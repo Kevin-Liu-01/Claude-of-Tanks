@@ -303,3 +303,126 @@ collar); pano at 2.495 vs the real ~2.7 (warp-clamped print, p95-priced);
 closer-wedge/roof-corner +0.08-0.17 over 2-3 cols (the raised front roof
 is a real C1 feature); shaded-path flatness vs the ref's baked texture
 (world-continuous camo + no AO is engine-level, out of profile scope).
+
+## PUSH ROUND (2026-08-05, misc agent) — 65.5 -> 76.3 x2, every component up, dims 100 held
+
+Final gate x2 stable (three consecutive runs): min **76.3** | hull 80.7 /
+whole 76.3 / turret 83.6 / stations 85.9 / dims 100 / floaters 100
+(baseline 65.5 | 69.7 / 68.8 / 65.5 / 72.8 / 100 / 100 — every component
++7.7..+18.1). Track-clip exact **0/0**; standard-check clip 0/0 ✓ contig 0 ✓
+mg1+3d ✓; turret-parent stranded-1/abutting-1 = the SAME two documented
+turret-fix adjudications (deck roll false-positive + tail spares — both
+stay in rig_hull, re-verified against shots/turret-parent.json boxes);
+npm test clean. Twelve landed edit cycles; probes:
+tools/tmp-ariete-worldtrace.mjs (gate-identical registration, prints every
+row's full column work order in the BUILD's world frame — kills the ledger
+'at'-decode guessing), tmp-ariete-slice4.mjs (station slice-top attribution),
+tmp-ariete-raycol.mjs / tmp-ariete-xmax.mjs (column-content attribution).
+
+THE ROUND'S STRUCTURAL DISCOVERY — THE WIDTH-NORMALIZE RENDER SCALE: the
+fidelity harness scales BOTH roots so the visible-box width equals
+spec widthM (procedural-fidelity.html:403 `safeScale(3.60, procWidth)`).
+With the build's widest authored |x| at 1.7775 the WHOLE tank renders
+x1.01266 (verified: skirt bucket maxX prints 1.8000 exactly; z extents
+match authored x1.0127). Consequences, all measured this round: the
+overallLengthM mystery (authored 9.60 read 9.72-9.78), the certified-cap
+"±1.85 mirror-dot bin" boundary being GRID-relative (an authored-1.7775
+edge + AA landed in the dot col the moment a gun-length edit moved the
+shared box), and every boundary-hugging margin being ~1.27% narrower than
+authored. LAW FOR THIS FILE: author against RENDERED = authored x k
+(k = 1.80/max-authored-|x|); NEVER change the widest piece (currently the
+SKIRT END PLATES at +-1.7775) without re-deriving every fitted value.
+
+WHAT LANDED (worst-rows-first, per the worldtrace work orders):
+- PLAN REAR RE-LAY: center-only tail lip (x +-0.20; the 2.70-wide lip
+  printed plan rear -3.94 at every x where the ref reads -3.65..-3.83),
+  rear exhaust/hitch stubs at +-1.02 to -3.825 (ref -3.79..-3.82 both
+  sides), 14th skirt course pulled to -3.56, trench fill widened/extended
+  (x 1.42-1.67, rear -3.71). plan_hull 83.4 -> 90.4.
+- MUZZLE/MRS COLLAR (r 0.135, off-axis xc -0.04, world 5.40-5.70 via the
+  gunMount +0.60 frame — verified against the mantlet block's 1.745
+  front): covers the plan x=-0.165 column the ref's off-center fused tube
+  owns — the certified 1.84-err plan-center col DIED (turret_plan 75.9 ->
+  87.4). Band 0.27 stays under the 12% body cut so dims never see it.
+- GUN LEN 5.18 -> 5.10: the MASK is the measure of record — the rendered
+  tube read overallLengthM 9.78/+1.19% (the render scale); 5.10 reads 9.70.
+- TURRET UNDERSIDE RE-LAY: body poly ends z_w -1.27, raked-belly bustle
+  slabs (1.50 -> 1.645 -> flat) — the ref turret underside RISES aft
+  (1.405 front / 1.555@-1.27 / 1.645@-1.5..-2.0 / 1.675 basket); plinth
+  dropped to the 1.445 deck line; wedge undersides 1.455 (1 cm over the
+  deck at every yaw — the ref's 1.375-1.405 is unreachable without
+  yaw-sweep clip). turret_side 65.5 -> 84.0.
+- ROOF RE-METER: mid/bustle roof plates +-1.175 top 2.32/2.30; poly h
+  0.72 (top 2.20 — the ref wall-top corner falls 2.31@1.19 -> 2.16@1.24);
+  channel 2.31; TURMS x 0.505-0.84 top 2.4925/lid 2.506 (heightM p95
+  anchor, +0.4%); 6-cm roof-edge RAILS at +-1.02-1.065 top 2.46 (the
+  ref's tall shoulder prints ONLY in the +-1.058 front col); slim pano
+  x -0.21..-0.255, z_w -1.10..-1.27; loader sight hood x -0.73..-0.99
+  top 2.46; center periscope vane top 2.44; hatches aft (crowns 2.30-2.33
+  in the ref's 2.30 band); BROW LOFT: three chained raked planes
+  2.28@0.95 -> 2.11@1.15 -> 2.03@1.61 -> 1.865@1.99 (smoothLoft class,
+  replaced the floating brow box).
+- MANTLET SNOUT (canvas, x +-0.40 to z_w 2.16): the ref plan front holds
+  2.16-2.19 across +-0.2-0.42 — the gap between the 0.36 block and the
+  wedge roots read 0.85 short.
+- GEAR: both end wheels raised HARD per the ref wrap-crest bottoms
+  (idler 3.30/0.89/r0.13, sprocket -3.12/0.86/r0.21, contact patch pinned
+  2.36/-2.05, track band x 1.065-1.68 rendered 1.078-1.70 — the ref front
+  rows reach near-ground at +-1.07-1.10); SS-B6 trapezoid stronger than
+  baseline. Skirts: band 0.60-1.42 (ref front-row skirt bottom 0.626),
+  SLANTED LEADING CUT (one raked lip 1.42@2.52 -> 1.34@2.98), courses
+  x 1.715-1.755, SKIRT END PLATES x 1.7225-1.7775 (the +-1.81 front cols
+  want the ref's full 0.59-1.31 band AND the +-1.84 plan bin wants a
+  short dot — the 38-cm plate delivers both and carries widthM 3.60).
+- HULL LINES: glacis (2.44,1.386)->(3.40,1.15); nose 3.60 with the
+  FRAME-LOCK (the nose-tip col band = nose UNION tube = 0.845 — robustly
+  over the 12% body cut, so hullLengthM holds 7.57 and side dAlong stays
+  pinned ~0.775); mudguard crest x 1.55-1.745 z 3.28-3.49 (clear of the
+  1024-grid tube-only col at 3.60); stern rake 0.38@-2.60 -> 0.74@-3.66;
+  rear plate to 0.62; V splash rail hugging the glacis; hump 1.585; deck
+  roll flattened to 1.61; belly 0.40; deck decal moved onto the glacis
+  plane (its floating band owned the tube-only col after the nose pull).
+- CLIP RE-CERT after the wrap raise: flap re-seated as a thin lip under
+  the crest (the 0.72-0.88 flap sat INSIDE the wrap annulus — 94 vox),
+  idler 0.92 -> 0.89 (glacis edge vs dilated wrap), left exhaust raised
+  to 1.20 (the sprocket wrap climbed to 1.15) — 0/0 exact; sponson band
+  rear to -3.62 (two top-down sky cells at +-1.53/-3.57) — contig 0.
+
+LAWS BANKED (push round):
+1. RENDER-SCALE LAW (above) — the widest authored |x| is a global
+   calibration constant, not decoration.
+2. WORK-ORDER FRAME: tools/tmp-ariete-worldtrace.mjs replicates the
+   gate's registration exactly (body-span dAlong from the hull row, dy,
+   fixedReg reuse, turret hull-span trim) and prints want/have per column
+   in build coordinates — author from IT, never from the bbox-skewed
+   vertex-workorder turret rows and never from hand-decoded ledger 'at's.
+3. FRAME-LOCK: registration dAlong follows the body-column census; any
+   front/rear column whose band hovers near the 12% cut flips per-run and
+   sloshes dAlong +-0.06, moving every turret/pano/basket target. Pin the
+   end columns with band-robust geometry (nose-tip UNION tube = 0.845
+   here) BEFORE fitting anything aft of the ring.
+4. STATION-SLICE TOPS are per-slice-index comparisons of topH ABOVE EACH
+   MODEL'S OWN box-min: ref slice tops here read ~2.33 (i6), ~2.2 (i4) —
+   fitting my 2.46-rails into slice 6 cost 6.2%; the 1-cm window between
+   the -0.18 side col (wants 2.50) and the slice-6 boundary is
+   unbuildable — station trim priced lower than the side col.
+5. GRID-COUPLING: every 96-col grid is derived from the SHARED box —
+   a gun-length edit moves every view's column boundaries. Boundary-
+   hugging margins under ~8 mm rendered are coin-flips; design features
+   to sit mid-column or accept the flicker class explicitly.
+
+MEASURED CEILING / REMAINING (honest): front_whole 76.3 binds. Remaining
+worst columns are (a) the +-1.72/1.76 track-curtain/bottom class — the
+ledger reads bottoms 0.26-0.36 there that no authored mesh owns (static
+vertex scan + raycast negative; suspected harness-side LOD-far render at
+the gate's 60-m camera — ~0.5 pts, needs an orchestrator-lane harness
+probe to certify), (b) the L/R-asymmetric ref columns (wall-top 1.19 L vs
+1.24 R, track inner edges, +-1.03/1.07 cols — symmetric geometry can
+satisfy one side per column pair, ~0.5 pts), (c) the idler-wrap curl
+(ref crest-bottom 0.80-0.91 vs a physical wheel's 0.62-0.75 — matching
+it exactly needs a non-circular wrap the kit doesn't build, ~0.4 pts),
+(d) the certified stubby-print cover cols (side 1.83%: nose-tip
+PROC-ONLY + two ref tail-lip cols beyond my published rear; front 0.56%).
+Ceiling with (b)-(d) certified and (a) unresolved ≈ 78-80 on wholeCurves;
+hull/turret/stations have 85-90 reachable if whole unbinds. dims 100 is
+robust (all four dims 0.05-0.57%).
