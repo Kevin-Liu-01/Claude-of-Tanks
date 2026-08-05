@@ -5,7 +5,7 @@
  "components": {
   "hullCurves": 90.5,
   "wholeCurves": 91,
-  "turretCurves": 91.4,
+  "turretCurves": 91.6,
   "stations": 93.6,
   "dims": 100,
   "floaters": 100
@@ -770,8 +770,8 @@
    ]
   },
   "plan": {
-   "score": 91.39140212393329,
-   "meanPct": 0.65,
+   "score": 91.60483647555397,
+   "meanPct": 0.63,
    "p95Pct": 1.44,
    "coverPct": 0,
    "reg": {
@@ -802,14 +802,6 @@
      "procTop": 3.01,
      "procBot": -0.56,
      "errM": 0.084
-    },
-    {
-     "at": -0.73,
-     "refTop": 2.78,
-     "refBot": -0.42,
-     "procTop": 2.65,
-     "procBot": -0.39,
-     "errM": 0.082
     },
     {
      "at": -0.63,
@@ -858,6 +850,14 @@
      "procTop": 2.8,
      "procBot": -0.53,
      "errM": 0.057
+    },
+    {
+     "at": -0.73,
+     "refTop": 2.78,
+     "refBot": -0.42,
+     "procTop": 2.7,
+     "procBot": -0.39,
+     "errM": 0.055
     },
     {
      "at": -0.15,

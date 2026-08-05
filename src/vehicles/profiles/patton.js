@@ -763,6 +763,143 @@ function smoothLoft(P, bucket, sections, opts = {}) {
 }
 
 // ---------------------------------------------------------------------------
+// r8 S1/S3 (m47): smooth-cast bustle — the slab chain's outer skin re-emitted
+// as ONE indexed grid (B8 smoothLoft lineage) so the walls, the tail corner
+// wrap AND the tail face shade as a continuously-graded casting instead of
+// flat tone sheets with hard facet steps (the r6 verdict's remaining driver:
+// "planar walls with chamfer bevels" vs the ref's rounded cast shell).
+//   - ring corners byte-equal to the slab corners (floor xL/xR, top at the
+//     0.96 taper; last ring 0.94 — the slab chain's own a-ring/b-ring values;
+//     between rings the top edge follows the 0.96 cone, inside the plan)
+//   - cross-section adds a mid-wall ring point (<=10 mm outward bulge — the
+//     B4 chord-limit class: ~1 px at the 9.7 mm/px critic pitch, sub-pixel at
+//     the 65 mm gate pitch) and an on-line shoulder point so the top-corner
+//     normal roll is confined to a cast-radius band instead of the whole wall
+//   - S1 wrapRings: interpolated plan rings between the B1 blend rings (the
+//     ordered 4-6 chord-limited facets) with 2-5 mm sagitta-class bulges
+//   - the TAIL FACE is part of the same grid (two collapsing cap rings), so
+//     computeVertexNormals grades the face into the corner wrap — the
+//     "no flat plateau >= 0.6 m" done-gate mechanism; tail-face z stays
+//     -2.683 (anchor law), the cap rings add no plan/side extent
+//   - floor + front face stay separate flat soups (hard edges: the crisp
+//     under-bustle shadow line and the dome-buried front cap)
+// ---------------------------------------------------------------------------
+function smoothBustle(P, BS, yl, zl, opts = {}) {
+  const taper = 0.96, taperEnd = 0.94;
+  const bulge = opts.bulge ?? 0.010;    // wall-zone outward sagitta (m)
+  // ring list: sections + interpolated wrap rings (sorted front -> rear)
+  const rings = BS.map((s) => ({ ...s, t: taper }));
+  rings[rings.length - 1].t = taperEnd;
+  for (const W of opts.wrapRings || []) {
+    let i = 0;
+    while (i < BS.length - 1 && !(W.z <= BS[i].z && W.z >= BS[i + 1].z)) i++;
+    if (i >= BS.length - 1) continue;
+    const a = BS[i], b = BS[i + 1], f = (W.z - a.z) / (b.z - a.z);
+    const lerp = (ka, kb) => ka + (kb - ka) * f;
+    rings.push({
+      z: W.z, t: taper,
+      xL: lerp(a.xL, b.xL) - (W.b ?? 0), xR: lerp(a.xR, b.xR) + (W.b ?? 0),
+      top: lerp(a.top, b.top), floor: lerp(a.floor, b.floor),
+    });
+  }
+  // r8 S2: per-ring top-taper overrides (wrap rings included) — the front
+  // rings tuck their roof corners toward the dome's own shoulder line, the
+  // tail rings tighten so the trailing 45° corner sheds its proud shoulder
+  // (the B1-class 91.9°/0.65 m tangent-vertical finding). Roof y and plan
+  // (floor) unchanged. tailFloorEase lifts the LAST rings' floor corners
+  // (egg-end underside; <=2.7 cm on the final half-column, B1-priced class).
+  for (const [tz, tt] of opts.tapers || []) {
+    const r = rings.find((s) => Math.abs(s.z - tz) < 1e-6);
+    if (r) r.t = tt;
+  }
+  for (const [fz, dy] of opts.tailFloorEase || []) {
+    const r = rings.find((s) => Math.abs(s.z - fz) < 1e-6);
+    if (r) r.floor += dy;
+  }
+  rings.sort((a, b) => b.z - a.z);
+  // 13-point cross section: floor, three barrel points (30/55/80% height),
+  // crown corner each side + crown centre (left wall up over the roof and
+  // down the right). Wall-zone rings clamp the bulge INSIDE the floor plan
+  // (zero plan cost); tail-zone rings (r8 S2) carry a real UNclamped barrel
+  // — the ref's rear shell is egg-ended, and the 45° trailing contour needs
+  // genuine tangent swing to stop fitting as one 0.64 m vertical (the
+  // B1-class finding both quarters). Chord-limit: tail sagitta <= 2.4 cm,
+  // the B1-priced <=4.7 cm class.
+  const sec = (s) => {
+    const wallX = (x0, xt, y) => x0 + (xt - x0) * ((y - s.floor) / (s.top - s.floor));
+    const xLt = s.xL * s.t, xRt = s.xR * s.t;
+    const tail = opts.tailBulge
+      ? Math.max(0, Math.min(1, (opts.tailBulge.z0 - s.z) / (opts.tailBulge.z0 - opts.tailBulge.z1)))
+      : 0;
+    const bAt = (f) => (bulge + (opts.tailBulge ? tail * (opts.tailBulge.b - bulge) : 0)) *
+      (f === 0.30 ? 0.52 : f === 0.55 ? 1.0 : 0.50);
+    const pt = (sideX, sideT, sign, f) => {
+      const y = s.floor + (s.top - s.floor) * f;
+      const xw = wallX(sideX, sideT, y);
+      let b = bAt(f);
+      if (tail <= 0) b = Math.max(0, Math.min(b, Math.abs(sideX) - 0.001 - Math.abs(xw)));
+      return [xw + sign * b, y];
+    };
+    return [
+      [s.xL, s.floor], pt(s.xL, xLt, -1, 0.30), pt(s.xL, xLt, -1, 0.55), pt(s.xL, xLt, -1, 0.80), [xLt, s.top],
+      [(xLt + xRt) / 2, s.top],
+      [xRt, s.top], pt(s.xR, xRt, 1, 0.80), pt(s.xR, xRt, 1, 0.55), pt(s.xR, xRt, 1, 0.30), [s.xR, s.floor],
+    ];
+  };
+  const rows = rings.map((s) => ({ z: s.z, pts: sec(s) }));
+  // tail cap: two collapsing rings ON the tail plane (z anchor untouched) —
+  // shared grid vertices grade the wrap into the face; interior stays -z flat
+  const last = rows[rows.length - 1];
+  const cx = last.pts.reduce((t, p) => t + p[0], 0) / last.pts.length;
+  const cy = last.pts.reduce((t, p) => t + p[1], 0) / last.pts.length;
+  for (const f of [0.52, 0]) {
+    rows.push({ z: last.z, pts: last.pts.map(([x, y]) => [cx + (x - cx) * f, cy + (y - cy) * f]) });
+  }
+  const M = 11;
+  const emit = (pos, idx) => {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(new Array((pos.length / 3) * 2).fill(0), 2));
+    if (idx) g.setIndex(idx);
+    g.computeVertexNormals();
+    P.add('turret', g);
+  };
+  { // outer skin + graded tail cap (one shared-normal grid)
+    const pos = [], idx = [];
+    for (const r of rows) for (const p of r.pts) pos.push(p[0], yl(p[1]), zl(r.z));
+    for (let i = 0; i < rows.length - 1; i++) {
+      for (let j = 0; j < M - 1; j++) {
+        const a0 = i * M + j, a1 = a0 + 1, b0 = a0 + M, b1 = b0 + 1;
+        idx.push(a0, a1, b1, a0, b1, b0);
+      }
+    }
+    emit(pos, idx);
+  }
+  { // flat underside strip (hard bottom edges, follows the wrap plan)
+    const pos = [], idx = [];
+    for (const r of rows.slice(0, rings.length)) {
+      pos.push(r.pts[M - 1][0], yl(r.pts[M - 1][1]), zl(r.z), r.pts[0][0], yl(r.pts[0][1]), zl(r.z));
+    }
+    for (let i = 0; i < rings.length - 1; i++) {
+      const a0 = i * 2, a1 = a0 + 1, b0 = a0 + 2, b1 = b0 + 1;
+      idx.push(a0, a1, b1, a0, b1, b0);
+    }
+    emit(pos, idx);
+  }
+  { // flush front cap (dome-buried; hard edges like the old slab face)
+    const r = rows[0], pos = [];
+    const fx = r.pts.reduce((t, p) => t + p[0], 0) / r.pts.length;
+    const fy = r.pts.reduce((t, p) => t + p[1], 0) / r.pts.length;
+    for (let k = 0; k < M - 1; k++) {
+      const a = r.pts[k], b = r.pts[k + 1];
+      pos.push(fx, yl(fy), zl(r.z), b[0], yl(b[1]), zl(r.z), a[0], yl(a[1]), zl(r.z));
+    }
+    pos.push(fx, yl(fy), zl(r.z), r.pts[0][0], yl(r.pts[0][1]), zl(r.z), r.pts[M - 1][0], yl(r.pts[M - 1][1]), zl(r.z));
+    emit(pos, null);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // M47 long-nose turret: needle prow -> plateau loft, long squared bustle
 // overhang, rangefinder blister pods, low cupola, roof M2.
 // ---------------------------------------------------------------------------
@@ -804,6 +941,59 @@ function m47Cast(P, T) {
   }
   for (const C of T.cheekPods || []) { // asymmetric cheek masses (the m47
     // casting reads fuller on the commander flank than the symmetric loft)
+    // r8 S1: C.roll = [[y, xOut]...] extends the B2b corner treatment ACROSS
+    // the outer face — the whole wall becomes a chord-limited leaning
+    // profile (bottom -> top), emitted as ONE smooth-normal prism so the
+    // rear-view contour reads the ref's own leaning-cheek diagonal class
+    // (evaluator ref 66.5°/112.9° cheek edges) instead of a 0.32-0.43 m
+    // 90° wall vertical. Every profile point stays inside the r4 box
+    // envelope; the top face edge lands at the last profile point (the
+    // B2b-priced chamfer band). End caps/top/inner wall stay hard.
+    if (C.roll) {
+      const outerIsX0 = Math.abs(C.x0) > Math.abs(C.x1);
+      const xIn = outerIsX0 ? C.x1 : C.x0;
+      let loop = [[xIn, C.y0], ...C.roll.map(([ry, rx]) => [rx, ry]), [xIn, C.y1]];
+      if (!outerIsX0) loop = loop.slice().reverse();
+      const L = loop.length, rows = [C.z0, C.z1];
+      const pos = [], idx = [];
+      for (const z of rows) for (const p of loop) pos.push(p[0], yl(p[1]), zl(z));
+      for (let j = 0; j < L; j++) {
+        const a0 = j, a1 = (j + 1) % L, b0 = j + L, b1 = a1 + L;
+        idx.push(a0, a1, b1, a0, b1, b0);
+      }
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+      g.setAttribute('uv', new THREE.Float32BufferAttribute(new Array((pos.length / 3) * 2).fill(0), 2));
+      g.setIndex(idx);
+      g.computeVertexNormals();
+      P.add('turret', g);
+      // signed loop area orients the caps (the mirrored right-pod loop
+      // reverses winding — an unoriented cap culls from the front and the
+      // open tube punches mask holes; caught in-gate, whole 91.0 -> 89.1)
+      let area2 = 0;
+      for (let k = 0; k < L; k++) {
+        const a = loop[k], b = loop[(k + 1) % L];
+        area2 += a[0] * b[1] - b[0] * a[1];
+      }
+      const ccw = area2 > 0; // CCW seen from +z
+      for (const [z, sign] of [[C.z0, 1], [C.z1, -1]]) { // flush end caps
+        const cx2 = loop.reduce((t, p) => t + p[0], 0) / L;
+        const cy2 = loop.reduce((t, p) => t + p[1], 0) / L;
+        const cap = [];
+        for (let k = 0; k < L; k++) {
+          const a = loop[k], b = loop[(k + 1) % L];
+          const fwd = (sign > 0) === ccw; // +z cap needs CCW-from-+z triangles
+          if (fwd) cap.push(cx2, yl(cy2), zl(z), a[0], yl(a[1]), zl(z), b[0], yl(b[1]), zl(z));
+          else cap.push(cx2, yl(cy2), zl(z), b[0], yl(b[1]), zl(z), a[0], yl(a[1]), zl(z));
+        }
+        const cg = new THREE.BufferGeometry();
+        cg.setAttribute('position', new THREE.Float32BufferAttribute(cap, 3));
+        cg.setAttribute('uv', new THREE.Float32BufferAttribute(new Array((cap.length / 3) * 2).fill(0), 2));
+        cg.computeVertexNormals();
+        P.add('turret', cg);
+      }
+      continue;
+    }
     // r6 B2b: C.chamfer = [dy, dx] rolls the pod's TOP-OUTER corner (a cut
     // INSIDE the box envelope — the rear-view 90° wall verticals at
     // x -1.115 / +1.155 read rolled at 1x while the ref's own flat
@@ -831,13 +1021,45 @@ function m47Cast(P, T) {
   // workorder plan cols ±0.73..0.83); floor climbs 1.86 -> 1.955 (ref
   // underside 1.87 @ -1.55, 1.942 @ -1.64); roof flat at the ref 2.613.
   const BS = T.bustleSecs;
-  for (let i = 0; i < BS.length - 1; i++) {
-    const a = BS[i], b = BS[i + 1];
-    P.add('turret', slab(
-      [a.xL, yl(a.floor), zl(a.z)], [a.xR, yl(a.floor), zl(a.z)], [b.xR, yl(b.floor), zl(b.z)], [b.xL, yl(b.floor), zl(b.z)],
-      [a.xL * 0.96, yl(a.top), zl(a.z)], [a.xR * 0.96, yl(a.top), zl(a.z)], [b.xR * 0.94, yl(b.top), zl(b.z)], [b.xL * 0.94, yl(b.top), zl(b.z)]));
+  if (T.bustleSmooth) {
+    // r8 S1/S3: one smooth-shaded skin (see smoothBustle) — slab corners
+    // preserved, wrap rings + tail-face grading per the r6 orders
+    smoothBustle(P, BS, yl, zl, T.bustleSmooth);
+  } else {
+    for (let i = 0; i < BS.length - 1; i++) {
+      const a = BS[i], b = BS[i + 1];
+      P.add('turret', slab(
+        [a.xL, yl(a.floor), zl(a.z)], [a.xR, yl(a.floor), zl(a.z)], [b.xR, yl(b.floor), zl(b.z)], [b.xL, yl(b.floor), zl(b.z)],
+        [a.xL * 0.96, yl(a.top), zl(a.z)], [a.xR * 0.96, yl(a.top), zl(a.z)], [b.xR * 0.94, yl(b.top), zl(b.z)], [b.xL * 0.94, yl(b.top), zl(b.z)]));
+    }
   }
   const B = { z0: BS[0].z, z1: BS[BS.length - 1].z, w0: BS[0].xR, w1: BS[BS.length - 2].xR, top0: BS[0].top, top1: BS[BS.length - 1].top, floor0: BS[0].floor, floor1: BS[BS.length - 1].floor };
+  // r8 S2 (render lane): the dome-bottom (1.76) to bustle-floor (1.90-1.94)
+  // gap at z -1.46..-1.63 reads as a see-through notch at both 45° quarters
+  // (the residual 87.8°/0.50 throat chains trace its boundary). A side-mask
+  // filler would break the r3 floor-line pairing (ref underside 1.87/1.942
+  // anchors), so the plug is a *Shadow*-NAMED curtain — §C proxy law:
+  // excluded from gate masks, evaluator analysis masks and critic framing,
+  // drawn in every shaded render (verified per-harness in r6; gate held
+  // bit-identical x2 with it present this round).
+  if (T.bustleSmooth) {
+    const notchMat = P.mats.shadow.clone();
+    notchMat.color.setHex(0x424535);
+    notchMat.roughness = 0.97;
+    notchMat.metalness = 0.0;
+    notchMat.envMapIntensity = 0.24;
+    notchMat.onBeforeCompile = vehicleAmbientFloorHook;
+    notchMat.customProgramCacheKey = () => 'veh-ambient-floor-v2';
+    P.disposables.push(notchMat);
+    const ng = new THREE.BoxGeometry(1.42, 0.17, 0.17);
+    const nm = new THREE.Mesh(ng, notchMat);
+    nm.name = 'throatNotchShadow';
+    nm.position.set(0, yl(1.845), zl(-1.545));
+    nm.castShadow = false;
+    nm.receiveShadow = true;
+    P.turretG.add(nm);
+    P.disposables.push(ng);
+  }
   // ammo chin under the bustle throat: ref bottom dips 1.726 ONLY over
   // z -1.40..-1.50 (col -1.548 already reads 1.87) — thin box inside it.
   // r4 B2: with rackFill the chin joins the pale fitting class — its rear
@@ -897,8 +1119,12 @@ function m47Cast(P, T) {
     P.add('turretCloth', box(0.80, 0.42, 0.026), 0.01, yl(2.34), zl(wallZ + 0.011));
     tarpRoll(P, 'turretCloth', 0.0, yl(2.475), zl(wallZ + 0.0435), 0.74, 0.045, true, P.q ? 12 : 8);
     tarpRoll(P, 'turretCloth', 0.0, yl(2.205), zl(wallZ + 0.0435), 0.70, 0.045, true, P.q ? 12 : 8);
+    // r8 S4: strap battens muted to the cloth bucket — the r6 turretDark
+    // rails added rectilinear grammar the ref's soft tarp handles don't
+    // have (three pale-on-dark verticals at 1x). Same geometry, same trace
+    // column (anchor law) — the read is now tone-on-tone sewn straps.
     for (const sx of [-0.27, 0.01, 0.29]) {
-      P.add('turretDark', box(0.035, 0.38, 0.012), sx, yl(2.335), zl(wallZ + 0.0025));
+      P.add('turretCloth', box(0.035, 0.38, 0.012), sx, yl(2.335), zl(wallZ + 0.0025));
     }
   }
   // LEFT cheek roll wedges (r2): the ref front rolls 2.815 @ x -0.79 down
@@ -1022,7 +1248,11 @@ function m47Cast(P, T) {
   // antennaWhip on the PALE-REFUND slot, aligned so both masks' whip
   // columns pair (heightM p95 budget: 1-2 side columns, verdict-priced).
   if (T.whip) {
-    const whip = FITTINGS.antennaWhip({ mats: P.mats, h: T.whip.h, rake: 0.05, seed: 47 });
+    // r8: T.whip.r opt-in (default = the fitting's own 0.011) — the 22 mm
+    // whip printed as a PAIR of 0.47 m rear-contour verticals where the
+    // ref's own thinner spike AA-blends; 15 mm keeps the pale side-view
+    // spike line (1.5 px at critic pitch) and the D1 column pairing.
+    const whip = FITTINGS.antennaWhip({ mats: P.mats, h: T.whip.h, r: T.whip.r, rake: 0.05, seed: 47 });
     whip.position.set(T.whip.x, yl(T.whip.y), zl(T.whip.z));
     P.turretG.add(whip);
   }
@@ -1414,8 +1644,17 @@ function buildPershing(P, cfg) {
             // r4 A3 (m47): cfg.fenderSkirtB routes the hanger-skirt drops off
             // the pale detail bucket (they serrated the deck line as primer
             // sticks against the dark band). Default byte-identical.
-            P.add(cfg.fenderSkirtB || 'hullDetail', box(0.04, skirtD, Math.abs(bz0 - bz1)),
-              side * (hull.hw - 0.02), fy - 0.019 - skirtD / 2, (bz0 + bz1) / 2);
+            // r8 T1/S1 (m47) opt-in cfg.fenderSkirtSlim = [w, inset]: thin
+            // the drop plates so their inner faces sit sub-pixel from the
+            // bump-plate contour line — the rear-view ±1.707 tab verticals
+            // (evaluator 0.45 m pair) merge into the matched ±1.751 fender
+            // line, and the quarters read one curtain band instead of
+            // discrete tabs. OUTER face stays at hull.hw - 0.006 - w/2 +
+            // w/2 = the r4 line, so front/side/plan masks are unchanged.
+            // Default [0.04, 0.02] byte-identical (m46 frozen).
+            const [skW, skIn] = cfg.fenderSkirtSlim || [0.04, 0.02];
+            P.add(cfg.fenderSkirtB || 'hullDetail', box(skW, skirtD, Math.abs(bz0 - bz1)),
+              side * (hull.hw - skIn), fy - 0.019 - skirtD / 2, (bz0 + bz1) / 2);
           }
         }
       }
@@ -1575,10 +1814,20 @@ function buildPershing(P, cfg) {
     // { covers: [[w,h,d,y,z,rx]...], curtains: [[w,h,d,x,y,z]...],
     //   backers: [[w,h,d,y,z]...], endRings: [[r,dx,y,z,name?]...] | null }.
     const GS = cfg.gearShade === true ? {
+      // r8 T1: the outboard curtain deepened (0.19 -> 0.34, hanging to the
+      // skirt-drop bottoms) and extended over the rear fender run (z +1.04
+      // -> -4.02) so the lit fender-rim/wall gaps BETWEEN the six skirt
+      // verticals drop the ordered tone step — the band reads continuous
+      // at 1x (done-gate: no >12L lit gap between curtain columns).
       covers: [[0.61, 0.016, 1.26, 1.40, -2.71, 0.157], [0.61, 0.016, 2.82, 1.30, -0.70, 0], [0.61, 0.016, 0.74, 1.34, 1.06, -0.111]],
-      curtains: [[0.016, 0.19, 4.07, 1.63, 1.425, -1.00], [0.014, 0.22, 0.40, 1.195, 1.39, -2.46]],
+      curtains: [[0.016, 0.34, 5.05, 1.63, 1.35, -1.49], [0.014, 0.22, 0.40, 1.195, 1.39, -2.46]],
       backers: [[0.05, 0.95, 0.62, 0.93, -3.00], [0.05, 0.85, 0.42, 0.90, 1.52]],
       endRings: null,
+      // r8 T2 companion: second inner rim ring per road wheel (the ref's
+      // dished wheels carry a double rim light) — restores the hero-rr
+      // window sd >= 11 the end-drum mute spent, via the ordered in-class
+      // wheel-rim lane. m46's object form lacks the flag: byte-identical.
+      rimBoost: true,
     } : cfg.gearShade;
     const mkShade = (hex, env = 0.12) => {
       const m = P.mats.shadow.clone();
@@ -1677,10 +1926,21 @@ function buildPershing(P, cfg) {
       mesh.receiveShadow = true;
       P.hullG.add(mesh);
       P.disposables.push(geo);
+      return mesh;
     };
+    // r8 T2 companion (m47 literal only): the boost rings live in wheel-bay
+    // shade — at glintMat's tone they render at the local mean (zero sd
+    // effect, measured); a brighter dedicated clone carries the ref's
+    // dished double-rim light. m46 (no rimBoost flag) never builds these.
+    const glintBoost = GS.rimBoost ? mkShade(0x7c805f, 0.70) : null;
+    if (glintBoost) {
+      glintBoost.roughness = 0.45;
+      glintBoost.metalness = 0.32;
+    }
     for (const z of wheelZsS) {
       for (const side of [-1, 1]) {
         glintRing(G.wheelR * 0.80, side * (xcS + wheelWS / 2 + 0.016), wyS, z);
+        if (GS.rimBoost) glintRing(G.wheelR * 0.52, side * (xcS + wheelWS / 2 + 0.052), wyS, z).material = glintBoost;
       }
     }
     // sprocket + idler rim glints (cycle-2/3): the ref's highlight tail
@@ -1692,15 +1952,24 @@ function buildPershing(P, cfg) {
     // sprocket ring joins the §C proxy package (mask-excluded *Shadow*
     // name, shaded-render visible), 10 mm proud of the face it accents.
     // The idler ring rides its dished cone face as real interior geometry.
+    // r8 T2 (m47 literals only — m46's object form is untouched): the
+    // carrier-face rings read as DRAWN bright circles at 1x (drum window
+    // p95 93.0 vs ref 78.5; the ref's end wheels carry only subdued rim
+    // light) — the end-drum rings drop to a muted clone (bar p95 <= ref+6
+    // ~= 84.5) while the road-wheel rims keep full glint for N5's sd >= 11.
+    const glintMuted = mkShade(0x43473a, 0.22);
+    glintMuted.roughness = 0.70;
+    glintMuted.metalness = 0.12;
     const endRings = GS.endRings || [
-      [G.sprocket.r * 0.80, 0.342, G.sprocket.y, G.sprocket.z, 'gearShadowGlint'],
-      [G.sprocket.r * 0.52, 0.342, G.sprocket.y, G.sprocket.z, 'gearShadowGlint'],
-      [G.idler.r * 0.76, 0.235, G.idler.y, G.idler.z],
+      [G.sprocket.r * 0.80, 0.342, G.sprocket.y, G.sprocket.z, 'gearShadowGlint', 1],
+      [G.sprocket.r * 0.52, 0.342, G.sprocket.y, G.sprocket.z, 'gearShadowGlint', 1],
+      [G.idler.r * 0.76, 0.235, G.idler.y, G.idler.z, null, 1],
     ];
     for (const side of [-1, 1]) {
-      for (const [rr, rdx, ry, rz, rname] of endRings) {
-        if (rname) glintRing(rr, side * (xcS + rdx), ry, rz, rname);
-        else glintRing(rr, side * (xcS + rdx), ry, rz);
+      for (const [rr, rdx, ry, rz, rname, rmute] of endRings) {
+        const mesh0 = rname ? glintRing(rr, side * (xcS + rdx), ry, rz, rname)
+          : glintRing(rr, side * (xcS + rdx), ry, rz);
+        if (rmute) mesh0.material = glintMuted;
       }
     }
   }
@@ -3158,6 +3427,10 @@ export const PATTON_PROFILES = {
       // proxies (§C mask-excluded, verified per-harness) + ramp-wedge
       // backers + wheel-rim glints; N1/N2 hue+drum work rides gearTone.
       gearTone: true, gearShade: true, fenderSkirtB: 'hullDark', hoodScopes: true, deckKit: true,
+      // (r8 cycle-3: fenderSkirtSlim [0.012, 0.006] tried for the rear-view
+      // ±1.707 tab pair — the slim tabs did NOT merge into the ±1.751 fender
+      // line; instead the uncovered track band printed a NEW 0.72 m vertical
+      // (rear procOnly 26 -> 29). Reverted — the tabs stay the r4 geometry.)
       tailTray: { z0: -3.64, z1: -4.04, x0: 0.24, x1: 0.92 },
       // r3 REAR ANCHOR (post-warp re-anchor): the warped ref carries a FAT
       // (0.48-0.53 band) tail to -4.27 in its frame — proc-content -4.16 at
@@ -3270,10 +3543,20 @@ export const PATTON_PROFILES = {
           { x0: -0.415, x1: -0.24, y0: 1.90, y1: 2.24, z0: 1.04, z1: 0.60 },
           { x0: -0.93, x1: -0.62, y0: 2.15, y1: 2.50, z0: 0.42, z1: -0.95 },
           { x0: -1.028, x1: -0.93, y0: 1.95, y1: 2.30, z0: 0.26, z1: -1.02 },
-          // r6 B2b: outer-wall pods carry a 6 cm top-outer corner chamfer
-          // (rear-view 90° verticals @ x -1.115 / +1.155 / +1.045 read
-          // rolled; ref front plateau 2.281 loses only the corner columns)
-          { x0: -1.115, x1: -1.02, y0: 1.85, y1: 2.27, z0: 0.115, z1: -1.03, chamfer: [0.06, 0.045] },
+          // r6 B2b -> r8 S1: the 6 cm top-outer chamfers extended ACROSS the
+          // outer faces (C.roll leaning profiles, smooth prism) — the
+          // remaining rear-view 90° wall verticals (0.43/0.32 m evaluator
+          // findings @ x -1.115 / +1.155) convert to the ref's own
+          // 66.5°/112.9° leaning-cheek diagonal class. Profiles stay inside
+          // the r4 box envelopes; top edges land on the B2b chamfer band.
+          // (cycle-2: the first roll leaned the TOP in — but the front
+          // plateau columns at |x| 1.09-1.17 are ref-paired at 2.21-2.29
+          // (B2b band): front_whole 91 -> 89.1, caught in-gate. The ref's
+          // own section is an UNDERCUT: plateau lip at full width, wall
+          // tucked IN below — its 66.5/112.9deg rear diagonals live under
+          // the lip where the front trace never reads. Profile flipped.)
+          { x0: -1.115, x1: -1.02, y0: 1.85, y1: 2.27, z0: 0.115, z1: -1.03,
+            roll: [[1.85, -1.038], [1.95, -1.064], [2.05, -1.096], [2.13, -1.112], [2.21, -1.115], [2.27, -1.07]] },
           { x0: 0.40, x1: 0.72, y0: 2.35, y1: 2.76, z0: -0.55, z1: -1.25 },
           // r6 B4: the r2 flat steps 2.63/2.47 read square where the ref
           // ROLLS (its own front cols: 2.690 @0.733-0.780, 2.652 @0.804-
@@ -3286,8 +3569,10 @@ export const PATTON_PROFILES = {
           { x0: 0.805, x1: 0.858, y0: 2.20, y1: 2.650, z0: -0.55, z1: -1.25 },
           { x0: 0.858, x1: 0.902, y0: 2.10, y1: 2.615, z0: -0.45, z1: -1.22 },
           { x0: 0.902, x1: 0.938, y0: 2.05, y1: 2.525, z0: -0.35, z1: -1.20 },
-          { x0: 0.935, x1: 1.155, y0: 1.95, y1: 2.29, z0: 0.09, z1: -0.72, chamfer: [0.06, 0.05] },
-          { x0: 0.935, x1: 1.045, y0: 1.95, y1: 2.29, z0: 0.28, z1: -0.99, chamfer: [0.06, 0.035] },
+          { x0: 0.935, x1: 1.155, y0: 1.95, y1: 2.29, z0: 0.09, z1: -0.72,
+            roll: [[1.95, 1.078], [2.05, 1.102], [2.14, 1.140], [2.23, 1.155], [2.29, 1.105]] },
+          { x0: 0.935, x1: 1.045, y0: 1.95, y1: 2.29, z0: 0.28, z1: -0.99,
+            roll: [[1.95, 0.978], [2.05, 1.000], [2.14, 1.032], [2.23, 1.045], [2.29, 1.010]] },
         ],
         rollWedges: [
           { x0: -0.786, x1: -0.865, top0: 2.815, top1: 2.76, y0: 2.28, z0: -0.05, z1: -1.23 },
@@ -3315,6 +3600,27 @@ export const PATTON_PROFILES = {
           // sliver column samples the new low tail bar, not the core face
           { z: -2.683, xL: -0.40, xR: 0.42, top: 2.60, floor: 1.968 },
         ],
+        // r8 S1/S3: smooth-cast bustle skin (smoothBustle) — the ordered
+        // 4-6 chord-limited wrap facets between the B1 blend rings (sagitta
+        // 2-5 mm) + <=10 mm mid-wall bulge + graded tail face. Slab corner
+        // coordinates preserved; tail-face z / tailLip anchors untouched.
+        bustleSmooth: {
+          wrapRings: [{ z: -2.50, b: 0.004 }, { z: -2.635, b: 0.004 },
+            { z: -2.664, b: 0.005 }, { z: -2.680, b: 0.002 }],
+          // r8 S2: front-ring roof corners tuck toward the dome shoulder
+          // (throat tangent-vertical kill; roof y / plan floor unchanged;
+          // milder than the first cut — the left corner carries front
+          // columns above pod2's 2.50 shelf between x -0.755..-0.81)
+          tapers: [[-1.44, 0.90], [-1.51, 0.925], [-1.64, 0.95],
+            [-2.648, 0.925], [-2.664, 0.91], [-2.677, 0.90], [-2.680, 0.895], [-2.683, 0.89]],
+          // r8 S2: egg-end barrel on the tail rings — the 45° trailing
+          // contour (both quarters' B1-class 0.64 m vertical, the magenta
+          // tail edge) needs real tangent swing; sagitta ramps 10 -> 32 mm
+          // over the last 0.18 m (B1-priced <=4.7 cm class), tail rings'
+          // roof corners tightened + floor corners eased (egg underside)
+          tailBulge: { z0: -2.50, z1: -2.683, b: 0.032 },
+          tailFloorEase: [[-2.677, 0.010], [-2.680, 0.017], [-2.683, 0.027]],
+        },
         tailLip: [2.0575, -2.773, 0.12],
         basket: { w: 1.50, y0: 0.84, y1: 1.62, z0: 0.42, z1: -0.94 },
         blisterX: 0.72, blisterY: 2.47, blisterZ: 0.30,
@@ -3342,6 +3648,9 @@ export const PATTON_PROFILES = {
         // r6: B2b tail tarp (flush, inside the -2.683 plane) + B8 smooth
         // cast dome (normals-only — vertex positions identical)
         mountTruss: true, rackFill: true, tailTarp: true, noseCasting: true,
+        // (r8 cycle-3: whip r 0.0075 tried for the rear-view 0.47 m contour
+        // pair — the thinner box still prints both sides; no count change.
+        // Reverted to the D1-certified 0.011.)
         whip: { x: -0.60, y: 2.72, z: -0.88, h: 0.66 },
       },
       // r3: muzzle re-paired to the WARPED oracle (its face now reads 4.25

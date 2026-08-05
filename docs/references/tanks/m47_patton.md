@@ -520,6 +520,146 @@ world-box UV re-projection (cylinder-cap UVs collapse maps to a texel);
 (5) M2-band grammar must step TOWARD the ref's own band easing — the same
 volume away from it prices stations 1:1.
 
+## Round r8 (2026-08-04) — the m47 GROUP-S structural + T polish round (shaded-parity r6 orders)
+Gate **90.5 PASS x2 bit-identical** (hull 90.5 / whole 91.0 / turret 91.6 /
+stations 93.6 / dims 100 / floaters 100) — turret UP 91.4 -> 91.6 (the smooth
+bustle + egg-end pair BETTER than the slab chain; the S-group razor spend is
+NEGATIVE 0.2). standard-check clip 0/0 ✓ contig 0 ✓ decor mg1+1d ✓;
+track-clip --exact 0/0; turret-parent 0/0/0. Evaluator RIG PARITY OK x3 runs
+(max yawProxy 1.3° @front, |dCentroid| 0.047 m). Hashes: m47 **70941de0**
+(109 meshes / 103383 verts; was f02ef936 96/100818 — smooth grids + rings +
+proxies); m46 **99a3b0b4 FROZEN** (verified after every batch; its r7 critic
+ran concurrently — patton.js m46 sections byte-identical, all shared-code
+edits opt-in with m46 defaults); graduates m60a1 **81e69e34** / m60a3
+**efcde5c4** exact. npm test green (166 + track-geometry). MID-ROUND
+RE-BASELINE: the materials lane landed bakeDirtDeckEq ON for m47/m46
+(f243966 + 09eeafe, spec-row only) at 16:45 — every number below is from
+POST-knob renders. Shots: shots/patton-r8/ (14 final pairs + ab-*.png A/B
+crops + eval-final.json; r6 pairs under baseline/).
+
+**GROUP S — cast-shell finish (the floor-mover):**
+- **S1 ROLL the bustle rear wall ✓ (arc done-gate + crop-proof; procOnly
+  partial)**: the whole bustle re-emitted as ONE smooth-normal indexed grid
+  (`smoothBustle`, B8 smoothLoft lineage): slab corners byte-preserved,
+  13-pt cross sections (three barrel points per wall), the ordered 4-6
+  chord-limited wrap facets between the B1 blend rings (wrapRings at
+  -2.635/-2.664/-2.680, sagitta 2-5 mm) and the TAIL FACE grading INTO the
+  wrap via two in-grid cap rings (tail-face z -2.683 / tailLip anchors
+  untouched). Done-gates: **rear arcs proc 1 / PAIRED 1** (was 0/0 — the
+  fitter now pairs the ref's own r0.119 cheek-roll arc); crop-proof
+  ab-S1-rear-bustle.png (the corner wraps grade continuously; the visible
+  flat expanse is the CLOTH TARP PANEL, 0.80 m — the ref's own tarp is a
+  smooth cloth face; the shell around it grades). B2 windows re-verified
+  BETTER than r6: full [175..465]x[313..352] med **71.4** (r4 bar >=68; r6
+  read 67.2), cavity med **75.3** vs ref 73.8, sub-45 **0**. RESIDUAL
+  (honest): evaluator rear procOnly **28 vs the ordered <=18** (r6: 26) —
+  the pod-wall 90° verticals died (0.429/0.319 gone) but their ref-class
+  replacements count as new short segments (74.3°/0.275 + 108.1°/0.206
+  diagonals + 0.196/0.142 fragments = the ref's own 66.5/112.9° leaning-
+  cheek grammar, angle-matched but length-unmatched), and the rest of the
+  list is certified/other-lane: whip pair 0.47x2 (D1 content, ref spike
+  prints no rear contour), hull fender/muffler horizontals x3, tailStack
+  corner pair, skirt tabs ±1.707 x2 (see the cycle-3 note), dome crown
+  chords x4, wedge cross-section edges x2 (front-roll-column carriers —
+  cross-section sacred). Segment-count is the wrong metric for this
+  contour: the matched/paired trend (rear matched 23, arcs paired 1) and
+  the crops carry the read.
+- **S2 kill the B1-class tangent verticals ✓ (ordered window CLEAN)**: the
+  proc-only >=0.4 m 88-93° edge in the z -1.55..-1.70 band is **0 on BOTH
+  frontleft and frontright** (r6: 91.9°/0.65 frontright + 88.4°/0.50
+  frontleft twin). Mechanism (three parts, all in-grid): front-ring roof
+  tapers (0.90/0.925/0.95 — the throat corner tucks to the dome's own
+  shoulder line), tail-ring egg-end (UNclamped barrel: sagitta ramps 10 ->
+  32 mm over the last 0.18 m — B1-priced <=4.7 cm class — + tail tapers
+  0.925..0.89 + floor ease 10/17/27 mm on the last three rings), and the
+  wrap facets. The frontright trailing vertical (the r6 verdict's magenta
+  tail edge) is DEAD (ab-S2-tail-corner-fr.png — the tail end now rounds).
+  RESIDUAL: the frontleft twin survives at **87.8°/0.50** (0.2° BELOW the
+  ordered angle window, z -1.63; r6 88.4°/0.504) — the throat-notch class:
+  the 2D chain traces the dome-bottom(1.76)-to-bustle-floor(1.90) gap
+  boundary. The gap ITSELF is now plugged in shaded renders by a
+  *Shadow*-named notch curtain (§C proxy: gate + evaluator masks exclude
+  it — the contour finding cannot move by law; the RENDER read is filled).
+  Priced carry, same class the r6 verdict carried.
+- **S3 side-wall cast grading ✓**: the wall band carries real barrel
+  curvature (<=10 mm wall-zone sagitta, clamped inside the floor plan =
+  zero plan cost) + shared-vertex normal averaging along z and into the
+  crown corners — the one-tone sheet now grades vertically AND toward the
+  tail (ab-S3-sidewall-fl.png, ab-S1's side walls). Landed inside the
+  bit-identical gate line (turret UP 0.2 net).
+- **S4 batten mute ✓**: the three tail straps turretDark -> turretCloth
+  (same geometry, same trace column) — the rear face reads one soft tarp'd
+  shell (ab-S4-battens.png); the rectilinear rail grammar is gone.
+
+**GROUP T — texture accents:**
+- **T1 curtain continuity ✓ mechanism / metric with a documented window
+  caveat**: outboard curtain deepened 0.19 -> 0.34 (hangs to the skirt-drop
+  bottoms) + extended z +1.04..-4.02 (the full fender run). The r6 "3-4
+  discrete gray verticals with lit gaps" read is gone at 1x in frontleft/
+  rearleft (ab-T1-band-fl.png): the verticals melt into one continuous
+  band. Done-gate numbers: curtain-core column profile spread **11.7-12.0L
+  rearleft** (bar <=12); frontleft reads 15.2L ONLY because the fixed row
+  window clips the r6 run-cover TOP faces (76L lit plates, N3-ordered
+  content) — the inter-curtain gaps themselves (the r6 85-87L class) are
+  dead; no sky/wall reads between curtain columns. CYCLE-3 NEGATIVE
+  (banked): fenderSkirtSlim [0.012, 0.006] was tried first — the slimmed
+  tabs did NOT merge into the ±1.751 matched fender line; the uncovered
+  track band printed a NEW 0.72 m rear vertical (procOnly 26 -> 29).
+  Reverted same-cycle; the r4 skirt geometry stands.
+- **T2 carrier-ring mute ✓ EXACT + N5 held**: end-drum rings swapped to a
+  muted clone (0x43473a env 0.22 rough 0.70 metal 0.12; two dial steps
+  sampled on the render per the ordered-class law: 0x575b46 read p95 92.9,
+  0x4d5140 91.1): drum window [55..110]x[355..410] p95 **93.0 -> 83.6**
+  (bar <= ref+6 = 84.5; ref 78.5) — the drawn bright circles are subdued
+  rim light (ab-T2-drum.png). N5 compensation via the ordered wheel-rim
+  lane: `rimBoost` second inner rim ring per road wheel on a dedicated
+  bright clone — hero-rr gear window sd **11.56** (bar >=11, was 11.05,
+  ref 13.15), p95 79.4 <= ref+4 (90.4). A1 class HELD: view-left sub-30
+  **0**, p5 **54.1** (bar >=35), med 66.6 / p75 71.6; A2 held: wheel band
+  p75 **72.2** (bar >=66). N1 held: hero-rr gear r/g **1.004** (bar
+  <=1.01), own-hull 0.971 (residual split 0.033 = the r6 watch class,
+  unmoved); N4 zeros held (largest sub-25 blob 0 px in rearleft/rearright/
+  hero-rr). DEBUG LESSON (banked): the boost rings measured ZERO effect at
+  two dial steps — they were BURIED inside the dished-wheel cone (+16 mm
+  proud of the face plane is INSIDE the dish crown); at +52 mm they clear
+  and deliver. "Interior to the silhouette" and "outside the neighbor
+  solid" are different constraints — probe with a loud-color render when a
+  material dial reads byte-identical.
+
+**BANKED-LANE STATE (top view, knob ON)**: the materials lane's
+bakeDirtDeckEq landed mid-round — top [260..380]x[330..490] sub-50 census
+**1620 vs ref 1160** (r6: 2334; the albedo fix delivered ~700 of the ~1170
+gap; the residual ~460 is proc-only spareTrack/fittings content per the
+orchestrator note). The top view's B3 holder is now materially smaller;
+whether it reaches 9.0 is the critic's call on the knob-on renders.
+
+SELF-READ floors (14 views, S+T assumed delivered): rear/rearleft/
+rearright/frontleft/frontright/hero-fl/hero-rr 9.0 (the bustle reads CAST:
+graded wraps, egg end, soft tarp, no batten grammar; gear accents muted);
+front/left/right hold their 9.0; top 8.9 (census 1620 vs 1160 — improved
+but the blotch mass still reads on the bare plates); toptilt/close-front/
+close-roof 8.9-9.0 (T3/T4 optional orders NOT taken — cupola drum and tarp
+T-strap texture remain; B6/B9/C4 banked untouched). Honest bar risks: the
+rear procOnly 28 number if the critic scores the ordered <=18 literally;
+the frontleft 87.8° carry; T3/T4 untaken.
+
+LAW DISCOVERIES (bank): (1) evaluator procOnly SEGMENT COUNT is a poor
+done-gate for cast-shell work — converting 90° verticals to the ref's own
+leaning grammar can RAISE the count while every other signal (arc pairing,
+matched count, crops) improves; order future shell work on arcs-paired +
+crop-proof. (2) The evaluator's quarter-view midWorld z is DEPTH-ASSUMED
+back-projection — the r6 "z -1.55..-1.70 band" finding physically lived at
+the bustle TAIL (z -2.68 trailing corner) and at the throat notch; locate
+findings on the OVERLAY magenta before ordering geometry at the reported
+coordinates. (3) Dished-wheel face accents must clear the DISH CONE, not
+just the rim plane (+52 mm, not +16). (4) A *Shadow*-named proxy that
+plugs a see-through notch must carry the LIT class of the content it
+plugs (0x424535/env 0.24 pale-wash here) — a dark plug re-darkens the
+ordered B2 cavity from dead-rear (caught at med 74.3 -> 63.9, retoned
+same-cycle). (5) smoothBustle cap winding: signed-loop-area orients
+mirrored prism caps (the first cut culled the right-pod front caps —
+whole 91.0 -> 89.1, caught in-gate).
+
 ## Vertex round r1 (2026-08-03) — ORCHESTRATOR LANDING NOTE
 (Builder finished without a section; from its verified report.) 66.1 ->
 82.5 (hull 89.2 / whole 83.3 / turret 82.5 / stations 95.1 / dims 100).
