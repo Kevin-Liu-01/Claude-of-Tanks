@@ -799,15 +799,22 @@ function analyzeMask(field, cam) {
   loops.forEach((l, li) => { const a = Math.abs(shoelace(l.pts)); l.area = a; if (a > best) { best = a; outer = li; } });
   const outerSign = Math.sign(shoelace(loops[outer].pts));
   const mpp = mPerPxOf(cam, S);
-  const holes = [], islands = [];
+  const holes = [], islands = [], borderClips = [];
   loops.forEach((l, li) => {
     if (li === outer || l.area < 12) return;
     const c = l.pts.reduce((s, p) => [s[0] + p[0], s[1] + p[1]], [0, 0]).map((v) => v / l.pts.length);
     const w = pxToWorld(cam, c[0], c[1], S);
     const rec = { areaM2: l.area * mpp * mpp, centroidWorld: [w.x, w.y, w.z], centroidPx: c };
+    // HERO-FRAME BORDER-CLIP law (revolution r12/r15 critics, banked
+    // 5e59cd2): an OPEN chain cut by the mask frame border gets virtually
+    // closed by the shoelace wraparound and reads as a giant fake void —
+    // the r7 "0.741 m² hero hole" class. Open chains are border-clip
+    // artifacts, never enclosed voids; report them separately.
+    if (!l.closed) { rec.borderClipped = true; borderClips.push(rec); return; }
     if (Math.sign(shoelace(l.pts)) !== outerSign) holes.push(rec); else islands.push(rec);
   });
   holes.sort((a, b) => b.areaM2 - a.areaM2); islands.sort((a, b) => b.areaM2 - a.areaM2);
+  borderClips.sort((a, b) => b.areaM2 - a.areaM2);
 
   // segments + arcs on every loop big enough to carry structure
   const segments = [], arcs = [];
@@ -917,7 +924,7 @@ function analyzeMask(field, cam) {
     bboxWorldW: (maxX - minX + 1) * mpp, bboxWorldH: (maxY - minY + 1) * mpp,
     principalDeg, skew, aspect,
   };
-  return { loops, outer, holes, islands, segments, arcs, cols, moments, mpp, lit, half };
+  return { loops, outer, holes, islands, borderClips, segments, arcs, cols, moments, mpp, lit, half };
 }
 
 // -------------------------------------------------------------- comparison --
@@ -1311,6 +1318,10 @@ for (const def of viewDefs) {
     holes: { ref: AR.holes.slice(0, 6).map((h) => ({ areaM2: R3(h.areaM2), centroidWorld: h.centroidWorld.map(R3) })),
              proc: AP.holes.slice(0, 6).map((h) => ({ areaM2: R3(h.areaM2), centroidWorld: h.centroidWorld.map(R3) })) },
     islands: { ref: AR.islands.length, proc: AP.islands.length },
+    // border-clip artifacts (open chains cut by the mask frame — the r12
+    // law): reported separately so critics stop ordering geometry at them.
+    borderClips: { ref: (AR.borderClips || []).length, proc: (AP.borderClips || []).length,
+                   procWorst: (AP.borderClips || []).slice(0, 2).map((h) => ({ areaM2: R3(h.areaM2), centroidWorld: h.centroidWorld.map(R3) })) },
     parity,
   };
 

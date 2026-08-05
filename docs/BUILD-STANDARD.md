@@ -169,6 +169,17 @@ never excuses missing it.
   from current renders before re-use.
 - REF-RENDER OUTRANKS ROW ANALYSIS; ref-silhouette permit; perspective-
   volume verified in hero views.
+- PROBE-FRAME LAW (ariete render-scale find, 6bf35b8): the fidelity
+  harness scales BOTH roots so visible-box width = spec widthM — every
+  external probe/raycast must apply that factor (or decode via a
+  gate-identical in-page instrument) or it reads authored coords ~1%
+  off the mask and "finds" phantom columns (the ariete ±1.72 class =
+  its own skirt at scaled x; the bradley procTop divergence = the same
+  family). The widest authored |x| sets the factor — grid boundaries
+  are shared-box-relative.
+- HERO-VOID BORDER-CLIP (r12 law, now in the tool): the evaluator
+  reports open border-cut chains under `borderClips`, never as holes —
+  critics stop ordering geometry at them.
 
 ## E. Oracle repairs (orchestrator lane ONLY — warp law v2)
 - Fresh `.bak` from committed HEAD bytes per batch (equal-tris/fewer-verts
