@@ -258,6 +258,95 @@ export const PRESET_ORDER = ['low', 'medium', 'high', 'ultra'];
 
 const listeners = new Set();
 
+// ---------------------------------------------------------------------------
+// ADAPTIVE AUTO TIER (perf-r2e, owner report: "someone with a weaker laptop
+// didn't get the mobile version but it's still laggy"). 'auto' used to
+// resolve to 'high' on EVERY desktop; the dynamic-resolution governor only
+// engages on retina-class ratios, so a dpr-1 integrated-GPU laptop had no
+// relief at all. Two inputs now pick the auto tier, and ONLY 'auto' adapts —
+// an explicit stored preset choice always wins and clears any adaptation:
+//  - boot heuristics: the unmasked GL renderer string (software rasterizers,
+//    non-Arc Intel integrated, mobile-class parts under a desktop UA) plus
+//    low deviceMemory seed a conservative starting tier;
+//  - the live frame governor (post.js) calls reportSustainedOverload() when
+//    the frame budget has been missed for several consecutive decision
+//    windows with no resolution lever left — the auto tier steps down one
+//    notch and persists, so the next session starts where this one settled.
+// ---------------------------------------------------------------------------
+const LS_AUTO_TIER = 'cot.gfxAutoTier';
+const AUTO_ORDER = ['low', 'medium', 'high']; // ultra stays explicit opt-in
+let _gpuRendererString = '';
+
+/** Record the unmasked GL renderer string (createRenderer calls this once). */
+export function noteGpuRenderer(str) {
+  _gpuRendererString = String(str || '');
+  try { console.info(`[quality] gpu: ${_gpuRendererString || '(masked)'}`); } catch (_) { /* ok */ }
+}
+
+/** Conservative hardware classification: null = no cap (full 'high'). */
+function heuristicAutoCap() {
+  const gpu = _gpuRendererString.toLowerCase();
+  // software rasterizers: nothing rescues these — floor tier
+  if (/swiftshader|llvmpipe|software|basic render/.test(gpu)) return 'low';
+  // integrated / mobile-class parts under a desktop UA. Intel Arc and Iris
+  // Xe MAX are dedicated-class and deliberately NOT matched.
+  if (/intel(\(r\))?\s*(u?hd|iris(?!.*xe max)|hd)\s*graphics/.test(gpu)
+    || /\b(mali|adreno|powervr|videocore)\b/.test(gpu)) return 'medium';
+  let mem = null;
+  try { mem = navigator.deviceMemory; } catch (_) { /* unavailable */ }
+  if (typeof mem === 'number' && mem <= 4) return 'medium';
+  return null;
+}
+
+/** The persisted governor demotion ('medium'|'low'), if any. ?gfxreset clears. */
+function storedAutoTier() {
+  try {
+    if (new URLSearchParams(window.location.search).has('gfxreset')) {
+      window.localStorage.removeItem(LS_AUTO_TIER);
+      return null;
+    }
+  } catch (_) { /* headless */ }
+  try {
+    const v = window.localStorage.getItem(LS_AUTO_TIER);
+    return AUTO_ORDER.includes(v) ? v : null;
+  } catch (_) { return null; }
+}
+
+/** Resolve what 'auto' means on this device right now. */
+export function resolveAutoTier() {
+  let tier = 'high';
+  const cap = heuristicAutoCap();
+  const stored = storedAutoTier();
+  for (const t of [cap, stored]) {
+    if (t && AUTO_ORDER.indexOf(t) < AUTO_ORDER.indexOf(tier)) tier = t;
+  }
+  return tier;
+}
+
+/**
+ * The governor's escalation path: sustained frame-budget misses with no
+ * resolution lever left. Steps the AUTO tier down one notch (high → medium
+ * → low), persists it, and rebroadcasts the preset so every engine module
+ * resizes live. No-op (returns false) when the user pinned an explicit
+ * preset or the tier is already at the floor.
+ * @returns {boolean} true if a tier step was applied
+ */
+export function reportSustainedOverload() {
+  if (getDeviceTier() === 'mobile') return false;
+  if (getStoredChoice() !== 'auto') return false;
+  const cur = resolveAutoTier();
+  const i = AUTO_ORDER.indexOf(cur);
+  if (i <= 0) return false;
+  const next = AUTO_ORDER[i - 1];
+  try { window.localStorage.setItem(LS_AUTO_TIER, next); } catch (_) { /* ok */ }
+  try {
+    console.info(`[quality] sustained overload at '${cur}' with no headroom — auto tier now '${next}' (pick a preset in Settings to override; ?gfxreset clears)`);
+  } catch (_) { /* ok */ }
+  const preset = getPreset();
+  for (const fn of listeners) fn(preset);
+  return true;
+}
+
 /** The user's stored choice: a preset name or 'auto' (default). */
 export function getStoredChoice() {
   try {
@@ -288,7 +377,8 @@ export function resolvePresetName(choice = getStoredChoice()) {
   // remains the explicit test/escape hatch (resolveDeviceTier).
   if (getDeviceTier() === 'mobile') return 'mobile';
   if (choice !== 'auto') return choice;
-  return 'high';
+  // perf-r2e: 'auto' adapts to the hardware (see ADAPTIVE AUTO TIER above).
+  return resolveAutoTier();
 }
 
 /** @returns {typeof PRESETS[keyof typeof PRESETS]} the active preset object */
@@ -306,6 +396,12 @@ export function getPreset() {
 export function setPresetName(name) {
   if (name !== 'auto' && !PRESETS[name]) return;
   try { window.localStorage.setItem(LS_KEY, name); } catch (_) { /* ok */ }
+  // perf-r2e: an explicit preset pick takes control back from the adaptive
+  // auto tier — clear any persisted governor demotion so a later return to
+  // 'auto' re-detects from scratch instead of resurrecting an old verdict.
+  if (name !== 'auto') {
+    try { window.localStorage.removeItem(LS_AUTO_TIER); } catch (_) { /* ok */ }
+  }
   const preset = getPreset();
   for (const fn of listeners) fn(preset);
 }

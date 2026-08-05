@@ -31,7 +31,10 @@ import {
 // MOBILE r1: device tier — sourced-GLB swaps are disabled wholesale on the
 // mobile tier (modelLoader gates its own pipeline; the checks here are the UI
 // bookkeeping that must not WAIT for swaps that will never arrive).
-import { glbModelsEnabled, resolveDeviceTier } from './engine/quality.js';
+import {
+  glbModelsEnabled, resolveDeviceTier, resolvePresetName, resolveAutoTier,
+  reportSustainedOverload, setPresetName, noteGpuRenderer,
+} from './engine/quality.js';
 import { createSky } from './engine/sky.js';
 import { createLighting } from './engine/lighting.js';
 import { createPost } from './engine/post.js';
@@ -1916,7 +1919,16 @@ function openBattle() {
   // battle_countdown r1: the loading screen is down and the world is live —
   // resolve the entry hold armed at roster spawn into the visible countdown.
   // Camera look stays free; hulls, turrets and triggers release at zero.
-  if (game.preBattleS === Infinity) game.preBattleS = PRE_BATTLE_HOLD_S;
+  if (game.preBattleS === Infinity) {
+    game.preBattleS = PRE_BATTLE_HOLD_S;
+    // perf-r2e: one re-warm sweep mid-countdown — materials that land AFTER
+    // the loading screen (late kit additions, graduate passes, straggler
+    // swaps) get their programs linked while everything is still frozen and
+    // a one-frame hitch is invisible. Repeats are cache hits.
+    setTimeout(() => {
+      if (game.phase === 'battle' && game.preBattleS > 0) compileHiddenVariants();
+    }, 900);
+  }
   audio.resume(); // the entry-gate keypress already unlocked the context
   audio.ambientOn(true);
 }
@@ -3489,6 +3501,18 @@ function warmCombatPipeline() {
       fx.exhaust(wp, 1, true);
       fx.destruction(wp, null, 'shot');
       fx.destruction(wp, null, 'ammorack');
+      // perf-r2e: one scar stamp per fielded visual — the impact-decal
+      // system bakes its shared scar canvases (heightToNormal/roughness
+      // getImageData work) per FAMILY on the first stamp, which used to be
+      // the player's FIRST CONNECTING SHELL. resetAll() clears the stamped
+      // decals; the baked canvases persist in the family cache.
+      for (const e of game.tanks) {
+        if (!e.visual || !e.visual.root || !e.state) continue;
+        _v1.copy(e.state.pos);
+        _v1.y += (e.spec && e.spec.dims ? e.spec.dims.heightM : 2.4) * 0.5;
+        _v2.set(0, 0, 1);
+        try { fx.armorScar(e.visual, _v1, _v2, 100); } catch (_) { /* warm only */ }
+      }
     } catch (err) {
       console.warn('[warm] fx volley failed (continuing):', err);
     }
@@ -3557,6 +3581,20 @@ function compileHiddenVariants() {
     try {
       if (lighting && lighting.updateFrustums) lighting.updateFrustums();
       renderer.render(scene, camera);
+      // perf-r2e: the FIRST sniper zoom paid a ~230 ms one-off with ZERO new
+      // programs — FOV-dependent lazy work (vegetation repartition against
+      // the narrow frustum). Render two hidden frames at scope FOVs so that
+      // work lands here instead of on the first Shift press.
+      const fov0 = camera.fov;
+      for (const f of [20, 8]) {
+        camera.fov = f;
+        camera.updateProjectionMatrix();
+        if (lighting && lighting.updateFrustums) lighting.updateFrustums();
+        renderer.render(scene, camera);
+      }
+      camera.fov = fov0;
+      camera.updateProjectionMatrix();
+      if (lighting && lighting.updateFrustums) lighting.updateFrustums();
     } catch (_) { /* warm only */ }
     for (const o of flips) o.visible = false;
   }
@@ -4015,6 +4053,9 @@ window.__DEBUG = {
   settings, // PAUSE probe: isOpen/open/close introspection
   pauseInfo, // PAUSE probe: { paused, resumes, lastDtR, lastResumeDtR }
   garage,
+  // perf-r2e ADAPTIVE AUTO TIER introspection (probes assert the resolved
+  // tier, drive the overload escalation, and reset the stored choice)
+  quality: { resolvePresetName, resolveAutoTier, reportSustainedOverload, setPresetName, noteGpuRenderer },
   get pedestalVisual() { return pedestalVisual; },
   // switch-desync r1: the id the garage UI (stats card / card highlight)
   // believes is selected — probes assert pedestalVisual.specId === this.

@@ -46,7 +46,7 @@ import { SMAAPass } from 'three/examples/jsm/postprocessing/SMAAPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { CopyShader } from 'three/examples/jsm/shaders/CopyShader.js';
-import { getPreset, onPresetChange } from './quality.js';
+import { getPreset, onPresetChange, reportSustainedOverload } from './quality.js';
 
 // r5 bloom retune ("muzzle flash is three enormous structureless gaussian
 // bloom blobs"): strength 0.34 → 0.20 and radius 0.4 → 0.28 so bloom is a
@@ -1437,6 +1437,9 @@ export function createPost(renderer, scene, camera) {
   let dynLastUpAt = -Infinity;
   let dynLastDownAt = -Infinity;
   let dynPin = null; // QA capture pin (see pinDynScale below); null = live
+  // perf-r2e adaptive-tier strike counter (see the decision block)
+  const TIER_STRIKES_MAX = 4;
+  let tierStrikes = 0;
   function applySize(w, h) {
     cssW = w;
     cssH = h;
@@ -1481,7 +1484,12 @@ export function createPost(renderer, scene, camera) {
       renderer.domElement.dataset.dynBudgetMs = dynBudgetMs.toFixed(2);
     }
     if (dynPin !== null) return; // QA pin owns the scale; telemetry stays live
-    if (renderer.getPixelRatio() < 1.25) return; // retina-class only (see above)
+    // perf-r2e: decisions now run at EVERY pixel ratio. The dynScale lever
+    // stays retina-class only (downscaling an already-1.0x chain reads as
+    // "weird pixelly" — the engine-aa r1 lesson), but the OVERLOAD STRIKES
+    // below must see dpr-1 devices too: a weak integrated-GPU laptop has no
+    // resolution lever at all, and its only relief is the auto-tier step.
+    const dynLeverAvailable = renderer.getPixelRatio() >= 1.25;
     if (dynClock - dynLastDecision < DYN_INTERVAL_S) return;
     if (dynWinFrames < DYN_MIN_WINDOW_FRAMES) return; // thin window: wait
     // Decision point (every >= 2.5 s of visible frames).
@@ -1499,15 +1507,33 @@ export function createPost(renderer, scene, camera) {
     if (dynUpBackoffS > DYN_INTERVAL_S && dynClock - dynLastDownAt > DYN_BACKOFF_RESET_S) {
       dynUpBackoffS = DYN_INTERVAL_S; // flap-free minute: forgiven
     }
-    if (dynEma > dynBudgetMs * DYN_DOWN_LEVEL && missRatio > DYN_DOWN_MISS_MIN
-        && dynScale > dynMin()) {
+    // perf-r2e ADAPTIVE TIER strikes: sustained budget misses with NO lever
+    // left (either the scale already sits at the preset floor, or this is a
+    // dpr-1 device where the scale lever never engages) escalate to a
+    // one-notch auto-tier step (quality.reportSustainedOverload — no-op when
+    // the user pinned an explicit preset). Four consecutive overloaded
+    // decision windows ≈ 10+ s of sustained misses past the warmup, so a
+    // load hitch or a killcam beat can never demote the tier.
+    const overloaded = dynEma > dynBudgetMs * DYN_DOWN_LEVEL && missRatio > DYN_DOWN_MISS_MIN;
+    const leverLeft = dynLeverAvailable && dynScale > dynMin();
+    if (overloaded && !leverLeft && dynClock > 20) {
+      tierStrikes++;
+      if (tierStrikes >= TIER_STRIKES_MAX) {
+        tierStrikes = 0;
+        if (reportSustainedOverload()) return; // preset rebroadcast resets the governor
+      }
+    } else if (!overloaded) {
+      tierStrikes = 0;
+    }
+    if (overloaded && leverLeft) {
       dynScale = Math.max(dynMin(), dynScale - DYN_STEP);
       if (dynClock - dynLastUpAt < DYN_FLAP_S) {
         // the last up-step flapped — back the next try off exponentially
         dynUpBackoffS = Math.min(dynUpBackoffS * 2, DYN_BACKOFF_MAX_S);
       }
       dynLastDownAt = dynClock;
-    } else if (dynEma < dynBudgetMs * DYN_UP_LEVEL && missRatio < DYN_UP_MISS_MAX
+    } else if (dynLeverAvailable
+        && dynEma < dynBudgetMs * DYN_UP_LEVEL && missRatio < DYN_UP_MISS_MAX
         && dynScale < 1 && dynClock - dynLastStep >= dynUpBackoffS) {
       dynScale = Math.min(1, dynScale + DYN_STEP);
       dynLastUpAt = dynClock;

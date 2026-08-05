@@ -1560,6 +1560,15 @@ function addRuntimeTuskKit(hullG, turretG, spec) {
     _tuskRailMat = new THREE.MeshStandardMaterial({
       name: 'AddOnTuskRail', color: 0x242620, roughness: 0.92, metalness: 0.16,
     });
+    // perf-r2e (first-use hitches): bare materials compile as fresh
+    // 'onBeforeCompile() {}' program classes on their first render — the
+    // spike probe kept catching this pair linking mid-battle. The ambient-
+    // floor hook + shared key dedups them against the dozens of identical-
+    // key vehicle programs already compiled behind the loading screen.
+    _tuskKitMat.onBeforeCompile = vehicleAmbientFloorHook;
+    _tuskKitMat.customProgramCacheKey = () => 'veh-ambient-floor-v2';
+    _tuskRailMat.onBeforeCompile = vehicleAmbientFloorHook;
+    _tuskRailMat.customProgramCacheKey = () => 'veh-ambient-floor-v2';
   }
   _tuskPanelGeo ||= new THREE.BoxGeometry(0.13, 0.29, 0.34);
   _tuskRailGeo ||= new THREE.BoxGeometry(0.075, 0.07, 5.1);

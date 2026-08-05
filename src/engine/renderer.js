@@ -13,7 +13,7 @@
  * resolution governor.
  */
 import * as THREE from 'three';
-import { resolveDeviceTier } from './quality.js';
+import { resolveDeviceTier, noteGpuRenderer } from './quality.js';
 
 // engine-aa r1: 1.5 → 2. This caps the CANVAS BACKING STORE, not the render
 // cost: the composer renders the scene + post chain at the preset's
@@ -48,6 +48,15 @@ export function createRenderer(container) {
   // ladder after this point. Also captures gl MAX_TEXTURE_SIZE for the
   // central texSize() clamp.
   resolveDeviceTier(renderer);
+  // perf-r2e ADAPTIVE AUTO TIER: hand quality.js the unmasked GPU string so
+  // the auto preset can start conservatively on integrated/software parts
+  // (a weak dpr-1 laptop is NOT the mobile tier but cannot hold 'high').
+  try {
+    const gl = renderer.getContext();
+    const info = gl.getExtension('WEBGL_debug_renderer_info');
+    noteGpuRenderer(info ? gl.getParameter(info.UNMASKED_RENDERER_WEBGL)
+      : (gl.getParameter(gl.RENDERER) || ''));
+  } catch (_) { noteGpuRenderer(''); }
   // MOBILE r1: a lost WebGL context used to be a SILENT PERMANENT black
   // screen (no handler anywhere) — on phones, where the OS reclaims the GPU
   // under memory pressure, that was indistinguishable from a crash. Keep the
