@@ -5855,9 +5855,11 @@ function buildKF51(P) {
     const L = (zF - zR) / n;
     for (let i = 0; i < n; i++) fn(zF - L * i, zF - L * (i + 1));
   };
-  P.add('turret', slab(                                                        // sloped cheek front (base corner 2.00 → top 1.12; one wedge — a
-    [-1.50, 0.16, 2.00], [1.50, 0.16, 2.00], [1.50, 0.16, 1.10], [-1.50, 0.16, 1.10],  // zseg here TWISTED the top ring)
-    [-1.31, 0.72, 1.12], [1.31, 0.72, 1.12], [1.31, 0.72, 1.10], [-1.31, 0.72, 1.10]));
+  P.add('turret', slab(                                                        // sloped cheek front (one wedge — a zseg here TWISTED the top ring).
+    [-1.50, 0.16, 1.88], [1.50, 0.16, 1.88], [1.50, 0.16, 1.10], [-1.50, 0.16, 1.10],  // §B1 r11: retracted 0.12 (base 2.00→1.88, top 1.12→1.00) so the plane
+    [-1.31, 0.72, 1.00], [1.31, 0.72, 1.00], [1.31, 0.72, 0.96], [-1.31, 0.72, 0.96]));// tucks INSIDE the new hood facets everywhere (it was fully occluded by
+  // the old staircase; plan cols ±1.31..1.50 stay lip-owned at 2.43w —
+  // measured interior both before and after, x/y corners untouched)
   zseg(1.10, -1.00, 5, (a, b) => P.add('turret', frustum(1.50, a, b, 1.31, a, b, 0.16, 0.72)));   // fore cheek block
   zseg(0.70, -2.73, 8, (a, b) => P.add('turret', frustum(1.44, a, b, 1.30, Math.min(a, 0.60), Math.max(b, -2.71), 0.16, 0.72))); // mid walls
   zseg(1.46, -0.80, 5, (a, b) => P.add('turret', frustum(1.30, a, b, 1.24, Math.min(a, 1.34), b, 0.72, 0.79)));   // fore roof step (2.50w)
@@ -5875,27 +5877,84 @@ function buildKF51(P) {
   P.add('turret', slab(                                                        // rear underside chamfer (ref bottoms 1.69→1.83 over −0.95..−1.60w)
     [-1.29, -0.02, -1.40], [1.29, -0.02, -1.40], [1.27, 0.12, -2.05], [-1.27, 0.12, -2.05],
     [-1.29, 0.16, -1.40], [1.29, 0.16, -1.40], [1.27, 0.30, -2.05], [-1.27, 0.30, -2.05]));
-  // chin apron: ledge under the cliff then the bowed nose (plan fronts are
-  // the fresh plan_turret row; tops fall 2.22 → 2.08w so station 11 and the
-  // side 2.06..3.02w columns read the ref 2.11-2.23 shelf)
-  P.add('turret', slab(                                                        // ledge z 1.87..2.30w
-    [-1.30, 0.24, 1.42], [1.30, 0.24, 1.42], [1.28, 0.24, 1.85], [-1.28, 0.24, 1.85],
-    [-1.30, 0.51, 1.42], [1.30, 0.51, 1.42], [1.28, 0.475, 1.85], [-1.28, 0.475, 1.85]));
-  P.add('turret', slab(                                                        // centre bow to plan 3.15w
-    [-0.90, 0.20, 1.85], [0.90, 0.20, 1.85], [0.46, 0.20, 2.70], [-0.46, 0.20, 2.70],
-    [-0.90, 0.42, 1.85], [0.90, 0.42, 1.85], [0.46, 0.355, 2.70], [-0.46, 0.355, 2.70]));
+  // §B1 TURRET FRONT WEDGE (r11 graduate-change, owner directive "update
+  // the turret front of the kf51"; BUILD-STANDARD §B1 turret extension).
+  // The certified r4-r6 front was a STAIRCASE: a dead-vertical nose slab at
+  // 3.134w over y 1.90..2.06w (0.22 m of 0° face, up to +0.60 forward of
+  // the print's line), a near-horizontal shelf, a second vertical (ledge
+  // front 2.29w), then the recess panels — exactly the §B1 failing read.
+  // The print (kf51_grip420, probe tools/tmp-kf51-frontfacet-probe.mjs,
+  // shots/leopard-r11/probe-kf51-before.json) reads a sharp WEDGE:
+  //   under-chin sweeps forward-up ~81° from vertical to a PROW at world
+  //   y 1.84 / z 3.129, ONE faceted hood plane rakes back-up 70.3° from
+  //   vertical (side fit y 1.84..2.26, resid ~1 cm) to the crown shoulder
+  //   2.227w@2.057w, then the near-vertical cliff/crown band to the roof.
+  //   The prow arc sweeps back in plan (3.13 centre -> 2.88@±1.24 ->
+  //   corner facets to 2.40@±1.48) with a gun notch |x| <= ~0.32.
+  // Re-authored to the print with the abrams §B1 mechanics (chin-split
+  // raked bands INSIDE the certified plan polyline): prow keeps the EXACT
+  // certified plan arc (plan mask unchanged), chin dips 0.20 -> 0.139
+  // (front-mask bottoms 1.86 -> 1.84w = the ref's own prow line), hood
+  // slope 1.136/0.406 = 70.3° per facet strip, hood tops at the y 0.545
+  // crown shoulder (shelf top 2.244w vs ref 2.227w; the old ledge read
+  // 2.209w). Facet strips follow the arc segments -> the angular cheek
+  // facet read; the corner strip twists onto the wall-front plane (the
+  // casting's corner blend). Sloped faces paint station slices (§C: the
+  // sloped zone is one explicit wedge slab; bodies keep frontal faces).
+  const ARC = [[0.32, 2.70], [0.46, 2.70], [0.95, 2.52], [1.30, 2.42], [1.415, 2.16]];
+  const AREAR = [1.85, 1.85, 1.60, 1.15];                                      // body rears (certified apron footprint kept)
+  const YP = 0.139, YB = 0.20, YH = 0.545, HK = 2.798;                         // prow y (1.84w), chin base, hood-top y, hood slope
+  const fslab = (bk, s, b0, b1, b2, b3, t0, t1, t2, t3) => {                   // mirrored 8-corner slab (abrams sideSlab pattern: mirror x AND swap
+    const M = (v) => [s * v[0], v[1], v[2]];                                   // corner order so windings stay outward)
+    P.add(bk, s > 0
+      ? slab(b0, b1, b2, b3, t0, t1, t2, t3)
+      : slab(M(b1), M(b0), M(b3), M(b2), M(t1), M(t0), M(t3), M(t2)));
+  };
+  // centre (gun notch |x| <= 0.32 — the ref's mantlet slot): chin + prow +
+  // a low hood stub to the notch floor y 0.30; the shroud emerges through
+  // the notch, recess panels + mantlet wall close its back as certified
+  zseg(2.28, 1.60, 2, (a, b) => P.add('turret', slab(                          // notch body (frontal segment planes for the station windows)
+    [-0.32, YB, a], [0.32, YB, a], [0.32, YB, b], [-0.32, YB, b],
+    [-0.32, 0.30, Math.min(a, 2.25)], [0.32, 0.30, Math.min(a, 2.25)], [0.32, 0.30, b], [-0.32, 0.30, b])));
+  P.add('turret', slab(                                                        // centre prow wedge: 81.7° chin under, 70.3° hood stub over
+    [-0.32, YP, 2.70], [0.32, YP, 2.70], [0.32, YB, 2.28], [-0.32, YB, 2.28],
+    [-0.32, 0.145, 2.683], [0.32, 0.145, 2.683], [0.32, 0.30, 2.25], [-0.32, 0.30, 2.25]));
   for (const s of [-1, 1]) {
-    P.add('turret', slab(                                                      // bow shoulder ±0.46→±0.95
-      [s * 0.46, 0.20, 1.85], [s * 0.95, 0.20, 1.85], [s * 0.95, 0.20, 2.52], [s * 0.46, 0.20, 2.70],
-      [s * 0.46, 0.42, 1.85], [s * 0.95, 0.42, 1.85], [s * 0.95, 0.36, 2.52], [s * 0.46, 0.355, 2.70]));
-    P.add('turret', slab(                                                      // bow flank ±0.95→±1.30
-      [s * 0.95, 0.20, 1.60], [s * 1.30, 0.20, 1.60], [s * 1.30, 0.20, 2.42], [s * 0.95, 0.20, 2.52],
-      [s * 0.95, 0.42, 1.60], [s * 1.30, 0.42, 1.60], [s * 1.30, 0.37, 2.42], [s * 0.95, 0.36, 2.52]));
-    P.add('turret', slab(                                                      // bow corner ±1.30→±1.415
-      [s * 1.30, 0.20, 1.15], [s * 1.415, 0.20, 1.15], [s * 1.415, 0.20, 2.16], [s * 1.30, 0.20, 2.42],
-      [s * 1.30, 0.44, 1.15], [s * 1.415, 0.40, 1.15], [s * 1.415, 0.36, 2.16], [s * 1.30, 0.37, 2.42]));
-  }
-  P.add('turretDark', box(1.9, 0.02, 0.02), 0, 0.52, 1.40);                    // roof-front seam
+    for (let i = 0; i < 4; i++) {
+      const [xa, Pa] = ARC[i], [xb, Pb] = ARC[i + 1], R = AREAR[i];
+      // hood-top edge: strips 0-2 cap at the y 0.545 crown shoulder; the
+      // corner strip blends onto the retracted wall-front plane (twisted
+      // quad = the casting's corner crease, slab-crossing at ~(0.30, 1.70))
+      const tA = i < 3 ? [YH, Pa - 1.136] : [YH, Pa - 1.136];
+      const tB = i < 3 ? [YH, Pb - 1.136] : [0.30, 1.70];
+      fslab('turret', s,                                                       // prow wedge: chin band + hood facet meeting at the 6 mm prow land
+        [xa, YP, Pa], [xb, YP, Pb], [xb, YB, Pb - 0.42], [xa, YB, Pa - 0.42],
+        [xa, 0.145, Pa - 0.017], [xb, 0.145, Pb - 0.017], [xb, tB[0], tB[1]], [xa, tA[0], tA[1]]);
+      // body top: the ref crown shoulder is NARROW (2.227w over z 1.96..
+      // 2.06w only) — forward of it the ref line keeps FALLING (2.14w @
+      // 2.29w). A1/A2 tops slope from the hood-top edge (0.545 @ 2.00w)
+      // down to 0.443 at their R face (= the ref hood line continued);
+      // A3/corner tops stay under the roof/step columns.
+      const yR = R === 1.85 ? 0.443 : (i < 3 ? YH : tB[0]);
+      fslab('turret', s,                                                       // facet body: certified footprint to the rear, interface plane shared
+        [xa, YB, Pa - 0.42], [xb, YB, Pb - 0.42], [xb, YB, R], [xa, YB, R],
+        [xa, tA[0], tA[1]], [xb, tB[0], tB[1]], [xb, yR, R], [xa, i < 3 ? yR : tA[0], R]);
+    }
+    // crown shoulder shelf at y 0.545 (ref 2.227w@2.057w): from the hood
+    // top polyline back under the brow foot (tucks 4 mm behind 1.3964)
+    fslab('turret', s,
+      [0.32, 0.505, 1.560], [0.46, 0.505, 1.560], [0.46, 0.505, 1.392], [0.32, 0.505, 1.392],
+      [0.32, YH, 1.560], [0.46, YH, 1.560], [0.46, YH, 1.392], [0.32, YH, 1.392]);
+    fslab('turret', s,
+      [0.46, 0.505, 1.560], [0.88, 0.505, 1.4207], [0.88, 0.505, 1.404], [0.46, 0.505, 1.392],
+      [0.46, YH, 1.560], [0.88, YH, 1.4207], [0.88, YH, 1.404], [0.46, YH, 1.392]);
+    // (r11 measurement note: NO eyebrow masses — the ref plan-band values
+    // z 2.33-2.41w at y 2.1-2.3w ARE the hood surface itself (y_ref(z) =
+    // 1.84 + (3.129-z)/2.786 reproduces them); a first-cut 0.585-top hood
+    // pair read +0.07..+0.12 over the ref side cols z 2.24..2.48w and was
+    // deleted on the workorder diff.)
+    P.add('turretDark', box(0.008, 0.15, 0.40), s * 0.316, 0.365, 1.82);       // notch side liner (dark recess flanks, replaces the buried r6 cheeks;
+  }                                                                            //  top 2.139w stays UNDER the ref hood line at every column it spans)
   // VISUAL r1 #4 — wedge shading planes: the one-plane cheek read slab-flat
   // from the front. A weld-crease bar ON the surface splits it and an upper
   // facet plate tilted ~3 deg flatter catches different key light; both are
@@ -5903,25 +5962,18 @@ function buildKF51(P) {
   // their columns, z-proud only — front/plan silhouettes untouched).
   // (r3 crease seam bar deleted — the r4 dip-shadow strip under the brow
   // foot replaces it; the old bar would poke a dark ridge through the stub)
-  // r4 #2 BROW POLARITY: the r3 24° facet was TOO FLAT — under the board key
-  // (sun (30,42,24), 74% up-component) a flatter plane catches MORE sun, so
-  // the brow read 51-55 while the ref's near-vertical crown band reads 36-41
-  // (measured facet-L mean 52.8 on the r3 pair). Angle math: ramp normal
-  // (0,.84,.54) keys 0.85; a 73°-above-horizontal brow wall keys ~0.60 and
-  // halves the sky-hemi term → net ~x0.7 = the work-order multiplier. The
-  // wall inherits the old facet's certified front duty EXACTLY: top edge x
-  // ±1.39 at y 0.716-0.722 (front cols 1.311..1.39 keep their 2.43w tops),
-  // bottom edge on the ramp; whole plate under the roof/step in side/plan
-  // (z 1.345..1.425 < roof end 1.49). The dark strip at its foot is the dip
-  // shadow; the ledge stub keeps the old facet bottom-edge side columns
-  // (w 1.95..2.02 read ~2.23 = the ref's apron-shelf line).
-  P.add('turret', slab(                                                        // trapezoid like the old facet: top x ±1.30 keeps the ref's FALLING
-    [-1.39, 0.450, 1.425], [1.39, 0.450, 1.425], [1.30, 0.716, 1.345], [-1.30, 0.716, 1.345],   // cheek line on front cols ±1.32..1.40 (flat-top read +0.11 there)
-    [-1.39, 0.4527, 1.4341], [1.39, 0.4527, 1.4341], [1.30, 0.7187, 1.3541], [-1.30, 0.7187, 1.3541]));
-  P.add('turretDark', box(2.70, 0.022, 0.014), 0, 0.448, 1.432);               // dip shadow slot under the brow foot
-  P.add('turret', slab(                                                        // ledge stub: old facet bottom-edge line (side cols w1.95-2.02 ~2.23)
-    [-1.39, 0.437, 1.570], [1.39, 0.437, 1.570], [1.39, 0.517, 1.500], [-1.39, 0.517, 1.500],
-    [-1.39, 0.445, 1.578], [1.39, 0.445, 1.578], [1.39, 0.525, 1.508], [-1.39, 0.525, 1.508]));
+  // r4 #2 BROW POLARITY (r11 re-seat): the near-vertical crown band keys
+  // ~x0.7 vs the ramp under the board key — kept, SAME PLANE as certified
+  // (the V-wing transforms and the x0.71 vertex-tint box key off it). §B1
+  // r11 raised its FOOT along that plane 0.450 -> 0.545 (x 1.39 -> 1.358,
+  // z 1.425 -> 1.3964) so it rises from the new crown shoulder instead of
+  // poking through the hood facets; top edge (±1.30, 0.716, 1.345) EXACT.
+  // (The old ledge stub is deleted: its w1.95-2.02 side columns now read
+  // the shelf/hood-top at 2.244w vs ref's own 2.227w shoulder line.)
+  P.add('turret', slab(                                                        // crown band: near-vertical wall over the hood shelf
+    [-1.358, 0.545, 1.3964], [1.358, 0.545, 1.3964], [1.30, 0.716, 1.345], [-1.30, 0.716, 1.345],
+    [-1.358, 0.5477, 1.4055], [1.358, 0.5477, 1.4055], [1.30, 0.7187, 1.3541], [-1.30, 0.7187, 1.3541]));
+  P.add('turretDark', box(2.70, 0.022, 0.014), 0, 0.538, 1.401);               // dip shadow slot under the (raised) brow foot
   P.add('turretDark', box(0.60, 0.58, 0.015), 0, 0.42, 1.6135);                // mantlet recess shadow panel (1 mm proud of the back wall face; deeper z broke the 2.08w col; r6 narrowed with the wall)
   P.add('turret', box(0.48, 0.44, 0.004), 0, 0.42, 1.6225);                    // r3 #4b: scheme inner panel over the dark frame — the recess read as a grey sticker; face 2.0745w stays under the 2.08w col (the broken 15 mm attempt hit it)
   // crown block + drone-bay seams. r5: width 1.70 → 1.40 — the crown is
@@ -6248,7 +6300,9 @@ function buildKF51(P) {
   // cheek/apron-covered, side z-span unchanged): the ref mantlet is a
   // NARROW collar and the wide wall was occluding the new V-wing plates.
   P.add('turret', box(0.60, 0.62, 0.08), 0, 0.42, 1.58);
-  for (const s of [-1, 1]) P.add('turretDark', box(0.05, 0.34, 0.55), s * 0.43, 0.23, 1.80);
+  // (§B1 r11: the r6 dark flank cheeks at s*0.43/z 1.80 are deleted — they
+  // were already buried inside the old bow solid, and the new notch side
+  // liners at ±0.316 carry the dark-recess duty inside the mantlet slot)
   // ---- Rh-130 L/52 FGS r4: bare tube r 0.092 (ref side band 1.746..1.926;
   // the old 0.128 sleeve + 0.1376 rings lit the ±0.166 plan columns all the
   // way to the muzzle — ref x −0.166 ends at its shroud taper 4.525), root
@@ -6632,18 +6686,19 @@ function buildKF51(P) {
     // vs our plain disc collar. Plates ride the brow plane zone — their
     // z-span 1.3915..1.3970 lives INSIDE the certified brow band (1.345..
     // 1.4341) so side columns are untouched; front/plan strictly interior.
-    // wingPale pops over the x0.71-tinted brow; moat-class slot vents.
-    // (r6 tune 2: the flat-z wing park hid BEHIND the brow plate — larger z
-    // is closer to the front camera and the brow face spans 1.3541..1.4341.
-    // The wings now LIE ON the brow plane: rz sweep first, then rx −0.2922
-    // = the brow lean (xform euler XYZ applies Rz then Rx), riding ~2mm
-    // proud along the plane normal. Extents: y 0.457..0.713 (<=0.7187), z
-    // 1.354..1.4346 (0.5mm past the brow band bottom corner — sub-raster),
-    // x 0.39..0.76 clear of the narrowed 0.60 mantlet wall.)
+    // wingPale pops over the camo facet; moat-class slot vents.
+    // (§B1 r11 re-seat: the brow foot rose to y 0.545, so the wings moved
+    // DOWN-FORWARD onto the new HOOD facet (the A2 cheek plane, x 0.46..
+    // 0.95, plan edge slope dz/dx −0.367, hood lean 70.3° from vertical):
+    // rz sweep first, then ry +s*0.1230 (the facet's plan sweep), then
+    // rx −1.2273 (the facet lean) — plate plane = facet plane, riding
+    // ~2 mm proud along the facet normal (0, 0.934, 0.334). They read as
+    // the ref's winged-mantlet splash plates ON the cheek facets, x
+    // 0.48..0.85 clear of the 0.32 notch and below the 0.36+ eyebrows.)
     for (const s of [-1, 1]) {
-      tone(wingPale, KIT.xform(KIT.box(0.38, 0.085, 0.004), s * 0.575, 0.585, 1.3945, -0.2922, 0, s * 0.53), true);
-      tone(moatMat, KIT.xform(KIT.box(0.24, 0.02, 0.003), s * 0.5629, 0.6051, 1.3895, -0.2922, 0, s * 0.53), true);
-      tone(moatMat, KIT.xform(KIT.box(0.24, 0.02, 0.003), s * 0.5871, 0.5655, 1.4015, -0.2922, 0, s * 0.53), true);
+      tone(wingPale, KIT.xform(KIT.box(0.38, 0.085, 0.004), s * 0.665, 0.304, 2.169, -1.2273, s * 0.1230, s * 0.53), true);
+      tone(moatMat, KIT.xform(KIT.box(0.24, 0.02, 0.003), s * 0.653, 0.311, 2.149, -1.2273, s * 0.1230, s * 0.53), true);
+      tone(moatMat, KIT.xform(KIT.box(0.24, 0.02, 0.003), s * 0.677, 0.297, 2.189, -1.2273, s * 0.1230, s * 0.53), true);
     }
     // ---- r7 #3 rear-face 6-socket connector plate REBUILT VISIBLE. The r6
     // plate at (0.03, 1.01, -3.3465) was ~86% OCCLUDED dead-rear: the slat
