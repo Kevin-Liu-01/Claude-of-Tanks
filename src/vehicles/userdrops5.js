@@ -162,7 +162,10 @@ if (ALLOW_LOCAL_RECOVERED_MODELS) {
   // pitchOffset -PI/2).
   articulated('fv510', { yawOffset: Math.PI });
   articulated('leo2_revolution', { yawOffset: Math.PI });
-  articulated('leo2a5');
+  // leo2a5: DUAL-GATE GRADUATE (2026-08-04, the 21st — geometry 90.8 x2 +
+  // critic 9.0 every view at r10; ladder 7.7 -> 9.0 over five rounds;
+  // 04c3e11). Registration retired per §10; freeze hash bc9bad30; the
+  // recovered print stays a measurement oracle via the three maps.
   source('leo2a7v', {
     // The author exported the complete upper fighting compartment (including
     // the L/55 and mantlet) as this distinct mesh.
@@ -272,4 +275,4 @@ export const USERDROP5_TANK_IDS = SPECS.map((s) => s.id);
 // signal — the garage catalog keys era buckets off this list instead, keeping
 // local and public grouping identical. m60a1 is excluded: it graduated the
 // dual gate and its procedural build ships everywhere (a true original now).
-export const USERDROP5_SOURCED_IDS = USERDROP5_TANK_IDS.filter((id) => !['m60a1', 'm1a1ha', 'merkava3b', 'merkava3c', 'merkava3d', 'pt91m', 't72b3m', 'merkava1b', 'chieftain5'].includes(id));
+export const USERDROP5_SOURCED_IDS = USERDROP5_TANK_IDS.filter((id) => !['m60a1', 'm1a1ha', 'merkava3b', 'merkava3c', 'merkava3d', 'pt91m', 't72b3m', 'merkava1b', 'chieftain5', 'leo2a5'].includes(id));

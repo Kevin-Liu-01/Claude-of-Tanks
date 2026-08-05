@@ -1083,3 +1083,14 @@ at a fleet-shader floor × the rear-med carrier — the two banked
 windows' family. Graduation-track: the critic adjudicates whether the
 delivered visual read + the mechanism dossier clears the bar the same
 way the r8 verdict adjudicated gear-sub45/2c-p75.
+
+## GRADUATION FREEZE (2026-08-04) — the program's 21st graduate
+Dual gate: geometry 90.8 PASS x2 bit-identical (eeef4bf: hull 90.8 /
+whole 91.0 / turret 91.6 / stations 94.3 / dims 100 / floaters 100) +
+graduation critic PASS floor 9.0 every view, mean 9.04 (04c3e11; ladder
+7.7 -> 8.4 -> 8.7 -> 9.0 over five rounds). HASH FROZEN: **bc9bad30**
+(141 meshes / 145168 verts). Shipping-state findings of record (critic
+r10): crown over100 484 (knob interaction; class unchanged), glacis sd
+6.71 (beats the dossier). Deck knob bakeDirtDeckEq stays ON. userdrops5
+recovered registration RETIRED (articulated call + SOURCED_IDS);
+mirrored into the three maps; variants backfill clean; icons procedural.
