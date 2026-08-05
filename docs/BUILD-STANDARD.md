@@ -69,6 +69,18 @@ never excuses missing it.
    flat areas from: lights, ropes/tow cables, ladders, ERA/armor blocks,
    wooden trunks, canisters, bags, smoke launchers, railings/holders,
    crates, duffels, antennas. Use `KIT` fittings (kit.js) — don't hand-roll.
+   NO MYSTERY BOXES (owner directive 2026-08-05: "there are just random
+   boxes that are not ERAs around armor and especially guns and those
+   need to be actual proper shapes or equipment instead of just
+   rectangles" — named on the merkavas, t-xx series, m1a2 sepv2): every
+   box-primitive must read as IDENTIFIABLE equipment at 1×. ERA carries
+   its own grammar (tile pitch, wedge/brick profile, mounting rails);
+   everything else must be a named thing with its tell — a sight has a
+   hood + lens, a bin has a lid seam + latches, a launcher has tubes, a
+   jerry can has its cross-stamping. Bare cuboids hovering near mantlets
+   / gun roots / armor faces are a failing read: replace with the real
+   equipment (KIT fittings first) or delete. Critics: unidentifiable
+   rectangles are an order, everywhere, especially around guns.
 4. TRACK CONTAINMENT: tracks never clip through the bow/stern — wrap arcs
    stay clear of hull solids (plates, fenders, flaps). Tracks are the
    two-layer shoe system (pads + inner chain/guide horns) riding real
