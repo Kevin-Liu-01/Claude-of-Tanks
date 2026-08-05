@@ -117,6 +117,12 @@ never excuses missing it.
 - Winding audit on every new slab (backface culling eats reversed slabs
   from top); probe corners after compound rotations; AABB framing on
   fittings (never change the model AABB with decoration).
+- PARTIAL-PIXEL MARGIN (russia-tail law, supersedes the bare 15mm at
+  boundaries): masks light at ANY partial pixel coverage — boundary-
+  critical faces need >=2px margins (~22mm side/plan, ~9mm front).
+- dALONG-SIGN: at dAlong +d the gate compares ref column Z against the
+  proc window [Z, Z+2d] — rear content seats half a column REARWARD of
+  raw ref reads; check the sign before authoring from seats.
 - Tone work hits the ORDERED class (floor-cliff regimes) — overshoot
   inverts the law. Material splits are free where geometry is priced
   (rear-visible content below the idler-wrap line writes side-mask

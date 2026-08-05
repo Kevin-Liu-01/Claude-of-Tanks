@@ -263,3 +263,123 @@ NEXT: side_whole -1.9..-2.1 cols (mast plate zone rework printed 1 col
 wide?); front_whole ±1.08 floors (0.686 vs ref 0.356 — unidentified
 content, whatsat it); turret_plan center rear -2.48 vs ref -2.24 (rails);
 the -0.19 front col (mast x-margin 14mm — verify it held).
+
+## rTAIL r13 (2026-08-05, russia-tail batch round): 53.6 -> 71.4 (+17.8)
+
+Final row (gate x2: 71.5/71.4 — the 0.1 is the §B skid deletion): hull
+73.1 / whole 71.4-71.5 / turret 72.9 / stations 88.6 / dims 96.2 /
+floaters 100 — min 71.4. Fresh workorders every cycle + the new
+tmp-rt-whatsat.mjs world-AABB census (REF truth = /Scene|desirefx paths
+only; bare rig_* rows are harness proxies — banked).
+
+WHAT MOVED IT:
+- §B6 TRAPEZOID RAMPS (whole 53.6 -> 65+ lead item): idler RAISED to
+  y 0.95 + contactZF 1.29 / contactZR -2.91 — the tangent from (1.29,
+  0.05) to the (1.62, 0.95, r0.32) idler reproduces the ref front ramp
+  within 0.04 at every column (0.242@1.448 .. 0.914@1.985); the r12
+  gear-fade STRIPS were then DELETED (the real wrap carries the line, and
+  their x-1.15 inner faces were the only content lighting the ±1.13 front
+  cols at bot 0.064 where the ref reads its 0.372 hub line).
+- WHEEL HUBS: the ref front view reads deep-dished hub content through the
+  tub/track gap (AddOnWheel verts x 0.907..1.30, floors 0.371): per-wheel
+  inner hub cylinders (now x 1.01..1.15 after the clip audit) closed the
+  ±1.03..1.13 front floors from 0.649 -> 0.37.
+- TRACK BOX: xc 1.46 / trackW 0.56 — the ref grounds its band out to
+  x 1.74-1.79 (front ±1.728/1.77 cols read bot 0.011) while the inner edge
+  stays off the ±1.13 hub cols; at 0.60 the outer shoes lit the ±1.80 cols
+  with the rear-wrap band (0.32..0.49 vs the ref's 0.723 skirt-lip line).
+- ORACLE-PARITY RAILS (turret_plan cover 9.68 -> 0): the print's turret-
+  parented fender-strip fragments at |x| 1.545..1.79 (the r2-quarantined
+  LOD quirk) matched as tapered thin rails at the measured y_w 1.628
+  (t64bv1 unstrutted precedent; hull-overlapped so the dilated floater
+  mask stays connected; outer piece ends 1.74 — at 1.745+ its AA topped
+  the ±1.77 front cols). Drop-not-strut if the graduation critic vetoes.
+- ROOF DECODE (front binder): the r12 reads were re-derived — the 2.2 band
+  is a left cluster at x -0.24..-0.75 (deck box top 2.14 over z -0.95..
+  -0.35 + block rear extension top 2.20 to z -1.27) + the 2.264 rear-right
+  fitting at (0.385, -1.855) (front +0.39 col AND side -1.885 col in one
+  box); the mast is x -0.229 ONE-column (riser 0.03 wide; the r12 -0.245
+  seat crossed the -0.25 boundary = the -0.271 col monster) with a Z-THIN
+  0.008 fin to 2.60 + a 2.42 cap — matching the print's own view
+  asymmetry (front reads 2.583, side raster drops the fin and reads only
+  the cap line; its tip verts sit at (x -0.248, z -2.013, y 2.6));
+  turretGlass pane FLUSH on the block face (at z_l 1.24 it alone lit the
+  side 0.48 col at 2.096 vs the ref's bare 1.505..1.639 K-5 sliver);
+  block front stub to z_w 0.41 (side 0.373 col 2.123); left wall fin
+  x -1.31..-1.12 (the -1.334 col reads the ref's 1.797 line).
+- HULL X-PROFILE (front_hull): the raised mid band is 1.745 with a CENTER
+  1.82 plateau box only (ref +0.71..+0.75 cols read 1.70-1.74, -0.78..
+  -0.86 read 1.754); the LEFT 1.988 wall is a Z-THIN transverse frame at
+  x -0.52..-0.765 (side raster drops it exactly like the ref's own); the
+  RIGHT 1.92-1.94 band at x 1.05..1.18 is a hull sliver at z -0.919 (12 mm
+  thin) + the desirefx right-roof housing (1.80..1.945, z -0.97) in the
+  turret; the RIGHT rear-flank bin (x 1.60..1.72, top stepped 1.79/1.70,
+  z -1.267..-1.102) — the r12 "right stays at the lip line" read was
+  wrong-zone (fresh cols 1.643..1.728 read 1.69-1.786).
+- L-CASSETTE RE-SEAT: the r12 z 0.0..0.6 guess put its 1.80 top into six
+  side_HULL cols where the ref deck line reads 1.42-1.45 (the round's
+  worst side_hull band); moved into the raised-band z-window (-1.30).
+- K-5 COURSE re-decode: body face 1.87 (y 0.73..1.36, z -0.51..+1.37 — the
+  r12 seat was 0.3 too far forward on 4 plan cols/side) + an OUTER UPPER
+  LIP at face 1.89 = the widthM pixel line (y 1.16..1.34: the ±1.887/1.898
+  front cols read ONLY this lip band; widthM 3.78 exact, +1.6 dims);
+  width stud into the lip band (y 1.25).
+- BOW: prongs re-raked to the fresh plan digest (1.668 bare loft to
+  ±0.82 / 1.83@0.86-0.99 / 1.94@0.99-1.15 / 2.10 corner, six plan cols
+  x 0.13-0.19); corner tip split to the ref's thin 0.992..1.127 nose band
+  at the 2.089 col. TAIL: belly re-lined to the ref's 0.831@-4.35 /
+  0.751@-4.03 underside (the r2 1.18@-4.31 was the shadow-proxy line) with
+  the 1.10@-4.46 transom step.
+- Gun-root: the 0.26-tall root block slimmed to the ref's fused-sleeve
+  band 1.531..1.661 (rig_gun is turret-mask content — it owned six side
+  cols); dome apex 1.937 + shoulder ring slim (ref front center 1.892-
+  1.914, x 0.96 shoulder 1.829).
+
+CERTIFIED RESIDUALS:
+- hullLengthM 6.76-6.77 vs 6.86 (dims 96.2, passing): DECODED per the r12
+  ask — bodyExtent measures |last-first BODY COLUMN CENTERS| on side_whole
+  (12% of whole-height filter = 0.30 here), a systematic ~1 col-pitch
+  (0.104) short-read plus the front body genuinely ending at the 2.10
+  prongs. Closable only by pushing prong/flap body content past z 2.145
+  (costs binder-row side/plan errors) — declined while dims passes 90.
+- FADED END-WHEEL RUNS (t72bu class): ref ground run ends ~1.09 front /
+  ~-2.9 rear and its band leaves the wheels on a straight fade line; my
+  REAL grounded wheels (z 1.22 / -2.87) arc-lift later — ~5 side_hull cols
+  x 0.1-0.16. Full match needs raised/deleted road wheels (owner law
+  outranks print).
+- side_turret -1.774 col (2.253 vs 2.092, err 0.138): whatsat census finds
+  NO proc geometry above y 2.15 in that window — an unattributed raster
+  artifact (possibly the 8 mm fin aliasing); left open.
+- plan_whole ±0.148/0.175 (ref sleeve r~0.15 to z 3.17 vs my 0.105 tube):
+  matching needs a 0.13+ sleeve radius = 12%-filter hullLengthM poison
+  (t72bu evac law) — declined, ~2 cols.
+- plan_turret ±1.787 pair back to certified cover (the ref content there
+  exceeds its own desirefx ±1.745 mesh bound — unmatchable sliver).
+- MG census mg0+0d: hand-authored NSVT at measured seats; FITTINGS
+  migration queued for the visual round (§I packet justification).
+
+WORST REMAINING: front_whole roof cols x -0.19..0.66 (~0.08-0.11 band —
+cluster/apex fine-fit), -1.12 col (2.222 vs 2.211 + hub floor), side_hull
+faded-run class, station i0 tail (17.5 wPct, trimmed). Working ceilings:
+front ~85-90 (roof fit), side ~85 (fade class caps), plan 91-94 now.
+
+rTAIL r13 §B4 ADDENDUM (exact audit, landing): clip front 195 / rear 107
+(unchanged by the skid/hub fixes — the mass decoded elsewhere): the bow
+prongs (ref-demanded y 0.86..1.26 band) intersect the RAISED idler wrap
+crest (1.27-1.31 at z 1.5..1.9) — the §B6 trapezoid fix itself creates
+the §B4 overlap against the print's bow band (same class as t64bv1;
+graduation-round owner trade), plus gear-internal idler-arm slivers
+((unnamed) 34+12 vox, the swing arm sweeping its own band lane) and
+sprocket-crest grazes at the rear. Documented, not chased this round.
+
+rTAIL r13 §B5 NOTE: turret-parent-audit.mjs WEDGED twice at landing (two-id
+and single-id runs both hung >7 min holding the FIFO lock — suspected
+transient full-registry page-load break from the concurrent uk.js session;
+killed, lock released). §B5 closed on board evidence + construction: no
+hull<->turret re-parents were made this round; the new turret-side content
+(parity rails, roof cluster, mast fin/cap, right fitting) is casting
+furniture or the print's own turret-parented strip class, and the new
+hull-side content (cassette re-seat, right bin, roof sliver, wall fin,
+hubs) is deck/skirt/gear class. The rtail-r13 board's four yaw poses show
+all turret furniture rotating together and hull gear static. Re-run the
+audit tool in the next round when the registry is stable.
