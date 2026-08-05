@@ -3188,11 +3188,28 @@ REPAIRS['m47_patton'] = [
 # clean). Roof TRUE, furniture knee 2.23, hull + fused tube stretched,
 # muzzle pinned rear+9.72. Expect the r30 build's short-print cover
 # columns to release; dims should approach 100.
+# batch-35 DEMOTED TO HISTORY (2026-08-04): its warp output is IN the
+# committed HEAD bytes; batch-40 re-baselines from a fresh .bak (pristine
+# bak archived *.pre-batch40-history) per warp law v2.
+#
+# ============================================================== batch 40 ===
+# T84 TURRET-SEAT COMPOUND (owner report: "turret was elevated too far
+# away from the hull... an issue with the base model"; probe: casting
+# underside y 17.746 vs deck 14.682 = +0.28m daylight). Plan verified by
+# the russia measure round (scout-gen2-t84.md "BATCH-40 TURRET-SEAT
+# PLAN", dry-run on all 98,284 verts): deck up to the family 1.3994 line,
+# casting stretched 0.63 -> 0.84 with the roof pinned at the published
+# 2.2200 EXACTLY, slope-1 band 19.0..22.2 protecting the fused tube,
+# then the Turret node seats down 5.2029u so the rim lands 2.3cm INTO
+# the deck (family contact class). Gate reads FAIL vs the frozen proc
+# until the coupled re-seat round — lands in ONE commit with it.
 REPAIRS['t84'] = [
     ('py2', _axis_warp('t84', long_axis='z',
-                       y_map=[(0, 0), (24.7312, 24.7312), (28.8679, 24.8643)],
-                       long_map=[(-35.4322, -39.2239), (35.5009, 39.2927), (59.7442, 68.5731)],
-                       y_top_max=25.1194, expect=(2, 98284, 259887))),
+                       y_map=[(0, 0), (11.0, 11.0), (14.682, 15.52), (19.0, 22.501),
+                              (22.2, 25.701), (24.75, 29.8235), (30.0, 35.0735)],
+                       long_map=[(-39.2986, -39.2986), (68.5737, 68.5737)],
+                       y_top_max=29.95, expect=(2, 98284, 259887))),
+    ('translate', 'Turret', [0.0, -5.2029, 0.0]),
 ]
 
 

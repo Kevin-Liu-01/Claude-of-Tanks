@@ -316,3 +316,327 @@ reference mirrored into the three measurement override maps
 (procedural-fidelity / tmp-tank-critic [gitignored] / visual-evaluator-page)
 with no harness offsets. variants.js backfill: clean (no t84 row). Icons
 regenerated from the procedural build (5 by exact name, rest restored).
+
+## BATCH-40 TURRET-SEAT PLAN (r33 MEASURE+PLAN, 2026-08-04, russia agent)
+## Owner report: "turret elevated too far away from the hull ... an issue
+## with the base model." VERDICT: real — the print's casting floats 0.28 m
+## over the ring deck AND the print hides a squat deck + squat casting
+## behind that float. Plan = compound oracle seat (global y_map + Turret
+## translate) + coupled proc re-seat. GRADUATE-CHANGE round: nothing here
+## is landed; orchestrator executes the batch, THEN russia re-anchors.
+
+MEASUREMENT TABLE (fresh probes, committed post-batch-35 print; frame:
+raw glb u, ground y=0.0000 exactly, registration s = 3.56/width_raw =
+3.56/39.4812 = 0.090169 m/u — verified equal to the loader+harness
+composite: s_loader = min(9.72/107.87=0.09011 len-limited, 3.8448/39.48,
+2.886/24.86) then width safeScale 3.56/3.5577 = 1.00066, clamp far from
+0.68/1.65; probes tools/tmp-t84-seatprobe2.py + tmp-t84-rimhist.py +
+tmp-t84-siblingprobe.py + tmp-t84-batch40-dryrun.py):
+
+| band (model u -> m)               | print now      | family truth / target |
+|---|---|---|
+| ring-deck plateau (z -12..+14)    | 14.682 = 1.324 | 1.39-1.45 (see below) -> **15.52 = 1.3994** |
+| engine hump top (z -14..-20, ±10) | 15.270 = 1.377 | 1.45-1.50 -> **1.4851** |
+| casting shell rim LOW (z +8..10)  | 17.746 = 1.600 | seats deck-0.02..-0.03 -> **1.3769** |
+| rim by z: ring 18.07-18.22, cheek-rear 18.44-19.07, bustle 20.55-20.59 | 1.63-1.86 | rising skirt line 1.42..1.70 |
+| casting roof plateau (z -6..+6)   | 24.750 = 2.2317| pub 2.22 -> **24.6202 = 2.2200** |
+| furniture crest (squashed cluster)| 24.864 = 2.2420| rides -> **2.2303** (score-carried) |
+| free tube axis (z 30..68)         | 20.595 = 1.857 | -> **1.7036**, r 0.1234 CIRCULAR |
+| basket plug disc (x ±7.8, z -2..10)| 10.682 = 0.963 | interior -> 0.494 (enclosed, above tub floor) |
+| DAYLIGHT rim-vs-deck              | +3.06u = +0.28 | **-0.25u = -0.023 contact** |
+
+- Proportion corroboration (the "real roof line"): the T-80 family
+  prints (t84's direct lineage, same gen2 contract) read ring deck =
+  0.631/0.633/0.635 of their own tops (t80/t80b/t80bv), i.e. ~1.39 m at
+  pub height, with casting rims 0.020-0.028 BELOW the deck (seated) and
+  casting visible heights 0.74-0.85 m. The certified russia builds agree:
+  t72b3m GRADUATE deck 1.395-1.422, t90m 1.35-1.39 (seat 1.40), t80-line
+  seats 1.45. The t84 print is the outlier on BOTH counts: deck/top
+  0.590 and rim +0.276 OVER the deck — the float hides a ~0.08 m deck
+  deficit and a ~0.21 m casting-height deficit (0.63 m vs family
+  0.74-0.85). heightM datum re-confirmed BARE ROOF 2.22 (r30 law; Kord/
+  sight cluster is score-carried; dims row is proc-only p95-tops).
+- Naive seat-down (drop only) is REJECTED by measurement: rigid drop to
+  deck+contact reads ~1.97-2.03 top (heightM -8.6%); rigid-casting with
+  deck raised to compensate needs deck 1.61 (0.73 of height — off family
+  by +0.21). The truth is the COMPOUND: deck UP to family line, casting
+  STRETCHED to family visible height, roof pinned at pub 2.22.
+
+BATCH-40 RECIPE (batch-29 format; law v2). RE-BASELINE per the batch-29
+fbc4f14 pattern: fresh .bak from committed HEAD bytes (be7eb4f embodies
+batch-35's z-warp; archive the pristine bak as
+t84.glb.bak.pre-batch40-history) — batch-35 demotes to history and this
+recipe is the compound seat ALONE on the new baseline, in the post-35
+frame. Census of the committed bytes probe-verified (2, 98284, 259887).
+
+    REPAIRS['t84'] = [
+        ('py2', _axis_warp('t84', long_axis='z',
+                           y_map=[(0, 0), (11.0, 11.0), (14.682, 15.52),
+                                  (19.0, 22.501), (22.2, 25.701),
+                                  (24.75, 29.8235), (30.0, 35.0735)],
+                           long_map=[(-39.2986, -39.2986), (68.5737, 68.5737)],
+                           y_top_max=29.95, expect=(2, 98284, 259887))),
+        ('translate', 'Turret', [0.0, -5.2029, 0.0]),
+    ]
+
+Zone derivation (u; slopes monotone >0): 0..11.0 identity (tracks/
+wheels/skirt hems/belly + width anchor untouched); 11.0..14.682 slope
+1.22759 (hull upper band: deck 14.682->15.52 = 1.3994, fender/glacis
+lines follow proportionally); 14.682..19.0 slope 1.61672 (daylight +
+casting lower wall: rim 17.746->20.4736; the hull's engine hump rides
+this zone's toe, 15.27->16.4706 = 1.4851);
+19.0..22.2 slope 1 (FUSED-TUBE PROTECTION: tube band 19.226..21.963
+rides rigid — stays circular); 22.2..24.75 slope 1.61667 (dome band:
+roof 24.7498->29.8232); 24.75+ slope 1 (squashed furniture rides).
+Then the Turret-node translate -5.2029 seats the casting: net rim
+17.746->15.2708 (1.3769, 2.2-3.4 cm INTO the deck line = family contact
+class), net roof 24.7498->24.6202 (2.2200 EXACT), furniture crest
+24.7349 (2.2303), tube axis 20.595->18.892 (1.7036). y_top_max 29.95
+covers the PRE-translate warp apex 29.9378 (the guard runs inside
+_axis_warp before the translate; final top is 24.7349). Order matters:
+warp FIRST (zones defined in the unmoved frame), translate second.
+Turret node y 10.68191 -> 5.47901; gate autoPivot keeps using the node
+origin (0.494 world > 0.25, inside the loose turret box) and x/z pivot
+is untouched — rig parity preserved. In-memory dry-run on all 98284
+verts (tools/tmp-t84-batch40-dryrun.py) reproduces every number above.
+
+PREDICTED REF SHIFTS PER GATE ROW (ledger frame: side 'at' = -(gate z),
+gate z = (z_model - 14.6376) x 0.090169; shifts are absolute-Δ per zone
+and frame-independent; plan/x rows CANNOT move — both ops are y-only,
+and ref z/x extents are unchanged so camera pitches and station bins do
+NOT re-roll):
+- side_hull: refTop ring-plateau cols ('at' +0.06..+2.41; at = -(gate z),
+  anchor: the r32 cupola/Kord/rack trio sits at 'at' +1.15/1.26/1.37)
+  +0.075..0.077 (1.324->1.3994); hump cols ('at' +2.58..+3.12) +0.108
+  (1.377->1.4851); stern-deck cols ('at' +3.2..+4.4) +0.083..0.093 (the
+  1.337-1.351 stern plateaus sit in the k2 zone); glacis-fall cols ('at'
+  -0.3..-2.2) +0.066 at the 1.28 line tapering to 0 below 0.992;
+  refBot all cols UNCHANGED (identity below 0.992).
+- side_whole: hull cols as above; casting cols ('at' -0.45..+3.04)
+  refTop -0.012 (2.2317->2.2200); tube cols ('at' -0.45..-4.86) band
+  -0.153 both edges (root band 1.942..1.778 -> 1.789..1.625, tip cols
+  follow).
+- turret rows (side; scored with the hull row's fixed reg): band top
+  -0.012 at casting cols; band BOTTOM = the hull-mask top at ring cols
+  (the certified 'at' 1.15/1.26/1.37 worst trio — ledger refBot decodes
+  to a 1.0-class hull line there, k1 zone): rises +0.001..+0.077 per the
+  k1/k2 interpolation of whatever hull line owns each column; bottom
+  -0.153 where it is the bustle rim ('at' +1.9..+3.04, e.g. the
+  2.13/2.46/3.01 trio: 1.853->1.6997 over the 1.4851 hump — 0.21 m
+  family-normal bustle overhang); mantlet/root cols -0.153.
+  turret plan row: UNCHANGED (95.9 class holds).
+- front rows: refTop |at|<=1.22 casting roof -0.012; |at| 1.22..1.49
+  deck +0.075; |at| 1.49..1.78 skirt/fender line +0.071..0.073 (hump is
+  front-occluded: x ±0.91 < casting ±1.22). refBot unchanged.
+- stations (same 14 bins — z-extents unchanged): y1 at casting stations
+  -0.012; y1 at hump/stern-deck stations +0.075..0.108; w/x0/x1/y0
+  unchanged. dims: NO direct effect (proc-only row).
+- EXPECTED GATE TRAJECTORY: the frozen proc vs the warped ref fails the
+  gate on side/front/turret rows (deck line -0.075 low everywhere, whole
+  turret band mis-seated ~0.15-0.28) until the proc re-seat lands — the
+  batch must NOT be committed alone (§E gate-in-loop: verify against the
+  RE-SEATED proc build in the same round; one graduate-change landing).
+
+PROC RE-SEAT MAP (buildT84, src/vehicles/profiles/russia.js — DOCUMENTED
+DIFF ONLY, NOT LANDED; russia.js untouched this round, hash 531fe4f0
+re-verified frozen 2026-08-04 via tools/tmp-t84-hashgeo74.mjs alongside
+pt91m e6994e54 + t72b3m 3d92bb98). Meters formula (certified world y ->
+new world y): hull y<=0.9919 keep; 0.9919..1.3239: 0.9919+(y-0.9919)
+x1.22759; hull >1.3239: 1.3994+(y-1.3239)x1.61672. Turret zones:
+1.3239..1.7132: 0.93025+(y-1.3239)x1.61672; 1.7132..2.0018: y-0.15347;
+2.0018..2.2317: 1.84853+(y-2.0018)x1.61667; >2.2317 (furniture lane):
+y-0.0117. Key constants (old -> new; the executing round re-derives
+exact values from a FRESH digest/workorder per the r31 re-anchor law —
+this table is the authored intent):
+- turretG.position 1.32 -> 1.40 (ring deck 1.3994-1.4108 class).
+- loftHull deck row values: 1.28->1.3456, 1.333->1.4141, 1.321->1.3959,
+  1.301->1.3714, 1.278->1.3431, 1.272->1.3358, 1.215->1.2658,
+  1.172->1.2130, 1.148->1.1836, 1.06->1.0755; sponsonY 1.12->1.1492;
+  wUp 1.28->1.3456. Belly/wLo/tracks/gear/skirt hems UNCHANGED;
+  widthAnchor (y 0.95) UNCHANGED.
+- side humps 1.3325->~1.433 (top 1.365->1.4659); splash rail
+  1.317->1.3902; ruDeck deckY 1.31->1.3824; Kontakt-5 rows
+  1.158..1.192 -> 1.196..1.238; fender strips 1.30/1.28/1.215 ->
+  1.3701/1.3456/1.2658; stern boxes 1.18/0.99 lanes: map values >=0.992
+  only; skirts yTop 1.32/1.30/1.24 -> 1.3947/1.3701/1.2965 (hems 0.64/
+  0.26 stay); V4 slab tops 1.122..1.209 -> 1.152..1.258; P.topY
+  1.30 -> 1.40.
+- turret band (locals vs turretG 1.40): collar world 1.58..1.66 ->
+  1.344..1.474 (bottom tucks 2-6 cm into the deck = seat contact);
+  cheeks 1.58..1.90 -> 1.344..1.747; ring-side cheek base 1.669 ->
+  1.488; apex ramp 1.88..2.04 -> 1.727..1.910; walls top 2.10 -> 2.007;
+  carrier stack re-centers to keep apron ~0.94 (interior); bustle
+  staircase 1.66/1.72/1.79/1.85 -> 1.474/1.567/1.637/1.697; Utes crate
+  top 2.21 -> 2.185.
+- ROOF-PLATE LANE (dims protection — DO NOT blind-map): re-author the
+  plates/plateau to the FRESH ref plateau lines (2.20..2.22 abs, ref
+  roof band by z 2.212-2.220), sights 2.22-2.24, cupola drum top
+  ~2.22-2.23, blocks ~2.24, Kord crest 2.29-2.31 over <=2 cols. The
+  heightM p95-tops datum must land 2.21-2.23 (pct <=0.5, inside grace);
+  a blind -0.055 map of the 2.205 plate constant would read heightM
+  ~2.19 (-1.4% = -3.2 dims pts) — the ref demands 2.22 tops anyway.
+- gun: gunG y 0.515 -> 0.2815 local (axis 1.835 -> 1.6815 world, ref
+  1.7036 - the certified -0.022 authored offset); mantlet 1.58..1.94 ->
+  1.344..1.787; evac band 1.735..1.97 -> 1.582..1.817; tube stages/rings
+  unchanged (radii keep the plan bins; band follows the axis drop).
+- floaters/poses: collar+carrier tuck INTO the deck (contact deepens);
+  5-pose islands stay 1; depression -8 deg muzzle ~1.0 m up — clear.
+- dims after re-seat: heightM ~2.22 (<=0.5%), hullLengthM 7.00 (1.11%,
+  -0.9 — unchanged, quantized r31 decision stands), overall/width
+  untouched -> dims holds 99.1.
+
+RISK NOTES
+1. dims interaction: heightM is the proc p95-tops datum — protected by
+   the roof-plate lane note above; hullLength/overall/width axes are
+   untouched by a y-only round.
+2. Station/bin re-phase: NONE — ref z/x extents unchanged (y-only ops),
+   shared-box side/front camera halves stay length-dominated, so the
+   0.1213/0.0405 pitches hold; §C 15 mm face-clearance re-check still
+   mandatory after the proc re-author (r31 law 3).
+3. The two stretch-zone kinks (1.713 / 2.002 m) bend the cheek/dome
+   silhouette slightly; watch the critic on close-front (root stage
+   deepens to 1.35..1.72) and the dome slope. Family class says this is
+   the CORRECT look (t80 casting 0.74-0.85 visible height).
+4. Mantlet-vs-glacis clearance post-seat: +3.1..+3.2 cm per z-bin (z22:
+   1.3769 vs 1.3464; z24: 1.3475 vs 1.3151) — contact-free but tight;
+   the proc gun at -8 deg depression clears by design (axis drop is
+   matched by the deck rise only at the ring, not under the tube).
+5. Interior artifacts (accepted): basket plug lands 0.494 (enclosed,
+   above the ~0.35 tub floor); root/breech interior verts stretch inside
+   the casting; casting front floor tucks <=3.8 cm into the deck-glacis
+   corner at |x|<0.23, z gate -0.06..+0.12 (occluded, = family seating).
+6. Graduate coupling: this is a §10/§H3 graduate-change — batch-40 +
+   proc re-seat + gate >=90 x2 + critic re-cert + re-freeze (531fe4f0 ->
+   new hash) land as ONE commit; pt91m e6994e54 / t72b3m 3d92bb98 stay
+   byte-frozen (re-verify in-round).
+7. y_top_max timing: 29.95 is a PRE-translate guard (warp apex 29.9378),
+   not a final-height statement — do not "fix" it down to 24.8.
+
+## r33 TURRET-SEAT RE-ANCHOR (2026-08-04, russia agent): the coupled proc
+## half of batch-40 — FAIL-by-design 0 -> 92.5 min x2 (hull 92.5 / whole
+## 93.2 / turret 93.2 / stations 96.1 / dims 99.1 / floaters 100), +2.3
+## over the r32 graduation record, owner daylight CLOSED (crops archived)
+
+Batch-40 verified in-tree first (probes: deck 15.520u=1.3994, hump 1.4851,
+rim 15.271u=1.3769 = 2.3 cm INTO the deck, roof crest 24.7349u=2.2303,
+tube axis 18.893u=1.7036 r 0.1234 — rimhist reads RAW mesh coords, minus
+the -5.2029 Turret translate). buildT84 re-authored per the plan's zone
+map (k1 x1.22759 / k2 x1.61672 hull; z1 x1.61672 / z2 -0.15347 / z3
+x1.61667 turret), turretG 1.32 -> 1.40, gunG 0.515 -> 0.2815 (axis
+1.6815 = fresh ref 1.7036 - the certified 0.022), roof lane held ABS.
+Trajectory 0 -> 50.5 -> 87.8 -> 90.6 -> 92.5 (plateau; every component
+>= the r32 record). Diff confined to buildT84 (no shared-helper edits —
+proven by the graduates' byte-identical hashes).
+
+MAP CORRECTIONS vs the batch-40 packet table (re-derive law honored —
+three table lines were wrong, caught by fresh probes):
+1. "wUp 1.28->1.3456" is a DECK-VALUE LEAK: wUp is the loft x half-width
+   and x cannot move on a y-only round. wUp stays 1.28.
+2. "carrier re-centers to keep apron ~0.94" is WRONG for the gate: the
+   turret mask is PART-ISOLATED (no hull occlusion) and the seated ref's
+   basket plug paints the band bottom 0.492 across z -0.18..-1.71 (15
+   cols; the certified r32 "1.0-class refBot" the plan attributed to a
+   hull line WAS the pre-seat plug at 0.963). Carrier follows: apron
+   0.490, top 1.3766 (fully interior — inside wLo, above the 0.35 tub).
+3. "P.topY 1.30 -> 1.40" applied as written (HUD/camera anchor only).
+Blind-map amplification: the zone slopes amplify every certified residual
+x1.23..x1.62 — six lanes re-anchored to FRESH per-column ref values
+instead: engine humps (asymmetric: L top 1.4659, R split 1.428/1.472,
+center crest ribs 1.4851 EXACT with the ref's 1.434 center channel kept),
+deck EDGE SHOULDER (loft rows carry the 1.352-1.392 edge line, certified
+center line rides new +-1.00 overlay slabs — side/stations unchanged),
+glacis knee rows 0.55/0.75 -> 1.320/1.310, driver hatch HELD at 1.245
+(the ref hatch is flush; k1's 1.3026 topped the fresh 1.292 line), stern
+fender row split into 1.345/1.417 courses (5 mm overlap, no top-down
+slit), casting walls 2.007 -> main 1.93 + four edge strips (L 1.942/
+1.884, R 1.994/1.942 — print asymmetry; strip gaps never cross a bin,
+collar closes them from below), roof-plate rows split (mid pairs x
+0.21..0.72 keep the 2.205 side plateau + row1 2.17 for the ref's
+2.10->2.205 fore-aft ramp; center lane 2.117 = the fresh ref's roof dip;
+seams follow the mid lanes), apex step 2.12 asymmetric (-0.21..-0.50 /
++0.115..+0.50), Utes crate narrowed to the right plate lane (side keeps
+its 2.185/2.209 line, front center cols freed), bustle staircase
+RE-PHASED to the fresh 0.028/col rising line (seven 1.72-wide stairs
+1.474..1.669 with every face >=15 mm FORE of its column boundary +
+separate 2.079 upper band starting 15 mm PAST -2.202 — bottoms transition
+fore of boundaries, tops aft, never the same box), bow lip -> three-stage
+stair (1.118/1.04/0.9575 per the fresh 2.01/2.12/2.23 cols), front flap
+-> two courses (0.41 lower ending 16 mm before the 2.066 bin; 0.574 col
+kept by the upper), belly pan asymmetric -0.78..+0.835, outer bracket
+pair at the 1.58/1.62 front cols' 0.304 bottom, K-5 rows 3-4 1.196/1.184.
+
+§B2 SEAT PROOF + canyon flip (before/after archived
+shots/russia-t84-seat/): the owner's ring daylight is GONE at every
+angle — view-left/right/frontleft/rearright pairs show the casting
+seated INTO the deck like the ref. NEW FINDING: closing the daylight
+FLIPPED the old shoulder-to-bustle canyon (z -1.31..-1.80 over the
+carrier) from border-connected sky into an ENCLOSED 573/562 px window at
+view-left/right — plugged with solid camo at the carrier planform
+(x +-0.80, z -1.30..-1.72 full-depth + rear 8 cm bottoming at the ref's
+own 1.45 'at'-1.82 line; trace-invisible: tops stay the 2.216 plates,
+bottoms the 0.49 carrier). Flood census (mask-method, >=12px clusters):
+view-left 573 -> 0, view-right 562 -> 0; TOTAL 2517 px vs the r32
+certified 2182 residual — same families (view-front 145 grazing-camo,
+hero-toptilt 861, close-roof 1194 proxy-shadow class, hero-rearright 132
+BETTER than r32's 159) plus a named NEW class: Kord-barrel sky slits
+(view-rear 125 / rearleft 28 / rearright 32) — the enclosed pocket under
+the swung barrel between pintle, receiver and roof: MG PHYSICS wants the
+sky-backed silhouette (§C pintle allowance), certified as
+decoration-lane residual with the rear-cluster crop as evidence.
+
+Done-gates (official rigs, final geometry): geometry-gate min 92.5 PASS
+x2 (components identical both runs: 92.5/93.2/93.2/96.1/99.1/100;
+gatePassed:true re-read from JSON); dims heightM p95 2.24 (0.74%, grace —
+r32-identical; the roof-lane ABS protection held dims at 99.1 exactly,
+hullLength 7.00 quantized decision stands); floaters 100 x2 (contact
+deepened, no new islands); tank-standard-check PASS (clip 4/0 =
+r32-identical, holes 0, mg1+6d); track-clip-audit --exact 4/0;
+turret-parent-audit stranded 1 = fitting_towCable(29%) — PRE-EXISTING
+audit artifact (the committed r32 build reads stranded 1 + abutting 1;
+this round clears the abutting): the engine-deck tow cable is hull deck
+furniture the bustle merely overhangs (§B5 keeps it in rig_hull), the
+AABB envelope smears over it; adjudicated, negative documented.
+visual-evaluator exit 0, RIG PARITY OK (max dYawProxy 1.0 deg
+@close-roof vs r32's 1.8, |dCentroid| 0.025 m); named kink findings per
+the plan's risk 3, cited per §D: dome-slope class left "edge upper
+170.6 vs ref 0 (Δ-9.4 +-0.6) @ z -0.13..0.87 y 1.78..1.95" (the z1/z2
+stretch kink bending the cheek ramp — family-correct look per the plan),
+close-front root-depth class "lower-left Δ-10.3 +-0.5 @ z 1.41..1.60
+y 0.12..0.26" (bow flap course lane). npm test exit 0.
+
+HASHES: t84 531fe4f0 -> **fd0bca6c** (47 meshes / 93220 verts) — for the
+re-freeze at landing. Graduates byte-frozen in-round at every measure
+batch: pt91m e6994e54, t72b3m 3d92bb98.
+
+Honest residuals (worst columns, gate frame): side 'at' 4.32 err 0.062 x1
+(the certified r31 "stern ramp step -4.32 -0.07" arc-vs-straight-ramp
+gear class — the ref's rake mapped up while the sprocket wrap is
+identity-zone; rear wrap link instances bottom 0.53 at z -4.267, measured
+by vertex probe); wheel-gap phase cols 'at' -1.04/-1.15 +-0.03; turret
+'at' -0.27 err 0.051 x1 (the ref's 1.442 mantlet-rotor ridge — a collar4
+raise to 1.425 would re-open a through-slit over the 1.356 shoulder loft,
+rejected per §B2); front center-roof 'at' 0.14 -0.06 (ref's 2.224 lane
+pokes between drum and step); plan smoke-tip cols 0.61/0.71 -0.10 x2
+(certified since r31); front cupola-drum east edge 'at' 0.66 +0.03
+(critic-ordered drum kept over 0.3 gate pts).
+
+BANKED LAWS (r33):
+1. PART-ISOLATED TURRET MASK SEES INTERIOR CONTENT: the gate renders the
+   turret band with the hull hidden — a seated oracle's interior floors
+   (basket plug) SET the band bottom, and the proc's interior stacks must
+   match the ref's interior bands, not the visible hull line. Never
+   reason "occluded = invisible" about part masks.
+2. ZONE MAPS AMPLIFY CERTIFIED RESIDUALS BY THE ZONE SLOPE (x1.23-x1.62
+   here): after any compound warp, re-derive per-column targets from a
+   FRESH workorder — a -0.01 certified read becomes a -0.016..-0.026 miss
+   if mapped blind, and knee zones (glacis fall, wall tops, roof ramps)
+   shift NON-uniformly because the per-vertex map crosses zone boundaries
+   inside a single authored member.
+3. SEAT-CLOSES-DAYLIGHT FLIPS §B2 TOPOLOGY: pockets that scanned "open"
+   through a float gap become ENCLOSED windows the moment the seat lands
+   — re-run the flood scan after ANY contact-class change and plug with
+   trace-invisible interior fills (tops/bottoms owned by other content).
+4. The gate's own JSON stores camera-frame values; the workorder's
+   world-frame dump with the GATE's hull-row dy (not the row's own mean
+   dy) is the only authorable per-column truth (the row-mean dy is
+   polluted by exactly the family you are chasing).
