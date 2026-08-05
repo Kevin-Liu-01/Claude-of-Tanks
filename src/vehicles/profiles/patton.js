@@ -570,7 +570,15 @@ function t26Cast(P, T) {
     P.turretG.add(mesh);
     P.disposables.push(geo);
   };
-  loftBody(P, 'turret', secs, { oy: T.ringY, oz: T.ringZ, wall: 0.46, mid: 0.79, midW: 0.85, crownW: 0.46, ...(T.loft || {}) });
+  // r9 R4 (m46, adopting the m47 r6-B8/r8-S lane): T.loft.smooth re-emits the
+  // SAME ring corners through smoothLoft (one indexed grid, shared-vertex
+  // computeVertexNormals) so the roof/shoulder facet family shades as one
+  // cast roll instead of per-slab flat panels. Silhouette-identical by
+  // construction (every ring corner byte-equal to the slab corners; verified
+  // in-gate x2). Default OFF — m26/m45 keep the slab loft byte-identical.
+  const loftOpts = { oy: T.ringY, oz: T.ringZ, wall: 0.46, mid: 0.79, midW: 0.85, crownW: 0.46, ...(T.loft || {}) };
+  if (loftOpts.smooth) smoothLoft(P, 'turret', secs, loftOpts);
+  else loftBody(P, 'turret', secs, loftOpts);
   if (T.basket) { // crew basket under the ring: the reference rig_turret
     // subtrees hang to y 0.35-0.41 — the gate measures it.
     const B = T.basket;
@@ -611,8 +619,47 @@ function t26Cast(P, T) {
     const R = T.rack;
     P.add('turretCloth', box(0.72, 0.05, 0.17), 0.02, yl(R.floorY + 0.028), zl(-2.115));
     tarpRoll(P, 'turretCloth', -0.06, yl(2.196), zl(-2.115), 0.66, 0.068, true, P.q ? 12 : 8);
+    // r9 R2 (shaded-parity r7): the load read as ONE uniform dark cloth
+    // slab — texture it INSIDE the same certified envelope (tops <= 2.295,
+    // z -2.00..-2.352, plan +-0.45; the C3 abort record is the fence).
+    // Two-tone canvas (pale sun-bleached over-wraps on both rolls) +
+    // deep-olive mottle fold patches + one shadow line per roll/bed
+    // junction + strap webbing swapped near-black (geometry identical).
+    // Per-build canvasCloth clones + ambient rehook (clone drops
+    // onBeforeCompile — merkava gearFloor law).
+    const mkCloth = (hex) => {
+      const m = P.mats.canvasCloth.clone();
+      m.color.setHex(hex);
+      m.onBeforeCompile = vehicleAmbientFloorHook;
+      m.customProgramCacheKey = () => 'veh-ambient-floor-v2';
+      P.disposables.push(m);
+      return m;
+    };
+    const clothPale = mkCloth(0x565a41);   // bleached top canvas
+    const clothDeep = mkCloth(0x313423);   // shadowed folds / mottle
+    const webDark = mkCloth(0x211f19);     // strap webbing + junction shadow
+    const texMesh = (mat, geo, x, y, z, rx = 0, ry = 0) => {
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.set(x, yl(y), zl(z));
+      if (rx || ry) mesh.rotation.set(rx, ry, 0);
+      mesh.receiveShadow = true;
+      P.turretG.add(mesh);
+      P.disposables.push(geo);
+    };
+    const { cylX } = KIT;
+    // pale over-wraps: crests 2.268 / 2.291 — under the 2.295 loadTop
+    texMesh(clothPale, cylX(0.072, 0.24, P.q ? 12 : 8), -0.08, 2.196, -2.115);
+    texMesh(clothPale, cylX(0.088, 0.15, P.q ? 12 : 8), -0.27, 2.203, -2.033);
+    // mottle patches (dapple grammar: thin, flush on bed/roll surfaces)
+    texMesh(clothDeep, box(0.15, 0.010, 0.11), 0.22, 2.133, -2.16, 0, 0.35);
+    texMesh(clothDeep, box(0.10, 0.010, 0.08), -0.08, 2.272, -2.13, 0.18, 0);
+    texMesh(clothDeep, box(0.12, 0.010, 0.07), 0.10, 2.258, -2.09, -0.35, 0.2);
+    texMesh(clothDeep, box(0.09, 0.010, 0.09), -0.33, 2.135, -2.19, 0, -0.25);
+    // roll/bed junction shadow lines (the fold-shadow read)
+    texMesh(webDark, box(0.60, 0.016, 0.012), -0.06, 2.136, -2.056);
+    texMesh(webDark, box(0.60, 0.016, 0.012), -0.06, 2.136, -2.176);
     for (const sx of [-0.30, 0.02, 0.33]) { // straps over the load (slat rhythm)
-      P.add('turretDark', box(0.032, 0.010, 0.19), sx, yl(2.29), zl(-2.115));
+      texMesh(webDark, box(0.032, 0.010, 0.19), sx, 2.29, -2.115);
     }
   }
   // r7 D (m46, §B3/§H.4): spare track links hung on the right stowage-shelf
@@ -3217,7 +3264,16 @@ export const PATTON_PROFILES = {
       // carrier face is the plan-mask edge; idler ring real interior).
       gearShade: {
         covers: [[0.61, 0.016, 1.30, 1.195, -3.10, 0.146], [0.61, 0.016, 3.25, 1.30, -0.825, 0], [0.61, 0.016, 0.80, 1.23, 1.20, -0.14]],
-        curtains: [[0.016, 0.19, 4.85, 1.63, 1.30, -1.125], [0.014, 0.22, 0.44, 1.18, 1.27, -2.50]],
+        // r9 R3 (m47 r8-T1 recipe): outboard curtain deepened 0.19 -> 0.34
+        // (top tucked to the 1.370..1.405 fender plate, bottom 1.065 —
+        // 20 mm above the 1.045 idler crest) and extended over the full
+        // fender run (z 1.30..-3.55 -> 1.58..-4.10) so the lit fender-wall
+        // gaps between the skirt-tab verticals drop the ordered tone step
+        // at close-front (done-gate: no >12L lit gap between curtain
+        // columns). Third segment: the z 1.58..1.71 wedge UNDER the bow
+        // fender ramp (top 1.235 < the ramp's 1.26 @ z 1.71) backs the
+        // front-most tab. §C proxies (mask-excluded), gate x2 verified.
+        curtains: [[0.016, 0.34, 5.68, 1.63, 1.235, -1.26], [0.014, 0.22, 0.44, 1.18, 1.27, -2.50], [0.016, 0.17, 0.13, 1.63, 1.15, 1.645]],
         backers: [[0.05, 0.90, 0.80, 0.75, -3.35], [0.05, 0.80, 0.40, 0.80, 1.45]],
         endRings: [
           [0.126, 0.342, 0.815, -3.88, 'gearShadowGlint'],
@@ -3285,7 +3341,11 @@ export const PATTON_PROFILES = {
         // over x 0.96..1.05 — the full-hw wall band to 57% height read
         // +0.2 on the outer front columns). shiftX dropped (the warped ref
         // cheeks read symmetric ±0.71 -> z 0.52).
-        loft: { wall: 0.38, mid: 0.73, midW: 0.86, crownW: 0.20, crownX: -0.30, shiftX: 0 },
+        // r9 R4: smooth — the same ring corners re-emitted through
+        // smoothLoft (cast-roll shading; silhouette-identical, gate x2 +
+        // front_whole row verified — the crest pods/zWedges above stay
+        // byte-identical hard-edged gate carriers).
+        loft: { wall: 0.38, mid: 0.73, midW: 0.86, crownW: 0.20, crownX: -0.30, shiftX: 0, smooth: true },
         // SECTION TOPS STAY LOW (<= 2.68): the side crest line 2.72-2.82
         // rides the x-bounded A-pods below — any section top above ~2.64
         // leaks its crown quad into the FRONT right-roof columns the ref

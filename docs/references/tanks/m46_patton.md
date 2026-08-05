@@ -450,6 +450,104 @@ top run need descending ceilings (the m47 literals assume rising ones).
 own load envelope — bucket-swap the existing certified loads FIRST (zero
 mask), add volume only inside it.
 
+## Round r9 (2026-08-04) — the m46 POLISH round (shaded-parity r7 orders R1–R4)
+Gate **91.1 PASS x2 bit-identical at BOTH landing points** (hull 91.9 /
+whole 91.8 / turret 91.1 / stations 92.5 / dims 100 / floaters 100 — the r7
+line to the decimal; front_whole row 91.75, reg dAlong 0). standard-check
+clip **0/0 ✓** contig **0 ✓** decor **mg1+2d ✓**; track-clip --exact 0/0;
+turret-parent **0/0/0** (first batched run hit a FIFO-contention navigation
+timeout — solo rerun clean). Evaluator **RIG PARITY OK** (max yawProxy 1.0°
+@frontleft, |dCentroid| 0.061 m @rearleft, 0 flips — the r5/r7 numbers
+exactly), front §B1: 29 matched / 1 flag (Δ+9.7° certified mast band), p95
+Δtop 0.143 / Δbot 0.134 (r5 class); all five adjudicated void classes at
+their r5 coordinates (toptilt 4.193 m² projection triangle, close-roof
+0.066 m² MG window, toe/overhang/under-belly). npm test green (166 +
+track-geometry). Hashes: m46 **99a3b0b4 → 8cf23500** (99 meshes / 89 106
+verts — smooth grid + 11 texture meshes + 2 curtain segments); m47
+**70941de0 FROZEN** (verified before/mid/after — its graduation critic ran
+concurrently, patton.js m47 sections untouched); m26 **2621292c** / m45
+**e103a2dc** / m60a1 **81e69e34** / m60a3 **efcde5c4** byte-identical (the
+t26Cast smooth branch is opt-in, default = the slab loft). Shots:
+shots/patton-r9/ (baseline/ = R1 re-baseline pairs, c1/ = delivered state;
+14 official pairs each, zero console errors both batches).
+
+- **R1 ALBEDO RE-BASELINE ✓ — notch NOT applied (condition did not fire)**:
+  fresh official pairs on the committed knob-ON state (bakeDirtDeckEq
+  09eeafe + hem-parity f243966; the critic's +4–5L drift state was the
+  then-uncommitted materials tree, since landed DISABLED per f60d520). Ref
+  windows read the ARCHIVE class again: A3 front track columns ref
+  **62.8/62.8**, proc 59.9/60.1 → **Δ2.9/2.7 ≤ 5L** (the notch trigger
+  >5L is dead); A1 bars held (sub-30 **0**, p5 **54.1** ≥35, med 66.6 vs
+  ref 63.2 = Δ3.4 ≤ 6L, sd 7.49 ≤ ref+4, p95 76.0 ≤ 81.5); A2 p75 72.6
+  ≥66; A5 sub-25 **0**, med 56.7 vs ref 58.6; B1 rod med **76.8** ytop 223
+  = ref. N1 split ≤0.03 preserved — post-R4 it COLLAPSED: gear r/g 0.988,
+  own-hull 0.984 → split **0.004** (was 0.030; ref's own 0.045).
+- **R2 RACK-LOAD TEXTURE ✓ (tone lane, envelope-interior)**: the uniform
+  cloth-slab load now carries (a) TWO-TONE canvas — pale bleached
+  over-wraps on both rolls (canvasCloth clones + ambient rehook; crests
+  2.268/2.291 < the 2.295 loadTop), (b) deep-olive mottle fold patches
+  (4, ≤10 mm, flush on bed/roll faces), (c) near-black roll/bed junction
+  shadow lines ×2, (d) straps re-toned near-black webbing (0x211f19,
+  geometry identical). Every piece inside the certified envelope (tops
+  ≤2.291, z −2.03..−2.20, plan |x| ≤0.42) — turret 91.1 held bit-identical
+  x2 (the C3 abort fence never moved). Reads at 1×: rearleft two-tone roll
+  + strap rhythm (loudest), top strap ticks over the pale band, hero-rr
+  wrap band. Crops: shots/patton-r9/ diffs; view-top diff bbox
+  (893,175)-(1027,386) = rack + R4 roof re-shade only.
+- **R3 CURTAIN-LEG CONTINUITY ✓ (m47 r8-T1 recipe)**: outboard curtain
+  deepened 0.19 → **0.34** (top tucked to the 1.370..1.405 fender plate,
+  bottom 1.065 = 20 mm above the 1.045 idler crest) + extended z
+  1.30..−3.55 → **1.58..−4.10** (the full fender run), + a NEW third
+  wedge segment [0.016, 0.17, 0.13] @ (1.63, 1.15, 1.645) under the bow
+  fender ramp (top 1.235 < the ramp's 1.26 @ z 1.71 — a proxy poking over
+  a rising ramp would read as a floating dark plane; segment-under-the-
+  line is the pattern). Done-gate: close-front curtain-core columns
+  (y 378..396) **spread 7L** between tabs (bar ≤12; baseline gaps ran
+  +15–19L over the band, loudest gap 80.0 → 74.9 and that survivor is the
+  lit bow-ramp face at the window edge — the m47 N3-content caveat class,
+  ref's own window max 85.6). The tabs now read as a ≤5L step INSIDE one
+  continuous band at 1× (frontleft/rearleft kept their pass — verified on
+  the c1 pairs). §C proxies (gearShadowProxy name), gate mask-inert x2.
+- **R4 ROOF CAST CONTINUITY ✓ (abort-priced — fence NEVER wobbled)**:
+  t26Cast gains the m47 B8 branch — `T.loft.smooth` re-emits the SAME
+  ring corners through smoothLoft (one indexed grid + shared-vertex
+  normals; m26/m45 default slab path byte-identical, hash-proven). The
+  close-roof facet patchwork is DEAD: the dome shades as one cast roll at
+  close-roof AND the quarters (crops in scratchpad round record; c1
+  close-roof/frontleft). Crest pods + zWedges stay hard-edged byte-
+  identical gate carriers (section tops ≤2.68 law untouched); gate x2
+  bit-identical immediately after the flip (front_whole 91.75, dims 100
+  x2), so the fence held with ZERO spend. Side effect (measured): the
+  hero-rr hull-window hue moved with the re-shade — N1 split 0.030 →
+  0.004 (better than the ref's own 0.045).
+
+R5 STATE (NOT taken — orchestrator lane, reported for the record): the
+deck knob delivered the LUMA half — view-top rear-deck band med proc
+**58.8 vs ref 59.0** (r7 read: 56.0 vs 61.9) — but the slat-rhythm
+STRUCTURE gap stands (tracker window [250..390]x[180..480] sub-50 proc
+5627 vs ref 3190: the ref's pale slat crowns break its dark fields, the
+proc's camo sits unbroken). toptilt stays the floor holder until the
+usKit/decal-lane R5 lands.
+
+SELF-READ floors (builder estimate, not a verdict): front/left/right hold
+their 9.0; frontleft/frontright/hero-fl ~9.0 (facet family dead, curtain
+continuous; held by certified gear/plan classes); rearleft/rear/rearright/
+hero-rr 8.9–9.0 (load textured, curtain continuous; banked C4 corner
+verticals @ x ±1.68 — evaluator-exact 88.9°/91.1° len 0.573 — and the
+rear rectilinear trade procOnly 29 vs refOnly 9, both r7-banked); top 8.9
+(load textured; deck structure gap = R5); close-front ~9.0 (7L band);
+close-roof ~9.0 (one cast roll; M2 slab-stack mass = certified band);
+**hero-toptilt 8.8–8.9 — the R5-held view** (tone parity closed, texture
+density open). LAW NOTES (bank): (1) smoothLoft normal re-shading moves
+HUE-window reads on adjacent bodywork (N1 split 0.030→0.004 here) —
+re-verify N-class windows after any smooth-shading flip; (2) shadow-proxy
+curtains under a RISING fender ramp need a stepped segment whose top
+follows under the ramp line (the r9 wedge pattern) — a single deep box
+pokes the silhouette as a floating dark plane; (3) rack-texture pieces
+priced zero because they ride INSIDE the certified load mass — the C3
+"bucket-swap first, volume only inside" law extends to texture: wrap
+radii +4 mm and flush patches are the whole budget.
+
 ## Vertex round r3 (2026-08-04) — probe round: r2 baseline RESTORED, deltas banked
 Budget remainder after the m47 pass. Attempted the r1/r2 'free rows'
 (front centre-can band, right-roof line, bow eye, rack floor); closing
