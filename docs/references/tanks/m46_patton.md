@@ -739,3 +739,16 @@ recommended (3.02 -> 3.08, userdrops6.js — over-M2 datum re-measures
 open). Extract ORIENTATION MISMATCH warnings on m26/m46 are certified
 false alarms of the descent-run vote (rear deck out-runs the steep
 glacis); boards prove bow-under-gun.
+
+## GRADUATION FREEZE (2026-08-05) — the program's 23rd graduate, the patton family's SECOND
+Dual gate: geometry 91.2 PASS x2 bit-identical (08c9cd4: hull 91.9 /
+whole 91.8 / turret 91.2 / stations 92.5 / dims 100 / floaters 100) +
+graduation critic PASS ALL 14 views at 9.0 (ladder 8.2 -> 8.8 -> 9.0
+across six builder rounds + three adjudications, incl. the batch-36
+body+tube-compress warp, the r5 re-anchor, the tone round, and the
+in-profile deck-slat delivery). HASH FROZEN: **dfacd57c** (100 meshes /
+90354 verts). Registration retired + mirrored at the FLEET FLIP
+(c487188); SOURCED lists exclude it; variants backfill clean; icons
+regenerated at the graduation state. Banked carry-forward: aft-band
+louvre density (cfg.deckSlats extension), dome-blotch distribution
+(materials lane), C4 verticals (family lane).
