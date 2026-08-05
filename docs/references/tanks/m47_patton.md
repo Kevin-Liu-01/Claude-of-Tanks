@@ -672,3 +672,13 @@ muzzle station); tube-stretch warp literals banked in vertex-normalize
 PLANS — EXECUTION FROZEN by the 2026-08-03 incident law (gate-in-loop
 verification required). Worst remaining: front_whole dome-roll (~30 cols,
 0.07-0.13), turret_plan edges +-1.16-1.21.
+
+## GRADUATION FREEZE (2026-08-04) — the program's 20th graduate, the patton family's FIRST
+Dual gate: geometry 90.5 PASS x2 bit-identical (914bdb0: hull 90.5 /
+whole 91.0 / turret 91.6 / stations 93.6 / dims 100 / floaters 100) +
+graduation critic PASS floor 9.0 ALL 14 views (eeaa462; ladder 8.3 ->
+8.5 -> 8.8 -> 9.0). HASH FROZEN: **70941de0** (109 meshes / 103383
+verts) — any change is a graduate-change per §10. userdrops6 recovered
+registration RETIRED (loop + USERDROP6_SOURCED_IDS); mirrored into the
+three measurement maps; variants backfill clean; icons regenerated
+procedural (5 by exact name from a clean worktree).

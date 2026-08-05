@@ -130,8 +130,13 @@ if (ALLOW_LOCAL_RECOVERED_MODELS) {
   // across eleven visual rounds). The recovered GLB stays on disk as the
   // measurement oracle only (override configs in procedural-fidelity.html
   // + tmp-tank-critic.html); NO MODEL_SOURCE — freeze hash via tmp-hashgeo.
+  // m47_patton: DUAL-GATE GRADUATE (2026-08-04, the patton family's first —
+  // geometry 90.5 gatePassed x2, graduation critic 9.0 on ALL fourteen views
+  // at r8; ladder 8.3 -> 8.5 -> 8.8 -> 9.0; commit eeaa462). Registration
+  // retired per §10 — the recovered GLB stays a measurement oracle via the
+  // three override maps; freeze hash 70941de0 via tmp-hashgeo.
   for (const id of ['centurion3', 'centurion5', 'comet', 'challenger_cruiser', 'charioteer',
-    'leopard2_proto', 'm46_patton', 'm47_patton', 'm26_pershing', 'm45_patton']) articulated(id);
+    'leopard2_proto', 'm46_patton', 'm26_pershing', 'm45_patton']) articulated(id);
   // The Bergman Abrams exports an empty Turret pivot at the scene origin.
   // Its authored hull/turret placement is already correct; autoPivot treated
   // the long fused cannon as the turret footprint and moved the entire upper
@@ -148,7 +153,7 @@ export const USERDROP6_TANK_IDS = SPECS.map((s) => s.id);
 // Sourced-intent roster for garage bucketing: dual-gate GRADUATES leave this
 // list (they render our builds and chip under CUSTOM), everything else stays
 // in its era bucket even when public builds render procedural fallbacks.
-export const USERDROP6_SOURCED_IDS = USERDROP6_TANK_IDS.filter((id) => id !== 'm60a3' && id !== 'isu122s' && id !== 'isu152');
+export const USERDROP6_SOURCED_IDS = USERDROP6_TANK_IDS.filter((id) => id !== 'm60a3' && id !== 'isu122s' && id !== 'isu152' && id !== 'm47_patton');
 
 // USER DROPS wave 8 (scout-gen2 integration): chain-loaded here because
 // tankFactory.js (the usual registration hook) is frozen during the fleet
