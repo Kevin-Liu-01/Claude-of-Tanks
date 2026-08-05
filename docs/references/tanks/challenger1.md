@@ -255,3 +255,95 @@ running-gear lane, r3 carried it too); plan rear lip cols ±0.31..0.73
 (-4.16 vs ref -4.06, the published-tail anchor, dims-priced); front
 parity yawProxy 4° (ref's own skew, under the 10° abort); nose-top AA
 flip-flop band 2.55..2.81 (~0.07x3, r3 plateau class).
+
+## PUSH-2 — post-staircase ladder (2026-08-05, uk agent): 77.9 -> 90.1 GATE PASS x2
+FRESH BASELINE: 77.9 unchanged post-amendment (ad39179 moved nothing here;
+hash a18d91a8 verified). Five worst-rows-first cycles to the program's
+dual-gate bar — geometry side DONE: **min 90.1 | hull 91.9 whole 90.1
+turret 90.2 stations 90.6 dims 95 floaters 100 — PASS x2 bit-identical**
+(fleet 24/88). Hash a18d91a8 -> **8ef58c18** (41 meshes, 88 644 verts).
+Trajectory: 77.9 -> 86.2 -> 88.7 -> 89.2 -> 90.0 -> 90.1 PASS.
+
+THE THREE STRUCTURAL FINDS (each worth 2-4 pts, all workorder-measured):
+- SKIRT COURSE TRUTH: the ref hull-mask top is 1.624 across the WHOLE mid
+  band (side cols -1.21..2.55) — our 1.74 skirt run painted FIFTEEN
+  columns +0.13. Skirt top 1.74 -> 1.624 (one course, co-planar with the
+  front panels), face pulled to the ref's own 1.578 plane, plus its TWO
+  outboard layers re-read from the front/station cross-check: a 0.515-hem
+  OUTER BOARD row at 1.598..1.613 (top 1.525) and the ±1.66-1.68 station
+  bosses now BRIDGING skirt->board (§B2 attachment). Rear quarter is an
+  INBOARD raised panel (x 1.568..1.613, top 1.53, hem 0.90, z -2.55..
+  -3.28) carrying the plan's -3.283 tail with the ramp-owned side bottoms
+  left bare (skirt z0 -3.30 -> -2.55; st1 ±1.60 station read).
+- RUNNING-GEAR LANE (the round's named binder): ref front ramp is 0.51/m
+  from z 2.89 into a HIGH FORWARD idler — (3.50,0.60,0.28) ->
+  **(3.62, 0.80, 0.28)** + contactZF 2.90; rear y=0.5(|z|-2.06) into
+  **sprocket (-2.64, 0.80, 0.33)** + contactZR -2.12 + padCornerFloor
+  0.012 (centurion r6 law). Bow wings ARCH over the raised wrap (belly
+  1.00 -> 1.245 crest -> 0.995 tip, §B4/§B1); §B6 trapezoid both ends.
+  The deck knee lowered to the ref's splash-board cols ([2.90,1.575]) and
+  the mid deck to its flat 1.622 with the REAL engine-bulkhead step at
+  -1.25/-1.31 (ref's own 1.689 mixed-AA step col reproduced exactly).
+- §B1 CROWN ASYMMETRY (c1ad424 clause applied): the ref casting crown is
+  commander-high LEFT (2.498 plateau, x<0) / loader-low RIGHT (~2.33 flat
+  to the 2.28-2.31 cheek band) — our symmetric 0.878 crown painted 18
+  front columns +0.08..+0.15. Face slab split at x 0 (plinth step wall =
+  the ref's real course line), right cheek rake runs out into its OWN low
+  roof (slope motivates the mass), rear roof + chamfer top quads kink at
+  x 0, cowl re-seated on the surface it sits on. Turret furniture
+  re-derived: TOGS tapered body (2.28 inner / 2.355 outer) + 2.985 head
+  (run INTO the body — a 0.065 float minted a yaw-90 mask island, the
+  round's one floater, raycast-located), left-block 2.86 sight cap, NBC
+  0.885, glass strips flush, sight x-span 0.26, deep trunnion floor to
+  the live 0.942 band (12 cols), ring-collar split 1.59/1.46 (§C: the
+  front piece's rear face moved 24 mm clear of the -0.239 boundary).
+BASKET/BUSTLE plan staircase re-cut to the live cols (hump/mid ±0.74,
+asymmetric tail halves -2.13/-2.09, waist shoulders stepped -1.92/-1.78
+right and -1.92/-1.854 left, left wall to -1.75, cloth to -1.77, 2.40
+left kit block at x -1.05..-1.42 for the front row's 2.386-2.416 band);
+rear-deck bin re-profiled (1.83 crest ±0.30 + 1.762 wings to ±1.375);
+tail furniture stepped to the ref's own underside jitter (side boxes
+1.165/-3.66 + 1.10/-3.88, deep-box segs 1.12/1.15/1.22, lip 1.47); gun
+lane: junction ring 2.10, sleeves +0.02 with authored RIDGE RINGS at the
+ref's 1.981 ridge cols (4.73/5.25/6.60) over a 1.935 valley base, MRS
+z-stretched to cover both muzzle cols at r 0.108.
+CHECKS: standard-check PASS (clip 0/0 exact, §B2 holes 12 -> 0 via the
+rear gear-deck cover shelf, mg1 census); §B5 parent 0/0/0; evaluator
+14/14 RIG PARITY OK (max yawProxy 2.1°), no stair-chain reads; npm 166 +
+track-geometry green. FROZEN PROOFS at close: chieftain5 **5117b9a8**,
+centurion3 **caa2e91c**, centurion5 **bbcf7d80** — byte-identical (the
+ukHull opt-ins skirtW/skirtTrimFlush default byte-identical; padHugZ0
+NOT plumbed on purpose — plumbing it would alter the frozen centurions'
+live `padHugZ0: 0` config mid-critic, orchestrator-lane coupling).
+Evidence: shots/uk-challenger1-push2/ (gate-final.json, track-clip),
+shots/visual-eval-challenger1/.
+
+LAW BANK (push-2 discoveries):
+1. TRIM-PLANK ANTI-RECIPE: r15's plank painted a line its band couldn't
+   reach behind a skirt window — a plank can NEVER raise a mask bottom
+   the visible band itself paints lower (tried + removed here; the wrap
+   deficit is the band+shoe-hang itself).
+2. §C IS PER-ROW-GRID: the turret rows sample their OWN column grids —
+   the MRS cleared plan_whole's 0.146 boundary but sat 5 mm inside
+   plan_turret's 0.125 and lit the column to the muzzle (-4.3 pts on one
+   col). Clearance checks must run against every scored row's grid.
+3. STATION FRAMES ARE PER-MODEL: the gate's stations band each model's
+   OWN side-hull z-range — a dims-priced tail-lip overhang shifts every
+   proc band ~0.13 vs ref, so st0 fragility is structural (and trimmed).
+4. RAYCAST ATTRIBUTION beats AABB probing on merged buckets: three
+   stubborn plan columns traced to painters static analysis missed (the
+   rear-roof slab's plan footprint at ±0.95, the tail-course ±0.53 AA
+   edge 6 mm off a boundary, the old waist shoulder's outer half).
+5. GEAR MOVES SWEEP THE SHOE ENVELOPE: idler-forward pushed the shoe
+   sweep (r+CLEAR+pads ≈ r+0.15) through the center tip flap with NO
+   legal z between the sweep (<=4.065) and the next §C boundary (4.047)
+   — solids sharing the gear x-band re-derive with every end-wheel move.
+HONEST RESIDUALS (the measured ceiling without orchestrator help):
+side_whole 90.03 — the wrap-zone bottoms z 3.46..3.98 read -0.05..-0.16
+under the ref line (band+shoe-hang; padHug is unplumbed on this rig —
+fixing it couples to the frozen centurions); muzzle ridge/valley ±0.03
+alternation; plan rear lip cols (dims-priced tail anchor, unchanged);
+st0 wPct ~7.6 trimmed (law 3). turret:plan 89.97 -> 90.2 came from the
+§C fixes — the 0.861/0.601 columns hold ~0.08 of ref-side basket kit our
+shell reads clean. Dual gate: geometry side PASSED — independent critic
+>= 9.0 every view is the remaining graduation leg.
