@@ -611,3 +611,155 @@ Residuals (certified/measured, no new orders):
 - Fan-arch size: r 0.36 vs ref ≈0.55 (deck-carry bound, see order 5).
 - frontright/left/right residual flood 27-57 px in earlier states traced
   to the same corridor class; final state has every view ≤ label+33.
+
+## Visual round r12 (2026-08-04) — FINISH TIER round 2 (shaded-parity r9 verdict, commit 571ea39): the round-2 order book delivered
+
+Gate at landing: **min 90.7 PASS ×2 BIT-IDENTICAL** (hull 91.4 / whole 90.7
+/ turret 91.8 / stations 90.8 / dims 99.5 / floaters 100 — whole binder
+unchanged; hull −0.1 = the D2b plane move + E1b course, priced). Hash
+f6a1d3c0 → **9249c794** (58→63 meshes, 111368→112169 verts). Frozen
+siblings verified at the same sitting (both bookends): leo2a5 **bc9bad30**,
+leo2a6 **80b76338**, kf51 **3ae9b70c** — exactly the r10/kf51-landing
+freeze lines. Evaluator: **RIG PARITY OK** (11 ortho views, max yawProxy
+0.8° @close-front — the r9 line), shots/visual-eval-leo2_revolution/.
+standard-check: gateMin 90.7 | clip **98/429 — the documented §B4 carry TO
+THE DIGIT** (no gear geometry touched) | contig 0 ✓ | decor mg1+4d ✓.
+npm test 166 checks pass. Renders: shots/critic-leo2_revolution/ (official
+tmp-tank-critic rig, zero console errors). Measures:
+tools/tmp-rev-critic-r9-measure.py (the r9 critic's own rig) +
+tools/tmp-e3-maskprobe.{html,mjs} (E3 diagnosis only).
+
+Orders → deliveries (per-order done-gates, official pairs):
+1. **D2b CABLE-X VISIBILITY (mandatory — the r9 mis-position)**: option B
+   (25 mm proud). Both towCable runs re-laid as a clean crossing X at
+   center z −3.863, r 0.014→0.016 — cable FRONTS −3.879, 2 mm proud of
+   the D1 slat faces (−3.877) and 6 mm inside the rails' −3.885 plane;
+   shackle blocks moved ONTO the cable lines (fronts −3.878; the r9
+   blocks at −3.845 were slat-occluded too, same miss class). Done-gate:
+   **view-rear at 1× shows the X crossing** ✓ (verified 1× and 3×);
+   flood rear 101 px = label+9 hairline, THE R9 DIGIT ✓; dims 99.5 held
+   ×2 ✓ (hullLengthM guard: rails still own −3.885). D1 window with the
+   X across it: med **77.3** sd **12.31** (gates 70..85 / ≥10; r9 was
+   77.3/12.50) — the lattice cert holds under the crossing.
+2. **A2b RWS BARREL LEGIBILITY**: barrel r 0.024→0.032, muzzle ring
+   r 0.034→0.042 (ring face −0.400, inside the −0.385 pod plane; barrel
+   top 2.617w < the 2.66 anchor), + the ordered elevation-arm shadow line
+   (dark strip 6 mm proud of the arm front) + a barrel drop-shadow stripe
+   on the race lip (top 2.439w < st5's 2.655 head-cap line). Done-gate:
+   view-front 2× parses barrel + dark ring at the head left of the optic
+   ✓; dims 99.5 / stations 90.8 untouched ×2 ✓ (st4 cap blades
+   byte-identical).
+3. **A3b MAG WEAPON-READ — THE §C PINTLE ALLOWANCE IS SPENT** (r7 option
+   A): pale cap grown to a receiver BLOCK (top 2.048w) + co-rod lifted
+   (top 2.0465w) + pale pintle post tying rod to the wing cover. Priced
+   exactly as ordered: the w 2.337/2.447 side cols take ~0.05 over the
+   ref's 1.991-2.001 wing band — **turret_side held ≥91 (turret 91.8
+   unmoved at gate precision)**, well inside the ≤0.4 allowance. Census
+   mg1+ held ✓. close-roof 2×: pale receiver mass + post + rod parse as
+   a mounted weapon ✓.
+4. **C1b FAN SCREEN READ**: the 4 radial blades DELETED (the wagon-wheel
+   signature) → 4 horizontal chord slats per well (dz ±0.075/±0.205,
+   tops ≤1.718 inside the r9 +8.5 mm budget) + hinge contrast plates
+   (dark-on-pale, top 1.7183). Zero new columns ✓ gate ×2 trivially ✓.
+   Done-gate: top view circles read as chorded slat-screen arches ✓.
+5. **C2b CABLE VISIBILITY (tone)**: two-point measures FIRST (the
+   ordered discipline): deck camo 47-56, pure hullDark top faces 49-57,
+   floor-hooked shadow-clone 55 — **top-lit tone is COMPRESSED** (the
+   ambient floor + sun): the rehooked path cannot land dark-on-pale, the
+   order's anticipated 'tone stalls' branch. Landed: RAW shadow-clone
+   (no ambient-floor hook — the D1 two-point's dark end) at 0x1f231a:
+   cable minima 32-44 vs deck med 55 (Δ11-23). Tail runs read as dark
+   lines at 1×; draped runs show as dark arc segments in the bare
+   z −0.12..−0.35 window (the r9 deck-cable law bounds them — crowns
+   legal only under the riser tops, so the risers occlude the covered
+   spans top-down too; the ref's long unbroken read is priced by that
+   banked law). One MORE draped run added inside the certified window
+   (x 0.55..0.95). Same certified pts/r elsewhere; non-casting.
+6. **E3 UNDER-WING FILL (carried) — ADJUDICATED MEASUREMENT ARTIFACT +
+   real fills**: the 0.741 m² "enclosed-void" was REPLICATED off-rig
+   (tmp-e3-maskprobe: same heroFor camera, same marching-squares/
+   shoelace semantics): it is an **OPEN contour chain that exits the
+   1024-mask frame border** (closed=false, bbox to x 1023, virtually-
+   closed area 0.755, centroid px (833,440) = the report's (839,442) to
+   AA) — the proc tail-rail corner overflows the heroFor frame (the
+   proc print is ~0.07 m longer than the ref's; the rails' 2.85 width
+   is st0/plan-load-bearing and cannot legally narrow). A probe box
+   filling the whole wing-beak gap moved NOTHING (0.741 unchanged) —
+   no interior fill can move a border-clip chain. Post-round evaluator:
+   0.742 (stable), toptilt 3.528+0.311 = the r9-certified classes
+   exactly. REAL fills delivered for the slot the critics see: E3a
+   bustle shoulder box (x −0.9975..−1.1875 inside the rails' st3 width
+   line, y 2.26..2.60 under the pod's 2.664 side cover, both z-caps
+   inside station i3, top under the whip's 2.70 window line) + E3b
+   pelmet deepening (y 1.9025..2.0725 in the r9-c pelmet's certified
+   x/w footprint, under the A-panel 2.08 side band). Gate ×2 held
+   90.7 bit-identical with both in ✓.
+7. **D1b LATTICE-WING FRONT READ**: pale grid bars (latticePale canvas)
+   4-6 mm proud of the corner pocket cards' front faces, every bar
+   INSIDE its own card's x-window (segment-gap law): left stowage plate
+   (3 verticals + rail, placed in the x −1.29..−1.44 range the pod wall
+   leaves dead-front visible) + rack card (oblique-front carrier) + a
+   NEW right-corner card (x 1.286..1.333 — fully under the right rail's
+   2.1875 front cover, past the core slab's ±1.28 dead-front occlusion
+   edge, inside A4's side band and the rail's plan footprint) with 2
+   verticals + rail. Done-gate: view-front 2× shows grid texture at the
+   left corner (clean lattice read at 4×+); the right corner reads a
+   pale grid post — the full ref-width grid there is PRICED: ref front
+   col +1.333 reads 2.138 vs our rail's 2.182 (already +0.044-high);
+   no legal room outboard/above. Honest residual below.
+8. **F2b SEAM ORGANICS**: the identical E2 seam pair split into 4
+   staggered segments (varied lengths 0.74-1.28, gaps, same planes);
+   louvre strips varied (1.64/1.72/1.80 lengths, offset centers); +2
+   further tint plates via the F1 prepCamo mechanism: turret fore-roof
+   step (top +4 mm) and hull mid-deck + fore-shelf pair (tops +4.5 mm,
+   z-parked in bare-deck zones clear of risers/humps/furniture). No
+   window inversion: D1 panel 77.3 (70..85 ✓); flood digits unchanged.
+9. **E1b BOW-SHELF SEAM COURSE**: one MORE engraved course on the upper
+   beak face at (±0.72, 1.77, 3.033) — 0.020 wide (≈3 px at 1×, vs the
+   r9 0.014 courses) so the rake suggestion survives at 1×; the three
+   courses now carry varied lengths 0.50/0.56/0.62 (organics). Priced
+   inside the hull −0.1 movement; gate ×2 PASS.
+
+§B standing: §B2 flood ALL TEN VIEWS at the r9-verdict digits exactly
+(front 92, rear 101, rearleft/rearright/frontleft/frontright 92, left
+119, right 125, top 122, toptilt 94) ✓. §B3 census mg1+4d ✓ (A3b spend
+documented above). §B4 carry untouched (clip 98/429 to the digit). §B5
+untouched classes (no re-parents; E3a/E3b/D1b-card are turret furniture
+in turretG). §B6 untouched (no gear geometry).
+
+LAW DISCOVERIES (bank):
+1. **HERO-FRAME BORDER-CLIP VOIDS**: visual-evaluator hero-view "holes"
+   include OPEN marching-squares chains cut by the mask frame border,
+   virtually closed by shoelace across the cut — a model whose box
+   corner overflows heroFor's frame prints a phantom multi-m² void
+   (leo2_revolution hero-rr 0.741) that NO interior geometry can move.
+   Diagnose: replicate mask + chain (closed flag, bbox at the border);
+   probe-box test. Hero-void claims should re-derive with the chain's
+   closed flag before ordering geometry.
+2. **TOP-LIT TONE COMPRESSION**: on sun-lit top faces the family
+   ambient floor compresses EVERYTHING to luma ~47-57 (deck camo, pure
+   hullDark, floor-hooked clones all read alike) — dark-on-pale deck
+   dressing is only reachable via RAW clones (no ambient-floor hook);
+   the D1 raw-clone "crush" (26.5 rear-face) is the FEATURE here, not
+   the bug. Two-point on the actual face class before picking the path.
+3. **OCCLUSION AUDIT FOR PROUD DRESSING** (the D2b/r9 lesson made
+   mechanical): any read-critical fitting near a textured backdrop
+   needs a camera-side depth check — cable fronts −3.856 behind slat
+   faces −3.877 was invisible despite 35 mm of standoff from the wall
+   itself. Check the FRONT surface of the dressing against the FRONT
+   surface of everything in its y-band, not against the wall.
+
+Residuals (certified/measured, no new orders):
+- hero-rr 0.742 border-clip chain (finding 1) — measurement artifact,
+  not a geometry defect; stands until the harness frames per-model
+  overflow or the muzzle/rail load-bearing lengths change lanes.
+- Right-corner grid read bounded to the 47 mm rail-covered window (ref
+  front col +1.333 2.138 vs our 2.182 rail — priced, no legal room).
+- Draped-cable read limited to the bare-deck arc windows by the r9
+  deck-cable law (crowns must stay under riser tops; risers then
+  occlude those spans top-down as well).
+- §B4 carry digits identical (clip 98/429); rear 9 px flood hairline;
+  toptilt 3.528/0.311 m² certified classes; whip-stub bistability
+  convention — all carried unchanged.
+- hull 91.5→91.4: the D2b proud plane + E1b third course — priced
+  against the mandatory visibility order (whole binder unmoved 90.7).

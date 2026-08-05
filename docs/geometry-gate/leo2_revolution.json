@@ -3,7 +3,7 @@
  "geoMin": 90.7,
  "gatePassed": true,
  "components": {
-  "hullCurves": 91.5,
+  "hullCurves": 91.4,
   "wholeCurves": 90.7,
   "turretCurves": 91.8,
   "stations": 90.8,
@@ -12,13 +12,13 @@
  },
  "curveRows": {
   "side_hull": {
-   "score": 91.46617425487564,
+   "score": 91.4100456631089,
    "meanPct": 0.63,
    "p95Pct": 1.63,
    "coverPct": 0,
    "reg": {
     "dAlong": 0,
-    "dy": 0.003
+    "dy": 0.002
    },
    "worst": [
     {
@@ -110,23 +110,23 @@
      "errM": 0.029
     },
     {
-     "at": -0.94,
-     "refTop": 0.7,
-     "refBot": -1.35,
-     "procTop": 0.75,
-     "procBot": -1.33,
+     "at": 3.94,
+     "refTop": 0.99,
+     "refBot": -0.94,
+     "procTop": 0.98,
+     "procBot": -0.98,
      "errM": 0.029
     }
    ]
   },
   "side_whole": {
-   "score": 91.86736124799734,
+   "score": 91.83556600181905,
    "meanPct": 0.54,
    "p95Pct": 1.34,
    "coverPct": 0.56,
    "reg": {
     "dAlong": 0,
-    "dy": 0.003
+    "dy": 0.002
    },
    "worst": [
     {
@@ -143,15 +143,7 @@
      "refBot": -0.91,
      "procTop": 0.67,
      "procBot": -0.98,
-     "errM": 0.039
-    },
-    {
-     "at": -0.61,
-     "refTop": 0.78,
-     "refBot": -1.35,
-     "procTop": 0.84,
-     "procBot": -1.33,
-     "errM": 0.039
+     "errM": 0.04
     },
     {
      "at": 4.83,
@@ -159,7 +151,15 @@
      "refBot": -0.23,
      "procTop": 1.11,
      "procBot": -0.3,
-     "errM": 0.039
+     "errM": 0.04
+    },
+    {
+     "at": -0.61,
+     "refTop": 0.78,
+     "refBot": -1.35,
+     "procTop": 0.84,
+     "procBot": -1.34,
+     "errM": 0.038
     },
     {
      "at": -2.5,
@@ -174,7 +174,7 @@
      "refTop": 0.36,
      "refBot": -0.76,
      "procTop": 0.37,
-     "procBot": -0.82,
+     "procBot": -0.83,
      "errM": 0.036
     },
     {
@@ -186,28 +186,20 @@
      "errM": 0.031
     },
     {
-     "at": -0.72,
-     "refTop": 0.79,
-     "refBot": -1.35,
-     "procTop": 0.83,
-     "procBot": -1.33,
-     "errM": 0.029
-    },
-    {
      "at": -1.83,
      "refTop": 0.68,
      "refBot": -1.16,
      "procTop": 0.67,
      "procBot": -1.21,
-     "errM": 0.028
+     "errM": 0.029
     },
     {
      "at": 3.94,
      "refTop": 0.99,
      "refBot": -0.94,
-     "procTop": 0.98,
+     "procTop": 0.97,
      "procBot": -0.98,
-     "errM": 0.028
+     "errM": 0.029
     },
     {
      "at": 4.49,
@@ -215,15 +207,23 @@
      "refBot": -0.69,
      "procTop": 0.36,
      "procBot": -0.74,
+     "errM": 0.029
+    },
+    {
+     "at": -1.5,
+     "refTop": 0.61,
+     "refBot": -1.34,
+     "procTop": 0.66,
+     "procBot": -1.34,
      "errM": 0.028
     },
     {
-     "at": -2.38,
-     "refTop": 0.68,
-     "refBot": -0.85,
-     "procTop": 0.66,
-     "procBot": -0.81,
-     "errM": 0.026
+     "at": -1.38,
+     "refTop": 0.64,
+     "refBot": -1.34,
+     "procTop": 0.69,
+     "procBot": -1.34,
+     "errM": 0.028
     }
    ]
   },
@@ -662,13 +662,13 @@
  },
  "turretRows": {
   "side": {
-   "score": 91.82701194701313,
-   "meanPct": 0.62,
+   "score": 91.75600487742767,
+   "meanPct": 0.63,
    "p95Pct": 1.15,
    "coverPct": 0,
    "reg": {
     "dAlong": 0,
-    "dy": 0.003
+    "dy": 0.002
    },
    "worst": [
     {
@@ -680,20 +680,20 @@
      "errM": 0.042
     },
     {
+     "at": -1.38,
+     "refTop": 0.64,
+     "refBot": 0.43,
+     "procTop": 0.69,
+     "procBot": 0.41,
+     "errM": 0.036
+    },
+    {
      "at": 2.06,
      "refTop": 1.26,
      "refBot": 0.65,
      "procTop": 1.31,
      "procBot": 0.62,
      "errM": 0.036
-    },
-    {
-     "at": -1.38,
-     "refTop": 0.64,
-     "refBot": 0.43,
-     "procTop": 0.68,
-     "procBot": 0.41,
-     "errM": 0.031
     },
     {
      "at": -0.72,
@@ -725,13 +725,21 @@
      "refBot": 0.71,
      "procTop": 1.31,
      "procBot": 0.66,
-     "errM": 0.028
+     "errM": 0.029
     },
     {
      "at": -2.5,
      "refTop": 0.61,
      "refBot": 0.39,
      "procTop": 0.58,
+     "procBot": 0.41,
+     "errM": 0.026
+    },
+    {
+     "at": -1.27,
+     "refTop": 0.66,
+     "refBot": 0.43,
+     "procTop": 0.69,
      "procBot": 0.41,
      "errM": 0.026
     },
@@ -752,20 +760,12 @@
      "errM": 0.026
     },
     {
-     "at": 1.95,
-     "refTop": 1.26,
-     "refBot": 0.62,
-     "procTop": 1.31,
-     "procBot": 0.62,
-     "errM": 0.024
-    },
-    {
      "at": 3.16,
      "refTop": 1.36,
      "refBot": 0.4,
      "procTop": 1.35,
      "procBot": 0.36,
-     "errM": 0.023
+     "errM": 0.024
     }
    ]
   },
