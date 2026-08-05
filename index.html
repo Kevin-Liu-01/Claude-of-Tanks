@@ -289,13 +289,29 @@
       <!-- Brand badge: v4.3 colored crest (master copy public/brand/logo-mark.svg
            - keep in sync). Inline SVG so it needs no network round-trip at all. -->
       <svg class="cot-boot-mark" viewBox="0 0 256 256" aria-label="Claude of Tanks">
-  
-  
+      <!-- INLINE COPY of public/brand/logo-mark.svg (v4.6) — the splash must paint before any network fetch, so the crest is inlined. When the logo changes, re-copy the master file body here (brand r3 note). -->
+  <!-- v4.1 (owner-directed): speed lines removed — the tank is the primary feature; tank scaled +6% and re-centered in the bowl; ground bar trimmed to the bowl curve; metal variant promoted to favicon. v4.3: ground bar removed entirely; cannon back at -10 degrees but translated down 4 units on the turret face. -->
+  <!-- Claude of Tanks v4 crest mark — COLORED PRIMARY (the one the game uses:
+       splash, garage, favicons, og cards). Owner-approved side-profile
+       composition — stylized modern MBT (original vector art) with the Claude
+       Code mascot (Anthropic; via thesvg.org — see docs/ATTRIBUTION.md)
+       commanding from the open hatch — in the game palette: dark steel field
+       (#151f29), steel-blue two-tone tank (v1 body tones #2a3947/#3a4c5f/
+       #4d637a), mascot #D97757, amber #f5b64b pennant/pinstripe/keel accents.
+       v4 (owner-directed cleanup; v3 archived in public/brand/v3-shield/):
+       tank rescaled to fit FULLY inside the shield's inner border (muzzle no
+       longer breaks the wall), two stroke weights only (2.5 primary / 1.8
+       detail), skirt seams locked to the wheel pitch, vertical flag pole +
+       one diagonal whip antenna, and the blobby dashes replaced by three
+       rounded speed strokes (left-aligned, long to short). Shield geometry
+       identical to logo-mark-bw.svg (keep in sync): one midline path stroked
+       ink band w16 + amber pinstripe w3 + field fill. Metal treatment:
+       logo-mark-metal.svg. -->
   <defs>
-    <clipPath id="cotHatchClipC"><rect x="70" y="26" width="68" height="44"/></clipPath>
+    <clipPath id="cotHatchClipC"><rect x="70" y="29" width="68" height="44"/></clipPath>
   </defs>
 
-  
+  <!-- ===== crest: ink band, amber pinstripe groove, dark steel field ===== -->
   <path d="M34 26 H222 L236 40 V112 C236 174 196 214 128 238 C60 214 20 174 20 112 V40 Z"
         fill="#151f29" stroke="#0b0f12" stroke-width="16" stroke-linejoin="miter"/>
   <path d="M34 26 H222 L236 40 V112 C236 174 196 214 128 238 C60 214 20 174 20 112 V40 Z"
@@ -303,13 +319,18 @@
 
   <g transform="translate(-0.8 24) scale(1.06)">
 
-    
-    <path d="M52 96 32 76" stroke="#55697e" stroke-width="1.8" stroke-linecap="round" fill="none"/>
-    
+    <!-- whip antenna: deck mount box + raked whip curving off the rear
+         quarter, bead tip (logo v4.5 — the bare diagonal read as a stray
+         line) -->
+    <rect x="49.5" y="90" width="6" height="5" rx="1" fill="#1c2833"/>
+    <path d="M52.5 90 Q46.5 76 40.5 57" stroke="#55697e" stroke-width="1.6" stroke-linecap="round" fill="none"/>
+    <circle cx="40.5" cy="57" r="1.1" fill="#7d90a3"/>
+    <!-- flag: vertical pole from the bustle rack + amber pennant streaming back -->
     <path d="M68 84V34" stroke="#55697e" stroke-width="2.5" stroke-linecap="round" fill="none"/>
     <path d="M68 34 46 39.5 68 45Z" fill="#f5b64b"/>
 
-    
+    <!-- running gear: near-black track band, steel wheel two-tone
+         (six identical road wheels on an exact 24.4 pitch) -->
     <path d="M52 107h122a15 15 0 0 1 0 30H52a15 15 0 0 1 0-30Z" fill="#0c1218"/>
     <g fill="#33424f">
       <circle cx="52" cy="122" r="10"/><circle cx="76.4" cy="122" r="10"/><circle cx="100.8" cy="122" r="10"/>
@@ -319,51 +340,79 @@
       <circle cx="52" cy="122" r="3.2"/><circle cx="76.4" cy="122" r="3.2"/><circle cx="100.8" cy="122" r="3.2"/>
       <circle cx="125.2" cy="122" r="3.2"/><circle cx="149.6" cy="122" r="3.2"/><circle cx="174" cy="122" r="3.2"/>
     </g>
+    <!-- gear detail (v4.6): dished rims, rear drive sprocket teeth, front
+         idler ring, track-shoe ticks along the bottom run -->
+    <g fill="none" stroke="#0c1218" stroke-width="1.8">
+      <circle cx="52" cy="122" r="6.4"/><circle cx="76.4" cy="122" r="6.4"/><circle cx="100.8" cy="122" r="6.4"/>
+      <circle cx="125.2" cy="122" r="6.4"/><circle cx="149.6" cy="122" r="6.4"/><circle cx="174" cy="122" r="6.4"/>
+    </g>
+    <g fill="#33424f"><rect x="50.4" y="109.8" width="3.2" height="3.4" transform="rotate(0 52 122)"/><rect x="50.4" y="109.8" width="3.2" height="3.4" transform="rotate(45 52 122)"/><rect x="50.4" y="109.8" width="3.2" height="3.4" transform="rotate(90 52 122)"/><rect x="50.4" y="109.8" width="3.2" height="3.4" transform="rotate(135 52 122)"/><rect x="50.4" y="109.8" width="3.2" height="3.4" transform="rotate(180 52 122)"/><rect x="50.4" y="109.8" width="3.2" height="3.4" transform="rotate(225 52 122)"/><rect x="50.4" y="109.8" width="3.2" height="3.4" transform="rotate(270 52 122)"/><rect x="50.4" y="109.8" width="3.2" height="3.4" transform="rotate(315 52 122)"/></g>
+    <circle cx="174" cy="122" r="8.4" fill="none" stroke="#0c1218" stroke-width="1.6"/>
+    <g fill="#33424f"><rect x="60.0" y="130.6" width="2.6" height="4.6"/><rect x="72.2" y="130.6" width="2.6" height="4.6"/><rect x="84.4" y="130.6" width="2.6" height="4.6"/><rect x="96.6" y="130.6" width="2.6" height="4.6"/><rect x="108.8" y="130.6" width="2.6" height="4.6"/><rect x="121.0" y="130.6" width="2.6" height="4.6"/><rect x="133.2" y="130.6" width="2.6" height="4.6"/><rect x="145.4" y="130.6" width="2.6" height="4.6"/><rect x="157.6" y="130.6" width="2.6" height="4.6"/></g>
 
-    
+    <!-- hull: low profile, long wedge glacis (steel mass, lighter edge seams) -->
     <path d="M34 116 40 94h108l52 18-3 6Z" fill="#2a3947"/>
     <path d="M148 94l52 18-1.9 3.8-51.6-17.6Z" fill="#4d637a"/>
     <rect x="40" y="94" width="108" height="2.4" fill="#4d637a"/>
+    <!-- hull kit (v4.6): rear exhaust louvre, bow headlight, tow hook -->
+    <rect x="45" y="97.5" width="11" height="6.5" rx="1" fill="#1c2833"/>
+    <path d="M47 99.7h7M47 101.9h7" stroke="#0c1218" stroke-width="1.3"/>
+    <rect x="185.5" y="107" width="4.6" height="3.4" rx="0.8" fill="#7d90a3"/>
+    <rect x="194.5" y="112.6" width="4.6" height="3.4" rx="1" fill="#1c2833"/>
 
-    
+    <!-- side skirt: lighter steel panel; seams sit exactly midway between
+         wheel centers so panels and wheels share one rhythm -->
     <path d="M46 106h136v8l-9 12H46Z" fill="#3d5062" stroke="#0c1218" stroke-width="2.5" stroke-linejoin="round"/>
     <rect x="41" y="106" width="5" height="20" fill="#1c2833"/>
     <g stroke="#1a232d" stroke-width="1.8">
       <path d="M64.2 107.5V124M88.6 107.5V124M113 107.5V124M137.4 107.5V124M161.8 107.5V124"/>
     </g>
 
-    
+    <!-- turret: long low wedge + bustle rack + facet flash -->
     <rect x="60" y="79" width="16" height="14" rx="1.5" fill="#1c2833"/>
     <path d="M61 83.7h14M61 88.3h14" stroke="#0c1218" stroke-width="1.8"/>
     <path d="M72 96 82 74l58 3.5L154 96Z" fill="#3a4c5f"/>
     <path d="M82 74 140 77.5 138.8 80.8 81 77.2Z" fill="#4d637a"/>
+    <!-- turret kit (v4.6): ring shadow, CITV periscope, side seam strip -->
+    <rect x="76" y="93.8" width="72" height="2.6" fill="#1c2833"/>
+    <rect x="128" y="69.5" width="7.5" height="7.4" rx="1" fill="#1c2833"/>
+    <rect x="129.4" y="71.2" width="4.7" height="1.8" fill="#7d90a3"/>
+    <rect x="84" y="87.6" width="36" height="4" rx="0.8" fill="#2b3947"/>
+    <path d="M92 87.6v4M100 87.6v4M108 87.6v4" stroke="#1c2833" stroke-width="1.2"/>
     <path d="M124 80l7 .5 6 15.5h-7Z" fill="#f5b64b"/>
 
-    
-    <rect x="91" y="57" width="30" height="12" fill="#0c1218"/>
+    <!-- the commander: Claude Code mascot, faithful source path (brand orange;
+         legs clipped by the hatch), centered on x=106 with the hatch ring -->
+    <rect x="91" y="60" width="30" height="12" fill="#0c1218"/>
     <g clip-path="url(#cotHatchClipC)">
       <path clip-rule="evenodd" fill-rule="evenodd" fill="#D97757" stroke="#0b0f12"
-        stroke-width="1.5" paint-order="stroke" transform="translate(82.6 42.75) scale(1.95)"
+        stroke-width="1.5" paint-order="stroke" transform="translate(82.6 45.75) scale(1.95)"
         d="M20.998 10.949H24v3.102h-3v3.028h-1.487V20H18v-2.921h-1.487V20H15v-2.921H9V20H7.488v-2.921H6V20H4.487v-2.921H3V14.05H0V10.95h3V5h17.998v5.949zM6 10.949h1.488V8.102H6v2.847zm10.51 0H18V8.102h-1.49v2.847z"/>
     </g>
-    
-    <rect x="81" y="68" width="50" height="6.5" rx="1.5" fill="#3a4c5f" stroke="#0c1218" stroke-width="2.5"/>
+    <!-- hatch coaming (arms rest on the ring) -->
+    <rect x="81" y="71" width="50" height="6.5" rx="1.5" fill="#3a4c5f" stroke="#0c1218" stroke-width="2.5"/>
 
-    
-    <path d="M87.5 52.5a18.5 12 0 0 1 37 0Z" fill="#7d90a3" stroke="#0c1218" stroke-width="2.5" stroke-linejoin="round"/>
-    <rect x="85.5" y="52.3" width="41" height="4.2" rx="2" fill="#0e151d"/>
-    <rect x="93.75" y="45.2" width="24.5" height="5.2" rx="1.5" fill="#0e151d"/>
-    <circle cx="101.75" cy="47.8" r="3.8" fill="#0e151d" stroke="#9fb2c4" stroke-width="1.8"/>
-    <circle cx="110.25" cy="47.8" r="3.8" fill="#0e151d" stroke="#9fb2c4" stroke-width="1.8"/>
+    <!-- tanker helmet: light steel dome + rim + goggles, all symmetric on x=106 -->
+    <path d="M87.5 55.5a18.5 12 0 0 1 37 0Z" fill="#7d90a3" stroke="#0c1218" stroke-width="2.5" stroke-linejoin="round"/>
+    <rect x="85.5" y="55.3" width="41" height="4.2" rx="2" fill="#0e151d"/>
+    <rect x="93.75" y="48.2" width="24.5" height="5.2" rx="1.5" fill="#0e151d"/>
+    <circle cx="101.75" cy="50.8" r="3.8" fill="#0e151d" stroke="#9fb2c4" stroke-width="1.8"/>
+    <circle cx="110.25" cy="50.8" r="3.8" fill="#0e151d" stroke="#9fb2c4" stroke-width="1.8"/>
 
-    
+    <!-- main gun, elevated 10 degrees: steel barrel, light keylines + muzzle
+         step — trimmed so the muzzle stays inside the shield's inner border -->
     <g transform="translate(0 4) rotate(-10 140 82)">
-      <rect x="136" y="76" width="18" height="12" rx="1.5" fill="#24313f"/>
-      <rect x="154" y="78.3" width="48" height="7.4" fill="#2b3947"/>
-      <rect x="154" y="78.3" width="48" height="1.9" fill="#4d637a"/>
-      <rect x="154" y="84.5" width="48" height="1.2" fill="#1a232d"/>
-      <rect x="166" y="76.4" width="16" height="11.2" rx="4.4" fill="#24313f" stroke="#7d90a3" stroke-width="1.8"/>
-      <rect x="199.5" y="76.2" width="11" height="11.6" rx="1.5" fill="#7d90a3" stroke="#0b0f12" stroke-width="2.5"/>
+      <rect x="136" y="75.5" width="16" height="13" rx="1.5" fill="#24313f"/>
+      <rect x="152" y="77.9" width="22" height="8.2" rx="1.2" fill="#2b3947"/>
+      <rect x="152" y="77.9" width="22" height="1.8" fill="#4d637a"/>
+      <rect x="157.5" y="77.4" width="2.6" height="9.2" fill="#1a232d"/>
+      <rect x="166.5" y="77.4" width="2.6" height="9.2" fill="#1a232d"/>
+      <rect x="174" y="76.6" width="15" height="10.8" rx="4.2" fill="#24313f"/>
+      <rect x="177" y="77.9" width="9" height="1.6" rx="0.8" fill="#4d637a"/>
+      <rect x="189" y="79.3" width="15.5" height="5.4" fill="#2b3947"/>
+      <rect x="189" y="79.3" width="15.5" height="1.3" fill="#4d637a"/>
+      <rect x="189" y="83.7" width="15.5" height="1" fill="#1a232d"/>
+      <rect x="204.5" y="78.2" width="6" height="7.6" rx="1" fill="#7d90a3" stroke="#0b0f12" stroke-width="2"/>
     </g>
   </g>
 </svg>
