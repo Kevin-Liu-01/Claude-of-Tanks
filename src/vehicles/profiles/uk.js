@@ -978,7 +978,7 @@ function ukToneKit(P, o = {}) {
     // it fires saturated-blue chips (ch1 r7 O4c: 8 clusters b-r +12..+22;
     // c5 r6 O4b ×3; c3 r6 2b: 177 blue-signature px). Smoked dark-olive
     // glass instead: b-r <= 0, soft sheen at closeup.
-    P.mats.glass.color.setHex(0x3d443c);
+    P.mats.glass.color.setHex(o.glassHex ?? 0x3d443c);
     P.mats.glass.roughness = 0.48;
     P.mats.glass.metalness = 0.38;
     P.mats.glass.envMapIntensity = 0.3;
@@ -1013,6 +1013,25 @@ function ukToneKit(P, o = {}) {
   drumTone.color.setHex(o.drumHex ?? 0x3f4534);
   drumTone.envMapIntensity = o.drumEnv ?? 0.18;
   P.disposables.push(wheelTone, drumTone);
+  // r8 WHEEL-RING GRAMMAR (combined uk round 3: c3 W1 / c5 O7 / ch1 O1a —
+  // the shared family finding): the dished wheelGeo already authors the ring
+  // set (tire band + shoulder in the `tire` IM; dish-bottom annulus + 16 rim
+  // bolts in the `dark` IM), but BOTH ride mats.rubber, and the r7
+  // tireEmissive floor (0x191d12 ~ +25L additive) lifted their lit read into
+  // the disc-face luma — the drawn rings vanished and all six wheels rendered
+  // as featureless pale pillows, the POLARITY INVERSE of the refs' dark-drawn
+  // rim/bolt/hub rings on olive discs. Split the merged tones: both wheel
+  // rubber IMs drop onto a dark olive-iron ring clone ~8-12L below the disc
+  // face, NO emissive lift (the ambient-floor hook alone owns shade safety —
+  // the pad/chain precedent holds sub-30 at zero). The r6 pale-bullseye
+  // overshoot stays dead: rings are DARK-drawn, never pale. mkInst creation
+  // order is tire-first, dark-second (tankFactory buildRunningGear) — both
+  // take the same ring tone so the order only matters for documentation.
+  const ringMat = rehook(P.mats.rubber.clone());
+  ringMat.color.setHex(o.ringHex ?? 0x2b2f1f);
+  ringMat.envMapIntensity = o.ringEnv ?? 0.10;
+  ringMat.emissive.setHex(0x000000);
+  P.disposables.push(ringMat);
   P.hullG.traverse((ob) => {
     if (!ob.isMesh && !ob.isInstancedMesh) return;
     const m = ob.material;
@@ -1023,6 +1042,8 @@ function ukToneKit(P, o = {}) {
     } else if (ob.isInstancedMesh && m.color.getHex() === 0x27251f) {
       rehook(m).color.setHex(o.chainHex ?? 0x3b402f);    // inner chain/horns
       m.envMapIntensity = o.chainEnv ?? 0.32;
+    } else if (ob.isInstancedMesh && m === P.mats.rubber) {
+      ob.material = ringMat;                             // tire ring + bolt/annulus IMs
     } else if (m === P.mats.wheels) {
       // road-wheel disc InstancedMesh + sprocket/idler body spinners
       ob.material = ob.isInstancedMesh ? wheelTone : drumTone;
@@ -1039,8 +1060,9 @@ function ukToneKit(P, o = {}) {
   // Sprocket/idler teeth + recess rings + spare links: dark olive-iron (the
   // pale drawn bolt-ring bullseye class, c3 1c — ref's are occluded-dark).
   P.mats.spareTrack.color.setHex(o.spareHex ?? 0x2c2f24);
-  // Tire rings: small emissive floor only (merkava r12 tire law) — the
-  // rubber ring in wheel-bay shade fed the sub-30 census; bays stay dark.
+  // Shared rubber (mud-flap class only, r8 — the wheel-ring IMs moved onto
+  // ringMat above): small emissive floor (merkava r12 tire law) so flap
+  // panels in wrap shade never feed the sub-30 census.
   if (P.mats.rubber.emissive) P.mats.rubber.emissive.setHex(o.tireEmissive ?? 0x191d12);
 }
 
@@ -1785,6 +1807,35 @@ function challenger1Build(P) {
       flapBox(0.04, 0.37, 0.028, s * 1.568, 0.815, -2.965);     // stem -> rear panel
     }
   }
+  // r9 O4 (shaded-parity r8 — glacis-plan tone, gate-free): the LEFT glacis
+  // half masks out near-black in plan (the evaluator's Δbot +1.133 @ x
+  // -0.94 and the 89.2-vs-74.6 mask-cut edge are the instrument's echo of
+  // the same tone hole). The c3 family recipe, both levers: (i) spec-level
+  // bakeDirtDeckEq drops the up-face darkening term; (ii) a map-domain
+  // dark-texel lift chained after the material's existing hook stack lifts
+  // only linear albedo < ~0.04 (the ink/blotch floor class) toward soft
+  // dark-olive — mid camo and the parity side tables untouched by
+  // construction. Masks and geometry byte-identical (vertex colors +
+  // fragment shader only).
+  P.spec.visual.bakeDirtDeckEq = true;
+  {
+    const inkLift = (m, key) => {
+      const prev = m.onBeforeCompile;
+      m.onBeforeCompile = (shader, rdr) => {
+        if (prev) prev(shader, rdr);
+        shader.fragmentShader = shader.fragmentShader.replace(
+          '#include <map_fragment>',
+          `#include <map_fragment>
+{
+  float ukInkL = dot(diffuseColor.rgb, vec3(0.299, 0.587, 0.114));
+  float ukLift = smoothstep(0.042, 0.007, ukInkL) * 0.0105;
+  diffuseColor.rgb += ukLift * vec3(0.85, 1.0, 0.72);
+}`);
+      };
+      m.customProgramCacheKey = () => key;
+    };
+    inkLift(P.mats.hull, 'veh-ambient-floor-v2+cr1ink');
+  }
   // O1a/O2/O4 — family tone kit (wheels/pads/chain/band/glass/cloth) +
   // gear-air backers (render-only /shadow/ meshes: idler bay 3.06, mid bay
   // 0.30, sprocket bay -2.36 — threaded between the ground-ramp and
@@ -1793,10 +1844,17 @@ function challenger1Build(P) {
   // (gear window med 59.1/p95 91 vs the ref band 54.8/66; plank 60 vs box
   // ctx 37.5; root boxes 63 warm-grey vs ref 47) — every hex re-sampled on
   // the render toward the ref class.
+  // r9 (shaded-parity r8 O1a/c — the half-delivered disc read): disc faces
+  // 0x3e4531 -> 0x323826 (window band mean 62.1/p95 73.2 vs the ordered
+  // ~53/<=70; the §C overshoot note) and the wheel-ring split restores the
+  // tire-annulus + bolt-dot read (ringHex 0x2b2f1f ~ the ordered 0x2c-class,
+  // ukToneKit r8 — the r7 tireEmissive floor had merged the rings into the
+  // disc luma).
   ukToneKit(P, {
     cloth: 0x262b1d, clothEnv: 0.05,
     dark: 0x282c22,
-    wheelHex: 0x3e4531, wheelEnv: 0.15, drumHex: 0x373d2c, drumEnv: 0.14,
+    wheelHex: 0x323826, wheelEnv: 0.13, drumHex: 0x373d2c, drumEnv: 0.14,
+    ringHex: 0x2b2f1f, ringEnv: 0.10,
     padHex: 0x272b20, padEnv: 0.18, chainHex: 0x2f3427, chainEnv: 0.22,
     bandMul: [0.92, 0.98, 0.82], bandEnv: 0.08,
   });
@@ -1805,6 +1863,29 @@ function challenger1Build(P) {
     [0.56, 0.46, 0.02, 1.24, 0.52, 0.30],
     [0.56, 0.62, 0.02, 1.24, 0.63, -2.36],
   ]);
+  // r9 O1b + O2 (both render-only /shadow/ lane, zero gate price; clip-audit
+  // envelopes threaded — the audit does NOT skip shadow meshes):
+  // - O1b INTER-WHEEL SHADOW WALL: the six gear windows read flat pale
+  //   panels with window p5 51.2 vs the ref's 25.8 dark-gap band — the three
+  //   r8 backers are z-thin catch plates (edge-on from the side), so side
+  //   rays between the discs land on the lit belt face (x 0.975, ~51L). An
+  //   x-thin near-black wall 2 mm outboard of the belt face gives the discs
+  //   the ref's inter-wheel shadow to read against. Envelope: x 0.977..0.993
+  //   (rail inner edge 1.027 stays 34 mm clear), y 0.25..0.60 (under the
+  //   top-run rail/horn dip band, above the ground-run pads), z -2.10..2.80
+  //   (clear of both wrap annuli: sprocket wrap starts -2.22, approach ramp
+  //   climbs from 2.90).
+  // - O2 RAMP-BAY BACKER: close-roof's one genuine §B2 finding — a 141-px
+  //   enclosed sky pocket at the bow ramp triangle ~(0.86, 0.34, 2.94), the
+  //   bay past the last z-backer (3.06). A horizontal dark floor plate under
+  //   the bow bay blocks the down-going exit rays BOTH sides. Envelope:
+  //   x 0.60..1.00 (ground-run rail inner edge 1.027 clear by 27 mm),
+  //   y 0.29..0.31 (ramp band at z<=3.15 stays under ~0.22 incl. rails),
+  //   z 2.50..3.15.
+  ukGearAirBackers(P, [
+    [0.016, 0.35, 4.90, 0.985, 0.425, 0.35],
+    [0.40, 0.02, 0.65, 0.80, 0.30, 2.825],
+  ], 0x13170d);
   P.topY = 1.35;
 }
 
@@ -1869,6 +1950,11 @@ const CENTURION_HULL = {
   // the dims span at 7.52 regardless). Horn tip course ends 3.80 with a
   // thin 0.18 band; idler stays at the ref circle z.
   sprocket: { z: -2.95, y: 0.99, r: 0.37 }, idler: { z: 3.30, y: 0.96, r: 0.345 },
+  // r8 (c3 Y2 / c5 O10e): the proud skirt-lip trim strip painted a plan
+  // double-edge at x ±1.62-1.64 (dark lip + skirt top as parallel lines) —
+  // flush-tuck it (the ch1 push-2 opt-in; side-invisible here under the
+  // 1.60 fender line, plan x-extents unchanged: mask-neutral).
+  skirtTrimFlush: true,
   trackTop: 0.95, arms: false, coveredTop: true, noFlaps: true, rakeHalfW: 0.88,
   // r6 (90-push): the ref's approach/departure ramps start EARLIER than the
   // default wheel-patch tangents (ref rear ramp fits 0.57/m from z -2.35,
@@ -1991,6 +2077,14 @@ function centurionBuild(P, mk) {
   if (mk === 5) P.add('hullDetail', box(0.40, 0.05, 0.10), 0.72, 1.532, 2.665); // periscope hump (ref 1.564 col)
   for (const s of [-1, 1]) {
     headlight(P, s * 1.05, 1.40, 3.06, -0.2);
+    // r8 (c3 Y1): flush lamp faces — the pods read as featureless drums
+    // with a hard-dark face (no lens tell, no arc read; the ref presents
+    // r~0.18-class round lamps). A wider smoked-glass face disc + a dark
+    // rim ring give the circle read; ring r_out 0.069 stays front-interior
+    // (the nose front face behind covers y 1.08..1.46) and plan-interior
+    // (max y 1.469 under the 1.474 glacis line at z 3.06).
+    P.add('hullGlass', xform(cylZ(0.058, 0.014, 14), 0, 0, 0.042), s * 1.05, 1.40, 3.06, -0.2, 0, 0);
+    P.add('hullDetail', xform(new THREE.TorusGeometry(0.060, 0.009, 8, 18), 0, 0, 0.040), s * 1.05, 1.40, 3.06, -0.2, 0, 0);
     P.add('hullDetail', box(0.2, 0.02, 0.16), s * 1.05, 1.445, 3.00, -0.25, 0, 0);
     P.add('hullDetail', box(1.05, 0.045, 0.08), s * 0.54, 1.685, 2.26, 0, s * -0.3, 0);
     P.add('hullDetail', box(0.11, 0.1, 0.15), s * 0.82, 0.95, 3.40);
@@ -2008,8 +2102,30 @@ function centurionBuild(P, mk) {
   // x 1.548..1.605) and the ±1.65 front columns top at the 1.467 skirt
   // line (flap tops pulled 1.58 -> 1.475); rear faces at the ref's fresh
   // -3.066 plan line.
+  // r8 (c3 X3, priced vs front_whole 91.2 + side rows): the ref hangs FULL
+  // flap panels both ends (outer plane |x|~1.63, bottoms ~0.5) — the r6
+  // stub was 0.057x0.20 and the 1d front/rear air residual (8.3/8.6% vs
+  // <=7) lived in the uncovered 1.61..1.65 outer-flap columns. Envelopes:
+  // REAR panel x 1.548..1.625 (14 mm off the 1.639 strip inner face),
+  // bottom 0.545 ABOVE the sprocket-wrap side line at z -3.05 (0.541 —
+  // side-interior), rear face at the r6-certified -3.064 plan line, plan
+  // sliver x 1.61..1.625 rides the ref's own skirt-zone rear. FRONT panel
+  // at z 3.44 under the 3.47 horn-guard segment (top embeds 10 mm into its
+  // 1.4555 underside — §B2 chain), x to 1.6335 inside the guards' plan
+  // footprint (plan-neutral) and the 1.659 strip width guard, bottom 0.545
+  // above the idler-wrap side line at z 3.44 (0.548). §B4 lateral: both
+  // panels outboard of the 1.545 shoe/pin envelope.
+  // (bottoms 0.625: a first cut at 0.545/0.565 read procBot -0.94 vs the
+  // gate ref's -0.87 flap line at the ±1.58 column — the ref hangs its
+  // flaps to ~0.63 there, and matching it recovers the front_whole cost.
+  // Outer faces 1.6365 [dial 2]: the first 1.625/1.6335 cut left the
+  // 1.63..1.65 slit open and the 1d air read 7.6/8.1 vs the <=7 gate —
+  // widening to 2.5 mm short of the 1.639 strip face kills it. Rear inner
+  // pulled 1.548 -> 1.560 (the pin-cap envelope ends 1.5555; the clip
+  // audit read 14 rear vox with the tall flap at 1.548).)
   for (const s of [-1, 1]) {
-    P.add('hullRubber', box(0.057, 0.20, 0.03), s * 1.5765, 1.375, -3.05, 0.05, 0, 0);
+    P.add('hullRubber', box(0.0765, 0.85, 0.028), s * 1.59825, 1.05, -3.05);
+    P.add('hullRubber', box(0.079, 0.841, 0.028), s * 1.597, 1.0455, 3.44);
   }
   spareTrackStrip(P, 'hull', -0.55, 1.41, 3.05, 3);
   // Engine deck: louvre field + fillers, all under the ref's 1.755 ceiling.
@@ -2097,7 +2213,24 @@ function centurionBuild(P, mk) {
   // r6: x-narrowed to -0.88..-0.10 — the live front columns read the ref at
   // 2.61 by x -0.93 and 2.60 at x -0.01 (the old -0.95..-0.03 span paid
   // +0.11 on both edge columns); z untouched (side-certified 2.732 plateau).
+  // r8 (c3 X1b / c5 O3b — FLAT-CAP-BEHIND-A-RAKE): the flat plate's edges
+  // read all round vs the print's cast swell. A raked top (0.9675 rear ->
+  // 0.9335 front, chasing the evaluator's left-view Δ+4.5° ref fall) was
+  // TRIED and measured: turret_side 91.1 -> 91.0 (c3) / 90.5 -> 90.3 (c5) —
+  // the evaluator's ref fall is a SHADING edge, not the mask top line; the
+  // flat plateau is the mask truth (r5 2.732 side cert stands). REVERTED to
+  // the flat box; the delivered X1b/O3b piece is the two FORWARD CAPS
+  // flanking the cupola drum (which itself fills x -0.67..-0.23 of the front
+  // cliff): they grade the plate's forward edge onto the crown, tops under
+  // the 0.9675 plate top at every shared x, bottoms on the crown plane —
+  // front/side interior by construction.
   P.add('turret', box(0.845, 0.11, 0.435), -0.4775, 0.912, -0.7025);
+  P.add('turret', slab(
+    [-0.88, 0.775, -0.30], [-0.70, 0.76, -0.30], [-0.70, 0.857, -0.485], [-0.88, 0.857, -0.485],
+    [-0.88, 0.777, -0.302], [-0.70, 0.762, -0.302], [-0.70, 0.945, -0.485], [-0.88, 0.945, -0.485]));
+  P.add('turret', slab(
+    [-0.21, 0.73, -0.30], [-0.085, 0.725, -0.30], [-0.085, 0.83, -0.485], [-0.21, 0.835, -0.485],
+    [-0.21, 0.732, -0.302], [-0.085, 0.727, -0.302], [-0.085, 0.945, -0.485], [-0.21, 0.945, -0.485]));
   P.add('turret', box(0.07, 0.055, 0.435), -0.03, 0.7925, -0.7025);
   // r6 right-rear sight riser: the ref front view tops 2.69 over x
   // 0.37..0.52 (probe: TurretMesh at [0.45, 2.69, build -0.42..-0.55]) —
@@ -2122,6 +2255,15 @@ function centurionBuild(P, mk) {
     P.add('turret', box(1.36, 0.512, 0.20), 0, 0.346, -2.00);
     // rounded rear: only the center carries the last 0.13 (plan cert r2)
     P.add('turret', box(1.32, 0.44, 0.15), 0, 0.36, -2.115);
+    // r8 (O3d rear read): the bustle rear rendered rectangle-in-rectangle —
+    // 45-deg trim strips embedded along the rear boxes' top edges (6 mm
+    // inside both faces, silhouette-identical) break the punched-corner
+    // highlight into the ref casting's eased-shoulder read.
+    P.add('turretDetail', box(1.54, 0.020, 0.020), 0, 0.582, -2.020, Math.PI / 4, 0, 0);
+    P.add('turretDetail', box(1.26, 0.020, 0.020), 0, 0.560, -2.170, Math.PI / 4, 0, 0);
+    for (const s2 of [-1, 1]) {
+      P.add('turretDetail', box(0.020, 0.44, 0.020), s2 * 0.776, 0.346, -2.016, 0, s2 * Math.PI / 4, 0);
+    }
     // bustle WALLS, r5 z-split kept (dip seg at the 2.48 roof dip, crest
     // seg at 2.60 through local -1.16..-1.57 — side-certified 2.609 both).
     // r6: x re-seated to ±0.90..1.19 — the live front columns want the
@@ -2132,6 +2274,33 @@ function centurionBuild(P, mk) {
     P.add('turret', box(0.285, 0.70, 0.24), 1.0425, 0.35, -1.04);
     P.add('turret', box(0.333, 0.82, 0.41), -1.0715, 0.41, -1.365);
     P.add('turret', box(0.285, 0.82, 0.41), 1.0425, 0.41, -1.365);
+    // r8 (O3a/O3d — probe-verified zero-silhouette relief): the front-row
+    // probe (tmp-ukr4-probe, x 0.88..1.28 both models) reads the wall band
+    // at MASK PARITY (d -0.04..+0.04; the REF ITSELF cliffs 2.60 -> 2.26
+    // between x 1.16 and 1.20) — the critic's 81/165-deg shoulder arcs are
+    // the ref render's INTERNAL round-over shading, so easing must stay
+    // inside the silhouette:
+    // - O3a cheek-to-wall blend wedges: the crown slab's outboard edge
+    //   (x ±1.09, y 0.84/0.77) dead-ended 0.15 above the first wall seg's
+    //   0.70 top — a raked blend continues the rake's line into the flank
+    //   (tops <=0.775 under the 0.79 rear-crown side line and the 0.82
+    //   crest front cols; §B1 slope-motivates-the-mass).
+    // - O3d corner-trim strips: 45-deg facet strips embedded along the
+    //   crest outer-top corners break the square-corner highlight into the
+    //   ref's eased-shoulder read; strips sit 6 mm INSIDE both faces —
+    //   silhouette byte-identical by construction.
+    for (const s of [-1, 1]) {
+      const wTop = s < 0 ? 0.775 : 0.760;    // under the crown edge (L 0.86 / R 0.77)
+      // slab plan order is (-x,+z),(+x,+z),(+x,-z),(-x,-z) — mirror via
+      // lo/hi so the LEFT wedge keeps outward windings (§C winding audit).
+      const wLo = Math.min(s * 1.09, s * 1.20), wHi = Math.max(s * 1.09, s * 1.20);
+      const yLo = s < 0 ? 0.702 : wTop, yHi = s < 0 ? wTop : 0.702;
+      P.add('turret', slab(
+        [wLo, 0.70, -0.92], [wHi, 0.70, -0.92], [wHi, 0.70, -1.16], [wLo, 0.70, -1.16],
+        [wLo, yLo, -0.92], [wHi, yHi, -0.92], [wHi, yHi, -1.16], [wLo, yLo, -1.16]));
+      P.add('turretDetail', box(0.020, 0.020, 0.39), s * 1.165, 0.80, -1.365, 0, 0, s * Math.PI / 4);
+      P.add('turretDetail', box(0.020, 0.020, 0.22), s * 1.165, 0.68, -1.04, 0, 0, s * Math.PI / 4);
+    }
     P.add('turret', box(0.08, 0.25, 0.075), -1.14, 0.475, -1.5825);
     P.add('turret', box(0.08, 0.25, 0.075), 1.14, 0.475, -1.5825);
     for (const s of [-1, 1]) {
@@ -2189,15 +2358,53 @@ function centurionBuild(P, mk) {
       P.add('turret', box(0.05, 0.415, a2r - tabR), s * 1.275, 0.2125, (a2r + tabR) / 2);
     }
     P.add('turret', box(0.165, 0.50, 1.69), s * 1.3825, 0.17, 0.025);
-    P.add('turretDark', box(0.13, 0.02, 0.87 - a1r - 0.06), s * 1.1675, 0.43, (0.87 + a1r) / 2);
-    P.add('turretDark', box(0.165, 0.02, 1.63), s * 1.3825, 0.43, 0.025);
+    // r8 (c3 Y4 — bin-row slot floors, med 52.7 vs the >=55 gate; duffels
+    // verdict-protected and untouched): the mk3 shelf lids join the scheme
+    // detail class (mask-identical bucket swap) and a low olive coaming
+    // fills the dark slot shadow behind the duffel row (interior: under the
+    // 0.58 duffel top, inboard of the 1.4875 stub, z inside the shelf).
+    P.add(mk === 5 ? 'turretDark' : 'turretDetail', box(0.13, 0.02, 0.87 - a1r - 0.06), s * 1.1675, 0.43, (0.87 + a1r) / 2);
+    P.add(mk === 5 ? 'turretDark' : 'turretDetail', box(0.165, 0.02, 1.63), s * 1.3825, 0.43, 0.025);
+    if (mk !== 5) {
+      P.add('turret', box(0.35, 0.065, 0.022), s * 1.175, 0.435, -0.975);
+      P.add('turret', box(0.35, 0.065, 0.022), s * 1.175, 0.435, 0.845);
+    }
     // r7 (tone round, c5 O5 weave read): the outer basket wall reads as a
     // plain pale camo slab vs the ref's dark woven basketry — rebucket the
     // slab 'turret' -> 'turretDark' on the Mk.5 (mask-identical material
     // swap; the Mk.3 keeps camo). A first cut ran thin slat strips at
     // x 1.469 and partial-pixel-painted the 1.4625 stub-column boundary
     // (±1.42/1.47 plan cols +0.03..0.05) — withdrawn per §C.
-    P.add(mk === 5 ? 'turretDark' : 'turret', box(0.05, 0.46, 0.55), s * 1.4875, 0.17, 0.135);
+    // r8 (O9, shaded-parity r7): the turretDark rebucket OVERSHOT — panels
+    // measured 53.8 vs the ref's LIGHT dotted weave 65.2. Same box, same
+    // masks, but a standalone mesh on a solid light-olive weave clone
+    // (~63 albedo, no camo — the ref weave is unpainted basketry) under
+    // rig_turret (§B5), plus flush dark slat hints inset on the outer face
+    // (15 mm off every edge; the outer face x 1.5135 sits 74 mm clear of
+    // the 1.5875 plan boundary — the r7 withdrawal was the INBOARD 1.469
+    // face against the 1.4625 boundary).
+    if (mk === 5) {
+      const weaveMat = P.mats.detail.clone();
+      weaveMat.color.setHex(0x474e38);
+      weaveMat.roughness = 0.95;
+      weaveMat.envMapIntensity = 0.16;
+      weaveMat.onBeforeCompile = vehicleAmbientFloorHook;
+      weaveMat.customProgramCacheKey = () => 'veh-ambient-floor-v2';
+      P.disposables.push(weaveMat);
+      const wg = new THREE.BoxGeometry(0.05, 0.46, 0.55);
+      const wall = new THREE.Mesh(wg, weaveMat);
+      wall.name = 'basketWeavePanel';
+      wall.position.set(s * 1.4875, 0.17, 0.135);
+      wall.castShadow = false;
+      wall.receiveShadow = true;
+      P.turretG.add(wall);
+      P.disposables.push(wg);
+      for (const wz of [-0.05, 0.13, 0.31]) {
+        P.add('turretDark', box(0.004, 0.40, 0.035), s * 1.5135, 0.17, wz);
+      }
+    } else {
+      P.add('turret', box(0.05, 0.46, 0.55), s * 1.4875, 0.17, 0.135);
+    }
     // r5: ROUNDED outer stub read (r1 cert) — a falling chamfer carries the
     // ref's 1.93-class half-column at x 1.53..1.56 instead of a hard drop
     // from the 2.18 stub lid to the 1.66 tail shelf. v2: the stub box ends
@@ -2230,6 +2437,30 @@ function centurionBuild(P, mk) {
   P.add('turret', cylY(0.198, 0.218, 0.13, 16), -0.45, 0.85, -0.30);
   cupola(P, 'turret', -0.45, 0.87, -0.30, 0.155, 0.145, 6);
   P.add('turretDark', torus(0.145, 0.016, 16), -0.45, 0.97, -0.30);
+  // r8 (c3 X2 / c5 O3c — cupola read): the drum stack rendered featureless
+  // (c3: "faceted cupola drum, arc unpaired"; the refs present a sculpted
+  // ring r~0.10 span ~101-104 deg + clip relief).
+  // - CLIP RELIEF (both marks, zero height/plan change): eight radial clip
+  //   blocks on the drum cone face — outer extent 0.208 <= the 0.218 base
+  //   circle, y-band 0.807..0.893 inside the drum's 0.785..0.915.
+  // - HATCH ARC RING (both marks): a 101-deg dark torus arc on the lid
+  //   (r 0.10, tube top 1.053 < the 1.055 lid top — zero height change);
+  //   answers the unpaired ref arc.
+  // - DOME CAP (Mk.5 ONLY — O3c "3-ring stack -> domed read"): a lathe dome
+  //   over the lid to 2.844 world, inside the certified 2.85 class (the ref
+  //   dome peaks 2.848; the p95 anchor is the VANE, untouched). c3 X2 is
+  //   bound to ZERO height change and keeps the flat lid.
+  for (let k = 0; k < 8; k++) {
+    const a = (k / 8) * Math.PI * 2 + 0.20;
+    P.add('turretDetail', box(0.035, 0.085, 0.012),
+      -0.45 + Math.sin(a) * 0.202, 0.85, -0.30 + Math.cos(a) * 0.202, 0, a, 0);
+  }
+  P.add('turretDark', xform(new THREE.TorusGeometry(0.10, 0.012, 8, 16, 1.76), 0, 0, 0, Math.PI / 2, 0, 0),
+    -0.45, 1.041, -0.30, 0, -0.55, 0);
+  if (mk === 5) {
+    P.add('turret', lathe([[0.146, 0], [0.141, 0.016], [0.127, 0.034], [0.104, 0.048],
+      [0.072, 0.058], [0.030, 0.064], [0.001, 0.066]], 20), -0.45, 0.998, -0.30);
+  }
   P.add('turret', box(0.06, 0.125, 0.40), -0.45, 1.0925, -0.22);
   P.add('turretGlass', box(0.052, 0.03, 0.05), -0.45, 1.09, -0.035);
   // Loader hatch ring + gunner sight (r5: sight/periscope hoods shaved to
@@ -2260,8 +2491,14 @@ function centurionBuild(P, mk) {
   // front_whole 90.7->89.0 — and was withdrawn; gate x2 after).
   // The Mk.3 MAG keeps its r6-praised stow EXACTLY (verdict: honest pintle
   // cluster, no order — §H4 tell protected).
+  // r8 (c5 O10a — MG PHYSICS dark-crown polarity): the M2 receiver zone
+  // measured 44.2 vs crown 44.4 at close-roof — ZERO contrast; the pale
+  // 'two-tone' top caps vanish against the pale deck. tone 'dark' is a
+  // material-slot-only switch (geometry byte-identical — the r6 mask-proven
+  // foot and r7 rotation pose are untouched). The c3 MAG keeps two-tone
+  // (verdict-praised, §H4 tell).
   {
-    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: mk === 5 ? 'm2' : 'mag', tone: 'two-tone', elev: mk === 5 ? 0.05 : 0, scale: 0.8, seed: mk === 5 ? 5 : 9 });
+    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: mk === 5 ? 'm2' : 'mag', tone: mk === 5 ? 'dark' : 'two-tone', elev: mk === 5 ? 0.05 : 0, scale: 0.8, seed: mk === 5 ? 5 : 9 });
     mg.position.set(-0.10, 0.53, -0.62);
     mg.rotation.y = Math.PI + (mk === 5 ? 0.95 : 0.35);
     P.turretG.add(mg);
@@ -2301,6 +2538,24 @@ function centurionBuild(P, mk) {
       [i1, 0.26, 0.72], [o1, 0.26, 0.72], [o1, 0.14, 1.32], [i1, 0.14, 1.32],
       [i1, 0.36, 0.72], [o1, 0.36, 0.72], [o1, 0.22, 1.32], [i1, 0.22, 1.32]));
     P.add('turretDetail', box(0.15, 0.07, 0.11), s * 1.095, 0.215, 1.305);
+    // r8 (c5 O8, §B3 NO-MYSTERY-BOXES — tone-first pass): the covered banks
+    // read as bare dark slabs at the gun root; the ref presents the housing
+    // + a scalloped tube-mouth row. Five dark mouth discs + a pale lip
+    // strip painted ON the inner raked face (plane (0.735, 0.78) ->
+    // (0.24, 1.32), 42.5 deg): discs ride 4 mm proud along the face normal
+    // — every proud extent is interior to the bank's own silhouette in all
+    // three views (§C margins kept off the 96.9-guard plan columns).
+    if (mk === 5) {
+      const fy = 0.735 - 0.30 * 0.495, fz = 0.78 + 0.30 * 0.54;   // 30% down the face
+      const ny = Math.cos(0.815), nz = Math.sin(0.815);           // face normal (up-forward)
+      for (let k = 0; k < 5; k++) {
+        const mx = s * (0.938 + k * 0.0335);
+        P.add('turretDark', cylZ(0.0155, 0.006, 10),
+          mx, fy + 0.004 * ny, fz + 0.004 * nz, -(Math.PI / 2 - 0.815), 0, 0);
+      }
+      P.add('turretDetail', xform(box(0.168, 0.012, 0.005), 0, 0, 0, -(Math.PI / 2 - 0.815), 0, 0),
+        s * 1.005, fy + 0.030, fz - 0.026);
+    }
   }
   // Bucket on the shelf rear wall (British) + antenna base pots kept under
   // the local roofline (the print tops 2.85 at the cupola only).
@@ -2316,10 +2571,32 @@ function centurionBuild(P, mk) {
   // Recessed internal mantlet + canvas hood: the print's hood is RIGHT-
   // biased (plan front: right to local 1.83, LEFT recedes at 1.48).
   P.add('turretDark', box(0.85, 0.34, 0.06), 0, 0.10, 1.50);
+  // r8 (c3 X1c): soften the mantlet-recess hard rectangle — the dark plate
+  // read as a punched rectangle at 3-4x. An olive lintel bevel eases the top
+  // edge and two side bevels ease the verticals; every piece sits INSIDE the
+  // recess plate's own footprint (x<=0.425, y<=0.27, z>=1.47) or inside the
+  // nose-slab face span (x<=0.35 at the lintel's 0.245..0.295 band), so
+  // silhouettes are identical by construction.
+  P.add('turret', slab(
+    [-0.35, 0.245, 1.532], [0.35, 0.245, 1.532], [0.35, 0.245, 1.505], [-0.35, 0.245, 1.505],
+    [-0.35, 0.295, 1.541], [0.35, 0.295, 1.541], [0.35, 0.295, 1.528], [-0.35, 0.295, 1.528]));
+  for (const s of [-1, 1]) {
+    P.add('turret', box(0.035, 0.295, 0.014), s * 0.405, 0.0975, 1.535);
+  }
   // r6: hood +0.03 to the live 2.115 column (both marks read 2.085 at the
   // build +1.90 column)
   P.add('turretCloth', box(0.42, 0.24, 0.34), 0.23, 0.155, 1.63, -0.42, 0, 0);
   P.add('turretCloth', box(0.30, 0.16, 0.22), 0.24, 0.14, 1.72, -0.1, 0, 0);
+  // r8 (c3 X1a): hood rear-corner chamfer INTO the casting line — the box
+  // exits the nose-slab face at y~0.246/z~1.54 and its top-rear corners read
+  // free past the casting. A canvas lap rides the face plane (z(y) = 1.46 +
+  // 0.1667*(y+0.23), offset +2 mm out of z-fight — 2 mm << the 22 mm §C
+  // pixel, no column risk) from under the hood exit up to the slab's 0.31
+  // top edge, so the cover visibly continues onto the casting. x 0.04..0.35
+  // stays inside the slab face span at every y it paints.
+  P.add('turretCloth', slab(
+    [0.04, 0.185, 1.5312], [0.35, 0.185, 1.5312], [0.35, 0.185, 1.42], [0.04, 0.185, 1.42],
+    [0.04, 0.305, 1.5512], [0.35, 0.305, 1.5512], [0.35, 0.305, 1.44], [0.04, 0.305, 1.44]));
   const gunLen = 5.15;
   if (mk === 5) {
     // L7: the print tube reads ~0.28 thick the whole way (sleeved); the
@@ -2373,6 +2650,20 @@ function centurionBuild(P, mk) {
       spareTrackStrip(P, 'hull', s * 1.26, 1.38, -3.585, 1, 1.35);
     }
   } else {
+    // r8 Y3 (c3 shaded-parity r7): tail-plate dressing — the c3 tail read
+    // BARE vs its print's draped-cable jungle. The c5 O5 recipe verbatim
+    // (same shared tail courses, same mask-interior envelope: cable max rear
+    // z -3.632 inside the -3.64 C-course line, ends on the A face, link
+    // plates flat on the B face under the local 1.49 course line); §B3
+    // tells: cable drape + end cleats + spare-link chevrons.
+    KIT.towCable(P, [
+      [-1.22, 1.60, -3.465], [-0.63, 1.30, -3.598], [0, 1.565, -3.48],
+      [0.63, 1.30, -3.598], [1.22, 1.60, -3.465],
+    ]);
+    for (const s of [-1, 1]) {
+      P.add('hullDark', box(0.08, 0.07, 0.05), s * 1.22, 1.60, -3.475);
+      spareTrackStrip(P, 'hull', s * 1.26, 1.38, -3.585, 1, 1.35);
+    }
     // c3 2a — ink/camo overshoot on plan/roof fields (view-top sub-38
     // census 9-10x the print's; medians -3.5..-5.3L): the documented
     // per-spec UP-FACE deck equalization (bakeDirt drops the *0.84 term —
@@ -2418,9 +2709,21 @@ function centurionBuild(P, mk) {
   // med 63-66 vs ref 51; horn/pad row 75.9; ground strip p95 75) — hexes
   // re-sampled on the render toward the ref 50-58 class; c5 hood one notch
   // down (p95 82.9 vs the <=73 target).
+  // r8 (c3 W1/W2 + c5 O7 — the shaded-parity r7 family finding): disc faces
+  // dropped 0x3e4531 -> 0x323826 into the ref 51-class (c5 disc interior
+  // read 64.5 vs ref 51.4; c3 band p95 73.2 vs the <=65 gate; the W2 pale
+  // ground wedges are the same lit disc arcs at the contact zone) and the
+  // ring split restores the dark-drawn rim/bolt read (ukToneKit ringHex).
+  // r8 c5 SHOULD set: glassHex half-steps the bow periscope lids toward the
+  // 41.4 deck context (O10c: they read +23..28 over it); dark 0x32352c is
+  // the O10d drum neutral nudge to the ordered (50,53,44) — the band tell
+  // stays (dark vs camo tube), the r-g warmth goes.
   ukToneKit(P, {
     cloth: mk === 5 ? 0x353c2b : undefined,
-    wheelHex: 0x3e4531, wheelEnv: 0.15, drumHex: 0x373d2c, drumEnv: 0.14,
+    glassHex: mk === 5 ? 0x353c35 : undefined,
+    dark: mk === 5 ? 0x32352c : undefined,
+    wheelHex: 0x323826, wheelEnv: 0.13, drumHex: 0x373d2c, drumEnv: 0.14,
+    ringHex: 0x2b2f1f, ringEnv: 0.10,
     padHex: 0x272b20, padEnv: 0.18, chainHex: 0x2f3427, chainEnv: 0.22,
     bandMul: [0.92, 0.98, 0.82], bandEnv: 0.08,
   });

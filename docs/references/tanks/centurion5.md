@@ -402,3 +402,82 @@ round — 0.5 turret headroom mid-critic makes it the orchestrator-
 scheduled follow-up; the O2 horn/pad row med 65.9 sits +14 over the
 ref's 52 (the wheels' lit lower arcs dominate the row — in-family, sd
 9.6 vs ref 5.1); hood med 54 is 2L under its (56,62,47) target.
+
+## r8 — COMBINED UK ROUND 3 (2026-08-05, uk agent; answers shaded-parity r7 563cc18)
+Orders O3 (the priced cast-turret campaign), O7 (wheel articulation —
+the W1 family recipe), O8 (§B3 discharger tell), O9 (basket weave),
+O10 SHOULD set. Gate: **90.5 -> 90.7 PASS x2 bit-identical** (hull
+92.6 -> 92.8, whole 90.7, turret 90.5 -> **90.7**, stations 95.5, dims
+100, floaters 100) — the round GAINED 0.2 on the razor row (the Y2
+flush skirt lip was a registration sliver, see the c3 r8 section).
+Hash 2395a924 -> **a25a73b8** (48 -> 50 meshes: +2 weave panels).
+ORDERS:
+- O3 CAST-TURRET CAMPAIGN, probe-adjudicated (tools/tmp-ukr4-probe
+  aligned ref/proc scans; never authored from gate-JSON 'at'): the
+  front-row probe (x 0.88..1.28, both models) reads the wall band at
+  MASK PARITY (d -0.04..+0.04 everywhere — the REF ITSELF cliffs 2.60
+  -> 2.26 between x 1.16 and 1.20), and the aligned side scan puts the
+  crown/wall band within ±0.04 except the CERTIFIED vane-anchor
+  cluster (+0.15 x3 cols @ x -0.48 — the dims-sovereign p95 anchor,
+  re-confirmed to the coordinate) and the r5-adjudicated ridge
+  boundary column. CONSEQUENCE: the critic's 81/154/165-deg shoulder
+  arcs are the ref render's INTERNAL round-over shading — the O3
+  deliverables went in as silhouette-INTERIOR relief, not cuts:
+  (a) cheek-to-wall blend wedges (x 1.09..1.20, tops 0.775 L / 0.760 R
+  under the crown edges) — the rake's line continues into the flank
+  instead of dead-ending 0.15 above the wall (§B1 slope-motivates-the-
+  mass); (b) crown ridge: two FORWARD CAPS flanking the cupola drum
+  (the drum itself fills x -0.67..-0.23 of the old cliff); a raked
+  plate top chasing the evaluator's Δ+4.5° ref fall was TRIED and
+  MEASURED (turret_side 90.5 -> 90.3) — the fall is a shading edge,
+  not the mask line; withdrawn, flat plateau restored (the r5 2.732
+  cert is the mask truth); the 2.60 step-tab is co-planar with the
+  wall-crest line by construction; (c) cupola 3-ring stack -> DOMED
+  read: lathe dome cap to 2.844 world (inside the certified 2.85
+  class, ref dome 2.848; the vane p95 anchor untouched) + eight clip
+  blocks on the drum cone (outer 0.208 <= the 0.218 base circle) + a
+  101-deg dark hatch-arc torus (top 1.053 < the 1.055 lid);
+  (d) bustle corners: 45-deg trim strips embedded 6 mm inside both
+  faces along the wall-crest corners and the rear boxes' top/side
+  edges — the rectangle-in-rectangle rear read breaks into the eased-
+  shoulder class with silhouette byte-identity (gate held to the
+  decimal at every batch; left-side slab windings built lo/hi per the
+  §C winding audit).
+- O7 WHEEL ARTICULATION (W1 family recipe, ukToneKit r8 — see c3):
+  disc faces 0x3e4531 -> 0x323826 + tire/bolt ring split onto
+  0x2b2f1f. MEASURED (fresh pairs 16:17, hash a25a73b8): disc interior
+  med 64.5 -> **56.2** p95 73.2 -> **59.6** (ref 51.4/55.9 — the +13
+  flat-pale read is now +4.8 with rim/bolt rings drawing); left band
+  med 54.1 sd 4.6 vs ref 51.8 sd 4.4 (PARITY family); horn/pad row
+  med 65.9 -> **56.2** (the +14 residual now +4). The optional hem
+  0.84 -> 0.81 sub-item was NOT taken (byte-risk vs a hair of disc).
+- O8 §B3 DISCHARGER TELL (tone-first): five dark tube-mouth discs +
+  a pale lip strip painted ON each inner raked bank face (30% down
+  the (0.735,0.78)->(0.24,1.32) plane, 4 mm proud along the normal —
+  interior to the bank's own silhouette in all three views; §C margins
+  off the 96.9-guard plan columns). Geometry escalation reserved per
+  the order if 1x still reads bare slabs.
+- O9 REAR BASKET PARITY: the r7 turretDark rebucket overshot (53.8 vs
+  the ref's light dotted weave 65.2) — the outer walls are standalone
+  meshes on a solid light-olive weave clone (0x474e38, no camo —
+  unpainted basketry; under rig_turret per §B5) + flush dark slat
+  hints on the outer face (x 1.5135, 74 mm clear of the 1.5875 plan
+  boundary; the r7 withdrawal was the INBOARD 1.469 face). MEASURED:
+  panels 53.8 -> 56-60 toward the 60-65 window, slat grammar reads.
+- O10a M2 polarity: tone 'two-tone' -> 'dark' (material-slot only —
+  the r6 mask-proven foot and r7 rotation pose byte-identical); the
+  pale caps no longer vanish against the pale crown. O10c periscope
+  lids: glassHex 0x353c35 (half-step toward the 41.4 deck context).
+  O10d drum hue: mats.dark -> 0x32352c = the ordered (50,53,44)
+  neutral — band tell kept, r-g warmth gone. O10b (wrap serration)
+  documented texture-class; O10e — the Y2 flush lip removed the
+  loudest plan double-edge for free.
+CHECKS at close: gate x2 bit-identical at 90.7; standard-check PASS;
+track-clip --exact 0 front / rear in the documented sprocket-graze
+band; turret-parent 0/0/0 (weave panels under rig_turret); npm 166 +
+track-geometry green. Frozen proofs: chieftain5 5117b9a8, fv510
+a55c85cc, vickers_mk1 1389d11c, comet 8c9a2098, charioteer c6fc76a8 —
+byte-identical at start AND close. Evidence: shots/critic-centurion5/
+(fresh 14 pairs, 16:17, zero console errors),
+tools/tmp-uk-r8-gear-measure.py, probe JSONs (c5probes*.json, session
+scratchpad).

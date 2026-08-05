@@ -289,3 +289,106 @@ CHECKS at close: standard-check PASS (clip 0/20 documented, contig 0,
 mg1 MAG — pose untouched, §H4 tell protected); turret-parent 0/0/0;
 npm 166 green. Frozen proofs as challenger1 r8. Evidence:
 shots/uk-tone-combined/ + shots/critic-centurion3/ (fresh pairs).
+
+## r8 — COMBINED UK ROUND 3 (2026-08-05, uk agent; answers shaded-parity r7 bdcb1fb — the graduation push)
+Orders W1/W2 (wheel-ring grammar — the family finding), X1/X2 (the
+last §B1 casting cluster), X3 (mudflaps, priced), X4 (adjudicated),
+Y1-Y4 trues. Gate: **91.1 -> 91.1 PASS x2 bit-identical on final
+bytes** (hull 92.4 -> 92.8, whole 91.2 [front_whole 91.2 -> 91.24,
+front_hull 94.6 -> 94.7], turret 91.1, stations 95.2, dims 100,
+floaters 100 — the razor floor held EXACTLY with the X3 mask-positive
+flaps in). Hash ac63e6d8 -> **bf0a45e8** (47 meshes, 70 340 -> 74 828
+verts). DELIVERED (done-gates measured on fresh official pairs,
+tools/tmp-uk-r8-gear-measure.py):
+- W1 WHEEL-RING GRAMMAR (family recipe, ukToneKit r8): the r7
+  tireEmissive floor (0x191d12, ~ +25L additive) had lifted the tire
+  band + bolt/annulus IMs into the disc-face luma — the drawn rings
+  vanished and the six wheels read as pale ring-less pillows, the
+  POLARITY INVERSE of the ref. Split: both wheel-rubber IMs onto a
+  dark olive-iron ring clone (ringHex 0x2b2f1f, no emissive — the
+  ambient hook alone owns shade, the pad/chain precedent) ~10L under
+  the disc face; disc faces 0x3e4531 -> 0x323826 into the ref
+  51-class. MEASURED: left band med 58.3 -> **55.1** (ref 51.4), p95
+  73.2 -> **61.9** (gate <=65 ✓), sd 9.6 -> **4.2** (gate <=7 ✓ — ref
+  itself 4.4, PARITY), sub30 0 held ✓. Dark-on-olive rim/bolt rings
+  draw on every disc.
+- W2 ground wedges (the same lit disc arcs at the contact zone):
+  close-front band p95 84.0 -> **71.8 = the ref's own 71.8 exactly**
+  (gate <=75 ✓), med 61.4 vs ref 60.6, sub30 0 ✓.
+- X1 casting blend (silhouette-neutral by construction, gate line
+  bit-identical): (a) hood-lap canvas wedge riding the nose-slab face
+  plane (offset +2 mm out of z-fight; x 0.04..0.35 inside the face
+  span) — the cover now continues onto the casting past its exit line
+  instead of ending in free corners; (b) crown-ridge FORWARD CAPS
+  (x -0.88..-0.70 / -0.21..-0.085) flanking the cupola drum, tops
+  under the plate top; A RAKED PLATE TOP (0.9675 -> 0.9335 forward,
+  chasing the evaluator's Δ+4.5° ref fall) was TRIED and MEASURED:
+  turret_side 91.1 -> 91.0 (and c5 90.5 -> 90.3) — the evaluator fall
+  is a SHADING edge, not the mask line; withdrawn same cycle, flat
+  plate restored (the r5 "2.732 plateau" cert now understood exact);
+  (c) mantlet-recess softening: olive lintel bevel (x ±0.35, y
+  0.245..0.295, z <= the 1.548 face plane) + flush side strips
+  (±0.405) inside the plate/face footprints.
+- X2 cupola relief (ZERO height change, the 2.92 vane anchor sacred):
+  eight radial clip blocks on the drum cone face (outer 0.208 <= the
+  0.218 base circle, y-band inside the drum) + a 101-deg dark
+  hatch-arc torus (r 0.10, tube top 1.053 < the 1.055 lid top) — the
+  drum reads sculpted, the unpaired ref arc is answered.
+- X3 MUDFLAPS both ends (priced per the verdict, landed as a GAIN):
+  rear panel x 1.560..1.6365 (pin-cap envelope 1.5555 cleared 4.5 mm;
+  outer face 2.5 mm short of the 1.639 strip face), front panel at
+  z 3.44 under the 3.47 horn-guard segment (top embeds 10 mm into its
+  1.4555 underside — §B2 chain), both outboard of the shoe envelope
+  (§B4 lateral). Bottoms 0.625: a first cut at 0.545/0.565 read
+  procBot -0.94 vs the gate ref's -0.87 flap line at ±1.58 — the ref
+  hangs its flaps to ~0.63, and matching it turned the priced order
+  into front_whole 91.15 -> **91.24** / front_hull 94.60 -> **94.71**
+  (both above the r7 baseline). Probe (tmp-ukr4-probe, front/whole):
+  flap columns ±1.58..1.62 read procBot 0.61..0.63 vs refBot 0.59 —
+  parity class. 1d air (the flap-width columns): 8.3/8.6 -> 7.6/8.1
+  at the first width (1.6335), outer faces then widened to 1.6365 to
+  close the 1.63..1.65 slit (arithmetic ~-0.6/-0.2 more; ref's own
+  air is 5.5 front / 7.6 rear — the REAR gate <=7 sits BELOW the
+  ref's own read, so ref-parity is the honest bar).
+- X4 departure ramps — EVIDENCE ADJUDICATION (no geometry): the
+  authored contact tangents measure rear **29.8° vs the ref fit
+  29.7°** (+0.1°) and front 25.3° vs 27.7° (-2.4°) — the quarter-view
+  ±13° flags cannot be the authored ramp line (contactZF 2.50 /
+  contactZR -2.32 ARE derived from the r6 ref fits); the flag class
+  is the projected shoe-serration/wrap-onset envelope (the family the
+  c5 critic adjudicated as texture-class O10b). Certified with the
+  tangent math; the trackCurves/whole rows were left unrisked.
+- Y1 lamp faces: wider smoked-glass face discs + dark rim rings on
+  the headlight pods (ring r_out 0.069 front-interior under the nose
+  face, plan-interior under the 1.474 glacis line) — the lens/arc
+  tell replaces the featureless drum read.
+- Y2 skirt-lip seam: skirtTrimFlush on CENTURION_HULL (the ch1 push-2
+  opt-in) — the proud trim's plan double-edge at ±1.62-1.64 joins the
+  deck class. Side-invisible under the 1.60 fender line; BONUS: hull
+  row +0.4 both marks and the c5 twin's turret_side +0.2 (the proud
+  lip was a registration sliver).
+- Y3 tail dressing: the c5 O5 recipe verbatim (double-U cable, ends
+  on the A face, max rear z -3.632 inside the -3.64 C-course; cleats
+  + spare-link chevrons per shoulder) — the bare tail plate joins the
+  print's draped class; §B3 tells all present.
+- Y4 bin-row slot floors (duffels verdict-protected, untouched): mk3
+  shelf lids turretDark -> turretDetail (mask-identical bucket swap)
+  + low olive coamings (x 1.00..1.35, tops 0.4675 under the 0.48
+  duffel line). HONEST: the 2c rect's med stays 52.7 — it is
+  duffel-OWNED (the r7 verdict's own -2.3 adjudication); the slot
+  grammar below the row is where the fill lands. sub45 100 held.
+CHECKS at close: gate x2 bit-identical (final bytes); r7-window
+regression sweep CLEAN (rear cols 57.3/57.3 sub30 0, deck ink 10/136/
+165, blue 0, front face 50.8, close-roof 3170 — every landed r7 gate
+held); standard-check + track-clip (rear vox in the kv2 band —
+dial-2's 1.560 inner edge clears the pin-cap envelope) + turret-parent
+queued on the shared FIFO at close, npm 166 + track-geometry green.
+FROZEN PROOFS at start AND close: chieftain5 5117b9a8, fv510 a55c85cc,
+vickers_mk1 1389d11c, comet 8c9a2098, charioteer c6fc76a8. Evidence:
+shots/critic-centurion3/ (fresh 14 pairs), tools/tmp-uk-r8-gear-
+measure.py, tmp-ukr4-probe runs (X3/X4 numerics; c5 parity probes).
+SELF-READ vs the r7 ladder: both W drivers at ref-parity numbers, the
+X1/X2 cluster relieved with one measured-withdrawn attempt documented,
+X3 delivered as a gate gain, X4 evidence-closed — the ordered floors
+(left/right/close-front/close-roof 8.7) self-read 8.9-9.0; graduation
+adjudication requested.

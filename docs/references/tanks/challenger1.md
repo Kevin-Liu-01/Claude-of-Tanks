@@ -424,3 +424,59 @@ view's projection; aft-facing barrels over falling rooflines are the
 expensive class. (4) /shadow/-named render-only meshes are the zero-
 price lane for bay-interior tone fills (gate/evaluator masks + critic
 framing exclude them; clip audit does NOT — thread the envelopes).
+
+## r9 — COMBINED UK ROUND 3 (2026-08-05, uk agent; answers shaded-parity r8 984dc10)
+Orders O1 (disc structure — the unshipped half of r8-O1, both 7.0 side
+floors), O2 (the one §B2 finding), O4 (glacis-plan tone); O3/O5/O6
+left for the next round (this round scoped ch1 to the floor-clears).
+Gate: **90.2 -> 90.2 PASS x2 bit-identical** (hull 91.9 / whole 90.2 /
+turret 90.3 / stations 90.6 / dims 95 / floaters 100 — the 0.2 wall
+untouched: every delivery is material/shadow-lane). Hash e686ddb6 ->
+**e4d77fd2** (59 -> 63 meshes: +4 /shadow/ backer meshes). ORDERS:
+- O1a/c DISC STRUCTURE (the W1 family recipe, ukToneKit r8 — see the
+  c3 r8 section): the r7 tireEmissive floor had merged the tire
+  annulus + bolt ring into the disc luma — the windows read flat pale
+  panels. Split: wheel-rubber IMs onto the 0x2b2f1f ring clone (the
+  ordered 0x2c-class), disc faces 0x3e4531 -> 0x323826. MEASURED
+  (fresh pairs 16:18, hash e4d77fd2): left window band mean 62.1 ->
+  **54.6** (ordered ~53) p95 73.2 -> **58.2** (<=70 ✓) sd 2.6; right
+  band 58.3 -> **51.5** vs ref 50.2; tire-annulus + bolt rings draw
+  dark-on-olive on every disc.
+- O1b INTER-WHEEL SHADOW — PARTIAL, structural (reported per §D): the
+  near-black wall is in place (x 0.977..0.993 — rail inner edge 34 mm
+  clear; y 0.25..0.60; z -2.10..2.80) and clip-clean, but the window
+  p5 stays ~51 vs the ref's 25.8: the fresh crops show the ref's dark
+  gaps are its BAY VOID — ours are filled by the toned top-run
+  rail/web stream at x 1.03..1.50, i.e. the r8-O2 landed parity class
+  itself. No /shadow/ plate can sit in front of that stream without
+  entering the shoe envelope (§B4/banked law 4), and re-blackening the
+  run would revert the certified O2 parity. Aggregates are at ref
+  parity (mean/p95/sd); the tangency-gap oscillation is the honest
+  carried residual.
+- O2 RAMP-BAY BACKER (§B2 kill): horizontal dark floor plate under the
+  bow bay BOTH sides (x 0.60..1.00 — ground-run rail edge 27 mm clear;
+  y 0.29..0.31; z 2.50..3.15). VERIFIED: tmp-cr1-r8-voidcheck on the
+  fresh close-roof reads ZERO proc-side enclosed components (the
+  141-px pocket is dead; remaining hits are label speckle + the REF
+  pane's own 49-px pocket). track-clip --exact 0/0 with both new
+  backers in.
+- O4 GLACIS-PLAN TONE (gate-free): the c3 family recipe, both levers —
+  bakeDirtDeckEq + the map-domain dark-texel lift chained after the
+  hull material's hook stack (cache key 'veh-ambient-floor-v2+cr1ink';
+  lifts only linear albedo < ~0.04). MEASURED: glacis plan halves now
+  BALANCED (L med 45.4 / R 45.8 — the near-black left hole is gone)
+  with sub38 below the REF's own on both halves (209/277 vs 247/320);
+  the remaining -5L field is the scheme's own darkness, not a mask
+  hole.
+CHECKS at close: gate x2 bit-identical at 90.2; standard-check PASS
+(clip 0/0 exact, contig 0, mg1 — the MAG pose byte-untouched);
+turret-parent 0/0/0; npm 166 + track-geometry green. Frozen proofs as
+the c3 r8 section. ACCEPTANCE OFFER TAKEN (r8 §5): the dead-front
+corner ladder-over-panel residual (front corners 51.6 vs ref 64.3) is
+CERTIFIED — the panel hangs inside the wrap silhouette because law-5
+leaves no legal z outside the shoe sweep (the r8 packet's own
+geometry argument; rects reproduce via tools/tmp-cr1-r8-tone.py).
+HONEST RESIDUALS: O3 (MG legible read), O5 (bustle/tail), O6 (small
+real-angle family) not taken this round. Evidence:
+shots/critic-challenger1/ (fresh 14 pairs, 16:18, zero console
+errors), tools/tmp-uk-r8-gear-measure.py, tmp-cr1-r8-voidcheck.py.

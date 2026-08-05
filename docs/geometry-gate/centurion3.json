@@ -3,7 +3,7 @@
  "geoMin": 91.1,
  "gatePassed": true,
  "components": {
-  "hullCurves": 92.4,
+  "hullCurves": 92.8,
   "wholeCurves": 91.2,
   "turretCurves": 91.1,
   "stations": 95.2,
@@ -12,9 +12,9 @@
  },
  "curveRows": {
   "side_hull": {
-   "score": 92.40028003806995,
-   "meanPct": 0.57,
-   "p95Pct": 1.32,
+   "score": 92.78406227317922,
+   "meanPct": 0.54,
+   "p95Pct": 1.29,
    "coverPct": 0,
    "reg": {
     "dAlong": 1.237,
@@ -33,7 +33,7 @@
      "at": -1.42,
      "refTop": 0.06,
      "refBot": -1.09,
-     "procTop": 0.01,
+     "procTop": 0.02,
      "procBot": -1.13,
      "errM": 0.042
     },
@@ -43,7 +43,7 @@
      "refBot": -1.45,
      "procTop": 0.13,
      "procBot": -1.48,
-     "errM": 0.038
+     "errM": 0.037
     },
     {
      "at": 4.38,
@@ -51,13 +51,13 @@
      "refBot": -1.35,
      "procTop": 0.27,
      "procBot": -1.42,
-     "errM": 0.038
+     "errM": 0.037
     },
     {
      "at": -1.54,
      "refTop": 0.01,
      "refBot": -1.02,
-     "procTop": 0.01,
+     "procTop": 0.02,
      "procBot": -1.08,
      "errM": 0.035
     },
@@ -75,15 +75,7 @@
      "refBot": -0.31,
      "procTop": -0.27,
      "procBot": -0.37,
-     "errM": 0.032
-    },
-    {
-     "at": -0.8,
-     "refTop": 0.02,
-     "refBot": -1.41,
-     "procTop": 0.04,
-     "procBot": -1.44,
-     "errM": 0.029
+     "errM": 0.031
     },
     {
      "at": 2.04,
@@ -105,7 +97,7 @@
      "at": -1.67,
      "refTop": -0.01,
      "refBot": -0.97,
-     "procTop": 0.01,
+     "procTop": 0.02,
      "procBot": -1,
      "errM": 0.028
     },
@@ -114,8 +106,16 @@
      "refTop": -0.1,
      "refBot": -0.77,
      "procTop": -0.12,
-     "procBot": -0.8,
-     "errM": 0.026
+     "procBot": -0.79,
+     "errM": 0.025
+    },
+    {
+     "at": 4.26,
+     "refTop": 0.27,
+     "refBot": -1.41,
+     "procTop": 0.27,
+     "procBot": -1.45,
+     "errM": 0.025
     }
    ]
   },
@@ -770,9 +770,9 @@
    ]
   },
   "plan": {
-   "score": 95.46735985054971,
+   "score": 95.40425366406032,
    "meanPct": 0.35,
-   "p95Pct": 0.65,
+   "p95Pct": 0.71,
    "coverPct": 0,
    "reg": {
     "dAlong": 0,
@@ -792,8 +792,8 @@
      "refTop": 3.15,
      "refBot": -0.04,
      "procTop": 3.25,
-     "procBot": -0.07,
-     "errM": 0.064
+     "procBot": -0.08,
+     "errM": 0.069
     },
     {
      "at": 0.43,
