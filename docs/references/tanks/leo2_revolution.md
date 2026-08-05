@@ -895,3 +895,172 @@ Residuals (certified/measured):
 - hero-rr 0.742 border-clip chain / whip-stub bistability / muzzle tip
   cover 0.56-class / st11/12 wPct / pod-line carries — all r12
   residuals carried unchanged (gate row equality ×2 is the proof).
+
+## §B1 round r14 (2026-08-05) — BOW-WEDGE + CHEEK-RAKE RE-PLANE (owner ruling A on the round-3 verdict): the four ledger-parked geometry classes re-planed INSIDE the gate, min 90.7 -> **90.8 PASS ×2 bit-identical**
+
+Gate at landing: **min 90.8 PASS ×2 BIT-IDENTICAL** (hull 91.2 / whole
+**90.8** / turret **92.2** / stations **91.4** / dims 99.5 / floaters 100 —
+the whole binder itself moved UP through a geometry re-plane round; turret
++0.4, stations +0.6, hull −0.2 = the priced hem/closure trade). Side
+dAlong **0** on every row after every batch — the r5 body-span law held
+through the entire bow program (toe y-band byte-identical throughout).
+Hash eb04115c → **3820620** (64→79 meshes, 113033→110833 verts — the
+stair boxes died into facet slabs; hub dots + fixtures added). Frozen
+siblings verified at the same sitting: leo2a5 **bc9bad30**, leo2a6
+**80b76338**, kf51 **3ae9b70c**. Evaluator: **RIG PARITY OK** (max
+yawProxy 0.8° @front — the r13 line). standard-check: gateMin 90.8 |
+clip **0/0 ✓** | contig 0 ✓ | decor mg1+4d ✓. track-clip --exact 0/0
+re-read after every §B4-adjacent batch (plank widen, toe sweep, hem,
+under-tub filler). npm test at the section's landing. Evidence:
+shots/leopard-r14/ (r13 renders under before/, landing renders + 
+crop-close-front / crop-view-frontleft before/after pairs),
+shots/visual-eval-leo2_revolution/, shots/critic-leo2_revolution/.
+Measures: tools/tmp-rev-critic-r9-measure.py (the standing §D mask).
+
+Orders → deliveries (evaluator official digits, before → after):
+1. **A-1 BOW WEDGE (the NO-STAIRCASES kill)**: the stepped-strata read is
+   re-planed into the ref's continuous rakes at every mechanism the r13
+   verdict named:
+   - the 1.04-wide camo CREST that floated 0.10-0.19 over the beak plane
+     (the "stacked horizontal course" read) → narrow clamp front A-LEG
+     (hullDetail, x 0.20..0.50 on the clamp-rod line, rooted through the
+     plate; side cols 3.42/3.47 keep the 2.02 top = ref 2.028 line);
+   - jacket nose taper end: 0.94-tall vertical cliff at 3.485 → 14°-raked
+     face (top corner 3.485→3.25);
+   - jacket nose BULGE end (the last outermost vertical at the corner,
+     the frontleft Δ+14.2/75.5°-pair's true owner): raked to 25.8°
+     (top 3.585→3.44; plan cols keep the 3.585 bottom edge);
+   - skirt/lip bottom STAIRCASES (5 equal-pitch boxes per stack) → the
+     real diagonal hem cut: three co-planar facets through the ref's own
+     bin values (A 0.446@3.2585→0.499@3.3665, B1 →0.777@3.5885, B2
+     →0.870@3.6995; per-column errs ≤ the old park's, col 3.32's 0.041
+     undercut KILLED) + hem NOSE cut whose top edge meets the beak plane
+     at the corner (1.30@3.5885→1.114@3.6995 — co-planar meet, §B1);
+     tip nubs kept (plan 3.766 / body-span cap 1.02) with 10-14° raked
+     front faces;
+   - mudguard planks widened to the jacket inner line (outer 1.42-taper
+     → 1.63 straight, same plane, same 1.385 §B4 underside — audit 0/0)
+     — the wedge now spans the full inter-jacket width;
+   - BOW CROWN: the ref's own front_hull line FALLS outboard (2.104@
+     1.333 → 2.047@1.513 — its corners chamfer to the fender line) where
+     our flat tops printed +0.02..0.03 on five columns per side — hump/
+     shelf/tail outboard chamfer facets (k 0.155 humps / 0.10 shelf+tail,
+     |x| ≥ 1.26; center plates flat = side rows + dAlong bins untouched)
+     + plank top outboard tilt. front_hull cols now ON the ref line.
+   DONE-GATE: the bow-shelf pair (ref 163.6°) **176.9 → 169.2 (Δ+13.3 →
+   Δ+5.7 ±0.5)**; the nose-corner vertical pair (ref 75.5°) **89.7 →
+   OFF the flag list** (bulge/taper rakes); close-front worst **Δ−14.4 →
+   Δ−10.5** and the −10.5 is the parked RWS/pod-zone class, NOT the bow;
+   close-front/frontleft at 1× show ONE dominant raked wedge + clamp
+   fixture + diagonal hem (crop pairs in shots/leopard-r14/).
+2. **A-2 CHEEK RAKE**: the r7 packet's ref cheek line falls ACROSS x
+   (inward-leaning facets) — delivered as outboard-down facet tilts +
+   face rakes with side rows pinned by the inboard maxima: wing top
+   (−0.075 outboard) + tilted dark cover + NOSE LIP restoring the ref's
+   own 1.97 side cols at 3.42/3.53 (proc 1.942 → 1.97 EXACT, ×2 cols);
+   left cheek top (−0.12 outboard = the probe's 20.6° lean); right wall
+   fore-front face raked 15° (top edge 2.04→1.976 plan-safe); notch step
+   top 0.56→0.44 (was a lone 2.16w pillar) + 15° face; fore-roof steps
+   1-2 + edge seam → ONE raked plane 2.22w@1.15 → 2.124w@1.82 (ref cols
+   2.22/2.192/2.164/2.137 — net err −0.05 vs the steps), step 3 kept as
+   the MANTLET CROWN (ref 2.164@1.87..2.09) with the roof's own x-facet;
+   LEFT core top-front 0.605→0.51 (the notch-side roof line 2.4°→7.1°).
+   WING X-EDGE 1.60→1.553: plan_turret col 1.623's **0.773 err KILLED**
+   (the #1 plan_turret defect — ref wing ends at its 1.512 col; the wall
+   2.04 face owns 1.623 at ref 2.035) — turret 91.8 → **92.2**, stations
+   90.8 → **91.4**. DONE-GATE: front view worst flag now **Δ−2.7°**;
+   close-roof upper-front pair matched at −8.7 (was UNMATCHED at r13).
+3. **A-3 PLAN TOE Δ−10.5 — DELIVERED FREE**: toe caps plan-swept at the
+   ref's own 10.4° taper (top edge m 0.184, x→1.34, z0 3.785 §B4-pinned;
+   y-profile byte-identical = dAlong bins untouched). The top-view toe
+   pair (ref 10.5° @x 0.98..1.60) is **GONE from the flag list**; plan
+   cols 1.29/1.401 moved onto the ref line (3.811 exact / err 0.033→
+   ~0.013). The r13 tension note is MOOT: the toe step never had to die
+   as a step — the sweep re-planed it inside the law.
+4. **P-1 WHEEL-ROW READ (left/right window)**: rear-course skirt bottoms
+   0.36→0.53 (row-free: side bottoms are gear-owned, front reads the
+   unchanged FRONT course, stations don't measure bottoms) opening the
+   ref's visible wheel band; 7 pale hub-dot discs per side on the wheel
+   faces (mgPale family, r 0.10 × 4 mm, x ±1.386 — inside the wheel
+   circle and the skirt plane: zero silhouette in every row); under-tub
+   dark filler (y 0.31..0.36) closes the through-slit the raise exposed.
+   DONE-GATE: **B1 strip certs to the digit** — left med 56.6 p5 **51.4**
+   (r13: 56.4/51.4; gates p5 ≥40 med 48..58), right med **51.1** p5 45.0
+   (r13: 51.1/44.3) ✓✓; the hub-dot row reads in the opened band at 1×.
+5. **P-2 MAG TOP COVER**: raw-clone pale plate (0x8a8d74, no ambient
+   floor hook — the C2b top-lit compression law's bright branch) at the
+   receiver's exact top (2.048w, same footprint — zero mask movement);
+   pintle post re-rooted through the tilted wing cover (top 2.0355w
+   unchanged). Reads as the stowed gun's cover from the close-roof
+   camera.
+
+§B standing: **§B2 flood** — front 92 / rear **99** / rl 92 / rr 92 /
+fl 92 / fr 92 / left **120** / right **126** / top **110** / toptilt 95
+vs the r13 digits 92/101/92×4/119/125/122/94: rear −2 and top −12
+BETTER, left/right/toptilt +1 px (single-pixel AA jitter on the
+certified residual classes; same bboxes). Mid-round the wing pull +
+taper rake exposed two corridor classes (top +171: the deck-edge↔skirt
+slot the wing had shadowed; left/right +80/+59: the tube↔beak clamp
+slot) — closed the ref's way: corridor roof strips at 1.945 (2.6 cm
+under the shelf chamfer corner so the crown line keeps the oblique
+silhouette) and the clamp support WEB (the real vehicle's cradle
+gusset, fixture-dark, interior to every row). **§B3** mg1+4d ✓ (MAG
+plate + hub dots are tone-lane). **§B4 0/0** ✓ ×3 re-reads. **§B5**
+stranded 6 / abutting 0 / dangling 0 — the r13 adjudicated classes
+exactly (hub dots hull-parented by design; wing/cheek/lip content
+turretG). **§B6** untouched (zero gear params moved).
+
+Tone certs re-derived at the landing bytes: D1 tail panel med **77.3**
+sd **12.31** (the r12/r13 digits EXACTLY); F1 jacket med **67.4** vs
+ref same-rect 67.4 (**Δ0.0** — was Δ+0.6); B1 strips above.
+
+LAW DISCOVERIES (bank):
+1. **RE-PLANES MOVE FLOOD SHADOWS**: a rake/pull that removes mass
+   REVEALS whatever slot it used to shadow — the taper-end rake exposed
+   the tube↔beak clamp slot (79 px) and the wing pull exposed the
+   deck↔skirt corridor (2×~90 px) with ZERO silhouette-row movement.
+   §B2 flood re-runs after every visibility-changing batch, not only
+   after adding geometry; close the slot the way the REAL vehicle does
+   (clamp web, deck reach) rather than re-flattening the re-plane.
+2. **CLOSURE STRIPS MUST SIT UNDER THE CROWN LINE**: the first corridor
+   roof at 1.97 became the oblique silhouette corner and RE-FLATTENED
+   the just-delivered crown read (Δ+5.7 bounced to +11.1) — any filler
+   near a chamfered corner rides ≥2 cm under the chamfer's outer edge
+   or it owns the silhouette.
+3. **FACETED HEM ≈ COLUMN LEDGER**: a 3-facet diagonal through the
+   bin-START values reproduces a certified per-column stair park within
+   ±0.03 per column (net err −0.045 here) — NO-STAIRCASES re-planes of
+   bottom stairs are near-free when authored against column starts, not
+   centers (the gate reads min-in-column at the column's leading edge).
+4. **INWARD-LEANING FACETS ARE SIDE-ROW-FREE**: outboard-down top tilts
+   (wing −0.075, cheek −0.12, crown −0.045) never move side rows (max
+   over x = the inboard edge) or plan/front rows (footprint + taller
+   cover) — the whole "cheek verticality" class was deliverable at zero
+   gate spend; only FLOATING consumers (the MAG pintle) need re-rooting.
+5. **REF RENDER vs REF COLUMNS at mass breaks**: the ref's rendered
+   fore-roof line falls 13.7° THROUGH a zone its own columns read flat
+   (2.164@1.87..2.09) — the fall is x-tilt mixing plus the cheek-band
+   drop behind the mantlet; column-pinned flats at a mass break can
+   read as Δ−8..−11 pairs that no column-legal z-slope can close
+   (matching drift, not a defect — price it, don't chase it).
+
+Residuals (certified/measured, self-read):
+- frontleft worst **Δ+9.2** (hem oblique: our 3-facet cut reads
+  45-54° vs the ref's rendered 38.9-50.2° — its mudflap curtain hangs
+  below our hem line; matched smooth-vs-smooth, staircase dead);
+  rearleft twin Δ+12.5.
+- fore-roof pair: close-roof **Δ−6.9 = the r13 digit exactly**;
+  frontright −11.4 (law-5 matching drift at the mantlet break — the
+  crown is column-pinned flat at ref 2.164).
+- hero-fl Δ+15.0 @(1.47, 0.23, 2.99) — the track APPROACH-RAMP angle
+  (ref 19.4° vs kit-tangent 34.4°): §B6 kit geometry, idler position
+  dims-guarded since r7 — outside this file's lane, priced since r7.
+- top Δ+14.4 ±4.0 — wrap-outline vs ref skirt-shadow projection pair
+  at the §B4 open-wrap corner (x 1.55..1.57), gear-projection class.
+- close-front Δ−10.5/−13.6 — the parked RWS/pod-zone class (r13 digit)
+  and the toe-face lean (dAlong-pinned band, 0.24 len).
+- toptilt flood 95 = 94 + one frame-corner px (y470 x633 border pair);
+  left 120 / right 126 = the r13 119/125 residual classes ±1 px.
+- hero-rr 0.742 border-clip chain / whip-stub bistability / muzzle
+  cover 0.56 / st11-12 wPct / pod-line carries — unchanged (gate row
+  equality ×2).
