@@ -88,3 +88,96 @@ Worst remaining: turret_side/plan ~80 (crest-cap columns + nose/shield
 fine shape), stations 83 (i5 4.4 crest-cap slice uncovered once the trim
 is spent). Shots: shots/patton-r2/m60a2-*.png; §D evaluator clean
 (yawProxy 0.1-2.4°, no RIG MISMATCH).
+
+## PUSH ROUND — patton family (2026-08-05, patton-family builder)
+80.3 -> 86.3 PASS-of-round (x2 stable, runs identical): hull 88.1 / whole
+86.3 / turret 91.2 / stations 89.6 / dims 97.9 / floaters 100. Target was
+>=88 x2 or the measured ceiling; the ceiling is now MEASURED (below) —
+whole saturates at ~87.5 on three certified mechanisms. Track clip 0/0,
+contiguity 0, mg1+3d census, turret-parent stranded/dangling 0 (one
+REVIEW-tier abutting = the towCable on the hull fender line: deck gear,
+correctly hull-parented — leave). npm test clean (265 checks). Frozen
+marks byte-identical at every batch: m60a1 81e69e34, m60a3 efcde5c4,
+m47_patton 70941de0, m46_patton dfacd57c. New m60a2 hash e0ba7b37
+(45 meshes / 71716 verts). Shots: shots/patton-push-a2/m60a2-board.png.
+
+ORDERS DELIVERED (fresh in-page probes, PROBE-FRAME law):
+1. Shield/mantlet re-author (§B1 slope-motivates-the-mass): raked mass —
+   2.82 top plane to z 2.356, vertical upper face, forward-raked lower lip
+   to the plan's 2.56, asymmetric wings (-0.585/+0.570), co-planar dark
+   launcher door; SEGMENTED at z 2.10 (§C end-caps, see law d). Killed the
+   1.87-2.47 side band (+2.6 turret) and stations i10/i11/i12 tops
+   (i11 3.76 -> 0.32, i12 12.4 -> 1.67).
+2. Crest §B1 de-staircase: the right shoulder steps + proud loader drum
+   replaced by ONE rake (0.42,3.132)->(0.6135,2.99) with a vertical cast
+   end-face; plateau left edge to the ref's -0.89 crest corner; rear slope
+   ends (-1.16, 2.79). Sight head re-seated on the fresh spike read
+   (x -0.27..+0.13, z -0.14..+0.12, 4 side cols = ref parity, heightM p95
+   safe at 3.13). Loader hatch is now a flush plateau ring.
+3. Basket to the ref's z 1.39/y 1.15 floor (worst turret column 0.366->0.02).
+4. Plan nose ARROWHEAD via opt-in loftBody hwL (left cheek rakes (x -0.64,
+   z 1.56)->(-1.27, 0.83); right cheek short per ref) + bin re-shape
+   (x 1.09..1.385, plan-raked rear, front 1.31) + tube re-seat (center
+   x +0.045, near-round plan 0.165, muzzle to the ref's own 3.712 end) —
+   plan_turret 84.1 -> 94.6.
+5. Width system: fenders to outer 1.760 (curveHull outer = fenderHW+0.005),
+   lip 1.782 @ y 1.805, low rear mud boards at 1.8165 (z -2.68..-3.19),
+   tapered rear flap bottoms (0.75 @ -3.36 -> 0.93 @ -3.64), front flaps to
+   x 1.8155 — widthM 3.64 (+0.18%, was -1.12%), stations widths kept-mean
+   ~0.51, front cols +-1.74/1.78/1.81 all on the ref line.
+6. Deck-tail notch: deck band ends -3.47 (ref corner), centre carried to
+   -3.60 on the widened rear plate — plan_hull tail cols dead (87.1->88.1).
+7. Housekeeping: flush driver hatch (opt-in usKit hatchFlush), splash to
+   1.801, tow cable to 1.955, lift eye under the crest, louver lift -6mm,
+   idler 2.895 (wrap clear of the 3.375 dims-anchor column), contactZF 2.20,
+   right decal onto the bin face (was floating 0.115 off the wall).
+
+DIMS TRADES (documented, dims 97.9): muzzle 3.712 => overall 7.36 (+1.22%,
+-1.8 dims) buys +1.9 curve pts of muzzle cover; heightM 3.13 (+0.55%, in
+grace) with the ref-parity 4-col spike.
+
+MEASURED CEILING (certified-cap candidates, all mechanisms re-verified
+this round):
+1. BOW TIP (side_whole ~3.9 pts + side_hull cover 2 cols + plan front ring
+   ~1.3/plan row): ref tip/flap-front runs to z 3.52-3.54; hullLengthM's
+   12%-band filter reads ANY tip column FAT because the launcher tube
+   overlaps it (col band = extremes) — front body anchor pinned at 3.375
+   (len 7.02, +1.04%; the ref's own body span measures the same 7.02).
+   Re-measured dead ends: thin tips, sub-band y-splits, rear-anchor
+   retreat (sprocket wrap keeps the rear body col at -3.647).
+2. CREST HEIGHT CAP (side_whole ~3.5 incl the p95 term + front_whole ~1.5
+   + stations i5 4.3 now riding a trim slot): ref crest 3.24-3.31 over
+   x -0.89..+0.20 / z -0.21..-0.80 vs the published-3.11 cap (grace edge
+   3.141, plateau authored 3.135).
+3. STERN TIP (cover ~0.85/side row): ref flap tips -3.71..-3.73 vs the
+   overallLengthM pixel-span cap.
+4. STATIONS i13 24.2 (trim slot): ref-side artifact — the fused TurretMesh
+   paints NO tube pixels in its own clipped bow slice (probe: window
+   [3.0,3.52] refTop 1.64 while [3.52,3.8] shows 2.42) + the certified
+   window skew; i12 residual 1.67 is the skew alone.
+
+LAW BANK (this round):
+(a) vertex-workorder's plan mode heuristic MIS-PICKS on stub-gun tanks
+    (muzzle overhang < the 0.4 thin-end band => both ends read fat): its
+    plan rows come out MIRRORED (z_true = K - z_printed). Confirmed against
+    landmark meshes; use gate-identical in-page instruments for plan work
+    on short-gun vehicles.
+(b) The gate's station windows come from 96-COLUMN CENTERS of the side
+    hull trace, not pixel extents — each end sits ~half a column (0.04)
+    inside the mask. Window-edge margins (2px rule) must be computed
+    against the col-center range (the shield face at 2.39 still fed i12,
+    whose true window starts 2.372).
+(c) §C STATION END-CAPS applies to gunMount slabs too: the 0.66 m shield
+    plate painted only its end caps and VANISHED from i11's window (top
+    fell to the wing line). Segment <=0.48 m; a z-split of the same plane
+    is co-planar and §B1-clean.
+(d) curveHull's fender plate outer edge lands at fenderHW + 0.005 (box
+    centered (bhw+fhw)/2, width fhw-bhw+0.01) — author boundary columns
+    against fenderHW+0.005, not fenderHW.
+(e) renderMask-based probes: SIZE is 384 — always derive S from
+    sqrt(mask.length); a hardcoded 512 scrambles the buffer into full-lit
+    garbage (looks like a posed/rotated model).
+(f) heightM p95 re-verified: 4 side spike columns at 3.39 leave heightM at
+    the plateau (5th-from-top); the flip threshold is ~4.8 columns.
+Worst remaining rows: side_whole 86.3 (mechanisms above), plan_hull 88.1
+(bow/stern flap ring), front_whole ~88 (crest band). Everything else >=89.
