@@ -249,23 +249,23 @@ MODEL_SOURCE.merkava4 = {
     yawOffset: -Math.PI / 2,
   },
 };
-MODEL_SOURCE.t80u = {
-  source: 'glb',
-  // turret shell Object09_24 (accessories reparented in offline); gun
-  // Object1101_22 is a turret SIBLING -> explicit gunNode resolves it
-  // scene-wide. Nose = raw +Z -> no yawOffset.
-  // tank_models r4 ("bleached washed-out mint, visibly paler than every
-  // neighboring vehicle... factory camo applies no pattern"): the baked
-  // albedo skipped every cohesion pass. stripBakedTextures routes the shell
-  // onto the shared camo canvas (darker 4BO base now authored in modern2.js)
-  // exactly like the kv2/is3/T-90A treatment, keeps the asset's normal maps,
-  // and the refine pass re-creases the decimation-melted turret kit normals.
-  glb: {
-    path: '/models/tanks/t80u_javanilga.glb',
-    turretNode: '^Object09_24$', gunNode: '^Object1101_22$', autoPivot: true,
-    paintUntextured: true, stripBakedTextures: true,
-  },
-};
+// FLIP-RETIRED: MODEL_SOURCE.t80u = {
+// FLIP-RETIRED:   source: 'glb',
+// FLIP-RETIRED:   // turret shell Object09_24 (accessories reparented in offline); gun
+// FLIP-RETIRED:   // Object1101_22 is a turret SIBLING -> explicit gunNode resolves it
+// FLIP-RETIRED:   // scene-wide. Nose = raw +Z -> no yawOffset.
+// FLIP-RETIRED:   // tank_models r4 ("bleached washed-out mint, visibly paler than every
+// FLIP-RETIRED:   // neighboring vehicle... factory camo applies no pattern"): the baked
+// FLIP-RETIRED:   // albedo skipped every cohesion pass. stripBakedTextures routes the shell
+// FLIP-RETIRED:   // onto the shared camo canvas (darker 4BO base now authored in modern2.js)
+// FLIP-RETIRED:   // exactly like the kv2/is3/T-90A treatment, keeps the asset's normal maps,
+// FLIP-RETIRED:   // and the refine pass re-creases the decimation-melted turret kit normals.
+// FLIP-RETIRED:   glb: {
+// FLIP-RETIRED:     path: '/models/tanks/t80u_javanilga.glb',
+// FLIP-RETIRED:     turretNode: '^Object09_24$', gunNode: '^Object1101_22$', autoPivot: true,
+// FLIP-RETIRED:     paintUntextured: true, stripBakedTextures: true,
+// FLIP-RETIRED:   },
+// FLIP-RETIRED: };
 // kf51: DUAL-GATE GRADUATE (2026-08-03) — the procedural build is the
 // model of record everywhere (geometry min 90.4 gatePassed, independent
 // critic 9.0+ on all FOURTEEN views, round 8 — the program's first

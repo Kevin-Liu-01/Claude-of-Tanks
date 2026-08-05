@@ -235,16 +235,10 @@ export const VARIANT_MODEL_SOURCE = {
   // GLB (the print family owner-identified as a mislabeled Leopard 2A5)
   // instead of the graduated procedural build. Caught 2026-08-04 by the
   // owner's custom-list check. The variant GLB stays on disk unregistered.
-  t90a: {
-    source: 'glb',
-    glb: {
-      path: '/models/tanks/community/variants/t90a_xarchenko_variant.glb',
-      turretNode: 'TurretPivot',
-      gunNode: 'GunPivot',
-      autoPivot: true,
-      paintUntextured: true,
-    },
-  },
+  // t90a: FLEET FLIP 2026-08-04 (owner: every MBT renders procedural +
+  // CUSTOM) — variant registration retired; the xarchenko GLB stays a
+  // measurement oracle via the three override maps.
+
   m1a2_tusk: {
     source: 'glb',
     glb: {

@@ -144,10 +144,10 @@ for (const spec of SPECS) {
 }
 
 if (ALLOW_LOCAL_RECOVERED_MODELS) {
-  articulated('challenger1', {
-    turretFollowers: CHALLENGER_TURRET_FOLLOWERS,
-    gunFollowers: CHALLENGER_GUN_FOLLOWERS,
-  });
+    // FLIP-RETIRED: articulated('challenger1', {
+  // FLIP-RETIRED: turretFollowers: CHALLENGER_TURRET_FOLLOWERS,
+  // FLIP-RETIRED: gunFollowers: CHALLENGER_GUN_FOLLOWERS,
+  // FLIP-RETIRED: });
   // This OBJ retains its authored Z-up frame after import; rotate Z-up to the
   // runtime's Y-up convention before modelLoader measures and normalizes it.
   // Oracle repair (tools/repair_oracles.py): the GLB's original `Turret` node
@@ -161,7 +161,7 @@ if (ALLOW_LOCAL_RECOVERED_MODELS) {
   // oracle (all three override maps carry the registration incl.
   // pitchOffset -PI/2).
   articulated('fv510', { yawOffset: Math.PI });
-  articulated('leo2_revolution', { yawOffset: Math.PI });
+    // FLIP-RETIRED: articulated('leo2_revolution', { yawOffset: Math.PI });
   // leo2a5: DUAL-GATE GRADUATE (2026-08-04, the 21st — geometry 90.8 x2 +
   // critic 9.0 every view at r10; ladder 7.7 -> 9.0 over five rounds;
   // 04c3e11). Registration retired per §10; freeze hash bc9bad30; the
@@ -173,11 +173,11 @@ if (ALLOW_LOCAL_RECOVERED_MODELS) {
   });
   // m1a1ha: DUAL-GATE GRADUATE (2026-08-02, freeze hash 88a4a978) — no
   // MODEL_SOURCE; procedural ships everywhere (tejas GLB stays as oracle).
-  source('m1a2_sepv2', {
-    turretNode: '^Turret$', gunNode: '^misc_b$', autoPivot: true,
-    yawOffset: Math.PI,
-    turretFollowers: '^(?:ammo_(?:5|box)|armor_turret|ex_armoc|ex_armor(?!_body)|ex_era_turret|ex_decor_04|glsaa_[6-8]|hatch_0[34]|mg_aamount_h|misc_a|optic_commander)$',
-  });
+    // FLIP-RETIRED: source('m1a2_sepv2', {
+  // FLIP-RETIRED: turretNode: '^Turret$', gunNode: '^misc_b$', autoPivot: true,
+  // FLIP-RETIRED: yawOffset: Math.PI,
+  // FLIP-RETIRED: turretFollowers: '^(?:ammo_(?:5|box)|armor_turret|ex_armoc|ex_armor(?!_body)|ex_era_turret|ex_decor_04|glsaa_[6-8]|hatch_0[34]|mg_aamount_h|misc_a|optic_commander)$',
+  // FLIP-RETIRED: });
   // m60a1: NO source() call — dual-gate graduate, procedural build ships in
   // every flavor. The recovered m60a1.glb FILE stays on disk: userdrops6's
   // m60a3 still aliases it directly (and has NOT passed the gate).
@@ -204,13 +204,13 @@ if (ALLOW_LOCAL_RECOVERED_MODELS) {
   // across r12-r13; three arbitration certs decisive). NO MODEL_SOURCE —
   // freeze hash 106b0074 via tmp-hashgeo; the recovered GLB stays as the
   // measurement oracle (all three override maps carry the registration).
-  for (const id of ['merkava2b', 'merkava2d', 'merkava4b']) {
+  for (const id of []) { // FLEET FLIP 2026-08-04: merkava2b/2d/4b -> procedural+CUSTOM
     articulated(id, {
       turretFollowers: MERKAVA_TURRET_FOLLOWERS,
       gunFollowers: MERKAVA_GUN_FOLLOWERS,
     });
   }
-  for (const id of ['t64bv1', 'type90']) {
+  for (const id of []) { // FLEET FLIP 2026-08-04: t64bv1/type90 -> procedural+CUSTOM
     source(id, {
       turretNode: '^Turret$', autoPivot: true, yawOffset: -Math.PI / 2,
     });
@@ -219,19 +219,19 @@ if (ALLOW_LOCAL_RECOVERED_MODELS) {
   // Gun node under Turret, but this registration never DECLARED it — the
   // turret mask swallowed the whole tube subtree (plan_turret read the ref
   // turret to z 5.89) and turret rows capped at 11. gunNode resolves it.
-  source('t72bu', {
-    turretNode: '^Turret$', gunNode: '^Gun$', autoPivot: true,
-    yawOffset: -Math.PI / 2,
-  });
+    // FLIP-RETIRED: source('t72bu', {
+  // FLIP-RETIRED: turretNode: '^Turret$', gunNode: '^Gun$', autoPivot: true,
+  // FLIP-RETIRED: yawOffset: -Math.PI / 2,
+  // FLIP-RETIRED: });
   // batch-13 (tools/repair_oracles.py 't72b_1987'): the fused 2A46M — 7
   // loose tube components inside TurretMesh — is component-split into
   // GunMesh under a new Gun node (no trim; the warped tube already ends at
   // published overall -0.3%). gunNode resolves it so turret masks compare
   // tube-less turret to tube-less turret at every yaw pose.
-  source('t72b_1987', {
-    turretNode: '^Turret$', gunNode: '^Gun$', autoPivot: true,
-    yawOffset: -Math.PI / 2,
-  });
+    // FLIP-RETIRED: source('t72b_1987', {
+  // FLIP-RETIRED: turretNode: '^Turret$', gunNode: '^Gun$', autoPivot: true,
+  // FLIP-RETIRED: yawOffset: -Math.PI / 2,
+  // FLIP-RETIRED: });
   // t62mv1: oracle ADOPTED from the gen2 bergman bake (batch-9 verdict —
   // true-to-published stature vs the print pack's +6.1% roof; clean two-shell
   // CAD, real Turret split). Gen2 node contract needs no yaw correction, and
@@ -245,10 +245,10 @@ if (ALLOW_LOCAL_RECOVERED_MODELS) {
   // the loader keys normalization on hullLengthM over the gun-excluded box
   // (gun=null previously keyed overallLengthM on the +14% tube: the tank
   // shipped ~12% undersized and 1.5 m displaced — the gate's hull-8 row).
-  source('t62mv1', {
-    path: `${ROOT}t62_bergman.glb`, turretNode: '^Turret$', gunNode: '^Gun$',
-    autoPivot: false,
-  });
+    // FLIP-RETIRED: source('t62mv1', {
+  // FLIP-RETIRED: path: `${ROOT}t62_bergman.glb`, turretNode: '^Turret$', gunNode: '^Gun$',
+  // FLIP-RETIRED: autoPivot: false,
+  // FLIP-RETIRED: });
   // t72b3m: DUAL-GATE GRADUATE (2026-08-04) — the program's 15th. Geometry
   // min 91.8 gatePassed x2 + graduation critic 9.0 on ALL FOURTEEN views
   // (floor 8.0 -> 8.5 -> 9.0 across thirteen builder rounds; three views
@@ -256,15 +256,15 @@ if (ALLOW_LOCAL_RECOVERED_MODELS) {
   // NO MODEL_SOURCE — freeze hash c19ec9f0 via tmp-hashgeo; the recovered
   // GLB stays as the measurement oracle (all three override maps carry the
   // registration incl. yawOffset PI).
-  source('t90sm', {
-    turretNode: '^misc_a$', gunNode: '^misc_b$', autoPivot: true,
-    yawOffset: Math.PI,
-  });
-  source('t90a_vladimir', {
-    // Highest-detail turret assembly; the remaining desirefx meshes are hull,
-    // running gear, side skirts and LOD layers and must stay with the chassis.
-    turretNode: '^desirefx[._]?me_001$', autoPivot: true,
-  });
+    // FLIP-RETIRED: source('t90sm', {
+  // FLIP-RETIRED: turretNode: '^misc_a$', gunNode: '^misc_b$', autoPivot: true,
+  // FLIP-RETIRED: yawOffset: Math.PI,
+  // FLIP-RETIRED: });
+    // FLIP-RETIRED: source('t90a_vladimir', {
+  // FLIP-RETIRED: // Highest-detail turret assembly; the remaining desirefx meshes are hull,
+  // FLIP-RETIRED: // running gear, side skirts and LOD layers and must stay with the chassis.
+  // FLIP-RETIRED: turretNode: '^desirefx[._]?me_001$', autoPivot: true,
+  // FLIP-RETIRED: });
 }
 
 export const USERDROP5_TANK_IDS = SPECS.map((s) => s.id);
@@ -275,4 +275,4 @@ export const USERDROP5_TANK_IDS = SPECS.map((s) => s.id);
 // signal — the garage catalog keys era buckets off this list instead, keeping
 // local and public grouping identical. m60a1 is excluded: it graduated the
 // dual gate and its procedural build ships everywhere (a true original now).
-export const USERDROP5_SOURCED_IDS = USERDROP5_TANK_IDS.filter((id) => !['m60a1', 'm1a1ha', 'merkava3b', 'merkava3c', 'merkava3d', 'pt91m', 't72b3m', 'merkava1b', 'chieftain5', 'leo2a5'].includes(id));
+export const USERDROP5_SOURCED_IDS = USERDROP5_TANK_IDS.filter((id) => !['m60a1', 'm1a1ha', 'merkava3b', 'merkava3c', 'merkava3d', 'pt91m', 't72b3m', 'merkava1b', 'chieftain5', 'leo2a5', 'challenger1', 'leo2_revolution', 'm1a2_sepv2', 't62mv1', 't72bu', 't72b_1987', 't90sm', 't90a_vladimir', 'merkava2b', 'merkava2d', 'merkava4b', 'fv510', 't64bv1', 'type90'].includes(id));

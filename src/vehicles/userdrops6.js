@@ -135,14 +135,17 @@ if (ALLOW_LOCAL_RECOVERED_MODELS) {
   // at r8; ladder 8.3 -> 8.5 -> 8.8 -> 9.0; commit eeaa462). Registration
   // retired per §10 — the recovered GLB stays a measurement oracle via the
   // three override maps; freeze hash 70941de0 via tmp-hashgeo.
-  for (const id of ['centurion3', 'centurion5', 'comet', 'challenger_cruiser', 'charioteer',
-    'leopard2_proto', 'm46_patton', 'm26_pershing', 'm45_patton']) articulated(id);
+  // FLEET FLIP (owner directive 2026-08-04): centurion3/5, m26/m45/m46
+  // render procedural + CUSTOM; prints stay measurement oracles via the
+  // three maps. comet/cruiser/charioteer/proto keep GLBs (0-row builds).
+  for (const id of ['comet', 'challenger_cruiser', 'charioteer',
+    'leopard2_proto']) articulated(id);
   // The Bergman Abrams exports an empty Turret pivot at the scene origin.
   // Its authored hull/turret placement is already correct; autoPivot treated
   // the long fused cannon as the turret footprint and moved the entire upper
   // vehicle off the pedestal. Keep the neutral placement and rotate it around
   // the spec's real turret-ring pivot instead.
-  articulated('m1a1_aim', 'm1a1_aim', { autoPivot: false });
+  // FLEET FLIP 2026-08-04: m1a1_aim -> procedural + CUSTOM (was articulated autoPivot:false)
   // m60a3: GRADUATED (third complete dual-gate pass — geometry min 90.0,
   // visual min 9/10, commit 967be0e). The certified procedural build is the
   // model of record everywhere; the old m60a1-GLB alias is retired. The
@@ -153,7 +156,7 @@ export const USERDROP6_TANK_IDS = SPECS.map((s) => s.id);
 // Sourced-intent roster for garage bucketing: dual-gate GRADUATES leave this
 // list (they render our builds and chip under CUSTOM), everything else stays
 // in its era bucket even when public builds render procedural fallbacks.
-export const USERDROP6_SOURCED_IDS = USERDROP6_TANK_IDS.filter((id) => id !== 'm60a3' && id !== 'isu122s' && id !== 'isu152' && id !== 'm47_patton');
+export const USERDROP6_SOURCED_IDS = USERDROP6_TANK_IDS.filter((id) => !['m60a3', 'isu122s', 'isu152', 'm47_patton', 'centurion3', 'centurion5', 'm46_patton', 'm26_pershing', 'm45_patton', 'm1a1_aim'].includes(id));
 
 // USER DROPS wave 8 (scout-gen2 integration): chain-loaded here because
 // tankFactory.js (the usual registration hook) is frozen during the fleet

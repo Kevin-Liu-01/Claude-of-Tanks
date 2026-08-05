@@ -181,11 +181,11 @@ const glb = (file) => ({
 // shippable class (CC BY / CC BY-SA) — registered in every build
 MODEL_SOURCE.t44 = glb('t44_foxygamer.glb');
 MODEL_SOURCE.m48 = glb('m48a5_atmodeler.glb');
-MODEL_SOURCE.m60a2 = glb('m60a2_ahab.glb');
+// FLEET FLIP 2026-08-04: MODEL_SOURCE_RETIRED.m60a2 = glb('m60a2_ahab.glb');
 MODEL_SOURCE.amx30 = glb('amx30b_ahab.glb');
 MODEL_SOURCE.amx30b2 = glb('amx30b2_ahab.glb');
 MODEL_SOURCE.type59 = glb('type69_lasttriarius.glb');
-MODEL_SOURCE.vickers_mk1 = glb('vickers_mk1_jack.glb');
+// FLEET FLIP 2026-08-04: MODEL_SOURCE_RETIRED.vickers_mk1 = glb('vickers_mk1_jack.glb');
 
 // quarantine class (NC-SA) — local builds only; public builds keep these ids
 // on their procedural family fallbacks and strip-nc-assets deletes the files
@@ -194,7 +194,10 @@ MODEL_SOURCE.vickers_mk1 = glb('vickers_mk1_jack.glb');
 // GEOMETRY-GATE §10; the reference lives on only in the three local
 // measurement override maps.
 if (ALLOW_LOCAL_RECOVERED_MODELS) {
-  for (const id of ['t54', 't80', 't80b', 't80bv']) {
+  // FLEET FLIP (owner directive 2026-08-04, "every single mbt" under CUSTOM):
+  // t80/t80b/t80bv render procedural; recovered prints stay measurement
+  // oracles via the three override maps. t54 keeps its GLB (winding parked).
+  for (const id of ['t54']) {
     MODEL_SOURCE[id] = glb(`recovered/${id}.glb`);
   }
 }
@@ -202,4 +205,4 @@ if (ALLOW_LOCAL_RECOVERED_MODELS) {
 export const USERDROP7_TANK_IDS = SPECS.map((s) => s.id);
 // every wave-8 row is sourced-from-online (era bucketing intent, cf.
 // USERDROP5_SOURCED_IDS) — t84 graduated out (dual gate, §10)
-export const USERDROP7_SOURCED_IDS = USERDROP7_TANK_IDS.filter((id) => id !== 't84');
+export const USERDROP7_SOURCED_IDS = USERDROP7_TANK_IDS.filter((id) => !['t84', 't80', 't80b', 't80bv', 'm60a2', 'vickers_mk1'].includes(id));

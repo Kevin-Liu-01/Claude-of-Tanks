@@ -41,6 +41,38 @@ if (!spec) throw new Error(`Unknown tank id: ${id}`);
 // registered by the public build; the generated procedural code stays an
 // original primitive construction rather than embedding source mesh data.
 const LOCAL_REFERENCE_OVERRIDES = {
+  // ---- FLEET FLIP (owner directive 2026-08-04, commit-batch wave 1):
+  // registrations retired fleet-wide so every MBT renders procedural +
+  // CUSTOM; these mirrors keep gate/critic/evaluator coverage. Generated
+  // from the RUNTIME dump (helper-expanded configs — the gunNode lesson).
+  centurion3: { source:'glb', glb:{ path:'/models/tanks/community/recovered/centurion3.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
+  centurion5: { source:'glb', glb:{ path:'/models/tanks/community/recovered/centurion5.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
+  challenger1: { source:'glb', glb:{ path:'/models/tanks/community/recovered/challenger1.glb', paintUntextured:true, turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, turretFollowers:'vehicle#(?:ammo_|antenna_|bone_mg_aa_|ex_decor_(?:0[1-3]|0[5-9]|1[0-2])_|hatch_0[2-5]_)', gunFollowers:'vehicle#(?:gun_mask_|bone_mg_gun_twin_)' } },
+  leclerc: { source:'glb', glb:{ path:'/models/tanks/char_leclerc_andertan.glb', turretNode:'^turret$', gunNode:'^Cylinder086$', autoPivot:true, yawOffset:-1.5707963267948966 } },
+  leo2_revolution: { source:'glb', glb:{ path:'/models/tanks/community/recovered/leo2_revolution.glb', paintUntextured:true, turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, yawOffset:3.141592653589793 } },
+  m1a1_aim: { source:'glb', glb:{ path:'/models/tanks/community/recovered/m1a1_aim.glb', turretNode:'^Turret$', autoPivot:false, paintUntextured:true } },
+  m26_pershing: { source:'glb', glb:{ path:'/models/tanks/community/recovered/m26_pershing.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
+  m45_patton: { source:'glb', glb:{ path:'/models/tanks/community/recovered/m45_patton.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
+  m46_patton: { source:'glb', glb:{ path:'/models/tanks/community/recovered/m46_patton.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
+  m60a2: { source:'glb', glb:{ path:'/models/tanks/community/m60a2_ahab.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
+  merkava2b: { source:'glb', glb:{ path:'/models/tanks/community/recovered/merkava2b.glb', paintUntextured:true, turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, turretFollowers:'vehicle#(?:antenna_|bone_|ex_armor_(?!body|[lr]_)|ex_decor_(?:0[1-9]|13)|ex_decor_[lr]_02|hatch_(?:0[4-9]|1[0-3]))', gunFollowers:'vehicle#gun_barrel_' } },
+  merkava2d: { source:'glb', glb:{ path:'/models/tanks/community/recovered/merkava2d.glb', paintUntextured:true, turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, turretFollowers:'vehicle#(?:antenna_|bone_|ex_armor_(?!body|[lr]_)|ex_decor_(?:0[1-9]|13)|ex_decor_[lr]_02|hatch_(?:0[4-9]|1[0-3]))', gunFollowers:'vehicle#gun_barrel_' } },
+  merkava4b: { source:'glb', glb:{ path:'/models/tanks/community/recovered/merkava4b.glb', paintUntextured:true, turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, turretFollowers:'vehicle#(?:antenna_|bone_|ex_armor_(?!body|[lr]_)|ex_decor_(?:0[1-9]|13)|ex_decor_[lr]_02|hatch_(?:0[4-9]|1[0-3]))', gunFollowers:'vehicle#gun_barrel_' } },
+  t62mv1: { source:'glb', glb:{ path:'/models/tanks/community/recovered/t62_bergman.glb', paintUntextured:true, turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:false } },
+  t64bv1: { source:'glb', glb:{ path:'/models/tanks/community/recovered/t64bv1.glb', paintUntextured:true, turretNode:'^Turret$', autoPivot:true, yawOffset:-1.5707963267948966 } },
+  t72b_1987: { source:'glb', glb:{ path:'/models/tanks/community/recovered/t72b_1987.glb', paintUntextured:true, turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, yawOffset:-1.5707963267948966 } },
+  t72bu: { source:'glb', glb:{ path:'/models/tanks/community/recovered/t72bu.glb', paintUntextured:true, turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, yawOffset:-1.5707963267948966 } },
+  t80: { source:'glb', glb:{ path:'/models/tanks/community/recovered/t80.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
+  t80b: { source:'glb', glb:{ path:'/models/tanks/community/recovered/t80b.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
+  t80bv: { source:'glb', glb:{ path:'/models/tanks/community/recovered/t80bv.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
+  t80u: { source:'glb', glb:{ path:'/models/tanks/t80u_javanilga.glb', turretNode:'^Object09_24$', gunNode:'^Object1101_22$', autoPivot:true, paintUntextured:true, stripBakedTextures:true } },
+  t90a: { source:'glb', glb:{ path:'/models/tanks/community/variants/t90a_xarchenko_variant.glb', turretNode:'TurretPivot', gunNode:'GunPivot', autoPivot:true, paintUntextured:true } },
+  t90a_vladimir: { source:'glb', glb:{ path:'/models/tanks/community/recovered/t90a_vladimir.glb', paintUntextured:true, turretNode:'^desirefx[._]?me_001$', autoPivot:true } },
+  t90m: { source:'glb', glb:{ path:'/models/tanks/t90m_minehffd.glb', turretNode:'^Turret$', gunNode:'^Main_barrel$', autoPivot:true, scaleToOverall:true, yawOffset:1.5707963267948966, heroTex:true } },
+  t90sm: { source:'glb', glb:{ path:'/models/tanks/community/recovered/t90sm.glb', paintUntextured:true, turretNode:'^misc_a$', gunNode:'^misc_b$', autoPivot:true, yawOffset:3.141592653589793 } },
+  type90: { source:'glb', glb:{ path:'/models/tanks/community/recovered/type90.glb', paintUntextured:true, turretNode:'^Turret$', autoPivot:true, yawOffset:-1.5707963267948966 } },
+  vickers_mk1: { source:'glb', glb:{ path:'/models/tanks/community/vickers_mk1_jack.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
+  m1a2_sepv2: { source:'glb', glb:{ path:'/models/tanks/community/recovered/m1a2_sepv2.glb', paintUntextured:true, turretNode:'^Turret$', gunNode:'^misc_b$', autoPivot:true, yawOffset:3.141592653589793, turretFollowers:'^(?:ammo_(?:5|box)|armor_turret|ex_armoc|ex_armor(?!_body)|ex_era_turret|ex_decor_04|glsaa_[6-8]|hatch_0[34]|mg_aamount_h|misc_a|optic_commander)$' } },
   ariete: {
     source:'glb',
     glb:{

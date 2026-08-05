@@ -327,32 +327,32 @@ if (SHIP_USERDROP2_NEW) {
 // 'procedural' rows the spec modules registered at import time. Node names
 // verified against each GLB's JSON chunk (scratchpad glbtree.mjs; GLTFLoader
 // sanitizes names: spaces -> underscores, dots stripped).
-MODEL_SOURCE.t90m = {
-  source: 'glb',
-  // 'Turret' yaw shell parents all turret meshes; 'Main barrel' pitch node.
-  // Raw asset is ~16.2 units long with the barrel forward and no clean
-  // hull-only box (thermal sleeve meshes sit outside the gun node) ->
-  // scaleToOverall. Nose = raw -X -> yawOffset +90°.
-  glb: {
-    path: '/models/tanks/t90m_minehffd.glb',
-    turretNode: '^Turret$', gunNode: '^Main_barrel$', autoPivot: true,
-    scaleToOverall: true,
-    yawOffset: Math.PI / 2,
-    // PERF (performance_budget r3): tank_closeup_t90m contract hero —
-    // keeps 2048 color maps at import (see specs.js m1a2 heroTex note).
-    heroTex: true,
-  },
-};
-MODEL_SOURCE.leclerc = {
-  source: 'glb',
-  // authored 'turret' node (yaw) with child gun mesh 'Cylinder.086'
-  // (elevation). Nose = raw +X -> yawOffset -90°.
-  glb: {
-    path: '/models/tanks/char_leclerc_andertan.glb',
-    turretNode: '^turret$', gunNode: '^Cylinder086$', autoPivot: true,
-    yawOffset: -Math.PI / 2,
-  },
-};
+// FLIP-RETIRED: MODEL_SOURCE.t90m = {
+// FLIP-RETIRED:   source: 'glb',
+// FLIP-RETIRED:   // 'Turret' yaw shell parents all turret meshes; 'Main barrel' pitch node.
+// FLIP-RETIRED:   // Raw asset is ~16.2 units long with the barrel forward and no clean
+// FLIP-RETIRED:   // hull-only box (thermal sleeve meshes sit outside the gun node) ->
+// FLIP-RETIRED:   // scaleToOverall. Nose = raw -X -> yawOffset +90°.
+// FLIP-RETIRED:   glb: {
+// FLIP-RETIRED:     path: '/models/tanks/t90m_minehffd.glb',
+// FLIP-RETIRED:     turretNode: '^Turret$', gunNode: '^Main_barrel$', autoPivot: true,
+// FLIP-RETIRED:     scaleToOverall: true,
+// FLIP-RETIRED:     yawOffset: Math.PI / 2,
+// FLIP-RETIRED:     // PERF (performance_budget r3): tank_closeup_t90m contract hero —
+// FLIP-RETIRED:     // keeps 2048 color maps at import (see specs.js m1a2 heroTex note).
+// FLIP-RETIRED:     heroTex: true,
+// FLIP-RETIRED:   },
+// FLIP-RETIRED: };
+// FLIP-RETIRED: MODEL_SOURCE.leclerc = {
+// FLIP-RETIRED:   source: 'glb',
+// FLIP-RETIRED:   // authored 'turret' node (yaw) with child gun mesh 'Cylinder.086'
+// FLIP-RETIRED:   // (elevation). Nose = raw +X -> yawOffset -90°.
+// FLIP-RETIRED:   glb: {
+// FLIP-RETIRED:     path: '/models/tanks/char_leclerc_andertan.glb',
+// FLIP-RETIRED:     turretNode: '^turret$', gunNode: '^Cylinder086$', autoPivot: true,
+// FLIP-RETIRED:     yawOffset: -Math.PI / 2,
+// FLIP-RETIRED:   },
+// FLIP-RETIRED: };
 if (SHIP_USERDROP2_NEW) {
   // r3 QUARANTINE DELIST: leo2a4/bmp2 ride their procedural builders until a
   // clean-license substitution lands (see the spec-credit gate above).
