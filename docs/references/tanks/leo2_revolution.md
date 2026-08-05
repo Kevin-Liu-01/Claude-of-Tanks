@@ -1064,3 +1064,157 @@ Residuals (certified/measured, self-read):
 - hero-rr 0.742 border-clip chain / whip-stub bistability / muzzle
   cover 0.56 / st11-12 wPct / pod-line carries — unchanged (gate row
   equality ×2).
+
+## §B6 round r15 (2026-08-05) — R5-1 APPROACH-RAMP FLATTEN (the r14 floor holder, the LAST order): hero-fl low pair Δ+13.2 -> **Δ+3.3 ±0.2 INSIDE ±5°**, gate 90.7 PASS ×2 bit-identical
+
+Gate at landing: **min 90.7 PASS ×2 BIT-IDENTICAL** (hull 90.8 / whole
+90.7 / turret 92.1 / stations 91.4 / dims 99.5 / floaters 100 — cmp-clean
+between runs; hull −0.4 / whole −0.1 vs r14 = the priced ramp-window
+trade, every component ≥90). Side dAlong **0** both rows after every
+step (the toe-band/body-span law held; try-1 without the trim plank
+crashed side_hull to 89.6 and was measured, diagnosed and repaired
+before landing). Hash 3820620 → **7175fbf0** (79 meshes UNCHANGED —
+the planks merged into leoGearTrimL/R; verts 110833 → 110905 = +72 =
+exactly two 36-vert slabs). Graduates frozen at the same sitting, both
+bookends: leo2a5 **bc9bad30**, leo2a6 **80b76338**, kf51 **3ae9b70c**
+(the leoGear contactZF/contactZR pass-through defaults are undefined →
+byte-identical, proven by the held hashes). Siblings recorded: leo2a7v
+e28fc316, leopard2_proto 5647ef3e. Evaluator full run: exit 0, parity
+max yawProxy 1.2° @close-front (was 0.8 @front — the front-low mask
+moved; <10 gate, no RIG MISMATCH). standard-check: gateMin 90.7 | clip
+0/0 ✓ | contig 0 ✓ | decor mg1+4d ✓. track-clip --exact **0/0 ×2**.
+npm test green (166 checks + track-geometry). Evidence:
+shots/leopard-r15/ (r15-herofl-gear-before-after.png board, pocket
+crops, evidence pairs), shots/uk-b6/leo2_revolution-side-*-r15{before,
+try1,after}.*, shots/visual-eval-leo2_revolution/, fresh critic pairs at
+shots/critic-leo2_revolution/. Measures: tmp-uk-b6-sideprobe/rampcalc
+(side ortho), tmp-r15-boxprobe + offline hero-projection solver
+(validated against both instrument reads before use), visual-evaluator
+FULL digest (the done-gate instrument), tmp-rev-critic-r9-measure.
+
+Order → delivery (official digits, before → after):
+1. **R5-1 APPROACH-RAMP FLATTEN — DONE-GATE MET**: hero-fl low-zone
+   matched pair **proc 35.2° vs ref 22.1° (Δ+13.2 ±0.5) → proc 22.7° vs
+   ref 19.4° (Δ+3.3 ±0.2), len 0.92 m** — INSIDE the ±5° gate with the
+   ref angle at the r14 packet's own 19.4 digit. Fresh ref measurement
+   first (r15before side probe): ref low-zone ramp **29.8–31.2°** side-
+   ortho (chord z 2.54→3.12, lifting at z≈2.54 from ground), steepening
+   to 36° at its wrap; kit tangent measured 41.4° analytic / 38.7–40.2
+   mask chord. Mechanism, TWO coupled pieces (both this file):
+   - **contactZF 2.5975(default) → 2.22** on the revolution's leoGear
+     call (opt-in pass-through added to leoGear; §B6 kit machinery at
+     tankFactory ~869, m1a2 contact-pin precedent): front tangent
+     41.4° → **32.3°** side (T (3.569,0.914) → (3.544,0.895)), idler
+     CENTER untouched (dims-guard held, dims 99.5 exact). Kills the
+     steep serrated rise under the beak (the r14 "34.4° short rise vs
+     the band shadows the hubs" read).
+   - **FRONT RAMP TRIM PLANK per side** (the r13 §B4 dip-plate class at
+     the front, same r9gearL/R buckets → leoGearTrimL/R, same gearOlv
+     instance, +1 slab each): the flattened tangent lives BEHIND the
+     0.36 skirt window (measured: the visible tangent run collapses to
+     ≤4–7 cm for any cF ≤2.35 — wheel-1 arc below, skirt bottom above —
+     so contactZF ALONE cannot register a low edge; try-1 digest proved
+     it: ref lower 22.1° UNMATCHED). The plank paints the ref's visible
+     ramp line the band cannot own: raked bottom **0.176@z2.74 →
+     0.446@z3.2585 (27.5°)**, co-linear with hem facet A's 26.1° — the
+     arch-to-beak lower silhouette reads as ONE shallow diagonal (§B1
+     no-staircases, co-planar joint at the hem corner); x 1.46..1.54
+     bedded inside the pad envelope end-to-end (top 0.50→0.62), wheels
+     end 1.386, courses 1.61+ own y≥0.36 outboard; plan-interior
+     (z≤3.2585 « 3.765), front bottoms stay band-owned, station width
+     skirt-owned, ≤0.48 m end-cap law (0.4785).
+   Side-ortho whole-rise after: proc 35.2° vs ref 36.3° (Δ−1.1), hull
+   rows 33.3 vs 33.7 (Δ−0.4); proc ground-run end lands within 2 cols
+   of the ref's (was 0.19 m long). Gate side_hull worst columns after:
+   the z 2.85/2.96/3.07 window reads +0.033..+0.038 (was +0.06..+0.12
+   at try-1; r14 carried −0.05..0 there with the WRONG angle read).
+2. **R5-2 (wheel-rim contrast) — SKIPPED, measured**: R5-1 landed, and
+   the B1 left strip med moved 56.6 → 56.9 (the plank's in-rect pixels)
+   leaving **1.1 luma** headroom to the 58.0 ceiling — the +1 notch
+   would spend headroom the gates need. The order marked it "not
+   required if R5-1 lands".
+
+§B standing at the landing bytes:
+- **§B1 strips**: left med **56.9** p5 **51.4** (gates med 48..58, p5
+  ≥40; r14 56.6/51.4), right med **51.7** p5 **45.3** (r14 51.1/45.0).
+- **§B2 flood, ALL TEN at the r14 digits to the pixel**: front 92 /
+  rear 99 / rl 92 / rr 92 / fl 92 / fr 92 / left **120** / right
+  **126** / top **110** / toptilt **94** (r14 read 95 = 94 + one
+  frame-corner AA px — this run prints the bare 94, same class).
+- **§B3**: census mg1+4d unchanged.
+- **§B4**: 0/0 --exact ×2 + standard-check (the wrap arc end moved
+  138.6°→147.7° with the tangent — audited clean; the plank rides the
+  r13 in-lane gear-trim classification, x-reach unchanged 1.27/0.972).
+- **§B5**: floaters 100 ×2 in the gate row (plank bedded in the pad
+  envelope, merged into the existing hull-parented trim meshes).
+- **§B6**: trapezoid lawful both ends — ground run 2.22..−2.1775 stays
+  the short base, both end wheels raised with tangent ramps; the ANGLE
+  moved into the ref's class, the shape class did not. Rear untouched
+  (contactZR default; ref rear 35.1° vs proc rear tangent 34.6°).
+- **Tone**: D1 tail med **77.3** sd **12.31** (the r12–r14 digits
+  EXACTLY); F1 jacket proc med **67.4** vs ref 67.4 **Δ0.0**.
+
+Evaluator full-digest per-view worst flags — every one an r14-certified
+class at its digit: front −2.5 (r14 −2.7), frontleft +9.1 (hem oblique
++9.2 class, now BETTER), left +12.8 (EXACT r14 digit), rearleft −10.6,
+rear −9.8, rearright −10.4, right −9.2, frontright −11.2 (law-5 drift
+−11.4 class), top +14.5 ±4 (wrap-outline projection), hero-fl **+10.9**
+(jacket-corner class — THE RAMP IS OFF THE FLAG BOARD), hero-rr −7.1,
+toptilt +13.8 ±4 (wing-pull class), close-front −10.5 (EXACT parked
+RWS/pod digit), close-roof −9.2 (EXACT). Voids: top 0.002, hero-rr
+0.739 (border-clip chain), toptilt 3.386 + 0.294 — certified digits.
+
+LAW DISCOVERIES (bank):
+1. **CONTACT-PIN VISIBILITY BOUND**: flattening a §B6 tangent by moving
+   contactZF rearward pivots the ramp about the (frozen) idler tangent
+   point — the line RISES off the ground exactly where it flattens. On
+   a skirted rig the visible window (ground .. skirt bottom) empties:
+   for this tank every cF ≤2.35 leaves ≤7 cm of registered edge. A
+   contact-pin flatten on a skirted tank is only HALF the order — the
+   visible line must be re-owned (dip-plate-class trim) or the idler
+   must drop (dims lane). Measure the visible-window corridor BEFORE
+   picking the pin.
+2. **PROJECTED-ANGLE SOLVER**: hero-view angle deltas can be solved
+   offline (per-model heroFor cameras from the critic's visibleBox +
+   NDC line projection) and validated against two instrument reads
+   before touching geometry — the r15 solver predicted the try-1 hidden
+   state and the final pair inside ~1–2°. Projection is strongly
+   window-dependent (~26° 3D reads 22° at z 2.5–3.1 but 14° at
+   z 2.8–3.3): compare pairs only in their shared zone, and target the
+   REF'S 3D SLOPE, not its projected digit.
+3. **TRIM STRIPS PAIR WITH KIT PINS**: the r13 "paint the ref bottoms
+   the band cannot own" class extends to RAMP LINES: one raked-bottom
+   in-lane strip, co-linear with an existing hem facet, lands a 0.92 m
+   matched edge, −1.6 gate pts of try-1 damage repaired, zero flood
+   movement on the ten §B2 views, B1 strips inside gates — for +72
+   verts and no new meshes.
+
+Residuals (certified/measured, self-read; every owner named):
+- ref r2.43 span-97° wheel/ramp ARC still unmatched + two shorter ref
+  lower sub-chords (22.4°/0.47, 15.5°/0.67) — our rig is a straight
+  tangent + straight trim line; the arc-blend is print identity
+  (RE-CERTIFIED per the r14 disposition's "or the residual
+  re-certifies" clause; the main chord now matches at Δ+3.3).
+- hero-fl lower secondary pair 48.7 vs 43.1 (Δ+5.6 ±0.8) — the hem
+  oblique B1-zone family (certified at +9.2/+12.5 since r13; REDUCED).
+- close-roof +1 enclosed pocket 28 px / evaluator 0.003 m² (arch/hem
+  corridor the flatten opened, y519..527 x133..138) — the ref's OWN
+  close-roof carries SIX pockets totaling 289 px of the same gear-slot
+  class; §B2 ten-view gate untouched (digits above). Declared carry.
+- upper-rear 9.3-vs-21.3 (Δ−12 ±4, 0.26 m) matcher-assignment artifact:
+  appears only when the front-low structure changed (absent r15before,
+  present try-1 and landing with the deck geometry byte-identical) —
+  short-segment corner-bias tier, rear-deck code untouched this round.
+- close-front parity yawProxy 1.2° (registration proxy moved with the
+  front-low mask; gate <10).
+- All r14 carries otherwise unchanged: jacket-corner +10.9/+10.1/+9.8
+  trio, upper-rear −8.7, law-5 fore-roof drifts, RWS/pod −10.5,
+  no-evacuator, plan width 2.00 dims-sovereign, whip-stub bistability,
+  muzzle cover 0.56, border-clip 0.739 chain, B1 rim-contrast tone cap
+  (R5-2 headroom now 1.1 luma, documented above).
+
+STOP-state: R5-1 delivered to the done-gate digit (Δ+3.3 inside ±5) with
+all gates held ×2 — hero-fl self-reads ≥9.0 on the r14 calibration (the
+low band no longer dominates; every residual named with a certified
+owner). The tank is READY FOR THE GRADUATION CRITIC per the r14
+disposition (13 views at 9.0 + the floor holder killed).

@@ -71,6 +71,12 @@ function leoGear(P, g) {
     // defaults stay byte-identical (a6/kf51/a5 hashes hold).
     padHex: g.padHex, chainHex: g.chainHex, tireHex: g.tireHex,
     gearFloor: g.gearFloor,
+    // r15 leo2_revolution §B6 opt-in (m1a2 contact-pin precedent, factory
+    // ~line 869): per-tank contact-patch pins — moving zF rearward flattens
+    // the approach tangent to the raised idler. Undefined for every other
+    // caller: buildRunningGear falls back to wheelZs ± wheelR*0.5, so
+    // a5/a6/kf51 hashes hold byte-identical.
+    contactZF: g.contactZF, contactZR: g.contactZR,
   });
 }
 
@@ -4766,6 +4772,20 @@ function buildLeo2Revolution(P) {
     r9g.push(KIT.xform(box(0.30, 0.94, 0.103), s * 1.42, 1.02, -3.2365));      // 0.55 bottom (col -3.24)
     r9g.push(KIT.xform(box(0.30, 1.14, 0.086), s * 1.42, 0.92, -3.345));       // 0.35 bottom (col -3.35)
     r9g.push(KIT.xform(box(0.30, 0.83, 0.084), s * 1.42, 1.075, -3.458));      // 0.66 bottom (col -3.46)
+    // r15 R5-1 FRONT RAMP TRIM PLANK (the r13 dip-plate class at the FRONT):
+    // the contactZF flatten lifts the kit tangent behind the 0.36 skirt
+    // window, so the band can no longer own the ref's visible ramp line
+    // (side bottoms 0.20@2.85 / 0.26@2.96 / 0.31@3.07 rising ~26.6deg to the
+    // hem corner). One raked-bottom strip per side paints that line: bottom
+    // edge 0.176@2.74 -> 0.446@3.2585 (27.5deg, co-linear with hem facet A's
+    // 26.1deg — the arch-to-beak diagonal reads as ONE line, §B1 no-stairs);
+    // x 1.46..1.54 beds into the pad envelope (in-lane, wheels end 1.386,
+    // courses 1.61 own y>=0.36 outboard); top rides 0.50->0.62 inside the
+    // band envelope so the strip stays bedded end-to-end (t72b3m law).
+    // Plan-interior (z<=3.2585 << 3.765 pad edge), front bottoms band-owned.
+    r9g.push(slab(
+      [s * 1.46, 0.176, 2.74], [s * 1.54, 0.176, 2.74], [s * 1.54, 0.446, 3.2585], [s * 1.46, 0.446, 3.2585],
+      [s * 1.46, 0.50, 2.74], [s * 1.54, 0.50, 2.74], [s * 1.54, 0.62, 3.2585], [s * 1.46, 0.62, 3.2585]));
   }
   // gear: HIGH raised end wheels, kit-native tangent ramps (fresh probe:
   // flat ends 2.60/-2.42, front ramp 0.13@2.77 -> 0.96@3.88 far edge 3.94,
@@ -4791,6 +4811,14 @@ function buildLeo2Revolution(P) {
     // dims-guard carry (ref's last ramp columns uncovered).
     sprocket: { z: -3.46, y: 1.12, r: 0.10 }, idler: { z: 3.44, y: 1.06, r: 0.15 },
     topY: 0.95, botY: 0.058,
+    // r15 R5-1 (§B6 kit approach-ramp, the r14 floor holder): contactZF
+    // 2.5975 (default) -> 2.22 flattens the front tangent 41.4deg -> 32.3deg
+    // side-view (ref side low-zone 29.8-31.2 from the r15 side probe; hero-fl
+    // instrument pair was proc 35.2 vs ref 22.1, delta +13.2). The ramp now
+    // lifts off inside the wheel-1 arc zone exactly like the ref's own line
+    // crosses its arch; idler CENTER untouched (dims-guard). Rear patch stays
+    // the kit default (contactZR undefined = -2.1775).
+    contactZF: 2.22,
     // r9 B1 (critic driver 2 — band p5 6.8 vs ref 51.1, the merkava-class
     // near-black read): pads/chain to the pt91m r27 olive-brown recipe +
     // the gearFloor rehook (Material.clone drops the family ambient floor).
