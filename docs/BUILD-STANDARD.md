@@ -46,6 +46,17 @@ never excuses missing it.
    chord-limited-facet machinery (m47 r8 smoothBustle lineage) + slope
    caps co-planar onto the facet (FLAT-CAP-BEHIND-A-RAKE law). Critics:
    stair-step reads on any slope are an order, on every tank.
+   SLOPE MOTIVATES THE MASS (owner directive 2026-08-05: "when we have a
+   slope, keep in mind its not just a plate on stuff that makes a slope,
+   it motivates the whole shaping"): a slope is never a plate laid over a
+   boxy core — the raked surface drives the WHOLE volume's shaping. Side
+   profiles follow the glacis rake, flanks and roofs meet raked faces on
+   the slope's own lines, intersecting panels continue its geometry: real
+   armor is a shaped mass, not a dressed box. Failing reads: a box corner
+   or un-raked flank poking past a raked front; a rake that dead-ends
+   into a vertical side wall the real vehicle blends; appliqué-slope over
+   a rectangular silhouette. When authoring a slope, re-derive every
+   surface it touches.
 2. NO EMPTY AREAS / CONTIGUITY: no hollow pockets, no see-through voids, no
    gaps between masses, at ALL angles including top-down. Turrets are
    contiguous volumes; every standoff mass reads attached (mounts,
