@@ -271,3 +271,117 @@ lumpy band), st11/12 topPct 3.4/0.9 residual rib phase. The honest
 ceiling of this arc without another instrument-grade find is ~82-85;
 >=90 needs the front saddle rebuilt and the stations wPct spread
 (1.3-1.7 class) retired.
+
+## AFV r3 — ceiling round: saddle + st3 instrument + registration re-seat (2026-08-04)
+
+### Trajectory (gate x2 identical at close) — CEILING MET
+78.7 -> **82.8** | hull 80.6 -> 85.2 / whole 78.7 -> 82.8 (front_whole
+binds) / turret 79.5 -> 84.5 / stations 87.6 -> 88.4 / dims 100 held at
+every landing point / floaters 100. Row detail at close: side_hull 85.2,
+side_whole 85.1, plan 97.2, front_hull 85.7, front_whole 82.8,
+turret_side 85.8, turret_plan 84.5. Geometry hash dc28248 -> a16de748
+(54 meshes / 67124 verts). Oracle bytes sha1-8 396cb021 untouched
+(re-verified). npm test 265 ok. Evaluator digests
+shots/visual-eval-bmp2/ (yawProxy <=1.1 deg, no RIG MISMATCH).
+standard-check: clip 0/0, holes 0, census mg1+6d; turret-parent 0/0/0.
+
+### ORDER 1 — the st3 instrument probe: REAL, and the divergence solved
+The r2 probe-vs-gate divergence is an INSTRUMENT BUG, now precisely
+characterized (bank law): the gate's geo path renders masks with its own
+gMask at GSIZE=1024, but `window.__FIDELITY_DEBUG.renderMask` renders at
+SIZE=384 — the r2 EXTERNAL replicas (tmp-bmp2-stgate/stprobe.mjs)
+indexed 384-px masks with hardcoded GSIZE=1024 and read garbage
+("matching" rW==pW was fake). ONLY in-page instrumentation of the geo
+path itself is ground truth: tools/tmp-bmp2-fidelity.html extended with
+[TMPFLANK]/[TMPCOL] per-column lit-segment dumps (runner
+tools/tmp-bmp2-stpage.mjs, --query passthrough, works for any id).
+FINDING (real): ref st3 slab (z -1.94..-1.45) carries a 3.086-wide band
+at x ±1.52..1.54, y 0.91..1.05 = its rear-fender lower skirt continuing
+forward; my proc had only the 2.76 track band there AND the one-piece
+rear outer rail slice-vanishes (§C end-cap law: long thin boxes paint
+only their z-caps — it painted NO mid station). FIX: rail segmented
+into 4 chunks <=0.48 m with caps inside st0/1/2/3 (z -3.10..-1.455),
+rear dust skirt extended to -1.70 as the floater bridge. st3 wPct
+10.55 -> 0.4; st1 1.71 -> 0.2 (its cap lands in st1). NOTE the trimmed
+station mean had already dropped st3, so the stations gain is +1.0 (to
+88.4) — the fix's real value is releasing the trim slot for the next
+wart.
+
+### ORDER 2 — the front roof-stack saddle: DELIVERED
+front_hull 80.6 -> 85.7 / front_whole 79.3 -> 82.8. The saddle's east
+face was the r2 pintle-MG's forward-right barrel (tip at x -0.20,
+z 0.19..0.31, y 2.44-2.46: +0.09 on the front x -0.226 col AND
++0.06..0.25 on three side cols) — MG re-aimed AFT (stowed) and re-seated
+z +0.06 so the apex rides the mapped spike band; cupola tiers dropped a
+further 0.075 (tops 2.105/2.1425/2.1665 vs ref 2.105/2.144/2.171);
+day-sight housing top 2.4575 -> 2.4425 with the east edge widened to
+x -0.27 (the ref's 2.44 band runs to -0.26); gunner hatch re-seated
+x -0.42 (its 2.186 rim carries the ref's 2.17 shelf to -0.65). Also
+retired: the st10 width bump and the mid fender stub DROPPED into the
+0.85..1.06 rail band (stations measure width at any y — the front rows
+stop paying), fender-root chamfers x 1.29..1.365 confined to the st6
+z-band, deck bands narrowed to |x|<=0.19 (ref lids are center-only),
+right-only tall intake mushroom at the ref's own x 1.10..1.14 column.
+
+### The r3 instrument-grade find (bank): the +0.114 law owns the TURRET
+The r2 registration law was applied to hull mids but the turret
+furniture was authored at RAW ref lines ("aligned with the ref's own
+spike columns" was same-column thinking): under fixedReg the gate
+samples proc at ref_z+0.114, so basket/riser/crest/Konkurs/muzzle all
+read ~0.1 aft. Re-seats: MUZZLE 3.275 -> 3.36 (the ref gun band ends
+~3.26; its mapped pair sampled past my tip — the single biggest
+side_whole error released, and overallLengthM still reads off the 3.365
+lip); riser/crest +0.08; basket edges re-tuned to -0.445..0.671; the
+Konkurs stack got +0.015 ONLY — see the conflict law below.
+
+### BANK LAW — station-fraction vs side-registration conflict (the
+### central discovery of the round)
+Stations are PROC-FRACTIONAL slabs; side rows sample at ref_z+0.114.
+Elements that serve BOTH have a tiny legal window, not a free choice:
+- The Konkurs tube's rear cap must stay inside proc slab 5 (<= -0.483)
+  because the slab-5 top IS the 2.39 tube (pulling it out cost topPct
+  9.3) — the +0.08 side-ideal shift is capped at +0.015.
+- The dome rear rim is slab 4's 1.86-top painter (needs z <= -0.972)
+  AND must clear the side -1.02 cover column (needs >= -0.975): dome
+  z-scale 1.019 is the ONLY legal value (rim -0.974). The residual st4
+  topPct 3.8 and two +0.08 side cols at z 1.0-1.1 are the certified
+  price of serving both instruments.
+- Same §C boundary-law class: mask edges that land INSIDE a 96-col
+  trace column read AA-partial junk (the basket's 0.69 front edge read
+  bottom 1.27 in a half-lit column) — author edges >=8 mm clear of
+  column bounds (pitch 0.0757 for this hull).
+
+### Other fixes at the mapped lines
+Stern underside re-phased +0.114 (ledge flat 0.35/0.375 to -2.96, rise
+0.47 @ -3.01, cliff 0.50->0.97 over -3.01..-3.09, flap band 0.96 at
+-3.14..-3.19, door-band bottom 1.135, frame/rail/flap re-seated); IDLER
+-2.554 -> -2.44 (+0.114): the wrap now sits +0.02..+0.05 vs the mapped
+covered-run line — the r2 §B6 wrap-bulge residual is effectively
+retired (deepest approach-ramp delta ~0.04 on 1-2 cols); nose lip is
+now a sloped slab 1.42@3.13 -> 1.33@3.365 (the mapped knuckle falls
+1.44 -> 1.30; tip band 0.33 holds the dims body filter); mantlet boss
+front pulled to plan 1.04 + coax tip 1.07 (the ref plan front line at
+x<=0.25 is 0.97 — the r2 1.13 was misread); smoke splay 0.55 -> 0.30
+(ref bumps end x 0.49); dome x-scale kept 1.02 (shaving to 1.0 gained
+2 plan cols but cost 2 binder front cols — front_whole is the binder).
+
+### §B table at close
+§B2 holes 0; §B3 census mg1+6d; §B4 clip 0/0; §B5 0/0/0; §B6 trapezoid
+both ends raised (sprocket y 0.80 @ 2.256, idler y 0.60 @ -2.44),
+wrap-bulge residual ~0.04 on 1-2 approach cols (down from r2's 0.03-
+0.07 class plus the 5-col deep-wrap band the re-seat retired).
+
+### Worst remaining (honest) — the >=90 blockers, named
+front_whole 82.8 binds: the ±1.04 unidentified 1.74-y pair (+0.07 x2),
+dome-window cols (certified above), and a broad 0.03-0.05 tail. side
+rows 85.1/85.2: the tail dims-trade col (0.133, certified), 2 nose
+cover cols (structural: my dims-pinned nose vs the ref's thin nose
+under +0.114). turret_plan 84.5: x ±1.02 dome-rim-vs-faceted-print
+cols (0.17-0.18 — the print's dome is faceted; a smooth 30-seg lathe
+overhangs its chords at the diagonals; matching would need a faceted
+dome build). stations 88.4: st2/st11/st12 widths 1.3-1.7 (ref fender
+lumps my plank line undershoots by ~0.02-0.05 x-per-side). The r2
+"82-85 honest ceiling" is CONFIRMED MET at 82.8; breaking 85 needs
+the faceted-dome build + the ±1.04 find; >=90 additionally needs the
+tail/nose trade columns released, which dims sovereignty forbids
+against this print.

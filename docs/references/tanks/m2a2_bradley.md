@@ -262,3 +262,137 @@ next arc's first order). plan rows 70.8 (the x ±1.5-1.7 flank-edge
 lottery). turret plan residual: the x ~0.04 column (one col, e0.92,
 unidentified against the yawed capture — packet-flagged for the next
 probe).
+
+## AFV r3 — side-mid re-anchor + turret binder push (2026-08-04)
+
+### Trajectory (gate x2 identical at close)
+58.2 -> **79.9** | hull 65.5 -> 80.4 / whole 62.3 -> 79.9 (front_whole
+binds) / turret 58.2 -> 81.5 (**the binder order: +23.3**; asked +5) /
+stations 73.4 -> 83.3 / dims 100 held at every landing point (close:
+heightM 0.54% / hullLength 0.72% / overall 0.2% / width 0.08%) /
+floaters 100. Rows at close: side_hull 82.8, side_whole 81.9, plan
+85.3/85.3, front_hull 80.4, front_whole 79.9, turret_side 85.2,
+turret_plan 81.5. Geometry hash 27dd300e -> 44e1808c (63 meshes /
+75236 verts). Oracle bytes sha1-8 e699c868 untouched (re-verified).
+npm test 265 ok. Evaluator digests shots/visual-eval-m2a2_bradley/
+(yawProxy <=2.9 deg, no RIG MISMATCH).
+
+### THE ORDERED RE-ANCHOR — the -0.075 registration was BUILD-CAUSED
+dAlong -0.075 -> -0.036 (and plan dAlong 0.074 -> ~0). Two artifacts
+manufactured it, found by re-scoring the workorder traces under the
+gate's exact pairing (ref@Z <-> proc@Z+dAlong, sign verified against
+the gate JSON's own worst columns):
+1. The ramp door HANDLE knob (z -3.278..-3.323) plus the bumperette
+   bottoms made the -3.33 side column 0.371 y-thick — 17 mm OVER the
+   0.354 body filter — extending my body span a full column aft.
+   Handle moved to -3.24.
+2. My bow at the ref's z 3.27 body column read 0.19 thick where the
+   print's reads 0.39: a bow face plate (y 0.87..1.26, z 3.19..3.268)
+   makes the column body-thick at the ref's own band.
+With the registration snapped, the r2 "shifted" stern/glacis columns
+self-healed (they had been RIGHT same-column all along) — side_whole
++7.6 in one landing. BANK: registration is part of the BUILD — a
+9-cm door handle moved a whole family of rows.
+
+### BANK LAW — the workorder plan-mirror bug bit r1/r2 authoring
+The vertex-workorder's plan world-mapping mirrors per-run (the t72bu
+degenerate-pick class, still live). Three r1/r2 packet reads were
+Z-MIRRORED and are corrected here: (a) the "front-left fender bag box
+z 2.0..2.5" is at the ref's STERN (z -2.0..-2.5) — after the r3 bow/
+stern edits made the plan envelope near-symmetric, the v11 orientation
+guard hard-zeroed the plan row (mirror fit 76.8 vs straight 0) until
+the bag moved; (b) the "left rear bracket at -1.62, z -2.0..-2.5" was
+a PHANTOM (the bag's own outer face carries the thin 1.25..1.31 front
+bands) — deleted; (c) the bow "corners to 2.96" read: the ref's bow
+plan is 3.17 center / 3.26 mid / 3.28 CORNERS-FORWARD — nose rebuilt
+(lip curl top to 3.24, shelf corner verts to 3.28). Plan rows 70.8 ->
+85.3. RULE: author plan z-values only from the gate JSON frame or the
+in-page instrument; raw workorder plan values must be sign-checked
+against a known asymmetric feature every run.
+
+### Turret binder 58.2 -> 81.5
+- TOW pod front re-cut as the ref's plan diagonal (z 0.68@x -0.86 ->
+  0.21@-1.23, seen from above: the erect pod's tilted corner); tube
+  muzzles pulled flush.
+- gunPivot x -0.115 -> -0.075: the print's fused M242 plan band is
+  x -0.15..0.0 (gate-frame re-measure; the r2 "-0.11 center" lit an
+  extra column) — pod/rib/muzzle x re-compensated so world seats hold.
+- Left wing rebuilt: bags DESCENDING STAIR (2.53 top at x 1.08..1.18,
+  2.175 at 1.175..1.305, chained mast->step1->step2 with real overlaps
+  — turret furniture must never anchor on the gun-parented pod, which
+  elevates away); wing duffels re-cut to the ref bags rear (world z
+  -1.50..-0.95); the r2 wing rail DELETED — its ref plan island
+  (x 1.37, z 0.13..0.18) belongs to an element whose y-band would
+  sweep the hull roof under yaw (§B5) — one 0.59 column certified.
+- Rack w 1.42 (fill lumps poked the plan x 0.85 col 0.35 past the ref
+  rack line); tail duffel rear -1.815 (the ref's 2.43 band ends -1.855
+  under -0.036; §C column-boundary law on the edge).
+- Right tower: fill top 2.805 (ref 2.80), bin front to world 0.19,
+  fill front edge off the st7 slab; roof riser east edge 0.71 (ref
+  dips 2.47 at x 0.72); coax barrel stub deleted (internal on the
+  real M242 — only the port slit shows; its 1.0-1.3 plan reach printed
+  0.26-0.5 err on center columns).
+
+### front rows 62.3 -> 79.9 (instrumented, not guessed)
+The [TMPCOL] segment instrument (see the bmp2 r3 section; runner
+works per-id) identified every phantom: the 1.886-y band across ALL
+x ±1.35..1.57 front columns was the RAMP FACE's ±1.55 corners plus
+the RAMP HINGE LINE's ±1.45 ends (both now ±1.31, the ref's ramp
+width — bumperettes own the stern corners, asymmetric: left -3.14,
+right -3.26, raised to the ref's own 1.04..1.22 corner band); the
+glacis crest was ±1.60 at y 1.895 where the ref's roof-edge camber
+steps 1.90@1.0 -> 1.77@1.42-1.44 -> skirt band (crest w1 1.26; camber
+slabs re-cut asymmetric L1.45/R1.40); the LEFT skirt is VERTICAL on
+the print (y 0.635..1.555 at x 1.445..1.49, z -2.95..1.30 = its own
+-1.51 plan column band) — the r2 TILTED plate projected only its top
+strip and read +0.36 bottoms; left appliqué raised to 1.60; track
+band re-lined 0.98..1.32 (trackW 0.34 @ xc 1.15: the ref right tread
+does NOT ground x 0.92-0.96, and 1.32 clears the ±1.35 column starts)
+with the left-inner pad row widened to 0.82..0.98 (ref left band
+0.82..1.30 ~= the spec 0.53 m track — the r2 0.33 band was a misread
+of outer edges only); trim vane shortened off the z>2.9 shelf cols;
+wire cutter re-leaned flat (residual +0.06 x2 cols, §C allowance);
+driver plinth to the ref's 1.57 plateau; mudguards ±1.42 with skirt-
+lapped st12 cap tabs (below).
+
+### stations 73.4 -> 83.3 (slice-paint law applied)
+- st10 topPct 9.5 -> 1.2: the 28-seg M242 tube slice-vanishes; a
+  12-seg thermal-sleeve joint at world z 1.45..1.85 is the segment
+  that paints slab 10 (the ref slab-10 top IS its 2.31 gun bar). The
+  cradle re-cut to a 2.32-top gun bar (its old 2.35 cap owned st9).
+- The RIGHT appliqué's 3.19-wide end caps are its only slice paint:
+  split so caps land where ref width carries them (rear plate caps
+  st1/st2; mid band x<=1.5725 caps st3/st9; the r3c FRONT plate at
+  z 2.38..2.76 BROKE the side rows — its 1.79 top rode the glacis
+  line — replaced by low mudguard cap tabs at y 1.05 in st12).
+- Mast mid-step cap pulled off the st4/st5 boundary; tower fill off
+  st7; right hanger bracket cap out of st10 (zc 1.9 -> 2.1).
+- Residual: st10 wPct 3.5, st13 2.1 (the skirt's 3.29-wide front cap
+  — unplaceable without a wider station), st5/7/8 tops ~2 (mast/riser
+  cap trades documented in-code).
+
+### §B table at close
+§B2 holes 0; §B3 census mg1+9d; §B4 clip 4 front / 49 rear —
+kv2-band pass (<=60) but NOT the r2 0/0: the idler raise 0.68 -> 0.74
+(the ref's rear covered-line 0.43@-2.89, worth ~5 side columns) put
+the wrap top at 1.05 under the stern furniture; the 49-voxel residual
+vs the corner caps/guards is the documented §B6-vs-§B4 trade of this
+print's high rear ramps. §B5 turret-parent 0/0/0 (the r1 tarp-roll
+abutting flag CLEARED with the rack resize). §B6 trapezoid both ends
+raised (front sprocket 0.56, rear idler 0.74), contact pinned
+2.14/-2.16 at the ref's own ramp starts.
+
+### Worst remaining rows (honest) — next arc's orders
+front rows 79.9/80.4 bind: x 0.94 col (ref right-inner tread edge
+reads 0.46-bottom vs my 0.98 band edge — half-col AA class), the
+±1.35 bottoms (~0.42-y element, likely wheel-dish/wrap AA — one
+instrument run will name it), x 1.57 (+0.19). side_whole 81.9: the
+-2.4-at col (z +2.42: gun-tip class under the -0.036 residual
+registration — the bow plate's 8 mm AA margins bound it; making the
+3.27 column fatter re-zeros it but pays plan center cols). plan 85.3:
+the x -1.51 col (1.10: the ref's odd [-2.94..+1.29] flank band vs my
+skirt span — partially servable by z-trimming the skirt to match).
+turret_plan 81.5: x 1.37 ref island (0.59, §B5-blocked, certified),
+x 0.85 (0.19). stations 83.3 (see residuals above). NOTE hullLengthM
+margin is now 0.72% of the 1% grace — stern/bow edits must re-verify
+dims every landing.
