@@ -1599,6 +1599,77 @@ function buildPershing(P, cfg) {
       P.add('hullDetail', box(lhw * 2, 0.022, 0.013), 0, ly, RL.z);
     }
   }
+  if (cfg.deckSlats) {
+    // r10 R5 (m46, shaded-parity r7 R5 escalation — orchestrator ruling:
+    // usKit stays FROZEN with the m60 graduates, the slat rhythm lands
+    // IN-PROFILE): pale slat CROWNS at the reference's measured crest pitch
+    // over the m46's own deck-grille bays. Measured on the official pairs
+    // (view-top, ITU-601): ref crest rows at z -2.055/-1.86/-1.66/-1.465
+    // (pitch 0.199 m), crest dashes 84-96L against 54-64L bay fields, dash
+    // runs broken at the ref's own spine gap (x 0.715..0.79); the proc bays
+    // read FLAT 50-57 with the fleet camo's sub-50 blotches unbroken
+    // (tracker [250..390]x[180..480] sub-50 proc 5577 vs ref 3190 — the
+    // toptilt/top floor holder since r7). Grammar per bay side:
+    //  (a) flush detail-tone FIELD plate over the bay footprint — kills the
+    //      near-black blotch class inside the bay (the m47-r4 deckKit
+    //      "dress the dark fields with flat kit" mechanism; the plate top
+    //      rides 1 mm over the frozen usKit slat tops so the bay reads ONE
+    //      louvre field, not a 0.117-pitch remnant against the new rhythm);
+    //  (b) pale crown dashes on dark riser bars at the ref stations, every
+    //      crown WRAPPING its riser by +0.02 in both plan axes and >=0.034
+    //      across the top-view read axis (the m47-r4 crown-strip law —
+    //      equal-width crowns bury inside their parts);
+    //  (c) pale = the r7-B1 mgPale recipe in the HULL lane (per-build
+    //      shadow clone + ambient rehook — clones drop onBeforeCompile,
+    //      merkava gearFloor law): the shared 'detail' bucket ceilings ~67
+    //      where the ref crests read the 84-96 class. The 32 identical
+    //      crowns emit as ONE InstancedMesh (the t90m ERA-brick pattern):
+    //      deck furniture the casting merely OVERHANGS is correct hull
+    //      parenting, but a separate merged mesh's AABB sits >=25% inside
+    //      the turret-parent audit's casting envelope and reads stranded —
+    //      the audit's instancer lane (its designed exemption for repeated
+    //      fittings) is the honest representation for a repeated pattern.
+    // Decal-grade budget (§C texture-inside-certified-mass law): field
+    // plate embedded in the deck plate, crown tops <= deck +0.024 (the
+    // m47-r4 dressing law — dims/hull carriers untouched at that lift; the
+    // 1.7645/1.740 deckCaps own the front-view columns above |x| <= 1.02),
+    // plan interior to the bay. Default absent — every sibling
+    // (m26/m45/m47/m60s) byte-identical.
+    const DS = cfg.deckSlats;
+    const palem = P.mats.shadow.clone();
+    palem.color.setHex(DS.hex ?? 0x424635);
+    palem.roughness = 0.9;
+    palem.metalness = 0.02;
+    palem.envMapIntensity = 0.18;
+    palem.onBeforeCompile = vehicleAmbientFloorHook;
+    palem.customProgramCacheKey = () => 'veh-ambient-floor-v2';
+    P.disposables.push(palem);
+    const places = [];
+    const zm = (DS.z0 + DS.z1) / 2, zd = DS.z0 - DS.z1;
+    const riserBot = DS.fieldTop - 0.001, riserTop = DS.crownTop - 0.005;
+    let dashL = 0;
+    for (const side of [-1, 1]) {
+      P.add('hullDetail', box(DS.x1 - DS.x0, DS.fieldTop - DS.fieldBot, zd),
+        side * (DS.x0 + DS.x1) / 2, (DS.fieldTop + DS.fieldBot) / 2, zm);
+      for (const cz of DS.crests) {
+        for (const [dx0, dx1] of DS.dashes) {
+          const cx = side * (dx0 + dx1) / 2;
+          dashL = dx1 - dx0;
+          P.add('hullDark', box(dashL - 0.02, riserTop - riserBot, 0.020),
+            cx, (riserTop + riserBot) / 2, cz);
+          places.push([cx, DS.crownTop - 0.003, cz]);
+        }
+      }
+    }
+    const crownGeo = box(dashL, 0.006, 0.040);
+    const crownInst = new THREE.InstancedMesh(crownGeo, palem, places.length);
+    const m4 = new THREE.Matrix4();
+    places.forEach(([cx, cy, cz], i) => crownInst.setMatrixAt(i, m4.makeTranslation(cx, cy, cz)));
+    crownInst.instanceMatrix.needsUpdate = true;
+    crownInst.receiveShadow = true;
+    P.hullG.add(crownInst);
+    P.disposables.push(crownGeo);
+  }
   if (cfg.towCable) {
     // r7 D (m46, §B3): KIT tow cable coiled on the rear deck plateau,
     // outboard of the 1.7645/1.740 deckCaps that carry the side tops there
@@ -3330,6 +3401,27 @@ export const PATTON_PROFILES = {
       // r7 C4 (tone lane): louvre rows on the tail plate, faces >=0.5 mm
       // INSIDE the -4.246 tail plane (12%-band anchor untouched).
       rearLouvres: { z: -4.239, hw0: 0.50, backH: 0.26, backY: 1.17, rows: [[1.06, 0.62], [1.13, 0.62], [1.20, 0.62], [1.27, 0.62], [1.35, 0.45], [1.41, 0.45]] },
+      // r10 R5 (shaded-parity r7 R5 escalation, in-profile per the
+      // orchestrator ruling — usKit frozen): pale slat crowns at the ref's
+      // measured 0.199 m crest pitch over the deck-grille bays + flush
+      // louvre field plates. Crest stations/dash grammar re-measured on the
+      // official pairs (outer dash 0.79..0.93 and the 0.715..0.79 spine gap
+      // are the ref's own visible reads; inner dashes reconstruct the pitch
+      // under the dome occlusion). Deck plateau 1.7155: field top +0.0135,
+      // crown tops +0.023 <= the r4 +0.024 dressing law; plate x1 1.015
+      // under the 1.02 deckCaps front-view carriers.
+      deckSlats: {
+        x0: 0.025, x1: 1.015, z0: -1.44, z1: -2.22,
+        fieldBot: 1.7135, fieldTop: 1.729, crownTop: 1.7385,
+        crests: [-1.465, -1.66, -1.86, -2.055],
+        dashes: [[0.145, 0.285], [0.36, 0.50], [0.575, 0.715], [0.79, 0.93]],
+        // sampled dial (the A2/drum dial law): the r7-B1 0x424635 recipe
+        // hex reads ~60 on TOP faces — the same class as the detail-bucket
+        // field plate (that hex was dialed for the M2's sun-raking VERTICAL
+        // faces; top light flattens the two materials together) — where the
+        // ref crest dashes read p75 86-95. Scale 1.55x, r/g 0.943 held.
+        hex: 0x666c52,
+      },
       // r7 D: tow cable coiled on the rear plateau INSIDE the 1.7645
       // deckCaps side window (crown 1.7596; mufflers 1.784 own the front
       // columns); +1d census with the turret sideLinks.

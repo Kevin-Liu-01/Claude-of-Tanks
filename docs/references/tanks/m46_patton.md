@@ -548,6 +548,109 @@ priced zero because they ride INSIDE the certified load mass — the C3
 "bucket-swap first, volume only inside" law extends to texture: wrap
 radii +4 mm and flush patches are the whole budget.
 
+## Round r10 (2026-08-05) — the m46 DECK-SLAT round (r7 R5, in-profile per the orchestrator ruling)
+Gate **91.2 PASS x2 bit-identical** — hull 91.9 / whole 91.8 / turret
+**91.2** (+0.1 on the r9 line) / stations 92.5 / dims **100 x2** / floaters
+100; re-run x2 AGAIN after the instancer conversion, four identical lines
+total. standard-check clip **0/0 ✓** contig **0 ✓** decor **mg1+2d ✓**;
+track-clip --exact 0/0; turret-parent **0/0/0**; evaluator parity yawProxy
+0.1-1.0° (the r5/r7/r9 numbers), front §B1 29 matched / 1 flag (Δ+9.7°
+certified mast band), p95 front Δtop 0.143 / Δbot 0.134 (r5 class exact),
+left/right Δbot 0.080/0.080, rear procOnly 29 vs refOnly 9 (the r7-banked
+trade, unchanged). npm green (166 + track-geometry). Hashes: m46
+**8cf23500 → dfacd57c** (100 meshes / 90 354 verts — +1 InstancedMesh
+crown set + 34 bucket boxes); m47 **70941de0 FROZEN** (verified mid-round
++ at close); m26 **2621292c** / m45 **e103a2dc** / m60a1 **81e69e34** /
+m60a3 **efcde5c4** byte-identical (usKit untouched per the ruling). Shots:
+shots/patton-r10/ (baseline/ = pre-round official pairs, c1/ = first-cut
+flat-hex state, c2/ = dialed merged state, c3/ = FINAL instanced state,
+pixel-identical to c2 on every view; top-grille-/toptilt-deck-
+before/after.png crop panels). Zero console errors all four batches.
+
+**R5 DELIVERED — the slat rhythm reads.** Ref rhythm measured on my fresh
+baseline (view-top, ITU-601, the r9 window class): crest rows at z
+**-2.055 / -1.86 / -1.66 / -1.465 (pitch 0.199 m)**, crest dashes p75
+**86-95** (max 88-97) against 54-64 bay fields; dash grammar: outer dash
+x 0.79..0.93, spine gap 0.715..0.79, inner dashes dome-occluded; crests
+occupy 1-2 rows per 12.85-px row pitch (~12-16% pale fraction). The proc
+bays read FLAT 50-57, camo blotches unbroken — tracker
+[250..390]x[180..480] sub-50 **proc 5577 vs ref 3190** on my rig (the r9
+packet's 5627 was its own rig's read; ref 3190 reproduces EXACT, and my
+5577 re-derives on the archived r9 c1 batch — rig-delta, not drift).
+Baseline meds: rear-deck band (x[260..380]y[110..170]) 58.8 vs ref 59.0,
+grille zone (x[250..390]y[174..227]) 55.9 vs ref 60.5.
+
+Delivery (cfg.deckSlats, buildPershing opt-in, default absent — every
+sibling byte-identical, hash-proven):
+- **Field plates**: one hullDetail plate per bay (x 0.025..1.015, z
+  -1.44..-2.22, top deck+0.0135) — the m47-r4 deckKit "dress the dark
+  fields with flat kit" mechanism; kills the sub-50 blotch class inside
+  the bay footprint and swallows the frozen usKit 0.117-pitch slat tops
+  (1 mm under the plate top) so the bay reads ONE louvre field under the
+  new rhythm. In-bay sub-50 census 1207 → **814** (ref 534; the rect
+  includes dome-top blotch pixels the deck lane cannot reach).
+- **Crown dashes**: 4 dashes x 4 crest rows x 2 bays at the measured ref
+  stations/segmentation (dashes [0.145,0.285]/[0.36,0.50]/[0.575,0.715]/
+  [0.79,0.93] — outer dash and spine gap are the ref's own visible
+  reads), each pale crown 0.14 x 0.006 x **0.040** wrapping its hullDark
+  riser bar by +0.02 in both plan axes (the m47-r4 crown law: >=0.034
+  across the read axis AND wrap — equal-width crowns bury). Crown tops
+  deck+0.023 <= the r4 +0.024 dressing law.
+- **Pale lane, sampled dial**: the r7-B1 recipe (shadow clone + ambient
+  rehook) at its M2 hex 0x424635 read **60** on TOP faces — the same
+  class as the detail-bucket plate (that hex was dialed for sun-raking
+  VERTICAL faces) — where the ref crests read 86-95. One 1.55x dial →
+  **0x666c52** (r/g 0.943 held): crowns read **p75/max 89**, dead in the
+  ref band; the two dome-occluded dash windows read 60-81 exactly as the
+  ref's occluded dashes do.
+- **Emission law (§B5)**: the 32 identical crowns emit as ONE
+  InstancedMesh (t90m ERA-brick pattern). A separate MERGED mesh's AABB
+  sits >=25% inside the turret-parent audit's casting envelope and reads
+  **stranded 1** (measured — deck furniture the casting merely
+  overhangs); the audit's instancer lane is its designed exemption for
+  repeated fittings, and the instanced emission renders PIXEL-IDENTICAL
+  to the merged mesh (diff bbox None on every view, both halves).
+
+Done-gates: proc crest rows **73.2/72.7/75.7/69.8** vs ref L
+**74.1/73.3/76.5/70.0** — within 1L row for row (ref R rows 67.9-82.4
+ride its brighter field class); tracker view-top 5577 → **5184** toward
+the 3190 class (-393 = the full bay-lane share; the remaining excess is
+the turret-roof/bow camo-blotch class at z -0.93..-0.31 (+941) and
++0.93..1.24 (+471) — the m47-r4 B3 "materials-owner lane" residual
+class, NOT deck-grille; the ref is itself darker at z 1.24..1.86 by
+-677); toptilt window 8594 → **8292**; rear-deck med **58.8 vs ref 59.0
+HELD EXACT**; grille med 55.9 → 56.2. View isolation measured: view-front
+diff bbox **None** (the 1.7645/1.740 deckCaps own the front columns at
+|x|<=1.02 — deck dressing under them is front-mask-free by
+construction), left/right 51x8 px deck-line serrations, rear 290x11,
+close-roof 65x55 corner — nothing anywhere else.
+
+CONCURRENT-LANE LOG (r7-critic protocol): tankFactory.js carries an
+uncommitted russia-lane bucket addition (hullTrackDetailL/R — no patton
+caller, renders byte-identical for this family); modern3.js passed
+through a broken mid-edit window (unclosed brace, vite import-analysis
+refused the graph ~2 min) — waited for the balanced state, no patton
+effect; the gate ledger was regenerated by another lane at 09:39 with
+the m46 r9 line intact.
+
+SELF-READ floors (builder estimate, not a verdict): **hero-toptilt 8.8-8.9
+→ ~9.0** — the r7 holder ("the texture-density gap is the loudest single
+read on the vehicle") is delivered: the deck now carries the ref's own
+louvre grammar at its own pitch, tone-matched row for row; residual
+holders are the r7-banked certified classes (C4 corner verticals @ x
+±1.68, plan-edge notched rails, M2 slab-stack mass) plus the turret-roof
+camo-blotch materials class. **top 8.9 → ~9.0** (same delivery; plan
+registration was already excellent). Every other view: unchanged by
+construction (diff-bbox-verified). LAW NOTES (bank): (1) the r7-B1
+pale-fitting hex is a VERTICAL-face dial — top light flattens it into
+the detail class (~60); deck-lane pale needs its own sampled dial
+(0x666c52 → 89 here); (2) hull-lane furniture under the casting
+overhang: emit repeated pieces as an InstancedMesh, never a separate
+merged mesh (stranded-1 class, measured); (3) the m46 front mask at
+|x|<=1.02 over the mid deck is owned by the 1.7645/1.740 deckCaps —
+dressing under that line is front-view-invisible (diff None), so the r4
++0.024 budget spends ONLY on side-view serration columns there.
+
 ## Vertex round r3 (2026-08-04) — probe round: r2 baseline RESTORED, deltas banked
 Budget remainder after the m47 pass. Attempted the r1/r2 'free rows'
 (front centre-can band, right-roof line, bow eye, rack floor); closing
