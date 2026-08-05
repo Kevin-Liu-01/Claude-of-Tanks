@@ -214,3 +214,92 @@ CERTIFIED RESIDUALS: the plan-center muzzle-island col (~1.0 err, its
 tube band is turret+hull mixed at x -0.18) and the +-1.85 dot cols (2x
 cover) cap plan rows ~80-84; turret_side binds at 64-69 with the
 remaining prow/roof band deltas; stations 71.9. dims 100 stable.
+
+## TURRET-FIX ROUND (2026-08-04, misc agent) — owner report "c1 ariete turret is quite broken": diagnosed + fixed; gate UP on every component
+
+Final gate x2 stable: min **65.5** | hull 69.7 / whole 68.8 / turret 65.5 /
+stations 72.8 / dims 100 / floaters 100 (r4 baseline 64.4 | 69.5 / 67.8 /
+64.4 / 71.9 / 100 / 100 — every component held-or-up). Track-clip exact
+0/0; standard-check clip ✓ contig 0 ✓ mg1+**3d** (MAG + 2x antennaWhip +
+spareTrackLinks). Official visual-evaluator run clean (yawProxy 0.1-2.9°,
+no RIG MISMATCH; findings are the certified cliff-offset class). Boards:
+shots/misc-ariete-turretfix/{before,after}/ (14 critic views + heroes),
+shots/visual-eval-ariete/.
+
+DIAGNOSIS (before set archived): the r4 build passed its masks but READ as
+a giant camo casemate in every shaded 3/4 view: (1) a 0.18 m BLACK TRENCH
+over the exposed track top between the deck edge (+-1.56) and the skirt
+inner faces (+-1.735), full hull length — SS-B2; (2) skirt courses 0.455
+deep on a 0.4775 pitch = 2.25 cm through-slots reading as a picket fence
+under that trench; (3) a BLANK roof plain (3.8 cm hatch crowns invisible
+at 1x, bare deck, bare walls) fusing hull+turret+skirts into one slab —
+no AO in the shaded path and the world-projected camo is continuous
+across parts, so only geometry/material breaks can separate masses;
+(4) the basket read as an empty wire frame with sky through it; (5) the
+mantlet read as a pinhole in the big front wall.
+
+FIXES (all mask-checked, mostly interior):
+- hull: fender TRENCH FILL plate x 1.55..1.735 @ y 1.400 (top 1.412 under
+  both the 1.42 skirt line and the 1.424 fender top — the first 1.41 seat
+  cost side_hull 0.6); deck contact-shadow band ahead of the turret ring;
+  fore-deck battery/intake panels; spareTrackLinks fitting on the tail
+  deck (tops 1.65 by the ref's own 1.6 aft line).
+- turret: dark RING PLINTH at the base (polyTurret +2% flare x 5 cm — the
+  SS-B2 contact-shadow device that separates turret from deck); RAISED
+  hatch ring rims + domed/open lids (crowns 2.31-2.34 inside the ref's
+  notch-zone fall); pano tower re-detailed at the print's 2.495 ceiling
+  (slimmer pedestal + foot collar); ration box by the TURMS; weld seam
+  strips x3 per canted wall; under-lip contact shadow + tie-down HORNS on
+  the shelf lids (outer 1.63 = the ref's +-1.60-1.63 plan dot columns,
+  seated LOW at 1.58w so the 1.62 front-row line clears them); basket gets
+  dark FLOOR + side mesh sheets + side rails + duffel pile (top 2.13) —
+  solid top-down read inside the r4 footprint; dark canvas MANTLET COVER
+  (0.70 wide, band y 1.51-1.83 / z_w 1.01-1.31 inside the priced mantlet
+  band) + gun-root collar cylZ r0.135 to z_w 2.20 — the prow now reads
+  mantlet+gun, and the certified plan-center col improved 2.07 -> 1.84;
+  mantlet block narrowed 0.44 -> 0.36 (+-0.18 covers the +-0.165 plan
+  col); closer wedge top 2.395 -> 2.35; raised-front-roof lips pulled to
+  z_w 0.61; MAG foot sunk 0.63 -> 0.55 (receiver 2.52 -> 2.44 vs ref
+  2.31); whips re-raked rotation -1.15 (tips 2.10 at z_w -2.38 = the ref
+  2.12 aft band; the r4 -0.9 rake put shafts 2.25-2.35 there = the gate's
+  top side columns).
+
+LAWS BANKED (turret-fix round):
+1. TURRET-ROW BBOX NORMALIZATION: the gate's turret rows compare
+   bbox-normalized traces. With the certified-long tube (+0.94 vs the
+   print) the turret REAR must stay correspondingly short — the r4 short
+   basket was the undocumented compensation. Extending the basket to the
+   "measured" ref tail smeared every column: turret 64.4 -> 0, stations
+   71.9 -> 29. Basket length is HARNESS-PINNED, not free identity space.
+2. WORKORDER FRAME TRAP: vertex-workorder printed z for turret rows is
+   bbox-skewed — authoring the roof/prow from it moved everything ~0.85
+   off and cratered the gate. Decode the GATE LEDGER's own worst columns
+   instead: side rows map z_w = 1.15 - at, y = val + 1.25 (calibrate on
+   your own authored planes, non-circularly, before trusting any target).
+3. FRONT-ROW LINE POLICES x-COLUMNS: anything stacked above the ref's
+   front-row line at its x prints immediately (shelf-top duffels at 2.15
+   over the 1.91 shelf line cost whole -4.9; horns at 1.92 over the 1.62
+   line cost 3 cols — seat wall furniture AT the ref's own front line).
+4. p95 HEIGHT BUDGET IS NARROWER THAN IT READS: a 0.26-wide pano head +
+   dilation spans ~5 side columns — the 2.66 identity tower (real C1
+   ~2.7; the packet dims table) priced dims 100 -> 91.3 and was revoked.
+   The vertex-normalize warp clamped the print's 2.55-2.78 furniture band
+   to 2.50/2.52, so the 2.7 pano stays a DOCUMENTED residual, not gamed.
+
+SS-B5 ADJUDICATIONS (audit: stranded 1, abutting 1, dangling 0):
+- stranded (unnamed, 100% overlap, box x[-1.53,-1.07] y[1.59,1.74]
+  z[-2.57,-1.73]) = the hull-deck stowage roll at (-1.30, 1.66, -2.15):
+  DECK GEAR the basket merely overhangs (bottom sits ON the 1.595 deck) —
+  the documented ring-tub envelope-smear false-positive class. Stays in
+  rig_hull. NO re-parent.
+- abutting (fitting_spareTrackLinks, x[-0.93,-0.47] z[-3.37,-2.73]) =
+  tail-deck spares BEHIND the basket end (-2.705); links top 1.65 clears
+  the basket floor 1.665 at every yaw. Deck gear — stays in rig_hull.
+
+CERTIFIED/DOCUMENTED RESIDUALS: the 8 ONLY-PROC side tube columns
+(published 9.67 muzzle vs the print's short tube — dims-sovereign, never
+traded); the plan-center muzzle-island col (improved 2.07 -> 1.84 by the
+collar); pano at 2.495 vs the real ~2.7 (warp-clamped print, p95-priced);
+closer-wedge/roof-corner +0.08-0.17 over 2-3 cols (the raised front roof
+is a real C1 feature); shaded-path flatness vs the ref's baked texture
+(world-continuous camo + no AO is engine-level, out of profile scope).
