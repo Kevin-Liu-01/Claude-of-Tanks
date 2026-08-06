@@ -147,6 +147,15 @@ honestly parked at 88.9 pending its retune)
   baseline x2 + retire the recovered/ short-print (batch-44 note stays
   historical). The live fv510 photo-parity round gates dims/floaters
   only meanwhile (notified).
+- **SPz PUMA — NEW VEHICLE (owner order + oracle drop 2026-08-06:
+  "make the spz puma as well")**: community/spz_puma.glb landed (42manako
+  CC-BY-4.0, verified). FULL BUILD-UP QUEUED, next free lane: (a) spec
+  row (German modern IFV: 30mm MK30-2/ABM in an unmanned RCT30 turret
+  offset left, hull crew of 6+3, ~7.6m x 3.7m x 3.6m, twin whips, ROSY,
+  slat/skirt options); (b) profile home = wherever bradley/bmp2 live
+  (AFV class) or a new afv builder; (c) bradley-flow oracle onboarding
+  (extract + registration + baseline); (d) full photo-class round to the
+  rulebook incl. §B3.2 density; (e) icons + CUSTOM tab row.
 - **OWNER PUNCH LIST 2 (2026-08-06 pm, four screenshots)**: (1) fv510
   photo-parity round 2 (real Warrior photo: angular welded turret w/
   sloped faces, front-corner smoke banks, 3 whips, loaded rear bins,

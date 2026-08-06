@@ -736,3 +736,10 @@ fails the build if any registered playable still references a stripped path.
   (Sketchfab download, license verified from embedded asset.extras).
   Replaces the shape-divergent recovered/fv510.glb print as fv510's
   measurement oracle (onboarding: extract + registration + baseline).
+
+## SPz Puma oracle drop (2026-08-06, owner-downloaded)
+- public/models/tanks/community/spz_puma.glb — "SPz Puma" by 42manako
+  (https://sketchfab.com/42manako), CC-BY-4.0,
+  https://sketchfab.com/3d-models/spz-puma-8e7d946d4b3d4fdeaf458a3fc4226e1b
+  (license verified from embedded asset.extras). NEW VEHICLE: the Puma is
+  not yet in the roster — owner order "make the spz puma as well".
