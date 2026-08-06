@@ -79,7 +79,7 @@ re-freeze NEW hash, all in ONE commit.
 | t84 | 04707a9c | |
 | m47_patton | 53b6123a | |
 | leo2a5 | 2f9d0af0 | |
-| leo2_revolution | 323228f8 CANDIDATE (r17 retune, gate 91.2 PASS; PENDING 14-view re-cert — the new device's first critic spawn) | de-fusion RE-CERT RATIFIED (floor 9.0 x14 at the coupled 88.9); retune round owed (88.9 -> 90+, P-1 fore-ring tells folded in) |
+| leo2_revolution | r18 OWNER REF-WRONG turret re-author IN FLIGHT (supersedes the 323228f8 re-cert; §B7 ruling — turret authored to the real MBT Revolution, print ruled wrong) | de-fusion RE-CERT RATIFIED (floor 9.0 x14 at the coupled 88.9); retune round owed (88.9 -> 90+, P-1 fore-ring tells folded in) |
 | m46_patton | 90ebf864 | |
 | centurion3 | fea56ecc | GRADUATED fd2c365 (24th, Centurion line's first) |
 | m1a2_sepv2 | 5564306c | GRADUATED 2026-08-05 (25th; floor 9.0, mean 9.11 x14) |
@@ -115,13 +115,15 @@ honestly parked at 88.9 pending its retune)
   orchestrator lane), ariete 82.3 (wrap break LANDED via lane-local fill
   — the sanctioned non-circular mechanism; cover/frame-lock certified).
 - **70-80**: t64bv1 73.4, t90a_vladimir 71.4. m26_pershing 90.4 GATE
-  PASS — awaiting graduation adjudication (candidate f348ecd5).
+  PASS — graduation adjudication critic IN FLIGHT (candidate f348ecd5, would be the 26th).
 - **Russia tail**: t72b_1987 56.0 CEILING-CERTIFIED (print drum-band cap),
   t90sm 56.4 (AA-teeter binds), t62mv1 63.7 (fade-cap ceiling ~77-81),
   t72bu ~55-70 certified-ceiling — ORACLE
   DECISION PENDING (orchestrator lane).
-- **Zero/low rows** (triage lane): recon_tank ruling, fv510/q_heavy/t30
-  walls, merkava2b 39.6 / 2d 34.9 / 4 0 / 4b 34.1 (family rebuilds),
+- **OWNER PRIORITY (2026-08-05): fv510 Warrior marked a PERFECT CANDIDATE
+  for a full round** — next open family-lane slot takes it (its repair
+  recipe was incident-disabled; re-adjudicate the oracle first, §E).
+- **Zero/low rows** (triage lane): recon_tank ruling, q_heavy/t30 walls, merkava2b 39.6 / 2d 34.9 / 4 0 / 4b 34.1 (family rebuilds),
   t54 winding repair, m48 pitch, type74+t80bv scaleToOverall ruling.
 
 ## 5. IN-FLIGHT AGENTS (SUPERSEDED BY §12 — the 2026-08-05 device

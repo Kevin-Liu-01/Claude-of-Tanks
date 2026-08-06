@@ -437,3 +437,17 @@ pixel identity).
 - Station-boundary bumps >=10mm clear of slice boundaries (9mm slivers
   read full width). Shoe pads extend wrap faces +0.05-0.08 beyond
   r+CLEAR+TH/2 — seat end wheels by vertex probe.
+
+## §B7. OWNER REF-WRONG OVERRIDE (owner ruling 2026-08-05, leo2_revolution turret)
+When the owner rules a reference region WRONG ("the revolution turret
+looks terrible because its source material is wrong — make it more like
+the actual tank"), the REAL VEHICLE (photo class) governs that region,
+not the print. Mechanics: (1) author the region to the real vehicle's
+documented configuration; (2) the gate keeps recording honest rows — the
+divergence is certified in the packet as an OWNER REF-WRONG cap (region,
+rows, measured cost, owner quote + date); caps never cover dims; (3)
+critics score the overridden region against the real-vehicle photo class,
+ref parity applies everywhere else; (4) the override is per-region, not
+per-tank — uncontested regions still chase the print; (5) prefer
+mask-free real-vehicle reads first — spend gate points only where the
+real configuration demands it.

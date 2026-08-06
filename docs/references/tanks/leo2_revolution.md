@@ -1678,3 +1678,12 @@ factory; sibs exact at new frozen values). Changed views: ALL 14 (camo
 mottle reseeds). THE NEW DEVICE'S FIRST CRITIC SPAWN: full 14-view
 re-cert at 323228f8; on PASS ratify the re-freeze (final renders
 preserved in the round's scratchpad paths per §r17).
+
+### r18 OWNER RULING (2026-08-05): REF-WRONG turret override (§B7)
+Owner: "the revolution turret looks terrible because its source material
+is wrong. just go in and make it more like the actual tank since our
+reference is wrong." The r17 323228f8 re-cert is SUPERSEDED — r18
+re-authors the turret to the real Rheinmetall MBT Revolution
+configuration (photo class governs); gate turret-row divergence vs the
+flawed print gets an OWNER REF-WRONG cap per §B7. Hull/running-gear rows
+keep chasing the print (uncontested).
