@@ -133,7 +133,16 @@ honestly parked at 88.9 pending its retune)
   rulebook (§B1-§B7, §C) as lanes free — the visual critic is the bar
   where no oracle exists (false-0 law: never gate without a reference);
   (c) parallel oracle-sourcing lane (community CC models only, bradley
-  flow — THE ONE ABSOLUTE RULE stands). FIRST SLICE DONE (2026-08-06): leo2a4 REBUILT
+  flow — THE ONE ABSOLUTE RULE stands). SLICE 2 DONE (2026-08-06 pm): ROSTER DELIVERED
+  (docs/PROGRAM-STATE-base21.md — 17 no-oracle ids: 15 true originals +
+  2 quarantine-fallbacks; real ids are t14/k2 not t14_armata/
+  k2_black_panther); challenger2 REBUILT (modern1.js, floor 8.6, clips
+  102/78+182/74 -> 0/0+0/0, mg1+5d, hash 22c8127); t14 REBUILT
+  (modern2.js, floor 8.6, clips zeroed, mg1+2d, hash 1d232727); ww2 trio
+  AUTHORED in ww2.js but ladders PARKED per the modern-first order
+  (next-slice item; Sherman rx-sign fix banked). QUEUED my-lane: spec
+  gunBarrel true-ups (challenger2 ~6.3, t14 6.15 — verify per-tank
+  before editing). FIRST SLICE DONE (2026-08-06): leo2a4 REBUILT
   photo-class (the first base-21 modernization — new buildLeo2A4, all
   batteries clean from 83/436-clip mg0 ancient state; spec 9.67 true-up
   landed); leo2a7v re-laid on the V3 rig (dims 100, clips 0/0, certified
