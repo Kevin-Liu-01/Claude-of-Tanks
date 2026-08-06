@@ -577,3 +577,87 @@ above), close-roof camo fields, and the rear-view MG presentation.
 Evidence: shots/critic-challenger1/ (fresh 14 pairs, zero console
 errors), shots/visual-eval-challenger1/ (report.json + overlays),
 scratchpad workorder dumps (before/after column tables).
+
+## r11 — UK ROUND 5 (2026-08-05, uk agent; the r10 residual set: O6 shading
+## family + close-roof fields + rear MG presentation)
+CONTEXT: the orchestrator's INVISIBLE-LOD mass re-freeze (9bf2a6d) landed
+mid-round — every hash in this section is on the POST-FIX factory (clean
+ch1 baseline 10be2350 = the re-frozen r10 bytes; LOD0 pixel identity per
+the landing proof). Gate: **90.1 -> 90.1 PASS x2 bit-identical** (hull
+91.8 / whole 90.1 / turret 90.2 / stations 90.6 / dims 95 / floaters 100
+— the 0.1 wall untouched: every delivery is mask-interior/tangent by
+construction). Hash 10be2350 -> **bc23972c** (61 meshes, 95 844 verts).
+DELIVERED:
+- CAMBERED-CAP RECIPE (the close-roof Δ+14° x 0.67 m collar->sleeve
+  fitted line, THE O6 residual): the r10 octagonal caps kept flat top
+  planes — each flat top now splits into two PLANAR roof quads meeting at
+  a center ridge AT the exact old top height (side rows read max-over-x =
+  the ridge, byte-equal; plan keeps bottom-quad extents; front is
+  turret-interior at gun x). Applied: forward sleeve cap, aft sleeve
+  (re-boxed 0.15 + roof pair), shroud cap, junction-ring cap. MEASURED
+  (fresh evaluator, final bytes): the Δ+14 len 0.67 close-roof line is
+  GONE; remaining fragments Δ+11.8/+8.6/-5.9 all len <=0.23 m (corner-
+  fit class). front/close-front keep their matched-edge counts.
+- ARRIS DIAMONDS (the "boxy cheek masses / clean-box tiling" quarter
+  read): six flush-tangent 45° strips (c5 r9 grammar, vertices ON both
+  faces, zero silhouette) on the exposed long arrises — L outer bin
+  (-1.48/0.635), R bin (1.375/0.635), both outer tiers, crown plateau
+  left arris, loader-roof right arris. Plus BIN LID WIDENING (tone-only,
+  0.19/0.15/0.25 -> 0.206/0.166/0.266 inside the box footprints): the
+  10 mm pale camo margins that striped every course line are dead.
+- SMOKE TUBE TIPS (the r8-O5c optional, c5 r9 O8 recipe): per-tube proud
+  tips (r 0.014 x 0.032) + dark bores at +0.138/+0.156 along the cluster
+  normal — circular mouths read at 1x in front/close-front. Interior by
+  construction: max (x 1.53, y 0.589=2.21w, z_loc 1.60) under the tier
+  posts' 0.66 front line / the bins' 2.255 side line / the tiers' 1.985
+  plan front.
+- ROOF DRESSING (close-roof "large empty camo fields"): loader-hatch arc
+  torus (r 0.145, top 2.500=ring top) + lid seam disc + three periscope
+  blocks at ring r~0.25 (tops 2.498 EXACT = the plateau plane, flush-
+  tangent); right-roof vent disc + two dark ports (tops 2.331 — toward
+  the ref's 2.336-2.396 band); two plateau seam strips (+3.5 mm) + two
+  NBC grill strips (top 2.560 — toward ref 2.566); hull deck: two dark
+  panel seams (top 1.626 vs ref's own 1.624 line) + two filler caps.
+  Evaluator close-roof matched edges 15 -> 23 (the dressing PAIRS with
+  ref detail); top procOnly >0.5 m all in the certified tail/bow-wing
+  zones.
+- MG STATION CLUSTER + THE REAR-PRESENTATION CERT: ammo can x2 + belt
+  tray beside the MAG inside the r10-PROVEN envelope (x -0.876..-0.734,
+  tops <=0.861 loc, z 0.06..0.77). Fresh dead-rear board: the crown now
+  reads a legible MG-station cluster (AA-ring + receiver mass + cans)
+  over the rear-roof face line at x -0.77..-1.0. CERTIFIED UNREACHABLE
+  (the full ref-class sky-silhouetted crown MG from dead-rear): the rear
+  projection IS the front mask — the only above-2.498 ceilings are the
+  sight band (z_w 0.22..0.58, <=2.945) and left-block band (x -0.56..
+  -0.89, <=2.79/2.86) with a PRICED GAP between (front cols x -0.565..
+  -0.734 ceiling 2.498; side cols z_w 0.58..0.80 ceiling 2.498); any
+  barrel leaving the conjunction zone pays side/front columns (computed
+  trades: rear-yaw +0.24 x3 side cols; left-yaw +0.45 x~7 front cols;
+  AA-elev tip 2.90 > the 2.86 block band) — the §C 0.4 pintle allowance
+  is un-spendable at whole 90.1/side_whole 90.03. The r8 verdict's own
+  fallback (b) is hereby answered with the trade numbers per §D.
+CHECKS at close: gate x2 bit-identical 90.1; standard-check PASS (clip
+0/0 exact, contig 0, mg1+0d); turret-parent 0/0/0; evaluator RIG PARITY
+OK (max yawProxy 2.1° @rear); npm 166 + track-geometry green. FROZEN
+PROOFS at close (post-re-freeze registry values): chieftain5 **94c09bb0**
++ centurion3 **fea56ecc** byte-identical at round start AND close.
+SELF-READS (vs r10): close-roof 7.5 -> 8.5 (collar family dead, roof
+dressed, MG cluster; sight-hood/mast certs remain), hero-toptilt 8.5 ->
+8.75, top 8.0 -> 8.5, rear 8.0 -> 8.5 (MG-station cluster at the crown),
+rearleft/rearright 8.0 -> 8.25, left/right 8.0 -> 8.25 (striping dead),
+close-front 8.0 -> 8.5 (tube circles + camber), front 8.0 -> 8.25,
+frontleft/frontright 7.5-8.0 -> 8.0-8.25, hero-fl 8.0 -> 8.25, hero-rr
+8.0 -> 8.5. FLOORS ~8.0-8.25: below the 8.9 bar — NO adjudication
+request. CEILING-CERTIFIED RESIDUAL TABLE (the stop-rule arm delivered):
+(1) sight-hood Δ-14.7 close-roof — no mask-legal author (r10 measured
+twice, unchanged by the visor); (2) whip-mast lean/Δtop family
+(close-front Δ-18.5, close-roof Δ-6.1 + p95 0.302) — heightM p95 budget
+outranks; (3) rearright Δ-7.6 / frontright Δ-10.9 oblique course lines —
+workorder-proven mask truth (proc level IS the side-mask line); (4)
+corner-flap ladder (r9 ratified cert); (5) rear crown-MG sky silhouette
+(this round's column-math cert above); (6) boxy-cheek class — the bins/
+tiers/posts ARE the ref's own measured course architecture (further ease
+= tone/chamfer only, delivered); (7) fender three-stripe — the 1.435
+edge-roll is the §D width-plane carrier. Evidence:
+shots/critic-challenger1/ + shots/visual-eval-challenger1/ (fresh, final
+bytes), scratchpad crops (rear MG window, sleeve camber, roof).

@@ -550,3 +550,97 @@ certifies (flat plateau + straight wall bands), the crown-tab fitted
 pair, and top-view procOnly clutter. Evidence: shots/critic-
 centurion5/ (fresh 14 pairs, zero console errors), shots/visual-eval-
 centurion5/ (report.json + overlays).
+
+## r10 — UK ROUND 5 (2026-08-05, uk agent; the r9 residual set: crown-tab
+## pair + pear casting + top-view clutter)
+CONTEXT: the orchestrator's INVISIBLE-LOD mass re-freeze (9bf2a6d)
+landed mid-round — hashes here are on the POST-FIX factory (clean c5
+baseline 5ffb0b8d = the re-frozen r9 bytes). Gate: **90.7 -> 90.7 PASS
+x2 bit-identical at every batch AND at close** (hull 92.8 / whole 90.7 /
+turret 90.7 / stations 95.5 / dims 100 / floaters 100 — zero spend).
+Hash 5ffb0b8d -> **52422a00** (46 meshes, 76 688 verts). ALL mk===5
+gated; centurion3 re-hashed **fea56ecc** (its NEW frozen registry value)
+at start and close. DELIVERED:
+- THE "CROWN-TAB PAIR" ATTRIBUTED AND CERTIFIED (the ordered frontright
+  Δ+14.3 ±0.8 x 0.34 m): a purpose-built oblique raycast probe
+  (tools/tmp-uk-r5-oblq.mjs, §D diagnosis-only) walks the yaw-45 upper
+  silhouette with owner attribution — the proc edge is the p95 VANE
+  ANCHOR's dead-level 2.93 top (u -0.87..-0.65, x -0.424 face) pairing
+  against the REF CUPOLA DOME SHOULDER falling 2.842 -> 2.834. It is NOT
+  a crown tab: it is the dims-sovereign heightM anchor itself (the
+  r5/r6-certified vane-tax class, now extended to its oblique-fit
+  echo). A z-taper is un-authorable (heightM 2.91-2.92 sits at 0.87% of
+  the 1% grace on exactly those four side columns). The frontleft twin
+  (Δ-14.4 ±4.0) is corner-bias noise per §D. Delivered anyway: the vane
+  x-TAPERS to a blade (base box + two planar roof quads to a z-spine at
+  the exact old 1.155 top — all four side anchor columns byte-equal,
+  plan base unchanged, the 2-col front tax moves TOWARD the ref's 2.76)
+  and the cupola dome re-profiles to a TRUE ELLIPSE (same base circle,
+  same 2.844 peak inside the certified 2.85 class; mid-flank -4 mm
+  interior) so the crown cluster presents the ref's own dome+spike
+  grammar — the fitted Δ+14.3 line persists as the certified anchor
+  echo (re-measured on final bytes, coordinates identical).
+- PEAR-READ CHAMFER EXTENSIONS (mask-neutral, the r9 grammar): wall
+  INNER top arrises (both crest + dip segs, centered t/sqrt2 inside top
+  + wall body — interior toward the dip), sight-riser x-arris pair,
+  gunner-sight outboard arris (front arris left clear of its glass
+  strip). The crown's straight-pale-line census from top/tilt drops
+  again; the flat plateau itself stays the r8-measured mask truth.
+- TOP-VIEW LINE KILL (the ordered procOnly clutter): the four 5.37 m
+  90° flank lines at x ±1.609/±1.639 (fender->skirt-top step + skirt->
+  strip slot reading as parallel bright/dark edges) are DEAD — SKIRT TOP
+  CAPS (12 segs/side, x 1.601..1.6585, top 1.4735) close the slot AT the
+  ref's own 1.48-at-x-1.63-1.66 skirt-plane read (r2 tables): mask-
+  interior-toward-ref (plan outer 0.5 mm inside the 1.659 panel face;
+  boss 1.6895 width guard untouched; station widths boss-carried; gate
+  row-identical x2 proves the price was zero). BOW CHUTE COVERS (2/side,
+  x 0.870..0.930 embedded in the rake loft, y 1.435 under the glacis +
+  wrap-crown lines) close the ±0.88..0.94 deck-to-shoe lane pair.
+  MEASURED: top procOnly 24 -> 18 (>1 m survivors: the single tail
+  C-course line in the certified phantom-stern zone); the two new ±4.0
+  noise flags at the chute edges are §D no-findings. Top-view flank band
+  luma at parity (proc 51.5/50.2 vs ref 55.4/52.2 — no pale overshoot).
+- WEAVE DOT LATTICE (the r8-O9 read, completed): the outer-face slat
+  hints read edge-on from dead-rear — full 4x6 dot lattice on the outer
+  face (x 1.5135, the r8-cleared 74 mm plan margin) + 4x2 rear-face rows
+  (z -0.142, inside the shelf's own -1.03/-1.10 plan rears): the ref's
+  dotted-basketry polarity reads from flank AND rear.
+CHECKS at close: gate x2 bit-identical 90.7 (plus a mid-round identical
+pair); standard-check PASS (clip 0/0 --exact, contig 0, mg1+0d);
+turret-parent 0/0/0; evaluator RIG PARITY OK (max yawProxy 1.4°); npm
+166 + track-geometry green. FROZEN PROOFS: chieftain5 **94c09bb0** +
+centurion3 **fea56ecc** (post-re-freeze registry values) byte-identical
+at start AND close.
+SELF-READS (vs r9): frontleft 8.0 -> 8.25, frontright 7.5-8.0 -> 8.25
+(the +14.3 is now the attributed anchor cert, and the dome+fin cluster
+reads the ref's dome+spike), left/right 8.0 -> 8.25, rearleft/rearright
+8.0 -> 8.25, rear 8.5 -> 8.75 (dome+fin + weave dots), top 7.5-8.0 ->
+8.5 (flank lines dead, procOnly 18), hero-fl 8.0 -> 8.25, hero-rr 8.5 ->
+8.75, hero-toptilt 8.0 -> 8.5, close-front 8.0 -> 8.25, close-roof 8.0
+-> 8.5. FLOORS ~8.25: below the 8.9 bar — NO adjudication request.
+CEILING-CERTIFIED RESIDUAL TABLE (the stop-rule arm delivered): (1) the
+vane-anchor oblique line (Δ+14.3 — dims-sovereign, probe-attributed,
+above); (2) flat plateau / straight wall MASK lines — the r8 raked-top
+chase measured turret_side 90.5 -> 90.3 and was withdrawn (mask truth;
+all reachable easing = the chamfer grammar, now on every exposed arris);
+(3) wrap/ramp serration fit family (±10.7..13.4 lower-rear + 8 unpaired
+arcs — r7 O10b texture class, unchanged); (4) weave coverage: the ref's
+basket wraps its bustle rear where our r6-certified plan puts flank
+walls only — dot rows deliver the polarity, the wrap itself is
+plan-priced; (5) exposed wrap tops at the bow corners in plan (our
+guard architecture ends at 2.58; covering the wrap is side-col priced).
+LAW BANK (round 5): (1) VANE-ANCHOR OBLIQUE LINE — a z-long p95 height
+anchor paints a LEVEL fitted edge in every oblique view crossing its
+u-run; the evaluator pairs it with the nearest ref edge and mints a
+phantom order — ATTRIBUTE BY OBLIQUE PROBE before authoring (the
+"crown-tab pair" dissolved into the existing dims cert). (2)
+CAMBERED-CAP: flat-top fitted lines die mask-free via two planar roof
+quads meeting at a ridge AT the old top (see the ch1 r11 section for
+the measured kill). (3) FLANK-LAYER TOP CAP: stacked skirt courses
+draw parallel plan procOnly lines; an interior top cap at the lower
+course's plane kills them at zero row cost when the ref's own plane
+reads there. (4) OUTER-FACE DETAIL IS VIEW-LOCAL: ±x-face detail is
+invisible edge-on from ±z — an ordered rear read needs rear-facing
+rows. Evidence: shots/critic-centurion5/ + shots/visual-eval-
+centurion5/ (fresh, final bytes 52422a00), tools/tmp-uk-r5-oblq.mjs
+(probe transcript in the round log).

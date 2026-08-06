@@ -1295,6 +1295,14 @@ function challenger1Build(P) {
     P.add('hullDark', box(0.02, 0.90, 0.016), s * 1.570, 1.11, 2.0025);
   }
   towCableUK(P);
+  // r10b (uk round 5 — "deck course-line patchwork vs ref's cleaner
+  // plates" / close-roof empty fields): flush dark panel seams + filler
+  // caps on the flat 1.622 mid deck (tone detail, +2..5 mm — the ref's
+  // own deck line is 1.624).
+  P.add('hullDark', box(1.9, 0.004, 0.016), 0, 1.624, 0.62);
+  P.add('hullDark', box(1.9, 0.004, 0.016), 0, 1.624, 1.72);
+  P.add('hullDetail', cylY(0.05, 0.05, 0.005), 0.75, 1.6245, -0.90);
+  P.add('hullDetail', cylY(0.05, 0.05, 0.005), -0.75, 1.6245, -0.90);
   // Engine deck louvres.
   P.add('hull', box(1.9, 0.035, 1.05), 0, 1.72, -2.62);
   if (P.q) for (let i = 0; i < 6; i++) {
@@ -1552,12 +1560,12 @@ function challenger1Build(P) {
   // (nose x0 stays -1.31: an -1.29 edge sat 7 mm INSIDE the -1.283 plan
   // band — AA flicker collapsed the whole -1.348 column, -0.49)
   binNose(-1.31, -1.10, 1.96, 2.52);
-  P.add('turretDark', box(0.19, 0.02, 2.65), -1.205, 0.633, 0.585);
+  P.add('turretDark', box(0.206, 0.02, 2.65), -1.205, 0.633, 0.585);
   // (r3: outer bin's full-height course ends world -1.39 — its rear 0.26
   // ran the -1.47/-1.60 side cols at 2.26 over the ref's falling 2.21
   // line; a lower 2.20 cap carries the plan rear to -1.62)
   segBoxZ(P, 'turret', 0.17, 0.44, 2.86, -1.395, 0.415, 0.24);
-  P.add('turretDark', box(0.15, 0.02, 2.78), -1.395, 0.633, 0.23);
+  P.add('turretDark', box(0.166, 0.02, 2.78), -1.395, 0.633, 0.23);
   P.add('turret', box(0.17, 0.38, 0.23), -1.395, 0.385, -1.305);
   // (r2: right bin outer edge 1.425 -> 1.375 — it partial-lit the 1.411
   // front col 2.25 over the ref's falling 2.17 line)
@@ -1576,18 +1584,18 @@ function challenger1Build(P) {
   P.add('turret', box(0.09, 0.44, 0.18), 1.325, 0.415, 2.14);
   binNose(1.16, 1.28, 2.23, 2.63);
   binNose(1.28, 1.37, 2.23, 2.50);
-  P.add('turretDark', box(0.25, 0.02, 3.15), 1.24, 0.633, 0.425);
+  P.add('turretDark', box(0.266, 0.02, 3.15), 1.24, 0.633, 0.425);
   // Outer skirt-top bin tier (the print's 2.06-2.17 tops at x 1.46..1.60;
   // plan_turret: the RIGHT tier runs world 0.0..2.01 — the old rear -0.36
   // overhang broke the x 1.64 plan column by 0.36).
   segBoxZ(P, 'turret', 0.21, 0.42, 1.57, -1.545, 0.33, 0.045);
-  P.add('turretDark', box(0.19, 0.02, 1.51), -1.545, 0.549, 0.045);
+  P.add('turretDark', box(0.206, 0.02, 1.51), -1.545, 0.549, 0.045);
   // push-2: the RIGHT tier is a LOWER course than the left (front_whole:
   // ref right cols 1.49..1.648 fall 2.148 -> 2.02 where the left holds
   // 2.297 — 'the 2.28 posts' claim was left-side truth only; our right
   // posts+lid painted 5 columns +0.07..+0.15).
   segBoxZ(P, 'turret', 0.21, 0.37, 2.00, 1.545, 0.305, 1.20);
-  P.add('turretDark', box(0.19, 0.02, 1.90), 1.545, 0.499, 1.20);
+  P.add('turretDark', box(0.206, 0.02, 1.90), 1.545, 0.499, 1.20);
   // tier end posts: LEFT at the ref's 2.28 front tops, RIGHT at its own
   // lower 2.15 line.
   for (const [px, pz, py] of [[-1.545, -0.71, 0.51], [-1.545, 0.78, 0.51],
@@ -1597,6 +1605,21 @@ function challenger1Build(P) {
   // notched tier tail: the ref's inner tier edge runs on to world -0.36
   // at x<=1.56 while the outer face stops at 0.0 (plan cols 1.51/1.64)
   P.add('turret', box(0.12, 0.42, 0.36), 1.50, 0.33, 0.02);
+  // r10b (uk round 5 — the "boxy cheek masses / clean-box tiling" quarter
+  // read): flush-tangent 45-deg chamfer strips along the EXPOSED long top
+  // arrises (the c5 r9 grammar — each rolled diamond centered t/sqrt2
+  // inside BOTH faces, vertices ON the planes: tangent-line contact, zero
+  // silhouette by construction; camo 'turret' so the ease reads as the
+  // casting/bin edge rounding, not trim). Seats: L outer bin (-1.48 face,
+  // 0.635 top — lower vertex 0.567 clears the 0.549 tier top), R bin
+  // (1.375/0.635), both outer tiers, the crown plateau's left arris and
+  // the low loader-roof's right arris (§B1 crown asymmetry kept).
+  P.add('turret', box(0.048, 0.048, 2.70), -1.4461, 0.6011, 0.24, 0, 0, Math.PI / 4);
+  P.add('turret', box(0.048, 0.048, 3.10), 1.3411, 0.6011, 0.425, 0, 0, Math.PI / 4);
+  P.add('turret', box(0.048, 0.048, 1.50), -1.6161, 0.5061, 0.045, 0, 0, Math.PI / 4);
+  P.add('turret', box(0.048, 0.048, 1.55), 1.6161, 0.4561, 1.20, 0, 0, Math.PI / 4);
+  P.add('turret', box(0.048, 0.048, 0.95), -0.6661, 0.8441, 0.315, 0, 0, Math.PI / 4);
+  P.add('turret', box(0.048, 0.048, 0.95), 0.8961, 0.6711, 0.315, 0, 0, Math.PI / 4);
   // REAR BASKET (live-rig turret): stepped tops 2.165 -> 2.41 -> 2.24
   // across z -2.16..-1.32 — the ref's own REAL course lines (kept).
   // push-2 r1 plan re-cut (workorder plan_turret): the ref basket rear
@@ -1740,6 +1763,37 @@ function challenger1Build(P) {
     mg.rotation.y = -0.06;
     P.turretG.add(mg);
   }
+  // r10b (uk round 5 — the rear-view MG presentation order): AMMO CLUSTER
+  // beside the MAG inside the r10-PROVEN envelope (x -0.876..-0.734, tops
+  // <= 0.861, z 0.06..0.77 — every ortho mask interior by the same column
+  // table). From dead-rear the r10 receiver already peeks 2.40..2.48 over
+  // the rear-roof face line at x -0.77; the cans+tray widen that read into
+  // a legible weapon-station cluster (close-roof/toptilt bulk up too).
+  // (The full crown-MG rear presentation is CERTIFIED UNREACHABLE this
+  // round — packet: every above-2.498 rear-projection lane is priced; the
+  // §C 0.4 pintle allowance is un-spendable at whole 90.1.)
+  P.add('turretDark', box(0.10, 0.12, 0.16), -0.826, 0.72, 0.28);
+  P.add('turretDetail', box(0.09, 0.10, 0.14), -0.80, 0.71, 0.52);
+  P.add('turretDark', box(0.07, 0.028, 0.10), -0.792, 0.795, 0.24);
+  // r10b ROOF DRESSING (the close-roof "large empty camo fields" order):
+  // tone-first flush detail — every piece <= 6 mm proud of its host plane
+  // and strictly toward the ref's own higher line where the host IS a
+  // measured line (right roof 2.325 vs ref 2.336-2.396; NBC 2.555 vs ref
+  // 2.566): loader-hatch arc + lid seam + periscope blocks around the
+  // ring; right-roof vent disc + periscope ports; plateau/NBC seam strips.
+  P.add('turretDark', xform(new THREE.TorusGeometry(0.145, 0.011, 8, 18, 2.0), 0, 0, 0, Math.PI / 2, 0, 0),
+    -0.58, 0.869, -0.05, 0, -0.7, 0);
+  P.add('turretDetail', cylY(0.155, 0.155, 0.006), -0.58, 0.8755, -0.05);
+  for (const [px, pz] of [[-0.48, 0.19], [-0.33, -0.02], [-0.62, 0.185]]) {
+    P.add('turretDark', box(0.07, 0.010, 0.05), px, 0.873, pz);
+  }
+  P.add('turretDetail', cylY(0.055, 0.055, 0.006), 0.42, 0.708, 0.10);
+  P.add('turretDark', box(0.09, 0.006, 0.06), 0.62, 0.708, 0.30);
+  P.add('turretDark', box(0.07, 0.006, 0.05), 0.16, 0.708, 0.20);
+  P.add('turretDark', box(0.016, 0.004, 0.98), -0.175, 0.8795, 0.315);
+  P.add('turretDark', box(0.66, 0.004, 0.014), -0.35, 0.8795, 0.10);
+  P.add('turretDark', box(0.30, 0.005, 0.05), -0.45, 0.9375, -0.02);
+  P.add('turretDark', box(0.30, 0.005, 0.05), -0.45, 0.9375, -0.18);
   // Canvas dust-cover wedge over the low gun root + L11A5 with the print's
   // fat armored collar (contour r 0.42-0.50 at z 0.75..1.75) and wide-flat
   // thermal sleeve sections.
@@ -1768,10 +1822,28 @@ function challenger1Build(P) {
   // oblique views read a faceted-round shoulder (front cols only ROUND
   // toward the ref's own cylinder falloff). Collar + junction ring + shroud.
   P.addGunExtra(box(0.24, 0.19, 2.50), 0, 0.005, 3.10);
+  // r10b (uk round 5 — the close-roof Δ+14/+11.9 collar->sleeve family):
+  // the r10 octagonal caps kept FLAT top planes, and from the tilted views
+  // the flat-top arris is the fitted line (ref presents a round sleeve's
+  // falling tangents at the same matched silhouette). CAMBER the caps:
+  // each flat top splits into two planar roof quads meeting at a center
+  // RIDGE at the exact old top height — side rows read max-over-x = the
+  // ridge (byte-equal line), plan keeps the bottom-quad extents, front is
+  // turret-interior at these x. The oblique/tilt views now read falling
+  // shading tangents instead of a level plane edge.
   P.addGunExtra(slab(
-    [-0.12, 0.10, 4.35], [0.12, 0.10, 4.35], [0.12, 0.10, 1.85], [-0.12, 0.10, 1.85],
-    [-0.085, 0.13, 4.35], [0.085, 0.13, 4.35], [0.085, 0.13, 1.85], [-0.085, 0.13, 1.85]), 0, 0, 0);
-  P.addGunExtra(box(0.22, 0.21, 2.20), 0, -0.02, 5.30);
+    [-0.12, 0.10, 4.35], [0, 0.10, 4.35], [0, 0.10, 1.85], [-0.12, 0.10, 1.85],
+    [-0.085, 0.112, 4.35], [0, 0.13, 4.35], [0, 0.13, 1.85], [-0.085, 0.112, 1.85]), 0, 0, 0);
+  P.addGunExtra(slab(
+    [0, 0.10, 4.35], [0.12, 0.10, 4.35], [0.12, 0.10, 1.85], [0, 0.10, 1.85],
+    [0, 0.13, 4.35], [0.085, 0.112, 4.35], [0.085, 0.112, 1.85], [0, 0.13, 1.85]), 0, 0, 0);
+  P.addGunExtra(box(0.22, 0.15, 2.20), 0, -0.05, 5.30);
+  P.addGunExtra(slab(
+    [-0.11, 0.025, 6.40], [0, 0.025, 6.40], [0, 0.025, 4.20], [-0.11, 0.025, 4.20],
+    [-0.11, 0.028, 6.40], [0, 0.085, 6.40], [0, 0.085, 4.20], [-0.11, 0.028, 4.20]), 0, 0, 0);
+  P.addGunExtra(slab(
+    [0, 0.025, 6.40], [0.11, 0.025, 6.40], [0.11, 0.025, 4.20], [0, 0.025, 4.20],
+    [0, 0.085, 6.40], [0.11, 0.028, 6.40], [0.11, 0.028, 4.20], [0, 0.085, 4.20]), 0, 0, 0);
   for (const rz of [4.73, 5.25, 6.60]) {
     P.addGunExtra(box(0.23, 0.235, 0.16), 0, 0.02, rz);
   }
@@ -1785,14 +1857,20 @@ function challenger1Build(P) {
   // nothing right of +0.146 (col +0.211) — a centered shroud can't do both.
   P.addGunExtra(box(0.29, 0.175, 0.48), -0.015, -0.0175, 4.44);
   P.addGunExtra(slab(
-    [-0.160, 0.07, 4.68], [0.130, 0.07, 4.68], [0.130, 0.07, 4.20], [-0.160, 0.07, 4.20],
-    [-0.125, 0.105, 4.68], [0.095, 0.105, 4.68], [0.095, 0.105, 4.20], [-0.125, 0.105, 4.20]), 0, 0, 0);
+    [-0.160, 0.07, 4.68], [-0.015, 0.07, 4.68], [-0.015, 0.07, 4.20], [-0.160, 0.07, 4.20],
+    [-0.125, 0.092, 4.68], [-0.015, 0.105, 4.68], [-0.015, 0.105, 4.20], [-0.125, 0.092, 4.20]), 0, 0, 0);
+  P.addGunExtra(slab(
+    [-0.015, 0.07, 4.68], [0.130, 0.07, 4.68], [0.130, 0.07, 4.20], [-0.015, 0.07, 4.20],
+    [-0.015, 0.105, 4.68], [0.095, 0.092, 4.68], [0.095, 0.092, 4.20], [-0.015, 0.105, 4.20]), 0, 0, 0);
   // Thermal-sleeve junction ring (the ref's 2.08-2.11 gun-top band at the
   // 2.43..2.67 columns — push-2 raised 0.04 to the live cols).
   P.addGunExtra(box(0.30, 0.26, 0.24), 0, 0.08, 2.13);
   P.addGunExtra(slab(
-    [-0.15, 0.21, 2.25], [0.15, 0.21, 2.25], [0.15, 0.21, 2.01], [-0.15, 0.21, 2.01],
-    [-0.105, 0.25, 2.25], [0.105, 0.25, 2.25], [0.105, 0.25, 2.01], [-0.105, 0.25, 2.01]), 0, 0, 0);
+    [-0.15, 0.21, 2.25], [0, 0.21, 2.25], [0, 0.21, 2.01], [-0.15, 0.21, 2.01],
+    [-0.105, 0.235, 2.25], [0, 0.25, 2.25], [0, 0.25, 2.01], [-0.105, 0.235, 2.01]), 0, 0, 0);
+  P.addGunExtra(slab(
+    [0, 0.21, 2.25], [0.15, 0.21, 2.25], [0.15, 0.21, 2.01], [0, 0.21, 2.01],
+    [0, 0.25, 2.25], [0.105, 0.235, 2.25], [0.105, 0.235, 2.01], [0, 0.25, 2.01]), 0, 0, 0);
   // r2: cradle underside re-cut as the ref's own FALLING line (side
   // bottoms 1.429@3.333 -> 1.234@3.723 — the flat 1.30 belly read -0.13
   // rear / +0.065 front of it).
@@ -1828,6 +1906,14 @@ function challenger1Build(P) {
         // face center = tube center + 0.121 * (Euler XYZ (-0.5, a, 0) local +z)
         const dx = Math.sin(a), dy = Math.sin(0.5) * Math.cos(a), dz = Math.cos(0.5) * Math.cos(a);
         P.add('turretDark', cylZ(0.030, 0.006, 8), tx + 0.121 * dx, by + 0.121 * dy, tz + 0.121 * dz, -0.5, a, 0);
+        // r10b (uk round 5 — the r8-O5c/verdict "smoke tube circles absent"
+        // hold, c5 r9 O8 recipe): proud tube TIPS + dark bores give the
+        // 2x5 clusters real circular mouths at 1x. Interior by construction:
+        // tip max (x 1.53, y 0.589, z_local 1.60) rides under the tier
+        // posts' 0.66 front line, inside the tiers' 1.985 plan front and
+        // the bins' 2.255 side line (§C margins re-checked this round).
+        P.add('turretDetail', cylZ(0.014, 0.032, 8), tx + 0.138 * dx, by + 0.138 * dy, tz + 0.138 * dz, -0.5, a, 0);
+        P.add('turretDark', cylZ(0.011, 0.005, 8), tx + 0.156 * dx, by + 0.156 * dy, tz + 0.156 * dz, -0.5, a, 0);
       }
     }
   }
@@ -2133,6 +2219,39 @@ function centurionBuild(P, mk) {
     for (const bz of [-1.766, -1.227, -0.149, 0.390, 1.468, 2.007]) {
       P.add('hullDetail', box(0.031, 0.42, 0.25), s * 1.674, 1.00, bz);
     }
+    // r10 (uk round 5, c5 O-top — the shaded-parity r7 O10e "procOnly
+    // panel-line thinning", now measured: the evaluator top view carries
+    // FOUR 5.37 m 90-deg procOnly lines at x ±1.609/±1.639 = the open slot
+    // between the skirt plane (outer face 1.61, top 1.48) and the outer
+    // strip row (1.639..1.659, tops 1.31) reading as parallel bright/dark
+    // edges from above; the REF's own skirt plane tops 1.48 out at x
+    // 1.63..1.66 — one continuous surface, one edge). SKIRT TOP CAP: an
+    // olive rail closes the slot from above — MASK-INTERIOR BY
+    // CONSTRUCTION toward-ref: front cols x 1.61..1.656 straddle the
+    // skirt's own 1.48 top; the fully-outboard window ~1.656..1.66 sliver
+    // lights 1.4735 where the REF reads its 1.48 skirt line (r2 read);
+    // plan: outer edge 1.6585 stays 0.5 mm inside the panels' 1.659 face
+    // (boss 1.6895 width guard untouched, station widths boss/plate-
+    // carried); side: 1.4735 rides under the 1.48 skirt top everywhere.
+    // Inner edge embeds 9 mm into the skirt plate (§B2 chain). Segmented
+    // (§C station end-cap law).
+    if (mk === 5) {
+      for (let k = 0; k < 12; k++) {
+        P.add('hull', box(0.0585, 0.012, 0.44), s * 1.63025, 1.4675, -2.85625 + k * 0.4675);
+      }
+      // BOW CHUTE COVER (the top view's ±0.865..0.916 procOnly line pair,
+      // z 3.02..3.44): the glacis rake loft ends at rakeHalfW 0.88 and the
+      // open lane to the shoe band (x 0.94) reads as a bright-edge slot
+      // from above where the ref's full-width glacis/guard covers. Dark
+      // chute plates close the lane: y 1.435 sits under the glacis line
+      // (1.462+) and under the wrap crown band (1.47-1.51 at z>3.2), x
+      // 0.870..0.930 embeds 10 mm into the rake loft (§B2) and stays
+      // 10 mm clear of the 0.94 shoe face (§B4 lateral); front cols
+      // (deck 1.658+ over these x) and plan cols (wrap front owns the
+      // lane to 3.8) interior by construction.
+      P.add('hullDark', box(0.060, 0.012, 0.40), s * 0.90, 1.435, 2.83);
+      P.add('hullDark', box(0.060, 0.012, 0.38), s * 0.90, 1.435, 3.22);
+    }
   }
   // Fender horns/guards over the raised idlers: the ref's outboard guard
   // run carries the ±1.66 plan columns to z 3.70 (lateral clearance from
@@ -2400,6 +2519,13 @@ function centurionBuild(P, mk) {
   // side-invisible under the 2.747 ridge plateau, exactly the ref's own
   // z-band.
   P.add('turret', box(0.16, 0.09, 0.11), 0.45, 0.865, -0.845);
+  if (mk === 5) {
+    // r10 (uk round 5): flush-tangent eases on the riser's x-arrises — the
+    // bare brick read at close-roof/top; vertices ON the top + side planes
+    // (zero silhouette by the r9 grammar).
+    P.add('turret', box(0.042, 0.042, 0.11), 0.3997, 0.8803, -0.845, 0, 0, Math.PI / 4);
+    P.add('turret', box(0.042, 0.042, 0.11), 0.5003, 0.8803, -0.845, 0, 0, Math.PI / 4);
+  }
   // ---- bustle: mark-specific roofline lofts (tables in local coords) ----
   if (mk === 5) {
     // r6: extraZ pins the bottom-table knots (the top-knot-only z-set let a
@@ -2473,6 +2599,16 @@ function centurionBuild(P, mk) {
       const wIn = wOut - Math.sign(wOut) * 0.0389;
       P.add('turret', box(0.055, 0.055, 0.39), wIn, 0.7811, -1.365, 0, 0, s * Math.PI / 4);
       P.add('turret', box(0.055, 0.055, 0.22), wIn, 0.6611, -1.04, 0, 0, s * Math.PI / 4);
+      // r10 (uk round 5, pear-read extension): the walls' INNER top arrises
+      // still draw straight pale lines from top/tilt (the r9 diamonds sit
+      // on the outer crest corners only). Same flush-tangent grammar on the
+      // inner arrises — centered t/√2 inside the top face AND inside the
+      // wall body from its inner face, so vertices land ON both planes
+      // (tangent-line contact, zero silhouette; interior toward the dip).
+      const wInn = s < 0 ? -0.905 : 0.90;
+      const wInC = wInn + Math.sign(wOut) * 0.0389;
+      P.add('turret', box(0.055, 0.055, 0.39), wInC, 0.7811, -1.365, 0, 0, s * Math.PI / 4);
+      P.add('turret', box(0.055, 0.055, 0.22), wInC, 0.6611, -1.04, 0, 0, s * Math.PI / 4);
     }
     P.add('turret', box(0.08, 0.25, 0.075), -1.14, 0.475, -1.5825);
     P.add('turret', box(0.08, 0.25, 0.075), 1.14, 0.475, -1.5825);
@@ -2572,8 +2708,21 @@ function centurionBuild(P, mk) {
       wall.receiveShadow = true;
       P.turretG.add(wall);
       P.disposables.push(wg);
-      for (const wz of [-0.05, 0.13, 0.31]) {
-        P.add('turretDark', box(0.004, 0.40, 0.035), s * 1.5135, 0.17, wz);
+      // r10 (uk round 5): the r8 slat hints read plain from dead-rear vs
+      // the ref's DOTTED weave — full dot lattice on the same outer face
+      // (x 1.5135, the r8-cleared 74 mm plan margin; every dot inside the
+      // wall's own y/z envelope — mask-free by the same argument).
+      for (const wy of [0.045, 0.135, 0.225, 0.30]) {
+        for (const wz of [-0.10, -0.01, 0.08, 0.17, 0.26, 0.35]) {
+          P.add('turretDark', box(0.004, 0.026, 0.026), s * 1.5135, wy, wz);
+        }
+        // dead-rear rows: the outer-face dots read edge-on from the rear —
+        // the ref presents its weave dots there too. Rear-face pair per
+        // row (4 mm proud at z -0.142; x inside the wall span, plan cols
+        // interior by the shelf's own -1.03/-1.10 rears).
+        for (const wx of [-0.012, 0.012]) {
+          P.add('turretDark', box(0.022, 0.026, 0.004), s * (1.4875 + wx), wy, -0.142);
+        }
       }
     } else {
       P.add('turret', box(0.05, 0.46, 0.55), s * 1.4875, 0.17, 0.135);
@@ -2631,10 +2780,37 @@ function centurionBuild(P, mk) {
   P.add('turretDark', xform(new THREE.TorusGeometry(0.10, 0.012, 8, 16, 1.76), 0, 0, 0, Math.PI / 2, 0, 0),
     -0.45, 1.041, -0.30, 0, -0.55, 0);
   if (mk === 5) {
-    P.add('turret', lathe([[0.146, 0], [0.141, 0.016], [0.127, 0.034], [0.104, 0.048],
-      [0.072, 0.058], [0.030, 0.064], [0.001, 0.066]], 20), -0.45, 0.998, -0.30);
+    // r10 (uk round 5): ELLIPTICAL dome falloff — the oblq probe attributes
+    // the frontright upper silhouette at u -0.87..-0.65 to the REF dome
+    // SHOULDER falling 2.842 -> 2.834 (17-deg tangents) where the r9
+    // profile held a near-flat cap (3-8 deg over its top 0.21 m). True
+    // ellipse x = 0.146*sqrt(1-(y/0.066)^2): same base circle (plan
+    // identical), same 2.844 peak (the certified 2.85 class; the p95
+    // anchor stays the VANE), mid-flank within -4 mm of the r9 profile
+    // (interior) and +6 mm only on the top 2 mm cap sliver (sub-AA).
+    P.add('turret', lathe([[0.146, 0], [0.1436, 0.012], [0.136, 0.024], [0.1224, 0.036],
+      [0.1047, 0.046], [0.0839, 0.054], [0.0608, 0.060], [0.0357, 0.064], [0.001, 0.066]], 20), -0.45, 0.998, -0.30);
   }
-  P.add('turret', box(0.06, 0.125, 0.40), -0.45, 1.0925, -0.22);
+  if (mk === 5) {
+    // r10 (uk round 5): the p95-anchor VANE tapers to a blade — the oblq
+    // probe attributes the frontright Δ+14.3 fitted edge to THIS box's
+    // dead-level 2.93 top (0.29 u-run) pairing against the ref dome
+    // shoulder. The Z-SPINE at x -0.45 keeps the FULL 1.155 top over the
+    // FULL 0.40 z-run: all four side p95-anchor columns byte-equal
+    // (heightM 2.91-2.92 grace intact — dims sovereign), plan base
+    // unchanged; only the front-view x-profile tapers (2 tax cols move
+    // TOWARD the ref's 2.76 line — the r6-certified vane-tax class
+    // shrinks). Roof halves are planar quads (twisted-quad law).
+    P.add('turret', box(0.06, 0.064, 0.40), -0.45, 1.062, -0.22);
+    P.add('turret', slab(
+      [-0.48, 1.094, -0.02], [-0.45, 1.094, -0.02], [-0.45, 1.094, -0.42], [-0.48, 1.094, -0.42],
+      [-0.48, 1.098, -0.02], [-0.45, 1.155, -0.02], [-0.45, 1.155, -0.42], [-0.48, 1.098, -0.42]));
+    P.add('turret', slab(
+      [-0.45, 1.094, -0.02], [-0.42, 1.094, -0.02], [-0.42, 1.094, -0.42], [-0.45, 1.094, -0.42],
+      [-0.45, 1.155, -0.02], [-0.42, 1.098, -0.02], [-0.42, 1.098, -0.42], [-0.45, 1.155, -0.42]));
+  } else {
+    P.add('turret', box(0.06, 0.125, 0.40), -0.45, 1.0925, -0.22);
+  }
   P.add('turretGlass', box(0.052, 0.03, 0.05), -0.45, 1.09, -0.035);
   // Loader hatch ring + gunner sight (r5: sight/periscope hoods shaved to
   // the ref's 2.53-2.65 bump lines; the x−0.30 hood holds the ref's own
@@ -2645,6 +2821,12 @@ function centurionBuild(P, mk) {
   // r6: sight housing dropped to the ref's 2.53 line (probe: 2.53 over
   // build 0.43..0.71 at x 0.45; the 2.62 top read +0.09 on the +0.42 col)
   P.add('turret', box(0.24, 0.10, 0.30), 0.44, 0.715, 0.29);
+  if (mk === 5) {
+    // r10 (uk round 5): gunner-sight hood OUTBOARD top arris eased —
+    // flush-tangent, silhouette-identical (the front arris keeps its
+    // glass strip clear).
+    P.add('turret', box(0.036, 0.036, 0.26), 0.5345, 0.7395, 0.29, 0, 0, Math.PI / 4);
+  }
   P.add('turretGlass', box(0.16, 0.05, 0.03), 0.44, 0.74, 0.45);
   // r6: right hood raised/re-seated to the live 2.51@build 1.03..1.15 zone
   // (r5 read it 2.429/2.445 — the fresh scan says +0.065 higher, both marks
