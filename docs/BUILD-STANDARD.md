@@ -384,3 +384,15 @@ decorations need a packet justification.
   render diffs against changed stations before pricing.
 - Record the pixel-diff threshold alongside banked px counts (t>4 vs t>2
   reads ~30% apart on identical bboxes).
+
+## §C addendum — INVISIBLE-LOD ENVELOPE law (owner task, 2026-08-05)
+Invisible meshes still carry world AABBs (Box3.setFromObject, icon
+framing, probes, hashers all include them). State-gated visuals
+(destruction kits, retracted gear) are built LAZILY at the state
+transition — never parked hidden at their triggered pose; the rest scene
+graph carries no geometry outside the visible hull envelope
+(tools/tmp-lod-envelope-probe measures it). Corollaries: "invisible at
+LOD0" is not proof of LOD1 geometry (lodWrap LOD1 levels are empty by
+design); keep MATERIAL creation eager when deferring construction
+(material ids are a draw-sort key — deferred clones renumber and break
+pixel identity).

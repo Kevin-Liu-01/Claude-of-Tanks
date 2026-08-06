@@ -1060,111 +1060,22 @@ function buildRunningGear(P, cfg) {
   // A crumpled OPEN run of link pads draped off the rear of the running gear
   // and trailing flat behind the last road wheel, with growing lateral wiggle
   // so it reads as a violently shed band, not a straight plank. Hidden until
-  // setBroken(side, true).
-  const rearIsSprocket = sprocket.z < idler.z;
-  const rearZ = Math.min(sprocket.z, idler.z);
-  const rearR = rearIsSprocket ? sprocket.r : idler.r;
-  const rearY = rearIsSprocket ? sprocket.y : idler.y;
-  const RIB_N = 16;
-  const ribPads = [];
-  // low drape start: the shed band slips off the LOWER rear wheel rim and
-  // lies nearly flat — the r4 probe showed a chest-high curl reading as a
-  // giant pale drum parked against the hull
-  // r5: +0.14 -> +0.06 — the ribbon lies FLATTER off the rim (r4: the curl
-  // still read as raised dominoes from the judged framing)
-  const dropY = Math.min(rearY, wheelY) + 0.06;
-  // r7 "laid dominoes": the run was a straight evenly-spaced row of flat
-  // plates floating behind the sprocket. Now: positions along a BENT spline
-  // (tail whips outboard in a decaying S), uneven clumped spacing, yaw
-  // following the curve tangent + jitter, random roll with the odd pad
-  // folded up on edge, and a 3-pad pile right at the breakpoint.
-  const rr = (k) => { const x = Math.sin(k * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
-  // r5 (critic: "chain of oversized flat lit-tan link slabs curling like
-  // dominoes"): pad plates HALVED in thickness (0.05 -> 0.026) with a slim
-  // center GUIDE HORN so each link carries the double-pin track silhouette
-  // instead of reading as a bare wooden plank.
-  const ribPad = () => mergeAll([
-    box(trackW * 0.96, 0.026, 0.17),
-    xform(box(trackW * 0.88, 0.022, 0.05), 0, 0.024, 0), // grouser bar
-    xform(box(0.045, 0.055, 0.05), 0, 0.04, 0.02),       // guide horn
-  ]);
-  // spline points first, so each pad's yaw can follow the local tangent
-  const ribPts = [];
-  for (let i = 0; i < RIB_N; i++) {
-    const t = i / (RIB_N - 1);
-    const drape = Math.exp(-t * 4.6);
-    const py = 0.045 + Math.max(0, dropY - 0.045) * drape + (rr(i + 41) - 0.5) * 0.025;
-    // r2 "die-straight row of planks" fix: the S-curve amplitude doubled
-    // (0.15 -> 0.34 with a second lower-frequency bend) and the along-run
-    // spacing is CLUMPED — pads bunch into overlapping runs of 2-3 with
-    // ragged gaps, the way a whipping band actually piles as it unspools.
-    const px = Math.pow(t, 1.5) * 0.72
-      + Math.sin(t * 8.4) * 0.34 * Math.min(1, t * 2.2)
-      + Math.sin(t * 3.1 + 1.2) * 0.18 * t;
-    const clump = Math.sin(t * 19.7 + rr(i) * 2.4) * 0.09;
-    const pz = rearZ + 0.1 - (t * 2.15 + clump + (rr(i * 3 + 7) - 0.5) * 0.16);
-    ribPts.push([px, py, pz, t, drape]);
-  }
-  // r1 continuous-ribbon rework (critique: "scattered rigid rectangle links
-  // plus two unexplained upright black stubs"): pads follow the spline as a
-  // CONNECTED band — tight tangent-following yaw, small roll, no on-edge
-  // pads, no vertical breakpoint pile. The unspooled band reads as one
-  // crumpled ribbon lying behind the bare wheel run.
-  for (let i = 0; i < RIB_N; i++) {
-    const [px, py, pz, t, drape] = ribPts[i];
-    const nb = ribPts[Math.min(i + 1, RIB_N - 1)];
-    const pb = ribPts[Math.max(i - 1, 0)];
-    const tanYaw = Math.atan2(nb[0] - pb[0], -(nb[2] - pb[2])) * -1;
-    const yaw = tanYaw + (rr(i * 7 + 3) - 0.5) * 0.14;
-    const pitch = Math.min(0.5, Math.atan2(Math.max(0, dropY - 0.045) * 4.6 * drape, 2.15))
-      + (rr(i * 11 + 5) - 0.5) * 0.10;
-    const roll = (rr(i * 17 + 1) - 0.5) * 0.22;
-    ribPads.push(xform(ribPad(), px, py, pz, pitch, yaw, roll));
-  }
-  // breakpoint: a FLAT overlapping pile of links right under the sprocket
-  // where the band tore off (r2: 3 -> 6 pads — the shed point must read as
-  // a heaped pile, not a continuation of the row), lies flat, never on end
-  for (let i = 0; i < 6; i++) {
-    ribPads.push(xform(ribPad(),
-      (rr(i + 21) - 0.5) * 0.30,
-      0.04 + i * 0.034,
-      rearZ + 0.16 - rr(i + 33) * 0.38,
-      (rr(i + 47) - 0.5) * 0.26,
-      (rr(i + 52) - 0.5) * 0.9,
-      (rr(i + 66) - 0.5) * 0.24));
-  }
-  const ribbonGeo = mergeAll(ribPads);
-  P.disposables.push(ribbonGeo);
-  // r4 SLUMPED PARTIAL BAND (critic detrack minor): the broken side is not
-  // just bare wheels + a ground ribbon — a torn stub of the band stays
-  // HUNG off the rear sprocket/idler, draping down its back face and
-  // piling on the ground in a catenary sag. Built once from the same pad
-  // kit; toggled with the ribbon in setBroken.
-  const slumpPads = [];
-  {
-    const cx = rearY, cz = rearZ; // rear wheel center (hull-local y/z)
-    const R = rearR + 0.055;
-    // over-the-wheel arc: from just past top-dead-center down the back face
-    for (let i = 0; i < 7; i++) {
-      const a = 1.35 - (i / 6) * 2.45; // rad, 1.35 (up-front) -> -1.1 (low-rear)
-      const py = cx + Math.sin(a) * R;
-      const pz = cz - Math.cos(a) * R;
-      slumpPads.push(xform(ribPad(), (rr(i + 81) - 0.5) * 0.05, py, pz,
-        -a + Math.PI / 2 + (rr(i + 91) - 0.5) * 0.12, (rr(i + 97) - 0.5) * 0.10, (rr(i + 87) - 0.5) * 0.12));
-    }
-    // catenary drop from the low-rear rim to the ground behind the wheel
-    const y0 = cx + Math.sin(-1.1) * R, z0 = cz - Math.cos(-1.1) * R;
-    for (let i = 0; i < 5; i++) {
-      const t = (i + 1) / 5;
-      const sag = 1 - (1 - t) * (1 - t);
-      const py = Math.max(0.05, y0 * (1 - sag) + 0.05 * sag);
-      const pz = z0 - t * 0.55 - (rr(i + 71) - 0.5) * 0.06;
-      slumpPads.push(xform(ribPad(), (rr(i + 61) - 0.5) * 0.07, py, pz,
-        0.9 * (1 - t) + (rr(i + 51) - 0.5) * 0.14, (rr(i + 55) - 0.5) * 0.16, (rr(i + 57) - 0.5) * 0.18));
-    }
-  }
-  const slumpGeo = mergeAll(slumpPads);
-  P.disposables.push(slumpGeo);
+  // setBroken(side, true) — and, since the INVISIBLE-LOD ENVELOPE law,
+  // not even BUILT until then: the kit used to be constructed eagerly and
+  // parked visible=false in rig_hull at its THROWN pose — 22+12 pads per
+  // side trailing ~2.4 m behind the rear wheel and whipping ~0.55 m
+  // outboard of the track guard. Invisible meshes still carry world AABBs,
+  // so every consumer that cannot skip them (THREE.Box3.setFromObject —
+  // icon framing, mesh probes, geometry hashers; killcam.fitXrayFrame
+  // already works around exactly this class) read a phantom envelope
+  // ~1.4 m longer and ~1.1 m wider than the visible tank, and headless
+  // AABB probes flagged out-of-envelope running-gear geometry fleet-wide.
+  // Building on the first actual throw keeps the rest scene graph inside
+  // the hull envelope; the thrown visual is byte-identical (same pad
+  // math, same seeds, same transforms). Only ribMat stays eager:
+  // material ids are a renderer draw-sort key — deferring the clone
+  // would renumber every material created after this point and reorder
+  // rest-pose draws (the LOD0 pixel-identity guarantee).
   // r5 (critic: "lit-tan link slabs"): the thrown band renders in a DARKER
   // rubber-steel derivative of the track material so the shed run reads as
   // greased track iron on dirt, never lit lumber.
@@ -1179,25 +1090,136 @@ function buildRunningGear(P, cfg) {
   P.disposables.push(ribMat);
   const thrownRibbons = {};
   const slumpBands = {};
-  for (const side of [-1, 1]) {
-    const rm = new THREE.Mesh(ribbonGeo, ribMat);
-    rm.position.x = side * xc;
-    // mirror + slight per-side yaw so L/R throws never read identical
-    rm.scale.x = side;
-    rm.rotation.y = side * 0.07;
-    rm.castShadow = false;
-    rm.receiveShadow = true;
-    rm.visible = false;
-    hullG.add(rm);
-    thrownRibbons[side] = rm;
-    const sm = new THREE.Mesh(slumpGeo, ribMat);
-    sm.position.x = side * xc;
-    sm.scale.x = side;
-    sm.castShadow = false;
-    sm.receiveShadow = true;
-    sm.visible = false;
-    hullG.add(sm);
-    slumpBands[side] = sm;
+  let thrownKitBuilt = false;
+  function buildThrownKit() {
+    if (thrownKitBuilt) return;
+    thrownKitBuilt = true;
+    const rearIsSprocket = sprocket.z < idler.z;
+    const rearZ = Math.min(sprocket.z, idler.z);
+    const rearR = rearIsSprocket ? sprocket.r : idler.r;
+    const rearY = rearIsSprocket ? sprocket.y : idler.y;
+    const RIB_N = 16;
+    const ribPads = [];
+    // low drape start: the shed band slips off the LOWER rear wheel rim and
+    // lies nearly flat — the r4 probe showed a chest-high curl reading as a
+    // giant pale drum parked against the hull
+    // r5: +0.14 -> +0.06 — the ribbon lies FLATTER off the rim (r4: the curl
+    // still read as raised dominoes from the judged framing)
+    const dropY = Math.min(rearY, wheelY) + 0.06;
+    // r7 "laid dominoes": the run was a straight evenly-spaced row of flat
+    // plates floating behind the sprocket. Now: positions along a BENT spline
+    // (tail whips outboard in a decaying S), uneven clumped spacing, yaw
+    // following the curve tangent + jitter, random roll with the odd pad
+    // folded up on edge, and a 3-pad pile right at the breakpoint.
+    const rr = (k) => { const x = Math.sin(k * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+    // r5 (critic: "chain of oversized flat lit-tan link slabs curling like
+    // dominoes"): pad plates HALVED in thickness (0.05 -> 0.026) with a slim
+    // center GUIDE HORN so each link carries the double-pin track silhouette
+    // instead of reading as a bare wooden plank.
+    const ribPad = () => mergeAll([
+      box(trackW * 0.96, 0.026, 0.17),
+      xform(box(trackW * 0.88, 0.022, 0.05), 0, 0.024, 0), // grouser bar
+      xform(box(0.045, 0.055, 0.05), 0, 0.04, 0.02),       // guide horn
+    ]);
+    // spline points first, so each pad's yaw can follow the local tangent
+    const ribPts = [];
+    for (let i = 0; i < RIB_N; i++) {
+      const t = i / (RIB_N - 1);
+      const drape = Math.exp(-t * 4.6);
+      const py = 0.045 + Math.max(0, dropY - 0.045) * drape + (rr(i + 41) - 0.5) * 0.025;
+      // r2 "die-straight row of planks" fix: the S-curve amplitude doubled
+      // (0.15 -> 0.34 with a second lower-frequency bend) and the along-run
+      // spacing is CLUMPED — pads bunch into overlapping runs of 2-3 with
+      // ragged gaps, the way a whipping band actually piles as it unspools.
+      const px = Math.pow(t, 1.5) * 0.72
+        + Math.sin(t * 8.4) * 0.34 * Math.min(1, t * 2.2)
+        + Math.sin(t * 3.1 + 1.2) * 0.18 * t;
+      const clump = Math.sin(t * 19.7 + rr(i) * 2.4) * 0.09;
+      const pz = rearZ + 0.1 - (t * 2.15 + clump + (rr(i * 3 + 7) - 0.5) * 0.16);
+      ribPts.push([px, py, pz, t, drape]);
+    }
+    // r1 continuous-ribbon rework (critique: "scattered rigid rectangle links
+    // plus two unexplained upright black stubs"): pads follow the spline as a
+    // CONNECTED band — tight tangent-following yaw, small roll, no on-edge
+    // pads, no vertical breakpoint pile. The unspooled band reads as one
+    // crumpled ribbon lying behind the bare wheel run.
+    for (let i = 0; i < RIB_N; i++) {
+      const [px, py, pz, t, drape] = ribPts[i];
+      const nb = ribPts[Math.min(i + 1, RIB_N - 1)];
+      const pb = ribPts[Math.max(i - 1, 0)];
+      const tanYaw = Math.atan2(nb[0] - pb[0], -(nb[2] - pb[2])) * -1;
+      const yaw = tanYaw + (rr(i * 7 + 3) - 0.5) * 0.14;
+      const pitch = Math.min(0.5, Math.atan2(Math.max(0, dropY - 0.045) * 4.6 * drape, 2.15))
+        + (rr(i * 11 + 5) - 0.5) * 0.10;
+      const roll = (rr(i * 17 + 1) - 0.5) * 0.22;
+      ribPads.push(xform(ribPad(), px, py, pz, pitch, yaw, roll));
+    }
+    // breakpoint: a FLAT overlapping pile of links right under the sprocket
+    // where the band tore off (r2: 3 -> 6 pads — the shed point must read as
+    // a heaped pile, not a continuation of the row), lies flat, never on end
+    for (let i = 0; i < 6; i++) {
+      ribPads.push(xform(ribPad(),
+        (rr(i + 21) - 0.5) * 0.30,
+        0.04 + i * 0.034,
+        rearZ + 0.16 - rr(i + 33) * 0.38,
+        (rr(i + 47) - 0.5) * 0.26,
+        (rr(i + 52) - 0.5) * 0.9,
+        (rr(i + 66) - 0.5) * 0.24));
+    }
+    const ribbonGeo = mergeAll(ribPads);
+    P.disposables.push(ribbonGeo);
+    // r4 SLUMPED PARTIAL BAND (critic detrack minor): the broken side is not
+    // just bare wheels + a ground ribbon — a torn stub of the band stays
+    // HUNG off the rear sprocket/idler, draping down its back face and
+    // piling on the ground in a catenary sag. Built once from the same pad
+    // kit; toggled with the ribbon in setBroken.
+    const slumpPads = [];
+    {
+      const cx = rearY, cz = rearZ; // rear wheel center (hull-local y/z)
+      const R = rearR + 0.055;
+      // over-the-wheel arc: from just past top-dead-center down the back face
+      for (let i = 0; i < 7; i++) {
+        const a = 1.35 - (i / 6) * 2.45; // rad, 1.35 (up-front) -> -1.1 (low-rear)
+        const py = cx + Math.sin(a) * R;
+        const pz = cz - Math.cos(a) * R;
+        slumpPads.push(xform(ribPad(), (rr(i + 81) - 0.5) * 0.05, py, pz,
+          -a + Math.PI / 2 + (rr(i + 91) - 0.5) * 0.12, (rr(i + 97) - 0.5) * 0.10, (rr(i + 87) - 0.5) * 0.12));
+      }
+      // catenary drop from the low-rear rim to the ground behind the wheel
+      const y0 = cx + Math.sin(-1.1) * R, z0 = cz - Math.cos(-1.1) * R;
+      for (let i = 0; i < 5; i++) {
+        const t = (i + 1) / 5;
+        const sag = 1 - (1 - t) * (1 - t);
+        const py = Math.max(0.05, y0 * (1 - sag) + 0.05 * sag);
+        const pz = z0 - t * 0.55 - (rr(i + 71) - 0.5) * 0.06;
+        slumpPads.push(xform(ribPad(), (rr(i + 61) - 0.5) * 0.07, py, pz,
+          0.9 * (1 - t) + (rr(i + 51) - 0.5) * 0.14, (rr(i + 55) - 0.5) * 0.16, (rr(i + 57) - 0.5) * 0.18));
+      }
+    }
+    const slumpGeo = mergeAll(slumpPads);
+    P.disposables.push(slumpGeo);
+    for (const side of [-1, 1]) {
+      const rm = new THREE.Mesh(ribbonGeo, ribMat);
+      rm.name = 'gearThrownRibbon';
+      rm.position.x = side * xc;
+      // mirror + slight per-side yaw so L/R throws never read identical
+      rm.scale.x = side;
+      rm.rotation.y = side * 0.07;
+      rm.castShadow = false;
+      rm.receiveShadow = true;
+      rm.visible = false;
+      hullG.add(rm);
+      thrownRibbons[side] = rm;
+      const sm = new THREE.Mesh(slumpGeo, ribMat);
+      sm.name = 'gearSlumpBand';
+      sm.position.x = side * xc;
+      sm.scale.x = side;
+      sm.castShadow = false;
+      sm.receiveShadow = true;
+      sm.visible = false;
+      hullG.add(sm);
+      slumpBands[side] = sm;
+    }
   }
 
   // de-track state: 0 = healthy, 1 = thrown (band slumps, links sag)
@@ -1505,6 +1527,11 @@ function buildRunningGear(P, cfg) {
       const showBand = !broken && !hullG.userData.__glbSwapped;
       if (side < 0) { brokenL = broken ? 1 : 0; tl.visible = showBand; tl.position.y = tlY0; tl.rotation.x = 0; }
       else { brokenR = broken ? 1 : 0; tr.visible = showBand; tr.position.y = trY0; tr.rotation.x = 0; }
+      // INVISIBLE-LOD ENVELOPE law: the thrown kit exists only once a
+      // track has actually been thrown — repair calls before any throw
+      // have nothing to hide, and rest-state builds never carry the
+      // out-of-envelope ribbon AABBs.
+      if (broken) buildThrownKit();
       if (thrownRibbons[side]) {
         const rm = thrownRibbons[side];
         rm.visible = !!broken;

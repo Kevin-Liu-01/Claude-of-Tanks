@@ -1,0 +1,120 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>tmp lod-envelope mesh probe</title>
+<script type="module">
+// TEMP (factory invisible-LOD envelope round): clone of tmp-ariete-probe.html
+// extended per the owner's order — lists EVERY mesh (visible AND invisible)
+// with name/parent/rig/LOD-level/visible/tris/material/world-AABB, computes
+// the model's VISIBLE envelope (LOD0 forced, like the critic page) and flags
+// any mesh whose AABB extends outside it. Also reports the setFromObject-
+// equivalent full box so the phantom-envelope inflation is quantified.
+// Read-only diagnosis harness; deleted after the round.
+import * as THREE from 'three';
+import { createTank } from '/src/vehicles/tankFactory.js';
+
+const params = new URLSearchParams(location.search);
+const id = params.get('id') || 'ariete';
+const engineCtx = { setupShadowMaterial: (m) => m, anisotropy: 1, renderer: null };
+const tank = createTank(id, engineCtx, { camoSeed: 4242, quality: 'high', proceduralOnly: true });
+const scene = new THREE.Scene();
+scene.add(tank.root);
+tank.root.updateMatrixWorld(true);
+// force LOD level0 like the critic page
+tank.root.traverse((o) => {
+  if (!o.isLOD) return;
+  o.autoUpdate = false;
+  o.levels.forEach((level, i) => { if (level.object) level.object.visible = i === 0; });
+});
+tank.root.updateMatrixWorld(true);
+
+const lodLevelOf = (o) => {
+  // walk up: if an ancestor chain crosses a THREE.LOD, report the level index
+  for (let p = o; p && p.parent; p = p.parent) {
+    const par = p.parent;
+    if (par.isLOD) {
+      for (let i = 0; i < par.levels.length; i++) {
+        if (par.levels[i].object === p) return i;
+      }
+    }
+  }
+  return null;
+};
+
+const rows = [];
+const visBox = new THREE.Box3();   // union of RENDERING meshes (visible, colorWrite)
+const fullBox = new THREE.Box3();  // setFromObject-equivalent: every mesh
+tank.root.traverse((o) => {
+  if (!(o.isMesh || o.isInstancedMesh) || !o.geometry) return;
+  let vis = true;
+  for (let p = o; p; p = p.parent) if (!p.visible) { vis = false; break; }
+  let rig = '?';
+  for (let p = o; p; p = p.parent) if (/^rig_/.test(p.name || '')) { rig = p.name; break; }
+  let bb;
+  if (o.isInstancedMesh) {
+    if (o.count === 0) return;
+    o.computeBoundingBox();
+    bb = o.boundingBox ? o.boundingBox.clone().applyMatrix4(o.matrixWorld) : null;
+  } else {
+    if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+    bb = o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld);
+  }
+  if (!bb || !isFinite(bb.min.x)) return;
+  const posAttr = o.geometry.attributes.position;
+  const colorWrite = o.material ? o.material.colorWrite !== false : true;
+  rows.push({
+    name: o.name || '(anon)',
+    parent: (o.parent && o.parent.name) || '(anon)',
+    rig,
+    visible: vis,
+    ownVisible: o.visible,
+    lodLevel: lodLevelOf(o),
+    instanced: !!o.isInstancedMesh,
+    count: o.count || 1,
+    mat: (o.material && o.material.name) || o.material?.type || '?',
+    colorWrite,
+    tris: posAttr ? Math.round(posAttr.count / 3) : 0,
+    min: [bb.min.x, bb.min.y, bb.min.z].map((v) => +v.toFixed(3)),
+    max: [bb.max.x, bb.max.y, bb.max.z].map((v) => +v.toFixed(3)),
+    _bb: bb,
+  });
+  fullBox.union(bb);
+  if (vis && colorWrite) visBox.union(bb);
+});
+
+// out-of-envelope report: per mesh, how far it pokes past the VISIBLE box
+const EPS = 0.01; // 1 cm
+for (const r of rows) {
+  const bb = r._bb;
+  const over = {
+    xNeg: +(visBox.min.x - bb.min.x).toFixed(3),
+    xPos: +(bb.max.x - visBox.max.x).toFixed(3),
+    yNeg: +(visBox.min.y - bb.min.y).toFixed(3),
+    yPos: +(bb.max.y - visBox.max.y).toFixed(3),
+    zNeg: +(visBox.min.z - bb.min.z).toFixed(3),
+    zPos: +(bb.max.z - visBox.max.z).toFixed(3),
+  };
+  const out = Object.values(over).some((v) => v > EPS);
+  if (out) r.outOfEnvelope = over;
+  delete r._bb;
+}
+
+const box3arr = (b) => ({
+  min: [b.min.x, b.min.y, b.min.z].map((v) => +v.toFixed(3)),
+  max: [b.max.x, b.max.y, b.max.z].map((v) => +v.toFixed(3)),
+});
+window.__PROBE = {
+  id,
+  visibleBox: box3arr(visBox),
+  fullBox: box3arr(fullBox),
+  inflation: {
+    lenRearM: +(visBox.min.z - fullBox.min.z).toFixed(3),
+    lenFrontM: +(fullBox.max.z - visBox.max.z).toFixed(3),
+    widthM: +((fullBox.max.x - fullBox.min.x) - (visBox.max.x - visBox.min.x)).toFixed(3),
+  },
+  meshCount: rows.length,
+  invisibleCount: rows.filter((r) => !r.visible).length,
+  offenders: rows.filter((r) => r.outOfEnvelope),
+  invisibleRows: rows.filter((r) => !r.visible),
+};
+window.__PROBE_READY = true;
+</script>

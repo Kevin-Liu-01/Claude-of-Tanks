@@ -58,31 +58,38 @@ re-freeze NEW hash, all in ONE commit.
 
 | id | hash | notes |
 |---|---|---|
-| m60a1 | 81e69e34 | never gated |
-| m60a3 | efcde5c4 | never gated |
-| kv2 | f01e1e00 | freeze-verify only |
-| leo2a6 | 80b76338 | |
-| m1a1 | 97c10194 | carries flap-in-sweep class (future round) |
-| m1a1ha | f5c556dc | owner rear-fix RE-CERT RATIFIED (floor 9.0, mean 9.09) |
-| m1a2_tejas | 3fcae440 | drift 89.4 watch item |
-| merkava3b | 87ba249c | re-frozen 0e47256 |
-| merkava3c | 4880b0a4 | re-frozen 0e47256 |
-| kf51 | 3ae9b70c | |
-| isu122s | fdb91d50 | |
-| isu152 | 6df708a8 | |
-| merkava3d | 93e7b4eb | re-frozen 0e47256 |
-| pt91m | a37a0d24 | |
-| t72b3m | 3d92bb98 | |
-| merkava1b | 1fda7dbd | re-frozen 0e47256 |
-| m1a2 | 248a8468 | §B3 port RE-CERT RATIFIED 2026-08-05 (floor 9.0, mean 9.11) |
-| chieftain5 | 5117b9a8 | |
-| t84 | fd0bca6c | |
-| m47_patton | 70941de0 | |
-| leo2a5 | bc9bad30 | |
-| leo2_revolution | 1993cfb1 | de-fusion RE-CERT RATIFIED (floor 9.0 x14 at the coupled 88.9); retune round owed (88.9 -> 90+, P-1 fore-ring tells folded in) |
-| m46_patton | dfacd57c | |
-| centurion3 | bf0a45e8 | GRADUATED fd2c365 (24th, Centurion line's first) |
-| m1a2_sepv2 | b489ba14 | GRADUATED 2026-08-05 (25th; floor 9.0, mean 9.11 x14) |
+| m60a1 | fbf9f4cc | never gated |
+| m60a3 | 051c454c | never gated |
+| kv2 | 382b2310 | freeze-verify only |
+| leo2a6 | f25dad51 | |
+| m1a1 | 5a45a659 | carries flap-in-sweep class (future round) |
+| m1a1ha | 96d4dfc4 | owner rear-fix RE-CERT RATIFIED (floor 9.0, mean 9.09) |
+| m1a2_tejas | f3ab40f4 | drift 89.4 watch item |
+| merkava3b | 36fc1c74 | re-frozen 0e47256 |
+| merkava3c | a2805356 | re-frozen 0e47256 |
+| kf51 | 1452024b | |
+| isu122s | 60b08d10 | |
+| isu152 | 8e2f75c0 | |
+| merkava3d | 6b97616c | re-frozen 0e47256 |
+| pt91m | 2cf10e23 | |
+| t72b3m | 1e1ca4b8 | |
+| merkava1b | 470f3665 | re-frozen 0e47256 |
+| m1a2 | c20ab8dc | §B3 port RE-CERT RATIFIED 2026-08-05 (floor 9.0, mean 9.11) |
+| chieftain5 | 94c09bb0 | |
+| t84 | 04707a9c | |
+| m47_patton | 53b6123a | |
+| leo2a5 | 2f9d0af0 | |
+| leo2_revolution | 1993cfb1* | de-fusion RE-CERT RATIFIED (floor 9.0 x14 at the coupled 88.9); retune round owed (88.9 -> 90+, P-1 fore-ring tells folded in) |
+| m46_patton | 90ebf864 | |
+| centurion3 | fea56ecc | GRADUATED fd2c365 (24th, Centurion line's first) |
+| m1a2_sepv2 | 5564306c | GRADUATED 2026-08-05 (25th; floor 9.0, mean 9.11 x14) |
+
+*ALL 24 hashes above re-frozen 2026-08-05 by the INVISIBLE-LOD ENVELOPE
+fix (de-track kit now lazy-built; LOD0 pixels byte-identical x12, gates
+held, old->new table in the landing commit). leo2_revolution keeps its
+ratified 1993cfb1 pre-fix baseline: HEAD carries the mid-retune WIP sweep
+(hash drift expected; resolves + re-freezes at the retune landing, which
+must hash on the POST-LOD-FIX factory).
 
 Mirror maps (graduates + flip-era tanks measure via these, NOT runtime
 registration): tools/procedural-fidelity.html LOCAL_REFERENCE_OVERRIDES,
@@ -292,15 +299,13 @@ read BUILD-STANDARD+packets first, §F.4 report).
    candidate + changed views -> re-cert critic. Hold leo2a5/leo2a6/kf51.
 6. DONE: m1a2 §B3 re-cert PASS — re-frozen 248a8468 (bytes were already
    at HEAD via the handover snapshot; ratification landed).
-7. LOD running-gear fix (tankFactory.js + kit.js, owner task 2026-08-05):
-   two invisible LOD1 rig_hull meshes (792 tris each, mirrored) overrun
-   the ariete hull envelope (AABB z to -5.28 vs tail -3.90; x to ±2.35 vs
-   ±1.80) — garbage at >150 m. Reproduce via tools/tmp-ariete-probe,
-   locate in buildRunningGear, scope fleet, fix geometry inside envelope,
-   prove: probe clean, long-range pair, LOD0 pixel-identity, gate rows
-   unchanged, FULL 25-graduate hash old->new table (tmp-hashgeo hashes
-   invisible meshes -> expect fleet-wide hash change -> orchestrator mass
-   re-freeze in ONE commit).
+7. DONE (landed post-handover): INVISIBLE-LOD ENVELOPE fix — root cause
+   was the de-track destruction kit parked hidden at thrown pose (not
+   LOD); now lazy-built on first throw. 12/12 render pairs byte-identical
+   (incl. detrack visuals), gates held, 24-graduate mass re-freeze landed.
+   Follow-ups for family lanes: procShadow_gun oversize true-ups (t84
+   +1.80m, m46 +1.60, kf51 +1.16, leo2a6 +1.09, kv2 +0.84, ariete +0.25);
+   icons re-frame tighter at next genIcons per tank.
 8. Shoe-envelope audit extension (track-clip-audit.{mjs,html} + §B4 text,
    owner task 2026-08-05): audit tests BAND voxels but players see the
    SHOE system ~+0.13 outside (m1a1ha read 0/0 while shoes clipped).
