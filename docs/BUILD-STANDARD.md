@@ -638,3 +638,15 @@ The right mechanism is PER-TANK authored hull geometry: real belly
 plates at the real height, sponson undersides, closure panels INBOARD
 of the band inner faces (the ww2-lane channel-pan class, ±3cm clear) —
 authored where the real tank has metal, never where it has air.
+- FITTINGS-IMPORT-ONLY (§B3 mechanics, slice-3): extension-module
+  builders use the top-level `import { FITTINGS }` — there is no
+  kitFittings(); KIT.fittings attaches post-init via microtask; and an
+  extension module as import ENTRY throws kit.js's TDZ spuriously —
+  smoke-load via tankFactory.js. SWEPT-PLANAR CORE (§B1): behind
+  plan-swept raked cheeks an axis-aligned core pokes the rake or opens a
+  top-down valley — author L/R half-slabs with vertical front faces on
+  the cheek top-rear edge line. CHEEK-APEX GLACIS SEAT: apex overhang
+  floats over the raked plane — sink bottom rings interior (-0.08
+  class). ERA-DEF/GEOMETRY COUPLING (§D): re-anchoring ERA-carrying
+  geometry moves the era-kind armor defs in the SAME edit. Hash
+  invariance pairs must be back-to-back at one tree state.
