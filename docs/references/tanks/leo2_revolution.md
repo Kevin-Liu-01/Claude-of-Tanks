@@ -1687,3 +1687,190 @@ re-authors the turret to the real Rheinmetall MBT Revolution
 configuration (photo class governs); gate turret-row divergence vs the
 flawed print gets an OWNER REF-WRONG cap per §B7. Hull/running-gear rows
 keep chasing the print (uncontested).
+
+## §B7 round r18 (2026-08-05, leopard builder) — OWNER REF-WRONG TURRET
+## RE-AUTHOR: the turret is the real MBT Revolution now; gate rows record
+## the honest distance to the wrong print under the r18 §B7 cap.
+## Gate at close: min 0.2 | hull 91.8 / whole 76.4 / turret 0.2 /
+## stations 78 / dims 99.5 / floaters 100 — x2 BIT-IDENTICAL (cmp on the
+## tool JSON). Candidate hash ce7f3824 (78 meshes / 107353 verts, x2).
+
+WHAT WAS AUTHORED (photo class, everything under rig_turret):
+1. FRONT WEDGE (§B1 slope-motivates-the-mass): ONE face plane per side —
+   world z = 2.50 − 1.3772(|x|−0.44) − 0.8421(y−1.79): 40° back-rake from
+   vertical, 54° plan sweep from the embrasure (±0.44 @ w 2.50) to the
+   shoulder (±1.58 @ w 0.93); three stacked module courses per side with
+   co-planar faces whose BOTTOMS ride the certified ref floor staircase
+   exactly (2.045w / 1.90w / 1.79w — the r5/r7-chased channel floors
+   survive by construction); outer edge chamfers 1.58 -> 1.50 at the
+   roof; center PROW halves meet over the mantlet at a +0.13 ridge
+   (planarity verified to 0.6 mm); module-joint grammar ON the plane
+   (vertical seam + course seam ±4 mm, lifting bosses).
+2. GUNNER'S SIGHT recessed in the right cheek top: hood walls + roof
+   (2.42w) over a dark rectangular aperture + recessed glass.
+3. ROOF DECK at 2.36w — one plateau (real deck->roof 0.74 over the
+   honest 1.62 hull line; the print dives to 2.23) with a roof-edge
+   chamfer course closing to the panel tops.
+4. SIDE PANELS: two-facet courses — cant OUT ±1.615 @1.92w -> ±1.700
+   @2.17w (the real modules' ±1.70 width; front cols ±1.66..1.74 top out
+   at the ref's own 2.17 corner line BY CONSTRUCTION), then a top bevel
+   to ±1.6425 @2.30w (chamfered-joint grammar); three segments ending at
+   w −1.45 where the real modules meet the bustle; dark seam strips in
+   the gaps; ROSY four-tube banks integrated low on the mid panels
+   (housing + mouths + rim collars riding the cant face, x-reach inside
+   the panel-printed plan columns).
+5. ROOF SET: SEOSS panoramic on ring+pedestal, head 0.46 x 0.36 topping
+   EXACTLY 2.66w (the heightM anchor ON the ref's own spike band; face
+   package recessed 22 mm clear of the −0.725 column boundary), hood
+   visor + recessed lens; equipment module (x −0.44..−1.26, w −1.22..
+   −2.00, top 2.575w) with louvre ribs + lid seams + latches + the st4
+   cap blades INSIDE at its own top line (station cap law); compact
+   .50-cal RWS rear-right — the §B3 census pintleMG fitting (m2,
+   two-tone) with its foot SUNK to 2.30w so the pale cap tops 2.633w
+   under the 2.64 published line (a deck-level fitting stack reads
+   2.69-2.79 and blows the dims-sovereign p95 budget; §I hand-dressing:
+   base/collar/slew disc/sensor pack/ready-ammo bin justified here);
+   crosswind mast (fore-aft head, one column, top 2.62w); hatches SEATED
+   on the roof with lid seams + hinge blocks + cupola periscopes.
+6. BUSTLE RACK read: certified rails/A-panels/stubs kept + frame drops,
+   strapped duffel, upper bustle rail at the roof edge, jerry cans +
+   tarp roll against the shaded rear face; right rail widened to the
+   real (and ref) ±1.4 basket line.
+7. RECESSED UNDER-WEDGE STEEL as a SHADOW-NAMED render-only mesh
+   ('leoTurretRecessShadow', §C mechanism): per-side courses swept 0.28
+   behind the face plane + the mantlet/ring collar — the A4 turret front
+   under the appliqué reads live at ZERO mask cost (a turretDark first
+   cut printed 1.71 bottoms across the certified 2.05-2.08 stair
+   columns, −0.35 x6). Bow ring-gap fill split: aft full-height to
+   w 1.40 + fore LOW band (±0.60 x-width still blocks the §B2 side
+   x-ray) so the old dead-front BLACK BOX is gone.
+
+DELETED PRINT ARTIFACTS (the owner's "terrible" reads): the Gun-node fore
+WING (y 1.79-2.03 out to w 3.56 — physically impossible on the real
+vehicle), left cheek/notch complex (1.33w notch), left mid slab,
+asymmetric fore cores, diving fore-roof plane + crown, ±1.71 corner tabs,
+right-wall fore-front slab, the pod deck (station tub + right pod +
+shoulder + shelf + roof step), print-parked floating cupolas, EMES
+box/sight pod/riser, the wing-cover finish suite (overlay quads, seams,
+hinge bars, bolt row, stowed-MAG dressing).
+
+### r18 §B7 OWNER REF-WRONG CAP (region: TURRET; ruling quote + date
+above; ratified in BUILD-STANDARD §B7). Rows moved r17 -> r18, measured
+at the close x2 line (all divergence = real-vehicle-vs-wrong-print in
+the overridden region; hull rows BYTE-EQUAL scores — uncontested intact):
+| row | r17 | r18 | Δ | dominant §B7 classes |
+|---|---|---|---|---|
+| plan_turret | 92.32 | 0.23 (mean 7.11) | −92.1 | ref's Gun-node wing fronts w 3.54-3.57 vs real wedge sweep (x 0.17..1.61, errs 0.7-1.6 x ~11 cols); panels-vs-tab-nub at ±1.72 (2.34 x2); wall-front w 2.06 vs module end (−1.61) |
+| side_turret | 91.83 | 74.75 (mean 1.88) | −17.1 | 2.36w roof plateau + wedge top vs the print's 2.06-2.24 diving pancake nose (w 0.2..2.5, +0.10..0.24 x ~14 cols); sight hood 2.42 vs 2.21 (x2 cols) |
+| turretCurves | 91.8 | 0.2 | −91.6 | binder = plan_turret |
+| front_whole | 93.01 | 76.37 | −16.6 | roof plateau/wedge cols x ±0.1..1.3 (+0.1-0.2); SEOSS/module band vs ref band asymmetries; mast col −0.29 (+0.28 x1); ±1.78 col (ref turret wider than the real ±1.70, −0.2 x1) |
+| side_whole | 91.41 | 80.96 | −10.5 | same plateau-vs-dive classes through the whole mask |
+| wholeCurves | 91.4 | 76.4 | −15.0 | binder = front_whole |
+| stations | 91.2 | 78.0 | −13.2 | topPct: st6 3.4 (cupola at real seat) / st7 4.5 / st9 5.1 / st10 7.7 / st11 9.6 (wedge/prow plateau vs diving print); st8 wPct settled 2.91 (certified flicker band); st11/12 wPct 2.6/2.6 sovereign carry |
+| hull rows | 91.79/97.56/95.35 | 91.79/97.56/95.35 | 0 | side/plan/front_hull IDENTICAL — hull/running gear untouched |
+| plan_whole | 97.39 | 97.39 | 0 | hull owns every plan front |
+| dims | 99.5 | 99.5 | 0 | caps never cover dims: heightM 2.65 (SEOSS anchor = the ref's own spike band), hullL 0.68, overallL 1.06, w 0.11 |
+| floaters | 100 | 100 | 0 | x2 |
+Registration UNMOVED in every row (side dAlong 0 / dy −0.004, front dy
+0.000 — the §D counterweight held; no smear).
+
+CLOSE BATTERY (all at the final bytes):
+- geometry-gate x2 BIT-IDENTICAL: min 0.2 | 91.8 / 76.4 / 0.2 / 78 /
+  99.5 / 100 (full lines above).
+- track-clip --exact: front 0 / rear 0 | shoe 0 / 0, blind spots 0 PASS.
+- turret-parent: stranded 2 / abutting 0 / dangling 0 — the two
+  certified mast-union AABB false-flag classes (53%/26% — ratios moved
+  with the turret envelope, same two merged hull buckets).
+- standard-check: clip 0/0 | contig 0 (§B2 top-down clean) | decor
+  mg1+4d (RWS M2 fitting + 2 cables + 2 light clusters).
+- visual-evaluator: RIG PARITY OK, max yawProxy 2.9° @close-front (no
+  RIG MISMATCH); flagged edge deltas are the §B7 wedge-vs-print classes.
+- yaw-90 pair (shots/leo-r18/*-yaw90.png + census): the ENTIRE new
+  turret — wedge, SEOSS, module, RWS, rack, ring shadow fills — yaws as
+  one mass (§B5 de-fusion proven at the new config).
+- npm test: 166 checks + track-geometry PASS.
+- Hashes: candidate ce7f3824 x2 (78/107353); frozen sibs BYTE-IDENTICAL
+  pre-edit AND at close: leo2a5 2f9d0af0, leo2a6 f25dad51, kf51 1452024b.
+- Renders: shots/leo-r18/{before,after}/ (14 views each), crops/ (2x all
+  14 + 4x close-front/close-roof/front/left, before/after), yaw pair.
+  CHANGED VIEWS for the re-cert critic: ALL 14 (turret camo bucket
+  re-merged -> mottle reseeds; the turret silhouette changes every view).
+
+SELF-READ (photo class for the turret region per §B7(3); hull-only reads
+stay ref-parity — hull rows byte-equal): front 8.7 / frontleft 8.9 /
+frontright 8.9 / left 8.8 / right 8.8 / rear 8.6 / rearleft 8.7 /
+rearright 8.7 / top 9.0 / hero-fl 8.8 / hero-rr 8.6 / hero-toptilt 8.9 /
+close-front 8.5 / close-roof 8.9. Weakest reads named: the ring-gap
+band still reads flat-dark at 1x side/front (certified §C mechanism —
+the real gap is shallower; a recess-steel tone pass is the follow-up),
+and close-front's mantlet zone is shadow-heavy vs the photo class.
+
+LAW DISCOVERIES (bank):
+1. §B7-ECONOMY ORDER: in an overridden region, spend in this order —
+   (a) real masses that COINCIDE with ref bands (SEOSS on the ref's own
+   2.66 spike band = heightM anchor kept; ammo bin on the right-pod
+   band; basket rail to the ref's own ±1.4); (b) §C shadow-named
+   render-only for RECESS reads over certified floors (the under-wedge
+   steel — a bucket-mesh first cut cost −0.35 x6 on certified columns,
+   the named mesh costs zero); (c) honest divergence only where the
+   real shape demands it (wedge plateau, wing deletion).
+2. FITTING-SINK: a pintleMG fitting can serve a low RWS by sinking its
+   origin BELOW deck level (column emerges through a mount collar) —
+   the cap lands under the published-height line without scaling; a
+   deck-seated M2 stack reads 2.69-2.79 and breaks the p95 budget.
+3. DEAD-PLANE DECALS PRINT LONE COLUMNS (§C decals-are-mask-geometry,
+   sharpened): a decal left on a deleted face's plane printed the
+   otherwise-EMPTY −1.72 plan column alone at 2.85 errM — re-pin decals
+   whenever their host face moves; a floating decal is a full mask
+   column, not a texture.
+4. MIRRORED-SLAB WINDING: mirror slab() geometry across x by negating
+   corners AND swapping (b0<->b1, b2<->b3, t0<->t1, t2<->t3) — the
+   corner swap restores outward winding (backface culling otherwise
+   eats every mirrored face from outside).
+5. WINDOW-EDGE Z-CAPS RE-TRIGGER STATION FLICKER: new segment end-caps
+   parked ON a station window boundary (panels at w 0.55 = st8's 0.555
+   edge) re-arm the certified width flicker at its worst state (6.5%);
+   park caps >=40 mm clear (settled 2.91).
+6. SHADOW-FILL EXPOSURE: a shadow-named fill is only legal where REAL
+   geometry covers it from every scored-and-rendered angle it isn't
+   meant to read from — the full-width bow fill's lit top read as a
+   floating black slab once the wing died; a side x-ray is blocked by
+   ANY x-width, so recess fills can narrow to ±0.60 and hide under the
+   prow plan-cover.
+
+RESIDUALS (certified/measured):
+- The §B7 cap rows above — the r18 floor until the ORACLE-REPAIR
+  CANDIDATE lands: the print's wing band rides the Gun node (r16
+  census); a wing-band mesh drop (batch-41 chassis_vlo class, §E
+  orchestrator lane — builders never touch GLBs) would free
+  plan_turret's ~11 wing columns and side_turret's w 2.4..3.3 band, and
+  the cap shrinks to the roof/nose classes. RECOMMENDED.
+- procShadow_gun oversize: the gun shadow proxy runs to z 7.6 = 1.6 m
+  past the 6.005 muzzle (the fleet LOD-fix follow-up class: t84 +1.80,
+  m46 +1.60, kf51 +1.16...) — mask-excluded, render-only; true-up in
+  the family's next shared round.
+- Ring-gap band tone at 1x (above); st8 wPct flicker band 2.6-6.5
+  carried; mast col −0.29 +0.28 x1 (thin-feature, ref's own 2.34 step
+  zone); ±1.78 front col — the print's turret is wider than the real
+  ±1.70 (ref-only, capped).
+- r13 kit shoe-pin front −1.01 col + §B6 idler-wrap crown + toe-band
+  dAlong guard: all carried byte-identical (hull rows identical).
+
+### r18 LANDED (2026-08-05, orchestrator) — §B7 cap in force, candidate ce7f3824
+Landed with the turret authored to the real MBT Revolution per the owner
+ruling; hull rows held r17 EXACTLY (91.79/97.56/95.35 + plan_whole 97.39,
+registration unmoved). Gate x2 bit-identical: min 0.2 — the §B7 cap table
+above decodes it (dominant class: the print's Gun-node/TurretMesh wing
+band). ORACLE-EXCISION ROUND QUEUED (§E lane): orchestrator component
+census on committed bytes (probe: scratchpad probe-rev-guncomp.py, output
+banked in the session tool-results) found the wing band = a SWARM of
+hundreds of small TurretMesh fragments at glb y 1.13-1.29 reaching x
+±1.78 (gate w 3.56, roof-height plan carriers) + two DEGENERATE
+single-triangle slivers: GunMesh prim0 (x -1.84..-0.03, one tri) and the
+whole vehicle#gun_tube_vlo node (one tri, z -6.04..-1.12 along the tube —
+VLO-BAKE class, batch-41 sibling). The excision round uses
+REQUEST-INTERCEPTION SIM iteratively (multi-box _index_surgery + the two
+JSON-only drops), then the gate re-derives and the §B7 cap shrinks to the
+genuine real-vs-print divergence. RE-CERT CRITIC spawned at ce7f3824 —
+photo-class scoring on the turret per §B7, ref parity hull-only; the
+capped gate row is adjudicated, NOT a critic concern.

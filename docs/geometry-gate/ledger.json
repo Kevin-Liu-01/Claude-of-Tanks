@@ -1,7 +1,7 @@
 {
  "generatedAt": "2026-08-06T01:48:57.961Z",
  "gate": "every component >= 90; min is the headline",
- "passed": 25,
+ "passed": 24,
  "total": 88,
  "rows": [
   {
@@ -1051,13 +1051,13 @@
   },
   {
    "id": "leo2_revolution",
-   "geoMin": 91.2,
-   "gatePassed": true,
+   "geoMin": 0.2,
+   "gatePassed": false,
    "components": {
     "hullCurves": 91.8,
-    "wholeCurves": 91.4,
-    "turretCurves": 91.8,
-    "stations": 91.2,
+    "wholeCurves": 76.4,
+    "turretCurves": 0.2,
+    "stations": 78,
     "dims": 99.5,
     "floaters": 100
    }
