@@ -1411,3 +1411,7 @@ candidate hash + changed-view list; re-freeze at landing).
 - STATION-CROWN RHYTHM: station maxY carriers deleted from a crown must
   be replaced at EVERY possible slice window (one carrier per ~0.5 m
   slice pitch), not per aesthetic rhythm.
+
+### GUN-RUN RE-CERT RATIFIED (2026-08-06): RE-FREEZE 8bb8d984 CONFIRMED —
+floor 9.1, mean 9.19 (10 changed views; docs/critique/shaded-parity-
+merkava3bc-gunrun-recert.md). No coordinate orders.

@@ -65,8 +65,8 @@ re-freeze NEW hash, all in ONE commit.
 | m1a1 | 5a45a659 -> 66f953e4 CANDIDATE (cheek+gun round, re-cert in flight) |
 | m1a1ha | 96d4dfc4 -> cd209f68 CANDIDATE (cheek+gun round, re-cert in flight) |
 | m1a2_tejas | f3ab40f4 -> 25304310 CANDIDATE (cheek+gun round, re-cert in flight) |
-| merkava3b | 36fc1c74 -> 8bb8d984 CANDIDATE (gun-run §B3.1, re-cert in flight) |
-| merkava3c | a2805356 -> b7318b10 CANDIDATE (gun-run §B3.1, re-cert in flight) |
+| merkava3b | 8bb8d984 | gun-run re-cert RATIFIED (floor 9.1) |
+| merkava3c | b7318b10 | gun-run re-cert RATIFIED (floor 9.1) |
 | kf51 | 1452024b | |
 | isu122s | 60b08d10 | |
 | isu152 | 8e2f75c0 | |

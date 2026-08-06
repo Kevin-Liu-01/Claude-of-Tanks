@@ -622,3 +622,6 @@ code path, shared numbers; 3C params identical).
   view-left, view-right, view-top, hero-frontleft, hero-toptilt,
   close-roof.
 - Unchanged: view-rear, view-rearleft, view-rearright, hero-rearright.
+
+### GUN-RUN RE-CERT RATIFIED (2026-08-06): RE-FREEZE b7318b10 CONFIRMED —
+floor 9.1, mean 9.19 (10 changed views; same verdict doc). No orders.

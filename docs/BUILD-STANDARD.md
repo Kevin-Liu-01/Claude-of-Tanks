@@ -535,3 +535,10 @@ score is no defense.
   SCORE SATURATION: err-9 only-proc columns dominate a row; when an
   uncertified only-proc class saturates, the CERT is the ceiling driver
   — file the cert extension, don't chase columns.
+- CHANGED-VIEW LISTS ARE DIFF-DERIVED (§J, merkava gun re-cert): builders'
+  occlusion reasoning under-lists — derive the critic's scoring contract
+  from actual per-view pixel diffs. §B2 FLOOD-DELTA METHOD: fresh-vs-
+  baseline enclosed-px per view separates new holes from banked censuses
+  (delta-0 under a localized change = the clean re-cert signature).
+  ROUNDED-RECT SEG floor: facet sagitta < 1 px at the largest critic zoom
+  is the machine check for "no polygonal read".
