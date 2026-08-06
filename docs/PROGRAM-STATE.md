@@ -4,7 +4,7 @@ this INDEXES the living law docs, it does not replace them)
 
 ## 0. Doc map (where the law lives)
 - **docs/BUILD-STANDARD.md** — the LIVING RULEBOOK (owner-ratified build
-  laws §A-§I; owner standing directive: keep editing it as lessons land).
+  laws §A-§J incl. §B3.1/§B3.2; owner standing directive: keep editing it as lessons land).
 - **docs/GEOMETRY-GATE.md** — the measured gate, §10 graduation protocol,
   amendments (three-map retirement, trim-boundary interp clamp).
 - **docs/references/tanks/<id>.md** — per-tank PACKETS: round history,
@@ -85,12 +85,10 @@ re-freeze NEW hash, all in ONE commit.
 | m1a2_sepv2 | b284b8ac | 25th graduate; density re-cert RATIFIED 9.2 |
 | m26_pershing | 2f579de8 | GRADUATED 2026-08-05 (26th; floor 9.0 x14 second sitting; warp->re-anchor->retune arc) |
 
-*ALL 24 hashes above re-frozen 2026-08-05 by the INVISIBLE-LOD ENVELOPE
-fix (de-track kit now lazy-built; LOD0 pixels byte-identical x12, gates
-held, old->new table in the landing commit). leo2_revolution keeps its
-ratified 1993cfb1 pre-fix baseline: HEAD carries the mid-retune WIP sweep
-(hash drift expected; resolves + re-freezes at the retune landing, which
-must hash on the POST-LOD-FIX factory).
+*Historical note: the 2026-08-05 INVISIBLE-LOD fix mass re-froze the
+then-24 stable graduates (old->new table in commit 9bf2a6d); every row
+above now shows its CURRENT ratified hash after the 2026-08-06 waves
+(cheek+gun, density, shoe, gun-run, ring rounds — all re-certified).
 
 Mirror maps (graduates + flip-era tanks measure via these, NOT runtime
 registration): tools/procedural-fidelity.html LOCAL_REFERENCE_OVERRIDES,
@@ -235,8 +233,11 @@ honestly parked at 88.9 pending its retune)
 - **OWNER PRIORITY (2026-08-05): fv510 Warrior marked a PERFECT CANDIDATE
   for a full round** — next open family-lane slot takes it (its repair
   recipe was incident-disabled; re-adjudicate the oracle first, §E).
-- **Zero/low rows** (triage lane): recon_tank ruling, q_heavy/t30 walls, merkava2b 39.6 / 2d 34.9 / 4 0 / 4b 34.1 (family rebuilds),
-  t54 winding repair, m48 pitch, type74+t80bv scaleToOverall ruling.
+- **Zero/low rows** (triage lane): recon_tank ruling, q_heavy/t30 walls
+  (fv510 RESOLVED: built actual + photo-parity r2 + new oracle pending
+  onboarding), merkava2b 39.6 / 2d 34.9 / 4 0 / 4b 34.1 (family
+  rebuilds), t54 winding repair, m48 pitch, type74+t80bv scaleToOverall
+  ruling.
 
 ## 5. IN-FLIGHT AGENTS (SUPERSEDED BY §12 — the 2026-08-05 device
 handover interrupted these; respawn per §12)

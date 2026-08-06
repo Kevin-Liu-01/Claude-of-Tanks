@@ -231,6 +231,15 @@ judging, credited in [`docs/ATTRIBUTION.md`](docs/ATTRIBUTION.md). A small set o
 back to procedural visuals. **No assets extracted from commercial games are used** — candidate uploads were
 routinely declined on provenance.
 
+## Finding your way around
+
+**[`docs/INDEX.md`](docs/INDEX.md)** is the navigation hub — what every document is, what every
+measurement tool does, and where things live. From there: [`docs/DESIGN.md`](docs/DESIGN.md) (how the
+tank generation program is architected), [`docs/LESSONS.md`](docs/LESSONS.md) (the incident stories
+behind its laws), [`docs/PROGRAM-STATE.md`](docs/PROGRAM-STATE.md) (the live fleet registry and
+how a session resumes), and [`docs/BUILD-STANDARD.md`](docs/BUILD-STANDARD.md) (the living rulebook).
+Operational checklists for the program's recurring flows live as skills in `.claude/skills/`.
+
 ---
 
 <p align="center">
