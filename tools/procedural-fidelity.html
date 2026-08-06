@@ -103,6 +103,62 @@ const LOCAL_REFERENCE_OVERRIDES = {
       turretNode:'^turret_lod$', autoPivot:true,
     },
   },
+  // BASE-21 ORACLE WAVE (owner drop 2026-08-06; ATTRIBUTION.md "Base-21
+  // oracle wave") — measurement oracles only, the playables stay
+  // procedural (SHIP_USERDROP2_NEW=false keeps runtime MODEL_SOURCE
+  // procedural). Configs derived from raw-GLB node inspection; the
+  // vertex-extract REG rows mirror them (docs/references/vertex/*.json).
+  // NOT REGISTERED from the same drop: leo2a4 <- leopard_2a4_otco.glb
+  // (live Sketchfab description "Leopard 2A4 OTCO from War Thunder" —
+  // the same asset ATTRIBUTION.md rejected 2026-07-27; THE ONE ABSOLUTE
+  // RULE, type_89 precedent) and type10 <- type-10_main_battle_tank.glb
+  // (author rip-history hold, see docs/references/tanks/type10.md).
+  challenger2: {
+    // "Challenger II" by buh (CC-BY-4.0). Turret+gun FUSED in the
+    // 'challendger 2_0' node (sanitized 'challendger_2_0' — regex takes
+    // both); print split is material-based (turret node spans the full
+    // length + dips into the hull) — turret rows print-capped, packet
+    // note. Nose +z; ~1:1 m; thin turret-left antenna (raw y 3.05) binds
+    // the §E height clamp, width safeScale recovers (extract: s 0.8007,
+    // k 1.2318).
+    source:'glb',
+    glb:{
+      path:'/models/tanks/community/challenger_ii.glb',
+      turretNode:'^challendger[ _]2_0$', autoPivot:true,
+    },
+  },
+  t14: {
+    // "T-14 Armara Uralvagon Factory" by 3DYAROSLAV2 (CC-BY-4.0).
+    // 223 MB LOCAL-ONLY GLB (gitignored community-candidates/ staging —
+    // extracts committed, GLB never pushes; this row is a local
+    // instrument). Flat OBJ print: turret shell Object_8 + BASHNYA/roof
+    // cluster followers; gun tube Object_14 (raw muzzle -z -> yaw PI).
+    // Height clamp binds on the sensor mast (s 1.9169), width safeScale
+    // k 1.073 recovers the frame (net -0.5% vs length anchor).
+    source:'glb',
+    glb:{
+      path:'/models/community-candidates/t-14_armara_uralvagon_factory.glb',
+      turretNode:'^Object_8$', gunNode:'^Object_14$', autoPivot:true,
+      yawOffset:Math.PI,
+      turretFollowers:'^Object_(?:9|10|11|15)$',
+    },
+  },
+  t72b3: {
+    // "T-72B3M Obr. 2022" by 42manako (CC-BY-4.0). Registered for the
+    // t72b3 BASE id ONLY — the t72b3m GRADUATE keeps its frozen
+    // recovered-print registration (re-oracle decision = orchestrator
+    // lane; comparison in docs/references/tanks/t72b3.md). Turret shell
+    // Object_14 (k-1 ERA mat, includes gun-run cladding), gun Object_15,
+    // tall right-roof cluster Object_3 as follower; raw nose -z -> yaw
+    // PI. Stern log/drums inflate the hull mask (t72b_1987 drum class).
+    source:'glb',
+    glb:{
+      path:'/models/tanks/community/t-72b3m_obr._2022.glb',
+      turretNode:'^Object_14$', gunNode:'^Object_15$', autoPivot:true,
+      yawOffset:Math.PI,
+      turretFollowers:'^Object_3$',
+    },
+  },
   // Same quarantine-oracle pattern as ariete: the NullOps Type 74 is
   // PERSONAL-USE (docs/ATTRIBUTION.md) and never ships as a MODEL_SOURCE;
   // the roster's type74 spec + procedural build live in profiles/misc.js.

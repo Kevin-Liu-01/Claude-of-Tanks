@@ -48,6 +48,23 @@ const REG = {
     turretNode: '^turret_lod$', autoPivot: true,
     pubDims: { hullLengthM: 6.55, overallLengthM: 6.55, widthM: 3.28, heightM: 2.98 },
   },
+  // SPz Puma NEW VEHICLE (owner drop 2026-08-06, CC-BY-4.0 42manako;
+  // ATTRIBUTION.md "SPz Puma oracle drop"). Bradley-flow onboarding: the
+  // print carries a real articulated split (turret node [80] with the
+  // RCT30 cluster + spike_lr pod; gun_rot -> gun + shooter00/01 rockets)
+  // but the registration keeps the gun FUSED under turretNode like the
+  // bradley (proc turret mask includes rig_gun — parity holds; autoPivot
+  // reads the whole-cluster footprint like bradley's turret_lod). Raw
+  // nose = +X (front sprocket wheel_l_1/r_1 raised at +x, doorback1 ramp
+  // at -x) -> yawOffset -90 (the leclerc convention). IFV: MK30-2 muzzle
+  // stays behind the bow plane in the print -> overall = hull length.
+  // pubDims mirror the modern3.js spec row (7.6 hull; width/height datum
+  // reconciliation documented in docs/references/tanks/spz_puma.md).
+  spz_puma: {
+    path: 'public/models/tanks/community/spz_puma.glb',
+    turretNode: '^turret$', autoPivot: true, yawOffset: -Math.PI / 2,
+    pubDims: { hullLengthM: 7.6, overallLengthM: 7.6, widthM: 3.9, heightM: 3.6 },
+  },
   t62mv1: {
     path: 'public/models/tanks/community/recovered/t62_bergman.glb',
     turretNode: '^Turret$', gunNode: '^Gun$', autoPivot: false,
@@ -484,6 +501,91 @@ const REG = {
     path: 'public/models/tanks/community/bmp2_bergman.glb',
     turretNode: '^Turret$', autoPivot: true,
     pubDims: { hullLengthM: 6.72, overallLengthM: 6.72, widthM: 3.15, heightM: 2.45 },
+  },
+  // ---- BASE-21 ORACLE WAVE (owner drop 2026-08-06; ATTRIBUTION.md "Base-21
+  // oracle wave"). PROVENANCE ADJUDICATIONS from this onboarding round:
+  // * leo2a4 <- leopard_2a4_otco.glb NOT REGISTERED — the live Sketchfab
+  //   description reads "Leopard 2A4 OTCO from War Thunder" (tag:
+  //   warthunder); same asset ATTRIBUTION.md already rejected 2026-07-27.
+  //   THE ONE ABSOLUTE RULE refuses it regardless of the CC-BY tag (the
+  //   type_89 precedent).
+  // * type10 <- type-10_main_battle_tank.glb ON HOLD — author
+  //   nazidefenseforceofficial was adjudicated a game-rip poster
+  //   2026-07-27 (T-90AM, *_dds ripper textures); no per-asset rip
+  //   evidence in this file, owner adjudication required before it can
+  //   instrument a gate.
+  // * challenger_1_main_battle_tank.glb (challenger1 ALTERNATE) NOT
+  //   REGISTERED — Sketchfab page is tagged createdwithai +
+  //   world-of-tanks (AI-generated); measurement-unusable. challenger1
+  //   keeps its gate-PASS recovered print.
+  challenger2: {
+    // "Challenger II" by buh (CC-BY-4.0, the leo2a6 author). Raw print is
+    // ~1:1 meters, nose +z (muzzle overhang +z 2.86 m). Turret+gun live
+    // FUSED in the node 'challendger 2_0' (GLTFLoader sanitizes to
+    // 'challendger_2_0' — regex accepts both); running gear is the low
+    // 'truck.001' node; no gun node -> FULL box scales to overallLengthM.
+    // §E height-clamp NOTE: a thin turret-left antenna tops the box at raw
+    // y 3.05 (roof mass ends 2.25) + track bottom -0.99 -> box height 4.04
+    // binds the 1.30*heightM clamp (s 0.80 vs 1.03 length-anchored); the
+    // width safeScale (k~1.23) recovers the frame — document, don't hide.
+    path: 'public/models/tanks/community/challenger_ii.glb',
+    turretNode: '^challendger[ _]2_0$', autoPivot: true,
+    pubDims: { hullLengthM: 8.33, overallLengthM: 11.50, widthM: 3.52, heightM: 2.49 },
+  },
+  t14: {
+    // "T-14 Armara Uralvagon Factory" by 3DYAROSLAV2 (CC-BY-4.0; Russian
+    // semantic materials BASHNYA/KORPUS/PULEMETORUDIE = original Blender
+    // work). 223 MB LOCAL-ONLY (gitignored staging area) — this extract is
+    // the committed artifact, the GLB never pushes. Flat OBJ nodes: turret
+    // shell Object_8 (BASHNYA1) + Object_9/10/11 cluster (harness maps
+    // carry them as turretFollowers — this tool models split loss only),
+    // gun tube Object_14 (PULEMETORUDIE, muzzle toward raw -z -> yaw PI).
+    path: 'public/models/community-candidates/t-14_armara_uralvagon_factory.glb',
+    turretNode: '^Object_8$', gunNode: '^Object_14$', autoPivot: true,
+    yawOffset: Math.PI,
+    pubDims: { hullLengthM: 8.7, overallLengthM: 10.8, widthM: 3.9, heightM: 2.7 },
+  },
+  t72b3: {
+    // "T-72B3M Obr. 2022" by 42manako (CC-BY-4.0, 4th verified drop from
+    // this author). Registered for the t72b3 BASE id only — the t72b3m
+    // GRADUATE keeps its frozen recovered-print row (re-oracle decision =
+    // orchestrator lane; comparison note in docs/references/tanks/
+    // t72b3.md). Flat OBJ nodes: turret shell+ERA Object_14 (k-1.0 mat,
+    // includes gun-run cladding), gun tube Object_15 (5.6 m, muzzle toward
+    // raw -z -> yaw PI), tall right-roof cluster Object_3 (harness maps
+    // carry it as a turretFollower). Rear log/drums at raw +z inflate the
+    // hull mask (t72b_1987 drum-band class).
+    path: 'public/models/tanks/community/t-72b3m_obr._2022.glb',
+    turretNode: '^Object_14$', gunNode: '^Object_15$', autoPivot: true,
+    yawOffset: Math.PI,
+    pubDims: { hullLengthM: 6.67, overallLengthM: 9.53, widthM: 3.59, heightM: 2.23 },
+  },
+  challenger_3: {
+    // "Challenger 3" by 42manako — CC-BY-NC-4.0: LOCAL MEASUREMENT ONLY,
+    // never ship (NEW-VEHICLE candidate, no TANK_SPECS row -> extract +
+    // dims report only, NO harness registration). Authored FBX hierarchy
+    // (hull/turret/trophy/smoke*/antennas; gun = 'weapon' under 'mount').
+    // pubDims ANCHOR CAVEAT: no CR3 spec exists in the roster — anchored
+    // to the Challenger 2 hull family figures (CR3 reuses the CR2 hull;
+    // L55A1 is L/55 like the L30) purely to scale the extract; the packet
+    // note records the raw proportions as the real deliverable.
+    // Raw nose = +X (gunBox +x, turret seat +x) -> yawOffset -90, the
+    // leclerc convention (first extract run confirmed: z-box was the 3.5 m
+    // width, gun along +x).
+    path: 'public/models/tanks/community/challenger_3.glb',
+    turretNode: '^turret$', gunNode: '^weapon$', autoPivot: true,
+    yawOffset: -Math.PI / 2,
+    pubDims: { hullLengthM: 8.33, overallLengthM: 11.50, widthM: 3.52, heightM: 2.49 },
+  },
+  leo1a4_scan: {
+    // "Leopard 1A4 [photogrammetry scan]" by pervonharke (CC-BY-4.0) —
+    // leo1a5 FAMILY-INFLUENCE report only (no leo1a4 id in the roster; the
+    // leo1a5 build takes its grammar from this + photos). Single fused
+    // photogrammetry mesh, no turret node -> fixedMount-style whole-box
+    // measure against the leo1a5 spec dims (modern2.js).
+    path: 'public/models/tanks/community/leopard_1a4_photogrammetry_scan.glb',
+    fixedMount: true,
+    pubDims: { hullLengthM: 7.09, overallLengthM: 9.54, widthM: 3.37, heightM: 2.62 },
   },
 };
 const RUSSIA_IDS = Object.keys(REG);

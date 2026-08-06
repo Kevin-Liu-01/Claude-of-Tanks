@@ -119,7 +119,13 @@ honestly parked at 88.9 pending its retune)
 - **Russia tail**: t72b_1987 56.0 CEILING-CERTIFIED (print drum-band cap),
   t90sm 56.4 (AA-teeter binds), t62mv1 63.7 (fade-cap ceiling ~77-81),
   t72bu ~55-70 certified-ceiling — ORACLE
-  DECISION PENDING (orchestrator lane).
+  DECISION PENDING (orchestrator lane). t72b3m RE-ORACLE DECIDED
+  2026-08-06: NO SWAP (onboarding evidence: current oracle dims-EXACT +
+  split-clean + the 91.8 row frozen against it; the obr-2022 drop is a
+  later configuration = feature order + §E normalize + full re-gate,
+  not a measurement upgrade; it serves as the t72b3 BASE oracle instead;
+  ATTRIBUTION LEAD: the recovered t72b3m print is very likely 42manako's
+  own earlier upload — mesh 'T-72B3M_Zavod_edition', identical width).
 - **BASE-21 MODERNIZATION WORKSTREAM (owner directive 2026-08-06: "the
   21 original base-game customs (Sherman, Tiger I, T-34-85, Leopard
   2A4/2A7, T-14, Challenger 2, etc.) need to begin being worked on

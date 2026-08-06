@@ -235,7 +235,7 @@
    "geoMin": 0,
    "gatePassed": false,
    "components": {
-    "hullCurves": 41.7,
+    "hullCurves": 34.4,
     "wholeCurves": 13.2,
     "turretCurves": 13.9,
     "stations": 9.3,
@@ -248,7 +248,7 @@
    "geoMin": 0,
    "gatePassed": false,
    "components": {
-    "hullCurves": 1.3,
+    "hullCurves": 0,
     "wholeCurves": 0,
     "turretCurves": 0,
     "stations": 0,

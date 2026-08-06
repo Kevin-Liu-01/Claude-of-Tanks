@@ -118,3 +118,43 @@ the boot collar sits slightly deep in the slot shadow at close-front.
    AABB — the cheapest lawful fix was moving the equipment to its
    photo-true station (driver sight to the glacis crest, kit bags to the
    rear deck), not re-parenting and not documenting an artifact.
+
+## ORACLE ONBOARDED (2026-08-06 base-21 wave — closes the §E re-source line above)
+"Challenger II" by buh (the leo2a6 author), CC-BY-4.0 verified live —
+`community/challenger_ii.glb` (80 MB). Registered in all THREE harness
+maps + the vertex-extract REG (turretNode `^challendger[ _]2_0$` — raw
+name has a space, GLTFLoader sanitizes to `challendger_2_0`; regex takes
+both; autoPivot; NO gun node — tube is fused in the turret mesh, loader
+normalizes the FULL box to overallLengthM). Extract:
+docs/references/vertex/challenger2.json.
+
+### Print facts (vertex extract + node census)
+- ~1:1 meters, nose +z, no yaw needed. Hull mask span 8.192 (-1.7% vs
+  8.33), overall 11.01 (-4.3%), width 3.519 (0%). Node split is
+  MATERIAL-based, not assembly-based: `challendger 2_0` (ch2_1 mat)
+  carries turret+gun+full-length fittings (z -4.56..+6.60, dips 2.60 m
+  below deck, 3225 interpen verts); `challendger 2_1` = hull shell;
+  `truck.001` = running gear.
+- STYLIZATION: print body height 3.208 = +28.8% vs the 2.49 roof datum
+  (deep running gear + tall turret read). §E height clamp BINDS (thin
+  turret-left antenna tops the raw box at y 3.05; s 0.8007) — the width
+  safeScale k 1.2318 recovers the frame (net -1.6% class). A §E
+  height-normalize batch is the candidate repair if curve rows are to
+  measure the real vehicle (leo2a5 band-flatten precedent).
+- ORIENTATION-ASSERT ARTIFACT (law note): the extract's glacis vote
+  reads -z because CR2's REAR deck plateau (1.71-1.81) tops the long low
+  bow run — deck evidence (nose tip 1.13 at z +2.70, stern 1.46->1.81
+  in 0.4 m) + muzzle overhang +2.82 m adjudicate nose=+z. Print is
+  correctly oriented; the Soviet-tuned deck-descent heuristic misfired.
+
+### HONEST BASELINE (single-id gate x2, 2026-08-06 — first CR2 ledger rows ever)
+geoMin 0 x2 identical: hull 0, whole 0, turret 0, stations 13.6, dims 0,
+floaters 100. dims 0 is the PROC's own read (height 2.87 vs 2.49 datum =
++15.07% -> score 0; length/width/overall all <=0.44%). Curve zeros are
+real print-vs-build divergence + the print's +28.8% height stylization;
+turret rows additionally print-capped by the material split (turret_plan
+worst err 2.58 m at z -1.51). Worst columns: side_hull z 0.07 (refTop
+1.14 vs procTop -0.11, err 0.855), plan_hull z -1.8 (err 1.90),
+front_whole z 1.51 (err 0.77). Work order: reconcile the proc height
+datum first (cheap +dims), then price a §E normalize before chasing
+curves.

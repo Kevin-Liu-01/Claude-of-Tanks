@@ -112,6 +112,18 @@ const CRITIC_REFERENCE_OVERRIDES = {
     turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, paintUntextured:true,
     turretFollowers:'vehicle#(?:antenna_|bone_|ex_armor_(?!body|[lr]_)|ex_decor_(?:0[1-9]|1[01]|13|1[5-7])|ex_decor_[lr]_02|hatch_(?:0[4-9]|1[0-3]))',
     gunFollowers:'vehicle#gun_barrel_' } },
+  // BASE-21 ORACLE WAVE (2026-08-06): oracle rows mirroring the fidelity
+  // harness LOCAL_REFERENCE_OVERRIDES (see its wave block for print notes
+  // + the leo2a4/type10 provenance refusals). t14's GLB is LOCAL-ONLY
+  // (gitignored community-candidates/ staging area).
+  challenger2: { source:'glb', glb:{ path:'/models/tanks/community/challenger_ii.glb',
+    turretNode:'^challendger[ _]2_0$', autoPivot:true } },
+  t14: { source:'glb', glb:{ path:'/models/community-candidates/t-14_armara_uralvagon_factory.glb',
+    turretNode:'^Object_8$', gunNode:'^Object_14$', autoPivot:true, yawOffset:Math.PI,
+    turretFollowers:'^Object_(?:9|10|11|15)$' } },
+  t72b3: { source:'glb', glb:{ path:'/models/tanks/community/t-72b3m_obr._2022.glb',
+    turretNode:'^Object_14$', gunNode:'^Object_15$', autoPivot:true, yawOffset:Math.PI,
+    turretFollowers:'^Object_3$' } },
 };
 // graduates carry a truthy {source:'procedural'} marker, and createTank
 // reads MODEL_SOURCE internally — checking alone is not enough: INJECT the

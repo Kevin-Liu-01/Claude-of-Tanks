@@ -142,3 +142,25 @@ separable at a glance.
 4. DECK-TO-LIP CONTIGUITY: the deck polyline must END on the rear-wall
    plane — any gap to the lip overhang is an enclosed §B2 pocket over
    the sprocket bay (16 cells at ±1.25 on the first cut).
+
+## ORACLE REFUSED (2026-08-06 base-21 wave — the §E re-source line stays OPEN)
+The wave's dropped `leopard_2a4_otco.glb` ("Leopard 2A4 OTCO" by
+Jeyhun1985, embedded CC-BY-4.0) was REFUSED and DELETED (28bf608):
+- Live Sketchfab description reads verbatim "Leopard 2A4 OTCO from War
+  Thunder." with tag `warthunder`; internal root node
+  `Leopard_2_(OTCo).obj...` — a WT extraction (OTCo is the WT variant
+  designation).
+- ATTRIBUTION.md had ALREADY rejected this exact author+title on
+  2026-07-27 ("identical face count to a known WT-extraction upload.
+  Ripped game asset — forbidden. Deleted."). The re-drop verified only
+  the embedded license — which is exactly what the new §E ORACLE
+  PROVENANCE law (BUILD-STANDARD) now forbids trusting alone.
+- THE ONE ABSOLUTE RULE refuses rips even as measurement-only oracles
+  (the type_89 precedent, same day). No registration was ever written;
+  the briefly-recorded false-0 ledger row was dropped.
+leo2a4 remains a NO-ORACLE photo-class id; the visual critic stays its
+bar. Clean-license candidates for a future drop: 42manako's catalog
+(bradley/fv510/puma/t72b3m/challenger_3 all verified) has no 2A4 today;
+the leo2a5/leo2_revolution recovered prints remain the nearest family
+instruments (family-transfer measurement is NOT sanctioned — influence
+only).

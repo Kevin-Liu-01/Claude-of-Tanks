@@ -94,6 +94,18 @@ const CRITIC_REFERENCE_OVERRIDES = {
     turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
   m2a2_bradley: { source:'glb', glb:{ path:'/models/tanks/community/m2_bradley_ifv.glb',
     turretNode:'^turret_lod$', autoPivot:true } },
+  // BASE-21 ORACLE WAVE (2026-08-06): oracle rows mirroring the fidelity
+  // harness LOCAL_REFERENCE_OVERRIDES (see its wave block for the print
+  // notes + the leo2a4/type10 provenance refusals). t14's GLB is
+  // LOCAL-ONLY (gitignored staging area).
+  challenger2: { source:'glb', glb:{ path:'/models/tanks/community/challenger_ii.glb',
+    turretNode:'^challendger[ _]2_0$', autoPivot:true } },
+  t14: { source:'glb', glb:{ path:'/models/community-candidates/t-14_armara_uralvagon_factory.glb',
+    turretNode:'^Object_8$', gunNode:'^Object_14$', autoPivot:true, yawOffset:Math.PI,
+    turretFollowers:'^Object_(?:9|10|11|15)$' } },
+  t72b3: { source:'glb', glb:{ path:'/models/tanks/community/t-72b3m_obr._2022.glb',
+    turretNode:'^Object_14$', gunNode:'^Object_15$', autoPivot:true, yawOffset:Math.PI,
+    turretFollowers:'^Object_3$' } },
   leo2a6: { source:'glb', glb:{ path:'/models/tanks/leo2a6_buh.glb',
     turretNode:'^turret', gunNode:'^gun', autoPivot:true, yawOffset:Math.PI } },
   m1a2_tejas: { source:'glb', glb:{ path:'/models/tanks/m1a2_tejas.glb',

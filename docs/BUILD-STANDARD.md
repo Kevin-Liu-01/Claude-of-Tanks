@@ -650,3 +650,13 @@ authored where the real tank has metal, never where it has air.
   class). ERA-DEF/GEOMETRY COUPLING (§D): re-anchoring ERA-carrying
   geometry moves the era-kind armor defs in the SAME edit. Hash
   invariance pairs must be back-to-back at one tree state.
+- ORIENTATION-ASSERT ADJUDICATION (§D/§E, onboarding wave): the glacis
+  deck-descent heuristic misfires on hulls whose rear deck tops the bow
+  run and on prints whose turret followers pollute the hull partition —
+  a mismatch is a FLAG for deck-corner vertex adjudication, never an
+  automatic block. PHOTOGRAMMETRY OUTLIER CRUSH: stray scan points
+  inflate accessor min/max and every loader-parity consumer silently
+  crushes the model — §E outlier-strip + min/max rebuild is MANDATORY
+  before a scan oracle registers. DIMS-DATUM CLASS: when proc AND oracle
+  both read mast-inclusive p95 above the published roof datum, a dims-0
+  row is a datum-reconciliation work order, not a shape defect.
