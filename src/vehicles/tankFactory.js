@@ -757,9 +757,15 @@ function buildRunningGear(P, cfg) {
   {
     const z0 = Math.min(...wheelZs) - wheelR * 1.7;
     const z1 = Math.max(...wheelZs) + wheelR * 1.7;
-    const xi = Math.max(0.2, xc - trackW * 0.35);
+    // r8b (owner: merkava/bradley/bmp "no meat under the slopes"): the pan
+    // spans the FULL track envelope, not just the inter-track channel — the
+    // outboard band hides behind the opaque tracks/skirts where they exist
+    // and back-fills the lateral daylight under sponson-slope hulls.
+    // cfg.bellyTop lets sloped-side builds raise the fill to their slope's
+    // lower edge (defaults to the AO-wall height).
+    const xi = xc + trackW * 0.55;
     const panBot = botY + 0.02;
-    const panH = Math.max(0.2, (cfg.bayShadowTop ?? (topY + 0.1)) - panBot);
+    const panH = Math.max(0.2, (cfg.bellyTop ?? cfg.bayShadowTop ?? (topY + 0.1)) - panBot);
     P.add('hullShadow', new THREE.BoxGeometry(xi * 2, panH, z1 - z0),
       0, panBot + panH / 2, (z0 + z1) / 2);
   }
