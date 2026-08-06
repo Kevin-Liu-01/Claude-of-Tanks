@@ -2114,3 +2114,10 @@ what albedo can move in the floor-lit zone; a stronger lift would need
 the ambient-floor hook and re-certification of the fills' certified
 raw-clone tone class). procShadow_gun oversize (+1.6 m) still carried
 (fleet LOD-fix follow-up class).
+
+### r19 RE-CERT RATIFIED (2026-08-06): RE-FREEZE b53a16f8 CONFIRMED —
+floor 9.0, mean 9.11 (up from 9.04; no view below its r18 score). P-R1
+lit-tops dead at 5x, recess steel separated (p90 64.1 exact); P-R2 SEOSS
+pale population extinct. Flood delta-0 x14. Erratum: min-diff view is
+view-left (369 px). docs/critique/shaded-parity-leo2_revolution-r19-
+recert.md. No orders — the revolution arc is fully settled.

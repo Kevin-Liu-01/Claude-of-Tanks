@@ -542,3 +542,8 @@ score is no defense.
   (delta-0 under a localized change = the clean re-cert signature).
   ROUNDED-RECT SEG floor: facet sagitta < 1 px at the largest critic zoom
   is the machine check for "no polygonal read".
+- TONE-ROUND CRITIC TRIPLET (§J, revolution r19): self-colored-unit
+  homogenization reads as p90 down + sd down with med free — read the
+  triplet, not the med. Re-cert diffs spanning an oracle-repair landing
+  decompose per pair-half before attribution. Flood delta-0 doubles as
+  the whole-frame no-regression oracle for tone-only rounds.
