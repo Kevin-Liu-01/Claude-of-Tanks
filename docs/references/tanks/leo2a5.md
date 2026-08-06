@@ -1145,3 +1145,6 @@ Residuals: the pile BODY's own bottom-front corner reads ~1.6 mm outside
 the exact bar (0 vox, the fleet authored-hug class, left byte-identical
 — it carries the certified 1.845-1.857 front-top law); default-run
 near-contact counts are the fleet hug signature.
+
+### §B4 SHOE-ROUND RE-CERT RATIFIED (2026-08-06): RE-FREEZE d34a0a58 CONFIRMED
+(docs/critique/shaded-parity-leopard-shoe-recert.md; floors 9.0-9.1).

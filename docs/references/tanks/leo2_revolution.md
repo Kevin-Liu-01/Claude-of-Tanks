@@ -2164,3 +2164,6 @@ Residual: at extreme low grazing angles a 10 mm slit under the wall
 floors remains by design (kept so the shadow set never touches the
 mask solids); the under-BUSTLE opening aft of z -2.0 is the real
 vehicle's open rack zone, intentionally left.
+
+### §B4 SHOE-ROUND RE-CERT RATIFIED (2026-08-06): RE-FREEZE fa1a47fc CONFIRMED
+(docs/critique/shaded-parity-leopard-shoe-recert.md; floors 9.0-9.1).

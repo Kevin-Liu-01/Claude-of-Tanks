@@ -1115,3 +1115,6 @@ Residual: fleet-wide default-run (dilate=1) near-contact counts remain
 (authored band-hugs, the tool's documented fleet signature); exact = 0.
 Fittings census mg0+0d unchanged (packet-justified hand-authored MG3,
 §I migration queued fleet-wide).
+
+### §B4 SHOE-ROUND RE-CERT RATIFIED (2026-08-06): RE-FREEZE cff6f478 CONFIRMED
+(docs/critique/shaded-parity-leopard-shoe-recert.md; floors 9.0-9.1).
