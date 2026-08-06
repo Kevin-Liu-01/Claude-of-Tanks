@@ -49,7 +49,7 @@ at load.
 - Env for EVERY node run: `export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh"`
 - npm test before every landing (166 equipment checks + track-geometry).
 
-## 3. GRADUATE REGISTRY (25 graduates, hash-frozen)
+## 3. GRADUATE REGISTRY (26 graduates, hash-frozen)
 Freeze = deterministic geometry hash via `node tools/tmp-hashgeo.mjs
 --ids=...` (camoSeed 4242 pinned build; FNV-1a over position buffers +
 world matrices, mesh-order independent). Graduate-change protocol: fix ->
@@ -83,6 +83,7 @@ re-freeze NEW hash, all in ONE commit.
 | m46_patton | 90ebf864 | |
 | centurion3 | fea56ecc | GRADUATED fd2c365 (24th, Centurion line's first) |
 | m1a2_sepv2 | 5564306c | GRADUATED 2026-08-05 (25th; floor 9.0, mean 9.11 x14) |
+| m26_pershing | 2f579de8 | GRADUATED 2026-08-05 (26th; floor 9.0 x14 second sitting; warp->re-anchor->retune arc) |
 
 *ALL 24 hashes above re-frozen 2026-08-05 by the INVISIBLE-LOD ENVELOPE
 fix (de-track kit now lazy-built; LOD0 pixels byte-identical x12, gates
@@ -115,11 +116,8 @@ honestly parked at 88.9 pending its retune)
   orchestrator lane), ariete 82.3 (wrap break LANDED via lane-local fill
   — the sanctioned non-circular mechanism; cover/frame-lock certified).
 - **70-80**: t64bv1 73.4, t90a_vladimir 71.4. m26_pershing 90.4 GATE
-  PASS 90.5 — r4 retune LANDED both verdict orders (smooth loft + deck
-  slats; SMOOTHLOFT-hwL PARITY law banked). Fresh graduation adjudication
-  IN FLIGHT at candidate 2f579de8 (would be the 26th). X-brace
-  architecture conflict = orchestrator ruling item (stations-law open
-  track zone).
+  GRADUATED (26th, 2f579de8). X-brace architecture conflict remains an
+  orchestrator ruling item (stations-law open track zone).
 - **Russia tail**: t72b_1987 56.0 CEILING-CERTIFIED (print drum-band cap),
   t90sm 56.4 (AA-teeter binds), t62mv1 63.7 (fade-cap ceiling ~77-81),
   t72bu ~55-70 certified-ceiling — ORACLE

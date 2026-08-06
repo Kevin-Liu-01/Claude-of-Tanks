@@ -556,3 +556,18 @@ top/tilt views carry the density), Bank A +4L vs its ref rows, the
 certified r3 list unchanged (side_whole tail/tab/muzzle-collar columns,
 turret_side basket/rotor-lane, front_whole M2 crown strip, i1 1.93 =
 1.81 certified + 0.12 tone-row quantization).
+
+## GRADUATED 2026-08-05 — DUAL-GATE PASS (fleet graduate 26)
+Geo 90.5 gatePassed x2 EXACT (93.1/90.5/94.2/90.6/100/100; 90.4/90.5 =
+banked flicker twin) + independent critic 9.0 ALL FOURTEEN views on the
+second sitting (r2 adjudication, docs/critique/shaded-parity-m26-
+graduation-r2.md — close-roof and hero-toptilt 8.8 -> 9.0, facet
+patchwork dead, deck arrays at ref density row-for-row). FREEZE HASH
+2f579de8 (46 meshes / 72532 verts, orchestrator-verified at landing).
+The print's journey: 70.6 baseline -> batch-42 warp (print body defect
+cured) -> r3 re-anchor (90.4 first-ever pass) -> r4 blocker retune ->
+graduation. Flip-era §10: no runtime registration (dump clean), mirrors
+x3, no variants backfill, icons x5 from a clean HEAD worktree. Carry
+list held by owners: X-brace architecture ruling (orchestrator), ramp
+grazing class, certified residual columns (re-measured EXACT at both
+adjudications).
