@@ -246,3 +246,94 @@ shots/abrams-b1/after-m1a2_sepv2/.
   twin fifties from front/close-roof.
 - The §B5 stranded-2 stands BY CERTIFICATION until the orchestrator lands
   the coupled registration+flag round (one-flag flip on our side).
+
+## §B3 BOX-CLEANUP ROUND (2026-08-05, abrams builder) — owner directive:
+## "random boxes that are not ERAs... especially around guns"
+SWEEP METHOD: fresh critic pairs + a tint-probe (tools/tmp-sepv2-b3-tint.*,
+per-mesh flat colors -> pixel-sampled identities; shots/abrams-b3/) mapped
+every bare-cuboid read to its source line before any edit; mask-visible
+swaps were measured first (refcurves cols + trace-frame math per §D).
+
+### Box table (violation -> read, all `sep`-gated — m1a2 f3c34424 FROZEN)
+1. GUN-ROOT D/E BAND (the owner's exact class): bare stacked rectangles ->
+   the M256's ARMORED SLEEVE HOUSING. Top edges ROUNDED r 0.04/0.035 via
+   the crown-pair recipe (lower box + tangent edge cylinder + exact top
+   slab — every side top, plan extent and front bin byte-equal; the
+   exposed-corner arc cols are union-covered by D2 behind). CLAMP COLLARS
+   at the two seam stations z 2.49/3.06 (flank plates + dark tension-bolt
+   segment Z-SPLIT into one plane; x-proud only — plan cols read
+   z-extents, side projects along x; right D2 face 0.005 proud = 15 mm
+   clear of the 0.44 col boundary per the partial-pixel law). TUBE EXIT
+   BOOT (gunDark r 0.10 x 0.05, world z 3.878..3.928) inside the
+   [3.82..3.93] col's existing envelope — the gun exits a collar, not a
+   flat wall.
+2. WIND POST (glacis peg, certified glsaa_5 mask content): bare square
+   peg -> the driver's wind SENSOR: head keeps the certified 1.925 top
+   plane over the FULL -0.225..-0.13 footprint (front bin -0.221 + side
+   col spike hold), dark lens slot, slim dark mast r 0.015 filling the
+   exact [2.612..2.642] side window, base bracket; front bins below the
+   head stay works-A-covered (union along z). Mask-exact swap.
+3. BOW SHOE STACKS (cert 0.53/0.465 side bins): bare dark cuboids ahead
+   of the tracks -> stowed idler SHOES: proud pad plates + pale guide-horn
+   dots on the OUTER face only (x to 1.4185 < the 1.419 filler face;
+   y/z strictly inside each certified block).
+4. SPONSON RAIL BOXES (wf hull split, ex_armor_l/r mirrors): bare camo
+   slabs -> stowage BINS: dark lid-seam lines + latch blocks + pale hinge
+   dots, 6 mm x-proud, >=16 mm clear of the 1.43 col boundaries.
+5. ADJUDICATED KEEP: the close-front "dark box at the root" is partly the
+   REF-ENDORSED shadow pocket between cheek tips and the D1 start (the r3
+   no-holes pocket) — shadow, not a box; the collar/boot work re-frames
+   the rest.
+
+### Gate (official rig, x2 consecutive)
+BEFORE: min 91.3 | hull 93.2 whole 92.4 turret 91.3 stations 93.4 dims 100
+floaters 100 PASS. AFTER x2 IDENTICAL: **min 91.3 | hull 93.1 whole 92.4
+turret 91.3 stations 93.4 dims 100 floaters 100 PASS** — hull -0.1 is the
+sweep's total spend (bow-shoe/rail AA), inside the §C decoration
+allowance; every other component byte-equal. Hash d98bf39a -> b489ba14
+(46 meshes / 116696 verts). FROZEN SIBLINGS BYTE-EXACT through the round:
+m1a2 f3c34424, m1a1 97c10194, m1a2_tejas 3fcae440, m1a2_tusk f7ecade4
+(m1a1ha moved 5c765fc4 -> f5c556dc in its OWN owner-ordered lane — see
+m1a1ha.md).
+
+### §H.4 variety intact
+Cable, CIP pair, rigid crate, twin fifties all untouched (close-roof/top
+pairs); the new bin/clamp/boot/sensor tells ADD variant texture without
+moving any §H.4 item.
+
+### Honest residuals
+- The graduated m1a2 shows the SAME 1x classes (bare D/E band, square wind
+  post, bare bow shoe stacks, bare non-wf rail boxes — same shared lines,
+  sep-gated off): REPORTED for a scheduled m1a2 graduate round, per the
+  "report, don't force" clause. Evidence: shots/abrams-b3/ tint set +
+  this table (the m1a2 renders read identically at those stations).
+- CITV/GPS hoods stay unauthored: the r3 roof-recess law (2.4275 lid
+  ceiling forbids proud drums) blocks them; the CDR/loader ring drums
+  carry the station reads. Documented as law-blocked, not §B3 misses.
+- The band's close-front read keeps the ref-endorsed root shadow pocket
+  (adjudicated above).
+
+### Round-close audit lines (official rigs, 2026-08-05 — queue-delayed, all landed)
+- standard-check: gateMin 91.3 (93.1/92.4/91.3/93.4/100/100), clip 0/0 ✓,
+  contig 0 ✓ (§B2 zero enclosed holes), decor mg1+1d ✓ (§B3 census).
+- track-clip --exact: front 0 / rear 0 (0/2 offenders with m1a1ha).
+- turret-parent: stranded 2 / abutting 0 / dangling 0 — byte-same certified
+  ORACLE-REGISTRATION-PINNED classes (45%/26% works-cloth + hullDetail).
+- visual-evaluator (fresh, post-§B3): RIG PARITY OK all 14 views
+  (yawProxy 0.1-0.7°); flagged rows are the documented carry classes
+  (corner-handover + short re-segmented contours). report + overlays at
+  shots/visual-eval-m1a2_sepv2/ (17:08 run).
+- npm test: full suite green (equipment 166 checks, track-geometry ok).
+- LAW-BANK note (orchestrator lane): the cot-shots FIFO at today's agent
+  count exceeds the tools' hardcoded 30-min acquireLock timeout — three
+  official-rig runs died queued before landing on retry. Timeout or a
+  per-agent render budget wants an infra pass. Also: a wrapper holding the
+  lock around a tool that self-tickets DEADLOCKS the fleet (this round's
+  jam, self-diagnosed + repaired) — never wrap the self-ticketing rigs
+  (track-clip/turret-parent/standard-check/visual-evaluator/tank-critic).
+
+### LANDED AS GRADUATION CANDIDATE (2026-08-05, orchestrator)
+§B3 box-cleanup round landed. Gate x2 IDENTICAL min 91.3 PASS
+(93.1/92.4/91.3/93.4/100/100). Hash b489ba14 (46/116696, orchestrator-
+verified). The full-14-view graduation adjudication critic (the program's
+25th candidate) is IN FLIGHT at landing — on PASS the orchestrator runs §10.

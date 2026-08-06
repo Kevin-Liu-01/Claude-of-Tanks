@@ -406,13 +406,32 @@ function abramsHull(P, g) {
     // Flaps sit flush INSIDE the skirt plane and never below its hem (the
     // reference hem line is the front-view silhouette bottom at this x).
     if (!g.noFrontFlaps && !g.noFlaps) {
-      P.add('hullRubber', box(0.32 * s, 0.26 * s, 0.028), side * (sk.x - 0.17 * s), sk.bot + 0.14 * s, sk.z1 + 0.02, -0.08, 0, 0);
+      // g.frontFlapZ opt-in (§B1-6/§B4 m1a1ha graduate round, 2026-08-05):
+      // the default sk.z1+0.02 plane sits INSIDE the idler-wrap SHOE sweep
+      // (band path r+0.045+th/2, links +0.057 rOut, pad faces +0.073 —
+      // envelope r = wheel r + 0.22; tejas idler reach z 3.580 vs flap rear
+      // face 3.556) — the owner's "tracks glitching through" class. The
+      // override re-hangs the flap clear of the sweep INSIDE the same side
+      // trace column and behind the fenders' plan reach. Default
+      // byte-identical.
+      P.add('hullRubber', box(0.32 * s, 0.26 * s, 0.028), side * (sk.x - 0.17 * s), sk.bot + 0.14 * s, g.frontFlapZ ?? (sk.z1 + 0.02), -0.08, 0, 0);
     }
-    if (!g.noFlaps) {
+    if (!g.noFlaps && !g.noRearFlap) {
       // rearFlapZ hangs the flap behind the skirt end when the oracle's rear
       // flap line sits aft of it (tejas -3.755) — TOP-HUNG from the overhang
       // shelf bottom (the ref's -3.77 side band is y >= 0.96, not a
       // ground-skirt flap).
+      // g.noRearFlap opt-in (§B1-6/§B4 m1a1ha graduate round, 2026-08-05):
+      // on the tejas rig the sprocket-wrap SHOE envelope (r = sprocket r
+      // + 0.22) sweeps z to -3.820 across the flap's whole height — the
+      // -3.755 plane is UNREACHABLE without interpenetration (owner
+      // screenshot class), and the ref's own -3.778 plan/side band at those
+      // columns is its PARKED SHOES, not a flap (refcurves 2026-08-05:
+      // plan cols 61-63 read -3.778 on both sides with the proc flap at
+      // -3.769 — the parked pads carry the same class without it). Deleting
+      // the flap keeps the columns on the pads and clears the sweep; the
+      // corner read closes with the fender-back tongues (buildTejasFamily
+      // m1a1ha block). Default byte-identical.
       const rfz = g.rearFlapZ ?? (sk.z0 - 0.02);
       const rfy = g.rearFlapZ ? (g.tailShelf ? g.tailShelf.yBot : sk.bot) + 0.105 : sk.bot + 0.13 * s;
       // rearFlapInset pulls the flap inboard when the ref's flap columns end
@@ -1526,7 +1545,17 @@ function tejasSuspensionDress(P, g) {
 // ref tail is also -3.937), so hullLengthM and the -3.99 side bin read are
 // unchanged. Tilted slats catch the hemi on their top faces = the ref's
 // light-catching fine-pitch grille.
-function tejasRearKit(P) {
+function tejasRearKit(P, opts) {
+  // opts.softDark (§B2-read m1a1ha graduate round, 2026-08-05 — owner
+  // "gaps between stuff": the remaining hullDark rear-wall fittings fire
+  // pitch-black under the dark-bucket outgoing scale and read as VOID SLOTS
+  // at 1x — the same class the r4 door-backing fix measured). The flag
+  // moves the TIP box to the detail tone with a real lid-seam/latch tell
+  // (§B3: a bin has a lid seam + latches) and the grille frame straps +
+  // pintle base to hullShadow (the ref's own ~49/255 mid-shadow floor).
+  // Geometry classes and every envelope unchanged; default (undefined)
+  // byte-identical for m1a1/m1a2_tejas/m1a2_tusk.
+  const sd = !!(opts && opts.softDark);
   const W = -3.937;                       // center wall plane (|x| <= 0.95)
   const WO = -3.602;                      // outboard wall plane (to |x| 1.64)
   // Bay backing in the scheme-detail tone (r3 sample: a cooled-dark backer
@@ -1546,8 +1575,8 @@ function tejasRearKit(P) {
   for (const vx of [-0.455, -0.30, -0.15, 0.15, 0.30, 0.455]) {
     P.add('hullWood', box(0.020, 0.30, 0.016), vx, 1.185, W + 0.006);
   }
-  P.add('hullDark', box(0.045, 0.35, 0.014), -0.61, 1.185, W + 0.004);
-  P.add('hullDark', box(0.045, 0.35, 0.014), 0.61, 1.185, W + 0.004);
+  P.add(sd ? 'hullShadow' : 'hullDark', box(0.045, 0.35, 0.014), -0.61, 1.185, W + 0.004);
+  P.add(sd ? 'hullShadow' : 'hullDark', box(0.045, 0.35, 0.014), 0.61, 1.185, W + 0.004);
   P.add('hullDetail', box(1.84, 0.032, 0.012), 0, 1.372, W + 0.005);
   // Taillights + tow pintle on the same wall. (The two hullDark shackle
   // toruses are GONE — visual r3 item 4's "two stray circle outlines".)
@@ -1555,7 +1584,7 @@ function tejasRearKit(P) {
     P.add('hullDark', box(0.125, 0.072, 0.010), side * 0.80, 1.352, W + 0.004);
     P.add('hullDetail', box(0.135, 0.014, 0.012), side * 0.80, 1.396, W + 0.005);
   }
-  P.add('hullDark', box(0.30, 0.062, 0.018), 0, 1.030, W + 0.008);
+  P.add(sd ? 'hullShadow' : 'hullDark', box(0.30, 0.062, 0.018), 0, 1.030, W + 0.008);
   P.add('hullDetail', box(0.10, 0.09, 0.016), 0, 1.032, W + 0.007);
   // Outboard grille doors + the TIP box (plan-safe: all faces inside the
   // -3.635 full-width plan edge). §B4 (family variety round): the old
@@ -1580,8 +1609,17 @@ function tejasRearKit(P) {
   }
   // TIP box re-mounted on the surviving wall above the right door (its old
   // 1.34..1.50 station lost the wall to the lane carve and would float).
-  P.add('hullDark', box(0.16, 0.22, 0.035), 0.98, 1.52, WO - 0.019);
+  // (softDark: the box takes the detail tone + §B3 phone-box tells — the
+  // hullDark slab read as a black HOLE in the corner wall at 1x, the
+  // owner's "gaps" screenshot class. x 0.90..1.06 stays clear of the shoe
+  // lane (pads 1.124..1.686, pin caps 1.092..1.718) — never swept.)
+  P.add(sd ? 'hullDetail' : 'hullDark', box(0.16, 0.22, 0.035), 0.98, 1.52, WO - 0.019);
   P.add('hullDetail', box(0.17, 0.028, 0.04), 0.98, 1.645, WO - 0.020);
+  if (sd) {
+    P.add('hullShadow', box(0.13, 0.016, 0.012), 0.98, 1.573, WO - 0.040);  // lid seam
+    P.add('hullShadow', box(0.024, 0.034, 0.010), 0.98, 1.508, WO - 0.040); // latch
+    P.add('hullDetail', box(0.032, 0.012, 0.014), 0.98, 1.451, WO - 0.039); // cable port
+  }
 }
 
 // Tone kit (visual r2, leopard r4/r5 + merkava r3 precedents — sampled
@@ -1787,6 +1825,23 @@ function buildTejasFamily(P, p) {
     : (vid === 'm1a2_tejas' || vid === 'm1a2_tusk') ? [0.7, 0, 1] : null;
   const t = dufMul ? { ...TEJAS_TURRET, rackDufMul: dufMul } : TEJAS_TURRET;
   if (p.abramsKit === 'tusk') g = { ...g, noTip: true, noFlaps: true };
+  // §B1-6/§B4 GRADUATE-CHANGE (m1a1ha ONLY, owner screenshot 2026-08-05:
+  // "tracks are glitching through and theres gaps between stuff"):
+  // - SHOE-ENVELOPE truth (leo-r13 law; the --exact clip audit tests the
+  //   BAND only): envelope r = end-wheel r + bandOuterR(0.045+th/2) + link
+  //   rOut(th/2+0.012) + pad faces(0.073) = r + 0.220. Sprocket sweep
+  //   reaches z -3.820; the -3.755 rear flap sat FULLY inside it, and the
+  //   idler sweep (3.580) cut the 3.556..3.584 front flap — both owner
+  //   poke-through reads. Rear flap DELETED (noRearFlap: the ref's own
+  //   -3.778 rear band at plan cols 61-63 / side col 90 is its PARKED
+  //   SHOES — ours carry the same columns, measured 2026-08-05); front
+  //   flap re-hung at 3.620 (extremes 3.596..3.644: >=1.6 cm sweep
+  //   clearance, same side trace column 23 [3.550..3.660], behind the
+  //   fenders' plan reach).
+  // - The corner tongues + rear-kit softDark ride below/in tejasRearKit.
+  // m1a1/m1a2_tejas/m1a2_tusk take none of this — byte-identical (hash
+  // proof in the round report).
+  if (vid === 'm1a1ha') g = { ...g, noRearFlap: true, frontFlapZ: 3.620 };
   abramsHull(P, g);
   // Front fender wings: the oracle's plan reaches 3.71..3.82 at |x| 1.75-1.83
   // (forward of the skirt front) — thin segmented plates flush at the
@@ -1847,6 +1902,25 @@ function buildTejasFamily(P, p) {
     // (r5: pod grille tops mid-shade — the two ink-black bars on the rear
     // deck in view-top; the ref deck is fused with soft dark grilles)
     P.add('hullShadow', box(0.30, 0.02, 0.22), side * 1.56, 1.757, -3.41);
+  }
+  // §B2-read CORNER TONGUES (m1a1ha graduate round, 2026-08-05 — owner
+  // "gaps between stuff"): the §B4 stern lane carve (x 1.08) leaves the
+  // rear corners open from the shelf ring to the skirt — at rear/quarter
+  // views the void reads as a stepped hole over the sprocket. A fender-back
+  // plate closes the corner ABOVE the shoe sweep: bottoms 1.55 (envelope
+  // clearance ≥1.9 cm at every plate y: sweep z at y1.55 = -3.5785 vs face
+  // -3.598), tops 1.695 under the 1.713 deck, z -3.598..-3.618 fully inside
+  // side col 89 and plan-interior to the -3.641 skirt read; inner edge
+  // welds 2 cm into the shelf-ring wall (x 1.06..1.08). §B3 tell: bolted
+  // edge lip. m1a1ha only — every other family build byte-identical.
+  if (vid === 'm1a1ha') {
+    for (const side of [-1, 1]) {
+      P.add('hull', box(0.632, 0.145, 0.020), side * 1.376, 1.6225, -3.608);
+      P.add('hullDetail', box(0.612, 0.020, 0.008), side * 1.376, 1.688, -3.622);
+      for (const bx of [1.15, 1.375, 1.60]) {
+        P.add('hullDetail', box(0.024, 0.024, 0.006), side * bx, 1.60, -3.621);
+      }
+    }
   }
   P.turretG.position.set(t.ring[0], t.ring[1], t.ring[2]);
   P.gunG.position.set(t.gun[0], t.gun[1], t.gun[2]);
@@ -1923,7 +1997,7 @@ function buildTejasFamily(P, p) {
   // Visual r2 kits (work order items 1/3/5/7 + the tone laws).
   tejasWheelKit(P, g);
   tejasSuspensionDress(P, g);                  // visual r4 item 3
-  tejasRearKit(P);
+  tejasRearKit(P, vid === 'm1a1ha' ? { softDark: true } : undefined);
   tejasToneKit(P);
 
   if (p.abramsKit === 'tusk') {
@@ -2505,6 +2579,25 @@ function buildM1a2(P, V) {
       // audit zone; carries the cert 0.53/0.465 side bins to 3.595.
       sb('hullTrack', s, 0.955, 1.41, 0.53, 0.88, 3.30, 3.465);
       sb('hullTrack', s, 0.955, 1.41, 0.465, 0.88, 3.48, 3.595);
+      if (sep) {
+        // §B3 BOX-CLEANUP (sepv2 round, 2026-08-05): the two cert blocks
+        // read as bare dark cuboids floating ahead of the track at 1x —
+        // they ARE the print's stowed idler shoes, so they take the
+        // track-shoe grammar: proud pad plates + pale guide-horn dots on
+        // the OUTER face only (x to 1.417, inside the 1.419 filler-band
+        // face; y/z strictly inside each certified block, so every side
+        // bin and plan/front row is byte-equal). m1a2 keeps the bare
+        // blocks (frozen f3c34424 — 1x read reported for its own round).
+        for (const [zA, zB, y0] of [[3.30, 3.465, 0.53], [3.48, 3.595, 0.465]]) {
+          const n = 3;
+          const step = (zB - zA - 0.02) / n;
+          for (let k = 0; k < n; k++) {
+            const zc = zA + 0.01 + step * (k + 0.5);
+            sb('hullTrack', s, 1.41, 1.417, y0 + 0.03, 0.85, zc - step * 0.36, zc + step * 0.36);
+            sb('hullDetail', s, 1.41, 1.4185, 0.665, 0.695, zc - 0.012, zc + 0.012);
+          }
+        }
+      }
       // Cert tail shoe under the shelf (keyed 1 cm into the tail solid —
       // floater contract; bottom rides the ref's 0.65-0.685 tail line).
       sb('hullTrack', s, 0.955, 1.41, 0.655, 0.90, -3.555, -3.42);
@@ -2575,6 +2668,19 @@ function buildM1a2(P, V) {
     hb('hull', -1.317, -1.283, 1.42, 1.695, -1.90, -1.10);
     hb('hull', 1.205, 1.315, 1.42, 2.115, -2.02, -0.92);
     hb('hull', 1.315, 1.44, 1.42, 2.042, -2.02, -0.92);
+    // §B3 BOX-CLEANUP (sepv2 round, 2026-08-05): the rail boxes are the
+    // ref's sponson STOWAGE BINS — bare camo slabs at 1x. Bin grammar on
+    // the outer faces (§B3: a bin has a lid seam + latches): dark lid seam
+    // line + latch blocks + hinge dots, 6 mm x-proud (plan cols read
+    // z-extents; faces stay >=16 mm clear of the 1.43 col boundaries).
+    hb('hullDark', -1.451, -1.445, 2.036, 2.048, -1.98, -0.96);   // L lid seam
+    hb('hullDark', 1.44, 1.446, 1.963, 1.975, -1.98, -0.96);      // R lid seam
+    for (const zc of [-1.80, -1.47, -1.14]) {
+      hb('hullDark', -1.4515, -1.445, 1.95, 2.01, zc - 0.02, zc + 0.02);  // L latches
+      hb('hullDark', 1.44, 1.4465, 1.877, 1.937, zc - 0.02, zc + 0.02);   // R latches
+      hb('hullDetail', -1.4505, -1.445, 2.075, 2.095, zc - 0.014, zc + 0.014); // L hinges
+      hb('hullDetail', 1.44, 1.4455, 2.002, 2.022, zc - 0.014, zc + 0.014);    // R hinges
+    }
   } else {
     tb('turret', -1.445, -1.325, 1.566, 2.115, -2.02, -0.92); // left rail box
     tb('turret', -1.317, -1.283, 1.566, 1.695, -1.90, -1.10); // left rail step
@@ -2630,7 +2736,24 @@ function buildM1a2(P, V) {
   // r2: x widened -0.20 -> -0.225 (census glsaa_5 -0.223..-0.137) — the
   // works-A departure left the -0.221 front bin reading the post alone,
   // and the old edge missed that bin by half a millimetre (err 0.164).
-  hb('hullDetail', -0.225, -0.13, 1.30, 1.925, 2.612, 2.642);
+  if (sep) {
+    // §B3 BOX-CLEANUP (sepv2 round, 2026-08-05): the bare square peg reads
+    // as an unidentifiable post at 1x — re-authored as the INSTRUMENT it is
+    // (§B3: a named thing with its tell): sensor head + slim mast + base
+    // bracket. MASK-EXACT swap: the head keeps the certified 1.925 top
+    // plane over the FULL -0.225..-0.13 footprint (front bin -0.221 and
+    // the side col 2.52 spike hold), the mast fills the same side z-window
+    // (r 0.015 at z 2.627 = [2.612..2.642] exact) below it, and every
+    // front bin below the head stays covered by works block A behind
+    // (union along z). Plan interior to the deck band throughout.
+    hb('hullDetail', -0.225, -0.13, 1.845, 1.925, 2.612, 2.642);           // sensor head
+    P.add('hullDark', box(0.075, 0.024, 0.004), -0.1775, 1.887, 2.610);    // lens slot
+    P.add('hullDark', cylY(0.015, 0.015, 0.455, 10), -0.1775, 1.6275, 2.627); // mast
+    P.add('hullDark', cylY(0.021, 0.021, 0.018, 10), -0.1775, 1.836, 2.627); // collar
+    hb('hullDetail', -0.225, -0.13, 1.30, 1.42, 2.612, 2.642);             // base bracket
+  } else {
+    hb('hullDetail', -0.225, -0.13, 1.30, 1.925, 2.612, 2.642);
+  }
   // Works-field dressing (visual r2): the bare camo boxes read as a crate
   // stack of pale-edged line-art from top/heroes. Tarp caps, ratchet
   // straps, rib slats and grab handles put equipment identity on them —
@@ -3418,9 +3541,38 @@ function buildM1a2(P, V) {
   gb('gunMount', -0.44, 0.44, 1.45, 1.88, -0.06, 0.38);    // root block
   gb('gunMount', -0.42, 0.42, 1.14, 1.92, 0.38, 0.90);     // rotor/mantlet
   P.add('gunMount', cylZ(0.115, 1.30, 14), 0, 0, 1.55 - M1A2_GUNP[2]);  // sleeve
-  gb('gunMount', -0.20, 0.42, 1.565, 2.148, 2.265, 2.375); // sight band D1
-  gb('gunMount', -0.20, 0.42, 1.565, 2.175, 2.375, 2.44);  // D1 rear step
-  gb('gunMount', -0.20, 0.42, 1.565, 2.148, 2.44, 2.905);  // sight band D2
+  // §B3 BOX-CLEANUP (sepv2 round, 2026-08-05 — the owner's "random boxes
+  // ... especially around guns" case): under `sep` the D/E band re-reads as
+  // the M256's ARMORED SLEEVE HOUSING instead of bare stacked rectangles.
+  // Mechanics, all mask-exact:
+  // - top edges ROUND via the crown-pair recipe (lower box to top-R + edge
+  //   cylinder tangent on BOTH certified planes + top slab at the exact
+  //   top): every side top, plan extent and front bin is byte-equal — the
+  //   exposed-corner arc columns are union-covered by D2 behind them;
+  // - clamp COLLARS ride the flanks at the two dark seam stations (x-proud
+  //   only: plan cols read z-extents, side view projects along x, front
+  //   tops stay under the band tops — zero-row class);
+  // - the tube exits through a dark BOOT collar inside the [3.82..3.93]
+  //   side-col envelope (§B3: a gun exits through a collar, not a wall).
+  // m1a2 keeps the original three-box author byte-identical (graduate
+  // freeze f3c34424; its own 1x read is REPORTED, not forced).
+  if (sep) {
+    const RB = 0.04;
+    for (const [x0, x1, top, z0, z1] of [
+      [-0.20, 0.42, 2.148, 2.265, 2.375],                  // D1
+      [-0.20, 0.42, 2.175, 2.375, 2.44],                   // D1 rear step
+      [-0.20, 0.42, 2.148, 2.44, 2.905],                   // D2
+    ]) {
+      gb('gunMount', x0, x1, 1.565, top - RB, z0, z1);
+      P.add('gunMount', cylZ(RB, z1 - z0, 12), x1 - RB,
+        top - RB - M1A2_GUNP[1], (z0 + z1) / 2 - M1A2_GUNP[2]);
+      gb('gunMount', x0, x1 - RB, top - RB, top, z0, z1);
+    }
+  } else {
+    gb('gunMount', -0.20, 0.42, 1.565, 2.148, 2.265, 2.375); // sight band D1
+    gb('gunMount', -0.20, 0.42, 1.565, 2.175, 2.375, 2.44);  // D1 rear step
+    gb('gunMount', -0.20, 0.42, 1.565, 2.148, 2.44, 2.905);  // sight band D2
+  }
   // (§B5 r2 measurement note, bank it: the vertex-workorder's 96-col grid
   // is PHASE-SHIFTED from the gate's — its 0.179 plan bin (boundary 0.124)
   // read the E band's 0.12 edge as a 1-m overpaint, but on the GATE grid
@@ -3429,8 +3581,41 @@ function buildM1a2(P, V) {
   // "fixed" the workorder row and broke the real one (err 0.294) — REVERTED.
   // Confirm bin ownership on the gate's own worst list before moving edges.)
   gb('gunMount', -0.20, 0.12, 1.575, 2.172, 2.905, 2.955); // D2 center tail
-  gb('gunMount', -0.26, -0.20, 1.565, 2.15, 2.265, 2.82);  // D left corner
-  gb('gunMount', -0.17, 0.12, 1.565, 2.118, 2.955, 3.895); // sensor band E
+  if (sep) {
+    // D left corner, outer top edge rounded at -0.26 (tangents exact).
+    gb('gunMount', -0.26, -0.20, 1.565, 2.11, 2.265, 2.82);
+    P.add('gunMount', cylZ(0.04, 0.555, 12), -0.22, 2.11 - M1A2_GUNP[1], 2.5425 - M1A2_GUNP[2]);
+    gb('gunMount', -0.22, -0.20, 2.11, 2.15, 2.265, 2.82);
+    // sensor band E, both top edges rounded (r 0.035).
+    gb('gunMount', -0.17, 0.12, 1.565, 2.083, 2.955, 3.895);
+    P.add('gunMount', cylZ(0.035, 0.94, 12), -0.135, 2.083 - M1A2_GUNP[1], 3.425 - M1A2_GUNP[2]);
+    P.add('gunMount', cylZ(0.035, 0.94, 12), 0.085, 2.083 - M1A2_GUNP[1], 3.425 - M1A2_GUNP[2]);
+    gb('gunMount', -0.135, 0.085, 2.083, 2.118, 2.955, 3.895);
+    // Clamp collars over the two seam stations (flank plates with a dark
+    // tension-bolt segment Z-SPLIT into the same plane — the §B3
+    // sleeve-clamp grammar). x-proud only; the right D2 face rides 0.005
+    // proud (0.425 = 15 mm clear of the 0.44 col boundary, partial-pixel
+    // law) — every other face keeps >=15 mm boundary margins inside its
+    // own col.
+    for (const [zc, xl, xr, yt, pl, pr] of [
+      [2.49, -0.20, 0.42, 2.06, 0.008, 0.005],
+      [3.06, -0.17, 0.12, 2.05, 0.008, 0.008],
+    ]) {
+      for (const [fx0, fx1] of [[xl - pl, xl], [xr, xr + pr]]) {
+        gb('gunMount', fx0, fx1, 1.62, yt, zc - 0.0375, zc - 0.016);
+        gb('gunMount', fx0, fx1, 1.62, yt, zc + 0.016, zc + 0.0375);
+        gb('gunMount', fx0, fx1, 1.62, 1.86, zc - 0.016, zc + 0.016);
+        gb('gunMount', fx0, fx1, 1.94, yt, zc - 0.016, zc + 0.016);
+        gb('gunMountDark', fx0, fx1, 1.86, 1.94, zc - 0.016, zc + 0.016);
+      }
+    }
+    // Tube exit boot at the E face (world z 3.878..3.928, r 0.10 — inside
+    // the [3.82..3.93] col's existing 1.565..2.118 envelope).
+    P.add('gunDark', cylZ(0.10, 0.05, 14), 0, 0.0075, 3.903 - M1A2_GUNP[2]);
+  } else {
+    gb('gunMount', -0.26, -0.20, 1.565, 2.15, 2.265, 2.82);  // D left corner
+    gb('gunMount', -0.17, 0.12, 1.565, 2.118, 2.955, 3.895); // sensor band E
+  }
   gb('gunMountDark', -0.20, 0.36, 1.60, 2.06, 2.46, 2.52); // band seams
   gb('gunMountDark', -0.12, 0.07, 1.62, 2.06, 3.04, 3.08);
   // Visual r3 order 5 (no-holes flag): the daylight slit under D1/D2

@@ -5,8 +5,8 @@
  "components": {
   "hullCurves": 91.7,
   "wholeCurves": 89.4,
-  "turretCurves": 89.6,
-  "stations": 93.5,
+  "turretCurves": 89.8,
+  "stations": 93.9,
   "dims": 100,
   "floaters": 100
  },
@@ -120,8 +120,8 @@
    ]
   },
   "side_whole": {
-   "score": 92.07140668432207,
-   "meanPct": 0.52,
+   "score": 92.20927571968785,
+   "meanPct": 0.51,
    "p95Pct": 1.43,
    "coverPct": 0.56,
    "reg": {
@@ -662,8 +662,8 @@
  },
  "turretRows": {
   "side": {
-   "score": 89.63587973903013,
-   "meanPct": 0.79,
+   "score": 89.80870148758723,
+   "meanPct": 0.78,
    "p95Pct": 1.43,
    "coverPct": 0,
    "reg": {
@@ -672,20 +672,20 @@
    },
    "worst": [
     {
-     "at": -1.15,
-     "refTop": 0.9,
-     "refBot": 0.29,
-     "procTop": 0.92,
-     "procBot": 0.21,
-     "errM": 0.051
-    },
-    {
      "at": 1.81,
      "refTop": 1.18,
      "refBot": 0.15,
      "procTop": 1.1,
      "procBot": 0.13,
      "errM": 0.046
+    },
+    {
+     "at": -1.15,
+     "refTop": 0.9,
+     "refBot": 0.29,
+     "procTop": 0.9,
+     "procBot": 0.21,
+     "errM": 0.041
     },
     {
      "at": -2.9,
@@ -731,15 +731,7 @@
      "at": -1.04,
      "refTop": 0.92,
      "refBot": 0.27,
-     "procTop": 0.93,
-     "procBot": 0.21,
-     "errM": 0.036
-    },
-    {
-     "at": -0.93,
-     "refTop": 0.92,
-     "refBot": 0.26,
-     "procTop": 0.94,
+     "procTop": 0.91,
      "procBot": 0.21,
      "errM": 0.036
     },
@@ -747,9 +739,9 @@
      "at": -0.82,
      "refTop": 0.93,
      "refBot": 0.15,
-     "procTop": 0.94,
+     "procTop": 0.93,
      "procBot": 0.21,
-     "errM": 0.036
+     "errM": 0.031
     },
     {
      "at": 0.71,
@@ -761,6 +753,14 @@
     },
     {
      "at": 0.82,
+     "refTop": 1.24,
+     "refBot": 0.15,
+     "procTop": 1.2,
+     "procBot": 0.13,
+     "errM": 0.031
+    },
+    {
+     "at": 0.93,
      "refTop": 1.24,
      "refBot": 0.15,
      "procTop": 1.2,
@@ -932,12 +932,12 @@
   {
    "i": 10,
    "wPct": 0,
-   "topPct": 1.05
+   "topPct": 0.75
   },
   {
    "i": 11,
    "wPct": 0.32,
-   "topPct": 0.59
+   "topPct": 0.17
   },
   {
    "i": 12,

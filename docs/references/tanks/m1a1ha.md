@@ -106,3 +106,70 @@ faceRake 0.32 = 34.8° cheek edge exact. Gate x2: 89.4 held both runs
 0/0/0; standard-check PASS; pairs shots/abrams-b1/{before,after}-m1a1ha/
 (proc-half diff localized to the turret front, 295 px view-left; ref half
 0-diff). NEW HASH b14be581 -> 5c765fc4 (46/158212) for re-cert+re-freeze.
+
+## §B1-6/§B4 SHOE-SWEEP + §B2-READ REAR (graduate-change round, 2026-08-05)
+OWNER REPORT (screenshot, m1a1ha rear 3/4): "tracks are glitching through
+and theres gaps between stuff in the model. fix!"
+DIAGNOSIS (measured, tankFactory shoe math — the --exact clip audit tests
+the BAND only, audit-blind to shoes):
+- SHOE ENVELOPE = end-wheel r + bandOuterR(0.045+th/2) + link rOut
+  (th/2+0.012) + pad faces(0.073) = r + 0.220. Sprocket (r 0.32 @ y 1.10,
+  z -3.28) sweeps to z -3.820 across y 1.02..1.18; the rear flap
+  (z faces -3.769..-3.741, y 0.965..1.205) sat FULLY inside the sweep —
+  interpenetration at every track phase. Idler (r 0.34 @ 0.88, 3.02)
+  sweeps to z 3.580; front flap faces 3.556..3.584 — clipped.
+- "GAPS": (a) the hullDark TIP box + grille frame straps + pintle base bar
+  fired pitch-black under the dark-bucket outgoing scale (the r4
+  door-backing class) — void reads, not geometry; (b) the §B4 stern lane
+  carve (x 1.08) leaves the rear corners open shelf-ring-to-skirt — a
+  stepped see-through channel at rear quarters.
+FIX (all m1a1ha-gated; m1a1/m1a2_tejas/m1a2_tusk byte-identical — hashes
+97c10194 / 3fcae440 / f7ecade4 verified unchanged, m1a2 f3c34424,
+m1a2_sepv2 untouched by this lane):
+- REAR FLAP DELETED (g.noRearFlap opt-in): refcurves 2026-08-05 prove the
+  ref's own -3.778 band at plan cols 61-63 / side col 90 is its PARKED
+  SHOES — our parked pads carry the same columns, so the flap was
+  mask-redundant AND unreachable without clipping. Front flap re-hung
+  (g.frontFlapZ 3.620; extremes 3.596..3.644): >=1.6 cm sweep clearance,
+  same side trace col 23 [3.550..3.660], behind the fenders' plan reach.
+- CORNER TONGUES (fender-back plates, both sides): x 1.06..1.692 (welded
+  2 cm into the shelf-ring wall), y 1.55..1.695 (sweep clearance >=1.9 cm,
+  under the 1.713 deck), z -3.598..-3.618 (side col 89 interior,
+  plan-interior to the -3.641 skirt read) + bolted edge lip (§B3 tell).
+- REAR-KIT softDark (tejasRearKit opt-in): TIP box -> detail tone + lid
+  seam/latch/cable-port (§B3 phone-box tells; x 0.90..1.06 is outside the
+  shoe lane — never swept); grille straps + pintle base -> hullShadow
+  (the ref's ~49/255 mid-shadow floor).
+GATE HOLD x2 IDENTICAL, ZERO delta: min 89.4 | hull 91.7 whole 89.4
+turret 89.8 stations 93.9 dims 100 floaters 100 (= pre-fix baseline both
+runs; the parked-shoe analysis priced the flap deletion at exactly 0).
+CHANGED VIEWS: view-rear, view-rearleft, view-rearright, hero-rearright
+(corner tongues + TIP/strap tones + flap deletion), view-left/right +
+view-front + close-front (front-flap 4 cm re-hang), hero-toptilt
+(marginal). Before: shots/abrams-b3/m1a1ha-before/; after:
+shots/critic-m1a1ha/ (fresh full 14-view set, zero console errors).
+NEW HASH 5c765fc4 -> f5c556dc (46 meshes / 158608 verts) — graduate-change
+re-freeze on landing after critic re-cert of the changed views.
+RESIDUAL (honest): below the tongues the open sprocket bay shows the
+honest wrap exactly like the ref's own corner; m1a1 + m1a2_tejas +
+m1a2_tusk carry the SAME flap-in-sweep defect classes (same TEJAS_HULL
+numbers) — REPORTED for their own graduate/band rounds, not forced here.
+
+### Round-close audit lines (official rigs, 2026-08-05)
+- standard-check: gateMin 89.4 (91.7/89.4/89.8/93.9/100/100 — the
+  pre-existing sub-90 drift row, held EXACTLY), clip 0/0 ✓, contig 0 ✓,
+  decor mg1+1d ✓.
+- track-clip --exact: front 0 / rear 0 (tongues + re-hung/deleted flaps
+  clear of the band by construction and by audit).
+- turret-parent: stranded 0 / abutting 0 / dangling 0.
+- visual-evaluator (fresh, post-fix): RIG PARITY OK all views (yawProxy
+  0.2-1.6°); report at shots/visual-eval-m1a1ha/ (17:07 run).
+- npm test: full suite green.
+
+### LANDED PENDING RE-CERT (2026-08-05, orchestrator — owner takeover order)
+The §B4/§B3 rear fix (owner report: "tracks are glitching through and theres
+gaps") landed with the family round. Gate HOLD x2 zero-delta at the frozen
+row (89.4 | 91.7/89.4/89.8/93.9/100/100). RE-FREEZE CANDIDATE f5c556dc
+(46 meshes / 158608 verts, orchestrator-verified; was 5c765fc4) — the
+graduate-change re-cert critic (changed rear views, >=9.0 bar) is IN FLIGHT
+at landing; its verdict ratifies the re-freeze or files orders.
