@@ -103,9 +103,11 @@ honestly parked at 88.9 pending its retune)
   m1a2_sepv2 GRADUATED (25th).
 - **80-90 band**: m60a2 86.3 (ceiling 87.5 — cert decision pending),
   bradley 84.7, bmp2 84.0 (ceiling), m45_patton 81.2 (stop-rule closed).
-- **70-80**: type90 79.0 (climbing, misc r3 agent on it), ariete 78.5
-  (ceiling ~82 without cert-class break; wrap-authoring attempt in misc
-  r3), m26_pershing 74.8 (dims 91.9 = priced re-anchor debt; patton
+- **80-90 additions (misc r3 CLOSED, ceiling-measured ~84-85 each)**:
+  type90 83.6 (station lane class binds; 3.69 band-solver col =
+  orchestrator lane), ariete 82.3 (wrap break LANDED via lane-local fill
+  — the sanctioned non-circular mechanism; cover/frame-lock certified).
+- **70-80**: m26_pershing 74.8 (dims 91.9 = priced re-anchor debt; patton
   re-anchor agent ON IT), t64bv1 73.4, t90a_vladimir 71.4.
 - **Russia tail**: t72b_1987 56.0 CEILING-CERTIFIED (print drum-band cap),
   t90sm 46.9 (loft rework ordered, russia r3 agent on it), t62mv1 47.9
@@ -265,9 +267,10 @@ is snapshot-committed; each line below is the respawn mission. Use the §6
 agent-brief boilerplate (never-commit, single-owner file, env line, vite
 74xx-77xx, FIFO §F.1, never-wait-on-watchers, graduate hashes, false-0,
 read BUILD-STANDARD+packets first, §F.4 report).
-1. misc r3 (misc.js): type90 79.0 ladder (+10 or ceiling; band-solver
-   3.68-col is orchestrator-lane) + ariete non-circular wrap-break attempt
-   (else certify ceiling). Packets: type90.md, ariete.md round-2 decodes.
+1. DONE pre-handover (landed in 2a6094b, report verified): misc r3 —
+   type90 83.6, ariete 82.3, both ceiling-measured; eight laws banked in
+   packets (1024-PARITY PROBE, FRUSTUM-HALFWIDTH, LANE-LOCAL FILL, etc.).
+   Next misc round = orchestrator band-solver col + certified classes.
 2. russia tail-3 (russia.js): t62mv1 47.9 decode-first (crown/cupola caps,
    drum-stack) + t90sm 46.9 §B1 loft rework (dims 92.2->100, rear clip
    376->0). Hold pt91m a37a0d24 / t72b3m 3d92bb98 / t84 fd0bca6c /
