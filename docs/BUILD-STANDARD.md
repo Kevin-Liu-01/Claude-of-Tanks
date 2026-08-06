@@ -660,3 +660,18 @@ authored where the real tank has metal, never where it has air.
   before a scan oracle registers. DIMS-DATUM CLASS: when proc AND oracle
   both read mast-inclusive p95 above the published roof datum, a dims-0
   row is a datum-reconciliation work order, not a shape defect.
+
+## §B3.1 addendum — MUZZLE BORE (owner directive 2026-08-06, with
+## screenshot: "make tips of guns have holes, bruh")
+No gun ends in a solid capped tip. Every muzzle face carries a visible
+BORE: an annular rim at tube radius + a near-black bore disc recessed
+2-4 cm inside the tube at ~0.55-0.70x tube radius (gunDark/void tone,
+never camo). Muzzle BRAKES bore through the brake front face (and the
+real side baffle windows already carry §B3.1). Reference collars/flash
+hiders keep their rim grammar with the bore visible through. The disc is
+interior to the tube silhouette by construction — mask-neutral from
+side/plan; end-on it is the read the owner ordered. Applies fleet-wide:
+MBT main guns, howitzers, autocannons (30/35mm — smaller disc), RARDEN,
+MG muzzles at their scale (M2/NSVT get pinhole-class dark tips, not
+drilled geometry). Graduates take the graduate-change flow (close-front
+family views change).
