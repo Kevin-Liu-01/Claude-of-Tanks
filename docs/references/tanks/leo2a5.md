@@ -1094,3 +1094,54 @@ r10): crown over100 484 (knob interaction; class unchanged), glacis sd
 6.71 (beats the dossier). Deck knob bakeDirtDeckEq stays ON. userdrops5
 recovered registration RETIRED (articulated call + SOURCED_IDS);
 mirrored into the three maps; variants backfill clean; icons procedural.
+
+## §B4 SHOE-ENVELOPE round (2026-08-06) — GRADUATE CHANGE: blind spot 126/308 -> 0/0
+Fleet shoe audit blind spot #3 (front 126 / rear 308 exact voxels with
+bandVox 0/0 — the m1a1ha class). Decode (tmp-shoe-decode clusters):
+- front 126 (hull): the outer beak-wing band (box 0.65x0.20x0.08 @
+  ±1.225,1.15,3.885) — its rear face 3.845 was stepped off the BAND far
+  edge (3.818) but sat 2.7 cm inside the idler-wrap shoe pads (they
+  reach 3.906). Plus 636 vox correctly classified dressingSkipped: the
+  r6 idler mudflap stack RIDES the envelope by certified design (frac
+  0.82 conformance, its sloped tops hug the band with the shoes hanging
+  below by design) — conformance lane, NOT deleted, per §B4.
+- rear 138 (hull): the r4 sponsonLaneLift 1.50 floor — clear of the
+  BAND crest (0.385 r) but inside the pad slab+shoulder band (flag top
+  1.508) at the sprocket crown.
+- rear 166 (hullTrack): the r4 rear-flap staircase boards' TOPS
+  (authored >=0.02 under the BAND arc — inside the pads which ride
+  +0.085 outside it). maxDepth 0.023-0.036.
+- rear 4 (hullDark): the LEFT stern pile's outboard cinch strap
+  (KIT.stowage stamps straps at ±0.28w -> x -1.172, bottom 1.4496) —
+  bottom-front corner in the crown pad band. (A first fix raised the
+  coincident pile-edge blob bottom 1.4456 -> 1.52 — also a carrier.)
+Fixes (projection-preserving):
+- wing band split: inboard sliver x 0.90..1.036 keeps full z-depth
+  (side columns exact); pad-spanning part keeps z >= 3.874 only; the
+  3.925 plan face + front y-band survive every column.
+- sponsonLaneLift crest sub-window (new V3 opt-in, default undefined):
+  crestZ0 -3.32 / crestZ1 -3.06 / crestY 1.54 — only the crown range
+  lifts (station cross-sections there are pad/band-carried in masks).
+- flap boards split per board: inboard sliver x 0.96..1.026 keeps the
+  certified staircase tops (side x-invariant, exact); outboard parts
+  (1.026..1.70) drop tops 1.12/0.92/0.85 -> 0.90/0.83/0.78, radially
+  clear of the pad orbit at every z in their spans; all 0.63 bottoms +
+  z planes exact; low cover + hanger posts untouched (audit-clean).
+- pile-1 hand-stamped with the SAME rng draw (sequence preserved for
+  pile-2; body/lid/inboard strap byte-identical) — ONLY the outboard
+  strap bottom clips 1.4496 -> 1.52 (top exact; front/side masks are
+  pile-body-covered there). Pile-edge blob bottom 1.4456 -> 1.52 (top
+  1.8416 exact).
+DONE-GATES: official audit --exact 0/0 + 0/0 with the mudflap stack
+reported under dressingSkipped (636, frac 0.82) — the audited exclusion;
+gate x2 HOLD EXACT at the frozen row 90.8 | 90.8/91/91.6/94.3/100/100;
+standard-check clip 0/0 contig 0; npm test green; yaw pairs under
+shots/leopard-shoe-b4/.
+CANDIDATE HASH d34a0a58 (137 meshes / 138328 verts; frozen 2f9d0af0) —
+pending re-cert critic. Changed views: view-rearright/rearleft/rear +
+hero-rearright (flap staircase outboard tops, strap, blob),
+view-front/frontleft (wing band nose plate).
+Residuals: the pile BODY's own bottom-front corner reads ~1.6 mm outside
+the exact bar (0 vox, the fleet authored-hug class, left byte-identical
+— it carries the certified 1.845-1.857 front-top law); default-run
+near-contact counts are the fleet hug signature.

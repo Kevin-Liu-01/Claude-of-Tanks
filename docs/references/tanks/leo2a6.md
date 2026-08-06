@@ -1067,3 +1067,51 @@ Fittings census mg0+0d: the r6-refreeze MG3 is hand-authored (predates
 KIT.fittings) — §B3 carried by packet justification, unchanged this
 round. Siblings byte-exact (44acdee0/e28fc316/5647ef3e): every shared
 leoHullV3 edit is an opt-in param with byte-identical defaults.
+
+## §B4 SHOE-ENVELOPE round (2026-08-06) — GRADUATE CHANGE: blind spot 316/192 -> 0/0
+Fleet shoe audit (shots/track-clip-shoes.json, §12.8) ranked leo2a6 the
+fleet's #2 blind spot: shoes >=1.5cm inside hull solids while bandVox
+read 0/0 (the m1a1ha class — the r4 containment round cleared the BAND,
+and the shoe pads ride +0.085 m outside the band face).
+Decode (tools/tmp-shoe-decode.mjs clusters, exact):
+- front 288 (hullDetail): the r4 drum-face rim rings (0.170/0.210 @
+  x ±1.5175/±1.558) sat square inside the shoe INNER-CHAIN CONNECTOR-RAIL
+  sweep (rails ride radial 0.1295..0.2645 / 0.1695..0.3045 off the wheel
+  centres, at exactly the rings' x-planes). maxDepth 0.056.
+- front 28 (hull): the r4 "diving mudguard front" planks' sloped front
+  face + bottom corner in the idler pad-slab band (authored parallel to
+  the BAND arc +0.03 — inside the SHOES). maxDepth 0.030.
+- rear 10 (hull): the deck band's full-depth slab bottom corner (1.30
+  floor at the z -3.34 window edge) in the sprocket-crown pad band.
+Fixes (projection-preserving; masks untouched by construction):
+- rim rings pulled AGAIN 0.170/0.210 -> 0.105/0.145 (tube outers
+  0.126/0.166 keep >=0.017 outside the rails' inner faces; the vacated
+  annulus is swept by the scrolling dark rails/web — chain metal covers
+  the old "hollow box" read in motion; static rings must clear the
+  MOVING chain).
+- wing planks split: inboard x-sliver 0.985..1.008 keeps the ORIGINAL
+  z/y profile (side staircase 1.145->1.1249 x-invariant, exact); the
+  full-span part keeps only z >= 3.752 (voxel rows radially outside
+  every shoe component; grousers are along-track-thin and cannot carry
+  the 1.5 cm bar); rubber nose band byte-identical; 3.77 plan face and
+  front y-band survive on every column (front cols band-lit to ~1.29).
+- sponsonLaneLift capZ0 -3.415 / capY 1.35 (new V3 opt-in, default
+  undefined): the 8 cm cap strip abutting the window lifts its outboard
+  floor clear of the crown pads; centre keeps 1.30, side is skirt-
+  interior, front z-blind.
+DONE-GATES: official audit --exact 0/0 + 0/0 (band + shoe, both zones);
+gate x2 HOLD at 90.9 | 91.3/90.9/92.8/92.6/91/100 — clean-worktree HEAD
+baseline measures IDENTICAL components (the ledger row 91.2/-/90.9 is
+stale-low pre-existing drift-up, proven at f66a524, not this round);
+standard-check clip 0/0 contig 0; npm test green; yaw-0/90 pairs under
+shots/leopard-shoe-b4/.
+CANDIDATE HASH cff6f478 (42 meshes / 147000 verts; frozen f25dad51) —
+pending the graduate-change re-cert critic. Changed views for the
+critic: close-front + view-front/frontleft/frontright (rim rings, wing
+plank nose), hero-frontleft (bow quarter), view-rearright/rear (sprocket
+ring). Siblings leo2a4 5dd00289 / leo2a7v 20bc6b30 / leopard2_proto
+dd1b8ba byte-identical vs HEAD (SLL opt-in default path proven).
+Residual: fleet-wide default-run (dilate=1) near-contact counts remain
+(authored band-hugs, the tool's documented fleet signature); exact = 0.
+Fittings census mg0+0d unchanged (packet-justified hand-authored MG3,
+§I migration queued fleet-wide).

@@ -2121,3 +2121,46 @@ lit-tops dead at 5x, recess steel separated (p90 64.1 exact); P-R2 SEOSS
 pale population extinct. Flood delta-0 x14. Erratum: min-diff view is
 view-left (369 px). docs/critique/shaded-parity-leo2_revolution-r19-
 recert.md. No orders — the revolution arc is fully settled.
+
+## OWNER RING-GAP ORDER (2026-08-06) — GRADUATE CHANGE: "see-through / disembodied" sides closed
+Owner report (with screenshot): "the leopard 2 revolutions turret is a
+little see through right now... fix these sides and turret ring area
+that makes it seem disembodied." Diagnosis: the r16-e/§B7-r18
+leoRingGapShadowFill set stopped at x ±1.18 with tops 1.75 (ring) /
+1.86 (bow-aft/aft) — a see-through band stayed open between the fill
+tops and the side-module floors (walls floor 1.96-2.05w, AMAP panel
+bottoms 1.92w), and everything outboard of ±1.18 under the panels was
+open background at oblique angles (A/B crops:
+shots/leopard-shoe-b4/ring-crop-{base,fixed}.png — the baseline band is
+BROKEN by background slivers; fixed is one continuous seated shade).
+Fix — same §C SHADOW-NAMED mechanism (mask-excluded, turret-parented,
+shadeFill lit-top bake), three moves:
+- the ring / bow-aft / aft fills WIDEN 2.36 -> 2.76 (±1.38, inside the
+  walls' 1.39/1.43 inner faces) and RISE to 1.95 (10 mm under the
+  lowest wall floor). The sub-1.95 ring-belt V-stairs now read as
+  under-structure in deep shade instead of against background — the
+  real vehicle's tight dark ring (§B7 photo class); their MASK rows are
+  untouched (shadow meshes excluded from every measurement mask).
+- per-side UNDER-WALL CURTAINS (x 1.36..1.58, y 1.42..1.94, z world
+  -2.00..0.70) close the oblique daylight under the AMAP modules,
+  recessed 7 cm behind the wall faces (they read as the modules' own
+  under-shade). Curtain tops tuck 20 mm under the 1.96 wall floors —
+  no 3D contact with mask solids.
+- bow-fore LOW fill untouched (the r18-certified recessed bow read).
+DONE-GATES: gate x2 REPRODUCES THE §B7-CAPPED LINE EXACTLY both runs:
+62.8 | 91.8/69.9/62.8/78/99.5/100 (mask-exclusion proven end-to-end);
+shoe/band audit --exact 0/0 + 0/0 (fills/curtains are mid-hull, clear
+of both wrap zones); standard-check clip 0/0 contig 0 mg1+4d; npm test
+green. YAW-90 CLEAN: the fills/curtains rotate with the turret (pair
+under shots/leopard-shoe-b4/leo2_revolution-yaw{0,90}/) — nothing
+strands over the hull flanks; the swung corners stay under the turret
+walls (they overhang the hull side less than the turret itself does).
+CANDIDATE HASH fa1a47fc (80 meshes / 109729 verts; frozen b53a16f8 —
+the +2 meshes are the curtains) — pending re-cert critic. Changed views
+(diff-derived): view-left/right (the closed band), view-rearleft/
+rearright + hero-rearright/hero-frontleft (oblique under-panel shade),
+close-front unchanged-class but include for the ring shade grade.
+Residual: at extreme low grazing angles a 10 mm slit under the wall
+floors remains by design (kept so the shadow set never touches the
+mask solids); the under-BUSTLE opening aft of z -2.0 is the real
+vehicle's open rack zone, intentionally left.

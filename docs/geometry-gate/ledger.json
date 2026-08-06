@@ -1015,9 +1015,9 @@
    "geoMin": 90.9,
    "gatePassed": true,
    "components": {
-    "hullCurves": 91.2,
+    "hullCurves": 91.3,
     "wholeCurves": 90.9,
-    "turretCurves": 90.9,
+    "turretCurves": 92.8,
     "stations": 92.6,
     "dims": 91,
     "floaters": 100

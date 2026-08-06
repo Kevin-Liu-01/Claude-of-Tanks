@@ -440,9 +440,22 @@ function leoHullV3(P, H) {
   // keeps the sponson floor, the outboard (over-track) part lifts its bottom
   // clear of the crest — exactly the real sponson-over-track configuration.
   const SLL = H.sponsonLaneLift;
+  // §B4 SHOE-ENVELOPE opt-ins (2026-08-06 blind-spot round, defaults undefined
+  // -> byte-identical for every caller not passing them):
+  //   capZ0/capY  — the full-depth slab piece ABUTTING the window from the
+  //                 rear gets an extra split at capZ0: [capZ0, z0] lifts its
+  //                 OUTBOARD floor to capY (centre keeps the sponson floor).
+  //                 The bare corner of the old full slab at the window edge
+  //                 sat >=1.5cm inside the sprocket-crown SHOE pads (bandVox
+  //                 0 — the m1a1ha blind-spot class; a6 rear 10 vox).
+  //   crestZ0/crestZ1/crestY — sub-window inside [z0,z1] whose outboard
+  //                 floor lifts to crestY instead of y: the shoe pad+grouser
+  //                 band tops ride ~0.05 above the BAND crest the r4 lift was
+  //                 authored against (a5 rear 138 vox at the 1.50 floor).
   for (let i = 0; i < deck.length - 1; i++) {
     const [zF, yF] = deck[i], [zR, yR] = deck[i + 1];
-    if (!SLL || Math.min(zF, zR) >= SLL.z1 || Math.max(zF, zR) <= SLL.z0) {
+    const winLo = SLL && (SLL.capZ0 ?? SLL.z0);
+    if (!SLL || Math.min(zF, zR) >= SLL.z1 || Math.max(zF, zR) <= winLo) {
       P.add('hull', slab(
         [-hw, H.sponsonY, zF], [hw, H.sponsonY, zF], [hw, H.sponsonY, zR], [-hw, H.sponsonY, zR],
         [-hw, yF, zF], [hw, yF, zF], [hw, yR, zR], [-hw, yR, zR]));
@@ -450,23 +463,29 @@ function leoHullV3(P, H) {
     }
     // split this segment at the lift window (deck runs front->rear: zF > zR)
     const yAt = (z) => yF + (yR - yF) * ((z - zF) / (zR - zF));
-    const cuts = [zF, Math.min(zF, SLL.z1), Math.max(zR, SLL.z0), zR]
+    const bounds = [SLL.z1, SLL.z0, SLL.capZ0, SLL.crestZ0, SLL.crestZ1]
+      .filter((v) => v != null).map((v) => Math.max(zR, Math.min(zF, v)));
+    const cuts = [zF, ...bounds, zR]
       .sort((a, b) => b - a).filter((z, k, arr) => k === 0 || z < arr[k - 1] - 1e-6);
     for (let k = 0; k < cuts.length - 1; k++) {
       const za = cuts[k], zb = cuts[k + 1];
       const ya = yAt(za), yb = yAt(zb);
-      const inWin = za <= SLL.z1 + 1e-6 && zb >= SLL.z0 - 1e-6;
-      if (!inWin) {
+      const mid = (za + zb) / 2;
+      const inWin = mid <= SLL.z1 && mid >= SLL.z0;
+      const inCap = !inWin && SLL.capZ0 != null && mid < SLL.z0 && mid >= SLL.capZ0;
+      if (!inWin && !inCap) {
         P.add('hull', slab(
           [-hw, H.sponsonY, za], [hw, H.sponsonY, za], [hw, H.sponsonY, zb], [-hw, H.sponsonY, zb],
           [-hw, ya, za], [hw, ya, za], [hw, yb, zb], [-hw, yb, zb]));
       } else {
+        const lift = inCap ? SLL.capY
+          : (SLL.crestZ0 != null && mid <= SLL.crestZ1 && mid >= SLL.crestZ0) ? SLL.crestY : SLL.y;
         P.add('hull', slab(                                                    // centre: full-depth to the sponson floor
           [-SLL.x0, H.sponsonY, za], [SLL.x0, H.sponsonY, za], [SLL.x0, H.sponsonY, zb], [-SLL.x0, H.sponsonY, zb],
           [-SLL.x0, ya, za], [SLL.x0, ya, za], [SLL.x0, yb, zb], [-SLL.x0, yb, zb]));
         for (const s of [-1, 1]) {                                              // outboard: lifted over the wrap crest
           P.add('hull', slab(
-            [s * SLL.x0, SLL.y, za], [s * hw, SLL.y, za], [s * hw, SLL.y, zb], [s * SLL.x0, SLL.y, zb],
+            [s * SLL.x0, lift, za], [s * hw, lift, za], [s * hw, lift, zb], [s * SLL.x0, lift, zb],
             [s * SLL.x0, ya, za], [s * hw, ya, za], [s * hw, yb, zb], [s * SLL.x0, yb, zb]));
         }
       }
@@ -1127,7 +1146,12 @@ function buildLeo2A6(P) {
     // segment keeps only its outboard 1.63..1.66 sliver; the sponson floor
     // lifts to 1.42 (the rear-skirt top line) over the sprocket crest.
     glacisLaneCut: { x: 0.988, z0: 3.13 },
-    sponsonLaneLift: { z0: -3.34, z1: -2.88, x0: 0.988, y: 1.42 },
+    // §B4 shoe round (2026-08-06): capZ0/capY — the full slab abutting the
+    // window read 10 exact-voxels inside the sprocket-crown SHOE pads at its
+    // z -3.34 bottom corner (bandVox 0, the m1a1ha blind-spot class). The
+    // 8 cm cap strip lifts its outboard floor to 1.35 (flag band tops 1.326
+    // + margin); centre keeps 1.30, side/front rows are skirt/deck-interior.
+    sponsonLaneLift: { z0: -3.34, z1: -2.88, x0: 0.988, y: 1.42, capZ0: -3.415, capY: 1.35 },
     beltY: 0.62, bellyY: 0.50,
     // headlight pods: fresh grid reads the ref col 3.267 top at 1.495 =
     // pod top (1.44+0.055r); the old 1.51 center read one row high
@@ -1233,13 +1257,33 @@ function buildLeo2A6(P) {
   // band-free inter-track corridor (x 0.89..0.985) onto the narrowed beak
   // underside — never through the band (contiguity law).
   {
-    const wx0 = 0.985, wx1 = 1.5326;
+    // §B4 shoe round (2026-08-06, blind-spot decode): the plank's sloped
+    // front face + bottom-front corner sat 2-3 cm inside the idler-wrap SHOE
+    // pad solids (slab deep-band radial 0.301..0.343 off the wheel centre;
+    // the r4 plank was authored parallel to the BAND arc +0.03, and the pads
+    // ride +0.085 outside the band face — bandVox 0, shoeVox 28+, the
+    // m1a1ha class). Projection-preserving split:
+    //   - an INBOARD X-SLIVER (x 0.985..1.008, fully inboard of the pad
+    //     boxes' 1.0117 inner face) keeps the ORIGINAL z/y profile — the
+    //     side staircase (1.145 -> 1.1249) is x-invariant and survives
+    //     exactly;
+    //   - the full-span part keeps only z >= 3.752 (voxel rows >= 3.76 sit
+    //     radially outside every shoe component box; grouser bars are
+    //     along-track-thin and cannot carry the 1.5 cm depth bar) — the
+    //     3.77 plan face and the front-view y-band survive on every column
+    //     (front cols 1.01..1.53 are band-lit to ~1.29 regardless);
+    //   - the rubber nose band keeps its exact certified footprint.
+    const wx0 = 0.985, wx1 = 1.5326, sx1 = 1.008, zn = 3.752;
+    const topAt = (z) => 1.145 + (1.1249 - 1.145) * (z - 3.675) / (3.758 - 3.675);
     for (const s of [-1, 1]) {
       const ord = (r) => (s < 0 ? [r[1], r[0], r[3], r[2]] : r);
       const ring = (pts) => ord(pts.map(([x, y, z]) => [s * x, y, z]));
-      P.add('hull', KIT.slab(
-        ...ring([[wx0, 1.045, 3.715], [wx1, 1.045, 3.715], [wx1, 1.045, 3.758], [wx0, 1.045, 3.758]]),
-        ...ring([[wx0, 1.145, 3.675], [wx1, 1.145, 3.675], [wx1, 1.1249, 3.758], [wx0, 1.1249, 3.758]])));
+      P.add('hull', KIT.slab(                                                  // inboard sliver: original profile
+        ...ring([[wx0, 1.045, 3.715], [sx1, 1.045, 3.715], [sx1, 1.045, 3.758], [wx0, 1.045, 3.758]]),
+        ...ring([[wx0, 1.145, 3.675], [sx1, 1.145, 3.675], [sx1, 1.1249, 3.758], [wx0, 1.1249, 3.758]])));
+      P.add('hull', KIT.slab(                                                  // full-span nose plate (z >= 3.752 only)
+        ...ring([[sx1, 1.045, zn], [wx1, 1.045, zn], [wx1, 1.045, 3.758], [sx1, 1.045, 3.758]]),
+        ...ring([[sx1, topAt(zn), zn], [wx1, topAt(zn), zn], [wx1, 1.1249, 3.758], [sx1, 1.1249, 3.758]])));
       P.add('hullRubber', KIT.slab(
         ...ring([[wx0, 1.045, 3.758], [wx1, 1.045, 3.758], [wx1, 1.045, 3.77], [wx0, 1.045, 3.77]]),
         ...ring([[wx0, 1.1249, 3.758], [wx1, 1.1249, 3.758], [wx1, 1.122, 3.77], [wx0, 1.122, 3.77]])));
@@ -1580,9 +1624,18 @@ function buildLeo2A6(P) {
   // (their tubes spanned the shell's radial band, the a6's largest unnamed
   // exact-voxel cluster). They still read as drum-face rim rings; the
   // 0.19..0.22 sliver they vacate is the scheme-painted drum body face.
+  // §B4 shoe round (2026-08-06): pulled AGAIN, 0.170/0.210 -> 0.105/0.145 —
+  // the band-clearance rings sat square inside the SHOE inner-chain
+  // CONNECTOR-RAIL sweep (rails ride radial 0.1295..0.2645 / 0.1695..0.3045
+  // off the wheel centres at exactly the rings' x-planes; 288+182 exact
+  // voxels, the a6's whole front/rear blind spot). The static rings must
+  // clear the MOVING chain: tube outers 0.126/0.166 keep >=0.017 outside
+  // the rails' inner faces. They now read as hub-boss collars; the vacated
+  // annulus is swept by the scrolling dark rails/web — chain metal, not
+  // blank drum (the r4 "hollow box" read stays closed by the chain itself).
   for (const s2 of [-1, 1]) {
-    P.add('hullDetail', xform(torus(0.170, 0.024, P.q ? 22 : 14), 0, 0, 0, 0, 0, Math.PI / 2), s2 * 1.5175, 0.98, 3.38);
-    P.add('hullDetail', xform(torus(0.210, 0.022, P.q ? 22 : 14), 0, 0, 0, 0, 0, Math.PI / 2), s2 * 1.558, 1.02, -3.11);
+    P.add('hullDetail', xform(torus(0.105, 0.021, P.q ? 22 : 14), 0, 0, 0, 0, 0, Math.PI / 2), s2 * 1.5175, 0.98, 3.38);
+    P.add('hullDetail', xform(torus(0.145, 0.021, P.q ? 22 : 14), 0, 0, 0, 0, 0, Math.PI / 2), s2 * 1.558, 1.02, -3.11);
     P.add('hullDark', cylX(0.075, 0.05, 10), s2 * 1.53, 0.98, 3.38);
     P.add('hullDark', cylX(0.085, 0.05, 10), s2 * 1.56, 1.02, -3.11);
   }
@@ -2436,7 +2489,13 @@ function buildLeo2A5(P) {
     glacisLaneCut: { x: 1.02, z0: 3.14 },
     beakWings: { z: 3.845, x0: 0.55, th: 0.21, x1: 1.02 },
     beltY: 0.62, bellyY: 0.615, headlightY: 1.40, headlightZ: 3.58, headlightX: 0.90,
-    sponsonLaneLift: { z0: -3.36, z1: -2.86, x0: 1.02, y: 1.50 },
+    // §B4 shoe round (2026-08-06): crest sub-window — the 1.50 floor was
+    // authored clear of the BAND crest (outer r 0.385) but the shoe pad
+    // slab+shoulder band tops reach 1.508 flag-depth at the sprocket crown
+    // (138 exact voxels, bandVox 0 — the m1a1ha blind-spot class). Only the
+    // crown sub-range lifts to 1.54 (flag window z -3.27..-3.11 + margin);
+    // the station cross-sections there stay pad/band-carried in the masks.
+    sponsonLaneLift: { z0: -3.36, z1: -2.86, x0: 1.02, y: 1.50, crestZ0: -3.32, crestZ1: -3.06, crestY: 1.54 },
     rearWallHW: 1.02,
     rear: { wallZ: -3.42, lipZ: -3.56, yTop: 1.82, yBot: 0.86 },
     // r6 STATION-WIDTH LAW: the ref's station slices 0-8 read ±1.737 as the
@@ -2588,9 +2647,23 @@ function buildLeo2A5(P) {
     // x 1.02..1.70 — the naked outer comb read) — the wrap-arc clearances
     // are x-invariant and the cap orbit (r~0.33) never reaches the board
     // z-band below their tops; staircase tops + 0.63 bottoms certified r4.
-    P.add('hullTrack', box(0.74, 0.49, 0.053), s * 1.33, 0.875, -3.6185);    // deep board: z -3.645..-3.592 (behind the rim), y 0.63..1.12
-    P.add('hullTrack', box(0.74, 0.29, 0.036), s * 1.33, 0.775, -3.574);     // mid board: top 0.92 under the rim tip (arc lower 0.95+ here)
-    P.add('hullTrack', box(0.74, 0.22, 0.040), s * 1.33, 0.740, -3.536);     // fore board: top 0.85 under the falling arc (0.888 at z -3.516)
+    // §B4 shoe round (2026-08-06): the r4 staircase was authored >=0.02
+    // under the BAND arc — the SHOE pads ride +0.085 outside the band face
+    // and the board TOPS sat 1.8-2.6 cm inside the pad slab band (166 exact
+    // voxels, bandVox 0, the m1a1ha class). Projection-preserving split per
+    // board: an inboard x-sliver (0.96..1.026, clear of the pad boxes'
+    // 1.0596 inner face AND the 1.0274 pin-cap band) keeps the certified
+    // staircase tops — side columns are x-invariant and survive exactly;
+    // the outboard parts (1.026..1.70) drop their tops clear of the pad
+    // orbit (voxel radial > 0.433 + margin off the sprocket centre at every
+    // z in each board's span). All 0.63 bottoms + z planes stay certified;
+    // rear/front views of the dropped corners are band/wrap-covered.
+    P.add('hullTrack', box(0.066, 0.49, 0.053), s * 0.993, 0.875, -3.6185);  // deep board sliver: y 0.63..1.12 (the certified top)
+    P.add('hullTrack', box(0.674, 0.27, 0.053), s * 1.363, 0.765, -3.6185);  // deep board outboard: top 0.90 (pad-orbit clear)
+    P.add('hullTrack', box(0.066, 0.29, 0.036), s * 0.993, 0.775, -3.574);   // mid board sliver: top 0.92
+    P.add('hullTrack', box(0.674, 0.20, 0.036), s * 1.363, 0.73, -3.574);    // mid board outboard: top 0.83
+    P.add('hullTrack', box(0.066, 0.22, 0.040), s * 0.993, 0.740, -3.536);   // fore board sliver: top 0.85
+    P.add('hullTrack', box(0.674, 0.15, 0.040), s * 1.363, 0.705, -3.536);   // fore board outboard: top 0.78
     P.add('hullDetail', box(0.07, 0.60, 0.07), s * 0.99, 1.42, -3.565);      // hanger post: flap top 1.12 -> tail lip 1.71, inboard of the band
     // VISUAL r6 1a REAR LOW COVER (critic driver A): the rear window
     // [y 0.03..0.55] reads the naked descending-ramp comb (med +11.1,
@@ -2634,7 +2707,17 @@ function buildLeo2A5(P) {
     for (const s of [-1, 1]) {
       P.add('hull', box(0.09, 0.21, 0.33), s * 1.755, 1.155, 3.765);
       P.add('hullDark', box(0.08, 0.15, 0.02), s * 1.75, 1.15, 3.60);
-      P.add('hull', box(0.65, 0.20, 0.08), s * 1.225, 1.15, 3.885);
+      // §B4 shoe round (2026-08-06): the wing band's rear face (3.845) was
+      // stepped off the BAND far edge (3.818) but sat 2.7 cm inside the
+      // idler-wrap SHOE pads (they ride +0.085 outside the band face; 126
+      // exact voxels, bandVox 0). Projection-preserving split: an inboard
+      // x-sliver (0.90..1.036, clear of the pad boxes' 1.0596 inner face)
+      // keeps the full certified z-depth so the side columns are exact; the
+      // pad-spanning part keeps only z >= 3.874 (voxel rows radially outside
+      // every shoe component). The 3.925 plan face and the front-view band
+      // survive on every column by construction.
+      P.add('hull', box(0.136, 0.20, 0.08), s * 0.968, 1.15, 3.885);
+      P.add('hull', box(0.514, 0.20, 0.051), s * 1.293, 1.15, 3.8995);
     }
   }
   // hull rear stowage frame (batch-3 certified Strv-pattern HULL rack),
@@ -2686,8 +2769,26 @@ function buildLeo2A5(P) {
     // 1.857/1.836 (the certified 1.845-1.857 front-top law) by shrinking h
     // with the centre re-derived: top = y + 0.55h, bottom = y - h/2. The
     // piles now rest on the 1.445 rail top instead of sinking through it.
+    // §B4 shoe round (2026-08-06): pile-1's OUTBOARD cinch strap (stowage()
+    // stamps straps at x ± 0.28w — the left one lands x -1.186..-1.158,
+    // bottom 1.4496) sat 3.0 cm inside the sprocket-crown shoe pads (4
+    // exact voxels, bandVox 0). Pile-1 is hand-stamped with the SAME rng
+    // draw (sequence preserved for pile-2) and byte-identical body/lid/
+    // inboard strap; ONLY the outboard strap's bottom clips to 1.52 (top
+    // 1.8532 exact). Front/side masks are pile-body-covered at the vacated
+    // band. Residual note: the pile BODY's own bottom-front corner reads
+    // ~1.6 mm outside the audit bar (0 vox) — the fleet-wide authored-hug
+    // class, left byte-identical (it carries the 1.845-1.857 front-top law).
+    {
+      const [px, py, pz, pw, ph, pd] = [-0.85, 1.6436, -3.58, 1.15, 0.388, 0.38];
+      const pileYaw = (P.rng() - 0.5) * 0.12;
+      P.add('hullCloth', box(pw, ph, pd), px, py, pz, 0, pileYaw, 0);
+      P.add('hullCloth', box(pw * 1.04, ph * 0.18, pd * 1.04), px, py + ph * 0.46, pz, 0, pileYaw, 0);
+      P.add('hullDark', box(0.028, 0.3332, pd * 1.06), px - 0.28 * pw, 1.6866, pz, 0, pileYaw, 0);   // outboard strap, bottom clipped 1.4496 -> 1.52 (§B4)
+      P.add('hullDark', box(0.028, ph * 1.04, pd * 1.06), px + 0.28 * pw, py + ph * 0.02, pz, 0, pileYaw, 0); // inboard strap: exact stowage stamp
+    }
     stowage(P, 'hullCloth', P.rng, [
-      [-0.85, 1.6436, -3.58, 1.15, 0.388, 0.38], [0.55, 1.6338, -3.58, 1.05, 0.368, 0.36],
+      [0.55, 1.6338, -3.58, 1.05, 0.368, 0.36],
     ]);
     // ONE narrow tall roll as a 4-step z-staircase in the -0.064 front bin:
     // side cols read the ref's falling 2.00/1.97/1.94/1.92 stowage crest
@@ -3635,7 +3736,12 @@ function buildLeo2A5(P) {
       // HELD gate) reads that pile's faces.
       blob(camoRed, P.hullG, KIT.xform(KIT.box(0.15, 0.390, 0.430), -1.05, 1.642, -3.58));
       blob(camoOlv, P.hullG, KIT.xform(KIT.box(0.12, 0.390, 0.430), -0.58, 1.642, -3.58));
-      blob(P.mats.dark, P.hullG, KIT.xform(KIT.box(0.055, 0.396, 0.435), -1.17, 1.6436, -3.58));
+      // §B4 shoe round (2026-08-06): bottom 1.4456 -> 1.52 — the pile-edge
+      // slab's bottom-front corner sat 3.0 cm inside the sprocket-crown shoe
+      // pads (4 exact voxels; the corner rode the pad slab band at z -3.36).
+      // Top 1.8416 EXACT (the certified pile-edge line); the freed corner is
+      // wrap/pad-covered in every projection.
+      blob(P.mats.dark, P.hullG, KIT.xform(KIT.box(0.055, 0.3216, 0.435), -1.17, 1.6808, -3.58));
       P.add('hullTrack', box(1.17, 0.012, 0.395), -0.85, 1.4566, -3.58);
       blob(camoOlv, P.hullG, KIT.xform(KIT.box(0.13, 0.370, 0.410), 0.30, 1.632, -3.58));
       blob(camoRed, P.hullG, KIT.xform(KIT.box(0.10, 0.370, 0.410), 0.84, 1.632, -3.58));
@@ -5973,18 +6079,38 @@ function buildLeo2Revolution(P) {
         P.turretG.add(m);
         P.disposables.push(m.geometry);
       };
-      mkFill(2.36, 0.35, 1.11, 0, 1.575, -0.115);                              // ring zone (y 1.40..1.75, z -0.67..0.44)
+      // OWNER ORDER 2026-08-06 (screenshot: "the leopard 2 revolutions
+      // turret is a little see through right now... fix these sides and
+      // turret ring area that makes it seem disembodied"): the r18 fills
+      // stopped at x ±1.18 / tops 1.75-1.86 — a see-through band stayed
+      // open between the fill tops and the side-module floors (walls floor
+      // 1.96-2.05, AMAP panel bottoms 1.92w), and everything outboard of
+      // ±1.18 under the panels was open sky at oblique angles. Same §C
+      // mechanism, three moves, all mask-excluded + turret-parented (yaw
+      // clean): the three body fills WIDEN to ±1.38 (inside the walls'
+      // 1.39/1.43 inner faces) and RISE to 1.95 (10 mm under the lowest
+      // wall floor — the sight-line band is closed; the sub-1.95 ring-belt
+      // stairs now read as under-structure in deep shade, not against
+      // background); plus per-side UNDER-WALL CURTAINS (x 1.36..1.58,
+      // tops 1.94) close the oblique daylight under the AMAP modules —
+      // recessed 7 cm behind the wall faces so they read as the modules'
+      // own under-shade. The gate line must reproduce EXACTLY (62.8 |
+      // 91.8/69.9/62.8/78/99.5/100): every mesh here is /shadow/i-named.
+      mkFill(2.76, 0.55, 1.11, 0, 1.675, -0.115);                              // ring zone (y 1.40..1.95, z -0.67..0.44)
       // §B7 r18: the bow zone splits — the old full-height fill to w 2.31
       // read as a dead-front BLACK BOX once the wing died; the fore part
       // drops to a low band under the new under-courses (recessed shadow
       // read, §B2 side sight-lines still closed, masks still excluded).
-      mkFill(2.36, 0.46, 0.95, 0, 1.63, 0.925);                                // bow zone aft (y 1.40..1.86, z 0.45..1.40)
+      mkFill(2.76, 0.55, 0.95, 0, 1.675, 0.925);                               // bow zone aft (y 1.40..1.95, z 0.45..1.40)
       // fore LOW fill: a side x-ray is blocked by ANY x-width — ±0.60 keeps
       // the §B2 side sight-line closed while the prow/wedge top faces cover
       // it from above (the full-width first cut poked its lit top past the
       // wedge plan sweep and read as a floating black slab at close-front).
       mkFill(1.20, 0.26, 0.88, 0, 1.53, 1.84);                                 // bow zone fore LOW (y 1.40..1.66, z 1.40..2.28)
-      mkFill(2.36, 0.46, 1.30, 0, 1.63, -1.33);                                // aft zone (y 1.40..1.86, z -1.98..-0.68)
+      mkFill(2.76, 0.55, 1.30, 0, 1.675, -1.33);                               // aft zone (y 1.40..1.95, z -1.98..-0.68)
+      for (const s of [-1, 1]) {
+        mkFill(0.22, 0.52, 2.70, s * 1.47, 1.68, -0.65);                       // under-wall curtain (x 1.36..1.58, y 1.42..1.94, z -2.00..0.70)
+      }
       // §B7 r18 RECESSED UNDER-WEDGE STEEL (shadow-named render-only, the
       // §C mechanism — a turretDark first cut printed 1.71 bottoms across
       // the certified 2.05-2.08 channel-stair columns): the A4 turret front
@@ -6531,7 +6657,16 @@ function buildKF51(P) {
     // r4 CONTAINMENT: the departure ramp passes y 0.375..0.51 through this
     // plane — the filler splits into boards above and below the band with
     // >=0.02 clearance (the ramp's own dark pads fill the gap visually).
-    P.add('hullShadow', box(0.52, 0.175, 0.03), s * 1.30, 0.6325, 3.25);       // upper filler y 0.545..0.72
+    // §B4 shoe round (2026-08-06): the upper filler crossed the shoe
+    // inner-chain sweep at the wrap's lower quadrant (rails/horn/cap lower
+    // windows; 34 exact voxels, bandVox 0) — it splits into the two
+    // chain-free x-corridors (between inner rail and guide horn, and
+    // between horn and outer rail; >=8 mm clear of every component's
+    // deep window). Mask-free edit (hullShadow is excluded from every
+    // measurement mask, §C); the corridors keep the dark fill exactly
+    // where the eye sees between the moving chain runs.
+    P.add('hullShadow', box(0.104, 0.175, 0.03), s * 1.174, 0.6325, 3.25);     // upper filler, inner corridor (x 1.122..1.226)
+    P.add('hullShadow', box(0.096, 0.175, 0.03), s * 1.352, 0.6325, 3.25);     // upper filler, outer corridor (x 1.304..1.400)
     P.add('hullShadow', box(0.52, 0.12, 0.03), s * 1.30, 0.30, 3.25);          // lower filler y 0.24..0.36
     // r3 #2 side-effect repair: the pad de-tooth pulled the idler wrap's
     // low fringe — the ref z 3.71 side column reads a 0.40 bottom the bare
@@ -6684,11 +6819,21 @@ function buildKF51(P) {
     // r3 #3: WIDE dark outer ring band on each drum face — the pale disc
     // visually shrinks to the hub zone (the mask cannot move the certified
     // wrap: torus outer 0.315/0.288 stays inside the r 0.36/0.34 drums).
-    P.add('hullDark', torus(0.285, 0.030, 20), s * 1.492, 1.03, -3.18, 0, 0, Math.PI / 2);
+    // §B4 shoe round (2026-08-06): dark rims pulled 0.285/0.262 ->
+    // 0.245/0.220 — the r3 rings were sized against the BAND (drum r) but
+    // their tubes sat square inside the SHOE inner-chain CONNECTOR-RAIL
+    // sweep (rails ride radial 0.2695..0.4045 / 0.2495..0.3845 off the
+    // wheel centres at the rings' exact x-planes; 184+~160 exact voxels =
+    // the kf51 rear blind spot + most of the front one). Static rings must
+    // clear the MOVING chain: new tube outers 0.266/0.240 keep >=0.017
+    // outside the rails' inner faces; the vacated annulus is swept by the
+    // scrolling dark rails/web, so the "pale disc" stays covered by chain
+    // metal in motion (the r3 read this dressed).
+    P.add('hullDark', torus(0.245, 0.021, 20), s * 1.492, 1.03, -3.18, 0, 0, Math.PI / 2);
     P.add('hullDetail', torus(0.20, 0.016, 18), s * 1.497, 1.03, -3.18, 0, 0, Math.PI / 2);
     P.add('hullDetail', torus(0.115, 0.013, 14), s * 1.500, 1.03, -3.18, 0, 0, Math.PI / 2);
     P.add('hullDark', KIT.cylX(0.095, 0.034, 12), s * 1.503, 1.03, -3.18);
-    P.add('hullDark', torus(0.262, 0.028, 20), s * 1.472, 0.90, 3.28, 0, 0, Math.PI / 2);
+    P.add('hullDark', torus(0.220, 0.020, 20), s * 1.472, 0.90, 3.28, 0, 0, Math.PI / 2);
     P.add('hullDetail', torus(0.185, 0.016, 18), s * 1.479, 0.90, 3.28, 0, 0, Math.PI / 2);
     P.add('hullDark', KIT.cylX(0.080, 0.032, 12), s * 1.483, 0.90, 3.28);
     // skirt panel seams ON the visible mid-course face at the segment
@@ -6717,10 +6862,23 @@ function buildKF51(P) {
     // (1.2387) and the top-run band's lower surface (1.221 at z 3.222); the
     // whole package now stays inside the wrap's inner void with >=0.016
     // true clearance. Same z class (3.222..3.278 EXACT), same x edges.
-    P.add('hull', pbox(0.50, 0.47, 0.056), s * 1.30, 0.955, 3.25);
-    P.add('hullDark', box(0.54, 0.05, 0.062), s * 1.30, 1.18, 3.25);
-    P.add('hullDark', box(0.024, 0.46, 0.060), s * 1.062, 0.96, 3.25);         // inner return post
-    P.add('hullDark', box(0.024, 0.46, 0.060), s * 1.538, 0.96, 3.25);         // outer return post
+    // §B4 shoe round (2026-08-06): the "inner void" is fiction — the shoe
+    // inner-chain layer sweeps it (connector rails ride radial 0.2495..
+    // 0.3845 and the guide horn to 0.36 off the idler centre; the board/
+    // header tops and the horn x-window carried 58+ exact voxels — the
+    // m1a1ha blind-spot class, on the player-visible surface). Rework, all
+    // projections preserved (the whole package is band-disc interior in
+    // side/front/plan): tops drop under the rail sweep's lower window
+    // (board 1.10, header cap 1.148 -> voxel rows <= 1.14 < the 1.1645
+    // rail window) and a 10 cm GUIDE-HORN NOTCH opens at x 1.212..1.312
+    // (the horn's swept channel — exactly what a real end-connector
+    // clearance slot is). z class 3.222..3.278 EXACT, outer edge 1.55 kept.
+    P.add('hull', pbox(0.162, 0.38, 0.056), s * 1.131, 0.91, 3.25);            // board, inner piece (x 1.05..1.212)
+    P.add('hull', pbox(0.238, 0.38, 0.056), s * 1.431, 0.91, 3.25);            // board, outer piece (x 1.312..1.55)
+    P.add('hullDark', box(0.182, 0.048, 0.062), s * 1.121, 1.124, 3.25);       // header, inner piece (x 1.03..1.212, top 1.148)
+    P.add('hullDark', box(0.238, 0.048, 0.062), s * 1.431, 1.124, 3.25);       // header, outer piece (x 1.312..1.55)
+    P.add('hullDark', box(0.024, 0.425, 0.060), s * 1.062, 0.9325, 3.25);      // inner return post (top 1.145)
+    P.add('hullDark', box(0.024, 0.425, 0.060), s * 1.538, 0.9325, 3.25);      // outer return post
   }
 
   // ---- turret r4 re-lay from the fresh 96-col workorder, pivot (1.71,

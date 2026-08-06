@@ -569,3 +569,13 @@ mark carries them. Variant kits are REAL SYSTEMS: TUSK = ARAT ERA tiles
 + loader shield + TIP + slat + urban lights; SEP kits ride the family
 base build (owner: sepv2/sepv3/tusk are "based off of our existing m1a1
 abrams with the extra armoring and ERA and urban survival kit").
+- STATIC-VS-MOVING-CHAIN (§B4, leopard shoe round): the wrap "inner
+  void" is fiction — the shoe inner-chain (connector rails radial
+  ~0.13-0.40 off wheel centers, guide horns, caps) SWEEPS it as tracks
+  scroll; static furniture inside a wrap clears the component
+  deep-windows, not the band. Drum-face rim rings sized to the drum are
+  the standing carrier class. PROJECTION-PRESERVING SPLIT: an inboard
+  x-sliver (side mask x-invariant) + a thin outer-z plate (plan/front
+  faces exact) clears 3D shoe overlap with zero mask movement.
+  Thin-component exemption: boxes with any dimension < 2x the depth bar
+  cannot carry it — deep-window math skips them.

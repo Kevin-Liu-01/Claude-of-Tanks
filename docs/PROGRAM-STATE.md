@@ -61,13 +61,13 @@ re-freeze NEW hash, all in ONE commit.
 | m60a1 | fbf9f4cc | never gated |
 | m60a3 | 051c454c | never gated |
 | kv2 | 382b2310 | freeze-verify only |
-| leo2a6 | f25dad51 | |
+| leo2a6 | f25dad51 -> cff6f478 CANDIDATE (§B4 shoe round, re-cert in flight) |
 | m1a1 | 66f953e4 | cheek+gun re-cert RATIFIED (floor 9.1) |
 | m1a1ha | cd209f68 | cheek+gun re-cert RATIFIED (floor 9.1) |
 | m1a2_tejas | 25304310 | cheek+gun re-cert RATIFIED (floor 9.1) |
 | merkava3b | 8bb8d984 | gun-run re-cert RATIFIED (floor 9.1) |
 | merkava3c | b7318b10 | gun-run re-cert RATIFIED (floor 9.1) |
-| kf51 | 1452024b | |
+| kf51 | 1452024b -> fcc60d6c CANDIDATE (§B4 shoe round, re-cert in flight) |
 | isu122s | 60b08d10 | |
 | isu152 | 8e2f75c0 | |
 | merkava3d | 6b97616c | re-frozen 0e47256 |
@@ -78,8 +78,8 @@ re-freeze NEW hash, all in ONE commit.
 | chieftain5 | 94c09bb0 | |
 | t84 | 04707a9c | |
 | m47_patton | 53b6123a | |
-| leo2a5 | 2f9d0af0 | |
-| leo2_revolution | b53a16f8 | r19 tone re-cert RATIFIED (floor 9.0, mean 9.11) — the revolution arc fully settled | r18 RE-CERT RATIFIED (§B7 photo-class, floor 9.0 x14); batch-43 wing excision EXECUTED — gate 0.2 -> 62.8 (§B7 cap = genuine real-vs-print divergence only: the print has no solid side modules). Next: P-R1/P-R2 tone round; the capped row is the print's honest limit under the owner ruling | de-fusion RE-CERT RATIFIED (floor 9.0 x14 at the coupled 88.9); retune round owed (88.9 -> 90+, P-1 fore-ring tells folded in) |
+| leo2a5 | 2f9d0af0 -> d34a0a58 CANDIDATE (§B4 shoe round, re-cert in flight) |
+| leo2_revolution | b53a16f8 -> fa1a47fc CANDIDATE (ring see-through closed per owner + §B4; re-cert in flight) | r18 RE-CERT RATIFIED (§B7 photo-class, floor 9.0 x14); batch-43 wing excision EXECUTED — gate 0.2 -> 62.8 (§B7 cap = genuine real-vs-print divergence only: the print has no solid side modules). Next: P-R1/P-R2 tone round; the capped row is the print's honest limit under the owner ruling | de-fusion RE-CERT RATIFIED (floor 9.0 x14 at the coupled 88.9); retune round owed (88.9 -> 90+, P-1 fore-ring tells folded in) |
 | m46_patton | 90ebf864 | |
 | centurion3 | fea56ecc | GRADUATED fd2c365 (24th, Centurion line's first) |
 | m1a2_sepv2 | b74366ac | 25th graduate; cheek+gun re-cert RATIFIED (floor 9.1) |
