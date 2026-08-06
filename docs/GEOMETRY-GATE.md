@@ -317,3 +317,11 @@ bit-identical — held-or-up across the board, no regression possible by
 construction (lenient only where the span check already said in-span).
 Frozen graduate rows that drift UP from this amendment refresh in the
 ledger without re-certification (scores changed, builds did not).
+
+## §10 amendment (2026-08-05): mirror the HELPER-EXPANDED config
+When retiring a registration into the three override maps, mirror the
+FULLY-EXPANDED runtime config, never the surface call site: userdrops
+helpers inject fields (the `articulated` helper includes `gunNode:'^Gun'`)
+and dropping one cratered a graduate to min 0 at load-prove (the leo2a5
+gunNode incident). Dump the runtime truth with tools/tmp-modelsource-dump
+(full-chain import required for donor order) and mirror THAT.

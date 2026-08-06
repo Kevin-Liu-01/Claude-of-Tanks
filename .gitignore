@@ -13,3 +13,5 @@ public/models/community-candidates/
 tools/tmp-*.mjs
 public/models/**/*.glb.bak
 public/models/tanks/candidates-gen2/
+tools/__pycache__/
+__pycache__/
