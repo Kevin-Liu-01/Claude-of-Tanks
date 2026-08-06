@@ -126,8 +126,10 @@ honestly parked at 88.9 pending its retune)
   leclerc MISSING LEFT TURRET SIDES (misc lane; §C missing-side class);
   (2) sepv2/sepv3/merkava gun rectangular prisms -> real weapons (§B3.1);
   (3) ALL abrams left cheeks = rectangles not slopes (§B1.1); (4)
-  m1a1_aim (53.6) joins the abrams family batches; (5) russia-wide §B3.1
-  prism sweep; (6) fv510 "made actual" — full round RUNNING (uk lane).
+  m1a1_aim (53.6) + abramsx + m1a2_tusk join the abrams family batches
+  ACTIVELY (owner extension mid-round, relayed to the live agent); (5)
+  russia-wide §B3.1 prism sweep; (6) fv510 "made actual" — full round
+  RUNNING (uk lane).
 - **OWNER PRIORITY (2026-08-05): fv510 Warrior marked a PERFECT CANDIDATE
   for a full round** — next open family-lane slot takes it (its repair
   recipe was incident-disabled; re-adjudicate the oracle first, §E).
