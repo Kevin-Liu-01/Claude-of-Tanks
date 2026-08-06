@@ -168,10 +168,12 @@ honestly parked at 88.9 pending its retune)
   all 42manako CC-BY — check that catalog first).
 - PUMA amendment: base the build on the BRADLEY recipe (owner order),
   with its 42manako oracle for measurement.
-- **OWNER PUNCH LIST 2 (2026-08-06 pm, four screenshots)**: (1) fv510
-  photo-parity round 2 (real Warrior photo: angular welded turret w/
-  sloped faces, front-corner smoke banks, 3 whips, loaded rear bins,
-  skirts-over-wheels, glacis lights) — uk lane; (2) sepv2/sepv3/tusk
+- **OWNER PUNCH LIST 2 (2026-08-06 pm, four screenshots)**: (1) DONE — fv510 photo-parity r2: all NINE gap-table reads closed
+  (turret left-offset, 2x4 chunky banks, tall whips, deep vent rings,
+  low guarded lights + convoy plate, loaded bins/racks mg1+16d, skirts
+  22cm over wheel tops, mirrors inside the anchor); self-read floor 8.7;
+  dims/floaters held; hash bf3bdf00. New-oracle onboarding still queued
+  (the gap table = the re-verify checklist); (2) sepv2/sepv3/tusk
   REBASED on the m1a1 family build + real kits (ERA/TUSK/CROWS) +
   §B3.2 density on ALL abrams — abrams lane; (3) revolution turret
   see-through sides/ring ("disembodied") — relayed to the LIVE leopard

@@ -3477,9 +3477,11 @@ function fv510Build(P) {
       [0.90, 1.3092, 2.68], [1.44, 1.335, 2.68], [1.46, 1.518, 2.28], [0.90, 1.518, 2.28]));
   }
   // ---- fender shelves over the sprockets (level 1.335 crowns; the wrap
-  // arc crests 1.04 — containment) ----
+  // arc crests 1.04 — containment). r2: rear widths meet the front-guard
+  // plane (1.47 overlaps its 1.461 inner face) — the mirror arm + guard
+  // otherwise enclose a 1-cell §B2 sky pocket at the shelf/guard slot ----
   for (const s of [-1, 1]) {
-    for (const [zf, zr, xf, xr] of [[3.16, 2.92, 1.37, 1.41], [2.92, 2.66, 1.41, 1.44]]) {
+    for (const [zf, zr, xf, xr] of [[3.16, 2.92, 1.37, 1.47], [2.92, 2.66, 1.47, 1.47]]) {
       P.add('hull', sslab(s,
         [0.90, 1.285, zf], [xf, 1.285, zf], [xr, 1.285, zr], [0.90, 1.285, zr],
         [0.90, 1.335, zf], [xf, 1.335, zf], [xr, 1.335, zr], [0.90, 1.335, zr]));
@@ -3489,15 +3491,23 @@ function fv510Build(P) {
   loftBand(P, 'hull', 0.90, 0.02, [[-2.30, 1.335], [-3.155, 1.335]], fvSternY,
     -2.30, -3.155, [-2.7]);
   // ---- skirts: six panels, dark panel seams, top trim (outer face 1.509
-  // — inside the strake plane; inner face clears the shoe envelope §B4) ----
+  // — inside the strake plane; inner face clears the shoe envelope §B4).
+  // photo-parity r2 gap #7: hem at 0.70 hangs OVER the wheel tops (0.82)
+  // with the lower wheel halves + mud churn visible below; stepped
+  // mudguard plates cover the naked sprocket/idler wraps at both ends ----
   for (const s of [-1, 1]) {
     for (let k = 0; k < 6; k++) {
       const z = 2.30 - 0.41 - k * 0.82;
-      P.add('hull', box(0.048, 0.57, 0.80), s * 1.485, 1.055, z);
-      P.add('hullDark', box(0.018, 0.51, 0.016), s * 1.492, 1.05, z - 0.40);
+      P.add('hull', box(0.048, 0.74, 0.80), s * 1.485, 0.97, z);
+      P.add('hullDark', box(0.018, 0.68, 0.016), s * 1.492, 0.96, z - 0.40);
     }
     P.add('hullDark', box(0.014, 0.035, 0.46), s * 1.499, 1.325, 2.06);
     P.add('hullDark', box(0.014, 0.035, 0.46), s * 1.499, 1.325, -2.38);
+    // front mudguard steps over the sprocket wrap (crest ~1.04)
+    P.add('hull', box(0.048, 0.46, 0.36), s * 1.485, 1.11, 2.49);
+    P.add('hull', box(0.048, 0.36, 0.32), s * 1.485, 1.16, 2.82);
+    // rear guard stub over the raised idler wrap
+    P.add('hull', box(0.048, 0.40, 0.34), s * 1.485, 1.14, -2.80);
   }
   // ---- WRAP appliqué strakes: the Warrior's ribbed flanks. Faces at the
   // committed ±1.515 width plane (THE §D anchor), segmented ≤0.46 so every
@@ -3517,20 +3527,24 @@ function fv510Build(P) {
       P.add('hullDetail', box(0.04, 0.84, 0.05), s * 1.493, 1.25, zs);
     }
   }
-  // ---- bow slat cage hugging the lower bow plate (bars ≤ +3.165 — the
-  // hull crease keeps the +3.17 length anchor) + corner cheek rows ----
-  for (let k = 0; k < 5; k++) {
-    const f = k / 4;
-    const zb = 2.56 + f * 0.575, yb = 0.54 + f * 0.44;
-    P.add('hullDetail', box(1.80, 0.045, 0.06), 0, yb, zb);
-  }
-  for (const px of [-0.72, -0.30, 0.30, 0.72]) {
-    P.add('hullDetail', box(0.05, 0.05, 0.72), px, 0.77, 2.845, -0.688, 0, 0);
-  }
+  // ---- bow furniture (photo-parity r2 gap #5/#8: the owner's exercise
+  // Warrior carries NO bow slat cage — cage deleted, §B7 photo governs;
+  // the LOW bow now reads: convoy plate on the lower bow rake, guarded
+  // light clusters seated low on the corner shelves, wing mirrors on
+  // stalks INSIDE the ±1.515 strake anchor (the r2 width-breach class
+  // stays dead: heads reach |x| 1.47 max) ----
+  // convoy plate: pale square + dark frame lying ON the lower bow rake
+  P.add('hullDark', box(0.34, 0.30, 0.018), 0, 0.79, 2.905, -0.688, 0, 0);
+  P.add('hullDetail', box(0.30, 0.26, 0.020), 0, 0.79, 2.907, -0.688, 0, 0);
+  // wing mirrors: fender-shelf post -> cross arm -> angled head (contiguous;
+  // heads ride at ~driver-plate height so they read against sky in 3/4
+  // views like the photo — tops 1.99 stay far under the 2.80 height anchor)
   for (const s of [-1, 1]) {
-    for (let k = 0; k < 3; k++) {
-      P.add('hullDetail', box(0.34, 0.04, 0.05), s * 1.14, 1.10 + k * 0.10, 3.13);
-    }
+    P.add('hullDark', box(0.024, 0.58, 0.024), s * 1.26, 1.62, 3.02);
+    P.add('hullDark', box(0.026, 0.026, 0.30), s * 1.26, 1.90, 2.92, 0, 0, 0);
+    P.add('hullDark', box(0.20, 0.024, 0.024), s * 1.335, 1.90, 3.02);
+    P.add('hullDetail', box(0.17, 0.24, 0.022), s * 1.40, 1.83, 3.045, 0, s * 0.30, 0.06);
+    P.add('hullDark', box(0.13, 0.19, 0.012), s * 1.40, 1.83, 3.057, 0, s * 0.30, 0.06);
   }
   // ---- driver station front-LEFT: flush hatch + periscope hood on the
   // plate break, twin scopes (real Warrior layout — print-confirmed) ----
@@ -3582,10 +3596,18 @@ function fv510Build(P) {
   P.add('hullDark', box(0.05, 0.16, 0.014), -0.50, 1.30, -3.161);
   for (const hy of [1.05, 1.68]) P.add('hullDetail', box(0.07, 0.12, 0.05), 0.60, hy, -3.14);
   for (const s of [-1, 1]) {
-    P.add('hull', box(0.34, 0.38, 0.28), s * 1.14, 1.62, -2.99);
-    P.add('hullDark', box(0.35, 0.014, 0.29), s * 1.14, 1.755, -2.99);
-    P.add('hullDetail', box(0.06, 0.10, 0.02), s * 1.02, 1.58, -3.135);
+    // photo-parity r2 gap #6: BIG loaded rear corner bins — lid seam,
+    // latches, cinch straps (a loaded vehicle, not parade-clean)
+    P.add('hull', box(0.42, 0.46, 0.30), s * 1.10, 1.64, -2.99);
+    P.add('hullDark', box(0.43, 0.014, 0.31), s * 1.10, 1.805, -2.99);
+    P.add('hullDetail', box(0.06, 0.10, 0.02), s * 1.02, 1.58, -3.147);
+    P.add('hullDark', box(0.05, 0.47, 0.315), s * (1.10 - 0.12), 1.645, -2.99);
+    P.add('hullDark', box(0.05, 0.47, 0.315), s * (1.10 + 0.12), 1.645, -2.99);
+    P.add('hullDetail', box(0.07, 0.12, 0.025), s * 1.10, 1.50, -3.145);
   }
+  // door stencil plate + extra hinge blocks (rear face busy-ness)
+  P.add('hullDetail', box(0.26, 0.16, 0.012), -0.30, 1.52, -3.158);
+  P.add('hullDetail', box(0.07, 0.10, 0.05), 0.60, 1.38, -3.14);
   for (let k = 0; k < 3; k++) {
     P.add('hullDetail', box(1.72, 0.045, 0.05), 0, 0.55 + k * 0.13, -2.885 - k * 0.115);
   }
@@ -3606,25 +3628,57 @@ function fv510Build(P) {
   // ---- KIT fittings (§I census): headlight clusters in guards, rear
   // lights, tow cable, jerry cans, left-flank CES basket, hull whip ----
   for (const s of [-1, 1]) {
+    // photo-parity r2 gap #5: lights sit LOW on the bow corners in a
+    // chunky wrap-over brush-guard frame (not bare pods on the shelf top)
     P.add('hullDetail', box(0.30, 0.045, 0.16), s * 1.14, 1.36, 3.02);
     const hl = FITTINGS.lightCluster({ mats: P.mats, pods: 2, spacing: 0.15, r: 0.05, rake: -0.55, seed: 3 + s });
-    hl.position.set(s * 1.14, 1.435, 3.03);
+    hl.position.set(s * 1.14, 1.425, 3.03);
     P.hullG.add(hl);
+    P.add('hullDark', box(0.022, 0.115, 0.17), s * 1.14 - 0.155, 1.44, 3.03);
+    P.add('hullDark', box(0.022, 0.115, 0.17), s * 1.14 + 0.155, 1.44, 3.03);
+    P.add('hullDark', box(0.335, 0.022, 0.17), s * 1.14, 1.505, 3.03);
     const rl = FITTINGS.lightCluster({ mats: P.mats, pods: 2, spacing: 0.12, r: 0.04, rake: 0, lens: 'dark', seed: 5 + s, rotation: [0, Math.PI, 0] });
     rl.position.set(s * 1.22, 1.10, -3.10);
     P.hullG.add(rl);
   }
-  const tc = FITTINGS.towCable({ mats: P.mats, pts: [[1.30, 2.062, -0.55], [1.27, 2.072, -1.45], [1.31, 2.062, -2.35]], seed: 9 });
+  // tow cable re-draped (photo-parity r2 gap #6: the colinear r1 route read
+  // as a straight pipe — x/y weave gives the rope read)
+  const tc = FITTINGS.towCable({
+    mats: P.mats, seed: 9,
+    pts: [[1.30, 2.075, -0.42], [1.22, 2.062, -0.95], [1.30, 2.068, -1.50], [1.23, 2.060, -2.05]],
+  });
   P.hullG.add(tc);
-  const jc = FITTINGS.jerryCans({ mats: P.mats, seed: 12 });
-  jc.position.set(-1.22, 2.05, -2.72);
+  // jerry can row RACKED on the left roof edge (was loose on the corner):
+  // low rail frame + strapped cans
+  const jc = FITTINGS.jerryCans({ mats: P.mats, count: 3, seed: 12, rotation: [0, -Math.PI / 2, 0] });
+  jc.position.set(-1.05, 2.06, -2.60);
   P.hullG.add(jc);
-  const rack = FITTINGS.stowageRack({ mats: P.mats, w: 1.15, d: 0.30, h: 0.26, fill: 0.7, seed: 11, rotation: [0, -Math.PI / 2, 0] });
+  P.add('hullDark', box(0.03, 0.03, 0.72), -1.24, 2.20, -2.60);
+  P.add('hullDark', box(0.03, 0.03, 0.72), -0.87, 2.20, -2.60);
+  for (const zp of [-2.28, -2.92]) P.add('hullDark', box(0.40, 0.03, 0.03), -1.055, 2.20, zp);
+  // full-width rear roof bin (loaded: lid + straps)
+  P.add('hull', box(1.26, 0.22, 0.34), 0.10, 2.16, -2.86);
+  P.add('hullDark', box(1.27, 0.014, 0.35), 0.10, 2.245, -2.86);
+  P.add('hullDark', box(0.035, 0.24, 0.36), -0.28, 2.16, -2.86);
+  P.add('hullDark', box(0.035, 0.24, 0.36), 0.48, 2.16, -2.86);
+  // CES baskets BOTH rear flanks (photo: bins run the hull rear sides),
+  // hanger posts, loaded full
+  const rack = FITTINGS.stowageRack({ mats: P.mats, w: 1.15, d: 0.30, h: 0.26, fill: 1.0, seed: 11, rotation: [0, -Math.PI / 2, 0] });
   rack.position.set(-1.30, 1.56, -2.10);
   P.hullG.add(rack);
   P.add('hullDark', box(0.05, 0.16, 0.05), -1.42, 1.47, -1.72);
   P.add('hullDark', box(0.05, 0.16, 0.05), -1.42, 1.47, -2.48);
-  const hw = FITTINGS.antennaWhip({ mats: P.mats, h: 0.85, r: 0.010, rake: 0.05, seed: 4 });
+  const rackR = FITTINGS.stowageRack({ mats: P.mats, w: 1.15, d: 0.30, h: 0.26, fill: 1.0, seed: 21, rotation: [0, Math.PI / 2, 0] });
+  rackR.position.set(1.30, 1.56, -2.10);
+  P.hullG.add(rackR);
+  P.add('hullDark', box(0.05, 0.16, 0.05), 1.42, 1.47, -1.72);
+  P.add('hullDark', box(0.05, 0.16, 0.05), 1.42, 1.47, -2.48);
+  // roof-edge bundle rows (loaded exercise kit: strapped bergens/tarps)
+  stowage(P, 'hullCloth', P.rng, [
+    [-1.02, 2.14, -0.85, 0.52, 0.17, 0.44], [-1.00, 2.14, -1.48, 0.46, 0.15, 0.40],
+    [0.92, 2.14, -0.72, 0.48, 0.16, 0.42], [0.94, 2.14, -1.42, 0.50, 0.15, 0.38],
+  ]);
+  const hw = FITTINGS.antennaWhip({ mats: P.mats, h: 1.15, r: 0.010, rake: 0.05, seed: 4 });
   hw.position.set(1.30, 2.05, -2.85);
   P.hullG.add(hw);
   const stl = FITTINGS.spareTrackLinks({ mats: P.mats, seed: 6, rotation: [-0.503, 0, 0] });
@@ -3647,13 +3701,15 @@ function fv510Build(P) {
   P.decal('hull', 'number', num, 0.30, [-1.462, 1.80, -1.60], -Math.PI / 2);
 
   // ================= TURRET: two-man welded steel box, forward of center,
-  // slightly LEFT; raked face plate with symmetric cheek returns (§B1.1);
-  // everything below lives in turret buckets (§B5 — it all yaws) =========
-  P.turretG.position.set(-0.07, 2.02, 0.55);
+  // sat LEFT of hull center (photo-parity r2: the owner photo + the print's
+  // RARDEN pivot both read the turret left — ring x -0.20, gun world -0.30);
+  // raked face plate with symmetric cheek returns (§B1.1); everything below
+  // lives in turret buckets (§B5 — it all yaws) =========
+  P.turretG.position.set(-0.20, 2.02, 0.55);
   P.gunG.position.set(-0.10, 0.285, 0.55);
   // ring race + hull splash collar
   P.add('turret', cylY(0.74, 0.78, 0.16, 20), 0, -0.06, 0);
-  P.add('hull', cylY(0.80, 0.82, 0.055, 20), -0.07, 1.958, 0.55);
+  P.add('hull', cylY(0.80, 0.82, 0.055, 20), -0.20, 1.958, 0.55);
   // body walls (slight inward rake)
   P.add('turret', slab(
     [-0.84, 0.02, 0.42], [0.84, 0.02, 0.42], [0.78, 0.02, -0.62], [-0.78, 0.02, -0.62],
@@ -3691,13 +3747,24 @@ function fv510Build(P) {
   periscope(P, 'turretDetail', 0.12, 0.468, -0.06);
   periscope(P, 'turretDetail', 0.52, 0.468, -0.10);
   periscope(P, 'turretDetail', -0.55, 0.468, -0.06);
-  // ---- L8 smoke dischargers: 4-tube clusters on both cheeks (KIT bank on
-  // a bracket plate) ----
+  // ---- L8 smoke dischargers (photo-parity r2 gap #2: PROMINENT banks on
+  // both front corners — TWO chunky 4-tube clusters per corner, angled
+  // outward, on real bracket plates tied to the cheek returns) ----
   for (const s of [-1, 1]) {
-    P.add('turretDetail', box(0.05, 0.11, 0.24), s * 0.72, 0.17, 0.44, 0, s * 0.42, 0);
-    const sb = FITTINGS.smokeBank({ mats: P.mats, count: 4, splay: s * 1.05, pitch: -0.45, seed: s > 0 ? 7 : 8, rotation: [0, s * 0.42, 0] });
-    sb.position.set(s * 0.80, 0.27, 0.52);
-    P.turretG.add(sb);
+    P.add('turretDetail', box(0.06, 0.13, 0.34), s * 0.74, 0.17, 0.40, 0, s * 0.42, 0);
+    P.add('turretDark', box(0.30, 0.05, 0.06), s * 0.72, 0.115, 0.47, 0, s * 0.42, 0);
+    const sbIn = FITTINGS.smokeBank({
+      mats: P.mats, count: 4, r: 0.046, len: 0.30, spacing: 0.102,
+      splay: s * 0.92, pitch: -0.42, seed: s > 0 ? 7 : 8, rotation: [0, s * 0.42, 0],
+    });
+    sbIn.position.set(s * 0.62, 0.30, 0.56);
+    P.turretG.add(sbIn);
+    const sbOut = FITTINGS.smokeBank({
+      mats: P.mats, count: 4, r: 0.046, len: 0.30, spacing: 0.102,
+      splay: s * 1.22, pitch: -0.42, seed: s > 0 ? 17 : 18, rotation: [0, s * 0.42, 0],
+    });
+    sbOut.position.set(s * 0.88, 0.26, 0.44);
+    P.turretG.add(sbOut);
   }
   // ---- bustle stowage basket wrapping the rear (rails + mesh + rolls) ----
   P.add('turretDetail', box(1.46, 0.035, 0.035), 0, 0.36, -1.12);
@@ -3709,9 +3776,15 @@ function fv510Build(P) {
   }
   for (let k = 0; k < 4; k++) P.add('turretDetail', box(0.028, 0.30, 0.028), -0.54 + k * 0.36, 0.23, -1.12);
   P.add('turretDark', box(1.40, 0.014, 0.30), 0, 0.115, -1.00);
+  // photo-parity r2 gap #6: bustle basket LOADED — three strapped bundles
+  // + a tarp roll riding the top rail (tarps/bags read)
   stowage(P, 'turretCloth', P.rng, [
-    [-0.34, 0.26, -0.98, 0.56, 0.22, 0.26], [0.32, 0.24, -1.00, 0.48, 0.19, 0.24]]);
-  // shallow side baskets on the turret walls
+    [-0.40, 0.26, -0.98, 0.48, 0.22, 0.26], [0.38, 0.24, -1.00, 0.44, 0.19, 0.24],
+    [-0.01, 0.25, -1.02, 0.42, 0.21, 0.25]]);
+  P.add('turretCloth', cylX(0.095, 1.10, 10), 0, 0.44, -1.04);
+  P.add('turretDark', cylX(0.100, 0.026, 10), -0.34, 0.44, -1.04);
+  P.add('turretDark', cylX(0.100, 0.026, 10), 0.32, 0.44, -1.04);
+  // shallow side baskets on the turret walls — both sides carry kit
   for (const s of [-1, 1]) {
     P.add('turretDetail', box(0.03, 0.03, 0.52), s * 0.90, 0.30, -0.26);
     P.add('turretDetail', box(0.03, 0.03, 0.52), s * 0.90, 0.10, -0.26);
@@ -3719,7 +3792,8 @@ function fv510Build(P) {
     P.add('turretDetail', box(0.03, 0.20, 0.03), s * 0.89, 0.20, -0.04);
     P.add('turretDetail', box(0.03, 0.20, 0.03), s * 0.89, 0.20, -0.48);
   }
-  stowage(P, 'turretCloth', P.rng, [[0.90, 0.34, -0.26, 0.14, 0.14, 0.44]]);
+  stowage(P, 'turretCloth', P.rng, [
+    [0.90, 0.34, -0.26, 0.14, 0.14, 0.44], [-0.90, 0.33, -0.28, 0.14, 0.13, 0.40]]);
   // ---- whip antennas on pots at the bustle corners (2 thin columns of the
   // p95 budget, aligned with the print's own mast spikes) ----
   const wa1 = FITTINGS.antennaWhip({ mats: P.mats, h: 1.05, r: 0.011, rake: 0.05, seed: 2 });
@@ -3747,9 +3821,12 @@ function fv510Build(P) {
   buildGun(P, { len: 2.02, r: 0.030, sleeve: false, evac: null, collar: false, baseR: 0.058 });
   P.addGunExtra(cylZ(0.041, 0.60, 10, 0.046), 0, 0, 0.82);
   P.addGunExtra(cylZ(0.0335, 0.55, 10), 0, 0, 1.42);
-  P.addGunExtra(cylZ(0.045, 0.30, 12), 0, 0, 1.86);
-  for (const zr of [1.78, 1.86, 1.94]) P.addGunExtraDark(cylZ(0.0465, 0.016, 12), 0, 0, zr);
-  P.addGunExtraDark(cylZ(0.036, 0.05, 10), 0, 0, 2.02);
+  // perforated flash hider (photo-parity r2 gap #4: the vent read — four
+  // deep dark rings + slotted cap; muzzle tip 3.152 < the +3.17 nose)
+  P.addGunExtra(cylZ(0.048, 0.30, 12), 0, 0, 1.86);
+  for (const zr of [1.755, 1.835, 1.915, 1.995]) P.addGunExtraDark(cylZ(0.0495, 0.018, 12), 0, 0, zr);
+  P.addGunExtraDark(cylZ(0.037, 0.05, 10), 0, 0, 2.02);
+  P.addGunExtraDark(cylZ(0.028, 0.012, 10), 0, 0, 2.046);
   // coax 7.62 chain gun port left of the main gun (dark ring + stub)
   P.add('turretDark', cylZ(0.032, 0.02, 10), -0.42, 0.30, 0.52);
   P.add('turretDark', cylZ(0.014, 0.16, 8), -0.42, 0.30, 0.58);
