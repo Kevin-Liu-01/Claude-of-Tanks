@@ -587,3 +587,15 @@ abrams with the extra armoring and ERA and urban survival kit").
   FITTINGS.pintleMG reproduces hand receivers within 4mm — droop longer
   barrels under local crests. COAX-PORT CLASS: flush ports inside
   scaled-ellipse mantlet rectangles are invisible to every mask.
+- §B4 STERN-RESUME (abrams density round): a laneCarve window ending
+  short of the tail-rake end deletes the outboard tail — hull builders
+  resume full width behind the window. Corridor-annulus: LC.x closes to
+  <=3.5cm of the band inner face or the gap reads as top-down sky.
+  WF-SPLIT REGISTRATION ASYMMETRY: identical deck dressing can be free
+  on one variant and cost another (works-mask absorption vs bare-deck
+  registration) — bisect per variant. FLOOD IS BLIND TO WINDING:
+  reversed slabs read as open background, never enclosed holes — renders
+  are the witness. §H.4 corollary (owner check 2026-08-06): weapon kit
+  is NATIONAL grammar — US marks read American (M2HB jacket collar +
+  spade grips + hung can, M240 gas tube, CROWS sensor cluster), Soviet
+  marks read NSVT/Kord; critics flag cross-national silhouettes.

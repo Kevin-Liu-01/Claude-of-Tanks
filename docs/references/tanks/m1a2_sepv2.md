@@ -368,3 +368,32 @@ view-right, close-front, hero-frontleft.
 ### CHEEK+GUN RE-CERT RATIFIED (2026-08-06): RE-FREEZE b74366ac CONFIRMED —
 floor 9.1 (docs/critique/shaded-parity-abrams-cheekgun-recert.md). Left
 cheek reads ONE raked plane; gun run reads the real M256. No orders.
+
+## §B3.2 DENSITY ROUND (2026-08-06, abrams builder — graduate-change)
+The rebase half of the owner directive was already this build's
+architecture (rides buildM1a2 with the family shell/cheek/gun lines;
+§H.4 kit: RIGHT deck tow cable, CIP panels both forward walls, twin
+fifties, rigid ammo crate in the rack, CROWS station) — this round is
+the density half.
+ADDED: 4 deck tie-down D-rings — glacis pair (±0.60, 2.60) + MID-DECK
+pair (±0.85, 1.55); both inside this build's own A/B-measured +17 mm
+deck-bin slack (the r3 cable round). The mid-deck pair is legal HERE
+and not on the m1a2: this variant's hull mask carries the works field
+(wf split) and absorbs the registration hair the bare-deck m1a2 could
+not (bisect-proven, see m1a2.md).
+REVERTED with the m1a2 (shared decode): right-edge rack fill (ammo-can
+pair — the same plan-edge law) and duffel straps. RESIDUAL as m1a2.
+GATE HOLD x2 EXACT: min 91.3 PASS | 93.1/92.4/91.3/93.4/100/100 (= the
+same-day baseline, both close runs). standard-check clip 0/0, contig 0,
+mg1+1d.
+§B5 AUDIT (documented negative, HEAD A/B-proven PRE-EXISTING): stranded
+2 (unnamed 45% box [-1.42..1.42, 1.04..2.37, -3.96..0.28]; unnamed 26%
+full-hull box) — the ORACLE-REGISTRATION-PINNED works field (hull-side
+BY DESIGN per this print's follower registration, the documented
+BUILD-STANDARD §B5 class) smeared across whole-bucket merged AABBs
+(the audit's own coarse-AABB caveat). Identical flags on the committed
+HEAD build; adjudicated LEAVE.
+CANDIDATE: b74366ac -> b284b8ac (42 meshes / 112100 verts).
+CHANGED VIEWS (diff-derived): view-front 0.009% + close-front 0.003%
++ close-roof/hero-frontleft <= 0.002% — ring stations only.
+Yaw pair: shots/abrams-b32/yaw{0,90}-m1a2_sepv2/.

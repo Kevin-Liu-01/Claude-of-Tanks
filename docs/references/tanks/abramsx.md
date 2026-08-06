@@ -204,3 +204,36 @@ Orders applied:
 Hash 5ae4bd90-class -> 5963b41b (36/64100, non-graduate). Before/after:
 shots/abrams-cheek-r1/{before,after}-abramsx/. §H.4: hero-variant tells
 (blade bow, RWS bridge, hex shell, XM360) read distinct at a glance.
+
+## §B3.2 DENSITY + §B2/§B4 ROUND (2026-08-06, abrams builder — owner
+## directive: "add far more of these decorations on ALL abrams")
+DENSITY (all mask-interior, x2-verified): LEFT sponson-ledge tow cable
+(crowns 1.497 under the 1.50 skirt-top class) + clamps; guarded
+lightCluster pods ×2 on the lower bow; wing mirrors under the 1.50
+front class (heads 1.36..1.46); whip-mast base furniture (junction
+boxes + guy collars INSIDE the two certified whip columns at ±1.15,
+-1.98 — a first junction seat floated 25 mm over the mast base, contig-
+caught, re-seated); glacis tie-down D-rings ×4 (deck-bin slack class).
+The XM914 RWS run is this mark's §B3.2 automated-emplacement story.
+§B4: lane carve (corridor 1.055, bowZ [2.30,3.20], sternZ [-3.30,
+-2.30]) — audit front 133 / rear 104 (HEAD A/B: pre-existing) -> 0 / 8
+band-only (shoe 0/0; 8 <= the ~60 zone bar).
+§B2: the top-down scan carried PRE-EXISTING 18+18-cell sky holes at
+(±0.78, 3.74) — closed with sub-deck bow shelves (tops 1.355 under the
+1.371-1.38 deck line, faces inside the 3.97 nose; widened once to x
+1.12 for the corridor-edge slivers). Scan now 0 enclosed cells,
+contig 0.
+GATE (fresh x2 IDENTICAL): min 3.7 | 3.7/9.1/64.2/76.8/100/100 — the
+min (capped hull, bridge-band cert above) and dims/floaters are EXACT
+vs the round-open line; turret 65.7 -> 64.2 is the bow-shelf hull-
+registration coupling (m26 §D law — hull reg pins turret), priced
+against the gate-blocking §B2 law (holes 36c -> 0). stations 76.8
+held. §B5 0/0/0.
+MG CENSUS JUSTIFICATION (§I hand-authored clause): mg0 stands — the
+AbramsX is the UNMANNED-turret demonstrator; its crew-served system is
+the XM914 30 mm RWS (hand-authored §B3.1 cylinder run at the oracle's
+own bridge station). A pintle fitting has no legal mask seat: the deck
+is the capped-row silhouette line everywhere a 0.36-tall stamp could
+sit, and min binds on hull. Documented exception, standing.
+Hash -> (see hashes-final; non-graduate). Shots:
+shots/critic-abramsx-b32/ + shots/abrams-b32/yaw{0,90}-abramsx/.

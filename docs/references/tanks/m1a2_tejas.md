@@ -200,3 +200,22 @@ CANDIDATE HASH for re-cert + re-freeze: m1a2_tejas f3ab40f4 -> 25304310 (43/1507
 ### CHEEK+GUN RE-CERT RATIFIED (2026-08-06): RE-FREEZE 25304310 CONFIRMED —
 floor 9.1 (docs/critique/shaded-parity-abrams-cheekgun-recert.md). Left
 cheek reads ONE raked plane; gun run reads the real M256. No orders.
+
+## §B3.2 DENSITY ROUND (2026-08-06, abrams builder — graduate-change)
+ADDED: helmet bag + strap on the right duffel crown (top 0.646 local =
+2.216 world, inside the fill class); RIGHT skirt-ledge SPARE-LINK strip
+(4 links half-sunk, ridge tops 1.458 EXACT = the certified ledge-class
+cap, outer faces <= 1.810) + 2 clamps; 4 deck D-rings (+14 mm slack
+class). §H.4 ledger across the trio: m1a1 = LEFT cable + satchel,
+m1a1ha = RIGHT cable + bedroll + shield-M2, tejas = RIGHT LINKS +
+helmet bag + CROWS — three distinct flank/roof reads.
+GATE HOLD x2 EXACT: min 89.4 | 91.7/89.4/89.8/93.9/100/100 (= the
+same-day baseline; also held EXACT through the intermediate run before
+the links landed — two independent holds). standard-check clip 0/0,
+contig 0, mg1+2d. §B5 0/0/0.
+CANDIDATE: 25304310 -> 93a9a890 (44 meshes / 153400 verts).
+CHANGED VIEWS (diff-derived, fresh render): close-roof 0.067% /
+hero-toptilt 0.040% / hero-rearright 0.033% / view-front 0.023% /
+view-rear 0.021% / view-top 0.017% — links + bag + rings; the rest
+AA-noise. Yaw pair: shots/abrams-b32/yaw{0,90}-m1a2_tejas/ (links
+static in hullG, bag rides turretG).

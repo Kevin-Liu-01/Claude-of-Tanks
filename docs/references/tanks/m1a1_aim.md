@@ -247,3 +247,40 @@ W1 RECOMMENDATIONS (orchestrator lane, updated): tube z-stretch to
 published overall (removes class 1 everywhere), crown compression
 (class 3), plus a collar-valley region note for any future oracle
 repair. Hash 5d6c5a34 (40/85808, non-graduate).
+
+## §B3.2 DENSITY + §B4 CONTAINMENT ROUND (2026-08-06, abrams builder —
+## owner directive: "add far more of these decorations on ALL abrams")
+DENSITY (mask-interior or off-grid, per-column decoded):
+- LEFT skirt-ledge tow cable (m1a1 ledge class in the aim frame: crowns
+  1.386 sunk under the 1.38 skirt-top front class — side tops there
+  belong to the crowned deck spine) + 3 clamp blocks.
+- Guarded lightCluster pods ×2 sunk into the glacis line (tops 1.362
+  under the 1.386 deck read); wing mirrors INSIDE the fender-lip band
+  (heads capped at the lip's own 1.55 class line).
+- Deck tie-down D-rings ×6 at the spine shoulder (tops interior to the
+  1.67-1.84 spine undulation on every column).
+- Tail-rack fill (the -4.30+ OFF-GRID tail, banked law): lashed jerry
+  can pair (rear extent -4.44 inside the -4.46 mesh plane — §C AABB law;
+  a first seat at -4.478 poked the AABB and was pulled), spare-link
+  plates on the mesh, stowed loader's M240 (mag fitting) beside the M2 —
+  §B3.2 MG density, the AIM hull-rack stowage identity.
+§B4 TRACK CONTAINMENT (pre-existing debt, decoded via --exact boxes +
+HEAD A/B — the audit read front 233 / rear 57 IDENTICALLY on the
+committed build): the full-width bow/stern wedges swallowed both wrap
+windows. LANE CARVE landed (corridor x 1.055 — 3.5 cm clear of the 1.09
+band inner face; bowZ [2.35,3.10] via the new no-planTaper branch in
+abramsHull, sternZ [-3.55,-2.90]) + the STERN RESUME segment law (see
+abramsHull note: without it the tail past the window vanished — §B2
+scan read 114+112 cells at (±0.96,-3.87), caught and closed same
+round). Audit now front 0 / rear 0, shoe 0/0.
+GATE (fresh x2 IDENTICAL): min 48.8 | 68.4/56.4/48.8/69.7/100/100 —
+was 46.1 | 68.4/53.2/46.1/69.9 at the round open: whole +3.2 / turret
++2.7 (the deck kit fills real print mass and the registration follows;
+stations -0.2 priced by the carve). dims 100 floaters 100 held.
+standard-check CLEAN: clip 0/0, contig 0, holes 0, mg2+5d. §B5 audit
+0/0/0. Hash -> 608d7468 (51 meshes; non-graduate, no freeze). Shots:
+shots/critic-m1a1_aim-b32/ + shots/abrams-b32/yaw{0,90}-m1a1_aim/.
+RESIDUAL (honest): turret 48.8 still binds — the print-turret cap
+class documented above stands; the §B4 stations trade (69.9 -> 69.7)
+is priced against the owner containment law (outranks, M1-slope
+precedent).

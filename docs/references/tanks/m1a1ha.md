@@ -197,3 +197,23 @@ CANDIDATE HASH for re-cert + re-freeze: m1a1ha 96d4dfc4 -> cd209f68 (42/151120).
 ### CHEEK+GUN RE-CERT RATIFIED (2026-08-06): RE-FREEZE cd209f68 CONFIRMED —
 floor 9.1 (docs/critique/shaded-parity-abrams-cheekgun-recert.md). Left
 cheek reads ONE raked plane; gun run reads the real M256. No orders.
+
+## §B3.2 DENSITY ROUND (2026-08-06, abrams builder — graduate-change)
+ADDED: RIGHT skirt-ledge tow cable + 3 clamps (the m1a1 LEFT-ledge
+class MIRRORED — proven zero-row lay: crowns <= 1.458 in the ref's own
+1.37-1.48 skirt-zone front class, outer faces inside the 1.812 plane,
+hull-frame pose-static); bedroll on the left duffel crown (top 0.727
+local = 2.297 world, in the 2.30 fill class); 4 deck D-rings (the
++14 mm slack class, stations as m1a1). §H.4: m1a1 cable LEFT vs HA
+cable RIGHT + shield-M2/links vs bare-M2/satchel — the pair reads
+apart at a glance from either flank.
+GATE HOLD x2 EXACT: min 89.4 | 91.7/89.4/89.8/93.9/100/100 (= the
+same-day baseline, both runs). standard-check clip 0/0, contig 0,
+mg1+2d. §B5 0/0/0.
+CANDIDATE: cd209f68 -> 4023964c (43 meshes / 154252 verts).
+CHANGED VIEWS (diff-derived): close-roof 0.133% / hero-toptilt 0.099%
+/ view-rear 0.087% / hero-rearright 0.086% / view-right 0.067% /
+view-top 0.061% / view-rearright 0.055% / view-front + view-frontright
+0.045% — the right cable owns the right/front deltas, the bedroll +
+rings the roof/top ones. Yaw pair: shots/abrams-b32/yaw{0,90}-m1a1ha/
+(cable static in hullG at yaw — the §B5 m1a1-cable law honored).

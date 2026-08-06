@@ -171,3 +171,52 @@ listing (hull zones, chimera-print lane — documented, unchanged by this
 round). §B5 0/0/0. Hash f7ecade4-class -> 51966e20 (43/175096,
 non-graduate: no freeze law). Before/after:
 shots/abrams-cheek-r1/{before,after}-m1a2_tusk/.
+
+## §B3.2 DENSITY ROUND (2026-08-06, abrams builder — owner directive with
+## screenshot: "sepv2s and sepv3 and tusk need to be based off of our
+## existing m1a1 abrams with the extra armoring and ERA and urban survival
+## kit ... add far more of these decorations on ALL abrams")
+KIT REBUILD (real-system grammar; the box-pile kit retired):
+- ARAT-1 lower course: 14 XM19 tiles/side — base brick at the 1.825 outer
+  plane + raked wedge crown falling inboard + twin face bolts (outer 1.827
+  < the 1.828 width plane; a first cut at 1.8325 was a WIDTH-GUARD
+  violation, caught pre-gate) + bottom hook lip + course mount shelf; dark
+  seam spacers keep the tile pitch.
+- ARAT-2 upper course: 14 M32 shingles/side, tipped outboard rz 0.20 —
+  leaned brick + pale face plate (8 mm border) + center V-seam + top lip.
+- Rails ×2 + 5 standoff arms/side + 4 hanger straps/side (rack grammar).
+- Slat cage: 6 slat rows at 0.098 pitch between heavy chords (0.92/1.58)
+  + 7 posts + corner gussets + 3 brace arms + convoy lights on the chord
+  ends. Braces pulled ±1.3 -> ±1.05 (§B4: the old arms crossed the
+  sprocket shoe sweep at z -3.42..-3.58 — the audit's rear 10/14 vox; now
+  0/0 with the front 336 belly-lip band correctly conformance-excluded as
+  envelope-riding dressing).
+- TIP re-stationed on the cage right end (old station z -3.85 grazed the
+  shoe sweep plane): box + lid seam + latch + cable port + bracket +
+  coiled handset cable to the bumper (towCable fitting r 0.011).
+- LAGS completed: coping strip, left wing glass slit, MOUNTED M240
+  (pintle post + receiver + barrel through the shield notch + hider +
+  ammo pouch) — tops <= 0.86 local (2.43 world, under the 2.44 plateau).
+- Urban kit: guarded lightCluster pods both fender wings (drums sunk into
+  the 1.316 glacis line — a 1.40 seat FLOATED 8 cm; contig 22 -> 0),
+  mirror masts + heads, CROWS-side spotlight (top 0.845 < the 0.883 knee).
+- §B3.2 commons: RIGHT skirt-ledge tow cable (the m1a1 ledge class
+  mirrored), glacis spare-link strip, jerry can pair on the left rear
+  deck — re-seated (-1.10, -3.40) BEHIND the bustle-rack swept annulus
+  (§B5 audit: at (-1.32,-2.98) the can tops sat inside the rack corner
+  sweep r<=3.63; now r>=3.86 at every corner; audit reads the pair as
+  ABUTTING = deck-gear review tier, adjudicated LEAVE) + pioneer tools
+  (shovel/axe with §B3 handle+blade tells) + family deck D-rings +
+  helmet bag (shared tejas-family §B3.2 block).
+GATE x2 IDENTICAL: min 14.1 | 14.9/14.1/42.3/39.5/100/100 both runs —
+min 13.7 -> 14.1, dims 100 + floaters 100 (the achievable components)
+HELD; hull 24.3->14.9 / stations 40.4->39.5 are CHIMERA-CAPPED row
+wobble (certified two-scale oracle, cert stands). track-clip 0/0 (was
+0/10). §B5: stranded 0 real (1 merged-bucket 25% false-flag, boxed
+[-1.58..1.58, 1.16..1.67] = the whole hullDark bucket; 2 ABUTTING =
+the deck-gear cans, adjudicated). standard-check tail holes at
+(±1.12, -3.9) PRE-EXISTING (chimera-print lane, documented above).
+Hash 51966e20 -> 2bab773c (54 meshes / 194344 verts; non-graduate, no
+freeze). Shots: shots/critic-m1a2_tusk-b32/ + shots/abrams-b32/yaw{0,90}-
+m1a2_tusk/. §H.4 tells at a glance: two-course ARAT wall + slat cage +
+TIP + LAGS-with-M240 + urban lights — no other abrams carries any of it.
