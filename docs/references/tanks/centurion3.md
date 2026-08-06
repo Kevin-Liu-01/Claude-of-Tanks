@@ -392,3 +392,18 @@ X1/X2 cluster relieved with one measured-withdrawn attempt documented,
 X3 delivered as a gate gain, X4 evidence-closed — the ordered floors
 (left/right/close-front/close-roof 8.7) self-read 8.9-9.0; graduation
 adjudication requested.
+
+## GRADUATED 2026-08-05 — DUAL-GATE PASS (fleet graduate 24, the Centurion line's first)
+Geo 91.1 gatePassed x2 bit-identical + independent critic 9.0 ALL
+FOURTEEN VIEWS (r8 adjudication, docs/critique/shaded-parity-
+centurion3-r8.md — floor 9.0). FREEZE HASH bf0a45e8 (47 meshes, 74828
+verts; orchestrator-verified at landing). Flip-era §10: registration
+retired + three-map mirrors landed at the fleet flip (c487188);
+USERDROP6_SOURCED_IDS exclusion verified; variants.js carries no
+centurion3 rows (nothing to backfill); icons x5 regenerated from a
+clean HEAD worktree at this hash. Critic rig integrity: hashes
+bf0a45e8 / a25a73b8 (challenger1) / 5117b9a8 (chieftain5) stable
+campaign start -> end; evaluator rig parity OK (max yawProxy 1.0°).
+Residuals held by owners: Y2 plan skirt seam lines (tone-gate owner),
+±13.1° quarter serration-envelope class (X4, evidence-closed), two
+r6-era projection-gap micro-voids (identical coordinates, priced).
