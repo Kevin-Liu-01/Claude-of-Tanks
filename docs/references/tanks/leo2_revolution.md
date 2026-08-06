@@ -1231,3 +1231,236 @@ graduate-change per §10. Registration state: already retired + mirrored
 + procedural icons at the FLEET FLIP (c487188); userdrops5 SOURCED_IDS
 already excludes it; variants backfill clean. The recovered print stays
 the measurement oracle via the three maps.
+
+## §B5 DE-FUSION round r16 (2026-08-05, leopard builder) — owner report
+## "the leopard 2 revolutions turret appears to have been fused with its
+## hull": ROOT CAUSE MEASURED (a certified-instrument defect, the
+## chassis_vlo whole-vehicle LOD bake), COUPLED ORACLE-REPAIR + PROC
+## RE-LAY STAGED in one landing package (sim-gate min 88.9 x2 bit-stable,
+## whole/turret/stations/dims/floaters all >=90); graduate-change per §10 —
+## official re-gate/re-cert blocked on the orchestrator repair (§E lane)
+
+ROOT CAUSE (instrument-proven, shots/leo-defuse/):
+- The print carries `chassis_vlo` — a 27k-vert whole-vehicle LOD shell in
+  the HULL node that BAKES the turret-at-rest (plus clamp/shelf towers) into
+  every hull mask. Diff of the ref hull mask with the committed bytes vs a
+  copy with the vlo's mesh reference removed: **128 side columns z
+  -2.85..+3.50 read 1.74-2.34 committed -> 1.28-1.70 honest**; the ref
+  WHOLE mask moves on 25 columns (rear corner-post zone 2.31-2.34 -> the
+  real 1.70-2.27 bustle line at z -2.45..-2.85; bow clamp/shelf 1.97-2.04
+  -> the gun's 1.92 line at z +2.55..+3.40).
+- The print's TRUE split: hi-res `chassis` tops at 1.28-1.73 through the
+  whole turret zone (flat deck 1.619 z -0.32..+1.32; only the tail mast
+  stack 2.17-2.47 at z -3.7..-3.8 stands above 1.73). EVERYTHING else the
+  eye reads as superstructure belongs to the ROTATING `^Turret$`/TurretMesh
+  (x -1.76..1.73, y 1.648..2.716, z -2.81..+2.90) + `Gun` (which carries
+  the right wing band, x to +1.64).
+- The r2-r15 proc mirrored the bake into rig_hull: deck plate 2.06 +
+  underfill, fore shelf 1.99, bow humps/crowns 2.02-2.19, mid-deck riser
+  stair 2.13-2.22, engine course 2.21, corner posts 2.33 + bridge, fender
+  strips 2.03, clamp tower 2.02-2.06 — turret-mass lookalikes that never
+  yawed. That IS the owner's "fused" read: the visually-read turret barely
+  existed as a rotating mass.
+- NO followers regex can fix it (the m1a2 path does not apply): the
+  pollution is ONE baked mesh merged into kitMerged_hull_0 at swap time,
+  not mis-split follower nodes. The map-side patch is an ORACLE REPAIR.
+
+EVIDENCE RIG (diagnosis lane; no shared file, no committed byte touched):
+- tools/tmp-leo-defuse-census.{html,mjs} — official-audit replication +
+  per-add census (78 hull pieces overlapped the casting box pre-flip) +
+  ref node census + side/plan mask column traces, ref loaded through the
+  SAME modelLoader swap the gate uses; --glb= loads a repaired copy.
+- tools/tmp-leo-defuse-mkglb.mjs — builds shots/leo-defuse/
+  leo2_revolution.novlo.glb (chassis_vlo mesh ref removed).
+- tools/tmp-leo-defuse-gate.mjs — the UNMODIFIED procedural-fidelity.html
+  math with the ref GLB swapped via puppeteer request interception: the
+  simulated coupled gate. Rig parity proven: committed bytes x staged-HEAD
+  tree reproduced the graduation line **min 90.7 (90.8/90.7/92.1/91.4/
+  99.5/100) to the decimal**.
+- tools/tmp-leo-defuse-refprobe/refbands.mjs — offline GLB node/vertex
+  censuses (loader normalization replicated: scale 0.904456).
+
+COUPLING PROOF (the m1a2 §B5-r2 mid-state class, on the official math):
+- novlo bytes x r15-HEAD tree (repair alone, proc unchanged): **min 0**
+  (hull 0 / whole 0 / turret 0 / stations 87.6 / dims 99.5 / floaters 100)
+  — hull-anchored registration collapses; both sides of the instrument
+  MUST move in one landing. shots/leo-defuse/gate-sim-midstate.json.
+
+ORACLE-REPAIR PLAN (orchestrator lane — §E: builders report, never run):
+- leo2_revolution.glb: remove the `chassis_vlo` node's MESH reference
+  (node keeps its transform; tools/tmp-leo-defuse-mkglb.mjs is the exact
+  literal — my sims ran those bytes). REPAIRS['leo2_revolution'] EXISTS
+  (batch-37 band-flatten): EXTEND the chain, never flat-assign; fresh .bak
+  from HEAD bytes (archive *.pre-batchNN-history); census guard 28 nodes /
+  26 meshes; byte-idempotent x2; gate-in-loop vs THIS staged tree.
+- Normalization invariants proven: loader ground comes from the track
+  meshes (y=0), length/width from chassis (z ±3.866, x ±2.0) — the frame
+  does not move when the vlo dies. The gun's 3-vert bore-line vlo
+  (vehicle#gun_tube_vlo) is NOT touched (it is the ref tube mask line).
+- Game side: leo2_revolution is FLIP-RETIRED (procedural ships everywhere)
+  — the print is measurement-only via the three maps; zero game-render
+  consequence.
+- Alternative (NOT preferred): per-id maskHide cfg in the three override
+  maps + baseVisible exclusion — touches three instruments' code for what
+  one data repair fixes permanently.
+
+PROC RE-LAY (this file, STAGED in the working tree — the coupled half):
+1. TRUE DECK: the bake deck replaced by an 11-band deckBand stack at the
+   chassis lines (novlo 0.05-grid): 1.619 flat z -0.32..1.32, 1.542 ring
+   dip, 1.585/1.600 aft, 1.655/1.672 risers, 1.694/1.701 engine-tail
+   flats, 1.540/1.500/1.440 bow bands + 1.588 periscope hump + 1.566
+   hatch plates; bottoms 1.30 (tub overlap = side-through solid).
+2. BAKE-MIRRORS DELETED: humps + r14 crown chamfers + hump seam, riser
+   stair, engine course + cap, corner posts + steps + caps, bridge, 2.03
+   fender strips, r14-e corridor roof strips, hump shoulder strips, clamp
+   rod/web/A-leg, old shelf/E2 seams. The r14 A-1 clamp-leg/crest visual
+   is superseded by the honest config: low hull pedestal (top 1.40 = the
+   print's own 1.400-1.404 cols) + the r7 clamp JAW on the gun node.
+3. BOW RE-PLANE: beak upper plane 1.97@2.83 -> 1.44@2.83 (toe band
+   0.90..0.965@3.83/3.85 BYTE-IDENTICAL — the dAlong body-span guard held:
+   side dAlong 0 / dy -0.004 in every sim run); mudguard planks split A/B
+   with tops on the ref's falling 1.435->1.31 fender line, ENDING at
+   z 3.20 — the idler wrap crests into the open past it exactly like the
+   print (its own 1.28-1.385 crown line IS the ref's 1.29-1.32 read
+   there); §B4 undersides re-derived, min clearance +0.041 over the shoe
+   envelope at the 3.20 end (>= the 0.02 law margin).
+4. JACKET HONESTY: rear course tops per segment 1.696/1.689/1.662/1.590/
+   1.573/1.532/1.614 (segRunXT — the flat 1.70 was bake-height mid-body);
+   front course 1.498/1.430/1.320; nose taper top 1.68 -> 1.316/1.29;
+   rear+tail courses widened INBOARD 0.36 -> 0.40 (x 1.60..2.00, shoe
+   clearance 0.078) for the honest ±1.60 front cols (ref 1.72 line);
+   bottoms 0.71 -> 0.7275 (ref ±1.78..1.87 cols bottom 0.728); right
+   band-edge strip bottom 0.02 -> 0.0885 (the 0.011 ground read was the
+   vlo's 0-stripe).
+5. DECK FURNITURE ON THE HONEST DECK: hatch ring/seam + periscopes at the
+   1.588/1.566 zones; louvre cluster + cable backer to the 1.694 engine
+   flat (tops <=1.692); intake housings trimmed to 1.69; liftEyes 1.611;
+   deck discs 1.610; corridor bulkheads 1.578/1.578/1.52; E1 seams on the
+   honest beak plane (rx -0.436); E2 seams per deck band; deckTint +
+   draped C2b cables on the 1.619 deck (crowns 1.616 — the r9
+   riser-window law is moot: the honest deck is flat).
+6. TURRET (what now rotates + honest-line trims): corner tabs top 2.12 ->
+   2.16 (novlo turret ±1.73 cols); outer shelf 2.34 -> 2.21 (2.34 was
+   bake-calibrated; the core's 2.2525 owns the <=1.28 front cols); BUSTLE
+   TAIL STUBS per side (tops 2.165, world z to -2.79/-2.82, inside the
+   rails'/A-panels' overlap) — the print's rotating basket tail plate
+   (novlo plan taper ±1.43@-2.20 -> ±1.09@-2.80) whose station-1 cap the
+   dead corner posts used to fake.
+7. RING-GAP SHADOW FILL: /shadow/i-NAMED render-only block (x ±1.18,
+   y 1.40..1.77, z -0.57..2.32) reproduces the print's dark under-turret
+   void (which the bake used to fill in every mask); excluded from every
+   measurement mask (fidelity baseVisible, evaluator proxy-hide, critic
+   framing-only exclusion verified), renders in critic/game views;
+   audit-safe (overlap 0.22 < 0.25).
+
+SIM-GATE LADDER (novlo bytes x staged tree, official page math):
+- flip1 (deck + deletions + bow): min 87.1 (hull 87.1 / whole 88.2 /
+  turret 91.9 / stations 90.3 / dims 99.5 / floaters 100); side rows
+  91.3/91.4 with dAlong 0 — plan rows BIT-IDENTICAL to baseline (96.4/
+  96.3/92.63: the deck drop is plan-invariant by construction).
+- flip3 x2 (jacket widen/bottoms, plank split, tabs/shelf/stubs, strip
+  bottom, ring fill): min 87.8 IDENTICAL x2 (hull 87.8 / whole 89.6 /
+  turret 91.9 / stations 91.2 / dims 99.5 / floaters 100); front rows the
+  binder (front_hull mean 0.93: the -1.01 certified pin col 0.156 + the
+  taper-bottom sextet + long tail), side 91.8/91.4, stations st1 CLOSED by
+  the bustle tail stubs (15.58 -> 0.3-class), plan rows bit-identical to
+  baseline.
+- flip4 x2 (r16-c: taper bottoms 0.7275, core-edge cap 2.21w at x
+  1.05..1.28 with side maxima held by construction — 4 slabs narrowed to
+  +1.05 + capped right shoulders + plug split + fore-roof +x corner 0.60):
+  min 88.1 IDENTICAL x2 (hull 88.1 / whole 89.8 / turret 91.8 / stations
+  91.2 / dims 99.5 / floaters 100). The taper fix exposed the ref's SHARP
+  outer-lip step (bottoms 0.728 at x <=1.87 -> 0.648-0.658 at x >=1.91).
+- FINAL x2 (r16-d: dark bottom lips widened inboard to x 1.894..2.00 —
+  their 0.635 bottom owns the ±1.91..2.00 cols at -0.015): **min 88.9
+  IDENTICAL x2 (hull 88.9 / whole 90.4 / turret 91.8 / stations 91.2 /
+  dims 99.5 / floaters 100)** — every component >=90 EXCEPT hullCurves,
+  whose worst list is now: the -1.01 certified kit shoe-pin col (0.156),
+  the +1.01 ref asymmetric-band 0-stripe col (0.055, §B6-frozen band),
+  1.46/1.51 ground-line cols (0.032 x2), then the ~0.02-avg banded-deck
+  long tail. floaters 100 in EVERY sim run (baseline, midstate, flips
+  1/2/3 x2/4 x2/final x2 = 10 readings x 5 poses).
+- Post-flip audit (census-flip.json): stranded 6 -> 2, abutting 0,
+  dangling 0 — both residuals are merged-bucket AABB unions (hullDetail
+  0.50 / hullDark 0.26) driven by the hull-TRUE mast stack + full-length
+  dressing; the per-add census shows SIX hull pieces intersecting the
+  casting box at all: three engine-deck louvre strips (tops 1.692 — deck
+  furniture under the bustle overhang, the §B5 law's own hull-side
+  clause), two engine deckBands grazing the clamped floor (frac 0.022/
+  0.010) and the exhaust (0.016). ZERO turret-mass pieces remain
+  hull-parented — the de-fusion is real; the flags are the m1a2-r2
+  wind-post adjudication class exactly.
+- §B4 track-clip --exact: 0/0 PASS on the staged tree (the plank
+  re-plane + 3.20 open-crest held containment).
+- r16-e FLOOD ROUND (fresh critic pairs at the final bytes; PROC-half
+  blue-signature flood, the r9 rig): the deck drop re-opened the honest
+  print's own sight-lines — ring-gap fills re-parented to TURRET (the
+  shadow yaws with the mass casting it; §B5-audit-clean as ordinary
+  turret furniture) and split 3-zone (ring capped 1.75 so the certified
+  V-stair side reads survive; bow/aft to 1.86), corridor roofs re-cut at
+  the honest deck level (tops 1.525/1.428 — parked UNDER the local
+  side/front lines, mask-free by construction). Digits: front 176 / rear
+  125 / rearleft 631 / rearright 313 / frontleft 143 / frontright 205 /
+  left 410 / right 460 / top 131 / toptilt 94 (r13-cert baselines 92/99/
+  92/92/92/92/119-120/125-126/110/94: toptilt EXACT, top +21, front/rear
+  small; the left/right/quarter residuals are the ring-gap band above
+  the fill caps + the reopened oblique sponson corridors — REF-PARITY
+  classes post-repair: the honest print opens the same sight-lines, so
+  the r13 flood baselines (measured against a bake-filled ref) are
+  INVALID for the coupled state; the re-cert critic re-derives them on
+  the honest pair). Gate x2 after the flood fixes: min 88.9 IDENTICAL
+  (components byte-equal to the pre-fix pair — the fills are
+  mask-excluded and the strips are under-line, proven).
+
+HASHES + CHECKS (staged tree): leo2_revolution 7175fbf0 -> **1993cfb1**
+(82 meshes / 110365 verts at the r16-e landing bytes; +3 meshes = the
+3-zone ring shadow fills, -1 merged) — the re-freeze candidate for the
+coupled landing commit. Frozen siblings verified at the
+same sitting: leo2a5 **bc9bad30**, leo2a6 **80b76338**, kf51 **3ae9b70c**
+— byte-identical (no shared-helper change; segRunXT is builder-local).
+leo2a7v e28fc316, leopard2_proto 5647ef3e recorded. npm test: 166 checks +
+track-geometry PASS on the staged tree.
+
+RESIDUALS (coupled state, measured on the sim rig):
+- front -1.01 col errM 0.156 (0.131-0.133 committed): the r13-certified
+  kit shoe-pin class vs the honest ref belly 0.35 — kit-frozen, priced.
+- side z 3.41..3.53 (+0.05..0.06 x ~4 cols): OUR idler-wrap crown
+  1.36-1.385 vs the ref's lower 1.28-1.30 fender line — §B6 dims-guarded
+  idler + §B4 shoe envelope: the print clips its own track there; owner
+  law outranks oracle (m1-slope precedent class).
+- side z 3.86 toe col -0.05: the toe band stays 0.965 (honest toe reads
+  1.02-1.08) — raising it re-flips the 3.743 bin to BODY and smears every
+  side row (the r5/r7 dAlong law).
+- plan_turret cam +1.61 col: the r12-documented REF-side bistable (rear
+  flips -1.0/-2.48) — observed in both states on the sim rig; carried.
+- §B5 audit after the flip: residual merged-bucket AABB unions (hullDetail
+  ~0.50 / hullDark ~0.26) — the m1a2-r2 wind-post class: driven by the
+  hull-TRUE mast stack (novlo hull cols 2.17-2.47) + full-length dressing
+  unions; per-piece census (census-flip.json) shows the turret-zone mass
+  above the honest deck lines is zero. The cable/deckTint/periscope-glass
+  strands of the r13 six CLEARED by the deck drop itself. Audit growth
+  suggestion (orchestrator): per-piece above-ring resolution would zero it.
+
+LANDING ORDER (one commit, the m1a2 §B5-r2 shape): orchestrator lands the
+vlo repair + this staged tree together; official geometry-gate x2 +
+floaters x5 + 14-view critic re-cert (full — the hull camo bucket
+re-merged: mottle re-derives on changed pieces; the owner-visible deck
+drop changes every close view) + yaw-90 pair + re-freeze 1993cfb1 in the same commit. Until then the official gate MUST
+NOT run on the staged tree alone (mid-state min 0 — proven above).
+
+### COUPLED LANDING EXECUTED (2026-08-05, orchestrator — owner takeover order)
+Both halves landed in ONE commit per the LANDING ORDER: repair_oracles.py
+batch-41 (chassis_vlo mesh-ref drop; byte-idempotent 11f9d8c0 x2; pre-flight
+proved .bak + batch-37 chain reproduced committed bytes exactly) + the
+staged leopard.js flip. Official gate x3 IDENTICAL post-repair: min 88.9 |
+hull 88.9 / whole 90.4 / turret 91.8 / stations 91.2 / dims 99.5 /
+floaters 100 — the request-interception sim reproduced to the decimal.
+LEDGER ROW DROPS 90.7 -> 88.9 BY HONESTY: the old row measured the vlo-
+polluted mask (VLO-BAKE POLLUTION law, BUILD-STANDARD §E). RE-FREEZE
+CANDIDATE 1993cfb1 (82 meshes / 110365 verts, orchestrator-verified) —
+full 14-view re-cert critic IN FLIGHT at landing (owner takeover order
+landed the tree mid-protocol; the critic's verdict either ratifies the
+re-freeze or files orders). QUEUED NEXT: the hullCurves 88.9 -> 90+
+retune round (r7-class ledger retune against the honest hull line +
+vertex-workorder against repaired bytes + the per-tank shoe-pin-cap
+opt-in decision, all decoded in the §B5-r16 section above).

@@ -3299,6 +3299,36 @@ REPAIRS['m46_patton'] = [
 ]
 
 
+# =============================================================== batch 41 ===
+# LEO2_REVOLUTION VLO-BAKE DROP (§B5 DE-FUSION, owner directive 2026-08-05
+# "the leopard 2 revolutions turret appears to have been fused with its
+# hull"; packet leo2_revolution.md §B5-r16 LANDING ORDER). The print's
+# `chassis_vlo` node carries a 27k-vert whole-vehicle LOD shell on the
+# HULL side that bakes the turret-at-rest into every hull/whole mask (128
+# polluted side columns; de-baked deck is flat 1.619 — everything above
+# belongs to ^Turret$/TurretMesh + Gun). Repair = drop the node's mesh ref
+# (node keeps its transform, renders nothing; buffers untouched). Literal
+# mirrors the round's diagnosis tool tmp-leo-defuse-mkglb.mjs, whose
+# request-interception sim reproduced official-gate rig parity 90.7 to the
+# decimal and measured the coupled staged state at min 88.9 x4 (BUILD-
+# STANDARD §E REQUEST-INTERCEPTION SIM). COUPLED graduate-change: this
+# repair alone gates 0 — it lands ONLY with the staged leopard.js flip in
+# the same commit (VLO-BAKE POLLUTION law). Chain extends batch 37 (never
+# flat-assign): .bak stays the pre-batch-37 pristine bytes; the full
+# recipe = warp + vlo drop.
+def repair_leo2_revolution_vlo_drop(gltf):
+    removed = 0
+    for n in gltf['nodes']:
+        if n.get('name') == 'chassis_vlo' and 'mesh' in n:
+            del n['mesh']
+            removed += 1
+    assert removed == 1, f'expected exactly 1 chassis_vlo mesh node, removed {removed}'
+    print('[repair] leo2_revolution: chassis_vlo mesh ref dropped (vlo bake)')
+
+
+REPAIRS['leo2_revolution'].append(('py', repair_leo2_revolution_vlo_drop))
+
+
 # =============================================================== batch 42 ===
 # M26_PERSHING BODY-STRETCH + MUZZLE-PIN (m46 batch-36 class; formal warp
 # request FILED in m26_pershing.md "Vertex round r2", patton-family builder
