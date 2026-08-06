@@ -163,3 +163,87 @@ stations 68 / dims 100 / floaters 100 (shared abramsHull edits verified
 no-regression). NEXT (build, honest): side_hull tail/stack columns and
 front_hull stack x-alignment per the 2026-08-01 list; the p95 crown-peak
 block placement can absorb one more column of the print's 2.65 crest.
+
+## FAMILY-MEMBERSHIP ROUND (2026-08-06, abrams builder — owner verbatim:
+## "AIM abrams doesnt seem to be beign worked on with the other abrams")
+THE ROUND-2 STORY, RESOLVED THE OWNER'S WAY: the print-matching round
+lathe dome + cliff slabs + stern box are RETIRED; the AIM now rides the
+family rig (abramsShell, §H.2) sized inside the print casting envelope:
+plan ±1.31/±1.375-left vs print ±1.33+, z -2.44..1.02, crown plateau
+2.46 (the certified p95 anchor), §B1.1 raked cheeks BOTH sides at the
+family 0.33 rake, per-side plan sweep chasing the print's own left
+offset (right cut back zTipR 1.55/twTipR 1.26/zWideR 0.30), BOTH-side
+raked chin bulges (the family §B1.1 mechanism), left flank strip +
+rear-left crown post, flush M1 hatches (lids 2.458 <= the 2.4644 grace),
+peak block re-fit to the CURRENT warped print's 2.49-2.56 crest (the old
+2.65 chased a stale pre-warp read) at the ref's own crown-face column.
+GUN: the fat root collar boxes -> elliptical drums at the same envelopes
+(§B3.1; the tube run was already buildGun sleeve+evac cylinders).
+SHARED-SHELL PARAM ADDED (§F.2 pattern): throatDepth, default 1.3
+byte-identical — tejas trio gate-proven EXACT after (frozen rows x2).
+HULL LADDER (workorder-decoded): exhaust stack re-tabled to the ref's
+own stations (z -3.31..-3.53, x -0.145..-0.005, cap at the 2.453
+quantize knee), rack mesh deepened to the ref's 0.73 line + top rail
+1.77, §B4 hygiene (front strips slimmed to 1.8125 with faces clear of
+the 1.795 shoe envelope, fender lip pulled to 1.74).
+§B3 census MG: stowed M2 fitting lashed across the TAIL RACK (hull
+frame; the roof p95 belongs to the plateau — tejas clamp law; the tail
+sits at the gate grid's end column so the tell is ~mask-free). §H.4
+IDENTITY vs m1a1/m1a1ha: compact family turret (no bustle rack), hull
+tail rack + stowed M2, rear exhaust stack, slab print hull — reads AIM
+at a glance (h4 strip + after-pairs).
+
+### Numbers (before -> after, gate x2 identical both states)
+min 53.6 -> 46.3 | hull 62 -> 68.7 | whole 53.6 -> 53.7 | turret 56.3
+-> 46.3 | stations 68 -> 69.9 | dims 100 -> 100 | floaters 100 x2.
+plan_turret 51.2 -> 69.7 (+18.5); side_turret 53.1 -> 46.3 is the
+binder and is CEILING-DECODED below. clip 233/57 PRE-EXISTING (see §B4).
+
+### CERTIFIED / DECODED CLASSES (the ceiling story, per-column evidence)
+1. GUN-COVER ONLY-PROC x7 on side_turret (z 4.60..5.26): the print's
+   fused muzzle ends 4.54-4.57; the build carries the published-9.77
+   tube (dims-sovereign). The 2026-08-01 cert names wholeCurves + the
+   plan-turret CENTER columns — side_turret carries the SAME physical
+   class UNNAMED: these 7 columns are ~40 points of the row (err-9
+   saturation). CERT-EXTENSION ASK for the orchestrator: extend the
+   short-tube cover cap to side_turret's z>4.57 columns (identical
+   mechanism, identical honesty).
+2. FAMILY-IDENTITY DIVERGENCE (owner law outranks oracle, m1a1ha-§B6
+   precedent): the real M1 cheek/throat/roofline mass fills z -0.25..
+   0.69w where the print carries a naked collar + VALLEY (side cols
+   read ref 1.63-1.65 vs proc 2.26-2.42, gate-frame worst 'at'
+   0.17-0.39: proc band 1.05 m vs ref 0.02-0.07 m); measured 0.44-0.83
+   x ~6 columns + the p95Pct 14.98 driver. This is the price of the
+   owner's family mandate against this print — certified residual.
+3. CROWN CLAMP (standing cert, re-verified): print crown 2.49-2.56 vs
+   published 2.44+grace; plateau 2.46/peak 2.555 carry ~6 columns of
+   0.05-0.14 halved error.
+4. REF-TEETER: ±1-2 pts single-run variance observed on side_turret
+   (§D AA-teeter family) — the x2 closing runs are byte-identical.
+### §B4 (documented, standing item for this lane)
+track-clip 233/57 front/rear (maxDepth 0.036, frac 0.26): the offender
+is the SLAB PRINT HULL LOFT itself occupying the track lanes at the
+bow/stern rake bands (boxes [-1.72..1.72, 0.56..1.18, 2.52..3.00] /
+[-1.68..1.68, 0.44..0.96, -3.5..-3.02]) — pre-existing architecture
+(the print's body IS full-width through the lanes), untouched by this
+round's periphery hygiene. Fix = an opt-in lane carve in the shared
+abramsHull loft (follow-up round; same class as the fleet §B4 queue).
+### LAW DISCOVERIES (bank)
+- GATE-GRID SPAN: the gate's 96 columns end short of extreme tail/nose
+  content (here -4.30w vs tail -4.48) — workorder-only columns are
+  UNSCORED; confirm a column exists in the gate/refcurves grid before
+  spending on it (generalizes the §B5-r2 phase-shift note to SPAN).
+- SCORE SATURATION: a row's score is not the naive column-err mean —
+  err-9 ONLY-PROC columns saturate it (7 cols ~= 40 pts here); when a
+  row carries an uncertified only-proc class, per-column laddering
+  cannot recover it — the cert IS the ceiling driver.
+- PROC-BBOX RE-PHASE (re-confirmed, m1a2 +28 mm precedent): a bow
+  sliver extending the proc z-max re-phased every column and moved
+  turret/whole rows; reverted — never extend extremes for one column.
+### Evidence
+Before/after: shots/abrams-cheek-r1/{before,after}-m1a1_aim/; yaw pair
+yaw{0,90}-m1a1_aim (turret+gun rotate; tail rack + M2 stay, §B5 0/0/0).
+W1 RECOMMENDATIONS (orchestrator lane, updated): tube z-stretch to
+published overall (removes class 1 everywhere), crown compression
+(class 3), plus a collar-valley region note for any future oracle
+repair. Hash 5d6c5a34 (40/85808, non-graduate).

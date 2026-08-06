@@ -5,7 +5,7 @@
  "components": {
   "hullCurves": 24.3,
   "wholeCurves": 13.7,
-  "turretCurves": 42.2,
+  "turretCurves": 42.3,
   "stations": 39.6,
   "dims": 100,
   "floaters": 100
@@ -770,7 +770,7 @@
    ]
   },
   "plan": {
-   "score": 42.18276791764509,
+   "score": 42.270878752583364,
    "meanPct": 3.43,
    "p95Pct": 19.86,
    "coverPct": 3.13,
@@ -808,8 +808,8 @@
      "refTop": 3.5,
      "refBot": -0.48,
      "procTop": 3.64,
-     "procBot": -1.09,
-     "errM": 0.378
+     "procBot": -1.08,
+     "errM": 0.373
     },
     {
      "at": 1.16,

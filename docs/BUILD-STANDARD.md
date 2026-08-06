@@ -527,3 +527,11 @@ score is no defense.
   threshold bridged only by a neighbor's corner — audit helper-placed
   fittings per mark); island hunts run at GATE resolution (384px masks
   dilation-bridge gaps the 1024 gate keeps open).
+- CYLINDER-AT-PRISM-ENVELOPE (§B3.1, abrams round): an elliptical
+  z-cylinder at the box's half-extents produces byte-identical side/plan
+  columns — the free swap wherever the front view is interior. GATE-GRID
+  SPAN LAW: the gate's 96 columns end short of extreme tail content —
+  verify grid membership before spending on workorder-only columns.
+  SCORE SATURATION: err-9 only-proc columns dominate a row; when an
+  uncertified only-proc class saturates, the CERT is the ceiling driver
+  — file the cert extension, don't chase columns.

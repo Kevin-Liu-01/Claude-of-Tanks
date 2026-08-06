@@ -62,9 +62,9 @@ re-freeze NEW hash, all in ONE commit.
 | m60a3 | 051c454c | never gated |
 | kv2 | 382b2310 | freeze-verify only |
 | leo2a6 | f25dad51 | |
-| m1a1 | 5a45a659 | carries flap-in-sweep class (future round) |
-| m1a1ha | 96d4dfc4 | owner rear-fix RE-CERT RATIFIED (floor 9.0, mean 9.09) |
-| m1a2_tejas | f3ab40f4 | drift 89.4 watch item |
+| m1a1 | 5a45a659 -> 66f953e4 CANDIDATE (cheek+gun round, re-cert in flight) |
+| m1a1ha | 96d4dfc4 -> cd209f68 CANDIDATE (cheek+gun round, re-cert in flight) |
+| m1a2_tejas | f3ab40f4 -> 25304310 CANDIDATE (cheek+gun round, re-cert in flight) |
 | merkava3b | 36fc1c74 -> 8bb8d984 CANDIDATE (gun-run §B3.1, re-cert in flight) |
 | merkava3c | a2805356 -> b7318b10 CANDIDATE (gun-run §B3.1, re-cert in flight) |
 | kf51 | 1452024b | |
@@ -74,7 +74,7 @@ re-freeze NEW hash, all in ONE commit.
 | pt91m | 2cf10e23 | |
 | t72b3m | 1e1ca4b8 | |
 | merkava1b | 470f3665 | re-frozen 0e47256 |
-| m1a2 | c20ab8dc | §B3 port RE-CERT RATIFIED 2026-08-05 (floor 9.0, mean 9.11) |
+| m1a2 | c20ab8dc -> b78279b4 CANDIDATE (cheek+gun round, re-cert in flight) |
 | chieftain5 | 94c09bb0 | |
 | t84 | 04707a9c | |
 | m47_patton | 53b6123a | |
@@ -82,7 +82,7 @@ re-freeze NEW hash, all in ONE commit.
 | leo2_revolution | ce7f3824 -> b53a16f8 CANDIDATE (r19 P-R1/P-R2 tone, gate line EXACT, mini re-cert in flight) | r18 RE-CERT RATIFIED (§B7 photo-class, floor 9.0 x14); batch-43 wing excision EXECUTED — gate 0.2 -> 62.8 (§B7 cap = genuine real-vs-print divergence only: the print has no solid side modules). Next: P-R1/P-R2 tone round; the capped row is the print's honest limit under the owner ruling | de-fusion RE-CERT RATIFIED (floor 9.0 x14 at the coupled 88.9); retune round owed (88.9 -> 90+, P-1 fore-ring tells folded in) |
 | m46_patton | 90ebf864 | |
 | centurion3 | fea56ecc | GRADUATED fd2c365 (24th, Centurion line's first) |
-| m1a2_sepv2 | 5564306c | GRADUATED 2026-08-05 (25th; floor 9.0, mean 9.11 x14) |
+| m1a2_sepv2 | 5564306c -> b74366ac CANDIDATE (cheek+gun round, re-cert in flight; 25th graduate) |
 | m26_pershing | 2f579de8 | GRADUATED 2026-08-05 (26th; floor 9.0 x14 second sitting; warp->re-anchor->retune arc) |
 
 *ALL 24 hashes above re-frozen 2026-08-05 by the INVISIBLE-LOD ENVELOPE
@@ -147,11 +147,11 @@ honestly parked at 88.9 pending its retune)
   type90, type74 — next misc/russia rounds);
   (2) merkava guns DONE — MG251/253 runs de-prismed all 8 marks (frozen
   rows EXACT; 3b/3c candidates 8bb8d984/b7318b10 pending re-cert critic;
-  mk4 evac surfaced at station; 4b +3.1 stations); abrams guns still in
-  flight;
-  (3) ALL abrams left cheeks = rectangles not slopes (§B1.1); (4)
-  m1a1_aim (53.6) + abramsx + m1a2_tusk join the abrams family batches
-  ACTIVELY (owner extension mid-round, relayed to the live agent); (5)
+  mk4 evac surfaced at station; 4b +3.1 stations); abrams DONE — cheeks raked family-wide (A/B curve-identity proofs),
+  gun runs de-prismed x8, AIM on the family shell (46.3 honest: family
+  mandate vs short print, cert extension filed), TUSK/abramsx actively
+  batched; FIVE graduate candidates pending the family re-cert critic;
+  (3)+(4) folded into the abrams round above; (5)
   russia-wide §B3.1 prism sweep; (6) DONE — fv510 Warrior BUILT ACTUAL (photo class: offset
   turret, RARDEN §B3.1 cylinders + perforated hider, slat cages, skirts,
   GPMG, mg1+13d; dims 100, batteries clean; hash 6bfcee8). Oracle

@@ -237,8 +237,8 @@
    "components": {
     "hullCurves": 3.7,
     "wholeCurves": 9.1,
-    "turretCurves": 65.6,
-    "stations": 77.5,
+    "turretCurves": 65.7,
+    "stations": 76.8,
     "dims": 100,
     "floaters": 100
    }
@@ -263,7 +263,7 @@
    "components": {
     "hullCurves": 24.3,
     "wholeCurves": 13.7,
-    "turretCurves": 42.2,
+    "turretCurves": 42.3,
     "stations": 39.6,
     "dims": 100,
     "floaters": 100
@@ -466,13 +466,13 @@
   },
   {
    "id": "m1a1_aim",
-   "geoMin": 53.6,
+   "geoMin": 46.3,
    "gatePassed": false,
    "components": {
-    "hullCurves": 62,
-    "wholeCurves": 53.6,
-    "turretCurves": 56.3,
-    "stations": 68,
+    "hullCurves": 68.7,
+    "wholeCurves": 53.7,
+    "turretCurves": 46.3,
+    "stations": 69.9,
     "dims": 100,
     "floaters": 100
    }

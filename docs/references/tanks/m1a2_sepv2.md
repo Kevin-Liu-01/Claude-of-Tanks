@@ -349,3 +349,18 @@ classes (coupled followers+worksHull landing remains queued). Critic law
 finds banked: yaw-pair evidence is hash-stamped; flood tooling excludes
 the pair-PNG label band. Recommended next: m1a2 graduate-change §B3 round
 (same shared 1x classes, sep-gated off today).
+
+## §B3.1 GUN-RUN ROUND (2026-08-06, abrams builder — the owner's named
+## id; shared buildM1a2 lines, full mechanics in m1a2.md this round)
+Inherits the complete D/E-band prism retirement (elliptical housings,
+clamp rings, MRS spine, elliptical throat/cinch disks — m1a2.md §B3.1
+section). PROOF: m1a2 A/B curves byte-identical; THIS id gate x2
+IDENTICAL at the FROZEN ROW: min 91.3 | 93.1/92.4/91.3/93.4/100/100
+PASS both runs. standard-check clip 0/0, contig 0, mg1+1d. §B5 audit
+stranded 2 / abutting 0 / dangling 0 = the certified ORACLE-
+REGISTRATION-PINNED classes byte-same (45% works-cloth / 26% hullDetail,
+graduation cert). §H.4 tells untouched (cable, CIPs, crate, twin
+fifties). Before/after: shots/abrams-cheek-r1/{before,after}-m1a2_sepv2/.
+CANDIDATE HASH for re-cert + re-freeze: m1a2_sepv2 5564306c -> b74366ac
+(42/110180). CHANGED VIEWS: view-frontleft, view-frontright, view-left,
+view-right, close-front, hero-frontleft.

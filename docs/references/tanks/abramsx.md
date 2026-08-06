@@ -175,3 +175,32 @@ bergman print's turret node is gun-fused (single mesh, probe zMax = the
 4.54 tube) — leading edge unmeasurable by the turret-only probe; the
 proc turret is the certified round-casting identity whose front slopes
 continuously (no vertical/slab read, §B1-conformant as built).
+
+## FAMILY BATCH (2026-08-06, abrams builder — owner extension: abramsx
+## is an active target with the family)
+Orders applied:
+- §B1.1: the chin-split raked face (29.4° at the print's own chin, §B1
+  round) is SYMMETRIC by construction (slab corners mirror ±x) — both
+  front quarters verified in the after-pairs.
+- §B3.1 GUN RUN: the XM914 RWS 30 mm receiver/barrel was a SQUARE PRISM
+  (the exact failing read) -> cylinder set at the same envelope tops
+  (r 0.08 + barrel + step ring). The XM360 shroud top now RAKES toward
+  the muzzle inside its old box envelope (real XM360 slope; the tube
+  run was already buildGun cylinders + octagonal thermal shroud +
+  collar + pepperpot).
+- MEASURED SPEND (order-2 mask discipline): stations 77.5 -> 76.8
+  (-0.7 = the cylinder swap's slice footprint at the RWS/root zone),
+  turret 65.6 -> 65.7, everything else byte-equal: min 3.7 x2 (the
+  certified RWS-bridge/registration-pollution caps stand — hull/whole
+  structurally capped ~0-15; turret_side ceiling 70-75 per the 2026-08-01
+  cert). Documented as what the real weapon demands (§B3.1 priority =
+  silhouette break).
+- §B3 census: mg0+0d stands WITH JUSTIFICATION (§I clause): the XM914
+  RWS is this variant's roof gun, hand-authored to the oracle's own
+  bridge stations under the certified height clamp — a KIT pintleMG
+  would violate the p95/bridge cert. Packet-justified.
+- standard-check: bow/tail holes + clip PRE-EXISTING byte-same (§B1
+  round listing; hull zones). §B5 0/0/0. dims 100 x2, floaters 100 x2.
+Hash 5ae4bd90-class -> 5963b41b (36/64100, non-graduate). Before/after:
+shots/abrams-cheek-r1/{before,after}-abramsx/. §H.4: hero-variant tells
+(blade bow, RWS bridge, hex shell, XM360) read distinct at a glance.

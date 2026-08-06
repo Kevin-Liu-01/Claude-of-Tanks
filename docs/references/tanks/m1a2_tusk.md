@@ -151,3 +151,23 @@ stand untouched. §B5 audit 0/0/0. Standard-check: pre-existing tail holes
 (x -1.12/-1.02, z -3.9) + rear clip 10 unchanged (hull zones, unrelated).
 Hash f1aebbec -> f7ecade4 (47/182584). After-pairs
 shots/abrams-b1/after-m1a2_tusk/.
+
+## FAMILY BATCH (2026-08-06, abrams builder — owner extension: "the
+## abrams x has to be worked on with the other abramns, as well as
+## ABRAMS TUSK")
+Active-target round. Inherits via buildTejasFamily: the §B1.1 left-cheek
+raked bulge (stair prisms retired) + the §B3.1 M256 elliptical thermal
+jacket (m1a1.md mechanics). Gate x2 IDENTICAL: min 13.7 | 24.3/13.7/
+42.3/39.6/100/100 — turret 42.2 -> 42.3 IMPROVED vs the round baseline,
+nothing regressed; the CHIMERA CERT stands untouched (hull/whole/
+stations structurally capped by the two-scale oracle; dims 100 +
+floaters 100 sovereign-green; ceiling-measured, stop-rule CEILING).
+§H.4 tells verified in the after-pairs: ARAT two-course tile grammar
+(seam spacers, rails, standoff arms — §B3 tile pitch, not bare bricks),
+slat cage + braces, TIP, LAGS with vision window, CROWS station:
+distinct from tejas at a glance. standard-check: clip 0/10 + tail holes
+(x -1.12/-1.02, z -3.9) PRE-EXISTING and byte-same as the §B1-round
+listing (hull zones, chimera-print lane — documented, unchanged by this
+round). §B5 0/0/0. Hash f7ecade4-class -> 51966e20 (43/175096,
+non-graduate: no freeze law). Before/after:
+shots/abrams-cheek-r1/{before,after}-m1a2_tusk/.

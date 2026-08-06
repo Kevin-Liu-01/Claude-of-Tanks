@@ -178,3 +178,18 @@ at landing; its verdict ratifies the re-freeze or files orders.
 views — owner defect classes dead (no shoe-through, no corner channel,
 TIP reads a bin). RE-FREEZE f5c556dc CONFIRMED (was 5c765fc4);
 docs/critique/shaded-parity-m1a1ha-rearfix-recert.md.
+
+## §B1.1 LEFT CHEEK + §B3.1 GUN RUN (2026-08-06, abrams builder — family
+## batch; shared tejasRoofKit/buildTejasFamily lines, full mechanics +
+## law bank in m1a1.md this round)
+Inherits the left-cheek raked-bulge rebuild (stair prisms + vertical
+chord plate -> chord-toe + 34.8° wedges, left M250 onto the bulge face)
+and the M256 elliptical thermal-jacket swap (dust-cover prisms ->
+segmented jacket at the exact envelopes). PROOF: m1a1 A/B curve run
+byte-identical on all 18 rows; THIS id gate x2 IDENTICAL at the FROZEN
+ROW: min 89.4 | 91.7/89.4/89.8/93.9/100/100 both runs. standard-check
+clip 0/0, contig 0, mg1+1d; §B5 audit 0/0/0. Before/after:
+shots/abrams-cheek-r1/{before,after}-m1a1ha/.
+CHANGED VIEWS for re-cert: view-frontleft, view-frontright, close-front,
+hero-frontleft, view-left, view-right.
+CANDIDATE HASH for re-cert + re-freeze: m1a1ha 96d4dfc4 -> cd209f68 (42/151120).
