@@ -114,8 +114,8 @@ honestly parked at 88.9 pending its retune)
   type90 83.6 (station lane class binds; 3.69 band-solver col =
   orchestrator lane), ariete 82.3 (wrap break LANDED via lane-local fill
   — the sanctioned non-circular mechanism; cover/frame-lock certified).
-- **70-80**: m26_pershing 74.8 (dims 91.9 = priced re-anchor debt; patton
-  re-anchor agent ON IT), t64bv1 73.4, t90a_vladimir 71.4.
+- **70-80**: t64bv1 73.4, t90a_vladimir 71.4. m26_pershing 90.4 GATE
+  PASS — awaiting graduation adjudication (candidate f348ecd5).
 - **Russia tail**: t72b_1987 56.0 CEILING-CERTIFIED (print drum-band cap),
   t90sm 56.4 (AA-teeter binds), t62mv1 63.7 (fade-cap ceiling ~77-81),
   t72bu ~55-70 certified-ceiling — ORACLE
@@ -283,11 +283,11 @@ read BUILD-STANDARD+packets first, §F.4 report).
    dims 100, clips 0/0; AA-teeter family binds ~2-4 pts variance).
    Ceilings: t62mv1 ~77-81 (print rear-gear fade certified). Next russia
    round: t62mv1 side-row ladder under the fade cap.
-3. patton re-anchor (patton.js): m26 74.8 post-warp re-anchor from the
-   WARPED extract (docs/references/vertex/m26_pershing.json @ bc17984);
-   dims 91.9->100 via proc M2-band lift to 3.08; banked §B orders in
-   m26_pershing.md. Hold m46 dfacd57c / m47 70941de0 / m60a1 81e69e34 /
-   m60a3 efcde5c4.
+3. DONE: m26 re-anchor landed — 74.8 -> 90.4 GATE PASS x2 (first-ever
+   pass; dims 100; registration -0.002/0.001; clips 0/0 band + shoe;
+   cheekPod deleted; bow = certified print-class near-vertical glacis, no
+   further warp). Candidate hash f348ecd5. PENDING GRADUATION
+   ADJUDICATION (14-view critic = new-device spawn; would be the 26th).
 4. uk round-5 (uk.js): ch1 (gate wall 90.1, spare 0.1) O6 shading family +
    close-roof camo + dead-rear MG; c5 crown-tab pair + plateau-vs-pear
    casting + top clutter. Self-read >=8.9 every view -> request

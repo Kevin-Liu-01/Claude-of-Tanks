@@ -303,3 +303,116 @@ userdrops6.js — single-owner law; this is the flag.
   Healthy plan/front/stations = keep the warp (m47 batch-34 precedent).
 - Post-warp re-anchor round: SPAWNED (patton lane) — authors from THIS
   warped extract frame per the banked §B orders above.
+
+## Vertex round r3 (2026-08-05, patton-family builder) — POST-WARP RE-ANCHOR: 74.8 -> 90.4 PASS (+15.6)
+The banked re-anchor round, authored entirely from the WARPED extract frame
+(docs/references/vertex/m26_pershing.json @ bc17984: hull mask -4.326..
++2.004 = 6.33 exact, ring (0, 1.518, -0.454), muzzle +4.326, pubDims
+heightM 3.08). The old batch-8 trace frame (ring +0.187, tail -3.61,
+muzzle +5.00) sat ~0.65 forward of the warped print: the r0 workorder read
+**side dAlong 0.632 / plan dy -0.832** — the m47 batch-34 re-phase class,
+retired by re-seating every constant in the extract frame (m45/m46/m47 r1
+recipe; dense retrace probe tools/tmp-m46-retrace.mjs --id=m26_pershing,
+vertex probe tools/tmp-m26-boxprobe.mjs for the three grid-mysteries).
+
+GATE (x2 bit-identical, current HEAD tree incl. the 9bf2a6d de-track-kit
+fix): **min 90.4 PASS — hull 93.1 / whole 90.4 / turret 94.2 / stations
+90.6 / dims 100 / floaters 100** (from 74.8 | 86.0/76.3/74.8/76.0/91.9).
+Battery: track-clip --exact **0/0 front/rear + 0/0 shoe**; turret-parent
+**0/0/0**; standard-check **contig 0 ✓ decor mg1+0d ✓** (stowed FITTINGS
+'mag' carries the census; the measured m2Station stays the gate-driven
+roof gun — m45/m46 §I justification); npm suite green (166 + track-geo).
+Graduate freeze verified against the 9bf2a6d MASS RE-FREEZE registry:
+m46 90ebf864 / m47 53b6123a / m60a1 fbf9f4cc / m60a3 051c454c — the brief's
+pre-refreeze values (dfacd57c/70941de0/81e69e34/efcde5c4) were superseded
+by the orchestrator's own landing mid-round; byte-identity vs the NEW
+registry holds (m60a2 c99cd1a7, m45 31914c3f unchanged post-refreeze).
+
+ORDER DELIVERY:
+1. RE-ANCHOR: done — every seat from the warped extract (workorder ABS
+   columns). Post-anchor registration reads dAlong -0.002 / dy 0.001.
+2. DIMS 91.9 -> **100**: heightM = the mounted-M2 band raised to the 3.08
+   row (receiver/cover band 3.03-3.09, ref's own spikes 3.1036 x2 covered
+   at z -1.83/-1.93; heightM reads 3.09 = +0.36%); hullLengthM held 6.34
+   (+0.19%) via the tier3 duckbill under-band (see law 1 below).
+3. §B orders: left cheekPod (bare 1.05 m box) DELETED — the left flank
+   tops 2.08-2.25 @ x -1.0..-1.24 ride the loft's own bands (per-side hwL,
+   the m45 cupola-side bulge: LEFT holds 1.11+ to the -1.036 plan corner);
+   the right shelf / cupola seat drum / left shoulder are flush casting
+   pods (§B3: casting mass, not boxes). §B1 glacis re-check: the print's
+   bow is a compressed near-vertical face (knee (1.564,1.54) -> toe
+   (1.60,1.135)) with fender-led 1.008..1.099 platforms to z 1.913 — the
+   PRE-WARP extract shows the same cliff (deckCorners (1.564,1.54) ->
+   (1.594,1.193)), so it is the print's own read, not a warp artifact;
+   authored as ONE rake + real bow furniture (eyes/clevis tab/platforms).
+   The real M26's ~46-deg glacis is unreachable against this print: a
+   true-rake toe at z 2.0 costs ~+0.37 x 12 plan-front columns + 4 side
+   cols (measured in-session) — certified print-class residual, in the
+   m46 chopped-track lineage. m45 recipe transfers: gearTone olive +
+   darkGearFit + MG two-tone landed (materials-only); fender hangers =
+   fenderHW 1.673 + 7 discrete bump pairs at the ref's own wide slices
+   (stations alternate 3.3466/3.5045). m3 brake flank boxes adjudicated
+   §B3-legit (the double-baffle's real side windows, not mystery boxes).
+4. Battery + packet: this section; shots at shots/track-clip.json,
+   shots/turret-parent.json, docs/geometry-gate/m26_pershing.json.
+
+LAW DISCOVERIES (for the bank):
+1. **PER-ROW BODY-FILTER / REGISTRATION-COUNTERWEIGHT LAW** (the big one):
+   the 12%-band body filter uses each ROW's own rough — side_whole rough
+   ~3.1 (threshold 0.37) but side_HULL rough ~1.6 (threshold 0.19). A
+   dims tail anchor fat enough for the whole-row (hullLengthM) is
+   automatically fat in the hull-row too and SHIFTS THE HULL-ROW BODY MID;
+   hull reg pins whole+turret (fixedReg), so a 0.05 dAlong smeared every
+   side row (turret 89.8 -> 83.6, whole 90 -> 86.6) while the workorder
+   digest — which re-derives registration with its own sign — still
+   printed near-zero errors. Counterweight per §A: extend the hull-row
+   body SYMMETRICALLY — here the left tow-clevis tab deepened to y0 0.85
+   (hull-row band 0.25 > 0.19) makes the proc hull body -4.36..1.98
+   mirror the ref's own -4.26..1.885 mid exactly (dAlong -> 0, all six
+   points recovered, dims kept). Cost: tab bot -0.15 x1 + tier3 bot
+   -0.30 x1 certified columns.
+2. STATION-BOUNDARY BUMP LAW: fenderBump spans must stay >=10 mm clear of
+   the 14 station-slice boundaries — a 9 mm bump sliver inside a narrow
+   slice reads the full 3.5045 width (wPct 4.64 on i4/i8/i10 = ~5 station
+   pts).
+3. M2-STATION TWO-BAND SPLIT: the print's mounted M2 carries a rear
+   receiver/cover spike (~3.10) over a ~3.0 barrel line; m2Station's
+   fixed cover-tube spacing (0.077) fits it only with the COVER on the
+   spike (topY 3.06 -> cover 3.09 / tube 3.01). Seating topY on the
+   receiver band instead over-reads the barrel corridor stations (i5-i9
+   topPct +0.4 each; measured both ways in-gate).
+4. PADS-BEYOND-FACE: the two-layer shoe pads extend a wrap face +0.05..
+   0.08 beyond r+CLEAR+trackTh/2 (vertex-probed at x +-1.65, z 1.93-1.98)
+   — seat idlers by probe, not formula; the idler ring's dark carrier
+   extends x to ~1.69 (wider than the 0.60 band).
+5. PROBE-GRID vs GATE-GRID: the retrace probe's 96 columns are NOT the
+   gate's (different shared box) — razor seats (the basket front edge sat
+   between the two grids' boundaries) must be tuned against the GATE run
+   (basket z0 0.26 splits both windows; 0.20 lost a 0.4-err column, 0.28
+   poked the next).
+6. CHOPPED-TRACK REAR (m46 class, confirmed on m26): the print's rear
+   wrap is an impossible circle (side flat 0.566 @ -3.98..-4.17 vs plan
+   track end -4.11): small sprocket (-3.87, 0.79, r 0.07) seats the plan
+   face; the hull's own tail transmission shelf (bowTabs box, y 0.566..
+   0.75, z -4.03..-4.175 — the real M26 final-drive mass) carries the
+   belly flat the track cannot.
+CERTIFIED residuals (worst columns, gate JSON): side_whole 'at' 4.34
+(tier3 bot 0.82 vs ref 1.12 — law-1 price, 0.119), 'at' -2.0 (tab bot
+0.85 vs ref 1.0 — law-1 price, 0.085), 'at' -4.34 (muzzle-collar band
+0.063); turret_side 'at' -1.02 (basket rear/casting 0.068) + the mantlet
+zF 0.89 plan-vs-side trade (side col z~1.0 reads tube-only vs the ref's
+2.12 rotor lane: -0.07 x1); front_whole x -0.054 (the fixed-width 0.38
+M2 crown strip pokes one column: +0.24 — MG-PHYSICS two-tone kept);
+stations i1 topPct 1.81 (rear-ramp window, un-attributed after two deck
+trims — candidate for the visual round's evaluator pass).
+State: m26_pershing hash f348ecd5 (post-9bf2a6d baseline), NOT frozen —
+graduation needs the independent critic (dual gate). Ready for the
+graduation-critic round.
+§H.4 family tells (vs m45/m46/m47, geometry lane): the m26 keeps its own
+mark kit — 5 return rollers (m46/m47 carry 3), the rear TENSION idler
+(-3.30, 0.25) pressing the shallow ramp start, duckbill prongs + pintle
+tail tiers, bow fender PLATFORMS + tow eyes + clevis tab (m45's bow is
+fender-platforms + single tab, m46/m47 are fender-shelf bows), NO fender
+mufflers (m46/m47 tell), M2 at the bustle rear with the barrel forward
+over the crest (m45 mounts front-left x -0.44, m46 forward station).
+Loadout dressing variety beyond the print is the visual round's lane.

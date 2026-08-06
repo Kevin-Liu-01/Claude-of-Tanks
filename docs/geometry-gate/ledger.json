@@ -1,7 +1,7 @@
 {
  "generatedAt": "2026-08-06T01:48:57.961Z",
  "gate": "every component >= 90; min is the headline",
- "passed": 24,
+ "passed": 25,
  "total": 88,
  "rows": [
   {
@@ -609,14 +609,14 @@
   },
   {
    "id": "m26_pershing",
-   "geoMin": 74.8,
-   "gatePassed": false,
+   "geoMin": 90.4,
+   "gatePassed": true,
    "components": {
-    "hullCurves": 86,
-    "wholeCurves": 76.3,
-    "turretCurves": 74.8,
-    "stations": 76,
-    "dims": 91.9,
+    "hullCurves": 93.1,
+    "wholeCurves": 90.4,
+    "turretCurves": 94.2,
+    "stations": 90.6,
+    "dims": 100,
     "floaters": 100
    }
   },

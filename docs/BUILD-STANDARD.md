@@ -428,3 +428,12 @@ pixel identity).
 - LIVE-TREE FROZEN-SIB HAZARD (§F addendum): foreign shared-module WIP
   moves every family hash — clean-room worktrees are the honest frame for
   freeze proofs; handover sweeps can commit mid-round builder snapshots.
+- PER-ROW BODY-FILTER / REGISTRATION-COUNTERWEIGHT LAW (§D addendum, m26
+  r3): the 12% body filter uses each row's OWN rough — a dims tail anchor
+  fat for side_whole is automatically fat for side_hull and shifts the
+  hull-row registration mid; hull reg pins whole+turret (0.05 dAlong cost
+  6 turret pts). Counterweight the HULL-row body symmetrically so proc
+  mids == ref mids on every row.
+- Station-boundary bumps >=10mm clear of slice boundaries (9mm slivers
+  read full width). Shoe pads extend wrap faces +0.05-0.08 beyond
+  r+CLEAR+TH/2 — seat end wheels by vertex probe.
