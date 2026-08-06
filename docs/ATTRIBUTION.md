@@ -749,8 +749,28 @@ fails the build if any registered playable still references a stripped path.
 - community/t-72b3m_obr._2022.glb — "T-72B3M Obr. 2022" by 42manako, CC-BY-4.0 (t72b3m graduate re-oracle candidate + t72b3 base)
 - community/challenger_3.glb — "Challenger 3" by 42manako, **CC-BY-NC-4.0** (non-commercial — local measurement/influence only, never ship; NEW-VEHICLE candidate)
 - community/challenger_ii.glb — "Challenger II" by buh, CC-BY-4.0 (challenger2 oracle)
-- community/challenger_1_main_battle_tank.glb — "Challenger 1 Main Battle Tank" by Muhamad Mirza Arrafi, CC-BY-4.0 (challenger1 alternate reference)
-- community/type-10_main_battle_tank.glb — "TYPE-10 Main Battle Tank" by Muhamad Mirza Arrafi, CC-BY-4.0 (type10 oracle)
+- community/challenger_1_main_battle_tank.glb — CC-BY-4.0, but **NOT
+  REGISTERED (measurement-unusable)**: the Sketchfab page is tagged
+  createdwithai + world-of-tanks, i.e. AI-generated geometry — not a
+  faithful record of the real vehicle. challenger1 keeps its gate-PASS
+  recovered print. Kept in-repo (no rule violation, just unusable).
+- community-candidates/type-10_main_battle_tank.glb — **ON HOLD, NOT
+  REGISTERED, quarantined (gitignored) 2026-08-06**: the uploading
+  account (nazidefenseforceofficial) was adjudicated a game-rip poster
+  2026-07-27 (T-90AM with *_dds ripper textures). No per-asset rip
+  evidence in this file, so it is held rather than destroyed — OWNER
+  ADJUDICATION REQUIRED before it may instrument a gate. type10 keeps
+  its photo-class lane meanwhile.
 - community-candidates/t-14_armara_uralvagon_factory.glb — "T-14 Armara Uralvagon Factory" by 3DYAROSLAV2, CC-BY-4.0, **223MB: exceeds GitHub's 100MB file limit — lives in the gitignored staging area, LOCAL-ONLY; onboarding extracts (small) are committed instead** (t14 oracle)
-- community/leopard_2a4_otco.glb — "Leopard 2A4 OTCO" by Jeyhun1985, CC-BY-4.0 (leo2a4 oracle)
-Owner ruling on scope: these are measurement/influence references for our own procedural builds ("its just influences were making our own high quality models off of") — never shipped as game assets. The type_89_ifv_war_thunder.glb drop remains REFUSED (commercial-game extraction; THE ONE ABSOLUTE RULE) — the Type 89 builds from photos.
+- ~~community/leopard_2a4_otco.glb~~ — **REJECTED + DELETED 2026-08-06**:
+  the live Sketchfab page describes it "Leopard 2A4 OTCO **from War
+  Thunder**" (tag: warthunder) — the same asset this file already
+  rejected 2026-07-27. THE ONE ABSOLUTE RULE refuses game extractions
+  regardless of the uploader's CC-BY tag (type_89 precedent). File
+  removed from the repo; leo2a4 keeps its photo-class build and has NO
+  oracle. Embedded asset.extras claimed CC-BY-4.0/Jeyhun1985 — a
+  reminder that embedded metadata alone is NOT sufficient provenance.
+PROVENANCE LAW (reinforced by this wave): embedded asset.extras is a
+STARTING point, never proof — the live source page (description, tags,
+uploader history) is the authority. Three of these eight failed that
+check. Owner ruling on scope: the clean ones are measurement/influence references for our own procedural builds ("its just influences were making our own high quality models off of") — never shipped as game assets. The type_89_ifv_war_thunder.glb drop remains REFUSED (commercial-game extraction; THE ONE ABSOLUTE RULE) — the Type 89 builds from photos.

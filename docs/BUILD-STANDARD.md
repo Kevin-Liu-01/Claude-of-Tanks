@@ -607,3 +607,17 @@ abrams with the extra armoring and ERA and urban survival kit").
   rx/ry-only helpers cannot reach vertical faces — check the composed
   frame. AA-SLIVER OWNERSHIP: a millimeter face kiss can own a column —
   re-own such lines with honest geometry, not deletion.
+
+## §E addendum — ORACLE PROVENANCE (2026-08-06, base-21 wave)
+Embedded `asset.extras` license/author is a STARTING point, never proof.
+Before an oracle instruments a gate, check the LIVE source page:
+description text (e.g. "from War Thunder"), tags (warthunder,
+world-of-tanks, createdwithai), and the uploader's history. Three of one
+eight-file wave failed: one confirmed game rip (deleted from the repo —
+THE ONE ABSOLUTE RULE), one from an adjudicated rip-posting account
+(quarantined to the gitignored candidates area pending owner
+adjudication — held, not destroyed, absent per-asset evidence), one
+AI-generated (kept but never registered: measurement-unusable). A
+refused oracle NEVER writes a ledger row — a registration that cannot
+load times out at 150 s and taxes every later fleet run, and the row it
+would leave is a FALSE-0.

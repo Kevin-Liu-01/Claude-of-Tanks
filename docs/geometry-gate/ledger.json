@@ -1,8 +1,8 @@
 {
- "generatedAt": "2026-08-06T21:23:44.096Z",
+ "generatedAt": "2026-08-06T22:50:46.941Z",
  "gate": "every component >= 90; min is the headline",
  "passed": 24,
- "total": 88,
+ "total": 91,
  "rows": [
   {
    "id": "recon_tank",
@@ -216,6 +216,45 @@
    "id": "cruiser",
    "geoMin": 0,
    "gatePassed": false
+  },
+  {
+   "id": "challenger2",
+   "geoMin": 0,
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 0,
+    "wholeCurves": 0,
+    "turretCurves": 0,
+    "stations": 13.6,
+    "dims": 0,
+    "floaters": 100
+   }
+  },
+  {
+   "id": "t14",
+   "geoMin": 0,
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 41.7,
+    "wholeCurves": 13.2,
+    "turretCurves": 13.9,
+    "stations": 9.3,
+    "dims": 0,
+    "floaters": 100
+   }
+  },
+  {
+   "id": "t72b3",
+   "geoMin": 0,
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 1.3,
+    "wholeCurves": 0,
+    "turretCurves": 0,
+    "stations": 0,
+    "dims": 74.1,
+    "floaters": 100
+   }
   },
   {
    "id": "charioteer",
@@ -473,6 +512,19 @@
     "wholeCurves": 59.2,
     "turretCurves": 68.4,
     "stations": 81.8,
+    "dims": 100,
+    "floaters": 100
+   }
+  },
+  {
+   "id": "leclerc",
+   "geoMin": 55.9,
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 57.3,
+    "wholeCurves": 55.9,
+    "turretCurves": 86.8,
+    "stations": 88.9,
     "dims": 100,
     "floaters": 100
    }
@@ -746,19 +798,6 @@
     "wholeCurves": 85,
     "turretCurves": 84.7,
     "stations": 84.8,
-    "dims": 100,
-    "floaters": 100
-   }
-  },
-  {
-   "id": "leclerc",
-   "geoMin": 85.3,
-   "gatePassed": false,
-   "components": {
-    "hullCurves": 86.6,
-    "wholeCurves": 85.3,
-    "turretCurves": 86.8,
-    "stations": 88.9,
     "dims": 100,
     "floaters": 100
    }
