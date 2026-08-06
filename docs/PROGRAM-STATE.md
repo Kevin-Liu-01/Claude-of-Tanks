@@ -199,6 +199,14 @@ honestly parked at 88.9 pending its retune)
   lineage, leo1a5 <- leopard1 family, t72b3 <- t72 family, chieftain_mk10
   <- chieftain5 the graduate, k2 <- its own modern class) — "but this
   should also be intuitied": builders derive family grammar themselves.
+- **OWNER PUNCH LIST 3 (2026-08-06 eve)**: (1) MUZZLE BORES fleet-wide
+  (§B3.1 addendum banked 32a6946: rim + recessed near-black bore disc;
+  graduates = graduate-change flow) — abrams round + fleet sweep agent
+  spawned, live lanes (misc/modern2+3/ww2) relayed; (2) "fix m1 butts"
+  (screenshot): M1-family rears — §B2 void pocket beside the exhaust
+  grille, grille reads stuck-on-box not the real full-width plate,
+  floating rear fender rails, deck camo scale mismatch — abrams round
+  spawned (same agent as bores).
 - **OWNER PUNCH LIST 2 (2026-08-06 pm, four screenshots)**: (1) DONE — fv510 photo-parity r2: all NINE gap-table reads closed
   (turret left-offset, 2x4 chunky banks, tall whips, deep vent rings,
   low guarded lights + convoy plate, loaded bins/racks mg1+16d, skirts
