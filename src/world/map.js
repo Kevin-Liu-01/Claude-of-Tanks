@@ -4,9 +4,9 @@
 // createMap(engineCtx, { mapId }) — 'verdant' | 'desert' | 'winter' | 'urban'.
 
 import * as THREE from 'three';
-import { createHeightField, buildTerrainMeshes } from './terrain.js';
-import { createVegetation } from './vegetation.js';
-import { createProps } from './props.js';
+import { createHeightField, buildTerrainMeshes, buildTerrainMeshesAsync } from './terrain.js';
+import { createVegetation, createVegetationAsync } from './vegetation.js';
+import { createProps, createPropsAsync } from './props.js';
 import { getMapConfig } from './maps/index.js';
 
 const _pt = new THREE.Vector3();
@@ -73,14 +73,24 @@ export async function createMapAsync(engineCtx, { mapId = 'verdant', seed = 1337
   onStep = null) {
   const config = getMapConfig(mapId);
   const step = async (label, f) => { if (onStep) await onStep(label, f); };
+  // perf-r3 (play-session probe): the old five-yield build left each
+  // subsystem ATOMIC — 1.5-2.4 s tasks that pinned the loading bar (and
+  // fused into a single ~29 s task on a loaded machine). Each subsystem now
+  // drains its chunked twin, yielding through `step` after every slice so
+  // the bar creeps THROUGH a subsystem instead of jumping between them.
+  const sub = (label, f0, f1) => (done, total) =>
+    step(label, f0 + (f1 - f0) * (done / Math.max(1, total)));
   await step('Surveying terrain', 0.0);
   const heightField = createHeightField(seed, config);
   await step('Building terrain meshes', 0.34);
-  const terrain = buildTerrainMeshes(heightField, engineCtx, config);
+  const terrain = await buildTerrainMeshesAsync(heightField, engineCtx, config,
+    sub('Building terrain meshes', 0.34, 0.58));
   await step('Planting vegetation', 0.58);
-  const vegetation = createVegetation(heightField, engineCtx, 2001, config);
+  const vegetation = await createVegetationAsync(heightField, engineCtx, 2001, config,
+    sub('Planting vegetation', 0.58, 0.82));
   await step('Placing structures', 0.82);
-  const props = createProps(heightField, engineCtx, 2002, config);
+  const props = await createPropsAsync(heightField, engineCtx, 2002, config,
+    sub('Placing structures', 0.82, 0.96));
   await step('Sealing the battlefield', 0.96);
   return assembleWorld(engineCtx, config, heightField, terrain, vegetation, props);
 }

@@ -2425,24 +2425,54 @@ function buildChunkGeometry(hf, cx0, cz0, segs, fine) {
  * @returns {THREE.Group} terrain chunk group
  */
 export function buildTerrainMeshes(heightField, engineCtx, cfg = null) {
+  const g = terrainBuildSteps(heightField, engineCtx, cfg);
+  let r = g.next();
+  while (!r.done) r = g.next();
+  return r.value;
+}
+
+/**
+ * perf-r3 (play-session probe): chunked twin of {@link buildTerrainMeshes} —
+ * the one-call build was a single ~2.4 s task behind the loading bar (64
+ * chunk grids x 3 LODs in one gulp). Awaits `tick(done, total)` after every
+ * chunk ROW so the loading screen keeps painting and its bar can creep.
+ * Byte-identical output: both wrappers drain the same generator.
+ * @param {?function(number, number): (Promise<void>|void)} tick
+ */
+export async function buildTerrainMeshesAsync(heightField, engineCtx, cfg = null, tick = null) {
+  const g = terrainBuildSteps(heightField, engineCtx, cfg);
+  let r = g.next();
+  while (!r.done) {
+    if (tick) await tick(r.value[0], r.value[1]);
+    r = g.next();
+  }
+  return r.value;
+}
+
+function* terrainBuildSteps(heightField, engineCtx, cfg) {
   const group = new THREE.Group();
   group.name = 'terrain';
   group.add(buildHorizonRing(engineCtx, cfg, 1337));
+  yield [0, CHUNKS + 2]; // horizon ring built — splat bake gets its own slice
   const mat = createSplatMaterial(engineCtx, heightField._layout, cfg ? cfg.splat : null,
     (cfg && cfg.id) || 'verdant', heightField._mesaW || null);
   const chunks = [];
-  for (let cz = 0; cz < CHUNKS; cz++) for (let cx = 0; cx < CHUNKS; cx++) {
-    const cx0 = -HALF + cx * CHUNK_SIZE, cz0 = -HALF + cz * CHUNK_SIZE;
-    // r7: one shared fine grid per chunk — see buildFineGrid (terracing fix)
-    const fine = buildFineGrid(heightField, cx0, cz0);
-    const lods = LOD_SEGS.map((segs) => buildChunkGeometry(heightField, cx0, cz0, segs, fine));
-    const mesh = new THREE.Mesh(lods[2], mat);
-    mesh.receiveShadow = true;
-    mesh.castShadow = false;
-    mesh.matrixAutoUpdate = false;
-    mesh.updateMatrix();
-    group.add(mesh);
-    chunks.push({ mesh, lods, level: 2, cx: cx0 + CHUNK_SIZE / 2, cz: cz0 + CHUNK_SIZE / 2 });
+  yield [1, CHUNKS + 2]; // splat canvas bake done
+  for (let cz = 0; cz < CHUNKS; cz++) {
+    for (let cx = 0; cx < CHUNKS; cx++) {
+      const cx0 = -HALF + cx * CHUNK_SIZE, cz0 = -HALF + cz * CHUNK_SIZE;
+      // r7: one shared fine grid per chunk — see buildFineGrid (terracing fix)
+      const fine = buildFineGrid(heightField, cx0, cz0);
+      const lods = LOD_SEGS.map((segs) => buildChunkGeometry(heightField, cx0, cz0, segs, fine));
+      const mesh = new THREE.Mesh(lods[2], mat);
+      mesh.receiveShadow = true;
+      mesh.castShadow = false;
+      mesh.matrixAutoUpdate = false;
+      mesh.updateMatrix();
+      group.add(mesh);
+      chunks.push({ mesh, lods, level: 2, cx: cx0 + CHUNK_SIZE / 2, cz: cz0 + CHUNK_SIZE / 2 });
+    }
+    yield [cz + 2, CHUNKS + 2]; // one row of chunk grids per slice
   }
   group.userData.updateLOD = (camPos) => {
     for (const c of chunks) {

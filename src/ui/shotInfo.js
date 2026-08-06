@@ -1385,11 +1385,21 @@ export function createShotInfo(bus) {
      * @param {string[]} specIds fielded roster (both teams)
      */
     warmSchematics(specIds) {
-      for (const id of specIds || []) {
-        if (!id) continue;
+      // perf-r3 (play-session probe): a 14-tank roster kicked 28 decodes at
+      // once and their onload bakes (two full-image getImageData passes each)
+      // landed as one burst of small tasks in the same window — measured as
+      // 56 readbacks inside the rematch entry. Kick ONE tank per frame: the
+      // warm still finishes far inside the loading screen, spread thin.
+      const ids = (specIds || []).filter(Boolean);
+      let i = 0;
+      const kick = () => {
+        if (i >= ids.length) return;
+        const id = ids[i++];
         schematicUrl(id, 'top', CARD_TOP_S * 2, CARD_TOP_S * 2);
         schematicUrl(id, 'side', CARD_SIDE_W * 2, CARD_SIDE_H * 2);
-      }
+        requestAnimationFrame(kick);
+      };
+      kick();
     },
     root,
     statsRoot,

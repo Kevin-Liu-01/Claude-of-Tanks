@@ -931,6 +931,10 @@ async function ensureWorld(mapId, onProgress = null) {
       });
     worldCache.set(id, next);
   }
+  // perf-r3: assembleWorld and activateWorld (minimap top-down capture,
+  // collider build, sky re-key) used to fuse into one ~1.6 s task — give the
+  // loading bar a painted frame between them.
+  await nextFrame();
   if (world !== next || worldDormant) activateWorld(next);
   return world;
 }

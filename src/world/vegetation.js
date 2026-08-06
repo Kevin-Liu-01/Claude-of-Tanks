@@ -1444,6 +1444,34 @@ function buildBushCards(rng, pal = {}) {
  *   setWindTime:function(number):void, treeObstacles:Array<{min:number[],max:number[]}>}}
  */
 export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null) {
+  const g = vegetationBuildSteps(heightField, engineCtx, seed, cfg);
+  let r = g.next();
+  while (!r.done) r = g.next();
+  return r.value;
+}
+
+/**
+ * perf-r3 (play-session probe): chunked twin of {@link createVegetation} —
+ * the one-call build was a single ~2.1 s task behind the loading bar. Awaits
+ * `tick(done, total)` between sections (grass carpet, tree prep, each tree
+ * placement pass, root decals, bushes) so the loading screen keeps painting.
+ * Byte-identical output: both wrappers drain the same generator, same rng
+ * draw order.
+ * @param {?function(number, number): (Promise<void>|void)} tick
+ */
+export async function createVegetationAsync(heightField, engineCtx, seed = 2001, cfg = null,
+  tick = null) {
+  const g = vegetationBuildSteps(heightField, engineCtx, seed, cfg);
+  let r = g.next();
+  let i = 0;
+  while (!r.done) {
+    if (tick) await tick(++i, 7);
+    r = g.next();
+  }
+  return r.value;
+}
+
+function* vegetationBuildSteps(heightField, engineCtx, seed, cfg) {
   const veg = {
     species: ['pine', 'oak'],
     clusterMix: [['pine', 0.55], ['oak', 0.45]],
@@ -1719,9 +1747,12 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
   }
   function writeTuft(mesh, i, t) { writeTuftAt(mesh, i, t, 0); }
 
+  yield; // perf-r3: grass textures/materials prepped — yield before scatter
   // ---- midfield grass scatter (map-wide chunks, unchanged system) ----
   const grassChunks = [];
-  for (let cz = 0; cz < CHUNKS; cz++) for (let cx = 0; cx < CHUNKS; cx++) {
+  for (let cz = 0; cz < CHUNKS; cz++) {
+    yield; // perf-r3: one chunk row of tuft scatter per slice
+    for (let cx = 0; cx < CHUNKS; cx++) {
     const crng = mulberry32((seed ^ (cx * 73856093) ^ (cz * 19349663)) >>> 0);
     const x0 = -HALF + cx * CHUNK_SIZE, z0 = -HALF + cz * CHUNK_SIZE;
     const tufts = [[], []];
@@ -1746,8 +1777,10 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
     if (chunkMeshes.length > 0) {
       grassChunks.push({ meshes: chunkMeshes, cx: x0 + CHUNK_SIZE / 2, cz: z0 + CHUNK_SIZE / 2 });
     }
+    }
   }
 
+  yield;
   // ---- near grass carpet (camera-centred, dense, cell-cached) ----
   // PERF (performance_budget r5): DOUBLE-BUFFERED. A rebuild used to
   // bufferSubData 3.9 MB into the instance buffers the GPU was still reading
@@ -1852,6 +1885,7 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
     }
   }
 
+  yield;
   // ---- trees ----
   // Every tree material carries the per-instance occlusion fade (aFadeI,
   // 0 = solid → 1 = dithered to ~12%) plus a near-camera dissolve: WoT fades
@@ -2422,6 +2456,7 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
     }
     if (placed > 2) clusters.push({ x, z, r });
   }
+  yield;
   for (let i = 0, placed = 0; i < 700 && placed < veg.loneCount; i++) { // lone trees + pairs
     const x = (rng() * 2 - 1) * 460, z = (rng() * 2 - 1) * 460;
     if (addTree(x, z, pickSpecies(veg.loneMix, rng()))) {
@@ -2466,6 +2501,7 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
   // emergent scatter fills the saddles so gaps read as thin forest, not
   // clean breaks between identical tufts.
   const _standTint = new THREE.Color();
+  yield;
   for (let c = 0; c < veg.rimCount; c++) {
     const slot = (c + (rng() - 0.5)) / Math.max(1, veg.rimCount);
     const a = slot * Math.PI * 2 + (rng() - 0.5) * 0.22;
@@ -2609,6 +2645,7 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
     });
   }
 
+  yield;
   // ---- tree root decals (r7) ---------------------------------------------
   // Terrain-conformed dark elliptical blend discs under every trunk: the
   // trunk-meets-ground contact was a hard unshaded seam and trees read as
@@ -2692,6 +2729,7 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
   // ~1.5 hull radii of the player join the dither set (see updateOcclusionFade).
   const bushFadeReg = [];
 
+  yield;
   // ---- bushes (hedgerow / field-edge cover, purely visual) ----
   {
     const bushPal = palOf(bushSpecies);
@@ -2791,6 +2829,7 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
     }
   }
 
+  yield;
   // ---- chase-camera foliage occlusion fade -------------------------------
   // WoT behavior: any tree standing between the camera and the player's tank
   // fades to near-transparency so the third-person loop stays readable on

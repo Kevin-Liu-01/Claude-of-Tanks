@@ -470,8 +470,23 @@ function precompileStaged(objectOrScene) {
 // see tankFactory's swap warm). Raw handles can't race material lifecycle: a
 // deleted program answers null (≠ false) and reads as done. No extension →
 // completion is unknowable → report done and let first use pay the link.
+/** Live program count (the linkWait watermark). @returns {number} */
+function programCount() {
+  const D = typeof window !== 'undefined' ? window.__DEBUG : null;
+  return (D && D.renderer && D.renderer.info.programs.length) || 0;
+}
+
 let _linkExt;
-function shaderLinksPending() {
+/**
+ * @param {number} fromIndex only poll programs added at/after this index of
+ *   renderer.info.programs — i.e. the ones THIS staged model just compiled.
+ *   perf-r3 (CPU profile): the first cut polled the WHOLE list; at 431 live
+ *   programs that is 431 blocking GL round-trips per advance, and the profile
+ *   caught it as 1.36 s of getProgramParameter inside a kill window (the idle
+ *   pump keeps running in battle at 300 ms spacing). Scoped to the model's
+ *   own additions it is a few dozen queries.
+ */
+function shaderLinksPending(fromIndex = 0) {
   try {
     const D = typeof window !== 'undefined' ? window.__DEBUG : null;
     if (!D || !D.renderer) return false;
@@ -480,8 +495,10 @@ function shaderLinksPending() {
       _linkExt = gl.getExtension('KHR_parallel_shader_compile') || null;
     }
     if (!_linkExt) return false;
-    for (const p of D.renderer.info.programs || []) {
-      if (!p.program) continue;
+    const progs = D.renderer.info.programs || [];
+    for (let i = Math.max(0, fromIndex); i < progs.length; i++) {
+      const p = progs[i];
+      if (!p || !p.program) continue;
       if (gl.getProgramParameter(p.program, _linkExt.COMPLETION_STATUS_KHR) === false) return true;
     }
   } catch (_) { /* best-effort — never stall the pipeline on a poll error */ }
@@ -2783,6 +2800,8 @@ export async function applyGlbModel(ctx) {
           st.meshes = [];
           st.staged.scene.traverse((o) => { if (o.isMesh) st.meshes.push(o); });
           st.mi = 0;
+          // watermark: linkWait polls only the programs added from here on
+          st.progBase = programCount();
           st.phase = 'compileMesh';
           return 'more';
         case 'compileMesh': {
@@ -2815,7 +2834,7 @@ export async function applyGlbModel(ctx) {
           // the linker there would burn the whole slot; the blocking first
           // use is harmless in an offline capture, so commit immediately.
           if (inShotPhase() || _queuePaused
-            || performance.now() >= st.linkDeadline || !shaderLinksPending()) {
+            || performance.now() >= st.linkDeadline || !shaderLinksPending(st.progBase)) {
             st.phase = 'commit';
           }
           return 'more';

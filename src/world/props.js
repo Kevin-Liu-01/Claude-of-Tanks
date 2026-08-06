@@ -852,6 +852,34 @@ function mergeInto(buckets, parts, transform = null) {
  *   colliders:Array<{min:number[],max:number[]}>, features:{buildings:Array<object>}}}
  */
 export function createProps(heightField, engineCtx, seed = 2002, cfg = null) {
+  const g = propsBuildSteps(heightField, engineCtx, seed, cfg);
+  let r = g.next();
+  while (!r.done) r = g.next();
+  return r.value;
+}
+
+/**
+ * perf-r3 (play-session probe): chunked twin of {@link createProps} — the
+ * one-call build was a single ~1.6 s task behind the loading bar. Awaits
+ * `tick(done, total)` between placement families (buildings, rowhouses,
+ * walls, trucks, crops, street furniture, wrecks, pool finalization) so the
+ * loading screen keeps painting. Byte-identical output: both wrappers drain
+ * the same generator, same rng draw order.
+ * @param {?function(number, number): (Promise<void>|void)} tick
+ */
+export async function createPropsAsync(heightField, engineCtx, seed = 2002, cfg = null,
+  tick = null) {
+  const g = propsBuildSteps(heightField, engineCtx, seed, cfg);
+  let r = g.next();
+  let i = 0;
+  while (!r.done) {
+    if (tick) await tick(++i, 9);
+    r = g.next();
+  }
+  return r.value;
+}
+
+function* propsBuildSteps(heightField, engineCtx, seed, cfg) {
   const P = {
     plan: ['cottage', 'barn', 'cottage', 'tower', 'cottage', 'ruin',
       'cottage', 'barn', 'cottage', 'cottage'],
@@ -1189,6 +1217,7 @@ ${snowCap ? `
     list.push({ min: [x - hx, y, z - hz], max: [x + hx, y + h, z + hz] });
   }
 
+  yield;
   // --- village buildings along the roads ---
   const roads = L.roads;
   // junction/plaza: the road crossing nearest the village/town center
@@ -1362,6 +1391,7 @@ ${snowCap ? `
     colliders.push({ min: [x - pr, y, z - pr], max: [x + pr, y + pr * 0.7, z + pr] });
   }
 
+  yield;
   // --- contiguous rowhouse strips along the streets (town maps): buildings
   // butt against each other with shared walls, doors on the street, varied
   // heights/facades, the odd collapsed slot spilling rubble into the street ---
@@ -1493,6 +1523,7 @@ ${snowCap ? `
     }
   }
 
+  yield;
   // --- town block fill (urban): place remaining plan buildings on a coarse
   // grid BETWEEN the streets so blocks read built-up, not just road-fronted ---
   if (P.blockFill && bi < builders.length) {
@@ -1617,6 +1648,7 @@ ${snowCap ? `
     }
   }
 
+  yield;
   // --- low boundary walls (cover) ---
   // world-dressing r1 built these as a styled merged kit; DESTRUCTIBLES r1
   // rebuilds every run as WALL_SEG (3 m) DESTRUCTIBLE MODULES: a tank at
@@ -1863,6 +1895,7 @@ ${snowCap ? `
   }
 
   // --- DESTRUCTIBLES r1: soft-vehicle + military-clutter dressing ----------
+  yield;
   // Supply trucks and utility 4x4s parked on roadside pull-offs and yards
   // (destructible to burnt hulks), fuel-drum clusters with the rare RED
   // explosive drum, ammo-box stacks, and campsite/supply-dump story clusters
@@ -2339,6 +2372,7 @@ ${snowCap ? `
   }
 
   // --- standing crop fields (r6 terrain_environment) ------------------------
+  yield;
   // The open farmland carried no crops at all ("summer fields have no crops"
   // critique) — WoT maps stage their fields with standing grain. Each plot is
   // a fan of parallel crop-card rows (terrain-conformed vertical strips, one
@@ -2466,6 +2500,7 @@ ${snowCap ? `
   }
 
   // --- street lampposts (r6 terrain_environment, town maps) -----------------
+  yield;
   // Cast-iron posts marching along the paved grid — the missing street
   // furniture scale cue ("urban streets missing furniture" critique).
   if (P.lampposts) {
@@ -2602,6 +2637,7 @@ ${snowCap ? `
   }
 
   // --- knocked-out TANK WRECKS: real roster vehicles, baked static ----------
+  yield;
   // DESTRUCTIBLES r1 replaces the r7 generic box hulks with the game's own
   // tank models: era-appropriate roster vehicles built through tankFactory,
   // posed by the factory's settled-wreck machinery (turret tossed or unseated,
@@ -3303,6 +3339,7 @@ ${snowCap ? `
   }
 
   // -------------------------------------------------------------------------
+  yield;
   // DESTRUCTIBLE POOL FINALIZATION (world-dressing r1): one InstancedMesh per
   // type for the intact instances, one (initially empty) for the broken
   // debris states. Geometry is built ONCE per type per map from the kit's
@@ -3312,6 +3349,7 @@ ${snowCap ? `
   // -------------------------------------------------------------------------
   const _zeroScale = new THREE.Vector3(1e-4, 1e-4, 1e-4);
   for (const [kind, pool] of dPools) {
+    yield; // perf-r3: one instanced-pool build per slice (geometry per kind)
     const meta = pool.meta;
     // DESTRUCTIBLES r1: wall modules ride the map-toned masonry materials
     // ('stone'/'plaster') so runs match the biome exactly like the old
