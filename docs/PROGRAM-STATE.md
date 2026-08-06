@@ -156,6 +156,18 @@ honestly parked at 88.9 pending its retune)
   (AFV class) or a new afv builder; (c) bradley-flow oracle onboarding
   (extract + registration + baseline); (d) full photo-class round to the
   rulebook incl. §B3.2 density; (e) icons + CUSTOM tab row.
+- **TYPE 89 IFV — NEW VEHICLE queued; oracle drop REFUSED (2026-08-06)**:
+  the dropped type_89_ifv_war_thunder.glb is titled "Type 89 IFV (War
+  Thunder)" in its embedded metadata = a commercial-game extraction; THE
+  ONE ABSOLUTE RULE refuses it regardless of the Sketchfab CC-BY tag
+  (uploader cannot license Gaijin's model). File NOT copied. The Type 89
+  builds PHOTO-CLASS on the bradley recipe (owner: "use the bradley on
+  puma and this type 89 ifv") — 35mm KDE autocannon turret two-man
+  right-offset, 6 roadwheels, firing ports; a properly-licensed
+  community oracle is welcome if one exists (bradley/warrior/puma are
+  all 42manako CC-BY — check that catalog first).
+- PUMA amendment: base the build on the BRADLEY recipe (owner order),
+  with its 42manako oracle for measurement.
 - **OWNER PUNCH LIST 2 (2026-08-06 pm, four screenshots)**: (1) fv510
   photo-parity round 2 (real Warrior photo: angular welded turret w/
   sloped faces, front-corner smoke banks, 3 whips, loaded rear bins,
