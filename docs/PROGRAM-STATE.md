@@ -177,6 +177,18 @@ honestly parked at 88.9 pending its retune)
   all 42manako CC-BY — check that catalog first).
 - PUMA amendment: base the build on the BRADLEY recipe (owner order),
   with its 42manako oracle for measurement.
+- **BASE-21 ORACLE WAVE (2026-08-06, owner drop x8, licenses verified)**:
+  ONBOARDING QUEUE (orchestrator lane, bradley flow each: extract + REG +
+  harness registration (HELPER-EXPANDED law) + gate baseline x2):
+  leo2a4 <- leopard_2a4_otco; type10 <- type-10_main_battle_tank;
+  challenger2 <- challenger_ii (80MB); t14 <- community-candidates/
+  t-14_armara (223MB LOCAL-ONLY, gitignored — extracts committed, GLB
+  never pushed); t72b3 base + t72b3m graduate re-oracle candidate <-
+  t-72b3m_obr_2022 (graduate swap = full re-gate + re-cert protocol);
+  leo1a5 family influence <- leopard_1a4 photogrammetry scan;
+  challenger1 ALTERNATE ref (already gate-PASS on its print — optional
+  compare); challenger_3 = NEW-VEHICLE candidate (CC-BY-NC: local
+  measurement only, never ship). Type 89 rip stays REFUSED — photos.
 - **BASE-21 FAMILY-INSPO GUIDANCE (owner 2026-08-06): k2, type10,
   type99a, leo1a5, t72b3, chieftain_mk10 take inspiration from their
   tank families** (type10 <- type90 recipes, type99a <- the russia-style

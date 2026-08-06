@@ -743,3 +743,14 @@ fails the build if any registered playable still references a stripped path.
   https://sketchfab.com/3d-models/spz-puma-8e7d946d4b3d4fdeaf458a3fc4226e1b
   (license verified from embedded asset.extras). NEW VEHICLE: the Puma is
   not yet in the roster — owner order "make the spz puma as well".
+
+## Base-21 oracle wave (2026-08-06, owner-downloaded; licenses verified from embedded asset.extras)
+- community/leopard_1a4_photogrammetry_scan.glb — "Leopard 1A4 [photogrammetry scan]" by pervonharke, CC-BY-4.0 (leo1a5 family influence + oracle candidate)
+- community/t-72b3m_obr._2022.glb — "T-72B3M Obr. 2022" by 42manako, CC-BY-4.0 (t72b3m graduate re-oracle candidate + t72b3 base)
+- community/challenger_3.glb — "Challenger 3" by 42manako, **CC-BY-NC-4.0** (non-commercial — local measurement/influence only, never ship; NEW-VEHICLE candidate)
+- community/challenger_ii.glb — "Challenger II" by buh, CC-BY-4.0 (challenger2 oracle)
+- community/challenger_1_main_battle_tank.glb — "Challenger 1 Main Battle Tank" by Muhamad Mirza Arrafi, CC-BY-4.0 (challenger1 alternate reference)
+- community/type-10_main_battle_tank.glb — "TYPE-10 Main Battle Tank" by Muhamad Mirza Arrafi, CC-BY-4.0 (type10 oracle)
+- community-candidates/t-14_armara_uralvagon_factory.glb — "T-14 Armara Uralvagon Factory" by 3DYAROSLAV2, CC-BY-4.0, **223MB: exceeds GitHub's 100MB file limit — lives in the gitignored staging area, LOCAL-ONLY; onboarding extracts (small) are committed instead** (t14 oracle)
+- community/leopard_2a4_otco.glb — "Leopard 2A4 OTCO" by Jeyhun1985, CC-BY-4.0 (leo2a4 oracle)
+Owner ruling on scope: these are measurement/influence references for our own procedural builds ("its just influences were making our own high quality models off of") — never shipped as game assets. The type_89_ifv_war_thunder.glb drop remains REFUSED (commercial-game extraction; THE ONE ABSOLUTE RULE) — the Type 89 builds from photos.
