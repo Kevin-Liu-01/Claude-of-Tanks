@@ -502,3 +502,13 @@ score is no defense.
   Device: an orientedSlab wrapper (face-outwardness census, re-orients
   reversed rings) — bind slab through it in every profile that mirrors.
   Known carriers still open: t80u (1), type90 (4+1), type74 (1+1).
+- LOADER HEIGHT-CLAMP KEYING (§E, fv510 batch-44): modelLoader scales by
+  min(len, width*1.08, height*1.30) — mast-heavy prints bind on HEIGHT
+  and a pure z-warp is normalized away until a y-knee releases the
+  clamp. Verify which min() term binds before authoring any warp; judge
+  warps by ROW terms (mean/p95/cover/safeScale), never the 0-floored
+  headline (curve score = 100 - 12*mean - 0.6*p95 - 1.5*cover: the 12x
+  mean term floors short/shape-divergent prints at 0 regardless).
+- Mirrored-slab winding guards are now per-profile devices: orientedSlab
+  (misc.js) / sslab (uk.js) — every profile that mirrors slabs binds
+  through one (§C missing-side law).

@@ -145,8 +145,13 @@ honestly parked at 88.9 pending its retune)
   (3) ALL abrams left cheeks = rectangles not slopes (§B1.1); (4)
   m1a1_aim (53.6) + abramsx + m1a2_tusk join the abrams family batches
   ACTIVELY (owner extension mid-round, relayed to the live agent); (5)
-  russia-wide §B3.1 prism sweep; (6) fv510 "made actual" — full round
-  RUNNING (uk lane).
+  russia-wide §B3.1 prism sweep; (6) DONE — fv510 Warrior BUILT ACTUAL (photo class: offset
+  turret, RARDEN §B3.1 cylinders + perforated hider, slat cages, skirts,
+  GPMG, mg1+13d; dims 100, batteries clean; hash 6bfcee8). Oracle
+  adjudicated HONEST-0 (print -10.9% short + shape-divergent); batch-44
+  warp EXECUTED (hold lifted, height-clamp root cause) — frame honest
+  (cover 1.12%, safeScale 1.0), headline stays print-capped: the
+  photo-class build is the truth, visual critic is fv510's bar.
 - **OWNER PRIORITY (2026-08-05): fv510 Warrior marked a PERFECT CANDIDATE
   for a full round** — next open family-lane slot takes it (its repair
   recipe was incident-disabled; re-adjudicate the oracle first, §E).

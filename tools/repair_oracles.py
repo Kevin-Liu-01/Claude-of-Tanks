@@ -3107,18 +3107,26 @@ REPAIRS['challenger1'] = [
                        long_map=[(-4.8536, -5.0332), (3.9024, 4.0821), (6.9558, 7.566)],
                        y_top_max=3.2873, expect=(149, 157826, 121277))),
 ]
-# fv510: INVESTIGATION HOLD — its warp verified clean offline TWICE (stale
-# and fresh baselines) yet the harness reads all-0 with dims 100 either
-# way (warp inert in the gate). Same investigation bucket as q_heavy's
-# visible=false latch + the 0.0125-glb-unit extreme-scale suspicion.
-# Recipe parked (popped) until the harness path is understood.
+# fv510: HOLD LIFTED (batch 44, 2026-08-06 — uk fv510 round root cause +
+# §E request-interception sim). The "inert in the gate" mystery is the
+# LOADER HEIGHT-CLAMP: modelLoader scales by min(len, width*1.08,
+# height*1.30) and the mast-heavy print binds on HEIGHT (3.64/0.0172 =
+# 211.30) — a pure z-warp is normalized away until this recipe's y-knee
+# compresses the mast band and releases the clamp (sim-verified re-key
+# to 226.43; safeScale 1.0712 -> 0.9996, single-sided cover 5.29% ->
+# 1.12%). The headline stays 0 either way: the 12x-mean curve term is
+# dominated by genuine print-vs-real shape divergence (owner's
+# photo-class order governs the build; this warp makes the ORACLE FRAME
+# honest for future measurement). Executed on the 946da9d
+# turret-purified bytes; fresh census below.
 REPAIRS['fv510'] = [
     ('py2', _axis_warp('fv510', long_axis='z',
                        y_map=[(-0.0086, -0.0086), (0.0029, 0.0029), (0.004, 0.0037), (0.0086, 0.0039)],
                        long_map=[(-0.0125, -0.014), (0.0125, 0.014)],
                        y_top_max=0.0041, expect=(5, 29817, 28582))),
 ]
-REPAIRS.pop('fv510', None)
+# batch 44: the park-pop is retired with the hold (root cause + sim proof
+# above); the recipe is LIVE again.
 
 
 # =============================================================== batch 31 ===
