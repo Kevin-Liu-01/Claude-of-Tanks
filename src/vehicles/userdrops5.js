@@ -84,17 +84,15 @@ const SPECS = [
   make('merkava4', 'merkava2d', 'Merkava Mk.2D', 'Israel',
     { hp: 2150, weightTons: 65, topSpeedKmh: 50, gun: { reloadS: 7.2 },
       dims: { hullLengthM: 7.45, overallLengthM: 8.78, widthM: 3.70, heightM: 2.65 } }),
-  make('merkava4', 'merkava3b', 'Merkava Mk.3B', 'Israel',
-    { hp: 2250, weightTons: 65, topSpeedKmh: 60, gun: { reloadS: 6.8 },
-      dims: { hullLengthM: 7.60, overallLengthM: 9.04, widthM: 3.72, heightM: 2.66 } }),
+  // merkava3b REMOVED BY OWNER 2026-08-06 ('remove merkava mk 3b') —
+  // builder code stays dormant in merkava.js; packet is historical.
   make('merkava4', 'merkava3c', 'Merkava Mk.3C', 'Israel',
     { hp: 2300, weightTons: 65, topSpeedKmh: 60, gun: { reloadS: 6.6 },
       dims: { hullLengthM: 7.60, overallLengthM: 9.04, widthM: 3.72, heightM: 2.66 } }),
   make('merkava4', 'merkava3d', 'Merkava Mk.3D', 'Israel',
     { hp: 2350, weightTons: 65, topSpeedKmh: 60, gun: { reloadS: 6.4 },
       dims: { hullLengthM: 7.60, overallLengthM: 9.04, widthM: 3.72, heightM: 2.66 } }),
-  make('merkava4', 'merkava4b', 'Merkava Mk.4B', 'Israel',
-    { hp: 2500, weightTons: 65, topSpeedKmh: 64, gun: { reloadS: 6.1 } }),
+  // merkava4b REMOVED BY OWNER 2026-08-06 ('remove merkava mk 4b').
   make('leo1a5', 't62mv1', 'T-62MV-1', 'USSR/Russia',
     { hp: 1650, weightTons: 38, topSpeedKmh: 50, reverseSpeedKmh: 8, gun: { reloadS: 8.2 },
       dims: { hullLengthM: 6.63, overallLengthM: 9.34, widthM: 3.30, heightM: 2.40 } }),
@@ -275,4 +273,4 @@ export const USERDROP5_TANK_IDS = SPECS.map((s) => s.id);
 // signal — the garage catalog keys era buckets off this list instead, keeping
 // local and public grouping identical. m60a1 is excluded: it graduated the
 // dual gate and its procedural build ships everywhere (a true original now).
-export const USERDROP5_SOURCED_IDS = USERDROP5_TANK_IDS.filter((id) => !['m60a1', 'm1a1ha', 'merkava3b', 'merkava3c', 'merkava3d', 'pt91m', 't72b3m', 'merkava1b', 'chieftain5', 'leo2a5', 'challenger1', 'leo2_revolution', 'm1a2_sepv2', 't62mv1', 't72bu', 't72b_1987', 't90sm', 't90a_vladimir', 'merkava2b', 'merkava2d', 'merkava4b', 'fv510', 't64bv1', 'type90'].includes(id));
+export const USERDROP5_SOURCED_IDS = USERDROP5_TANK_IDS.filter((id) => !['m60a1', 'm1a1ha', 'merkava3c', 'merkava3d', 'pt91m', 't72b3m', 'merkava1b', 'chieftain5', 'leo2a5', 'challenger1', 'leo2_revolution', 'm1a2_sepv2', 't62mv1', 't72bu', 't72b_1987', 't90sm', 't90a_vladimir', 'merkava2b', 'merkava2d', 'fv510', 't64bv1', 'type90'].includes(id));

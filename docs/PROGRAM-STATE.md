@@ -65,7 +65,7 @@ re-freeze NEW hash, all in ONE commit.
 | m1a1 | 5290e3bc | density re-cert RATIFIED 9.1; American-MG audit YES |
 | m1a1ha | 4023964c | density re-cert RATIFIED 9.1 |
 | m1a2_tejas | 93a9a890 | density re-cert RATIFIED 9.1 |
-| merkava3b | 8bb8d984 | gun-run re-cert RATIFIED (floor 9.1) |
+| merkava3b | REMOVED BY OWNER 2026-08-06 (roster prune; was 8bb8d984, packet historical) |
 | merkava3c | b7318b10 | gun-run re-cert RATIFIED (floor 9.1) |
 | kf51 | fcc60d6c | §B4 shoe re-cert RATIFIED (notch = real connector slot) |
 | isu122s | 60b08d10 | |
@@ -249,8 +249,8 @@ honestly parked at 88.9 pending its retune)
   recipe was incident-disabled; re-adjudicate the oracle first, §E).
 - **Zero/low rows** (triage lane): recon_tank ruling, q_heavy/t30 walls
   (fv510 RESOLVED: built actual + photo-parity r2 + new oracle pending
-  onboarding), merkava2b 39.6 / 2d 34.9 / 4 0 / 4b 34.1 (family
-  rebuilds), t54 winding repair, m48 pitch, type74+t80bv scaleToOverall
+  onboarding), merkava2b 39.6 / 2d 34.9 / 4 0 (family rebuilds; 3b+4b REMOVED BY
+  OWNER 2026-08-06), t54 winding repair, m48 pitch, type74+t80bv scaleToOverall
   ruling.
 
 ## 4.9 GEAR R8/R8B REVERTED (2026-08-06 pm): the unconditional belly pan
