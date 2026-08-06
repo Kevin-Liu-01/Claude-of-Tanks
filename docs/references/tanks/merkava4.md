@@ -185,3 +185,37 @@ the slope mass law") + §B3 ff50bf5 (random non-ERA rectangles near guns).
   shellTop (they fan DOWN onto the casting); with shellTop at roof height
   the clamp inverts and the wash deck rides over the cheeks. Drop the
   shell top below topOut before enabling roofMerge on a new mark.
+
+## §B3.1 GUN-RUN round (2026-08-06, merkava family agent)
+Owner directive (BUILD-STANDARD §B3.1): the Mk.4M gun run carried a
+buried bore evacuator (evac 0.30 = world z 1.27, inside the casting —
+the tube showed none) and the drum-through-flat-wall root junction.
+
+### Change
+- evac 0.30 -> 0.751 + evacR 1.46: evacuator drum at world ~3.37..3.73
+  (~37-53% of the visible tube, Mk.4M photo station), r 0.105 = +17 mm
+  proud of the thermal sleeve — the real MG253 bulge, KIT cylinders.
+- gunBoot: true (full fabric roll, rAdd 0.045): dust boot at the
+  recessed trough mouth — roll + bellows taper + step-shadow seam ring +
+  dark slot shadow; gun-bucket (pitches with the gun). No proud rings
+  (the 4B floater lesson, see merkava4b.md).
+- crest.rakeTop 0.10 / rakeTop1 0.30: leaning gun-hood flanks (same
+  treatment as 4B; free on this mark's certified-0 curve components).
+- Smoke cluster: left on the m4 cheekPoint seat — the m4 cheek DOES
+  reach the apex and the roofMerge washes bridge it (floaters 100
+  measured x4 this round).
+
+### Done-gates (official rigs, x2 at close)
+- geometry-gate x2 IDENTICAL: min 0 — curves/stations certified-0 vs the
+  unrepairable arlassar print (v6-v8 published-envelope note governs);
+  dims 91.8 HELD, floaters 100 HELD. Dims anchors untouched (toe 3.53 /
+  rack -4.02 / muzzle 4.78 / skirts ±1.86 / p95 tops <= 2.655 — every
+  new piece crowns <= 2.49).
+- npm test green. Track-clip: front 14 / rear 215+330 shoe — the
+  pre-existing r12/idler-wrap classes (gear untouched by gun edits).
+  Turret-parent: 0/0/0. Standard-check: contig 0 holes.
+- Yaw pair at final bytes (shots/merkava-gunrun/pairs/*merkava4).
+
+### Honest residuals
+- Rear track clip 215/330 (idler-wrap §B4 lane, unpriced by the 0-capped
+  gate) and the decor census (§I) remain their documented selves.

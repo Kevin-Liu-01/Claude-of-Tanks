@@ -121,3 +121,19 @@ Owner §B1 c1ad424 + §B3 ff50bf5. Baseline: min 34.9 (hull 75.1 / whole
   b5-round adjudicated audit-artifact class (AABB-coarse tool); verified
   unchanged by this round's A/B.
 - turretCurves 34.9 pinned by the certified 2B/2D oracle defects.
+
+## §B3.1 GUN-RUN round (2026-08-06, merkava family agent)
+Same M64 canvas grammar as merkava2b (shared m.canvas path on the legacy
+branch — rings at local taper +3 mm, seat seam, shoulder-band creases;
+see merkava2b.md §B3.1 for mechanics).
+
+### Done-gates (official rigs, x2 at close)
+- geometry-gate x2 IDENTICAL to baseline: min 34.9 — hull 75.1 /
+  whole 57.3 / turret 34.9 / stations 72.6 / dims 96.2 / floaters 100
+  (zero cost).
+- npm test green. Track-clip rear 284/204 pre-existing. Contig 0 holes.
+- Turret-parent: stranded 1 (unnamed, 26%) — PRE-EXISTING: this round's
+  edits are all rig_gun-bucket (canvas rings/creases); gun-bucket
+  content cannot strand hull-side. The flag belongs to the 2D rebuild
+  lane's backlog (34.9 row).
+- Yaw pair at final bytes (shots/merkava-gunrun/pairs/*merkava2d).

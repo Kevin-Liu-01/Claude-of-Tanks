@@ -1331,3 +1331,83 @@ list + re-freeze at landing).
   view-left / view-right / view-top carry only the sub-pixel louver/seam
   hairlines and the <= 6 mm proud face-edge slivers.
 - Unchanged views: view-rear, hero-rearright and every hull-only crop.
+
+## §B3.1 GUN-RUN graduate-change round (2026-08-06, merkava family agent)
+Owner directive (BUILD-STANDARD §B3.1, 2026-08-06: "sepv2 and sepv3 and
+the merkavas have those really ugly gun rectangular prisms and dont look
+accurate"): the r8 BOXY MG251 mantlet housing — a literal 0.34 x 0.3165
+box with box drape crowns — read as a shoebox in every 3/4 view at 1x-4x.
+This round replaces the whole housing stack with the real MG251 mount's
+ROUND-SHOULDERED cast/canvas collar. Graduate-change flow (gate hold x2 +
+candidate hash + changed-view list; re-freeze at landing).
+
+### Change (m.boxy branch, shared 3B/3C)
+- ROUNDED-RECT COLLAR COMPOSITION (the mask-exact prism-killer): two flat
+  carrier slabs (0.090 x 0.3165 crown/keel strip + 0.340 x 0.0665 flank
+  strip) + four r 0.125 corner cylinders. Every certified cardinal extent
+  rides a FLAT face exactly where the certified housing's faces sat —
+  side top 2.1465 / bot 1.8300, plan ±0.170 — so the silhouette edge is
+  the same straight line (AA-identical class); the 90-degree corners
+  become r 0.125 shoulder arcs. Corner rounds inset 24 mm from the z
+  ends (endIn) so the slabs' RoundedBox end bevels govern there
+  (measured: un-inset rims cost 3c stations 92.3 -> 92.2).
+- Trough seat: same composition inscribed in the old 0.35 x 0.34 seat
+  block (hidden inside the casting mouth, fills the §B2 gap).
+- 6 r8 drape-crown boxes DELETED; the certified ~2.1485-2.1495 station
+  maxY line is carried by three r 0.0055 canvas cinch ROLLS lying across
+  the crown (tops 2.1494, seated 8 mm into the slab) — one per possible
+  station window (measured: without them 3c stations -0.1).
+- 12 canvas sag/cinch creases hug the shoulder arcs at center radius
+  0.1225 (SHOULDER-ZONE FREE DRESSING law below).
+- Dark end plate -> same-extent rounded-rect ring (±0.1725 x ±0.145,
+  r 0.075, plain-box ends). Under-collar trough shadow box unchanged
+  (its 1.8125 keel line is a certified side-bottom carrier).
+- r8 flank folds KEPT (they ride the flat flank strip at 1.2-2 mm proud,
+  dy 0.047/-0.043/0.012 — same certified plan partials); only the pale
+  fold re-seats 0.1714 -> 0.1625 (its dy 0.082 station is shoulder-arc
+  now — it hovered 11 mm off the round surface). Under-hem darks re-seat
+  inboard (old -0.125 x-reach floated past the rounded end ring's corner
+  arc, x_max 0.1185 there).
+- Front collar cylinder + dark ring, 5 collar drape wedges (r 0.159 <
+  0.163 clamp column), 5 sleeve wrinkles, face sag creases: unchanged.
+
+### Gate hold (official rig, x2 at close)
+- Run 1: min 90.1 — hull 91.1 / whole 90.1 / turret 90.4 / stations 93.6 / dims 100 / floaters 100 PASS
+- Run 2: min 90.1 — hull 91.1 / whole 90.1 / turret 90.4 / stations 93.6 / dims 100 / floaters 100 PASS
+  (every component EXACTLY the frozen row, both runs.)
+- npm test green (166 + track-geometry). Track-clip: band 0/0, shoe rear
+  18 rig_hull — the pre-existing §12.8 audit value, untouched (gun edits
+  cannot move gear). Turret-parent: stranded 0 / abutting 0 / dangling 0.
+  Standard-check: contig 0 holes; decor mg0+0d is the documented
+  family-wide hand-authored-MG state (§I migration lane).
+- Yaw pair (rest/yaw90, 14 views each) rendered at the candidate bytes:
+  full gun run + collar rotate with the turret; no stranded/dangling
+  furniture (shots/merkava-gunrun/pairs/*merkava3b).
+
+### Candidate
+- hash 36fc1c74 -> 8bb8d984 (meshes 37, verts 141450 -> 145590).
+  Re-freeze at landing on critic PASS.
+
+### Changed-view list (for the independent re-cert critic)
+- close-front, view-front, view-frontleft, view-frontright, view-left,
+  view-right, view-top, hero-frontleft, hero-toptilt, close-roof (the
+  collar zone z 1.55-2.26 reads in all of these; side/plan silhouettes
+  are carrier-identical — the READ changes, the outline does not).
+- Unchanged views: view-rear, view-rearleft, view-rearright,
+  hero-rearright (collar occluded by the casting/bustle; the unchanged
+  sleeve/tube tip is the only gun content there).
+
+### Law discoveries (bank)
+- ROUNDED-RECT CARRIER COMPOSITION (§B3.1 mechanism): to de-prism a
+  mask-certified box, compose flat cardinal carrier slabs + corner
+  cylinders — every certified extent stays on a FLAT face (AA-identical
+  silhouette edge), corners read round. Corner rounds MUST inset from
+  the z ends by the box() bevel radius (~24 mm) or their rims out-reach
+  the certified end bevels (3c stations -0.1 measured).
+- SHOULDER-ZONE FREE DRESSING: on a convex rounded member, the 45-deg
+  shoulder band is interior to BOTH side and plan silhouettes
+  (cos45 x (r + 3 mm) < r): creases/wrinkles/straps placed there are
+  mask-free by construction.
+- STATION-CROWN RHYTHM: station maxY carriers deleted from a crown must
+  be replaced at EVERY possible slice window (one carrier per ~0.5 m
+  slice pitch), not per aesthetic rhythm.

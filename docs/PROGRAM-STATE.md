@@ -65,8 +65,8 @@ re-freeze NEW hash, all in ONE commit.
 | m1a1 | 5a45a659 | carries flap-in-sweep class (future round) |
 | m1a1ha | 96d4dfc4 | owner rear-fix RE-CERT RATIFIED (floor 9.0, mean 9.09) |
 | m1a2_tejas | f3ab40f4 | drift 89.4 watch item |
-| merkava3b | 36fc1c74 | re-frozen 0e47256 |
-| merkava3c | a2805356 | re-frozen 0e47256 |
+| merkava3b | 36fc1c74 -> 8bb8d984 CANDIDATE (gun-run §B3.1, re-cert in flight) |
+| merkava3c | a2805356 -> b7318b10 CANDIDATE (gun-run §B3.1, re-cert in flight) |
 | kf51 | 1452024b | |
 | isu122s | 60b08d10 | |
 | isu152 | 8e2f75c0 | |
@@ -141,7 +141,10 @@ honestly parked at 88.9 pending its retune)
   DoubleSide-mask visible; orientedSlab guard landed; gates held exact;
   leclerc bonus: contig 0, mg1, §B3.1 gun root. OPEN CARRIERS: t80u,
   type90, type74 — next misc/russia rounds);
-  (2) sepv2/sepv3/merkava gun rectangular prisms -> real weapons (§B3.1);
+  (2) merkava guns DONE — MG251/253 runs de-prismed all 8 marks (frozen
+  rows EXACT; 3b/3c candidates 8bb8d984/b7318b10 pending re-cert critic;
+  mk4 evac surfaced at station; 4b +3.1 stations); abrams guns still in
+  flight;
   (3) ALL abrams left cheeks = rectangles not slopes (§B1.1); (4)
   m1a1_aim (53.6) + abramsx + m1a2_tusk join the abrams family batches
   ACTIVELY (owner extension mid-round, relayed to the live agent); (5)

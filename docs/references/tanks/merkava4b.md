@@ -162,3 +162,70 @@ min 34.6 (hull 60.6 / whole 34.6 / turret 51 / stations 58.7 / dims 100).
 - front_whole -0.5 rake residual (above); whole 34.1 remains the binder at
   its documented ~45-50 stature ceiling class.
 - Rear basket/rack slabs read olive-cloth at 1x (tone lane).
+
+## §B3.1 GUN-RUN round (2026-08-06, merkava family agent)
+Owner directive (BUILD-STANDARD §B3.1 "gun rectangular prisms"): the 4B
+gun root was the family's worst §B3.1 read — the drum pierced a
+flat-faced, vertical-walled crest slab (the owner's "rectangular block")
+with a buried bore evacuator (evac 0.30 = world z 1.27, inside the
+casting: the tube showed NO evacuator).
+
+### Change
+- evac 0.30 -> 0.751 + evacR 1.35: MG253 evacuator drum lands at world
+  ~3.24..3.60 (~37-53% of the visible tube, the Mk.4 photo station),
+  r 0.105 vs the 0.095 sleeve.
+- gunBoot { rAdd: 0.020 }: fabric dust boot at the recessed trough mouth
+  (roll + bellows taper + step-shadow seam ring + dark slot shadow).
+  SLIM on 4B: the sparse-turret print prices every proud mm — rAdd 0.045
+  measured turretCurves 52.3 -> 51.4; 0.020 measures 0.0. Boot is
+  gun-bucket (pitches with the gun, as the real fabric does).
+- crest.rakeTop 0.10 / rakeTop1 0.30 (new opt-in in the default crest
+  branch): the gun hood's flanks now LEAN (real Mk.4B ridge) instead of
+  the vertical-walled box. Mask carriers untouched by construction: plan
+  rides the unchanged BOTTOM edges, side max-over-x rides the unchanged
+  centerline top lines. Params absent = byte-identical old slabs (3-series
+  graduates unaffected, verified by frozen-row gate holds + hashes).
+- SMOKE RE-SEAT (§B2, measured): the shared cheekPoint(f 0.58) line
+  assumes an apex-reaching cheek (m4 class); the 4B cheek polyline starts
+  at z_local 1.85, so the rosette HOVERED over the notch void — a true
+  standoff that stayed mask-connected only through the old vertical hood
+  corner (fq-right islands 392 px rest / 413 px yaw-180 at the gate's
+  400 px threshold — floaters flipped to 0 the moment the hood raked).
+  It now sits ON the left cheek sheet (pts[0] +0.15 outboard, 0.15
+  down-slope).
+- Over-gun .50 on the hood (merkavaMG at crest z0-1.0, post base embedded
+  in the raked hood top): real Mk.4B fit, §B3 roof-MG law, §H.4 tell vs
+  m4's roof-edge mount — and the HONEST carrier for the station slice the
+  floating smoke pod had been holding by accident (stations 61.8 -> 59.0
+  when the pod re-seated; 64.9 with the MG).
+
+### Done-gates (official rigs, x2 at close)
+- geometry-gate x2 IDENTICAL: min 34.1 — hull 60.6 / whole 34.1 /
+  turret 53.2 / stations 64.9 / dims 100 / floaters 100.
+  vs baseline 60.6/34.1/52.3/61.8/100/100: turret +0.9, stations +3.1,
+  everything else exact. floaters 100 restored (see smoke re-seat).
+- npm test green. Track-clip: band rear 6 / shoe rear 38 (pre-existing
+  class, gear untouched). Turret-parent: 0/0/0. Standard-check: contig
+  0 holes.
+- Yaw pair at final bytes (shots/merkava-gunrun/pairs/*merkava4b).
+
+### Law discoveries (bank)
+- FLOATER-BY-BRIDGE (§B2 corollary, measured end to end): a standoff
+  mass can sit for ROUNDS at 392 px — 8 px under the gate's 400 px
+  island threshold — connected only through a neighbor's silhouette
+  corner; ANY slimming of that neighbor flips it to a floater. Helper-
+  placed fittings (cheekPoint class) must be audited against the actual
+  mark's geometry, not the helper's assumed anatomy.
+- PROUD-RING-ON-GUN-RUN: a cinch ring 1.5 mm proud of a boot/collar can
+  crest the assembly silhouette at articulation poses once casting
+  bridges rake away — keep rings at or under the body surface (the
+  step-shadow seam pattern) on anything that pitches.
+- ISLAND HUNTS RUN AT GATE RESOLUTION: the debug renderMask (384) dilates
+  2 px of 384 and bridges gaps the 1024 gate mask keeps open — hunting
+  floaters below gate resolution reports false-clean.
+
+### Honest residuals
+- whole 34.1 unchanged — the documented stature/fused-print ceiling
+  class binds this mark, not the gun run.
+- Track-clip rear 6/38 + decor census mg0+0d: pre-existing documented
+  lanes (idler-wrap class; §I fittings migration).

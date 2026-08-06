@@ -591,3 +591,34 @@ list + re-freeze at landing).
   view-left / view-right / view-top carry only the sub-pixel louver/seam
   hairlines and the <= 6 mm proud face-edge slivers.
 - Unchanged views: view-rear, hero-rearright and every hull-only crop.
+
+## §B3.1 GUN-RUN graduate-change round (2026-08-06, merkava family agent)
+Owner directive (BUILD-STANDARD §B3.1): same change as merkava3b — the
+shared m.boxy branch swaps the boxy MG251 housing for the rounded-rect
+carrier collar (flat certified-extent faces + r 0.125 shoulder arcs,
+canvas crown rolls + shoulder creases). Full mechanics, mask-safety
+construction and law bank: merkava3b.md §B3.1 round section (shared
+code path, shared numbers; 3C params identical).
+
+### Gate hold (official rig, x2 at close)
+- Run 1: min 90.5 — hull 91.9 / whole 90.5 / turret 90.8 / stations 92.3 / dims 100 / floaters 100 PASS
+- Run 2: min 90.5 — hull 91.9 / whole 90.5 / turret 90.8 / stations 92.3 / dims 100 / floaters 100 PASS
+  (every component EXACTLY the frozen row, both runs. The first cut
+  measured stations 92.3 -> 92.2 twice — decoded to the un-inset corner
+  rims + deleted drape crowns; the endIn insets + crown rolls restored
+  92.3 exactly. Per-column decode lives in the 3b section.)
+- npm test green. Track-clip: band 0/0, shoe rear 18 (pre-existing
+  §12.8 value). Turret-parent: 0/0/0. Standard-check: contig 0 holes;
+  decor census = family-wide §I lane.
+- Yaw pair rendered at candidate bytes
+  (shots/merkava-gunrun/pairs/*merkava3c): gun run rotates whole.
+
+### Candidate
+- hash a2805356 -> b7318b10 (meshes 37, verts 141816 -> 145956).
+  Re-freeze at landing on critic PASS.
+
+### Changed-view list (for the independent re-cert critic)
+- Same as 3B: close-front, view-front, view-frontleft, view-frontright,
+  view-left, view-right, view-top, hero-frontleft, hero-toptilt,
+  close-roof.
+- Unchanged: view-rear, view-rearleft, view-rearright, hero-rearright.

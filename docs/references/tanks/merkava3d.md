@@ -1143,3 +1143,14 @@ list + re-freeze at landing).
   view-left / view-right / view-top carry only the sub-pixel louver/seam
   hairlines and the <= 6 mm proud face-edge slivers.
 - Unchanged views: view-rear, hero-rearright and every hull-only crop.
+
+## §B3.1 GUN-RUN verification (2026-08-06, merkava family agent — NO-OP)
+Owner §B3.1 sweep: the 3D gun run adjudicated CLEAN at 1x-4x on fresh
+gun-framed renders (shots/merkava-gunrun/before/merkava3d) — cylindrical
+mantlet drum (the certified [1.83..2.14] band), sleeve continuation with
+the certified pale muzzle ring, sleeve-flush MG251 evacuator (evacR 1.35
+matches both the print and the real shrouded configuration), tube: no
+prisms anywhere mantlet to muzzle. Bytes untouched; frozen hash 6b97616c
+verified at round start AND close. The 3B/3C boxy-collar swap does not
+touch the 3D code path (default mantlet branch; rakeTop params absent =
+byte-identical slabs, proven by the hash).

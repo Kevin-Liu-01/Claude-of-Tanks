@@ -518,3 +518,12 @@ score is no defense.
   it first on every prism. Corollaries: RING-CLIP (boot collars under
   cover slabs clip to the tube's front silhouette or corners poke);
   proud face-relief on certified rows is never free (flush or pay).
+- ROUNDED-RECT CARRIER COMPOSITION (§B3.1, merkava gun round): de-prism a
+  mask-certified box with flat cardinal carrier slabs on the certified
+  extents + corner cylinders (AA-identical silhouette edges; corner
+  rounds inset by the box bevel radius). Corollaries: the 45° SHOULDER
+  ZONE of any convex round member is interior to both masks — dressing
+  there is free; FLOATER-BY-BRIDGE (standoffs can idle under the island
+  threshold bridged only by a neighbor's corner — audit helper-placed
+  fittings per mark); island hunts run at GATE resolution (384px masks
+  dilation-bridge gaps the 1024 gate keeps open).

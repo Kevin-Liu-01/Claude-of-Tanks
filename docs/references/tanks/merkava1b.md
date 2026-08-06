@@ -1079,3 +1079,17 @@ list + re-freeze at landing).
   view-left / view-right / view-top carry only the sub-pixel louver/seam
   hairlines and the <= 6 mm proud face-edge slivers.
 - Unchanged views: view-rear, hero-rearright and every hull-only crop.
+
+## §B3.1 GUN-RUN verification (2026-08-06, merkava family agent — NO-OP)
+Owner §B3.1 sweep: the 1B gun run adjudicated CLEAN at 1x-4x on fresh
+gun-framed renders (shots/merkava-gunrun/before/merkava1b) — mantlet
+drum, KIT sleeve segments with dark seam/clamp rings, sleeve
+continuation, pale end ring, tube: all cylinders, no prisms. Bytes
+untouched; frozen hash 470f3665 verified at round start AND close.
+HONEST RESIDUAL (owner §B3.1 "bore evacuator at its real station"): the
+M64's evacuator bulge is not modelled — the recovered print's own tube
+reads uniform (sleeveTo 4.00 band), so a real bulge is a ref-divergent
+silhouette spend on a frozen graduate (~+2.4 cm over 2-3 side columns).
+The KIT sleeve's dark seam/clamp ring pair at the sleeve gap already
+carries the station rhythm read. Left for an owner-priced round if the
+read is ordered; not spendable inside an exact-hold round.

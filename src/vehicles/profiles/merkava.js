@@ -4006,16 +4006,26 @@ function merkavaModularTurret(P, t) {
         [xb, cr.top1 - db, cr.z1], [xa, cr.top1 - da, cr.z1]));
     }
   } else {
+    // §B3.1 rakeTop/rakeTop1 (owner 2026-08-06, 4-series gun hood): the
+    // default crest slabs carried VERTICAL side walls — over the mantlet
+    // they read as the "rectangular block" the owner named; the real Mk.4
+    // gun hood is a narrow ridge with leaning flanks. Opt-in per mark
+    // (t.crest.rakeTop/rakeTop1 = top half-widths): masks keep every
+    // carrier — plan rides the unchanged BOTTOM edges, side max-over-x
+    // rides the unchanged centerline top lines; only upper-flank front
+    // columns vacate (certified-0 on m4; measured on 4b). Absent params
+    // reproduce the old slabs exactly (graduate marks byte-identical).
+    const rT0 = cr.rakeTop ?? cr.hw0, rT1 = cr.rakeTop1 ?? cr.hw1;
     P.add('turret', slab(
       [-cr.hw0, cr.bot, cr.z0], [cr.hw0, cr.bot, cr.z0],
       [cr.hw0, cr.bot - 0.06, cr.zW], [-cr.hw0, cr.bot - 0.06, cr.zW],
-      [-cr.hw0, cr.top0, cr.z0], [cr.hw0, cr.top0, cr.z0],
-      [cr.hw0, cr.top0, cr.zW], [-cr.hw0, cr.top0, cr.zW]));
+      [-rT0, cr.top0, cr.z0], [rT0, cr.top0, cr.z0],
+      [rT0, cr.top0, cr.zW], [-rT0, cr.top0, cr.zW]));
     P.add('turret', slab(
       [-cr.hw1, cr.bot - 0.06, cr.zW], [cr.hw1, cr.bot - 0.06, cr.zW],
       [cr.hw1, shellTop - 0.02, cr.z1], [-cr.hw1, shellTop - 0.02, cr.z1],
-      [-cr.hw1, cr.top0 + 0.01, cr.zW], [cr.hw1, cr.top0 + 0.01, cr.zW],
-      [cr.hw1, cr.top1, cr.z1], [-cr.hw1, cr.top1, cr.z1]));
+      [-rT1, cr.top0 + 0.01, cr.zW], [rT1, cr.top0 + 0.01, cr.zW],
+      [rT1, cr.top1, cr.z1], [-rT1, cr.top1, cr.z1]));
   }
   // r11 (defect A/C): the full-width crest rear bar was a lit-turretDark
   // warm line AND a y-222 crown-window run — rackShelf/3D: detail hairline
@@ -5163,6 +5173,8 @@ function buildMerkavaMark(P, p) {
       low: p.crest.low,
       zW2: p.crest.zW2 !== undefined ? L(p.crest.zW2) : undefined,
       lowFace: p.crest.lowFace ? p.crest.lowFace.map(V) : undefined,
+      // §B3.1 gun-hood flank rake (4-series, 2026-08-06)
+      rakeTop: p.crest.rakeTop, rakeTop1: p.crest.rakeTop1,
       shelfTop: p.crest.shelfTop !== undefined ? V(p.crest.shelfTop) : undefined } : undefined,
     noseHW: p.noseHW, noseZ: p.noseZ !== undefined ? L(p.noseZ) : undefined,
     planPts: p.planPts ? p.planPts.map(([x, z]) => [x, L(z)]) : undefined,
@@ -5404,41 +5416,104 @@ function buildMerkavaMark(P, p) {
     P.addGunExtra(cylZ(m.r1, 0.26, 14, m.r0 * 0.94), 0, mDrop * 0.5, apexG + m.len + 0.06);
     P.addGunExtraDark(cylZ(m.r0 * 1.02, 0.035, 16), 0, mDrop, apexG + m.len - 0.03);
     P.addGunExtraDark(cylZ(m.r1 * 1.04, 0.03, 14), 0, mDrop * 0.5, apexG + m.len + 0.17);
-  } else if (m.boxy) {
-    // Compact BOXY MG251 mantlet housing (3B/3C visual round — the round
-    // drum read as a generic collar). Same certified envelope: plan stays
-    // inside the old drum's ±0.175, side band lands exactly on the ref's
-    // measured 1.83..2.15 mantlet band (old drum: 1.805..2.155).
-    const mz = (m.z0 !== undefined ? L(m.z0) : t.apexZ - 0.06) - gunZL;
-    P.addGunExtra(box(0.35, 0.34, 0.30), 0, mDrop + 0.005, mz - 0.13);
-    // r8 CLOTH WRAP (critic item 3 — "telescoping ring-stack -> cloth-
-    // wrapped collar"): the main housing drops 9 mm of its crown and SIX
-    // pitched drape crowns ride the top with their crests back AT the
-    // certified 2.15 band line (one crest per ~0.11 m: every 9 cm side
-    // trace column still catches the band top) — the box top now reads as
-    // a sagging wrapped cover, not a machined slab. Kinked cloth-shade
-    // fold bands + lit rolls drape the flanks and rear face (<= 3 mm
-    // proud, plan inside ±0.175), a collar drape bridges the housing rear
-    // to the sleeve INSIDE the certified clamp column (r 0.163 at z
-    // 2.23-2.27), and thin wrinkle runs ride the thermal sleeve between
-    // its (ref-true) clamp rings at r <= 0.122, inside the ring envelope.
-    // r8b GATE FIX: the first cut dropped the housing crown 9 mm and relied
-    // on the drape crests to carry the 2.15 band — but the side columns are
-    // finer than the crest pitch, so most columns read -0.009 (turret side
-    // -0.4). The housing now keeps 2.1465 (3.5 mm sag — under half a gate
-    // pixel) and the crests ride to 2.1495.
-    P.addGunExtra(box(0.34, 0.3165, m.len), 0, mDrop + 0.00825, mz + m.len / 2);
-    for (let dc = 0; dc < 6; dc++) {
-      const dz6 = mz + 0.055 + dc * (m.len - 0.10) / 5;
-      const rx6 = 0.26 + ((dc * 5) % 3) * 0.09;
-      const w6 = 0.30 - ((dc * 3) % 2) * 0.03;
-      // crown top = yc + 0.010cos(rx) + 0.0525sin(rx) + rz corner swing:
-      // the -0.018 - 0.0515sin term parks every crest 0.5-1.5 mm UNDER the
-      // certified band top for the whole rx/rz jitter range
-      P.addGunExtra(KIT.xform(box(w6, 0.020, 0.105), 0, 0, 0, rx6, ((dc % 2) - 0.5) * 0.10, ((dc * 7) % 3 - 1) * 0.04),
-        ((dc * 5) % 3 - 1) * 0.012, mDrop + 0.1705 - 0.018 - 0.0515 * Math.sin(rx6), dz6);
+    if (m.canvas) {
+      // §B3.1 (owner 2026-08-06): the M64's canvas dust cover grammar —
+      // the bare triple-cylinder read as a machined pipe stack, not the
+      // real cinched fabric sleeve. Drum taper runs FAT-REAR (front r0,
+      // rear r0*1.08): each cinch ring rides its local drum radius +3 mm
+      // (sub-alias class, r8-3D "~4 mm over the bare sleeve" precedent);
+      // sag creases hug the 45-deg shoulder band, which is INTERIOR to
+      // both side and plan silhouettes on a round drum (cos45 * (r+3mm)
+      // < r) — mask-free. Seam ring marks the seat collar joint.
+      const drumZ0 = apexG - 0.06 - m.len / 2;              // drum rear face
+      const drumR = (fr) => m.r0 * 1.08 - (m.r0 * 0.08) * fr; // local taper radius
+      for (const fr of [0.25, 0.62]) {
+        P.addGunExtraDark(cylZ(drumR(fr) + 0.003, 0.035, 16), 0, mDrop, drumZ0 + m.len * fr);
+      }
+      P.addGunExtraDark(cylZ(drumR(0.02) + 0.0025, 0.018, 16), 0, mDrop, drumZ0 + m.len * 0.02);
+      for (const [sx, sy] of [[-1, 1], [1, 1], [-1, -1], [1, -1]]) {
+        for (const [fr, aOff, ln] of [[0.18, -0.14, 0.15], [0.44, 0.10, 0.19], [0.74, -0.04, 0.13]]) {
+          const th = Math.PI / 4 + aOff + sx * 0.05;
+          const rr = drumR(fr) + 0.0015;
+          P.addGunExtraDark(KIT.xform(box(0.005, 0.045, ln), 0, 0, 0, 0, 0, -sx * sy * (Math.PI / 2 + th)),
+            sx * rr * Math.sin(th), mDrop + sy * rr * Math.cos(th), drumZ0 + m.len * fr + ln / 2);
+        }
+      }
     }
-    P.addGunExtraDark(box(0.345, 0.29, 0.030), 0, mDrop + 0.01, mz + m.len - 0.025);
+  } else if (m.boxy) {
+    // §B3.1 GUN-ASSEMBLY ACCURACY (owner 2026-08-06: "sepv2 and sepv3 and
+    // the merkavas have those really ugly gun rectangular prisms and dont
+    // look accurate"): the r8 boxy MG251 housing read as a literal shoebox
+    // in every 3/4 view at 1x-4x. The mantlet is now the ROUND-SHOULDERED
+    // cast/canvas collar of the real MG251 mount — a rounded-rect section
+    // (flat cardinal faces exactly where the certified housing's faces
+    // sat + r 0.125 shoulder arcs) seated into the casting trough.
+    // MASK-EXACT BY CONSTRUCTION (graduate-change, frozen rows):
+    //  - side band: flat crown/keel strips carry top 2.1465 / bot 1.8300
+    //    over the same z run (r8b band-carrier class, AA-identical: the
+    //    silhouette edge is the same straight line);
+    //  - plan: flat ±0.170 flank strips carry the certified half-width,
+    //    and the r8 flank folds stay (they ride the flat flank zone at
+    //    1.2-2 mm proud, same certified plan partials; only the pale
+    //    fold re-seats — its dy 0.082 station is shoulder-arc now);
+    //  - front rows: crest-covered (casting face at 2.52+ behind the
+    //    whole collar z-run);
+    //  - stations: maxY rides the same flat crown line;
+    //  - the 6 r8 drape-crown boxes are DELETED (crests sat 0.5-1.5 mm
+    //    over the flat crown — sub-half-pixel); the canvas read moves to
+    //    shoulder-arc creases, which live INSIDE the silhouette rectangle
+    //    in BOTH side and plan projections (mask-free dressing zone).
+    const mz = (m.z0 !== undefined ? L(m.z0) : t.apexZ - 0.06) - gunZL;
+    const cyc = mDrop + 0.00825;                // certified housing center-y
+    // rounded-rect tube: two flat carrier slabs + 4 corner rounds (full
+    // cylinders — the inner 3/4 embeds in the body; embedded geometry
+    // renders nothing, r13b law). endIn insets the corner rounds from the
+    // z ends so the slabs' RoundedBox end bevels govern there — the OLD
+    // housing box beveled ALL extents ~24 mm at its z ends, and un-inset
+    // corner rims held full radius to the flat end (measured: 3c stations
+    // 92.3 -> 92.2 on the first cut).
+    const RR = (hw, hh, rr, len, yc, zc, dark = false, endIn = 0.024) => {
+      const A = dark ? 'addGunExtraDark' : 'addGunExtra';
+      P[A](box(2 * (hw - rr), 2 * hh, len), 0, yc, zc);
+      P[A](box(2 * hw, 2 * (hh - rr), len), 0, yc, zc);
+      for (const sx of [-1, 1]) for (const sy of [-1, 1]) {
+        P[A](cylZ(rr, Math.max(0.02, len - 2 * endIn), 20), sx * (hw - rr), yc + sy * (hh - rr), zc);
+      }
+    };
+    // trough seat (inside the casting mouth behind the face — fills the
+    // §B2 gap; envelope inscribed in the old 0.35 x 0.34 seat block)
+    RR(0.175, 0.17, 0.12, 0.30, mDrop + 0.005, mz - 0.13);
+    // main collar: certified envelope [1.8300..2.1465] x ±0.170 over m.len
+    RR(0.170, 0.15825, 0.125, m.len, cyc, mz + m.len / 2);
+    // canvas cinch ROLLS across the crown (round bodies, §B3.1): the
+    // deleted r8 drape crests carried the station maxY line at ~2.1485-
+    // 2.1495 (+2-3 mm over the flat crown — measured: 3c stations 92.3 ->
+    // 92.2 without them). Three rolled seam bulges restore that exact
+    // line: r 0.0055 rods lying across the crown, tops at 2.1494, seated
+    // 8 mm into the slab; one roll per possible station window.
+    for (const zf9 of [0.16, 0.48, 0.80]) {
+      P.addGunExtra(KIT.cylX(0.0055, 0.10, 10), 0, cyc + 0.15555, mz + m.len * zf9);
+    }
+    // canvas sag/cinch creases hugging the shoulder arcs (center radius
+    // 0.1225 on the 0.125 arc: strip ends ride ~3 mm proud of the LOCAL
+    // curve while every outermost corner stays inside the certified
+    // silhouette rectangle — |x| <= 0.136 < 0.170, y within ±0.124 of
+    // center < 0.15825)
+    for (const [sx, sy] of [[-1, 1], [1, 1], [-1, -1], [1, -1]]) {
+      for (const [zf, aOff, ln] of [[0.10, -0.20, 0.16], [0.32, 0.12, 0.20], [0.55, -0.05, 0.14]]) {
+        const th = Math.PI / 4 + aOff + sx * 0.06;
+        const px = sx * (0.045 + 0.1225 * Math.sin(th));
+        const py = cyc + sy * (0.033 + 0.1225 * Math.cos(th));
+        P.addGunExtraDark(KIT.xform(box(0.006, 0.05, ln), 0, 0, 0, 0, 0, -sx * sy * (Math.PI / 2 + th) + aOff * 0.5),
+          px, py, mz + m.len * zf + ln / 2);
+      }
+    }
+    // dark end ring (was the 0.345 x 0.29 flat plate — same cardinal
+    // extents, rounded shoulders; the old plate was a PLAIN box, so no
+    // end inset needed at len 0.030)
+    RR(0.1725, 0.145, 0.075, 0.030, mDrop + 0.01, mz + m.len - 0.025, true, 0);
+    // under-collar trough shadow (unchanged: the dark recess read; its
+    // 1.8125 keel line is a certified side-bottom carrier)
     P.addGunExtraDark(box(0.24, 0.045, 0.26), 0, mDrop - 0.145, mz + 0.32);
     P.addGunExtra(cylZ(m.r1, 0.12, 14), 0, mDrop * 0.5, mz + m.len + 0.05);
     P.addGunExtraDark(cylZ(m.r1 * 1.05, 0.028, 14), 0, mDrop * 0.5, mz + m.len + 0.10);
@@ -5467,21 +5542,54 @@ function buildMerkavaMark(P, p) {
       P.addGunExtraDark(box(0.105, 0.007, 0.008), 0.110, mDrop + sy - 0.003, mz + m.len - 0.002 + zf);
     }
     for (const sxm of [-1, 1]) {
-      // r8: flank fold pairs (kinked, leaning) instead of two ruled pin
-      // lines — the wrap's side read; faces 1.5 mm proud of the housing
+      // r8 flank fold pairs, kept (§B3.1 swap): the three dark folds ride
+      // the flat flank strip at 1.2-2 mm proud (dy 0.047/-0.043/0.012 all
+      // read local surface 0.1696-0.170) — same certified plan partials.
+      // The PALE fold's dy 0.082 station is shoulder-arc on the round
+      // collar (local surface 0.160) — re-seated to 0.1625 so it hugs the
+      // arc instead of hovering 11 mm off it.
       P.addGunExtraDark(KIT.xform(box(0.006, 0.115, 0.010), 0, 0, 0, 0, 0, sxm * 0.22), sxm * 0.1712, mDrop + 0.055, mz + m.len * 0.30);
       P.addGunExtraDark(KIT.xform(box(0.006, 0.095, 0.010), 0, 0, 0, 0, 0, -sxm * 0.16), sxm * 0.1712, mDrop - 0.035, mz + m.len * 0.36);
       P.addGunExtraDark(KIT.xform(box(0.006, 0.105, 0.010), 0, 0, 0, 0, 0, sxm * 0.18), sxm * 0.1712, mDrop + 0.020, mz + m.len * 0.70);
-      P.addGunExtra(KIT.xform(box(0.006, 0.085, 0.012), 0, 0, 0, 0, 0, sxm * 0.20), sxm * 0.1714, mDrop + 0.090, mz + m.len * 0.52);
+      P.addGunExtra(KIT.xform(box(0.006, 0.085, 0.012), 0, 0, 0, 0, 0, sxm * 0.20), sxm * 0.1625, mDrop + 0.090, mz + m.len * 0.52);
     }
-    P.addGunExtraDark(box(0.13, 0.007, 0.008), -0.06, mDrop - 0.132, mz + m.len - 0.006);
-    P.addGunExtraDark(box(0.11, 0.007, 0.008), 0.075, mDrop - 0.140, mz + m.len - 0.004);
+    // drooping under-hem edge (x re-seated inboard: the old -0.125 reach
+    // floated past the rounded end ring's corner arc, x_max 0.1185 there)
+    P.addGunExtraDark(box(0.13, 0.007, 0.008), -0.05, mDrop - 0.132, mz + m.len - 0.006);
+    P.addGunExtraDark(box(0.11, 0.007, 0.008), 0.06, mDrop - 0.140, mz + m.len - 0.004);
   } else {
     const mz = (m.z0 !== undefined ? L(m.z0) : t.apexZ - 0.06) - gunZL;
     P.addGunExtra(cylZ(m.r0 * 1.06, 0.30, 16), 0, mDrop, mz - 0.13);
     P.addGunExtra(cylZ(m.r0, m.len, 16, m.r0 * 1.05), 0, mDrop, mz + m.len / 2);
     P.addGunExtraDark(cylZ(m.r0 * 1.02, 0.035, 16), 0, mDrop, mz + m.len - 0.03);
     P.addGunExtraDark(cylZ(m.r1, 0.10, 14), 0, mDrop * 0.5, mz + m.len + 0.05);
+  }
+  if (p.gunBoot) {
+    // §B3.1 GUN-ASSEMBLY ACCURACY (owner 2026-08-06): the 4-series MG253
+    // root read as a bare drum piercing a flat casting wall with hard
+    // notch corners — a prism stack at 1x-4x. The real Mk.4 gun base is
+    // wrapped in a FABRIC DUST BOOT bridging the recessed trough mouth to
+    // the collar; the boot pitches with the gun exactly as the real
+    // fabric does (gun-bucket parenting is the honest rig). Rounded boot
+    // mouth roll + bellows taper + cinch ring + a dark under-slot shadow
+    // complete the recessed-collar read. merkava4: curve components are
+    // certified-0 vs the unrepairable arlassar print (published-envelope
+    // authoring governs); merkava4b: gate-in-loop (§F.2).
+    const bz = (m.z0 !== undefined ? L(m.z0) : t.apexZ - 0.06) - gunZL;
+    // rAdd: boot radius over the collar (default the full fabric roll;
+    // 4b runs slim — its sparse-turret print prices every proud mm:
+    // measured -0.9 turretCurves at +0.045).
+    const rB = m.r0 + (p.gunBoot.rAdd ?? 0.045);
+    // NO PROUD RINGS on the boot (floater lesson, 4b yaw-180): a cinch
+    // strap 1.5 mm proud of the roll islanded >400 px once the raked hood
+    // stopped bridging its crest — the cinch read now comes from the
+    // roll->taper STEP + the recessed dark seam ring strictly inside the
+    // roll surface (embedded past the step, visible in the step shadow).
+    P.addGunExtra(cylZ(rB, 0.085, 20, rB - 0.002), 0, mDrop, bz + 0.075);      // boot mouth roll (at the trough lip)
+    P.addGunExtra(cylZ(rB - 0.004, 0.16, 20, m.r0 + 0.006), 0, mDrop, bz + 0.19); // bellows taper onto the collar
+    P.addGunExtraDark(cylZ(rB - 0.0035, 0.014, 20), 0, mDrop, bz + 0.121);     // seam ring in the step shadow (never crests the roll)
+    // dark slot shadow under the boot (the trough recess read)
+    P.addGunExtraDark(box(0.30, 0.028, 0.11), 0, mDrop - rB - 0.006, bz + 0.075);
   }
   KIT.buildGun(P, {
     len: gLen, r: p.gunR,
@@ -6025,8 +6133,22 @@ function merkava4bKit(P, p, t) {
   merkavaSidePanels(P, p, t, { radar: false });
   merkavaMG(P, t.cupolaX + 0.30, cap - 0.24, t.cupolaZ - 0.20, 0.75);
   merkavaMG(P, -t.cupolaX, cap - 0.26, t.cupolaZ + 0.15, 0.65);
-  const sc = merkavaCheekPoint(t, 0.58, 0.80);
-  merkavaSmokeCluster(P, -sc.x, sc.y - 0.01, sc.z, -0.30, 4, { recessed: true, pitch: -0.24 });
+  // §B2/§B3.1 smoke re-seat (measured, gun-hood rake round): the shared
+  // cheekPoint line assumes an apex-reaching cheek (m4 class); the 4B
+  // cheek polyline starts at z 1.85 local, so the f 0.58 point HOVERED
+  // over the notch void — a true standoff that only stayed mask-connected
+  // through the old vertical hood corner (392-413 px fq-right island once
+  // the hood raked; the gate's >400 threshold flagged yaw-180). The
+  // rosette now sits ON the left cheek sheet itself (pts[0] + 0.15
+  // outboard, 0.15 down-slope).
+  const ckP = t.cheek.pts[0];
+  merkavaSmokeCluster(P, -(ckP[0] + 0.15), t.apexY + 0.18, ckP[1] - 0.15, -0.30, 4, { recessed: true, pitch: -0.24 });
+  // Over-gun .50 on the hood (real Mk.4B fit — §B3 roof-MG law + §H.4
+  // tell vs m4's roof-edge mount): post base embeds in the raked hood
+  // top; the receiver crown (~2.485 world) carries the station slice the
+  // old floating smoke pod had been holding by accident (61.8 -> 59.0
+  // when it re-seated; this puts an HONEST carrier at that z).
+  merkavaMG(P, 0.14, t.crest.top0 - 0.015, t.crest.z0 - 1.0, 0.7);
   KIT.tarpRoll(P, 'turretCloth', -0.28, t.roof.at(-1)[1] - 0.07, t.roof.at(-1)[0] + 0.22, 0.8, 0.10);
 }
 
@@ -7735,7 +7857,9 @@ export const MERKAVA_PROFILES = {
     // modelled short at 4.08 — certified wholeCurves gun cap).
     gunAxisY: 1.99, gunR: 0.078, sleeve: false, evac: 0.60, evacR: 1.35, gunTipZ: 4.53, gunZL: 0.40,
     muzzleCollar: { r: 0.105, len: 0.28 },
-    mantlet: { r0: 0.125, r1: 0.10, len: 0.85, drop: 0.05, legacy: true },
+    // §B3.1 canvas: M64 dust-cover cinch rings + shoulder sag creases
+    // (sub-alias, gate-in-loop) — the bare pipe stack read as machined.
+    mantlet: { r0: 0.125, r1: 0.10, len: 0.85, drop: 0.05, legacy: true, canvas: true },
     apexZ: 0.90, notchHW: 0.20, hwMax: 1.30, roofHW: 0.98, roofInset: 0.76,
     shoulderZ: 0.45, shellRearZ: -2.05, maxWZ: -0.45,
     // Rising cast roof (ref side turret): 2.17@0.88 -> 2.38@-0.44, dome
@@ -7804,7 +7928,8 @@ export const MERKAVA_PROFILES = {
     // short at 4.03 — certified wholeCurves gun cap).
     gunAxisY: 1.99, gunR: 0.078, sleeve: false, evac: 0.60, evacR: 1.35, gunTipZ: 4.50, gunZL: 0.40,
     muzzleCollar: { r: 0.105, len: 0.28 },
-    mantlet: { r0: 0.125, r1: 0.10, len: 0.85, drop: 0.05, legacy: true },
+    // §B3.1 canvas (same M64 grammar as 2B).
+    mantlet: { r0: 0.125, r1: 0.10, len: 0.85, drop: 0.05, legacy: true, canvas: true },
     apexZ: 1.06, notchHW: 0.20, hwMax: 1.44, roofHW: 1.04, roofInset: 0.76,
     shoulderZ: 0.55, shellRearZ: -2.55, maxWZ: -0.60,
     // Rising cast roof + wedge face 0.16 fwd of 2B; dome drum capped 2.66.
@@ -8762,7 +8887,15 @@ export const MERKAVA_PROFILES = {
     // MG253 L/44 at the published overall length: tip 4.78; hullLength 7.60
     // closes toe 3.53/3.58 to the rack tail -4.02 (dims-sovereign — the
     // foreshortened arlassar print never anchors this mark's scale).
-    gunAxisY: 2.06, gunR: 0.072, sleeve: true, evac: 0.30, gunTipZ: 4.78, gunZL: 0.30,
+    // §B3.1 (owner 2026-08-06): evac 0.30 buried the bore evacuator INSIDE
+    // the casting (gun-local 1.52 = world z 1.27) — the tube showed NO
+    // evacuator. 0.751 lands the drum at world 3.37..3.73 (~37-53% of the
+    // visible tube, the Mk.4M photo station); evacR 1.46 reads +17 mm
+    // proud of the thermal sleeve. gunBoot: fabric dust boot at the
+    // recessed trough (see the mantlet §B3.1 note). Curve components are
+    // certified-0; dims anchors (muzzle 4.78, p95 tops) untouched.
+    gunAxisY: 2.06, gunR: 0.072, sleeve: true, evac: 0.751, evacR: 1.46, gunTipZ: 4.78, gunZL: 0.30,
+    gunBoot: true,
     mantlet: { r0: 0.16, r1: 0.11, len: 0.60, z0: 2.55 },
     // §B1 SLOPE-MOTIVATES-THE-MASS re-mass (owner directive 2026-08-05,
     // c1ad424 — "the merkavas should take heavy upgrades from the slope
@@ -8786,7 +8919,9 @@ export const MERKAVA_PROFILES = {
     apexZ: 2.60, notchHW: 0.30, hwMax: 1.57, roofHW: 1.06, roofInset: 0.86, rearWide: 0.97,
     shellFrontZ: 1.30, noseZ: 0.42, noseHW: 1.26, maxWZ: -0.35, shellRearZ: -2.25,
     shellBotY: 1.58, shellTopY: 2.42,
-    crest: { z0: 2.60, zW: 1.55, z1: 0.55, hw0: 0.22, hw1: 0.48, top0: 2.28, top1: 2.64, bot: 1.92 },
+    // §B3.1 rakeTop: the gun hood's flanks lean (real Mk.4M ridge), the
+    // old vertical-walled slab read as the owner's "rectangular block"
+    crest: { z0: 2.60, zW: 1.55, z1: 0.55, hw0: 0.22, hw1: 0.48, top0: 2.28, top1: 2.64, bot: 1.92, rakeTop: 0.10, rakeTop1: 0.30 },
     // ONE planar quad per side (the strip fan twisted at rake 0.45 — each
     // non-planar quad's triangulation seam shaded as a tooth row; the real
     // Mk.4 cheek is a single straight plane in plan). topOut 2.14 solves
@@ -8866,7 +9001,14 @@ export const MERKAVA_PROFILES = {
     // Published hull 7.60 closes toe (3.53) to the rack tail (-4.02); the
     // muzzle carries overall to 8.95 (oracle MG253 short at 4.30-4.39 —
     // certified wholeCurves coverage cap).
-    gunAxisY: 2.06, gunR: 0.078, sleeve: true, evac: 0.30, gunTipZ: 4.80, gunZL: 0.32,
+    // §B3.1 (owner 2026-08-06): evac 0.30 buried the evacuator inside the
+    // casting — same fix as merkava4 (drum at world ~3.24..3.60, evacR
+    // 1.35 = r 0.105 vs the 0.095 sleeve); gunBoot at the trough mouth,
+    // SLIM (rAdd 0.020): the sparse-turret print prices every proud mm —
+    // the 0.045 roll measured turretCurves 52.3 -> 51.4.
+    // Gate-in-loop: whole/turret rows measured before/after (§F.2).
+    gunAxisY: 2.06, gunR: 0.078, sleeve: true, evac: 0.751, evacR: 1.35, gunTipZ: 4.80, gunZL: 0.32,
+    gunBoot: { rAdd: 0.020 },
     mantlet: { r0: 0.17, r1: 0.12, len: 0.60, z0: 2.55 },
     // §B1 SLOPE-MOTIVATES-THE-MASS re-mass (owner directive 2026-08-05,
     // c1ad424 — same treatment as merkava4, own numbers): full-sweep raked
@@ -8891,7 +9033,11 @@ export const MERKAVA_PROFILES = {
     // plan outline stays on the measured pts; the SLOPE read rides the
     // ELEVATION rake (cheekRake 0.45, topOut raised to the print's own
     // 2.24 shoulder band) + washes/fillets, which the plan row never sees.
-    crest: { z0: 2.60, zW: 1.50, z1: 0.60, hw0: 0.22, hw1: 0.46, top0: 2.30, top1: 2.655, bot: 1.92 },
+    // §B3.1 rakeTop (same treatment as merkava4): leaning gun-hood flanks
+    // replace the vertical-walled block over the mantlet; plan/side
+    // carriers unchanged (bottom edges + centerline top lines), only
+    // upper-flank front columns vacate — measured below (§F.2).
+    crest: { z0: 2.60, zW: 1.50, z1: 0.60, hw0: 0.22, hw1: 0.46, top0: 2.30, top1: 2.655, bot: 1.92, rakeTop: 0.10, rakeTop1: 0.30 },
     cheek: { pts: [[0.65, 1.30], [1.00, 1.05], [1.30, 0.75], [1.58, 0.55]], topIn: 2.50, topOut: 2.00, botIn: 1.88, botOut: 1.56 },
     cheekRake: 0.45, wedgeFront: true, wedgeRake: 0.40,
     roofLine: [[0.60, 2.655], [0.10, 2.60], [-0.05, 2.655], [-1.90, 2.655], [-2.10, 2.60]],

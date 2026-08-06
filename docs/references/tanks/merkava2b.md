@@ -172,3 +172,31 @@ Owner §B1 c1ad424 + §B3 ff50bf5. Baseline: min 39.9 (hull 78.2 / whole
   r13 class); left for a dedicated §B4 lane.
 - turretCurves 39.6 remains structurally pinned by the r3 rig-split
   forensics (packet above); the round did not attempt that coupling.
+
+## §B3.1 GUN-RUN round (2026-08-06, merkava family agent)
+Owner directive (BUILD-STANDARD §B3.1): the M64's legacy triple-cylinder
+mantlet read as a machined pipe stack — no prisms (already cylinders),
+but not the real cinched canvas dust cover either.
+
+### Change (m.canvas on the legacy branch, shared 2B/2D)
+- Two cinch rings riding the drum at its LOCAL taper radius +3 mm
+  (drum runs fat-rear r0*1.08 -> r0; sub-alias class, the r8-3D "~4 mm
+  over the bare sleeve" precedent), seam ring at the seat-collar joint
+  (+2.5 mm), and 12 sag creases hugging the 45-deg shoulder band —
+  interior to BOTH side and plan silhouettes on a round drum
+  (cos45 x (r+3mm) < r), mask-free by construction.
+- Evacuator already at its real station (evac 0.60 = the packet's
+  measured z 2.4-2.6) and the muzzleCollar already the measured ref
+  flare — both verified, untouched.
+
+### Done-gates (official rigs, x2 at close)
+- geometry-gate x2 IDENTICAL to baseline: min 39.6 — hull 78.3 /
+  whole 56.7 / turret 39.6 / stations 80 / dims 95.3 / floaters 100
+  (canvas grammar measured ZERO cost).
+- npm test green. Track-clip rear 304/271 = the documented pre-existing
+  §B4 class (gear untouched). Turret-parent 0/0/0. Contig 0 holes.
+- Yaw pair at final bytes (shots/merkava-gunrun/pairs/*merkava2b).
+
+### Honest residuals
+- turretCurves 39.6 stays structurally pinned by the r3 rig-split
+  forensics (rebuild lane); this round is read-accuracy only.
