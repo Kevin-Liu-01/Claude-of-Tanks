@@ -248,7 +248,7 @@ const REG = {
   m26_pershing: {
     path: 'public/models/tanks/community/recovered/m26_pershing.glb',
     turretNode: '^Turret$', autoPivot: true,
-    pubDims: { hullLengthM: 6.33, overallLengthM: 8.65, widthM: 3.51, heightM: 3.02 },
+    pubDims: { hullLengthM: 6.33, overallLengthM: 8.65, widthM: 3.51, heightM: 3.08 },
   },
   m45_patton: {
     path: 'public/models/tanks/community/recovered/m45_patton.glb',

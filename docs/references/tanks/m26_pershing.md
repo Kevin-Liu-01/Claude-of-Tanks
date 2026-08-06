@@ -282,3 +282,24 @@ as the warp (kills the --verify +1.8% flag; the post-warp re-anchor then
 raises the proc M2 band to the ref's own 3.03-3.09 line and recovers the
 turret_side residual without a dims trade). Builder does NOT edit
 userdrops6.js — single-owner law; this is the flag.
+
+### batch-42 EXECUTED (2026-08-05, orchestrator lane)
+- repair_oracles.py batch-42: batch-8 seat recipe DEMOTED TO HISTORY (old
+  pre-batch-8 bak archived as *.pre-batch42-history); recipe = the warp
+  ALONE on a fresh .bak from committed HEAD bytes. Byte-idempotent
+  ec9c61ad x2; census guard (2, 54984, 109998) exact.
+- Extract regenerated on warped bytes (pubDims mirror 3.08): bodyH -0.2% /
+  bodyLen -0.2% / hullMask 0% / overall 0% / width 0% — the -4.0% print
+  body defect is CURED. Orientation agree:false pre-existed (t62_bergman
+  print class, unchanged by the z-monotone warp; gate frame handles it).
+- heightM true-up 3.02 -> 3.08 landed with this batch (userdrops6.js:87 +
+  vertex-extract.mjs pubDims mirror) — the --verify +1.8% flag is dead.
+- Gate-in-loop: pre-warp 72.1 (ledger 70.6) -> 74.8 | hull 86.0 (+8.1, the
+  certified batch-8 hull-length-tension covers RELEASED) / whole 76.3 /
+  turret 74.8 / stations 76.0 / dims 91.9 / floaters 100. ISOLATION RUN
+  PROVED warp-alone dims = 100 (heightM reverted -> 100, restored -> 91.9):
+  the 91.9 is solely the spec-vs-proc M2-band gap = the documented
+  re-anchor debt (the re-anchor round lifts the proc M2 band to 3.08).
+  Healthy plan/front/stations = keep the warp (m47 batch-34 precedent).
+- Post-warp re-anchor round: SPAWNED (patton lane) — authors from THIS
+  warped extract frame per the banked §B orders above.

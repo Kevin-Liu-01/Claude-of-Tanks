@@ -84,7 +84,9 @@ const SPECS = [
       // rows): published 2.78 is the no-MG datum, but the gate measures the
       // build's roof INCLUDING the pintle M2 (~14 body columns) — batch-8
       // packet proves no build satisfies both 2.78 and turretCurves >= 90.
-      dims: { hullLengthM: 6.33, overallLengthM: 8.65, widthM: 3.51, heightM: 3.02 } }),
+      // 3.08 = extract bodyTopM 3.078 (m26 r2 re-derivation, 166 columns
+      // above 3.0 are real mounted-M2 print geometry; lands with batch-42).
+      dims: { hullLengthM: 6.33, overallLengthM: 8.65, widthM: 3.51, heightM: 3.08 } }),
   make('m4a3e8', 'm45_patton', 'M45 Patton', 'USA',
     { hp: 1500, weightTons: 42, topSpeedKmh: 40, gun: { caliberMm: 105, reloadS: 9.0 },
       // stub 105mm howitzer barely clears the bow; the seated oracle's muzzle

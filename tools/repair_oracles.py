@@ -3299,5 +3299,32 @@ REPAIRS['m46_patton'] = [
 ]
 
 
+# =============================================================== batch 42 ===
+# M26_PERSHING BODY-STRETCH + MUZZLE-PIN (m46 batch-36 class; formal warp
+# request FILED in m26_pershing.md "Vertex round r2", patton-family builder
+# 2026-08-05, re-verified byte-for-byte against the PLANS-authoring extract).
+# Print body 6.076 vs published 6.33 (-4.0%) while overall reads 8.71 vs
+# 8.65: body stretches about centre -1.317 (slope 1.0418), muzzle pinned at
+# tail'+8.65 (tube slope 0.8808, both maps monotone). Width TRUE (anchor
+# untouched); y IDENTITY (stature +1.8% is the over-M2 datum — spec true-up
+# heightM 3.02 -> 3.08 in userdrops6.js lands with THIS batch, killing the
+# --verify flag). Raw literals via the extract's own glbToGate (scale
+# 0.0975, offsetGate z -4.3636). LAW v2: the batch-8 seat_turret output is
+# IN the committed HEAD bytes -> the seat recipe DEMOTES TO HISTORY (m46
+# batch-36 / m47 batch-34 precedent; old pre-batch-8 .bak archived as
+# *.pre-batch42-history); recipe = the warp ALONE on a fresh .bak. Gate-in-
+# loop vs pre-warp baseline 72.1 (77.9/72.1/73.7/78.5/100/100): certified
+# batch-8 hull-length-tension cover columns + ~2 ref-only muzzle columns
+# expected to release; dims MUST hold 100; a side dAlong re-phase is
+# EXPECTED re-anchor debt (healthy plan/front/stations = keep the warp,
+# queue the patton-lane post-warp re-anchor round).
+REPAIRS['m26_pershing'] = [
+    ('py2', _axis_warp('m26_pershing', long_axis='z',
+                       y_map=[(0, 0), (31.8051, 31.8051)],
+                       long_map=[(0.0882, -1.2144), (62.4062, 63.7087), (89.4215, 87.5036)],
+                       y_top_max=31.90, expect=(2, 54984, 109998))),
+]
+
+
 if __name__ == '__main__':
     sys.exit(main(sys.argv[1:]))
