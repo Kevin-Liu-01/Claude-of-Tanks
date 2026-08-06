@@ -62,9 +62,9 @@ re-freeze NEW hash, all in ONE commit.
 | m60a3 | 051c454c | never gated |
 | kv2 | 382b2310 | freeze-verify only |
 | leo2a6 | f25dad51 | |
-| m1a1 | 5a45a659 -> 66f953e4 CANDIDATE (cheek+gun round, re-cert in flight) |
-| m1a1ha | 96d4dfc4 -> cd209f68 CANDIDATE (cheek+gun round, re-cert in flight) |
-| m1a2_tejas | f3ab40f4 -> 25304310 CANDIDATE (cheek+gun round, re-cert in flight) |
+| m1a1 | 66f953e4 | cheek+gun re-cert RATIFIED (floor 9.1) |
+| m1a1ha | cd209f68 | cheek+gun re-cert RATIFIED (floor 9.1) |
+| m1a2_tejas | 25304310 | cheek+gun re-cert RATIFIED (floor 9.1) |
 | merkava3b | 8bb8d984 | gun-run re-cert RATIFIED (floor 9.1) |
 | merkava3c | b7318b10 | gun-run re-cert RATIFIED (floor 9.1) |
 | kf51 | 1452024b | |
@@ -74,7 +74,7 @@ re-freeze NEW hash, all in ONE commit.
 | pt91m | 2cf10e23 | |
 | t72b3m | 1e1ca4b8 | |
 | merkava1b | 470f3665 | re-frozen 0e47256 |
-| m1a2 | c20ab8dc -> b78279b4 CANDIDATE (cheek+gun round, re-cert in flight) |
+| m1a2 | b78279b4 | cheek+gun re-cert RATIFIED (floor 9.1) |
 | chieftain5 | 94c09bb0 | |
 | t84 | 04707a9c | |
 | m47_patton | 53b6123a | |
@@ -82,7 +82,7 @@ re-freeze NEW hash, all in ONE commit.
 | leo2_revolution | b53a16f8 | r19 tone re-cert RATIFIED (floor 9.0, mean 9.11) — the revolution arc fully settled | r18 RE-CERT RATIFIED (§B7 photo-class, floor 9.0 x14); batch-43 wing excision EXECUTED — gate 0.2 -> 62.8 (§B7 cap = genuine real-vs-print divergence only: the print has no solid side modules). Next: P-R1/P-R2 tone round; the capped row is the print's honest limit under the owner ruling | de-fusion RE-CERT RATIFIED (floor 9.0 x14 at the coupled 88.9); retune round owed (88.9 -> 90+, P-1 fore-ring tells folded in) |
 | m46_patton | 90ebf864 | |
 | centurion3 | fea56ecc | GRADUATED fd2c365 (24th, Centurion line's first) |
-| m1a2_sepv2 | 5564306c -> b74366ac CANDIDATE (cheek+gun round, re-cert in flight; 25th graduate) |
+| m1a2_sepv2 | b74366ac | 25th graduate; cheek+gun re-cert RATIFIED (floor 9.1) |
 | m26_pershing | 2f579de8 | GRADUATED 2026-08-05 (26th; floor 9.0 x14 second sitting; warp->re-anchor->retune arc) |
 
 *ALL 24 hashes above re-frozen 2026-08-05 by the INVISIBLE-LOD ENVELOPE

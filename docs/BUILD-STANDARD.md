@@ -547,3 +547,10 @@ score is no defense.
   triplet, not the med. Re-cert diffs spanning an oracle-repair landing
   decompose per pair-half before attribution. Flood delta-0 doubles as
   the whole-frame no-regression oracle for tone-only rounds.
+- ENVELOPE-SWAP SIDE-READ (§B3.1 corollary, abrams re-cert): cylinder-at-
+  prism-envelope conversions are silhouette-invisible in the preserved
+  projections — critics judge them by shading gradient + ring grammar,
+  not silhouette. CHIN-STEP ADJUDICATION (§B1.1 corollary): certified
+  column bottoms pinning a stepped chin under a raked cheek always flag a
+  horizontal-vs-chamfer delta — adjudicate against the packet constraint
+  first; one constraint ledge is not the colonnade class.

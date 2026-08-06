@@ -196,3 +196,7 @@ shots/abrams-cheek-r1/{before,after}-m1a2_tejas/.
 CHANGED VIEWS for re-cert: view-frontleft, view-frontright, close-front,
 hero-frontleft, view-left, view-right.
 CANDIDATE HASH for re-cert + re-freeze: m1a2_tejas f3ab40f4 -> 25304310 (43/150760).
+
+### CHEEK+GUN RE-CERT RATIFIED (2026-08-06): RE-FREEZE 25304310 CONFIRMED —
+floor 9.1 (docs/critique/shaded-parity-abrams-cheekgun-recert.md). Left
+cheek reads ONE raked plane; gun run reads the real M256. No orders.
