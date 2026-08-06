@@ -4700,17 +4700,14 @@ function buildLeo2Revolution(P) {
   P.add('hullDetail', box(0.045, 0.012, 0.032), -0.55, 1.5435, 2.062);         // hinge block L (top 1.5495)
   P.add('hullDetail', box(0.045, 0.012, 0.032), -0.35, 1.5435, 2.062);         // hinge block R
   P.add('hullDark', box(0.02, 0.010, 0.085), -0.45, 1.548, 1.885);             // lid grab handle (top 1.553)
-  // - KIT periscope bodies re-dressed per the #1 driver-bank grammar
-  //   (pale hood frame + smoked-glass slit): camo hood mass first (kills
-  //   the bare-grey read), pale lip, glass slit on the bow face.
-  periscope(P, 'hullDetail', -0.62, 1.512, 1.70);
-  P.add('hull', box(0.155, 0.020, 0.108), -0.62, 1.544, 1.70);                 // hood cap (camo, top 1.554)
-  P.add('hullDetail', box(0.165, 0.010, 0.030), -0.62, 1.548, 1.752);          // pale hood lip over the slit
-  P.add('hullGlass', box(0.122, 0.026, 0.012), -0.62, 1.5335, 1.7545);         // smoked slit, bow face
-  periscope(P, 'hullDetail', -0.36, 1.512, 1.68, 0.25);
-  P.add('hull', box(0.155, 0.020, 0.108), -0.36, 1.544, 1.68, 0, 0.25, 0);     // hood cap (camo)
-  P.add('hullDetail', box(0.165, 0.010, 0.030), -0.3471, 1.548, 1.7304, 0, 0.25, 0); // pale hood lip over the slit
-  P.add('hullGlass', box(0.122, 0.026, 0.012), -0.3465, 1.5335, 1.7328, 0, 0.25, 0); // smoked slit, bow face
+  // (P-1 note: the KIT periscope bodies sit ENTIRELY under the 1.562
+  //  hump-plate bottom — buried, pixel-free from every official view; the
+  //  r12 buried-class rule says dress nothing there. The close-front
+  //  "grey cluster" pixels decode to the mantlet cheeks / wing cover edge
+  //  (projection proof in the r17 packet section) — those carry the new
+  //  tells below.)
+  periscope(P, 'hullDetail', -0.62, 1.518, 1.70);
+  periscope(P, 'hullDetail', -0.36, 1.518, 1.68, 0.25);
   // r9 C1 TWIN FAN ARCHES (r7 critic driver 3 — "engine-deck fans missing"):
   // the old flush discs at (±0.72, -1.15) sat at 2.034..2.058, UNDER the
   // 2.06 deck-plate top — z-buried, invisible, and at the WRONG z anyway:
@@ -5319,6 +5316,17 @@ function buildLeo2Revolution(P) {
   // the ref falls to 2.056)
   P.add('turret', box(0.80, 0.25, 0.08), 0, 0.295, 2.55);
   for (const s of [-1, 1]) P.add('turretDark', box(0.05, 0.24, 0.42), s * 0.41, 0.31, 2.44);
+  // P-1 (defuse-recert critic order): the mantlet cheek blocks read as
+  // bare grey "posts" over the black ring window at close-front. Tells:
+  // the RIGHT cheek carries the coax MG port (pale collar + dark bore on
+  // its front face — the real 2A46/L44 coax spot), the LEFT a bolt row.
+  // All faces interior to the turret silhouette (core 2.2525 line owns
+  // every column here; y stays inside the blocks' own 0.19..0.43 band).
+  P.add('turretDetail', KIT.cylZ(0.030, 0.012, 12), 0.41, 0.355, 2.652);       // coax port collar
+  P.add('turretDark', KIT.cylZ(0.017, 0.020, 10), 0.41, 0.355, 2.654);         // coax bore stub
+  P.add('turretDetail', box(0.012, 0.012, 0.006), -0.41, 0.385, 2.652);        // left cheek bolt row
+  P.add('turretDetail', box(0.012, 0.012, 0.006), -0.41, 0.330, 2.652);
+  P.add('turretDetail', box(0.012, 0.012, 0.006), -0.41, 0.275, 2.652);
   // ---- L/44 at axis 1.85 (band 1.76..1.94): muzzle 6.005 (published
   // overall 9.97; print tube ends 5.934). r7: 6.02 -> 6.005 — the settled
   // grid's pitch shrank the 0.75-pitch cover margin to 0.083 and the 6.02
@@ -5661,16 +5669,19 @@ function buildLeo2Revolution(P) {
       const deckTint = [];
       // §B5 r16: tint plates ride the honest deck bands (+4.5 mm, each
       // fully inside ONE band's z-window)
-      // P-2 (defuse-recert critic order): the single dark aft rect read
-      // ruler-edged at 3x in the top view — split into three overlapping
-      // ry-rotated quads at staggered tints (the mottle grammar). Every
-      // rotated corner stays inside the 1.585 band's z-window (-0.95..
-      // -0.52, >=12 mm margins), tops stagger 1.5891/1.5893/1.5895 (all
-      // inside the +4.5 mm E1/E2 budget over the 1.585 band).
-      deckTint.push(prepCamo(KIT.xform(box(0.40, 0.004, 0.28), -0.60, 1.5891, -0.73, 0, 0.30, 0), 0, 0.5, 0.90));
-      deckTint.push(prepCamo(KIT.xform(box(0.34, 0.004, 0.24), -0.44, 1.5893, -0.755, 0, -0.42, 0), 0, 0.5, 0.94));
-      deckTint.push(prepCamo(KIT.xform(box(0.26, 0.004, 0.20), -0.68, 1.5895, -0.70, 0, 0.65, 0), 0, 0.5, 0.87));
+      deckTint.push(prepCamo(KIT.xform(box(0.62, 0.004, 0.36), -0.55, 1.5895, -0.74), 0, 0.5, 0.93));
       deckTint.push(prepCamo(KIT.xform(box(0.70, 0.004, 0.42), 0.42, 1.4445, 2.57), 0, 0.5, 1.06));
+      // P-2 disposition (r17, measured): the top-view dark rect at PROC px
+      // [267:310]x[335:385] decodes to WORLD x -0.93..-0.44, z 1.36..2.29
+      // and is NOT a tint plate — it is the mantlet/left-cheek CAST SHADOW
+      // pooling on the fore-left deck. Its interior reads p10=p50=p90=34.0
+      // (the deep-shade ambient floor: tint is NORMALIZED albedo there).
+      // Two full overlay attempts rendered ZERO changed pixels: darkening
+      // bridge quads (tints 0.72-0.80) and lifting quads (1.18-1.38), both
+      // on the local plate heights straddling every ruler edge. The edges
+      // are the certified mantlet/cheek silhouette projected by the sun —
+      // albedo work cannot soften them; the quads were removed as dead
+      // geometry (r12 buried-class). Honest residual, packet-documented.
       const dm = new THREE.Mesh(KIT.mergeAll(deckTint), P.mats.hull);
       dm.receiveShadow = true;
       dm.castShadow = false;
@@ -5678,6 +5689,19 @@ function buildLeo2Revolution(P) {
       P.disposables.push(dm.geometry);
       P.add('turretDark', box(0.012, 0.004, 1.20), 0.50, 0.317, 3.24);         // wing cover panel seams
       P.add('turretDark', box(1.36, 0.004, 0.012), 0.85, 0.317, 3.10);
+      // P-1 (defuse-recert critic order): the dark wing cover's EXPOSED
+      // zones (between the camo tint quads) read as flat CAD-grey at
+      // close-front — pale hinge bars + a leading-edge bolt row give the
+      // cover its access-panel identity. The cover top is TILTED
+      // (y 0.315@x0.14 -> 0.241@x1.545, slope -0.0527): bars ride the
+      // local surface with rz matching, bolts sit at per-x surface height.
+      // Everything +-2 mm proud, interior to every gate row.
+      P.add('turretDetail', box(0.40, 0.003, 0.018), 1.15, 0.2633, 2.72, 0, 0, -0.0527); // hinge bar (right-fore exposed zone)
+      P.add('turretDetail', box(0.30, 0.003, 0.018), 1.20, 0.2606, 3.74, 0, 0, -0.0527); // hinge bar (right-aft exposed zone)
+      P.add('turretDetail', box(0.014, 0.003, 0.014), 0.30, 0.3066, 2.68);     // leading-edge bolt row (each at its local tilted-surface height)
+      P.add('turretDetail', box(0.014, 0.003, 0.014), 0.62, 0.2897, 2.68);
+      P.add('turretDetail', box(0.014, 0.003, 0.014), 0.94, 0.2728, 2.68);
+      P.add('turretDetail', box(0.014, 0.003, 0.014), 1.26, 0.2560, 2.68);
     }
     // -- A3 stowed-MAG legibility — r12 A3b: THE §C PINTLE ALLOWANCE IS
     // SPENT (r9-critic order, r7 option A): the pale receiver cap grows

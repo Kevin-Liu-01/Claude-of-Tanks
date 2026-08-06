@@ -79,7 +79,7 @@ re-freeze NEW hash, all in ONE commit.
 | t84 | 04707a9c | |
 | m47_patton | 53b6123a | |
 | leo2a5 | 2f9d0af0 | |
-| leo2_revolution | 1993cfb1* | de-fusion RE-CERT RATIFIED (floor 9.0 x14 at the coupled 88.9); retune round owed (88.9 -> 90+, P-1 fore-ring tells folded in) |
+| leo2_revolution | 323228f8 CANDIDATE (r17 retune, gate 91.2 PASS; PENDING 14-view re-cert — the new device's first critic spawn) | de-fusion RE-CERT RATIFIED (floor 9.0 x14 at the coupled 88.9); retune round owed (88.9 -> 90+, P-1 fore-ring tells folded in) |
 | m46_patton | 90ebf864 | |
 | centurion3 | fea56ecc | GRADUATED fd2c365 (24th, Centurion line's first) |
 | m1a2_sepv2 | 5564306c | GRADUATED 2026-08-05 (25th; floor 9.0, mean 9.11 x14) |
@@ -293,10 +293,10 @@ read BUILD-STANDARD+packets first, §F.4 report).
    casting + top clutter. Self-read >=8.9 every view -> request
    adjudication (26th/27th). Hold chieftain5 5117b9a8 / centurion3
    bf0a45e8.
-5. leopard retune (leopard.js): revolution hull 88.9->90+ vs repaired
-   bytes (vertex-workorder; shoe-pin-cap opt-in needs orchestrator ruling)
-   + P-1 fore-ring tells + P-2 top tint; graduate-change -> new hash
-   candidate + changed views -> re-cert critic. Hold leo2a5/leo2a6/kf51.
+5. DONE PENDING RE-CERT: revolution r17 retune landed — 88.9 -> 91.2
+   PASS x2 (honest deck shelf, mast-column riser, belly 0.338, P-1 tells
+   mask-free, P-2 proven cast-shadow). Candidate 323228f8; re-cert critic
+   = new device's first spawn (all 14 views; camo reseeds).
 6. DONE: m1a2 §B3 re-cert PASS — re-frozen 248a8468 (bytes were already
    at HEAD via the handover snapshot; ratification landed).
 7. DONE (landed post-handover): INVISIBLE-LOD ENVELOPE fix — root cause

@@ -85,8 +85,29 @@ never excuses missing it.
    stay clear of hull solids (plates, fenders, flaps). Tracks are the
    two-layer shoe system (pads + inner chain/guide horns) riding real
    wheels; no clipping, no floating bands.
-   Check: `node tools/track-clip-audit.mjs --exact --ids=<id>` ≤ ~60 voxels
-   per zone (kv2-graduate band); 0 is the target for new builds.
+   Check: `node tools/track-clip-audit.mjs --exact --ids=<id>` — the check
+   is now BOTH columns per zone, `bandVox + shoeVox`, and shoeVox is the
+   PLAYER-VISIBLE bar (m1a1ha lesson, owner report 2026-08-05: shoes
+   glitched through the rear plates while the band test read 0/0 — the
+   band is NOT the visible surface). The visible track surface is the
+   instanced shoe/pad envelope riding OUTSIDE the band: instance centers
+   at rOut = trackTh/2 + 0.012 off the band centerline plus 0.073 m of
+   pad+grouser depth (tankFactory buildRunningGear/trackShoeGeometries)
+   = +0.085 m beyond the band outer face (~0.13 m off the centerline at
+   the default trackTh 0.09). A plate can clear the band and still eat
+   the shoes — bandVox=0 alone proves nothing about the visible read.
+   Semantics: shoeVox counts hull-candidate surface voxels ≥1.5 cm
+   INSIDE the world-transformed shoe instance solids at --exact
+   (near-contact margin on the default run); hidden pads (coveredTop,
+   thrown sides) don't count; per-side wrap-pad meshes and full-width
+   dressing buckets that RIDE the envelope by design (abrams wrap-pad
+   taxonomy) are conformance-excluded and reported under
+   dressingSkipped — audit the exclusions, never delete them silently.
+   Bars: bandVox ≤ ~60 per zone (kv2-graduate band, unchanged legacy
+   trend line) AND shoeVox ≤ ~60 per zone with 0 the target for new
+   builds; a blind spot (shoeVox > 0 while bandVox = 0) is a standing
+   order for the owning family lane. Fleet comparison lives in
+   shots/track-clip-shoes.json (blindSpots ranked worst-first).
 5. TURRET FURNITURE PARENTING (owner law 2026-08-04: "stuff in the back of
    the turrets … just stays there and isn't rotating with the turret").
    Everything that visually belongs to the turret — bustle racks, duffels,
@@ -396,3 +417,14 @@ LOD0" is not proof of LOD1 geometry (lodWrap LOD1 levels are empty by
 design); keep MATERIAL creation eager when deferring construction
 (material ids are a draw-sort key — deferred clones renumber and break
 pixel identity).
+- DEEP-SHADE ALBEDO CLAMP (§J addendum, revolution r17): zero-variance
+  dark zones (p10=p50=p90) are shadow reads — tint work provably cannot
+  move them; critics check percentile spread before ordering mottle.
+- BURIED-FURNITURE PROBE FALSE-ATTRIBUTION: world-box probes name
+  occluded geometry; decode screen rects with the critic's own projection
+  and verify tells by pixel-diff before dressing.
+- BAKE-MIRROR NARROW-NOT-DROP: when one row read of a bake-mirror is
+  real, narrow it to its witness column instead of deleting.
+- LIVE-TREE FROZEN-SIB HAZARD (§F addendum): foreign shared-module WIP
+  moves every family hash — clean-room worktrees are the honest frame for
+  freeze proofs; handover sweeps can commit mid-round builder snapshots.

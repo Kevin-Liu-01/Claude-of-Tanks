@@ -1473,3 +1473,208 @@ Retune round takes: hull 88.9 -> 90+ orders (§B5-r16 decode) + P-1
 fore-ring deck cluster tells (close-front floor-setter) + P-2 top tint
 edges. New laws banked: DE-BAKE CONTRAST WINDOW, YAW-PROOF STATIC-PIXEL
 FALSE-FLAG (BUILD-STANDARD §E).
+
+## HULL-RETUNE round r17 (2026-08-05, leopard builder) — the de-bake debt paid: min 88.9 -> **91.2 PASS x2 bit-identical** (hull 91.8 / whole 91.4 / turret 91.8 / stations 91.2 / dims 99.5 / floaters 100) + P-1 tells + P-2 measured disposition
+
+| component | r16 coupled (certified) | after r17 |
+|---|---|---|
+| hull | 88.9 (front_hull 88.89 binder) | **91.8** (front_hull 95.35; side_hull 91.79 = new binder) |
+| whole | 90.4 (front_whole 90.45) | **91.4** (front_whole 93.01; side_whole 91.41 binder) |
+| turret | 91.8 | 91.8 (side 91.83 / plan 92.27 — rows byte-equal) |
+| stations | 91.2 | 91.2 (identical list — NEW GATE BINDER: st8 4.9 flicker + st11/12 width-guard sovereign, all certified classes) |
+| dims | 99.5 | 99.5 (identical: h 0.5 / hullL 0.68 / overallL 1.06 / w 0.11) |
+| floaters | 100 | 100 |
+
+ORDERS -> DELIVERIES:
+
+1. **HULL RETUNE 88.9 -> 90+ (front_hull 88.89 -> 95.35, mean 0.87 -> 0.36,
+   p95 1.09 -> 0.60, reg dy -0.015 -> 0.000)** — the honest-residual decode
+   (workorder vs REPAIRED bytes + gate-identical in-page column-ownership
+   probe + ref z-windowed sweeps + plan pixel-column traces):
+   - The +0.055 43-column mid class was ONE piece: the r2 tail riser
+     (box 2.0 wide, top 1.775, z -3.635..-3.735) — a bake-mirror survivor
+     (its "ref -3.68 tops 1.796" comment was the vlo bake). But its SIDE
+     read is REAL: honest ref side -3.681 tops 1.776 = mast-base equipment
+     hidden inside the mast's own front column. **BAKE-MIRROR
+     NARROW-NOT-DROP**: riser narrowed to exactly the mast column
+     (box 0.02 x 0.065 x 0.11 @ x 0.0745) — side -3.681 keeps 1.776 at
+     zero cost, all 43 front columns drop to the honest deck line.
+   - The honest print's REAR DECK PLATE measured: ref plan-hull zmin
+     -3.856 CONTINUOUS x 1.43..1.982 (pixel-column probe) + ref front-hull
+     1.71 full-width sourced at z -3.95..-3.65 (z-sweep). ONE new plate
+     carries three rows: **rear deck shelf** box(3.978, 0.032, 0.245) @
+     (0, 1.696, -3.7425) — front outboard cols 1.46..2.00 rise 1.688 ->
+     1.71 (ref line), plan outboard rear edges -3.825 -> -3.865 (plan_hull
+     96.45 -> 97.56, plan_whole 96.33 -> 97.39 — free), mid/shelf columns
+     get a STABLE 1.71 print (the bare tail-box top at authored 1.710 was
+     a 40%-pixel-coverage coin flip). Rests on tail box + shoulders,
+     meets the rail aft; x 1.989 inside the +-2.0 width guard.
+   - Top rail 1.70 -> 1.6895 (top 1.7145): the ref front at the rail z is
+     1.71 full width; the old 1.725 top printed a 1.721 lid over every mid
+     column once the riser died. Priced trade: the ref's 1.721-line shelf
+     cols (+1.15..1.33, 5 cols) now read -0.011 at top (0.016 errM each,
+     in the worst list below).
+   - Fan wells re-sunk <=1.712 authored + hinge chord bars/plates/bolts
+     dropped ~6 mm (tops 1.711-1.7122): with the riser gone these become
+     the mid columns' top painters; the old 1.7185 rim line straddles the
+     r16 grid's next bin edge (1.721-print risk, model sensitivity -0.9).
+   - **Belly honesty**: tub bottom 0.36 -> 0.338 (box y-center 0.849,
+     h 1.022) — the honest ref belly prints 0.337 across ~30 mid front
+     columns (0.009-0.020 errM each at the re-derived dy); side/plan are
+     blind to it (tracks own every side bottom — side rows byte-equal
+     before/after) and st topPct measures tops only. front_whole shares
+     the gain (its bottoms are the same tub).
+   - Scenario model (gate-math replica on the full 96-column dumps,
+     scripts in scratchpad): predicted front_hull 96.7 / front_whole 93.6
+     at re-derived dy +0.004, robust to +-1 print bin (95.8/96.7);
+     measured 95.35/93.01 at dy 0.000. The model's residual list matched
+     the gate's worst list ordering exactly.
+
+2. **P-1 fore-ring cluster tells (defuse-recert floor order)** — the
+   named coordinates decode AGAINST the render, not the probe:
+   - The KIT periscope bodies sit ENTIRELY under the 1.562 hump-plate
+     bottom (bodies 1.483..1.554) — buried, pixel-free from every
+     official view (close-front pixel-diff: zero changed px at their
+     projected rect 787..818 x 312..324). A first dressing pass
+     (hood caps + pale lips + glass slits) was REVERTED as dead geometry
+     (r12 buried-class law). **BURIED-FURNITURE PROBE FALSE-ATTRIBUTION**
+     law banked below.
+   - The VISIBLE "flat-grey cuboids" decode via critic-camera projection
+     (orthoFor math, no render needed) to: mantlet cheek blocks
+     (turretDark, screen 818..895) = the "posts"; the wing dark-cover
+     leading edge + exposed top zones (875..1034) = the "slab"; the fore
+     core front face (camo, 835..924) = the "stepped box"; clamp jaw +
+     recoil rod (certified travel-lock group members) between them.
+   - Tells delivered (all interior — gate rows byte-identical
+     before/after): RIGHT cheek carries the coax MG port (pale collar +
+     dark bore stub on its front face, the real L/44 coax spot); LEFT
+     cheek a 3-bolt pale row; wing cover gets 2 pale hinge bars riding
+     the TILTED top surface (rz -0.0527 matching its slope) + a 4-bolt
+     leading-edge row at per-x surface heights; the hatch riser gets its
+     ordered LID: camo lid disc (top 1.542) + dark lid-seam ring + two
+     pale hinge blocks on the 1.566 hatch-plate zone + grab handle —
+     the lid's fore arc is the top-view-visible tell.
+
+3. **P-2 top-view dark rect — MEASURED DISPOSITION (honest residual)**:
+   the rect (PROC px [267:310]x[335:385]) decodes to WORLD x -0.93..
+   -0.44, z 1.36..2.29 and is NOT a tint plate: it is the mantlet/left-
+   cheek CAST SHADOW pooling on the fore-left deck. Its interior reads
+   p10=p50=p90=34.0 — the deck material's deep-shade floor, which
+   NORMALIZES albedo. Two full overlay attempts rendered ZERO changed
+   pixels (verified by pixel-diff both times): darkening bridge quads
+   (tints 0.72-0.80) and lifting quads (1.18-1.38), both riding the
+   local plate heights straddling every ruler edge. The edges ARE the
+   certified mantlet/cheek silhouette projected by the sun — albedo work
+   cannot soften them (the caster is gate-priced geometry). Quads
+   removed (dead-geometry law); source comment at the deckTint block
+   carries the receipts. The ref's same zone reads 44-65 mottle because
+   its differing turret nose shades it differently — a geometry-class
+   difference already priced in the turret rows.
+
+4. **§J DE-BAKE CONTRAST WINDOW re-audit**: fore window borders = the
+   P-1 pieces (now told) + certified travel-lock group; aft window
+   borders = louvre cluster (pale BY DESIGN, r16-e certified) + intake
+   housings (camo) + cable backer — no new bare-grey neighbors; the
+   stern sponson corridors reopened by the vlo drop are now COVERED
+   top-down by the honest full-width shelf (flood direction: fewer sky
+   px; the re-cert critic re-derives the flood baselines).
+
+5. **Close battery (all on the final bytes)**:
+   - Official gate x2 BIT-IDENTICAL (cmp on the tool-written JSON):
+     **min 91.2 | 91.8/91.4/91.8/91.2/99.5/100 PASS** — run twice on the
+     main tree at a healthy shared-module snapshot AND twice in the
+     clean-room worktree (HEAD 8594840 + this leopard.js): four runs,
+     one line.
+   - §B4 `track-clip --exact`: **0/0 PASS** (clean-room; the plank
+     re-plane + 3.20 open-crest held; shelf sits behind the sprocket
+     wrap, shoulders' 1.42 bottoms untouched).
+   - §B5 turret-parent: **stranded 2 / abutting 0 / dangling 0** — the
+     two certified mast-union AABB false-flag classes exactly (61%/31%,
+     unchanged from the ratified verdict).
+   - standard-check: clip 0/0 | contig 0 | decor mg1+4d (identical
+     census).
+   - visual-evaluator: **RIG PARITY OK** (max yawProxy 2.3 deg @
+     close-roof — the certified value), exit 0; flagged edge deltas are
+     the carried wing-tilt/ramp families.
+   - npm test: 166 checks + track-geometry PASS (clean-room worktree).
+
+HASHES — TWO BASELINES VERIFIED (the INVISIBLE-LOD de-track fix 9bf2a6d
+landed MID-ROUND with its 24-graduate mass re-freeze; every number below
+was measured, not inferred):
+- At the OLD baseline (clean-room worktree = HEAD 8594840 + this file):
+  candidate 2385487d (82 meshes / 111649 verts); frozen sibs EXACT at
+  their pre-fix values (bc9bad30 / 80b76338 / 3ae9b70c) — proof my file
+  changes nothing sibling-side.
+- At the CURRENT baseline (9bf2a6d, de-track kit lazy-built): the r17
+  re-freeze candidate is **323228f8 (78 meshes / 104305 verts)**, stable
+  x3; frozen siblings EXACT at their 9bf2a6d mass-refrozen values in the
+  same sittings: leo2a5 **2f9d0af0**, leo2a6 **f25dad51**, kf51
+  **1452024b**. (The -4 meshes per tank fleet-wide = the de-tracked
+  thrown-kit meshes, per the 9bf2a6d landing.)
+- Full battery REPEATED at the settled 9bf2a6d tree: gate x2
+  BIT-IDENTICAL min 91.2 | 91.8/91.4/91.8/91.2/99.5/100; track-clip
+  --exact (updated tool) front 0 / rear 0 | shoe 0/0, blind spots 0;
+  turret-parent 2/0/0 (61%/31% certified classes); standard-check 0/0,
+  contig 0, mg1+4d; npm test 166 + track-geometry PASS.
+- NOTE: HEAD already contains an 87-line MID-ROUND snapshot of this file
+  (the 2a6094b DEVICE HANDOVER sweep) — the diff to land is live-file vs
+  HEAD, not vs 636d3e4. Renders in the report were taken at the pre-fix
+  tankFactory; the de-track fix is render-invisible (visible=false
+  meshes), so they remain representative of 323228f8's pixels.
+
+CHANGED VIEWS for the re-cert critic: ALL 14 (the hull camo bucket
+re-merged -> bakeDirt mottle reseeds everywhere, the r16 precedent).
+Geometry deltas concentrate in: top/toptilt/rear/rearleft/rearright
+(stern shelf + narrowed riser + rail drop + sunk wells), left/right
+(rail -1 px; shelf stern edge), front/frontleft/frontright/close-front/
+hero-frontleft (belly line +22 mm, outboard top line +1 px, cheek/wing
+tells), close-roof (hatch lid + wells).
+
+HONEST RESIDUALS (front_hull worst list, measured):
+- -1.01 col errM 0.133 — the r13-certified kit shoe-pin class, back at
+  its certified 0.131-0.133 value with dy at 0.000 (kit-frozen, priced).
+- +1.01 col 0.047 — the §B6-frozen ref asymmetric-band 0-stripe.
+- -1.06 col 0.025; +-1.24..1.33 cols 0.016 x5 — the rail-drop trade on
+  the ref's asymmetric 1.721-line (model-predicted, priced).
+- stations 91.2 is the NEW GATE BINDER — st8 4.9 (r7-documented window
+  flicker), st11/12 3.3/2.7 (width-guard sovereign class); untouched.
+- P-2 cast-shadow rect (above) — geometry-certified caster, albedo-
+  unreachable, receipts in source + here.
+- Ring fills inkier than the print's open gap; rear bustle breadth;
+  deck micro-grain — carried r16 classes, unchanged.
+
+LAW DISCOVERIES (for the bank):
+1. **DEEP-SHADE ALBEDO CLAMP**: inside a cast-shadow pool the deck
+   material's deep-shade floor normalizes albedo — tint overlays in BOTH
+   directions (0.72..1.38) render zero pixel change. A zero-variance
+   dark zone (p10=p50=p90) is a SHADOW read: adjudicate against the
+   caster's silhouette, never order mottle/tint work on it. Critics:
+   check the percentile spread before calling a "tint rect".
+2. **BURIED-FURNITURE PROBE FALSE-ATTRIBUTION**: world-box triangle
+   probes attribute close-range pixel reads to geometry that is fully
+   occluded (the periscopes under the hump plate). Decode screen rects
+   with the critic camera's own orthoFor projection (cheap, no render)
+   before naming pieces in orders; verify tells with a pixel-diff.
+3. **BAKE-MIRROR NARROW-NOT-DROP**: a bake-mirror piece can carry one
+   REAL row read among its fakes (the riser's side 1.776 vs its false
+   front 1.766 x43). Narrow it to the witness column instead of
+   deleting/lowering — the honest row keeps its read at zero cost.
+4. **LIVE-TREE FROZEN-SIB VERIFICATION HAZARD** (process, for §F):
+   sibling-agent WIP in shared modules (tankFactory.js here) transiently
+   changes every family build (-4 track meshes fleet-wide, track-clip
+   blind-spots, all four leopard hashes moved). Frozen-hash proofs and
+   §B batteries must come from a CLEAN-ROOM WORKTREE (committed HEAD +
+   own file + symlinked node_modules) whenever `git status` shows
+   foreign shared-module edits. Corollary: a handover/takeover sweep can
+   commit MID-ROUND builder snapshots (2a6094b took this file at 87
+   lines in) — diff against CURRENT HEAD at landing, not the round's
+   starting commit.
+
+### r17 LANDED PENDING RE-CERT (2026-08-05, orchestrator — no-new-spawns
+order): gate 91.2 PASS x2 bit-identical at both baselines — the graduate
+is back above 90 (stations 91.2 now binds, certified classes). RE-FREEZE
+CANDIDATE 323228f8 (78/104305, orchestrator-verified on the post-LOD-fix
+factory; sibs exact at new frozen values). Changed views: ALL 14 (camo
+mottle reseeds). THE NEW DEVICE'S FIRST CRITIC SPAWN: full 14-view
+re-cert at 323228f8; on PASS ratify the re-freeze (final renders
+preserved in the round's scratchpad paths per §r17).
