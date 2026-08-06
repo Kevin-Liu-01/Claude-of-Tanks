@@ -239,6 +239,16 @@ honestly parked at 88.9 pending its retune)
   rebuilds), t54 winding repair, m48 pitch, type74+t80bv scaleToOverall
   ruling.
 
+## 4.9 GEAR R8/R8B REVERTED (2026-08-06 pm): the unconditional belly pan
+(3ce46b8 + 2811281) is UNDONE per the owner's screenshot report ("terrible
+gray rectangle under the tanks") — §B2 CLARIFICATION law banked (holes,
+not channels; per-tank authored closures only). Revert verified: five
+sampled graduates return EXACTLY to ratified registry hashes (2f579de8/
+90ebf864/75e981e0/94c09bb0/fbf9f4cc) — no re-freeze needed. The earlier
+belly-pan clamp task is SUPERSEDED by this revert. sherman_jumbo's 22/10
+band + 34/6 shoe audit reading is PRE-PAN (persists post-revert) — ww2
+lane decode item.
+
 ## 5. IN-FLIGHT AGENTS (SUPERSEDED BY §12 — the 2026-08-05 device
 handover interrupted these; respawn per §12)
 1. DONE+RATIFIED: abrams dual critic (m1a1ha f5c556dc, sepv2 §10 run).

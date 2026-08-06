@@ -621,3 +621,20 @@ AI-generated (kept but never registered: measurement-unusable). A
 refused oracle NEVER writes a ledger row — a registration that cannot
 load times out at 150 s and taxes every later fleet run, and the row it
 would leave is a FALSE-0.
+
+## §B2 CLARIFICATION — HOLES, NOT CHANNELS (owner ruling 2026-08-06, with
+## screenshot; reverts gear r8/r8b)
+Owner verbatim: "all tanks have this terrible gray rectangle under the
+tanks - this is completely wrong ... when i talked abotu space under
+slopes, i met having hulls not have holes, not just willy nilly filling
+in space." The §B2 no-empty-areas law means the HULL VOLUME is closed —
+you never see through a hull or into an unmodeled interior. It does NOT
+mean the open air between the track runs gets filled: the ground
+channel, wheel-train daylight, and under-sponson air are REAL on the
+real vehicles. A factory-wide belly slab is the wrong mechanism twice
+over — it curtains the running gear from the side (owner's gray
+rectangle) and it breaks the §D width anchor on narrow-track builds.
+The right mechanism is PER-TANK authored hull geometry: real belly
+plates at the real height, sponson undersides, closure panels INBOARD
+of the band inner faces (the ww2-lane channel-pan class, ±3cm clear) —
+authored where the real tank has metal, never where it has air.

@@ -746,29 +746,6 @@ function buildRunningGear(P, cfg) {
         side * (xc - wheelW * 2.0), shadowH / 2 + 0.03, (z0 + z1) / 2);
     }
   }
-  // BELLY PAN (owner report, gear r8): the channel between the two track runs
-  // was OPEN — from low bow/stern angles you looked straight under the glacis
-  // overhang, through the empty belly, and out the far side ("there's just
-  // nothing under these slopes"). One near-black closed box now fills the
-  // inter-track volume for EVERY gear style (the AO walls above are
-  // layered-gear-only and per-side, so moderns had no closure at all).
-  // Extends past the wheel span toward sprocket/idler so the bow/stern
-  // overhang voids back-fill as shadow; hullShadow bucket = 'shadow' mat.
-  {
-    const z0 = Math.min(...wheelZs) - wheelR * 1.7;
-    const z1 = Math.max(...wheelZs) + wheelR * 1.7;
-    // r8b (owner: merkava/bradley/bmp "no meat under the slopes"): the pan
-    // spans the FULL track envelope, not just the inter-track channel — the
-    // outboard band hides behind the opaque tracks/skirts where they exist
-    // and back-fills the lateral daylight under sponson-slope hulls.
-    // cfg.bellyTop lets sloped-side builds raise the fill to their slope's
-    // lower edge (defaults to the AO-wall height).
-    const xi = xc + trackW * 0.55;
-    const panBot = botY + 0.02;
-    const panH = Math.max(0.2, (cfg.bellyTop ?? cfg.bayShadowTop ?? (topY + 0.1)) - panBot);
-    P.add('hullShadow', new THREE.BoxGeometry(xi * 2, panH, z1 - z0),
-      0, panBot + panH / 2, (z0 + z1) / 2);
-  }
   const rollerEntries = [];
   for (const rl of rollers) {
     for (const side of [-1, 1]) rollerEntries.push({ x: side * xc, y: rl.y, z: rl.z, r: rl.r ?? rollerR, road: false, i: 0 });
