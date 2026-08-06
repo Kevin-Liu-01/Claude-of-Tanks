@@ -1,10 +1,10 @@
 {
  "id": "t90a_vladimir",
- "geoMin": 71.4,
+ "geoMin": 71.5,
  "gatePassed": false,
  "components": {
   "hullCurves": 73.1,
-  "wholeCurves": 71.4,
+  "wholeCurves": 71.5,
   "turretCurves": 72.9,
   "stations": 88.6,
   "dims": 96.2,
@@ -552,7 +552,7 @@
    ]
   },
   "front_whole": {
-   "score": 71.43432945651497,
+   "score": 71.4547780437736,
    "meanPct": 2.21,
    "p95Pct": 3.38,
    "coverPct": 0,
@@ -626,20 +626,20 @@
      "errM": 0.086
     },
     {
-     "at": -0.28,
-     "refTop": 0.8,
-     "refBot": -0.85,
-     "procTop": 0.89,
-     "procBot": -0.94,
-     "errM": 0.086
-    },
-    {
      "at": 0.66,
      "refTop": 0.66,
      "refBot": -0.84,
      "procTop": 0.73,
      "procBot": -0.94,
      "errM": 0.084
+    },
+    {
+     "at": -0.28,
+     "refTop": 0.8,
+     "refBot": -0.85,
+     "procTop": 0.88,
+     "procBot": -0.94,
+     "errM": 0.082
     },
     {
      "at": 0.24,

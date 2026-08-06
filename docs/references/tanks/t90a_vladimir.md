@@ -412,3 +412,24 @@ Residuals: K-5 leaves still read thin from dead-front (certified r13b
 thin-HIGH band, print-parity — §B7 not invoked); sight-block cluster
 stays boxy per its certified rows (glass + brow present); glacis stays
 bare per its fought r13 columns.
+
+## §B3.2 DECORATION DENSITY + MG round (2026-08-06, russia-family builder)
+ADDED KIT: hand nsvt() -> census FITTINGS.pintleMG (NSVT, tone dark, same
+anchor — receiver reproduces the certified carrier: top 0.618 vs 0.62,
+z-band -0.467..-0.055 vs -0.47..-0.05, and owns its own front columns
+x -0.345..-0.255; barrel DROOPED elev -0.45 so past the 0.64 sight-deck
+cover it stays under the dome's 0.42-0.43 falloff — the straight fitting
+barrel would have printed 0.16-proud on ~2.5 side cols); PKT coax port
+stub + 1mm washer flush on the root-block face (z 0.25 plan rect); spare
+track-link run FLUSH on the raised 1.745 mid-band; tow cable draped flush
+on the left band (tops <=1.738, certified front cols -0.78..-0.86 read
+1.754).
+MG census: mg0+0d -> mg1+2d. GATE x2: 71.5 | 73.1/71.5/72.9/88.6/96.2/100
+(baseline 71.4 — whole +0.1, rest exact).
+Residuals (honest): tail unditching log skipped — the 1.655-1.671 tail
+plateau IS the loft top (mask bakes the drum row into the deck line), no
+visible lane; jerryCans unplaceable (raised-band headroom 0 on the right
+half: ref front cols +0.71..+0.75 read 1.70-1.74 vs plateau 1.745); clip
+195/107 PRE-EXISTING. Turret-parent: 2 deck-fitting flags = §B5
+audit-artifact class (adjudicated deck gear, stays rig_hull).
+npm test green.

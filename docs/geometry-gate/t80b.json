@@ -3,7 +3,7 @@
  "geoMin": 81.6,
  "gatePassed": false,
  "components": {
-  "hullCurves": 87.5,
+  "hullCurves": 87.6,
   "wholeCurves": 81.6,
   "turretCurves": 86.2,
   "stations": 92.3,
@@ -12,9 +12,9 @@
  },
  "curveRows": {
   "side_hull": {
-   "score": 87.54151371062936,
-   "meanPct": 0.87,
-   "p95Pct": 3.38,
+   "score": 87.61319135440932,
+   "meanPct": 0.86,
+   "p95Pct": 3.37,
    "coverPct": 0,
    "reg": {
     "dAlong": 1.507,
@@ -65,7 +65,7 @@
      "at": 4.71,
      "refTop": 0.29,
      "refBot": -0.75,
-     "procTop": 0.33,
+     "procTop": 0.32,
      "procBot": -0.81,
      "errM": 0.047
     },
@@ -89,7 +89,7 @@
      "at": 4.46,
      "refTop": 0.29,
      "refBot": -0.91,
-     "procTop": 0.33,
+     "procTop": 0.32,
      "procBot": -0.96,
      "errM": 0.041
     },
@@ -105,7 +105,7 @@
      "at": 4.33,
      "refTop": 0.31,
      "refBot": -0.99,
-     "procTop": 0.33,
+     "procTop": 0.32,
      "procBot": -1.05,
      "errM": 0.035
     },
@@ -113,7 +113,7 @@
      "at": 4.59,
      "refTop": 0.29,
      "refBot": -0.83,
-     "procTop": 0.33,
+     "procTop": 0.32,
      "procBot": -0.86,
      "errM": 0.035
     }

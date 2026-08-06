@@ -187,8 +187,11 @@ honestly parked at 88.9 pending its retune)
   §B3.2 density on ALL abrams — abrams lane; (3) revolution turret
   see-through sides/ring ("disembodied") — relayed to the LIVE leopard
   agent; (4) leclerc turret front = steep rake down to a small flat
-  strip — misc lane; (5) russia §B3.2 decorations + MG/RWS density —
-  russia lane.
+  strip — misc lane; (5) DONE — russia §B3.2 density: mg backlog CLEARED 10/10 (census mg>=1
+  everywhere, +25 markers; T05BV-1 RWS grammar on t90sm/t90m, Utyos on
+  t80bv, coax ports x9, logs/links/cables laned); every gate held or up
+  (t72b_1987 +1.3); graduates EXACT x3. Residual classes packet-noted
+  (jerryCans/headlights blocked by certified-tight rows).
 - **OWNER PUNCH LIST (2026-08-06, five rounds spawned)**: (1) DONE — ariete+leclerc left sides FIXED (reversed-winding class
   decoded: mirror loops hand slabs inward faces, FrontSide-culled but
   DoubleSide-mask visible; orientedSlab guard landed; gates held exact;

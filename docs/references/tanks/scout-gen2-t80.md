@@ -256,3 +256,31 @@ glacis-raft edge zone), shoe clips 221-324 (§B4 backlog), t80bv mg0.
 Residual (certified): no evacuator bulge on the tube — the compressed
 prints read a flat 0.313 band (r27 circle-law trade); a photo-class
 evac would break the certified band, banked for an owner ruling.
+
+## §B3.2 DECORATION DENSITY + MG round (2026-08-06, russia-family builder)
+Owner directive: decorations + "many more machine guns of all varieties".
+T-80BV mg0 backlog CLEARED: the BV lane (v===2) now carries its real
+commander's NSVT Utyos as a census FITTINGS.pintleMG — seated mask-
+INTERIOR (receiver, swung ry -90 / ammo off, lands x 0.277..0.499,
+z -0.574..-0.526 INSIDE the cupola footprint x 0.26..0.78 / z -0.68..
+-0.16 / top 0.76; receiver top 0.698 also under the 0.727 dome line at
+its plan radius; barrel drooped elev -0.25 under the 0.74+ crown apex
+zone). t80/t80b keep the r26/r27 spike-covering fitting NSVT.
+ADDED KIT (all variants, §H.4 variety by mirrored seats + seeds): PKT
+coax port stub + washer flush-recessed in the mantlet hood face (v0/v1,
+z<=1.689 vs the 1.69 face) / V-cover face (v2, z<=1.618 vs 1.62); spare
+track-link run FLUSH on the deck (v0 right 0.60 / v1 LEFT mirror / v2
+right 0.30); tow cable draped flush (v0 right-rear / v1 left-rear / v2
+right-front drapes; knot tops each <=local deck polyline).
+MG census: t80 mg1+0d -> mg1+2d; t80b mg1+0d -> mg1+2d; t80bv mg0+0d ->
+mg1+2d. GATE x2 (both runs identical):
+  t80  82.5 | 88.7/82.5/84.7/88.3/98.9/100 (baseline EXACT)
+  t80b 81.6 | 87.6/81.6/86.2/92.3/100/100 (hull +0.1, rest exact)
+  t80bv 35.5 | 44.6/45/55.2/35.5/100/100 (baseline EXACT — the 4.4%
+  under-scale print residual + stations 35.5 remain the r25f structural
+  certification item, untouched by this round)
+Residuals (honest): BV MG visible close-up only (mask-neutral nesting on
+the 35.5-gate tank); jerryCans unplaceable on the 1.44-1.50 deck lines;
+clip failures (221/280, 221/310, 324/280) and the t80bv 3-cell bow holes
+PRE-EXISTING. Turret-parent: towCable flags = §B5 audit-artifact
+(adjudicated deck gear). npm test green.

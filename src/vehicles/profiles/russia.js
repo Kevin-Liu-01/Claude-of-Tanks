@@ -545,6 +545,27 @@ function buildT90A(P) {
     P.add('hullRubber', box(0.36, 0.30, 0.05), s * 1.52, 0.80, -3.06); // rear mud flaps (ref plan rear -3.08 at x 1.33+, floor 0.645)
     P.add('hullRubber', box(0.40, 0.16, 0.05), s * 1.55, 0.85, 3.345); // front mud flaps (ref plan 3.367 at ±1.76)
   }
+  // §B3.2 DENSITY (owner directive 2026-08-06): common-kit fittings on the
+  // deck, FLUSH-RECESSED to the certified deck lines (t84 r32 recipe — the
+  // hull mask is hull-only, so turret shadow protects nothing here; §D law:
+  // any hull column-top lift shears the whole/turret registration too —
+  // measured -2.2/-4.2 on a proud first cut, reverted). Tops ride ON the
+  // local deck polyline (1.375 fwd / 1.36 aft); a draped cable adds <=15 mm
+  // over 3 columns (sub-pixel-class read, gate-verified HOLD).
+  {
+    // spare tow cable draped on the right deck beside the bustle
+    // (eyes:false — the t84 stern lesson; tube top 1.372-1.375)
+    const cable = FITTINGS.towCable({
+      mats: P.mats, eyes: false, r: 0.018,
+      pts: [[0.95, 1.348, -0.95], [1.20, 1.338, -1.25], [0.95, 1.345, -1.53]], seed: 5,
+    });
+    P.hullG.add(cable);
+    // spare track-link run laid flat on the forward deck right of the ring
+    // (top 1.375 ON the 1.375 deck line)
+    const links = FITTINGS.spareTrackLinks({ mats: P.mats, links: 4, width: 0.5, seed: 7 });
+    links.position.set(0.55, 1.325, 0.55);
+    P.hullG.add(links);
+  }
   // r10c: log slimmed to the ref's x +-1.0 / top 1.39 line (the 2.55-long
   // 1.605-high log owned eight front cols and the -1.33 side col)
   P.add('hullDark', cylX(0.09, 2.0, 10), 0, 1.535, -1.43);
@@ -644,7 +665,17 @@ function buildT90A(P) {
   P.add('turretDetail', box(0.09, 0.10, 0.10), 0.315, 0.845, -0.96);
   P.add('turretDark', cylY(0.05, 0.05, 0.16, 10), 0.30, 0.70, -1.33);
   mast(P, -0.23, 0.46, -1.24, 0.86, 0.022, 0.06);
-  nsvt(P, -0.55, 0.46, -0.50);
+  // §B3.2/§I (2026-08-06): hand nsvt() -> census FITTINGS.pintleMG at the
+  // same cupola anchor. INTERIOR by construction: the whole envelope
+  // (receiver top 0.778, barrel run to z +0.51, ammo can x -0.69) sits
+  // inside the LEFT roof-hump silhouette (x -1.10..-0.36, top 0.835,
+  // z -1.00..+0.88) in both side and front masks — mask-neutral swap.
+  // Pale-deck polarity => tone 'dark' (family recipe, pt91m/t62mv1).
+  {
+    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'nsvt', tone: 'dark', elev: 0.02, ammo: true });
+    mg.position.set(-0.55, 0.46, -0.50);
+    P.turretG.add(mg);
+  }
   // bustle bin band (r10b: x narrowed to +-1.05 — ref plan rear at
   // +-1.11-1.22 is the -0.85 bin line, the 2.5-wide slab read -1.74 there)
   P.add('turret', box(2.10, 0.58, 0.50), 0, 0.175, -1.61);
@@ -687,6 +718,11 @@ function buildT90A(P) {
   // corner read rounds. Boot fold rings ride inside the block∪chin∪tube
   // envelope and a clamp ties the boot onto the tube at the chin's end.
   P.addGunExtra(KIT.xform(cylZ(0.5, 0.30, 16, 0.46), 0, 0, 0, 0, 0, 0, [0.56, 0.40, 1]), 0, 0.02, 0.13);
+  // §B3.2 (2026-08-06): PKT coax port right of the tube — dark muzzle stub
+  // + port washer INSIDE the collar's plan rectangle (±0.28 to z 0.28) and
+  // side band (±0.20): flush-recessed, zero silhouette in every view.
+  P.addGunExtraDark(cylZ(0.020, 0.05, 8), 0.20, 0.07, 0.25);
+  P.addGunExtraDark(cylZ(0.030, 0.012, 10), 0.20, 0.07, 0.272);
   // r10: housing z-trimmed (ref 2.15 ends world 1.63); hump extended to the
   // ref's 2.61; chin slimmed to the 1.375..1.515 band (its 1.17 bottom
   // owned six side cols where the ref floor is 1.397-1.424)
@@ -824,6 +860,25 @@ function buildT62MV1(P) {
     P.add('hullTrack', box(0.86, 0.08, 0.21), s * 0.53, 1.415, -2.55, 0.06, 0, 0);
     P.add('hullTrack', box(0.78, 0.07, 0.17), s * 0.49, 1.425, -2.68, 0.08, 0, 0);
   }
+  // §B3.2 DENSITY (owner directive 2026-08-06, CEILING-CERT tank ->
+  // mask-neutral only): common kit strictly inside the certified lines.
+  // The tail-drum row carries side 1.92-1.97 over z -2.83..-3.36 and front
+  // 1.92 across |x| 0.08..1.05 — the log nests UNDER the drums (top 1.36,
+  // bedded through the bracket rails, §B2-connected); links + cable ride
+  // FLUSH on the 1.482 deck plateau (t84 recipe).
+  {
+    const log = FITTINGS.unditchingLog({ mats: P.mats, len: 1.6, r: 0.08, straps: 2, seed: 5 });
+    log.position.set(0, 1.28, -2.95);
+    P.hullG.add(log);
+    const links = FITTINGS.spareTrackLinks({ mats: P.mats, links: 3, width: 0.5, seed: 9 });
+    links.position.set(-0.53, 1.432, 0.60);
+    P.hullG.add(links);
+    const cable = FITTINGS.towCable({
+      mats: P.mats, eyes: false, r: 0.018,
+      pts: [[0.50, 1.468, 0.30], [0.95, 1.458, 0.90], [0.55, 1.468, 1.50]], seed: 7,
+    });
+    P.hullG.add(cable);
+  }
   // glacis eye hooks on the lower bow (tow eyes clear of the fwd idler wrap)
   for (const s of [-1, 1]) {
     P.add('hullDark', box(0.10, 0.115, 0.13), s * 0.94, 0.816, 2.519, -0.3, 0, 0);
@@ -929,6 +984,10 @@ function buildT62MV1(P) {
   P.addGunExtra(KIT.xform(cylZ(0.5, 0.36, 16, 0.4425), 0, 0, 0, 0, 0, 0, [0.52, 0.33, 1]), 0, -0.06, 0.13);
   P.addGunExtraDark(KIT.xform(cylZ(0.5, 0.035, 16), 0, 0, 0, 0, 0, 0, [0.505, 0.318, 1]), 0, -0.058, 0.20);
   P.addGunExtraDark(KIT.xform(cylZ(0.150, 0.04, 14), 0, 0, 0), 0, -0.02, 0.325);
+  // §B3.2 (2026-08-06): PKT coax port right of the tube — stub + washer
+  // inside the mantlet's plan rectangle (±0.26 to z 0.31) and side band.
+  P.addGunExtraDark(cylZ(0.020, 0.05, 8), 0.18, 0.02, 0.285);
+  P.addGunExtraDark(cylZ(0.028, 0.010, 10), 0.18, 0.02, 0.304);
   P.addGunExtra(box(0.16, 0.30, 0.20), 0, 0.32, -0.072);    // KTD-2 support pylon (bridges root -> hood)
   // §B3.1: the KTD-2 rangefinder is a rounded pod — elliptical shell with
   // the certified top band (2.35-2.37) and ±0.15 plan width held exactly;
@@ -1155,6 +1214,23 @@ function buildT90AVladimir(P) {
   // swallows it exactly as the ref side does).
   P.add('hull', box(0.80, 0.075, 1.70), 0, 1.7825, -1.80);
   P.add('hull', box(0.245, 0.185, 0.012), -0.6425, 1.8975, -1.52);
+  // §B3.2 DENSITY (owner directive 2026-08-06): common kit FLUSH on the
+  // raised 1.745 mid-band (t84 flush-recess recipe — the hull mask is
+  // hull-only; certified front cols +0.71..+0.75 read 1.70-1.74 so nothing
+  // may ride proud of the plateau). Tail log skipped: the tail plateau
+  // 1.655-1.671 IS the loft top there — no visible lane (packet note).
+  {
+    // spare track-link run flush right of the center plateau box
+    const links = FITTINGS.spareTrackLinks({ mats: P.mats, links: 4, width: 0.5, seed: 7 });
+    links.position.set(0.62, 1.695, -1.60);
+    P.hullG.add(links);
+    // spare tow cable draped flush on the left band (tube tops <=1.738)
+    const cable = FITTINGS.towCable({
+      mats: P.mats, eyes: false, r: 0.018,
+      pts: [[-0.60, 1.722, -1.10], [-0.95, 1.712, -1.60], [-0.60, 1.722, -2.10]], seed: 5,
+    });
+    P.hullG.add(cable);
+  }
   // r13d: RIGHT-side hull roof sliver (kitMerged hull verts x 1.02..1.16,
   // y to 1.942, z -0.919) — the ref front_HULL reads 1.92-1.94 at x
   // 1.05..1.18; z-thin so the side raster drops it like the ref's own.
@@ -1317,7 +1393,19 @@ function buildT90AVladimir(P) {
     P.add('turretDetail', box(0.09, 0.026, 0.215), s * 1.675, 0.128, 0.2145);
     P.add('turretDetail', box(0.035, 0.026, 0.04), s * 1.7225, 0.128, 0.20);
   }
-  nsvt(P, -0.30, 0.30, -0.32);
+  // §B3.2/§I (2026-08-06): hand nsvt() -> census FITTINGS.pintleMG at the
+  // same anchor. Receiver reproduces the certified carrier (top 0.618 local
+  // vs the hand's 0.62; z-band -0.467..-0.055 vs -0.47..-0.05) and OWNS its
+  // own front columns (x -0.345..-0.255). The fitting barrel runs 0.42
+  // longer than the hand tube, so it is DROOPED (elev -0.45): past the
+  // 0.64 sight-deck cover (z<=0.40) it falls under the dome's 0.42-0.43
+  // falloff line instead of printing a 0.16-proud run on the z_w -0.35..
+  // -0.07 side columns. Mask-neutral swap (gate HOLD verified).
+  {
+    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'nsvt', tone: 'dark', elev: -0.45, ammo: true });
+    mg.position.set(-0.30, 0.30, -0.32);
+    P.turretG.add(mg);
+  }
   // rear bin stack + basket (ref rows 1.86-1.97 over -1.49..-2.29)
   P.add('turret', box(0.72, 0.44, 0.64), -0.60, 0.20, -0.97);
   P.add('turretDark', box(0.74, 0.36, 0.03), -0.60, 0.20, -1.30);
@@ -1338,6 +1426,11 @@ function buildT90AVladimir(P) {
   // cols at 1.42..1.68 where the ref sleeve reads 1.529..1.663
   P.addGunExtra(box(0.44, 0.13, 0.26), 0, 0.046, 0.12);
   P.addGunExtra(box(0.36, 0.10, 0.85), 0, 0.06, 0.55);
+  // §B3.2 (2026-08-06): PKT coax port right of the tube — stub flush in the
+  // root block face (z 0.25) + washer ring 1 mm proud (sub-noise); inside
+  // the block's plan/side rectangles in every view.
+  P.addGunExtraDark(cylZ(0.018, 0.05, 8), 0.155, 0.075, 0.223);
+  P.addGunExtraDark(cylZ(0.028, 0.010, 10), 0.155, 0.075, 0.2505);
   // §B3 (mystery-box sweep): the two root slabs read as bare rectangles —
   // sleeve clamp plate + side straps + dust-cover seam, all INSIDE the
   // slabs' own silhouettes (mask-neutral by construction).
@@ -1465,6 +1558,31 @@ function buildT64BV1(P) {
   }
   P.add('hullDark', box(0.16, 0.10, 0.93), -1.21, 1.15, -2.61);         // left exhaust duct on the sponson strip
   stowage(P, 'hull', P.rng, [[0.80, 1.05, -0.86, 0.28, 0.08, 1.42], [-0.80, 1.05, -1.73, 0.28, 0.08, 1.20]]);
+  // §B3.2 DENSITY (owner directive 2026-08-06): every T-series carries the
+  // common kit. Lanes measured against the COMPONENT masks (t90a lesson —
+  // turret shadow protects nothing in the hull mask): the sponson strips
+  // carry the side line at 1.1975 (x 1.02..1.40, z -3.49..-0.74) and the
+  // recessed center deck reads 1.039-1.045 in BOTH masks at |x|<0.9.
+  {
+    // unditching log bedded in the right sponson-strip tray (top 1.17 =
+    // 27 mm under the 1.1975 strip line; front cols x 1.14..1.28 are the
+    // strips' own)
+    const log = FITTINGS.unditchingLog({ mats: P.mats, len: 1.6, r: 0.07, axis: 'z', straps: 2, seed: 5 });
+    log.position.set(1.21, 1.10, -1.80);
+    P.hullG.add(log);
+    // spare track-link run FLUSH on the recessed center deck (top 1.045 =
+    // the authored deck line; ref front line 1.039 at |x|<0.6)
+    const links = FITTINGS.spareTrackLinks({ mats: P.mats, links: 4, width: 0.5, seed: 9 });
+    links.position.set(-0.45, 0.995, -2.00);
+    P.hullG.add(links);
+    // spare tow cable draped flush on the center deck right (eyes:false —
+    // t84 stern lesson; tube tops ~1.048 on the 1.045 deck)
+    const cable = FITTINGS.towCable({
+      mats: P.mats, eyes: false, r: 0.018,
+      pts: [[0.40, 1.03, -0.60], [0.75, 1.02, -1.20], [0.45, 1.03, -1.80]], seed: 7,
+    });
+    P.hullG.add(cable);
+  }
   // center-rear drum rack ON the print's own tail (post-warp mask reaches
   // -4.61 with tops 0.93-1.0 — no dims anchors needed, the span IS published)
   // r8: ref plan carries the FULL -4.614 rear across |x|<=1.31 (my old rack
@@ -1707,7 +1825,18 @@ function buildT64BV1(P) {
   P.add('turretDetail', box(0.03, 0.198, 2.94), 1.20, 0.055, -0.96);
   // MG lowered to the ref's 1.845-1.847 rear-roof line (receiver top was
   // 1.936 — rTAIL r13)
-  nsvt(P, -0.45, 0.48, -0.93);
+  // §B3.2/§I (2026-08-06): hand nsvt() -> census FITTINGS.pintleMG. The
+  // fitting receiver reproduces the certified carrier EXACTLY (top 0.800
+  // local = the ref's 1.846 line; z-band -1.077..-0.665 vs the hand's
+  // -1.08..-0.66) and everything else is interior: barrel run covered by
+  // the 0.854 box (z -0.67..-0.47), the right housing 0.955 (z -0.53..
+  // -0.14) and the cupola/gallery; ammo can inside the gallery's x -0.33..
+  // -0.91 front band. Mask-neutral swap (gate HOLD verified).
+  {
+    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'nsvt', tone: 'dark', elev: 0.02, ammo: true });
+    mg.position.set(-0.45, 0.482, -0.93);
+    P.turretG.add(mg);
+  }
   P.add('turret', KIT.sph(0.114, 12, Math.PI / 2), 0.45, 0.715, -0.16);
   domeRailRu(P, rings, 0.93, 0.38, 0.98);
   // ---- 125 mm 2A46-2 on the normalized tube: axis 1.445, muzzle world
@@ -1738,6 +1867,11 @@ function buildT64BV1(P) {
     [0.42, 0.155, 0.30, -0.145],   // mid fold (bottom -0.295)
     [0.71, 0.14, 0.21, -0.06],     // clamp fold onto the tube
   ] });
+  // §B3.2 (2026-08-06): PKT coax port right of the tube, INSIDE the r8
+  // |x|<=0.09 gun-furniture law (disc x 0.04..0.08) — stub seats against
+  // the dome face behind the boot root, washer flush on the fold skin.
+  P.addGunExtraDark(cylZ(0.020, 0.06, 8), 0.06, -0.049, -0.385);
+  P.addGunExtraDark(cylZ(0.028, 0.010, 10), 0.06, -0.049, -0.352);
   tubeGun(P, [
     [0.60, 2.26, 0.0875], [2.26, 3.31, 0.095], [3.31, 4.01, 0.0875], [4.01, 4.24, 0.0835],
   ], { rings: [[0.95, 0.0895], [1.30, 0.0895], [1.62, 0.0895], [1.94, 0.0895], [2.26, 0.097], [2.61, 0.097], [2.96, 0.097], [3.31, 0.097], [3.66, 0.0895], [4.01, 0.0895]], muzzle: 4.24 });
@@ -2768,6 +2902,24 @@ function buildT80Line(P, v) {
   P.add('hullWood', cylX(0.10, 1.95, 10), 0, 0.97, -3.00);
   for (const s of [-0.5, 0.5]) P.add('hullDark', cylX(0.107, 0.04, 10), s * 1.5, 0.97, -3.00);
   KIT.towCable(P, [[-1.15, 1.05, 2.72], [0, 1.12, 2.42], [1.15, 1.05, 2.72]]);
+  // §B3.2 DENSITY (owner directive 2026-08-06): common kit FLUSH on the
+  // deck lines (t84 recipe — hull mask is hull-only, no tall deck kit).
+  // §H.4 VARIANT VARIETY: mirrored seats + seeds per mark so the three
+  // T-80s read distinct in the garage.
+  {
+    const links = FITTINGS.spareTrackLinks({ mats: P.mats, links: 4, width: 0.5, seed: 7 + v });
+    links.position.set(v === 1 ? -0.58 : 0.58, 1.395, v === 2 ? 0.30 : 0.60);
+    P.hullG.add(links);
+    const cable = FITTINGS.towCable({
+      mats: P.mats, eyes: false, r: 0.018, seed: 5 + v,
+      pts: v === 2
+        ? [[0.45, 1.420, 0.95], [0.90, 1.410, 0.35], [0.50, 1.425, -0.25]]
+        : v === 1
+          ? [[-0.50, 1.432, -0.55], [-0.95, 1.445, -1.15], [-0.60, 1.478, -1.60]]
+          : [[0.50, 1.432, -0.55], [0.95, 1.445, -1.15], [0.60, 1.478, -1.60]],
+    });
+    P.hullG.add(cable);
+  }
   // running gear: pt91m r25 corner-pad recipe from birth — flat dies at the
   // ref's ground reads (rear -1.90 / front +2.33), dip zones land inside
   // ground columns, steep diagonals keep the link pads above the strips.
@@ -2871,6 +3023,10 @@ function buildT80Line(P, v) {
     P.add('turret', box(0.56, 0.26, 0.36), 0, 0.22, 1.44);
     P.add('turretDark', box(0.29, 0.02, 0.008), 0, 0.26, 1.766);
     P.add('turretDark', box(0.55, 0.02, 0.008), 0, 0.25, 1.616);
+    // §B3.2 (2026-08-06): PKT coax port right of the tube — stub + washer
+    // flush-recessed in the V-cover face (all inside its rects).
+    P.add('turretDark', KIT.xform(cylZ(0.020, 0.06, 8), 0, 0, 0), 0.17, 0.26, 1.588);
+    P.add('turretDark', KIT.xform(cylZ(0.030, 0.012, 10), 0, 0, 0), 0.17, 0.26, 1.612);
     // §B3.1: the right sight is a DRUM (0.26 box -> r 0.13 cylinder:
     // inscribed circle, side/plan rectangles identical) + round lens.
     P.add('turretDetail', KIT.xform(cylZ(0.13, 0.24, 14), 0, 0, 0), 0.55, 0.40, 0.96);
@@ -2887,6 +3043,10 @@ function buildT80Line(P, v) {
     P.add('turret', box(1.30, 0.32, 0.50), 0, 0.34, 1.44);
     P.add('turret', box(0.90, 0.12, 0.24), 0, 0.545, 1.155);
     P.add('turret', box(0.30, 0.40, 0.28), 0, 0.26, 1.84);
+    // §B3.2 (2026-08-06): PKT coax port right of the tube — stub + washer
+    // flush-recessed in the hood face (z<=1.689 vs the 1.69 face).
+    P.add('turretDark', KIT.xform(cylZ(0.022, 0.06, 8), 0, 0, 0), 0.30, 0.30, 1.658);
+    P.add('turretDark', KIT.xform(cylZ(0.032, 0.012, 10), 0, 0, 0), 0.30, 0.30, 1.683);
     // §B3: nose cover fold creases + dark end seam, flush on the box faces.
     P.add('turretDark', box(0.29, 0.02, 0.008), 0, 0.30, 1.976);
     P.add('turretDark', box(0.29, 0.35, 0.008), 0, 0.245, 1.9755);
@@ -3053,6 +3213,21 @@ function buildT80Line(P, v) {
     // The receiver crests 2.29 on the spike columns; the swung barrel dips
     // inboard under the crown line.
     mg.position.set(0.42, 0.66, -0.55);
+    P.turretG.add(mg);
+  } else {
+    // §B3.2 (owner directive 2026-08-06): the T-80BV carries the same
+    // commander's NSVT Utyos — the BV lane was the roster's mg0 backlog.
+    // Seat INTERIOR to the BV's own turret mask: receiver (swung ry -90,
+    // ammo off) lands x 0.277..0.499 / z -0.574..-0.526 INSIDE the cupola
+    // footprint (x 0.26..0.78, z -0.68..-0.16, top 0.76) with receiver top
+    // 0.698 under both the cupola and the 0.727 dome line at its plan
+    // radius; the inboard-swung barrel droops (elev -0.25) under the 0.74+
+    // crown apex zone. Mask-neutral add (gate HOLD verified).
+    const mg = FITTINGS.pintleMG({
+      mats: P.mats, cls: 'nsvt', scale: 0.54, tone: 'dark', ammo: false,
+      elev: -0.25, rotation: [0, -Math.PI / 2, 0],
+    });
+    mg.position.set(0.42, 0.52, -0.55);
     P.turretG.add(mg);
   }
   P.topY = 1.20;
@@ -3720,6 +3895,18 @@ function buildT90MProryv(P) {
   }
   KIT.towCable(P, [[-1.25, 1.30, 2.05], [0, 1.37, 1.60], [1.25, 1.30, 2.05]]);
   stowage(P, 'hull', P.rng, [[0, 1.37, -2.30, 1.53, 0.13, 0.38]]);
+  // §B3.2 DENSITY (owner directive 2026-08-06): common kit FLUSH on the
+  // 1.38 deck lines (t84 recipe — no proud deck kit, t90a lesson).
+  {
+    const links = FITTINGS.spareTrackLinks({ mats: P.mats, links: 4, width: 0.5, seed: 7 });
+    links.position.set(0.60, 1.334, 0.40);
+    P.hullG.add(links);
+    const cable = FITTINGS.towCable({
+      mats: P.mats, eyes: false, r: 0.018,
+      pts: [[-0.50, 1.352, -0.30], [-0.90, 1.342, -0.85], [-0.55, 1.348, -1.40]], seed: 9,
+    });
+    P.hullG.add(cable);
+  }
   buildRunningGear(P, {
     // r26a: ref ground contact spans -1.49..2.52 with the track band at
     // |x| 1.12..1.73 (front view) — wheels re-seated, arms off (the strip
@@ -3917,6 +4104,23 @@ function buildT90MProryv(P) {
     kord.position.set(0.28, 0.675, -0.50);
     P.turretG.add(kord);
   }
+  // §B3.2/§B3.1 (owner directive 2026-08-06): the T-90M roof gun is the
+  // T05BV-1 REMOTE weapon station — RWS grammar per the cylinders law:
+  // slewing ring on the pedestal, sensor-head DRUM + rim + lens, cradle
+  // cheek plates and the RWS ammo bin. Every part INTERIOR: the L/R roof
+  // humps carry side/front at 0.8375 over x 0.20..0.82, z -1.24..-0.16
+  // (all tops <=0.77, all x-spans inside 0.20..0.82). Gate HOLD verified.
+  {
+    P.add('turretDark', KIT.torus(0.085, 0.011, 18), 0.29, 0.685, -0.50);      // slewing ring
+    P.add('turretDetail', KIT.xform(cylZ(0.05, 0.14, 12), 0, 0, 0), 0.26, 0.72, -0.72); // sensor-head drum
+    P.add('turretDark', KIT.xform(cylZ(0.053, 0.012, 12), 0, 0, 0), 0.26, 0.72, -0.648); // rim
+    P.add('turretGlass', KIT.xform(cylZ(0.038, 0.010, 12), 0, 0, 0), 0.26, 0.72, -0.642); // lens
+    P.add('turretDark', box(0.03, 0.03, 0.14), 0.27, 0.70, -0.61);             // sensor yoke onto the cradle
+    P.add('turretDark', box(0.014, 0.09, 0.18), 0.225, 0.70, -0.47);           // cradle cheek plates
+    P.add('turretDark', box(0.014, 0.09, 0.18), 0.335, 0.70, -0.47);
+    P.add('turretDetail', box(0.12, 0.10, 0.20), 0.46, 0.72, -0.50);           // RWS ammo bin
+    P.add('turretDark', box(0.10, 0.010, 0.18), 0.46, 0.772, -0.50);           // bin lid seam (§B3 tell)
+  }
   // r30 902B smoke banks on the cheek flanks (§B3 variety + the front
   // ±1.68..1.77 cols: registered ref front tops 1.73-1.82 there, mine read
   // 1.35-1.65 = fender-lip line). Tube tips stay inside x ±1.78 (15 mm law
@@ -3975,6 +4179,10 @@ function buildT90MProryv(P) {
   P.addGunExtra(KIT.xform(cylZ(0.5, 0.30, 16, 0.465), 0, 0, 0, 0, 0, 0, [0.60, 0.30, 1]), 0, 0.06, 0.16);
   P.addGunExtraDark(KIT.xform(cylZ(0.5, 0.035, 14), 0, 0, 0, 0, 0, 0, [0.575, 0.285, 1]), 0, 0.055, 0.24);
   P.addGunExtraDark(KIT.xform(cylZ(0.124, 0.04, 14), 0, 0, 0), 0, 0, 0.53);
+  // §B3.2 (2026-08-06): PKT coax port right of the tube — stub + washer
+  // inside the root collar's plan rectangle (±0.30 to z 0.31) + side band.
+  P.addGunExtraDark(cylZ(0.020, 0.05, 8), 0.20, 0.12, 0.278);
+  P.addGunExtraDark(cylZ(0.028, 0.010, 10), 0.20, 0.12, 0.300);
   // r27 (turret-plan +-0.19 col, the r26 mask-dump order): DECODED — the
   // evac swell seg r 0.128 raster-clips the +-0.17/0.201 plan columns
   // (col inner boundary at +-0.108; the r26 note documents this exact
@@ -4072,6 +4280,19 @@ function buildT72B87(P) {
   // r8: sponson bundles lowered — ref side plateau reads a clean 1.365 line
   // over z 0.07..0.39 (the 1.52 tarp tops owned five 0.13 columns)
   stowage(P, 'hull', P.rng, [[-1.2, 1.38, -0.18, 0.32, 0.12, 1.3], [1.2, 1.38, 0.72, 0.32, 0.12, 1.5]]);
+  // §B3.2 DENSITY (owner directive 2026-08-06, CEILING-CERT tank ->
+  // mask-neutral only): links + cable FLUSH on the sloping 1.44->1.40 deck
+  // plateau (t84 recipe; tops track the local polyline within noise).
+  {
+    const links = FITTINGS.spareTrackLinks({ mats: P.mats, links: 4, width: 0.5, seed: 7 });
+    links.position.set(0.55, 1.370, 0.80);
+    P.hullG.add(links);
+    const cable = FITTINGS.towCable({
+      mats: P.mats, eyes: false, r: 0.018,
+      pts: [[-0.50, 1.408, 0.70], [-0.90, 1.383, 0.20], [-0.55, 1.358, -0.35]], seed: 9,
+    });
+    P.hullG.add(cable);
+  }
   // ASYMMETRIC front flaps (print skew), re-seated onto the pulled bow nose
   // (r8: the old 3.2825 seat floated 0.21 ahead of the new 3.05 beak); the
   // +3.33 plan span is now the prongs' job. Left kept clear of the -1.78
@@ -4147,7 +4368,18 @@ function buildT72B87(P) {
   // r8: NSVT receiver pulled out of the -0.573 col (ref top there is 1.847
   // — the receiver partial lit it at 2.14) and the antenna base re-seated
   // into the -0.788 col alone, raised to the ref's 2.302 spike.
-  nsvt(P, -0.50, 0.40, -0.60);
+  // §B3.2/§I (2026-08-06, CEILING-CERT tank -> mask-neutral only): hand
+  // nsvt() -> census FITTINGS.pintleMG at the same anchor. Receiver
+  // reproduces the certified carrier (top 0.718 vs 0.72, z-band -0.747..
+  // -0.335 vs -0.75..-0.335 — the r8 column discipline holds); the longer
+  // fitting barrel is DROOPED (elev -0.42) so past the cupola's 0.80 cover
+  // (z<=-0.16) it stays under the 0.77 sight-box line (z -0.04..0.34) and
+  // beds toward the collar skin at the tip. Gate HOLD verified.
+  {
+    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'nsvt', tone: 'dark', elev: -0.42, ammo: true });
+    mg.position.set(-0.50, 0.40, -0.60);
+    P.turretG.add(mg);
+  }
   // r8b dALONG-SIGN law: the gate compares ref col Z against proc [Z, Z+2d]
   // (d=+0.053 here) — at -1.15 the base landed in the -0.88 ref col whose
   // top is 1.744 (read 2.24 there, err 0.27). Seat = raw ref z + d.
@@ -7770,6 +8002,25 @@ function buildT90SM(P) {
   }
   KIT.towCable(P, [[-1.25, 1.36, 2.07], [0, 1.43, 1.62], [1.25, 1.36, 2.07]]);
   stowage(P, 'hull', P.rng, [[0.2, 1.30, -2.72, 1.53, 0.10, 0.38]]);
+  // §B3.2 DENSITY (owner directive 2026-08-06): common kit strictly inside
+  // the component-mask lines. Log NESTED through the twin rear racks
+  // (side: rack-A top 1.38 carries z -3.02..-3.18, log top 1.36; plan:
+  // x <=0.45 stays on the rack/tray columns — the ref's 0.66..0.77 window
+  // is EMPTY, r12 law, so the log never reaches it); links + cable FLUSH
+  // on the 1.40-1.45 deck plateau (t84 recipe).
+  {
+    const log = FITTINGS.unditchingLog({ mats: P.mats, len: 0.9, r: 0.08, straps: 2, seed: 5 });
+    log.position.set(0, 1.28, -3.10);
+    P.hullG.add(log);
+    const links = FITTINGS.spareTrackLinks({ mats: P.mats, links: 4, width: 0.5, seed: 7 });
+    links.position.set(0.62, 1.363, 0.60);
+    P.hullG.add(links);
+    const cable = FITTINGS.towCable({
+      mats: P.mats, eyes: false, r: 0.018,
+      pts: [[-0.55, 1.424, -0.40], [-0.95, 1.420, -1.05], [-0.60, 1.428, -1.70]], seed: 9,
+    });
+    P.hullG.add(cable);
+  }
   // r12: flap floor to 1.08 — the 1.02 hem still crossed the wrap arc's
   // 1.05 line at the flap plane (§B4 exact-audit residual)
   ruFlaps(P, { x: 1.46, w: 0.60, front: [1.25, 0.26], frontZ: 3.12 });
@@ -7913,6 +8164,29 @@ function buildT90SM(P) {
     mg.position.set(0.62, 0.39, -1.35);
     P.turretG.add(mg);
   }
+  // §B3.2/§B3.1 (owner directive 2026-08-06): the T-90SM's roof gun is the
+  // T05BV-1 REMOTE weapon station, not a bare pintle — RWS grammar built
+  // around the census Kord per the cylinders law: slewing-ring pedestal
+  // (torus), sensor-head DRUM with rim + lens (never a prism), cradle
+  // cheek plates, elevation drum and the RWS ammo bin. Every part is
+  // mask-INTERIOR: side z -1.03..-1.53 is carried at 0.85 by the left
+  // 2.25-plateau bin; front x 0.17..0.47 by the same bin, x 0.53..0.71 by
+  // the Kord receiver (top 0.708), x 0.69..1.01 by the right roof-bin
+  // (top 0.77). Gate HOLD verified.
+  {
+    const { torus } = KIT;
+    P.add('turretDark', torus(0.095, 0.012, 18), 0.62, 0.545, -1.35);           // slewing ring above the bustle lid
+    P.add('turretDark', cylY(0.055, 0.075, 0.05, 12), 0.62, 0.525, -1.35);      // ring hub
+    P.add('turretDetail', KIT.xform(cylZ(0.055, 0.16, 12), 0, 0, 0), 0.40, 0.60, -1.33); // sensor-head drum
+    P.add('turretDark', KIT.xform(cylZ(0.058, 0.014, 12), 0, 0, 0), 0.40, 0.60, -1.249); // sensor rim
+    P.add('turretGlass', KIT.xform(cylZ(0.042, 0.012, 12), 0, 0, 0), 0.40, 0.60, -1.242); // lens
+    P.add('turretDark', box(0.10, 0.03, 0.03), 0.49, 0.56, -1.33);              // sensor yoke arm onto the cradle
+    P.add('turretDark', box(0.016, 0.10, 0.20), 0.545, 0.50, -1.29);            // cradle cheek plates
+    P.add('turretDark', box(0.016, 0.10, 0.20), 0.695, 0.50, -1.29);
+    P.add('turretDark', KIT.xform(KIT.cylX(0.045, 0.10, 10), 0, 0, 0), 0.71, 0.545, -1.28); // elevation drum
+    P.add('turretDetail', box(0.13, 0.11, 0.22), 0.78, 0.50, -1.33);            // RWS ammo bin (right, under the 0.77 roof-bin line)
+    P.add('turretDark', box(0.11, 0.012, 0.20), 0.78, 0.558, -1.33);            // bin lid seam (§B3 tell)
+  }
   // squared removable bustle: full depth only to |x| 0.91 (ref plan rear
   // staircase -2.43 center / -1.99 @1.0 / -1.31 @1.15 / -1.0 @1.23).
   // r9: the ref bustle UNDERSIDE rises rearward (1.654@-2.16 ->
@@ -7977,6 +8251,10 @@ function buildT90SM(P) {
   P.addGunExtra(box(0.60, 0.026, 0.024), 0, 0.26, 0.30);
   P.addGunExtra(box(0.026, 0.34, 0.024), 0.26, 0.10, 0.30);
   P.addGunExtra(box(0.026, 0.34, 0.024), -0.26, 0.10, 0.30);
+  // §B3.2 (2026-08-06): PKT coax port right of the tube — stub + washer
+  // flush against the canvas pad (z<=0.303 vs the 0.304 pad face).
+  P.addGunExtraDark(cylZ(0.022, 0.04, 8), 0.22, 0.18, 0.278);
+  P.addGunExtraDark(cylZ(0.032, 0.010, 10), 0.22, 0.18, 0.297);
   P.addGunExtraDark(KIT.xform(cylZ(0.139, 0.035, 14), 0, 0, 0), 0, 0, 0.44);
   P.addGunExtraDark(KIT.xform(cylZ(0.142, 0.035, 14), 0, 0, 0), 0, 0, 0.58);
   // r10: muzzle 4.94 -> 4.97 (the z 6.182 side col reads ref tube to 6.20+;

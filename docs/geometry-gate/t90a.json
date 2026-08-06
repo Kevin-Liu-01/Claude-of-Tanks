@@ -3,7 +3,7 @@
  "geoMin": 72.6,
  "gatePassed": false,
  "components": {
-  "hullCurves": 77.5,
+  "hullCurves": 77.6,
   "wholeCurves": 76.8,
   "turretCurves": 72.6,
   "stations": 84.2,
@@ -12,7 +12,7 @@
  },
  "curveRows": {
   "side_hull": {
-   "score": 77.51856312282652,
+   "score": 77.58478709762257,
    "meanPct": 1.55,
    "p95Pct": 4.51,
    "coverPct": 0.77,

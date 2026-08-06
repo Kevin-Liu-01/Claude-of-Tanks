@@ -496,3 +496,24 @@ GATE HOLD x2: 56.4 | 61.2/56.4/73.0/75.9/100/100 (baseline exact;
 turret +0.1). npm test green. mg1 census (Kord RWS fitting) held.
 Residuals: AA-teeter family variance class unchanged; rear sight panel
 and Sosna-U keep their certified masses (already lens/hood-dressed).
+
+## §B3.2 DENSITY + T05BV-1 RWS round (2026-08-06, russia-family builder)
+Owner directive: "automated machine gun emplacements" — the T-90SM roof
+gun is the T05BV-1 REMOTE weapon station. BUILT (§B3.1 cylinders law, all
+hand parts justified as RWS structure around the census Kord fitting):
+slewing ring (torus r 0.095) + hub above the bustle lid, sensor-head DRUM
+(cylZ r 0.055) with dark rim + glass lens, sensor yoke arm, cradle cheek
+plates, elevation drum, RWS ammo bin + lid seam. Every part mask-INTERIOR:
+side z -1.03..-1.53 carried at 0.85 by the left 2.25-plateau bin; front
+x 0.17..0.47 by the same bin, x 0.53..0.71 by the Kord receiver (0.708),
+x 0.69..1.01 by the right roof-bin (0.77).
+ADDED KIT: unditching log through the twin rear racks (top 1.36 under the
+1.38 rack-A line; len 0.9 keeps plan on the rack/tray columns — the ref's
+0.66..0.77 plan window is EMPTY, r12 law); PKT coax stub + washer flush
+against the mantlet canvas pad (z<=0.303 vs the 0.304 face); spare
+track-link run FLUSH at the 1.413 deck; tow cable flush on the left deck.
+MG census: mg1+0d -> mg1+3d. GATE x2: 56.4 | 61.2/56.4/73/75.9/100/100
+(baseline EXACT; no AA-teeter flip observed this round).
+Residuals (honest): kit subtle at hero distance (flush law); §B1 loft
+ladder unchanged (existing t90sm ceiling work continues in its own lane).
+Turret-parent: cable flag = §B5 audit-artifact. npm test green.

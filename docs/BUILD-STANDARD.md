@@ -579,3 +579,11 @@ abrams with the extra armoring and ERA and urban survival kit").
   faces exact) clears 3D shoe overlap with zero mask movement.
   Thin-component exemption: boxes with any dimension < 2x the depth bar
   cannot carry it — deep-window math skips them.
+- COMPONENT-MASK FREE-LANE LAW (§C, russia density round): the
+  "turret-shadow deck lane" does not exist in the hull-only mask — a
+  proud deck rack costs hull AND shears registration. Hull-mask free
+  lanes are: flush-recess to the deck polyline, nesting inside certified
+  bump envelopes, or sub-line side cover. MATCHED-ENVELOPE MG SWAP:
+  FITTINGS.pintleMG reproduces hand receivers within 4mm — droop longer
+  barrels under local crests. COAX-PORT CLASS: flush ports inside
+  scaled-ellipse mantlet rectangles are invisible to every mask.
