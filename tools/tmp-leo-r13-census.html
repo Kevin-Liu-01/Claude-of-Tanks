@@ -1,0 +1,216 @@
+<!doctype html>
+<!-- TEMP (leopard r13 §B4 containment round): per-PIECE add() census for
+     buildLeo2Revolution, crossed with the track-band voxel sets of the two
+     audit zones. Drives the builder with an instrumented P whose add()
+     records bucket + leopard.js call-site line + transformed AABB, KEEPS the
+     transformed geometry for pieces near the bow/stern wrap zones, then
+     samples those surfaces against the real band meshes (buildRunningGear
+     runs for real on the shim's hullG) with the official audit's exact
+     voxel math (V=0.02, exact mode). DIAGNOSIS ONLY — orders are measured
+     on tools/track-clip-audit.mjs. Pattern: tools/tmp-b5-t72b3m-pieces.html. -->
+<meta charset="utf-8">
+<title>tmp-leo-r13-census</title>
+<script type="module">
+import * as THREE from 'three';
+import '/src/vehicles/tankFactory.js';
+import { LEOPARD_PROFILES } from '/src/vehicles/profiles/leopard.js';
+import { getSpec } from '/src/vehicles/specs.js';
+import { createTankMaterials } from '/src/vehicles/materials.js';
+
+const params = new URLSearchParams(location.search);
+const id = params.get('id') || 'leo2_revolution';
+
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const spec = getSpec(id);
+const armor = spec.armor;
+const engineCtx = { setupShadowMaterial: (m) => m, anisotropy: 1, renderer: null };
+const mats = createTankMaterials(spec, engineCtx, 4242, 'high');
+const rng = mulberry32(4242 ^ 0x9e37);
+
+const root = new THREE.Group();
+root.rotation.order = 'YXZ';
+const hullG = new THREE.Group(); hullG.name = 'rig_hull';
+const turretG = new THREE.Group(); turretG.name = 'rig_turret';
+turretG.position.set(armor.turretPivot[0], armor.turretPivot[1], armor.turretPivot[2]);
+const gunG = new THREE.Group(); gunG.name = 'rig_gun';
+gunG.position.set(armor.gunPivot[0], armor.gunPivot[1], armor.gunPivot[2]);
+const recoilG = new THREE.Group(); recoilG.name = 'rig_recoil';
+root.add(hullG, turretG); turretG.add(gunG); gunG.add(recoilG);
+
+// keep-window: generous superset of both audit zones (hull frame)
+const KEEP = (bb) => bb.max.y > -0.1 && bb.min.y < 1.6 &&
+  ((bb.max.z > 2.9 && bb.min.z < 4.0) || (bb.min.z < -2.9 && bb.max.z > -4.0));
+
+const records = [];
+const kept = [];
+const _m = new THREE.Matrix4();
+function record(bucket, geo, x, y, z, rx, ry, rz, s) {
+  const sc = Array.isArray(s) ? s : [s, s, s];
+  _m.compose(
+    new THREE.Vector3(x, y, z),
+    new THREE.Quaternion().setFromEuler(new THREE.Euler(rx, ry, rz)),
+    new THREE.Vector3(sc[0], sc[1], sc[2]),
+  );
+  geo.applyMatrix4(_m);
+  geo.computeBoundingBox();
+  const bb = geo.boundingBox;
+  let line = null;
+  const stack = (new Error().stack || '').split('\n');
+  for (const fr of stack) {
+    const m2 = fr.match(/leopard\.js[^:]*:(\d+):/);
+    if (m2) { line = +m2[1]; break; }
+  }
+  const rec = {
+    i: records.length, bucket, line,
+    min: bb.min.toArray().map((v) => +v.toFixed(4)),
+    max: bb.max.toArray().map((v) => +v.toFixed(4)),
+  };
+  records.push(rec);
+  if (/^hull/.test(bucket) && KEEP(bb)) kept.push({ rec, geo });
+  else geo.dispose();
+}
+
+const P = {
+  spec, mats, rng, q: true, hullG, turretG, gunG, recoilG,
+  disposables: [], gear: null, muzzleZ: armor.gunBarrel.lengthM, topY: 0.8,
+  add(bucket, geo, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, s = 1) {
+    record(bucket, geo, x, y, z, rx, ry, rz, s);
+  },
+  clear(...names) {
+    for (const name of names.flat()) {
+      for (const r of records) if (r.bucket === name) r.cleared = true;
+    }
+  },
+  addGunExtra(geo, x, y, z) { record('gunMount', geo, x, y, z, 0, 0, 0, 1); },
+  addGunExtraDark(geo, x, y, z) { record('gunMountDark', geo, x, y, z, 0, 0, 0, 1); },
+  decal() {},
+  eraCluster(plateName, fill, turretLocal = false) {
+    records.push({ i: records.length, bucket: `eraCluster:${plateName}`, turretLocal, era: true });
+  },
+};
+
+LEOPARD_PROFILES[id].build(P);
+root.updateMatrixWorld(true);
+
+// ---- band voxel sets (official audit math, exact mode) ----
+const V = 0.02;
+const key = (x, y, z) => `${Math.round(x / V)},${Math.round(y / V)},${Math.round(z / V)}`;
+const bands = [];
+const directMeshes = [];
+hullG.traverse((o) => {
+  if (!o.visible) return;
+  if (o.isMesh && !o.isInstancedMesh && o.geometry) {
+    const pos = o.geometry.getAttribute('position');
+    if (pos && pos.usage === THREE.DynamicDrawUsage) bands.push(o);
+    else directMeshes.push(o);
+  }
+});
+
+const out = { id, bands: bands.length, zones: [], directMeshes: directMeshes.length };
+if (bands.length !== 2) {
+  out.anomaly = `expected 2 band meshes, found ${bands.length}`;
+  window.__CLIP_RESULT = out; window.__CLIP_READY = true;
+} else {
+  const bbox = new THREE.Box3();
+  const lanes = bands.map((b) => { bbox.setFromObject(b); return bbox.clone(); });
+  const zMax = Math.max(...lanes.map((l) => l.max.z));
+  const zMin = Math.min(...lanes.map((l) => l.min.z));
+  const yTop = Math.max(...lanes.map((l) => l.max.y));
+  const yBot = Math.min(...lanes.map((l) => l.min.y));
+  const laneInnerX = Math.min(...lanes.map((l) => Math.min(Math.abs(l.min.x), Math.abs(l.max.x))));
+  out.band = { zMax: +zMax.toFixed(3), zMin: +zMin.toFixed(3), yTop: +yTop.toFixed(3), yBot: +yBot.toFixed(3), laneInnerX: +laneInnerX.toFixed(3) };
+
+  const zones = [
+    { name: 'front', z0: zMax - 0.50, z1: zMax + 0.06 },
+    { name: 'rear', z0: zMin - 0.06, z1: zMin + 0.50 },
+  ];
+  const y0 = yBot + 0.02, y1 = yTop + 0.06;
+
+  const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(), p = new THREE.Vector3();
+  function sampleGeo(g, matrixWorld, z0, z1, set) {
+    const pos = g.getAttribute('position'), gidx = g.index;
+    const n = gidx ? gidx.count : pos.count;
+    for (let i = 0; i < n; i += 3) {
+      const i0 = gidx ? gidx.getX(i) : i, i1 = gidx ? gidx.getX(i + 1) : i + 1, i2 = gidx ? gidx.getX(i + 2) : i + 2;
+      a.fromBufferAttribute(pos, i0); b.fromBufferAttribute(pos, i1); c.fromBufferAttribute(pos, i2);
+      if (matrixWorld) { a.applyMatrix4(matrixWorld); b.applyMatrix4(matrixWorld); c.applyMatrix4(matrixWorld); }
+      const zc = (a.z + b.z + c.z) / 3;
+      const zr = Math.max(a.z, b.z, c.z) - Math.min(a.z, b.z, c.z);
+      if (zc + zr < z0 || zc - zr > z1) continue;
+      const area = b.clone().sub(a).cross(c.clone().sub(a)).length() / 2;
+      const steps = Math.max(1, Math.min(24, Math.ceil(Math.sqrt(area) / 0.012)));
+      for (let u = 0; u <= steps; u++) {
+        for (let v = 0; v + u <= steps; v++) {
+          const w = steps - u - v;
+          p.set(0, 0, 0).addScaledVector(a, u / steps).addScaledVector(b, v / steps).addScaledVector(c, w / steps);
+          if (p.z < z0 || p.z > z1 || p.y < y0 || p.y > y1) continue;
+          set.add(key(p.x, p.y, p.z));
+        }
+      }
+    }
+  }
+
+  for (const zone of zones) {
+    const bandSet = new Set();
+    for (const bm of bands) sampleGeo(bm.geometry, bm.matrixWorld, zone.z0, zone.z1, bandSet);
+    const hits = [];
+    // per-add pieces (kept transformed geometries, hull frame = world frame)
+    for (const { rec, geo } of kept) {
+      const set = new Set();
+      sampleGeo(geo, null, zone.z0, zone.z1, set);
+      let ov = 0; let lo = [1e9, 1e9, 1e9]; let hi = [-1e9, -1e9, -1e9];
+      for (const k of set) {
+        if (!bandSet.has(k)) continue;
+        ov++;
+        const [x, y, z] = k.split(',').map(Number);
+        lo = [Math.min(lo[0], x), Math.min(lo[1], y), Math.min(lo[2], z)];
+        hi = [Math.max(hi[0], x), Math.max(hi[1], y), Math.max(hi[2], z)];
+      }
+      if (ov > 0) {
+        hits.push({
+          piece: `add#${rec.i} ${rec.bucket} L${rec.line}`,
+          vox: ov,
+          aabb: [rec.min, rec.max],
+          box: [lo.map((v) => +(v * V).toFixed(3)), hi.map((v) => +(v * V).toFixed(3))],
+        });
+      }
+    }
+    // direct meshes (finish block / gear spinners): whole-mesh overlap for
+    // completeness, tagged by vert count for identification
+    for (const m of directMeshes) {
+      bbox.setFromObject(m);
+      const zoneBox = new THREE.Box3(
+        new THREE.Vector3(-1e3, y0, zone.z0), new THREE.Vector3(1e3, y1, zone.z1));
+      if (!bbox.intersectsBox(zoneBox)) continue;
+      const set = new Set();
+      sampleGeo(m.geometry, m.matrixWorld, zone.z0, zone.z1, set);
+      let ov = 0; let lo = [1e9, 1e9, 1e9]; let hi = [-1e9, -1e9, -1e9];
+      for (const k of set) {
+        if (!bandSet.has(k)) continue;
+        ov++;
+        const [x, y, z] = k.split(',').map(Number);
+        lo = [Math.min(lo[0], x), Math.min(lo[1], y), Math.min(lo[2], z)];
+        hi = [Math.max(hi[0], x), Math.max(hi[1], y), Math.max(hi[2], z)];
+      }
+      if (ov > 0) {
+        hits.push({
+          piece: `direct ${m.geometry.getAttribute('position').count}v x[${+bbox.min.x.toFixed(2)},${+bbox.max.x.toFixed(2)}]`,
+          vox: ov,
+          box: [lo.map((v) => +(v * V).toFixed(3)), hi.map((v) => +(v * V).toFixed(3))],
+        });
+      }
+    }
+    hits.sort((x, y) => y.vox - x.vox);
+    out.zones.push({ name: zone.name, kept: kept.length, hits });
+  }
+  window.__CLIP_RESULT = out; window.__CLIP_READY = true;
+}
+</script>

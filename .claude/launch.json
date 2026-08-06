@@ -4,8 +4,8 @@
     {
       "name": "tanks-dev",
       "runtimeExecutable": "/Users/kevinliu/claude-of-tanks/node_modules/.bin/vite",
-      "runtimeArgs": ["/Users/kevinliu/claude-of-tanks", "--port", "5001", "--strictPort"],
-      "port": 5001
+      "runtimeArgs": ["/Users/kevinliu/claude-of-tanks"],
+      "autoPort": true
     },
     {
       "name": "impact-decals",

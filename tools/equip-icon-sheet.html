@@ -1,0 +1,39 @@
+<!doctype html>
+<!-- EQUIPMENT SYSTEM icon sheet — renders every equipIcons.js glyph at
+     20/34/48 px on the garage plate colors for crispness review.
+     Served by any project vite (tools/equipment-icon-sheet.mjs screenshots it). -->
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  body{margin:0;background:#0b0f14;font-family:Inter,system-ui,sans-serif;
+    color:#e6edf3;padding:22px;}
+  h1{font-size:13px;letter-spacing:.24em;text-transform:uppercase;color:#8a97a3;
+    margin:0 0 14px;}
+  .grid{display:grid;grid-template-columns:repeat(7,1fr);gap:10px;max-width:1060px;}
+  .cell{background:linear-gradient(180deg,#161c22,#0d1116);border:1px solid rgba(146,164,180,.28);
+    padding:10px 6px 8px;text-align:center;}
+  .cell .row{display:flex;align-items:flex-end;justify-content:center;gap:9px;margin-bottom:7px;}
+  .cell .nm{font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+    color:#9fb0bf;line-height:1.3;}
+  svg{display:block;}
+</style>
+</head>
+<body>
+<h1>Equipment icon sheet &middot; 20 / 34 / 48 px</h1>
+<div class="grid" id="grid"></div>
+<script type="module">
+  import { equipIconSVG } from '/src/ui/equipIcons.js';
+  import { EQUIPMENT_CATALOG } from '/src/game/equipment.js';
+  const grid = document.getElementById('grid');
+  for (const it of EQUIPMENT_CATALOG) {
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+    cell.innerHTML = `<div class="row">${equipIconSVG(it.id, 20)}${equipIconSVG(it.id, 34)}${equipIconSVG(it.id, 48)}</div>` +
+      `<div class="nm">${it.name}</div>`;
+    grid.appendChild(cell);
+  }
+  window.__SHEET_READY = true;
+</script>
+</body>
+</html>

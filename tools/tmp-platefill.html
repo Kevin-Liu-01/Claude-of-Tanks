@@ -1,0 +1,230 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>tmp plate-fill probe</title>
+<style>:root{color-scheme:dark;background:#0b0f12;color:#e7edf0;font:13px monospace}</style>
+<div id="out">booting…</div>
+<script type="module">
+// TEMP probe (plate-fill round r1, owner directive 2026-08-01): renders the
+// PROCEDURAL build alone on a turntable + doctrine close-ups so hollow-back
+// plates / floating panels / open-shell pockets can be seen and measured.
+// Two automated tells per frame:
+//   - leakPx: pixels inside the DoubleSide silhouette mask where the lit
+//     render shows the magenta clear color — a ray that entered the model
+//     and exited without hitting a front face (open lathe/cyl mouths,
+//     inverted slabs, true through-gaps).
+//   - darkFrac/darkPx: luma < 26 inside the mask — unlit cavity interiors
+//     (the readability floor keeps real painted steel above ~40; only
+//     authored dark buckets and open shells sit below).
+// The turntable frames themselves are the doctrine's mandatory review.
+// Deleted after the round.
+import * as THREE from 'three';
+import { createTank } from '/src/vehicles/tankFactory.js';
+import { TANK_SPECS } from '/src/vehicles/specs.js';
+
+const params = new URLSearchParams(location.search);
+const id = params.get('id') || 'kv2';
+const spec = TANK_SPECS[id];
+if (!spec) throw new Error(`Unknown tank id: ${id}`);
+
+const CELL = 960;
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, preserveDrawingBuffer: true });
+renderer.setSize(CELL, CELL, false);
+renderer.setPixelRatio(1);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+const scene = new THREE.Scene();
+const engineCtx = { setupShadowMaterial: (m) => m, anisotropy: 1, renderer };
+const tank = createTank(id, engineCtx, { camoSeed: 4242, quality: 'high', proceduralOnly: true });
+scene.add(tank.root);
+
+const hemi = new THREE.HemisphereLight(0xcfd8e0, 0x2a2f26, 1.05);
+const sun = new THREE.DirectionalLight(0xfff2dd, 2.2);
+sun.position.set(30, 42, 24);
+scene.add(hemi, sun);
+
+tank.root.updateMatrixWorld(true);
+tank.root.traverse((o) => {
+  if (!o.isLOD) return;
+  o.autoUpdate = false;
+  o.levels.forEach((level, i) => { if (level.object) level.object.visible = i === 0; });
+});
+// shadow-only proxies (procShadow_*, colorWrite:false) are invisible in lit
+// renders but paint white under the mask override — drop them from BOTH.
+tank.root.traverse((o) => {
+  if ((o.isMesh || o.isInstancedMesh) && (/shadow/i.test(o.name || '') || o.material?.colorWrite === false)) {
+    o.visible = false;
+  }
+});
+
+function visibleBox(root) {
+  const box = new THREE.Box3();
+  root.updateMatrixWorld(true);
+  root.traverse((o) => {
+    if (!(o.isMesh || o.isInstancedMesh || o.isSkinnedMesh) || !o.geometry) return;
+    let vis = true;
+    for (let p = o; p; p = p.parent) if (!p.visible) { vis = false; break; }
+    if (!vis || /shadow/i.test(o.name || '')) return;
+    if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+    box.union(o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld));
+  });
+  return box;
+}
+const bbox = visibleBox(tank.root);
+const center = bbox.getCenter(new THREE.Vector3());
+const size = bbox.getSize(new THREE.Vector3());
+const maxDim = Math.max(size.x, size.y, size.z);
+// body box for close-up framing: skip long high meshes (gun tubes) so the
+// barrel does not drag the frame center off the hull
+const bodyBox = new THREE.Box3();
+tank.root.traverse((o) => {
+  if (!(o.isMesh || o.isInstancedMesh) || !o.geometry || !o.visible) return;
+  if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+  const b = o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld);
+  const zLen = b.max.z - b.min.z;
+  if (zLen > 2.6 && b.min.y > 1.2) return;
+  bodyBox.union(b);
+});
+const bCenter = bodyBox.getCenter(new THREE.Vector3());
+const bSize = bodyBox.getSize(new THREE.Vector3());
+
+// perspective camera at yaw (deg, 0 = looking from +z / the bow), elev (deg)
+function turnCam(yawDeg, elevDeg, distMul, lookYFrac = 0.45, fov = 30) {
+  const cam = new THREE.PerspectiveCamera(fov, 1, 0.05, 300);
+  const yaw = (yawDeg * Math.PI) / 180, el = (elevDeg * Math.PI) / 180;
+  const d = maxDim * distMul;
+  const look = new THREE.Vector3(center.x, bbox.min.y + size.y * lookYFrac, center.z);
+  cam.position.set(
+    look.x + Math.sin(yaw) * Math.cos(el) * d,
+    look.y + Math.sin(el) * d,
+    look.z + Math.cos(yaw) * Math.cos(el) * d,
+  );
+  cam.lookAt(look);
+  cam.updateMatrixWorld(true);
+  return cam;
+}
+function posCam(pos, look, fov = 30) {
+  const cam = new THREE.PerspectiveCamera(fov, 1, 0.05, 300);
+  cam.position.set(...pos);
+  cam.lookAt(new THREE.Vector3(...look));
+  cam.updateMatrixWorld(true);
+  return cam;
+}
+
+const maskMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
+const copy2d = document.createElement('canvas');
+copy2d.width = copy2d.height = CELL;
+const copyCtx = copy2d.getContext('2d', { willReadFrequently: true });
+function renderPass(camera, asMask) {
+  scene.overrideMaterial = asMask ? maskMaterial : null;
+  renderer.setRenderTarget(null);
+  renderer.setClearColor(asMask ? 0x000000 : 0xff00ff, 1);
+  renderer.clear(true, true, true);
+  renderer.render(scene, camera);
+  copyCtx.drawImage(renderer.domElement, 0, 0, CELL, CELL);
+  return copyCtx.getImageData(0, 0, CELL, CELL).data;
+}
+const luma = (d, i) => 0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2];
+
+function measure(lit, mask) {
+  let maskPx = 0, leakPx = 0, darkPx = 0;
+  const leakCells = new Map(), darkCells = new Map(); // 12x12 grid -> px
+  const marks = new Uint8Array(CELL * CELL);           // 1 leak, 2 dark
+  for (let p = 0; p < CELL * CELL; p++) {
+    if (mask[p * 4] <= 40) continue;
+    maskPx++;
+    const i = p * 4;
+    const cell = `${Math.floor(((p % CELL) / CELL) * 12)},${Math.floor((p / CELL / CELL) * 12)}`;
+    if (lit[i] > 200 && lit[i + 2] > 200 && lit[i + 1] < 80) {
+      leakPx++; marks[p] = 1; leakCells.set(cell, (leakCells.get(cell) || 0) + 1);
+    } else if (luma(lit, i) < 26) {
+      darkPx++; marks[p] = 2; darkCells.set(cell, (darkCells.get(cell) || 0) + 1);
+    }
+  }
+  const top = (m) => [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4)
+    .map(([k, v]) => `${k}:${v}`);
+  return {
+    maskPx, leakPx, darkPx,
+    darkFrac: maskPx ? +(darkPx / maskPx).toFixed(4) : 0,
+    leakTop: top(leakCells), darkTop: top(darkCells), marks,
+  };
+}
+
+// frame set -------------------------------------------------------------
+const FRAMES = [];
+for (let k = 0; k < 12; k++) FRAMES.push([`tt-e14-y${String(k * 30).padStart(3, '0')}`, turnCam(k * 30, 14, 1.75, 0.45, 32)]);
+for (let k = 0; k < 8; k++) FRAMES.push([`low-e6-y${String(k * 45).padStart(3, '0')}`, turnCam(k * 45 + 22, 6, 1.75, 0.35, 32)]);
+// target-anchored close-ups: camera = target + dir*dist (BODY box frame)
+const L = Math.max(bSize.x, bSize.y, bSize.z), H = bSize.y, Lz = bSize.z, W = bSize.x;
+const y0 = bodyBox.min.y, cz = bCenter.z;
+const aim = (name, target, dir, dist, fov) => {
+  const t = new THREE.Vector3(...target);
+  const d = new THREE.Vector3(...dir).normalize().multiplyScalar(dist);
+  FRAMES.push([name, posCam(t.clone().add(d).toArray(), t.toArray(), fov)]);
+};
+aim('closeup-front-quarter', [0, y0 + H * 0.42, cz + Lz * 0.30], [0.8, 0.35, 0.8], L * 0.62, 34);
+aim('closeup-rear-quarter', [0, y0 + H * 0.42, cz - Lz * 0.30], [0.8, 0.35, -0.8], L * 0.62, 34);
+aim('closeup-side-low', [W * 0.30, y0 + H * 0.35, cz], [1, 0.10, -0.22], L * 0.60, 34);
+aim('closeup-top', [0, y0 + H, cz], [0.14, 1, 0.05], L * 0.80, 36);
+// the owner's KV-2 angle: low rear-quarter into the rear fender/deck step
+aim('closeup-rear-deck', [W * 0.18, y0 + H * 0.46, cz - Lz * 0.40], [0.55, 0.42, -0.78], L * 0.46, 30);
+aim('closeup-bow-deck', [W * 0.18, y0 + H * 0.46, cz + Lz * 0.40], [0.55, 0.42, 0.78], L * 0.46, 30);
+// under-lip rake: grazing view up the hull side under fenders/skirts
+aim('closeup-fender-rake', [W * 0.48, y0 + H * 0.48, cz], [0.55, -0.28, -0.9], L * 0.42, 30);
+
+const report = { id, frames: {} };
+const images = {};
+// contact sheets: turntable 4x3, low ring 4x2, closeups 3x2
+const sheets = {
+  turntable: { cols: 4, names: [], canvas: null },
+  lowring: { cols: 4, names: [], canvas: null },
+  closeups: { cols: 3, names: [], canvas: null },
+};
+for (const [name, cam] of FRAMES) {
+  const lit = renderPass(cam, false);
+  const mask = renderPass(cam, true);
+  const m = measure(lit, mask);
+  const img = new ImageData(new Uint8ClampedArray(lit), CELL, CELL);
+  copyCtx.putImageData(img, 0, 0);
+  const bucket = name.startsWith('tt-') ? 'turntable' : name.startsWith('low-') ? 'lowring' : 'closeups';
+  sheets[bucket].names.push([name, copy2d.toDataURL('image/png')]);
+  if (bucket === 'closeups') images[name] = copy2d.toDataURL('image/png');
+  // overlay: leak px -> lime, dark px -> cyan (only when worth looking at)
+  if (m.leakPx > 1200 || m.darkPx > 2500) {
+    const ov = new ImageData(new Uint8ClampedArray(lit), CELL, CELL);
+    for (let p = 0; p < CELL * CELL; p++) {
+      if (!m.marks[p]) continue;
+      const i = p * 4;
+      if (m.marks[p] === 1) { ov.data[i] = 60; ov.data[i + 1] = 255; ov.data[i + 2] = 60; }
+      else { ov.data[i] = 40; ov.data[i + 1] = 230; ov.data[i + 2] = 255; }
+    }
+    copyCtx.putImageData(ov, 0, 0);
+    images[`overlay-${name}`] = copy2d.toDataURL('image/png');
+  }
+  delete m.marks;
+  report.frames[name] = m;
+}
+// stitch sheets at half res
+const SC = CELL / 2;
+for (const [sheetName, s] of Object.entries(sheets)) {
+  const rows = Math.ceil(s.names.length / s.cols);
+  const c = document.createElement('canvas');
+  c.width = s.cols * SC; c.height = rows * SC;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#101418'; ctx.fillRect(0, 0, c.width, c.height);
+  let k = 0;
+  for (const [name, url] of s.names) {
+    const im = new Image();
+    await new Promise((res) => { im.onload = res; im.src = url; });
+    const x = (k % s.cols) * SC, y = Math.floor(k / s.cols) * SC;
+    ctx.drawImage(im, x, y, SC, SC);
+    ctx.fillStyle = '#ffd97a'; ctx.font = '16px monospace';
+    ctx.fillText(name, x + 8, y + 20);
+    k++;
+  }
+  images[`sheet-${sheetName}`] = c.toDataURL('image/png');
+}
+
+window.__PF_IMAGES = images;
+window.__PF_REPORT = report;
+document.querySelector('#out').textContent = JSON.stringify(report, null, 2);
+window.__PF_READY = true;
+</script>

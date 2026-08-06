@@ -1,0 +1,77 @@
+<!doctype html>
+<title>tmp-r9-raywho</title>
+<script type="module">
+// TEMP (merkava r9): reproduce the tmp-tank-critic heroFor camera for the
+// PROCEDURAL half and raycast image-pixel windows to attribute blockers.
+// Query: id, view (hero-rearright only for now), x0,x1,y0,y1 (half coords).
+import * as THREE from 'three';
+import { createTank } from '/src/vehicles/tankFactory.js';
+
+const q = new URLSearchParams(location.search);
+const id = q.get('id') || 'merkava3d';
+const X0 = +(q.get('x0') ?? 555), X1 = +(q.get('x1') ?? 640);
+const Y0 = +(q.get('y0') ?? 310), Y1 = +(q.get('y1') ?? 375);
+const SIZE = 640;
+const engineCtx = { setupShadowMaterial: (m) => m, anisotropy: 1, renderer: null };
+const tank = createTank(id, engineCtx, { camoSeed: 4242, quality: 'high', proceduralOnly: true });
+tank.root.updateMatrixWorld(true);
+tank.root.traverse((o) => {
+  if (!o.isLOD) return;
+  o.autoUpdate = false;
+  o.levels.forEach((level, i) => { if (level.object) level.object.visible = i === 0; });
+});
+
+function visibleBox(root) {
+  const box = new THREE.Box3();
+  root.updateMatrixWorld(true);
+  root.traverse((o) => {
+    if (!(o.isMesh || o.isInstancedMesh || o.isSkinnedMesh) || !o.geometry) return;
+    let vis = true;
+    for (let p = o; p; p = p.parent) if (!p.visible) { vis = false; break; }
+    if (!vis || /shadow/i.test(o.name || '')) return;
+    if (o.isInstancedMesh) {
+      if (o.count === 0) return;
+      o.computeBoundingBox();
+      if (o.boundingBox && !o.boundingBox.isEmpty()) box.union(o.boundingBox.clone().applyMatrix4(o.matrixWorld));
+      return;
+    }
+    if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+    box.union(o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld));
+  });
+  return box;
+}
+
+function heroFor(box, direction) {
+  const center = box.getCenter(new THREE.Vector3());
+  const size = box.getSize(new THREE.Vector3());
+  const dist = Math.max(size.x, size.y, size.z) * 1.55;
+  const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 300);
+  camera.position.copy(center).addScaledVector(direction.clone().normalize(), dist);
+  camera.position.y += size.y * 0.28;
+  camera.lookAt(center);
+  camera.updateProjectionMatrix();
+  camera.updateMatrixWorld(true);
+  return camera;
+}
+
+const box = visibleBox(tank.root);
+const cam = heroFor(box, new THREE.Vector3(1, 0.35, -1));
+const ray = new THREE.Raycaster();
+const out = [];
+// sample the window on an 8-px grid; report first-hit world point per sample
+for (let iy = Y0; iy < Y1; iy += 6) {
+  for (let ix = X0; ix < X1; ix += 6) {
+    const ndc = new THREE.Vector2((ix + 0.5) / SIZE * 2 - 1, -((iy + 0.5) / SIZE * 2 - 1));
+    ray.setFromCamera(ndc, cam);
+    const hits = ray.intersectObject(tank.root, true);
+    const h = hits.find((hh) => {
+      let vis = true;
+      for (let p = hh.object; p; p = p.parent) if (!p.visible) { vis = false; break; }
+      return vis;
+    });
+    if (h) out.push([ix, iy, +h.point.x.toFixed(3), +h.point.y.toFixed(3), +h.point.z.toFixed(3)]);
+  }
+}
+window.__RAYWHO = out;
+window.__HASH_READY = true;
+</script>

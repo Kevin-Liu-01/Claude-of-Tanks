@@ -1,0 +1,51 @@
+<!doctype html>
+<!-- TEMP (materials albedo-floor round): dump resolveCamoVisual + baked proc
+     camo-canvas luma censuses for the cited tanks. Reads the canvas straight
+     off createTankMaterials' hull material (entry canvas). Deleted after round. -->
+<meta charset="utf-8">
+<body>
+<script type="module">
+import { TANK_SPECS } from '/src/vehicles/specs.js';
+import '/src/vehicles/tankFactory.js'; // side effect: registers variant/userdrop specs
+import { createTankMaterials, resolveCamoVisual } from '/src/vehicles/materials.js';
+
+const ids = (new URLSearchParams(location.search).get('ids') || 'm47_patton,t84,leo2a5').split(',');
+const out = {};
+const stubCtx = { setupShadowMaterial: (m) => m, anisotropy: 4 };
+
+for (const id of ids) {
+  const spec = TANK_SPECS[id];
+  if (!spec) { out[id] = { error: 'no spec' }; continue; }
+  const vis = resolveCamoVisual(spec, 'factory');
+  const mats = createTankMaterials(spec, stubCtx, 4242, 'high');
+  const canvas = mats.hull.map && mats.hull.map.image;
+  const rec = { visual: { scheme: vis.scheme, base: vis.base, weather: vis.weather, patches: vis.patches || [] } };
+  if (canvas && canvas.getContext) {
+    const S = canvas.width;
+    const d = canvas.getContext('2d').getImageData(0, 0, S, S).data;
+    let n = 0, sub30 = 0, sub38 = 0, sub45 = 0, sub50 = 0, pale95 = 0, sum = 0;
+    let p = new Array(26).fill(0); // 10-luma bins 0..260
+    for (let i = 0; i < d.length; i += 16) { // stride 4 px
+      const L = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+      n++; sum += L;
+      if (L < 30) sub30++;
+      if (L < 38) sub38++;
+      if (L < 45) sub45++;
+      if (L < 50) sub50++;
+      if (L >= 95) pale95++;
+      p[Math.min(25, L / 10 | 0)]++;
+    }
+    rec.canvas = { size: S, n, mean: +(sum / n).toFixed(2),
+      pct_sub30: +(100 * sub30 / n).toFixed(3), pct_sub38: +(100 * sub38 / n).toFixed(3),
+      pct_sub45: +(100 * sub45 / n).toFixed(3), pct_sub50: +(100 * sub50 / n).toFixed(3),
+      pct_pale95: +(100 * pale95 / n).toFixed(3),
+      hist10: p };
+  } else {
+    rec.canvas = { error: 'no canvas on hull.map' };
+  }
+  out[id] = rec;
+  mats.dispose && mats.dispose();
+}
+window.__PROBE_RESULT = JSON.stringify(out, null, 1);
+window.__PROBE_READY = true;
+</script>

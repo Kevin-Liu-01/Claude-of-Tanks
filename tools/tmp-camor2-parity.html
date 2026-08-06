@@ -1,0 +1,194 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>tmp camo-r2 tone-parity probe</title>
+<style>:root{color-scheme:dark;background:#0b0f12;color:#e7edf0;font:13px monospace}</style>
+<div id="out">booting…</div>
+<script type="module">
+// TEMP probe (CAMO EXPANSION round — certified-tone parity gate). Byte-faithful
+// reproduction of the m60a3-r1 critic's fixed-world rig (per-model ortho
+// framing at 0.62 fill, the fidelity board's exact light rig, median luminance
+// over white-mask-gated tank pixels at 1000px cells, undercarriage band
+// medians on the pure side views) so before/after numbers for the certified
+// tanks (m60a1 / kv2 / m60a3) are directly comparable: every band/view median
+// must stay within ±0.03 relative luminance (±7.65 of 255) across the round.
+// Differences from the critic probes: ids without a GLB reference (m60a1
+// graduated — the recovered GLB is retired) measure the single procedural
+// build only, and no closeup/turntable captures (tone numbers only).
+// Deleted after the round.
+import * as THREE from 'three';
+import { createTank } from '/src/vehicles/tankFactory.js';
+import { MODEL_SOURCE, TANK_SPECS } from '/src/vehicles/specs.js';
+
+const CELL = 1000;
+const params = new URLSearchParams(location.search);
+const id = params.get('id') || 'm60a3';
+const spec = TANK_SPECS[id];
+if (!spec) throw new Error(`Unknown tank id: ${id}`);
+const hasGlb = MODEL_SOURCE[id]?.source === 'glb';
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, preserveDrawingBuffer: true });
+renderer.setSize(CELL, CELL, false);
+renderer.setPixelRatio(1);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.setClearColor(0x151b20, 1);
+const scene = new THREE.Scene();
+const engineCtx = { setupShadowMaterial: (m) => m, anisotropy: 1, renderer };
+
+const reference = hasGlb
+  ? createTank(id, engineCtx, { camoSeed: 4242, quality: 'high', decor: false })
+  : null;
+const procedural = createTank(id, engineCtx, {
+  camoSeed: 4242, quality: 'high', proceduralOnly: true, decor: false,
+});
+if (reference) scene.add(reference.root);
+scene.add(procedural.root);
+
+// fidelity board's exact light rig
+const hemi = new THREE.HemisphereLight(0xcfd8e0, 0x2a2f26, 1.05);
+const sun = new THREE.DirectionalLight(0xfff2dd, 2.2);
+sun.position.set(30, 42, 24);
+scene.add(hemi, sun);
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const swapped = (visual) => {
+  let yes = false;
+  visual.root.traverse((o) => { if (o.userData?.__glbSwapped) yes = true; });
+  return yes;
+};
+if (reference) {
+  for (let i = 0; i < 600 && !swapped(reference); i++) await sleep(50);
+  if (!swapped(reference)) throw new Error(`${id} reference GLB did not load`);
+}
+await sleep(400);
+for (const visual of [reference, procedural]) {
+  if (!visual) continue;
+  visual.root.updateMatrixWorld(true);
+  visual.root.traverse((o) => {
+    if (!o.isLOD) return;
+    o.autoUpdate = false;
+    o.levels.forEach((level, i) => { if (level.object) level.object.visible = i === 0; });
+  });
+}
+
+// the board's nine proof directions (procedural-fidelity.html ANGLES)
+const ANGLES = {
+  front: [0, 0.08, 1], frontLeft: [-1, 0.08, 1], left: [-1, 0.05, 0],
+  rearLeft: [-1, 0.28, -1], rear: [0, 0.08, -1], rearRight: [1, 0.28, -1],
+  right: [1, 0.05, 0], frontRight: [1, 0.08, 1], top: [0, 1, 0.02],
+};
+
+function visibleBox(root) {
+  const box = new THREE.Box3();
+  root.updateMatrixWorld(true);
+  root.traverse((o) => {
+    if (!(o.isMesh || o.isInstancedMesh || o.isSkinnedMesh) || !o.geometry) return;
+    let vis = true;
+    for (let p = o; p; p = p.parent) if (!p.visible) { vis = false; break; }
+    if (!vis || /shadow/i.test(o.name || '')) return;
+    if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+    box.union(o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld));
+  });
+  return box;
+}
+
+function cameraFor(root, dirArr) {
+  const box = visibleBox(root);
+  const center = box.getCenter(new THREE.Vector3());
+  const dir = new THREE.Vector3(...dirArr).normalize();
+  const nominalUp = Math.abs(dir.y) > 0.9 ? new THREE.Vector3(0, 0, -1) : new THREE.Vector3(0, 1, 0);
+  const right = new THREE.Vector3().crossVectors(nominalUp, dir).normalize();
+  const up = new THREE.Vector3().crossVectors(dir, right).normalize();
+  const size = box.getSize(new THREE.Vector3());
+  const half = Math.max(size.x, size.y, size.z) * 0.62;
+  const camera = new THREE.OrthographicCamera(-half, half, half, -half, 0.1, 200);
+  camera.position.copy(center).addScaledVector(dir, 60);
+  camera.up.copy(up);
+  camera.lookAt(center);
+  camera.updateProjectionMatrix();
+  camera.updateMatrixWorld(true);
+  return camera;
+}
+
+const maskMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
+const copy2d = document.createElement('canvas');
+copy2d.width = copy2d.height = CELL;
+const copyCtx = copy2d.getContext('2d', { willReadFrequently: true });
+function renderModel(visual, camera, asMask) {
+  if (reference) reference.root.visible = visual === reference;
+  procedural.root.visible = visual === procedural;
+  scene.overrideMaterial = asMask ? maskMaterial : null;
+  renderer.setRenderTarget(null);
+  renderer.setClearColor(asMask ? 0x000000 : 0x151b20, 1);
+  renderer.clear(true, true, true);
+  renderer.render(scene, camera);
+  copyCtx.drawImage(renderer.domElement, 0, 0, CELL, CELL);
+  return copyCtx.getImageData(0, 0, CELL, CELL).data;
+}
+
+const luma = (d, i) => 0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2];
+function medianLuma(lit, mask, rowFilter) {
+  const vals = [];
+  for (let p = 0; p < CELL * CELL; p++) {
+    if (mask[p * 4] <= 40) continue;
+    if (rowFilter && !rowFilter((p / CELL) | 0)) continue;
+    vals.push(luma(lit, p * 4));
+  }
+  vals.sort((a, b) => a - b);
+  const q = (f) => vals.length ? vals[Math.min(vals.length - 1, (vals.length * f) | 0)] : 0;
+  return { median: q(0.5), p05: q(0.05), p25: q(0.25), p75: q(0.75), p95: q(0.95), n: vals.length,
+    darkFrac: vals.length ? vals.filter((v) => v < 40).length / vals.length : 0 };
+}
+
+function rowOf(camera, wx, wy, wz) {
+  const v = new THREE.Vector3(wx, wy, wz).project(camera);
+  return ((1 - v.y) / 2) * CELL;
+}
+
+const report = { id, hasGlb, builds: {} };
+const pairs = {};
+const buildList = reference
+  ? [['ref', reference], ['proc', procedural]]
+  : [['proc', procedural]];
+for (const [tag, visual] of buildList) {
+  const rows = { views: {}, band: {} };
+  for (const [name, dir] of Object.entries(ANGLES)) {
+    // both roots visible before framing (m60a3 critic's bothVisible rule) —
+    // visibleBox skips invisible ancestors, and renderModel leaves the
+    // OTHER build hidden after each capture.
+    if (reference) reference.root.visible = true;
+    procedural.root.visible = true;
+    const cam = cameraFor(visual.root, dir);
+    const mask = renderModel(visual, cam, true);
+    const lit = renderModel(visual, cam, false);
+    const m = medianLuma(lit, mask);
+    let maskMax = 0;
+    for (let p = 0; p < CELL * CELL; p++) if (mask[p * 4] > maskMax) maskMax = mask[p * 4];
+    rows.views[name] = {
+      median: +m.median.toFixed(1), p25: +m.p25.toFixed(1), p75: +m.p75.toFixed(1),
+      p05: +m.p05.toFixed(1), p95: +m.p95.toFixed(1), n: m.n, maskMax,
+    };
+    if (name === 'left' || name === 'right') {
+      // undercarriage band metric (m60 r4 tell-5 bar): world y in [0.10, 1.20]
+      const band = { top: rowOf(cam, 0, 1.20, 0), bot: rowOf(cam, 0, 0.10, 0) };
+      const mB = medianLuma(lit, mask, (row) => row > band.top && row < band.bot);
+      rows.band[name] = {
+        median: +mB.median.toFixed(1), p05: +mB.p05.toFixed(1), p25: +mB.p25.toFixed(1),
+        darkFrac: +mB.darkFrac.toFixed(3), n: mB.n,
+      };
+    }
+    if (name === 'frontRight' || name === 'left') {
+      // one lit PNG per build for eyeballing (not a gate input)
+      copyCtx.putImageData(new ImageData(new Uint8ClampedArray(lit), CELL, CELL), 0, 0);
+      pairs[`${tag}-${name}`] = copy2d.toDataURL('image/png');
+    }
+  }
+  report.builds[tag] = rows;
+}
+
+if (reference) reference.root.visible = true;
+procedural.root.visible = true;
+window.__PAIRS = pairs;
+window.__REPORT = report;
+document.querySelector('#out').textContent = JSON.stringify(report, null, 2);
+window.__PARITY_READY = true;
+</script>

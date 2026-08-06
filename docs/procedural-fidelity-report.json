@@ -1,80 +1,147 @@
 {
-  "generatedAt": "2026-07-31T22:01:21.103Z",
+  "generatedAt": "2026-08-06T00:08:10.544Z",
   "summary": {
-    "references": 1,
+    "references": 2,
     "passed": 0,
-    "failed": 1,
+    "failed": 2,
     "passThreshold": 90,
     "perViewFloor": 90,
-    "median": 85.84,
-    "worst": "kv2",
-    "best": "kv2"
+    "median": 88.29,
+    "worst": "type90",
+    "best": "ariete"
   },
   "rows": [
     {
-      "id": "kv2",
-      "name": "KV-2",
-      "sourcePath": "/models/tanks/community/kv2-full-comrade1280.glb",
-      "fallback": "kv2",
-      "score": 85.84,
+      "id": "type90",
+      "name": "Type 90 Kyu-maru",
+      "sourcePath": "/models/tanks/community/recovered/type90.glb",
+      "fallback": "type10",
+      "score": 81.59,
       "scores": {
-        "overall": 96.27,
-        "hull": 96.15,
-        "turret": 86.61,
-        "gun": 28.32,
-        "tracks": 92.31
+        "overall": 93.45,
+        "hull": 95.49,
+        "turret": 83.01,
+        "gun": 8.36,
+        "tracks": 92.51
       },
       "componentMasksAvailable": true,
-      "minView": 94.99,
+      "minView": 92.01,
       "gatePassed": false,
       "angles": {
         "front": {
-          "score": 97.41,
-          "iou": 96.62
+          "score": 94.76,
+          "iou": 93.4
         },
         "frontLeft": {
-          "score": 96,
-          "iou": 94.82
+          "score": 92.01,
+          "iou": 89.96
         },
         "left": {
-          "score": 95.09,
-          "iou": 93.68
+          "score": 93.3,
+          "iou": 91.47
         },
         "rearLeft": {
-          "score": 95.15,
-          "iou": 93.76
+          "score": 92.29,
+          "iou": 90.58
         },
         "rear": {
-          "score": 96.89,
-          "iou": 96.08
+          "score": 94.46,
+          "iou": 92.99
         },
         "rearRight": {
-          "score": 96.2,
-          "iou": 95.13
+          "score": 92.96,
+          "iou": 91.28
         },
         "right": {
-          "score": 94.99,
-          "iou": 93.61
+          "score": 93.24,
+          "iou": 91.35
         },
         "frontRight": {
-          "score": 95.92,
-          "iou": 94.72
+          "score": 92.17,
+          "iou": 90.15
         },
         "top": {
-          "score": 98.81,
-          "iou": 98.59
+          "score": 95.89,
+          "iou": 94.75
         }
       },
       "boxes": {
         "reference": [
-          3.32,
-          3.29,
-          7.19
+          3.43,
+          2.4,
+          9.78
         ],
         "procedural": [
-          3.32,
-          3.28,
-          6.98
+          3.43,
+          2.46,
+          9.82
+        ]
+      }
+    },
+    {
+      "id": "ariete",
+      "name": "C1 Ariete",
+      "sourcePath": "/models/tanks/community/ariete-dustymojito.glb",
+      "fallback": "ariete",
+      "score": 88.29,
+      "scores": {
+        "overall": 94.87,
+        "hull": 95.08,
+        "turret": 86.71,
+        "gun": 52.97,
+        "tracks": 95.26
+      },
+      "componentMasksAvailable": true,
+      "minView": 92.53,
+      "gatePassed": false,
+      "angles": {
+        "front": {
+          "score": 94.91,
+          "iou": 93.51
+        },
+        "frontLeft": {
+          "score": 94.33,
+          "iou": 92.83
+        },
+        "left": {
+          "score": 93.75,
+          "iou": 92.01
+        },
+        "rearLeft": {
+          "score": 94.27,
+          "iou": 92.91
+        },
+        "rear": {
+          "score": 92.53,
+          "iou": 90.95
+        },
+        "rearRight": {
+          "score": 96.08,
+          "iou": 95.11
+        },
+        "right": {
+          "score": 95.3,
+          "iou": 93.96
+        },
+        "frontRight": {
+          "score": 95.61,
+          "iou": 94.53
+        },
+        "top": {
+          "score": 97.03,
+          "iou": 96.31
+        }
+      },
+      "boxes": {
+        "reference": [
+          3.6,
+          2.52,
+          9.69
+        ],
+        "procedural": [
+          3.6,
+          2.54,
+          9.72
         ]
       }
     }

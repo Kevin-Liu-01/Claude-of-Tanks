@@ -1,0 +1,435 @@
+<!doctype html>
+<!-- TEMP (leopard §B5 DE-FUSION round, graduate-change): combined evidence
+     page for the leo2_revolution turret/hull split.
+     PART A: official turret-parent-audit math replicated on the REAL proc
+             build (createTank proceduralOnly) — casting box, ringY, stranded/
+             abutting/dangling with per-mesh identification.
+     PART B: per-add() census (tmp-leo-r13-census pattern) — every hull-bucket
+             add + direct hull mesh crossed against PART A's casting envelope
+             (per-piece overlap fraction + line numbers).
+     PART C: reference truth — the print loaded through the SAME modelLoader
+             swap the gate uses (MODEL_SOURCE override), width-normalized like
+             the fidelity harness; node census (what does ^Turret$ rotate?) +
+             side/plan mask column traces for ref hull / ref hull WITHOUT
+             chassis_vlo / ref turret, and the proc hull/turret pair.
+     DIAGNOSIS ONLY — done-gates run on the official rigs. -->
+<meta charset="utf-8">
+<title>tmp-leo-defuse-census</title>
+<script type="module">
+import * as THREE from 'three';
+import { createTank } from '/src/vehicles/tankFactory.js';
+import { MODEL_SOURCE, TANK_SPECS } from '/src/vehicles/specs.js';
+import { LEOPARD_PROFILES } from '/src/vehicles/profiles/leopard.js';
+import { getSpec } from '/src/vehicles/specs.js';
+import { createTankMaterials } from '/src/vehicles/materials.js';
+
+const params = new URLSearchParams(location.search);
+const id = params.get('id') || 'leo2_revolution';
+const out = { id, partA: null, partB: null, partC: null };
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, preserveDrawingBuffer: true, powerPreference: 'high-performance' });
+renderer.setSize(1024, 1024, false);
+renderer.setPixelRatio(1);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.setClearColor(0x000000, 1);
+const engineCtx = { setupShadowMaterial: (m) => m, anisotropy: 1, renderer };
+
+// ---------- PART A: official audit replication ----------
+const proc = createTank(id, engineCtx, { camoSeed: 4242, quality: 'high', proceduralOnly: true });
+proc.root.updateMatrixWorld(true);
+{
+  const turretG = proc.root.getObjectByName('rig_turret');
+  const gunG = proc.root.getObjectByName('rig_gun');
+  const A = { stranded: [], abutting: [], dangling: [], castingBox: null, ringY: null };
+  const ringY = new THREE.Vector3().setFromMatrixPosition(turretG.matrixWorld).y;
+  const inSubtree = (o, root) => { for (let p = o; p; p = p.parent) if (p === root) return true; return false; };
+  const auditable = (o) =>
+    o.isMesh && !o.isInstancedMesh && o.geometry && o.visible &&
+    (!o.material || o.material.colorWrite !== false) &&
+    !(o.userData && o.userData.trackBucket);
+  const casting = new THREE.Box3();
+  const bb = new THREE.Box3();
+  let castingMeshes = 0;
+  turretG.traverse((o) => {
+    if (!auditable(o)) return;
+    if (gunG && inSubtree(o, gunG)) return;
+    bb.setFromObject(o);
+    casting.union(bb);
+    castingMeshes++;
+  });
+  const M = 0.03;
+  casting.min.y = Math.max(casting.min.y, ringY - 0.10);
+  const shrunk = casting.clone();
+  shrunk.min.addScalar(M); shrunk.max.addScalar(-M);
+  A.castingBox = [casting.min.toArray().map((v) => +v.toFixed(3)), casting.max.toArray().map((v) => +v.toFixed(3))];
+  A.ringY = +ringY.toFixed(3);
+  A.castingMeshes = castingMeshes;
+  const inter = new THREE.Box3();
+  const idOf = (o) => ({
+    name: o.name || '(unnamed)',
+    parent: o.parent?.name || o.parent?.type || '?',
+    verts: o.geometry.getAttribute('position')?.count ?? 0,
+    matCol: o.material?.color ? '#' + o.material.color.getHexString() : '?',
+  });
+  proc.root.traverse((o) => {
+    if (!auditable(o)) return;
+    const isTurret = inSubtree(o, turretG);
+    bb.setFromObject(o);
+    const vol = Math.max(1e-9, (bb.max.x - bb.min.x) * (bb.max.y - bb.min.y) * (bb.max.z - bb.min.z));
+    if (!isTurret) {
+      if (bb.max.y <= ringY + 0.02) return;
+      inter.copy(bb);
+      inter.min.max(shrunk.min); inter.max.min(shrunk.max);
+      const hasOverlap = inter.min.x < inter.max.x && inter.min.y < inter.max.y && inter.min.z < inter.max.z;
+      const frac = hasOverlap
+        ? ((inter.max.x - inter.min.x) * (inter.max.y - inter.min.y) * (inter.max.z - inter.min.z)) / vol : 0;
+      if (frac >= 0.25) {
+        A.stranded.push({ ...idOf(o), overlap: +frac.toFixed(2),
+          box: [bb.min.toArray().map((v) => +v.toFixed(3)), bb.max.toArray().map((v) => +v.toFixed(3))] });
+        return;
+      }
+      const GAP = 0.12;
+      if (bb.min.y > ringY - 0.10 && bb.min.y < casting.max.y && bb.max.y > casting.min.y + M &&
+          bb.max.x > casting.min.x - GAP && bb.min.x < casting.max.x + GAP &&
+          bb.max.z > casting.min.z - GAP && bb.min.z < casting.max.z + GAP) {
+        A.abutting.push({ ...idOf(o),
+          box: [bb.min.toArray().map((v) => +v.toFixed(3)), bb.max.toArray().map((v) => +v.toFixed(3))] });
+      }
+    } else if (bb.max.y < ringY - 0.03) {
+      A.dangling.push({ ...idOf(o), topY: +bb.max.y.toFixed(2) });
+    }
+  });
+  A.stranded.sort((a, b) => b.overlap - a.overlap);
+  out.partA = A;
+}
+
+// ---------- PART B: per-add census (instrumented P shim) ----------
+{
+  function mulberry32(a) {
+    return function () {
+      a |= 0; a = (a + 0x6d2b79f5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  const spec = getSpec(id);
+  const armor = spec.armor;
+  const mats = createTankMaterials(spec, engineCtx, 4242, 'high');
+  const rng = mulberry32(4242 ^ 0x9e37);
+  const root = new THREE.Group();
+  const hullG = new THREE.Group(); hullG.name = 'rig_hull';
+  const turretG = new THREE.Group(); turretG.name = 'rig_turret';
+  turretG.position.set(armor.turretPivot[0], armor.turretPivot[1], armor.turretPivot[2]);
+  const gunG = new THREE.Group(); gunG.name = 'rig_gun';
+  gunG.position.set(armor.gunPivot[0], armor.gunPivot[1], armor.gunPivot[2]);
+  const recoilG = new THREE.Group(); recoilG.name = 'rig_recoil';
+  root.add(hullG, turretG); turretG.add(gunG); gunG.add(recoilG);
+
+  const records = [];
+  const _m = new THREE.Matrix4();
+  function record(bucket, geo, x, y, z, rx, ry, rz, s) {
+    const sc = Array.isArray(s) ? s : [s, s, s];
+    _m.compose(new THREE.Vector3(x, y, z),
+      new THREE.Quaternion().setFromEuler(new THREE.Euler(rx, ry, rz)),
+      new THREE.Vector3(sc[0], sc[1], sc[2]));
+    geo.applyMatrix4(_m);
+    geo.computeBoundingBox();
+    const bb = geo.boundingBox;
+    let line = null;
+    const stack = (new Error().stack || '').split('\n');
+    for (const fr of stack) {
+      const m2 = fr.match(/leopard\.js[^:]*:(\d+):/);
+      if (m2) { line = +m2[1]; break; }
+    }
+    records.push({ i: records.length, bucket, line,
+      min: bb.min.toArray().map((v) => +v.toFixed(4)),
+      max: bb.max.toArray().map((v) => +v.toFixed(4)) });
+    geo.dispose();
+  }
+  const P = {
+    spec, mats, rng, q: true, hullG, turretG, gunG, recoilG,
+    disposables: [], gear: null, muzzleZ: armor.gunBarrel.lengthM, topY: 0.8,
+    add(bucket, geo, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, s = 1) {
+      record(bucket, geo, x, y, z, rx, ry, rz, s);
+    },
+    clear(...names) { for (const name of names.flat()) for (const r of records) if (r.bucket === name) r.cleared = true; },
+    addGunExtra(geo, x, y, z) { record('gunMount', geo, x, y, z, 0, 0, 0, 1); },
+    addGunExtraDark(geo, x, y, z) { record('gunMountDark', geo, x, y, z, 0, 0, 0, 1); },
+    decal() {},
+    eraCluster() {},
+  };
+  LEOPARD_PROFILES[id].build(P);
+  root.updateMatrixWorld(true);
+
+  // TURRET-bucket adds are in TURRET-LOCAL coordinates (world - pivot).
+  // Builder overrode turretG.position — read it back for the world mapping.
+  const pivot = turretG.position.toArray();
+  const B = { pivot: pivot.map((v) => +v.toFixed(3)), records: records.length, hull: [], direct: [], turretUnion: null };
+  // per-piece cross vs PART A's casting envelope (shrunk, floor-clamped)
+  const cast = out.partA.castingBox;
+  const ringY = out.partA.ringY;
+  const M = 0.03;
+  const shrunk = [[cast[0][0] + M, cast[0][1] + M, cast[0][2] + M], [cast[1][0] - M, cast[1][1] - M, cast[1][2] - M]];
+  const overlapFrac = (lo, hi) => {
+    const ix = Math.min(hi[0], shrunk[1][0]) - Math.max(lo[0], shrunk[0][0]);
+    const iy = Math.min(hi[1], shrunk[1][1]) - Math.max(lo[1], shrunk[0][1]);
+    const iz = Math.min(hi[2], shrunk[1][2]) - Math.max(lo[2], shrunk[0][2]);
+    if (ix <= 0 || iy <= 0 || iz <= 0) return 0;
+    const vol = Math.max(1e-9, (hi[0] - lo[0]) * (hi[1] - lo[1]) * (hi[2] - lo[2]));
+    return (ix * iy * iz) / vol;
+  };
+  const bucketUnion = {};
+  for (const r of records) {
+    if (r.cleared) continue;
+    const u = bucketUnion[r.bucket] || (bucketUnion[r.bucket] = [[1e9, 1e9, 1e9], [-1e9, -1e9, -1e9]]);
+    for (let k = 0; k < 3; k++) { u[0][k] = Math.min(u[0][k], r.min[k]); u[1][k] = Math.max(u[1][k], r.max[k]); }
+    if (!/^hull/.test(r.bucket)) continue;
+    if (r.max[1] <= ringY + 0.02) continue;
+    const frac = overlapFrac(r.min, r.max);
+    if (frac > 0) {
+      B.hull.push({ i: r.i, bucket: r.bucket, line: r.line, frac: +frac.toFixed(3),
+        box: [r.min.map((v) => +v.toFixed(3)), r.max.map((v) => +v.toFixed(3))] });
+    }
+  }
+  B.hull.sort((a, b) => b.frac - a.frac);
+  B.bucketUnion = Object.fromEntries(Object.entries(bucketUnion).map(([k, u]) => [k,
+    [u[0].map((v) => +v.toFixed(3)), u[1].map((v) => +v.toFixed(3))]]));
+  // direct meshes added by the builder (finish block, gear) to hullG/turretG
+  const bb = new THREE.Box3();
+  for (const [gName, g] of [['hullG', hullG], ['turretG', turretG]]) {
+    g.traverse((o) => {
+      if (!o.isMesh || !o.geometry) return;
+      bb.setFromObject(o);
+      const lo = bb.min.toArray(), hi = bb.max.toArray();
+      const frac = gName === 'hullG' && hi[1] > ringY + 0.02 ? overlapFrac(lo, hi) : 0;
+      B.direct.push({ group: gName, name: o.name || '(unnamed)',
+        verts: o.geometry.getAttribute('position')?.count ?? 0,
+        instanced: !!o.isInstancedMesh,
+        trackBucket: o.userData?.trackBucket || null,
+        dyn: o.geometry.getAttribute('position')?.usage === THREE.DynamicDrawUsage,
+        frac: +frac.toFixed(3),
+        box: [lo.map((v) => +v.toFixed(3)), hi.map((v) => +v.toFixed(3))] });
+    });
+  }
+  out.partB = B;
+}
+
+// ---------- PART C: reference truth ----------
+{
+  const glbPath = params.get('glb') || '/models/tanks/community/recovered/leo2_revolution.glb';
+  const source = { source: 'glb', glb: { path: glbPath, paintUntextured: true, turretNode: '^Turret$', gunNode: '^Gun$', autoPivot: true, yawOffset: Math.PI } };
+  const originalSource = MODEL_SOURCE[id];
+  MODEL_SOURCE[id] = source;
+  const reference = createTank(id, engineCtx, { camoSeed: 4242, quality: 'high' });
+  MODEL_SOURCE[id] = originalSource;
+  // the swap pipeline skips "dead" tanks whose root chain is not a live
+  // scene (modelLoader live() check) — attach BOTH roots before waiting,
+  // exactly like the fidelity harness does.
+  const scene0 = new THREE.Scene();
+  scene0.add(reference.root, proc.root);
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const swapped = () => { let yes = false; reference.root.traverse((o) => { if (o.userData?.__glbSwapped) yes = true; }); return yes; };
+  for (let i = 0; i < 600 && !swapped(); i++) await sleep(50);
+  if (!swapped()) { out.partC = { anomaly: 'GLB did not swap' }; }
+  else {
+    reference.root.updateMatrixWorld(true);
+    // LOD pin (gate law) on both roots
+    for (const root of [reference.root, proc.root]) {
+      root.traverse((o) => {
+        if (!o.isLOD) return;
+        o.autoUpdate = false;
+        o.levels.forEach((level, i) => { if (level.object) level.object.visible = i === 0; });
+      });
+    }
+    const isRenderNode = (o) => (o.isMesh || o.isSkinnedMesh || o.isInstancedMesh) && o.geometry;
+    const effectivelyVisible = (o) => { for (let p = o; p; p = p.parent) if (!p.visible) return false; return true; };
+    const isShadowHelper = (o) => /shadow/i.test(o.name || '');
+    const baseVisible = new Map();
+    for (const root of [reference.root, proc.root]) {
+      root.traverse((o) => { if (isRenderNode(o)) baseVisible.set(o, effectivelyVisible(o) && !isShadowHelper(o)); });
+    }
+    const visibleBox = (root) => {
+      const result = new THREE.Box3();
+      const local = new THREE.Box3();
+      root.updateMatrixWorld(true);
+      root.traverse((o) => {
+        if (!isRenderNode(o) || !baseVisible.get(o)) return;
+        if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+        if (!o.geometry.boundingBox) return;
+        local.copy(o.geometry.boundingBox);
+        local.applyMatrix4(o.matrixWorld);
+        result.union(local);
+      });
+      return result;
+    };
+    const refBox = visibleBox(reference.root);
+    const procBox = visibleBox(proc.root);
+    const safeScale = (target, current) => THREE.MathUtils.clamp(target / Math.max(current, 1e-3), 0.68, 1.65);
+    const spec = TANK_SPECS[id];
+    const refS = safeScale(spec.dims.widthM, refBox.getSize(new THREE.Vector3()).x);
+    const procS = safeScale(spec.dims.widthM, procBox.getSize(new THREE.Vector3()).x);
+    reference.root.scale.multiplyScalar(refS);
+    proc.root.scale.multiplyScalar(procS);
+    reference.root.updateMatrixWorld(true);
+    proc.root.updateMatrixWorld(true);
+    const C = { refScale: +refS.toFixed(5), procScale: +procS.toFixed(5), nodes: [], traces: {} };
+
+    // node census in the normalized frame
+    const refTurretG = reference.root.getObjectByName('rig_turret');
+    const refGunG = reference.root.getObjectByName('rig_gun');
+    const refHullG = reference.root.getObjectByName('rig_hull');
+    const inSub = (o, r) => { for (let p = o; p; p = p.parent) if (p === r) return true; return false; };
+    const bb = new THREE.Box3();
+    reference.root.traverse((o) => {
+      if (!isRenderNode(o) || !baseVisible.get(o)) return;
+      bb.setFromObject(o);
+      C.nodes.push({ name: o.name || '(unnamed)',
+        side: refGunG && inSub(o, refGunG) ? 'GUN' : refTurretG && inSub(o, refTurretG) ? 'TURRET' : 'HULL',
+        box: [bb.min.toArray().map((v) => +v.toFixed(3)), bb.max.toArray().map((v) => +v.toFixed(3))] });
+    });
+    C.refPivot = new THREE.Vector3().setFromMatrixPosition(refTurretG.matrixWorld).toArray().map((v) => +v.toFixed(3));
+
+    // ---- masks ----
+    const scene = scene0;
+    scene.overrideMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
+    const target = new THREE.WebGLRenderTarget(1024, 1024, { depthBuffer: true, stencilBuffer: false });
+    const setPart = (root, part) => {
+      const hull = root.getObjectByName('rig_hull');
+      const turret = root.getObjectByName('rig_turret');
+      root.traverse((o) => {
+        if (!isRenderNode(o)) return;
+        const base = baseVisible.get(o) === true;
+        const allowed = part === 'whole'
+          || (part === 'hull' && inSub(o, hull) && !inSub(o, turret))
+          || (part === 'turret' && inSub(o, turret));
+        o.visible = base && allowed;
+      });
+    };
+    // fixed world windows shared by every trace
+    const WIN = { z0: -4.3, z1: 4.3, y0: -0.3, y1: 3.2, x0: -2.2, x1: 2.2 };
+    const nameChainMatches = (o, re) => {
+      for (let p = o; p; p = p.parent) if (re.test(p.name || '')) return true;
+      return false;
+    };
+    const mask = (visual, other, part, hideRe) => {
+      visual.root.visible = true; other.root.visible = false;
+      setPart(visual.root, part);
+      if (hideRe) visual.root.traverse((o) => { if (isRenderNode(o) && nameChainMatches(o, hideRe)) o.visible = false; });
+      return null;
+    };
+    const render = (camera) => {
+      renderer.setRenderTarget(target);
+      renderer.clear(true, true, true);
+      renderer.render(scene, camera);
+      const rgba = new Uint8Array(1024 * 1024 * 4);
+      renderer.readRenderTargetPixels(target, 0, 0, 1024, 1024, rgba);
+      const m = new Uint8Array(1024 * 1024);
+      for (let i = 0; i < m.length; i++) m[i] = rgba[i * 4] > 40 ? 1 : 0;
+      return m;
+    };
+    // side camera: at +x looking toward -x, world y = camera y. The z<->column
+    // orientation is CALIBRATED below with a probe box (zRight flag) — no
+    // trust in hand-derived rotation signs.
+    const sideCam = new THREE.OrthographicCamera(WIN.z0, WIN.z1, WIN.y1, WIN.y0, 0.1, 50);
+    sideCam.position.set(10, 0, 0);
+    sideCam.up.set(0, 1, 0);
+    sideCam.rotation.set(0, Math.PI / 2, 0);
+    sideCam.updateMatrixWorld(true);
+    sideCam.updateProjectionMatrix();
+    // plan camera: looking down -y; image x = world x, image y = world z
+    const planCam = new THREE.OrthographicCamera(WIN.x0, WIN.x1, WIN.z1, WIN.z0, 0.1, 50);
+    planCam.position.set(0, 10, 0);
+    planCam.up.set(0, 0, -1);
+    planCam.lookAt(0, 0, 0);
+    planCam.updateMatrixWorld(true);
+    planCam.updateProjectionMatrix();
+
+    const sideTrace = (m) => {
+      // image col c (0..1023): camera local x from -4.3..4.3. With rotation
+      // y=+pi/2 camera local +x = world +z? verify: R_y(pi/2) maps local
+      // (1,0,0) -> world (cos(pi/2)... = (0,0,-1)?? — calibrate empirically
+      // below with the calib probe. Trace returns per-column top/bot.
+      const cols = [];
+      for (let c = 0; c < 1024; c++) {
+        let top = -1, bot = -1;
+        for (let r = 1023; r >= 0; r--) { if (m[r * 1024 + c]) { top = r; break; } }
+        if (top >= 0) for (let r = 0; r < 1024; r++) { if (m[r * 1024 + c]) { bot = r; break; } }
+        cols.push(top < 0 ? null : [top, bot]);
+      }
+      return cols;
+    };
+    // calibration probe: render a tiny box at known world (z=+3.0, y=2.5)
+    const probeGeo = new THREE.BoxGeometry(0.2, 0.2, 0.2);
+    const probe = new THREE.Mesh(probeGeo, new THREE.MeshBasicMaterial({ color: 0xffffff }));
+    probe.position.set(0, 2.5, 3.0);
+    scene.add(probe);
+    reference.root.visible = false; proc.root.visible = false;
+    const calib = render(sideCam);
+    let cx = 0, cy = 0, n = 0;
+    for (let r = 0; r < 1024; r++) for (let c = 0; c < 1024; c++) if (calib[r * 1024 + c]) { cx += c; cy += r; n++; }
+    C.calib = { col: +(cx / n).toFixed(1), row: +(cy / n).toFixed(1), n };
+    // readRenderTargetPixels row 0 = bottom. world y=2.5 -> v=(2.5-y0)/(y1-y0)*1024 = (2.8/3.5)*1024 = 819
+    // col: if world z=+3 lands at col (3-z0)/(z1-z0)*1024 = (7.3/8.6)*1024 = 869 -> +z at right (zSign=+1) else flipped
+    const zRight = Math.abs(cx / n - ((3.0 - WIN.z0) / (WIN.z1 - WIN.z0)) * 1024) < 30;
+    C.zRight = zRight;
+    scene.remove(probe);
+    probeGeo.dispose();
+
+    const colToZ = (c) => {
+      const t = (c + 0.5) / 1024;
+      return zRight ? WIN.z0 + t * (WIN.z1 - WIN.z0) : WIN.z1 - t * (WIN.z1 - WIN.z0);
+    };
+    const rowToY = (r) => WIN.y0 + ((r + 0.5) / 1024) * (WIN.y1 - WIN.y0);
+    const traceSet = (visual, other, part, hideRe, key) => {
+      mask(visual, other, part, hideRe);
+      const m = render(sideCam);
+      const cols = sideTrace(m);
+      // compact: [z, topY, botY] per lit column
+      const rows = [];
+      for (let c = 0; c < 1024; c++) {
+        if (!cols[c]) continue;
+        rows.push([+colToZ(c).toFixed(3), +rowToY(cols[c][0]).toFixed(3), +rowToY(cols[c][1]).toFixed(3)]);
+      }
+      C.traces[key] = rows;
+      // plan footprint per z: min/max x
+      mask(visual, other, part, hideRe);
+      const pm = render(planCam);
+      const prow = [];
+      for (let r = 0; r < 1024; r++) {
+        let lo = -1, hi = -1;
+        for (let c = 0; c < 1024; c++) { if (pm[r * 1024 + c]) { if (lo < 0) lo = c; hi = c; } }
+        if (lo >= 0) prow.push([r, lo, hi]);
+      }
+      // plan cam: up=(0,0,-1), so image row maps world z; col maps world x.
+      // calibrate: row r -> z = WIN.z0 + ((r+0.5)/1024)*(z1-z0) if probe says so —
+      // reuse zRight convention empirically below (planCalib).
+      C.traces[key + '_plan'] = prow.map(([r, lo, hi]) => [r, lo, hi]);
+      return null;
+    };
+    // plan calibration
+    scene.add(probe);
+    probe.geometry = new THREE.BoxGeometry(0.2, 0.2, 0.2);
+    probe.position.set(1.5, 2.5, 3.0);
+    reference.root.visible = false; proc.root.visible = false;
+    const pcal = render(planCam);
+    let px = 0, py = 0, pn = 0;
+    for (let r = 0; r < 1024; r++) for (let c = 0; c < 1024; c++) if (pcal[r * 1024 + c]) { px += c; py += r; pn++; }
+    C.planCalib = { col: +(px / pn).toFixed(1), row: +(py / pn).toFixed(1), n: pn };
+    scene.remove(probe);
+
+    traceSet(reference, proc, 'hull', null, 'refHull');
+    traceSet(reference, proc, 'hull', /_vlo$/, 'refHullNoVlo');
+    traceSet(reference, proc, 'turret', null, 'refTurret');
+    traceSet(reference, proc, 'whole', /_vlo$/, 'refWholeNoVlo');
+    traceSet(reference, proc, 'whole', null, 'refWhole');
+    traceSet(proc, reference, 'hull', null, 'procHull');
+    traceSet(proc, reference, 'turret', null, 'procTurret');
+    traceSet(proc, reference, 'whole', null, 'procWhole');
+    out.partC = C;
+  }
+}
+
+window.__CENSUS_RESULT = out;
+window.__CENSUS_READY = true;
+</script>

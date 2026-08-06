@@ -1,0 +1,89 @@
+<!doctype html>
+<!-- TEMP (merkava §B5-r2 re-tune): per-P.add census of the TAIL ZONE
+     (z-min < -3.4) after the bustlePackTurret flip — which adds are
+     hull-side vs turret-side, with world AABBs. Same instrumented-P replica
+     as tmp-merkava-b5-addprobe.html. DIAGNOSIS ONLY. -->
+<meta charset="utf-8">
+<title>tmp-b5r2-tailcensus</title>
+<script type="module">
+import * as THREE from 'three';
+import { KIT } from '/src/vehicles/tankFactory.js';
+import { getSpec } from '/src/vehicles/specs.js';
+import { createTankMaterials } from '/src/vehicles/materials.js';
+import { PROFILED_BUILDERS } from '/src/vehicles/profiledProcedurals.js';
+
+const params = new URLSearchParams(location.search);
+const id = params.get('id') || 'merkava3b';
+
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
+  t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+
+const engineCtx = { setupShadowMaterial: (m) => m, anisotropy: 1, renderer: null };
+const spec = getSpec(id);
+const armor = spec.armor;
+const mats = createTankMaterials(spec, engineCtx, 4242, 'high');
+const rng = mulberry32((4242 | 0) ^ 0x9e37);
+
+const hullG = new THREE.Group(); hullG.name = 'rig_hull';
+const turretG = new THREE.Group(); turretG.name = 'rig_turret';
+turretG.position.set(armor.turretPivot[0], armor.turretPivot[1], armor.turretPivot[2]);
+const gunG = new THREE.Group(); gunG.name = 'rig_gun';
+gunG.position.set(armor.gunPivot[0], armor.gunPivot[1], armor.gunPivot[2]);
+const recoilG = new THREE.Group(); recoilG.name = 'rig_recoil';
+hullG.add(turretG);
+turretG.add(gunG); gunG.add(recoilG);
+
+const records = [];
+function site() {
+  const lines = (new Error().stack || '').split('\n');
+  for (const ln of lines) {
+    const m = ln.match(/\/src\/vehicles\/(profiles\/[^:)]+|tankFactory\.js):(\d+):(\d+)/);
+    if (m) return `${m[1]}:${m[2]}`;
+  }
+  return '(unknown)';
+}
+function record(bucket, geo) {
+  geo.computeBoundingBox();
+  const b = geo.boundingBox;
+  records.push({ bucket, site: site(),
+    box: [[b.min.x, b.min.y, b.min.z], [b.max.x, b.max.y, b.max.z]] });
+}
+const P = {
+  spec, mats, rng, q: true, hullG, turretG, gunG, recoilG,
+  disposables: [], gear: null, muzzleZ: armor.gunBarrel.lengthM, topY: 0.8,
+  add(bucket, geo, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, s = 1) {
+    record(bucket, KIT.xform(geo, x, y, z, rx, ry, rz, s));
+  },
+  clear(...names) {
+    const drop = new Set(names.flat());
+    for (let i = records.length - 1; i >= 0; i--) if (drop.has(records[i].bucket)) records.splice(i, 1);
+  },
+  addGunExtra(geo, x, y, z) { record('gunMount', KIT.xform(geo, x, y, z)); },
+  addGunExtraDark(geo, x, y, z) { record('gunMountDark', KIT.xform(geo, x, y, z)); },
+  decal() {},
+  eraCluster() {},
+};
+
+PROFILED_BUILDERS[id](P);
+
+const pivot = [turretG.position.x, turretG.position.y, turretG.position.z];
+const gunPos = [gunG.position.x, gunG.position.y, gunG.position.z];
+const TURRET_SIDE = new Set(['turret', 'turretDetail', 'turretDark', 'turretCloth', 'turretGlass', 'turretTrack']);
+const GUN_SIDE = new Set(['gun', 'gunDark', 'gunMount', 'gunMountDark']);
+for (const r of records) {
+  const off = TURRET_SIDE.has(r.bucket) ? pivot
+    : GUN_SIDE.has(r.bucket) ? [pivot[0] + gunPos[0], pivot[1] + gunPos[1], pivot[2] + gunPos[2]]
+    : [0, 0, 0];
+  r.world = [
+    [r.box[0][0] + off[0], r.box[0][1] + off[1], r.box[0][2] + off[2]],
+    [r.box[1][0] + off[0], r.box[1][1] + off[1], r.box[1][2] + off[2]]];
+  r.side = TURRET_SIDE.has(r.bucket) ? 'TURRET' : GUN_SIDE.has(r.bucket) ? 'GUN' : 'HULL';
+}
+const tail = records
+  .filter((r) => r.world[0][2] < -3.4)
+  .map((r) => ({ side: r.side, bucket: r.bucket, site: r.site,
+    box: r.world.map((v) => v.map((n) => +n.toFixed(3))) }))
+  .sort((a, b) => a.box[0][2] - b.box[0][2]);
+window.__B5_RESULT = { id, pivot, tail };
+window.__B5_READY = true;
+</script>

@@ -1,0 +1,88 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>tmp leo r6 view probe</title>
+<style>:root{color-scheme:dark;background:#0b0f12;color:#e7edf0;font:13px monospace}</style>
+<div id="out">booting…</div>
+<script type="module">
+// TEMP (leo2a6 r6): fast PROC-ONLY ortho renders of view-front / view-rear
+// with the board light rig — tone-iteration probe so each tone nudge does
+// not cost a full 14-pair critic run. Framing matches tmp-tank-critic.html
+// (same orthoFor math on the proc box). Optional ?mag=1 renders the track
+// band mats in magenta to identify which pixels they own. Deleted after the
+// round.
+import * as THREE from 'three';
+import { createTank } from '/src/vehicles/tankFactory.js';
+
+const SIZE = 640;
+const params = new URLSearchParams(location.search);
+const id = params.get('id') || 'leo2a6';
+const magenta = params.get('mag') === '1';
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, preserveDrawingBuffer: true });
+renderer.setSize(SIZE, SIZE, false);
+renderer.setPixelRatio(1);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.setClearColor(0x151b20, 1);
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+const engineCtx = { setupShadowMaterial: (m) => m, anisotropy: 1, renderer };
+const tank = createTank(id, engineCtx, { camoSeed: 4242, quality: 'high', proceduralOnly: true });
+scene.add(tank.root);
+if (magenta) {
+  tank.root.traverse((o) => {
+    if (!(o.isMesh || o.isInstancedMesh)) return;
+    const m = o.material;
+    if (m && m.map && m.bumpMap && m.map === m.bumpMap) m.color.setRGB(4, 0, 4);          // trackL/R -> magenta
+    else if (o.isInstancedMesh && m && m.color && m.color.getHex() === 0x242220) m.color.setRGB(0, 4, 0); // chain -> green
+    else if (o.isInstancedMesh && m && m.color && m.color.getHex() === 0x3e3a37) m.color.setRGB(0, 0, 4); // pads -> blue
+    else if (m && m.color && m.color.getHex() === 0x2c2a26) m.color.setRGB(4, 4, 0); // rubber (flaps) -> yellow
+  });
+}
+const hemi = new THREE.HemisphereLight(0xcfd8e0, 0x2a2f26, 1.05);
+const sun = new THREE.DirectionalLight(0xfff2dd, 2.2);
+sun.position.set(30, 42, 24);
+scene.add(hemi, sun);
+tank.root.updateMatrixWorld(true);
+tank.root.traverse((o) => {
+  if (!o.isLOD) return;
+  o.autoUpdate = false;
+  o.levels.forEach((level, i) => { if (level.object) level.object.visible = i === 0; });
+});
+const box = new THREE.Box3();
+tank.root.traverse((o) => {
+  if (!(o.isMesh || o.isInstancedMesh) || !o.geometry) return;
+  let vis = true;
+  for (let p = o; p; p = p.parent) if (!p.visible) { vis = false; break; }
+  if (!vis || /shadow/i.test(o.name || '')) return;
+  if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+  box.union(o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld));
+});
+function orthoFor(direction, frac = 0.55) {
+  const center = box.getCenter(new THREE.Vector3());
+  const dir = direction.clone().normalize();
+  const nominalUp = Math.abs(dir.y) > 0.9 ? new THREE.Vector3(0, 0, -1) : new THREE.Vector3(0, 1, 0);
+  const right = new THREE.Vector3().crossVectors(nominalUp, dir).normalize();
+  const up = new THREE.Vector3().crossVectors(dir, right).normalize();
+  let ext = 0.5;
+  for (const cx of [box.min.x, box.max.x]) for (const cy of [box.min.y, box.max.y]) for (const cz of [box.min.z, box.max.z]) {
+    const d = new THREE.Vector3(cx, cy, cz).sub(center);
+    ext = Math.max(ext, Math.abs(d.dot(right)), Math.abs(d.dot(up)));
+  }
+  const half = ext * (frac / 0.5) * 1.06;
+  const camera = new THREE.OrthographicCamera(-half, half, half, -half, 0.1, 200);
+  camera.position.copy(center).addScaledVector(dir, 60);
+  camera.up.copy(up);
+  camera.lookAt(center);
+  camera.updateProjectionMatrix();
+  camera.updateMatrixWorld(true);
+  return camera;
+}
+const shots = {};
+for (const [name, dir] of [['front', new THREE.Vector3(0, 0.08, 1)], ['rear', new THREE.Vector3(0, 0.08, -1)]]) {
+  renderer.clear(true, true, true);
+  renderer.render(scene, orthoFor(dir));
+  shots[name] = renderer.domElement.toDataURL('image/png');
+}
+window.__PROBE = shots;
+window.__PROBE_READY = true;
+document.getElementById('out').textContent = 'probe done';
+</script>

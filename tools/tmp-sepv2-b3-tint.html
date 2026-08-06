@@ -1,0 +1,97 @@
+<!doctype html>
+<!-- TEMP (abrams §B3 box-cleanup round): merged-mesh identification probe.
+     Renders the procedural build only from critic-view cameras with EVERY
+     merged mesh tinted a unique flat color; legend maps color -> rig path +
+     original material color. ?id=m1a2_sepv2&view=closefront|front|toptilt|closeroof
+     Exposes window.__PROBE_PNG + __PROBE_LEGEND + __PROBE_DONE. Deleted after round. -->
+<meta charset="utf-8">
+<title>tmp sepv2 b3 tint</title>
+<script type="module">
+import * as THREE from 'three';
+import { createTank } from '/src/vehicles/tankFactory.js';
+
+const SIZE = 1280;
+const q = new URLSearchParams(location.search);
+const id = q.get('id') || 'm1a2_sepv2';
+const view = q.get('view') || 'closefront';
+
+const renderer = new THREE.WebGLRenderer({ antialias: false, alpha: false, preserveDrawingBuffer: true });
+renderer.setSize(SIZE, SIZE, false);
+renderer.setPixelRatio(1);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.setClearColor(0x151b20, 1);
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+const engineCtx = { setupShadowMaterial: (m) => m, anisotropy: 1, renderer };
+const tank = createTank(id, engineCtx, { camoSeed: 4242, quality: 'high', proceduralOnly: true });
+scene.add(tank.root);
+tank.root.updateMatrixWorld(true);
+
+// unique flat tints, high-contrast palette (indexable from PNG)
+const PAL = [];
+for (let i = 0; i < 64; i++) {
+  const h = (i * 47) % 360, s = 90, l = i % 2 ? 55 : 40;
+  PAL.push(new THREE.Color(`hsl(${h}, ${s}%, ${l}%)`));
+}
+const legend = [];
+let k = 0;
+tank.root.traverse((o) => {
+  if (!(o.isMesh || o.isInstancedMesh) || !o.geometry) return;
+  // shadow proxies are invisible in real renders (shadow-only) — hide them
+  // here or they paint over everything in the unlit tint pass.
+  if (/procShadow/i.test(o.name || '')) { o.visible = false; return; }
+  let vis = true;
+  for (let p = o; p; p = p.parent) if (!p.visible) { vis = false; break; }
+  if (!vis) return;
+  // skip LOD non-primary levels
+  for (let p = o; p; p = p.parent) {
+    if (p.isLOD) { p.autoUpdate = false; p.levels.forEach((lv, j) => { if (lv.object) lv.object.visible = j === 0; }); }
+  }
+  const path = [];
+  for (let p = o; p; p = p.parent) path.unshift(p.name || p.type);
+  const src = Array.isArray(o.material) ? o.material[0] : o.material;
+  const col = PAL[k % PAL.length];
+  const hex = '#' + col.getHexString();
+  legend.push({ i: k, hex, path: path.join('/'), mat: src && src.color ? '#' + src.color.getHexString() : '?', verts: o.geometry.getAttribute('position')?.count ?? 0 });
+  o.material = new THREE.MeshBasicMaterial({ color: col });
+  k += 1;
+});
+
+const box = new THREE.Box3().setFromObject(tank.root);
+function orthoFor(direction, frac = 0.55, centerOff = null) {
+  const center = box.getCenter(new THREE.Vector3());
+  const size = box.getSize(new THREE.Vector3());
+  if (centerOff) { center.x += centerOff.x * size.x; center.y += centerOff.y * size.y; center.z += centerOff.z * size.z; }
+  const dir = direction.clone().normalize();
+  const nominalUp = Math.abs(dir.y) > 0.9 ? new THREE.Vector3(0, 0, -1) : new THREE.Vector3(0, 1, 0);
+  const right = new THREE.Vector3().crossVectors(nominalUp, dir).normalize();
+  const up = new THREE.Vector3().crossVectors(dir, right).normalize();
+  let ext = 0.5;
+  for (const cx of [box.min.x, box.max.x]) for (const cy of [box.min.y, box.max.y]) for (const cz of [box.min.z, box.max.z]) {
+    const d = new THREE.Vector3(cx, cy, cz).sub(center);
+    ext = Math.max(ext, Math.abs(d.dot(right)), Math.abs(d.dot(up)));
+  }
+  const half = ext * (frac / 0.5) * 1.06;
+  const camera = new THREE.OrthographicCamera(-half, half, half, -half, 0.1, 200);
+  camera.position.copy(center).addScaledVector(dir, 60);
+  camera.up.copy(up);
+  camera.lookAt(center);
+  camera.updateProjectionMatrix();
+  return camera;
+}
+const CAMS = {
+  closefront: () => orthoFor(new THREE.Vector3(-1, 0.22, 1), 0.26, { x: 0, y: 0.12, z: 0.28 }),
+  closefrontR: () => orthoFor(new THREE.Vector3(1, 0.22, 1), 0.26, { x: 0, y: 0.12, z: 0.28 }),
+  closeroof: () => orthoFor(new THREE.Vector3(1, 0.55, 0.35), 0.24, { x: 0, y: 0.3, z: 0.05 }),
+  front: () => orthoFor(new THREE.Vector3(0, 0.08, 1), 0.55),
+  left: () => orthoFor(new THREE.Vector3(-1, 0.05, 0), 0.55),
+  toptilt: () => orthoFor(new THREE.Vector3(0.55, 1.35, -0.75), 0.55),
+  rear: () => orthoFor(new THREE.Vector3(0, 0.08, -1), 0.55),
+  closerearL: () => orthoFor(new THREE.Vector3(-1, 0.22, -1), 0.26, { x: -0.15, y: -0.1, z: -0.32 }),
+  closerearR: () => orthoFor(new THREE.Vector3(1, 0.22, -1), 0.26, { x: 0.15, y: -0.1, z: -0.32 }),
+};
+renderer.render(scene, CAMS[view]());
+window.__PROBE_PNG = renderer.domElement.toDataURL('image/png');
+window.__PROBE_LEGEND = legend;
+window.__PROBE_DONE = true;
+</script>

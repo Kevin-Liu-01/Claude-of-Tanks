@@ -4,9 +4,9 @@
  "gatePassed": true,
  "components": {
   "hullCurves": 94.9,
-  "wholeCurves": 91,
+  "wholeCurves": 90.9,
   "turretCurves": 90.4,
-  "stations": 92.1,
+  "stations": 92.3,
   "dims": 97.8,
   "floaters": 100
  },
@@ -120,7 +120,7 @@
    ]
   },
   "side_whole": {
-   "score": 90.97509823367515,
+   "score": 90.93239985863362,
    "meanPct": 0.58,
    "p95Pct": 2.05,
    "coverPct": 0.56,
@@ -552,8 +552,8 @@
    ]
   },
   "front_whole": {
-   "score": 92.50748824923039,
-   "meanPct": 0.55,
+   "score": 92.55034770404615,
+   "meanPct": 0.54,
    "p95Pct": 1.54,
    "coverPct": 0,
    "reg": {
@@ -662,7 +662,7 @@
  },
  "turretRows": {
   "side": {
-   "score": 90.41056527762466,
+   "score": 90.35118784983251,
    "meanPct": 0.7,
    "p95Pct": 2.05,
    "coverPct": 0,
@@ -736,6 +736,14 @@
      "errM": 0.045
     },
     {
+     "at": -1.02,
+     "refTop": 0.36,
+     "refBot": -0.1,
+     "procTop": 0.29,
+     "procBot": -0.1,
+     "errM": 0.039
+    },
+    {
      "at": 2.22,
      "refTop": 0.75,
      "refBot": -0.13,
@@ -752,27 +760,19 @@
      "errM": 0.039
     },
     {
-     "at": 3.05,
-     "refTop": 0.75,
-     "refBot": 0.07,
-     "procTop": 0.74,
-     "procBot": 0.02,
-     "errM": 0.033
-    },
-    {
-     "at": -1.62,
-     "refTop": 0.32,
+     "at": -1.13,
+     "refTop": 0.35,
      "refBot": -0.1,
      "procTop": 0.29,
-     "procBot": -0.12,
-     "errM": 0.028
+     "procBot": -0.1,
+     "errM": 0.034
     }
    ]
   },
   "plan": {
-   "score": 94.91945196702356,
+   "score": 94.76305863783882,
    "meanPct": 0.37,
-   "p95Pct": 1.15,
+   "p95Pct": 1.26,
    "coverPct": 0,
    "reg": {
     "dAlong": 0,
@@ -792,16 +792,16 @@
      "refTop": 1.83,
      "refBot": -0.98,
      "procTop": 2.04,
-     "procBot": -0.94,
-     "errM": 0.122
+     "procBot": -0.92,
+     "errM": 0.134
     },
     {
      "at": -1.49,
      "refTop": 2.26,
      "refBot": -0.94,
      "procTop": 2.04,
-     "procBot": -0.94,
-     "errM": 0.113
+     "procBot": -0.92,
+     "errM": 0.123
     },
     {
      "at": -1.37,
@@ -937,12 +937,12 @@
   {
    "i": 11,
    "wPct": 0.21,
-   "topPct": 0.21
+   "topPct": 0
   },
   {
    "i": 12,
    "wPct": 0.42,
-   "topPct": 1.07
+   "topPct": 3.11
   },
   {
    "i": 13,

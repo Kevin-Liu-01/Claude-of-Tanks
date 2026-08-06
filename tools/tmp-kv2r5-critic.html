@@ -1,0 +1,499 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>tmp kv2 r5 critic probe</title>
+<style>:root{color-scheme:dark;background:#0b0f12;color:#e7edf0;font:13px monospace}</style>
+<div id="out">booting…</div>
+<script type="module">
+// TEMP probe (kv2 shaded-parity r5 — independent critic, FINAL VERDICT).
+// Reproduces the r4 critic's fixed-world pair rig at 1100px tiles (board
+// lights hemi 1.05 / sun 2.2 @ (30,42,24), per-model ortho framing at 0.62
+// fill, median luminance over white-mask-gated tank pixels) so every number
+// is directly comparable to shots/critique-kv2-r4/pair-luminance.json AND to
+// the closing agent's tools/tmp-kv2r5-parity.html. Adds the r5 verdict
+// measurements:
+//   - the closing agent's occlusion-preserving TRACK-BAND component masks
+//     (strict env<=0.101 family / whole gear) with bottom-run slice below
+//     world y 0.48 — verifies the 4.11x -> 0.92x retone claim + hue family;
+//   - hero-perspective luminance row (r4 table comparability);
+//   - top-view CHROMA metrics (median r-g / b-g, pink-pixel fractions) over
+//     the whole tank and the aft engine deck world rect — verifies de-pink;
+//   - brightest-pixel raycast identification on top + front (proc);
+//   - flat ORTHO ZOOM pairs on the three architecture tells (turret rear
+//     dead astern, aft deck plan, bow dead-on);
+//   - 12 perspective closeup pairs at every r4 tell subject + hunt angles;
+//   - 7-frame back-lit turntable (frames 7..13 of the board sweep).
+// Deleted after the round.
+import * as THREE from 'three';
+import { createTank } from '/src/vehicles/tankFactory.js';
+import { MODEL_SOURCE, TANK_SPECS } from '/src/vehicles/specs.js';
+
+const SIZE = 1100;
+const params = new URLSearchParams(location.search);
+const id = params.get('id') || 'kv2';
+const spec = TANK_SPECS[id];
+if (!spec) throw new Error(`Unknown tank id: ${id}`);
+if (MODEL_SOURCE[id]?.source !== 'glb') throw new Error(`${id} has no GLB reference`);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, preserveDrawingBuffer: true });
+renderer.setSize(SIZE, SIZE, false);
+renderer.setPixelRatio(1);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.setClearColor(0x151b20, 1);
+const scene = new THREE.Scene();
+const engineCtx = { setupShadowMaterial: (m) => m, anisotropy: 1, renderer };
+
+const reference = createTank(id, engineCtx, { camoSeed: 4242, quality: 'high' });
+const procedural = createTank(id, engineCtx, { camoSeed: 4242, quality: 'high', proceduralOnly: true });
+scene.add(reference.root, procedural.root);
+
+// fidelity board's exact light rig
+const hemi = new THREE.HemisphereLight(0xcfd8e0, 0x2a2f26, 1.05);
+const sun = new THREE.DirectionalLight(0xfff2dd, 2.2);
+sun.position.set(30, 42, 24);
+scene.add(hemi, sun);
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const swapped = (visual) => {
+  let yes = false;
+  visual.root.traverse((o) => { if (o.userData?.__glbSwapped) yes = true; });
+  return yes;
+};
+for (let i = 0; i < 600 && !swapped(reference); i++) await sleep(50);
+if (!swapped(reference)) throw new Error(`${id} reference GLB did not load`);
+await sleep(400);
+for (const root of [reference.root, procedural.root]) {
+  root.updateMatrixWorld(true);
+  root.traverse((o) => {
+    if (!o.isLOD) return;
+    o.autoUpdate = false;
+    o.levels.forEach((level, i) => { if (level.object) level.object.visible = i === 0; });
+  });
+}
+
+// ground anchors cached ONCE while both models are visible (visibleBox is
+// visibility-gated; renderModel hides the counterpart model, so any anchor
+// computed mid-loop silently reads an empty Box3)
+const groundAnchorOf = (root) => {
+  const b = visibleBox(root);
+  const c = b.getCenter(new THREE.Vector3());
+  return new THREE.Vector3(c.x, b.min.y, c.z);
+};
+
+// r4 rig's six fixed world directions
+const ANGLES = {
+  front: new THREE.Vector3(0, 0.08, 1),
+  right: new THREE.Vector3(1, 0.05, 0),
+  left: new THREE.Vector3(-1, 0.05, 0),
+  rear34: new THREE.Vector3(-1, 0.28, -1),
+  rear: new THREE.Vector3(0, 0.08, -1),
+  top: new THREE.Vector3(0, 1, 0.02),
+};
+const BAND_VIEWS = { left: true, right: true };
+
+// ---- closing agent's component-mask machinery (verbatim mechanism) --------
+function procStrictTrack(o) {
+  const m = o.material;
+  return !!m && typeof m.envMapIntensity === 'number' && m.envMapIntensity <= 0.101;
+}
+function procGear(o) {
+  return procStrictTrack(o) || o.isInstancedMesh || (o.isMesh && Math.abs(o.position.x) > 0.9);
+}
+function refMatcher(re) {
+  return (o) => !!(o.material && re.test(o.material.name || ''));
+}
+function gearVisibleSet(visual, isProc, strict) {
+  const keep = new Set();
+  const pred = isProc ? (strict ? procStrictTrack : procGear)
+    : refMatcher(strict ? /track/i : /track|wheel/i);
+  visual.root.traverse((o) => {
+    if (!(o.isMesh || o.isInstancedMesh) || !o.geometry) return;
+    if (pred(o)) keep.add(o);
+  });
+  return keep;
+}
+const gearWhite = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
+const gearBlack = new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.DoubleSide });
+function renderGearMask(visual, other, camera, keep) {
+  const saved = [];
+  visual.root.traverse((o) => {
+    if (!(o.isMesh || o.isInstancedMesh) || !o.geometry) return;
+    saved.push([o, o.material]);
+    o.material = keep.has(o) ? gearWhite : gearBlack;
+  });
+  const data = renderModel(visual, other, camera, false);
+  for (const [o, m] of saved) o.material = m;
+  return data;
+}
+
+function visibleBox(root) {
+  const box = new THREE.Box3();
+  root.updateMatrixWorld(true);
+  root.traverse((o) => {
+    if (!(o.isMesh || o.isInstancedMesh || o.isSkinnedMesh) || !o.geometry) return;
+    let vis = true;
+    for (let p = o; p; p = p.parent) if (!p.visible) { vis = false; break; }
+    if (!vis || /shadow/i.test(o.name || '')) return;
+    if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+    box.union(o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld));
+  });
+  return box;
+}
+
+function cameraFor(root, direction) {
+  const box = visibleBox(root);
+  const center = box.getCenter(new THREE.Vector3());
+  const dir = direction.clone().normalize();
+  const nominalUp = Math.abs(dir.y) > 0.9 ? new THREE.Vector3(0, 0, -1) : new THREE.Vector3(0, 1, 0);
+  const right = new THREE.Vector3().crossVectors(nominalUp, dir).normalize();
+  const up = new THREE.Vector3().crossVectors(dir, right).normalize();
+  const size = box.getSize(new THREE.Vector3());
+  const half = Math.max(size.x, size.y, size.z) * 0.62;
+  const camera = new THREE.OrthographicCamera(-half, half, half, -half, 0.1, 200);
+  camera.position.copy(center).addScaledVector(dir, 60);
+  camera.up.copy(up);
+  camera.lookAt(center);
+  camera.updateProjectionMatrix();
+  camera.updateMatrixWorld(true);
+  return camera;
+}
+
+const maskMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
+const copy2d = document.createElement('canvas');
+copy2d.width = copy2d.height = SIZE;
+const copyCtx = copy2d.getContext('2d', { willReadFrequently: true });
+function renderModel(visual, other, camera, asMask) {
+  visual.root.visible = true;
+  other.root.visible = false;
+  scene.overrideMaterial = asMask ? maskMaterial : null;
+  renderer.setRenderTarget(null);
+  renderer.setClearColor(asMask ? 0x000000 : 0x151b20, 1);
+  renderer.clear(true, true, true);
+  renderer.render(scene, camera);
+  copyCtx.drawImage(renderer.domElement, 0, 0, SIZE, SIZE);
+  return copyCtx.getImageData(0, 0, SIZE, SIZE).data;
+}
+
+function stats(lit, mask, rect) {
+  const vals = [];
+  const rs = [], gs = [], bs = [];
+  const [x0, x1] = rect ? rect.x : [0, SIZE];
+  const [y0, y1] = rect ? rect.y : [0, SIZE];
+  for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
+    const p = y * SIZE + x;
+    if (mask[p * 4] <= 40) continue;
+    const i = p * 4;
+    vals.push(0.2126 * lit[i] + 0.7152 * lit[i + 1] + 0.0722 * lit[i + 2]);
+    rs.push(lit[i]); gs.push(lit[i + 1]); bs.push(lit[i + 2]);
+  }
+  const med = (a) => { a.sort((q, w) => q - w); return a.length ? a[(a.length / 2) | 0] : 0; };
+  const mean = vals.length ? vals.reduce((a, v) => a + v, 0) / vals.length : 0;
+  return { median: med(vals), mean: +mean.toFixed(1), n: vals.length, rgb: [med(rs), med(gs), med(bs)] };
+}
+function chromaStats(lit, mask, rect) {
+  const dg = [], db = [];
+  let pink8 = 0, pink14 = 0, n = 0;
+  const [x0, x1] = rect ? rect.x : [0, SIZE];
+  const [y0, y1] = rect ? rect.y : [0, SIZE];
+  for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
+    const p = y * SIZE + x;
+    if (mask[p * 4] <= 40) continue;
+    const i = p * 4;
+    const d1 = lit[i] - lit[i + 1], d2 = lit[i + 2] - lit[i + 1];
+    dg.push(d1); db.push(d2); n++;
+    if (d1 >= 8) pink8++;
+    if (d1 >= 14) pink14++;
+  }
+  const med = (a) => { a.sort((q, w) => q - w); return a.length ? a[(a.length / 2) | 0] : 0; };
+  return { medRG: med(dg), medBG: med(db), pinkFrac8: n ? +(pink8 / n).toFixed(4) : 0, pinkFrac14: n ? +(pink14 / n).toFixed(4) : 0, n };
+}
+function projRect(camera, xw, yw, zw) {
+  // project a world AABB (arrays [min,max]) into pixel rect
+  let px0 = SIZE, px1 = 0, py0 = SIZE, py1 = 0;
+  for (const x of xw) for (const y of yw) for (const z of zw) {
+    const v = new THREE.Vector3(x, y, z).project(camera);
+    const px = ((v.x + 1) / 2) * SIZE, py = (1 - (v.y + 1) / 2) * SIZE;
+    px0 = Math.min(px0, px); px1 = Math.max(px1, px);
+    py0 = Math.min(py0, py); py1 = Math.max(py1, py);
+  }
+  return { x: [Math.max(0, Math.round(px0)), Math.min(SIZE, Math.round(px1))], y: [Math.max(0, Math.round(py0)), Math.min(SIZE, Math.round(py1))] };
+}
+
+const pairCanvas = document.createElement('canvas');
+pairCanvas.width = SIZE * 2; pairCanvas.height = SIZE;
+const pairCtx = pairCanvas.getContext('2d', { willReadFrequently: true });
+function pairFromPixels(refPixels, procPixels) {
+  const a = new ImageData(new Uint8ClampedArray(refPixels), SIZE, SIZE);
+  const b = new ImageData(new Uint8ClampedArray(procPixels), SIZE, SIZE);
+  copyCtx.putImageData(a, 0, 0); pairCtx.drawImage(copy2d, 0, 0);
+  copyCtx.putImageData(b, 0, 0); pairCtx.drawImage(copy2d, SIZE, 0);
+  return pairCanvas.toDataURL('image/png');
+}
+
+// raycast identification of a pixel's owning mesh (proc only)
+const raycaster = new THREE.Raycaster();
+function identifyPixel(camera, px, py) {
+  reference.root.visible = false;
+  procedural.root.visible = true;
+  const ndc = new THREE.Vector2((px + 0.5) / SIZE * 2 - 1, 1 - (py + 0.5) / SIZE * 2);
+  raycaster.setFromCamera(ndc, camera);
+  const hits = raycaster.intersectObject(procedural.root, true);
+  reference.root.visible = true;
+  if (!hits.length) return null;
+  const o = hits[0].object;
+  const chain = [];
+  for (let p = o; p && p !== procedural.root; p = p.parent) if (p.name) chain.unshift(p.name);
+  const m = Array.isArray(o.material) ? o.material[hits[0].face?.materialIndex ?? 0] : o.material;
+  return {
+    name: o.name || '(unnamed)', chain: chain.join('/'),
+    matHex: m?.color?.getHex ? m.color.getHex().toString(16).padStart(6, '0') : null,
+    point: hits[0].point.toArray().map((v) => +v.toFixed(3)),
+  };
+}
+
+const REF_ANCHOR = groundAnchorOf(reference.root);
+const PROC_ANCHOR = groundAnchorOf(procedural.root);
+// y is zeroed: both builds stand on the y=0 ground plane (ref box min.y is
+// exactly 0; the proc's -0.37 is instanced-geometry bbox pollution, not
+// geometry — anchoring on it shifted every zoom/closeup frame)
+const ANCHOR_OFF = new THREE.Vector3(
+  PROC_ANCHOR.x - REF_ANCHOR.x, 0, PROC_ANCHOR.z - REF_ANCHOR.z);
+const anchorOffset = (root) => (root === procedural.root
+  ? ANCHOR_OFF.clone() : new THREE.Vector3());
+
+const report = { id, views: {}, band: {}, chroma: {}, brightest: {} };
+const pairs = {};
+const luma = (d, i) => 0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2];
+
+for (const [name, dir] of Object.entries(ANGLES)) {
+  const litData = {}, maskData = {}, cams = {};
+  const row = {};
+  for (const [tag, visual, other] of [['ref', reference, procedural], ['proc', procedural, reference]]) {
+    reference.root.visible = true;
+    procedural.root.visible = true;
+    const cam = cameraFor(visual.root, dir);
+    cams[tag] = cam;
+    maskData[tag] = renderModel(visual, other, cam, true);
+    litData[tag] = renderModel(visual, other, cam, false);
+    const s = stats(litData[tag], maskData[tag]);
+    row[tag] = s.median;
+    row[`${tag}Mean`] = s.mean;
+    row[`${tag}N`] = s.n;
+  }
+  row.ratio = row.proc > 0 ? +(row.ref / row.proc).toFixed(3) : -1;
+  row.ratioMean = row.procMean > 0 ? +(row.refMean / row.procMean).toFixed(3) : -1;
+  report.views[name] = row;
+  pairs[`pair-${name}`] = pairFromPixels(litData.ref, litData.proc);
+
+  if (BAND_VIEWS[name]) {
+    for (const strict of [true, false]) {
+      const bandRow = {}, botRow = {};
+      for (const [tag, visual, other] of [['ref', reference, procedural], ['proc', procedural, reference]]) {
+        reference.root.visible = true;
+        procedural.root.visible = true;
+        const cam = cams[tag];
+        const keep = gearVisibleSet(visual, tag === 'proc', strict);
+        const gearMask = renderGearMask(visual, other, cam, keep);
+        bandRow[tag] = stats(litData[tag], gearMask);
+        bandRow[`${tag}N`] = keep.size;
+        const v = new THREE.Vector3(0, 0.48, 0).project(cam);
+        const rowTop = Math.max(0, Math.round((1 - (v.y + 1) / 2) * SIZE));
+        botRow[tag] = stats(litData[tag], gearMask, { x: [0, SIZE], y: [rowTop, SIZE] });
+      }
+      bandRow.ratio = bandRow.proc.median > 0 ? +(bandRow.ref.median / bandRow.proc.median).toFixed(3) : -1;
+      botRow.ratio = botRow.proc.median > 0 ? +(botRow.ref.median / botRow.proc.median).toFixed(3) : -1;
+      report.band[`${name}${strict ? '-track' : '-gear'}`] = bandRow;
+      report.band[`${name}${strict ? '-track' : '-gear'}-bot`] = botRow;
+    }
+  }
+
+  if (name === 'top') {
+    // whole-tank chroma + aft engine-deck world rect chroma (de-pink verdict)
+    for (const tag of ['ref', 'proc']) {
+      const deckRect = projRect(cams[tag], [-1.75, 1.75], [1.5, 1.7], [-3.55, -0.85]);
+      report.chroma[`${tag}-top-all`] = chromaStats(litData[tag], maskData[tag]);
+      report.chroma[`${tag}-top-aftdeck`] = { rect: deckRect, ...chromaStats(litData[tag], maskData[tag], deckRect) };
+    }
+  }
+  if (name === 'top' || name === 'front') {
+    // brightest tank pixel on the PROC cell, raycast-identified + ref parity max
+    let maxL = -1, at = 0;
+    for (let p = 0; p < SIZE * SIZE; p++) {
+      if (maskData.proc[p * 4] <= 40) continue;
+      const l = luma(litData.proc, p * 4);
+      if (l > maxL) { maxL = l; at = p; }
+    }
+    let maxLR = -1;
+    for (let p = 0; p < SIZE * SIZE; p++) {
+      if (maskData.ref[p * 4] <= 40) continue;
+      const l = luma(litData.ref, p * 4);
+      if (l > maxLR) maxLR = l;
+    }
+    const px = at % SIZE, py = (at / SIZE) | 0;
+    report.brightest[name] = { procMax: +maxL.toFixed(1), at: [px, py], refMax: +maxLR.toFixed(1), owner: identifyPixel(cams.proc, px, py) };
+  }
+}
+
+// ---- ref GLB track-material texel family (tone target) --------------------
+{
+  let trackMat = null;
+  reference.root.traverse((o) => {
+    if (trackMat || !o.material) return;
+    const list = Array.isArray(o.material) ? o.material : [o.material];
+    for (const m of list) if (/track/i.test(m.name || '') && m.map && m.map.image) trackMat = m;
+  });
+  if (trackMat) {
+    const img = trackMat.map.image;
+    const tc = document.createElement('canvas');
+    tc.width = tc.height = 64;
+    const tctx = tc.getContext('2d', { willReadFrequently: true });
+    tctx.drawImage(img, 0, 0, 64, 64);
+    const td = tctx.getImageData(0, 0, 64, 64).data;
+    const rs = [], gs = [], bs = [];
+    let mr = 0, mg = 0, mb = 0;
+    for (let i = 0; i < 64 * 64 * 4; i += 4) {
+      rs.push(td[i]); gs.push(td[i + 1]); bs.push(td[i + 2]);
+      mr += td[i]; mg += td[i + 1]; mb += td[i + 2];
+    }
+    const med = (a) => { a.sort((q, w) => q - w); return a[(a.length / 2) | 0]; };
+    report.refTrackTexels = {
+      colorFactor: trackMat.color ? trackMat.color.getHexString() : null,
+      meanRGB: [mr, mg, mb].map((v) => Math.round(v / (64 * 64))),
+      medianRGB: [med(rs), med(gs), med(bs)],
+    };
+  }
+}
+
+// ---- hero perspective pair + hero luminance row (r4 table parity) ---------
+const bothVisible = () => { reference.root.visible = true; procedural.root.visible = true; };
+function heroCameraFor(root, dirArr) {
+  const box = visibleBox(root);
+  const c = box.getCenter(new THREE.Vector3());
+  const cam = new THREE.PerspectiveCamera(30, 1, 0.1, 400);
+  const radius = box.getSize(new THREE.Vector3()).length() * 1.06;
+  cam.position.copy(c).addScaledVector(new THREE.Vector3(...dirArr).normalize(), radius);
+  cam.lookAt(c);
+  cam.updateProjectionMatrix();
+  cam.updateMatrixWorld(true);
+  return cam;
+}
+{
+  bothVisible();
+  const camR = heroCameraFor(reference.root, [0.75, 0.32, 1]);
+  const camP = heroCameraFor(procedural.root, [0.75, 0.32, 1]);
+  const maskR = renderModel(reference, procedural, camR, true);
+  const litR = renderModel(reference, procedural, camR, false);
+  const maskP = renderModel(procedural, reference, camP, true);
+  const litP = renderModel(procedural, reference, camP, false);
+  const sR = stats(litR, maskR), sP = stats(litP, maskP);
+  report.views.hero = {
+    ref: sR.median, proc: sP.median, refMean: sR.mean, procMean: sP.mean,
+    ratio: sP.median > 0 ? +(sR.median / sP.median).toFixed(3) : -1,
+    ratioMean: sP.mean > 0 ? +(sR.mean / sP.mean).toFixed(3) : -1,
+  };
+  pairs['pair-hero'] = pairFromPixels(litR, litP);
+  // sun-opposite hero (r4 extra) — re-show both models BEFORE the box reads
+  bothVisible();
+  const camR2 = heroCameraFor(reference.root, [-0.75, 0.30, -1]);
+  const camP2 = heroCameraFor(procedural.root, [-0.75, 0.30, -1]);
+  const litR2 = renderModel(reference, procedural, camR2, false);
+  const litP2 = renderModel(procedural, reference, camP2, false);
+  pairs['hero-rear-left'] = pairFromPixels(litR2, litP2);
+}
+
+// ---- flat ortho zoom pairs on the three architecture tells ----------------
+// per-model frame offsets anchor at bbox BOTTOM-CENTER (both tanks stand on
+// their tracks; bbox-center deltas mis-shift when the boxes differ in height)
+function orthoZoomPair(name, dirArr, centerW, halfW) {
+  bothVisible();
+  const dir = new THREE.Vector3(...dirArr).normalize();
+  const out = {};
+  for (const [tag, visual, other] of [['ref', reference, procedural], ['proc', procedural, reference]]) {
+    const off = anchorOffset(visual.root);
+    const center = new THREE.Vector3(...centerW).add(off);
+    const nominalUp = Math.abs(dir.y) > 0.9 ? new THREE.Vector3(0, 0, -1) : new THREE.Vector3(0, 1, 0);
+    const right = new THREE.Vector3().crossVectors(nominalUp, dir).normalize();
+    const up = new THREE.Vector3().crossVectors(dir, right).normalize();
+    const cam = new THREE.OrthographicCamera(-halfW, halfW, halfW, -halfW, 0.1, 200);
+    cam.position.copy(center).addScaledVector(dir, 60);
+    cam.up.copy(up);
+    cam.lookAt(center);
+    cam.updateProjectionMatrix();
+    cam.updateMatrixWorld(true);
+    out[tag] = renderModel(visual, other, cam, false);
+  }
+  pairs[name] = pairFromPixels(out.ref, out.proc);
+}
+orthoZoomPair('zoom-turret-rear', [0, 0.02, -1], [0, 2.35, 0], 1.9);
+orthoZoomPair('zoom-top-aftdeck', [0, 1, 0.02], [0, 1.6, -2.0], 1.9);
+orthoZoomPair('zoom-front-bow', [0, 0.05, 1], [0, 1.2, 0], 1.9);
+orthoZoomPair('zoom-left-gearband', [-1, 0.05, 0], [0, 0.8, 0], 2.4);
+orthoZoomPair('zoom-right-gearband', [1, 0.05, 0], [0, 0.8, 0], 2.4);
+
+// ---- perspective closeup pairs at tell/hunt subjects ----------------------
+const perspFor = (root, pos, look, fov) => {
+  const c = new THREE.PerspectiveCamera(fov, 1, 0.1, 200);
+  const off = anchorOffset(root);
+  c.position.set(...pos).add(off);
+  c.lookAt(new THREE.Vector3(...look).add(off));
+  c.updateMatrixWorld(true);
+  return c;
+};
+const CLOSEUPS = {
+  'closeup-turret-rear': [[0.25, 2.8, -6.6], [0, 2.2, -1.2], 30],
+  'closeup-rear-quarter': [[-4.4, 3.6, -5.2], [0.3, 2.1, -1.0], 34],
+  'closeup-mantlet': [[2.9, 3.3, 5.6], [0.1, 2.55, 1.6], 28],
+  'closeup-gear-right': [[6.2, 1.25, -0.8], [0.3, 0.85, -0.2], 36],
+  'closeup-gear-left': [[-6.2, 1.25, 0.8], [-0.3, 0.85, 0.2], 36],
+  'closeup-sprocket': [[3.9, 1.15, -5.4], [1.35, 0.75, -2.9], 24],
+  'closeup-idler': [[-3.9, 1.15, 5.4], [-1.35, 0.75, 2.9], 24],
+  'closeup-deck': [[2.4, 5.4, -4.8], [0, 1.6, -1.8], 32],
+  'closeup-bow': [[2.2, 2.7, 6.6], [0, 1.3, 2.7], 32],
+  'closeup-muzzle': [[1.3, 3.1, 7.2], [0.15, 2.5, 3.3], 20],
+  'closeup-links': [[-5.0, 0.8, 3.6], [-1.4, 0.5, 1.4], 26],
+  'closeup-garage': [[5.6, 2.7, 5.6], [0, 1.6, 0], 38],
+};
+for (const [name, [pos, look, fov]] of Object.entries(CLOSEUPS)) {
+  bothVisible();
+  const camR = perspFor(reference.root, pos, look, fov);
+  const camP = perspFor(procedural.root, pos, look, fov);
+  const litR = renderModel(reference, procedural, camR, false);
+  const litP = renderModel(procedural, reference, camP, false);
+  pairs[name] = pairFromPixels(litR, litP);
+}
+
+// ---- 7-frame back-lit turntable (frames 7..13 of the board 24x15 sweep) ---
+{
+  bothVisible();
+  const px = 700;
+  const cv = document.createElement('canvas');
+  cv.width = px * 7; cv.height = px;
+  const ctx = cv.getContext('2d');
+  const baseYaw = procedural.root.rotation.y;
+  const cam = heroCameraFor(procedural.root, [0.75, 0.32, 1]);
+  for (let i = 0; i < 7; i++) {
+    procedural.root.rotation.y = baseYaw + (7 + i) * (Math.PI / 12);
+    procedural.root.updateMatrixWorld(true);
+    renderModel(procedural, reference, cam, false);
+    ctx.drawImage(copy2d, 0, 0, SIZE, SIZE, i * px, 0, px, px);
+  }
+  procedural.root.rotation.y = baseYaw;
+  procedural.root.updateMatrixWorld(true);
+  pairs['turntable-backlit-7f'] = cv.toDataURL('image/png');
+}
+
+bothVisible();
+// debug handles: world boxes as visibleBox sees them (framing diagnostics)
+{
+  const b2a = (b) => ({ min: b.min.toArray().map((v) => +v.toFixed(3)), max: b.max.toArray().map((v) => +v.toFixed(3)) });
+  report.debug = {
+    refBox: b2a(visibleBox(reference.root)),
+    procBox: b2a(visibleBox(procedural.root)),
+    refPos: reference.root.position.toArray(),
+    procPos: procedural.root.position.toArray(),
+  };
+}
+window.__PAIRS = pairs;
+window.__REPORT = report;
+document.querySelector('#out').textContent = JSON.stringify(report, null, 2);
+window.__CRITIC_READY = true;
+</script>

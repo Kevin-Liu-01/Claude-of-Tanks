@@ -1,0 +1,132 @@
+<!doctype html>
+<!-- TEMP (leo2_revolution defuse re-cert critic): yaw-90 proof rig.
+     Renders yaw 0 / yaw 90 from four cameras (two hero perspectives, one
+     ORTHO left side, one ORTHO top) and computes a DIRECT GEOMETRY census:
+     per-z-band max vertex Y of the rig_hull subtree vs rig_turret subtree
+     (instanced meshes included). Proc only; diagnosis rig (standing-check
+     evidence, not view scoring). -->
+<meta charset="utf-8">
+<title>tmp-defuse-recert-yawpair</title>
+<body style="margin:0;background:#151b20">
+<script type="module">
+import * as THREE from 'three';
+import { createTank } from '/src/vehicles/tankFactory.js';
+
+const params = new URLSearchParams(location.search);
+const id = params.get('id') || 'leo2_revolution';
+const yawDeg = Number(params.get('yaw') || 90);
+
+const engineCtx = { setupShadowMaterial: (m) => m, anisotropy: 1, renderer: null };
+const tank = createTank(id, engineCtx, { camoSeed: 4242, quality: 'high', proceduralOnly: true });
+tank.root.updateMatrixWorld(true);
+
+// ---------- direct geometry census (rest pose) ----------
+function subtreeTops(rootName) {
+  const node = tank.root.getObjectByName(rootName);
+  if (!node) return null;
+  node.updateMatrixWorld(true);
+  const bands = {}; // zBand(0.1m) -> maxY
+  const v = new THREE.Vector3();
+  const m = new THREE.Matrix4();
+  node.traverse((o) => {
+    if (!o.isMesh || !o.geometry?.attributes?.position) return;
+    const pos = o.geometry.attributes.position;
+    const mats = [];
+    if (o.isInstancedMesh) {
+      for (let i = 0; i < o.count; i++) {
+        const im = new THREE.Matrix4();
+        o.getMatrixAt(i, im);
+        mats.push(new THREE.Matrix4().multiplyMatrices(o.matrixWorld, im));
+      }
+    } else mats.push(o.matrixWorld);
+    for (const mw of mats) {
+      for (let i = 0; i < pos.count; i++) {
+        v.fromBufferAttribute(pos, i).applyMatrix4(mw);
+        const zb = Math.round(v.z * 10) / 10;
+        if (!(zb in bands) || v.y > bands[zb]) bands[zb] = v.y;
+      }
+    }
+  });
+  return bands;
+}
+const hullTops = subtreeTops('rig_hull');
+const turretTops = subtreeTops('rig_turret');
+const turret = tank.root.getObjectByName('rig_turret');
+const tBox = new THREE.Box3().setFromObject(turret);
+const census = {
+  id,
+  turretAabb: { min: tBox.min.toArray(), max: tBox.max.toArray() },
+  hullTopsByZ: hullTops,
+  turretTopsByZ: turretTops,
+};
+
+// ---------- renders ----------
+const PX = 1100;
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setSize(PX, PX);
+renderer.setClearColor(0x151b20, 1);
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.add(new THREE.HemisphereLight(0xcfd8e8, 0x2a2e26, 0.95));
+const key = new THREE.DirectionalLight(0xfff2dd, 1.35);
+key.position.set(30, 42, 24);
+scene.add(key);
+const fill = new THREE.DirectionalLight(0xdde8ff, 0.35);
+fill.position.set(-26, 18, -30);
+scene.add(fill);
+scene.add(tank.root);
+
+const box = new THREE.Box3().setFromObject(tank.root);
+const c = box.getCenter(new THREE.Vector3());
+const size = box.getSize(new THREE.Vector3());
+const r = size.length() * 0.62;
+
+function perspCam(dirV) {
+  const cam = new THREE.PerspectiveCamera(38, 1, 0.1, 400);
+  cam.position.copy(c).addScaledVector(dirV.normalize(), r * 1.55);
+  cam.lookAt(c.x, c.y + 0.15, c.z);
+  cam.updateMatrixWorld(true);
+  return cam;
+}
+// ORTHO side (looking -x): x right = world +z, y up = world y
+const HALF = Math.max(size.z, size.x) * 0.62;
+function orthoSide() {
+  const cam = new THREE.OrthographicCamera(-HALF, HALF, HALF, -HALF, 0.1, 200);
+  cam.position.set(c.x - 40, c.y, c.z);
+  cam.up.set(0, 1, 0);
+  cam.lookAt(c.x, c.y, c.z);
+  cam.updateMatrixWorld(true);
+  return cam;
+}
+function orthoTop() {
+  const cam = new THREE.OrthographicCamera(-HALF, HALF, HALF, -HALF, 0.1, 200);
+  cam.position.set(c.x, c.y + 40, c.z);
+  cam.up.set(0, 0, -1); // screen up = world -z? keep: up toward -z so +z reads DOWN
+  cam.lookAt(c.x, c.y, c.z);
+  cam.updateMatrixWorld(true);
+  return cam;
+}
+const views = {
+  rearleft: perspCam(new THREE.Vector3(-0.85, 0.42, -1)),
+  frontright: perspCam(new THREE.Vector3(0.85, 0.42, 1)),
+  side: orthoSide(),
+  top: orthoTop(),
+};
+census.ortho = { halfM: HALF, centre: c.toArray(), px: PX };
+
+const shots = {};
+for (const yaw of [0, yawDeg]) {
+  turret.rotation.y = yaw * Math.PI / 180;
+  tank.root.updateMatrixWorld(true);
+  for (const [name, cam] of Object.entries(views)) {
+    renderer.render(scene, cam);
+    shots[`${name}-yaw${yaw}`] = renderer.domElement.toDataURL('image/png');
+  }
+}
+turret.rotation.y = 0;
+
+window.__SHOTS = shots;
+window.__CENSUS = JSON.stringify(census);
+window.__YAW_READY = true;
+</script>

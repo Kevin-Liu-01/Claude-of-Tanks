@@ -1,0 +1,75 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>tmp holefind</title>
+<script type="module">
+// TEMP (plate-fill r1): casts the exact camera ray through a flagged
+// see-through pixel and reports every mesh AABB it enters/exits plus real
+// raycast hits — names the pieces that bound an open corridor. Deleted
+// after the round.
+import * as THREE from 'three';
+import { createTank } from '/src/vehicles/tankFactory.js';
+
+const q = new URLSearchParams(location.search);
+const id = q.get('id') || 'chieftain5';
+const px = Number(q.get('px') || 655), py = Number(q.get('py') || 210);
+const CELL = 960;
+const renderer = new THREE.WebGLRenderer();
+const engineCtx = { setupShadowMaterial: (m) => m, anisotropy: 1, renderer };
+const tank = createTank(id, engineCtx, { camoSeed: 4242, quality: 'high', proceduralOnly: true });
+const scene = new THREE.Scene();
+scene.add(tank.root);
+tank.root.updateMatrixWorld(true);
+tank.root.traverse((o) => {
+  if (!o.isLOD) return;
+  o.autoUpdate = false;
+  o.levels.forEach((level, i) => { if (level.object) level.object.visible = i === 0; });
+});
+tank.root.traverse((o) => {
+  if ((o.isMesh || o.isInstancedMesh) && (/shadow/i.test(o.name || '') || o.material?.colorWrite === false)) o.visible = false;
+});
+// body box (same rule as tmp-platefill.html)
+const bodyBox = new THREE.Box3();
+tank.root.traverse((o) => {
+  if (!(o.isMesh || o.isInstancedMesh) || !o.geometry || !o.visible) return;
+  if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+  const b = o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld);
+  if ((b.max.z - b.min.z) > 2.6 && b.min.y > 1.2) return;
+  bodyBox.union(b);
+});
+const bSize = bodyBox.getSize(new THREE.Vector3());
+const bCenter = bodyBox.getCenter(new THREE.Vector3());
+const L = Math.max(bSize.x, bSize.y, bSize.z), H = bSize.y, W = bSize.x;
+const y0 = bodyBox.min.y, cz = bCenter.z;
+// closeup-side-low camera (must match tmp-platefill.html)
+const target = new THREE.Vector3(W * 0.30, y0 + H * 0.35, cz);
+const dir = new THREE.Vector3(1, 0.10, -0.22).normalize().multiplyScalar(L * 0.60);
+const cam = new THREE.PerspectiveCamera(34, 1, 0.05, 300);
+cam.position.copy(target.clone().add(dir));
+cam.lookAt(target);
+cam.updateMatrixWorld(true);
+// ray through pixel
+const ndc = new THREE.Vector2((px / CELL) * 2 - 1, -((py / CELL) * 2 - 1));
+const ray = new THREE.Raycaster();
+ray.setFromCamera(ndc, cam);
+const hits = ray.intersectObject(tank.root, true)
+  .map((h) => ({ d: +h.distance.toFixed(3), name: h.object.name || h.object.material?.name || 'mesh',
+    mat: h.object.material?.color ? '#' + h.object.material.color.getHexString() : '',
+    at: [h.point.x, h.point.y, h.point.z].map((v) => +v.toFixed(3)) }));
+// AABB walk
+const segs = [];
+tank.root.traverse((o) => {
+  if (!(o.isMesh || o.isInstancedMesh) || !o.geometry || !o.visible) return;
+  const b = o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld);
+  const t = ray.ray.intersectBox(b, new THREE.Vector3());
+  if (!t) return;
+  const size = b.getSize(new THREE.Vector3());
+  segs.push({ enter: +t.distanceTo(ray.ray.origin).toFixed(3),
+    box: [b.min, b.max].map((v) => [v.x, v.y, v.z].map((n) => +n.toFixed(2))),
+    dims: [size.x, size.y, size.z].map((n) => +n.toFixed(2)) });
+});
+segs.sort((a, b) => a.enter - b.enter);
+window.__HOLE = { id, px, py, cam: cam.position.toArray().map((v) => +v.toFixed(2)),
+  rayDir: ray.ray.direction.toArray().map((v) => +v.toFixed(3)),
+  raycastHits: hits.slice(0, 8), aabbAlongRay: segs.slice(0, 14) };
+window.__HOLE_READY = true;
+</script>

@@ -1,0 +1,68 @@
+<!doctype html>
+<!-- TEMP (patton family): list procedural meshes whose world bbox intersects
+     a query box. ?id=m26_pershing&x0=&x1=&y0=&y1=&z0=&z1= -->
+<meta charset="utf-8">
+<title>tmp-whatsat</title>
+<script type="module">
+import * as THREE from 'three';
+import { createTank } from '/src/vehicles/tankFactory.js';
+
+const q = new URLSearchParams(location.search);
+const id = q.get('id') || 'm26_pershing';
+const B = {
+  x0: +(q.get('x0') ?? -10), x1: +(q.get('x1') ?? 10),
+  y0: +(q.get('y0') ?? -10), y1: +(q.get('y1') ?? 10),
+  z0: +(q.get('z0') ?? -10), z1: +(q.get('z1') ?? 10),
+};
+const engineCtx = { setupShadowMaterial: (m) => m, anisotropy: 1, renderer: null };
+const tank = createTank(id, engineCtx, { camoSeed: 4242, quality: 'high', proceduralOnly: true });
+tank.root.updateMatrixWorld(true);
+const out = [];
+const qb = new THREE.Box3(new THREE.Vector3(B.x0, B.y0, B.z0), new THREE.Vector3(B.x1, B.y1, B.z1));
+tank.root.updateMatrixWorld(true);
+tank.root.traverse((o) => {
+  if (!(o.isMesh || o.isInstancedMesh) || !o.geometry) return;
+  let vis = true;
+  for (let p = o; p; p = p.parent) if (p.visible === false) { vis = false; break; }
+  if (!vis) return;
+  const path = [];
+  for (let p = o; p; p = p.parent) path.unshift(p.name || p.type);
+  const test = (bb) => bb.intersectsBox(qb);
+  if (o.isInstancedMesh) {
+    const m = new THREE.Matrix4();
+    if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+    for (let i = 0; i < o.count; i++) {
+      o.getMatrixAt(i, m);
+      const bb = o.geometry.boundingBox.clone().applyMatrix4(new THREE.Matrix4().multiplyMatrices(o.matrixWorld, m));
+      if (test(bb)) out.push({ path: path.join('/') + `[inst ${i}]`, min: bb.min.toArray().map((v) => +v.toFixed(3)), max: bb.max.toArray().map((v) => +v.toFixed(3)) });
+    }
+  } else {
+    const bb = new THREE.Box3().setFromObject(o);
+    if (test(bb)) out.push({ path: path.join('/') + '#' + (o.material && o.material.color ? o.material.color.getHexString() : '?'), min: bb.min.toArray().map((v) => +v.toFixed(3)), max: bb.max.toArray().map((v) => +v.toFixed(3)) });
+    if (test(bb) && q.get('tris')) {
+      // per-triangle scan: report triangles fully inside the query box
+      const pos = o.geometry.getAttribute('position');
+      const idx = o.geometry.index;
+      const v = new THREE.Vector3();
+      const n = idx ? idx.count : pos.count;
+      const inBox = (i) => {
+        v.fromBufferAttribute(pos, idx ? idx.getX(i) : i).applyMatrix4(o.matrixWorld);
+        return v.x >= B.x0 && v.x <= B.x1 && v.y >= B.y0 && v.y <= B.y1 && v.z >= B.z0 && v.z <= B.z1
+          ? [+v.x.toFixed(3), +v.y.toFixed(3), +v.z.toFixed(3)] : null;
+      };
+      const seen = new Set();
+      for (let i = 0; i < n; i++) {
+        const a = inBox(i);
+        if (!a) continue;
+        const key = a.join(',');
+        if (seen.has(key)) continue;
+        seen.add(key);
+        out.push({ path: path.join('/') + ' VERT', min: a, max: a });
+        if (seen.size > 40) break;
+      }
+    }
+  }
+});
+window.__WHATSAT = out;
+window.__HASH_READY = true;
+</script>

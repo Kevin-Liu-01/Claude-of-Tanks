@@ -1,0 +1,118 @@
+{
+  "date": "2026-08-02T22:24:26.213Z",
+  "scene": "battle",
+  "map": "verdant",
+  "roster": "pinned:kv2,jagdtiger,tiger2,object279,is7,t30,t95",
+  "viewport": {
+    "width": 1920,
+    "height": 1080,
+    "deviceScaleFactor": 1
+  },
+  "sampleSeconds": 60,
+  "frames": 5613,
+  "loadToReadyMs": -1,
+  "fps": {
+    "median": 100,
+    "p5": 67.6,
+    "p1": 34.7,
+    "mean": 117.6
+  },
+  "frameMs": {
+    "median": 10,
+    "p95": 14.8,
+    "p99": 28.8
+  },
+  "drawCalls": {
+    "median": 664,
+    "max": 818
+  },
+  "triangles": {
+    "median": 4852562,
+    "max": 5800043
+  },
+  "rendererInfo": {
+    "geometries": 545,
+    "textures": 242,
+    "programs": 263
+  },
+  "heap": {
+    "startMB": 628.5,
+    "endMB": 642.9,
+    "growthMBperS": 0.24,
+    "floorGrowthMBperS": 0,
+    "retainedStartMB": 612.6,
+    "retainedEndMB": 622.4,
+    "retainedGrowthMBperS": 0.16
+  },
+  "gpuTextureEstimate": {
+    "sceneTextureMB": 503.5,
+    "shadowRtMB": 160,
+    "uniqueTextures": 205
+  },
+  "consoleErrors": [],
+  "machine": {
+    "cores": 18,
+    "load1Start": 5.7,
+    "load1End": 6.55,
+    "load1Max": 6.81,
+    "foreignHeadlessMax": 0,
+    "foreignGpuCpuMax": 41.4,
+    "contended": true
+  },
+  "budget": {
+    "pass": false,
+    "fpsMedian": {
+      "limit": ">=60",
+      "actual": 100,
+      "pass": true
+    },
+    "fpsP5": {
+      "limit": ">=45",
+      "actual": 67.6,
+      "pass": true
+    },
+    "frameMsP99": {
+      "limit": "<=25",
+      "actual": 28.8,
+      "pass": false
+    },
+    "drawCallsWorstFrame": {
+      "limit": "<=900",
+      "actual": 818,
+      "pass": true
+    },
+    "trianglesMedian": {
+      "limit": "<=7000000",
+      "actual": 4852562,
+      "pass": true
+    },
+    "loadToReady": {
+      "limit": "<=8000",
+      "actual": -1,
+      "pass": true
+    },
+    "sceneTextureMB": {
+      "limit": "<=512 (frozen; holdable via parked-pool visual eviction)",
+      "actual": 503.5,
+      "pass": true
+    },
+    "heapStableMBperS": {
+      "limit": "<=1",
+      "actual": 0.16,
+      "pass": true
+    },
+    "consoleErrors": {
+      "limit": "=0",
+      "actual": 0,
+      "pass": true
+    },
+    "certification": "REFUSED — machine contended (load1 5.7->6.55, mid-run max 6.81, foreign headless-GPU procs 0, interactive-browser GPU cpu 41.4% (limit 15), on 18 cores, load limit 9); re-run quiet"
+  },
+  "ratchet": {
+    "trianglesMedian": {
+      "target": 6000000,
+      "actual": 4852562,
+      "met": true
+    }
+  }
+}

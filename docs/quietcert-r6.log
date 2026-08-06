@@ -151,3 +151,37 @@
 [quietcert 2026-07-30T08:32:27.160Z] waiting: load1=4.7 busyHeadless=0 interactiveGpu=19.5%
 [quietcert 2026-07-30T08:42:27.284Z] waiting: load1=3.7 busyHeadless=0 interactiveGpu=24.4%
 [quietcert 2026-07-30T08:52:27.291Z] gave up after 24 h without a quiet window — rerun after sibling sessions finish
+[quietcert 2026-08-02T19:43:01.679Z] runner up on 7ce4e20 + uncommitted src changes; cores=18 quiet-load<7.6 quiet-gpu<10%
+[quietcert 2026-08-02T19:43:01.817Z] waiting: load1=8.0 busyHeadless=0 interactiveGpu=35.7%
+[quietcert 2026-08-02T19:53:01.980Z] waiting: load1=4.5 busyHeadless=0 interactiveGpu=53.3%
+[quietcert 2026-08-02T20:03:02.115Z] waiting: load1=6.4 busyHeadless=0 interactiveGpu=44.5%
+[quietcert 2026-08-02T20:13:02.269Z] waiting: load1=5.8 busyHeadless=0 interactiveGpu=48.2%
+[quietcert 2026-08-02T20:23:02.392Z] waiting: load1=4.5 busyHeadless=0 interactiveGpu=44%
+[quietcert 2026-08-02T20:33:02.538Z] waiting: load1=5.8 busyHeadless=0 interactiveGpu=53.9%
+[quietcert 2026-08-02T20:43:02.699Z] waiting: load1=5.9 busyHeadless=0 interactiveGpu=31.6%
+[quietcert 2026-08-02T20:53:02.848Z] waiting: load1=8.2 busyHeadless=0 interactiveGpu=35.3%
+[quietcert 2026-08-02T21:03:02.988Z] waiting: load1=4.3 busyHeadless=0 interactiveGpu=50.3%
+[quietcert 2026-08-02T21:13:03.130Z] waiting: load1=5.2 busyHeadless=0 interactiveGpu=48.9%
+[quietcert 2026-08-02T21:23:03.276Z] waiting: load1=6.0 busyHeadless=0 interactiveGpu=39.9%
+[quietcert 2026-08-02T21:33:03.460Z] waiting: load1=4.7 busyHeadless=0 interactiveGpu=51%
+[quietcert 2026-08-02T21:43:03.620Z] waiting: load1=4.2 busyHeadless=0 interactiveGpu=54.9%
+[quietcert 2026-08-02T21:53:03.749Z] waiting: load1=6.3 busyHeadless=0 interactiveGpu=53.9%
+[quietcert 2026-08-02T22:03:03.891Z] waiting: load1=6.1 busyHeadless=0 interactiveGpu=50.7%
+[quietcert 2026-08-02T22:13:04.077Z] waiting: load1=5.1 busyHeadless=0 interactiveGpu=55.2%
+[quietcert 2026-08-02T22:23:04.235Z] quiet window: load1=5.7 busyHeadless=0 interactiveGpu=6% — attempting cert pair
+[quietcert 2026-08-02T22:23:04.235Z] starting perfprobe --dsf 1 (60 s cert window)
+[perf] vite up at http://localhost:5907/
+[perf] CONTENDED MACHINE: load1 5.7 -> 6.55 (mid-run max 6.81), foreign headless-GPU procs 0, on 18 cores (load limit 9). Numbers are for iteration only — certification refused.
+[perf] BUDGET FAIL: frameMsP99=28.8 (want <=25)
+[quietcert 2026-08-02T22:24:26.586Z] probe dsf1: certification=REFUSED — machine contended (load1 5.7->6.55, mid-run max 6.81, foreign headless-GPU procs 0, interactive-browser GPU cpu 41.4% (limit 15), on 18 cores, load limit 9); re-run quiet fps=100/67.6 p99=28.8 tris=4852562 load=-1
+[quietcert 2026-08-02T22:34:26.791Z] waiting: load1=6.9 busyHeadless=0 interactiveGpu=62.1%
+[quietcert 2026-08-02T22:44:27.010Z] waiting: load1=7.4 busyHeadless=5 interactiveGpu=50.6%
+[quietcert 2026-08-02T22:54:27.144Z] waiting: load1=6.0 busyHeadless=0 interactiveGpu=50.9%
+[quietcert 2026-08-02T23:04:27.880Z] waiting: load1=117.4 busyHeadless=0 interactiveGpu=168.1%
+[quietcert 2026-08-02T23:14:28.048Z] waiting: load1=11.5 busyHeadless=0 interactiveGpu=135%
+[quietcert 2026-08-02T23:24:28.370Z] waiting: load1=14.1 busyHeadless=3 interactiveGpu=19.6%
+[quietcert 2026-08-02T23:34:29.061Z] waiting: load1=39.2 busyHeadless=2 interactiveGpu=110.7%
+[quietcert 2026-08-02T23:44:29.389Z] waiting: load1=29.3 busyHeadless=2 interactiveGpu=78.5%
+[quietcert 2026-08-02T23:54:29.662Z] waiting: load1=37.9 busyHeadless=2 interactiveGpu=136.6%
+[quietcert 2026-08-03T00:04:52.113Z] waiting: load1=226.1 busyHeadless=2 interactiveGpu=119.4%
+[quietcert 2026-08-03T00:14:55.507Z] waiting: load1=183.9 busyHeadless=2 interactiveGpu=72%

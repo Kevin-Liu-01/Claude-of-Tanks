@@ -1,0 +1,183 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>tmp leo r6 hero leak scan</title>
+<style>:root{color-scheme:dark;background:#0b0f12;color:#e7edf0;font:13px monospace}</style>
+<div id="out">booting…</div>
+<script type="module">
+// TEMP (leo2a6 r6 hero patch): renders the PROCEDURAL build alone at a sweep
+// of low-oblique hero perspectives, flood-fills the background from the frame
+// border and counts ENCLOSED background pixels (sky leaks through interior
+// gaps). Clusters leaks, casts the camera ray through each cluster center and
+// reports the AABB corridor so the open pieces can be named. Deleted after
+// the round.
+import * as THREE from 'three';
+import { createTank } from '/src/vehicles/tankFactory.js';
+
+const SIZE = 960;
+const params = new URLSearchParams(location.search);
+const id = params.get('id') || 'leo2a6';
+const renderer = new THREE.WebGLRenderer({ antialias: false, alpha: false, preserveDrawingBuffer: true });
+renderer.setSize(SIZE, SIZE, false);
+renderer.setPixelRatio(1);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+const BG = new THREE.Color(0x151b20);
+renderer.setClearColor(BG, 1);
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+const engineCtx = { setupShadowMaterial: (m) => m, anisotropy: 1, renderer };
+const tank = createTank(id, engineCtx, { camoSeed: 4242, quality: 'high', proceduralOnly: true });
+scene.add(tank.root);
+const hemi = new THREE.HemisphereLight(0xcfd8e0, 0x2a2f26, 1.05);
+const sun = new THREE.DirectionalLight(0xfff2dd, 2.2);
+sun.position.set(30, 42, 24);
+scene.add(hemi, sun);
+tank.root.updateMatrixWorld(true);
+tank.root.traverse((o) => {
+  if (!o.isLOD) return;
+  o.autoUpdate = false;
+  o.levels.forEach((level, i) => { if (level.object) level.object.visible = i === 0; });
+});
+
+const box = new THREE.Box3();
+tank.root.traverse((o) => {
+  if (!(o.isMesh || o.isInstancedMesh) || !o.geometry) return;
+  let vis = true;
+  for (let p = o; p; p = p.parent) if (!p.visible) { vis = false; break; }
+  if (!vis || /shadow/i.test(o.name || '') || o.material?.colorWrite === false) return;
+  if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+  box.union(o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld));
+});
+const center = box.getCenter(new THREE.Vector3());
+const size = box.getSize(new THREE.Vector3());
+
+const copy2d = document.createElement('canvas');
+copy2d.width = copy2d.height = SIZE;
+const ctx2d = copy2d.getContext('2d', { willReadFrequently: true });
+
+function heroCam(dir, elevFrac) {
+  const dist = Math.max(size.x, size.y, size.z) * 1.55;
+  const cam = new THREE.PerspectiveCamera(35, 1, 0.1, 300);
+  cam.position.copy(center).addScaledVector(dir.clone().normalize(), dist);
+  cam.position.y += size.y * elevFrac;
+  cam.lookAt(center);
+  cam.updateProjectionMatrix();
+  cam.updateMatrixWorld(true);
+  return cam;
+}
+
+function scan(cam) {
+  renderer.setRenderTarget(null);
+  renderer.clear(true, true, true);
+  renderer.render(scene, cam);
+  ctx2d.drawImage(renderer.domElement, 0, 0, SIZE, SIZE);
+  const img = ctx2d.getImageData(0, 0, SIZE, SIZE);
+  const d = img.data;
+  const isBG = new Uint8Array(SIZE * SIZE);
+  for (let i = 0, p = 0; i < SIZE * SIZE; i++, p += 4) {
+    if (Math.abs(d[p] - 0x15) < 8 && Math.abs(d[p + 1] - 0x1b) < 8 && Math.abs(d[p + 2] - 0x20) < 8) isBG[i] = 1;
+  }
+  // flood from border over bg pixels
+  const outside = new Uint8Array(SIZE * SIZE);
+  const stack = [];
+  for (let x = 0; x < SIZE; x++) { stack.push(x, (SIZE - 1) * SIZE + x); }
+  for (let y = 0; y < SIZE; y++) { stack.push(y * SIZE, y * SIZE + SIZE - 1); }
+  while (stack.length) {
+    const i = stack.pop();
+    if (outside[i] || !isBG[i]) continue;
+    outside[i] = 1;
+    const x = i % SIZE, y = (i / SIZE) | 0;
+    if (x > 0) stack.push(i - 1);
+    if (x < SIZE - 1) stack.push(i + 1);
+    if (y > 0) stack.push(i - SIZE);
+    if (y < SIZE - 1) stack.push(i + SIZE);
+  }
+  // enclosed bg = bg && !outside; cluster them
+  const seen = new Uint8Array(SIZE * SIZE);
+  const clusters = [];
+  let total = 0;
+  for (let i = 0; i < SIZE * SIZE; i++) {
+    if (!isBG[i] || outside[i] || seen[i]) continue;
+    let n = 0, sx = 0, sy = 0, x0 = SIZE, x1 = 0, y0 = SIZE, y1 = 0;
+    const st = [i];
+    seen[i] = 1;
+    while (st.length) {
+      const j = st.pop();
+      const x = j % SIZE, y = (j / SIZE) | 0;
+      n++; sx += x; sy += y; total++;
+      if (x < x0) x0 = x; if (x > x1) x1 = x;
+      if (y < y0) y0 = y; if (y > y1) y1 = y;
+      for (const k of [j - 1, j + 1, j - SIZE, j + SIZE]) {
+        if (k >= 0 && k < SIZE * SIZE && !seen[k] && isBG[k] && !outside[k]) { seen[k] = 1; st.push(k); }
+      }
+    }
+    clusters.push({ n, cx: Math.round(sx / n), cy: Math.round(sy / n), box: [x0, y0, x1, y1] });
+  }
+  clusters.sort((a, b) => b.n - a.n);
+  // raycast corridors through the biggest clusters
+  const ray = new THREE.Raycaster();
+  for (const cl of clusters.slice(0, 8)) {
+    const ndc = new THREE.Vector2((cl.cx / SIZE) * 2 - 1, -((cl.cy / SIZE) * 2 - 1));
+    ray.setFromCamera(ndc, cam);
+    cl.hits = ray.intersectObject(tank.root, true).slice(0, 4).map((h) => ({
+      d: +h.distance.toFixed(2),
+      at: [h.point.x, h.point.y, h.point.z].map((v) => +v.toFixed(3)),
+      mat: h.object.material?.color ? '#' + h.object.material.color.getHexString() : (h.object.name || 'mesh'),
+    }));
+    // probe rays through the 4 corners of the cluster box too (edges name the
+    // bounding geometry better than the center)
+    cl.edgeHits = [];
+    for (const [ex, ey] of [[cl.box[0], cl.box[1]], [cl.box[2], cl.box[1]], [cl.box[0], cl.box[3]], [cl.box[2], cl.box[3]]]) {
+      const nd2 = new THREE.Vector2(((ex + 0.5) / SIZE) * 2 - 1, -(((ey + 0.5) / SIZE) * 2 - 1));
+      ray.setFromCamera(nd2, cam);
+      const h = ray.intersectObject(tank.root, true)[0];
+      cl.edgeHits.push(h ? { px: [ex, ey], d: +h.distance.toFixed(2), at: [h.point.x, h.point.y, h.point.z].map((v) => +v.toFixed(3)) } : { px: [ex, ey], miss: true });
+    }
+    ray.setFromCamera(ndc, cam);
+    const segs = [];
+    tank.root.traverse((o) => {
+      if (!(o.isMesh || o.isInstancedMesh) || !o.geometry) return;
+      let vis = true;
+      for (let p = o; p; p = p.parent) if (!p.visible) { vis = false; break; }
+      if (!vis || o.material?.colorWrite === false) return;
+      const b = o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld);
+      const t = ray.ray.intersectBox(b, new THREE.Vector3());
+      if (!t) return;
+      segs.push({ enter: +t.distanceTo(ray.ray.origin).toFixed(2),
+        min: [b.min.x, b.min.y, b.min.z].map((v) => +v.toFixed(2)),
+        max: [b.max.x, b.max.y, b.max.z].map((v) => +v.toFixed(2)) });
+    });
+    segs.sort((a, b) => a.enter - b.enter);
+    cl.corridor = segs.slice(0, 6);
+    // world point where the ray passes the tank's mid-plane distance
+    const tMid = ray.ray.origin.distanceTo(center);
+    const wp = ray.ray.origin.clone().addScaledVector(ray.ray.direction, tMid);
+    cl.worldAtMid = [wp.x, wp.y, wp.z].map((v) => +v.toFixed(2));
+  }
+  // marked png (leaks in magenta)
+  for (let i = 0; i < SIZE * SIZE; i++) {
+    if (isBG[i] && !outside[i]) { const p = i * 4; d[p] = 255; d[p + 1] = 0; d[p + 2] = 255; }
+  }
+  ctx2d.putImageData(img, 0, 0);
+  return { total, clusters: clusters.slice(0, 10), png: copy2d.toDataURL('image/png') };
+}
+
+const CAMS = {
+  'rr-035': [new THREE.Vector3(1, 0.35, -1), 0.28],
+  'rr-018': [new THREE.Vector3(1, 0.18, -1), 0.10],
+  'rr-010': [new THREE.Vector3(1, 0.10, -1), 0.10],
+  'rl-018': [new THREE.Vector3(-1, 0.18, -1), 0.10],
+  'fr-018': [new THREE.Vector3(1, 0.18, 1), 0.10],
+  'rear-015': [new THREE.Vector3(0.25, 0.15, -1), 0.10],
+  // game "sky leak" case: camera BELOW deck level looking slightly UP —
+  // upward rays thread the fan-well curb/floor annulus if it is open
+  'rr-below': [new THREE.Vector3(1, 0.04, -1), -0.22],
+  'rear-below': [new THREE.Vector3(0.4, 0.04, -1), -0.22],
+};
+const out = {};
+for (const [name, [dir, elev]] of Object.entries(CAMS)) {
+  out[name] = scan(heroCam(dir, elev));
+}
+window.__LEAKS = out;
+window.__LEAK_READY = true;
+document.getElementById('out').textContent = 'scan done';
+</script>

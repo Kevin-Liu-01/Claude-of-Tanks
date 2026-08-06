@@ -1,0 +1,79 @@
+<!doctype html>
+<!-- TEMP (abrams §B5 r2): dump every non-instanced render mesh under
+     rig_hull/rig_turret with parent-chain, material key (matched by
+     reference against the tank's own materials), AABB and vert count —
+     identifies the audit's "(unnamed)" boxes. Read-only probe. -->
+<meta charset="utf-8">
+<title>tmp-b5r2-meshdump</title>
+<script type="module">
+import * as THREE from 'three';
+import { createTank } from '/src/vehicles/tankFactory.js';
+import { createTankMaterials } from '/src/vehicles/materials.js';
+
+const params = new URLSearchParams(location.search);
+const id = params.get('id') || 'm1a2';
+const renderer = new THREE.WebGLRenderer({ antialias: false });
+renderer.setSize(64, 64);
+const engineCtx = { setupShadowMaterial: (m) => m, anisotropy: 1, renderer };
+const tank = createTank(id, engineCtx, { camoSeed: 4242, quality: 'high', proceduralOnly: true });
+tank.root.updateMatrixWorld(true);
+const hullG = tank.root.getObjectByName('rig_hull');
+const turretG = tank.root.getObjectByName('rig_turret');
+const rows = [];
+const bb = new THREE.Box3();
+for (const [gname, g] of [['hull', hullG], ['turret', turretG]]) {
+  g.traverse((o) => {
+    if (!o.isMesh || o.isInstancedMesh || !o.geometry || !o.visible) return;
+    if (o.material && o.material.colorWrite === false) return;
+    bb.setFromObject(o);
+    const chain = [];
+    for (let p = o; p && p !== tank.root; p = p.parent) chain.unshift(p.name || p.type);
+    // For wide meshes, isolate the outboard (|x| >= 1.6) vertex cloud and
+    // the above-ring (y >= 1.74) cloud — identifies the audit's AABB hits.
+    let outBox = null, upBox = null;
+    const pos = o.geometry.attributes.position;
+    if (pos && (Math.abs(bb.min.x) >= 1.6 || Math.abs(bb.max.x) >= 1.6)) {
+      const v = new THREE.Vector3();
+      const ob = new THREE.Box3(), ub = new THREE.Box3();
+      for (let i = 0; i < pos.count; i++) {
+        v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
+        if (Math.abs(v.x) >= 1.6) ob.expandByPoint(v);
+        if (v.y >= 1.74) ub.expandByPoint(v);
+      }
+      if (!ob.isEmpty()) outBox = [ob.min.x, ob.min.y, ob.min.z, ob.max.x, ob.max.y, ob.max.z].map((n) => +n.toFixed(3));
+      if (!ub.isEmpty()) upBox = [ub.min.x, ub.min.y, ub.min.z, ub.max.x, ub.max.y, ub.max.z].map((n) => +n.toFixed(3));
+      // z-cluster the outboard verts (gap > 0.25 m starts a new cluster)
+      if (!ob.isEmpty()) {
+        const pts = [];
+        for (let i = 0; i < pos.count; i++) {
+          v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
+          if (Math.abs(v.x) >= 1.6) pts.push([v.x, v.y, v.z]);
+        }
+        pts.sort((p1, p2) => p1[2] - p2[2]);
+        const clusters = [];
+        let cb = null, lastZ = null;
+        for (const p of pts) {
+          if (lastZ === null || p[2] - lastZ > 0.25) { cb = new THREE.Box3(); clusters.push(cb); }
+          cb.expandByPoint(new THREE.Vector3(...p));
+          lastZ = p[2];
+        }
+        window.__CLUSTERS = window.__CLUSTERS || {};
+        window.__CLUSTERS[`${gname}:${rows.length}`] = clusters.slice(0, 10).map((c) =>
+          [c.min.x, c.min.y, c.min.z, c.max.x, c.max.y, c.max.z].map((n) => +n.toFixed(3)));
+      }
+    }
+    rows.push({
+      group: gname,
+      name: o.name || '(unnamed)',
+      chain: chain.join('>'),
+      mat: (o.material && (o.material.name || o.material.type)) || '?',
+      verts: o.geometry.attributes.position ? o.geometry.attributes.position.count : 0,
+      trackBucket: (o.userData && o.userData.trackBucket) || null,
+      box: [bb.min.x, bb.min.y, bb.min.z, bb.max.x, bb.max.y, bb.max.z].map((v2) => +v2.toFixed(3)),
+      outBox, upBox,
+    });
+  });
+}
+window.__DUMP = { id, rows };
+window.__DUMP_READY = true;
+</script>

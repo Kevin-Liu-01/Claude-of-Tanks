@@ -8,7 +8,7 @@
 // Usage: node tools/gunnery_gate.mjs [--battles 8] [--shots 6] [--min 80]
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
-import { mkdirSync, rmdirSync, statSync } from 'node:fs';
+import { mkdirSync, rmdirSync, statSync, unlinkSync } from 'node:fs';
 
 const LOCK_DIR = '/tmp/cot-shots.lock';
 const LOCK_STALE_MS = 5 * 60 * 1000;

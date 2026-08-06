@@ -1,0 +1,89 @@
+<!doctype html>
+<!-- TEMP (abrams §B5 round): bucket identification for the m1a2 stranded
+     audit hits. The turret-parent audit reports merged bucket meshes with no
+     names; this probe matches each hullG mesh back to its bucket by material
+     identity (BUCKET_DEF material slots are unique per hull bucket), then
+     reports its AABB, casting overlap (same math as turret-parent-audit.html)
+     and the z/x/y extents of ONLY its above-ring vertices — the §B5
+     adjudication needs to know exactly WHICH authored pieces lift each
+     bucket into the casting envelope. Diagnosis only, never a verdict rig. -->
+<meta charset="utf-8">
+<title>tmp-b5-bucketprobe</title>
+<script type="module">
+import * as THREE from 'three';
+import { createTank } from '/src/vehicles/tankFactory.js';
+
+const params = new URLSearchParams(location.search);
+const id = params.get('id') || 'm1a2';
+const engineCtx = { setupShadowMaterial: (m) => m, anisotropy: 1, renderer: null };
+const tank = createTank(id, engineCtx, { camoSeed: 4242, quality: 'high', proceduralOnly: true });
+tank.root.updateMatrixWorld(true);
+
+const turretG = tank.root.getObjectByName('rig_turret');
+const gunG = tank.root.getObjectByName('rig_gun');
+const hullG = tank.root.getObjectByName('rig_hull');
+const ringY = new THREE.Vector3().setFromMatrixPosition(turretG.matrixWorld).y;
+const inSubtree = (o, root) => { for (let p = o; p; p = p.parent) if (p === root) return true; return false; };
+const auditable = (o) =>
+  o.isMesh && !o.isInstancedMesh && o.geometry && o.visible &&
+  (!o.material || o.material.colorWrite !== false) &&
+  !(o.userData && o.userData.trackBucket);
+
+// material identity -> bucket name (mats slots per BUCKET_DEF, hull side)
+const mats = tank.mats || {};
+const matName = (m) => {
+  for (const [k, v] of Object.entries(mats)) if (v === m) return k;
+  return m && m.name ? m.name : '(unknown mat)';
+};
+
+const casting = new THREE.Box3();
+const bb = new THREE.Box3();
+turretG.traverse((o) => {
+  if (!auditable(o)) return;
+  if (gunG && inSubtree(o, gunG)) return;
+  bb.setFromObject(o);
+  casting.union(bb);
+});
+const M = 0.03;
+const shrunk = casting.clone();
+shrunk.min.addScalar(M); shrunk.max.addScalar(-M);
+
+const out = { id, ringY: +ringY.toFixed(3), casting: casting.min.toArray().map(v=>+v.toFixed(3)).concat(casting.max.toArray().map(v=>+v.toFixed(3))), buckets: [] };
+const inter = new THREE.Box3();
+const v = new THREE.Vector3();
+hullG.traverse((o) => {
+  if (!auditable(o)) return;
+  bb.setFromObject(o);
+  const vol = Math.max(1e-9, (bb.max.x - bb.min.x) * (bb.max.y - bb.min.y) * (bb.max.z - bb.min.z));
+  inter.copy(bb);
+  inter.min.max(shrunk.min); inter.max.min(shrunk.max);
+  const hasOverlap = inter.min.x < inter.max.x && inter.min.y < inter.max.y && inter.min.z < inter.max.z;
+  const frac = hasOverlap
+    ? ((inter.max.x - inter.min.x) * (inter.max.y - inter.min.y) * (inter.max.z - inter.min.z)) / vol : 0;
+  // above-ring vertex census (world y > ringY + 0.02): extents of the content
+  // that makes this bucket auditable at all
+  const pos = o.geometry.getAttribute('position');
+  let n = 0;
+  const hi = { minx: 1e9, maxx: -1e9, miny: 1e9, maxy: -1e9, minz: 1e9, maxz: -1e9 };
+  for (let i = 0; i < pos.count; i++) {
+    v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
+    if (v.y <= ringY + 0.02) continue;
+    n++;
+    hi.minx = Math.min(hi.minx, v.x); hi.maxx = Math.max(hi.maxx, v.x);
+    hi.miny = Math.min(hi.miny, v.y); hi.maxy = Math.max(hi.maxy, v.y);
+    hi.minz = Math.min(hi.minz, v.z); hi.maxz = Math.max(hi.maxz, v.z);
+  }
+  out.buckets.push({
+    mat: matName(o.material),
+    lod0: o.parent === hullG,
+    box: bb.min.toArray().map(x=>+x.toFixed(2)).concat(bb.max.toArray().map(x=>+x.toFixed(2))),
+    overlap: +frac.toFixed(3),
+    flagged: bb.max.y > ringY + 0.02 && frac >= 0.25,
+    aboveRingVerts: n,
+    aboveRingExtent: n ? Object.fromEntries(Object.entries(hi).map(([k, x]) => [k, +x.toFixed(3)])) : null,
+  });
+});
+out.buckets.sort((a, b) => b.overlap - a.overlap);
+window.__TP_RESULT = out;
+window.__TP_READY = true;
+</script>

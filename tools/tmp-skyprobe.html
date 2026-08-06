@@ -1,0 +1,124 @@
+<!doctype html>
+<!-- TEMP (pt91m r28, diagnosis-only): pixel-ownership raycast probe under the
+     EXACT tmp-tank-critic.html ortho rig (proc half). For a view + pixel
+     window, reports per-column first-content hits (skyline ownership) with
+     object path, material hex, and world point. Never a verdict source.
+     ?id=pt91m&view=front&x0=100&x1=540&y0=100&y1=260&step=2 -->
+<meta charset="utf-8">
+<title>tmp-skyprobe</title>
+<script type="module">
+import * as THREE from 'three';
+import { createTank } from '/src/vehicles/tankFactory.js';
+
+const q = new URLSearchParams(location.search);
+const id = q.get('id') || 'pt91m';
+const viewName = q.get('view') || 'front';
+const X0 = +(q.get('x0') ?? 100), X1 = +(q.get('x1') ?? 540);
+const Y0 = +(q.get('y0') ?? 100), Y1 = +(q.get('y1') ?? 260);
+const STEP = +(q.get('step') ?? 2);
+const SIZE = 640;
+
+const engineCtx = { setupShadowMaterial: (m) => m, anisotropy: 1, renderer: null };
+const procedural = createTank(id, engineCtx, { camoSeed: 4242, quality: 'high', proceduralOnly: true });
+procedural.root.updateMatrixWorld(true);
+procedural.root.traverse((o) => {
+  if (!o.isLOD) return;
+  o.autoUpdate = false;
+  o.levels.forEach((level, i) => { if (level.object) level.object.visible = i === 0; });
+});
+
+const VIEWS = {
+  front: new THREE.Vector3(0, 0.08, 1),
+  left: new THREE.Vector3(-1, 0.05, 0),
+  rear: new THREE.Vector3(0, 0.08, -1),
+  right: new THREE.Vector3(1, 0.05, 0),
+  top: new THREE.Vector3(0, 1, 0.02),
+};
+
+function visibleBox(root) {
+  const box = new THREE.Box3();
+  root.updateMatrixWorld(true);
+  root.traverse((o) => {
+    if (!(o.isMesh || o.isInstancedMesh || o.isSkinnedMesh) || !o.geometry) return;
+    let vis = true;
+    for (let p = o; p; p = p.parent) if (!p.visible) { vis = false; break; }
+    if (!vis || /shadow/i.test(o.name || '')) return;
+    if (o.isInstancedMesh) {
+      if (o.count === 0) return;
+      o.computeBoundingBox();
+      if (o.boundingBox && !o.boundingBox.isEmpty()) box.union(o.boundingBox.clone().applyMatrix4(o.matrixWorld));
+      return;
+    }
+    if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+    box.union(o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld));
+  });
+  return box;
+}
+function orthoFor(box, direction, frac = 0.55, centerOff = null) {
+  const center = box.getCenter(new THREE.Vector3());
+  const size = box.getSize(new THREE.Vector3());
+  if (centerOff) { center.x += centerOff.x * size.x; center.y += centerOff.y * size.y; center.z += centerOff.z * size.z; }
+  const dir = direction.clone().normalize();
+  const nominalUp = Math.abs(dir.y) > 0.9 ? new THREE.Vector3(0, 0, -1) : new THREE.Vector3(0, 1, 0);
+  const right = new THREE.Vector3().crossVectors(nominalUp, dir).normalize();
+  const up = new THREE.Vector3().crossVectors(dir, right).normalize();
+  let ext = 0.5;
+  for (const cx of [box.min.x, box.max.x]) for (const cy of [box.min.y, box.max.y]) for (const cz of [box.min.z, box.max.z]) {
+    const d = new THREE.Vector3(cx, cy, cz).sub(center);
+    ext = Math.max(ext, Math.abs(d.dot(right)), Math.abs(d.dot(up)));
+  }
+  const half = ext * (frac / 0.5) * 1.06;
+  const camera = new THREE.OrthographicCamera(-half, half, half, -half, 0.1, 200);
+  camera.position.copy(center).addScaledVector(dir, 60);
+  camera.up.copy(up);
+  camera.lookAt(center);
+  camera.updateProjectionMatrix();
+  camera.updateMatrixWorld(true);
+  return camera;
+}
+
+const box = visibleBox(procedural.root);
+let camera;
+if (viewName === 'close-roof') camera = orthoFor(box, new THREE.Vector3(1, 0.55, 0.35), 0.24, { x: 0, y: 0.3, z: 0.05 });
+else if (viewName === 'close-front') camera = orthoFor(box, new THREE.Vector3(-1, 0.22, 1), 0.26, { x: 0, y: 0.12, z: 0.28 });
+else camera = orthoFor(box, VIEWS[viewName]);
+
+const ray = new THREE.Raycaster();
+ray.firstHitOnly = false;
+const targets = [];
+procedural.root.traverse((o) => {
+  if (!(o.isMesh || o.isInstancedMesh) || !o.geometry) return;
+  let vis = true;
+  for (let p = o; p; p = p.parent) if (!p.visible) { vis = false; break; }
+  if (!vis) return;
+  if (o.material && o.material.colorWrite === false) return;
+  targets.push(o);
+});
+const label = (o) => {
+  const path = [];
+  for (let p = o; p; p = p.parent) path.unshift(p.name || p.type);
+  let hex = '';
+  try { hex = o.material && o.material.color ? o.material.color.getHexString() : ''; } catch (e) { hex = '?'; }
+  const fit = o.userData && o.userData.fitting ? `[fit ${o.userData.fitting}]` : '';
+  return `${path.join('/')}#${hex}${fit}`;
+};
+const ndc = new THREE.Vector2();
+const out = [];
+for (let x = X0; x <= X1; x += STEP) {
+  let row = null;
+  for (let y = Y0; y <= Y1; y += 1) {
+    ndc.x = (x + 0.5) / SIZE * 2 - 1;
+    ndc.y = -((y + 0.5) / SIZE) * 2 + 1;
+    ray.setFromCamera(ndc, camera);
+    const hits = ray.intersectObjects(targets, false);
+    if (hits.length) {
+      const h = hits[0];
+      row = { x, y, obj: label(h.object), pt: h.point.toArray().map((v) => +v.toFixed(3)) };
+      break;
+    }
+  }
+  out.push(row || { x, y: -1, obj: 'AIR', pt: null });
+}
+window.__SKY = out;
+window.__READY = true;
+</script>

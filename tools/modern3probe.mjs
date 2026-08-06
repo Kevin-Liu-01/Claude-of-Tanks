@@ -7,7 +7,7 @@
 
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
-import { mkdirSync, rmdirSync, statSync } from 'node:fs';
+import { mkdirSync, rmdirSync, statSync, unlinkSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const LOCK_DIR = '/tmp/cot-shots.lock';
