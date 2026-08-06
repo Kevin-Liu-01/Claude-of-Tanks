@@ -397,3 +397,7 @@ CANDIDATE: b74366ac -> b284b8ac (42 meshes / 112100 verts).
 CHANGED VIEWS (diff-derived): view-front 0.009% + close-front 0.003%
 + close-roof/hero-frontleft <= 0.002% — ring stations only.
 Yaw pair: shots/abrams-b32/yaw{0,90}-m1a2_sepv2/.
+
+### DENSITY-ROUND RE-CERT RATIFIED (2026-08-06): RE-FREEZE b284b8ac CONFIRMED
+(floors 9.1-9.3; American MG grammar audited YES; docs/critique/
+shaded-parity-abrams-density-recert.md).

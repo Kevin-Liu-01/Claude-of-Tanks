@@ -217,3 +217,7 @@ view-top 0.061% / view-rearright 0.055% / view-front + view-frontright
 0.045% — the right cable owns the right/front deltas, the bedroll +
 rings the roof/top ones. Yaw pair: shots/abrams-b32/yaw{0,90}-m1a1ha/
 (cable static in hullG at yaw — the §B5 m1a1-cable law honored).
+
+### DENSITY-ROUND RE-CERT RATIFIED (2026-08-06): RE-FREEZE 4023964c CONFIRMED
+(floors 9.1-9.3; American MG grammar audited YES; docs/critique/
+shaded-parity-abrams-density-recert.md).

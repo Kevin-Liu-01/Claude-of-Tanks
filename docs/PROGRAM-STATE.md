@@ -62,9 +62,9 @@ re-freeze NEW hash, all in ONE commit.
 | m60a3 | 051c454c | never gated |
 | kv2 | 382b2310 | freeze-verify only |
 | leo2a6 | cff6f478 | §B4 shoe re-cert RATIFIED |
-| m1a1 | 66f953e4 -> 5290e3bc CANDIDATE (density kit round, re-cert in flight) | |
-| m1a1ha | cd209f68 -> 4023964c CANDIDATE (density kit round, re-cert in flight) | |
-| m1a2_tejas | 25304310 -> 93a9a890 CANDIDATE (density kit round, re-cert in flight) | |
+| m1a1 | 5290e3bc | density re-cert RATIFIED 9.1; American-MG audit YES |
+| m1a1ha | 4023964c | density re-cert RATIFIED 9.1 |
+| m1a2_tejas | 93a9a890 | density re-cert RATIFIED 9.1 |
 | merkava3b | 8bb8d984 | gun-run re-cert RATIFIED (floor 9.1) |
 | merkava3c | b7318b10 | gun-run re-cert RATIFIED (floor 9.1) |
 | kf51 | fcc60d6c | §B4 shoe re-cert RATIFIED (notch = real connector slot) |
@@ -74,7 +74,7 @@ re-freeze NEW hash, all in ONE commit.
 | pt91m | 2cf10e23 | |
 | t72b3m | 1e1ca4b8 | |
 | merkava1b | 470f3665 | re-frozen 0e47256 |
-| m1a2 | b78279b4 -> 75e981e0 CANDIDATE (density kit round, re-cert in flight) | |
+| m1a2 | 75e981e0 | = the named SEPv3; density re-cert RATIFIED 9.3 |
 | chieftain5 | 94c09bb0 | |
 | t84 | 04707a9c | |
 | m47_patton | 53b6123a | |
@@ -82,7 +82,7 @@ re-freeze NEW hash, all in ONE commit.
 | leo2_revolution | fa1a47fc | ring-gap CLOSED, re-cert RATIFIED floor 9.1 mean 9.18 — owner's disembodied read dead |
 | m46_patton | 90ebf864 | |
 | centurion3 | fea56ecc | GRADUATED fd2c365 (24th, Centurion line's first) |
-| m1a2_sepv2 | b74366ac -> b284b8ac CANDIDATE (density kit round, re-cert in flight) | |
+| m1a2_sepv2 | b284b8ac | 25th graduate; density re-cert RATIFIED 9.2 |
 | m26_pershing | 2f579de8 | GRADUATED 2026-08-05 (26th; floor 9.0 x14 second sitting; warp->re-anchor->retune arc) |
 
 *ALL 24 hashes above re-frozen 2026-08-05 by the INVISIBLE-LOD ENVELOPE
@@ -270,7 +270,7 @@ handover interrupted these; respawn per §12)
   respawn fresh only if the transcript is unrecoverable. Waiter-stalls
   (agent stops "to wait") get a finalize nudge via SendMessage.
 
-## 7. MY-LANE QUEUE (orchestrator work, ripeness order at handoff)
+## 7. MY-LANE QUEUE (+ ammo-can LEFT-FEED nit: hand-authored CROWS/band cans hang gun-right; M2 feed is left — abrams family lane, non-blocking) (orchestrator work, ripeness order at handoff)
 1. Land the six in-flight agents' results (per §5 protocols).
 2. t72bu oracle decision (certified-ceiling ~55-70; packet has the
    evidence; options: warp batch vs ceiling-cert vs re-source).

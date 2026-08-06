@@ -219,3 +219,7 @@ hero-toptilt 0.040% / hero-rearright 0.033% / view-front 0.023% /
 view-rear 0.021% / view-top 0.017% — links + bag + rings; the rest
 AA-noise. Yaw pair: shots/abrams-b32/yaw{0,90}-m1a2_tejas/ (links
 static in hullG, bag rides turretG).
+
+### DENSITY-ROUND RE-CERT RATIFIED (2026-08-06): RE-FREEZE 93a9a890 CONFIRMED
+(floors 9.1-9.3; American MG grammar audited YES; docs/critique/
+shaded-parity-abrams-density-recert.md).
