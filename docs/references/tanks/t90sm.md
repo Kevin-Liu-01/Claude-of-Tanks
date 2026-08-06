@@ -406,3 +406,77 @@ track seat (xc 1.3835) pushed more sprocket-wrap voxels into the raked
 tub face (198 -> 376): the wrap-vs-sponson class is inherent to the
 published-width tub + ref track edge; a real fix re-derives the loft's
 rear rake around the wrap (§B1 slope-mass), NEXT-round item.
+
+## VERTEX ROUND r12 — tail round-3 §B1 LOFT REWORK (2026-08-05): 46.9 -> 56.4 x2 (+9.5), dims 100, clip 376 -> 0
+
+Gate trajectory (official runs): 46.9 -> 47.5 -> 50.5 -> 55.8 -> 52.7
+(batch-J regression, reverted) -> 55.8 -> FINAL 56.4 x2 IDENTICAL (hull
+61.2 / whole 56.4 / turret 72.9 / stations 75.9 / dims 100 / floaters
+100). Components before -> after: hull 52.4->61.2, whole 46.9->56.4,
+turret 73.0->72.9, stations 81.1->75.9 (re-phase, below), dims 92.2->100.
+
+ORDER DONE-GATES:
+1. dims 92.2 -> 100 (hullLengthM -1.98% DECODED): the r11 "why do the
+   3.36-3.43 tip cols drop from the curve" mystery is the §D PROBE-FRAME
+   FACTOR BAKED INTO AUTHORING — the outer course lip's 1.910 authored
+   extent was the widest face, so the harness width-normalization scaled
+   EVERY authored coordinate x0.9895: the prong tip authored 3.43 landed
+   world 3.394 and lit only 21mm (AA-marginal, never body); the muzzle
+   sat 6.135; the r11-decoded ±1.64..1.81 seats all landed ~18mm inboard.
+   FIX CLASS (LAW): keep the width-defining face AT the widthAnchor
+   (lip pulled 1.910 -> 1.889 extent; anchor 1.890 defines width) so
+   scale = 1.0 and authored = world; prong tips extended to 3.465
+   (55+ mm window coverage = solid body col). hullLengthM 6.85-6.88
+   (0.16-0.32%), heightM 2.24, overall 9.66-9.71, width 3.75-3.78.
+2. rear clip-audit 376 -> 0 (§B1 SLOPE-MOTIVATES-THE-MASS): the flat 0.81
+   sponson floor buried BOTH wrap crowns in the tub slab. The track-bay
+   roof now follows the wraps (t72b3m §B4 profile recipe): sponsonY
+   [[-2.92,0.81],[-2.84,1.18],[-2.06,1.18],[-1.78,0.81],[2.52,0.81],
+   [2.64,1.15],[3.02,1.15]] — raked lifts, tub face restored at the
+   corners (§B2 flank stays closed). Front 240 -> 0: glacis tow-eye tori
+   out of the lane (eyeX 0.98 on the ±1.0 lower tub face), fender bridge
+   floor 1.075 over the 1.059 wrap arc, flap floor 1.12, headlights
+   inboard (hlX 1.02 opt-in — the w*0.44 default seat lands IN the lane
+   on wide hulls), sprocket disc rim r 0.263 (the 0.28 rim shared 2cm
+   voxel cells with the band shell), corner bins -2.94 (wrap rear edge).
+3. §B3: mg census 0 -> 1 — PKT-class pintle (FITTINGS.pintleMG nsvt,
+   dark) on the bustle rack pedestal at (0.62, 0.39, -1.35): receiver top
+   2.11 rides UNDER the ref's own 2.25 roof plateau (z world -0.97..
+   -1.41), barrel drooped -0.18 inside the roofline — inside the ±0.4
+   allowance. Hand-authored UDP RWS kept (r11 packet justification
+   stands). INCIDENT (honest): the first migration attempt text-matched
+   buildT72BU's nsvt (the identical comment block) — t72bu is SKIP-listed;
+   REVERTED and verified byte-identical to HEAD before any t72bu build/
+   gate ran. §B2: the rack re-decode enclosed a 63-cell pocket at
+   (0,-3.16) -> rack tray floor; bow bridges widened base->tip.
+
+TAIL RE-DECODE (today's renders overrule r10/r11 — §D banked numbers
+re-derive before re-use): the ref -3.43 racks read at |x| 0.33..0.44 with
+a SECOND pair at 1.10..1.21 (rear -3.26); the 0.66..0.77 window is EMPTY
+(-2.96) and the corner rear is -3.02 (r11 had racks 0.69..0.87, corners
+-3.29..-3.35). Racks re-seated, outer pair added, corner flaps -2.975,
+towrope coil bridges the twin racks (plan center rear -3.43).
+
+AA-TEETER FAMILY (measured, the front-row bind + run variance): the ref's
+thin ±1.64..1.90 bands sit ON column-window edges; the shared box changes
+with every edit, so the windows drift and the reads FLIP (the -1.674 col
+read bottom 1.01 in one grid and 0.447 in the next; the +1.64 ground col
+came and went across three consecutive runs). Chasing single reads
+whipsaws (batch-J -3.1, reverted); only >=2px-from-edge authoring is
+stable. This family carries ~2-4 pts of run-to-run variance on the front
+rows and is the whole-row bind at 56.4.
+
+STATIONS 81.1 -> 75.9 (explained): hullZRange defines the slice windows —
+the prong body extension (z1 3.36 -> 3.46) re-phased all 14 slices
+(t62mv1-r7c corollary: span changes re-phase stations). Slice 12 (topPct
+~15, trimmed-dropped) is the ref's low nose line vs my deck/idler-wrap
+band; headlights/stowage/spare-track tops re-seated recovered part.
+Left-tab law case: its 1.872 edge partial-pixeled into the ±1.9
+plan_whole window and painted a phantom +0.98 front edge (e1.0, p95
+10.33) — 2px margins fixed it (x -1.83).
+
+Sight-tower head masses added (ref front carries 2.18-2.23 across
+|x| 0.15..0.55 where the bare roof read 2.03). §H.4: base-rig conformant;
+variant tells vs t90a/t90m: welded wedge turret + squared bustle + tower
+pair + bustle PKT. No *_vlo signature in mask behavior; no oracle repair
+needed this round. npm test green; turret-parent 0/0/0.

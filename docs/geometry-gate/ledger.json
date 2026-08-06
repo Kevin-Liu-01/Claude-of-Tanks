@@ -479,13 +479,13 @@
   },
   {
    "id": "t90sm",
-   "geoMin": 55.8,
+   "geoMin": 56.4,
    "gatePassed": false,
    "components": {
     "hullCurves": 61.2,
-    "wholeCurves": 55.8,
-    "turretCurves": 73.3,
-    "stations": 75.7,
+    "wholeCurves": 56.4,
+    "turretCurves": 72.9,
+    "stations": 75.9,
     "dims": 100,
     "floaters": 100
    }
@@ -518,11 +518,11 @@
   },
   {
    "id": "t62mv1",
-   "geoMin": 64.1,
+   "geoMin": 63.7,
    "gatePassed": false,
    "components": {
-    "hullCurves": 64.1,
-    "wholeCurves": 65.3,
+    "hullCurves": 63.7,
+    "wholeCurves": 65.2,
     "turretCurves": 69,
     "stations": 90.9,
     "dims": 100,

@@ -364,3 +364,17 @@ decorations need a packet justification.
   same-camo turret faces as "static" inside the ring zone; adjudicate
   against a rig_hull/rig_turret vertex census (instanced meshes included)
   before ordering geometry.
+
+## §D addenda (russia tail-3, 2026-08-05)
+- PROBE-FRAME AUTHORING LAW: the §D width-normalization factor bakes into
+  AUTHORING — any build whose widest authored |x| exceeds the width anchor
+  scales every coordinate (~1% inboard/short seats, dead ground columns,
+  short hullLengthM). Keep the width-defining face AT the anchor: scale
+  1.0, authored = world.
+- AA-TEETER FAMILY: ref bands whose edges sit on column-window boundaries
+  flip reads run-to-run as the shared box drifts; only >=2px-from-edge
+  authoring is stable — single-run reads of such columns are NOT orders.
+- STATION RE-PHASE COROLLARY: hullZRange span changes re-phase all 14
+  slices; post-span-fix station drops are re-decode artifacts first.
+- DIMS RAZOR-BAND: a body column hovering at the 12% threshold coin-flips
+  dims ±8 pts — pin end columns with hard cross-section faces.

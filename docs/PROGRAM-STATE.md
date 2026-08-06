@@ -110,8 +110,8 @@ honestly parked at 88.9 pending its retune)
 - **70-80**: m26_pershing 74.8 (dims 91.9 = priced re-anchor debt; patton
   re-anchor agent ON IT), t64bv1 73.4, t90a_vladimir 71.4.
 - **Russia tail**: t72b_1987 56.0 CEILING-CERTIFIED (print drum-band cap),
-  t90sm 46.9 (loft rework ordered, russia r3 agent on it), t62mv1 47.9
-  (decode ordered, same agent), t72bu ~55-70 certified-ceiling — ORACLE
+  t90sm 56.4 (AA-teeter binds), t62mv1 63.7 (fade-cap ceiling ~77-81),
+  t72bu ~55-70 certified-ceiling — ORACLE
   DECISION PENDING (orchestrator lane).
 - **Zero/low rows** (triage lane): recon_tank ruling, fv510/q_heavy/t30
   walls, merkava2b 39.6 / 2d 34.9 / 4 0 / 4b 34.1 (family rebuilds),
@@ -271,10 +271,11 @@ read BUILD-STANDARD+packets first, §F.4 report).
    type90 83.6, ariete 82.3, both ceiling-measured; eight laws banked in
    packets (1024-PARITY PROBE, FRUSTUM-HALFWIDTH, LANE-LOCAL FILL, etc.).
    Next misc round = orchestrator band-solver col + certified classes.
-2. russia tail-3 (russia.js): t62mv1 47.9 decode-first (crown/cupola caps,
-   drum-stack) + t90sm 46.9 §B1 loft rework (dims 92.2->100, rear clip
-   376->0). Hold pt91m a37a0d24 / t72b3m 3d92bb98 / t84 fd0bca6c /
-   isu122s fdb91d50 / isu152 6df708a8.
+2. DONE (landed post-handover): russia tail-3 — t62mv1 63.7 (+15.8, stale
+   crown caps retired, drum row decoded, dims 100), t90sm 56.4 (+9.5,
+   dims 100, clips 0/0; AA-teeter family binds ~2-4 pts variance).
+   Ceilings: t62mv1 ~77-81 (print rear-gear fade certified). Next russia
+   round: t62mv1 side-row ladder under the fade cap.
 3. patton re-anchor (patton.js): m26 74.8 post-warp re-anchor from the
    WARPED extract (docs/references/vertex/m26_pershing.json @ bc17984);
    dims 91.9->100 via proc M2-band lift to 3.08; banked §B orders in
