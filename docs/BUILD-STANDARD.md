@@ -512,3 +512,9 @@ score is no defense.
 - Mirrored-slab winding guards are now per-profile devices: orientedSlab
   (misc.js) / sslab (uk.js) — every profile that mirrors slabs binds
   through one (§C missing-side law).
+- INSCRIBED-DRUM CONVERSION CLASS (§B3.1, russia sweep): box->cylinder
+  (r = w/2, axis-extreme) and box->elliptical-frustum swaps keep side AND
+  plan mask rectangles identical — the free §B3.1 conversion; reach for
+  it first on every prism. Corollaries: RING-CLIP (boot collars under
+  cover slabs clip to the tube's front silhouette or corners poke);
+  proud face-relief on certified rows is never free (flush or pay).

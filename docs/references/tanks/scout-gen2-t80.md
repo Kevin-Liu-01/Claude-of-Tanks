@@ -226,3 +226,33 @@ fade line now v-conditioned; its 3.42 bow fender depth unaddressed), and
 cheek-corner plan columns ±1.3..1.5 at 0.15-0.26 (the compressed ref's
 pinched corners want a planform decode round). Stretch >=85 needs those
 two decodes; this round's floor (>=80 both) is met with margin.
+
+## §B3.1 PRISM SWEEP round (2026-08-06, russia-family builder — t80/t80b/t80bv)
+PRISM INVENTORY (found -> replaced-with), per variant of buildT80Line:
+- t80/t80b boot mass box(0.46,0.50,0.40) under the hood -> elliptical
+  frustum (same extremes at center axes) + fold ring inside the local
+  skin.
+- t80bv mantlet block box(0.46,0.32,0.34) -> same elliptical cast-collar
+  treatment + fold ring.
+- Luna IR "box" (t80/t80b at x 0.72; BV right sight at x 0.55) -> REAL
+  SEARCHLIGHT DRUM: cylZ r 0.13 (inscribed circle of the 0.26 box —
+  side/plan mask rectangles identical), dark rim, round glass lens.
+- V-nose dust-cover boxes (both branches) -> fold-crease strips + dark
+  end seam, flush on the certified faces (canvas grammar, zero growth).
+GATE HOLD x2:
+- t80  82.5 | 88.7/82.5/84.7/88.3/98.9/100 (baseline exact)
+- t80b 81.6 | 87.5/81.6/86.2/92.3/100/100 (turret 84.3 -> 86.2: the
+  elliptical boot mass reads CLOSER to the print than the box did)
+- t80bv 35.5 | 44.6/45.0/55.2/35.5/100/100 (pristine-HEAD verified
+  equal — the ledger 45.1/45.4 hull/whole rows were stale; the 35.5
+  stations headline is the standing scaleToOverall ruling class,
+  orchestrator lane)
+§H.4 DISTINCTNESS held: t80 = clean cheeks + right Luna drum; t80b =
+brow shelf + spread applique tiles + 902 tube cluster + Luna drum;
+t80bv = K-1 cheek arc + glacis raft + V-nose creases + right sight
+drum. npm test green.
+Pre-existing (pristine class): t80bv holes 3x1c at z 3.06 (§B2 backlog,
+glacis-raft edge zone), shoe clips 221-324 (§B4 backlog), t80bv mg0.
+Residual (certified): no evacuator bulge on the tube — the compressed
+prints read a flat 0.313 band (r27 circle-law trade); a photo-class
+evac would break the certified band, banked for an owner ruling.

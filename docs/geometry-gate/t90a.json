@@ -770,7 +770,7 @@
    ]
   },
   "plan": {
-   "score": 81.28682695963408,
+   "score": 81.24720699631358,
    "meanPct": 1.39,
    "p95Pct": 3.4,
    "coverPct": 0,
@@ -816,8 +816,8 @@
      "refTop": 3.05,
      "refBot": -0.21,
      "procTop": 3.01,
-     "procBot": -0.66,
-     "errM": 0.244
+     "procBot": -0.67,
+     "errM": 0.249
     },
     {
      "at": -1.45,
@@ -832,8 +832,8 @@
      "refTop": 2.75,
      "refBot": 0.09,
      "procTop": 2.82,
-     "procBot": -0.22,
-     "errM": 0.191
+     "procBot": -0.23,
+     "errM": 0.197
     },
     {
      "at": 1.35,

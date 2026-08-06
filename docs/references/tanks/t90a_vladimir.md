@@ -383,3 +383,32 @@ hull-side content (cassette re-seat, right bin, roof sliver, wall fin,
 hubs) is deck/skirt/gear class. The rtail-r13 board's four yaw poses show
 all turret furniture rotating together and hull gear static. Re-run the
 audit tool in the next round when the registry is stable.
+
+## §B3.1 PRISM SWEEP round (2026-08-06, russia-family builder)
+PRISM INVENTORY (found -> replaced-with):
+- fused-root cover slabs (kept — the ref side band 1.529..1.663 IS that
+  flat band) + NEW boot identity: three accordion fold collars wrapping
+  the tube UNDER the cover (w 0.20 <= tube ±0.105 front silhouette) and
+  a clamp ring at the cover's end on the tube. LAW FOUND: the r1
+  ±0.17-wide rings poked under the slab bottoms beside the tube and cost
+  front_whole 0.5 — rings clipped to the tube's own front silhouette.
+- K-5 clamshell leaves (bare 0.85 boxes) -> SECTIONED via k5Seg 4
+  (opt-in, flush seams at exactly the face plane — the r1 +4 mm proud
+  strips also cost front_whole 0.5; flush = zero growth) + lower lip.
+- Shtora eyes (recessed dark windows) -> OTShU-1-7 emitter grammar via
+  eyeKit (opt-in): 3 horizontal vent fins over the window, side cheek
+  plates, under-bracket to the skin — all inside the eye box envelope.
+- K-5 side-course panels -> row-split seam FLUSH with the 1.870 panel
+  face. LAW FOUND (AA-teeter corollary): the r1 seam at 1.872 (face
+  1.880) sat OUTSIDE the 1.883 lip's y-band (lip covers only y
+  1.16..1.34) and owned fresh AA in the ±1.87 front cols — front_whole
+  -0.5. Flush-with-face is the only safe seat outside a certified
+  proud band.
+GATE HOLD x2: 71.4 | 73.1/71.4/72.9/88.6/96.2/100 (baseline exact,
+proven against a pristine-HEAD baseline run mid-round). npm test green.
+Pre-existing (pristine-verified): shoe clip 195/107 (§B4 backlog), mg0
+census (§I migration owed).
+Residuals: K-5 leaves still read thin from dead-front (certified r13b
+thin-HIGH band, print-parity — §B7 not invoked); sight-block cluster
+stays boxy per its certified rows (glass + brow present); glacis stays
+bare per its fought r13 columns.

@@ -480,3 +480,19 @@ Sight-tower head masses added (ref front carries 2.18-2.23 across
 variant tells vs t90a/t90m: welded wedge turret + squared bustle + tower
 pair + bustle PKT. No *_vlo signature in mask behavior; no oracle repair
 needed this round. npm test green; turret-parent 0/0/0.
+
+## §B3.1 PRISM SWEEP round (2026-08-06, russia-family builder)
+PRISM INVENTORY (found -> replaced-with):
+- floating strap frame (3 thin boxes hovering 10-22 mm ahead of the
+  mantlet plug) -> CANVAS COVER PAD filling the plug front (inside the
+  straps' own z-envelope 0.288..0.312) with the straps riding it
+  half-buried — the "open rectangle floating in front of the plug" read
+  is gone; plug slab kept (certified SM flat-mantlet mass).
+- bare root cone -> two boot fold rings on the cone (+6 mm over the
+  local cone skin, inside side noise).
+- bare roof box at (-0.85, 0.52, -0.27) -> stowage-bin grammar: flush
+  lid seam + two latches on its own faces.
+GATE HOLD x2: 56.4 | 61.2/56.4/73.0/75.9/100/100 (baseline exact;
+turret +0.1). npm test green. mg1 census (Kord RWS fitting) held.
+Residuals: AA-teeter family variance class unchanged; rear sight panel
+and Sosna-U keep their certified masses (already lens/hood-dressed).

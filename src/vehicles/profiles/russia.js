@@ -250,6 +250,76 @@ function ruSaddle(P, o) {
   P.addGunExtra(cylX(o.rollR, o.rollW, 14), 0, 0, 0);
   P.addGunExtra(cylZ(o.rootR ?? o.rollR * 0.62, o.rootL ?? 0.55, 12, o.tubeR * 1.25), 0, 0, (o.rootL ?? 0.55) * 0.5 + 0.05);
 }
+
+// §B3.1 GUN-ASSEMBLY ACCURACY (owner directive 2026-08-06): the Russian
+// mantlet BOOT — the accordion canvas dust cover every T-62/64/72/80/90
+// carries between the turret face and the thermal sleeve. Grammar: TAPERED
+// canvas sections following a measured polyline (slab frustums — one raked
+// surface per section, never a box stack, §B1 staircase law), dark crease
+// collars at the section joints, and a clamp collar tying the last fold
+// onto the tube. Authored INSIDE the caller's measured root envelope: the
+// polyline's extreme faces carry the replaced prism's certified lines; the
+// taper sheds only far-end corners the root cone/tube already own, so the
+// swap is mask-near-neutral by construction (gate-in-loop verifies).
+//   o.pts   : [[z, w, h, yC], ...] gun-local section rects, root -> tube
+//   o.bulge : crease-collar proudness (default 7 mm — under every §C
+//             partial-pixel threshold)
+//   o.clamp : false to skip the end clamp ring
+// Sections are gunMount (pitch, no recoil) like every mantlet part; the
+// crease/clamp collars ride gunMountDark.
+function ruBoot(P, o) {
+  const { frustum, xform, cylZ } = KIT;
+  const pts = o.pts;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const [zA, wA, hA, yAr] = pts[i], [zB, wB, hB, yBr] = pts[i + 1];
+    const yA = yAr ?? 0, yB = yBr ?? yA;
+    // frustum builds along +Y; rotate +Y -> +Z (rx = PI/2 maps y'->z, z'->-y)
+    const g = frustum(wA / 2, -(yA - hA / 2), -(yA + hA / 2),
+      wB / 2, -(yB - hB / 2), -(yB + hB / 2), 0, zB - zA);
+    P.addGunExtra(xform(g, 0, 0, 0, Math.PI / 2, 0, 0), 0, 0, zA);
+    if (i > 0) {
+      // crease collar at the joint: elliptical ring a few mm proud of the
+      // local canvas skin (the accordion fold read)
+      const b = o.bulge ?? 0.007;
+      P.addGunExtraDark(xform(cylZ(0.5, o.creaseD ?? 0.035, 14), 0, 0, 0, 0, 0, 0,
+        [wA + b * 2, hA + b * 2, 1]), 0, yA, zA);
+    }
+  }
+  if (o.clamp !== false) {
+    const [zE, wE, hE, yEr] = pts[pts.length - 1];
+    P.addGunExtraDark(xform(cylZ(0.5, 0.04, 14), 0, 0, 0, 0, 0, 0,
+      [wE + 0.012, hE + 0.012, 1]), 0, yEr ?? 0, zE - 0.02);
+  }
+}
+
+// §B3 ERA tile grammar on an authored slab face (owner directive
+// 2026-08-06: "weird rectangular prisms that dont emulate actual armor").
+// Dresses an EXISTING certified plate with the K-1 cassette read: a dark
+// seam grid + a rim frame, every strip INSIDE the slab's own outline and
+// <=4 mm proud of the face — under all §C partial-pixel thresholds, so no
+// mask row can move. The slab keeps every certified face line; only the
+// bare-prism read goes away.
+//   o = { w, h, d, x, y, z, rx, ry, rz, sx (outer-face sign, default +1),
+//         rows, cols, seam (width, default 0.02), proud (default 0.004),
+//         inset (edge margin, default 0.025), bucket (default 'turretDark') }
+function eraTileFace(P, o) {
+  const { box } = KIT;
+  const sx = o.sx ?? 1, proud = o.proud ?? 0.004, inset = o.inset ?? 0.025;
+  const bucket = o.bucket ?? 'turretDark';
+  const seam = o.seam ?? 0.02;
+  const fx = sx * (o.w / 2 + proud / 2);          // strip center off the face
+  const H = o.h - inset * 2, D = o.d - inset * 2;
+  const rot = [o.rx ?? 0, o.ry ?? 0, o.rz ?? 0];
+  const put = (ly, lz, hh, dd) => P.add(bucket, KIT.xform(box(proud, hh, dd), fx, ly, lz),
+    o.x, o.y, o.z, rot[0], rot[1], rot[2]);
+  for (let r = 1; r < (o.rows ?? 2); r++) put(-H / 2 + (H * r) / (o.rows ?? 2), 0, seam, D);
+  for (let c = 1; c < (o.cols ?? 3); c++) put(0, -D / 2 + (D * c) / (o.cols ?? 3), H, seam);
+  // rim frame (the cassette rail read)
+  put(H / 2 - seam / 2, 0, seam, D);
+  put(-H / 2 + seam / 2, 0, seam, D);
+  put(0, D / 2 - seam / 2, H, seam);
+  put(0, -D / 2 + seam / 2, H, seam);
+}
 // ---------------------------------------------------------------------------
 // Shared Soviet-family furniture (hull frame unless noted)
 // ---------------------------------------------------------------------------
@@ -466,6 +536,10 @@ function buildT90A(P) {
     P.add('hull', cylZ(0.112, 0.46, 12), s * 0.72, 1.36, -3.19);
     P.add('hullDark', cylZ(0.116, 0.03, 12), s * 0.72, 1.36, -2.975);
     P.add('hullDark', box(0.05, 0.11, 0.05), s * 0.72, 1.36, -3.18);
+    // §B3 (prism sweep 2026-08-06): drum straps — mid cinch ring (+2 mm,
+    // sub-pixel) and rear rim so the drums read strapped, not extruded.
+    P.add('hullDark', cylZ(0.114, 0.022, 12), s * 0.72, 1.36, -3.19);
+    P.add('hullDark', cylZ(0.114, 0.022, 12), s * 0.72, 1.36, -3.33);
   }
   for (const s of [-1, 1]) {
     P.add('hullRubber', box(0.36, 0.30, 0.05), s * 1.52, 0.80, -3.06); // rear mud flaps (ref plan rear -3.08 at x 1.33+, floor 0.645)
@@ -538,7 +612,9 @@ function buildT90A(P) {
   }
   // r10 k5: clamshell leaves forward + long (ref plan front 2.48-2.53 at
   // |x| 0.7-0.9, faces 1.46@1.36); bottoms hold the 1.42 line
-  const p5 = { rings, sz: 1.21, k5T: 0.62, k5Out: 0.24, k5Len: 1.20, k5H: 0.24, k5Y: 0.31, k5Yaw: 0.35, k5Rise: 0 };
+  // §B3.1 (prism sweep 2026-08-06): k5Seg sections the clamshell leaves
+  // (flush seams), eyeKit gives the Shtora eyes their emitter grammar.
+  const p5 = { rings, sz: 1.21, k5T: 0.62, k5Out: 0.24, k5Len: 1.20, k5H: 0.24, k5Y: 0.31, k5Yaw: 0.35, k5Rise: 0, k5Seg: 5, eyeKit: true };
   eraRuCheeks(P, p5, 'k5');
   ruShtora(P, p5, 0.30);
   // left sight cluster (ref spikes 2.25-2.30) + right TKN block — r10:
@@ -605,13 +681,22 @@ function buildT90A(P) {
   // ---- 2A46M-2 on the normalized contour: axis 1.50, muzzle world +6.10 ----
   P.gunG.position.set(0, 0.165, 0.825);
   ruSaddle(P, { rollR: 0.22, rollW: 0.62, tubeR: 0.117, rootL: 0.69 });
-  P.addGunExtra(box(0.56, 0.40, 0.30), 0, 0.02, 0.13);
+  // §B3.1 (prism sweep 2026-08-06): the bare mantlet block becomes the cast
+  // collar — elliptical frustum with the SAME plan (±0.28) and side (±0.20)
+  // extremes at center axes; masks read identical rectangles, only the
+  // corner read rounds. Boot fold rings ride inside the block∪chin∪tube
+  // envelope and a clamp ties the boot onto the tube at the chin's end.
+  P.addGunExtra(KIT.xform(cylZ(0.5, 0.30, 16, 0.46), 0, 0, 0, 0, 0, 0, [0.56, 0.40, 1]), 0, 0.02, 0.13);
   // r10: housing z-trimmed (ref 2.15 ends world 1.63); hump extended to the
   // ref's 2.61; chin slimmed to the 1.375..1.515 band (its 1.17 bottom
   // owned six side cols where the ref floor is 1.397-1.424)
   // r10c: housing SLOPED — ref 1.946 at -0.06..-0.12, tall only past -0.14
   P.addGunExtra(box(0.09, 0.20, 0.28), -0.095, 0.44, 0.20);
   P.addGunExtra(box(0.21, 0.24, 0.20), -0.245, 0.55, 0.16);
+  // §B3: the housing's outer face carries its sight aperture — dark inset
+  // + brow, flush on the existing face.
+  P.add('gunMountDark', box(0.15, 0.10, 0.016), -0.245, 0.55, 0.251);
+  P.addGunExtra(box(0.21, 0.025, 0.05), -0.245, 0.655, 0.23);
   // r10b hump SPLIT: ref plan front at +-0.15..0.4 is 2.185-2.265 while the
   // side carries 1.96 to z 2.6 — wide part ends 2.25, narrow nose to 2.63
   P.addGunExtra(box(0.46, 0.22, 0.80), 0, 0.33, 0.565);
@@ -619,6 +704,19 @@ function buildT90A(P) {
   // 2.653 column band (ref reads the bare 1.586 tube line there, err 0.19)
   P.addGunExtra(box(0.22, 0.20, 0.339), 0, 0.32, 1.1395);
   P.addGunExtra(box(0.62, 0.14, 0.55), 0, -0.055, 0.39);
+  // §B3.1: hump identity — top-edge chamfer strips (down-outward from the
+  // top plane, inside the box), a dark weld seam where the wide cover meets
+  // the nose, and a dark canvas end face on the nose (all flush).
+  for (const s of [-1, 1]) {
+    P.addGunExtra(KIT.xform(box(0.05, 0.014, 0.78), 0, -0.007, 0, 0, 0, s * 0.5), s * 0.20, 0.42, 0.565);
+  }
+  P.add('gunMountDark', box(0.44, 0.20, 0.016), 0, 0.33, 0.958);
+  P.add('gunMountDark', box(0.20, 0.18, 0.014), 0, 0.32, 1.302);
+  // boot fold rings + clamp (inside block/chin/tube envelope)
+  P.addGunExtraDark(KIT.xform(cylZ(0.5, 0.04, 14), 0, 0, 0, 0, 0, 0, [0.54, 0.30, 1]), 0, 0.0, 0.21);
+  P.addGunExtraDark(KIT.xform(cylZ(0.5, 0.04, 14), 0, 0, 0, 0, 0, 0, [0.60, 0.21, 1]), 0, -0.008, 0.36);
+  P.addGunExtraDark(KIT.xform(cylZ(0.5, 0.04, 14), 0, 0, 0, 0, 0, 0, [0.60, 0.21, 1]), 0, -0.008, 0.52);
+  P.addGunExtraDark(KIT.xform(cylZ(0.150, 0.04, 14), 0, 0, 0), 0, 0, 0.645);
   tubeGun(P, [
     [0.65, 1.47, 0.112], [1.47, 3.17, 0.117], [3.17, 4.72, 0.096], [4.72, 4.816, 0.090],
   ], { rings: [[1.47, 0.119], [2.12, 0.120], [3.17, 0.099], [3.87, 0.100], [4.30, 0.097]], muzzle: 4.816 });
@@ -822,10 +920,30 @@ function buildT62MV1(P) {
   // swell 4.99..5.99, muzzle +6.03 (overall 9.34 published) ----
   P.gunG.position.set(0, 0.2866, 1.019);
   ruSaddle(P, { rollR: 0.19, rollW: 0.42, tubeR: 0.145, rootL: 0.58 });
-  P.addGunExtra(box(0.52, 0.33, 0.36), 0, -0.06, 0.13);     // mantlet collar block (ref throat lip 1.45, plan front 2.34 @ |x|<0.26)
+  // §B3.1 (prism sweep 2026-08-06): the U-5TS mantlet is a rounded CAST
+  // collar under a canvas boot, not a prism — elliptical frustum with the
+  // SAME plan width (±0.26 -> plan front 2.34 line held at max-y) and side
+  // height (±0.165 at center-x) as the old box; masks see identical
+  // plan/side rectangles, only the corner read changes. Boot crease rings
+  // inside the local skin + clamp where the cast meets the tube.
+  P.addGunExtra(KIT.xform(cylZ(0.5, 0.36, 16, 0.4425), 0, 0, 0, 0, 0, 0, [0.52, 0.33, 1]), 0, -0.06, 0.13);
+  P.addGunExtraDark(KIT.xform(cylZ(0.5, 0.035, 16), 0, 0, 0, 0, 0, 0, [0.505, 0.318, 1]), 0, -0.058, 0.20);
+  P.addGunExtraDark(KIT.xform(cylZ(0.150, 0.04, 14), 0, 0, 0), 0, -0.02, 0.325);
   P.addGunExtra(box(0.16, 0.30, 0.20), 0, 0.32, -0.072);    // KTD-2 support pylon (bridges root -> hood)
-  P.addGunExtra(box(0.30, 0.28, 0.26), 0, 0.50, -0.072);    // KTD-2 hood (ref 2.35-2.37 over z 1.86..2.13, 22mm col margins)
-  P.addGunExtra(box(0.34, 0.25, 0.28), -0.60, -0.05, -0.06); // Luna bracket (ref plan front 2.13 out to x -0.78)
+  // §B3.1: the KTD-2 rangefinder is a rounded pod — elliptical shell with
+  // the certified top band (2.35-2.37) and ±0.15 plan width held exactly;
+  // dark lens inset in the front face.
+  P.addGunExtra(KIT.xform(cylZ(0.5, 0.26, 14), 0, 0, 0, 0, 0, 0, [0.30, 0.28, 1]), 0, 0.50, -0.072);
+  P.add('gunMountDark', box(0.20, 0.16, 0.02), 0, 0.50, 0.052);
+  // §B3.1: the Luna L-2AG is a SEARCHLIGHT — drum + glass face + yoke arms
+  // + mount plate replacing the bare bracket prism. The old box's plan
+  // front line (2.13 out to x -0.78) is carried by the drum face plus the
+  // yoke arms at the old corner columns.
+  P.addGunExtra(KIT.xform(cylZ(0.125, 0.24, 14), 0, 0, 0), -0.60, -0.03, -0.05);
+  P.add('gunMountDark', KIT.xform(cylZ(0.118, 0.014, 14), 0, 0, 0), -0.60, -0.03, 0.062);
+  P.addGunExtra(box(0.045, 0.17, 0.26), -0.4575, -0.05, -0.05);
+  P.addGunExtra(box(0.045, 0.17, 0.26), -0.7425, -0.05, -0.05);
+  P.addGunExtra(box(0.34, 0.20, 0.09), -0.60, -0.06, -0.155);
   tubeGun(P, [
     [0.40, 1.06, 0.140], [1.06, 2.93, 0.136], [2.93, 3.93, 0.142],
   ], { rings: [[0.72, 0.141], [1.06, 0.141], [1.41, 0.138], [1.76, 0.138], [2.11, 0.138], [2.46, 0.138], [2.93, 0.1425], [3.28, 0.1425], [3.63, 0.1425]], muzzle: 3.93 });
@@ -1111,6 +1229,12 @@ function buildT90AVladimir(P) {
     P.add('hull', box(0.05, 0.63, 0.50), s * 1.845, 1.045, zc5);
     P.add('hull', box(0.014, 0.18, 0.50), s * 1.883, 1.25, zc5);
     P.add('hullDark', box(0.04, 0.55, 0.03), s * 1.851, 1.045, zc5 - 0.25);
+    // §B3 (prism sweep 2026-08-06): K-5 side-course row seam — the real
+    // panels stack two cassette rows; dark split FLUSH with the 1.870
+    // panel face (r1 at 1.872 poked 10 mm past it OUTSIDE the lip's
+    // y-band and cost front_whole 0.5 — the 1.883 lip only covers
+    // y 1.16..1.34; AA-teeter law: stay >=2px inside the face column).
+    P.add('hullDark', box(0.016, 0.024, 0.46), s * 1.862, 1.02, zc5);
   }
 
   // ---- turret: dome to the normalized 2.19-2.23 roof, pano spike 2.60 ----
@@ -1122,7 +1246,10 @@ function buildT90AVladimir(P) {
   // r13b wedge re-fit: ref K-5 side band is 1.529..1.663 (thin, HIGH) over
   // z_w 0.4..1.0 — k5Y +0.05, slimmer/shorter leaf, pitch relaxed -0.40 ->
   // -0.26 (the tilt was throwing the inner ends to 1.81)
-  const p5 = { rings, sz: 0.73, k5Len: 0.85, k5T: 0.50, k5Y: 0.02, k5H: 0.22, k5Pitch: -0.18, k5TileY: 0.14 };
+  // §B3.1 (prism sweep 2026-08-06): k5Seg sections the clamshell leaves
+  // (flush seams), eyeKit gives the Shtora eyes their emitter grammar —
+  // every certified band held (eyeKit gate HOLD 71.4 proven pre-revert).
+  const p5 = { rings, sz: 0.73, k5Len: 0.85, k5T: 0.50, k5Y: 0.02, k5H: 0.22, k5Pitch: -0.18, k5TileY: 0.14, k5Seg: 4, eyeKit: true };
   eraRuCheeks(P, p5, 'k5');
   ruShtora(P, p5, 0.30);
   // r12: the 2.12-2.21 roof band is the LEFT sight block (front 2.21 at
@@ -1218,6 +1345,16 @@ function buildT90AVladimir(P) {
   P.add('gunDark', box(0.012, 0.085, 0.03), 0.183, 0.06, 0.30);
   P.add('gunDark', box(0.012, 0.085, 0.03), -0.183, 0.06, 0.30);
   P.add('gunDark', box(0.40, 0.022, 0.02), 0, 0.092, 0.238);
+  // §B3.1 (prism sweep 2026-08-06): the fused-print root keeps its certified
+  // armored-cover slabs (the ref side band 1.529..1.663 IS that flat band) —
+  // the boot identity comes from accordion fold collars wrapping the TUBE
+  // under the cover (w 0.20 <= tube ±0.105 front silhouette — the r1
+  // ±0.17-wide rings poked under the slab bottoms and cost front_whole
+  // 0.5), plus a clamp ring where the cover ends on the tube.
+  for (const zf of [0.30, 0.52, 0.74]) {
+    P.addGunExtraDark(KIT.xform(cylZ(0.5, 0.05, 14), 0, 0, 0, 0, 0, 0, [0.19, 0.19, 1]), 0, 0, zf);
+  }
+  P.add('gunDark', KIT.xform(cylZ(0.104, 0.045, 14), 0, 0, 0), 0, 0, 1.02);
   tubeGun(P, [
     [0.45, 2.30, 0.105], [2.30, 2.87, 0.106], [2.87, 3.90, 0.096], [3.90, 4.475, 0.090],
   ], { rings: [[0.90, 0.107], [1.50, 0.107], [2.30, 0.105], [2.95, 0.098], [3.60, 0.092], [4.20, 0.092]], muzzle: 4.475 });
@@ -1290,8 +1427,18 @@ function buildT64BV1(P) {
   for (const s of [-1, 1]) {
     P.add('hull', box(0.30, 0.11, 0.30), s * 0.72, 0.87, 1.68);
   }
+  // §B3 (prism sweep 2026-08-06): the two bare glacis chevron strips become
+  // the ref's K-1 cassette rows — 3 cassettes per strip at the SAME seat,
+  // rake and plane (span/thickness identical, gaps expose the glacis like
+  // the print's quilt seams; side/front/plan bands unchanged — gate HOLD
+  // proven 73.4 exact pre-revert).
   for (let row = 0; row < 2; row++) for (const s of [-1, 1]) {
-    P.add('hullTrack', box(0.62, 0.07, 0.28), s * 0.36, 0.99 - row * 0.07, 1.26 + row * 0.28, -0.35, s * 0.32, 0);
+    for (let ci = -1; ci <= 1; ci++) {
+      P.add('hullTrack', KIT.xform(box(0.19, 0.07, 0.28), ci * 0.215, 0, 0),
+        s * 0.36, 0.99 - row * 0.07, 1.26 + row * 0.28, -0.35, s * 0.32, 0);
+      P.add('hullDark', KIT.xform(box(0.19, 0.055, 0.022), ci * 0.215, 0.005, 0.13),
+        s * 0.36, 0.99 - row * 0.07, 1.26 + row * 0.28, -0.35, s * 0.32, 0);
+    }
   }
   KIT.towCable(P, [[-1.05, 1.02, 0.55], [0, 1.045, 0.01], [1.05, 1.02, 0.55]]);
   for (const s of [-1, 1]) {
@@ -1398,9 +1545,17 @@ function buildT64BV1(P) {
   const rings = [[1.24, -0.029], [1.32, 0.114], [1.24, 0.523], [1.13, 0.684], [1.02, 0.779], [0.55, 0.827], [0.02, 0.836]];
   meshDome(P, rings, 0.93);
   // BV cheek WING PLATES seated ON the face
+  // §B3.1/§B3 (prism sweep 2026-08-06): the wings keep every certified
+  // face line and gain the K-1 cassette grammar — dark seam grid + rim
+  // rails <=4 mm proud, strictly inside each plate's outline (mask-neutral
+  // by construction; gate HOLD proven 73.4 exact pre-revert).
   for (const s of [-1, 1]) {
     P.add('turretTrack', box(0.10, 0.49, 0.70), s * 0.99, 0.27, 0.55, -0.15, s * -0.24, 0);
     P.add('turretTrack', box(0.09, 0.42, 0.58), s * 0.78, 0.29, 0.88, -0.18, s * -0.10, 0);
+    eraTileFace(P, { w: 0.10, h: 0.49, d: 0.70, x: s * 0.99, y: 0.27, z: 0.55,
+      rx: -0.15, ry: s * -0.24, sx: s, rows: 2, cols: 3, seam: 0.018 });
+    eraTileFace(P, { w: 0.09, h: 0.42, d: 0.58, x: s * 0.78, y: 0.29, z: 0.88,
+      rx: -0.18, ry: s * -0.10, sx: s, rows: 2, cols: 2, seam: 0.018 });
   }
   // LEFT roof gallery (rTAIL r13 full-profile re-decode): the ref roof
   // UNDULATES — 2.183 plateau over world -1.73..-1.11 ONLY, then a 2.105
@@ -1561,13 +1716,28 @@ function buildT64BV1(P) {
   // r8: furniture narrowed to |x|<=0.09 — the ref's fused tube occupies
   // only the center plan columns; 0.10-0.11-wide kit polluted x +-0.14
   ruSaddle(P, { rollR: 0.143, rollW: 0.22, tubeR: 0.084, rootL: 0.6 });
-  P.addGunExtra(box(0.16, 0.114, 0.39), 0, 0.025, 0.46);                // KTD hood hugs the tube (ref 1.52 top)
+  // §B3.1 (prism sweep 2026-08-06): the KTD-2 hood is a ROUNDED cover, not
+  // a prism — elliptical shell with the same top/bottom/width/front lines
+  // as the old box (side/plan silhouettes identical; only the corner read
+  // changes). Lens recess stays inset in the front face.
+  P.addGunExtra(KIT.xform(KIT.cylZ(0.5, 0.39, 14), 0, 0, 0, 0, 0, 0, [0.16, 0.114, 1]), 0, 0.025, 0.46);
   P.add('gunDark', box(0.12, 0.078, 0.018), 0, 0.025, 0.644);           // §B3: KTD lens face (inside the hood silhouette)
   // rTAIL r13: collar/throat slimmed to |x|<=0.08 — the 0.30-wide throat
   // (a gun child, so plan_turret content) filled the ±0.14 plan cols to
   // z 0.45 where the ref's slit-mantlet face ends at +0.012.
-  P.addGunExtra(box(0.16, 0.30, 0.65), 0, -0.15, 0.41);                 // narrow mantlet collar
-  P.addGunExtra(box(0.16, 0.42, 0.46), 0, -0.10, -0.15);               // breech throat to the dome face
+  // §B3.1 (prism sweep 2026-08-06): the bare collar/throat prisms become
+  // the REAL accordion boot — same envelope union (dome-face rect w 0.16 /
+  // y -0.31..+0.11, hanging bottom held near the certified -0.30 line
+  // through the fold run, converging onto the tube at the clamp). The
+  // certified |x|<=0.08 plan hide is preserved (every fold w <= 0.16,
+  // crease collars +-0.0845 < tube r 0.0875). Gate HOLD proven 73.4 exact
+  // (r1 of this sweep, pre-revert).
+  ruBoot(P, { pts: [
+    [-0.38, 0.16, 0.42, -0.10],    // dome face (old breech-throat rect)
+    [0.085, 0.16, 0.365, -0.1175], // slit-frame exit fold (bottom -0.30)
+    [0.42, 0.155, 0.30, -0.145],   // mid fold (bottom -0.295)
+    [0.71, 0.14, 0.21, -0.06],     // clamp fold onto the tube
+  ] });
   tubeGun(P, [
     [0.60, 2.26, 0.0875], [2.26, 3.31, 0.095], [3.31, 4.01, 0.0875], [4.01, 4.24, 0.0835],
   ], { rings: [[0.95, 0.0895], [1.30, 0.0895], [1.62, 0.0895], [1.94, 0.0895], [2.26, 0.097], [2.61, 0.097], [2.96, 0.097], [3.31, 0.097], [3.66, 0.0895], [4.01, 0.0895]], muzzle: 4.24 });
@@ -2690,21 +2860,42 @@ function buildT80Line(P, v) {
   // mantlet hood + saddle root own the ref's 1.94-2.06 side band over
   // z 1.19..1.75; the V-nose dust cover carries 1.9 out to z 1.98.
   if (v === 2) {
-    P.addGunExtra(box(0.46, 0.32, 0.34), 0, 0.02, 0.72);
+    // §B3.1 (prism sweep 2026-08-06): the mantlet block is the cast collar
+    // under the boot — elliptical frustum, same plan/side extremes at the
+    // center axes (masks read identical rectangles); fold ring inside.
+    P.addGunExtra(KIT.xform(cylZ(0.5, 0.34, 16, 0.465), 0, 0, 0, 0, 0, 0, [0.46, 0.32, 1]), 0, 0.02, 0.72);
+    P.addGunExtraDark(KIT.xform(cylZ(0.5, 0.035, 14), 0, 0, 0, 0, 0, 0, [0.43, 0.295, 1]), 0, 0.015, 0.80);
+    // §B3: V-nose dust cover keeps its certified masses + fold-crease
+    // strips flush on the faces (canvas grammar, zero growth).
     P.add('turret', box(0.30, 0.20, 0.14), 0, 0.24, 1.70);
     P.add('turret', box(0.56, 0.26, 0.36), 0, 0.22, 1.44);
-    P.add('turretDetail', box(0.26, 0.26, 0.24), 0.55, 0.40, 0.96);
-    P.add('turretGlass', box(0.18, 0.18, 0.02), 0.55, 0.40, 1.09);
+    P.add('turretDark', box(0.29, 0.02, 0.008), 0, 0.26, 1.766);
+    P.add('turretDark', box(0.55, 0.02, 0.008), 0, 0.25, 1.616);
+    // §B3.1: the right sight is a DRUM (0.26 box -> r 0.13 cylinder:
+    // inscribed circle, side/plan rectangles identical) + round lens.
+    P.add('turretDetail', KIT.xform(cylZ(0.13, 0.24, 14), 0, 0, 0), 0.55, 0.40, 0.96);
+    P.add('turretDark', KIT.xform(cylZ(0.122, 0.014, 14), 0, 0, 0), 0.55, 0.40, 1.082);
+    P.add('turretGlass', KIT.xform(cylZ(0.09, 0.02, 14), 0, 0, 0), 0.55, 0.40, 1.09);
   } else {
-    P.addGunExtra(box(0.46, 0.50, 0.40), 0, -0.10, 0.75);
+    // §B3.1 (prism sweep 2026-08-06): boot mass hanging under the hood —
+    // elliptical frustum (same extremes), fold ring, clamp hidden under
+    // the hood line.
+    P.addGunExtra(KIT.xform(cylZ(0.5, 0.40, 16, 0.465), 0, 0, 0, 0, 0, 0, [0.46, 0.50, 1]), 0, -0.10, 0.75);
+    P.addGunExtraDark(KIT.xform(cylZ(0.5, 0.035, 14), 0, 0, 0, 0, 0, 0, [0.43, 0.47, 1]), 0, -0.105, 0.84);
     // r27: hood/step dropped to the compressed ref's side band (hood zone
     // tops read 1.905-2.015 where the old 2.00/2.16 pair sat +0.10)
     P.add('turret', box(1.30, 0.32, 0.50), 0, 0.34, 1.44);
     P.add('turret', box(0.90, 0.12, 0.24), 0, 0.545, 1.155);
     P.add('turret', box(0.30, 0.40, 0.28), 0, 0.26, 1.84);
+    // §B3: nose cover fold creases + dark end seam, flush on the box faces.
+    P.add('turretDark', box(0.29, 0.02, 0.008), 0, 0.30, 1.976);
+    P.add('turretDark', box(0.29, 0.35, 0.008), 0, 0.245, 1.9755);
     // Luna IR seated right of the mantlet (ref plan front 1.81 at x 0.6-0.85)
-    P.add('turretDetail', box(0.26, 0.26, 0.24), 0.72, 0.35, 1.62);
-    P.add('turretGlass', box(0.18, 0.18, 0.02), 0.72, 0.35, 1.755);
+    // §B3.1: Luna is a SEARCHLIGHT DRUM (0.26 box -> r 0.13 cylinder:
+    // inscribed circle keeps both mask rectangles) + rim + round lens.
+    P.add('turretDetail', KIT.xform(cylZ(0.13, 0.24, 14), 0, 0, 0), 0.72, 0.35, 1.62);
+    P.add('turretDark', KIT.xform(cylZ(0.122, 0.014, 14), 0, 0, 0), 0.72, 0.35, 1.742);
+    P.add('turretGlass', KIT.xform(cylZ(0.09, 0.02, 14), 0, 0, 0), 0.72, 0.35, 1.75);
   }
   // cheek staircase + flank slabs (ref plan fronts 1.31@±1.0, 1.12@±1.3,
   // 0.9@±1.45; flank rears +0.1@±1.33 — the old shoulder run owned the
@@ -3776,7 +3967,14 @@ function buildT90MProryv(P) {
   // crest (world 3.20..3.44), muzzle +6.20 ----
   P.gunG.position.set(0, 0.21, 1.15);
   ruSaddle(P, { rollR: 0.17, rollW: 0.56, tubeR: 0.108, rootR: 0.17, rootL: 0.50 });
-  P.addGunExtra(box(0.60, 0.30, 0.30), 0, 0.06, 0.16);
+  // §B3.1 (prism sweep 2026-08-06): the root block is the cast collar under
+  // the boot — elliptical frustum (same plan ±0.30 / side ±0.15 extremes at
+  // the center axes; mask rectangles identical), fold ring inside the local
+  // skin, clamp at the cone->tube seam (top 1.734 world stays under the
+  // 1.74 hood line).
+  P.addGunExtra(KIT.xform(cylZ(0.5, 0.30, 16, 0.465), 0, 0, 0, 0, 0, 0, [0.60, 0.30, 1]), 0, 0.06, 0.16);
+  P.addGunExtraDark(KIT.xform(cylZ(0.5, 0.035, 14), 0, 0, 0, 0, 0, 0, [0.575, 0.285, 1]), 0, 0.055, 0.24);
+  P.addGunExtraDark(KIT.xform(cylZ(0.124, 0.04, 14), 0, 0, 0), 0, 0, 0.53);
   // r27 (turret-plan +-0.19 col, the r26 mask-dump order): DECODED — the
   // evac swell seg r 0.128 raster-clips the +-0.17/0.201 plan columns
   // (col inner boundary at +-0.108; the r26 note documents this exact
@@ -3991,7 +4189,17 @@ function buildT72B87(P) {
   // ---- 2A46M (fused in the ref; mine stays a Gun node) ----
   P.gunG.position.set(0, 0.06, 0.95);
   ruSaddle(P, { rollR: 0.20, rollW: 0.58, tubeR: 0.098, rootL: 0.62 });
-  P.addGunExtra(box(0.50, 0.26, 0.42), 0, -0.13, 0.18);
+  // §B3.1 (prism sweep 2026-08-06, CEILING-CERT tank -> mask-neutral only):
+  // the root block becomes the cast collar — elliptical frustum with the
+  // SAME plan (±0.25) / side (±0.13) extremes at the center axes (side and
+  // plan mask rectangles identical; the block is front-occluded), a canvas
+  // pad fills the strap frame so it no longer floats, and fold rings ride
+  // strictly inside the block∪tube envelope. No clamp on this tank (the
+  // cone would need a proud ring — not mask-neutral).
+  P.addGunExtra(KIT.xform(cylZ(0.5, 0.42, 16, 0.47), 0, 0, 0, 0, 0, 0, [0.50, 0.26, 1]), 0, -0.13, 0.18);
+  P.addGunExtra(box(0.44, 0.20, 0.016), 0, -0.10, 0.395);
+  P.addGunExtraDark(KIT.xform(cylZ(0.5, 0.035, 14), 0, 0, 0, 0, 0, 0, [0.47, 0.235, 1]), 0, -0.128, 0.10);
+  P.addGunExtraDark(KIT.xform(cylZ(0.5, 0.035, 14), 0, 0, 0, 0, 0, 0, [0.46, 0.23, 1]), 0, -0.128, 0.27);
   // §B3 mantlet tells: dust-cover strap relief on the block's front face
   // (10-20mm proud, inside the block's own silhouette in every view)
   P.addGunExtra(box(0.44, 0.024, 0.022), 0, -0.04, 0.40);
@@ -7748,6 +7956,11 @@ function buildT90SM(P) {
   P.add('turretDark', cylZ(0.024, 0.62, 8), 0.32, 0.72, -0.90, -0.04, 0, 0);
   P.add('turretGlass', box(0.12, 0.09, 0.02), 0.24, 0.60, -1.00);
   P.add('turret', box(0.30, 0.36, 0.30), -0.85, 0.52, -0.27);
+  // §B3 (prism sweep 2026-08-06): the bare roof box reads as a stowage
+  // bin — lid seam + two latches, flush on its own faces.
+  P.add('turretDark', box(0.26, 0.012, 0.26), -0.85, 0.694, -0.27);
+  P.add('turretDark', box(0.022, 0.05, 0.014), -0.79, 0.60, -0.123);
+  P.add('turretDark', box(0.022, 0.05, 0.014), -0.91, 0.60, -0.123);
   // ---- 2A46M-5 + MRS bulge (axis 1.70, muzzle +6.20) ----
   P.gunG.position.set(0, 0.30, 1.17);
   ruSaddle(P, { rollR: 0.21, rollW: 0.60, tubeR: 0.111, rootL: 0.70 });
@@ -7755,9 +7968,17 @@ function buildT90SM(P) {
   // §B3 mantlet-plug tells: canvas-cover strap relief on the plug FRONT
   // face plane (10-16mm proud, inside the plug's own side/front silhouette
   // — the bare 0.66 box read as a mystery rectangle).
+  // §B3.1 (prism sweep 2026-08-06): the straps used to FLOAT as an open
+  // frame ahead of the plug — a canvas cover PAD now fills the plug front
+  // (inside the straps' own z-envelope 0.288..0.312), the straps ride it
+  // half-buried, and two fold rings on the root cone carry the boot read
+  // onto the tube (+6 mm over the cone skin, inside side noise).
+  P.addGunExtra(box(0.60, 0.36, 0.018), 0, 0.115, 0.295);
   P.addGunExtra(box(0.60, 0.026, 0.024), 0, 0.26, 0.30);
   P.addGunExtra(box(0.026, 0.34, 0.024), 0.26, 0.10, 0.30);
   P.addGunExtra(box(0.026, 0.34, 0.024), -0.26, 0.10, 0.30);
+  P.addGunExtraDark(KIT.xform(cylZ(0.139, 0.035, 14), 0, 0, 0), 0, 0, 0.44);
+  P.addGunExtraDark(KIT.xform(cylZ(0.142, 0.035, 14), 0, 0, 0), 0, 0, 0.58);
   // r10: muzzle 4.94 -> 4.97 (the z 6.182 side col reads ref tube to 6.20+;
   // tip 6.23 world covers the col center with margin; overall 9.69 = +0.6%)
   tubeGun(P, [
@@ -7822,6 +8043,18 @@ function eraRuCheeks(P, p, kind) {
       const px5 = p.k5Pitch ?? -0.40;
       P.add('turretTrack', box(L, H, H), x, yc, z, px5, ry, rz);
       P.add('turretDark', box(L + 0.01, 0.035, H - 0.04), x, yc + H / 2, z, px5, ry, rz);
+      // k5Seg (§B3.1 prism sweep 2026-08-06, opt-in): the real K-5 clamshell
+      // is SECTIONED — n-1 dark seams across the leaf face plus a lower lip
+      // strip. Seams FLUSH with the leaf face (outer face at exactly H/2 —
+      // zero silhouette growth; the r1 +4 mm proud strips cost front_whole
+      // 0.5 on vladimir). Defaults byte-identical for every legacy caller.
+      if (p.k5Seg) {
+        for (let gi = 1; gi < p.k5Seg; gi++) {
+          const lx = -L / 2 + (L * gi) / p.k5Seg;
+          P.add('turretDark', KIT.xform(box(0.022, H - 0.024, 0.008), lx, 0, H / 2 - 0.004), x, yc, z, px5, ry, rz);
+        }
+        P.add('turretDark', KIT.xform(box(L - 0.03, 0.03, 0.008), 0, -H / 2 + 0.035, H / 2 - 0.004), x, yc, z, px5, ry, rz);
+      }
       const bx = Math.cos(ry), bz = -Math.sin(ry);
       for (const e of [-1, 1]) {
         P.add('turretTrack', box(0.06, H - 0.02, H - 0.02),
@@ -8004,6 +8237,20 @@ function ruShtora(P, p, y) {
     P.add('turretDark', box(0.24, 0.27, 0.22), s * x, y, zc);
     P.add('turretGlass', box(0.17, 0.18, 0.03), s * x, y, zc + 0.115);
     P.add('turretDetail', box(0.27, 0.04, 0.24), s * x, y + 0.155, zc + 0.01);
+    // eyeKit (§B3.1 prism sweep 2026-08-06, opt-in): the OTShU-1-7 emitter
+    // grammar — horizontal vent fins over the emitter window, side cheek
+    // plates and an under-bracket back to the skin, all inside the eye
+    // box's own envelope (+<=8 mm face relief; under §C thresholds; gate
+    // HOLD proven on vladimir 71.4 exact pre-revert). Defaults
+    // byte-identical for every legacy caller.
+    if (p.eyeKit) {
+      for (let fi = 0; fi < 3; fi++) {
+        P.add('turretDark', box(0.19, 0.024, 0.014), s * x, y - 0.056 + fi * 0.056, zc + 0.118);
+      }
+      P.add('turretDetail', box(0.014, 0.21, 0.19), s * (x + 0.122), y, zc - 0.005);
+      P.add('turretDetail', box(0.014, 0.21, 0.19), s * (x - 0.122), y, zc - 0.005);
+      P.add('turretDark', box(0.18, 0.045, 0.16), s * x, y - 0.155, zc - 0.045);
+    }
   }
 }
 // ---------------------------------------------------------------------------

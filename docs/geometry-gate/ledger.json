@@ -378,8 +378,8 @@
    "geoMin": 35.5,
    "gatePassed": false,
    "components": {
-    "hullCurves": 45.1,
-    "wholeCurves": 45.4,
+    "hullCurves": 44.6,
+    "wholeCurves": 45,
     "turretCurves": 55.2,
     "stations": 35.5,
     "dims": 100,
@@ -479,12 +479,12 @@
   },
   {
    "id": "t72b_1987",
-   "geoMin": 56,
+   "geoMin": 56.1,
    "gatePassed": false,
    "components": {
     "hullCurves": 63.3,
     "wholeCurves": 59.7,
-    "turretCurves": 56,
+    "turretCurves": 56.1,
     "stations": 69.1,
     "dims": 96.7,
     "floaters": 100
@@ -497,7 +497,7 @@
    "components": {
     "hullCurves": 61.2,
     "wholeCurves": 56.4,
-    "turretCurves": 72.9,
+    "turretCurves": 73,
     "stations": 75.9,
     "dims": 100,
     "floaters": 100
@@ -536,7 +536,7 @@
    "components": {
     "hullCurves": 63.7,
     "wholeCurves": 65.2,
-    "turretCurves": 69,
+    "turretCurves": 69.1,
     "stations": 90.9,
     "dims": 100,
     "floaters": 100
@@ -653,7 +653,7 @@
    "components": {
     "hullCurves": 87.5,
     "wholeCurves": 81.6,
-    "turretCurves": 84.3,
+    "turretCurves": 86.2,
     "stations": 92.3,
     "dims": 100,
     "floaters": 100
@@ -664,7 +664,7 @@
    "geoMin": 81.7,
    "gatePassed": false,
    "components": {
-    "hullCurves": 81.9,
+    "hullCurves": 83.1,
     "wholeCurves": 81.7,
     "turretCurves": 83.3,
     "stations": 81.9,

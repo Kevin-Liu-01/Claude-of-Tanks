@@ -1,11 +1,11 @@
 {
  "id": "t72b_1987",
- "geoMin": 56,
+ "geoMin": 56.1,
  "gatePassed": false,
  "components": {
   "hullCurves": 63.3,
   "wholeCurves": 59.7,
-  "turretCurves": 56,
+  "turretCurves": 56.1,
   "stations": 69.1,
   "dims": 96.7,
   "floaters": 100
@@ -662,8 +662,8 @@
  },
  "turretRows": {
   "side": {
-   "score": 55.95410280976567,
-   "meanPct": 2.52,
+   "score": 56.059309092756436,
+   "meanPct": 2.51,
    "p95Pct": 6.57,
    "coverPct": 6.6,
    "reg": {
@@ -733,7 +733,7 @@
      "refBot": 0.21,
      "procTop": 0.66,
      "procBot": 0.07,
-     "errM": 0.095
+     "errM": 0.093
     },
     {
      "at": 0.48,
@@ -756,8 +756,8 @@
      "refTop": 0.64,
      "refBot": 0.21,
      "procTop": 0.67,
-     "procBot": 0.07,
-     "errM": 0.085
+     "procBot": 0.08,
+     "errM": 0.08
     },
     {
      "at": 0.7,
@@ -770,7 +770,7 @@
    ]
   },
   "plan": {
-   "score": 78.47581020599817,
+   "score": 78.45471645599817,
    "meanPct": 1.51,
    "p95Pct": 5.67,
    "coverPct": 0,
