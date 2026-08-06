@@ -62,9 +62,9 @@ re-freeze NEW hash, all in ONE commit.
 | m60a3 | 051c454c | never gated |
 | kv2 | 382b2310 | freeze-verify only |
 | leo2a6 | f25dad51 -> cff6f478 CANDIDATE (§B4 shoe round, re-cert in flight) |
-| m1a1 | 66f953e4 | cheek+gun re-cert RATIFIED (floor 9.1) |
-| m1a1ha | cd209f68 | cheek+gun re-cert RATIFIED (floor 9.1) |
-| m1a2_tejas | 25304310 | cheek+gun re-cert RATIFIED (floor 9.1) |
+| m1a1 | 66f953e4 -> 5290e3bc CANDIDATE (density kit round, re-cert in flight) | |
+| m1a1ha | cd209f68 -> 4023964c CANDIDATE (density kit round, re-cert in flight) | |
+| m1a2_tejas | 25304310 -> 93a9a890 CANDIDATE (density kit round, re-cert in flight) | |
 | merkava3b | 8bb8d984 | gun-run re-cert RATIFIED (floor 9.1) |
 | merkava3c | b7318b10 | gun-run re-cert RATIFIED (floor 9.1) |
 | kf51 | 1452024b -> fcc60d6c CANDIDATE (§B4 shoe round, re-cert in flight) |
@@ -74,7 +74,7 @@ re-freeze NEW hash, all in ONE commit.
 | pt91m | 2cf10e23 | |
 | t72b3m | 1e1ca4b8 | |
 | merkava1b | 470f3665 | re-frozen 0e47256 |
-| m1a2 | b78279b4 | cheek+gun re-cert RATIFIED (floor 9.1) |
+| m1a2 | b78279b4 -> 75e981e0 CANDIDATE (density kit round, re-cert in flight) | |
 | chieftain5 | 94c09bb0 | |
 | t84 | 04707a9c | |
 | m47_patton | 53b6123a | |
@@ -82,7 +82,7 @@ re-freeze NEW hash, all in ONE commit.
 | leo2_revolution | b53a16f8 -> fa1a47fc CANDIDATE (ring see-through closed per owner + §B4; re-cert in flight) | r18 RE-CERT RATIFIED (§B7 photo-class, floor 9.0 x14); batch-43 wing excision EXECUTED — gate 0.2 -> 62.8 (§B7 cap = genuine real-vs-print divergence only: the print has no solid side modules). Next: P-R1/P-R2 tone round; the capped row is the print's honest limit under the owner ruling | de-fusion RE-CERT RATIFIED (floor 9.0 x14 at the coupled 88.9); retune round owed (88.9 -> 90+, P-1 fore-ring tells folded in) |
 | m46_patton | 90ebf864 | |
 | centurion3 | fea56ecc | GRADUATED fd2c365 (24th, Centurion line's first) |
-| m1a2_sepv2 | b74366ac | 25th graduate; cheek+gun re-cert RATIFIED (floor 9.1) |
+| m1a2_sepv2 | b74366ac -> b284b8ac CANDIDATE (density kit round, re-cert in flight) | |
 | m26_pershing | 2f579de8 | GRADUATED 2026-08-05 (26th; floor 9.0 x14 second sitting; warp->re-anchor->retune arc) |
 
 *ALL 24 hashes above re-frozen 2026-08-05 by the INVISIBLE-LOD ENVELOPE
@@ -177,14 +177,21 @@ honestly parked at 88.9 pending its retune)
   all 42manako CC-BY — check that catalog first).
 - PUMA amendment: base the build on the BRADLEY recipe (owner order),
   with its 42manako oracle for measurement.
+- **BASE-21 FAMILY-INSPO GUIDANCE (owner 2026-08-06): k2, type10,
+  type99a, leo1a5, t72b3, chieftain_mk10 take inspiration from their
+  tank families** (type10 <- type90 recipes, type99a <- the russia-style
+  lineage, leo1a5 <- leopard1 family, t72b3 <- t72 family, chieftain_mk10
+  <- chieftain5 the graduate, k2 <- its own modern class) — "but this
+  should also be intuitied": builders derive family grammar themselves.
 - **OWNER PUNCH LIST 2 (2026-08-06 pm, four screenshots)**: (1) DONE — fv510 photo-parity r2: all NINE gap-table reads closed
   (turret left-offset, 2x4 chunky banks, tall whips, deep vent rings,
   low guarded lights + convoy plate, loaded bins/racks mg1+16d, skirts
   22cm over wheel tops, mirrors inside the anchor); self-read floor 8.7;
   dims/floaters held; hash bf3bdf00. New-oracle onboarding still queued
-  (the gap table = the re-verify checklist); (2) sepv2/sepv3/tusk
-  REBASED on the m1a1 family build + real kits (ERA/TUSK/CROWS) +
-  §B3.2 density on ALL abrams — abrams lane; (3) revolution turret
+  (the gap table = the re-verify checklist); (2) DONE — SEPv3 RESOLVED: TANK_SPECS.m1a2 IS the named M1A2 SEPv3;
+  TUSK rebuilt real (ARAT-1/2 grammar, cage, TIP, LAGS-M240, 14.1,
+  clips/contig zeroed); AIM 48.8; abramsx bow closed; five graduate
+  candidates pending re-cert; (3) revolution turret
   see-through sides/ring ("disembodied") — relayed to the LIVE leopard
   agent; (4) leclerc turret front = steep rake down to a small flat
   strip — misc lane; (5) DONE — russia §B3.2 density: mg backlog CLEARED 10/10 (census mg>=1
