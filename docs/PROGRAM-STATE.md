@@ -306,13 +306,16 @@ read BUILD-STANDARD+packets first, §F.4 report).
    Follow-ups for family lanes: procShadow_gun oversize true-ups (t84
    +1.80m, m46 +1.60, kf51 +1.16, leo2a6 +1.09, kv2 +0.84, ariete +0.25);
    icons re-frame tighter at next genIcons per tank.
-8. Shoe-envelope audit extension (track-clip-audit.{mjs,html} + §B4 text,
-   owner task 2026-08-05): audit tests BAND voxels but players see the
-   SHOE system ~+0.13 outside (m1a1ha read 0/0 while shoes clipped).
-   Add shoeVox column (sample instanced pad geometry; fallback dilation by
-   the measured kit offset), keep bandVox output backward-compatible,
-   fleet re-run + blind-spot findings table (shoeVox>0 where bandVox=0 ->
-   per-family orders), validate on fixed m1a1ha, update §B4 semantics.
+8. DONE (landed post-handover): shoe-envelope audit shipped — instance
+   sampling with >=1.5cm depth bar + dressingSkipped conformance
+   exclusion; bandVox output backward-compatible; m1a1ha + 15 negative
+   controls clean. FINDINGS = the new §B4 queue (graduate-change flow,
+   re-run --ids fresh before acting; full table in the audit report/log):
+   BLIND SPOTS ranked — kf51 front 387 (glacis toe, render-confirmed) +
+   rear 184; leo2a6 316+192; leo2a5 308+126; isu152 264+50; merkava1b
+   140; t72b3m 112+24; t84 near-blind front 162; merkava3d 32; 3b/3c 18;
+   t62mv1/t90sm/t90m 12-18; isu122s 8. Worse-than-band severity: t90a
+   608, t64bv1, t72bu, bradley rear 121, chieftain_mk10 44.
 Plus the standing my-lane queue in §7.
 
 ## 13. HOW TO RESUME FROM A NEW DEVICE (the loop protocol)
