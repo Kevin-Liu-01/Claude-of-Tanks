@@ -122,6 +122,20 @@ honestly parked at 88.9 pending its retune)
   t90sm 56.4 (AA-teeter binds), t62mv1 63.7 (fade-cap ceiling ~77-81),
   t72bu ~55-70 certified-ceiling — ORACLE
   DECISION PENDING (orchestrator lane).
+- **BASE-21 MODERNIZATION WORKSTREAM (owner directive 2026-08-06: "the
+  21 original base-game customs (Sherman, Tiger I, T-34-85, Leopard
+  2A4/2A7, T-14, Challenger 2, etc.) need to begin being worked on
+  because the current models are wholly ancient")**: these predate the
+  oracle program — most have NO ledger row (no reference GLB; leo2a7v 0,
+  t80u 75.4 and t90m 81.7 are exceptions with oracles). Mechanics: (a)
+  identify the exact 21-id roster from TANK_SPECS (first triage task);
+  (b) per-family PHOTO-CLASS modernization rounds under the full current
+  rulebook (§B1-§B7, §C) as lanes free — the visual critic is the bar
+  where no oracle exists (false-0 law: never gate without a reference);
+  (c) parallel oracle-sourcing lane (community CC models only, bradley
+  flow — THE ONE ABSOLUTE RULE stands). STARTED 2026-08-06 on the free
+  leopard lane (leo2a4 + leo2a7v + the revolution P-R1/P-R2 tone
+  orders).
 - **OWNER PUNCH LIST (2026-08-06, five rounds spawned)**: (1) ariete +
   leclerc MISSING LEFT TURRET SIDES (misc lane; §C missing-side class);
   (2) sepv2/sepv3/merkava gun rectangular prisms -> real weapons (§B3.1);
