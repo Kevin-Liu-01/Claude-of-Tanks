@@ -140,6 +140,13 @@ honestly parked at 88.9 pending its retune)
   proportional ceiling; §E re-source request filed in packet);
   PHOTO-CLASS FLOW law banked (tmp-leo-photoclass rig = the no-oracle
   lane mechanism for the remaining base-21 slices).
+- **fv510 NEW ORACLE (2026-08-06, owner drop)**: community/
+  fv510_warrior.glb (42manako CC-BY-4.0, verified; ATTRIBUTION.md).
+  ONBOARDING = orchestrator lane, bradley flow: vertex-extract REG +
+  registration into the harness maps (HELPER-EXPANDED law) + gate
+  baseline x2 + retire the recovered/ short-print (batch-44 note stays
+  historical). The live fv510 photo-parity round gates dims/floaters
+  only meanwhile (notified).
 - **OWNER PUNCH LIST 2 (2026-08-06 pm, four screenshots)**: (1) fv510
   photo-parity round 2 (real Warrior photo: angular welded turret w/
   sloped faces, front-corner smoke banks, 3 whips, loaded rear bins,
