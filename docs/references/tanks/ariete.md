@@ -641,3 +641,98 @@ PROC-ONLY + two ref tail-lip cols beyond my published rear; front 0.56%).
 Ceiling with (b)-(d) certified and (a) unresolved ≈ 78-80 on wholeCurves;
 hull/turret/stations have 85-90 reachable if whole unbinds. dims 100 is
 robust (all four dims 0.05-0.57%).
+
+## MISSING-LEFT-SIDE ROUND (2026-08-06, misc agent) — owner report "ariete and leclerc are missing left side of turrets": ROOT CAUSE = REVERSED WINDING (12/22 slabs inside-out, backface-culled in every FrontSide render, fully visible to the gate's DoubleSide masks). FIXED; gate HOLD 82.3 x2 EXACT; full §B battery green.
+
+ROOT CAUSE (named per the §C order: winding, NOT missing emit): KIT.slab
+builds its six faces for ONE ring handedness — corners in plan order
+(-x,+z),(+x,+z),(+x,-z),(-x,-z), bottom then top (tankFactory.js:128). A
+mirrored call (x *= -1 without re-ordering — the `for (const s of [-1,1])`
+pattern) hands it the OPPOSITE orientation: all six faces come out INWARD
+and the solid is culled in every FrontSide render (game, critic pairs,
+standard-check truth renders) while staying FULLY VISIBLE to the gate's
+DoubleSide maskMaterial (procedural-fidelity.html:315 — masks are
+winding-blind). That split is the whole §C MISSING-SIDE mechanism: the
+defect is invisible to every gate row, so it survived to 82.3.
+
+MEASURED INVENTORY (tools/tmp-misc-leftprobe.mjs, face-outwardness census
+per slab about its corner centroid — REVERSED = 0/6 faces outward):
+- LEFT wedge-cheek slab + LEFT wedge-root slab (the s=-1 instances of the
+  mantlet prow complex) — THE OWNER'S REPORT: the whole left prow was
+  culled while the right rendered.
+- ALL THREE brow-loft planes (full-width x ±0.42 — the §B1 smoothLoft in
+  front of the turret was invisible from EVERY angle).
+- Bow belly rise (x ±0.90).
+- All FIVE fseg wrap-fill slabs on the RIGHT (s=+1) — the r3 lane-local
+  wrap break rendered only on the LEFT; the right fill was mask-only.
+- RIGHT 13th skirt course (slanted leading cut).
+The reversed set was NOT left-only: winding errors land wherever the
+authored ring handedness flips, and no mask row can see any of them.
+
+FIX: `orientedSlab` wrapper in misc.js (measures outwardness, re-orients
+reversed rings b0,b3,b2,b1 / t0,t3,t2,t1 before building — identical
+solids, outward faces). buildAriete/buildLeclerc bind `slab` to it, so
+the class cannot recur in these builders. Mask-neutral BY CONSTRUCTION
+(DoubleSide masks are winding-blind; only positions-buffer ORDER changes)
+— and measured: gate x2 IDENTICAL 82.3 | hull 85.0 / whole 82.3 / turret
+83.3 / stations 87.0 / dims 100 / floaters 100 (the r3 baseline to the
+decimal).
+
+PROOF SET (shots/misc-leftside/{before,after}/):
+- Renders ariete-{left,frontleft,rearleft,right,frontright,rearright}.png
+  + yaw-180 pairs (yaw180-right == left flank; flood counts match their
+  mirror views run-to-run). BEFORE frontleft: bare canted wall, floating
+  gun. AFTER: wedge cheeks + brow loft carry the prow from both sides.
+- Pixel diffs (t>4, §D threshold recorded): left 4281 / frontleft 9450 /
+  rearleft 2993 / right 1531 / frontright 5753 / rearright 1721 — all
+  rects confined to the turret/prow/wrap bands.
+- §B2 flood on left views (mask-method 0x151b20 maxch<=13 + blue-signature
+  B-R>=8, flood from borders): byte-identical before/after (left 1218 =
+  the honest symmetric running-gear daylight band; right 1211; turret zone
+  0). No new enclosed sky.
+- Mirrored-raycast probe (FrontSide-true): asym rows 55 -> 14; every
+  survivor decodes to AUTHORED asymmetry (left MAG fitting, pano
+  left-of-center, left deck roll, left-of-center spare links, the push-2
+  asymmetric roof rails).
+
+§B BATTERY (official rigs, final bytes): gate x2 82.3 EXACT; track-clip
+--exact 0/0 band + 0/0 shoe; turret-parent stranded-1/abutting-1 = the two
+certified turret-fix adjudications (deck roll + tail spares, boxes
+re-verified, both stay rig_hull); standard-check clip ✓ contig 0 ✓
+mg1+3d ✓; npm test green (166 + track-geometry).
+
+§B3.1 GUN-RUN CHECK (ordered, in-file): COMPLIANT — tube/sleeve/evac/MRS
+are cylinders (buildGun + MRS collar), the mantlet is the real C1 angular
+casting class (packet identity cue), and the two canvas masses carry the
+push-2 §B3 tells (cinch straps, rolled hem, coax hood). No bare prism on
+the gun run; no change needed. Closeups: shots/misc-leftside/after/
+ariete-gunrun-{left,right}.png.
+
+LAWS BANKED (missing-side round):
+1. MISSING-SIDE MECHANISM NAMED: gate masks render DoubleSide
+   (procedural-fidelity.html:315) while game/critic/standard-check render
+   FrontSide — winding defects are INVISIBLE to every mask row and fully
+   visible to players. Gate score is no defense (the §C addendum's law,
+   now with its mechanism decoded for this file).
+2. ORIENTEDSLAB DEVICE: measure ring outwardness at build time and
+   re-orient; a winding fix is mask-neutral by construction, so a HOLD
+   order costs zero gate risk.
+3. THE MIRROR-LOOP CARRIER: every `for (const s of [-1,1])` slab whose
+   corners multiply x by s flips handedness on one side. The reversed side
+   is whichever the author didn't eyeball — here LEFT for the turret
+   complex but RIGHT for the wrap fills and skirt cut.
+4. FrontSide-true RAYCAST PROBE: THREE.Raycaster honors material.side —
+   mirrored first-hit |x| asymmetry decodes culled surfaces numerically
+   (55 rows -> 14 authored) without renders.
+
+INCIDENT (banked for the orchestrator): mid-round an external sweep
+reverted src/vehicles/profiles/misc.js to HEAD bytes between two of this
+agent's edits (single-owner file; only the in-flight edit survived on the
+reverted base). Recovered from the scratchpad WIP snapshot; all
+measurements re-run on final bytes. LIVE-TREE FROZEN-SIB HAZARD family —
+snapshot WIP to scratchpad at every milestone.
+
+CERTIFIED/DOCUMENTED RESIDUALS: unchanged — the r3 measured-ceiling
+classes stand (side_whole 82.3 binder: cover 1.83%, nose FRAME-LOCK col,
+knee/apex pad taxes, cliff-lerp floors, pano 2.495 vs real ~2.7). dims
+100 robust. The winding fix moved NO mask row (that is the point).

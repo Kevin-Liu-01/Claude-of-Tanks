@@ -493,3 +493,12 @@ to every side row and can survive to high gate scores. Mandatory checks
 on every round: the §C winding audit + a LEFT-side render (or yaw-180
 pair) compared against the right. A missing side is a §B2 void — gate
 score is no defense.
+- MISSING-SIDE MECHANISM DECODED (§C, misc left-side round 2026-08-06):
+  mirror loops (`for s of [-1,1]` with x*s and no corner re-order) hand
+  slab builders the OPPOSITE ring handedness — all six faces point
+  inward, the solid is backface-culled in every FrontSide render (game,
+  critic, standard-check) yet stays FULLY VISIBLE to the gate's
+  DoubleSide mask material. The gate structurally cannot see this class.
+  Device: an orientedSlab wrapper (face-outwardness census, re-orients
+  reversed rings) — bind slab through it in every profile that mirrors.
+  Known carriers still open: t80u (1), type90 (4+1), type74 (1+1).

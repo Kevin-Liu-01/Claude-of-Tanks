@@ -120,8 +120,8 @@
    ]
   },
   "side_whole": {
-   "score": 86.08113715689477,
-   "meanPct": 0.98,
+   "score": 86.17114346942958,
+   "meanPct": 0.97,
    "p95Pct": 2.25,
    "coverPct": 0.56,
    "reg": {
@@ -170,14 +170,6 @@
      "errM": 0.057
     },
     {
-     "at": -1.6,
-     "refTop": 0.74,
-     "refBot": -0.91,
-     "procTop": 0.71,
-     "procBot": -0.99,
-     "errM": 0.054
-    },
-    {
      "at": -4.15,
      "refTop": 0.74,
      "refBot": 0.47,
@@ -223,6 +215,14 @@
      "refBot": 0.48,
      "procTop": 0.69,
      "procBot": 0.53,
+     "errM": 0.047
+    },
+    {
+     "at": 3.71,
+     "refTop": 0.94,
+     "refBot": -1.11,
+     "procTop": 0.95,
+     "procBot": -1.19,
      "errM": 0.047
     }
    ]
@@ -552,7 +552,7 @@
    ]
   },
   "front_whole": {
-   "score": 85.27376454715966,
+   "score": 85.253837217042,
    "meanPct": 1.1,
    "p95Pct": 2.55,
    "coverPct": 0,
@@ -584,6 +584,14 @@
      "procTop": 1.12,
      "procBot": -1.23,
      "errM": 0.133
+    },
+    {
+     "at": 0.95,
+     "refTop": 1.25,
+     "refBot": -1.25,
+     "procTop": 1.14,
+     "procBot": -1.23,
+     "errM": 0.066
     },
     {
      "at": -1.72,
@@ -626,14 +634,6 @@
      "errM": 0.053
     },
     {
-     "at": 0.95,
-     "refTop": 1.25,
-     "refBot": -1.25,
-     "procTop": 1.17,
-     "procBot": -1.23,
-     "errM": 0.051
-    },
-    {
      "at": 1.44,
      "refTop": 0.8,
      "refBot": -1.25,
@@ -662,8 +662,8 @@
  },
  "turretRows": {
   "side": {
-   "score": 89.5369331828238,
-   "meanPct": 0.78,
+   "score": 89.67270541698647,
+   "meanPct": 0.77,
    "p95Pct": 1.75,
    "coverPct": 0,
    "reg": {
@@ -704,15 +704,15 @@
      "errM": 0.042
     },
     {
-     "at": 2.16,
+     "at": 1.94,
      "refTop": 1.1,
      "refBot": 0.35,
-     "procTop": 1.17,
+     "procTop": 1.16,
      "procBot": 0.34,
-     "errM": 0.042
+     "errM": 0.036
     },
     {
-     "at": 1.94,
+     "at": 2.16,
      "refTop": 1.1,
      "refBot": 0.35,
      "procTop": 1.16,
@@ -752,19 +752,19 @@
      "errM": 0.031
     },
     {
+     "at": 1.61,
+     "refTop": 1.1,
+     "refBot": 0.31,
+     "procTop": 1.12,
+     "procBot": 0.34,
+     "errM": 0.029
+    },
+    {
      "at": 3.16,
      "refTop": 1.09,
      "refBot": 0.37,
      "procTop": 1.05,
      "procBot": 0.35,
-     "errM": 0.028
-    },
-    {
-     "at": 3.49,
-     "refTop": 1,
-     "refBot": 0.58,
-     "procTop": 0.98,
-     "procBot": 0.54,
      "errM": 0.028
     }
    ]

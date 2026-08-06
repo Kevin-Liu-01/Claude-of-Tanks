@@ -20,6 +20,7 @@
 // type74 3.18 (track outer faces ±1.59). NOTHING (bins, baskets, flaps,
 // ERA, mirrors) may exceed those planes or the whole tank rescales and
 // every mask shifts.
+import * as THREE from 'three';
 import { KIT, FITTINGS, buildProfile, WESTERN } from './kit.js';
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from '../specs.js';
 
@@ -282,6 +283,47 @@ function trunnionRoll(P, rollR, rollW, o = {}) {
   P.addGunExtra(cylX(rollR, rollW, 16), 0, 0, 0);
   if (o.ballR) P.addGunExtra(sph(o.ballR, 12), 0, 0, o.ballZ ?? rollR * 0.9);
 }
+
+// §C MISSING-SIDE fix (owner report 2026-08-06, "ariete and leclerc are
+// missing left side of turrets"): KIT.slab builds its six faces for ONE
+// ring handedness — corners in plan order (-x,+z),(+x,+z),(+x,-z),(-x,-z),
+// bottom then top (tankFactory.js:128). A mirrored call (x *= -1 without
+// re-ordering — the `for (const s of [-1,1])` pattern) hands it the
+// OPPOSITE orientation: all six faces come out INWARD and the solid is
+// backface-culled in every FrontSide render — game, critic pairs,
+// standard-check truth renders — while staying fully visible to the gate's
+// DoubleSide maskMaterial (procedural-fidelity.html:315). That split is
+// exactly how the class survives to 82-85 gate scores (§C addendum:
+// MISSING-SIDE). Measured on this file 2026-08-06 (tools/
+// tmp-misc-leftprobe.mjs): ariete 12/22 slabs reversed (LEFT wedge-cheek
+// pair, ALL THREE brow-loft planes, bow belly rise, all five RIGHT fseg
+// wrap fills, RIGHT 13th skirt course), leclerc 6/21 (LEFT forward-cheek
+// complex 1.15 m^3 + outer sweep, LEFT roof-edge chamfer, LEFT armor-box
+// chamfer, RIGHT aft roof wedge, RIGHT mudguard strip). This wrapper
+// measures face outwardness about the corner centroid and re-orients
+// reversed rings (b0,b3,b2,b1 / t0,t3,t2,t1) before building: identical
+// solid, outward faces, mask-neutral by construction (DoubleSide masks are
+// winding-blind; only the positions-buffer ORDER changes on repaired
+// slabs). buildAriete/buildLeclerc bind `slab` to this wrapper so the
+// class cannot recur in those builders; audit rig = tmp-misc-leftprobe.mjs
+// (REVERSED must read 0).
+function orientedSlab(b0, b1, b2, b3, t0, t1, t2, t3) {
+  const c8 = [b0, b1, b2, b3, t0, t1, t2, t3];
+  const cen = [0, 1, 2].map((k) => c8.reduce((s, p) => s + p[k], 0) / 8);
+  const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+  const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  let outward = 0;
+  for (const f of [[b0, b1, t1, t0], [b1, b2, t2, t1], [b2, b3, t3, t2],
+    [b3, b0, t0, t3], [t0, t1, t2, t3], [b3, b2, b1, b0]]) {
+    const n = cross(sub(f[1], f[0]), sub(f[2], f[0]));
+    const fc = [0, 1, 2].map((k) => (f[0][k] + f[1][k] + f[2][k] + f[3][k]) / 4);
+    if (dot(n, sub(fc, cen)) > 0) outward++;
+  }
+  return outward >= 3
+    ? KIT.slab(b0, b1, b2, b3, t0, t1, t2, t3)
+    : KIT.slab(b0, b3, b2, b1, t0, t3, t2, t1);
+}
 // ---------------------------------------------------------------------------
 // C1 Ariete — docs/references/tanks/ariete.md
 // R4 FULL RE-LAY (2026-08-03) from the r27-landmine-fixed workorder dump
@@ -318,8 +360,9 @@ function trunnionRoll(P, rollR, rollW, o = {}) {
 // short-tube class, ~1 col).
 // ---------------------------------------------------------------------------
 function buildAriete(P) {
-  const { box, cylX, cylY, cylZ, frustum, slab, torus, buildGun, buildRunningGear,
+  const { box, cylX, cylY, cylZ, frustum, torus, buildGun, buildRunningGear,
     fenders, headlight, liftEye, periscope, towCable, stowage, jerryCan } = KIT;
+  const slab = orientedSlab;                                                   // §C missing-side fix: winding-corrected slabs only (see orientedSlab)
   const { rng } = P;
   // ---- hull tub + sponsons + stepped deck ----
   P.add('hull', box(2.06, 0.90, 5.90), 0, 0.85, 0.05);                        // tub x +-1.03, belly 0.35 (push round: ref front-row bottoms 0.343 at +-0.66-1.03), z -2.90..3.00
@@ -686,8 +729,9 @@ function buildAriete(P) {
 // GALIX corners, rear hull rack.
 // ---------------------------------------------------------------------------
 function buildLeclerc(P) {
-  const { box, cylY, cylZ, frustum, slab, torus, buildGun, buildRunningGear,
+  const { box, cylY, cylZ, frustum, torus, buildGun, buildRunningGear,
     fenders, headlight, liftEye, periscope, towCable, stowage, jerryCan, ammoCan } = KIT;
+  const slab = orientedSlab;                                                   // §C missing-side fix: winding-corrected slabs only (see orientedSlab)
   const { rng } = P;
   // hull — R2 FULL RE-LAY from the post-warp workorder (2026-08-03):
   // the ref side deck line steps 1.549 (fore) / 1.577 (mid) / 1.632 (engine)
@@ -761,6 +805,29 @@ function buildLeclerc(P) {
     P.add('hullDark', box(0.02, 0.05, 5.82), s * 1.688, 0.505, 0.31);
     // front flap tucked fully below the idler wrap arc (containment)
     mudflap(P, s * 1.41, 0.60, 3.28, 0.50, 0.20);
+    // §B2 CONTIG FIX (missing-left-side round, 2026-08-06; pre-existing at
+    // HEAD — the r2 build predates the v2 standard-check top-down scan):
+    // the 8 cm fender slot between the track outer plane (1.60) and the
+    // block/strip lane encloses two ~6 cm cells per side at (±1.65,
+    // z 3.13-3.25), ringed by pads (x<=1.623), 6th block (1.68+), mudguard
+    // strip overhead (1.70+) and the flap (fore). Cover = the §C
+    // SHADOW-NAMED RENDER FURNITURE mechanism: /shadow/i-named meshes are
+    // excluded from EVERY measurement mask (fidelity baseVisible, evaluator
+    // proxy-hide, critic framing — gate rows untouchable by construction)
+    // while the B2 truth scan counts them (colorWrite true) and the game
+    // renders the honest fender-slot shadow the real vehicle carries.
+    // x 1.655..1.70 = 32 mm real clearance off the pad plane (track-clip
+    // dilates 2 cm — outside the dilated envelope, zero band voxels).
+    // HULL-parented: the fender casting the shadow is hull-side (§B5).
+    {
+      const skin = new THREE.Mesh(box(0.045, 0.006, 0.34), P.mats.shadow);
+      skin.name = s < 0 ? 'fenderSlotShadowL' : 'fenderSlotShadowR';
+      skin.position.set(s * 1.6775, 1.20, 3.155);
+      skin.castShadow = false;
+      skin.receiveShadow = true;
+      P.hullG.add(skin);
+      P.disposables.push(skin.geometry);
+    }
   }
   // rear plate + REAR STOWAGE RACK overhang. R2: plate face -3.31 (ref deep
   // body end), rack rails to -3.56, top rail 1.545 — the 1.5625 top keeps
@@ -885,6 +952,20 @@ function buildLeclerc(P) {
   P.add('turret', box(0.38, 0.86, 0.21), 0, 0.10, 1.655);
   P.add('turret', box(0.38, 0.41, 0.60), 0, 0.325, 2.06);
   P.add('turret', box(0.19, 0.40, 0.65), 0, 0.30, 2.675);                      // fixed tube-root collar (1.70..2.10w to z 2.90w)
+  // §B3.1 GUN-RUN TELLS (owner directive 2026-08-06 — no bare prisms on the
+  // gun run): the root collar + chin stack read as plain cuboids at 1x. The
+  // real CN120-26 root wears a bolted face frame with the tube passing a
+  // circular aperture ring, and the thermal sleeve carries clamp collars.
+  // All pieces INTERIOR to the priced collar envelope (y band 1.70..2.10w,
+  // x inside the ±0.15 plan cols the junction collars own; face plate 5 mm
+  // proud at z 3.0 sits mid-span of the tube's plan run — zero row change).
+  P.add('turretDark', box(0.17, 0.36, 0.012), 0, 0.30, 3.005);                 // bolted face frame plate
+  P.add('turretDark', torus(0.105, 0.014, 14), 0, 0.30, 3.012, Math.PI / 2, 0, 0); // tube aperture ring on the face
+  P.add('turretDark', cylZ(0.108, 0.03, 14), 0, 0.30, 2.42);                   // root clamp collar (collar-to-chin joint)
+  for (const bs of [-1, 1]) {
+    P.add('turretDark', box(0.013, 0.34, 0.04), bs * 0.1015, 0.30, 2.92);      // side flange bolt strips (6.5 mm proud of the collar side faces — y-extent inside the priced 1.70-2.10w band, x inside the ±0.15 plan cols)
+    P.add('turretDark', box(0.013, 0.34, 0.04), bs * 0.1015, 0.30, 2.55);      // second flange row at the sleeve joint
+  }
   for (const s of [-1, 1]) P.add('turret', box(0.34, 0.42, 0.60), s * 0.45, 0.24, 1.06); // cheek fills beside sleeve
   // side ARMOR BOXES (tops chamfered 2.13 -> 1.92w outboard), LOW outer
   // applique band, midships baskets (outer face 1.57 — plan sees it at
@@ -916,11 +997,22 @@ function buildLeclerc(P) {
   P.add('turretDark', box(0.38, 0.012, 0.03), -0.56, roofAt(-0.55) + 0.048, -0.55);
   P.add('turret', cylY(0.20, 0.20, 0.04, 14), 0.58, roofAt(-0.90) + 0.02, -0.90);
   // 7.62 ANF1 pintle LOW by the mast column (decoration law; receiver top
-  // 2.43w — the r1 gunner-ring perch read 2.49-2.52 over the 2.35 roof)
-  P.add('turretDark', cylY(0.024, 0.028, 0.08, 8), 0.95, LH + 0.04, -0.75);
-  P.add('turretDark', box(0.07, 0.08, 0.30), 0.95, 0.752, -0.70);
-  P.add('turretDark', cylZ(0.017, 0.34, 8), 0.95, 0.762, -0.38, -0.10, 0, 0);
-  P.add('turretDetail', box(0.05, 0.09, 0.12), 0.86, LH + 0.03, -0.76);
+  // 2.43w — the r1 gunner-ring perch read 2.49-2.52 over the 2.35 roof).
+  // §B3/§I MIGRATION (missing-left-side round, 2026-08-06): the four
+  // hand-authored pintle pieces censused mg0+0d on the v2 standard-check —
+  // replaced with FITTINGS.pintleMG (mag class = the 7.62 ANF1 family,
+  // two-tone per deck polarity). Foot SUNK to 0.615 local so the fitting's
+  // receiver/cap stack tops at the SAME priced 2.43w line the hand pintle
+  // held (receiver+ridge+cap ~0.215 over the foot; the 2.52 sight-lid x4 +
+  // 2.53/2.54 masts + pano keep owning heightM p95 — the MG stays under
+  // every anchor). Envelope x 0.83..0.99 inside the 0.99 mast column,
+  // barrel forward like the hand original.
+  {
+    const anf1 = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone', elev: 0, seed: 11 });
+    anf1.position.set(0.95, 0.578, -0.66);
+    P.turretG.add(anf1);
+  }
+  P.add('turretDetail', box(0.05, 0.09, 0.12), 0.86, LH + 0.03, -0.76);        // sight/mount block (kept from the hand pintle — it carries the priced 2.427w line at x 0.835-0.885)
   periscope(P, 'turretDetail', -0.35, 0.66, -0.28, 0.3);
   periscope(P, 'turretDetail', 0.42, roofAt(-0.58) + 0.05, -0.58);
   // HL-15 panoramic + antenna pot: the ref's 2.49-2.50 head cluster lives
@@ -974,6 +1066,7 @@ function buildLeclerc(P) {
   P.gunG.position.set(0, 0.27, 0.50);
   trunnionRoll(P, 0.21, 0.68);
   P.addGunExtra(box(0.92, 0.62, 0.85), 0, 0.07, 0.55);                         // moving mantlet plate
+  P.addGunExtraDark(cylZ(0.12, 0.06, 14), 0, 0, 0.985);                        // §B3.1 dust-boot ring where the tube exits the plate face (r 0.12 < the 0.132 junction collar — interior to the priced sleeve band)
   P.addGunExtraDark(cylZ(0.028, 0.10, 8), 0.34, 0.10, 0.44);                   // coax port
   P.addGunExtra(cylZ(0.132, 0.50, 12), 0, -0.02, 2.55);                        // fat sleeve-junction collar (plan ±0.15 cols)
   P.addGunExtra(cylZ(0.126, 0.42, 12), 0, -0.02, 3.62);

@@ -136,8 +136,11 @@ honestly parked at 88.9 pending its retune)
   flow — THE ONE ABSOLUTE RULE stands). STARTED 2026-08-06 on the free
   leopard lane (leo2a4 + leo2a7v + the revolution P-R1/P-R2 tone
   orders).
-- **OWNER PUNCH LIST (2026-08-06, five rounds spawned)**: (1) ariete +
-  leclerc MISSING LEFT TURRET SIDES (misc lane; §C missing-side class);
+- **OWNER PUNCH LIST (2026-08-06, five rounds spawned)**: (1) DONE — ariete+leclerc left sides FIXED (reversed-winding class
+  decoded: mirror loops hand slabs inward faces, FrontSide-culled but
+  DoubleSide-mask visible; orientedSlab guard landed; gates held exact;
+  leclerc bonus: contig 0, mg1, §B3.1 gun root. OPEN CARRIERS: t80u,
+  type90, type74 — next misc/russia rounds);
   (2) sepv2/sepv3/merkava gun rectangular prisms -> real weapons (§B3.1);
   (3) ALL abrams left cheeks = rectangles not slopes (§B1.1); (4)
   m1a1_aim (53.6) + abramsx + m1a2_tusk join the abrams family batches

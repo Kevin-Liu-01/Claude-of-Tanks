@@ -207,3 +207,105 @@ gate re-verified 85.3 post-restructure. Boards: shots/misc-r2/.
 Residuals if chasing 90: the mirrored one-sided ground columns at
 front x ±1.64 (print asymmetry, ~2 cols), plan_whole rack-gap dither,
 side_whole 0.56 cover col at the bag tail.
+
+## MISSING-LEFT-SIDE ROUND (2026-08-06, misc agent) — owner report "ariete and leclerc are missing left side of turrets": ROOT CAUSE = REVERSED WINDING (6/21 slabs inside-out — the LEFT forward-cheek complex was a 1.45 m^3 invisible void). FIXED; gate HOLD 85.3 x2 EXACT; §B battery green incl. contig 0 + mg1 (both pre-existing reds repaired); §B3.1 gun-root tells landed at zero gate cost.
+
+ROOT CAUSE (named: winding, NOT missing emit — the geometry was always
+authored and always in the masks): same class as ariete this round —
+KIT.slab's fixed ring handedness vs mirrored/reordered corner authoring.
+Gate masks are DoubleSide (winding-blind); game/critic/standard-check
+renders are FrontSide — reversed slabs are player-invisible and
+mask-visible, which is how 85.3 carried a missing turret side. Full
+mechanism note: ariete packet, missing-side round.
+
+MEASURED INVENTORY (tools/tmp-misc-leftprobe.mjs):
+- LEFT forward-cheek near-flat face slab (1.15 m^3!) + LEFT outer sweep
+  slab (0.30 m^3) — THE OWNER'S REPORT: the entire left cheek complex
+  over the glacis was culled; from the left the turret read as a stub
+  with a floating gun (the "surface" a left ray hit at |x|~1.05 was the
+  reversed slab's own INNER wall).
+- LEFT roof-edge chamfer; LEFT side armor-box chamfer slab.
+- RIGHT aft roof wedge; RIGHT outer mudguard strip. (Not left-only —
+  handedness flips wherever authoring mirrored without re-ordering.)
+
+FIX + HOLD: `orientedSlab` binding (see ariete packet). Gate x2 IDENTICAL
+**85.3 | hull 86.6 / whole 85.3 / turret 87.5 / stations 89.7 / dims 100 /
+floaters 100** — the r2 baseline to the decimal.
+
+PROOF SET (shots/misc-leftside/{before,after}/): left/frontleft/rearleft
++ right trio + yaw-180 pairs; BEFORE frontleft shows the cheek void,
+AFTER carries the swept cheek mass. Pixel diffs (t>4): left 4921 /
+frontleft 10429 / rearleft 4260 / right 1691 / frontright 2923 /
+rearright 1556, rects confined to the turret band. §B2 flood on left
+views: no new enclosed sky (164 = the honest gear daylight band; turret
+zone 0). Raycast asym rows 102 -> 71; survivors are the print's own
+authored asymmetries (left-deep GALIX 5x2 + corner bin + left-biased
+cage, right sight-well notch at x 0.54-0.70, left-longer cheek/applique
+per the print).
+
+§B BATTERY (official rigs, final bytes):
+- track-clip --exact: front 24 band / rear 0, shoe 0/0, no blind spot.
+  The 24 is PRE-EXISTING AT HEAD (attributed by HEAD-bytes swap run this
+  round): a 2 cm sliver of the low bow side wall frustum (x ±1.68 wall,
+  y 1.20-1.26 @ z 2.96-2.98) inside the dilated front wrap — under the
+  ~60 band bar, visible-shoe layer clean. Documented residual (fixing it
+  means moving a priced bow wall under a HOLD order — declined).
+- turret-parent: 0/0/0 clean.
+- standard-check: **contig 0 ✓ mg1 ✓** — both were PRE-EXISTING REDS at
+  HEAD (r2 predates the v2 scan + census), repaired this round:
+  (a) CONTIG: two ~6 cm cells per side at (±1.65, z 3.13-3.25) — the
+  8 cm fender slot between track plane (1.60) and block/strip lane,
+  ringed by pads/block/strip/flap. Closed with `fenderSlotShadowL/R`
+  skins = the §C SHADOW-NAMED RENDER FURNITURE mechanism (mask-excluded
+  by name — gate rows untouchable by construction; B2 truth scan counts
+  them; the game renders the honest fender-slot shadow). x 1.655-1.70 =
+  32 mm real clearance off the pad plane: clip audit unchanged at the
+  pre-existing 24 (zero new voxels, measured).
+  (b) MG CENSUS: the four hand-authored ANF1 pintle pieces migrated to
+  FITTINGS.pintleMG (mag class, two-tone, elev 0, foot 0.95/0.578/-0.66)
+  + the original sight/mount block kept at x 0.835-0.885 (it carries the
+  priced 2.427w line). PRICED-FURNITURE SWAP law banked below: the first
+  seat (default elev 0.06, foot 0.615/-0.75) cost stations -1.8 (slice
+  i6 barrel line +0.05) and whole -0.1; attribution by disable-run
+  (stations recovered exactly with MG off → the fitting, not the §B3.1
+  tells), then elev 0 + foot -0.037 reproduced the hand pintle's barrel
+  top (2.38w) and receiver band (2.29-2.39w @ z_w -0.85..-0.55) —
+  85.3 exact.
+  (c) 0d justification (§I): the remaining hand dressing (flank baskets,
+  rear cage, rear hull rack, GALIX banks, corner bin) is
+  silhouette-STRUCTURAL, gate-matched identity content measured into the
+  r2 rows — same justification class as ariete's GALIX/basket note.
+- npm test green (166 + track-geometry).
+
+§B3.1 GUN-RUN TELLS (ordered): the fixed tube-root collar + chin stack
+read as bare prisms at 1x (closeups: shots/misc-leftside/
+gunrun-check/ vs after/). Landed, ALL interior to priced envelopes,
+gate-proven zero-cost (85.3 exact with tells in): bolted face frame
+plate + circular tube aperture ring on the collar face (z_w ~3.0), root
+clamp collar at the collar-chin joint, side flange bolt strips (6.5 mm
+proud, y inside the priced 1.70-2.10w band, x inside the ±0.15 plan
+cols), dust-boot ring where the tube exits the moving mantlet plate
+(r 0.12 < the 0.132 junction collar). The moving mantlet plate itself is
+the real Leclerc read (wide shallow plate — identity cue) and the fat
+junction collars/sleeve bands are cylinders.
+
+LAWS BANKED:
+1. (shared) MISSING-SIDE MECHANISM + ORIENTEDSLAB + MIRROR-LOOP CARRIER +
+   FrontSide RAYCAST PROBE — see the ariete packet, this round.
+2. PRICED-FURNITURE SWAP LAW (§I corollary): a fittings migration
+   replacing HAND-TUNED mask content must reproduce the hand piece's
+   mask FOOTPRINT, not just its census — the fitting's elev/foot/z are
+   the knobs (elev 0 + sunk foot matched barrel-line and receiver-band
+   here; a 3-5 cm barrel-line drift in ONE station slice cost -1.8).
+   Attribute with a disable-run BEFORE tuning: it splits fitting cost
+   from co-landed edits in one gate run.
+3. REVERSED-SLAB INNER-WALL MIRAGE: a culled slab is not a clean void —
+   probes/rays see its INTERIOR back-walls (the left cheek "surface" at
+   |x|~1.05), which can masquerade as thin misplaced geometry. Trust the
+   outwardness census, not the first-hit alone.
+
+CERTIFIED/DOCUMENTED RESIDUALS: the r2 classes stand (mirrored one-sided
+ground cols at front ±1.64 print asymmetry, plan_whole rack-gap dither,
+side_whole 0.56 cover col at the bag tail); the pre-existing 24-voxel
+front band sliver documented above; masts/pano/sight keep heightM p95
+(dims 100 robust). Winding fix moved no mask row.
