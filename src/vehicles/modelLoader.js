@@ -486,7 +486,17 @@ let _linkExt;
  *   pump keeps running in battle at 300 ms spacing). Scoped to the model's
  *   own additions it is a few dozen queries.
  */
-function shaderLinksPending(fromIndex = 0) {
+/**
+ * @param {{base: number, cursor: number}} scan mutable scan state: `base` is
+ *   the watermark (programs added at/after it belong to this staged model),
+ *   `cursor` remembers how far the previous poll got. perf-r3b (CPU profile):
+ *   each COMPLETION_STATUS query is a BLOCKING driver call on ANGLE/Metal —
+ *   scanning the whole tail every advance still billed ~1 s of
+ *   getProgramParameter into a combat window. Early-exit at the first
+ *   still-linking program and resume there next time: one query per advance
+ *   in the common case, and every program before the cursor is known-done.
+ */
+function shaderLinksPending(scan) {
   try {
     const D = typeof window !== 'undefined' ? window.__DEBUG : null;
     if (!D || !D.renderer) return false;
@@ -496,10 +506,14 @@ function shaderLinksPending(fromIndex = 0) {
     }
     if (!_linkExt) return false;
     const progs = D.renderer.info.programs || [];
-    for (let i = Math.max(0, fromIndex); i < progs.length; i++) {
+    for (let i = Math.max(scan.base, scan.cursor); i < progs.length; i++) {
       const p = progs[i];
-      if (!p || !p.program) continue;
-      if (gl.getProgramParameter(p.program, _linkExt.COMPLETION_STATUS_KHR) === false) return true;
+      if (p && p.program
+        && gl.getProgramParameter(p.program, _linkExt.COMPLETION_STATUS_KHR) === false) {
+        scan.cursor = i; // still linking — resume here next advance
+        return true;
+      }
+      scan.cursor = i + 1;
     }
   } catch (_) { /* best-effort — never stall the pipeline on a poll error */ }
   return false;
@@ -2800,8 +2814,9 @@ export async function applyGlbModel(ctx) {
           st.meshes = [];
           st.staged.scene.traverse((o) => { if (o.isMesh) st.meshes.push(o); });
           st.mi = 0;
-          // watermark: linkWait polls only the programs added from here on
-          st.progBase = programCount();
+          // watermark + resumable cursor: linkWait polls only programs this
+          // model added, one blocking query per advance in the common case
+          st.linkScan = { base: programCount(), cursor: 0 };
           st.phase = 'compileMesh';
           return 'more';
         case 'compileMesh': {
@@ -2834,7 +2849,7 @@ export async function applyGlbModel(ctx) {
           // the linker there would burn the whole slot; the blocking first
           // use is harmless in an offline capture, so commit immediately.
           if (inShotPhase() || _queuePaused
-            || performance.now() >= st.linkDeadline || !shaderLinksPending(st.progBase)) {
+            || performance.now() >= st.linkDeadline || !shaderLinksPending(st.linkScan)) {
             st.phase = 'commit';
           }
           return 'more';

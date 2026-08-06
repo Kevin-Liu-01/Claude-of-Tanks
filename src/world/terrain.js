@@ -417,6 +417,46 @@ export function createHeightField(seed = 1337, cfg = null) {
 
   const getHeightAt = (x, z) => heightAt(x, z, true, true);
 
+  // perf-r3b (CPU profile): every height query runs the full 9-octave simplex
+  // stack — a live battle makes ~3.9 k queries per FRAME (LOS ray marches, AI
+  // terrain probes), ~2.4 ms of every frame on the probe box. Hot NON-GEOMETRY
+  // consumers read this lazily-baked 1 m bilinear grid instead (≤ ~1 cm from
+  // the analytic surface — far tighter than the rendered mesh's own 2.7 m
+  // discretization of the same function). Everything that SEATS visible
+  // geometry (wheel conform, spawns, staged captures, world builders) keeps
+  // the exact analytic getHeightAt above, so frozen screenshot/metrology
+  // contracts are untouched. Tiles bake on first touch (65x65 queries,
+  // ~5 ms once per 64 m tile) so map load pays nothing.
+  const FGN = MAP_SIZE + 1;                 // 1 m verts, 1025^2 ≈ 4.2 MB
+  const FTILE = 64;                          // bake granularity (cells)
+  const FTN = Math.ceil(MAP_SIZE / FTILE);   // tiles per axis
+  const fGrid = new Float32Array(FGN * FGN);
+  const fBaked = new Uint8Array(FTN * FTN);
+  function bakeFastTile(tx, tz) {
+    const x0 = tx * FTILE, z0 = tz * FTILE;
+    const x1 = Math.min(MAP_SIZE, x0 + FTILE), z1 = Math.min(MAP_SIZE, z0 + FTILE);
+    for (let gz = z0; gz <= z1; gz++) {
+      for (let gx = x0; gx <= x1; gx++) {
+        fGrid[gz * FGN + gx] = heightAt(gx - HALF, gz - HALF, true, true);
+      }
+    }
+    fBaked[tz * FTN + tx] = 1;
+  }
+  function getHeightAtFast(x, z) {
+    const gx = clamp(x + HALF, 0, MAP_SIZE - 1e-4);
+    const gz = clamp(z + HALF, 0, MAP_SIZE - 1e-4);
+    const x0 = gx | 0, z0 = gz | 0;
+    const tx = (x0 / FTILE) | 0, tz = (z0 / FTILE) | 0;
+    // each tile bakes its far border row/col inclusively, so the bilinear
+    // read below never leaves this tile's baked region
+    if (!fBaked[tz * FTN + tx]) bakeFastTile(tx, tz);
+    const fx = gx - x0, fz = gz - z0;
+    const i = z0 * FGN + x0;
+    const a = fGrid[i] + (fGrid[i + 1] - fGrid[i]) * fx;
+    const b = fGrid[i + FGN] + (fGrid[i + FGN + 1] - fGrid[i + FGN]) * fx;
+    return a + (b - a) * fz;
+  }
+
   const _scratchN = new THREE.Vector3();
   const NEPS = 1.2;
   function getNormalAt(x, z) {
@@ -479,7 +519,7 @@ export function createHeightField(seed = 1337, cfg = null) {
   } : null;
 
   return {
-    getHeightAt, getNormalAt, getGroundType,
+    getHeightAt, getHeightAtFast, getNormalAt, getGroundType,
     size: MAP_SIZE, minY, maxY,
     _roadDist: (x, z) => gridSample(gRoadDist, x, z),
     _villageMask: villageMask,

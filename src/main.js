@@ -319,7 +319,18 @@ fx.bindBus(bus);
 
 // Per-wheel suspension: give every battle tank the live heightfield so road
 // wheels conform to terrain (garage pedestal tank stays rigid on its disc).
-const groundSampler = (x, z) => hfProxy.getHeightAt(x, z);
+// perf-r3b (stack-sampled): the per-wheel gear conform is the single hottest
+// terrain consumer (~3.5 k queries/frame across a battle roster, each a
+// 9-octave simplex stack). Live battles read the baked 1 m grid (≤ ~1 cm from
+// analytic — tighter than the rendered mesh's own 2.7 m discretization);
+// capture contexts (shotMode) and the pre-world boot keep the exact analytic
+// path so the frozen screenshot/metrology contracts are byte-identical. The
+// garage pedestal never conforms at all (rigid on its disc).
+const groundSampler = (x, z) => (
+  world && !shotMode && world.heightField.getHeightAtFast
+    ? world.heightField.getHeightAtFast(x, z)
+    : hfProxy.getHeightAt(x, z)
+);
 // PERF (performance_budget r4): pool visuals are lazy — remember the sampler
 // on the game state so ensureTankVisual applies it to visuals built later.
 game._groundSampler = groundSampler;

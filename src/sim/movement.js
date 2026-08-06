@@ -534,6 +534,13 @@ export function createTankState(spec, pos, yaw) {
  * @returns {void}
  */
 export function updateTank(entity, heightField, dt, collide = null) {
+  // perf-r3b: terrain probes below run dozens of times per tank per frame
+  // (pose corners, per-wheel gear lines, muzzle clearance). Real battles
+  // provide the baked 1 m grid (≤ ~1 cm from the analytic surface); selftest
+  // fixtures don't and keep their exact synthetic function.
+  const hAt = heightField.getHeightAtFast
+    ? (x, z) => heightField.getHeightAtFast(x, z)
+    : (x, z) => heightField.getHeightAt(x, z);
   if (!(dt > 0)) return;
   const spec = entity.spec;
   const state = entity.state;
@@ -869,10 +876,10 @@ export function updateTank(entity, heightField, dt, collide = null) {
     const fx2 = Math.sin(state.yaw), fz2 = Math.cos(state.yaw);
     const rx2 = Math.cos(state.yaw), rz2 = -Math.sin(state.yaw);
     const px2 = state.pos.x, pz2 = state.pos.z;
-    const hFL = heightField.getHeightAt(px2 + fx2 * hl2 - rx2 * hw2, pz2 + fz2 * hl2 - rz2 * hw2);
-    const hFR = heightField.getHeightAt(px2 + fx2 * hl2 + rx2 * hw2, pz2 + fz2 * hl2 + rz2 * hw2);
-    const hRL = heightField.getHeightAt(px2 - fx2 * hl2 - rx2 * hw2, pz2 - fz2 * hl2 - rz2 * hw2);
-    const hRR = heightField.getHeightAt(px2 - fx2 * hl2 + rx2 * hw2, pz2 - fz2 * hl2 + rz2 * hw2);
+    const hFL = hAt(px2 + fx2 * hl2 - rx2 * hw2, pz2 + fz2 * hl2 - rz2 * hw2);
+    const hFR = hAt(px2 + fx2 * hl2 + rx2 * hw2, pz2 + fz2 * hl2 + rz2 * hw2);
+    const hRL = hAt(px2 - fx2 * hl2 - rx2 * hw2, pz2 - fz2 * hl2 - rz2 * hw2);
+    const hRR = hAt(px2 - fx2 * hl2 + rx2 * hw2, pz2 - fz2 * hl2 + rz2 * hw2);
     const terrP2 = Math.atan2((hFL + hFR - hRL - hRR) * 0.5, 2 * hl2);
     // Renderer-consistent roll sign (positive lifts the right side): the rock
     // layer's roll delta now measures the true conformance error instead of
@@ -979,7 +986,7 @@ export function updateTank(entity, heightField, dt, collide = null) {
         const zr = -sl + k * step; // lever about the contact-run center (fit)
         const z = zc + zr;         // actual hull-local z (deficit / projection)
         const z2 = y1 * sa0 + z * ca0;
-        const h = heightField.getHeightAt(px1 + x1 * cb + z2 * sb, pz1 - x1 * sb + z2 * cb);
+        const h = hAt(px1 + x1 * cb + z2 * sb, pz1 - x1 * sb + z2 * cb);
         sumHZ += h * zr;
         sumZZ += zr * zr;
         if (side < 0) sumL += h; else sumR += h;
@@ -1013,7 +1020,7 @@ export function updateTank(entity, heightField, dt, collide = null) {
           const xg = x * cr0 - yg * sr0;
           const yg1 = x * sr0 + yg * cr0;
           const z2g = yg1 * sa0 + zg * ca0;
-          const hg = heightField.getHeightAt(px1 + xg * cb + z2g * sb, pz1 - xg * sb + z2g * cb);
+          const hg = hAt(px1 + xg * cb + z2g * sb, pz1 - xg * sb + z2g * cb);
           const dg = hg - ((x * sinR + yg * cr0) * cosP + zg * sinP);
           if (dg > outerMax) outerMax = dg;
         }
@@ -1063,7 +1070,7 @@ export function updateTank(entity, heightField, dt, collide = null) {
         for (let k = 0; k < nLine; k += fanStride) {
           const z = zc + (k === nLine - 2 ? sl : -sl + k * step); // keep the far end
           const z2 = y1 * sa0 + z * ca0;
-          const h = heightField.getHeightAt(px1 + x1 * cb + z2 * sb, pz1 - x1 * sb + z2 * cb);
+          const h = hAt(px1 + x1 * cb + z2 * sb, pz1 - x1 * sb + z2 * cb);
           const d = h - (lift + z * sinP);
           if (ln.yOff === 0) {
             if (d > fanMax) fanMax = d;
@@ -1085,7 +1092,7 @@ export function updateTank(entity, heightField, dt, collide = null) {
             const xg1 = x * cr0 - ygr * sr0;
             const yg1 = x * sr0 + ygr * cr0;
             const z2g = yg1 * sa0 + zg * ca0;
-            const hg = heightField.getHeightAt(px1 + xg1 * cb + z2g * sb, pz1 - xg1 * sb + z2g * cb);
+            const hg = hAt(px1 + xg1 * cb + z2g * sb, pz1 - xg1 * sb + z2g * cb);
             const dg = hg - ((x * sinR + ygr * cr0) * cosP + zg * sinP);
             if (dg > outerMax) outerMax = dg;
           }
@@ -1238,7 +1245,7 @@ export function updateTank(entity, heightField, dt, collide = null) {
       let needSin = -1;
       for (const frac of [1, 0.55]) { // muzzle tip + mid-barrel
         const reach = trunnionFwd + barrelLen * frac * cosWP;
-        const hMuz = heightField.getHeightAt(state.pos.x + gyw * reach, state.pos.z + gzw * reach);
+        const hMuz = hAt(state.pos.x + gyw * reach, state.pos.z + gzw * reach);
         const s = (hMuz + MUZZLE_CLEARANCE_M - gy) / (barrelLen * frac);
         if (s > needSin) needSin = s;
       }

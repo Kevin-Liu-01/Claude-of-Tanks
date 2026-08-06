@@ -270,7 +270,15 @@ export function createAI(entity, opts = {}) {
   const tier = DIFFICULTY_TIERS[opts.difficulty ?? 'normal'];
   if (!tier) throw new Error(`createAI: unknown difficulty '${opts.difficulty}'`);
   const rng = typeof opts.rng === 'function' ? opts.rng : mulberry32(DEFAULT_SEED);
-  const hf = deps.heightField;
+  const hfRaw = deps.heightField;
+  // perf-r3b: AI terrain probes (cover eval, hull-down checks, LOS eyelines)
+  // are pure reads that never seat geometry — serve them from the baked 1 m
+  // grid when the heightfield provides one (headless fixtures don't).
+  // Prototype delegation (NOT a spread): the live proxy's getters must keep
+  // resolving against the active world.
+  const hf = typeof hfRaw.getHeightAtFast === 'function'
+    ? Object.create(hfRaw, { getHeightAt: { value: (x, z) => hfRaw.getHeightAtFast(x, z) } })
+    : hfRaw;
   // SPOTTING WIRING: optional concealment gate (absent in headless fixtures)
   const spotting = deps.spotting && typeof deps.spotting.isSpotted === 'function'
     ? deps.spotting : null;

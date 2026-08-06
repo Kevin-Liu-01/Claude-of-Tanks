@@ -133,6 +133,12 @@ function assembleWorld(engineCtx, config, heightField, terrain, vegetation, prop
    * @param {number} maxDist maximum distance, meters
    * @returns {null|{point:THREE.Vector3,normal:THREE.Vector3,dist:number,kind:('terrain'|'prop')}}
    */
+  // perf-r3b: the march samples terrain height dozens of times per ray and
+  // LOS/spotting fires many rays per frame — the baked 1 m grid (≤ ~1 cm from
+  // analytic, tighter than the rendered mesh itself) serves it. Spawn seating
+  // above keeps the exact analytic query.
+  const hAtF = heightField.getHeightAtFast || heightField.getHeightAt;
+
   function raycast(origin, dir, maxDist) {
     // props first — they bound the terrain march
     let best = Infinity, bestKind = null;
@@ -147,7 +153,7 @@ function assembleWorld(engineCtx, config, heightField, terrain, vegetation, prop
     // terrain march with adaptive step + bisection refinement
     let terrainT = -1;
     let t = 0;
-    let clearance = origin.y - heightField.getHeightAt(origin.x, origin.z);
+    let clearance = origin.y - hAtF(origin.x, origin.z);
     if (clearance <= 0) {
       terrainT = 0;
     } else {
@@ -159,13 +165,13 @@ function assembleWorld(engineCtx, config, heightField, terrain, vegetation, prop
         t = Math.min(t + step, limit);
         _pt.copy(dir).multiplyScalar(t).add(origin);
         if (dir.y > 0 && _pt.y > heightField.maxY + 2) break; // rising above all terrain
-        clearance = _pt.y - heightField.getHeightAt(_pt.x, _pt.z);
+        clearance = _pt.y - hAtF(_pt.x, _pt.z);
         if (clearance <= 0) {
           let lo = prevT, hi = t;
           for (let i = 0; i < 6; i++) {
             const mid = (lo + hi) * 0.5;
             _bisA.copy(dir).multiplyScalar(mid).add(origin);
-            if (_bisA.y - heightField.getHeightAt(_bisA.x, _bisA.z) <= 0) hi = mid; else lo = mid;
+            if (_bisA.y - hAtF(_bisA.x, _bisA.z) <= 0) hi = mid; else lo = mid;
           }
           terrainT = (lo + hi) * 0.5;
           break;
