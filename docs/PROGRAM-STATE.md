@@ -193,8 +193,10 @@ honestly parked at 88.9 pending its retune)
   clips/contig zeroed); AIM 48.8; abramsx bow closed; five graduate
   candidates pending re-cert; (3) revolution turret
   see-through sides/ring ("disembodied") — relayed to the LIVE leopard
-  agent; (4) leclerc turret front = steep rake down to a small flat
-  strip — misc lane; (5) DONE — russia §B3.2 density: mg backlog CLEARED 10/10 (census mg>=1
+  agent; (4) DONE — leclerc front re-authored (29-deg plane per cheek to the
+  1.55-1.74w strip, sight recessed §B1.1, gun run per §B3.1; 85.3 held
+  x2 with receipted symmetry trades) + §B3.2 density + the t80u/type90/
+  type74 winding fixes verified in the final file (REVERSED 0 x27); (5) DONE — russia §B3.2 density: mg backlog CLEARED 10/10 (census mg>=1
   everywhere, +25 markers; T05BV-1 RWS grammar on t90sm/t90m, Utyos on
   t80bv, coax ports x9, logs/links/cables laned); every gate held or up
   (t72b_1987 +1.3); graduates EXACT x3. Residual classes packet-noted

@@ -215,3 +215,24 @@ ESCALATION (orchestrator lane — oracle work, builders never run repairs):
    cap in the low tens regardless of build until then.
 With 1-3 resolved this build's rows re-score in one round; the frame,
 gear, and dy-effective bands are already seated.
+
+## §C MISSING-SIDE WINDING FIX (2026-08-06, abrams builder — coordinator order extension)
+tmp-misc-leftprobe measured the RIGHT glacis half-plate REVERSED (out1/6,
+vol -0.322): x[0.02,1.55] y[0.55,1.39] z[1.06,3.22] (buildType74 ~:1744,
+the `for s of [-1,1]` crease-glacis mirror loop — the as-authored corner
+ring is left-handed for s=+1; the LEFT half read mixed out5/6 and rendered
+correctly). FIX: buildType74 binds `const slab = orientedSlab;` (slab
+dropped from the KIT destructure). Probe after: REVERSED 0; both halves
+now SYMMETRIC mixed out5/6, positive volumes (+0.322/+0.305) — per-face
+adjudication: the single centroid-"inward" face per half is the CENTER-
+CREASE inner-edge face at x ±0.02 (the two halves face each other across
+a 4 cm slit over the hull tub — interior by construction, unlit at 1x);
+the outer glacis surface, front band and side edge are outward. The fixed
+right half is the byte-mirror of the always-correct left. Renders
+(shots/misc-leftside/{before,after}/type74-*): diffs localized to
+frontleft/frontright/gunrun (0.02-0.20% px — the right glacis surface now
+renders); left/rear/yaw-180 views identical. Asym rows 21 -> 18; the
+residual rows are the print's own offsets, not winding. Flood identical
+(open-background class). GATE HOLD x2 EXACT: min 0 (skinned-print cap
+class, see above — hull/whole/turret/stations capped) with the SOVEREIGN
+components byte-held: dims 99.6 / floaters 100 both runs.

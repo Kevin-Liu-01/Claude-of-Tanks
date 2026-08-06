@@ -501,3 +501,26 @@ CERTIFIED RESIDUALS (orchestrator awareness):
   pts on plan_hull/plan_whole/turret_plan p95+mean. THE binding item.
 - The 1.64-col lerp junk (law 3 above, ~6 pts on plan rows).
 - whole 63.7 needs the plan rows; side rows are at mean 1.6-1.75%.
+
+## §C MISSING-SIDE WINDING FIX (2026-08-06, abrams builder — coordinator order extension)
+tmp-misc-leftprobe measured 4 REVERSED + 1 mixed slab in buildType90:
+- bow belly rise x[-0.9,0.9] z[2.6,3.34] (~:1404, out0/6) — symmetric slab
+  authored with inward rings;
+- RIGHT mudguard pod x[0.96,1.62] z[2.88,3.56] (~:1416, out0/6) and RIGHT
+  raked fender tip x[1.22,1.64] z[3.2,3.44] (~:1494, out0/6) — mirror-loop
+  handedness (the s=+1 corner order is left-handed as authored);
+- LEFT roof-edge wedge x[-1.3,-0.88] z[-0.32,1.42] (~:1592, out2/6
+  REVERSED) with its RIGHT twin reading mixed out4/6.
+FIX: buildType90 binds `const slab = orientedSlab;` (slab dropped from the
+KIT destructure). Probe after: REVERSED 0; the roof-edge pair reads
+SYMMETRIC mixed out4/6 with POSITIVE volumes (+0.037/+0.029) — per-face
+adjudication: the two centroid-"inward" faces per side are the BUTT-JOINT
+faces against the roof core boxes (x 0.88 plane) and the wall-band tops
+(1.85 plane), invisible by construction; the visible top/outer/end faces
+are outward — the previously-correct RIGHT side carried this exact state
+all along (it is the twisted-quad centroid-heuristic signature, not a
+defect). Renders (shots/misc-leftside/{before,after}/type90-*): diffs in
+bow/left-roof views (frontleft 0.28%, gunrun-right 2.2% — pod+fender tip
+now render); asym rows 106 -> 91. Flood identical (open-background class,
+see t80u note). GATE HOLD x2 EXACT: min 83.6 | 88.5/84.9/84.7/83.6/100/100
+both runs.

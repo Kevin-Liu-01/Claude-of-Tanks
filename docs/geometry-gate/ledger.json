@@ -757,8 +757,8 @@
    "components": {
     "hullCurves": 86.6,
     "wholeCurves": 85.3,
-    "turretCurves": 87.5,
-    "stations": 89.7,
+    "turretCurves": 86.8,
+    "stations": 88.9,
     "dims": 100,
     "floaters": 100
    }

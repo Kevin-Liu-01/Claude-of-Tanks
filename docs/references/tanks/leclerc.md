@@ -309,3 +309,138 @@ ground cols at front ±1.64 print asymmetry, plan_whole rack-gap dither,
 side_whole 0.56 cover col at the bag tail); the pre-existing 24-voxel
 front band sliver documented above; masts/pano/sight keep heightM p95
 (dims 100 robust). Winding fix moved no mask row.
+
+## TURRET-FRONT ROUND (2026-08-06, misc agent) — owner close-up: "the leclerc turret front is more sloped, and slopes down to a small strip of flatness i believe". RE-AUTHORED per §B1: ONE raked plane per cheek down to the narrow near-vertical strip; sight WELL recessed in the RIGHT cheek; §B3.2 density pass. Gate HOLD **85.3 x2 EXACT** (85.3 | hull 86.6 / whole 85.3 / turret 86.8 / stations 88.9 / dims 100 / floaters 100).
+
+PRINT DECODE (tools/tmp-leclercfront-probe.mjs — ref front depth map +
+top height map in the gate frame; §D ref-render-outranks-rows): the
+andertan print's front is NOT the old build's 0.7 m vertical wall. It is:
+cheek planes falling ~18-30 deg-from-horizontal to a NEAR-VERTICAL STRIP
+(z_w 2.22-2.23 left / 2.01-2.12 right at y 1.55-1.74, 15 mm base lean);
+a center near-vertical plate x -0.25..0.45 (z_w 2.02-2.08, the plan
+2.091 line); its 2.243 side shelf z_w 1.4-2.18 carried by the CENTER
+housings only (left glass housing top 2.25 + brow 2.13-2.22 + mantlet
+rotor) — the print's outboard cheek fields top at just 2.00-2.04w (the
+old build ran its 2.24 plateau full-width = the owner's "blocky" read);
+gunner-sight bay recessed right of the gun = the plan notch cols 0.623:
+1.841 / 0.734: 1.952; a PROUD glass housing on the left cheek (face
+1.97-1.99, x -0.35..-0.73) owning the left 2.229 plan band.
+
+NEW ARCHITECTURE (all through orientedSlab; facet quads verified planar,
+<= 4 mm sagitta — twisted-quad law):
+- CHEEK PLANES: one flat plane per side, 29 deg from horizontal (print
+  inboard rake 30.5), from the forward-roof arris (LH 2.352w, z_l 1.06)
+  to the strip top (1.74w) on the swept plan line; facet arris at x 0.98
+  = the roof-edge chamfer knee; outboard facet top edge runs UNDER the
+  chamfer line to (1.38, 0.585, 1.010) — the first draft's (1.44, 0.60)
+  rode 11 mm over it and took front cols 1.402-1.524 (+0.09 x3).
+- STRIP: y 1.55..1.74w, front 2.06w inboard (plan cols 0.845/0.955 read
+  0.003 off the ref's 2.063), swept (0.98, 2.16_l) -> (1.47, 1.731_l):
+  plan cols 1.066: 2.035 exact, 1.509: 1.648 exact-R.
+- CENTER SPINE: one box x +-0.32 top 2.248w, z_l -0.355..2.245 — owns
+  side cols z_w 1.29-2.18 at the ref's 2.243 line ALONE (front z_w 2.145
+  = 24 mm inside the col-2.176 window, margin-legal; also fills the old
+  z_l 0.395..0.575 center roof slot). Its 2.145 face + visor band read
+  +0.054 on plan cols +-0.29 (ref 2.091) — decoded spend.
+- SIGHT WELL (right cheek, §B1.1 riding detail): bay cut through plane
+  AND strip x 0.50..0.80 — open inboard half to the 1.78w floor (front
+  edge 1.84 z_w = plan col 0.623 ref 1.841 EXACT), armored shutter
+  housing x 0.68..0.80 face 1.95 z_w (col 0.734 ref 1.952 EXACT), lens +
+  frame on the bay rear wall, thin hood riding ON the plane above.
+- GUN RUN (§B3.1): strip -> mantlet lower lip (restores the col-2.176
+  turret-row bottom 1.55w) -> boot x +-0.19 top 2.13w z_w 2.09-2.62 (ref
+  2.132 shelf: cols 2.287/2.398 err 0.031 -> 0.005) -> root collar top
+  2.085w z_w 2.60-2.87 (ref 2.077 shelf; rear held 25 mm clear of the
+  col-2.951 window — the first draft's 2.90 face lit it +0.027) ->
+  thermal-sleeve clamp ring r 0.14 top 1.99w at z_w 2.92 (the honest
+  owner of col 2.951's 1.99 line the old collar held by a 4.5 mm AA
+  sliver) -> junction collars/sleeve (unchanged). Face frame plate +
+  aperture ring moved to the root face (z_w 2.876/2.883); flange strips
+  re-seated on boot flanks (+-0.1965) and root (+-0.1765). Old fore
+  block + collar box staircase DELETED.
+- §B1.1 SYMMETRY: both cheeks carry the same plane/strip/sweep (mean of
+  the print's asymmetric L/R sweep lines). The print's proud LEFT glass
+  housing is DROPPED per the owner's real-vehicle read (sight = right
+  cheek): left plan cols -0.374..-0.928 read 2.063 vs the print's
+  2.229/2.201 band (+0.28 err-sum) and stations 10-11 topPct 0.18/0.33
+  -> 0.71/0.63 — THE documented symmetry trade, plan_turret 87.47 ->
+  86.77 (turret 87.5 -> 86.8) and stations 89.7 -> 88.9. Side-box tops
+  stay print-asymmetric (L 0.62 / R 0.53): symmetrizing them cost +0.09
+  x3 front cols beyond the chamfer end (gate-in-loop find, reverted).
+
+§B3.2 DENSITY (all mask-decoded, gate-neutral at the hold):
+- GALIX right bank 4x1 -> 5+4 double row (real nine-tube fit) INSIDE the
+  priced envelope (rear tube z_w -1.76 = documented edge, crown 2.078w).
+- Spare track links x4 on the LEFT side-box face (turretTrack steel,
+  outer x -1.6035 inside the col -1.592 window; KIT.spareTrackStrip
+  cannot mount on a vertical face — its euler stands the 0.5 m plates
+  upright, measured +0.17 on front cols; plates authored directly).
+- Headlight brush guards capped at y 1.371 (glacis line at z 2.72 is
+  1.352: the first 1.445 draft printed +0.07 on two cols; final rails
+  1.36 under every row, WIDTH GUARD outer 1.795 < 1.80 after the 1.841
+  incident — that first seat rescaled the whole tank: dims 53.6).
+- Bow tow shackle pair (clevis + pin nub) on the lower bow x +-0.55,
+  proud faces 3.34 < the 3.46 nose / 3.50 pad lanes.
+- Second tow cable run on the right engine deck (crown 1.62 < the ref's
+  own 1.634 engine line); pioneer tools (shovel + pick) on the INNER
+  x 0.90..1.18 deck lanes, crowns 1.62 — the first seat on the 1.60
+  outer fender topped front_hull cols 1.44-1.60 by 30 mm (-0.46 row
+  pts, gate-in-loop find; front_hull 88.16 vs 88.24 baseline after
+  reseat).
+- Rear convoy light + guard FLUSH on the rear plate (rear -3.381; the
+  35 mm-proud draft moved the col-0.623 rear line +0.083 on plan_whole
+  — same col where a 5th rack bag was tried and REVERTED: the print
+  deliberately keeps that rail gap open at -3.253, and a stowage()
+  entry also shifts the rng stream for every later call, re-jittering
+  priced bags. The rack stays four-bag like the ref).
+- Cargo straps x4 over the bustle shelf rolls (2.5 mm proud, interior).
+
+GATE LEDGER (rows, before -> after): side_whole 86.17 -> 86.50, side_hull
+86.65 EXACT, plan_hull 91.87 -> 91.84, plan_whole 87.90 -> 87.87,
+front_hull 88.24 -> 88.16, front_whole 85.25 -> 85.33 (the whole binder,
+now ABOVE baseline), side_turret 89.67 -> 89.71, plan_turret 87.47 ->
+86.77 (symmetry trade above). Headline 85.3 x2 EXACT on final bytes.
+
+PROOF SET: shots/misc-leclerc-front/{front-before,front-after}/ (24
+matched ref/proc views each: quarters, tf-* turret-front closeups, plan,
+heroes) + crop-before-*/crop-after-*/crop-ref-* brightened pairs;
+left/right + yaw-180 pairs shots/misc-leftside/frontround-after/ (§B2
+flood: left 166 = the honest gear band [was 164], turret zone 0, yaw180
+pair pixel-consistent).
+
+§B BATTERY (final bytes): track-clip --exact front 24 band / rear 0,
+shoe 0/0, no blind spot (the certified pre-existing bow sliver, zero new
+voxels); turret-parent 0/0/0; standard-check contig 0 / mg1+0d; npm test
+green (166 + track-geometry); tmp-misc-leftprobe REVERSED 0 (27 slabs,
++6 new all outward), asym rows 71 -> 63.
+
+LAWS BANKED (this round):
+1. WIDTH-GUARD-BY-DRESSING: a 4 cm decoration post outside the +-1.80
+   plane rescales the ENTIRE tank (render-scale law) — dims 100 -> 53.6
+   from one brush-guard post at x 1.841. Every §B3.2 piece needs a width
+   check before its first gate run.
+2. RNG-STREAM STABILITY: adding an entry to an existing stowage() call
+   (or any rng consumer) re-jitters every later rng-consuming fitting —
+   priced bags move rows. New soft cargo near priced content is authored
+   as fixed boxes, or appended at the builder's END.
+3. EULER-COMPOSED FITTINGS: KIT helpers with rx/ry-only rotation cannot
+   reach every mounting plane (spareTrackStrip on a vertical face stands
+   its plates upright). Check the composed box extents against the
+   mask BEFORE the gate run, or author plates directly in the helper's
+   material.
+4. AA-SLIVER OWNERSHIP: a priced col can be held by a sub-pixel face
+   kiss (the old collar's 4.5 mm rear sliver read 1.994 at col 2.951).
+   Widening the mass re-lights the window (+0.027) — when re-authoring,
+   either hold the boundary 25 mm clear AND re-own the line with honest
+   geometry (the clamp ring), or accept the col.
+5. STATION ROWS SEE THE TURRET: stations 10-11 moved with zero hull
+   edits — the 14 station slices price whole-model content in their z
+   band; turret-front mass redistribution shows up as station topPct.
+
+HONEST RESIDUALS (this round): turret 86.8 (plan_turret 86.77 — the
++-0.29 spine cols +0.054 and the left 2.063-vs-2.229 band, both the
+owner-symmetry read); stations 88.9 (topPct 10-12: 0.71/0.63/0.63 — same
+trade + the boot zone); front col 1.398/-1.371 sweep means split the
+print's L/R cheek asymmetry (R 0.111 aft / L 0.083 fwd of ref). All
+decoded per-column above; headline and every whole/hull row at or above
+the 85.3 baseline.

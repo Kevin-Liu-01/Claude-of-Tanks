@@ -599,3 +599,11 @@ abrams with the extra armoring and ERA and urban survival kit").
   is NATIONAL grammar — US marks read American (M2HB jacket collar +
   spade grips + hung can, M240 gas tube, CROWS sensor cluster), Soviet
   marks read NSVT/Kord; critics flag cross-national silhouettes.
+- WIDTH-GUARD-BY-DRESSING (§D, leclerc front round): ONE proud fitting
+  past the width anchor rescales the whole build (a 4cm guard post cost
+  dims 100->53.6) — every fitting respects the anchor. RNG-STREAM
+  STABILITY: inserting stowage() entries re-jitters every later priced
+  bag — append at stream end or hand-stamp. EULER-COMPOSED FITTINGS:
+  rx/ry-only helpers cannot reach vertical faces — check the composed
+  frame. AA-SLIVER OWNERSHIP: a millimeter face kiss can own a column —
+  re-own such lines with honest geometry, not deletion.
