@@ -65,8 +65,8 @@ const SPECS = [
   make('leo2a4', 'leopard2_proto', 'Leopard 2 Prototype', 'Germany',
     { hp: 2050, weightTons: 55, topSpeedKmh: 68, gun: { reloadS: 6.8 },
       dims: { hullLengthM: 7.72, overallLengthM: 9.97, widthM: 3.70, heightM: 2.48 } }),
-  make('m1a1', 'm1a1_aim', 'M1A1 AIM Abrams', 'USA',
-    { hp: 2400, weightTons: 63, gun: { reloadS: 6.2 } }),
+  // m1a1_aim REMOVED BY OWNER 2026-08-06 ('also remove the AIM abrams') —
+  // builder code dormant in abrams.js; packet historical.
   make('m60a1', 'm46_patton', 'M46 Patton', 'USA',
     { hp: 1450, weightTons: 44, topSpeedKmh: 48, gun: { caliberMm: 90, reloadS: 7.0 },
       dims: { hullLengthM: 6.33, overallLengthM: 8.48, widthM: 3.51, heightM: 3.18 },
@@ -158,7 +158,7 @@ export const USERDROP6_TANK_IDS = SPECS.map((s) => s.id);
 // Sourced-intent roster for garage bucketing: dual-gate GRADUATES leave this
 // list (they render our builds and chip under CUSTOM), everything else stays
 // in its era bucket even when public builds render procedural fallbacks.
-export const USERDROP6_SOURCED_IDS = USERDROP6_TANK_IDS.filter((id) => !['m60a3', 'isu122s', 'isu152', 'm47_patton', 'centurion3', 'centurion5', 'm46_patton', 'm26_pershing', 'm45_patton', 'm1a1_aim'].includes(id));
+export const USERDROP6_SOURCED_IDS = USERDROP6_TANK_IDS.filter((id) => !['m60a3', 'isu122s', 'isu152', 'm47_patton', 'centurion3', 'centurion5', 'm46_patton', 'm26_pershing', 'm45_patton'].includes(id));
 
 // USER DROPS wave 8 (scout-gen2 integration): chain-loaded here because
 // tankFactory.js (the usual registration hook) is frozen during the fleet

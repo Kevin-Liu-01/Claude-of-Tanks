@@ -2,7 +2,7 @@
  "generatedAt": "2026-08-06T23:43:18.242Z",
  "gate": "every component >= 90; min is the headline",
  "passed": 23,
- "total": 89,
+ "total": 88,
  "rows": [
   {
    "id": "recon_tank",
@@ -460,19 +460,6 @@
     "wholeCurves": 47.7,
     "turretCurves": 100,
     "stations": 74.4,
-    "dims": 100,
-    "floaters": 100
-   }
-  },
-  {
-   "id": "m1a1_aim",
-   "geoMin": 48.8,
-   "gatePassed": false,
-   "components": {
-    "hullCurves": 68.4,
-    "wholeCurves": 56.4,
-    "turretCurves": 48.8,
-    "stations": 69.7,
     "dims": 100,
     "floaters": 100
    }
