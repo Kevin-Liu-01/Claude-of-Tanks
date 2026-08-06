@@ -451,3 +451,14 @@ ref parity applies everywhere else; (4) the override is per-region, not
 per-tank — uncontested regions still chase the print; (5) prefer
 mask-free real-vehicle reads first — spend gate points only where the
 real configuration demands it.
+- TURRET-FLIP CENSUS FRAME (§E addendum, batch-43): a print's TurretMesh
+  content can render PI-YAWED about the turret pivot vs raw glb coords
+  (loader rest-yaw) while the Gun subtree does not — glb-frame censuses
+  map to gate meaning with x AND z negated for the turret node only.
+  Attribute by station ownership before excising (the "fore strip" that
+  owned st12 was the rotating bustle tail plate).
+- DEGENERATE-SLIVER MASK CARRIERS: one zero-area triangle can carry
+  double-digit gate points (a 3v/1t sliver held 34.6 turret pts on
+  revolution). Component censuses must list 1-tri components, and
+  oracle-excision rounds check them FIRST — they are free wins with
+  differential-sim proof.

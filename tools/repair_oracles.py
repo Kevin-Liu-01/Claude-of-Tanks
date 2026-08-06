@@ -3329,6 +3329,64 @@ def repair_leo2_revolution_vlo_drop(gltf):
 REPAIRS['leo2_revolution'].append(('py', repair_leo2_revolution_vlo_drop))
 
 
+# =============================================================== batch 43 ===
+# LEO2_REVOLUTION WING-BAND EXCISION (§B7/§E; owner ruling 2026-08-05 "the
+# revolution turret looks terrible because its source material is wrong";
+# plan sim-verified by the §E planner — packet section "batch-43 WING-BAND
+# EXCISION PLAN"). The print's turret rows were dominated by junk: (1) a
+# FLOATING SHELF SWARM on TurretMesh prim0 at |x| 1.32..1.94, y 1.02..1.32
+# glb (roof-height plan carriers to gate w ~3.56, zero support below —
+# hundreds of <200v fragments); (2) GunMesh prim0 = ONE degenerate 3v/1t
+# triangle (the "wing fronts w 3.54-3.57" carrier: its lone drop moves
+# turretCurves 0.2 -> 34.8 with every other row byte-equal); (3) the
+# vehicle#gun_tube_vlo node's single 3v triangle (batch-41 hygiene class,
+# measured no-op). FRAME LAW: TurretMesh renders PI-YAWED about the pivot
+# vs raw glb (Gun subtree does not) — the glb -z center strip is the
+# rotating BUSTLE TAIL PLATE (owns st12) and is KEPT, as are the ±1.75
+# basket rails and all prim1 mast/sensor furniture. Sim x2 bit-identical:
+# min 0.2 -> 62.8 | hull 91.8 BYTE-HELD / whole 69.9 / turret 62.8 /
+# stations 78.0 / dims 99.5 / floaters 100. Visual parity: 2870 px of
+# 1.4M, all thin slivers in the turret band; no crater. Dress-rehearsal
+# md5 c0ffb352bd5fcf283bed0efdc29752b3 (2527660 B), deterministic x2.
+def repair_leo2_revolution_gunmesh_prim0_drop(gltf):
+    ni = find_node(gltf, 'GunMesh')
+    mesh = gltf['meshes'][gltf['nodes'][ni]['mesh']]
+    prims = mesh['primitives']
+    assert len(prims) == 2, f'GunMesh: expected 2 prims, got {len(prims)}'
+    nv0 = gltf['accessors'][prims[0]['attributes']['POSITION']]['count']
+    nt0 = gltf['accessors'][prims[0]['indices']]['count'] // 3
+    nv1 = gltf['accessors'][prims[1]['attributes']['POSITION']]['count']
+    nt1 = gltf['accessors'][prims[1]['indices']]['count'] // 3
+    assert (nv0, nt0) == (3, 1), f'GunMesh prim0: expected 3v/1t, got {nv0}v/{nt0}t'
+    assert (nv1, nt1) == (356, 286), f'GunMesh prim1: expected 356v/286t, got {nv1}v/{nt1}t'
+    mesh['primitives'] = [prims[1]]
+    print('[repair] leo2_revolution: GunMesh prim0 dropped (3v/1t wing-front sliver)')
+
+
+def repair_leo2_revolution_gun_tube_vlo_drop(gltf):
+    removed = 0
+    for n in gltf['nodes']:
+        if n.get('name') == 'vehicle#gun_tube_vlo' and 'mesh' in n:
+            nv = gltf['accessors'][gltf['meshes'][n['mesh']]['primitives'][0]['attributes']['POSITION']]['count']
+            assert nv == 3, f'gun_tube_vlo: expected 3v, got {nv}'
+            del n['mesh']
+            removed += 1
+    assert removed == 1, f'expected exactly 1 vehicle#gun_tube_vlo mesh node, removed {removed}'
+    print('[repair] leo2_revolution: vehicle#gun_tube_vlo mesh ref dropped (vlo sliver)')
+
+
+REPAIRS['leo2_revolution'].extend([
+    ('py2', _index_surgery('leo2_revolution', 'TurretMesh', prim_index=0,
+                           delete_rules=[((-2.00, -1.32, 0.95, 1.35, -1.90, -0.05), 0, 0),
+                                         ((1.32, 2.00, 0.95, 1.35, -1.90, -0.05), 0, 0)],
+                           gun_rules=[((-0.30, 0.30, 0.85, 1.20, -6.10, -2.95), 0, 0)],
+                           expect_delete=(470, 1917, 953),
+                           expect_gun=(0, 0, 0))),
+    ('py', repair_leo2_revolution_gunmesh_prim0_drop),
+    ('py', repair_leo2_revolution_gun_tube_vlo_drop),
+])
+
+
 # =============================================================== batch 42 ===
 # M26_PERSHING BODY-STRETCH + MUZZLE-PIN (m46 batch-36 class; formal warp
 # request FILED in m26_pershing.md "Vertex round r2", patton-family builder

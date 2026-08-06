@@ -1885,3 +1885,171 @@ turret yaws as one. Builder's close-front 8.5 refuted upward (carried
 dressing round: P-R1 fill/recess tone pass WITH top-face darkening term
 (SHADOW-FILL LIT-TOP law), P-R2 SEOSS pale top -> sight-family tone.
 Wing-excision §E round re-endorsed (sim planner in flight).
+
+## batch-43 WING-BAND EXCISION PLAN (sim-verified, 2026-08-05, §E oracle-repair
+## planner — REQUEST-INTERCEPTION SIM lane; committed bytes NEVER touched.
+## Simulated line: min 0.2 -> **62.8 x2 BIT-IDENTICAL** (hull 91.8 BYTE-HELD /
+## whole 69.9 / turret 62.8 / stations 78.0 / dims 99.5 / floaters 100).
+## Deliverable: ops literals below — ORCHESTRATOR appends to the
+## repair_oracles.py chain and lands; builders never run repairs.
+
+SWARM CENSUS (committed bytes = post batch-37+41 chain state; probe
+tools/tmp-leo-wingex-census.py in the EXACT _index_surgery frame —
+repair_oracles.node_world_matrix glb-world, both sides):
+- TurretMesh (mesh 'chassis_vlo.002') prim0: 1697 index-connected
+  components, 9050v/5649t, ALL <200v. Solid turret core (walls with
+  support down to y 0.71-0.93) ends at |x| ~1.26; EVERYTHING at |x|
+  1.32..1.94 is a FLOATING SHELF y 1.02..1.32 (glb) with zero support
+  below — the swarm. Fore/aft lobes: glb z -1.9..-0.65 outboard (the
+  orchestrator's sample rows z -1.37..-1.82) + glb z +0.9..+3.3 outboard;
+  center tail strip glb z -1.95..-3.0 x ±1.0 (12t).
+- TurretMesh prim1: 379 comps, 2400v/1832t, ALL inside x +0.38..+1.39,
+  y 1.40..1.90, z +1.33..+2.74 — the mast/sensor furniture cluster.
+  REAL — untouched.
+- GunMesh (mesh 'chassis_vlo.001') prim0: ONE degenerate tri (3v/1t,
+  x -1.843..-0.028, y 0.292 const, z -3.419..-3.382) — the plan_turret
+  "wing fronts w 3.54-3.57" carrier (differential-proven: its lone drop
+  moves turretCurves 0.2 -> 34.8 with EVERY other row byte-equal).
+- GunMesh prim1 RE-CHECKED for outboard fragments: 33 comps, 356v/286t,
+  ALL x -0.145..+0.158 (pure tube, z -6.041..-1.122). ZERO outboard. Keep.
+- vehicle#gun_tube_vlo: ONE degenerate tri (3v/1t, x -0.015..0.026,
+  y 1.005..1.015, z -6.041..-1.122). Differential sim: dropping it is a
+  measured NO-OP (all rows/stations equal to the decimal) — r16's "it is
+  the ref tube mask line" is moot at these bytes (prim1's 33 fragments
+  carry the line). Dropped for batch-41-class hygiene at zero cost.
+
+FRAME LAW (bank candidate — this round's near-miss): the print's
+TurretMesh content renders PI-YAWED about the turret pivot relative to
+raw glb coords (loader rest-yaw); the Gun subtree does NOT get the extra
+flip. A glb-frame census maps to gate/packet-w meaning with x AND z
+negated for TurretMesh only. Proven by station attribution: the glb
+z -2.0..-3.0 center strip owns st12 (the TAIL station, topPct 0.11 ->
+23.10 when deleted) — it is the print's rotating BUSTLE TAIL PLATE, not
+fore-wing. First candidate ate it and cost stations 78 -> 70.4; the
+landed plan KEEPS it (and the ±1.75 basket rails, and all core/prim1
+furniture). "Dome, hatches, sights survive" verified by census + renders.
+
+BATCH-43 OPS (the exact literals; EXTEND REPAIRS['leo2_revolution'] —
+never flat-assign; chain order batch-37 warp -> batch-41 vlo drop ->
+these three):
+
+  ('py2', _index_surgery('leo2_revolution', 'TurretMesh', prim_index=0,
+      delete_rules=[((-2.00, -1.32, 0.95, 1.35, -1.90, -0.05), 0, 0),
+                    ((1.32, 2.00, 0.95, 1.35, -1.90, -0.05), 0, 0)],
+      gun_rules=[((-0.30, 0.30, 0.85, 1.20, -6.10, -2.95), 0, 0)],
+      expect_delete=(470, 1917, 953),
+      expect_gun=(0, 0, 0)))
+  # gun_rules here = pure GUARD: expect_gun (0,0,0) makes the op REFUSE
+  # to write if anything ever occupies the tube corridor inside TurretMesh
+  # (zero matches = no gun-move side effect, proven every build).
+
+  ('py', repair_leo2_revolution_gunmesh_prim0_drop)   # asserts 2 prims,
+  # prim0 == 3v/1t and prim1 == 356v/286t, then mesh['primitives'] =
+  # [prims[1]] — drops the degenerate wing-front sliver, keeps the tube.
+
+  ('py', repair_leo2_revolution_gun_tube_vlo_drop)    # batch-41 literal
+  # class: asserts the node's prim is 3v, removes exactly 1 mesh ref
+  # (node keeps its transform).
+
+  (Working reference implementations with the exact asserts:
+  tools/tmp-leo-wingex-mkglb.py — drop_gunmesh_prim0 / drop_gun_tube_vlo.)
+
+EXPECT CENSUSES (§E): surgery expect_delete (470 parts, 1917 verts, 953
+tris); expect_gun (0,0,0). Post-chain state census (idempotency
+tripwire): 28 nodes / 26 meshes; TurretMesh prim0 4696t, prim1 1832t;
+GunMesh 1 prim 286t; gun_tube_vlo mesh-less. A re-run replays from .bak
+(repair() semantics) so the recipe is idempotent by construction; the
+expect censuses refuse on any drifted input.
+
+PRE-FLIGHT (proven in scratch this round, shots/leo-wingex/):
+1. Chain replay batch-37+41 from leo2_revolution.glb.bak -> BYTE-EQUAL to
+   committed bytes (2499440 B, md5 2d8b74b8...). No STALE-BAK.
+2. Full dress rehearsal .bak + 37 + 41 + 43 -> 2527660 B, md5
+   c0ffb352bd5fcf283bed0efdc29752b3 — byte-equal to the sim-verified
+   candidate, build-deterministic x2.
+
+SIM VERIFICATION (tools/tmp-leo-wingex-gate.mjs = the r16 precedent
+driver cloned; UNMODIFIED official procedural-fidelity.html?geo=1 math,
+candidate bytes served by request interception):
+- RIG PARITY: committed bytes x HEAD tree reproduced the r18 close line
+  TO THE DECIMAL: min 0.2 | 91.8 / 76.4 / 0.2 / 78 / 99.5 / 100.
+- FINAL x2 BIT-IDENTICAL (cmp on tool JSON):
+  min 62.8 | hull 91.8 / whole 69.9 / turret 62.8 / stations 78.0 /
+  dims 99.5 / floaters 100
+  min 62.8 | hull 91.8 / whole 69.9 / turret 62.8 / stations 78.0 /
+  dims 99.5 / floaters 100
+- HULL UNTOUCHED: side_hull 91.79 / front_hull 95.35 rows BYTE-EQUAL to
+  baseline (full JSON compare); plan_hull 97.56 / plan_whole 97.39 equal
+  in every curve/reg/worst byte with a 3e-7 raw-score float drift
+  (sub-ulp GPU accumulation from the changed buffer layout; invisible at
+  the gate's 1-decimal output). dims rows + floaters identical every run.
+- Sim ladder (each iteration x1 unless noted): prim0-only 34.8; vlo-only
+  no-op; strip-only stations 70.4-71.7 (REJECTED); one-shelf 11.9;
+  shelves+strip+prim0+vlo 62.8 but stations 70.4 (REJECTED); +z-outboard
+  ring variants 62/66-whole (REJECTED); FINAL shelves+prim0+vlo 62.8 with
+  stations HELD x2. Corner-tab nub plates (12 tiny plates z +1.28..+1.54,
+  |x| 1.72..1.84) tested: zero measurable effect — left in place.
+
+VISUAL PARITY (tools/tmp-leo-wingex-pair.mjs, board-mode shaded pair +
+articulation strip, committed vs candidate, shots/leo-wingex/pair-*):
+2870 px changed (t>4) of 1.4M in the hero pair, all thin-sliver-shaped
+inside the reference turret band; articulation deltas confined to the
+reference row's same band at every yaw/pitch pose. No crater — the print
+still reads as a whole tank (crop proof hero-crop-compare.png).
+
+§B7 CAP AFTER EXCISION (measured, final x2; cap shrinks to genuine
+real-vs-print divergence):
+| row | r18 cap | post-43 | Δ | class after excision |
+|---|---|---|---|---|
+| plan_turret | 0.23 | 62.82 | +62.6 | wing fronts + shelf swarm GONE; left: wedge fore-sweep vs print (±1.61 0.52-0.56), module-depth classes (0.28-0.48), cover 3.23% = emptied outboard cols (print has NO solid side modules) |
+| turretCurves | 0.2 | 62.8 | +62.6 | binder = plan_turret |
+| side_turret | 74.75 | 73.49 | -1.3 | plateau-vs-pancake widened honestly at rear cols (0.12-0.17 x6) once the shelf's false tops left |
+| front_whole | 76.37 | 69.94 | -6.4 | ±1.78 ref-only col CLEARED; new honest class ±1.69/±1.73 x4 (0.24-0.27): real modules where the print carries only air after the junk leaves |
+| side_whole | 80.96 | 80.00 | -1.0 | same honest-exposure family |
+| wholeCurves | 76.4 | 69.9 | -6.5 | binder = front_whole |
+| stations | 78.0 | 78.0 | 0 | st10 7.72 -> 9.28 (shelf aft fragments were st10 top carriers; class already listed), st12 0.11 PRESERVED (tail plate kept) |
+| hull rows / plan_whole / dims / floaters | — | — | 0 | untouched by construction |
+The whole/side drops are the §B7 FALSE-AGREEMENT corollary: impossible
+junk that accidentally mimicked real geometry (wing shelf tops = module
+tops in the front mask) scored better than the honest print; the capped
+rows now measure the true print. All divergence above = real-vs-wrong-
+print in the overridden region; the cap covers it.
+
+ORCHESTRATOR LANDING STEPS: (1) pre-flight chain replay (above) must
+byte-match committed; (2) append the three ops (batch-43 header + the two
+py helpers) — NEVER flat-assign; (3) python3 tools/repair_oracles.py
+repair leo2_revolution; verify output md5 c0ffb352... and byte-idempotent
+x2 (second run replays .bak identically); (4) official geometry-gate x2
+(expect the line above to the decimal) + floaters x5 + standard-check;
+(5) the proc tree is UNTOUCHED this batch (leopard.js frozen — no coupled
+half; the repair is ref-side only and gates standalone, midstate-safe:
+proven by the sims running the HEAD tree); (6) §J DE-BAKE CONTRAST WINDOW
+does not trigger (render deltas are sliver-scale) but the re-cert critic
+should note the reference pair, not proc views — proc bytes identical.
+
+LAW DISCOVERIES (bank): (1) TURRET-FLIP CENSUS LAW (above — glb-frame
+turret censuses need the pivot pi-flip before gate/w-frame attribution;
+station ownership is the cheap proof). (2) DEGENERATE-SLIVER MASK
+CARRIERS: one zero-area triangle carried 34.6 turretCurves pts of mask
+error — census degenerate prims by bbox, never by area, and expect
+single-tri drops to move whole rows. (3) FALSE-AGREEMENT JUNK: §B7 rows
+can legitimately DROP under an honest excision where junk mimicked real
+masses — price the cap by class, not by score sign. (4) FULLY-INSIDE box
+rules auto-protect long real furniture (the ±1.75 basket rails span z
+-0.105..+3.631 and straddle every box by construction) — author boxes so
+real furniture straddles them. (5) gun_tube_vlo class refinement: a
+Gun-node vlo sliver is NOT hull-bake pollution (it articulates with the
+gun); measure before assuming the batch-41 class applies — here it was a
+harmless no-op, not a mask-line owner.
+
+### batch-43 EXECUTED (2026-08-05, orchestrator lane)
+Pre-flight: chain 37+41 byte-reproduced committed (md5 2d8b74b8). Ops
+landed per the plan literals verbatim; guards all passed (surgery -953
+plate tris = expect exact; GunMesh prim asserts; vlo 3v assert).
+Idempotent x2 at md5 c0ffb352 / 2527660 B = the sim-verified candidate to
+the byte. OFFICIAL gate x2 IDENTICAL = the simulated line to the decimal:
+min 62.8 | hull 91.8 / whole 69.9 / turret 62.8 / stations 78.0 /
+dims 99.5 / floaters 100. The §B7 cap now covers only genuine
+real-vs-print divergence (wedge fore-sweep, module-depth classes, 3.23%
+cover where the print carries NO solid side modules — the real vehicle
+does). Proc untouched (ce7f3824 stands ratified).
