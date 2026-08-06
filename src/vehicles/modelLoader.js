@@ -451,12 +451,41 @@ function prewarmBurnStaged(stagedScene, ctx) {
  * targetScene, so the programs match what the attached model will use; with
  * KHR_parallel_shader_compile the driver keeps linking off-thread during the
  * slots between here and the commit). */
-function precompileStaged(scene) {
+function precompileStaged(objectOrScene) {
   try {
     const D = typeof window !== 'undefined' ? window.__DEBUG : null;
     if (!D || !D.renderer || !D.camera || !D.scene) return;
-    D.renderer.compile(scene, D.camera, D.scene);
+    // perf-r2f: callers pass single MESHES on a time budget (see the
+    // compileMesh phase) — a whole-scene call is a multi-second task on a
+    // many-material hero. Compiling vs the live scene keeps light defines
+    // correct either way.
+    D.renderer.compile(objectOrScene, D.camera, D.scene);
   } catch (_) { /* warm-up only — never block the swap */ }
+}
+
+// perf-r2f: is the driver's parallel shader linker still chewing? Polls
+// KHR_parallel_shader_compile COMPLETION_STATUS on the RAW program handles —
+// deliberately not three's compileAsync, whose setTimeout poll dereferences
+// disposed material bookkeeping (the camo_spotting r5 uncatchable TypeError;
+// see tankFactory's swap warm). Raw handles can't race material lifecycle: a
+// deleted program answers null (≠ false) and reads as done. No extension →
+// completion is unknowable → report done and let first use pay the link.
+let _linkExt;
+function shaderLinksPending() {
+  try {
+    const D = typeof window !== 'undefined' ? window.__DEBUG : null;
+    if (!D || !D.renderer) return false;
+    const gl = D.renderer.getContext();
+    if (_linkExt === undefined) {
+      _linkExt = gl.getExtension('KHR_parallel_shader_compile') || null;
+    }
+    if (!_linkExt) return false;
+    for (const p of D.renderer.info.programs || []) {
+      if (!p.program) continue;
+      if (gl.getProgramParameter(p.program, _linkExt.COMPLETION_STATUS_KHR) === false) return true;
+    }
+  } catch (_) { /* best-effort — never stall the pipeline on a poll error */ }
+  return false;
 }
 
 /** Pre-upload the swapped subtree's textures and compile its programs against
@@ -2745,8 +2774,50 @@ export async function applyGlbModel(ctx) {
           return 'more';
         case 'compile':
           prewarmBurnStaged(st.staged.scene, ctx);
-          precompileStaged(st.staged.scene);
-          st.phase = 'commit';
+          // perf-r2f (journey probe): the one-call precompile was itself a
+          // monster task — shader-source generation + compile submission for
+          // a 65-material hero measured 0.9-2.7 s in ONE idle slot (two
+          // stacked prefetches hit 180 programs in a single task). Compile
+          // mesh-by-mesh on a per-slot time budget instead; the program
+          // cache dedupes shared materials so re-walks are cheap.
+          st.meshes = [];
+          st.staged.scene.traverse((o) => { if (o.isMesh) st.meshes.push(o); });
+          st.mi = 0;
+          st.phase = 'compileMesh';
+          return 'more';
+        case 'compileMesh': {
+          // ≥4 meshes per slice: each compile() call re-collects the LIVE
+          // scene's lights (a full traversal), so ultra-fine slices trade a
+          // monster task for pure per-call overhead. Most meshes are program-
+          // cache hits and cost microseconds; the floor only matters when
+          // they aren't.
+          const tc0 = performance.now();
+          let batched = 0;
+          while (st.mi < st.meshes.length
+            && (batched < 4 || performance.now() - tc0 < 12)) {
+            precompileStaged(st.meshes[st.mi++]);
+            batched++;
+          }
+          if (st.mi < st.meshes.length) return 'more';
+          st.meshes = null;
+          // precompile SUBMITS the programs but the driver links them on its
+          // own thread — committing on the very next slot made the reveal
+          // frame block on every outstanding link (first select of an
+          // unparsed hero measured a 13 s frame with 65 fresh programs on a
+          // loaded box). Hold the commit until the parallel linker reports
+          // done (bounded — see linkWait).
+          st.linkDeadline = performance.now() + 1500;
+          st.phase = 'linkWait';
+          return 'more';
+        }
+        case 'linkWait':
+          // Capture contexts drain unbounded in a tight loop — spinning on
+          // the linker there would burn the whole slot; the blocking first
+          // use is harmless in an offline capture, so commit immediately.
+          if (inShotPhase() || _queuePaused
+            || performance.now() >= st.linkDeadline || !shaderLinksPending()) {
+            st.phase = 'commit';
+          }
           return 'more';
         case 'commit': {
           if (!live()) return 'dead';

@@ -466,7 +466,12 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
       if (forceAuto || roll < 0.6) setCamoOverride(ent.specId, 'auto');
     }
   }
-  applyCamoPatterns();
+  // perf-r2f: real battle entries defer this sweep to the caller's CHUNKED
+  // pass (main.js startBattle — one yielding sweep covers biome + the rolls
+  // above without pinning the loading bar). The synchronous sweep stays for
+  // every other caller: ensureShotWorld's capture contract requires the
+  // frame to be fully determined when setupBattle returns.
+  if (!opts.deferCamoRepaint) applyCamoPatterns();
   // PERF (performance_budget r4): participants get visuals on demand; parked
   // vehicles' visuals are EVICTED (scene detach + dispose) so only fielded
   // tanks keep generated texture sets resident — see spawnTanks.

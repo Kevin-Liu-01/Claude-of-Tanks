@@ -3170,6 +3170,52 @@ export function applyCamoPatterns(onlySpecId = null) {
   retintGlbModels();
 }
 
+// perf-r2f (journey probe): the no-arg sweep above repaints EVERY stale cache
+// entry in one task — a biome flip with a warm 7-tank cache is ~0.3-1.4 s of
+// canvas painting PER ENTRY, which froze the garage on a map pick and pinned
+// the battle loading bar for many seconds on a rematch. This variant yields a
+// real painted frame between entries and re-resolves each pattern AT PAINT
+// TIME, so overlapping drains (rapid map-card scrubbing) converge on the last
+// selection instead of painting stale patterns. A newer drain cancels the
+// remainder of an older one outright (the newer pass owns every stale entry).
+let _camoSweepGen = 0;
+/**
+ * Chunked equivalent of applyCamoPatterns(): one repaint per macrotask.
+ * @param {{priorityIds?: string[]}} [opts] specs to repaint first (the ones
+ *   on screen — pedestal hero, player tank)
+ * @returns {Promise<void>} resolves when every stale entry is repainted (or
+ *   a newer sweep took over the remainder)
+ */
+export async function applyCamoPatternsChunked(opts = null) {
+  const gen = ++_camoSweepGen;
+  const prio = (opts && opts.priorityIds) || [];
+  const keys = [...TEX_CACHE.keys()]
+    .sort((a, b) => (prio.indexOf(a) < 0 ? 1 : 0) - (prio.indexOf(b) < 0 ? 1 : 0));
+  for (const key of keys) {
+    if (gen !== _camoSweepGen) return; // superseded — the newer drain finishes
+    const entry = TEX_CACHE.get(key);
+    if (!entry) continue; // evicted while we yielded
+    const pid = resolveCamoPattern(key);
+    if (entry.patternId === pid) continue;
+    // yield BEFORE painting: the triggering click/frame paints first, and the
+    // loading bar gets a frame between consecutive entry repaints.
+    await new Promise((r) => setTimeout(r, 32));
+    if (gen !== _camoSweepGen) return;
+    const cur = TEX_CACHE.get(key);
+    if (!cur) continue;
+    const nowPid = resolveCamoPattern(key);
+    if (cur.patternId !== nowPid) repaintEntry(cur, nowPid);
+  }
+  // GLB retints chunk too: each model whose pattern changed re-composites
+  // several albedo sheets (composeGlbShare skips unchanged ones itself).
+  for (const e of [...GLB_TINTED]) {
+    if (gen !== _camoSweepGen) return;
+    await new Promise((r) => setTimeout(r, 16));
+    if (gen !== _camoSweepGen) return;
+    if (GLB_TINTED.includes(e)) applyGlbEntry(e); // skip entries evicted mid-drain
+  }
+}
+
 // ---- sourced-GLB hook (modelLoader.js) ------------------------------------
 // GLB assets arrive with their own baked albedo maps. The old approach — a
 // 0.45 color lerp over the map — was invisible (summer/desert/winter were

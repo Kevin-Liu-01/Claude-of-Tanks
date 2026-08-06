@@ -49,7 +49,7 @@ import { createTank } from './vehicles/tankFactory.js';
 // CAMO WIRING: pattern persistence + live repaint (garage picker, AUTO biome)
 import {
   CAMO_PATTERN_IDS, CAMO_PATTERN_LABEL, getCamoSelection, setCamoSelection,
-  setCamoBiome, applyCamoPatterns, clearCamoOverrides, warmWreckTextures,
+  setCamoBiome, applyCamoPatterns, applyCamoPatternsChunked, clearCamoOverrides, warmWreckTextures,
   upgradeSharedTextures,
 } from './vehicles/materials.js';
 import { computeDispersionRadM, SIM_DT } from './sim/movement.js';
@@ -307,6 +307,10 @@ spawnTanks(game, engineCtx);
 // before any battle or screenshot frame can render the battlefield.
 let collider = null;
 let battleStaged = false;
+// perf-r2f: handle of the in-flight chunked camo sweep startBattle kicks —
+// startBattleLoading awaits it before the wreck dances (burnt bakes copy the
+// camo canvases, so paint must be final first).
+let camoSweepP = Promise.resolve();
 
 // --- fx ----------------------------------------------------------------------
 const fx = createFx(engineCtx, hfProxy, { seed: 5000 });
@@ -1017,7 +1021,10 @@ const garage = await bootStage('ui', () => createGarage({
   // the roll, so battle state is always correct regardless.
   onMapSelect: (mapId) => {
     setCamoBiome(mapId);
-    applyCamoPatterns();
+    // perf-r2f: chunked — the sync sweep froze the garage ~0.3-1.4 s PER
+    // cached tank on a map-card click. The visible hero repaints in the
+    // first slice; parked/roster entries follow one frame apart.
+    applyCamoPatternsChunked({ priorityIds: [selectedSpecId] });
   },
 }));
 
@@ -1751,6 +1758,11 @@ async function startBattleLoading(specId, mapId = null) {
     }
   }
   bltStage('swapDrain');
+  // perf-r2f: the chunked camo sweep startBattle kicked runs concurrently
+  // with the world/swap waits above and is almost always done by now — but
+  // the wreck dances below bake burnt canvases FROM the camo canvases, so
+  // paint must be final before any charring copies it.
+  await camoSweepP;
   // EVENT-SPIKE WARM part 3 (perf-r2b): the wreck dance in warmCombatPipeline
   // ran on PRE-SWAP visuals — a swapped GLB tank's first kill still baked its
   // wreck-share canvases on the event frame. The swaps just drained above, so
@@ -1767,6 +1779,12 @@ async function startBattleLoading(specId, mapId = null) {
   for (const e of game.tanks) {
     if (e.visual && e.visual.setDestroyed && e.visual.resetDestroyed) {
       try { e.visual.setDestroyed({}); e.visual.resetDestroyed(); } catch (_) { /* warm only */ }
+      // perf-r2f: one macrotask per tank — the dance bakes wreck canvases
+      // (150-900 ms a family) and running all of them back-to-back pinned
+      // the loading bar in one multi-second task on a rematch. The screen
+      // owns this whole window, so the yields cost nothing but keep it
+      // painting.
+      await new Promise((r) => setTimeout(r, 16));
     }
   }
   // ...and the reveal-compile pass on the POST-SWAP hierarchies (see
@@ -1865,15 +1883,24 @@ function startBattle(specId, mapId = null, opts = {}) {
   // CAMO WIRING: AUTO patterns resolve to the biome of the map being fought;
   // only tanks whose resolved pattern actually changed get repainted.
   setCamoBiome(world.mapId);
-  applyCamoPatterns();
   // COMMUNITY TANKS: garage battles roll a random enemy roster from the
   // full pool (core + community), seeded per battle for reproducibility.
   // MODERN EXPANSION: rosters are era-matched to the player's vehicle —
   // mixed-era battles happen only on the RANDOM battlefield card.
   setupBattle(game, specId, world, {
     random: true, mixedEra: mapId === 'random', deferVisuals: !!opts.deferVisuals,
+    deferCamoRepaint: true,
   });
   battleStaged = true;
+  // perf-r2f: ONE chunked sweep covers the biome flip AND the bot camo rolls
+  // setupBattle just made (its own trailing sweep is deferred by the flag
+  // above). The old back-to-back sync sweeps repainted the warm cache in a
+  // single task — a rematch measured a 14 s frame with the loading bar
+  // frozen. Chunked, the bar animates between entry repaints; the player's
+  // spec paints in the first slice. startBattleLoading AWAITS the handle
+  // before the wreck dances — burnt bakes copy the camo canvases, so paint
+  // must be final first (the sync sweep's ordering, preserved).
+  camoSweepP = applyCamoPatternsChunked({ priorityIds: [specId] });
   // SHOT-INFO identity (killcam_shotinfo r3): set synchronously — hud.update
   // only forwards it after the first rendered frame, which dropped hits
   // resolved in the very first sim ticks (headless replays / spectators).
@@ -1951,7 +1978,10 @@ function enterGarage() {
   // camo_spotting r5: bot biome-camo overrides are battle-scoped — drop
   // them so the pedestal/picker show the player's own persisted selection.
   clearCamoOverrides();
-  applyCamoPatterns();
+  // perf-r2f: chunked — the hero repaints in the first slice (inside the
+  // transition veil); parked roster entries follow one frame apart instead
+  // of freezing the garage reveal for the whole cache.
+  applyCamoPatternsChunked({ priorityIds: [selectedSpecId] });
   setGarageSpots(true);
   // garage-scene r1: a battle entered before the idle pump finished must not
   // return to a half-dressed workshop — finish the remaining chunks now
@@ -3501,6 +3531,15 @@ function warmCombatPipeline() {
       fx.exhaust(wp, 1, true);
       fx.destruction(wp, null, 'shot');
       fx.destruction(wp, null, 'ammorack');
+      // perf-r2f (journey probe): the prop-destruction families bake their
+      // splinter/debris sprites on FIRST break — ramming your first fence
+      // measured a 1.1 s frame. One silent break per family joins the volley
+      // (same corner, cleared by the resetAll below).
+      _v3.set(1, 0, 0);
+      for (const kind of ['fence', 'wall', 'sandbag', 'truck', 'drumblast']) {
+        fx.propBreak(kind, wp, _v3, 1.5);
+      }
+      fx.propCrush(wp, _v3, 7);
       // perf-r2e: one scar stamp per fielded visual — the impact-decal
       // system bakes its shared scar canvases (heightToNormal/roughness
       // getImageData work) per FAMILY on the first stamp, which used to be
