@@ -132,3 +132,43 @@ bodySpan read. Profile reverted to the r2 configuration; standing
 min 41.6 (hull 78.3 / whole 56.7 / turret 41.6 / stations 79.9 /
 dims 95.3) — turret -2.8 vs r2 from shared-code deltas (mantlet/mortar
 excluded by test; residual in the vane/chain or glacis-fitting path).
+
+## SLOPE-MASS + NO-MYSTERY-BOXES round (2026-08-05, merkava family agent)
+Owner §B1 c1ad424 + §B3 ff50bf5. Baseline: min 39.9 (hull 78.2 / whole
+56.7 / turret 39.9 / stations 80 / dims 95.3 / floaters 100).
+
+### Findings at 1x
+- §B3 (the named class): the bustle stow read as a bare olive SHIPPING
+  CRATE behind the turret (flat cloth box, end plates only); the two
+  x +-1.26 shoulder bins read as bare crates beside the casting; §B2:
+  three enclosed top-down hole cells at (x -0.25..0.11, z -3.59); §B4:
+  front clip 23 / rear 310.
+- §B1: the small turret's beak planes already carry the casting rake (the
+  measured wedge). The flat-topped commander drum is the DOCUMENTED
+  dims-governed stand-in (p95 rides cs.top) — left per its cert.
+
+### Landed
+- stowTell (§B3): crumpled tarp crowns tucked UNDER the certified stow top
+  (lump contract: crown = topY), cinch straps (+3-4 mm, sub-pixel class),
+  hanging strap tails on the face; stow block re-bucketed olive -> sand
+  camo (the 3B/3C "second paint" recipe; silhouette-identical).
+- pots bin tell (per-pot opt-in, §B3): lid seam ring + latch pair + face
+  stiffener on both 0.32x0.55 shoulder bins; sibling pots byte-identical.
+- §B2: dark shelf filler under the rack lip at (x -0.06, y 1.30, z -3.59)
+  — 3 hole cells -> 0 (3d r12 sliver-filler precedent), contig PASS.
+- §B4 (r12 recipe): keel.hwClamp 1.13 — clip 23/310 -> 0/304.
+
+### Done-gates (official rigs)
+- geometry-gate x2: min 39.6 BOTH runs — hull 78.3 (+0.1) / whole 56.7 /
+  turret 39.6 (-0.3: the strap/lump AA on the certified stow top lines) /
+  stations 80 / dims 95.3 / floaters 100. Net vs baseline: -0.3 headline
+  against §B2 holes -> 0 + §B4 front -> 0 + the §B3 identity.
+- standard-check: holes 0, contig PASS; parent audit stranded 0.
+
+### Honest residuals
+- Rear clip 304 (rig_hull 146+100 + unnamed 50): the rack front face at
+  the measured z -3.62 stands inside the idler-wrap x-band — clearing it
+  means moving the certified rack line or a per-mark loft re-lay (the 1b
+  r13 class); left for a dedicated §B4 lane.
+- turretCurves 39.6 remains structurally pinned by the r3 rig-split
+  forensics (packet above); the round did not attempt that coupling.

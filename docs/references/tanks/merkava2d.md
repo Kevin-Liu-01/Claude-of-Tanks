@@ -94,3 +94,30 @@ See merkava2b round-3: side dAlong -0.545 from the print's short hull-body
 mask; reconstruction attempts reverted, r2 caps stand. Standing min 37.0
 (hull 73.3 / whole 56.4 / turret 37.0 / stations 73.7 / dims 96.2).
 Batch-8 forensics with 2B.
+
+## SLOPE-MASS + NO-MYSTERY-BOXES round (2026-08-05, merkava family agent)
+Owner §B1 c1ad424 + §B3 ff50bf5. Baseline: min 34.9 (hull 75.1 / whole
+57.3 / turret 34.9 / stations 72.6 / dims 96.2 / floaters 100).
+
+### Findings at 1x
+- §B3: same bare olive stow crate class as 2B behind the small turret;
+  §B4 clip 35/292. §B1: the 2D beak + kit appliqué wedges already read as
+  raked casting planes (merkava2dKit slabs); the flat commander drum is
+  the documented dims-governed stand-in.
+
+### Landed
+- stowTell (§B3): tarp crowns under the certified top + straps + strap
+  tails; stow re-bucketed olive -> sand camo (3B/3C recipe).
+- §B4 (r12 recipe): keel.hwClamp 1.13 — clip 35/292 -> 0/284.
+
+### Done-gates (official rigs)
+- geometry-gate x2: min 34.9 BOTH runs — every component IDENTICAL to
+  baseline (75.1 / 57.3 / 34.9 / 72.6 / 96.2 / 100): the tells live under
+  certified lines. standard-check contig PASS, holes 0.
+
+### Honest residuals
+- Rear clip 284: same rack-vs-wrap class as 2B (dedicated §B4 lane).
+- Parent audit stranded 1 (unnamed, 26%): pre-existing at HEAD — the
+  b5-round adjudicated audit-artifact class (AABB-coarse tool); verified
+  unchanged by this round's A/B.
+- turretCurves 34.9 pinned by the certified 2B/2D oracle defects.

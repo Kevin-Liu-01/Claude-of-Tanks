@@ -116,3 +116,49 @@ Standing: min 26 -> 42.7 (hull 59.9 / whole 42.7 / turret 51.0 /
 stations 58.7 / dims 100 / floaters 100) — at/near the re-derived
 ceilings everywhere except turret plan (~5 pts of honest wedge work
 left, r3 anatomy params are mechanical scales).
+
+## SLOPE-MASS + NO-MYSTERY-BOXES round (2026-08-05, merkava family agent)
+Owner directives §B1 c1ad424 + §B3 ff50bf5. Baseline this round:
+min 34.6 (hull 60.6 / whole 34.6 / turret 51 / stations 58.7 / dims 100).
+
+### §B1 findings (before)
+- Same slab-turret class as merkava4: vertical shell walls to 2.58 with the
+  small 0.06-rake cheek appliqué; crest a flat 2.60-2.665 cap wall; side
+  panels + wedge head reading as a leaning DOOR + crates (§B3).
+
+### Re-mass (landed) — owner-law-over-oracle, M1-slope precedent
+- cheekRake 0.45 elevation rake on the CERTIFIED r5 plan pts (the pts
+  polyline is near-straight: per-strip twist measured (C-A)*n ~ -0.021r,
+  no tooth row) + wedgeFront V-fillets (wedgeRake 0.40); crest re-lined as
+  the rising ridge top0 2.30 (zW 1.50) -> top1 2.655 @ z1 0.60 under the
+  certified stature cap; nose/shell/roofInset kept at the r5-certified
+  envelope (bisect: dropping the shell top / retreating the nose cost
+  ~-1.0 whole against the 1.313x-tall print for zero law gain — the rake
+  read carries on the front planes).
+- §B3: side-panel bin grammar (lid seam + latch pair + handle + spare
+  periscope block on the wedge head), panel stud rows + course seams.
+- §B4 (r12 recipe): keel.hwClamp 1.13 — clip 6/78 -> 0/6 exact-voxel PASS
+  (<= 60 band, 0-target residual 6 rear).
+
+### Bisect record (measured, official gate)
+- extended arrowhead pts: turret_plan 51 -> 25.5 vs the SPARSE rig_turret
+  print (certified defect: turret node holds only furniture) — REVERTED,
+  plan stays on the measured lines; elevation carries the law.
+- chin (hw 0.95): turret 33.8 vs 52.3 without — its top face crossed the
+  raked cheeks (intersection seam) AND dragged side bottoms 0.4 under the
+  sparse print's high mask floor — REMOVED (the r5 nose face still backs
+  the notch: no §B2 void; verified holes 0).
+- crest ridge: stations 58.7 -> 61.8 (+3.1) at zero turret cost — KEPT.
+
+### Done-gates (official rigs)
+- geometry-gate x2: min 34.1 BOTH runs — hull 60.6 / whole 34.1 / turret
+  52.3 / stations 61.8 / dims 100 / floaters 100.
+- vs baseline: turret +1.3, stations +3.1, whole -0.5 (front_whole: the
+  raked cheeks vacate part of the tall print's solid 2.5-3.0 front band —
+  the certified owner-law residual, "build the real rake, measure the
+  delta"), hull/dims/floaters unchanged. Track clip PASS; parent audit 0/0.
+
+### Honest residuals
+- front_whole -0.5 rake residual (above); whole 34.1 remains the binder at
+  its documented ~45-50 stature ceiling class.
+- Rear basket/rack slabs read olive-cloth at 1x (tone lane).

@@ -1106,3 +1106,40 @@ Ref split parity: the 3D oracle's rear is genuinely low (rack band
 1.44-1.70, NO tall pile; ex_armor_08/09 kit under its Turret node) —
 agreement with our split. Probe: tools/tmp-merkava-b5-refsplit.py.
 Residual: official stranded stays 2 (adjudicated-hull, AABB-coarse class).
+
+## §B3 POD-IDENTITY graduate-change round (2026-08-05, merkava family agent)
+Owner directive ff50bf5 (NO MYSTERY BOXES — "random boxes that are not
+ERAs around armor and especially guns", the merkava mantlet area named):
+the two measured cheek-shoulder pod boxes beside the gun root read as bare
+cuboids at 1x. Graduate-change flow (gate hold x2 + changed-view re-cert
+list + re-freeze at landing).
+
+### Change (merkavaPodTell, podTell: true)
+- RIGHT pod = gunner's sight: pale hood lip over a dark aperture slot with
+  the lens inside, hood side cheeks, wiper tick, outer-face louver pair.
+- LEFT pod = fitting bin: lid seam ring, latch pair + keepers, handle bar,
+  stiffener line.
+- MASK SAFETY by construction: the pod boxes themselves are UNTOUCHED
+  (the certified mask carriers); every tell lies strictly inside the pod
+  x/y footprint at <= 5.5 mm face-proud (the r10 "+3 mm strap over
+  certified tops" precedent class); the certified 15 mm glass strip is
+  kept byte-identical as the lens. No piece rises above pod top or
+  leads the lens line.
+
+### Gate hold (official rig, x2)
+- Run 1: min 90.4 — hull 90.4 / whole 90.6 / turret 91.4 / stations 91.7 / dims 100 / floaters 100 PASS
+- Run 2: min 90.4 — hull 90.4 / whole 90.6 / turret 91.4 / stations 91.7 / dims 100 / floaters 100 PASS
+  (every component EXACTLY the frozen row — the tells are mask-invisible
+  as constructed). Floaters 100 both runs. turret-parent audit unchanged
+  vs HEAD A/B. Furniture is casting-fixed turret-bucket
+  (yaws with the turret; no re-parenting, yaw pair n/a).
+
+### Re-freeze
+- hash 954a9650 -> 93e7b4eb (meshes unchanged, verts 169604 -> 170180).
+
+### Changed-view list (for the independent re-cert critic)
+- close-front, view-front, view-frontleft, view-frontright,
+  hero-frontleft, hero-toptilt, close-roof (pod faces);
+  view-left / view-right / view-top carry only the sub-pixel louver/seam
+  hairlines and the <= 6 mm proud face-edge slivers.
+- Unchanged views: view-rear, hero-rearright and every hull-only crop.

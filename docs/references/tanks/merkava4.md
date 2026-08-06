@@ -119,3 +119,69 @@ Unrepairable print (yawed, foreshortened, fused barrel — r2 cert stands):
 curves/stations 0 by construction, dims 91.8, floaters 100. The build
 keeps the published-envelope shape (r3 modular params applied so the
 family code path stays uniform). No further action this round.
+
+## SLOPE-MASS + NO-MYSTERY-BOXES round (2026-08-05, merkava family agent)
+Owner directives §B1 c1ad424 ("the merkavas should take heavy upgrades from
+the slope mass law") + §B3 ff50bf5 (random non-ERA rectangles near guns).
+
+### §B1 findings (before, at 1x on the critic rig)
+- THE named failing read: full-height polyTurret box (shellTopY 2.55 = roof
+  height, vertical nose face at z 0.90 spanning ±1.45) with a small
+  appliqué cheek wedge (pts z <= 1.55, rake 0.06) dead-ending into it; the
+  crest face a full-height vertical parapet (top0 2.60) over the mantlet.
+- §B3: Trophy launcher wedge + radar head read as bare leaning crates with
+  a blue sticker; no tube mouths, no frame.
+
+### Re-mass (landed)
+- Cheek = ONE planar raked quad per side, pts [[0.34,2.38],[1.56,0.88]],
+  topIn 2.44 / topOut 2.14 / botIn 1.90 / botOut 1.60, cheekRake 0.45
+  (~43 deg). topOut solves the coplanarity constraint exactly — see the
+  TWISTED-QUAD law below.
+- Crest re-lined as the rising ridge: top0 2.28 over the mantlet (z0 2.60,
+  zW 1.55) climbing to top1 2.64 @ z1 0.55, meeting roofLine 2.62.
+- Casting prism dropped to a low leaning base: shellTopY 2.42, roofInset
+  0.86, roofHW 0.98 -> 1.06; nose retreated to z 0.42 (noseHW 1.26) fully
+  behind the wedge; wedgeFront V-fillets (wedgeRake 0.42) close the
+  crest/cheek gap; chin clamped to the notch lane
+  { z0 2.35, z1 0.40, bots 1.66/1.54, hw 0.42 }.
+- §B3 Trophy tell (merkavaSidePanels opts.radar path): dark tube-mouth
+  pair under pale lips on the launcher head, radar frame rail + foot stud,
+  panel stud rows + course seam on the big plates.
+- §B4 (r12 recipe): keel.hwClamp 1.13 — front clip 33 -> 14 (band pass).
+
+### Done-gates (official rigs)
+- geometry-gate x2: min 0 unchanged — dims 91.8 / floaters 100 BOTH runs
+  (curve/station components remain certified-0 vs the unrepairable
+  arlassar print; published-envelope authoring per the v6-v8 note governs
+  this mark). Every new top <= 2.64 (p95 budget intact), dims anchors
+  untouched (toe 3.53 / rack -4.02 / muzzle 4.78 / skirts +-1.86).
+- turret-parent audit: stranded 0 / dangling 0. Track clip: front 14 PASS,
+  rear 215 residual (pre-existing idler-wrap class, see residuals).
+
+### Honest residuals
+- Rear track clip 215 voxels (rear:unnamed 94 + rig_hull chunks): the
+  idler-wrap class the 3-series took in r13 via loft-tail lifts — needs its
+  own §B4 lane (tail yB re-lay + rack clearance vs the wrap rear pole);
+  not §B1/§B3 scope, unpriced by the 0-capped gate.
+- Basket/chain-vane side face still reads as a tall cloth slab at 1x from
+  rear quarters (olive bucket); the rear face carries the rail+chain
+  grammar. Tone lane, not form.
+
+### Law discoveries (bank)
+- TWISTED-QUAD TOOTH ROW (§B1 mechanism): a strip-fan cheek under a large
+  cheekRake renders a tooth row when the plan pts polyline CURVES — each
+  slab quad goes non-planar, its two triangles take different normals, and
+  the lit/shaded alternation reads as sawteeth riding the wedge (verified:
+  teeth persisted with washes AND chin removed; vanished the moment the
+  fan collapsed to one coplanar quad). Authoring rule: at cheekRake > ~0.2
+  either keep the pts polyline straight (per-strip near-planarity — the 4B
+  case measured (C-A)*n ~ -0.02r) or solve a top height for exact
+  coplanarity; check every slab() whose four corners are authored
+  independently.
+- INTERIOR-FILLER INTERSECTION: a chin/filler crossing a visible raked
+  plane paints its intersection seam onto the face — clamp fillers to the
+  notch lane (hw inside the cheek inner pts).
+- WASH-CLAMP PRECONDITION: roofMerge washes assume cheek tops ABOVE
+  shellTop (they fan DOWN onto the casting); with shellTop at roof height
+  the clamp inverts and the wash deck rides over the cheeks. Drop the
+  shell top below topOut before enabling roofMerge on a new mark.

@@ -349,13 +349,13 @@
   },
   {
    "id": "merkava4b",
-   "geoMin": 34.6,
+   "geoMin": 34.1,
    "gatePassed": false,
    "components": {
     "hullCurves": 60.6,
-    "wholeCurves": 34.6,
-    "turretCurves": 51,
-    "stations": 58.7,
+    "wholeCurves": 34.1,
+    "turretCurves": 52.3,
+    "stations": 61.8,
     "dims": 100,
     "floaters": 100
    }
@@ -401,12 +401,12 @@
   },
   {
    "id": "merkava2b",
-   "geoMin": 39.9,
+   "geoMin": 39.6,
    "gatePassed": false,
    "components": {
-    "hullCurves": 78.2,
+    "hullCurves": 78.3,
     "wholeCurves": 56.7,
-    "turretCurves": 39.9,
+    "turretCurves": 39.6,
     "stations": 80,
     "dims": 95.3,
     "floaters": 100

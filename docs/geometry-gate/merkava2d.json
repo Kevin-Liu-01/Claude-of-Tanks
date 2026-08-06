@@ -120,8 +120,8 @@
    ]
   },
   "side_whole": {
-   "score": 57.2754390743704,
-   "meanPct": 2.61,
+   "score": 57.30270528845246,
+   "meanPct": 2.6,
    "p95Pct": 10.41,
    "coverPct": 3.47,
    "reg": {
@@ -143,7 +143,7 @@
      "refBot": -2.41,
      "procTop": 1.28,
      "procBot": -2.42,
-     "errM": 0.582
+     "errM": 0.579
     },
     {
      "at": 1.73,
@@ -662,7 +662,7 @@
  },
  "turretRows": {
   "side": {
-   "score": 62.40686385397944,
+   "score": 62.43551063586313,
    "meanPct": 2.4,
    "p95Pct": 11.58,
    "coverPct": 1.24,
@@ -685,7 +685,7 @@
      "refBot": -0.81,
      "procTop": 1.28,
      "procBot": -0.85,
-     "errM": 0.598
+     "errM": 0.596
     },
     {
      "at": 1.73,
