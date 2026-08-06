@@ -480,3 +480,100 @@ HONEST RESIDUALS: O3 (MG legible read), O5 (bustle/tail), O6 (small
 real-angle family) not taken this round. Evidence:
 shots/critic-challenger1/ (fresh 14 pairs, 16:18, zero console
 errors), tools/tmp-uk-r8-gear-measure.py, tmp-cr1-r8-voidcheck.py.
+
+## r10 — UK ROUND 4 (2026-08-05, uk agent; the shaded-parity r8 REMAINING orders O3/O5/O6)
+Round scope: the r8 verdict's three undelivered order families (r9 took
+O1/O2/O4 + the acceptance offer). Gate: **90.2 -> 90.1 PASS x2
+bit-identical on final bytes** (hull 91.8-91.9 / whole 90.1 / turret
+90.2 / stations 90.6 / dims 95 / floaters 100) — 0.1 of the 0.2 wall
+spent across the whole delivery. Hash e4d77fd2 -> **c9df0b28** (63 ->
+65 meshes: +2 bustle mesh panels). ORDERS:
+- O3 MG LEGIBLE READ — DELIVERED (the verdict's own staging: "raise/yaw
+  within the plateau cover's shadow"). The MAG re-poses to the loader
+  station beside the hatch ring on the 0.66 mid-roof shelf at
+  (-0.77, 0.66, 0.16) yaw -0.06, scale 0.85 -> 0.92, tone two-tone ->
+  'dark' (MG PHYSICS pale-deck inversion; the c5 O10a precedent).
+  Column-safe by the fresh workorder: z-envelope 0.06..0.77 inside the
+  plateau band whose side ceilings are the sight/hatch cols (2.76-2.92;
+  receiver top 2.481), x-envelope -0.876..-0.734 inside the left
+  roof-block front band (2.79-2.86). Ray-staged against the REAL
+  perspective hero camera: from hero-toptilt the full receiver + barrel
+  clear the plateau edge by >=0.12 and pass 0.10 rear of the sight —
+  VERIFIED on the fresh board: unambiguous dark receiver-mass +
+  barrel-line at 1x in hero-toptilt, dark line kept in top/plan.
+  close-roof gets the top-cap peek only (the ordered pair needs ONE
+  view; toptilt carries it).
+- O5a BASKET-ON-RAILS — DELIVERED: dark mesh panels seated on the two
+  tail-course rear faces (each embeds 2 mm into ITS OWN box plane —
+  the humps carry different rears -1.930/-1.890) + pale rail pairs and
+  posts (turretDetail over dark mesh = the ref's rail-over-mesh
+  polarity) + upper rail pair on the mid course + short flank pair.
+  Envelope lesson BANKED: a first flank pair at z -1.45..-1.75 y 0.74
+  re-topped the world -1.603 col +0.13 over its 2.24 course ceiling
+  (side_turret 90.28 -> 90.05) — a rail's WHOLE SPAN must clear every
+  column window it enters, not just its midpoint; constrained to
+  z -1.55..-1.75 y <=0.71, gate recovered to 90.2.
+- O5b REAR PLATE CLUTTER — DELIVERED: exhaust boxes + twin pipe stubs
+  at the tail corners (y >= 1.23 inside the deep-box side band), upper
+  cable drape with cleats, LOW WAVY pipe run riding a new tail-shelf
+  floor, dark convoy light. §B2 chain lesson BANKED: the low cable
+  SEGMENTED the open tail lanes into enclosed top-down cells
+  (standard-check 3x6c at x ±0.3, then 2x1c at the lip corners after
+  the shelf) — dressing that crosses an open lane needs the lane
+  FLOORED first: tail-shelf plate y 1.13..1.16 (sits exactly on the
+  box1 bottoms at z -3.62..-3.77 — no side-col move) + lip-band corner
+  pads; contig now 0. A glass convoy lens fired a white bloom dot at
+  1x — hullDark lens instead.
+- O5c smoke tube circles — NOT TAKEN (optional in the order): a pale
+  rim ring behind each cap risks partial-pixel on the ±1.3-1.5 front
+  discharger cols for a sub-pixel read; documented.
+- O6a SIGHT-HOOD VISOR — geometry delivered, fitted edge UNMOVED
+  (documented per the chieftain-O4 refusal precedent): body depth 0.46
+  -> 0.36 + visor wedge z 0.78..0.86 raking 1.325 -> 1.253 with a 1.19
+  soffit; glass tucked under the lip (0.91 -> 0.865). Zero column
+  moves by construction (wedge ends OUT of the 0.735-col window; the
+  0.605 col keeps 1.325 from the body). The evaluator's close-roof
+  Δ-14.7 (ref 37.7 proc 23.0, mid[-0.28,2.75,2.40]) re-measured
+  IDENTICAL after the visor — the fitted proc edge is not the hood top
+  face; the ref's 37.7° line has no reachable mask-legal author. Rake
+  exists and reads at 2x; residual carried with numbers.
+- O6b COLLAR/SLEEVE SHOULDER — mask-neutral octagonalization: collar +
+  junction ring + shroud rebuilt as body + flush trapezoid caps (exact
+  top planes at narrower x, exact ±x at lower y, exact z ends — side/
+  plan/front silhouettes identical; front corners only ROUND toward
+  the ref's cylinder falloff). The close-roof Δ+14/+11.9/-8.3 family
+  re-measured unchanged — those fitted lines live on ref-vs-proc
+  shading tangents at MATCHED silhouettes (workorder: both FLAT 1.949
+  across z 3.9..4.5); documented as the shading-class residual.
+- O6c RIGHT CHEEK COURSE — DELIVERED AND GATE-MEASURED: the workorder
+  read the ref holding 2.241 to the 2.034 col THEN falling (2.176@
+  2.164, 2.143@2.294) where the r-noses raked from local 2.05; hold
+  boxes carry the 0.635 course to local 2.23 (world 2.03) and the
+  noses steepen to the SAME plan fronts. The 2.034 worst-turret col
+  (err 0.039) and the 1.904 col (0.033) both dropped OUT of the
+  worst-14 table; the predicted 2.164 regression (+0.027) is the one
+  honest cost. rearright's fitted Δ-7.3 persists (-7.5 after) — same
+  shading-class note as O6b.
+- O6 SHOULDs NOT TAKEN: whip lean (an 18° lean walks the mast tip
+  ~0.34 in z off the ref's own p95 spike columns — heightM budget
+  outranks a SHOULD); right fender-line run (course-strip family,
+  rows did not allow inside the 0.1 remaining wall).
+CHECKS at close: gate x2 bit-identical 90.1; standard-check PASS (clip
+0/0 exact, contig 0, mg1+0d); track-clip --exact 0/0; turret-parent
+0/0/0 (MG + panels in turretG); visual-evaluator fresh both ends (rig
+parity OK, yawProxy <=1.6°); npm 166 + track-geometry green. FROZEN
+PROOFS: chieftain5 5117b9a8 + centurion3 bf0a45e8 byte-identical at
+round start AND close. SELF-READS (ordered views, vs the r8 scores):
+close-roof 7.0 -> 7.5 (pocket dead r9, MG peek + visor + collar
+shoulders; empty camo fields hold), hero-toptilt 7.5 -> 8.5 (the
+ordered MG read is THE new tell), top 7.5 -> 8.0, rear 7.5 -> 8.0
+(clutter + rails; ref-presented crown MG from dead-rear still absent
+— honest), rearleft/rearright 7.5 -> 8.0, left/right 7.0 -> 8.0 (r9
+disc delivery verified holding), close-front 7.5 -> 8.0, front 8.0 ->
+8.0, frontleft/frontright 7.5 -> 7.5-8.0, hero-fl/hero-rr 7.5 -> 8.0.
+Floors ~7.5: BELOW the 8.9 adjudication bar — no graduation request;
+the remaining distance is the O6 fitted-edge shading family (numbers
+above), close-roof camo fields, and the rear-view MG presentation.
+Evidence: shots/critic-challenger1/ (fresh 14 pairs, zero console
+errors), shots/visual-eval-challenger1/ (report.json + overlays),
+scratchpad workorder dumps (before/after column tables).

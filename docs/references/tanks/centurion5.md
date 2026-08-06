@@ -481,3 +481,72 @@ byte-identical at start AND close. Evidence: shots/critic-centurion5/
 (fresh 14 pairs, 16:17, zero console errors),
 tools/tmp-uk-r8-gear-measure.py, probe JSONs (c5probes*.json, session
 scratchpad).
+
+## r9 — UK ROUND 4 (2026-08-05, uk agent; the O3 CAST-TURRET READ round)
+Round scope: the binding order — "the turret must read as a CASTING
+(crown-recipe rounding, casting blends, no slab cheeks) at 1x/2x"; the
+r8 interior relief was mask-parity-correct but sub-pixel at 1x (the 20
+mm trim strips = 1.5 px at the 75 px/m rear ortho). Gate: **90.7 ->
+90.7 PASS x2 BIT-IDENTICAL to the r8 line** (hull 92.8 / whole 90.7 /
+turret 90.7 / stations 95.5 / dims 100 / floaters 100) — the whole
+round priced ZERO by construction. Hash a25a73b8 -> **c725cd11** (50
+meshes unchanged — all adds merged into the turret bucket). CENTURION3
+IS A FROZEN GRADUATE (bf0a45e8): every r9 add is mk-5-gated; c3
+re-hashed byte-identical at start and close. DELIVERED:
+- FLUSH-TANGENT CHAMFER GRAMMAR (the round's mechanism, banked): a 45°
+  rolled diamond centered t/√2 inside BOTH faces of an arris puts its
+  vertices ON the face planes — tangent-LINE contact, zero silhouette
+  by construction (the compound-rotation extreme only ever recedes;
+  the gate held to the third decimal across 14 strips). 48-55 mm faces
+  read 3.5-4 px at 1x where the r8 20 mm strips vanished.
+  - crown ridge plate: rear + both side arrises (front is graded by
+    the r8 forward caps + drum);
+  - crown-slab outboard creases (§B1 slope-motivates-the-mass — the
+    cheek rake's line now rounds INTO the flank instead of creasing):
+    mid-casting E(∓0.95,0.68/0.62,0.50)->F(∓1.10,0.85/0.78,-0.60) as
+    single pitched+yawed strips (rx/ry follow the crease line), rear-
+    crown pair sized from the corner MIN y;
+  - bustle rear: one strip per rear course (the three courses carry
+    DIFFERENT rear planes/tops: 0.602/-2.04, 0.602/-2.10, 0.58/-2.19)
+    + vertical corner pair at ±0.80 — the rectangle-in-rectangle rear
+    now reads eased shoulders at 1x (verified on the fresh board);
+  - wall crests re-seated on each wall's TRUE outer-top corner (L
+    -1.238 / R 1.185 — the r8 symmetric ±1.165 seat rode inboard of
+    both). All strips camo 'turret' so the ease reads as the casting.
+- O8 GEOMETRY ESCALATION (reserved by the r7 order, now taken): five
+  tube TIPS per bank proud 36 mm along the bank-face normal (r 0.016
+  cylinders + dark bore discs on their outer faces) — the scalloped
+  mouth row has real relief at 1x. Interior by construction: proud
+  extent (0,+0.025,+0.026) keeps max y 0.614 under the bank's 0.735
+  top and max z 0.971 under its 1.32 tip plate; the 96.9 plan-guard
+  columns never see them.
+- MEASURED MOVEMENT (visual-evaluator, fresh, rig parity OK yawProxy
+  <=1.4°): hero-toptilt worst flag Δ-12.1° (r7, crown-front class) ->
+  **Δ+6.9°**; close-roof worst Δ-5.0°; rear view flags now all <=3.2°.
+  PERSISTING (documented, the r8-banked shading-vs-mask class): the
+  crown-tab pair frontright Δ+14.3 ±0.8 @ mid[0.60,2.83,0.50] /
+  frontleft Δ-14.5 ±4.0 (noise-band), and the 8 wrap-arc + 2 ramp-line
+  unpaired fits (serration texture class, r7 O10b documentation
+  stands). The r8 packet already measured the raked-plate chase at
+  turret_side 90.5 -> 90.3 — the mask truth caps these fits; carried
+  with numbers, not chased.
+CHECKS at close: gate x2 bit-identical 90.7 (plus a third identical
+run in the paired series); standard-check PASS (clip 0/0 --exact —
+better than the r6 0/20 cert band; contig 0; mg1+0d); turret-parent
+0/0/0; npm 166 + track-geometry green. FROZEN PROOFS: chieftain5
+5117b9a8 + centurion3 bf0a45e8 byte-identical at start AND close.
+SELF-READS (ordered views, vs the r7 scores): frontleft 7.0 -> 8.0
+(cheek shoulder rounds, tips, weave), frontright 7.0 -> 7.5-8.0 (the
+Δ+14.3 fitted tab persists), rearleft/rearright 7.0 -> 8.0 (eased
+shoulders; serration documented), rear 7.5 -> 8.5 (the rectangle-in-
+rectangle read is dead at 1x), left/right 7.5 -> 8.0 (r8 disc split
+holding), top 7.5 -> 7.5-8.0 (plateau is mask truth; arrises eased;
+procOnly panel clutter holds), hero-fl 7.0 -> 8.0, hero-rr 7.5 ->
+8.5, hero-toptilt 7.0 -> 8.0 (measured flag halved), close-front 7.5
+-> 8.0, close-roof 7.0 -> 8.0 (dome + eased crown + M2 dark).
+Floors ~7.5-8.0: BELOW the 8.9 adjudication bar — no graduation
+request; the honest gap is the rectilinear-vs-pear plan read the mask
+certifies (flat plateau + straight wall bands), the crown-tab fitted
+pair, and top-view procOnly clutter. Evidence: shots/critic-
+centurion5/ (fresh 14 pairs, zero console errors), shots/visual-eval-
+centurion5/ (report.json + overlays).
