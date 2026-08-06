@@ -297,3 +297,112 @@ class); front +-1.03-1.13 bottoms (ref 0.33-0.478 vs my track face);
 side_whole -1.3 col 2.25-vs-2.06 whole/turret row contradiction (tool
 frame question — decode before authoring); muzzle-tip col reads NONE in
 the digest despite verts at 6.20 (raster question, coverPct 1.12).
+
+## VERTEX ROUND r10-r11 (2026-08-05, russia TAIL ROUND-2 + §B3 sweep)
+
+Gate trajectory (all official runs): 41.8 -> 47.4 (r10) -> 47.2 x2
+IDENTICAL (r10b, hull 51.8 / whole 47.2 / turret 72.7 / stations 80.5 /
+dims 92.2 / floaters 100) -> r11 line below. Turret +9.5, stations +3.6.
+
+What landed (fresh workorder + gate-frame mask-run probe,
+tools/tmp-ru2-frontruns.mjs — §D diagnosis-only):
+- BOW STAIRCASE: ref plan front steps 3.186..3.24 at |x| 0.8..0.95 and
+  3.43 at 1.14..1.37 ONLY — old ±1.075 prong pair replaced; tip split
+  over the idler wrap (§B4) with a flap bridge (§B2).
+- TAIL RE-DECODE (r9c inverted): plan_hull ref rear −2.913 at |x|<=0.61,
+  −2.886 at 0.908 — the −3.43 run lives ONLY at |x| 0.69..0.87. Center
+  bar deleted, racks at x 0.68..0.865 (22mm col margins), outer step rear
+  −3.26, thin 1.11..1.19 sliver to −3.48 (ref side −3.468 col
+  [1.193..1.111]). hullLengthM body kept via rack B at −3.43 + corner
+  flaps deepened to −3.43 after a dims 91.6 scare (bodyExtent forensics:
+  the filter needs col span > 12% of the whole-mask rough height on
+  side_whole — thin trays/slivers never carry the ends).
+- −1.884 LEFT TAB: plan_turret ONLY-REF err-9 col (ref z 0.963..0.99,
+  front cap 1.361) — dark cassette end-block y 1.25..1.42 bracketed to
+  the outer stow panel; z tightened to 2px margins after the 0.05 depth
+  bled the z-0.88 side col (§C partial-pixel).
+- CHEEK STOW SPLIT: main x 1.57..1.735 (top 1.84) + outer 1.74..1.86
+  (top 1.765) + lid seam, z world per the ref staircase
+  [1.153..0.313]@1.694 / [1.099..0.611]@1.776.
+- ROOF-BAND RE-DECODE (overrules r8): the ref 2.25 plateau lives at z
+  world −0.97..−1.41 (5 cols) with 2.06..2.09 at −0.43..−0.54 and a
+  2.105 front cap at |x| 0.91..0.99. Tall bin narrowed to x 0.70..0.86
+  and moved aft; the 2.10 box extended over the −0.43..−0.54 cols.
+- BUSTLE PLAN STAIRCASE: ref rear −1.585@−1.125 vs −1.314@+1.152 is one
+  symmetric step edge at |x|~1.10 sampled by different grid columns —
+  deep box left-full/right-thin, mid step 1.14..1.23 rear −1.33;
+  underside floors raised to the ref 1.51..1.53 line; step3 rear pulled
+  to world −2.40 + thin tail slat (ref side −2.49 col tops 1.706).
+- FRONT FLANK BAND (r11, probe-decoded): the ref deep-skirt bands are
+  ASYMMETRIC — left 0.447@−1.674 + 0.404@−1.759..−1.802 + 0.574@−1.845,
+  right 0.872@1.685 / 0.946@1.728 / 0.404@1.77 / 0.585@1.813..1.855 with
+  a bare 0.893..0.936 sliver at 1.898. Deep rubber sections re-seated to
+  [1.758, 1.813] both sides (the r10 1.745 face partial-lit the ±1.717/
+  1.728 cols the ref holds at 0.946); skirt band moved to faces
+  1.725/1.805 (the ref carries its 0.95..1.29 band into the ±1.717 col);
+  course lower panels pulled to [1.81, 1.868] (left to 1.888 — print
+  skew) under a thin 0.89..0.94 outer lip at the 1.91 width line.
+- TRACK SEAT (r11): ref grounds only to |x| 1.643..1.66 and the belly
+  cols ±1.09..1.13 read 0.34..0.478 — xc 1.3835 / trackW 0.44 puts the
+  pad line at 1.6435 and the inner edge at 1.1635 (both 2px-clear).
+- GEAR: idler 0.78/0.23 (ref front ramp 0.488@3.04 -> 0.759@3.25),
+  sprocket −2.42 at y 0.80 (ramp 0.32@−2.28 vs ref 0.298; the 0.84 seat
+  poked the sponson floor — clip audit).
+- ruDeck periY 1.22 (the deckY+0.05 periscopes topped 1.50 where the ref
+  nose line is 1.266); muzzle 4.97 (side z-6.182 col; overall 9.6 ✓).
+- §B2 HOLES: standard-check found enclosed top-down cells at (±1.7,
+  z 3.02) between the lip-row end and the flap — bow skirt end-caps
+  close the ring.
+- §B4: flap floor raised to 1.02 over the raised idler wrap (clip audit
+  front 249 -> flap-clear).
+
+DIMS residual: hullLengthM 6.72 (−1.98%, −8 class) persisted through the
+rack/flap/prong body fixes in r10b; the r11 probe's bodyExtent dump shows
+front body ending at the prong-tip col — re-measure after r11; heightM/
+overall/width all inside grace.
+
+§B3 mystery-box sweep (owner directive ff50bf5):
+| box | verdict | action |
+|---|---|---|
+| gun-root plug 0.66x0.42x0.28 | bare box at the gun root | kept (mask-priced mantlet mass) + canvas strap relief on the front face plane |
+| bow prong pair ±1.075 | bare rectangles on the glacis | rebuilt as the measured 2-step fender staircase + dark face seams |
+| tail center bar + 0.42-racks | bare bar, plan-wrong | deleted/re-seated; racks carry end-frame plates |
+| corner bins ±1.30 | bare cuboids | lid seams |
+| left/right roof boxes | bare (left also mis-seated) | narrowed bin + lid seams + mount bracket |
+| rear tower + panel | bare sight tower | lens face + hood lip |
+| cheek stow blobs | bare | split panels + lid seam |
+| new tab/-1.884 | — | authored as a dark cassette end-block |
+| new deep skirts + rear flaps | — | hullRubber (rubber grammar) |
+(RWS/pano towers already carried barrel/glass/cyl-head tells; bustle bins
+carry turretDetail lids. mg census 0: the UDP RWS is hand-authored,
+pre-fittings — migration to KIT.fittings.pintleMG deferred; a blind swap
+would reseat this round's tuned side/front columns. NEXT round item.)
+
+Probes: tools/tmp-ru2-frontruns.mjs (front mask-run + sideBody dumps,
+scratchpad probe-t90sm.json). LAW BANKED: a column is polluted by ANY
+neighbor face within ~9mm of its span edge (front px 3.9mm — the r10
+deep panels lit cols 28mm away via their 4mm overlap); check the FULL
+column-grid family (whole/hull/turret grids differ) before seating
+boundary-critical faces.
+
+r11 gate line x2 IDENTICAL: min 46.9 (hull 52.4 / whole 46.9 / turret
+73.0 / stations 81.1 / dims 92.2 / floaters 100). HONEST TRAJECTORY:
+41.8 -> 47.4 (r10) -> 47.2 x2 (r10b) -> 46.9 x2 (r11). The r11 front-band
+re-seats traded ~even on whole (−0.3) while lifting hull +0.6 / turret
++0.3 / stations +0.6 — BUT r10b carried two §B2 top-down HOLES at (±1.7,
+z 3.02) and a §B4 flap-in-wrap clip (audit front 249), both gate-blocking
+laws: r11 is the lawful configuration and stands as the round's final
+state (+5.1 net). dims 92.2 residual: hullLengthM still reads 6.72
+(−1.98%) — the sideBody probe shows the front body column ending at the
+prong-tip col; the prong tips carry 15% span yet the measured extent
+stays 3.29/3.33-class: the remaining decode (why the 3.36-3.43 tip cols
+drop from the curve) is the round's top NEXT item, worth +7.8 dims. The
+whole-row binder remains front (46.9): worst residual families are the
+±1.68..1.73 transition cols and the certified-class tower/crown cols.
+mg census 0 carried with the packet justification above.
+Standard-check r11: top-down holes 0 (was 2 at r10b), clip audit 240
+front / 376 rear — the flap-in-wrap front clip is gone but the ref-true
+track seat (xc 1.3835) pushed more sprocket-wrap voxels into the raked
+tub face (198 -> 376): the wrap-vs-sponson class is inherent to the
+published-width tub + ref track edge; a real fix re-derives the loft's
+rear rake around the wrap (§B1 slope-mass), NEXT-round item.

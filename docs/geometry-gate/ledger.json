@@ -414,14 +414,14 @@
   },
   {
    "id": "t90sm",
-   "geoMin": 41.8,
+   "geoMin": 46.9,
    "gatePassed": false,
    "components": {
-    "hullCurves": 52.1,
-    "wholeCurves": 41.8,
-    "turretCurves": 63.2,
-    "stations": 76.9,
-    "dims": 100,
+    "hullCurves": 52.4,
+    "wholeCurves": 46.9,
+    "turretCurves": 73,
+    "stations": 81.1,
+    "dims": 92.2,
     "floaters": 100
    }
   },
@@ -479,14 +479,14 @@
   },
   {
    "id": "t72b_1987",
-   "geoMin": 51.5,
+   "geoMin": 56,
    "gatePassed": false,
    "components": {
-    "hullCurves": 54.7,
-    "wholeCurves": 53.7,
-    "turretCurves": 51.5,
-    "stations": 66.5,
-    "dims": 100,
+    "hullCurves": 63.3,
+    "wholeCurves": 59.7,
+    "turretCurves": 56,
+    "stations": 69.1,
+    "dims": 96.7,
     "floaters": 100
    }
   },
