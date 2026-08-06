@@ -72,7 +72,8 @@ body.cot-touch-layout .cot-shells{left:auto;right:max(10px,env(safe-area-inset-r
 body.cot-touch-layout .cot-shell{width:48px;height:52px;}
 body.cot-touch-layout .cot-shell canvas{transform:translate(-50%,-50%) scale(.76);}
 body.cot-touch-layout .cot-shell .key,body.cot-touch-layout .cot-con .key{display:none;}
-body.cot-touch-layout .cot-shell .ty{font-size:7px}.cot-shell .cnt{font-size:11px;}
+body.cot-touch-layout .cot-shell .ty{font-size:7px}
+body.cot-touch-layout .cot-shell .cnt{font-size:11px;}
 /* stronger ACTIVE-AMMO read at glance distance: brighter amber frame, inner
    keyline + glow (the desktop .sel border alone washes out at phone size) */
 body.cot-touch-layout .cot-shell.sel{border-color:#ffbd5c;border-bottom-color:#ffbd5c;
