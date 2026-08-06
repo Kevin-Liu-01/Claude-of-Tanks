@@ -74,7 +74,7 @@ re-freeze NEW hash, all in ONE commit.
 | pt91m | a37a0d24 | |
 | t72b3m | 3d92bb98 | |
 | merkava1b | 1fda7dbd | re-frozen 0e47256 |
-| m1a2 | f3c34424 | carries §B3 1x classes (future graduate-change round) |
+| m1a2 | 248a8468 | §B3 port RE-CERT RATIFIED 2026-08-05 (floor 9.0, mean 9.11) |
 | chieftain5 | 5117b9a8 | |
 | t84 | fd0bca6c | |
 | m47_patton | 70941de0 | |
@@ -290,10 +290,8 @@ read BUILD-STANDARD+packets first, §F.4 report).
    bytes (vertex-workorder; shoe-pin-cap opt-in needs orchestrator ruling)
    + P-1 fore-ring tells + P-2 top tint; graduate-change -> new hash
    candidate + changed views -> re-cert critic. Hold leo2a5/leo2a6/kf51.
-6. m1a2 re-cert critic: abrams.js holds the DONE §B3 port round (gate
-   frozen-row EXACT x2, candidate hash 248a8468, changed views = all 14;
-   packet m1a2.md). Spawn the graduate-change re-cert critic; on PASS land
-   abrams.js + packet + re-freeze 248a8468 in ONE commit.
+6. DONE: m1a2 §B3 re-cert PASS — re-frozen 248a8468 (bytes were already
+   at HEAD via the handover snapshot; ratification landed).
 7. LOD running-gear fix (tankFactory.js + kit.js, owner task 2026-08-05):
    two invisible LOD1 rig_hull meshes (792 tris each, mirrored) overrun
    the ariete hull envelope (AABB z to -5.28 vs tail -3.90; x to ±2.35 vs

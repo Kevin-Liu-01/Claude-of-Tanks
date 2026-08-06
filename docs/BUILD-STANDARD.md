@@ -378,3 +378,9 @@ decorations need a packet justification.
   slices; post-span-fix station drops are re-decode artifacts first.
 - DIMS RAZOR-BAND: a body column hovering at the 12% threshold coin-flips
   dims ±8 pts — pin end columns with hard cross-section faces.
+- BG-TOLERANCE DARK-TRACK BLINDNESS (§J addendum, m1a2 re-cert): mask
+  diffs with bg tolerance maxch<=13 cannot see the 0x171614 track tone —
+  pale dressing added there reads as false "silhouette growth"; decompose
+  render diffs against changed stations before pricing.
+- Record the pixel-diff threshold alongside banked px counts (t>4 vs t>2
+  reads ~30% apart on identical bboxes).
