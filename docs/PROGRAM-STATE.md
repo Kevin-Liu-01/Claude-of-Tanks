@@ -122,6 +122,12 @@ honestly parked at 88.9 pending its retune)
   t90sm 56.4 (AA-teeter binds), t62mv1 63.7 (fade-cap ceiling ~77-81),
   t72bu ~55-70 certified-ceiling — ORACLE
   DECISION PENDING (orchestrator lane).
+- **OWNER PUNCH LIST (2026-08-06, five rounds spawned)**: (1) ariete +
+  leclerc MISSING LEFT TURRET SIDES (misc lane; §C missing-side class);
+  (2) sepv2/sepv3/merkava gun rectangular prisms -> real weapons (§B3.1);
+  (3) ALL abrams left cheeks = rectangles not slopes (§B1.1); (4)
+  m1a1_aim (53.6) joins the abrams family batches; (5) russia-wide §B3.1
+  prism sweep; (6) fv510 "made actual" — full round RUNNING (uk lane).
 - **OWNER PRIORITY (2026-08-05): fv510 Warrior marked a PERFECT CANDIDATE
   for a full round** — next open family-lane slot takes it (its repair
   recipe was incident-disabled; re-adjudicate the oracle first, §E).

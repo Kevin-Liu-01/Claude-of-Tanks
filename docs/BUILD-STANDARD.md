@@ -462,3 +462,34 @@ real configuration demands it.
   revolution). Component censuses must list 1-tri components, and
   oracle-excision rounds check them FIRST — they are free wins with
   differential-sim proof.
+
+## §B3.1 GUN-ASSEMBLY ACCURACY (owner directive 2026-08-06: "sepv2 and
+sepv3 and the merkavas have those really ugly gun rectangular prisms and
+dont look accurate" + "many of the russian tanks have those weird
+rectangular prisms that dont emulate actual armor or equipment")
+The GUN ASSEMBLY itself is never a prism. Tube = cylinder; thermal
+sleeve = larger cylinder with clamp rings; bore evacuator = the real
+weapon's bulged sleeve at its real station; muzzle = the real brake/
+reference collar; mantlet = the real casting/shroud shape (M256 boxy
+shroud has RAKED faces, MG253 sits in a recessed collar, Russian 125mm
+carries its distinctive mantlet boot). A rectangular prism anywhere on
+the gun run is a failing read at 1x. This extends §B3 (equipment
+grammar) to the weapon: author from the real gun's photo class, not
+from mask convenience. Critics: prism reads on any gun run are an
+order, on every tank, priority equal to a silhouette break.
+
+## §B1.1 CHEEK SYMMETRY (owner directive 2026-08-06: "left cheek of all
+abrams have weird rectangles instead of the correct slopes")
+Both turret cheeks carry the real vehicle's rake — asymmetric detail
+(sights, MG mounts) rides ON the raked plane; it never replaces the
+plane with stacked rectangles. Failing read: a correct right cheek and
+a boxy left cheek (or vice versa). Critics check BOTH cheeks in both
+front-quarter views on every tank.
+
+## §C addendum — MISSING-SIDE CLASS (owner report 2026-08-06: "ariete
+and leclerc are missing left side of turrets")
+Side masks image ONE side: a missing/reversed LEFT surface is invisible
+to every side row and can survive to high gate scores. Mandatory checks
+on every round: the §C winding audit + a LEFT-side render (or yaw-180
+pair) compared against the right. A missing side is a §B2 void — gate
+score is no defense.
