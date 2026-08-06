@@ -304,6 +304,108 @@ closer-wedge/roof-corner +0.08-0.17 over 2-3 cols (the raised front roof
 is a real C1 feature); shaded-path flatness vs the ref's baked texture
 (world-continuous camo + no AO is engine-level, out of profile scope).
 
+## R3 WRAP-BREAK ROUND (misc round-3 agent) — 78.5 -> 82.3 x2 FINAL (hull 81.1->85.0, whole 78.5->82.3, turret 82.1->83.3, stations 88.6->87.0, dims 100 held, floaters 100); §B: clip 0/0 exact, contig 0, mg1+3d, parent = the two certified adjudications; npm test green. THE NON-CIRCULAR WRAP AUTHORING BREAK LANDED.
+
+GATE LINE x2 IDENTICAL: **82.3 | hull 85.0 / whole 82.3 / turret 83.3 /
+stations 87.0 / dims 100 / floaters 100**. wholeCurves binds (side_whole
+~82.3 with the certified cover classes). Stations traded -1.6 (deck
+re-lay moved slab tops; still 2nd-highest component).
+
+MEASURE OF RECORD FIRST (the round's headline law, shared with type90
+r6): tools/tmp-misc3-worldtrace.mjs — a 1024 GATE-IDENTICAL worldtrace
+that clones the geo block's mask/trace/scorer in-page and proves parity
+against the official __GEO_REPORT per run. It exposed that the push-2
+"measured ceiling ≈ every remaining worst column is certified" was
+STALE: at the current dAlong 0.775 registration the side rows carried
+systematic NON-certified offsets (deck -0.018 x12 cols, glacis +0.05..
++0.08 x8, hump aft-extent short, driver furniture +0.03..+0.05, stern
+deck -0.03..-0.05) and the official front registration (dAlong 0.02,
+NOT the 384-probe's 0) made the ±1.8 col pair L/R-ASYMMETRIC.
+
+ORDER 2 DELIVERED — THE WRAP BREAK (builder-lane, zero shared-file
+edits): the ref's front gear silhouette is a 0.39-slope ramp to z 3.17,
+a HARD KNEE (~1.8 slope) to a wrap bottom 0.79@3.34, and a THIN
+[0.78..1.00] annulus apex ending 3.575 — measured impossible for the
+kit's tangent+circle (the annulus needs R_out-R_in ~0.22 where band+pads
+carry ~0.34). The break: the visible wrap/ramp is AUTHORED as five
+per-side track-tone slabs in the **hullTrackTrimL/R buckets** (the
+russia t72b3m §B4 lane-local class — one-sided AABBs so
+track-clip-audit's lane-local skip classifies them as running gear; the
+/track/i name carries the §B4 tag) with the kit band+pads re-fitted
+INSIDE it (idler 3.30/0.945/r 0.09 — band annulus [0.79..1.10] at the
+apex col). The fill's 3.575 front face TOOK OVER the plan front lane
+from the flap (which moved to 3.34-3.46 / 1.21-1.26: any content above
+~1.0 in the 3.464-3.577 apex window prints the 3.568 col over the ref's
+[0.786..1.01] band — that content WAS the old mystery 1.339 top).
+Result: apex col 0.23 -> 0.079, knee col 0.055 -> ~0.01, ramp cols
+0.046-0.085 -> ~0.01-0.03; track-clip EXACT 0/0 (the audit's lane-local
+skip verified in anger).
+
+WHAT ELSE LANDED (fresh 1024 work orders):
+- SIDE RE-LAY: main deck 1.4615 to z 1.565; dip 1.386; fore step 1.417
+  to 2.34; glacis (2.36,1.358)->(3.05,1.248) at the CURRENT 0.775 map
+  (the r4 line was authored at the stale 0.86 map); tow cable re-draped;
+  headlights sunk (y 1.20); driver hatch/periscopes sunk; tail deck
+  raised 1.585; CENTER EXHAUST STACK x ±0.07 top 1.638 z -2.76..-2.94
+  (one mass = the ref's front ±0.04 dome want 1.659 AND its side -2.8
+  1.66 line; §B3 stack + dark grate).
+- HUMP 3-STEP: the ref deck-edge top line STEPS across x (1.625 center /
+  1.598 at 0.57-1.05 / 1.667 at 1.01-1.34 rendered) — inner 1.605 /
+  mid 1.578 / outer 1.646 segments, extended aft to -1.96; spare links
+  sunk to tops 1.578 (front want AND the side band's low edge).
+- FRONT ±1.8 PAIR: the ref's L -1.822 col is a MIRROR-ARM DOT
+  [1.272..1.314] where R carries the full skirt band — the symmetric
+  end plates paid 0.332 (THE worst front_hull col). L plate is now a
+  y 1.255-1.295 DOT STRIP (same x/z: keeps the plan ±1.84 dot, the
+  widthM pixel column, and the 1.7775 render-scale k anchor). Skirt
+  courses split into main (outer 1.7325) + LOW OUTER SKIN (1.7325-1.755,
+  top 1.295 = the ref's 1.317 outermost-col line); crest crown outer
+  pulled to 1.737 (a 4.6 mm coin-flip sliver owned the ±1.784 col).
+  front_hull 81.15 -> 90.9, front_whole 78.5 -> 87.1.
+- BANKED PUSH-2 ORDERS applied at fresh wants: roof plates ±1.12; L rail
+  top 2.31; R rail L-PROFILE (inner 0.97-1.02 top 2.417 + flange
+  1.02-1.0775 top 2.367); loader-hood inboard step 2.359; second
+  periscope sunk 0.79; commander ring stack crown 2.20 (ref hatch line
+  2.219 at its side cols; its old front cols want the 2.328 roof line).
+- PANO RE-READ: the fresh side rows show TWO ~2.50 spikes (z_w -0.14..
+  -0.26 AND -1.089) — the pano shifted +0.09 fwd onto the -1.089 col
+  and a SECOND sight pedestal landed at z_w -0.22 at the SAME
+  x -0.2325 the pano head already owns in front view (zero front cost);
+  commander periscope sunk to 2.215 (ref 2.217 line).
+
+LAWS BANKED (r3):
+1. 1024-PARITY PROBE (see type90 r6 law 1) — the 384 probe mis-read
+   front dAlong 0 vs the official 0.02; ceilings certified from a
+   non-parity probe are provisional.
+2. LANE-LOCAL FILL LAW: hullTrackTrimL/R + a fill whose silhouette
+   FOLLOWS the ref polyline is the sanctioned non-circular wrap
+   mechanism — the kit gear must be re-fitted INSIDE the authored shape
+   (pads bottom = y - r - ~0.14; band far = z + r + 0.135; check every
+   quadrant against neighbor solids: crest/flap/fenders at 15 mm+).
+3. REGISTRATION-DRIFT STALENESS: slope features (glacis, rakes)
+   authored at an old dAlong map read as VERTICAL error when the map
+   drifts (0.86 -> 0.775 here = +0.05-0.08 on the glacis); flat
+   features hide it. On any dAlong move, re-derive every raked line.
+4. ONE-MASS-TWO-VIEWS: before adding view-specific furniture, look for
+   a single mass that satisfies both views' wants at one x/z (the
+   center stack: front dome 1.659 + side 1.66; the second pedestal at
+   the pano's certified front cols) — half the cost, no new col taxes.
+
+CERTIFIED/DOCUMENTED RESIDUALS (r3, measured ceiling ≈ 84-85):
+- side_whole 82.3 BINDS: cover 1.83% certified (nose-tip PROC-ONLY +
+  two ref tail-lip cols beyond the published rear + the dims-sovereign
+  tube class); the 3.686 nose FRAME-LOCK col (0.253 — its band keeps
+  hullLengthM's front body col; pulling it re-prices dims -12); the
+  -2.763 col (0.124, ref 2.116-want spike over my 1.891 links/deck
+  line); knee/apex pad taxes (~0.07-0.11 x2 — the circular band's
+  residual inside the authored wrap).
+- turret_side 83.3: the ±0.2 pano/TURMS half-phase spike taxes (~0.06
+  x4, cliff-lerp floor); wedge-cheek/brow tops (~0.05-0.07 x3).
+- stations 87.0: the station-4 spike (certified) + deck-top trades.
+- plan rows 91.3/91.4: the ±1.85 dot-bin covers + muzzle-island class.
+- The r5-era "phantom ±1.72/1.76" class stays RETIRED.
+dims 100 robust (0.14-0.88%).
+
 ## PUSH ROUND 2 (2026-08-05, misc agent) — 76.0 -> 78.5 x2 FINAL (hull 81.1 / whole 78.5 / turret 82.1 / stations 88.6 / dims 100 / floaters 100; legacy board 86.2 -> 88.3); §B: clip 0/0, contig 0, mg1+3d, parent = the two certified adjudications. Post-amendment re-baseline + phantom-column re-probe + targeted col work; CEILING MEASURED (see below) — 82+ requires breaking a certified class.
 
 BASELINE: the ad39179 trim-boundary amendment re-gated ariete 76.3 -> 76.0

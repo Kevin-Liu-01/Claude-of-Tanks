@@ -328,6 +328,108 @@ bar and 2.4 cm whips survive the slab render where the ref's 1 px rack
 rails and mast vanish — matching the side rows means eating 2-5% station
 top error the ref never pays).
 
+## R6 LADDER (misc round-3 agent) — 79.0 -> 83.6 x2 FINAL (hull 80.4->88.5, whole 79.5->84.9, turret 79.1->84.7, stations 79.0->83.6, dims 100 held, floaters 100); §B: clip 0/0 exact, contig 0, mg1+5d, parent 0/0/0; npm test green
+
+GATE LINE x2 IDENTICAL: **83.6 | hull 88.5 / whole 84.9 / turret 84.7 /
+stations 83.6 / dims 100 / floaters 100** (baseline this round 79.0 x2 —
+every component +4.2..+8.1). Stations bind (the certified lane class).
+
+THE ROUND'S TOOL (bank, tools/tmp-misc3-worldtrace.mjs — COMMITTED-PATH
+SCRATCH, reusable fleet-wide): the older 384-px worldtrace probes are NOT
+gate-identical — `__FIDELITY_DEBUG.renderMask` renders at SIZE=384 while
+the geo gate renders at GSIZE=1024, so boundary/thin-member columns and
+even REGISTRATION decode differently (ariete's front dAlong read 0 at 384
+vs the official 0.02). The new probe clones the geo block's
+gMask/gTrace/curveScore (incl. the 2026-08-05 trim clamp) at 1024 with its
+own in-page renderer and PROVES parity every run against the same page
+load's official __GEO_REPORT (score/mean/p95/cover per row to the decimal
+— parity failure aborts authoring). Every number below came from it.
+
+WHAT LANDED (all world-frame, ref side rows +1.034 / plan +0.973):
+- TUB BOW TAPER: tub shortened to z 2.30 + a 1.15-top bow segment — the
+  1.306 tub top poked ABOVE the glacis line across z 2.35-2.96 (ref line
+  1.17-1.21; 0.086-0.098 x5 cols).
+- DECK KNEE MAP: fore deck extended to -0.88, mid course 1.4115 to -1.85,
+  1.423 course to -2.10 (ref knees 1.400@-0.82 / 1.411@-0.94..-1.79 /
+  1.423@-1.91); lift eyes sunk to 1.36.
+- SPLASH BOARD pulled to z<=3.13 (ref board ends 3.16; the 3.20 col wants
+  the bare 1.172 plateau); fender TIP RAKE 1.19@3.20 -> 1.09@3.44 (§B1
+  one surface; ref line 1.172/1.137/1.092) + 2nd armored panel to z 3.12.
+- GEAR RE-LAY: sprocket (-2.98, 0.84, r 0.14), idler (3.24, 0.73, r 0.19),
+  contact pins 2.18/-2.26 — ref ramps lift ~2.30/-2.40 and climb to HIGH
+  thin wraps (rear wrap bottom ~0.61 vs the old 0.40; front annulus
+  [0.646..0.897] at the 3.57 col). Flap raised to 0.92-1.10, mudguard pod
+  slab band raised to 1.075-1.19 (§B4 voxels), shadow-proxy z synced.
+- NOSE PLAN FRONT: the ref plan center front is a FLAT 3.222 across ±0.85
+  — nose fall re-ended 3.06->3.22 (was 3.38, +0.086 x12 plan cols); tow
+  eyes to 3.12. plan_hull muzzle island + L-cheek cliff stay certified.
+- TURRET: walls' base +0.03 (ref underside rises 1.423->1.446 — the
+  ariete rising-underside class; AABB bottom stays the gun roll, no
+  reframe); roof-core + hatch-plate L CHANNEL at x -0.215..-0.115 floor
+  1.89 (the ref's front valley between pintle mount and sight ridge —
+  the flat 2.06 core paid +0.17 x3 front cols); lid step z_w -0.11..0.31
+  (exits station i6: topPct 3.63 -> ~0.5) and x 0.01..0.225 (off the
+  ±0.1/0.25 front ridge cols); tower body/lid rear pulled to z_w ~-0.22
+  (off the -0.33 col lerp); sight-tower/step p95-anchor complex otherwise
+  UNTOUCHED (certified dims trade re-verified: every lower/relocate of
+  the 2.33 step re-priced heightM p95 below the 1% grace).
+- ASYMMETRIC MASTS (fresh front rows): ref mast cols read L 2.232 /
+  R 2.395 — L whip h 0.48 (tip 2.236@-2.19), R whip h 0.68 r 0.018
+  rot -0.78 rake 0.02 (TRUE tip 2.386 @ z_w -2.40 = the ref's side
+  mast-cliff col want 2.39). Basket rear floor rail raised to 1.66-1.70
+  (ref floor rises aft), posts/mesh pulled off the -2.40 flicker col,
+  frame bars extended z_w -2.00..-2.30 (ref 2.31 band).
+- MRS: the r5 cylZ r0.10 muzzle collar became a flat y±0.025 PLATE
+  x -0.15..0.22 (keeps the 0.198 plan-col reach at zero side-band cost;
+  ref muzzle band [1.514..1.617]).
+
+LAWS BANKED (r6):
+1. 1024-PARITY PROBE LAW (fleet): never author boundary/registration
+   work from a 384 renderMask probe — clone the gate's 1024 path and
+   prove parity in-run (the probe prints PARITY per row; a MISMATCH
+   aborts). tools/tmp-misc3-worldtrace.mjs is the template.
+2. FRUSTUM-HALFWIDTH: KIT frustum(bw,...) takes HALF-widths — a 1.70
+   first arg spans ±1.70. Mis-reading it as full width put the widened
+   nose THROUGH the wrap lanes (40-84 §B4 voxels, invisible in every
+   curve row because the wrap masks it). Check the helper signature
+   before scaling any width literal.
+3. TRUE-TIP LAW (fittings): antennaWhip's tip = foot pot (0.06) + h
+   along the rotated axis + bead — the r6 first cut placed the
+   'calculated' 2.365 tip half a column aft (actual 2.449@-2.47) and
+   spilled 0.52+0.28 err into two deck cols. Measure fitting tips on
+   the dump, not from h alone.
+4. DOUBLE THIN-MAST FLICKER (cousin of STATION END-CAP asymmetric
+   survival): at 1024 BOTH the ref's 1-px mast and my 2.4 cm whip tip
+   coin-flip per run in the side trace — the -2.40 col oscillates
+   between [1.57..2.39] (ref mast lit) and [1.66..1.79] (unlit) and no
+   single build value zeroes both rolls. Fat-tip (r 0.018 = 3px) makes
+   MY side deterministic; the residual is the ref's roll (~0.15 EV,
+   certified below).
+5. STEP-ANCHOR RELOCATION: a p95 heightM anchor is Z-FREE and X-FREE at
+   constant height — moving the 2.33 lid step out of a bad station slab
+   and off two bad front columns kept dims 100 exactly (the r5 "priced
+   vs every relocation" certification applies to HEIGHT changes only).
+
+CERTIFIED RESIDUALS (r6, the measured ceiling ≈ 84-85 on these):
+- stations 83.6 BINDS: the LINK-OVERHANG lane class (i4/i7/i8 + a
+  per-run i6 dice: proc w 3.216 vs ref slab reads 3.093-3.187, wPct 3.98
+  x3-4 with only 2 trimmed — ~1.0-1.3 mW floor) + the i2/i3
+  thin-furniture asymmetric-survival tops (~0.7 mT incl. the 2.33 frame
+  in i3). Lanes are pinned by the r4a bleed landmines; certified.
+- side_whole/side_hull: the 3.69 tube-only col (0.28, band-solver family
+  — ORCHESTRATOR-LANE, unchanged); the -2.40 double-flicker col (~0.15
+  EV, law 4); the -3.865 pod-anchor col (0.106 — the §A rear anchor's
+  band, hullLengthM-pinned); 3.57 wrap-annulus pads tax (~0.08).
+- front_whole: the R mirror counterweight col (0.13, r5b certified); the
+  1.9-2.03 chamfer/side-band cols (~0.05 x4); step front cols +0.07 x2
+  (p95 anchor trade).
+- turret_side: the M2/core front cliff-lerp (0.11 half-phase floor); the
+  step/ridge +0.05 x3.
+- plan_hull: the muzzle island col (1.20, ref node-split, unmatchable
+  without a floater); the L-cheek plan z-cliff col (0.30); the mudguard
+  tip-depth widthM trade (0.08).
+dims 100 robust (0.12-0.63%; heightM anchor = step 4 cols + frame).
+
 ## VERTEX ROUND r4 (2026-08-04, misc agent) — FULL RE-LAY: 0 -> 63.7 min (hull 27.3->68.8, whole 0->63.7, turret 0->68.4, stations 0->76.4, dims 100)
 
 Gate x2 stable: min **63.7** | hull 68.8 / whole 63.7 / turret 68.4 /

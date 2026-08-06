@@ -2167,8 +2167,12 @@ function buildM1a2(P, V) {
   // HULL mask — wf flips the proc works field / sponson stowage back to the
   // graduation-state hull arrangement (freeze bc225318 class: proven 91.5
   // all-components under exactly this mask split). sep gates the variant's
-  // §H.4 loadout tells. m1a2's own entry carries neither flag: both paths
-  // below are byte-identical no-ops for it (hash-freeze safe).
+  // §H.4 loadout tells ONLY (cable/CIPs/crate/twin fifties). The §B3
+  // equipment grammar (gun-root sleeve band, wind sensor, bow shoe pads,
+  // rail-bin lid grammar) is FAMILY-SHARED since the m1a2 graduate-change
+  // port (2026-08-05): identical world geometry on both variants where the
+  // mask splits agree, m1a2-authored tiling where they don't (rail bins).
+  // m1a2's own entry carries neither flag.
   const wf = !!(V && V.worksHull);
   const sep = !!(V && V.sepv2);
   // World-coordinate helpers. hb: hull box by extents; sb: mirrored hull box
@@ -2579,15 +2583,18 @@ function buildM1a2(P, V) {
       // audit zone; carries the cert 0.53/0.465 side bins to 3.595.
       sb('hullTrack', s, 0.955, 1.41, 0.53, 0.88, 3.30, 3.465);
       sb('hullTrack', s, 0.955, 1.41, 0.465, 0.88, 3.48, 3.595);
-      if (sep) {
-        // §B3 BOX-CLEANUP (sepv2 round, 2026-08-05): the two cert blocks
-        // read as bare dark cuboids floating ahead of the track at 1x —
-        // they ARE the print's stowed idler shoes, so they take the
-        // track-shoe grammar: proud pad plates + pale guide-horn dots on
-        // the OUTER face only (x to 1.417, inside the 1.419 filler-band
-        // face; y/z strictly inside each certified block, so every side
-        // bin and plan/front row is byte-equal). m1a2 keeps the bare
-        // blocks (frozen f3c34424 — 1x read reported for its own round).
+      {
+        // §B3 BOX-CLEANUP (sepv2 round, 2026-08-05; PORTED to m1a2 in its
+        // graduate-change round the same day — family-shared, both
+        // variants): the two cert blocks read as bare dark cuboids
+        // floating ahead of the track at 1x — they ARE the print's stowed
+        // idler shoes, so they take the track-shoe grammar: proud pad
+        // plates + pale guide-horn dots on the OUTER face only (x to
+        // 1.417/1.4185, inside the 1.419 filler-band face; y/z strictly
+        // inside each certified block, and the front/plan pixel columns
+        // out to the 1.4416 pin caps are already band-lit — every side
+        // bin and plan/front row is byte-equal; proven gate-neutral on
+        // sepv2, re-proven on m1a2 this round).
         for (const [zA, zB, y0] of [[3.30, 3.465, 0.53], [3.48, 3.595, 0.465]]) {
           const n = 3;
           const step = (zB - zA - 0.02) / n;
@@ -2682,14 +2689,46 @@ function buildM1a2(P, V) {
       hb('hullDetail', 1.44, 1.4455, 2.002, 2.022, zc - 0.014, zc + 0.014);    // R hinges
     }
   } else {
-    tb('turret', -1.445, -1.325, 1.566, 2.115, -2.02, -0.92); // left rail box
+    // §B3 GRADUATE-CHANGE PORT (m1a2 round, 2026-08-05; the sepv2-round
+    // class): the rail boxes are the ref's sponson STOWAGE BINS — bare
+    // camo slabs at 1x. In THIS (turret-mask) split the sepv2's x-proud
+    // dressing is illegal twice over: turret_side sits 0.03 over the
+    // frozen 91.0 print line, and the right step face 1.415 has ZERO
+    // proud headroom against the ~1.43 plan-bin boundary (r2 finding 5).
+    // The bin grammar therefore lands as Z-SPLIT PLANE TILING (the sepv2
+    // clamp-collar mechanism): each certified box re-tiles into body +
+    // dark lid-seam line + a lid band segmented [camo | dark latch tabs |
+    // pale hinge points] at the EXACT certified outer planes — abutting
+    // tiles only, zero proud, zero overlap: every side/plan/front trace
+    // is byte-identical by construction.
+    const binTile = (x0, x1, yb, yt, z0, z1) => {
+      const seam0 = yt - 0.063, seam1 = yt - 0.057;          // 6 mm seam line
+      tb('turret', x0, x1, yb, seam0, z0, z1);               // bin body
+      tb('turretDark', x0, x1, seam0, seam1, z0, z1);        // lid seam
+      const segs = [];
+      for (const zc of [-1.80, -1.47, -1.14]) segs.push([zc - 0.02, zc + 0.02, 'turretDark']);
+      for (const zh of [-1.965, -0.975]) segs.push([zh - 0.014, zh + 0.014, 'turretDetail']);
+      segs.sort((a, b) => a[0] - b[0]);
+      let zAt = z0;
+      for (const [sa, sz, bk] of segs) {
+        if (sa > zAt) tb('turret', x0, x1, seam1, yt, zAt, sa);
+        tb(bk, x0, x1, seam1, yt, sa, sz);
+        zAt = sz;
+      }
+      if (zAt < z1) tb('turret', x0, x1, seam1, yt, zAt, z1);
+    };
+    binTile(-1.445, -1.325, 1.566, 2.115, -2.02, -0.92);     // left rail bin
     tb('turret', -1.317, -1.283, 1.566, 1.695, -1.90, -1.10); // left rail step
-    tb('turret', 1.205, 1.315, 1.566, 2.115, -2.02, -0.92);   // right rail box
+    // Right box: only its 2.042..2.115 band shows above the step — one
+    // seam line there (same tiling mechanism, same planes).
+    tb('turret', 1.205, 1.315, 1.566, 2.076, -2.02, -0.92);  // right box body
+    tb('turretDark', 1.205, 1.315, 2.076, 2.082, -2.02, -0.92); // box lid seam
+    tb('turret', 1.205, 1.315, 2.082, 2.115, -2.02, -0.92);  // box lid band
     // r2: step edge 1.44 -> 1.415 (clear of BOTH trace grids' bin boundary —
     // the gate's ~1.43 and the workorder's 1.444; at 1.44/1.429 its deep aft
     // span AA-bled into the outer bin and hung the 1.48 turret_plan column
     // 1.1 m aft, err 0.58-0.59; the r5 boundary law, measured on each grid).
-    tb('turret', 1.315, 1.415, 1.566, 2.042, -2.02, -0.92);   // right rail step
+    binTile(1.315, 1.415, 1.566, 2.042, -2.02, -0.92);       // right step = the exposed bin face
   }
 
   // ---- mid-deck works field: TURRET furniture (§B5 r2 re-parent) ---------
@@ -2736,23 +2775,25 @@ function buildM1a2(P, V) {
   // r2: x widened -0.20 -> -0.225 (census glsaa_5 -0.223..-0.137) — the
   // works-A departure left the -0.221 front bin reading the post alone,
   // and the old edge missed that bin by half a millimetre (err 0.164).
-  if (sep) {
-    // §B3 BOX-CLEANUP (sepv2 round, 2026-08-05): the bare square peg reads
-    // as an unidentifiable post at 1x — re-authored as the INSTRUMENT it is
-    // (§B3: a named thing with its tell): sensor head + slim mast + base
-    // bracket. MASK-EXACT swap: the head keeps the certified 1.925 top
-    // plane over the FULL -0.225..-0.13 footprint (front bin -0.221 and
-    // the side col 2.52 spike hold), the mast fills the same side z-window
-    // (r 0.015 at z 2.627 = [2.612..2.642] exact) below it, and every
-    // front bin below the head stays covered by works block A behind
-    // (union along z). Plan interior to the deck band throughout.
+  {
+    // §B3 BOX-CLEANUP (sepv2 round, 2026-08-05; PORTED to m1a2 in its
+    // graduate-change round the same day — family-shared): the bare square
+    // peg reads as an unidentifiable post at 1x — re-authored as the
+    // INSTRUMENT it is (§B3: a named thing with its tell): sensor head +
+    // slim mast + base bracket. MASK-EXACT swap in BOTH registrations: the
+    // head keeps the certified 1.925 top plane over the FULL -0.225..-0.13
+    // footprint (front bin -0.221 and the side col 2.52 spike hold), the
+    // mast fills the same side z-window (r 0.015 at z 2.627 = [2.612..
+    // 2.642] exact) below it, and the trace metric is a TOP/BOT envelope —
+    // the open run under the head prices zero in either mask split (sepv2:
+    // works-A also unions the front bins along z; m1a2: works-A is
+    // turret-side, the head itself holds the bin top). Plan interior to
+    // the deck band throughout.
     hb('hullDetail', -0.225, -0.13, 1.845, 1.925, 2.612, 2.642);           // sensor head
     P.add('hullDark', box(0.075, 0.024, 0.004), -0.1775, 1.887, 2.610);    // lens slot
     P.add('hullDark', cylY(0.015, 0.015, 0.455, 10), -0.1775, 1.6275, 2.627); // mast
     P.add('hullDark', cylY(0.021, 0.021, 0.018, 10), -0.1775, 1.836, 2.627); // collar
     hb('hullDetail', -0.225, -0.13, 1.30, 1.42, 2.612, 2.642);             // base bracket
-  } else {
-    hb('hullDetail', -0.225, -0.13, 1.30, 1.925, 2.612, 2.642);
   }
   // Works-field dressing (visual r2): the bare camo boxes read as a crate
   // stack of pale-edged line-art from top/heroes. Tarp caps, ratchet
@@ -3542,9 +3583,10 @@ function buildM1a2(P, V) {
   gb('gunMount', -0.42, 0.42, 1.14, 1.92, 0.38, 0.90);     // rotor/mantlet
   P.add('gunMount', cylZ(0.115, 1.30, 14), 0, 0, 1.55 - M1A2_GUNP[2]);  // sleeve
   // §B3 BOX-CLEANUP (sepv2 round, 2026-08-05 — the owner's "random boxes
-  // ... especially around guns" case): under `sep` the D/E band re-reads as
-  // the M256's ARMORED SLEEVE HOUSING instead of bare stacked rectangles.
-  // Mechanics, all mask-exact:
+  // ... especially around guns" case; PORTED to m1a2 in its graduate-change
+  // round the same day — family-shared, both variants): the D/E band reads
+  // as the M256's ARMORED SLEEVE HOUSING instead of bare stacked
+  // rectangles. Mechanics, all mask-exact:
   // - top edges ROUND via the crown-pair recipe (lower box to top-R + edge
   //   cylinder tangent on BOTH certified planes + top slab at the exact
   //   top): every side top, plan extent and front bin is byte-equal — the
@@ -3554,9 +3596,7 @@ function buildM1a2(P, V) {
   //   tops stay under the band tops — zero-row class);
   // - the tube exits through a dark BOOT collar inside the [3.82..3.93]
   //   side-col envelope (§B3: a gun exits through a collar, not a wall).
-  // m1a2 keeps the original three-box author byte-identical (graduate
-  // freeze f3c34424; its own 1x read is REPORTED, not forced).
-  if (sep) {
+  {
     const RB = 0.04;
     for (const [x0, x1, top, z0, z1] of [
       [-0.20, 0.42, 2.148, 2.265, 2.375],                  // D1
@@ -3568,10 +3608,6 @@ function buildM1a2(P, V) {
         top - RB - M1A2_GUNP[1], (z0 + z1) / 2 - M1A2_GUNP[2]);
       gb('gunMount', x0, x1 - RB, top - RB, top, z0, z1);
     }
-  } else {
-    gb('gunMount', -0.20, 0.42, 1.565, 2.148, 2.265, 2.375); // sight band D1
-    gb('gunMount', -0.20, 0.42, 1.565, 2.175, 2.375, 2.44);  // D1 rear step
-    gb('gunMount', -0.20, 0.42, 1.565, 2.148, 2.44, 2.905);  // sight band D2
   }
   // (§B5 r2 measurement note, bank it: the vertex-workorder's 96-col grid
   // is PHASE-SHIFTED from the gate's — its 0.179 plan bin (boundary 0.124)
@@ -3581,7 +3617,7 @@ function buildM1a2(P, V) {
   // "fixed" the workorder row and broke the real one (err 0.294) — REVERTED.
   // Confirm bin ownership on the gate's own worst list before moving edges.)
   gb('gunMount', -0.20, 0.12, 1.575, 2.172, 2.905, 2.955); // D2 center tail
-  if (sep) {
+  {
     // D left corner, outer top edge rounded at -0.26 (tangents exact).
     gb('gunMount', -0.26, -0.20, 1.565, 2.11, 2.265, 2.82);
     P.add('gunMount', cylZ(0.04, 0.555, 12), -0.22, 2.11 - M1A2_GUNP[1], 2.5425 - M1A2_GUNP[2]);
@@ -3612,9 +3648,6 @@ function buildM1a2(P, V) {
     // Tube exit boot at the E face (world z 3.878..3.928, r 0.10 — inside
     // the [3.82..3.93] col's existing 1.565..2.118 envelope).
     P.add('gunDark', cylZ(0.10, 0.05, 14), 0, 0.0075, 3.903 - M1A2_GUNP[2]);
-  } else {
-    gb('gunMount', -0.26, -0.20, 1.565, 2.15, 2.265, 2.82);  // D left corner
-    gb('gunMount', -0.17, 0.12, 1.565, 2.118, 2.955, 3.895); // sensor band E
   }
   gb('gunMountDark', -0.20, 0.36, 1.60, 2.06, 2.46, 2.52); // band seams
   gb('gunMountDark', -0.12, 0.07, 1.62, 2.06, 3.04, 3.08);

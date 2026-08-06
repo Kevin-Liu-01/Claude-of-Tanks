@@ -4228,7 +4228,7 @@ function buildLeo2Revolution(P) {
   const r9gearL = [];                                                          // B1 near-black band trim -> olive-dark clone (left lane)
   const r9gearR = [];                                                          // (right lane)
   // ---- hull ----
-  P.add('hull', box(2.40, 1.00, 5.80), 0, 0.86, 0.0);                          // tub y 0.36..1.36, z -2.9..2.9
+  P.add('hull', box(2.40, 1.022, 5.80), 0, 0.849, 0.0);                        // tub y 0.338..1.36, z -2.9..2.9 (r17: bottom 0.36 -> 0.338 — the honest ref belly prints 0.337 across ~30 mid front columns; side/plan blind to it, tracks own every side bottom)
   // §B5 DE-FUSION r16 (owner report "turret fused with hull"): the old
   // raised deck (plate 2.06 + underfill + 1.99 fore shelf + 2.06-2.19 bow
   // humps + 2.13-2.21 riser stair + 2.21 engine course + 2.33 corner posts)
@@ -4635,12 +4635,29 @@ function buildLeo2Revolution(P) {
   // 13.65) are replaced by the pale open-frame lattice in the finish block
   // below — same z-envelope (-3.877..-3.822 inside the old -3.88..-3.82),
   // interior to every gate row (top rail 1.725 / tail box own the reads).
-  P.add('hullDetail', box(2.85, 0.05, 0.05), 0, 1.70, -3.86);                  // tail top rail (body col -3.88)
+  P.add('hullDetail', box(2.85, 0.05, 0.05), 0, 1.6895, -3.86);                // tail top rail (body col -3.88; r17: 1.70 -> 1.6895, top 1.7145 — the honest ref front line at the rail z is 1.71 full-width, the old 1.725 top printed a 1.721 lid over every mid column once the riser died)
   P.add('hullDetail', box(2.85, 0.05, 0.05), 0, 1.19, -3.86);                  // low rail (r5: 1.08 -> 1.19 — the ref -3.90 column bottoms 1.167)
   // r2 tail riser + mast: the ref -3.68 col tops 1.796 and its -3.79 col
   // carries a 2.464 stack (under the 2.68 anchor — no p95 cost); the mast
   // front column hides under the 2.68 sensor pod at x -1.3
-  P.add('hull', box(2.0, 0.065, 0.10), 0, 1.7425, -3.685);
+  // HULL-RETUNE r17: the 2.0-wide riser was a bake-mirror survivor — the
+  // HONEST ref front reads 1.71 across every mid column (the 1.796 read was
+  // vlo bake). Its side-row line is REAL though: ref side -3.681 tops 1.776
+  // = mast-column base equipment hidden inside the mast's own front column
+  // (x 0.0645..0.0845 prints only col 0.067 = the 2.47 stack). NARROWED to
+  // exactly the mast column: side -3.681 keeps its 1.776 read, the ~44 mid
+  // front columns drop to the honest deck line below.
+  P.add('hull', box(0.02, 0.065, 0.11), 0.0745, 1.7425, -3.69);
+  // HULL-RETUNE r17: the honest print's REAR DECK PLATE — full width to the
+  // stern: ref plan-hull zmin -3.856 CONTINUOUS x 1.43..1.982 (pixel-column
+  // probe) and ref front-hull tops 1.71 out to +-2.00 sourced at z
+  // -3.95..-3.65 (z-windowed sweep). One plate carries three rows: front
+  // outboard cols 1.46..2.00 rise 1.688 -> 1.71, plan outboard rear edges
+  // -3.825 -> -3.865, mid/shelf cols read a STABLE 1.71 bin (the bare tail
+  // box top at 1.710 is a 40%-coverage coin flip). Rests on the tail box +
+  // shoulders (y overlap at 1.68..1.71), meets the dropped top rail aft
+  // (z overlap -3.865..-3.835); x 1.989 < the +-2.0 width guard.
+  P.add('hull', box(3.978, 0.032, 0.245), 0, 1.696, -3.7425);
   // r5: mast at x 0.06 with a slim cap — the ref's OWN mast prints its 2.467
   // in the front 0.074 column (fresh 384 probe); ours at 0.075 was right all
   // along but its 0.1025-wide CAP edge leaked the read into the next column
@@ -4670,8 +4687,30 @@ function buildLeo2Revolution(P) {
   // hump z 1.63..1.77; everything ≤ the plate/hump tops)
   P.add('hull', cylY(0.18, 0.18, 0.020, 14), -0.45, 1.520, 1.91);              // hatch ring (top 1.530 — under every band line, inside the 1.540 band's z-window)
   P.add('hullDark', torus(0.18, 0.008, 14), -0.45, 1.526, 1.91);               // hatch seam (crown 1.534 — sub-line)
-  periscope(P, 'hullDetail', -0.62, 1.518, 1.70);
-  periscope(P, 'hullDetail', -0.36, 1.518, 1.68, 0.25);
+  // P-1 (defuse-recert critic order): the fore-ring cluster read as
+  // flat-grey unidentified cuboids against the new black ring fill at
+  // close-front/hero-fl (DE-BAKE CONTRAST WINDOW class). Each piece gets
+  // its tell in the deck material family, tops held under the local
+  // 1.566/1.588 plate lines (mask-neutral):
+  // - driver hatch LID on the riser ring: camo lid disc + dark lid seam +
+  //   pale hinge blocks (bow side, on the ref's own 1.568 hatch plate
+  //   zone) + grab handle — the "hatch riser gets its lid seam" order.
+  P.add('hull', cylY(0.165, 0.165, 0.012, 14), -0.45, 1.536, 1.91);            // hatch lid (top 1.542)
+  P.add('hullDark', torus(0.150, 0.005, 14), -0.45, 1.5425, 1.91);             // lid seam ring (crown 1.5475)
+  P.add('hullDetail', box(0.045, 0.012, 0.032), -0.55, 1.5435, 2.062);         // hinge block L (top 1.5495)
+  P.add('hullDetail', box(0.045, 0.012, 0.032), -0.35, 1.5435, 2.062);         // hinge block R
+  P.add('hullDark', box(0.02, 0.010, 0.085), -0.45, 1.548, 1.885);             // lid grab handle (top 1.553)
+  // - KIT periscope bodies re-dressed per the #1 driver-bank grammar
+  //   (pale hood frame + smoked-glass slit): camo hood mass first (kills
+  //   the bare-grey read), pale lip, glass slit on the bow face.
+  periscope(P, 'hullDetail', -0.62, 1.512, 1.70);
+  P.add('hull', box(0.155, 0.020, 0.108), -0.62, 1.544, 1.70);                 // hood cap (camo, top 1.554)
+  P.add('hullDetail', box(0.165, 0.010, 0.030), -0.62, 1.548, 1.752);          // pale hood lip over the slit
+  P.add('hullGlass', box(0.122, 0.026, 0.012), -0.62, 1.5335, 1.7545);         // smoked slit, bow face
+  periscope(P, 'hullDetail', -0.36, 1.512, 1.68, 0.25);
+  P.add('hull', box(0.155, 0.020, 0.108), -0.36, 1.544, 1.68, 0, 0.25, 0);     // hood cap (camo)
+  P.add('hullDetail', box(0.165, 0.010, 0.030), -0.3471, 1.548, 1.7304, 0, 0.25, 0); // pale hood lip over the slit
+  P.add('hullGlass', box(0.122, 0.026, 0.012), -0.3465, 1.5335, 1.7328, 0, 0.25, 0); // smoked slit, bow face
   // r9 C1 TWIN FAN ARCHES (r7 critic driver 3 — "engine-deck fans missing"):
   // the old flush discs at (±0.72, -1.15) sat at 2.034..2.058, UNDER the
   // 2.06 deck-plate top — z-buried, invisible, and at the WRONG z anyway:
@@ -4688,20 +4727,24 @@ function buildLeo2Revolution(P) {
   // read. Zero new columns: every top <=1.718 inside the r9-certified
   // +8.5 mm budget, x/z inside the existing well footprints. Hinge bar gets
   // the ordered contrast plate (dark on pale).
+  // HULL-RETUNE r17: well furniture re-sunk — with the bake-mirror riser
+  // narrowed, these become the mid columns' front-top painters; every top
+  // pulled <=1.712 (the honest 1.71 print bin; the old 1.7185 rim line
+  // straddles the next bin edge on the r16 grid). Same wells, 6 mm deeper.
   for (const s of [-1, 1]) {
-    P.add('hullDark', cylY(0.36, 0.36, 0.004, P.q ? 26 : 16), s * 0.42, 1.7125, -3.2675); // recess disc (top 1.7145)
-    P.add('hullDetail', cylY(0.29, 0.29, 0.003, P.q ? 26 : 16), s * 0.42, 1.7135, -3.2675); // screen ring (r9-b: pale — the ref arches read BRIGHT, luma 84-93)
-    P.add('hullDark', cylY(0.225, 0.225, 0.003, P.q ? 24 : 14), s * 0.42, 1.7145, -3.2675); // inner grille disc
-    P.add('hullDetail', torus(0.355, 0.005, P.q ? 28 : 18), s * 0.42, 1.7135, -3.2675);   // rim ring (tube top 1.7185)
-    P.add('hullDetail', box(0.66, 0.003, 0.050), s * 0.42, 1.7165, -3.2675 + 0.075);      // chord slat (dz +0.075)
-    P.add('hullDetail', box(0.66, 0.003, 0.050), s * 0.42, 1.7165, -3.2675 - 0.075);      // chord slat (dz -0.075)
-    P.add('hullDetail', box(0.52, 0.003, 0.050), s * 0.42, 1.7165, -3.2675 + 0.205);      // chord slat (dz +0.205)
-    P.add('hullDetail', box(0.52, 0.003, 0.050), s * 0.42, 1.7165, -3.2675 - 0.205);      // chord slat (dz -0.205)
-    P.add('hullDark', cylY(0.055, 0.055, 0.006, 10), s * 0.42, 1.7135, -3.2675);          // hub
-    P.add('hull', box(0.80, 0.004, 0.048), s * 0.44, 1.7145, -3.617);                     // hinge chord bar against the riser
-    P.add('hullDark', box(0.26, 0.003, 0.042), s * 0.42, 1.7168, -3.617);                 // hinge contrast plate (top 1.7183)
+    P.add('hullDark', cylY(0.36, 0.36, 0.004, P.q ? 26 : 16), s * 0.42, 1.7095, -3.2675); // recess disc (top 1.7115)
+    P.add('hullDetail', cylY(0.29, 0.29, 0.003, P.q ? 26 : 16), s * 0.42, 1.7095, -3.2675); // screen ring (r9-b: pale — the ref arches read BRIGHT, luma 84-93)
+    P.add('hullDark', cylY(0.225, 0.225, 0.003, P.q ? 24 : 14), s * 0.42, 1.7105, -3.2675); // inner grille disc (top 1.712)
+    P.add('hullDetail', torus(0.355, 0.005, P.q ? 28 : 18), s * 0.42, 1.707, -3.2675);    // rim ring (tube top 1.712)
+    P.add('hullDetail', box(0.66, 0.003, 0.050), s * 0.42, 1.7105, -3.2675 + 0.075);      // chord slat (dz +0.075)
+    P.add('hullDetail', box(0.66, 0.003, 0.050), s * 0.42, 1.7105, -3.2675 - 0.075);      // chord slat (dz -0.075)
+    P.add('hullDetail', box(0.52, 0.003, 0.050), s * 0.42, 1.7105, -3.2675 + 0.205);      // chord slat (dz +0.205)
+    P.add('hullDetail', box(0.52, 0.003, 0.050), s * 0.42, 1.7105, -3.2675 - 0.205);      // chord slat (dz -0.205)
+    P.add('hullDark', cylY(0.055, 0.055, 0.006, 10), s * 0.42, 1.7085, -3.2675);          // hub (top 1.7115)
+    P.add('hull', box(0.80, 0.004, 0.048), s * 0.44, 1.709, -3.617);                      // hinge chord bar on the deck (r17: -5.5 mm with the wells — top 1.711)
+    P.add('hullDark', box(0.26, 0.003, 0.042), s * 0.42, 1.7105, -3.617);                 // hinge contrast plate (top 1.712)
     for (let k = 0; k < 4; k++) {
-      P.add('hullDark', box(0.02, 0.004, 0.02), s * (0.14 + k * 0.19), 1.7165, -3.617);   // chord bolt row
+      P.add('hullDark', box(0.02, 0.004, 0.02), s * (0.14 + k * 0.19), 1.7102, -3.617);   // chord bolt row (top 1.7122)
     }
     P.add('hullDetail', cylY(0.085, 0.085, 0.018, 12), s * 1.26, 1.601, 0.35); // deck disc on the honest 1.619 deck (§B5 r16)
   }
@@ -5618,7 +5661,15 @@ function buildLeo2Revolution(P) {
       const deckTint = [];
       // §B5 r16: tint plates ride the honest deck bands (+4.5 mm, each
       // fully inside ONE band's z-window)
-      deckTint.push(prepCamo(KIT.xform(box(0.62, 0.004, 0.36), -0.55, 1.5895, -0.74), 0, 0.5, 0.93));
+      // P-2 (defuse-recert critic order): the single dark aft rect read
+      // ruler-edged at 3x in the top view — split into three overlapping
+      // ry-rotated quads at staggered tints (the mottle grammar). Every
+      // rotated corner stays inside the 1.585 band's z-window (-0.95..
+      // -0.52, >=12 mm margins), tops stagger 1.5891/1.5893/1.5895 (all
+      // inside the +4.5 mm E1/E2 budget over the 1.585 band).
+      deckTint.push(prepCamo(KIT.xform(box(0.40, 0.004, 0.28), -0.60, 1.5891, -0.73, 0, 0.30, 0), 0, 0.5, 0.90));
+      deckTint.push(prepCamo(KIT.xform(box(0.34, 0.004, 0.24), -0.44, 1.5893, -0.755, 0, -0.42, 0), 0, 0.5, 0.94));
+      deckTint.push(prepCamo(KIT.xform(box(0.26, 0.004, 0.20), -0.68, 1.5895, -0.70, 0, 0.65, 0), 0, 0.5, 0.87));
       deckTint.push(prepCamo(KIT.xform(box(0.70, 0.004, 0.42), 0.42, 1.4445, 2.57), 0, 0.5, 1.06));
       const dm = new THREE.Mesh(KIT.mergeAll(deckTint), P.mats.hull);
       dm.receiveShadow = true;

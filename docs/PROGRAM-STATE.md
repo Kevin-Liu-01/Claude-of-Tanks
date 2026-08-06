@@ -115,8 +115,8 @@ honestly parked at 88.9 pending its retune)
   walls, merkava2b 39.6 / 2d 34.9 / 4 0 / 4b 34.1 (family rebuilds),
   t54 winding repair, m48 pitch, type74+t80bv scaleToOverall ruling.
 
-## 5. IN-FLIGHT AGENTS at handoff (6; on their notifications: verify
-rigs+hashes+packets -> pathspec commits -> re-freezes -> spawn follow-ups)
+## 5. IN-FLIGHT AGENTS (SUPERSEDED BY §12 — the 2026-08-05 device
+handover interrupted these; respawn per §12)
 1. DONE+RATIFIED: abrams dual critic (m1a1ha f5c556dc, sepv2 §10 run).
 2. DONE+RATIFIED: revolution re-cert (1993cfb1); retune round SPAWNED
    (hull 88.9 -> 90+ + P-1 fore-ring tells + P-2).
@@ -243,3 +243,80 @@ perf budget (docs/cert-r6-* artifacts; contended attempts REFUSED by
 design). Under constant fleet load it may never find a window — that is
 honest; do not relax its stamps. Re-launch overnight when agent load
 drops: `nohup node tools/quietcert.mjs >> docs/quietcert-r6.log 2>&1 &`
+
+## 11. SESSION CHRONOLOGY 2026-08-05 (the takeover-day landings, in order)
+0e47256 merkava re-cert PASS x4 — pod tells certified, four re-freezes
+(1fda7dbd/87ba249c/4880b0a4/93e7b4eb). 8cfa546 patton m26/m45 band (m45
+59.4->81.2; m26 warp request filed). 0eeaced misc push-2 (type90 79.0,
+ariete 78.5 ceiling-measured). 0c37688 russia tail-2 (t90sm 46.9,
+t72b_1987 56.0 ceiling-certified). a6c01ed rulebook six-law bank.
+bc17984 m26 batch-42 warp EXECUTED (print cured, 74.8, dims 91.9 =
+re-anchor debt; heightM 3.08 true-up). fd2c365 GRADUATION centurion3
+(24th, bf0a45e8). c9ddba0 leo2_revolution coupled vlo de-fusion (honest
+88.9). e85e546 abrams round (m1a1ha rear-fix + sepv2 §B3). 588fe43 this
+registry + §10 helper-expansion amendment. decec28 takeover sweep (full
+tree). 636d3e4 GRADUATION m1a2_sepv2 (25th, b489ba14) + m1a1ha f5c556dc
+and revolution 1993cfb1 re-certs RATIFIED + §J critic laws. 92f5817 uk
+round-4 (ch1 90.1 orders delivered, c5 chamfer grammar law).
+
+## 12. INTERRUPTED ROUNDS — respawn briefs for a new device
+This session's background agents die with the machine. Their WIP (if any)
+is snapshot-committed; each line below is the respawn mission. Use the §6
+agent-brief boilerplate (never-commit, single-owner file, env line, vite
+74xx-77xx, FIFO §F.1, never-wait-on-watchers, graduate hashes, false-0,
+read BUILD-STANDARD+packets first, §F.4 report).
+1. misc r3 (misc.js): type90 79.0 ladder (+10 or ceiling; band-solver
+   3.68-col is orchestrator-lane) + ariete non-circular wrap-break attempt
+   (else certify ceiling). Packets: type90.md, ariete.md round-2 decodes.
+2. russia tail-3 (russia.js): t62mv1 47.9 decode-first (crown/cupola caps,
+   drum-stack) + t90sm 46.9 §B1 loft rework (dims 92.2->100, rear clip
+   376->0). Hold pt91m a37a0d24 / t72b3m 3d92bb98 / t84 fd0bca6c /
+   isu122s fdb91d50 / isu152 6df708a8.
+3. patton re-anchor (patton.js): m26 74.8 post-warp re-anchor from the
+   WARPED extract (docs/references/vertex/m26_pershing.json @ bc17984);
+   dims 91.9->100 via proc M2-band lift to 3.08; banked §B orders in
+   m26_pershing.md. Hold m46 dfacd57c / m47 70941de0 / m60a1 81e69e34 /
+   m60a3 efcde5c4.
+4. uk round-5 (uk.js): ch1 (gate wall 90.1, spare 0.1) O6 shading family +
+   close-roof camo + dead-rear MG; c5 crown-tab pair + plateau-vs-pear
+   casting + top clutter. Self-read >=8.9 every view -> request
+   adjudication (26th/27th). Hold chieftain5 5117b9a8 / centurion3
+   bf0a45e8.
+5. leopard retune (leopard.js): revolution hull 88.9->90+ vs repaired
+   bytes (vertex-workorder; shoe-pin-cap opt-in needs orchestrator ruling)
+   + P-1 fore-ring tells + P-2 top tint; graduate-change -> new hash
+   candidate + changed views -> re-cert critic. Hold leo2a5/leo2a6/kf51.
+6. m1a2 re-cert critic: abrams.js holds the DONE §B3 port round (gate
+   frozen-row EXACT x2, candidate hash 248a8468, changed views = all 14;
+   packet m1a2.md). Spawn the graduate-change re-cert critic; on PASS land
+   abrams.js + packet + re-freeze 248a8468 in ONE commit.
+7. LOD running-gear fix (tankFactory.js + kit.js, owner task 2026-08-05):
+   two invisible LOD1 rig_hull meshes (792 tris each, mirrored) overrun
+   the ariete hull envelope (AABB z to -5.28 vs tail -3.90; x to ±2.35 vs
+   ±1.80) — garbage at >150 m. Reproduce via tools/tmp-ariete-probe,
+   locate in buildRunningGear, scope fleet, fix geometry inside envelope,
+   prove: probe clean, long-range pair, LOD0 pixel-identity, gate rows
+   unchanged, FULL 25-graduate hash old->new table (tmp-hashgeo hashes
+   invisible meshes -> expect fleet-wide hash change -> orchestrator mass
+   re-freeze in ONE commit).
+8. Shoe-envelope audit extension (track-clip-audit.{mjs,html} + §B4 text,
+   owner task 2026-08-05): audit tests BAND voxels but players see the
+   SHOE system ~+0.13 outside (m1a1ha read 0/0 while shoes clipped).
+   Add shoeVox column (sample instanced pad geometry; fallback dilation by
+   the measured kit offset), keep bandVox output backward-compatible,
+   fleet re-run + blind-spot findings table (shoeVox>0 where bandVox=0 ->
+   per-family orders), validate on fixed m1a1ha, update §B4 semantics.
+Plus the standing my-lane queue in §7.
+
+## 13. HOW TO RESUME FROM A NEW DEVICE (the loop protocol)
+1) Clone; `npm install`; verify `npm test` (166 + track-geometry).
+2) Read this file, BUILD-STANDARD.md, GEOMETRY-GATE.md.
+3) Respawn §12 rounds (one agent per profile file; two critics max
+   concurrently for FIFO sanity; 6-8 agents total is the proven load).
+4) Land on notification: verify hashes yourself (tmp-hashgeo), pathspec/
+   cacheinfo commits (§6), re-freezes only on critic PASS, §10 on
+   graduation PASS, push after each wave, update §3/§4/§5 rows here.
+5) Re-arm a ~25-min heartbeat that re-reads this file as the handoff.
+The owner's standing orders: keep going with everything, many agents,
+LIVING RULEBOOK (every lesson lands in BUILD-STANDARD the turn it
+arrives), never gate m60a1/m60a3/kv2, never false-0, owner port 5001.
