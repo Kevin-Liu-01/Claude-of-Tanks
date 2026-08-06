@@ -75,9 +75,9 @@
    "gatePassed": false,
    "components": {
     "hullCurves": 0,
-    "wholeCurves": 6.2,
+    "wholeCurves": 8.9,
     "turretCurves": 0,
-    "stations": 9.2,
+    "stations": 8.5,
     "dims": 100,
     "floaters": 100
    }

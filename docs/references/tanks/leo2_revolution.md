@@ -2053,3 +2053,64 @@ dims 99.5 / floaters 100. The §B7 cap now covers only genuine
 real-vs-print divergence (wedge fore-sweep, module-depth classes, 3.23%
 cover where the print carries NO solid side modules — the real vehicle
 does). Proc untouched (ce7f3824 stands ratified).
+
+## r19 P-R1/P-R2 TONE ROUND (2026-08-06, leopard BASE-21 starter round —
+## the r18 re-cert's non-blocking orders; graduate-change candidate)
+
+Orders executed (albedo/tone only, ZERO geometry):
+- **P-R1 fill/recess tone pass WITH the top-face darkening term**
+  (SHADOW-FILL LIT-TOP law, §J №6): the four `leoRingGapShadowFill`
+  boxes move to a dedicated fillDark clone (cables keep their certified
+  two-point tone) and both fill + `leoTurretRecessShadow` bake
+  vertex-color shading — up-facing fragments multiply DOWN (fills 0.55,
+  recess 0.50: a lit top on a shadow fill is the r18 floating-slab
+  class), undersides stay deep (0.80/0.85), vertical faces carry a
+  bottom->top ambient grade (fills 0.90->1.16; recess steel 0.96->1.30
+  so steel-vs-shadow separates at the recess mouth — the r18 self-read
+  residual). Positions/index untouched; meshes stay /shadow/i-named
+  (mask-excluded, §C).
+- **P-R2 SEOSS pale top -> sight-family tone**: the SEOSS head box
+  leaves the camo 'turret' bucket for 'turretDark' (the a5/a6 PERI-head
+  optics-housing class). Same box, same transform — silhouette, the
+  2.66w heightM anchor and its −1.01 front-column cover are unmoved;
+  bakeDirt is position-hashed so every other camo vertex keeps
+  byte-identical color.
+
+### Measured tone deltas (ITU-601 luma on the changed pixels, official
+### photoclass renders, shots/leo-tone-r19/{before,after})
+- view-top (SEOSS head): med 55.6 -> 49.4 (the pale-top kill).
+- view-rear: med 46.1 -> 41.5; view-front: med 53.7 -> 50.5 with p10
+  40.1 -> 34.6 (tops darken) and p90 held (walls).
+- close-front (recess zone): med 40.1 -> 35.2 with p90 53.8 -> 64.1 —
+  the recess-mouth lift (steel separation) + top-kill signature.
+
+### Graduate-change proofs (final bytes)
+- geometry-gate x2 BIT-IDENTICAL = the ratified r18/batch-43 line TO
+  THE DECIMAL: min 62.8 | hull 91.8 / whole 69.9 / turret 62.8 /
+  stations 78 / dims 99.5 / floaters 100. Mask-neutrality proven (the
+  §B7 capped row is adjudicated, not re-opened).
+- HASH MOVED (expected — the P-R2 bucket move changes two merged
+  buffers): ce7f3824 -> candidate **b53a16f8**, stable x2, meshes 78 /
+  verts 107353 both unchanged. P-R1 alone is hash-free (vertex colors
+  and materials do not feed tmp-hashgeo).
+- CHANGED VIEWS for the mini re-cert critic: ALL 14 (pixel-diff t>4:
+  369 px [view-rearleft] .. 5963 px [view-rear], total 26 583 px of
+  14x768² — SEOSS head zones + the ring/recess band; bboxes in
+  tools/tmp-leo-tonediff.py output, banked in the round report).
+- track-clip --exact 0/0 + 0/0 (x2 runs this round); standard-check
+  clip ✓ contig 0 ✓ mg1+4d ✓; turret-parent stranded 2 = the two
+  CERTIFIED mast-union AABB false-flag classes (53 %/26 % — byte-same
+  as the r18 close); npm test PASS.
+- Frozen sibs BYTE-IDENTICAL at close: leo2a5 2f9d0af0, leo2a6
+  f25dad51, kf51 1452024b.
+
+RE-FREEZE PROTOCOL: candidate b53a16f8 awaits the mini re-cert critic
+on the changed views (tone-only; the capped gate line is reproduced
+above) — orchestrator re-freezes on PASS in the landing commit.
+
+Residuals: the ring band at 1x remains a conservative dark read (the
+grade is deliberately subtle — the §J DEEP-SHADE ALBEDO CLAMP bounds
+what albedo can move in the floor-lit zone; a stronger lift would need
+the ambient-floor hook and re-certification of the fills' certified
+raw-clone tone class). procShadow_gun oversize (+1.6 m) still carried
+(fleet LOD-fix follow-up class).

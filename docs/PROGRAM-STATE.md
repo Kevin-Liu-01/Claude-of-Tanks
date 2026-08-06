@@ -79,7 +79,7 @@ re-freeze NEW hash, all in ONE commit.
 | t84 | 04707a9c | |
 | m47_patton | 53b6123a | |
 | leo2a5 | 2f9d0af0 | |
-| leo2_revolution | ce7f3824 | r18 RE-CERT RATIFIED (§B7 photo-class, floor 9.0 x14); batch-43 wing excision EXECUTED — gate 0.2 -> 62.8 (§B7 cap = genuine real-vs-print divergence only: the print has no solid side modules). Next: P-R1/P-R2 tone round; the capped row is the print's honest limit under the owner ruling | de-fusion RE-CERT RATIFIED (floor 9.0 x14 at the coupled 88.9); retune round owed (88.9 -> 90+, P-1 fore-ring tells folded in) |
+| leo2_revolution | ce7f3824 -> b53a16f8 CANDIDATE (r19 P-R1/P-R2 tone, gate line EXACT, mini re-cert in flight) | r18 RE-CERT RATIFIED (§B7 photo-class, floor 9.0 x14); batch-43 wing excision EXECUTED — gate 0.2 -> 62.8 (§B7 cap = genuine real-vs-print divergence only: the print has no solid side modules). Next: P-R1/P-R2 tone round; the capped row is the print's honest limit under the owner ruling | de-fusion RE-CERT RATIFIED (floor 9.0 x14 at the coupled 88.9); retune round owed (88.9 -> 90+, P-1 fore-ring tells folded in) |
 | m46_patton | 90ebf864 | |
 | centurion3 | fea56ecc | GRADUATED fd2c365 (24th, Centurion line's first) |
 | m1a2_sepv2 | 5564306c | GRADUATED 2026-08-05 (25th; floor 9.0, mean 9.11 x14) |
@@ -133,9 +133,13 @@ honestly parked at 88.9 pending its retune)
   rulebook (§B1-§B7, §C) as lanes free — the visual critic is the bar
   where no oracle exists (false-0 law: never gate without a reference);
   (c) parallel oracle-sourcing lane (community CC models only, bradley
-  flow — THE ONE ABSOLUTE RULE stands). STARTED 2026-08-06 on the free
-  leopard lane (leo2a4 + leo2a7v + the revolution P-R1/P-R2 tone
-  orders).
+  flow — THE ONE ABSOLUTE RULE stands). FIRST SLICE DONE (2026-08-06): leo2a4 REBUILT
+  photo-class (the first base-21 modernization — new buildLeo2A4, all
+  batteries clean from 83/436-clip mg0 ancient state; spec 9.67 true-up
+  landed); leo2a7v re-laid on the V3 rig (dims 100, clips 0/0, certified
+  proportional ceiling; §E re-source request filed in packet);
+  PHOTO-CLASS FLOW law banked (tmp-leo-photoclass rig = the no-oracle
+  lane mechanism for the remaining base-21 slices).
 - **OWNER PUNCH LIST (2026-08-06, five rounds spawned)**: (1) DONE — ariete+leclerc left sides FIXED (reversed-winding class
   decoded: mirror loops hand slabs inward faces, FrontSide-culled but
   DoubleSide-mask visible; orientedSlab guard landed; gates held exact;

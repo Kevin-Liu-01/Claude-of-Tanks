@@ -112,3 +112,96 @@ the family-wide raisedEnds-workaround removal: the certified oracle/print
 defect cap STANDS (curve/station rows unchanged at their capped levels)
 and dims HOLDS >= 90. No compensation was re-introduced; end wheels are
 plain kit-native fits.
+
+## Round-4 BASE-21 MODERNIZATION (2026-08-06, leopard starter round)
+
+### Oracle adjudication (the "why is the ledger row 0" question)
+The reference EXISTS and MEASURES (dims/floaters run and hold 100) —
+this is NOT a false-0/broken-ref case and gating is legal. The row
+reads 0 because the CERTIFIED ORACLE-DEFECT CAP (v9/v10 above) sits at
+near-zero residuals: the print is proportionally defective as a whole
+(+9.7 % hull span, +22.7 % roof; no rigid transform can repair relative
+proportions), so hull/turret curve rows are capped single-digits BY
+CEILING. There is no ladder: the certified ceiling IS the current row.
+Lane taken per the round orders: photo-class modernization under the
+full rulebook, dims-sovereign anchors preserved, gate x2 at close to
+prove dims/floaters hold.
+
+### §E RE-SOURCE REQUEST (orchestrator lane; literals)
+Request: replace `public/models/tanks/community/recovered/leo2a7v.glb`
+(desirefx print) with any correctly-proportioned CC/community 2A7V (or
+2A7) print. Acceptance literals, measured in the width-normalized gate
+frame (width = 4.00):
+- hull mask span 7.72 m ±3 % (print reads 8.47, +9.7 %);
+- p95 roof plateau 2.64 m ±4 % (print reads 3.24, +22.7 %);
+- overall length 10.97 m ±3 % (print reads 11.83, +7.9 %);
+- deck line ≤ 1.9 m at width 4.0 (print bakes 2.6-2.9);
+- no hull-node mast/plinth taller than the turret roof (print carries
+  one at z −2.2..−0.6 topping 3.2 — un-riggable);
+- turret node articulable about a sane ring (the print's turret node
+  drags hull-side courses to y≈1.9 across z −3.4..+2.4).
+Until then the v10 cap STANDS and the row stays ~0 by ceiling.
+
+### r4 changes (photo class; dims anchors byte-preserved)
+- HULL re-laid on the family V3 rig (the v1 slab hull clipped 330/234
+  band + 88/102 shoe and read chunky): leopard glacis line with the
+  A7V's blunter prow + lower-front appliqué module plate (identity),
+  deck staircase 1.60->1.82 to the −3.78 wall / −3.86 lip (hull 7.72),
+  deep modular skirts at ±2.00 EXACT hanging to 0.55 (lower wheel
+  halves visible — photo class), §B4 lane opt-ins at 1.17 (= track
+  inner face 1.20 − 0.03 family clearance; the 1.20 first cut was
+  coplanar and voxelized 378/184+146/51), fenders 1.84..1.955, front
+  mudguard assembly + fender-hung rear flaps (a4 recipes at this
+  frame), APU/cooling housings with §B3 tells (louvre ribs, lid seams,
+  latches, intake mesh), rubber tone 0x33352b.
+- GEAR: §B6 raised-end geometry at the real Leopard 2 configuration —
+  idler {3.40, 1.06, 0.25}, sprocket {−3.26, 1.05, 0.29} (the print
+  frame's 0.56/0.64 centers gave a near-flat run); span [2.60, −2.40].
+- TURRET kept at the dims-proven wedge fit (shell/roof params
+  byte-identical: EMES hood 2.66 = the heightM anchor, PERI 2.90,
+  bustle mast) + ring plinth (§B2 slit closure), loader MG3
+  FITTINGS.pintleMG mag/two-tone FITTING-SUNK through a mount collar
+  (cap under the 2.64 published line — the revolution FITTING-SINK
+  law), four low-profile ADS-ready sensor pods at the roof corners
+  (body + dark lens + conduit, tops 2.545 < 2.64), cross decals
+  re-pinned ON the side-module outer faces (±1.386 — the old ±1.17
+  pins were buried inside the wall).
+- GUN: L/55A1 len 5.45 -> 5.56 (tube tip world 7.09 over the −3.86
+  tail = overall 10.95 / 0.18 %; the v1 constant predated the honest
+  ±3.86 hull and read 10.84 = −1.8 dims).
+
+### Close battery (official rigs, final bytes)
+- geometry-gate x2 BIT-IDENTICAL:
+  min 0 | hull 0 / whole 8.9 / turret 0 / stations 8.5 / dims 100 /
+  floaters 100 (x2). dims RECOVERED to 100 (a mid-round muzzle state
+  read 98.2); curve/station rows sit inside the certified v10 cap
+  regime (pre-round 0/6.2-7.9/0/9.2 — whole/stations moved +1..+2.7
+  WITHIN the cap band; the cap covers curve rows only, never dims).
+- track-clip --exact: 0/0 band + 0/0 shoe, blind spots 0 (was 330/234 +
+  88/102).
+- standard-check: contig 0 ✓, decor mg1+0d ✓ (dressing = family kit
+  helpers + hand-authored §B3 tells; MG fitting censuses).
+- turret-parent: 0/0/0.
+- §B5 yaw-90 pair: shots/leo-a7v-r4/after-yaw90 — wedge shell, roof
+  farm, MG fitting, ADS pods, rack and plinth yaw as one mass.
+- npm test PASS. Geometry record hash 20bc6b30 (40 meshes / 92300
+  verts; not a freeze — capped id, no graduation possible under this
+  oracle).
+- Renders: shots/leo-a7v-r4/{before,after}/ (14 views each) + yaw pair.
+
+### 14-view SELF-READS (photo class; builder reads)
+front 8.5 / frontleft 8.6 / left 8.6 / rearleft 8.5 / rear 8.5 /
+rearright 8.5 / right 8.6 / frontright 8.6 / top 8.7 / hero-fl 8.6 /
+hero-rr 8.5 / hero-toptilt 8.7 / close-front 8.3 / close-roof 8.6.
+Weakest named: close-front — the v1-era wedgeTurretShell apex tier
+under the gun reads busier than the photo class (the a5/a6 V3 wedge
+grammar is finer); candidate for the family wedge-consolidation round.
+Mid-hull side band between skirt top (1.30) and deck edge shows the
+bare band face on long stretches.
+
+### Residuals
+- The certified proportional-defect cap (v9/v10) — re-source per the §E
+  literals above is the only path to a measurable ladder.
+- wedgeTurretShell apex tier (above).
+- Whole/stations rows wobble 6.2..9.5 run-to-run inside the cap band
+  (defective-print comparison noise; dims/floaters stable at 100 x2).

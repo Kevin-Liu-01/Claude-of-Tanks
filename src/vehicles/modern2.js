@@ -181,7 +181,7 @@ export const MODERN2_SPECS = {
         shell('DM12 HE proxy', 'HE', 120, 40, 40, 560, 1000),
       ],
     },
-    dims: { hullLengthM: 7.72, overallLengthM: 9.97, widthM: 3.70, heightM: 2.48 },
+    dims: { hullLengthM: 7.72, overallLengthM: 9.67, widthM: 3.70, heightM: 2.48 },
     armor: mbtArmor({
       hl: 3.86, hw: 1.85, roofY: 1.72, trkTop: 1.0, floor: 0.5,
       turretPivot: [0, 1.72, -0.15], gunPivot: [0, 0.42, 0.55],
