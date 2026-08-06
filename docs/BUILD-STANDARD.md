@@ -140,6 +140,14 @@ never excuses missing it.
 - Winding audit on every new slab (backface culling eats reversed slabs
   from top); probe corners after compound rotations; AABB framing on
   fittings (never change the model AABB with decoration).
+- TWISTED-QUAD TOOTH ROW (merkava4 r-round): a strip-fan cheek under a
+  large cheekRake renders a phantom tooth row when the plan pts polyline
+  CURVES — each slab quad goes non-planar, its two triangles take
+  different normals, and the lit/shaded alternation reads as sawteeth
+  riding the wedge. At cheekRake > ~0.2 either keep the pts polyline
+  straight (per-strip near-planarity, |(C−A)·n| ≲ 0.02r) or solve a top
+  height for exact coplanarity; audit every slab() whose four corners are
+  authored independently.
 - PARTIAL-PIXEL MARGIN (russia-tail law, supersedes the bare 15mm at
   boundaries): masks light at ANY partial pixel coverage — boundary-
   critical faces need >=2px margins (~22mm side/plan, ~9mm front).
@@ -155,6 +163,12 @@ never excuses missing it.
   the real geometry (a stale spec value ran a gun proxy 1.3m long).
   Verify per-harness before pricing either way; the older 'proxies ARE
   in masks' reading is stale for the gate path.
+- SHADOW-NAMED RENDER FURNITURE (leopard §B5-r16): /shadow/i-named meshes
+  render in critic/game views but are excluded from EVERY measurement
+  mask (fidelity baseVisible, evaluator proxy-hide, critic framing) — the
+  legal mechanism for honest voids/shadow reads the masks must not price
+  (e.g. a turret-ring gap). Parent them to the mass that casts them (the
+  turret, not the hull) and the §B5 parent audit stays clean.
 - STATION END-CAPS (uk r3): station slices render front-on with near/far
   clipping — thin axis-aligned planes paint only their end caps and VANISH
   from mid slices. Segment long thin members (fenders, guards, skirt lips)
@@ -219,11 +233,34 @@ never excuses missing it.
   commit; documented retune debts are the only acceptable regressions.
 - Builders/critics REPORT normalize plans + literals; they never run
   repairs or touch GLBs.
+- VLO-BAKE POLLUTION (leo2_revolution §B5-r16): recovered prints'
+  `*_vlo` whole-vehicle LOD shells ride the HULL node and bake at-rest
+  articulated content into every hull/whole mask (128 polluted side
+  columns measured on revolution — the proc then mirrors the bake and
+  the turret "fuses"). Audit any print carrying `_vlo`-suffixed nodes
+  before trusting its hull rows (t64bv1 / t72* / t90* class candidates).
+  When a proc build mirrored the bake, the LOD-delete repair is a COUPLED
+  graduate-change: repair alone gates 0 — both halves land in ONE commit.
+- REQUEST-INTERCEPTION SIM: verify candidate oracle repairs against the
+  UNMODIFIED official gate math via puppeteer request interception
+  (`req.respond()` serving candidate GLB bytes at the reference URL) —
+  full-fidelity coupled-state verification with zero shared-file edits.
+  Prove rig parity to the decimal (committed bytes × HEAD tree) before
+  trusting any simulated number.
 
 ## F. Round protocol (uniform for every family agent)
 1. One agent per profile file (single-owner). NEVER commit. Env:
    `export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh"`; own vite
    74xx-77xx; FIFO lock respected.
+   FIFO HARD RULES (fleet-proven 2026-08-05): the official browser tools
+   (track-clip, turret-parent, standard-check, visual-evaluator,
+   tank-critic) SELF-TICKET the FIFO — NEVER wrap them in an external
+   lock hold (wrapping deadlocks the fleet; two independent jams proven).
+   Tickets are 15-digit zero-padded — any other width corrupts the FIFO
+   sort and queue-jumps. Under heavy contention official runs can die at
+   the tools' 30-min queue timeout: retry honestly, never jump; for
+   render batches hold ONE ticket with a batch driver on the identical
+   render path (tmp-b1b3-critic-batch.mjs pattern).
 2. Graduates in your file are HASH-FROZEN: verify with
    `node tools/tmp-hashgeo.mjs --ids=<graduates>` before reporting;
    shared-helper edits are opt-in params with byte-identical defaults.
