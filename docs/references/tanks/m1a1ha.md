@@ -173,3 +173,8 @@ row (89.4 | 91.7/89.4/89.8/93.9/100/100). RE-FREEZE CANDIDATE f5c556dc
 (46 meshes / 158608 verts, orchestrator-verified; was 5c765fc4) — the
 graduate-change re-cert critic (changed rear views, >=9.0 bar) is IN FLIGHT
 at landing; its verdict ratifies the re-freeze or files orders.
+
+### RE-CERT RATIFIED (2026-08-05): floor 9.0, mean 9.09 over nine changed
+views — owner defect classes dead (no shoe-through, no corner channel,
+TIP reads a bin). RE-FREEZE f5c556dc CONFIRMED (was 5c765fc4);
+docs/critique/shaded-parity-m1a1ha-rearfix-recert.md.

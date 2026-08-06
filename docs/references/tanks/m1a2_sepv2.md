@@ -337,3 +337,15 @@ moving any §H.4 item.
 (93.1/92.4/91.3/93.4/100/100). Hash b489ba14 (46/116696, orchestrator-
 verified). The full-14-view graduation adjudication critic (the program's
 25th candidate) is IN FLIGHT at landing — on PASS the orchestrator runs §10.
+
+## GRADUATED 2026-08-05 — DUAL-GATE PASS (fleet graduate 25)
+Geo 91.3 gatePassed x2 (93.1/92.4/91.3/93.4/100/100, critic-verified) +
+independent critic 9.0+ ALL FOURTEEN views (floor 9.0, mean 9.11;
+docs/critique/shaded-parity-sepv2-graduation.md). FREEZE HASH b489ba14
+(46 meshes / 116696 verts). Flip-era §10: no runtime registration (dump
+clean), three-map mirrors present, no variants backfill, icons x5 from a
+clean HEAD worktree. §B5 stranded-2 = certified registration-pinned
+classes (coupled followers+worksHull landing remains queued). Critic law
+finds banked: yaw-pair evidence is hash-stamped; flood tooling excludes
+the pair-PNG label band. Recommended next: m1a2 graduate-change §B3 round
+(same shared 1x classes, sep-gated off today).

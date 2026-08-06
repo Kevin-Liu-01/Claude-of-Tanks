@@ -1464,3 +1464,12 @@ re-freeze or files orders). QUEUED NEXT: the hullCurves 88.9 -> 90+
 retune round (r7-class ledger retune against the honest hull line +
 vertex-workorder against repaired bytes + the per-tank shoe-pin-cap
 opt-in decision, all decoded in the §B5-r16 section above).
+
+### RE-CERT RATIFIED (2026-08-05): RE-FREEZE 1993cfb1 CONFIRMED — floor
+9.0 all fourteen views at the coupled 88.9 state (c9ddba0 = the certified
+bytes; docs/critique/shaded-parity-leo2_revolution-defuse-recert.md).
+Yaw-90 killed three ways (vertex census, 4-camera pairs, official audits).
+Retune round takes: hull 88.9 -> 90+ orders (§B5-r16 decode) + P-1
+fore-ring deck cluster tells (close-front floor-setter) + P-2 top tint
+edges. New laws banked: DE-BAKE CONTRAST WINDOW, YAW-PROOF STATIC-PIXEL
+FALSE-FLAG (BUILD-STANDARD §E).

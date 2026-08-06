@@ -49,7 +49,7 @@ at load.
 - Env for EVERY node run: `export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh"`
 - npm test before every landing (166 equipment checks + track-geometry).
 
-## 3. GRADUATE REGISTRY (24 graduates, hash-frozen)
+## 3. GRADUATE REGISTRY (25 graduates, hash-frozen)
 Freeze = deterministic geometry hash via `node tools/tmp-hashgeo.mjs
 --ids=...` (camoSeed 4242 pinned build; FNV-1a over position buffers +
 world matrices, mesh-order independent). Graduate-change protocol: fix ->
@@ -63,7 +63,7 @@ re-freeze NEW hash, all in ONE commit.
 | kv2 | f01e1e00 | freeze-verify only |
 | leo2a6 | 80b76338 | |
 | m1a1 | 97c10194 | carries flap-in-sweep class (future round) |
-| m1a1ha | 5c765fc4 -> **f5c556dc CANDIDATE** | owner rear-fix landed e85e546; re-cert critic IN FLIGHT |
+| m1a1ha | f5c556dc | owner rear-fix RE-CERT RATIFIED (floor 9.0, mean 9.09) |
 | m1a2_tejas | 3fcae440 | drift 89.4 watch item |
 | merkava3b | 87ba249c | re-frozen 0e47256 |
 | merkava3c | 4880b0a4 | re-frozen 0e47256 |
@@ -79,15 +79,16 @@ re-freeze NEW hash, all in ONE commit.
 | t84 | fd0bca6c | |
 | m47_patton | 70941de0 | |
 | leo2a5 | bc9bad30 | |
-| leo2_revolution | 7175fbf0 -> **1993cfb1 CANDIDATE** | coupled vlo de-fusion landed c9ddba0 at honest 88.9; re-cert critic IN FLIGHT; retune round owed (88.9 -> 90+) |
+| leo2_revolution | 1993cfb1 | de-fusion RE-CERT RATIFIED (floor 9.0 x14 at the coupled 88.9); retune round owed (88.9 -> 90+, P-1 fore-ring tells folded in) |
 | m46_patton | dfacd57c | |
 | centurion3 | bf0a45e8 | GRADUATED fd2c365 (24th, Centurion line's first) |
+| m1a2_sepv2 | b489ba14 | GRADUATED 2026-08-05 (25th; floor 9.0, mean 9.11 x14) |
 
 Mirror maps (graduates + flip-era tanks measure via these, NOT runtime
 registration): tools/procedural-fidelity.html LOCAL_REFERENCE_OVERRIDES,
 tools/visual-evaluator-page.html CRITIC_REFERENCE_OVERRIDES (committed),
-tools/tmp-tank-critic.html CRITIC_REFERENCE_OVERRIDES (gitignored — REBUILD
-BY HAND in a fresh clone by mirroring the fidelity map). §10 LESSON: mirror
+tools/tmp-tank-critic.html CRITIC_REFERENCE_OVERRIDES (committed at the
+takeover sweep decec28). §10 LESSON: mirror
 the HELPER-EXPANDED config, never the surface call (the gunNode incident —
 userdrops5's `articulated` helper includes `gunNode:'^Gun'`; dropping it
 cratered leo2a5 to min 0 at load-prove). Load-prove = `node
@@ -99,7 +100,7 @@ honestly parked at 88.9 pending its retune)
 - **Gate-PASS awaiting visual ladder / adjudication**: challenger1 90.2
   (critic floor 7.0, chieftain-exact recipe one round behind), centurion5
   90.7 (floor 7.0, O3 cast-turret round) — uk round-4 agent ON IT.
-  m1a2_sepv2 91.3 — graduation critic IN FLIGHT (25th candidate).
+  m1a2_sepv2 GRADUATED (25th).
 - **80-90 band**: m60a2 86.3 (ceiling 87.5 — cert decision pending),
   bradley 84.7, bmp2 84.0 (ceiling), m45_patton 81.2 (stop-rule closed).
 - **70-80**: type90 79.0 (climbing, misc r3 agent on it), ariete 78.5
@@ -116,18 +117,15 @@ honestly parked at 88.9 pending its retune)
 
 ## 5. IN-FLIGHT AGENTS at handoff (6; on their notifications: verify
 rigs+hashes+packets -> pathspec commits -> re-freezes -> spawn follow-ups)
-1. **abrams dual critic**: m1a1ha re-cert (rear views, >=9.0) + sepv2
-   graduation adjudication (all 14). On PASS: ratify f5c556dc re-freeze in
-   packet; run §10 for sepv2 (flip-era pattern, hash b489ba14).
-2. **revolution de-fusion re-cert critic**: 14 views at the coupled 88.9
-   state + yaw-90 proof. On PASS: ratify 1993cfb1 in packet; spawn the
-   hull-retune round. On FAIL: its orders feed the same retune round.
+1. DONE+RATIFIED: abrams dual critic (m1a1ha f5c556dc, sepv2 §10 run).
+2. DONE+RATIFIED: revolution re-cert (1993cfb1); retune round SPAWNED
+   (hull 88.9 -> 90+ + P-1 fore-ring tells + P-2).
 3. **misc r3**: type90 ladder + ariete wrap-break attempt.
 4. **russia tail-3**: t62mv1 decode + t90sm §B1 loft rework.
 5. **patton re-anchor**: m26 post-warp re-anchor from the WARPED extract
    (dims 91.9 -> 100 via proc M2 band lift to the 3.08 spec).
 6. **uk round-4**: challenger1 + centurion5 visual ladders toward
-   adjudication (25th/26th candidates). MUST hold centurion3 bf0a45e8.
+   adjudication (26th/27th candidates). MUST hold centurion3 bf0a45e8.
 
 ## 6. ORCHESTRATOR MECHANICS (how landings actually work)
 - **Pathspec/hunk-split commits**: the owner's parallel session stages

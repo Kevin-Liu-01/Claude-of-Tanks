@@ -348,3 +348,19 @@ decorations need a packet justification.
   censuses ZERO — migrate it or justify it in the packet.
 - Library self-test: `node tools/tank-standard-check.mjs --fixture`
   (marker coverage, AABB stamp, seed determinism, top-down winding).
+
+## J. Critic-lane laws (banked 2026-08-05, abrams+revolution re-cert wave)
+- YAW-PAIR EVIDENCE IS HASH-STAMPED: a builder's rest/yaw90 proof pair is
+  only valid at the hash it rendered; graduation/re-cert critics re-render
+  the yaw pair at the verdict hash.
+- PAIR-PNG LABEL BAND: flood/sky tooling on critic pair PNGs must exclude
+  the REFERENCE/PROCEDURAL label band (y 13-21) — letter counters read as
+  enclosed sky under the mask+blue-signature method.
+- DE-BAKE CONTRAST WINDOW (§E corollary): dropping a vlo bake opens honest
+  dark windows — previously-certified adjacent furniture inherits a new
+  high-contrast read; any vlo-drop round re-audits furniture bordering new
+  shadow windows even where its bytes did not change.
+- YAW-PROOF STATIC-PIXEL FALSE-FLAG: rest-vs-yaw90 pixel diffs flag
+  same-camo turret faces as "static" inside the ring zone; adjudicate
+  against a rig_hull/rig_turret vertex census (instanced meshes included)
+  before ordering geometry.
