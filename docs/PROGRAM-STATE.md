@@ -115,7 +115,11 @@ honestly parked at 88.9 pending its retune)
   orchestrator lane), ariete 82.3 (wrap break LANDED via lane-local fill
   — the sanctioned non-circular mechanism; cover/frame-lock certified).
 - **70-80**: t64bv1 73.4, t90a_vladimir 71.4. m26_pershing 90.4 GATE
-  PASS — graduation adjudication critic IN FLIGHT (candidate f348ecd5, would be the 26th).
+  PASS — adjudication FAIL floor 8.8 (mean 8.91): the SLAB-LOFT facet class
+  (m46/m47 both fixed it pre-graduation) + deck-slat crown gap. r4 retune
+  IN FLIGHT with the two family-proven orders (loft.smooth is
+  silhouette-identical by construction); fresh adjudication at the new
+  hash after.
 - **Russia tail**: t72b_1987 56.0 CEILING-CERTIFIED (print drum-band cap),
   t90sm 56.4 (AA-teeter binds), t62mv1 63.7 (fade-cap ceiling ~77-81),
   t72bu ~55-70 certified-ceiling — ORACLE
