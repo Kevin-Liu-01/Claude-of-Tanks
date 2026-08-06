@@ -1874,3 +1874,14 @@ JSON-only drops), then the gate re-derives and the §B7 cap shrinks to the
 genuine real-vs-print divergence. RE-CERT CRITIC spawned at ce7f3824 —
 photo-class scoring on the turret per §B7, ref parity hull-only; the
 capped gate row is adjudicated, NOT a critic concern.
+
+### r18 RE-CERT RATIFIED (2026-08-05): RE-FREEZE ce7f3824 CONFIRMED —
+floor 9.0, mean 9.04, all fourteen views (§B7 photo-class turret + ref-
+parity hull; docs/critique/shaded-parity-leo2_revolution-r18-recert.md).
+The owner's "turret looks terrible" is CLOSED: wedge one-plane-per-side
+at 4x, §B3 tells at 2x-6x, §B2 cleaner than the print every view, whole
+turret yaws as one. Builder's close-front 8.5 refuted upward (carried
+§C mechanism tier, priced by delta). Non-blocking orders for the next
+dressing round: P-R1 fill/recess tone pass WITH top-face darkening term
+(SHADOW-FILL LIT-TOP law), P-R2 SEOSS pale top -> sight-family tone.
+Wing-excision §E round re-endorsed (sim planner in flight).

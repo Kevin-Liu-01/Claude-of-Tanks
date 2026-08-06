@@ -79,7 +79,7 @@ re-freeze NEW hash, all in ONE commit.
 | t84 | 04707a9c | |
 | m47_patton | 53b6123a | |
 | leo2a5 | 2f9d0af0 | |
-| leo2_revolution | ce7f3824 CANDIDATE | r18 real-turret LANDED under §B7 (hull rows held r17 exactly; gate 0.2 = print wing band, cap table in packet). Re-cert critic IN FLIGHT (photo-class). QUEUED: §E wing-excision round (swarm census banked in packet) | de-fusion RE-CERT RATIFIED (floor 9.0 x14 at the coupled 88.9); retune round owed (88.9 -> 90+, P-1 fore-ring tells folded in) |
+| leo2_revolution | ce7f3824 | r18 real-turret RE-CERT RATIFIED (§B7 photo-class, floor 9.0 x14) — owner's fused/terrible-turret arc CLOSED. Gate §B7-capped 0.2 pending the §E wing-excision (sim planner in flight); next dressing round: P-R1 fill-tone + P-R2 SEOSS tone | de-fusion RE-CERT RATIFIED (floor 9.0 x14 at the coupled 88.9); retune round owed (88.9 -> 90+, P-1 fore-ring tells folded in) |
 | m46_patton | 90ebf864 | |
 | centurion3 | fea56ecc | GRADUATED fd2c365 (24th, Centurion line's first) |
 | m1a2_sepv2 | 5564306c | GRADUATED 2026-08-05 (25th; floor 9.0, mean 9.11 x14) |
