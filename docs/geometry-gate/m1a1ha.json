@@ -770,8 +770,8 @@
    ]
   },
   "plan": {
-   "score": 94.71811967971668,
-   "meanPct": 0.4,
+   "score": 94.79550535120781,
+   "meanPct": 0.39,
    "p95Pct": 0.8,
    "coverPct": 0,
    "reg": {
@@ -824,8 +824,8 @@
      "refTop": 3.73,
      "refBot": -1,
      "procTop": 3.69,
-     "procBot": -1.06,
-     "errM": 0.053
+     "procBot": -1.05,
+     "errM": 0.048
     },
     {
      "at": 1.48,
