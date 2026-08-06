@@ -518,13 +518,13 @@
   },
   {
    "id": "m45_patton",
-   "geoMin": 59.4,
+   "geoMin": 81.2,
    "gatePassed": false,
    "components": {
-    "hullCurves": 69.6,
-    "wholeCurves": 69.4,
-    "turretCurves": 59.4,
-    "stations": 71.8,
+    "hullCurves": 87.3,
+    "wholeCurves": 82.9,
+    "turretCurves": 81.2,
+    "stations": 91.2,
     "dims": 100,
     "floaters": 100
    }
@@ -583,12 +583,12 @@
   },
   {
    "id": "m26_pershing",
-   "geoMin": 70.6,
+   "geoMin": 72.1,
    "gatePassed": false,
    "components": {
-    "hullCurves": 77.5,
-    "wholeCurves": 70.6,
-    "turretCurves": 72,
+    "hullCurves": 77.9,
+    "wholeCurves": 72.1,
+    "turretCurves": 73.7,
     "stations": 78.5,
     "dims": 100,
     "floaters": 100

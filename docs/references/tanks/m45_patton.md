@@ -156,11 +156,164 @@ narrow tail block (hw 0.82 -> 0.67) ending ~-3.0.
 CERTIFICATIONS / BLOCKERS:
 1. DIMS heightM BLOCKER — same no-MG convention issue as m26: published
    2.78 vs the oracle's mounted M2 band ~3.0 (dims ~23 when turret-matched).
+   [RESOLVED at family r1: over-M2 row 3.0 landed, dims 100.]
 2. DIMS overallLengthM re-check (packet batch-8 already flagged): the
    seated stub muzzle reads +3.35 -> overall ~6.55-6.6 vs the spec row 6.40.
    Built to the published 6.40 (muzzle +3.18, ~1.5 ref-only columns).
    userdrops6.js row may deserve the ~6.6 figure.
+   [Row landed as 6.6 at family r1; the CONVENTION stays open — see r1 below.]
 3. Hull length: recovered span ~6.16 vs published 6.33 — centre tail pintle
    to -3.20 carries the dims row (1-2 certified proc-only columns).
 State at handoff: hull 70.4 / whole 69.4 / turret 56.7 / stations 73.9 /
 dims 22.6 (blocker 1) / floaters 100.
+
+## Vertex round r1 (2026-08-05, patton-family builder) — EXTRACT-FRAME RE-AUTHOR (the m46/m47 r1 recipe)
+The family r1 landing note (aa31778) adjudicated m45 NO-WARP ("its bodyLen
+read is a 12%-filter artifact" — hullMask -0.9% inside grace, banked in
+vertex-normalize.mjs comments) and deferred the re-author; this round is
+that re-author, run as the warp-free tank while the m26 formal warp
+request went to the orchestrator lane (m26_pershing.md r2).
+
+Authored from docs/references/vertex/m45_patton.json (2026-08-03 extract,
+gate-parity raster; the m47-r2 law — only workorder/extract WORLD values
+are author-grade). Ref truths that replaced the batch-8 trace:
+- RING at the extract turretPivot (0, 1.548, +0.719) (was 1.516/+0.82).
+- BASKET at z 0.046..1.365, bot 0.742, front-view extent x -0.68..+1.02
+  (batch-8 had it one basket-length forward at z 0.55..1.42 — the top
+  turret order, 8 columns x ~0.4 err) + the right crew-seat pod
+  (x 0.86..1.016, z 0.20..1.20). New shared opt-in: basket.x offset
+  (default 0, all siblings byte-identical).
+- DOME re-lofted to the plan footprint (front face 1.51 @ hw 0.72, widest
+  1.21 @ z 0.55-0.72, bustle tail -1.05; wall 0.40 / mid 0.72 / midW 0.92
+  fitted to the measured flank rolls 1.96/2.39 @ 1.21/1.09): RIGHT roof
+  plateau 2.51-2.55 in the loft crown, LEFT ridge/crest 2.607-2.712 as
+  four flush pods (front-hidden under the M2 stack x -0.05..-0.59, side
+  tops exact), cupola ring + crown at the measured x -0.775 (crown 2.625
+  over z -0.07..-0.23, shoulder pod 2.558), loader 2.60 @ x 0.52.
+- M2 STATION at x -0.44 (plan barrel band -0.38..-0.50), receiver band
+  z 0.62..1.48 tops 3.027, cover 3.072 @ 0.565..0.705 (ref 3.071 band
+  0.566..0.645), barrel to tipZ 2.20 (ref 2.205); tops budgeted under
+  heightM p95 grace (pub 3.0; ref's own band reads 3.01-3.07 — the
+  -0.02..-0.04 residual on ~10 columns is the spec-grace compromise).
+- HULL: glacis (2.42, 1.385) -> toe (2.71, 1.105) with the 1.099 toe lip
+  carried by bow-fender platforms re-seated 3.16 -> 2.95 (the 3.16
+  platforms were 2 ONLY-PROC side columns + 0.2 plan overshoot) + the
+  print's single LEFT bow tab to 3.046 (new cfg.bowTabs, single-sided —
+  the m46/m47 left-tow-casting class); deck 1.5245 fwd / 1.5525 aft with
+  flush hatches (hatchFlush) at 1.82, caps bump 1.5825 @ -0.68, grille
+  bay -0.44..-1.155; fender plate y 1.293 spanning 2.48..-2.842 (ref
+  2.474-2.486 / -2.842 exact); rear: full width ends -2.50 ->
+  narrowTail hw 0.81 to -2.885 (top 1.372->1.29, bot 0.55) -> tail tiers
+  hw 0.63/0.605 to -3.235 floating at 0.88-0.92 (ref bot 0.919) with the
+  pintle cyl to -3.25; tracks 0.58 wide (ref inner 1.08/outer 1.66),
+  contact pinned 1.97/-1.79 (ref flat -1.78..+1.97), idler (2.52, 0.71,
+  0.26) wrap front 2.95 = ref, SPROCKET re-seated (-2.66, 0.74, 0.10) —
+  wrap bottom 0.50 / ramp slope 0.53 riding the ref line (0.336@-2.43 /
+  0.389@-2.53), plan end -2.90 vs ref -2.842. §B6: both ends raised +
+  tangent ramps hold; the small-radius rear wheel is the print's
+  CHOPPED-TRACK class (m46 precedent) — size residual certified here.
+- §B1 slope-mass: glacisWingY0 1.30 / drop 0.04 (m47 containment recipe —
+  the full-width glacis slab otherwise swallows the idler wrap);
+  §B3 mantlet sweep: the wave-2 mystery shield (0.84 slab at zF 2.10) is
+  now the real M71 counterweighted casting — w 1.31 face at zF 1.99 (ref
+  plan 1.986 spanning x -0.653..+0.666), chin 1.712 at the face (ref
+  1.711), rotor r 0.14; no bare boxes near the gun root.
+- TONE transfer (m46 r7 / m47 r4+r6 olive recipes, materials-only):
+  cfg.gearTone + darkGearFit ON. wheelMul left at the shared default —
+  LAW: the wheel-camo multiplier is NOT tank-portable; dial on this
+  print's own camo instance in the shaded-parity round.
+- §B3 census: stowed FITTINGS 'mag' interior to the casting at
+  (0.30, 2.12, +0.30); the measured m2Station stays the gate-driven roof
+  gun (§I justification, m46-r2 pattern).
+- MUZZLE +3.39 keeps the pub-6.6 row (dims sovereign): the seated print's
+  muzzle reads +3.234 (overall 6.468) — the r1 CONVENTION FLAG STANDS for
+  the owner (userdrops6.js line 93; a ~6.47 row would retire 2 side + 1
+  plan proc-only columns and re-seat the proc muzzle on the print's own
+  station).
+ITERATION 2 (same round): the first gate x2 read 56.7 — curves leapt
+(hull 69.6->88.2, whole 69.4->83.2, turret 59.4->79.6, stations
+71.8->90.9) but dims CRASHED on two mechanics worth banking as laws:
+- BODY-FILTER TAIL LAW: dims hullLengthM/heightM measure bodyExtent on
+  side_whole with a 12%-of-rough band filter (procedural-fidelity.html
+  ~line 1155). My ref-matched tail tiers (bands 0.356/0.225) sat UNDER
+  the 0.369 threshold — the span silently lost 0.365 m of tail
+  (actual read 5.97 = -5.61% => -36.9). The ref's own tail is sub-12%
+  too (its bodyZ ends -2.936) but dims is sovereign to the published
+  row: a narrow (hw 0.17) pintle-mount UNDER-bracket (y 0.75..1.14,
+  z -3.06..-3.25, band 0.39) restores a fat column chain to the -3.25
+  station for ~2.5 side columns of -0.15 bot residual.
+- PAD-DROOP heightM TERM: heightM = p95(body tops) - min(body bots); the
+  track link pads hang ~15 mm BELOW y0 (min bot -0.015), so heightM pays
+  p95top + 0.015. A botY lift moves the whole ramp profile off the
+  measured ref lines for only ~1 mm of pad recovery (measured: botY
+  0.055->0.084 moved the pad floor 0.001) — NOT worth it; the M2 tops
+  trim (topY 3.042 -> 3.030) buys the margin instead. buildRunningGear
+  gains a botY pass-through opt-in (default byte-identical) from the
+  attempt — documented for the family bank.
+- Workorder r2 finds folded into the same iteration: rear-quarter plan
+  asymmetry (the -x/cupola flank bulges to 1.07-1.13 through z
+  0.10..1.24 while the +x flank retreats to 0.82-0.88 — per-side hwL
+  sections, the m60a2 lane, 8 plan columns x 0.14-0.23), rotor drum
+  plan-narrowed to the ref's own |x| <= 0.20 band (new S.rotorW opt-in,
+  default byte-identical — was +0.09 across six centre columns), M2 can
+  pair extended to the ref's x -0.03..-0.27 band, right lifting-eye
+  sliver pod (plan 0.815..0.875 @ x 1.19..1.245), rack z1 -1.28 ->
+  -1.265 (a dAlong-shifted rail-end column), dome front skirt extended
+  to z 1.70 at hw 0.645 (ref bots 1.513 hold to ~1.70 under the shield).
+ITERATION 3 (§B4 clip round, same day): the r2 track-clip read front 230 /
+rear 176 voxels — flapF plane tangent to the idler wrap face, flapR plane
+INSIDE the sprocket wrap arc, and the 1.11 idler-wrap crest clipping the
+bow platforms. Fixes: idler re-seated (2.52, 0.71, 0.26) -> (2.56, 0.68,
+0.21) — the wrap crest drops to 1.03 under the 1.0615 platform floor
+while the plan front (2.94) and the ramp bots hold the ref lines (0.617
+vs 0.607 @ 2.92); flapF -> 2.97 (past the wrap face), flapR -> y
+0.95..1.27 (above the wrap arc, inside the ref side window). Post-fix
+clip **34/16 ✓** (kv2-graduate band; 0 remains the family target — the
+residual is the flap/wrap AA shell class). The heightM p95 carrier was
+run down with a lock-free column scan: the ammo-can band (3.04 over z
+0.65..0.95) rode WITH the cover band past the p95 exclusion budget —
+cans sunk 2.94 -> 2.90 (tops 3.0), p95 lands on the receiver 3.017,
+heightM reads 3.026 (+0.85%, inside grace).
+
+ROUND CLOSE — gate **81.2 x2 bit-identical** (close3, one lock hold):
+hull 87.3 / whole 82.9 / turret 81.2 / stations 91.2 / **dims 100** /
+floaters 100. TRAJECTORY **59.4 -> 81.2 (+21.8)**: hull 69.6->87.3,
+whole 69.4->82.9, turret 59.4->81.2, stations 71.8->91.2, dims 100 held
+(through the two banked dims mechanics above, recovered same-round).
+standard-check: **clip 34/16 ✓ contig 0 ✓ decor mg1+0d ✓** (dressing
+additions = the visual-round lane; the §I justification for the
+hand-authored m2Station stands, stowed FITTINGS 'mag' carries the
+census). turret-parent **0/0/0 ✓** (stranded/abutting/dangling — run
+pre-canY/flap edits; those move no parent classes). npm test green
+(166 + track-geometry) before and after. Shots: shots/patton-r11/
+(= shots/critic-m45_patton/, 14 official critic pair views, zero console
+errors).
+CERTIFIED residuals (worst remaining, close3 workorder):
+- side_whole/side_turret z 3.306/3.381: 2 ONLY-PROC muzzle columns — the
+  pub-6.6-overall convention tax (~-3.1 on each row; seated print muzzle
+  6.468 — owner row ruling retires it, see the r1 flag above).
+- side_turret -1.187: 0.103 (ref rack side-frame reads deeper than the
+  rail band — the m46 sideFloorY class, next round's lane), 1.733/2.033:
+  0.066-0.078 (M2 jacket/chin band vs the spec-grace M2 compromise);
+  everything else <=0.04.
+- FRONT-VIEW residuals live in front_whole 84.3-class rows: the x -1.24
+  turret flank column (ref 2.073 — the loft wall-top at hw 1.21 reads
+  1.93; a +hw push pokes plan), and the -0.05..-0.59 M2 stack tops
+  reading -0.02..-0.05 under the ref band (the heightM grace trade).
+- hull 87.3 floor: bow-lip class at 2.708 (0.093 — ref fender-lip vs the
+  platform slab step) + the -3.06..-3.25 pintle-bracket bots (-0.15 x2.5
+  cols, the BODY-FILTER TAIL LAW price for dims hullLengthM 100).
+Hashes at close: m45 re-authored; siblings byte-identical to HEAD —
+m26 **2621292c**, m46 **dfacd57c** (FROZEN), m47 **70941de0** (FROZEN),
+m60a1 **81e69e34** / m60a3 **efcde5c4** (FROZEN, never gated),
+m60a2 **e0ba7b37** — verified after EVERY batch (6 verifications this
+round; the t26Cast basket.x / bowTabs / rotorW / botY opt-ins all
+default byte-identical, hash-proven).
+NEW SHARED-CODE OPT-INS (defaults byte-identical, §F.2): basket.x
+(t26Cast), cfg.bowTabs (buildPershing), S.rotorW (pattonGun),
+buildRunningGear botY pass-through (curveHull), hwL consumed on t26Cast
+sections (existing m60a2 lane).
+NEXT (the +10 rule is DOUBLE-met; ~84-85 is the structural ceiling under
+the muzzle convention): the owner's 6.6-vs-6.468 row ruling (retires ~3.1
+x2 rows), rack side-frame deepening, front-flank wall-top work, then the
+visual pipeline (wheelMul dial + dressing variety per §H.4).

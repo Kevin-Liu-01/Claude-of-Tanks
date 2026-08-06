@@ -288,6 +288,10 @@ function curveHull(P, H) {
     // departures match the measured ref lines (the loop eases into its
     // tangent ~0.1 m past the patch end). Undefined = byte-identical.
     contactZF: G.contactZF, contactZR: G.contactZR,
+    // m45 r1 opt-in pass-through: ground line for the band bottom — the
+    // default 0.055 hangs link pads ~15 mm below y0 and the dims heightM
+    // read (p95 top - min bot) pays it. Undefined = byte-identical.
+    botY: G.botY,
   });
   // readable hub ring + bolts on every outer wheel face
   for (const z of wheelZs) {
@@ -594,9 +598,11 @@ function t26Cast(P, T) {
   if (loftOpts.smooth) smoothLoft(P, 'turret', secs, loftOpts);
   else loftBody(P, 'turret', secs, loftOpts);
   if (T.basket) { // crew basket under the ring: the reference rig_turret
-    // subtrees hang to y 0.35-0.41 — the gate measures it.
+    // subtrees hang to y 0.35-0.41 — the gate measures it. B.x opt-in (m45
+    // vertex r1: the seated print's basket reads x -0.68..+1.02, centre
+    // +0.17 — the front-view extremes are offset). Default 0 byte-identical.
     const B = T.basket;
-    P.add('turretDark', box(B.w, B.y1 - B.y0, B.z0 - B.z1), 0, yl((B.y0 + B.y1) / 2), zl((B.z0 + B.z1) / 2));
+    P.add('turretDark', box(B.w, B.y1 - B.y0, B.z0 - B.z1), B.x ?? 0, yl((B.y0 + B.y1) / 2), zl((B.z0 + B.z1) / 2));
   }
   for (const C of T.cheekPods || (T.cheekPod ? [T.cheekPod] : [])) {
     // asymmetric cheek/ridge masses (the recovered castings read wider or
@@ -1356,7 +1362,10 @@ function pattonGun(P, G) {
     const W = S.wings;
     P.addGunExtra(box(W.w, W.h, W.d), 0, W.dy ?? 0, w2l(W.zF) - W.d / 2);
   }
-  P.addGunExtra(xform(cylX(S.rotorR ?? Math.min(0.20, S.h * 0.3), S.w * 0.7, P.q ? 16 : 10), 0, 0, 0), 0, S.dy * 0.4, zF - 0.05);
+  // S.rotorW opt-in (m45 r1): the ref rotor drum is plan-narrow (m45 reads
+  // 2.06-2.07 over |x| <= 0.20 only) — the S.w*0.7 default painted 0.09
+  // plan overshoot across six centre columns. Default byte-identical.
+  P.addGunExtra(xform(cylX(S.rotorR ?? Math.min(0.20, S.h * 0.3), S.rotorW ?? (S.w * 0.7), P.q ? 16 : 10), 0, 0, 0), 0, S.dy * 0.4, zF - 0.05);
   const sq = (r, l, at, sy = 1, sx = 1) => P.add('gun', xform(cylZ(r, l, seg), 0, 0, 0, 0, 0, 0, [sx, sy, 1]), 0, 0, at);
   if (G.device === 'm3') {
     // 90 mm M3: bare tube then the double-baffle brake — an oblong solid body
@@ -1465,6 +1474,16 @@ function buildPershing(P, cfg) {
     const S = cfg.bowShelf;
     for (const side of [-1, 1]) {
       P.add('hull', box(S.x1 - S.x0, 0.037, S.z0 - S.z1), side * (S.x0 + S.x1) / 2, S.y, (S.z0 + S.z1) / 2);
+    }
+  }
+  if (cfg.bowTabs) {
+    // one-sided bow fixtures the seated prints carry past the glacis toe
+    // (m45 vertex r1: a single LEFT tab reads plan zF 3.046 at x -0.71..
+    // -0.665, side band 1.007..1.099 — same single-sided class as the
+    // m46/m47 left tow casting). Explicit boxes, no mirroring.
+    for (const T of cfg.bowTabs) {
+      P.add('hull', box(T.x1 - T.x0, T.y1 - T.y0, T.z0 - T.z1),
+        (T.x0 + T.x1) / 2, (T.y0 + T.y1) / 2, (T.z0 + T.z1) / 2);
     }
   }
   if (cfg.bowGuards) {
@@ -2976,33 +2995,48 @@ const M26_FIT = {
   rearGrilleY: 1.08, rearGrilleW: 0.56, rearGrilleZ: -3.36,
 };
 
-// M45 — batch-8 re-trace (seated oracle): toe (2.80, 1.18) knee (2.00,
-// 1.55) with fender platforms to 3.16 (y ~1.05); deck 1.512 with grille
-// bumps 1.55-1.57 over -0.3..-1.1; full width ends -2.50 into the narrow
-// tail (0.82 -> 0.67 hw) ending -3.0; ring (1.516, +0.82); M2 front-left
-// band 2.98-3.06 over +0.75..+2.25; howitzer axis 1.947 (oracle muzzle
-// +3.35; built to the published 6.40 overall => muzzle 3.18).
+// M45 — VERTEX ROUND r1 (2026-08-05): re-authored in the EXTRACT frame
+// (docs/references/vertex/m45_patton.json — the r1 family round adjudicated
+// m45 NO-WARP: hullMask -0.9% inside grace, bodyLen -5.1% is a 12%-filter
+// artifact). Ref lines (extract world): glacis (2.42, 1.385) -> toe (2.71,
+// 1.105), toe lip 1.099 to 3.041 (fender platforms 2.948, single LEFT tab
+// 3.046); deck 1.5245 fwd / 1.5525 aft of -0.31 (caps bump 1.581 at
+// -0.63..-0.73); rear ramp 1.526 @ -1.68 -> 1.28 @ -2.93; tail tiers
+// 1.256/1.144 to -3.234 floating at bot 0.919; contact flat -1.78..+1.97,
+// front ramp to the idler wrap ending 2.95, rear ramp slope 0.52 to the
+// print's chopped small end wheel (wrap bottom ~0.50, plan end -2.88 —
+// §B6 both-ends-raised holds; the small-radius residual is the m46
+// chopped-track class, documented in the packet).
 const M45_HULL = {
-  W: 3.51, bandHW: 1.60, trackW: 0.62, trackInset: 0.095, sponsonY: 1.05, bellyY: 0.46, noseW: 1.30,
-  deck: [[2.80, 1.18], [2.00, 1.553], [1.62, 1.512], [0.10, 1.512], [-0.29, 1.545],
-    [-1.10, 1.552], [-1.45, 1.535], [-1.63, 1.505], [-1.82, 1.471], [-2.01, 1.468],
-    [-2.21, 1.403], [-2.50, 1.37]],
-  fenderY: [1.37, 2.66, -2.50],
-  toeBot: 1.08, bellyFrontZ: 2.10, bellyRearZ: -2.10,
-  narrowTail: { hw: 0.75, z0: -2.55, z1: -2.98, top1: 1.14, botY: 0.55 },
-  flapF: [2.94, 0.50, 1.04], flapR: [-2.44, 0.56, 0.94],
+  W: 3.51, bandHW: 1.60, trackW: 0.58, trackInset: 0.095, sponsonY: 1.05, bellyY: 0.46, noseW: 1.04,
+  bellyHW: 1.04, glacisWingY0: 1.30, glacisWingDrop: 0.04,
+  darkGearFit: true, // r1 tone transfer (m46 r7 A4 / m47 A3 recipe): muffler-leg
+                     // class fittings off the pale bucket — bucket swap only
+
+  deck: [[2.71, 1.105], [2.42, 1.385], [2.34, 1.478], [2.29, 1.53], [2.15, 1.5575],
+    [1.75, 1.5575], [1.69, 1.539], [1.63, 1.5245], [-0.28, 1.5245], [-0.34, 1.5525],
+    [-1.66, 1.5525], [-1.73, 1.512], [-2.00, 1.4685], [-2.06, 1.477], [-2.13, 1.477],
+    [-2.19, 1.4335], [-2.50, 1.372]],
+  fenderY: [1.293, 2.48, -2.842], fenderHW: 1.676,
+  toeBot: 1.005, bellyFrontZ: 2.10, bellyRearZ: -2.10,
+  narrowTail: { hw: 0.81, z0: -2.50, z1: -2.885, top1: 1.29, botY: 0.55 },
+  // flaps ride ABOVE/BEHIND the end-wheel wraps (§B4: the r2 track-clip read
+  // front 230 / rear 176 voxels — flapF plane tangent to the idler wrap
+  // face, flapR plane inside the sprocket wrap arc, platforms clipped by
+  // the 1.11 wrap crest; idler lowered to the ref's own sub-lip wrap)
+  flapF: [2.97, 0.62, 1.04], flapR: [-2.81, 0.95, 1.27],
   gear: {
-    wheelR: 0.33, span: [1.95, -1.65], rollerN: 5, rollerY: 0.98,
-    idler: { z: 2.52, y: 0.71, r: 0.26 }, sprocket: { z: -2.62, y: 0.72, r: 0.24 },
+    wheelR: 0.33, span: [1.95, -1.65], rollerN: 5, rollerY: 0.98, contactZF: 1.97, contactZR: -1.79,
+    idler: { z: 2.56, y: 0.68, r: 0.21 }, sprocket: { z: -2.66, y: 0.74, r: 0.10 },
     tension: { z: -2.05, y: 0.30, r: 0.15, support: true },
   },
 };
 const M45_FIT = {
-  hatchZ: 1.90, bowMG: [0.55, 1.31, 2.42, -0.80],
+  hatchZ: 1.82, hatchFlush: true, bowMG: [0.55, 1.28, 2.42, -0.80],
   lights: { x: 0.68, y: 1.40, z: 2.52, rx: -0.62 },
-  shackleY: 0.98, shackleZ: 2.86,
-  grille: { z0: -0.28, z1: -1.15, y: 1.525, rx: 0 }, caps: [0.85, -1.05],
-  rearGrilleY: 0.95, rearGrilleW: 0.56, rearGrilleZ: -2.99, noRearEyes: true,
+  shackleY: 0.98, shackleZ: 2.60,
+  grille: { z0: -0.44, z1: -1.155, y: 1.532, rx: 0 }, caps: [0.25, -0.68],
+  rearGrilleY: 1.02, rearGrilleW: 0.56, rearGrilleZ: -3.225, noRearEyes: true,
 };
 
 // M46 — batch-8 re-trace (seated oracle): toe (2.42, 1.19) with fender
@@ -3351,57 +3385,124 @@ export const PATTON_PROFILES = {
     }),
   },
   m45_patton: {
-    // Batch-8 SEATED oracle: ring (0, 1.516, +0.82); crest 2.64-2.71 over
-    // +0.2..+0.6; the M2 cluster overhangs the bow (band 2.98-3.06 over
-    // +0.75..+2.25 — spec heightM 2.78 is the no-MG convention, same blocker
-    // as m26); stub howitzer pokes ~0.2 past the glacis (oracle muzzle
-    // +3.35 vs published 6.40 overall => proc muzzle 3.18, ~1.5 cover cols
-    // + packet-flagged spec re-check toward ~6.6).
+    // VERTEX ROUND r1 (2026-08-05): extract-frame re-author (see M45_HULL
+    // header). Ring = the extract turretPivot (0, 1.548, +0.719). Basket
+    // re-seated to the measured z 0.046..1.365 / bot 0.742 / x -0.68..+1.02
+    // (was one basket-length too far forward — 8 columns x ~0.4 err). Dome
+    // sections re-lofted to the plan footprint (front face 1.51 at hw 0.72,
+    // widest 1.21 @ z 0.55-0.72, bustle to -1.05) with the RIGHT roof
+    // plateau 2.51-2.55 in the loft and the LEFT ridge/crest 2.61-2.712
+    // carried by narrow pods (front-view hidden under the M2 band, side
+    // tops exact). M2 station at the ref's x -0.44 / receiver band
+    // 0.62..1.48 tops 3.027 / cover 3.072 / barrel to 2.20 (pub heightM 3.0
+    // +1% grace holds at p95 — the ref's own band reads 3.01-3.07; the
+    // -0.02..-0.04 receiver residual is the spec-grace compromise).
+    // Muzzle +3.39 carries the pub-6.6 overall row (seated print muzzle
+    // +3.234 = 6.468 — the r1 convention flag stands; 2 side + 1 plan
+    // proc-only columns certified until the owner rules on the row).
     build: (P) => buildPershing(P, {
+      // r1 tone transfer: the m47-r4/r6-olive gear recipe via the SHARED
+      // cfg.gearTone path (materials only — gate-mask inert; m46 r7 proved
+      // the olive constants). wheelMul left at the shared default pending
+      // the per-tank render dial (LAW: the wheel multiplier is NOT
+      // tank-portable — dial on this print's own camo instance in the
+      // shaded-parity round).
+      gearTone: true,
       hull: M45_HULL, fit: M45_FIT,
-      ring: [1.516, 0.82], topWorld: 3.03,
+      ring: [1.548, 0.719], topWorld: 3.05,
+      // m47-r9 fender law: the ref's continuous fender line is 1.676 hw
+      // (stations alternate 3.352/3.509) — full width rides discrete hanger
+      // bumps at the ref's own 3.509 slice stations, each span clear of the
+      // 3.352 slice windows (i4/i6/i7/i8/i10/i13) and pinning the plan
+      // extremes (front 2.486 / rear -2.845 vs ref 2.474-2.486 / -2.842).
+      fenderHW: 1.676,
+      fenderBumps: [[-2.845, -2.755], [-2.60, -2.52], [-2.16, -2.07], [-1.71, -1.62],
+        [-0.815, -0.725], [0.90, 1.00], [1.87, 1.97], [2.37, 2.486]],
       tailStack: [
-        { hw: 0.17, y0: 0.66, y1: 1.06, z0: -2.95, z1: -3.20 },
+        { hw: 0.665, y0: 0.90, y1: 1.256, z0: -2.885, z1: -3.06 },
+        { hw: 0.66, y0: 0.92, y1: 1.145, z0: -3.06, z1: -3.19 },
+        { hw: 0.605, y0: 0.92, y1: 1.14, z0: -3.19, z1: -3.235 },
+        // narrow pintle-mount stack UNDER the tail tiers: the dims
+        // hullLengthM body filter needs one >12%-band column chain to the
+        // -3.25 tail station (the ref's own tail band is sub-12% — its
+        // bodyZ ends -2.936 — but dims is sovereign to the published 6.33;
+        // the 0.75..0.92 under-bracket costs ~2.5 side columns -0.15 and
+        // matches the centre plan tip -3.24..-3.25 exactly).
+        { hw: 0.17, y0: 0.75, y1: 1.14, z0: -3.06, z1: -3.25 },
       ],
-      bowFenders: { x0: 1.05, x1: 1.665, y: 1.045, z0: 3.16, z1: 2.80 },
-      flapWings: [[2.90, 0.77, 1.33], [-2.44, 0.77, 1.30]],
-      bowGuards: [[0.68, 1.47, 2.40]],
+      bowFenders: { x0: 1.02, x1: 1.665, y: 1.08, z0: 2.95, z1: 2.48 },
+      bowTabs: [{ x0: -0.71, x1: -0.665, y0: 1.007, y1: 1.099, z0: 3.046, z1: 2.90 }],
+      flapWings: [[2.47, 0.77, 1.31], [-2.80, 0.77, 1.30]],
+      bowGuards: [[0.68, 1.4865, 2.57, 0.10]],
       turret: {
-        ringY: 1.516, ringZ: 0.82, loft: { wall: 0.46, mid: 0.62, midW: 0.88, crownW: 0.55, crownX: -0.08 },
+        ringY: 1.548, ringZ: 0.719,
+        loft: { wall: 0.40, mid: 0.72, midW: 0.92, crownW: 0.50, crownX: -0.02 },
+        // hw = +x flank, hwL = -x flank (the dense plan raster shows the
+        // casting asymmetric: the -x/cupola quarter bulges to 1.07-1.13
+        // through z 0.10..1.24 while the +x flank retreats — the r2
+        // workorder priced the symmetric loft 0.14-0.23 on eight plan
+        // columns; per-side widths are the m60a2 hwL lane, opt-in).
         sections: [
-          { z: 2.05, hw: 0.66, top: 2.31, bot: 1.66 },
-          { z: 1.85, hw: 0.74, top: 2.38, bot: 1.55 },
-          { z: 1.70, hw: 0.84, top: 2.44, bot: 1.53 },
-          { z: 1.45, hw: 0.95, top: 2.51, bot: 1.52 },
-          { z: 1.32, hw: 1.06, top: 2.56, bot: 1.52 },
-          { z: 1.15, hw: 1.14, top: 2.61, bot: 1.52 },
-          { z: 0.98, hw: 1.19, top: 2.66, bot: 1.52 },
-          { z: 0.80, hw: 1.21, top: 2.69, bot: 1.52 },
-          { z: 0.56, hw: 1.20, top: 2.68, bot: 1.52 },
-          { z: 0.35, hw: 1.16, top: 2.65, bot: 1.52 },
-          { z: 0.16, hw: 1.10, top: 2.66, bot: 1.52 },
-          { z: 0.10, hw: 0.99, top: 2.63, bot: 1.53 },
-          { z: -0.20, hw: 0.90, top: 2.55, bot: 1.55 },
-          { z: -0.42, hw: 0.82, top: 2.49, bot: 1.74 },
-          { z: -0.55, hw: 0.78, top: 2.45, bot: 1.76 },
-          { z: -0.70, hw: 0.72, top: 2.42, bot: 1.78 },
-          { z: -0.85, hw: 0.66, top: 2.40, bot: 1.80 },
-          { z: -1.00, hw: 0.60, top: 2.25, bot: 1.86 },
-          { z: -1.15, hw: 0.55, top: 2.20, bot: 2.00 },
+          { z: 1.70, hw: 0.645, top: 2.30, bot: 1.523 },
+          { z: 1.51, hw: 0.70, hwL: 0.72, top: 2.325, bot: 1.523 },
+          { z: 1.36, hw: 0.85, hwL: 0.838, top: 2.38, bot: 1.523 },
+          { z: 1.20, hw: 1.015, hwL: 1.135, top: 2.43, bot: 1.523 },
+          { z: 1.05, hw: 1.06, hwL: 1.10, top: 2.475, bot: 1.523 },
+          { z: 0.90, hw: 1.13, hwL: 1.17, top: 2.52, bot: 1.523 },
+          { z: 0.72, hw: 1.185, hwL: 1.22, top: 2.545, bot: 1.523 },
+          { z: 0.55, hw: 1.20, hwL: 1.19, top: 2.55, bot: 1.523 },
+          { z: 0.44, hw: 1.15, hwL: 1.165, top: 2.552, bot: 1.523 },
+          { z: 0.32, hw: 1.02, hwL: 1.14, top: 2.55, bot: 1.523 },
+          { z: 0.19, hw: 0.945, hwL: 1.10, top: 2.545, bot: 1.523 },
+          { z: 0.115, hw: 0.885, hwL: 1.075, top: 2.54, bot: 1.523 },
+          { z: 0.095, hw: 0.875, hwL: 0.85, top: 2.538, bot: 1.523 },
+          { z: 0.03, hw: 0.848, hwL: 0.836, top: 2.535, bot: 1.523 },
+          { z: -0.03, hw: 0.825, hwL: 0.80, top: 2.533, bot: 1.523 },
+          { z: -0.13, hw: 0.815, hwL: 0.79, top: 2.53, bot: 1.523 },
+          { z: -0.25, hw: 0.80, hwL: 0.785, top: 2.52, bot: 1.523 },
+          { z: -0.32, hw: 0.795, hwL: 0.78, top: 2.50, bot: 1.545 },
+          { z: -0.38, hw: 0.79, hwL: 0.775, top: 2.496, bot: 1.748 },
+          { z: -0.55, hw: 0.755, hwL: 0.755, top: 2.49, bot: 1.757 },
+          { z: -0.59, hw: 0.73, hwL: 0.73, top: 2.428, bot: 1.76 },
+          { z: -0.70, hw: 0.645, hwL: 0.65, top: 2.427, bot: 1.772 },
+          { z: -0.88, hw: 0.60, hwL: 0.595, top: 2.427, bot: 1.786 },
+          { z: -0.93, hw: 0.575, hwL: 0.55, top: 2.348, bot: 1.79 },
+          { z: -1.05, hw: 0.44, hwL: 0.42, top: 2.21, bot: 1.83 },
         ],
-        basket: { w: 1.55, y0: 0.74, y1: 1.58, z0: 1.42, z1: 0.55 },
-        rack: { z0: -0.90, z1: -1.30, zC: -0.96, halfW: 0.46, floorY: 1.97, railY: 2.18, loadTop: 2.18 },
-        cupola: { x: -0.62, z: 0.0, r: 0.28, base: 2.50, h: 0.10 },
-        loader: { x: 0.52, z: 0.06, y: 2.56 },
-        vent: { x: 0.05, z: 0.75, y: 2.62 },
-        stowBump: { x: -0.35, y: 2.50, z: -0.69, r: 0.085, len: 0.5 },
-        antenna: { x: 0.70, z: -0.75, y: 2.10 },
-        mg: { x: -0.32, z: 0.72, baseY: 2.45, topY: 2.99, tipZ: 2.26, rl: 0.86, w: 1.5, canY: 2.88, cans: [0.26, -0.22] },
+        basket: { w: 1.55, x: 0.095, y0: 0.742, y1: 1.55, z0: 1.365, z1: 0.046 },
+        cheekPods: [
+          // right crew-seat pod: the basket's far-right mass (plan zR
+          // 0.20-0.42 / zF 1.20 at x 0.94-1.02, front bot 0.742 to +1.016)
+          { x0: 0.86, x1: 1.016, y0: 0.742, y1: 1.55, z0: 1.20, z1: 0.20 },
+          // LEFT roof ridge/crest (side tops 2.60-2.712 over z -0.19..+0.455;
+          // front-hidden under the M2 stack at x -0.05..-0.59)
+          { x0: -0.56, x1: -0.06, y0: 2.42, y1: 2.712, z0: 0.455, z1: 0.315 },
+          { x0: -0.54, x1: -0.08, y0: 2.42, y1: 2.652, z0: 0.505, z1: 0.455 },
+          { x0: -0.50, x1: -0.08, y0: 2.42, y1: 2.685, z0: 0.315, z1: 0.10 },
+          { x0: -0.45, x1: -0.10, y0: 2.42, y1: 2.645, z0: 0.10, z1: -0.045 },
+          { x0: -0.42, x1: -0.12, y0: 2.42, y1: 2.607, z0: -0.045, z1: -0.19 },
+          // commander-cupola shoulder ring (front band 2.56 at x -0.65..-0.90)
+          { x0: -0.90, x1: -0.65, y0: 2.485, y1: 2.558, z0: -0.01, z1: -0.19 },
+          // right lifting-eye sliver (plan 0.815..0.875 at x 1.19..1.245,
+          // front top 1.958 bot 1.903 — the measured +x flank tell)
+          { x0: 1.19, x1: 1.245, y0: 1.90, y1: 1.955, z0: 0.875, z1: 0.815 },
+        ],
+        rack: { z0: -0.90, z1: -1.265, zC: -1.04, halfW: 0.465, floorY: 2.00, railY: 2.21, loadTop: 2.21 },
+        cupola: { x: -0.775, z: -0.15, r: 0.08, base: 2.55, h: 0.075 },
+        loader: { x: 0.52, z: 0.0, y: 2.577 },
+        vent: { x: -0.01, z: 0.30, y: 2.44 },
+        stowBump: { x: -0.02, y: 2.51, z: -0.725, r: 0.085, len: 0.62 },
+        antenna: { x: 0.60, z: -0.62, y: 2.30 },
+        // §B3 census fitting (m46 r2 recipe): stowed FITTINGS 'mag' interior
+        // to the casting silhouette — the measured m2Station stays the
+        // gate-driven roof gun (§I packet justification).
+        stowMG: [0.30, 2.12, 0.30],
+        // tone 'two-tone' = the m46-r7 B1 / m47-r4 B5 MG-PHYSICS recipe
+        // (sky-backed station reads pale top-lit): pale upper works + crown
+        // strips + barrel taper w/ collar END pinned at tipZ (anchor law).
+        mg: { x: -0.44, z: 0.76, baseY: 2.50, topY: 3.030, tipZ: 2.20, rl: 0.86, w: 1.5, coverZ: 0.635, coverL: 0.14, canY: 2.90, cans: [0.24, 0.34], tone: 'two-tone' },
       },
-      // published overall 6.6 (userdrops6 batch-8 true-up: the seated
-      // oracle's muzzle ruling) with the tail at -3.21 => muzzle +3.39
-      // (oracle tube reads +3.27-live: ~1 proc-only column)
-      gun: { rootZ: 1.70, axisY: 1.947, muzzle: 3.39, r: 0.135, device: 'stub', shield: { w: 0.84, h: 0.66, dy: -0.04, zF: 2.10, d: 0.55, chinRise: 0.17 } },
+      gun: { rootZ: 1.70, axisY: 1.948, muzzle: 3.39, r: 0.132, device: 'stub', shield: { w: 1.31, h: 0.72, dy: -0.02, zF: 1.99, d: 0.55, chinRise: 0.144, rotorR: 0.13, rotorW: 0.40 } },
     }),
   },
   m46_patton: {

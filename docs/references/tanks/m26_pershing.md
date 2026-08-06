@@ -194,6 +194,8 @@ CERTIFICATIONS / BLOCKERS:
    heightM -> ~3.05 over-MG row (no verified published figure found in a
    quick search; Wikipedia/afvdatabase list only 2.78), or an owner call to
    build the M2 low and certify the turretCurves shortfall.
+   [RESOLVED at r1: the over-M2 row landed as 3.02; the r2 true-up below
+   re-measures the datum at 3.078 -> recommend 3.08.]
 2. Hull-length tension (certified, structural): the recovered hull spans
    6.11 m vs published 6.33. dims stays sovereign: the excess is carried by
    the bow fender platforms (+gun-union body columns) and a narrow centre
@@ -202,3 +204,81 @@ CERTIFICATIONS / BLOCKERS:
    muzzle +5.00 adds ~2 ref-only columns (overall 8.65 sovereign).
 State at handoff: hull 77.3 / whole 71.2 / turret 73.5 / stations 83.2 /
 dims 25.3 (blocker 1) / floaters 100.
+
+## Vertex round r2 (2026-08-05, patton-family builder) — FORMAL WARP REQUEST + heightM true-up verification
+m26 stayed DEFERRED FOR POST-WARP RE-AUTHOR per the r1 landing note
+(aa31778: "m26/m45 deferred for post-warp re-authors; three z-only tube/
+body warp plans banked — EXECUTION FROZEN per the incident law"). This
+section is the formal execution request for the banked m26 plan
+(orchestrator lane per §E — builder reports plans + literals only; the
+m45 ladder ran concurrently as the warp-free tank).
+
+### FORMAL WARP REQUEST — m26_pershing body-stretch + muzzle-pin (m46 batch-36 class)
+Print defect (extract docs/references/vertex/m26_pershing.json, generated
+2026-08-03 on the committed batch-8-seated bytes — the PLANS-authoring
+extract): hull mask spans 6.076 m (z -4.355..+1.721) vs published 6.33
+(-4.0%); overall reads 8.71 vs published 8.65 while the hull is short, so
+the tube must COMPRESS when the body stretches (muzzle pinned at
+tail'+8.65). Width TRUE (3.509, anchor untouched); y IDENTITY (stature
++1.8% is the over-M2 datum — see the true-up below, spec lane, NOT a
+warp).
+- Plan literals (banked at r1, re-verified this round against the extract
+  byte-for-byte — vertex-normalize.mjs PLANS m26_pershing, world frame):
+  z: [[-4.355, -4.482], [1.721, 1.848], [4.355, 4.168]]  (body 6.076 ->
+  6.33 about centre -1.317, slope 1.0418; muzzle 4.355 -> 4.168 =
+  tail'+8.65, tube slope 0.8808 — both maps monotone);
+  y: [[0, 0], [3.101, 3.101]] identity, yTopMax 3.11.
+- Raw GLB-frame literals for `_axis_warp` (derived via the extract's own
+  glbToGate: scale 0.0975 all axes, offsetGate z -4.3636, y 0 — the same
+  frame mechanism the batch-34/36 executions used):
+  long_map = [(0.0882, -1.2144), (62.4062, 63.7087), (89.4215, 87.5036)]
+  y_map    = [(0, 0), (31.8051, 31.8051)]
+  y_top_max = 31.90   # guard only (y identity; 3.110 world)
+  expect   = (2, 54984, 109998)   # extract counts on committed HEAD bytes
+- LAW v2 mechanics: fresh .bak from committed HEAD bytes (the batch-8
+  seat_turret output is IN the committed bytes -> the seat recipe demotes
+  to history exactly like m46 batch-36/m47 batch-34; recipe = the warp
+  ALONE). Never flat-assign over a live entry without the demotion note.
+- Gate-in-loop baseline: min 72.1 — hull 77.9 / whole 72.1 / turret 73.7 /
+  stations 78.5 / dims 100 / floaters 100 (single run this round; the
+  2026-08-05 ledger row reads 70.6 with whole 70.6 — the 1.5-pt spread is
+  ledger-generation phase, both are valid pre-warp baselines; the
+  orchestrator's gate-in-loop re-baselines at execution per LAW v2).
+  Expected releases: the certified batch-8 hull-length-tension cover
+  columns (proc-only bow-platform/tail-pintle columns vs the short print
+  body) and the ~2 ref-only muzzle columns (print muzzle sat 0.06 long of
+  the published station pre-warp in the proc frame). dims MUST hold 100.
+  A side dAlong re-phase is EXPECTED re-anchor debt (m47 batch-34
+  precedent: healthy plan/front/stations = keep the warp, queue the m26
+  post-warp re-anchor round in the patton lane — I execute that round).
+- Verification: vertex-normalize --verify deltas ~0% post-warp except the
+  KNOWN heightM +1.8-vs-tol-1.6 flag, which dies iff the spec true-up
+  below lands with the same batch; regenerate the vertex extract after
+  the warp (the re-anchor round authors from the WARPED extract frame).
+- BANKED for the post-warp re-anchor round (§B orders, builder lane):
+  (1) §B3 mantlet-area sweep — the current build's left cheekPod
+  (x -1.25..-1.00, y 1.90..2.09, z 0.85..-0.20) is a bare 1.05 m
+  rectangle riding the casting cheek: re-derive it from the warped
+  extract as casting mass (loft/pod flush on the dome) or replace with
+  identifiable stowage; same sweep over the m3 brake flank boxes.
+  (2) §B1 slope-mass re-check on the glacis wings after the body
+  stretch. (3) The m45-r1 recipe transfers (gearTone olive + darkGearFit
+  + stowMG census fitting are cfg opt-ins already proven family-safe —
+  hashes byte-identical on every sibling).
+
+### heightM true-up VERIFIED (spec lane — flag for the orchestrator landing)
+Mission item: verify the r1 recommendation (3.02 -> 3.08, userdrops6.js).
+Re-derived this round from the extract curves (independent of the banked
+scalar, §D re-derive law): the mounted M2 band is REAL print geometry
+spanning 166 side_whole columns (1.65 m, z -0.405..-2.055 extract frame)
+with tops 3.025..3.099, max 3.099, body-p95 3.061; the extract's own
+bodyTopM datum reads 3.078. Published-row candidates: 3.02 (current row,
+src/vehicles/userdrops6.js line 87) sits -1.9% under the datum — a proc
+that matches the ref M2 band would read heightM ~-1.9% => dims ~92.6,
+while the current proc holds dims 100 only by building its M2 band LOW
+(turret_side residual). CONFIRMED RECOMMENDATION: heightM 3.02 -> 3.08
+(the bodyTopM datum, rounding 3.078). Coupling: land it in the same batch
+as the warp (kills the --verify +1.8% flag; the post-warp re-anchor then
+raises the proc M2 band to the ref's own 3.03-3.09 line and recovers the
+turret_side residual without a dims trade). Builder does NOT edit
+userdrops6.js — single-owner law; this is the flag.
