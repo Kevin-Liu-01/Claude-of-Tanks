@@ -140,6 +140,16 @@ honestly parked at 88.9 pending its retune)
   proportional ceiling; §E re-source request filed in packet);
   PHOTO-CLASS FLOW law banked (tmp-leo-photoclass rig = the no-oracle
   lane mechanism for the remaining base-21 slices).
+- **OWNER PUNCH LIST 2 (2026-08-06 pm, four screenshots)**: (1) fv510
+  photo-parity round 2 (real Warrior photo: angular welded turret w/
+  sloped faces, front-corner smoke banks, 3 whips, loaded rear bins,
+  skirts-over-wheels, glacis lights) — uk lane; (2) sepv2/sepv3/tusk
+  REBASED on the m1a1 family build + real kits (ERA/TUSK/CROWS) +
+  §B3.2 density on ALL abrams — abrams lane; (3) revolution turret
+  see-through sides/ring ("disembodied") — relayed to the LIVE leopard
+  agent; (4) leclerc turret front = steep rake down to a small flat
+  strip — misc lane; (5) russia §B3.2 decorations + MG/RWS density —
+  russia lane.
 - **OWNER PUNCH LIST (2026-08-06, five rounds spawned)**: (1) DONE — ariete+leclerc left sides FIXED (reversed-winding class
   decoded: mirror loops hand slabs inward faces, FrontSide-culled but
   DoubleSide-mask visible; orientedSlab guard landed; gates held exact;

@@ -554,3 +554,18 @@ score is no defense.
   column bottoms pinning a stepped chin under a raked cheek always flag a
   horizontal-vs-chamfer delta — adjudicate against the packet constraint
   first; one constraint ledge is not the colonnade class.
+
+## §B3.2 DECORATION DENSITY (owner directives 2026-08-06, with screenshots)
+"add far more of these decorations on ALL abrams" + russia: "the most
+common decorations still need to be modelled and added, and many more
+machine guns of all varieties or automated machine gun emplacements".
+§B3's minimum is now a DENSITY mandate: real vehicles are BUSY — every
+tank carries its type's full common kit (lights + guards, mirrors, tow
+cables + shackles, jerry cans, stowage bins/baskets LOADED, antennas,
+straps, spare track links, tools) and crew-served weapons at real
+density: MGs of all varieties (pintle, coax port, loader's, bow where
+real) AND automated emplacements (CROWS/RWS with sensor heads) where the
+mark carries them. Variant kits are REAL SYSTEMS: TUSK = ARAT ERA tiles
++ loader shield + TIP + slat + urban lights; SEP kits ride the family
+base build (owner: sepv2/sepv3/tusk are "based off of our existing m1a1
+abrams with the extra armoring and ERA and urban survival kit").
