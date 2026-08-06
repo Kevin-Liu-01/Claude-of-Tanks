@@ -1,0 +1,36 @@
+<!doctype html>
+<!-- SCRATCH: identify a5 rear 4-vox carrier — dump tris of the 0x36342f mesh near the cluster -->
+<meta charset="utf-8">
+<title>tmp-a5-rear-probe</title>
+<script type="module">
+import * as THREE from 'three';
+import { createTank } from '/src/vehicles/tankFactory.js';
+const engineCtx = { setupShadowMaterial: (m) => m, anisotropy: 1, renderer: null };
+const tank = createTank('leo2a5', engineCtx, { camoSeed: 4242, quality: 'high', proceduralOnly: true });
+tank.root.updateMatrixWorld(true);
+const out = [];
+const box = { x0: -1.20, x1: -1.14, y0: 1.42, y1: 1.46, z0: -3.42, z1: -3.36 };
+const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
+tank.root.traverse((o) => {
+  if (!o.isMesh || o.isInstancedMesh || !o.geometry) return;
+  const pos = o.geometry.getAttribute('position');
+  if (!pos || pos.usage === THREE.DynamicDrawUsage) return;
+  const matC = o.material && o.material.color ? o.material.color.getHexString() : '?';
+  const idx = o.geometry.index;
+  const n = idx ? idx.count : pos.count;
+  const tris = [];
+  for (let i = 0; i < n; i += 3) {
+    const i0 = idx ? idx.getX(i) : i, i1 = idx ? idx.getX(i + 1) : i + 1, i2 = idx ? idx.getX(i + 2) : i + 2;
+    a.fromBufferAttribute(pos, i0).applyMatrix4(o.matrixWorld);
+    b.fromBufferAttribute(pos, i1).applyMatrix4(o.matrixWorld);
+    c.fromBufferAttribute(pos, i2).applyMatrix4(o.matrixWorld);
+    const cx = (a.x + b.x + c.x) / 3, cy = (a.y + b.y + c.y) / 3, cz = (a.z + b.z + c.z) / 3;
+    if (cx > box.x0 && cx < box.x1 && cy > box.y0 && cy < box.y1 && cz > box.z0 && cz < box.z1) {
+      tris.push([[+a.x.toFixed(3), +a.y.toFixed(3), +a.z.toFixed(3)], [+b.x.toFixed(3), +b.y.toFixed(3), +b.z.toFixed(3)], [+c.x.toFixed(3), +c.y.toFixed(3), +c.z.toFixed(3)]]);
+    }
+  }
+  if (tris.length) out.push({ name: o.name || o.parent?.name || '(unnamed)', mat: matC, tris: tris.slice(0, 20), nTris: tris.length });
+});
+window.__PROBE_RESULT = out;
+window.__PROBE_READY = true;
+</script>

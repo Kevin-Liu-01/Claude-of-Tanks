@@ -12,9 +12,9 @@
  },
  "curveRows": {
   "side_hull": {
-   "score": 94.37917385898312,
-   "meanPct": 0.39,
-   "p95Pct": 1.64,
+   "score": 94.0817291119422,
+   "meanPct": 0.41,
+   "p95Pct": 1.65,
    "coverPct": 0,
    "reg": {
     "dAlong": 0,
@@ -35,7 +35,7 @@
      "refBot": -0.28,
      "procTop": 0.46,
      "procBot": -0.39,
-     "errM": 0.051
+     "errM": 0.052
     },
     {
      "at": 4.88,
@@ -51,7 +51,7 @@
      "refBot": -0.51,
      "procTop": 0.46,
      "procBot": -0.55,
-     "errM": 0.041
+     "errM": 0.042
     },
     {
      "at": 3.45,
@@ -60,6 +60,14 @@
      "procTop": 0.48,
      "procBot": -1.25,
      "errM": 0.031
+    },
+    {
+     "at": -1.81,
+     "refTop": 0.11,
+     "refBot": -1.11,
+     "procTop": 0.14,
+     "procBot": -1.14,
+     "errM": 0.026
     },
     {
      "at": -2.14,
@@ -108,14 +116,6 @@
      "procTop": 0.52,
      "procBot": -0.64,
      "errM": 0.021
-    },
-    {
-     "at": -2.47,
-     "refTop": 0.1,
-     "refBot": -0.78,
-     "procTop": 0.1,
-     "procBot": -0.74,
-     "errM": 0.015
     }
    ]
   },
@@ -444,9 +444,9 @@
    ]
   },
   "front_hull": {
-   "score": 91.69727575358337,
+   "score": 91.68588819726922,
    "meanPct": 0.63,
-   "p95Pct": 1.23,
+   "p95Pct": 1.22,
    "coverPct": 0,
    "reg": {
     "dAlong": 0,
@@ -474,7 +474,7 @@
      "refTop": 0.49,
      "refBot": -1.21,
      "procTop": 0.51,
-     "procBot": -1.25,
+     "procBot": -1.26,
      "errM": 0.037
     },
     {
@@ -514,7 +514,7 @@
      "refTop": 0.5,
      "refBot": -1.21,
      "procTop": 0.51,
-     "procBot": -1.25,
+     "procBot": -1.26,
      "errM": 0.029
     },
     {
@@ -534,19 +534,19 @@
      "errM": 0.027
     },
     {
-     "at": -1.42,
-     "refTop": 0.48,
-     "refBot": -1.25,
-     "procTop": 0.51,
-     "procBot": -1.26,
-     "errM": 0.023
-    },
-    {
      "at": -1.01,
      "refTop": 0.47,
      "refBot": -0.86,
      "procTop": 0.46,
      "procBot": -0.9,
+     "errM": 0.024
+    },
+    {
+     "at": -1.42,
+     "refTop": 0.48,
+     "refBot": -1.25,
+     "procTop": 0.51,
+     "procBot": -1.26,
      "errM": 0.023
     }
    ]
