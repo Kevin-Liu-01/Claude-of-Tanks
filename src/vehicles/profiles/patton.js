@@ -774,9 +774,18 @@ function smoothLoft(P, bucket, sections, opts = {}) {
   const sx = opts.shiftX ?? 0;
   const oy = opts.oy ?? 0, oz = opts.oz ?? 0;
   const L = (s, f) => s.bot + (s.top - s.bot) * f;
+  // r4 (m26 graduation retune): per-side LEFT widths — loftBody's exact
+  // opt-in s.hwL expressions (hl / crownL), so hwL-carrying castings (m26
+  // cupola-flank bulge) keep their slab silhouette through the smooth
+  // re-emit. Absent -> the symmetric expressions below are byte-identical
+  // (m46/m47 smooth rings carry no hwL; hash-verified).
+  const hl = (s) => s.hwL ?? s.hw;
+  const crownL = (s) => (s.hwL != null
+    ? Math.max((crownX - crownW) * s.hw, -midW * s.hwL)
+    : (crownX - crownW) * s.hw);
   const ring = (s) => [
-    [-s.hw + sx, s.bot], [-s.hw + sx, L(s, wallT)], [-midW * s.hw + sx, L(s, midT)],
-    [(crownX - crownW) * s.hw + sx, s.top], [(crownX + crownW) * s.hw + sx, s.top],
+    [-hl(s) + sx, s.bot], [-hl(s) + sx, L(s, wallT)], [-midW * hl(s) + sx, L(s, midT)],
+    [crownL(s) + sx, s.top], [(crownX + crownW) * s.hw + sx, s.top],
     [midW * s.hw + sx, L(s, midT)], [s.hw + sx, L(s, wallT)], [s.hw + sx, s.bot],
   ];
   const M = 8, nS = sections.length;
@@ -1377,6 +1386,17 @@ function pattonGun(P, G) {
     sq(0.165, 0.11, b0 + 0.10, 1, 1.55);                    // rear baffle ring
     sq(0.165, 0.11, b0 + 0.42, 1, 1.55);                    // front baffle ring
     for (const side of [-1, 1]) P.add('gunDark', box(0.06, 0.10, 0.12), side * 0.19, 0, b0 + 0.26);
+    if (G.brakeBars) {
+      // r4 order-3b (m26, the m46 r7-C5 baffle-slot lane): the verdict read
+      // the double-baffle's dark side windows WEAKER than the ref's notch —
+      // transverse contrast bars ON the body flanks between the baffle
+      // rings (faces 0.5 mm proud of the 0.24 body face, inside the
+      // certified 0.256 ring plan band and the front-view ring contour;
+      // muzzle z untouched). Default absent — m45's m3 byte-identical.
+      for (const side of [-1, 1]) {
+        P.add('gunDark', box(0.008, 0.084, 0.20), side * 0.2405, 0, b0 + 0.26);
+      }
+    }
     P.add('gun', cylZ(G.r * 1.05, 0.05, 10), 0, 0, len - 0.015);
   } else if (G.device === 'm3a1') {
     // 90 mm M3A1: bore-evacuator sleeve over the mid tube (the measured
@@ -1446,6 +1466,23 @@ function buildPershing(P, cfg) {
     }
     const T = cfg.tailStack[cfg.tailStack.length - 1];
     P.add('hullDark', cylX(0.055, T.hw * 1.2, 8), 0, (T.y0 + T.y1) / 2, T.z1 + 0.04);
+    if (cfg.pintleKit) {
+      // r4 order-3a (m26, graduation-retune polish): rear towing-pintle
+      // BRACKET tell around the existing pintle cylinder — the verdict's
+      // view-rear 8.9 named "no pintle-bracket tell" on an otherwise
+      // honest rear face. Everything INSIDE the final tier's certified
+      // envelope (|x| <= tier hw, y inside the tier band, z >= -4.321 =
+      // 1 mm inside the certified -4.322 tier reach; the pintle cyl's own
+      // -4.33 surface stays the rear-most read) — plan/side/rear
+      // mask-neutral by construction: the tier's own silhouette owns
+      // every view's boundary there. Default absent — byte-identical.
+      const yC = (T.y0 + T.y1) / 2;
+      P.add('hullDark', box(0.17, 0.15, 0.006), 0, yC + 0.045, T.z1 - 0.003);   // backing plate
+      P.add('hullDetail', box(0.06, 0.04, 0.008), 0, yC + 0.13, T.z1 - 0.002);  // latch block
+      for (const side of [-1, 1]) {                                             // chain-eye dots
+        P.add('hullDark', box(0.02, 0.05, 0.006), side * 0.10, yC - 0.10, T.z1 - 0.002);
+      }
+    }
   }
   if (cfg.bowFenders) {
     // front fender platforms: the recovered hulls end their glacis toe ~2.39
@@ -1680,12 +1717,21 @@ function buildPershing(P, cfg) {
     const places = [];
     const zm = (DS.z0 + DS.z1) / 2, zd = DS.z0 - DS.z1;
     const riserBot = DS.fieldTop - 0.001, riserTop = DS.crownTop - 0.005;
+    // r4 (m26): opt-in cell skips [[crestIdx, dashIdx], ...] — the ref's own
+    // crest rows BREAK at its proud deck fittings (m26 fuel caps @ -1.88,
+    // bump plates @ -2.33..-2.47 stand TALLER than the crowns); skipping
+    // those cells is the parity-true read. Absent -> empty set, loop
+    // geometry byte-identical (m46 passes none).
+    const skip = new Set((DS.skips || []).map(([ci, di]) => ci * 100 + di));
     let dashL = 0;
     for (const side of [-1, 1]) {
       P.add('hullDetail', box(DS.x1 - DS.x0, DS.fieldTop - DS.fieldBot, zd),
         side * (DS.x0 + DS.x1) / 2, (DS.fieldTop + DS.fieldBot) / 2, zm);
-      for (const cz of DS.crests) {
-        for (const [dx0, dx1] of DS.dashes) {
+      for (let ci = 0; ci < DS.crests.length; ci++) {
+        const cz = DS.crests[ci];
+        for (let di = 0; di < DS.dashes.length; di++) {
+          if (skip.has(ci * 100 + di)) continue;
+          const [dx0, dx1] = DS.dashes[di];
           const cx = side * (dx0 + dx1) / 2;
           dashL = dx1 - dx0;
           P.add('hullDark', box(dashL - 0.02, riserTop - riserBot, 0.020),
@@ -1702,6 +1748,60 @@ function buildPershing(P, cfg) {
     crownInst.receiveShadow = true;
     P.hullG.add(crownInst);
     P.disposables.push(crownGeo);
+  }
+  if (cfg.rampBanks) {
+    // r4 (m26, graduation-retune order 2 — the same verdict lane as
+    // deckSlats): the ref's rear ramp carries TWO transverse louvre banks
+    // the bare proc ramp lacks (view-top: full-width med-rows 64-68 at z
+    // -3.50..-3.19 — the loudest deck read on the vehicle — plus dash rows
+    // -4.01..-3.69), separated by the ref's own PLAIN step zone (-3.55..
+    // -3.65 reads quiet, max<60 — left bare here too). Grammar = the m47-r4
+    // tailTray read (pale lit louvre slats over dark seam shadows) at the
+    // m26 ref's own measured stations, each slat following the deck
+    // polyline at its own station (a continuous base slab would bury/poke
+    // across the -3.44/-3.50 ramp kink). Heights TONE-PURE, not the m47
+    // +0.019 class: the m26 deck polyline was traced from the ref's own
+    // side silhouette WITH its banks — proud crests double-count the line
+    // (measured in-gate, twice: +0.019 pushed the certified i1 rear-ramp
+    // window 1.81 -> 2.40 and +0.008 still read 2.05; stations 90.6 ->
+    // 89.6/89.7). Dark seam bar EMBEDDED (top = line +0.001), pale crest
+    // top = line +0.002 — the i0/i1 station tops stay at their certified
+    // reads (+0.065% worst case); the view-top read is luma contrast, a
+    // lift is 1.2 px at 63 px/m and carries nothing. Crest depth 0.036 >=
+    // the 0.034 crown-read law, dark seam peeks 7 mm each side of it.
+    // B.x0 < 0 = one full-width bank; B.x0 >= 0 =
+    // mirrored side pair. Pale = the sampled deck-lane dial (per-build
+    // shadow clone + ambient rehook; clones drop onBeforeCompile), emitted
+    // as ONE InstancedMesh per bank (t90m ERA-brick pattern). Default
+    // absent — every sibling (m45/m46/m47/m60s) byte-identical.
+    const dAt = hull.deckAt;
+    const rbPale = P.mats.shadow.clone();
+    rbPale.color.setHex(cfg.rampBanks.hex ?? 0x424635);
+    rbPale.roughness = 0.9;
+    rbPale.metalness = 0.02;
+    rbPale.envMapIntensity = 0.18;
+    rbPale.onBeforeCompile = vehicleAmbientFloorHook;
+    rbPale.customProgramCacheKey = () => 'veh-ambient-floor-v2';
+    P.disposables.push(rbPale);
+    for (const B of cfg.rampBanks.banks) {
+      const spans = B.x0 < 0 ? [[B.x0, B.x1]] : [[B.x0, B.x1], [-B.x1, -B.x0]];
+      const w = B.x1 - B.x0;
+      const crestGeo = box(w - 0.02, 0.004, 0.036);
+      const inst = new THREE.InstancedMesh(crestGeo, rbPale, spans.length * B.zs.length);
+      const m4b = new THREE.Matrix4();
+      let bi = 0;
+      for (const [xa, xb] of spans) {
+        for (const zs of B.zs) {
+          const ly = dAt(zs);
+          P.add('hullDark', box(w, 0.006, 0.050), (xa + xb) / 2, ly - 0.002, zs);
+          inst.setMatrixAt(bi++, m4b.makeTranslation((xa + xb) / 2, ly, zs));
+        }
+      }
+      inst.instanceMatrix.needsUpdate = true;
+      inst.receiveShadow = true;
+      P.hullG.add(inst);
+      P.disposables.push(crestGeo);
+    }
   }
   if (cfg.towCable) {
     // r7 D (m46, §B3): KIT tow cable coiled on the rear deck plateau,
@@ -3016,8 +3116,12 @@ const M26_FIT = {
   lights: { x: 0.68, y: 1.40, z: 1.48, rx: -0.35 }, siren: [-0.3, 1.51, 1.10],
   shackleY: 1.12, shackleZ: 1.575,
   // grille bay interior to the 1.552 aft shelf band (frames/slats all under
-  // the 1.5781 trace quantum); the 1.578+ bumps ride caps + bump plates
-  grille: { z0: -1.55, z1: -2.28, y: 1.545, rx: 0 }, caps: [0.85, -1.88], noRearEyes: true,
+  // the 1.5781 trace quantum); the 1.578+ bumps ride caps + bump plates.
+  // r4: bay seat 1.545 -> 1.532 so the deckSlats field plate (1.561)
+  // swallows the 0.104-pitch usKit slat tops 1 mm under its top face (the
+  // m46 r10 mechanism exactly — the bay reads ONE louvre field under the
+  // ref's own 0.0808 crest rhythm, not two beating pitches).
+  grille: { z0: -1.55, z1: -2.28, y: 1.532, rx: 0 }, caps: [0.85, -1.88], noRearEyes: true,
   rearGrilleY: 1.02, rearGrilleW: 0.56, rearGrilleZ: -4.196,
 };
 
@@ -3394,6 +3498,13 @@ export const PATTON_PROFILES = {
         // station (m45 BODY-FILTER TAIL LAW price: bot -0.26 on one column)
         { hw: 0.175, y0: 0.82, y1: 1.24, z0: -4.26, z1: -4.315 },
       ],
+      // r4 order-3a: pintle-bracket tell inside the tier3 envelope (the
+      // view-rear 8.9 polish; X-braces NOT taken — the ref's wide rear
+      // mud-guard stays span x 1.24..1.70 over what the stations law makes
+      // an OPEN track zone on the proc (narrow 1.673 fender lip + discrete
+      // bumps): floating X-strips there would violate §B2 attachment.
+      // Documented residual, packet r4.
+      pintleKit: true,
       // bow fender platforms (1.008..1.099 to z 1.913, plan x 1.09..1.72)
       // + the single LEFT tab to 1.99 (hull-mask front; ref tab plan 2.0186
       // spanning x -0.66..-0.77 — the 1.99 face keeps the 2.066 trace
@@ -3431,9 +3542,62 @@ export const PATTON_PROFILES = {
       ],
       flapWings: [[-4.135, 0.77, 1.26]],
       bowGuards: [[0.68, 1.44, 1.44, 0.10]],
+      // r4 graduation-retune order 2 (the m46 r10 R5 recipe at the m26
+      // ref's OWN stations — measured on the verdict critic's view-top
+      // pair, ITU-601, mapping z(y) = -4.315 + (y-48)/62.88 verified on
+      // the proc's own ramp steps to ~1 px): engine-bay crest rows y156..
+      // y217 = z -2.598..-1.629, pitch 5.08 px = 0.0808 m (13 rows; the
+      // ref's fine louvre rhythm — m46's ref ran 0.199); dash bands per
+      // side measured at x-pitch 0.158, dash ~0.063 (right-side pale
+      // bands 0.324..0.387 / 0.482..0.545 / 0.640..0.703 / 0.798..0.861 /
+      // 0.957..1.020, left side mirrors). Ref crest luma p75 63-74 over
+      // 52-59 bay fields (plain-olive print — a full class dimmer than
+      // m46's 86-95; hex sampled/dialed on the official render, NOT
+      // transplanted). Field plate swallows the lowered grille slats
+      // (fieldTop 1.561 = slat tops 1.560 + 1 mm, m46-exact); crownTop
+      // 1.572 = deck +0.020..+0.024 across the bay's own 1.552->1.548
+      // fall, under the 1.5781 trace quantum (gate-mask-free by
+      // construction). skips = the ref's own crest breaks at its proud
+      // fittings (bump plates -2.33..-2.47 top 1.588, fuel caps -1.88 top
+      // 1.581 — both stand taller than the crowns). Footprint ends at
+      // -2.513, >=10 mm clear of the -2.523 station boundary: the i3
+      // window's ref side-trace top is the BARE deck line (measured
+      // in-gate: proud content past the boundary read i3 topPct 0.13 ->
+      // 0.97, stations -0.7; i4 absorbs the crowns freely — the ref's own
+      // crests are proud in its window). The ref's two aft-most crest
+      // rows (-2.598/-2.517) are ceded to that boundary law — they sit in
+      // the rack's shadow zone at 1x (rack overhang to -2.505).
+      deckSlats: {
+        x0: 0.10, x1: 1.02, z0: -1.58, z1: -2.513,
+        fieldBot: 1.545, fieldTop: 1.561, crownTop: 1.572,
+        crests: [-2.436, -2.356, -2.275, -2.194, -2.113,
+          -2.033, -1.952, -1.871, -1.790, -1.710, -1.629],
+        dashes: [[0.324, 0.387], [0.482, 0.545], [0.640, 0.703], [0.798, 0.861], [0.957, 1.020]],
+        skips: [[0, 3], [0, 4], [1, 3], [1, 4], [6, 3], [7, 3]],
+        hex: 0x4a4f3d,
+      },
+      // Ramp louvre banks (same order, same pair): Bank B = the loudest
+      // deck read (full-width med-rows 64-68), 5 rows z -3.504..-3.186 @
+      // 0.0795 over the -3.16..-3.50 ramp flat+kink; Bank A = centre dash
+      // rows z -4.013..-3.695 (|x| 0.15..0.45 visible dashes; the bright
+      // flanks there are the rear fender ends, already geometry). The
+      // ref's plain zones (-2.65..-3.10, -3.55..-3.65) stay bare.
+      rampBanks: {
+        hex: 0x4a4f3d,
+        banks: [
+          { x0: -0.85, x1: 0.85, zs: [-3.504, -3.424, -3.345, -3.266, -3.186] },
+          { x0: 0.15, x1: 0.45, zs: [-4.013, -3.933, -3.854, -3.774, -3.695] },
+        ],
+      },
       turret: {
         ringY: 1.518, ringZ: -0.454,
-        loft: { wall: 0.46, mid: 0.62, midW: 0.88, crownW: 0.55, crownX: -0.10 },
+        // r4 graduation-retune order 1 (shaded-parity-m26-graduation FAIL
+        // verdict, 2026-08-05): smooth — the SAME ring corners re-emitted
+        // through smoothLoft (one indexed grid, shared-vertex normals) so
+        // the casting shades as one cast roll instead of the slab facet
+        // patchwork (the close-roof/hero-toptilt 8.8 floor holder; m47
+        // r6-B8 / m46 r9-R4 lineage, silhouette-identical by construction).
+        loft: { wall: 0.46, mid: 0.62, midW: 0.88, crownW: 0.55, crownX: -0.10, smooth: true },
         // hw = +x flank, hwL = -x flank (plan_turret: LEFT holds 1.11+ from
         // z +0.135 to the -1.036 corner while RIGHT reads 1.013 @ 0.099..
         // -0.901 / 1.118 @ -0.03..-0.66 — the m45 cupola-side bulge)
@@ -3509,7 +3673,8 @@ export const PATTON_PROFILES = {
       // so the brake face 4.32 stays clear of the 4.380 trace column.
       // Mantlet face 0.89 = the ref's own 0.8948 PLAN band (the 2.12 side
       // read at z ~1.0 is the narrow rotor lane, not the full-width face).
-      gun: { rootZ: 0.90, axisY: 1.9464, muzzle: 4.31, r: 0.105, device: 'm3', shield: { w: 1.36, h: 0.82, dy: 0.04, zF: 0.89, d: 0.41, chinRise: 0.26, rotorR: 0.11, rotorW: 0.42 } },
+      // r4 order-3b: brakeBars — the C5-lane window-contrast bars.
+      gun: { rootZ: 0.90, axisY: 1.9464, muzzle: 4.31, r: 0.105, device: 'm3', brakeBars: true, shield: { w: 1.36, h: 0.82, dy: 0.04, zF: 0.89, d: 0.41, chinRise: 0.26, rotorR: 0.11, rotorW: 0.42 } },
     }),
   },
   m45_patton: {

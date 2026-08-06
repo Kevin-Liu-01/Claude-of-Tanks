@@ -416,3 +416,143 @@ fender-platforms + single tab, m46/m47 are fender-shelf bows), NO fender
 mufflers (m46/m47 tell), M2 at the bustle rear with the barrel forward
 over the crest (m45 mounts front-left x -0.44, m46 forward station).
 Loadout dressing variety beyond the print is the visual round's lane.
+
+## Vertex round r4 (2026-08-05, patton-family builder) — GRADUATION-BLOCKER RETUNE (shaded-parity FAIL floor 8.8 -> orders delivered)
+The retune ordered by docs/critique/shaded-parity-m26-graduation.md
+(GRADUATION FAIL floor 8.8 at f348ecd5: slab-loft facet patchwork on
+every casting-dominant view + the deck-slat crown gap; geometry certified
+sound). Both family-proven orders delivered + the optional polish lane;
+no re-author, no warp, no dims motion.
+
+GATE (close x2, runs consecutive, lines identical): **min 90.5 PASS —
+hull 93.1 / whole 90.5 / turret 94.2 / stations 90.6 / dims 100 /
+floaters 100**. The whole row reads +0.1 over the verdict's 90.4 line:
+measured MID-ROUND on byte-identical geometry (order-1-only state read
+90.4 x2 then 90.5 on the next run, no edit between) — the 90.4<->90.5
+whole-row flicker is run-phase (AA-teeter class), not geometry. Battery:
+track-clip --exact **0/0 band + 0/0 shoe**; turret-parent **0/0/0**;
+standard-check **contig 0 / decor mg1+0d / clip 0/0** all green;
+evaluator **RIG PARITY OK** (max yawProxy 0.9 deg @frontright, no
+flips); npm suite green (166 + track-geometry). Sib freeze verified at
+open + mid-round x3 + close: m45 31914c3f, m46 90ebf864, m47 53b6123a,
+m60a1 fbf9f4cc, m60a3 051c454c — byte-identical throughout.
+**Candidate hash: f348ecd5 -> 2f579de8** (46 meshes / 72532 verts).
+Shots: shots/critic-m26_pershing/ (14 fresh official pairs at the
+candidate, zero console errors), shots/patton-r4/{rest,yaw90} (B5
+eyeball sets), shots/visual-eval-m26_pershing/.
+
+ORDER DELIVERY:
+1. **loft.smooth: true** (t26Cast -> smoothLoft, m47 r6-B8 / m46 r9-R4
+   lineage). LAW DISCOVERY on landing: smoothLoft's ring() read only
+   s.hw — the m26 sections carry per-side **hwL** (cupola-flank bulge,
+   15 sections) and the first flip DROPPED the left bulge (gate 90.4 ->
+   89.0, whole/turret down). smoothLoft now carries loftBody's exact
+   opt-in hl()/crownL() expressions; absent-hwL rings are byte-identical
+   (m46/m47 smooth lofts hash-held 90ebf864/53b6123a). Post-fix gate
+   read the r3 line EXACT x2 (93.1/90.4/94.2/90.6/100/100) — the smooth
+   re-emit is silhouette-identical on an hwL rig too. Close-roof A/B vs
+   the verdict critic's before-pairs: the flat-quad patchwork (front
+   face / cheek planes / shoulder step / crown) shades as ONE cast roll;
+   same read at quarters, heroes, and head-on.
+2. **Deck-slat crowns at the ref's own array stations** (m46 r10 R5
+   recipe, m26 grammar measured on the verdict critic's view-top pair,
+   ITU-601; mapping z(y) = -4.315 + (y-48)/62.88 verified on the proc's
+   own ramp step edges to ~1 px):
+   - ENGINE-BAY dash arrays: ref crest rows y156..217 = z -2.598..
+     -1.629, pitch 5.08 px = **0.0808 m** (13 rows — the M26's fine
+     louvre rhythm; m46's ref ran 0.199); dash x-grammar pitch 0.158,
+     dash ~0.063, five bands 0.324..1.020 per side, mirrored. Ref crest
+     luma p75 63-74 over 52-59 fields (plain-olive print — a full class
+     dimmer than m46's 86-95). Delivered via cfg.deckSlats: field plate
+     1.561 swallowing the LOWERED grille slats (M26_FIT.grille.y 1.545
+     -> 1.532, slat tops 1.560 = 1 mm under the plate, m46-exact
+     mechanism), crownTop 1.572 <= deck +0.024 and under the 1.5781
+     trace quantum (gate-mask-free); footprint z1 -2.513 >= 10 mm clear
+     of the -2.523 station boundary; 11 of 13 ref rows delivered (the
+     two aft-most ceded to the boundary law — they sit in the rack's 1x
+     shadow zone); skips = the ref's own crest breaks at its proud
+     fittings (bump plates -2.33..-2.47, fuel caps -1.88). Sampled dial
+     hex 0x4a4f3d: proc crowns read p75 61-67 IN the ref band.
+   - RAMP LOUVRE BANKS (new opt-in cfg.rampBanks, every sibling absent
+     -> byte-identical): Bank B = the ref's loudest deck read (5
+     full-width med-64-68 rows, z -3.504..-3.186 @ 0.0795, x +-0.85),
+     Bank A = centre dash rows (z -4.013..-3.695, |x| 0.15..0.45); the
+     ref's plain zones (-2.65..-3.10, -3.55..-3.65) left bare. Proc
+     Bank B reads med/p75 66.8 = the ref band EXACT; Bank A 66.8 vs ref
+     60-63 (a hair hot, inside the ref crest envelope). Heights
+     TONE-PURE (crest top = line +0.002, seam bar embedded +0.001):
+     measured in-gate twice, +0.019/+0.008 crests pushed the certified
+     i1 rear-ramp window 1.81 -> 2.40/2.05 (stations 89.6/89.7 FAIL) —
+     the r3 deck polyline was traced from the ref's side silhouette
+     WITH its banks, so proud crests double-count the line. At
+     tone-pure heights i1 reads 1.93, stations 90.6 held (i3 0.13 back
+     to baseline after the footprint trim; measured stepwise with a
+     full per-station bisect).
+3. Optional polish (both landed): (a) **pintle-bracket tell** inside
+   the tier3 envelope (backing plate / latch / chain-eye dots, |x| <=
+   0.175, z >= -4.321 — mask-neutral by construction, the tier's own
+   silhouette owns every view boundary; the pintle cyl's -4.33 stays
+   the rearmost read). (b) **brake window-contrast bars** (m46 r7-C5
+   lane): dark transverse bars on the m3 double-baffle body flanks
+   between the rings, faces 0.5 mm proud of the 0.24 body face, inside
+   the certified 0.256 ring plan band; muzzle z untouched; m45 (the
+   only other m3 consumer) byte-identical, hash-proven. (c) X-BRACES
+   NOT TAKEN (documented residual): the ref's rear mud-guard X-stays
+   span x 1.24..1.70 over what the stations law makes an OPEN track
+   zone on the proc (narrow 1.673 fender lip + discrete hanger bumps)
+   — floating X-strips there would violate B2 attachment; needs an
+   orchestrator ruling on the rear-fender architecture if ever taken.
+
+Standing checks re-verified: **B2 floods 14/14 views byte-match the
+verdict's adjudicated-legal table** (front 536 / fl 97 / fr 89 / left
+119 / right 142 / rl 41 / rear 213 / rr 45 / top 8 / hero-fl 140 /
+hero-rr 155 / toptilt 36 / close-front 58 / close-roof 1334; ref halves
+0 except its own wheel-pocket classes) — the round added ZERO new sky.
+**H.4 four-up** fresh proc pixels: tells hold (m26 plain-olive +
+double-baffle + bustle-rear M2 barrel-forward + platforms/eyes/clevis +
+5 rollers + tension idler + duckbills; no re-badge read). **B5 yaw-90
+eyeball** (instanced meshes are audit-exempt): dash arrays / Banks A+B /
+pintle kit stay hull-side, casting kit + M2 + rack + gun (with the new
+brake bars) rotate; nothing sweeps, nothing drags.
+
+SELF-READ vs the verdict's per-view floors (builder estimate, not a
+verdict): the ten 8.8-8.9 views all read >= 9.0 to my eye — close-roof
+and hero-toptilt (the joint 8.8 floor) are the acid tests and both
+holders are delivered (facet patchwork GONE at close-roof; deck density
++ roof roll at toptilt); front/quarters/heroes ride the same dead facet
+family; view-top carries the ref's own louvre grammar at its own pitch
+row-for-row; rear delivers the pintle tell + smooth bustle (X-braces
+residual documented, priced inside the 8.9 -> 9.0 step per the
+verdict's "these two orders clear all ten" calibration). left/right/
+close-front held their 9.0 (brake bars add the notch-window contrast).
+
+LAW DISCOVERIES (for the bank):
+1. **SMOOTHLOFT-hwL PARITY LAW**: any smooth re-emit of a slab loft
+   must consume the FULL opt-in section grammar (hwL per-side widths,
+   crownL clamp) — a smooth flip on an hwL rig silently sheds the
+   asymmetric flank and the gate reads it as -1.4 min. Byte-identical-
+   default proof: absent-hwL rings emit the exact symmetric
+   expressions (sib hashes held).
+2. **TRACE-LINE DOUBLE-COUNT LAW** (deck-dressing corollary): when a
+   deck polyline was authored FROM the ref's side trace, the trace
+   already includes the ref's own proud deck furniture — re-adding
+   that furniture as proud geometry DOUBLE-COUNTS it (i1 1.81 -> 2.40
+   measured). Dressing over trace-authored lines must be tone-pure
+   (<= +0.002) unless the window's ref top provably rides higher than
+   the authored line (i2 absorbed +0.019 free — its ref window carries
+   the ref's own crests).
+3. Station-boundary law extension: the >=10 mm clearance applies to
+   plan-interior deck FIELDS too, not just width-carrying bumps — the
+   i3 window read a 1.02-hw field plate's +0.013 top across the
+   boundary as +0.84 topPct (max-over-window semantics, one certified
+   baseline was near-perfect at 0.13).
+
+State: candidate **2f579de8** at gate 90.5 PASS x2, NOT frozen — ready
+for the fresh independent 14-view graduation adjudication (would be the
+26th graduate). Residual carry-list for that critic: X-brace
+architecture residual (above), ramp-band rear-grazing read (tone rows
+vanish at the rear camera's ~4.6 deg — the ref's 3D louvres read there;
+top/tilt views carry the density), Bank A +4L vs its ref rows, the
+certified r3 list unchanged (side_whole tail/tab/muzzle-collar columns,
+turret_side basket/rotor-lane, front_whole M2 crown strip, i1 1.93 =
+1.81 certified + 0.12 tone-row quantization).

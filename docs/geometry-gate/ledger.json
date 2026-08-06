@@ -609,11 +609,11 @@
   },
   {
    "id": "m26_pershing",
-   "geoMin": 90.4,
+   "geoMin": 90.5,
    "gatePassed": true,
    "components": {
     "hullCurves": 93.1,
-    "wholeCurves": 90.4,
+    "wholeCurves": 90.5,
     "turretCurves": 94.2,
     "stations": 90.6,
     "dims": 100,
