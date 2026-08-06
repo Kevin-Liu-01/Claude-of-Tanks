@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-08-06T01:48:57.961Z",
+ "generatedAt": "2026-08-06T06:07:26.122Z",
  "gate": "every component >= 90; min is the headline",
  "passed": 24,
  "total": 88,
@@ -478,19 +478,6 @@
    }
   },
   {
-   "id": "t90sm",
-   "geoMin": 56.4,
-   "gatePassed": false,
-   "components": {
-    "hullCurves": 61.2,
-    "wholeCurves": 56.4,
-    "turretCurves": 72.9,
-    "stations": 75.9,
-    "dims": 100,
-    "floaters": 100
-   }
-  },
-  {
    "id": "t72b_1987",
    "geoMin": 56,
    "gatePassed": false,
@@ -504,6 +491,19 @@
    }
   },
   {
+   "id": "t90sm",
+   "geoMin": 56.4,
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 61.2,
+    "wholeCurves": 56.4,
+    "turretCurves": 72.9,
+    "stations": 75.9,
+    "dims": 100,
+    "floaters": 100
+   }
+  },
+  {
    "id": "t34_85_cad",
    "geoMin": 59.5,
    "gatePassed": false,
@@ -513,6 +513,19 @@
     "turretCurves": 66.9,
     "stations": 83.4,
     "dims": 97.5,
+    "floaters": 100
+   }
+  },
+  {
+   "id": "leo2_revolution",
+   "geoMin": 62.8,
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 91.8,
+    "wholeCurves": 69.9,
+    "turretCurves": 62.8,
+    "stations": 78,
+    "dims": 99.5,
     "floaters": 100
    }
   },
@@ -603,19 +616,6 @@
     "wholeCurves": 74.1,
     "turretCurves": 73.4,
     "stations": 84.4,
-    "dims": 100,
-    "floaters": 100
-   }
-  },
-  {
-   "id": "m26_pershing",
-   "geoMin": 90.5,
-   "gatePassed": true,
-   "components": {
-    "hullCurves": 93.1,
-    "wholeCurves": 90.5,
-    "turretCurves": 94.2,
-    "stations": 90.6,
     "dims": 100,
     "floaters": 100
    }
@@ -946,6 +946,19 @@
    }
   },
   {
+   "id": "m26_pershing",
+   "geoMin": 90.5,
+   "gatePassed": true,
+   "components": {
+    "hullCurves": 93.1,
+    "wholeCurves": 90.5,
+    "turretCurves": 94.2,
+    "stations": 90.6,
+    "dims": 100,
+    "floaters": 100
+   }
+  },
+  {
    "id": "merkava3c",
    "geoMin": 90.5,
    "gatePassed": true,
@@ -1046,19 +1059,6 @@
     "turretCurves": 91.1,
     "stations": 95.2,
     "dims": 100,
-    "floaters": 100
-   }
-  },
-  {
-   "id": "leo2_revolution",
-   "geoMin": 62.8,
-   "gatePassed": false,
-   "components": {
-    "hullCurves": 91.8,
-    "wholeCurves": 69.9,
-    "turretCurves": 62.8,
-    "stations": 78,
-    "dims": 99.5,
     "floaters": 100
    }
   },

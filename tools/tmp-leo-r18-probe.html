@@ -1,0 +1,25 @@
+<!doctype html>
+<!-- TEMP r18: per-mesh world AABBs of the revolution turret subtree -->
+<meta charset="utf-8">
+<title>tmp-leo-r18-probe</title>
+<script type="module">
+import * as THREE from 'three';
+import { createTank } from '/src/vehicles/tankFactory.js';
+const engineCtx = { setupShadowMaterial: (m) => m, anisotropy: 1, renderer: null };
+const tank = createTank('leo2_revolution', engineCtx, { camoSeed: 4242, quality: 'high', proceduralOnly: true });
+tank.root.updateMatrixWorld(true);
+let turretG = null;
+tank.root.traverse((o) => { if (o.name === 'rig_turret') turretG = o; });
+const rows = [];
+turretG.traverse((o) => {
+  if (!(o.isMesh || o.isInstancedMesh) || !o.geometry) return;
+  const box = new THREE.Box3().setFromObject(o);
+  rows.push({ n: o.name || o.material?.name || 'mesh', vis: o.visible,
+    x0: +box.min.x.toFixed(2), x1: +box.max.x.toFixed(2),
+    y0: +box.min.y.toFixed(2), y1: +box.max.y.toFixed(2),
+    z0: +box.min.z.toFixed(2), z1: +box.max.z.toFixed(2) });
+});
+rows.sort((a, b) => b.z1 - a.z1);
+window.__ROWS = rows;
+window.__READY = true;
+</script>
