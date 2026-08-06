@@ -60,6 +60,7 @@ rack overhang, long raked whip antennas, gun overhang ≈ 2.26 m real
 |---|---|---|---|---|---|---|---|
 | 2026-07-30 | 78.9 | 76.2 | 87.8 | 61.6 | 73.4 | 84.0 | baseline (generic kit profile in misc.js; muzzle 0.8 m SHORT of the real L/44 station) |
 | 2026-07-30 | 79.0 | 80.4 | 87.3 | 73.0 | 49.7 | 81.0 | wave-2 final: turret raised to the real 2.33 roof (+0.22), commander sight tower + center M2 + rear rack overhang + vertical whips, evacR 1.9 gun rebuild, L/44 muzzle at the TRUE bow+2.26 station (gunZ stays 0 — a forward gun origin detached the kit mantlet, r1 floater fixed). GUN CAP ACCEPTED: the oracle is width-under-normalized (~20% tall/long), so its hull swallows most of the true overhang window — the honest muzzle costs G 73→50 while every view score RISES (minView 76.2→80.4); HANDOFF §4 says published dims win |
+| 2026-08-05 | 81.6 | — | 95 | 83 | 8 | 93 | r5 ladder final (legacy board; the G 8 is the certified published-vs-print tube class). GEOMETRY GATE (the measure of record): 63.7 -> 79.0 x2 — hull 80.4 / whole 79.5 / turret 79.1 / stations 79.0 / dims 100 / floaters 100 |
 
 ## GATE-V10 RE-VERIFIED ORACLE-DEFECT CAP — all curve components + stations (2026-07-31)
 
@@ -200,6 +201,132 @@ as side-row BODY span, shifting the 12%-band midpoint (~1m dAlong class)
 cylinder + clamp plate, scout-gen2-t80.md landmines) + SS-A symmetric
 dims anchors. ariete/type74 share the class. batch-32 (_region_pitch)
 now applies to m48 ONLY (its slope 0.223 is real and measured).
+
+## R5 LADDER (2026-08-05, misc agent) — 63.7 -> 79.0 x2 FINAL (hull 68.8->80.4, whole 63.7->79.5, turret 68.4->79.1 [turret_plan 94.4], stations 76.4->79.0, dims 100 held) — post-amendment fresh baseline, worldtrace re-lay; trajectory 63.7 -> 75.5 -> 77.5 -> 76.9 -> 79.0 x2. Stations (79.0) and turret_side (79.1) now co-bind; the remaining structure is the certified-residuals list below.
+
+Baseline re-gate after the ad39179 trim-boundary amendment: **63.7 EXACT —
+unchanged**, but the amendment RETIRED the r4 "1.64-col lerp-junk" residual
+(the fresh worldtrace reads that col at err 0.01) and reshaped the worst-col
+map, so the r4 CERTIFIED-RESIDUAL list was re-derived from scratch before
+building (BOOTSTRAP-MAP law cousin: never build against a stale work order).
+
+THE ROUND'S HEADLINE FIND — the r4 "REF MASK ISLANDS" cert is MOSTLY
+RETIRED: the plan_hull muzzle island (col x -0.05, front 5.79, err 1.22) is
+real and stays certified (a hull rod under the tube = floater), but the
+plan_turret/plan_whole "island" columns are COVERABLE TUBE FURNITURE:
+- col x 0.198 (want front 5.769, err 1.98 — THE worst turret col): the
+  ref's muzzle-zone MRS collar is OFF-AXIS; a cylZ(0.10) at x +0.07
+  (reach 0.17) covers the col at a 2-col +0.04 side tax. err -> ~0.06.
+- col x -0.167 (want front 3.455, err 0.82): the ref's evac drum reaches
+  x -0.14; my evacR 1.89 drum (reach 0.123) missed the col boundary
+  (-0.107) by 16 mm of GRAZING footprint that never sampled. evacR 2.12
+  (r 0.138, band 0.276 under the ~0.29 12% cut) lights it robustly.
+- the ref tube ALSO carries a REAR drum (side tops 1.697-1.715 over z_w
+  1.83-2.31) — added as cylZ(0.135, 0.48) with seam rings; the r 0.153
+  exact match would CROSS the 12% side cut (landmine held).
+
+WHAT LANDED (all numbers our world frame; ref side +1.035 / plan +0.995):
+- GUN-FRAME LAW (bank): gunExtra world z = local + gunG.z + turretG.z
+  (= local + 0.35 here; verified against the 5.94 lit muzzle). The r4
+  "root collar at z_w 2.0-2.4" comment was frame-slipped; every new tube
+  piece calibrated through the law.
+- TURRET PLAN-FORM RE-LAY (asym): ref cheek line falls 0.10-0.30 sooner
+  than r4 on both sides — L holds wide (front 0.99 @ x -1.26, wall band
+  to -1.30) while R caps at 1.21 (its 1.08-front col at x 1.17, NOTHING
+  past 1.233); the wide band is FRONT-HALF-ONLY (x>1.233 content ends z_w
+  -1.327). Roof core/wedge fronts pulled to z_w 1.275 (the 1.34 face lit
+  the ref's 1.806-want col at 2.06).
+- SIDE SHELVES (the +-1.29-1.39 identity): the ref's widest turret content
+  is a SHELF SLIVER — plan z_w -0.687..-1.296 only, front tops 1.84-1.85,
+  L wide to 1.366 / R to 1.297 (the 1.336+ front cols read deck 1.475) —
+  replacing the r4 deck rails (which printed the 1.416 PROC-ONLY cover
+  col + 1.515 front tops).
+- BASKET/rack: rails+posts to the ref's own plan rear -2.453; center top
+  frame pulled to z_w -2.10..-2.30 and raised (2.3325) as a p95 partner;
+  whips h 0.60 rot -0.60 (tips 2.34 @ z_w -2.06).
+- STATION i2 ASYMMETRIC-SURVIVAL (bank, STATION END-CAP corollary): the
+  full-match whip rig (tips 2.41 @ -2.36) landed in station i2 where the
+  REF'S OWN thin mast VANISHES from the near/far-clipped slab render —
+  i2 topPct 5.25. Matching the front-view want (2.401) exactly means
+  eating ~4% station top error the ref itself doesn't pay: split the
+  difference (2.34 tips, half the front want, i2 clean).
+- MUDGUARD TIPS = widthM anchor: the ref's outermost plan col (x window
+  1.690-1.812) is a LOW guard tip (z 3.365-3.48, front band 0.665-0.868)
+  — NOT the skirt panels (armored panels re-seated z 2.575-3.295, outer
+  1.678, per its stations: i11 wants 3.19). widthM LAW (bank): the width
+  measure only counts plan columns with a >=0.35 m z-band — the
+  exact-match 0.115-deep tip read widthM 3.38 (-3.6 dims); depth 0.36
+  carries 3.43 at a certified ~0.12 outer-col price.
+- HULL: fore deck 1.408 (fresh 1.41 line); tail lip to -3.84 (fills the
+  ref's -3.875 side col = the old REF-ONLY cover, band 0.03 non-body);
+  stepped pod-lip rear -3.885 (ref plan x 1.48-1.60); §A front bracket
+  narrowed to x 0.865-0.935 (the ref's OWN 3.546 bow col — the 0.55-0.92
+  block printed 3.595 over six 3.23-3.30 cols); idler z 3.20 (far 3.58 —
+  the 3.66 wrap far printed a 0.96 band in the ref's tube-only col);
+  contact patch PINNED 2.24/-2.40 (ref liftoffs 2.28/-2.42; the free
+  patch held the belly grounded 0.15-0.25 past both).
+- SIGHT RIDGE re-meter: tower/lid/step right edges 0.32->0.24-0.28 (ref
+  2.18-line starts x 0.256), housing 0.445 wide + front z_w 1.29, lid
+  2.25, pano 2.2525 (the r4 "ref 2.315 spike" is stale post-amendment),
+  M2 foot 0.52 (receiver 2.20-2.22 on the fresh 2.202 ridge line);
+  commander hatch RAISED ring+dome (crown 2.0625, ref 2.05-2.08 band).
+  The lid step KEEPS 2.33 (+0.07 over the ref line, ~3 cols): it is the
+  heightM p95 anchor — every relocation priced the same or worse.
+- §B3 sweep (gun/mantlet): embrasure block carries canvas bellows ring +
+  bolted retainer strips; coax gets its hood; guard tips get bolt strips.
+  No bare cuboids near the gun remain.
+
+R5 §B LINE (final batch): track-clip exact 0/0; standard-check contig 0,
+decor mg1+5d (M2 + 2x smokeBank + 2x antennaWhip + towCable); turret-
+parent 0/0/0 CLEAN; npm test clean. Legacy board 81.6 (H95 T83 R93; G 8
+is the certified published-tube-vs-short-print class).
+
+R5B MICRO-WAVE (same round, post-77.4 worldtrace):
+- FRONT dALONG COUNTERWEIGHT (the biggest single lever, +law): the
+  official front registration read dAlong +0.019 — the REF's front body
+  span is 19 mm right-of-center — so EVERY front column lerp-sampled a
+  symmetric build half-a-pixel-column off (official front mean 1.57 vs
+  0.98 when grid-aligned; ~6-7 pts of pure phase smear). Fix: the R
+  FOLDED REAR-VIEW MIRROR (a real JGSDF identity cue) on the R guard tip
+  gives the R ±1.712 col a BODY band while the L tip goes non-body — my
+  body mid moves to +0.019, dAlong -> 0, the grid aligns. TWO-PART FIX
+  (the first attempt failed): the cut is the FRONT_HULL row's own rough
+  x 0.12 ≈ 0.177, NOT the whole-row 0.29 — the symmetric 0.20 tip bands
+  left BOTH ±1.712 cols body and dAlong stayed 0.019 (76.9 run). v3:
+  L tip band thinned to 0.14 (robustly non-body), R tip + mirror 0.46
+  (robustly body). One R col pays ~0.13. LAW (SS-A corollary): the §A
+  "registration counterweight" applies PER-VIEW with the PER-ROW cut —
+  an asymmetric ref body span in FRONT view needs an asymmetric
+  body-band answer, and a single band-qualifying fitting moves the
+  midpoint one half-pitch.
+- v3 also: stern wedge x ±0.92 -> ±0.90 (the edge sat 1 mm inside the
+  ±0.94 front-col boundary — AA coin-flip class). LEDGER-DECODE NOTE
+  for the next agent: the gate ledger's front-row 'at' pairs with a
+  +1.213 val offset THIS round (not the side rows' +1.45) — camera
+  offsets are per-view AND per-extent; trust only the worldtrace.
+- basket top rail/posts/mesh pulled to -2.40 z_w faces (the -2.41 top
+  rail poked the -2.413 col boundary and printed 1.91 into the ref's
+  1.46-want deck col, err 0.167); floor rails widened to ±1.195 (the
+  plan ±1.20 col wants the full -2.455 rear; 2px clear of the 1.201
+  front-col boundary).
+- commander ring aft to z -0.17 (ref hatch band runs to z_w -0.65; the
+  -0.586 col read 0.07 low).
+- muzzle collar trimmed to z_w 5.58-5.82 (ref plan front 5.751).
+
+CERTIFIED RESIDUALS (r5): the plan_hull muzzle island col (~1.2 err, 1
+col — unmatchable without a floater); the track-width station class (i4/
+i6-i8 wPct ~3.7-4.0: ref mid-hull tracks read ±1.55 vs my LINK-OVERHANG-
+law lanes at 0.9785/1.6135 — pinned by the r4a bleed landmines); the 3.68
+side col (want tube-only, my have carries a ~0.96-1.6 band no authored
+mesh owns after the idler pull to 3.20 — the BAND-SOLVER family's front
+mirror, ~0.28 x2 rows, orchestrator-lane look suggested); the L-cheek
+1.16 m plan z-cliff at x ~1.20 (tax ~0.29-0.40, col -1.203 straddles the
+ref's own cliff); the M2-barrel/roof-core front cliff at z 1.24-1.36
+(tax ~0.11); the sight-ridge dims trade (step 2.33 anchor, ~3 cols
++0.07); station i2/i3 thin-furniture ASYMMETRIC-SURVIVAL (my 3 cm frame
+bar and 2.4 cm whips survive the slab render where the ref's 1 px rack
+rails and mast vanish — matching the side rows means eating 2-5% station
+top error the ref never pays).
 
 ## VERTEX ROUND r4 (2026-08-04, misc agent) — FULL RE-LAY: 0 -> 63.7 min (hull 27.3->68.8, whole 0->63.7, turret 0->68.4, stations 0->76.4, dims 100)
 

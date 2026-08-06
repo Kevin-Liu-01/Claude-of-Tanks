@@ -544,13 +544,13 @@
   },
   {
    "id": "type90",
-   "geoMin": 63.7,
+   "geoMin": 79,
    "gatePassed": false,
    "components": {
-    "hullCurves": 68.8,
-    "wholeCurves": 63.7,
-    "turretCurves": 68.4,
-    "stations": 76.4,
+    "hullCurves": 80.4,
+    "wholeCurves": 79.5,
+    "turretCurves": 79.1,
+    "stations": 79,
     "dims": 100,
     "floaters": 100
    }
@@ -661,13 +661,13 @@
   },
   {
    "id": "ariete",
-   "geoMin": 76.3,
+   "geoMin": 78.5,
    "gatePassed": false,
    "components": {
-    "hullCurves": 80.7,
-    "wholeCurves": 76.3,
-    "turretCurves": 83.6,
-    "stations": 85.9,
+    "hullCurves": 81.1,
+    "wholeCurves": 78.5,
+    "turretCurves": 82.1,
+    "stations": 88.6,
     "dims": 100,
     "floaters": 100
    }

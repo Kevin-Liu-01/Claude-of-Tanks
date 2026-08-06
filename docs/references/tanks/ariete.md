@@ -304,6 +304,119 @@ closer-wedge/roof-corner +0.08-0.17 over 2-3 cols (the raised front roof
 is a real C1 feature); shaded-path flatness vs the ref's baked texture
 (world-continuous camo + no AO is engine-level, out of profile scope).
 
+## PUSH ROUND 2 (2026-08-05, misc agent) — 76.0 -> 78.5 x2 FINAL (hull 81.1 / whole 78.5 / turret 82.1 / stations 88.6 / dims 100 / floaters 100; legacy board 86.2 -> 88.3); §B: clip 0/0, contig 0, mg1+3d, parent = the two certified adjudications. Post-amendment re-baseline + phantom-column re-probe + targeted col work; CEILING MEASURED (see below) — 82+ requires breaking a certified class.
+
+BASELINE: the ad39179 trim-boundary amendment re-gated ariete 76.3 -> 76.0
+(whole 76.3->76.0, others byte-same) — the amendment slightly REPRICED the
+half-pitch lerp pairings here (opposite sign to the centurions).
+
+PHANTOM-COLUMN QUESTION CLOSED (the push-round residual (a)): re-probed
+with the render-scale factor via the gate-registered worldtrace — the
+"±1.72/1.76 columns with bottoms 0.26-0.36 no authored mesh owns" DO NOT
+REPRODUCE post-amendment. The fresh front rows read those columns as
+ordinary small residuals (my crest top 1.615 vs want 1.557-1.567, bottoms
++0.03) — no LOD-far phantom, no orchestrator harness probe needed. The
+class is RETIRED (it was a pre-amendment read, most plausibly the same
+trim-boundary fake-cover family the amendment fixed).
+
+WHAT LANDED (fresh worldtrace work orders, rendered-frame k=1.01266 per
+the render-scale law):
+- WELD-SEAM WINDING FIX (the §B3-adjacent find): the canted-wall seam
+  strips' z-tilt was REVERSED (-s*0.234) — their tops swung OUTBOARD 0.07
+  past the wall cant and printed 2.15 tops in the ±1.28 front cols (ref
+  2.074). Flipped inboard along the cant.
+- HUMP/DECK-EDGE BAND: powerpack hump 1.585 -> 1.640 x ±1.333 — the fresh
+  rows want 1.661 rendered across side z -1.35..-1.85 AND front 1.658 at
+  |x| 1.03-1.36 (one edit, both views; x capped so the rendered edge
+  stays 2px clear of the 1.372 front-col boundary).
+- STERN NOTCH SPLIT: the ref rear at |x| 0.85-0.97 reads -3.53/-3.57 (a
+  cutout between its center plate and exhaust pods) — rear plate split
+  ±0.83 / 0.99-1.42, rake slab ±0.82, tail deck notched to -3.50 there,
+  grille narrowed ±0.81; exhaust stubs narrowed to x 0.99-1.13 and
+  DEEPENED to y 0.72 (ref -3.85-zone bottoms 0.65).
+- ±1.85 DOT-BIN sharpened: skirt end plates depth 0.38 -> 0.14 (z_w
+  0.85-0.99 about the ref's 0.936 mirror dot; y-band 0.59-1.31 and the
+  ±1.7775 widthM faces unchanged).
+- approach ramp: contactZF 2.36 -> 2.22 (ref liftoff ~2.33, shallow climb
+  0.22@2.68 — the old patch held ground to 2.45 then climbed steep; 6 ramp
+  cols were 0.06-0.12 deep). The idler-crest hook stays the certified curl
+  class.
+- basket rear pulled 3 cm (rails/sheets/posts rendered aft-faces -2.75,
+  clear of the -2.775 col boundary): the -2.782 faces lit the straddling
+  col and smeared the ref's deck col at -2.894 to 1.897 — cliff-lerp
+  optimum = zero the low col, eat half the high one.
+- front-row micro (all fresh wants): periscope vane re-windowed x
+  0.01-0.15 top 2.40 authored; L-only roof-edge stowage lip (x 1.175-
+  1.215, top 2.276) fills the ref's L/R-asymmetric wall-top col (L 2.306
+  vs R 2.155); asym roof rails (L 2.395 / R 2.475); loader hood 2.427;
+  turret lift eyes 0.74; deck lift eyes zone: spare links sunk 2 cm
+  (their 1.665 tops printed five front cols over the ref's 1.598 line);
+  crest split with an outer 1.545 crown step; pano head top 2.468
+  (rendered 2.499 = the fresh front want; also -0.03 on its side spike).
+- §B3 MANTLET SWEEP (owner directive class): the two canvas masses at the
+  gun root now carry canvas tells — cinch straps + rolled top hem, coax
+  hood — all inside the priced mantlet band (y 1.51-1.83, x ±0.41), no
+  mask-row change. No bare cuboids remain around the mantlet/gun.
+
+LANDED: 76.0 -> 78.5 x1 (hull 80.7->81.1, whole 76.0->78.5, turret
+83.6->82.1, stations 85.9->88.6, dims 100, floaters 100); x2 pending in
+the round's final batch. The turret -1.5 is a PRICED TRADE: the basket
+3 cm pull removed my rearmost turret-mask column, so the ref's -2.775
+basket col fell outside the ±0.02 interp window = a side_turret REF-ONLY
+cover col (-1.4 turret) — but it killed the -2.894 deck-col smear on
+side_whole (0.147+0.035 -> 0.015+0.134), and side_whole IS the min
+binder (turret stays 3.6 clear). Kept deliberately.
+
+LAWS BANKED (push-2):
+1. CLIFF-LERP TAX (generalizes the type90 CLIFF-LERP law): with the
+   half-pitch dAlong phase, ANY mask cliff of height h pays ~h/2 top-err
+   on exactly one ref column — the only choice is WHICH column (put the
+   full column on the ref's high col; zero the low col). The pano
+   2-column spike is AT its tax floor (~0.26 sum): every repositioning
+   priced equal-or-worse. Measure before moving cliffs.
+2. The commander-ring z-footprint (r 0.235 cylinder = 0.47 of z) makes
+   ring crowns 3-4-column-wide side content — hatch hardware near a ref
+   fall line needs the ring SMALL or the line matched, not both.
+3. SPAN-END COROLLARY to the cliff-lerp law: if the cliff you pull IS
+   the mask's span end (basket rear = the turret row's last column),
+   pulling it past a column boundary doesn't just move the smear — it
+   NULLS the ref's edge column (interp span +-0.02 window) and books
+   COVER (1.5 pts/%). Price cover vs smear before pulling span ends.
+
+BANKED NON-BINDING ORDERS (diagnosed this round, NOT applied — they move
+turret_plan/front_whole which sit 3.6-6 pts ABOVE the side_whole binder;
+apply only if the certified side classes ever break):
+- galixBank x 1.36 -> 1.315: the k3 tube tips (x 1.586) poke the ±1.63
+  plan col whose ref content is the horn DOT at z_w -0.73 (0.28 err x2 —
+  the worst plan_turret pair);
+- roof plates (mid 2.32 + bustle 2.30) x ±1.175 -> ±1.12: their rendered
+  1.19 edges print 2.35 into the ref's falling 2.25/2.18 wall-top cols
+  (front 1.159/1.2, −0.067 sum net after the wall-edge re-read);
+- R rail L-profile: inner segment to x 0.9825 (fills the ref 2.49-want
+  col at 0.997) + outer flange top 2.379 at x 1.0435-1.0775 (the ref
+  falls 2.409 at 1.078; the plain 2.509 rail overshoots);
+- pano head widen to x -0.2125..-0.3025 (the ref 2.511 front col at
+  -0.299; z-footprint unchanged so the side spike stays at its tax);
+- loader ring/lid +0.045 (ref 2.399-want at x -0.66..-0.72);
+- second periscope y 0.715 (its helper tops +0.12 above the seat; the
+  0.81 seat still reads 2.445 vs the 2.349 want);
+- plan bow corner taper (type90-r5 find applies here too if the plan
+  rows ever bind).
+
+MEASURED CEILING (push-2, supersedes the push-1 estimate): side_whole
+binds wholeCurves at ~78.5; its residual budget is now certified
+classes almost entirely — cover 1.83% (stubby-print, -2.75), the
+nose/tube frame-lock col (0.243, dims-sovereign), the idler-curl +
+crest-cliff family (0.11-0.14 x3), the half-phase cliff taxes (TURMS
+front, pano window, bustle-roof rear, hatch-ring line: ~0.05-0.09
+each, all AT the h/2 floor), the station-slice-6 rail trap (r10), and
+the ramp's convex-vs-tangent gap (~0.05 x2). Sum ≈ every remaining
+worst column. wholeCurves ceiling ≈ 79-80 with the kit's circular wrap
+and the certified print defects standing; 82+ requires breaking a
+certified class (non-circular wrap authoring or oracle-lane print
+repair). hull/turret/stations are 81-89 and non-binding; dims 100
+robust.
+
 ## PUSH ROUND (2026-08-05, misc agent) — 65.5 -> 76.3 x2, every component up, dims 100 held
 
 Final gate x2 stable (three consecutive runs): min **76.3** | hull 80.7 /
