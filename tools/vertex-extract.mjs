@@ -90,8 +90,12 @@ const REG = {
     pubDims: { hullLengthM: 6.86, overallLengthM: 9.53, widthM: 3.78, heightM: 2.23 },
   },
   t72b3m: {
-    path: 'public/models/tanks/community/recovered/t72b3m.glb',
-    turretNode: '^misc_a$', gunNode: '^misc_b$', autoPivot: true, yawOffset: Math.PI,
+    // RE-ORACLED 2026-08-06 (owner override; batch-45 roof normalize):
+    // the obr_2022 print replaces the recovered print as this id's
+    // oracle. Turret shell+ERA Object_14 (gun-run cladding included),
+    // gun Object_15, roof cluster Object_3 follower, raw nose -z.
+    path: 'public/models/tanks/community/t-72b3m_obr._2022.glb',
+    turretNode: '^Object_14$', gunNode: '^Object_15$', autoPivot: true, yawOffset: Math.PI,
     pubDims: { hullLengthM: 6.67, overallLengthM: 9.53, widthM: 3.59, heightM: 2.23 },
   },
   t90sm: {
@@ -559,21 +563,10 @@ const REG = {
     yawOffset: Math.PI,
     pubDims: { hullLengthM: 8.7, overallLengthM: 10.8, widthM: 3.9, heightM: 2.7 },
   },
-  t72b3: {
-    // "T-72B3M Obr. 2022" by 42manako (CC-BY-4.0, 4th verified drop from
-    // this author). Registered for the t72b3 BASE id only — the t72b3m
-    // GRADUATE keeps its frozen recovered-print row (re-oracle decision =
-    // orchestrator lane; comparison note in docs/references/tanks/
-    // t72b3.md). Flat OBJ nodes: turret shell+ERA Object_14 (k-1.0 mat,
-    // includes gun-run cladding), gun tube Object_15 (5.6 m, muzzle toward
-    // raw -z -> yaw PI), tall right-roof cluster Object_3 (harness maps
-    // carry it as a turretFollower). Rear log/drums at raw +z inflate the
-    // hull mask (t72b_1987 drum-band class).
-    path: 'public/models/tanks/community/t-72b3m_obr._2022.glb',
-    turretNode: '^Object_14$', gunNode: '^Object_15$', autoPivot: true,
-    yawOffset: Math.PI,
-    pubDims: { hullLengthM: 6.67, overallLengthM: 9.53, widthM: 3.59, heightM: 2.23 },
-  },
+  // (t72b3 BASE-id row retired 2026-08-06: the owner delisted t72b3 from
+  // the roster and overrode t72b3m's oracle to the obr_2022 print — the
+  // registration moved to the t72b3m key above; its extract t72b3.json
+  // was deleted as stale pre-batch-45 bytes of a delisted id.)
   challenger_3: {
     // "Challenger 3" by 42manako — CC-BY-NC-4.0: LOCAL MEASUREMENT ONLY,
     // never ship. OWNER GREENLIGHT 2026-08-06: challenger_3 is now a BUILT

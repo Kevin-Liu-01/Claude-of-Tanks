@@ -72,7 +72,7 @@ re-freeze NEW hash, all in ONE commit.
 | isu152 | 8e2f75c0 | |
 | merkava3d | 39de83c8 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | pt91m | 2cf10e23 | |
-| t72b3m | 1e1ca4b8 | |
+| t72b3m | 1e1ca4b8 | RE-ORACLED 2026-08-06 (owner override, §4.998): oracle = obr_2022 print + batch-45 stature normalize; honest re-baseline 69 x2 (was frozen 91.8 vs the retired recovered print) — re-cert chain restarts; the 2022-config gap (RWS/roof cluster/Relikt) is the russia-lane coupled round |
 | merkava1b | 2cc7a76c | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | m1a2 | bbae99a4 | CROWS aim-frame re-cert RATIFIED (floor 9.1+; owner both-halves YES) |
 | chieftain5 | d4f2a9a6 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
@@ -428,6 +428,22 @@ sights fused into the hull-side Object_5 = turret rows print-capped),
 ATTRIBUTION owner-cleared entry. Honest baseline x2: all-0 + floaters
 100, verified real (populated curve rows) — the ancient base-21 build.
 Fleet denominator 89 -> 90. PRIORITY §B8 round SPAWNED (modern3.js).
+
+## 4.999945 T72B3M ORACLE SWAP EXECUTED (2026-08-06, my-lane batch item
+3; §4.998 order): four maps re-keyed to community/t-72b3m_obr._2022.glb
+(Object_14/15 + Object_3 follower, yaw PI); t72b3 BASE rows retired
+with the roster delist (extract t72b3.json deleted); batch-45 stature
+normalize FILED+EXECUTED (same-author dome class: deck-knee 0.736
+identity, dome 2.107 -> 1.6055 the recovered recipe's proven landing,
+cluster 2.945 -> 1.885 keeping the obr-2022 signature; byte-idempotent
+x2 md5 b825c4c3; first cluster-only cut measured 24.4 and the dome cap
+was unambiguous — extended per gate-in-loop). Honest re-baseline x2:
+69 | hull 69 / whole 77.7 / turret 80.1 / stations 84 / dims 100 /
+floaters 100 (frozen 91.8 retired; fleet 22 -> 21 while the re-cert
+chain restarts). Graduate proc hash HELD 1e1ca4b8. NEXT: the
+russia-lane coupled round (2022 config: RWS, roof cluster, Relikt fit
++ the ORACLE-REGISTRATION-PINNED bustle re-parent) spawns when the
+live russia turret agent lands (russia.js single-writer law).
 
 ## 4.99995 OWNER PUNCH LIST 3 (2026-08-06 night, verbatim intent):
 "finisht eh challegner 3, chjallenger 2, t14 armata (hull is wrong)

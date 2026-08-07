@@ -2374,15 +2374,42 @@ REPAIRS['t72bu'] = [
                        long_map=[(-84.4263, -71.7698), (84.397, 71.7405), (143.391, 127.5965)],
                        y_top_max=53.9628, expect=(4, 8953, 6220))),
 ]
-REPAIRS['t72b3m'] = [
-    # Sosna-U tower 3.36-3.42 -> 2.24-2.25 (pub 2.23; r2 pinned inside the
-    # dims grace — the ~5-column tower owns p95), dome crown 2.66-2.85 ->
-    # 2.16-2.24; hull near-true (0.979); short tube stretched to overall 9.53
-    ('py2', _axis_warp('t72b3m', long_axis='z',
-                       y_map=[(-0.8157, -0.8157), (0.7361, 0.7361), (2.2108, 1.6055), (2.9482, 1.6605)],
-                       long_map=[(-5.6312, -5.9394), (-2.8688, -2.7918), (4.626, 4.549)],
-                       y_top_max=1.7485, expect=(19, 152693, 119993))),
-]
+# batch-45 RETIREMENT of the recovered-print recipe (owner re-oracle
+# override 2026-08-06, PROGRAM-STATE §4.998 "and build the t72 b3m"):
+# t72b3m's oracle SWAPS to community/t-72b3m_obr._2022.glb — the
+# recovered print (whose Sosna-U normalize lived here: y_map
+# [(-0.8157,-0.8157),(0.7361,0.7361),(2.2108,1.6055),(2.9482,1.6605)],
+# long_map [(-5.6312,-5.9394),(-2.8688,-2.7918),(4.626,4.549)],
+# y_top_max 1.7485, expect (19,152693,119993)) keeps its repaired bytes
+# + .bak on disk but stops being the id's oracle. The frozen 91.8
+# graduate row re-baselines against the new print; the re-cert chain
+# restarts (owner-sanctioned).
+#
+# =============================================================== batch 45 ===
+# T72B3M OBR-2022 STATURE NORMALIZE (§E; the swap's coupled repair, filed
+# in t72b3.md "GRADUATE RE-ORACLE COMPARISON" — height +46.9%). Same
+# author's model as the recovered print (identical ground -0.816, same
+# stylized-tall class throughout the TURRET, not just the cluster): the
+# roof cluster Object_3 (y 1.511..2.945, 9,879 verts) carries the p95,
+# and the turret dome (Object_14, tops 2.107) reads the retired recipe's
+# dome class (recovered: 2.2108 -> 1.6055). A cluster-only first cut
+# (knee 1.9 -> top 2.25) gate-measured 24.4 with the dome cap unambiguous
+# in the rows (refTop 1.34-1.39 vs procTop 0.87-0.97 across the turret
+# band) — EXTENDED per gate-in-loop to the retired recipe's intent:
+# identity through the 0.736 deck knee (the recovered recipe's own
+# anchor; obr turret base 0.700), dome 2.107 -> 1.6055 (the PROVEN
+# landing), cluster 2.945 -> 1.885 (~+0.28 over the dome = the real
+# obr-2022 cluster proportion — the config's signature stays readable).
+# No long_map normalize: hull +2.1% is the stern log/drum band
+# (t72b_1987 class, tolerated); overall -2.3% rides. Census expect =
+# the full reachable print (15 prims / 156,371 verts / 130,716 tris).
+REPAIRS['t72b3m'] = {
+    'path': 'public/models/tanks/community/t-72b3m_obr._2022.glb',
+    'ops': [('py2', _axis_warp('t72b3m', long_axis='z',
+                               y_map=[(-0.816, -0.816), (0.736, 0.736), (2.107, 1.6055), (2.945, 1.885)],
+                               long_map=[(-5.70, -5.70), (4.70, 4.70)],
+                               y_top_max=1.90, expect=(15, 156371, 130716)))],
+}
 REPAIRS['t90sm'] = [
     *REPAIRS['t90sm'],
     # welded-roof towers +39.5% -> tower band lands 2.22-2.26 (inside the

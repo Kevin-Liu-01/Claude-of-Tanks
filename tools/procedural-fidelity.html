@@ -158,22 +158,9 @@ const LOCAL_REFERENCE_OVERRIDES = {
       turretFollowers:'^Object_(?:9|10|11|15)$',
     },
   },
-  t72b3: {
-    // "T-72B3M Obr. 2022" by 42manako (CC-BY-4.0). Registered for the
-    // t72b3 BASE id ONLY — the t72b3m GRADUATE keeps its frozen
-    // recovered-print registration (re-oracle decision = orchestrator
-    // lane; comparison in docs/references/tanks/t72b3.md). Turret shell
-    // Object_14 (k-1 ERA mat, includes gun-run cladding), gun Object_15,
-    // tall right-roof cluster Object_3 as follower; raw nose -z -> yaw
-    // PI. Stern log/drums inflate the hull mask (t72b_1987 drum class).
-    source:'glb',
-    glb:{
-      path:'/models/tanks/community/t-72b3m_obr._2022.glb',
-      turretNode:'^Object_14$', gunNode:'^Object_15$', autoPivot:true,
-      yawOffset:Math.PI,
-      turretFollowers:'^Object_3$',
-    },
-  },
+  // (the t72b3 BASE-id entry that lived here moved to the t72b3m key
+  // above: the owner delisted t72b3 from the roster AND overrode the
+  // graduate's oracle to this print — see the t72b3m entry comment.)
   challenger_3: {
     // "Challenger 3" by 42manako — CC-BY-NC-4.0: LOCAL-ONLY QUARANTINE
     // class (ATTRIBUTION precedent; NC = measurement/influence only, never
@@ -297,13 +284,19 @@ const LOCAL_REFERENCE_OVERRIDES = {
       turretFollowers:'vehicle#(?:antenna_|bone_|ex_armor_(?!body|[lr]_)|ex_decor_(?:0[1-9]|13)|ex_decor_[lr]_02|hatch_(?:0[4-9]|1[0-3]))',
       gunFollowers:'vehicle#gun_barrel_' },
   },
-  // t72b3m (graduated 2026-08-04, the 15th): retired userdrops5
-  // registration — measurement-only.
+  // t72b3m (graduated 2026-08-04, the 15th) — RE-ORACLED 2026-08-06 to
+  // the obr_2022 print (owner override "and build the t72 b3m"; batch-45
+  // roof-cluster normalize applied in repair_oracles.py; the recovered
+  // print + its .bak stay on disk but are no longer this id's oracle;
+  // frozen 91.8 row re-baselines, re-cert chain restarts). Entry keyed
+  // t72b3 while the base id existed moved here when the owner delisted
+  // t72b3 from the roster.
   t72b3m: {
     source:'glb',
-    glb:{ path:'/models/tanks/community/recovered/t72b3m.glb',
-      turretNode:'^misc_a$', gunNode:'^misc_b$', autoPivot:true,
-      paintUntextured:true, yawOffset:Math.PI },
+    glb:{ path:'/models/tanks/community/t-72b3m_obr._2022.glb',
+      turretNode:'^Object_14$', gunNode:'^Object_15$', autoPivot:true,
+      yawOffset:Math.PI,
+      turretFollowers:'^Object_3$' },
   },
   // pt91m (graduated 2026-08-03, the 14th): retired userdrops5
   // registration — measurement-only. NO yawOffset here: this harness
