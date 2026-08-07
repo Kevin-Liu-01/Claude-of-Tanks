@@ -79,7 +79,7 @@ re-freeze NEW hash, all in ONE commit.
 | t84 | 04707a9c | |
 | m47_patton | 2fc99c50 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | leo2a5 | e215a738 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
-| leo2_revolution | bbae2c80 | GRAY-RECTANGLES DEAD (§B8 critic ACCEPTED); batch-46 adjudicated: chain 37/41/43 retired vs owner's restructured print, honest baseline 0 (§B7 REF-WRONG — pristine tall mast restored; hull 94.5), candidate RE-FROZEN on photo class |
+| leo2_revolution | db70c929 | RE-FROZEN 2026-08-07 (photo-class record): §5.09 closure -85% + §5.17a turret-completion (real collar/chin/under-cheek/under-skirt walls — the floating shell is DEAD, owner diagnosis answered); re-cert 9.4/9.2/9.3 on changed families; §B7 gate caps stand (hull 94.3 trustworthy band) |
 | m46_patton | 108806c8 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | centurion3 | 50273080 | bore resit RATIFIED (end 9.2; occlusion class fixed) |
 | m1a2_sepv2 | 7ef1c5ec | RE-FROZEN 2026-08-07 (CROWS-FORWARD wave §5.07: forward pose improved whole +4.1..+14.1; re-cert floor 9.1-9.2 x14 views, sheets shots/critic-sep-crowsfwd/) |
@@ -1271,3 +1271,11 @@ aa74be6a, 3d 667ece84). The owner's §5.11 under-roof diagnosis is
 FULLY ANSWERED at the candidate hashes. All adjudicated-air residuals
 verified as intentional structure; 3d's y90 under-chin daylight =
 turret-hull-gap class (explicitly out of the §5.11 scope).
+
+## 5.25 REVOLUTION COMPLETION RATIFIED (2026-08-07): re-cert PASS
+(front 9.4 / side 9.2 / close 9.3; floods verified digit-for-digit,
+zero regressions across 63 views; the one new 153px yaw45 pocket
+adjudicated REAL AIR — open-notch projection signature, legit
+overhang class) -> RE-FROZEN bbae2c80 -> db70c929 in §3. The owner's
+§5.17/§5.17a "turret didnt finish building" complaint is CLOSED: the
+shell now stands on real casting walls at every angle.
