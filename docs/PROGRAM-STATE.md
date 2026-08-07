@@ -1233,3 +1233,16 @@ rotating turret; the 61.6% four-box is thin dressing, documented).
 ASK-OWNER banked: the proto's RCWS is legally SQUAT (published-height
 dims row caps it) — a proud a4-class station there needs an owner
 override of the height row. RCWS forward + connected verified x4.
+
+## 5.22 T14 VERDICT RATIFIED (2026-08-07): PASS 9.0 — §5.15 OWNER
+ORDER CLOSED (independent critic, clean-room bracket at 60d7d14 x4;
+sheets shots/critic-t14-proportion/). LONG-NOT-WIDE DEAD by the
+numbers: plan W/L 0.4521 vs the print's 0.4503 (proc now wider-per-
+length than the print), front band 0.978 vs 0.953, tail 15.9% vs
+18.8%, garage-angle parity +0..+2.1%, 7 wheels at native tone
+(variance 738, 7 even peaks). Turret delivered on all five ordered
+items (Afganit ring, MG stowed, pano at the real columns, GLONASS,
+shroud facets). NO regression on the 765310f tells. Report-only
+residuals banked (roof density detail-class, track albedo shared-
+material, glacis tone, stern screen hang attributed). Record 60d7d14
+binds.
