@@ -87,6 +87,8 @@ const CRITIC_REFERENCE_OVERRIDES = {
     gunFollowers:'vehicle#gun_barrel_' } },
   // t72b3m re-oracled to the obr_2022 print (owner override 2026-08-06,
   // batch-45 roof normalize) — entry below, keyed t72b3m.
+  leopard2_proto: { source:'glb', glb:{ path:'/models/tanks/community/recovered/leopard2_proto.glb',
+    turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
   pt91m: { source:'glb', glb:{ path:'/models/tanks/community/recovered/pt91m.glb',
     turretNode:'^misc_a$', gunNode:'^misc_b$', autoPivot:true, paintUntextured:true,
     yawOffset:Math.PI } },

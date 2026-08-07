@@ -183,3 +183,18 @@ articulated list — a turretless hump in game). This round's proc build
 is the §B8 photo-class replacement candidate: the FLEET-FLIP to
 procedural (MODEL_SOURCE removal) is an orchestrator/landing action
 outside this file's ownership, gated on the independent critic verdict.
+
+## MODEL_SOURCE FLIP (2026-08-06, orchestrator lane — flip-era mechanics)
+
+The §B8-accepted procedural build (f1af7ba8, V3 delta + PT turret +
+cast mantlet, day-resit PASS) is now the MODEL OF RECORD: the
+userdrops6 articulated() registration is delisted (Sources drains by
+one) and the recovered print stays measurement-only via override
+entries added to all three harness maps (procedural-fidelity,
+tmp-tank-critic, visual-evaluator — ^Turret$/autoPivot/paintUntextured,
+identical to the retired MODEL_SOURCE config). PROOF the rig is
+unchanged: gate x2 post-flip reproduces the HEAD ledger row exactly
+(0 | hull 45.6 whole 0 turret 0 stations 0 dims 100 floaters 100 — the
+melted-print cap line; hull 45.6 IS the §B7-class cap, the print's
+turret reads half-height vs the build, refTop 0.71 vs procTop 1.39).
+Hash HELD f1af7ba8 across the flip.

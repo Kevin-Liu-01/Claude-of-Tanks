@@ -298,6 +298,14 @@ const LOCAL_REFERENCE_OVERRIDES = {
       yawOffset:Math.PI,
       turretFollowers:'^Object_3$' },
   },
+  // leopard2_proto (MODEL_SOURCE FLIP 2026-08-06, flip-era mechanics):
+  // the §B8-accepted procedural build (f1af7ba8, day-resit PASS) is the
+  // model of record; the recovered print stays measurement-only here.
+  leopard2_proto: {
+    source:'glb',
+    glb:{ path:'/models/tanks/community/recovered/leopard2_proto.glb',
+      turretNode:'^Turret$', autoPivot:true, paintUntextured:true },
+  },
   // pt91m (graduated 2026-08-03, the 14th): retired userdrops5
   // registration — measurement-only. NO yawOffset here: this harness
   // renders the print correctly without it (probe-proven; the critic +

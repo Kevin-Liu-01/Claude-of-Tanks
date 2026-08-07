@@ -139,9 +139,13 @@ if (ALLOW_LOCAL_RECOVERED_MODELS) {
   // three override maps; freeze hash 70941de0 via tmp-hashgeo.
   // FLEET FLIP (owner directive 2026-08-04): centurion3/5, m26/m45/m46
   // render procedural + CUSTOM; prints stay measurement oracles via the
-  // three maps. comet/cruiser/charioteer/proto keep GLBs (0-row builds).
-  for (const id of ['comet', 'challenger_cruiser', 'charioteer',
-    'leopard2_proto']) articulated(id);
+  // three maps. comet/cruiser/charioteer keep GLBs (0-row builds).
+  // leopard2_proto: MODEL_SOURCE FLIP 2026-08-06 — the §B8-accepted
+  // procedural build (f1af7ba8, V3 delta + PT turret + cast mantlet,
+  // day-resit PASS) is the model of record; the recovered print stays a
+  // measurement oracle via the three override maps (flip-era mechanics,
+  // Sources group drains by one).
+  for (const id of ['comet', 'challenger_cruiser', 'charioteer']) articulated(id);
   // The Bergman Abrams exports an empty Turret pivot at the scene origin.
   // Its authored hull/turret placement is already correct; autoPivot treated
   // the long fused cannon as the turret footprint and moved the entire upper
