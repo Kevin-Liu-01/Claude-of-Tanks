@@ -767,3 +767,24 @@ lacked. Standing audit: per tank compare spec dims against published
 real-vehicle dims (type90 first: verify width/height/length vs the real
 3.43w x 2.34h x 9.76 overall) AND eyeball garage lineups for relative
 scale. Spec true-ups are orchestrator-lane, verify-first.
+
+## §B8.1 PROPORTION GATES (from the 2026-08-06 acceptance slate — 0/12
+## passed; envelope-parity is FALSE COMFORT: all 12 matched pub dims
+## within ~4% and all failed the glance test)
+Measurable gates, checked BEFORE detail (detail cannot rescue form —
+freeze decoration until these pass):
+1. WHEEL EXPOSURE: per-family exposure fraction (real 40-70%); "can't
+   count the wheels in the left view" = auto-FAIL (9/12 failed this).
+2. GLACIS PLANE: brief carries glacis run + nose-height TARGET NUMBERS —
+   spec anchors the nose z but nothing else constrains the plane (8/12).
+3. TURRET SHAPE LINE: face height + roof plane + one falsifiable
+   family-shape line (drum vs wedge vs cast dome) — footprint ratios
+   pass while the grammar is wrong-family (5/12).
+4. STRUCTURE-MERGE ALARM: turretMass length > ~55% of hull length =
+   alarm (the a7v read 77% and swings at yaw — also the §C.1 INVERSE
+   case: the yaw checker flags turret-footprint mass OUTSIDE the ring
+   envelope).
+5. GEAR PATTERN: encode the arrangement (HVSS pairs, Tiger interleave,
+   Christie spacing), not the count.
+6. The four-box probe (overall/hull/turret/gun + rig_muzzle boxes vs
+   targets) is a standing round-close check for photo-class builds.

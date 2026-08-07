@@ -299,6 +299,16 @@ in garage.js; six glb-sourced cold-war ids auto-migrate on graduation).
 Owner files untouched. Flag for owner: charioteer spec era 'ww2' (a
 1950s TD — say the word for a spec-era true-up).
 
+## 4.99 §B8 ACCEPTANCE SLATE (2026-08-06): 0/12 PASS — verdicts +
+prioritized orders in docs/critique/photo-acceptance-20260806.md.
+RESPAWN PLAN (hardest first, lanes as they free, briefs MUST carry
+§B8.1 target numbers + the per-tank order lists): (1) t14 + leo2a7v
+(structural: turret 1.82->~1.0 shroud; a7v band re-parent/cut), (2)
+spz_puma + challenger2, (3) type99a (drum->wedge rebuild) + t34_85,
+(4) type89 + m4a3e8, (5) leo2a4, k2, fv510, tiger1 (single-dominant-
+order marginals). Also: promote the four-box probe; tmp-tank-critic
+matched-scale mode wanted; fv510 print -11% (pub sovereign, held).
+
 ## 5. IN-FLIGHT AGENTS (SUPERSEDED BY §12 — the 2026-08-05 device
 handover interrupted these; respawn per §12)
 1. DONE+RATIFIED: abrams dual critic (m1a1ha f5c556dc, sepv2 §10 run).
