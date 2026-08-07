@@ -693,3 +693,19 @@ family views change).
   (evidence tooling must re-show shadow-named nodes for crops);
   FITTING-CAP TAIL (whatsat the fitting AABB per slot before seating);
   KIT.torus lies flat (rotate for vertical rings).
+
+## §C.1 RENDER-TRUTH CHECKER (owner order 2026-08-06, t72b3m screenshot:
+## "many parts of the turret that should be part of the turret are not
+## there... we need checkers to make sure there arent erroneous stuf
+## like this")
+The gate CANNOT see this class (DoubleSide masks) while players CAN (the
+game culls back-faces): reversed-winding pieces score perfectly and
+vanish in game. A FLEET-WIDE official winding/render-truth audit is now
+law: FrontSide-vs-DoubleSide comparison per tank across views (the
+tmp-misc-leftprobe pattern promoted to an official tool), reporting
+reversed/mixed slab counts + per-view pixel deficits, ranked worst-first
+— run at every round close like track-clip. Named carriers at order
+time: t72b3m (graduate! gate 91.8 while the game shows a bare turret),
+challenger-line. Every profile binds mirrored slabs through a winding
+guard (orientedSlab/sslab class) — this is now a standing §C check, not
+a per-incident fix.
