@@ -630,13 +630,13 @@
   },
   {
    "id": "t14",
-   "geoMin": 68.3,
+   "geoMin": 73.7,
    "gatePassed": false,
    "components": {
-    "hullCurves": 78.8,
-    "wholeCurves": 68.3,
-    "turretCurves": 70.4,
-    "stations": 80.8,
+    "hullCurves": 79.1,
+    "wholeCurves": 74,
+    "turretCurves": 73.7,
+    "stations": 84.7,
     "dims": 100,
     "floaters": 100
    }
