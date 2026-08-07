@@ -721,12 +721,12 @@
   },
   {
    "id": "m1a1",
-   "geoMin": 79,
+   "geoMin": 84.1,
    "gatePassed": false,
    "components": {
     "hullCurves": 91.7,
-    "wholeCurves": 79,
-    "turretCurves": 85.7,
+    "wholeCurves": 84.1,
+    "turretCurves": 85.6,
     "stations": 92.5,
     "dims": 100,
     "floaters": 100

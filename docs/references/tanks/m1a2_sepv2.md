@@ -452,3 +452,67 @@ re-cert.
 ### CROWS AIM-FRAME RE-CERT RATIFIED (2026-08-06): RE-FREEZE dda7bcf4
 CONFIRMED (floor 9.1-9.2; owner both-halves YES — docs/critique/
 shaded-parity-abrams-crows-recert.md).
+
+## SEPV2 REMAKE ROUND (2026-08-07, abrams builder — §5.07 owner order,
+## verbatim: "right now just focus on remaking the sepv2 and sepv3 based
+## on the current abrams platforms"; graduate-change, moves the frozen
+## dda7bcf4)
+
+### Platform audit (job 1 first half)
+The id already IS the current platform: one build path (buildM1a2 + the
+V.sepv2/worksHull param surface, the r10 §H derivation) — no stale
+variant branches survive (r10 deleted the standalone tables). Audit of
+every sep/wf gate this round: works-field parenting (wf, certified
+oracle-registration split), §H.4 tells (cable/CIPs/crate/twin fifties),
+CROWS II tall + partial armor, mid-deck rings — all current-platform
+lines. The remake therefore = the §5.07 kit delta below, all sep-gated
+(the m1a2 graduate takes ONLY the shared CROWS-forward azimuth change).
+
+### The remake delta (owner order + coordinator wiki reference)
+1. ELEVATED CROWS II — FORWARD (the mark's signature tell per the wiki
+   drop; §5.07 order 2): the tall-mast station re-aims to rest yaw 0 via
+   the family CROWS-FORWARD mechanics (m1a1.md round home): receiver/
+   can/yoke pinned in the certified 3 spike columns (z 0.517/0.625/0.739,
+   sepTall heights byte-kept), armored crown re-pinned over the receiver,
+   brow on the head, barrel run SHADOW-NAMED past the window. The pod's
+   +z apertures now look down the gun line — the §4.999a aperture
+   residual CLOSES.
+2. IMPROVED CITV + GPS DOGHOUSES (owner: "improved CITV/GPS doghouses"):
+   CITV pot (drum + rotating head + thermal window + crown, right of
+   center) + GPS doghouse (armored hood + cap + dark aperture + glass,
+   left of center) seated on the 2.365 center band INSIDE the station's
+   3 spike columns — side-view interior (p95 untouched, dims 100 by
+   construction); the read prices FRONT columns only.
+3. UAAPU READ (coordinator wiki fact — SEPv2 carries the APU): the LEFT
+   outboard grille door reads as the APU exhaust — pale frame + round
+   exhaust outlet cut into the louver field + junction box + vent slot,
+   all in the rear-band proudness envelope (outlet ring 6.5 mm rearward
+   on plan columns whose REF corners reach -3.96 — toward-ref class).
+4. URBAN-KIT STOWAGE DENSITY (§B3.2): ratchet straps + buckles across
+   the sponson bin lids (+10 mm flush class, side/plan-interior) and
+   cinch straps + buckles on the outer duffels' rear faces (1 mm
+   sub-AA proud of the -3.295 tails, tops 2.17 — the §B3.2 crown-margin
+   lesson honored).
+5. Family §B3.2 mid-deck rings, tan/decor: inherited (m1a2ToneKit).
+
+### Gate x2 (byte-identical runs, final tree) — movement vs the 60.3 baseline
+**65.1 | hull 93.3 (+0.1) whole 65.1 (+4.8) turret 80.6 (EXACT) stations
+83.6 (EXACT) dims 100 floaters 100** (frozen row was 60.3 |
+93.2/60.3/80.6/83.6/100/100). The whole-row gain is the CROWS-forward
+re-price (the transverse barrel's priced front columns vanish; the §B7
+mast cap shrinks); hull +0.1 is the APU/strap dressing net. p95 probe:
+spikes = EXACTLY the 3 mast columns @ 2.9616, 4th-tallest 2.4353 —
+byte-same as the baseline probe.
+CANDIDATE HASH for re-cert + re-freeze: dda7bcf4 -> 7ef1c5ec
+(45 meshes / 119460 verts). CHANGED VIEWS (station + roof + tail):
+view-front, view-frontleft/right, view-left/right, view-top, close-front,
+close-roof, hero-frontleft, hero-toptilt, view-rear/rearleft/rearright
+(APU door read + duffel straps), hero-rearright.
+
+### Evidence
+shots/abrams-crowsfwd-r1/after-m1a2_sepv2/ + yaw{0,90}-m1a2_sepv2/ (official 14-view pairs; the
+M2 reads FORWARD in view-left/close-roof/heroes). Audit lines in the
+round report (standard-check, track-clip --exact, turret-parent — the
+certified ORACLE-REGISTRATION-PINNED works-field classes expected
+byte-same, winding x2 modes). DELIVERED-PENDING-CRITIC; the orchestrator
+runs re-cert + re-freeze (§5.07).

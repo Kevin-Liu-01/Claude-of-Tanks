@@ -64,6 +64,17 @@ const SPECS = [
     { hp: 2350, weightTons: 62, gun: { reloadS: 6.3 } }),
   make('m1a2', 'm1a2_sepv2', 'M1A2 Abrams SEPv2', 'USA',
     { hp: 2600, weightTons: 66.8, gun: { reloadS: 6.0 } }),
+  // m1a2_sepv3 (§5.07 owner order 2026-08-07): M1A2 SEPv3 — redesignated
+  // M1A2C in Sept 2018; first shown AUSA Oct 2015. PURE PROCEDURAL variant
+  // on the m1a2 family rig (ABRAMS_PROFILES m1a2_sepv3) — NO recovered GLB
+  // ships or registers for this id (the local m1a2_sepv3_dannzjs.glb is a
+  // measurement-influence source only: its print is the adjudicated
+  // mislabeled-Leopard/odd-dims asset, see docs/references/tanks/m1a2.md;
+  // dims stay the m1a2's published 7.93/9.77/3.66/2.44). community: null —
+  // original build, nothing recovered to credit.
+  make('m1a2', 'm1a2_sepv3', 'M1A2 SEPv3', 'USA',
+    { hp: 2700, weightTons: 67.5, gun: { reloadS: 5.8 },
+      community: null, visual: { number: '34' } }),
   // DUAL-GATE GRADUATE (2026-07-31, commit 0f5cd55): m60a1's procedural build
   // passed geometry min 90.7 + shaded parity min 9/10 — the recovered GLB is
   // retired and the procedural model ships EVERYWHERE (local + public), so no
@@ -114,6 +125,16 @@ const SPECS = [
   make('t90a', 't90a_vladimir', 'T-90A Vladimir', 'Russia',
     { hp: 2150, topSpeedKmh: 65, gun: { reloadS: 6.8 } }),
 ];
+
+// SEPv3 ammo identity (coordinator wiki reference 2026-08-07): the AMP round
+// ships under its developmental XM designation on this mark (the base m1a2
+// row carries the fielded 'M1147 AMP' name — the copy is renamed, not the
+// base). Ammunition Data Link handling is the row's reloadS edge.
+{
+  const sepv3 = SPECS.find((s) => s.id === 'm1a2_sepv3');
+  const amp = sepv3.gun.shells.find((sh) => /AMP/.test(sh.name));
+  if (amp) amp.name = 'XM1147 AMP';
+}
 
 const ROOT = '/models/tanks/community/recovered/';
 const source = (id, cfg = {}) => {
@@ -273,4 +294,4 @@ export const USERDROP5_TANK_IDS = SPECS.map((s) => s.id);
 // signal — the garage catalog keys era buckets off this list instead, keeping
 // local and public grouping identical. m60a1 is excluded: it graduated the
 // dual gate and its procedural build ships everywhere (a true original now).
-export const USERDROP5_SOURCED_IDS = USERDROP5_TANK_IDS.filter((id) => !['m60a1', 'm1a1ha', 'merkava3c', 'merkava3d', 'pt91m', 't72b3m', 'merkava1b', 'chieftain5', 'leo2a5', 'challenger1', 'leo2_revolution', 'm1a2_sepv2', 't62mv1', 't72bu', 't72b_1987', 't90sm', 't90a_vladimir', 'merkava2b', 'merkava2d', 'fv510', 't64bv1', 'type90'].includes(id));
+export const USERDROP5_SOURCED_IDS = USERDROP5_TANK_IDS.filter((id) => !['m60a1', 'm1a1ha', 'merkava3c', 'merkava3d', 'pt91m', 't72b3m', 'merkava1b', 'chieftain5', 'leo2a5', 'challenger1', 'leo2_revolution', 'm1a2_sepv2', 'm1a2_sepv3', 't62mv1', 't72bu', 't72b_1987', 't90sm', 't90a_vladimir', 'merkava2b', 'merkava2d', 'fv510', 't64bv1', 'type90'].includes(id));
