@@ -1068,6 +1068,158 @@ function paintCamoSwatch(canvas, spec, pid) {
     spark(W * 0.28, H * 0.5, H * 1.05, terra, 0.95);
     spark(W * 0.66, H * 0.4, H * 0.55, slate, 0.9);
     spark(W * 0.88, H * 0.66, H * 0.4, terra, 0.8);
+  } else if (scheme === 'ducky' && patches.length) {
+    // camo r6 fun set: each card sells its motif with 1-3 signature marks.
+    const gold = patches[0], ink = patches[1] || patches[0];
+    const duck = (x, y, sc, a) => {
+      c.save(); c.translate(x, y); c.scale(sc, sc);
+      c.fillStyle = swRgb(gold, a);
+      c.beginPath(); c.ellipse(0.02, 0.10, 0.46, 0.33, 0, 0, Math.PI * 2); c.fill();
+      c.beginPath(); c.ellipse(-0.30, -0.28, 0.22, 0.21, 0, 0, Math.PI * 2); c.fill();
+      c.beginPath(); c.moveTo(-0.48, -0.36); c.lineTo(-0.68, -0.26);
+      c.lineTo(-0.48, -0.18); c.closePath(); c.fill();
+      c.fillStyle = swRgb(ink, a);
+      c.beginPath(); c.arc(-0.34, -0.31, 0.05, 0, Math.PI * 2); c.fill();
+      c.restore();
+    };
+    duck(W * 0.32, H * 0.52, H * 0.6, 0.95);
+    duck(W * 0.74, H * 0.5, H * 0.32, 0.9);
+  } else if (scheme === 'suits' && patches.length) {
+    const red = patches[0], blk = patches[1] || patches[0];
+    const glyph = (d, x, y, sc, col) => {
+      c.save(); c.translate(x, y); c.scale(sc / 24, sc / 24); c.translate(-12, -12);
+      c.fillStyle = swRgb(col, 0.94); c.fill(new Path2D(d)); c.restore();
+    };
+    const HEART = 'M12 21C4 13 2 9 2 6.5 2 3.5 4.2 2 6.5 2 8.6 2 10.8 3.2 12 5.6' +
+      ' 13.2 3.2 15.4 2 17.5 2 19.8 2 22 3.5 22 6.5 22 9 20 13 12 21Z';
+    const SPADE = 'M12 2C20 10 22 12.5 22 15 22 18 19.8 19.5 17.5 19.5 16 19.5 14.6' +
+      ' 18.9 13.6 17.8L15.2 23H8.8L10.4 17.8C9.4 18.9 8 19.5 6.5 19.5 4.2 19.5 2 18' +
+      ' 2 15 2 12.5 4 10 12 2Z';
+    glyph(HEART, W * 0.3, H * 0.5, H * 0.85, red);
+    glyph(SPADE, W * 0.68, H * 0.46, H * 0.55, blk);
+    glyph(HEART, W * 0.88, H * 0.68, H * 0.35, red);
+  } else if (scheme === 'flames' && patches.length) {
+    const fr = patches[0], fo = patches[1] || fr, fg = patches[2] || fo;
+    const lick = (x, y, sc, col, a) => {
+      c.fillStyle = swRgb(col, a);
+      for (let k = 0; k < 3; k++) {
+        c.beginPath();
+        c.arc(x + k * sc * 0.6, y - k * sc * 0.3, sc * (0.5 - k * 0.13), 0, Math.PI * 2);
+        c.fill();
+      }
+    };
+    lick(W * 0.16, H * 0.66, H * 0.52, fr, 0.95);
+    lick(W * 0.2, H * 0.62, H * 0.36, fo, 0.95);
+    lick(W * 0.24, H * 0.6, H * 0.22, fg, 0.95);
+    lick(W * 0.62, H * 0.56, H * 0.34, fr, 0.9);
+    lick(W * 0.65, H * 0.53, H * 0.2, fo, 0.9);
+  } else if (scheme === 'leopardprint' && patches.length) {
+    const amber = patches[0], blk = patches[1] || patches[0];
+    for (let i = 0; i < 7; i++) {
+      const x = rng() * W, y = rng() * H, r = S * 0.032 * (0.8 + rng() * 0.6);
+      swBlob(c, rng, x, y, r * 0.75);
+      c.fillStyle = swRgb(amber, 0.9); c.fill();
+      c.strokeStyle = swRgb(blk, 0.92); c.lineWidth = r * 0.5;
+      const n = 3 + ((rng() * 3) | 0), a0 = rng() * 7;
+      for (let k = 0; k < n; k++) {
+        c.beginPath();
+        const a1 = a0 + (k / n) * Math.PI * 2;
+        c.arc(x, y, r, a1, a1 + 0.6); c.stroke();
+      }
+    }
+  } else if (scheme === 'bolt' && patches.length) {
+    const gold = patches[0], ink = patches[1] || patches[0];
+    const zap = (x, y, sc, col, a) => {
+      c.save(); c.translate(x, y); c.scale(sc, sc);
+      c.fillStyle = swRgb(col, a);
+      c.beginPath();
+      c.moveTo(0.06, -0.5); c.lineTo(0.26, -0.5); c.lineTo(0.03, -0.09);
+      c.lineTo(0.2, -0.09); c.lineTo(-0.14, 0.5); c.lineTo(-0.02, 0.05);
+      c.lineTo(-0.2, 0.05); c.closePath(); c.fill(); c.restore();
+    };
+    zap(W * 0.32, H * 0.5, H * 0.85, gold, 0.95);
+    zap(W * 0.66, H * 0.48, H * 0.5, ink, 0.9);
+    zap(W * 0.86, H * 0.62, H * 0.32, gold, 0.85);
+  } else if (scheme === 'stars' && patches.length) {
+    const cream = patches[0], gold = patches[1] || patches[0];
+    const star = (x, y, sc, col, a) => {
+      c.save(); c.translate(x, y); c.scale(sc, sc);
+      c.fillStyle = swRgb(col, a); c.beginPath();
+      for (let k = 0; k < 10; k++) {
+        const rr = k % 2 ? 0.21 : 0.5, aa = -Math.PI / 2 + (k * Math.PI) / 5;
+        const px = Math.cos(aa) * rr, py = Math.sin(aa) * rr;
+        if (k) c.lineTo(px, py); else c.moveTo(px, py);
+      }
+      c.closePath(); c.fill(); c.restore();
+    };
+    star(W * 0.3, H * 0.5, H * 0.8, cream, 0.95);
+    star(W * 0.68, H * 0.42, H * 0.45, gold, 0.9);
+    star(W * 0.87, H * 0.68, H * 0.28, gold, 0.85);
+  } else if (scheme === 'daisy' && patches.length) {
+    const cream = patches[0], button = patches[1] || patches[0];
+    const flower = (x, y, sc, a) => {
+      for (let k = 0; k < 6; k++) {
+        const aa = (k * Math.PI) / 3 + 0.3;
+        c.beginPath();
+        c.ellipse(x + Math.cos(aa) * sc * 0.3, y + Math.sin(aa) * sc * 0.3,
+          sc * 0.21, sc * 0.115, aa, 0, Math.PI * 2);
+        c.fillStyle = swRgb(cream, a); c.fill();
+      }
+      c.beginPath(); c.arc(x, y, sc * 0.145, 0, Math.PI * 2);
+      c.fillStyle = swRgb(button, a); c.fill();
+    };
+    flower(W * 0.3, H * 0.5, H * 0.75, 0.95);
+    flower(W * 0.72, H * 0.5, H * 0.42, 0.9);
+  } else if (scheme === 'circuit' && patches.length) {
+    const pad = patches[0], trace = patches[1] || patches[0];
+    const via = (x, y, r) => {
+      c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2);
+      c.fillStyle = swRgb(pad, 0.92); c.fill();
+    };
+    c.strokeStyle = swRgb(trace, 0.85); c.lineWidth = 2.4;
+    for (let i = 0; i < 5; i++) {
+      let x = rng() * W, y = rng() * H;
+      via(x, y, 2.6);
+      c.beginPath(); c.moveTo(x, y);
+      let dir = ((rng() * 4) | 0) * (Math.PI / 2);
+      for (let k = 0; k < 2; k++) {
+        const len = W * (0.1 + rng() * 0.15);
+        x += Math.cos(dir) * len; y += Math.sin(dir) * len;
+        c.lineTo(x, y);
+        dir += (rng() < 0.5 ? 1 : -1) * (Math.PI / 4);
+      }
+      c.stroke(); via(x, y, 2.6);
+    }
+    c.fillStyle = swRgb(swMix(base, [0, 0, 0], 0.45), 0.95);
+    c.fillRect(W * 0.62, H * 0.3, W * 0.14, H * 0.34);
+  } else if (scheme === 'racing' && patches.length) {
+    const red = patches[0], blk = patches[1] || patches[0];
+    c.save(); c.translate(W * 0.38, H * 0.5); c.rotate(-0.3);
+    c.fillStyle = swRgb(red, 0.94); c.fillRect(-W * 0.07, -H * 2, W * 0.14, H * 4);
+    c.fillRect(W * 0.1, -H * 2, W * 0.045, H * 4);
+    c.fillStyle = swRgb(blk, 0.9); c.fillRect(-W * 0.11, -H * 2, W * 0.016, H * 4);
+    c.restore();
+    c.beginPath(); c.arc(W * 0.74, H * 0.48, H * 0.34, 0, Math.PI * 2);
+    c.fillStyle = swRgb(swMix(base, [255, 255, 255], 0.55), 0.96); c.fill();
+    c.lineWidth = H * 0.05; c.strokeStyle = swRgb(blk, 0.92); c.stroke();
+    c.fillStyle = swRgb(blk, 0.94);
+    c.font = `900 ${Math.round(H * 0.4)}px 'ABC Monument Grotesk', sans-serif`;
+    c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillText('7', W * 0.74, H * 0.5);
+  } else if (scheme === 'paintball' && patches.length) {
+    for (let i = 0; i < 4; i++) {
+      const col = patches[i % patches.length];
+      const x = rng() * W, y = rng() * H, r = S * 0.045 * (0.7 + rng() * 0.6);
+      swBlob(c, rng, x, y, r);
+      c.fillStyle = swRgb(col, 0.92); c.fill();
+      for (let k = 0; k < 5; k++) {
+        const aa = rng() * Math.PI * 2, d = r * (1.2 + rng() * 1.4);
+        c.beginPath();
+        c.arc(x + Math.cos(aa) * d, y + Math.sin(aa) * d * 0.8,
+          r * (0.08 + rng() * 0.12), 0, Math.PI * 2);
+        c.fill();
+      }
+    }
   }
   // faint top-light so the tile reads as painted steel, not a flat chip
   const g = c.createLinearGradient(0, 0, 0, H);

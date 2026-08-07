@@ -1574,6 +1574,409 @@ function paintCamo(canvas, visual, rng, feats, seed) {
         rng() * Math.PI * 2, rng() < 0.3 ? slate : terra, 0.6);
     }
     // ===================== END CAMO PATTERN SECTION =================
+  } else if (scheme === 'ducky' && patches.length) {
+    // ===================== CAMO PATTERN SECTION =====================
+    // RUBBER DUCKY (camo r6, owner ask: fun set): a hero duck and its
+    // flotilla in bath-toy gold on pond gray, slate wing/eye/beak accents,
+    // faint ripple lines for water. patches = [gold, slate].
+    const gold = patches[0];
+    const ink = patches[1] || '#2e3338';
+    for (let i = 0; i < Math.round(4 * nK); i++) {   // ripples
+      const y0 = rng() * S;
+      const path = new Path2D();
+      path.moveTo(-S * 0.1, y0);
+      path.bezierCurveTo(S * 0.3, y0 + (rng() - 0.5) * S * 0.05,
+        S * 0.7, y0 + (rng() - 0.5) * S * 0.05, S * 1.1, y0);
+      strokeWrapped(ctx, S, path, rgb(mix(base, [255, 255, 255], 0.2), 0.45),
+        Math.max(2, S * 0.005));
+    }
+    const duck = (x, y, s, flip, a) => {
+      const m = new DOMMatrix().translate(x, y).scale(flip ? -s : s, s);
+      const body = new Path2D();
+      const q = new Path2D();
+      q.ellipse(0.02, 0.10, 0.46, 0.33, 0, 0, Math.PI * 2);      // hull
+      q.ellipse(-0.30, -0.28, 0.22, 0.21, 0, 0, Math.PI * 2);    // head
+      q.moveTo(-0.48, -0.36); q.lineTo(-0.68, -0.26); q.lineTo(-0.48, -0.18);
+      q.closePath();                                             // beak
+      q.moveTo(0.34, -0.02); q.quadraticCurveTo(0.58, -0.22, 0.46, 0.08);
+      q.closePath();                                             // tail flick
+      body.addPath(q, m);
+      fillWrapped(ctx, S, body, rgb(gold, a));
+      const detail = new Path2D();
+      const q2 = new Path2D();
+      q2.ellipse(0.08, 0.12, 0.17, 0.10, -0.35, 0, Math.PI * 2); // wing
+      q2.moveTo(-0.31, -0.31); q2.arc(-0.34, -0.31, 0.035, 0, Math.PI * 2); // eye
+      detail.addPath(q2, m);
+      fillWrapped(ctx, S, detail, rgb(ink, a * 0.85));
+    };
+    duck(S * (0.3 + rng() * 0.4), S * (0.3 + rng() * 0.4),
+      S * (0.26 + rng() * 0.06), rng() < 0.5, 0.95);             // hero duck
+    for (let i = 0; i < 3; i++) {
+      duck(rng() * S, rng() * S, S * (0.12 + rng() * 0.05), rng() < 0.5, 0.92);
+    }
+    for (let i = 0; i < Math.round(6 * nK); i++) {               // ducklings
+      duck(rng() * S, rng() * S, S * (0.045 + rng() * 0.03), rng() < 0.5, 0.8);
+    }
+    // ===================== END CAMO PATTERN SECTION =================
+  } else if (scheme === 'suits' && patches.length) {
+    // ===================== CAMO PATTERN SECTION =====================
+    // HIGH ROLLER (camo r6): playing-card suits scattered over aged ivory —
+    // hearts/diamonds in red, spades/clubs in black, casino-felt wash.
+    // patches = [red, black].
+    const red = patches[0];
+    const blk = patches[1] || '#2b2b2e';
+    const suit = (kind, x, y, s, rot, a) => {
+      const q = new Path2D();
+      if (kind === 0) {          // heart (24x24 box)
+        q.moveTo(12, 21);
+        q.bezierCurveTo(4, 13, 2, 9, 2, 6.5);
+        q.bezierCurveTo(2, 3.5, 4.2, 2, 6.5, 2);
+        q.bezierCurveTo(8.6, 2, 10.8, 3.2, 12, 5.6);
+        q.bezierCurveTo(13.2, 3.2, 15.4, 2, 17.5, 2);
+        q.bezierCurveTo(19.8, 2, 22, 3.5, 22, 6.5);
+        q.bezierCurveTo(22, 9, 20, 13, 12, 21);
+        q.closePath();
+      } else if (kind === 1) {   // diamond
+        q.moveTo(12, 1); q.lineTo(19.5, 12); q.lineTo(12, 23);
+        q.lineTo(4.5, 12); q.closePath();
+      } else if (kind === 2) {   // spade
+        q.moveTo(12, 2);
+        q.bezierCurveTo(20, 10, 22, 12.5, 22, 15);
+        q.bezierCurveTo(22, 18, 19.8, 19.5, 17.5, 19.5);
+        q.bezierCurveTo(16, 19.5, 14.6, 18.9, 13.6, 17.8);
+        q.lineTo(15.2, 23); q.lineTo(8.8, 23); q.lineTo(10.4, 17.8);
+        q.bezierCurveTo(9.4, 18.9, 8, 19.5, 6.5, 19.5);
+        q.bezierCurveTo(4.2, 19.5, 2, 18, 2, 15);
+        q.bezierCurveTo(2, 12.5, 4, 10, 12, 2);
+        q.closePath();
+      } else {                   // club
+        q.arc(12, 7, 5.2, 0, Math.PI * 2);
+        q.moveTo(11.6, 14); q.arc(6.4, 14, 5.2, 0, Math.PI * 2);
+        q.moveTo(22.8, 14); q.arc(17.6, 14, 5.2, 0, Math.PI * 2);
+        q.moveTo(15.2, 23); q.lineTo(8.8, 23); q.lineTo(10.8, 16);
+        q.lineTo(13.2, 16); q.closePath();
+      }
+      const p = new Path2D();
+      p.addPath(q, new DOMMatrix().translate(x, y)
+        .rotate((rot * 180) / Math.PI).scale(s / 24, s / 24).translate(-12, -12));
+      fillWrapped(ctx, S, p, rgb(kind < 2 ? red : blk, a));
+    };
+    suit((rng() * 4) | 0, S * (0.3 + rng() * 0.4), S * (0.3 + rng() * 0.4),
+      S * (0.42 + rng() * 0.12), (rng() - 0.5) * 0.5, 0.94);     // hero suit
+    const cell = S / 2;
+    let k6 = (rng() * 4) | 0;
+    for (let gy = 0; gy < 2; gy++) {
+      for (let gx = 0; gx < 2; gx++) {
+        k6++;
+        suit(k6 % 4, (gx + 0.5 + (rng() - 0.5) * 0.6) * cell,
+          (gy + 0.5 + (rng() - 0.5) * 0.6) * cell,
+          cell * (0.34 + rng() * 0.12), (rng() - 0.5) * 0.5, 0.9);
+      }
+    }
+    for (let i = 0; i < Math.round(8 * nK); i++) {
+      suit((rng() * 4) | 0, rng() * S, rng() * S,
+        S * (0.05 + rng() * 0.04), (rng() - 0.5) * 0.7, 0.65);
+    }
+    // ===================== END CAMO PATTERN SECTION =================
+  } else if (scheme === 'flames' && patches.length) {
+    // ===================== CAMO PATTERN SECTION =====================
+    // HOT ROD (camo r6): flame licks sweeping one shared diagonal over
+    // near-black — deep red under orange under gold cores, drawn as chains
+    // of shrinking lobes with a whip tip. patches = [red, orange, gold].
+    const fr = patches[0];
+    const fo = patches[1] || patches[0];
+    const fg = patches[2] || fo;
+    const flow = -0.5 + rng() * 0.25;
+    const licks = [];
+    for (let i = 0; i < Math.round(7 * nK); i++) {
+      licks.push({ x: rng() * S, y: rng() * S, ang: flow + (rng() - 0.5) * 0.4,
+        len: S * (0.22 + rng() * 0.2), w: S * (0.045 + rng() * 0.035), j: rng() * 9 });
+    }
+    const drawLayer = (col, kScale, alpha) => {
+      for (const L of licks) {
+        const p = new Path2D();
+        const steps = 4;
+        for (let k2 = 0; k2 < steps; k2++) {
+          const t = k2 / steps;
+          const wob = Math.sin(L.j + t * 7) * L.w * 0.5;
+          p.addPath(blobPath2D(mulberry32((L.j * 1e4) | 0), 0, 0,
+            L.w * kScale * (1 - t * 0.72), 7, 0.3),
+          new DOMMatrix().translate(
+            L.x + Math.cos(L.ang) * L.len * t - Math.sin(L.ang) * wob,
+            L.y + Math.sin(L.ang) * L.len * t + Math.cos(L.ang) * wob));
+        }
+        const tip = new Path2D();                    // whip tip
+        tip.moveTo(L.x + Math.cos(L.ang) * L.len * 0.9,
+          L.y + Math.sin(L.ang) * L.len * 0.9);
+        tip.quadraticCurveTo(
+          L.x + Math.cos(L.ang) * L.len * 1.15 - Math.sin(L.ang) * L.w,
+          L.y + Math.sin(L.ang) * L.len * 1.15 + Math.cos(L.ang) * L.w,
+          L.x + Math.cos(L.ang) * L.len * (1.3 + kScale * 0.2),
+          L.y + Math.sin(L.ang) * L.len * (1.3 + kScale * 0.2));
+        ctx.filter = `blur(${Math.max(1, S * 0.0008).toFixed(1)}px)`;
+        fillWrapped(ctx, S, p, rgb(col, alpha));
+        strokeWrapped(ctx, S, tip, rgb(col, alpha * 0.9), L.w * kScale * 0.5);
+        ctx.filter = 'none';
+      }
+    };
+    drawLayer(fr, 1, 0.95);
+    drawLayer(fo, 0.66, 0.95);
+    drawLayer(fg, 0.34, 0.9);
+    // ===================== END CAMO PATTERN SECTION =================
+  } else if (scheme === 'leopardprint' && patches.length) {
+    // ===================== CAMO PATTERN SECTION =====================
+    // LEOPARD PRINT (camo r6): fashion rosettes — amber patch under a broken
+    // black ring of arc chips, solid pips between. patches = [amber, black].
+    const amber = patches[0];
+    const blk = patches[1] || '#2e2a26';
+    for (let i = 0; i < Math.round(24 * nK); i++) {
+      const x = rng() * S, y = rng() * S;
+      const r = S * (0.035 + rng() * 0.028);
+      ctx.filter = `blur(${Math.max(1, S * 0.0007).toFixed(1)}px)`;
+      fillWrapped(ctx, S, blobPath2D(rng, x, y, r * 0.8, 7, 0.35), rgb(amber, 0.85));
+      ctx.filter = 'none';
+      const n = 3 + ((rng() * 3) | 0);
+      const a0 = rng() * Math.PI * 2;
+      for (let k2 = 0; k2 < n; k2++) {
+        const a1 = a0 + (k2 / n) * Math.PI * 2 + (rng() - 0.5) * 0.35;
+        const chip = new Path2D();
+        chip.arc(x, y, r * (0.95 + rng() * 0.2), a1, a1 + 0.5 + rng() * 0.5);
+        strokeWrapped(ctx, S, chip, rgb(blk, 0.92), r * (0.4 + rng() * 0.2));
+      }
+    }
+    for (let i = 0; i < Math.round(16 * nK); i++) {  // solid pips between
+      fillWrapped(ctx, S, blobPath2D(rng, rng() * S, rng() * S,
+        S * (0.008 + rng() * 0.01), 6, 0.4), rgb(blk, 0.85));
+    }
+    // ===================== END CAMO PATTERN SECTION =================
+  } else if (scheme === 'bolt' && patches.length) {
+    // ===================== CAMO PATTERN SECTION =====================
+    // THUNDERBOLT (camo r6): comic lightning bolts, gold heroes with ink
+    // counter-bolts on storm gray; soft cloud washes behind.
+    // patches = [gold, ink].
+    const gold = patches[0];
+    const ink = patches[1] || '#26292d';
+    for (let i = 0; i < Math.round(3 * nK); i++) {   // cloud washes
+      ctx.filter = `blur(${Math.max(2, S * 0.004).toFixed(1)}px)`;
+      fillWrapped(ctx, S, blobPath2D(rng, rng() * S, rng() * S,
+        S * wk * (0.14 + rng() * 0.08), 8, 0.3),
+      rgb(mix(base, [255, 255, 255], 0.14), 0.5));
+      ctx.filter = 'none';
+    }
+    const bolt = (x, y, s, rot, col, a) => {
+      const q = new Path2D();
+      q.moveTo(0.06, -0.5); q.lineTo(0.26, -0.5); q.lineTo(0.03, -0.09);
+      q.lineTo(0.2, -0.09); q.lineTo(-0.14, 0.5); q.lineTo(-0.02, 0.05);
+      q.lineTo(-0.2, 0.05); q.closePath();
+      const p = new Path2D();
+      p.addPath(q, new DOMMatrix().translate(x, y)
+        .rotate((rot * 180) / Math.PI).scale(s, s));
+      fillWrapped(ctx, S, p, rgb(col, a));
+    };
+    bolt(S * (0.3 + rng() * 0.4), S * (0.3 + rng() * 0.4),
+      S * (0.5 + rng() * 0.14), (rng() - 0.5) * 0.7, gold, 0.95);  // hero bolt
+    const cell = S / 2;
+    for (let gy = 0; gy < 2; gy++) {
+      for (let gx = 0; gx < 2; gx++) {
+        bolt((gx + 0.5 + (rng() - 0.5) * 0.6) * cell,
+          (gy + 0.5 + (rng() - 0.5) * 0.6) * cell,
+          cell * (0.4 + rng() * 0.14), (rng() - 0.5) * 0.8,
+          (gx + gy) % 2 ? ink : gold, 0.9);
+      }
+    }
+    for (let i = 0; i < Math.round(7 * nK); i++) {
+      bolt(rng() * S, rng() * S, S * (0.05 + rng() * 0.045),
+        rng() * Math.PI * 2, rng() < 0.35 ? ink : gold, 0.7);
+    }
+    // ===================== END CAMO PATTERN SECTION =================
+  } else if (scheme === 'stars' && patches.length) {
+    // ===================== CAMO PATTERN SECTION =====================
+    // STARFALL (camo r6): five-point stars from dust to hero on night navy,
+    // cream heroes with gold satellites. patches = [cream, gold].
+    const cream = patches[0];
+    const gold = patches[1] || patches[0];
+    const star = (x, y, s, rot, col, a) => {
+      const q = new Path2D();
+      for (let k2 = 0; k2 < 10; k2++) {
+        const rr = k2 % 2 ? 0.21 : 0.5;
+        const aa = -Math.PI / 2 + (k2 * Math.PI) / 5;
+        const px = Math.cos(aa) * rr, py = Math.sin(aa) * rr;
+        if (k2) q.lineTo(px, py); else q.moveTo(px, py);
+      }
+      q.closePath();
+      const p = new Path2D();
+      p.addPath(q, new DOMMatrix().translate(x, y)
+        .rotate((rot * 180) / Math.PI).scale(s, s));
+      fillWrapped(ctx, S, p, rgb(col, a));
+    };
+    star(S * (0.3 + rng() * 0.4), S * (0.3 + rng() * 0.4),
+      S * (0.46 + rng() * 0.12), (rng() - 0.5) * 0.6, cream, 0.94); // hero star
+    const cell = S / 2;
+    for (let gy = 0; gy < 2; gy++) {
+      for (let gx = 0; gx < 2; gx++) {
+        star((gx + 0.5 + (rng() - 0.5) * 0.6) * cell,
+          (gy + 0.5 + (rng() - 0.5) * 0.6) * cell,
+          cell * (0.32 + rng() * 0.14), rng() * Math.PI,
+          (gx + gy) % 2 ? gold : cream, 0.9);
+      }
+    }
+    for (let i = 0; i < Math.round(14 * nK); i++) {  // star dust
+      star(rng() * S, rng() * S, S * (0.02 + rng() * 0.035),
+        rng() * Math.PI, rng() < 0.5 ? gold : cream, 0.7);
+    }
+    // ===================== END CAMO PATTERN SECTION =================
+  } else if (scheme === 'daisy' && patches.length) {
+    // ===================== CAMO PATTERN SECTION =====================
+    // FLOWER POWER (camo r6): sixties daisies — six cream petal ellipses
+    // around a terracotta button, hero to sprinkle on olive drab.
+    // patches = [cream, center].
+    const cream = patches[0];
+    const button = patches[1] || '#c96a3a';
+    const daisy = (x, y, s, rot, a) => {
+      for (let k2 = 0; k2 < 6; k2++) {
+        const aa = rot + (k2 * Math.PI) / 3;
+        const q = new Path2D();
+        q.ellipse(x + Math.cos(aa) * s * 0.3, y + Math.sin(aa) * s * 0.3,
+          s * 0.21, s * 0.115, aa, 0, Math.PI * 2);
+        fillWrapped(ctx, S, q, rgb(cream, a));
+      }
+      const c2 = new Path2D();
+      c2.arc(x, y, s * 0.145, 0, Math.PI * 2);
+      fillWrapped(ctx, S, c2, rgb(button, Math.min(1, a + 0.05)));
+    };
+    daisy(S * (0.3 + rng() * 0.4), S * (0.3 + rng() * 0.4),
+      S * (0.4 + rng() * 0.1), rng() * Math.PI, 0.93);            // hero daisy
+    const cell = S / 2;
+    for (let gy = 0; gy < 2; gy++) {
+      for (let gx = 0; gx < 2; gx++) {
+        daisy((gx + 0.5 + (rng() - 0.5) * 0.6) * cell,
+          (gy + 0.5 + (rng() - 0.5) * 0.6) * cell,
+          cell * (0.3 + rng() * 0.12), rng() * Math.PI, 0.9);
+      }
+    }
+    for (let i = 0; i < Math.round(8 * nK); i++) {
+      daisy(rng() * S, rng() * S, S * (0.045 + rng() * 0.035),
+        rng() * Math.PI, 0.75);
+    }
+    // ===================== END CAMO PATTERN SECTION =================
+  } else if (scheme === 'circuit' && patches.length) {
+    // ===================== CAMO PATTERN SECTION =====================
+    // CIRCUIT BOARD (camo r6): mint traces with 45-degree jogs, gold via
+    // dots and pads, a few IC packages, on PCB green.
+    // patches = [pad gold, trace mint].
+    const pad = patches[0];
+    const trace = patches[1] || patches[0];
+    const via = (x, y, r) => {
+      const q = new Path2D();
+      q.arc(x, y, r, 0, Math.PI * 2);
+      fillWrapped(ctx, S, q, rgb(pad, 0.92));
+    };
+    for (let i = 0; i < Math.round(16 * nK); i++) {  // traces
+      let x = rng() * S, y = rng() * S;
+      const p = new Path2D();
+      p.moveTo(x, y);
+      via(x, y, S * 0.011);
+      let dir = ((rng() * 4) | 0) * (Math.PI / 2);
+      const segs = 2 + ((rng() * 3) | 0);
+      for (let k2 = 0; k2 < segs; k2++) {
+        const len = S * (0.07 + rng() * 0.13);
+        x += Math.cos(dir) * len; y += Math.sin(dir) * len;
+        p.lineTo(x, y);
+        dir += (rng() < 0.5 ? 1 : -1) * (Math.PI / 4) * (1 + ((rng() * 2) | 0));
+      }
+      strokeWrapped(ctx, S, p, rgb(trace, 0.8), Math.max(2, S * 0.006));
+      via(x, y, S * 0.011);
+    }
+    for (let i = 0; i < Math.round(4 * nK); i++) {   // IC packages
+      const x = rng() * S, y = rng() * S;
+      const w = S * (0.06 + rng() * 0.05), h = w * (0.55 + rng() * 0.5);
+      const q = new Path2D();
+      q.rect(x - w / 2, y - h / 2, w, h);
+      fillWrapped(ctx, S, q, rgb(mix(base, [0, 0, 0], 0.45), 0.95));
+      for (let k2 = 0; k2 < 4; k2++) {               // legs
+        via(x - w / 2 - S * 0.008, y - h / 2 + (k2 + 0.5) * (h / 4), S * 0.006);
+        via(x + w / 2 + S * 0.008, y - h / 2 + (k2 + 0.5) * (h / 4), S * 0.006);
+      }
+    }
+    for (let i = 0; i < Math.round(10 * nK); i++) via(rng() * S, rng() * S, S * 0.009);
+    // ===================== END CAMO PATTERN SECTION =================
+  } else if (scheme === 'racing' && patches.length) {
+    // ===================== CAMO PATTERN SECTION =====================
+    // RACING TEAM (camo r6): twin rally stripes with a keyline down one
+    // shared diagonal, plus number roundels. patches = [red, black].
+    const red = patches[0];
+    const blk = patches[1] || '#26282c';
+    const ang = -0.35 + (rng() - 0.5) * 0.2;
+    const band = (offX, offY, w, col, alpha) => {
+      const path = new Path2D();
+      const len = S * 1.6;
+      path.moveTo(offX - Math.cos(ang) * len * 0.5, offY - Math.sin(ang) * len * 0.5);
+      path.lineTo(offX + Math.cos(ang) * len * 0.5, offY + Math.sin(ang) * len * 0.5);
+      strokeWrapped(ctx, S, path, rgb(col, alpha), w);
+    };
+    const cx = rng() * S, cy = rng() * S;
+    const nx = -Math.sin(ang), ny = Math.cos(ang);   // stripe normal
+    band(cx, cy, S * 0.11, red, 0.94);               // main stripe
+    band(cx + nx * S * 0.095, cy + ny * S * 0.095, S * 0.035, red, 0.94);
+    band(cx - nx * S * 0.075, cy - ny * S * 0.075, S * 0.012, blk, 0.9);
+    const num = String(1 + ((rng() * 98) | 0));
+    const roundel = (x, y, r) => {
+      const disc = new Path2D();
+      disc.arc(x, y, r, 0, Math.PI * 2);
+      fillWrapped(ctx, S, disc, rgb(mix(base, [255, 255, 255], 0.55), 0.96));
+      const ring = new Path2D();
+      ring.arc(x, y, r * 0.94, 0, Math.PI * 2);
+      strokeWrapped(ctx, S, ring, rgb(blk, 0.92), r * 0.09);
+      ctx.save();
+      ctx.font = `900 ${Math.round(r * 1.15)}px 'ABC Monument Grotesk', sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = rgb(blk, 0.94);
+      for (const dx of [-S, 0, S]) {
+        for (const dy of [-S, 0, S]) {
+          ctx.save(); ctx.translate(dx, dy); ctx.fillText(num, x, y * 1.02); ctx.restore();
+        }
+      }
+      ctx.restore();
+    };
+    roundel(cx + nx * S * (0.26 + rng() * 0.06), cy + ny * S * 0.26, S * (0.13 + rng() * 0.03));
+    roundel(cx - nx * S * (0.3 + rng() * 0.06), cy - ny * S * 0.3, S * (0.09 + rng() * 0.03));
+    for (let i = 0; i < Math.round(3 * nK); i++) {   // sponsor-ish ticks
+      const x = rng() * S, y = rng() * S;
+      const q = new Path2D();
+      q.rect(x, y, S * (0.05 + rng() * 0.05), S * 0.014);
+      fillWrapped(ctx, S, q, rgb(rng() < 0.5 ? red : blk, 0.7));
+    }
+    // ===================== END CAMO PATTERN SECTION =================
+  } else if (scheme === 'paintball' && patches.length) {
+    // ===================== CAMO PATTERN SECTION =====================
+    // PAINTBALL (camo r6): multicolor splats — irregular core, radial
+    // droplet spray, occasional drip run — on primer gray.
+    // patches = [blue, red, green, yellow].
+    for (let i = 0; i < Math.round(9 * nK); i++) {
+      const col = patches[(rng() * patches.length) | 0];
+      const x = rng() * S, y = rng() * S;
+      const r = S * (0.05 + rng() * 0.065);
+      ctx.filter = `blur(${Math.max(1, S * 0.0006).toFixed(1)}px)`;
+      fillWrapped(ctx, S, blobPath2D(rng, x, y, r, 11, 0.55), rgb(col, 0.9));
+      ctx.filter = 'none';
+      const nd = 4 + ((rng() * 6) | 0);
+      for (let k2 = 0; k2 < nd; k2++) {              // droplet spray
+        const aa = rng() * Math.PI * 2;
+        const d = r * (1.15 + rng() * 1.5);
+        const q = new Path2D();
+        q.arc(x + Math.cos(aa) * d, y + Math.sin(aa) * d * 0.85,
+          r * (0.06 + rng() * 0.13), 0, Math.PI * 2);
+        fillWrapped(ctx, S, q, rgb(col, 0.85));
+      }
+      if (rng() < 0.45) {                            // drip run
+        const drip = new Path2D();
+        drip.moveTo(x + (rng() - 0.5) * r, y + r * 0.5);
+        drip.lineTo(x + (rng() - 0.5) * r, y + r * (1.6 + rng() * 1.6));
+        strokeWrapped(ctx, S, drip, rgb(col, 0.82), r * (0.1 + rng() * 0.08));
+      }
+    }
+    // ===================== END CAMO PATTERN SECTION =================
   } else if (scheme === 'amoeba' && patches.length) {
     // ===================== CAMO PATTERN SECTION =====================
     // Soviet WW2 amoeba/kumovka (camo r2 expansion): FEW very large rounded
@@ -2730,6 +3133,10 @@ export const CAMO_PATTERN_IDS = [
   // the one sanctioned break of append-only; safe because getCamoSelection
   // validates stored ids against this list and falls back to 'factory'.
   'spark',
+  // camo r6 (owner ask 2026-08-07): the fun ten — style-only, appended per
+  // the contract.
+  'ducky', 'suits', 'flames', 'leopardprint', 'bolt',
+  'stars', 'daisy', 'circuit', 'racing', 'paintball',
 ];
 export const CAMO_PATTERN_LABEL = {
   auto: 'Auto (map)', factory: 'Factory', summer: 'Summer',
@@ -2744,6 +3151,10 @@ export const CAMO_PATTERN_LABEL = {
   berlin: 'Berlin Bde', oakleaf: 'Oak Leaf',
   hexfield: 'Hex Mesh', midnight: 'Night Ops',
   claude: 'Claude', spark: 'Claude Spark',
+  ducky: 'Rubber Ducky', suits: 'High Roller', flames: 'Hot Rod',
+  leopardprint: 'Leopard Print', bolt: 'Thunderbolt', stars: 'Starfall',
+  daisy: 'Flower Power', circuit: 'Circuit Board', racing: 'Racing Team',
+  paintball: 'Paintball',
 };
 
 const CAMO_LS_PREFIX = 'cot.camo.';
@@ -3239,6 +3650,39 @@ function patternVisual(spec, patternId) {
     // lesson). Style-only, no biome bonus.
     o = { scheme: 'spark', base: '#d8cbb5', weather: '#c6b8a0',
       patches: ['#b4593a', '#3a3733'] };
+  } else if (patternId === 'ducky') {
+    // camo r6 fun set: bath-toy gold on pond gray-blue, slate accents. All
+    // ten r6 palettes respect the established ladders — light bases under
+    // the ~198 whitewash ceiling, dark bases at or above the '#26' floor.
+    o = { scheme: 'ducky', base: '#8798a3', weather: '#7b8c97',
+      patches: ['#d9b13f', '#2e3338'] };
+  } else if (patternId === 'suits') {
+    o = { scheme: 'suits', base: '#d6cdbd', weather: '#c5bba9',
+      patches: ['#9e3a3a', '#2b2b2e'] };
+  } else if (patternId === 'flames') {
+    o = { scheme: 'flames', base: '#292a2e', weather: '#303136',
+      patches: ['#a83226', '#d97b35', '#e0b23f'] };
+  } else if (patternId === 'leopardprint') {
+    o = { scheme: 'leopardprint', base: '#c2a878', weather: '#b39a6c',
+      patches: ['#8a5f38', '#2e2a26'] };
+  } else if (patternId === 'bolt') {
+    o = { scheme: 'bolt', base: '#4a4f57', weather: '#42474e',
+      patches: ['#d9b13f', '#26292d'] };
+  } else if (patternId === 'stars') {
+    o = { scheme: 'stars', base: '#3a4254', weather: '#333b4c',
+      patches: ['#e2d7ba', '#d9b13f'] };
+  } else if (patternId === 'daisy') {
+    o = { scheme: 'daisy', base: '#5a6b46', weather: '#52623f',
+      patches: ['#e6ded0', '#c96a3a'] };
+  } else if (patternId === 'circuit') {
+    o = { scheme: 'circuit', base: '#2b4536', weather: '#263d30',
+      patches: ['#c9a53f', '#86b096'] };
+  } else if (patternId === 'racing') {
+    o = { scheme: 'racing', base: '#c9c7bd', weather: '#b9b7ab',
+      patches: ['#a83430', '#26282c'] };
+  } else if (patternId === 'paintball') {
+    o = { scheme: 'paintball', base: '#b9b9b2', weather: '#a9a9a2',
+      patches: ['#3f7fbf', '#c9503f', '#58a05a', '#d9b13f'] };
   }
   return o ? { ...v, ...o } : v;
 }
