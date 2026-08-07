@@ -1076,3 +1076,17 @@ hold was lifted). One UK agent owns modern1.js + uk.js (fv510 +
 reading the ch1 base; chieftain5 d4f2a9a6 + chieftain_mk10 59551064 +
 challenger1 dbe33204 hash-guarded). Five builder lanes now live:
 SEP, leopard, t90, merkava, UK.
+
+## 5.13 OWNER ORDER (2026-08-07, relayed to the live t90 agent):
+"i want their turrets to look more like each other. the t90sm and
+t90m turrets are good, but the t90a and t90a vladimir need to be
+based off of those turrets, with their own designs and attachments
+and era and other equipment ofc" — T90 TURRET FAMILY LAW: t90a +
+vladimir turret lofts REBASE on the approved t90sm/t90m welded
+family grammar (t90m read-only donor — graduate e345ee8a untouched),
+each keeping its own variant kit (K-5 clamshell/tiles, red eyes,
+Kord, bricks, markings). §B7 owner-taste class: both prints carry
+CAST domes — the welded rebase moves turret rows against them; the
+look-order OUTRANKS the rows; caps documented per column (type10
+evidence pattern). t90sm's approved turret is look-protected; its
+ladder is hull-only.
