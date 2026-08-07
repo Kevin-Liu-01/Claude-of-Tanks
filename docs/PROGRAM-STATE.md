@@ -484,6 +484,27 @@ one (e.g. tejas -> 'M1A2 Abrams (hero)' or fold the id)?
 (2) CHARIOTEER ERA FLAG: charioteer sits in the coldwar group with a
 WW2-ancestry spec (Cromwell hull) — confirm intended era grouping.
 
+## 4.99998 RUSSIA TURRET LANE LANDED f4c323f (2026-08-07): t90sm
+turret 73->81 (T05BV-1 RWS connected+aimed, pano sight, Sosna housing,
+Relikt, snorkel, mantlet+bore — the owner's "no attachments" complaint
+addressed, critic pending), t90a 72.6->76.3 (K-5 clamshell apex,
+Shtora on the ref line), vladimir turret 72.9->78.4 (dome squash,
+K-5 cheek walls, r13 artifact decoded); tier-2: t54 turret +2.7,
+t72b_1987 min +2.8, §B3.1 bore sweep (t72bu + cast-collar mantlet).
+Print-pinned classes documented per packet (t80bv barrel re-parent +
+scaleToOverall ruling wanted; t54 winding repair queued). Orchestrator
+reproduced all five moved lines exactly; graduates held; npm green.
+IN FLIGHT NOW (2026-08-07): §B8 critic (t90sm/t90a/vladimir trio,
+shots/critic-russia-trio/), t72b3m COUPLED 2022-config round
+(russia.js freed — RWS, roof cluster, Relikt, turret-side bustle;
+re-freeze after its critic), challenger lane (modern1/2), type10 lane
+(modern3). NEXT SPAWNS QUEUED: t34_85/m4a3e8 §B8 resits (ww2.js,
+proxies trued), type74 round (misc.js, oracle registered, honest 0s +
+dims 99.6), chieftain_mk10/leo1a5 base-21 SCAFFOLD rounds (specs in
+userdrops7/userdrops3, no profiles builder yet — briefs need packet
+prep), latent reversed-core sweep, §I mg migrations, m60a2 packet
+decision, t72bu decision.
+
 ## 5. IN-FLIGHT AGENTS (SUPERSEDED BY §12 — the 2026-08-05 device
 handover interrupted these; respawn per §12)
 1. DONE+RATIFIED: abrams dual critic (m1a1ha f5c556dc, sepv2 §10 run).
