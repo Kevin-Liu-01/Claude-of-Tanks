@@ -414,7 +414,112 @@ export function buildTurretAndGun(P,p) {
     evacR:p.evacR ?? (p.sleeve !== false ? 1.9 : 1.62),
     collar:true,baseR:Math.max(0.12,P.spec.armor.gunBarrel.radiusM*1.7),
   });
+  // §B3.1 MUZZLE BORE — OPT-IN per profile (p.muzzleBore true|config);
+  // absent = byte-identical build (shared-helper law).
+  if (p.muzzleBore) muzzleBore(P,{
+    len:p.gunLength || P.spec.armor.gunBarrel.lengthM,
+    r:p.gunRadius || Math.max(0.05,P.spec.armor.gunBarrel.radiusM*0.82),
+    ...(typeof p.muzzleBore === 'object' ? p.muzzleBore : null),
+  });
   P.topY=h+(p.pano?0.46:0.25);
+}
+
+// §B3.1 addendum MUZZLE BORE (owner 2026-08-06, banked 32a6946; MANDATORY
+// MECHANISM per the leclerc landing, banked 3fca39b): no gun ends in a solid
+// capped tip — every muzzle face carries an annular rim + a near-black bore
+// disc recessed inside the rim mouth. MECHANISM = SHADOW-NAMED RENDER
+// FURNITURE (§C), the misc.js muzzleBore() reference pattern: bucket-based
+// rims grow the gun AABB ~3cm and RE-FRAME the turret-row cameras (-6.2
+// measured on leclerc; also re-binned gate z-columns here — m46/m47 hull
+// -0.5/-0.3 measured before the rework). /shadow/i-named meshes render in
+// every game/critic view but are excluded from every measurement mask AND
+// the visible-box framing recipes — mask/frame-neutral BY CONSTRUCTION, and
+// the rim sits honestly proud of the old solid cap (which would otherwise
+// occlude a recessed disc — the kv2 r9/r10 "blank bore face" lesson).
+// Dark torus rim at tube radius + mats.shadow disc at 0.62x recessed ~2cm
+// inside the rim mouth; parented to P.gunG (elevation-correct).
+// ADDITIVE + OPT-IN ONLY: nothing reaches this without a caller asking.
+//
+// Modes:
+//   muzzleBore(P,{len,r,brake})  buildGun-cfg mirror — tip plane derived
+//     from buildGun's face table (plain tube len-0.02; brake exits: single
+//     +0.02, double +0.00, discs +0.005).
+//   muzzleBore(P,{z,r,...})      explicit face plane for hand-authored
+//     tubes (x/y for offset bores). MG muzzles do NOT take the ring — the
+//     law gives them pinhole-class dark tips (see muzzleTipDot).
+export function muzzleBore(P, o = {}) {
+  const { cylZ, torus, xform } = KIT;
+  const r = o.r ?? Math.max(0.05, P.spec.armor.gunBarrel.radiusM * 0.82);
+  const len = o.len ?? P.muzzleZ;
+  const zTip = o.z ?? (o.brake === 'double' ? len
+    : o.brake === 'discs' ? len + 0.005
+    : o.brake ? len + 0.02
+    : len - 0.02);
+  const x = o.x ?? 0, y = o.y ?? 0;
+  // KIT.torus lies flat — rotate rx PI/2 for a vertical ring about the bore
+  const ring = new THREE.Mesh(
+    xform(torus(r * 0.82, r * 0.18, o.seg ?? 16), 0, 0, 0, Math.PI / 2, 0, 0),
+    P.mats.dark);
+  ring.name = 'muzzleBoreShadowRim';
+  ring.position.set(x, y, zTip + 0.016);
+  const disc = new THREE.Mesh(cylZ(o.boreR ?? r * 0.62, 0.012, o.seg ?? 14), P.mats.shadow);
+  disc.name = 'muzzleBoreShadowDisc';
+  disc.position.set(x, y, zTip + 0.006);
+  for (const m of [ring, disc]) {
+    m.castShadow = false;
+    m.receiveShadow = true;
+    P.gunG.add(m);
+    P.disposables.push(m.geometry);
+  }
+}
+
+// §C.1 winding guard (orientedSlab class — the misc.js device, hoisted here
+// for the fleet sweep so every family file can bind it): KIT.slab builds its
+// six faces for ONE ring handedness — corners in plan order (-x,+z),(+x,+z),
+// (+x,-z),(-x,-z), bottom then top. A mirrored call (x *= -1 without
+// re-ordering) hands it the OPPOSITE orientation: all six faces come out
+// INWARD and the solid is backface-culled in every FrontSide render (game,
+// critic, standard-check truth renders) while staying fully visible to the
+// gate's DoubleSide masks — the §C MISSING-SIDE class. This wrapper measures
+// face outwardness about the corner centroid and re-orients reversed rings
+// (b0,b3,b2,b1 / t0,t3,t2,t1) before building: identical solid, outward
+// faces, mask-neutral by construction (only the position-buffer ORDER
+// changes on repaired slabs — flipped graduates take the graduate-change
+// candidate flow). Mixed rings (3-5 outward) pass through untouched —
+// per-face adjudication stays with the owning file (§C.1).
+export function orientedSlab(b0, b1, b2, b3, t0, t1, t2, t3) {
+  const c8 = [b0, b1, b2, b3, t0, t1, t2, t3];
+  const cen = [0, 1, 2].map((k) => c8.reduce((s, p) => s + p[k], 0) / 8);
+  const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+  const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  let outward = 0;
+  for (const f of [[b0, b1, t1, t0], [b1, b2, t2, t1], [b2, b3, t3, t2],
+    [b3, b0, t0, t3], [t0, t1, t2, t3], [b3, b2, b1, b0]]) {
+    const n = cross(sub(f[1], f[0]), sub(f[2], f[0]));
+    const fc = [0, 1, 2].map((k) => (f[0][k] + f[1][k] + f[2][k] + f[3][k]) / 4);
+    if (dot(n, sub(fc, cen)) > 0) outward++;
+  }
+  return outward >= 3
+    ? KIT.slab(b0, b1, b2, b3, t0, t1, t2, t3)
+    : KIT.slab(b0, b3, b2, b1, t0, t3, t2, t1);
+}
+
+// MG-scale companion (§B3.1: "M2/NSVT get pinhole-class dark tips, not
+// drilled geometry"): ONE tiny mats.shadow disc on the muzzle of a small-
+// arms tube. Shadow-named for the same mask/framing neutrality. parent =
+// the P group the MG lives in ('turretG'|'hullG'|'gunG', default turretG);
+// pos is that group's frame; rx/ry aim the disc with the tube.
+export function muzzleTipDot(P, x, y, z, r = 0.012, o = {}) {
+  const { cylZ, xform } = KIT;
+  const dot = new THREE.Mesh(
+    xform(cylZ(r, 0.006, 8), 0, 0, 0, o.rx ?? 0, o.ry ?? 0, o.rz ?? 0), P.mats.shadow);
+  dot.name = 'muzzleTipShadowDot';
+  dot.position.set(x, y, z);
+  dot.castShadow = false;
+  dot.receiveShadow = true;
+  (o.parent === 'hullG' ? P.hullG : o.parent === 'gunG' ? P.gunG : P.turretG).add(dot);
+  P.disposables.push(dot.geometry);
 }
 
 export function buildProfile(P,p) {
@@ -788,7 +893,9 @@ function fittingJerryCans(opts = {}) {
   const { box, cylY } = KIT;
   const count = Math.max(1, opts.count || 2);
   const gap = opts.gap ?? 0.05;
-  const slot = opts.slot || 'detail';
+  // owner 2026-08-06: cans read too bright fleet-wide in 'detail' pale
+  // metal — default to the olive canvas tone; callers may still opt in.
+  const slot = opts.slot || 'canvasCloth';
   const rng = fitRng(opts.seed ?? 1);
   const parts = fitParts();
   const pitchX = 0.16 + gap;

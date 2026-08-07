@@ -748,3 +748,22 @@ on every view is the owner's: "does it read as the real tank" — not
 "is it decorated." Applies retroactively: all 2026-08-06 photo-class
 landings (puma, type89, k2, type99a, ww2 trio, leo2a4, challenger2, t14,
 leo2a7v, fv510) are DELIVERED-PENDING-CRITIC until adjudicated.
+
+## §B3.1 addendum — MANTLETS MANDATORY (owner 2026-08-06: "make sure all
+## tanks including russian tanks have mantlets" + "type 90 needs a
+## mantlet")
+Every gun run carries its REAL mantlet/gun-shield mass at the turret
+face — the cast collar, boot, or shield the actual vehicle mounts (§B3.1
+grammar; russian marks: the boot/collar classes from the prism sweep;
+japanese type90: its distinctive flat armored mantlet plate). A bare
+tube exiting a turret face with no mantlet mass is a failing read
+fleet-wide. Critics: check every tank's gun root.
+
+## §D addendum — SCALE/SIZE TRUE-UP (owner 2026-08-06: "make sure to
+## scale and size tanks correctly, i think type 90 is too small")
+dims=100 only proves the build matches ITS SPEC — the spec itself can be
+wrong, and cross-tank scale reads in-game are the check the program
+lacked. Standing audit: per tank compare spec dims against published
+real-vehicle dims (type90 first: verify width/height/length vs the real
+3.43w x 2.34h x 9.76 overall) AND eyeball garage lineups for relative
+scale. Spec true-ups are orchestrator-lane, verify-first.

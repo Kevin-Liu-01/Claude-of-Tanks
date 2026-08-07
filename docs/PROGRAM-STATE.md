@@ -280,6 +280,18 @@ challenger1 0.31%, t62mv1/t72b_1987 0.25%. LATENT REVERSED-CORES (census
 only, occluded): vickers 8, centurion3 6, centurion5 6, merkava3c 6,
 merkava1b 5, merkava3d 4, +12 more — sweep when lanes free.
 
+## 4.97 OWNER ORDERS 2026-08-06 late: (1) jerry cans darkened fleet-wide
+(kit.js default slot -> canvasCloth; graduates carried via live rounds'
+candidates); (2) MANTLETS MANDATORY fleet-wide (§B3.1 addendum; relayed
+to live sweep + t90m lanes; type90 named); (3) type90 SIZE audit (spec
+vs real 3.43x2.34x9.76 — my-lane verify-first true-up; dims=100 doesn't
+prove the spec); (4) still-unstarted base-21: leo2a7, chieftain_mk10,
+type10(held), leo1a5, type74, t72b3 build rounds queue BEHIND the §B8
+acceptance-critic calibration (building six more tanks before the
+proportions verdicts would repeat the puma mistake); k2/t14/challenger2
+rebuilds await their §B8 verdicts; sepv2/sepv3 visible upgrades are
+MID-FLIGHT (live abrams round, not yet landed).
+
 ## 5. IN-FLIGHT AGENTS (SUPERSEDED BY §12 — the 2026-08-05 device
 handover interrupted these; respawn per §12)
 1. DONE+RATIFIED: abrams dual critic (m1a1ha f5c556dc, sepv2 §10 run).
