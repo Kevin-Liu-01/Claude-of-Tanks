@@ -1347,3 +1347,21 @@ kit; record 190e6a32 moves by order; the 63.8 print-bake cap
 discipline stands); (2) t90a — the excess rectangle on the right
 side of its tracks near the bottom REMOVED (§B3 no-mystery-boxes:
 identify, re-seat if real, delete if not; both sides probed).
+
+## 5.31 OWNER ORDER (2026-08-07): GARAGE REGROUP — "move our custom
+tanks into where they properly belong": WW2 <- sherman_jumbo,
+leichttraktor, pziii (both pziii ids adjudicated at execution),
+sturmtiger, tiger2, jagdtiger, jagdpanzer (jpz_e100 read — confirm at
+execution), t34_85_cad, t44, is3 (+is3_bergman), is6b; COLD WAR <-
+type59, strv103, t95 ('doomturtle'), m48; MODERN <- merkava4
+('merkava mk IVM'), m1a2_tusk. THEN: the SOURCES group becomes the
+complete catalog of ALL actual 3D tank models (every GLB-rendered
+model listed there, even where the tank also appears in its era
+group). EXECUTION BLOCKED on garage.js: the file carries the owner's
+live uncommitted WIP (their parallel session) — the group logic
+(Sources derivation + COLDWAR_IDS map) lives there. Executes the
+moment garage.js lands clean; era-side spec fields ride the same
+commit. NOTE the destination judgment on the first list: t44/is3/
+is6b read WW2-era (1944-45 vehicles) — the owner's list order is
+ambiguous between WW2 and Cold War for them; DEFAULT WW2 with the
+type59 in Cold War; owner can re-sort with one word.
