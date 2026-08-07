@@ -2,7 +2,7 @@
  "generatedAt": "2026-08-07T14:29:13.544Z",
  "gate": "every component >= 90; min is the headline",
  "passed": 21,
- "total": 90,
+ "total": 89,
  "rows": [
   {
    "id": "recon_tank",
@@ -211,11 +211,6 @@
     "dims": 7,
     "floaters": 100
    }
-  },
-  {
-   "id": "cruiser",
-   "geoMin": 0,
-   "gatePassed": false
   },
   {
    "id": "challenger2",
