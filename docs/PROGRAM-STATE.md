@@ -729,3 +729,23 @@ Plus the standing my-lane queue in §7.
 The owner's standing orders: keep going with everything, many agents,
 LIVING RULEBOOK (every lesson lands in BUILD-STANDARD the turn it
 arrives), never gate m60a1/m60a3/kv2, never false-0, owner port 5001.
+
+## 4.999991 RUSSIA TRIO §B8 VERDICTS (independent critic, adjudicated
+at 3baa25c; sheets shots/critic-russia-trio/ + 27 evidence crops):
+t90sm CONDITIONAL 8.0 (orders: bustle/side SLAT GRID mesh; turret-side
+stowage BRIM FLARE outward; Relikt glacis rows + retire grey-lavender
+glacis tone + pano head +0.2-0.3). t90a FAIL 5.5 — §B8.1 gate-3 kill:
+box-stack superstructure, not a cast dome (orders: TURRET REBUILD
+reusing the vladimir dome loft, K-5 as dome-hugging plates, Shtora RED
+round dazzlers not blue windows, cupola+Kord MG, glacis K-5 rows +
+stern drums, rehook near-black light clusters). t90a_vladimir FAIL 7.0
+but close (orders: FLOATER above roof x~1005-1018 y~148-178 connect-
+or-delete, cupola+Kord MG, box-fort rim thinned so the dome reads,
+Shtora red eyes, glacis rows, rear-wall story, bow clusters).
+OWNER CHECKLIST: t90sm all three complaints DEAD (attachments,
+RWS-yawed-right, welded silhouette matches print numerically); "both
+t90a turrets wrong" ALIVE for t90a / MOSTLY DEAD for vladimir.
+Trio-wide note: proc track bands read chunky vs the prints' smooth
+runs (shared-material lane, report-only — same class as t14's).
+FIX ROUND QUEUED behind the live t72b3m coupled agent (russia.js
+single-writer): carries ALL orders above verbatim.
