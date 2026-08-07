@@ -256,3 +256,7 @@ chute, IR pointer pod. Rest azimuth +90 deg window-pinned (head depth
 0.200 in the 0.206 usable window). GATE HELD EXACT x2: 61.5 |
 92/61.5/83.4/92.3/100/100. Mode-2: 0 candidates. Candidate hash in
 m1a1.md — re-freeze on re-cert.
+
+### CROWS AIM-FRAME RE-CERT RATIFIED (2026-08-06): RE-FREEZE 89c9f260
+CONFIRMED (floor 9.1-9.2; owner both-halves YES — docs/critique/
+shaded-parity-abrams-crows-recert.md).

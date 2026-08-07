@@ -250,3 +250,7 @@ bracket + feed chute (M2 feeds left, §7 nit); flush ring conduit. GATE
 HELD EXACT x2: 79.0 | 91.7/79/85.7/92.5/100/100. Winding mode-2: 0
 candidates. Candidate hash in m1a1.md close table — re-freeze on the
 re-cert critic's verdict.
+
+### CROWS AIM-FRAME RE-CERT RATIFIED (2026-08-06): RE-FREEZE f1aaf80
+CONFIRMED (floor 9.1-9.2; owner both-halves YES — docs/critique/
+shaded-parity-abrams-crows-recert.md).

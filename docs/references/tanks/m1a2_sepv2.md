@@ -448,3 +448,7 @@ correctly forward). GATE HELD EXACT x2: 60.3 |
 93.2/60.3/80.6/83.6/100/100. Mode-2: 5519 px = the certified works
 field EXACT (no new stranding). Candidate hash in m1a1.md — re-freeze on
 re-cert.
+
+### CROWS AIM-FRAME RE-CERT RATIFIED (2026-08-06): RE-FREEZE dda7bcf4
+CONFIRMED (floor 9.1-9.2; owner both-halves YES — docs/critique/
+shaded-parity-abrams-crows-recert.md).

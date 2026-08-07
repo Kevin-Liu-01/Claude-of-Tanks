@@ -62,9 +62,9 @@ re-freeze NEW hash, all in ONE commit.
 | m60a3 | 097c35a2 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | kv2 | 382b2310 | freeze-verify only |
 | leo2a6 | 09912270 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
-| m1a1 | ba45613c -> a04c8c74 CANDIDATE (CROWS aim-frame round, re-cert in flight) |
-| m1a1ha | ff97bc44 -> f1aaf80 CANDIDATE (CROWS aim-frame round, re-cert in flight) |
-| m1a2_tejas | 4891abb6 -> 89c9f260 CANDIDATE (CROWS aim-frame round, re-cert in flight) |
+| m1a1 | a04c8c74 | CROWS aim-frame re-cert RATIFIED (floor 9.1+; owner both-halves YES) |
+| m1a1ha | f1aaf80 | CROWS aim-frame re-cert RATIFIED (floor 9.1+; owner both-halves YES) |
+| m1a2_tejas | 89c9f260 | CROWS aim-frame re-cert RATIFIED (floor 9.1+; owner both-halves YES) |
 | merkava3b | REMOVED BY OWNER 2026-08-06 (roster prune; was 8bb8d984, packet historical) |
 | merkava3c | 8b7ed9bc | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | kf51 | 9ac547ac | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
@@ -74,7 +74,7 @@ re-freeze NEW hash, all in ONE commit.
 | pt91m | 2cf10e23 | |
 | t72b3m | 1e1ca4b8 | |
 | merkava1b | 2cc7a76c | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
-| m1a2 | 4778c7a8 -> bbae99a4 CANDIDATE (CROWS aim-frame round, re-cert in flight) |
+| m1a2 | bbae99a4 | CROWS aim-frame re-cert RATIFIED (floor 9.1+; owner both-halves YES) |
 | chieftain5 | d4f2a9a6 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | t84 | 04707a9c | |
 | m47_patton | 2fc99c50 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
@@ -82,7 +82,7 @@ re-freeze NEW hash, all in ONE commit.
 | leo2_revolution | bbae2c80 | GRAY-RECTANGLES DEAD (acid YES every view family, §B8 critic); render-side ACCEPTED — gate stays barred pending the 4.995 oracle adjudication |
 | m46_patton | 108806c8 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | centurion3 | 50273080 | bore resit RATIFIED (end 9.2; occlusion class fixed) |
-| m1a2_sepv2 | 83277374 -> dda7bcf4 CANDIDATE (CROWS aim-frame round, re-cert in flight) |
+| m1a2_sepv2 | dda7bcf4 | CROWS aim-frame re-cert RATIFIED (floor 9.1+; owner both-halves YES) |
 | m26_pershing | 65c564c0 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 
 *Historical note: the 2026-08-05 INVISIBLE-LOD fix mass re-froze the
