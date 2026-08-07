@@ -221,3 +221,18 @@ rings the roof/top ones. Yaw pair: shots/abrams-b32/yaw{0,90}-m1a1ha/
 ### DENSITY-ROUND RE-CERT RATIFIED (2026-08-06): RE-FREEZE 4023964c CONFIRMED
 (floors 9.1-9.3; American MG grammar audited YES; docs/critique/
 shaded-parity-abrams-density-recert.md).
+
+## REAR + BORE + VISIBILITY ROUND (2026-08-06, abrams builder — graduate-
+## change; full mechanics + §C decode + §B7 cap notes in m1a1.md)
+Inherits the family stern rebuild (full-height mid-step, corner guard
+plates + taillight clusters in guards, rail termination, tow shackles,
+rear-kit rework — the HA's OWN corner tongues/softDark/flap set is now
+family-wide, extended not regressed), the M256 muzzle bore, and the CWS
+standing M2 — SHIELDED here (§H.4 tell vs m1a1's bare gun; shield top at
+the receiver line). Whip tops 2.466 -> 2.453w (knee class) funded the
+mast depth. GATE x2: 79.0 | 91.7/79/85.7/92.5/100/100 both runs,
+IDENTICAL row to m1a1 (hull 91.7 EXACT vs frozen; dims/floaters 100).
+§B7-class owner-authorized cap: mast columns (see m1a1.md). §B2 stern
+band 0 new cells (view-rear 0->0, rearleft 51->41, rearright 80->82 =
+AA-teeter on pre-existing wheel-bay enclosures). CANDIDATE 4023964c -> ff97bc44 (44 meshes / 158264 verts, tmp-hashgeo x2
+back-to-back at the verdict tree) — re-freeze on re-cert.

@@ -223,3 +223,21 @@ static in hullG, bag rides turretG).
 ### DENSITY-ROUND RE-CERT RATIFIED (2026-08-06): RE-FREEZE 93a9a890 CONFIRMED
 (floors 9.1-9.3; American MG grammar audited YES; docs/critique/
 shaded-parity-abrams-density-recert.md).
+
+## REAR + BORE + VISIBILITY ROUND (2026-08-06, abrams builder — graduate-
+## change; full mechanics + §C decode + §B7 cap notes in m1a1.md)
+Inherits the family stern rebuild + M256 bore + the FULL CROWS II mast
+(riser, slew drum, sensor cluster with day/thermal windows + LRF,
+elevated M2 + ammo box, cable drop — the owner's garage-distance RWS).
+Whip spike columns traded for mast depth (tops 2.453w knee class). GATE
+x2: 61.5 | 92.0/61.5/83.4/92.3/100/100 both runs — hull +0.3 IMPROVED
+(the stern set), dims/floaters 100 HELD. §B7-class owner-authorized cap:
+CROWS mast columns front x -0.14..-0.97 err 0.230-0.240 / side z
++0.16..+0.39 (whole -27.9, turret -6.4, stations -1.6 vs frozen; the
+W1b warp flattened the print's real 3.2-3.3 CROWS band to ~2.46 — the
+real-config mast reads against the flattened band by construction; the
+print's own PRE-WARP cluster rode 3.2-3.29 at these very stations).
+RESIDUAL: an 86 px turret-overhang air window at view-rear (rack-to-deck
+gap beside the 0.7-duffel — real air, ref-endorsed class).
+CANDIDATE 93a9a890 -> 4891abb6 (45 meshes / 158720 verts, tmp-hashgeo x2
+at the verdict tree) — re-freeze on re-cert ratification.

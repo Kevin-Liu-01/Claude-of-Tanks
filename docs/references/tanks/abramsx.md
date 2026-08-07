@@ -237,3 +237,40 @@ is the capped-row silhouette line everywhere a 0.36-tall stamp could
 sit, and min binds on hull. Documented exception, standing.
 Hash -> (see hashes-final; non-graduate). Shots:
 shots/critic-abramsx-b32/ + shots/abrams-b32/yaw{0,90}-abramsx/.
+
+## REAR + BORE ROUND (2026-08-06, abrams builder — non-graduate,
+## gate-in-loop; family round home m1a1.md)
+ORDER A (rear): AX_HULL takes noRearFace — the default abramsHull rear
+kit sat BURIED inside the -3.97 tail loft (the exact class the flag was
+built for: the stern rendered one blank camo wall; the old pintle at
+-3.915/-3.925 equally invisible). The kit is authored ON the visible
+plate now (<=12 mm proud, faces >= -3.982 — the banked -4.05
+hullLengthM lesson): full-width hybrid-drive VENT FIELD (9 louver rows
++ frames + sills over a dark bay, the AbramsX's dominant rear feature),
+taillight clusters in guards, tow shackles ±0.45, center pintle.
+§B2: the top-down scan carried two PRE-EXISTING 18-cell sky holes at
+(±1.61..1.67, -3.37) — the deck-band-to-skirt slot over the empty
+aft-of-sprocket bay. Closure shelves (x to 1.795/1.815-class, y top
+1.4775 under the 1.50 skirt-top + 1.75 deck lines, z -3.20..-3.50; the
+shoe sweep tops out at z -3.27 at mid-heights and never reaches this y)
+took contig 36 -> 0 in three measured steps. §B3 census: a stowed
+FITTINGS M240 on the low rear deck (the hand-authored XM914 censuses
+zero) — mg1+3d ✓.
+ORDER B (§B3.1): XM360 rim ring (outer 0.083 torus) + near-black bore
+disc r 0.060 = 0.60x tube r, faces +0.5 mm past the 3.58 tube cap; the
+XM914's dark muzzle run + smokeBank dark tubes are pinhole-class
+compliant as built.
+GATE x2 (byte-identical, final tree): 6.2 | hull 6.2 (+2.5 IMPROVED)
+whole 10.3 (+1.2) turret 75.3 (+11.1 vs the ledger row) stations 69.6
+dims 100 floaters 100. Late §B2 closures folded in: corner fender decks
+at the 1.55 lip plane + under-deck guard/side panels (tejas grammar) +
+bay bulkheads + rack-mesh seal — view-rear stern flood 39 -> 0, hero
+2 -> 0, rearleft 137 -> 132; the view-rearright 305 px band decoded as
+UNDER-BARREL enclosed air at the bow (the XM360 tube over the bow deck,
+framed by the muzzle device — pre-existing 139 px class re-classified
+by the frame; not a stern void; same class as the m1a1 hero
+border-clip). The min row stays the certified oracle-cap class;
+achievable rows dims/floaters HELD 100. Stations decode: i1 8.7% = the
+census M240 + closure zone (final-state re-run identical) (owner-density trade on a capped mask);
+i3 67% / i12 25% pre-existing print classes. track-clip --exact: band
+rear 8 (pre-existing, <=60 bar), shoe 0/0 ✓. turret-parent 0/0/0.

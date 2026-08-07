@@ -401,3 +401,33 @@ Yaw pair: shots/abrams-b32/yaw{0,90}-m1a2_sepv2/.
 ### DENSITY-ROUND RE-CERT RATIFIED (2026-08-06): RE-FREEZE b284b8ac CONFIRMED
 (floors 9.1-9.3; American MG grammar audited YES; docs/critique/
 shaded-parity-abrams-density-recert.md).
+
+## REAR + BORE + VISIBILITY ROUND (2026-08-06, abrams builder — graduate-
+## change; family round home m1a1.md, m1a2.md carries the shared-recipe
+## mechanics)
+Shares the m1a2 round set: corner taillight guards + tow shackles (rear),
+M256 rim+bore (§B3.1), the FULL CROWS mast — here the CROWS II TALL head
++ gun raised +0.075 (top 2.95; §H.4 vs the m1a2's CROWS-LP wide-flat),
+loader shield on the TWIN-FIFTY mount (its standing tell), dual whip
+rods. p95: spikes = the 3 mast columns; dims 100 by construction.
+GATE x2 (byte-identical): 60.3 | hull 93.2 (+0.1) whole 60.3 turret
+80.6 stations 83.6 dims 100 floaters 100 (frozen 91.3 |
+93.1/92.4/91.3/93.4/100/100). §B7-class owner-authorized cap: mast
+columns (front x -0.88..-0.14 err 0.264-0.280, side z +0.17..+0.39 err
+0.269), rows whole -32.1 / turret -10.7 / stations -9.8 — the sepv2
+head is taller than the m1a2's (the §H.4 split), so its spend is the
+family's largest. Owner/escalation quotes in m1a2.md.
+§C.1 WINDING: shared band() fix — census rev 2 -> 0, mode-1 clean.
+MODE-2 ADJUDICATION (5,519 yaw-stranded candidate px, coordinator
+fold-in): ALL FOUR candidate meshes (2666+1788+909+156 px, rig_hull,
+heights 1.97-2.41, works-band z -2.7..0.2) are the CERTIFIED
+ORACLE-REGISTRATION-PINNED works field — this registration keeps the
+ten works-band stowage nodes in the REF HULL mask (bc225318-class
+split, proven 91.5 all-components); re-parenting would break the
+certified split. Adjudicated CERTIFIED, no move; same disposition for
+the turret-parent audit's stranded 2 (the same whole-bucket hull meshes,
+45%/26% coarse-AABB overlap — the documented audit-artifact pairing).
+Audits: standard-check clip 0/0 contig 0 mg1+1d; track-clip --exact
+0/0 + 0/0; npm test green.
+CANDIDATE b284b8ac -> 83277374 (42 meshes / 116220 verts, tmp-hashgeo x2
+at the verdict tree) — re-freeze on re-cert ratification.

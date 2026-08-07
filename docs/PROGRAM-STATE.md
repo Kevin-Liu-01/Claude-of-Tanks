@@ -62,9 +62,9 @@ re-freeze NEW hash, all in ONE commit.
 | m60a3 | 051c454c | never gated |
 | kv2 | 382b2310 | freeze-verify only |
 | leo2a6 | cff6f478 | §B4 shoe re-cert RATIFIED |
-| m1a1 | 5290e3bc | density re-cert RATIFIED 9.1; American-MG audit YES |
-| m1a1ha | 4023964c | density re-cert RATIFIED 9.1 |
-| m1a2_tejas | 93a9a890 | density re-cert RATIFIED 9.1 |
+| m1a1 | 5290e3bc -> ba45613c CANDIDATE (owner visibility round: CROWS/shields/sterns; §B7-class capped rows, re-cert in flight) |
+| m1a1ha | 4023964c -> ff97bc44 CANDIDATE (owner visibility round: CROWS/shields/sterns; §B7-class capped rows, re-cert in flight) |
+| m1a2_tejas | 93a9a890 -> 4891abb6 CANDIDATE (owner visibility round: CROWS/shields/sterns; §B7-class capped rows, re-cert in flight) |
 | merkava3b | REMOVED BY OWNER 2026-08-06 (roster prune; was 8bb8d984, packet historical) |
 | merkava3c | b7318b10 | gun-run re-cert RATIFIED (floor 9.1) |
 | kf51 | fcc60d6c | §B4 shoe re-cert RATIFIED (notch = real connector slot) |
@@ -74,7 +74,7 @@ re-freeze NEW hash, all in ONE commit.
 | pt91m | 2cf10e23 | |
 | t72b3m | 1e1ca4b8 | |
 | merkava1b | 470f3665 | re-frozen 0e47256 |
-| m1a2 | 75e981e0 | = the named SEPv3; density re-cert RATIFIED 9.3 |
+| m1a2 | 75e981e0 -> 4778c7a8 CANDIDATE (owner visibility round: CROWS/shields/sterns; §B7-class capped rows, re-cert in flight) |
 | chieftain5 | 94c09bb0 | |
 | t84 | 04707a9c | |
 | m47_patton | 53b6123a | |
@@ -82,7 +82,7 @@ re-freeze NEW hash, all in ONE commit.
 | leo2_revolution | fa1a47fc | ring-gap CLOSED, re-cert RATIFIED floor 9.1 mean 9.18 — owner's disembodied read dead |
 | m46_patton | 90ebf864 | |
 | centurion3 | fea56ecc | GRADUATED fd2c365 (24th, Centurion line's first) |
-| m1a2_sepv2 | b284b8ac | 25th graduate; density re-cert RATIFIED 9.2 |
+| m1a2_sepv2 | b284b8ac -> 83277374 CANDIDATE (owner visibility round: CROWS/shields/sterns; §B7-class capped rows, re-cert in flight) |
 | m26_pershing | 2f579de8 | GRADUATED 2026-08-05 (26th; floor 9.0 x14 second sitting; warp->re-anchor->retune arc) |
 
 *Historical note: the 2026-08-05 INVISIBLE-LOD fix mass re-froze the

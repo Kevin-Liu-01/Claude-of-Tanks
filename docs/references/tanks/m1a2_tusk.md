@@ -220,3 +220,16 @@ Hash 51966e20 -> 2bab773c (54 meshes / 194344 verts; non-graduate, no
 freeze). Shots: shots/critic-m1a2_tusk-b32/ + shots/abrams-b32/yaw{0,90}-
 m1a2_tusk/. §H.4 tells at a glance: two-course ARAT wall + slat cage +
 TIP + LAGS-with-M240 + urban lights — no other abrams carries any of it.
+
+## REAR + BORE + VISIBILITY ROUND (2026-08-06, abrams builder — full
+## mechanics + §C decode in m1a1.md; gate-in-loop non-graduate)
+Inherits the family stern rebuild (guard plates sit between the hull and
+the -4.0 slat cage; the TIP phone keeps its cage station), the M256
+bore, and the CROWS II mast (real TUSK-II fit). GATE x2: 0 |
+14.9/0/42.3/39.2/100/100 both runs — the chimera-capped mask rows move
+with the mast (whole 14.1 -> 0 under the cap; packet cert stands); the
+ACHIEVABLE rows dims 100 / floaters 100 HELD x2. standard-check clip
+0/0, contig 0, census mg1+7d. §B2 stern band improved (rearleft 84->63,
+rearright 165->141); +14 hero px = mast/cage air classes (m1a1.md).
+CANDIDATE (non-graduate, gate-in-loop) fc4018b8 (55 meshes / 199736
+verts, tmp-hashgeo x2).
