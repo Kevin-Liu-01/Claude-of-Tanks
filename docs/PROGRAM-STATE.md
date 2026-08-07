@@ -62,9 +62,9 @@ re-freeze NEW hash, all in ONE commit.
 | m60a3 | 097c35a2 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | kv2 | 382b2310 | freeze-verify only |
 | leo2a6 | 09912270 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
-| m1a1 | a04c8c74 | CROWS aim-frame re-cert RATIFIED (floor 9.1+; owner both-halves YES) |
-| m1a1ha | f1aaf80 | CROWS aim-frame re-cert RATIFIED (floor 9.1+; owner both-halves YES) |
-| m1a2_tejas | 89c9f260 | CROWS aim-frame re-cert RATIFIED (floor 9.1+; owner both-halves YES) |
+| m1a1 | 2f277528 | RE-FROZEN 2026-08-07 (CROWS-FORWARD wave §5.07: forward pose improved whole +4.1..+14.1; re-cert floor 9.1-9.2 x14 views, sheets shots/critic-sep-crowsfwd/) |
+| m1a1ha | aa7af504 | RE-FROZEN 2026-08-07 (CROWS-FORWARD wave §5.07: forward pose improved whole +4.1..+14.1; re-cert floor 9.1-9.2 x14 views, sheets shots/critic-sep-crowsfwd/) |
+| m1a2_tejas | f7510d88 | RE-FROZEN 2026-08-07 (CROWS-FORWARD wave §5.07: forward pose improved whole +4.1..+14.1; re-cert floor 9.1-9.2 x14 views, sheets shots/critic-sep-crowsfwd/) |
 | merkava3b | REMOVED BY OWNER 2026-08-06 (roster prune; was 8bb8d984, packet historical) |
 | merkava3c | 8b7ed9bc | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | kf51 | 9ac547ac | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
@@ -74,7 +74,7 @@ re-freeze NEW hash, all in ONE commit.
 | pt91m | 2cf10e23 | |
 | t72b3m | 61a83b2c | RE-FROZEN 2026-08-07 (graduate-change complete on the obr_2022 oracle): 2022-config round 69 -> 85.9 + re-cert critic PASS 9.0 x14 (sheets shots/critic-t72b3m-recert/) — owner "build the t72 b3m" order CLOSED; gate ladder stays open honestly at 85.9 (dome re-loft follow-up + bow/smoke density candidates banked) |
 | merkava1b | 2cc7a76c | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
-| m1a2 | bbae99a4 | CROWS aim-frame re-cert RATIFIED (floor 9.1+; owner both-halves YES) |
+| m1a2 | 636a4860 | RE-FROZEN 2026-08-07 (CROWS-FORWARD wave §5.07: forward pose improved whole +4.1..+14.1; re-cert floor 9.1-9.2 x14 views, sheets shots/critic-sep-crowsfwd/) |
 | chieftain5 | d4f2a9a6 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | t84 | 04707a9c | |
 | m47_patton | 2fc99c50 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
@@ -82,7 +82,7 @@ re-freeze NEW hash, all in ONE commit.
 | leo2_revolution | bbae2c80 | GRAY-RECTANGLES DEAD (§B8 critic ACCEPTED); batch-46 adjudicated: chain 37/41/43 retired vs owner's restructured print, honest baseline 0 (§B7 REF-WRONG — pristine tall mast restored; hull 94.5), candidate RE-FROZEN on photo class |
 | m46_patton | 108806c8 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | centurion3 | 50273080 | bore resit RATIFIED (end 9.2; occlusion class fixed) |
-| m1a2_sepv2 | dda7bcf4 | CROWS aim-frame re-cert RATIFIED (floor 9.1+; owner both-halves YES) |
+| m1a2_sepv2 | 7ef1c5ec | RE-FROZEN 2026-08-07 (CROWS-FORWARD wave §5.07: forward pose improved whole +4.1..+14.1; re-cert floor 9.1-9.2 x14 views, sheets shots/critic-sep-crowsfwd/) |
 | m26_pershing | 65c564c0 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | t90m | e345ee8a | GRADUATED 2026-08-06 (27th; floor 9.0 x14 second sitting; the owner's dedicated-agent arc 81.7 -> dual gate) |
 
@@ -1192,3 +1192,18 @@ visual base-ness isn't reading; the round unifies the SEP variants'
 platform detail with the tejas-grade look, then the kit). AMBIGUITY
 FLAGGED to the owner: "the M1A2 abrams base model" = the base m1a2
 id or the tank NAMED 'M1A2 Abrams' (tejas)?
+
+## 5.20 SEP-LANE VERDICTS RATIFIED (2026-08-07): 5/5 graduate
+re-certs PASS -> RE-FROZEN in §3 (m1a1 2f277528, m1a1ha aa7af504,
+m1a2 636a4860, tejas f7510d88, sepv2 7ef1c5ec); CROWS-FORWARD
+verified 7/7 in pixels (owner order CLOSED — "point forward, not to
+the left" reads on every station; shadowBarrel invisible as defect);
+sepv2 remake ACCEPTED (elevated forward CROWS II + APU + urban kit);
+m1a2_sepv3 ACCEPTED PASS 9.1 into the roster at 12ffb1f4 (FALSE-0,
+never gate; M1A2C identity complete; notes banked). tusk b1786e4c
+scored 9.1 floor, no orders. Critic observation banked: the
+tejas-family loader's skate-rail M240 rests TRANSVERSE (certified
+pre-existing on 3 graduates) — if the owner's forward-look extends to
+manned rail guns, that is a future cap re-adjudication (ASK OWNER,
+nicety). The critic worked a clean-room at 18d3f13 — its name-
+collision observation is already resolved by the 56d5b14 rename.
