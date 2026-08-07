@@ -324,6 +324,23 @@ forward), armor surrounds on some, ammo boxes, lights, shapes CONNECTED;
 sepv2 donor verified already-m1a2. FLEET ICON REGEN queued (full
 worktree run — the "3d images for the tank scrolling section" order).
 
+## 4.997 OWNER ORDER BATCH (2026-08-06 late — EXECUTE FIRST NEXT WAKE):
+(1) REMOVE t72b3 + type99a from the roster (CAUTION: t72b3 is the make()
+donor for pt91m/t64bv1/t72b_1987 — delist-keep-spec like leo2a7; type99a
+spec modern2.js:291 + its new builder go dormant; drop ledger rows +
+icons; the type99a spec-width ruling dies with it). (2) type10
+UN-QUARANTINED BY OWNER ("build the type 10 and challenger 2 as a
+priority using the real glbs" = the pending adjudication CLEARED): mv
+community-candidates/type-10_main_battle_tank.glb -> community/,
+ATTRIBUTION owner-cleared note, register (three maps + REG, the held
+config comments are in the map files), then the PRIORITY type10
+oracle-driven §B8 rebuild (misc.js lane, free). (3) challenger2 PRIORITY
+oracle-driven §B8 rework — RELAYED to the live moderns agent. (4) K2
+REAL GLB: owner says one exists — check ~/Downloads for a k2/black
+panther GLB (none seen in the 11 drops); if present: provenance check
+(§E ORACLE PROVENANCE law — live page, not just extras), bradley flow,
+then k2's oracle-driven round. (5) FLEET ICON REGEN still queued.
+
 ## 5. IN-FLIGHT AGENTS (SUPERSEDED BY §12 — the 2026-08-05 device
 handover interrupted these; respawn per §12)
 1. DONE+RATIFIED: abrams dual critic (m1a1ha f5c556dc, sepv2 §10 run).
