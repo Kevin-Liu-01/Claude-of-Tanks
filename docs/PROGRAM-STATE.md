@@ -910,3 +910,24 @@ the glacis plane), idler-dressing-vs-drive-end verification rule,
 chieftain pale-rim ~40-luma = the new gate-1 countability reference.
 Polish notes banked in packets (EMES twin-aperture tone step, basket
 interior step, bolt-plate decal).
+
+## 5.03 FLEET REVERSED-CORE SWEEP (2026-08-07, read-only audit; raw at
+shots/reversed-core-sweep/): 70 audited, 0 errors; 48 roster tanks
+CLEAN (all recent landings verified — centurion/vickers/merkava3c/
+m1a2/t34_85 closures hold). RANKED FIX LIST (none packet-adjudicated):
+(1) is2+is1 RENDER-VISIBLE reversed rear tail slab — shared buildIS2
+in tankFactory.js, rig_hull mesh#15, 12 tris, vol -0.319, AABB
+[-1.40,1.20,-3.38]->[1.40,1.80,-2.86], rear deficit 60/62px — the
+t34-since-authorship class, FIX FIRST; (2) challenger1 right-front
+open-plane 199px (packet's "F-vs-D 0" contradicted — regressed or
+view-scoped, OPEN); (3) t80u mirrored front-deck strips 208px x2 +
+stern edge; (4) t62mv1 paired turret pieces 184/127px; (5) t72b_1987
+paired rear-side 171/115px; (6-9) LATENT (deficit 0, flag-until-
+visible §C.1): t84 GRADUATE right-turret core (NO PACKET EXISTS —
+create one), leo2a5 GRADUATE 2 strips, leo2a6 3 pieces, merkava1b
+GRADUATE 2 pieces; (10) t30 bow slab near-latent. HOUSEKEEPING:
+'cruiser' = stale ledger row with no spec (drop via drop-ledger-rows);
+type99a spec fully gone (delist complete). Mode-2 candidate list
+banked (12 HARDs, candidates-not-defects per §J). Graduate fixes need
+the graduate-change protocol (fix -> gate x2 -> re-cert -> re-freeze,
+ONE commit each).
