@@ -433,3 +433,49 @@ half: ref front cols +0.71..+0.75 read 1.70-1.74 vs plateau 1.745); clip
 195/107 PRE-EXISTING. Turret-parent: 2 deck-fitting flags = §B5
 audit-artifact class (adjudicated deck gear, stays rig_hull).
 npm test green.
+
+## TURRET-LANE round (2026-08-06/07 punch list 3): turret 72.9 -> 78.4, stations 88.6 -> 89.0
+
+Owner order: "both t90a turrets are wrong". Gate x2 IDENTICAL:
+min 71.4 | hull 73.1 / whole 71.4 / turret 78.4 / stations 89.0 / dims
+96.2 / floaters 100 (baseline 71.5 | 73.1/71.5/72.9/88.6/96.2/100 —
+whole -0.1 is the packet's own documented gate-spread class; turret
++5.5).
+
+WHAT LANDED (T3V markers in buildT90AVladimir):
+- DOME PLAN SQUASH: meshDome sz 0.73 -> 0.66 / cz 0.23 -> 0.05 — the ref
+  dome front reads 0.82-1.04L at x 0.3-0.6 where the old ellipse poked
+  1.29L (0.2-0.45 proud on eight plan cols); the K-5 ring re-seats with
+  sz and lands on the ref's own front line.
+- CHEEK FRONT WALLS (§B1): the ref cast cheeks are FLAT-FRONTED in plan
+  (1.09L across x 0.58..0.93, 1.06L at 1.14, cliff to 0.78L at 1.22,
+  0.55-0.62L to 1.44) — four thin staircased walls per side inside the
+  ref's own 1.53-1.66 K-5 side band (y 0.03..0.16L), winding-guarded
+  through orientedSlab.
+- FUSED-ROOT BAND TRUE-UP: root tube seg slimmed INTO the ref's
+  1.529..1.663 fused-sleeve band (r 0.068 @ cy 0.045 — its 0.105 radius
+  printed the 1.445 tube bottom under the cover on five side cols);
+  collars [0.15,0.13] @ +0.045; clamp 0.070; trunnion roll r 0.115
+  (bottom 1.435 vs the old 1.34; still seals the slot behind the block);
+  mid sleeve r 0.113 so the ±0.148 plan col REGISTERS to the ref's 3.184
+  sleeve end (raster law: the 0.106 seg's 12mm reach was sub-threshold;
+  0.13+ stays the declined hullLengthM-poison class).
+- Bins split per the ref rear staircase (left inner deep -2.19w / outer
+  -1.83w; right inner -2.11w / outer -1.86w); sight-block forward run
+  SLOPED (ref 2.21@-0.65w -> 2.15@-0.48w); rear-right roof fitting
+  z-shrunk 19mm clear of the -1.828 window (it bled 27mm into the
+  -1.774 col — the r13 "unattributed raster artifact" DECODED); rack
+  rails shortened off the -1.755 sliver; muzzleBore (shadow-named).
+RESIDUALS: dims 96.2 hullLengthM class (certified r13); shoe clip
+195/107 PRE-EXISTING; the ±0.174 sleeve col stays declined (0.13+
+radius poison). Self-shots: shots/russia-vertex/turretlane-t90a/.
+DELIVERED-PENDING-CRITIC.
+
+TURRET-LANE winding-audit note: mode-1 CLEAN (0 reversed/mixed — the new
+cheek walls bind through orientedSlab). Mode-2 flags rig_hull/mesh#19
+HARD (candidatePx 10468) — that is the packet's own ORACLE-PARITY dome
+ghost (the print's hull node carries LOD dome copies; my hull matches
+them so the masks compare like-for-like). The dome plan squash exposed
+more of the ghost at yaw. Adjudicated BY-DESIGN / oracle-registration-
+pinned (§B5 coupled-followers class, orchestrator lane) — do not
+re-parent unilaterally.

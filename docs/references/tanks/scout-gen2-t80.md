@@ -284,3 +284,12 @@ the 35.5-gate tank); jerryCans unplaceable on the 1.44-1.50 deck lines;
 clip failures (221/280, 221/310, 324/280) and the t80bv 3-cell bow holes
 PRE-EXISTING. Turret-parent: towCable flags = §B5 audit-artifact
 (adjudicated deck gear). npm test green.
+
+## TURRET-LANE round note (2026-08-06/07)
+muzzleBore added to the t80 family rig (all three marks; shadow-named,
+mask/frame-neutral — t80 82.5 / t80b 81.6 rows EXACT). t80bv turret
+55.2 is oracle-pinned: today's side_turret registration read dAlong
+1.285 / plan dy -1.365 — the recovered t80bv print's `^Turret$` node
+has no gunNode (fused barrel; r6 repair-queue class "re-parent baked
+barrels to gun nodes") and the §7 scaleToOverall ruling is pending.
+Mantlet collars + Luna + NSVT already per-variant on the rig.

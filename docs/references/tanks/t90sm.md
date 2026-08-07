@@ -517,3 +517,59 @@ MG census: mg1+0d -> mg1+3d. GATE x2: 56.4 | 61.2/56.4/73/75.9/100/100
 Residuals (honest): kit subtle at hero distance (flush law); §B1 loft
 ladder unchanged (existing t90sm ceiling work continues in its own lane).
 Turret-parent: cable flag = §B5 audit-artifact. npm test green.
+
+## TURRET-LANE round (2026-08-06/07 punch list 3, russia turret lane): turret 73.0 -> 81.0, stations 75.9 -> 84.0
+
+Owner order: "t90sm (no attachments or decorations or the machine gun
+turret, turret does not look good)". Gate x2 IDENTICAL:
+min 57.4 | hull 61.2 / whole 57.4 / turret 81.0 / stations 84.0 / dims 100
+/ floaters 100 (baseline 56.4 | 61.2/56.4/73.0/75.9/100/100 — every row
+held or improved; whole +1.0, min +1.0).
+
+TURRET RE-LOFT (T3R markers in buildT90SM):
+- Prism h 0.515 (the flat 1.99 roof was 0.08 proud over the ref's 1.912
+  front-half line) + center crown plate 1.985 with hatch rings; rear
+  outline pulled to -0.80 local with a rear casting shelf carrying the
+  ref's raised 1.50 underside (the poly base 1.40 was 0.11 deep on six
+  rear cols); §B1 raked nose slabs to the measured plan staircase
+  (1.868L @ |x|0.44 -> poly edge @1.05, chin rising 1.40 -> 1.59w);
+  welded-rear staircase outline (ref rear is FLAT -0.405L across x
+  1.43..1.55 — the old taper painted -0.50 at the ±1.46-1.49 cols).
+- Bustle: tail slat pulled off the z -2.517 ONLY-PROC col (err 9, the
+  row's old p95 driver; plan rear now -2.445 vs ref -2.418); mid-step
+  narrowed for the re-phased ±1.243 window; per-side 0.985-box depths
+  (print asym); basket rail ring at 1.955-1.965w (the ref's own
+  1.939-1.966 rear band, was under-read 0.03).
+- EQUIPMENT (the owner's missing kit, placed where the ref's own 2.239
+  side band lives, z world -0.41..-1.32): pano commander sight (boxy
+  head + mast + EW cluster, top 2.235) at x -0.34..-0.57; the UDP
+  T05BV-1 RWS as one CONNECTED station (slew drum + ring + yoke +
+  armored shroud crown 2.235 + sensor pod + ammo can) around the census
+  Kord fitting, yawed ry +1.45 (CROWS law: scanning right, never
+  dead-forward) with the barrel DROOPED (elev -0.26) so its line falls
+  2.17 -> 2.0 along the ref's right-shoulder falloff; muzzleTipDot;
+  Sosna-U gunner housing stepping 2.15/2.095/2.015 (ref 2.157/2.103/
+  2.021); rear 2.24 spike panel restored z-THIN at the ref's own -1.97
+  one-col spike (lost when the old panel was lowered — side_whole err
+  0.174 appeared and died with it); left flank bin (ref ±1.12 front
+  cols 2.009); OPVT snorkel half-sunk on the bustle; relikt single tall
+  course rRows 1/rH 0.42 (the old row-1 crest printed 2.005-2.02 over
+  seven cols where the ref roof is 1.912).
+- GUN: mantlet plug moved to the new turret face (world 1.96-1.98 = the
+  ref's own plan front line; it sat buried 0.5 behind), §B3.1 collar
+  boot (crease rings + end clamp) at the ref's 1.775-1.83 boot band;
+  outer tube waisted at the sleeve joint (ref band 1.611..1.748 = r
+  0.0685 @ cy -0.02); muzzleBore (shadow-named).
+- FRONT-DIP LAW CASE: the ref FRONT has a center dip (1.988 at |x|<=0.19)
+  between shoulder masses (2.13-2.23 at x<=-0.31, 2.21 at x>=+0.15) —
+  the first cluster cut read 2.233 across the center cols (front_whole
+  mean +0.42, p95 +3.35 = the -7 whole regression, reverted by parking
+  pano LEFT of -0.34 and the RWS RIGHT of +0.18).
+- WIDTH-GUARD RE-PROVEN: the -1.898 parity blob first seated at x -1.93
+  tripped the §D WIDTH-GUARD-BY-DRESSING rescale (dims 100 -> 92.2,
+  hull -5.7) — re-capped inside the 1.890 anchor.
+RESIDUALS (honest): whole 57.4 stays the AA-teeter front-band bind
+(certified ±2-4 pt variance class); plan_turret cover 2.86 (muzzle-end
+grid family); the -1.898 col teeters with dy (matched today at x
+-1.874). Self-shots: shots/russia-vertex/turretlane-t90sm/ (equipment
+visibly present; articulation clean). DELIVERED-PENDING-CRITIC.

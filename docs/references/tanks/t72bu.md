@@ -325,3 +325,10 @@ ceiling ~55-70 stands. Board r9 reviewed: orientation correct, top mask
 floaters. NEXT: front_whole 59.2 (crown-zone leftovers at +-0.2..0.6 —
 re-digest; Agat/NSVT band), stations 81.8 (slice 0 tail class), plan 92 ✓
 nearly done.
+
+## TURRET-LANE round note (2026-08-06/07, "update all soviet turrets" sweep)
+§B3.1: mantlet block box -> inscribed cast-collar frustum (identical
+±0.26/±0.18 mask extremes) + dark boot ring; muzzleBore (shadow-named).
+Gate row EXACT: 52.8 | 52.8/59.2/68.4/81.8/100/100 — the oracle stays
+the certified-ceiling blocker (§7 orchestrator decision pending:
+warp batch vs ceiling-cert vs re-source).

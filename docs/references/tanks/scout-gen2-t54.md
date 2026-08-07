@@ -81,3 +81,22 @@ front rows are PINNED):
 NEXT (post-oracle-repair round): re-derive the turret against a normalized
 print; the hull loft/gear/fittings seats are digest-derived and should
 mostly hold. side_hull already reads 79.4 pre-repair.
+
+## TURRET-LANE round (2026-08-06/07): turret 46.9 -> 49.6, all certified rows held exactly
+
+Owner sweep order ("update all soviet turrets"). Gate x2: min 17 |
+hull 17 / whole 17.7 / turret 49.6 / stations 72.7 / dims 100 /
+floaters 100 (baseline turret 46.9; hull/whole/stations/dims EXACT —
+the certified-oracle rows did not move).
+- §B3.1: pig-snout collar box -> inscribed elliptical frustum (identical
+  ±0.23/±0.17 mask extremes) + canvas boot ring; Luna L-2 IR searchlight
+  right of the mantlet (gun-slaved drum + rim + lens + yoke — era kit);
+  muzzleBore (shadow-named).
+- REPORT (what else beyond the turret): the turret row is PINNED by the
+  certified oracle defects — today's side_turret registration read
+  dAlong 1.408 / plan dy -1.347 (the packet's "registration walks
+  between runs" class, RIG-MISMATCH adjacent), and the reversed-winding
+  lower bow keeps front rows ~17. The queued ORCHESTRATOR oracle repair
+  (winding fix + turret normalization, §7 queue) gates any real t54
+  turret ladder; the hull loft/gear seats are digest-derived and should
+  hold through it.
