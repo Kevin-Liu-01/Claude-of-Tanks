@@ -837,3 +837,11 @@ freeze decoration until these pass):
   owner's <=35 zero-variance defect class; dark camo patches mimic the
   signature (organic fill + paint-edge context separate them). Bore
   crops are excluded from rectangle verdicts.
+- TONE-SLOT MECHANICS (§C, t90m r8): REPAINT-REGISTERED SLOTS
+  (wheels/wheelsDark/detail) ignore retints — dead code; the AMBIENT
+  FLOOR pins hooked vertical faces at ~52L (sub-40 targets need unhooked
+  clones); small carriers re-bucketed to camo sample ONE PATCH (lottery
+  — use cloth/steel slots); sample TOP views before accepting roof tones
+  (warm-key flip). ORACLE-RENDER HEM SEMANTICS (§D): decode the ref's
+  below-hem tone runs per column before authoring any curtain — the
+  t90m ref's "curtain" was its wheels' lit upper arcs.

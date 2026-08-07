@@ -678,9 +678,9 @@
    "gatePassed": true,
    "components": {
     "hullCurves": 90.7,
-    "wholeCurves": 91.3,
-    "turretCurves": 93.2,
-    "stations": 94.4,
+    "wholeCurves": 91.6,
+    "turretCurves": 93.4,
+    "stations": 94.1,
     "dims": 100,
     "floaters": 100
    }

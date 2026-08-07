@@ -118,10 +118,11 @@ honestly parked at 88.9 pending its retune)
   orchestrator ruling item (stations-law open track zone).
 - **Russia tail**: t72b_1987 56.0 CEILING-CERTIFIED (print drum-band cap),
   t90sm 56.4 (AA-teeter binds), t62mv1 63.7 (fade-cap ceiling ~77-81),
-  t90m 90.7 PASS x2 — adjudication FAIL floor 8.4 (mask-blind triad:
-  curtained wheels, tan drums, missing hatch rings; gate+batteries all
-  verified green); order round IN FLIGHT (four cheap named fixes) ->
-  full re-adjudication at the new bytes (the m26 second-sitting arc); t72b3m yaw = ORACLE-REGISTRATION-PINNED
+  t90m r8 orders DONE (wheels countable both sides, drums tone-matched
+  p50 78==78 — the tan was the LOG, attribution superseded; hatch rings
+  flush; Relikt relief) — gate 90.7 x2 held, candidate e345ee8a, SECOND
+  SITTING adjudication IN FLIGHT (critic note: judge actual tones, the
+  old drum attribution is dead);
   (bustle band hull-side matching an empty-turret print) — re-parent
   lands COUPLED with the ordered obr-2022 oracle swap + rebuild,
   t72bu ~55-70 certified-ceiling — ORACLE
