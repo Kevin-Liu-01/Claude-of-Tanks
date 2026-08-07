@@ -238,3 +238,84 @@ byte-idempotent x2 md5 4c994390; y untouched. Gate x2: hull 67.4 ->
 which the tube length cannot move — the min is unchanged by design,
 not a warp failure. Remaining caps: the -4.17 hullLengthM anchor
 column, §H.4 Boxer columns, twin 5.21w antennas (all certified above).
+
+## UK ROUND r3 — CH1-BASE PORT + LADDER (2026-08-07, uk round builder;
+## owner order "challenger 2 and 3 ... using the base of the challenger
+## 1"; DELIVERED-PENDING-CRITIC per §B8)
+Baseline (batch-47 tree, x2): min 61.4 | hull 69.8 / whole 61.4 / turret
+71.1 / stations 77.9 / dims 99.8 / floaters 100 (whole rides front_whole).
+
+### CH1-BASE PORT (same mechanism set as the challenger2 r4 section:
+### ch1BaseToneKit / ch1BaseGearBackers / smokeTubeTips / rail-over-mesh
+### / stern cable kit — modern1.js shared helpers, uk.js untouched)
+Backer wall spans the SKIRTED bays only (z -0.955..2.65 — the rear run
+is honestly naked per the print); 3 catch plates at the scallop
+stations; smoke tips on both 2x5 banks; pale rail pair over the bustle
+mesh panel; draped cable + cleats on the recessed center plate (z >=
+-3.977, the -4.125 anchor posts untouched).
+
+### Measured ladder (workorder-authored, 3 gate cycles)
+1. SHOE-ENVELOPE + GEAR TRUE-UP: xc 1.29/trackW 0.56 put the shoe outer
+   at 1.655 = the plan ±1.72 window edge AND inside the 1.624 front
+   window (ref bottom 0.838 there — our ground read was the front row's
+   worst-column class). xc 1.245 / trackW 0.50 -> shoes 1.58; sponson
+   strips follow to 0.90 (0.035 lane), spine ±0.96. Sprocket tucked
+   z -2.60 / y 0.98 / r 0.28 — wrap far -3.065 clears the -3.26 window
+   (ref floor 1.094); orbit top 1.44 holds 0.035 under the 1.475
+   sponson floor (§B4).
+2. STERN FLOOR ON THE REF LINE: belly end -3.15 -> -2.93; the 0.42-floor
+   frustum replaced by three <=0.48 rise slabs THROUGH the ref's own
+   bottom reads (0.515@-3.0 / 0.612@-3.13 / 1.094@-3.258 / 1.191@-4.03).
+3. TROPHY = TILTED-PANEL READ: the batch-47 ref fronts read 2.45 at the
+   ±1.61 windows and 2.205 at ±1.73 — a roof-shoulder course (top 2.42w
+   to x 1.60) + a 30-degree LEANED module face (1.59/0.88 -> 1.75/0.62
+   local; outer 1.749 under the 1.755 §D anchor) on three standoff
+   brackets per side (§B2 attached), panel ribs + fore/aft radar heads.
+   Real Trophy grammar replaces the old vertical slab.
+4. RIGHT SENSOR BAND: the ref's 2.85-2.95 tops across x 0.62..1.15 /
+   z_w -0.25..-1.20 = its pano TOWER + pot cluster — pano re-seated
+   x 0.87 on a tall pedestal (head cap 2.93w, hood deepened over both
+   -0.97/-1.09 side windows) + GPS pot (2.85w) + met pot (2.82w); RWS
+   ammunition/junction tier behind the mount (top 2.60w — the ref's own
+   z_w 0.35..0.48 side band; §B3 named equipment).
+5. SKIRT RE-READ: bay hems 0.62 -> 0.95 (the ref's shallow high band;
+   front ±1.7 bottoms), scallop tabs pulled inboard (1.64..1.70 — they
+   AA-kissed the ±1.698 boundary and painted the ±1.727/1.742 windows
+   0.53-deep vs ref 1.176) and welded into the bay hem (§B2).
+6. WHIP ADJUDICATION (law-bank entry): the print's 5.2 antenna spike is
+   a SUB-PIXEL FLICKER — it lit x 0.97 in one trace run and vanished
+   the next (AA-TEETER: single-run reads are NOT orders). A h 2.75
+   chase also lifted the side-row rough so the 12% body filter ATE the
+   -4.1 hullLengthM anchor column (dims 99.8 -> 87 — the WHIP-ROUGH
+   COUPLING, now banked). Whips restored to the certified real heights
+   (1.75/1.60/1.45), a3 co-windowed with a2; rear light-guard bars
+   added at ±0.98 (real CR3 kit) armoring the anchor column's height
+   span (0.70..1.40) against future rough drift.
+
+### CERTIFIED RESIDUALS (new)
+- §B6-vs-PRINT SPROCKET: the print hides its rear sprocket wrap (side
+  bottoms rear of -2.4 are hull boat-tail only; its wheel-to-sprocket
+  band reads empty at -2.51, bottom ~1.36) — owner law §B6 mandates the
+  real raised drive sprocket + ramp, so the -2.4..-2.9 wrap columns
+  carry ~0.5 err x2-3 cols by LAW (chieftain idler precedent: build the
+  real ramp, certify the oracle delta).
+- The batch-47 x-rescale moved every prior packet column table — the
+  FINISH r2 numbers are stale for authoring (this round re-derived all
+  targets from fresh workorders; REGISTRATION-ANCHOR law).
+
+### FINAL GATE LINE (x2 bit-identical, uk round r3 tree)
+**min 61.7 | hull 69.8 / whole 61.7 / turret 72.1 / stations 79.7 /
+dims 99.8 / floaters 100** (baseline 61.4 | 69.8/61.4/71.1/77.9/99.8/
+100 — min +0.3, turret +1.0, stations +1.8; side_hull rode to 84.7 and
+side_whole to 77.4 inside the components from the stern-floor +
+sensor-band work; the 72+ target was NOT reached — the remaining
+front_whole mass is the certified §H.4 Boxer columns, the antenna
+flicker, the §D skirt-anchor bottoms and the §B6 sprocket divergence,
+all documented above). tmp-hashgeo: **fbbcf378** (62 meshes / 63,457
+verts) — record hash, NOT a freeze. Round-close battery: track-clip
+--exact 0/0 + 0/0 (sprocket tuck + narrowed band + shadow backers all
+clean); turret-parent 0/0/0 (born-clean held); winding-audit mode-1
+0 reversed / 0 deficit (the new stern slabs + leaned Trophy wind
+clean), mode-2 clean; standard-check contig 0 / census mg1+6d; npm
+test 166 + track-geometry PASS. Evidence: shots/critic-challenger_3/
+(fresh pairs at the final tree). DELIVERED-PENDING-CRITIC.

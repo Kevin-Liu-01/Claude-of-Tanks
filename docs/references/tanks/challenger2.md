@@ -339,3 +339,74 @@ analyzed at SOURCE level (the fidelity page's registration code) in a
 dedicated round before any further ch2 oracle surgery. The batch-48
 warp-only chain stands (md5 3c6a15dc verified restored); the uint32
 surgery extension is KEPT in the helper (byte-proven on t90sm).
+
+## UK ROUND r4 — CH1-BASE PORT (2026-08-07, uk round builder; owner order
+## "challenger 2 and 3 using the actual models we have now using the base
+## of the challenger 1"; DELIVERED-PENDING-CRITIC per §B8)
+Baseline (batch-48 tree, x2): 0 | hull 0 / whole 0 / turret 0 / stations
+25.5 / dims 100 / floaters 100 — plan_hull 66.3 / plan_whole 55.8 inside
+the zeroed components; the §5.06 dAlong 1.368 side-registration walk
+stands (harness mechanism under source-level investigation — side/front
+rows stay walk-capped regardless of build; photo class governs there).
+
+### The CH1-BASE PORT (what came over from challenger1Build, uk.js —
+### PORTED not imported: uk.js is single-owner + hash-guarded dbe33204)
+- ch1BaseToneKit (modern1.js — the ch1 r8/r9 family recipes): pale-olive
+  Hydrogas DISC faces vs DARK-drawn tire rings (the r8 WHEEL-RING
+  GRAMMAR; the builders' 0x565c50 tireHex clone re-keyed to the ring
+  tone), warm-olive pads/chain, muted band multipliers, smoked dark-olive
+  glass (blue-chip kill), dark-olive fittings hue, canvas retone.
+  Per-instance material work only — masks byte-identical (§C).
+- ch1BaseGearBackers (the r9 O1b/O2 lane): render-only /shadow/-named
+  catch plates — an x-thin inter-wheel shadow wall (x 0.99..1.006, 30 mm
+  inside the 1.035 band inner face) + five per-bay plates at the scallop
+  stations. Gate/evaluator/critic masks exclude them by name.
+- ch1 r10b SMOKE TUBE TIPS + BORES (smokeTubeTips, exact cluster
+  transform math): both 2x5 banks read circular mouths at 1x.
+- ch1 r10 O5a RAIL-OVER-MESH basketry: dark mesh panels seated 2 mm into
+  the bustle bin rear face + pale rail pairs/posts over them.
+- ch1 r10b/r11 ROOF GRAMMAR: loader-hatch periscope blocks + lid seam
+  disc, MG-station ammo cluster (cans + belt tray inside the cupola-line
+  envelope), flush roof seam strips; deck panel seams + filler caps.
+- ch1 r10 O5b STERN KIT (CR2 fit): draped tow cable + cleats across the
+  upper rear face, outlet boxes + pipe stubs — everything z >= -4.145
+  (the rear plate kit is the hullLengthM/dAlong anchor, never extended).
+- CROWS-FORWARD spirit (§5.07): loader GPMG rest yaw 0.55 -> 0.12.
+
+### Measured edits (workorder-authored)
+- SHOE-ENVELOPE IN-WINDOW fix: xc 1.34/trackW 0.65 put the shoe outer
+  face at 1.75 — 2 mm inside the plan ±1.82 column window (1.748..): the
+  wrap shoes painted those columns to z -3.3 where the batch-48 ref's
+  skirt content ends -2.43 (worst plan_hull columns, err ~1.03 x2).
+  xc 1.325 / trackW 0.58 -> shoe outer 1.70 (48 mm clear; the 1.688
+  front window keeps its matched ground read; belly lane 0.05 held §B4).
+- WHIPS to the batch-48 ref's ONE antenna column (x -0.886, top 2.94):
+  a1 re-seated + trimmed h 0.44 (tip ~2.98); a2 kept as the real CR2
+  second whip (variant truth), shortened h 0.36 under the sensor band —
+  its ref column carries no antenna (honest ~0.5 residual, one column).
+
+### CERTIFIED RESIDUAL (new, batch-48 artifact class)
+The batch-48 knee took the REF's own pano/sensor masts BELOW the
+published 3.04 sensor line (ref front tops x 0.42..0.62 now read
+2.32..2.52) while our VS580 head carries the published 3.04 datum that
+dims sovereignty REQUIRES (dims 100 holds only at the real sensor
+line). The ~4 front columns x 0.42..0.62 reading +0.5 over the kneed
+ref are a REF-ARTIFACT residual, not a build defect — never lower the
+mast to a print artifact (dims outranks; the §5.06 registration-source
+round owns the harness side).
+
+### FINAL GATE LINE (x2 bit-identical, uk round r4 tree)
+hull 0 / whole 0 / turret 0 / stations 25.5 / dims 100 / floaters 100 —
+HELD EXACT vs the batch-48 baseline through the whole port (the
+walk-capped side/front rows stay 0 per §5.06; stations/dims/floaters
+unmoved). tmp-hashgeo: **25af6210** (66 meshes / 74,893 verts) — record
+hash, NOT a freeze. Round-close battery: track-clip --exact 0/0 + 0/0;
+turret-parent stranded 0 / abutting 1 (the banked crest driver-station
+audit-artifact) / dangling 0; winding-audit mode-2 HARD =
+rig_hull/mesh#38 1733 px — the EXACT banked rear-deck-kit signature
+(legitimate-deck-gear, correctly static under yaw; r2/r3 adjudication
+stands, mesh index moved with the round's added meshes); standard-check
+contig 0 / census mg1+5d; npm test 166 + track-geometry PASS. Evidence:
+shots/critic-challenger2/ (fresh pairs at the final tree). Guarded
+hashes at close: challenger1 dbe33204 / chieftain5 d4f2a9a6 /
+chieftain_mk10 59551064 — byte-identical. DELIVERED-PENDING-CRITIC.

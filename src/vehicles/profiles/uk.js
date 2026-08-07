@@ -3852,14 +3852,24 @@ function fv510Build(P) {
     -2.30, -3.155, [-2.7]);
   // ---- skirts: six panels, dark panel seams, top trim (outer face 1.509
   // — inside the strake plane; inner face clears the shoe envelope §B4).
-  // photo-parity r2 gap #7: hem at 0.70 hangs OVER the wheel tops (0.82)
-  // with the lower wheel halves + mud churn visible below; stepped
-  // mudguard plates cover the naked sprocket/idler wraps at both ends ----
+  // uk round 2026-08-07 (owner order "redesign the fv510 warrior to look
+  // more like its actual tank"): the REAL Warrior skirt hem is WAVY — the
+  // lower edge arcs over each roadwheel with points hanging down between
+  // stations. Main panels ride an 0.86 hem (just over the 0.82 wheel
+  // tops); trapezoid wave points (§B1 shaped chamfers, not steps) drop to
+  // 0.62 at the five inter-wheel stations. Wheels read under the arcs with
+  // mud churn visible below (photo-parity r2 gap #7 exposure kept).
   for (const s of [-1, 1]) {
     for (let k = 0; k < 6; k++) {
       const z = 2.30 - 0.41 - k * 0.82;
-      P.add('hull', box(0.048, 0.74, 0.80), s * 1.485, 0.97, z);
-      P.add('hullDark', box(0.018, 0.68, 0.016), s * 1.492, 0.96, z - 0.40);
+      P.add('hull', box(0.048, 0.48, 0.80), s * 1.485, 1.10, z);
+      P.add('hullDark', box(0.018, 0.42, 0.016), s * 1.492, 1.09, z - 0.40);
+    }
+    // wave points between the wheel stations (wheelZs pitch 0.90)
+    for (const zw of [1.80, 0.90, 0.0, -0.90, -1.80]) {
+      P.add('hull', sslab(s,
+        [1.463, 0.62, zw + 0.13], [1.507, 0.62, zw + 0.13], [1.507, 0.62, zw - 0.13], [1.463, 0.62, zw - 0.13],
+        [1.463, 0.88, zw + 0.24], [1.507, 0.88, zw + 0.24], [1.507, 0.88, zw - 0.24], [1.463, 0.88, zw - 0.24]));
     }
     P.add('hullDark', box(0.014, 0.035, 0.46), s * 1.499, 1.325, 2.06);
     P.add('hullDark', box(0.014, 0.035, 0.46), s * 1.499, 1.325, -2.38);
@@ -4060,16 +4070,19 @@ function fv510Build(P) {
   P.decal('hull', 'number', num, 0.30, [1.462, 1.80, -1.60], Math.PI / 2);
   P.decal('hull', 'number', num, 0.30, [-1.462, 1.80, -1.60], -Math.PI / 2);
 
-  // ================= TURRET: two-man welded steel box, forward of center,
-  // sat LEFT of hull center (photo-parity r2: the owner photo + the print's
-  // RARDEN pivot both read the turret left — ring x -0.20, gun world -0.30);
-  // raked face plate with symmetric cheek returns (§B1.1); everything below
-  // lives in turret buckets (§B5 — it all yaws) =========
-  P.turretG.position.set(-0.20, 2.02, 0.55);
+  // ================= TURRET: two-man welded steel box, forward of center.
+  // uk round 2026-08-07 ("look more like its actual tank"): the community
+  // fv510_warrior.glb (local vertex probe — the id stays UNREGISTERED,
+  // FALSE-0 law) reads its above-deck mass centered x ≈ -0.10 with the
+  // turret band at z +0.3..+0.9 — ring re-seated -0.20 -> -0.10 (the r2
+  // owner-photo LEFT-of-center read stands, milder), z +0.55 confirmed.
+  // Raked face plate with symmetric cheek returns (§B1.1); everything
+  // below lives in turret buckets (§B5 — it all yaws) =========
+  P.turretG.position.set(-0.10, 2.02, 0.55);
   P.gunG.position.set(-0.10, 0.285, 0.55);
   // ring race + hull splash collar
   P.add('turret', cylY(0.74, 0.78, 0.16, 20), 0, -0.06, 0);
-  P.add('hull', cylY(0.80, 0.82, 0.055, 20), -0.20, 1.958, 0.55);
+  P.add('hull', cylY(0.80, 0.82, 0.055, 20), -0.10, 1.958, 0.55);
   // body walls (slight inward rake)
   P.add('turret', slab(
     [-0.84, 0.02, 0.42], [0.84, 0.02, 0.42], [0.78, 0.02, -0.62], [-0.78, 0.02, -0.62],
@@ -4088,6 +4101,15 @@ function fv510Build(P) {
   // ---- gun mount: dark vertical slot recess ON the raked face, cast
   // collar — §B3.1: cylinders and cast shapes only, no prisms on the run
   P.add('turretDark', box(0.40, 0.34, 0.025), -0.10, 0.30, 0.505, -0.651, 0, 0);
+  // uk round 2026-08-07 (owner identity list): the RARDEN's DISTINCTIVE
+  // MANTLET CHEEKS — the paired angular castings flanking the mount slot
+  // on the real Warrior face, riding ON the raked plane (§B1.1: detail on
+  // the plane, never replacing it) + the lintel over the slot.
+  P.add('turret', box(0.15, 0.30, 0.075), -0.335, 0.295, 0.515, -0.651, 0, 0); // left cheek casting
+  P.add('turret', box(0.15, 0.30, 0.075), 0.135, 0.295, 0.515, -0.651, 0, 0);  // right cheek casting
+  P.add('turret', box(0.44, 0.09, 0.065), -0.10, 0.475, 0.425, -0.651, 0, 0);  // mantlet lintel
+  P.add('turretDark', box(0.13, 0.02, 0.078), -0.335, 0.30, 0.517, -0.651, 0, 0); // cheek bolt seams
+  P.add('turretDark', box(0.13, 0.02, 0.078), 0.135, 0.30, 0.517, -0.651, 0, 0);
   // ---- twin sight heads: BGTI hood (the 2.795 height anchor) + commander
   // day sight; hooded visors + glass slits (§B3 tells) ----
   P.add('turret', box(0.44, 0.315, 0.30), -0.26, 0.6175, 0.20);
