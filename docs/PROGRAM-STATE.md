@@ -1285,3 +1285,22 @@ triumph... as are the merkava geometries. all tank designs have to
 aim for this level of quality" — codified as BUILD-STANDARD §K
 (QUALITY EXEMPLARS: measure -> loft to measured lines -> close with
 real geometry -> prove in pixels). Relayed to all live builders.
+
+## 5.27 ABRAMSX VERDICT: FAIL 5.5 (independent critic, native-tone §K
+severity; sheets shots/critic-abramsx-dedicated/). Gained: verdict 2
+CLOSED (hull panels/fenders/light bays), turret facets + smoke banks
+on the face plane, +13.4 min. NOT CLOSED: (1) wheels UNREADABLE at
+native tone view-left (proc band spread 3.6L vs the ref's 17-21L at
+the same paint — geometry, not scheme: no inter-wheel daylight, no
+dark tire annulus); (3) TWO §B2 violations — the left rear flap
+floats (bg on all four sides) + the stern rack is a stilted table
+with 4,353 bg px through it (NEITHER reference carries that
+structure); (4) partial — roofline identity sub-visible at garage
+range + a mushroom-eave roof overhang both refs lack. SEVEN ORDERS
+(measurable pass conditions in the verdict): wheel daylight + tire
+annulus own-bucket, flap hinge-straps to the hull edge, stern rack ->
+the print's solid stepped deck (§K merkava mechanism), roof rim
+flush, roofline RWS/drums/pods within the cap + the dims-datum
+extension work order, tone-honest pepperpot, tray lashings + stern
+bays. FIX ROUND QUEUED behind the live SEP-on-tejas agent
+(abrams.js single-writer).
