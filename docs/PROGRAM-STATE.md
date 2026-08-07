@@ -970,3 +970,15 @@ the hull-partition split can run. Turret prim = 26,279 verts (node
 (5) t54 winding repair + t80bv re-parent DEFER to the same §E window
 as 48b (all three are surgery-class; batch them when the helper
 extension lands).
+
+## 5.06 SURGERY WINDOW OUTCOME (2026-08-07): _index_surgery UINT32
+EXTENSION LANDED 58e74f0 (5125 accepted; 5123 path byte-proven via the
+t90sm chain md5). ch2 batch-48b/48c BOTH NEGATIVE + REVERTED (bins
+re-parent = dAlong byte-identical; length-parity shift = dAlong worse
+1.532 + plan -6.2; batch-48 bytes restored exact 3c6a15dc). NEW
+DEPENDENCY FILED: the dAlong anchor mechanism ("12%-band mid at band
+heights") must be analyzed at SOURCE (the fidelity page registration
+code) in a DEDICATED round — this gates ch2 batch-48d, t54's winding
+repair (same walk class, dAlong 1.29-1.41), and t80bv's re-parent
+ruling. All three park on that round. The registration-source round is
+now the top §E queue item.
