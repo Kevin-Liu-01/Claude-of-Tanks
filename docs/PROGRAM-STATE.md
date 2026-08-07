@@ -66,14 +66,14 @@ re-freeze NEW hash, all in ONE commit.
 | m1a1ha | aa7af504 | RE-FROZEN 2026-08-07 (CROWS-FORWARD wave §5.07: forward pose improved whole +4.1..+14.1; re-cert floor 9.1-9.2 x14 views, sheets shots/critic-sep-crowsfwd/) |
 | m1a2_tejas | f7510d88 | RE-FROZEN 2026-08-07 (CROWS-FORWARD wave §5.07: forward pose improved whole +4.1..+14.1; re-cert floor 9.1-9.2 x14 views, sheets shots/critic-sep-crowsfwd/) |
 | merkava3b | REMOVED BY OWNER 2026-08-06 (roster prune; was 8bb8d984, packet historical) |
-| merkava3c | 8b7ed9bc | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
+| merkava3c | aa74be6a | RE-FROZEN 2026-08-07 (§B2 under-roof closure wave §5.11: solid casting walls, gate rows EXACT, re-cert floor 9.0 on every changed view; sheets shots/critic-merkava-closure/) |
 | kf51 | 9ac547ac | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | isu122s | 8f420d18 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | isu152 | 8e2f75c0 | |
-| merkava3d | 39de83c8 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
+| merkava3d | 667ece84 | RE-FROZEN 2026-08-07 (§B2 under-roof closure wave §5.11: solid casting walls, gate rows EXACT, re-cert floor 9.0 on every changed view; sheets shots/critic-merkava-closure/) |
 | pt91m | 2cf10e23 | |
 | t72b3m | 61a83b2c | RE-FROZEN 2026-08-07 (graduate-change complete on the obr_2022 oracle): 2022-config round 69 -> 85.9 + re-cert critic PASS 9.0 x14 (sheets shots/critic-t72b3m-recert/) — owner "build the t72 b3m" order CLOSED; gate ladder stays open honestly at 85.9 (dome re-loft follow-up + bow/smoke density candidates banked) |
-| merkava1b | 2cc7a76c | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
+| merkava1b | 78051af0 | RE-FROZEN 2026-08-07 (§B2 under-roof closure wave §5.11: solid casting walls, gate rows EXACT, re-cert floor 9.0 on every changed view; sheets shots/critic-merkava-closure/) |
 | m1a2 | 636a4860 | RE-FROZEN 2026-08-07 (CROWS-FORWARD wave §5.07: forward pose improved whole +4.1..+14.1; re-cert floor 9.1-9.2 x14 views, sheets shots/critic-sep-crowsfwd/) |
 | chieftain5 | d4f2a9a6 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | t84 | 04707a9c | |
@@ -1262,3 +1262,12 @@ abramsx round as the primary look reference), type_74_new.glb
 (NullOps, SPLIT nodes — oracle-replacement candidate, kills the
 re-rig escalation if clean; onboarding = my lane, QUEUED), the
 type-10 source OBJ (source material).
+
+## 5.24 MERKAVA WAVE RATIFIED (2026-08-07): 5/5 closures DEAD (my
+numbers reproduced the builder's byte-identically; 2d's honest
+after-count is 638 not ~430 — packet-note class), 3/3 graduates PASS
+>= 9.0 on every changed view -> RE-FROZEN in §3 (1b 78051af0, 3c
+aa74be6a, 3d 667ece84). The owner's §5.11 under-roof diagnosis is
+FULLY ANSWERED at the candidate hashes. All adjudicated-air residuals
+verified as intentional structure; 3d's y90 under-chin daylight =
+turret-hull-gap class (explicitly out of the §5.11 scope).
