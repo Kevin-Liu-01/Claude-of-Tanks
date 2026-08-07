@@ -1061,3 +1061,18 @@ gate x2 + re-cert + re-freeze each) + merkava2b/2d. The §5.03 latent
 pieces on merkava1b (2 deficit-0 roof-area pieces) ride the same
 wave (likely the same roof-panel construction). SPAWNED (merkava.js
 free). Four builder lanes now live: SEP, leopard, t90, merkava.
+
+## 5.12 OWNER ORDERS (2026-08-07, continued): (1) "challenger 1 looks
+good, but we need agents working on the challenger 2 and 3 using the
+actual models we have now using the base of the challenger 1" — UK
+ROUND: rebuild ch2 + ch3 ON THE CH1 BUILD PLATFORM (challenger1Build
+in uk.js — gate-PASS 90.2, owner-approved look) measured vs their
+real GLBs (challenger_ii.glb + challenger_3.glb); ch2's §B7 caps +
+the §5.06 registration-walk finding stand (photo class where the
+print misleads). (2) "redesign the fv510 warrior to look more like
+its actual tank" — FV510 REDESIGN vs fv510_warrior.glb (check its
+registration state first — FALSE-0 if unregistered; the batch-44
+hold was lifted). One UK agent owns modern1.js + uk.js (fv510 +
+reading the ch1 base; chieftain5 d4f2a9a6 + chieftain_mk10 59551064 +
+challenger1 dbe33204 hash-guarded). Five builder lanes now live:
+SEP, leopard, t90, merkava, UK.
