@@ -763,3 +763,24 @@ VERIFIED (none rejected); §E queue items confirmed correctly filed.
 Detail-round notes banked (t14 Afganit stubs borderline §B3, ch2
 wheel-arc at the low end of the window) — NO closing orders. Record
 hashes bind the verdicts; dual gate still pending for freezes.
+
+## 4.999993 TYPE10 §B8 VERDICT: FAIL 5.5 (independent critic, fresh
+pairs + own four-box, hash bracket 89a11aea x2; sheets
+shots/critic-type10-indep/). ROOT CAUSE proven three ways: proc turret
+walls at ±1.40 deck-to-roof = casemate read; the print's wide rows
+(halfW 1.40-1.44) sit BELOW its deck (bin courses) while its above-
+deck turret body is halfW 0.89-1.19 with a plan-converging cheek V.
+"Dims verify the box, §B8 verifies the mass inside the box" — box
+ratios were print-consistent; the mass distribution was not. CLOSING
+ORDERS (gross form first): (1) TURRET WIDTH CUT ±1.40 -> ±1.10-1.20 +
+shoulder-step plan convergence (keep mantlet/prow group exactly);
+optional stepped bin course <=±1.30 with undercut gap; (2) three side
+depth planes (skirt 1.54 / sponson 1.38-1.42 / turret 1.15) + top deck
+margins around a readable turret outline; (3) pano pedestal 0.25-0.35
+proud (spend the p95 spike budget there, cap crosswind mast <=2.31),
+taller gunner brow, M2 silhouettes above the narrowed wall; (4) rear
+two-tier verify after the cut. Builder self-read caveat BANKED: the
+r13 broad-flat-wall class was self-scored closed but had only moved
+outboard — §B8 self-reads-never-accept demonstrated again. Gun run
+called EXEMPLARY (nested mantlet + bore at 5x). FIX ROUND SPAWNED
+(modern3.js free).
