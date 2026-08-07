@@ -1977,6 +1977,73 @@ function paintCamo(canvas, visual, rng, feats, seed) {
       }
     }
     // ===================== END CAMO PATTERN SECTION =================
+  } else if (scheme === 'star' && patches.length) {
+    // ===================== CAMO PATTERN SECTION =====================
+    // INVASION STAR (camo r7 loadout set): olive field with ONE hero circled
+    // white star + a plain satellite star + registration stencils — the
+    // Normandy air-recognition language. patches = [white].
+    const white = patches[0];
+    const star = (x, y, s, rot, a, ring) => {
+      const q = new Path2D();
+      for (let k2 = 0; k2 < 10; k2++) {
+        const rr = k2 % 2 ? 0.19 : 0.5;
+        const aa = -Math.PI / 2 + (k2 * Math.PI) / 5;
+        if (k2) q.lineTo(Math.cos(aa) * rr, Math.sin(aa) * rr);
+        else q.moveTo(Math.cos(aa) * rr, Math.sin(aa) * rr);
+      }
+      q.closePath();
+      const p = new Path2D();
+      p.addPath(q, new DOMMatrix().translate(x, y)
+        .rotate((rot * 180) / Math.PI).scale(s, s));
+      fillWrapped(ctx, S, p, rgb(white, a));
+      if (ring) {                                    // broken invasion circle
+        const c2 = new Path2D();
+        c2.arc(x, y, s * 0.62, 0.25, Math.PI * 2 - 0.2);
+        strokeWrapped(ctx, S, c2, rgb(white, a * 0.9), s * 0.055);
+      }
+    };
+    star(S * (0.3 + rng() * 0.4), S * (0.3 + rng() * 0.4),
+      S * (0.3 + rng() * 0.06), (rng() - 0.5) * 0.4, 0.9, true);   // hero
+    star(rng() * S, rng() * S, S * (0.12 + rng() * 0.04),
+      (rng() - 0.5) * 0.5, 0.85, false);
+    for (let i = 0; i < 3; i++) {                    // registration stencils
+      const q = new Path2D();
+      q.rect(0, 0, S * (0.05 + rng() * 0.04), S * 0.011);
+      const p = new Path2D();
+      p.addPath(q, new DOMMatrix().translate(rng() * S, rng() * S));
+      fillWrapped(ctx, S, p, rgb(white, 0.6));
+    }
+    // ===================== END CAMO PATTERN SECTION =================
+  } else if (scheme === 'idband' && patches.length) {
+    // ===================== CAMO PATTERN SECTION =====================
+    // BERLIN ID BAND (camo r7 loadout set): the white air-recognition band
+    // crossing the 4BO field, plus a big white tactical number stencil.
+    // patches = [white].
+    const white = patches[0];
+    const y0 = S * (0.25 + rng() * 0.5);
+    const band = new Path2D();
+    band.moveTo(-S * 0.1, y0);
+    band.lineTo(S * 1.1, y0);
+    strokeWrapped(ctx, S, band, rgb(white, 0.88), S * 0.045);
+    const x1 = S * (0.2 + rng() * 0.6);              // crossing vertical band
+    const band2 = new Path2D();
+    band2.moveTo(x1, -S * 0.1);
+    band2.lineTo(x1, S * 1.1);
+    strokeWrapped(ctx, S, band2, rgb(white, 0.82), S * 0.035);
+    const num = String(100 + ((rng() * 899) | 0));   // tactical number
+    ctx.save();
+    ctx.font = `900 ${Math.round(S * 0.17)}px 'ABC Monument Grotesk', sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = rgb(white, 0.9);
+    const nx = S * (0.25 + rng() * 0.5), ny = (y0 + S * 0.55) % S;
+    for (const dx of [-S, 0, S]) {
+      for (const dy of [-S, 0, S]) {
+        ctx.save(); ctx.translate(dx, dy); ctx.fillText(num, nx, ny); ctx.restore();
+      }
+    }
+    ctx.restore();
+    // ===================== END CAMO PATTERN SECTION =================
   } else if (scheme === 'amoeba' && patches.length) {
     // ===================== CAMO PATTERN SECTION =====================
     // Soviet WW2 amoeba/kumovka (camo r2 expansion): FEW very large rounded
@@ -3137,6 +3204,12 @@ export const CAMO_PATTERN_IDS = [
   // the contract.
   'ducky', 'suits', 'flames', 'leopardprint', 'bolt',
   'stars', 'daisy', 'circuit', 'racing', 'paintball',
+  // camo r7 (owner ask 2026-08-07): historical LOADOUT camos — these six
+  // also bolt a physical stowage kit onto the visual (src/vehicles/camoKit.js:
+  // ladders, pintle MGs, sandbags, logs, foliage, moss). Style-only paint;
+  // the kit is geometry, applied wherever createTank visuals are born and on
+  // every picker switch.
+  'normandy44', 'berlin45', 'ardennes44', 'pacific45', 'jungleops', 'rasputitsa',
 ];
 export const CAMO_PATTERN_LABEL = {
   auto: 'Auto (map)', factory: 'Factory', summer: 'Summer',
@@ -3155,6 +3228,8 @@ export const CAMO_PATTERN_LABEL = {
   leopardprint: 'Leopard Print', bolt: 'Thunderbolt', stars: 'Starfall',
   daisy: 'Flower Power', circuit: 'Circuit Board', racing: 'Racing Team',
   paintball: 'Paintball',
+  normandy44: "Normandy '44", berlin45: "Berlin '45", ardennes44: "Ardennes '44",
+  pacific45: "Pacific '45", jungleops: 'Jungle Ops', rasputitsa: "Rasputitsa '42",
 };
 
 const CAMO_LS_PREFIX = 'cot.camo.';
@@ -3683,6 +3758,29 @@ function patternVisual(spec, patternId) {
   } else if (patternId === 'paintball') {
     o = { scheme: 'paintball', base: '#b9b9b2', weather: '#a9a9a2',
       patches: ['#3f7fbf', '#c9503f', '#58a05a', '#d9b13f'] };
+  } else if (patternId === 'normandy44') {
+    // camo r7 loadout set: US olive drab with the white invasion star.
+    o = { scheme: 'star', base: '#57603f', weather: '#4e5738',
+      patches: ['#ded8c8'] };
+  } else if (patternId === 'berlin45') {
+    // Soviet 4BO with the white air-recognition band + tactical number.
+    o = { scheme: 'idband', base: '#4a5138', weather: '#525a3e',
+      patches: ['#e0dccb'] };
+  } else if (patternId === 'ardennes44') {
+    // winter-offensive whitewash, a step dirtier than 'washworn'; patches[0]
+    // is the show-through factory paint per the winter/washworn contract.
+    o = { scheme: 'washworn', base: '#878e8c', weather: '#6e7574',
+      patches: [v.base || '#4b5320'] };
+  } else if (patternId === 'pacific45') {
+    // USMC forest green — the foliage/planking kit does the talking.
+    o = { scheme: 'solid', base: '#44523c', weather: '#3d4a36', patches: [] };
+  } else if (patternId === 'jungleops') {
+    o = { scheme: 'blotch', base: '#42513a', weather: '#3b4934',
+      patches: ['#31402e', '#54613f'] };
+  } else if (patternId === 'rasputitsa') {
+    // mud-season 4BO — heavy earth blotches climbing the hull.
+    o = { scheme: 'blotch', base: '#565742', weather: '#4d4e3b',
+      patches: ['#4a3d2c', '#39322a'] };
   }
   return o ? { ...v, ...o } : v;
 }

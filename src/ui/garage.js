@@ -12,6 +12,7 @@ import { ensureTankThumbs, drainTankThumbs, getTankThumb, requeueTankThumbs } fr
 // palette from materials.js) instead of hand-approximated CSS gradients.
 import { resolveCamoVisual, CLAUDE_CODE_MARK, CLAUDE_SPARK_MARK }
   from '../vehicles/materials.js';
+import { KIT_PATTERN_IDS } from '../vehicles/camoKit.js';
 // CATALOG v2 (owner re-order 2026-08-06): the SOURCES catalog group is keyed
 // off the RUNTIME MODEL_SOURCE map — the single source of truth for "this id
 // plays a not-mine GLB". Membership is computed at load, never hardcoded, so
@@ -1220,6 +1221,31 @@ function paintCamoSwatch(canvas, spec, pid) {
         c.fill();
       }
     }
+  } else if (scheme === 'star' && patches.length) {
+    // camo r7 loadout set: the circled invasion star on olive drab
+    const white = patches[0];
+    const star = (x, y, sc, a) => {
+      c.save(); c.translate(x, y); c.scale(sc, sc);
+      c.fillStyle = swRgb(white, a); c.beginPath();
+      for (let k = 0; k < 10; k++) {
+        const rr = k % 2 ? 0.21 : 0.5, aa = -Math.PI / 2 + (k * Math.PI) / 5;
+        const px = Math.cos(aa) * rr, py = Math.sin(aa) * rr;
+        if (k) c.lineTo(px, py); else c.moveTo(px, py);
+      }
+      c.closePath(); c.fill(); c.restore();
+    };
+    star(W * 0.34, H * 0.5, H * 0.7, 0.95);
+    c.strokeStyle = swRgb(white, 0.9); c.lineWidth = H * 0.045;
+    c.beginPath(); c.arc(W * 0.34, H * 0.5, H * 0.46, 0.3, Math.PI * 2 - 0.2); c.stroke();
+    star(W * 0.76, H * 0.5, H * 0.36, 0.9);
+  } else if (scheme === 'idband' && patches.length) {
+    // camo r7 loadout set: white recognition band + tactical number on 4BO
+    const white = patches[0];
+    c.fillStyle = swRgb(white, 0.9);
+    c.fillRect(0, H * 0.34, W, H * 0.12);
+    c.font = `900 ${Math.round(H * 0.5)}px 'ABC Monument Grotesk', sans-serif`;
+    c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillText('312', W * 0.68, H * 0.66);
   }
   // faint top-light so the tile reads as painted steel, not a flat chip
   const g = c.createLinearGradient(0, 0, 0, H);
@@ -1228,6 +1254,17 @@ function paintCamoSwatch(canvas, spec, pid) {
   g.addColorStop(1, 'rgba(0,0,0,0.14)');
   c.fillStyle = g;
   c.fillRect(0, 0, W, H);
+  // camo r7: loadout camos ship physical stowage (camoKit.js) — badge the
+  // card so the picker says so at a glance.
+  if (KIT_PATTERN_IDS.includes(pid)) {
+    c.fillStyle = 'rgba(10,13,16,0.82)';
+    c.fillRect(W - 30, 2, 28, 11);
+    c.fillStyle = 'rgba(240,160,48,0.95)';
+    c.font = `700 7px 'ABC Monument Grotesk', sans-serif`;
+    c.textAlign = 'center';
+    c.textBaseline = 'middle';
+    c.fillText('+KIT', W - 16, 8);
+  }
 }
 // --- END CAMO PICKER SECTION (swatch painter) --------------------------------
 

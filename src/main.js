@@ -50,10 +50,11 @@ import { createTank } from './vehicles/tankFactory.js';
 import {
   CAMO_PATTERN_IDS, CAMO_PATTERN_LABEL, getCamoSelection, setCamoSelection,
   setCamoBiome, applyCamoPatterns, applyCamoPatternsChunked, clearCamoOverrides, warmWreckTextures,
-  applyCamoPatternInstant, prewarmCamoBakes,
+  applyCamoPatternInstant, prewarmCamoBakes, resolveCamoPattern,
   prebakeSharedTextures, prebakeBurntSteps,
   upgradeSharedTextures, upgradeSharedTexturesChunked,
 } from './vehicles/materials.js';
+import { applyCamoKit } from './vehicles/camoKit.js';
 import { computeDispersionRadM, SIM_DT } from './sim/movement.js';
 import { tankPoseFromState, queryAimArmor, traceTank } from './sim/armor.js';
 import {
@@ -599,6 +600,10 @@ function buildPedestalVisual(specId) {
   const vis = createTank(specId, engineCtx, { camoSeed: 4200, quality: 'ai' });
   const pedSpec = getSpec(specId);
   vis.spec = pedSpec;
+  // camo r7 (loadout kits): stowage geometry rides the pattern — attach
+  // while the root is still unposed (the kit measures the hull here once
+  // and caches dims for picker re-applies).
+  applyCamoKit(vis, pedSpec, resolveCamoPattern(specId));
   // camo_spotting r4: same front-3/4 presentation for every hero — long
   // hulls may carry a yaw trim so the camo picker repaints a fully framed
   // vehicle (visual.garageYawDeg, authored per spec; 0 keeps today's pose).
@@ -1110,6 +1115,11 @@ const garage = await bootStage('ui', () => createGarage({
       // worn before lands in a couple of blits instead of a 0.3-1.4 s
       // repaint; cold patterns repaint once and memoize.
       applyCamoPatternInstant(specId);
+      // camo r7: loadout kits swap with the pattern (geometry add/remove,
+      // instant; dims come from the cache measured at build).
+      if (pedestalVisual && pedestalVisual.specId === specId) {
+        applyCamoKit(pedestalVisual, getSpec(specId), resolveCamoPattern(specId));
+      }
     },
     // camo r4: garage tank-select starts a background bake trickle so the
     // whole picker roster restores warm by the time it's browsed.
