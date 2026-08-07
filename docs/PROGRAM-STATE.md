@@ -62,9 +62,9 @@ re-freeze NEW hash, all in ONE commit.
 | m60a3 | 097c35a2 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | kv2 | 382b2310 | freeze-verify only |
 | leo2a6 | 09912270 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
-| m1a1 | ba45613c | visibility re-cert RATIFIED (floor 9.1+, owner-question YES) |
-| m1a1ha | ff97bc44 | visibility re-cert RATIFIED (floor 9.1+, owner-question YES) |
-| m1a2_tejas | 4891abb6 | visibility re-cert RATIFIED (floor 9.1+, owner-question YES) |
+| m1a1 | ba45613c -> a04c8c74 CANDIDATE (CROWS aim-frame round, re-cert in flight) |
+| m1a1ha | ff97bc44 -> f1aaf80 CANDIDATE (CROWS aim-frame round, re-cert in flight) |
+| m1a2_tejas | 4891abb6 -> 89c9f260 CANDIDATE (CROWS aim-frame round, re-cert in flight) |
 | merkava3b | REMOVED BY OWNER 2026-08-06 (roster prune; was 8bb8d984, packet historical) |
 | merkava3c | 8b7ed9bc | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | kf51 | 9ac547ac | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
@@ -74,7 +74,7 @@ re-freeze NEW hash, all in ONE commit.
 | pt91m | 2cf10e23 | |
 | t72b3m | 1e1ca4b8 | |
 | merkava1b | 2cc7a76c | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
-| m1a2 | 4778c7a8 | visibility re-cert RATIFIED (floor 9.1+, owner-question YES) |
+| m1a2 | 4778c7a8 -> bbae99a4 CANDIDATE (CROWS aim-frame round, re-cert in flight) |
 | chieftain5 | d4f2a9a6 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | t84 | 04707a9c | |
 | m47_patton | 2fc99c50 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
@@ -82,7 +82,7 @@ re-freeze NEW hash, all in ONE commit.
 | leo2_revolution | bbae2c80 | GRAY-RECTANGLES DEAD (acid YES every view family, §B8 critic); render-side ACCEPTED — gate stays barred pending the 4.995 oracle adjudication |
 | m46_patton | 108806c8 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | centurion3 | 50273080 | bore resit RATIFIED (end 9.2; occlusion class fixed) |
-| m1a2_sepv2 | 83277374 | visibility re-cert RATIFIED (floor 9.1+, owner-question YES) |
+| m1a2_sepv2 | 83277374 -> dda7bcf4 CANDIDATE (CROWS aim-frame round, re-cert in flight) |
 | m26_pershing | 65c564c0 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 
 *Historical note: the 2026-08-05 INVISIBLE-LOD fix mass re-froze the
@@ -397,6 +397,15 @@ acid answered YES x16 views incl. yaw), leo2a4 ACCEPTED (orders 1-3
 closed with numbers, 551cb30e), leopard2_proto FIRST ACCEPTANCE
 (f1af7ba8; its MODEL_SOURCE flip to procedural is now UNBLOCKED —
 my-lane queue). Day resit ledger: 5/5. Four scoring laws banked.
+
+## 4.9999 ABRAMS COMBINED LANDED: seven stations = ONE aim-frame each
+(rest yaws +90/-90-outboard/+34, tusk full armor wrap, cans ALL gun-left
+— feed nit closed); abramsx 6.2 -> 49.4 (compressed-print caps RETIRED,
+wheels exposed, XM360 slimmed; whips re-parent SHIPPED-DISABLED behind
+AX_WHIPS_TURRET awaiting the orchestrator's coupled turretFollowers
+landing — work order in abramsx.md). MY-LANE ADDS: the coupled abramsx
+whip landing; graduate rest-azimuth cap re-adjudication (+95 trial
+moved certified rows — transverse is window-pinned).
 
 ## 5. IN-FLIGHT AGENTS (SUPERSEDED BY §12 — the 2026-08-05 device
 handover interrupted these; respawn per §12)

@@ -233,3 +233,17 @@ ACHIEVABLE rows dims 100 / floaters 100 HELD x2. standard-check clip
 rearright 165->141); +14 hero px = mast/cage air classes (m1a1.md).
 CANDIDATE (non-graduate, gate-in-loop) fc4018b8 (55 meshes / 199736
 verts, tmp-hashgeo x2).
+
+## CROWS-REWORK ROUND (2026-08-06/07, abrams builder — §4.999a; family
+## round home m1a1.md, per-station table + laws there)
+The family's REAL pointing delta (non-graduate): the whole CROWS II
+station FLIPS OUTBOARD to -90 deg — the M2 overhangs the right cheek
+like the real CROWS photo pose — plus the §4.999a FULL ARMOR WRAP:
+flank plates both sides (7 mm proud of the receiver faces, 7 mm window
+margins by construction at -90), rear plate, armored crown lid; second
+urban spotlight on the yoke (the base spotlight stays); yoke/collar/can
+GUN-LEFT/chute/IR pod as tejas, mirrored. LAGS M240 untouched (a loader
+shield station faces frontal fire by design). GATE: the capped rows
+absorbed the flip EXACTLY — 0 | 14.9/0/42.3/39.2/100/100 unchanged,
+dims/floaters 100 held. Mode-2 425 px = the pre-existing deck-gear
+class, unchanged. Non-graduate: no freeze; hash in m1a1.md close table.

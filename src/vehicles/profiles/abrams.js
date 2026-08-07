@@ -1134,46 +1134,116 @@ function tejasRoofKit(P, t, station = 'crows') {
   // depth <= 0.213 (face windows/LRF at 0.357, HA shield to 0.3465).
   // Front-col spends decoded per §C.)
   if (station === 'cws') {
-    // M1A1/M1A1HA CWS: standing M2HB on the powered ring — pintle post +
-    // cradle + receiver + charging handle + transverse barrel with a real
-    // muzzle (§B3.1 pinhole-class dark tip) + ammo can + belt chute.
-    P.add('turretDark', box(0.055, 0.155, 0.075), -0.70, 0.958, 0.2565);   // pintle post
-    P.add('turretDark', box(0.13, 0.045, 0.155), -0.665, 1.035, 0.2565);   // cradle
-    P.add('turretDark', box(0.34, 0.095, 0.185), -0.575, 1.075, 0.2565);   // receiver
-    P.add('turretDetail', box(0.30, 0.012, 0.170), -0.575, 1.128, 0.2565); // top cover lick
-    P.add('turretDark', box(0.05, 0.05, 0.10), -0.760, 1.068, 0.2565);     // spade grips
-    P.add('turretDark', cylX(0.0165, 0.115, 8), -0.375, 1.082, 0.2565);    // barrel jacket collar
-    P.add('turretDark', cylX(0.0145, 0.30, 8), -0.275, 1.082, 0.2565);     // barrel (tip x -0.125 — clear of the center front cols)
-    P.add('turretDark', cylX(0.0155, 0.012, 8), -0.123, 1.082, 0.2565);    // §B3.1 dark tip
-    P.add('turretDetail', box(0.085, 0.105, 0.155), -0.545, 0.988, 0.2565); // ammo can on cradle arm
-    P.add('turretDark', box(0.012, 0.058, 0.12), -0.487, 1.045, 0.2565);   // belt chute
+    // M1A1/M1A1HA CWS — COHERENT assembly on ONE rest azimuth (CROWS-REWORK
+    // round, owner §4.999a: "point in the right direction (not pointing
+    // forward) ... shapes need to be connected"). The M2 rides an aim frame
+    // A measured from +z (positive sweeps toward +x = vehicle LEFT):
+    //   m1a1 / m1a1ha: A = +90 deg EXACT (left-transverse). MEASURED
+    //   AZIMUTH RESIDUAL (this round): a +95 deg trial with a 0.148-slim
+    //   receiver moved the certified graduate rows (whole 79 -> 78.5,
+    //   turret 85.7 -> 86.4 — a different row set, not a hold) — the
+    //   certified 3-column z window plus the priced front columns PIN the
+    //   graduates' rest azimuth at exactly transverse; banked in the
+    //   packet for any future owner cap re-adjudication. The HA shield
+    //   independently pins its mark (the 0.30 face swings out of the
+    //   window at any other azimuth).
+    // Every above-knee solid stays inside z local [0.150, 0.363] (3 side
+    // trace cols; p95 = knee; dims 100). Ammo can re-hung GUN-LEFT with a
+    // cradle bracket + feed chute (the M2 feeds LEFT — §7 audit nit; at
+    // A = +90 gun-left = -z, so the can rides the window's forward half).
+    const A = Math.PI / 2;
+    const cA = Math.cos(A), sA = Math.sin(A);
+    const rd = 0.185;                                      // receiver depth across aim (certified class)
+    const at = (u, v) => [-0.70 - u * cA + v * sA, 0.2565 + u * sA + v * cA];
+    const part = (bk, geo, u, v, y) => { const [px, pz] = at(u, v); P.add(bk, geo, px, y, pz, 0, A, 0); };
+    part('turretDark', box(0.075, 0.155, 0.055), 0, 0, 0.958);            // pintle post (base 0.8805 into the 0.883 base top)
+    part('turretDark', box(0.155, 0.045, 0.13), 0, 0.035, 1.035);         // cradle (bottom 1.0125 on the post top 1.0355)
+    part('turretDark', box(rd, 0.095, 0.34), 0, 0.125, 1.075);            // receiver (long axis ALONG aim)
+    part('turretDetail', box(rd - 0.015, 0.012, 0.30), 0, 0.125, 1.128);  // top cover lick
+    part('turretDark', box(0.10, 0.05, 0.05), 0, -0.06, 1.068);           // spade grips (rear of aim)
+    part('turretDark', cylZ(0.0165, 0.115, 8), 0, 0.325, 1.082);          // barrel jacket collar
+    part('turretDark', cylZ(0.0145, 0.30, 8), 0, 0.425, 1.082);           // barrel
+    part('turretDark', cylZ(0.0155, 0.012, 8), 0, 0.577, 1.082);          // §B3.1 dark tip (end x -0.117 at A=90 / -0.119 at 95 — clear of the center front cols)
+    part('turretDetail', box(0.065, 0.105, 0.155), -0.05, 0.10, 1.055);   // ammo can GUN-LEFT of the receiver
+    part('turretDark', box(0.075, 0.045, 0.03), -0.038, 0.055, 1.0325);   // can bracket -> cradle left arm
+    part('turretDark', box(0.012, 0.052, 0.12), -0.072, 0.15, 1.09);      // feed chute can top -> receiver left rail
+    // Powered-ring conduit: flush dark cable run on the base top from the
+    // ring drum to the mast root (§4.999a cabling; top 0.883 = base plane,
+    // zero-silhouette tone line).
+    P.add('turretDark', box(0.03, 0.006, 0.17), -0.70, 0.880, 0.335);
     if (P.spec.id === 'm1a1ha') {
-      // §H.4 tell: the HA carries its CWS gun SHIELDED (m1a1 bare).
+      // §H.4 tell: the HA carries its CWS gun SHIELDED (m1a1 bare). The
+      // plate is the station's VEHICLE-FORWARD shield (it does not slew
+      // with the gun — byte-identical certified geometry).
       // (shield top 1.1215 = the receiver's own 1.1225 line — the first cut
       // topped the mast by 3.5 cm and cost front_turret -4.5 for nothing)
       P.add('turret', box(0.30, 0.115, 0.019), -0.575, 1.064, 0.3395);
       P.add('turretDark', box(0.10, 0.05, 0.008), -0.575, 1.060, 0.3425);
     }
   } else {
-    // TEJAS/TUSK CROWS II: riser + slew drum + sensor cluster (day window,
-    // thermal window, LRF) + elevated M2 with ammo box + cable drop — the
-    // garage-distance RWS mass the owner ordered.
-    P.add('turret', box(0.105, 0.235, 0.150), -0.70, 0.998, 0.2565);       // riser post
-    P.add('turretDark', box(0.125, 0.030, 0.170), -0.70, 1.128, 0.2565);   // slew plate
-    P.add('turretDetail', cylY(0.075, 0.085, 0.045, 12), -0.70, 1.155, 0.2565); // slew drum
-    P.add('turretDark', box(0.235, 0.195, 0.200), -0.865, 1.245, 0.2565);  // sensor cluster body
-    P.add('turretDetail', box(0.24, 0.02, 0.205), -0.865, 1.348, 0.2565);  // cluster crown lick
-    P.add('turretGlass', box(0.085, 0.075, 0.012), -0.905, 1.258, 0.357);  // day window
-    P.add('turretGlass', box(0.065, 0.055, 0.012), -0.80, 1.248, 0.357);   // thermal window
-    P.add('turretDark', cylZ(0.020, 0.012, 10), -0.862, 1.192, 0.357);     // LRF aperture
-    P.add('turretDark', box(0.035, 0.155, 0.055), -0.732, 1.10, 0.185);    // cable drop
-    P.add('turretDark', box(0.30, 0.105, 0.185), -0.55, 1.315, 0.2565);    // M2 receiver (elevated)
-    P.add('turretDetail', box(0.26, 0.012, 0.170), -0.55, 1.373, 0.2565);  // top cover lick
-    P.add('turretDark', cylX(0.0165, 0.10, 8), -0.375, 1.322, 0.2565);     // barrel collar
-    P.add('turretDark', cylX(0.0145, 0.30, 8), -0.285, 1.322, 0.2565);     // barrel (tip x -0.135 — clear of the center front cols)
-    P.add('turretDark', cylX(0.0155, 0.012, 8), -0.133, 1.322, 0.2565);    // §B3.1 dark tip
-    P.add('turretDetail', box(0.085, 0.115, 0.160), -0.44, 1.235, 0.2565); // ammo box under cradle
-    P.add('turretDark', box(0.012, 0.05, 0.11), -0.485, 1.30, 0.2565);     // feed chute
+    // TEJAS/TUSK CROWS II — COHERENT station on ONE rest azimuth (CROWS-
+    // REWORK round, §4.999a). Aim frame A from +z (positive toward +x =
+    // vehicle LEFT):
+    //   tejas A = +90 deg EXACT — the CROWS II sensor head z-depth (0.200)
+    //         fills the certified window's usable 0.206 span: the head
+    //         physically pins the graduate's rest yaw at left-transverse
+    //         (documented residual). Sensor windows RE-FACED to the aim
+    //         face (+x) so the pod looks where the gun points.
+    //   tusk  A = -90 deg — the non-graduate flips OUTBOARD (right-
+    //         transverse): the M2 overhangs the right cheek like the real
+    //         CROWS photo pose, and the §4.999a ARMOR WRAP boxes the
+    //         receiver (priced honestly in its capped rows).
+    // New CONNECTIONS (§4.999a "shapes need to be connected"): cradle yoke
+    // drum -> receiver (the elevated M2 no longer floats), can bracket,
+    // head/drum contact collar. Ammo can re-hung GUN-LEFT (M2 feeds left).
+    const tusk = P.spec.id === 'm1a2_tusk';
+    const A = tusk ? -Math.PI / 2 : Math.PI / 2;
+    const cA = Math.cos(A), sA = Math.sin(A);
+    const at = (u, v) => [-0.70 - u * cA + v * sA, 0.2565 + u * sA + v * cA];
+    const part = (bk, geo, u, v, y) => { const [px, pz] = at(u, v); P.add(bk, geo, px, y, pz, 0, A, 0); };
+    part('turret', box(0.150, 0.235, 0.105), 0, 0, 0.998);                 // riser post
+    part('turretDark', box(0.170, 0.030, 0.125), 0, 0, 1.128);             // slew plate
+    P.add('turretDetail', cylY(0.075, 0.085, 0.045, 12), -0.70, 1.155, 0.2565); // slew drum (axisymmetric — stays put)
+    part('turretDark', box(0.06, 0.145, 0.10), 0, 0.10, 1.24);             // CRADLE YOKE: drum top 1.1775 -> receiver bottom 1.2625
+    part('turretDark', box(0.200, 0.195, 0.235), 0, -0.165, 1.245);        // sensor cluster body (long axis ALONG aim)
+    part('turretDetail', box(0.205, 0.02, 0.24), 0, -0.165, 1.348);        // cluster crown lick
+    part('turretDark', box(0.14, 0.030, 0.075), 0, -0.13, 1.164);          // head/drum contact collar (x fully under the head — the first seat spanned the head/riser gap columns and moved front_whole 61.5 -> 61.2; decoded + re-seated)
+    // Sensor apertures ON THE AIM FACE (head forward face along A) — the
+    // old forward-facing (+z) glass read as a pod staring sideways off its
+    // own gun line, the §4.999a incoherence. Plates sit 11 mm INTO the
+    // face with 1 mm proud: sub-AA by the 16%-coverage pixel math, so the
+    // gap-band columns never read them (the 6.5 mm-proud first cut was the
+    // other half of the 61.2 read).
+    part('turretGlass', box(0.085, 0.075, 0.012), 0.0435, -0.0525, 1.258);  // day window
+    part('turretGlass', box(0.065, 0.055, 0.012), -0.0665, -0.0525, 1.248); // thermal window
+    part('turretDark', box(0.04, 0.04, 0.012), 0.0435, -0.0525, 1.192);     // LRF aperture
+    part('turretDark', box(0.055, 0.155, 0.035), -0.0715, -0.032, 1.10);   // cable drop
+    part('turretDark', box(0.185, 0.105, 0.30), 0, 0.15, 1.315);           // M2 receiver (elevated, long axis ALONG aim)
+    part('turretDetail', box(0.170, 0.012, 0.26), 0, 0.15, 1.373);         // top cover lick
+    part('turretDark', cylZ(0.0165, 0.10, 8), 0, 0.325, 1.322);            // barrel collar
+    part('turretDark', cylZ(0.0145, 0.30, 8), 0, 0.415, 1.322);            // barrel
+    part('turretDark', cylZ(0.0155, 0.012, 8), 0, 0.567, 1.322);           // §B3.1 dark tip
+    part('turretDetail', box(0.065, 0.115, 0.155), -0.055, 0.13, 1.24);    // ammo can GUN-LEFT
+    part('turretDark', box(0.05, 0.05, 0.03), -0.03, 0.11, 1.225);         // can bracket -> yoke
+    part('turretDark', box(0.012, 0.05, 0.11), -0.075, 0.17, 1.30);        // feed chute
+    // IR pointer pod on the cradle right rail (§4.999a lights; interior to
+    // the receiver columns, below the crown).
+    part('turretDetail', cylZ(0.024, 0.10, 10), 0.045, 0.16, 1.30);
+    part('turretGlass', cylZ(0.018, 0.008, 10), 0.045, 0.214, 1.30);
+    if (tusk) {
+      // §4.999a ARMOR WRAP (TUSK CROWS II PROTECTOR kit — non-graduate,
+      // priced honestly): flank plates (7 mm proud of the receiver faces,
+      // 7 mm window margins by construction at A = -90) + rear plate +
+      // armored crown lid box the receiver.
+      part('turret', box(0.014, 0.125, 0.30), 0.0925, 0.15, 1.305);        // right flank plate
+      part('turret', box(0.014, 0.125, 0.30), -0.0925, 0.15, 1.305);       // left flank plate (over the can)
+      part('turret', box(0.13, 0.115, 0.016), 0, -0.012, 1.31);            // rear plate (behind the receiver)
+      part('turret', box(0.132, 0.014, 0.28), 0, 0.15, 1.362);             // armored crown lid (under the 1.373 lick line)
+      // Urban spotlight on the yoke (the second §4.999a light; the base
+      // spotlight below the knee stays).
+      part('turretDetail', cylZ(0.028, 0.09, 10), -0.045, 0.05, 1.19);
+      part('turretGlass', cylZ(0.021, 0.008, 10), -0.045, 0.098, 1.19);
+    }
   }
   // Whip antennas at the ref's own x stations (world x -1.168/+1.096, still
   // centered in their front bins). W1b dropped the ref whips from 2.656 to
@@ -3950,16 +4020,50 @@ function buildM1a2(P, V) {
         P.add('turretDark', cylZ(0.019, 0.012, 10), -0.755, ty(2.742), tz(0.7205)); // LRF
       }
       P.add('turretDark', box(0.032, 0.16, 0.055), -0.66, ty(2.60), tz(0.578));    // cable drop
+      // ---- CROWS-REWORK round (§4.999a): the station reads as ONE
+      // COHERENT assembly on its rest azimuth (+90 deg left-transverse —
+      // the CROWS head z-depth fills the certified [0.533, 0.724] window
+      // EXACTLY, so the graduates' rest yaw is window-pinned; documented).
+      // CONNECTIONS: cradle yoke drum -> receiver (the M2 no longer
+      // floats), head/drum contact collar, can bracket. Ammo can re-hung
+      // GUN-LEFT (aim +x => gun-left = -z; the M2 feeds LEFT, §7 nit).
+      // Apertures RE-FACED to the aim face as flush-recessed strips (the
+      // old +z glass stared sideways off the gun line).
+      P.add('turretDark', box(0.06, 0.0775 + sepTall, 0.10), -0.575, ty(2.761 + sepTall / 2), tz(0.6285)); // CRADLE YOKE drum top 2.725 -> receiver bottom
+      P.add('turretDark', box(0.10, 0.030, 0.16), -0.69, ty(2.710), tz(0.6285));  // head/drum contact collar (under the 2.725 drum-top plane)
       P.add('turretDark', box(0.30, 0.10, 0.180), -0.475, ty(2.845 + sepTall), tz(0.6285));   // M2 receiver
       P.add('turretDetail', box(0.26, 0.012, 0.165), -0.475, ty(2.901 + sepTall), tz(0.6285)); // top cover lick
       P.add('turretDark', box(0.05, 0.045, 0.10), -0.645, ty(2.838 + sepTall), tz(0.6285));   // spade grips
       P.add('turretDark', cylX(0.0165, 0.10, 8), -0.40, ty(2.852 + sepTall), tz(0.6285));      // barrel collar
       P.add('turretDark', cylX(0.0145, 0.30, 8), -0.29, ty(2.852 + sepTall), tz(0.6285));     // barrel (tip x -0.14)
       P.add('turretDark', cylX(0.0155, 0.012, 8), -0.136, ty(2.852 + sepTall), tz(0.6285));    // §B3.1 dark tip
-      P.add('turretDetail', box(0.085, 0.115, 0.150), -0.39, ty(2.775 + sepTall), tz(0.6285)); // ammo box
-      P.add('turretDark', box(0.012, 0.05, 0.11), -0.435, ty(2.838 + sepTall), tz(0.6285));    // feed chute
+      P.add('turretDetail', box(0.155, 0.115, 0.090), -0.41, ty(2.745 + sepTall), tz(0.585));  // ammo can GUN-LEFT under the receiver
+      P.add('turretDark', box(0.05, 0.035, 0.055), -0.465, ty(2.782 + sepTall), tz(0.5975));   // can bracket -> yoke/receiver bottom
+      P.add('turretDark', box(0.012, 0.05, 0.075), -0.44, ty(2.822 + sepTall), tz(0.578));     // feed chute can top -> receiver left rail
+      // (aperture RE-FACING is WINDOW-PINNED here: the LP/CROWS-II head
+      // fills the 0.191 z window to 0.5 mm — aim-face plates need proud
+      // clearance the certified slice does not have; apertures stay on the
+      // certified +z face. Documented residual, §4.999a packet.)
+      // IR pointer pod on the cradle right rail (§4.999a lights)
+      P.add('turretDetail', cylX(0.020, 0.09, 10), -0.42, ty(2.822 + sepTall), tz(0.685));
+      P.add('turretGlass', cylX(0.015, 0.008, 10), -0.372, ty(2.822 + sepTall), tz(0.685));
+      if (sep) {
+        // §4.999a PARTIAL ARMOR (sepv2's tall CROWS II): armored crown
+        // plate + head brow — the graduate's [0.533, 0.724] window leaves
+        // ~5 mm of slack per receiver flank, so proud flank plates are
+        // structurally unpayable (plan-pixel flip class); the partial kit
+        // is the crown + brow (documented in the packet).
+        P.add('turret', box(0.25, 0.012, 0.155), -0.475, ty(2.898 + sepTall), tz(0.6285)); // armored crown (under the 2.901+ lick)
+        P.add('turret', box(0.215, 0.016, 0.19), -0.775, ty(2.922), tz(0.6285));  // head brow plate (under the 2.934 crown lick)
+      }
       // riser base gussets tie the post into the ring plate (§B2 attached)
       P.add('turretDark', box(0.16, 0.045, 0.130), -0.615, ty(2.435), tz(0.6285));
+      // slew-ring power conduit: flush dark run across the R1 band from the
+      // riser base toward the lane-1 rail (§4.999a cabling; top 2.421 =
+      // 1 mm over the 2.42 R1 plane, sub-AA tone line; z-run stays ON the
+      // R1 band's own 0.06..0.378 span — the first route crossed onto the
+      // 2.377 recess bed and floated).
+      P.add('turretDark', box(0.028, 0.005, 0.30), -0.615, ty(2.4185), tz(0.22));
     }
     // Loader's M240 on the right plateau — visual r3 order 3: barrel run
     // lengthened 0.46 -> 0.62 and slewed -0.14 so the dark crown-riding
@@ -4723,7 +4827,15 @@ const AX_HULL = {
     [3.74, 0.82], [3.97, 0.90]],
   tailRake: [[-2.42, 0.30], [-2.87, 0.32], [-3.11, 0.38], [-3.34, 0.53], [-3.50, 0.70]],
   tailShelf: { z0: -3.50, z1: -3.97, yBot: 0.70 },
-  skirt: { x: 1.828, top: 1.50, bot: 0.46, z0: -3.56, z1: 3.68 },
+  // Order-B retune: the print's skirt is a KNEED panel run — face ±1.79,
+  // top sloping with the deck line (1.36 bow -> 1.745 rear), bottoms LOW
+  // over the idler (0.52) then raised to 0.80 exposing the road wheels
+  // (§B8.1 WHEEL EXPOSURE — the first full-depth cut walled the gear off
+  // and failed the glance test), plus a full-length RUB RAIL at ±1.828
+  // y 0.77-0.81 (the front ±1.83 columns' exact read; it is also the
+  // committed 3.66 WIDTH plane). Hand-rolled in buildAbramsX — noSkirt.
+  skirt: { x: 1.79, top: 1.76, bot: 0.52, z0: -3.56, z1: 3.68 },
+  noSkirt: true,
   // noRearFace (rear round 2026-08-06): the default abramsHull rear kit
   // seats at rearZ+0.02..0.06 = INSIDE this hull's -3.97 tail loft (the
   // exact class the flag was built for — the plate rendered blank camo
@@ -4776,7 +4888,10 @@ function buildAbramsX(P) {
   // slot runs out to ~1.78; shelf extended to 1.795/z -3.20..-3.50, still
   // under the skirt top + deck lines; the sweep never reaches this height)
   for (const sx of [-1, 1]) {
-    P.add('hull', box(0.77, 0.05, 0.30), sx * 1.4325, 1.4525, -3.35);
+    // (Order-B width re-architecture: every closure piece now ends INSIDE
+    // the 1.79 skirt face — the old 1.8175/1.795 reaches owned the ±1.83
+    // front columns at 1.48 where the print reads only the 0.81 strip.)
+    P.add('hull', box(0.72, 0.05, 0.30), sx * 1.42, 1.4525, -3.35);
     // BAY BULKHEAD (the m1a2 sprocket-bay closure-wall precedent): with
     // the shelf roofing the slot, the open sponson tunnel above the track
     // read through from dead-rear as two enclosed sky slivers (x ±1.32,
@@ -4784,20 +4899,19 @@ function buildAbramsX(P) {
     // shelf's rear edge keeps the bay reading shadow, not daylight;
     // sprocket sweep tops out at z -3.27 (2 dm clear), plan is
     // skirt-owned, side tops interior to the deck line.
-    P.add('hullDark', box(0.74, 0.72, 0.022), sx * 1.4325, 1.065, -3.481);
+    P.add('hullDark', box(0.72, 0.72, 0.022), sx * 1.42, 1.065, -3.481);
     // CORNER FENDER DECK (§B2, the rear-quarter witness): aft of the
     // shelf the deck loft narrows to the ±1.055 corridor — the corner
-    // top (x 1.06..1.80, z -3.50..-3.86) was OPEN and the quarter rays
+    // top (x 1.06..1.78, z -3.50..-3.86) was OPEN and the quarter rays
     // saw sky straight across both sponson tunnels. One flat fender
     // plate at the lip-top 1.55 plane (the real AbramsX full rear
-    // fender) closes the corner; front cols at x 1.6..1.79 read +0.05
-    // over the 1.50 skirt line (deep-capped rows; decoded in packet).
-    P.add('hull', box(0.735, 0.045, 0.64), sx * 1.4275, 1.5275, -3.52);
+    // fender) closes the corner.
+    P.add('hull', box(0.72, 0.045, 0.64), sx * 1.42, 1.5275, -3.52);
     // ...and the hollow UNDER it closes like the tejas corner: a
     // rear-facing guard plate at the tail-band line + an outboard side
     // panel spanning skirt-end to guard (the quarter-ray witnesses).
-    P.add('hull', box(0.72, 0.315, 0.020), sx * 1.425, 1.3475, -3.83);
-    P.add('hull', box(0.022, 0.315, 0.27), sx * 1.784, 1.3475, -3.695);
+    P.add('hull', box(0.70, 0.315, 0.020), sx * 1.415, 1.3475, -3.83);
+    P.add('hull', box(0.022, 0.315, 0.27), sx * 1.779, 1.3475, -3.695);
   }
   // §B3 census MG (rear round): stowed M240 lashed on the low rear deck
   // (FITTINGS marker; the hand-authored XM914 RWS censuses zero). Tops
@@ -4810,27 +4924,80 @@ function buildAbramsX(P) {
   }
   // Faceted corner sensor pods (hull mask in the oracle) — pylons carry them
   // to the deck so articulation poses stay connected. Tops clamped to 2.44.
+  // §C.1 WINDING FIX (re-cert order 2026-08-06: 1 latent REVERSED piece,
+  // 12px top deficit): the mirrored pod slab now binds through sideSlab —
+  // the -1 loop handed slab() the opposite ring handedness (the exact
+  // BUILD-STANDARD §C missing-side mechanism); masks are DoubleSide so the
+  // gate is byte-identical, the game's FrontSide render regains the face.
   for (const side of [-1, 1]) {
     P.add('hull', box(0.14, 0.9, 0.35), side * 1.30, 1.95, 0.72);
-    P.add('hull', slab(
-      [side * 1.18, 2.28, 1.15], [side * 1.52, 2.28, 1.15], [side * 1.52, 2.28, 0.3], [side * 1.18, 2.28, 0.3],
-      [side * 0.62, 2.44, 1.05], [side * 0.98, 2.44, 1.05], [side * 0.98, 2.44, 0.4], [side * 0.62, 2.44, 0.4]));
+    sideSlab(P, 'hull', side,
+      [1.18, 2.28, 1.15], [1.52, 2.28, 1.15], [1.52, 2.28, 0.3], [1.18, 2.28, 0.3],
+      [0.62, 2.44, 1.05], [0.98, 2.44, 1.05], [0.98, 2.44, 0.4], [0.62, 2.44, 0.4]);
     P.add('hullDark', box(0.2, 0.07, 0.03), side * 1.36, 2.36, 1.16, 0, 0, side * 0.3);
+    // Order-B retune: SENSOR WING — the warped print's pod belt runs OUT
+    // TO x ±1.665 at tops 2.31-2.32 (front cols ±1.55-1.65 read refTop
+    // 2.31-2.32; the ref hull falls to 1.73 by ±1.71, so the wing stops at
+    // 1.665). Hangs off the pod slab's outboard edge (2 cm overlap).
+    P.add('hull', box(0.165, 0.36, 0.75), side * 1.5825, 2.13, 0.725);
+    P.add('hullDark', box(0.125, 0.05, 0.65), side * 1.5825, 2.275, 0.725);
   }
   // RWS / sensor bridge (hull mask in the oracle, 3.22-3.46 over ~2.4 m of
   // z): clamped to a 2.44 bridge deck + single mast head at 3.46 (p95
   // budget). The oracle's bridge peak sits at (x ~0.5, z -0.3..-0.5).
-  P.add('hull', box(0.3, 0.85, 0.3), 0.05, 1.95, -0.55);   // support leg
-  P.add('hull', box(0.3, 0.85, 0.3), 0.05, 1.95, 0.75);    // support leg
-  P.add('hull', box(1.0, 0.20, 2.40), 0.05, 2.32, 0.25);   // bridge deck 2.42
-  P.add('hullDark', box(0.9, 0.06, 2.3), 0.05, 2.405, 0.25);
+  // ---- ORDER-B RETUNE (2026-08-06/07 round): the batch-20 oracle warp
+  // (commit 42ec7e8) COMPRESSED the print's RWS bridge to 2.44-2.451 and
+  // its whips to ~2.47 — the old "3.2-3.46 band certified unreachable"
+  // caps are RETIRED (re-derived via tmp-abrams-refcurves on the CURRENT
+  // GLB; full curve tables in the packet). The proc now matches the
+  // warped print's real bands:
+  //   band A (bridge): z +1.06..-0.85, tops 2.43-2.46; front x -0.57..+0.55
+  //   step-down: ref tops fall 2.35 -> 2.10 over z +1.06..+1.40
+  //   slot: z -0.9..-1.3 drops to the 1.55-1.68 deck
+  //   band B (rear sensor deck): z -1.37..-2.26, tops 2.29-2.35 out to
+  //     x ±1.45, with SHORT whip masts at (±1.15, -1.98) topping 2.46-2.47
+  //     (the old proc 4.12 rods were the documented post-warp retune debt).
+  P.add('hull', box(0.3, 0.85, 0.3), 0.05, 1.95, -0.45);   // support leg
+  P.add('hull', box(0.3, 0.85, 0.3), 0.05, 1.95, 0.65);    // support leg
+  P.add('hull', box(1.12, 0.20, 2.31), -0.01, 2.32, 0.315); // bridge deck 2.42 (z -0.84..+1.47; left edge -0.57 per the ref's own span)
+  P.add('hullDark', box(1.02, 0.06, 2.21), -0.01, 2.405, 0.315);
+  // front step-down wedge — measured seat (A/B gate bisect this round:
+  // the warped print's high band runs to z ~1.6 and its deck resumes 1.38
+  // by ~1.74; a 1.09->1.40 step read -9.7 on the hull row vs this seat).
+  // Rear edge buried 2 cm into the deck box, top flush at 2.42.
+  P.add('hull', slab(
+    [0.49, 2.08, 1.45], [-0.45, 2.08, 1.45], [-0.45, 2.02, 1.74], [0.49, 2.02, 1.74],
+    [0.49, 2.42, 1.45], [-0.45, 2.42, 1.45], [-0.45, 2.08, 1.72], [0.49, 2.08, 1.72]));
   P.add('hullDetail', cylY(0.28, 0.32, 0.05, 16), 0.30, 2.435, -0.35);
-  // 30 mm run kept under the bridge line and inside the oracle's RWS span.
-  // §B3.1: the XM914 receiver/barrel run is a CYLINDER set (the old square
-  // prism was the exact gun-run failing read) — same envelope tops.
-  P.add('hullDark', cylZ(0.08, 0.6, 12), 0.05, 2.30, 0.95);
-  P.add('hullDark', cylZ(0.05, 0.32, 10), 0.05, 2.32, 1.30);
-  P.add('hullDark', cylZ(0.062, 0.05, 10), 0.05, 2.31, 1.27);
+  // ---- XM914 30 mm RWS — CROWS-REWORK round (§4.999a): ONE COHERENT
+  // station on a real rest azimuth, +34 deg (0.60 rad) toward the left
+  // bow quarter — the only abrams station with true yaw freedom (the
+  // bridge-deck envelope hides every solid from all three masks; the
+  // certified caps stand untouched). Slew drum + receiver + short barrel
+  // + muzzle with §B3.1 dark tip + EO box on the mount + ammo can
+  // GUN-LEFT with chute + pale cover licks (the top-down read against
+  // the dark cap) — all inside deck x[-0.45,0.55] y[..2.435] z[-0.95,1.45].
+  {
+    const Ax = 0.60, sAx = Math.sin(Ax), cAx = Math.cos(Ax);
+    const at = (u, v) => [0.05 - u * cAx + v * sAx, 0.45 + u * sAx + v * cAx];
+    const part = (bk, geo, u, v, y) => { const [px, pz] = at(u, v); P.add(bk, geo, px, y, pz, 0, Ax, 0); };
+    P.add('hullDark', cylY(0.075, 0.085, 0.05, 12), 0.05, 2.40, 0.45);    // slew drum
+    part('hullDark', box(0.11, 0.10, 0.42), 0, 0.16, 2.38);               // receiver housing
+    part('hullDetail', box(0.10, 0.008, 0.40), 0, 0.16, 2.431);           // pale cover lick (top 2.435 = cap plane)
+    part('hullDark', cylZ(0.019, 0.23, 8), 0, 0.485, 2.4125);             // exposed barrel run (top 2.4315 = lick seat)
+    part('hullDetail', box(0.02, 0.006, 0.22), 0, 0.485, 2.4315);         // barrel lick (top-down read, rides the barrel)
+    part('hullDark', box(0.045, 0.045, 0.06), 0, 0.575, 2.4105);          // muzzle block
+    part('hullDark', cylZ(0.012, 0.006, 8), 0, 0.604, 2.4125);            // §B3.1 dark bore tip
+    part('hullDark', box(0.08, 0.09, 0.12), 0.10, 0.05, 2.388);           // EO box on the mount right
+    part('hullGlass', box(0.06, 0.05, 0.010), 0.10, 0.115, 2.393);        // EO aperture (aim face)
+    part('hullDetail', box(0.075, 0.095, 0.16), -0.105, 0.08, 2.385);     // ammo can GUN-LEFT
+    part('hullDark', box(0.012, 0.05, 0.10), -0.062, 0.10, 2.405);        // feed chute
+    // station power conduit: pale flush line on the dark cap toward the
+    // mast head (§4.999a cabling; top 2.435 = cap plane, tone-only).
+    P.add('hullDetail', box(0.025, 0.005, 0.52), 0.24, 2.4325, -0.10, 0, -0.35, 0);
+    // (the old forward light pod at z 1.43 retired WITH its column: the
+    // batch-20 ref line reads 2.10 there — the step wedge now owns it)
+  }
   // Mast head CLAMPED to the plateau (p95 skip budget on this ~7.6 m body
   // is only THREE columns — the whips own two of them; a 3.46 mast head
   // straddling the grid kept blowing measured heightM to 2.9-3.45. The
@@ -4841,20 +5008,81 @@ function buildAbramsX(P) {
   P.add('hullDetail', box(0.1, 0.035, 0.08), 0.48, 2.455, -0.35);
   // Twin whip antennas at the oracle's own (±1.15, z -1.98) stations, tops
   // 4.12 — two p95-free columns; they also zero the whip station slice.
+  // §B5/§C.1 WHIP COUPLING (re-cert order 2026-08-06, mode-2 HARD 1368px):
+  // the REAL AbramsX carries these whips on the TURRET bustle corners —
+  // but the ORACLE bakes them into its HULL mask at (±1.15, -1.98) and the
+  // certified hull rows match them there (ORACLE-REGISTRATION-PINNED
+  // class, the m1a2 works-field precedent). A proc-only re-parent regresses
+  // the certified hull row (the two matched whip columns go only-ref), so
+  // the fix is COUPLED: land a turretFollowers extension on the abramsx
+  // MODEL_SOURCE registration (userdrops4.js — outside this single-owner
+  // file) in the SAME commit that flips this toggle. The turret-side
+  // branch below is the READY half: pods re-based on the shell chamfer at
+  // the same (±1.15, world -1.98) stations, rod tops 4.12 EXACT (world
+  // pose preserved at rest — §B5 mechanics).
+  // Order-B retune: the whips are SHORT MASTS now — the batch-20 warp
+  // compressed the print's whips to ~2.46-2.47 (front cols ±1.13-1.19 read
+  // refTop 2.35-2.47); the old proc 4.12 rods were the documented
+  // post-warp retune debt (side/front d +1.65..+1.76 on four columns) and
+  // are PAID this round. Masts stand on the rear sensor deck (band B).
+  const AX_WHIPS_TURRET = false; // ORCHESTRATOR: flip WITH the followers extension (one landing)
   for (const side of [-1, 1]) {
-    P.add('hullDetail', box(0.09, 0.14, 0.09), side * 1.15, 1.74, -1.98);
-    P.add('hullDark', box(0.05, 2.32, 0.05), side * 1.15, 2.96, -1.98);
+    if (AX_WHIPS_TURRET) {
+      // turret-local frame (ring at 0, 1.95, -0.39): world (±1.15, -1.98)
+      // = local (±1.15, -1.59); pod seats on the rear-chamfer face, mast
+      // top local 0.52 = world 2.47 (§B5-ready half, coupled landing).
+      P.add('turretDetail', box(0.09, 0.06, 0.09), side * 1.15, 0.38, -1.59);
+      P.add('turretDark', box(0.05, 0.11, 0.05), side * 1.15, 0.465, -1.59);
+    } else {
+      P.add('hullDetail', box(0.09, 0.06, 0.09), side * 1.15, 2.34, -1.98); // mast base pod on the deck slab
+      P.add('hullDark', box(0.05, 0.155, 0.05), side * 1.15, 2.3925, -1.98); // mast (top 2.47 = the warped print's own whip line)
+    }
   }
-  // Rear-deck sensor pots behind the shell (the oracle's hull mask shows
-  // 2.33-2.48 stubs at z -1.3..-1.7 and a 2.75 spike at -1.81 — the stubs
-  // are matched under the height clamp, the spike is capped).
-  for (const [px, pz, pt] of [[-1.42, -1.30, 2.38], [1.42, -1.62, 2.43], [-1.42, -1.81, 2.44]]) {
-    P.add('hull', box(0.09, 0.16, 0.09), px, 1.80, pz);
-    P.add('hull', cylY(0.030, 0.036, pt - 1.88, 8), px, (pt + 1.88) / 2, pz);
-    P.add('hullDark', box(0.07, 0.05, 0.07), px, pt - 0.03, pz);
+  // REAR SENSOR DECK (Order-B retune — the warped print's band B): a
+  // raised equipment deck over the hull rear, z -1.37..-2.26, tops 2.31
+  // out to x ±1.45 (ref front cols ±1.42-1.47 read 2.25-2.33), standing
+  // on legs over the 1.55-1.62 rear deck; louver seams + edge sills keep
+  // it §B3-identifiable (the hybrid pack's roof radiator/APU deck).
+  P.add('hull', box(2.86, 0.10, 0.88), 0, 2.26, -1.815);     // deck slab (top 2.31)
+  P.add('hullDark', box(2.78, 0.02, 0.80), 0, 2.305, -1.815); // dark inset field
+  if (P.q) for (let k = 0; k < 4; k++) {
+    P.add('hullDetail', box(2.74, 0.014, 0.05), 0, 2.312, -1.50 - k * 0.21); // louver seams
   }
-  P.decal('hull', 'number', P.spec.visual.number || '', 0.34, [1.80, 0.8, -0.6], Math.PI / 2);
-  P.decal('hull', 'number', P.spec.visual.number || '', 0.34, [-1.80, 0.8, -0.6], -Math.PI / 2);
+  for (const lx of [-1.05, -0.35, 0.35, 1.05]) {
+    P.add('hull', box(0.16, 0.62, 0.55), lx, 1.92, -1.815);  // support legs
+  }
+  P.add('hullDetail', box(2.86, 0.035, 0.03), 0, 2.295, -1.385); // fore sill
+  P.add('hullDetail', box(2.86, 0.035, 0.03), 0, 2.295, -2.245); // aft sill
+  // (decals ride the 1.79 skirt face after the width re-architecture;
+  // 1.5 mm proud = sub-AA per the 16%-coverage pixel math)
+  P.decal('hull', 'number', P.spec.visual.number || '', 0.34, [1.7915, 0.8, -0.6], Math.PI / 2);
+  P.decal('hull', 'number', P.spec.visual.number || '', 0.34, [-1.7915, 0.8, -0.6], -Math.PI / 2);
+  // AX SKIRT (hand-rolled, Order-B retune — see AX_HULL.skirt note): six
+  // kneed panels on the ±1.79 face, tops on the deck line, bottoms LOW
+  // over the idler then raised to 0.80 so the road wheels read (§B8.1),
+  // seam sticks between panels, and the full-length RUB RAIL whose outer
+  // face at ±1.828 is the committed width plane (WIDTH GUARD).
+  {
+    const skTop = (z) => Math.min(1.745, deckAt(AX_HULL, z) - 0.015);
+    const skBot = (z) => lineAt([[3.68, 0.52], [2.30, 0.52], [1.80, 0.80], [-2.95, 0.80], [-3.30, 0.62], [-3.56, 0.62]], z);
+    const edges = [3.68, 2.62, 2.30, 1.80, 0.62, -0.62, -1.85, -2.95, -3.56];
+    for (const side of [-1, 1]) {
+      for (let k = 0; k < edges.length - 1; k++) {
+        const zF = edges[k], zR = edges[k + 1];
+        const t0 = skTop(zF), t1 = skTop(zR);
+        const b0 = skBot(zF), b1 = skBot(zR);
+        sideSlab(P, 'hull', side,
+          [1.770, b0, zF], [1.805, b0, zF], [1.805, b1, zR], [1.770, b1, zR],
+          [1.770, t0, zF], [1.805, t0, zF], [1.805, t1, zR], [1.770, t1, zR]);
+        if (P.q && k < edges.length - 2) {
+          P.add('hullDark', box(0.014, (Math.min(t1, 1.6) - Math.max(b1, 0.55)) * 0.86, 0.016),
+            side * 1.798, (Math.min(t1, 1.6) + Math.max(b1, 0.55)) / 2, zR);
+        }
+      }
+      // full-length rub rail — outer face ±1.828 = the committed width
+      P.add('hull', box(0.023, 0.042, 7.17), side * 1.8165, 0.79, 0.075);
+    }
+  }
   // ---- REAR PLATE KIT (rear round 2026-08-06, owner "fix m1 butts" family
   // order): the default abramsHull kit sat BURIED inside the -3.97 tail
   // loft (noRearFace now set) and the old pintle at -3.915/-3.925 was
@@ -4921,24 +5149,30 @@ function buildAbramsX(P) {
     [-0.52, 0.18, 2.567], [0.52, 0.18, 2.567], [1.60, 0.30, 2.22], [-1.60, 0.30, 2.22]));
   P.add('turret', slab(   // face slope up to the roof plateau
     [-1.70, -0.38, 2.28], [1.70, -0.38, 2.28], [1.70, -0.34, 1.04], [-1.70, -0.34, 1.04],
-    [-1.62, 0.30, 2.24], [1.62, 0.30, 2.24], [1.62, 0.51, 1.06], [-1.62, 0.51, 1.06]));
+    [-1.65, 0.30, 2.24], [1.65, 0.30, 2.24], [1.65, 0.48, 1.06], [-1.65, 0.48, 1.06]));
   P.add('turret', slab(   // plateau body
     [-1.70, -0.34, 1.08], [1.70, -0.34, 1.08], [1.70, -0.28, -0.11], [-1.70, -0.28, -0.11],
-    [-1.62, 0.51, 1.08], [1.62, 0.51, 1.08], [1.62, 0.51, -0.11], [-1.62, 0.51, -0.11]));
-  P.add('turret', slab(   // 2.39 shelf with the undercut rise
+    [-1.65, 0.48, 1.08], [1.65, 0.48, 1.08], [1.65, 0.48, -0.11], [-1.65, 0.48, -0.11]));
+  // Order-B retune: the batch-20 warp compressed the print's shell above
+  // its 2.30 knee — the ref shelf/tail now read ~2.33/2.22 world. The
+  // shelf and stern follow the warped print DOWN (turret-row work order);
+  // the fore plateau HOLDS the published 2.44-2.46 roof (dims sovereign —
+  // heightM p95 anchors there; the plateau columns' +0.12 over the
+  // over-compressed print is the round's certified turret cap, packet).
+  P.add('turret', slab(   // shelf falling to the warped 2.33 line
     [-1.70, -0.28, -0.07], [1.70, -0.28, -0.07], [1.70, -0.16, -1.29], [-1.70, -0.16, -1.29],
-    [-1.62, 0.51, -0.07], [1.62, 0.51, -0.07], [1.62, 0.44, -1.31], [-1.62, 0.44, -1.31]));
-  P.add('turret', slab(   // rear chamfer to the flat stern
+    [-1.65, 0.48, -0.07], [1.65, 0.48, -0.07], [1.65, 0.375, -1.31], [-1.65, 0.375, -1.31]));
+  P.add('turret', slab(   // rear chamfer to the flat stern (warped 2.22 class)
     [-1.70, -0.16, -1.29], [1.70, -0.16, -1.29], [0.78, 0.06, -2.14], [-0.78, 0.06, -2.14],
-    [-1.62, 0.44, -1.31], [1.62, 0.44, -1.31], [0.78, 0.18, -2.14], [-0.78, 0.18, -2.14]));
+    [-1.65, 0.375, -1.31], [1.65, 0.375, -1.31], [0.78, 0.11, -2.14], [-0.78, 0.11, -2.14]));
   P.add('turretDark', box(1.5, 0.10, 0.03), 0, 0.06, -2.14);
-  P.add('turretDetail', box(2.1, 0.03, 0.7), 0, 0.49, 0.2);
+  P.add('turretDetail', box(2.1, 0.03, 0.7), 0, 0.462, 0.2); // rides the 0.48 plateau
   if (P.q) {
     for (const side of [-1, 1]) {
       P.add('turretDark', box(0.02, 0.5, 0.02), side * 1.30, -0.16, 2.30, -0.35, 0, 0);
       P.add('turretDark', box(0.02, 0.02, 3.2), side * 1.58, 0.40, 0.35);
-      P.add('turretDetail', box(0.24, 0.03, 0.03), side * 0.9, 0.505, -0.01);
-      P.add('turretDetail', box(0.24, 0.03, 0.03), side * 0.9, 0.505, 0.89);
+      P.add('turretDetail', box(0.24, 0.03, 0.03), side * 0.9, 0.462, -0.01);
+      P.add('turretDetail', box(0.24, 0.03, 0.03), side * 0.9, 0.462, 0.89);
       P.add('turretDetail', box(0.03, 0.30, 0.03), side * 1.3, 0.28, -1.65);
     }
   }
@@ -4955,9 +5189,16 @@ function buildAbramsX(P) {
     [-0.26, 0.18, 0.135], [0.26, 0.18, 0.135], [0.28, 0.18, -0.205], [-0.28, 0.18, -0.205]), 0, 0.02, 0.02);
   P.addGunExtraDark(box(0.50, 0.03, 0.03), 0, 0.12, 0.20);
   P.addGunExtraDark(cylZ(0.04, 0.16, 10), 0.22, 0.08, 0.18);
-  buildGun(P, { len: 3.60, r: 0.10, sleeve: true, evac: 0.5, collar: true, baseR: 0.14 });
-  P.add('gun', box(0.24, 0.24, 0.5), 0, 0, 2.68);
-  P.add('gun', box(0.24, 0.24, 0.5), 0, 0, 2.68, 0, 0, Math.PI / 4);
+  // Order-B retune: NO bore-evacuator bulge (the real XM360 runs a slim
+  // integrated shroud — §B3.1 authors the real weapon; the bulge also
+  // broke the dims body filter once the whips came down: with rough 2.46
+  // the 12% band threshold is 0.295 m, and any gun feature over it
+  // re-classifies its column as BODY and drags hullLengthM to the muzzle).
+  // Muzzle device boxes slimmed 0.24 -> 0.20 for the same reason (the
+  // 45-deg box's 0.34 diagonal was the 9.09 m hullLengthM read).
+  buildGun(P, { len: 3.60, r: 0.10, sleeve: true, collar: true, baseR: 0.14 });
+  P.add('gun', box(0.20, 0.20, 0.5), 0, 0, 2.68);
+  P.add('gun', box(0.20, 0.20, 0.5), 0, 0, 2.68, 0, 0, Math.PI / 4);
   P.add('gunDark', cylZ(0.115, 0.26, 12), 0, 0, 3.42);
   P.add('gun', cylZ(0.125, 0.1, 12), 0, 0, 3.25);
   P.add('gunDark', torus(0.09, 0.02, 12), 0, 0, 3.55, Math.PI / 2, 0, 0);
@@ -4992,18 +5233,26 @@ function buildAbramsX(P) {
       P.add('hullDetail', box(0.014, 0.10, 0.12), sx * 1.56, 1.41, 3.52);
       P.add('hullDark', box(0.008, 0.085, 0.10), sx * (1.56 + 0.006), 1.41, 3.52);
     }
-    // Whip-mast base furniture (junction boxes + guy collars) — interior to
-    // the two whip columns the masks already carry at (±1.15, -1.98).
+    // Whip-mast base furniture (§B3.2): junction boxes at the mast feet ON
+    // the rear sensor deck (tops under the masts' own 2.47 columns).
+    // Rides the AX_WHIPS_TURRET toggle with its masts (coupled landing).
     for (const sx of [-1, 1]) {
-      P.add('hullDark', box(0.09, 0.09, 0.06), sx * 1.15, 1.88, -1.98);
-      P.add('hullDetail', box(0.07, 0.05, 0.05), sx * 1.15, 2.28, -1.98);
-      P.add('hullDark', cylY(0.034, 0.034, 0.03, 8), sx * 1.15, 2.05, -1.98);
+      if (AX_WHIPS_TURRET) {
+        P.add('turretDark', box(0.07, 0.05, 0.06), sx * 1.15, 0.335, -1.50);
+      } else {
+        P.add('hullDark', box(0.07, 0.05, 0.06), sx * 1.15, 2.335, -1.89);
+      }
     }
     // Glacis tie-down D-rings, half-sunk (sub-alpha class).
     for (const [dx, dz] of [[-0.55, 2.65], [0.55, 2.65], [-0.55, 1.80], [0.55, 1.80]]) {
       P.add('hullDetail', torus(0.028, 0.008, 10), dx, deckAt(AX_HULL, dz) + 0.006, dz, Math.PI / 2, 0, 0);
     }
   }
+  // §C proxy-size law (leclerc stale-proxy class): without an explicit
+  // muzzleZ the gun shadow proxy runs to the spec's cloned 5.28 m barrel
+  // (world z +7.48, 1.7 m past the real XM360 tip) — pin it to the real
+  // gun-local muzzle (tube cap 3.58 + bore rim).
+  P.muzzleZ = 3.58;
   P.topY = 1.6;
 }
 

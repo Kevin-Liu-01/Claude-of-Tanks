@@ -240,3 +240,13 @@ back-to-back at the verdict tree) — re-freeze on re-cert.
 ### VISIBILITY RE-CERT RATIFIED (2026-08-06): RE-FREEZE ff97bc44 CONFIRMED
 (floor 9.1+; owner-question YES — docs/critique/shaded-parity-abrams-
 visibility-recert.md).
+
+## CROWS-REWORK ROUND (2026-08-06/07, abrams builder — §4.999a; family
+## round home m1a1.md, per-station table + laws there)
+CWS re-authored as ONE aim-frame assembly at +90 deg (the frontal shield
+pins the azimuth — it swings out of the certified z window at any other
+rest yaw; shield byte-identical). Ammo can re-hung GUN-LEFT with cradle
+bracket + feed chute (M2 feeds left, §7 nit); flush ring conduit. GATE
+HELD EXACT x2: 79.0 | 91.7/79/85.7/92.5/100/100. Winding mode-2: 0
+candidates. Candidate hash in m1a1.md close table — re-freeze on the
+re-cert critic's verdict.

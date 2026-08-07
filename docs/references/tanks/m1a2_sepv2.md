@@ -435,3 +435,16 @@ at the verdict tree) — re-freeze on re-cert ratification.
 ### VISIBILITY RE-CERT RATIFIED (2026-08-06): RE-FREEZE 83277374 CONFIRMED
 (floor 9.1+; owner-question YES — docs/critique/shaded-parity-abrams-
 visibility-recert.md).
+
+## CROWS-REWORK ROUND (2026-08-06/07, abrams builder — §4.999a; family
+## round home m1a1.md, per-station table + laws there)
+CROWS II tall made coherent (yoke spans the +sepTall gap, collar, can
+GUN-LEFT + bracket + chute, IR pod, R1 conduit) + §4.999a PARTIAL ARMOR:
+armored crown plate under the lick line + head brow plate (proud flank
+plates are structurally unpayable — the graduate's z window leaves ~5 mm
+per receiver flank and the plan-pixel flips price anything prouder;
+documented). Twin-fifty loader station byte-identical (its shield is
+correctly forward). GATE HELD EXACT x2: 60.3 |
+93.2/60.3/80.6/83.6/100/100. Mode-2: 5519 px = the certified works
+field EXACT (no new stranding). Candidate hash in m1a1.md — re-freeze on
+re-cert.

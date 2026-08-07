@@ -245,3 +245,14 @@ at the verdict tree) — re-freeze on re-cert ratification.
 ### VISIBILITY RE-CERT RATIFIED (2026-08-06): RE-FREEZE 4891abb6 CONFIRMED
 (floor 9.1+; owner-question YES — docs/critique/shaded-parity-abrams-
 visibility-recert.md).
+
+## CROWS-REWORK ROUND (2026-08-06/07, abrams builder — §4.999a; family
+## round home m1a1.md, per-station table + laws there)
+CROWS II made coherent: CRADLE YOKE drum->receiver, head/drum contact
+collar (re-seated under the head after the first cut re-priced the
+head/riser gap columns — decoded, gate returned EXACT), day/thermal/LRF
+RE-FACED to the AIM face (1 mm proud = sub-AA), can GUN-LEFT + bracket +
+chute, IR pointer pod. Rest azimuth +90 deg window-pinned (head depth
+0.200 in the 0.206 usable window). GATE HELD EXACT x2: 61.5 |
+92/61.5/83.4/92.3/100/100. Mode-2: 0 candidates. Candidate hash in
+m1a1.md — re-freeze on re-cert.

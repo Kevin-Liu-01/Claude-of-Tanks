@@ -274,3 +274,140 @@ achievable rows dims/floaters HELD 100. Stations decode: i1 8.7% = the
 census M240 + closure zone (final-state re-run identical) (owner-density trade on a capped mask);
 i3 67% / i12 25% pre-existing print classes. track-clip --exact: band
 rear 8 (pre-existing, <=60 bar), shoe 0/0 ✓. turret-parent 0/0/0.
+
+## COMBINED ROUND — CROWS REWORK + ORDER-B BUILD-UP (2026-08-06/07,
+## abrams builder, registry §4.999; non-graduate, gate-in-loop)
+
+### ORACLE STATE CORRECTION (supersedes the "certified caps" above)
+The 2026-08-01 cap narrative describes the PRE-WARP print. Oracle-repair
+batch-20 (commit 42ec7e8, 2026-08-02) COMPRESSED the GLB above its 2.30
+knee: RWS bridge band 3.0-3.47 -> 2.44-2.451, whips 4.13 -> ~2.47, tube
+pinned to rear+9.77. Re-derived this round from the CURRENT file
+(tmp-abrams-refcurves + the gate's own worst tables):
+- bridge band A: z +1.06..-0.85, tops 2.43-2.46, front x -0.57..+0.55;
+  a step-down to ~2.10 whose z-seat measures ~1.45-1.74 in the gate's
+  registered frame (an A/B bisect against a 1.09-1.40 seat read -9.7 on
+  the hull row);
+- slot z -0.9..-1.3 (tops = deck 1.5-1.7), then band B (rear sensor
+  deck) z -1.37..-2.26, tops 2.29-2.35 out to x ±1.45, whip MASTS at
+  (±1.13-1.15, -1.9..-2.05) topping 2.46-2.47;
+- the SHELL itself is warp-compressed: plateau ~2.33, shelf ~2.33, tail
+  ~2.22/1.71-1.74 (the warp's 2.30 knee caught the turret node too);
+- skirt: face ±1.80-1.81, top SLOPING with the deck line (1.36 bow ->
+  1.745 rear), bottoms LOW over the idler then raised ~0.80 with the
+  road wheels exposed (§B8.1), plus a full-length rub strip at ±1.83,
+  y 0.77-0.81 — the print's own widest content (widthM carrier);
+- corner pod belt runs to x ±1.665 at tops 2.31-2.32.
+THE OLD "3.2-3.46 band certified unreachable / registration pollution"
+CAPS ARE RETIRED. The remaining structural caps are: (1) PLATEAU CAP —
+published heightM 2.44 is sovereign, the proc plateau anchors p95 at
+2.43-2.46 while the warped shell reads ~2.33: ~8-10 turret side columns
+carry +0.10-0.13 err by construction (batch-20 OVERSHOT on the turret
+node; orchestrator warp candidate: turret-node knee 2.44 or a
+decompression pass — normalize plan below); (2) the deck-step/slot seats
+teeter ±2-5 row pts with the print's articulated-shell registration
+(dAlong 0.02-0.05 across configs; minimax seats banked in code
+comments); (3) station i12 topPct 25.1 and i1 8.8 (the census-M240
+trade) are pre-existing print classes unchanged all round.
+
+### ORDER A on this mark — XM914 station rework (§4.999a)
+The 30 mm run was BURIED inside the bridge-deck slab (receiver fully
+interior; only a muzzle stub past z 1.45 read). Rebuilt as ONE coherent
+station on rest azimuth +34 deg (0.60 rad, toward the left bow quarter
+— the family's only station with true yaw freedom: the deck envelope
+hides every solid from all three masks): slew drum + receiver housing
+with pale cover lick at the 2.435 cap plane + exposed barrel run with
+muzzle block and §B3.1 dark bore tip + EO box with aim-face aperture +
+ammo can GUN-LEFT with feed chute + flush conduit lick toward the mast
+head. Rest yaw documented: +34 deg. The old dead-forward stub and its
+z 1.43 light-pod column retired WITH the step retune (ref reads 2.10
+there post-warp).
+
+### ORDER-B retune log (gate-in-loop; every step measured)
+baseline 6.2 | 6.2/10.3/75.3/69.6/100/100 (the ledger row)
+-> whips 4.12 -> 2.47 masts on a new REAR SENSOR DECK (band B: slab +
+   louvers + legs + sills, z -1.37..-2.26, tops 2.31; the 4.12 rods were
+   the documented batch-20 retune debt: d +1.65..+1.76 on 4 front + 2
+   side columns), old 3-pot cluster retired; bridge deck re-seated
+   z -0.84..+1.47 with the left edge at -0.57 (ref span) and the
+   step-down wedge 1.45 -> 1.74; corner-pod SENSOR WINGS to ±1.665 at
+   2.31; XM360: NO evacuator bulge (the real XM360 runs a slim shroud;
+   the bulge also broke the dims body filter once the whips came down —
+   rough 2.46 puts the 12% band threshold at 0.295 m and the 45-deg
+   muzzle box's 0.34 diagonal dragged hullLengthM to 9.09; muzzle boxes
+   slimmed 0.24 -> 0.20) -> 52.7 | 52.7/44.6->45/68.9-69.7/79.4/100/100
+-> shell follows the warped print DOWN where dims allow: shelf 2.46 ->
+   2.325w, stern 2.13 -> 2.06w, top rings widened ±1.62 -> ±1.65,
+   plateau 2.46 -> 2.43 (inside the 1% grace; heightM p95 anchors 2.43)
+-> SKIRT re-architecture (§B8.1 WHEEL EXPOSURE — the first full-depth
+   cut walled off the running gear and failed the glance test, caught on
+   the REF|PROC pair): hand-rolled kneed panels (noSkirt + AX-side
+   build): face ±1.805, tops on the deck line, bottoms 0.52 over the
+   idler rising to 0.80 (wheels read), seam sticks, full-length rub rail
+   with outer face ±1.828 = the committed 3.66 width plane (WIDTH
+   GUARD); §B2 rear closure kit trimmed inside the new face; decals on
+   the face (1.5 mm proud, sub-AA)
+-> FINAL 49.4 | 56/49.4/68.6/76.4/100/100 (x2 at close below)
+LADDER vs baseline: hull +49.8, whole +39.1, stations +6.8, dims 100
+HELD, floaters 100 HELD; turret 75.3 -> 68.6 is the HONEST RE-DECODE:
+the old 75.3 was measured under the retired whip-polluted registration
+(the 2026-08-01 "+0.16-0.20 dy pollution" note), and the plateau cap
+above binds ~8-10 columns; ceiling with a dims-pinned plateau measures
+68-72 across seats (teeter documented).
+
+### §C.1 winding + §B5 (the two banked re-cert orders — both resolved)
+- rev-1/12px order: the latent reversed piece was the MIRRORED corner
+  pod slab (side=-1 handed slab() the opposite ring handedness) — bound
+  through sideSlab; a step-wedge slab introduced mid-round was caught
+  reversed by the same audit and re-wound. CLOSE STATE: mode-1 rev 0 /
+  mix 0, verdict CLEAN; a 12 px @top hairline at the stern lip
+  (z -3.95, y 1.33, x ±0.93 — the abramsHull tail-shelf class,
+  pre-existing, no reversed piece attached) is the honest residual.
+- whip yaw-stranding (mode-2 HARD): the REAL AbramsX carries the whips
+  on the turret bustle corners, but the ORACLE bakes them (and the whole
+  band-B deck) into its HULL mask — ORACLE-REGISTRATION-PINNED class
+  (m1a2 works-field precedent). A proc-only re-parent regresses the
+  matched hull columns, so the fix is COUPLED: turretFollowers extension
+  on the abramsx MODEL_SOURCE registration (userdrops4.js — outside this
+  builder's single-owner file) + the READY turret-side branch behind
+  AX_WHIPS_TURRET in buildAbramsX (pods re-based on the shell chamfer,
+  mast tops 2.47, world pose preserved at rest) in ONE landing.
+  mode-2 close state: 8949 px candidates, top rig_hull/mesh#25 (the
+  masts + band-B deck at 2.36-2.47 static under the yawing shell) —
+  ADJUDICATED BY-DESIGN pending the coupled landing: it is the print's
+  own architecture (its hull mask carries the identical static band).
+- §C proxy-size law: buildAbramsX now pins P.muzzleZ = 3.58 (the gun
+  shadow proxy ran to the cloned spec's 5.28 barrel = world z +7.48,
+  1.7 m past the real tip — the leclerc stale-proxy class).
+
+### §B8.1 four-box (close state, world)
+hull x ±1.83 (3.66 committed) y 0.01..2.47 z -4.01..+3.97 (7.98);
+turret (shell) x ±1.70 y 1.55..2.43 z -2.53..+1.85 + gun to z +5.80
+(overall 9.81 ≈ published 9.77 +0.4%); heightM p95 2.43-2.46 vs 2.44.
+Identity read: low-profile unmanned hex shell (0.9 m tall), XM360 slim
+angular shroud with bore, kneed slab-side skirts with exposed wheels,
+raised twin-mast rear sensor deck, corner pod wings — the four-view
+REF|PROC pairs live at shots/abrams-crows-r1/final-abramsx/.
+
+### §I mg census (report-either-way clause)
+mg1+3d STANDS via the stowed FITTINGS M240 on the rear deck (unchanged
+this round; its z -3.02 column cost is priced in the row). The XM914
+remains hand-authored (§B3.1 cylinder run at the print's own bridge
+station under the deck clamp) — the census exception narrative from the
+rear round is RESOLVED as "census satisfied, XM914 justified" and needs
+no further exception.
+
+### CLOSE PROOFS (this round)
+GATE x2 IDENTICAL: 49.4 | 56/49.4/68.6/76.4/100/100 (vs the 6.2 |
+6.2/10.3/75.3/69.6/100/100 ledger row — min +43.2). Hash x2: 92aed610
+-> 9c059ce0 (44/68208). Winding mode-1 CLEAN (rev 0, the 12px stern
+hairline documented above); mode-2 8949px adjudicated by-design pending
+the coupled whip landing. track-clip --exact 0/8 band (pre-existing
+<=60 class) 0/0 shoe; turret-parent 0/0/0; standard-check contig 0,
+census mg1+3d. Evidence: shots/abrams-crows-r1/final-abramsx/ +
+yaw{0,90}-abramsx/. NORMALIZE PLAN (orchestrator lane, §E): batch-20's
+y-compress caught the TURRET node below published height (shell plateau
+~2.33 vs heightM 2.44) — candidate follow-up: re-run the compress with
+the turret-node knee at 2.44 (or a turret-only decompression), which
+would release the ~8-10-column plateau cap and let turret_side re-reach
+~75+ honestly.
