@@ -1015,3 +1015,23 @@ corner), the turret wedge reads generic rather than the AbramsX
 faceted low-profile shroud. Current state: 49.4 | 56/49.4/68.6/76.4/
 100/100, hash 9c059ce0, whips PARKED (autoPivot crater — abramsx.md).
 The round must close the OWNER's look, not just the number.
+
+## 5.09 OWNER ORDER (2026-08-07): NEW LEOPARD ROUND — "update the
+leopard 2a7v, leopard 2 prototype, and leopard 2a4 to match their
+references. for the leopard revolution, close the gaps and empty
+spaces in its turret that dont have plates but are see through to
+the other side. and put a huge automated turret crows system on the
+revolution and other leopards too." Parsed: (1) leo2a7v reference
+round (the queued 77%-hull turret-merge structural rework); (2)
+leopard2_proto reference round (photo class — its print is the
+melted measurement-only oracle); (3) leo2a4 reference round (photo
+class — no oracle, the otco rip was destroyed); (4) leo2_revolution
+§B2 TURRET CLOSURE (see-through gaps = missing plates — REAL plates,
+no willy-nilly fills; photo class governs its §B7 ref-wrong band);
+(5) BIG AUTOMATED RCWS (FLW-200 class, HUGE read, FORWARD per the
+CROWS-FORWARD law) on revolution + 2a7v + proto + 2a4 (graduates
+leo2a5/leo2a6/kf51 excluded pending owner word — re-cert cost).
+SPAWNED immediately (leopard.js free). Graduates hash-guarded:
+leo2a5 e215a738, leo2a6 09912270, kf51 9ac547ac; revolution bbae2c80
+moves by design (photo-class re-freeze after its critic); leo1a5
+1c79188 record held.
