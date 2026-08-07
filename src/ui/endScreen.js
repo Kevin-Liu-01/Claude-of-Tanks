@@ -206,6 +206,22 @@ body.cot-es-armed .cot-end{display:none !important;}
   .cot-es .es-cols{margin-top:9px;}
   .cot-es .es-actions{margin-top:1.4vh;}
 }
+/* MOBILE-QA r1: landscape phones (375-430 pt tall). The centered fixed-height
+   column overflowed BOTH ends on an iPhone SE/13 — BATTLE AGAIN / RETURN TO
+   GARAGE rendered below the fold with overflow:hidden, so the player could
+   not leave the results screen at all. Top-anchor + scroll, compact the hero
+   and tallies so the common case fits without scrolling anyway. */
+@media (max-height:480px){
+  .cot-es{justify-content:flex-start;overflow-y:auto;padding:10px 0 16px;}
+  .cot-es .es-ban{font-size:clamp(24px,9vh,38px);}
+  .cot-es .es-econ{margin-top:8px;}
+  .cot-es .es-eco{padding:6px 12px 7px;}
+  .cot-es .es-eco .v{font-size:19px;}
+  .cot-es .es-tal .v{font-size:14px;}
+  .cot-es .es-cols{margin-top:8px;flex:0 0 auto;max-height:26vh;}
+  .cot-es .es-actions{margin-top:12px;flex:0 0 auto;}
+  .cot-es .cot-es-btn{padding:12px 30px;}
+}
 `;
 
 const fmtTime = (s) => {

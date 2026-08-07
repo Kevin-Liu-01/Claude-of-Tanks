@@ -115,6 +115,21 @@ body.cot-touch-layout .cot-bounce{top:31%;font-size:12px;}
   body.cot-touch-layout .cot-shells{top:calc(max(4px,env(safe-area-inset-top)) + 46px);}
   body.cot-touch-layout .cot-killfeed{top:calc(max(4px,env(safe-area-inset-top)) + 106px);}
 }
+/* MOBILE-QA r1: shell chip label/count collision — at the 48px touch chip the
+   selected slot's long class label (APFSDS, 35px) ran under the ammo count
+   (11px overlap, both bottom-anchored). The keycap badge is hidden on touch,
+   so its top-right corner is free: the count moves there. */
+body.cot-touch-layout .cot-shell .cnt{top:2px;right:3px;bottom:auto;}
+/* MOBILE-QA r1: touch-target floor for chrome the phone shares with desktop.
+   The garage nav row (25px), TECH TREE (27px), era chips (20px), carousel
+   arrows (34px strip) and the battle back button (38px) all sat under the
+   ~40px finger floor; several were genuinely hard to hit on an SE. Padding
+   bumps only — same type, same layout language. */
+body.cot-touch-layout .nv{padding:9px 14px;}
+body.cot-touch-layout .cot-tech{padding:10px 16px;}
+body.cot-touch-layout .cot-era-chip{padding:9px 12px;}
+body.cot-touch-layout .cot-car-arrow{width:44px;}
+body.cot-touch-layout .cot-touch .back{padding:12px 16px;min-height:44px;}
 `;
 
 const SHELL = `<svg viewBox="0 0 34 56" aria-hidden="true"><path d="M17 2 24 15v27H10V15Z" fill="currentColor"/><path d="M8 42h18v10H8z" fill="currentColor"/><path d="M11 25h12" stroke="#1a2025" stroke-width="2"/></svg>`;

@@ -303,6 +303,16 @@ const SETTINGS_CSS = `
   color:#f0b04a;text-shadow:0 2px 14px rgba(0,0,0,.8);}
 .cot-resume .rz-sub{font-size:11px;font-weight:600;letter-spacing:.22em;color:#9fb0bf;
   text-transform:uppercase;}
+
+/* MOBILE-QA r1: landscape phones — the 280px body floor pushed the footer
+   (Close / Reset) past a 375pt viewport; panel fits and the body scrolls. */
+@media (max-height:480px){
+  .cot-set-panel{max-height:96vh;}
+  .cot-set-body{min-height:0;}
+}
+/* MOBILE-QA r1: touch-target floor for the option pills (28px measured). */
+body.cot-touch-layout .cot-set-body button{min-height:40px;}
+body.cot-touch-layout .cot-set-ftr .cot-set-btn{min-height:42px;}
 `;
 
 const GEAR_SVG =
@@ -482,6 +492,14 @@ export function createSettings(opts) {
     (typeof performance !== 'undefined' ? performance.now() : Date.now());
   const replayOwnsScreen = () => kcReplay || nowMs() - kcDoneMs < KC_DONE_GRACE_MS;
   let activeTab = 'controls';
+  // MOBILE-QA r1: a touch device has no keyboard to rebind — the Controls
+  // tab rendered 70+ sub-30px keycap chips (useless, and every one a failed
+  // touch target). Hide the tab and land on Gameplay instead.
+  if (input.isTouchLayout && input.isTouchLayout()) {
+    activeTab = 'gameplay';
+    const tb = root.querySelector('.cot-set-tab[data-tab="controls"]');
+    if (tb) tb.style.display = 'none';
+  }
   let capture = null; // { actionId, slot: 0|1|'pad', chip }
   let escHoldTimer = null; // pending hold-Esc-to-bind timer during capture
   let conflict = null; // { actionId, slot, otherId, otherSlot, code, pad }
