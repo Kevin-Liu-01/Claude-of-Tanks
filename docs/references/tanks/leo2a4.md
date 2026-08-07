@@ -167,3 +167,69 @@ only).
 
 ## 2026-08-06 FLEET MUZZLE-BORE + §C.1 WINDING SWEEP (fleet-sweep one-liner)
 - §B3.1 bore via leoMantletGun (shared with a7v), tube face len-0.02; §C.1 8 reversed re-oriented (leoHullV3 glacis/bow); F-vs-D 131->0; gate no oracle row (render-verified; standard-check contig 0 after the checker law-alignment); hash not frozen; mantlet mass verified per MANTLETS-MANDATORY (db9168c). Mechanism: kit.js muzzleBore shadow-named furniture + orientedSlab guard (3fca39b / 1017339); end-on+quarter crops shots/muzzle-sweep/{before,after}/.
+
+## 2026-08-06 §B8 PROPORTION REWORK (photo-acceptance orders; PROPORTIONS
+## BEFORE DETAIL per §B8.1)
+Orders (docs/critique/photo-acceptance-20260806.md): 1 WHEEL EXPOSURE,
+2 BOW cliff, 3 TURRET PRESENCE (+ rack/smoke profile detail).
+
+### Order done-gates (official rigs; four-box = tmp-b8-measure)
+1. WHEEL EXPOSURE: skirt bottoms 0.78/0.80 -> 0.38 fore blocks / 0.44
+   aft run (rubber lip 0.39..0.44 kissing the 0.395 hub line) = the
+   ordered "skirt bottom at hub line". §B8.1 exposure (skirtBot-wheelBot)
+   /dia = 48% fore / 56% aft (real family 40-70%). Countability: the
+   under-skirt zone rendered ambient-black (merkava r12 13.8L class) —
+   gearFloor + tireHex 0x24261f opt-ins (leoGear passthrough added,
+   undefined defaults, sibling hashes PROVEN below) + seven pale hub
+   discs/side (revolution P-1 recipe, x ±1.486 inside the skirt plane,
+   zero silhouette): seven hubs countable in view-left. Fore-block
+   emphasis = the real stepped line (blocks 6 cm deeper than the run;
+   proud-face relief is width-guard-forbidden at ±1.85).
+2. BOW: nose interior fill's front face (tip-0.40) painted a full-width
+   vertical wall between the tracks — H.noseFillZFront opt-in
+   (byte-identical default, hash-proven) pulls it inside the beak
+   underside's belt-foot band (3.36); the visible under-nose is now the
+   real 48.5° receding plane, TONE-fixed (it rendered 69-82, BRIGHTER
+   than the 58 glacis) by a hooked near-black overlay ON the plane
+   ((0.62,3.48)->(1.05,3.86), rx -0.847 — the +rx first cut floated
+   half-proud/half-sunk, empirically bisected). Lit vertical front is
+   now the real 0.19 m nose band (1.05..1.24). Track horns + shallow
+   glacis read ✓.
+3. TURRET PRESENCE: cheek/mid walls 1.74 -> 1.695w (bustle slab keeps
+   1.74 — the real 2A4 rising bottom line, yaw-honest); aft deck
+   TRUE-UP 1.775 -> 1.70/1.71 one-plane (the old plane stood 8-11 cm
+   over the real hull roof; rear wall/lip yTop follow). Face 2.48-1.695
+   = 0.785 wall + band-to-EMES-lid 2.638-1.695 = 0.943 ~ the ordered
+   0.95. Rest clearance 5 mm at the fore corners; yaw-sweep dip <=2.5 cm
+   at the extreme corner arc = the same margin class the certified
+   1.74-over-1.775 build carried.
+   DETAIL (after gates): bustle rack mid rail + closed end frames +
+   fore/aft end posts; Wegmann banks: heavier plate + support arm +
+   muzzle collar rings per tube. §B3.1 gun run unchanged (leoMantletGun
+   carries the fleet-sweep muzzle bore; no prisms).
+
+### §B8.1 gate table (four-box before -> after)
+- overall 9.660x3.703x2.806 (PERI 2.79 spike; roof 2.48) — unchanged,
+  pub 9.67/3.70/2.48 ✓
+- hull l 7.81 (body 7.72 + mudguard lip, the critique's noted +1.2%
+  residual) — h 1.836 -> 1.771 (deck true-up) ✓
+- turretMass 3.256 l = 42% of hull (<55% merge alarm) ✓ w 2.712 ✓
+- gun bore y 2.00 ✓ muzzle +5.82 (9.68 overall) ✓
+- gear: 7 duals pitch 0.84, raised idler 3.48/1.11 + sprocket -3.19/1.09
+  (§B6 trapezoid) ✓
+- wheel exposure 48/56% + countable ✓ (gate 1); glacis targets carried
+  (gate 2); face 0.785/band 0.943 + boxy VERTICAL family line (gate 3).
+
+### Evidence + battery (2026-08-06)
+shots/leo-a4-b8/{before,after9-probe,final,final-yaw90} (14-view
+photoclass + four-box measures.json per stage; the before set is the
+b8-batch acceptance rig re-run). Battery: winding-audit m1 rev0/mix0
+deficit 0 + m2 clean; track-clip --exact 0/0 band 0/0 shoe (skirt drop
+x-clear by 6 cm); turret-parent 0/0/0; standard-check no-gate (FALSE-0
+law) + clip ✓ contig 0 ✓ mg1+1d ✓; npm test 166 + track-geometry PASS.
+HASHES: leo2a4 5dd00289 -> 551cb30e (58 meshes); graduates PROVEN
+unmoved through both shared-helper opt-ins (leoGear passthrough +
+noseFillZFront): leo2a5 e215a738 / leo2a6 09912270 / kf51 9ac547ac
+(checked before AND after each helper edit); leo2_revolution bbae2c80
+(this round's own candidate). Independent §B8 critic adjudication
+PENDING (builder self-reads are not the bar).

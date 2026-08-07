@@ -2170,3 +2170,58 @@ vehicle's open rack zone, intentionally left.
 
 ## 2026-08-06 FLEET MUZZLE-BORE + §C.1 WINDING SWEEP (fleet-sweep one-liner)
 - §B3.1 r9 flat dark end-cap kept; furniture adds rim+recess read (z 4.985); §C.1 14 reversed re-oriented; F-vs-D 54->1 (3cm mixed sliver); gate HELD x2 EXACT - NOTE pre-existing turret 0.2 at HEAD (ledger said 62.8; batch-37 oracle revert suspected - ORCHESTRATOR ITEM); hash fa1a47fc -> bb2bb60c CANDIDATE; mantlet mass verified per MANTLETS-MANDATORY (db9168c). Mechanism: kit.js muzzleBore shadow-named furniture + orientedSlab guard (3fca39b / 1017339); end-on+quarter crops shots/muzzle-sweep/{before,after}/.
+
+## 2026-08-06 GRAY-RECTANGLE FIX (owner PRIORITY order: "fix the leopard 2
+## revolution from all angles, the gray rectangles are really making it
+## look so weird")
+DEFECT: the r16-e/r18 ring-gap shadow-fill band (deck 1.62 -> wall floors
+1.96-2.05: ~0.4 m of near-black boxes + under-wall curtains at ±1.58)
+rendered as flat gray/black RECTANGLES in every compass/hero view —
+measured (5,7,5) flat at the ambient floor, band 281 px wide in
+view-left. Root causes: (1) NO REAL METAL where the real vehicle has its
+module lower course — half a meter of void can never read as shadow;
+(2) fillDark/recessSteel inherited cableDark's deliberate RAW-clone (no
+ambient-floor hook) so no gradient could render; (3) the r19 grade
+brightened wall tops (inverted vs physics).
+
+FIX (three mechanisms, all angles proven):
+1. REAL §B7 MODULE APRON (turret camo bucket, yaws with the mass): side
+   runs face ±1.60, y 1.735..1.975w, z -2.06..0.70w + RAKED front
+   extensions following the wedge plane (wfz - 0.06 setback, kills the
+   hard vertical start edge) + rear return x ±1.55 face -2.03..-2.08w +
+   8 mm proud turretDark seam strips (module joint grammar). The real
+   MBT Revolution's AMAP side modules hang low over the deck (the
+   A-panel 1.70 bottoms are the same real line); the honest ~11 cm
+   shadow slit over the 1.62 deck remains. Side-row floors in the apron
+   span (certified 1.79/1.90/2.045w staircase) re-price under the
+   standing §B7 turret cap — packet-documented, RENDER-ONLY round (the
+   oracle is BROKEN at HEAD: batch-37 revert; gate NOT run by order).
+2. UNDER-WALL CURTAINS DELETED (the single biggest side-view carrier);
+   their §B2 oblique-daylight duty moved to the real apron.
+3. SHADOW RE-TONE: fillDark 0x1f231a -> 0x3a4033 + rehook (ambient
+   floor ON — raw-clone darkness stays cableDark's certified lever, the
+   fills split off it); grade INVERTED to physics (top faces 0.38,
+   walls 1.22 bottom -> 0.42 top: darkest under the overhang,
+   bounce-lit at the deck); fill tops 1.95 -> 1.78 (overlap band
+   1.735..1.78 under the apron — no sight-line slit; ring-belt V-stairs
+   now hang INTO the slit as real structure); fore-low fill ±0.60 ->
+   ±0.48 / z end 2.28 -> 2.20 (tucked inside the mantlet collar
+   footprint); recessSteel 0x262b22 -> 0x333931 + rehook + inverted
+   grade (0.45/0.90/1.26 -> 0.58) — steel-vs-shade separates at close
+   range.
+
+PROOF (render-only, official photoclass rig, 14 views + yaw90):
+shots/leo-rev-gray/{before,before-yaw90,after,after2,after2-yaw90}.
+Before: black band y350-376 x181-461 px (view-left), pure (5,7,5).
+After2: band GONE in all 8 compass + 3 hero + 2 close views; under-gun
+shade reads graded steel; yaw90 pair — apron/fills rotate as one mass
+(§B5 unity). Battery: winding-audit m1 rev0 mix0 deficit 0px / m2 clean
+(coinc-dominated); track-clip --exact 0/0 band + 0/0 shoe; turret-parent
+stranded-2 = PRE-EXISTING whole-bucket false-flag (identical at clean
+HEAD, verified by stash A/B — documented negative, my pieces
+turret-parented); standard-check clip/contig/decor ✓ (gate columns VOID
+this round: broken oracle, turret 0.2 pre-exists at HEAD); npm test 166
++ track-geometry PASS. HASH: bb2bb60c -> bbae2c80 NEW CANDIDATE
+(supersedes bb2bb60c pending the batch re-cert; meshes 82 -> 80: the
+two curtain meshes deleted). Graduates untouched: leo2a5 e215a738 /
+leo2a6 09912270 / kf51 9ac547ac verified before and after.

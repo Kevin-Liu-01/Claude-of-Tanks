@@ -814,3 +814,11 @@ freeze decoration until these pass):
   SHOE-STACK envelope (pin caps included), not the band apex. GATE
   FLOATERS = projected islands: stalked furniture needs >=10px-projected
   brackets at gate resolution.
+- SHADOW-TONE PHYSICS (§C, revolution gray fix): raw-clone shadow
+  furniture renders unmovable black (no ambient floor — rehook before
+  grading); grade DIRECTION is physics (top-dark under overhangs,
+  bounce-lit at the deck); and NO TONE PASS RESCUES AN OVERSIZED VOID —
+  a 0.4m band needs real geometry (§B7 apron) + an honest slit.
+  FITTING-CAP heightM p95: wide-span roof fittings own the p95 across
+  columns — whatsat the fitting AABB before seating roof weapons on
+  published-height builds.

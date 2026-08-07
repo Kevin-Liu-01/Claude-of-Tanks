@@ -79,7 +79,7 @@ re-freeze NEW hash, all in ONE commit.
 | t84 | 04707a9c | |
 | m47_patton | 2fc99c50 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | leo2a5 | e215a738 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
-| leo2_revolution | fa1a47fc -> bb2bb60c CANDIDATE (bore+winding sweep, batch re-cert in flight) |
+| leo2_revolution | bbae2c80 CANDIDATE (gray-rectangles fixed with the real §B7 apron; supersedes bb2bb60c; render-proven — gate stays barred until the oracle adjudication 4.995) |
 | m46_patton | 108806c8 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | centurion3 | 50273080 | bore resit RATIFIED (end 9.2; occlusion class fixed) |
 | m1a2_sepv2 | 83277374 | visibility re-cert RATIFIED (floor 9.1+, owner-question YES) |
@@ -374,6 +374,14 @@ removed (m1a2 37%/bmp2 25%/tiger1 7%); true ramp normals; hash+gate
 neutrality proven; COMBAT SUITE NOW 253 CHECKS (was 233 — update future
 briefs). Queue: ARCHITECTURE.md §2.3 trackShapes addendum (owner WIP in
 docs/ — orchestrator lands it when free).
+
+## 4.9996 LEOPARD TRIPLE LANDED: revolution grays FIXED (real apron +
+physics-graded fills, candidate bbae2c80); leo2a4 §B8 rework (48/56%
+wheel exposure, real nose band, turret trued — 551cb30e); leopard2_proto
+BUILT (V3 delta + PT turret + cast mantlet, gate 45.6-at-melted-cap,
+f1af7ba8). All three DELIVERED-PENDING-CRITIC (§B8 resit spawned).
+MY-LANE ADD: proto MODEL_SOURCE flip to procedural (drains Sources;
+keep the GLB as the measurement override — flip-era mechanics).
 
 ## 5. IN-FLIGHT AGENTS (SUPERSEDED BY §12 — the 2026-08-05 device
 handover interrupted these; respawn per §12)

@@ -94,3 +94,92 @@ plain kit-native fits.
 
 ## 2026-08-06 FLEET MUZZLE-BORE + §C.1 WINDING SWEEP (fleet-sweep one-liner)
 - §B3.1 bore on the plain tube (len 4.80); §C.1 2 reversed re-oriented (leoHull glacis); F-vs-D 149->0; gate HELD x2 EXACT (all-0 row pre-existing); hash not frozen; mantlet mass verified per MANTLETS-MANDATORY (db9168c). Mechanism: kit.js muzzleBore shadow-named furniture + orientedSlab guard (3fca39b / 1017339); end-on+quarter crops shots/muzzle-sweep/{before,after}/.
+
+## 2026-08-06 §B8 BUILD-UP (owner order: "the leopard 2 prototype and
+## leopard 2a4 need a lot of work"; leopard-family builder round)
+FULL photo-class rebuild in src/vehicles/profiles/leopard.js: the old V1
+leoHull playable-fallback build (67-class fidelity, wrong-era hull lines)
+is replaced by a FAMILY V3 RIG build (leoHullV3 param delta — the rig
+litmus) + a bespoke PT turret/gun.
+
+### Identity delivered (photo class, panzerplace/PT walkarounds)
+- HULL: production Leopard 2 layout on the family V3 rig — one-plane
+  1.70/1.71 aft deck (the a4 §B8 true-up line), family two-slope glacis
+  + beak wings + §B4 lane opt-ins + noseFillZFront 3.36 + the a4 bow
+  shade overlay (cliff killed); EARLY NOSE fit: headlight pods LOW on
+  the nose plate (1.32/3.62 vs the a4's 1.40/3.56); front mudguard
+  assembly + rear flaps (§B4-proven planes); tow cable + tool box
+  (§B3.2 trials-honest kit); Y-014 PT trials number.
+- SKIRTS: prototype-era ONE plain flat full-length line at the ±1.85
+  width anchor, th 0.045, NO sculpted fore blocks, no flap — bottom
+  0.46 = §B8.1 exposure 59% (real 40-70%); hub-line read via gearFloor
+  + tireHex + seven pale hub discs/side (§H.4 tell vs the a4's stepped
+  heavy-block line).
+- TURRET: LOW slab welded box WITHOUT wedge — walls bottom 1.695w
+  (family §B8 face bar), roof plane 2.37w (solids' own tops — a cap
+  plate overhung the tapered plan as top-view ledges, deleted); rounded-
+  in-plan cheek front (TWO co-planar facets per cheek, §B1.1 symmetric,
+  weld seam on the knuckle); stereoscopic rangefinder BLISTERS on both
+  cheeks (dome + collar ring + dark optic cap) straddling the roof edge;
+  base ring bulge WIDER than the walls (±1.30x1.18 ellipse, bottom
+  1.69w, 1.4 cm extreme-arc dip = family margin class); early ring
+  cupola (crown 2.50w — inside the 1% dims grace), loader hatch, gunner
+  periscope, early IR searchlight box (hood + recessed lens, top
+  2.47w), anemometer mast, folded-down whips (a6 precedent), 2x4 early
+  Wegmann clusters LOW on the rear walls, segmented rails + lift eyes,
+  bustle stowage box + strapped kit (stowage/tarp/ammo can), loader MG3
+  pintle (census; mount 0.54 — see the dims lesson), cross decals.
+- GUN (§B3.1): ROUNDED cast mantlet — trunnion roll + ellipsoid dome +
+  tapered boot (never a prism) + coax port; BARE slim 105 smoothbore
+  (no thermal sleeve), r 0.064, mid-tube evacuator, muzzle +6.11 =
+  spec 9.97 overall; kit.js muzzleBore (shadow-named, 3fca39b).
+
+### §B8.1 gate table (four-box, tmp-b8-measure)
+- overall 9.80(box incl bow flap)x3.702x2.63-spike / muzzle 6.11 ✓
+  (spec 9.97 = -3.86 tail -> +6.11 muzzle); roof 2.37; heightM gate
+  reads p95 2.49 (+0.51%, in grace)
+- hull -3.86..3.95 (7.81 box; gate hullLengthM 7.78 +0.81% in grace)
+- turretMass l 3.13 = 40.5% of hull (<55% alarm) ✓ w 2.58 (blisters)
+- gun bore y 1.98 ✓; wheels 7 duals pitch 0.84, §B6 raised idler
+  3.48/1.11 + sprocket -3.19/1.09 ✓; exposure 59% + countable hubs ✓
+
+### DIMS LESSON (banked): FITTING-CAP heightM p95
+The mag pintleMG's receiver band spans SEVERAL side columns — mounted
+at 0.65 local it wrote heightM p95 2.59 (+4.46% = dims 72.3) and the
+value FROZE across three unrelated spike fixes (cupola/whips/mast are
+1-2 columns each; the p95 sat on the MG band). Mount 0.54 -> receiver
+~2.48, p95 falls to the cupola crown 2.49. Wide-span fittings, not tall
+thin spikes, own heightM — whatsat the fitting AABB per slot (§C law)
+BEFORE seating roof weapons on published-height builds.
+
+### Close battery (2026-08-06, official rigs)
+geometry-gate x2: 45.6/0/0/0/100/100 both runs — dims 100 + floaters
+100 HOLD (the certified melted-print cap: whole/turret/stations capped
+~0 BY CERTIFICATE; hullCurves 0 -> 45.6 improved, cap unchanged).
+winding-audit m1 rev0/mix0 deficit 0px + m2 clean; track-clip --exact
+0/0 band 0/0 shoe; turret-parent 0/0/0; standard-check clip ✓ contig 0
+✓ mg1+1d ✓; npm test 166 + track-geometry PASS. Renders:
+shots/leo-proto-b8/{r1,r2,final,final-yaw90} (14-view photoclass +
+probes; yaw-90 pair = §B5 unity, blisters/cupola/MG/bustle rotate as
+one). HASH: f1af7ba8 (56 meshes; old build not frozen). Graduates
+PROVEN unmoved: leo2a5 e215a738 / leo2a6 09912270 / kf51 9ac547ac;
+family: leo2_revolution bbae2c80 (this round) / leo2a4 551cb30e (this
+round).
+
+### 14-view SELF-READS (§B8 honest builder reads, NOT an acceptance bar
+### — independent critic adjudication pending)
+front 8.4 / frontleft 8.5 / left 8.5 / rearleft 8.4 / rear 8.4 /
+rearright 8.4 / right 8.5 / frontright 8.5 / top 8.5 / hero-fl 8.5 /
+hero-rr 8.4 / hero-toptilt 8.5 / close-front 8.2 / close-roof 8.4.
+Weakest named: close-front cheek faces read plain (real PT is plain
+steel there — candidate: casting/weld texture pass); bow shade overlay
+reads uniform at close-front; MG mount rides low (the dims budget —
+candidate: re-seat on a real hatch-ring arm if the id ever loses the
+melted print for a real oracle).
+
+### MODEL_SOURCE NOTE (orchestrator lane)
+The id still ships the melted-tub GLB as the playable (userdrops6.js
+articulated list — a turretless hump in game). This round's proc build
+is the §B8 photo-class replacement candidate: the FLEET-FLIP to
+procedural (MODEL_SOURCE removal) is an orchestrator/landing action
+outside this file's ownership, gated on the independent critic verdict.
