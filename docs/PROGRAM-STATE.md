@@ -863,3 +863,18 @@ classes; §B8.1 gates pass. Watch items banked: dome re-loft follow-up
 density, clamp chip cosmetics. The owner's "and build the t72 b3m"
 override is CLOSED end-to-end (oracle swap ea740e9 -> batch-45 ->
 coupled round cfca3b0 -> re-cert -> re-freeze).
+
+## 5.0 RUSSIA TRIO RESIT: 3/3 PASS 9.0 — OWNER PUNCH LIST 3 FULLY
+CLOSED (2026-08-07; fresh independent critic, hash bracket x2 exact:
+t90sm 55509794 / t90a 71f67270 / vladimir 782bdbc4; sheets
+shots/critic-russia-trio-resit/). All 16 fix-round orders re-verified
+CLOSED in pixels; zero floaters across 42 pairs; owner complaints ALL
+DEAD ("t90sm attachments/RWS/turret" x3, "both t90a turrets wrong" x2
+— t90a's box-stack is a plan-round cast dome, vladimir's dome reads
+over the thinned rim with cupola+Kord). t90sm pano literal remains
+the documented dims-blocked residual (order-substance satisfied).
+PUNCH LIST 3 SCOREBOARD: challenger half 3/3 PASS (§4.999992) +
+russia half 3/3 PASS = 6/6. Combined with this window's other
+acceptances (type10, type74, ww2 resit pair, t72b3m re-freeze), the
+2026-08-06/07 owner-order backlog is CLEAR. Remaining §B8 sub-9.0
+work rides the standing queue, not owner orders.
