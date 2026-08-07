@@ -1124,3 +1124,17 @@ adjust the hull; improve the turret (banked t14.md notes: Afganit
 corner stubs borderline §B3, crown seam density, roof sparsity).
 The print tube-pin stays DEFERRED (certified short-tube cap — agent
 must not chase those columns). Seven builder lanes now live.
+
+## 5.16 OWNER ORDER (2026-08-07): LEO-PROTO/TYPE90/2A4 FAMILY BASIS —
+"the type 90 is based off of it [the leopard prototype] so they can
+share a basis, and the 2a4 is also similar to the type 90, so make
+all of them similar to each other with the type 90 giving the most
+basis and being scaled properly and the type 90 needs a better gun
+placement and mantlet." Split across the two live lanes: (a) LEOPARD
+agent (owns proto + 2a4): rebase both on the type90 grammar (READ
+buildType90 in misc.js read-only — the donor), family read across
+the trio; (b) FRANCE agent (owns misc.js): +1 job — type90 SCALE
+CHECK (the standing too-small flag; dims sovereign, four-box vs spec
++ its registered recovered/type90.glb oracle), BETTER GUN PLACEMENT,
+proper MANTLET (§B3.1; the standing "type 90 needs a mantlet" order).
+Grammar transfers; per-tank dims stay sovereign.
