@@ -1321,3 +1321,21 @@ per-column caps document against the print; the finish round may
 spend those ~30 columns. Follow-up round SPAWNED (misc.js free).
 Leclerc chirality-anchor observation banked (signed-x top map as the
 fleet mirror-scare test).
+
+## 5.29 OWNER REFINEMENT (2026-08-07, REAL PHOTO — T-72B3 obr. 2016
+parade): "this is what i meant by the chevrons for the russian ERA,
+its like two panels of era that meet at a tip. thats what i wanted
+dude! and update all the equipment around and add more machine guns
+to the soviet MBTs." — THE CHEVRON SPEC REFINED: TWO large flat
+soft-case ERA panels angled as a shallow V MEETING AT A POINTED TIP
+at the turret center-front (the obr-2016 wedge read; the photo also
+shows: full-perimeter slat/bar armor on the hull rear + turret rear
+arc, side-skirt flexible squares with the camo print, the NSVT/Kord
+pintle prominent on the cupola, smoke banks angled on the cheek).
+FOLLOW-UP ROUND SPAWNED (russia.js free post-78b89f5): re-shape the
+just-landed chevron banks into the two-panels-at-a-tip read on every
+soviet MBT that carries soft-case ERA fronts + EQUIPMENT DENSITY +
+MORE MACHINE GUNS (pintle NSVT/Kord/PKT per cupola, CROWS-FORWARD
+law) fleet-wide on the soviet MBTs. The in-flight chevron critic's
+verdicts remain useful evidence; the refinement supersedes shape
+verdicts where they conflict.
