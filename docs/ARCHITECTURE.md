@@ -208,6 +208,18 @@ Fidelity bar: 6–14 hull plates + 4–8 turret plates per tank, transcribed fro
 roster armor tables (thickness + angle) at the roster dimensions. ERA on t90m only.
 Spaced: skirts (panther_g, m1a2, leo2a7, t90m rubber half), mantlet outer layers, tracks.
 
+**trackShapes addendum (2026-08-06, fleet-wide).** Track hitboxes are no
+longer per-tank rectangle stacks: `attachTrackShapes` (specs.js) derives one
+convex prism per side from each profile's `trackLoopPoints` at spec time, and
+`tankFactory.trackHitboxHull` mirrors the same derivation for the visual
+debug hull, so the killcam and combat agree by construction. Combat raycasts
+enter through `intersectTrackPrism` (src/sim/armor.js) before the plate walk
+(`moduleLink 'trackL'/'trackR'` semantics unchanged); the killcam renders the
+true trapezoid + loop-following slats via `addTrackPrism`. The prisms are
+derived data — never hand-author them; fix the gear loop instead. Hash/gate
+neutrality was proven at the fleet landing (101/101 profiles, combat suite
+253 checks).
+
 ### 2.4 `TankEntity`, `TankState`, `CombatState`
 Integration composes entities; each sub-object has exactly one owner module.
 ```js

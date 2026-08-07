@@ -461,6 +461,29 @@ where turret reads off) — §B8.1 turret-shape-line pass, mantlets
 mandatory (§B3.1). Spawned 2026-08-06: challenger lane (ch2+ch3+t14),
 russia turret lane (t90sm+t90a pair first, then the soviet sweep).
 
+## 4.99996 MY-LANE BATCH CLOSEOUT (2026-08-06 night): item 4 proto
+FLIP LANDED c769c8a (rig-unchanged proof: gate x2 reproduces the HEAD
+row; hash HELD f1af7ba8). Item 5 abramsx coupled whips PARKED 0cc8dae
+('^Dekali$' followers crater autoPivot — registration-shift class;
+refined narrow-node/pinned-pivot/§E-split work order in abramsx.md;
+certified 49.4 line + hash 9c059ce0 reproduced post-revert). Item 7:
+E8 gunBarrel 3.96->3.44 + t34 4.64->4.00 (packet residuals, stale-
+proxy class, single-consumer armor fns verified); ARCHITECTURE.md §2.3
+trackShapes addendum LANDED (docs/ freed — symbols verified:
+attachTrackShapes specs.js:2013, trackHitboxHull tankFactory.js:442,
+intersectTrackPrism armor.js, addTrackPrism killcam.js:3005).
+REST-AZIMUTH NOTE (the queued re-adjudication): the +95 trial moved
+certified rows — graduate rest yaw is WINDOW-PINNED (transverse); the
+cap stands until a dedicated re-cert wave re-measures each graduate's
+rest azimuth against its print. Do not move rest yaws piecemeal.
+
+## 4.99997 ASK OWNER (standing questions, non-blocking):
+(1) NAME COLLISION: m1a2 and m1a2_tejas BOTH read 'M1A2 Abrams' in the
+garage since the "(Tejas)" strip order — keep the collision, or rename
+one (e.g. tejas -> 'M1A2 Abrams (hero)' or fold the id)?
+(2) CHARIOTEER ERA FLAG: charioteer sits in the coldwar group with a
+WW2-ancestry spec (Cromwell hull) — confirm intended era grouping.
+
 ## 5. IN-FLIGHT AGENTS (SUPERSEDED BY §12 — the 2026-08-05 device
 handover interrupted these; respawn per §12)
 1. DONE+RATIFIED: abrams dual critic (m1a1ha f5c556dc, sepv2 §10 run).

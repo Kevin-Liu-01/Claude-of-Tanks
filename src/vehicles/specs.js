@@ -91,7 +91,9 @@ function armorM4() {
     boundingRadiusM: 4.1,
     turretPivot: [0, 2.18, 0.4],
     gunPivot: [0, 0.35, 0.55],
-    gunBarrel: { lengthM: 3.96, radiusM: 0.07 },
+    // shadow-proxy true-up (m4a3e8.md residual): the built visible run is
+    // 3.44 — the old 3.96 proxy overhung the muzzle (stale-proxy class).
+    gunBarrel: { lengthM: 3.44, radiusM: 0.07 },
     hullPlates: [
       fr('upper_glacis', 63.5, 1.45, 1.0, 3.10, roofY, 2.10),          // 47 deg
       fr('lower_front', 89, 1.45, floor, 2.75, 1.0, 3.10),             // cast transmission nose
@@ -195,7 +197,9 @@ function armorT34() {
     boundingRadiusM: 4.35,
     turretPivot: [0, 1.70, 0.55],
     gunPivot: [0, 0.35, 0.5],
-    gunBarrel: { lengthM: 4.64, radiusM: 0.075 },
+    // shadow-proxy true-up (t34_85.md residual): the built visible run is
+    // 4.00 — the old 4.64 proxy overhung the muzzle (stale-proxy class).
+    gunBarrel: { lengthM: 4.00, radiusM: 0.075 },
     hullPlates: [
       fr('upper_glacis', 45, 1.45, 0.7, 2.95, roofY, 1.30),            // 60 deg
       fr('lower_glacis', 45, 1.45, floor, 2.55, 0.7, 2.95),            // 53 deg
