@@ -228,6 +228,71 @@ function intersectAABB(frame, min, max) {
 }
 
 /**
+ * Segment-vs-track-prism (TRACK-HITBOX schema, specs.attachTrackShapes): a
+ * convex CCW polygon in hull-local (z,y) extruded across the lateral slab
+ * [x0,x1] — the real \____/ band silhouette. Parametric half-space clipping;
+ * on hit, `_prismExitT` holds the exit parameter and (_pnx,_pny,_pnz) the
+ * hull-local outward normal of the ENTRY face (±X side face, or an
+ * approach/departure ramp / end-wheel wrap facet with a real slope). Entry
+ * t = 0 means the segment starts inside (no meaningful entry face).
+ * @param {number} frame frame index (tracks are hull-local: FR_HULL)
+ * @param {object} shape {x0,x1,poly} trackShapes entry
+ * @returns {number} entry parameter t in [0,1], or -1
+ */
+let _prismExitT = 1;
+let _pnx = 0;
+let _pny = 0;
+let _pnz = 0;
+function intersectTrackPrism(frame, shape) {
+  const f = _fromL[frame];
+  const d = _dirL[frame];
+  let t0 = 0;
+  let t1 = 1;
+  let nx = 0;
+  let ny = 0;
+  let nz = 0;
+  if (Math.abs(d.x) < 1e-12) {
+    if (f.x < shape.x0 || f.x > shape.x1) return -1;
+  } else {
+    let ta = (shape.x0 - f.x) / d.x;
+    let tb = (shape.x1 - f.x) / d.x;
+    let na = -1; // entering through the x0 face → outward normal -X
+    if (ta > tb) { const s = ta; ta = tb; tb = s; na = 1; }
+    if (ta > t0) { t0 = ta; nx = na; ny = 0; nz = 0; }
+    if (tb < t1) t1 = tb;
+    if (t0 > t1) return -1;
+  }
+  const poly = shape.poly;
+  const n = poly.length;
+  for (let i = 0; i < n; i++) {
+    const a = poly[i];
+    const b = poly[(i + 1) % n];
+    const ez = b[0] - a[0];
+    const ey = b[1] - a[1];
+    const len = Math.hypot(ez, ey);
+    if (len < 1e-9) continue;
+    const onz = ey / len;  // outward normal of a CCW edge in (z,y)
+    const ony = -ez / len;
+    const d0 = (f.z - a[0]) * onz + (f.y - a[1]) * ony;
+    const dd = d.z * onz + d.y * ony;
+    if (Math.abs(dd) < 1e-12) {
+      if (d0 > 1e-9) return -1; // parallel to the facet and outside it
+      continue;
+    }
+    const tc = -d0 / dd;
+    if (dd < 0) {
+      if (tc > t0) { t0 = tc; nx = 0; ny = ony; nz = onz; }
+    } else if (tc < t1) {
+      t1 = tc;
+    }
+    if (t0 > t1) return -1;
+  }
+  _prismExitT = t1;
+  _pnx = nx; _pny = ny; _pnz = nz;
+  return t0;
+}
+
+/**
  * Segment-vs-barrel-cylinder (axis +Z from the origin, barrel frame).
  * @param {number} lengthM cylinder length along +Z
  * @param {number} radiusM cylinder radius
@@ -272,10 +337,25 @@ export function traceTank(from, to, pose, armorModel, eraSpent = EMPTY_SET) {
   /** @type {Array<object>} */
   const out = [];
 
+  // TRACK-HITBOX schema: real track prisms REPLACE the legacy full-length
+  // rectangle plate + AABB pair for ray tests (specs.attachTrackShapes).
+  // The legacy entries stay in the model for their non-ray consumers
+  // (HE blast targets, hull AABB, killcam bands) — models without
+  // trackShapes keep the legacy path bit-identical.
+  const trackShapes = Array.isArray(armorModel.trackShapes) && armorModel.trackShapes.length
+    ? armorModel.trackShapes
+    : null;
+  const trackCovered = (name) => {
+    if (!trackShapes || !name) return false;
+    for (const s of trackShapes) if (s.module === name) return true;
+    return false;
+  };
+
   const testPlates = (plates, frame) => {
     if (!plates) return;
     for (const plate of plates) {
       if (plate.kind === 'era' && eraSpent.has(plate.name)) continue;
+      if (plate.kind === 'external' && trackCovered(plate.moduleLink)) continue;
       const fr = plate.gunFollow ? FR_GUN : frame;
       const t = intersectQuad(fr, plate.verts);
       if (t < 0) continue;
@@ -294,8 +374,55 @@ export function traceTank(from, to, pose, armorModel, eraSpent = EMPTY_SET) {
   testPlates(armorModel.hullPlates, FR_HULL);
   testPlates(armorModel.turretPlates, FR_TURRET);
 
+  if (trackShapes) {
+    // one module record per module name (min entry / max exit across the
+    // side's prisms — exact single-AABB record semantics for damage.js's
+    // straddler/post-pen sweep); one PLATE record per crossed prism face
+    // (the external track screen, with the true face normal).
+    let spanL = null;
+    let spanR = null;
+    for (const shape of trackShapes) {
+      const t = intersectTrackPrism(FR_HULL, shape);
+      if (t < 0) continue;
+      if (t > 0) {
+        const cosI = Math.min(1, Math.max(0,
+          -(_dirN[FR_HULL].x * _pnx + _dirN[FR_HULL].y * _pny + _dirN[FR_HULL].z * _pnz)));
+        out.push({
+          t,
+          kind: 'plate',
+          plate: shape.plate,
+          point: _pt.copy(_fromL[FR_HULL]).addScaledVector(_dirL[FR_HULL], t)
+            .clone().applyMatrix4(_hullM),
+          normal: _n.set(_pnx, _pny, _pnz).clone().transformDirection(_hullM),
+          impactAngleDeg: Math.acos(cosI) * DEG_PER_RAD,
+        });
+      }
+      const span = shape.module === 'trackL' ? spanL : spanR;
+      if (!span) {
+        const rec = { t, tExit: _prismExitT };
+        if (shape.module === 'trackL') spanL = rec; else spanR = rec;
+      } else {
+        if (t < span.t) span.t = t;
+        if (_prismExitT > span.tExit) span.tExit = _prismExitT;
+      }
+    }
+    for (const [module, span] of [['trackL', spanL], ['trackR', spanR]]) {
+      if (!span) continue;
+      out.push({
+        t: span.t,
+        tExit: span.tExit,
+        kind: 'module',
+        module,
+        external: false, // parity with the legacy track AABB record
+        point: _pt.copy(_fromL[FR_HULL]).addScaledVector(_dirL[FR_HULL], span.t)
+          .clone().applyMatrix4(_hullM),
+      });
+    }
+  }
+
   if (armorModel.modules) {
     for (const box of armorModel.modules) {
+      if (trackCovered(box.module)) continue;
       const fr = box.turretLocal ? FR_TURRET : FR_HULL;
       const t = intersectAABB(fr, box.min, box.max);
       if (t < 0) continue;

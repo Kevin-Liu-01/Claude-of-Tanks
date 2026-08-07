@@ -10,7 +10,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
-import { getSpec, MODEL_SOURCE, TANK_SPECS } from './specs.js';
+import { getSpec, MODEL_SOURCE, TANK_SPECS, attachTrackShapes } from './specs.js';
 import { createTankMaterials, makeBurnUniforms, applyBurnHook, vehicleAmbientFloorHook } from './materials.js';
 // MOBILE r1: sourced-GLB swaps are tier-gated (modelLoader also self-gates;
 // checking here skips even the dynamic import + pipeline bookkeeping).
@@ -422,6 +422,86 @@ function trackLoopPoints({ idler, sprocket, botY, topY, sag = 0.03, supports = n
   // heightM reading (geo-gate round-2 finding)
   for (const p of pts) if (p[1] < botY) p[1] = botY;
   return pts;
+}
+
+/**
+ * TRACK-HITBOX HULL (combat data only — never geometry). Owner order
+ * 2026-08-06: killcam track hitboxes read as "a bunch of rectangles". The
+ * band centerline loop from trackLoopPoints IS the real track silhouette
+ * (\____/ run + raised end-wheel wraps), so the hitbox is derived from it
+ * instead of hand-authoring 88 tanks: the loop's convex hull in (z,y),
+ * expanded by `r` (half band thickness + shoe depth) via a Minkowski-sum
+ * approximation, pruned to <= maxV vertices. Pure array math — no THREE, no
+ * side effects; consumed by specs.attachTrackShapes / sim/armor.traceTank.
+ *
+ * @param {Array<[number,number]>} pts band centerline loop [(z,y), ...]
+ * @param {number} r outward expansion in meters (band surface + shoe)
+ * @param {number} [maxV] vertex budget for the hit-test polygon
+ * @returns {Array<[number,number]>} convex CCW polygon in (z,y), mm-rounded
+ */
+function trackHitboxHull(pts, r, maxV = 12) {
+  const cloud = [];
+  const N = 8; // disc facets: max inward facet sag = r·(1-cos(π/8)) ≈ 0.076·r
+  for (const p of pts) {
+    for (let k = 0; k < N; k++) {
+      const a = (k / N) * Math.PI * 2;
+      cloud.push([p[0] + Math.cos(a) * r, p[1] + Math.sin(a) * r]);
+    }
+  }
+  cloud.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const lo = [];
+  for (const p of cloud) {
+    while (lo.length >= 2 && cross(lo[lo.length - 2], lo[lo.length - 1], p) <= 0) lo.pop();
+    lo.push(p);
+  }
+  const hi = [];
+  for (let i = cloud.length - 1; i >= 0; i--) {
+    const p = cloud[i];
+    while (hi.length >= 2 && cross(hi[hi.length - 2], hi[hi.length - 1], p) <= 0) hi.pop();
+    hi.push(p);
+  }
+  const hull = lo.slice(0, -1).concat(hi.slice(0, -1)); // CCW in (z,y)
+  // prune to budget OUTWARD-ONLY (containment guarantee): merge the vertex
+  // pair whose outer edge lines meet with the least added area — the hull
+  // only ever GROWS, so no loop point can leak outside the hit volume (the
+  // old drop-a-vertex chord cut measured points up to 3 cm OUTSIDE).
+  while (hull.length > maxV) {
+    let bi = -1;
+    let bp = null;
+    let ba = Infinity;
+    const n = hull.length;
+    for (let i = 0; i < n; i++) {
+      // candidate: replace the pair (hull[i], hull[i+1]) with the
+      // intersection of line(hull[i-1]→hull[i]) and line(hull[i+1]→hull[i+2])
+      const a0 = hull[(i + n - 1) % n];
+      const a1 = hull[i];
+      const b0 = hull[(i + 1) % n];
+      const b1 = hull[(i + 2) % n];
+      const d1z = a1[0] - a0[0];
+      const d1y = a1[1] - a0[1];
+      const d2z = b1[0] - b0[0];
+      const d2y = b1[1] - b0[1];
+      const den = d1z * d2y - d1y * d2z;
+      if (Math.abs(den) < 1e-9) continue; // parallel support lines
+      const t = ((b0[0] - a1[0]) * d2y - (b0[1] - a1[1]) * d2z) / den;
+      if (t < 0) continue; // intersection behind the edge — reflex-safe guard
+      const P = [a1[0] + d1z * t, a1[1] + d1y * t];
+      const added = Math.abs(cross(a1, P, b0)) / 2;
+      if (added < ba) { ba = added; bi = i; bp = P; }
+    }
+    if (bi < 0) break; // nothing safely mergeable — keep the larger hull
+    if (bi === n - 1) {
+      // wrap pair (last, first): drop both ends, append the merged vertex
+      // (it sits between old hull[n-2] and old hull[1] — CCW preserved)
+      hull.pop();
+      hull.shift();
+      hull.push(bp);
+    } else {
+      hull.splice(bi, 2, bp);
+    }
+  }
+  return hull.map((p) => [Math.round(p[0] * 1000) / 1000, Math.round(p[1] * 1000) / 1000]);
 }
 
 // Road-wheel geometry per style. Returns { tire, disc } (tire may be null).
@@ -1561,6 +1641,19 @@ function buildRunningGear(P, cfg) {
     },
   };
   gearUnit.contactGeom = gearContactGeom;
+  // TRACK-HITBOX metadata (RUNTIME DATA ONLY — no geometry, same channel as
+  // contactGeom): the real band silhouette + lateral extent of this unit's
+  // tracks, derived from the exact loop the visual band was built from.
+  // createTank hands it to specs.attachTrackShapes so hit resolution and the
+  // killcam x-ray follow the true \____/ trapezoid run instead of one AABB
+  // (owner order 2026-08-06). Expansion = half band thickness + 0.045 m shoe
+  // pad/grouser depth (trackShoeGeometries pads reach ~0.05-0.073 outward on
+  // the running faces; the old hand-authored boxes included none of it).
+  gearUnit.trackHitbox = [{
+    x0: xc - trackW / 2,
+    x1: xc + trackW / 2,
+    poly: trackHitboxHull(pts, trackTh / 2 + 0.045),
+  }];
   // Seat this unit's InstancedMesh matrices at rest NOW (scroll 0/0). The
   // instanced wheels/link pads otherwise carry identity matrices — an origin
   // blob reaching ~0.4 m below ground — until someone calls update(). The
@@ -1610,6 +1703,9 @@ function registerGearUnit(P, unit) {
       for (const u of units) u.conform(state, sampler, pitchEff, rollEff);
     },
     setBroken(module, broken) { for (const u of units) u.setBroken(module, broken); },
+    // multi-unit rigs (t95 four-track): one hitbox hull PER UNIT, per side —
+    // attachTrackShapes mirrors each entry to trackL/trackR prisms.
+    trackHitbox: units.flatMap((u) => u.trackHitbox || []),
     contactGeom: {
       halfLenM: (zF - zR) / 2,
       zCenterM: (zF + zR) / 2,
@@ -1842,7 +1938,8 @@ function spareTrackStrip(P, bucket, x, y, z, links, rx = 0, ry = 0) {
 // ---------------------------------------------------------------------------
 export const KIT = {
   xform, box, cylX, cylY, cylZ, sph, torus, lathe, slab, frustum, polyTurret,
-  mergeAll, trackBandGeo, trackLoopPoints, trackShoeGeometries, buildRunningGear, buildGun,
+  mergeAll, trackBandGeo, trackLoopPoints, trackShoeGeometries, trackHitboxHull,
+  buildRunningGear, buildGun,
   cupola, headlight, liftEye, periscope, pintleMG, smokeCluster, towCable,
   fenders, stowage, jerryCan, tarpRoll, ammoCan, shovelTool, spareTrackStrip,
   // Exposed for the recovered Abrams family: those variants layer their own
@@ -3789,6 +3886,16 @@ export function createTank(specId, engineCtx, opts = {}) {
     };
     root.userData.contactGeom = contactGeom;
   }
+
+  // ---- track hitbox attach (combat data only — no geometry writes) --------
+  // Derived by buildRunningGear from the as-built band loop; attached onto
+  // the SHARED spec.armor so every armor consumer (state.js shell sweeps,
+  // damage.js, ai.js weak-spot probes, main.js HUD, killcam snapshots) sees
+  // the real track shape. Deterministic per spec (gear cfg is authored data;
+  // camoSeed/quality never move wheels), so re-attachment on every build is
+  // an idempotent overwrite. Gearless builds (community GLB placeholders)
+  // publish nothing and keep the legacy plate+AABB path untouched.
+  if (P.gear && P.gear.trackHitbox) attachTrackShapes(armor, P.gear.trackHitbox);
 
   // ---- state ----
   let destroyed = false;

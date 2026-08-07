@@ -296,3 +296,140 @@ merkava/uk/casemate/kit) — the verdict hashes remain current at
 hashgeo at the landing commit.
 
 — independent critic, fleet bore+winding re-cert, 2026-08-06
+
+---
+
+# centurion3 RESIT — single-view re-cert of the surgical bore re-seat
+# (a125d0d, one-line muzzleBore re-seat; independent critic, 2026-08-06)
+
+Scope: exactly the failed contract from the campaign above — hashgeo x2
+bracket (centurion3 + frozen-sib chieftain5), gate x2 at the 91.1 line,
+END-ON bore view scored fresh at 2x with my own luma measurement
+(ITU-601 center patch, this doc's method + family void-tone table),
+quarter spot-check. Floor >=9.0. Fresh renders only.
+
+Frame: CLEAN-ROOM WORKTREE at **a125d0d** (== live HEAD at my open AND
+close; live tree carries foreign WIP — modern3/ww2/world/main + three
+render pages — none on my render path, but the worktree is the honest
+frame; uk.js verified CLEAN vs HEAD in the live tree). Tracked tools
+identical by construction; untracked drivers (tmp-hashgeo.mjs,
+tmp-muzzle-crops.mjs) copied in verbatim; worktree status clean apart
+from the node_modules symlink. Combat-selftest red in the live tree is
+the known foreign sim-lane WIP — not run, not adjudicated here (npm
+test not part of this contract).
+
+## VERDICT: **RE-CERT PASS (re-freeze 50273080)** — end 9.2 / quarter
+## 9.3, floor 9.2. The ordered void read is DELIVERED at the mandated
+## 2x end-on: bore-center **35.7/35.7/35.7-FLAT** on my own
+## measurement, byte-EXACT the tone of the ratified chieftain5 control
+## measured in the same run. One claims-law flag (below): the commit's
+## "one changed view (end-on)" is falsified by the §J diff — the
+## QUARTER also changed (4.13% t>4, muzzle mouth only); scored anyway,
+## it IMPROVED. Non-blocking.
+
+## STANDING CHECK 1 — HASHGEO x2 BRACKET
+
+Open + close runs line-identical (hashgeo-run1.log == run2.log):
+- centurion3 **50273080** (45 meshes, 67725 verts) — EXACT at the
+  briefed candidate, stable both ends
+- chieftain5 **d4f2a9a6** (41 meshes, 94065 verts) — byte-identical at
+  its ratified re-freeze, both ends
+
+## STANDING CHECK 2 — GATE x2 (worktree, fresh)
+
+`geometry-gate.mjs --ids=centurion3` TWICE — both runs EXACT at the
+landed line, logs line-identical:
+
+    min 91.1 | hull 92.8 whole 91.2 turret 91.1 stations 95.2 dims 100
+    floaters 100 PASS
+
+Row json BYTE-identical across the two runs AND byte-identical to the
+committed docs/geometry-gate/centurion3.json (three-way cmp clean) —
+the builder's "row json byte-identical" claim REPRODUCED.
+
+## LUMA TABLE (my measurement: ITU-601, rect (298,320)-(342,365),
+## p10/p50/p90 + spread + sd; 2.0 spread = flat threshold)
+
+| crop (state) | p10/p50/p90 | spread | sd | read |
+|---|---|---|---|---|
+| centurion3 end, FRESH @50273080 | **35.7/35.7/35.7** | 0.0 | 0.06 | **FLAT — family void, <=38 MET** |
+| chieftain5 end, FRESH @d4f2a9a6 (control) | 35.7/35.7/35.7 | 0.0 | 0.06 | FLAT — ratified family tone, identical |
+| centurion3 end @46b03895 (failed state, builder after/) | 43.9/45.4/46.5 | 2.6 | 1.06 | mottled camo cap — the FAIL, reproduced by my rig |
+| centurion3 end @fea56ecc (pre-sweep before/) | 43.9/45.4/46.5 | 2.6 | 1.06 | IDENTICAL to failed state — occlusion proof: the sweep's disc never reached the end-on pixels |
+
+The before==after identity on the failed views is the mechanism's own
+signature: the sweep's disc sat 8mm behind the 20-pdr tip collar's cap
+(collar spans to exactly gunLen=5.15; the {len} seat derived 5.13),
+so the end view was pixel-unchanged by the sweep — the m60a1
+invisible-counterbore class, polarity flipped, exactly as the campaign
+diagnosed. The fix (uk.js: `muzzleBore(P, { z: gunLen, r: 0.145 })`)
+is the in-file L7A1 precedent recipe verbatim (z at the collar cap
+plane, r at the collar face) — mechanism verified read-only at
+src/vehicles/profiles/uk.js:3004 vs the precedent at :4224.
+
+## VIEW SCORES (fresh renders @50273080, my crops)
+
+- **END-ON 9.2** (was 7.5): at 2x the aperture is a deep uniform void
+  (35.7-flat wall to wall), thick lit collar rim around it, dark rim
+  band at the lip, no floating rim, no texture inside. The camo
+  mottle + cap-edge polygon of the failed state are GONE. Void-
+  perimeter faceting = the family 14-seg class (chieftain5 control
+  shows the same at 2x; scored 9.2 when ratified) — family-conformant,
+  not a defect of this fix. Reads the sibling's grammar at the
+  sibling's tone.
+- **QUARTER 9.3** (held from 9.3): rim + true void conforming to the
+  tube face, evacuator + camo tube character untouched. The re-seat
+  actually CLEANED this view — the failed state's camo annulus
+  standing past the ring and the texture-tinged recess are both gone;
+  mouth now reads lit collar -> dark rim -> flat void.
+
+Changed-view containment (my crops vs builder's after/ index, t>4):
+end 24.41% changed, ONE region = aperture + collar annulus (diffmap
+black everywhere else — turret face/fittings untouched); quarter
+4.13%, ONE region = muzzle mouth. chieftain5 end AND quarter
+**byte-identical to the builder's after/ crops** (cmp) — frozen sib
+pixel-proven 0-diff on my watch, and the builder's evidence set is
+render-rig honest.
+
+## FLAGS + ORDERS (non-blocking)
+
+1. **Claims-law flag (§J changed-view list)**: commit a125d0d claims
+   "one changed view (end-on)"; the official diff method finds TWO —
+   the quarter moved 4.13% (t>4, muzzle mouth). Deterministic-rig
+   proof (chieftain5 byte-identity) rules out noise. The change is
+   grammar-improving and scored 9.3, so the flag costs nothing here —
+   but changed-view lists cite the diff, not the intent.
+2. **Packet round section MISSING**: docs/references/tanks/
+   centurion3.md still ends at the sweep one-liner — the re-seat round
+   has no packet section (landing law: orchestrator writes the landing
+   note at ratification, discipline flag to the round).
+3. Bookkeeping at ratification: PROGRAM-STATE row currently reads
+   "50273080 CANDIDATE ... re-cert in flight" — flip to RATIFIED +
+   re-freeze on landing; campaign VERDICT TABLE row above (line
+   "centurion3 | RE-CERT FAIL floor 7.5") stands as the historical
+   fleet-run record, this RESIT section is the governing verdict.
+
+## EVIDENCE
+
+- Worktree @ a125d0d: scratchpad/wt-a125d0d; logs in scratchpad root:
+  hashgeo-run{1,2}.log, gate-run{1,2}.log (+ gate-row-{committed,run1,
+  run2}.json three-way cmp), muzzle-render.log
+- My verdict-hash crops: scratchpad/recert-crops/centurion3_{end,
+  quarter}.png + chieftain5 controls (19:20 stamps, this resit)
+- Zooms + diffmaps: cent3-bore-zoom-{FIX,FAILEDSTATE}.png,
+  chieft5-bore-zoom-CONTROL.png, cent3-quarter-zoom-{FIX,
+  FAILEDSTATE}.png, cent3-{end,quarter}-diffmap.png
+- Measurement scripts (mine): critic-luma.py, critic-diff.py,
+  critic-zoom.py (scratchpad)
+
+## CURRENCY ADDENDUM (resit close)
+
+Main HEAD advanced a125d0d -> bcf6166 during my campaign (live-tree
+hazard, observed again — one commit: t90m perfection round). File-list
+verified: touches russia.js + t90m docs ONLY; zero diff a125d0d ->
+bcf6166 on uk.js, kit.js, tankFactory.js, both render pages, the gate
+tool, and docs/geometry-gate/centurion3.json — the verdict hashes
+remain current at bcf6166. Standard practice: orchestrator re-verifies
+hashgeo at the landing commit.
+
+— independent critic, centurion3 RESIT, 2026-08-06

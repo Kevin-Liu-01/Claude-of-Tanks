@@ -81,7 +81,7 @@ re-freeze NEW hash, all in ONE commit.
 | leo2a5 | e215a738 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | leo2_revolution | fa1a47fc -> bb2bb60c CANDIDATE (bore+winding sweep, batch re-cert in flight) |
 | m46_patton | 108806c8 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
-| centurion3 | fea56ecc -> 50273080 CANDIDATE (bore re-seat: occlusion class fixed, luma 35.7-flat = sibling tone, machine gate MET; single-view re-cert in flight) |
+| centurion3 | 50273080 | bore resit RATIFIED (end 9.2; occlusion class fixed) |
 | m1a2_sepv2 | 83277374 | visibility re-cert RATIFIED (floor 9.1+, owner-question YES) |
 | m26_pershing | 65c564c0 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 
@@ -366,6 +366,14 @@ oracle-driven round toward its local reference GLB (certified bridge-cap
 rows; AbramsX identity: low-profile unmanned turret, XM360 angular
 shroud, hybrid hull lines, 30mm RWS) per §B8.1 + ladder; (c) any FAIL
 orders from the visibility verdict. sepv2 donor verified already-m1a2.
+
+## 4.9995 TRACK HITBOXES LANDED (owner order): convex prisms per side,
+auto-derived from the gear loop fleet-wide (101/101), killcam renders
+the real trapezoid + loop-following slats; phantom rectangle claim
+removed (m1a2 37%/bmp2 25%/tiger1 7%); true ramp normals; hash+gate
+neutrality proven; COMBAT SUITE NOW 253 CHECKS (was 233 — update future
+briefs). Queue: ARCHITECTURE.md §2.3 trackShapes addendum (owner WIP in
+docs/ — orchestrator lands it when free).
 
 ## 5. IN-FLIGHT AGENTS (SUPERSEDED BY §12 — the 2026-08-05 device
 handover interrupted these; respawn per §12)

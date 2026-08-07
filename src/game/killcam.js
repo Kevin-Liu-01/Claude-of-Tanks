@@ -2994,13 +2994,115 @@ export function createKillCam(deps) {
       pb.obstacles.push({ parent, corners, key: key || null });
       if (key && !anchors.has(key)) anchors.set(key, seg);
     };
+    // TRACK-HITBOX viz (owner order 2026-08-06: the killcam's track hitboxes
+    // read as "a bunch of rectangles"): when the snapshot armor carries the
+    // derived trackShapes prisms (specs.attachTrackShapes — the same volumes
+    // hit resolution now rolls against), the track module draws as the REAL
+    // \____/ silhouette: wireframe prism (side-view polygon at both track
+    // faces + connecting rails) and, when hit, tread slats laid ALONG the
+    // band perimeter — ground run, approach/departure ramps and raised
+    // end-wheel wraps — instead of one full-length box + a flat slab row.
+    const addTrackPrism = (shapes, key, mat, fillMat) => {
+      // union AABB first: the group is POSITIONED at the prism center so the
+      // damage chip's anchor (getWorldPosition) lands on the track itself,
+      // exactly like addBox's centered seg.
+      const minV = [Infinity, Infinity, Infinity];
+      const maxV = [-Infinity, -Infinity, -Infinity];
+      for (const shape of shapes) {
+        for (const p of shape.poly) {
+          minV[0] = Math.min(minV[0], shape.x0, shape.x1);
+          maxV[0] = Math.max(maxV[0], shape.x0, shape.x1);
+          minV[1] = Math.min(minV[1], p[1]); maxV[1] = Math.max(maxV[1], p[1]);
+          minV[2] = Math.min(minV[2], p[0]); maxV[2] = Math.max(maxV[2], p[0]);
+        }
+      }
+      const cx = (minV[0] + maxV[0]) / 2;
+      const cy = (minV[1] + maxV[1]) / 2;
+      const cz = (minV[2] + maxV[2]) / 2;
+      const group = new THREE.Group();
+      group.renderOrder = 12; // nested Groups reset groupOrder (see poseGrp)
+      group.position.set(cx, cy, cz);
+      for (const shape of shapes) {
+        const poly = shape.poly;
+        const n = poly.length;
+        const posArr = [];
+        const push = (x, p) => posArr.push(x - cx, p[1] - cy, p[0] - cz);
+        for (let i = 0; i < n; i++) {
+          const a = poly[i];
+          const b = poly[(i + 1) % n];
+          push(shape.x0, a); push(shape.x0, b);   // inner face outline
+          push(shape.x1, a); push(shape.x1, b);   // outer face outline
+          push(shape.x0, a); push(shape.x1, a);   // connecting rail
+        }
+        const lineGeo = new THREE.BufferGeometry();
+        lineGeo.setAttribute('position', new THREE.Float32BufferAttribute(posArr, 3));
+        pb.disposables.push(lineGeo);
+        group.add(new THREE.LineSegments(lineGeo, mat));
+        if (fillMat) {
+          // tread slats along the perimeter — the destroyed-track tint reads
+          // as the track itself (same link-pitch language as the r6 slats,
+          // now following the true loop instead of filling the AABB)
+          const xMid = (shape.x0 + shape.x1) / 2 - cx;
+          const width = Math.abs(shape.x1 - shape.x0);
+          const TH = 0.17; // slat band thickness (band + shoe read)
+          for (let i = 0; i < n; i++) {
+            const a = poly[i];
+            const b = poly[(i + 1) % n];
+            const dz = b[0] - a[0];
+            const dy = b[1] - a[1];
+            const len = Math.hypot(dz, dy);
+            if (len < 0.12) continue;
+            const nSl = Math.max(1, Math.min(14, Math.round(len / 0.55)));
+            const segL = (len / nSl) * 0.62;
+            const slatGeo = new THREE.BoxGeometry(width * 0.96, TH, segL);
+            pb.disposables.push(slatGeo);
+            const tz = dz / len;
+            const ty = dy / len;
+            // outward normal of a CCW edge in (z,y) — slats sit half a band
+            // INSIDE the hull outline so the ring hugs the real surface
+            const onz = ty;
+            const ony = -tz;
+            for (let k = 0; k < nSl; k++) {
+              const s = (k + 0.5) * (len / nSl);
+              const slat = new THREE.Mesh(slatGeo, fillMat);
+              slat.position.set(
+                xMid,
+                a[1] + ty * s - ony * (TH / 2) - cy,
+                a[0] + tz * s - onz * (TH / 2) - cz,
+              );
+              slat.rotation.x = Math.atan2(-ty, tz);
+              group.add(slat);
+            }
+          }
+        }
+      }
+      poseGrp.add(group); // tracks are hull-local, never turretLocal
+      if (mat === S.edgeDim) group.visible = false; // r8: un-hit = anchors only
+      const corners = [];
+      for (let i = 0; i < 8; i++) {
+        corners.push(new THREE.Vector3(
+          i & 1 ? maxV[0] : minV[0],
+          i & 2 ? maxV[1] : minV[1],
+          i & 4 ? maxV[2] : minV[2],
+        ));
+      }
+      pb.obstacles.push({ parent: poseGrp, corners, key: key || null });
+      if (key && !anchors.has(key)) anchors.set(key, group);
+    };
+    const trackShapesOf = (name) => {
+      const list = (armor.trackShapes || []).filter((s) => s.module === name);
+      return list.length ? list : null;
+    };
     for (const mb of armor.modules || []) {
       const state = effState(mb.module);
       const mat = state === 'red' ? S.edgeRed : state === 'yellow' ? S.edgeYellow : S.edgeDim;
       const fill = state === 'red' ? S.fillRed : state === 'yellow' ? S.fillYellow : null;
       // every module box anchors (hit ones get damage chips, idle key
       // internals get always-on micro-labels — WT-style AMMO/ENGINE/FUEL)
-      addBox(mb, `m:${mb.module}`, mat, fill);
+      const prism = (mb.module === 'trackL' || mb.module === 'trackR')
+        ? trackShapesOf(mb.module) : null;
+      if (prism) addTrackPrism(prism, `m:${mb.module}`, mat, fill);
+      else addBox(mb, `m:${mb.module}`, mat, fill);
     }
     for (const cb of armor.crew || []) {
       const hit = crewHit.has(cb.crew);

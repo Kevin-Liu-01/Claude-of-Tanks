@@ -1968,6 +1968,83 @@ Object.assign(MODEL_SOURCE, {
 });
 
 /**
+ * TRACK-HITBOX SCHEMA (combat round 2026-08-06, owner order: "make track
+ * hitboxes represented and look much more accurate ... theyre just a bunch
+ * of rectangles"). Attach real track-shape volumes to an ArmorModel:
+ *
+ *   armor.trackShapes = [{
+ *     module: 'trackL'|'trackR',       // combat module the prism damages
+ *     x0, x1,                          // hull-local lateral slab (x0 < x1)
+ *     poly: [[z,y], ...],              // convex CCW side-view silhouette
+ *     plate: {name, physicalMm, keMm, ceMm, kind:'external',
+ *             era:null, moduleLink, gunFollow:false},  // screen stats
+ *   }, ...]
+ *
+ * Each entry is a convex prism (the polygon extruded across [x0,x1]) that
+ * REPLACES, for ray tests only, the legacy hand-authored track pair — the
+ * full-length rectangle plate (sR/sL 'track_R'/'track_L') and the trackL/R
+ * module AABB. sim/armor.traceTank consumes it (prism entry face = the
+ * external track screen with a TRUE surface normal — vertical band side,
+ * angled approach/departure ramps, raised end-wheel wraps); the killcam
+ * x-ray draws it. The legacy plates/boxes STAY in the model as authored:
+ * plates keep feeding the HE nearest-face AABB, boxes keep feeding HE blast
+ * targets, killcam shader bands and ghost anatomy — traceTank simply skips
+ * them when trackShapes is present, and every armor model WITHOUT
+ * trackShapes (headless probes, hand-built selftest models, gearless
+ * community placeholders) keeps the legacy path bit-identical.
+ *
+ * `hulls` comes from the running gear actually built for this spec
+ * (buildRunningGear publishes {x0,x1,poly} per unit — wheel positions/radii
+ * and band profile truth), so the hitbox follows the real \____/ trapezoid
+ * run per tank with zero hand-authoring. Idempotent: recomputes and
+ * overwrites on every call. HAND-OVERRIDE HOOK for odd rigs: author
+ * `armor.trackShapesOverride = [...]` (same entry shape, minus `plate`
+ * which is still auto-wired) on a spec and it wins over the derived hulls.
+ *
+ * @param {object} armor ArmorModel (mutated in place)
+ * @param {Array<{x0:number,x1:number,poly:Array}>} hulls derived per-unit
+ *   track hulls, RIGHT-side coordinates (x0>0); mirrored here for the left
+ * @returns {object} the same armor object
+ */
+export function attachTrackShapes(armor, hulls) {
+  if (!armor) return armor;
+  const src = Array.isArray(armor.trackShapesOverride) && armor.trackShapesOverride.length
+    ? armor.trackShapesOverride
+    : hulls;
+  if (!Array.isArray(src) || !src.length) return armor;
+  const shapes = [];
+  for (const h of src) {
+    if (!h || !Array.isArray(h.poly) || h.poly.length < 3) continue;
+    const sides = h.module === 'trackL' ? [-1] : h.module === 'trackR' ? [1] : [-1, 1];
+    for (const side of sides) {
+      const module = side < 0 ? 'trackL' : 'trackR';
+      const legacy = (armor.hullPlates || []).find(
+        (p) => p.moduleLink === module && p.kind === 'external');
+      const lo = Math.min(Math.abs(h.x0), Math.abs(h.x1));
+      const hi = Math.max(Math.abs(h.x0), Math.abs(h.x1));
+      shapes.push({
+        module,
+        x0: side < 0 ? -hi : lo,
+        x1: side < 0 ? -lo : hi,
+        poly: h.poly.map((v) => [v[0], v[1]]),
+        plate: {
+          name: legacy ? legacy.name : (side < 0 ? 'track_L' : 'track_R'),
+          physicalMm: legacy ? legacy.physicalMm : 20,
+          keMm: legacy ? legacy.keMm : 20,
+          ceMm: legacy ? legacy.ceMm : 20,
+          kind: 'external',
+          era: null,
+          moduleLink: module,
+          gunFollow: false,
+        },
+      });
+    }
+  }
+  if (shapes.length) armor.trackShapes = shapes;
+  return armor;
+}
+
+/**
  * Fit a (deep-copied) donor armor model to a recipient's published dims
  * (module_hitbox r1). Recovered/derived vehicles copy their donor's spec and
  * patch `dims` — but the armor GEOMETRY (plates, module/crew boxes, pivots)
@@ -2000,6 +2077,12 @@ export function fitArmorToDims(armor, fromDims, toDims) {
   }
   for (const list of [armor.modules, armor.crew]) {
     for (const b of list || []) { v3(b.min); v3(b.max); }
+  }
+  // derived track prisms scale like every other armor position (plate stats
+  // inside stay design values, same rule as plates)
+  for (const s of armor.trackShapes || []) {
+    s.x0 *= sx; s.x1 *= sx;
+    for (const v of s.poly) { v[0] *= sz; v[1] *= sy; }
   }
   if (armor.turretPivot) v3(armor.turretPivot);
   if (armor.gunPivot) v3(armor.gunPivot);
