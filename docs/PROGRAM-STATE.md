@@ -814,3 +814,28 @@ stay honestly print-capped per the §E evidence — re-rig escalation
 remains the path to a measured ladder). Banked notes: solid turret
 length 58% just above the gate-4 alarm (watch on length edits), roof
 density round candidate, shaded-side seams pipeline-endemic.
+
+## 4.999996 WW2 RESIT VERDICTS: t34_85 PASS 9.0 + m4a3e8 PASS 9.1
+(independent photo-class critic; hash bracket x2 EXACT 84996d88 /
+977909c8; sheets shots/critic-ww2-resit-indep/). ALL TEN per-tank
+slate orders closed in pixels (four-box reproduced to the mm x2; two
+intent-resolved deltas per ORDER-NUMBER vs ORDER-SUBSTANCE). Both
+owner complaints DEAD ("steep-nosed slab with a faceted box turret" /
+"tall shoebox with a Sherman-ish turret"). THE 2026-08-06 SLATE RESIT
+LEDGER STANDS 7/7 (puma, type89, leo triple, t34_85, m4a3e8).
+Record hashes bind; both ids remain FALSE-0 (no oracle) — weihe
+registration decision still flagged (§4.999994).
+
+## 4.999997 FLEET HANDEDNESS FLAG (critic discovery, orchestrator
+adjudication + ASK OWNER): the program's "+x = right" labeling is
+physically INVERTED (three.js right-handed, forward +z => vehicle-
+right is -x) — asymmetric fittings placed per the fleet convention
+render mirror-flipped vs real-vehicle photos (E8 cupola, t34 cupola,
+tiger1, type89's ratified offset, etc.). Corroborated against the
+t34_85_cad print (its cupola at +x = the real vehicle's LEFT;
+evidence shots/critic-ww2-resit-indep/handedness-probe/). Fleet-wide,
+pre-dates every recent round, ratified by prior verdicts, sub-glance
+for acid reads. OPTIONS: (a) accept as the program frame (document in
+BUILD-STANDARD §A and move on), or (b) schedule a fleet x-flip —
+which INVALIDATES every side-registration digest + prior verdict
+crop. Default pending owner word: (a) accept-and-document.
