@@ -2476,7 +2476,9 @@ function buildIS2(P) {
   P.add('hull', slab(                                                            // 30° lower glacis, tapered
     [-0.96, 0.45, 3.01], [0.96, 0.45, 3.01], [1.30, 0.45, 2.35], [-1.30, 0.45, 2.35],
     [-1.06, 0.95, 3.30], [1.06, 0.95, 3.30], [1.45, 0.95, 1.95], [-1.45, 0.95, 1.95]));
-  P.add('hull', frustum(1.4, -2.86, -2.86, 1.4, -3.38, -3.0, 1.2, 1.8));        // sloped rear
+  // sloped rear — top-ring zF/zR were swapped (zF -3.38 < zR -3.0 inverted
+  // the slab ring => inside-out since authorship; §5.03 sweep item 1)
+  P.add('hull', frustum(1.4, -2.86, -2.86, 1.4, -3.0, -3.38, 1.2, 1.8));
   P.add('hull', box(0.3, 0.12, 0.3), 0, 1.85, 1.6);                             // driver periscope hump
   // r4 diving-board fix (worst at the IS-2 bow): main fender run pulled back
   // from the tapered prow, sawtooth tips angle DOWN right off the run's end,
