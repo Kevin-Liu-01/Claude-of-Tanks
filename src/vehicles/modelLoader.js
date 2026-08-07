@@ -2792,9 +2792,31 @@ export async function applyGlbModel(ctx) {
         case 'camoShare':
           if (!warmNextGlbShare(st.pre.scene, ctx.spec, shareCap)) st.phase = 'camoMerge';
           return 'more';
+        // perf-r5 ("tanks loading in when spotted"): the one-shot camoMerge
+        // slice measured 391 ms mid-battle — the camo composite AND three
+        // mergeGeometries buckets in one job. Four slices now.
         case 'camoMerge':
           if (!live()) return 'dead';
-          st.staged = finishPrepareSwap(st.pre, ctx);
+          applyCamoToModel(st.pre.scene, ctx.spec, { shareCap: ctx.cfg.heroTex ? 1024 : 512 });
+          st.phase = 'mergeHull';
+          return 'more';
+        case 'mergeHull': {
+          if (!live()) return 'dead';
+          const { turret, gun, turretFollowers, gunFollowers } = st.pre;
+          const excl = new Set([turret, gun, ...turretFollowers, ...gunFollowers].filter(Boolean));
+          mergeStaticKit(st.pre.scene, 'hull', excl);
+          st.phase = 'mergeTurret';
+          return 'more';
+        }
+        case 'mergeTurret':
+          if (st.pre.turret) {
+            mergeStaticKit(st.pre.turret, 'turret', new Set(st.pre.gun ? [st.pre.gun] : []));
+          }
+          st.phase = 'mergeGun';
+          return 'more';
+        case 'mergeGun':
+          if (st.pre.gun) mergeStaticKit(st.pre.gun, 'gun');
+          st.staged = st.pre;
           st.texs = collectStagedTextures(st.staged.scene);
           st.ti = 0;
           st.phase = 'warmTex';

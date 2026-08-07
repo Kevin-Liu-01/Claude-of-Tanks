@@ -1454,6 +1454,11 @@ export function createPost(renderer, scene, camera) {
   const TRIM_MAX = 3;
   const TRIM_STRIKES = 2;
   const TRIM_UP_BACKOFF_S = 15;
+  // trim releases tolerate a dirtier window than resolution up-steps (0.04):
+  // background-app spikes on a healthy device otherwise freeze recovery at a
+  // trimmed rung forever — the trims are coarse levers, and a flapped
+  // release is caught by the exponential backoff anyway.
+  const TRIM_UP_MISS_MAX = 0.10;
   const TRIM_UP_BACKOFF_MAX_S = 90;
   let perfTrim = 0;
   let trimStrikes = 0;
@@ -1584,7 +1589,8 @@ export function createPost(renderer, scene, camera) {
         dynUpBackoffS = Math.min(dynUpBackoffS * 2, DYN_BACKOFF_MAX_S);
       }
       dynLastDownAt = dynClock;
-    } else if (clean && perfTrim > 0
+    } else if (perfTrim > 0
+        && dynEma < dynBudgetMs * DYN_UP_LEVEL && missRatio < TRIM_UP_MISS_MAX
         && dynClock - trimLastDownAt >= trimUpBackoffS
         && dynClock - trimLastUpAt >= trimUpBackoffS) {
       // recovery order: un-trim first (restore shadows/AO), resolution after —
