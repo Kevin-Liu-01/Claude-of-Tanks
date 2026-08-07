@@ -6092,6 +6092,48 @@ function buildLeo2Revolution(P) {
   }
   P.add('turret', box(3.10, 0.24, 0.05), 0, 0.255, -1.705);                    // apron rear return (x ±1.55, face -2.08..-2.03w, closes the side runs)
   P.add('turretDark', box(0.70, 0.20, 0.008), 0, 0.255, -1.734);               // rear return center seam strip
+  // §5.17 OWNER ORDER (2026-08-07, close-up garage screenshot: "theres
+  // still a gap under front part of its turret ... fix the turret" +
+  // owner correction: "the turret didnt finish building under that front
+  // part and sides"): the turret read as a roof/upper shell floating over
+  // unbuilt volume — the wedge courses ended at their certified 1.79-2.045w
+  // floors with ONLY the render-only recess/collar shadow mesh floating in
+  // the cavity below (the owner's gap), and the sides showed hollow fill
+  // faces through the ring slit. REAL lower structure per §B2 (the real
+  // vehicle's own surfaces — the A4 casting + mantlet collar the AMAP
+  // shell bolts onto; no willy-nilly fills):
+  //   - REAL mantlet COLLAR (±0.52, y 1.74..2.02w, z 0.20..2.16w — the
+  //     r18 render-only collar's certified visual footprint made real and
+  //     widened past the cheek blocks; elevation-safe: same top/front the
+  //     -9/+20 sweep was certified against since r18);
+  //   - per-side CHIN BAND under C3 (x 0.44..1.20) riding the wedge plane
+  //     at a 0.05 module-lip setback (the modules stay proud — photo
+  //     class), top buried in the C3 course (1.91w), down to 1.74w;
+  //   - per-side UNDER-CHEEK CLOSURE (x 1.20..1.55, top ring tapered to
+  //     C2's 1.48 knife line, up to 2.06w into the wall floors) closing
+  //     the cheek underside back to z 0.50w;
+  //   - per-side UNDER-SKIRT WALL (x 1.36..1.46, down to 1.725w, z -2.00..
+  //     0.60w) — the visible stepped casting wall 9 cm inside the apron
+  //     line; the shadow fills behind it keep the last ~10 cm as the
+  //     honest ring-clearance shade.
+  // YAW-SWEEP LAW (this block): every bottom clears the deck content of
+  // its own sweep annulus about the ring pivot (0, -0.35w) by >= 2 cm at
+  // ALL yaw — deck-edge/jacket strip tops 1.700 @ r >= 1.55 -> floors
+  // 1.725+; tail box 1.71 @ r >= 2.55 -> chin/collar floors 1.74; fan
+  // wells r 2.95 / tail mast r 3.33 stay outside the max piece radius
+  // (2.88). Turret rows are §B7-capped (batch-46 0-at-cap; documented
+  // adds); hull rows untouched by construction; tops <= 2.06w (heightM
+  // anchor 2.65 unmoved); widest x 1.55 inside the ±2.00 width guard.
+  P.add('turretDark', box(1.04, 0.28, 1.96), 0, 0.28, 1.53);                   // REAL mantlet/ring collar (x ±0.52, y 1.74..2.02w, z 0.20..2.16w)
+  for (const s of [-1, 1]) {
+    P.add('turret', mslab(s,                                                   // chin band under C3 (y 1.74..1.91w, plane -0.05..-0.30)
+      [0.44, 0.14, wfz(0.44, 0.14) - 0.05], [1.20, 0.14, wfz(1.20, 0.14) - 0.05], [1.20, 0.14, wfz(1.20, 0.14) - 0.30], [0.44, 0.14, wfz(0.44, 0.14) - 0.30],
+      [0.44, 0.31, wfz(0.44, 0.31) - 0.05], [1.20, 0.31, wfz(1.20, 0.31) - 0.05], [1.20, 0.31, wfz(1.20, 0.31) - 0.30], [0.44, 0.31, wfz(0.44, 0.31) - 0.30]));
+    P.add('turret', mslab(s,                                                   // under-cheek closure (y 1.74..2.06w, plane -0.05 back to z 0.50w)
+      [1.20, 0.14, wfz(1.20, 0.14) - 0.05], [1.55, 0.14, wfz(1.55, 0.14) - 0.05], [1.55, 0.14, 0.85], [1.20, 0.14, 0.85],
+      [1.20, 0.46, wfz(1.20, 0.46) - 0.05], [1.48, 0.46, wfz(1.48, 0.46) - 0.05], [1.48, 0.46, 0.85], [1.20, 0.46, 0.85]));
+    P.add('turret', box(0.10, 0.275, 2.60), s * 1.41, 0.2625, -0.35);          // under-skirt wall (x 1.36..1.46, y 1.725..2.00w, z -2.00..0.60w)
+  }
   // §B7 r18 ROOF FURNITURE — the real MBT Revolution roof set replaces the
   // print-chasing pod deck (station tub, right pod/shoulder/shelf, roof
   // step — all deleted; their ref band w -0.735..-2.01 re-prices in the
@@ -6766,10 +6808,12 @@ function buildLeo2Revolution(P) {
       mkFill(2.76, 0.38, 0.95, 0, 1.59, 0.925);                                // bow zone aft (y 1.40..1.78, z 0.45..1.40)
       // fore LOW fill: a side x-ray is blocked by ANY x-width — ±0.48 keeps
       // the §B2 side sight-line closed while tucking the front face inside
-      // the mantlet collar's footprint (±0.42 collar, z to 2.16w) so the
-      // close-front read is the collar's own under-shade, not a proud
-      // black U (the gray-rectangle class).
-      mkFill(0.96, 0.26, 0.80, 0, 1.53, 1.80);                                 // bow zone fore LOW (y 1.40..1.66, z 1.40..2.20)
+      // the mantlet collar's footprint (±0.52 REAL collar, z to 2.16w) so
+      // the close-front read is the collar's own under-shade, not a proud
+      // black U (the gray-rectangle class). §5.17: top 1.66 -> 1.73 (1 cm
+      // under the real collar's 1.74 bottom — the old 1.66..1.755 sliver
+      // read daylight under the chin), front tucked to 2.14.
+      mkFill(0.96, 0.33, 0.74, 0, 1.565, 1.77);                                // bow zone fore LOW (y 1.40..1.73, z 1.40..2.14)
       mkFill(2.76, 0.38, 1.30, 0, 1.59, -1.33);                                // aft zone (y 1.40..1.78, z -1.98..-0.68)
       // §5.09 UNDER-RACK FILL (owner see-through order): the basket
       // overhang zone aft of -1.98 read straight through to sky at the
@@ -6782,40 +6826,11 @@ function buildLeo2Revolution(P) {
       // moved to the REAL §B7 module apron in the turret build; their
       // outer faces at ±1.58 were the single biggest gray-rectangle
       // carrier in the side views.)
-      // §B7 r18 RECESSED UNDER-WEDGE STEEL (shadow-named render-only, the
-      // §C mechanism — a turretDark first cut printed 1.71 bottoms across
-      // the certified 2.05-2.08 channel-stair columns): the A4 turret front
-      // under the appliqué — per-side courses swept parallel to the wedge
-      // plane (0.28 back) + the mantlet/ring collar. Slightly lighter than
-      // the void fills so steel-vs-shadow separates at close range.
-      {
-        const recessSteel = P.mats.shadow.clone();
-        // GRAY-RECTANGLE FIX: albedo up from 0x262b22 (rendered flat at
-        // the ambient floor) so the wall grade is visible; grade inverted
-        // to physics like the fills — bounce-lit near the deck, darkening
-        // up under the wedge. Steel-vs-void separation now renders: the
-        // courses read a clear notch lighter than the slit shade.
-        recessSteel.color.setHex(0x333931);
-        recessSteel.roughness = 0.96;
-        recessSteel.metalness = 0.05;
-        recessSteel.envMapIntensity = 0.10;
-        recessSteel.vertexColors = true;
-        rehook(recessSteel);                                                   // ambient floor (same fix as fillDark — raw clone rendered flat black)
-        P.disposables.push(recessSteel);
-        const rgeos = [];
-        for (const s of [-1, 1]) {
-          rgeos.push(mslab(s,
-            [0.44, 0.10, wfz(0.44, 0.19) - 0.28], [1.24, 0.10, wfz(1.24, 0.19) - 0.28], [1.24, 0.10, 0.55], [0.44, 0.10, 0.55],
-            [0.44, 0.20, wfz(0.44, 0.19) - 0.28], [1.24, 0.20, wfz(1.24, 0.19) - 0.28], [1.24, 0.20, 0.55], [0.44, 0.20, 0.55]));
-        }
-        rgeos.push(KIT.xform(box(0.84, 0.265, 1.96), 0, 0.2875, 1.53));        // mantlet/ring collar (y 1.755..2.02w)
-        const rm = new THREE.Mesh(shadeFill(KIT.mergeAll(rgeos), 0.45, 0.90, 1.26, 0.58), recessSteel);
-        rm.name = 'leoTurretRecessShadow';
-        rm.receiveShadow = true;
-        rm.castShadow = false;
-        P.turretG.add(rm);
-        P.disposables.push(rm.geometry);
-      }
+      // (§B7 r18 RECESSED UNDER-WEDGE STEEL mesh DELETED — §5.17: the
+      // render-only courses/collar floated in the open chin cavity and
+      // read as unfinished slabs at the owner's garage angle; the REAL
+      // chin bands + under-cheek closures + REAL ±0.52 mantlet collar in
+      // the turret build now own that volume with real casting surfaces.)
       mkCable([[-1.30, 1.716, -3.05], [-0.42, 1.717, -3.10], [0.30, 1.716, -3.02], [1.18, 1.716, -3.08]], 0.011);
     }
     // -- E1 (cited flats — shading only): bow rake seam engraving on the

@@ -1,0 +1,152 @@
+<!doctype html>
+<!-- TEMP (revolution §5.17 turret-fix round): OWNER-ANGLE render page.
+     Reproduces the owner's close-up garage read — elevated close 3/4 from
+     the front-left — plus chin/side/rear-oblique probes, at ?yaw= turret
+     poses. Fixed perspective cameras (before/after comparable), critic
+     lights + clear color. Also runs the §B2 enclosed-background flood
+     (mask method |px-0x151b20| maxch<=13 + blue-signature B-R>=8) per view
+     and reports RAW bg pixels inside a fixed central band (open daylight
+     under the turret is border-connected at these obliques — enclosed-only
+     would be blind to it). Diagnosis + evidence only. -->
+<meta charset="utf-8">
+<title>tmp-rev517-owner</title>
+<style>body{margin:0;background:#151b20}</style>
+<div id="out"></div>
+<script type="module">
+import * as THREE from 'three';
+import { createTank } from '/src/vehicles/tankFactory.js';
+
+const SIZE = 900;
+const params = new URLSearchParams(location.search);
+const id = params.get('id') || 'leo2_revolution';
+const yawDeg = parseFloat(params.get('yaw') || '0');
+const hideShadow = params.get('noshadow') === '1';
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, preserveDrawingBuffer: true });
+renderer.setSize(SIZE, SIZE, false);
+renderer.setPixelRatio(1);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.setClearColor(0x151b20, 1);
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+const engineCtx = { setupShadowMaterial: (m) => m, anisotropy: 1, renderer };
+
+const tank = createTank(id, engineCtx, { camoSeed: 4242, quality: 'high', proceduralOnly: true });
+scene.add(tank.root);
+
+// critic page's exact light rig
+const hemi = new THREE.HemisphereLight(0xcfd8e0, 0x2a2f26, 1.05);
+const sun = new THREE.DirectionalLight(0xfff2dd, 2.2);
+sun.position.set(30, 42, 24);
+scene.add(hemi, sun);
+
+if (yawDeg) {
+  tank.root.traverse((o) => { if (o.name === 'rig_turret') o.rotation.y = yawDeg * Math.PI / 180; });
+}
+if (hideShadow) {
+  tank.root.traverse((o) => { if (o.isMesh && /shadow/i.test(o.name || '')) o.visible = false; });
+}
+tank.root.updateMatrixWorld(true);
+tank.root.traverse((o) => {
+  if (!o.isLOD) return;
+  o.autoUpdate = false;
+  o.levels.forEach((level, i) => { if (level.object) level.object.visible = i === 0; });
+});
+
+// FIXED perspective cameras (world-space constants — before/after and
+// yaw-pose comparable; NOT box-framed on purpose).
+function persp(target, dir, dist, fov = 35) {
+  const camera = new THREE.PerspectiveCamera(fov, 1, 0.1, 300);
+  const d = dir.clone().normalize();
+  camera.position.copy(target).addScaledVector(d, dist);
+  camera.lookAt(target);
+  camera.updateProjectionMatrix();
+  camera.updateMatrixWorld(true);
+  return camera;
+}
+const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
+// owner: elevated close 3/4 from the front-left (garage drag pose class —
+// pitch ~27 deg, close on the turret + front hull).
+const CAMS = {
+  'owner':       persp(V3(0, 1.75, 0.45), V3(-1.0, 0.74, 1.05), 7.6),
+  'owner-right': persp(V3(0, 1.75, 0.45), V3(1.0, 0.74, 1.05), 7.6),
+  'chin':        persp(V3(0, 1.75, 1.30), V3(-0.85, 0.44, 1.05), 5.6),
+  'chin-low':    persp(V3(0, 1.70, 1.40), V3(-0.70, 0.16, 1.00), 5.2),
+  'side-left':   persp(V3(0, 1.85, -0.10), V3(-1.0, 0.52, 0.12), 6.8),
+  'side-low':    persp(V3(0, 1.72, -0.10), V3(-1.0, 0.14, 0.10), 6.4),
+  'rear-left':   persp(V3(0, 1.85, -0.60), V3(-1.0, 0.60, -0.85), 7.2),
+};
+
+const shots = {};
+function shoot(camera) {
+  renderer.setRenderTarget(null);
+  renderer.setClearColor(0x151b20, 1);
+  renderer.clear(true, true, true);
+  renderer.render(scene, camera);
+  return renderer.domElement.toDataURL('image/png');
+}
+
+// bg census inside the central band (x 12..88%, y 8..80%): raw bg px +
+// enclosed clusters (flood from border) for the through-hole class.
+function bgCensus() {
+  const gl = renderer.getContext();
+  const w = SIZE, h = SIZE;
+  const buf = new Uint8Array(w * h * 4);
+  gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, buf);
+  const isbg = (i) => {
+    const r = buf[i], g = buf[i + 1], b = buf[i + 2];
+    return Math.abs(r - 0x15) <= 13 && Math.abs(g - 0x1b) <= 13 && Math.abs(b - 0x20) <= 13 && (b - r) >= 8;
+  };
+  const bg = new Uint8Array(w * h);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    if (isbg((y * w + x) * 4)) bg[y * w + x] = 1;
+  }
+  // flood from border -> open sky
+  const seen = new Uint8Array(w * h);
+  const stack = [];
+  for (let x = 0; x < w; x++) { if (bg[x]) { seen[x] = 1; stack.push(x); } const j = (h - 1) * w + x; if (bg[j] && !seen[j]) { seen[j] = 1; stack.push(j); } }
+  for (let y = 0; y < h; y++) { const i = y * w; if (bg[i] && !seen[i]) { seen[i] = 1; stack.push(i); } const j = y * w + w - 1; if (bg[j] && !seen[j]) { seen[j] = 1; stack.push(j); } }
+  while (stack.length) {
+    const p = stack.pop();
+    const px = p % w, py = (p / w) | 0;
+    if (px > 0 && bg[p - 1] && !seen[p - 1]) { seen[p - 1] = 1; stack.push(p - 1); }
+    if (px < w - 1 && bg[p + 1] && !seen[p + 1]) { seen[p + 1] = 1; stack.push(p + 1); }
+    if (py > 0 && bg[p - w] && !seen[p - w]) { seen[p - w] = 1; stack.push(p - w); }
+    if (py < h - 1 && bg[p + w] && !seen[p + w]) { seen[p + w] = 1; stack.push(p + w); }
+  }
+  let enclosed = 0;
+  const clusters = [];
+  const cseen = new Uint8Array(w * h);
+  for (let p = 0; p < w * h; p++) {
+    if (!bg[p] || seen[p] || cseen[p]) continue;
+    let n = 0, minX = w, maxX = 0, minY = h, maxY = 0;
+    const st2 = [p]; cseen[p] = 1;
+    while (st2.length) {
+      const q = st2.pop(); n++;
+      const qx = q % w, qy = (q / w) | 0;
+      if (qx < minX) minX = qx; if (qx > maxX) maxX = qx;
+      if (qy < minY) minY = qy; if (qy > maxY) maxY = qy;
+      for (const r2 of [q - 1, q + 1, q - w, q + w]) {
+        if (r2 < 0 || r2 >= w * h) continue;
+        if (Math.abs((r2 % w) - qx) > 1) continue;
+        if (bg[r2] && !seen[r2] && !cseen[r2]) { cseen[r2] = 1; st2.push(r2); }
+      }
+    }
+    enclosed += n;
+    if (n >= 4) clusters.push({ n, rect: [minX, SIZE - 1 - maxY, maxX, SIZE - 1 - minY] });
+  }
+  clusters.sort((a, b) => b.n - a.n);
+  return { enclosedPx: enclosed, clusters: clusters.slice(0, 10) };
+}
+
+const report = { id, yaw: yawDeg, views: {} };
+for (const [name, cam] of Object.entries(CAMS)) {
+  shots[name] = shoot(cam);
+  report.views[name] = bgCensus();
+}
+
+window.__SHOTS = shots;
+window.__REPORT = report;
+window.__SHOTS_READY = true;
+document.getElementById('out').textContent = `shots ready: ${Object.keys(shots).length}`;
+</script>

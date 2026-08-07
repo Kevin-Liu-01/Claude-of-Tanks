@@ -2330,3 +2330,98 @@ regression signal; hull 94.5 / dims 99.5 / floaters 100 remain the
 print's trustworthy bands. Any future gate work on this id starts by
 filing a fresh normalize batch against THIS lineage (mast flatten to
 the 2.68 anchor + wing-sliver drop — batch-37/43 intent, new nodes).
+
+## 2026-08-07 §5.17 TURRET-COMPLETION ROUND (leopard builder) — owner order
+## "theres still a gap under front part of its turret ... fix the turret"
+## + owner correction (supersedes the gray-squares half): "the turret didnt
+## finish building under that front part and sides"
+
+DIAGNOSIS (owner-angle rig tools/tmp-rev517-owner.{html,mjs} — fixed
+perspective cameras at the garage drag-pose class, elevated close 3/4
+front-left + chin/side/rear probes, yaw 0/45/90, §B2 bg census per view;
+before-crops shots/rev517/before*): the turret rendered as a roof/upper
+shell floating over unbuilt volume. Under the FRONT: the wedge courses
+ended at their certified 1.79/1.90/2.045w floors and the only content in
+the chin cavity was the r18 SHADOW-NAMED recess/collar mesh — render-only
+slabs FLOATING in open air (the owner's "gap": daylight between the
+wedge underside, the floating collar bar, and the bow deck, wide open at
+elevated angles). Along the SIDES: through the 1.619..1.735 ring slit the
+eye hit the bare near-black fill faces 17 cm inside — hollow, no
+structure. Root cause: r18 §B7 re-authored the turret DOWN to the course
+floors and §C-shadow-filled the rest; nothing REAL was ever built between
+the shell and the ring band.
+
+FIX (REAL §B2 geometry — the A4 casting + mantlet collar the AMAP shell
+bolts onto; all under rig_turret, §5.17 block in buildLeo2Revolution):
+1. REAL MANTLET COLLAR (turretDark, ±0.52, y 1.74..2.02w, z 0.20..2.16w)
+   — the r18 render-only collar's certified visual footprint made REAL
+   and widened past the cheek blocks (elevation-safe: same top/front the
+   -9/+20 sweep was certified against since r18).
+2. Per-side CHIN BAND (camo, x 0.44..1.20, y 1.74..1.91w) riding the
+   wedge plane at a 0.05 module-lip setback (modules stay proud — photo
+   class), top buried in the C3 course, meeting the collar at ±0.44/0.52.
+3. Per-side UNDER-CHEEK CLOSURE (camo, x 1.20..1.55, top ring tapered to
+   C2's 1.48 knife line, y 1.74..2.06w into the wall floors, plane-0.05
+   back to z 0.50w) — the cheek underside is a closed volume.
+4. Per-side UNDER-SKIRT WALL (camo, x 1.36..1.46, y 1.725..2.00w,
+   z -2.00..0.60w) — the visible stepped casting wall 9 cm inside the
+   apron line; the ring/aft fills behind it keep the last ~10 cm as the
+   honest ring-clearance shade.
+5. Fore-LOW fill raised (top 1.66 -> 1.73w, 1 cm under the real collar;
+   front tucked 2.20 -> 2.14w) — the 1.66..1.755 under-chin daylight
+   sliver is dead.
+6. r18 RECESSED UNDER-WEDGE STEEL shadow mesh DELETED (courses + old
+   collar) — its floating-slab read WAS the complaint; real geometry
+   supersedes it. Fills (ring/bow-aft/aft/under-rack) unchanged.
+YAW-SWEEP LAW (banked, in-source): every new bottom clears the deck
+content of its own sweep annulus about the ring pivot (0, -0.35w) by
+>= 2 cm at ALL yaw — deck-edge/jacket strips 1.700 @ r >= 1.55 -> floors
+1.725+; tail box 1.71 @ r >= 2.55 -> chin/collar floors 1.74; fan wells
+(r 2.95) / tail mast (r 3.33) outside the max piece radius 2.88. Tops
+<= 2.06w (heightM anchor 2.65 unmoved); widest x 1.55 inside ±2.00.
+
+PROOF (clean-room worktree = HEAD 507f83b + this file only — LIVE-TREE
+FROZEN-SIB law; foreign WIP in materials/main/abrams at round time):
+- geometry-gate x2 IDENTICAL, the §5.09/batch-46 baseline TO THE DECIMAL:
+  `0 | hull 94.3 whole 66.7 turret 0 stations 73.2 dims 99.5 floaters
+  100` — hull 94.3 (guard >= 93.5: UNMOVED), dims 99.5 EXACT, floaters
+  100 x2; whole/stations/turret byte-equal to the §5.09 line (the adds
+  are fully mask-interior — not even a documented §B7 move).
+- §B2 FLOOD DELTA-0 x14 rest views (front 58 / fl 0 / left 0 / rl 42 /
+  rear 11 / rr 74 / right 0 / fr 13 / top 12 / hero-fl 0 / hero-rr 0 /
+  toptilt 0 / close-front 0 / close-roof 27 = the §5.09 digits EXACTLY);
+  yaw sets IMPROVED, zero regressions: yaw45 frontright 98 -> 20, top
+  154 -> 113; yaw90 right 226 -> 45, rearleft 172 -> 148, top 38 -> 34
+  (the new walls close real yaw sightlines; every other view at digit).
+- track-clip --exact 0/0 band + 0/0 shoe, blind spots 0. turret-parent
+  stranded 2 / abutting 0 / dangling 0 = the two CERTIFIED mast-union
+  false-flags (53%/26%). standard-check clip 0/0, contig 0, mg1+4d.
+  winding-audit m1 rev 0 / mix 0 / deficit 0 px; m2 clean (coincidence-
+  dominated, candidatePx 5). npm test 166 checks + track-geometry PASS.
+- HASHES: leo2_revolution 531d8a7c -> **db70c929** (81 -> 80 meshes =
+  the recess shadow mesh deleted; 112874 -> 113594 verts), stable across
+  both bookends. Guarded siblings BYTE-HELD at both bookends: leo2a5
+  e215a738 / leo2a6 09912270 / kf51 9ac547ac / leo1a5 1c79188 / leo2a4
+  12db10a0 / leopard2_proto 24bd57cc / leo2a7v 3ca4af86.
+- OWNER-ANGLE EVIDENCE: shots/rev517/evidence/pair-owner-*.png (labeled
+  before/after boards at the owner's elevated close 3/4 + chin/chin-low/
+  side/rear probes, rest + yaw45 + yaw90); official 14-view sets at
+  shots/rev517/photoclass{,-yaw45,-yaw90} vs the §5.09 baseline
+  shots/leo-509/final/*.
+
+RESIDUALS (measured, named):
+- yaw45 owner-rig swung-chin air: ONE new 153 px enclosed pocket on the
+  bespoke owner camera only (sky between the swung closure underside,
+  the bow deck corner and the jacket rail — the §5.09 "swung basket
+  overhangs the hull side" class at the front; real air, physically
+  correct at yaw45, floors sweep-law-bound). Official rig: zero new
+  enclosed px anywhere, six views improved.
+- The chin band/collar read DARK at garage angles — they sit in the
+  wedge's own cast shadow (DEEP-SHADE ALBEDO CLAMP class; they are
+  surfaces now, not voids — tone work there stays bounded by the clamp).
+- Dead-side low view barely moves (the §5.09 apron already owned that
+  read); the under-skirt wall's stepped edge registers only under the
+  apron line at near-horizontal pitches.
+- Carried untouched: §5.09 documented residuals (under-barrel/whip
+  station air, bustle-overhang daylight, ring-dip top slivers 4-9 px),
+  fills' certified tones, batch-46 oracle 0-at-cap state.
