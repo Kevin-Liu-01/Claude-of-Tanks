@@ -982,3 +982,21 @@ code) in a DEDICATED round — this gates ch2 batch-48d, t54's winding
 repair (same walk class, dAlong 1.29-1.41), and t80bv's re-parent
 ruling. All three park on that round. The registration-source round is
 now the top §E queue item.
+
+## 5.07 OWNER ORDERS (2026-08-07, direct — SUPERSEDES the queue):
+(1) "right now just focus on remaking the sepv2 and sepv3 based on
+the current abrams platforms" — m1a2_sepv2 REMAKE on the current
+m1a2 platform code (GRADUATE dda7bcf4: graduate-change protocol —
+after rebuild, gate x2 + re-cert critic + re-freeze); m1a2_sepv3
+CREATE (new roster variant on the m1a2 base; M1A2C/SEPv3 identity;
+the local m1a2_sepv3_dannzjs.glb is the measurement source candidate
+— provenance already local/owner-supplied, used historically for the
+m1a2 hero fixes). (2) "focus on making the crows machine guns point
+forward, not to the left" — CROWS-FORWARD LAW: supersedes the
+2026-08-06 outboard-yaw ruling (§4.9999 rest yaws +90/-90/+34);
+ALL abrams RWS/CROWS stations re-aim to forward rest. HAZARD: the
+rest-azimuth window-pinned law — yaw changes move certified gate
+rows on the five CROWS graduates (m1a1 a04c8c74, m1a1ha f1aaf80,
+m1a2_tejas 89c9f260, m1a2 bbae99a4, m1a2_sepv2 dda7bcf4) — every
+touched graduate gates x2, re-certs, re-freezes per protocol. The
+registration-source round + remaining queue PARK behind this focus.
