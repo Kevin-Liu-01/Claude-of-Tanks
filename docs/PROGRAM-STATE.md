@@ -798,3 +798,19 @@ byte-identical; graduates held. Photo-class critic IN FLIGHT
 (shots/critic-ww2-resit-indep/). Law notes banked in packets:
 roof-lip bow-steepening, co-planar frustum-front glacis,
 step-requires-body-split, wrap-pad width attribution.
+
+## 4.999995 TYPE10 RESIT: PASS 9.0 (independent resit critic, hash
+bracket 48fc36ba x2; sheets shots/critic-type10-resit/). All four
+§4.999993 orders CLOSED with pixels: turret 94% -> 80% of hull width
+(wall 74.1% = target band, real ~72%); true shoulder step + deck run;
+three side depth planes + top margins with drawn outline; pano 0.275
+proud (the only mass above the roof), M2 silhouettes; rear two-tier
+84% nesting. Gun four-box byte-identical to r1 (EXEMPLARY ruling
+stands, "untouched" proven numerically). §B7 discount applied where
+the fused print reads wide/stepless — the proc now beats the print on
+that axis. The owner's "build the type 10 as a priority" order is
+ACCEPTED at the §B8 bar (record hash 48fc36ba binds; gate curve rows
+stay honestly print-capped per the §E evidence — re-rig escalation
+remains the path to a measured ladder). Banked notes: solid turret
+length 58% just above the gate-4 alarm (watch on length edits), roof
+density round candidate, shaded-side seams pipeline-endemic.
