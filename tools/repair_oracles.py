@@ -3436,6 +3436,27 @@ def repair_leo2_revolution_gun_tube_vlo_drop(gltf):
 # reference until a future round files a fresh recipe against THIS lineage.
 
 
+# =============================================================== batch 47 ===
+# CHALLENGER_3 TUBE-PIN NORMALIZE (§E; filed in challenger_3.md
+# "Certified residuals" — SHORT-GUN COVER CAP, t14-class). The 42manako
+# print's L55A1 run is short: extract overallLenM 10.335 vs pub 11.50
+# (-10.1%), leaving 7 only-proc muzzle columns z 6.53..7.30 in the
+# hull-anchored frame (side_whole cover 5.26% ~= -7.9 pts). Raw frame:
+# nose +x, non-gun content ends x 3.832 (the guard) — ONLY the tube
+# overhang lives ahead, so the warp knee sits at 3.90 and the stretch
+# touches nothing but the tube run: muzzle 6.365 -> 7.226 (the
+# center-aligned +7.335-frame parity estimate; gate-in-loop refines).
+# y identity. Census expect = the full reachable print (65 prims /
+# 21,148 verts / 15,355 tris).
+REPAIRS['challenger_3'] = {
+    'path': 'public/models/tanks/community/challenger_3.glb',
+    'ops': [('py2', _axis_warp('challenger_3', long_axis='x',
+                               y_map=[(0.007, 0.007), (5.576, 5.576)],
+                               long_map=[(-4.686, -4.686), (3.90, 3.90), (6.365, 7.226)],
+                               y_top_max=5.60, expect=(65, 21148, 15355)))],
+}
+
+
 # =============================================================== batch 42 ===
 # M26_PERSHING BODY-STRETCH + MUZZLE-PIN (m46 batch-36 class; formal warp
 # request FILED in m26_pershing.md "Vertex round r2", patton-family builder

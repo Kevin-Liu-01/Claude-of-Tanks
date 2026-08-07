@@ -226,3 +226,15 @@ mode-1 rev 0 deficit 0 (the r1 standing '2 latent reversed' CLOSED:
 the stern deck slab ring order + the lower-bow frustum, both
 re-authored in the glacis slab convention), mode-2 clean; standard-
 check contig 0 census mg1+6d; npm test 166 + track-geometry PASS.
+
+## batch-47 TUBE-PIN NORMALIZE EXECUTED (2026-08-07, orchestrator §E)
+
+The filed SHORT-GUN COVER CAP is closed: raw-frame warp knee 3.90
+(non-gun content ends 3.832 — only the tube overhang stretched),
+muzzle 6.365 -> 7.226 raw (+7.335-frame center-aligned parity);
+byte-idempotent x2 md5 4c994390; y untouched. Gate x2: hull 67.4 ->
+69.8, side_whole cover 5.26% -> 1.12% (row 65 -> 73.0 — the filed
+~+7.9 delivered). The whole component (61.4) now rides front_whole,
+which the tube length cannot move — the min is unchanged by design,
+not a warp failure. Remaining caps: the -4.17 hullLengthM anchor
+column, §H.4 Boxer columns, twin 5.21w antennas (all certified above).
