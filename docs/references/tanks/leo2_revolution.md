@@ -2225,3 +2225,44 @@ this round: broken oracle, turret 0.2 pre-exists at HEAD); npm test 166
 (supersedes bb2bb60c pending the batch re-cert; meshes 82 -> 80: the
 two curtain meshes deleted). Graduates untouched: leo2a5 e215a738 /
 leo2a6 09912270 / kf51 9ac547ac verified before and after.
+
+## batch-46 ORACLE ADJUDICATION (2026-08-06, orchestrator lane) — CHAIN RETIRED
+
+The owner's parallel session landed b08d1a2 ("revert batch-37 warp to
+last-good asset") + 8ad527a ("drop chassis_vlo junk shell, dedicated
+track material") — not a re-dress of the repaired lineage but a FULL
+PRINT RESTRUCTURE. Census of the live bytes (sha1 1d7112d9, 1,442,776
+B): `chassis`/`GunMesh`/`TurretMesh` are meshless articulation shells;
+geometry lives on new children `chassis_vlo001` + `chassis_vlo001_1`
+(gun tube, under GunMesh) and `chassis_vlo002` + `chassis_vlo002_1`
+(turret print, under TurretMesh); 12 per-shoe track nodes + big wheels
+under Scene; 5 materials incl. a dedicated `Tracks`.
+
+ADJUDICATION: batches 37 (mast warp) / 41 (vlo drop) / 43 (wing
+excision) all assert on retired-lineage nodes (`chassis_vlo` mesh node,
+2-prim GunMesh mesh, `vehicle#gun_tube_vlo`) — pre-flight can never
+pass. Whole chain RETIRED to history (repair_oracles.py batch-46 note;
+no REPAIRS entry remains). Old .bak (2,499,448 B, pre-batch-37 +
+blender-reparent lineage) archived `*.pre-batch46-history`; fresh .bak
+= owner bytes verbatim (the new pristine).
+
+HONEST BASELINE (x2 bit-identical, official gate):
+`0 | hull 94.5 whole 70.3 turret 0 stations 72.8 dims 99.5 floaters 100`
+Mechanism (tmp-leo-defuse-refprobe, gate frame): the rescue restored
+the PRISTINE tall mast/whip band — turret subtree y 1.648..4.026 vs
+published roof 2.64 (the exact geometry batch-37 flattened, whip tips
+raw 3.27-class). The loader height clamp governs (scale 0.771 vs len
+0.903), the whole model squeezes, and the turret band comparison
+collapses to 0. Hull improved under the rescue: 91.8 -> 94.5 BYTE-HELD
+class. The 3v wing-front sliver (batch-43's carrier) is BACK in the
+print (GUN `chassis_vlo001` x 0..1.64 flat y 1.267 z ~3.55).
+
+§B7 CAP RE-DERIVATION: owner ruling stands ("source material is
+wrong") — the print's turret band (mast height, wing slivers) is
+REF-WRONG; photo class governs the turret. The §B8-accepted candidate
+bbae2c80 (grays dead, acid YES every family, independent critic)
+RE-FREEZES as the render truth. Gate line reads 0-at-cap and is NOT a
+regression signal; hull 94.5 / dims 99.5 / floaters 100 remain the
+print's trustworthy bands. Any future gate work on this id starts by
+filing a fresh normalize batch against THIS lineage (mast flatten to
+the 2.68 anchor + wing-sliver drop — batch-37/43 intent, new nodes).

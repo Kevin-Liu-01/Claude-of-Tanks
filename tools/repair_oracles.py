@@ -3275,12 +3275,9 @@ REPAIRS['m2a2_bradley'] = {
 # the warp alone). EXPECTED RETUNE DEBT (documented): proc blades/whips
 # above the flattened band read proc-only until the leopard r7 retune
 # (~10-17 cols, a5 post-batch-29 class); dims should rise 96.5 -> ~100.
-REPAIRS['leo2_revolution'] = [
-    ('py2', _axis_warp('leo2_revolution', long_axis='z',
-                       y_map=[(-1.108, -1.108), (1.634, 1.634), (2.0563, 1.855), (3.343, 1.895)],
-                       long_map=[(-6.041, -6.041), (4.796, 4.796)],
-                       y_top_max=1.921, expect=(31, 69542, 47420))),
-]
+# batch-46 RETIREMENT: this registration (and the batch-41/43 extensions
+# below) demoted to history — see the batch 46 note. The owner's b08d1a2
+# revert + 8ad527a rescue replaced the asset lineage these ops assert on.
 
 
 # =============================================================== batch 36 ===
@@ -3334,7 +3331,8 @@ def repair_leo2_revolution_vlo_drop(gltf):
     print('[repair] leo2_revolution: chassis_vlo mesh ref dropped (vlo bake)')
 
 
-REPAIRS['leo2_revolution'].append(('py', repair_leo2_revolution_vlo_drop))
+# batch-46 RETIREMENT: append demoted to history (owner rescue already
+# drops the vlo shell its own way — no chassis_vlo mesh node exists).
 
 
 # =============================================================== batch 43 ===
@@ -3383,16 +3381,32 @@ def repair_leo2_revolution_gun_tube_vlo_drop(gltf):
     print('[repair] leo2_revolution: vehicle#gun_tube_vlo mesh ref dropped (vlo sliver)')
 
 
-REPAIRS['leo2_revolution'].extend([
-    ('py2', _index_surgery('leo2_revolution', 'TurretMesh', prim_index=0,
-                           delete_rules=[((-2.00, -1.32, 0.95, 1.35, -1.90, -0.05), 0, 0),
-                                         ((1.32, 2.00, 0.95, 1.35, -1.90, -0.05), 0, 0)],
-                           gun_rules=[((-0.30, 0.30, 0.85, 1.20, -6.10, -2.95), 0, 0)],
-                           expect_delete=(470, 1917, 953),
-                           expect_gun=(0, 0, 0))),
-    ('py', repair_leo2_revolution_gunmesh_prim0_drop),
-    ('py', repair_leo2_revolution_gun_tube_vlo_drop),
-])
+# batch-46 RETIREMENT: extend demoted to history (GunMesh/TurretMesh are
+# meshless articulation shells in the owner's rescued print — every assert
+# above targets the retired lineage).
+
+
+# =============================================================== batch 46 ===
+# LEO2_REVOLUTION CHAIN RETIREMENT (§E adjudication, 2026-08-06). The owner
+# landed b08d1a2 (revert to last-good bytes) + 8ad527a (rescue: "drop
+# chassis_vlo junk shell, dedicated track material") — a FULL PRINT
+# RESTRUCTURE, not a re-dress of the repaired lineage. Census of the live
+# bytes (sha1 1d7112d9, 1,442,776 B): nodes chassis / GunMesh / TurretMesh
+# are meshless articulation shells; geometry now lives on child nodes
+# chassis_vlo001 + chassis_vlo001_1 (gun tube, under GunMesh) and
+# chassis_vlo002 + chassis_vlo002_1 (turret print, under TurretMesh);
+# 5 materials incl. a dedicated 'Tracks'. Batches 37/41/43 assert on nodes
+# of the RETIRED lineage (chassis_vlo mesh node, GunMesh 2-prim mesh,
+# vehicle#gun_tube_vlo) — pre-flight cannot pass and never will. Per the
+# warp-law demotion convention the whole chain retires to history: the old
+# .bak (2,499,448 B, pre-batch-37+reparent lineage) archives as
+# *.pre-batch46-history; fresh .bak = the owner's live bytes verbatim (the
+# new pristine). The gate re-baselines honestly against the owner's asset
+# (FALSE-0 law: the stale 62.8 ledger row died with the lineage). The
+# §B8-accepted proc candidate (gray-fix, bbae2c80) re-freezes against the
+# honest line; §B7 cap re-derives from the new baseline in the packet.
+# NO REPAIRS['leo2_revolution'] ENTRY EXISTS — the owner's bytes ARE the
+# reference until a future round files a fresh recipe against THIS lineage.
 
 
 # =============================================================== batch 42 ===

@@ -284,12 +284,12 @@
   },
   {
    "id": "leo2_revolution",
-   "geoMin": 0.2,
+   "geoMin": 0,
    "gatePassed": false,
    "components": {
     "hullCurves": 94.5,
     "wholeCurves": 70.3,
-    "turretCurves": 0.2,
+    "turretCurves": 0,
     "stations": 72.8,
     "dims": 99.5,
     "floaters": 100

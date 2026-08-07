@@ -79,7 +79,7 @@ re-freeze NEW hash, all in ONE commit.
 | t84 | 04707a9c | |
 | m47_patton | 2fc99c50 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | leo2a5 | e215a738 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
-| leo2_revolution | bbae2c80 | GRAY-RECTANGLES DEAD (acid YES every view family, §B8 critic); render-side ACCEPTED — gate stays barred pending the 4.995 oracle adjudication |
+| leo2_revolution | bbae2c80 | GRAY-RECTANGLES DEAD (§B8 critic ACCEPTED); batch-46 adjudicated: chain 37/41/43 retired vs owner's restructured print, honest baseline 0 (§B7 REF-WRONG — pristine tall mast restored; hull 94.5), candidate RE-FROZEN on photo class |
 | m46_patton | 108806c8 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | centurion3 | 50273080 | bore resit RATIFIED (end 9.2; occlusion class fixed) |
 | m1a2_sepv2 | dda7bcf4 | CROWS aim-frame re-cert RATIFIED (floor 9.1+; owner both-halves YES) |
@@ -316,10 +316,22 @@ spz_puma + challenger2, (3) type99a (drum->wedge rebuild) + t34_85,
 order marginals). Also: promote the four-box probe; tmp-tank-critic
 matched-scale mode wanted; fv510 print -11% (pub sovereign, held).
 
-## 4.995 URGENT MY-LANE: leo2_revolution turret measures 0.2 at HEAD
-(ledger 62.8) — the owner's b08d1a2 GLB revert broke the batch-43
-coupled baseline; adjudicate the repair chain vs the last-good asset +
-re-baseline the §B7 cap BEFORE any revolution re-cert ratifies.
+## 4.995 RESOLVED (batch-46, 2026-08-06): leo2_revolution ORACLE
+ADJUDICATED — the owner's b08d1a2 revert + 8ad527a rescue is a FULL
+PRINT RESTRUCTURE (census: GunMesh/TurretMesh meshless shells, geometry
+on chassis_vlo001*/002* children, dedicated Tracks material, 1,442,776
+B sha1 1d7112d9). Chain 37/41/43 asserts on the retired lineage —
+RETIRED to history (repair_oracles.py batch-46 note); old .bak archived
+*.pre-batch46-history; fresh .bak = owner bytes. Honest baseline x2:
+0 | hull 94.5 / whole 70.3 / turret 0 / stations 72.8 / dims 99.5 /
+floaters 100. Turret-0 mechanism (refprobe): the rescue restored the
+PRISTINE tall mast/whip band (gate-frame turret y 1.65..4.03 vs pub
+roof 2.64) — the exact geometry batch-37 flattened; height clamp 0.771
+squeezes the model, turret band comparison collapses. §B7 REF-WRONG
+class (owner ruled the source wrong): candidate bbae2c80 re-frozen on
+photo-class acceptance (§B8 critic PASSED, grays dead); hull 94.5 is
+the print's only trustworthy band. Gate line stays capped until a
+fresh batch files against THIS lineage (mast flatten, batch-37 intent).
 
 ## 4.996 leo2a7 REMOVED BY OWNER (2026-08-06: "fully focus on the 2a7v")
 — roster-delisted (spec row stays as the revolution's donor); leo2a7v's
@@ -407,6 +419,22 @@ AX_WHIPS_TURRET awaiting the orchestrator's coupled turretFollowers
 landing — work order in abramsx.md). MY-LANE ADDS: the coupled abramsx
 whip landing; graduate rest-azimuth cap re-adjudication (+95 trial
 moved certified rows — transverse is window-pinned).
+
+## 4.99995 OWNER PUNCH LIST 3 (2026-08-06 night, verbatim intent):
+"finisht eh challegner 3, chjallenger 2, t14 armata (hull is wrong)
+t90sm (no attachments or decorations or the machine gun turret, turret
+does not look good, both t90a turrets are wrong, just update all soviet
+turrets fix all". Parsed orders: (1) challenger_3 FINISH (built
+d39f2258, needs its oracle-driven §B8 round to the bar); (2)
+challenger2 FINISH (rework landed, same bar); (3) t14 HULL WRONG
+(§B8.1 re-proportion — hull specifically); (4) t90sm: attachments +
+decorations + the MG turret (RWS) MISSING, turret shape NOT GOOD —
+full §B3-real equipment pass + turret re-loft; (5) BOTH t90a turrets
+(t90a + t90a_vladimir) WRONG — re-loft; (6) FLEET ORDER: update ALL
+soviet/russian turrets (t54/t55/t62/t64/t72/t80/t90 lines + IS/ISU
+where turret reads off) — §B8.1 turret-shape-line pass, mantlets
+mandatory (§B3.1). Spawned 2026-08-06: challenger lane (ch2+ch3+t14),
+russia turret lane (t90sm+t90a pair first, then the soviet sweep).
 
 ## 5. IN-FLIGHT AGENTS (SUPERSEDED BY §12 — the 2026-08-05 device
 handover interrupted these; respawn per §12)
