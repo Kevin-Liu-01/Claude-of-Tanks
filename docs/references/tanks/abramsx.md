@@ -433,3 +433,107 @@ registration, or (b) an §E node-split surgery isolating the whip
 geometry into a new node (batch-43 _index_surgery class) before the
 follower re-parent. Print hierarchy + band evidence in the orchestrator
 census (2026-08-06): Dekali/korpus/puli groups all sibling to ^Turret$.
+
+## §5.08 DEDICATED ROUND (2026-08-07, abramsx builder — non-graduate,
+## gate-in-loop; RELAUNCHED mid-round, prior agent's WIP audited + kept)
+
+### Relaunch WIP audit (AXDED-R1, the stopped agent's tree)
+git diff audited hunk-by-hunk (mirror: scratchpad ax-relaunch-wip.diff +
+workorder-abramsx-{before,step1,step2}.txt): ALL KEPT, nothing reverted.
+The R1 layer (28 AXDED-R1 markers): mid-rear deck DIP retable, belly
+0.30->0.41 (front-row 0.412 floor), nose/tail rake lifts (bisect-KEEP),
+skirt re-architecture (kneed leaned panels 1.805->1.760, real 16 mm
+joints + dark backing, sponson shadow channel, rising lead-fender
+diagonal to 3.78, rear -3.505), bridge deck reseat (full height ends
+z 0.70, two-segment fall 2.435->2.36->2.10), XM914 station to z 0.05
+(azimuth 0 — CROWS-FORWARD held), rear-corner re-scope with open-air
+aft of -3.70, MG sunk into a lashed tray, stern ladder, shackle bows
+verticalized (the z -4.064 ONLY-PROC column cleared), turret shell
+seat drop + stern pull-in to -2.05, flank armor rails, roof/face
+identity kit, mantlet collar, muzzle windows + end plate, wheel-face
+hub/ring dressing. Verified on relaunch: gate x2 IDENTICAL 62.8 |
+62.8/70/77/81.1/100/100 (vs the 49.4 hold bar), family hashes all
+byte-guarded, npm test green.
+
+### NEW REFERENCE DROP (owner, mid-round): abrams_x_low_poly.glb
+public/models/community-candidates/abrams_x_low_poly.glb (53 MB, same
+author Mortavex, Sketchfab Standard = LOCAL-ONLY quarantine; NOT
+registered — orchestrator lane; the gate still measures the registered
+abramsx-mortavex.glb). Probed OFFLINE (tools/tmp-abramsx-newref.{html,
+mjs} — direct GLTFLoader, width-normalized to the committed 3.66):
+- UN-WARPED shape truth: whips to 4.13, RWS pod 2.57..3.47 — the
+  pre-batch-20 proportions (the registered print is compressed above
+  2.30; heightM 2.44 stays sovereign so these stay LOOK reference only);
+- node grammar stvol/puli/korpus/dekali* + Bashnya/KOLESA (one tank;
+  lowercase set = the RWS assembly, y 2.57+);
+- look tells extracted at the garage angles (shots/abramsx-dedicated-r1/
+  garage-newref/): upper skirt band ~45% depth with bolt courses +
+  crisp panel seams, 7 big readable wheels (light rims/hubs/bolt
+  circles), DARK chamfered bow-corner fender blocks, recessed foredeck
+  access-panel outlines + shoulder headlight recesses, cheek-recessed
+  4-tube smoke banks, twin tall sight drums, pedestal RWS, ribbed
+  pepperpot muzzle brake, big rear mud flaps, stern slat stack (the
+  vent field, already built), bustle-corner whips (PARKED cert).
+
+### AXDED-R2 layer (this relaunch — new-ref look order, 10 markers)
+All mask-interior or sub-AA by construction; every station analyzed
+against the current worst tables before authoring:
+- WHEEL READ (verdict 1): fat sidewall rings r 0.285 on mid wheels
+  (end wheels keep the measured 0.22/0.234 ramp cap), 6-bolt circles
+  at radial 0.166 on MID wheels only, hubs 0.118, idler/sprocket hub
+  collars r 0.112/0.115 UNDER the 0.13 chain-annulus floor. First cut
+  used 0.235/0.255 drum rings + end-wheel bolts: track-clip --exact
+  caught shoe front 111 / rear 26 (blind-spot class) — audit-driven
+  retreat to the annulus floor; close state front 0/0, rear 10 band
+  (pre-existing <=60 class) / 0 shoe, blind spots 0.
+- SKIRT READ (verdicts 1+2): per-panel light top-cap strips (x 1.7565,
+  47 mm clear of the 1.8065 front-bin boundary) + bolt courses on the
+  leaned upper third (heads 1.782+, interior to every proc front span).
+- BOW CORNER FENDER CAPS (verdict 2): dark 2 mm relief + bevel strip
+  on the risen lead fender (z 3.44-3.76, face 1.806 < the 1.828 width
+  plane, tops under skTop).
+- FOREDECK GRAMMAR (verdict 2): recessed access-panel outlines (two on
+  segment A rx +0.119, one wide on segment B rx -0.053 — RX-SIGN law),
+  center crease, shoulder headlight recess bays + split lenses; all
+  +7.5 mm flush plates under the local 1.438 mirror-column tops.
+- REAR FLAPS (verdict 3): widened 0.30->0.42, outer edge 1.76.
+- CHEEK SMOKE BANKS (verdict 4, §B3.2): KIT smokeBank x2 (4 tubes,
+  r 0.040, dark) + pale mounting frames, turretG-parented (§B5), on
+  the raked band plane at x ±1.10. FIRST SEAT LESSON: authored at the
+  FLANK-corner z (2.28) = 0.15 m behind the mid-cheek plane — the
+  fitting-census probe (world AABBs via the garage page's __FIT_CENSUS
+  debug export) caught the cluster buried; the raked band at x 1.10
+  runs z_local 2.38..2.50 — re-seated at 2.41. Measure the plane AT
+  THE STATION x, not at the ring corners (the §B1 chin lesson, plan
+  edition).
+- MUZZLE (verdict 4): 4 pepperpot slot rings (torus 0.104/0.012)
+  wrapping the octagonal shroud — radial 0.116 ~= the certified 0.115
+  muzzle-cyl class, total 0.232 < the 0.295 12%-band hazard.
+- SIGHT DRUMS + RWS BULK (verdict 4): pano base drum 0.098/0.106 +
+  head + aperture band + ears (top HELD 2.459 = the 1% grace line),
+  gunner's hood + cheeks, RWS pedestal riser + receiver 0.15 wide +
+  barrel r 0.023 (top plane 2.4315 HELD), roof bolt courses at ±1.60
+  (+8 mm sub-AA).
+- (surveyed, rejected: front mini flaps — every legal seat is occluded
+  behind the risen fender or undercuts the ref hem line; the
+  2026-07-30 floater delete stands.)
+
+### CLOSE PROOFS (relaunch close, final bytes)
+GATE x2 IDENTICAL: 62.8 | 62.8/69.7/77.2/79/100/100 — vs the round-open
+ledger 49.4 | 56/49.4/68.6/76.4/100/100: min +13.4, hull +6.8, whole
++20.3, turret +8.6, stations +2.6, dims/floaters 100 HELD x2. (R2 vs R1
+decode: hull/min BYTE-HELD 62.8; stations 81.1->79 = the R2 dressing's
+station-slice footprint, the owner-density trade class; whole -0.3
+teeter; turret +0.2.) The gate row was re-stamped from final bytes
+after the cross-lane sweep overwrite (orchestrator note honored).
+Family hashes x2 (before + after): m1a1 2f277528 / m1a1ha aa7af504 /
+m1a2 636a4860 / tejas f7510d88 / sepv2 7ef1c5ec / tusk b1786e4c /
+sepv3 12ffb1f4 — ALL BYTE-GUARDED. abramsx hash d2d0ef48 (48/107352).
+track-clip --exact: front 0 band / 0 shoe, rear 10 band (pre-existing
+<=60) / 0 shoe, blind spots 0. npm test green (166 checks).
+Constraints held: whips PARKED (coupled landing stays orchestrator
+lane), XM914 azimuth 0 FORWARD at z 0.05, mode-2 8949 px certified
+by-design (unchanged), owner WIP files untouched (main.js/garage.js/
+materials.js/modelLoader.js), NOTHING committed.
+Evidence: shots/abramsx-dedicated-r1/{garage-newref, garage-relaunch-now,
+garage-after-r2, close-r2} + the audit logs in the session scratchpad.

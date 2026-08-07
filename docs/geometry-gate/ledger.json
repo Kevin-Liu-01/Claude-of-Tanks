@@ -474,13 +474,13 @@
   },
   {
    "id": "abramsx",
-   "geoMin": 49.4,
+   "geoMin": 62.8,
    "gatePassed": false,
    "components": {
-    "hullCurves": 56,
-    "wholeCurves": 49.4,
-    "turretCurves": 68.6,
-    "stations": 76.4,
+    "hullCurves": 62.8,
+    "wholeCurves": 69.7,
+    "turretCurves": 77.2,
+    "stations": 79,
     "dims": 100,
     "floaters": 100
    }

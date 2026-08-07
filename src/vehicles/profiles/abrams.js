@@ -5018,18 +5018,36 @@ function buildAim(P) {
 const AX_HULL = {
   bodyHalfW: 1.72, nose: 3.97,
   planTaper: { bowHalfW: 0.50, bowPull: 0.30, tailHalfW: 0.85, tailPull: 0.11 },
+  // AXDED-R1 mid-rear DIP: the ref hull deck falls to 1.49-1.58 over
+  // z -0.95..-1.4 (the slot between its bridge band and band B — proc
+  // read 1.66-1.69 there, +0.10-0.19 x3 columns). Skirt tops follow via
+  // skTop; the under-shell gap this opens is the print's own read.
   deck: [[3.97, 1.20], [3.86, 1.30], [3.74, 1.38], [3.55, 1.37], [3.30, 1.40],
     [3.10, 1.42], [2.98, 1.42], [2.88, 1.34], [2.68, 1.37], [2.52, 1.45],
     [2.36, 1.51], [2.20, 1.49], [2.02, 1.44], [1.70, 1.42], [1.20, 1.46],
-    [0.20, 1.54], [-0.86, 1.66], [-1.60, 1.72], [-2.28, 1.76], [-3.34, 1.76],
+    [0.20, 1.54], [-0.60, 1.60], [-0.85, 1.50], [-1.30, 1.49], [-1.48, 1.62],
+    [-1.60, 1.72], [-2.28, 1.76], [-3.34, 1.76],
     [-3.52, 1.71], [-3.70, 1.68], [-3.82, 1.56], [-3.97, 1.42]],
-  beltTop: 1.02, belly: 0.30,
+  // AXDED-R1 (dedicated round 2026-08-07): the workorder front rows read the
+  // ref's underside FLOOR at 0.412 across |x| < 1.05 (28 columns of proc
+  // 0.299 vs ref 0.412) — belly raised 0.30 -> 0.41 and both rake tables'
+  // sub-0.41 knots lifted with it. Side rows are track-owned (bottoms 0/
+  // 0.055) so this is front-row-only; §B2 ground channel is real air.
+  beltTop: 1.02, belly: 0.41,
   // The prow keeps a >12%-band underside past 3.7 so measured hullLengthM
   // stays at the published span (a thin blade tip fell out of the body
   // classification and the skirt at 3.68 became the measured bow).
-  noseRake: [[2.35, 0.30], [2.91, 0.34], [3.15, 0.42], [3.39, 0.54], [3.52, 0.74],
-    [3.74, 0.82], [3.97, 0.90]],
-  tailRake: [[-2.42, 0.30], [-2.87, 0.32], [-3.11, 0.38], [-3.34, 0.53], [-3.50, 0.70]],
+  // AXDED-R1 tip lift (bisect-verified KEEP: reverting it read -1.4 worse
+  // — the dy 0.02->0.04 shift is the least-squares registration reacting
+  // to the front-hem/corner bottom classes, healed by the skirt
+  // re-architecture below): ref side bottoms read 1.05-1.14 at the bow
+  // tip (proc rake sat 0.74-0.90) — knots 3.39+ lifted MODESTLY so every
+  // tip column keeps a >=0.30 body band under the local deck line.
+  noseRake: [[2.35, 0.41], [2.91, 0.44], [3.15, 0.50], [3.39, 0.60], [3.52, 0.86],
+    [3.74, 0.98], [3.97, 0.90]],
+  // (tail-lift note: the -2.42/-2.87 knots at 0.41/0.42 add 2 rear band
+  // voxels — 10 vs 8, inside the ~60 bar; kept for the front-row floor)
+  tailRake: [[-2.42, 0.41], [-2.87, 0.42], [-3.11, 0.44], [-3.34, 0.53], [-3.50, 0.70]],
   tailShelf: { z0: -3.50, z1: -3.97, yBot: 0.70 },
   // Order-B retune: the print's skirt is a KNEED panel run — face ±1.79,
   // top sloping with the deck line (1.36 bow -> 1.745 rear), bottoms LOW
@@ -5038,7 +5056,7 @@ const AX_HULL = {
   // and failed the glance test), plus a full-length RUB RAIL at ±1.828
   // y 0.77-0.81 (the front ±1.83 columns' exact read; it is also the
   // committed 3.66 WIDTH plane). Hand-rolled in buildAbramsX — noSkirt.
-  skirt: { x: 1.79, top: 1.76, bot: 0.52, z0: -3.56, z1: 3.68 },
+  skirt: { x: 1.79, top: 1.76, bot: 0.52, z0: -3.505, z1: 3.78 },  // AXDED-R1 spans (see the hand-rolled block)
   noSkirt: true,
   // noRearFace (rear round 2026-08-06): the default abramsHull rear kit
   // seats at rearZ+0.02..0.06 = INSIDE this hull's -3.97 tail loft (the
@@ -5059,6 +5077,56 @@ const AX_HULL = {
 function buildAbramsX(P) {
   const g = AX_HULL;
   abramsHull(P, g);
+  // AXDED-R1 RUNNING-GEAR FACE DRESSING (§B8.1 wheel countability, owner
+  // verdict 1: "wheels invisible at garage angles"): the stock discs
+  // render near-black camo — the ref's wheels read via LIGHT hub faces
+  // and rim rings. Detail-slot (wheelTone-coupled tan — the loud carrier,
+  // wanted here) hub caps + rim rings per road wheel, hub dots on idler/
+  // sprocket. All strictly inside the wheel/track envelope: hub r 0.105
+  // < the 0.13 shoe-chain annulus floor; side/plan/front masks already
+  // painted by the discs and band at every affected pixel.
+  // (rim rings r 0.22 — a 0.295 ring's forward arc caught the rising
+  // band ramps at wheels 1/7: track-clip front 95 / rear 10; at radial
+  // 0.234 the ring's z-extreme sits y 0.45-0.53 vs the ramp's <=0.28)
+  // AXDED-R2 (new-ref look order, owner drop abrams_x_low_poly.glb): the
+  // new print's wheels read via a FAT light sidewall ring near the tire
+  // edge + bolt circle + bright hub — the old thin 0.22 ring under-read.
+  // Ring radii per station: mid wheels (2-6, away from the ramp sweeps)
+  // take r 0.285 tube 0.018 (radial extreme 0.303 — ground-run shoe stack
+  // tops ~0.15 at those z, 0.19 ring bottom clears); end wheels 1/7 keep
+  // the measured 0.22/0.234 cap (the 0.295 ring caught the rising band
+  // ramps: track-clip front 95 / rear 10 at that size). Bolt circles at
+  // radial 0.155+0.011=0.166, hubs 0.118 — both under/inside the wheel
+  // disc silhouette; hub < the 0.13 chain-annulus floor class per wheel.
+  // Idler/sprocket take drum-face rim rings SIZED TO THE DRUM (the §B3.2
+  // standing carrier class) + the hub dots. track-clip --exact re-run at
+  // close (§B4).
+  for (const side of [-1, 1]) {
+    g.wheelZs.forEach((wz, wi) => {
+      const end = wi === 0 || wi === g.wheelZs.length - 1;
+      P.add('hullDetail', cylX(0.118, 0.028, 14), side * 1.517, g.wheelY, wz);
+      P.add('hullDark', cylX(0.052, 0.016, 10), side * 1.532, g.wheelY, wz);
+      P.add('hullDetail', torus(end ? 0.22 : 0.285, end ? 0.012 : 0.018, 18),
+        side * 1.518, g.wheelY, wz, 0, 0, Math.PI / 2);
+      // bolt circles on MID wheels only (radial 0.166 sits inside the
+      // 0.13-0.40 chain-sweep annulus — legal at mid stations where the
+      // chain rides the flat ground run far below, but the END wheels
+      // border the wrap windows: audit-measured shoe hits, dropped there)
+      if (!end) for (let b = 0; b < 6; b++) {
+        const ba = (b / 6) * Math.PI * 2 + wi * 0.35;
+        P.add('hullDark', cylX(0.011, 0.010, 6), side * 1.530,
+          g.wheelY + Math.sin(ba) * 0.155, wz + Math.cos(ba) * 0.155);
+      }
+    });
+    // idler/sprocket: hub dots + a TIGHT hub collar ring UNDER the 0.13
+    // chain-annulus floor (the 0.235/0.255 drum-face rings measured shoe
+    // 111/26 in the wrap windows — the wrap chain sweeps radial 0.13-0.40
+    // off these centers; §B4 audit-driven retreat, AXDED-R2)
+    P.add('hullDetail', cylX(0.075, 0.030, 12), side * 1.636, g.idlerY, g.idlerZ);
+    P.add('hullDetail', torus(0.112, 0.012, 16), side * 1.640, g.idlerY, g.idlerZ, 0, 0, Math.PI / 2);
+    P.add('hullDetail', cylX(0.080, 0.030, 12), side * 1.655, g.sprocketY, g.sprocketZ);
+    P.add('hullDetail', torus(0.115, 0.012, 16), side * 1.659, g.sprocketY, g.sprocketZ, 0, 0, Math.PI / 2);
+  }
   // Splitter lip under the blade bow (the noseRake carries the blade line).
   P.add('hullDark', box(2.4, 0.035, 0.035), 0, 0.98, 3.82);
   // §B2 bow closure (this round): the top-down scan carried two 18-cell
@@ -5072,14 +5140,51 @@ function buildAbramsX(P) {
     // x out to 1.12: the first 0.97-edge cut left 2-cell slivers at
     // (±1.02..1.08, 3.74) between shelf, corridor and band inner face;
     // z 3.74 is far forward of the idler sweep (max 3.22) so the lane is
-    // §B4-clear at this height.
-    P.add('hull', box(0.62, 0.10, 0.21), sx * 0.81, 1.30, 3.765);
+    // §B4-clear at this height. AXDED-R1: z trimmed 3.66..3.87 -> 3.60..
+    // 3.80 — the old 3.87 front face owned the ±1.04-1.15 plan bins 0.14
+    // past the ref's 3.728 corner read (still roofs the 3.74 hole class).
+    P.add('hull', box(0.62, 0.10, 0.20), sx * 0.81, 1.30, 3.70);
+  }
+  // AXDED-R2 FOREDECK PANEL GRAMMAR (new-ref look order): the new print's
+  // near-flat blade foredeck carries RECESSED access-panel outlines + the
+  // headlight recesses at the outer shoulders — the proc bow read as one
+  // blank camo plane (owner verdict 2). Thin dark frames flush on the
+  // deck segments (RX-SIGN: segment A 3.30-3.55 falls toward +z, rx
+  // +0.119; segment B 3.55-3.74 rises, rx -0.053), +7.5 mm proud = under
+  // the local 1.438 mirror-column tops (side-interior), x well inside the
+  // plan taper. Lens dots detail-slot on the recess plates.
+  {
+    const yA = (z) => 1.40 - 0.12 * (z - 3.30) + 0.0075;   // segment A plane
+    const yB = (z) => 1.37 + 0.0526 * (z - 3.55) + 0.0075; // segment B plane
+    for (const sx of [-1, 1]) {
+      // access panel outline (0.56 x 0.20) on segment A
+      for (const pz of [3.325, 3.525]) {
+        P.add('hullDark', box(0.56, 0.013, 0.013), sx * 0.55, yA(pz), pz, 0.119, 0, 0);
+      }
+      for (const px of [-0.28, 0.28]) {
+        P.add('hullDark', box(0.013, 0.013, 0.213), sx * 0.55 + px, yA(3.425), 3.425, 0.119, 0, 0);
+      }
+      // headlight recess at the outer shoulder (dark bay + split lenses)
+      P.add('hullDark', box(0.17, 0.014, 0.11), sx * 1.30, yA(3.36) + 0.002, 3.36, 0.119, 0, 0);
+      P.add('hullDetail', box(0.048, 0.008, 0.056), sx * 1.30 - 0.038, yA(3.36) + 0.009, 3.358, 0.119, 0, 0);
+      P.add('hullDetail', box(0.048, 0.008, 0.056), sx * 1.30 + 0.038, yA(3.36) + 0.009, 3.358, 0.119, 0, 0);
+    }
+    // wide shallow outline (1.06 x 0.14) on segment B + center crease line
+    for (const pz of [3.575, 3.715]) {
+      P.add('hullDark', box(1.06, 0.013, 0.013), 0, yB(pz), pz, -0.053, 0, 0);
+    }
+    for (const px of [-0.53, 0.53]) {
+      P.add('hullDark', box(0.013, 0.013, 0.153), px, yB(3.645), 3.645, -0.053, 0, 0);
+    }
+    P.add('hullDark', box(0.014, 0.012, 0.24), 0, yA(3.425), 3.425, 0.119, 0, 0);
   }
   // Hybrid-drive louver panels on the LOW rear deck (current bake: 1.75-1.77).
+  // AXDED-R1: stack lowered 0.018 — the 1.79 frame tops owned four rear
+  // columns +0.03-0.06 over the ref's 1.742-1.77 deck line.
   if (P.q) for (const side of [-1, 1]) {
-    P.add('hullDark', box(1.05, 0.02, 0.75), side * 0.68, 1.762, -3.0);
+    P.add('hullDark', box(1.05, 0.02, 0.75), side * 0.68, 1.744, -3.0);
     for (let k = 0; k < 5; k++) {
-      P.add('hullDetail', box(1.0, 0.024, 0.05), side * 0.68, 1.778, -2.72 - k * 0.14);
+      P.add('hullDetail', box(1.0, 0.024, 0.05), side * 0.68, 1.760, -2.72 - k * 0.14);
     }
   }
   // §B2 REAR-CORNER CLOSURE (rear round 2026-08-06): the top-down scan read
@@ -5095,7 +5200,9 @@ function buildAbramsX(P) {
     // (Order-B width re-architecture: every closure piece now ends INSIDE
     // the 1.79 skirt face — the old 1.8175/1.795 reaches owned the ±1.83
     // front columns at 1.48 where the print reads only the 0.81 strip.)
-    P.add('hull', box(0.72, 0.05, 0.30), sx * 1.42, 1.4525, -3.35);
+    // (AXDED-R1: x 1.78 -> 1.76 — the shelf corner poked the ±1.827 front
+    // bin the ref keeps at its 0.81 rub-strip line.)
+    P.add('hull', box(0.70, 0.05, 0.30), sx * 1.41, 1.4525, -3.35);
     // BAY BULKHEAD (the m1a2 sprocket-bay closure-wall precedent): with
     // the shelf roofing the slot, the open sponson tunnel above the track
     // read through from dead-rear as two enclosed sky slivers (x ±1.32,
@@ -5106,25 +5213,40 @@ function buildAbramsX(P) {
     P.add('hullDark', box(0.72, 0.72, 0.022), sx * 1.42, 1.065, -3.481);
     // CORNER FENDER DECK (§B2, the rear-quarter witness): aft of the
     // shelf the deck loft narrows to the ±1.055 corridor — the corner
-    // top (x 1.06..1.78, z -3.50..-3.86) was OPEN and the quarter rays
-    // saw sky straight across both sponson tunnels. One flat fender
-    // plate at the lip-top 1.55 plane (the real AbramsX full rear
-    // fender) closes the corner.
-    P.add('hull', box(0.72, 0.045, 0.64), sx * 1.42, 1.5275, -3.52);
-    // ...and the hollow UNDER it closes like the tejas corner: a
-    // rear-facing guard plate at the tail-band line + an outboard side
-    // panel spanning skirt-end to guard (the quarter-ray witnesses).
-    P.add('hull', box(0.70, 0.315, 0.020), sx * 1.415, 1.3475, -3.83);
-    P.add('hull', box(0.022, 0.315, 0.27), sx * 1.779, 1.3475, -3.695);
+    // top was OPEN and the quarter rays saw sky straight across both
+    // sponson tunnels. One flat fender plate at the lip-top 1.55 plane
+    // (the real AbramsX full rear fender) closes the corner.
+    // AXDED-R1 re-scope (workorder): the ref's rear corner ENDS at
+    // -3.701 for x 1.26..1.71 and -3.784 inboard (the old plate ran to
+    // -3.84 and out to 1.78, owning the ±1.7-1.84 plan/front bins 0.14-
+    // 0.36 past the ref) — plate now x 1.06..1.76 / z -3.20..-3.70 with
+    // an inboard tongue x 1.06..1.20 to -3.77; guard + side panel follow;
+    // aft of -3.70 the corner is OPEN AIR exactly like the print (§B2
+    // channels-not-holes clarification).
+    P.add('hull', box(0.70, 0.045, 0.50), sx * 1.41, 1.5275, -3.45);
+    P.add('hull', box(0.14, 0.045, 0.075), sx * 1.13, 1.5275, -3.7325);
+    P.add('hull', box(0.68, 0.315, 0.020), sx * 1.40, 1.3475, -3.69);
+    P.add('hull', box(0.022, 0.315, 0.19), sx * 1.744, 1.3475, -3.60);
   }
   // §B3 census MG (rear round): stowed M240 lashed on the low rear deck
-  // (FITTINGS marker; the hand-authored XM914 RWS censuses zero). Tops
-  // ~1.82 sit under the 1.83-1.84 center-spine side line.
+  // (FITTINGS marker; the hand-authored XM914 RWS censuses zero).
+  // AXDED-R1 SINK + TRAY (workorder + owner verdict 3): the stack topped
+  // ~1.94-2.0 and owned three -2.9..-3.18 side columns +0.2 over the
+  // ref's flat 1.75-1.77 deck — and read as a floating box at garage
+  // angles. Sunk into a lashed stowage tray (frame rails + strap licks =
+  // the §B3 connected read); stack tops now ~1.81 vs the 1.775 louver
+  // line (+0.03 class).
   {
     const mag = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', seed: 47,
       elev: 0.02, ammo: false, rotation: [0, 1.55, 0] });
-    mag.position.set(-1.02, 1.772, -3.02);
+    mag.position.set(-1.02, 1.585, -3.02);
     P.hullG.add(mag);
+    P.add('hullDetail', box(0.56, 0.035, 0.022), -1.02, 1.758, -3.135);  // tray rail
+    P.add('hullDetail', box(0.56, 0.035, 0.022), -1.02, 1.758, -2.905);  // tray rail
+    P.add('hullDetail', box(0.022, 0.035, 0.25), -1.30, 1.758, -3.02);   // tray end
+    P.add('hullDetail', box(0.022, 0.035, 0.25), -0.74, 1.758, -3.02);   // tray end
+    P.add('hullDark', box(0.045, 0.012, 0.26), -1.16, 1.775, -3.02);     // lash strap
+    P.add('hullDark', box(0.045, 0.012, 0.26), -0.88, 1.775, -3.02);     // lash strap
   }
   // Faceted corner sensor pods (hull mask in the oracle) — pylons carry them
   // to the deck so articulation poses stay connected. Tops clamped to 2.44.
@@ -5162,42 +5284,56 @@ function buildAbramsX(P) {
   //     x ±1.45, with SHORT whip masts at (±1.15, -1.98) topping 2.46-2.47
   //     (the old proc 4.12 rods were the documented post-warp retune debt).
   P.add('hull', box(0.3, 0.85, 0.3), 0.05, 1.95, -0.45);   // support leg
-  P.add('hull', box(0.3, 0.85, 0.3), 0.05, 1.95, 0.65);    // support leg
-  P.add('hull', box(1.12, 0.20, 2.31), -0.01, 2.32, 0.315); // bridge deck 2.42 (z -0.84..+1.47; left edge -0.57 per the ref's own span)
-  P.add('hullDark', box(1.02, 0.06, 2.21), -0.01, 2.405, 0.315);
-  // front step-down wedge — measured seat (A/B gate bisect this round:
-  // the warped print's high band runs to z ~1.6 and its deck resumes 1.38
-  // by ~1.74; a 1.09->1.40 step read -9.7 on the hull row vs this seat).
-  // Rear edge buried 2 cm into the deck box, top flush at 2.42.
-  P.add('hull', slab(
-    [0.49, 2.08, 1.45], [-0.45, 2.08, 1.45], [-0.45, 2.02, 1.74], [0.49, 2.02, 1.74],
-    [0.49, 2.42, 1.45], [-0.45, 2.42, 1.45], [-0.45, 2.08, 1.72], [0.49, 2.08, 1.72]));
+  P.add('hull', box(0.3, 0.85, 0.3), 0.05, 1.95, 0.55);    // support leg
+  // AXDED-R1 BRIDGE RESEAT (dedicated round 2026-08-07, workorder truth):
+  // the ref band's full 2.43-2.46 height ends at REGISTERED z ~0.9 and its
+  // top FALLS 2.384@0.815 -> 2.107@1.369 -> gone by 1.48 (the old proc
+  // deck ran full-height to 1.47 + a 1.45->1.74 wedge: err 0.17-0.49 over
+  // 8 side columns; the 2026-08-06 "1.45-1.74 seat" bisect is superseded
+  // by the current registration, dAlong 0.110). Full deck now ends z 0.70
+  // and a two-segment fall matches the ref curve: 2.435@0.70 -> 2.36@1.05
+  // -> 2.10@1.42, end face 1.45 (window [1.48, 1.70] stays clear).
+  P.add('hull', box(1.12, 0.20, 1.54), -0.01, 2.32, -0.07); // bridge deck 2.42 (z -0.84..+0.70; left edge -0.57 per the ref's own span)
+  P.add('hullDark', box(1.02, 0.06, 1.46), -0.01, 2.405, -0.075);
+  P.add('hull', slab(   // fall A: 2.435 -> 2.36 over z 0.68..1.05 (2 cm buried)
+    [0.49, 2.10, 0.68], [-0.45, 2.10, 0.68], [-0.45, 2.06, 1.05], [0.49, 2.06, 1.05],
+    [0.49, 2.435, 0.68], [-0.45, 2.435, 0.68], [-0.45, 2.36, 1.05], [0.49, 2.36, 1.05]));
+  P.add('hull', slab(   // fall B: 2.36 -> 2.10 over z 1.05..1.42, end face 1.45
+    [0.49, 2.06, 1.049], [-0.45, 2.06, 1.049], [-0.45, 2.00, 1.45], [0.49, 2.00, 1.45],
+    [0.49, 2.36, 1.049], [-0.45, 2.36, 1.049], [-0.45, 2.10, 1.42], [0.49, 2.10, 1.42]));
   P.add('hullDetail', cylY(0.28, 0.32, 0.05, 16), 0.30, 2.435, -0.35);
   // ---- XM914 30 mm RWS — CROWS-FORWARD LAW (owner 2026-08-07, §5.07:
   // "focus on making the crows machine guns point forward, not to the
   // left" — supersedes the §4.999a +34 deg rest): rest azimuth 0 rad,
   // straight down the bow. Still the only abrams station with true yaw
   // freedom — at A = 0 every solid stays inside the same bridge-deck
-  // envelope (muzzle tip z 1.054 < 1.45; ammo can x 0.155 < 0.55), so
-  // all three masks and the certified caps hold untouched by
-  // construction. Slew drum + receiver + short barrel + muzzle with
+  // envelope, so all three masks and the certified caps hold untouched
+  // by construction. AXDED-R1: station base moved z 0.45 -> 0.05 so the
+  // whole run (muzzle tip z 0.654) stays inside the reseated FULL-HEIGHT
+  // deck zone (ends 0.70 now — the fall zone would have exposed the
+  // barrel top); also nearer the ref's own bridge peak (x ~0.5,
+  // z -0.3..-0.5). Slew drum + receiver + short barrel + muzzle with
   // §B3.1 dark tip + EO box on the mount + ammo can GUN-LEFT with chute
-  // + pale cover licks — all inside deck x[-0.45,0.55] y[..2.435]
-  // z[-0.95,1.45].
+  // + pale cover licks — all inside deck x[-0.45,0.55] y[..2.435].
   {
     const Ax = 0, sAx = Math.sin(Ax), cAx = Math.cos(Ax);
-    const at = (u, v) => [0.05 - u * cAx + v * sAx, 0.45 + u * sAx + v * cAx];
+    const at = (u, v) => [0.05 - u * cAx + v * sAx, 0.05 + u * sAx + v * cAx];
     const part = (bk, geo, u, v, y) => { const [px, pz] = at(u, v); P.add(bk, geo, px, y, pz, 0, Ax, 0); };
-    P.add('hullDark', cylY(0.075, 0.085, 0.05, 12), 0.05, 2.40, 0.45);    // slew drum
-    part('hullDark', box(0.11, 0.10, 0.42), 0, 0.16, 2.38);               // receiver housing
-    part('hullDetail', box(0.10, 0.008, 0.40), 0, 0.16, 2.431);           // pale cover lick (top 2.435 = cap plane)
-    part('hullDark', cylZ(0.019, 0.23, 8), 0, 0.485, 2.4125);             // exposed barrel run (top 2.4315 = lick seat)
+    // AXDED-R2 station bulk (new-ref look order): the new print's RWS is a
+    // PEDESTAL-mounted mass — bolted riser under the slew drum, wider
+    // receiver, fatter barrel (top plane 2.4315 HELD; every solid stays
+    // inside the certified deck cap x[-0.45,0.55] y[..2.435]).
+    P.add('hullDark', box(0.16, 0.055, 0.16), 0.05, 2.3575, 0.05);        // pedestal riser
+    P.add('hullDark', cylY(0.075, 0.085, 0.05, 12), 0.05, 2.40, 0.05);    // slew drum
+    part('hullDark', box(0.15, 0.10, 0.46), 0, 0.16, 2.38);               // receiver housing
+    part('hullDetail', box(0.14, 0.008, 0.44), 0, 0.16, 2.431);           // pale cover lick (top 2.435 = cap plane)
+    part('hullDark', cylZ(0.023, 0.23, 8), 0, 0.485, 2.4085);             // exposed barrel run (top 2.4315 = lick seat)
     part('hullDetail', box(0.02, 0.006, 0.22), 0, 0.485, 2.4315);         // barrel lick (top-down read, rides the barrel)
-    part('hullDark', box(0.045, 0.045, 0.06), 0, 0.575, 2.4105);          // muzzle block
-    part('hullDark', cylZ(0.012, 0.006, 8), 0, 0.604, 2.4125);            // §B3.1 dark bore tip
+    part('hullDark', box(0.052, 0.045, 0.08), 0, 0.575, 2.4105);          // muzzle block
+    part('hullDark', cylZ(0.012, 0.006, 8), 0, 0.617, 2.4085);            // §B3.1 dark bore tip
     part('hullDark', box(0.08, 0.09, 0.12), 0.10, 0.05, 2.388);           // EO box on the mount right
     part('hullGlass', box(0.06, 0.05, 0.010), 0.10, 0.115, 2.393);        // EO aperture (aim face)
-    part('hullDetail', box(0.075, 0.095, 0.16), -0.105, 0.08, 2.385);     // ammo can GUN-LEFT
+    part('hullDetail', box(0.095, 0.095, 0.16), -0.115, 0.08, 2.385);     // ammo can GUN-LEFT
     part('hullDark', box(0.012, 0.05, 0.10), -0.062, 0.10, 2.405);        // feed chute
     // station power conduit: pale flush line on the dark cap toward the
     // mast head (§4.999a cabling; top 2.435 = cap plane, tone-only).
@@ -5269,30 +5405,117 @@ function buildAbramsX(P) {
   // 1.5 mm proud = sub-AA per the 16%-coverage pixel math)
   P.decal('hull', 'number', P.spec.visual.number || '', 0.34, [1.7915, 0.8, -0.6], Math.PI / 2);
   P.decal('hull', 'number', P.spec.visual.number || '', 0.34, [-1.7915, 0.8, -0.6], -Math.PI / 2);
-  // AX SKIRT (hand-rolled, Order-B retune — see AX_HULL.skirt note): six
-  // kneed panels on the ±1.79 face, tops on the deck line, bottoms LOW
-  // over the idler then raised to 0.80 so the road wheels read (§B8.1),
-  // seam sticks between panels, and the full-length RUB RAIL whose outer
-  // face at ±1.828 is the committed width plane (WIDTH GUARD).
+  // AX SKIRT (hand-rolled; AXDED-R1 re-architecture, workorder-measured):
+  // kneed panels on the ±1.805 face, tops on the deck line, bottoms LOW
+  // over the idler then raised to 0.80 so the road wheels read (§B8.1);
+  // seam sticks between panels; the RUB RAIL whose outer face at ±1.828
+  // is the committed width plane (WIDTH GUARD). AXDED-R1 changes:
+  // (1) panels THICKENED inboard 1.770 -> 1.735 — the ref's plan bins at
+  //     x ±1.705/1.733 read skirt content (front 3.784 / rear -3.70) that
+  //     the old 35 mm panel missed entirely (err 0.28-0.30 x2);
+  // (2) front reach 3.68 -> 3.78 (ref plan 3.784) with the ref's RISING
+  //     LEAD-FENDER DIAGONAL: hem 0.52@3.20 -> 0.60@3.34 -> 0.887@3.48
+  //     -> 1.06@3.78 (ref side bottoms 0.638/0.887/0.97/1.053 at z 3.365
+  //     ..3.698) — the idler + ramp READ under the fender at garage
+  //     angles (§B8.1 gate-1, the owner's slab-wall verdict);
+  // (3) rear end -3.56 -> -3.505 (ref plan -3.506 at ±1.82-1.84);
+  // (4) rub rail trimmed to the hem run (a 0.79-line rail under the
+  //     risen fender would float in air): z -3.49..3.37.
   {
     const skTop = (z) => Math.min(1.745, deckAt(AX_HULL, z) - 0.015);
-    const skBot = (z) => lineAt([[3.68, 0.52], [2.30, 0.52], [1.80, 0.80], [-2.95, 0.80], [-3.30, 0.62], [-3.56, 0.62]], z);
-    const edges = [3.68, 2.62, 2.30, 1.80, 0.62, -0.62, -1.85, -2.95, -3.56];
+    const skBot = (z) => lineAt([[3.78, 1.06], [3.48, 0.887], [3.34, 0.60], [3.20, 0.52],
+      [2.30, 0.52], [1.80, 0.80], [-2.95, 0.80], [-3.30, 0.62], [-3.505, 0.62]], z);
+    const edges = [3.78, 3.48, 3.34, 2.62, 2.30, 1.80, 0.62, -0.62, -1.85, -2.95, -3.505];
     for (const side of [-1, 1]) {
       for (let k = 0; k < edges.length - 1; k++) {
-        const zF = edges[k], zR = edges[k + 1];
+        // AXDED-R1 REAL PANEL JOINTS (owner verdict 1/2 — "one full-height
+        // slab wall" / "monolithic flat panel"): adjacent panels now stop
+        // 8 mm short of each interior joint and a dark backing plate at
+        // ±1.742 fills the 16 mm gap — a true shadowed separation that
+        // reads at garage angles. Silhouette-stable: the backing paints
+        // the same side columns; the 16 mm outer-face recession is a
+        // sub-AA sliver in the 110 mm plan bins.
+        const zF = edges[k] - (k > 0 ? 0.008 : 0);
+        const zR = edges[k + 1] + (k < edges.length - 2 ? 0.008 : 0);
         const t0 = skTop(zF), t1 = skTop(zR);
         const b0 = skBot(zF), b1 = skBot(zR);
+        // AXDED-R1 PANEL LEAN (decoded from the ref's own front bins: at
+        // x 1.73-1.85 the ref tops read only 1.47-1.52 while its side
+        // tops run 1.68-1.77 — its panels LEAN, outer face 1.805 at the
+        // hem tapering to 1.760 at the top edge). Side silhouette is
+        // x-invariant; the 1.805 bottom ring keeps every plan column and
+        // the width plane; front bins ±1.786/1.827 pick up the ref's
+        // 0.81-1.52 tiered reads. Also the AbramsX's angled-armor look.
+        // (inner face CONSTANT 1.735 — an inner lean to 1.700 dipped the
+        // face inside the idler-wrap shoe envelope at y 0.68-0.84 and
+        // read 95 front band voxels; the outer-face lean alone carries
+        // the ref's tiered front-bin read)
         sideSlab(P, 'hull', side,
-          [1.770, b0, zF], [1.805, b0, zF], [1.805, b1, zR], [1.770, b1, zR],
-          [1.770, t0, zF], [1.805, t0, zF], [1.805, t1, zR], [1.770, t1, zR]);
-        if (P.q && k < edges.length - 2) {
-          P.add('hullDark', box(0.014, (Math.min(t1, 1.6) - Math.max(b1, 0.55)) * 0.86, 0.016),
-            side * 1.798, (Math.min(t1, 1.6) + Math.max(b1, 0.55)) / 2, zR);
+          [1.735, b0, zF], [1.805, b0, zF], [1.805, b1, zR], [1.735, b1, zR],
+          [1.735, t0, zF], [1.760, t0, zF], [1.760, t1, zR], [1.735, t1, zR]);
+        if (k < edges.length - 2) {
+          const zJ = edges[k + 1];
+          const tj = skTop(zJ), bj = skBot(zJ);
+          P.add('hullDark', box(0.012, tj - bj - 0.02, 0.10),
+            side * 1.742, (tj + bj) / 2, zJ);
+        }
+        // AXDED-R1 sponson shadow channel (per segment — follows the
+        // sloping top line): a mask-excluded /shadow/ groove strip under
+        // the skirt top edge — the deck reads as OVERHANGING the skirt
+        // band instead of fusing with it (the ref's two-tier side read).
+        P.add('hullShadow', box(0.010, 0.038, Math.max(zF - zR - 0.03, 0.06)),
+          side * 1.7565, (t0 + t1) / 2 - 0.042, (zF + zR) / 2);
+        // AXDED-R2 panel READ layer (new-ref look order): the new print's
+        // skirt segments read via a light TOP CAP strip under the deck
+        // overhang + a BOLT COURSE row on the upper-third of each panel
+        // (its bolt heads catch light as a dotted seam line at garage
+        // range). Both interior: strip face 1.7625 (47 mm clear of the
+        // 1.8065 front-bin boundary — no AA bleed), tops ride the skTop
+        // silhouette line the side mask already owns; bolts on the LEANED
+        // face upper third (x 1.778 + 4 mm proud = 1.786-bin interior,
+        // y under the local proc front tops).
+        P.add('hullDetail', box(0.012, 0.020, Math.max(zF - zR - 0.05, 0.05)),
+          side * 1.7565, (t0 + t1) / 2 - 0.012, (zF + zR) / 2);
+        if (t0 - b0 > 0.30) {
+          const nB = Math.max(2, Math.floor((zF - zR) / 0.17));
+          for (let bk = 0; bk < nB; bk++) {
+            const bz = zR + ((bk + 0.5) / nB) * (zF - zR);
+            const by = skTop(bz) - 0.10 - 0.20 * (skTop(bz) - skBot(bz));
+            P.add('hullDark', cylX(0.010, 0.008, 6), side * 1.782, by, bz);
+          }
         }
       }
-      // full-length rub rail — outer face ±1.828 = the committed width
-      P.add('hull', box(0.023, 0.042, 7.17), side * 1.8165, 0.79, 0.075);
+      // rub rail on the hem run — outer face ±1.828 = the committed width
+      P.add('hull', box(0.023, 0.042, 6.86), side * 1.8165, 0.79, -0.06);
+      // AXDED-R1 rear flaps (E): the ref side reads hanging content down
+      // to 0.527 at z -3.62..-3.73 behind the sprocket (its mud flaps,
+      // visible in the garage rear pair) — proc had nothing below 0.638.
+      // AXDED-R2: widened 0.30 -> 0.42 to the new print's near-full-fender
+      // flap read (outer edge 1.76 inside the 1.805 hem plane).
+      P.add('hullRubber', box(0.42, 0.26, 0.030), side * 1.55, 0.66, -3.67, 0.08, 0, 0);
+      // AXDED-R2 BOW CORNER FENDER CAP (new-ref look order — its single
+      // strongest hull-side identity item): the dark chamfered fender
+      // block over the idler. A 2 mm relief plate ON the risen lead-fender
+      // panel + a beveled top strip; dark tone carries the read. Outer
+      // face 1.807 (under the 1.828 width plane, 47 mm inside the ±1.827
+      // front-bin content the panel already owns at these y); tops under
+      // the local skTop silhouette line; §B4-clear by construction (same
+      // plane as the panel face, no inboard reach).
+      {
+        const capT = (z) => skTop(z) - 0.012;
+        for (const [cz0, cz1] of [[3.44, 3.76]]) {
+          const zm = (cz0 + cz1) / 2;
+          const h = capT(zm) - (skBot(zm) + 0.02);
+          P.add('hullDark', box(0.006, h, cz1 - cz0),
+            side * 1.804, (capT(zm) + skBot(zm) + 0.02) / 2, zm);
+          P.add('hullDark', box(0.010, 0.030, cz1 - cz0 - 0.05),
+            side * 1.806, capT(zm) - 0.010, zm);
+        }
+      }
+      // (AXDED-R2 note: the new print's small front flaps were surveyed —
+      // every legal seat is either fully occluded behind the risen-fender
+      // panel or costs a measured side column below the ref's own hem
+      // line; the 2026-07-30 front-flap floater delete stands.)
     }
   }
   // ---- REAR PLATE KIT (rear round 2026-08-06, owner "fix m1 butts" family
@@ -5324,15 +5547,33 @@ function buildAbramsX(P) {
       P.add('hullDetail', box(0.018, 0.100, 0.026), side * 0.785, 1.315, WX - 0.004);
       P.add('hullDetail', box(0.188, 0.018, 0.026), side * 0.70, 1.367, WX - 0.004);
       // tow shackle station (clevis pair + bow + pin)
+      // AXDED-R1: the bow torus stood FLAT (KIT.torus XZ default) — its
+      // rim reached z -4.014 and carried a whole ONLY-PROC err-9 column
+      // at z -4.064 in BOTH side rows (ref tail ends -3.95). Rotated
+      // VERTICAL (real shackle-bow read); rear reach now -3.986 and the
+      // -4.064 bin clears. hullLengthM re-anchors on the -3.99 wall kit
+      // (7.96 vs published 7.98 — inside the 1% grace).
       P.add('hullDetail', box(0.028, 0.080, 0.010), side * 0.45 - 0.030, 0.885, WX - 0.005);
       P.add('hullDetail', box(0.028, 0.080, 0.010), side * 0.45 + 0.030, 0.885, WX - 0.005);
-      P.add('hullDark', torus(0.028, 0.010, 12), side * 0.45, 0.878, WX - 0.006);
+      P.add('hullDark', torus(0.028, 0.010, 12), side * 0.45, 0.878, WX - 0.006, Math.PI / 2, 0, 0);
       P.add('hullDetail', cylX(0.009, 0.082, 8), side * 0.45, 0.912, WX - 0.004);
     }
     // center tow pintle ON the plate (was buried at -3.915/-3.925)
     P.add('hullDark', box(0.30, 0.062, 0.016), 0, 0.90, WX - 0.008);
     P.add('hullDetail', box(0.10, 0.095, 0.014), 0, 0.902, WX - 0.007);
     P.add('hullDark', cylZ(0.030, 0.020, 10), 0, 0.94, WX - 0.010);
+    // AXDED-R1 STERN LADDER (owner verdict 3 — the ref's garage rear pair
+    // shows a corner ladder): on the right corner wall (the tail loft
+    // face at z -3.86 for |x| > 0.85 — the tailPull ring), <=12 mm proud,
+    // interior to the tail box from the side.
+    {
+      const LWX = -3.86;
+      P.add('hullDetail', box(0.016, 0.60, 0.014), 1.10, 1.03, LWX - 0.008);
+      P.add('hullDetail', box(0.016, 0.60, 0.014), 1.32, 1.03, LWX - 0.008);
+      for (let k = 0; k < 4; k++) {
+        P.add('hullDetail', box(0.235, 0.014, 0.012), 1.21, 0.78 + k * 0.165, LWX - 0.012);
+      }
+    }
   }
   // Yawing shell (turret mask — the repaired oracle articulates it): sharp
   // front face at z 2.55, roof rising 2.13 -> 2.46 plateau (z 0.65..-0.55),
@@ -5360,10 +5601,15 @@ function buildAbramsX(P) {
     [-0.60, -0.11, 2.73], [0.60, -0.11, 2.73], [1.648, -0.11, 2.244], [-1.648, -0.11, 2.244],
     [-0.52, 0.18, 2.567], [0.52, 0.18, 2.567], [1.60, 0.30, 2.22], [-1.60, 0.30, 2.22]));
   P.add('turret', slab(   // face slope up to the roof plateau
-    [-1.70, -0.38, 2.28], [1.70, -0.38, 2.28], [1.70, -0.34, 1.04], [-1.70, -0.34, 1.04],
+    [-1.70, -0.38, 2.28], [1.70, -0.38, 2.28], [1.70, -0.39, 1.04], [-1.70, -0.39, 1.04],
     [-1.65, 0.30, 2.24], [1.65, 0.30, 2.24], [1.65, 0.48, 1.06], [-1.65, 0.48, 1.06]));
+  // AXDED-R1 shell seat: the workorder's broad class read proc shell
+  // bottoms +0.04-0.06 over the ref line (ref 1.635 flat to z -0.85 world,
+  // then rising ~0.23/m to 2.02 at the stern) — plateau/shelf bottom rings
+  // dropped 0.05 (the shell now seats INTO the deck line like the print's)
+  // and the shelf/stern bottoms follow the ref's rising line.
   P.add('turret', slab(   // plateau body
-    [-1.70, -0.34, 1.08], [1.70, -0.34, 1.08], [1.70, -0.28, -0.11], [-1.70, -0.28, -0.11],
+    [-1.70, -0.39, 1.08], [1.70, -0.39, 1.08], [1.70, -0.33, -0.11], [-1.70, -0.33, -0.11],
     [-1.65, 0.48, 1.08], [1.65, 0.48, 1.08], [1.65, 0.48, -0.11], [-1.65, 0.48, -0.11]));
   // Order-B retune: the batch-20 warp compressed the print's shell above
   // its 2.30 knee — the ref shelf/tail now read ~2.33/2.22 world. The
@@ -5371,13 +5617,19 @@ function buildAbramsX(P) {
   // the fore plateau HOLDS the published 2.44-2.46 roof (dims sovereign —
   // heightM p95 anchors there; the plateau columns' +0.12 over the
   // over-compressed print is the round's certified turret cap, packet).
+  // AXDED-R1 STERN PULL-IN (workorder): the old -2.14 stern (world -2.53)
+  // spilled a whole ONLY-PROC err-9 column at z -2.622 (ref plan rear
+  // reach -2.481, side content ends by -2.51) — stern now local -2.05
+  // (world -2.44), tail top RAISED 0.11 -> 0.19 (ref tail tops 2.19@-2.29,
+  // 2.134@-2.51) and tail bottom 0.06 -> 0.07 with the chamfer bottom
+  // riding the ref's rising line.
   P.add('turret', slab(   // shelf falling to the warped 2.33 line
-    [-1.70, -0.28, -0.07], [1.70, -0.28, -0.07], [1.70, -0.16, -1.29], [-1.70, -0.16, -1.29],
+    [-1.70, -0.33, -0.07], [1.70, -0.33, -0.07], [1.70, -0.15, -1.29], [-1.70, -0.15, -1.29],
     [-1.65, 0.48, -0.07], [1.65, 0.48, -0.07], [1.65, 0.375, -1.31], [-1.65, 0.375, -1.31]));
   P.add('turret', slab(   // rear chamfer to the flat stern (warped 2.22 class)
-    [-1.70, -0.16, -1.29], [1.70, -0.16, -1.29], [0.78, 0.06, -2.14], [-0.78, 0.06, -2.14],
-    [-1.65, 0.375, -1.31], [1.65, 0.375, -1.31], [0.78, 0.11, -2.14], [-0.78, 0.11, -2.14]));
-  P.add('turretDark', box(1.5, 0.10, 0.03), 0, 0.06, -2.14);
+    [-1.70, -0.15, -1.29], [1.70, -0.15, -1.29], [0.78, 0.07, -2.05], [-0.78, 0.07, -2.05],
+    [-1.65, 0.375, -1.31], [1.65, 0.375, -1.31], [0.78, 0.19, -2.05], [-0.78, 0.19, -2.05]));
+  P.add('turretDark', box(1.5, 0.11, 0.03), 0, 0.125, -2.05);
   P.add('turretDetail', box(2.1, 0.03, 0.7), 0, 0.462, 0.2); // rides the 0.48 plateau
   if (P.q) {
     for (const side of [-1, 1]) {
@@ -5385,11 +5637,76 @@ function buildAbramsX(P) {
       P.add('turretDark', box(0.02, 0.02, 3.2), side * 1.58, 0.40, 0.35);
       P.add('turretDetail', box(0.24, 0.03, 0.03), side * 0.9, 0.462, -0.01);
       P.add('turretDetail', box(0.24, 0.03, 0.03), side * 0.9, 0.462, 0.89);
-      P.add('turretDetail', box(0.03, 0.30, 0.03), side * 1.3, 0.28, -1.65);
+      // AXDED-R1: corner sticks shortened (tops 2.38 world owned the tail
+      // bins 0.08 over the ref's 2.30 line) — tops now 2.29 world.
+      P.add('turretDetail', box(0.03, 0.20, 0.03), side * 1.3, 0.24, -1.65);
     }
   }
-  P.add('turret', box(0.3, 0.30, 0.3), 0.75, 0.30, -0.85);    // sensor post
-  P.add('turretDark', box(0.22, 0.12, 0.03), 0.75, 0.42, -0.69);
+  // AXDED-R1: sensor post trimmed under the falling shelf top line (the
+  // old 0.45 top poked 0.036 over it and owned two mid-shelf bins).
+  P.add('turret', box(0.3, 0.24, 0.3), 0.75, 0.27, -0.85);    // sensor post
+  P.add('turretDark', box(0.22, 0.10, 0.03), 0.75, 0.35, -0.69);
+  // AXDED-R1 FLANK ARMOR RAILS (§B3.2 + workorder): the ref's front bins
+  // at x ±1.65-1.76 read flank content topping 2.06-2.23 that our
+  // tumblehomed shell missed entirely (err 0.38-0.43 x4 front columns) —
+  // the AbramsX carries appliqué panel rails on the shell flanks. Boxes
+  // at x 1.695-1.740 (inside the 1.828 width plane), tops world 2.26,
+  // interior to the shell's side silhouette; ribs + dark trim for the
+  // §B3 identifiable-equipment read.
+  for (const side of [-1, 1]) {
+    P.add('turret', box(0.045, 0.29, 2.90), side * 1.7175, 0.165, 0.25);
+    P.add('turretDark', box(0.020, 0.24, 0.016), side * 1.7285, 0.165, -0.62, 0, 0, 0);
+    P.add('turretDark', box(0.020, 0.24, 0.016), side * 1.7285, 0.165, 0.25, 0, 0, 0);
+    P.add('turretDark', box(0.020, 0.24, 0.016), side * 1.7285, 0.165, 1.12, 0, 0, 0);
+    P.add('turretDetail', box(0.014, 0.035, 2.82), side * 1.7315, 0.290, 0.25);
+  }
+  // AXDED-R1 ROOF + FACE IDENTITY (owner verdict 4 — "the turret wedge
+  // reads generic"): the real AbramsX roof carries LOW sight housings and
+  // the faceted face carries its sensor slit — everything here stays
+  // under the 2.46 heightM grace line (tops 2.452-2.459 world; the p95
+  // budget stays with the mast + whips) and flush on certified planes.
+  // AXDED-R2 drum bulk (new-ref look order): the new print's sights are
+  // proper DRUMS — base ring + head with a dark aperture band + side ears.
+  // Tops hold the 0.509 local = 2.459 world grace ceiling (p95 budget
+  // stays with the masts); base rings seat INTO the 0.48 plateau (no-air).
+  P.add('turret', box(0.30, 0.042, 0.34), 0.48, 0.483, 0.55);        // gunner's sight hood
+  P.add('turretDark', box(0.26, 0.048, 0.012), 0.48, 0.468, 0.727);  // its aperture slit
+  P.add('turretDark', box(0.024, 0.030, 0.30), 0.32, 0.486, 0.55);   // hood cheek L
+  P.add('turretDark', box(0.024, 0.030, 0.30), 0.64, 0.486, 0.55);   // hood cheek R
+  P.add('turret', cylY(0.098, 0.106, 0.038, 14), -0.52, 0.478, 0.28); // pano base drum
+  P.add('turretDark', cylY(0.074, 0.074, 0.022, 14), -0.52, 0.498, 0.28); // pano head (top 2.459)
+  P.add('turretDark', box(0.10, 0.026, 0.014), -0.52, 0.498, 0.356);  // pano aperture band
+  P.add('turret', box(0.022, 0.026, 0.05), -0.616, 0.494, 0.28);      // pano ear L
+  P.add('turret', box(0.022, 0.026, 0.05), -0.424, 0.494, 0.28);      // pano ear R
+  // roof bolt courses along the plateau edges (the new print's riveted
+  // roof-edge read; +8 mm sub-AA over the 0.48 plane, side x-invariant)
+  P.add('turretDetail', box(0.008, 0.007, 2.30), -1.60, 0.4845, 0.30);
+  P.add('turretDetail', box(0.008, 0.007, 2.30), 1.60, 0.4845, 0.30);
+  P.add('turretDark', box(0.56, 0.05, 0.016), 0, 0.035, 2.6485, 0.513, 0, 0); // face sensor slit (flush on the 29.4° rake)
+  for (const side of [-1, 1]) {   // cheek chamfer weld seams
+    P.add('turretDark', box(1.16, 0.013, 0.013), side * 1.124, 0.245, 2.487, 0, side * 0.434, 0);
+  }
+  // AXDED-R2 CHEEK SMOKE BANKS (new-ref look order + §B3.2: the new print
+  // carries recessed multi-tube banks in BOTH upper cheeks — the proc face
+  // was bare). KIT fitting, turret parented (§B5 — yaws with the shell),
+  // dark tubes in the recess read. Anchored ON the face-slope plane
+  // (z 2.27 at local y 0.14); tube tips reach z <= 2.38, interior to the
+  // chin's own 2.40-2.51 plan line at these x — every mask painted by the
+  // face already. §B1.1 symmetric by construction.
+  for (const side of [-1, 1]) {
+    // (first seat at z 2.28 was ~0.15 m BEHIND the face plane — the census
+    // probe read the cluster buried with only tips proud. The raked band
+    // at x 1.10 runs z_local 2.38..2.50: anchor ON it.)
+    // pale mounting frame behind the tubes (the new print's banks read as
+    // dark tubes on a light bracket — camo alone ate the 0.034 cluster);
+    // rx follows the band's back-lean, ry the plan chamfer (weld-seam 0.434)
+    P.add('turretDetail', box(0.30, 0.17, 0.016), side * 1.10, 0.13, 2.398, -0.28, side * 0.434, 0);
+    const bank = FITTINGS.smokeBank({ mats: P.mats, count: 4, r: 0.040,
+      len: 0.22, splay: side * 0.72, pitch: -0.50, arc: 0.50,
+      spacing: 0.094, slot: 'dark', seed: 61 + side });
+    bank.position.set(side * 1.10, 0.14, 2.41);
+    P.turretG.add(bank);
+  }
   // XM360: axis 1.93 (oracle tube band 1.80..2.04), muzzle at the published
   // 9.77 overall (5.71 world against the -4.06 pintle tail; the oracle tube
   // runs long to 6.22 — bounded whole-row cover). Slim angular shroud —
@@ -5399,6 +5716,15 @@ function buildAbramsX(P) {
   P.addGunExtra(slab(
     [-0.28, -0.14, 0.245], [0.28, -0.14, 0.245], [0.28, -0.14, -0.205], [-0.28, -0.14, -0.205],
     [-0.26, 0.18, 0.135], [0.26, 0.18, 0.135], [0.28, 0.18, -0.205], [-0.28, 0.18, -0.205]), 0, 0.02, 0.02);
+  // AXDED-R1 MANTLET COLLAR (§B3.1 MANTLETS MANDATORY + owner verdict 4):
+  // the tube exited the raked face bare — the real XM360 mount carries an
+  // angular collar at the root. Faceted box + cheek chamfers hugging the
+  // face plane (gun-local z 0.02..0.18 vs the face at 0.14 — buried =
+  // connected), y ±0.13 inside the certified 1.80-2.04 tube band, x ±0.22
+  // inside the existing plan reach.
+  P.addGunExtra(box(0.44, 0.26, 0.16), 0, 0, 0.10);
+  P.addGunExtra(box(0.20, 0.20, 0.14), 0, 0, 0.09, 0, 0, Math.PI / 4);
+  P.addGunExtraDark(box(0.46, 0.05, 0.03), 0, -0.115, 0.115);
   P.addGunExtraDark(box(0.50, 0.03, 0.03), 0, 0.12, 0.20);
   P.addGunExtraDark(cylZ(0.04, 0.16, 10), 0.22, 0.08, 0.18);
   // Order-B retune: NO bore-evacuator bulge (the real XM360 runs a slim
@@ -5411,6 +5737,26 @@ function buildAbramsX(P) {
   buildGun(P, { len: 3.60, r: 0.10, sleeve: true, collar: true, baseR: 0.14 });
   P.add('gun', box(0.20, 0.20, 0.5), 0, 0, 2.68);
   P.add('gun', box(0.20, 0.20, 0.5), 0, 0, 2.68, 0, 0, Math.PI / 4);
+  // AXDED-R1 muzzle grammar (§B3.1, owner verdict 4 "big angular muzzle
+  // brake/shroud"): dark baffle windows on the device flanks + a square
+  // end plate — the angular XM360 tell, all inside the certified 0.20
+  // envelope (the 0.24 diagonal was the banked hullLengthM hazard).
+  for (const bs of [-1, 1]) {
+    P.add('gunDark', box(0.004, 0.062, 0.095), bs * 0.102, 0, 2.585);
+    P.add('gunDark', box(0.004, 0.062, 0.095), bs * 0.102, 0, 2.775);
+    P.add('gunDark', box(0.062, 0.004, 0.095), 0, bs * 0.102, 2.585);
+    P.add('gunDark', box(0.062, 0.004, 0.095), 0, bs * 0.102, 2.775);
+  }
+  // AXDED-R2 pepperpot ribs (new-ref look order): the new print's brake is
+  // a RIBBED cylinder — transverse dark slot rings wrapping the octagonal
+  // shroud (ring span 0.092-0.116 intersects the 0.108 octagon surface =
+  // recessed band read). Radial 0.116 ~= the certified 0.115 muzzle-cyl
+  // class; total 0.232 stays under the 0.295 12%-band threshold that
+  // banked the hullLengthM hazard (the gun row itself is bounded cover).
+  for (const rz of [2.50, 2.62, 2.74, 2.86]) {
+    P.add('gunDark', torus(0.104, 0.012, 12), 0, 0, rz, Math.PI / 2, 0, 0);
+  }
+  P.add('gun', box(0.17, 0.17, 0.045), 0, 0, 3.485);
   P.add('gunDark', cylZ(0.115, 0.26, 12), 0, 0, 3.42);
   P.add('gun', cylZ(0.125, 0.1, 12), 0, 0, 3.25);
   P.add('gunDark', torus(0.09, 0.02, 12), 0, 0, 3.55, Math.PI / 2, 0, 0);
