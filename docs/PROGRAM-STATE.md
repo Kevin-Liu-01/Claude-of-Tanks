@@ -1219,3 +1219,17 @@ slaps on top. SIGNAL BANKED (not yet an order): the owner considers
 the BASE M1A2 PLATFORM'S LOOK WRONG — a future base-m1a2 rebuild
 toward the tejas grade is the likely next ask; the §3 graduate row
 (636a4860) stands until ordered.
+
+## 5.21 LEOPARD ROUND VERDICTS RATIFIED (2026-08-07): 4/4 PASS 9.0
+(independent critic, fresh 7x14-view sets; sheets
+shots/critic-leopard-509/). Revolution SEE-THROUGH DEAD at 531d8a7c
+(old sightlines 0-55px, all bounded intentional structure; -85%
+verified) — its RE-FREEZE DEFERRED to the §5.17a understructure
+round's landing + re-cert (the lane was already at WIP db70c929;
+same region). a4 12db10a0 / proto 24bd57cc / a7v 3ca4af86 records
+RATIFIED (a7v merge conclusively dead: yaw-90 top proves the compact
+rotating turret; the 61.6% four-box is thin dressing, documented).
+§5.16 FAMILY READ PASS (type90+proto+a4 one grammar, marks separable).
+ASK-OWNER banked: the proto's RCWS is legally SQUAT (published-height
+dims row caps it) — a proud a4-class station there needs an owner
+override of the height row. RCWS forward + connected verified x4.
