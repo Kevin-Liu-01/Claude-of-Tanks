@@ -221,6 +221,9 @@ body.cot-es-armed .cot-end{display:none !important;}
   .cot-es .es-cols{margin-top:8px;flex:0 0 auto;max-height:26vh;}
   .cot-es .es-actions{margin-top:12px;flex:0 0 auto;}
   .cot-es .cot-es-btn{padding:12px 30px;}
+  /* narrow side panels: the tracked-out header wrapped mid-word
+     ("TEAM ALIV") — drop the letterspacing and keep it on one line */
+  .cot-es .es-ph{letter-spacing:.1em;white-space:nowrap;gap:8px;overflow:hidden;}
 }
 `;
 
