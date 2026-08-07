@@ -1575,8 +1575,22 @@ export function createShowroomOrbit(camera, rig, deps) {
      * @returns {void}
      */
     update(dt) {
-      if (!running || !haveBox) return;
+      if (!running) return;
       const d = THREE.MathUtils.clamp(dt, 0, 0.1);
+      // perf-r5 camera-lock fix: the empty-pedestal poll below used to sit
+      // BEHIND the haveBox gate, so a start() on an empty pedestal (the boot
+      // hero now builds asynchronously behind a chunked prebake) left the
+      // controller inert forever — the static garageCameraPose owned the
+      // camera and the garage read as "locked". Keep polling until a hero
+      // exists, then settle onto the hero pose exactly like start() did.
+      if (!haveBox) {
+        measureAccS += d;
+        if (measureAccS > 0.4) {
+          measureAccS = 0;
+          if (measure() && haveBox) api.reset();
+        }
+        return;
+      }
       // The hero GLB streams in behind a procedural stand-in and the carousel
       // can swap vehicles at any time — re-measure a few times a second so the
       // framing (and heroDist) always describes what is actually on stage.

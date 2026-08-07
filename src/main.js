@@ -3771,36 +3771,54 @@ function* compileHiddenVariantsSteps() {
   // forced visible and all cascades marked dirty links them here, behind the
   // loading screen, in a single hidden frame.
   {
+    // perf-r5b (owner: "first load in battle is super laggy"): the four warm
+    // renders used to run as ONE atomic slice inside the force-visible
+    // window — 300-800 ms at retina scale, and the countdown re-warm runs
+    // with the screen LIVE. Each render is now its own slice; the addon
+    // force-visible flips apply and revert INSIDE each slice, so no
+    // presented frame ever shows a hidden addon.
     const flips = [];
-    for (const e of game.tanks) {
-      if (!e.visual || !e.visual.root) continue;
-      e.visual.root.traverse((o) => {
-        if (o.visible === false) { flips.push(o); o.visible = true; }
-      });
-    }
+    const collectFlips = () => {
+      flips.length = 0;
+      for (const e of game.tanks) {
+        if (!e.visual || !e.visual.root) continue;
+        e.visual.root.traverse((o) => {
+          if (o.visible === false) { flips.push(o); o.visible = true; }
+        });
+      }
+    };
+    const unflip = () => { for (const o of flips) o.visible = false; };
     try {
+      collectFlips();
       if (lighting && lighting.updateFrustums) lighting.updateFrustums();
       renderer.render(scene, camera);
-      // perf-r2e: the FIRST sniper zoom paid a ~230 ms one-off with ZERO new
-      // programs — FOV-dependent lazy work (vegetation repartition against
-      // the narrow frustum). Render two hidden frames at scope FOVs so that
-      // work lands here instead of on the first Shift press.
-      const fov0 = camera.fov;
-      for (const f of [20, 8]) {
+      unflip();
+    } catch (_) { unflip(); }
+    yield;
+    // perf-r2e: the FIRST sniper zoom paid a ~230 ms one-off with ZERO new
+    // programs — FOV-dependent lazy work (vegetation repartition against
+    // the narrow frustum). Render two hidden frames at scope FOVs so that
+    // work lands here instead of on the first Shift press.
+    for (const f of [20, 8]) {
+      try {
+        collectFlips();
+        const fov0 = camera.fov;
         camera.fov = f;
         camera.updateProjectionMatrix();
         if (lighting && lighting.updateFrustums) lighting.updateFrustums();
         renderer.render(scene, camera);
-      }
-      camera.fov = fov0;
-      camera.updateProjectionMatrix();
-      // perf-r4a: the renders above run from the GARAGE-side camera — world
-      // programs whose exact parameter set only materializes from the battle
-      // view (grass-wind chunks, baked prop pools, wreck shadow proxies kept
-      // linking at rematch open). Render ONE hidden frame from the player
-      // spawn's chase pose: it links precisely what the first battle frame
-      // will draw, color and shadow-depth variants alike.
+        camera.fov = fov0;
+        camera.updateProjectionMatrix();
+        unflip();
+      } catch (_) { unflip(); }
+      yield;
+    }
+    // perf-r4a: one hidden frame from the player spawn's chase pose — links
+    // exactly what the first battle frame will draw (world grass/props/wreck
+    // proxies included), color and shadow-depth variants alike.
+    try {
       if (battleStaged && game.player && game.player.state) {
+        collectFlips();
         const p = game.player.state.pos;
         const yaw = game.player.state.yaw || 0;
         _v1.set(p.x - Math.sin(yaw) * -14, p.y + 7.5, p.z - Math.cos(yaw) * -14);
@@ -3809,19 +3827,16 @@ function* compileHiddenVariantsSteps() {
         const camQuat0 = camera.quaternion.clone();
         camera.position.copy(_v1);
         camera.lookAt(_v2);
-        // one world tick at the spawn pose first: the camera-centred grass
-        // carpet only materializes its spawn-area meshes on update(), and its
-        // variant otherwise linked on the first real battle frame (+10 ms).
         if (world && world.update) world.update(0.016, camera.position, null, null);
         if (lighting && lighting.updateFrustums) lighting.updateFrustums();
         renderer.render(scene, camera);
         camera.position.copy(camPos0);
         camera.quaternion.copy(camQuat0);
         if (world && world.update) world.update(0, camera.position, null, null);
+        unflip();
       }
       if (lighting && lighting.updateFrustums) lighting.updateFrustums();
-    } catch (_) { /* warm only */ }
-    for (const o of flips) o.visible = false;
+    } catch (_) { unflip(); }
   }
 }
 // PERF (performance_budget r3): stream the 7 deferred staged-battle visuals
