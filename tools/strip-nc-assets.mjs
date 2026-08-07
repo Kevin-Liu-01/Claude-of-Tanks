@@ -78,7 +78,11 @@ async function main() {
   }
   for (const id of RECOVERED_ICON_IDS) {
     for (const suffix of ICON_SUFFIXES) {
+      // perf-r3c: shaded views ship as .webp now (silhouettes stay .png) —
+      // strip BOTH extensions so no derivative render of an NC mesh can ride
+      // a format change into a public build.
       await rm(path.join(DIST, 'icons', `${id}_${suffix}.png`), { force: true });
+      await rm(path.join(DIST, 'icons', `${id}_${suffix}.webp`), { force: true });
     }
   }
 

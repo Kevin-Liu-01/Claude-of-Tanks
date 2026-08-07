@@ -133,7 +133,7 @@ function genOne(id) {
     const half = (Math.max(size.x, size.z) / 2) * MARGIN;
     const cam = orthoCam(center, size, [0, 1, 0], [0, 0, 1], half, half);
     const c = capture(cam, BASE, BASE);
-    out[`${id}_top.png`] = c.toDataURL('image/png');
+    out[`${id}_top.webp`] = c.toDataURL('image/webp', 0.9); // perf-r3c: shaded views ship WebP
     out[`${id}_top_silhouette.png`] = silhouette(c, 128, 128).toDataURL('image/png');
   }
 
@@ -144,7 +144,7 @@ function genOne(id) {
     const halfW = halfH * aspect;
     const cam = orthoCam(center, size, [-1, 0, 0], [0, 1, 0], halfW, halfH);
     const c = capture(cam, BASE, BASE / 2);
-    out[`${id}_side.png`] = c.toDataURL('image/png');
+    out[`${id}_side.webp`] = c.toDataURL('image/webp', 0.9); // perf-r3c: shaded views ship WebP
     out[`${id}_side_silhouette.png`] = silhouette(c, 256, 128).toDataURL('image/png');
   }
 
@@ -160,7 +160,7 @@ function genOne(id) {
     cam.updateMatrixWorld();
     // render loose at high res, then normalize framing by alpha auto-crop
     const c = autoCropSquare(capture(cam, BASE * 2, BASE * 2), BASE, 0.05);
-    out[`${id}_angle.png`] = c.toDataURL('image/png');
+    out[`${id}_angle.webp`] = c.toDataURL('image/webp', 0.9); // perf-r3c: shaded views ship WebP
   }
 
   scene.remove(root);
