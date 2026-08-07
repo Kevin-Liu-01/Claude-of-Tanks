@@ -228,6 +228,17 @@ export function ensureStagedVisuals(game, limit = Infinity) {
   return true;
 }
 
+/** perf-r4b: the next entity ensureStagedVisuals(game, 1) would build, plus
+ * the texture tier ensureTankVisual will bake it at — the pre-battle loading
+ * loop prebakes that exact entry chunked before the build acquires it.
+ * @returns {?{ent: object, quality: string}} */
+export function nextStagedBake(game) {
+  const ent = game.tanks.find((e) => !e.visual);
+  if (!ent) return null;
+  const hero = ent.isPlayer || ent === game.tanks[0] || HERO_TEX_SPECS.has(ent.specId);
+  return { ent, quality: hero ? 'high' : 'ai' };
+}
+
 /**
  * PERF (performance_budget r4): build a pool entity's visual on demand (battle
  * roster selection). Shares the per-spec texture cache with any live instance

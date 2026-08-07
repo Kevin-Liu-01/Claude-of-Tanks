@@ -2269,6 +2269,17 @@ const QUALITY_SIZES = {
 };
 
 function bakeSharedCanvases(entry, quality) {
+  const g = bakeSharedCanvasesSteps(entry, quality);
+  let r = g.next();
+  while (!r.done) r = g.next();
+}
+
+// perf-r4b (play-session 'Painting vehicles' rows): the one-call family bake
+// was a 0.3-4.7 s painter atom behind the loading bar. The generator yields
+// between painter stages so the pre-battle prebake path can breathe; the sync
+// wrapper above drains it whole — every existing caller (acquire, hero
+// upgrade) is byte-identical, same rng draw order.
+function* bakeSharedCanvasesSteps(entry, quality) {
   // MOBILE r1: tier scale applied at the ONE place every shared vehicle bake
   // sizes itself ('high' hero 2048/1024 → 1024/512 on mobile, 'ai' roster
   // 1024/512 → 512/256) — burnt/ember/camo repaints all derive from these.
@@ -2292,13 +2303,18 @@ function bakeSharedCanvases(entry, quality) {
   }
   entry.camoCanvas.width = entry.camoCanvas.height = sz.albedo;
   paintCamo(entry.camoCanvas, vis, rng, entry.feats, seed);
+  yield;
   exposureTrim(entry.camoCanvas);
+  yield;
   const heightCanvas = paintHeight(makeCanvas(sz.map, sz.map), vis, rng, entry.feats, seed);
+  yield;
   const normalSrc = heightToNormal(heightCanvas, vis.zimmerit ? 2.6 : 2.6);
+  yield;
   entry.normalCanvas.width = entry.normalCanvas.height = sz.map;
   entry.normalCanvas.getContext('2d').drawImage(normalSrc, 0, 0, sz.map, sz.map);
   entry.roughCanvas.width = entry.roughCanvas.height = sz.map;
   paintRoughness(entry.roughCanvas, rng, entry.feats);
+  yield;
   // camo_spotting r4: per-patch paint response rides the pattern (see
   // paintPatchRoughness) — repainted with the albedo on pattern switches.
   paintPatchRoughness(entry.roughCanvas, entry.camoCanvas, vis);
@@ -2351,6 +2367,12 @@ function acquireSharedTextures(spec, aniso, quality = 'high') {
 // material keeps working.
 function upgradeEntryToHigh(entry) {
   bakeSharedCanvases(entry, 'high');
+  finalizeEntryResize(entry);
+}
+
+/** Post-resize texture ritual shared by the sync hero upgrade and the chunked
+ * prebake upgrade (see the camo r8 immutable-storage note above). */
+function finalizeEntryResize(entry) {
   entry.camoTex.dispose();
   entry.normalTex.dispose();
   entry.roughTex.dispose();
@@ -2360,6 +2382,54 @@ function upgradeEntryToHigh(entry) {
   // burnt/ember derive from the albedo — rebuild lazily at next wreck
   if (entry.burntTex) { entry.burntTex.dispose(); entry.burntTex = null; }
   if (entry.emberTex) { entry.emberTex.dispose(); entry.emberTex = null; }
+}
+
+/**
+ * perf-r4b: bake (or upgrade) a spec's shared texture entry BEFORE the visual
+ * build acquires it, yielding between painter stages — the pre-battle
+ * 'Painting vehicles' loop awaits this per roster tank so a 2048² family bake
+ * stops being a 0.3-4.7 s atomic task under the loading bar. The subsequent
+ * acquireSharedTextures call is then a pure cache hit. Refcounts unchanged
+ * (a prebaked-but-never-acquired entry behaves exactly like a released one).
+ * @param {object} spec TankSpec
+ * @param {number} aniso engineCtx.anisotropy
+ * @param {string} quality 'ai' | 'high' — must match what the build will ask
+ * @param {?function(): (Promise<void>|void)} tick awaited between stages
+ */
+export async function prebakeSharedTextures(spec, aniso, quality = 'ai', tick = null) {
+  const key = spec.id;
+  const run = async (g) => {
+    let r = g.next();
+    while (!r.done) {
+      if (tick) await tick();
+      r = g.next();
+    }
+  };
+  let entry = TEX_CACHE.get(key);
+  if (entry) {
+    // mirror acquire's only upgrade case; anything else is already adequate
+    if (quality === 'high' && entry.quality === 'ai') {
+      await run(bakeSharedCanvasesSteps(entry, 'high'));
+      finalizeEntryResize(entry);
+    }
+    return;
+  }
+  const patternId = resolveCamoPattern(key);
+  const seed = 0x5eed ^ (key.split('').reduce((a, ch) => (a * 33 + ch.charCodeAt(0)) | 0, 7));
+  entry = {
+    refs: 0,
+    spec, seed, feats: null, patternId, paintable: new Set(),
+    quality,
+    camoCanvas: makeCanvas(4, 4),
+    normalCanvas: makeCanvas(4, 4),
+    roughCanvas: makeCanvas(4, 4),
+    trackCanvas: paintTrack(mulberry32(seed + 17)),
+  };
+  await run(bakeSharedCanvasesSteps(entry, quality));
+  entry.camoTex = canvasTex(entry.camoCanvas, { aniso, repeat: true });
+  entry.normalTex = canvasTex(entry.normalCanvas, { srgb: false, aniso, repeat: true });
+  entry.roughTex = canvasTex(entry.roughCanvas, { srgb: false, aniso, repeat: true });
+  TEX_CACHE.set(key, entry);
 }
 
 /**

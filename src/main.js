@@ -50,6 +50,7 @@ import { createTank } from './vehicles/tankFactory.js';
 import {
   CAMO_PATTERN_IDS, CAMO_PATTERN_LABEL, getCamoSelection, setCamoSelection,
   setCamoBiome, applyCamoPatterns, applyCamoPatternsChunked, clearCamoOverrides, warmWreckTextures,
+  prebakeSharedTextures,
   upgradeSharedTextures,
 } from './vehicles/materials.js';
 import { computeDispersionRadM, SIM_DT } from './sim/movement.js';
@@ -77,7 +78,7 @@ import { createSettings } from './ui/settings.js';
 import { createTouchControls } from './ui/touchControls.js';
 import {
   createBus, createGameState, spawnTanks, setupBattle, simStep, createCollider,
-  mulberry32, ensureStagedVisuals,
+  mulberry32, ensureStagedVisuals, nextStagedBake,
 } from './game/state.js';
 // BOOT SCREENS: the entry/loading gate (markup inline in index.html so first
 // paint never waits on this module graph) and the pre-battle roster screen.
@@ -1745,6 +1746,16 @@ async function startBattleLoading(specId, mapId = null) {
   await nextFrame();
   const missing = game.tanks.filter((e) => !e.visual).length;
   for (let i = 0; i < missing + 1; i++) {
+    // perf-r4b: bake the NEXT tank's shared canvases chunked (a painted frame
+    // between painter stages) so the build below acquires a warm cache entry
+    // — one 2048² family bake was a 0.3-4.7 s atomic task under this bar.
+    const next = nextStagedBake(game);
+    if (next) {
+      try {
+        await prebakeSharedTextures(getSpec(next.ent.specId),
+          engineCtx.anisotropy ?? 4, next.quality, () => nextFrame());
+      } catch (_) { /* warm only — ensureStagedVisuals bakes as before */ }
+    }
     if (ensureStagedVisuals(game, 1)) break;
     battleLoad.progress(0.58 + ((i + 1) / Math.max(1, missing)) * 0.30, 'Painting vehicles');
     await nextFrame();
@@ -3634,6 +3645,16 @@ function compileHiddenVariants() {
       renderer.compile(e.visual.root, camera, scene);   // live-state materials
     } catch (_) { /* warm only */ }
   }
+  // perf-r4a (play-session rematch rows): this function compiled every TANK
+  // subtree but never the WORLD group — and the real render below runs from
+  // the garage-side camera, so world materials culled from that view
+  // (grass-wind chunks, baked prop pools, wreck shadow proxies) linked their
+  // programs on the first battle frame from the spawn view instead.
+  // renderer.compile() is frustum-independent for color programs: one walk
+  // of the world group links them all here, behind the loading screen.
+  if (world && world.group) {
+    try { renderer.compile(world.group, camera, scene); } catch (_) { /* warm only */ }
+  }
   // perf-r2d: renderer.compile() never builds SHADOW-PASS depth programs —
   // they link the first time a mesh's material class actually renders into a
   // cascade (the ±1-flag program pairs the spike probe kept catching on
@@ -3664,6 +3685,31 @@ function compileHiddenVariants() {
       }
       camera.fov = fov0;
       camera.updateProjectionMatrix();
+      // perf-r4a: the renders above run from the GARAGE-side camera — world
+      // programs whose exact parameter set only materializes from the battle
+      // view (grass-wind chunks, baked prop pools, wreck shadow proxies kept
+      // linking at rematch open). Render ONE hidden frame from the player
+      // spawn's chase pose: it links precisely what the first battle frame
+      // will draw, color and shadow-depth variants alike.
+      if (battleStaged && game.player && game.player.state) {
+        const p = game.player.state.pos;
+        const yaw = game.player.state.yaw || 0;
+        _v1.set(p.x - Math.sin(yaw) * -14, p.y + 7.5, p.z - Math.cos(yaw) * -14);
+        _v2.set(p.x, p.y + 1.5, p.z);
+        const camPos0 = camera.position.clone();
+        const camQuat0 = camera.quaternion.clone();
+        camera.position.copy(_v1);
+        camera.lookAt(_v2);
+        // one world tick at the spawn pose first: the camera-centred grass
+        // carpet only materializes its spawn-area meshes on update(), and its
+        // variant otherwise linked on the first real battle frame (+10 ms).
+        if (world && world.update) world.update(0.016, camera.position, null, null);
+        if (lighting && lighting.updateFrustums) lighting.updateFrustums();
+        renderer.render(scene, camera);
+        camera.position.copy(camPos0);
+        camera.quaternion.copy(camQuat0);
+        if (world && world.update) world.update(0, camera.position, null, null);
+      }
       if (lighting && lighting.updateFrustums) lighting.updateFrustums();
     } catch (_) { /* warm only */ }
     for (const o of flips) o.visible = false;
