@@ -11,15 +11,15 @@ import { ensureTankThumbs, drainTankThumbs, getTankThumb, requeueTankThumbs } fr
 // CAMO PICKER SECTION: swatches preview the REAL resolved pattern (scheme +
 // palette from materials.js) instead of hand-approximated CSS gradients.
 import { resolveCamoVisual, CLAUDE_CODE_MARK } from '../vehicles/materials.js';
+// CATALOG v2 (owner re-order 2026-08-06): the SOURCES catalog group is keyed
+// off the RUNTIME MODEL_SOURCE map — the single source of truth for "this id
+// plays a not-mine GLB". Membership is computed at load, never hardcoded, so
+// the group shrinks by itself as tanks graduate to procedural builds. The old
+// provenance-intent union (USERDROP*_SOURCED_IDS) is retired with this order:
+// a tank whose GLB registration is absent in THIS build renders our custom
+// model, so it belongs with the custom fleet (a public build that strips the
+// registrations simply shows a larger custom fleet and no Sources chip).
 import { MODEL_SOURCE } from '../vehicles/specs.js';
-// PROVENANCE-INTENT era bucketing (see groupOf below): public builds strip
-// the quarantined GLB registrations AND delete spec.community, so neither is
-// a public-safe "sourced" signal. The recovered waves export their sourced-id
-// rosters explicitly; the union keeps catalog chips identical local vs public.
-import { USERDROP4_SOURCED_IDS } from '../vehicles/userdrops4.js';
-import { USERDROP5_SOURCED_IDS } from '../vehicles/userdrops5.js';
-import { USERDROP6_SOURCED_IDS } from '../vehicles/userdrops6.js';
-import { USERDROP7_SOURCED_IDS } from '../vehicles/userdrops7.js';
 // EQUIPMENT SYSTEM: full catalog + slot logic (game/equipment.js), the
 // white-silhouette icon set (equipIcons.js), and the spotting-side math the
 // stat card folds into its view/camo rows so the garage can never disagree
@@ -80,6 +80,81 @@ const TIER_BY_ID = {
   t80bv: 'X', amx30: 'VII', amx30b2: 'VIII', m48: 'VII', m60a2: 'VIII',
   vickers_mk1: 'VII', t84: 'IX',
 };
+
+// ---------------------------------------------------------------------------
+// CATALOG GROUPS v2 (owner order 2026-08-06): the selection is catalogued into
+// FOUR groups, shown in this order — the custom (procedural) fleet is the
+// source of truth, split cold-war / modern / WWII, and every vehicle that
+// still PLAYS a not-mine 3D model lives in its own trailing SOURCES group:
+//   (1) 'coldwar'  custom builds of cold-war-era vehicles;
+//   (2) 'modern'   custom builds of modern vehicles;
+//   (3) 'ww2'      custom builds of WWII vehicles (spec.era === 'ww2');
+//   (4) 'sources'  ids whose registered render is a community GLB — computed
+//                  AT LOAD from MODEL_SOURCE (runtime truth, see import note).
+// Partition, not overlay: every vehicle is in exactly one group.
+// ---------------------------------------------------------------------------
+// Specs only carry era 'ww2' | 'modern', so the cold-war split lives HERE as
+// a UI-layer classification map (id -> Cold War) instead of dozens of spec
+// edits. Membership rule: the VARIANT entered service before ~1991, with the
+// owner's example families pinned — Centurions, Chieftains, Pattons
+// (M46/M47/M48), M60s, the T-55/62/64/72-era Soviet marks, Leopard 1, AMX-30,
+// Type 74, plus Vickers MBT and Strv 103 by the same rule. The T-80/90/14
+// lines, post-1991 T-72 modernizations (T-72B3/B3M/BU, PT-91M), Challengers,
+// Merkavas and all IFVs stay 'modern' per the same owner brief. Ids that are
+// currently GLB-sourced (strv103, m48, amx30/amx30b2, t54, type59) are listed
+// too: the map only applies outside the Sources group, so each of them lands
+// in Cold War automatically the day it graduates to a custom build.
+const COLDWAR_IDS = new Set([
+  // USA — Patton line + M60s
+  'm46_patton', 'm47_patton', 'm48', 'm60a1', 'm60a2', 'm60a3',
+  // Germany — Leopard 1
+  'leo1a5',
+  // USSR — cold-war marks (T-54 through the 1987 T-72B)
+  't54', 'type59', 't62mv1', 't64bv1', 't72b_1987',
+  // UK — Centurion / Chieftain / Vickers
+  'centurion3', 'centurion5', 'chieftain5', 'chieftain_mk10', 'vickers_mk1',
+  // France — AMX-30 line
+  'amx30', 'amx30b2',
+  // Sweden / Japan
+  'strv103', 'type74',
+]);
+const isSourcedModel = (s) =>
+  (MODEL_SOURCE[s.id] && MODEL_SOURCE[s.id].source) === 'glb';
+const groupOf = (s) =>
+  isSourcedModel(s) ? 'sources'
+    : s.era === 'ww2' ? 'ww2'
+      : COLDWAR_IDS.has(s.id) ? 'coldwar' : 'modern';
+// The four catalog chips, in the owner's order. A chip with zero members
+// auto-hides (a public build strips the GLB registrations => no Sources).
+const CATALOG_GROUPS = [
+  { id: 'coldwar', label: 'Cold War' },
+  { id: 'modern', label: 'Modern' },
+  { id: 'ww2', label: 'WWII' },
+  { id: 'sources', label: 'Sources' },
+];
+const GROUP_RANK = new Map(CATALOG_GROUPS.map((g, i) => [g.id, i]));
+// Within a group the carousel reads nation-block first (WoT convention:
+// USA, Germany, the Soviet/Russian line as one run, UK, France, then the
+// rest, Community fictional last), then tier ascending (era progression
+// within the nation), then name. Unknown nations/tiers park at the end of
+// their block so curated runs stay in front.
+const NATION_RANK = new Map([
+  'USA', 'Germany', 'USSR', 'USSR/Russia', 'Russia', 'UK', 'France',
+  'China', 'Israel', 'Italy', 'Japan', 'Poland', 'South Korea', 'Sweden',
+  'Ukraine', 'Community',
+].map((n, i) => [n, i]));
+const TIER_NUM = {
+  I: 1, II: 2, III: 3, IV: 4, V: 5, VI: 6, VII: 7, VIII: 8, IX: 9, X: 10,
+};
+function catalogCompare(a, b) {
+  const g = (GROUP_RANK.get(groupOf(a)) ?? 9) - (GROUP_RANK.get(groupOf(b)) ?? 9);
+  if (g) return g;
+  const n = (NATION_RANK.get(a.nation) ?? 99) - (NATION_RANK.get(b.nation) ?? 99);
+  if (n) return n;
+  const t = (TIER_NUM[TIER_BY_ID[a.id]] || 999) - (TIER_NUM[TIER_BY_ID[b.id]] || 999);
+  if (t) return t;
+  return String(a.name).localeCompare(String(b.name));
+}
 
 const SHELL_TYPE_COLOR = {
   AP: '#ffd27a', APCR: '#e8f4ff', HEAT: '#ff8a5c', HE: '#ffb02e', APFSDS: '#ffc46b',
@@ -1024,7 +1099,12 @@ export function createGarage(opts) {
   // already gated off in userdrops2.js (SHIP_USERDROP2_NEW).
   const DELISTED = new Set(['newc_tiger', 'newc_pziii', 'bmp1', 'm1128', 'm1296']);
   const allSpecs = opts.specs || [];
-  const specs = allSpecs.filter((s) => !DELISTED.has(s.id));
+  // CATALOG v2: the carousel REORDERS the roster it receives — four catalog
+  // groups in the owner's order (Cold War / Modern / WWII / Sources), nation
+  // blocks + tier progression inside each (catalogCompare above). Cards,
+  // arrow stepping and chip first-picks all read this one sorted array, so
+  // the visual strip, keyboard walk and group hand-offs always agree.
+  const specs = allSpecs.filter((s) => !DELISTED.has(s.id)).sort(catalogCompare);
   ensureFonts();
   ensureStyle('cot-garage-style', GARAGE_CSS);
 
@@ -1410,34 +1490,12 @@ export function createGarage(opts) {
   }
   // --- END CAMO PICKER SECTION ---------------------------------------------
 
-  // CATALOG GROUPS (garage_ui): the roster is catalogued by PROVENANCE-INTENT
-  // first, then era — exactly three buckets, every vehicle in exactly one:
-  //   (1) 'custom'  true originals: tanks WE built (pure procedural geometry,
-  //                 never sourced) PLUS dual-gate graduates (m60a1, kv2 —
-  //                 procedural builds that beat their retired reference GLBs);
-  //   (2) 'ww2'     sourced-from-online vehicles with WWII-era styling;
-  //   (3) 'modern'  sourced vehicles that are not WWII — community fictional
-  //                 designs bucket by their era styling, and anything
-  //                 ambiguous lands here (era defaults to modern).
-  // era_bucket r1: bucketing keys off provenance-INTENT, not the registered
-  // render — public builds omit the quarantined GLB registrations, and the
-  // old MODEL_SOURCE-only test dumped every such row into CUSTOM (live deploy
-  // read Custom 63 / WWII 15 / Modern 12). A sourced spec stays in its era
-  // bucket whether or not its GLB is registered in THIS build (it renders the
-  // procedural family fallback there); the explicit id rosters exported by
-  // the recovered waves carry the intent because public builds also delete
-  // spec.community. Local and public chips now count identically.
-  // Classifier hoisted (r5-2): the carousel filter chips, arrow stepping and
-  // group cross-links all key off it.
-  const SOURCED_INTENT = new Set([
-    ...USERDROP4_SOURCED_IDS, ...USERDROP5_SOURCED_IDS, ...USERDROP6_SOURCED_IDS,
-    ...USERDROP7_SOURCED_IDS,
-  ]);
-  const isSourced = (s) =>
-    (MODEL_SOURCE[s.id] && MODEL_SOURCE[s.id].source) === 'glb' ||
-    SOURCED_INTENT.has(s.id);
-  const groupOf = (s) =>
-    !isSourced(s) ? 'custom' : (s.era === 'ww2' ? 'ww2' : 'modern');
+  // CATALOG GROUPS v2: classifier + four-group roster order live at module
+  // scope now (COLDWAR_IDS / groupOf / CATALOG_GROUPS / catalogCompare above
+  // the CSS) — the sorted `specs` array, the filter chips, arrow stepping and
+  // group cross-links all key off that one classifier. The old three-bucket
+  // provenance-intent scheme (custom/ww2/modern + USERDROP unions) is retired
+  // per the owner's 2026-08-06 re-order; see the MODEL_SOURCE import note.
 
   // PER-CLASS stat ranges for the normalized bars. r6-2 (round critique:
   // "6.0 s reload renders ~90% full / bars carry no comparative scale"): the
@@ -1447,8 +1505,10 @@ export function createGarage(opts) {
   // vehicle's own ERA + CLASS peer group (an Abrams compares against MBTs,
   // a Bradley against IFVs), higher-is-better on every row (reload
   // inverted: faster = fuller). garage_ui: stat peers stay ERA-based even
-  // though the catalog chips now group by provenance — a procedurally built
-  // Tiger I must range against WWII heavies, not against a custom Leo 2A7.
+  // though the catalog chips group by the four-way catalog (Cold War /
+  // Modern / WWII / Sources) — a procedurally built Tiger I must range
+  // against WWII heavies, not against a custom Leo 2A7, and a cold-war M60
+  // ranges against the whole modern-era MBT pool it fights alongside.
   const statGroupOf = (s) => `${s.era === 'ww2' ? 'ww2' : 'modern'}/${s.class || 'medium'}`;
   const STAT_RANGES = new Map(); // era/class -> {hp,speed,hpt,dmg,reload:[lo,hi]}
   for (const s of allSpecs) {
@@ -1494,23 +1554,19 @@ export function createGarage(opts) {
     return 0.14 + Math.max(0, Math.min(1, f)) * 0.86;
   }
 
-  // --- CATALOG FILTER CHIPS (CUSTOM / WWII / MODERN) ------------------------
-  // The carousel shows ONE group at a time so a 90-vehicle roster stays
-  // navigable. Exactly three chips, keyed by provenance then era (see groupOf
-  // above): tanks we built ourselves, sourced WWII vehicles, sourced modern
-  // vehicles. Partition, not overlay — the old LOCAL overlay chip (a tank in
-  // its era group AND in local) double-listed 69 vehicles. A chip with zero
-  // members auto-hides (a public build may strip the sourced fleet).
-  const ERA_GROUPS = [
-    { id: 'custom', label: 'Custom' },
-    { id: 'ww2', label: 'WWII' },
-    { id: 'modern', label: 'Modern' },
-  ];
+  // --- CATALOG FILTER CHIPS (COLD WAR / MODERN / WWII / SOURCES) ------------
+  // The carousel shows ONE group at a time so a 100-vehicle roster stays
+  // navigable. Exactly four chips in the owner's order (CATALOG_GROUPS at
+  // module scope): the custom cold-war fleet, the custom modern fleet, the
+  // custom WWII fleet, then every vehicle still playing a community GLB.
+  // Partition, not overlay — the old LOCAL overlay chip (a tank in its era
+  // group AND in local) double-listed 69 vehicles. A chip with zero members
+  // auto-hides (a public build may strip the sourced fleet entirely).
   const inGroup = (s, gid) => groupOf(s) === gid;
   let eraFilter = specs.length ? groupOf(specs[0]) : 'modern';
   const chipsEl = root.querySelector('.cot-era-chips');
   const chipById = new Map();
-  for (const g of ERA_GROUPS) {
+  for (const g of CATALOG_GROUPS) {
     const count = specs.filter((s) => inGroup(s, g.id)).length;
     if (!count) continue;
     const chip = document.createElement('button');
@@ -1550,15 +1606,13 @@ export function createGarage(opts) {
           { duration: 200, delay: Math.min(vis, 12) * 16, easing: 'ease-out', fill: 'backwards' });
       }
       if (showCard) vis++;
-      // r3: the per-card era tag is REDUNDANT while the matching era chip is
-      // the active filter (every visible card would repeat "MODERN" under a
-      // selected MODERN chip). It only stays on the mixed-era CUSTOM tab,
-      // where it actually disambiguates.
+      // CATALOG v2: the groups partition the roster, so a card only ever
+      // shows under its own chip and the per-card era tag is redundant —
+      // worse, a spec-era "MODERN" badge under the Cold War chip would
+      // actively misread. The one mixed-era tab left is SOURCES (WWII and
+      // modern GLBs share it); the tag stays there as the disambiguator.
       const tag = card.querySelector('.era');
-      if (tag) {
-        // the mixed-era custom tab keeps the per-card era tag
-        tag.style.display = (s.era === 'ww2' ? 'ww2' : 'modern') === gid ? 'none' : '';
-      }
+      if (tag) tag.style.display = gid === 'sources' ? '' : 'none';
     }
   }
   // --- END era filter chips -------------------------------------------------
@@ -1584,6 +1638,11 @@ export function createGarage(opts) {
     cardsEl.appendChild(card);
     cardById.set(s.id, card);
   }
+  // CATALOG v2: apply the initial partition now that the cards exist —
+  // applySelection only re-filters on a GROUP CHANGE, so a first selection
+  // that already sits in the default group would otherwise open onto the
+  // whole 100-card roster mixed together.
+  applyEraFilter(eraFilter);
   // Packaged PNGs avoid per-card WebGL contexts and remain deterministic
   // across the garage carousel, tech tree, and screenshot harness.
   ensureTankThumbs(allSpecs, { canWork: () => api.isOpen });

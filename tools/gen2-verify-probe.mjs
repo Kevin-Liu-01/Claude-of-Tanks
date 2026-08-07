@@ -35,12 +35,14 @@ const BATTLE_ID = opt('battle-id', 't84');
 const OUT = resolve('shots/gen2-integration');
 mkdirSync(OUT, { recursive: true });
 
-// id -> expected garage chip (t44 is the lone ww2-era row of the wave)
+// id -> expected garage chip. CATALOG v2 (owner re-order 2026-08-06): four
+// groups — Cold War / Modern / WWII / Sources. The wave's GLB-registered ids
+// live under SOURCES until they graduate; the custom builds split by era.
 const WAVE8 = {
-  t44: 'ww2',
-  t54: 'modern', type59: 'modern', t80: 'modern', t80b: 'modern',
-  t80bv: 'modern', amx30: 'modern', amx30b2: 'modern', m48: 'modern',
-  m60a2: 'modern', vickers_mk1: 'modern', t84: 'modern',
+  t44: 'sources', t54: 'sources', type59: 'sources',
+  amx30: 'sources', amx30b2: 'sources', m48: 'sources',
+  t80: 'modern', t80b: 'modern', t80bv: 'modern', t84: 'modern',
+  m60a2: 'coldwar', vickers_mk1: 'coldwar',
 };
 // tech-tree tabs touched by the wave: tab id -> [[node label, kind]]
 const TREE_EXPECT = {
@@ -164,8 +166,19 @@ for (const [id, chip] of Object.entries(WAVE8)) {
     fail(`${id}: pedestal never converged (${e.message})`);
     continue;
   }
-  if (!conv.glb) fail(`${id}: hero is NOT the sourced GLB (local build should register it)`);
-  else ok(`${id}: chip '${chip}' · card+icon+flag (${cardInfo.nation}) · GLB hero on pedestal`);
+  // CATALOG v2 (2026-08-06): expect a GLB hero only while the id is still
+  // GLB-registered in the RUNTIME MODEL_SOURCE — graduated/flipped wave ids
+  // (t80/t80b/t80bv/t84/m60a2/vickers_mk1...) legitimately play our custom
+  // procedural build, so the old all-GLB wave assertion went stale.
+  const wantGlb = await page.evaluate(async (tid) => {
+    const m = await import('/src/vehicles/specs.js');
+    return (m.MODEL_SOURCE[tid] && m.MODEL_SOURCE[tid].source) === 'glb';
+  }, id);
+  if (conv.glb !== wantGlb) {
+    fail(`${id}: hero ${conv.glb ? 'IS' : 'is NOT'} a sourced GLB but runtime MODEL_SOURCE says ${wantGlb ? 'glb' : 'procedural'}`);
+  } else {
+    ok(`${id}: chip '${chip}' · card+icon+flag (${cardInfo.nation}) · ${wantGlb ? 'GLB' : 'custom procedural'} hero on pedestal`);
+  }
   await shoot(`garage_${id}`);
 }
 

@@ -292,6 +292,13 @@ proportions verdicts would repeat the puma mistake); k2/t14/challenger2
 rebuilds await their §B8 verdicts; sepv2/sepv3 visible upgrades are
 MID-FLIGHT (live abrams round, not yet landed).
 
+## 4.98 GARAGE FOUR-GROUP CATALOG LANDED (owner order 2026-08-06):
+Cold War 15 | Modern 42 | WWII 12 | Sources 32 — Sources computed live
+from MODEL_SOURCE (auto-shrinks on graduation; COLDWAR_IDS map documented
+in garage.js; six glb-sourced cold-war ids auto-migrate on graduation).
+Owner files untouched. Flag for owner: charioteer spec era 'ww2' (a
+1950s TD — say the word for a spec-era true-up).
+
 ## 5. IN-FLIGHT AGENTS (SUPERSEDED BY §12 — the 2026-08-05 device
 handover interrupted these; respawn per §12)
 1. DONE+RATIFIED: abrams dual critic (m1a1ha f5c556dc, sepv2 §10 run).
