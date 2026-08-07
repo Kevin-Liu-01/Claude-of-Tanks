@@ -2006,13 +2006,35 @@ function paintCamo(canvas, visual, rng, feats, seed) {
       S * (0.3 + rng() * 0.06), (rng() - 0.5) * 0.4, 0.9, true);   // hero
     star(rng() * S, rng() * S, S * (0.12 + rng() * 0.04),
       (rng() - 0.5) * 0.5, 0.85, false);
-    for (let i = 0; i < 3; i++) {                    // registration stencils
+    // camo r8 detailing: repainted-panel modulation (large soft tonal
+    // rects), hard-edged OD touch-up patches, and a real registration
+    // serial — the crafted-paint read, not decals on a flat coat.
+    for (let i = 0; i < Math.round(5 * nK); i++) {
       const q = new Path2D();
-      q.rect(0, 0, S * (0.05 + rng() * 0.04), S * 0.011);
-      const p = new Path2D();
-      p.addPath(q, new DOMMatrix().translate(rng() * S, rng() * S));
-      fillWrapped(ctx, S, p, rgb(white, 0.6));
+      q.rect(rng() * S, rng() * S, S * (0.14 + rng() * 0.2), S * (0.1 + rng() * 0.16));
+      ctx.filter = `blur(${Math.max(2, S * 0.006).toFixed(1)}px)`;
+      fillWrapped(ctx, S, q, rgb(mix(base, [0, 0, 0], 0.16), 0.3 + rng() * 0.2));
+      ctx.filter = 'none';
     }
+    for (let i = 0; i < Math.round(4 * nK); i++) {   // hard touch-up patches
+      const q = new Path2D();
+      const w2 = S * (0.05 + rng() * 0.07), h2 = S * (0.04 + rng() * 0.05);
+      q.rect(rng() * S, rng() * S, w2, h2);
+      fillWrapped(ctx, S, q, rgb(mix(base, [20, 26, 14], 0.35), 0.55));
+    }
+    ctx.save();                                      // registration serial
+    ctx.font = `700 ${Math.round(S * 0.028)}px 'ABC Monument Grotesk', sans-serif`;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = rgb(white, 0.8);
+    const serial = `U.S.A. 30${100000 + ((rng() * 899999) | 0)}`;
+    const sx = rng() * S, sy = rng() * S;
+    for (const dx of [-S, 0, S]) {
+      for (const dy of [-S, 0, S]) {
+        ctx.save(); ctx.translate(dx, dy); ctx.fillText(serial, sx, sy); ctx.restore();
+      }
+    }
+    ctx.restore();
     // ===================== END CAMO PATTERN SECTION =================
   } else if (scheme === 'idband' && patches.length) {
     // ===================== CAMO PATTERN SECTION =====================
@@ -2043,6 +2065,228 @@ function paintCamo(canvas, visual, rng, feats, seed) {
       }
     }
     ctx.restore();
+    // camo r8 detailing: the band is field paint, not a sticker — eat its
+    // edges with base-tone dabs, add the diagonal assault slash and a
+    // Guards star outline.
+    for (let i = 0; i < Math.round(26 * nK); i++) {  // band wear
+      const q = new Path2D();
+      const bx = rng() * S;
+      const edge = y0 + (rng() < 0.5 ? -1 : 1) * S * 0.0225;
+      q.arc(bx, edge + (rng() - 0.5) * S * 0.008, S * (0.003 + rng() * 0.007), 0, Math.PI * 2);
+      fillWrapped(ctx, S, q, rgb(base, 0.85));
+    }
+    const slash = new Path2D();                      // assault slash
+    const sx2 = rng() * S, sy2 = rng() * S;
+    slash.moveTo(sx2 - S * 0.07, sy2 + S * 0.1);
+    slash.lineTo(sx2 + S * 0.07, sy2 - S * 0.1);
+    strokeWrapped(ctx, S, slash, rgb(white, 0.85), S * 0.02);
+    const gs = new Path2D();                         // Guards star outline
+    const gx2 = rng() * S, gy2 = rng() * S, gr = S * (0.05 + rng() * 0.02);
+    for (let k2 = 0; k2 < 10; k2++) {
+      const rr = (k2 % 2 ? 0.42 : 1) * gr;
+      const aa = -Math.PI / 2 + (k2 * Math.PI) / 5;
+      if (k2) gs.lineTo(gx2 + Math.cos(aa) * rr, gy2 + Math.sin(aa) * rr);
+      else gs.moveTo(gx2 + Math.cos(aa) * rr, gy2 + Math.sin(aa) * rr);
+    }
+    gs.closePath();
+    strokeWrapped(ctx, S, gs, rgb(white, 0.85), gr * 0.14);
+    // ===================== END CAMO PATTERN SECTION =================
+  } else if (scheme === 'brushwash' && patches.length) {
+    // ===================== CAMO PATTERN SECTION =====================
+    // ARDENNES BRUSH WASH (camo r8): whitewash slopped on with a wide
+    // brush — long directional strokes, olive drab dragging through in
+    // streaks, re-dabbed white over the worst gaps. Crisp stroke language,
+    // zero soft blobs. patches = [show-through OD, grime].
+    const od = patches[0];
+    const grime = patches[1] || patches[0];
+    const flow = (rng() - 0.5) * 0.3;                // near-horizontal brush
+    const strokeAt = (col, w, alpha, len) => {
+      const x0 = rng() * S, y0b = rng() * S;
+      const a = flow + (rng() - 0.5) * 0.18;
+      const bend = (rng() - 0.5) * w * 2;
+      const path = new Path2D();
+      path.moveTo(x0, y0b);
+      path.quadraticCurveTo(
+        x0 + Math.cos(a) * len * 0.5 - Math.sin(a) * bend,
+        y0b + Math.sin(a) * len * 0.5 + Math.cos(a) * bend,
+        x0 + Math.cos(a) * len, y0b + Math.sin(a) * len);
+      strokeWrapped(ctx, S, path, rgb(col, alpha), w);
+    };
+    for (let i = 0; i < Math.round(26 * nK); i++) {  // OD dragging through
+      strokeAt(od, S * (0.006 + rng() * 0.016), 0.2 + rng() * 0.3,
+        S * (0.2 + rng() * 0.35));
+    }
+    for (let i = 0; i < Math.round(10 * nK); i++) {  // grime streaks
+      strokeAt(grime, S * (0.004 + rng() * 0.01), 0.25 + rng() * 0.2,
+        S * (0.15 + rng() * 0.25));
+    }
+    for (let i = 0; i < Math.round(12 * nK); i++) {  // fresh re-dabs
+      strokeAt(mix(base, [255, 255, 255], 0.2), S * (0.02 + rng() * 0.03),
+        0.4 + rng() * 0.25, S * (0.1 + rng() * 0.18));
+    }
+    // ===================== END CAMO PATTERN SECTION =================
+  } else if (scheme === 'usmc' && patches.length) {
+    // ===================== CAMO PATTERN SECTION =====================
+    // PACIFIC '45 (camo r8): USMC forest green under HARD-EDGED black wave
+    // bands, a white hull number and coral-dust stipple — sharp painted
+    // shapes, not blobs. patches = [black, coral dust, stencil white].
+    const blk = patches[0];
+    const dust = patches[1] || patches[0];
+    const white = patches[2] || '#e3ded1';
+    const flow = -0.4 + rng() * 0.25;
+    for (let i = 0; i < Math.round(5 * nK); i++) {   // black wave bands
+      const x0 = rng() * S, y0b = rng() * S;
+      const len = S * (0.5 + rng() * 0.4);
+      const w = S * wk * (0.045 + rng() * 0.045);
+      const path = new Path2D();
+      path.moveTo(x0, y0b);
+      const seg = 4;
+      for (let k2 = 1; k2 <= seg; k2++) {
+        const t = k2 / seg;
+        path.quadraticCurveTo(
+          x0 + Math.cos(flow) * len * (t - 0.5 / seg) - Math.sin(flow) * w * (k2 % 2 ? 1.4 : -1.4),
+          y0b + Math.sin(flow) * len * (t - 0.5 / seg) + Math.cos(flow) * w * (k2 % 2 ? 1.4 : -1.4),
+          x0 + Math.cos(flow) * len * t, y0b + Math.sin(flow) * len * t);
+      }
+      strokeWrapped(ctx, S, path, rgb(blk, 0.92), w);
+    }
+    for (let i = 0; i < Math.round(6 * nK); i++) {   // coral-dust stipple
+      const cx2 = rng() * S, cy2 = rng() * S, cr = S * (0.05 + rng() * 0.09);
+      const nd = 16 + ((rng() * 22) | 0);
+      for (let k2 = 0; k2 < nd; k2++) {
+        const aa = rng() * Math.PI * 2, d = Math.sqrt(rng()) * cr;
+        const q = new Path2D();
+        q.arc(cx2 + Math.cos(aa) * d, cy2 + Math.sin(aa) * d * 0.8,
+          S * (0.0015 + rng() * 0.004), 0, Math.PI * 2);
+        fillWrapped(ctx, S, q, rgb(dust, 0.4 + rng() * 0.25));
+      }
+    }
+    ctx.save();                                      // hull number
+    const num2 = String(10 + ((rng() * 89) | 0));
+    ctx.font = `900 ${Math.round(S * 0.13)}px 'ABC Monument Grotesk', sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = rgb(white, 0.88);
+    const hx = rng() * S, hy = rng() * S;
+    for (const dx of [-S, 0, S]) {
+      for (const dy of [-S, 0, S]) {
+        ctx.save(); ctx.translate(dx, dy); ctx.fillText(num2, hx, hy); ctx.restore();
+      }
+    }
+    ctx.restore();
+    // ===================== END CAMO PATTERN SECTION =================
+  } else if (scheme === 'erdl' && patches.length) {
+    // ===================== CAMO PATTERN SECTION =====================
+    // ERDL LEAF (camo r8, the anti-blob flagship): interlocking HARD-EDGED
+    // organic islands — dark-green masses, brown mids riding their borders,
+    // thin black branch squiggles threading between. No blur anywhere; the
+    // shapes are high-irregularity multi-lobe unions so edges wander like
+    // the printed leaf pattern. patches = [dark green, brown, black].
+    const dk = patches[0];
+    const br = patches[1] || patches[0];
+    const bk = patches[2] || '#262a24';
+    const leafIsland = (x, y, r, lobes) => {
+      const p = blobPath2D(rng, x, y, r, 11, 0.62);
+      for (let k2 = 0; k2 < lobes; k2++) {
+        const aa = rng() * Math.PI * 2;
+        p.addPath(blobPath2D(rng, x + Math.cos(aa) * r * (0.8 + rng() * 0.5),
+          y + Math.sin(aa) * r * (0.7 + rng() * 0.4),
+          r * (0.45 + rng() * 0.4), 10, 0.6));
+      }
+      return p;
+    };
+    const dkIslands = [];
+    for (let i = 0; i < Math.round(8 * nK); i++) {   // dark-green masses
+      const x = rng() * S, y = rng() * S;
+      const r = S * wk * (0.05 + rng() * 0.055);
+      dkIslands.push([x, y, r]);
+      fillWrapped(ctx, S, leafIsland(x, y, r, 2), rgb(dk, 0.95));
+    }
+    for (let i = 0; i < Math.round(7 * nK); i++) {   // brown mids ride borders
+      const host = dkIslands[(rng() * dkIslands.length) | 0];
+      const aa = rng() * Math.PI * 2;
+      const x = host[0] + Math.cos(aa) * host[2] * (1 + rng() * 0.5);
+      const y = host[1] + Math.sin(aa) * host[2] * (0.9 + rng() * 0.5);
+      fillWrapped(ctx, S, leafIsland(x, y, S * wk * (0.03 + rng() * 0.035), 1),
+        rgb(br, 0.93));
+    }
+    for (let i = 0; i < Math.round(11 * nK); i++) {  // black branch squiggles
+      let x = rng() * S, y = rng() * S;
+      let a = rng() * Math.PI * 2;
+      const path = new Path2D();
+      path.moveTo(x, y);
+      const seg = 2 + ((rng() * 2) | 0);
+      for (let k2 = 0; k2 < seg; k2++) {
+        const len = S * (0.03 + rng() * 0.05);
+        const mx = x + Math.cos(a) * len * 0.5 - Math.sin(a) * len * (rng() - 0.5) * 0.8;
+        const my = y + Math.sin(a) * len * 0.5 + Math.cos(a) * len * (rng() - 0.5) * 0.8;
+        x += Math.cos(a) * len; y += Math.sin(a) * len;
+        path.quadraticCurveTo(mx, my, x, y);
+        a += (rng() - 0.5) * 1.4;
+      }
+      strokeWrapped(ctx, S, path, rgb(bk, 0.92), S * (0.007 + rng() * 0.008));
+      if (rng() < 0.5) {                             // leaf chip at the tip
+        fillWrapped(ctx, S, blobPath2D(rng, x, y, S * (0.008 + rng() * 0.008), 7, 0.5),
+          rgb(bk, 0.92));
+      }
+    }
+    // ===================== END CAMO PATTERN SECTION =================
+  } else if (scheme === 'mudwash' && patches.length) {
+    // ===================== CAMO PATTERN SECTION =====================
+    // RASPUTITSA (camo r8): mud as an EVENT, not blobs — directional
+    // spatter clusters (dense core, sparse fringe), dragged smears along
+    // one flow, crusted dry patches with dark rims, panel grime lines.
+    // patches = [wet mud, dry mud, dark spatter].
+    const wet = patches[0];
+    const dry = patches[1] || patches[0];
+    const dark = patches[2] || '#332a20';
+    const flow = (rng() - 0.5) * 0.5;
+    for (let i = 0; i < Math.round(4 * nK); i++) {   // crusted dry patches
+      const x = rng() * S, y = rng() * S;
+      const r = S * wk * (0.045 + rng() * 0.04);
+      const p = blobPath2D(rng, x, y, r, 10, 0.5);
+      fillWrapped(ctx, S, p, rgb(dry, 0.85));
+      strokeWrapped(ctx, S, p, rgb(dark, 0.7), r * 0.09); // cracked rim
+    }
+    for (let i = 0; i < Math.round(9 * nK); i++) {   // dragged smears
+      const x0 = rng() * S, y0b = rng() * S;
+      const a = flow + (rng() - 0.5) * 0.4;
+      const len = S * (0.08 + rng() * 0.18);
+      const w = S * (0.008 + rng() * 0.018);
+      const path = new Path2D();
+      path.moveTo(x0, y0b);
+      path.quadraticCurveTo(
+        x0 + Math.cos(a) * len * 0.5 - Math.sin(a) * w * 1.5,
+        y0b + Math.sin(a) * len * 0.5 + Math.cos(a) * w * 1.5,
+        x0 + Math.cos(a) * len, y0b + Math.sin(a) * len);
+      strokeWrapped(ctx, S, path, rgb(wet, 0.35 + rng() * 0.3), w);
+      if (rng() < 0.5) {                             // droplet at the tail
+        const q = new Path2D();
+        q.arc(x0 + Math.cos(a) * len * 1.12, y0b + Math.sin(a) * len * 1.12,
+          w * (0.5 + rng() * 0.4), 0, Math.PI * 2);
+        fillWrapped(ctx, S, q, rgb(wet, 0.6));
+      }
+    }
+    for (let i = 0; i < Math.round(7 * nK); i++) {   // spatter clusters
+      const cx2 = rng() * S, cy2 = rng() * S;
+      const cr = S * (0.03 + rng() * 0.07);
+      const nd = 14 + ((rng() * 20) | 0);
+      for (let k2 = 0; k2 < nd; k2++) {
+        const aa = rng() * Math.PI * 2, d = Math.sqrt(rng()) * cr;
+        const q = new Path2D();
+        q.arc(cx2 + Math.cos(aa) * d, cy2 + Math.sin(aa) * d * 0.85,
+          S * (0.0015 + rng() * 0.005), 0, Math.PI * 2);
+        fillWrapped(ctx, S, q, rgb(rng() < 0.3 ? dark : wet, 0.5 + rng() * 0.3));
+      }
+    }
+    for (let i = 0; i < Math.round(6 * nK); i++) {   // panel grime lines
+      const path = new Path2D();
+      const x0 = rng() * S, y0b = rng() * S, len = S * (0.06 + rng() * 0.1);
+      const vert = rng() < 0.5;
+      path.moveTo(x0, y0b);
+      path.lineTo(x0 + (vert ? 0 : len), y0b + (vert ? len : 0));
+      strokeWrapped(ctx, S, path, rgb(dark, 0.4), S * 0.0035);
+    }
     // ===================== END CAMO PATTERN SECTION =================
   } else if (scheme === 'amoeba' && patches.length) {
     // ===================== CAMO PATTERN SECTION =====================
@@ -3204,11 +3448,9 @@ export const CAMO_PATTERN_IDS = [
   // the contract.
   'ducky', 'suits', 'flames', 'leopardprint', 'bolt',
   'stars', 'daisy', 'circuit', 'racing', 'paintball',
-  // camo r7 (owner ask 2026-08-07): historical LOADOUT camos — these six
-  // also bolt a physical stowage kit onto the visual (src/vehicles/camoKit.js:
-  // ladders, pintle MGs, sandbags, logs, foliage, moss). Style-only paint;
-  // the kit is geometry, applied wherever createTank visuals are born and on
-  // every picker switch.
+  // camo r7/r8 (owner asks 2026-08-07): the historical set. r7's physical
+  // stowage kits were REMOVED in r8 (owner: "remove the extra props") — the
+  // budget went into bespoke paint detailing instead. Style-only.
   'normandy44', 'berlin45', 'ardennes44', 'pacific45', 'jungleops', 'rasputitsa',
 ];
 export const CAMO_PATTERN_LABEL = {
@@ -3767,20 +4009,29 @@ function patternVisual(spec, patternId) {
     o = { scheme: 'idband', base: '#4a5138', weather: '#525a3e',
       patches: ['#e0dccb'] };
   } else if (patternId === 'ardennes44') {
-    // winter-offensive whitewash, a step dirtier than 'washworn'; patches[0]
-    // is the show-through factory paint per the winter/washworn contract.
-    o = { scheme: 'washworn', base: '#878e8c', weather: '#6e7574',
-      patches: [v.base || '#4b5320'] };
+    // camo r8: dedicated brush-applied whitewash — directional strokes with
+    // the olive drab dragging through in streaks (no soft blobs). patches =
+    // [show-through OD, grime].
+    o = { scheme: 'brushwash', base: '#9aa09c', weather: '#878d89',
+      patches: ['#4c5539', '#6e6f64'] };
   } else if (patternId === 'pacific45') {
-    // USMC forest green — the foliage/planking kit does the talking.
-    o = { scheme: 'solid', base: '#44523c', weather: '#3d4a36', patches: [] };
+    // camo r8: late-war USMC — forest green under hard-edged black wave
+    // bands, white hull number, coral-dust stipple. patches = [black band,
+    // coral dust, stencil white].
+    o = { scheme: 'usmc', base: '#46543d', weather: '#3e4b36',
+      patches: ['#282e26', '#c2ab84', '#e3ded1'] };
   } else if (patternId === 'jungleops') {
-    o = { scheme: 'blotch', base: '#42513a', weather: '#3b4934',
-      patches: ['#31402e', '#54613f'] };
+    // camo r8: ERDL leaf language — interlocking HARD-EDGED organic islands
+    // in four tones with black branch squiggles between. patches = [dark
+    // green, brown, black].
+    o = { scheme: 'erdl', base: '#5d6b44', weather: '#556240',
+      patches: ['#3a4931', '#5a4632', '#262a24'] };
   } else if (patternId === 'rasputitsa') {
-    // mud-season 4BO — heavy earth blotches climbing the hull.
-    o = { scheme: 'blotch', base: '#565742', weather: '#4d4e3b',
-      patches: ['#4a3d2c', '#39322a'] };
+    // camo r8: mud SEASON, not mud blobs — washed 4BO under directional
+    // spatter clusters, dragged smears and crusted dry patches. patches =
+    // [wet mud, dry mud, dark spatter].
+    o = { scheme: 'mudwash', base: '#575843', weather: '#4e4f3c',
+      patches: ['#4a3b2a', '#6b5a42', '#332a20'] };
   }
   return o ? { ...v, ...o } : v;
 }

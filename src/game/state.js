@@ -21,8 +21,7 @@ import { createAI, roleOf } from './ai.js';
 import { getStoredDifficulty } from './input.js';
 // SPOTTING WIRING: concealment/spotting sim + camo-paint bonus source
 import { createSpottingSystem, CAMO_PAINT_BONUS } from '../sim/spotting.js';
-import { hasCamoPaint, setCamoOverride, clearCamoOverrides, applyCamoPatterns, resolveCamoPattern } from '../vehicles/materials.js';
-import { applyCamoKit } from '../vehicles/camoKit.js';
+import { hasCamoPaint, setCamoOverride, clearCamoOverrides, applyCamoPatterns } from '../vehicles/materials.js';
 // EQUIPMENT SYSTEM (game/equipment.js): per-tank loadouts — the player's
 // persisted picks, per-class AI defaults, and the equipMults record the
 // damage/movement/repair hooks read off CombatState.
@@ -262,10 +261,6 @@ export function ensureTankVisual(game, ent) {
   ent.visual = createTank(ent.specId, engineCtx, {
     camoSeed: ent._camoSeed, quality: hero ? 'high' : 'ai',
   });
-  // camo r7 (loadout kits): patterns in camoKit.js bolt physical stowage
-  // onto the visual — measured while the root is still unposed, so this
-  // must run before the scene add / pose below.
-  applyCamoKit(ent.visual, getSpec(ent.specId), resolveCamoPattern(ent.specId));
   engineCtx.scene.add(ent.visual.root);
   if (game._groundSampler && ent.visual.setGroundSampler) {
     ent.visual.setGroundSampler(game._groundSampler);

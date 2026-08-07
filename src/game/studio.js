@@ -36,10 +36,8 @@ import { createShell, stepShell } from '../sim/ballistics.js';
 import { createBus } from './state.js';
 import {
   CAMO_PATTERN_IDS, setCamoOverride, clearCamoOverrides, applyCamoPatterns,
-  resolveCamoPattern,
   setCamoBiome,
 } from '../vehicles/materials.js';
-import { applyCamoKit } from '../vehicles/camoKit.js';
 import { MAP_IDS, getMapConfig, resolveMapId } from '../world/maps/index.js';
 import { createStudioPanel } from '../ui/studioPanel.js';
 
@@ -355,9 +353,6 @@ export function createStudio(ctx) {
       setCamoOverride(specId, a.camo);
       applyCamoPatterns(specId);
     }
-    // camo r7 (loadout kits): stowage geometry follows the resolved pattern
-    // (override just set above, or the persisted garage selection).
-    applyCamoKit(visual, spec, resolveCamoPattern(specId));
     settleActor(a);
     if (cfg.state && cfg.state !== 'intact') setActorState(a, cfg.state, a.stateAgeS);
     if (cfg.smoking) a.smoking = true;   // additive layer over any mesh state

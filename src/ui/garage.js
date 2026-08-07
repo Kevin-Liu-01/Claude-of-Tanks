@@ -12,7 +12,6 @@ import { ensureTankThumbs, drainTankThumbs, getTankThumb, requeueTankThumbs } fr
 // palette from materials.js) instead of hand-approximated CSS gradients.
 import { resolveCamoVisual, CLAUDE_CODE_MARK, CLAUDE_SPARK_MARK }
   from '../vehicles/materials.js';
-import { KIT_PATTERN_IDS } from '../vehicles/camoKit.js';
 // CATALOG v2 (owner re-order 2026-08-06): the SOURCES catalog group is keyed
 // off the RUNTIME MODEL_SOURCE map — the single source of truth for "this id
 // plays a not-mine GLB". Membership is computed at load, never hardcoded, so
@@ -1246,6 +1245,66 @@ function paintCamoSwatch(canvas, spec, pid) {
     c.font = `900 ${Math.round(H * 0.5)}px 'ABC Monument Grotesk', sans-serif`;
     c.textAlign = 'center'; c.textBaseline = 'middle';
     c.fillText('312', W * 0.68, H * 0.66);
+  } else if (scheme === 'brushwash' && patches.length) {
+    // camo r8: streaky brushed whitewash with OD dragging through
+    const od = patches[0];
+    c.strokeStyle = swRgb(od, 0.4); c.lineCap = 'round';
+    for (let i = 0; i < 14; i++) {
+      c.lineWidth = 1 + rng() * 2.5;
+      c.beginPath();
+      const y = rng() * H, x = rng() * W;
+      c.moveTo(x, y);
+      c.quadraticCurveTo(x + 18, y + (rng() - 0.5) * 6, x + 30 + rng() * 24, y + (rng() - 0.5) * 8);
+      c.stroke();
+    }
+  } else if (scheme === 'usmc' && patches.length) {
+    const blk = patches[0], white = patches[2] || patches[0];
+    c.strokeStyle = swRgb(blk, 0.92); c.lineCap = 'round';
+    for (let i = 0; i < 3; i++) {
+      c.lineWidth = 5 + rng() * 4;
+      c.beginPath();
+      const y = rng() * H;
+      c.moveTo(-4, y);
+      c.quadraticCurveTo(W * 0.3, y + (rng() - 0.5) * 22, W * 0.6, y + (rng() - 0.5) * 14);
+      c.quadraticCurveTo(W * 0.85, y + (rng() - 0.5) * 22, W + 4, y + (rng() - 0.5) * 12);
+      c.stroke();
+    }
+    c.fillStyle = swRgb(white, 0.9);
+    c.font = `900 ${Math.round(H * 0.5)}px 'ABC Monument Grotesk', sans-serif`;
+    c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillText('34', W * 0.78, H * 0.5);
+  } else if (scheme === 'erdl' && patches.length) {
+    const dk = patches[0], br = patches[1] || dk, bk = patches[2] || dk;
+    for (let i = 0; i < 6; i++) {
+      swBlob(c, rng, rng() * W, rng() * H, S * 0.035 * (0.7 + rng() * 0.7));
+      c.fillStyle = swRgb(dk, 0.95); c.fill();
+    }
+    for (let i = 0; i < 4; i++) {
+      swBlob(c, rng, rng() * W, rng() * H, S * 0.024 * (0.7 + rng() * 0.6));
+      c.fillStyle = swRgb(br, 0.93); c.fill();
+    }
+    c.strokeStyle = swRgb(bk, 0.92); c.lineWidth = 1.6; c.lineCap = 'round';
+    for (let i = 0; i < 6; i++) {
+      c.beginPath();
+      const x = rng() * W, y = rng() * H;
+      c.moveTo(x, y);
+      c.quadraticCurveTo(x + (rng() - 0.5) * 16, y + (rng() - 0.5) * 16,
+        x + (rng() - 0.5) * 26, y + (rng() - 0.5) * 26);
+      c.stroke();
+    }
+  } else if (scheme === 'mudwash' && patches.length) {
+    const wet = patches[0], dry = patches[1] || wet, dark = patches[2] || wet;
+    for (let i = 0; i < 2; i++) {
+      swBlob(c, rng, rng() * W, rng() * H, S * 0.035);
+      c.fillStyle = swRgb(dry, 0.85); c.fill();
+      c.strokeStyle = swRgb(dark, 0.7); c.lineWidth = 1.4; c.stroke();
+    }
+    for (let i = 0; i < 60; i++) {
+      c.beginPath();
+      c.arc(rng() * W, rng() * H, 0.5 + rng() * 1.8, 0, Math.PI * 2);
+      c.fillStyle = swRgb(rng() < 0.3 ? dark : wet, 0.5 + rng() * 0.3);
+      c.fill();
+    }
   }
   // faint top-light so the tile reads as painted steel, not a flat chip
   const g = c.createLinearGradient(0, 0, 0, H);
@@ -1254,17 +1313,6 @@ function paintCamoSwatch(canvas, spec, pid) {
   g.addColorStop(1, 'rgba(0,0,0,0.14)');
   c.fillStyle = g;
   c.fillRect(0, 0, W, H);
-  // camo r7: loadout camos ship physical stowage (camoKit.js) — badge the
-  // card so the picker says so at a glance.
-  if (KIT_PATTERN_IDS.includes(pid)) {
-    c.fillStyle = 'rgba(10,13,16,0.82)';
-    c.fillRect(W - 30, 2, 28, 11);
-    c.fillStyle = 'rgba(240,160,48,0.95)';
-    c.font = `700 7px 'ABC Monument Grotesk', sans-serif`;
-    c.textAlign = 'center';
-    c.textBaseline = 'middle';
-    c.fillText('+KIT', W - 16, 8);
-  }
 }
 // --- END CAMO PICKER SECTION (swatch painter) --------------------------------
 
