@@ -314,6 +314,16 @@ matched-scale mode wanted; fv510 print -11% (pub sovereign, held).
 coupled baseline; adjudicate the repair chain vs the last-good asset +
 re-baseline the §B7 cap BEFORE any revolution re-cert ratifies.
 
+## 4.996 leo2a7 REMOVED BY OWNER (2026-08-06: "fully focus on the 2a7v")
+— roster-delisted (spec row stays as the revolution's donor); leo2a7v's
+§B8 structural rework (the 77%-hull turret merge) is THE 2a7-line focus,
+queued for the leopard lane after the live round (revolution priority +
+proto + 2a4). CROWS REWORK ORDERS banked for the next abrams round (on
+the visibility re-cert verdict): point the right direction (not
+forward), armor surrounds on some, ammo boxes, lights, shapes CONNECTED;
+sepv2 donor verified already-m1a2. FLEET ICON REGEN queued (full
+worktree run — the "3d images for the tank scrolling section" order).
+
 ## 5. IN-FLIGHT AGENTS (SUPERSEDED BY §12 — the 2026-08-05 device
 handover interrupted these; respawn per §12)
 1. DONE+RATIFIED: abrams dual critic (m1a1ha f5c556dc, sepv2 §10 run).

@@ -4,7 +4,11 @@
 // Units per ARCHITECTURE §1.2 — suffixed fields keep human units; consumers convert.
 
 /** Locked roster ids in locked garage-carousel order (ARCHITECTURE §2.1). */
-export const TANK_IDS = ['m4a3e8', 'tiger1', 't34_85', 'is2', 'panther_g', 'm1a2', 't90m', 'leo2a7'];
+// leo2a7 REMOVED from the roster BY OWNER 2026-08-06 ('remove the leopard
+// 2a7 and fully focus on the 2a7v') — its TANK_SPECS row STAYS as the
+// leo2_revolution make() donor (userdrops5); it just never enters
+// TANK_IDS/ALL_TANK_IDS, so no garage card, no ledger row.
+export const TANK_IDS = ['m4a3e8', 'tiger1', 't34_85', 'is2', 'panther_g', 'm1a2', 't90m'];
 
 // ---------------------------------------------------------------------------
 // Plate helpers (pure array math). Every quad is built as a PARALLELOGRAM
