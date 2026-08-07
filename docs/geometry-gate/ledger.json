@@ -682,13 +682,13 @@
   },
   {
    "id": "t80u",
-   "geoMin": 75.4,
+   "geoMin": 75.9,
    "gatePassed": false,
    "components": {
     "hullCurves": 76.6,
-    "wholeCurves": 75.4,
+    "wholeCurves": 75.9,
     "turretCurves": 80.6,
-    "stations": 77.3,
+    "stations": 78,
     "dims": 99,
     "floaters": 100
    }

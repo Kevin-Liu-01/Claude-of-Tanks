@@ -1186,9 +1186,16 @@ function buildT62MV1(P) {
   ], { rings: [[0.72, 0.141], [1.06, 0.141], [1.41, 0.138], [1.76, 0.138], [2.11, 0.138], [2.46, 0.138], [2.93, 0.1425], [3.28, 0.1425], [3.63, 0.1425]], muzzle: 3.93 });
   P.add('gunDark', cylZ(0.1425, 0.05, 14), 0, 0, 3.905);    // evac front seam
   muzzleBore(P, { r: 0.1425 });  // §B3.1 (shadow-named, mask/frame-neutral)
-  const dx = ringSkin(rings, 0.43) + 0.02;
-  P.decal('turret', 'number', P.spec.visual.number || '', 0.25, [dx * 0.98, 0.40, 0.51], Math.PI / 2);
-  P.decal('turret', 'number', P.spec.visual.number || '', 0.25, [-dx * 0.98, 0.40, 0.51], -Math.PI / 2);
+  // §C.1 winding fix-round 2026-08-07 (fleet sweep item 4): the number quads
+  // sat at the dome's max radius but at the forward-cheek z +0.51 where the
+  // 0.74-squashed egg is far narrower — flat one-sided planes floating up to
+  // 0.55 m off the skin (and the *0.98 sank the plane center INSIDE the
+  // dome): frontleft/frontright F-vs-D read 184/127 px. Re-seated at the
+  // ellipse max-width station z -0.30, radius from the band's own fat edge
+  // (y 0.18) + 6 mm pin; plan line 1.344 stays inside the 1.354 window edge.
+  const dx = ringSkin(rings, 0.18) + 0.006;
+  P.decal('turret', 'number', P.spec.visual.number || '', 0.22, [dx, 0.29, -0.30], Math.PI / 2);
+  P.decal('turret', 'number', P.spec.visual.number || '', 0.22, [-dx, 0.29, -0.30], -Math.PI / 2);
   P.topY = 1.10;
 }
 
@@ -5210,9 +5217,16 @@ function buildT72B87(P) {
     [0.55, 2.10, 0.114], [2.10, 2.90, 0.122], [2.90, 4.86, 0.118],
   ], { rings: [[2.10, 0.121], [2.90, 0.121], [3.55, 0.120], [4.20, 0.120], [4.70, 0.120]], muzzle: 4.86 });
   muzzleBore(P, { r: 0.118 });  // §B3.1 (shadow-named, mask/frame-neutral)
-  const dxB = ringSkin(collar, 0.20) + 0.02;
-  P.decal('turret', 'number', P.spec.visual.number || '', 0.25, [dxB * 0.99, 0.40, -0.5], Math.PI / 2);
-  P.decal('turret', 'number', P.spec.visual.number || '', 0.25, [-dxB * 0.99, 0.40, -0.5], -Math.PI / 2);
+  // §C.1 winding fix-round 2026-08-07 (fleet sweep item 5): the number quads
+  // rode y 0.275..0.525 at z -0.5 — the collar closes at y 0.40 and the
+  // crown there is only x ~0.38, so the one-sided planes towered into open
+  // air (rearright/rearleft F-vs-D 171/115 px). Re-seated on the collar
+  // flank AFT of the right K-1 standing raft (raft ends z -0.41): band
+  // y 0.0..0.21 / z -0.71..-0.49; plane x = the collar ellipse at z -0.60
+  // through the band max (1.52 · 0.985) + 6 mm pin. Symmetric both sides.
+  const dxB = 1.503;
+  P.decal('turret', 'number', P.spec.visual.number || '', 0.22, [dxB, 0.105, -0.60], Math.PI / 2);
+  P.decal('turret', 'number', P.spec.visual.number || '', 0.22, [-dxB, 0.105, -0.60], -Math.PI / 2);
   P.topY = 1.2;
 }
 

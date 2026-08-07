@@ -1,12 +1,12 @@
 {
  "id": "t80u",
- "geoMin": 75.4,
+ "geoMin": 75.9,
  "gatePassed": false,
  "components": {
   "hullCurves": 76.6,
-  "wholeCurves": 75.4,
+  "wholeCurves": 75.9,
   "turretCurves": 80.6,
-  "stations": 77.3,
+  "stations": 78,
   "dims": 99,
   "floaters": 100
  },
@@ -444,30 +444,22 @@
    ]
   },
   "front_hull": {
-   "score": 87.39943617115804,
-   "meanPct": 0.92,
-   "p95Pct": 2.55,
+   "score": 89.7450137160572,
+   "meanPct": 0.73,
+   "p95Pct": 2.48,
    "coverPct": 0,
    "reg": {
     "dAlong": 0,
-    "dy": -0.01
+    "dy": -0.006
    },
    "worst": [
     {
      "at": -1.15,
      "refTop": 0.22,
      "refBot": -1.1,
-     "procTop": 0.28,
+     "procTop": 0.29,
      "procBot": -1.03,
-     "errM": 0.066
-    },
-    {
-     "at": -1.72,
-     "refTop": 0.18,
-     "refBot": -0.49,
-     "procTop": 0.12,
-     "procBot": -0.55,
-     "errM": 0.059
+     "errM": 0.07
     },
     {
      "at": -1.11,
@@ -475,15 +467,7 @@
      "refBot": -0.94,
      "procTop": 0.28,
      "procBot": -0.85,
-     "errM": 0.059
-    },
-    {
-     "at": 1.72,
-     "refTop": 0.18,
-     "refBot": -0.48,
-     "procTop": 0.12,
-     "procBot": -0.54,
-     "errM": 0.059
+     "errM": 0.063
     },
     {
      "at": 1.11,
@@ -491,7 +475,31 @@
      "refBot": -0.94,
      "procTop": 0.28,
      "procBot": -0.85,
-     "errM": 0.057
+     "errM": 0.061
+    },
+    {
+     "at": -1.72,
+     "refTop": 0.18,
+     "refBot": -0.49,
+     "procTop": 0.13,
+     "procBot": -0.54,
+     "errM": 0.055
+    },
+    {
+     "at": 1.15,
+     "refTop": 0.25,
+     "refBot": -1.1,
+     "procTop": 0.29,
+     "procBot": -1.03,
+     "errM": 0.055
+    },
+    {
+     "at": 1.72,
+     "refTop": 0.18,
+     "refBot": -0.48,
+     "procTop": 0.13,
+     "procBot": -0.54,
+     "errM": 0.055
     },
     {
      "at": -1.07,
@@ -508,14 +516,6 @@
      "procTop": 0.24,
      "procBot": -0.85,
      "errM": 0.053
-    },
-    {
-     "at": 1.15,
-     "refTop": 0.25,
-     "refBot": -1.1,
-     "procTop": 0.28,
-     "procBot": -1.03,
-     "errM": 0.051
     },
     {
      "at": 1.68,
@@ -552,13 +552,13 @@
    ]
   },
   "front_whole": {
-   "score": 75.35793931628989,
-   "meanPct": 1.87,
-   "p95Pct": 3.58,
+   "score": 75.8530980853915,
+   "meanPct": 1.83,
+   "p95Pct": 3.74,
    "coverPct": 0,
    "reg": {
     "dAlong": 0,
-    "dy": -0.01
+    "dy": -0.006
    },
    "worst": [
     {
@@ -581,7 +581,7 @@
      "at": 0.51,
      "refTop": 0.87,
      "refBot": -0.84,
-     "procTop": 1.02,
+     "procTop": 1.03,
      "procBot": -0.85,
      "errM": 0.085
     },
@@ -594,52 +594,44 @@
      "errM": 0.084
     },
     {
-     "at": 0.47,
-     "refTop": 0.87,
-     "refBot": -0.84,
-     "procTop": 1.01,
-     "procBot": -0.85,
-     "errM": 0.08
-    },
-    {
      "at": -1.68,
      "refTop": 0.31,
      "refBot": -1.1,
-     "procTop": 0.4,
+     "procTop": 0.41,
      "procBot": -1.03,
-     "errM": 0.079
+     "errM": 0.083
+    },
+    {
+     "at": 0.47,
+     "refTop": 0.87,
+     "refBot": -0.84,
+     "procTop": 1.02,
+     "procBot": -0.85,
+     "errM": 0.08
     },
     {
      "at": -0.18,
      "refTop": 0.85,
      "refBot": -0.84,
-     "procTop": 0.99,
+     "procTop": 1,
      "procBot": -0.85,
      "errM": 0.078
-    },
-    {
-     "at": -1.44,
-     "refTop": 1.08,
-     "refBot": -1.1,
-     "procTop": 0.95,
-     "procBot": -1.12,
-     "errM": 0.076
-    },
-    {
-     "at": -1.4,
-     "refTop": 1.08,
-     "refBot": -1.1,
-     "procTop": 0.96,
-     "procBot": -1.12,
-     "errM": 0.075
     },
     {
      "at": -0.22,
      "refTop": 0.86,
      "refBot": -0.84,
-     "procTop": 0.99,
+     "procTop": 1,
      "procBot": -0.85,
      "errM": 0.074
+    },
+    {
+     "at": -1.44,
+     "refTop": 1.08,
+     "refBot": -1.1,
+     "procTop": 0.96,
+     "procBot": -1.12,
+     "errM": 0.072
     },
     {
      "at": 0.39,
@@ -656,6 +648,14 @@
      "procTop": 1,
      "procBot": -0.85,
      "errM": 0.072
+    },
+    {
+     "at": -1.4,
+     "refTop": 1.08,
+     "refBot": -1.1,
+     "procTop": 0.96,
+     "procBot": -1.12,
+     "errM": 0.071
     }
    ]
   }
@@ -882,7 +882,7 @@
   {
    "i": 0,
    "wPct": 2.03,
-   "topPct": 5.67
+   "topPct": 1.41
   },
   {
    "i": 1,

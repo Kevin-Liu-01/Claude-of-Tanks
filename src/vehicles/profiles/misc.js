@@ -1525,7 +1525,15 @@ function buildT80U(P) {
   liftEye(P, 'hullDetail', 1.15, 1.30, 0.9);
   towCable(P, [[-1.25, 0.96, 2.85], [-0.35, 0.90, 3.02], [0.50, 0.94, 2.92]]);
   spareTrackStrip(P, 'hull', 1.05, 1.20, 1.55, 2, -0.35, 0);
-  P.decal('hull', 'soot', null, 1.0, [0.0, 0.9, -3.42], Math.PI);
+  // §C.1 winding fix-round 2026-08-07 (fleet sweep item 3): the 1.0 soot
+  // quad at z -3.42 floated 0.12 aft of the whole port group (r3 pulled the
+  // group to -3.27, the decal never followed) and topped out at 1.4 — over
+  // the 1.19 deck rear corner sightline. One-sided, it painted the gate's
+  // DoubleSide masks from frontleft/frontright/top (208/208/68 px F-vs-D
+  // deficits) while the game culls it. Re-pinned 5 mm proud of the dark
+  // port / louvre aft faces (-3.295) and sized inside the stern silhouette
+  // (top 1.15 stays under the hood lip 1.155 and the deck corner line).
+  P.decal('hull', 'soot', null, 0.55, [0.0, 0.875, -3.30], Math.PI);
   // 6 small dished wheels + 5 skirt-hidden rollers, rear sprocket. VERTEX
   // ROUND: the ref's flat contact patch is SHORT (-2.0..2.24) with long
   // climbing ramps to a HIGH short idler (bottom ~0.58 at z~3.06) and a
