@@ -1196,6 +1196,110 @@ function mkShell(shellSpec, distM = 100) {
   assert(evB.kind === 'pen', `200·0.75 = 150 vs 100 mm main ⇒ pen (got ${evB.kind})`);
 }
 
+// -------------------- TRACK-HITBOX prisms (armor.trackShapes, 2026-08-06) ---
+// Owner order: track hitboxes must follow the REAL \____/ band silhouette.
+// specs.attachTrackShapes derives convex prisms from the as-built running
+// gear; traceTank rolls rays against them INSTEAD of the legacy full-length
+// rectangle plate + AABB pair (which stay in the model for their non-ray
+// consumers). Models without trackShapes (everything above) keep the legacy
+// path — these checks pin the new one.
+{
+  // \____/ silhouette: flat ground run z∈[-2.8,2.8] at y=0.05, approach/
+  // departure ramps to raised end wraps topping at y=1.05 (convex CCW).
+  const poly = [
+    [-2.8, 0.05], [2.8, 0.05], [3.5, 0.7], [3.5, 1.05], [-3.5, 1.05], [-3.5, 0.7],
+  ];
+  const mkTrackArmor = () => ({
+    boundingRadiusM: 4.5,
+    turretPivot: [0, 1.8, 0],
+    gunPivot: [0, 0.3, 0.5],
+    gunBarrel: null,
+    hullPlates: [
+      // legacy authored pair — must be SKIPPED for rays once prisms exist
+      mkPlate({ name: 'track_R', kind: 'external', physicalMm: 20, keMm: 20, ceMm: 20, moduleLink: 'trackR', verts: [[1.35, 0.15, 3.5], [1.35, 0.15, -3.5], [1.35, 1.1, -3.5], [1.35, 1.1, 3.5]] }),
+      mkPlate({ name: 'hull_side_R', physicalMm: 60, keMm: 60, ceMm: 60, verts: [[0.9, 0.1, 3.4], [0.9, 0.1, -3.4], [0.9, 1.6, -3.4], [0.9, 1.6, 3.4]] }),
+    ],
+    turretPlates: [],
+    modules: [
+      { module: 'trackR', min: [0.9, 0, -3.5], max: [1.5, 1.1, 3.5], turretLocal: false },
+      { module: 'trackL', min: [-1.5, 0, -3.5], max: [-0.9, 1.1, 3.5], turretLocal: false },
+    ],
+    crew: [],
+    trackShapes: [
+      { module: 'trackR', x0: 0.9, x1: 1.5, poly: poly.map((p) => [p[0], p[1]]), plate: { name: 'track_R', physicalMm: 20, keMm: 20, ceMm: 20, kind: 'external', era: null, moduleLink: 'trackR', gunFollow: false } },
+      { module: 'trackL', x0: -1.5, x1: -0.9, poly: poly.map((p) => [p[0], p[1]]), plate: { name: 'track_L', physicalMm: 20, keMm: 20, ceMm: 20, kind: 'external', era: null, moduleLink: 'trackL', gunFollow: false } },
+    ],
+  });
+  const pose0 = tankPoseFromState(mkState());
+
+  // Side shot at mid-run track height: prism plate at the OUTER band face
+  // (x=1.5, true +X normal), module span record, legacy rectangle skipped.
+  const armorT = mkTrackArmor();
+  const hits = traceTank(V(10, 0.5, 0), V(-10, 0.5, 0), pose0, armorT);
+  const pr = hits.find((h) => h.kind === 'plate' && h.plate.name === 'track_R');
+  assert(!!pr, 'prism: side shot crosses the trackR screen');
+  if (pr) {
+    near(pr.point.x, 1.5, 1e-6, 'prism: screen met at the OUTER band face (x=1.5)');
+    near(pr.normal.x, 1, 1e-6, 'prism: side-face normal +X');
+    near(pr.impactAngleDeg, 0, 0.01, 'prism: flat side impact angle 0°');
+  }
+  const mr = hits.find((h) => h.kind === 'module' && h.module === 'trackR');
+  assert(!!mr, 'prism: trackR module span reported');
+  if (mr) {
+    assert(mr.external === false, 'prism: module record stays internal (legacy AABB parity)');
+    assert(mr.tExit > mr.t, 'prism: module span carries entry AND exit');
+  }
+  assert(hits.filter((h) => h.kind === 'plate' && h.plate.name === 'track_R').length === 1,
+    'prism: legacy full-length rectangle plate NOT double-reported');
+  assert(hits.some((h) => h.kind === 'module' && h.module === 'trackL'),
+    'prism: far-side trackL span still crossed (through-shot)');
+
+  // The r6 dead-zone: under the raised end (z=3.3, y=0.3) the old rectangle
+  // pair reported track; the real band is 30+ cm higher — nothing there now.
+  const hitsGap = traceTank(V(10, 0.3, 3.3), V(-10, 0.3, 3.3), pose0, mkTrackArmor());
+  assert(!hitsGap.some((h) => (h.kind === 'plate' && h.plate.moduleLink === 'trackR') || (h.kind === 'module' && h.module === 'trackR')),
+    'prism: shot UNDER the raised end no longer reads track');
+  assert(hitsGap.some((h) => h.kind === 'plate' && h.plate.name === 'hull_side_R'),
+    'prism: that shot still reaches the hull side behind');
+
+  // ...but through the raised wrap itself (y=0.9) the track IS there.
+  const hitsWrap = traceTank(V(10, 0.9, 3.3), V(-10, 0.9, 3.3), pose0, mkTrackArmor());
+  assert(hitsWrap.some((h) => h.kind === 'plate' && h.plate.name === 'track_R'),
+    'prism: raised end-wheel wrap still tracks');
+
+  // End-on shot into the approach ramp: entry through the ANGLED facet —
+  // the normal carries the real ramp slope (the rising underside faces
+  // forward-DOWN: nz>0, ny<0), never the old flat vertical rectangle.
+  const hitsRamp = traceTank(V(1.2, 0.28, 10), V(1.2, 0.28, -10), pose0, mkTrackArmor());
+  const ramp = hitsRamp.find((h) => h.kind === 'plate' && h.plate.name === 'track_R');
+  assert(!!ramp, 'prism: end-on shot enters through the approach ramp facet');
+  if (ramp) {
+    assert(ramp.normal.z > 0.3 && ramp.normal.y < -0.3, 'prism: ramp facet normal carries the true slope');
+    assert(ramp.impactAngleDeg > 20 && ramp.impactAngleDeg < 70,
+      `prism: ramp impact angle is oblique (got ${ramp.impactAngleDeg.toFixed(1)}°)`);
+  }
+
+  // Segment starting INSIDE the prism: module span from t=0, no phantom
+  // entry plate (no meaningful surface was crossed).
+  const hitsIn = traceTank(V(1.2, 0.5, 0), V(10, 0.5, 0), pose0, mkTrackArmor());
+  assert(!hitsIn.some((h) => h.kind === 'plate' && h.plate.name === 'track_R'),
+    'prism: start-inside segment reports no entry screen');
+  const mIn = hitsIn.find((h) => h.kind === 'module' && h.module === 'trackR');
+  assert(!!mIn && mIn.t === 0, 'prism: start-inside segment still spans the module from t=0');
+
+  // Full resolution through the prism: screen absorb + track roll + main pen
+  // (the legacy flow, now on the real shape).
+  const spec = mkSpec({ armor: mkTrackArmor() });
+  const entity = { id: 'prism_victim', spec, state: mkState(), combat: createCombatState(spec) };
+  const shell = mkShell(AP100, 100);
+  const rng = seqRng([0.5, 0.5, 0.2, 0.5, 0.2, 0.5]); // pen, dmg, trackR save+dmg (+straddle save+dmg)
+  const hitsRes = traceTank(V(10, 0.5, 0), V(-10, 0.5, 0), tankPoseFromState(entity.state), spec.armor);
+  const ev = resolveShellHit(shell, entity, hitsRes, rng);
+  assert(ev.kind === 'pen', `prism: side shot pens hull behind the track screen (got ${ev.kind})`);
+  assert(ev.modulesHit.some((m) => m.module === 'trackR'), 'prism: track screen crossing rolled track damage');
+  near(ev.penRollMm, 180, 1e-9, 'prism: decisive-plate pen roll = 200 minus the 20 mm track screen');
+}
+
 // ------------------------------------------------------------------ report --
 if (failures > 0) {
   console.error(`combat.selftest: ${failures}/${checks} assertions FAILED`);

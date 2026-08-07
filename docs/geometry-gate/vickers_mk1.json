@@ -5,7 +5,7 @@
  "components": {
   "hullCurves": 82,
   "wholeCurves": 81.8,
-  "turretCurves": 82.6,
+  "turretCurves": 84.1,
   "stations": 88.9,
   "dims": 99,
   "floaters": 100
@@ -662,10 +662,10 @@
  },
  "turretRows": {
   "side": {
-   "score": 82.6031257011607,
+   "score": 84.10484524270647,
    "meanPct": 0.83,
    "p95Pct": 2.79,
-   "coverPct": 3.81,
+   "coverPct": 2.86,
    "reg": {
     "dAlong": 1.051,
     "dy": -0.003

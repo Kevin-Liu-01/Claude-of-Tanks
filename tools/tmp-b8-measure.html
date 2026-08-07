@@ -1,0 +1,95 @@
+<!doctype html>
+<!-- TEMP (§B8 photo-acceptance critic, 2026-08-06): PROC-ONLY numeric
+     proportion probe. Builds the tank exactly like tmp-ww2-photoclass.html
+     (same factory call, LOD-0 pin) and reports gross-form measurements on
+     window.__MEASURE for the acceptance critic: overall box, hull-only box
+     (rig_turret subtree excluded), turret-mass box (rig_gun excluded), gun
+     box, rig_muzzle world position. NO renders — measurement only.
+     Deleted after the round. -->
+<meta charset="utf-8">
+<title>tmp-b8-measure</title>
+<style>body{margin:0;background:#151b20;color:#dde;font:12px monospace}</style>
+<div id="out">building…</div>
+<script type="module">
+import * as THREE from 'three';
+import { createTank } from '/src/vehicles/tankFactory.js';
+import { TANK_SPECS } from '/src/vehicles/specs.js';
+
+const params = new URLSearchParams(location.search);
+const id = params.get('id') || 'leo2a4';
+
+const renderer = new THREE.WebGLRenderer({ antialias: false, alpha: false });
+renderer.setSize(64, 64, false);
+const engineCtx = { setupShadowMaterial: (m) => m, anisotropy: 1, renderer };
+
+const tank = createTank(id, engineCtx, { camoSeed: 4242, quality: 'high', proceduralOnly: true });
+const root = tank.root;
+root.updateMatrixWorld(true);
+root.traverse((o) => {
+  if (!o.isLOD) return;
+  o.autoUpdate = false;
+  o.levels.forEach((level, i) => { if (level.object) level.object.visible = i === 0; });
+});
+root.updateMatrixWorld(true);
+
+function underNamed(o, name) {
+  for (let p = o; p; p = p.parent) if (p.name === name) return true;
+  return false;
+}
+function collectBox(filter) {
+  const box = new THREE.Box3();
+  let meshes = 0;
+  root.traverse((o) => {
+    if (!(o.isMesh || o.isInstancedMesh || o.isSkinnedMesh) || !o.geometry) return;
+    let vis = true;
+    for (let p = o; p; p = p.parent) if (!p.visible) { vis = false; break; }
+    if (!vis || /shadow/i.test(o.name || '')) return;
+    if (!filter(o)) return;
+    meshes += 1;
+    if (o.isInstancedMesh) {
+      if (o.count === 0) return;
+      o.computeBoundingBox();
+      if (o.boundingBox && !o.boundingBox.isEmpty()) {
+        box.union(o.boundingBox.clone().applyMatrix4(o.matrixWorld));
+      }
+      return;
+    }
+    if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+    box.union(o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld));
+  });
+  return { box, meshes };
+}
+const r3 = (v) => Math.round(v * 1000) / 1000;
+const dims = (b) => b.isEmpty() ? null : {
+  x: [r3(b.min.x), r3(b.max.x)], y: [r3(b.min.y), r3(b.max.y)], z: [r3(b.min.z), r3(b.max.z)],
+  w: r3(b.max.x - b.min.x), h: r3(b.max.y - b.min.y), l: r3(b.max.z - b.min.z),
+};
+
+const overall = collectBox(() => true);
+const hull = collectBox((o) => !underNamed(o, 'rig_turret'));
+const turretMass = collectBox((o) => underNamed(o, 'rig_turret') && !underNamed(o, 'rig_gun'));
+const gun = collectBox((o) => underNamed(o, 'rig_gun'));
+
+const spec = TANK_SPECS[id] || null;
+const muzzle = root.getObjectByName('rig_muzzle');
+const turretNode = root.getObjectByName('rig_turret');
+const gunNode = root.getObjectByName('rig_gun');
+const wp = (n) => { if (!n) return null; const v = n.getWorldPosition(new THREE.Vector3()); return [r3(v.x), r3(v.y), r3(v.z)]; };
+
+window.__MEASURE = {
+  id,
+  generatedAt: new Date().toISOString(),
+  meshCounts: { total: overall.meshes, hull: hull.meshes, turretMass: turretMass.meshes, gun: gun.meshes },
+  overall: dims(overall.box),
+  hull: dims(hull.box),
+  turretMass: dims(turretMass.box),
+  gun: dims(gun.box),
+  muzzleWorld: wp(muzzle),
+  turretPivotWorld: wp(turretNode),
+  gunPivotWorld: wp(gunNode),
+  specDims: spec?.dims ?? null,
+  specGunBarrel: spec?.armor?.gunBarrel ?? null,
+};
+window.__MEASURE_READY = true;
+document.getElementById('out').textContent = JSON.stringify(window.__MEASURE, null, 1);
+</script>

@@ -1,10 +1,10 @@
 {
  "id": "jagdtiger",
- "geoMin": 31.1,
+ "geoMin": 31.8,
  "gatePassed": false,
  "components": {
-  "hullCurves": 31.1,
-  "wholeCurves": 31.1,
+  "hullCurves": 31.8,
+  "wholeCurves": 31.8,
   "turretCurves": 100,
   "stations": 53.6,
   "dims": 99.7,
@@ -12,7 +12,7 @@
  },
  "curveRows": {
   "side_hull": {
-   "score": 65.17186404505988,
+   "score": 65.17186041450941,
    "meanPct": 2.29,
    "p95Pct": 6.19,
    "coverPct": 2.45,
@@ -120,7 +120,7 @@
    ]
   },
   "side_whole": {
-   "score": 65.19040932998462,
+   "score": 65.19040678405537,
    "meanPct": 2.28,
    "p95Pct": 6.18,
    "coverPct": 2.45,
@@ -228,7 +228,7 @@
    ]
   },
   "plan_hull": {
-   "score": 64.70848576770732,
+   "score": 64.70848507326123,
    "meanPct": 2.74,
    "p95Pct": 4.09,
    "coverPct": 0,
@@ -336,7 +336,7 @@
    ]
   },
   "plan_whole": {
-   "score": 64.7117425619813,
+   "score": 64.71174238527401,
    "meanPct": 2.74,
    "p95Pct": 4.09,
    "coverPct": 0,
@@ -444,10 +444,10 @@
    ]
   },
   "front_hull": {
-   "score": 31.098885577458677,
-   "meanPct": 5.14,
+   "score": 31.800160525149938,
+   "meanPct": 5.15,
    "p95Pct": 10.75,
-   "coverPct": 0.56,
+   "coverPct": 0,
    "reg": {
     "dAlong": -0.001,
     "dy": -0.032
@@ -547,15 +547,15 @@
      "refBot": -1.5,
      "procTop": 1.32,
      "procBot": -1.49,
-     "errM": 0.24
+     "errM": 0.241
     }
    ]
   },
   "front_whole": {
-   "score": 31.13124235695795,
-   "meanPct": 5.13,
+   "score": 31.81404997286942,
+   "meanPct": 5.14,
    "p95Pct": 10.74,
-   "coverPct": 0.56,
+   "coverPct": 0,
    "reg": {
     "dAlong": -0.001,
     "dy": -0.032
