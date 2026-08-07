@@ -749,3 +749,17 @@ Trio-wide note: proc track bands read chunky vs the prints' smooth
 runs (shared-material lane, report-only — same class as t14's).
 FIX ROUND QUEUED behind the live t72b3m coupled agent (russia.js
 single-writer): carries ALL orders above verbatim.
+
+## 4.999992 CHALLENGER TRIO §B8 VERDICTS: 3/3 PASS 9.0 (independent
+critic, fresh pairs, hash bracket x2 bit-identical to the landed
+candidates b4e51df8/17bb2528/a3762fe; sheets
+shots/critic-challenger-trio-indep/). OWNER CHECKLIST CLOSED WITH
+PIXELS: t14 "hull is wrong" DEAD (V-nose chisel, full-length tall
+skirts, 7 countable wheels, raked stern ramp, capsule hump); ch3
+FINISHED (angular welded turret, flat mantlet, RWS §H.4-M2, Trophy,
+L55A1 to 11.50); ch2 FINISHED WITHIN CAPS (§B7 applied vs the +28.8%
+print — CR2 silhouette holds, VS580 at 3.04). ALL print-cap claims
+VERIFIED (none rejected); §E queue items confirmed correctly filed.
+Detail-round notes banked (t14 Afganit stubs borderline §B3, ch2
+wheel-arc at the low end of the window) — NO closing orders. Record
+hashes bind the verdicts; dual gate still pending for freezes.
