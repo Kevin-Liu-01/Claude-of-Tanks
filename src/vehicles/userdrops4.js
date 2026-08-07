@@ -10,7 +10,7 @@ const ALLOW_LOCAL_RECOVERED_MODELS = typeof import.meta !== 'undefined' &&
 
 const tejas = clone(TANK_SPECS.m1a2);
 tejas.id = 'm1a2_tejas';
-tejas.name = 'M1A2 Abrams (Tejas)';
+tejas.name = 'M1A2 Abrams';  // owner 2026-08-06: '(Tejas)' dropped from the display name
 tejas.variantOf = 'm1a2';
 tejas.publicVisualFallback = 'm1a2';
 tejas.community = {
