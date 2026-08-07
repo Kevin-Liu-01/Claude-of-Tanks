@@ -996,6 +996,35 @@ async function ensureWorld(mapId, onProgress = null) {
   // collider build, sky re-key) used to fuse into one ~1.6 s task — give the
   // loading bar a painted frame between them.
   await nextFrame();
+  // perf-r5c (retina probe): activateWorld's minimap capture was the FIRST
+  // render touching the fresh world's programs — 55 links resolved in that
+  // one slice (630 ms). Submit the compiles now, let the parallel linker
+  // breathe, and bake the cloud decks one-per-frame; the capture then binds
+  // ready programs and baked clouds.
+  try { renderer.compile(next.group, camera, scene); } catch (_) { /* warm only */ }
+  for (const _ of linkerBreathingSlices(40)) await nextFrame();
+  // shadow-depth variants never build through compile() (r2d note) and the
+  // render that submits them also BINDS them — one full render resolved ~59
+  // links in a single slice (3 s under heavy host load). Render the world in
+  // SUBSETS instead (terrain -> +vegetation -> +props): each slice submits
+  // and resolves roughly a third, with linker breathing between.
+  {
+    const kids = next.group.children.slice();
+    for (let sub = 0; sub < kids.length; sub++) {
+      const hidden = [];
+      for (let j = sub + 1; j < kids.length; j++) {
+        if (kids[j].visible) { kids[j].visible = false; hidden.push(kids[j]); }
+      }
+      try {
+        if (lighting && lighting.updateFrustums) lighting.updateFrustums();
+        warmRender();
+      } catch (_) { /* warm only */ }
+      for (const o of hidden) o.visible = true;
+      for (const _ of linkerBreathingSlices(40)) await nextFrame();
+      await nextFrame();
+    }
+  }
+  if (sky.ensureCloudTexturesChunked) await sky.ensureCloudTexturesChunked(() => nextFrame());
   if (world !== next || worldDormant) activateWorld(next);
   return world;
 }
@@ -1842,7 +1871,7 @@ async function startBattleLoading(specId, mapId = null) {
     if (glbTanks.length) {
       const loader = await import('./vehicles/modelLoader.js').catch(() => null);
       if (loader && loader.hasPendingSwap) {
-        const deadline = performance.now() + 8000;
+        const deadline = performance.now() + 15000; // perf-r5c: typical broadband finishes the roster; countdown stragglers shrink
         for (;;) {
           const pending = glbTanks.filter(
             (e) => !e.visual || loader.hasPendingSwap(e.visual.root),
@@ -3688,6 +3717,13 @@ function* warmCombatPipelineSteps() {
         _v2.set(0, 0, 1);
         try { fx.armorScar(e.visual, _v1, _v2, 100); } catch (_) { /* warm only */ }
       }
+      // perf-r5c (owner: first shot still blips): the volley used to be
+      // cleared WITHOUT ever rendering a frame — the fx materials' pipelines
+      // (blending/depth state against the live targets) still bound for the
+      // first time on the player's first real muzzle flash. One quarter-
+      // viewport frame with the volley alive warms them for real.
+      try { fx.update(0.016, game.shells, camera); } catch (_) { /* warm only */ }
+      warmRender();
     } catch (err) {
       console.warn('[warm] fx volley failed (continuing):', err);
     }
@@ -3726,6 +3762,46 @@ function* warmCombatPipelineSteps() {
  * and again after the GLB swap drain (swapped hierarchies carry their own
  * materials and addon nodes).
  */
+// perf-r5c: warm renders only need to TOUCH programs/textures — full-frame
+// rasterization at retina scale made each one a 400-730 ms slice. A quarter
+// viewport cuts the fragment bill ~16x while binding the same pipelines.
+const _warmVp = new THREE.Vector4();
+function warmRender() {
+  renderer.getViewport(_warmVp);
+  const sz = renderer.getSize(_v2gp || (_v2gp = new THREE.Vector2()));
+  renderer.setViewport(0, 0, Math.max(8, sz.x * 0.25), Math.max(8, sz.y * 0.25));
+  try { renderer.render(scene, camera); } finally {
+    renderer.setViewport(_warmVp);
+  }
+}
+let _v2gp = null;
+
+let _linkExtMain;
+function* linkerBreathingSlices(maxSlices) {
+  try {
+    const gl = renderer.getContext();
+    if (_linkExtMain === undefined) {
+      _linkExtMain = gl.getExtension('KHR_parallel_shader_compile') || null;
+    }
+    if (!_linkExtMain) return;
+    let cursor = 0;
+    for (let i = 0; i < maxSlices; i++) {
+      const progs = renderer.info.programs || [];
+      let pending = false;
+      for (; cursor < progs.length; cursor++) {
+        const pr = progs[cursor];
+        if (pr && pr.program
+          && gl.getProgramParameter(pr.program, _linkExtMain.COMPLETION_STATUS_KHR) === false) {
+          pending = true;
+          break;
+        }
+      }
+      if (!pending) return;
+      yield;
+    }
+  } catch (_) { /* best-effort — the render below still resolves links */ }
+}
+
 function compileHiddenVariants() {
   const g = compileHiddenVariantsSteps();
   let r = g.next();
@@ -3769,6 +3845,12 @@ function* compileHiddenVariantsSteps() {
   if (world && world.group) {
     try { renderer.compile(world.group, camera, scene); } catch (_) { /* warm only */ }
     yield;
+    // perf-r5c (retina probe: one slice resolved 55 links at once, 653 ms):
+    // give the driver's parallel linker breathing slices before any warm
+    // render binds the new programs. Local KHR poll (modelLoader stays a
+    // dynamic import — perf-budget rule) with an early-exit cursor, bounded
+    // so a linker that never reports done cannot stall the warm.
+    yield* linkerBreathingSlices(40);
   }
   // perf-r2d: renderer.compile() never builds SHADOW-PASS depth programs —
   // they link the first time a mesh's material class actually renders into a
@@ -3797,7 +3879,7 @@ function* compileHiddenVariantsSteps() {
     try {
       collectFlips();
       if (lighting && lighting.updateFrustums) lighting.updateFrustums();
-      renderer.render(scene, camera);
+      warmRender();
       unflip();
     } catch (_) { unflip(); }
     yield;
@@ -3812,7 +3894,7 @@ function* compileHiddenVariantsSteps() {
         camera.fov = f;
         camera.updateProjectionMatrix();
         if (lighting && lighting.updateFrustums) lighting.updateFrustums();
-        renderer.render(scene, camera);
+        warmRender();
         camera.fov = fov0;
         camera.updateProjectionMatrix();
         unflip();
@@ -3835,7 +3917,7 @@ function* compileHiddenVariantsSteps() {
         camera.lookAt(_v2);
         if (world && world.update) world.update(0.016, camera.position, null, null);
         if (lighting && lighting.updateFrustums) lighting.updateFrustums();
-        renderer.render(scene, camera);
+        warmRender();
         camera.position.copy(camPos0);
         camera.quaternion.copy(camQuat0);
         if (world && world.update) world.update(0, camera.position, null, null);

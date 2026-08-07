@@ -904,10 +904,12 @@ export function createSky(scene, renderer) {
     tex.anisotropy = CLOUD_ANISOTROPY;
     return tex;
   };
-  let cloudsBaked = false;
+  // perf-r5c: per-deck flags — the chunked twin bakes one deck per tick and
+  // a mid-chunk SYNC call (world activation is a finish-now guarantee) still
+  // bakes exactly the remainder.
+  let cirrusBaked = false;
+  let cumulusBaked = false;
   const ensureCloudTextures = () => {
-    if (cloudsBaked) return;
-    cloudsBaked = true;
     const swap = (deck, baked) => {
       const tex = deck.material.uniforms.uMap.value;
       // dispose BEFORE the image swap (same fix as particles.js sprite
@@ -921,8 +923,21 @@ export function createSky(scene, renderer) {
       tex.needsUpdate = true;
       baked.dispose(); // wrapper never uploaded — frees only CPU-side state
     };
-    swap(cloudsFar, makeCirrusTexture());
-    swap(clouds, makeCloudTexture());
+    if (!cirrusBaked) { cirrusBaked = true; swap(cloudsFar, makeCirrusTexture()); }
+    if (!cumulusBaked) { cumulusBaked = true; swap(clouds, makeCloudTexture()); }
+  };
+  /** perf-r5c: one ~350-600 ms fbm deck bake per tick (loading-bar path). */
+  const ensureCloudTexturesChunked = async (tick) => {
+    if (!cirrusBaked) {
+      cirrusBaked = true;
+      swap(cloudsFar, makeCirrusTexture());
+      if (tick) await tick();
+    }
+    if (!cumulusBaked) {
+      cumulusBaked = true;
+      swap(clouds, makeCloudTexture());
+      if (tick) await tick();
+    }
   };
   const cloudsFar = mkCloudDeck(
     lazyCloudTex(), CIRRUS_ALT, CIRRUS_UV_METERS, CLOUD_LAYER2_OPACITY,
@@ -1027,6 +1042,7 @@ export function createSky(scene, renderer) {
      * main.js runs it on first world activation and from post-ready idle.
      */
     ensureCloudTextures,
+    ensureCloudTexturesChunked,
 
     /**
      * Bake the procedural sky into a PMREM environment map and install it as
