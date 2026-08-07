@@ -7,7 +7,7 @@
   "wholeCurves": 0,
   "turretCurves": 0,
   "stations": 13.4,
-  "dims": 0,
+  "dims": 62,
   "floaters": 100
  },
  "curveRows": {
@@ -954,8 +954,8 @@
   {
    "name": "heightM",
    "actual": 2.87,
-   "published": 2.49,
-   "pct": 15.07
+   "published": 3.04,
+   "pct": 5.75
   },
   {
    "name": "hullLengthM",

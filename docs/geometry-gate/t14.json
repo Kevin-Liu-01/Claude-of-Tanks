@@ -1,13 +1,13 @@
 {
  "id": "t14",
- "geoMin": 0,
+ "geoMin": 48.1,
  "gatePassed": false,
  "components": {
   "hullCurves": 77.8,
   "wholeCurves": 65.5,
   "turretCurves": 68.8,
   "stations": 82.5,
-  "dims": 0,
+  "dims": 48.1,
   "floaters": 100
  },
  "curveRows": {
@@ -120,7 +120,7 @@
    ]
   },
   "side_whole": {
-   "score": 66.29149937011135,
+   "score": 66.29149937011137,
    "meanPct": 1.91,
    "p95Pct": 6.38,
    "coverPct": 4.62,
@@ -954,8 +954,8 @@
   {
    "name": "heightM",
    "actual": 3.4,
-   "published": 2.7,
-   "pct": 25.81
+   "published": 3.16,
+   "pct": 7.49
   },
   {
    "name": "hullLengthM",

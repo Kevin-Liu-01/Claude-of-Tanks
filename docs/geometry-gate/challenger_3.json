@@ -1,13 +1,13 @@
 {
  "id": "challenger_3",
- "geoMin": 0,
+ "geoMin": 41.6,
  "gatePassed": false,
  "components": {
   "hullCurves": 42.4,
   "wholeCurves": 41.6,
   "turretCurves": 54.5,
   "stations": 52.4,
-  "dims": 0,
+  "dims": 66,
   "floaters": 100
  },
  "curveRows": {
@@ -444,7 +444,7 @@
    ]
   },
   "front_hull": {
-   "score": 72.39561225795468,
+   "score": 72.39561225795462,
    "meanPct": 1.95,
    "p95Pct": 6.92,
    "coverPct": 0,
@@ -552,7 +552,7 @@
    ]
   },
   "front_whole": {
-   "score": 41.583063800011246,
+   "score": 41.58306380001122,
    "meanPct": 4.1,
    "p95Pct": 15.27,
    "coverPct": 0,
@@ -662,7 +662,7 @@
  },
  "turretRows": {
   "side": {
-   "score": 56.08098234467399,
+   "score": 56.080982344674005,
    "meanPct": 2.8,
    "p95Pct": 7.99,
    "coverPct": 3.7,
@@ -954,8 +954,8 @@
   {
    "name": "heightM",
    "actual": 3.1,
-   "published": 2.49,
-   "pct": 24.7
+   "published": 2.95,
+   "pct": 5.25
   },
   {
    "name": "hullLengthM",

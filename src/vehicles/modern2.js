@@ -392,7 +392,10 @@ export const MODERN2_SPECS = {
         shell('Telnik HE-Frag', 'HE', 125, 55, 55, 600, 850),
       ],
     },
-    dims: { hullLengthM: 8.7, overallLengthM: 10.8, widthM: 3.9, heightM: 2.7 },
+    // heightM is the mast-inclusive datum (packet-filed 2.7 -> 3.16, the
+    // oracle extract's measured bodyHeightM: real T-14 masts carry the p95;
+    // 2.7 is the unmanned-turret roof).
+    dims: { hullLengthM: 8.7, overallLengthM: 10.8, widthM: 3.9, heightM: 3.16 },
     armor: mbtArmor({
       // MEASURED-LADDER r1 (oracle 3DYAROSLAV2 print, §B8 proportion truth):
       // deck raised to the print's 1.685 line (the r7 eyeball cut 1.62->1.50

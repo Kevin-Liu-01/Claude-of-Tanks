@@ -420,7 +420,9 @@ const MODERN1_SPECS = {
         shell('L34 WP Smoke', 'HE', 120, 10, 10, 100, 650),
       ],
     },
-    dims: { hullLengthM: 8.33, overallLengthM: 11.50, widthM: 3.52, heightM: 2.49 },
+    // heightM is the sensor-inclusive datum (m26 precedent): 2.49 is the
+    // turret roof; the gate p95 rides the pano sight (published 3.04).
+    dims: { hullLengthM: 8.33, overallLengthM: 11.50, widthM: 3.52, heightM: 3.04 },
     armor: armorChallenger2(),
     visual: {
       // British 2-tone: black stripe geometry over NATO green (§18.5)
@@ -451,7 +453,9 @@ const MODERN1_SPECS = {
     },
     // ANCHOR CAVEAT (packet): no official CR3 dims sheet — CR2 hull family
     // figures anchor the row (CR3 reuses the CR2 hull; L55A1 is L/55).
-    dims: { hullLengthM: 8.33, overallLengthM: 11.50, widthM: 3.52, heightM: 2.49 },
+    // heightM is the sensor-inclusive datum (packet-filed 2.49 -> ~2.95:
+    // RWS/pano/whips carry the p95 on both the print and the build).
+    dims: { hullLengthM: 8.33, overallLengthM: 11.50, widthM: 3.52, heightM: 2.95 },
     armor: armorChallenger3(),
     visual: {
       // British 2-tone black-over-green, distinct number from the CR2 (§H.3
