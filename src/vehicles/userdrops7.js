@@ -182,8 +182,17 @@ const glb = (file) => ({
 MODEL_SOURCE.t44 = glb('t44_foxygamer.glb');
 MODEL_SOURCE.m48 = glb('m48a5_atmodeler.glb');
 // FLEET FLIP 2026-08-04: MODEL_SOURCE_RETIRED.m60a2 = glb('m60a2_ahab.glb');
-MODEL_SOURCE.amx30 = glb('amx30b_ahab.glb');
-MODEL_SOURCE.amx30b2 = glb('amx30b2_ahab.glb');
+// FRANCE ROUND 2026-08-07 (owner: "the amx 30bs' hulls are backwards"):
+// the ahab bakes carry an INTERNAL hull/turret 180 — build_gen2_tanks.py
+// rotates the hull RZ(-90) but the turret RZ(+90), so the hull glacis
+// renders at -z while the gun points +z (vertex extracts amx30/amx30b2:
+// glacisSign -1, gunSign +1, agree:false). A MODEL_SOURCE yawOffset cannot
+// fix an internal disagreement (a scene yaw flips BOTH), so the playables
+// flip to the misc.js procedural builds; the one-line re-bake fix
+// (hull RZ(-90) -> RZ(90) in the manifest) is the §E lane's, and the
+// re-baked GLBs can then re-register as measurement oracles.
+// MODEL_SOURCE_RETIRED.amx30 = glb('amx30b_ahab.glb');
+// MODEL_SOURCE_RETIRED.amx30b2 = glb('amx30b2_ahab.glb');
 MODEL_SOURCE.type59 = glb('type69_lasttriarius.glb');
 // FLEET FLIP 2026-08-04: MODEL_SOURCE_RETIRED.vickers_mk1 = glb('vickers_mk1_jack.glb');
 
@@ -205,4 +214,4 @@ if (ALLOW_LOCAL_RECOVERED_MODELS) {
 export const USERDROP7_TANK_IDS = SPECS.map((s) => s.id);
 // every wave-8 row is sourced-from-online (era bucketing intent, cf.
 // USERDROP5_SOURCED_IDS) — t84 graduated out (dual gate, §10)
-export const USERDROP7_SOURCED_IDS = USERDROP7_TANK_IDS.filter((id) => !['t84', 't80', 't80b', 't80bv', 'm60a2', 'vickers_mk1'].includes(id));
+export const USERDROP7_SOURCED_IDS = USERDROP7_TANK_IDS.filter((id) => !['t84', 't80', 't80b', 't80bv', 'm60a2', 'vickers_mk1', 'amx30', 'amx30b2'].includes(id));

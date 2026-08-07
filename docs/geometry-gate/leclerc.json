@@ -1,12 +1,12 @@
 {
  "id": "leclerc",
- "geoMin": 86,
+ "geoMin": 86.2,
  "gatePassed": false,
  "components": {
   "hullCurves": 86.6,
-  "wholeCurves": 86,
+  "wholeCurves": 86.2,
   "turretCurves": 88.8,
-  "stations": 90.1,
+  "stations": 90.3,
   "dims": 100,
   "floaters": 100
  },
@@ -120,7 +120,7 @@
    ]
   },
   "side_whole": {
-   "score": 86.76447268688224,
+   "score": 86.7889736161082,
    "meanPct": 0.92,
    "p95Pct": 2.25,
    "coverPct": 0.56,
@@ -444,8 +444,8 @@
    ]
   },
   "front_hull": {
-   "score": 88.1646051061781,
-   "meanPct": 0.86,
+   "score": 88.07913900145128,
+   "meanPct": 0.87,
    "p95Pct": 2.54,
    "coverPct": 0,
    "reg": {
@@ -482,16 +482,16 @@
      "refTop": 0.3,
      "refBot": -0.48,
      "procTop": 0.35,
-     "procBot": -0.39,
-     "errM": 0.065
+     "procBot": -0.4,
+     "errM": 0.064
     },
     {
      "at": 1.72,
      "refTop": 0.3,
      "refBot": -0.48,
      "procTop": 0.35,
-     "procBot": -0.39,
-     "errM": 0.065
+     "procBot": -0.4,
+     "errM": 0.064
     },
     {
      "at": -0.99,
@@ -542,18 +542,18 @@
      "errM": 0.036
     },
     {
-     "at": 1.44,
-     "refTop": 0.37,
-     "refBot": -1.25,
-     "procTop": 0.35,
-     "procBot": -1.26,
+     "at": -0.71,
+     "refTop": 0.36,
+     "refBot": -0.97,
+     "procTop": 0.37,
+     "procBot": -0.99,
      "errM": 0.019
     }
    ]
   },
   "front_whole": {
-   "score": 86.04773220827246,
-   "meanPct": 1.04,
+   "score": 86.18882262583386,
+   "meanPct": 1.02,
    "p95Pct": 2.55,
    "coverPct": 0,
    "reg": {
@@ -581,9 +581,9 @@
      "at": -0.95,
      "refTop": 1.11,
      "refBot": -0.98,
-     "procTop": 1.12,
+     "procTop": 1.09,
      "procBot": -1.23,
-     "errM": 0.133
+     "errM": 0.134
     },
     {
      "at": -1.72,
@@ -642,28 +642,28 @@
      "errM": 0.044
     },
     {
-     "at": -0.26,
-     "refTop": 1.1,
-     "refBot": -0.97,
-     "procTop": 1.03,
-     "procBot": -0.99,
-     "errM": 0.043
-    },
-    {
      "at": 1.8,
      "refTop": 0.16,
      "refBot": -0.33,
      "procTop": 0.19,
      "procBot": -0.39,
      "errM": 0.042
+    },
+    {
+     "at": 1.48,
+     "refTop": 0.76,
+     "refBot": -1.26,
+     "procTop": 0.83,
+     "procBot": -1.26,
+     "errM": 0.038
     }
    ]
   }
  },
  "turretRows": {
   "side": {
-   "score": 90.10403999381593,
-   "meanPct": 0.74,
+   "score": 90.14099902264829,
+   "meanPct": 0.73,
    "p95Pct": 1.75,
    "coverPct": 0,
    "reg": {
@@ -696,22 +696,6 @@
      "errM": 0.045
     },
     {
-     "at": 2.05,
-     "refTop": 1.1,
-     "refBot": 0.35,
-     "procTop": 1.17,
-     "procBot": 0.34,
-     "errM": 0.042
-    },
-    {
-     "at": 1.94,
-     "refTop": 1.1,
-     "refBot": 0.35,
-     "procTop": 1.16,
-     "procBot": 0.34,
-     "errM": 0.036
-    },
-    {
      "at": 2.16,
      "refTop": 1.1,
      "refBot": 0.35,
@@ -726,6 +710,22 @@
      "procTop": 1.05,
      "procBot": 0.5,
      "errM": 0.036
+    },
+    {
+     "at": 1.16,
+     "refTop": 1.11,
+     "refBot": -0.01,
+     "procTop": 1.16,
+     "procBot": -0.01,
+     "errM": 0.031
+    },
+    {
+     "at": 1.28,
+     "refTop": 1.09,
+     "refBot": -0.01,
+     "procTop": 1.14,
+     "procBot": -0.01,
+     "errM": 0.031
     },
     {
      "at": 2.61,
@@ -744,6 +744,14 @@
      "errM": 0.031
     },
     {
+     "at": 1.39,
+     "refTop": 1.04,
+     "refBot": -0.01,
+     "procTop": 0.99,
+     "procBot": -0.01,
+     "errM": 0.028
+    },
+    {
      "at": 3.16,
      "refTop": 1.09,
      "refBot": 0.37,
@@ -758,14 +766,6 @@
      "procTop": 0.98,
      "procBot": 0.54,
      "errM": 0.028
-    },
-    {
-     "at": -1.5,
-     "refTop": 0.83,
-     "refBot": 0.41,
-     "procTop": 0.82,
-     "procBot": 0.45,
-     "errM": 0.026
     }
    ]
   },
@@ -917,7 +917,7 @@
   {
    "i": 7,
    "wPct": 0.11,
-   "topPct": 0.33
+   "topPct": 0.93
   },
   {
    "i": 8,
@@ -932,12 +932,12 @@
   {
    "i": 10,
    "wPct": 0,
-   "topPct": 0.71
+   "topPct": 0.18
   },
   {
    "i": 11,
    "wPct": 0,
-   "topPct": 0.63
+   "topPct": 0.33
   },
   {
    "i": 12,

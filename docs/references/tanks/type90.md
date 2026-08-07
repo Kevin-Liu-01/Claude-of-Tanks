@@ -524,3 +524,44 @@ bow/left-roof views (frontleft 0.28%, gunrun-right 2.2% — pod+fender tip
 now render); asym rows 106 -> 91. Flood identical (open-background class,
 see t80u note). GATE HOLD x2 EXACT: min 83.6 | 88.5/84.9/84.7/83.6/100/100
 both runs.
+
+## FRANCE ROUND rider (2026-08-07, france agent) — §5.16 owner orders: scale / gun placement / mantlet. Gate x2 **83.6 | hull 88.5 / whole 84.9 / turret 84.6 / stations 83.6 / dims 100 / floaters 100** (baseline 83.6 | 88.5/84.9/84.7/83.6 — turret -0.1 for the mantlet block, every other row EXACT; well inside the round's >1.0 bar).
+
+(3) PROPER MANTLET — LANDED: the print ITSELF carries a proud mantlet
+mass ~0.3 m forward of the turret face at the tube root (fresh ref
+front-depth map, tools/tmp-france-topmap.mjs: x +-0.15, y 1.50..1.65,
+ref z 1.11..1.24 = proc-frame 2.12..2.25 after the ref's -1.01 full-box
+centering offset) — the old build buried the root INSIDE the prow and
+showed a bare tube. Built as the Type 90's flat-faced Rh-120-class
+mantlet BLOCK riding the gun at the print's own station: block x +-0.16
+(y 1.42..1.71w, face z_w 2.065) + proud flat face plate + dark tube-exit
+collar + bolted edge strips + trunnion cheek tapers closing block->prow
+(§B2 connected) + underside shadow line. Cost: turret -0.1 x2 runs.
+
+(2) GUN PLACEMENT — MEASURED AT THE PRINT: tube axis 1.562 = the ref
+band mid (1.485..1.639) EXACT; the placement complaint decodes as the
+MISSING VISIBLE MOUNT (fixed above — the root now reads at the print's
+own mantlet station instead of a tube emerging from a bare wedge).
+
+(1) SCALE — FOUR-BOX DIAGNOSIS (the standing "type 90 is too small"):
+- ENVELOPE = SPEC: dims 100 x2 (hullLengthM 7.45 / overall 9.76 / width
+  3.43 / heightM p95 2.33 vs published 2.34) — the envelope is NOT the
+  problem, and the spec matches published figures (no spec true-up due).
+- THE ROOT CAUSE IS THE PRINT'S SQUAT TURRET: fresh top-map probe reads
+  the ORACLE's turret roof at **1.90 m** (hatch domes 2.05-2.08, sight
+  ridge 2.23-2.26, basket frame ~2.31 — the p95 2.31 that made the
+  extract's heightPct -1.5 look honest is furniture, not roof). The
+  REAL Type 90 roof is 2.34 m (published, two sources): deck-to-roof
+  0.62 m (proc, roof 2.06 — already +0.16 OVER the print) vs ~0.90 m
+  real. The turret reads ~30% too shallow because the REFERENCE is.
+- The in-budget fix does not exist: raising the roof to the real line
+  moves ~30 side/front turret columns 0.2+ against the registered
+  oracle and re-tops 5-6 station slices (stations 83.6 is the headline
+  min — it would take the ledger row DOWN ~1+). RECOMMENDATION for the
+  orchestrator lane: a §B7-class OWNER REF-WRONG turret re-proportion
+  round (real-vehicle 2.34 roof governs, per-column caps documented,
+  type10-evidence pattern) — needs cap ratification before any builder
+  spends the rows.
+§B battery (final bytes): track-clip --exact 0/0 band + 0/0 shoe;
+turret-parent 0/0/0; winding m1 clean / m2 clean; standard-check contig
+0, census mg1+5d; npm test green. Hash ea251927 -> d9b3fc88 (mantlet).

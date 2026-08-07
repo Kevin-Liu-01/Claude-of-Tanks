@@ -593,3 +593,71 @@ is capped by the print band + published 2.53 (dims-sovereign, documented);
 MG barrel prints ~+0.01-0.02 partial-pixel on side cols 0.515/0.626
 (pintle allowance, tone-dark minimized); type74's all-zero curve rows are
 its committed certified cap (pre-existing, bores added zero motion).
+
+## FRANCE ROUND (2026-08-07, france agent) — owner §5.14: "update the leclerc. the front sloping was not good, compare the turret to the actual model again to get the geometry much more accurate. also add machine guns and lights and other equipment". RE-MEASURED the print's front; the single 29-deg plane REPLACED by the print's true two-stage profile. Gate **86.2** (baseline 86.0) | hull 86.6 EXACT / whole 86.2 / turret 88.8 / stations 90.3 / dims 100 / floaters 100.
+
+PRINT RE-DECODE (tools/tmp-france-front2.mjs — REF + PROC top/front maps,
+the plateau-start question the first probe never covered): the andertan
+front is NOT one 29-deg plane to the roof arris. Measured architecture:
+- CHEEKS: the 30.5-deg rake is SHORT — strip (y 1.55..1.77) then rake
+  rising only to y ~1.96, landing on LOW NEAR-FLAT FIELDS (1.96 -> 2.04w
+  over z_w 1.66..1.00, ~7 deg = the actual "long raked face"), then a
+  riser at z_w ~1.0 to a 2.21w MID ROOF (the print's left rim/band line),
+  and the 2.35 HIGH ROOF only AFT of z_w ~-0.1. The old plane climbing to
+  2.352 at z_w 0.96 read +0.06..+0.20 over the ref across the WHOLE cheek
+  band (proc-vs-ref maps) — the owner's "not good" decoded.
+- CENTER: a TALL near-vertical plate (y 1.65..2.10, face 2.05->2.02, ~8
+  deg lean), the NARROW FLAT BROW strip at 2.13w (z_w 1.94..2.03 — "the
+  small strip of flatness above the mantlet"), then ONE LONG ~10-deg
+  raked face climbing to the 2.248 center line at z_w ~1.26. The photo
+  round's V-planes + full-length rotor ridge (2.248 out to z_w 2.145,
+  +0.12 over the ref's own 2.13 brow band) are REPLACED by the measured
+  plate/brow/slope; the rotor housing bulge (top 2.243, z_w 1.955..2.19)
+  + a narrow spine strip on the slope carry the ref's 2.243 side band.
+- The 2.352 plateau is NOT full-width forward: ref front center cols read
+  2.248-2.278 — the HIGH CAPS are side pieces (x 0.34..1.00/side), the
+  center keeps the channel line.
+NEW ROOF FURNITURE at print seats: gunner sight HOUSING cluster (base
+2.32w + lid step 2.375w, z_w 0.06..0.68 — the ref's own 2.31-2.42 band),
+commander hatch WELL (recessed dish floor 2.075w, x -0.35..-0.85, z_w
+0.34..0.64, lid + rim inside), tower pedestal dropped to the mid roof
+(real ~0.6 m tower prominence restored from BELOW; the 2.52 lid p95
+anchor untouched), window apron now reads ~0.44 m tall.
+
+§B3.2 EQUIPMENT (§5.14 order): 12.7 mm M2 pintle (cls m2) right-forward
+on the mid roof, FORWARD rest per the §5.07 CROWS-FORWARD law — seat
+receipts: first seat cost EXACTLY -0.4 headline by disable-run
+attribution (turret -0.7, stations -1.6); re-tuned per the ANF1's own
+priced lessons (droop -0.20, ammo can OFF -> flat pouch, scale 0.76,
+foot sunk 0.575) to ~0 headline / -0.5 stations — inside the pintle
+allowance. Coax port gains its §B3 hood tell. Bow IR/blackout lens caps
+on the inboard lamps (flush discs, width-guard safe). LEFT engine-deck
+tow-cable run added (pair with the right; crowns 1.61 under the 1.618
+line). GALIX banks, baskets, bins, antennas: presence re-verified.
+
+ROW LEDGER (baseline -> final): turret_side 90.10 -> 90.14, turret_plan
+88.76 -> 88.76 EXACT, side_whole 86.76 -> 86.79, front_whole 86.05 ->
+86.19, plan_whole 87.87 EXACT, side_hull 86.65 EXACT, plan_hull 91.84
+EXACT, front_hull 88.16 -> 88.08 (-0.08, IR-cap AA), stations 90.1 ->
+90.3, dims/floaters 100 hold. Headline 86.0 -> 86.2.
+
+LOOP RECEIPTS (gate-in-loop finds banked):
+1. WINDOW = +-HALF-PITCH: a convex corner sweep chasing raw col reads
+   (ref "1.869/1.925 fronts") cost turret 88.8 -> 87.0 — those reads are
+   window MAXIMA (+-0.055), not line points; the bulge flooded the
+   neighboring priced windows. Author sweeps from POINTWISE map lines,
+   never from col extrema. (Reverted; linear sweep stands.)
+2. CAP-SEAT PERISCOPES: re-seating roof periscopes onto new roof levels
+   must re-derive the HEAD line — the 0.762 cap seat printed +0.10 over
+   the ref's 2.36 band (side cols -0.38); flush-sunk seats fixed it and
+   the pre-existing 2.55-topping second periscope (+0.19 class) rode the
+   same fix (stations 89.3 -> 90.3).
+3. MUZZLE-BAND WASH: an on-axis r 0.125 muzzle sleeve matching the ref's
+   uniform 1.994..1.744 band scored a WASH (88.7 both seats vs 88.8 with
+   the committed drum) — reverted; the drum stays.
+HONEST RESIDUALS: plan_turret 1.62 (0.152) / 1.398 (0.125) / 1.288
+corner-window class (certified print-corner reads, pre-existing);
+the -0.374..-0.817 owner-symmetry glass-housing band (unchanged);
+side cols 0.626/-1.147/-0.704 tower-head/block AA class (~0.05);
+front_hull -0.08 (IR caps). The M2 stations -0.5 is the documented
+pintle-allowance spend.

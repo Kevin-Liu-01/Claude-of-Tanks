@@ -864,13 +864,13 @@
   },
   {
    "id": "leclerc",
-   "geoMin": 86,
+   "geoMin": 86.2,
    "gatePassed": false,
    "components": {
     "hullCurves": 86.6,
-    "wholeCurves": 86,
+    "wholeCurves": 86.2,
     "turretCurves": 88.8,
-    "stations": 90.1,
+    "stations": 90.3,
     "dims": 100,
     "floaters": 100
    }
