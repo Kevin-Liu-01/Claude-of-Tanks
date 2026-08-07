@@ -216,6 +216,148 @@ ESCALATION (orchestrator lane — oracle work, builders never run repairs):
 With 1-3 resolved this build's rows re-score in one round; the frame,
 gear, and dy-effective bands are already seated.
 
+## VERTEX ROUND r5 (2026-08-07, type74 lane) — FULL PRINT-FRAME REBUILD; plan rows 46.5/67.8 -> 61.4/80.8, dims 100, all audits 0-clean; remaining rows PRINT-CAPPED with mechanism evidence
+
+Gate x2 (bit-identical): `min 0 | hull 0 whole 0 turret 0 stations 0 dims
+100 floaters 100`. Row detail (final run): plan_whole **80.8** (mean 1.47
+p95 2.75 cover 0), plan_hull **61.4** (mean 2.44, p95 15.65 = the 2+2
+fused-gun center columns), side_whole 0 (mean 9.34 — the dy floor, see
+CAP-2), side_hull 0 (mean 12.18 cover 19.01 — CAP-1), front_whole 0 (mean
+11.24 — CAP-2 at dy +0.325), front_hull 0 (CAP-1), stations 0 (CAP-3),
+turret 0 (CAP-4). dims: heightM 2.48/0.06%, hullLengthM 6.71/0.13%,
+overallLengthM 9.48/0.60%, widthM 3.19/0.28%. Hash `tmp-hashgeo type74
+7ba404c5` (51 meshes / 55557 verts); siblings byte-held (diff scope = two
+hunks: TYPE74_SPEC armor pivots + buildType74; ariete 324c3f12 / t80u
+a6782440 match their banked resit values at this tree).
+
+WHAT LANDED (authored from the LIVE workorder, world = body-relative):
+- **§D WIDTH-ANCHOR FIX (the round's structural find):** the kit's sprocket
+  TOOTH RING spans the band edges +0.031 (widest face xc+0.3065) and the
+  shoe pads ride xc+0.2985 — at the r4 xc 1.315 the build's visibleBox hit
+  ±1.6215 and safeScale rescaled the ENTIRE build x0.98066 (probe-frame
+  law: every authored coordinate rendered ~2% small; the r4 "dims 99.6" was
+  measured on the shrunk render). xc 1.2835 seats the tooth ring EXACTLY at
+  the ±1.59 published anchor: scale 1.0000, authored = world, widthM 3.18
+  EXACT, and plan cover dropped 3.51 -> 0 in the same landing.
+- Frame: body [-3.38, +3.30] (published 6.7 about mid -0.04), muzzle +5.96
+  (overall anchored on the -3.44 sprocket-shoe rear extreme), deck 1.395,
+  belly 0.305.
+- Gear from the live print bots: 5 near-touching wheels r 0.42 at z [1.83,
+  0.96, 0.10, -0.77, -1.64] (contact [-2.06, +2.25] = the print's), raised
+  idler {2.93, 0.64, r 0.28}, HIGH climbing sprocket {-3.00, 0.90, r 0.26}
+  — the Type 74 tail-high wrap read; track-clip --exact **0/0 band + 0/0
+  shoe**.
+- BOW (§B8.1 gate-2): two-plane 29°-from-horizontal glacis with the
+  PRONOUNCED center V-crease (nose edge (0, 0.89, +3.37) -> (±0.98, 0.91,
+  +3.17), sweep 0.20 ≈ 9°/side) + reverse-raked chin plate tucking to the
+  belly (0.90@+3.35 -> 0.42@+3.16 center); glacis crest x ±1.02 — the real
+  vehicle's glacis is the plate BETWEEN the fenders (the first-pass ±1.50
+  wing swept its taper edge through the idler wrap: track-clip front 17/22
+  -> 0/0 on the narrow). Splash rail, tow eyes on the chin, cable draped
+  across the crest, driver hatch flush at the deck edge (-0.52, +2.00).
+- TURRET seated FORWARD per the print (pivot z +0.50; the r4 -0.05 seat was
+  ~0.8 aft of the print's crown zone -0.10..+1.47 body-rel): long-crown
+  STB-1 cast dome (lathe, crown 2.26-2.28, left shoulder 2.10-2.16 = the
+  ref's own 2.03-2.13 front-view band), tapered bustle + rear plate to
+  world -1.55, side baskets (rails + mesh + duffel) hugging the bustle
+  flanks to ±1.28, x-outer 1.30. Cupola RIGHT (photo class; the print reads
+  it near center — documented split) lid ~2.34 + M2 pintle = the
+  heightM-2.48 p95 anchor (receiver+sight ~2.535); loader ring LEFT on the
+  shoulder (lid 2.20); IR searchlight box LEFT of the mantlet seated
+  AGAINST the dome face (rear face buried into the casting) with hood lip,
+  split doors, glass slit, mount arm, cable conduit.
+- GUN on the print's bore line: gunG world (0, 1.60, +1.65) — bore 1.60 vs
+  ref tube axis 1.57 (r4 rode 1.74); trunnion saddle roll r 0.22 + ball +
+  collar (§B3.1 mantlet mass), cast brow; bare L7 tube len 4.31, evacuator
+  at the ref's own +3.43..+3.72 station (evac 0.445/evacR 1.75), muzzle
+  step + §B3.1 shadow-named bore at +5.96.
+- §I FITTINGS census mg1+6d: pintleMG(m2) + towCable + jerryCans(x2, left
+  fender) + antennaWhip x2 ON THE BUSTLE flanks (x ±0.94 body-rel -0.93 =
+  the ref's own 2.59 spikes; §B5: they yaw with the turret — r3/r4 had them
+  hull-mounted) + smokeBank x2 (3-tube JGSDF banks on the dome rear
+  quarters). Fender bins/rack-shelf boxes stay hand-authored (JGSDF lidded
+  bins — no library primitive matches; justification per §I).
+- Rear: exhaust NOTCH panels (x 0.68-0.97 recessed to -3.21 = the print's
+  own plan notch) with mesh outlets + taillights; rack shelf at the print's
+  1.447 line (z -2.69..-3.29, bottom 1.392 clears the sprocket-shoe crown
+  1.355); tail plate center x ±0.66 at -3.38; corner step 1.246; flaps
+  above both wrap arcs.
+
+AUDITS (round close): track-clip --exact 0/0 + 0/0 ✓; winding-audit m1
+rev 0 / mix 0 / deficit 6px 0.00% (AA @rear) ✓, m2 yaw-stranded CLEAN (38
+candidate px vs 5205 static, 5167 coincidence) ✓ — **the §C.1 BUILD-
+STANDARD "type74 (1+1)" open-carrier note is CLOSED at this rebuild**;
+turret-parent 0/0/0 ✓; standard-check clip ✓ contig 0 ✓ census mg1+6d ✓;
+floaters 100 x2 ✓; §B5 yaw-90 top pair banked (the full turret group —
+dome/gun/searchlight/baskets/whips/smoke/M2 — rotates as one, hull
+furniture static): shots/misc-r5/final/type74/yawpair-top.png.
+
+Self-shots (16-view photoclass, rest + yaw90 + measures.json):
+shots/misc-r5/final/type74/; mask board shots/misc-r5/type74-board.png
+(overlap overall 91.0). §B8 self-read (NOT an acceptance verdict —
+DELIVERED-PENDING-CRITIC): low-slung hull, 5 countable wheels, no skirts,
+raised ends w/ high sprocket, 29° V-crease bow, forward-set long low cast
+dome, bare L7 + mid-tube evacuator + bore, searchlight left of mantlet,
+cupola+M2 right / loader left, bustle baskets + whips. Turret z-span 3.83
+= 57% of hull — over the generic §B8.1-4 ~55% alarm line but print-true
+(the ref's own crown+bustle read spans the same; revolution-class
+adjudication note, not an order).
+
+### PRINT CAPS (gate-v11, live 2026-08-07 tree — the type10 evidence pattern; re-scoreable only by oracle repair, orchestrator lane)
+
+The oracle is the RAW SKINNED ARMATURE (re-verified in bytes this round:
+29 nodes, 5 meshes ALL carrying skin 0; Tower_9/Gun_7/Hull_17/wheels are
+meshless bones — the batch-6 re-rig is NOT in the committed GLB; the
+batch-27 y-warp rebuilt from .bak and dropped it). Consequences, measured:
+
+- **CAP-1 (side/front/plan _hull rows):** the ref "hull" mask = the WHOLE
+  fused model (extract: side_hull == side_whole byte-equal; hullMask span
+  9.385 vs body 6.654 = the 40.1% flag). Any honest proc hull (turretless)
+  eats ~12-13% mean over the ref's turret-zone columns + 18-19% cover from
+  its ~19 barrel-only columns. Measured floor this round: side_hull mean
+  12.18 / cover 19.01; front_hull mean 13.53. plan_hull only loses the 2+2
+  center gun columns (p95 15.65) -> 61.4 is its cap neighborhood.
+- **CAP-2 (side/front _whole rows):** whole-vs-whole is fair, but the gate
+  pins whole rows to the HULL row's registration (fixedReg law) and the
+  fused hull mask pollutes dy upward: measured dy +0.254 side / +0.325
+  front (decomposition: ref turret-zone mids ride +0.35..+0.5 over our
+  deck mids on ~40 of 66 paired columns -> predicted +0.25/+0.29;
+  measured matches). Every paired column then carries ~dy of error the
+  build cannot follow (track bottoms cannot sit 0.25 below ground; a
+  dy-chasing build would need deck 1.12/bore 1.32 — §B8 identity death).
+  Measured floor: side_whole mean 9.34, front_whole 11.24 -> scores 0.
+- **CAP-3 (stations):** station z-ranges come from each model's own
+  side-HULL mask ("no barrel in it" by design — violated by this print):
+  refZR spans -4.69..+4.69 INCLUDING the tube, so ref stations 11-13 are
+  barrel-only slices (extract stations: w 0.153/0.146/0.139) while proc
+  slices are body -> wPct 1499/1503/1506; trimmed() drops only 2 -> one
+  ~1500 always survives -> stations 0 for ANY honest build. Additionally
+  the body pairing SHEARS (ref body occupies stations 0-9.99 of 14, proc
+  0-14: ref station i samples body fraction 1.41x i/14).
+- **CAP-4 (turretCurves):** the bones carry no meshes -> setPart('turret')
+  on the ref renders EMPTY -> curveScore(empty ref, non-empty proc) = 0
+  both rows (gate turretRows: score 0, mean 100, cover 100, reg None).
+  noTurretBoth cannot apply (our rig_turret is honest), fixedMount would
+  be a lie (turreted vehicle).
+- **LIVE-vs-EXTRACT LAW (banked for the file):** the 2026-08-06 vertex
+  extract's CPU skinning disagrees with the live GPU skin on this armature
+  print — live ref muzzle reads ~+0.48 beyond the extract's (+5.17 vs
+  +4.70 workorder frame; live overall span ~9.87 vs extract 9.385) and
+  live plan columns light to ±1.71 (its fender-mirror arms) vs the
+  extract's ±1.59 box. Skinned-print rounds must author from the LIVE
+  workorder dump only; extract curves stay useful for BAND SHAPES (deck/
+  dome/bore lines corroborated live).
+
+ESCALATION (unchanged, orchestrator lane): restore the batch-6 re-rig
+(tools/repair_oracles_blender.py RERIG_RECIPES.type74 — bake bind pose,
+split by dominant bone weight into hull/Tower_9/Gun_7 static trees),
+verified against the CURRENT loader (the old warp-verify note's
+scaleToOverall re-normalization concern reads RESOLVED at this tree:
+live height stylization ≈ -1%, gate dy is pollution-shaped, not
+scale-shaped). With the re-rig landed, CAP-1..4 all lift and this build's
+rows re-score in one round — the frame, gear, bands and turret seat are
+already print-true.
+
 ## §C MISSING-SIDE WINDING FIX (2026-08-06, abrams builder — coordinator order extension)
 tmp-misc-leftprobe measured the RIGHT glacis half-plate REVERSED (out1/6,
 vol -0.322): x[0.02,1.55] y[0.55,1.39] z[1.06,3.22] (buildType74 ~:1744,
