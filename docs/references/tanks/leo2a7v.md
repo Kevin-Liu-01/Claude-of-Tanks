@@ -208,3 +208,53 @@ bare band face on long stretches.
 
 ## 2026-08-06 FLEET MUZZLE-BORE + §C.1 WINDING SWEEP (fleet-sweep one-liner)
 - §B3.1 bore via leoMantletGun (len 5.56); §C.1 13 reversed re-oriented; F-vs-D 281->0; gate HELD x2 EXACT (certified-ceiling row 0/8.9/dims100); hash not frozen; mantlet mass verified per MANTLETS-MANDATORY (db9168c). Mechanism: kit.js muzzleBore shadow-named furniture + orientedSlab guard (3fca39b / 1017339); end-on+quarter crops shots/muzzle-sweep/{before,after}/.
+
+## 2026-08-07 §5.09 ROUND (leopard builder) — STRUCTURAL REWORK (§B8.1-4
+## merge alarm) + A7V IDENTITY + HUGE FLW 200 RCWS
+Owner order §5.09-1: "update the leopard 2a7v to match its reference" —
+the queued 77%-hull turret-merge rework.
+
+### Structure (§B8.1 gate 4)
+The v1 wedgeTurretShell fit spanned apex world 3.25 -> rack -2.75
+(~6.0 m = 77-78% of the 7.72 hull) and swung as a hull-length lid at
+yaw. RE-LAID on the FAMILY V3 WEDGE (wedgeTurretV3 param table — the
+a5/a6 grammar the r4 residual named "finer"; the family-rig litmus:
+~40 lines of params): apex world 1.90, rack rear world -2.23 ->
+turretMass ~4.13 m = 53.5% (< the 55% alarm). wedgeTurretShell +
+leoTurretRoof are now ORPHANED helpers (a7v was the last consumer —
+left in place, flagged for the family cleanup).
+### A7V identity delivered (photo class)
+V3 arrowhead wedge (nose [[0.30,1.55],[1.29,0.95],[1.42,0.62]] local,
+crest falling outboard), symmetric side-armor pads + full-length side
+modules ±1.42, EMES hood lid ~2.66w = the heightM anchor, PERI R17 2.90w
+(the published "~3.0 over sights" band), round-law hatches, crosswind
+mast + A7V bustle sensor mast (head 2.64w), folded whips 2.64w, Wegmann
+banks, slatted rack + cargo, ring plinth; CREW AC unit on the left
+bustle roof (§B3 louvres + lid seam + latches + conduit, top 2.62w);
+SLAT/BAR ARMOR REAR ARC (segmented ≤0.48 m panels: frame posts + 4 bars
+each, visible brackets, side + angled corner panels per side); APU
+EXHAUST tell on the left hull housing (stub + §B3.1 dark bore + heat
+shield cowl + soot); ADS pods re-seated; decals re-pinned to the V3
+module faces (±1.426).
+### §5.09-5 RCWS (leoFLW200; §5.07 FORWARD)
+Full station on the bustle roof (0.15, 0.74, -1.35) s 1.15: slew
+ring/drum, armored trough + flank shields + rear plate, sunk m2 census
+fitting (receiver cap 2.63w), sensor pod on the aim face, gun-left ammo
+bin + feed chute, IR pointer, cable + conduit; elev 0.08 (tip ~2.62w).
+NO above-grace optic tower on THIS mark: two tall spikes (PERI + tower
+at d 0.07 each) still reached 6 side columns at razor phase (d + 2 AA =
+the 0.114 trace pitch exactly) and heightM p95 read 2.87-2.88 = dims
+34-38; the PERI alone owns the above-grace budget. LAW BANKED: the
+guaranteed-column formula is d + 2*AA <= pitch for <=2 columns —
+`<=` at equality is a razor; TWO separate tall heads on one roof need
+d <= pitch - 2AA - margin EACH, or one of them cedes.
+### Gate (certified-cap regime — dims sovereign)
+- r1 (rework + RCWS + tower): dims 34.3 (heightM 2.88) — REJECTED.
+- r2 (d 0.07 windows): dims 38.5 (heightM 2.87) — REJECTED.
+- r3 (tower dropped): `0 | hull 0 whole 8.4 turret 0 stations 9.6 dims
+  100 floaters 100` — dims RECOVERED (heightM 2.65 = +0.37% in grace,
+  hullL 0.57, overallL 0.25, width 0.22). whole/stations sit inside the
+  documented cap wobble band (pre-round 8.9/8.5). x2 line in the round
+  report.
+- Renders: shots/leo-509/final/leo2a7v{,-yaw90}. Hash: 2a9fa8c0 ->
+  3ca4af86 (44 meshes / 105997 verts; no freeze — capped id).

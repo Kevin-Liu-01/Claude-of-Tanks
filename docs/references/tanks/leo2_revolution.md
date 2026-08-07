@@ -2226,6 +2226,70 @@ this round: broken oracle, turret 0.2 pre-exists at HEAD); npm test 166
 two curtain meshes deleted). Graduates untouched: leo2a5 e215a738 /
 leo2a6 09912270 / kf51 9ac547ac verified before and after.
 
+## 2026-08-07 §5.09 ROUND (leopard builder) — §B2 TURRET SEE-THROUGH
+## CLOSURE + HUGE FLW 200 RCWS
+Owner order §5.09-4/5 (verbatim): "for the leopard revolution, we need to
+close the gaps and empty spaces in its turret that dont have plates for
+some reason but are see through to the other side. and put a huge
+automated turret crows system on the revolution and other leopards too."
+
+### GAP INVENTORY (found by enclosed-background scan — mask-method +
+### blue-signature — across 14 views x rest/yaw45/yaw90;
+### tools/tmp-leo509-holes.py; before px -> close px)
+| sightline | before | closure (REAL geometry per §B2 — no willy-nilly fills) |
+|---|---|---|
+| view-top tail slits x ±1.55-1.60, z -3.6..-1.5 (270+270 px; yaw45 563+417) | 12 / 154y45 / 38y90 | HULL TAIL+MID CORRIDOR ROOFS: the 5 cm deck-edge<->jacket slot (probe: deck edge 1.549 / jacket inner 1.599, tops 1.700/1.699) closed by the certified r16-e corridor-roof mechanism — 5 segs/side top 1.665 (z -3.60..-1.48) + 6 segs/side top 1.52 (z -1.48..+1.06); every top parked under the local deck/jacket/lip lines: side/front/plan masks unchanged by construction (hull rows held: 94.5 -> 94.3) |
+| view-rear outboard corridors x ±1.28..1.55 over the apron (149+64+43+12 px) | 11 | BUSTLE CORNER STOWAGE BINS ±1.29..1.43 (§B3 grammar: lid seam + latch + rail straps; bottoms 1.955w overlap the apron top) + MODULE END PLATES ±1.43..1.55 abutting the wall sliver rear faces |
+| yaw90 close-roof rail<->A-panel corridor x -0.86..-1.01 (361 px) | 55 | LEFT + RIGHT RAIL STOWAGE BOARDS (the r9-c card grown to the full rail z-window, y 1.86..2.145w, z -1.755..-2.355 — dropping the under-rack daylight to the real shallow band) |
+| yaw45 rearright bustle lattice (237+25+19 px) | 26 | bins + boards + end plates + the under-rack fill |
+| rearleft/left/right under-rack band (158+55 / 64 / 82 px) | 42 / 0 / 0 | §C SHADOW-NAMED UNDER-RACK FILL (leoRingGapShadowFill class extended aft: x ±1.38, y 1.40..1.78, world z -2.60..-1.98 — mask-excluded, turret-parented, the honest slit stays) |
+| front flank slots ±1.59 (47+20+20 px) | 58 total front (flank pair DEAD; remainder = whip/tower air) | CHAMFER FORWARD CAPS (the roof-edge course continues to the wedge sweep line, raked front cut) + module lower front end-caps (±1.59, y 0.18..0.38, z 0.955) |
+| yaw45 front under-RWS air (356 px) | 138 | the compact r18 RWS replaced by the full FLW 200 station (trough + pod + tower fill the old skeletal air; the remainder is the real gun-cradle air under the elevated receiver) |
+TOTALS: rest 7-view sum 1355 -> 197 px (-85%); yaw set 2232 -> 373
+(-83%); heroes 0 px x3. Documented residuals: under-barrel/whip
+furniture air (real station air, not plate holes — the §B2 law targets
+hull/turret voids); the station-air pocket behind the elevated receiver
+(74 px, view-rearright); yaw45 bustle-OVERHANG daylight (80+41 px — the
+swung basket overhangs the hull side; air outboard of the hull is real);
+ring-dip top slivers 4-9 px (mid-hull corridor at the 1.542 dip band —
+roof strips there would poke the dip deck line).
+### §5.09-5 RCWS (leoFLW200; §5.07 FORWARD; §4.9999 connections)
+The r18 compact RWS upgraded IN PLACE (same rear-right seat, the real
+MBT Revolution RCWS spot; old base/collar/sensor-pack/bin retired, their
+ref-band duties absorbed): full station at (0.43, 0.76, -1.25) s 1.15 —
+slew ring/drum, armored trough + flank shields + rear plate, m2 census
+fitting FITTING-SUNK at 0.72 (cap 2.65w), sensor pod on the aim face
+(pod top 2.55w), gun-left ammo bin + feed chute, IR pointer, cable +
+conduit, elev 0.06 (tip ~2.63w), NARROW optic tower (top 2.93w, z-window
+0.14 = <=3 columns; above-grace budget = whip col 1 + tower <=3 = 4).
+### Gate + battery (batch-46 honest-baseline regime: 0-at-§B7-cap; hull
+### 94.5 is the trustworthy band)
+- geometry-gate x2 IDENTICAL:
+  `0 | hull 94.3 whole 66.7 turret 0 stations 73.2 dims 99.5 floaters 100`
+  — hull 94.5 -> 94.3 (-0.2, inside the ±1.0 hold), dims 99.5 = the
+  baseline value EXACTLY (heightM 2.65 +0.5% in grace; hullL 0.68 /
+  overallL 1.06 = the certified carries), floaters 100 x2. whole 70.3 ->
+  66.7 and stations 72.8 -> 73.2: the §B7-capped-region turret adds
+  (bins/boards/station read against the broken print — the
+  FALSE-AGREEMENT class; cap covers them, never dims).
+- DIMS INCIDENT (banked): the first close read dims 90.9 — the 2.70
+  whip-rod tops (certified against the OLD print lineage) straddled a
+  trace boundary after the batch-46 AABB re-phase (TWO above-grace
+  columns + the tower's three -> heightM p95 2.69). The §B7 cap killed
+  the rods' 2.70 duty (turret rows read 0); rods dropped to 2.64w tops
+  and dims returned to 99.5. LAW: certified spike tops die with their
+  oracle lineage — re-audit every above-grace carrier after an oracle
+  restructure.
+- Hash: bbae2c80 -> 531d8a7c (81 meshes / 112874 verts — moves by
+  design; photo-class re-freeze after the critic). Graduates byte-held:
+  leo2a5 e215a738 / leo2a6 09912270 / kf51 9ac547ac / leo1a5 1c79188.
+- track-clip --exact: 0/0 band + 0/0 shoe, blind spots 0.
+- Corridor roofs are the ONLY hull-bucket change and are mask-invisible
+  by construction (tops under every local line; interior to plan
+  silhouette) — hull rows held within 0.2.
+Renders: shots/leo-509/final/leo2_revolution{,-yaw45,-yaw90};
+before/after sightline crops shots/leo-509/evidence/.
+
 ## batch-46 ORACLE ADJUDICATION (2026-08-06, orchestrator lane) — CHAIN RETIRED
 
 The owner's parallel session landed b08d1a2 ("revert batch-37 warp to

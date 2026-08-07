@@ -168,6 +168,52 @@ only).
 ## 2026-08-06 FLEET MUZZLE-BORE + §C.1 WINDING SWEEP (fleet-sweep one-liner)
 - §B3.1 bore via leoMantletGun (shared with a7v), tube face len-0.02; §C.1 8 reversed re-oriented (leoHullV3 glacis/bow); F-vs-D 131->0; gate no oracle row (render-verified; standard-check contig 0 after the checker law-alignment); hash not frozen; mantlet mass verified per MANTLETS-MANDATORY (db9168c). Mechanism: kit.js muzzleBore shadow-named furniture + orientedSlab guard (3fca39b / 1017339); end-on+quarter crops shots/muzzle-sweep/{before,after}/.
 
+## 2026-08-07 §5.09/§5.16 ROUND (leopard builder) — TYPE90 FAMILY REBASE +
+## HUGE FLW 200 RCWS
+Owner orders executed: §5.09 "update the leopard 2a4 to match its
+reference" + §5.09-5 "huge automated turret crows system" + §5.16 "the
+2a4 is also similar to the type 90, so make all of them similar to each
+other with the type 90 giving the most basis."
+
+### §5.16 family rebase (type90 = read-only donor, misc.js buildType90)
+- TURRET SHELL re-laid as the donor's CLOSED-POLYGON construction
+  (KIT.polyTurret, flare=inset=1 vertical walls) on the SAME certified
+  §B8 footprint — flat center front ±0.40 @ z 1.10, swept cheeks to the
+  ±1.20 shoulders, taper to the ±1.10 bustle; two stacked bands keep the
+  real 2A4 rising bottom line (fore 1.695w / bustle 1.74w — the certified
+  yaw-margin class). §B8 numbers unchanged by construction (face 0.785,
+  turretMass 42%, VERTICAL faces = the named §5.16 variant tell).
+- type90 grammar adds: hatch-zone plates (tops 2.50w), rack MESH BACK
+  panel, RAKED-AFT whips (FITTINGS.antennaWhip, rx -0.72 — the donor's
+  identity sweep; no oracle so the ~2.95w tips are legal), V SPLASH BOARD
+  on the upper glacis (+rx flush per the sign law; the real Leopard 2
+  carries it), cross-country Notek light (glacis left), stepped-deck
+  course seams (thin tone lines ON the deck planes).
+- Variant tells kept: EMES-15 hood, PERI R17, blocky plate mantlet
+  (leoMantletGun), 2x8 Wegmann, full-width slatted rack, wavy skirts.
+### §5.09-5 RCWS (leoFLW200 private helper — shared by the four
+### non-graduate leopards only; §5.07 CROWS-FORWARD; §4.9999 connections)
+Full FLW 200-class station at (0.05, 0.76, -1.12) s 1.15: base plate +
+gussets -> powered slew ring/drum -> pedestal + slew plate -> cradle arms
++ trunnion cross-shaft -> ARMORED GUN TROUGH with flank SHIELDS + rear
+plate; §B3-census pintleMG (m2, two-tone, ammo:false) FITTING-SUNK at
+origin 0.90 (receiver ~2.74-2.92w, cap ~3.02w — no oracle, the station
+rides the real ~0.6 m over the roof); sensor pod ON the aim face (day +
+thermal glass recessed + LRF + wiper), ammo bin GUN-LEFT + bracket +
+feed chute (M2 feeds left), IR pointer light, cable drop + flush roof
+conduit. FORWARD rest, elev 0.03. No optic tower on this mark (the gun
+itself rides high).
+### Close battery (2026-08-07)
+- FALSE-0 law: no gate on this id (photo class; visual bar).
+- track-clip --exact / turret-parent / standard-check / winding --check:
+  see the round report (shots/leo-509/) — all clean at close.
+- npm test 166 + track-geometry PASS.
+- Renders: shots/leo-509/final/leo2a4 (14 views) + leo2a4-yaw90 (§B5
+  pair). Hash: 551cb30e -> 12db10a0 (64 meshes / 92978 verts — the
+  family-rebase + RCWS move it by design; no graduation state).
+- §H.4: the type90-family strip (type90/proto/a4) at
+  shots/leo-509/evidence/family-strip-*.png — one family, three marks.
+
 ## 2026-08-06 §B8 PROPORTION REWORK (photo-acceptance orders; PROPORTIONS
 ## BEFORE DETAIL per §B8.1)
 Orders (docs/critique/photo-acceptance-20260806.md): 1 WHEEL EXPOSURE,

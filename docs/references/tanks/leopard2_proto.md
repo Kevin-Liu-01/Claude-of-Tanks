@@ -184,6 +184,53 @@ is the §B8 photo-class replacement candidate: the FLEET-FLIP to
 procedural (MODEL_SOURCE removal) is an orchestrator/landing action
 outside this file's ownership, gated on the independent critic verdict.
 
+## 2026-08-07 §5.09/§5.16 ROUND (leopard builder) — TYPE90 FAMILY REBASE +
+## HUGE FLW 200 RCWS
+Owner orders executed: §5.09 "update the leopard 2 prototype to match its
+reference" + §5.09-5 RCWS + §5.16 "the type 90 is based off of it [the
+leopard 2 prototype] so they can share a basis... type 90 giving the most
+basis."
+
+### §5.16 family rebase (type90 = read-only donor)
+- TURRET SHELL re-laid as the donor's CLOSED-POLYGON construction
+  (KIT.polyTurret, vertical walls) on the certified footprint — the
+  V-series early slab turret IS the family origin shape (10-gon: two
+  co-planar cheek facets per side, §B1.1 symmetric). Two stacked bands
+  keep the rising bottom line (fore 1.695w / 1.74w aft).
+- PT PERISCOPE RING (the coordinator-named tell) STRENGTHENED: tall
+  vision-block ring drum + 8 periscope blocks with glass slivers + flat
+  lid, crown 2.50w EXACT (grace 2.5048 — the dims lesson class).
+- type90 grammar adds: raked-aft whips on low side brackets (tips 2.497w
+  < grace; replaces the a6 fold-down stubs at the same p95 cost), low
+  overhung basket frame + mesh back behind the bustle box, V splash
+  board + Notek light + deck course seams (hull family tells).
+- Variant tells kept: blisters, base ring bulge, early IR box,
+  anemometer, rounded cast mantlet + bare slim 105, plain flat skirts.
+### §5.09-5 RCWS (leoFLW200; §5.07 FORWARD; anachronism BY ORDER)
+DIMS-SOVEREIGN SQUAT-WIDE fit (published 2.48 binds hardest here — roof
+2.37w leaves 0.135 m of wide-mass headroom): s 1.1, gunY 0.46, gunScale
+0.92, drumH 0.05, podY 0.70/podH 0.16, elev 0.07. Every wide mass under
+the 2.5048 grace line: trough top 2.498w (tucked 2 cm into the roof —
+ring-well recess), pod top 2.50w, receiver cap 2.485w, barrel 2.41w
+rising to ~2.48 at the tip (the §5.07 "slight elevation"). Garage height
+carried by the NARROW optic tower (top 2.78w, z-window 0.16 = <=3 side
+columns; above-grace budget = anemometer mast 1 + tower 3 = the 4-col
+budget, p95 stays the 2.50 cupola/whip class inside grace). No shields
+(the flank plates would top 2.53w — documented as not-fitting on this
+mark). Station reads: wide base ring + squat armored trough + elevated
+barrel + big pod + tall panoramic tower head.
+### Close battery (2026-08-07)
+- geometry-gate (melted-print cap regime): run 1
+  `0 | hull 45.8 whole 0 turret 0 stations 0 dims 100 floaters 100` —
+  dims 100 + floaters 100 HOLD with the full rebase + RCWS aboard
+  (hull 45.8 vs 45.6 pre-round = capped-row wobble). x2 line in the
+  round report.
+- audits + renders: shots/leo-509/final/leopard2_proto{,-yaw90}; battery
+  results in the round report. npm test PASS.
+- Hash: f1af7ba8 -> 24bd57cc (62 meshes / 86363 verts — moves by design;
+  no freeze). Graduates byte-held at close: leo2a5 e215a738 / leo2a6
+  09912270 / kf51 9ac547ac / leo1a5 1c79188.
+
 ## MODEL_SOURCE FLIP (2026-08-06, orchestrator lane — flip-era mechanics)
 
 The §B8-accepted procedural build (f1af7ba8, V3 delta + PT turret +

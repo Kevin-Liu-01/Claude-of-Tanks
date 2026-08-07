@@ -4206,6 +4206,120 @@ function buildLeo2A5(P) {
 }
 
 // ---------------------------------------------------------------------------
+// FLW 200-class REMOTE WEAPON STATION (owner order §5.09-5, 2026-08-07:
+// "put a huge automated turret crows system on the revolution and other
+// leopards too"). Shared by the four NON-GRADUATE leopards only (leo2a4 /
+// leopard2_proto / leo2a7v / leo2_revolution) — graduates a5/a6/kf51 are
+// excluded by order. Laws carried:
+//  - §5.07 CROWS-FORWARD: rest aim is FORWARD (+z, yaw 0), slight
+//    elevation via the fitting's own elev.
+//  - §4.9999 CONNECTION laws: ONE aim frame; every mass CONNECTED (base
+//    plate + gussets -> slew ring/drum -> pedestal -> slew plate -> cradle
+//    arms -> armored gun trough; the M2 is the §B3-census pintleMG fitting
+//    FITTING-SUNK through the trough so the pale cap respects each tank's
+//    dims heightM budget); ammo bin GUN-LEFT with bracket + feed chute
+//    (the M2 feeds left); sensor pod ON THE AIM FACE (day + thermal glass
+//    recessed + LRF); IR pointer light; cable drop + flush roof conduit.
+//  - heightM p95 discipline: wide masses stay under each tank's grace
+//    line (o.capY bounds them, local frame); the tall optic TOWER that
+//    gives the station its garage-distance height is a NARROW z-window
+//    (o.towerW, abrams m1a2 FULL-CROWS-MAST precedent — <=3 side trace
+//    columns) parked at o.towerZ; gated ids keep their spike budgets.
+// o: { x, y (roof/base seat local y), z, s (station scale), gunY (fitting
+//      origin local y — FITTING-SINK), gunScale, towerTop (optic tower
+//      top local y; null = none), towerZ (tower z-center, local),
+//      towerW (z window, default 0.16), shields (flank armor), seed }
+// ---------------------------------------------------------------------------
+function leoFLW200(P, o) {
+  const { box, cylY, cylZ } = KIT;
+  const s = o.s ?? 1.0;
+  const X = o.x, Y = o.y, Z = o.z;
+  const seg = P.q ? 18 : 12;
+  // base plate + corner gussets tie the station into the roof (§B2 attached)
+  P.add('turret', box(0.50 * s, 0.030, 0.50 * s), X, Y + 0.015, Z);
+  P.add('turretDark', box(0.42 * s, 0.026, 0.05), X, Y + 0.042, Z - 0.21 * s);
+  P.add('turretDark', box(0.42 * s, 0.026, 0.05), X, Y + 0.042, Z + 0.21 * s);
+  // powered slew ring + drum (the automated tell — a ringed turntable, not
+  // a pintle post). drumH squashes for low-profile fits (proto dims line).
+  const dh = o.drumH ?? 0.10;
+  P.add('turretDark', cylY(0.21 * s, 0.21 * s, 0.024, seg + 4), X, Y + 0.042, Z);
+  P.add('turret', cylY(0.16 * s, 0.185 * s, dh, seg + 4), X, Y + 0.05 + dh / 2, Z);
+  P.add('turretDark', cylY(0.135 * s, 0.135 * s, 0.05, seg), X, Y + 0.045 + dh, Z); // drum neck
+  // pedestal column up to the cradle (the fitting column emerges inside
+  // it); skipped when the cradle plane sits at/under the roof (squat fit —
+  // the trough then connects straight onto the drum).
+  const pedTop = o.gunY + 0.10;
+  if (pedTop - Y - 0.18 > 0.04) {
+    P.add('turretDark', box(0.15 * s, pedTop - Y - 0.18, 0.19 * s), X, (Y + 0.18 + pedTop) / 2, Z);
+    P.add('turretDark', box(0.22 * s, 0.026, 0.26 * s), X, pedTop - 0.013, Z);  // slew plate under the cradle
+  }
+  // armored gun trough: the protected weapon cradle the receiver emerges
+  // from (the FLW's boxy armored housing — the "huge" central mass).
+  // On squat fits the trough tucks 2 cm into the roof plane (ring-well
+  // recess) so its top stays under the tank's grace line.
+  const troughC = Math.max(pedTop + 0.10 * s, Y - 0.02 + 0.0675 * s);
+  // elevation cradle: two side arms flanking the trough root
+  const armY = troughC - 0.045 * s;
+  P.add('turretDark', box(0.038, 0.15 * s, 0.17 * s), X - 0.125 * s, armY, Z - 0.02 * s);
+  P.add('turretDark', box(0.038, 0.15 * s, 0.17 * s), X + 0.125 * s, armY, Z - 0.02 * s);
+  P.add('turretDark', cylZ(0.030 * s, 0.30 * s, 10), X, armY + 0.02 * s, Z - 0.02 * s, 0, Math.PI / 2, 0); // trunnion cross-shaft (x-axis)
+  P.add('turret', box(0.235 * s, 0.135 * s, 0.56 * s), X, troughC, Z + 0.06 * s);
+  P.add('turretDetail', box(0.20 * s, 0.016, 0.50 * s), X, troughC + 0.0675 * s + 0.008, Z + 0.06 * s); // trough crown lick
+  P.add('turretDark', box(0.24 * s, 0.018, 0.02), X, troughC + 0.055 * s, Z + 0.34 * s);             // trough front lip
+  if (o.shields) {
+    // flank shield plates + rear plate box the trough (armor surround)
+    P.add('turret', box(0.016, 0.17 * s, 0.46 * s), X - 0.135 * s, troughC + 0.005 * s, Z + 0.02 * s);
+    P.add('turret', box(0.016, 0.17 * s, 0.46 * s), X + 0.135 * s, troughC + 0.005 * s, Z + 0.02 * s);
+    P.add('turret', box(0.25 * s, 0.15 * s, 0.016), X, troughC, Z - 0.225 * s);
+  }
+  // SENSOR POD front-center UNDER the gun line (FLW 200 anatomy): housing +
+  // crown + day/thermal windows recessed ON the aim face + LRF + wiper bar.
+  // podY/podH override for low-profile fits (pod rides forward-high).
+  const podY = o.podY ?? (pedTop - 0.045 * s);
+  const podH = o.podH ?? 0.185 * s;
+  P.add('turretDark', box(0.27 * s, podH, 0.17 * s), X, podY, Z + 0.42 * s);
+  P.add('turretDetail', box(0.275 * s, 0.016, 0.175 * s), X, podY + podH / 2 + 0.008, Z + 0.42 * s);
+  P.add('turretGlass', box(0.085 * s, Math.min(0.065 * s, podH * 0.42), 0.012), X - 0.055 * s, podY + podH * 0.14, Z + 0.505 * s);
+  P.add('turretGlass', box(0.060 * s, Math.min(0.050 * s, podH * 0.34), 0.012), X + 0.065 * s, podY + podH * 0.08, Z + 0.505 * s);
+  P.add('turretDark', cylZ(0.020 * s, 0.014, 8), X + 0.065 * s, podY - podH * 0.27, Z + 0.51 * s);   // LRF aperture
+  P.add('turretDark', box(0.20 * s, 0.014, 0.014), X, podY - podH * 0.43, Z + 0.505 * s);            // wiper bar
+  // ammo bin GUN-LEFT of the trough + bracket + feed chute (feed law)
+  P.add('turretDetail', box(0.135 * s, 0.15 * s, 0.30 * s), X - 0.20 * s, troughC - 0.025 * s, Z - 0.04 * s);
+  P.add('turretDark', box(0.06 * s, 0.04, 0.05), X - 0.145 * s, troughC - 0.065 * s, Z - 0.04 * s);  // bin bracket -> pedestal
+  P.add('turretDark', box(0.014, 0.05, 0.10 * s), X - 0.135 * s, troughC + 0.045 * s, Z - 0.02 * s); // feed chute -> receiver left rail
+  // IR pointer pod on the right cradle rail (§4.9999 lights)
+  P.add('turretDetail', cylZ(0.022 * s, 0.09 * s, 10), X + 0.125 * s, troughC + 0.015 * s, Z + 0.16 * s);
+  P.add('turretGlass', cylZ(0.016 * s, 0.008, 10), X + 0.125 * s, troughC + 0.015 * s, Z + 0.21 * s);
+  // cable drop + flush roof conduit (§4.9999 cabling — powered station)
+  P.add('turretDark', box(0.032, Math.max(0.05, pedTop - Y - 0.06), 0.05), X + 0.10 * s, Y + Math.max(0.05, pedTop - Y - 0.06) / 2 + 0.01, Z - 0.10 * s);
+  P.add('turretDark', box(0.028, 0.006, 0.30), X + 0.06, Y + 0.003, Z - 0.36 * s);
+  // THE GUN — §B3-census pintleMG (m2 class), FITTING-SUNK at o.gunY,
+  // FORWARD rest (no rotation), slight elevation. Its own ammo can is
+  // disabled where the class supports it via scale/tone defaults; the
+  // station bin above is the feed.
+  {
+    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', tone: 'two-tone',
+      scale: o.gunScale ?? (1.05 * s), elev: o.elev ?? 0.03, ammo: false, seed: o.seed ?? 13 });
+    mg.position.set(X, o.gunY, Z);
+    P.turretG.add(mg);
+  }
+  // OPTIC TOWER (garage-distance height in a narrow z-window — the m1a2
+  // FULL-CROWS-MAST precedent): riser + compact panoramic head + glass.
+  if (o.towerTop != null) {
+    const tw = o.towerW ?? 0.16;
+    const tz = o.towerZ ?? (Z - 0.30 * s);
+    const headH = 0.12 * s;
+    const headTop = o.towerTop;
+    const riserTop = headTop - headH;
+    P.add('turretDark', box(0.075, riserTop - pedTop, Math.min(0.075, tw * 0.5)), X + 0.02, (pedTop + riserTop) / 2, tz);
+    P.add('turretDark', box(0.22 * s, headH, tw), X + 0.02, headTop - headH / 2, tz);      // panoramic head (wide across — x is mask-free)
+    P.add('turretDetail', box(0.225 * s, 0.014, tw + 0.005), X + 0.02, headTop - 0.007, tz);
+    P.add('turretGlass', box(0.13 * s, 0.055 * s, 0.010), X + 0.02, headTop - headH / 2, tz + tw / 2 - 0.002);
+    P.add('turretDark', cylZ(0.016 * s, 0.012, 8), X + 0.02 - 0.08 * s, headTop - headH / 2, tz + tw / 2 - 0.010); // head LRF (recessed INTO the face — stays inside the tower's z-window)
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Leopard 2A4 — BASE-21 MODERNIZATION (owner directive 2026-08-06: the
 // base-game customs "are wholly ancient"). PHOTO-CLASS build: NO reference
 // oracle exists (MODEL_SOURCE is procedural-only, no ledger row — FALSE-0
@@ -4398,45 +4512,54 @@ function buildLeo2A4(P) {
   // the fleet mid-grey (the revolution r9 B1 precedent — per-build
   // material instance, zero shared-tank impact).
   P.mats.rubber.color.setHex(0x33352b);
+  // §5.16 FAMILY HULL GRAMMAR (type90 donor tells on the leopard hull):
+  // V SPLASH BOARD riding the upper glacis (the donor's proud V strip —
+  // the real Leopard 2 carries the same board; arms lean back on the
+  // plate, +rx per the glacis-furniture sign law).
+  for (const s of [-1, 1]) P.add('hull', box(0.44, 0.10, 0.045), s * 0.38, 1.565, 2.70, 0.30, s * 0.40, 0);
+  P.add('hull', box(0.13, 0.10, 0.045), 0, 1.578, 2.775, 0.30, 0, 0);
+  // cross-country (Notek) light on the glacis left — hooded lamp + slit
+  P.add('hullDetail', box(0.10, 0.052, 0.08), -0.70, 1.617, 2.545, 0.40, 0, 0);
+  P.add('hullDark', box(0.084, 0.012, 0.014), -0.70, 1.612, 2.586, 0.40, 0, 0);
+  // stepped-deck course seams (the donor's clean deck-course read; thin
+  // tone lines ON the deck planes, mask-interior)
+  P.add('hullDark', box(2.00, 0.005, 0.022), 0, 1.703, -1.00);
+  P.add('hullDark', box(2.00, 0.005, 0.022), 0, 1.713, -2.40);
   P.decal('hull', 'number', '414', 0.26, [0.62, 1.22, -3.79], Math.PI, 0);
 
   // ---- turret: pre-wedge boxy welded box (photo class; §B1.1 both cheeks
   // carry the same plan rake on VERTICAL faces — the real 2A4 front).
   // Pivot matches the spec armor rig (§H.1): world y 1.72, ring z -0.15.
+  // §5.16 FAMILY REBASE (owner 2026-08-07: type90 gives the basis — "the
+  // 2a4 is also similar to the type 90, so make all of them similar"):
+  // the turret shell is now the type90-class CLOSED POLYGON construction
+  // (KIT.polyTurret, vertical walls flare=inset=1 — the misc.js buildType90
+  // donor grammar) on the SAME certified §B8 footprint: flat center front
+  // ±0.40 @ z 1.10, swept cheek lines to the ±1.20 shoulders, near-parallel
+  // walls tapering to the ±1.10 bustle. Two stacked bands keep the real
+  // 2A4's RISING bottom line (fore walls 1.695w, bustle floats 1.74w over
+  // the 1.71 aft deck — yaw-honest, the certified margin class).
   P.turretG.position.set(0, 1.72, -0.15);
-  const mirr4 = ([x, y, z]) => [-x, y, z];
-  const mslab4 = (s2, b0, b1, b2, b3, t0, t1, t2, t3) => (s2 > 0
-    ? slab(b0, b1, b2, b3, t0, t1, t2, t3)
-    : slab(mirr4(b1), mirr4(b0), mirr4(b3), mirr4(b2), mirr4(t1), mirr4(t0), mirr4(t3), mirr4(t2)));
-  // cheek solids: vertical plan-raked faces from the ±0.40 mantlet slot to
-  // the ±1.20 shoulders; tops rise 0.745 -> 0.76 (the subtle fore-roof
-  // bevel; one surface, §B1 no-staircase). §B8 REWORK (order 3, TURRET
-  // PRESENCE): cheek/mid-wall bottoms 0.02 -> -0.025 (world 1.74 -> 1.695)
-  // — the walls meet the hull roof line instead of floating a hand above
-  // it; with the EMES lid at 2.638w the turret band reads ~0.95 over the
-  // deck (the order's number). Rest clearance: fore deck under the cheek
-  // corners 1.690 (5 mm); yaw sweep dips ≤2.5 cm over the 1.70/1.71 aft
-  // plane at the extreme corner arc — the same margin class the certified
-  // 1.74-vs-1.775 build carried. The BUSTLE slab keeps its 0.02 bottom
-  // (1.74w): the real 2A4's turret bottom line RISES to the rear over the
-  // engine deck (yaw-honest by construction).
-  for (const s of [-1, 1]) {
-    P.add('turret', mslab4(s,
-      [0.40, -0.025, 1.10], [1.20, -0.025, 0.30], [1.20, -0.025, -0.10], [0.40, -0.025, -0.10],
-      [0.40, 0.745, 1.10], [1.20, 0.755, 0.30], [1.20, 0.76, -0.10], [0.40, 0.76, -0.10]));
-    // weld seam engraving down each cheek/side joint (on the face plane)
-    P.add('turretDark', mslab4(s,
-      [1.185, 0.00, 0.316], [1.213, 0.00, 0.288], [1.213, 0.00, 0.272], [1.185, 0.00, 0.30],
-      [1.185, 0.72, 0.316], [1.213, 0.72, 0.288], [1.213, 0.72, 0.272], [1.185, 0.72, 0.30]));
-  }
-  // core: vertical walls with the gentle rearward plan taper (±1.20 at the
-  // shoulders -> ±1.10 at the bustle wall) — closed solids, tops at 0.76.
-  P.add('turret', slab(
-    [-1.20, -0.025, 0.30], [1.20, -0.025, 0.30], [1.155, -0.025, -0.75], [-1.155, -0.025, -0.75],
-    [-1.20, 0.76, 0.30], [1.20, 0.76, 0.30], [1.155, 0.76, -0.75], [-1.155, 0.76, -0.75]));
-  P.add('turret', slab(
-    [-1.155, 0.02, -0.75], [1.155, 0.02, -0.75], [1.10, 0.02, -1.75], [-1.10, 0.02, -1.75],
-    [-1.155, 0.76, -0.75], [1.155, 0.76, -0.75], [1.10, 0.76, -1.75], [-1.10, 0.76, -1.75]));
+  const A4_PLAN = [
+    [-0.40, 1.10], [0.40, 1.10], [1.20, 0.30], [1.155, -0.75], [1.10, -1.75],
+    [-1.10, -1.75], [-1.155, -0.75], [-1.20, 0.30],
+  ];
+  P.add('turret', KIT.polyTurret(A4_PLAN, 0.74, 1.0, 1.0), 0, 0.02, 0);        // main band (walls 1.74..2.48w, closed fan roof 0.76)
+  P.add('turret', KIT.polyTurret([                                             // fore lower band: cheeks meet the hull roof line (1.695w)
+    [-0.40, 1.10], [0.40, 1.10], [1.20, 0.30], [1.20, 0.22], [-1.20, 0.22],
+  ], 0.125, 1.0, 1.0), 0, -0.025, 0);
+  // weld seam engraving down each cheek/side knuckle (on the face planes;
+  // mirrored with the corner-swap law — orientedSlab re-guards winding)
+  P.add('turretDark', slab(
+    [1.185, 0.00, 0.316], [1.213, 0.00, 0.288], [1.213, 0.00, 0.272], [1.185, 0.00, 0.30],
+    [1.185, 0.72, 0.316], [1.213, 0.72, 0.288], [1.213, 0.72, 0.272], [1.185, 0.72, 0.30]));
+  P.add('turretDark', slab(
+    [-1.213, 0.00, 0.288], [-1.185, 0.00, 0.316], [-1.185, 0.00, 0.30], [-1.213, 0.00, 0.272],
+    [-1.213, 0.72, 0.288], [-1.185, 0.72, 0.316], [-1.185, 0.72, 0.30], [-1.213, 0.72, 0.272]));
+  // type90-family hatch-zone plates (raised course under the hatch rings —
+  // the donor's hatch-zone read; tops 2.50w, inside the roof footprint)
+  P.add('turret', box(0.62, 0.022, 0.62), 0.60, 0.771, -0.75);
+  P.add('turret', box(0.56, 0.022, 0.56), -0.64, 0.771, -0.55);
   // center front: mantlet slot bay — back wall, brow strip over the gun,
   // chin plate below, dark slot cheeks (§B3: the slot reads as an armored
   // embrasure, not a void).
@@ -4481,12 +4604,15 @@ function buildLeo2A4(P) {
     P.turretG.add(mg);
   }
   // crosswind sensor mast (rear-left roof) + twin whip antennas at the
-  // bustle corners — slim spike columns per the p95 discipline.
+  // bustle corners. §5.16 family rebase: the whips take the type90 donor's
+  // RAKED-AFT read (FITTINGS.antennaWhip, rx aft) — the shared family
+  // identity cue; no oracle on this id so the taller sweep is legal.
   P.add('turretDetail', cylY(0.012, 0.016, 0.24, 8), -0.85, 0.885, -1.50);
   P.add('turretDark', box(0.04, 0.04, 0.11), -0.85, 1.015, -1.50);
   for (const s of [-1, 1]) {
-    P.add('turretDetail', box(0.03, 0.28, 0.03), s * 1.00, 0.90, -1.62, 0, 0, s * 0.05);
-    P.add('turretDetail', box(0.06, 0.13, 0.06), s * 1.00, 0.825, -1.62);      // antenna base pot
+    const whip = FITTINGS.antennaWhip({ mats: P.mats, h: 0.46, r: 0.014, seed: 6 + s, rotation: [-0.72, 0, s * 0.05] });
+    whip.position.set(s * 1.00, 0.78, -1.60);
+    P.turretG.add(whip);
   }
   // 2x4 Wegmann smoke mortars per side on the rear side walls (§B3
   // launcher grammar — mount plate + angled tube banks). §B8 detail order
@@ -4541,6 +4667,9 @@ function buildLeo2A4(P) {
       P.add('turretDetail', box(0.045, rackT - rackB, 0.045), s * 1.11, (rackT + rackB) / 2, -1.78); // fore end post into the wall
     }
     P.add('turretDark', box(2.16, 0.018, 0.32), 0, rackB + 0.03, -1.95);
+    // §5.16 family: mesh back panel closing the rack rear (type90 donor's
+    // low overhung basket read — frame + mesh, not floating bars)
+    P.add('turretDark', box(2.16, rackT - rackB - 0.14, 0.014), 0, (rackT + rackB) / 2, -2.145);
     stowage(P, 'turretCloth', P.rng, [
       [-0.62, 0.32, -1.97, 0.68, 0.38, 0.30], [0.12, 0.30, -1.99, 0.58, 0.34, 0.28],
       [0.80, 0.31, -1.97, 0.46, 0.36, 0.26],
@@ -4552,6 +4681,11 @@ function buildLeo2A4(P) {
   }
   P.decal('turret', 'crossgrey', null, 0.32, [1.172, 0.40, -0.44], Math.PI / 2, 0, 0.042);
   P.decal('turret', 'crossgrey', null, 0.32, [-1.172, 0.40, -0.44], -Math.PI / 2, 0, -0.042);
+  // ---- HUGE FLW 200 RCWS (owner order §5.09-5): center roof behind the
+  // hatch line, FORWARD rest (§5.07), full station anatomy + flank shields.
+  // No oracle on this id — the station rides high (gun origin 0.90 local =
+  // receiver band ~2.75-2.95w, the real FLW-on-2A4 ~0.6 m over the roof).
+  leoFLW200(P, { x: 0.05, y: 0.76, z: -1.12, s: 1.15, gunY: 0.90, shields: true, seed: 13 });
   // ---- Rh 120 L/44 (§B3.1: tube cylinder + thermal sleeve segments with
   // clamp rings + mid-tube bore evacuator + MRS collar; plate mantlet on a
   // trunnion roll — never a prism). Trunnion world (0, 2.00, 0.87); muzzle
@@ -4646,47 +4780,126 @@ function buildLeo2A7V(P) {
     P.add('hullDetail', box(0.014, 0.05, 0.06), s * 1.728, 1.93, -3.46);       // latch B
     P.add('hullDark', box(0.26, 0.16, 0.014), s * 1.55, 1.90, -3.697);         // rear intake mesh
   }
+  // §5.09 APU EXHAUST tell (left housing rear face): stub pipe + heat
+  // shield cowl + soot ring — the A7V's running-APU read.
+  P.add('hullDark', KIT.cylZ(0.045, 0.10, 10), -1.42, 1.82, -3.74);            // exhaust stub
+  P.add('hullDark', KIT.cylZ(0.032, 0.014, 8), -1.42, 1.82, -3.795);           // §B3.1 dark bore tip
+  P.add('hullDetail', box(0.16, 0.10, 0.03), -1.42, 1.86, -3.72);              // heat shield cowl
+  P.decal('hull', 'soot', null, 0.30, [-1.42, 1.70, -3.79], Math.PI);
   P.decal('hull', 'number', 'Y-877', 0.26, [0.62, 1.24, -3.795], Math.PI, 0);
 
-  // turret: A5/A6 wedge family shell with the A7V roof fit; ring z 0.35,
-  // pivot 1.72; EMES hood (lid ~2.66) anchors the published 2.64 height
+  // ---- turret: §5.09 STRUCTURAL REWORK (the §B8.1-4 merge alarm: the old
+  // wedgeTurretShell fit read turretMass ~77% of hull length — apex world
+  // 3.25 + rack -2.75 — and swung as a hull-length lid at yaw). Re-laid on
+  // the FAMILY V3 WEDGE (wedgeTurretV3 param delta — the a5/a6 grammar the
+  // packet's own residual named "finer"): apex world 1.90, rack rear world
+  // -2.23 -> turretMass ~4.13 m = 53.5% of the 7.72 hull (< the 55% alarm).
+  // dims anchors preserved: EMES lid ~2.66w = the heightM anchor, PERI head
+  // 2.90w (z-depth 0.12 = 1-2 spike columns), width inside ±2.00, muzzle
+  // +7.09 / tail -3.86 untouched (registration-anchor law).
   P.turretG.position.set(0, 1.72, 0.35);
-  wedgeTurretShell(P, { tw: 1.42, boxW: 1.28, h: 0.74, apexY: 0.14, boxFront: 0.30, boxRear: -2.50, apexZ: 2.90, slotZ: 1.40, gunW: 0.36 });
-  leoTurretRoof(P, {
-    h: 0.74, boxW: 1.28, boxRear: -2.50,
-    emes: { x: 0.70, z: 0.80 }, peri: { x: 0.36, z: -0.55, top: 0.94 },
+  wedgeTurretV3(P, {
+    h: 0.74, apexY: 0.16, gunW: 0.36, slotZ: 1.18,
+    chamferY: 0.60, roofX: 1.06, crestTail: 0.62, crestTailDrop: 0.005,
+    body: [
+      { x: 1.38, z0: -0.10, z1: 0.55, cY: 0.60 },
+      { x: 1.38, z0: -0.75, z1: -0.10, cY: 0.60 },
+      { x: 1.38, z0: -1.30, z1: -0.75, y0: 0.05, cY: 0.60 },
+      { x: 1.31, z0: -1.72, z1: -1.30, xt: 1.06, y0: 0.05 },
+      { x: 1.31, z0: -2.10, z1: -1.72, xt: 1.06, y0: 0.085, top: 0.72 },
+    ],
+    rack: { x: 1.26, z0: -2.10, z1: -2.58, top: 0.62, bot: 0.15, wall: true },
+    nose: [[0.30, 1.55], [1.29, 0.95], [1.42, 0.62]],
+    noseUpper: [[0.30, 1.38], [1.29, 0.95], [1.42, 0.62]],
+    crest: [[0.20, 0.80, 0.44], [0.95, 0.775, 0.40], [1.00, 0.67, -0.55], [1.30, 0.66, -0.95], [1.42, 0.32, -1.10]],
+    tipPads: [
+      { s: -1, x: 1.50, x0: 1.34, z0: -0.60, z1: 0.30, y0: -0.02, y1: 0.26 },
+      { s: 1, x: 1.50, x0: 1.34, z0: -0.60, z1: 0.30, y0: -0.02, y1: 0.26 },
+    ],
+    sideMods: [
+      { s: -1, x: 1.42, z0: -1.55, z1: 0.32, y0: 0.10, y1: 0.26 },
+      { s: 1, x: 1.42, z0: -1.55, z1: 0.32, y0: 0.10, y1: 0.26 },
+    ],
+    emes: { x: 0.68, z: 0.62, top: 0.94, d: 0.40 },
+    // PERI head z-depth 0.07: the side-trace pitch is ~0.114 — a window of
+    // d + 2 AA margins <= pitch is the ONLY guarantee of <=2 columns at any
+    // phase (the 0.12 first cut caught 3 and, with the tower's 3, put six
+    // columns above grace: heightM p95 read 2.88 = dims 34.3). x-width
+    // keeps the 0.17 front read; 2.90w stays the published "~3.0 over
+    // sights" tell.
+    peri: { x: 0.36, z: -0.55, top: 1.18, w: 0.24, d: 0.07, mat: 'turret' },
     cmdr: { x: 0.60, z: -0.25 }, loader: { x: -0.64, z: -0.22 },
-    mastZ: -2.10, mastTop: 0.84, antennaZ: -2.28, antennaTop: 0.84,
-    rackZ: -3.10, rackTop: 0.70, rackBottom: -0.05, smoke: { z: -1.30, y: 0.40 },
+    hatchTop: 0.80, hatchRound: true,
+    mastX: -0.45, mastZ: -2.30, mastTop: 0.92,
+    whips: [
+      { x: -1.00, baseY: 0.74, z: -2.35, top: 0.92 },
+      { x: 1.00, baseY: 0.74, z: -2.35, top: 0.92 },
+    ],
+    smoke: { x: 1.30, y: 0.40, z: -1.35 },
   });
-  // the A7V identity sensor mast on the bustle — ONE slim spike column
-  P.add('turretDetail', cylY(0.024, 0.032, 0.24, 8), -0.45, 0.74 + 0.12, -2.60);
-  P.add('turretDark', box(0.09, 0.12, 0.09), -0.45, 0.88, -2.60);              // head top 2.66 world
   // turret ring plinth: closes the deck<->shell slit from the side
   // sight-lines (§B2) and yaws with the mass.
   P.add('turret', cylY(1.10, 1.14, 0.14, P.q ? 26 : 16), 0, -0.055, -0.55);
+  // ---- HUGE FLW 200 RCWS (owner order §5.09-5 — the A7V's REAL roof fit):
+  // FORWARD rest (§5.07), full station on the bustle roof. dims-sovereign:
+  // wide masses under the 2.6664 grace line (trough top 2.595w, receiver
+  // cap 2.63w via FITTING-SINK, barrel 2.55-2.58w). NO above-grace optic
+  // tower on THIS mark: two tall spikes (PERI + tower, d 0.07 each) still
+  // reached 6 side columns at razor phase (d + 2 AA = the 0.114 pitch
+  // exactly) and heightM p95 read 2.87-2.88 = dims 34-38 x2 — the PERI
+  // alone owns the above-grace budget (<=3 cols -> p95 = the 2.66 class).
+  // The real FLW 200 sits low-slung on the A7V bustle; the published
+  // "~3.0 over sights" band is the PERI's.
+  leoFLW200(P, { x: 0.15, y: 0.74, z: -1.35, s: 1.15, gunY: 0.58, gunScale: 1.0,
+    drumH: 0.08, podY: 0.80, podH: 0.19, shields: true, elev: 0.08, seed: 21 });
   // loader MG3 — the §I census fitting, FITTING-SUNK (revolution law):
-  // foot 0.08 below the roof through a mount collar so the pale cap stays
-  // under the 2.64 published-height line (EMES hood keeps the anchor).
+  // foot below the roof through a mount collar so the pale cap stays
+  // under the 2.6664 grace line (EMES hood keeps the anchor).
   P.add('turret', cylY(0.075, 0.095, 0.055, P.q ? 16 : 12), -0.40, 0.755, -0.05); // mount collar
   {
     const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone', seed: 6, rotation: [0, -0.3, 0] });
     mg.position.set(-0.40, 0.66, -0.05);
     P.turretG.add(mg);
   }
+  // A7V CREW AC / cooling unit on the left bustle roof (§B3 bin grammar:
+  // louvre ribs + lid seam + latches — the A7V rear-roof tell)
+  P.add('turret', box(0.42, 0.16, 0.52), -0.80, 0.82, -1.75);                  // unit body (top 2.62w)
+  for (let k = 0; k < 4; k++) {
+    P.add('turretDetail', box(0.36, 0.006, 0.05), -0.80, 0.903, -1.92 + k * 0.11); // louvre ribs
+  }
+  P.add('turretDark', box(0.38, 0.004, 0.010), -0.80, 0.902, -1.60);           // lid seam
+  P.add('turretDetail', box(0.012, 0.05, 0.05), -1.005, 0.84, -1.68);          // latch A
+  P.add('turretDetail', box(0.012, 0.05, 0.05), -1.005, 0.84, -1.86);          // latch B
+  P.add('turretDark', box(0.03, 0.03, 0.22), -0.62, 0.76, -1.48);              // conduit into the roof
+  // A7V SLAT/BAR ARMOR REAR ARC (identity: the rear-arc stand-off kit on
+  // deployed fits): segmented horizontal bar panels around the bustle rear
+  // corners — frame posts + 4 bars per panel, ≤0.48 m chunks (STATION
+  // END-CAP law), standing off the rack line on visible brackets.
+  for (const s of [-1, 1]) {
+    // side panel (z -2.10..-2.55) + corner panel (angled across the corner)
+    for (const [px, pz, ry, len] of [[1.42, -2.32, 0, 0.44], [1.24, -2.72, s * 0.62, 0.46]]) {
+      P.add('turretDark', box(0.03, 0.05, 0.05), s * (px - 0.05), 0.28, pz, 0, ry, 0);   // bracket -> rack/wall
+      P.add('turretDark', box(0.03, 0.05, 0.05), s * (px - 0.05), 0.52, pz, 0, ry, 0);
+      P.add('turretDetail', box(0.022, 0.30, 0.022), s * px, 0.40, pz - len / 2 + 0.02, 0, ry, 0); // frame post A
+      P.add('turretDetail', box(0.022, 0.30, 0.022), s * px, 0.40, pz + len / 2 - 0.02, 0, ry, 0); // frame post B
+      for (let b = 0; b < 4; b++) {
+        P.add('turretDark', box(0.018, 0.028, len), s * px, 0.28 + b * 0.085, pz, 0, ry, 0); // slat bar
+      }
+    }
+  }
   // ADS-ready sensor pods at the roof corners (photo class: low-profile
   // countermeasure fittings — §B3 tells: body + dark lens + conduit).
   for (const s of [-1, 1]) {
-    for (const [pz, ry] of [[0.24, s * 0.5], [-2.32, s * 2.6]]) {
+    for (const [pz, ry] of [[0.30, s * 0.5], [-1.95, s * 2.6]]) {
       P.add('turretDetail', box(0.10, 0.085, 0.10), s * 1.05, 0.785, pz, 0, ry, 0);
       P.add('turretDark', box(0.075, 0.055, 0.014), s * 1.05 + Math.sin(ry) * 0.052, 0.79, pz + Math.cos(ry) * 0.052, 0, ry, 0);
       P.add('turretDark', box(0.022, 0.022, 0.16), s * 1.05, 0.752, pz - 0.10, 0, 0, 0);
     }
   }
   // cross decals ON the side-module outer faces (§C decals-are-mask-
-  // geometry: the old ±1.17 pins sat buried inside the wall plane).
-  P.decal('turret', 'crossgrey', null, 0.36, [1.386, 0.36, -0.85], Math.PI / 2);
-  P.decal('turret', 'crossgrey', null, 0.36, [-1.386, 0.36, -0.85], -Math.PI / 2);
+  // geometry — pinned to the V3 sideMods planes at ±1.42).
+  P.decal('turret', 'crossgrey', null, 0.36, [1.426, 0.18, -0.65], Math.PI / 2);
+  P.decal('turret', 'crossgrey', null, 0.36, [-1.426, 0.18, -0.65], -Math.PI / 2);
   // L/55A1: trunnion world z 1.55, axis 1.98, tube tip world 7.09 over the
   // -3.86 tail = overall 10.95 (published 10.97, 0.18%). The v1 len 5.45
   // predates the honest ±3.86 hull and read overall 10.84 (-1.8 dims).
@@ -4801,40 +5014,45 @@ function buildLeo2Proto(P) {
     P.add('hullDark', box(0.62, 0.016, 0.02), -1.34, 1.788, -1.05);            // lid seam
   }
   P.mats.rubber.color.setHex(0x33352b);
+  // §5.16 FAMILY HULL GRAMMAR (type90 donor tells; same leoHullV3 glacis
+  // planes as the a4 so the same seat recipes hold):
+  // V SPLASH BOARD on the upper glacis (+rx flush per the sign law)
+  for (const s of [-1, 1]) P.add('hull', box(0.44, 0.10, 0.045), s * 0.38, 1.565, 2.70, 0.30, s * 0.40, 0);
+  P.add('hull', box(0.13, 0.10, 0.045), 0, 1.578, 2.775, 0.30, 0, 0);
+  // cross-country (Notek) light on the glacis left
+  P.add('hullDetail', box(0.10, 0.052, 0.08), -0.70, 1.617, 2.545, 0.40, 0, 0);
+  P.add('hullDark', box(0.084, 0.012, 0.014), -0.70, 1.612, 2.586, 0.40, 0, 0);
+  // stepped-deck course seams (clean deck-course family read)
+  P.add('hullDark', box(2.00, 0.005, 0.022), 0, 1.703, -1.00);
+  P.add('hullDark', box(2.00, 0.005, 0.022), 0, 1.713, -2.40);
   P.decal('hull', 'number', 'Y-014', 0.26, [0.62, 1.22, -3.79], Math.PI, 0);   // PT trials number on the rear wall
 
   // ---- PT turret: LOW slab welded box, rounded-in-plan cheek front (§B1.1
   // both cheeks identical, TWO co-planar facets each — no staircase), NO
   // wedge, blisters + base bulge. Family ring pivot (§H.1).
+  // §5.16 FAMILY REBASE (owner 2026-08-07: "the type 90 is based off of it
+  // [the leopard 2 prototype] so they can share a basis"): the shell is the
+  // type90-donor CLOSED POLYGON construction (KIT.polyTurret, vertical
+  // walls) on the SAME certified footprint — the V-series early slab
+  // turret is the family's origin shape. Two stacked bands keep the rising
+  // bottom line (fore walls 1.695w, mid/bustle 1.74w over the aft deck).
   P.turretG.position.set(0, 1.72, -0.15);
-  const mirrP = ([x, y, z]) => [-x, y, z];
-  const mslabP = (s2, b0, b1, b2, b3, t0, t1, t2, t3) => (s2 > 0
-    ? slab(b0, b1, b2, b3, t0, t1, t2, t3)
-    : slab(mirrP(b1), mirrP(b0), mirrP(b3), mirrP(b2), mirrP(t1), mirrP(t0), mirrP(t3), mirrP(t2)));
-  // walls bottom 1.695w (family §B8 face bar), roof plane local 0.62 =
-  // 2.34w — the PT turret is LOWER than the production 2A4 box (the real
-  // low-profile trials turret; cupola/periscopes carry the 2.48 line).
-  for (const s of [-1, 1]) {
-    // cheek facet A: mantlet slot (±0.40 @ 1.02) -> mid knuckle (±0.86 @ 0.70)
-    P.add('turret', mslabP(s,
-      [0.40, -0.025, 1.02], [0.86, -0.025, 0.70], [0.86, -0.025, 0.40], [0.40, -0.025, 0.40],
-      [0.40, 0.65, 1.02], [0.86, 0.65, 0.70], [0.86, 0.65, 0.40], [0.40, 0.65, 0.40]));
-    // cheek facet B: knuckle -> shoulder (±1.12 @ 0.15) — the plan-rounding
-    P.add('turret', mslabP(s,
-      [0.86, -0.025, 0.70], [1.12, -0.025, 0.15], [1.12, -0.025, -0.15], [0.86, -0.025, -0.15],
-      [0.86, 0.65, 0.70], [1.12, 0.65, 0.15], [1.12, 0.65, -0.15], [0.86, 0.65, -0.15]));
-    // weld seam down the knuckle line (on the facet joint)
-    P.add('turretDark', mslabP(s,
-      [0.845, 0.02, 0.7255], [0.875, 0.02, 0.7045], [0.875, 0.02, 0.6885], [0.845, 0.02, 0.7095],
-      [0.845, 0.58, 0.7255], [0.875, 0.58, 0.7045], [0.875, 0.58, 0.6885], [0.845, 0.58, 0.7095]));
-  }
-  // core walls: shoulders ±1.12 tapering to the ±1.04 bustle wall
-  P.add('turret', slab(
-    [-1.12, -0.025, 0.15], [1.12, -0.025, 0.15], [1.08, -0.025, -0.85], [-1.08, -0.025, -0.85],
-    [-1.12, 0.65, 0.15], [1.12, 0.65, 0.15], [1.08, 0.65, -0.85], [-1.08, 0.65, -0.85]));
-  P.add('turret', slab(                                                        // bustle (bottom 0.02 — the rising real line over the aft deck)
-    [-1.08, 0.02, -0.85], [1.08, 0.02, -0.85], [1.04, 0.02, -1.60], [-1.04, 0.02, -1.60],
-    [-1.08, 0.65, -0.85], [1.08, 0.65, -0.85], [1.04, 0.65, -1.60], [-1.04, 0.65, -1.60]));
+  const PT_PLAN = [
+    [-0.40, 1.02], [0.40, 1.02], [0.86, 0.70], [1.12, 0.15], [1.08, -0.85],
+    [1.04, -1.60], [-1.04, -1.60], [-1.08, -0.85], [-1.12, 0.15], [-0.86, 0.70],
+  ];
+  P.add('turret', KIT.polyTurret(PT_PLAN, 0.63, 1.0, 1.0), 0, 0.02, 0);        // main band (walls 1.74..2.34w + closed fan roof at 0.65)
+  P.add('turret', KIT.polyTurret([                                             // fore lower band: cheek facets meet the hull roof (1.695w)
+    [-0.40, 1.02], [0.40, 1.02], [0.86, 0.70], [1.12, 0.15], [1.12, 0.10], [-1.12, 0.10], [-1.12, 0.15], [-0.86, 0.70],
+  ], 0.125, 1.0, 1.0), 0, -0.025, 0);
+  // weld seams down the cheek knuckle lines (on the facet joints; mirrored
+  // with the corner-swap law — orientedSlab re-guards winding)
+  P.add('turretDark', slab(
+    [0.845, 0.02, 0.7255], [0.875, 0.02, 0.7045], [0.875, 0.02, 0.6885], [0.845, 0.02, 0.7095],
+    [0.845, 0.58, 0.7255], [0.875, 0.58, 0.7045], [0.875, 0.58, 0.6885], [0.845, 0.58, 0.7095]));
+  P.add('turretDark', slab(
+    [-0.875, 0.02, 0.7045], [-0.845, 0.02, 0.7255], [-0.845, 0.02, 0.7095], [-0.875, 0.02, 0.6885],
+    [-0.875, 0.58, 0.7045], [-0.845, 0.58, 0.7255], [-0.845, 0.58, 0.7095], [-0.875, 0.58, 0.6885]));
   // center front: mantlet slot bay (armored embrasure grammar, §B3)
   P.add('turret', box(0.80, 0.675, 0.24), 0, 0.3125, 0.80);                    // slot back wall (top 0.65 = the roof plane)
   P.add('turret', box(0.84, 0.16, 0.16), 0, 0.57, 0.90);                       // brow strip (flush to the roof line)
@@ -4855,9 +5073,19 @@ function buildLeo2Proto(P) {
     P.add('turretDark', KIT.cylX(0.082, 0.030, 10), s * 1.195, 0.55, 0.28);
     P.add('turretDetail', KIT.cylX(0.095, 0.012, 10), s * 1.176, 0.55, 0.28);  // blister collar ring
   }
-  // commander cupola RIGHT (early ring cupola, 6 periscopes; crown 2.55w =
-  // a p95 spike column) + loader hatch LEFT
-  KIT.cupola(P, 'turret', 0.55, 0.65, -0.55, 0.23, 0.075, 6);                 // crown 2.50w — inside the 1% dims grace (the 0.11 first cut read 2.61 and broke heightM)
+  // commander cupola RIGHT — §5.16 PT PERISCOPE RING (the coordinator-named
+  // V-series tell): TALL vision-block ring drum + 8 periscope blocks with
+  // glass slivers + flat lid. Crown 2.50w EXACT — inside the 1% dims grace
+  // (the 0.11 first cut read 2.61 and broke heightM; grace cap 2.5048).
+  P.add('turret', cylY(0.24, 0.245, 0.085, P.q ? 18 : 14), 0.55, 0.6925, -0.55); // ring drum (2.345..2.435w)
+  for (let k = 0; k < 8; k++) {
+    const a = (k / 8) * Math.PI * 2;
+    const bx = 0.55 + Math.sin(a) * 0.215, bz = -0.55 + Math.cos(a) * 0.215;
+    P.add('turretDark', box(0.075, 0.055, 0.03), bx, 0.712, bz, 0, a, 0);      // vision block
+    P.add('turretGlass', box(0.055, 0.030, 0.012), 0.55 + Math.sin(a) * 0.232, 0.716, -0.55 + Math.cos(a) * 0.232, 0, a, 0);
+  }
+  P.add('turret', cylY(0.215, 0.215, 0.028, P.q ? 18 : 14), 0.55, 0.766, -0.55); // flat lid (crown 2.50w)
+  P.add('turretDark', box(0.30, 0.012, 0.032), 0.55, 0.784, -0.55);            // lid handle seam
   P.add('turret', cylY(0.21, 0.21, 0.045, 14), -0.60, 0.6725, -0.45);
   P.add('turretDark', box(0.36, 0.014, 0.035), -0.60, 0.702, -0.45);
   periscope(P, 'turretDetail', 0.30, 0.66, 0.12);                              // gunner roof periscope (hood under the 2.48 line)
@@ -4869,12 +5097,15 @@ function buildLeo2Proto(P) {
   // anemometer mast rear-left + twin whip antennas at the bustle corners
   P.add('turretDetail', cylY(0.013, 0.017, 0.26, 8), -0.85, 0.76, -1.38);
   P.add('turretDark', box(0.14, 0.028, 0.028), -0.85, 0.905, -1.38);
+  // §5.16 family whips: the type90 donor's RAKED-AFT sweep, rooted on low
+  // side brackets so the tips stay 2.497w < the 2.5048 grace line (the
+  // dims heightM p95 budget stays mast(1) + RCWS tower — a6 fold-down
+  // precedent superseded by the raked family read at the same cost).
   for (const s of [-1, 1]) {
-    // whips FOLDED-DOWN class (a6 precedent): tops 2.49w — the p95 spike
-    // budget (≤4 columns over 2.48) is spent on the mast + MG cap; tall
-    // whips x2 pushed heightM to 2.59 (-27.7 dims).
-    P.add('turretDetail', box(0.028, 0.14, 0.028), s * 0.94, 0.70, -1.50, 0, 0, s * 0.05);
-    P.add('turretDetail', box(0.055, 0.12, 0.055), s * 0.94, 0.66, -1.50);     // base pot
+    P.add('turretDetail', box(0.06, 0.05, 0.08), s * 1.015, 0.50, -1.55);      // side bracket seat
+    const whip = FITTINGS.antennaWhip({ mats: P.mats, h: 0.32, r: 0.012, seed: 8 + s, rotation: [-1.05, 0, s * 0.05] });
+    whip.position.set(s * 1.00, 0.50, -1.55);
+    P.turretG.add(whip);
   }
   // loader MG3 pintle at the hatch rim (§B3 census weapon, mag class)
   {
@@ -4909,8 +5140,28 @@ function buildLeo2Proto(P) {
   ]);
   tarpRoll(P, 'turretCloth', 0.82, 0.50, -1.70, 0.60, 0.075, true, P.q ? 12 : 8);
   ammoCan(P, 'turretDark', -0.92, 0.48, -1.72, 0.18);
+  // §5.16 family: low overhung basket frame + mesh back behind the bustle
+  // box (the type90 donor's rear-basket read; PT trials pipe-frame class)
+  P.add('turretDetail', box(1.64, 0.035, 0.035), 0, 0.46, -1.92);
+  P.add('turretDetail', box(1.64, 0.035, 0.035), 0, 0.24, -1.92);
+  for (const bx of [-0.78, -0.26, 0.26, 0.78]) {
+    P.add('turretDetail', box(0.028, 0.24, 0.028), bx, 0.35, -1.92);
+  }
+  P.add('turretDark', box(1.58, 0.19, 0.012), 0, 0.35, -1.905);                // mesh back panel
   P.decal('turret', 'crossgrey', null, 0.30, [1.092, 0.26, -0.45], Math.PI / 2, 0, 0.040);
   P.decal('turret', 'crossgrey', null, 0.30, [-1.092, 0.26, -0.45], -Math.PI / 2, 0, -0.040);
+  // ---- HUGE FLW 200 RCWS (owner order §5.09-5, anachronism BY ORDER on
+  // the PT — the owner wants the station on all four leopards): FORWARD
+  // rest (§5.07), dims-sovereign SQUAT-WIDE fit — every wide mass under
+  // the 2.5048 grace line (roof 0.65 local: trough top 2.498w, pod top
+  // 2.50w, fitting FITTING-SUNK at 0.46/scale 0.92 -> cap 2.485w, barrel
+  // 2.39w emerging from the armored trough), garage height carried by the
+  // NARROW optic tower (z-window 0.16 = <=3 side trace columns; above-
+  // grace columns = anemometer mast 1 + tower 3 = the 4-col budget, p95
+  // stays the 2.50 cupola/whip class inside grace).
+  leoFLW200(P, { x: 0.02, y: 0.65, z: -1.18, s: 1.1, gunY: 0.46, gunScale: 0.92,
+    drumH: 0.05, podY: 0.70, podH: 0.16, shields: false, elev: 0.07,
+    towerTop: 1.06, towerZ: -1.52, towerW: 0.16, seed: 17 });
 
   // ---- 105 mm smoothbore (§B3.1): ROUNDED cast mantlet — trunnion roll +
   // domed collar shoulders + tapered boot, never a prism; bare slim tube
@@ -5207,6 +5458,24 @@ function buildLeo2Revolution(P) {
       P.add('hull', box(0.060, 0.77, 0.468), s * 1.640, 0.915, -2.86 + 0.48 * k + 0.24);
     }
     P.add('hullDark', box(0.01, 0.05, 3.36), s * 1.19, 0.335, -1.18);          // under-tub gap filler (y 0.31..0.36 — above the pad crown, behind the wheels)
+    // §5.09 §B2 TAIL CORRIDOR ROOFS (owner see-through order): the 5 cm
+    // deck-edge<->jacket slot over the engine/tail run read as top-down sky
+    // (probe: deck edge 1.549 / jacket inner 1.599, both tops ~1.70; slits
+    // x ±1.55-1.60 over z -3.60..-1.48 in the top views). Same certified
+    // r16-e corridor-roof mechanism: strips overlap BOTH edges, tops 1.69
+    // parked under the 1.701 deck / 1.699 jacket / 1.711 tail-lip lines —
+    // side/front/plan masks unchanged by construction; five ≤0.48 m
+    // segments (STATION END-CAP law). Real metal where the real deck is.
+    for (let k = 0; k < 5; k++) {
+      P.add('hull', box(0.072, 0.05, 0.418), s * 1.578, 1.665, -1.692 - 0.424 * k);
+    }
+    // ... and the MID-HULL stretch between the tail roofs (-1.48) and the
+    // certified r16-e bow roofs (1.055): same corridor, tops 1.52 = the
+    // r16-e precedent value (under the 1.542 ring-dip deck line and every
+    // deck band forward of the tail).
+    for (let k = 0; k < 6; k++) {
+      P.add('hull', box(0.072, 0.05, 0.4165), s * 1.578, 1.495, -1.269 + 0.4225 * k);
+    }
     // r14-e CORRIDOR ROOF: pulling the wing to 1.553 exposed the 6cm
     // deck-edge<->skirt corridor to the top-down flood over the bow zone
     // (two 3px x ~40px slivers at x ±1.58) — the ref reads its own DECK
@@ -5721,6 +5990,13 @@ function buildLeo2Revolution(P) {
     P.add('turret', mslab(s,
       [1.30, 0.70, 0.86], [1.6425, 0.70, 0.86], [1.6425, 0.70, -1.10], [1.30, 0.70, -1.10],
       [1.30, 0.76, 0.86], [1.34, 0.76, 0.86], [1.34, 0.76, -1.10], [1.30, 0.76, -1.10]));
+    // §5.09 §B2 chamfer FORWARD CAP (the before-front 47px corner slot):
+    // the course continues to the wedge sweep line with a raked front cut
+    // — the real module top meets the cheek edge, no sky slot between the
+    // wedge shoulder and the panel-band front corner.
+    P.add('turret', mslab(s,
+      [1.30, 0.70, 1.20], [1.6425, 0.70, 0.92], [1.6425, 0.70, 0.86], [1.30, 0.70, 0.86],
+      [1.30, 0.76, 1.14], [1.34, 0.76, 0.90], [1.34, 0.76, 0.86], [1.30, 0.76, 0.86]));
     // SIDE PANEL COURSES (real AMAP flank read, two facets): the main face
     // CANTS OUTWARD from ±1.615 @ 1.92w to ±1.700 @ 2.17w (the real modules
     // reach ±1.70 — the ref's own ±1.66..1.78 front columns read 2.12-2.17
@@ -5862,26 +6138,20 @@ function buildLeo2Revolution(P) {
   // that the module spans it z-through.
   P.add('turret', box(0.36, 0.09, 0.02), -0.85, 0.9295, -0.99);                // st4 cap blade (w -1.34)
   P.add('turret', box(0.36, 0.09, 0.02), -0.85, 0.9295, -1.11);                // st4 cap blade (w -1.46)
-  // compact .50-cal RWS rear-right (photo class). The GUN is the census
-  // pintleMG fitting (cls m2, two-tone MG PHYSICS) with its foot/column
-  // sunk through the roof plate into a slew collar — the fitting stack at
-  // deck level would top 2.69-2.79 and blow the dims-sovereign heightM
-  // budget (caps never cover dims), so the origin sits at 2.30w: receiver
-  // top 2.609w, pale cap 2.633w < the 2.64 published line. Mount dressing
-  // (base, collar, slew disc, optics, top plate) is hand-authored around
-  // the fitting — packet-justified per §I.
-  P.add('turret', box(0.20, 0.025, 0.20), 0.43, 0.7725, -1.25);                // RWS base plate (on the roof)
-  P.add('turretDark', cylY(0.115, 0.115, 0.022, P.q ? 18 : 12), 0.43, 0.772, -1.25); // slew disc
-  P.add('turret', cylY(0.075, 0.095, 0.06, P.q ? 16 : 12), 0.43, 0.79, -1.25); // mount collar (fitting column emerges through it)
-  P.add('turretDark', box(0.09, 0.09, 0.15), 0.43, 0.945, -1.50);              // sensor pack (behind the receiver — the x 0.55 park printed +0.23 outside the ref's 2.58 band)
-  P.add('turretGlass', box(0.055, 0.05, 0.012), 0.43, 0.95, -1.42);            // sensor lens (fore face)
-  // RWS ready-ammo stowage (real mount kit; also the ref's own 2.58 right
-  // band x 0.10..0.34 columns read it at 2.55 — §B3 bin grammar: lid seam +
-  // latches).
-  P.add('turret', box(0.24, 0.19, 0.40), 0.22, 0.855, -1.20);                  // ammo stowage bin (top 2.55w)
-  P.add('turretDark', box(0.22, 0.004, 0.010), 0.22, 0.948, -1.10);            // bin lid seam
-  P.add('turretDetail', box(0.012, 0.05, 0.05), 0.105, 0.90, -1.10);           // bin latch A
-  P.add('turretDetail', box(0.012, 0.05, 0.05), 0.105, 0.90, -1.32);           // bin latch B
+  // §5.09-5 HUGE FLW 200 RCWS (owner order: "put a huge automated turret
+  // crows system on the revolution and other leopards too") — the r18
+  // compact base/collar/sensor-pack set is UPGRADED IN PLACE to the full
+  // station (same rear-right seat, the real MBT Revolution RCWS spot):
+  // slew ring + drum, armored trough, sensor pod ON the aim face, ammo bin
+  // GUN-LEFT (absorbs the old 2.55w bin's ref-band duty at x 0.06..0.34),
+  // flank shields, IR pointer, cable + conduit, FORWARD rest (§5.07).
+  // dims-sovereign: wide masses under the 2.6664 grace line (trough top
+  // 2.60w, receiver cap 2.65w FITTING-SUNK, pod top 2.55w); garage height
+  // from the NARROW optic tower (top 2.93w, z-window 0.14 = <=2 spike
+  // columns; above-grace budget = whip col 1 + tower 2 = 3).
+  leoFLW200(P, { x: 0.43, y: 0.76, z: -1.25, s: 1.15, gunY: 0.72, gunScale: 1.0,
+    drumH: 0.08, podY: 0.85, podH: 0.19, shields: true, elev: 0.06,
+    towerTop: 1.33, towerZ: -1.55, towerW: 0.14, seed: 25 });
   // crosswind mast (rear roof): base + slim pole + fore-aft sensor head —
   // kept under the 2.64 published line (top 2.624w) and ONE front column
   // wide on the ref's own 2.34 roof-step zone (a transverse head at x -0.12
@@ -5961,6 +6231,27 @@ function buildLeo2Revolution(P) {
     // overlapping its rail/A-panel puts a SOLID cap inside the window.
     if (s > 0) P.add('turretDetail', box(0.16, 0.025, 0.29), 1.00, 0.5525, -2.295);   // right tail stub (world z -2.50..-2.79, top 2.165)
     else P.add('turretDetail', box(0.11, 0.025, 0.22), -1.065, 0.5525, -2.355);       // left tail stub (world z -2.60..-2.82, top 2.165)
+    // §5.09 §B2 BUSTLE CORNER CLOSURE (owner see-through order): the
+    // outboard corridor between the roof/slab-5 x-extent (±1.28/1.30) and
+    // the apron/wall line (±1.55) read as open background from dead-rear
+    // and the rear quarters (before-crops g4/g3) — the wedge courses end
+    // at w -1.45 and nothing closed the band over the apron top (1.975w)
+    // until the roof plate (2.17w). REAL closure per the reference: the
+    // rack corners carry STOWAGE BINS (§B3 bin grammar — lid seam +
+    // latches + rail straps), filling x ±1.29..1.43 (the real ±1.43
+    // basket line, inside the certified rail plan window) over the rail
+    // z-span; a module END PLATE closes the last ±1.43..1.55 slot against
+    // the wall sliver's rear face.
+    P.add('turret', box(0.14, 0.245, 0.40), s * 1.36, 0.4775, -1.95);                // corner bin (bottom 1.955w overlaps the apron top, top 2.20w, z -1.75..-2.15)
+    P.add('turretDark', box(0.13, 0.004, 0.010), s * 1.36, 0.601, -2.05);            // bin lid seam
+    P.add('turretDetail', box(0.010, 0.04, 0.05), s * 1.292, 0.55, -1.85);           // bin latch (inboard face)
+    P.add('turretDark', box(0.06, 0.016, 0.036), s * 1.33, 0.575, -1.78);            // rail strap A
+    P.add('turretDark', box(0.06, 0.016, 0.036), s * 1.33, 0.575, -2.12);            // rail strap B
+    P.add('turret', box(0.12, 0.17, 0.03), s * 1.49, 0.46, -1.785);                  // module end plate (x 1.43..1.55, abuts the wall rear face)
+    // §5.09 §B2 panel-band FRONT CORNER closure (the before-front 20px slot
+    // pair): module lower front end-cap between the apron top, the C3
+    // course, and the panel front caps.
+    P.add('turret', box(0.05, 0.20, 0.19), s * 1.59, 0.28, 0.955);
   }
   // whip antennas: ONE shared side column at w -2.13; front cols x -1.06 /
   // +0.84 per the fresh trace. Posts root on the 2.11 bustle shelf.
@@ -5975,10 +6266,17 @@ function buildLeo2Revolution(P) {
   // (x 0.84, z -2.164, tip 2.716) straddling the -2.168 bin edge — its
   // side/front reads flicker 2.24..2.72 across runs. Ours park SOLID at
   // mid-column (w -2.11) with tops 2.70 (the ref's printing-state read).
+  // §5.09 dims true-up: the 2.70 rod tops certified against the OLD print
+  // lineage died with the batch-46 §B7 cap (turret rows read 0; the ref
+  // whip band lives in the squeezed frame) — and the rescue's AABB
+  // re-phase made the -1.76 rod pair straddle a trace boundary (TWO
+  // above-grace columns; with the RCWS tower's three, heightM p95 read
+  // 2.69 = dims 90.9). Rods drop under the 2.6664 grace line (tops
+  // 2.64w); the tower alone owns the above-grace budget.
   P.add('turretDetail', box(0.06, 0.36, 0.044), -1.07, 0.68, -1.760);
-  P.add('turretDetail', box(0.022, 0.24, 0.022), -1.062, 0.98, -1.760);
+  P.add('turretDetail', box(0.022, 0.18, 0.022), -1.062, 0.95, -1.760);
   P.add('turretDetail', box(0.06, 0.36, 0.044), 0.84, 0.68, -1.760);
-  P.add('turretDetail', box(0.022, 0.24, 0.022), 0.836, 0.98, -1.760);
+  P.add('turretDetail', box(0.022, 0.18, 0.022), 0.836, 0.95, -1.760);
   // r5 FORE ANTENNA CARD (station-8 spike): the print's SECOND whip stands
   // on the fore-left cheek as a z-facing THIN CARD (raw GLB verts x 1.0,
   // z -0.4 -> world -1.05, +0.83) — it prints in the clipped station-8
@@ -6012,15 +6310,8 @@ function buildLeo2Revolution(P) {
   P.add('turretDetail', box(0.05, 0.018, 0.04), -0.68, 0.845, 0.28);           // hinge block L
   P.add('turretDetail', box(0.05, 0.018, 0.04), -0.52, 0.845, 0.28);           // hinge block R
   periscope(P, 'turretDetail', -0.60, 0.795, 0.32);                            // loader periscope
-  // RWS GUN = the §B3 census pintleMG fitting (cls m2, two-tone), origin
-  // sunk to 2.30w so the pale cap tops 2.633w (heightM budget — see the
-  // RWS mount note above). Column emerges through the mount collar.
-  {
-    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', tone: 'two-tone', seed: 5,
-      elev: 0.02 });
-    mg.position.set(0.43, 0.70, -1.25);
-    P.turretG.add(mg);
-  }
+  // (r18 compact RWS pintleMG retired — the §5.09-5 leoFLW200 station above
+  // carries the census m2 fitting FITTING-SUNK at the same seat.)
   for (const s of [-1, 1]) {
     liftEye(P, 'turretDetail', s * 0.95, 0.762, 0.35, s * 0.4);                // roof lift eyes (re-seated on the 2.36w deck)
   }
@@ -6041,7 +6332,14 @@ function buildLeo2Revolution(P) {
   P.add('turretDark', box(0.20, 0.09, 0.05), -1.34, 0.50, -1.985);            // stowage plate (blob-2 end cap; §B7 r18: the old cluster tubes it racked against moved to the panels — straps now tie it to the left rail)
   P.add('turretDark', box(0.075, 0.018, 0.04), -1.2225, 0.53, -1.975);        // plate hanger strap (to the rail)
   P.add('turretDark', box(0.075, 0.018, 0.04), -1.2225, 0.47, -1.995);        // plate hanger strap B
-  P.add('turretDark', box(0.15, 0.145, 0.04), -0.937, 0.4725, -1.985);        // rail rack card
+  // §5.09 §B2: the rail<->A-panel x-corridor (-0.86..-1.01) read as a
+  // see-through pocket at yaw from close-roof (the r9-c card blocked one
+  // z-slice only) — the card grows to a full stowage BOARD spanning the
+  // rail's z-window, hung between rail and panels and dropping to 1.86w so
+  // the under-rack daylight narrows to the real vehicle's shallow band
+  // (real racks carry such boards; same tone/bucket as the certified card).
+  P.add('turretDark', box(0.15, 0.285, 0.60), -0.937, 0.4025, -2.055);        // left rail stowage board (y 1.86..2.145w, z -1.755..-2.355)
+  P.add('turretDark', box(0.15, 0.285, 0.60), 0.955, 0.4025, -2.055);         // right rail stowage board (mirror — the right flank had no A-panel cover and read the same sky band)
   // §B7 r18 BUSTLE RACK read (photo class "stowage rack/basket across the
   // tail"): vertical frame drops tying the dark band to the rail line + a
   // strapped duffel INSIDE the certified basket envelope (top 2.16w under
@@ -6473,6 +6771,13 @@ function buildLeo2Revolution(P) {
       // black U (the gray-rectangle class).
       mkFill(0.96, 0.26, 0.80, 0, 1.53, 1.80);                                 // bow zone fore LOW (y 1.40..1.66, z 1.40..2.20)
       mkFill(2.76, 0.38, 1.30, 0, 1.59, -1.33);                                // aft zone (y 1.40..1.78, z -1.98..-0.68)
+      // §5.09 UNDER-RACK FILL (owner see-through order): the basket
+      // overhang zone aft of -1.98 read straight through to sky at the
+      // rear obliques (before rearleft 158+55 px) — same §C shadow-named
+      // mechanism extended under the rack (the real vehicle's under-basket
+      // shade; corner bins/boards above carry the real metal, the honest
+      // slit stays).
+      mkFill(2.76, 0.38, 0.62, 0, 1.59, -2.29);                                // under-rack zone (y 1.40..1.78, z -2.60..-1.98)
       // (under-wall curtains DELETED — the r16-e daylight-closing duty
       // moved to the REAL §B7 module apron in the turret build; their
       // outer faces at ±1.58 were the single biggest gray-rectangle
