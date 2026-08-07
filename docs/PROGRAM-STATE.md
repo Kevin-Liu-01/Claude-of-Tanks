@@ -1138,3 +1138,18 @@ CHECK (the standing too-small flag; dims sovereign, four-box vs spec
 + its registered recovered/type90.glb oracle), BETTER GUN PLACEMENT,
 proper MANTLET (§B3.1; the standing "type 90 needs a mantlet" order).
 Grammar transfers; per-tank dims stay sovereign.
+
+## 5.17 OWNER ORDER (2026-08-07, revolution close-up screenshot):
+"theres still a gap under front part of its turret and still has
+these ugly gray squares. fix the turret" — REVOLUTION TURRET FIX
+ROUND (leopard.js free post-eff8512, spawned immediately): (1) the
+UNDER-FRONT-TURRET GAP (chin/ring daylight — the closure round's
+documented station/gun-cradle-air residual is NOT acceptable to the
+owner; close it with real chin/collar geometry); (2) the UGLY GRAY
+SQUARES on the turret flank — flat rectangular module faces
+(including possibly the closure round's own new bins/end-plates/rail
+boards) must be re-dressed §B3-real: AMAP-class composite modules
+with seams/bolts/chamfers + correct tone slots, NOT flat gray slabs
+(the §4.9996 gray-rectangles class returned). The in-flight leopard
+critic's revolution verdict is superseded by this owner read; its
+other three verdicts stand.
