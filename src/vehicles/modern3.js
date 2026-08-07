@@ -16,7 +16,9 @@ import { FITTINGS } from './profiles/kit.js';
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
 
 export const MODERN3_IDS = [
-  'chieftain_mk10', 'k2', 'type10', 'm2a2_bradley', 'bmp2', 'ariete',
+  // k2 REMOVED BY OWNER 2026-08-06 ('nvm k2 doesnt [have a glb], remove
+  // it') — spec+builder stay dormant below.
+  'chieftain_mk10', 'type10', 'm2a2_bradley', 'bmp2', 'ariete',
   // AFV lane 2026-08-06 (owner order "make the spz puma as well" + "use the
   // bradley on puma and this type 89 ifv"): both ride the bradley recipe.
   'spz_puma', 'type89',
