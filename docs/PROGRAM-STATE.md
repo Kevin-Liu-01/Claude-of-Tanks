@@ -353,6 +353,16 @@ rebuilds t72b3m to the 2022 configuration (RWS, roof cluster, ERA fit —
 relayed to the live t90m agent as its follow-on). The graduate's re-cert
 chain restarts on the new oracle.
 
+## 4.999 NEXT ABRAMS ROUND (spawns ON the visibility re-cert verdict;
+combined): (a) CROWS REWORK — point the right direction (not forward),
+armor surrounds on some, ammo boxes, lights, shapes CONNECTED; (b)
+ABRAMSX BUILD-UP (owner: "make the abramsx look much more like our
+abramsx local model... its time to get that running too") — full
+oracle-driven round toward its local reference GLB (certified bridge-cap
+rows; AbramsX identity: low-profile unmanned turret, XM360 angular
+shroud, hybrid hull lines, 30mm RWS) per §B8.1 + ladder; (c) any FAIL
+orders from the visibility verdict. sepv2 donor verified already-m1a2.
+
 ## 5. IN-FLIGHT AGENTS (SUPERSEDED BY §12 — the 2026-08-05 device
 handover interrupted these; respawn per §12)
 1. DONE+RATIFIED: abrams dual critic (m1a1ha f5c556dc, sepv2 §10 run).
