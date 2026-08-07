@@ -1705,7 +1705,9 @@ input.onAction('shotLog', () => {
 
 bus.on('ui:shellSelect', ({ slot }) => {
   if (game.player && game.player.combat && !game.player.combat.destroyed) {
-    selectShell(game.player.combat, slot);
+    // spec: with per-shell reloads the restart prices the INCOMING shell
+    // (autocannon belt 0.4 s vs. ATGM rail 14+ s on the same vehicle).
+    selectShell(game.player.combat, slot, game.player.spec);
     game.player.input.shellSlot = slot;
   }
 });
@@ -1715,12 +1717,16 @@ bus.on('ui:shellSelect', ({ slot }) => {
 // ---------------------------------------------------------------------------
 // Per-battle loadout (rounds carried per shell type) — the HUD tray renders
 // card.count live, and firing is gated on the slot having rounds left.
+// A shell carrying its own `count` overrides the type table: IFV autocannon
+// belts hold hundreds of rounds against a handful of ATGMs (per-shell
+// reloads, sim/damage.js startReload), so type-level counts can't fit both.
 const SHELL_LOADOUT = { AP: 24, APCR: 20, APFSDS: 24, HEAT: 16, HE: 12 };
 let shellCards = [];
 function buildShellCards(spec) {
   shellCards = spec.gun.shells.map((sh) => ({
     name: sh.name, type: sh.type, dmg: sh.dmg, penLabel: `${Math.round(sh.pen100Mm)} mm`,
-    count: SHELL_LOADOUT[sh.type] != null ? SHELL_LOADOUT[sh.type] : 20,
+    count: sh.count != null ? sh.count
+      : (SHELL_LOADOUT[sh.type] != null ? SHELL_LOADOUT[sh.type] : 20),
   }));
 }
 // Real ammo depletion: the player's fired shells consume the active slot.

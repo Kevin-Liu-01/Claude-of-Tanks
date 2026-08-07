@@ -1347,7 +1347,18 @@ function tryFire(game, ent, bus, rig) {
   // undefined spec into acquireShell and crashed the sim step.
   const maxSlot = ent.spec.gun.shells.length - 1;
   const slot = Math.max(0, Math.min(Math.min(2, maxSlot), ent.input.shellSlot | 0));
-  if (slot !== c.shellSlot) c.shellSlot = slot;
+  if (slot !== c.shellSlot) {
+    // PER-SHELL RELOAD guard: switching INTO a slower slot at fire time must
+    // pay the incoming shell's load first (an IFV bot flipping its 0.4 s
+    // autocannon timer onto the ATGM rail would otherwise fire the missile
+    // instantly). Switching down to an equal/faster shell stays free — the
+    // longer load already waited covers it.
+    const sh = ent.spec.gun.shells;
+    const newBase = (sh[slot] && sh[slot].reloadS) || ent.spec.gun.reloadS;
+    const oldBase = (sh[c.shellSlot] && sh[c.shellSlot].reloadS) || ent.spec.gun.reloadS;
+    c.shellSlot = slot;
+    if (newBase > oldBase) { startReload(c, ent.spec); return; }
+  }
   const shellSpec = ent.spec.gun.shells[c.shellSlot];
 
   // Barrel direction from the visual (already chasing input.aimPoint).

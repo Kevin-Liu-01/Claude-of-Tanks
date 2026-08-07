@@ -282,15 +282,16 @@ const MODERN3_SPECS = {
     pivotStyle: 'neutral',
     turretTraverseDegS: 60, gunPitchDegS: 40, gunElevationDeg: 30, gunDepressionDeg: 9,
     gun: {
-      // §6.4 quotes per-shell reloads (0.5 s bursts / 14 s TOW); the sim has
-      // ONE gun.reloadS — 3.2 s is the balance compromise until per-shell
-      // reload lands. Per-shell values ride along as data (reloadS extra).
-      caliberMm: 25, reloadS: 3.2, baseAccuracy: 0.30, aimTimeS: 1.4,
+      // §6.4 per-shell reloads are LIVE (sim/damage.js startReload): the M242
+      // cycles 0.5 s bursts for sustained support fire while the TOW rail
+      // pays its full 14 s. gun.reloadS carries the headline burst value
+      // (garage card + fallback); per-shell counts size the belts vs. rails.
+      caliberMm: 25, reloadS: 0.5, baseAccuracy: 0.30, aimTimeS: 1.4,
       bloom: BLOOM_MODERN,
       shells: [
-        shell('M919 APFSDS-T', 'APFSDS', 25, 110, 110, 60, 1345, { pen2000Mm: 110, reloadS: 0.5 }),
-        shell('BGM-71 TOW-2A', 'HEAT', 152, 900, 900, 480, 300, { reloadS: 14 }),
-        shell('M792 HEI-T', 'HE', 25, 8, 8, 55, 1100, { reloadS: 0.5 }),
+        shell('M919 APFSDS-T', 'APFSDS', 25, 110, 110, 60, 1345, { pen2000Mm: 110, reloadS: 0.5, count: 225 }),
+        shell('BGM-71 TOW-2A', 'HEAT', 152, 900, 900, 480, 300, { reloadS: 14, count: 7 }),
+        shell('M792 HEI-T', 'HE', 25, 8, 8, 55, 1100, { reloadS: 0.5, count: 300 }),
       ],
     },
     // dims reconciliation (AFV r1, packet "Oracle status"): widthM rides the
@@ -333,14 +334,14 @@ const MODERN3_SPECS = {
     pivotStyle: 'pivot',
     turretTraverseDegS: 50, gunPitchDegS: 36, gunElevationDeg: 30, gunDepressionDeg: 5,
     gun: {
-      // §17.4 per-shell reloads (0.4 s burst / 16 s Konkurs) — same sim
-      // limitation + compromise as the Bradley above.
-      caliberMm: 30, reloadS: 3.0, baseAccuracy: 0.32, aimTimeS: 1.4,
+      // §17.4 per-shell reloads are LIVE (sim/damage.js startReload): 2A42
+      // 0.4 s bursts / 16 s Konkurs rail. Belt split is the real 160/340.
+      caliberMm: 30, reloadS: 0.4, baseAccuracy: 0.32, aimTimeS: 1.4,
       bloom: BLOOM_MODERN,
       shells: [
-        shell('3UBR8 APDS', 'APFSDS', 30, 60, 60, 45, 1120, { pen2000Mm: 60, reloadS: 0.4 }),
-        shell('9M113M Konkurs-M', 'HEAT', 135, 750, 750, 420, 250, { reloadS: 16 }),
-        shell('3UOF8 HE-I', 'HE', 30, 6, 6, 45, 960, { reloadS: 0.4 }),
+        shell('3UBR8 APDS', 'APFSDS', 30, 60, 60, 45, 1120, { pen2000Mm: 60, reloadS: 0.4, count: 160 }),
+        shell('9M113M Konkurs-M', 'HEAT', 135, 750, 750, 420, 250, { reloadS: 16, count: 5 }),
+        shell('3UOF8 HE-I', 'HE', 30, 6, 6, 45, 960, { reloadS: 0.4, count: 340 }),
       ],
     },
     // dims two-datum note (packet): heightM 2.45 is the Wikipedia
@@ -379,14 +380,14 @@ const MODERN3_SPECS = {
     // Unmanned RCT30: fast stabilized drives, +45 elevation class.
     turretTraverseDegS: 60, gunPitchDegS: 45, gunElevationDeg: 45, gunDepressionDeg: 10,
     gun: {
-      // MK30-2/ABM: per-shell burst reloads (bmp2/bradley sim rule) — one
-      // gun.reloadS as the balance compromise; per-shell values ride as data.
-      caliberMm: 30, reloadS: 3.0, baseAccuracy: 0.28, aimTimeS: 1.3,
+      // MK30-2/ABM per-shell reloads are LIVE (sim/damage.js startReload):
+      // 0.4 s bursts on the belts, 15 s on the Spike rail.
+      caliberMm: 30, reloadS: 0.4, baseAccuracy: 0.28, aimTimeS: 1.3,
       bloom: BLOOM_MODERN,
       shells: [
-        shell('MK30 APFSDS-T', 'APFSDS', 30, 130, 120, 62, 1385, { pen2000Mm: 110, reloadS: 0.4 }),
-        shell('Spike LR', 'HEAT', 152, 760, 760, 500, 180, { reloadS: 15 }),
-        shell('KETF ABM', 'HE', 30, 10, 10, 58, 1100, { reloadS: 0.4 }),
+        shell('MK30 APFSDS-T', 'APFSDS', 30, 130, 120, 62, 1385, { pen2000Mm: 110, reloadS: 0.4, count: 200 }),
+        shell('Spike LR', 'HEAT', 152, 760, 760, 500, 180, { reloadS: 15, count: 6 }),
+        shell('KETF ABM', 'HE', 30, 10, 10, 58, 1100, { reloadS: 0.4, count: 200 }),
       ],
     },
     // dims datum (AFV lane 2026-08-06, packet "Oracle status"): 7.6 hull =
@@ -452,13 +453,14 @@ const MODERN3_SPECS = {
     pivotStyle: 'neutral',
     turretTraverseDegS: 48, gunPitchDegS: 36, gunElevationDeg: 30, gunDepressionDeg: 8,
     gun: {
-      // 35 mm KDE: same per-shell burst-reload sim rule as bradley/bmp2.
-      caliberMm: 35, reloadS: 3.4, baseAccuracy: 0.30, aimTimeS: 1.4,
+      // 35 mm KDE per-shell reloads are LIVE (sim/damage.js startReload):
+      // 0.5 s bursts — the heaviest AFV autocannon round — / 18 s Jyu-MAT.
+      caliberMm: 35, reloadS: 0.5, baseAccuracy: 0.30, aimTimeS: 1.4,
       bloom: BLOOM_MODERN,
       shells: [
-        shell('Type 89 APDS-T', 'APFSDS', 35, 95, 90, 70, 1385, { pen2000Mm: 80, reloadS: 0.5 }),
-        shell('Type 79 Jyu-MAT', 'HEAT', 153, 700, 700, 450, 200, { reloadS: 18 }),
-        shell('35mm HEI-T', 'HE', 35, 8, 8, 65, 1175, { reloadS: 0.5 }),
+        shell('Type 89 APDS-T', 'APFSDS', 35, 95, 90, 70, 1385, { pen2000Mm: 80, reloadS: 0.5, count: 120 }),
+        shell('Type 79 Jyu-MAT', 'HEAT', 153, 700, 700, 450, 200, { reloadS: 18, count: 6 }),
+        shell('35mm HEI-T', 'HE', 35, 8, 8, 65, 1175, { reloadS: 0.5, count: 280 }),
       ],
     },
     // PHOTO-CLASS build (no oracle — the War Thunder rip is REFUSED per THE

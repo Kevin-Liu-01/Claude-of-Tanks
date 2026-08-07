@@ -44,8 +44,23 @@ const SPECS = [
   make('chieftain_mk10', 'chieftain5', 'Chieftain Mk.5', 'UK',
     { hp: 1850, topSpeedKmh: 48, gun: { reloadS: 7.8 },
       dims: { hullLengthM: 7.52, overallLengthM: 10.79, widthM: 3.50, heightM: 2.90 } }),
+  // Warrior gun rebuild (AFV support round): the cloned Bradley loadout left
+  // 25 mm ammo + a TOW rail on a vehicle that mounts neither — and the old
+  // gun-level 0.45 s reload applied to that inherited TOW (900 dmg HEAT at
+  // 2 rps). Real 30 mm RARDEN belts, per-shell reloads, no missile.
   make('m2a2_bradley', 'fv510', 'FV510 Warrior', 'UK',
-    { hp: 1250, weightTons: 25.4, topSpeedKmh: 75, gun: { caliberMm: 30, reloadS: 0.45 },
+    { hp: 1250, weightTons: 25.4, topSpeedKmh: 75,
+      gun: {
+        caliberMm: 30, reloadS: 0.45,
+        shells: [
+          { name: 'L14A2 APDS-T', type: 'APFSDS', caliberMm: 30, pen100Mm: 85, pen1000Mm: 78,
+            dmg: 55, velocityMps: 1175, moduleDmg: 30, tracer: 'APFSDS',
+            pen2000Mm: 70, reloadS: 0.45, count: 130 },
+          { name: 'L13A1 HE-T', type: 'HE', caliberMm: 30, pen100Mm: 8, pen1000Mm: 8,
+            dmg: 52, velocityMps: 1070, moduleDmg: 30, tracer: 'HE',
+            reloadS: 0.45, count: 120 },
+        ],
+      },
       dims: { hullLengthM: 6.34, overallLengthM: 6.34, widthM: 3.03, heightM: 2.80 } }),
   make('leo2a7', 'leo2_revolution', 'Leopard 2 Revolution', 'Germany',
     { hp: 2550, weightTons: 60, topSpeedKmh: 70,

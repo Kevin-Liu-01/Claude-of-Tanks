@@ -1684,9 +1684,13 @@ export function createGarage(opts) {
       const col = SHELL_TYPE_COLOR[sh.type] || '#9fb0bf';
       // penetration at point blank / at 1 km
       const pen = sh.type === 'HE' ? `${sh.pen100Mm}` : `${sh.pen100Mm} / ${sh.pen1000Mm}`;
+      // per-shell reload (IFV autocannon vs. ATGM rail): only shown when the
+      // shell's own duration differs from the headline Reload bar above.
+      const shRel = sh.reloadS && Math.abs(sh.reloadS - spec.gun.reloadS) > 0.01
+        ? ` &nbsp;<b>${sh.reloadS.toFixed(sh.reloadS < 10 ? 1 : 0)}</b> s` : '';
       shellRows += `<div class="shellrow"><span class="ty" style="color:${col}">${sh.type}</span>` +
         `<span class="nm">${sh.name}</span>` +
-        `<span class="pd"><b>${pen}</b> mm &nbsp;<b>${sh.dmg}</b> hp</span></div>`;
+        `<span class="pd"><b>${pen}</b> mm &nbsp;<b>${sh.dmg}</b> hp${shRel}</span></div>`;
     }
     const hullMm = frontArmorMm(spec.armor && spec.armor.hullPlates, ['glacis', 'front', 'driver']);
     const turMm = frontArmorMm(spec.armor && spec.armor.turretPlates, ['front', 'cheek', 'mantlet']);

@@ -1510,15 +1510,22 @@ export function repairAllModules(combat) {
 
 /**
  * Switch the loaded shell slot. Changing ammunition restarts the load using
- * the current reload duration (WoT behavior).
+ * the NEW shell's duration (WoT behavior) — with per-shell reloads (IFV
+ * autocannon bursts vs. ATGM rails) the restart must price the incoming
+ * shell, or a 0.4 s burst timer would hand out instant missile loads.
  * @param {object} combatState CombatState
  * @param {0|1|2} slot shell slot
+ * @param {object} [spec] TankSpec — when given, the restart re-derives the
+ *   full per-shell/crew/rack/equipment reload for the new slot; legacy
+ *   callers without it keep the old same-duration restart.
  * @returns {void}
  */
-export function selectShell(combatState, slot) {
+export function selectShell(combatState, slot, spec) {
+  if (spec && spec.gun.shells) slot = Math.max(0, Math.min(spec.gun.shells.length - 1, slot | 0));
   if (slot === combatState.shellSlot) return;
   combatState.shellSlot = slot;
-  combatState.reload.t = combatState.reload.totalS;
+  if (spec) startReload(combatState, spec);
+  else combatState.reload.t = combatState.reload.totalS;
 }
 
 /**
@@ -1539,7 +1546,13 @@ export function startReload(combatState, spec) {
   // EQUIPMENT SYSTEM: gun rammer / vents (× <1) — re-derived per reload like
   // the debuffs above, from the loadout attached to this combat state.
   mult *= equipMult(combatState, 'reload');
-  const totalS = spec.gun.reloadS * mult;
+  // PER-SHELL RELOAD (IFV support role): a shell carrying its own reloadS
+  // governs its slot — autocannon belts cycle in fractions of a second while
+  // the ATGM rail on the same vehicle takes its full 14-18 s. Vehicles
+  // without per-shell data keep the single gun-level duration.
+  const loaded = spec.gun.shells && spec.gun.shells[combatState.shellSlot];
+  const baseS = (loaded && loaded.reloadS) || spec.gun.reloadS;
+  const totalS = baseS * mult;
   combatState.reload.totalS = totalS;
   combatState.reload.t = totalS;
 }

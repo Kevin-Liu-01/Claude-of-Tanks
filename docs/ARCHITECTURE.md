@@ -166,6 +166,12 @@ ShellSpec = {
   velocityMps: number,           // real-ish muzzle velocity (shells doc §1)
   moduleDmg: number,             // default = caliberMm
   tracer: 'AP'|'APCR'|'HEAT'|'HE'|'APFSDS', // fx preset key (shells doc §10)
+  reloadS?: number,              // PER-SHELL reload (IFV autocannon belt vs. ATGM
+                                 // rail) — governs this slot in startReload;
+                                 // absent ⇒ gun.reloadS. Switching INTO a slower
+                                 // slot restarts the full new-slot load.
+  count?: number,                // rounds carried — overrides the type-level
+                                 // SHELL_LOADOUT table (belts vs. missile racks)
 }
 ```
 Modern roster pens are quoted @2 km: encode as `pen1000Mm = quoted2kmPen / (1 - lossPer100m*10) `

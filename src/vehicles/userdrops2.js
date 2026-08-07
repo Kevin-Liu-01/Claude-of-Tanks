@@ -242,12 +242,13 @@ const USERDROP2_SPECS = {
     terrainResistance: WHEELED_TR,
     turretTraverseDegS: 40, gunPitchDegS: 40, gunElevationDeg: 30, gunDepressionDeg: 8,
     gun: {
-      // XM813 Bushmaster: per-shell burst reloads (bmp2/bradley sim rule)
-      caliberMm: 30, reloadS: 2.6, baseAccuracy: 0.30, aimTimeS: 1.4,
+      // XM813 Bushmaster per-shell reloads are LIVE (sim/damage.js
+      // startReload): 0.35 s bursts, belt counts sized to match.
+      caliberMm: 30, reloadS: 0.35, baseAccuracy: 0.30, aimTimeS: 1.4,
       bloom: BLOOM_MODERN,
       shells: [
-        shell('MK258 APFSDS-T', 'APFSDS', 30, 85, 75, 50, 1430, { pen2000Mm: 65, reloadS: 0.35 }),
-        shell('MK310 HEI-T', 'HE', 30, 8, 8, 55, 1080, { reloadS: 0.35 }),
+        shell('MK258 APFSDS-T', 'APFSDS', 30, 85, 75, 50, 1430, { pen2000Mm: 65, reloadS: 0.35, count: 150 }),
+        shell('MK310 HEI-T', 'HE', 30, 8, 8, 55, 1080, { reloadS: 0.35, count: 150 }),
       ],
     },
     // widthM includes the hull ceramic-tile appliqué the print models carry
