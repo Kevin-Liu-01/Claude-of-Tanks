@@ -709,3 +709,12 @@ time: t72b3m (graduate! gate 91.8 while the game shows a bare turret),
 challenger-line. Every profile binds mirrored slabs through a winding
 guard (orientedSlab/sslab class) — this is now a standing §C check, not
 a per-incident fix.
+- §C.1 CORRECTION (owner, same day): the t72b3m case is §B5 YAW-STRANDING,
+  not winding — "i rotate my turret and a lot of stuff that should be
+  moving with it especially in back doesnt." The turret-parent audit reads
+  0/0/0 on it, so the strands live in the audit's BLIND SPOTS (instanced
+  meshes — ERA tiles — are not audited; merged-bucket AABB false
+  negatives). The checker therefore gets a SECOND MODE: YAW-STRANDED
+  pixel audit — render rest vs yaw-90/180 FrontSide, diff the turret
+  footprint, flag mass that fails to rotate (instanced included). Both
+  modes are standing round-close checks.
