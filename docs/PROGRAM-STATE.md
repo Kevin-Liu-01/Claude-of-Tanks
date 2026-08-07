@@ -784,3 +784,17 @@ r13 broad-flat-wall class was self-scored closed but had only moved
 outboard — §B8 self-reads-never-accept demonstrated again. Gun run
 called EXEMPLARY (nested mantlet + bore at 5x). FIX ROUND SPAWNED
 (modern3.js free).
+
+## 4.999994 WW2 RESIT LANE LANDED 7390118: t34_85 (84996d88 — one
+30-deg glacis plane, cast lathe dome at exact footprint, rev-1
+fleet-baseline winding flag FIXED) + m4a3e8 (977909c8 — 47-deg glacis
++ flush cast nose, TRUE 3-pair HVSS, deck step, ±1.533 adjudicated
+factory wrap-pad class). FALSE-0 honored: NO gate rows exist (both
+procedural MODEL_SOURCE, no reference override — the weihe print
+belongs to t34_85_cad). ORCHESTRATOR DECISION FLAGGED: whether to
+register t34_85_weihe.glb as the t34_85 oracle (print frame-shifted
+per packet — onboard-oracle lane). All 10 ww2.js siblings
+byte-identical; graduates held. Photo-class critic IN FLIGHT
+(shots/critic-ww2-resit-indep/). Law notes banked in packets:
+roof-lip bow-steepening, co-planar frustum-front glacis,
+step-requires-body-split, wrap-pad width attribution.
