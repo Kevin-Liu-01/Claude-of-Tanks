@@ -562,8 +562,9 @@ const REG = {
   },
   challenger_3: {
     // "Challenger 3" by 42manako — CC-BY-NC-4.0: LOCAL MEASUREMENT ONLY,
-    // never ship (NEW-VEHICLE candidate, no TANK_SPECS row -> extract +
-    // dims report only, NO harness registration). Authored FBX hierarchy
+    // never ship. OWNER GREENLIGHT 2026-08-06: challenger_3 is now a BUILT
+    // vehicle (modern1.js spec+builder) and this row is mirrored into all
+    // THREE harness maps (oracle-backed moderns round). Authored FBX hierarchy
     // (hull/turret/trophy/smoke*/antennas; gun = 'weapon' under 'mount').
     // pubDims ANCHOR CAVEAT: no CR3 spec exists in the roster — anchored
     // to the Challenger 2 hull family figures (CR3 reuses the CR2 hull;

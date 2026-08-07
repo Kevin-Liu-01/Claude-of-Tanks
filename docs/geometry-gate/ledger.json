@@ -2,7 +2,7 @@
  "generatedAt": "2026-08-06T23:43:18.242Z",
  "gate": "every component >= 90; min is the headline",
  "passed": 22,
- "total": 89,
+ "total": 90,
  "rows": [
   {
    "id": "recon_tank",
@@ -225,7 +225,7 @@
     "hullCurves": 0,
     "wholeCurves": 0,
     "turretCurves": 0,
-    "stations": 13.6,
+    "stations": 13.4,
     "dims": 0,
     "floaters": 100
    }
@@ -235,10 +235,10 @@
    "geoMin": 0,
    "gatePassed": false,
    "components": {
-    "hullCurves": 34.4,
-    "wholeCurves": 13.2,
-    "turretCurves": 13.9,
-    "stations": 9.3,
+    "hullCurves": 77.8,
+    "wholeCurves": 65.5,
+    "turretCurves": 68.8,
+    "stations": 82.5,
     "dims": 0,
     "floaters": 100
    }
@@ -1150,6 +1150,19 @@
     "turretCurves": 7.7,
     "stations": 40.7,
     "dims": 100,
+    "floaters": 100
+   }
+  },
+  {
+   "id": "challenger_3",
+   "geoMin": 0,
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 42.4,
+    "wholeCurves": 41.6,
+    "turretCurves": 54.5,
+    "stations": 52.4,
+    "dims": 0,
     "floaters": 100
    }
   }

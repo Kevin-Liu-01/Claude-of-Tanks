@@ -795,3 +795,13 @@ freeze decoration until these pass):
   fix them as a family. VERTEX-SCAN BLINDNESS (§C): world-box vertex
   scans cannot attribute merged/instanced content — AABB census +
   fitting tags are the attribution tools.
+- STATION WHOLE-SLAB LAW (§D, moderns round): station slices render the
+  WHOLE model per z-slab — turret-rear masts own hull-station tops; only
+  the 2-slice trim absorbs a print's antenna spike. EXTRACT-FOLLOWER
+  POLLUTION: extract hull rows include turretFollower content — author
+  hull rows from the LIVE workorder, never extract hull curves.
+  END-DRUM TUCK vs SPONSON (§B4): re-tucking end drums raises shoe
+  orbits into full-width deck bands — split bands wrap-safe (spine +
+  sponson floors + outer walls) BEFORE drum re-seats. DECAL FLOAT =
+  PHANTOM COLUMN (§C): unpinned decals read as silhouette columns —
+  asymmetric top reads are the tell.

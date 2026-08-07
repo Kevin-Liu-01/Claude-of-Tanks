@@ -159,5 +159,59 @@ front_whole z 1.51 (err 0.77). Work order: reconcile the proc height
 datum first (cheap +dims), then price a §E normalize before chasing
 curves.
 
+## §B8 ACCEPTANCE REWORK r2 (2026-08-06 — owner priority "build the
+## type 10 and challenger 2 as a priority using the real glbs";
+## executes docs/critique/photo-acceptance-20260806.md order list)
+All four verdict orders landed in `buildChallenger2` (modern1.js):
+1. **WHEEL EXPOSURE:** skirt bays lifted to the 0.58 hub line (panels
+   0.58..1.145) with a SCALLOPED lower edge (inter-wheel tabs at 0.55,
+   z 2.38/1.24/0.10/-1.04/-2.18); the 0.42..0.52 rubber fringe is GONE —
+   6 Hydrogas wheels now read ~60-65% exposed like the print.
+2. **BOW REBUILD:** the horizontal upper band no longer runs past the
+   ring (z front 1.45 -> 0.90); §B1 glacis now rises PAST the ring plane
+   to the verdict's 1.78 DRIVER CREST (plateau z 1.28..1.70) with a
+   back-slope down to the 1.55 ring roof — the real CR2 bow hump; the
+   lower bow is a REAL RAKE (0.40@3.72 -> 1.00@4.105, was near-vertical
+   = the "cliff"); driver hatch + periscope moved onto the crest; splash
+   V-strips re-raked (0.334). Track horns stay proud via the exposed
+   idler + approach run (front skirt step retained — verdict-praised).
+3. **LEDGE DELETE:** the full-length fender shelf (fenders() at y 1.135,
+   x 1.02..1.76) is DELETED — the skirt top meets the band line
+   directly; only the real front mudguards over the idler remain.
+4. **TURRET FACE:** both cheek planes now carry the Dorchester rake ALL
+   THE WAY to the roof line (top ring 0.92 -> 0.94 = the 2.49 crest);
+   the GPS housing body is SUNK so nothing pokes above the raked plane
+   (brow lid stays the 2.49 crest line); cheek UNDERSIDES rise toward
+   the apex (0 -> 0.26 at the tip) clearing the new 1.78 hump — the
+   real CR2 turret front floats over the crest.
+Gate at the rework tree: 0 / 0 / 0 / 13.4 / 0 / 100, x2 identical — the
+same print-stylization-capped class as the banked baseline (the
++28.8%-tall print keeps absolute-y curve rows unsatisfiable; §B8
+verdicts here are adjudicated on REF|PROC pairs, not curve rows).
+Geometry record hash 22c8127 is SUPERSEDED by this ordered rework (§B8
+lane; new record hash at landing). Evidence: shots/critic-challenger2/
+REF|PROC pairs at the rework tree (the verdict's decisive views are
+left/frontleft/front). §B5 audit at the rework tree: stranded 0 /
+abutting 1 / dangling 0 — the abutting flag is the CREST-region driver
+hatch/periscope inside the coarse turret AABB (the real CR2's driver
+station sits under the turret-front overhang; audit-artifact per the
+adjudication tiers, equipment stays hull-side). Track-clip --exact
+0/0 + 0/0; standard-check contig 0, census mg1+5d.
+HONEST RESIDUAL for the acceptance critic: the wheels are now
+geometrically exposed per order 1 (pair: the wheel run reads below the
+0.58 skirt line) but they read DARK vs the print's pale Hydrogas rims —
+a MATERIAL tone item (§C tone lane), not geometry; flagged as the
+follow-up if the §B8 re-adjudication still reads "buried".
+§C.1 winding at the rework tree: mode-1 "1 reversed / 34 px top
+deficit" (flag tier) — the one reversed piece is in the reworked bow/
+crest slab set; mode-2 HARD 2858 candidate px, top attribution
+rig_hull/mesh#26 (1733 px) at ring height = the rear-deck kit
+(bins/bags) which is REAL hull deck gear behind the bustle (correctly
+static under yaw; §B5 stranded reads 0 — the DECK-AT-RING per-pixel
+gate names hull-attributed content, not turret-borne mass).
+ADJUDICATION: legitimate-deck-gear, no re-parent; the 34-px top-view
+winding deficit is the standing next-round order (find + re-order the
+one reversed slab).
+
 ## 2026-08-06 FLEET MUZZLE-BORE + §C.1 WINDING SWEEP (fleet-sweep one-liner)
 - §B3.1 bore on the L30 tube (len 6.29); boot collar+seam mantlet verified; §C.1 0 reversed; F-vs-D 0 (owner-named line CLEAN); gate HELD x2 EXACT (broken row pre-existing - fresh-oracle re-baseline is the queued orchestrator item); hash not frozen; mantlet mass verified per MANTLETS-MANDATORY (db9168c). Mechanism: kit.js muzzleBore shadow-named furniture + orientedSlab guard (3fca39b / 1017339); end-on+quarter crops shots/muzzle-sweep/{before,after}/.

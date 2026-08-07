@@ -774,3 +774,10 @@ PROVENANCE LAW (reinforced by this wave): embedded asset.extras is a
 STARTING point, never proof — the live source page (description, tags,
 uploader history) is the authority. Three of these eight failed that
 check. Owner ruling on scope: the clean ones are measurement/influence references for our own procedural builds ("its just influences were making our own high quality models off of") — never shipped as game assets. The type_89_ifv_war_thunder.glb drop remains REFUSED (commercial-game extraction; THE ONE ABSOLUTE RULE) — the Type 89 builds from photos.
+
+## Challenger 3 oracle (2026-08-06, owner drop; NEW VEHICLE)
+- community/challenger_3.glb — "Challenger 3" by 42manako
+  (https://sketchfab.com/42manako), CC-BY-NC-4.0: NC = LOCAL-ONLY
+  QUARANTINE class per this file's standing rule — measurement/influence
+  reference for the challenger_3 procedural build only; never ships, the
+  playable is always the procedural model.

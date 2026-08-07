@@ -173,6 +173,23 @@ const LOCAL_REFERENCE_OVERRIDES = {
       turretFollowers:'^Object_3$',
     },
   },
+  challenger_3: {
+    // "Challenger 3" by 42manako — CC-BY-NC-4.0: LOCAL-ONLY QUARANTINE
+    // class (ATTRIBUTION precedent; NC = measurement/influence only, never
+    // ships). Registered 2026-08-06 for the NEW challenger_3 build (owner
+    // greenlight) — mirrors the vertex-extract REG row. Authored FBX
+    // hierarchy: the 'turret' subtree carries smoke pods/trophy/RCWS/
+    // antennas/mount; gun = 'weapon' under 'mount' (anchored regex skips
+    // the RWS 'weapon2' + coax 'weapon3'). Raw nose +x -> yawOffset -90
+    // (leclerc convention). Print stylization vs the CR2-anchor dims:
+    // hull -4.4%, overall -10.1% (short L55A1 run), body height +19.8%.
+    source:'glb',
+    glb:{
+      path:'/models/tanks/community/challenger_3.glb',
+      turretNode:'^turret$', gunNode:'^weapon$', autoPivot:true,
+      yawOffset:-Math.PI/2,
+    },
+  },
   // Same quarantine-oracle pattern as ariete: the NullOps Type 74 is
   // PERSONAL-USE (docs/ATTRIBUTION.md) and never ships as a MODEL_SOURCE;
   // the roster's type74 spec + procedural build live in profiles/misc.js.

@@ -128,6 +128,12 @@ const CRITIC_REFERENCE_OVERRIDES = {
   t72b3: { source:'glb', glb:{ path:'/models/tanks/community/t-72b3m_obr._2022.glb',
     turretNode:'^Object_14$', gunNode:'^Object_15$', autoPivot:true, yawOffset:Math.PI,
     turretFollowers:'^Object_3$' } },
+  // challenger_3 NEW VEHICLE (owner greenlight 2026-08-06): 42manako
+  // CC-BY-NC-4.0 — LOCAL-ONLY QUARANTINE oracle, never ships; mirrors the
+  // fidelity harness row (gun 'weapon' under 'mount'; anchored regex
+  // skips weapon2/weapon3; raw nose +x).
+  challenger_3: { source:'glb', glb:{ path:'/models/tanks/community/challenger_3.glb',
+    turretNode:'^turret$', gunNode:'^weapon$', autoPivot:true, yawOffset:-Math.PI/2 } },
 };
 // graduates carry a truthy {source:'procedural'} marker, and createTank
 // reads MODEL_SOURCE internally — checking alone is not enough: INJECT the
