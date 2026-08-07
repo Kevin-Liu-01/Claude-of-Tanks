@@ -1000,3 +1000,18 @@ rows on the five CROWS graduates (m1a1 a04c8c74, m1a1ha f1aaf80,
 m1a2_tejas 89c9f260, m1a2 bbae99a4, m1a2_sepv2 dda7bcf4) — every
 touched graduate gates x2, re-certs, re-freezes per protocol. The
 registration-source round + remaining queue PARK behind this focus.
+
+## 5.08 OWNER ORDER (2026-08-07, garage screenshot): "abramsX looks
+terrible, begin dedicating work on improving this now to match our
+actual abramsx model" — a DEDICATED abramsx §B8 round vs the local
+abramsx-mortavex.glb, queued to spawn THE MOMENT the SEP lane lands
+(abrams.js single-writer; the live agent was scoped down to the
+XM914 yaw only). Screenshot verdicts to carry into the brief: the
+side reads as ONE full-height slab wall (wheels invisible at garage
+angles — the 49.4 round's skirt work is NOT reading; §B8.1 gate-1
+FAIL at the acid level), the hull side is a monolithic flat panel,
+furniture is sparse (one floating-reading jerry can at the rear
+corner), the turret wedge reads generic rather than the AbramsX
+faceted low-profile shroud. Current state: 49.4 | 56/49.4/68.6/76.4/
+100/100, hash 9c059ce0, whips PARKED (autoPivot crater — abramsx.md).
+The round must close the OWNER's look, not just the number.
