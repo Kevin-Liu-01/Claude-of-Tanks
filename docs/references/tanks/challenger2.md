@@ -215,3 +215,86 @@ one reversed slab).
 
 ## 2026-08-06 FLEET MUZZLE-BORE + §C.1 WINDING SWEEP (fleet-sweep one-liner)
 - §B3.1 bore on the L30 tube (len 6.29); boot collar+seam mantlet verified; §C.1 0 reversed; F-vs-D 0 (owner-named line CLEAN); gate HELD x2 EXACT (broken row pre-existing - fresh-oracle re-baseline is the queued orchestrator item); hash not frozen; mantlet mass verified per MANTLETS-MANDATORY (db9168c). Mechanism: kit.js muzzleBore shadow-named furniture + orientedSlab guard (3fca39b / 1017339); end-on+quarter crops shots/muzzle-sweep/{before,after}/.
+
+## FINISH r3 (2026-08-06/07 punch list 3 — owner order "finish the
+## challenger 2"; challenger lane, DELIVERED-PENDING-CRITIC per §B8)
+Baseline (post c48bf50 datum 3.04, x2): hull 0 / whole 0 / turret 0 /
+stations 13.4 / dims 62 / floaters 100.
+**FINAL (x2 bit-identical): hull 0 / whole 0 / turret 0 / stations 19.8 /
+dims 100 / floaters 100** — plus plan_hull 43.5 -> 66.3 and plan_whole
+53.7 -> 55.8 inside the zeroed hull/whole components (the side/front
+rows stay print-capped; evidence below).
+
+### What moved (buildChallenger2 / modern1.js)
+1. **dims 62 -> 100:** the p95 read was 2.87 (the VS580 head at 2.90
+   across ~3 columns; whatsat census attributed the tall set: whip 3.216,
+   GPMG 2.75, pano 2.89). The VS580 mast is RAISED to the published
+   sensor line: pedestal column +0.26, drum at CTH+0.40, armored head
+   cap top = 1.49 local = **3.04 published**, z-sized 0.36 so THREE side
+   columns carry the p95 (grid-phase-safe); whips spike above within the
+   <=4-column budget aligned with the print's own 3.86/4.0 spikes.
+   heightM reads 3.01 (0.85%, grace) -> dims 100 with hullLengthM 8.37
+   (+0.44%) / overall 11.46 / width 3.51 all in grace.
+2. **plan_hull +22.8:** the print's FULL-WIDTH skirt faces span only
+   z -1.23..3.13 (gate frame) — the rear two bays + their handles/seams
+   RECESS 25 mm off the anchor face (the §D width anchor stays on the
+   front bays + stepped panel at 1.76 EXACT); the front panel is
+   shortened to the print's 3.13 line (raked lead edge 2.98 -> 3.12);
+   the mudguards pull to 1.735; the -2.18 scallop tab tucks with the
+   rear bays; tabs pull to 1.7525 max (AA-sliver law).
+3. **stations 13.4 -> 19.8:** the pano raise lifts the turret-zone
+   station tops (st8 12.2 -> 5.2 topPct). REGISTRATION-ANCHOR LAW
+   (measured mid-round): tucking the rear grille/louvre faces off
+   -4.145/-4.16 dropped the rear BODY column -> hullLengthM 8.37 -> 8.22
+   and dAlong 1.368 -> 1.443, re-phasing stations to 0. REVERTED
+   exactly; the rear plate kit is the length anchor — never tuck it.
+4. **§C.1 winding:** the standing r2 "1 reversed / 34 px top deficit"
+   is CLOSED — winding-audit pinned it to the crest back-slope slab
+   (modern1.js:756, signed vol -0.081, inside-out): its rings carried
+   the inverted y-order vs the glacis slab convention; re-ordered.
+5. **§B8.1 native-tone wheels:** tireHex '#565c50' — the acceptance
+   verdict's "wheels buried/dark" residual; 6 Hydrogas wheels now read
+   through the scallops at native tone.
+
+### §E PRINT-CAP EVIDENCE (why side/front/turret rows honestly stay 0)
+The buh print is a +28.8%-tall stylization with a MATERIAL-based node
+split (packet ORACLE STATE): measured bodyHeightM 3.208 vs the real
+2.49 roof / 3.04 sensor datum; hull -1.7% / overall -4.3%.
+- side rows: 249 print side columns read >2.8 m tall (z -3.32..0.85 —
+  its hull-partition shell carries a 3.14-3.21 superstructure over ~12
+  mid-hull columns where the real CR2 deck is 1.55): side_hull mean
+  11.38% at dy 0.432 — matching it means building a 3.2-tall hull.
+- front rows: the same tall shell reads 3.13-3.19 across x 0.57..1.11
+  (front_whole/hull mean ~9% at dy 0.51 — the print floats 0.5 high).
+- turret rows: the turret node carries full-length fittings (z -4.56..
+  +6.60, 3225 interpen verts, worst turret_plan err 2.58 m at z -1.51)
+  — the turret masks are structurally polluted.
+- stations: print whole-model station tops (extract table) run 2.38-3.98
+  across st2-st10 vs the real 1.55 deck / 2.49 roof — trimmed topPct
+  mean ~7.6% is the stylization floor; ceiling ≈ 20-25 with everything
+  else perfect. Recommendation for the orchestrator: the filed §E
+  height-normalize batch (leo2a5 band-flatten precedent) is the only
+  honest route to non-zero side/front rows; alternatively a
+  turretFollowers-style hull-partition split if the node census can
+  separate the 3.2-tall shell from the true hull.
+
+### Round-close battery (final tree)
+track-clip --exact 0/0 + 0/0; turret-parent stranded 0 / abutting 1
+(the KNOWN crest driver-station audit-artifact, adjudicated r2) /
+dangling 0; winding-audit mode-1 0 reversed 0 deficit (post-fix),
+mode-2 HARD flag = the rear-deck kit behind the bustle (legitimate-
+deck-gear adjudication banked in r2 — correctly static under yaw;
+coincidencePx-dominated); standard-check contig 0, census mg1+5d;
+hashgeo x2 identical (see report). §B8 pairs re-rendered:
+shots/critic-challenger2/. DELIVERED-PENDING-CRITIC.
+
+### FINAL GATE LINE (x2 bit-identical, FINISH r3 tree)
+hull 0 / whole 0 / turret 0 / stations 19.8 / dims 100 / floaters 100
+(plan_hull 66.3 / plan_whole 55.8 inside the components). tmp-hashgeo
+x2: **b4e51df8** (54 meshes / 69637 verts) — record hash, NOT a
+freeze. Round-close: track-clip --exact 0/0 + 0/0; turret-parent
+stranded 0 / abutting 1 (the banked crest audit-artifact) / dangling
+0; winding-audit mode-1 rev 0 (the r2 standing reversed crest slab
+CLOSED), mode-2 HARD = the banked rear-deck-kit legitimate-deck-gear
+adjudication (coincidencePx-dominated, correctly static); standard-
+check contig 0 census mg1+5d; npm test 166 + track-geometry PASS.

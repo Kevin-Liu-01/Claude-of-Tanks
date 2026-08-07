@@ -128,3 +128,101 @@ until pinned on the rear plate.
 > override maps + the vertex-extract REG 2026-08-06 at the owner's
 > challenger_3 greenlight. Extract: docs/references/vertex/
 > challenger_3.json.
+
+## FINISH r2 (2026-08-06/07 punch list 3 — owner order "finish the
+## challenger 3"; challenger lane, DELIVERED-PENDING-CRITIC per §B8)
+Baseline (post c48bf50 datums, x2): hull 42.4 / whole 41.6 / turret 54.5 /
+stations 52.4 / dims 66 / floaters 100 — min 41.6.
+**FINAL (x2 bit-identical): hull 67.4 / whole 61.4 / turret 71.1 /
+stations 77.9 / dims 99.8 / floaters 100 — min 61.4.** Every component
++15 or better (+25.0 / +19.8 / +16.6 / +25.5 / +33.8).
+
+### What moved (all in buildChallenger3 / modern1.js; authored from
+### tmp-moderns-worldtrace ABSOLUTE world columns, 3 trace rounds)
+1. **dims 66 -> 99.8:** the p95 carrier was the RWS M2 fitting topping
+   3.13w (whatsat AABB census; the sensor datum is 2.95). RWS re-derived
+   onto the print's own RCWS plateau (side ref 2.96-3.00 tops at z_w
+   0.55..1.15): mount body top 2.85, sensor head 2.96, M2 seat C3H+0.22
+   (receiver ~2.93-2.97), level-ish barrel to z_w ~1.9. p95 now rides the
+   plateau at 2.95 (0.07-0.16% err across runs).
+2. **Stern floor (side_hull +25):** belly ends -3.15, steep boat-tail
+   rise 0.42@-3.15 -> 0.97@-3.38, rising underside wedge 0.97 -> 1.19@
+   -4.05 (ref line 0.97..1.19), upper plate raised to 0.98..1.38.
+3. **Stern plan (plan rows +21..+25):** upper rear plate SPLIT — outer
+   anchor posts x 0.75..1.28 keep the face -4.125 (the hullLengthM/dAlong
+   BODY column; REGISTRATION-ANCHOR law held: dAlong -0.065 all round),
+   center plate recessed to -3.96 (print center-rear line) carrying
+   grille/louvres/convoy/soot; stern deck slab tapers to ±1.30 ending at
+   the -3.94 plate line; tapered stern walls 1.63@-3.55 -> 1.28@-3.92.
+4. **PLAN-GRID LAW (new, banked):** plan-view trace columns pitch 0.13 m
+   (SQUARE camera over the z-span), not the 0.04 width-pitch — the ±1.72
+   column window spans 1.655..1.785. The print keeps its band walls
+   inside 1.63 there (only skirts reach further): outer band walls pulled
+   1.66 -> 1.61 (faces 1.59..1.63), sponson floors end x 1.63. This also
+   fixed the FRONT ±1.61 columns (walls now own them at bot 1.02 vs the
+   old track-band AA reads).
+5. **Turret tail step (T rows +16.6/+27.3 -> plan 81.8):** the print's
+   tail zone tops at 0.70-0.74 local (side ref 2.25-2.29w at z_w
+   -1.72..-1.98) — main C3H body ends -2.87 local, tail steps DOWN to a
+   0.72 roof; chamfer strakes re-derived from the print's plan chamfer
+   line (x 1.23@-2.13w -> 1.50@-1.86w); bustle rack compacted to the
+   tail face (rails z_w -2.135; the old -3.62 rails were 3 only-proc
+   cover columns); in-basket stowage deleted (print-clean tail).
+6. **Trophy APS re-derived:** faces out to x 1.74 hanging at the roof
+   line (plan ref [0.95,-1.70]w at |x| 1.6; front ref tops 2.44-2.46 at
+   |x| 1.62-1.74), z_w -1.685..0.935, vent lines + fore/aft radars.
+7. **Whips = the print's antenna columns:** its 5.19-5.21w spike lights
+   ONE side column (z_w -1.46) and TWO front columns each side (x 0.91 +
+   0.97) — a1 h 1.75 @ (-0.90, -1.42w), a2 h 1.60 @ (0.92, -1.47w), a3
+   h 1.45 @ (0.965, -1.40w), rake 0 (antennaWhip rake is an X-LEAN —
+   banked: a raked whip sweeps 2-3 front columns). All three share the
+   side column under the ref spike; side p95 stays on the RWS plateau
+   (2 cols above the 2.95 datum, <=4 budget, ref-spike aligned).
+8. **§B3.1 MANTLET + fat sleeve:** flat-faced armored mantlet block
+   (0.56 x 0.44, face z_w 2.51, pitches with the gun) + chin shadow seam
+   + boot collar ahead; FAT root thermal sleeve r 0.185 z_w 2.60..3.55
+   (print plan gun columns) + clamp/step rings. Muzzle bore unchanged
+   (shadow-named kit.js mechanism).
+9. **§B8.1 native-tone wheels:** tireHex '#565c50' (merkava r12
+   mechanism) — the acceptance-flagged "wheels render DARK vs the
+   print's pale Hydrogas rims" §C tone item.
+10. **Gear:** sprocket re-seated z -2.66 / y 0.92 (wrap far -3.145
+   clears the -3.26 stern column whose ref floor is 1.13; orbit top
+   1.405 = sponson floor 1.475 - 0.07). Track-clip re-verified (below).
+
+### Certified residuals / caps (documented, not chased)
+- SHORT-GUN COVER CAP: 7 only-proc muzzle columns z 6.53..7.30 (print
+  overall -10.1%) = side_whole cover 5.26% (~-7.9 pts) + plan_whole
+  center columns. §E tube-pin normalize FILED for the orchestrator
+  (same class as the t14 plan): z-warp knee at the print's gun bearing,
+  scale to +7.335-frame parity; until it lands these columns are the
+  certified cap (hull-anchored registration caps wholeCurves + the
+  turret-row tube columns only).
+- -4.17 only-proc column = the hullLengthM anchor (print hull -4.4%
+  short; dims sovereign).
+- §H.4 residual (re-certified): the print's elevated Boxer 30 mm barrel
+  columns (ref 2.87w tops at z_w 2.0..2.67, ~5 cols x ~0.35) — the UK
+  M2 cannot reach them; grammar law outranks the rows.
+- Print's twin 5.21w antennas: front columns ±0.91/±0.97 read my 3.9-4.3
+  whip tops vs 5.21 (~0.5 x 4 cols) — real whips at real height; the
+  print's 2.2 m antennas are its own fit.
+- AA-TEETER: the ±1.62 front columns sit on the ch3 shoe envelope edge
+  (x 1.592 = window boundary) — coin-flip reads, not orders.
+- st4 station (print antenna spike) 17.5 + st11 (print RCWS/barrel zone)
+  11.4 topPct — both inside the 2-worst trim.
+
+### Round-close battery (final tree; details in the round report)
+track-clip --exact / turret-parent / winding-audit both modes /
+standard-check / hashgeo x2 — run at round close (see report). §B8
+REF|PROC pairs re-rendered at the final tree: shots/critic-challenger_3/.
+Self-reads never accept (§B8): DELIVERED-PENDING-CRITIC.
+
+### FINAL GATE LINE (x2 bit-identical, FINISH r2 tree)
+hull 67.4 / whole 61.4 / turret 71.1 / stations 77.9 / dims 99.8 /
+floaters 100 — min 61.4. tmp-hashgeo x2: **17bb2528** (54 meshes /
+56401 verts) — record hash, NOT a freeze (no dual gate). Round-close:
+track-clip --exact 0/0 + 0/0; turret-parent 0/0/0; winding-audit
+mode-1 rev 0 deficit 0 (the r1 standing '2 latent reversed' CLOSED:
+the stern deck slab ring order + the lower-bow frustum, both
+re-authored in the glacis slab convention), mode-2 clean; standard-
+check contig 0 census mg1+6d; npm test 166 + track-geometry PASS.
