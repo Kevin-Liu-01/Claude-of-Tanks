@@ -1304,3 +1304,20 @@ flush, roofline RWS/drums/pods within the cap + the dims-datum
 extension work order, tone-honest pepperpot, tray lashings + stern
 bays. FIX ROUND QUEUED behind the live SEP-on-tejas agent
 (abrams.js single-writer).
+
+## 5.28 FRANCE ROUND RATIFIED: 4/4 PASS 9.0 (independent critic;
+sheets shots/critic-france/). LECLERC front-slope complaint DEAD-
+MEASURED (brow strip 2.13w REF=PROC, ~9-deg raked face parity, the
+silhouette steps in raw pixels; M2 forward; equipment connected) —
+the owner's "triumph" state holds under fresh eyes; doc true-up
+banked (the packet's commander-well claim isn't in the bytes — flat
+roof + hatch ring reads; priced in ratified residuals). AMX30/B2
+CORRECT-WAY-ROUND proven four ways + full identity incl the visible
+20mm M693; §E re-bake lane proceeds. TYPE90 mantlet + gun-mid PASS.
+§B7 TYPE90 TURRET RE-PROPORTION — RATIFIED BY THIS RULING (packet-
+recommended + critic-seconded): the print is REF-WRONG on turret
+height (oracle roof 1.90 vs the real 2.34); the REAL 2.34 governs;
+per-column caps document against the print; the finish round may
+spend those ~30 columns. Follow-up round SPAWNED (misc.js free).
+Leclerc chirality-anchor observation banked (signed-x top map as the
+fleet mirror-scare test).
