@@ -623,3 +623,69 @@ grace-line seat. Audits: standard-check clip 0/0, holes 0, mg1+3d;
 winding m1 clean, m2 clean; turret-parent cable flag = §B5 artifact
 (pre-adjudicated). Trio-wide track-band chunky-vs-smooth note stands
 (shared-material lane, report-only).
+
+## T90-CONTINUATION round (2026-08-07, §5.10 owner order "keep working on them"; T5H markers): hull 61.2 -> 75.8, min 58.2 -> 75.8
+
+Gate x2 IDENTICAL: min 75.8 | hull 75.8 / whole 77.4 / turret 81.4 /
+stations 86.9 / dims 100 / floaters 100 (baseline 58.2 | 61.2/58.2/81.0/
+83.2/100/100 — hull +14.6, whole +19.2, turret +0.4, stations +3.7; the
+approved §5.0 turret read UNTOUCHED per the mid-round owner order).
+Geometry hash 55509794 -> d98f27dc (0b997c5c mid-round; the SS-B4 closure
+below moved it). Evidence: shots/t90cont/t90sm-before/ + t90sm-after-hull/
++ t90sm-final/ (14-view pairs at the record hash).
+
+WHAT MOVED IT (fresh vertex-workorder absolute columns, worst-first):
+1. TAIL RE-SEAT (plan_hull gold mine, ~10 cols x 0.2-0.3): today's
+   registered plan staircase overrules the r12 x-seats — ref rear is
+   -2.88..-2.99 at |x|<=0.5 (EMPTY center: the r12 racks/towrope/tray at
+   x 0.29..0.48 painted ten center cols to -3.40..-3.46), racks at the
+   ±0.806/0.833 cols. Racks moved OUT to x 0.80..0.87, tray+coil deleted,
+   log forward to the -2.92 transom, outer pair widened to solidly own
+   the ±1.05 window, corner bins/flaps to the -3.15 teeter compromise.
+   A SECOND inner pair at ±0.38 (rear -3.31) landed under today's frame
+   (the ref tail carries multiple rack modules — both pairs 20mm+ clear
+   of their window boundaries).
+2. BOW DECK LINE (side rows, 7+ cols x 0.11-0.19): the i=10 fender lip's
+   flat 1.425 top read +0.14 over the ref's falling 1.202..1.256 line —
+   run ends at z 2.455; flaps re-banded 1.075..1.205 (ref 3.05/3.16-col
+   tops 1.202; §B4 floor held over the 1.059 wrap arc); fender bridge
+   slimmed to top 1.12 (§B2 base->tip link kept); lips lowered to the
+   ref's own 1.371 fender line (top 1.3725).
+3. BELLY 0.30 -> 0.44/0.45 (front-view floor): ref front bottoms read
+   0.447..0.489 where the flat 0.30 belly printed 0.10-0.15 low across
+   five+ center cols. Tracks own side bottoms; plan interior (§B2: real
+   metal at the real height, not a filler slab).
+4. CONTACT PINS (§B6 ramps to today's ref lines): contactZF 2.45 /
+   contactZR -1.88 (front ramp read 0.08 low over six cols; ground ran
+   to -2.19 where the ref lifts at 0.218).
+5. DIMS RE-PIN: the tail-extreme trim (sliver -3.48 -> -3.435, an
+   ONLY-PROC err-9 col in today's frame) re-phased the side grid and the
+   pano-cap 2.2525 grace seat sampled 2.2532 (dims 99.7 x2 measured) —
+   cap to 2.245; the left plateau bin's 2.25 top + boundary AA was the
+   second driver (top -> 2.245). hullLengthM body anchors held: rack B
+   band 0.38 solid at the -3.39 col, prong tips 3.465 (front body).
+LAW CASES: the r11-decoded LEFT 1.665..1.705 inboard rubber run (its
+0.447@-1.674 front col) was decoded but never authored — landed left-only
+(print asym); first cut's -1.71 edge bled 12mm into the -1.717 window
+(whole err 0.281) — 2px margins. RIGHT upper-course extension REVERTED
+asym (ref +1.898 col is the bare 0.893..0.936 sliver; left carries
+0.574..1.308 — print skew). The T4S outer stow panel's 1.86 face
+AA-kissed the re-phased ±1.89 plan window (err 0.965) — face to 1.8525.
+§B2: the lip-run trim opened a 16-cell/side top-down pocket (tub/skirt/
+end-cap ring) — closed by a LOW lip segment ON the ref's own 1.202-1.256
+bow deck line (holes 16 -> 0). Audits: standard-check clip 0/0, holes 0,
+mg1+3d; npm test green.
+SS-B4 BLIND-SPOT CLOSED (exact audit at round close): rear shoe 24 vox at
+band 0 (the m1a1ha class) — the wrap shoes rode 23mm INSIDE the 1.18
+track-bay roof at z -2.44..-2.40 (full width) + the flap bracket's -2.72
+front sat in the sprocket wrap-shoe envelope. Sprocket window roof
+1.18 -> 1.21 (interior; deck 1.40-1.45 above), bracket/bin/flap fronts
+pulled to -2.95..-2.96. Final exact audit: band 0/0 + shoe 0/0 CLEAN
+(gate 75.8 x2 held through the closure; winding m1 0/0/11px, m2 CLEAN 0
+candidates).
+RESIDUALS (honest): AA-teeter front-band family (certified ±2-4 var
+class) still binds hull/whole; the ±1.68..1.90 col rears teeter between
+-3.35/-3.02 phases (compromise-seated at -3.15); prong-tip side col
+(3.49 ONLY-PROC, err 9 x1) and the fat 0.34 tip band at 3.396 (ref
+0.16 sliver) are the §D dims-vs-curve trade carrying hullLengthM's
+front body column — priced, kept.

@@ -485,7 +485,7 @@ function ruFlaps(P, o) {
 // curve targets kept wherever dims allow: deck 1.37-1.41, bustle top 2.02
 // z -1.7..-1.05, crown plateau pushed to the dims ceiling, wedges to +2.3.
 function buildT90A(P) {
-  const { box, cylX, cylY, cylZ, buildRunningGear, stowage } = KIT;
+  const { box, cylX, cylY, cylZ, buildRunningGear, stowage, polyTurret } = KIT;
   // VERTEX ROUND r2 (batch-12 oracle normalized to published dims): re-anchor
   // to docs/references/vertex/t90a.json — hull mask +-3.43 (6.865), deck
   // plateau 1.29-1.37 with the rear stack bumps 1.44-1.49 @ -3.16..-3.32,
@@ -594,7 +594,7 @@ function buildT90A(P) {
     // present)"): r 0.112 -> 0.145 so the pair reads as fuel drums at
     // hero distance — center dropped so the TOP stays on the certified
     // 1.47 line (slab-i1 law), bottoms stay inside the rack band.
-    P.add('hull', cylZ(0.145, 0.46, 14), s * 0.72, 1.325, -3.19);
+    P.add('hull', cylZ(0.145, 0.46, 14), s * 0.72, 1.325, -3.1775);  // T5F-c: rear -3.4075 — 12mm clear of the -3.419 side window (the -3.42 face teeter-read the -3.474 col at 1.47 where the ref band is the rack sliver)
     P.add('hullDark', cylZ(0.149, 0.03, 14), s * 0.72, 1.325, -2.975);
     P.add('hullDark', box(0.05, 0.14, 0.05), s * 0.72, 1.325, -3.18);
     // §B3 (prism sweep 2026-08-06): drum straps — mid cinch ring (+2 mm,
@@ -670,27 +670,43 @@ function buildT90A(P) {
     P.add('hullDark', box(0.04, 0.42, 0.03), s * 1.859, 0.95, 2.15 - i * 0.55);
   }
 
-  // ---- turret (T4A REBUILD, verdict §4.999991 t90a FAIL 5.5 gate-3 kill:
-  // "TURRET REBUILD to the cast dome — REUSE the vladimir build's dome
-  // loft; plan-round, sparse roof (cupola ring + sight + 2-3 boxes), kill
-  // the box grid") ----
+  // ---- turret (T5F WELDED FAMILY REBASE, owner order 2026-08-07: "the
+  // t90a and t90a vladimir need to be based off of those [t90sm/t90m]
+  // turrets, with their own designs and attachments and era and other
+  // equipment ofc") ----
+  // The T4A cast dome is REPLACED by the family welded wedge (t90sm/t90m
+  // grammar): faceted prism whose nose face holds the certified 1.92w
+  // plan-front line, cheek facets sweep back from the nose in plan (the
+  // owner's '<' chevron read, doubled by the K-5 banks riding them),
+  // shoulder at the dome's own ±1.36 max width, welded rear staircase at
+  // the dome's certified -1.37w rear. Every certified kit piece stays at
+  // its seat: K-5 clamshell chevron + apex pads, red Shtora eyes, ESSA
+  // housing, cupola + Kord, flank bins, bustle band. `rings` stays as the
+  // kit-seat profile (eraRuCheeks/ruShtora/decal seat math) — only the
+  // rendered shell changes. GATE CONSEQUENCE (owner-taste class, §B7
+  // mechanics): the xarchenko print carries a CAST dome — turret-row
+  // deltas vs the print are documented in the packet as the owner-look
+  // cap, never chased back toward the cast read.
   P.turretG.position.set(0, 1.335, 0.459);
-  // Cast dome: the vladimir dome's fuller ring curve mapped onto this
-  // build's certified base plan — base pair + apex byte-kept (plan
-  // footprint and the 1.81w center-dip line hold), the shoulder rolls
-  // early like the cast dome instead of the old near-vertical wall;
-  // curved-normal shell (t72b3m meshDomeCurved precedent) for the cast
-  // luminance read. The 15-box roof-tier grid is DELETED.
   const rings = [[1.30, -0.022], [1.36, 0.097], [1.29, 0.30], [1.10, 0.385], [0.82, 0.435], [0.48, 0.462], [0.18, 0.472], [0.02, 0.475]];
-  meshDomeCurved(P, rings, 1.21, 0, -0.18, { capR: 2.5 });
+  P.add('turret', polyTurret([
+    [-0.22, 1.44], [0.22, 1.44],
+    [0.86, 0.86], [1.20, 0.44], [1.36, 0.10],
+    [1.36, -0.60], [1.30, -1.10],
+    [1.09, -1.55], [0.85, -1.79], [-0.85, -1.79], [-1.09, -1.55],
+    [-1.30, -1.10], [-1.36, -0.60], [-1.36, 0.10],
+    [-1.20, 0.44], [-0.86, 0.86],
+  ], 0.497, 1.0, 0.80), 0, -0.022, 0);
+  // family crown plate (t90sm center-crown tell)
+  P.add('turret', box(1.10, 0.055, 0.95), 0, 0.500, -0.42);
   // TKN/cross-wind spike pair FIRST in the bucket (heightM p95 anchors +
   // the r12 merge-order law). T4A: x narrowed to the +0.31 column family
   // (the old 0.36 reach lit the +0.367 window at 2.286 where the ref
   // reads its 2.148 TKN line — that column now belongs to the cupola
   // sight head below); spike A z-deepened so the ref's continuous
   // 2.257-2.284 side band keeps a carrier across the -0.787w column.
-  P.add('turret', box(0.065, 0.42, 0.13), 0.3025, 0.72, -1.114);
-  P.add('turret', box(0.065, 0.44, 0.065), 0.3025, 0.735, -1.3465);
+  P.add('turret', box(0.065, 0.465, 0.13), 0.3025, 0.6975, -1.114);   // T5F: tops byte-held (0.93/0.955 p95 anchors); bases 0.465/0.46 seat on the 0.475 prism roof
+  P.add('turret', box(0.065, 0.49, 0.065), 0.3025, 0.71, -1.3465);
   P.add('turret', box(0.065, 0.10, 0.10), 0.3025, 0.845, -0.96);
   // r10 k5: clamshell leaves forward + long (ref plan front 2.48-2.53 at
   // |x| 0.7-0.9, faces 1.46@1.36); bottoms hold the 1.42 line
@@ -728,9 +744,9 @@ function buildT90A(P) {
     // leaf body — yawed deepening was rejected because rotated corners
     // swing into the guarded ±1.008/±1.088 plan windows; these stay
     // 10mm+ clear and are interior to the pads' own plan fronts.
-    P.add('turret', box(0.28, 0.24, 0.62), s2 * 0.70, 0.24, 1.45);
-    P.add('turret', box(0.10, 0.20, 0.50), s2 * 0.99, 0.26, 1.44);
-    P.add('turret', box(0.20, 0.22, 0.30), s2 * 0.52, 0.34, 1.44);                            // eye stalks (skin 1.275L -> eye rear 1.59L)
+    P.add('turret', box(0.28, 0.24, 0.92), s2 * 0.70, 0.24, 1.30);   // T5F: under-roots deepened into the prism nose facet (the welded face at x 0.70 sits at z 0.98 local; the dome skin the 0.62-deep root seated against is gone)
+    P.add('turret', box(0.10, 0.20, 1.10), s2 * 0.99, 0.26, 1.14);
+    P.add('turret', box(0.20, 0.22, 0.56), s2 * 0.52, 0.34, 1.35);                            // eye stalks (prism facet -> eye rear 1.59L, T5F re-rooted)
   }
   ruShtora(P, p5, 0.38);  // T3A-b3: eyes raised (ref side bottoms 1.397+ at the eye cols)
   // T4A SPARSE ROOF (verdict order 1). LEFT: one segmented ESSA sight
@@ -857,7 +873,7 @@ function buildT90A(P) {
     P.add('turret', box(0.072, 0.40, 0.455), s2 * 1.446, 0.24, 0.5575);
     P.add('turret', box(0.08, 0.40, 0.267), s2 * 1.565, 0.24, 0.4635);  // T3A-b5: seg edges re-owned 2px inside their windows (A edge 1.37, B 1.482 — each was AA-painting the next col's front)
   }
-  P.add('turret', box(0.045, 0.22, 2.30), 1.6325, 0.15, -0.82);
+  P.add('turret', box(0.045, 0.22, 2.30), 1.625, 0.15, -0.82);  // T5F-c: outer face 1.6475 — the 1.655 face AA-kissed the ±1.674 front window (err 0.176); the ±1.63 col keeps 38mm coverage
   P.add('turretDark', box(0.20, 0.32, 0.03), 1.50, 0.24, 0.05);
   P.add('turret', orientedSlab(
     [-1.28, 0.02, -1.14], [-0.95, 0.02, -1.14], [-0.95, 0.02, -1.38], [-1.28, 0.02, -1.26],
@@ -926,9 +942,13 @@ function buildT90A(P) {
   muzzleBore(P, { r: 0.064, y: 0.005 });  // §B3.1 (shadow-named, mask/frame-neutral)
   P.add('gun', cylZ(0.125, 0.42, 14, 0.117), 0, 0, 2.88);   // bore-evacuator swell
   P.add('gunDark', cylZ(0.127, 0.04, 14), 0, 0, 3.09);
-  const dx = ringSkin(rings, 0.34) + 0.02;
-  P.decal('turret', 'number', P.spec.visual.number || '', 0.25, [dx, 0.30, -0.42], Math.PI / 2);
-  P.decal('turret', 'number', P.spec.visual.number || '', 0.25, [-dx, 0.30, -0.42], -Math.PI / 2);
+  // T5F-d: numbers on the VERTICAL flank-wall faces — the prism wall is
+  // side-occluded by the flank walls (render check), and the old ringSkin
+  // dome seat floats inside the welded shell (§5.04 DECAL FLOAT class).
+  // Right rides the tall wall above the outer wall's 0.26 top; both flush
+  // on existing certified faces (no new mask column).
+  P.decal('turret', 'number', P.spec.visual.number || '', 0.17, [1.616, 0.35, -0.42], Math.PI / 2);
+  P.decal('turret', 'number', P.spec.visual.number || '', 0.25, [-1.556, 0.24, -0.35], -Math.PI / 2);
   // T4A SHADOW-TONE family lift (verdict order 6; t72b3m landed recipe):
   // dark/rubber/wood slots take the shadow-olive floor — corner brackets,
   // flaps, gear-fade strips and the log stop rendering unmovable
@@ -1360,7 +1380,7 @@ function buildT54(P) {
 // met mast 3.81 @ (-0.24, -2.25), tall rear bin stack to 3.1 on the turret.
 // Tube: axis 1.92, sleeve r.105 -> 4.2, muzzle 5.15.
 function buildT90AVladimir(P) {
-  const { box, cylX, cylY, cylZ, buildRunningGear, stowage } = KIT;
+  const { box, cylX, cylY, cylZ, buildRunningGear, stowage, polyTurret } = KIT;
   // VERTEX ROUND r2 (batch-12 normalized oracle): corner-driven re-anchor to
   // docs/references/vertex/t90a_vladimir.json. AFT frame: mask -4.755..+2.10
   // (6.855 = published). Deck: tail drums 1.655-1.671 @ -4.51..-4.29, plateau
@@ -1375,7 +1395,10 @@ function buildT90AVladimir(P) {
     // dropped (ref side bots 0.831@-4.35 / 0.751@-4.03 / 0.778@-3.92 —
     // the r2 1.18@-4.31 read was the print's shadow-proxy line).
     deck: [[-4.755, 1.51], [-4.51, 1.655], [-4.29, 1.671], [-4.15, 1.50], [-3.85, 1.475], [-3.72, 1.51], [-3.05, 1.514], [-2.72, 1.66], [-2.55, 1.75], [-0.92, 1.745], [-0.86, 1.46], [0.36, 1.45], [0.77, 1.38], [1.68, 1.29]],
-    belly: [[-4.755, 1.50], [-4.61, 1.19], [-4.46, 1.10], [-4.40, 0.85], [-4.10, 0.78], [-3.90, 0.77], [-3.78, 0.57], [-2.87, 0.30], [1.22, 0.30], [1.68, 0.60]],
+    // T5H-v: flat belly raised to the ref's own 0.404..0.447 front-view
+    // floor (15+ front cols read the 0.30 line 0.11-0.15 low; tracks own
+    // side bottoms, plan interior — same class as the t90sm belly fix).
+    belly: [[-4.755, 1.50], [-4.61, 1.19], [-4.46, 1.10], [-4.40, 0.85], [-4.10, 0.78], [-3.90, 0.77], [-3.78, 0.57], [-2.87, 0.42], [1.22, 0.42], [1.68, 0.60]],
     wUp: [[-4.755, 0.90], [-4.32, 0.95], [-4.26, 1.42], [-4.10, 1.60], [-2.80, 1.60], [-2.70, 1.58], [-0.94, 1.58], [-0.82, 1.60], [1.68, 1.58]],
     wLo: [[-4.755, 0.85], [-4.32, 0.90], [-4.26, 1.00], [1.68, 1.00]],
     sponsonY: 0.90,
@@ -1489,7 +1512,11 @@ function buildT90AVladimir(P) {
     // reproduces all four within 0.04. Rear: ground ends -2.91, slope 0.5
     // to the sprocket (y 0.70 tangent fits exactly).
     sprocket: { z: -3.45, y: 0.70, r: 0.29 }, idler: { z: 1.62, y: 0.95, r: 0.26 },
-    contactZF: 1.29, contactZR: -2.91,
+    // T5H-v: contact pins re-derived to today's registered ramp lines —
+    // ref front 0.268@1.445 -> 0.939@1.981 (zero ~1.23; front wheel at
+    // 1.22 caps the takeoff) and rear 0.402@-3.598 -> 0.751@-4.027 (zero
+    // ~-3.10). The r13 1.29/-2.91 fit read 0.17-0.2 late in today's frame.
+    contactZF: 1.22, contactZR: -3.10,
     rollers: [-2.3, -0.83, 0.6].map((z) => ({ z, y: 0.86, r: 0.086 })),
     // rTAIL r13b: xc 1.46 / trackW 0.60 — the ref grounds its track band
     // out to x 1.76-1.79 (front ±1.728/1.77 cols read bot 0.011) while the
@@ -1499,6 +1526,12 @@ function buildT90AVladimir(P) {
     // reads its 0.723 skirt-lip line, and the inner face 1.16 grazed the
     // ±1.13 hub cols; 1.46±0.28 keeps the ±1.77 ground read.)
     trackW: 0.56, topY: 0.90, botY: 0.05, paintedEnds: true, coveredTop: true, arms: true,
+    // T5H-v2 (t90m PERFECTION r1 mechanism, banked in tankFactory): the
+    // ramp shoes sag rOut below the band tangent — the printed front-ramp
+    // line read 0.13-0.2 under the ref's at z 1.44..1.98 after the
+    // contact re-pin; padCornerFloor clamps the ground-run corners and
+    // padHugZ0 hugs the pads onto the band over the front wrap shoulders.
+    padCornerFloor: 0.012, padHugZ0: 1.3,
   });
   // rTAIL r13: inner wheel hubs — the ref front view reads its deep-dished
   // wheel hubs through the tub/track gap (AddOnWheel spans x 0.907..1.30,
@@ -1551,15 +1584,37 @@ function buildT90AVladimir(P) {
     P.add('hullDark', box(0.016, 0.024, 0.46), s * 1.862, 1.02, zc5);
   }
 
-  // ---- turret: dome to the normalized 2.19-2.23 roof, pano spike 2.60 ----
+  // ---- turret (T5F WELDED FAMILY REBASE, owner order 2026-08-07: "based
+  // off of those [t90sm/t90m] turrets, with their own designs and
+  // attachments and era and other equipment ofc") ----
+  // The T4V cast dome is REPLACED by the family welded wedge: faceted
+  // prism INSCRIBED in the dome's own certified plan envelope (nose face
+  // at the dome's 1.04L plan-front line, shoulder at the ±1.44 chord,
+  // welded rear staircase at the dome's -1.65w rear), crown plate at the
+  // certified 1.935w apex. Vladimir's OWN kit stays: K-5 clamshell (now
+  // chevron-yawed — the owner's '<' read), K-5 flank tile course
+  // (re-seated on the prism walls), red Shtora eyes, sight block, cupola
+  // + Kord, thinned bin tiers, '112' side numbers, mast stack. `rings`
+  // stays as the kit-seat profile. GATE CONSEQUENCE (owner-taste class,
+  // §B7 mechanics): the desirefx print carries a CAST dome — turret-row
+  // deltas vs the print are documented in the packet as the owner-look
+  // cap, never chased back toward the cast read.
   P.turretG.position.set(0, 1.50, -0.75);
-  // r13b: apex squashed 1.98 -> 1.95 (ref front center cols ±0.24..0.41
-  // read 1.892-1.914; heightM lives on the sight block, not the dome)
   const rings = [[1.38, -0.02], [1.50, 0.10], [1.35, 0.24], [1.05, 0.345], [0.72, 0.405], [0.40, 0.428], [0.15, 0.433], [0.02, 0.435]];
-  // T4V (fix-round §4.999991): curved-normal cast shell — silhouette
-  // byte-exact to the same rings (t72b3m meshDomeCurved precedent), the
-  // luminance gradient reads dome instead of conical plates.
-  meshDomeCurved(P, rings, 0.66, 0, 0.05, { capR: 2.4 });  // T3V: plan squash — ref dome front reads 0.82-1.04L at x 0.3-0.6 (mine poked 1.29L); rear -1.69w vs ref -1.64 (the K-5 ring re-seats with sz and lands ON the ref's own front line)
+  // (T5F-b: outline sharpened to LONG facets — the first 12-gon's short
+  // rear segments shaded round-ish from top; the family read needs the
+  // t90sm-class angular plan: nose face, one cheek facet per side, straight
+  // walls, clipped rear corners, flat rear. Bins/rails own the plan rear
+  // cols outboard/center, so the tighter rear is mask-free.)
+  P.add('turret', polyTurret([
+    [-0.22, 1.00], [0.22, 1.00],
+    [1.10, 0.48], [1.44, 0.02], [1.40, -0.55],
+    [1.02, -0.82], [-1.02, -0.82],
+    [-1.40, -0.55], [-1.44, 0.02], [-1.10, 0.48],
+  ], 0.415, 1.0, 0.78), 0, -0.02, 0);
+  // family crown plate at the certified apex line (front-center cols
+  // 1.892-1.914 ref; the narrow plateau reads over the prism roof)
+  P.add('turret', box(1.05, 0.04, 0.72), 0, 0.415, -0.06);
   // T4V FLOATER FIX (verdict order 1: "a green capsule hangs in empty space
   // above the roof in the front acid view — connect the mast head or
   // delete"): the z-THIN 8mm detail-bucket fin dropped from the rendered
@@ -1581,38 +1636,28 @@ function buildT90AVladimir(P) {
   // §B3.1 (prism sweep 2026-08-06): k5Seg sections the clamshell leaves
   // (flush seams), eyeKit gives the Shtora eyes their emitter grammar —
   // every certified band held (eyeKit gate HOLD 71.4 proven pre-revert).
-  const p5 = { rings, sz: 0.66, k5Len: 0.85, k5T: 0.50, k5Y: 0.02, k5H: 0.22, k5Pitch: -0.18, k5TileY: 0.14, k5Seg: 4, eyeKit: true, eyeRound: true };  // T4V: Shtora blue slits -> round red eyes (verdict order)
+  const p5 = { rings, sz: 0.66, k5Len: 0.85, k5T: 0.50, k5Y: 0.02, k5H: 0.22, k5Pitch: -0.18, k5TileY: 0.14, k5Seg: 4, k5Yaw: 0.32, eyeKit: true, eyeRound: true };  // T4V red eyes; T5F k5Yaw 0.32 — the owner's '<' chevron order (2026-08-07): the banks sweep back from the mantlet center (tangent 28.6deg + 0.32 = ~47deg arrow)
   eraRuCheeks(P, p5, 'k5');
   // T4V K-5 FLANK TILE COURSE (verdict side_turret bottoms family: ten cols
   // z_w -0.27..-1.35 read proc bottom 1.502 vs ref 1.422 — the ref hangs
   // its flank cassette course on the dome sides; my flank was bare). Tiles
   // tucked to the skin (dist inset, plan growth <=1.5cm inside the ref
   // chord zone), band y -0.078..+0.062 local = the ref's own 1.42..1.56w.
+  // T5F: tiles re-seated ON the prism wall faces (the dome-skin seats
+  // bury inside the welded shell at two of three z-stations); yaws match
+  // the local wall plane — the cheek tile joins the '<' sweep. Seams ride
+  // tile-local (xform) so they stay on the rotated face. Same certified
+  // 1.42..1.56w y-band (the verdict's side_turret bottoms family).
   for (const sF of [-1, 1]) {
-    for (const [tz, tx, tyaw] of [[0.30, 1.329, 0.20], [-0.02, 1.378, 0.02], [-0.34, 1.250, -0.28]]) {
+    for (const [tz, tx, tyaw] of [[0.30, 1.295, 0.64], [-0.02, 1.475, 0.0], [-0.34, 1.445, -0.07]]) {  // T5F-b: seats/yaws re-derived for the sharpened outline (tile3 buried 15mm inside the straighter wall)
       P.add('turretTrack', box(0.055, 0.14, 0.30), sF * tx, -0.008, tz, 0, sF * -tyaw, 0);
-      P.add('turretDark', box(0.045, 0.11, 0.016), sF * (tx + 0.004), -0.008, tz + 0.155, 0, sF * -tyaw, 0);
+      P.add('turretDark', KIT.xform(box(0.045, 0.11, 0.016), 0, 0, 0.158), sF * tx, -0.008, tz, 0, sF * -tyaw, 0);
     }
   }
-  // T3V-b2 CHEEK FRONT WALLS (§B1): the ref cast cheeks are FLAT-FRONTED in
-  // plan — 1.09L across x 0.58..0.93, 1.06L at 1.14, cliff to 0.78L at 1.22
-  // then 0.55-0.62L to 1.44 (the bare lathe fell 0.2-0.45 short on ten plan
-  // cols). Thin K-5-band walls (y 0.03..0.16L = the ref's own 1.53-1.66
-  // side band) staircased on the arc, winding-guarded.
-  for (const sw of [-1, 1]) {
-    P.add('turretTrack', orientedSlab(
-      [sw * 0.55, 0.03, 1.10], [sw * 0.95, 0.03, 1.085], [sw * 0.95, 0.03, 0.68], [sw * 0.55, 0.03, 0.78],
-      [sw * 0.55, 0.16, 1.10], [sw * 0.95, 0.16, 1.085], [sw * 0.95, 0.16, 0.68], [sw * 0.55, 0.16, 0.78]));
-    P.add('turretTrack', orientedSlab(
-      [sw * 0.95, 0.03, 1.085], [sw * 1.18, 0.03, 1.05], [sw * 1.18, 0.03, 0.55], [sw * 0.95, 0.03, 0.68],
-      [sw * 0.95, 0.16, 1.085], [sw * 1.18, 0.16, 1.05], [sw * 1.18, 0.16, 0.55], [sw * 0.95, 0.16, 0.68]));
-    P.add('turretTrack', orientedSlab(
-      [sw * 1.18, 0.03, 0.80], [sw * 1.31, 0.03, 0.74], [sw * 1.31, 0.03, 0.45], [sw * 1.18, 0.03, 0.55],
-      [sw * 1.18, 0.16, 0.80], [sw * 1.31, 0.16, 0.74], [sw * 1.31, 0.16, 0.45], [sw * 1.18, 0.16, 0.55]));
-    P.add('turretTrack', orientedSlab(
-      [sw * 1.31, 0.03, 0.72], [sw * 1.44, 0.03, 0.62], [sw * 1.44, 0.03, 0.30], [sw * 1.31, 0.03, 0.40],
-      [sw * 1.31, 0.16, 0.72], [sw * 1.44, 0.16, 0.62], [sw * 1.44, 0.16, 0.30], [sw * 1.31, 0.16, 0.40]));
-  }
+  // (T5F: the T3V flat-fronted cheek walls are DELETED — the print's cast
+  // flat-front plan read contradicts the ordered welded '<' grammar; the
+  // prism cheek facets + yawed K-5 banks own the front now. The plan cols
+  // they carried are documented in the packet as the owner-look cap.)
   ruShtora(P, p5, 0.30);
   // r12: the 2.12-2.21 roof band is the LEFT sight block (front 2.21 at
   // x -1.04; center cols read 1.90-1.94): rear 2.20 run + 2.135 front run,
@@ -1769,9 +1814,12 @@ function buildT90AVladimir(P) {
   muzzleBore(P, { r: 0.090 });  // §B3.1 (shadow-named, mask/frame-neutral)
   P.add('gun', cylZ(0.118, 0.40, 14, 0.105), 0, 0, 2.06);
   P.add('gunDark', cylZ(0.120, 0.04, 14), 0, 0, 2.27);
-  const dxV = ringSkin(rings, 0.32) + 0.02;
-  P.decal('turret', 'number', P.spec.visual.number || '', 0.25, [dxV, 0.28, -0.35], Math.PI / 2);
-  P.decal('turret', 'number', P.spec.visual.number || '', 0.25, [-dxV, 0.28, -0.35], -Math.PI / 2);
+  // T5F-d: '112' — right PINNED on the leaned prism wall (lean 0.686,
+  // clear sightline above the flank tiles); left on the tall bin wall's
+  // vertical face (the leaned wall seat washed out at board light).
+  // Both flush on existing faces (§5.04 DECAL FLOAT guard).
+  P.decal('turret', 'number', P.spec.visual.number || '', 0.25, [1.114, 0.28, -0.35], Math.PI / 2, -0.686);
+  P.decal('turret', 'number', P.spec.visual.number || '', 0.25, [-1.316, 0.50, -0.05], -Math.PI / 2);
   // T4V SHADOW-TONE family lift (verdict order 7 class; t72b3m landed
   // recipe): dark/rubber/wood slots take the shadow-olive floor so corner
   // brackets, flaps and the log never render unmovable near-black / raw
@@ -8893,10 +8941,17 @@ function buildT90SM(P) {
   // stays closed (§B2).
   loftHull(P, {
     deck: [[-2.92, 1.40], [-1.75, 1.45], [-0.45, 1.44], [1.13, 1.40], [1.99, 1.40], [2.42, 1.29], [2.85, 1.23], [3.02, 1.17]],
-    belly: [[-2.92, 0.70], [-2.07, 0.30], [2.57, 0.34], [3.02, 0.49]],
+    // T5H: belly raised to the ref's own 0.447..0.489 front-view floor
+    // (today's workorder: five center front cols read my 0.30 flat belly
+    // 0.10-0.15 low; side/plan interior — tracks own side bottoms).
+    belly: [[-2.92, 0.70], [-2.07, 0.44], [2.57, 0.45], [3.02, 0.49]],
     wUp: [[-2.92, 1.20], [-2.79, 1.60], [2.88, 1.60], [3.02, 1.55]],
     wLo: [[-2.92, 1.00], [3.02, 1.00]],
-    sponsonY: [[-2.92, 0.81], [-2.84, 1.18], [-2.06, 1.18], [-1.78, 0.81], [2.52, 0.81], [2.64, 1.15], [3.02, 1.15]],
+    // T5H-e: sprocket window roof 1.18 -> 1.21 — the exact shoe audit
+    // found the wrap shoes 23mm INSIDE the 1.18 roof at z -2.44..-2.40
+    // (full width, the m1a1ha blind-spot class: band 0 while shoes hit).
+    // Interior everywhere (deck 1.40-1.45 above; §B4 recipe).
+    sponsonY: [[-2.92, 0.81], [-2.84, 1.21], [-2.06, 1.21], [-1.78, 0.81], [2.52, 0.81], [2.64, 1.15], [3.02, 1.15]],
   });
   // r10 BOW STAIRCASE (fresh workorder): ref plan front steps 3.186-3.24 at
   // |x| 0.8..0.95 and 3.43 at |x| 1.14..1.37 ONLY — the old 0.855..1.295
@@ -8904,7 +8959,7 @@ function buildT90SM(P) {
   // missed the 1.26 col's 3.43. Faces carry ERA-block seams (§B3).
   for (const s of [-1, 1]) {
     P.add('hull', box(0.29, 0.34, 0.30), s * 0.805, 1.02, 3.06);
-    P.add('hull', box(0.46, 0.17, 0.18), s * 1.17, 1.16, 3.175);    // fender bridge base->tip (§B2; floor 1.075 — idler wrap arc 1.059, §B4)
+    P.add('hull', box(0.46, 0.045, 0.18), s * 1.17, 1.0975, 3.175);  // fender bridge base->tip (§B2) — T5H slimmed: top 1.12 (ref 3.273-col top 1.12; the 1.245 top read +0.11), floor 1.075 held over the 1.059 idler wrap arc (§B4)
     // corner prong tip extended to 3.465 (authored = world after the lip
     // true-up): the 3.46 side column's window only caught 21 mm of the old
     // 3.43 face (AA-marginal, never body) — the r11 hullLengthM 6.72
@@ -8927,31 +8982,54 @@ function buildT90SM(P) {
   // numbers re-derive before re-use): the ref -3.43 racks read at
   // |x| 0.33..0.44 with a SECOND pair at 1.10..1.21 (rear -3.26); the
   // 0.66..0.77 window is EMPTY (-2.96) and the corner rear is -3.02.
+  // T5H TAIL RE-SEAT (2026-08-07 continuation round, fresh workorder —
+  // today's registered plan staircase overrules the r12 x-seats, §D banked
+  // numbers re-derive): ref rear is -2.88..-2.99 at |x|<=0.5 (EMPTY center
+  // — the r12 0.33..0.44 rack seat + towrope coil + tray painted ten center
+  // cols to -3.40..-3.46, the row's worst family), -3.40..-3.43 at the
+  // ±0.806/0.833 cols, -3.24 at ±1.05, -3.35 at 1.27..1.38, -3.29 at
+  // 1.6..1.7. Racks move OUT to x 0.80..0.87 (20mm+ clear of both window
+  // boundaries), outer pair widens inboard to solidly own the ±1.05
+  // window, corner bins deepen to -3.33, corner flaps run to -3.28.
   for (const s of [-1, 1]) {
-    P.add('hull', box(0.185, 0.62, 0.30), s * 0.385, 1.07, -3.03);    // rack A x 0.29..0.48
-    P.add('hull', box(0.185, 0.38, 0.24), s * 0.385, 1.19, -3.31);    // rack B x 0.29..0.48, z -3.43..-3.19 (hullLengthM body)
-    P.add('hull', box(0.185, 0.08, 0.09), s * 0.385, 1.15, -3.435);   // tail sliver bar y 1.11..1.19 to -3.48
-    P.add('hullDark', box(0.15, 0.30, 0.022), s * 0.385, 1.19, -3.391); // rack end-frame plate (§B3 rail tell, flush)
-    P.add('hull', box(0.11, 0.50, 0.24), s * 1.15, 1.08, -3.14);      // outer rack pair rear -3.26 (ref -3.264 @ 1.16)
-    P.add('hull', box(0.26, 0.44, 0.30), s * 1.30, 1.10, -2.94);
-    P.add('hullDark', box(0.20, 0.022, 0.24), s * 1.30, 1.309, -2.94); // corner-bin lid seam (§B3)
+    // T5H-b inner rack pair (gate-arbitrated trial): today's registered
+    // frame reads a SECOND ref rack pair at the ±0.37..0.39 cols with
+    // rear -3.31 (proc frame) — the real MS tail carries multiple rack
+    // modules; both pairs stay 20mm+ clear of their window boundaries.
+    P.add('hull', box(0.07, 0.55, 0.26), s * 0.38, 1.10, -3.05);
+    P.add('hull', box(0.07, 0.34, 0.22), s * 0.38, 1.21, -3.20);
+    P.add('hull', box(0.07, 0.62, 0.285), s * 0.835, 1.07, -3.0275);  // rack A x 0.80..0.87 (T5H-b: rear -3.17, 13mm clear of the -3.183 window — its 0.76 bottom AA-lit the -3.238 col)
+    P.add('hull', box(0.07, 0.38, 0.20), s * 0.835, 1.19, -3.29);     // rack B rear -3.39 (T5H-b: out of the -3.455 window — the ref band there is ONLY the 1.115..1.196 sliver; hullLengthM body holds at the -3.39 col, band 0.38 solid)
+    P.add('hull', box(0.07, 0.08, 0.045), s * 0.835, 1.15, -3.4125);  // tail sliver bar y 1.11..1.19 to -3.435 (ref -3.455-col band 1.115..1.196 ref-exact)
+    P.add('hullDark', box(0.06, 0.30, 0.022), s * 0.835, 1.19, -3.37); // rack end-frame plate (§B3 rail tell; T5H-b: off the -3.40 window)
+    P.add('hull', box(0.145, 0.32, 0.20), s * 1.1325, 1.17, -3.06);   // outer rack pair x 1.06..1.205 rear -3.16 (T5H-c teeter compromise: the ±1.05..1.13 col rear reads -3.24 in one frame, -3.02 in the next; band 1.01..1.33 per the ref 1.006 line)
+    P.add('hull', box(0.26, 0.40, 0.20), s * 1.30, 1.12, -3.05);      // corner bin rear -3.15 (T5H-b teeter compromise) — T5H-e: front -2.95 / bottom 0.92 (its 0.88 bottom-front corner grazed the sprocket wrap-shoe envelope: exact-audit 18 vox)
+    P.add('hullDark', box(0.20, 0.022, 0.18), s * 1.30, 1.309, -3.03); // corner-bin lid seam (§B3)
   }
-  // towrope coil bridging the twin racks (plan center rear -3.43, ref
-  // -3.428 at |x|<=0.44; rides inside the sliver-bar side band)
-  P.add('hullDark', box(0.84, 0.05, 0.05), 0, 1.13, -3.405);
-  // rack tray floor: §B2 top-down fill for the pocket the twin racks +
-  // towrope enclose (63 cells at (0, -3.16))
-  P.add('hull', box(0.62, 0.03, 0.50), 0, 1.015, -3.17);
   // width stud INSIDE the flank-wall z-band (at z +0.27 it owned the +-1.9
   // plan front columns where the ref is rear-only, r9c)
   widthAnchor(P, 1.89, 0.90, -1.60);
   // fender lips: thin segmented shelves (prism law) at the tub edge
-  for (const s of [-1, 1]) for (let i = 0; i < 11; i++) {
-    P.add('hull', box(0.20, 0.05, 0.50), s * 1.70, 1.40, -2.70 + i * 0.545);
+  // T5H: run ends at z 2.455 (i<10) — the ref side deck line FALLS to
+  // 1.202..1.256 over z 2.5..3.0 (today's workorder: the i=10 lip's flat
+  // 1.425 top read +0.14..0.19 across seven bow columns; the loft deck
+  // 1.20..1.26 matches the ref line there ref-exact).
+  // T5H-b: lip line 1.40 -> 1.3475 (top 1.3725 = the ref's own 1.361-1.371
+  // fender line — the 1.425 top read +0.05 across the ±1.6..1.8 front
+  // family; side tops stay with the 1.44 deck plateau).
+  for (const s of [-1, 1]) for (let i = 0; i < 10; i++) {
+    P.add('hull', box(0.20, 0.05, 0.50), s * 1.70, 1.3475, -2.70 + i * 0.545);
   }
+  // T5H-d §B2: the lip-run trim opened a 16-cell top-down pocket per side
+  // (tub wall / skirt panels / end-cap ring at z 2.455..3.0) — closed by a
+  // LOW lip segment on the ref's own 1.202-1.256 bow deck line (top 1.225
+  // = the line the trim was for; standard-check holes 16 -> 0).
+  for (const s of [-1, 1]) P.add('hull', box(0.20, 0.045, 0.55), s * 1.70, 1.2025, 2.7275);
   // r10b: periY near-flush — the default deckY+0.05 periscopes topped 1.50
   // at z 2.42 where the ref nose line is 1.266 (side at=-1.03 col)
-  ruDeck(P, { deckY: 1.44, hatchZ: 2.12, gz: -1.67, grilles: 5, gw: 1.5, periY: 1.22 });
+  // T5H: hatch on the LOCAL deck line (1.36 @ z 2.12) — the deckY-seated
+  // ring printed 1.489 at the ±0.19 front cols where the ref tops 1.435.
+  ruDeck(P, { deckY: 1.44, hatchY: 1.355, hatchZ: 2.12, gz: -1.67, grilles: 5, gw: 1.5, periY: 1.22 });
   // eyeX 0.98: the default w*0.36=1.26 tori sat INSIDE the track lane and
   // the idler wrap arc (clip-audit front class) — bedded on the ±1.0 lower
   // tub face instead
@@ -8987,8 +9065,11 @@ function buildT90SM(P) {
   // is EMPTY, r12 law, so the log never reaches it); links + cable FLUSH
   // on the 1.40-1.45 deck plateau (t84 recipe).
   {
+    // T5H: log forward to z -2.90 — with the racks re-seated to x ±0.835
+    // the center plan window is the bare -2.88..-2.99 ref line; the log's
+    // old -3.18 rear owned it. Rear face -2.98 nests on the -2.92 transom.
     const log = FITTINGS.unditchingLog({ mats: P.mats, len: 0.9, r: 0.08, straps: 2, seed: 5 });
-    log.position.set(0, 1.28, -3.10);
+    log.position.set(0, 1.28, -2.90);
     P.hullG.add(log);
     const links = FITTINGS.spareTrackLinks({ mats: P.mats, links: 4, width: 0.5, seed: 7 });
     links.position.set(0.62, 1.363, 0.60);
@@ -9001,9 +9082,20 @@ function buildT90SM(P) {
   }
   // r12: flap floor to 1.08 — the 1.02 hem still crossed the wrap arc's
   // 1.05 line at the flap plane (§B4 exact-audit residual)
-  ruFlaps(P, { x: 1.46, w: 0.60, front: [1.25, 0.26], frontZ: 3.12 });
+  // T5H: flap band re-read — today's ref tops at the 3.05/3.16 side cols
+  // are 1.202 (the r10 1.36-top band was the teetered read): band
+  // 1.075..1.205, floor still over the 1.059 wrap arc (§B4).
+  ruFlaps(P, { x: 1.46, w: 0.60, front: [1.14, 0.13], frontZ: 3.12 });
   // front fender horns: ref plan front 3.37 runs out to |x| 1.75 (r12)
   for (const s of [-1, 1]) P.add('hull', box(0.30, 0.05, 0.18), s * 1.60, 1.10, 3.30);
+  // T5H outer horn segment: the ref plan 1.816 col carries front 3.317 /
+  // rear -2.745 (proc read the 3.10 skirt front + -2.93 skirt rear there):
+  // a thin horn at x 1.75..1.86 fronts 3.32; the skirt band z0 pulls to
+  // -2.77 below. Interior in side (prong band 0.85..1.19 owns those z).
+  // (T5H-b: outer edge 1.83 — the first cut's 1.86 crossed the ±1.89 plan
+  // window boundary at 1.8345 and painted the width column front to 3.31
+  // where the ref's 1.89 content is rear-course-only, err 2.09 x2.)
+  for (const s of [-1, 1]) P.add('hull', box(0.08, 0.05, 0.18), s * 1.79, 1.10, 3.23);
   // r10 gear truth (fresh side digest): ref front ramp bottoms 0.488@3.04 ->
   // 0.759@3.25 want the idler higher (0.72/0.24 ran the wrap 0.10-0.16 low);
   // rear ramp ref 0.163@-2.06 -> 0.678@-2.82 wants the sprocket aft+up.
@@ -9021,6 +9113,11 @@ function buildT90SM(P) {
     wheelZs: evenStations(6, 4.05, 0.135),
     sprocket: { z: -2.42, y: 0.80, r: 0.263 }, idler: { z: 2.90, y: 0.78, r: 0.23 },
     rollers: [-1.40, 0, 1.44].map((z) => ({ z, y: 0.80, r: 0.086 })),
+    // T5H contact pins (§B6 ramps to today's ref lines): front ramp reads
+    // 0.137@2.618 -> 0.601@3.164 (my default patch ran flat past 2.6, ramp
+    // 0.08 low over six cols); rear ramp 0.218@-2.189 -> 0.655@-2.735 (my
+    // ground ran to -2.19 where the ref lifts).
+    contactZF: 2.45, contactZR: -1.88,  // T5H-b: rear ramp still 0.16-0.22 low at -2.00 (ref line 0.217@-2.15 -> 0.517@-2.585)
     trackW: 0.44, topY: 0.83, botY: 0.05, paintedEnds: true, coveredTop: true, arms: true,
   });
   // skirt bottom at the ref's 0.946 line (its shallow front skirts).
@@ -9033,7 +9130,7 @@ function buildT90SM(P) {
   // mask dump.)
   // r11: band at 1.765 (faces 1.725/1.805) — the ref carries the 0.946..
   // 1.286 skirt band INTO the ±1.717 col family my 1.74-face missed.
-  ruSkirtBand(P, { x: 1.765, z0: -2.93, z1: 3.10, yTop: 1.30, yBot: 0.94, panels: 7, th: 0.08 });
+  ruSkirtBand(P, { x: 1.765, z0: -2.77, z1: 3.10, yTop: 1.30, yBot: 0.94, panels: 7, th: 0.08 });  // T5H: z0 -2.93 -> -2.77 (ref plan 1.816-col rear is -2.745; side rows interior — the tub/rack band owns those z)
   // bow skirt end-caps: standard-check found enclosed top-down cells at
   // (±1.7, z 3.02) between the lip-row end (3.00) and the flap (3.10) —
   // §B2 NO-HOLES caps close the ring.
@@ -9050,12 +9147,16 @@ function buildT90SM(P) {
   for (const s of [-1, 1]) for (let i = 0; i < 3; i++) {
     P.add('hullRubber', box(0.055, 0.54, 0.33), s * 1.7855, 0.69, -1.52 - i * 0.36);
   }
+  // T5H-b: the r11 packet's LEFT 1.665..1.705 inboard run (its 0.447 read
+  // at the -1.674 front col) was decoded but never authored — the col has
+  // been the top front item since. Left only (print asym).
+  P.add('hullRubber', box(0.030, 0.54, 0.33), -1.680, 0.69, -1.70);  // T5H-c: x -1.695..-1.665 — the first cut's -1.71 edge bled 12mm into the -1.717 window (whole-row err 0.281)
   // rear corner mud flaps: ref plan rear -3.29..-3.35 at |x| 1.26..1.69
   // (t72bu fender-prong class), hung at the fender line so the side rack
   // band keeps its 1.0 raked floor.
   for (const s of [-1, 1]) {
-    P.add('hullRubber', box(0.44, 0.19, 0.09), s * 1.475, 1.095, -2.975); // ref corner rear -3.02 (r12 re-decode)
-    P.add('hull', box(0.05, 0.16, 0.40), s * 1.44, 1.10, -2.92);      // flap bracket onto the corner bin (§B2)
+    P.add('hullRubber', box(0.44, 0.19, 0.19), s * 1.475, 1.04, -3.055); // T5H-b/e: corner flaps rear -3.15 (teeter compromise); front -2.96 clear of the -2.905 shoe reach
+    P.add('hull', box(0.05, 0.16, 0.16), s * 1.44, 1.10, -3.04);      // flap bracket onto the corner bin (§B2) — T5H-e: front -2.96 (the -2.72 front rode the sprocket-wrap shoe envelope: exact-audit rear blind-spot 24 vox, band 0; §B4 shoe bar). Still bridges flap (-3.15..-2.93) onto bin (-3.15..-2.91).
   }
   // r11 (probe): the ref's 0.585 deep band spans x 1.81..1.87 with only a
   // 0.893..0.936 sliver at 1.898 — the old 1.86..1.91 full-height panels
@@ -9072,7 +9173,7 @@ function buildT90SM(P) {
     for (let i = 0; i < 4; i++) {
       P.add('hull', box(s < 0 ? 0.078 : 0.058, 0.35, 0.44), s * (s < 0 ? 1.849 : 1.839), 0.765, -2.55 + i * 0.47);
       P.add('hull', box(0.042, 0.05, 0.44), s * 1.868, 0.915, -2.55 + i * 0.47);
-      P.add('hull', box(0.037, 0.37, 0.44), s * 1.8485, 1.125, -2.55 + i * 0.47);
+      P.add('hull', box(s < 0 ? 0.058 : 0.037, 0.37, 0.44), s * (s < 0 ? 1.859 : 1.8485), 1.125, -2.55 + i * 0.47);  // T5H-c: LEFT face 1.888 (ref -1.887 col band 0.574..1.308), RIGHT stays 1.867 (ref +1.898 is the bare 0.893..0.936 sliver — the symmetric extension painted it 1.308, err 0.197; print skew)
       P.add('hullDark', box(0.04, 0.30, 0.03), s * 1.845, 0.765, -2.32 + i * 0.47);
     }
   }
@@ -9175,7 +9276,7 @@ function buildT90SM(P) {
     // (plan ±1.816 col read proc 0.614 where the ref bottom is 0.805).
     // T3R-b5: print asym — the LEFT panel runs deeper (ref -1.789 col
     // band 0.668..1.105 world vs right 0.805..1.078).
-    P.add('turret', box(0.12, 0.36, s < 0 ? 0.44 : 0.28), s * 1.80, 0.20, s < 0 ? 0.7965 : 0.8515);
+    P.add('turret', box(0.12, 0.36, s < 0 ? 0.44 : 0.28), s * 1.7925, 0.20, s < 0 ? 0.7965 : 0.8515);  // T5H-c: face 1.8525 — the 1.86 face sat 2.5mm from the re-phased ±1.89 plan window and AA-painted it (err 0.965); ±1.816 col keeps 99mm coverage
     P.add('turretDark', box(0.10, 0.022, s < 0 ? 0.40 : 0.24), s * 1.80, 0.343, s < 0 ? 0.7965 : 0.8515);
     // T4S BRIM FLARE (verdict order 2: "turret side stowage panels stand
     // vertical; the print's flare outward makes the MS brim"): a raked
@@ -9232,8 +9333,8 @@ function buildT90SM(P) {
   // housing on the right crown. heightM p95 stays 2.24-2.25 (ref-aligned
   // spike band, 1%-grace legal — same regime as the certified plateau).
   // Left plateau bin (ref 2.25 line, z world -0.94..-1.44) + bracket:
-  P.add('turret', box(0.16, 0.30, 0.50), -0.78, 0.70, -1.28);
-  P.add('turretDark', box(0.14, 0.022, 0.46), -0.78, 0.834, -1.28);
+  P.add('turret', box(0.16, 0.29, 0.46), -0.78, 0.70, -1.28);  // T5H-b/c: z-span 23mm clear of the re-phased -1.443w window; top 2.245w — the 2.25 top + boundary AA sampled heightM p95 2.2532 > the 2.2523 grace (dims 99.7 x2 measured; the pano-cap suspect was innocent)
+  P.add('turretDark', box(0.14, 0.022, 0.42), -0.78, 0.826, -1.28);
   P.add('turret', box(0.10, 0.06, 0.10), -0.78, 0.52, -1.40);          // bin bracket onto the bustle step (§B2)
   // Right roof-bin re-split: main 2.17 body only to x 0.89; outer sliver at
   // the r10 front cap 2.105 (|x| 0.91..0.99); front pulled to z 0.38 so the
@@ -9273,7 +9374,7 @@ function buildT90SM(P) {
   P.add('turretDetail', box(0.23, 0.13, 0.22), -0.455, 0.78, -0.665);          // head (top 2.245w)
   P.add('turretDark', box(0.17, 0.08, 0.012), -0.455, 0.778, -0.518);          // window slot (head front face)
   P.add('turretGlass', box(0.13, 0.06, 0.008), -0.455, 0.778, -0.512);
-  P.add('turretDark', box(0.25, 0.015, 0.24), -0.455, 0.845, -0.665);          // mushroom cap lip (top 2.2525w: the slab-leak puts the cap in BOTH station slices 5/6 — at 2.2575 it read one raster px over the ref's 2.259 slice-6 line, measured topPct +1.0; 2.2525 = the grace line, station-neutral)
+  P.add('turretDark', box(0.25, 0.015, 0.24), -0.455, 0.8375, -0.665);         // mushroom cap lip (T5H: top 2.245w — the tail-extreme trim re-phased the side grid and the old 2.2525 grace-line seat sampled 2.2532 > the 2.2523 grace, dims 99.7 measured; 2.245 keeps the mushroom read with margin)
   P.add('turretDetail', box(0.13, 0.13, 0.26), -0.635, 0.745, -0.665);  // meteo/EW cluster (old tower zone)
   P.add('turretDark', box(0.09, 0.022, 0.20), -0.635, 0.80, -0.665);
   // T05BV-1 RWS: base drum + slew ring on the shelf, armored shroud box
@@ -9396,7 +9497,7 @@ function buildT90SM(P) {
   // panel is z-THIN (world -1.995..-1.935, 19mm clear of the -1.916
   // turret-col boundary) so the -1.861 col stays on the 1.95 tower line.
   P.add('turret', box(0.30, 0.20, 0.30), -0.50, 0.44, -1.98);
-  P.add('turret', box(0.26, 0.38, 0.06), -0.50, 0.65, -2.055);
+  P.add('turret', box(0.26, 0.38, 0.05), -0.50, 0.65, -2.03);  // T5H-b: world -1.965..-1.915 — the re-phased -2.042w window caught 8mm of the old -1.995 face (err 0.2, the top side_whole item)
   P.add('turretGlass', box(0.18, 0.22, 0.016), -0.50, 0.62, -2.030);  // §B3: rear sight panel lens
   P.add('turretDark', box(0.26, 0.03, 0.02), -0.50, 0.825, -2.05);    // §B3: panel hood lip (inside panel top)
   P.add('turretDark', cylZ(0.024, 0.62, 8), 0.32, 0.72, -0.90, -0.04, 0, 0);

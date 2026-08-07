@@ -500,13 +500,13 @@
   },
   {
    "id": "t90sm",
-   "geoMin": 58.2,
+   "geoMin": 75.8,
    "gatePassed": false,
    "components": {
-    "hullCurves": 61.2,
-    "wholeCurves": 58.2,
-    "turretCurves": 81,
-    "stations": 83.2,
+    "hullCurves": 75.8,
+    "wholeCurves": 77.4,
+    "turretCurves": 81.4,
+    "stations": 86.9,
     "dims": 100,
     "floaters": 100
    }

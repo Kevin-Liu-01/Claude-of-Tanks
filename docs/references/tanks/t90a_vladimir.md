@@ -543,3 +543,54 @@ ghost (candidatePx 10475 ~ the adjudicated 10468; §B5 coupled-followers
 class, orchestrator lane — untouched). Turret-parent flags =
 pre-adjudicated deck fittings. npm test green. Trio track-band note
 stands (report-only).
+
+## T5F WELDED FAMILY REBASE + T5H whole ladder (2026-08-07, mid-round
+## owner orders: family turrets "based off of" t90sm/t90m + the '<' ERA
+## front): whole 71.0 -> 81.6, min 71.0 -> 77.5
+
+Gate x2 IDENTICAL: min 77.5 | hull 77.5 / whole 81.6 / turret 79.5 /
+stations 90.5 / dims 96.2 / floaters 100 (baseline 71.0 | 73.1/71.0/
+79.9/89.0/96.2/100 — hull +4.4, whole +10.6, stations +1.5, turret -0.4
+inside the 1.0 budget; dims = the certified hullLengthM class,
+unchanged). Geometry hash 782bdbc4 -> 02ebb722. Evidence:
+shots/t90cont/t90a_vladimir-before/ + -after-weld/ + -final/.
+
+THE REBASE: the T4V cast dome is REPLACED by the family welded wedge —
+polyTurret prism INSCRIBED in the dome's certified plan envelope (nose
+face at the dome's 1.04L plan-front line, shoulder at the ±1.44 chord,
+clipped rear corners at the dome's -1.65w rear; outline sharpened to
+LONG facets after the first 12-gon shaded round-ish from top), crown
+plate at the certified 1.935w apex. VLADIMIR'S OWN KIT held: K-5
+clamshell now CHEVRON-YAWED (k5Yaw 0.32: tangent 28.6deg + 0.32 = ~47deg
+arrow — the owner's '<' plan read, verified in the top pair), K-5 flank
+tile course RE-SEATED onto the prism wall faces with wall-matched yaws
+(the cheek tile joins the sweep; seams tile-local via xform), round RED
+eyes, sight block (p95 anchors byte-held), cupola + Kord, thinned bin
+tiers, mast stack, rear-wall story, '112' numbers.
+DELETED: the T3V flat-fronted cheek walls (print-parity cast read —
+contradicts the ordered welded '<' grammar; owner-look cap on the plan
+cols they carried, §B7 mechanics). OWNER-TASTE CAP measured: turret
+79.9 -> 79.4 on the rebase itself (-0.5) — the desirefx print's cast
+dome columns are not chased back.
+
+WHOLE LADDER (T5H-v, fresh workorder):
+1. BELLY 0.30 -> 0.42 flat run (ref front floor 0.404..0.447 — 15+ front
+   cols read the old line 0.11-0.15 low; t90sm-class fix).
+2. CONTACT PINS re-derived to today's registered ramp lines: contactZF
+   1.29 -> 1.22 (ref zero ~1.23; the 1.22 front-wheel center caps the
+   takeoff — §B6), contactZR -2.91 -> -3.10 (ref zero ~-3.10). The r13
+   fit read 0.17-0.2 late in today's frame.
+3. padCornerFloor 0.012 + padHugZ0 1.3 (the banked t90m PERFECTION-r1
+   mechanism): the ramp shoes sagged rOut below the band tangent —
+   printed line 0.13-0.2 under the ref's. hull +3.7 / whole +3.7 /
+   stations +1.8 in one move (stations now 90.5, first row over 90).
+DECAL: '112' right PINNED on the leaned prism wall (lean 0.686, flush);
+left on the tall bin wall's vertical face (§5.04 float guard).
+Audits: standard-check holes 0, mg1+4d; shoe clip front 171 vs the
+certified 195 backlog (IMPROVED), rear 107 exact; winding m2 rig_hull
+dome-ghost flag = the packet's §B5 oracle-registration-pinned class
+(orchestrator lane, untouched); npm test green.
+RESIDUALS (honest): dims 96.2 certified hullLengthM class; z -4.456
+transom-vs-floating-rack teeter col (certified r13 belly class); front
+ramp mid-cols ~0.05-0.08 after padHug (shoe-stack quantization); K-5
+read subtler than t90a's (its certified thin-HIGH band class).
