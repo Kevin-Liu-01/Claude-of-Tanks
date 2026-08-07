@@ -891,3 +891,22 @@ CLASS (type74-print escalation family). leo1a5 proceeds PHOTO-CLASS.
 Remaining §E queue: ch2 HEIGHT-NORMALIZE, t54 winding repair, t80bv
 barrel re-parent/scaleToOverall, t34_85 weihe decision, type74 +
 leo1a4 re-rig escalations, t14 tube-pin re-derivation.
+
+## 5.02 BASE-21 SCAFFOLD VERDICTS: chieftain_mk10 PASS 9.0 + leo1a5
+PASS 9.0 (independent photo-class critic, hash bracket x2 exact
+59551064 / 1c79188; sheets shots/critic-base21-indep/ + labeled
+contact sheets). ZERO orders — none of the 0/12-slate killer classes;
+every packet four-box reproduced to the millimeter independently;
+flat-region detector 0 defects x28 views. Identity tells confirmed in
+pixels (Stillbrew hump measured 2.52-2.71 rising to the 2.90 anchor,
+TOGS right, L11A5 sleeved+bore; EMES-18 flat embrasure, welded wedge
+lean-in walls, saddle mantlet w 1.394 probe-exact, 7 duals + 4
+rollers + correct drive end). The first two "wholly ancient" base-21
+customs are ACCEPTED at the §B8 bar (record hashes bind; both remain
+FALSE-0/no-oracle — measured ladders need future oracles: chieftain
+mk10 none known, leo1a5 awaits the leo1a4-scan re-rig). LAW BANK:
+STATE-A-DATUM (bow silhouette fits measure the fender/wing datum, not
+the glacis plane), idler-dressing-vs-drive-end verification rule,
+chieftain pale-rim ~40-luma = the new gate-1 countability reference.
+Polish notes banked in packets (EMES twin-aperture tone step, basket
+interior step, bolt-plate decal).
