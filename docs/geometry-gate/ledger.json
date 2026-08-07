@@ -2,7 +2,7 @@
  "generatedAt": "2026-08-07T04:20:10.853Z",
  "gate": "every component >= 90; min is the headline",
  "passed": 22,
- "total": 89,
+ "total": 90,
  "rows": [
   {
    "id": "recon_tank",
@@ -1150,6 +1150,19 @@
     "turretCurves": 93.2,
     "stations": 96.1,
     "dims": 99.1,
+    "floaters": 100
+   }
+  },
+  {
+   "id": "type10",
+   "geoMin": 0,
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 0,
+    "wholeCurves": 0,
+    "turretCurves": 0,
+    "stations": 0,
+    "dims": 0,
     "floaters": 100
    }
   }

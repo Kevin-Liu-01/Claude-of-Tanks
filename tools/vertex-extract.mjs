@@ -532,6 +532,20 @@ const REG = {
     turretNode: '^challendger[ _]2_0$', autoPivot: true,
     pubDims: { hullLengthM: 8.33, overallLengthM: 11.50, widthM: 3.52, heightM: 2.49 },
   },
+  type10: {
+    // "TYPE-10 MAIN BATTLE TANK" (Sketchfab OBJ merge; textured atlas).
+    // Author rip-history hold ADJUDICATED CLEARED by the owner 2026-08-06
+    // ("build the type 10 ... using the real glbs") — un-quarantined from
+    // community-candidates. Flat 5-mesh MATERIAL split (challenger2
+    // class): Object_6 = turret+gun FUSED (tube z 1.5..4.73 raw); Object_5
+    // mixes hull deck WITH the sight masts (raw y to 2.53 — turret rows
+    // print-capped by the split); Object_2/3 running gear, Object_4
+    // skirts. Nose +z, no yaw; no gun node -> FULL box scales to
+    // overallLengthM.
+    path: 'public/models/tanks/community/type-10_main_battle_tank.glb',
+    turretNode: '^Object_6$', autoPivot: true,
+    pubDims: { hullLengthM: 6.79, overallLengthM: 9.49, widthM: 3.24, heightM: 2.30 },
+  },
   t14: {
     // "T-14 Armara Uralvagon Factory" by 3DYAROSLAV2 (CC-BY-4.0; Russian
     // semantic materials BASHNYA/KORPUS/PULEMETORUDIE = original Blender

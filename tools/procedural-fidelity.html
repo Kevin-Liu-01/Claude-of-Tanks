@@ -125,8 +125,9 @@ const LOCAL_REFERENCE_OVERRIDES = {
   // NOT REGISTERED from the same drop: leo2a4 <- leopard_2a4_otco.glb
   // (live Sketchfab description "Leopard 2A4 OTCO from War Thunder" —
   // the same asset ATTRIBUTION.md rejected 2026-07-27; THE ONE ABSOLUTE
-  // RULE, type_89 precedent) and type10 <- type-10_main_battle_tank.glb
-  // (author rip-history hold, see docs/references/tanks/type10.md).
+  // RULE, type_89 precedent). type10's author rip-history hold was
+  // ADJUDICATED CLEARED by the owner 2026-08-06 ("build the type 10 ...
+  // using the real glbs") — registered below.
   challenger2: {
     // "Challenger II" by buh (CC-BY-4.0). Turret+gun FUSED in the
     // 'challendger 2_0' node (sanitized 'challendger_2_0' — regex takes
@@ -188,6 +189,21 @@ const LOCAL_REFERENCE_OVERRIDES = {
       path:'/models/tanks/community/challenger_3.glb',
       turretNode:'^turret$', gunNode:'^weapon$', autoPivot:true,
       yawOffset:-Math.PI/2,
+    },
+  },
+  type10: {
+    // "TYPE-10 MAIN BATTLE TANK" (Sketchfab OBJ merge; textured atlas).
+    // Author rip-history hold (2026-07-27 poster) ADJUDICATED CLEARED by
+    // the owner 2026-08-06 — un-quarantined from community-candidates.
+    // Flat 5-mesh MATERIAL split (challenger2 class): Object_6 =
+    // turret+gun FUSED (tube z 1.5..4.73 raw, trunnion y~0.5); Object_5
+    // mixes hull deck WITH the sight masts (raw y to 2.53) — turret rows
+    // print-capped by the split, packet note. Object_2/3 running gear,
+    // Object_4 skirts. Nose +z, no yaw.
+    source:'glb',
+    glb:{
+      path:'/models/tanks/community/type-10_main_battle_tank.glb',
+      turretNode:'^Object_6$', autoPivot:true,
     },
   },
   // Same quarantine-oracle pattern as ariete: the NullOps Type 74 is

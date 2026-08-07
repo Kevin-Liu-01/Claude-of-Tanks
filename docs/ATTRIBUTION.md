@@ -754,13 +754,16 @@ fails the build if any registered playable still references a stripped path.
   createdwithai + world-of-tanks, i.e. AI-generated geometry — not a
   faithful record of the real vehicle. challenger1 keeps its gate-PASS
   recovered print. Kept in-repo (no rule violation, just unusable).
-- community-candidates/type-10_main_battle_tank.glb — **ON HOLD, NOT
-  REGISTERED, quarantined (gitignored) 2026-08-06**: the uploading
-  account (nazidefenseforceofficial) was adjudicated a game-rip poster
-  2026-07-27 (T-90AM with *_dds ripper textures). No per-asset rip
-  evidence in this file, so it is held rather than destroyed — OWNER
-  ADJUDICATION REQUIRED before it may instrument a gate. type10 keeps
-  its photo-class lane meanwhile.
+- community/type-10_main_battle_tank.glb — **OWNER-CLEARED 2026-08-06,
+  registered (type10 oracle)**. History: quarantined earlier the same
+  day because the uploading account (nazidefenseforceofficial) was
+  adjudicated a game-rip poster 2026-07-27 (T-90AM with *_dds ripper
+  textures); no per-asset rip evidence existed for THIS file (Sketchfab
+  OBJ merge, textured atlas, no ripper-tool markers). The owner
+  adjudicated the hold ("build the type 10 and challenger 2 as a
+  priority using the real glbs") — un-quarantined from
+  community-candidates and registered in the four harness maps.
+  Influence/measurement oracle; the playable stays procedural.
 - community-candidates/t-14_armara_uralvagon_factory.glb — "T-14 Armara Uralvagon Factory" by 3DYAROSLAV2, CC-BY-4.0, **223MB: exceeds GitHub's 100MB file limit — lives in the gitignored staging area, LOCAL-ONLY; onboarding extracts (small) are committed instead** (t14 oracle)
 - ~~community/leopard_2a4_otco.glb~~ — **REJECTED + DELETED 2026-08-06**:
   the live Sketchfab page describes it "Leopard 2A4 OTCO **from War

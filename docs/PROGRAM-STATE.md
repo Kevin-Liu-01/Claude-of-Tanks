@@ -420,6 +420,15 @@ landing — work order in abramsx.md). MY-LANE ADDS: the coupled abramsx
 whip landing; graduate rest-azimuth cap re-adjudication (+95 trial
 moved certified rows — transverse is window-pinned).
 
+## 4.99994 TYPE10 ONBOARDED (2026-08-06, my-lane batch item 2): owner
+cleared the rip-history hold — GLB un-quarantined to community/, four
+harness maps registered (turretNode ^Object_6$ turret+gun fused, nose
++z), extract committed (bodyH +51.2% tall-stylized, challenger2 class;
+sights fused into the hull-side Object_5 = turret rows print-capped),
+ATTRIBUTION owner-cleared entry. Honest baseline x2: all-0 + floaters
+100, verified real (populated curve rows) — the ancient base-21 build.
+Fleet denominator 89 -> 90. PRIORITY §B8 round SPAWNED (modern3.js).
+
 ## 4.99995 OWNER PUNCH LIST 3 (2026-08-06 night, verbatim intent):
 "finisht eh challegner 3, chjallenger 2, t14 armata (hull is wrong)
 t90sm (no attachments or decorations or the machine gun turret, turret

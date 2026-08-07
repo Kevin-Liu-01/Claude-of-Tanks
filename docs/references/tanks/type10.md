@@ -34,3 +34,33 @@ Sketchfab-16.59 generator. Expect the standard flat-OBJ follower
 treatment (t14/t72b3 class). Until then the type10 lane builds
 photo-class from photos + type90 family grammar (false-0 law: dims +
 floaters only, never curves without a reference).
+
+## ONBOARDED (2026-08-06, orchestrator lane — owner-cleared hold)
+
+The owner adjudicated the rip-history hold CLEARED ("build the type 10
+and challenger 2 as a priority using the real glbs"). Un-quarantined:
+community-candidates/ -> public/models/tanks/community/. Registered in
+all four harness maps (procedural-fidelity, vertex-extract,
+visual-evaluator-page, tmp-tank-critic): turretNode `^Object_6$`,
+autoPivot, nose +z, no yaw, textured atlas (no paintUntextured).
+
+Node adjudication (world-box + band probes): Object_2 (49.6k) +
+Object_3 (47.4k) running gear/lower hull; Object_4 (8.3k) skirts;
+Object_5 (23.9k) HULL DECK + THE SIGHT MASTS FUSED (raw y to 2.53 —
+material split, not assembly: the pano/commander sights classify
+hull-side, so turret rows are PRINT-CAPPED, challenger2 class);
+Object_6 (19.3k) TURRET + GUN FUSED (tube z 1.5..4.73 raw at trunnion
+y~0.5, muzzle section at z 4.5+).
+
+Extract (committed docs/references/vertex/type10.json): bodyH 3.478 =
++51.2% vs the 2.30 datum (TALL-STYLIZED print — deep gear + sight
+masts; §E height clamp binds s 0.8246, width safeScale k 1.318
+recovers); bodyLen +6.3% / hullMask +7% / overall -5.2% / width -2.2%;
+773 turret verts interpenetrate 1.2 m below deck (split disease).
+
+HONEST BASELINE (x2 bit-identical, first real type10 gate line):
+`0 | hull 0 whole 0 turret 0 stations 0 dims 0 floaters 100`
+Verified real (FALSE-0 law): both silhouettes render, curve rows carry
+populated ref+proc pairs (side_hull mean 11.17% cover 4.88, reg dAlong
+0.87 dy 0.416). The zero is the ANCIENT base-21 build vs the real
+print — the §B8 rebuild round starts from this ladder.
