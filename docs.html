@@ -87,7 +87,7 @@
     background: var(--amber); color: #0b0f12; font-size: 11px; font-weight: 800;
     letter-spacing: .2em; text-indent: .1em; text-transform: uppercase;
   }
-  nav.top .play::before { content: '▶'; font-size: 8px; text-indent: 0; }
+  nav.top .play::before { content: '▶\FE0E'; font-size: 8px; text-indent: 0; }
   nav.top .play:hover { background: var(--gold); }
   @media (max-width: 880px) { nav.top .links a.lnk { display: none; } }
 
@@ -191,7 +191,7 @@
     <div class="statband">
       <div class="st"><div class="v num">102</div><div class="k">Vehicles</div></div>
       <div class="st"><div class="v num">8</div><div class="k">Battlefields</div></div>
-      <div class="st"><div class="v num">29</div><div class="k">Camouflage patterns</div></div>
+      <div class="st"><div class="v num">48</div><div class="k">Camouflage patterns</div></div>
       <div class="st"><div class="v num">1</div><div class="k">WebGL2 context</div></div>
       <div class="st"><div class="v num">0</div><div class="k">Install, accounts, downloads</div></div>
     </div>
@@ -267,7 +267,7 @@
   </ul>
 
   <h3 id="tanks-paint">Texture painters</h3>
-  <p>No tank texture ships with the game. Each spec owns one shared canvas set — albedo (2048² for the hero tier, 1024² for AI roster fills), a height-derived normal map, roughness with per-patch paint response — painted by deterministic canvas programs: base scheme, panel lines and weld rows (welded-composite hulls skip rivets), chips, streaks, dust, and one of <b>29 camouflage patterns</b> from three-tone NATO summer to dazzle, digital, winter whitewash and autumn schemes.</p>
+  <p>No tank texture ships with the game. Each spec owns one shared canvas set — albedo (2048² for the hero tier, 1024² for AI roster fills), a height-derived normal map, roughness with per-patch paint response — painted by deterministic canvas programs: base scheme, panel lines and weld rows (welded-composite hulls skip rivets), chips, streaks, dust, and one of <b>48 camouflage patterns</b> from three-tone NATO summer to dazzle, flecktarn, digital, winter whitewash and autumn schemes.</p>
   <div class="plate">
     <div class="micro">Why canvases</div>
     <p>A painted 2048² albedo is ~200&nbsp;ms of main-thread work but zero network bytes and infinitely restylable: the camo picker, the per-battlefield AUTO paint and the biome repaints all redraw the same shared canvas in place — every live instance of that tank updates through one <code>texture.needsUpdate</code>. All painters run as <b>generator programs</b> so loading paths bake them in stage-sized slices instead of one freeze (see <a href="#performance" style="color:var(--gold)">Performance</a>).</p>

@@ -833,7 +833,7 @@ export function initHud(bus) {
   specBar.innerHTML =
     '<span class="kk">Spectating</span>' +
     '<span class="who"><b class="nick"></b><span class="veh"></span></span>' +
-    '<span class="hint"><i>◀ A</i><i>D ▶</i> switch vehicle</span>' +
+    '<span class="hint"><i>\u25C0\uFE0E A</i><i>D \u25B6\uFE0E</i> switch vehicle</span>' +
     '<button type="button" class="gar">Return to garage</button>';
   const specWho = specBar.querySelector('.who');
   const specNick = specBar.querySelector('.nick');
