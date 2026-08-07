@@ -108,9 +108,79 @@ strakes).
    pass at close range.
 4. Icons = orchestrator lane.
 
+## §B8 REWORK ROUND (2026-08-06, AFV lane — owner rejection + acceptance-critic orders)
+Owner (verbatim): "the type 89 ifv needs a sloperd front and the same
+track shape as bradley" + the §B8 rejection; numeric orders from
+docs/critique/photo-acceptance-20260806.md. Geometry hash **2ace701c ->
+b19aca94** (62 meshes / 51448 verts). PHOTO CLASS — never gated (FALSE-0
+law holds; bars = probe + battery + view sets).
+
+**ROOT CAUSE (the "rectangle profile"):** the r1 glacis frustum spanned
+both rings over the full bow (flat stacked slab y 0.98..1.63 — the
+critic's "1.0 m chopped run + nose step" WAS this bug). The rework
+authors the plate properly (bottom ring at the nose strip, top ring at
+the crest strip).
+
+Done-gates (probe = tools/tmp-b8-measure.html):
+1. SLOPED FRONT (owner + order 2): ONE plane **(0.90, 3.36) -> (1.86,
+   1.60)** — 27 deg over 1.86 m of z (ordered: nose ~0.9, ~30 deg,
+   1.7-1.9 m run); crest knuckle down to the 1.78 deck; nose block
+   0.60..0.94 keeps the bow face body column (0.34 > the 0.30 filter);
+   upper body/deck extended to z 1.25/1.12 under the crest; corner
+   facets re-lined; PROW SIDE WALLS close the profile under the plane
+   edge (the r1 slab incidentally filled this — without them the left
+   view saw THROUGH into the sprocket bay). Driver hatch + periscopes +
+   louvre bank + splash rails + mirrors + links re-seated ON the plane
+   (rx **+0.499** — see law note 3).
+2. BRADLEY TRACK SHAPE (owner): sprocket y 0.55 -> **0.60 r 0.26** /
+   idler y 0.52 -> **0.70 r 0.27** (the m2a2_bradley raised-end heights),
+   rollers 0.88, topY 0.95, contact pinned ±2.18, **coveredTop DROPPED**
+   (open return-run pads like the bradley); §B6 trapezoid by
+   construction.
+3. WHEEL EXPOSURE (order 1): the 6-panel skirt bank (0.59..1.21) DELETED
+   -> thin strip y 0.92..1.12 at ±1.50 over the track top edge only +
+   strong fender line (planks 1.27..1.32 + dark shadow strip 1.26);
+   wheels (r 0.32) read near-fully below 0.92 — left view counts 6 +
+   both raised end wheels (§B8.1 gate 1 ✓). Width anchor intact (plank
+   faces ±1.595; skirt strip inboard at 1.515). JGSDF number decals
+   moved to the hull side (skirts gone).
+4. TURRET PRESENCE (order 3): walls 0.44 -> **0.56 proud, near-vertical
+   (~4 deg)**, roof 2.40/chamfer 2.42 world; 2.5 anchor cluster rides the
+   roof (cupola lid top 2.52, sight head 2.49); proud read ~0.64 solid /
+   ~0.72 incl. cluster (ordered ~0.75); **KDE MANTLET BLOCK** 0.44x0.34
+   + stepped front plate on the gun at the face (§B3.1 addendum — the r1
+   bare collar read as no mantlet); **Jyu-MAT boxes 0.36^3 x 0.92 RAISED
+   to wall-top height** (world 1.96..2.32 + tilt) so the wings read in
+   side profile; bustle/basket/smoke/whip/rails re-seated.
+5. ROOF M2 DELETED (order 4 — the real Type 89 carries NO roof HMG; §B7
+   ref-wrong). Census mg1 held by a recessed FITTINGS 'mag' at the coax
+   Type 74 port (spz_puma unmanned precedent); overall h drops to the
+   whip line (M2 stack 3.254 gone).
+
+Probe after: overall 3.200 w x 7.358 l (muzzle 3.90 = overall 7.3 ✓ KDE
+overhang held); hull 6.865 (6.8 pub); turret box w 2.20 (wings) z -1.215..
++0.750; bore stack survives (muzzle-endon: block + collar + flared hider
++ dark bore disc).
+
+**Battery:** track-clip --exact 0/0 + 0/0 ✓ | flood 0 ✓ | census mg1+10d ✓
+| winding-audit m1 clean (0px) + m2 yaw CLEAN (0 candidates) ✓ | npm test
+green. Evidence: shots/afv-b8-rework/{after,after-r1..r4}/type89/
+(16-view photoclass + measures.json). Graduate guard byte-identical
+before + after.
+
 ## Law notes for the bank
 1. National-grammar 'm2' trim on a Japanese mark confirmed per the
    §H.4 corollary (Sumitomo M2HB class) — the brief's ruling applied.
 2. Tapered muzzleBore rearR variant: flash-hider cones continue
    through the open wall by passing rearR = the body's front radius
    (this build is the exemplar).
+3. **GLACIS-FURNITURE rx SIGN:** for a plane descending toward +z, flush
+   plates need POSITIVE rx (front edge dips); negative rx flies the
+   front edge up (the r1's flat-slab bow masked the r1's own -0.212
+   wrong-sign seats — the rework's first cut inherited the sign and the
+   louvre bank read as a flying ramp). Verticals leaning back against
+   the plane keep NEGATIVE rx (mirror stalks).
+4. **FLAT-SLAB GLACIS BUG:** see the spz_puma packet law note 4 — both
+   AFV r1 bows carried it; the type89's whole "LONG glacis" was a
+   horizontal slab, which is why the profile read rectangle while the
+   packet described a plane.

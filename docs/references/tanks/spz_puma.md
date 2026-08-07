@@ -162,6 +162,74 @@ stations 40.7 / **dims 100** / **floaters 100**
    thin pods (certified — dims sovereignty, bradley precedent).
 5. Icons = orchestrator lane (genIcons --tanks spz_puma).
 
+## §B8 REWORK ROUND (2026-08-06, AFV lane — owner rejection + acceptance-critic orders)
+Owner (verbatim): "puma needs a more centered turret and the same track shape
+as bradley" + the §B8 rejection; numeric orders from
+docs/critique/photo-acceptance-20260806.md. Geometry hash **c8385d52 ->
+31dca571** (64 meshes / 68500 verts).
+
+**ROOT CAUSE FOUND (r1 bow):** the r1 "main glacis plane" frustum spanned
+BOTH rings over the full bow z (a flat stacked slab, front face
+near-vertical) — the critic's "chopped nose unit / parked bow" was this
+authoring bug, not a numbers dispute. Same bug existed on type89 (its
+whole glacis). Raked plates are now authored with the bottom ring at the
+NOSE strip and the top ring at the CREST strip so the front face IS the
+plane.
+
+Done-gates (probe = tools/tmp-b8-measure.html, official rig):
+1. TURRET RE-CENTERED (owner): pivot x 0.435 -> **0.15** (spec turretPivot +
+   ring hitbox + gunPivot local -0.35 -> -0.065 so the gun tube HOLDS the
+   print's world x 0.085; muzzle [0.085, 2.55, 2.466] unchanged). Probe
+   turret box x [-0.830, +1.010] (center +0.09) vs before [-0.545, +1.295]
+   (center +0.375). The print autoPivot 0.435 is documented as the
+   residual-2 seat departure — owner order outranks the print; honest gate
+   cost accepted below.
+2. SIDE BAND SPLIT (order 1): module band y 0.62..2.13 -> **1.00..2.00** in
+   two courses (upper 1.66..1.80 tucked, lower 1.70..1.86 flared = the
+   front-view trapezoid, order 6); stern module 1.05..1.60; trim rail at
+   the 2.00 step. Wheels (r 0.36, print stations) now read exposed with
+   the tub wall behind — left view counts 6 + high sprocket + idler
+   (§B8.1 gate 1 ✓, shots/afv-b8-rework/after/spz_puma/).
+3. BOW SWEEP (order 2): ONE plane (1.92, 1.77) -> (1.40, 3.72),
+   plan-tapered ±1.42 -> ±1.26 (order 4); shelf + chamfer DELETED; nose
+   wedge filler to the print's 1.23 lip; face plate 1.00..1.44 keeps the
+   hullLengthM body column; louvers moved ONTO the plane (rx +0.261 —
+   plate-flush); WIDE shoulder facets close the plane edge to the sponson
+   corner (outer-lower edge held 45 mm over the 1.482 SHOE-STACK envelope
+   — see law note 4).
+4. TURRET MASS CUT (order 3): walls raked 6 -> 11-13 deg, crown 2.785
+   (~2.80 ordered), mast base 0.34x0.40 -> 0.24x0.30 stepped stalk, head
+   top 3.60 EXACT (heightM datum); MUSS/rails/decals re-seated to the
+   raked tops.
+5. REAR/OVERHANGS (order 5): ramp face ±1.25 -> ±1.44 full-width + hinge;
+   tow-hook rings z 3.80 -> 3.78, rear lamps -3.76 -> -3.745: overall z
+   [-3.790, +3.800], l 7.590 (-0.13% vs 7.6).
+6. TRACK SHAPE: print-true gear UNCHANGED (already the bradley raised-end
+   trapezoid class — §B6 by construction); the exposure fix is the band
+   lift. §B5 kit re-seat for the new pivot: rack -> (-0.85, -3.12), tow
+   cable re-routed to the armor-band top step (old deck route fell inside
+   the re-centered core sweep).
+
+**Battery:** track-clip --exact 0/0 band + 0/0 shoe ✓ | flood 0 ✓ | census
+mg1+12d ✓ | winding-audit m1 clean (7px @right, AA-noise) ✓ | m2 yaw
+candidates 2670 (baseline 2829, fleet rank 8) = the r1-ADJUDICATED
+rear-deck kit class (rack/cans/bergen), all inner corners r >= 1.56 vs the
+1.499 swept radius or under the 2.25 sweep plane ✓ | npm test green.
+
+**GATE (x2 IDENTICAL, honest):** min **0** | hull 39.9 (was 35.8 ✓ the
+one-plane bow pairs better) / whole 18.1 / turret 0 / stations 20.3 /
+dims **100** / floaters **100**. The turret_plan 0 + front_whole 18.1 are
+the ORDERED seat departure (0.285 m); station tops pay the ordered band
+top (2.00 vs the print's own 2.14-2.16 deck line). dims: heightM 3.6
+(mast EXACT), length 7.59, width 3.90 — all anchors hold. If the owner
+ever wants print-exact back: seat 0.435 + band top 2.14 are one-line
+reverts (this section is the record).
+
+Evidence: shots/afv-b8-rework/{after,after-r1..r4}/spz_puma/ (16-view
+photoclass + 14 REF|PROC oracle pairs + measures.json four-box).
+Graduate guard: ariete/type90/type74/t80u/bmp2/m2a2_bradley/
+chieftain_mk10/type10 hashes byte-identical before + after (tmp-hashgeo).
+
 ## Law notes for the bank
 1. **AUTHORED-PIVOT AUTOPIVOT CLASS**: autoPivot prefers the turret
    node's authored origin when it sits inside the loose box (loader
@@ -176,3 +244,18 @@ stations 40.7 / **dims 100** / **floaters 100**
    inverted order).
 3. KIT.torus lies AXIS-Y — a z-axis ring needs rx π/2 in the P.add
    call (see the type99a drum-rib incident, same round).
+4. **FLAT-SLAB GLACIS BUG (§B8 rework find):** frustum(bw,bzF,bzR,tw,
+   tzF,tzR,y0,y1) with both rings spanning the full bow z builds a flat
+   slab whose front face is near-vertical — the "sloped plane" comment
+   lies. A raked plate = bottom ring at the NOSE strip, top ring at the
+   CREST strip (the front face becomes the plane). Both AFV r1 bows had
+   this; check any "one-plane" claim against the ring spans.
+5. **SHOE-STACK CLEARANCE (§B4):** budget hull pieces over the gear
+   against the SHOE envelope (pin caps to x xc+0.245, stack top 1.482
+   here), not the bare band apex (1.395) — the first shoulder-facet cut
+   cleared the band by 4 cm and still clipped 12 voxels.
+6. **GATE FLOATER = PROJECTED ISLANDS:** the floater check is silhouette
+   islands >400 px from frontRight — a hull-true part on a thin (5 cm)
+   arm AA-vanishes at 768 px and reads as a sky-island (pods, 5/5 poses).
+   Stalked furniture needs a plate-solid bracket (>=10 px projected), or
+   must overlap body mass in projection.

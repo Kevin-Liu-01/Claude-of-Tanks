@@ -805,3 +805,12 @@ freeze decoration until these pass):
   sponson floors + outer walls) BEFORE drum re-seats. DECAL FLOAT =
   PHANTOM COLUMN (§C): unpinned decals read as silhouette columns —
   asymmetric top reads are the tell.
+- FLAT-SLAB GLACIS BUG (§B8.1 gate-2 mechanics, IFV rework): a "raked
+  plane" authored with BOTH frustum rings spanning the full bow z is a
+  flat slab with a near-vertical face — author bottom-ring-at-nose /
+  top-ring-at-crest so the front face IS the plane; check ring spans on
+  any one-plane claim. GLACIS-FURNITURE rx SIGN: descending-toward-+z
+  planes take POSITIVE rx for flush plates. §B4 budgets clear the
+  SHOE-STACK envelope (pin caps included), not the band apex. GATE
+  FLOATERS = projected islands: stalked furniture needs >=10px-projected
+  brackets at gate resolution.

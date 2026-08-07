@@ -1142,13 +1142,13 @@
   },
   {
    "id": "spz_puma",
-   "geoMin": 7.7,
+   "geoMin": 0,
    "gatePassed": false,
    "components": {
-    "hullCurves": 35.8,
-    "wholeCurves": 27.8,
-    "turretCurves": 7.7,
-    "stations": 40.7,
+    "hullCurves": 39.9,
+    "wholeCurves": 18.1,
+    "turretCurves": 0,
+    "stations": 20.3,
     "dims": 100,
     "floaters": 100
    }
