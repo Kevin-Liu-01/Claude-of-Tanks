@@ -118,6 +118,10 @@ honestly parked at 88.9 pending its retune)
   orchestrator ruling item (stations-law open track zone).
 - **Russia tail**: t72b_1987 56.0 CEILING-CERTIFIED (print drum-band cap),
   t90sm 56.4 (AA-teeter binds), t62mv1 63.7 (fade-cap ceiling ~77-81),
+  t90m 90.7 PASS x2 — DUAL-GATE CANDIDATE 4acdebe4, adjudication critic
+  IN FLIGHT (would be the 27th); t72b3m yaw = ORACLE-REGISTRATION-PINNED
+  (bustle band hull-side matching an empty-turret print) — re-parent
+  lands COUPLED with the ordered obr-2022 oracle swap + rebuild,
   t72bu ~55-70 certified-ceiling — ORACLE
   DECISION PENDING (orchestrator lane). t72b3m RE-ORACLE DECIDED
   2026-08-06: NO SWAP (onboarding evidence: current oracle dims-EXACT +

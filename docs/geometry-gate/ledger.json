@@ -1,7 +1,7 @@
 {
  "generatedAt": "2026-08-06T23:43:18.242Z",
  "gate": "every component >= 90; min is the headline",
- "passed": 21,
+ "passed": 22,
  "total": 89,
  "rows": [
   {
@@ -674,13 +674,13 @@
   },
   {
    "id": "t90m",
-   "geoMin": 81.7,
-   "gatePassed": false,
+   "geoMin": 90.7,
+   "gatePassed": true,
    "components": {
-    "hullCurves": 83.1,
-    "wholeCurves": 81.7,
-    "turretCurves": 83.3,
-    "stations": 81.9,
+    "hullCurves": 90.7,
+    "wholeCurves": 91.3,
+    "turretCurves": 93.2,
+    "stations": 94.4,
     "dims": 100,
     "floaters": 100
    }

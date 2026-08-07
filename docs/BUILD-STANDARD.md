@@ -788,3 +788,10 @@ freeze decoration until these pass):
    Christie spacing), not the count.
 6. The four-box probe (overall/hull/turret/gun + rig_muzzle boxes vs
    targets) is a standing round-close check for photo-class builds.
+- REGISTRATION-ANCHOR LAW (§D, t90m round): body-span-extreme edits shift
+  dAlong half a column and INVALIDATE every prior digest target — freeze
+  the span extremes first, or re-derive all targets after any end edit.
+  TEETER CO-LOCATION: teeter columns cluster at shared grid phases —
+  fix them as a family. VERTEX-SCAN BLINDNESS (§C): world-box vertex
+  scans cannot attribute merged/instanced content — AABB census +
+  fitting tags are the attribution tools.
