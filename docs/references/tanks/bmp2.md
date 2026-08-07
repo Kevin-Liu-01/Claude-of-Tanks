@@ -461,3 +461,54 @@ cover cols (0.10/0.095, the r3-certified class, unchanged). turret
 The r3 ">=90 needs the tail/nose dims-trade columns" law still
 stands; 85 needs roughly +1.0 of flat front-field mean, which no
 single named element carries.
+
+## §B2 NO-AIR UNDER-GLACIS round (2026-08-07, AFV round — owner order §5.18)
+THE ORDER'S CORE CASE on this mark: the boat bow was three floating
+planes (glacis, prow plane A, plane B) with NOTHING between them — from
+low side/quarter views the whole triangle between the glacis underside,
+plane A's top face and the tub front read as a see-through cave
+(probe: 1301/1702 enclosed px per side-low view; clusters at
+(z 2.31, y 1.37) 0.38x0.10 m, (z 2.13, y 1.22), (z 2.17, y 0.36)), and
+a belly slot z 1.756..2.136 opened the cavity from below. The real
+BMP-2 boat bow is CLOSED — side plates run from the sponson line to the
+nose (the ref's own covered-run line (1.63,0.066)->(3.06,1.036); its
+side bottoms read 0.25..0.39 over this z where the proc's old bottom
+was the 0.675 dust-skirt line — closure moves side rows TOWARD ref).
+Probe/evidence: tools/tmp-afv-glacisgap.{html,mjs} (the merkava roofgap
+scanner re-aimed at the bow + vertical ray census);
+shots/afv-glacisgap/{before,final}/bmp2/ + pairs/bmp2-*.png.
+
+### Changes (buildBMP2 only — merkava roofSolid mechanism)
+1. SIDE BOW PLATES x3 per side (S1 z 1.72..1.90 / S2 1.90..2.16 /
+   S3 2.16..2.94, x 0.92..0.98): top chords ride 12-40 mm INSIDE the
+   glacis/crest-shoulder solids (frustum faces are planar at constant
+   x — straight chords stay interior); S3's bottom chord rides inside
+   prow plane A (rear-face line -0.03). Fully interior to front/plan
+   masks (behind plane A/B +-0.98..1.055, under the glacis +-1.06 min).
+2. BELLY PAN box +-0.98, y 0.36..0.42, z 1.70..2.26 — laps the tub
+   bottom and plane A's bottom rect; §B4: 7.5 cm clear of the 1.055
+   band inner face (channel-pan class).
+After: side-low enclosed 1301 -> 75 / 1702 -> 477, where the 477 is
+393 px of KONKURS-launcher standoff air (the tube on its mount posts —
+real configuration, merkava floating-MG plinth class) + wheel-train
+slivers y 0.31-0.36 (class-1 track air). Bow cave DEAD; garage/front
+views 0-6 px.
+
+### Done-gates
+- geometry-gate x2 EXACT the ledger row: min 84.0 — hull 85.2 / whole
+  84.0 / turret 84.8 / stations 87.3 / dims 100 / floaters 100 (the
+  packet's certified post-r4 ceiling; closure fully mask-neutral).
+- winding-audit m1 rev 0 / mix 0, m2 0 candidates (new slabs bind
+  through orientedSlab); track-clip 0/0 band + 0/0 shoe; standard-check
+  contig 0, mg1+6d. npm test green (265 checks).
+- hash ba2f514e -> 1d1a960 (50 meshes; verts 59780 -> 60320); wide
+  sweep: type89 + is1/is2/t34_85/m4a3e8/tiger1/sherman_jumbo/m60a1/kv2
+  all byte-identical.
+
+### Honest residuals
+- The Konkurs mount-post slot (0.26x0.05 m) is the launcher's real
+  standoff air — documented, not filled.
+- A ~3x6 cm diagonal sliver at (z 2.94..2.97, y 1.04..1.10) between
+  plane A's top face and the bow corner wedges — sub-glance, bounded.
+- Wheel-train daylight under plane A's bottom edge (y<=0.36) is the
+  real track class; the S-plate bottoms stop at 0.38 by design.

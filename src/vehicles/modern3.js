@@ -1412,6 +1412,44 @@ function buildBradley(P) {
   P.add('hull', box(2.60, 0.39, 0.078), 0, 1.065, 3.229);                       // (r3c: face to 3.268 — the plate
                                                                                 //   fell 8 mm short of the 3.27 side
                                                                                 //   column and reg drifted to -0.036)
+  // ---- §B2 NO-AIR BOW CLOSURE (owner order 2026-08-07, AFV under-glacis
+  // round): the glacis stack hung over an OPEN bow cavity — from front-low
+  // the camera read the frustums' bare undersides through the belly slot
+  // (tub front 2.375 -> lower-bow rear 2.94), and the bow corners carried
+  // see-through windows under the lower glacis side edges (probe clusters
+  // +-1.39/1.03 front-low 284 px, -0.25/1.04 right-low 406 px). The real
+  // M2's hull bottom runs to the lower bow plate and its flank armor
+  // closes to the 0.876 ODS-hanger floor (the instrumented r4 ref line:
+  // its 1.495/1.534 front cols bottom 0.876; flank floor x 1.35..1.46).
+  // Pan +-0.945 stays 3.5 cm inside the 0.98 band inner face (§B4
+  // channel-pan class) and laps tub bottom (0.45) + lower-bow rect (0.42).
+  // Corner walls: outer face 1.415 under the +-1.42 glacis rect; inner
+  // face slopes 1.345 (3 cm off the 1.315 band outer face) -> 1.30 riding
+  // 3 cm over the 1.068 shoe-stack top (§B4); top chord sunk into the
+  // lower-glacis underside; bottom at the ref's own 0.876 — front rows
+  // stay top/bottom-neutral (cols already bottom 0.88 via the flap).
+  P.add('hull', box(1.89, 0.08, 0.60), 0, 0.48, 2.66);                          // belly pan y 0.44..0.52, z 2.36..2.96
+                                                                                //   (bottom 1 cm ABOVE the lower-bow
+                                                                                //   0.42 rect: the first 0.39 pan
+                                                                                //   read 2 cm under it in the front
+                                                                                //   mask — 25 center cols dropped +
+                                                                                //   reg dy walked 8 mm, front_hull
+                                                                                //   -2.3; behind the bow's own line
+                                                                                //   the pan is mask-invisible)
+  for (const s of [-1, 1]) {
+    const m = (x) => (s < 0 ? -x : x);
+    P.add('hull', orientedSlab(
+      [m(1.345), 0.876, 2.94], [m(1.415), 0.876, 2.94], [m(1.415), 0.876, 2.50], [m(1.345), 0.876, 2.50],
+      [m(1.30), 1.30, 2.94], [m(1.415), 1.30, 2.94], [m(1.415), 1.50, 2.50], [m(1.30), 1.50, 2.50]));
+    // forward extension to the flap plane (z 2.94..3.13, flat 1.30 top under
+    // the bow corner slab band 1.24..1.36): the 2.94..3.14 slot mouth was a
+    // FrontSide through-tunnel (rays tunnelled the cavity and exited the far
+    // flank's backfaces — right-low 333 px window). z 3.13 IS the ref's own
+    // +-1.44 plan-col top; x-max 1.415 stays out of the 1.423 col bound.
+    P.add('hull', orientedSlab(
+      [m(1.345), 0.876, 3.13], [m(1.415), 0.876, 3.13], [m(1.415), 0.876, 2.94], [m(1.345), 0.876, 2.94],
+      [m(1.345), 1.30, 3.13], [m(1.415), 1.30, 3.13], [m(1.415), 1.30, 2.94], [m(1.345), 1.30, 2.94]));
+  }
   // driver hatch front-LEFT on the plateau + periscope row (§6.5)
   P.add('hull', box(0.62, 0.075, 0.62), -0.85, 1.5325, 2.56, -0.14, 0, 0);      // hatch plinth (r3: -0.03 — the ref
   P.add('hullDark', box(0.56, 0.02, 0.54), -0.85, 1.5675, 2.55, -0.14, 0, 0);   //   plateau reads 1.56-1.58 flat)
@@ -1543,8 +1581,15 @@ function buildBradley(P) {
                                                                                 //   its missing 3.12 read (ref
                                                                                 //   3.126, flares alone 3.02). The
                                                                                 //   -1.55 seam already feeds st3.
-    for (const zc of (s > 0 ? [-2.4, -1.10, -0.70, 0.8, 2.1]
+    for (const zc of (s > 0 ? [-2.4, -1.10, -0.70, 0.8, 2.1, 2.62]
       : [-1.65, -1.10, -0.70, 0.8])) {                                          // (r4f left -2.4 -> -1.65: st3 read
+                                                                                //   no-air round: right zc 2.62 —
+                                                                                //   the ref's ODS hanger row runs to
+                                                                                //   the bow (its 0.876 flank floor);
+                                                                                //   caps 2.47/2.77 inside st13, face
+                                                                                //   1.535 under the skirt's 1.6455
+                                                                                //   width — closes the right-low
+                                                                                //   333 px corner window lane
                                                                                 //   r4m2: -0.70 pair added — st5
                                                                                 //   collapsed to 2.89-wide with NO
                                                                                 //   vote (ref 3.046); the -0.70
@@ -1593,6 +1638,35 @@ function buildBradley(P) {
     // the plan x ±1.44-1.51 columns with its z 3.18 front (the ref's flank
     // there ends 2.97); the guard proper stays inside ±1.42.
     P.add('hull', box(0.34, 0.045, 0.72), s * 1.25, 1.05, 2.82);
+    if (s > 0) P.add('hull', box(0.10, 0.045, 0.24), 1.47, 1.05, 2.80);         // no-air round: fender bridge to
+                                                                                //   the skirt lane (x 1.42..1.52,
+                                                                                //   z 2.68..2.92 — inside the ref's
+                                                                                //   own x 1.44-1.51 plan band that
+                                                                                //   ends 2.97; §C: caps 109+ mm off
+                                                                                //   the 2.811 slice boundary)
+    if (s > 0) P.add('hull', box(0.16, 0.035, 0.24), 1.495, 1.1125, 2.40);      // no-air round: fender tail over
+                                                                                //   the skirt lane (x 1.415..1.575,
+                                                                                //   y 1.095..1.13 laps the flare
+                                                                                //   bottom line; z 2.28..2.52 laps
+                                                                                //   the flare front) — the rail +
+                                                                                //   bracket + bridge enclosed the
+                                                                                //   plan chimney at (1.5, 2.41):
+                                                                                //   the real fender covers it from
+                                                                                //   above; §B2 top-down cell -> 0.
+                                                                                //   Interior to front/side rows
+                                                                                //   (appliqué band + skirt carry
+                                                                                //   those cols' tops/bottoms)
+    if (s > 0) P.add('hull', box(0.055, 0.19, 0.60), 1.4425, 0.9705, 2.60);     // no-air round: skirt-mount rail
+                                                                                //   segment x 1.415..1.47, bottom
+                                                                                //   0.876 = the ref's own hanger
+                                                                                //   floor — blocks the 3.5 cm front
+                                                                                //   through-tunnel inboard of the
+                                                                                //   hanger row (139 px front-low;
+                                                                                //   raypick: sky lane ran UNDER the
+                                                                                //   first 0.955 bottom); row-true:
+                                                                                //   ref 1.44-1.47 cols bottom 0.876
+                                                                                //   top 1.79; §B4 10 cm off the
+                                                                                //   1.31 pin-cap reach
     if (s > 0) P.add('hull', box(0.075, 0.045, 0.48), 1.5625, 1.05, 2.70);      // st12 cap tab (right; y 1.05:
                                                                                 //   r4i: x 1.525..1.60 — BOTH jobs:
                                                                                 //   st12's 1.60 width read AND the
@@ -1613,9 +1687,13 @@ function buildBradley(P) {
                                                                                 //   top 0.975 (§B4)
                                                                                 //   (x to -1.50, lapped onto the
                                                                                 //   guard so it cannot float)
-    P.add('hullRubber', box(0.30, 0.15, 0.04), s * 1.25, 0.955, 3.16);          // flap 0.88..1.03 (r4: the 0.71
+    P.add('hullRubber', box(0.34, 0.15, 0.04), s * 1.25, 0.955, 3.16);          // flap 0.88..1.03 (r4: the 0.71
                                                                                 //   bottom under-ran the ref's
-                                                                                //   0.876 flank floor at ±1.35-1.40)
+                                                                                //   0.876 flank floor at ±1.35-1.40;
+                                                                                //   no-air round: x 1.40 -> 1.42 —
+                                                                                //   matches the mudguard edge, kills
+                                                                                //   the 2 cm front sliver onto the
+                                                                                //   new corner wall)
     if (s > 0) P.add('hull', box(0.34, 0.045, 0.55), 1.25, 1.16, -2.95);        // clear of the 1.09 wrap apex (§B4)
     else P.add('hull', box(0.32, 0.045, 0.55), -1.245, 1.16, -2.95);            //   (r4i left: edge -1.42 -> -1.405
                                                                                 //   — its 1 mm AA sliver fed the
@@ -2072,6 +2150,43 @@ function buildBMP2(P) {
       [-1.13, 1.12, 3.26], [-1.00, 1.12, 3.26], [-1.00, 1.10, 2.97], [-1.545, 1.10, 2.97],
       [-1.13, 1.28, 3.26], [-1.00, 1.28, 3.26], [-1.00, 1.40, 2.97], [-1.51, 1.24, 2.97],
     ), 0, 0, 0);
+  }
+  // ---- §B2 NO-AIR BOW CLOSURE (owner order 2026-08-07, AFV under-glacis
+  // round): the boat bow was three floating planes — from low side/quarter
+  // views the whole triangle between the glacis underside, prow plane A and
+  // the tub front read as a see-through cave (probe: 1301/1702 enclosed px
+  // per side-low view, clusters y 1.37/1.22/0.36 over z 2.1..2.4), and a
+  // belly slot z 1.756..2.136 opened the cavity from below. The real BMP-2
+  // boat bow is CLOSED: side plates run from the sponson line forward to
+  // the nose (ref covered-run line (1.63,0.066)->(3.06,1.036); ref side
+  // bottoms read 0.25..0.39 over this z — the proc's 0.675 skirt bottom was
+  // the SHORT read, so closure moves side rows TOWARD the ref). All pieces
+  // interior to front/plan masks: plates at x 0.92..0.98 hide behind plane
+  // A/B (+-0.98..1.055) and under the glacis (+-1.06 min); pan +-0.98 rides
+  // behind plane A's own bottom rect. Edge lines are sunk 12-40 mm INTO the
+  // neighbour solids (frustum faces are planar at constant x — straight
+  // chords stay interior, merkava roofSolid mechanism). §B4: band inner
+  // face 1.055 — plates clear by 7.5 cm, pan by 7.5 cm; the sprocket wrap
+  // (z 1.99..2.52 at x 1.055..1.355) is outboard of every piece.
+  P.add('hull', box(1.96, 0.06, 0.56), 0, 0.39, 1.98);                          // belly pan: tub front -> plane A
+                                                                                //   bottom rect (y 0.36..0.42,
+                                                                                //   z 1.70..2.26, both seams lapped)
+  for (const s of [-1, 1]) {
+    const m = (x) => (s < 0 ? -x : x);
+    // S1 rear plate: inside the tub/crest-shoulder overlap band
+    P.add('hull', orientedSlab(
+      [m(0.92), 0.38, 1.90], [m(0.98), 0.38, 1.90], [m(0.98), 0.38, 1.72], [m(0.92), 0.38, 1.72],
+      [m(0.92), 1.518, 1.90], [m(0.98), 1.518, 1.90], [m(0.98), 1.518, 1.72], [m(0.92), 1.518, 1.72]));
+    // S2: crest-to-mid — top chord parallel to the glacis underside (+14 mm)
+    P.add('hull', orientedSlab(
+      [m(0.92), 0.38, 2.16], [m(0.98), 0.38, 2.16], [m(0.98), 0.38, 1.90], [m(0.92), 0.38, 1.90],
+      [m(0.92), 1.470, 2.16], [m(0.98), 1.470, 2.16], [m(0.98), 1.527, 1.90], [m(0.92), 1.527, 1.90]));
+    // S3: mid-to-nose — top chord under the glacis, bottom chord riding
+    // INSIDE prow plane A (rear-face line -0.03); front edge tucks into the
+    // glacis nose-plate band at z 2.94
+    P.add('hull', orientedSlab(
+      [m(0.92), 0.92, 2.94], [m(0.98), 0.92, 2.94], [m(0.98), 0.386, 2.16], [m(0.92), 0.386, 2.16],
+      [m(0.92), 1.298, 2.94], [m(0.98), 1.298, 2.94], [m(0.98), 1.470, 2.16], [m(0.92), 1.470, 2.16]));
   }
   // wave-breaker ribs on the glacis plane (ref sawtooth peaks +0.03)
   P.add('hullDetail', box(2.00, 0.026, 0.065), 0, 1.553, 2.026, -0.22, 0, 0);
@@ -2553,6 +2668,36 @@ function buildPuma(P) {
     P.add('hull', slab(
       [m(1.26), 1.44, 3.58], [m(1.42), 1.46, 3.42], [m(1.66), 1.64, 1.41], [m(1.42), 1.92, 1.63],
       [m(1.18), 1.48, 3.56], [m(1.34), 1.50, 3.40], [m(1.58), 1.68, 1.43], [m(1.34), 1.96, 1.63]));
+  }
+  // ---- §B2 NO-AIR NOSE CLOSURE (owner order 2026-08-07, AFV under-glacis
+  // round, secondary check — class PRESENT): the bow plane hung over an
+  // open nose volume — side-low views read THROUGH under the plane's side
+  // edge, over the wrap front, out the far side (probe: 485/494 px windows
+  // at z 3.07 / y 1.41 per side; the nose-wedge top 1.30 vs plane underside
+  // ~1.44-1.54 left the interior slot the windows aligned with). The print
+  // is closed there: its side line sweeps unbroken to the nose lip
+  // (3.72,1.40) with the belly line rising to 1.23 at the nose. Inner
+  // walls continue the +-1.00 tub line under the plane (§B2 channel-pan:
+  // 3 cm inside the 1.03 band inner face; two z-segments so the top chords
+  // stay inside the plane wedge as it thins, bottoms riding the under-bow
+  // rise then the lower-bow body). Corner walls x 1.00..1.20 close the
+  // z 3.20..3.72 window — 3 cm clear of the wrap's z 3.17 reach (§B4),
+  // bottom on the face plate's own 1.00 line (the print's rising belly),
+  // top sunk into the plane; front tucks into the face-plate band, plan
+  // hides under the plane's +-1.26..1.33 nose taper.
+  for (const s of [-1, 1]) {
+    const m = (x) => (s < 0 ? -x : x);
+    // inner nose walls (tub-line continuation)
+    P.add('hull', orientedSlab(
+      [m(0.94), 0.50, 3.30], [m(1.00), 0.50, 3.30], [m(1.00), 0.64, 2.78], [m(0.94), 0.64, 2.78],
+      [m(0.94), 1.50, 3.30], [m(1.00), 1.50, 3.30], [m(1.00), 1.63, 2.78], [m(0.94), 1.63, 2.78]));
+    P.add('hull', orientedSlab(
+      [m(0.94), 0.68, 3.70], [m(1.00), 0.68, 3.70], [m(1.00), 0.75, 3.30], [m(0.94), 0.75, 3.30],
+      [m(0.94), 1.402, 3.70], [m(1.00), 1.402, 3.70], [m(1.00), 1.50, 3.30], [m(0.94), 1.50, 3.30]));
+    // bow corner walls (the see-through window closure)
+    P.add('hull', orientedSlab(
+      [m(1.00), 1.00, 3.72], [m(1.20), 1.00, 3.72], [m(1.20), 1.00, 3.20], [m(1.00), 1.00, 3.20],
+      [m(1.00), 1.40, 3.72], [m(1.20), 1.40, 3.72], [m(1.20), 1.52, 3.20], [m(1.00), 1.52, 3.20]));
   }
   // tow hooks on the face (plan 3.64@+-0.91 print -> 3.78; rings pulled
   // inside the +-3.80 envelope, §B8 order 5)

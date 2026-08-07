@@ -184,3 +184,19 @@ before + after.
    AFV r1 bows carried it; the type89's whole "LONG glacis" was a
    horizontal slab, which is why the profile read rectangle while the
    packet described a plane.
+
+## §5.18 NO-AIR CHECK NOTE (2026-08-07, AFV round secondary check — class NOT PRESENT)
+The under-glacis air class was probed (tools/tmp-afv-glacisgap,
+shots/afv-glacisgap/before/type89/) and is ALREADY CLOSED on this
+mark: the r2 §B8 rework's PROW SIDE WALLS carry the class's closure
+("the real hull's side plates run forward over the track to the
+nose"). Worst reads are small bounded slots: (z 3.26, y 1.08)
+0.13x0.055 m bow-lip notch between the glacis corner facets' front
+edges (z 2.85/2.90), the wrap reach (z 3.09) and the nose block —
+bordered by §B4 clearances on every side (pin caps reach 1.376;
+facet bottoms 1.12 clear the 0.95 wrap apex); front-under ±1.57
+slivers 1.6 cm wide (skirt-to-hull joint class); fql-low
+(apparent -1.66, 1.90) mid-flank skirt-top shadow. All sub-glance,
+all bounded by real structure — no closure ordered. Builder bytes
+untouched this round: hash b19aca94 held byte-identical through the
+wide sweep, both before and after the bmp2/bradley/puma edits.

@@ -259,3 +259,47 @@ chieftain_mk10/type10 hashes byte-identical before + after (tmp-hashgeo).
    arm AA-vanishes at 768 px and reads as a sky-island (pods, 5/5 poses).
    Stalked furniture needs a plate-solid bracket (>=10 px projected), or
    must overlap body mass in projection.
+
+## §B2 NO-AIR NOSE CLOSURE (2026-08-07, AFV round §5.18 secondary check — class PRESENT, closed)
+The under-glacis check found the class here too: the bow plane hung
+over an open nose volume — side-low views read THROUGH under the
+plane's side edge, over the wrap front (which ends z 3.17), and out
+the far side's backfaces (probe: 485/494 px windows at (z 3.07,
+y 1.41) per side; the nose-wedge top 1.30 vs the plane underside
+1.44-1.54 left the interior slot the windows aligned through). The
+print is closed there: its side line sweeps unbroken to the nose lip
+(3.72, 1.40) with the belly line rising to 1.23 at the nose.
+
+### Changes (buildPuma only)
+1. INNER NOSE WALLS x 0.94..1.00 per side, two z-segments (2.78..3.30
+   on the under-bow rise, 3.30..3.70 on the lower-bow body) — the tub
+   line continued under the plane (§B2 channel-pan: 3 cm inside the
+   1.03 band inner face); top chords segmented so they stay inside the
+   plane wedge as it thins (3-8 mm margins at the nose pinch).
+2. BOW CORNER WALLS x 1.00..1.20, z 3.20..3.72 (3 cm clear of the
+   wrap's 3.17 reach, §B4), bottom on the face plate's own 1.00 line
+   (the print's rising belly), top sunk into the plane, front tucked
+   into the face-plate band, plan under the plane's nose taper.
+After: both bow windows DEAD (side-low 752/759 -> 267/265, remainder
+wheel-train daylight at y 0.30-0.40 — class-1). Front/under views
+unchanged where they read the SKIRT-HOVER class (±1.56, y 1.73..1.96,
+884/878 px + (±0.93, 2.19) fql/fqr 444/344 px): that is the owner's
+QUEUED fleet no-air sweep item ("side plates that might just be
+hovering") — modular-armor standoff air, out of this round's scope,
+inventoried here for that sweep.
+
+### Done-gates
+- geometry-gate x2 EXACT the standing ledger row: min 0 — hull 39.9 /
+  whole 18.1 / turret 0 / stations 20.3 / dims 100 / floaters 100 (no
+  regression; this mark's row is its own standing rebuild debt).
+- winding m1 clean (rev 0 / mix 0); m2 HARD is PRE-EXISTING (fleet
+  baseline 2026-08-06 carries the same stern candidates, 2829 px then
+  vs 2670 now — nothing this round added sits near the ring zone).
+- track-clip 0/0 + 0/0; standard-check contig 0, mg1+12d; npm green.
+- hash 31dca571 -> d04e4c58 (64 meshes; verts 68500 -> 68716).
+
+### Honest residuals
+- Skirt-hover windows (above) — fleet-sweep inventory.
+- The W1/W2 inner-wall bottom step at z 3.30 (0.50 vs 0.75) crosses
+  the interior lower-bow/rise void — visible only from the low-rear
+  track-lane angle, terminates each wall on its carrier solid.

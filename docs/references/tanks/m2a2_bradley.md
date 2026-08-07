@@ -515,3 +515,71 @@ arc). stations: the fill-lump paint class above. The 84.7 landing is
 0.3 under the >=85 target; every remaining row is 84.7-85.7 with flat
 sub-0.1 worst columns — the next instrument-grade find (the -2.4
 divergence or the -1.2 element) is the 85 unlock.
+
+## §B2 NO-AIR UNDER-GLACIS round (2026-08-07, AFV round — owner order §5.18)
+The glacis stack hung over an OPEN bow cavity: front-low read the
+frustums' bare undersides through the belly slot (tub front 2.375 ->
+lower-bow rear 2.94), and both bow corners carried see-through windows
+under the lower-glacis side edges (probe clusters (±1.39, 1.03)
+front-low 284 px; (y 1.04, z 2.55) right-low 406 px). The real M2's
+hull bottom runs to the lower bow plate and its flank closes to the
+0.876 ODS-hanger floor (the r4-instrumented ref line: 1.495/1.534
+front cols bottom 0.876; flank floor x 1.35..1.46; ±1.44 plan col tops
+z 3.13). Probe/evidence: tools/tmp-afv-glacisgap.{html,mjs} +
+tools/tmp-afv-raypick.{html,mjs} (exact-sightline attribution);
+shots/afv-glacisgap/{before,final}/m2a2_bradley/ + pairs/.
+
+### Changes (buildBradley only)
+1. BELLY PAN +-0.945, y 0.44..0.52, z 2.36..2.96 (§B4: 3.5 cm inside
+   the 0.98 band inner face; laps tub bottom 0.45 + lower-bow rect).
+   LAW RECEIPT: the first pan at y 0.39..0.47 read 2 cm UNDER the
+   lower-bow 0.42 rect in the front mask — 25 center columns dropped
+   and the front registration dy walked 8 mm (front_hull -2.3): a
+   closure pan must hide BEHIND the bow's own lowest line, not extend
+   it. Raised, the row restored EXACT.
+2. BOW CORNER WALLS per side (x 1.345..1.415 base, inner face sloping
+   to 1.30 at the top — 3 cm off the 1.315 band outer face, 3 cm over
+   the 1.068 shoe stack, §B4) z 2.50..2.94, top chord sunk into the
+   lower-glacis underside, bottom at the ref's own 0.876 + FORWARD
+   EXTENSION z 2.94..3.13 (flat 1.30 top under the corner-slab band):
+   the 2.94..3.14 slot mouth was a FrontSide through-tunnel (raypick:
+   rays crossed the cavity and exited the far flank's backfaces).
+   z 3.13 is the ref's own ±1.44 plan-col top.
+3. RIGHT ODS lane kit (the ref's asymmetric flank): hanger bracket
+   zc 2.62 appended to the r4 row (caps 2.47/2.77 inside st13); fender
+   bridge x 1.42..1.52 z 2.68..2.92 (inside the ref's x 1.44-1.51 plan
+   band ending 2.97); skirt-mount rail x 1.415..1.47, bottom 0.876 =
+   the ref hanger floor (raypick receipt: the sky lane ran UNDER the
+   first 0.955 rail bottom); fender tail x 1.415..1.575 y 1.095..1.13
+   z 2.28..2.52 over the skirt lane — the rail+bracket+bridge had
+   enclosed a §B2 top-down chimney at (1.5, 2.41); the real fender
+   covers it (cell -> 0).
+4. Front mudflaps widened x 1.40 -> 1.42 (meets the mudguard edge).
+After: the corner windows and the belly read are DEAD (front-under
+8 px; right-low bow window 333 -> 0). front-low residual 870 px =
+turret-overhang trio (bin/TOW/mast under-hangs, 497 px — rotating
+furniture class) + the lawful §B4 tub-to-band channel slivers
+(1.3-2.7 cm, 363 px) + 10 px crumb.
+
+### Done-gates
+- geometry-gate x2 EXACT the ledger row at final bytes: min 84.7 —
+  hull 85.3 / whole 85.0 / turret 84.7 / stations 84.8 / dims 100 /
+  floaters 100 (zero regression; the -2.3 pan excursion caught and
+  reverted mid-round, receipt above).
+- winding-audit m1 rev 0 / mix 0 deficit 1 px, m2 0 candidates;
+  track-clip front 0/0, rear 45/121 — PROVEN PRE-EXISTING (identical
+  at HEAD bytes via pathspec-scoped stash run; stern §B4 furniture,
+  z -3.1..-2.7, five meters from every piece this round added);
+  standard-check contig 0, mg1+9d. npm test green.
+- hash 8d36a6cd -> 5a4cbadc (59 meshes; verts 67748 -> 68648) ON TOP
+  of the c461922 per-shell-reload spec landing (cross-lane stash sweep
+  recovered by patch; spec block preserved byte-exact). Wide sweep:
+  all 9 unintended ids byte-identical.
+
+### Honest residuals
+- Turret-overhang air (right bin/tower + TOW pod + left-mast steps
+  over the hull roof) is rotating-furniture class — documented.
+- The §B4 tub-to-band channels (x ±0.95..0.98) are the law's own
+  designed clearance — real on the vehicle, left open.
+- rear 45/121 track-clip is the pre-existing stern §B4 item (standing
+  lane debt, not this round's).

@@ -444,7 +444,7 @@
    ]
   },
   "front_hull": {
-   "score": 85.28839550908926,
+   "score": 85.30938100186505,
    "meanPct": 1.11,
    "p95Pct": 2.38,
    "coverPct": 0,
@@ -547,12 +547,12 @@
      "refBot": -1.48,
      "procTop": 0.4,
      "procBot": -1.47,
-     "errM": 0.056
+     "errM": 0.057
     }
    ]
   },
   "front_whole": {
-   "score": 87.36794051084362,
+   "score": 87.38342161207169,
    "meanPct": 0.94,
    "p95Pct": 2.21,
    "coverPct": 0,
