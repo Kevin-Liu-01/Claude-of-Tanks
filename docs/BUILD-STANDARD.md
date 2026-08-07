@@ -652,6 +652,21 @@ The right mechanism is PER-TANK authored hull geometry: real belly
 plates at the real height, sponson undersides, closure panels INBOARD
 of the band inner faces (the ww2-lane channel-pan class, ±3cm clear) —
 authored where the real tank has metal, never where it has air.
+
+NO-AIR PRINCIPLE (owner law 2026-08-07, after the merkava under-roof
+closures): "have a principle of no air between stuff except for stuff
+like tracks holding up the hull and the turret intersecting into a
+hull where there is bound to be air." Structural pieces CONNECT — no
+air gaps between a plate and what it mounts on, no hovering side
+plates, no roof floating over an unbuilt volume, no glacis with a
+void beneath it. The ONLY legitimate air classes: (1) track/suspension
+air (the running gear holding up the hull — wheel-train daylight is
+real), (2) turret-ring intersection air (the turret bearing into the
+hull), (3) authored open structure that is real configuration (basket
+frames, slat armor, ball-and-chain — the merkava-certified classes).
+Everything else closes with the piece's own geometry per the
+holes-not-channels ruling above. Critics: hovering plates and
+under-glacis voids are orders on every tank.
 - FITTINGS-IMPORT-ONLY (§B3 mechanics, slice-3): extension-module
   builders use the top-level `import { FITTINGS }` — there is no
   kitFittings(); KIT.fittings attaches post-init via microtask; and an

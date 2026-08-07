@@ -1161,3 +1161,16 @@ gray-squares job DROPPED; the whole round = BUILD THE MISSING TURRET
 STRUCTURE — the shell's lower side walls down to the ring band + the
 under-front chin/cheek undersides to the mantlet collar, real §B2
 casting walls; verified at the owner's close 3/4 angle + yaw 0/45/90.
+
+## 5.18 OWNER ORDER (2026-08-07): NO-AIR PRINCIPLE (now BUILD-STANDARD
+§B2 law) + AFV UNDER-GLACIS ROUND — "the merkava filling is good, now
+do it for the afvs' upper glacis which have big gaps under them,
+primarily bmp and bradley. eventually do this procedure for other
+tanks too, including side plates that might just be hovering." Round
+spawned: bmp2 + m2a2_bradley (builders in the SHARED tankFactory.js —
+strict path discipline + wide hash sweep), secondary puma/type89
+check (their builders live in modern3.js — free). FLEET NO-AIR SWEEP
+(hovering side plates, all tanks) QUEUED as a read-only audit next.
+NOTE the owner ALSO said "adjust their stats" for the AFVs — read as
+ambiguous (gameplay stats vs geometry); the geometry round is
+running; the stats half is FLAGGED FOR OWNER CLARIFICATION.
