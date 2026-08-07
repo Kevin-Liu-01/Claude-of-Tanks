@@ -1339,3 +1339,11 @@ MORE MACHINE GUNS (pintle NSVT/Kord/PKT per cupola, CROWS-FORWARD
 law) fleet-wide on the soviet MBTs. The in-flight chevron critic's
 verdicts remain useful evidence; the refinement supersedes shape
 verdicts where they conflict.
+
+## 5.30 OWNER ORDERS (2026-08-07, relayed into the live §5.29 round):
+(1) t90a_vladimir REBASED ON THE T90A — the turret REPLACED wholesale
+with the t90a's welded loft (vladimir keeps only its real-distinct
+kit; record 190e6a32 moves by order; the 63.8 print-bake cap
+discipline stands); (2) t90a — the excess rectangle on the right
+side of its tracks near the bottom REMOVED (§B3 no-mystery-boxes:
+identify, re-seat if real, delete if not; both sides probed).
