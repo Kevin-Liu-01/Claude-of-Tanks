@@ -1725,7 +1725,30 @@ function challenger1Build(P) {
   // 1.396 bottom vs our old 1.591/1.429).
   for (const s of [-1, 1]) P.add('hullDark', box(0.62, 0.19, 0.09), s * 0.61, 1.47, -4.145);
   P.add('hullDetail', box(2.1, 0.05, 0.05), 0, 1.70, -3.62);
-  P.decal('hull', 'soot', null, 0.9, [0.6, 1.3, -4.0], Math.PI);
+  // §C.1 winding fix-round 2026-08-07 (fleet sweep item 2): the 0.9 soot
+  // quad spanned x 0.15..1.05 / y 0.85..1.75 at z -4.0 — its top strip rode
+  // over the 1.72 tail-box line and its flanks hung past the backed plate
+  // composite, so the one-sided plane painted the gate's DoubleSide masks
+  // from frontright/frontleft (199/48 px F-vs-D) while the game culls it.
+  // Re-pinned 5 mm proud of the -3.99 tail-box aft face and sized inside
+  // that face (x 0.405..0.905, y 1.11..1.61); the O5b outlet boxes/stubs
+  // still poke through the stain as before.
+  P.decal('hull', 'soot', null, 0.5, [0.655, 1.36, -3.995], Math.PI);
+  // COMPANION MASS (same round): the phantom decal's 1.75 top edge was the
+  // rearmost station's ONLY 1.74-line painter — the ref reads a bin-rack
+  // rim over the tail bins' aft edge (its own side cols 1.741 at
+  // -4.01..-4.00, station-0 top 1.743/gate-row ~1.750; the reference md's
+  // "rear bin rack across the tail"). Authored honestly: rack rim rails on
+  // the tail-bin lids' rear edge (§B3.2 bin class), 5 mm seat on the 1.72
+  // lid plane + 15 mm rear lip over the -3.99 aft face (backed, touching —
+  // floaters-clean). Column math: tops ride ONLY the -4.00/-3.99 side cols
+  // where ref reads 1.741/1.736 (the -4.00 col IMPROVES from the 1.73
+  // deep-box read; a flat mid-run rim at 1.75 taxed side_whole off its
+  // 90.10 razor edge — r2 evidence in the round notes). x 0.38..0.92 sits
+  // inside the ±0.30..0.92 lip plan band (plan tail owned by the -4.19 lip
+  // below), center |x|<0.27 lane untouched (the -3.998 notch line keeps
+  // its §C margin), and front cols stay under the 1.762 deck-bin shoulder.
+  for (const s of [-1, 1]) P.add('hull', box(0.54, 0.0305, 0.02), s * 0.65, 1.73525, -3.995);
   // r10 O5b (shaded-parity r8 — lower rear plate exhaust/cable clutter, the
   // ordered rear tell): exhaust outlet boxes + pipe stubs at the tail
   // corners, a draped cable across the upper plate, cleats and a convoy

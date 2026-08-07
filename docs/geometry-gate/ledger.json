@@ -916,12 +916,12 @@
   },
   {
    "id": "challenger1",
-   "geoMin": 90.1,
+   "geoMin": 90.2,
    "gatePassed": true,
    "components": {
     "hullCurves": 91.8,
-    "wholeCurves": 90.1,
-    "turretCurves": 90.2,
+    "wholeCurves": 90.2,
+    "turretCurves": 90.3,
     "stations": 90.6,
     "dims": 95,
     "floaters": 100
