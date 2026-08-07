@@ -1420,8 +1420,13 @@ def _index_surgery(tank_id, node_name, *, prim_index=0, delete_rules=(),
         data = bytearray(chunks[bi][1])
 
         idx_acc = gltf['accessors'][prim['indices']]
-        if idx_acc['componentType'] != 5123:
-            raise SystemExit(f'{_id}: expected uint16 indices')
+        # batch-48b compat: uint32 (5125) prints accepted alongside uint16
+        # (5123). Writes reuse the SOURCE type, so every pre-existing 5123
+        # chain stays byte-identical (proof: repair t90sm md5-matched).
+        if idx_acc['componentType'] not in (5123, 5125):
+            raise SystemExit(f'{_id}: expected uint16/uint32 indices')
+        ichar = 'H' if idx_acc['componentType'] == 5123 else 'I'
+        itype = idx_acc['componentType']
         idx = [v[0] for v in _read_rows(gltf, data, prim['indices'])]
         pos = _read_rows(gltf, data, prim['attributes']['POSITION'])
         world = node_world_matrix(gltf, ni)
@@ -1486,8 +1491,8 @@ def _index_surgery(tank_id, node_name, *, prim_index=0, delete_rules=(),
 
         # re-point the prim at a trimmed index accessor (appended; original
         # index bytes stay in the bin, unreferenced)
-        nbv = _bin_append(gltf, data, struct.pack(f'<{len(kept)}H', *kept), 34963)
-        gltf['accessors'].append({'bufferView': nbv, 'componentType': 5123,
+        nbv = _bin_append(gltf, data, struct.pack(f'<{len(kept)}{ichar}', *kept), 34963)
+        gltf['accessors'].append({'bufferView': nbv, 'componentType': itype,
                                   'count': len(kept), 'type': 'SCALAR'})
         prim['indices'] = len(gltf['accessors']) - 1
 
@@ -1509,8 +1514,8 @@ def _index_surgery(tank_id, node_name, *, prim_index=0, delete_rules=(),
                 gltf['accessors'].append(new_acc)
                 attrs[name] = len(gltf['accessors']) - 1
             gidx = [remap[v] for tri in moved for v in tri]
-            gbv = _bin_append(gltf, data, struct.pack(f'<{len(gidx)}H', *gidx), 34963)
-            gltf['accessors'].append({'bufferView': gbv, 'componentType': 5123,
+            gbv = _bin_append(gltf, data, struct.pack(f'<{len(gidx)}{ichar}', *gidx), 34963)
+            gltf['accessors'].append({'bufferView': gbv, 'componentType': itype,
                                       'count': len(gidx), 'type': 'SCALAR'})
             gprim = {'attributes': attrs, 'indices': len(gltf['accessors']) - 1}
             if 'material' in prim:
@@ -3472,6 +3477,17 @@ REPAIRS['challenger_3'] = {
 # turret node's below-deck fitting dips (-0.604) ride the identity
 # zone. Census expect = the full reachable print (4 prims / 129,488
 # verts / 141,698 tris).
+# batch-48b/48c ATTEMPTED AND REVERTED (2026-08-07, gate-in-loop
+# negatives — both banked in challenger2.md): (b) stern-bins re-parent
+# to the hull node left dAlong BYTE-IDENTICAL at 1.368 (the anchor
+# reads the whole silhouette, not the node partition — mechanism
+# disproven; the uint32 _index_surgery extension it exercised is KEPT,
+# byte-proven on the t90sm chain); (c) length-parity shift (+0.43
+# hull-centering + tube stretch to 7.335) moved dAlong WORSE 1.368 ->
+# 1.532 and plan_hull 66.3 -> 60.1 — direction disproven. The dAlong
+# anchor mechanism needs source-level analysis of the fidelity page's
+# registration (12%-band mid at band heights) in a DEDICATED round;
+# until then the batch-48 warp-only chain stands.
 REPAIRS['challenger2'] = {
     'path': 'public/models/tanks/community/challenger_ii.glb',
     'ops': [('py2', _axis_warp('challenger2', long_axis='z',

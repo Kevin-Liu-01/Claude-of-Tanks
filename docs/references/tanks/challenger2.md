@@ -321,3 +321,21 @@ the turret node's full-length fittings to the hull side, or window
 the anchor off them), THEN the curve rows can measure. plan_hull 66.3
 (dAlong 0 in plan) corroborates: where registration is clean the
 print now scores.
+
+## batch-48b/48c ATTEMPTS — BOTH NEGATIVE, REVERTED (2026-08-07)
+
+(b) STERN-BINS RE-PARENT (uint32 _index_surgery, 2 components / 1,188
+verts / 2,176 tris to the hull node): dAlong stayed BYTE-IDENTICAL at
+1.368 — the side-registration anchor reads the WHOLE silhouette, not
+the node partition. Mechanism disproven for the walk (the partition
+itself is mask-neutral).
+(c) LENGTH PARITY (+0.43 hull-centering shift + tube stretch 6.597 ->
+7.335): dAlong WORSENED 1.368 -> 1.532 and plan_hull fell 66.3 ->
+60.1. Direction disproven — the anchor is not a whole-mask mid delta
+either.
+CONCLUSION: the dAlong mechanism ("dims anchors symmetric about the
+ref's own 12%-band mid, at the ref's own band heights") must be
+analyzed at SOURCE level (the fidelity page's registration code) in a
+dedicated round before any further ch2 oracle surgery. The batch-48
+warp-only chain stands (md5 3c6a15dc verified restored); the uint32
+surgery extension is KEPT in the helper (byte-proven on t90sm).
