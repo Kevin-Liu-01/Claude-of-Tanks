@@ -1161,8 +1161,8 @@
     "hullCurves": 0,
     "wholeCurves": 0,
     "turretCurves": 0,
-    "stations": 0,
-    "dims": 0,
+    "stations": 24.8,
+    "dims": 100,
     "floaters": 100
    }
   }
