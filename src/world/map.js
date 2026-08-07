@@ -108,6 +108,15 @@ function assembleWorld(engineCtx, config, heightField, terrain, vegetation, prop
   group.name = 'world-' + config.id;
   group.add(terrain, vegetation.group, props.group);
   engineCtx.scene.add(group);
+  // perf-governor r1 (discoverthreejs "matrixAutoUpdate = false for static
+  // objects"): every world dynamic goes through instanceMatrix writes or
+  // shader uniforms — no object-level transform under this group ever changes
+  // after build (breaks/crushes zero-scale INSTANCES; the grass carpet
+  // re-parks instances; wind is vertex-shader). Freeze the whole subtree so
+  // the per-frame updateMatrixWorld walk stops recomposing hundreds of
+  // static matrices.
+  group.updateMatrixWorld(true);
+  group.traverse((o) => { o.matrixAutoUpdate = false; });
 
   const obstacles = [...props.obstacles, ...vegetation.treeObstacles];
 

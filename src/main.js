@@ -1418,6 +1418,12 @@ sky.applyFog(scene);
 // render loop can scale it by FOV without mutating the sky's baseline.
 let baseFogDensity = scene.fog.density; // updated on map switch (sky preset)
 const post = createPost(renderer, scene, camera);
+// perf-governor r1: the post governor's session trim ladder reaches the
+// shadow lever through this hook — rung 1 halves the cascade refresh rate,
+// rung 3 drops it to a third; rung 2 (AO off) is post-internal.
+post.setPerfTrimHandler((lvl) => {
+  lighting.setShadowThrottle(lvl >= 3 ? 2 : lvl >= 1 ? 1 : 0);
+});
 
 // ---------------------------------------------------------------------------
 // End-of-battle overlay (integration-owned DOM)
@@ -3429,6 +3435,9 @@ window.__SHOTS = {
     warmCombatPipeline();
     showroom.stop(); // reset drag/inertia before any deterministic shot recipe
     shotMode = true;
+    // perf-governor r1: captures are a pixel contract — render untrimmed
+    // (update(force) already redraws every cascade; this restores AO too).
+    post.resetPerfTrims();
     // killcam_shotinfo r2 (harness reliability): keep the GLB idle queue
     // quiet during shot capture — a parse job landing inside the ~1.2 s
     // battlefield settle window adds decode pressure exactly while the

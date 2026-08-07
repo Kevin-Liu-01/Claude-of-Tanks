@@ -1440,6 +1440,41 @@ export function createPost(renderer, scene, camera) {
   // perf-r2e adaptive-tier strike counter (see the decision block)
   const TIER_STRIKES_MAX = 4;
   let tierStrikes = 0;
+  // perf-governor r1 (R3F PerformanceMonitor pattern, mapped onto this
+  // engine): between "resolution at the floor" and "drop the whole preset
+  // tier" there is now a SESSION TRIM LADDER driven purely by measured frame
+  // times — relief the moment a device actually struggles, restored the
+  // moment it recovers, never persisted:
+  //   trim 1  shadow cascades re-render at half rate (lighting.js lever)
+  //   trim 2  GTAO off (the most expensive single pass)
+  //   trim 3  shadow cascades at third rate
+  // Down-steps need TRIM_STRIKES consecutive overloaded windows (~5 s) so a
+  // killcam beat can't trim; up-steps need clean windows and back off
+  // exponentially when they flap (the R3F `flipflops` guard).
+  const TRIM_MAX = 3;
+  const TRIM_STRIKES = 2;
+  const TRIM_UP_BACKOFF_S = 15;
+  const TRIM_UP_BACKOFF_MAX_S = 90;
+  let perfTrim = 0;
+  let trimStrikes = 0;
+  let trimUpBackoffS = TRIM_UP_BACKOFF_S;
+  let trimLastUpAt = -Infinity;
+  let trimLastDownAt = -Infinity;
+  let onPerfTrim = null; // main.js hook (shadow throttle lives in lighting.js)
+  let quality = 'high'; // mirrors setQuality — AO recomputes from one place
+  function applyAoEnabled() {
+    gtao.enabled = quality !== 'low' && preset.aoScale > 0 && perfTrim < 2;
+  }
+  function setPerfTrim(next) {
+    const lv = Math.max(0, Math.min(TRIM_MAX, next));
+    if (lv === perfTrim) return;
+    perfTrim = lv;
+    applyAoEnabled();
+    renderer.domElement.dataset.perfTrim = String(perfTrim);
+    if (onPerfTrim) {
+      try { onPerfTrim(perfTrim); } catch (_) { /* relief must never throw */ }
+    }
+  }
   function applySize(w, h) {
     cssW = w;
     cssH = h;
@@ -1484,12 +1519,15 @@ export function createPost(renderer, scene, camera) {
       renderer.domElement.dataset.dynBudgetMs = dynBudgetMs.toFixed(2);
     }
     if (dynPin !== null) return; // QA pin owns the scale; telemetry stays live
-    // perf-r2e: decisions now run at EVERY pixel ratio. The dynScale lever
-    // stays retina-class only (downscaling an already-1.0x chain reads as
-    // "weird pixelly" — the engine-aa r1 lesson), but the OVERLOAD STRIKES
-    // below must see dpr-1 devices too: a weak integrated-GPU laptop has no
-    // resolution lever at all, and its only relief is the auto-tier step.
-    const dynLeverAvailable = renderer.getPixelRatio() >= 1.25;
+    // perf-governor r1: the resolution lever now works at EVERY pixel ratio —
+    // a dpr-1 laptop that can't hold the budget gets a slightly soft 60 fps
+    // instead of a crisp slideshow (the R3F AdaptivePixelRatio stance). The
+    // engine-aa r1 "weird pixelly" lesson came from the old 0.67-0.75 floor
+    // with a double upscale; dpr-1 devices therefore keep a conservative 0.8
+    // floor while retina-class chains keep the preset floor.
+    const dynLeverAvailable = true;
+    const dynFloor = renderer.getPixelRatio() < 1.25
+      ? Math.max(dynMin(), 0.8) : dynMin();
     if (dynClock - dynLastDecision < DYN_INTERVAL_S) return;
     if (dynWinFrames < DYN_MIN_WINDOW_FRAMES) return; // thin window: wait
     // Decision point (every >= 2.5 s of visible frames).
@@ -1507,16 +1545,29 @@ export function createPost(renderer, scene, camera) {
     if (dynUpBackoffS > DYN_INTERVAL_S && dynClock - dynLastDownAt > DYN_BACKOFF_RESET_S) {
       dynUpBackoffS = DYN_INTERVAL_S; // flap-free minute: forgiven
     }
-    // perf-r2e ADAPTIVE TIER strikes: sustained budget misses with NO lever
-    // left (either the scale already sits at the preset floor, or this is a
-    // dpr-1 device where the scale lever never engages) escalate to a
-    // one-notch auto-tier step (quality.reportSustainedOverload — no-op when
-    // the user pinned an explicit preset). Four consecutive overloaded
-    // decision windows ≈ 10+ s of sustained misses past the warmup, so a
-    // load hitch or a killcam beat can never demote the tier.
+    // perf-governor r1 RELIEF LADDER, purely from measured frame times:
+    //   resolution steps → session trims (shadow rate, AO) → tier strike.
+    // The tier step (quality.reportSustainedOverload — persisted, no-op when
+    // the user pinned an explicit preset) now fires only after the WHOLE
+    // in-session ladder is exhausted, so it is the last resort it was always
+    // meant to be. Recovery walks the same ladder in reverse.
     const overloaded = dynEma > dynBudgetMs * DYN_DOWN_LEVEL && missRatio > DYN_DOWN_MISS_MIN;
-    const leverLeft = dynLeverAvailable && dynScale > dynMin();
-    if (overloaded && !leverLeft && dynClock > 20) {
+    const clean = dynEma < dynBudgetMs * DYN_UP_LEVEL && missRatio < DYN_UP_MISS_MAX;
+    const leverLeft = dynLeverAvailable && dynScale > dynFloor;
+    if (overloaded && !leverLeft && perfTrim < TRIM_MAX && dynClock > 20) {
+      // scale floor reached but trims remain: walk the trim ladder
+      trimStrikes++;
+      if (trimStrikes >= TRIM_STRIKES) {
+        trimStrikes = 0;
+        setPerfTrim(perfTrim + 1);
+        if (dynClock - trimLastUpAt < DYN_FLAP_S * 2) {
+          trimUpBackoffS = Math.min(trimUpBackoffS * 2, TRIM_UP_BACKOFF_MAX_S);
+        }
+        trimLastDownAt = dynClock;
+        return;
+      }
+    } else if (overloaded && !leverLeft && perfTrim >= TRIM_MAX && dynClock > 20) {
+      // fully trimmed and still overloaded: escalate to the persisted tier
       tierStrikes++;
       if (tierStrikes >= TIER_STRIKES_MAX) {
         tierStrikes = 0;
@@ -1524,16 +1575,25 @@ export function createPost(renderer, scene, camera) {
       }
     } else if (!overloaded) {
       tierStrikes = 0;
+      trimStrikes = 0;
     }
     if (overloaded && leverLeft) {
-      dynScale = Math.max(dynMin(), dynScale - DYN_STEP);
+      dynScale = Math.max(dynFloor, dynScale - DYN_STEP);
       if (dynClock - dynLastUpAt < DYN_FLAP_S) {
         // the last up-step flapped — back the next try off exponentially
         dynUpBackoffS = Math.min(dynUpBackoffS * 2, DYN_BACKOFF_MAX_S);
       }
       dynLastDownAt = dynClock;
+    } else if (clean && perfTrim > 0
+        && dynClock - trimLastDownAt >= trimUpBackoffS
+        && dynClock - trimLastUpAt >= trimUpBackoffS) {
+      // recovery order: un-trim first (restore shadows/AO), resolution after —
+      // the trims are the visually loudest levers
+      setPerfTrim(perfTrim - 1);
+      trimLastUpAt = dynClock;
+      return;
     } else if (dynLeverAvailable
-        && dynEma < dynBudgetMs * DYN_UP_LEVEL && missRatio < DYN_UP_MISS_MAX
+        && clean
         && dynScale < 1 && dynClock - dynLastStep >= dynUpBackoffS) {
       dynScale = Math.min(1, dynScale + DYN_STEP);
       dynLastUpAt = dynClock;
@@ -1555,7 +1615,14 @@ export function createPost(renderer, scene, camera) {
     msaaSamples = samplesForPreset(preset);
     sceneAA.setSamples(msaaSamples);
     publishAAState();
-    gtao.enabled = preset.aoScale > 0;
+    // perf-governor r1: a preset switch is a new baseline — release every
+    // session trim (the new tier's own levers take over) and recompute AO.
+    perfTrim = 0;
+    trimStrikes = 0;
+    trimUpBackoffS = TRIM_UP_BACKOFF_S;
+    renderer.domElement.dataset.perfTrim = '0';
+    if (onPerfTrim) { try { onPerfTrim(0); } catch (_) { /* never throw */ } }
+    applyAoEnabled();
     dynPin = null; // preset change releases any QA capture pin
     dynScale = baseDynScale(); // new preset = new budget baseline; governor re-earns supersampling
     dynEma = 0;
@@ -1718,7 +1785,33 @@ export function createPost(renderer, scene, camera) {
      * @returns {void}
      */
     setQuality(level) {
-      gtao.enabled = level !== 'low' && preset.aoScale > 0;
+      quality = level;
+      applyAoEnabled();
     },
+
+    /** perf-governor r1: current session trim rung (0 = untrimmed). */
+    get perfTrim() { return perfTrim; },
+
+    /**
+     * perf-governor r1: receive trim-level changes (main.js forwards them to
+     * levers post.js cannot reach — the lighting shadow throttle).
+     * @param {?function(number): void} fn
+     */
+    setPerfTrimHandler(fn) {
+      onPerfTrim = typeof fn === 'function' ? fn : null;
+      if (onPerfTrim) {
+        try { onPerfTrim(perfTrim); } catch (_) { /* sync current state */ }
+      }
+    },
+
+    /** perf-governor r1: capture/shot contexts must render untrimmed. */
+    resetPerfTrims() {
+      trimStrikes = 0;
+      trimUpBackoffS = TRIM_UP_BACKOFF_S;
+      setPerfTrim(0);
+    },
+
+    /** QA hook (probes): force a trim rung, bypassing the strike windows. */
+    forcePerfTrim(level) { setPerfTrim(level); },
   };
 }
