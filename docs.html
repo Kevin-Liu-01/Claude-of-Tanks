@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Claude of Tanks — Technical Documentation | Engine, Tank Pipeline &amp; Performance</title>
+<meta name="description" content="How Claude of Tanks works: the pure three.js engine, the procedural tank pipeline, sourced-model program, world generation, simulation, and the measured-performance quality governor.">
+<link rel="icon" href="/brand/logo-mark.svg" type="image/svg+xml">
+<link rel="canonical" href="https://claude-of-tanks.vercel.app/docs">
+<meta property="og:title" content="Claude of Tanks — Technical Documentation">
+<meta property="og:description" content="Engine, tank pipeline, world generation, simulation and the performance system — everything, documented.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://claude-of-tanks.vercel.app/docs">
+<meta property="og:image" content="https://claude-of-tanks.vercel.app/media/featured/f2_06_desert_hero_kf51.webp">
+<style>
+  @font-face {
+    font-family: 'ABC Monument Grotesk';
+    src: url('/fonts/abc-monument-grotesk/ABCMonumentGrotesk-Regular.woff2') format('woff2');
+    font-weight: 100 400; font-style: normal; font-display: swap;
+  }
+  @font-face {
+    font-family: 'ABC Monument Grotesk';
+    src: url('/fonts/abc-monument-grotesk/ABCMonumentGrotesk-Medium.woff2') format('woff2');
+    font-weight: 500 600; font-style: normal; font-display: swap;
+  }
+  @font-face {
+    font-family: 'ABC Monument Grotesk';
+    src: url('/fonts/abc-monument-grotesk/ABCMonumentGrotesk-Bold.woff2') format('woff2');
+    font-weight: 700 900; font-style: normal; font-display: swap;
+  }
+  :root {
+    --bg: #05080b; --bg2: #0b1117; --panel: rgba(11,15,20,.88);
+    --ink: #e6edf3; --bright: #f2f7fb;
+    --mut: #9fb0bf; --dim: #6e7d8a; --faint: #4b5865;
+    --hair: rgba(146,164,180,.22); --hair2: rgba(146,164,180,.13);
+    --amber: #f0a030; --gold: #ffd27a; --battle: #ee8912;
+    --amber-dim: rgba(240,160,48,.55);
+    --mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: 'ABC Monument Grotesk', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-weight: 400; font-size: 15px; line-height: 1.65;
+    -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+  }
+  ::selection { background: var(--amber); color: #05080b; }
+  a { color: inherit; text-decoration: none; }
+  img { display: block; max-width: 100%; }
+  :focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 0 28px; }
+  .micro {
+    font-size: 10.5px; font-weight: 700; letter-spacing: .26em;
+    text-transform: uppercase; color: var(--dim);
+  }
+  .micro b { color: var(--gold); font-weight: 700; }
+  code {
+    font-family: var(--mono); font-size: .86em; color: var(--gold);
+    background: rgba(240,160,48,.07); border: 1px solid var(--hair2);
+    padding: .08em .38em; border-radius: 3px; white-space: nowrap;
+  }
+  .hatch {
+    height: 22px; border-top: 1px solid var(--hair2); border-bottom: 1px solid var(--hair2);
+    background: repeating-linear-gradient(45deg, transparent 0 8px, var(--hair2) 8px 9px);
+  }
+
+  nav.top {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(5,8,11,.86); backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--hair2);
+  }
+  nav.top .row { display: flex; align-items: center; justify-content: space-between; height: 58px; }
+  nav.top .id { display: flex; align-items: center; gap: 11px; }
+  nav.top .id img { width: 28px; height: 28px; }
+  nav.top .id .wm { font-size: 13.5px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--bright); }
+  nav.top .id .wm span { color: var(--amber); }
+  nav.top .links { display: flex; align-items: center; gap: 24px; }
+  nav.top .links a.lnk {
+    font-size: 11.5px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase;
+    color: var(--mut); padding: 4px 0; border-bottom: 2px solid transparent;
+  }
+  nav.top .links a.lnk:hover { color: var(--bright); }
+  nav.top .links a.lnk.on { color: var(--gold); border-bottom-color: var(--amber); }
+  nav.top .play {
+    display: inline-flex; align-items: center; gap: 8px; padding: 9px 20px;
+    background: var(--amber); color: #0b0f12; font-size: 11px; font-weight: 800;
+    letter-spacing: .2em; text-indent: .1em; text-transform: uppercase;
+  }
+  nav.top .play::before { content: '▶'; font-size: 8px; text-indent: 0; }
+  nav.top .play:hover { background: var(--gold); }
+  @media (max-width: 880px) { nav.top .links a.lnk { display: none; } }
+
+  header.hero {
+    position: relative; padding: 84px 0 56px; border-bottom: 1px solid var(--hair2);
+    background:
+      radial-gradient(90% 120% at 50% -30%, rgba(240,160,48,.10), transparent 60%),
+      var(--bg2);
+    overflow: hidden;
+  }
+  header.hero::before {
+    content: ''; position: absolute; inset: 0; pointer-events: none;
+    background-image:
+      linear-gradient(rgba(146,164,180,.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(146,164,180,.05) 1px, transparent 1px);
+    background-size: 74px 74px;
+    mask-image: radial-gradient(90% 76% at 50% 40%, #000 10%, transparent 78%);
+    -webkit-mask-image: radial-gradient(90% 76% at 50% 40%, #000 10%, transparent 78%);
+  }
+  header.hero h1 { font-size: clamp(34px, 5vw, 58px); font-weight: 900; letter-spacing: .02em; line-height: 1.08; color: var(--bright); max-width: 850px; }
+  header.hero h1 em { font-style: normal; color: var(--gold); }
+  header.hero .lede { margin-top: 18px; max-width: 720px; color: var(--mut); font-size: 16.5px; }
+  .statband { display: flex; flex-wrap: wrap; gap: 0; margin-top: 40px; border: 1px solid var(--hair); background: var(--panel); }
+  .statband .st { flex: 1 1 150px; padding: 16px 20px; border-right: 1px solid var(--hair2); }
+  .statband .st:last-child { border-right: 0; }
+  .statband .st .v { font-size: 24px; font-weight: 800; color: var(--gold); font-variant-numeric: tabular-nums; }
+  .statband .st .k { margin-top: 2px; font-size: 10px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; color: var(--dim); }
+
+  .layout { display: grid; grid-template-columns: 235px minmax(0,1fr); gap: 56px; padding: 56px 0 90px; }
+  @media (max-width: 980px) { .layout { grid-template-columns: 1fr; gap: 24px; } aside.toc { position: static; } }
+  aside.toc { position: sticky; top: 82px; align-self: start; }
+  aside.toc .micro { margin-bottom: 12px; }
+  aside.toc a {
+    display: block; padding: 7px 0 7px 14px; font-size: 13px; color: var(--mut);
+    border-left: 2px solid var(--hair2);
+  }
+  aside.toc a:hover { color: var(--bright); border-left-color: var(--amber-dim); }
+  aside.toc a.sub { padding-left: 26px; font-size: 12px; color: var(--dim); }
+
+  main.doc section { margin-bottom: 70px; scroll-margin-top: 84px; }
+  main.doc .kick { display: flex; align-items: baseline; gap: 14px; margin-bottom: 6px; }
+  main.doc .kick .n { font-family: var(--mono); font-size: 12px; color: var(--amber); letter-spacing: .1em; }
+  main.doc h2 { font-size: 27px; font-weight: 800; color: var(--bright); letter-spacing: .01em; margin-bottom: 16px; }
+  main.doc h3 { font-size: 17px; font-weight: 700; color: var(--gold); margin: 30px 0 10px; }
+  main.doc p { color: var(--mut); margin-bottom: 13px; max-width: 76ch; }
+  main.doc p b, main.doc li b { color: var(--ink); font-weight: 600; }
+  main.doc ul { margin: 0 0 14px 0; padding-left: 20px; color: var(--mut); max-width: 76ch; }
+  main.doc li { margin-bottom: 7px; }
+  main.doc li::marker { color: var(--amber); }
+  .plate {
+    border: 1px solid var(--hair); border-left: 3px solid var(--amber);
+    background: var(--panel); padding: 16px 20px; margin: 18px 0; max-width: 78ch;
+  }
+  .plate .micro { margin-bottom: 6px; }
+  .plate p { margin-bottom: 0; }
+  .flow {
+    font-family: var(--mono); font-size: 12.2px; line-height: 1.9; color: var(--mut);
+    border: 1px solid var(--hair); background: #070b0f; padding: 16px 20px;
+    margin: 16px 0; overflow-x: auto; white-space: pre; max-width: 100%;
+  }
+  .flow b { color: var(--gold); font-weight: 600; }
+  .flow i { color: var(--faint); font-style: normal; }
+  table.spec { border-collapse: collapse; width: 100%; max-width: 78ch; margin: 16px 0; font-size: 13.5px; }
+  table.spec th {
+    text-align: left; font-size: 10px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase;
+    color: var(--dim); padding: 8px 14px 8px 0; border-bottom: 1px solid var(--hair);
+  }
+  table.spec td { padding: 9px 14px 9px 0; border-bottom: 1px solid var(--hair2); color: var(--mut); vertical-align: top; }
+  table.spec td:first-child { color: var(--ink); font-weight: 600; white-space: nowrap; }
+
+  footer { border-top: 1px solid var(--hair2); background: var(--bg2); padding: 34px 0; }
+  footer .row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; }
+  footer .micro a { color: var(--mut); } footer .micro a:hover { color: var(--gold); }
+</style>
+</head>
+<body>
+
+<nav class="top">
+  <div class="wrap row">
+    <a class="id" href="/home" aria-label="Claude of Tanks — home">
+      <img src="/brand/logo-mark.svg" alt="">
+      <span class="wm">Claude <span>of</span> Tanks</span>
+    </a>
+    <div class="links">
+      <a class="lnk" href="/home">Home</a>
+      <a class="lnk on" href="/docs">Docs</a>
+      <a class="lnk" href="#tanks">Tank pipeline</a>
+      <a class="lnk" href="#performance">Performance</a>
+      <a class="lnk" href="#world">World</a>
+      <a class="lnk" href="#sim">Simulation</a>
+      <a class="play" href="/">Play</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="wrap" style="position:relative">
+    <div class="micro" style="margin-bottom:14px"><b>Technical documentation</b> · how the whole thing works</div>
+    <h1>A complete tank battle game, generated <em>at runtime</em> in your browser.</h1>
+    <p class="lede">Claude of Tanks is pure <b>three.js</b> on one WebGL2 context — no game engine, no asset CDN full of megabytes of textures. Vehicles are painted onto canvases when you look at them, battlefields are grown from seeded noise while the loading bar moves, and a measured-performance governor retunes quality to whatever hardware you brought. This page documents every system.</p>
+    <div class="statband">
+      <div class="st"><div class="v num">102</div><div class="k">Vehicles</div></div>
+      <div class="st"><div class="v num">8</div><div class="k">Battlefields</div></div>
+      <div class="st"><div class="v num">29</div><div class="k">Camouflage patterns</div></div>
+      <div class="st"><div class="v num">1</div><div class="k">WebGL2 context</div></div>
+      <div class="st"><div class="v num">0</div><div class="k">Install, accounts, downloads</div></div>
+    </div>
+  </div>
+</header>
+
+<div class="wrap layout">
+<aside class="toc">
+  <div class="micro">On this page</div>
+  <a href="#overview">Overview</a>
+  <a href="#engine">Engine &amp; rendering</a>
+  <a class="sub" href="#engine-post">Post chain &amp; AA</a>
+  <a class="sub" href="#engine-light">Lighting &amp; shadows</a>
+  <a href="#tanks">How tanks are made</a>
+  <a class="sub" href="#tanks-proc">Procedural builds</a>
+  <a class="sub" href="#tanks-paint">Texture painters</a>
+  <a class="sub" href="#tanks-glb">Sourced-model program</a>
+  <a class="sub" href="#tanks-wrecks">Wrecks</a>
+  <a href="#world">World generation</a>
+  <a href="#sim">Simulation</a>
+  <a href="#performance">Performance system</a>
+  <a class="sub" href="#perf-load">Loading &amp; warm pipeline</a>
+  <a class="sub" href="#perf-governor">Quality governor</a>
+  <a href="#mobile">Mobile</a>
+  <a href="#audio">Audio</a>
+  <a href="#ui">UI &amp; game modes</a>
+  <a href="#qa">QA &amp; determinism</a>
+</aside>
+
+<main class="doc">
+
+<section id="overview">
+  <div class="kick"><span class="n">01</span></div>
+  <h2>Overview</h2>
+  <p>The whole game is a single-page three.js application. There is no engine layer, no ECS framework, no physics library — the renderer, the simulation, the AI, the audio synth and every texture on screen are project code. That choice is what makes the rest of this page possible: every system below is inspectable in the repository, and almost everything is <b>generated at runtime from deterministic seeds</b> rather than shipped as assets.</p>
+  <ul>
+    <li><b>One render loop, one context.</b> A single <code>WebGLRenderer</code> (antialias off, stencil off, high-performance power preference) drives garage, battle, kill-cam and the scene studio. All presentation goes through one EffectComposer chain — nothing ever calls <code>renderer.render</code> beside it in live play.</li>
+    <li><b>Runtime generation.</b> Tank textures are painted on 2D canvases, terrain is sampled from a 9-octave simplex stack, vegetation and buildings are placed by seeded RNG streams, cloud decks are fbm bakes. The deployed page transfers ~3.6&nbsp;MB.</li>
+    <li><b>Determinism as a contract.</b> Every generator draws from <code>mulberry32</code> streams with fixed seeds. The same battlefield, the same paint job and the same wreck char render bit-identically across sessions — which is what lets the project pin screenshot and geometry contracts in CI-style gates.</li>
+  </ul>
+</section>
+
+<section id="engine">
+  <div class="kick"><span class="n">02</span></div>
+  <h2>Engine &amp; rendering</h2>
+  <p>The renderer is configured once at boot: ACES filmic tone mapping (exposure 1.16, tuned by pixel-measured playfield luma against a reference band), sRGB output through an <code>OutputPass</code>, PCF shadow maps, and a canvas pixel-ratio cap of 2. The canvas backing store is 1:1 with physical pixels on dpr&nbsp;≤&nbsp;2 displays; the <em>composer's</em> internal resolution is governed separately (see the <a href="#perf-governor" style="color:var(--gold)">quality governor</a>), so the final antialiasing pass always rasterizes at native resolution even when the 3D frame renders smaller.</p>
+
+  <h3 id="engine-post">Post chain &amp; antialiasing</h3>
+  <p>Context AA is deliberately off. The scene renders into a quality-tier MSAA target (up to 4×), resolves once, then runs a single-sampled post chain: half-resolution <b>GTAO</b> with Poisson denoise, threshold bloom with a pre-tonemap emissive shoulder (so fireball cores don't clip flat), a grade S-curve pivoted at 0.33, aerial/haze, and a final display-space <b>SMAA/FXAA</b> pass that steps in native canvas pixels. Passes are merged where possible — each extra pass is a full-screen render.</p>
+
+  <h3 id="engine-light">Lighting &amp; shadows</h3>
+  <p>One sun. A four-cascade <b>CSM</b> rig owns the only shadow-casting directionals; a hemisphere light and an anti-sun sky fill (shadowless) complete the set, plus exactly <b>two pooled PointLights</b> shared by every muzzle flash and explosion — pooling keeps the scene's light count constant, so three.js never has to relink shader programs mid-battle over a changed light count.</p>
+  <ul>
+    <li><b>Near cascades</b> re-render every frame; the two <b>far cascades</b> (hundreds of meters out) re-render round-robin, one per frame — camera motion per frame is a fraction of a far-cascade texel, so it's visually free.</li>
+    <li>The governor can throttle the whole rig to half or third refresh under measured load (<code>setShadowThrottle</code>), with staggered scheduling and a forced full redraw on every transition so a stale map is never presented.</li>
+    <li>Instance-level shadow culling compacts instanced meshes against each cascade's frustum before the depth pass — shadow fill rate is ~17% of total draw calls and earns its own optimization lever.</li>
+  </ul>
+  <p>The sky is a dome with two independent cloud decks — sun-aligned cumulus and cross-wind cirrus — whose textures are seeded fbm canvas bakes, baked lazily (one deck per frame on the loading path) and swapped in over 4×4 placeholders.</p>
+</section>
+
+<div class="hatch" style="margin-bottom:70px"></div>
+
+<section id="tanks">
+  <div class="kick"><span class="n">03</span></div>
+  <h2>How tanks are made</h2>
+  <p>Every vehicle in the game exists twice: as a <b>procedural build</b> — geometry constructed from measured real-world dimensions, painted by canvas programs — and, for much of the modern fleet, as a <b>community-sourced GLB</b> that streams in over the procedural stand-in. The procedural build is always the model of record: it spawns instantly, it works on every device tier, and it is what the license-stripped public build falls back to.</p>
+
+  <h3 id="tanks-proc">Procedural builds</h3>
+  <p>Each tank family lives in a profile module (Abrams, Leopard, Merkava, Soviet heavies, WWII marks…). A profile declares real dimensions — hull length, track gauge, turret ring, gun caliber — and composes the vehicle from a shared construction kit: multi-segment hull plates with authored glacis angles, turret prisms inscribed in certified envelope curves, mantlets, skirts, fenders, and a dense fitting layer (tow hooks, periscopes, stowage, ERA bricks, antennas) that gives silhouettes their read at distance.</p>
+  <ul>
+    <li><b>Running gear is instanced.</b> Road wheels, sprockets, idlers and every track link render as <code>InstancedMesh</code> — a tank's few hundred link pads cost one draw. Per-wheel terrain conform and track scroll write instance matrices; a distance gate drops conform to staggered thirds beyond 160&nbsp;m.</li>
+    <li><b>Geometry gates.</b> Sourced reference models double as measurement oracles: automated probes compare the procedural build's silhouette, station positions and plate proportions against the oracle from 14 views, and a family only "graduates" when it passes a dual gate (machine metrology + independent shaded-parity critic). The registry, ledgers and frozen hashes live in <code>docs/geometry-gate/</code>.</li>
+  </ul>
+
+  <h3 id="tanks-paint">Texture painters</h3>
+  <p>No tank texture ships with the game. Each spec owns one shared canvas set — albedo (2048² for the hero tier, 1024² for AI roster fills), a height-derived normal map, roughness with per-patch paint response — painted by deterministic canvas programs: base scheme, panel lines and weld rows (welded-composite hulls skip rivets), chips, streaks, dust, and one of <b>29 camouflage patterns</b> from three-tone NATO summer to dazzle, digital, winter whitewash and autumn schemes.</p>
+  <div class="plate">
+    <div class="micro">Why canvases</div>
+    <p>A painted 2048² albedo is ~200&nbsp;ms of main-thread work but zero network bytes and infinitely restylable: the camo picker, the per-battlefield AUTO paint and the biome repaints all redraw the same shared canvas in place — every live instance of that tank updates through one <code>texture.needsUpdate</code>. All painters run as <b>generator programs</b> so loading paths bake them in stage-sized slices instead of one freeze (see <a href="#performance" style="color:var(--gold)">Performance</a>).</p>
+  </div>
+
+  <h3 id="tanks-glb">The sourced-model program</h3>
+  <p>The modern fleet's showcase models come from community artists (credited per-model in <code>ATTRIBUTION.md</code>, license-ledgered per file; non-commercial models are quarantined out of public builds automatically). A sourced model is never dropped raw into the scene — it goes through a staged pipeline that runs in battle-safe idle slots:</p>
+  <div class="flow"><b>fetch</b> → <b>parse</b> → <b>prep</b> <i>(skeleton clone, name-targeted surgery, texture caps)</i>
+  → <b>camoShare ×N</b> <i>(per-sheet composite caches)</i> → <b>camoMerge</b> <i>(pattern over baked albedo)</i>
+  → <b>mergeHull / mergeTurret / mergeGun</b> <i>(static-kit geometry merges — 30-100 draws → a handful)</i>
+  → <b>warmTex</b> <i>(amortized GPU uploads)</i> → <b>compileMesh</b> <i>(program submission, 12 ms budget)</i>
+  → <b>linkWait</b> <i>(KHR_parallel_shader_compile poll)</i> → <b>commit</b> <i>(in-place swap, nothing binds new)</i></div>
+  <p>Camo on a GLB is composited <b>in texture space</b>: the pattern tile (mirror-stamped 3×3 so blob constellations never repeat across a hull) is blended with a luminance-normalized grayscale of the artist's albedo, preserving their weathering and AO while unifying the paint job. The procedural stand-in covers the stage until <b>commit</b>, so no frame ever shows a half-textured model.</p>
+
+  <h3 id="tanks-wrecks">Wrecks</h3>
+  <p>A kill swaps the vehicle to charred materials derived from its own camo canvas: multiply-and-desaturate char stack, sooty blotches, rising heat streaks, rust bloom and bare-metal scrapes, plus a separate ember emissive map that smolders in seams. Destruction can pop the turret with the real physics arc; the kill-cam replays the killing shell with an x-ray module breakdown.</p>
+</section>
+
+<section id="world">
+  <div class="kick"><span class="n">04</span></div>
+  <h2>World generation</h2>
+  <p>Battlefields are grown, not loaded. A heightfield samples a 9-octave simplex stack — domain-warped ridges plus detail octaves — then layers gameplay-aware features: a road network with smoothed corridor elevation (precomputed on a 257² field grid), a flattened village rectangle, marsh dips, lakes with auto-leveled shorelines, and per-biome macro forms (dune ridges, flat-top mesas with talus aprons) that fade around spawn pads and drive corridors so play always flows.</p>
+  <ul>
+    <li><b>Terrain</b> renders as an 8×8 grid of chunks, three LOD meshes each with hysteresis switching, under one splat material (canvas-baked masks; slope-driven rock only on real landforms).</li>
+    <li><b>Vegetation</b> is fully instanced: tree clusters, lone pairs and map-rim stands with per-instance color jitter and vertex-shader wind; billboard impostors past the near partition (promoted in the sniper scope's aim corridor); a camera-centred dense grass carpet that re-parks its instances as you drive, plus midfield tuft chunks.</li>
+    <li><b>Props &amp; destructibles</b> — cottages and rowhouses with plaster/roof/wood canvas prints, boundary walls, fences, trucks, lampposts, crops, sandbags — live in per-kind instanced pools. Breaking one is two matrix writes: zero-scale the intact slot, activate the broken slot. A rematch restores the whole map in O(1) per prop.</li>
+    <li><b>Hot-path height queries</b> (LOS ray marches, AI probes, wheel conform in battle) read a lazily-baked 1&nbsp;m bilinear grid — ≤1&nbsp;cm from the analytic surface, ~50× cheaper than the noise stack. Anything that seats visible geometry deterministically (spawns, captures) keeps the exact analytic function.</li>
+  </ul>
+  <p>The whole build runs through generator cores that yield between slices — terrain per chunk-row, vegetation per placement pass, props per family — so the loading bar reports real progress and the build never freezes a frame. The synchronous twin drains the same generators for screenshot-contract map switches: <b>both paths produce bit-identical worlds</b>, verified by a fingerprint parity gate.</p>
+</section>
+
+<section id="sim">
+  <div class="kick"><span class="n">05</span></div>
+  <h2>Simulation</h2>
+  <p>Gameplay runs on a fixed-step simulation decoupled from the render loop, with an accumulator that drains cleanly across hitches. Nothing in presentation writes game state.</p>
+  <ul>
+    <li><b>Movement</b> solves hull pose from four corner probes plus per-gear-line terrain samples, with ground-type speed effects (soft marsh bog-down, hard roads), engine/brake model, handbrake, and gun handling: the turret chases <code>input.aimPoint</code> under hull-arc limits while dispersion blooms with movement and traverse, exactly WoT-style.</li>
+    <li><b>Ballistics &amp; armor</b> — five shell classes (AP, APCR, APFSDS, HEAT, HE) with penetration falloff over distance, impact-angle normalization, ricochet thresholds, spaced-armor and ERA interactions, and hull/turret/module hitboxes. HE resolves splash through terrain occlusion.</li>
+    <li><b>Spotting</b> is a real concealment simulation: view range vs camouflage factor, foliage transparency along the sight line (bushes attenuate rather than block), firing bloom that scales with caliber, proximity detection through cover, and per-team intel — bots acquire targets through the same spotting state the player gets, never by cheating.</li>
+    <li><b>AI</b> runs doctrine tiers (easy/normal/hard): cover evaluation and hull-down seeking against the height grid, obstacle avoidance, focus-fire discipline, low-HP retreat toward living teammates, and per-battle seeded personalities so replays are reproducible.</li>
+  </ul>
+  <p>The movement, combat, spotting and equipment models are each pinned by headless self-test suites (28 / 233 / 99 / 166 assertions) that run on every landing.</p>
+</section>
+
+<div class="hatch" style="margin-bottom:70px"></div>
+
+<section id="performance">
+  <div class="kick"><span class="n">06</span></div>
+  <h2>Performance system</h2>
+  <p>The performance architecture has one rule: <b>anything that can hitch a live frame must either happen behind a screen the game owns, or be sliced until it can't.</b> Everything heavy — painting, parsing, compiling, linking, uploading — is attributed by probes (frame-gap recorders, long-task observers, CPU profiles, per-slice pipeline telemetry) and then moved or chunked.</p>
+
+  <h3 id="perf-load">Loading &amp; the warm pipeline</h3>
+  <ul>
+    <li><b>Chunked everything.</b> World subsystems, tank family bakes (per painter stage), wreck char bakes, camo repaints, cloud decks, GLB merges — all generator-sliced with a painted frame between slices. The loading bar creeps through subsystems instead of jumping between freezes.</li>
+    <li><b>The warm pipeline</b> runs behind the pre-battle screen: a silent volley of every effect family at a far map corner (sprite atlases bake, then one live-fx frame binds their pipelines), destroyed-state dances for every fielded family (wreck canvases + burn-hook shader variants compile), a whole-scene compile, then hidden-variant compiles per tank.</li>
+    <li><b>Shader links never block a reveal.</b> Program compilation is submitted mesh-batched on a 12&nbsp;ms budget, then the driver's parallel linker gets breathing frames (a bounded <code>KHR_parallel_shader_compile</code> poll) before anything renders. Shadow-depth variants — which only ever build at a real render — are resolved by warm renders of the world in subsets (terrain → +vegetation → +props) at a quarter viewport: same pipelines, 16× less fragment work.</li>
+    <li><b>A spawn-view warm frame</b> renders one hidden frame from the player's chase pose before the countdown, so the first battle frame binds nothing new — measured zero program links at battle-open.</li>
+    <li><b>The 5-second countdown</b> (sim frozen, world visible) doubles as an absorption window: a chunked re-warm covers any straggler models that outran the loading screen's bounded drain.</li>
+  </ul>
+
+  <h3 id="perf-governor">The quality governor</h3>
+  <p>Quality follows <b>measured performance</b>, not device class. A per-frame governor tracks the render delta EMA, a spike-miss ratio, and the display's true cadence (p10 of recent deltas), makes a decision every 2.5&nbsp;s of visible frames, and walks a relief ladder in both directions:</p>
+  <table class="spec">
+    <tr><th>Lever</th><th>What it does</th><th>Engages</th></tr>
+    <tr><td>Dynamic resolution</td><td>Composer scale steps 1.0 → floor (0.75 preset / 0.8 on dpr-1) in 0.09 steps; final AA stays native</td><td>First — every pixel ratio</td></tr>
+    <tr><td>Trim 1 — shadow rate</td><td>All cascades to half refresh, staggered</td><td>Scale at floor, 2 overloaded windows</td></tr>
+    <tr><td>Trim 2 — ambient occlusion</td><td>GTAO off (the most expensive single pass)</td><td>Next 2 overloaded windows</td></tr>
+    <tr><td>Trim 3 — shadow rate</td><td>Cascades to third refresh</td><td>Next 2 overloaded windows</td></tr>
+    <tr><td>Adaptive tier</td><td>Whole preset steps down, persisted across sessions</td><td>Last resort, ladder exhausted ~10&nbsp;s</td></tr>
+  </table>
+  <ul>
+    <li><b>Framerate-decline detection.</b> The governor earns an fps baseline during clean windows (rises fast, sags reluctantly) and treats a window that loses ≥20% of it — below a 72&nbsp;fps smooth-enough ceiling — as overloaded, even when frames sit under the absolute budget. This catches the two blind spots of budget-only governors: a uniform 45–52&nbsp;fps crawl with zero spikes, and a 120&nbsp;Hz display sagging to 70.</li>
+    <li><b>Recovery walks the same ladder back</b> — trims release first (they're visually loudest), resolution re-earns to 1.0 — with exponential flap backoff so an intermittently-loaded machine never oscillates.</li>
+    <li><b>Capture contexts reset everything</b>: screenshot and metrology contracts always render untrimmed at full scale, and cascade redraws are forced, so the certified pixel contracts never see the governor.</li>
+    <li>A boot-time <b>device diagnostic</b> probes basic/lit/lit+shadow rendering and self-rescues (e.g. shadows-off with an exposure band reclaim) on GL stacks that fail — with a collapsing on-screen report. GPU-string heuristics only pick the <em>starting</em> tier; measurement takes it from there.</li>
+  </ul>
+</section>
+
+<section id="mobile">
+  <div class="kick"><span class="n">07</span></div>
+  <h2>Mobile</h2>
+  <p>Touch devices resolve the mobile tier (UA + touch points + GPU limits) and get a Blitz-style battle HUD: left drive joystick with a texture-triangle D-pad, swipe-to-aim over the right half, fire/scope/brake cluster, pinch-to-zoom into sniper, consumables re-parked as a thumb column, and a top-right ammo tray with ≥44&nbsp;px targets. Portrait works with a landscape recommendation; safe-area insets are respected everywhere; browser pinch-zoom is defeated in depth. The mobile tier halves texture bakes and shadow budgets, and the same governor runs on top — verified end-to-end on iOS Safari (real WebKit, dpr 3) in the simulator, where the shadow-sampling rescue and tier detection were exercised for real.</p>
+</section>
+
+<section id="audio">
+  <div class="kick"><span class="n">08</span></div>
+  <h2>Audio</h2>
+  <p>The audio engine is WebAudio with two complete backends: a <b>baked sample set</b> (dense layered PCM synthesized offline, fetched and decoded after the first user gesture) and a <b>live synthesis fallback</b> that can produce every combat sound from oscillators and shaped noise if any sample fails — gunfire by caliber class, penetration clang, ricochet whine, HE crumps, engines, tracks, ambience and UI. Distance drives low-pass filtering and whump emphasis; repeats get playback-rate jitter so nothing sounds cloned.</p>
+</section>
+
+<section id="ui">
+  <div class="kick"><span class="n">09</span></div>
+  <h2>UI &amp; game modes</h2>
+  <ul>
+    <li><b>Garage</b> — pedestal showroom with a damped drag-orbit camera (fixed canonical framing so switching tanks never slides the eye), camo picker with live repaints, battlefield picker with biome-AUTO paint preview, era-filtered carousel, tech tree, equipment loadouts and per-tank stats.</li>
+    <li><b>Battle</b> — WoT-style HUD: shell tray with reload ring, minimap with real top-down capture underlay, damage panel with module states, kill feed, hit indicators, spotting eye, and an in-world 5-second countdown before control releases.</li>
+    <li><b>Kill-cam &amp; end screen</b> — slow-motion tracer replay of the killing shell with x-ray module breakdown, then a cinematic results screen (credits/XP economy, tallies, kill list, team panels) that adapts down to phone landscape.</li>
+    <li><b>Scene studio</b> (press <b>F8</b> in the garage) — a full staging tool: place any vehicles on any battlefield, pose turrets, trigger effects (fires, smoke, tracers, wrecks), drive cinematic cameras and export stills — it's how every marketing shot on the home page was made.</li>
+  </ul>
+</section>
+
+<section id="qa">
+  <div class="kick"><span class="n">10</span></div>
+  <h2>QA &amp; determinism</h2>
+  <p>The project treats rendering like an API with contracts:</p>
+  <ul>
+    <li><b>Self-tests</b> pin the simulation math (526 assertions across movement, combat, spotting, equipment) and run headless in Node.</li>
+    <li><b>Screenshot contracts</b> stage deterministic battles and hash-compare renders; the geometry-gate program freezes graduated vehicles against vertex oracles and re-certifies on any change.</li>
+    <li><b>Probe suites</b> drive the real game in headless Chrome: a journey probe (every first-use interaction), a play-session recorder (minutes of driving/fighting with frame-gap, long-task, shader-link and readback logging), a governor end-to-end (deterministic overload via frame burners), boot/battle-load stage telemetry, and world-build parity fingerprints.</li>
+    <li><b>Everything seeded.</b> Worlds, paint, AI personalities, wreck chars and cloud decks derive from fixed <code>mulberry32</code> streams — the foundation that makes every contract above possible.</li>
+  </ul>
+  <div class="plate">
+    <div class="micro">Source of truth</div>
+    <p>Deeper internal docs live in the repository: <code>docs/ARCHITECTURE.md</code> (system contracts), <code>docs/ATTRIBUTION.md</code> (every sourced model and license), and <code>docs/geometry-gate/</code> (the vehicle metrology program's registry and ledgers).</p>
+  </div>
+</section>
+
+</main>
+</div>
+
+<footer>
+  <div class="wrap row">
+    <div class="micro">Claude of Tanks · a <b>three.js</b> technology demo · built with Claude</div>
+    <div class="micro"><a href="/home">Home</a> · <a href="/">Play</a> · <a href="/home#kit">Media kit</a></div>
+  </div>
+</footer>
+
+</body>
+</html>

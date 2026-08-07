@@ -68,6 +68,7 @@ function rewriteRoutes(req, res, next) {
   const query = qi === -1 ? '' : url.slice(qi);
   if (path === '/studio' || path === '/studio/') req.url = '/index.html' + query;
   else if (path === '/home' || path === '/home/') req.url = '/home.html' + query;
+  else if (path === '/docs' || path === '/docs/') req.url = '/docs.html' + query;
   next();
 }
 
@@ -108,11 +109,12 @@ export default {
       input: {
         main: resolve(process.cwd(), 'index.html'),
         home: resolve(process.cwd(), 'home.html'),
+        docs: resolve(process.cwd(), 'docs.html'),
       },
     },
   },
   optimizeDeps: {
-    entries: ['index.html', 'home.html'],
+    entries: ['index.html', 'home.html', 'docs.html'],
     include: [
       'three',
       'three/examples/jsm/loaders/GLTFLoader.js',
