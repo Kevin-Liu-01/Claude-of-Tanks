@@ -283,3 +283,73 @@ cluster + hatches vs shroud).
    y_d − m(z_toe − z_d) − t ≥ y_c + 0.025 **at z_c and every z the
    piece spans** — solve at the CREST, not at the toe (the t14 law's
    arithmetic form; 99A numbers: toe z ≤ ~3.1, chosen 3.02).
+
+## r1 BUILD EXECUTED (2026-08-06, AFV/modern2 owner — authored from the
+## §r1 DESIGN SPEC above; deviations + battery below)
+Builder REPLACED at src/vehicles/modern2.js buildType99A (the ancient
+builder retired); orientedSlab99 §C winding guard + muzzleBore99 §B3.1
+device added module-level. ERA-DEF/GEOMETRY COUPLING executed in the
+same edit: spec hullEra true-ups landed (glacis_era fr → 0.8, 0.95,
+3.46, 1.42, 2.10; skirt_era sR/sL → 1.76, 0.55, 1.76, 1.15, 0.3, 3.45).
+
+### As-built vs the design spec (deviations, all packet-lawful)
+1. **Drum end ribs**: KIT.torus lies AXIS-Y — the spec's bare torus
+   calls rendered flat donuts poking 28 cm past the stern; their
+   donut-hole crescents were a symmetric 10+10-cell §B2 flood pair at
+   (±0.88, z −3.94). Fixed: rx π/2 in the P.add call (z-axis rings).
+   BANKED LAW below.
+2. **Drums LEVEL** (spec's rx 0.22 nose-up dropped): tilted cylinder
+   rims pinch plan slivers against the log/flap edges; axis-aligned
+   plan rectangles cannot pinch. Log lengthened 2.2 → 2.4 to overlap
+   the flap columns.
+3. **LEFT exhaust port re-dimensioned**: the spec's box(0.45, 0.28,
+   0.06) at x −1.63 puts 0.45 ALONG X → face −1.855, breaching the
+   ±1.75 anchor (§D WIDTH-GUARD-BY-DRESSING — it silently rescaled the
+   whole build ~3%). As-built: box(0.06, 0.28, 0.45) at −1.72 — an
+   outward-facing plate, face −1.75 EXACT.
+4. **Arrow-seam legibility** (the spec's own pre-registered weakest
+   read): the 0.022 ridge strip vanished under the digital camo — seam
+   widened to 0.05 + wedge top-edge catch-light strips (1.15 m, ±39°)
+   added. The front now reads TWO planes meeting (r3 view-front).
+5. **Bustle kit**: FITTINGS.spareTrackLinks seated turret-side left,
+   ammoCan right, tarpRoll on the rack line — per spec; QJC88 'nsvt'
+   pintle at (0.58, 0.745, −0.42) ✓ census.
+6. **§B3.1 MUZZLE BORE (owner order 32a6946, post-dates the spec)**:
+   buildGun len 6.55 → 6.508 capped body; bore stack at the 6.55 face
+   (muzzleBore99: open wall + recess funnel + dark disc r 0.042 inset
+   ~3 cm); **muzzle +7.20 world = 11.0 overall EXACT** held.
+
+### Machine battery — AFTER (2026-08-06, official rigs)
+- track-clip --exact: **0/0 band + 0/0 shoe** (BEFORE: 119/44 + 97/44).
+- standard-check: clip ✓, §B2 flood **0** (after the rib/drum fixes;
+  BEFORE-build measured 20 from the donut crescents), census
+  **mg1+6d** ✓ (BEFORE: mg0+0d).
+- turret-parent: **0/0/0** ✓ (drums/log hull-side, basket/whip/links/
+  mg turret-side — the spec's parenting held).
+- npm test 526 green. Resident invariance: t14 1d232727 / leo1a5
+  2db02a84 byte-identical across three same-tree runs.
+- Geometry hash **92331895** (56 meshes / 71632 verts).
+
+### 14-view self-read (shots/afv-r1/type99a-r3/ + r3-yaw90)
+Floor **~8.5**: front 8.6 (post-fix: arrow planes + widened seam +
+dazzler pair + boot + bored muzzle), top 8.7 (welded plan + wedge tops
+seat against the core — no §B2 sliver; drums/log/basket rear), close-
+roof 8.7 (dazzler + pano pair identifiable at 1×, sight doors read as
+doors), left/right 8.6 (FY-4 tile WALL vs the soft-kit rear — the
+spec's contrast intent lands), rear 8.5, heroes 8.6. §H.4 acid: welded
+arrow front + tile wall + JD-3/pano pair + NSVT-class MG + drums/log +
+6 big dished wheels + digital splinter — vs t72b3m/t90a (cast domes)
+and t14 (unmanned shroud) separable at a glance.
+
+### Law notes banked this round (new)
+1. **KIT.torus IS AXIS-Y**: a ring around a z-axis member needs rx π/2
+   in the placement call — flat-donut end ribs are invisible from the
+   side AND punch §B2 donut-hole crescents in the plan flood.
+2. **TILTED-CYLINDER PLAN PINCH (§B2)**: tilted cylinders present
+   elliptical plan silhouettes whose rim arcs pinch enclosed slivers
+   against neighboring straight edges — keep stern furniture cylinders
+   axis-aligned in plan, or bridge the pinch zones.
+3. **BLUEPRINT BOX-DIMS ARE FULL EXTENTS**: box(w,h,d) takes full
+   sizes — a "0.45-wide port on the flank" must put 0.45 along Z, not
+   X; transcribing plate dims into the wrong axis breaches §D anchors
+   silently (this build's −1.855 incident, caught by the mesh probe).

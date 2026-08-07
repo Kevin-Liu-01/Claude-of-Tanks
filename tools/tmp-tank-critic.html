@@ -112,6 +112,10 @@ const CRITIC_REFERENCE_OVERRIDES = {
     turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, paintUntextured:true,
     turretFollowers:'vehicle#(?:antenna_|bone_|ex_armor_(?!body|[lr]_)|ex_decor_(?:0[1-9]|1[01]|13|1[5-7])|ex_decor_[lr]_02|hatch_(?:0[4-9]|1[0-3]))',
     gunFollowers:'vehicle#gun_barrel_' } },
+  // AFV lane (2026-08-06): SPz Puma oracle row mirroring the fidelity
+  // harness (42manako CC-BY-4.0; playable stays procedural).
+  spz_puma: { source:'glb', glb:{ path:'/models/tanks/community/spz_puma.glb',
+    turretNode:'^turret$', autoPivot:true, yawOffset:-Math.PI/2 } },
   // BASE-21 ORACLE WAVE (2026-08-06): oracle rows mirroring the fidelity
   // harness LOCAL_REFERENCE_OVERRIDES (see its wave block for print notes
   // + the leo2a4/type10 provenance refusals). t14's GLB is LOCAL-ONLY

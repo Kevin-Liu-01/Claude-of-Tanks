@@ -160,6 +160,13 @@ honestly parked at 88.9 pending its retune)
   baseline x2 + retire the recovered/ short-print (batch-44 note stays
   historical). The live fv510 photo-parity round gates dims/floaters
   only meanwhile (notified).
+- AFV LANE LANDED (2026-08-06 eve): spz_puma BUILT + oracle-registered
+  (honest 7.7 baseline x2, dims 100; §E NORMALIZE PLAN FILED z x1.0418 /
+  y x1.0444 — orchestrator executes, build already authored post-warp
+  frame); type89 BUILT photo-class (rip stayed refused); k2 verified
+  (flap suspect negative); type99a REBUILT from blueprint (clips
+  119/44 -> 0/0, mg1+6d). Queue: type99a spec-width 3.5-vs-3.7 owner
+  ruling, gunBarrel true-ups, icons x4.
 - **SPz PUMA — NEW VEHICLE (owner order + oracle drop 2026-08-06:
   "make the spz puma as well")**: community/spz_puma.glb landed (42manako
   CC-BY-4.0, verified). FULL BUILD-UP QUEUED, next free lane: (a) spec

@@ -103,6 +103,20 @@ const LOCAL_REFERENCE_OVERRIDES = {
       turretNode:'^turret_lod$', autoPivot:true,
     },
   },
+  // AFV lane NEW VEHICLE (owner drop 2026-08-06): 42manako SPz Puma
+  // (CC-BY-4.0, ATTRIBUTION.md "SPz Puma oracle drop"). Oracle only — the
+  // playable stays procedural (modern3.js). Real articulated split in the
+  // print (turret node + gun_rot), registered FUSED under turretNode like
+  // the bradley (proc turret mask includes rig_gun — parity). Raw nose +X
+  // -> yawOffset -90 (leclerc convention; extract flip false). Mirrors the
+  // vertex-extract REG row (docs/references/vertex/spz_puma.json).
+  spz_puma: {
+    source:'glb',
+    glb:{
+      path:'/models/tanks/community/spz_puma.glb',
+      turretNode:'^turret$', autoPivot:true, yawOffset:-Math.PI/2,
+    },
+  },
   // BASE-21 ORACLE WAVE (owner drop 2026-08-06; ATTRIBUTION.md "Base-21
   // oracle wave") — measurement oracles only, the playables stay
   // procedural (SHIP_USERDROP2_NEW=false keeps runtime MODEL_SOURCE
