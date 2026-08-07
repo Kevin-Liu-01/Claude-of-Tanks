@@ -878,3 +878,16 @@ russia half 3/3 PASS = 6/6. Combined with this window's other
 acceptances (type10, type74, ww2 resit pair, t72b3m re-freeze), the
 2026-08-06/07 owner-order backlog is CLEAR. Remaining §B8 sub-9.0
 work rides the standing queue, not owner orders.
+
+## 5.01 §E QUEUE PROGRESS (2026-08-07 early): batch-47 ch3 TUBE-PIN
+LANDED 90f118e (side_whole cover 5.26 -> 1.12, row 65 -> 73; whole min
+now rides front_whole by design). t14 tube-pin DEFERRED 25dd459 — the
+r1 literals DO NOT SELF-CHECK (7.10 vs 6.45) + the plan is node-scoped
+(custom op); re-derive from a fresh vertex-workorder run. LEO1A4 SCAN
+ADJUDICATED NOT-ONBOARDABLE-YET: single fused photogrammetry blob (17
+chunks 'Stereo textured mesh', ~1.1M verts, scan-site world offset, NO
+turret split) — registration would false-0 hull rows; it is RE-RIG
+CLASS (type74-print escalation family). leo1a5 proceeds PHOTO-CLASS.
+Remaining §E queue: ch2 HEIGHT-NORMALIZE, t54 winding repair, t80bv
+barrel re-parent/scaleToOverall, t34_85 weihe decision, type74 +
+leo1a4 re-rig escalations, t14 tube-pin re-derivation.
