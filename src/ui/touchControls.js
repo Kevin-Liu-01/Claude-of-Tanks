@@ -30,6 +30,10 @@ const CSS = `
 .cot-touch .arrow{position:absolute;color:rgba(231,240,247,.72);font-size:16px;line-height:1;
   text-shadow:0 1px 3px #000}.cot-touch .arrow.u{left:61px;top:8px}.cot-touch .arrow.d{left:61px;bottom:8px}
 .cot-touch .arrow.l{left:10px;top:58px}.cot-touch .arrow.r{right:10px;top:58px}
+/* MOBILE-QA r2: all four arrows are the SAME ▲ glyph rotated — see markup */
+.cot-touch .arrow.d{transform:rotate(180deg)}
+.cot-touch .arrow.l{transform:rotate(-90deg)}
+.cot-touch .arrow.r{transform:rotate(90deg)}
 .cot-touch .round{position:absolute;z-index:3;display:flex;align-items:center;justify-content:center;
   border-radius:50%;pointer-events:auto;touch-action:none;border:2px solid rgba(220,231,239,.32);
   background:radial-gradient(circle at 35% 28%,rgba(90,103,113,.84),rgba(22,29,35,.93) 62%,rgba(6,9,12,.96));
@@ -145,8 +149,12 @@ export function createTouchControls({ input, bus, isBattleActive, onLeaveBattle,
   root.setAttribute('aria-label', 'Mobile battle controls');
   root.innerHTML = `<button class="back" type="button" aria-label="Return to garage">&#8592; Garage</button>` +
     `<div class="aimpad" aria-label="Swipe to aim"></div><div class="aimhint">Swipe to aim</div>` +
-    `<div class="joy" aria-label="Movement joystick"><span class="arrow u">&#9650;</span><span class="arrow d">&#9660;</span>` +
-    `<span class="arrow l">&#9664;</span><span class="arrow r">&#9654;</span><div class="knob"></div></div>` +
+    // MOBILE-QA r2 (owner): one triangle glyph (U+25B2, text presentation on
+    // every platform) rotated per direction — U+25C0/U+25B6 carry DEFAULT
+    // EMOJI PRESENTATION on iOS, so the left/right arrows rendered as blue
+    // emoji buttons next to the clean text up/down triangles.
+    `<div class="joy" aria-label="Movement joystick"><span class="arrow u">&#9650;</span><span class="arrow d">&#9650;</span>` +
+    `<span class="arrow l">&#9650;</span><span class="arrow r">&#9650;</span><div class="knob"></div></div>` +
     `<button class="round fire alt" type="button" aria-label="Fire gun left">${SHELL}<span class="lb">Fire</span></button>` +
     `<button class="round brake" type="button" aria-label="Handbrake"><b>HB</b><span class="lb">Brake</span></button>` +
     `<button class="round scope" type="button" aria-label="Toggle sniper mode">${SCOPE}<span class="lb">Scope</span></button>` +

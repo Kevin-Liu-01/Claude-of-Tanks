@@ -225,6 +225,18 @@ body.cot-es-armed .cot-end{display:none !important;}
      ("TEAM ALIV") — drop the letterspacing and keep it on one line */
   .cot-es .es-ph{letter-spacing:.1em;white-space:nowrap;gap:8px;overflow:hidden;}
 }
+/* MOBILE-QA r2 (iOS simulator, portrait): tall rosters overflow the centered
+   fixed column on portrait phones too — the sim's defeat screen clipped the
+   header AND the action row with no scroll. Same treatment as short
+   landscape: top-anchor, scroll, stack the kills/team columns. */
+@media (max-width:520px) and (orientation:portrait){
+  .cot-es{justify-content:flex-start;overflow-y:auto;padding:12px 0 18px;}
+  .cot-es .es-ban{font-size:clamp(30px,10vw,44px);}
+  .cot-es .es-cols{flex-direction:column;max-height:none;flex:0 0 auto;}
+  .cot-es .es-panel{max-height:30vh;}
+  .cot-es .es-actions{flex:0 0 auto;margin-top:14px;}
+  .cot-es .es-ph{letter-spacing:.1em;white-space:nowrap;gap:8px;overflow:hidden;}
+}
 `;
 
 const fmtTime = (s) => {

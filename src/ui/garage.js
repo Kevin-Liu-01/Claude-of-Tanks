@@ -640,6 +640,15 @@ const GARAGE_CSS = `
   .cot-card .cls{font-size:6px;margin-top:0;letter-spacing:.12em;}
   .cot-garage .hint{display:none;}
 }
+/* MOBILE-QA r2 (iOS simulator, portrait 393pt): the centered BATTLE plate
+   overlapped BOTH the wordmark (left) and the currency chips (right) — three
+   clusters sharing one 393px band. Portrait keeps the crest, drops the
+   wordmark text, narrows the plate and shrinks the wallet chips. */
+@media (max-width:520px) and (orientation:portrait){
+  .cot-garage .title span{display:none;}
+  .cot-battle{width:158px;height:38px;font-size:13px;}
+  .cot-topbar{top:6px;right:6px;transform:scale(.58);}
+}
 `;
 
 function ensureStyle(id, css) {

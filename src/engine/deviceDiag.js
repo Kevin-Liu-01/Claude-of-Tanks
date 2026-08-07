@@ -459,13 +459,43 @@ export function mountDiagOverlay({ tier, diag, rescue, renderer }) {
   bag._refresh = render;
   render();
   let mounted = false;
+  // MOBILE-QA r2 (iOS simulator): the panel parked over the touch joystick /
+  // brake cluster for the WHOLE session on any device that trips a rescue
+  // (taps pass through — pointer-events:none — but half the control cluster
+  // is invisible). Collapse to the headline after a reading dwell, then get
+  // out of the way entirely; a later rescue re-expands it. ?diag=1 keeps the
+  // full panel pinned (that's the debugging mode).
+  let collapseT = 0;
+  let hideT = 0;
+  const schedule = () => {
+    if (DIAG_PARAM === '1') return;
+    clearTimeout(collapseT);
+    clearTimeout(hideT);
+    el.style.opacity = '1';
+    collapseT = setTimeout(() => {
+      const lines = el.textContent.split('\n');
+      const head = lines[0] || '';
+      const resc = lines.find((l) => l.startsWith('RESCUE:')) || '';
+      el.textContent = resc ? `${head}\n${resc}` : head;
+      el.style.opacity = '.72';
+    }, 14000);
+    hideT = setTimeout(() => { el.style.display = 'none'; }, 45000);
+  };
   const mount = () => {
     if (mounted) return;
     mounted = true;
     if (document.body) document.body.appendChild(el);
     else window.addEventListener('DOMContentLoaded', () => document.body.appendChild(el), { once: true });
+    schedule();
   };
   // a late watchdog rescue must surface the panel even when boot was healthy
-  bag._showOverlay = () => { render(); if (!webdriver || DIAG_PARAM === '1') mount(); };
+  bag._showOverlay = () => {
+    render();
+    if (!webdriver || DIAG_PARAM === '1') {
+      mount();
+      el.style.display = '';
+      schedule(); // re-shown rescue gets its own reading dwell
+    }
+  };
   if (wanted) mount();
 }
