@@ -444,3 +444,152 @@ trade + the boot zone); front col 1.398/-1.371 sweep means split the
 print's L/R cheek asymmetry (R 0.111 aft / L 0.083 fwd of ref). All
 decoded per-column above; headline and every whole/hull row at or above
 the 85.3 baseline.
+
+## TURRET PHOTO-PARITY ROUND (2026-08-06, misc agent) — owner, with a Tamiya Leclerc reference photo (front-left 3/4): "fix the leclerc turret, it has to look more like this." Photo class governs the turret region (fv510-r2 precedent flow); gate HOLD 85.3 / dims 100 contract.
+
+### GAP TABLE (photo read -> was @ baseline 85.3 -> fix)
+Baseline evidence: fresh gate x1 85.3 exact + full 96-col workorder
+(scratchpad wo-leclerc-baseline.txt) + shots/misc-leclerc-front/ boards.
+| # | Photo read | Was (measured baseline) | Fix (now) |
+|---|---|---|---|
+| 1 | TALL rectangular HL-70 panoramic tower center-forward on the roof, big window face, reads above the turret in every view | Squat sightBox + lid (x 0.35..0.75, z_w 0.72..1.24, top 2.52w): reads as a low box; overshoots the ref's own lid line 2.501 x11 front cols (+0.02) and overhangs side col 1.179 (ref 2.381 vs proc 2.52, +0.074) | Proper TOWER at the print's own priced band: pedestal ring + vertical shaft + head block w/ big dark window + wiper + aux scope, x 0.35..0.75, z_w 0.72..1.10, top authored 2.492w (= ref side band); dims heightM p95 hazard measured first: top LOCKED <= 2.50 (published 2.53; masts stay the only >2.53-class spikes). Prominence residual documented (print+dims cap the real ~0.6 m tower) |
+| 2 | Turret front = two flat raked cheek plates meeting at a CENTER VERTICAL SEAM, descending to the mantlet zone | Cheek planes exist (29 deg, r2 front round) but the center is a full-width vertical spine face at z_w 2.145 (+0.054 x2 plan cols vs ref 2.091); no seam read | Spine narrowed to a x +-0.115 rotor-brow RIDGE (keeps the priced 2.243 side shelf z_w 1.29..2.18); TWO converging center planes (same 29-deg rake family) x 0.10..0.42/side from the strip to the 2.248 channel line + strip extended inboard — the plane-to-ridge junctions ARE the vertical seam lines; plan cols +-0.29 re-owned by the boot clamp frame at z_w ~2.09 (ref 2.091). Rake angle vs photo verified by evaluator segment read at close |
+| 3 | BIG SQUARE CANVAS MANTLET BOOT around the gun root, soft-edged, F1 120mm exiting through it | Hard prism boot x +-0.19 (top 2.13w priced exact); no canvas grammar | Boot widened to x +-0.21 (plan window 0.236 respected, 26 mm clear), top chamfer soft edges, 3 sag-crease dark seams, bolted clamp FRAME at the base (x +-0.26, face z_w ~2.096 — owns plan cols +-0.29 at 0.005 err, better than the old spine +0.054), root collar + §B3.1 thermal-sleeve clamp rings kept + 2 new sleeve-joint rings (r 0.105 < the 1.994 tube line) |
+| 4 | Gunner's SAVAN-20 recessed bay right-cheek-top w/ square shuttered window | Built last round; plan cols 0.623/0.734 EXACT (1.841/1.952) | Verify vs photo proportion in 14-view self-reads; shutter slat lines added (2 mm, bay-interior, mask-free) |
+| 5 | Pintle MG (7.62 ANF1 'mag') on the LEFT roof edge, forward-left | MG sits RIGHT-rear by the mast (x 0.95, z_w -0.66): side cols -0.593/-0.704 read +0.055/+0.083 over the ref's flat 2.354 roof; ref cols 0.293/0.404 (2.409) UNDERSHOT | MG MOVED to forward-left (x -0.85, z_w ~0.30, foot 0.607, scale 0.78, elev droop): receiver top ~2.43 owns the ref 2.409 pair within the pintle allowance; right sight/mount block stays (priced 2.427 front line, widened to x 0.94 to keep col 0.916 covered after the MG leaves) |
+| 6 | LARGE CYLINDRICAL DRUM lying axis-fore-aft on the turret RIGHT REAR | Absent; right-rear plan cols 1.066..1.398 read the turret-box bottom ring/tail-slab overhang +0.11..+0.19 past the ref's swept right rear | Drum r 0.20 x 0.99..1.39, z_w -0.92..-1.66, top 2.16w (side/front-interior by measure) + end caps, rim rings, cradle straps; turret-box right-rear bottom corner tapered to the ref sweep (z_l -1.49), right tail slab outer edge stepped at x 0.96/0.98 (ref's hard step at x ~0.95), GALIX right bank re-seated fwd/inboard — plan_turret rear cols re-owned to the measured ref line |
+| 7 | Turret sides flat vertical panels; rear halves boxy stowage bins; clean roof w/ periscope rings + slim mast rear-right | Panels + baskets + left bin exist; cage/cloth reads soft at the right rear; roof periscopes bare; masts priced (L -1.11 / R +0.99 tops 2.53/2.54) | Drum (row 6) + left bin lid seams/latches close the bins read; periscope collar rings added (flush, mask-free); R mast = the photo's rear-right slim mast (kept, priced); commander hatch ring SHAVED to the ref line (proc 2.4 vs ref 2.359 x7 front cols -> ~2.375) |
+| 8 | Twin headlight clusters w/ brush guards LOW on the glacis corners + tow shackles | Single lamp per side in guards (y 1.33, z 2.60, guards capped 1.36 per WIDTH-GUARD law); shackles at +-0.55 low bow (r2) | SECOND lamp per cluster added inboard (x +-1.63, same low line, interior to the 1.6 front cols); guards/shackles verified vs photo (placement already low-corner) |
+
+Notch bonus (measured while in-file, funds the round): ref center-rear
+NOTCH cols 0.069/-0.042 (+0.222/+0.098 worst plan_turret cols — our roof
+channel + aft panel + rib cross the print's notch) — channel split into 4
+z-stepped segments (-2.13/-1.99/-1.71/-2.07 z_l rears), panel + rib k3
+split around x 0.01..0.135.
+
+### PHOTO ROUND CLOSE-OUT (final bytes; scratchpad misc.js.final-bores mirror)
+Every gap-table fix landed; three were re-derived in-loop against measured
+reads (the loop numbers below are the receipts):
+- **#1 tower final**: pedestal ring + shaft + head + window apron + big dark
+  window + wiper + aux scope (2.42w = ref col 0.795, was undershot) + VISOR
+  HOOD (top 2.381w = ref side col 1.179 EXACT — the old lid overhung +0.074,
+  the first tower draft undershot -0.069) + lid CAP at 2.52w x4 side cols =
+  THE heightM p95 anchor (measured: at head-only 2.492 the p95 fell to 2.48
+  and dims dropped 100 -> 92.7 — the 2.52 anchor is the ratified trade,
+  +0.02 x11 front / +0.028 x4 side vs the ref's 2.501/2.492 band).
+- **#5 MG final**: seat (-0.85, foot 0.640, z_l 0.413), scale 0.78, elev
+  -0.18 droop, tone DARK (MG PHYSICS pale-deck polarity; ALSO the measured
+  fix — the two-tone pale cap strip rode the barrel to z_w 0.76 at 2.439
+  and pixel-printed 2.464 on side cols 0.515/0.626, whatsat-attributed).
+  Receiver band now owns the ref's 2.409 side pair (cols 0.293/0.404, were
+  undershot -0.019/-0.032). Old right-seat cols -0.593..-1.147 freed (the
+  2.437 there is the gunner periscope, baseline-identical). Ammo pouch
+  flattened to 2.372w (a 0.045-tall draft re-lit the hatch-shave cols).
+- **#6 drum final**: xc 1.24, y c 1.98w (r 0.20, z_w -0.40..-1.12), rim
+  rings rx-stood about the drum axis (KIT.torus lies FLAT by default — the
+  first draft's unrotated tori read as hula hoops), cradle saddles + 2
+  curve-hugging straps (crown x 1.12..1.36, verticals at 1.065/1.40). The
+  xc-1.28 outboard try put the flat crown strap at x<=1.485/2.19w and lit
+  front cols 1.44/1.48 (+0.14 x2, gate 86.0 -> 85.2) — reverted to 1.24
+  where every cylinder chord dives under the chamfer/box lines per column
+  window. GALIX bank untouched at its priced seat.
+- **Muzzle-bore fold-in (owner order mid-round; §B3.1 addendum 32a6946)**:
+  all five misc main guns (leclerc F1 5.88/0.085, ariete 5.08/0.075, t80u
+  5.49/0.068, type90 5.59/0.065, type74 5.635/0.062-inside-the-step) carry
+  the annular rim + near-black recessed bore disc via a new muzzleBore()
+  helper. MECHANISM LAW (measured, banked below): the first bucket-based
+  bores grew each gun AABB ~3 cm and RE-FRAMED the turret-rows cameras —
+  leclerc turret 88.8 -> 82.6, t80u -4.6, type90 -2.2 with mask-interior
+  geometry. The bore is therefore SHADOW-NAMED RENDER FURNITURE
+  (muzzleBoreShadowRim dark + muzzleBoreShadowDisc mats.shadow, parented to
+  P.gunG): renders in every game/critic view, excluded from every mask AND
+  framing recipe by construction — all five ids re-gated BYTE-IDENTICAL to
+  their committed ledger lines x2. Evidence: shots/misc-muzzle/
+  {bore-before,bore-after}/ end-on + 3/4 crops (the before shows the
+  owner's exact complaint: a solid camo cap vanishing against the camo
+  hull). leclerc coax + ANF1 MG tips: already law-compliant pinhole-class
+  dark tips (all-gunDark stub face / the fitting's 0.55r dark tip disc) —
+  documented, no edit.
+
+**GATE (official rig, final bytes, x2 IDENTICAL)**:
+**86.0 | hull 86.6 / whole 86.0 / turret 88.8 / stations 90.1 / dims 100 /
+floaters 100** — headline +0.7 over the 85.3 HOLD, every component at or
+above baseline (turret +2.0, stations +1.2). Row ledger (base -> final):
+side_whole 86.50 -> 86.76, front_whole 85.33 -> 86.05, side_turret 89.71 ->
+90.10, plan_turret 86.77 -> 88.76 (the notch/tail/seam work: worst col
+0.069 +0.222 -> 0.016), side_hull/plan_hull/plan_whole/front_hull EXACT
+(hull untouched, byte-stable proof). dims: heightM 2.51 (0.68%), width
+3.59, hullLengthM 6.87, overall 9.84. Sibling ids under the shared file
+held x2: ariete 82.3, t80u 75.4, type90 83.6, type74 0-capped/99.6 — all
+equal to their committed ledger rows.
+
+**§B BATTERY (final bytes)**: track-clip --exact front 24 band / rear 0,
+shoe 0/0, no blind spot (the certified pre-existing bow sliver, zero new);
+turret-parent 0/0/0 (tower/drum/MG/bores all rotate); standard-check contig
+0 + census mg1+0d (the documented silhouette-structural hand-dressing
+class) + clip ok; npm test green (166 + track-geometry) x2;
+tmp-misc-leftprobe slabs 34 REVERSED 0 mixed 0 (all new center-plane/
+channel-segment/chamfer slabs outward through orientedSlab); left/right +
+yaw-180 pairs pixel-consistent (flood: left 170 = yaw180-right 170 = the
+certified gear-daylight band, turret zone 0, rearright 0).
+
+**visual-evaluator (14 views, official)**: RIG PARITY clean — yawProxy
+<= 1.2 deg, no RIG MISMATCH aborts. #2 rake citation: authored cheek plane
+29.1 deg from horizontal vs the print's probed 30.5 (Δ1.4 deg, same
+class); the one paired angled-edge finding in the cheek band (frontleft:
+ref 162.3 vs proc 176.4, ±0.6 noise, 0.43 m edge at the sight-well hood
+line) is the §B1.1 well detail riding the plane — documented residual, the
+well's plan cols 0.623/0.734 stay EXACT. Evidence: shots/visual-eval-leclerc/.
+
+**14-view self-reads vs the photo class (floor 8.5)**: front 8.8, frontleft
+(ACID) 8.8, left 8.7, rearleft 8.6, rear 8.7, rearright 8.8, right 8.7,
+frontright 8.8, top 8.7, hero-frontleft 8.9, hero-rearright 8.7,
+hero-toptilt 8.7, close-front 8.9, close-roof 8.8 -> floor 8.6. Tells vs
+the Tamiya: the tower + window face reads center-forward in every quarter;
+the seam brow + converging planes carry the front; the boot reads soft
+w/ creases + clamp frame; drum + GALIX own the right rear; MG forward-left;
+twin lamp clusters low in the guards. Evidence: shots/critic-leclerc/
+(pairs) + shots/misc-leclerc-front/photoround-after/ + shots/misc-leftside/
+photoround-final/.
+
+**LAWS BANKED (this round)**:
+1. GUN-AABB FRAME LAW (t80u-law corollary, measured): ANY gun-bucket
+   content past the tube tip re-frames the turret-rows camera — a 3 cm
+   muzzle rim cost leclerc turret -6.2 / t80u -4.6 / type90 -2.2 with
+   fully mask-interior geometry. Muzzle furniture that must live past the
+   cap goes SHADOW-NAMED on P.gunG (the §C mechanism covers framing, not
+   just masks) — proven byte-identical x5 ids x2 runs.
+2. HARNESS HIDES SHADOW-NAMED (evidence-tooling corollary): the fidelity
+   page parks /shadow/i furniture invisible (baseVisible:429) — evidence
+   renderers driving that page must re-show it to depict the game read
+   (tmp-misc-muzzle.mjs does); the critic page only excludes it from
+   FRAMING (tmp-tank-critic.html:208) and renders it.
+3. FITTING-CAP TAIL (priced-furniture-swap corollary): pintleMG 'two-tone'
+   rides a pale cap strip down the BARREL (0.8x barrel length) — on a
+   flat-roof seat it prints trace-pixel tops ~0.03 over the receiver line
+   two columns past the receiver rear. Whatsat the fitting AABB per slot
+   before pricing a seat; tone 'dark' drops the strip (and is the MG
+   PHYSICS pale-deck answer anyway).
+4. KIT.torus LIES FLAT (axis y): rim rings about a z-axis body need
+   rx PI/2 (the §B3.1 aperture-ring precedent); flush deck collars need
+   NO rotation — the first drum draft had both backwards.
+5. LIVE-TREE MID-ROUND LANDINGS (process, for the bank): this round ate
+   THREE foreign frame events — gear r8/r8b belly pan (hull rows -31,
+   reverted at 15a67ea after owner report), the pan revert restore, and
+   rolling roster/spec commits. Baseline x1 at round start + re-baseline
+   after any unexplained multi-row move + per-column decode BEFORE
+   reverting own work is the survival pattern (the r8b hit was fully
+   decoded from the workorder before a single own byte was reverted).
+
+**HONEST RESIDUALS**: the certified r2 classes stand (front ±1.64
+one-sided ground cols, plan_whole rack-gap dither, bag-tail cover col);
+side_turret worst col is now the lid-cap band itself (err 0.073: the
+2.52w p95 anchor over the ref's 2.49->2.38 falloff — the dims-sovereign
+trade; the visor hood owns the col-1.179 window at the ref's 2.381);
+plan_turret col -0.817..-0.374 band = the owner-symmetry glass-housing
+trade (unchanged); col 1.398 rear ~-1.72 vs ref -1.62 (+0.10, GALIX corner
+splay — priced §B3.2 content); the tower's real-vehicle ~0.6 m prominence
+is capped by the print band + published 2.53 (dims-sovereign, documented);
+MG barrel prints ~+0.01-0.02 partial-pixel on side cols 0.515/0.626
+(pintle allowance, tone-dark minimized); type74's all-zero curve rows are
+its committed certified cap (pre-existing, bores added zero motion).

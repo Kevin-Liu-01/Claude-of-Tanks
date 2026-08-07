@@ -324,6 +324,33 @@ function orientedSlab(b0, b1, b2, b3, t0, t1, t2, t3) {
     ? KIT.slab(b0, b1, b2, b3, t0, t1, t2, t3)
     : KIT.slab(b0, b3, b2, b1, t0, t3, t2, t1);
 }
+
+// §B3.1 MUZZLE BORE (owner 2026-08-06 "make tips of guns have holes, bruh";
+// law banked 32a6946): annular rim at tube radius + near-black bore disc
+// recessed ~2 cm inside the rim mouth. MECHANISM: the first (bucket-based)
+// implementation grew the gun AABB by the rim's 3 cm and RE-FRAMED the
+// turret-rows camera (t80u frame law) — leclerc turret 88.8 -> 82.6, t80u
+// -4.6, type90 -2.2, measured. The bore is therefore SHADOW-NAMED RENDER
+// FURNITURE (§C): named meshes on the GUN group render in every game/critic
+// view but are excluded from every measurement mask AND the visible-box
+// framing recipes — mask/frame-neutral BY CONSTRUCTION, and the rim may sit
+// honestly proud of the old solid cap (which would otherwise occlude a
+// recessed disc). Elevation/recoil correct: parented to P.gunG.
+function muzzleBore(P, r, zTip) {
+  const ring = new THREE.Mesh(
+    KIT.xform(KIT.torus(r * 0.82, r * 0.18, 16), 0, 0, 0, Math.PI / 2, 0, 0), P.mats.dark);
+  ring.name = 'muzzleBoreShadowRim';
+  ring.position.set(0, 0, zTip + 0.016);
+  const disc = new THREE.Mesh(KIT.cylZ(r * 0.62, 0.012, 14), P.mats.shadow);
+  disc.name = 'muzzleBoreShadowDisc';
+  disc.position.set(0, 0, zTip + 0.006);
+  for (const m of [ring, disc]) {
+    m.castShadow = false;
+    m.receiveShadow = true;
+    P.gunG.add(m);
+    P.disposables.push(m.geometry);
+  }
+}
 // ---------------------------------------------------------------------------
 // C1 Ariete — docs/references/tanks/ariete.md
 // R4 FULL RE-LAY (2026-08-03) from the r27-landmine-fixed workorder dump
@@ -710,6 +737,7 @@ function buildAriete(P) {
   // print's own tube ends 5.73). Tube r 0.075: sleeve band 0.183 under the
   // 12% cut; MRS collar lands on the ref's own 4.6-4.8 swell.
   buildGun(P, { len: 5.10, r: 0.075, sleeve: true, evac: 0.685, evacR: 1.40, collar: true, baseR: 0.16 });  // r5: the 5.18 tube's AA/flare read overallLengthM 9.78 (+1.19%, -1.5 dims) — the MASK is the measure of record; 5.10 reads ~9.70 and drops the 5.8 proc-only col
+  muzzleBore(P, 0.075, 5.08);                                                  // §B3.1 muzzle bore (shadow-named — see the helper)
   // MRS/muzzle collar (push round): the ref's muzzle zone reads a THICK
   // 1.555-1.884 band at z 5.4-5.7 vs the bare 0.075 tube. Seated 4 cm LEFT
   // (real MRS units mount off-axis): x -0.175..0.095 covers the plan
@@ -862,8 +890,14 @@ function buildLeclerc(P) {
   P.add('hullDark', box(1.80, 0.016, 1.20), 0, 1.61, -2.42);
   for (let k = 0; k < 6; k++) P.add('hullDetail', box(1.72, 0.02, 0.055), 0, 1.618, -1.87 - k * 0.17);
   for (const s of [-1, 1]) P.add('hullDetail', cylY(0.09, 0.09, 0.026, 12), s * 1.30, 1.555, -0.55);
+  // TWIN headlight clusters (photo round, read 8): main lamp + inboard
+  // blackout lamp per corner, LOW on the glacis line inside the guards
+  // (tops < the 1.374 glacis read at z 2.60; front cols there are 1.6
+  // block-topped — cluster interior on every row).
   headlight(P, -1.74, 1.33, 2.60, -0.2);
   headlight(P, 1.74, 1.33, 2.60, -0.2);
+  headlight(P, -1.655, 1.328, 2.615, -0.2, 0.042);
+  headlight(P, 1.655, 1.328, 2.615, -0.2, 0.042);
   // §B3.2 (2026-08-06): light BRUSH GUARDS — low frames capped at y 1.37
   // (the falling glacis line reads 1.374 at z 2.60: guards must stay under
   // it; the first draft at 1.445 would have printed +0.07 on two side
@@ -935,31 +969,63 @@ function buildLeclerc(P) {
   P.turretG.position.set(0, 1.60, -0.10);
   const LH = 0.752;                                                            // roof plateau 2.352
   const roofAt = (z) => (z >= -1.32 ? LH : Math.max(0.575, LH + (z + 1.32) * 0.201));
-  P.add('turret', slab(                                                        // rear/autoloader box — right-rear roof corner CLIPPED (print)
-    [-1.30, 0, -0.12], [1.30, 0, -0.12], [1.30, 0, -1.70], [-1.30, 0, -1.70],
-    [-1.02, 0.60, -0.15], [1.02, 0.60, -0.15], [0.95, 0.60, -1.72], [-1.02, 0.60, -1.92]));
-  P.add('turret', slab(                                                        // bustle tail LEFT of the center notch
-    [-1.24, 0.16, -1.72], [-0.02, 0.16, -1.72], [-0.02, 0.40, -2.16], [-1.10, 0.40, -2.23],
-    [-1.20, 0.615, -1.72], [-0.02, 0.615, -1.72], [-0.02, 0.578, -2.16], [-1.06, 0.578, -2.23]));
-  P.add('turret', slab(                                                        // bustle tail RIGHT of the notch (tip -2.17w only to x0.90)
-    [0.14, 0.16, -1.72], [1.10, 0.16, -1.72], [0.90, 0.40, -2.07], [0.14, 0.40, -2.16],
-    [0.14, 0.615, -1.72], [1.06, 0.615, -1.72], [0.86, 0.578, -2.07], [0.14, 0.578, -2.16]));
+  P.add('turret', slab(                                                        // rear/autoloader box — right-rear roof corner CLIPPED (print); photo
+    [-1.30, 0, -0.12], [1.30, 0, -0.12], [1.30, 0, -1.55], [-1.30, 0, -1.70],
+    [-1.02, 0.60, -0.15], [1.02, 0.60, -0.15], [0.95, 0.60, -1.72], [-1.02, 0.60, -1.92])); // round: right-rear BOTTOM corner tapered -1.70 -> -1.55 to the ref's swept right rear (plan cols 1.066..1.288 read the ring at z_w -1.80 vs ref -1.786..-1.703; side bottoms keep the left corner)
+  P.add('turret', slab(                                                        // bustle tail LEFT of the center notch (photo round: inner face at
+    [-1.24, 0.16, -1.72], [-0.12, 0.16, -1.72], [-0.12, 0.40, -2.16], [-1.10, 0.40, -2.23],
+    [-1.20, 0.615, -1.72], [-0.12, 0.615, -1.72], [-0.12, 0.578, -2.16], [-1.06, 0.578, -2.23])); // x -0.12 — the old -0.02 wall put z_w -2.26 in the ref col -0.042 window (-2.09)
+  P.add('turret', slab(                                                        // bustle tail RIGHT of the notch: rear SQUARED at z_l -2.07 (z_w -2.17
+    [0.14, 0.16, -1.72], [0.98, 0.16, -1.72], [0.90, 0.40, -2.07], [0.14, 0.40, -2.07],
+    [0.14, 0.615, -1.72], [0.96, 0.615, -1.72], [0.86, 0.578, -2.07], [0.14, 0.578, -2.07])); // = ref cols 0.18..0.955), outer edge stepped at x 0.96/0.98 (ref's hard step ~0.95; the old 1.10 slant read z_w -1.96 in the col-1.066 window vs ref -1.786)
   for (const s of [-1, 1]) {
     P.add('turret', slab(                                                      // aft roof wedges: raised SIDE BANDS |x| 0.30..1.05
       [s * 1.28, 0.56, -1.28], [s * 0.30, 0.56, -1.28], [s * 0.30, 0.44, s > 0 ? -2.04 : -2.20], [s * (s > 0 ? 1.02 : 1.24), 0.44, s > 0 ? -1.80 : -2.20],
       [s * 1.05, LH, -1.30], [s * 0.30, LH, -1.30], [s * 0.30, 0.578, s > 0 ? -2.06 : -2.22], [s * (s > 0 ? 0.88 : 1.03), 0.578, s > 0 ? -1.84 : -2.22]));
   }
-  P.add('turret', slab(                                                        // LOW center roof channel (ref front center 2.248)
-    [-0.34, 0.56, -0.60], [0.34, 0.56, -0.60], [0.32, 0.44, -2.12], [-0.32, 0.44, -2.12],
-    [-0.32, 0.648, -0.62], [0.32, 0.648, -0.62], [0.30, 0.578, -2.14], [-0.30, 0.578, -2.14]));
-  // CENTER SPINE (turret-front round, 2026-08-06): one mass replaces the two
-  // center-strip boxes + their z 0.395..0.575 roof slot AND runs the brow
-  // forward to z_l 2.27 (z_w 2.17) — the certified 2.248w top now owns side
-  // cols z_w 1.29..2.18 ALONE (the old cheek-complex plateau is gone; ref
-  // 2.243 x7 cols hold, worst re-read +0.014 @ col 1.29). Its front face is
-  // the mantlet-bay rear + the visor band over the gun boot; plan cols
-  // +-0.29 read 2.17 vs ref 2.091 (+0.079 x2, decoded in the packet).
-  P.add('turret', box(0.64, 0.648, 2.60), 0, 0.324, 0.945);                    // z_l -0.355..2.245: front z_w 2.145 = 24 mm inside the side col-2.176 window (margin-legal) while plan cols +-0.29 read 0.029 closer to the ref's 2.091
+  // LOW center roof channel (ref front center 2.248). Photo round: split
+  // into FOUR z-stepped segments respecting the print's center-rear NOTCH —
+  // the one slab ran to z_w -2.24 across the notch and owned the two worst
+  // plan_turret cols (0.069: ref -1.814 proc -2.229, +0.222; -0.042: ref
+  // -2.09, +0.098). Steps (z_l rear, b/t): A -2.12/-2.14 | B -1.97/-1.99
+  // (z_w -2.09 = ref col -0.042) | C -1.69/-1.71 (z_w -1.81 = ref col
+  // 0.069) | D -2.05/-2.07 (z_w -2.17 = ref cols 0.18/0.291).
+  P.add('turret', slab(
+    [-0.34, 0.56, -0.60], [-0.12, 0.56, -0.60], [-0.12, 0.44, -2.12], [-0.32, 0.44, -2.12],
+    [-0.32, 0.648, -0.62], [-0.12, 0.648, -0.62], [-0.12, 0.578, -2.14], [-0.30, 0.578, -2.14]));
+  P.add('turret', slab(
+    [-0.12, 0.56, -0.60], [-0.005, 0.56, -0.60], [-0.005, 0.450, -1.97], [-0.12, 0.450, -1.97],
+    [-0.12, 0.648, -0.62], [-0.005, 0.648, -0.62], [-0.005, 0.585, -1.99], [-0.12, 0.585, -1.99]));
+  P.add('turret', slab(
+    [-0.005, 0.56, -0.60], [0.135, 0.56, -0.60], [0.135, 0.472, -1.69], [-0.005, 0.472, -1.69],
+    [-0.005, 0.648, -0.62], [0.135, 0.648, -0.62], [0.135, 0.598, -1.71], [-0.005, 0.598, -1.71]));
+  P.add('turret', slab(
+    [0.135, 0.56, -0.60], [0.34, 0.56, -0.60], [0.32, 0.444, -2.05], [0.135, 0.444, -2.05],
+    [0.135, 0.648, -0.62], [0.32, 0.648, -0.62], [0.30, 0.581, -2.07], [0.135, 0.581, -2.07]));
+  // CENTER SEAM (photo-parity round, 2026-08-06 — photo read 2: "two flat
+  // raked cheek plates meeting at a CENTER VERTICAL SEAM, descending to the
+  // mantlet zone"). The old full-width spine (x +-0.32, vertical face at
+  // z_w 2.145, +0.054 x2 plan cols vs ref 2.091) is NARROWED to a x +-0.115
+  // rotor-brow RIDGE — the real mantlet rotor housing (§B3.1) — which alone
+  // keeps the priced 2.243 side shelf (side cols z_w 1.29..2.18: ridge top
+  // 2.248 runs to z_w 2.145, inside the col-2.176 window as before; killing
+  // it entirely costs ~0.45 err-sum on 4-6 priced side cols — decoded, the
+  // ridge is the §B7 mask-first compromise and the print's own brow mass).
+  // TWO CONVERGING CENTER PLANES (same 29-deg rake family as the cheeks,
+  // planar parallelogram quads — twisted-quad law) fall from the 2.248
+  // channel line to the strip, x 0.06..0.42 each side, inner edge 4 cm
+  // forward (V-apex behind the ridge): the plane-to-ridge junctions carry
+  // 6 mm dark weld strips = the VERTICAL SEAM read; the plane-to-cheek
+  // junction at x 0.42 steps 2 cm = the center armor panel edge the real
+  // vehicle carries. Plan cols +-0.29 are re-owned by the boot clamp frame
+  // (z_w 2.096 vs ref 2.091 — better than the old spine by 0.049).
+  P.add('turret', box(0.23, 0.648, 2.60), 0, 0.324, 0.945);                    // rotor-brow ridge: z_l -0.355..2.245, top 2.248w, face z_w 2.145
+  for (const s of [-1, 1]) {
+    P.add('turret', slab(                                                      // converging center plane (V half)
+      [s * 0.06, 0.14, 2.20], [s * 0.42, 0.14, 2.16], [s * 0.42, 0.14, 0.20], [s * 0.06, 0.14, 0.20],
+      [s * 0.06, 0.648, 1.287], [s * 0.42, 0.648, 1.247], [s * 0.42, 0.648, 0.20], [s * 0.06, 0.648, 0.20]));
+    P.add('turretDark', box(0.006, 0.505, 0.025), s * 0.118, 0.392, 2.235);    // seam weld strip on the ridge flank
+  }
   P.add('turret', slab(                                                        // right main cheek
     [0.33, 0, 1.12], [1.30, 0, -0.10], [1.30, 0, -0.5], [0.33, 0, 0.68],
     [0.31, LH, 1.02], [1.00, LH, -0.16], [1.00, LH, -0.5], [0.31, LH, 0.58]));
@@ -1006,8 +1072,11 @@ function buildLeclerc(P) {
     const stripSeg = (x0, x1) => P.add('turret', slab(
       [m(x0), FR.sB, FR.inZb], [m(x1), FR.sB, FR.inZb], [m(x1), FR.sB, FR.rear], [m(x0), FR.sB, FR.rear],
       [m(x0), FR.sT, FR.inZ], [m(x1), FR.sT, FR.inZ], [m(x1), FR.sT, FR.rear], [m(x0), FR.sT, FR.rear]));
-    if (s < 0) stripSeg(0.31, FR.kink);
-    else { stripSeg(0.31, 0.50); stripSeg(0.80, FR.kink); }
+    // photo round: strip extended inboard to x 0.06 — the center face under
+    // the V planes closes to the boot/frame (front stays the priced 2.075
+    // line; center cols are gun/frame-owned)
+    if (s < 0) stripSeg(0.06, FR.kink);
+    else { stripSeg(0.06, 0.50); stripSeg(0.80, FR.kink); }
     P.add('turret', slab(
       [m(FR.kink), FR.sB, FR.inZb], [m(FR.outX), FR.sB, FR.outZb], [m(FR.outX), FR.sB, FR.rear], [m(FR.kink), FR.sB, FR.rear],
       [m(FR.kink), FR.sT, FR.inZ], [m(FR.outX), FR.sT, FR.outZ], [m(FR.outX), FR.sT, FR.rear], [m(FR.kink), FR.sT, FR.rear]));
@@ -1035,6 +1104,7 @@ function buildLeclerc(P) {
   P.add('turretDark', box(0.20, 0.18, 0.02), 0.60, 0.30, 1.452);               // lens frame
   P.add('turretGlass', box(0.15, 0.13, 0.016), 0.60, 0.30, 1.462);             // lens
   P.add('turret', box(0.12, 0.40, 0.10), 0.74, 0.235, 2.00);                   // shutter housing (face 1.95w plan line)
+  for (let k = 0; k < 3; k++) P.add('turretDark', box(0.10, 0.010, 0.006), 0.74, 0.16 + k * 0.075, 2.047); // shutter slat lines (photo read 4 — 3 mm INSET from the priced 1.952 face, mask-free)
   P.add('turret', slab(                                                        // hood: thin plate riding ON the plane over the bay
     [0.46, 0.50, 1.558], [0.84, 0.50, 1.558], [0.84, 0.50, 1.513], [0.46, 0.50, 1.513],
     [0.46, 0.62, 1.342], [0.84, 0.62, 1.342], [0.84, 0.62, 1.297], [0.46, 0.62, 1.297]));
@@ -1042,7 +1112,27 @@ function buildLeclerc(P) {
   // under-mantlet recess the real vehicle carries) + gun BOOT and ROOT
   // COLLAR on the print's own side shelves (2.132 / 2.077)
   P.add('turret', box(0.38, 0.86, 0.21), 0, 0.10, 1.655);
-  P.add('turret', box(0.38, 0.403, 0.53), 0, 0.3285, 2.455);                   // boot: top 2.13w, bottom 1.727w (ref 1.717 line), z_w 2.09..2.62
+  // BIG SQUARE CANVAS MANTLET BOOT (photo round, §B3.1 canvas grammar):
+  // widened x +-0.19 -> +-0.21 (26 mm clear of the plan col-0.291 window at
+  // 0.236 — partial-pixel law), soft top-edge chamfers, sag-crease dark
+  // seams, and a bolted CLAMP FRAME at the base whose face (z_w 2.096) now
+  // OWNS plan cols +-0.29 (ref 2.091, err 0.005 — the old spine read
+  // +0.054). Envelope holds the priced side shelves: top 2.13w over z_w
+  // 2.09..2.62, bottom 1.727w.
+  P.add('turret', box(0.42, 0.328, 0.53), 0, 0.291, 2.455);                    // boot body: x +-0.21, bottom 1.727w, z_w 2.09..2.62
+  P.add('turret', box(0.29, 0.075, 0.53), 0, 0.4925, 2.455);                   // boot cap: top 2.13w held (priced side shelf)
+  for (const s of [-1, 1]) {
+    P.add('turret', slab(                                                      // canvas shoulder chamfer closing body->cap (soft edge)
+      [s * 0.21, 0.455, 2.19], [s * 0.21, 0.455, 2.72], [s * 0.145, 0.53, 2.72], [s * 0.145, 0.53, 2.19],
+      [s * 0.155, 0.455, 2.19], [s * 0.155, 0.455, 2.72], [s * 0.10, 0.53, 2.72], [s * 0.10, 0.53, 2.19]));
+    P.add('turretDark', box(0.004, 0.36, 0.030), s * 0.212, 0.32, 2.38);       // side sag creases (2 mm proud)
+    P.add('turretDark', box(0.004, 0.34, 0.030), s * 0.212, 0.30, 2.58);
+  }
+  P.add('turretDark', box(0.36, 0.026, 0.004), 0, 0.415, 2.722);               // face sag creases (gun-plan-hidden cols)
+  P.add('turretDark', box(0.33, 0.024, 0.004), 0, 0.30, 2.722);
+  P.add('turretDark', box(0.30, 0.022, 0.004), 0, 0.19, 2.722);
+  P.add('turret', box(0.52, 0.44, 0.028), 0, 0.26, 2.182);                     // clamp frame: face z_w 2.096 owns plan +-0.29
+  P.add('turretDark', box(0.46, 0.38, 0.006), 0, 0.26, 2.20);                  // frame inner shadow inset
   P.add('turret', box(0.34, 0.36, 0.27), 0, 0.305, 2.835);                     // root collar: top 2.085w, z_w 2.60..2.87 — rear held 25 mm clear of the col-2.951 window (the wide face at 2.90 lit it +0.027 in loop 1; the old narrow collar's 4.5 mm sliver never did)
   P.add('turret', box(0.38, 0.15, 0.12), 0, 0.025, 2.25);                      // mantlet LOWER LIP under the boot mouth: restores the col-2.176 turret-row bottom (ref 1.551) the old cheek-complex base carried
   P.add('turretDark', cylZ(0.14, 0.05, 14), 0, 0.25, 3.02);                    // §B3.1 thermal-sleeve clamp ring at the root exit (top 1.99w — also the honest owner of side col 2.951's 1.99 line the old collar held by an AA sliver)
@@ -1084,35 +1174,80 @@ function buildLeclerc(P) {
   }
   // print's LEFT flank cloth bulge (front col -1.64 reads 1.65..1.92 there)
   P.add('turretCloth', box(0.05, 0.27, 0.80), -1.625, 0.185, -0.90);
-  // roof: HL-70 armored sight head FORWARD-right. Top 2.52w — the sight's
-  // 3-4 columns are the heightM p95 anchor (with the masts and pano pot);
-  // the roof plateau alone (2.352) reads 2.47 p95 = dims -12 (this round)
-  sightBox(P, 'turret', 0.55, LH + 0.08, 1.03, 0.40, 0.16, 0.42);
-  P.add('turret', box(0.42, 0.04, 0.42), 0.55, LH + 0.148, 1.04);
+  // roof: HL-70 PANORAMIC SIGHT TOWER center-forward (photo-parity round,
+  // 2026-08-06 — THE Leclerc identity feature per the owner's Tamiya photo).
+  // Re-authored from the squat sightBox+lid on the print's own priced band:
+  // ref front cols 0.349..0.754 read 2.501 (old lid overshot at 2.521 x11)
+  // and ref side cols 0.736..1.069 read 2.492 (old box overhung col 1.179,
+  // ref 2.381, by +0.074 — its z ran to 1.24w). Tower: x 0.35..0.75, z_w
+  // 0.70..1.10 (head front 24 mm clear of the col-1.179 window), head 2.486
+  // + lid cap 2.52 (the heightM p95 anchor — measured first per the round
+  // contract; masts stay the only above-2.53 spikes, heightM holds 2.51).
+  // Pedestal ring -> shaft -> head w/ raised lid cap; the tall window
+  // APRON drops onto the falling cheek plane (foot y 0.6745 = the plane
+  // surface at z_l 1.20) so the face reads 0.22 m tall from the front-left
+  // 3/4; big dark window + glass + wiper + right aux scope (aux top 2.42w
+  // owns front col 0.795 — ref 2.42, was undershot 2.389).
+  P.add('turret', cylY(0.15, 0.165, 0.03, 16), 0.55, LH + 0.015, 0.985);       // pedestal ring
+  P.add('turret', box(0.32, 0.075, 0.34), 0.55, 0.8195, 0.995);                // shaft
+  P.add('turret', box(0.40, 0.049, 0.40), 0.55, 0.8615, 1.00);                 // head block (top 0.886)
+  P.add('turret', box(0.41, 0.040, 0.41), 0.55, 0.900, 1.00);                  // lid CAP, top 0.920 = 2.52w — THE heightM p95 anchor (loop-1 measure: at 2.492 the p95 fell to 2.48, dims 100 -> 92.7; the 2.52 x4-col anchor is the ratified baseline trade: +0.02 x11 front / +0.028 x4 side cols vs the ref's 2.501/2.492 band, dims-sovereign)
+  P.add('turret', box(0.34, 0.19, 0.05), 0.55, 0.7695, 1.175);                 // window apron onto the cheek plane
+  P.add('turretDark', box(0.30, 0.16, 0.014), 0.55, 0.78, 1.208);              // window frame
+  P.add('turretGlass', box(0.26, 0.115, 0.012), 0.55, 0.778, 1.215);           // the big window
+  P.add('turretDark', box(0.012, 0.10, 0.012), 0.60, 0.79, 1.222, 0, 0, 0.3);  // wiper arm
+  P.add('turret', box(0.34, 0.022, 0.085), 0.55, 0.770, 1.2425);               // VISOR HOOD over the window (top 2.381w = ref side col 1.179 EXACT — the old lid overhung it +0.074, the loop-2 head undershot -0.069; z_w 1.10..1.185 inside the col window)
+  P.add('turretDark', box(0.07, 0.05, 0.07), 0.785, 0.795, 1.01);              // aux day scope (top 2.42w = ref col 0.795)
+  P.add('turretDark', box(0.014, 0.135, 0.014), 0.55, 0.8195, 0.793);          // rear cable conduit (flush on the head rear face — z_w 0.686 stays inside the col-0.736 window the head already owns)
+  P.add('turretDark', box(0.38, 0.010, 0.014), 0.55, 0.8555, 1.196);           // head/shaft split line
   P.add('turretDark', box(0.56, 0.014, 0.40), 0, 0.658, -1.12);                // autoloader panel field (in the low channel)
-  P.add('turretDark', box(0.56, 0.014, 0.62), 0, 0.60, -1.72, -0.09, 0, 0);    // aft panel rides the channel fall
-  for (let k = 0; k < 4; k++) P.add('turretDetail', box(0.56, 0.018, 0.02), 0, (k < 1 ? 0.648 : roofAt(-1.08 - k * 0.30) - 0.10) + 0.012, -1.08 - k * 0.30);
-  // commander (left) + gunner (right) hatches
-  P.add('turret', cylY(0.22, 0.22, 0.045, 14), -0.56, roofAt(-0.55) + 0.02, -0.55);
-  P.add('turretDark', box(0.38, 0.012, 0.03), -0.56, roofAt(-0.55) + 0.048, -0.55);
+  // aft panel rides the channel fall — split around the notch (photo round):
+  // left/right full-depth panels + a SHORT center strip ending z_w -1.775
+  // (clear of the ref col-0.069 notch floor at -1.814)
+  P.add('turretDark', box(0.16, 0.014, 0.62), -0.20, 0.60, -1.72, -0.09, 0, 0);
+  P.add('turretDark', box(0.14, 0.014, 0.26), 0.065, 0.607, -1.545, -0.09, 0, 0);
+  P.add('turretDark', box(0.145, 0.014, 0.62), 0.2075, 0.60, -1.72, -0.09, 0, 0);
+  for (let k = 0; k < 3; k++) P.add('turretDetail', box(0.56, 0.018, 0.02), 0, (k < 1 ? 0.648 : roofAt(-1.08 - k * 0.30) - 0.10) + 0.012, -1.08 - k * 0.30);
+  {                                                                            // 4th rib split around the notch (z_w -2.08 crossed the col-0.069 window)
+    const ry4 = roofAt(-1.98) - 0.10 + 0.012;
+    P.add('turretDetail', box(0.275, 0.018, 0.02), -0.1425, ry4, -1.98);
+    P.add('turretDetail', box(0.145, 0.018, 0.02), 0.2075, ry4, -1.98);
+  }
+  // commander (left) + gunner (right) hatches. Photo round: commander ring
+  // SHAVED to the ref line — the old 0.045 ring + 0.048 lid bar read 2.4 on
+  // seven front cols (x -0.34..-0.62) where the ref roof is 2.359/2.369;
+  // now ring top 2.368 / bar 2.378. Flush periscope collar RINGS added
+  // (photo read 7: clean roof w/ periscope rings; sub-centimeter, mask-free).
+  P.add('turret', cylY(0.22, 0.22, 0.016, 14), -0.56, roofAt(-0.55) + 0.008, -0.55);
+  P.add('turretDark', box(0.38, 0.012, 0.03), -0.56, roofAt(-0.55) + 0.020, -0.55);
   P.add('turret', cylY(0.20, 0.20, 0.04, 14), 0.58, roofAt(-0.90) + 0.02, -0.90);
-  // 7.62 ANF1 pintle LOW by the mast column (decoration law; receiver top
-  // 2.43w — the r1 gunner-ring perch read 2.49-2.52 over the 2.35 roof).
-  // §B3/§I MIGRATION (missing-left-side round, 2026-08-06): the four
-  // hand-authored pintle pieces censused mg0+0d on the v2 standard-check —
-  // replaced with FITTINGS.pintleMG (mag class = the 7.62 ANF1 family,
-  // two-tone per deck polarity). Foot SUNK to 0.615 local so the fitting's
-  // receiver/cap stack tops at the SAME priced 2.43w line the hand pintle
-  // held (receiver+ridge+cap ~0.215 over the foot; the 2.52 sight-lid x4 +
-  // 2.53/2.54 masts + pano keep owning heightM p95 — the MG stays under
-  // every anchor). Envelope x 0.83..0.99 inside the 0.99 mast column,
-  // barrel forward like the hand original.
+  P.add('turretDetail', torus(0.062, 0.008, 12), -0.35, 0.654, -0.28);         // flush collar rings (KIT.torus lies FLAT by default — the loop-1
+  P.add('turretDetail', torus(0.062, 0.008, 12), 0.42, roofAt(-0.58) - 0.002, -0.58); // vertical-hoop draft bought a +0.027 trace pixel at col -0.704)
+  // 7.62 ANF1 pintle MOVED forward-LEFT (photo-parity round, read 5 — the
+  // Tamiya shows it clearly on the left cheek edge; §B7 photo governs).
+  // The old right-rear seat (0.95, -0.66) read 2.409-2.437 on side cols
+  // -0.593..-0.704 where the ref roof is FLAT 2.354 (+0.05..0.08 x2-3), and
+  // the ref's own 2.409 side band at cols 0.293/0.404 sat UNDERSHOT — the
+  // new seat owns that band instead (side masks image both flanks, so a
+  // LEFT gun legally covers it): receiver z_w 0.246..0.453 inside the two
+  // 2.409 col windows [0.238..0.459] (scale 0.78 sizes the rec to fit; foot
+  // z_l 0.413), top ~2.41w; foot SUNK (priced-furniture-swap law) so the
+  // stack stays at the pintle allowance: front cols -0.825/-0.866 read
+  // ~2.41 vs ref 2.369 (+0.021 x2, funded by the tower/hatch recovery).
+  // Barrel DROOPS (elev -0.08, matched-envelope law) under the cheek-plane
+  // crest; ammo can OFF (its box would poke the col -0.947 front window) —
+  // a flat pouch sits on the roof instead.
   {
-    const anf1 = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone', elev: 0, seed: 11 });
-    anf1.position.set(0.95, 0.578, -0.66);
+    // tone 'dark' per MG PHYSICS (pale-deck roof gun reads dark) — ALSO the
+    // measured fix for side cols 0.515/0.626: the two-tone CAP strip rode
+    // the barrel to z_w 0.76 at 2.439 and pixel-printed 2.464 (loop-2
+    // whatsat AABB [-0.877..-0.823, top 2.439, z 0.258..0.763]).
+    const anf1 = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', elev: -0.18, seed: 11, scale: 0.78, ammo: false });
+    anf1.position.set(-0.85, 0.640, 0.413);
     P.turretG.add(anf1);
   }
-  P.add('turretDetail', box(0.05, 0.09, 0.12), 0.86, LH + 0.03, -0.76);        // sight/mount block (kept from the hand pintle — it carries the priced 2.427w line at x 0.835-0.885)
+  P.add('turretDark', box(0.11, 0.02, 0.16), -0.68, LH + 0.01, 0.32);          // ANF1 ammo pouch (FLAT: top 2.372w — a 0.045-tall draft read +0.028 into the hatch-shave cols)
+  P.add('turretDetail', box(0.105, 0.09, 0.12), 0.8875, LH + 0.03, -0.76);     // sight/mount block (carries the priced 2.427w front line; WIDENED x 0.835..0.94 so col 0.916 — ref 2.41 — stays covered after the MG left)
   periscope(P, 'turretDetail', -0.35, 0.66, -0.28, 0.3);
   periscope(P, 'turretDetail', 0.42, roofAt(-0.58) + 0.05, -0.58);
   // HL-15 panoramic + antenna pot: the ref's 2.49-2.50 head cluster lives
@@ -1140,6 +1275,32 @@ function buildLeclerc(P) {
   // interior to the priced corner columns).
   galixBank(P, 1.24, 0.38, -1.38, 1, 5, 2);
   galixBank(P, -1.34, 0.50, -1.62, -1, 5, 2);
+  // LARGE CYLINDRICAL DRUM on the turret right rear (photo round, read 6 —
+  // the Tamiya's very visible horizontal stowage drum, axis fore-aft).
+  // Measured seat r2: r 0.20 xc 1.24 (x 1.04..1.44 — the first outboard seat
+  // xc 1.28 put the flat crown strap at x<=1.485/2.19w and lit front cols
+  // 1.44/1.48 +0.14: gate 86.0 -> 85.2, reverted; at 1.24 every chord dives
+  // under the chamfer/box lines per column window), y 1.78..2.18w (at the
+  // 2.215+ chamfer/side-box front tops — front/side-interior by measure),
+  // z_w -0.40..-1.12 with the rear cap 7 cm clear of the priced GALIX bank
+  // front (bank UNTOUCHED at its documented -1.76 rear edge) — the drum is
+  // fully plan-interior: the tapered box ring + GALIX own every rear col.
+  // Grammar (§B3.1/§B3): body + end caps + rim rings + cradle saddles +
+  // over-straps + cap handle — never a bare prism.
+  P.add('turret', cylZ(0.20, 0.72, 16), 1.24, 0.38, -0.66);                    // drum body (z_l -1.02..-0.30)
+  P.add('turretDetail', cylZ(0.205, 0.022, 16), 1.24, 0.38, -0.31);            // front cap rim
+  P.add('turretDetail', cylZ(0.205, 0.022, 16), 1.24, 0.38, -1.01);            // rear cap rim
+  P.add('turretDark', torus(0.202, 0.011, 14), 1.24, 0.38, -0.48, Math.PI / 2, 0, 0); // rim rings stood about the drum axis (KIT.torus is flat by default)
+  P.add('turretDark', torus(0.202, 0.011, 14), 1.24, 0.38, -0.66, Math.PI / 2, 0, 0);
+  P.add('turretDark', torus(0.202, 0.011, 14), 1.24, 0.38, -0.88, Math.PI / 2, 0, 0);
+  P.add('turretDark', cylZ(0.13, 0.010, 14), 1.24, 0.38, -0.298);              // recessed front cap face
+  P.add('turretDetail', box(0.10, 0.022, 0.028), 1.24, 0.38, -0.288);          // cap handle bar
+  for (const dz of [-0.42, -0.90]) {
+    P.add('turretDark', box(0.30, 0.035, 0.06), 1.18, 0.17, dz);               // cradle saddles onto the box flank
+    P.add('turretDark', box(0.014, 0.42, 0.028), 1.065, 0.38, dz);              // tie-down strap: verticals + crown
+    P.add('turretDark', box(0.014, 0.42, 0.028), 1.40, 0.38, dz);
+    P.add('turretDark', box(0.24, 0.012, 0.028), 1.24, 0.586, dz);
+  }
   // §B3.2: spare track links along the LEFT side-box face (real Leclercs
   // strap links on the turret flank; visual counterweight to the right
   // sight well). KIT.spareTrackStrip cannot mount on a vertical face with
@@ -1155,19 +1316,25 @@ function buildLeclerc(P) {
     P.add('turretTrack', box(0.05, 0.05, 0.06), -1.583, 0.325, 0.42 + k * 0.19);
   }
   P.add('turret', box(0.24, 0.32, 0.44), -1.38, 0.35, -1.82);                  // LEFT corner bin (rear -2.14w at x 1.26-1.50)
+  P.add('turretDark', box(0.242, 0.008, 0.442), -1.38, 0.435, -1.82);          // bin lid seam (photo read 7: bins carry §B3 lid grammar)
+  P.add('turretDark', box(0.02, 0.05, 0.035), -1.503, 0.32, -1.70);            // lid latches (3 mm proud of the priced -1.50 face, z-interior)
+  P.add('turretDark', box(0.02, 0.05, 0.035), -1.503, 0.32, -1.94);
   // rear bustle rack: thin top shelf read (2.04..2.18w at the tail); the
   // print's cage is LEFT-BIASED (right rear edge stops ~-2.17w)
-  for (const y2 of [0.44, 0.60]) {                                             // cage rails (notched at x 0.0..0.14 like the print's rear face)
-    for (const [cx2, w3] of [[-0.46, 0.88], [0.52, 0.76]]) {
+  // cage rails — notch WIDENED to the trimmed channel steps (photo round:
+  // the left rail/vertical/mesh/roll used to cross the ref's col -0.042
+  // window at z_w -2.15..-2.18; all left cage pieces now end x -0.12)
+  for (const y2 of [0.44, 0.60]) {
+    for (const [cx2, w3] of [[-0.51, 0.78], [0.52, 0.76]]) {
       P.add('turretDetail', box(w3, 0.032, 0.032), cx2, y2, -2.06);
       P.add('turretDetail', box(w3, 0.032, 0.032), cx2, y2, -1.86);
     }
     for (const sx of [-1, 1]) P.add('turretDetail', box(0.032, 0.032, 0.20), sx * 0.90, y2, -1.96);
   }
-  for (const vx of [-0.86, -0.45, -0.04, 0.16, 0.55, 0.88]) P.add('turretDetail', box(0.028, 0.16, 0.028), vx, 0.52, -2.06);
-  P.add('turretDark', box(0.86, 0.14, 0.014), -0.46, 0.52, -2.075);
+  for (const vx of [-0.86, -0.45, -0.16, 0.16, 0.55, 0.88]) P.add('turretDetail', box(0.028, 0.16, 0.028), vx, 0.52, -2.06);
+  P.add('turretDark', box(0.77, 0.14, 0.014), -0.505, 0.52, -2.075);
   P.add('turretDark', box(0.72, 0.14, 0.014), 0.52, 0.52, -2.075);
-  P.add('turretCloth', box(0.80, 0.10, 0.16), -0.42, 0.50, -1.95);
+  P.add('turretCloth', box(0.70, 0.10, 0.16), -0.47, 0.50, -1.95);
   P.add('turretCloth', box(0.60, 0.09, 0.15), 0.50, 0.49, -1.94);
   // §B3.2: cargo STRAPS over the shelf rolls (2.5 mm proud, cage-interior)
   for (const sx of [-0.60, -0.25, 0.40, 0.62]) {
@@ -1193,12 +1360,18 @@ function buildLeclerc(P) {
   P.addGunExtraDark(cylZ(0.028, 0.10, 8), 0.34, 0.10, 0.44);                   // coax port
   P.addGunExtra(cylZ(0.132, 0.50, 12), 0, -0.02, 2.55);                        // fat sleeve-junction collar (plan ±0.15 cols)
   P.addGunExtra(cylZ(0.126, 0.42, 12), 0, -0.02, 3.62);
+  // §B3.1 thermal-sleeve SECTION CLAMP RINGS (photo round, read 3: sleeve
+  // sections + clamp rings on the F1 tube). r 0.105 tops 1.975w < the
+  // priced 1.994 tube line; on the bare tube runs between the collars.
+  P.addGunExtraDark(cylZ(0.105, 0.035, 12), 0, -0.005, 1.60);
+  P.addGunExtraDark(cylZ(0.105, 0.035, 12), 0, -0.014, 3.15);
   // muzzle drum + evac HELD UNDER the 12% side body filter (0.296 band on
   // the 2.52 build): a 0.33-band muzzle collar made hullLengthM read the
   // whole gun as body (9.44 incident this round)
   P.addGunExtra(cylZ(0.146, 0.26, 12), 0, 0.062, 5.62);
   P.addGunExtra(cylZ(0.138, 1.15, 12), 0, -0.014, 3.98);                       // fore sleeve band (ref 1.717..1.994 @ w 4.2-5.0)
   buildGun(P, { len: 5.90, r: 0.085, sleeve: true, evac: 0.52, evacR: 1.72, collar: true, baseR: 0.17 });
+  muzzleBore(P, 0.085, 5.88);                                                  // §B3.1 muzzle bore on the F1 tube (shadow-named)
   P.topY = LH + 0.55;
 }
 
@@ -1471,6 +1644,7 @@ function buildT80U(P) {
   // (r3e fat root-sleeve segment REMOVED — the gun renders into the turret
   // row and the 0.115 band at z 2.6-3.2 moved that row's registration)
   buildGun(P, { len: 5.51, r: 0.068, sleeve: true, evac: 0.47, evacR: 1.45, collar: false, baseR: 0.15 });
+  muzzleBore(P, 0.068, 5.49);                                                  // §B3.1 muzzle bore (shadow-named)
   P.topY = 1.15;
 }
 
@@ -1842,6 +2016,7 @@ function buildType90(P) {
   P.addGunExtraDark(cylZ(0.026, 0.10, 8), 0.26, 0.05, 0.60);                   // coax port
   P.addGunExtraDark(box(0.07, 0.05, 0.06), 0.26, 0.10, 0.62);                  // coax hood
   buildGun(P, { len: 5.61, r: 0.065, sleeve: true, evac: 0.50, evacR: 2.12, collar: false, baseR: 0.15 });
+  muzzleBore(P, 0.065, 5.59);                                                  // §B3.1 muzzle bore (shadow-named)
   P.topY = 1.0;
 }
 
@@ -1974,6 +2149,7 @@ function buildType74(P) {
   P.add('turret', box(0.56, 0.15, 0.30), 0, 0.62, 0.96, -0.50, 0, 0);          // cast brow
   buildGun(P, { len: 5.65, r: 0.062, sleeve: false, evac: 0.52, evacR: 2.05, collar: false, baseR: 0.14 });
   P.add('gun', cylZ(0.068, 0.09, 10), 0, 0, 5.59);                             // muzzle step (measured mask muzzle ~5.95 = rear extreme -3.47 + published 9.42)
+  muzzleBore(P, 0.062, 5.635);                                                 // §B3.1 muzzle bore inside the step face (shadow-named)
   P.topY = 1.15;
 }
 

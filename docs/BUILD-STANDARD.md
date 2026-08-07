@@ -683,3 +683,13 @@ family views change).
   items (headlights) may keep aim on a riser — per-item judgment.
   FRUSTUM-BOTTOM-STRIP: silhouette-preserving split at the ramp line
   clears side-band bottoms from wrap sweeps.
+- MUZZLE-BORE MECHANISM (§B3.1, leclerc round — MANDATORY for the fleet
+  sweep): bucket-based bore rims grow the gun AABB ~3cm and re-frame the
+  turret-row cameras (-6.2 measured) — implement bores as SHADOW-NAMED
+  gun-group furniture (the misc.js muzzleBore() helper pattern: dark rim
+  torus + mats.shadow recessed disc parented to P.gunG) — renders in
+  game/critic, excluded from every mask AND framing recipe; gates
+  byte-identical by construction. Corollaries: HARNESS-HIDES-SHADOW-NAMED
+  (evidence tooling must re-show shadow-named nodes for crops);
+  FITTING-CAP TAIL (whatsat the fitting AABB per slot before seating);
+  KIT.torus lies flat (rotate for vertical rings).
