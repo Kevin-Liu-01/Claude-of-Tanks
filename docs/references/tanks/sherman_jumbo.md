@@ -201,3 +201,24 @@ frozen warp); collar dims-anchor columns 2x ~0.10; plan_whole/hull ~94
 carry the print's 5-10cm lateral asymmetry (certified oracle cap).
 shots/ww2-r2/after/sherman_jumbo.png (eyeballed: orientation, containment,
 collar reads as travel-lock, no holes top-down, MG present).
+
+## DOCUMENTED RESIDENT FIX — belly split (ww2 BASE-21 ladder round,
+## 2026-08-06, coordinator-sanctioned; hash-proof id, not registry-frozen)
+Decode: track-clip --exact read front 22 / rear 10 band + 34/6 shoe
+(maxDepth 2.9 cm), hit boxes = the one-piece ±1.05 belly's END-FACE
+strips (x 0.81..1.05 in-lane) inside BOTH shoe wrap sweeps (lanes
+0.81..1.41; sprocket disc reach z 1.90, idler −2.14). Pre-dates and
+survives the gear-r8 pan revert (15a67ea) — own-geometry, not pan.
+Fix (src/vehicles/profiles/ww2.js buildShermanJumbo): belly split into a
+full-length ±0.78 center slab + outer 0.78..1.05 strips spanning only
+z −2.08..1.88, clear of both wrap discs. Silhouette-neutral: the E2 sand
+skirts + hullDark backing own every side pixel (after render:
+shots/ww2-ladder-r1/h4-sherman_jumbo — skirt silhouette identical).
+- Audit after: front 6 / rear 6 band + **0/0 shoe** (player-visible bar
+  CLEAN). The residual 6/6 = single-voxel rows at the SPONSON side-band
+  end planes (z 2.34 / −2.46, y ~1.02) where the coveredTop-hidden track
+  top run enters the enclosed sponson tunnel — architecturally inherent
+  to the M4 sponson-over-track layout, 100% occluded, far under the ~60
+  legacy bar: DOCUMENTED CLASS (enclosed-run entry plane), not chased.
+- Hash: b52ae76c (slice-2 documented, same shared world) → 6384e2b8
+  (38 meshes / 59136 verts). npm test 166 + track-geometry PASS.

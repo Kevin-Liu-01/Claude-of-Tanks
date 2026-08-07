@@ -675,3 +675,11 @@ MBT main guns, howitzers, autocannons (30/35mm — smaller disc), RARDEN,
 MG muzzles at their scale (M2/NSVT get pinhole-class dark tips, not
 drilled geometry). Graduates take the graduate-change flow (close-front
 family views change).
+- AO-WALL END-FACE CLIP CLASS (§B4, ww2 trio): factory layered-gear AO
+  walls ending inside both wrap discs merge into a center-crossing clip
+  candidate — end walls clear of the wrap poles (z ±2.50 class).
+  RX-SIGN GENERALIZATION (§B1 mechanics): glacis furniture tilts are
+  plate +rake / drum -(pi/2 - rake), derived per plate angle; aimed
+  items (headlights) may keep aim on a riser — per-item judgment.
+  FRUSTUM-BOTTOM-STRIP: silhouette-preserving split at the ramp line
+  clears side-band bottoms from wrap sweeps.

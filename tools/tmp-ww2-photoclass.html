@@ -147,6 +147,26 @@ for (const [name, dir, off, hs] of [
   shots[name] = shoot(orthoFor(box, dir, hs, off));
 }
 
+// §B3.1 MUZZLE BORE evidence (ladder r1): end-on + oblique tip crops framed
+// on rig_muzzle's world position (elevates with the gun; id-generic).
+{
+  const mz = tank.root.getObjectByName('rig_muzzle');
+  if (mz) {
+    const tip = mz.getWorldPosition(new THREE.Vector3());
+    const mkCrop = (dir, half) => {
+      const camera = new THREE.OrthographicCamera(-half, half, half, -half, 0.1, 200);
+      camera.position.copy(tip).addScaledVector(dir.clone().normalize(), 30);
+      camera.up.set(0, 1, 0);
+      camera.lookAt(tip);
+      camera.updateProjectionMatrix();
+      camera.updateMatrixWorld(true);
+      return camera;
+    };
+    shots['muzzle-endon'] = shoot(mkCrop(new THREE.Vector3(0, 0.02, 1), 0.30));
+    shots['muzzle-oblique'] = shoot(mkCrop(new THREE.Vector3(0.7, 0.25, 1), 0.42));
+  }
+}
+
 window.__SHOTS = shots;
 window.__SHOTS_READY = true;
 document.getElementById('out').textContent = `shots ready: ${Object.keys(shots).length}`;
