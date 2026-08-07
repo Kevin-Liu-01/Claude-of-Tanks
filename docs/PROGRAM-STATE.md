@@ -72,7 +72,7 @@ re-freeze NEW hash, all in ONE commit.
 | isu152 | 8e2f75c0 | |
 | merkava3d | 667ece84 | RE-FROZEN 2026-08-07 (§B2 under-roof closure wave §5.11: solid casting walls, gate rows EXACT, re-cert floor 9.0 on every changed view; sheets shots/critic-merkava-closure/) |
 | pt91m | 2cf10e23 | |
-| t72b3m | 61a83b2c | RE-FROZEN 2026-08-07 (graduate-change complete on the obr_2022 oracle): 2022-config round 69 -> 85.9 + re-cert critic PASS 9.0 x14 (sheets shots/critic-t72b3m-recert/) — owner "build the t72 b3m" order CLOSED; gate ladder stays open honestly at 85.9 (dome re-loft follow-up + bow/smoke density candidates banked) |
+| t72b3m | 175be954 | RE-FROZEN 2026-08-07 (fused-turret fix §5.23: ring-gap shadow band at the measured dome crest; gate row bit-identical to graduation 85.9; re-cert PASS 9.0 every changed view, deltas == the seam footprint exactly; sheets shots/critic-chevron-fused/) |
 | merkava1b | 78051af0 | RE-FROZEN 2026-08-07 (§B2 under-roof closure wave §5.11: solid casting walls, gate rows EXACT, re-cert floor 9.0 on every changed view; sheets shots/critic-merkava-closure/) |
 | m1a2 | 636a4860 | RE-FROZEN 2026-08-07 (CROWS-FORWARD wave §5.07: forward pose improved whole +4.1..+14.1; re-cert floor 9.1-9.2 x14 views, sheets shots/critic-sep-crowsfwd/) |
 | chieftain5 | d4f2a9a6 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
@@ -1365,3 +1365,17 @@ commit. NOTE the destination judgment on the first list: t44/is3/
 is6b read WW2-era (1944-45 vehicles) — the owner's list order is
 ambiguous between WW2 and Cold War for them; DEFAULT WW2 with the
 type59 in Cold War; owner can re-sort with one word.
+
+## 5.32 CHEVRON+FUSED WAVE RATIFIED (2026-08-07): 8/9 PASS (critic
+sheets shots/critic-chevron-fused/). t72b3m RE-FROZEN 61a83b2c ->
+175be954 (§3 updated; graduation record carries forward on every
+unchanged pixel). VLADIMIR separation PASS 9.0 — the §E escalation
+VERIFIED IN PIXELS (the print's hull node wears a complete
+non-rotating turret band + ring hole + fused tube; the 63.8 line is
+the print-bake cap, not a build break — the ORACLE BAKE-STRIP stays
+my top §E item). t80 CONDITIONAL 8.0 with ONE measured order (banks
+must break the dome silhouette in plan: proudness 0.07 -> ~0.14
+and/or pitch/k1Y until >= ~800px clay-plan footprint + two >= 25px
+angled runs per side) — RELAYED into the live §5.29 tip round (t80
+in scope). Ledger rows staged for the eight (vladimir's stale 71
+corrected). Packet overstatement note banked (t72b3m seam claims).
