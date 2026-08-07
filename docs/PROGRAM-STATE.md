@@ -1090,3 +1090,24 @@ CAST domes — the welded rebase moves turret rows against them; the
 look-order OUTRANKS the rows; caps documented per column (type10
 evidence pattern). t90sm's approved turret is look-protected; its
 ladder is hull-only.
+
+## 5.14 OWNER ORDERS (2026-08-07, continued): (1) FRANCE ROUND —
+"update the leclerc. the front sloping was not good, compare the
+turret to the actual model again to get the geometry much more
+accurate. also add machine guns and lights and other equipment, and
+also model the amx 30bs to complement the leclerc (note the amx 30bs'
+hulls are backwards" + garage screenshot proving the amx30 hull
+renders REVERSED vs its gun. Leclerc: re-measure the turret front
+slope vs char_leclerc_andertan.glb (the earlier Tamiya-photo order
+stands: sloped front descending to a small flat strip) + §B3.2 MGs/
+lights/equipment. AMX-30B/30B2: diagnose the backwards hull (if they
+render the ahab GLBs via MODEL_SOURCE, it is a REGISTRATION
+yaw/orientation error in userdrops7 — fix the registration; if
+procedural, fix the builder) + bring both to §B8 class. (2) RUSSIAN
+ERA-FRONT LAW — "many of the russian tanks have this kind of era
+front: <. properly represent that when comparing to their models.
+this affects the t72s, t80s, and t90s": the chevron/arrow K-5 wedge
+banks meeting at the gun (the '<' plan read). Relayed to the live
+t90 agent for the t90s; QUEUED as the next russia-lane round for the
+t72s + t80s (russia.js single-writer — spawns after the t90 agent
+lands).
