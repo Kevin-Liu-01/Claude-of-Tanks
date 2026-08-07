@@ -573,3 +573,53 @@ RESIDUALS (honest): whole 57.4 stays the AA-teeter front-band bind
 grid family); the -1.898 col teeters with dy (matched today at x
 -1.874). Self-shots: shots/russia-vertex/turretlane-t90sm/ (equipment
 visibly present; articulation clean). DELIVERED-PENDING-CRITIC.
+
+## FIX-ROUND (2026-08-07, §4.999991 verdict CONDITIONAL 8.0 -> orders closed; T4S markers)
+
+Gate x2 IDENTICAL: min 58.2 | hull 61.2 / whole 58.2 / turret 81.0 /
+stations 83.2 / dims 100 / floaters 100 (baseline 57.4 | 61.2/57.4/81.0/
+84.0/100/100 — whole +0.8, turret exact, hull exact, stations -0.8
+inside the 1.0 budget, dims held). Geometry hash e20fb700 -> 55509794.
+Evidence: shots/russia-fixround/t90sm/ (14 pairs at the final hash).
+
+ORDERS:
+1. SLAT GRID — the bustle rear dark inset is now a real slat panel:
+   frame + 3 horizontal bars + 5 stiles over a RECESSED dark backdrop
+   (slats read against shadow, §B2 closed), standoff struts onto step3;
+   envelope byte-preserved (outer plane -2.535 local = the certified
+   -2.445w plan rear; y 0.29..0.45). SIDE slat panels added on the
+   bustle flank step faces (backdrop + 4 bars + 3 stiles per side, bars
+   5mm proud of the ±1.06 face, 44mm clear of the ±1.109 window).
+   Rear pair shows the lattice read the print signs.
+2. BRIM FLARE — raked apron plates (orientedSlab, §C.1-guarded) bridge
+   the main-panel face (1.735 @ y 0.155) down-out to the outer panel's
+   lower edge across each side's certified outer z-window; front/rear
+   pairs now show the MS brim trapezoid. LAW CASE: the first cut's
+   1.872 outer edge AA-slivered the ±1.925 plan width column (2mm of
+   window coverage owned the col at err 0.969 — AA-SLIVER OWNERSHIP);
+   final outer edge 1.860 = the certified outer-panel extent.
+3. RELIKT GLACIS ROWS + TONE — full cassette courses (3 per side per
+   row + dark gap seams) in the certified hugged row envelope, SCHEME
+   bucket instead of hullTrack steel (t72b3m rBucket law): the
+   grey-lavender flat glacis is retired in the front pair. A lower-bow
+   splash board was DECLINED (the loft nose at 3.02 sits 2cm inside the
+   ref's 3.00 plan-front line — any proud board breaks it).
+   PANO HEAD: a literal +0.21 flipped heightM p95 to 2.44 (dims 33.6)
+   and cost stations -15, measured — dims are sovereign and the
+   normalized print carries its own towers at 2.24-2.26. Delivered as
+   the MUSHROOM READ the pair actually shows: thin neck (r 0.045) +
+   distinct wide-lipped head, cap 2.2525w (grace line). The +0.15
+   literal residual is dims-blocked (report).
+EXTRAS: the T3R hatch "rings" were ARG-SWAPPED cylY cones (rT,rB,h) —
+19cm spikes; whatsat vertex-arc decode. Both are now honest RAISED
+CUPOLAS (commander @ -0.395 x-shifted off the 1.99 front cols; gunner
+rim under the Sosna's 2.15 line) — the cones turn out to carry the
+ref's own 2.083-2.086 slice-6 cupola rims, so the cupola envelopes
+replicate them. Rear log off the loud-tan default (0x473e32).
+LAW NOTES: STATION-SLAB LEAK — the station z-slab (~0.52) is wider than
+the slice window: a 2.2575 cap read one raster px over the ref's 2.259
+slice-6 line from an ADJACENT slice; cap tops near slice refs need the
+grace-line seat. Audits: standard-check clip 0/0, holes 0, mg1+3d;
+winding m1 clean, m2 clean; turret-parent cable flag = §B5 artifact
+(pre-adjudicated). Trio-wide track-band chunky-vs-smooth note stands
+(shared-material lane, report-only).

@@ -479,3 +479,67 @@ them so the masks compare like-for-like). The dome plan squash exposed
 more of the ghost at yaw. Adjudicated BY-DESIGN / oracle-registration-
 pinned (§B5 coupled-followers class, orchestrator lane) — do not
 re-parent unilaterally.
+
+## FIX-ROUND (2026-08-07, §4.999991 verdict FAIL 7.0 — orders closed; T4V markers)
+
+Gate x2 IDENTICAL: min 71.0 | hull 73.1 / whole 71.0 / turret 79.9 /
+stations 89.0 / dims 96.2 / floaters 100 (baseline 71.4 | 73.1/71.4/
+78.4/89.0/96.2/100 — hull exact, turret +1.5, stations exact, whole
+-0.4 inside the 1.0 budget; dims = the certified hullLengthM class).
+Geometry hash 1f762036 -> 782bdbc4. Evidence:
+shots/russia-fixround/t90a_vladimir/ (14 pairs at the final hash).
+
+ORDERS:
+1. FLOATER — DECODED, NOT THE MAST: ortho pixel-math + whatsat put the
+   verdict's "green capsule" at (+0.38, 2.10..2.27, -1.88) = the
+   CERTIFIED rear-right roof fitting (T3V box @ 0.3835) hovering 0.17
+   above the bin lid. CONNECTED with a support stalk from the deep-bin
+   top to its underside (interior to the +0.39 col band). The mast is
+   also rebuilt as a SOLID camo-bucket stack right after meshDome
+   (riser -> 28mm rod -> collar head at the ref's 2.38-2.42 cap line;
+   the old 8mm turretDetail fin never survived the rendered merge —
+   t90a r12 merge-order class). Front pair shows a connected antenna
+   and NO floating content. LAW CASE: the first rod cut's -0.215 edge
+   AA-bled the 2.5-line into the -0.19 front col (err 0.293) — §C front
+   margins need >=9mm; final rod 0.022 @ -0.2315.
+2. CUPOLA + KORD — the cupola ring gets its hatch lid, hinge and TKN
+   periscope nubs; the census Kord rides it visibly: receiver 2.158
+   (+0.04 over the buried baseline seat), barrel elev -0.18 dead-ahead
+   so the muzzle line stays OVER the 1.94 dome crown from front and
+   side (~2 cols x +0.10, inside the §C pintle allowance). The prior
+   drooped-invisible seat and two raised trials (receiver 2.238/2.198 +
+   yawed barrel) were workorder-priced and walked back — the barrel tip
+   in the -0.19 col and receiver+ammo on the 2.05 cols were the whole
+   -5.3 front regression, all recovered.
+3. BOX-FORT RIM THINNED — outer bin tier keeps every certified TOP and
+   REAR line but loses bulk (heights cut, bottoms off the ring
+   shoulder, fronts retreated under the dome plan cover); side boxes
+   thinned; center-left deck box z-shrunk; deep bins get §B3 lid seams.
+   meshDomeCurved (capR 2.4, silhouette byte-exact) gives the crown the
+   cast luminance read. NEW K-5 FLANK TILE COURSE on the bare dome
+   sides (3 tucked tiles/side, band 1.42..1.56w): the verdict-window
+   side_turret bottoms family (ten cols at proc 1.502 vs ref 1.422) —
+   turret row +1.5 net, and the crown now reads dome-over-kit in the
+   toptilt pair.
+4. Shtora blue slits -> RED ROUND EYES (shared eyeRound opt-in, same
+   mechanics as t90a; front extremes byte-equal).
+5. GLACIS K-5 BRICK ROWS — full courses + gap seams in the certified
+   hugged envelope (outer cassette 0.96 — margin off the 1.18 lane
+   edge), scheme bucket.
+6. REAR-WALL STORY — unditching log, OPVT snorkel section and jack
+   block half-recessed on the raked transom INSIDE the -4.755 tail
+   plane. LAW CASE (the round's biggest trap): the first cut's log/OPVT
+   bottoms hung 3-6cm below the local band at the -4.53..-4.74 tail
+   columns — the 12% body filter flipped those extreme columns and the
+   HULL-ROW REGISTRATION SHEARED EVERY SIDE ROW (hull -1.9, turret
+   -1.7; registration-anchor law, measured by bisect). Band-safe seats
+   restored hull 73.1 EXACT and turret above baseline.
+7. BOW clusters — headlight pods on rehooked shadow-olive clones at the
+   certified seats (bucket headlights off via lights:false); family
+   dark/rubber/wood shadow-olive floor (t72b3m recipe). Front clip 159
+   vs baseline 195 (improved); shoe 200/74 baseline-exact.
+Winding m2 rig_hull HARD flag = the packet's own ORACLE-PARITY dome
+ghost (candidatePx 10475 ~ the adjudicated 10468; §B5 coupled-followers
+class, orchestrator lane — untouched). Turret-parent flags =
+pre-adjudicated deck fittings. npm test green. Trio track-band note
+stands (report-only).
