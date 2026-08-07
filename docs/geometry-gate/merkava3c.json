@@ -120,7 +120,7 @@
    ]
   },
   "side_whole": {
-   "score": 91.14524110402554,
+   "score": 91.09615970690952,
    "meanPct": 0.65,
    "p95Pct": 1.84,
    "coverPct": 0,
@@ -662,7 +662,7 @@
  },
  "turretRows": {
   "side": {
-   "score": 90.83171574097328,
+   "score": 90.77580022527148,
    "meanPct": 0.6,
    "p95Pct": 1.72,
    "coverPct": 0.63,

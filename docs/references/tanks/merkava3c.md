@@ -628,3 +628,43 @@ floor 9.1, mean 9.19 (10 changed views; same verdict doc). No orders.
 
 ## 2026-08-06 FLEET MUZZLE-BORE + §C.1 WINDING SWEEP (fleet-sweep one-liner)
 - §B3.1 bore via shared mark gun; §C.1 12 reversed re-oriented (modular-turret LEFT wedge courses, ring tub, rakes); F-vs-D 35->0; gate HELD x2 EXACT 90.5 PASS; hash b7318b10 -> 8b7ed9bc CANDIDATE; mantlet mass verified per MANTLETS-MANDATORY (db9168c). Mechanism: kit.js muzzleBore shadow-named furniture + orientedSlab guard (3fca39b / 1017339); end-on+quarter crops shots/muzzle-sweep/{before,after}/.
+
+## §B2 UNDER-ROOF CLOSURE round (2026-08-07, merkava round — owner order §5.11)
+Probe (tools/tmp-merkava-roofgap.{html,mjs}, side/quarter/elevated x yaw
+0/30/60/90): ONE real through-turret sightline — the crest rear face
+(z -0.08) stood 0.11 m ahead of the roof deck's first station (-0.19)
+with only the 2.40 shell cap between: an open trench a level side ray
+crossed end-to-end (21-44px hairline @ z -0.09, y 2.4-2.6 apparent).
+Evidence shots/merkava-roofgap/{before,after}/merkava3c/ + pairs/.
+
+### Change (t.crestSaddle — new modular-turret opt-in; graduate-change flow)
+Raked saddle wedge merging crest -> deck (the §B2 cheek-shoulder-wash
+class: the same trough-behind-a-raked-mass defect those washes fixed at
+the cheeks). Top runs (top0-0.075 = 2.465) @ z -0.05 down to the deck
+line (+0.002 = 2.407) @ -0.22; width hw1*0.96 (plan inside the shell cap
+footprint); front columns keep every crest read via max-over-z.
+MEASURED MOVEMENT (the closure's own): side_whole 91.145 -> 91.096 /
+turret_side 90.832 -> 90.776 raw (-0.05 each, inside the trench window)
+— both round to the SAME printed rows.
+
+### Adjudicated NOT a hole (kept)
+The plinth-slot air under the left-band MG rod (535+178px @ y 2.63,
+z -0.7..-1.7) is the r6/r7-certified floating-MG air gap: its top edge is
+the pintle-gun rod itself (receiver + muzzle grammar verified at 4x) —
+MG-physics air matching the ref's own float, not a roof-panel hole.
+
+### Done-gates
+- geometry-gate x2 EXACT the frozen row: min 90.5 — hull 91.9 / whole
+  90.5 / turret 90.8 / stations 92.3 / dims 100 / floaters 100 PASS,
+  both runs.
+- winding-audit rev 0 / deficit 0 (the baseline's 10px left deficit is
+  gone) / m1+m2 clean. npm test green.
+- verts 146197 -> 146233 (+1 orientedSlab wedge); meshes 39 unchanged.
+- hash 8b7ed9bc -> aa74be6a — RE-FREEZE CANDIDATE; orchestrator re-cert
+  + re-freeze.
+
+### Changed-view list (for the re-cert critic)
+- view-left / view-right / view-rearleft / view-rearright / hero views /
+  close-roof: the crest-deck junction now reads a cast saddle merge
+  instead of a see-through trench slit (z -0.08..-0.19 window only).
+- view-front / view-top: no visible change (fill interior to both).

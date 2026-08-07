@@ -1,0 +1,220 @@
+<!doctype html>
+<!-- TEMP (merkava §B2 under-roof closure round, owner order 2026-08-07):
+     see-through hole hunter for the turret assembly. Renders the tank
+     (game-truth FrontSide materials) from side/quarter/elevated views at
+     turret yaws 0/30/60/90, twice per view: full tank + turret-subtree-only.
+     The turret-only pass runs the §B2 enclosed-background flood (mask method
+     |px-0x151b20| maxch<=13 + blue-signature B-R>=8) and reports enclosed
+     clusters with approximate world coords. Diagnosis + evidence crops only,
+     never verdict evidence. -->
+<meta charset="utf-8">
+<title>tmp-merkava-roofgap</title>
+<style>body{background:#151b20;margin:0;color:#e7edf0;font:12px monospace}</style>
+<div id="out">building…</div>
+<script type="module">
+import * as THREE from 'three';
+import { createTank } from '/src/vehicles/tankFactory.js';
+
+const params = new URLSearchParams(location.search);
+const id = params.get('id') || 'merkava1b';
+const SIZE = 900;
+const YAWS = (params.get('yaws') || '0,30,60,90').split(',').map(Number);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setSize(SIZE, SIZE);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+const engineCtx = { setupShadowMaterial: (m) => m, anisotropy: 1, renderer };
+const procedural = createTank(id, engineCtx, { camoSeed: 4242, quality: 'high', proceduralOnly: true });
+scene.add(procedural.root);
+const hemi = new THREE.HemisphereLight(0xcfd8e0, 0x2a2f26, 1.05);
+const sun = new THREE.DirectionalLight(0xfff2dd, 2.2);
+sun.position.set(30, 42, 24);
+scene.add(hemi, sun);
+
+procedural.root.updateMatrixWorld(true);
+procedural.root.traverse((o) => {
+  if (!o.isLOD) return;
+  o.autoUpdate = false;
+  o.levels.forEach((level, i) => { if (level.object) level.object.visible = i === 0; });
+});
+
+const turret = procedural.root.getObjectByName('rig_turret');
+const gun = procedural.root.getObjectByName('rig_gun');
+
+function effVisible(o) {
+  for (let p = o; p; p = p.parent) if (!p.visible) return false;
+  return true;
+}
+function subtreeBox(node, skipNode) {
+  const box = new THREE.Box3();
+  node.updateMatrixWorld(true);
+  node.traverse((o) => {
+    if (skipNode) { for (let p = o; p; p = p.parent) if (p === skipNode) return; }
+    if (!(o.isMesh || o.isInstancedMesh) || !o.geometry) return;
+    if (!effVisible(o) || /shadow/i.test(o.name || '')) return;
+    if (o.isInstancedMesh) {
+      if (o.count === 0) return;
+      o.computeBoundingBox();
+      if (o.boundingBox && !o.boundingBox.isEmpty()) box.union(o.boundingBox.clone().applyMatrix4(o.matrixWorld));
+      return;
+    }
+    if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+    box.union(o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld));
+  });
+  return box;
+}
+
+// frame on the turret CASTING box (gun subtree excluded), padded
+const castBox = subtreeBox(turret, gun);
+castBox.expandByVector(new THREE.Vector3(0.35, 0.30, 0.35));
+
+function orthoFor(box, direction) {
+  const center = box.getCenter(new THREE.Vector3());
+  const dir = direction.clone().normalize();
+  const nominalUp = Math.abs(dir.y) > 0.9 ? new THREE.Vector3(0, 0, -1) : new THREE.Vector3(0, 1, 0);
+  const right = new THREE.Vector3().crossVectors(nominalUp, dir).normalize();
+  const up = new THREE.Vector3().crossVectors(dir, right).normalize();
+  let ext = 0.3;
+  for (const cx of [box.min.x, box.max.x]) for (const cy of [box.min.y, box.max.y]) for (const cz of [box.min.z, box.max.z]) {
+    const d = new THREE.Vector3(cx, cy, cz).sub(center);
+    ext = Math.max(ext, Math.abs(d.dot(right)), Math.abs(d.dot(up)));
+  }
+  const half = ext * 1.05;
+  const camera = new THREE.OrthographicCamera(-half, half, half, -half, 0.1, 200);
+  camera.position.copy(center).addScaledVector(dir, 40);
+  camera.up.copy(up);
+  camera.lookAt(center);
+  camera.updateProjectionMatrix();
+  camera.updateMatrixWorld(true);
+  return { camera, center, right, up, half };
+}
+
+const VIEWS = [
+  ['left', new THREE.Vector3(-1, 0.06, 0)],
+  ['right', new THREE.Vector3(1, 0.06, 0)],
+  ['left-up', new THREE.Vector3(-1, 0.30, 0)],
+  ['right-up', new THREE.Vector3(1, 0.30, 0)],
+  ['fql', new THREE.Vector3(-1, 0.18, 1)],
+  ['fqr', new THREE.Vector3(1, 0.18, 1)],
+  ['rql', new THREE.Vector3(-1, 0.18, -1)],
+  ['rqr', new THREE.Vector3(1, 0.18, -1)],
+];
+
+function grab(camera) {
+  renderer.setRenderTarget(null);
+  renderer.setClearColor(0x151b20, 1);
+  renderer.clear(true, true, true);
+  renderer.render(scene, camera);
+  return renderer.domElement.toDataURL('image/png');
+}
+
+// §B2 enclosed-background flood on the current canvas
+const ctx2d = document.createElement('canvas');
+ctx2d.width = SIZE; ctx2d.height = SIZE;
+const c2 = ctx2d.getContext('2d', { willReadFrequently: true });
+function enclosedScan(view) {
+  c2.drawImage(renderer.domElement, 0, 0);
+  const img = c2.getImageData(0, 0, SIZE, SIZE).data;
+  const N = SIZE * SIZE;
+  const isBg = new Uint8Array(N);
+  for (let i = 0; i < N; i++) {
+    const r = img[i * 4], g = img[i * 4 + 1], b = img[i * 4 + 2];
+    if (Math.abs(r - 0x15) <= 13 && Math.abs(g - 0x1b) <= 13 && Math.abs(b - 0x20) <= 13 && (b - r) >= 8) isBg[i] = 1;
+  }
+  // flood from borders
+  const open = new Uint8Array(N);
+  const stack = [];
+  for (let x = 0; x < SIZE; x++) { if (isBg[x]) stack.push(x); if (isBg[(SIZE - 1) * SIZE + x]) stack.push((SIZE - 1) * SIZE + x); }
+  for (let y = 0; y < SIZE; y++) { if (isBg[y * SIZE]) stack.push(y * SIZE); if (isBg[y * SIZE + SIZE - 1]) stack.push(y * SIZE + SIZE - 1); }
+  while (stack.length) {
+    const i = stack.pop();
+    if (open[i] || !isBg[i]) continue;
+    open[i] = 1;
+    const x = i % SIZE, y = (i / SIZE) | 0;
+    if (x > 0) stack.push(i - 1);
+    if (x < SIZE - 1) stack.push(i + 1);
+    if (y > 0) stack.push(i - SIZE);
+    if (y < SIZE - 1) stack.push(i + SIZE);
+  }
+  // enclosed clusters
+  const seen = new Uint8Array(N);
+  const clusters = [];
+  for (let i = 0; i < N; i++) {
+    if (!isBg[i] || open[i] || seen[i]) continue;
+    let px = 0, minX = SIZE, maxX = 0, minY = SIZE, maxY = 0;
+    const st = [i];
+    seen[i] = 1;
+    while (st.length) {
+      const j = st.pop();
+      px++;
+      const x = j % SIZE, y = (j / SIZE) | 0;
+      if (x < minX) minX = x; if (x > maxX) maxX = x;
+      if (y < minY) minY = y; if (y > maxY) maxY = y;
+      for (const k of [j - 1, j + 1, j - SIZE, j + SIZE]) {
+        if (k < 0 || k >= N || seen[k] || !isBg[k] || open[k]) continue;
+        const kx = k % SIZE;
+        if (Math.abs(kx - x) > 1) continue;
+        seen[k] = 1; st.push(k);
+      }
+    }
+    if (px >= 4) clusters.push({ px, minX, maxX, minY, maxY });
+  }
+  clusters.sort((a, b) => b.px - a.px);
+  // map cluster centers to world coords in the view plane
+  const mapped = clusters.slice(0, 12).map((cl) => {
+    const cx = (cl.minX + cl.maxX) / 2, cy = (cl.minY + cl.maxY) / 2;
+    const wx = (cx / SIZE * 2 - 1) * view.half;
+    const wy = (1 - cy / SIZE * 2) * view.half;
+    const wpt = view.center.clone().addScaledVector(view.right, wx).addScaledVector(view.up, wy);
+    return {
+      px: cl.px,
+      rect: [cl.minX, cl.minY, cl.maxX, cl.maxY],
+      world: [+wpt.x.toFixed(3), +wpt.y.toFixed(3), +wpt.z.toFixed(3)],
+      sizeM: [+((cl.maxX - cl.minX + 1) / SIZE * 2 * view.half).toFixed(3), +((cl.maxY - cl.minY + 1) / SIZE * 2 * view.half).toFixed(3)],
+    };
+  });
+  let total = 0;
+  for (const cl of clusters) total += cl.px;
+  return { enclosedPx: total, clusters: mapped };
+}
+
+// turret-only visibility mask
+const hidden = [];
+function turretOnly(on) {
+  if (on) {
+    procedural.root.traverse((o) => {
+      if (!(o.isMesh || o.isInstancedMesh)) return;
+      let under = false;
+      for (let p = o; p; p = p.parent) if (p === turret) { under = true; break; }
+      if (!under && o.visible && effVisible(o)) { o.visible = false; hidden.push(o); }
+    });
+  } else {
+    for (const o of hidden) o.visible = true;
+    hidden.length = 0;
+  }
+}
+
+const shots = {};
+const report = { id, views: {} };
+for (const yaw of YAWS) {
+  turret.rotation.y = yaw * Math.PI / 180;
+  procedural.root.updateMatrixWorld(true);
+  for (const [vn, dir] of VIEWS) {
+    const view = orthoFor(castBox, dir);
+    shots[`y${yaw}-${vn}`] = grab(view.camera);
+    turretOnly(true);
+    shots[`y${yaw}-${vn}-T`] = grab(view.camera);
+    report.views[`y${yaw}-${vn}`] = enclosedScan(view);
+    turretOnly(false);
+  }
+}
+turret.rotation.y = 0;
+procedural.root.updateMatrixWorld(true);
+
+window.__GAP_SHOTS = shots;
+window.__GAP_REPORT = report;
+window.__GAP_READY = true;
+document.getElementById('out').textContent = `roofgap shots ready (${id})`;
+</script>

@@ -140,3 +140,26 @@ see merkava2b.md §B3.1 for mechanics).
 
 ## 2026-08-06 FLEET MUZZLE-BORE + §C.1 WINDING SWEEP (fleet-sweep one-liner)
 - §B3.1 bore via shared mark gun; §C.1 3 reversed re-oriented; F-vs-D 12->2; gate HELD x2 EXACT 34.9; hash not frozen; mantlet mass verified per MANTLETS-MANDATORY (db9168c). Mechanism: kit.js muzzleBore shadow-named furniture + orientedSlab guard (3fca39b / 1017339); end-on+quarter crops shots/muzzle-sweep/{before,after}/.
+
+## §B2 UNDER-ROOF CLOSURE round (2026-08-07, merkava round — owner order §5.11)
+Same class as 2B (see merkava2b.md for the full mechanism): the rising
+roof panel floated over the 2.11 shell cap — see-through band 4663/4550
+enclosed px per side (y ~2.3, z +0.13..-1.98). p.roofSolid: true (no rear
+underfill needed — the 2D shell runs to -2.55 and its wider stow covers
+the lean zone; probe-verified). After: y0-right 4663 -> 409, y0-left
+4550 -> ~430; remainder = basket rail/chain air (legit open-frame class),
+verified at yaw 0/30/60/90. Evidence
+shots/merkava-roofgap/{before,after}/merkava2d/ + pairs/merkava2d-*.png.
+
+### Done-gates
+- geometry-gate x2 EXACT the ledger row: min 34.9 — hull 75.1 / whole
+  57.3 / turret 34.9 / stations 72.6 / dims 96.2 / floaters 100, both
+  runs (mask-neutral; the roofSolid deepening moves existing slab corners
+  only — verts 76507 unchanged, hash 24396b0d -> 38aec0e0).
+- winding-audit rev 0 / deficit 0 / m1+m2 clean (mode-2 28px
+  rig_hull/mesh#19 candidate pre-existing at baseline, §J
+  candidate-not-defect). npm test green.
+
+### Honest residuals
+- turretCurves 34.9 stays pinned by the certified 2B/2D oracle defects
+  (rebuild lane); basket density note as 2B.

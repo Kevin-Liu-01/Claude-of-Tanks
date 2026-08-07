@@ -203,3 +203,41 @@ but not the real cinched canvas dust cover either.
 
 ## 2026-08-06 FLEET MUZZLE-BORE + §C.1 WINDING SWEEP (fleet-sweep one-liner)
 - §B3.1 bore via shared mark gun; §C.1 3 reversed re-oriented; F-vs-D 10->2 (3cm mixed slivers); gate HELD x2 EXACT 39.6; hash not frozen; mantlet mass verified per MANTLETS-MANDATORY (db9168c). Mechanism: kit.js muzzleBore shadow-named furniture + orientedSlab guard (3fca39b / 1017339); end-on+quarter crops shots/muzzle-sweep/{before,after}/.
+
+## §B2 UNDER-ROOF CLOSURE round (2026-08-07, merkava round — owner order §5.11)
+THE ORDER'S CORE CASE on this mark: the rising cast roofLine (2.17@0.88 ->
+2.60@-2.06) was authored as a floating 0.10 m PANEL while the shell capped
+at rf[0]-0.06 = 2.11 — from either side the entire under-roof band read as
+see-through sky, ~2.3 m long x up to 0.5 m tall (probe: 6886/6336 enclosed
+px per side view, band y 1.89-2.42 over z +0.14..-2.2; the exact
+"straight panels instead of solid shapes" construction the owner named).
+Probe/evidence: tools/tmp-merkava-roofgap.{html,mjs};
+shots/merkava-roofgap/{before,after}/merkava2b/ + pairs/merkava2b-*.png.
+
+### Changes (p.roofSolid — new small-turret opt-in, siblings byte-identical)
+1. SOLID ROOF WEDGES: every roof segment aft of the beak zone
+   (z0 <= shoulderZ) drops its bottom ring into the shell cap
+   (shellH-0.06) — the wedge side walls ARE the casting's upper walls
+   rising with the roof (real Mk.2 turret form: walls meet the roof, no
+   floating lid). Top rings + plan widths untouched: silhouette traces
+   hold by construction; the fill is interior to side/front/plan masks.
+2. roofSolid.rear underfill (x ±0.92, y 1.82..2.08, z -1.55..-2.24): the
+   inset shell's leaning rear wall left a last window between the lean
+   line, the apron top (1.83) and the stow bottom (2.02) — the box
+   bridges apron -> stow with column bottoms unchanged.
+After: side enclosed 6886 -> 869 / 6336 -> 768; every remaining cluster is
+open basket-frame / ball-and-chain air (the vehicle's real configuration,
+1B-certified class), verified at yaw 0/30/60/90.
+
+### Done-gates
+- geometry-gate x2 EXACT the ledger row: min 39.6 — hull 78.3 / whole
+  56.7 / turret 39.6 / stations 80 / dims 95.3 / floaters 100, both runs
+  (closure fully mask-neutral).
+- winding-audit rev 0 / deficit 0 / m1+m2 clean (new slabs ride the
+  orientedSlab guard). npm test green.
+- hash f0a54b20 -> ab52f58c (36 meshes; verts 76543 -> 76867).
+
+### Honest residuals
+- The basket frame reads emptier than the ref's packed stowage — §B3.2
+  density note for the rebuild lane (turretCurves stays pinned by the
+  certified r3 rig-split forensics; not touched this round).

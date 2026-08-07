@@ -3230,7 +3230,21 @@ function merkavaSmallTurret(P, t) {
       // is now a LOW cast hood (pale, top = config 2.30) with a slit; the
       // gun in merkava1bKit owns the 2.51-2.534 line above it.
       P.add('turret', box(0.34, 0.16, b.z0 - b.z1), 0, b.top - 0.08, (b.z0 + b.z1) / 2);
-      P.add('turretDark', box(0.28, (b.top - 0.13) - (gy + 0.24), 0.30), 0, ((b.top - 0.13) + gy + 0.24) / 2, (b.z0 + b.z1) / 2 + 0.05);
+      // §C.1/§5.03 fix (2026-08-07): on the 1B low hood this filler's
+      // height went NEGATIVE ((2.30-0.13) - (1.975+0.24) = -0.045) — the
+      // sweep's latent inside-out rig_turret mesh#34 roof box at world
+      // y 2.17..2.215, z 1.11..1.41. Guarded: only built when a real gap
+      // exists between the beak line and the hood underside.
+      const dkH = (b.top - 0.13) - (gy + 0.24);
+      if (dkH > 0.02) P.add('turretDark', box(0.28, dkH, 0.30), 0, ((b.top - 0.13) + gy + 0.24) / 2, (b.z0 + b.z1) / 2 + 0.05);
+      // §B2 gun-notch closure (owner order 2026-08-07): between the sleeve
+      // top (~2.06 world) and the hood underside (2.14) the notch was open
+      // air — a slightly-elevated side ray passed clean through the turret
+      // over the tube (probe: the 1B y0-left-up 63px slit at z ~1.19).
+      // Dark casting filler embedded hood-to-sleeve: z-span inside the
+      // hood's own, so side tops stay the hood/gun lines; front and plan
+      // are interior behind the mantlet drum + beak planes + hood.
+      P.add('turretDark', box(0.30, (b.top - 0.155) - (gy + 0.07), 0.56), 0, ((b.top - 0.155) + gy + 0.07) / 2, b.z0 - 0.29);
       P.add(glassMat, box(0.20, 0.055, 0.018), 0, b.top - 0.055, b.z0 - 0.03);
       P.add('turretDark', box(0.24, 0.012, 0.016), 0, b.top - 0.008, b.z0 - 0.10);
     } else {
@@ -3243,13 +3257,39 @@ function merkavaSmallTurret(P, t) {
 
   // Roof: slabs following the measured rising crest line; per-station
   // widths (third tuple slot) follow the casting's plan taper.
+  // §B2 UNDER-ROOF CLOSURE (owner order 2026-08-07, t.roofSolid opt-in —
+  // 2B/2D): the rising crest rode as a floating 0.10 m PANEL over a shell
+  // capped at rf[0]-0.06 — every rearward segment left a widening
+  // see-through band between the shell cap and the roof underside (probe:
+  // ~6000 enclosed px per side view on 2B, band world y ~2.05-2.45 over
+  // z +0.5..-2.0). With roofSolid each segment aft of the beak zone
+  // (z0 <= shoulderZ) becomes a SOLID wedge: its bottom ring drops into
+  // the shell cap, so the wedge's side walls ARE the casting's upper
+  // walls rising with the roof (the real Mk.1/2 turret is a casting whose
+  // walls meet the roof — never a floating lid). Top rings and plan
+  // widths are untouched: side/plan/front traces hold by construction.
+  // 1B (its own planPts/camber anatomy) and the 3-series never set it.
+  const rsBot = t.roofSolid ? shellH - 0.06 : null;
   for (let i = 0; i < rf.length - 1; i++) {
     const [z0, y0] = rf[i], [z1, y1] = rf[i + 1];
     const w0 = (rf[i][2] ?? t.roofHW) * (i === 0 ? 0.96 : 1.0);
     const w1 = (rf[i + 1][2] ?? t.roofHW) * (i + 1 === rf.length - 1 ? 0.94 : 1.0);
+    const solid = rsBot !== null && z0 <= sf + 0.001;
+    const b0 = solid ? Math.min(y0 - 0.10, rsBot) : y0 - 0.10;
+    const b1 = solid ? Math.min(y1 - 0.10, rsBot) : y1 - 0.10;
     P.add('turret', slab(
-      [-w0, y0 - 0.10, z0], [w0, y0 - 0.10, z0], [w1, y1 - 0.10, z1], [-w1, y1 - 0.10, z1],
+      [-w0, b0, z0], [w0, b0, z0], [w1, b1, z1], [-w1, b1, z1],
       [-w0 * 0.96, y0, z0], [w0 * 0.96, y0, z0], [w1 * 0.96, y1, z1], [-w1 * 0.96, y1, z1]));
+  }
+  // roofSolid.rear (2B): the shell's inset top ring leans its rear wall
+  // forward — between the lean line, the stow-block bottom and the solid
+  // roof underside a last window survived at the casting rear (probe:
+  // 413px, world y 1.89-2.00 over z -1.7..-2.05). A casting rear-wall
+  // underfill closes it: interior — the column bottoms stay the shell
+  // base / stow lines, plan sits inside the roof/stow footprints.
+  if (t.roofSolid && t.roofSolid.rear) {
+    const rr = t.roofSolid.rear; // { z0, z1, top, bot, hw } local
+    P.add('turret', box(rr.hw * 2, rr.top - rr.bot, rr.z0 - rr.z1), 0, (rr.top + rr.bot) / 2, (rr.z0 + rr.z1) / 2);
   }
 
   // Ring tub (batch-18 refs: the 1B print carries the same descending crew
@@ -3545,7 +3585,13 @@ function merkavaSmallTurret(P, t) {
       // BELOW the 2.655 dome line (column-free); the p95 heightM read
       // stays on the dome band (rod cols < the top-5% count).
       const pp = lr.rod2Post;
-      P.add('turretDark', box(0.020, lr2Y - 0.038 - pp.top + 0.02, 0.022), pp.x + 0.01, (lr2Y - 0.038 + pp.top) / 2 + 0.01, pp.z); // pintle stem on the post
+      // §C.1/§5.03 fix (2026-08-07): on the 1B the rod bottom already sits
+      // BELOW the post top — the stem height evaluated to -5 mm and built
+      // the sweep's latent inside-out 2 cm speck at world (0.04, 2.63,
+      // -1.0). Guarded: the stem only exists when rod and post don't
+      // already interpenetrate.
+      const stemH9 = lr2Y - 0.038 - pp.top + 0.02;
+      if (stemH9 > 0.012) P.add('turretDark', box(0.020, stemH9, 0.022), pp.x + 0.01, (lr2Y - 0.038 + pp.top) / 2 + 0.01, pp.z); // pintle stem on the post
       P.add('turretDark', box(0.075, 0.050, 0.17), lr2X, lr2Y - 0.011, pp.z - 0.005);         // receiver body (top rides the rod line, inside the rod's z-span)
       P.add('turretDark', KIT.cylZ(0.016, (lr2Z0 - pp.z) + 0.09, 8), lr2X + 0.003, lr2Y, (lr2Z0 + pp.z - 0.09) / 2); // dark rod forward over the vault
       P.add('turretDark', KIT.cylZ(0.019, 0.050, 8), lr2X + 0.003, lr2Y + 0.001, lr2Z0 - 0.024); // muzzle booster
@@ -4036,6 +4082,25 @@ function merkavaModularTurret(P, t) {
   // lower on the rear face; siblings byte-identical.
   if (t.rackShelf) P.add('turretDetail', box(cr.hw1 * 1.55, 0.014, 0.03), 0, cr.top1 - 0.052, cr.z1 + 0.02);
   else P.add('turretDark', box(cr.hw1 * 1.55, 0.03, 0.03), 0, cr.top1 - 0.02, cr.z1 + 0.02);
+  // §B2 CREST-DECK SADDLE (owner order 2026-08-07, t.crestSaddle opt-in —
+  // 3C): its crest rear face (z1 world -0.08) stands 0.11 m ahead of the
+  // roof deck's first station (-0.19) with only the 2.40 shell cap between
+  // — an open trench a level side ray crossed end-to-end (probe: the
+  // y 2.4-2.6 hairline at z -0.09). The real casting merges the gun
+  // housing into the roof: a raked saddle wedge closes crest -> deck (the
+  // §B2 cheek-shoulder-wash class). Its top starts under the crestWaves
+  // lane base (front columns keep the crest reads via max-over-z) and
+  // lands on the deck line; plan stays inside the shell cap footprint.
+  // Movement is confined to the ~1 side column inside the trench window
+  // (documented closure movement, graduate-change protocol).
+  if (t.crestSaddle && cr) {
+    const sdW = cr.hw1 * 0.96;
+    P.add('turret', slab(
+      [-sdW, shellTop - 0.06, cr.z1 + 0.03], [sdW, shellTop - 0.06, cr.z1 + 0.03],
+      [sdW, shellTop - 0.06, roofF - 0.03], [-sdW, shellTop - 0.06, roofF - 0.03],
+      [-sdW, (cr.top0 ?? shellTop) - 0.075, cr.z1 + 0.03], [sdW, (cr.top0 ?? shellTop) - 0.075, cr.z1 + 0.03],
+      [sdW, h + 0.002, roofF - 0.03], [-sdW, h + 0.002, roofF - 0.03]));
+  }
 
   // Cheek wedges: swept plan taper (measured plateau -> shoulder), underside
   // rising from the ring plane to the mantlet line at the inner face.
@@ -4126,6 +4191,19 @@ function merkavaModularTurret(P, t) {
     P.add('turret', slab(
       [-ch.hw, ch.bot1, ch.z1], [ch.hw, ch.bot1, ch.z1], [ch.hw, ch.bot0, ch.z0], [-ch.hw, ch.bot0, ch.z0],
       [-ch.hw, ch.bot1 + 0.45, ch.z1], [ch.hw, ch.bot1 + 0.45, ch.z1], [ch.hw, ch.bot0 + 0.45, ch.z0], [-ch.hw, ch.bot0 + 0.45, ch.z0]));
+  }
+  // §B2 UNDER-CHEEK FILL (owner order 2026-08-07, t.chinFill opt-in — 3D):
+  // outboard of the narrow 3D chin the casting underside between the cheek
+  // planes' bottom edges, the shell nose face (z -0.05) and the chin flank
+  // was open volume — an elevated quarter ray entered under a cheek and
+  // exited to sky (probe: the 3D y0-right-up ~9x11 cm pocket at the gun
+  // root). One embedded box continues the casting underside: bottom rides
+  // above the chin's certified underside line (side bottoms hold), top
+  // tucks under the cheek bottom edges, faces embed into the shell nose /
+  // chin / cheek plan sweeps — interior to every mask by construction.
+  if (t.chinFill) {
+    const cf = t.chinFill; // { z0(front), z1(rear), top, bot, hw } local
+    P.add('turret', box(cf.hw * 2, cf.top - cf.bot, cf.z0 - cf.z1), 0, (cf.top + cf.bot) / 2, (cf.z0 + cf.z1) / 2);
   }
 
   // Cheek-side housings: the measured plan bumps leading each shoulder
@@ -5192,6 +5270,15 @@ function buildMerkavaMark(P, p) {
       dipsX: p.plinth.dipsX, // r11 parapet-break lanes (3D-only config)
       slot: p.plinth.slot ? { z0: L(p.plinth.slot.z0), z1: L(p.plinth.slot.z1), top: V(p.plinth.slot.top) } : undefined } : undefined,
     chin: p.chin ? { z0: L(p.chin.z0), z1: L(p.chin.z1), bot0: V(p.chin.bot0), bot1: V(p.chin.bot1), hw: p.chin.hw } : undefined,
+    // §B2 under-roof closure switches (owner order 2026-08-07): solid roof
+    // wedges (2B/2D), crest->deck saddle (3C), under-cheek fill (3D).
+    roofSolid: p.roofSolid
+      ? (p.roofSolid.rear
+        ? { rear: { z0: L(p.roofSolid.rear.z0), z1: L(p.roofSolid.rear.z1), top: V(p.roofSolid.rear.top), bot: V(p.roofSolid.rear.bot), hw: p.roofSolid.rear.hw } }
+        : true)
+      : undefined,
+    crestSaddle: p.crestSaddle,
+    chinFill: p.chinFill ? { z0: L(p.chinFill.z0), z1: L(p.chinFill.z1), top: V(p.chinFill.top), bot: V(p.chinFill.bot), hw: p.chinFill.hw } : undefined,
     cheekPod: p.cheekPod ? (Array.isArray(p.cheekPod) ? p.cheekPod : [p.cheekPod]).map((cp) => ({
       x0: cp.x0, x1: cp.x1, z0: L(cp.z0), z1: L(cp.z1), top: V(cp.top), bot: V(cp.bot) })) : undefined,
     podTell: p.podTell, // §B3 cheek-pod identity (2026-08-05 family round)
@@ -7872,6 +7959,13 @@ export const MERKAVA_PROFILES = {
     mantlet: { r0: 0.125, r1: 0.10, len: 0.85, drop: 0.05, legacy: true, canvas: true },
     apexZ: 0.90, notchHW: 0.20, hwMax: 1.30, roofHW: 0.98, roofInset: 0.76,
     shoulderZ: 0.45, shellRearZ: -2.05, maxWZ: -0.45,
+    // §B2 (owner order 2026-08-07): solid under-roof wedges — the rising
+    // roof was a floating panel with a ~2.3 m see-through band beneath.
+    // rear: casting rear-wall underfill under the inset shell's lean line
+    // (the last 0.35 m window between shell lean, stow bottom and roof);
+    // extended past the shell rear to bridge apron-top (1.83) -> stow-bot
+    // (2.02) — the column bottoms stay the apron/shell lines throughout.
+    roofSolid: { rear: { z0: -1.55, z1: -2.24, top: 2.08, bot: 1.82, hw: 0.92 } },
     // Rising cast roof (ref side turret): 2.17@0.88 -> 2.38@-0.44, dome
     // drum band -0.44..-1.72 (capped 2.66), rear shelf 2.55-2.60.
     roofLine: [[0.88, 2.17], [0.45, 2.25], [0.10, 2.33], [-0.08, 2.37], [-0.44, 2.38], [-1.80, 2.55], [-2.06, 2.60]],
@@ -7942,6 +8036,8 @@ export const MERKAVA_PROFILES = {
     mantlet: { r0: 0.125, r1: 0.10, len: 0.85, drop: 0.05, legacy: true, canvas: true },
     apexZ: 1.06, notchHW: 0.20, hwMax: 1.44, roofHW: 1.04, roofInset: 0.76,
     shoulderZ: 0.55, shellRearZ: -2.55, maxWZ: -0.60,
+    // §B2 (owner order 2026-08-07): solid under-roof wedges (see 2B note).
+    roofSolid: true,
     // Rising cast roof + wedge face 0.16 fwd of 2B; dome drum capped 2.66.
     roofLine: [[1.04, 2.17], [0.55, 2.26], [0.10, 2.34], [-0.08, 2.38], [-0.44, 2.39], [-1.80, 2.55], [-2.06, 2.60]],
     station: { x: -0.45, z0: -0.56, z1: -1.72, top: 2.66, hw: 0.53 },
@@ -8366,6 +8462,9 @@ export const MERKAVA_PROFILES = {
     shellFrontZ: 0.50, noseZ: -0.05, noseHW: 1.28, maxWZ: 0.00, shellRearZ: -2.07, rearWide: 0.985,
     shellBotY: 1.53, shellTopY: 2.40,
     crest: { z0: 1.53, zW: 0.88, z1: -0.08, hw0: 0.18, hw1: 0.41, top0: 2.54, top1: 2.57, bot: 1.86 },
+    // §B2 (owner order 2026-08-07): crest->deck saddle wedge — the 0.11 m
+    // open trench behind the crest rear face was a through-turret sightline.
+    crestSaddle: true,
     cheek: { pts: [[0.41, 0.92], [0.60, 0.895], [0.72, 0.82], [0.82, 0.73], [0.90, 0.52], [1.00, 0.43], [1.31, 0.57]],
       ptsL: [[0.41, 0.92], [0.50, 0.60], [0.60, 0.45], [0.72, 0.39], [0.80, 0.31], [0.90, 0.18], [1.03, 0.18]],
       topIn: 2.48, topOut: 1.98, botIn: 1.86, botOut: 1.70 },
@@ -8687,6 +8786,12 @@ export const MERKAVA_PROFILES = {
     // §B3 pod identity (2026-08-05 graduate-change round, see merkavaPodTell)
     podTell: true,
     chin: { z0: 0.75, z1: 0.06, bot0: 1.86, bot1: 1.575, hw: 0.42 },
+    // §B2 (owner order 2026-08-07): under-cheek fill — the open pocket
+    // between cheek bottoms, chin flank and shell nose read through to sky
+    // from elevated quarters. Bottom 1.70 stays above the chin underside
+    // line (1.575..1.70 over this z-run); top 1.88 tucks under the cheek
+    // bottom edges (botIn 1.87); z embeds into shell nose (-0.05) + sweeps.
+    chinFill: { z0: 0.34, z1: -0.03, top: 1.88, bot: 1.70, hw: 0.92 },
     // Roof deck (warped): saddle with the real mid dip, low shoulders 2.47,
     // rear plateau via roofBoxes, bustle deck dipping 2.43 to -3.06.
     roofLine: [[-0.06, 2.405], [-0.31, 2.385], [-0.53, 2.41], [-0.64, 2.47], [-1.90, 2.47], [-1.97, 2.465], [-2.42, 2.45], [-2.70, 2.43], [-3.06, 2.425], [-3.28, 2.43]],

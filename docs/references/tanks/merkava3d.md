@@ -1157,3 +1157,41 @@ byte-identical slabs, proven by the hash).
 
 ## 2026-08-06 FLEET MUZZLE-BORE + §C.1 WINDING SWEEP (fleet-sweep one-liner)
 - §B3.1 bore via shared mark gun; §C.1 9 reversed re-oriented; F-vs-D 28->0; gate HELD x2 EXACT 90.4 PASS; hash 6b97616c -> 39de83c8 CANDIDATE; mantlet mass verified per MANTLETS-MANDATORY (db9168c). Mechanism: kit.js muzzleBore shadow-named furniture + orientedSlab guard (3fca39b / 1017339); end-on+quarter crops shots/muzzle-sweep/{before,after}/.
+
+## §B2 UNDER-ROOF CLOSURE round (2026-08-07, merkava round — owner order §5.11)
+Probe (tools/tmp-merkava-roofgap.{html,mjs}, side/quarter/elevated x yaw
+0/30/60/90): ONE real casting void — outboard of the narrow 3D chin
+(hw 0.42) the volume between the cheek planes' bottom edges, the shell
+nose face (z -0.05) and the chin flank was open: elevated quarter rays
+entered under a cheek and exited to sky (~90px pocket at the gun root,
+~9 x 11 cm). Evidence shots/merkava-roofgap/{before,after}/merkava3d/ +
+pairs/merkava3d-chin-pocket.png.
+
+### Change (p.chinFill — new modular-turret opt-in; graduate-change flow)
+One embedded box (z 0.34..-0.03, y 1.70..1.88, hw 0.92) continuing the
+casting underside: bottom rides above the chin's certified underside line
+(1.575..1.70 over the z-run — side bottoms hold), top tucks under the
+cheek bottom edges (botIn 1.87), faces embed into shell nose / chin /
+cheek plan sweeps — interior to every mask by construction.
+
+### Adjudicated NOT holes (kept)
+M2 mount air over the crest (MG physics; the ref's own float), tail
+chain-mat rod air (the certified "rods hang over REAL air" read),
+saddle-dip sky over the solid deck (the ref's own 2.380-2.406 dip),
+bustle lattice windows. The 3D crest rear (z1 -0.06) meets its roofLine
+first station (-0.06) exactly — no 3C-class trench on this mark.
+
+### Done-gates
+- geometry-gate x2 EXACT the frozen row: min 90.4 — hull 90.4 / whole
+  90.6 / turret 91.4 / stations 91.7 / dims 100 / floaters 100 PASS,
+  both runs (fill fully mask-interior).
+- winding-audit rev 0 / deficit 0 / m1+m2 clean. npm test green.
+- verts 163077 -> 163401 (+1 rounded box); meshes 37 unchanged.
+- hash 39de83c8 -> 667ece84 — RE-FREEZE CANDIDATE; orchestrator re-cert
+  + re-freeze.
+
+### Changed-view list (for the re-cert critic)
+- hero-toptilt / hero-frontleft / view-frontleft / view-frontright /
+  close-front: the under-cheek pocket at the gun root reads solid casting
+  underside instead of a dark through-hole.
+- Side orthos / view-top / rear views: no visible change (interior fill).

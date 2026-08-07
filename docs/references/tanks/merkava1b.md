@@ -1096,3 +1096,46 @@ read is ordered; not spendable inside an exact-hold round.
 
 ## 2026-08-06 FLEET MUZZLE-BORE + §C.1 WINDING SWEEP (fleet-sweep one-liner)
 - §B3.1 bore on the shared mark tube (gLen-0.02); §C.1 4 reversed re-oriented (loftBand, chassis rear, small-turret LEFT, ring tub); F-vs-D 2->0; gate HELD x2 EXACT 90 PASS; hash 470f3665 -> 2cc7a76c CANDIDATE; mantlet mass verified per MANTLETS-MANDATORY (db9168c). Mechanism: kit.js muzzleBore shadow-named furniture + orientedSlab guard (3fca39b / 1017339); end-on+quarter crops shots/muzzle-sweep/{before,after}/.
+
+## §B2 UNDER-ROOF CLOSURE round (2026-08-07, merkava round — owner order §5.11)
+Owner verbatim: "make sure there are no gaps you can see through through
+the turrets... holes in the actual turret assembly under the roofs because
+the roofs were made with straight panels instead of solid shapes."
+Probe: tools/tmp-merkava-roofgap.{html,mjs} — side/quarter/elevated views
+x turret yaw 0/30/60/90, full-tank + turret-only passes, §B2
+enclosed-background flood (mask method + blue signature), world-mapped
+clusters. Evidence shots/merkava-roofgap/{before,after}/merkava1b/ + pairs/.
+
+### Changes (graduate-change flow; hash 2cc7a76c -> 78051af0)
+1. §5.03 LATENT REVERSED PIECES (both were degenerate NEGATIVE-dimension
+   boxes, fully embedded in parent solids = mask-invisible, culled from
+   FrontSide): (a) the brow dark under-hood filler height evaluated
+   (2.30-0.13)-(1.975+0.24) = -0.045 — the sweep's rig_turret mesh#34 roof
+   box [-0.14,2.17,1.11]->[0.14,2.215,1.41]; (b) the loader rod2Post
+   pintle stem height -5 mm — the 2 cm speck at (0.04,2.63,-1.0). Both
+   now GUARDED (dkH > 0.02 / stemH9 > 0.012) and drop out on the 1B
+   values. Winding census rev 2 -> 0 (m1 clean, deficit 0).
+2. §B2 GUN-NOTCH CLOSURE: between the sleeve top (~2.06) and the hood
+   underside (2.14) the notch was open air — slightly-elevated side rays
+   passed through the turret over the tube (probe: 63px slit at z ~1.19,
+   0.155 x 0.022 m). Dark casting filler 0.30 x 0.10 x 0.56 over
+   z 0.93..1.49 (inside the hood's own z-span): side tops stay the
+   hood/gun lines, front/plan interior behind mantlet + beaks + hood.
+Adjudicated NOT holes (kept): basket/vane/chain-curtain enclosed air —
+the certified open-frame read (r4-r13 lineage; the ref itself is
+see-through there).
+
+### Done-gates
+- geometry-gate x2 EXACT the frozen row: min 90.0 — hull 91.2 / whole 90 /
+  turret 91 / stations 91.4 / dims 100 / floaters 100 PASS, both runs
+  (the closure is mask-neutral by construction).
+- winding-audit: rev 0 / deficit 0 / m1+m2 clean.
+- verts 131803 -> 132055 (guarded boxes -48, rounded notch filler +~300);
+  meshes 40 unchanged. npm test green.
+- RE-FREEZE CANDIDATE 78051af0 — orchestrator re-cert + re-freeze.
+
+### Changed-view list (for the re-cert critic)
+- close-front / view-front / hero-frontleft / close-roof: the notch
+  interior under the brow hood reads dark casting instead of sky slivers.
+- All other views: no visible change (guarded pieces were inside-out and
+  embedded — nothing rendered before or after).
