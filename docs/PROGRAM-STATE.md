@@ -81,7 +81,7 @@ re-freeze NEW hash, all in ONE commit.
 | leo2a5 | e215a738 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | leo2_revolution | fa1a47fc -> bb2bb60c CANDIDATE (bore+winding sweep, batch re-cert in flight) |
 | m46_patton | 108806c8 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
-| centurion3 | fea56ecc -> 46b03895 CANDIDATE HELD — re-cert FAIL floor 7.5 (bore reads camo cap end-on; surgical re-seat + single-view re-cert in flight) |
+| centurion3 | fea56ecc -> 50273080 CANDIDATE (bore re-seat: occlusion class fixed, luma 35.7-flat = sibling tone, machine gate MET; single-view re-cert in flight) |
 | m1a2_sepv2 | 83277374 | visibility re-cert RATIFIED (floor 9.1+, owner-question YES) |
 | m26_pershing | 65c564c0 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 

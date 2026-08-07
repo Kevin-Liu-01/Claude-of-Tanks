@@ -2995,7 +2995,13 @@ function centurionBuild(P, mk) {
     // 20-pdr: the print tube reads nearly as thick as the L7's (0.25); a
     // hair fatter here so the thin tube holds its plan center columns.
     buildGun(P, { len: gunLen, r: 0.125, sleeve: false, evac: 0.52, evacR: 1.12, collar: false, baseR: 0.145 });
-    muzzleBore(P, { len: gunLen, r: 0.125 });               // §B3.1 (shadow-named, 3fca39b)
+    // §B3.1 (shadow-named, 3fca39b): bore on the TIP-COLLAR face (gunLen) —
+    // the 20-pdr tip collar (below) caps at exactly gunLen, PAST the buildGun
+    // tube face, so the len-0.02 seat buried the shadow disc 8mm behind the
+    // collar's own camo cap (end-on 44-47 mottled CAP vs the 36-flat family
+    // void; boresweep re-cert FAIL). Same class + fix as the L7A1 tip collar
+    // below (z = the collar cap plane, r = the collar face radius).
+    muzzleBore(P, { z: gunLen, r: 0.145 });
     P.add('gun', cylZ(0.138, 0.6, 12, 0.148), 0, 0, 0.5);
     P.add('gun', cylZ(0.145, 0.5, 10), 0, 0, gunLen - 0.25);
   }
