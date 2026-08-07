@@ -26,6 +26,20 @@ never excuses missing it.
   12%-band mid, at the ref's own band heights.
 - heightM p95 budget: ≤4 side columns above published height, aligned with
   the ref's own spikes.
+- PROGRAM-FRAME CHIRALITY LAW (adjudicated 2026-08-07, two independent
+  critics converged — ww2-resit + type74 verdicts): the program frame
+  "+x = right" is CANON for authoring, even though glTF/three.js
+  (+z forward, right-handed) makes physical vehicle-right = −x. Every
+  ratified digest, side registration, and verdict crop is built on the
+  program frame; a fleet x-flip would invalidate all of them for a
+  sub-glance cosmetic. Consequences: (1) author handed kit per the
+  program frame, uniformly; (2) a spec-true direct-drop print may read
+  MIRRORED next to the proc in head-on pairs — bank a "mirrored in
+  program frame" note in that oracle's packet (pt91m-class), it is NOT
+  a build defect and costs no acid points; (3) critics judge handed
+  kit for PRESENCE + CONNECTION, not side, unless the owner orders a
+  specific side. Owner may override with a fleet x-flip order
+  (schedule as its own wave; re-derive digests + re-crop verdicts).
 
 ## B. Silhouette identity (owner laws — all six are gate-blocking)
 1. FRONT SLOPES: follow the reference's slopes — no flat fronts where the

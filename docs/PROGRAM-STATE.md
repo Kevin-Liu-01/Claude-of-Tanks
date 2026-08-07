@@ -839,3 +839,17 @@ for acid reads. OPTIONS: (a) accept as the program frame (document in
 BUILD-STANDARD §A and move on), or (b) schedule a fleet x-flip —
 which INVALIDATES every side-registration digest + prior verdict
 crop. Default pending owner word: (a) accept-and-document.
+
+## 4.999998 TYPE74 VERDICT ADJUDICATED TO PASS 9.0: the critic's
+CONDITIONAL 8.5 hinged on ONE blocking order — the fleet chirality
+frame. ADJUDICATED (orchestrator, fleet-scoped): PROGRAM FRAME IS
+CANON — law written into BUILD-STANDARD §A (PROGRAM-FRAME CHIRALITY
+LAW); the nullops print banked "mirrored in program frame" in
+type74.md (pt91m-class); per the verdict's own option (b) the r5
+round PASSES AS-LANDED at 9.0 (record 7ba404c5 binds; all §B8.1
+gates + all four print caps + LIVE-vs-EXTRACT law verified by the
+critic). §4.999997's ASK-OWNER stands as an OVERRIDE option only
+(fleet x-flip = its own wave, re-derives digests). Detail note
+banked: type74 track band tone (non-blocking). Cross-lane ledger
+sync note: the critic's gate run refreshed the t72b3m row to the
+coupled lane's newer local state — reconcile at that landing.

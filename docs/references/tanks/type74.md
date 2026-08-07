@@ -378,3 +378,16 @@ residual rows are the print's own offsets, not winding. Flood identical
 (open-background class). GATE HOLD x2 EXACT: min 0 (skinned-print cap
 class, see above — hull/whole/turret/stations capped) with the SOVEREIGN
 components byte-held: dims 99.6 / floaters 100 both runs.
+
+## ORACLE NOTE — mirrored in program frame (adjudicated 2026-08-07)
+
+The nullops print is spec-true to glTF chirality: head-on it renders
+the searchlight at screen-right / cupola near-center — the MIRROR of
+the proc's program-frame authoring (searchlight −0.62, cupola +0.40).
+Per the PROGRAM-FRAME CHIRALITY LAW (BUILD-STANDARD §A, adjudicated
+from this round's critic finding + the ww2-resit critic's independent
+convergence): the program frame is canon, the print reads mirrored in
+head-on pairs, and this is NOT a build defect (pt91m-class note). The
+critic's order-1 option (b) applies — the r5 round PASSES as-landed
+at 9.0. Detail-class note banked (non-blocking): track band tone one
+step + shorter grouser horns at the next open round.
