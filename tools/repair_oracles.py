@@ -3457,6 +3457,30 @@ REPAIRS['challenger_3'] = {
 }
 
 
+# =============================================================== batch 48 ===
+# CHALLENGER2 HEIGHT-NORMALIZE (§E; filed in challenger2.md — the buh
+# print reads +28.8% tall / "deep-hulled": bodyH 3.208 vs the 2.49 roof
+# datum; 249 side cols >2.8 in the normalized frame; trio critic
+# VERIFIED the stylization in every side/front pair). Probe (2026-08-07):
+# gear band -0.993..0.239 is near-real proportion (1.23 vs real ~1.1) —
+# the excess lives ABOVE the gear: hull/turret band 0.24..2.295 spans
+# 2.06 raw where the real above-gear span is ~1.39 (+45%). leo2a5/t72bu
+# band-flatten class: identity through the gear (wheels stay round),
+# compress the body band 0.24..2.295 -> 0.24..1.60 (roof lands 2.59
+# above ground = pub 2.49 +4% grace; factor 0.662), antenna tip 3.05 ->
+# 2.06 (the published 3.04 sight line above the -0.993 ground). The
+# turret node's below-deck fitting dips (-0.604) ride the identity
+# zone. Census expect = the full reachable print (4 prims / 129,488
+# verts / 141,698 tris).
+REPAIRS['challenger2'] = {
+    'path': 'public/models/tanks/community/challenger_ii.glb',
+    'ops': [('py2', _axis_warp('challenger2', long_axis='z',
+                               y_map=[(-0.993, -0.993), (0.24, 0.24), (2.295, 1.60), (3.05, 2.06)],
+                               long_map=[(-4.60, -4.60), (6.60, 6.60)],
+                               y_top_max=2.07, expect=(4, 129488, 141698)))],
+}
+
+
 # =============================================================== batch 42 ===
 # M26_PERSHING BODY-STRETCH + MUZZLE-PIN (m46 batch-36 class; formal warp
 # request FILED in m26_pershing.md "Vertex round r2", patton-family builder

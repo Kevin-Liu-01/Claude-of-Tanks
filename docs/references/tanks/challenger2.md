@@ -298,3 +298,26 @@ stranded 0 / abutting 1 (the banked crest audit-artifact) / dangling
 CLOSED), mode-2 HARD = the banked rear-deck-kit legitimate-deck-gear
 adjudication (coincidencePx-dominated, correctly static); standard-
 check contig 0 census mg1+5d; npm test 166 + track-geometry PASS.
+
+## batch-48 HEIGHT-NORMALIZE EXECUTED (2026-08-07, orchestrator §E)
+
+The filed +28.8% stature stylization is closed: band-flatten per the
+leo2a5/t72bu class — identity through the gear band (-0.993..0.24,
+wheels stay round; the gear was already near-real proportion), body
+band 0.24..2.295 -> 0.24..1.60 (roof lands 2.59 above ground = pub
+2.49 +4% grace, factor 0.662), antenna 3.05 -> 2.06 (the published
+3.04 sight line). Byte-idempotent x2 md5 3c6a15dc. Gate x2: stations
+19.8 -> 25.5, dims 100 held; the REF pane now renders REAL CR2
+proportions (future §B8 pairs stop reading stretched).
+
+CURVE ROWS STAY 0 — ROOT CAUSE NOW ISOLATED: the side registration
+walks dAlong 1.368 (side_hull/side_whole reg), i.e. the print
+registers 1.37 m off along the hull because the material-split turret
+node carries FULL-LENGTH fittings (z -4.56..+6.60) that pollute the
+anchor mid. This is the packet's documented split disease, now the
+SOLE curve blocker (mean errs 10-13% are pure shift). FILED:
+batch-48b hull-partition split (batch-43 _index_surgery class — move
+the turret node's full-length fittings to the hull side, or window
+the anchor off them), THEN the curve rows can measure. plan_hull 66.3
+(dAlong 0 in plan) corroborates: where registration is clean the
+print now scores.
