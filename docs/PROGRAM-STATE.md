@@ -341,6 +341,18 @@ panther GLB (none seen in the 11 drops); if present: provenance check
 (§E ORACLE PROVENANCE law — live page, not just extras), bradley flow,
 then k2's oracle-driven round. (5) FLEET ICON REGEN still queued.
 
+## 4.998 OWNER OVERRIDES (2026-08-06 latest): (1) challenger line
+CONFIRMED fully covered — ch1 gate-PASS on its print, ch2 priority
+rework LIVE (moderns agent), challenger_3 building LIVE (same agent).
+(2) t72b3m RE-ORACLE OVERRIDE ("and build the t72 b3m" with the obr_2022
+GLB): the no-swap ruling is SUPERSEDED by owner order — MY LANE next
+wake: swap t72b3m's registration to t-72b3m_obr._2022.glb (three maps +
+REG; §E normalize plan for the +46.9% roof-cluster stylization; the
+frozen row honestly re-baselines — §B7-precedent), THEN the russia lane
+rebuilds t72b3m to the 2022 configuration (RWS, roof cluster, ERA fit —
+relayed to the live t90m agent as its follow-on). The graduate's re-cert
+chain restarts on the new oracle.
+
 ## 5. IN-FLIGHT AGENTS (SUPERSEDED BY §12 — the 2026-08-05 device
 handover interrupted these; respawn per §12)
 1. DONE+RATIFIED: abrams dual critic (m1a1ha f5c556dc, sepv2 §10 run).
