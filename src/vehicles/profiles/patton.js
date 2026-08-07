@@ -45,7 +45,7 @@
 // reference barrels are modelled short (see the packets) — the coverage cost
 // lands ONLY in wholeCurves/turretCurves and is certified per packet.
 import * as THREE from 'three';
-import { KIT, FITTINGS, evenStations } from './kit.js';
+import { KIT, FITTINGS, evenStations, muzzleBore, orientedSlab } from './kit.js';
 import { vehicleAmbientFloorHook } from '../materials.js';
 
 // ---------------------------------------------------------------------------
@@ -69,7 +69,7 @@ const deckLine = (deck) => (z) => {
 // whose roof ridge is offset (M60: ridge left of centre).
 // ---------------------------------------------------------------------------
 function loftBody(P, bucket, sections, opts = {}) {
-  const { slab } = KIT;
+  const slab = orientedSlab;                                  // §C.1 winding guard
   const wallT = opts.wall ?? 0.55;     // top of the vertical cheek band
   const midT = opts.mid ?? 0.84;      // top of the shoulder band
   const midW = opts.midW ?? 0.94;     // shoulder half-width fraction
@@ -116,7 +116,8 @@ function loftBody(P, bucket, sections, opts = {}) {
 //              rollerN, rollerY } }
 // ---------------------------------------------------------------------------
 function curveHull(P, H) {
-  const { box, slab, cylX, cylZ, torus, buildRunningGear } = KIT;
+  const { box, cylX, cylZ, torus, buildRunningGear } = KIT;
+  const slab = orientedSlab;                                  // §C.1 winding guard
   const hw = H.W / 2 - 0.008;          // fender edge (widest point)
   const bhw = H.bandHW ?? hw;           // full-width armour band half width
   const xc = H.W / 2 - H.trackW / 2 - (H.trackInset || 0);
@@ -617,7 +618,7 @@ function t26Cast(P, T) {
   // diagonal across each boundary tracks the true surface more closely).
   // Winding mirrors m47Cast rollWedges (§C slab audit). Default absent.
   for (const Wg of T.zWedges || []) {
-    const { slab } = KIT;
+    const slab = orientedSlab;                                  // §C.1 winding guard
     P.add('turret', slab(
       [Wg.x1, yl(Wg.y0), zl(Wg.z0)], [Wg.x0, yl(Wg.y0), zl(Wg.z0)], [Wg.x0, yl(Wg.y0), zl(Wg.z1)], [Wg.x1, yl(Wg.y0), zl(Wg.z1)],
       [Wg.x1, yl(Wg.top0), zl(Wg.z0)], [Wg.x0, yl(Wg.top0), zl(Wg.z0)], [Wg.x0, yl(Wg.top1), zl(Wg.z1)], [Wg.x1, yl(Wg.top1), zl(Wg.z1)]));
@@ -980,7 +981,8 @@ function smoothBustle(P, BS, yl, zl, opts = {}) {
 // overhang, rangefinder blister pods, low cupola, roof M2.
 // ---------------------------------------------------------------------------
 function m47Cast(P, T) {
-  const { box, slab, cylY, cylX, cylZ, sph, liftEye, cupola, tarpRoll } = KIT;
+  const { box, cylY, cylX, cylZ, sph, liftEye, cupola, tarpRoll } = KIT;
+  const slab = orientedSlab;                                  // §C.1 winding guard
   const yl = (y) => y - T.ringY, zl = (z) => z - T.ringZ;
   // r4 shared pale-fitting material (B2 cavity + B5 M2 upper works): the
   // shared 'detail' bucket ceilings at ~67 on vertical faces where the
@@ -1352,7 +1354,8 @@ function m47Cast(P, T) {
 // G: { rootZ, axisY, muzzle, r, device, shield:{w,h,dy,zF,d} }
 // ---------------------------------------------------------------------------
 function pattonGun(P, G) {
-  const { box, slab, cylX, cylZ, xform } = KIT;
+  const { box, cylX, cylZ, xform } = KIT;
+  const slab = orientedSlab;                                  // §C.1 winding guard
   const len = G.muzzle - G.rootZ;
   const w2l = (z) => z - G.rootZ;                            // world z -> gun local
   const seg = P.q ? 20 : 12;
@@ -1443,6 +1446,17 @@ function pattonGun(P, G) {
     P.add('gun', cylZ(G.r, len - 0.05, seg), 0, 0, (len - 0.05) / 2 + 0.02);
     P.add('gun', cylZ(G.r * 1.05, 0.08, 12), 0, 0, len - 0.05);
   }
+  // §B3.1 MUZZLE BORE (owner 2026-08-06; MANDATORY shadow-named mechanism
+  // per the leclerc landing 3fca39b — kit.js muzzleBore, mask/frame-excluded
+  // by construction): rim torus + recessed shadow disc on every device's
+  // FRONT face — m3 exit collar (face len+0.01), m36 rounded exit
+  // (len+0.01), m3a1 muzzle-face ellipse (len+0.003), howitzer collar
+  // (len-0.01).
+  muzzleBore(P, {
+    z: G.device === 'm3' || G.device === 'm36' ? len + 0.01
+      : G.device === 'm3a1' ? len + 0.003 : len - 0.01,
+    r: G.r,
+  });
   P.muzzleZ = len;
 }
 
@@ -1492,7 +1506,7 @@ function buildPershing(P, cfg) {
     // @ z 2.10 following the track curve — the side bow envelope IS the
     // fender line, full width in plan).
     const B = cfg.bowFenders;
-    const { slab } = KIT;
+    const slab = orientedSlab;                                  // §C.1 winding guard
     for (const side of [-1, 1]) {
       if (B.y1 != null) {
         const xa = side * B.x0, xb = side * B.x1;
@@ -1550,7 +1564,7 @@ function buildPershing(P, cfg) {
     // the flat aft run and the bow shelf (side tops 1.44-1.51 over z
     // 1.10..1.66 vs the r1 flat 1.545 read) — thin full-span plates that
     // follow it, mirrored.
-    const { slab } = KIT;
+    const slab = orientedSlab;                                  // §C.1 winding guard
     for (const R of cfg.fenderRamps) {
       for (const side of [-1, 1]) {
         const xa = side * R.x0, xb = side * R.x1;
@@ -1567,7 +1581,7 @@ function buildPershing(P, cfg) {
     // down from full height at |x| ~1.42 to ~1.61 by 1.545 (workorder cols
     // 1.436-1.525) — the r1 full-width flat band read the whole deck height
     // out to the band edge. One sloped wedge per deck segment, band-clipped.
-    const { slab } = KIT;
+    const slab = orientedSlab;                                  // §C.1 winding guard
     const S = cfg.deckShoulder;
     const dk = cfg.hull.deck;
     for (let i = 1; i < dk.length - 1; i++) {
@@ -1608,7 +1622,7 @@ function buildPershing(P, cfg) {
     // side of the centre spine. Deck-bump class (certified +0.03 deck
     // furniture band), segments <= 0.15 m (station end-cap law), forward
     // of the -4.09 tailStack anchors, inboard of the fender bump plates.
-    const { slab } = KIT;
+    const slab = orientedSlab;                                  // §C.1 winding guard
     const TT = cfg.tailTray;
     const dk = cfg.hull.deck;
     for (let i = 1; i < dk.length - 1; i++) {
@@ -2319,7 +2333,8 @@ function m60Loft(P, bucket, secs, profile, oy, oz, creases = [0]) {
 //   hullLengthM keeps its -3.445 anchor); pintle to -3.52 at |x|<0.17.
 // ---------------------------------------------------------------------------
 function buildM60(P, cfg) {
-  const { box, slab, cylY, cylZ, cylX, sph, xform, liftEye, buildGun, tarpRoll, torus, towCable } = KIT;
+  const { box, cylY, cylZ, cylX, sph, xform, liftEye, buildGun, tarpRoll, torus, towCable } = KIT;
+  const slab = orientedSlab;                                  // §C.1 winding guard
   // SHADED-PARITY r3 item 3 (m60-scoped material lift): 'glass' (near-black
   // metallic) never read as optics on the proof board — the reference pods
   // carry twin PALE lenses. createTankMaterials builds PER-INSTANCE
@@ -2757,10 +2772,13 @@ function buildM60(P, cfg) {
     P.add('gun', cylZ(0.128, 0.05, gseg, 0.098), 0, 0, 2.075);
     P.add('gun', cylZ(0.098, 0.05, gseg, 0.128), 0, 0, 2.285);
   }
-  // muzzle counterbore (r3: "muzzle ends in a flat body-color cap — no
-  // bore"): dark disc recessed into the tube face — strictly inside the
-  // existing face plane and radius, zero silhouette
-  P.add('gunDark', cylZ(0.058, 0.014, P.q ? 20 : 12), 0, 0, cfg.gunLen - 0.028);
+  // §B3.1 MUZZLE BORE (owner 2026-08-06): the r3 counterbore disc sat with
+  // its face 1 mm INSIDE the tube cap (front cfg.gunLen-0.021 vs face
+  // len-0.02) — fully enclosed by the solid = invisible (the kv2 r9 "blank
+  // bore face" class; end-on crop proved a flat camo cap). Replaced by the
+  // shared kit helper (MANDATORY shadow-named mechanism, 3fca39b): rim
+  // torus + recessed shadow disc, mask/frame-excluded by construction.
+  muzzleBore(P, { len: cfg.gunLen, r: cfg.sleeve ? 0.076 : 0.082 });
   P.topY = 3.26 - py + 0.12;
 }
 
@@ -2773,7 +2791,8 @@ function buildM60(P, cfg) {
 // re-authored in the extract frame. Published dims 6.95/7.27/3.63/3.11.
 // ---------------------------------------------------------------------------
 function buildM60A2(P, cfg) {
-  const { box, slab, cylY, cylZ, cylX, xform, liftEye } = KIT;
+  const { box, cylY, cylZ, cylX, xform, liftEye } = KIT;
+  const slab = orientedSlab;                                  // §C.1 winding guard
   const hull = curveHull(P, cfg.hull);
   usKit(P, hull, cfg.fit);
   // cambered engine crown (extract: shoulder 2.005 @ -0.66..-0.92 rising to
@@ -2826,7 +2845,7 @@ function buildM60A2(P, cfg) {
     // stations, stays thin for the body filter and ahead of the -3.6575
     // overall anchor). Push round: bottom TAPERED 0.75 @ -3.36 -> 0.93 @
     // -3.64 (front cols +-1.81 read ref 0.752; side col -3.647 reads 0.931)
-    P.add('hullRubber', KIT.slab(
+    P.add('hullRubber', orientedSlab(
       [side * 1.7965, 0.75, -3.36], [side * 1.8155, 0.75, -3.36], [side * 1.8155, 0.93, -3.64], [side * 1.7965, 0.93, -3.64],
       [side * 1.7965, 1.40, -3.36], [side * 1.8155, 1.40, -3.36], [side * 1.8155, 1.40, -3.64], [side * 1.7965, 1.40, -3.64]));
     P.add('hullDetail', box(0.0075, 0.62, 0.035), side * 1.7925, 1.52, -3.50);
@@ -3052,6 +3071,11 @@ function buildM60A2(P, cfg) {
   P.add('gun', xform(cylZ(0.156, 0.22, seg), 0, 0, 0, 0, 0, 0, [1.115, 1, 1]), 0.045, 0, glen - 0.55);
   P.add('gun', xform(cylZ(0.158, 0.06, seg), 0, 0, 0, 0, 0, 0, [1.115, 1, 1]), 0.045, 0, glen - 0.03);
   P.add('gunDark', cylZ(0.076, 0.014, seg), 0.045, 0, glen - 0.006);
+  // §B3.1 MUZZLE BORE (shadow-named mechanism, 3fca39b): the launcher's
+  // 152 mm bore ring+disc on the collar face (x +0.045 with the tube). The
+  // legacy 0.076 gunDark face disc above stays — certified gate state,
+  // fully occluded behind the new furniture.
+  muzzleBore(P, { z: glen, r: 0.148, x: 0.045 });
   P.topY = 3.14 - py + 0.12;
 }
 

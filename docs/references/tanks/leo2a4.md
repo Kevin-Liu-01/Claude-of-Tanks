@@ -164,3 +164,6 @@ bar. Clean-license candidates for a future drop: 42manako's catalog
 the leo2a5/leo2_revolution recovered prints remain the nearest family
 instruments (family-transfer measurement is NOT sanctioned — influence
 only).
+
+## 2026-08-06 FLEET MUZZLE-BORE + §C.1 WINDING SWEEP (fleet-sweep one-liner)
+- §B3.1 bore via leoMantletGun (shared with a7v), tube face len-0.02; §C.1 8 reversed re-oriented (leoHullV3 glacis/bow); F-vs-D 131->0; gate no oracle row (render-verified; standard-check contig 0 after the checker law-alignment); hash not frozen; mantlet mass verified per MANTLETS-MANDATORY (db9168c). Mechanism: kit.js muzzleBore shadow-named furniture + orientedSlab guard (3fca39b / 1017339); end-on+quarter crops shots/muzzle-sweep/{before,after}/.

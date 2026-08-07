@@ -571,3 +571,6 @@ x3, no variants backfill, icons x5 from a clean HEAD worktree. Carry
 list held by owners: X-brace architecture ruling (orchestrator), ramp
 grazing class, certified residual columns (re-measured EXACT at both
 adjudications).
+
+## 2026-08-06 FLEET MUZZLE-BORE + §C.1 WINDING SWEEP (fleet-sweep one-liner)
+- §B3.1 bore on the m3 brake exit collar (len+0.01); §C.1 3 reversed slabs re-oriented (bow belly, deck lip, mantlet slab); F-vs-D 19->0; gate HELD x2 EXACT 90.5 PASS; hash 2f579de8 -> 65c564c0 CANDIDATE; mantlet mass verified per MANTLETS-MANDATORY (db9168c). Mechanism: kit.js muzzleBore shadow-named furniture + orientedSlab guard (3fca39b / 1017339); end-on+quarter crops shots/muzzle-sweep/{before,after}/.

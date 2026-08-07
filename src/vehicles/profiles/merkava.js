@@ -15,7 +15,7 @@
 // aft-set turret, rear hull clamshell door, turret bustle basket +
 // ball-and-chain curtain. Mk.1B keeps exposed running gear under a narrow
 // fender line; every later mark hangs deep scalloped skirts.
-import { KIT } from './kit.js';
+import { KIT, muzzleBore, orientedSlab } from './kit.js';
 import { vehicleAmbientFloorHook } from '../materials.js';
 
 // ---------------------------------------------------------------------------
@@ -23,7 +23,7 @@ import { vehicleAmbientFloorHook } from '../materials.js';
 // Stations run FRONT (+z) to REAR; each entry {z, yT, yB, wT, wB}.
 // ---------------------------------------------------------------------------
 function loftBand(P, bucket, sts) {
-  const { slab } = KIT;
+  const slab = orientedSlab;                                // §C.1 winding guard
   for (let i = 0; i < sts.length - 1; i++) {
     const a = sts[i], b = sts[i + 1];
     const ax = a.x ?? 0, bx = b.x ?? 0; // optional plan shear per station
@@ -39,7 +39,8 @@ function loftBand(P, bucket, sts) {
 // c.keel: [[z,y]...] lower-glacis/belly line for the center body.
 // ---------------------------------------------------------------------------
 function merkavaChassis(P, c) {
-  const { box, slab, headlight, towCable, liftEye, periscope } = KIT;
+  const { box, headlight, towCable, liftEye, periscope } = KIT;
+  const slab = orientedSlab;                                  // §C.1 winding guard
   const w = c.width, hw = w / 2;
   const innerW = w - 2 * c.trackW - 0.06, ihw = innerW / 2;
   // r12 TRACK CONTAINMENT (owner law §B4) opt-in: c.keel.hwClamp pulls the
@@ -3127,7 +3128,8 @@ function merkavaAntennas(P, list) {
 // their own measured tub. Solid closed volume (fill rule): two ramp slabs +
 // one flat-bottom box, flush to the shell base.
 function merkavaRingTub(P, t) {
-  const { box, slab } = KIT;
+  const { box } = KIT;
+  const slab = orientedSlab;                                  // §C.1 winding guard
   const rt = t.ringTub; // { z0, zF0, zF1, z1, top, bot, hw, stepY? } local
   P.add('turret', slab( // front ramp down
     [-rt.hw, rt.bot, rt.zF0], [rt.hw, rt.bot, rt.zF0], [rt.hw, rt.top - 0.06, rt.z0], [-rt.hw, rt.top - 0.06, rt.z0],
@@ -3161,7 +3163,8 @@ function merkavaRingTub(P, t) {
 }
 
 function merkavaSmallTurret(P, t) {
-  const { box, cylY, polyTurret, slab, lathe, xform } = KIT;
+  const { box, cylY, polyTurret, lathe, xform } = KIT;
+  const slab = orientedSlab;                                  // §C.1 winding guard
   const apex = t.apexZ, gy = t.apexY;
   const sf = t.shoulderZ;        // full-height casting begins here
   const hwM = t.hwMax;
@@ -3836,7 +3839,8 @@ function merkavaSmallTurret(P, t) {
 // rear-deck dip then a pot/stowage bump; and a low-riding bustle.
 // ---------------------------------------------------------------------------
 function merkavaModularTurret(P, t) {
-  const { box, cylY, polyTurret, slab, frustum, xform } = KIT;
+  const { box, cylY, polyTurret, frustum, xform } = KIT;
+  const slab = orientedSlab;                                  // §C.1 winding guard
   const hwM = t.hwMax, gy = t.apexY;
   const rf = t.roof; // [[z,y]] roof DECK line front->rear (local)
   const roofF = rf[0][0], h = rf[0][1];
@@ -5597,6 +5601,10 @@ function buildMerkavaMark(P, p) {
     evacR: p.evacR ?? (p.sleeve !== false ? 1.9 : 1.62),
     baseR: Math.max(0.13, p.gunR * 2.0),
   });
+  // §B3.1 MUZZLE BORE (shadow-named mechanism, 3fca39b) — every mark's
+  // tube tip (plain buildGun face at gLen-0.02; collar'd marks keep their
+  // muzzleCollar flare as the outer rim grammar).
+  muzzleBore(P, { len: gLen, r: p.gunR });
   if (p.sleeveTo) { // thermal sleeve continuation: the refs' sleeves hold
     // r ~0.15 far past the mantlet (plan +-0.15 columns read them to z 3.8)
     const sz0 = (p.mantlet.z0 !== undefined ? L(p.mantlet.z0) : t.apexZ) + (p.mantlet.len ?? 0.6) - gunZL;
@@ -6106,12 +6114,12 @@ function merkavaWallSeams(P, walls) {
 // the certified envelope: apex edges tie AT band-top lines, base edges land
 // on the roof deck, spans hug the measured ref column targets per mark.
 function merkavaRakeZ(P, x0, x1, zA, yA, zB, yB, mat = 'turret') {
-  P.add(mat, KIT.slab(
+  P.add(mat, orientedSlab(                                    // §C.1 winding guard
     [x0, yA - 0.10, zA], [x1, yA - 0.10, zA], [x1, yB - 0.10, zB], [x0, yB - 0.10, zB],
     [x0, yA, zA], [x1, yA, zA], [x1, yB, zB], [x0, yB, zB]));
 }
 function merkavaRakeX(P, z0, z1, xA, yA, xB, yB, mat = 'turret') {
-  P.add(mat, KIT.slab(
+  P.add(mat, orientedSlab(                                    // §C.1 winding guard
     [xA, yA - 0.09, z0], [xB, yB - 0.09, z0], [xB, yB - 0.09, z1], [xA, yA - 0.09, z1],
     [xA, yA, z0], [xB, yB, z0], [xB, yB, z1], [xA, yA, z1]));
 }
@@ -6154,7 +6162,8 @@ function merkava4bKit(P, p, t) {
 
 // Mk.2D cheek appliqué wedges riding the cast beak planes.
 function merkava2dKit(P, p, t) {
-  const { box, slab } = KIT;
+  const { box } = KIT;
+  const slab = orientedSlab;                                  // §C.1 winding guard
   const sf = t.shoulderZ;
   for (const s of [-1, 1]) {
     P.add('turret', slab(
@@ -6570,7 +6579,8 @@ function merkava3dKit(P, p, t) {
   // plate run (x 1.30-1.58 to z -2.55), authored via roofBoxes.
   KIT.tarpRoll(P, km, -0.15, t.roof.at(-1)[1] - 0.06, t.roof.at(-1)[0] + 0.28, 1.1, 0.09);
   if (!p.paleKit) return;
-  const { box, slab } = KIT;
+  const { box } = KIT;
+  const slab = orientedSlab;                                  // §C.1 winding guard
   // ---- visual r2 item (a): TURRET ZIGGURAT -> smooth Dor-Dalet wedges ----
   // The ~8 stacked slabs per side (dark caps, rib shadows p5 56, crenellated
   // z-end stagger) become THREE swept wedge modules per side: single ruled

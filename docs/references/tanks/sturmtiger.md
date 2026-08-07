@@ -74,3 +74,6 @@ pixel span 6.33 within grace) and the crane beam raised to 2.93..3.23 so
 published heightM 3.2 rides the p95 line on the beam's ~12 columns.
 front_hull (47.7) remains the floor — casemate face/wall width iteration is
 live work against the print's 47-deg face.
+
+## 2026-08-06 FLEET MUZZLE-BORE + §C.1 WINDING SWEEP (fleet-sweep one-liner)
+- §B3.1 NO bore added - the RW61 already carries its dark 38cm bore face + 9-hole vent ring (compliant); §C.1 0 reversed; F-vs-D 0; gate HELD x2 EXACT 47.7; hash not frozen; mantlet mass verified per MANTLETS-MANDATORY (db9168c). Mechanism: kit.js muzzleBore shadow-named furniture + orientedSlab guard (3fca39b / 1017339); end-on+quarter crops shots/muzzle-sweep/{before,after}/.

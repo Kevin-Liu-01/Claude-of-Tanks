@@ -110,3 +110,6 @@ plan is the unlock, but this blender-re-repaired print needs an
 orchestrator node audit first (comet-class extract frame unreliability).
 TRACK CONTAINMENT LAW (shared cromwellHull fixes): audit 1235/1435 vox ->
 0/4. Banked: min 0.6 (hull 25.2, turret 28.7, stations 37.3, dims 99.7).
+
+## 2026-08-06 FLEET MUZZLE-BORE + §C.1 WINDING SWEEP (fleet-sweep one-liner)
+- §B3.1 bore on the 20-pdr tube; §C.1 2 reversed re-oriented; F-vs-D 49->17 (same class); gate HELD x2 EXACT 0.6; hash not frozen; mantlet mass verified per MANTLETS-MANDATORY (db9168c). Mechanism: kit.js muzzleBore shadow-named furniture + orientedSlab guard (3fca39b / 1017339); end-on+quarter crops shots/muzzle-sweep/{before,after}/.

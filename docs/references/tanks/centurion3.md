@@ -407,3 +407,6 @@ campaign start -> end; evaluator rig parity OK (max yawProxy 1.0°).
 Residuals held by owners: Y2 plan skirt seam lines (tone-gate owner),
 ±13.1° quarter serration-envelope class (X4, evidence-closed), two
 r6-era projection-gap micro-voids (identical coordinates, priced).
+
+## 2026-08-06 FLEET MUZZLE-BORE + §C.1 WINDING SWEEP (fleet-sweep one-liner)
+- §B3.1 bore on the 20-pdr tube face (gunLen-0.02); §C.1 8 reversed re-oriented (rear deck bands, belly, cheek bins); F-vs-D 32->0; gate HELD x2 EXACT 91.1 PASS; hash fea56ecc -> 46b03895 CANDIDATE; mantlet mass verified per MANTLETS-MANDATORY (db9168c). Mechanism: kit.js muzzleBore shadow-named furniture + orientedSlab guard (3fca39b / 1017339); end-on+quarter crops shots/muzzle-sweep/{before,after}/.

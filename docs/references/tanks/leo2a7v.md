@@ -205,3 +205,6 @@ bare band face on long stretches.
 - wedgeTurretShell apex tier (above).
 - Whole/stations rows wobble 6.2..9.5 run-to-run inside the cap band
   (defective-print comparison noise; dims/floaters stable at 100 x2).
+
+## 2026-08-06 FLEET MUZZLE-BORE + §C.1 WINDING SWEEP (fleet-sweep one-liner)
+- §B3.1 bore via leoMantletGun (len 5.56); §C.1 13 reversed re-oriented; F-vs-D 281->0; gate HELD x2 EXACT (certified-ceiling row 0/8.9/dims100); hash not frozen; mantlet mass verified per MANTLETS-MANDATORY (db9168c). Mechanism: kit.js muzzleBore shadow-named furniture + orientedSlab guard (3fca39b / 1017339); end-on+quarter crops shots/muzzle-sweep/{before,after}/.

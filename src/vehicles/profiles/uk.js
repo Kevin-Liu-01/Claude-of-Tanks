@@ -9,14 +9,14 @@
 // fv510 GLBs and the re-repaired m_bergman centurion / comet / charioteer /
 // A30 prints (assembled turrets — the honest curves).
 import * as THREE from 'three';
-import { KIT, FITTINGS, evenStations } from './kit.js';
+import { KIT, FITTINGS, evenStations, muzzleBore, orientedSlab } from './kit.js';
 import { vehicleAmbientFloorHook } from '../materials.js';
 
 const {
   box, cylX, cylY, cylZ, sph, torus, slab, frustum, lathe, buildRunningGear,
   buildGun, liftEye, periscope, headlight, cupola, pintleMG, smokeCluster,
   stowage, tarpRoll, jerryCan, spareTrackStrip, xform,
-} = new Proxy({}, { get: (_, name) => (...args) => KIT[name](...args) });
+} = new Proxy({}, { get: (_, name) => (...args) => (name === 'slab' ? orientedSlab : KIT[name])(...args) }); // §C.1 winding guard on slab
 
 // ---------------------------------------------------------------------------
 // Curve helpers (same discipline as the Abrams module: the deck/belly tables
@@ -938,6 +938,7 @@ function chieftain5Build(P) {
   P.addGunExtra(cylZ(0.145, 0.62, 16, 0.215), 0, 0, 0.45);
   P.addGunExtra(cylZ(0.152, 0.05, 16), 0, 0, 0.72);
   buildGun(P, { len: 6.40, r: 0.105, sleeve: false, evac: null, collar: false, baseR: 0.16 });
+  muzzleBore(P, { len: 6.40, r: 0.105 });                     // §B3.1 (shadow-named, 3fca39b)
   P.add('gun', cylZ(0.104, 0.09, 12), 0, 0, 6.40 - 0.5);
   P.decal('turret', 'number', P.spec.visual.number || '', 0.25, [1.1, 0.3, -0.6], Math.PI / 2);
   P.topY = 1.15;
@@ -1878,6 +1879,7 @@ function challenger1Build(P) {
   P.addGunExtraDark(box(1.01, 0.36, 0.22), 0.135, -0.42, 3.25);
   // Published 11.50 overall: tail -4.16 -> muzzle +7.34.
   buildGun(P, { len: 6.99, r: 0.095, sleeve: false, evac: 0, collar: false, baseR: 0.15 });
+  muzzleBore(P, { len: 6.99, r: 0.095 });                     // §B3.1 (shadow-named, 3fca39b)
   P.addGunExtra(box(0.24, 0.24, 0.62), 0, 0, 3.99);
   // push-2 MRS: the ref carries muzzle mass across BOTH 7.10/7.23 side
   // cols at 1.981 (our thin 0.108 ring at 6.62 left the last col on the
@@ -2967,6 +2969,7 @@ function centurionBuild(P, mk) {
     // L7: the print tube reads ~0.28 thick the whole way (sleeved); the
     // muzzle collar runs to the tip so the plan trace holds the last bins.
     buildGun(P, { len: gunLen, r: 0.125, sleeve: false, evac: null, collar: false, baseR: 0.15 });
+    muzzleBore(P, { len: gunLen, r: 0.125 });               // §B3.1 (shadow-named, 3fca39b)
     // r5: the print's L7 extractor drum is TOP-BIASED — authored offset.
     // r6: the live paired columns read the drum band 2.115..1.776 (offset
     // +0.04, r 0.17) and LONGER than the r5 read — full radius from build
@@ -2992,6 +2995,7 @@ function centurionBuild(P, mk) {
     // 20-pdr: the print tube reads nearly as thick as the L7's (0.25); a
     // hair fatter here so the thin tube holds its plan center columns.
     buildGun(P, { len: gunLen, r: 0.125, sleeve: false, evac: 0.52, evacR: 1.12, collar: false, baseR: 0.145 });
+    muzzleBore(P, { len: gunLen, r: 0.125 });               // §B3.1 (shadow-named, 3fca39b)
     P.add('gun', cylZ(0.138, 0.6, 12, 0.148), 0, 0, 0.5);
     P.add('gun', cylZ(0.145, 0.5, 10), 0, 0, gunLen - 0.25);
   }
@@ -3149,10 +3153,16 @@ function cromwellHull(P, o) {
     [bandW / 2, bowLo + 0.12, halfL * 0.99], [-bandW / 2, bowLo + 0.12, halfL * 0.99],
     [-bandW / 2 * 0.98, bowY, bowZ], [bandW / 2 * 0.98, bowY, bowZ],
     [bandW / 2 * 0.98, noseTipY, halfL], [-bandW / 2 * 0.98, noseTipY, halfL]));
+  // §C.1 per-face adjudication (sweep 2026-08-06): the authored rings
+  // CROSSED in y along the run (bottom ring above the top ring at the bowZ
+  // end) — a twisted prism the winding guard cannot repair (out2/6 mixed;
+  // comet/charioteer/a30 read 2.7 cm inward-facing skins on every top-down
+  // glacis ray). Same eight corners, rings re-assigned so bottom stays
+  // below top at both ends; the guard normalizes handedness.
   P.add('hull', slab(                       // narrow under-slab to the belly
-    [-chanIn, bandY - 0.05, bowZ], [chanIn, bandY - 0.05, bowZ],
-    [chanIn, bandY + 0.1, halfL * 0.99], [-chanIn, bandY + 0.1, halfL * 0.99],
     [-chanIn, bowLo + 0.01, bowZ], [chanIn, bowLo + 0.01, bowZ],
+    [chanIn, bandY + 0.1, halfL * 0.99], [-chanIn, bandY + 0.1, halfL * 0.99],
+    [-chanIn, bandY - 0.05, bowZ], [chanIn, bandY - 0.05, bowZ],
     [chanIn, noseTipY, halfL], [-chanIn, noseTipY, halfL]));
   // Lower toe/tail solids stay INSIDE the track channel (containment law:
   // the wrap arcs + climbing runs at |x| chanIn..width/2 own those zones).
@@ -3317,6 +3327,7 @@ function cometBuild(P, o) {
   P.addGunExtraDark(cylZ(0.026, 0.12, 8), -0.24, 0.12, 0.72);
   P.addGunExtra(cylZ(0.115, 0.3, 12, 0.145), 0, 0, 0.90);
   buildGun(P, { len: o.gunLength, r: 0.115, brake: 'single', sleeve: false, evac: null, collar: false, baseR: 0.16 });
+  muzzleBore(P, { len: o.gunLength, r: 0.115, brake: 'single' });                     // §B3.1 (shadow-named, 3fca39b)
   P.decal('turret', 'number', P.spec.visual.number || '', 0.25, [1.0, h * 0.42, -0.35], Math.PI / 2);
   P.topY = h + 0.25;
 }
@@ -3366,6 +3377,7 @@ function charioteerBuild(P, o) {
   }
   P.addGunExtra(cylZ(0.095, 0.42, 12, 0.125), 0, 0, 0.86);
   buildGun(P, { len: o.gunLength, r: 0.105, sleeve: false, evac: 0.52, evacR: 1.3, collar: true, baseR: 0.15 });
+  muzzleBore(P, { len: o.gunLength, r: 0.105 });                     // §B3.1 (shadow-named, 3fca39b)
   P.add('gun', cylZ(0.14, 1.5, 12, 0.15), 0, 0, 1.9);
   P.add('gun', cylZ(0.12, 1.2, 12, 0.14), 0, 0, 3.25);
   P.decal('turret', 'number', P.spec.visual.number || '', 0.25, [1.0, 0.24, -0.3], Math.PI / 2);
@@ -3402,6 +3414,7 @@ function a30Build(P, o) {
   P.addGunExtra(cylZ(0.088, 0.44, 12, 0.115), 0, 0, 0.8);
   P.addGunExtra(cylZ(0.062, 0.1, 10), 0, 0, 1.04);
   buildGun(P, { len: o.gunLength, r: 0.11, sleeve: false, evac: null, collar: true, baseR: 0.15 });
+  muzzleBore(P, { len: o.gunLength, r: 0.11 });                     // §B3.1 (shadow-named, 3fca39b)
   P.decal('turret', 'number', P.spec.visual.number || '', 0.25, [0.86, h * 0.35, -0.35], Math.PI / 2);
   P.topY = h + 0.25;
 }
@@ -3819,6 +3832,8 @@ function fv510Build(P) {
   // muzzle never clears the +3.17 nose, so overhang masks stay empty) =====
   P.addGunExtra(cylZ(0.075, 0.30, 12, 0.092), 0, 0, 0.26);
   buildGun(P, { len: 2.02, r: 0.030, sleeve: false, evac: null, collar: false, baseR: 0.058 });
+  muzzleBore(P, { len: 2.02, r: 0.030 });                     // §B3.1 (shadow-named, 3fca39b)
+  // RARDEN 30 mm: autocannon-scale disc (law: smaller disc)
   P.addGunExtra(cylZ(0.041, 0.60, 10, 0.046), 0, 0, 0.82);
   P.addGunExtra(cylZ(0.0335, 0.55, 10), 0, 0, 1.42);
   // perforated flash hider (photo-parity r2 gap #4: the vent read — four
@@ -4197,6 +4212,10 @@ function vickersMk1Build(P) {
   P.add('gun', cylZ(0.158, 0.55, 14), 0, 0.03, 2.158);          // extractor
   P.add('gunDark', cylZ(0.05, 0.11, 10), 0, 0, 4.475);          // muzzle neck
   P.add('gun', cylZ(0.132, 0.16, 12), 0, 0, 4.61);              // tip collar
+  // §B3.1 (shadow-named, 3fca39b): bore on the TIP COLLAR face (4.69) —
+  // the L7A1's neck+collar run PAST the buildGun tube face (first seat at
+  // len-0.02 buried the furniture behind the collar; crop-caught).
+  muzzleBore(P, { z: 4.69, r: 0.132 });
   P.decal('turret', 'number', P.spec.visual.number || '', 0.24, [1.03, 0.35, -0.35], Math.PI / 2);
   P.topY = 1.2;
 }

@@ -1397,3 +1397,6 @@ Round shots: shots/critic-isu122s-contain1/.
 **RE-FREEZE HASH fdb91d50 (34 meshes / 368714 verts)** — supersedes
 b472e956; re-freeze lands at the orchestrator's landing after the re-cert
 critic verdict per §H.3.
+
+## 2026-08-06 FLEET MUZZLE-BORE + §C.1 WINDING SWEEP (fleet-sweep one-liner)
+- §B3.1 NO bore added - graduated bore grammar compliant; §C.1 2 reversed side strips re-oriented; F-vs-D 0; gate HELD x2 EXACT 90.3 PASS; hash 60b08d10 -> 8f420d18 CANDIDATE (winding-only); mantlet mass verified per MANTLETS-MANDATORY (db9168c). Mechanism: kit.js muzzleBore shadow-named furniture + orientedSlab guard (3fca39b / 1017339); end-on+quarter crops shots/muzzle-sweep/{before,after}/.

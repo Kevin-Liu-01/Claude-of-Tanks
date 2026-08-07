@@ -158,3 +158,6 @@ worst err 2.58 m at z -1.51). Worst columns: side_hull z 0.07 (refTop
 front_whole z 1.51 (err 0.77). Work order: reconcile the proc height
 datum first (cheap +dims), then price a §E normalize before chasing
 curves.
+
+## 2026-08-06 FLEET MUZZLE-BORE + §C.1 WINDING SWEEP (fleet-sweep one-liner)
+- §B3.1 bore on the L30 tube (len 6.29); boot collar+seam mantlet verified; §C.1 0 reversed; F-vs-D 0 (owner-named line CLEAN); gate HELD x2 EXACT (broken row pre-existing - fresh-oracle re-baseline is the queued orchestrator item); hash not frozen; mantlet mass verified per MANTLETS-MANDATORY (db9168c). Mechanism: kit.js muzzleBore shadow-named furniture + orientedSlab guard (3fca39b / 1017339); end-on+quarter crops shots/muzzle-sweep/{before,after}/.

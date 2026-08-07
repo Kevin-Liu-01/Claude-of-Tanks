@@ -317,3 +317,6 @@ NEXT (the +10 rule is DOUBLE-met; ~84-85 is the structural ceiling under
 the muzzle convention): the owner's 6.6-vs-6.468 row ruling (retires ~3.1
 x2 rows), rack side-frame deepening, front-flank wall-top work, then the
 visual pipeline (wheelMul dial + dressing variety per §H.4).
+
+## 2026-08-06 FLEET MUZZLE-BORE + §C.1 WINDING SWEEP (fleet-sweep one-liner)
+- §B3.1 bore on the M4 howitzer collar (len-0.01); §C.1 3 reversed re-oriented; F-vs-D 34->0; gate HELD x2 EXACT 84 (fresh pre==post; 1 benign mixed strip); hash not frozen; mantlet mass verified per MANTLETS-MANDATORY (db9168c). Mechanism: kit.js muzzleBore shadow-named furniture + orientedSlab guard (3fca39b / 1017339); end-on+quarter crops shots/muzzle-sweep/{before,after}/.

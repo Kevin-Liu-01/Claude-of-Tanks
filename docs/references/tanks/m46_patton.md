@@ -752,3 +752,6 @@ in-profile deck-slat delivery). HASH FROZEN: **dfacd57c** (100 meshes /
 regenerated at the graduation state. Banked carry-forward: aft-band
 louvre density (cfg.deckSlats extension), dome-blotch distribution
 (materials lane), C4 verticals (family lane).
+
+## 2026-08-06 FLEET MUZZLE-BORE + §C.1 WINDING SWEEP (fleet-sweep one-liner)
+- §B3.1 bore on the m3a1 muzzle-face ellipse (len+0.003); §C.1 31 reversed re-oriented (26 LEFT fender strips buildPershing:1590, t26Cast steps, mantlet slab); F-vs-D 54->0; gate HELD x2 EXACT 91.2 PASS; hash 90ebf864 -> 108806c8 CANDIDATE; mantlet mass verified per MANTLETS-MANDATORY (db9168c). Mechanism: kit.js muzzleBore shadow-named furniture + orientedSlab guard (3fca39b / 1017339); end-on+quarter crops shots/muzzle-sweep/{before,after}/.

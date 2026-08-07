@@ -1,0 +1,137 @@
+<!doctype html>
+<!-- TEMP (misc missing-left-side round, 2026-08-06): §C winding audit +
+     left/right flank raycast probe on a PROCEDURAL build. Patches KIT.slab
+     before createTank so every profile slab call is censused: a slab whose
+     six faces point INWARD is backface-culled in every FrontSide render
+     (game + critic) while staying fully visible to the gate's DoubleSide
+     mask material — the §C MISSING-SIDE class. Raycast probe: mirrored
+     horizontal rays at (y,z) grid from both flanks; Raycaster respects
+     material.side, so a culled left wall reads as a deeper first-hit |x|
+     than its right mirror. -->
+<meta charset="utf-8">
+<title>tmp-sweep-windprobe</title>
+<script type="module">
+import * as THREE from 'three';
+import { KIT } from '/src/vehicles/tankFactory.js';
+import { createTank } from '/src/vehicles/tankFactory.js';
+
+const params = new URLSearchParams(location.search);
+const id = params.get('id') || 'ariete';
+
+// ---- 1. instrument KIT.slab (profiles destructure at build time) ----------
+const slabRecords = [];
+const origSlab = KIT.slab;
+KIT.slab = function (...corners) {
+  const [b0, b1, b2, b3, t0, t1, t2, t3] = corners;
+  const c8 = [b0, b1, b2, b3, t0, t1, t2, t3];
+  const cen = [0, 1, 2].map((k) => c8.reduce((s, p) => s + p[k], 0) / 8);
+  const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+  const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  // the six faces exactly as slab() builds them
+  const faces = [
+    [b0, b1, t1, t0], [b1, b2, t2, t1], [b2, b3, t3, t2],
+    [b3, b0, t0, t3], [t0, t1, t2, t3], [b3, b2, b1, b0],
+  ];
+  let outward = 0;
+  for (const f of faces) {
+    const n = cross(sub(f[1], f[0]), sub(f[2], f[0]));
+    const fc = [0, 1, 2].map((k) => (f[0][k] + f[1][k] + f[2][k] + f[3][k]) / 4);
+    if (dot(n, sub(fc, cen)) > 0) outward++;
+  }
+  // signed volume of the triangle soup about the origin
+  let vol = 0;
+  for (const f of faces) {
+    for (const tri of [[f[0], f[1], f[2]], [f[0], f[2], f[3]]]) {
+      vol += dot(tri[0], cross(tri[1], tri[2])) / 6;
+    }
+  }
+  // call-site line from the stack (vite serves unbundled ESM: real lines)
+  const stack = (new Error()).stack || '';
+  const site = (stack.split('\n').find((l) => /src\/vehicles\/(profiles\/)?\w+\.js/.test(l) && !/tankFactory\.js/.test(l)) || '')
+    .replace(/^\s+at\s+/, '').replace(location.origin, '');
+  const xs = c8.map((p) => p[0]);
+  slabRecords.push({
+    i: slabRecords.length, outward, vol: +vol.toFixed(5),
+    xMin: +Math.min(...xs).toFixed(3), xMax: +Math.max(...xs).toFixed(3),
+    zMin: +Math.min(...c8.map((p) => p[2])).toFixed(3),
+    zMax: +Math.max(...c8.map((p) => p[2])).toFixed(3),
+    yMin: +Math.min(...c8.map((p) => p[1])).toFixed(3),
+    yMax: +Math.max(...c8.map((p) => p[1])).toFixed(3),
+    site,
+  });
+  return origSlab.apply(this, corners);
+};
+
+// ---- 2. build ---------------------------------------------------------------
+const engineCtx = { setupShadowMaterial: (m) => m, anisotropy: 1, renderer: null };
+const tank = createTank(id, engineCtx, { camoSeed: 4242, quality: 'high', proceduralOnly: true });
+tank.root.updateMatrixWorld(true);
+
+// ---- 3. FrontSide-vs-DoubleSide raycast probe (§C.1 discriminator) ---------
+// The gate masks are DoubleSide; the game culls back-faces. Casting every
+// ray TWICE — once against the materials as built (FrontSide) and once with
+// every material forced DoubleSide — isolates exactly the surfaces players
+// lose: a first-hit that only exists in the DoubleSide pass is a
+// reversed-winding surface. Legit asymmetric fittings cancel out (both
+// passes agree), so unlike the L/R mirror probe this has no design false
+// positives. Flank rays (y,z grid, both sides) + top-down rays (x,z grid).
+const caster = new THREE.Raycaster();
+const meshes = [];
+tank.root.traverse((o) => {
+  if ((o.isMesh || o.isInstancedMesh) && o.geometry && !/shadow/i.test(o.name || '')) meshes.push(o);
+});
+const mats = new Set();
+for (const m of meshes) (Array.isArray(m.material) ? m.material : [m.material]).forEach((x) => x && mats.add(x));
+function setSide(side) {
+  for (const m of mats) { if (m.__side0 === undefined) m.__side0 = m.side; m.side = side; }
+}
+function restoreSide() { for (const m of mats) m.side = m.__side0; }
+function firstHit(ox, oy, oz, dx, dy, dz) {
+  caster.set(new THREE.Vector3(ox, oy, oz), new THREE.Vector3(dx, dy, dz));
+  const hits = caster.intersectObjects(meshes, false);
+  return hits.length ? { d: hits[0].distance, name: hits[0].object.name || '(unnamed)' } : null;
+}
+const rays = [];
+for (let y = 0.3; y <= 3.0; y += 0.1) {
+  for (let z = -4.6; z <= 4.6; z += 0.2) {
+    rays.push(['L', -8, +y.toFixed(2), +z.toFixed(2), 1, 0, 0]);
+    rays.push(['R', 8, +y.toFixed(2), +z.toFixed(2), -1, 0, 0]);
+  }
+}
+for (let x = -2.0; x <= 2.0; x += 0.15) {
+  for (let z = -4.6; z <= 4.6; z += 0.2) {
+    rays.push(['T', +x.toFixed(2), 8, +z.toFixed(2), 0, -1, 0]);
+  }
+}
+const deficits = [];
+for (const [tag, a, b, c, dx, dy, dz] of rays) {
+  const [ox, oy, oz] = tag === 'T' ? [a, b, c] : [a, b, c];
+  setSide(THREE.FrontSide);
+  const f = firstHit(ox, oy, oz, dx, dy, dz);
+  setSide(THREE.DoubleSide);
+  const d = firstHit(ox, oy, oz, dx, dy, dz);
+  if (d && (!f || f.d - d.d > 0.02)) {
+    deficits.push({
+      view: tag, at: tag === 'T' ? `x ${a} z ${c}` : `y ${b} z ${c}`,
+      frontD: f ? +f.d.toFixed(3) : null, doubleD: +d.d.toFixed(3),
+      gap: +((f ? f.d : 99) - d.d).toFixed(3), hit: d.name,
+    });
+  }
+}
+restoreSide();
+deficits.sort((a, b) => b.gap - a.gap);
+const perView = {};
+for (const r of deficits) perView[r.view] = (perView[r.view] || 0) + 1;
+
+window.__PROBE = {
+  id,
+  slabs: slabRecords,
+  reversed: slabRecords.filter((r) => r.outward <= 2),
+  mixed: slabRecords.filter((r) => r.outward > 2 && r.outward < 6),
+  deficits: deficits.slice(0, 120),
+  deficitCount: deficits.length,
+  perView,
+};
+window.__PROBE_READY = true;
+</script>

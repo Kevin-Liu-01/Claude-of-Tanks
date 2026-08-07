@@ -1118,3 +1118,6 @@ Fittings census mg0+0d unchanged (packet-justified hand-authored MG3,
 
 ### §B4 SHOE-ROUND RE-CERT RATIFIED (2026-08-06): RE-FREEZE cff6f478 CONFIRMED
 (docs/critique/shaded-parity-leopard-shoe-recert.md; floors 9.0-9.1).
+
+## 2026-08-06 FLEET MUZZLE-BORE + §C.1 WINDING SWEEP (fleet-sweep one-liner)
+- §B3.1 existing dark-on-dark face ring kept; shadow furniture supplies the void read (z 5.5125); §C.1 39 reversed re-oriented (leoHullV3 sponson/glacis, wedgeTurretV3 LEFT complexes, nose trio); F-vs-D 253->0; gate HELD x2 EXACT 90.9 PASS; hash cff6f478 -> 09912270 CANDIDATE; mantlet mass verified per MANTLETS-MANDATORY (db9168c). Mechanism: kit.js muzzleBore shadow-named furniture + orientedSlab guard (3fca39b / 1017339); end-on+quarter crops shots/muzzle-sweep/{before,after}/.

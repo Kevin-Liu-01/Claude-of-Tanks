@@ -788,3 +788,6 @@ the §10 re-freeze in the landing commit.
   ground 0.13): PASS. fv510 front-drive sprocket 0.58 / idler 0.55 (wrap
   bottoms ~0.19 vs wheel bottom 0.05): PASS — soft but present ramps
   both ends, period-correct for the Warrior's low round idlers.
+
+## 2026-08-06 FLEET MUZZLE-BORE + §C.1 WINDING SWEEP (fleet-sweep one-liner)
+- §B3.1 bore on the plain tube face (6.38); gun x-offset rides the gun frame; §C.1 1 reversed re-oriented (gun-tip collar sliver); F-vs-D 0->0; gate HELD x2 EXACT 91.2 PASS; hash 94c09bb0 -> d4f2a9a6 CANDIDATE; mantlet mass verified per MANTLETS-MANDATORY (db9168c). Mechanism: kit.js muzzleBore shadow-named furniture + orientedSlab guard (3fca39b / 1017339); end-on+quarter crops shots/muzzle-sweep/{before,after}/.

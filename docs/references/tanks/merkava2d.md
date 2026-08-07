@@ -137,3 +137,6 @@ see merkava2b.md §B3.1 for mechanics).
   content cannot strand hull-side. The flag belongs to the 2D rebuild
   lane's backlog (34.9 row).
 - Yaw pair at final bytes (shots/merkava-gunrun/pairs/*merkava2d).
+
+## 2026-08-06 FLEET MUZZLE-BORE + §C.1 WINDING SWEEP (fleet-sweep one-liner)
+- §B3.1 bore via shared mark gun; §C.1 3 reversed re-oriented; F-vs-D 12->2; gate HELD x2 EXACT 34.9; hash not frozen; mantlet mass verified per MANTLETS-MANDATORY (db9168c). Mechanism: kit.js muzzleBore shadow-named furniture + orientedSlab guard (3fca39b / 1017339); end-on+quarter crops shots/muzzle-sweep/{before,after}/.

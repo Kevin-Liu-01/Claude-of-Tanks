@@ -644,3 +644,6 @@ invisible edge-on from ±z — an ordered rear read needs rear-facing
 rows. Evidence: shots/critic-centurion5/ + shots/visual-eval-
 centurion5/ (fresh, final bytes 52422a00), tools/tmp-uk-r5-oblq.mjs
 (probe transcript in the round log).
+
+## 2026-08-06 FLEET MUZZLE-BORE + §C.1 WINDING SWEEP (fleet-sweep one-liner)
+- §B3.1 bore on the L7 tube face; §C.1 8 reversed re-oriented; F-vs-D 28->0; gate HELD x2 EXACT 90.7 PASS; hash not frozen; mantlet mass verified per MANTLETS-MANDATORY (db9168c). Mechanism: kit.js muzzleBore shadow-named furniture + orientedSlab guard (3fca39b / 1017339); end-on+quarter crops shots/muzzle-sweep/{before,after}/.

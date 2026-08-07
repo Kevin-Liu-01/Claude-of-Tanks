@@ -682,3 +682,6 @@ verts) — any change is a graduate-change per §10. userdrops6 recovered
 registration RETIRED (loop + USERDROP6_SOURCED_IDS); mirrored into the
 three measurement maps; variants backfill clean; icons regenerated
 procedural (5 by exact name from a clean worktree).
+
+## 2026-08-06 FLEET MUZZLE-BORE + §C.1 WINDING SWEEP (fleet-sweep one-liner)
+- §B3.1 bore on the m36 deflector rounded exit (len+0.01); §C.1 11 reversed re-oriented; F-vs-D 36->0; gate HELD x2 EXACT 91 PASS; hash 53b6123a -> 2fc99c50 CANDIDATE; mantlet mass verified per MANTLETS-MANDATORY (db9168c). Mechanism: kit.js muzzleBore shadow-named furniture + orientedSlab guard (3fca39b / 1017339); end-on+quarter crops shots/muzzle-sweep/{before,after}/.

@@ -121,3 +121,6 @@ Numbers (r0 -> banked): min 0.5 -> 11.3 (turret 13.4 -> 39.4, stations
 24.7 -> 61.3, whole 0.5 -> 11.3, hull 35.2 -> 32.0, dims 100). Residual
 floor: front rows (crown x-profile + track/guard bands) — next round
 works front_whole worst-first from fresh boards.
+
+## 2026-08-06 FLEET MUZZLE-BORE + §C.1 WINDING SWEEP (fleet-sweep one-liner)
+- §B3.1 bore through the 77mm single brake (o.gunLength+0.02); §C.1 2 reversed re-oriented; F-vs-D 83->20 (2.7cm skewed-loft nose skins - base-21 rebuild class residual, cromwellHull under-slab ring-cross FIXED at source); gate HELD x2 EXACT 11.3 (relic row); hash not frozen; mantlet mass verified per MANTLETS-MANDATORY (db9168c). Mechanism: kit.js muzzleBore shadow-named furniture + orientedSlab guard (3fca39b / 1017339); end-on+quarter crops shots/muzzle-sweep/{before,after}/.

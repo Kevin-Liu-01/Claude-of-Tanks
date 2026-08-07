@@ -2167,3 +2167,6 @@ vehicle's open rack zone, intentionally left.
 
 ### §B4 SHOE-ROUND RE-CERT RATIFIED (2026-08-06): RE-FREEZE fa1a47fc CONFIRMED
 (docs/critique/shaded-parity-leopard-shoe-recert.md; floors 9.0-9.1).
+
+## 2026-08-06 FLEET MUZZLE-BORE + §C.1 WINDING SWEEP (fleet-sweep one-liner)
+- §B3.1 r9 flat dark end-cap kept; furniture adds rim+recess read (z 4.985); §C.1 14 reversed re-oriented; F-vs-D 54->1 (3cm mixed sliver); gate HELD x2 EXACT - NOTE pre-existing turret 0.2 at HEAD (ledger said 62.8; batch-37 oracle revert suspected - ORCHESTRATOR ITEM); hash fa1a47fc -> bb2bb60c CANDIDATE; mantlet mass verified per MANTLETS-MANDATORY (db9168c). Mechanism: kit.js muzzleBore shadow-named furniture + orientedSlab guard (3fca39b / 1017339); end-on+quarter crops shots/muzzle-sweep/{before,after}/.

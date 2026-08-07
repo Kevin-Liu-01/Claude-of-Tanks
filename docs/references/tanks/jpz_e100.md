@@ -79,3 +79,6 @@ the full 1.60 half-width (the ref's belly line between the tracks is 0.45
 top edge projected a wide diagonal in front view (narrowed to the ref's
 (1.02, 3.04)->(1.30, 2.58) corner line); fender lip pulled inboard to
 ±1.72 (the ref's skirt tops at x 2.0-2.15 are 1.0-1.45).
+
+## 2026-08-06 FLEET MUZZLE-BORE + §C.1 WINDING SWEEP (fleet-sweep one-liner)
+- §B3.1 bore inside the 17cm muzzle collar step (hullG, z 6.85); §C.1 0 reversed; F-vs-D 0; gate HELD x2 EXACT 66.5; hash not frozen; mantlet mass verified per MANTLETS-MANDATORY (db9168c). Mechanism: kit.js muzzleBore shadow-named furniture + orientedSlab guard (3fca39b / 1017339); end-on+quarter crops shots/muzzle-sweep/{before,after}/.

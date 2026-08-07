@@ -58,32 +58,32 @@ re-freeze NEW hash, all in ONE commit.
 
 | id | hash | notes |
 |---|---|---|
-| m60a1 | fbf9f4cc | never gated |
-| m60a3 | 051c454c | never gated |
+| m60a1 | fbf9f4cc -> 912de524 CANDIDATE (bore+winding sweep, batch re-cert in flight) |
+| m60a3 | 051c454c -> 097c35a2 CANDIDATE (bore+winding sweep, batch re-cert in flight) |
 | kv2 | 382b2310 | freeze-verify only |
-| leo2a6 | cff6f478 | §B4 shoe re-cert RATIFIED |
+| leo2a6 | cff6f478 -> 09912270 CANDIDATE (bore+winding sweep, batch re-cert in flight) |
 | m1a1 | 5290e3bc -> ba45613c CANDIDATE (owner visibility round: CROWS/shields/sterns; §B7-class capped rows, re-cert in flight) |
 | m1a1ha | 4023964c -> ff97bc44 CANDIDATE (owner visibility round: CROWS/shields/sterns; §B7-class capped rows, re-cert in flight) |
 | m1a2_tejas | 93a9a890 -> 4891abb6 CANDIDATE (owner visibility round: CROWS/shields/sterns; §B7-class capped rows, re-cert in flight) |
 | merkava3b | REMOVED BY OWNER 2026-08-06 (roster prune; was 8bb8d984, packet historical) |
-| merkava3c | b7318b10 | gun-run re-cert RATIFIED (floor 9.1) |
-| kf51 | fcc60d6c | §B4 shoe re-cert RATIFIED (notch = real connector slot) |
-| isu122s | 60b08d10 | |
+| merkava3c | b7318b10 -> 8b7ed9bc CANDIDATE (bore+winding sweep, batch re-cert in flight) |
+| kf51 | fcc60d6c -> 9ac547ac CANDIDATE (bore+winding sweep, batch re-cert in flight) |
+| isu122s | 60b08d10 -> 8f420d18 CANDIDATE (bore+winding sweep, batch re-cert in flight) |
 | isu152 | 8e2f75c0 | |
-| merkava3d | 6b97616c | re-frozen 0e47256 |
+| merkava3d | 6b97616c -> 39de83c8 CANDIDATE (bore+winding sweep, batch re-cert in flight) |
 | pt91m | 2cf10e23 | |
 | t72b3m | 1e1ca4b8 | |
-| merkava1b | 470f3665 | re-frozen 0e47256 |
+| merkava1b | 470f3665 -> 2cc7a76c CANDIDATE (bore+winding sweep, batch re-cert in flight) |
 | m1a2 | 75e981e0 -> 4778c7a8 CANDIDATE (owner visibility round: CROWS/shields/sterns; §B7-class capped rows, re-cert in flight) |
-| chieftain5 | 94c09bb0 | |
+| chieftain5 | 94c09bb0 -> d4f2a9a6 CANDIDATE (bore+winding sweep, batch re-cert in flight) |
 | t84 | 04707a9c | |
-| m47_patton | 53b6123a | |
-| leo2a5 | d34a0a58 | §B4 shoe re-cert RATIFIED (flap split priced UP 9.1) |
-| leo2_revolution | fa1a47fc | ring-gap CLOSED, re-cert RATIFIED floor 9.1 mean 9.18 — owner's disembodied read dead |
-| m46_patton | 90ebf864 | |
-| centurion3 | fea56ecc | GRADUATED fd2c365 (24th, Centurion line's first) |
+| m47_patton | 53b6123a -> 2fc99c50 CANDIDATE (bore+winding sweep, batch re-cert in flight) |
+| leo2a5 | d34a0a58 -> e215a738 CANDIDATE (bore+winding sweep, batch re-cert in flight) |
+| leo2_revolution | fa1a47fc -> bb2bb60c CANDIDATE (bore+winding sweep, batch re-cert in flight) |
+| m46_patton | 90ebf864 -> 108806c8 CANDIDATE (bore+winding sweep, batch re-cert in flight) |
+| centurion3 | fea56ecc -> 46b03895 CANDIDATE (bore+winding sweep, batch re-cert in flight) |
 | m1a2_sepv2 | b284b8ac -> 83277374 CANDIDATE (owner visibility round: CROWS/shields/sterns; §B7-class capped rows, re-cert in flight) |
-| m26_pershing | 2f579de8 | GRADUATED 2026-08-05 (26th; floor 9.0 x14 second sitting; warp->re-anchor->retune arc) |
+| m26_pershing | 2f579de8 -> 65c564c0 CANDIDATE (bore+winding sweep, batch re-cert in flight) |
 
 *Historical note: the 2026-08-05 INVISIBLE-LOD fix mass re-froze the
 then-24 stable graduates (old->new table in commit 9bf2a6d); every row
@@ -308,6 +308,11 @@ spz_puma + challenger2, (3) type99a (drum->wedge rebuild) + t34_85,
 (4) type89 + m4a3e8, (5) leo2a4, k2, fv510, tiger1 (single-dominant-
 order marginals). Also: promote the four-box probe; tmp-tank-critic
 matched-scale mode wanted; fv510 print -11% (pub sovereign, held).
+
+## 4.995 URGENT MY-LANE: leo2_revolution turret measures 0.2 at HEAD
+(ledger 62.8) — the owner's b08d1a2 GLB revert broke the batch-43
+coupled baseline; adjudicate the repair chain vs the last-good asset +
+re-baseline the §B7 cap BEFORE any revolution re-cert ratifies.
 
 ## 5. IN-FLIGHT AGENTS (SUPERSEDED BY §12 — the 2026-08-05 device
 handover interrupted these; respawn per §12)

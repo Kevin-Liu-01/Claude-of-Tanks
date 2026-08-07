@@ -91,3 +91,6 @@ at +3.4..+4.0 vs my capped blade — the packet cap: sub-gun geometry past
 +3.52 would lift hullLengthM over published); the 2.33-2.38 cupola-cluster
 stature cap (published heightM 2.14 pins the build at 2.18) still costs
 ~6-8 topPct on 3 slices and the side-row crown columns.
+
+## 2026-08-06 FLEET MUZZLE-BORE + §C.1 WINDING SWEEP (fleet-sweep one-liner)
+- §B3.1 bore inside the L74 muzzle collar on the fixed glacis gun (hullG parent, z 5.40); §C.1 1 reversed re-oriented (dozer blade slab); F-vs-D 27->0; gate HELD x2 EXACT 37.1; hash not frozen; mantlet mass verified per MANTLETS-MANDATORY (db9168c). Mechanism: kit.js muzzleBore shadow-named furniture + orientedSlab guard (3fca39b / 1017339); end-on+quarter crops shots/muzzle-sweep/{before,after}/.

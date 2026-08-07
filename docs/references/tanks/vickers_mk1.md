@@ -91,3 +91,6 @@ the box's own columns.
   Ceiling est. 86-88 without an oracle warp; a length-normalizing warp
   (z ×1.109 about the hull mid) would release ~6-9 pts across side/turret
   covers if the orchestrator lane ever queues this print.
+
+## 2026-08-06 FLEET MUZZLE-BORE + §C.1 WINDING SWEEP (fleet-sweep one-liner)
+- §B3.1 bore RE-SEATED onto the L7A1 tip collar face (4.69) after the first seat buried it behind the neck+collar (crop-caught); §C.1 8 reversed re-oriented; F-vs-D 79->0; gate HELD x2 EXACT 81.8; hash not frozen; mantlet mass verified per MANTLETS-MANDATORY (db9168c). Mechanism: kit.js muzzleBore shadow-named furniture + orientedSlab guard (3fca39b / 1017339); end-on+quarter crops shots/muzzle-sweep/{before,after}/.

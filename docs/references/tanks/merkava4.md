@@ -219,3 +219,6 @@ the tube showed none) and the drum-through-flat-wall root junction.
 ### Honest residuals
 - Rear track clip 215/330 (idler-wrap §B4 lane, unpriced by the 0-capped
   gate) and the decor census (§I) remain their documented selves.
+
+## 2026-08-06 FLEET MUZZLE-BORE + §C.1 WINDING SWEEP (fleet-sweep one-liner)
+- §B3.1 bore via shared mark gun; §C.1 3 reversed re-oriented incl. the vol -0.98 LEFT turret module + -0.74 gun-face block (players were missing the whole left module); F-vs-D 153->2; gate HELD x2 EXACT (0-curves row pre-existing, dims 91.8); hash not frozen; mantlet mass verified per MANTLETS-MANDATORY (db9168c). Mechanism: kit.js muzzleBore shadow-named furniture + orientedSlab guard (3fca39b / 1017339); end-on+quarter crops shots/muzzle-sweep/{before,after}/.

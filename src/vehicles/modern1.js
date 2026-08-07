@@ -18,7 +18,7 @@ import * as THREE from 'three';
 import { KIT } from './tankFactory.js';
 // §I fittings census: the FITTINGS import is the spelling that survives
 // synchronous top-level createTank rigs (kit.js attach-site note).
-import { FITTINGS } from './profiles/kit.js';
+import { FITTINGS, muzzleBore } from './profiles/kit.js';
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
 
 const D2R = Math.PI / 180;
@@ -561,6 +561,7 @@ function buildT72B3(P) {
   P.addGunExtra(box(0.42, 0.42, 0.28), 0, 0.02, 0.52);
   P.addGunExtra(cylZ(0.13, 0.32, 12, 0.16), 0, 0, 0.76);
   buildGun(P, { len: 6.0, r: 0.068, sleeve: true, evac: 0.48, baseR: 0.15 });
+  muzzleBore(P, { len: 6.0, r: 0.068 });                      // §B3.1 (shadow-named, 3fca39b)
   // 6 big stamped wheels (bigger/flatter than T-90 — §14.5), 3 rollers,
   // sprocket REAR
   buildRunningGear(P, {
@@ -814,6 +815,7 @@ function buildChallenger2(P) {
   // fat thermal-sleeved L30 with MRS at the muzzle + fume extractor:
   // muzzle +7.335 world = the published 11.50 overall.
   buildGun(P, { len: 6.29, r: 0.082, sleeve: true, evac: 0.58, collar: true, baseR: 0.15 });
+  muzzleBore(P, { len: 6.29, r: 0.082 });                     // §B3.1 (shadow-named, 3fca39b)
   // ZAP plate front + squadron number on turret sides
   P.decal('hull', 'number', 'KC91AA', 0.34, [0.85, 1.30, 3.20], 0, -1.36);
   P.decal('turret', 'number', P.spec.visual.number || '22', 0.36, [1.20, 0.42, -0.9], Math.PI / 2, 0, 0.06);

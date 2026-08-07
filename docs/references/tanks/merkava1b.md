@@ -1093,3 +1093,6 @@ silhouette spend on a frozen graduate (~+2.4 cm over 2-3 side columns).
 The KIT sleeve's dark seam/clamp ring pair at the sleeve gap already
 carries the station rhythm read. Left for an owner-priced round if the
 read is ordered; not spendable inside an exact-hold round.
+
+## 2026-08-06 FLEET MUZZLE-BORE + §C.1 WINDING SWEEP (fleet-sweep one-liner)
+- §B3.1 bore on the shared mark tube (gLen-0.02); §C.1 4 reversed re-oriented (loftBand, chassis rear, small-turret LEFT, ring tub); F-vs-D 2->0; gate HELD x2 EXACT 90 PASS; hash 470f3665 -> 2cc7a76c CANDIDATE; mantlet mass verified per MANTLETS-MANDATORY (db9168c). Mechanism: kit.js muzzleBore shadow-named furniture + orientedSlab guard (3fca39b / 1017339); end-on+quarter crops shots/muzzle-sweep/{before,after}/.

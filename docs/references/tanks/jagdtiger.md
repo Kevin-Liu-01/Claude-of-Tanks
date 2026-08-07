@@ -89,3 +89,6 @@ now reads as ~2 REF-only columns) — the dims trade is sovereign and the
 cost is certified: short-vs-print span ~0.26 m = cover ~1.5-2% on side rows.
 front_hull (31.1, mean 5.1%) is live authoring work (casemate face/side
 widths), not a cap.
+
+## 2026-08-06 FLEET MUZZLE-BORE + §C.1 WINDING SWEEP (fleet-sweep one-liner)
+- §B3.1 bore through the 12.8cm brake front drum (hullG, z 6.39); §C.1 0 reversed; F-vs-D 0; gate HELD x2 EXACT 31.8; hash not frozen; mantlet mass verified per MANTLETS-MANDATORY (db9168c). Mechanism: kit.js muzzleBore shadow-named furniture + orientedSlab guard (3fca39b / 1017339); end-on+quarter crops shots/muzzle-sweep/{before,after}/.

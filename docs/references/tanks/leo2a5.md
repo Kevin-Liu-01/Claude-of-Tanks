@@ -1148,3 +1148,6 @@ near-contact counts are the fleet hug signature.
 
 ### §B4 SHOE-ROUND RE-CERT RATIFIED (2026-08-06): RE-FREEZE d34a0a58 CONFIRMED
 (docs/critique/shaded-parity-leopard-shoe-recert.md; floors 9.0-9.1).
+
+## 2026-08-06 FLEET MUZZLE-BORE + §C.1 WINDING SWEEP (fleet-sweep one-liner)
+- §B3.1 bore on the r3 muzzle face block front (4.565, y+0.012); §C.1 31 reversed re-oriented (wedgeTurretV3 LEFT cheeks, cutSlab bow, rack steps); F-vs-D 148->4 (sub-6cm mixed slivers, critic-passed class); gate HELD x2: every component EXACT except turret 91.6->91.5 (-0.1, investigated: non-planar quad re-triangulation of REPAIRED left-cheek slabs; min 90.8 PASS unchanged); hash d34a0a58 -> e215a738 CANDIDATE; mantlet mass verified per MANTLETS-MANDATORY (db9168c). Mechanism: kit.js muzzleBore shadow-named furniture + orientedSlab guard (3fca39b / 1017339); end-on+quarter crops shots/muzzle-sweep/{before,after}/.

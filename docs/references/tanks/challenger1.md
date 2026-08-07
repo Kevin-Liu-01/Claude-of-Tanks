@@ -661,3 +661,6 @@ tiers/posts ARE the ref's own measured course architecture (further ease
 edge-roll is the §D width-plane carrier. Evidence:
 shots/critic-challenger1/ + shots/visual-eval-challenger1/ (fresh, final
 bytes), scratchpad crops (rear MG window, sleeve camber, roof).
+
+## 2026-08-06 FLEET MUZZLE-BORE + §C.1 WINDING SWEEP (fleet-sweep one-liner)
+- §B3.1 bore on the L11 tube face (6.97); §C.1 0 reversed (uk sslab-guarded already); F-vs-D 0 (owner-named line verified CLEAN both before+after); gate HELD x2 EXACT 90.1 PASS; hash not frozen; mantlet mass verified per MANTLETS-MANDATORY (db9168c). Mechanism: kit.js muzzleBore shadow-named furniture + orientedSlab guard (3fca39b / 1017339); end-on+quarter crops shots/muzzle-sweep/{before,after}/.

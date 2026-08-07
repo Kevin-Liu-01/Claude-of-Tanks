@@ -32,7 +32,7 @@
 // kf51 3.60, leo2a7v/leo2_revolution 4.00. Nothing may stand wider, and the
 // hull z-extents below replicate each oracle's frame.
 import * as THREE from 'three';
-import { KIT, FITTINGS, evenStations } from './kit.js';
+import { KIT, FITTINGS, evenStations, muzzleBore, orientedSlab } from './kit.js';
 import { vehicleAmbientFloorHook } from '../materials.js';
 
 // ---------------------------------------------------------------------------
@@ -89,7 +89,8 @@ function leoGear(P, g) {
 //     span, sprocket, idler, topY, skirts:[{z0,z1,y0,y1,seams,heavy}...],
 //     fans?:{z,x,r}, driverZ?, fansOnDeck?, mastZ?/mastTop?, antiSlip? }
 function leoHull(P, H) {
-  const { box, slab, cylY, cylZ, frustum, torus, headlight, liftEye, towCable, periscope } = KIT;
+  const { box, cylY, cylZ, frustum, torus, headlight, liftEye, towCable, periscope } = KIT;
+  const slab = orientedSlab;                                  // §C.1 winding guard
   const hw = H.bodyHW ?? (H.W / 2 - 0.01);
   const innerW = H.W - 2 * H.trackW - 0.12;
   const deck = H.deck;
@@ -295,7 +296,8 @@ function deckYAt(deck, z) {
 // T: { tw (wedge tip half-width), boxW, h, boxFront, boxRear, apexZ,
 //     gunY (mantlet slot center), sideModules? }
 function wedgeTurretShell(P, T) {
-  const { box, slab, frustum } = KIT;
+  const { box, frustum } = KIT;
+  const slab = orientedSlab;                                  // §C.1 winding guard
   const tw = T.tw, h = T.h;
   const aB = T.apexY ?? 0.04;                 // apex tier base (a7v rides high)
   P.add('turret', frustum(T.boxW, T.boxFront, T.boxRear, T.boxW * 0.96, T.boxFront - 0.03, T.boxRear + 0.03, T.baseY ?? 0.0, h));
@@ -331,7 +333,8 @@ function wedgeTurretShell(P, T) {
 // R: { h, boxW, boxRear, emes:{x,z}, peri:{x,z,top}, cmdr:{x,z}, loader:{x,z},
 //     mastZ, antennaZ/antennaTop, rackZ, rackTop, basketZ0?, smoke:{z,y} }
 function leoTurretRoof(P, R) {
-  const { box, cylY, cylZ, slab, periscope, liftEye, smokeCluster, stowage, jerryCan, tarpRoll, ammoCan, spareTrackStrip } = KIT;
+  const { box, cylY, cylZ, periscope, liftEye, smokeCluster, stowage, jerryCan, tarpRoll, ammoCan, spareTrackStrip } = KIT;
+  const slab = orientedSlab;                                  // §C.1 winding guard
   const h = R.h;
   // EMES 15 gunner sight: rectangular cutout recessed into the right wedge
   // roof edge — dark well, armored head, brow lid, shutter face + glass
@@ -413,6 +416,8 @@ function leoMantletGun(P, G) {
     evac: G.evac ?? 0.56, evacR: G.evacR ?? 1.9,
     collar: G.mrs !== false, baseR: Math.max(0.15, G.r * 1.9),
   });
+  // §B3.1 MUZZLE BORE (shadow-named mechanism, 3fca39b) — a4/a7v tips
+  muzzleBore(P, { len: G.len, r: G.r });
 }
 
 // ---------------------------------------------------------------------------
@@ -428,7 +433,8 @@ function leoMantletGun(P, G) {
 // station slice windows — merkava packet mechanics), heavy front skirt
 // blocks at EXACTLY the committed half-width, inset rear skirt run.
 function leoHullV3(P, H) {
-  const { box, slab, cylY, cylZ, torus, headlight, liftEye, towCable, periscope } = KIT;
+  const { box, cylY, cylZ, torus, headlight, liftEye, towCable, periscope } = KIT;
+  const slab = orientedSlab;                                  // §C.1 winding guard
   const hw = H.bodyHW;
   const deck = H.deck;                     // [[z,y] ...] crease -> tail
   const tailZ = deck[deck.length - 1][0];
@@ -846,7 +852,8 @@ function leoHullV3(P, H) {
 // by the published-height p95 budget (<= 4 raised trace columns).
 // All coordinates turret-local.
 function wedgeTurretV3(P, T) {
-  const { box, slab, frustum, cylY, cylZ, torus, periscope, liftEye, smokeCluster, stowage, jerryCan, tarpRoll } = KIT;
+  const { box, frustum, cylY, cylZ, torus, periscope, liftEye, smokeCluster, stowage, jerryCan, tarpRoll } = KIT;
+  const slab = orientedSlab;                                  // §C.1 winding guard
   const h = T.h;
   // core body: stepped boxes following the measured plan taper. Walls run
   // vertical to the chamfer line, then tilt inward to the narrower roof
@@ -1119,7 +1126,8 @@ function wedgeTurretV3(P, T) {
 // mantlet block top 2.14 over z 3.35..3.90, L/55 axis 1.94 muzzle 7.08.
 // ---------------------------------------------------------------------------
 function buildLeo2A6(P) {
-  const { box, slab, cylX, cylZ, torus, xform, frustum } = KIT;
+  const { box, cylX, cylZ, torus, xform, frustum } = KIT;
+  const slab = orientedSlab;                                  // §C.1 winding guard
   leoHullV3(P, {
     // tracks re-laid to the measured front-view ground band (ref reaches
     // ground over x 0.99..1.63 per side; the shoe PIN CAPS add trackW*0.49
@@ -1278,13 +1286,13 @@ function buildLeo2A6(P) {
     for (const s of [-1, 1]) {
       const ord = (r) => (s < 0 ? [r[1], r[0], r[3], r[2]] : r);
       const ring = (pts) => ord(pts.map(([x, y, z]) => [s * x, y, z]));
-      P.add('hull', KIT.slab(                                                  // inboard sliver: original profile
+      P.add('hull', orientedSlab(                                              // inboard sliver: original profile
         ...ring([[wx0, 1.045, 3.715], [sx1, 1.045, 3.715], [sx1, 1.045, 3.758], [wx0, 1.045, 3.758]]),
         ...ring([[wx0, 1.145, 3.675], [sx1, 1.145, 3.675], [sx1, 1.1249, 3.758], [wx0, 1.1249, 3.758]])));
-      P.add('hull', KIT.slab(                                                  // full-span nose plate (z >= 3.752 only)
+      P.add('hull', orientedSlab(                                              // full-span nose plate (z >= 3.752 only)
         ...ring([[sx1, 1.045, zn], [wx1, 1.045, zn], [wx1, 1.045, 3.758], [sx1, 1.045, 3.758]]),
         ...ring([[sx1, topAt(zn), zn], [wx1, topAt(zn), zn], [wx1, 1.1249, 3.758], [sx1, 1.1249, 3.758]])));
-      P.add('hullRubber', KIT.slab(
+      P.add('hullRubber', orientedSlab(
         ...ring([[wx0, 1.045, 3.758], [wx1, 1.045, 3.758], [wx1, 1.045, 3.77], [wx0, 1.045, 3.77]]),
         ...ring([[wx0, 1.1249, 3.758], [wx1, 1.1249, 3.758], [wx1, 1.122, 3.77], [wx0, 1.122, 3.77]])));
       P.add('hull', box(0.095, 0.06, 0.115), s * 0.9375, 1.11, 3.6575);       // hanger bracket (inboard corridor)
@@ -2237,6 +2245,11 @@ function buildLeo2A6(P) {
     P.add('gunDark', box(0.30, 0.014, 0.17), -0.0425, -0.088, 5.19);
     P.add('gunDark', KIT.cylZ(0.106, 0.025, gseg), 0, 0, 5.50);                // muzzle face ring
     P.add('gunDark', KIT.cylZ(0.088, 0.012, gseg), 0, 0, 5.506);               // recessed bore disc
+    // §B3.1 MUZZLE BORE (shadow-named mechanism, 3fca39b): the r-band disc
+    // above is dark-on-dark inside the face ring (no tonal hole end-on) —
+    // the mats.shadow furniture supplies the recessed-void read on top of
+    // the certified rings (mask/frame-excluded by construction).
+    muzzleBore(P, { z: 5.5125, r: 0.104 });
   }
   // ---- shaded-parity r2 tone family (m60a1/kv2 recipe — MATERIALS ONLY,
   // zero mask change). r1 measured: proc band near-pure black vs the ref's
@@ -2456,7 +2469,8 @@ function buildLeo2A6(P) {
 // mantlet block top 2.21 over z 3.43..3.95, L/44 axis 1.99 muzzle 6.02.
 // ---------------------------------------------------------------------------
 function buildLeo2A5(P) {
-  const { box, slab } = KIT;
+  const { box } = KIT;
+  const slab = orientedSlab;                                  // §C.1 winding guard
   // r9 1a CROWN-TONE COLLECTOR: every r6/r8 pale lit-kit crown (strap
   // crowns, rail crowns, roll glints, folded tarps) moves off the fleet
   // hullDetail bucket onto the a5 litKit clone in the r9 tone block —
@@ -2568,7 +2582,7 @@ function buildLeo2A5(P) {
       [3.499, 3.609, 0.50, 0.609, 0.724], [3.611, 3.721, 0.61, 0.726, 0.813],
       [3.723, 3.833, 0.72, 0.842, 0.940],
     ];
-    const { slab } = KIT;
+    const slab = orientedSlab;                                // §C.1 winding guard
     for (const s of [-1, 1]) {
       for (const [za, zb, yb, ta, tb] of steps) {
         const x0 = s * 1.11, x1 = s * 1.61;
@@ -3369,6 +3383,9 @@ function buildLeo2A5(P) {
   // round cylZ collar overshot to 2.105. Asymmetric box: authored
   // 1.92..2.085 reads exactly the ref band (inside the ref box lid 6.031)
   P.add('gun', KIT.box(0.19, 0.165, 0.11), 0, 0.0225, 4.51);
+  // §B3.1 MUZZLE BORE (shadow-named mechanism, 3fca39b): rim + shadow disc
+  // on the face-block front plane (4.565), riding the +0.012 tube axis.
+  muzzleBore(P, { z: 4.565, r: 0.095, y: 0.012 });
   // sleeve side lugs (a6 MRS-lug law): the ref ±0.17 PLAN columns run to
   // the muzzle while its side band holds r 0.098 — flat lugs carry the
   // plan reach, hidden inside the side band
@@ -4197,7 +4214,8 @@ function buildLeo2A5(P) {
 // geometry is identical).
 // ---------------------------------------------------------------------------
 function buildLeo2A4(P) {
-  const { box, slab, cylY, cylZ, torus, periscope, liftEye, smokeCluster, stowage, jerryCan, tarpRoll, ammoCan, spareTrackStrip } = KIT;
+  const { box, cylY, cylZ, torus, periscope, liftEye, smokeCluster, stowage, jerryCan, tarpRoll, ammoCan, spareTrackStrip } = KIT;
+  const slab = orientedSlab;                                  // §C.1 winding guard
   leoHullV3(P, {
     bodyHW: 1.638, sponsonY: 1.32, trackW: 0.635, xc: 1.37,
     // deck: crease 1.665 rising gently to the flat 1.775 engine deck (the
@@ -4469,7 +4487,7 @@ function buildLeo2A7V(P) {
   });
   // lower-front appliqué module plate (the A7V's added frontal armor):
   // a proud course riding the lower glacis, inter-track width.
-  P.add('hull', KIT.slab(
+  P.add('hull', orientedSlab(
     [-1.15, 0.98, 3.72], [1.15, 0.98, 3.72], [1.15, 0.70, 3.52], [-1.15, 0.70, 3.52],
     [-1.15, 1.10, 3.80], [1.15, 1.10, 3.80], [1.15, 0.82, 3.62], [-1.15, 0.82, 3.62]));
   P.add('hullDark', box(2.26, 0.014, 0.02), 0, 1.115, 3.795);                  // module top seam
@@ -4612,6 +4630,7 @@ function buildLeo2Proto(P) {
   P.addGunExtra(cylZ(0.10, 0.28, 12, 0.125), 0, 0, 0.34);
   P.addGunExtraDark(cylZ(0.025, 0.09, 8), 0.19, 0.05, 0.22);                   // coax port
   KIT.buildGun(P, { len: 4.80, r: 0.062, sleeve: false, evac: 0.55, evacR: 1.8, collar: false, baseR: 0.12 });
+  muzzleBore(P, { len: 4.80, r: 0.062 });                     // §B3.1 (shadow-named, 3fca39b)
   P.topY = 0.75;
 }
 
@@ -4634,7 +4653,8 @@ function buildLeo2Proto(P) {
 // overall 9.97; print tube ends 5.93 -> ~1 cover column, documented).
 // ---------------------------------------------------------------------------
 function buildLeo2Revolution(P) {
-  const { box, slab, cylY, cylZ, torus, periscope, liftEye } = KIT;
+  const { box, cylY, cylZ, torus, periscope, liftEye } = KIT;
+  const slab = orientedSlab;                                  // §C.1 winding guard
   // r9 F1/F2 accumulators: jacket flank pieces leave the 'hull' bucket and
   // merge into ONE camo mesh re-using P.mats.hull with a -8-luma vertex
   // tint (the a5 r8 PANEL-TINT mechanism — same boxUV frame, same bakeDirt
@@ -5785,6 +5805,10 @@ function buildLeo2Revolution(P) {
   // phase knob; 6.005 stays). Plus the ordered dark collar band 0.13 m
   // behind the tip: +2 mm radial (sub-pixel), zero z change.
   P.add('gunDark', cylZ(0.062, 0.010, P.q ? 18 : 12), 0, 0, 4.9805);          // bore end-disc (face 4.9855)
+  // §B3.1 MUZZLE BORE (shadow-named mechanism, 3fca39b): the r9 flat dark
+  // end-cap killed the camo-cap read but carries no rim/recess — furniture
+  // ring at tube radius + shadow void disc on the 4.985 tube face.
+  muzzleBore(P, { z: 4.985, r: 0.078 });
   P.add('gunDark', cylZ(0.0805, 0.05, P.q ? 18 : 12), 0, 0, 4.855);           // muzzle collar band
   // r5 left plan lug (a5 MRS-lug law): the ref tube rides ~35mm left-offset —
   // its plan -0.153 column runs to the muzzle (err 1.76, the top plan error).
@@ -6250,7 +6274,8 @@ function mudflapRect(P, x, y, z) {
 // p95 roof anchored by SEOSS top 3.03 (mast is the 1-2 spike-col budget).
 // ---------------------------------------------------------------------------
 function buildKF51(P) {
-  const { box, slab, cylY, cylZ, frustum, torus, periscope, xform } = KIT;
+  const { box, cylY, cylZ, frustum, torus, periscope, xform } = KIT;
+  const slab = orientedSlab;                                  // §C.1 winding guard
   // VISUAL r1 helper — plain-faced box via slab (centered at origin, so it
   // takes P.add's placement like box()). The KIT box() auto-bevels anything
   // with a >=0.06 min dimension (RoundedBoxGeometry r up to 21.6 mm), and on

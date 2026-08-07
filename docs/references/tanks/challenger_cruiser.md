@@ -93,3 +93,6 @@ layout) — flag for orchestrator-level plan with a node audit before any
 warp (comet-class extract unreliability). TRACK CONTAINMENT LAW (shared
 cromwellHull fixes): audit 1259/1435 vox -> 16/4. dims 90.4 -> 96.9 (the
 containment inboard-solids trim also fixed a silent hull-mask overrun).
+
+## 2026-08-06 FLEET MUZZLE-BORE + §C.1 WINDING SWEEP (fleet-sweep one-liner)
+- §B3.1 bore on the 17-pdr collar tube; §C.1 2 reversed re-oriented; F-vs-D 55->36 (same skewed-loft class); gate HELD x2 EXACT 0-row; hash not frozen; mantlet mass verified per MANTLETS-MANDATORY (db9168c). Mechanism: kit.js muzzleBore shadow-named furniture + orientedSlab guard (3fca39b / 1017339); end-on+quarter crops shots/muzzle-sweep/{before,after}/.

@@ -200,3 +200,6 @@ but not the real cinched canvas dust cover either.
 ### Honest residuals
 - turretCurves 39.6 stays structurally pinned by the r3 rig-split
   forensics (rebuild lane); this round is read-accuracy only.
+
+## 2026-08-06 FLEET MUZZLE-BORE + §C.1 WINDING SWEEP (fleet-sweep one-liner)
+- §B3.1 bore via shared mark gun; §C.1 3 reversed re-oriented; F-vs-D 10->2 (3cm mixed slivers); gate HELD x2 EXACT 39.6; hash not frozen; mantlet mass verified per MANTLETS-MANDATORY (db9168c). Mechanism: kit.js muzzleBore shadow-named furniture + orientedSlab guard (3fca39b / 1017339); end-on+quarter crops shots/muzzle-sweep/{before,after}/.

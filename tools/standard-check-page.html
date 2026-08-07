@@ -61,6 +61,12 @@ const isColorWriting = (o) => {
 
 // AABB over everything that actually writes color (instance-aware — shadow
 // proxies are colorWrite:false and excluded from scan AND framing).
+// §B3.1 MUZZLE-BORE MECHANISM corollary (banked 3fca39b): /shadow/i-NAMED
+// render furniture (muzzle bore rims/discs) renders in game/critic but is
+// excluded from every measurement mask AND framing recipe — the same
+// isShadowHelper contract as tools/procedural-fidelity.html. Without this
+// filter the furniture grew the gun AABB and re-framed the ~6 cm contig
+// grid (leo2a4 fender-gap cells flipped to phantom holes, sweep 2026-08-06).
 function renderedAABB(root) {
   root.updateMatrixWorld(true);
   const bb = new THREE.Box3();
@@ -69,6 +75,7 @@ function renderedAABB(root) {
   root.traverse((o) => {
     if (!(o.isMesh || o.isInstancedMesh) || !o.geometry) return;
     if (!effectivelyVisible(o, root) || !isColorWriting(o)) return;
+    if (/shadow/i.test(o.name || '')) return;
     if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
     if (!o.geometry.boundingBox) return;
     if (o.isInstancedMesh) {
@@ -94,7 +101,7 @@ function topDownScan(root) {
   if (bb.isEmpty()) return { error: 'empty AABB' };
   const hidden = [];
   root.traverse((o) => {
-    if ((o.isMesh || o.isInstancedMesh) && !isColorWriting(o) && o.visible) { o.visible = false; hidden.push(o); }
+    if ((o.isMesh || o.isInstancedMesh) && (!isColorWriting(o) || /shadow/i.test(o.name || '')) && o.visible) { o.visible = false; hidden.push(o); }
   });
   const margin = MARGIN_CELLS * CELL_M;
   const x0 = bb.min.x - margin, x1 = bb.max.x + margin;

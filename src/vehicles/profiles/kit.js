@@ -465,10 +465,13 @@ export function muzzleBore(P, o = {}) {
   const disc = new THREE.Mesh(cylZ(o.boreR ?? r * 0.62, 0.012, o.seg ?? 14), P.mats.shadow);
   disc.name = 'muzzleBoreShadowDisc';
   disc.position.set(x, y, zTip + 0.006);
+  // parent choice for hull-frame guns (casemate class: tubes authored in
+  // hull buckets at world coords) — default stays the elevating gun group.
+  const parent = o.parent === 'hullG' ? P.hullG : o.parent === 'turretG' ? P.turretG : P.gunG;
   for (const m of [ring, disc]) {
     m.castShadow = false;
     m.receiveShadow = true;
-    P.gunG.add(m);
+    parent.add(m);
     P.disposables.push(m.geometry);
   }
 }

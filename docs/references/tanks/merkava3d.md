@@ -1154,3 +1154,6 @@ prisms anywhere mantlet to muzzle. Bytes untouched; frozen hash 6b97616c
 verified at round start AND close. The 3B/3C boxy-collar swap does not
 touch the 3D code path (default mantlet branch; rakeTop params absent =
 byte-identical slabs, proven by the hash).
+
+## 2026-08-06 FLEET MUZZLE-BORE + §C.1 WINDING SWEEP (fleet-sweep one-liner)
+- §B3.1 bore via shared mark gun; §C.1 9 reversed re-oriented; F-vs-D 28->0; gate HELD x2 EXACT 90.4 PASS; hash 6b97616c -> 39de83c8 CANDIDATE; mantlet mass verified per MANTLETS-MANDATORY (db9168c). Mechanism: kit.js muzzleBore shadow-named furniture + orientedSlab guard (3fca39b / 1017339); end-on+quarter crops shots/muzzle-sweep/{before,after}/.

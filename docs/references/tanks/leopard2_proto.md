@@ -91,3 +91,6 @@ the family-wide raisedEnds-workaround removal: the certified oracle/print
 defect cap STANDS (curve/station rows unchanged at their capped levels)
 and dims HOLDS >= 90. No compensation was re-introduced; end wheels are
 plain kit-native fits.
+
+## 2026-08-06 FLEET MUZZLE-BORE + §C.1 WINDING SWEEP (fleet-sweep one-liner)
+- §B3.1 bore on the plain tube (len 4.80); §C.1 2 reversed re-oriented (leoHull glacis); F-vs-D 149->0; gate HELD x2 EXACT (all-0 row pre-existing); hash not frozen; mantlet mass verified per MANTLETS-MANDATORY (db9168c). Mechanism: kit.js muzzleBore shadow-named furniture + orientedSlab guard (3fca39b / 1017339); end-on+quarter crops shots/muzzle-sweep/{before,after}/.

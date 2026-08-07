@@ -27,7 +27,7 @@
 //    ISU pair and T95/Strv103 oracles are proportionally off published dims;
 //    dims stays sovereign here and the curve ceilings are documented.
 import { BufferAttribute, BufferGeometry, Float32BufferAttribute, Mesh } from 'three';
-import { KIT } from './kit.js';
+import { KIT, muzzleBore, orientedSlab } from './kit.js';
 import { vehicleAmbientFloorHook } from '../materials.js';
 
 // NOTE: KIT arrives through the tankFactory module cycle — it must only be
@@ -120,7 +120,7 @@ const mottle = (u, v, ph, aC, aF) => {
 // casemate tracks its measured reference polyline to gate tolerance.
 // ---------------------------------------------------------------------------
 function loft(P, sts, bucket = 'hull') {
-  const { slab } = KIT;
+  const slab = orientedSlab;                                // §C.1 winding guard
   for (let i = 0; i < sts.length - 1; i++) {
     const a = sts[i], c = sts[i + 1];
     const awt = a.wt ?? a.w, cwt = c.wt ?? c.w;
@@ -150,7 +150,7 @@ function loft(P, sts, bucket = 'hull') {
 // casemate builders stay byte-identical.
 // cut = { x, front?: {z0, z1?, floor}, rear?: {z0?, z1, floor} }
 function loftCorridor(P, sts, cut, bucket = 'hull') {
-  const { slab } = KIT;
+  const slab = orientedSlab;                                // §C.1 winding guard
   const lerpRow = (a, c, z) => {
     const t = (z - a.z) / (c.z - a.z);
     const awt = a.wt ?? a.w, cwt = c.wt ?? c.w;
@@ -326,7 +326,7 @@ function buildStrv103(P) {
   // 12%-band span over published hullLengthM (side columns integrate all x),
   // so the blade stops at the published span and the plan view carries the
   // difference as a certified oracle-frame cost.
-  P.add('hull', KIT.slab(
+  P.add('hull', orientedSlab(                                 // §C.1 winding guard
     [-1.20, 0.46, 2.62], [1.20, 0.46, 2.62], [1.20, 0.84, 3.50], [-1.20, 0.84, 3.50],
     [-1.20, 0.72, 2.66], [1.20, 0.72, 2.66], [1.20, 1.02, 3.50], [-1.20, 1.02, 3.50]));
   for (const s of [-1, 1]) {
@@ -344,6 +344,8 @@ function buildStrv103(P) {
 
   // ---- fixed 105 mm L74 in the glacis (hull bucket, fixedMount topology).
   // Bore axis 1.65; muzzle at published overall: tail -3.52 -> muzzle +5.47.
+  // §B3.1 MUZZLE BORE (shadow-named, 3fca39b; hull-frame gun -> hullG)
+  muzzleBore(P, { z: 5.40, r: 0.085, y: 1.65, parent: 'hullG' });
   hullGun(P, 1.65, [
     { z0: 5.40, z1: 5.31, r: 0.110 },                                          // muzzle collar
     { z0: 5.31, z1: 3.30, r: 0.085 },                                          // fore tube
@@ -484,6 +486,8 @@ function buildJagdtiger(P) {
       Math.cos(a) * 0.225, Math.sin(a) * 0.225, 0.12, -0.26, 0, 0), 0, 2.11, 2.28);
   }
   P.add('hull', cylZ(0.185, 0.55, 18, 0.13), 0, 2.11, 2.62);                   // slim cast pot
+  // §B3.1 MUZZLE BORE (shadow-named, 3fca39b): through the brake face
+  muzzleBore(P, { z: 6.39, r: 0.095, y: 2.11, parent: 'hullG' });
   hullGun(P, 2.11, [
     { z0: 6.39, z1: 6.28, r: 0.115 },                                          // front brake drum (overall 10.65)
     { z0: 6.28, z1: 6.16, r: 0.055, dark: true },                              // brake slot core
@@ -629,6 +633,8 @@ function buildJPzE100(P) {
   // overhang. Axis 2.27; muzzle at published overall: 11.1 - 4.42 = +6.68.
   P.add('hull', xform2(cylZ(0.34, 0.30, 18), 0, 0, 0, -0.50), 0, 2.28, 0.85);
   P.add('hull', cylZ(0.30, 0.65, 18, 0.26), 0, 2.27, 1.30);                    // cast pot
+  // §B3.1 MUZZLE BORE (shadow-named, 3fca39b)
+  muzzleBore(P, { z: 6.85, r: 0.150, y: 2.27, parent: 'hullG' });
   hullGun(P, 2.27, [
     { z0: 6.85, z1: 6.55, r: 0.185 },                                          // muzzle collar step
     { z0: 6.55, z1: 4.20, r: 0.150 },                                          // fore tube
@@ -872,6 +878,9 @@ function buildT95(P) {
   // the oracle's fused tube is FAT (band 0.26-0.31) — replicated.
   P.add('hull', xform2(cylZ(0.34, 0.30, 18), 0, 0, 0, -0.30), 0, 1.32, 1.95);
   P.add('hull', cylZ(0.24, 0.55, 16, 0.30), 0, 1.28, 2.30);                    // rotor collar
+  // §B3.1 MUZZLE BORE (shadow-named, 3fca39b): bore inside the
+  // counterweight ring face (T28/T95 muzzle grammar)
+  muzzleBore(P, { z: 7.02, r: 0.105, y: 1.22, parent: 'hullG' });
   hullGun(P, 1.22, [
     { z0: 7.02, z1: 6.70, r: 0.150 },                                          // muzzle counterweight ring
     { z0: 6.70, z1: 6.30, r: 0.132 },                                          // muzzle step
@@ -3984,7 +3993,7 @@ function buildISU122S(P) {
     const xi0 = s * 1.1319, xo0 = s * 1.1354, xi1 = s * 1.1021, xo1 = s * 1.1056;
     const lo0 = Math.min(xi0, xo0), hi0 = Math.max(xi0, xo0);
     const lo1 = Math.min(xi1, xo1), hi1 = Math.max(xi1, xo1);
-    P.add('hullDetail', KIT.slab(
+    P.add('hullDetail', orientedSlab(                         // §C.1 winding guard
       [lo0, 1.70, -0.36], [hi0, 1.70, -0.36], [hi0, 1.70, 1.98], [lo0, 1.70, 1.98],
       [lo1, 2.13, -0.36], [hi1, 2.13, -0.36], [hi1, 2.13, 1.98], [lo1, 2.13, 1.98]));
     // r11 item 1b — CASEMATE SIDE material tier (critic: iqr 0.00 vs ref
