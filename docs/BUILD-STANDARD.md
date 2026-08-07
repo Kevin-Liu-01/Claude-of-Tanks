@@ -718,3 +718,13 @@ a per-incident fix.
   pixel audit — render rest vs yaw-90/180 FrontSide, diff the turret
   footprint, flag mass that fails to rotate (instanced included). Both
   modes are standing round-close checks.
+- §C.1 CHECKER LANDED (tools/winding-audit.{html,mjs} — official,
+  self-ticketing, --check exit-codes): mode 1 winding census (mesh-level
+  edge-balance + signed volume is AUTHORITATIVE; slab call-sites are
+  hints only) + render deficit (FrontSide-vs-DoubleSide, the catch-all);
+  mode 2 yaw-stranded (rest/90/180 plan diffs, per-pixel surface-height
+  gate at ringY+0.20 — the DECK-AT-RING law — flat-id attribution,
+  coincidencePx per §J). Standing classes: LATENT REVERSED-CORE
+  (deficit-0 inside-out solids — HARD when render-visible), CASEMATE
+  mode-2 by-design (coincidencePx 0 signature). Run at round close like
+  track-clip; fleet baseline banked shots/winding-audit-fleet-20260806.

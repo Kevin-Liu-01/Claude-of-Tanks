@@ -1,0 +1,714 @@
+<!doctype html>
+<!-- RENDER-TRUTH AUDIT (BUILD-STANDARD §C.1, owner order 2026-08-06; law
+     banked 1017339, yaw-stranded amendment 8e1de63). Official fleet tool —
+     the tmp-misc-leftprobe winding census promoted, plus the render-deficit
+     and yaw-stranded checks the gate structurally cannot make:
+
+     MODE 1a — GEOMETRIC WINDING CENSUS. Two layers:
+       (i) mesh census: every game-visible render node's geometry is split
+           into connected pieces (position-quantized union-find + triangle
+           connectivity, the track-clip componentsOf pattern). Per piece:
+           area-weighted outward-normal fraction about the piece centroid,
+           signed volume, boundary-edge and directed-edge-balance counts.
+           A CLOSED piece (no boundary edges) with balanced directed edges
+           and NEGATIVE signed volume is REVERSED (inside-out: backface-
+           culled from every FrontSide render while fully visible to the
+           gate's DoubleSide maskMaterial — the §C MISSING-SIDE class).
+           A closed piece with UNBALANCED directed edges is MIXED (some
+           faces flipped — partial cull). Open pieces are never classified
+           REVERSED/MIXED (concave/planar/open primitives make the centroid
+           heuristic lie); fully-inward open pieces with real area are
+           counted informationally as openSuspect. Winding verdicts are
+           matrixWorld-independent for regular meshes (the renderer flips
+           frontFace when det(matrixWorld)<0), so pieces are analyzed in
+           geometry space; world AABBs come from the mesh transform.
+           InstancedMesh geometry is censused once; per-instance NEGATIVE
+           determinants (mirror instancing — the renderer does NOT flip
+           frontFace per instance) are counted as mirrorInstances.
+           KNOWN GAP: butt-jointed solids sharing exact corner positions
+           merge into one piece; a reversed solid glued to a larger clean
+           one can net positive volume and slip the census — the render
+           deficit (1b) is the catch-all for that class.
+       (ii) slab-call census: KIT.slab is instrumented before createTank
+           (profiles destructure at build time — the tmp-misc-leftprobe
+           mechanism) so every profile slab ring is censused with its
+           call site: outward faces of 6 + signed volume. REVERSED =
+           outward<=2, MIXED = 3..5 (leftprobe thresholds kept).
+
+     MODE 1b — RENDER DEFICIT (FrontSide vs DoubleSide). The 8 compass
+     views + top are rendered twice with a white override mask:
+       game truth:  side=FrontSide, shadow-named render furniture VISIBLE
+                    (§C SHADOW-NAMED law: it renders in game/critic),
+                    colorWrite:false proxies hidden (they never paint);
+       gate truth:  side=DoubleSide, /shadow/i nodes HIDDEN (the fidelity
+                    harness baseVisible exclusion), proxies hidden.
+     deficitPx = pixels the gate mask has that the game render lacks —
+     ANY game-vs-gate divergence, not just windings. surplusPx (game-only
+     pixels, e.g. legal shadow-named furniture) is reported informationally.
+     Both passes share one camera per view, framed on the non-shadow
+     visible box (gate framing recipe).
+
+     MODE 2 — YAW-STRANDED AUDIT (§B5 blind-spot class, owner: "i rotate my
+     turret and a lot of stuff that should be moving with it especially in
+     back doesnt"). Top ortho plan view, shaded FrontSide renders at turret
+     yaw 0 / 90 / 180 (rig_turret.rotation.y — the §J yaw-pair rig). Pixels
+     PIXEL-STATIC across rest-vs-90 AND rest-vs-180 inside the turret plan
+     footprint (ring-centered disc of turret-body swept radius + 0.9 m
+     bustle-overhang allowance) and at/above the ring plane (per-pixel
+     height from an ortho depth pass; kills merged-hull-bucket ambiguity
+     the AABB audit false-negatives on) are stranded CANDIDATES. A flat-id
+     render pass at all three yaws attributes each candidate pixel to a
+     named node and drops turret-subtree ids (the §J YAW-PROOF STATIC-PIXEL
+     same-camo FALSE-FLAG class — reported as coincidencePx, not
+     candidates); surviving candidate nodes are cross-checked against a
+     world-space vertex census (instanced meshes included, per §J).
+     Candidates are ADJUDICATION INPUT, never automatic defects.
+
+     Never writes ledger rows. Reads builds only (proceduralOnly, camoSeed
+     4242, quality high — the gate build recipe); the census reflects the
+     LIVE tree at run time. mode=list emits procedural-source ids. -->
+<meta charset="utf-8">
+<title>winding-audit</title>
+<script type="module">
+import * as THREE from 'three';
+import { KIT, createTank } from '/src/vehicles/tankFactory.js';
+import { MODEL_SOURCE, TANK_SPECS } from '/src/vehicles/specs.js';
+
+const params = new URLSearchParams(location.search);
+const mode = params.get('mode') || 'audit';
+
+if (mode === 'list') {
+  const ids = Object.keys(TANK_SPECS).filter((id) => {
+    const src = MODEL_SOURCE[id];
+    return !src || src.source !== 'glb';
+  });
+  window.__WIND_RESULT = { ids };
+  window.__WIND_READY = true;
+} else {
+  const id = params.get('id') || 't72b3m';
+  const S = Math.max(256, Math.min(1024, Number(params.get('size')) || 768));
+  const out = { id, size: S };
+  if (!TANK_SPECS[id]) {
+    // skip-ids-without-specs law: report, never throw the whole run
+    out.skipped = 'no spec';
+    window.__WIND_RESULT = out;
+    window.__WIND_READY = true;
+  } else {
+    await audit();
+  }
+
+  async function audit() {
+    // exact id colors + comparable buffers: no color-space conversions
+    THREE.ColorManagement.enabled = false;
+
+    // ---- 1a(ii). instrument KIT.slab BEFORE the build ----------------------
+    const slabCalls = [];
+    const origSlab = KIT.slab;
+    KIT.slab = function (...corners) {
+      const [b0, b1, b2, b3, t0, t1, t2, t3] = corners;
+      const c8 = [b0, b1, b2, b3, t0, t1, t2, t3];
+      const cen = [0, 1, 2].map((k) => c8.reduce((s, p) => s + p[k], 0) / 8);
+      const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+      const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+      const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+      const faces = [
+        [b0, b1, t1, t0], [b1, b2, t2, t1], [b2, b3, t3, t2],
+        [b3, b0, t0, t3], [t0, t1, t2, t3], [b3, b2, b1, b0],
+      ];
+      let outward = 0;
+      let vol = 0;
+      for (const f of faces) {
+        const n = cross(sub(f[1], f[0]), sub(f[2], f[0]));
+        const fc = [0, 1, 2].map((k) => (f[0][k] + f[1][k] + f[2][k] + f[3][k]) / 4);
+        if (dot(n, sub(fc, cen)) > 0) outward++;
+        for (const tri of [[f[0], f[1], f[2]], [f[0], f[2], f[3]]]) {
+          vol += dot(tri[0], cross(tri[1], tri[2])) / 6;
+        }
+      }
+      if (outward < 6) {
+        const stack = (new Error()).stack || '';
+        const site = (stack.split('\n')
+          .find((l) => /src\/vehicles\/(?:profiles\/)?[\w.-]+\.js/.test(l) && !/tankFactory\.js/.test(l)) || '')
+          .replace(/^\s+at\s+/, '').replace(location.origin, '');
+        const xs = c8.map((p) => p[0]);
+        const ys = c8.map((p) => p[1]);
+        const zs = c8.map((p) => p[2]);
+        slabCalls.push({
+          class: outward <= 2 ? 'REVERSED' : 'MIXED',
+          outward,
+          vol: +vol.toFixed(5),
+          // pre-P.add LOCAL frame (call-time corners; attribution aid only)
+          local: [
+            [Math.min(...xs), Math.min(...ys), Math.min(...zs)].map((v) => +v.toFixed(3)),
+            [Math.max(...xs), Math.max(...ys), Math.max(...zs)].map((v) => +v.toFixed(3)),
+          ],
+          site,
+        });
+      }
+      return origSlab.apply(this, corners);
+    };
+
+    // ---- build (gate recipe) ----------------------------------------------
+    const engineCtx = { setupShadowMaterial: (m) => m, anisotropy: 1, renderer: null };
+    const tank = createTank(id, engineCtx, { camoSeed: 4242, quality: 'high', proceduralOnly: true });
+    KIT.slab = origSlab;
+    const root = tank.root;
+    // Pin every LOD to level 0 (fidelity-harness law: LOD re-asserts child
+    // visibility per render and silently overrides pass toggles otherwise).
+    root.traverse((o) => {
+      if (!o.isLOD) return;
+      o.autoUpdate = false;
+      o.levels.forEach((level, i) => { if (level.object) level.object.visible = i === 0; });
+    });
+    root.updateMatrixWorld(true);
+
+    // ---- node inventory -----------------------------------------------------
+    const turretG = root.getObjectByName('rig_turret');
+    const gunG = root.getObjectByName('rig_gun');
+    const isRenderNode = (o) => (o.isMesh || o.isInstancedMesh) && o.geometry;
+    const firstMat = (o) => (Array.isArray(o.material) ? o.material[0] : o.material);
+    const cwFalse = (o) => { const m = firstMat(o); return !!m && m.colorWrite === false; };
+    const isShadowNamed = (o) => /shadow/i.test(o.name || '');
+    const under = (o, anc) => { for (let p = o; p; p = p.parent) if (p === anc) return true; return false; };
+    const rigOf = (o) => {
+      for (let p = o; p; p = p.parent) if (/^rig_/.test(p.name || '')) return p.name;
+      return 'root';
+    };
+    const effVisible = (o) => { for (let p = o; p; p = p.parent) if (!p.visible) return false; return true; };
+
+    const nodes = [];
+    root.traverse((o) => {
+      if (!isRenderNode(o) || !effVisible(o)) return;
+      nodes.push({
+        o,
+        idx: nodes.length + 1,
+        cw: cwFalse(o),
+        shadow: isShadowNamed(o),
+        rig: rigOf(o),
+        turret: !!turretG && under(o, turretG),
+        gun: !!gunG && under(o, gunG),
+        name: `${o.name || (o.userData?.trackBucket ? `bucket_${o.userData.trackBucket}` : (o.isInstancedMesh ? 'IM' : 'mesh'))}#${nodes.length + 1}`,
+        vis0: o.visible,
+      });
+    });
+
+    // ---- 1a(i). mesh census: connected-piece winding analysis ---------------
+    const census = { pieces: 0, closed: 0, open: 0, reversed: 0, mixed: 0, openSuspect: 0, mirrorInstances: 0, flagged: [] };
+    const M4 = new THREE.Matrix4();
+    const V3 = new THREE.Vector3();
+    for (const n of nodes) {
+      if (n.cw || n.shadow) continue; // proxies never paint; shadow furniture is legal render-only
+      const g = n.o.geometry;
+      const pos = g.getAttribute('position');
+      if (!pos || pos.count < 3) continue;
+      if (n.o.isInstancedMesh) {
+        if (n.o.count === 0) continue;
+        for (let k = 0; k < n.o.count; k++) {
+          n.o.getMatrixAt(k, M4);
+          const d = M4.determinant();
+          if (Math.abs(d) > 1e-12 && d < 0) census.mirrorInstances++;
+        }
+      }
+      const idx = g.index;
+      const triN = (idx ? idx.count : pos.count) / 3 | 0;
+      if (!triN) continue;
+      const vN = pos.count;
+      // union-find over quantized vertex positions + triangle connectivity
+      const parent = new Int32Array(vN);
+      for (let i = 0; i < vN; i++) parent[i] = i;
+      const find = (i) => { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
+      const uni = (a, b) => { const ra = find(a), rb = find(b); if (ra !== rb) parent[ra] = rb; };
+      const byPos = new Map();
+      const q = 1e4; // 0.1 mm
+      for (let i = 0; i < vN; i++) {
+        const k = `${Math.round(pos.getX(i) * q)},${Math.round(pos.getY(i) * q)},${Math.round(pos.getZ(i) * q)}`;
+        const seen = byPos.get(k);
+        if (seen === undefined) byPos.set(k, i); else uni(i, seen);
+      }
+      const tv = (t, j) => (idx ? idx.getX(t * 3 + j) : t * 3 + j);
+      for (let t = 0; t < triN; t++) { uni(tv(t, 0), tv(t, 1)); uni(tv(t, 1), tv(t, 2)); }
+      // per-piece accumulators
+      const pieceOf = new Map(); // root -> piece record
+      const pk = (i) => {
+        const k = `${Math.round(pos.getX(i) * q)},${Math.round(pos.getY(i) * q)},${Math.round(pos.getZ(i) * q)}`;
+        return byPos.get(k); // canonical vertex per position (edge identity)
+      };
+      const getPiece = (r) => {
+        let p = pieceOf.get(r);
+        if (!p) {
+          p = {
+            tris: 0, area: 0, cx: 0, cy: 0, cz: 0,
+            edges: new Map(), // undirected key -> [fwd, rev]
+            min: [Infinity, Infinity, Infinity], max: [-Infinity, -Infinity, -Infinity],
+            faces: [],
+          };
+          pieceOf.set(r, p);
+        }
+        return p;
+      };
+      const A = new THREE.Vector3(), B = new THREE.Vector3(), C = new THREE.Vector3();
+      const AB = new THREE.Vector3(), AC = new THREE.Vector3(), N = new THREE.Vector3();
+      for (let t = 0; t < triN; t++) {
+        const i0 = tv(t, 0), i1 = tv(t, 1), i2 = tv(t, 2);
+        const r = find(i0);
+        const p = getPiece(r);
+        A.fromBufferAttribute(pos, i0); B.fromBufferAttribute(pos, i1); C.fromBufferAttribute(pos, i2);
+        AB.subVectors(B, A); AC.subVectors(C, A); N.crossVectors(AB, AC);
+        const a2 = N.length();
+        const area = a2 / 2;
+        p.tris++;
+        p.area += area;
+        const fx = (A.x + B.x + C.x) / 3, fy = (A.y + B.y + C.y) / 3, fz = (A.z + B.z + C.z) / 3;
+        p.cx += fx * area; p.cy += fy * area; p.cz += fz * area;
+        for (const v of [A, B, C]) {
+          if (v.x < p.min[0]) p.min[0] = v.x; if (v.x > p.max[0]) p.max[0] = v.x;
+          if (v.y < p.min[1]) p.min[1] = v.y; if (v.y > p.max[1]) p.max[1] = v.y;
+          if (v.z < p.min[2]) p.min[2] = v.z; if (v.z > p.max[2]) p.max[2] = v.z;
+        }
+        p.faces.push([A.x, A.y, A.z, B.x, B.y, B.z, C.x, C.y, C.z, N.x, N.y, N.z, area, fx, fy, fz]);
+        // directed edges on canonical vertex ids (vN < 2^22 always holds for
+        // merged tank buckets, so the packed numeric key cannot collide)
+        const c0 = pk(i0), c1 = pk(i1), c2 = pk(i2);
+        for (const [ea, eb] of [[c0, c1], [c1, c2], [c2, c0]]) {
+          if (ea === eb) continue; // degenerate
+          const lo = Math.min(ea, eb), hi = Math.max(ea, eb);
+          const key = lo * 4194304 + hi;
+          let e = p.edges.get(key);
+          if (!e) { e = [0, 0]; p.edges.set(key, e); }
+          e[ea === lo ? 0 : 1]++;
+        }
+      }
+      for (const p of pieceOf.values()) {
+        census.pieces++;
+        if (p.area < 1e-9) continue;
+        const cx = p.cx / p.area, cy = p.cy / p.area, cz = p.cz / p.area;
+        let outA = 0;
+        let vol = 0;
+        for (const f of p.faces) {
+          const dx = f[13] - cx, dy = f[14] - cy, dz = f[15] - cz;
+          if (f[9] * dx + f[10] * dy + f[11] * dz > 0) outA += f[12];
+          // signed volume about the piece centroid (numeric stability)
+          const ax = f[0] - cx, ay = f[1] - cy, az = f[2] - cz;
+          const bx = f[3] - cx, by = f[4] - cy, bz = f[5] - cz;
+          const gx = f[6] - cx, gy = f[7] - cy, gz = f[8] - cz;
+          vol += (ax * (by * gz - bz * gy) + ay * (bz * gx - bx * gz) + az * (bx * gy - by * gx)) / 6;
+        }
+        const outFrac = outA / p.area;
+        let boundary = 0;
+        let unbalanced = 0;
+        for (const e of p.edges.values()) {
+          const tot = e[0] + e[1];
+          if (tot === 1) boundary++;
+          else if (e[0] !== e[1]) unbalanced++;
+        }
+        const closed = boundary === 0;
+        if (closed) census.closed++; else census.open++;
+        let cls = null;
+        if (closed && unbalanced > 0) cls = 'MIXED';
+        else if (closed && vol < -1e-7) cls = 'REVERSED';
+        else if (!closed) {
+          const minDim = Math.min(p.max[0] - p.min[0], p.max[1] - p.min[1], p.max[2] - p.min[2]);
+          if (outFrac <= 0.12 && p.area > 0.005 && minDim >= 0.008) { census.openSuspect++; cls = 'openSuspect'; }
+        }
+        if (cls) {
+          // world AABB: local piece box through the mesh matrixWorld (for
+          // InstancedMesh: union over live instance matrices)
+          const wb = new THREE.Box3();
+          const lb = new THREE.Box3(new THREE.Vector3(...p.min), new THREE.Vector3(...p.max));
+          if (n.o.isInstancedMesh) {
+            const one = new THREE.Box3();
+            const wm = new THREE.Matrix4();
+            for (let k = 0; k < n.o.count; k++) {
+              n.o.getMatrixAt(k, M4);
+              if (Math.abs(M4.determinant()) < 1e-12) continue;
+              wm.multiplyMatrices(n.o.matrixWorld, M4);
+              one.copy(lb).applyMatrix4(wm);
+              wb.union(one);
+            }
+          } else {
+            wb.copy(lb).applyMatrix4(n.o.matrixWorld);
+          }
+          if (cls === 'REVERSED') census.reversed++;
+          if (cls === 'MIXED') census.mixed++;
+          if (census.flagged.length < 60) {
+            census.flagged.push({
+              class: cls,
+              node: n.name,
+              rig: n.rig,
+              instanced: !!n.o.isInstancedMesh,
+              tris: p.tris,
+              areaM2: +p.area.toFixed(4),
+              volM3: +vol.toFixed(5),
+              outFrac: +outFrac.toFixed(3),
+              unbalancedEdges: unbalanced,
+              aabb: wb.isEmpty() ? null : [
+                [wb.min.x, wb.min.y, wb.min.z].map((v) => +v.toFixed(3)),
+                [wb.max.x, wb.max.y, wb.max.z].map((v) => +v.toFixed(3)),
+              ],
+            });
+          }
+        }
+      }
+    }
+    out.census = census;
+    out.slabCalls = {
+      flaggedCalls: slabCalls.length,
+      reversed: slabCalls.filter((s) => s.class === 'REVERSED').length,
+      mixed: slabCalls.filter((s) => s.class === 'MIXED').length,
+      sites: slabCalls.slice(0, 60),
+    };
+
+    // ---- shared render plumbing ---------------------------------------------
+    const renderer = new THREE.WebGLRenderer({ antialias: false, alpha: false, preserveDrawingBuffer: false });
+    renderer.setSize(S, S, false);
+    renderer.setPixelRatio(1);
+    renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
+    renderer.setClearColor(0x000000, 1);
+    document.body.appendChild(renderer.domElement);
+    const target = new THREE.WebGLRenderTarget(S, S, { depthBuffer: true, stencilBuffer: false });
+    const scene = new THREE.Scene();
+    const hemi = new THREE.HemisphereLight(0xcfd8e0, 0x2a2f26, 1.05);
+    const sun = new THREE.DirectionalLight(0xfff2dd, 2.2);
+    sun.position.set(30, 42, 24);
+    scene.add(hemi, sun);
+    scene.add(root);
+
+    const setPass = (kind) => {
+      // kind: 'game' (FrontSide truth: shadow furniture visible, proxies
+      // hidden) | 'gate' (mask truth: /shadow/i hidden, proxies hidden)
+      for (const n of nodes) {
+        n.o.visible = kind === 'game' ? (n.vis0 && !n.cw) : (n.vis0 && !n.cw && !n.shadow);
+      }
+    };
+    const restoreVis = () => { for (const n of nodes) n.o.visible = n.vis0; };
+    const buf = new Uint8Array(S * S * 4);
+    const shoot = (cam) => {
+      renderer.setRenderTarget(target);
+      renderer.clear();
+      renderer.render(scene, cam);
+      renderer.readRenderTargetPixels(target, 0, 0, S, S, buf);
+      renderer.setRenderTarget(null);
+      return buf.slice();
+    };
+
+    const visibleBox = () => {
+      const box = new THREE.Box3();
+      root.updateMatrixWorld(true);
+      for (const n of nodes) {
+        if (!n.vis0 || n.cw || n.shadow) continue;
+        const o = n.o;
+        if (o.isInstancedMesh) {
+          if (!o.count) continue;
+          o.computeBoundingBox();
+          if (o.boundingBox && !o.boundingBox.isEmpty()) box.union(o.boundingBox.clone().applyMatrix4(o.matrixWorld));
+          continue;
+        }
+        if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+        box.union(o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld));
+      }
+      return box;
+    };
+
+    function orthoFor(box, direction, half = null) {
+      const center = box.getCenter(new THREE.Vector3());
+      const dir = direction.clone().normalize();
+      const nominalUp = Math.abs(dir.y) > 0.9 ? new THREE.Vector3(0, 0, -1) : new THREE.Vector3(0, 1, 0);
+      const right = new THREE.Vector3().crossVectors(nominalUp, dir).normalize();
+      const up = new THREE.Vector3().crossVectors(dir, right).normalize();
+      let ext = 0.5;
+      for (const cx of [box.min.x, box.max.x]) for (const cy of [box.min.y, box.max.y]) for (const cz of [box.min.z, box.max.z]) {
+        const d = new THREE.Vector3(cx, cy, cz).sub(center);
+        ext = Math.max(ext, Math.abs(d.dot(right)), Math.abs(d.dot(up)));
+      }
+      const h = half || ext * 1.06 * 1.1;
+      const camera = new THREE.OrthographicCamera(-h, h, h, -h, 0.1, 200);
+      camera.position.copy(center).addScaledVector(dir, 60);
+      camera.up.copy(up);
+      camera.lookAt(center);
+      camera.updateProjectionMatrix();
+      camera.updateMatrixWorld(true);
+      camera.userData.map = { center, half: h, right, up, dir };
+      return camera;
+    }
+    // readRenderTargetPixels rows are BOTTOM-origin (gl convention): row y=0
+    // is the frame bottom, i.e. +v along the camera up vector needs no flip.
+    const pxToWorld = (cam, x, y) => {
+      const { center, half, right, up } = cam.userData.map;
+      const un = ((x + 0.5) / S) * 2 - 1;
+      const vn = ((y + 0.5) / S) * 2 - 1;
+      return center.clone().addScaledVector(right, un * half).addScaledVector(up, vn * half);
+    };
+
+    // ---- 1b. render deficit: FrontSide (game) vs DoubleSide (gate) ----------
+    const VIEWS = {
+      front: [0, 0.08, 1], frontleft: [-1, 0.08, 1], left: [-1, 0.05, 0], rearleft: [-1, 0.08, -1],
+      rear: [0, 0.08, -1], rearright: [1, 0.08, -1], right: [1, 0.05, 0], frontright: [1, 0.08, 1],
+      top: [0, 1, 0.02],
+    };
+    const viewFilter = (params.get('views') || '').split(',').map((s) => s.trim()).filter(Boolean);
+    const frontMask = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.FrontSide });
+    const doubleMask = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
+    const box0 = visibleBox();
+    const lit = (b, i) => b[i * 4] > 90;
+    out.deficit = { views: {}, worstView: null, worstViewDeficit: 0, worstViewDeficitFrac: 0 };
+    for (const [name, d] of Object.entries(VIEWS)) {
+      if (viewFilter.length && !viewFilter.includes(name)) continue;
+      const cam = orthoFor(box0, new THREE.Vector3(...d));
+      scene.overrideMaterial = frontMask;
+      setPass('game');
+      const fb = shoot(cam);
+      scene.overrideMaterial = doubleMask;
+      setPass('gate');
+      const db = shoot(cam);
+      scene.overrideMaterial = null;
+      let deficit = 0;
+      let surplus = 0;
+      let gateArea = 0;
+      let x0 = S, y0 = S, x1 = -1, y1 = -1;
+      for (let y = 0; y < S; y++) {
+        for (let x = 0; x < S; x++) {
+          const i = y * S + x;
+          const g = lit(fb, i);
+          const m = lit(db, i);
+          if (m) gateArea++;
+          if (m && !g) {
+            deficit++;
+            if (x < x0) x0 = x; if (x > x1) x1 = x;
+            if (y < y0) y0 = y; if (y > y1) y1 = y;
+          } else if (g && !m) {
+            surplus++;
+          }
+        }
+      }
+      const row = {
+        deficitPx: deficit,
+        deficitFrac: +(deficit / Math.max(1, gateArea)).toFixed(5),
+        surplusPx: surplus,
+        gatePx: gateArea,
+      };
+      if (deficit > 0) {
+        // px rows count from the readback origin (bottom-left); world corners
+        // are exact via the ortho map, so orientation ambiguity cancels.
+        const wA = pxToWorld(cam, x0, y0);
+        const wB = pxToWorld(cam, x1, y1);
+        row.bbox = {
+          px: [x0, y0, x1, y1],
+          world: [
+            [Math.min(wA.x, wB.x), Math.min(wA.y, wB.y), Math.min(wA.z, wB.z)].map((v) => +v.toFixed(3)),
+            [Math.max(wA.x, wB.x), Math.max(wA.y, wB.y), Math.max(wA.z, wB.z)].map((v) => +v.toFixed(3)),
+          ],
+        };
+      }
+      out.deficit.views[name] = row;
+      if (deficit > out.deficit.worstViewDeficit) {
+        out.deficit.worstViewDeficit = deficit;
+        out.deficit.worstViewDeficitFrac = row.deficitFrac;
+        out.deficit.worstView = name;
+        out.deficit.worstBbox = row.bbox || null;
+      }
+    }
+
+    // ---- 2. yaw-stranded audit ----------------------------------------------
+    if (!turretG) {
+      out.yaw = { skipped: 'no rig_turret' };
+    } else {
+      const yaw = {};
+      const pivot = new THREE.Vector3();
+      turretG.getWorldPosition(pivot);
+      yaw.ringY = +pivot.y.toFixed(3);
+      yaw.pivot = [+pivot.x.toFixed(3), +pivot.z.toFixed(3)];
+      // turret-body swept radius: turret subtree minus the gun subtree
+      // (barrel length would balloon the disc), minus shadow/proxy nodes
+      let sweptR = 0;
+      const tv = new THREE.Vector3();
+      for (const n of nodes) {
+        if (!n.turret || n.gun || n.cw || n.shadow || !n.vis0) continue;
+        const g = n.o.geometry;
+        const pos = g.getAttribute('position');
+        if (!pos) continue;
+        if (n.o.isInstancedMesh) {
+          if (!g.boundingSphere) g.computeBoundingSphere();
+          const R = g.boundingSphere.radius + g.boundingSphere.center.length();
+          for (let k = 0; k < n.o.count; k++) {
+            n.o.getMatrixAt(k, M4);
+            if (Math.abs(M4.determinant()) < 1e-12) continue;
+            tv.setFromMatrixPosition(M4).applyMatrix4(n.o.matrixWorld);
+            sweptR = Math.max(sweptR, Math.hypot(tv.x - pivot.x, tv.z - pivot.z) + R);
+          }
+        } else {
+          const step = Math.max(1, Math.floor(pos.count / 2500));
+          for (let i = 0; i < pos.count; i += step) {
+            tv.fromBufferAttribute(pos, i).applyMatrix4(n.o.matrixWorld);
+            sweptR = Math.max(sweptR, Math.hypot(tv.x - pivot.x, tv.z - pivot.z));
+          }
+        }
+      }
+      if (sweptR === 0) yaw.note = 'no turret-body meshes (casemate class?)';
+      const BUSTLE_M = 0.9; // bustle-overhang allowance beyond the swept body
+      const R = sweptR + BUSTLE_M;
+      yaw.sweptRadiusM = +sweptR.toFixed(3);
+      yaw.zoneRadiusM = +R.toFixed(3);
+
+      const YAWS = [0, Math.PI / 2, Math.PI];
+      const setYaw = (a) => { turretG.rotation.y = a; root.updateMatrixWorld(true); };
+      // one camera framing the union of all three yaw poses (barrel swings)
+      const uBox = new THREE.Box3();
+      for (const a of YAWS) { setYaw(a); uBox.union(visibleBox()); }
+      setYaw(0);
+      const cam = orthoFor(uBox, new THREE.Vector3(0, 1, 0));
+
+      // shaded pass (game truth): real materials, FrontSide
+      setPass('game');
+      const shaded = [];
+      for (const a of YAWS) { setYaw(a); shaded.push(shoot(cam)); }
+      // id pass: flat unique colors per node (b==170 marks a valid id)
+      const idMats = new Map();
+      const idMat = (i) => {
+        let m = idMats.get(i);
+        if (!m) {
+          m = new THREE.MeshBasicMaterial({ side: THREE.FrontSide });
+          m.color.setRGB((i & 255) / 255, ((i >> 8) & 255) / 255, 170 / 255);
+          idMats.set(i, m);
+        }
+        return m;
+      };
+      const savedMats = nodes.map((n) => n.o.material);
+      for (const n of nodes) n.o.material = idMat(n.idx);
+      const ids = [];
+      for (const a of YAWS) { setYaw(a); ids.push(shoot(cam)); }
+      nodes.forEach((n, i) => { n.o.material = savedMats[i]; });
+      for (const m of idMats.values()) m.dispose();
+      // depth pass at rest (ortho: fragCoord.z is linear near..far)
+      setYaw(0);
+      const depthMat = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking });
+      scene.overrideMaterial = depthMat;
+      const dep = shoot(cam);
+      scene.overrideMaterial = null;
+
+      const camY = cam.position.y;
+      const near = 0.1, far = 200;
+      // exact inverse of three's packDepthToRGBA (packing.glsl.js: R coarse,
+      // A finest; channel c contributes (c/255)*UnpackFactors4[c]). Ortho
+      // fragCoord.z is linear in view depth, so worldY recovers exactly.
+      const heightAt = (i) => {
+        const d = dep[i * 4] / 256 + dep[i * 4 + 1] / 65536 + dep[i * 4 + 2] / 16777216 + dep[i * 4 + 3] / 4278190080;
+        return camY - (near + d * (far - near));
+      };
+      const idAt = (b, i) => (Math.abs(b[i * 4 + 2] - 170) <= 1 ? b[i * 4] + (b[i * 4 + 1] << 8) : 0);
+      const TOL = 2;
+      const same = (a, b, i) => Math.abs(a[i * 4] - b[i * 4]) <= TOL
+        && Math.abs(a[i * 4 + 1] - b[i * 4 + 1]) <= TOL
+        && Math.abs(a[i * 4 + 2] - b[i * 4 + 2]) <= TOL;
+
+      const { center, half, right, up } = cam.userData.map;
+      // allocation-free bottom-origin px -> world (x,z) on the plan plane
+      const worldXZ = (x, y) => {
+        const un = (((x + 0.5) / S) * 2 - 1) * half;
+        const vn = (((y + 0.5) / S) * 2 - 1) * half;
+        return [center.x + right.x * un + up.x * vn, center.z + right.z * un + up.z * vn];
+      };
+      // HEIGHT DISCRIMINATOR (calibrated on the 2026-08-06 validation set):
+      // engine decks sit AT or just above the ring plane fleet-wide (t72b3m
+      // deck 1.50-1.60 vs ring 1.42; ariete/leclerc/challenger alike), so a
+      // ring-plane gate floods every tank with deck pixels. Stranded turret
+      // furniture reads at TURRET heights — the candidate gate is
+      // h >= ringY + RISE (0.20 m); the deck band [ringY-0.05, ringY+RISE)
+      // is still counted informationally as deckStaticPx so nothing hides.
+      const RISE = 0.20;
+      let staticPx = 0;       // shaded-static in zone at/above ringY+RISE
+      let deckStaticPx = 0;   // shaded-static in zone in the deck band (info)
+      let coincidencePx = 0;  // static but turret-subtree/unstable id (§J false-flag class)
+      const cand = new Map(); // node idx -> {px, x0,y0,x1,y1, hMin,hMax}
+      for (let y = 0; y < S; y++) {
+        for (let x = 0; x < S; x++) {
+          const i = y * S + x;
+          const id0 = idAt(ids[0], i);
+          if (!id0) continue; // background at rest
+          const [wx, wz] = worldXZ(x, y);
+          if (Math.hypot(wx - pivot.x, wz - pivot.z) > R) continue;
+          if (!(same(shaded[0], shaded[1], i) && same(shaded[0], shaded[2], i))) continue;
+          const h = heightAt(i);
+          if (h < yaw.ringY + RISE) {
+            if (h >= yaw.ringY - 0.05) deckStaticPx++;
+            continue;
+          }
+          staticPx++;
+          const n0 = nodes[id0 - 1];
+          const idStable = idAt(ids[1], i) === id0 && idAt(ids[2], i) === id0;
+          if (!n0 || n0.turret || !idStable) { coincidencePx++; continue; }
+          let c = cand.get(id0);
+          if (!c) { c = { px: 0, x0: S, y0: S, x1: -1, y1: -1, hMin: Infinity, hMax: -Infinity }; cand.set(id0, c); }
+          c.px++;
+          if (x < c.x0) c.x0 = x; if (x > c.x1) c.x1 = x;
+          if (y < c.y0) c.y0 = y; if (y > c.y1) c.y1 = y;
+          if (h < c.hMin) c.hMin = h; if (h > c.hMax) c.hMax = h;
+        }
+      }
+      // vertex census cross-check (§J: adjudicate against rig vertex census,
+      // instanced meshes included) for every candidate node
+      const vertCensus = (n) => {
+        const g = n.o.geometry;
+        const pos = g.getAttribute('position');
+        if (!pos) return { inZone: 0, total: 0 };
+        let inZone = 0;
+        let total = 0;
+        const wm = new THREE.Matrix4();
+        const check = (m) => {
+          const step = Math.max(1, Math.floor(pos.count / 1500));
+          for (let i = 0; i < pos.count; i += step) {
+            tv.fromBufferAttribute(pos, i).applyMatrix4(m);
+            total++;
+            if (tv.y >= yaw.ringY + RISE && Math.hypot(tv.x - pivot.x, tv.z - pivot.z) <= R) inZone++;
+          }
+        };
+        if (n.o.isInstancedMesh) {
+          for (let k = 0; k < n.o.count; k++) {
+            n.o.getMatrixAt(k, M4);
+            if (Math.abs(M4.determinant()) < 1e-12) continue;
+            wm.multiplyMatrices(n.o.matrixWorld, M4);
+            check(wm);
+          }
+        } else check(n.o.matrixWorld);
+        return { inZone, total };
+      };
+      const candidates = [...cand.entries()]
+        .map(([nid, c]) => {
+          const n = nodes[nid - 1];
+          const vc = vertCensus(n);
+          const [ax, az] = worldXZ(c.x0, c.y0);
+          const [bx, bz] = worldXZ(c.x1, c.y1);
+          return {
+            node: n.name,
+            rig: n.rig,
+            instanced: !!n.o.isInstancedMesh,
+            shadowNamed: n.shadow || undefined,
+            px: c.px,
+            vertsInZone: vc.inZone,
+            vertsSampled: vc.total,
+            heightM: [+c.hMin.toFixed(3), +c.hMax.toFixed(3)],
+            bbox: {
+              px: [c.x0, c.y0, c.x1, c.y1],
+              worldXZ: [
+                [Math.min(ax, bx), Math.min(az, bz)].map((v) => +v.toFixed(3)),
+                [Math.max(ax, bx), Math.max(az, bz)].map((v) => +v.toFixed(3)),
+              ],
+            },
+          };
+        })
+        .sort((a, b) => b.px - a.px);
+      yaw.riseM = RISE;
+      yaw.staticPx = staticPx;
+      yaw.deckStaticPx = deckStaticPx;
+      yaw.coincidencePx = coincidencePx;
+      yaw.candidatePx = candidates.reduce((s, c) => s + c.px, 0);
+      yaw.candidates = candidates.slice(0, 24);
+      setYaw(0);
+      out.yaw = yaw;
+    }
+
+    restoreVis();
+    window.__WIND_RESULT = out;
+    window.__WIND_READY = true;
+  }
+}
+</script>

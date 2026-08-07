@@ -270,6 +270,16 @@ belly-pan clamp task is SUPERSEDED by this revert. sherman_jumbo's 22/10
 band + 34/6 shoe audit reading is PRE-PAN (persists post-revert) — ww2
 lane decode item.
 
+## 4.95 §C.1 FLEET BASELINE (winding-audit, 2026-08-06): mode-2 HARD
+candidates -> lane queue: t72b3m 11227 (russia agent ON IT), t90a_vladimir
+9973 + t90m 1903 (russia agent), m1a2_sepv2 5519 (abrams agent relayed),
+challenger2 2666 (moderns agent relayed), spz_puma 2829 (modern3 queue),
+m60a2 5304 + vickers_mk1 4562 + is1/is2 (lane queue); isu122s/isu152 =
+casemate by-design (adjudicated). Mode-1: t80u 0.33% open-surface,
+challenger1 0.31%, t62mv1/t72b_1987 0.25%. LATENT REVERSED-CORES (census
+only, occluded): vickers 8, centurion3 6, centurion5 6, merkava3c 6,
+merkava1b 5, merkava3d 4, +12 more — sweep when lanes free.
+
 ## 5. IN-FLIGHT AGENTS (SUPERSEDED BY §12 — the 2026-08-05 device
 handover interrupted these; respawn per §12)
 1. DONE+RATIFIED: abrams dual critic (m1a1ha f5c556dc, sepv2 §10 run).
