@@ -72,7 +72,7 @@ re-freeze NEW hash, all in ONE commit.
 | isu152 | 8e2f75c0 | |
 | merkava3d | 39de83c8 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | pt91m | 2cf10e23 | |
-| t72b3m | 1e1ca4b8 | RE-ORACLED 2026-08-06 (owner override, §4.998): oracle = obr_2022 print + batch-45 stature normalize; honest re-baseline 69 x2 (was frozen 91.8 vs the retired recovered print) — re-cert chain restarts; the 2022-config gap (RWS/roof cluster/Relikt) is the russia-lane coupled round |
+| t72b3m | 61a83b2c | RE-FROZEN 2026-08-07 (graduate-change complete on the obr_2022 oracle): 2022-config round 69 -> 85.9 + re-cert critic PASS 9.0 x14 (sheets shots/critic-t72b3m-recert/) — owner "build the t72 b3m" order CLOSED; gate ladder stays open honestly at 85.9 (dome re-loft follow-up + bow/smoke density candidates banked) |
 | merkava1b | 2cc7a76c | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | m1a2 | bbae99a4 | CROWS aim-frame re-cert RATIFIED (floor 9.1+; owner both-halves YES) |
 | chieftain5 | d4f2a9a6 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
@@ -853,3 +853,13 @@ critic). §4.999997's ASK-OWNER stands as an OVERRIDE option only
 banked: type74 track band tone (non-blocking). Cross-lane ledger
 sync note: the critic's gate run refreshed the t72b3m row to the
 coupled lane's newer local state — reconcile at that landing.
+
+## 4.999999 T72B3M RE-CERT PASS 9.0 -> RE-FROZEN 61a83b2c (registry §3
+row updated; graduate-change protocol complete on the owner-overridden
+obr_2022 oracle). All eight 2022-config checklist items verified in
+pixels; all four honest residuals confirmed as their documented
+classes; §B8.1 gates pass. Watch items banked: dome re-loft follow-up
+(rear-left plan quarter + roof wedge density), bow light/smoke bank
+density, clamp chip cosmetics. The owner's "and build the t72 b3m"
+override is CLOSED end-to-end (oracle swap ea740e9 -> batch-45 ->
+coupled round cfca3b0 -> re-cert -> re-freeze).
