@@ -411,3 +411,25 @@ y-compress caught the TURRET node below published height (shell plateau
 the turret-node knee at 2.44 (or a turret-only decompression), which
 would release the ~8-10-column plateau cap and let turret_side re-reach
 ~75+ honestly.
+
+### Coupled whip landing — ORCHESTRATOR ATTEMPT PARKED (2026-08-06)
+
+Attempted the coupled flip with turretFollowers '^Dekali$' (the print's
+turret-band cladding group: shell cladding .022, roof plate .023, rear
+band-B top .024 at world z -2.13..-1.61 y 2.31, front panel .025).
+GATE CRATERED: 0 | hull 0 whole 3.8 turret 0 stations 68.9 — the group
+spans the full turret band and AUTOPIVOT RE-DERIVES THE RING from the
+enlarged turret footprint; the whole registration shifts (not a mask
+migration — a pose break). Reverted; certified 49.4 line reproduced
+exactly post-revert (49.4 | 56/49.4/68.6/76.4/100/100, hash 9c059ce0).
+
+REFINED WORK ORDER for the abrams lane: derive the follower set with
+mode-2 tooling — candidates must be NARROW nodes (the masts/whip
+carriers only; the band-B deck plate stays hull on BOTH sides since the
+proc keeps its deck slab on hull). If no narrow node exists (whips baked
+into defaultMaterial.022), the coupled fix needs either (a) pinned
+pivot (autoPivot:false + explicit ring) so followers can't shift
+registration, or (b) an §E node-split surgery isolating the whip
+geometry into a new node (batch-43 _index_surgery class) before the
+follower re-parent. Print hierarchy + band evidence in the orchestrator
+census (2026-08-06): Dekali/korpus/puli groups all sibling to ^Turret$.

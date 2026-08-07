@@ -71,6 +71,12 @@ if (ALLOW_LOCAL_RECOVERED_MODELS) {
       path: '/models/tanks/community/abramsx-mortavex.glb',
       turretNode: '^Turret$', gunNode: '^[Ss]tvol$', autoPivot: true,
       paintUntextured: true,
+      // COUPLED WHIP LANDING PARKED (2026-08-06 orchestrator attempt):
+      // turretFollowers '^Dekali$' cratered the gate to 0 — the group
+      // spans the full turret band and autoPivot re-derives the ring
+      // from the enlarged footprint (registration shift class). The
+      // follower set must be derived by the abrams lane with mode-2
+      // tooling; AX_WHIPS_TURRET in abrams.js rides the same commit.
     },
   };
 

@@ -5025,7 +5025,12 @@ function buildAbramsX(P) {
   // refTop 2.35-2.47); the old proc 4.12 rods were the documented
   // post-warp retune debt (side/front d +1.65..+1.76 on four columns) and
   // are PAID this round. Masts stand on the rear sensor deck (band B).
-  const AX_WHIPS_TURRET = false; // ORCHESTRATOR: flip WITH the followers extension (one landing)
+  // ORCHESTRATOR 2026-08-06: coupled-flip ATTEMPTED with followers
+  // '^Dekali$' — gate cratered to 0 (autoPivot re-derives the ring from
+  // the enlarged turret footprint and the whole registration shifts).
+  // Stays false until the abrams lane derives the exact follower node
+  // set with mode-2 tooling (work order updated in abramsx.md).
+  const AX_WHIPS_TURRET = false;
   for (const side of [-1, 1]) {
     if (AX_WHIPS_TURRET) {
       // turret-local frame (ring at 0, 1.95, -0.39): world (±1.15, -1.98)
