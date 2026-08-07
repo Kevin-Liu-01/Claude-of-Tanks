@@ -1174,3 +1174,21 @@ check (their builders live in modern3.js — free). FLEET NO-AIR SWEEP
 NOTE the owner ALSO said "adjust their stats" for the AFVs — read as
 ambiguous (gameplay stats vs geometry); the geometry round is
 running; the stats half is FLAGGED FOR OWNER CLARIFICATION.
+
+## 5.19 OWNER ORDER (2026-08-07): SEPv3 DEDUPE + SEP REBUILD-ON-BASE —
+"theres two m1a2 sepv3s. lets use M1a2 sepv3 and delete m1a2 abrams
+sepv3. then, for sepv2s and sepv3, we need to rebuild them to use the
+M1A2 abrams base model and then start slapping on extra stuff and
+decorations." EXECUTED: the base m1a2 spec row RENAMED 'M1A2 Abrams
+SEPv3' -> 'M1A2' (the duplicate garage name is DELETED; the SEPv3
+identity belongs solely to m1a2_sepv3; the base id/geometry stays as
+the locked-roster family anchor + graduate + oracle bearer — if the
+owner meant delete the TANK, the leo2a7 delist mechanism is 30
+seconds, flagged in the code comment). QUEUED: SEP REBUILD-ON-BASE
+round (abrams.js — behind the live abramsx agent): sepv2 + sepv3
+rebuilt to visibly BE the M1A2 Abrams base platform + slapped-on
+kit/decorations (owner's third restatement of this intent — the
+visual base-ness isn't reading; the round unifies the SEP variants'
+platform detail with the tejas-grade look, then the kit). AMBIGUITY
+FLAGGED to the owner: "the M1A2 abrams base model" = the base m1a2
+id or the tank NAMED 'M1A2 Abrams' (tejas)?

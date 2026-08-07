@@ -698,7 +698,13 @@ export const TANK_SPECS = {
   },
 
   m1a2: {
-    id: 'm1a2', name: 'M1A2 Abrams SEPv3', nation: 'USA', era: 'modern', class: 'mbt',
+    // Renamed from 'M1A2 Abrams SEPv3' (owner 2026-08-07: "theres two
+    // m1a2 sepv3s. lets use M1a2 sepv3 and delete m1a2 abrams sepv3") —
+    // the SEPv3 garage identity now belongs solely to m1a2_sepv3; this
+    // base row keeps the id + geometry as the family anchor. If the owner
+    // wants this TANK gone (not just the name), delist per the leo2a7
+    // TANK_IDS mechanism.
+    id: 'm1a2', name: 'M1A2', nation: 'USA', era: 'modern', class: 'mbt',
     hp: 2600,
     // Real SEPv3 reverses at ~40 km/h, but that reads arcade-y next to the
     // 5-8 km/h WW2 roster and sits far outside the WoT-feel envelope
