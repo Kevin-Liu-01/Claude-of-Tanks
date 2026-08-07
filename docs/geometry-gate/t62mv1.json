@@ -5,7 +5,7 @@
  "components": {
   "hullCurves": 63.7,
   "wholeCurves": 65.2,
-  "turretCurves": 69.1,
+  "turretCurves": 68.9,
   "stations": 90.9,
   "dims": 100,
   "floaters": 100
@@ -120,7 +120,7 @@
    ]
   },
   "side_whole": {
-   "score": 65.2237764899072,
+   "score": 65.22418028297578,
    "meanPct": 2.42,
    "p95Pct": 8.08,
    "coverPct": 0.56,
@@ -662,15 +662,23 @@
  },
  "turretRows": {
   "side": {
-   "score": 69.1330355597829,
-   "meanPct": 1.98,
-   "p95Pct": 8.6,
+   "score": 68.92873597683959,
+   "meanPct": 2,
+   "p95Pct": 8.65,
    "coverPct": 1.28,
    "reg": {
     "dAlong": -0.054,
     "dy": 0.034
    },
    "worst": [
+    {
+     "at": -0.48,
+     "refTop": 0.83,
+     "refBot": 0.24,
+     "procTop": 0.9,
+     "procBot": -0.11,
+     "errM": 0.211
+    },
     {
      "at": 1.01,
      "refTop": 1.12,
@@ -680,20 +688,12 @@
      "errM": 0.21
     },
     {
-     "at": -0.48,
-     "refTop": 0.83,
-     "refBot": 0.24,
-     "procTop": 0.9,
-     "procBot": -0.11,
-     "errM": 0.209
-    },
-    {
      "at": -0.9,
      "refTop": 0.73,
      "refBot": 0.27,
      "procTop": 0.95,
      "procBot": 0.3,
-     "errM": 0.125
+     "errM": 0.127
     },
     {
      "at": 0.05,
@@ -724,8 +724,8 @@
      "refTop": 1.14,
      "refBot": 0.24,
      "procTop": 1.03,
-     "procBot": 0.24,
-     "errM": 0.058
+     "procBot": 0.25,
+     "errM": 0.057
     },
     {
      "at": -0.16,
@@ -770,9 +770,9 @@
    ]
   },
   "plan": {
-   "score": 95.25935752263337,
-   "meanPct": 0.36,
-   "p95Pct": 0.69,
+   "score": 93.77264586757968,
+   "meanPct": 0.47,
+   "p95Pct": 1.05,
    "coverPct": 0,
    "reg": {
     "dAlong": 0,
@@ -780,19 +780,51 @@
    },
    "worst": [
     {
-     "at": -1.11,
-     "refTop": 1.13,
-     "refBot": -0.39,
-     "procTop": 1.16,
-     "procBot": -0.49,
-     "errM": 0.064
+     "at": 0.69,
+     "refTop": 1.41,
+     "refBot": -0.74,
+     "procTop": 1.44,
+     "procBot": -0.52,
+     "errM": 0.123
+    },
+    {
+     "at": 0.58,
+     "refTop": 1.46,
+     "refBot": -0.79,
+     "procTop": 1.48,
+     "procBot": -0.61,
+     "errM": 0.098
+    },
+    {
+     "at": 0.79,
+     "refTop": 1.38,
+     "refBot": -0.69,
+     "procTop": 1.39,
+     "procBot": -0.51,
+     "errM": 0.093
     },
     {
      "at": -0.37,
      "refTop": 1.53,
      "refBot": -0.94,
      "procTop": 1.53,
-     "procBot": -0.81,
+     "procBot": -0.8,
+     "errM": 0.069
+    },
+    {
+     "at": 0.48,
+     "refTop": 1.5,
+     "refBot": -0.84,
+     "procTop": 1.51,
+     "procBot": -0.71,
+     "errM": 0.068
+    },
+    {
+     "at": -1.11,
+     "refTop": 1.13,
+     "refBot": -0.39,
+     "procTop": 1.16,
+     "procBot": -0.49,
      "errM": 0.064
     },
     {
@@ -820,14 +852,6 @@
      "errM": 0.059
     },
     {
-     "at": 0.79,
-     "refTop": 1.38,
-     "refBot": -0.69,
-     "procTop": 1.39,
-     "procBot": -0.59,
-     "errM": 0.053
-    },
-    {
      "at": 1.11,
      "refTop": 1.14,
      "refBot": -0.41,
@@ -850,30 +874,6 @@
      "procTop": 1.26,
      "procBot": -0.56,
      "errM": 0.035
-    },
-    {
-     "at": -0.26,
-     "refTop": 1.54,
-     "refBot": -0.99,
-     "procTop": 1.55,
-     "procBot": -1.05,
-     "errM": 0.035
-    },
-    {
-     "at": 1.22,
-     "refTop": 1.02,
-     "refBot": -0.25,
-     "procTop": 1.06,
-     "procBot": -0.27,
-     "errM": 0.035
-    },
-    {
-     "at": 0.69,
-     "refTop": 1.41,
-     "refBot": -0.74,
-     "procTop": 1.44,
-     "procBot": -0.7,
-     "errM": 0.034
     }
    ]
   }

@@ -6,7 +6,7 @@
   "hullCurves": 88.7,
   "wholeCurves": 82.5,
   "turretCurves": 84.7,
-  "stations": 88.3,
+  "stations": 87.8,
   "dims": 98.9,
   "floaters": 100
  },
@@ -120,8 +120,8 @@
    ]
   },
   "side_whole": {
-   "score": 87.09866854617792,
-   "meanPct": 0.97,
+   "score": 87.02031454118645,
+   "meanPct": 0.98,
    "p95Pct": 2.04,
    "coverPct": 0,
    "reg": {
@@ -662,7 +662,7 @@
  },
  "turretRows": {
   "side": {
-   "score": 87.30918895584408,
+   "score": 87.24311716753344,
    "meanPct": 0.96,
    "p95Pct": 2.04,
    "coverPct": 0,
@@ -712,14 +712,6 @@
      "errM": 0.038
     },
     {
-     "at": 0.56,
-     "refTop": 0.74,
-     "refBot": 0.32,
-     "procTop": 0.78,
-     "procBot": 0.36,
-     "errM": 0.038
-    },
-    {
      "at": 1.44,
      "refTop": 0.95,
      "refBot": -0.5,
@@ -734,6 +726,14 @@
      "procTop": 1.06,
      "procBot": -0.49,
      "errM": 0.038
+    },
+    {
+     "at": 0.69,
+     "refTop": 0.78,
+     "refBot": 0.31,
+     "procTop": 0.81,
+     "procBot": 0.27,
+     "errM": 0.035
     },
     {
      "at": -1.69,
@@ -932,7 +932,7 @@
   {
    "i": 10,
    "wPct": 2.32,
-   "topPct": 1.03
+   "topPct": 1.68
   },
   {
    "i": 11,

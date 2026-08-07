@@ -594,3 +594,66 @@ RESIDUALS (honest): dims 96.2 certified hullLengthM class; z -4.456
 transom-vs-floating-rack teeter col (certified r13 belly class); front
 ramp mid-cols ~0.05-0.08 after padHug (shoe-stack quantization); K-5
 read subtler than t90a's (its certified thin-HIGH band class).
+
+## FUSED-TURRET FIX round (2026-08-07, chevron+fused builder — owner order:
+## "for the t90a vladimir, the turret is literally fused with the hull")
+
+Order B (§5.23-class): from the SIDE the turret band merged into the hull
+with NO separation — the ring-zone deck (r13b raised band 1.745 + 1.82
+plateau + 1.988 left frame) was the proc MIRRORING the print's hull-node
+turret bake (§E vlo class; the winding-audit m2 rig_hull dome-ghost HARD
+flag was the same finding). FUSE markers in buildT90AVladimir.
+
+WHAT LANDED (§K measured lines):
+- RING-ZONE DECK -> the measured plate: extract side_hull_96 reads the
+  fore-ring deck 1.456-1.471 and the aft plateau 1.514 — the ring-zone
+  plate is their continuation at 1.50-1.51 (deck re-lined; the welded
+  turret base 1.48w now SITS ON the deck; the deck line breaks the side
+  silhouette at the turret front and behind the bustle).
+- The 1.82 center plateau + 1.988 left transverse frame + 1.94 right roof
+  sliver DELETED (ring-zone bake mirrors).
+- AFT STOWAGE as DISCRETE §B3 boxes (lid seams + latch nubs) on the 1.51
+  plate, tops 1.694/1.64, z -2.31..-2.66 (bustle swing clears z >= -2.25)
+  — replaces the full-width loft shoulder read.
+- §K MEASURED COLLAR: print turret bottoms read 1.41w FLAT over z -0.06..
+  -1.83 (extract side_turret_96) — a real casting collar drops the prism
+  base to 1.405..1.48w (also seats the turret over the 1.45 fore-deck at
+  every yaw, §B2). Turret row +2.8 from this line.
+- RING-GAP SHADOW BAND (§C shadow-named, muzzleBore pattern — renders in
+  game/critic, excluded from every mask + framing): dark seam ring at the
+  prism base 1.48..1.585w, 1.2% proud; turret-parented.
+- DEEP-BIN BOTTOMS 1.48 -> 1.55w (tops/rears byte-held, T4V law): the
+  under-bustle daylight is the §B2 legal turret-overhang air; bins stay
+  cantilevered off the prism (front 0.24 embeds).
+- Ring-zone deck furniture re-seated flush on the new plate (links y
+  1.455, cable pts 1.468-1.478); right fender bin pair dropped 0.095 to
+  SIT on the fender-lip shelf (bottoms 1.445; the lowered wall top left
+  them hovering, §B2).
+
+OWNER-TASTE CAP (§B7/§E, measured receipts): the print's ring-zone
+hull-node band (side tops 1.79-1.85 over z -0.93..-2.72; front cols
+±0.71..0.86 at 1.70-1.754; the 1.988/1.92-1.94 front frames) is the baked
+stack+ghost the owner's separation order overrides — NOT chased. Gate
+movement (x2 verified): 77.5 | 77.5/81.6/79.5/90.5/96.2/100 ->
+63.8 | 63.8/67.2/77.5/90.7/96.2/100 (hull -13.7 / whole -14.4 = the cap
+columns; turret -2.0 net after the +2.8 collar recovery — the bin-slit
+trade; stations +0.2; dims/floaters exact). ROW-RECOVERY PATH: the §E
+coupled oracle repair (strip the hull-node turret bake) re-scores these
+columns against the print's true deck — ESCALATED to the orchestrator
+lane (this round is the proc half of the coupled fix).
+CHEVRON (order A): already landed at T5F (k5Yaw 0.32 = 47deg measured
+arrow); held byte-exact this round.
+MEASURED YAW PROOF (§C.1 winding-audit m2, final bytes): the rig_hull
+fused-mass flag COLLAPSED 10468 (adjudicated baseline) -> 428 candidatePx
+(verdict HARD -> candidates) — the deck no longer reads as turret-footprint
+mass; m1 clean (0 rev / 0 mix / 1px). turret-parent-audit 0/0/0 (the two
+deck fittings re-seated below the envelope — the old audit-artifact flags
+cleared). Geometry hash 02ebb722 -> 190e6a32 (50 -> 51 meshes: the
+shadow band). Gate x2 bit-identical on final bytes.
+SWEEP NOTE: the camo-r6 landing's cross-lane `git stash` (df1913f) parked
+this round's WIP mid-verification; restored byte-exact from stash@{0}
+(sha ba4bf345) and every number above re-measured on the restored bytes.
+Evidence: shots/russia-chevron-fused/{before,after}/t90a_vladimir/ +
+after/yawpair-t90a_vladimir.png + after/yaw{0,90}-t90a_vladimir/
+(side pairs proving the separation + hero seam read + yaw sweep).
+DELIVERED-PENDING-CRITIC; not committed (builder law).

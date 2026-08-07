@@ -293,3 +293,35 @@ mask/frame-neutral — t80 82.5 / t80b 81.6 rows EXACT). t80bv turret
 has no gunNode (fused barrel; r6 repair-queue class "re-parent baked
 barrels to gun nodes") and the §7 scaleToOverall ruling is pending.
 Mantlet collars + Luna + NSVT already per-variant on the rig.
+
+## CHEVRON round (2026-08-07, chevron+fused builder — §5.14 owner '<' order,
+## all three marks; CHEV markers in buildT80Line)
+Mechanism: the shared k1Chevron opt-in in eraRuCheeks (straight banks
+sweeping back from the gun center, ry = -s*yaw k5-donor convention, thin
+dark backer frame bridging bank to casting §B2; defaults byte-identical
+for every legacy caller — proven by 14-tank hash hold before opt-in).
+- t80 (v0): print + real fit carry NO era front — the owner's '<' governs
+  (§B7 owner-taste, documented): LIGHT two-row, three-brick banks at
+  44.7deg (yaw 0.78, out 0.07 so the banks stand proud of the fat dome
+  bulge in plan), no flank field — the mark stays the lightest (§H.4:
+  t80 light banks / t80b applique banks + brow + 902 / t80bv full field
+  + raft + skirt plates). GATE: 82.5 | 88.7/82.5/84.7/87.8/98.9/100 vs
+  baseline 88.3 stations (-0.5, the proud banks in 1-2 slices; all other
+  rows EXACT incl. min).
+- t80b (v1): the three spread applique tiles re-line onto two straight
+  banks at 41.3deg (s*0.72; the r26 arc read was a 17deg fringe —
+  measured receipt: old tile line (0.40,1.52)->(1.06,1.32) = 16.9deg) +
+  thin dark backer per side. Same tile grammar/count; brow shelf + 902
+  tubes stay. GATE: 81.6 | 87.6/81.6/86.2/92.3/100/100 — EXACT baseline
+  every row.
+- t80bv (v2): the K-1 cheek field banks — bricks 0-2 at 44.7deg (yaw
+  0.78, out 0.07), brick 3 keeps its arc seat (flank wrap). MEASURED
+  receipt: the print's own arc chord reads 35.0deg. GATE: 33.7 |
+  44.6/45/52.5/33.7/100/100 vs baseline 35.5 | 44.6/45/55.2/35.5/100/100
+  (turret -2.7 / stations -1.8 = the §B7 owner-'<' cap on the 4.4%%
+  under-scale print whose turret row is already the standing
+  oracle-pinned class (dAlong 1.285) + scaleToOverall ruling pending;
+  hull/whole/dims/floaters EXACT).
+Plan pairs verify the '<' on all three
+(shots/russia-chevron-fused/after/*/view-top.png).
+DELIVERED-PENDING-CRITIC; not committed.

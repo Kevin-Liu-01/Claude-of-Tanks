@@ -526,13 +526,13 @@
   },
   {
    "id": "t72b_1987",
-   "geoMin": 60.2,
+   "geoMin": 59.8,
    "gatePassed": false,
    "components": {
     "hullCurves": 63.3,
     "wholeCurves": 60.7,
-    "turretCurves": 60.2,
-    "stations": 68.2,
+    "turretCurves": 59.8,
+    "stations": 68.4,
     "dims": 96.7,
     "floaters": 100
    }

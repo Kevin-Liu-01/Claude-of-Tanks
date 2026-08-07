@@ -332,3 +332,16 @@ nearly done.
 Gate row EXACT: 52.8 | 52.8/59.2/68.4/81.8/100/100 — the oracle stays
 the certified-ceiling blocker (§7 orchestrator decision pending:
 warp batch vs ceiling-cert vs re-source).
+
+## CHEVRON round (2026-08-07, chevron+fused builder — §5.14 owner '<' order)
+The obr-92 K-5 clamshell takes the donor arrow yaw (CHEV marker): k5Yaw
+0.38 over the default k5T 0.55 = 53.3deg sweep — inside the MEASURED donor
+window (t90a leaf run (±1.29,1.36)->(±0.61,2.35) = 55.5deg; vladimir 47deg).
+k5Len 0.95 -> 0.90 keeps the yawed inner tips at z <= 1.41 (the r9 mantlet
+floor class); k5Seg 4 adds the §B3.1 sectioned-clamshell seams (flush,
+zero growth). The print's own r9-calibrated leaves were tangent-only
+(31.5deg — measured receipt); the owner's '<' governs (§B7).
+GATE: 52.8 | 52.8/59.2/68.3/81.8/100/100 vs baseline 52.8 | 52.8/59.2/
+68.4/81.8/100/100 (turret -0.1; min EXACT). Plan pair verifies the '<'
+(shots/russia-chevron-fused/after/t72bu/view-top.png).
+DELIVERED-PENDING-CRITIC; not committed.
