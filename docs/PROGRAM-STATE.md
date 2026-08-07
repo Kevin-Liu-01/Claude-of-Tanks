@@ -931,3 +931,21 @@ type99a spec fully gone (delist complete). Mode-2 candidate list
 banked (12 HARDs, candidates-not-defects per §J). Graduate fixes need
 the graduate-change protocol (fix -> gate x2 -> re-cert -> re-freeze,
 ONE commit each).
+
+## 5.04 SWEEP FIX WAVE LANDED (2026-08-07): item 1 is1/is2 tail slab
+FIXED b24dfc0 (frustum zF/zR swap — inside-out since authorship;
+census rev 0 both); items 2-5 adjudicated f1d49a3 — ALL FOUR were the
+new DECAL FLOAT class (floating one-sided P.decal quads = phantom
+F-vs-D columns, census-invisible; attribution probe
+tools/tmp-winding-attrib.html COMMITTED): t80u soot re-pinned (gate
+75.4->75.9), t62mv1 + t72b_1987 bort numbers re-seated (gates
+byte-identical), challenger1 STOPPED per the protect clause (verified
+fix moves the 90.1 PASS to the razor edge — station-0 topPct was
+FAKED by the phantom decal; patch banked in the round evidence, needs
+a companion tail-top stowage mass in a builder round). Housekeeping:
+cruiser row dropped (fleet /89), t84 packet created. LANE LAW BANKED:
+the sweep's file attributions can be stale — PROFILED_BUILDERS shadow
+userdrops/modern builders (modern2.js buildT80U is DEAD CODE);
+builders live in profiles/*. FOLLOW-UPS: challenger1 companion item,
+dead-builder cleanup, fleet decal-pin sweep (same probe), graduate-
+latent wave (leo2a5/leo2a6/merkava1b/t84 — deficit-0, LOW).
