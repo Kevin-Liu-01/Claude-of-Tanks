@@ -822,3 +822,11 @@ freeze decoration until these pass):
   FITTING-CAP heightM p95: wide-span roof fittings own the p95 across
   columns — whatsat the fitting AABB before seating roof weapons on
   published-height builds.
+- DETAIL-SLOT LOUD-CARRIER (§C, t90m adjudication): the mats.detail
+  default is wheelTone-coupled TAN — profiles hanging large equipment on
+  it must retint/re-bucket (t72b3m did; t90m's drums did not).
+  INTERIOR-READ TRIAD: wheel exposure, hatch rings, and equipment tone
+  are mask-invisible — §B8.1 wheel-countability applies to ORACLE-BACKED
+  graduations too, judged vs the oracle render on every side pair.
+  HASH-IMPL PINNING: tmp-hashgeo's float64-saturating FNV defines the
+  recorded hashes — byte-identical arithmetic or no comparison.
