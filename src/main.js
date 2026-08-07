@@ -50,8 +50,9 @@ import { createTank } from './vehicles/tankFactory.js';
 import {
   CAMO_PATTERN_IDS, CAMO_PATTERN_LABEL, getCamoSelection, setCamoSelection,
   setCamoBiome, applyCamoPatterns, applyCamoPatternsChunked, clearCamoOverrides, warmWreckTextures,
-  prebakeSharedTextures,
-  upgradeSharedTextures,
+  applyCamoPatternInstant, prewarmCamoBakes,
+  prebakeSharedTextures, prebakeBurntSteps,
+  upgradeSharedTextures, upgradeSharedTexturesChunked,
 } from './vehicles/materials.js';
 import { computeDispersionRadM, SIM_DT } from './sim/movement.js';
 import { tankPoseFromState, queryAimArmor, traceTank } from './sim/armor.js';
@@ -627,7 +628,11 @@ function scheduleHeroUpgrade(specId) {
     // fire between staged-boot awaits (procedural boot hero path)
     if (!bootComplete) { scheduleHeroUpgrade(specId); return; }
     if (!pedestalVisual || pedestalVisual.specId !== specId) return;
-    upgradeSharedTextures(specId);
+    // perf-r5: chunked — the in-place 2048² re-bake was a ~0.9 s atom landing
+    // right after every reveal of an 'ai'-baked hero (the "switch feels
+    // laggy even after the tank appears" component).
+    upgradeSharedTexturesChunked(specId, () => nextFrame())
+      .catch(() => { /* upgrade is cosmetic — the 'ai' bake stays */ });
   }, 350); // one settle beat after the reveal; superseded by the next switch
 }
 // TANK-SWITCH PERF (switching r1): idle-time neighbor prefetch. The carousel
@@ -653,16 +658,25 @@ function schedulePedestalPrefetch() {
     _idle(() => {
       if (game.phase !== 'garage') return;
       const id = want.find((x) => !pedestalCache.has(x));
-      if (id) {
-        const v = buildPedestalVisual(id);
-        // switch-desync r1: hide BEFORE parking — parkVisual now refuses to
-        // strip a visible on-stage visual while the hero is hidden (cover
-        // protection), and a freshly built procedural prefetch is exactly
-        // that shape if it lands mid-switch. Hidden first, it parks cleanly.
-        if (v.setVisible) v.setVisible(false);
-        parkVisual(v);
-      }
-      schedulePedestalPrefetch(); // second neighbor (or done — idempotent)
+      if (!id) { schedulePedestalPrefetch(); return; }
+      // perf-r5: the prefetch build sync-baked too — the idle slice was the
+      // same 150-900 ms atom, felt whenever it landed under an interaction.
+      prebakeSharedTextures(getSpec(id), engineCtx.anisotropy ?? 4, 'ai', () => nextFrame())
+        .catch(() => { /* warm only */ })
+        .then(() => {
+          if (game.phase !== 'garage' || pedestalCache.has(id)) {
+            schedulePedestalPrefetch();
+            return;
+          }
+          const v = buildPedestalVisual(id);
+          // switch-desync r1: hide BEFORE parking — parkVisual now refuses to
+          // strip a visible on-stage visual while the hero is hidden (cover
+          // protection), and a freshly built procedural prefetch is exactly
+          // that shape if it lands mid-switch. Hidden first, it parks cleanly.
+          if (v.setVisible) v.setVisible(false);
+          parkVisual(v);
+          schedulePedestalPrefetch(); // second neighbor (or done — idempotent)
+        });
     }, 3000);
   }, 700); // let the selected hero reveal + texture upgrade land first
 }
@@ -732,8 +746,33 @@ function setPedestalTank(specId, force = false) {
     // parked before its GLB landed (prefetch raced the queue): fall through
     // to the standard hide-until-swapped poll below with the cached visual.
   }
-  pedestalVisual = cached || buildPedestalVisual(specId);
+  // perf-r5 (owner: "switching between tanks laggy"): a COLD cache build
+  // sync-baked the family canvases inside createTank — a 150-900 ms freeze on
+  // the click. Prebake CHUNKED first (painted frame between painter stages;
+  // instant no-op when the cache is warm), then build against the warm
+  // cache. The outgoing hero keeps covering the stage through the async gap
+  // (pedestalSwitchPending holds the watchdog off for 8 s) and the token
+  // discipline below treats a supersede exactly like the GLB poll does.
+  if (!cached) {
+    const buildToken = pedestalPollToken;
+    prebakeSharedTextures(getSpec(specId), engineCtx.anisotropy ?? 4, 'ai', () => nextFrame())
+      .catch(() => { /* warm only — buildPedestalVisual bakes as before */ })
+      .then(() => {
+        if (buildToken !== pedestalPollToken) {
+          pedTrace('prebake-stale', { id: specId, tok: buildToken });
+          retirePrev();
+          return;
+        }
+        pedestalVisual = buildPedestalVisual(specId);
+        parkHiddenPrev();
+        proceedWithHero();
+      });
+    return;
+  }
+  pedestalVisual = cached;
   parkHiddenPrev(); // stale hidden loader can't auto-reveal onto the stage
+  proceedWithHero();
+
   // content_breadth r1: never show the three-box procedural placeholder on
   // the garage pedestal while the hero's GLB parses (the hard pop landed
   // directly above the model's CC-BY credit line). createTank already kicked
@@ -743,6 +782,7 @@ function setPedestalTank(specId, force = false) {
   // No dispose/re-create: tearing the visual down mid-swap races three's
   // compileAsync material poll (unhandled TypeError). Dynamic import keeps
   // GLTFLoader off the boot-critical bundle path (perf-budget rule).
+  function proceedWithHero() {
   const src = MODEL_SOURCE[specId];
   if (wantsSourcedGlb(src)) {
     const token = pedestalPollToken;
@@ -816,6 +856,7 @@ function setPedestalTank(specId, force = false) {
     recordSwitch(specId, t0, 'procedural');
   }
   schedulePedestalPrefetch();
+  }
 }
 // switch-desync r1: CONVERGENCE WATCHDOG — the last line of defense. Whatever
 // interleaving the async seams produce (superseded polls, late GLB swaps,
@@ -1036,8 +1077,14 @@ const garage = await bootStage('ui', () => createGarage({
     get: (specId) => getCamoSelection(specId),
     set: (specId, patternId) => {
       setCamoSelection(specId, patternId);
-      applyCamoPatterns(specId);
+      // camo r4 (owner ask): memoized-restore path — a pattern this spec has
+      // worn before lands in a couple of blits instead of a 0.3-1.4 s
+      // repaint; cold patterns repaint once and memoize.
+      applyCamoPatternInstant(specId);
     },
+    // camo r4: garage tank-select starts a background bake trickle so the
+    // whole picker roster restores warm by the time it's browsed.
+    prewarm: (specId) => prewarmCamoBakes(specId),
   },
   // CAMO WIRING (r8): AUTO(map) tanks preview the pattern they will actually
   // wear on the highlighted battlefield. 'random' falls back to verdant
@@ -1940,6 +1987,7 @@ function startBattle(specId, mapId = null, opts = {}) {
     deferCamoRepaint: true,
   });
   battleStaged = true;
+  prewarmCamoBakes(null); // camo r4: cancel the garage bake trickle
   // perf-r2f: ONE chunked sweep covers the biome flip AND the bot camo rolls
   // setupBattle just made (its own trailing sweep is deferred by the flag
   // above). The old back-to-back sync sweeps repainted the warm cache in a
@@ -2001,7 +2049,7 @@ function openBattle() {
     // swaps) get their programs linked while everything is still frozen and
     // a one-frame hitch is invisible. Repeats are cache hits.
     setTimeout(() => {
-      if (game.phase === 'battle' && game.preBattleS > 0) compileHiddenVariants();
+      if (game.phase === 'battle' && game.preBattleS > 0) compileHiddenVariantsChunked();
     }, 900);
   }
   audio.resume(); // the entry-gate keypress already unlocked the context
@@ -3520,7 +3568,32 @@ await bootStage('post', () => {
 //   setGarageSpots), so entering battle swaps programs instead of compiling
 //   ~70 of them inside the opening frames.
 let combatPipelineWarmed = false;
+let _warmGen = null; // in-flight chunked warm — the sync wrapper drains the remainder
+// perf-r5 (owner: "first garage entry laggy"): the warm used to run as ONE
+// idle callback (~1-3 s: volley + every wreck dance + all compiles) the
+// moment the staged pump finished — exactly when the player starts touching
+// the garage. Generator core with per-step yields; the sync wrapper (battle
+// load / __SHOTS — the screen owns those frames) drains it whole, the
+// chunked wrapper gives the garage a painted frame between steps. A battle
+// entered mid-chunk simply drains the REMAINDER synchronously.
 function warmCombatPipeline() {
+  if (combatPipelineWarmed && !_warmGen) return;
+  const g = _warmGen || warmCombatPipelineSteps();
+  _warmGen = null;
+  let r = g.next();
+  while (!r.done) r = g.next();
+}
+async function warmCombatPipelineChunked() {
+  if (combatPipelineWarmed && !_warmGen) return;
+  const g = _warmGen || (_warmGen = warmCombatPipelineSteps());
+  for (;;) {
+    if (_warmGen !== g) return; // the sync wrapper took over and finished
+    const r = g.next();
+    if (r.done) { if (_warmGen === g) _warmGen = null; return; }
+    await nextFrame();
+  }
+}
+function* warmCombatPipelineSteps() {
   if (combatPipelineWarmed) return;
   combatPipelineWarmed = true;
   // LOADING PERF (boot r9): the particle sprite sheets bake lazily now (see
@@ -3531,7 +3604,8 @@ function warmCombatPipeline() {
   // finish the staged roster before anything renders the battlefield (this
   // runs synchronously from __SHOTS.set() and startBattle(), and from the
   // post-ready idle chunker below in the common garage-dwell case).
-  ensureStagedVisuals(game);
+  while (!ensureStagedVisuals(game, 1)) yield;
+  yield;
   const warm = game.tanks.find((e) => !e.isPlayer && e.visual);
   if (warm) {
     warm.visual.setDestroyed({});
@@ -3559,7 +3633,12 @@ function warmCombatPipeline() {
   // first kill.
   for (const e of game.tanks) {
     if (e.visual && e.visual.setDestroyed && e.visual.resetDestroyed) {
+      // perf-r5: the char/ember canvases are the dance's hidden atom — bake
+      // them CHUNKED first (a slice per painter stage), then the dance and
+      // every later kill hit the cache.
+      try { yield* prebakeBurntSteps(e.specId, engineCtx.anisotropy ?? 4); } catch (_) { /* warm only */ }
       try { e.visual.setDestroyed({}); e.visual.resetDestroyed(); } catch (_) { /* warm only */ }
+      yield; // one wreck-dance per slice
     }
   }
   // EVENT-SPIKE WARM part 2: fire one silent instance of every combat effect
@@ -3618,11 +3697,13 @@ function warmCombatPipeline() {
       }
     }
   });
+  yield;
   const spotsWereOn = game.phase !== 'battle';
   if (spotsWereOn) setGarageSpots(false);
   try { renderer.compile(scene, camera); } catch (_) { /* fine */ }
   if (spotsWereOn) setGarageSpots(true);
-  compileHiddenVariants();
+  yield;
+  yield* compileHiddenVariantsSteps();
 }
 
 /**
@@ -3640,6 +3721,23 @@ function warmCombatPipeline() {
  * materials and addon nodes).
  */
 function compileHiddenVariants() {
+  const g = compileHiddenVariantsSteps();
+  let r = g.next();
+  while (!r.done) r = g.next();
+}
+// perf-r5: the countdown re-warm ran this SYNCHRONOUSLY while late GLB swaps
+// and wreck bakes piled in — a 10 s frame during the countdown on a slow
+// network. Chunked wrapper for live windows; the sync wrapper stays for the
+// loading screen and capture paths.
+async function compileHiddenVariantsChunked() {
+  const g = compileHiddenVariantsSteps();
+  let r = g.next();
+  while (!r.done) {
+    await nextFrame();
+    r = g.next();
+  }
+}
+function* compileHiddenVariantsSteps() {
   for (const e of game.tanks) {
     if (!e.visual || !e.visual.root) continue;
     try {
@@ -3653,6 +3751,7 @@ function compileHiddenVariants() {
       }
       renderer.compile(e.visual.root, camera, scene);   // live-state materials
     } catch (_) { /* warm only */ }
+    yield; // one tank's variant compiles per slice
   }
   // perf-r4a (play-session rematch rows): this function compiled every TANK
   // subtree but never the WORLD group — and the real render below runs from
@@ -3663,6 +3762,7 @@ function compileHiddenVariants() {
   // of the world group links them all here, behind the loading screen.
   if (world && world.group) {
     try { renderer.compile(world.group, camera, scene); } catch (_) { /* warm only */ }
+    yield;
   }
   // perf-r2d: renderer.compile() never builds SHADOW-PASS depth programs —
   // they link the first time a mesh's material class actually renders into a
@@ -3739,8 +3839,21 @@ function pumpStagedVisuals() {
   // startBattle's synchronous warmCombatPipeline fallback is untouched.
   const glb = (typeof window !== 'undefined' && window.__GLB_STATS) || null;
   if (glb && glb.started > glb.settled) { _idle(pumpStagedVisuals, 2500); return; }
-  if (ensureStagedVisuals(game, 1)) warmCombatPipeline();
-  else _idle(pumpStagedVisuals, 1500);
+  // perf-r5 (owner: "first garage entry laggy"): the pump's one-bake-per-
+  // slice was still a 150-900 ms ATOM per family — exactly the freeze a
+  // player feels when they start interacting right after boot. Prebake the
+  // next family CHUNKED (painted frame between painter stages), then the
+  // build itself is a cache hit + geometry only.
+  const nextBake = nextStagedBake(game);
+  if (!nextBake) { warmCombatPipelineChunked(); return; }
+  prebakeSharedTextures(getSpec(nextBake.ent.specId), engineCtx.anisotropy ?? 4,
+    nextBake.quality, () => nextFrame())
+    .catch(() => { /* warm only — the build below bakes as before */ })
+    .then(() => {
+      if (combatPipelineWarmed) return;
+      if (ensureStagedVisuals(game, 1)) warmCombatPipelineChunked();
+      else _idle(pumpStagedVisuals, 1500);
+    });
 }
 // LOADING PERF (boot r9): everything evicted from the boot-critical path
 // drains here, one bake per idle slice, cheapest-user-facing first: the fx

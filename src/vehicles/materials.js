@@ -201,6 +201,44 @@ export const CLAUDE_CODE_MARK =
   'V20H7.488v-2.921H6V20H4.487v-2.921H3V14.05H0V10.95h3V5h17.998v5.949z' +
   'M6 10.949h1.488V8.102H6v2.847zm10.51 0H18V8.102h-1.49v2.847z';
 
+// Official Anthropic logogram (24x24 viewBox, verbatim from the published
+// icon) — the 'anthropic' brand camo stamps it hero-scale. The trailing
+// subpath is the punched A-counter: fill with 'evenodd' or it closes up.
+export const ANTHROPIC_MARK =
+  'M17.3041 3.541h-3.6718l6.696 16.918H24Zm-10.6082 0L0 20.459h3.7442l1.3693' +
+  '-3.5527h7.0052l1.3693 3.5528h3.7442L10.5363 3.5409Zm-.3712 10.2232 2.2914' +
+  '-5.9456 2.2914 5.9456Z';
+
+// Official Claude spark (24x24 viewBox, verbatim from the published icon) —
+// the 'spark' camo scatters it from sprinkle to hero scale. One closed
+// outline, plain nonzero fill.
+export const CLAUDE_SPARK_MARK =
+  'm4.7144 15.9555 4.7174-2.6471.079-.2307-.079-.1275h-.2307l-.7893-.0486-2.' +
+  '6956-.0729-2.3375-.0971-2.2646-.1214-.5707-.1215-.5343-.7042.0546-.3522.4' +
+  '797-.3218.686.0608 1.5179.1032 2.2767.1578 1.6514.0972 2.4468.255h.3886l.' +
+  '0546-.1579-.1336-.0971-.1032-.0972L6.973 9.8356l-2.55-1.6879-1.3356-.9714' +
+  '-.7225-.4918-.3643-.4614-.1578-1.0078.6557-.7225.8803.0607.2246.0607.8925' +
+  '.686 1.9064 1.4754 2.4893 1.8336.3643.3035.1457-.1032.0182-.0728-.164-.27' +
+  '33-1.3539-2.4467-1.445-2.4893-.6435-1.032-.17-.6194c-.0607-.255-.1032-.46' +
+  '74-.1032-.7285L6.287.1335 6.6997 0l.9957.1336.419.3642.6192 1.4147 1.0018' +
+  ' 2.2282 1.5543 3.0296.4553.8985.2429.8318.091.255h.1579v-.1457l.1275-1.70' +
+  '6.2368-2.0947.2307-2.6957.0789-.7589.3764-.9107.7468-.4918.5828.2793.4797' +
+  '.686-.0668.4433-.2853 1.8517-.5586 2.9021-.3643 1.9429h.2125l.2429-.2429.' +
+  '9835-1.3053 1.6514-2.0643.7286-.8196.85-.9046.5464-.4311h1.0321l.759 1.12' +
+  '93-.34 1.1657-1.0625 1.3478-.8804 1.1414-1.2628 1.7-.7893 1.36.0729.1093.' +
+  '1882-.0183 2.8535-.607 1.5421-.2794 1.8396-.3157.8318.3886.091.3946-.3278' +
+  '.8075-1.967.4857-2.3072.4614-3.4364.8136-.0425.0304.0486.0607 1.5482.1457' +
+  '.6618.0364h1.621l3.0175.2247.7892.522.4736.6376-.079.4857-1.2142.6193-1.6' +
+  '393-.3886-3.825-.9107-1.3113-.3279h-.1822v.1093l1.0929 1.0686 2.0035 1.80' +
+  '92 2.5075 2.3314.1275.5768-.3218.4554-.34-.0486-2.2039-1.6575-.85-.7468-1' +
+  '.9246-1.621h-.1275v.17l.4432.6496 2.3436 3.5214.1214 1.0807-.17.3521-.607' +
+  '1.2125-.6679-.1214-1.3721-1.9246L14.38 17.959l-1.1414-1.9428-.1397.079-.6' +
+  '74 7.2552-.3156.3703-.7286.2793-.6071-.4614-.3218-.7468.3218-1.4753.3886-' +
+  '1.9246.3157-1.53.2853-1.9004.17-.6314-.0121-.0425-.1397.0182-1.4328 1.967' +
+  '2-2.1796 2.9446-1.7243 1.8456-.4128.164-.7164-.3704.0667-.6618.4008-.5889' +
+  ' 2.386-3.0357 1.4389-1.882.929-1.0868-.0062-.1579h-.0546l-6.3385 4.1164-1' +
+  '.1293.1457-.4857-.4554.0608-.7467.2307-.2429 1.9064-1.3114Z';
+
 // PERF (performance_budget r5): the per-pixel LCG grain pass was the single
 // largest boot cost — bootprobe self-time 2.5 s across the staged vehicle
 // bakes (16 MB getImageData + a 4.2 M-iteration clamped-add loop +
@@ -1466,14 +1504,23 @@ function paintCamo(canvas, visual, rng, feats, seed) {
     // both the field and the masses without per-pixel sampling.
     const terra = patches[0];
     const slate = patches[1] || '#3d3b37';
-    for (const [tone, n, rBase] of [[terra, 3, 0.105], [slate, 3, 0.072]]) {
-      for (let i = 0; i < Math.max(2, Math.round(n * nK)); i++) {
+    // camo r4 (owner: "look more like cow camos with really small claudes"):
+    // the six round blob-pairs read as Holstein patches under the monogram,
+    // so the masses are now TWO sweeping fields per tone — each a chain of
+    // lobes strung along one shared diagonal flow. Disruptive-band language
+    // instead of spots, and big enough to carry the hero glyphs.
+    const flow = -0.5 + rng() * 0.3;               // shared diagonal, ~-20deg
+    for (const [tone, rBase] of [[terra, 0.155], [slate, 0.105]]) {
+      for (let i = 0; i < 2; i++) {
         const x = rng() * S, y = rng() * S;
         const r = S * wk * (rBase + rng() * 0.05);
-        const p = blobPath2D(rng, x, y, r, 9, 0.38);
-        const a2 = rng() * Math.PI * 2;
-        p.addPath(blobPath2D(rng, x + Math.cos(a2) * r * 0.85,
-          y + Math.sin(a2) * r * 0.65, r * (0.55 + rng() * 0.35), 9, 0.4));
+        const p = blobPath2D(rng, x, y, r, 9, 0.34);
+        for (let k2 = 1; k2 <= 2; k2++) {          // lobes chain downstream
+          const d = r * (0.9 + rng() * 0.5) * k2;
+          const a2 = flow + (rng() - 0.5) * 0.5;
+          p.addPath(blobPath2D(rng, x + Math.cos(a2) * d,
+            y + Math.sin(a2) * d * 0.7, r * (0.62 + rng() * 0.3), 9, 0.38));
+        }
         ctx.filter = `blur(${Math.max(1.2, S * 0.001).toFixed(1)}px)`;
         fillWrapped(ctx, S, p, rgb(tone, 0.9));
         ctx.filter = 'none';
@@ -1507,22 +1554,129 @@ function paintCamo(canvas, visual, rng, feats, seed) {
       p.addPath(codeSrc, m);
       return p;
     };
-    const cell = S / 8;
-    const inks = [[slate, 0.58], ['#e9e3d5', 0.52]];
+    // camo r4 ("make the claudes much larger"): 8x8 confetti -> a 3x3 grid
+    // of HERO stamps. Each mark now spans ~a third of the tile (8x the r3
+    // print, which dissolved into dot noise at hull scale) and the Claude
+    // Code creature carries two of every three cells; near-touching spacing
+    // reads as a fashion-house monogram repeat.
+    const cell = S / 3;
+    const inks = [[slate, 0.8], ['#e9e3d5', 0.72]];
     let gi = 0;
-    for (let gy = 0; gy < 8; gy++) {
-      for (let gx = 0; gx < 8; gx++) {
+    for (let gy = 0; gy < 3; gy++) {
+      for (let gx = 0; gx < 3; gx++) {
         gi++;
-        if (rng() < 0.26) continue;
-        const x = (gx + 0.5 + (rng() - 0.5) * 0.5) * cell;
-        const y = (gy + 0.5 + (rng() - 0.5) * 0.5) * cell;
-        const s = cell * (0.30 + rng() * 0.10);
-        const rot = (rng() - 0.5) * 0.7;
+        if (rng() < 0.14) continue;
+        const x = (gx + 0.5 + (rng() - 0.5) * 0.4) * cell;
+        const y = (gy + 0.5 + (rng() - 0.5) * 0.4) * cell;
+        const s = cell * (0.52 + rng() * 0.16);
+        const rot = (rng() - 0.5) * 0.5;
         const [ink, a] = inks[(gi + ((rng() * 2) | 0)) % 2];
-        const isTank = (gx + gy) % 2 === 0;
+        const isTank = gi % 3 === 0;
         const path = isTank ? glyphTank(x, y, s, rot) : glyphCode(x, y, s, rot);
+        // sticker halo: a contrast outline UNDER the ink so every stamp
+        // reads whichever field it lands on (half the r4a stamps vanished
+        // into same-tone masses — slate on slate, ivory on ivory).
+        strokeWrapped(ctx, S, path,
+          rgb(ink === slate ? '#e9e3d5' : slate, a * 0.85), s * 0.08);
         fillWrapped(ctx, S, path, rgb(ink, a), isTank ? undefined : 'evenodd');
       }
+    }
+    // ===================== END CAMO PATTERN SECTION =================
+  } else if (scheme === 'anthropic' && patches.length) {
+    // ===================== CAMO PATTERN SECTION =====================
+    // ANTHROPIC brand camo (camo r4, owner ask): broad angled color-block
+    // panels — kraft + slate over ivory, the brand-guideline page language —
+    // under hero-scale logogram stamps. patches = [kraft, slate]. Marks fill
+    // 'evenodd' so the punched A-counter stays open.
+    const kraft = patches[0];
+    const slate = patches[1] || '#33312d';
+    const tilt = -0.46 + rng() * 0.22;             // shared panel flow
+    const band = (col, w, alpha) => {
+      const x0 = rng() * S, y0 = rng() * S, len = S * (0.9 + rng() * 0.5);
+      const path = new Path2D();
+      path.moveTo(x0 - Math.cos(tilt) * len * 0.5, y0 - Math.sin(tilt) * len * 0.5);
+      path.lineTo(x0 + Math.cos(tilt) * len * 0.5, y0 + Math.sin(tilt) * len * 0.5);
+      ctx.filter = `blur(${Math.max(1, S * 0.0008).toFixed(1)}px)`;
+      strokeWrapped(ctx, S, path, rgb(col, alpha), w);
+      ctx.filter = 'none';
+    };
+    for (let i = 0; i < Math.max(2, Math.round(3 * nK)); i++) {
+      band(kraft, S * wk * (0.13 + rng() * 0.09), 0.92);
+    }
+    for (let i = 0; i < Math.max(1, Math.round(2 * nK)); i++) {
+      band(slate, S * wk * (0.055 + rng() * 0.05), 0.9);
+    }
+    const markSrc = new Path2D(ANTHROPIC_MARK);
+    const stamp = (x, y, s, rot, ink, a) => {
+      const p = new Path2D();
+      // 24x24 source box, mass centered on (12, 12); s/24 spans s units.
+      const m = new DOMMatrix().translate(x, y).rotate((rot * 180) / Math.PI)
+        .scale(s / 24, s / 24).translate(-12, -12);
+      p.addPath(markSrc, m);
+      // sticker halo (see 'claude'): contrast outline under the ink so the
+      // mark reads on panel bands and field alike.
+      strokeWrapped(ctx, S, p,
+        rgb(ink === slate ? '#e9e3d5' : slate, a * 0.85), s * 0.07);
+      fillWrapped(ctx, S, p, rgb(ink, a), 'evenodd');
+    };
+    // hero marks on a 2x2 grid, small satellites scattered between
+    const cell = S / 2;
+    const inks = [[slate, 0.8], ['#e9e3d5', 0.7]];
+    let gi = 0;
+    for (let gy = 0; gy < 2; gy++) {
+      for (let gx = 0; gx < 2; gx++) {
+        gi++;
+        const x = (gx + 0.5 + (rng() - 0.5) * 0.5) * cell;
+        const y = (gy + 0.5 + (rng() - 0.5) * 0.5) * cell;
+        const [ink, a] = inks[(gi + ((rng() * 2) | 0)) % 2];
+        stamp(x, y, cell * (0.58 + rng() * 0.16), (rng() - 0.5) * 0.45, ink, a);
+      }
+    }
+    for (let i = 0; i < Math.round(4 * nK); i++) {
+      const [ink, a] = inks[(rng() * 2) | 0];
+      stamp(rng() * S, rng() * S, S * (0.075 + rng() * 0.05),
+        (rng() - 0.5) * 0.6, ink, a * 0.85);
+    }
+    // ===================== END CAMO PATTERN SECTION =================
+  } else if (scheme === 'spark' && patches.length) {
+    // ===================== CAMO PATTERN SECTION =====================
+    // CLAUDE SPARK camo (camo r4, owner ask): the official starburst from
+    // sprinkle to hero scale over warm ivory with soft clay wash fields. One
+    // giant spark anchors the tile, mediums alternate terracotta/slate, a
+    // terracotta sprinkle fills the field. patches = [terracotta, slate].
+    const terra = patches[0];
+    const slate = patches[1] || '#3a3733';
+    for (let i = 0; i < Math.max(2, Math.round(3 * nK)); i++) {
+      // broad low-alpha clay washes so the ivory field isn't flat
+      const x = rng() * S, y = rng() * S;
+      const r = S * wk * (0.16 + rng() * 0.09);
+      ctx.filter = `blur(${Math.max(2, S * 0.004).toFixed(1)}px)`;
+      fillWrapped(ctx, S, blobPath2D(rng, x, y, r, 8, 0.3),
+        rgb(mix(terra, base, 0.62), 0.5));
+      ctx.filter = 'none';
+    }
+    const sparkSrc = new Path2D(CLAUDE_SPARK_MARK);
+    const spark = (x, y, s, rot, ink, a) => {
+      const p = new Path2D();
+      const m = new DOMMatrix().translate(x, y).rotate((rot * 180) / Math.PI)
+        .scale(s / 24, s / 24).translate(-12, -12);
+      p.addPath(sparkSrc, m);
+      fillWrapped(ctx, S, p, rgb(ink, a));
+    };
+    spark(S * (0.3 + rng() * 0.4), S * (0.3 + rng() * 0.4),
+      S * (0.5 + rng() * 0.12), rng() * Math.PI * 2, terra, 0.94); // the hero
+    const cell = S / 2;
+    for (let gy = 0; gy < 2; gy++) {
+      for (let gx = 0; gx < 2; gx++) {
+        const x = (gx + 0.5 + (rng() - 0.5) * 0.6) * cell;
+        const y = (gy + 0.5 + (rng() - 0.5) * 0.6) * cell;
+        spark(x, y, cell * (0.42 + rng() * 0.14), rng() * Math.PI * 2,
+          (gx + gy) % 2 ? slate : terra, 0.9);
+      }
+    }
+    for (let i = 0; i < Math.round(7 * nK); i++) {  // sprinkle
+      spark(rng() * S, rng() * S, S * (0.045 + rng() * 0.035),
+        rng() * Math.PI * 2, rng() < 0.3 ? slate : terra, 0.6);
     }
     // ===================== END CAMO PATTERN SECTION =================
   } else if (scheme === 'amoeba' && patches.length) {
@@ -2451,6 +2605,29 @@ export function upgradeSharedTextures(specId) {
 }
 
 /**
+ * perf-r5: chunked twin of {@link upgradeSharedTextures} — the in-place hero
+ * re-bake to 'high' was a ~0.9 s ATOM landing ~350 ms after every pedestal
+ * reveal of an 'ai'-baked spec (owner: "switching between tanks laggy").
+ * Yields between painter stages; live materials keep showing the 'ai' bake
+ * until the finalize flips the textures.
+ * @param {string} specId spec whose cached entry should be re-baked
+ * @param {?function(): (Promise<void>|void)} tick awaited between stages
+ * @returns {Promise<boolean>} true when an upgrade ran
+ */
+export async function upgradeSharedTexturesChunked(specId, tick = null) {
+  const entry = TEX_CACHE.get(specId);
+  if (!entry || entry.refs <= 0 || entry.quality !== 'ai') return false;
+  const g = bakeSharedCanvasesSteps(entry, 'high');
+  let r = g.next();
+  while (!r.done) {
+    if (tick) await tick();
+    r = g.next();
+  }
+  finalizeEntryResize(entry);
+  return true;
+}
+
+/**
  * PERF (perf-budget handoff): pre-upload every cached spec's burnt/ember maps
  * so the first kill of a battle doesn't pay a texture-upload stall inside a
  * combat frame (probe measured a 125 ms frame at first blood). Call once at
@@ -2485,6 +2662,26 @@ function releaseSharedTextures(spec) {
  * @param {object} entry TEX_CACHE entry @param {number} aniso
  */
 function ensureBurntTextures(entry, aniso) {
+  const g = burntBakeSteps(entry, aniso);
+  let r = g.next();
+  while (!r.done) r = g.next();
+}
+
+/**
+ * perf-r5: chunked burnt/ember prebake for one spec — the char bake is a
+ * 150-900 ms painter atom that otherwise lands on the warm dance (or, for
+ * drain-deadline stragglers, inside the COUNTDOWN). The warm pipeline
+ * yield*s this per fielded family so each stage gets its own slice; the
+ * kill-time ensureBurntTextures path then always hits the cache.
+ * @param {string} specId @param {number} aniso
+ */
+export function* prebakeBurntSteps(specId, aniso) {
+  const entry = TEX_CACHE.get(specId);
+  if (!entry || entry.burntTex) return;
+  yield* burntBakeSteps(entry, aniso);
+}
+
+function* burntBakeSteps(entry, aniso) {
   if (entry.burntTex) return;
   const S = texSize(1024); // MOBILE r1: central tier scale (S-relative painter)
   const cv = makeCanvas(S, S);
@@ -2517,6 +2714,7 @@ function ensureBurntTextures(entry, aniso) {
   ctx.fillStyle = 'rgba(128,128,128,0.72)';
   ctx.fillRect(0, 0, S, S);
   ctx.globalCompositeOperation = 'source-over';
+  yield; // char stack composited
   const rng = mulberry32((entry.seed ^ 0xb0217) >>> 0);
   // sooty blotches: char-black pockets and ash-grey burn-through patches
   for (let i = 0; i < 80; i++) {
@@ -2528,6 +2726,7 @@ function ensureBurntTextures(entry, aniso) {
     ctx.fillStyle = g;
     ctx.fillRect(x - r, y - r, r * 2, r * 2);
   }
+  yield; // soot blotches done
   // rising soot streaks (heat streaking up plates from hatches/seams)
   for (let i = 0; i < 52; i++) {
     const x = rng() * S;
@@ -2565,7 +2764,9 @@ function ensureBurntTextures(entry, aniso) {
     if (horiz) ctx.fillRect(x, y, len, 1 + rng() * 2);
     else ctx.fillRect(x, y, 1 + rng() * 2, len);
   }
+  yield; // streaks/rust/scrapes painted
   entry.burntTex = canvasTex(cv, { aniso, repeat: true });
+  yield; // burnt albedo uploaded-ready; ember canvas next
   // ember emissive mask: mostly black with a few soft hot pockets — the glow
   // reads as embers smoldering in seams, never a uniform lava dip
   const E = 256;
@@ -2629,6 +2830,9 @@ export const CAMO_PATTERN_IDS = [
   // camo r3 (owner ask 2026-08-04): the house scheme — style-only, appended
   // last per the append-only contract.
   'claude',
+  // camo r4 (owner ask 2026-08-07): the brand set — Anthropic logogram
+  // blocks + the Claude spark. Style-only, appended per the contract.
+  'anthropic', 'spark',
 ];
 export const CAMO_PATTERN_LABEL = {
   auto: 'Auto (map)', factory: 'Factory', summer: 'Summer',
@@ -2642,7 +2846,7 @@ export const CAMO_PATTERN_LABEL = {
   merdcwinter: 'MERDC Winter', winterbands: 'Winter Bands',
   berlin: 'Berlin Bde', oakleaf: 'Oak Leaf',
   hexfield: 'Hex Mesh', midnight: 'Night Ops',
-  claude: 'Claude',
+  claude: 'Claude', anthropic: 'Anthropic', spark: 'Claude Spark',
 };
 
 const CAMO_LS_PREFIX = 'cot.camo.';
@@ -3131,6 +3335,21 @@ function patternVisual(spec, patternId) {
     // lesson). Style-only — no biome bonus, like dazzle/midnight.
     o = { scheme: 'claude', base: '#d3ccbc', weather: '#c2b9a7',
       patches: ['#b25a3d', '#3d3b37'] };
+  } else if (patternId === 'anthropic') {
+    // camo r4 (owner ask): ANTHROPIC brand camo — kraft + slate panel blocks
+    // on the ivory field under hero logogram stamps. Same weathered-brand
+    // ladder as 'claude' (ivory at dirty-whitewash luma, warm tones
+    // desaturated a step below the printed brand). Style-only, no biome
+    // bonus.
+    o = { scheme: 'anthropic', base: '#d5cebe', weather: '#c4bba9',
+      patches: ['#8f6b4c', '#33312d'] };
+  } else if (patternId === 'spark') {
+    // camo r4 (owner ask): the Claude spark at hero scale on warm ivory with
+    // soft clay washes. Terracotta held a step below the app icon's #d97757
+    // so the warm garage key can't flare it orange (the summer-brown
+    // lesson). Style-only, no biome bonus.
+    o = { scheme: 'spark', base: '#d8cbb5', weather: '#c6b8a0',
+      patches: ['#b4593a', '#3a3733'] };
   }
   return o ? { ...v, ...o } : v;
 }
@@ -3210,20 +3429,118 @@ function repaintEntry(entry, patternId) {
   paintPatchRoughness(entry.roughCanvas, entry.camoCanvas, vis);
   entry.roughTex.needsUpdate = true;
   entry.patternId = patternId;
-  // wheels / sprockets / fittings follow the repaint live
+  retintEntryFittings(entry, vis);
+  // camo r4: memoize the finished bake — the next visit to this
+  // (spec, pattern) pair restores in a couple of blits instead of repainting.
+  snapshotBake(entry, patternId);
+}
+
+// camo r4: wheels / sprockets / fittings + the solid scheme-tone KIT canvas
+// (ARAT tiles, bolt-on armor — texture-backed so the applyCamoToModel clone
+// pass cannot orphan it: color-only paintables go stale on clones, canvas
+// redraws propagate to every clone; tank_models r7) follow every repaint AND
+// every memoized restore, so the tint block is shared by both paths. The
+// helpers only read the visual's tones — the plain patternVisual the restore
+// path passes lands on the same colors as repaintEntry's flagged clone.
+function retintEntryFittings(entry, vis) {
   for (const rec of entry.paintable) {
     const c = rec.kind === 'wheels' ? wheelRgbOf(vis)
       : rec.kind === 'wheelsDark' ? wheelDarkRgbOf(vis) : detailRgbOf(vis);
     rec.m.color.set(cssRGB(c));
   }
-  // tank_models r7: solid scheme-tone KIT canvas (ARAT tiles, bolt-on armor)
-  // follows the repaint through the shared texture — texture-backed so the
-  // applyCamoToModel clone pass cannot orphan it (color-only paintables go
-  // stale on clones; canvas redraws propagate to every clone).
   if (entry.kitCanvas) {
     paintKitCanvas(entry.kitCanvas, vis);
     entry.kitTex.needsUpdate = true;
   }
+}
+
+// ---- camo r4: instant pattern switching (owner ask 2026-08-07) ------------
+// "switching between camos should be instant". A picker click used to run the
+// full painter chain — paintCamo on a 2048^2 hero albedo + exposureTrim +
+// both roughness passes — measured 0.3-1.4 s of main-thread canvas work per
+// switch. Repaints are now MEMOIZED: every finished bake is snapshotted to
+// compressed blobs (the webp encode runs off the main thread and toBlob
+// captures at-call, so a later repaint can't tear the snapshot) and the
+// picker restores a cached pattern with two drawImage blits + GPU re-upload.
+// Blobs, not live canvases: a spec's 30-pattern roster held as RGBA canvases
+// would be ~0.5 GB at hero size; as webp it sits near ~15 MB.
+const BAKE_CACHE = new Map(); // `${specId}|${patternId}` -> {camo,rough:Blob,w}
+const BAKE_CACHE_MAX = 64;    // ~2 specs' full pattern rosters
+const bakeKey = (specId, pid) => `${specId}|${pid}`;
+function bakeStore(key, camo, rough, w) {
+  if (!camo || !rough || BAKE_CACHE.has(key)) return;
+  while (BAKE_CACHE.size >= BAKE_CACHE_MAX) {
+    BAKE_CACHE.delete(BAKE_CACHE.keys().next().value); // insertion-order LRU
+  }
+  BAKE_CACHE.set(key, { camo, rough, w });
+}
+function canvasToBlob(canvas, cb) {
+  // lossy webp at q0.92 is invisible under the weathering/grain stack and
+  // ~8x smaller than png; a null blob (no webp encoder) falls back to png.
+  try {
+    canvas.toBlob((b) => {
+      if (b) cb(b);
+      else canvas.toBlob((p) => cb(p || null), 'image/png');
+    }, 'image/webp', 0.92);
+  } catch (_) { cb(null); }
+}
+function snapshotBake(entry, patternId) {
+  const key = bakeKey(entry.spec.id, patternId);
+  if (BAKE_CACHE.has(key)) return;
+  const w = entry.camoCanvas.width;
+  let camo = null, rough = null, n = 0;
+  const done = () => { if (++n === 2) bakeStore(key, camo, rough, w); };
+  canvasToBlob(entry.camoCanvas, (b) => { camo = b; done(); });
+  canvasToBlob(entry.roughCanvas, (b) => { rough = b; done(); });
+}
+/**
+ * Restore a memoized bake onto the entry's live canvases. Resolves true on a
+ * cache hit (canvases, fittings and patternId updated — or a newer selection
+ * superseded this one mid-decode and owns the entry now), false when this
+ * (spec, pattern) pair was never baked at the current canvas size (caller
+ * falls back to repaintEntry).
+ */
+async function restoreBake(entry, patternId) {
+  const key = bakeKey(entry.spec.id, patternId);
+  const bake = BAKE_CACHE.get(key);
+  if (!bake) return false;
+  if (bake.w !== entry.camoCanvas.width) { // baked at another quality tier
+    BAKE_CACHE.delete(key);
+    return false;
+  }
+  BAKE_CACHE.delete(key); BAKE_CACHE.set(key, bake); // LRU touch
+  let cb, rb;
+  try {
+    [cb, rb] = await Promise.all([
+      createImageBitmap(bake.camo), createImageBitmap(bake.rough)]);
+  } catch (_) {
+    BAKE_CACHE.delete(key); // undecodable — bake fresh on the fallback path
+    return false;
+  }
+  if (resolveCamoPattern(entry.spec.id) !== patternId
+    || entry.patternId === patternId) {
+    // superseded (or already landed) while the bitmaps decoded — the newer
+    // selection's own restore/repaint owns the entry, don't fight it.
+    cb.close(); rb.close();
+    return true;
+  }
+  const blit = (canvas, bmp) => {
+    const c2 = canvas.getContext('2d');
+    c2.save();
+    c2.setTransform(1, 0, 0, 1, 0, 0);
+    c2.globalAlpha = 1;
+    c2.globalCompositeOperation = 'source-over';
+    c2.filter = 'none';
+    c2.drawImage(bmp, 0, 0, canvas.width, canvas.height);
+    c2.restore();
+  };
+  blit(entry.camoCanvas, cb); cb.close();
+  blit(entry.roughCanvas, rb); rb.close();
+  entry.camoTex.needsUpdate = true;
+  entry.roughTex.needsUpdate = true;
+  entry.patternId = patternId;
+  retintEntryFittings(entry, patternVisual(entry.spec, patternId));
+  return true;
 }
 
 /**
@@ -3238,6 +3555,94 @@ export function applyCamoPatterns(onlySpecId = null) {
     if (entry.patternId !== pid) repaintEntry(entry, pid);
   }
   retintGlbModels();
+}
+
+/**
+ * Picker-path pattern apply (camo r4, owner ask): restore the memoized bake
+ * when one exists — the hull updates within a frame or two — and fall back
+ * to ONE deferred repaint (which memoizes itself) on a cold pattern. GLB
+ * retints run immediately either way: composeGlbShare keeps its own
+ * per-share key check and the per-palette pattern-tile cache makes repeat
+ * composites cheap.
+ * @param {string} specId the tank whose selection just changed
+ */
+export function applyCamoPatternInstant(specId) {
+  const entry = TEX_CACHE.get(specId);
+  if (entry) {
+    const pid = resolveCamoPattern(specId);
+    if (entry.patternId !== pid) {
+      restoreBake(entry, pid).then((hit) => {
+        if (hit) return;
+        // cold pattern — repaint whatever the LATEST selection is (rapid
+        // clicks race the microtask; the newest resolution wins outright).
+        const cur = TEX_CACHE.get(specId);
+        const nowPid = resolveCamoPattern(specId);
+        if (cur && cur.patternId !== nowPid) repaintEntry(cur, nowPid);
+      });
+    }
+  }
+  retintGlbModels();
+}
+
+// camo r4: background bake trickle. One (spec, pattern) bake per timeout
+// slot, gap adaptive to the measured bake cost, so the garage stays
+// responsive while the roster warms; a newer call cancels the remainder.
+let _prewarmGen = 0;
+let _prewarmScratch = null; // reused {camo, rough} canvases (one hero-size pair)
+/**
+ * Trickle-bake every picker pattern for one spec into the blob cache so
+ * first clicks restore instead of painting (camo r4). Scratch canvases run
+ * the exact repaintEntry pipeline — same vis flags, same seed^hash rng
+ * streams, same feats plan — so restores are pixel-identical to a live
+ * repaint. GLB-swapped specs also warm their per-palette pattern tiles (the
+ * paintCamo atom behind composeGlbShare). Call with a null/unknown id (e.g.
+ * on battle start) to cancel a running trickle.
+ * @param {?string} specId garage-selected tank, or null to cancel
+ */
+export function prewarmCamoBakes(specId) {
+  const gen = ++_prewarmGen;
+  const entry = specId ? TEX_CACHE.get(specId) : null;
+  if (!entry || !entry.camoCanvas || entry.camoCanvas.width < 8) return;
+  const glb = GLB_TINTED.some((e) => e.specId === specId);
+  const todo = CAMO_PATTERN_IDS.filter((pid) => pid !== 'auto'
+    && pid !== entry.patternId && !BAKE_CACHE.has(bakeKey(specId, pid)));
+  const step = () => {
+    if (gen !== _prewarmGen) return;
+    const pid = todo.shift();
+    if (!pid) return;
+    if (BAKE_CACHE.has(bakeKey(specId, pid))) { setTimeout(step, 40); return; }
+    const t0 = performance.now();
+    if (!_prewarmScratch) {
+      _prewarmScratch = { camo: makeCanvas(4, 4), rough: makeCanvas(4, 4) };
+    }
+    const sc = _prewarmScratch;
+    // re-read sizes every step: the hero-quality upgrade can rebake the entry
+    // larger mid-trickle; the size key keeps stale bakes out either way.
+    if (sc.camo.width !== entry.camoCanvas.width) {
+      sc.camo.width = sc.camo.height = entry.camoCanvas.width;
+    }
+    if (sc.rough.width !== entry.roughCanvas.width) {
+      sc.rough.width = sc.rough.height = entry.roughCanvas.width;
+    }
+    // mirror repaintEntry EXACTLY — flags, rng streams, shared feats plan
+    const vis = { ...patternVisual(entry.spec, pid),
+      modernWelds: entry.spec.era === 'modern', fleetAlbedoFloor: true };
+    let ph = 0;
+    for (const ch of pid) ph = (ph * 31 + ch.charCodeAt(0)) | 0;
+    paintCamo(sc.camo, vis, mulberry32(entry.seed ^ ph), entry.feats, entry.seed);
+    exposureTrim(sc.camo);
+    paintRoughness(sc.rough, mulberry32(entry.seed ^ ph ^ 0x9e37), entry.feats);
+    paintPatchRoughness(sc.rough, sc.camo, vis);
+    const key = bakeKey(specId, pid), w = sc.camo.width;
+    let camo = null, rough = null, n = 0;
+    const done = () => { if (++n === 2) bakeStore(key, camo, rough, w); };
+    canvasToBlob(sc.camo, (b) => { camo = b; done(); });
+    canvasToBlob(sc.rough, (b) => { rough = b; done(); });
+    if (glb) glbPatternTile(entry.spec, pid); // warm the compose tile too
+    const cost = performance.now() - t0;
+    setTimeout(step, Math.max(200, cost * 2));
+  };
+  setTimeout(step, 350); // let the tank-select frame settle first
 }
 
 // perf-r2f (journey probe): the no-arg sweep above repaints EVERY stale cache
@@ -3274,7 +3679,17 @@ export async function applyCamoPatternsChunked(opts = null) {
     const cur = TEX_CACHE.get(key);
     if (!cur) continue;
     const nowPid = resolveCamoPattern(key);
-    if (cur.patternId !== nowPid) repaintEntry(cur, nowPid);
+    if (cur.patternId !== nowPid) {
+      // camo r4: memoized bakes short-circuit the painter chain — a biome
+      // flip back onto patterns this session has already worn costs blits,
+      // not repaints. The restore re-checks resolution after its decode
+      // awaits, so a drain that got superseded mid-entry stays correct.
+      if (await restoreBake(cur, nowPid)) continue;
+      if (gen !== _camoSweepGen) return;
+      const c2 = TEX_CACHE.get(key);
+      const p2 = resolveCamoPattern(key);
+      if (c2 && c2.patternId !== p2) repaintEntry(c2, p2);
+    }
   }
   // GLB retints chunk too: each model whose pattern changed re-composites
   // several albedo sheets (composeGlbShare skips unchanged ones itself).
