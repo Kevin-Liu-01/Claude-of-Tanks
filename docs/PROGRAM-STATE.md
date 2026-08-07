@@ -505,6 +505,24 @@ userdrops7/userdrops3, no profiles builder yet — briefs need packet
 prep), latent reversed-core sweep, §I mg migrations, m60a2 packet
 decision, t72bu decision.
 
+## 4.99999 CHALLENGER LANE LANDED 765310f + TYPE10 LANDED 8522056
+(2026-08-07): ch3 41.6->61.4 (all components +15; RWS on the print
+RCWS plateau, stern anchor posts, dims 99.8), t14 48.1->68.3 (owner
+hull ruling executed: full-length skirt walls, raked stern ramp,
+masts to 3.16, gunBarrel 6.45), ch2 print-capped (dims 100, stations
+19.8; buh print +28.8% tall + polluted split). type10 rebuild: dims
+0->100, plan rows 69-81, stations/side/front print-capped with six
+evidence classes. Critics spawned for both waves. MY-LANE §E QUEUE
+(filed by the lane, execute between landings): (a) ch2 HEIGHT-
+NORMALIZE batch (leo2a5 precedent — 249 side cols >2.8, hull shell
+3.14-3.21, station tops 2.38-3.98); (b) ch3 TUBE-PIN normalize
+(t14-class: 7 only-proc muzzle cols, z-warp knee at the gun bearing
+to +7.335 parity, ~+7.9 side_whole); (c) t14 tube-pin stands as filed
+in t14.md r1. Law-bank: plan-grid 0.13 pitch, whip rake=x-lean,
+registration-anchor measured live (dAlong +0.074 zeroed stations),
+AA-sliver 22mm+, gun-union body law + plan column window 0.12
+(type10). t14 track-shoe albedo = shared-material lane, report-only.
+
 ## 5. IN-FLIGHT AGENTS (SUPERSEDED BY §12 — the 2026-08-05 device
 handover interrupted these; respawn per §12)
 1. DONE+RATIFIED: abrams dual critic (m1a1ha f5c556dc, sepv2 §10 run).
