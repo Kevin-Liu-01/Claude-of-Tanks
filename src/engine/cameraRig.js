@@ -1399,6 +1399,24 @@ export function createShowroomOrbit(camera, rig, deps) {
     _sbCenter.set(0, 0, 0);
     for (let i = 0; i < 8; i++) _sbCenter.add(_sbCorners[i]);
     _sbCenter.multiplyScalar(1 / 8);
+    // FIXED FRAMING (garage r9 — owner: "when I select different tanks the
+    // camera keeps shifting around, just keep the camera in one place looking
+    // at center of garage"). The per-hull fit re-solved the ANCHOR (measured
+    // box center) and the DISTANCE on every carousel step, so a Leo 2A7 and a
+    // Panzer III parked the eye in visibly different places. With
+    // deps.fixedFrame the orbit still requires a live subject (an empty
+    // pedestal must never be framed) but poses against a CANONICAL box on the
+    // stage center: identical eye for every vehicle, while the stage-rect fit
+    // below still adapts to viewport size / UI panel layout as before.
+    const fb = deps.fixedFrame ? deps.fixedFrame() : null;
+    if (fb) {
+      _sbCenter.set(fb.x, fb.y, fb.z);
+      for (let i = 0; i < 8; i++) {
+        _sbCorners[i].set(_sbCenter.x + (i & 1 ? fb.hw : -fb.hw),
+          _sbCenter.y + (i & 2 ? fb.hh : -fb.hh),
+          _sbCenter.z + (i & 4 ? fb.hd : -fb.hd));
+      }
+    }
     let radius = 0;
     for (let i = 0; i < 8; i++) radius = Math.max(radius, _sbCorners[i].distanceTo(_sbCenter));
     nearDist = radius + SHOW_NEAR_PAD_M;

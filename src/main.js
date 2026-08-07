@@ -844,16 +844,24 @@ await bootStage('vehicle', () => setPedestalTank(selectedSpecId));
 // own fullscreen-pass compiles, which compileAsync(scene, camera) does not
 // cover), and compileAsync carries a known disposal race (camo_spotting r5).
 
+// GARAGE FRAMING ANCHOR (garage r9): the fixed point every showroom pose
+// looks at — the stage center at hull mid-height. The pedestal hull sits at
+// GARAGE_POS.y + 0.35, so +1.6 is the middle of a ~2.5 m tank.
+const GARAGE_LOOK_Y = 1.6;
+// Canonical hero box (half-extents, metres) the showroom frames INSTEAD of
+// each hull's own measured box — sized to the M1A2 reference (≈3.9 × 2.5 ×
+// 9.9 m). Keeping it constant is the whole point: every vehicle is viewed
+// from the same eye.
+const GARAGE_FRAME_BOX = { hw: 1.95, hh: 1.25, hd: 4.95 };
+
 function garageCameraPose() {
   // hud_ui r4: camera pulled in ~10% + slightly lower — kills the dead
   // charcoal zone below the dais and enlarges the hero tank.
-  // camo_spotting r4: offset scales with the selected hull's overall length
-  // so long vehicles (Leo 2A7 10.97 m, T-90M) keep the muzzle in frame at
-  // the same front-3/4 composition (M1A2 ~9.9 m is the reference framing).
-  const dims = pedestalVisual && pedestalVisual.spec && pedestalVisual.spec.dims;
-  const k = Math.min(1.25, Math.max(1, ((dims && dims.overallLengthM) || 9.9) / 9.9));
-  _v1.set(GARAGE_POS.x + 7.4 * k, GARAGE_POS.y + 2.75 + 0.2 * (k - 1), GARAGE_POS.z + 8.0 * k);
-  _v2.set(GARAGE_POS.x, GARAGE_POS.y + 1.55, GARAGE_POS.z);
+  // garage r9 (owner: "keep the camera in one place"): the per-hull length
+  // scale that used to stretch this offset is GONE — the fallback pose is a
+  // constant, matching the fixed showroom framing that takes over below.
+  _v1.set(GARAGE_POS.x + 7.4, GARAGE_POS.y + 2.75, GARAGE_POS.z + 8.0);
+  _v2.set(GARAGE_POS.x, GARAGE_POS.y + GARAGE_LOOK_Y, GARAGE_POS.z);
   rig.setExternalPose(_v1, _v2, 42);
 }
 
@@ -1161,6 +1169,14 @@ const showroom = (() => {
     heroYawRad: (162 + 45) * DEG,
     // elevation keeps the original garageCameraPose() composition (~6.3°)
     heroPitchRad: Math.atan2(1.2, Math.hypot(7.4, 8.0)),
+    // FIXED FRAMING (garage r9): pose against the stage center + a canonical
+    // hero box instead of the selected hull's own measured box, so switching
+    // tanks never slides the camera. Drag-orbit / zoom / spring-back all keep
+    // working — they just pivot around this fixed anchor.
+    fixedFrame: () => ({
+      x: GARAGE_POS.x, y: GARAGE_POS.y + GARAGE_LOOK_Y, z: GARAGE_POS.z,
+      hw: GARAGE_FRAME_BOX.hw, hh: GARAGE_FRAME_BOX.hh, hd: GARAGE_FRAME_BOX.hd,
+    }),
     floorY: () => GARAGE_POS.y,
   });
   let on = false;
