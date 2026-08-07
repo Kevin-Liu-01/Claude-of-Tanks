@@ -49,7 +49,7 @@ at load.
 - Env for EVERY node run: `export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh"`
 - npm test before every landing (166 equipment checks + track-geometry).
 
-## 3. GRADUATE REGISTRY (26 graduates, hash-frozen)
+## 3. GRADUATE REGISTRY (27 graduates, hash-frozen)
 Freeze = deterministic geometry hash via `node tools/tmp-hashgeo.mjs
 --ids=...` (camoSeed 4242 pinned build; FNV-1a over position buffers +
 world matrices, mesh-order independent). Graduate-change protocol: fix ->
@@ -84,6 +84,7 @@ re-freeze NEW hash, all in ONE commit.
 | centurion3 | 50273080 | bore resit RATIFIED (end 9.2; occlusion class fixed) |
 | m1a2_sepv2 | dda7bcf4 | CROWS aim-frame re-cert RATIFIED (floor 9.1+; owner both-halves YES) |
 | m26_pershing | 65c564c0 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
+| t90m | e345ee8a | GRADUATED 2026-08-06 (27th; floor 9.0 x14 second sitting; the owner's dedicated-agent arc 81.7 -> dual gate) |
 
 *Historical note: the 2026-08-05 INVISIBLE-LOD fix mass re-froze the
 then-24 stable graduates (old->new table in commit 9bf2a6d); every row
@@ -118,8 +119,7 @@ honestly parked at 88.9 pending its retune)
   orchestrator ruling item (stations-law open track zone).
 - **Russia tail**: t72b_1987 56.0 CEILING-CERTIFIED (print drum-band cap),
   t90sm 56.4 (AA-teeter binds), t62mv1 63.7 (fade-cap ceiling ~77-81),
-  t90m r8 orders DONE (wheels countable both sides, drums tone-matched
-  p50 78==78 — the tan was the LOG, attribution superseded; hatch rings
+  t90m GRADUATED (27th, e345ee8a); hatch rings
   flush; Relikt relief) — gate 90.7 x2 held, candidate e345ee8a, SECOND
   SITTING adjudication IN FLIGHT (critic note: judge actual tones, the
   old drum attribution is dead);
