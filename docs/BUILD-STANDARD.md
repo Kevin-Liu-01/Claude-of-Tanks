@@ -874,3 +874,26 @@ freeze decoration until these pass):
   (warm-key flip). ORACLE-RENDER HEM SEMANTICS (§D): decode the ref's
   below-hem tone runs per column before authoring any curtain — the
   t90m ref's "curtain" was its wheels' lit upper arcs.
+
+## §K. QUALITY EXEMPLARS (owner ratification 2026-08-07 — the fleet bar)
+Owner verbatim: "our exact modelling-replicating/generating procedures
+are going pretty well. the leclerc turret is a triumph in this way, as
+are the merkava geometries. all tank designs have to aim for this
+level of quality."
+THE EXEMPLARS and what made them:
+- The LECLERC TURRET FRONT (France round, 206c5fd1): the print's
+  profile was MEASURED (vertex-workorder columns), the old
+  approximation replaced by the true two-stage loft (tall lean plate
+  -> the small flat brow strip -> one long raked face), and a
+  tempting-but-wrong bulge was BUILT, MEASURED, and REVERTED with the
+  receipt banked. Exact replication over invention.
+- The MERKAVA GEOMETRIES (§5.11 wave): every under-roof volume closed
+  with SOLID CASTING SHAPES that read as the vehicle's own armor
+  surfaces (wedge walls rising with the roof, crest saddles, chin
+  fills) — zero gate regressions, verified at four turret yaws.
+THE LAW: every round on every tank aims for this level — measure the
+real profile first, loft to the measured lines, close volumes with
+real geometry, prove it in pixels (owner-angle + yaw sweeps), and bank
+reverted experiments as receipts. Critics: hold acid reads to the
+exemplar standard; "close enough" silhouettes that would not survive
+the leclerc-turret comparison are orders.

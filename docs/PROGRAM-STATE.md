@@ -1279,3 +1279,9 @@ adjudicated REAL AIR — open-notch projection signature, legit
 overhang class) -> RE-FROZEN bbae2c80 -> db70c929 in §3. The owner's
 §5.17/§5.17a "turret didnt finish building" complaint is CLOSED: the
 shell now stands on real casting walls at every angle.
+
+## 5.26 OWNER RATIFICATION (2026-08-07): "the leclerc turret is a
+triumph... as are the merkava geometries. all tank designs have to
+aim for this level of quality" — codified as BUILD-STANDARD §K
+(QUALITY EXEMPLARS: measure -> loft to measured lines -> close with
+real geometry -> prove in pixels). Relayed to all live builders.
