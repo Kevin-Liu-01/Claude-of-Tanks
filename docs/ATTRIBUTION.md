@@ -33,6 +33,7 @@ is first-party:
 |---|---|---|---|---|
 | Claude Code mascot icon (pristine 24×24 path; `color.svg` and `default.svg` on the source CDN are byte-identical, fill `#D97757`). Used verbatim inside the brand marks via `translate(...) scale(...)` with the legs clipped below the hatch ring — the glyph geometry itself is unmodified; the helmet/goggles are drawn as separate first-party shapes layered on top. | Anthropic (Claude Code branding; icon page curated by theSVG) | https://thesvg.org/icon/claude-code (file: https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons/claude-code/color.svg) | Anthropic trademark/branding, © Anthropic. Used in this PRIVATE, personal-use, never-published fan project only; not an endorsement. Would require Anthropic's permission for any public/commercial use — strip `public/brand/` mascot art if that ever changes. | pristine source: `public/brand/claude-code-source.svg`; composed into `public/brand/logo-mark.svg` (colored crest primary), `logo-mark-bw.svg`, `logo-mark-metal.svg`, `logo-full.svg` (v3 crest marks; `logo-mark-simple.svg`/`favicon.svg` drop the mascot to a helmet dome; PNG exports `favicon-32.png`, `favicon-192.png`, `apple-touch-icon.png`, `og-logo.png`, `og-logo-transparent.png`; v1 set archived in `public/brand/v1/`, v2 roundel set — incl. the retired `logo-mark-accent.svg` — in `public/brand/v2-roundel/`), and inlined in `index.html` boot splash |
 | Inter wordmark subsets inside `logo-full.svg` / `logo-full-metal.svg` (two static instances of the repo's Inter variable font — wght 800 and 700 at opsz 32 — subset to the 13 glyphs of "CLAUDE OF TANKS" with fontTools and embedded as ~1.5 KB woff2 data URIs so the lockup renders correctly standalone). | Rasmus Andersson (The Inter Project Authors) | derived from `public/fonts/inter/InterVariable.woff2` (see Inter row above) | SIL OFL 1.1 — modification/subsetting and embedding permitted; license at `public/fonts/inter/OFL.txt` | embedded in `public/brand/logo-full.svg`, `public/brand/logo-full-metal.svg` |
+| Anthropic logogram + Claude spark marks (verbatim 24×24 paths) used as in-game camouflage print motifs — the `anthropic` and `spark` patterns (camo r4, owner ask) stamp them across hull textures; the Claude Code mark above is likewise stamped by the `claude` pattern. Geometry unmodified; only fill color/scale/rotation vary. | Anthropic (brand marks; paths as published by the simple-icons project) | https://github.com/simple-icons/simple-icons (`icons/anthropic.svg`, `icons/claude.svg`) | Anthropic trademark/branding, © Anthropic. Same terms as the mascot row above: private, personal-use fan project; would require Anthropic's permission for any public/commercial use — remove the `anthropic`/`spark`/`claude` camo patterns from `src/vehicles/materials.js` if that ever changes. | inline path constants `ANTHROPIC_MARK` / `CLAUDE_SPARK_MARK` / `CLAUDE_CODE_MARK` in `src/vehicles/materials.js` (hull painters + `src/ui/garage.js` picker swatches) |
 
 PNG exports are produced by `tools/brand-render.mjs` (export mode) and the og
 composition script; regenerate any raster from its SVG master rather than
@@ -784,3 +785,16 @@ check. Owner ruling on scope: the clean ones are measurement/influence reference
   QUARANTINE class per this file's standing rule — measurement/influence
   reference for the challenger_3 procedural build only; never ships, the
   playable is always the procedural model.
+- community-candidates/abrams_x_low_poly.glb — "Abrams X Low Poly" by
+  Mortavex (same author as the registered abramsx oracle), SKETCHFAB
+  Standard license: **LOCAL-ONLY QUARANTINE, never ships** — owner-
+  supplied 2026-08-07 as the primary AbramsX look reference (§5.08).
+- community-candidates/type_74_new.glb — "Type 74" by NullOps (same
+  author as the registered type74 oracle), SKETCHFAB Standard:
+  **LOCAL-ONLY QUARANTINE** — owner-supplied 2026-08-07; census shows
+  SPLIT mesh nodes (Body/Tracks/...) vs the old fused single-skin —
+  candidate to REPLACE the type74 oracle and retire its re-rig
+  escalation (onboarding = orchestrator lane).
+- community-candidates/type10-source/ — the TYPE-10 source OBJ behind
+  the registered community GLB (owner-supplied 2026-08-07; source
+  material, not an instrument).

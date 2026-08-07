@@ -1246,3 +1246,19 @@ shroud facets). NO regression on the 765310f tells. Report-only
 residuals banked (roof density detail-class, track albedo shared-
 material, glacis tone, stern screen hang attributed). Record 60d7d14
 binds.
+
+## 5.23 OWNER EVENTS (2026-08-07): (1) ALL BACKGROUND AGENTS STOPPED
+from the owner's side mid-flight — owner ordered "bring them all
+back": four builders RELAUNCHED fresh (abramsx continuing its WIP in
+abrams.js; France continuing its WIP in misc.js+userdrops7; chevron
+fresh + the NEW FUSED-TURRET orders; AFV fresh), both critics resumed
+from transcripts. (2) FUSED-TURRET ORDER (screenshot): "the t90a
+vladimir, the turret is literally fused with the hull, like the
+t72b3m, which also needs to be fixed" — folded into the chevron
+agent's brief (vladimir 02ebb722 moves; t72b3m 61a83b2c graduate-
+change). (3) THREE REFERENCE DROPS staged in community-candidates/ +
+ATTRIBUTION'd: abrams_x_low_poly.glb (Mortavex, relayed to the live
+abramsx round as the primary look reference), type_74_new.glb
+(NullOps, SPLIT nodes — oracle-replacement candidate, kills the
+re-rig escalation if clean; onboarding = my lane, QUEUED), the
+type-10 source OBJ (source material).
