@@ -524,3 +524,181 @@ fv510 + tiger1 (single-dominant-order marginals).
 shots/photo-acceptance-20260806/ (16 views/tank, oracle pairs ×5, measures.json,
 leo2a7v yaw90). No src edits, no commits, rigs untouched (official pages used
 as-is; scratch: tools/tmp-b8-measure.html, tools/tmp-b8-batch.mjs).*
+
+---
+---
+
+# RESIT — §B8 ACCEPTANCE RE-ADJUDICATION of the two owner rejections
+# (independent critic #2, 2026-08-07T02:42Z captures)
+
+**Scope:** spz_puma + type89 only — the two owner-rejected builds, reworked and
+landed at **c64aac8** ("IFV §B8 rework LANDED"). Scoring contract: the per-tank
+ORDER LISTS above, CLOSED or not. Same method as the original slate: official
+photoclass 16-view set + tmp-b8-measure four-box probe + puma REF|PROC oracle
+pairs (tools untouched, tracked pages byte-clean vs HEAD; tmp-b8-batch.mjs one
+FIFO hold). Evidence: `shots/b8-resit-20260806/{spz_puma,type89}/`
+(+ `spz_puma/oracle/` ×14, `measures.json`).
+
+**Tree state (live-tree law):** captures bound to src/vehicles/modern3.js blob
+`1002f15e` = HEAD state at c64aac8; one unrelated landing (9e44130, leopard
+lane) occurred mid-resit and touches neither modern3.js nor these packets —
+hash bracket #2 post-dates it and is byte-identical, so every verdict below
+binds to the current tree too.
+
+## RESIT VERDICT TABLE
+
+| tank | proportions | detail /10 | acid ("reads as the real vehicle at a glance?") | orders |
+|---|---|---|---|---|
+| spz_puma | **PASS** | 7 | Yes — high one-piece bow, heavy 1.0 m module band over six countable wheels, low raked RCT30 cleaver + PERI mast | none (2 notes) |
+| type89 | **PASS** | 7 | Yes — long 27° glacis wedge, proud winged two-man turret, thick 35 mm w/ flash hider overhanging the bow | none (1 note) |
+
+**Both rejections are resolved. 2/2 pass the §B8 bar.** The claimed root cause
+(FLAT-SLAB GLACIS BUG — both frustum rings spanning the full bow z) is verified
+in code at both sites: the rework authors bottom-ring-at-nose / top-ring-at-crest
+(puma modern3.js `frustum(1.26,3.72,3.58, 1.42,1.77,1.63, 1.40,1.92)`; type89
+`frustum(1.42,3.36,3.20, 1.30,1.60,1.44, 0.90,1.86)`) — the front face IS the
+plane in both, and the profile renders confirm the rectangle/parked-bow reads
+are gone.
+
+## FOUR-BOX VERIFICATION (landed claim vs independent resit — official probe)
+
+| measure | landed claim | resit | verdict |
+|---|---|---|---|
+| puma overall l | 7.590 (z −3.790..+3.800) | 7.590 (z −3.790..+3.800) | ✓ exact |
+| puma overall w × h | 3.890 × 3.649 (mast raw 3.64) | 3.890 × 3.649 | ✓ exact |
+| puma turretMass x | [−0.830, +1.010] center **+0.09** | [−0.830, +1.010] center +0.09 | ✓ exact (was +0.375) |
+| puma turret pivot | [0.15, 2.03, −1.374] | [0.15, 2.03, −1.374] | ✓ exact |
+| puma muzzle world | [0.085, 2.55, 2.466] | [0.085, 2.55, 2.466] | ✓ exact (print x held) |
+| puma turret/hull l | — | 2.06/7.59 = 27% | ✓ §B8.1-4 clear |
+| type89 muzzle z | 3.90 (overall 7.3 held) | 3.900 → overall 7.358 (+0.8% pub) | ✓ exact |
+| type89 hull l | 6.865 (pub 6.8) | 6.865 | ✓ exact |
+| type89 glacis | 27° over 1.86 m, nose 0.90 | endpoints (0.90,3.36)→(1.86,1.60) = 28.6° over 1.76 m; incl. bow-face lip = 27.3° over 1.86 m | ✓ ordered window (~30°, 1.7–1.9 m) — datum note below |
+| type89 turret proud | 0.72 incl cluster (walls 0.56) | roof/chamfer 2.42, sight 2.49, cupola lid 2.52 vs deck 1.78 → 0.64 solid / 0.71–0.74 cluster | ✓ ordered ~0.75 within read noise |
+| type89 turretMass | w 2.20 (wings), z −1.215..+0.750 | w 2.20, z [−1.215, +0.750]; center x +0.25 RIGHT | ✓ exact; l 29% §B8.1-4 clear |
+
+## spz_puma — PROPORTION PASS (original orders 1–6 CLOSED)
+
+Oracle pairs at 14 matched views (the print is the proportion truth):
+
+1. SIDE BAND SPLIT — **CLOSED.** Band 0.62..2.13 → 1.00..2.00 in two courses
+   (upper tucked 1.66..1.80, lower flared 1.70..1.86). Left/right views count
+   6 wheels + HIGH sprocket + raised idler at a glance (wheel top 0.79 sits
+   fully below the 1.00 band edge, tub wall behind) — §B8.1 gate 1 PASS; the
+   pair matches the print's band-over-wheels read.
+2. BOW SWEEP — **CLOSED.** ONE plane (1.40, 3.72)→(1.92, 1.77) + break wedge
+   to the 2.085 deck = the print's own extract line ((1.40,3.72)→(1.92,1.63),
+   crest within 0.14 z); shelf + chamfer deleted; louvers ON the plane
+   (rx +0.261); the frontleft/hero pairs no longer show a "parked bow". Note:
+   the original order's "deck y≈2.55" was a misread (2.55 is the bore line;
+   the deck is 2.085) — the rework correctly followed the print.
+3. TURRET MASS CUT — **CLOSED.** Crown 2.785 (~2.80 ordered), walls raked
+   11–13°, face reads 0.70 above deck (ordered 0.6–0.7 cleaver), mast stepped
+   to 3.60 EXACT (heightM datum). Reads unmanned cleaver, not a crew box.
+4. PLAN TAPER — **CLOSED.** ±1.42→±1.26 over the bow plane + shoulder facets;
+   top pair shows the taper (subtler than the print's boat nose — acceptable,
+   print-mapped).
+5. REAR — **CLOSED.** Ramp face ±1.44 full-width + hinge line + posts +
+   taillights; stern furniture inside z ±3.8 (probe z max +3.800, overall
+   7.590 vs the original 7.615 overhang).
+6. FRONT STANCE — **CLOSED.** Two-course flare/tuck reads trapezoid in the
+   front pair.
+
+Owner's direct orders: turret re-centered +0.375→+0.09 with the gun tube held
+at the print's world x 0.085 ✓; track shape already the bradley raised-end
+trapezoid class (print-true gear unchanged) ✓.
+
+Acid per view: front YES / frontleft YES / left YES / rearleft YES / rear YES
+(tall flat face matches the print's own rear; full-width ramp now frames it) /
+rearright YES / right YES / frontright YES / top YES-at-a-squint (taper subtle,
+unmanned-turret plan correctly faint) / heroes YES.
+
+Detail 7/10 (ROSY, MUSS, Spike pod, rails, tow-cable re-route on the band step,
+Y-514 all read). NOTES (not orders): (a) muzzle-endon bore disc reads mid-grey
+rather than near-black under photoclass light — one-tone touch if a later
+round is open anyway; (b) bow-corner mirror pods read chunky at close range —
+certified width carriers (packet residual 4), leave unless the owner asks.
+
+## type89 — PROPORTION PASS (original orders 1–5 CLOSED)
+
+1. WHEEL EXPOSURE — **CLOSED.** 6-panel skirt bank DELETED → thin strip
+   0.92..1.12 over the track top only; 6 wheels + both raised end wheels read
+   near-fully in profile; strong fender line (planks 1.27..1.32 + shadow strip
+   1.26). §B8.1 gate 1 PASS. Note: the original order's "fender step at ~1.85"
+   was internally inconsistent with its own 60–70% exposure demand over 0.64 m
+   wheels (a 1.85 line would rebuild the barge wall); the landed 1.26–1.32
+   fender-over-wheel-tops line is the photo-true resolution.
+2. GLACIS RUN — **CLOSED.** One raked plate, nose 0.90 EXACT, crest 1.86,
+   ~27–29° over 1.76–1.86 m (ordered ~30° over 1.7–1.9). Profile reads the
+   long-glacis wedge — the Type 89 identity line. Prow side walls close the
+   profile under the plane edge (no see-through at the sprocket bay).
+3. TURRET PRESENCE — **CLOSED.** Near-vertical (~4°) walls 0.56 proud, 0.64
+   solid / ~0.72 incl the 2.5-anchor cluster (ordered ~0.75 — within read
+   noise); KDE MANTLET BLOCK at the face (§B3.1) reads in every front-arc
+   view; Jyu-MAT boxes raised to wall-top (world 1.96..2.32 + tilt) — the
+   wings now read in PLAIN SIDE PROFILE, the vehicle's tell.
+4. ROOF M2 — **CLOSED.** Deleted (real config carries no roof HMG); no pintle
+   silhouette in any view; census mg1 held by the recessed coax mag.
+5. REAR FACE — **CLOSED.** Door leaf outline + handle + hinge stacks + corner
+   bins + latches + taillights + tow eyes; firing ports 3/side read along the
+   flanks.
+
+Owner's direct orders: sloped front ✓ (the round's headline); bradley track
+shape ✓ (sprocket 0.60 r 0.26 / idler 0.70 r 0.27, open return run,
+coveredTop dropped).
+
+Acid per view: front YES / frontleft YES / left YES / rearleft YES / rear YES
+(the real rear is plain; the door face reads) / rearright YES / right YES /
+frontright YES / top YES / heroes YES.
+
+Detail 7/10 (mantlet block, tapered-bore flash hider, ports, splash rail,
+mirrors, water cans, rack, '1071'). NOTE (not an order): packet residuals 2–3
+(mid-flank stencils, Jyu-MAT face conduit) remain open candidates — detail
+class, no proportion bearing.
+
+## STANDING CHECKS (all reproduce the landing)
+
+- **Hash bracket ×2** (before captures / after all measure runs): spz_puma
+  **31dca571** (64/68500), type89 **b19aca94** (62/51448) — both runs, exactly
+  the landed hashes. Residents ariete 324c3f12 / type90 187df488 / type74
+  82f98438 / t80u a6782440 / bmp2 ba2f514e / m2a2_bradley 8d36a6cd /
+  chieftain_mk10 6cf7c684 / type10 8ea3e8a8 — byte-identical across the resit.
+- **puma gate ×1:** `min 0 | hull 39.9 whole 18.1 turret 0 stations 20.3
+  dims 100 floaters 100` — reproduces the landed line to the decimal.
+  Ordered-departure class (owner-ordered seat 0.285 m off the print autoPivot
+  + ordered band top 2.00 vs print 2.14–2.16), adjudicated in the packet, NOT
+  a fail basis. dims 100 = every published anchor holds at the new seat.
+- **type89 NOT gated** (FALSE-0 law holds — no oracle).
+- **track-clip --exact:** 0/0 band + 0/0 shoe BOTH ✓.
+- **winding-audit:** m1 clean both (puma 7 px @right AA-noise — the packet's
+  exact figure; type89 0 px); m2 puma 2670 candidates = the SAME count as the
+  landing (r1-adjudicated rear-deck kit class, adjudication transfers), type89
+  m2 CLEAN 0.
+- npm test skipped per resit brief (landing ran it green).
+
+## RESIT LAW NOTES for the bank
+
+1. **ORDER-NUMBER vs ORDER-SUBSTANCE:** two original orders carried misread
+   absolute numbers (puma "deck y≈2.55" — that is the bore line, deck 2.085;
+   type89 "fender step ~1.85" — literal compliance contradicts the same
+   order's exposure demand). Photo-acceptance orders bind on their falsifiable
+   INTENT (exposure fraction, plane run/angle, proud height, countability);
+   their absolute y/z guesses are advisory until probe-corroborated. Builders
+   who resolve to the print/photos should say so in the packet (this rework
+   did) — critics score the intent.
+2. **FOUR-BOX AS REGRESSION HARNESS:** builder-run and critic-resit probe
+   numbers match to the mm across every row — the probe is deterministic and
+   diff-able, and a claims-vs-resit table takes minutes. Promotion candidate
+   confirmed (beside winding-audit at round close).
+3. **m2 CANDIDATE-COUNT AS DRIFT DETECTOR:** an exact yaw-candidate count
+   match (2670 = 2670) carries a prior adjudication forward without
+   re-derivation; any count drift re-opens it.
+4. **STATE-A-DATUM for plane claims:** quote glacis run/angle WITH its datum —
+   type89's 1.76 m @ 28.6° (frustum endpoints) and 1.86 m @ 27.3° (incl. the
+   bow-face lip) are the same plane; unstated datums read as discrepancies.
+
+*Resit critic: independent §B8 acceptance lane #2. NEVER committed; no src
+edits; official rigs + tracked tool pages byte-clean vs HEAD; captures one
+cot-shots FIFO hold (self-ticketing tools never wrapped). Evidence:
+shots/b8-resit-20260806/ (16 views ×2, 14 oracle pairs, measures.json;
+gate/track-clip/winding artifacts under shots/ + docs/geometry-gate/ as
+tool-written).*

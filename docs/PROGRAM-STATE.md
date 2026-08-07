@@ -383,6 +383,13 @@ f1af7ba8). All three DELIVERED-PENDING-CRITIC (§B8 resit spawned).
 MY-LANE ADD: proto MODEL_SOURCE flip to procedural (drains Sources;
 keep the GLB as the measurement override — flip-era mechanics).
 
+## 4.9997 IFV RESIT: 2/2 PASS (2026-08-06) — puma + type89 §B8
+ACCEPTED by the independent critic (acid YES per view; all 11 original
+orders closed; four-box numbers reproduced exactly; hashes 31dca571 /
+b19aca94). The owner's founding §B8 rejections are resolved. Laws:
+ORDER-NUMBER vs ORDER-SUBSTANCE (orders bind on falsifiable intent),
+four-box = deterministic regression harness (promoted).
+
 ## 5. IN-FLIGHT AGENTS (SUPERSEDED BY §12 — the 2026-08-05 device
 handover interrupted these; respawn per §12)
 1. DONE+RATIFIED: abrams dual critic (m1a1ha f5c556dc, sepv2 §10 run).
