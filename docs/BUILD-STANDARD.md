@@ -830,3 +830,10 @@ freeze decoration until these pass):
   graduations too, judged vs the oracle render on every side pair.
   HASH-IMPL PINNING: tmp-hashgeo's float64-saturating FNV defines the
   recorded hashes — byte-identical arithmetic or no comparison.
+- NATIVE-TONE SCORING (§B8.1 gate-1, leopard resit): equalized crops
+  rescue tonally-dead geometry — the a4's "buried" wheels were exposed
+  inside an ambient-black void; score wheel-countability at NATIVE tone.
+  MID-GRAY FLAT (50-58) is pipeline-endemic and distinct from the
+  owner's <=35 zero-variance defect class; dark camo patches mimic the
+  signature (organic fill + paint-edge context separate them). Bore
+  crops are excluded from rectangle verdicts.

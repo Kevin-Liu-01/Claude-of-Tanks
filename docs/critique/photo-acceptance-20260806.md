@@ -702,3 +702,230 @@ cot-shots FIFO hold (self-ticketing tools never wrapped). Evidence:
 shots/b8-resit-20260806/ (16 views ×2, 14 oracle pairs, measures.json;
 gate/track-clip/winding artifacts under shots/ + docs/geometry-gate/ as
 tool-written).*
+
+---
+---
+
+# RESIT — §B8 LEOPARD TRIPLE (independent acceptance critic,
+# 2026-08-07T02:51Z captures)
+
+**Scope:** the 9e44130 landing ("leopard triple LANDED") — (1) leo2_revolution
+GRAY-RECTANGLES owner-priority order, candidate **bbae2c80**; (2) leo2a4 §B8
+rework resit (original verdict above: marginal FAIL — wheels/bow/turret),
+**551cb30e**; (3) leopard2_proto FIRST §B8 acceptance (new proc build),
+**f1af7ba8**. Method: official photoclass 16-view set at REST **and ?yaw=90**
+per id + tmp-b8-measure four-box, one cot-shots FIFO hold (scratch driver
+tools/tmp-b8-resit-batch.mjs, tmp-b8-batch clone + yaw pass; official pages
+untouched). Evidence: `shots/photo-acceptance-resit-20260806/<id>/`
+(+ `<id>/yaw90/`, `measures.json`). NO oracle pairs: revolution's oracle is
+BROKEN at HEAD (batch-37 revert, turret 0.2 pre-exists — gate NOT run on it,
+by order), leo2a4 has no oracle (FALSE-0 law), proto's is the melted tub
+(cap adjudicated).
+
+**Tree state (live-tree law):** render path clean vs HEAD 9e44130 the whole
+session — leopard.js c0acc34b / kit.js 38e27414 / modelLoader.js 7755ffae
+sha-held start→end; only foreign-lane files were dirty (abrams.js etc., not
+on this path). Hash bracket ×2 (below) byte-identical.
+
+## RESIT VERDICT TABLE
+
+| tank | proportions | detail /10 | acid ("reads as the real vehicle at a glance?") | orders |
+|---|---|---|---|---|
+| leo2_revolution | **PASS** (§B7-adjudicated) | 8 | Yes — closed faceted AMAP mass over camo module courses, no dead bands anywhere | none (2 notes) |
+| leo2a4 | **PASS** | 7 | Yes — leo2 stance restored: countable gear under hub-line skirts, nose band not cliff, turret proud | none (2 notes) |
+| leopard2_proto | **PASS** | 7 | Yes — early PT: low plain slab turret, cheek blisters, bare 105, plain full skirts | none (2 notes) |
+
+**3/3 pass. The leo2a4 marginal FAIL is resolved (orders 1–3 CLOSED with
+numbers); the owner's revolution priority order is CLOSED — the gray/black
+rectangles are measurably dead in every view family; the proto's first
+independent acceptance PASSES.** With critic #2's puma/type89 above, the
+resit ledger stands 5/5.
+
+## leo2_revolution — GRAY-RECTANGLES DEAD: YES in every view family
+
+Detector: connected flat regions (5×5 range ≤3) at mean lum ≤35, ≥1200 px —
+calibrated on the banked BEFORE set (shots/leo-rev-gray/before), where it
+reads the defect exactly: view-left 3075 px @ mean **5** (p10/50/90 = 5/5/6,
+the pure (5,7,5) band), rear 8610 px @ 6 + 2569 px @ 6, rearleft 2672 px @ 5,
+right 3063 px @ 26, frontleft 2064 px @ 5, frontright 2079 px @ 28, front
+2×~3500 px @ 24, hero-frontleft 2405 px @ 5, hero-rearright 4194 px @ 28,
+close-roof 11250 px @ 27.
+
+At bbae2c80 (my captures):
+
+- **8 compass: DEAD — YES** (0 defect-class regions ×8).
+- **3 heroes: DEAD — YES** (0 ×3; before carried mean-5 and mean-28 blocks).
+- **2 closes: DEAD — YES** (0 ×2; before close-roof carried 11250 px @ 27).
+- **yaw-90, all 16 views: DEAD — YES** (0 across the set).
+- Non-acid note: muzzle-endon (30× bore-evidence crop) shows one 768×11 px
+  fender-line sliver @ mean 34 — an 11 px zoom artifact, not a view family.
+
+**Apron reads as real armor (§B7):** the module lower course carries camo
+continuous with the turret mass, vertical seam joints at module pitch, raked
+front extensions following the wedge plane, and the ring-belt V-stairs hang
+INTO the slit as structure (6× zoom check) — metal where the real MBT
+Revolution has metal; no curtain read from any angle.
+
+**Slit is honest shadow (SHADOW-TONE law):** view-left row probe — dark band
+6–7 px ≈ **11 cm** at 68.2 px/m; graded top-dark→deck-lit (row means 52.0 →
+**49.0 minimum under the apron edge** → 53.9 → 58.2 → 64 at the module tops);
+floor 48 ≫ the raw-black 5 — no ambient-floor pixel anywhere in the band, and
+variance along x (min 48 / max 60–66) breaks any rectangle read.
+
+**Yaw-90 unity (§B5):** rest/yaw90 top pair — shroud + apron + RWS + basket +
+gun rotate as ONE mass, hull furniture static; winding m2: 5 candidate px,
+coincidence-dominated (6829/6834) = clean.
+
+**Proportions (context; gate barred this round):** four-box overall 9.87 ×
+4.002 × 2.716 (RWS spike) vs pub 9.97/4.0 ✓; hull 7.735 ✓. turretMass l
+5.315 = **68.7% of hull — over the generic §B8.1-4 ~55% alarm**; adjudicated
+TRUE-TO-VEHICLE under §B7: the demonstrator's turret genuinely runs long
+(A4 box + closed AMAP forward wedge + bustle basket + slat course), and the
+yaw-90 top confirms the rotating mass reads as a TURRET (pointed plan, gun,
+distinct bustle), not the a7v hull-board class. Documented, not ordered.
+
+Detail 8. Notes (no orders): (1) the under-nose plane renders one uniform
+mid-gray at head-on — fleet-endemic class, see law note 3; (2) alarm-line
+turret fraction above, re-check only if the oracle adjudication (4.995)
+re-prices the §B7 cap.
+
+## leo2a4 — PROPORTION PASS (original orders 1–3 CLOSED)
+
+Four-box (probe, exact): overall 9.660 × 3.703 × 2.806 (PERI spike; roof
+2.48) vs pub 9.67/3.70/2.48 ✓✓; hull 7.81 box (the documented +1.2% mudguard
+lip) with **h 1.771 — the deck true-up landed** (was 1.836 in the original
+read); turretMass 3.256 l = **41.7% of hull** ✓ w 2.713; bore y **2.00** ✓;
+muzzle +5.82 → 9.68 real-config overall (spec-row 9.97 carry-over stays a
+modern2.js true-up item, packet-documented).
+
+1. **WHEEL EXPOSURE — CLOSED.** Skirt bottoms measured from pixels: aft run
+   ≈0.41–0.44 m (claim 0.44 — AA edge), fore blocks hang deeper (step reads
+   in the 4× band crop) → **~52–56% aft / 48% fore of the 0.79 wheel** —
+   §B8.1 gate-1 window (40–70%). Under-skirt band renders ALIVE: row means
+   45–54 vs the original build's **6.8 ambient-black row** (the actual
+   read-killer — see law note 1); 7 hub discs/side at measured pitch 57 px =
+   0.84 m ✓ — 6 read clean + 1 shaded under the fore block; countable.
+   Residual (note, not an order): native photoclass hub contrast is faint
+   (~5–6 lum units, peaks 57 vs gaps 52) — one hub-tone step is the lever if
+   the owner still reads the left view dark; geometry + tone hooks delivered.
+2. **BOW — CLOSED.** Head-on profile through the nose: glacis 52 / **lit
+   nose band 69–71 over 23 px lit (+ seam-shaded lower edge) ≈ 0.13–0.19 m**
+   (ordered 0.19, 1.05..1.24) / beak-underside shadow 47–50 / under-nose
+   receding plane **57 = glacis-class tone** (the packet's fix: it rendered
+   69–82, BRIGHTER than the glacis, pre-overlay). The full-height lit cliff
+   is dead; track horns read proud; view-left bow profile = beak + recede,
+   no wall.
+3. **TURRET PRESENCE — CLOSED.** Walls at the family lines (vertical faces,
+   the 2A4 rising bottom line with the bustle slab kept at 1.74), face
+   2.48−1.695 = **0.785** wall / band-to-EMES-lid **0.943** ≈ the ordered
+   0.95; deck true-up measured (hull box top 1.755); profile presence reads —
+   PERI, MG3, EMES hood right-cheek, crosses; bustle rack mid-rail + closed
+   end frames and the heavier Wegmann banks read in profile and rear.
+
+§B8.1: gate-1 ✓ (above); gate-2 ✓ (glacis targets carried, cliff dead);
+gate-3 ✓ (boxy VERTICAL family line + EMES hood — falsifiable and correct);
+gate-4 ✓ 41.7%; gate-5 ✓ (7 duals @0.84 m measured + §B6 raised idler 3.48 /
+sprocket −3.19 trapezoid). Acid per family: front YES / left YES / rear YES /
+top YES / heroes YES. Yaw-90 set defect-clean; §B1.1 both cheeks raked-true
+in both front quarters; §B3.1 gun run prism-free (mantlet collar, tube,
+evacuator, bore).
+
+Detail 7. Notes: hub tone (above); under-nose 296×70 px uniform-57 panel —
+inside the fleet class (law note 3), candidate for a one-step texture break
+in a detail round.
+
+## leopard2_proto — PROPORTION PASS (first §B8 acceptance)
+
+Four-box: overall 9.95 box (muzzle +6.11 → **spec 9.97** ✓) × 3.702 ×
+2.655 spike (roof plane 2.37 walls); hull 7.81 box = the family line ✓;
+turretMass 3.13 l = **40.1% of hull** ✓ w 2.581 (blisters) h **0.984** — the
+LOW PT slab (face 2.37−1.695 = 0.675); bore y **1.98** ✓. Hull box h 1.826
+vs the a4's 1.771 (early-nose deck kit; inside the packet's dims grace —
+gate dims 100 corroborates).
+
+**Prototype identity — DELIVERED** (scored against the packet's
+panzerplace/PT photo class): low slab welded turret with NO wedge; rounded-
+in-plan cheek fronts (two co-planar facets each side, weld seam on the
+knuckle, §B1.1 symmetric — front view); stereoscopic rangefinder BLISTERS
+bulging from BOTH cheeks (dome + collar + dark optic cap, straddling the
+roof edge); base ring bulge WIDER than the walls; early ring cupola; IR
+searchlight box (hood + recessed lens); anemometer; folded whips; 2×4 early
+Wegmann clusters LOW on the rear walls; bustle box + strapped kit; loader
+MG3 (mount 0.54, the banked FITTING-CAP dims lesson); Y-014 + cross decals.
+**Gun (§B3.1): rounded CAST mantlet** — trunnion roll + ellipsoid dome +
+tapered boot, coax port, NO prism anywhere on the run; **BARE slim 105**
+(no thermal sleeve), mid-tube evacuator, real recessed bore at +6.11.
+**Skirts: prototype-plain** one flat full-length line at ±1.85, no fore
+blocks, bottom 0.45–0.46 measured = **58–59% exposure** ✓; 7 ringed hubs
+countable (same native-faintness note as the a4). §B6 trapezoid ✓.
+
+**Gate line ×1 (my run):** `min 0 | hull 45.6 whole 0 turret 0 stations 0
+dims 100 floaters 100` — reproduces the landed line EXACTLY; dims 100 +
+floaters 100 HOLD; whole/turret/stations stay capped BY CERTIFICATE (melted
+print — turret melted to deck, gun printed as a deck-height bar), scored on
+visuals per the adjudication.
+
+**Variant distinctiveness (§H.4):** proto vs a4 tells read at a glance —
+blisters / bare tube / plain skirts / low 0.675 face / IR box vs EMES hood /
+sleeved L/44 / sculpted fore blocks / 0.785 face. Not a re-badge.
+
+Acid per family: front YES / left YES / rear YES / top YES / heroes YES.
+Yaw-90: turret+blisters+cupola+bustle rotate as one, defect-clean ×16.
+
+Detail 7. Notes: plain cheek faces are the REAL PT read (builder's own
+weakest-view list concurs) — casting/weld texture is a candidate, not an
+order; MODEL_SOURCE still ships the melted tub as the playable — the
+FLEET-FLIP to procedural is orchestrator-lane and is now UNBLOCKED by this
+independent PASS.
+
+## STANDING CHECKS (all reproduce the landing)
+
+- **Hash bracket ×2** (before captures / after all runs): leo2_revolution
+  **bbae2c80** (80/107954), leo2a4 **551cb30e** (58/88109), leopard2_proto
+  **f1af7ba8** (56/80693) — both runs, exactly the landed candidates.
+  Frozen sibs byte-held both runs: leo2a5 **e215a738** / leo2a6 **09912270**
+  / kf51 **9ac547ac** (both shared-helper opt-ins byte-identical-default,
+  confirmed live).
+- **geometry-gate:** proto ×1 exact (above); revolution NOT RUN by order
+  (broken oracle = orchestrator item 4.995; its ledger row untouched at the
+  pre-existing 0.2-turret HEAD state); leo2a4 NOT gated (FALSE-0 law).
+- **track-clip --exact:** 0/0 band + 0/0 shoe — all THREE ✓.
+- **winding-audit:** m1 rev 0 / mix 0 / deficit 0 px ×3; m2 clean ×3
+  (revolution 5 px coincidence-dominated; a4 + proto 0).
+- **standard-check:** contig **0** ×3 ✓; decor census mg1+4d / mg1+1d /
+  mg1+1d ✓.
+- npm test skipped per brief (landing ran 166 + track-geometry green).
+
+## RESIT LAW NOTES for the bank
+
+1. **EQUALIZATION-RESCUE FALSE-READ (§B8.1 gate-1 metrology):** an
+   autocontrast/equalized crop rescues tonally-dead geometry — the OLD a4
+   band looks BETTER equalized (near-fully-exposed wheels) than the fixed
+   build, because its wheels were geometrically present inside an
+   ambient-black void (row mean 6.8). This is how "~15% exposure" and
+   "7 wheel bottoms countable" coexisted in the original verdict. LAW: score
+   exposure/countability at NATIVE tone; equalize only to count geometry
+   already visible natively.
+2. **CAMO-PATCH FALSE-POSITIVE (flat-region detectors):** black-green camo
+   patches measure mean <30 at near-zero spread INSIDE lit panels (a 2 k px
+   hit on the a4 right cheek decoded to paint). Separators: organic fill
+   (<0.4 of bbox) + paint-edge context. Detector spec that calibrates
+   cleanly on the banked before-set: flat = 5×5 range ≤3, defect = mean ≤35
+   AND area ≥1200 px in an acid view.
+3. **MID-GRAY FLAT CLASS IS PIPELINE-ENDEMIC:** uniform 50–58 plate reads
+   appear on every build in the dark photoclass scenes (control: k2's
+   praised front view carries a 51 k px mean-54 flat — 5× anything on this
+   triple). It is NOT the owner's rectangle class (that class is ≤35 at
+   zero variance) — do not order mottle on it without the DEEP-SHADE
+   percentile-spread check (existing §J law, re-confirmed here).
+4. **BORE-CROP EXCLUSION:** muzzle-endon/oblique are 30× evidence crops —
+   under-hull shade at grazing angles reads 30–35 flat there on every tank;
+   they are not acid view families and never carry a rectangle verdict.
+
+*Resit critic: independent §B8 acceptance lane (leopard triple). NEVER
+committed; no src edits; official rigs byte-clean vs HEAD; captures +
+measures one cot-shots FIFO hold (self-ticketing tools never wrapped;
+scratch: tools/tmp-b8-resit-batch.mjs + scratchpad flatscan). Evidence:
+shots/photo-acceptance-resit-20260806/ (16 views ×2 poses ×3 ids,
+measures.json; gate/track-clip/winding artifacts under shots/ +
+docs/geometry-gate/leopard2_proto.json as tool-written).*

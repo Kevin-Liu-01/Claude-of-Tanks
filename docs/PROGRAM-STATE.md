@@ -79,7 +79,7 @@ re-freeze NEW hash, all in ONE commit.
 | t84 | 04707a9c | |
 | m47_patton | 2fc99c50 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | leo2a5 | e215a738 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
-| leo2_revolution | bbae2c80 CANDIDATE (gray-rectangles fixed with the real §B7 apron; supersedes bb2bb60c; render-proven — gate stays barred until the oracle adjudication 4.995) |
+| leo2_revolution | bbae2c80 | GRAY-RECTANGLES DEAD (acid YES every view family, §B8 critic); render-side ACCEPTED — gate stays barred pending the 4.995 oracle adjudication |
 | m46_patton | 108806c8 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | centurion3 | 50273080 | bore resit RATIFIED (end 9.2; occlusion class fixed) |
 | m1a2_sepv2 | 83277374 | visibility re-cert RATIFIED (floor 9.1+, owner-question YES) |
@@ -391,6 +391,12 @@ orders closed; four-box numbers reproduced exactly; hashes 31dca571 /
 b19aca94). The owner's founding §B8 rejections are resolved. Laws:
 ORDER-NUMBER vs ORDER-SUBSTANCE (orders bind on falsifiable intent),
 four-box = deterministic regression harness (promoted).
+
+## 4.9998 LEOPARD TRIPLE RESIT: 3/3 PASS — revolution grays DEAD (owner
+acid answered YES x16 views incl. yaw), leo2a4 ACCEPTED (orders 1-3
+closed with numbers, 551cb30e), leopard2_proto FIRST ACCEPTANCE
+(f1af7ba8; its MODEL_SOURCE flip to procedural is now UNBLOCKED —
+my-lane queue). Day resit ledger: 5/5. Four scoring laws banked.
 
 ## 5. IN-FLIGHT AGENTS (SUPERSEDED BY §12 — the 2026-08-05 device
 handover interrupted these; respawn per §12)
