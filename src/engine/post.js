@@ -1453,6 +1453,21 @@ export function createPost(renderer, scene, camera) {
   // exponentially when they flap (the R3F `flipflops` guard).
   const TRIM_MAX = 3;
   const TRIM_STRIKES = 2;
+  // perf-governor r2 (owner: "adjust based on framerate — if declining, kick
+  // in"): the absolute budget + spike-miss gates are blind to two real cases:
+  //   - a UNIFORM slowdown parked just under the miss threshold (a stable
+  //     45-52 fps on a 60 Hz screen has ema>budget but ZERO misses),
+  //   - a high-refresh display sagging (120 -> 70 fps never crosses the
+  //     16.9 ms budget at all).
+  // The governor now EARNS an fps baseline during clean windows (rises
+  // quickly, sags reluctantly) and treats a window that loses >=20% of it —
+  // while below the smooth-enough ceiling — as overloaded, walking the same
+  // relief ladder. After it fires, the baseline decays toward reality so an
+  // exhausted ladder doesn't re-fire every window forever.
+  const FPS_DECLINE_K = 0.80;
+  const FPS_BASELINE_MIN = 24;   // no baseline chasing on already-slow boxes
+  const FPS_SMOOTH_CEILING = 72; // above this, a relative sag is not user-felt
+  let fpsBaseline = 0;
   const TRIM_UP_BACKOFF_S = 15;
   // trim releases tolerate a dirtier window than resolution up-steps (0.04):
   // background-app spikes on a healthy device otherwise freeze recovery at a
@@ -1544,6 +1559,10 @@ export function createPost(renderer, scene, camera) {
     const p10 = sorted[Math.floor(dynRingN * 0.10)];
     dynBudgetMs = Math.min(DYN_BUDGET_MAX_MS, Math.max(DYN_TARGET_MS, p10));
     const missRatio = dynWinMisses / dynWinFrames;
+    // perf-governor r2: achieved fps this window (counted frames over counted
+    // time — >250 ms hitch frames are excluded from both, so a uniform
+    // slowdown reads true).
+    const windowFps = dynWinFrames / Math.max(0.001, dynClock - dynLastDecision);
     dynWinFrames = 0;
     dynWinMisses = 0;
     dynLastDecision = dynClock;
@@ -1556,7 +1575,20 @@ export function createPost(renderer, scene, camera) {
     // the user pinned an explicit preset) now fires only after the WHOLE
     // in-session ladder is exhausted, so it is the last resort it was always
     // meant to be. Recovery walks the same ladder in reverse.
-    const overloaded = dynEma > dynBudgetMs * DYN_DOWN_LEVEL && missRatio > DYN_DOWN_MISS_MIN;
+    const overBudget = dynEma > dynBudgetMs * DYN_DOWN_LEVEL && missRatio > DYN_DOWN_MISS_MIN;
+    const fpsDeclined = fpsBaseline >= FPS_BASELINE_MIN
+      && windowFps < fpsBaseline * FPS_DECLINE_K
+      && windowFps < FPS_SMOOTH_CEILING;
+    const overloaded = overBudget || fpsDeclined;
+    if (!overloaded) {
+      // clean-ish window: re-earn the baseline quickly, sag it reluctantly
+      fpsBaseline = fpsBaseline === 0 ? windowFps
+        : fpsBaseline + (windowFps - fpsBaseline) * (windowFps > fpsBaseline ? 0.3 : 0.05);
+    } else if (fpsDeclined) {
+      fpsBaseline += (windowFps - fpsBaseline) * 0.15; // decay toward reality
+    }
+    renderer.domElement.dataset.fps = windowFps.toFixed(1);
+    renderer.domElement.dataset.fpsBaseline = fpsBaseline.toFixed(1);
     const clean = dynEma < dynBudgetMs * DYN_UP_LEVEL && missRatio < DYN_UP_MISS_MAX;
     const leverLeft = dynLeverAvailable && dynScale > dynFloor;
     if (overloaded && !leverLeft && perfTrim < TRIM_MAX && dynClock > 20) {
@@ -1637,6 +1669,7 @@ export function createPost(renderer, scene, camera) {
     dynWinFrames = 0;
     dynWinMisses = 0;
     dynUpBackoffS = DYN_INTERVAL_S;
+    fpsBaseline = 0; // perf-governor r2: new preset re-earns its fps baseline
     dynLastStep = dynClock;
     dynLastDecision = dynClock;
     if (cssW > 0 && cssH > 0) applySize(cssW, cssH);
