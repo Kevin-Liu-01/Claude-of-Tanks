@@ -62,9 +62,9 @@ re-freeze NEW hash, all in ONE commit.
 | m60a3 | 051c454c -> 097c35a2 CANDIDATE (bore+winding sweep, batch re-cert in flight) |
 | kv2 | 382b2310 | freeze-verify only |
 | leo2a6 | cff6f478 -> 09912270 CANDIDATE (bore+winding sweep, batch re-cert in flight) |
-| m1a1 | 5290e3bc -> ba45613c CANDIDATE (owner visibility round: CROWS/shields/sterns; §B7-class capped rows, re-cert in flight) |
-| m1a1ha | 4023964c -> ff97bc44 CANDIDATE (owner visibility round: CROWS/shields/sterns; §B7-class capped rows, re-cert in flight) |
-| m1a2_tejas | 93a9a890 -> 4891abb6 CANDIDATE (owner visibility round: CROWS/shields/sterns; §B7-class capped rows, re-cert in flight) |
+| m1a1 | ba45613c | visibility re-cert RATIFIED (floor 9.1+, owner-question YES) |
+| m1a1ha | ff97bc44 | visibility re-cert RATIFIED (floor 9.1+, owner-question YES) |
+| m1a2_tejas | 4891abb6 | visibility re-cert RATIFIED (floor 9.1+, owner-question YES) |
 | merkava3b | REMOVED BY OWNER 2026-08-06 (roster prune; was 8bb8d984, packet historical) |
 | merkava3c | b7318b10 -> 8b7ed9bc CANDIDATE (bore+winding sweep, batch re-cert in flight) |
 | kf51 | fcc60d6c -> 9ac547ac CANDIDATE (bore+winding sweep, batch re-cert in flight) |
@@ -74,7 +74,7 @@ re-freeze NEW hash, all in ONE commit.
 | pt91m | 2cf10e23 | |
 | t72b3m | 1e1ca4b8 | |
 | merkava1b | 470f3665 -> 2cc7a76c CANDIDATE (bore+winding sweep, batch re-cert in flight) |
-| m1a2 | 75e981e0 -> 4778c7a8 CANDIDATE (owner visibility round: CROWS/shields/sterns; §B7-class capped rows, re-cert in flight) |
+| m1a2 | 4778c7a8 | visibility re-cert RATIFIED (floor 9.1+, owner-question YES) |
 | chieftain5 | 94c09bb0 -> d4f2a9a6 CANDIDATE (bore+winding sweep, batch re-cert in flight) |
 | t84 | 04707a9c | |
 | m47_patton | 53b6123a -> 2fc99c50 CANDIDATE (bore+winding sweep, batch re-cert in flight) |
@@ -82,7 +82,7 @@ re-freeze NEW hash, all in ONE commit.
 | leo2_revolution | fa1a47fc -> bb2bb60c CANDIDATE (bore+winding sweep, batch re-cert in flight) |
 | m46_patton | 90ebf864 -> 108806c8 CANDIDATE (bore+winding sweep, batch re-cert in flight) |
 | centurion3 | fea56ecc -> 46b03895 CANDIDATE (bore+winding sweep, batch re-cert in flight) |
-| m1a2_sepv2 | b284b8ac -> 83277374 CANDIDATE (owner visibility round: CROWS/shields/sterns; §B7-class capped rows, re-cert in flight) |
+| m1a2_sepv2 | 83277374 | visibility re-cert RATIFIED (floor 9.1+, owner-question YES) |
 | m26_pershing | 2f579de8 -> 65c564c0 CANDIDATE (bore+winding sweep, batch re-cert in flight) |
 
 *Historical note: the 2026-08-05 INVISIBLE-LOD fix mass re-froze the

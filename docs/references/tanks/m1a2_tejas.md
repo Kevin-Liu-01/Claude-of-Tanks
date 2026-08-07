@@ -241,3 +241,7 @@ RESIDUAL: an 86 px turret-overhang air window at view-rear (rack-to-deck
 gap beside the 0.7-duffel — real air, ref-endorsed class).
 CANDIDATE 93a9a890 -> 4891abb6 (45 meshes / 158720 verts, tmp-hashgeo x2
 at the verdict tree) — re-freeze on re-cert ratification.
+
+### VISIBILITY RE-CERT RATIFIED (2026-08-06): RE-FREEZE 4891abb6 CONFIRMED
+(floor 9.1+; owner-question YES — docs/critique/shaded-parity-abrams-
+visibility-recert.md).

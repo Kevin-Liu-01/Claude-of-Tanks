@@ -236,3 +236,7 @@ IDENTICAL row to m1a1 (hull 91.7 EXACT vs frozen; dims/floaters 100).
 band 0 new cells (view-rear 0->0, rearleft 51->41, rearright 80->82 =
 AA-teeter on pre-existing wheel-bay enclosures). CANDIDATE 4023964c -> ff97bc44 (44 meshes / 158264 verts, tmp-hashgeo x2
 back-to-back at the verdict tree) — re-freeze on re-cert.
+
+### VISIBILITY RE-CERT RATIFIED (2026-08-06): RE-FREEZE ff97bc44 CONFIRMED
+(floor 9.1+; owner-question YES — docs/critique/shaded-parity-abrams-
+visibility-recert.md).

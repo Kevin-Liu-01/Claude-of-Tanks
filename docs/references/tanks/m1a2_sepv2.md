@@ -431,3 +431,7 @@ Audits: standard-check clip 0/0 contig 0 mg1+1d; track-clip --exact
 0/0 + 0/0; npm test green.
 CANDIDATE b284b8ac -> 83277374 (42 meshes / 116220 verts, tmp-hashgeo x2
 at the verdict tree) — re-freeze on re-cert ratification.
+
+### VISIBILITY RE-CERT RATIFIED (2026-08-06): RE-FREEZE 83277374 CONFIRMED
+(floor 9.1+; owner-question YES — docs/critique/shaded-parity-abrams-
+visibility-recert.md).
