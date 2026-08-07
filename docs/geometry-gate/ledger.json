@@ -882,11 +882,11 @@
   },
   {
    "id": "isu122s",
-   "geoMin": 90.1,
+   "geoMin": 90.3,
    "gatePassed": true,
    "components": {
     "hullCurves": 90.3,
-    "wholeCurves": 90.1,
+    "wholeCurves": 90.3,
     "turretCurves": 100,
     "stations": 94.9,
     "dims": 98.3,
@@ -1004,7 +1004,7 @@
    "components": {
     "hullCurves": 90.8,
     "wholeCurves": 91,
-    "turretCurves": 91.6,
+    "turretCurves": 91.5,
     "stations": 94.3,
     "dims": 100,
     "floaters": 100

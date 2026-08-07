@@ -5,7 +5,7 @@
  "components": {
   "hullCurves": 90.8,
   "wholeCurves": 91,
-  "turretCurves": 91.6,
+  "turretCurves": 91.5,
   "stations": 94.3,
   "dims": 100,
   "floaters": 100
@@ -120,8 +120,8 @@
    ]
   },
   "side_whole": {
-   "score": 91.57057266671885,
-   "meanPct": 0.6,
+   "score": 91.49857986226293,
+   "meanPct": 0.61,
    "p95Pct": 1.96,
    "coverPct": 0,
    "reg": {
@@ -662,8 +662,8 @@
  },
  "turretRows": {
   "side": {
-   "score": 91.60097405105448,
-   "meanPct": 0.63,
+   "score": 91.50426729880026,
+   "meanPct": 0.64,
    "p95Pct": 1.35,
    "coverPct": 0,
    "reg": {

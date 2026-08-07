@@ -58,32 +58,32 @@ re-freeze NEW hash, all in ONE commit.
 
 | id | hash | notes |
 |---|---|---|
-| m60a1 | fbf9f4cc -> 912de524 CANDIDATE (bore+winding sweep, batch re-cert in flight) |
-| m60a3 | 051c454c -> 097c35a2 CANDIDATE (bore+winding sweep, batch re-cert in flight) |
+| m60a1 | 912de524 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
+| m60a3 | 097c35a2 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | kv2 | 382b2310 | freeze-verify only |
-| leo2a6 | cff6f478 -> 09912270 CANDIDATE (bore+winding sweep, batch re-cert in flight) |
+| leo2a6 | 09912270 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | m1a1 | ba45613c | visibility re-cert RATIFIED (floor 9.1+, owner-question YES) |
 | m1a1ha | ff97bc44 | visibility re-cert RATIFIED (floor 9.1+, owner-question YES) |
 | m1a2_tejas | 4891abb6 | visibility re-cert RATIFIED (floor 9.1+, owner-question YES) |
 | merkava3b | REMOVED BY OWNER 2026-08-06 (roster prune; was 8bb8d984, packet historical) |
-| merkava3c | b7318b10 -> 8b7ed9bc CANDIDATE (bore+winding sweep, batch re-cert in flight) |
-| kf51 | fcc60d6c -> 9ac547ac CANDIDATE (bore+winding sweep, batch re-cert in flight) |
-| isu122s | 60b08d10 -> 8f420d18 CANDIDATE (bore+winding sweep, batch re-cert in flight) |
+| merkava3c | 8b7ed9bc | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
+| kf51 | 9ac547ac | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
+| isu122s | 8f420d18 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | isu152 | 8e2f75c0 | |
-| merkava3d | 6b97616c -> 39de83c8 CANDIDATE (bore+winding sweep, batch re-cert in flight) |
+| merkava3d | 39de83c8 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | pt91m | 2cf10e23 | |
 | t72b3m | 1e1ca4b8 | |
-| merkava1b | 470f3665 -> 2cc7a76c CANDIDATE (bore+winding sweep, batch re-cert in flight) |
+| merkava1b | 2cc7a76c | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | m1a2 | 4778c7a8 | visibility re-cert RATIFIED (floor 9.1+, owner-question YES) |
-| chieftain5 | 94c09bb0 -> d4f2a9a6 CANDIDATE (bore+winding sweep, batch re-cert in flight) |
+| chieftain5 | d4f2a9a6 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | t84 | 04707a9c | |
-| m47_patton | 53b6123a -> 2fc99c50 CANDIDATE (bore+winding sweep, batch re-cert in flight) |
-| leo2a5 | d34a0a58 -> e215a738 CANDIDATE (bore+winding sweep, batch re-cert in flight) |
+| m47_patton | 2fc99c50 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
+| leo2a5 | e215a738 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | leo2_revolution | fa1a47fc -> bb2bb60c CANDIDATE (bore+winding sweep, batch re-cert in flight) |
-| m46_patton | 90ebf864 -> 108806c8 CANDIDATE (bore+winding sweep, batch re-cert in flight) |
-| centurion3 | fea56ecc -> 46b03895 CANDIDATE (bore+winding sweep, batch re-cert in flight) |
+| m46_patton | 108806c8 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
+| centurion3 | fea56ecc -> 46b03895 CANDIDATE HELD — re-cert FAIL floor 7.5 (bore reads camo cap end-on; surgical re-seat + single-view re-cert in flight) |
 | m1a2_sepv2 | 83277374 | visibility re-cert RATIFIED (floor 9.1+, owner-question YES) |
-| m26_pershing | 2f579de8 -> 65c564c0 CANDIDATE (bore+winding sweep, batch re-cert in flight) |
+| m26_pershing | 65c564c0 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 
 *Historical note: the 2026-08-05 INVISIBLE-LOD fix mass re-froze the
 then-24 stable graduates (old->new table in commit 9bf2a6d); every row

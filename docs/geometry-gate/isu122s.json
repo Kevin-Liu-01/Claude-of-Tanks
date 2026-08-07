@@ -1,10 +1,10 @@
 {
  "id": "isu122s",
- "geoMin": 90.1,
+ "geoMin": 90.3,
  "gatePassed": true,
  "components": {
   "hullCurves": 90.3,
-  "wholeCurves": 90.1,
+  "wholeCurves": 90.3,
   "turretCurves": 100,
   "stations": 94.9,
   "dims": 98.3,
@@ -120,15 +120,23 @@
    ]
   },
   "side_whole": {
-   "score": 90.07483208557447,
-   "meanPct": 0.63,
+   "score": 90.47090454647473,
+   "meanPct": 0.68,
    "p95Pct": 2.28,
-   "coverPct": 0.64,
+   "coverPct": 0,
    "reg": {
     "dAlong": 1.542,
     "dy": 0
    },
    "worst": [
+    {
+     "at": 5.72,
+     "refTop": -0.31,
+     "refBot": -0.4,
+     "procTop": -0.31,
+     "procBot": -0.61,
+     "errM": 0.102
+    },
     {
      "at": -0.96,
      "refTop": 0.52,
@@ -216,14 +224,6 @@
      "procTop": 0.92,
      "procBot": -1.22,
      "errM": 0.025
-    },
-    {
-     "at": -4.18,
-     "refTop": 0.56,
-     "refBot": 0.32,
-     "procTop": 0.52,
-     "procBot": 0.33,
-     "errM": 0.024
     }
    ]
   },
