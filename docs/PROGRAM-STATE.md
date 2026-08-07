@@ -949,3 +949,24 @@ userdrops/modern builders (modern2.js buildT80U is DEAD CODE);
 builders live in profiles/*. FOLLOW-UPS: challenger1 companion item,
 dead-builder cleanup, fleet decal-pin sweep (same probe), graduate-
 latent wave (leo2a5/leo2a6/merkava1b/t84 — deficit-0, LOW).
+
+## 5.05 ORCHESTRATOR ADJUDICATIONS (2026-08-07): (1) t34_85 WEIHE
+ORACLE — REFUSED: the weihe print belongs to the separate frozen
+t34_85_cad id and is frame-shifted (t34_85.md "NO ORACLE" note);
+t34_85 stays photo-class (it holds a fresh §B8 PASS 9.0) — the §E
+re-source lane remains the only path to a measured ladder. (2) m60a2
+— CERTIFIED AT CEILING: 86.3 x2 with the ceiling MEASURED ~87.5 on
+three certified mechanisms (scout-gen2-m60a2.md); per the bmp2
+ceiling precedent the id is CLOSED at its measured ceiling — further
+work is owner-elective, not queued. (3) t72bu — CERTIFIED-CAP HOLDS:
+degenerate single-fused-primitive print + stature class (its packet's
+v6/v10 certifications); dims+floaters only; CLOSED-PENDING-RESOURCE
+(a new honest print is the only unlock). (4) batch-48b BLOCKER FILED:
+the ch2 print's indices are uint32 (5125) — _index_surgery asserts
+uint16 (5123); the helper needs a compat extension (parallel 5125
+path, 5123 behavior byte-identical so prior chains reproduce) before
+the hull-partition split can run. Turret prim = 26,279 verts (node
+'challendger 2_0' prim 0); hull shell 65,532 + 2,709; gear 34,968.
+(5) t54 winding repair + t80bv re-parent DEFER to the same §E window
+as 48b (all three are surgery-class; batch them when the helper
+extension lands).
