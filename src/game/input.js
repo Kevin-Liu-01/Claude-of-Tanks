@@ -13,8 +13,9 @@
 // gameplay feel settings (mouse sensitivity / invert-Y / sniper sensitivity /
 // aim smoothing / pad sensitivity / sound mix, cot.settings.v1) and a
 // smoothed, sensitivity-scaled mouse-delta accumulator consumed once per
-// render frame. The `fire` action is special-cased to a consumed press edge
-// (one shot per click / trigger pull — see FIRE_PRESS_BUFFER_MS).
+// render frame. The `fire` action is special-cased: a click is a buffered
+// press edge (one shot), and HOLDING the control is full-auto — the gun
+// refires whenever the reload completes (see FIRE_PRESS_BUFFER_MS).
 //
 // Gamepad model (standard mapping): left stick drives (throttle/steer are
 // synthesized as held forward/back/left/right actions past a deadzone),
@@ -169,13 +170,16 @@ const DEFAULT_SETTINGS = {
 
 const VOLUME_KEYS = ['volMaster', 'volEngine', 'volCombat', 'volAmbience', 'volUi', 'volVoice'];
 
-// One shot per trigger pull (WoT PC): fire reports a PRESS EDGE through
-// getState() instead of held state, so a button held across the reload can
-// never surprise-fire the instant the next shell seats. The edge is only
-// latched when the press could legitimately fire (pointer locked, a gamepad
-// pull, or — in cursor-aim mode — a click on the game canvas itself) and goes
-// stale after this window, so a garage click can't discharge the gun on the
-// first battle frame.
+// Fire semantics (full-auto rework — owner order): a CLICK is a press edge
+// good for one shot; a HELD control is full-auto — getState() keeps
+// reporting fire while the hold lasts, so the gun refires the instant each
+// reload completes (autocannon IFVs stream their 0.4-0.5 s bursts; an MBT
+// held down refires on seat). The edge/hold is only honored when the press
+// could legitimately fire (pointer locked, a gamepad pull, a touch fire
+// button, or — in cursor-aim mode — a press on the game canvas itself):
+// fireHoldLegit latches WITH the edge and dies with the release, so a mouse
+// button held down from a garage/menu click can never walk into a battle
+// firing.
 //
 // r2 CRITICAL FIX (41.7% click-to-fire): the edge is NOT consumed by a
 // getState() read. The render loop samples getState() once per rAF and
@@ -382,6 +386,7 @@ export function createInput(opts = {}) {
   let smDX = 0;
   let smDY = 0;
   let firePressMs = -Infinity; // last legitimate fire press edge (see FIRE_PRESS_BUFFER_MS)
+  let fireHoldLegit = false;   // current fire hold began as a legitimate press (full-auto gate)
 
   // CURSOR-AIM FALLBACK: pointer lock is unavailable in some embeds (sandboxed
   // iframes / embedded panes — requestPointerLock throws a synchronous
@@ -441,6 +446,7 @@ export function createInput(opts = {}) {
     }
     if (nowMillis() - lastCanvasFirePressMs < FIRE_PRESS_BUFFER_MS) {
       firePressMs = lastCanvasFirePressMs; // re-arm the swallowed click
+      fireHoldLegit = true; // a canvas press still held is full-auto too
     }
     if ((hard || lockDenyStreak >= LOCK_DENY_LATCH_STREAK) && !lockDenied) {
       lockDenied = true;
@@ -477,6 +483,7 @@ export function createInput(opts = {}) {
          (lockDenied && evt &&
           (evt.target === lockElement || evt.type === 'keydown')))) {
       firePressMs = nowMillis();
+      fireHoldLegit = true; // holding from this press is full-auto
     } else if (actionId === 'fire' && evt && evt.target === lockElement) {
       // content_breadth r6: canvas click before the no-lock latch — remember
       // it so noteLockDenied can re-arm the edge (see lastCanvasFirePressMs).
@@ -650,17 +657,23 @@ export function createInput(opts = {}) {
     padLabelFor: labelForPadButton,
 
     /** Snapshot of every action's held state (cached object, no allocation).
-     *  EXCEPTION: `fire` is a consumed press edge, not held state — one shot
-     *  per click / trigger pull (WoT PC), so holding the button through a
-     *  reload never auto-fires when the shell seats. */
+     *  `fire` is press edge OR legitimate hold: a click buffers one shot; a
+     *  control still held keeps fire hot, so the gun refires as each reload
+     *  completes (full-auto — see FIRE_PRESS_BUFFER_MS block). */
     getState() {
       pollPad();
       for (const def of ACTION_DEFS) state[def.id] = enabled && isHeld(def.id);
-      // NOT consumed by the read (see FIRE_PRESS_BUFFER_MS): the edge stays
+      // Edge: NOT consumed by the read (see FIRE_PRESS_BUFFER_MS): it stays
       // hot for the whole buffer window so a fixed sim step is guaranteed to
       // sample it even when this rAF ran zero steps. tryFire's reload gate
-      // (seconds per shell) makes a second shot inside the window impossible.
-      state.fire = enabled && nowMillis() - firePressMs < FIRE_PRESS_BUFFER_MS;
+      // makes a double fire from one click impossible.
+      // Hold: full-auto only while the hold that latched the edge persists —
+      // release drops the gate, and a hold that never latched (menu click,
+      // lock-acquiring click) never fires.
+      const fireHeld = isHeld('fire');
+      if (!fireHeld) fireHoldLegit = false;
+      state.fire = enabled && ((nowMillis() - firePressMs < FIRE_PRESS_BUFFER_MS) ||
+        (fireHoldLegit && fireHeld));
       return state;
     },
 
@@ -844,8 +857,13 @@ export function createInput(opts = {}) {
       api.releaseVirtual(actionId);
     },
 
-    /** Recent touch activity relaxes pointer-lock-only fire gating. */
-    virtualActive() { return nowMillis() - virtualLastActiveMs < PAD_ACTIVE_WINDOW_MS; },
+    /** Recent touch activity relaxes pointer-lock-only fire gating. A touch
+     *  button still held IS current activity — a static full-auto fire hold
+     *  must not go stale after the 4 s window (belts empty in 10-100 s). */
+    virtualActive() {
+      return virtualHeld.size > 0 || virtualMoveActive ||
+        nowMillis() - virtualLastActiveMs < PAD_ACTIVE_WINDOW_MS;
+    },
 
     /** Coarse-pointer devices use the Blitz-style touch HUD and skip pointer
      *  lock. gunnery r1 REGRESSION FIX (owner bug 1 root cause): the mobile
@@ -960,6 +978,7 @@ export function createInput(opts = {}) {
     setEnabled(v) {
       enabled = !!v;
       firePressMs = -Infinity;
+      fireHoldLegit = false; // a hold never survives a menu open/close
       pressLatch.clear(); // taps must not queue across a menu open/close
       if (!enabled) {
         down.clear();
