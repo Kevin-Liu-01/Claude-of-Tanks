@@ -1046,3 +1046,18 @@ density note). All three hold fresh §B8 PASS 9.0 records
 (55509794/71f67270/782bdbc4) — the round must NOT regress the
 accepted look (re-cert on silhouette-changing edits). t90m GRADUATE
 e345ee8a excluded + hash-guarded; t72b3m 61a83b2c hands off.
+
+## 5.11 OWNER ORDER (2026-08-07): MERKAVA ROUND — "make sure there
+are no gaps you can see through through the turrets... literally
+just that there are holes in the actual turret assembly under the
+roofs because the roofs were made with straight panels instead of
+solid shapes" — §B2 UNDER-ROOF CLOSURE as the lead order: side-view
+see-through holes INSIDE the turret assembly (not the turret-hull
+gap), caused by straight roof panels; close with SOLID shapes / real
+plate geometry per §B2 (no willy-nilly fills). Scope = the merkava.js
+family incl. GRADUATES by explicit owner order (merkava1b 2cc7a76c,
+merkava3c 8b7ed9bc, merkava3d 39de83c8 — graduate-change protocol:
+gate x2 + re-cert + re-freeze each) + merkava2b/2d. The §5.03 latent
+pieces on merkava1b (2 deficit-0 roof-area pieces) ride the same
+wave (likely the same roof-panel construction). SPAWNED (merkava.js
+free). Four builder lanes now live: SEP, leopard, t90, merkava.
