@@ -648,13 +648,13 @@
   },
   {
    "id": "t72b3m",
-   "geoMin": 69,
+   "geoMin": 85.9,
    "gatePassed": false,
    "components": {
-    "hullCurves": 69,
-    "wholeCurves": 77.7,
-    "turretCurves": 80.1,
-    "stations": 84,
+    "hullCurves": 89,
+    "wholeCurves": 85.9,
+    "turretCurves": 86.9,
+    "stations": 90.1,
     "dims": 100,
     "floaters": 100
    }
