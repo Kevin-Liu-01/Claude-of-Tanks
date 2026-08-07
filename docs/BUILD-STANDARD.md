@@ -728,3 +728,23 @@ a per-incident fix.
   (deficit-0 inside-out solids — HARD when render-visible), CASEMATE
   mode-2 by-design (coincidencePx 0 signature). Run at round close like
   track-clip; fleet baseline banked shots/winding-audit-fleet-20260806.
+
+## §B8 OWNER ACCEPTANCE BAR — PROPORTIONS FIRST (owner directive
+## 2026-08-06, with garage screenshot)
+Owner verbatim: "i genuinely wont accept any tank that came from old era
+and looks like this. it just doesnt look like a tank. honestly i dont
+know how the puma or type 89 passed the bar, the propertions are wrong
+and just dont look like their references." RULINGS: (1) builder
+SELF-READS are NOT an acceptance bar — every photo-class/no-oracle build
+requires an INDEPENDENT photo-parity critic verdict before it counts as
+delivered (the same severity discipline as graduation critics); (2)
+PROPORTIONS COME FIRST: before any detail work, the build must match the
+real vehicle's gross form — hull length:width:height ratios vs published
+dims, turret mass/position/size relative to hull, gun bore-line height,
+wheel count/diameter/spacing, silhouette at a glance from 4 compass
+views. A critic scores proportions as a GATING sub-verdict (proportion
+FAIL = round FAIL regardless of detail quality); (3) the acid question
+on every view is the owner's: "does it read as the real tank" — not
+"is it decorated." Applies retroactively: all 2026-08-06 photo-class
+landings (puma, type89, k2, type99a, ww2 trio, leo2a4, challenger2, t14,
+leo2a7v, fv510) are DELIVERED-PENDING-CRITIC until adjudicated.
