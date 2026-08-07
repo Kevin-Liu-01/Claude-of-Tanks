@@ -10,7 +10,7 @@ import { createTechTree } from './techtree.js';
 import { ensureTankThumbs, drainTankThumbs, getTankThumb, requeueTankThumbs } from './tankThumbs.js';
 // CAMO PICKER SECTION: swatches preview the REAL resolved pattern (scheme +
 // palette from materials.js) instead of hand-approximated CSS gradients.
-import { resolveCamoVisual, CLAUDE_CODE_MARK, ANTHROPIC_MARK, CLAUDE_SPARK_MARK }
+import { resolveCamoVisual, CLAUDE_CODE_MARK, CLAUDE_SPARK_MARK }
   from '../vehicles/materials.js';
 // CATALOG v2 (owner re-order 2026-08-06): the SOURCES catalog group is keyed
 // off the RUNTIME MODEL_SOURCE map — the single source of truth for "this id
@@ -1037,62 +1037,22 @@ function paintCamoSwatch(canvas, spec, pid) {
       }
     }
   } else if (scheme === 'claude' && patches.length) {
-    // claude camo r4: house pattern — sweeping terra/slate fields on ivory
-    // under HERO-scale monogram (the hull print grew 8x, the card matches).
+    // claude camo r5: the creature IS the print — hero + satellite Claude
+    // Code guys in terracotta/slate straight on ivory (fields gone, owner
+    // ask; same card language as 'spark'). evenodd keeps the eyes open.
     const terra = patches[0], slate = patches[1] || patches[0];
-    for (let i = 0; i < 2; i++) {
-      swBlob(c, rng, rng() * W, rng() * H, S * (0.07 + rng() * 0.04));
-      c.fillStyle = swRgb(terra, 0.9);
-      c.fill();
-    }
-    swBlob(c, rng, rng() * W, rng() * H, S * 0.06);
-    c.fillStyle = swRgb(slate, 0.88);
-    c.fill();
-    const glyph = (x, y, s, kind, ink) => {
-      c.save();
-      c.translate(x, y);
-      c.scale(s, s);
-      c.fillStyle = swRgb(ink, 0.95);
-      if (kind === 'tank') {
-        c.fillRect(-0.62, 0.10, 1.24, 0.30); // track run
-        c.fillRect(-0.52, -0.14, 1.04, 0.26); // hull
-        c.fillRect(-0.20, -0.38, 0.42, 0.26); // turret
-        c.fillRect(0.20, -0.30, 0.46, 0.09); // gun
-      } else {
-        // official Claude Code pixel mark — same 24x24 path the hull painter
-        // stamps (materials.js CLAUDE_CODE_MARK); evenodd keeps the eyes open
-        c.scale(1 / 16, 1 / 16);
-        c.translate(-12, -12.5);
-        c.fill(new Path2D(CLAUDE_CODE_MARK), 'evenodd');
-      }
-      c.restore();
-    };
-    glyph(W * 0.28, H * 0.52, H * 0.8, 'tank', slate);
-    glyph(W * 0.72, H * 0.5, H * 0.62, 'spark', slate);
-  } else if (scheme === 'anthropic' && patches.length) {
-    // camo r4: brand camo — angled kraft/slate panel bands under the
-    // Anthropic logogram at hero scale (evenodd keeps the A-counter open).
-    const kraft = patches[0], slate = patches[1] || patches[0];
-    c.save();
-    c.translate(W * 0.34, H * 0.5);
-    c.rotate(-0.45);
-    c.fillStyle = swRgb(kraft, 0.92);
-    c.fillRect(-W * 0.15, -H * 2.4, W * 0.3, H * 4.8);
-    c.translate(W * 0.46, 0);
-    c.fillStyle = swRgb(slate, 0.9);
-    c.fillRect(-W * 0.06, -H * 2.4, W * 0.12, H * 4.8);
-    c.restore();
-    const mark = (x, y, s, ink, a) => {
+    const guy = (x, y, s, ink, a) => {
       c.save();
       c.translate(x, y);
       c.scale(s / 24, s / 24);
-      c.translate(-12, -12);
+      c.translate(-12, -12.5);
       c.fillStyle = swRgb(ink, a);
-      c.fill(new Path2D(ANTHROPIC_MARK), 'evenodd');
+      c.fill(new Path2D(CLAUDE_CODE_MARK), 'evenodd');
       c.restore();
     };
-    mark(W * 0.30, H * 0.5, H * 0.8, slate, 0.95);
-    mark(W * 0.72, H * 0.52, H * 0.55, [233, 227, 213], 0.95);
+    guy(W * 0.30, H * 0.5, H * 1.05, terra, 0.95);
+    guy(W * 0.68, H * 0.42, H * 0.6, slate, 0.9);
+    guy(W * 0.88, H * 0.68, H * 0.42, terra, 0.8);
   } else if (scheme === 'spark' && patches.length) {
     // camo r4: the Claude spark from sprinkle to hero scale on warm ivory.
     const terra = patches[0], slate = patches[1] || patches[0];

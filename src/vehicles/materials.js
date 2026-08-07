@@ -201,14 +201,6 @@ export const CLAUDE_CODE_MARK =
   'V20H7.488v-2.921H6V20H4.487v-2.921H3V14.05H0V10.95h3V5h17.998v5.949z' +
   'M6 10.949h1.488V8.102H6v2.847zm10.51 0H18V8.102h-1.49v2.847z';
 
-// Official Anthropic logogram (24x24 viewBox, verbatim from the published
-// icon) — the 'anthropic' brand camo stamps it hero-scale. The trailing
-// subpath is the punched A-counter: fill with 'evenodd' or it closes up.
-export const ANTHROPIC_MARK =
-  'M17.3041 3.541h-3.6718l6.696 16.918H24Zm-10.6082 0L0 20.459h3.7442l1.3693' +
-  '-3.5527h7.0052l1.3693 3.5528h3.7442L10.5363 3.5409Zm-.3712 10.2232 2.2914' +
-  '-5.9456 2.2914 5.9456Z';
-
 // Official Claude spark (24x24 viewBox, verbatim from the published icon) —
 // the 'spark' camo scatters it from sprinkle to hero scale. One closed
 // outline, plain nonzero fill.
@@ -1496,146 +1488,49 @@ function paintCamo(canvas, visual, rng, feats, seed) {
     // ===================== END CAMO PATTERN SECTION =================
   } else if (scheme === 'claude' && patches.length) {
     // ===================== CAMO PATTERN SECTION =====================
-    // The HOUSE SCHEME (camo r3, owner ask): terracotta + slate disruptive
-    // masses over weathered ivory, monogrammed with the tank-Claude crest
-    // mascot and the Claude spark on a jittered grid — a fashion-house print
-    // that still breaks the silhouette at range. patches = [terracotta,
-    // slate]. Glyph ink alternates slate/ivory at print alpha so it reads on
-    // both the field and the masses without per-pixel sampling.
+    // The HOUSE SCHEME (camo r5, owner ask: "remove the black and orange
+    // dots... massive versions of the claude guys themselves in black and
+    // orange"). The r4 terra/slate field lobes still read as dots under the
+    // monogram, so the fields are GONE — same composition language as
+    // 'spark': soft clay washes for depth, then the official Claude Code
+    // creature stamped from sprinkle to hero scale, ink alternating
+    // terracotta/slate straight on the ivory. patches = [terracotta, slate].
     const terra = patches[0];
     const slate = patches[1] || '#3d3b37';
-    // camo r4 (owner: "look more like cow camos with really small claudes"):
-    // the six round blob-pairs read as Holstein patches under the monogram,
-    // so the masses are now TWO sweeping fields per tone — each a chain of
-    // lobes strung along one shared diagonal flow. Disruptive-band language
-    // instead of spots, and big enough to carry the hero glyphs.
-    const flow = -0.5 + rng() * 0.3;               // shared diagonal, ~-20deg
-    for (const [tone, rBase] of [[terra, 0.155], [slate, 0.105]]) {
-      for (let i = 0; i < 2; i++) {
-        const x = rng() * S, y = rng() * S;
-        const r = S * wk * (rBase + rng() * 0.05);
-        const p = blobPath2D(rng, x, y, r, 9, 0.34);
-        for (let k2 = 1; k2 <= 2; k2++) {          // lobes chain downstream
-          const d = r * (0.9 + rng() * 0.5) * k2;
-          const a2 = flow + (rng() - 0.5) * 0.5;
-          p.addPath(blobPath2D(rng, x + Math.cos(a2) * d,
-            y + Math.sin(a2) * d * 0.7, r * (0.62 + rng() * 0.3), 9, 0.38));
-        }
-        ctx.filter = `blur(${Math.max(1.2, S * 0.001).toFixed(1)}px)`;
-        fillWrapped(ctx, S, p, rgb(tone, 0.9));
-        ctx.filter = 'none';
-      }
-    }
-    // monogram pass — crest tank (hull/tracks/turret/gun/pennant, chunky
-    // enough to read at ~20 px) alternating with the official Claude Code
-    // pixel mark (owner ask: the real icon, not a generic spark). Path is
-    // the published 24x24 glyph verbatim; evenodd fill keeps the eyes open.
-    const glyphTank = (x, y, s, rot) => {
-      const p = new Path2D();
-      const m = new DOMMatrix().translate(x, y).rotate((rot * 180) / Math.PI).scale(s, s);
-      const q = new Path2D();
-      q.rect(-0.62, 0.10, 1.24, 0.30);   // track run
-      q.rect(-0.52, -0.14, 1.04, 0.26);  // hull
-      q.rect(-0.20, -0.38, 0.42, 0.26);  // turret
-      q.rect(0.20, -0.30, 0.46, 0.09);   // gun
-      q.rect(-0.06, -0.62, 0.05, 0.26);  // pennant mast
-      q.moveTo(-0.01, -0.62); q.lineTo(0.24, -0.545); q.lineTo(-0.01, -0.47); q.closePath();
-      p.addPath(q, m);
-      return p;
-    };
-    const codeSrc = new Path2D(CLAUDE_CODE_MARK);
-    const glyphCode = (x, y, s, rot) => {
-      const p = new Path2D();
-      // 24x24 source box, visual mass centered near (12, 12.5); s/16 makes
-      // the mark span 1.5 units — the crest tank's footprint plus enough
-      // extra that the punched eyes survive small stamps.
-      const m = new DOMMatrix().translate(x, y).rotate((rot * 180) / Math.PI)
-        .scale(s / 16, s / 16).translate(-12, -12.5);
-      p.addPath(codeSrc, m);
-      return p;
-    };
-    // camo r4 ("make the claudes much larger"): 8x8 confetti -> a 3x3 grid
-    // of HERO stamps. Each mark now spans ~a third of the tile (8x the r3
-    // print, which dissolved into dot noise at hull scale) and the Claude
-    // Code creature carries two of every three cells; near-touching spacing
-    // reads as a fashion-house monogram repeat.
-    const cell = S / 3;
-    const inks = [[slate, 0.8], ['#e9e3d5', 0.72]];
-    let gi = 0;
-    for (let gy = 0; gy < 3; gy++) {
-      for (let gx = 0; gx < 3; gx++) {
-        gi++;
-        if (rng() < 0.14) continue;
-        const x = (gx + 0.5 + (rng() - 0.5) * 0.4) * cell;
-        const y = (gy + 0.5 + (rng() - 0.5) * 0.4) * cell;
-        const s = cell * (0.52 + rng() * 0.16);
-        const rot = (rng() - 0.5) * 0.5;
-        const [ink, a] = inks[(gi + ((rng() * 2) | 0)) % 2];
-        const isTank = gi % 3 === 0;
-        const path = isTank ? glyphTank(x, y, s, rot) : glyphCode(x, y, s, rot);
-        // sticker halo: a contrast outline UNDER the ink so every stamp
-        // reads whichever field it lands on (half the r4a stamps vanished
-        // into same-tone masses — slate on slate, ivory on ivory).
-        strokeWrapped(ctx, S, path,
-          rgb(ink === slate ? '#e9e3d5' : slate, a * 0.85), s * 0.08);
-        fillWrapped(ctx, S, path, rgb(ink, a), isTank ? undefined : 'evenodd');
-      }
-    }
-    // ===================== END CAMO PATTERN SECTION =================
-  } else if (scheme === 'anthropic' && patches.length) {
-    // ===================== CAMO PATTERN SECTION =====================
-    // ANTHROPIC brand camo (camo r4, owner ask): broad angled color-block
-    // panels — kraft + slate over ivory, the brand-guideline page language —
-    // under hero-scale logogram stamps. patches = [kraft, slate]. Marks fill
-    // 'evenodd' so the punched A-counter stays open.
-    const kraft = patches[0];
-    const slate = patches[1] || '#33312d';
-    const tilt = -0.46 + rng() * 0.22;             // shared panel flow
-    const band = (col, w, alpha) => {
-      const x0 = rng() * S, y0 = rng() * S, len = S * (0.9 + rng() * 0.5);
-      const path = new Path2D();
-      path.moveTo(x0 - Math.cos(tilt) * len * 0.5, y0 - Math.sin(tilt) * len * 0.5);
-      path.lineTo(x0 + Math.cos(tilt) * len * 0.5, y0 + Math.sin(tilt) * len * 0.5);
-      ctx.filter = `blur(${Math.max(1, S * 0.0008).toFixed(1)}px)`;
-      strokeWrapped(ctx, S, path, rgb(col, alpha), w);
-      ctx.filter = 'none';
-    };
     for (let i = 0; i < Math.max(2, Math.round(3 * nK)); i++) {
-      band(kraft, S * wk * (0.13 + rng() * 0.09), 0.92);
+      // broad low-alpha clay washes so the ivory field isn't flat
+      const x = rng() * S, y = rng() * S;
+      const r = S * wk * (0.16 + rng() * 0.09);
+      ctx.filter = `blur(${Math.max(2, S * 0.004).toFixed(1)}px)`;
+      fillWrapped(ctx, S, blobPath2D(rng, x, y, r, 8, 0.3),
+        rgb(mix(terra, base, 0.62), 0.5));
+      ctx.filter = 'none';
     }
-    for (let i = 0; i < Math.max(1, Math.round(2 * nK)); i++) {
-      band(slate, S * wk * (0.055 + rng() * 0.05), 0.9);
-    }
-    const markSrc = new Path2D(ANTHROPIC_MARK);
-    const stamp = (x, y, s, rot, ink, a) => {
+    const codeSrc = new Path2D(CLAUDE_CODE_MARK);
+    const guy = (x, y, s, rot, ink, a) => {
       const p = new Path2D();
-      // 24x24 source box, mass centered on (12, 12); s/24 spans s units.
+      // 24x24 source box, visual mass centered near (12, 12.5); s/24 spans
+      // s units. evenodd keeps the punched eyes open. Rotations stay small —
+      // the creature reads upright, unlike the any-angle starburst.
       const m = new DOMMatrix().translate(x, y).rotate((rot * 180) / Math.PI)
-        .scale(s / 24, s / 24).translate(-12, -12);
-      p.addPath(markSrc, m);
-      // sticker halo (see 'claude'): contrast outline under the ink so the
-      // mark reads on panel bands and field alike.
-      strokeWrapped(ctx, S, p,
-        rgb(ink === slate ? '#e9e3d5' : slate, a * 0.85), s * 0.07);
+        .scale(s / 24, s / 24).translate(-12, -12.5);
+      p.addPath(codeSrc, m);
       fillWrapped(ctx, S, p, rgb(ink, a), 'evenodd');
     };
-    // hero marks on a 2x2 grid, small satellites scattered between
+    guy(S * (0.3 + rng() * 0.4), S * (0.3 + rng() * 0.4),
+      S * (0.52 + rng() * 0.12), (rng() - 0.5) * 0.5, terra, 0.94); // the hero guy
     const cell = S / 2;
-    const inks = [[slate, 0.8], ['#e9e3d5', 0.7]];
-    let gi = 0;
     for (let gy = 0; gy < 2; gy++) {
       for (let gx = 0; gx < 2; gx++) {
-        gi++;
-        const x = (gx + 0.5 + (rng() - 0.5) * 0.5) * cell;
-        const y = (gy + 0.5 + (rng() - 0.5) * 0.5) * cell;
-        const [ink, a] = inks[(gi + ((rng() * 2) | 0)) % 2];
-        stamp(x, y, cell * (0.58 + rng() * 0.16), (rng() - 0.5) * 0.45, ink, a);
+        const x = (gx + 0.5 + (rng() - 0.5) * 0.6) * cell;
+        const y = (gy + 0.5 + (rng() - 0.5) * 0.6) * cell;
+        guy(x, y, cell * (0.44 + rng() * 0.14), (rng() - 0.5) * 0.5,
+          (gx + gy) % 2 ? slate : terra, 0.9);
       }
     }
-    for (let i = 0; i < Math.round(4 * nK); i++) {
-      const [ink, a] = inks[(rng() * 2) | 0];
-      stamp(rng() * S, rng() * S, S * (0.075 + rng() * 0.05),
-        (rng() - 0.5) * 0.6, ink, a * 0.85);
+    for (let i = 0; i < Math.round(7 * nK); i++) {  // sprinkle guys
+      guy(rng() * S, rng() * S, S * (0.05 + rng() * 0.04),
+        (rng() - 0.5) * 0.7, rng() < 0.4 ? slate : terra, 0.62);
     }
     // ===================== END CAMO PATTERN SECTION =================
   } else if (scheme === 'spark' && patches.length) {
@@ -2830,9 +2725,11 @@ export const CAMO_PATTERN_IDS = [
   // camo r3 (owner ask 2026-08-04): the house scheme — style-only, appended
   // last per the append-only contract.
   'claude',
-  // camo r4 (owner ask 2026-08-07): the brand set — Anthropic logogram
-  // blocks + the Claude spark. Style-only, appended per the contract.
-  'anthropic', 'spark',
+  // camo r4 (owner ask 2026-08-07): the Claude spark. Style-only, appended
+  // per the contract. camo r5 (owner ask, same day): 'anthropic' REMOVED —
+  // the one sanctioned break of append-only; safe because getCamoSelection
+  // validates stored ids against this list and falls back to 'factory'.
+  'spark',
 ];
 export const CAMO_PATTERN_LABEL = {
   auto: 'Auto (map)', factory: 'Factory', summer: 'Summer',
@@ -2846,7 +2743,7 @@ export const CAMO_PATTERN_LABEL = {
   merdcwinter: 'MERDC Winter', winterbands: 'Winter Bands',
   berlin: 'Berlin Bde', oakleaf: 'Oak Leaf',
   hexfield: 'Hex Mesh', midnight: 'Night Ops',
-  claude: 'Claude', anthropic: 'Anthropic', spark: 'Claude Spark',
+  claude: 'Claude', spark: 'Claude Spark',
 };
 
 const CAMO_LS_PREFIX = 'cot.camo.';
@@ -3326,23 +3223,15 @@ function patternVisual(spec, patternId) {
     o = { scheme: 'nato', base: '#33373a', weather: '#3a3e41',
       patches: ['#26292c', '#41464a'] };
   } else if (patternId === 'claude') {
-    // camo r3 (owner ask): the HOUSE SCHEME — Anthropic ivory field with
-    // muted terracotta + slate disruptive masses, monogrammed with the
-    // tank-Claude crest mascot and the Claude spark. Tones are weathered
-    // military versions of the brand palette: ivory held at dirty-whitewash
-    // luma (the winter near-white blowout lesson), terracotta desaturated a
-    // step so the warm garage key can't flare it orange (the summer-brown
-    // lesson). Style-only — no biome bonus, like dazzle/midnight.
+    // camo r3/r5 (owner asks): the HOUSE SCHEME — the Claude Code creature
+    // itself, sprinkle to hero scale, in terracotta + slate on weathered
+    // ivory (r5 dropped the disruptive field masses: they read as dots).
+    // Ivory held at dirty-whitewash luma (the winter near-white blowout
+    // lesson), terracotta desaturated a step so the warm garage key can't
+    // flare it orange (the summer-brown lesson). Style-only — no biome
+    // bonus, like dazzle/midnight.
     o = { scheme: 'claude', base: '#d3ccbc', weather: '#c2b9a7',
       patches: ['#b25a3d', '#3d3b37'] };
-  } else if (patternId === 'anthropic') {
-    // camo r4 (owner ask): ANTHROPIC brand camo — kraft + slate panel blocks
-    // on the ivory field under hero logogram stamps. Same weathered-brand
-    // ladder as 'claude' (ivory at dirty-whitewash luma, warm tones
-    // desaturated a step below the printed brand). Style-only, no biome
-    // bonus.
-    o = { scheme: 'anthropic', base: '#d5cebe', weather: '#c4bba9',
-      patches: ['#8f6b4c', '#33312d'] };
   } else if (patternId === 'spark') {
     // camo r4 (owner ask): the Claude spark at hero scale on warm ivory with
     // soft clay washes. Terracotta held a step below the app icon's #d97757
