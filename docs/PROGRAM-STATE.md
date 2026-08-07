@@ -1207,3 +1207,15 @@ pre-existing on 3 graduates) — if the owner's forward-look extends to
 manned rail guns, that is a future cap re-adjudication (ASK OWNER,
 nicety). The critic worked a clean-room at 18d3f13 — its name-
 collision observation is already resolved by the 56d5b14 rename.
+
+## 5.19a OWNER CLARIFICATION (2026-08-07): "i meant the m1a2 abrams
+(ex tejas) is the correct base, the base m1a2 platform is WRONG." —
+the queued SEP REBUILD-ON-BASE round's base = the m1a2_tejas platform
+configuration (the tank named 'M1A2 Abrams', re-frozen f7510d88), NOT
+buildM1a2's base fit. sepv2 + sepv3 rebuild so their hull/turret/
+detail grade visibly IS the tejas-grade platform, then the variant
+kit (sepv2: elevated CROWS II + APU + urban kit; sepv3: M1A2C set)
+slaps on top. SIGNAL BANKED (not yet an order): the owner considers
+the BASE M1A2 PLATFORM'S LOOK WRONG — a future base-m1a2 rebuild
+toward the tejas grade is the likely next ask; the §3 graduate row
+(636a4860) stands until ordered.
