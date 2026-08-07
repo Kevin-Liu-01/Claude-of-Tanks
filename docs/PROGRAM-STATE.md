@@ -1153,3 +1153,11 @@ with seams/bolts/chamfers + correct tone slots, NOT flat gray slabs
 (the §4.9996 gray-rectangles class returned). The in-flight leopard
 critic's revolution verdict is superseded by this owner read; its
 other three verdicts stand.
+
+## 5.17a OWNER CORRECTION (2026-08-07): "the squares are not the
+issue, its just that the turret didnt finish building under that
+front part and sides" — the §5.17 round RE-SCOPED (relayed live):
+gray-squares job DROPPED; the whole round = BUILD THE MISSING TURRET
+STRUCTURE — the shell's lower side walls down to the ring band + the
+under-front chin/cheek undersides to the mantlet collar, real §B2
+casting walls; verified at the owner's close 3/4 angle + yaw 0/45/90.
