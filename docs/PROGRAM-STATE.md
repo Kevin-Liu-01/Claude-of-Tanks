@@ -1035,3 +1035,14 @@ SPAWNED immediately (leopard.js free). Graduates hash-guarded:
 leo2a5 e215a738, leo2a6 09912270, kf51 9ac547ac; revolution bbae2c80
 moves by design (photo-class re-freeze after its critic); leo1a5
 1c79188 record held.
+
+## 5.10 OWNER ORDER (2026-08-07): "the t90s look a lot better, keep
+working on them too in a new subagent" — T90 CONTINUATION ROUND
+spawned (russia.js free): t90sm gate ladder (58.2 — hull 61.2 is the
+weak row; slat/brim/pano landed and resit-PASSED 9.0), t90a ladder
+(76.1 — dome landed; ESSA pane + deep-shade wings notes), vladimir
+ladder (71.0 — dims 96.2 certified hullLengthM class; roof wedge
+density note). All three hold fresh §B8 PASS 9.0 records
+(55509794/71f67270/782bdbc4) — the round must NOT regress the
+accepted look (re-cert on silhouette-changing edits). t90m GRADUATE
+e345ee8a excluded + hash-guarded; t72b3m 61a83b2c hands off.
