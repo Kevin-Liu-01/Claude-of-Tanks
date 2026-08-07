@@ -1111,3 +1111,16 @@ banks meeting at the gun (the '<' plan read). Relayed to the live
 t90 agent for the t90s; QUEUED as the next russia-lane round for the
 t72s + t80s (russia.js single-writer — spawns after the t90 agent
 lands).
+
+## 5.15 OWNER ORDER (2026-08-07): "update the armata, the proportions
+are def off and need to be remeasured, its really long but not wide
+at all. adjust the hull, and also improve the turret" — T14 PROPORTION
+ROUND (modern2.js free, spawned): re-MEASURE the four-box vs spec
+dims (hull 8.7 / overall 10.8 / width 3.9 / height 3.16 datum) + the
+print + photos; the owner reads it LONG-NOT-WIDE — find where the
+visual width is under-built (skirt/fender planes vs the true ±1.95,
+wheel band width, turret plan width) and/or the length over-reads;
+adjust the hull; improve the turret (banked t14.md notes: Afganit
+corner stubs borderline §B3, crown seam density, roof sparsity).
+The print tube-pin stays DEFERRED (certified short-tube cap — agent
+must not chase those columns). Seven builder lanes now live.
