@@ -2066,3 +2066,18 @@ and now UNBLOCKED in the orchestrator queue; t90m batch-23 precedent
 forecasts the 64->90-class arc). france.js module goes live (stub ->
 full resident). Wave score: type99a landed, amx40 landed, type90
 landed; k2/k1a1 in sitting 2; t90 trio critic scoring.
+
+## 5.64 T90 TRIO CRITIC: ALL THREE FAIL — FIX ROUND DISPATCHED
+(2026-08-08): t90 7.0 / t90ms 6.5 / burlak 6.5 vs the 9.0 bar
+(hygiene clean x3, identity short on 17 measurable defects — verdict
+doc docs/critique/shaded-parity-t90fam-trio.md). Headliners: §5.29
+chevrons authored as WIRE RAILS not panel banks (law candidate:
+chevron orders carry a plan-footprint number); shared egg turret plan
+across three marks; floating glacis ERA shelves w/ blue untinted
+cells; t90ms slat cage inset as a louver grille (law candidate: slat
+orders specify STAND-OFF geometry); burlak bustle proportion INVERTED
+(2.4-2.6m vs the print's 1.9m magazine). Builder resumed with the
+full order set + return-path pin (three prior reports misrouted to
+the owner's parallel session). Landing HOLDS; fresh sitting on new
+hashes. Wave ledger: 3 landed (type99a/type90/amx40), 5 in fix
+rounds (k2/k1a1 sitting-2 pending, trio fixing).
