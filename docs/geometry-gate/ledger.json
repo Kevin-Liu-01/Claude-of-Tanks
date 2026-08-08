@@ -1160,6 +1160,19 @@
     "dims": 99.1,
     "floaters": 100
    }
+  },
+  {
+   "id": "type99a",
+   "geoMin": 17.7,
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 17.7,
+    "wholeCurves": 25.4,
+    "turretCurves": 29.7,
+    "stations": 71.3,
+    "dims": 87.5,
+    "floaters": 100
+   }
   }
  ]
 }

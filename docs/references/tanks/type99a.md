@@ -353,3 +353,145 @@ and t14 (unmanned shroud) separable at a glance.
    sizes — a "0.45-wide port on the flank" must put 0.45 along Z, not
    X; transcribing plate dims into the wrong axis breaches §D anchors
    silently (this build's −1.855 incident, caught by the mesh probe).
+
+## r2 PRINT-LOFT REBUILD + RE-ACTIVATION (2026-08-08, §5.38 owner priority
+## wave — "fully model a custom type99a based on this model")
+The Type 99A2 print (public/models/community-candidates/
+type_99a2_armored_warfare.glb, LOCAL-ONLY, md5 bbb31bfe66b734e8e75f8a1d7e945a14
+pristine post-§5.49) VOIDS the 2026-08-06 delist: type99a RE-LISTED in
+MODERN2_IDS. The r1 build above was authored BLIND; this round re-lofted
+every station to vertex-measured print lines. The id GATES now — the r1
+"FALSE-0 never gate" law is retired for this id. Owner dims ruling: 7.6 /
+11.0 / 3.7 / 2.37 (the r1 3.5-width flag is RESOLVED).
+
+### §5.49 orientation adjudication (this round's discovery)
+The extract flagged the print BACKWARDS (glacis -z vs gun +z) + 2713-vert
+interpen. Six raw-frame hull tells (dozer bow +z, two-plane glacis to a
+0.70 toe, armored-skirt half +z, raised powerpack deck -z, log/rack -z,
+driver fitting) agreed with the turret tells — print internally COHERENT;
+the assert = the documented §D raised-rear-deck misfire (1.78 rear deck
+tops the 1.50 bow run). Coordinator reversed the turret-180 repair,
+restored pristine bytes, filed the misfire guard. Registration carries NO
+yawOffset; first-pair render verified NOT reversed (no mirror-guard flags,
+plan cover 0, gun-forward both models).
+
+### FOLLOWER CENSUS COMPLETION (three harness maps, k2-depth)
+Onboarding followers ^Object_(?:7|9|13|30)$ left turret furniture
+hull-side. Vertex-verified extension to
+^Object_(?:3|4|6|7|9|10|11|12|13|15|16|19|20|21|23|30)$: 3 roof trim /
+4 cheek smoke banks (full-width y 1.81..2.28 z 0.33..0.48 band) / 6 roof
+plate / 10+23 cheek rails / 11+12+15+16+19 side bins / 20 left mast /
+21 sight wiper. vertex REG comment updated (extract models split loss
+only — t14 note). Object_29 stays hull: headlights + RAKED MIRROR-STALK
+strand (y 2.11@z1.95 -> 2.42@z0.45 — proc now authors it) + glacis rails;
+its turret-handrail strand is the §E ask below.
+
+### As-built r2 (buildType99A, print-lofted; ~30 measured lines in-code)
+Frame: ±1.85 tile anchor; muzzle +7.20 = 11.0 EXACT; flap anchors ±3.775
+(bands 0.48-0.58); stern overhang capped -3.91 (overall 11.12 = +1.09%).
+Gear: 6 stations pitch 0.90 r 0.40, xc 1.46 trackW 0.60, idler y 0.62
+r 0.34 / sprocket y 0.60 r 0.36 (print wrap arcs), contactZR -2.35, top
+run 1.27. Hull: belly 0.385..1.305; deck 1.50 + powerpack ramp + raised
+1.78 rear deck; TWO-PLANE bow (16.3° + 62° to the 0.70 toe) + dozer;
+CHEVRON ERA arrow-field (4x4 per half, ±12° skew, forward-stepping tip —
+§5.29 kinship); full-depth 3x11 FY-4 tile wall (rows 0.535/0.84/1.145);
+stern plate -3.645 + log/rack. Turret: 17-pt UNDERCUT loft (flare 0.74,
+walls ±1.66, roof 2.48 print-true) + wedge cheeks 0.52/0.92->1.74/0.30
+shoulder 2.30 + arrow-seam prisms + boot-skirt canvas + smoke banks 2x5 +
+side bins + bustle ±1.58 + basket; tower right-rear (cap 2.855), pano
+left-rear, JD-3 on the left shoulder, sight conduit+head over the mantlet,
+wiper arms, hatches, wind sensor + whips in the tower band; QJC-88 nsvt
+at the commander station FORWARD (owner MG law). Gun: trunnion 1.94
+(gunPivot y 0.52), boot collars + top cable conduit, sleeve/evac r 0.085
+evacR 1.35, bored muzzle. turretPivot z 0.10 -> 0.28 + gunPivot z 0.55 ->
+0.37 (r6 registered-frame decode; trunnion/muzzle worlds unchanged).
+Armor FRAME true-ups ride the print lines (hw 1.85, roofY 1.50, trkTop
+1.28, floor 0.385, tHalfW 1.62, tFrontZ 1.00, tRearZ -2.35, tH 0.98,
+glacisNoseZ 3.30, glacisTopZ 2.02) — every RHAe VALUE byte-identical;
+era-kind defs moved WITH the geometry (coupling law).
+
+### Gate rows (honest; all runs bit-identical x2 where marked)
+- r1 BASELINE x2 (HEAD worktree: blind build + re-list + owner dims +
+  completed followers) BIT-IDENTICAL: min 0 — hull 1 / whole 10.2 /
+  turret 0 / stations 40.3 / dims 0 (heightM +11.8%, hullLen +6.6%,
+  overall +5.9%, width +0.2% — the ±1.75-anchor scale blowup) /
+  floaters 0 (one-pose island).
+- r2 ladder: r2 17/19/7.3/61/0/100 -> r4 (roof 2.48 + world-frame cheek
+  bricks + flap profiles) -> r6 pivot shift (stations 71.6, st02 17->1.2)
+  -> r7 FINAL x2 BIT-IDENTICAL: min 0 — hull 17.7 / whole 25.4 / turret
+  29.7 / stations 71.3 / dims 0 / floaters 100. Candidate hash 8d13f030
+  (58 meshes / 76945 verts).
+
+### The two blockers (coordinator lane; each quantified from probes)
+1. DIMS-DATUM (heightM): p95 body-column top cannot reach the 2.37 roof
+   datum with the owner-mandated forward MG (its barrel line alone spans
+   ~0.8 m of columns at ~2.7) + the tall sight tower; the print's own
+   receipt reads heightPct +55.7. BOTH models read sights-inclusive p95
+   over the roof datum = the documented §D DIMS-DATUM CLASS ("datum-
+   reconciliation work order, not a shape defect"; t14 precedent re-filed
+   2.7 -> 3.16 from the receipt). ASK: heightM 2.37 -> 2.86 (the tower-cap
+   line; real-vehicle sights-inclusive). Proc p95 measured 2.93-2.97 —
+   lands ~2.86 with the r7 cluster trims. Expected dims after ruling:
+   ~95+ (len +0.21%, width +0.16%, overall +1.09%).
+2. §E EXCISION (Object_29 turret-handrail strand): 196 verts above y 2.05
+   at x -1.4..+1.0, z -1.05..+0.95 (left-edge rails y 2.42..2.56 + cross
+   arcs) — turret furniture in the hull bucket; tops ~22 side-hull columns
+   and ~24 front-hull columns the proc can never lawfully match (§B5
+   forbids hull-side authoring at turret height). Measured cost ~-25 to
+   -30 on side_hull AND front_hull + the dy skew both rows. Keep 29's
+   headlight/mirror/glacis strands (y <= ~1.9) — proc authors them.
+3. (menu) §E warp candidates for the 90 ladder: hull body z-scale x1.062
+   about body mid (receipt hullLen -5.9%), gun tip -0.21 (overall +5.7%),
+   roof band 2.48-2.56 -> 2.44 + tower 3.14 -> 2.9 + mast crop (heightPct
+   +55.7), stern rack crop -4.24 -> -3.9.
+
+### §B7 caps (print stylizations, dims sovereign)
+roof band 2.48-2.56 (proc 2.48 plateau ✓ print-true after the datum-class
+annotation freed it); tower 3.14 -> 2.855; masts 3.49/3.73/antenna 4.35 ->
+whips ~3.1 + sensor 2.85; muzzle 7.41 -> 7.20 (11.0 EXACT); stern rack
+-4.24 -> -3.91; center sight head 2.51 -> 2.545; print hull body 7.152
+(-5.9%) vs the 7.6 anchors (cover ~2.5-2.8% both side rows); print body
+mid +0.25 asymmetry (2-3 bow columns pair against the ref gun run).
+
+### Machine battery (official rigs, this tree)
+track-clip --exact 0/0 band + 0/0 shoe; standard-check: clip ✓ contig 0 ✓
+census mg1+7d ✓; turret-parent: stranded 1 = ADJUDICATED AABB-artifact
+(the fender mirror stalks poke the turret envelope; hull-true on the real
+vehicle AND the print — kf51 class, documented negative), dangling 0;
+floaters 100 x2; npm test exit 0 (equipment 166 + track-geometry green).
+Resident invariance: t80u af5e3ad9, leclerc 206c5fd1 (the §K frozen
+triumph ✓), leo1a5 1c79188, t14 60d7d14 — BYTE-MATCH HEAD-worktree
+baselines; leo2a4 differs (12db10a0 -> b68e42c2) = the LEOPARD lane's
+live uncommitted buildLeo2A4 WIP (profiles/leopard.js +297/-158,
+PROFILED_BUILDERS override; modern2's copy is dead code) — not this lane.
+
+### Evidence
+shots/type99a/r7 + r7-yaw90 (14 views each) + gate receipts (baseline x2,
+candidate x2) copied beside them; probe dumps + per-column analyzers in
+the round scratchpad. Identity self-read: front (arrow cheeks + smoke
+banks + tower-right + boot ✓), close-roof (chevron arrow-field + raked
+mirror stalk on the print line + boot/sight cluster ✓), left (tile wall +
+welded box + tower + sleeved 125 ✓), top/yaw90 clean.
+
+### Law notes banked this round
+1. HEIGHTM P95 BAND CONSOLIDATION: the 12% body filter never excludes
+   columns standing over the hull — every tall roof fitting is a body
+   column. The 5% p95 budget (~0.38 m of z) must be spent as ONE shared
+   z-band; a mandatory forward MG alone can overrun it -> DIMS-DATUM
+   CLASS, not geometry mutilation.
+2. OVERALL-SPAN STERN CAP: overallLengthM is the muzzle-to-stern PIXEL
+   span — stern furniture spends the same 1% grace the muzzle needs;
+   cap overhang at (muzzle_z - 1.01 x overallLengthM).
+3. TURRETLOCAL ERA PUT() COORDS ARE WORLD-FRAME (t90Cheek convention):
+   seatEraBricks subtracts the pivot itself — turret-local puts hang
+   bricks pivot-height BELOW their faces (r1 + candidate-r2 both hit it;
+   gate-measured, now in-code documented).
+4. TURRET-PIVOT REGISTERED-FRAME SHIFT: when every turret mismatch
+   (front rise, bustle tail, rear stations, plan rear) agrees on one
+   signed offset, shift turretPivot z and counter-shift gunPivot z —
+   trunnion/muzzle worlds hold, and roof-cluster fittings that were
+   world-correct must shift back by the same delta.
+5. ORACLE-REGISTRATION COMPLETION IS A BUILDER DELIVERABLE on flat
+   Object_N prints: AABB onboarding misses sub-1k-vert furniture; a
+   vertex-level follower census (k2-depth) belongs to the first build
+   round, with per-object evidence.

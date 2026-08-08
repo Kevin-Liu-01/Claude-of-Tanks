@@ -1858,3 +1858,17 @@ pattern) — SANITY GATE per §5.39 + §5.49 laws: warp targets checked
 vs the real ZTZ-99A published profile + raw-vertex tells BEFORE
 execution; .bak mirror BEFORE any byte surgery (quarantined
 instrument class).
+
+## 5.52 TYPE99A RATIFIED + LANDED (2026-08-08): identity critic PASS
+9.05 at 8d13f030 (14 fresh pairs, garage-weighted; §H.4 acid
+unambiguous; arrow glacis reads as a true arrow with the tip law
+honored; per-view floor 8.8 = the front-ortho camo-flattened seam,
+banked). Landed with the §5.51 APPROVED datum heightM 2.37->2.86
+(re-gate x2 bit-identical: min 0->17.7, dims 0->87.5) — the id is
+MEASURABLE and laddering (§E batch-51 menu = the next rungs).
+POLISH BANK (next 99a touch): D1 unditching-log tone -> dark
+wood-brown (loud at the garage default pose), D2 arrow-seam
+catch-light strips for pure front ortho, D3 basket rim -0.02. Owner's
+"fully model a custom type99a" order: EXECUTED (re-list + print-loft
+rebuild + dual verification). Fleet line read 23/93 mid-window — a
+parallel battery landed a pass; reconcile at its landing.
