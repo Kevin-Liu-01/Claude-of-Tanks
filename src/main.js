@@ -3727,13 +3727,22 @@ function* warmCombatPipelineSteps() {
     const wd = new THREE.Vector3(0, 0, 1);
     try {
       fx.muzzleFlash(wp, wd, 120);
+      // MOBILE-QA r11 (idle profiler): the volley ran as ONE generator slice
+      // (~1.1 s of garage-idle jank — every family's lazy sprite/atlas bake
+      // in a single task). Yields between effect families; call order and
+      // the trailing resetAll are unchanged (bake caches persist).
+      yield;
       for (const kind of ['pen', 'nonpen', 'ricochet', 'he_pen', 'he_splash', 'era', 'spaced_absorb', 'terrain']) {
         fx.impact(kind, wp, wn, 120);
+        yield;
       }
       fx.dust(wp, wd, 1);
       fx.exhaust(wp, 1, true);
+      yield;
       fx.destruction(wp, null, 'shot');
+      yield;
       fx.destruction(wp, null, 'ammorack');
+      yield;
       // perf-r2f (journey probe): the prop-destruction families bake their
       // splinter/debris sprites on FIRST break — ramming your first fence
       // measured a 1.1 s frame. One silent break per family joins the volley
@@ -3741,8 +3750,10 @@ function* warmCombatPipelineSteps() {
       _v3.set(1, 0, 0);
       for (const kind of ['fence', 'wall', 'sandbag', 'truck', 'drumblast']) {
         fx.propBreak(kind, wp, _v3, 1.5);
+        yield; // r11: one splinter/debris sprite bake per slice
       }
       fx.propCrush(wp, _v3, 7);
+      yield;
       // perf-r2e: one scar stamp per fielded visual — the impact-decal
       // system bakes its shared scar canvases (heightToNormal/roughness
       // getImageData work) per FAMILY on the first stamp, which used to be
@@ -3754,6 +3765,7 @@ function* warmCombatPipelineSteps() {
         _v1.y += (e.spec && e.spec.dims ? e.spec.dims.heightM : 2.4) * 0.5;
         _v2.set(0, 0, 1);
         try { fx.armorScar(e.visual, _v1, _v2, 100); } catch (_) { /* warm only */ }
+        yield; // r11: one family's scar-canvas bake per slice
       }
       // perf-r5c (owner: first shot still blips): the volley used to be
       // cleared WITHOUT ever rendering a frame — the fx materials' pipelines
