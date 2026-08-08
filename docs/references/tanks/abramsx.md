@@ -412,6 +412,115 @@ the turret-node knee at 2.44 (or a turret-only decompression), which
 would release the ~8-10-column plateau cap and let turret_side re-reach
 ~75+ honestly.
 
+## §5.27 FIX ROUND (2026-08-07/08, abramsx fix builder — non-graduate,
+## gate-in-loop; closes the seven orders of the FAIL-5.5 verdict)
+
+### Per-order log (markers AXFIX-O1..O7 in buildAbramsX/AX_HULL)
+1. WHEELS (§B8.1 gate-1): wheel train rebuilt print-true — r 0.38->0.31
+   (the 0.38 discs at 0.68 pitch OVERLAPPED 8 cm; the ref's wheels measure
+   r ~0.28-0.31, span 0.10..0.66), centers 0.49->0.425 (bottoms stay on the
+   band inner face), dishR 0.74 exposes the stock tire cylinder as the FAT
+   DARK ANNULUS tinted by the tireHex OWN-BUCKET clone 0x232220 (§C
+   tone-slot law: wheels/detail slots are repaint-registered = retint-dead);
+   OWN-BUCKET lit-steel face plates + hub caps (merged single mesh, hooked,
+   0x4d5044) stand PROUD of the stock disc/cap planes (1.536/1.577 — the
+   round's PROUD-PLANE lesson: the first dressing cut at 1.503-1.531 was
+   fully occluded and moved nothing). beltCoreTop 0.47 splits the solid
+   0.41..1.02 belly core into the real PAN (0.41 front-row floor held,
+   hullDark so the bay reads shade) + open under-sponson air = the print's
+   inter-wheel daylight (§B2 legal class). contactZF/R pinned 2.24/-2.22
+   (certified ramps byte-held); deadSag 0.03 (taut live-track top run —
+   at r 0.30/0.415 the run dropped into the sub-hem window as a black
+   scalloped band, bisect receipt).
+   MEASURED (official view-left, final bytes): band p50->p90 spread 3.6L ->
+   37.0L; daylight 0 -> 6 gap runs of 15-17 px at thr40 (+11 bg-through
+   column runs; the ref itself reads 2 wide runs); 7 primary disc peaks at
+   the 37 px pitch (62/98/135/172/210/254/292, prom >= 6) and 7 lit discs
+   countable at garage-frontleft. track-clip --exact 0/0 band 0/0 shoe
+   (the pan split also cleared the 10 pre-existing rear band voxels).
+2. REAR FLAPS: the floating slab (bg on all four sides, high-rl exhibit)
+   is now the print's HINGED assembly per side: hinge bar buried into the
+   corner-guard 1.19 bottom edge, 0.62-tall dark flap (ref hanging content
+   0.527..1.19 at z -3.62..-3.73), pale hinge straps crossing bar onto the
+   guard + bolt heads — guard->strap->bar->flap all interpenetrate: 0 bg
+   through the joint by construction; verified in the garage set (enclosed
+   sky at rearleft/rearright 3/5 px speckle, none at the flap).
+3. STERN RACK -> SOLID STEPPED DECK (§K merkava mechanism): the four
+   stilted legs are REPLACED by a full-perimeter closed plinth (front/rear
+   walls + side cheeks 0.73 tall, bottoms buried in the deck loft, tops in
+   the slab underside) with §B3 grammar (dark intake bays + louver strips
+   per cheek + rear inset bay + sills). Close-stern through-sky: the only
+   enclosed-sky residual is 56 px UNDER the XM914's exposed barrel run
+   (the certified under-barrel open-structure class, XM360-over-bow
+   family) — the table see-through and post-gap sky bands are gone
+   (high-rl enclosed 207 px == the OLD render's own 207 = the print's
+   bridge/band-B slot air, pre-existing unchanged).
+4. ROOF EAVE: decoded — the wall band between the flank-rail tops (local
+   0.31) and the roof rim (0.48) leaned INWARD and sat in full shade under
+   the rim: a mushroom-eave shadow slot at garage-high angles. Closed with
+   §K raked closure bands per side (turret bucket, two segments following
+   the plateau and falling-shelf lines, from inside the rail shoulder to
+   1 mm under the rim corner) — the roof now meets a lit faceted wall
+   (pixel-diff witness: 1,619 px in exactly the slot region). The
+   remaining plate lips (bridge deck rim <= 4 cm over the shelf) are
+   panel-line class, not eave. Yaw-pair verified: the bands rotate with
+   the shell (§B5).
+5. ROOFLINE IDENTITY (within the 2.435/2.459 caps, p95 budget untouched):
+   XM914 receiver 0.15 -> 0.44 wide (real class) + thermal sleeve collar +
+   fatter barrel (top plane 2.4315 HELD) + real sensor head with dark
+   optic face plate + proud aperture glass + full-size ammo box + chute;
+   pano drum 0.098 -> 0.128/0.138 base with 0.098 head (top 2.459 grace
+   EXACT), gunner's hood 0.30 -> 0.38 wide; corner pods take bigger dark
+   visors + lens strips + wing sensor faces. CROWS-FORWARD azimuth 0 held.
+6. MUZZLE: tone-honest pepperpot — OWN-BUCKET lit-steel rib rings (0x8e948c
+   clone, recoilG-parented like boreDisc) interleave the dark slot tori on
+   the shroud + band the dark end brake: the hero-frontleft axis profile
+   alternates 12 lit/dark band transitions (bar >= 3); radial extreme
+   0.116 = certified muzzle-cyl class, all z inside the existing device
+   span.
+7. MG TRAY + STERN (§B3.2): straps now DRAPE OVER the stowed M240 (tops
+   1.816 = certified stack class) with buckles + rail drops; taillight
+   clusters sit in RECESSED dark bays (lamps 5 mm proud) + glass lens;
+   tow points bulked (taller cheek plates, 0.036 bow rings, longer pins,
+   dark mouth slots) at the certified proudness class (faces >= -3.986).
+
+### Gate + guards (final bytes)
+GATE x2 IDENTICAL: 62.9 | 62.9/69.3/77.7/78.9/100/100 vs the 62.8 |
+62.8/69.7/77.2/79/100/100 verdict row — min +0.1 (HOLD-OR-IMPROVE met),
+turret +0.5, stations -0.1, whole -0.4 (the O4 closure bands' front-col
+cost + teeter; priced against the ordered eave closure), dims/floaters
+100 HELD x2. Receipt: a 0.06 aft sill against a misread of the 56 px slit
+cost hull -0.2 (62.9 -> 62.7) and was REVERTED (the slit is under-barrel
+air, not §B2). Family hashes x2 (before + after, all BYTE-GUARDED):
+m1a1 2f277528 / m1a1ha aa7af504 / m1a2 636a4860 / m1a2_tejas f7510d88 /
+m1a2_sepv2 e60878a9 / m1a2_sepv3 2c9023d0 / m1a2_tusk b1786e4c. The
+abramsHull opt-ins added for O1 (beltCoreTop + dishR/tireHex/deadSag/
+contactZF/contactZR passthrough) are byte-identical defaults — proven by
+the hash table. abramsx hash 2c6eb344 (53/98961). Audits: track-clip
+--exact 0/0/0/0, turret-parent 0/0/0, winding mode-1 CLEAN (rev 0/mix 0;
+the 12 px stern-lip hairline is the documented pre-existing residual),
+mode-2 5947 px = the certified BY-DESIGN static-band class (was 8949;
+the print's own hull mask carries the identical static band — coupled
+whip landing stays parked, orchestrator lane). standard-check contig 0,
+census mg1+5d. npm test green (166). Whips PARKED, XM914 FORWARD.
+Evidence: shots/abramsx-fix-r1/{garage-final, close-final2, pairs-final}
++ shots/abrams-cheek-r1/yaw{0,90}-abramsx (yaw pair at final bytes).
+
+### DIMS-DATUM EXTENSION WORK ORDER (order 5 second half — ORCHESTRATOR
+### LANE, §D dims-datum class, filed like the whip normalize plan)
+The REAL AbramsX roofline runs ABOVE the batch-20-compressed print: the
+un-warped look reference (abrams_x_low_poly.glb, offline probe) reads the
+RWS pod at 2.57..3.47 and whips to 4.13, while published heightM 2.44
+stays sovereign and the registered print is compressed to ~2.30+ knee.
+Candidates, in order: (1) re-run the batch-20 compress with the
+turret-node knee at 2.44 (or a turret-only decompression) — releases the
+~8-10-column plateau cap AND lets the RWS/sight/pod roofline rise toward
+the real proportions; (2) a dims-datum reconciliation for the
+mast-inclusive p95 (the §D "datum work order, not a shape defect" class)
+so the RWS head + whips can stand at their real heights without dims 0.
+Until one lands, the roofline stays clamped at 2.435/2.459 and the whips
+at 2.47 (this round held both).
+
 ### Coupled whip landing — ORCHESTRATOR ATTEMPT PARKED (2026-08-06)
 
 Attempted the coupled flip with turretFollowers '^Dekali$' (the print's

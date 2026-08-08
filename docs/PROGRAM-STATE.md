@@ -1557,3 +1557,19 @@ sanity-checked against the real vehicle's published profile BEFORE
 execution — batch-49 v1 encoded 2.67-2.70 crown targets no Type 90
 reaches; the receipt's heightPct (+17.4) was the tell, and the owner's
 eyes caught it before I did.
+
+## 5.40 ABRAMSX §5.27 RE-CERT: RATIFY 9.2 — ROUND CLOSED (2026-08-08):
+independent critic scored all seven orders >=9.0 on fresh evidence at
+bound bytes (abramsx 2c6eb344 verified x3 across three HEADs; family
+byte-guard 8/8 EXACT incl. sepv2 e60878a9/sepv3 2c9023d0 — the O1
+opt-ins are byte-invisible, proven). Highlights: wheels 9.5 (7/7 disc
+peaks both sides, 17 real daylight runs, mush dead), flaps 9.5 (0
+enclosed), stern rack 9.5 (4353px through-sky -> 0; 58px residual =
+certified under-barrel class), eave 9.0 (closure walls read, §B5 yaw
+proven), roofline 9.0 (kit present within 2.435/2.459 caps), muzzle
+9.0 (11 lit/dark transitions), lashings 9.0. Gate 62.9 hold-or-improve
+stands. §5.08/§5.27 CLOSED. Non-blocking residuals ledgered: idler
+disc flat, right band modulation trails left, RCWS detail waits on
+the FILED dims-datum work order (orchestrator lane, the remaining
+identity headroom). Abrams lane FREES -> sepv2 works-echo deletion
+round (§5.34 chain) spawns next.
