@@ -2027,3 +2027,16 @@ when a fix's evidence was gathered while an earlier fix was live,
 re-verify the ORIGINAL state before chaining — a fix can manufacture
 the artifact the next fix chases; and know the harness's own
 auto-behaviors (the rear-gun auto-flip) before interpreting masks.
+
+## 5.61 KOREA CRITIC: BOTH FAIL — FIX ROUND DISPATCHED (2026-08-08):
+k2 6.8 / k1a1 6.4 vs the 9.0 bar (hygiene passed: yaw90 unity,
+no-air, bore, massing skeletons; identity failed: TURRET-HULL FUSION
+the killer on both — flush walls read as casemate slabs; roof kit
+underscaled to invisibility under the height caps; wheels buried;
+vertical bows; k1a1 inverted rotor + solid baskets; k2 placeholder
+fins + decal-flat KAPS; family distinctness weak-fail with the
+fleet's own m1a1 as the existence proof). Builder resumed with the
+critic's five ordered fixes; fresh sitting on new hashes at delivery.
+Batch-52 (k2 print surgery) may run in parallel — the builder is
+briefed to re-baseline through it. The bar is the bar: two §5.38
+tanks failing critics is the process WORKING (§K).
