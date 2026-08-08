@@ -2207,3 +2207,17 @@ in plan). 30 GRADUATES; FLEET 24/96. The §5.33 campaign's proven
 routes continue: ariete §E path (~85-86 ceiling -> print work),
 amx30-pair y-normalize, the trio turret ladder (live), k2 ladder vs
 the 52b-opened rows, m48 tube-level, type99a §E menu.
+
+## 5.72 TRIO TURRET LADDER LANDED (2026-08-08): t90 29.8->47.8 (st
++35.4), t90ms 20.7->52.5 (the -4.8 stations trade REPAID at 74.7),
+burlak 0->8.6 w/ dims 75->88.3 honest (whip-rough re-class) — x2
+bit-identical, hold-or-improve every component, guards x14, identity
+self-checked byte-visible vs the ratified §5.64 reads (one hem
+regression caught + reverted in-round). Hashes: t90 72104d14, t90ms
+034e1bac, burlak d588df50. THREE LAW CANDIDATES banked in the
+packets: heightM p95 spike-budget arithmetic (<=3 over-court columns,
+fittings can silently hold slots), mid-window station blindness to
+axis-aligned boxes, the t90ms +0.35 turret-seat class (check
+cluster-vs-hull seat before per-column chases). Next trio rungs are
+print-side (§B7 caps + the k2-class §E menu); russia lane FREES ->
+t44+type59 builds spawn (the last §5.45 no-builder ids).
