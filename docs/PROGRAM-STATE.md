@@ -1379,3 +1379,21 @@ and/or pitch/k1Y until >= ~800px clay-plan footprint + two >= 25px
 angled runs per side) — RELAYED into the live §5.29 tip round (t80
 in scope). Ledger rows staged for the eight (vladimir's stale 71
 corrected). Packet overstatement note banked (t72b3m seam claims).
+
+## 5.33 OWNER MISSION BAR (2026-08-07): "we need to get at least 30
+more tanks above 90 is your bar i dont even care. with all specific
+issues like see-through-sides or the t72 turrets not spinning right,
+fix all of them." — THE 90-LADDER CAMPAIGN: fleet 21/89 passing ->
+target 51+. Routes, fastest first: (a) the 80-90 band harvest
+(leclerc 86.2, bradley 84.7, type90 83.6-live, t80 82.5, ariete
+82.3, t80b 81.6, m45 81.2 — small ladders); (b) §E oracle repairs +
+re-oracles for cap-bound ids (vladimir bake-strip, sepv2 re-oracle,
+type_74_new, the registration-source round unblocking ch2/t54/
+t80bv); (c) the 60-80 band by family. DEFECT CLASSES named by the
+owner: SEE-THROUGH SIDES (fleet no-air sweep NOW RUNNING read-only ->
+fix list) + T72 TURRETS NOT SPINNING RIGHT (relayed into the live
+russia round: turret-parent audits + yaw pairs on the t72 line).
+Four interrupted agents RESUMED from transcripts (type90, chevron-
+tip, SEP critic, abramsx fix); four others verified already-landed.
+First ladder wave spawned: bradley (tankFactory), m45_patton
+(patton.js), the fleet see-through sweep.
