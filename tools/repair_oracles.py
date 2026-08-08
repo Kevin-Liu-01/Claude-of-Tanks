@@ -3668,6 +3668,34 @@ def _detach_child_node(tank_id, name, *, expect_verts):
     return op
 
 
+# =============================================================== batch 52b ==
+# RE-ARM + THE THIRD CARRIER (the §5.66 coupled landing: this recipe + the
+# Korea-lane buildK2 skirt de-ladder to the print-true ±1.72 run land
+# TOGETHER — re-applying the surgery without the de-ladder re-regresses
+# stations, receipts above). Batch-52b sanity census — RE-DERIVED from the
+# pristine bytes (4d6d7db3), not the §5.66 receipts, per §5.39/§5.49:
+#  * Object_23 / Object_22 verified EXACT to batch-52 (301v/308t/31 comps
+#    16+15 bands; 5520v/3248t/1144 comps, delete box = 433/2072/1206 fully
+#    inside, ZERO crossers, y-gap 1.5117..1.7032).
+#  * Object_19 (the GUN node) FULL census: 3294v/2912t/344 comps. The LEFT
+#    ROADWHEEL/SUSPENSION COLONNADE: delete box (x -1.24..-1.08, y 0.25..
+#    0.86, z -2.24..+3.01) holds 252 comps / 1608 verts / 1104 tris FULLY
+#    inside, ZERO crossing comps; inside extent x -1.2340..-1.0836,
+#    y 0.2614..0.8519, z -2.2258..+3.0057; z-histogram = SIX stacks at 0.9
+#    pitch (starts -2.2/-1.3/-0.4/+0.5/+1.4/+2.3, repeating vertex
+#    signature). REMAINDER = the real gun: 92 comps / 1686v / 1808t,
+#    x -0.3162..+0.4319, y 1.6340..2.5359, z +1.7769..+7.0499 (tube to the
+#    muzzle) — nearest kept comp sits 0.774 world units from the box, so
+#    NOTHING the box removes touches the tube (component-separable, the
+#    §5.66 forecast confirmed).
+#  * FULL-CLUSTER CENSUS (§5.66 law candidate, executed): every node in the
+#    turret/follower/gun cluster (2/8/10/15/18/20/21/22/24/25/19) censused
+#    for sub-1.5y out-of-band content — ONLY Object_22 (the batch-52 band)
+#    and Object_19 (this colonnade) carry any. No fourth carrier.
+#  * Registration stability: autoPivot reads Object_21 only (untouched);
+#    the flip check (gun bbox z-center vs pivot z) reads +2.41 pristine ->
+#    +4.41 post, both far above the pivot line -> flip verdict unchanged;
+#    width safeScale edges +-1.8595 are interior-safe (colonnade x -1.23).
 REPAIRS['k2'] = {
     'path': 'public/models/community-candidates/k2_black_panther_armored_warfare.glb',
     'ops': [
@@ -3676,12 +3704,17 @@ REPAIRS['k2'] = {
                                delete_rules=[((-1.87, 1.87, 0.60, 1.60, -0.45, 3.05), 0, 0)],
                                expect_delete=(433, 2072, 1206),
                                rebuild_bounds=True)),
+        # batch-52b: excise the left roadwheel/suspension colonnade from the
+        # gun node (census above; refuse-on-mismatch like every chain).
+        ('py2', _index_surgery('k2', 'Object_19',
+                               delete_rules=[((-1.24, -1.08, 0.25, 0.86, -2.24, 3.01), 0, 0)],
+                               expect_delete=(252, 1608, 1104),
+                               rebuild_bounds=True)),
     ],
 }
-# DISARMED pending batch-52b (see the verdict above): the fleet baseline
-# pins the PRISTINE k2 print (4d6d7db3) while the negative receipt stands —
-# a stray `repair --all` must not re-apply the surgery under it.
-REPAIRS.pop('k2')
+# RE-ARMED 2026-08-08 (batch-52b): the §5.66 negative receipt is resolved by
+# the coupled landing (this 3-op chain + the buildK2 de-ladder). The .bak
+# stays the pristine 4d6d7db3 bytes; the chain rebuilds from it every run.
 
 
 if __name__ == '__main__':

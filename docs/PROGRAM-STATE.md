@@ -2120,3 +2120,19 @@ NEW §E OPS BANKED (in repair_oracles.py, reusable): _detach_child_node
 seeds bounds from accessor min/max — load-bearing). Load-deviation
 note: the <15 trough never arrived (owner QA fleet at ~21 for 8h) —
 x2 bit-identity carried the acceptance instead, all four runs exact.
+
+## 5.67 BATCH-52b LANDED — K2 UNLOCKED (2026-08-08): the coupled
+landing succeeded on every acceptance row x2 (hull 38.8->56.1,
+front_hull ->76.26, TURRET 0->52.8 = the first honest read proving
+the Object_19 colonnade was the §5.66 second carrier, stations
+50.5->53.2 — the de-ladder cured the regression AND gained, dims 100
+robust after the in-scope KGPS 2.40-datum re-tune). MD5 chain: print
+4d6d7db3 -> 7b3a76e9 idempotent x3, .bak pristine; recipe stays
+ARMED. Build k2 27c330c3 -> 2ac112a8 (skirts print-true ±1.72,
+§5.65 hems executed — wheels read below the hems in both halves).
+Guards x8 held, npm 265 green x2. §5.66's two law candidates PROVEN
+in practice (full-cluster census found no fourth carrier;
+ladder-anchor provenance drove the de-ladder). NEXT (Korea lane):
+the k2 90-ladder vs the opened rows (side_whole 48.4 floor = the §B7
+pano/mast band -> the banked antenna y-warp is the next print move)
++ the density critic on the §5.65 residuals.

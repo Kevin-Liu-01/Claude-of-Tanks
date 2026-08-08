@@ -819,8 +819,10 @@ function buildK2(P) {
   });
   // near-black bay walls behind the wheel line (type10 §B8.1 device,
   // critic r1 gear-read order): the lit wheels pop against the dark bay.
+  // batch-52b: raised to 1.305 so the skirt-cutout windows (hem 1.30) show
+  // dark bay, never a see-through slot over the track top band.
   for (const s of [-1, 1]) {
-    P.add('hullShadow', box(0.02, 0.95, 6.20), s * 1.10, 0.55, 0);
+    P.add('hullShadow', box(0.02, 1.23, 6.20), s * 1.10, 0.69, 0);
   }
 
   // hull: belly between the tracks, full-width band above the skirt line,
@@ -861,35 +863,43 @@ function buildK2(P) {
     P.add('hullRubber', box(0.14, 0.26, 0.024), s * 1.72, 0.73, 3.71);         // guard flap
     P.add('hullRubber', box(0.58, 0.30, 0.026), s * 1.40, 0.87, 3.70);         // center-lane front flaps
   }
-  // K2 signature skirts (print + gate r1 stations wPct 4.3-4.6): the ref's
-  // FRONT-HALF skirt/fender run flares to ±1.80 (Object_22 material, ±1.86
-  // raw) with the rear run stepped in at ±1.72 — heavy ±1.80 armor front
-  // block + forward run, step-in at z −0.75, ±1.72 aft; SAWTOOTH hems
-  // (0.41 front, 0.67 mid, 0.90 notch, 0.44 rear); rubber fringe.
+  // K2 skirts DE-LADDERED to the print-true ±1.72 run (batch-52b, the §5.66
+  // ladder-anchor coupling: the r7 "front-half ±1.80" order had anchored on
+  // Object_22's fender-FURNITURE band — excised by the batch-52 surgery;
+  // byte truth is the Object_29 run at raw 1.73-1.78 = build 1.67-1.72,
+  // touching ±1.86 only at the bow flares, which keep the §D ±1.80 anchor
+  // above). HEMS raised to the print's 50:50 wall:gear lines (§5.65 density
+  // residual; byte census receipts in k2.md §E): front block hem 0.67,
+  // mid-run SAWTOOTH of deep teeth (hem 0.67) and notch strips (hem 1.30),
+  // open CUTOUT strip over wheels 4-5, wall resuming 0.71, deep 0.44 rear
+  // panel, rising 0.53->1.10 tail — the wheels now read below the hems
+  // like the print. Side/plan outlines are untouched: the raised bay walls
+  // + tracks carry the silhouette floor.
   for (const s of [-1, 1]) {
-    P.add('hull', slab(                                                        // heavy front block ±1.80, top raked with the glacis line
-      [s * 1.745, 0.41, 3.38], [s * 1.80, 0.41, 3.38], [s * 1.80, 0.41, 1.62], [s * 1.745, 0.41, 1.62],
-      [s * 1.745, 1.44, 3.38], [s * 1.80, 1.44, 3.38], [s * 1.80, 1.66, 1.62], [s * 1.745, 1.66, 1.62]));
-    // fwd main run ±1.80 SEGMENTED into 4 real panels (station slice-paint
-    // law, bradley §C: long box mid-spans are invisible to station slabs —
-    // per-panel end caps paint every slice; 3 mm face stagger kills
-    // z-fighting and stays inside the 0.1% width read)
+    P.add('hull', slab(                                                        // heavy front block ±1.72 (print-true run), top raked with the glacis line
+      [s * 1.67, 0.67, 3.38], [s * 1.72, 0.67, 3.38], [s * 1.72, 0.67, 1.62], [s * 1.67, 0.67, 1.62],
+      [s * 1.67, 1.44, 3.38], [s * 1.72, 1.44, 3.38], [s * 1.72, 1.66, 1.62], [s * 1.67, 1.66, 1.62]));
+    // fwd run ±1.72 as the print's SAWTOOTH: 4 deep teeth alternating with
+    // 3 notch strips (station slice-paint law kept — denser end caps than
+    // the old 4-panel cut; 3 mm face stagger between teeth and strips)
     for (let k = 0; k < 4; k++) {
-      P.add('hull', box(k % 2 ? 0.052 : 0.055, 1.00, 0.5925),
-        s * (k % 2 ? 1.771 : 1.7725), 1.16, 1.324 - k * 0.5925);               // panels z -0.75..+1.62
+      P.add('hull', box(0.05, 0.99, 0.36), s * 1.695, 1.165, 1.44 - k * 0.67); // teeth y 0.67..1.66, z 1.26..1.62 / 0.59..0.95 / -0.08..0.28 / -0.75..-0.39
+    }
+    for (let k = 0; k < 3; k++) {
+      P.add('hull', box(0.047, 0.36, 0.31), s * 1.6935, 1.48, 1.105 - k * 0.67); // notch strips y 1.30..1.66 between the teeth
     }
     for (let k = 0; k < 2; k++) {
-      P.add('hull', box(k % 2 ? 0.047 : 0.05, 1.00, 0.475),
-        s * (k % 2 ? 1.6935 : 1.695), 1.16, -0.9875 - k * 0.475);              // aft run ±1.72 (the K2 step-in), z -1.70..-0.75
+      P.add('hull', box(k % 2 ? 0.047 : 0.05, 0.36, 0.475),
+        s * (k % 2 ? 1.6935 : 1.695), 1.48, -0.9875 - k * 0.475);              // aft CUTOUT strips (print hem 1.30 — wheels 4-5 read below), z -1.70..-0.75
     }
-    P.add('hull', box(0.055, 0.30, 0.06), s * 1.7425, 1.10, -0.755);           // step-in return cap (closes the 1.80->1.72 jog, §B2)
-    P.add('hull', box(0.05, 0.76, 0.60), s * 1.695, 1.28, -2.00);              // notch step panel y 0.90..1.66
-    P.add('hull', box(0.05, 1.22, 1.00), s * 1.695, 1.05, -2.80);              // rear deep panels y 0.44..1.66
-    P.add('hullDark', box(0.05, 0.56, 0.02), s * 1.7735, 1.10, 1.62);          // block seam (face 1.7985)
-    for (let k = 0; k < 2; k++) P.add('hullDark', box(0.05, 0.50, 0.018), s * 1.7735, 1.02, 1.05 - k * 1.20); // fwd panel seams
-    P.add('hullDark', box(0.045, 0.50, 0.018), s * 1.6965, 1.02, -1.35);       // aft panel seam
-    P.add('hullRubber', box(0.024, 0.10, 2.35), s * 1.76, 0.63, 0.435);        // rubber fringe under the fwd run
-    P.add('hullRubber', box(0.024, 0.10, 0.93), s * 1.682, 0.63, -1.225);      // rubber fringe under the aft run
+    P.add('hull', box(0.05, 0.95, 0.36), s * 1.695, 1.185, -1.88);             // wall resumes aft of the cutout, y 0.71..1.66 (print 0.71)
+    P.add('hull', box(0.05, 1.22, 0.79), s * 1.695, 1.05, -2.455);             // rear deep panel y 0.44..1.66 (print 0.42-class)
+    P.add('hull', slab(                                                        // rising tail panel (print hem 0.53 -> 1.10 toward the stern)
+      [s * 1.67, 0.53, -2.85], [s * 1.72, 0.53, -2.85], [s * 1.72, 1.10, -3.30], [s * 1.67, 1.10, -3.30],
+      [s * 1.67, 1.66, -2.85], [s * 1.72, 1.66, -2.85], [s * 1.72, 1.66, -3.30], [s * 1.67, 1.66, -3.30]));
+    P.add('hullDark', box(0.05, 0.56, 0.02), s * 1.6965, 1.10, 1.62);          // block seam (face 1.7215)
+    P.add('hullDark', box(0.045, 0.28, 0.018), s * 1.6965, 1.48, -1.225);      // cutout strip seam (rides the strip band)
+    P.add('hullRubber', box(0.024, 0.10, 1.70), s * 1.70, 0.62, 2.50);         // rubber fringe under the front block (print 0.61..0.73 band)
     P.add('hullShadow', box(0.05, 0.022, 6.60), s * 1.685, 1.652, -0.16);      // deck-edge shadow seam
   }
   // glacis furniture ON the plane: driver station front-LEFT (bed wedge
@@ -1023,19 +1033,24 @@ function buildK2(P) {
     cheekPanel(s, 0.635, 0.785, 0.34, 0.54, 0.024, 'turretDark');              // KSPAW panel (recessed)
   }
   // roof furniture — heightM p95 discipline (pub 2.40 = the sight plane):
-  // broad tops ≤ 2.42 world (local 0.76); the ONLY spikes are the pano
-  // head (2 cols, 2.78) + crosswind mast (1 col, 2.75). K6 rides a LOW
-  // right-wall swing mount (type90 height-law precedent), FORWARD (§5.07
-  // CROWS-FORWARD). Whips carried FOLDED (stub bases) for the same datum.
+  // broad tops ≤ 2.40 world (local 0.74) — batch-52b TIGHTENED from 2.42:
+  // the ref surgery re-framed the shared gate camera and the p95 index
+  // landed ON the 2.43-class KGPS cheek walls (heightM 2.41 -> 2.43, dims
+  // 100 -> 98.9); the broad band now sits AT the published sight-plane
+  // datum so no body-population shift can lift the p95 off it. The ONLY
+  // spikes stay the pano head (2 cols, 2.77) + crosswind mast (2.39 —
+  // off-budget). K6 rides a LOW right-wall swing mount (type90 height-law
+  // precedent), FORWARD (§5.07 CROWS-FORWARD). Whips carried FOLDED (stub
+  // bases) for the same datum.
   // KGPS gunner sight — a real HOODED housing (critic r1: mass, not flush
-  // glass), every top ≤2.42: main house + side cheeks + visor overhang +
+  // glass), every top ≤2.40: main house + side cheeks + visor overhang +
   // deep dark cavity behind the recessed angled window.
-  P.add('turret', box(0.56, 0.115, 0.56), 0.60, 0.6975, 1.44);                 // KGPS housing right-front
-  P.add('turret', box(0.07, 0.13, 0.52), 0.315, 0.705, 1.43);                  // left cheek wall
-  P.add('turret', box(0.07, 0.13, 0.52), 0.885, 0.705, 1.43);                  // right cheek wall
-  P.add('turretDetail', box(0.60, 0.022, 0.50), 0.60, 0.749, 1.42);            // brow lid (top 2.420)
-  P.add('turretDetail', box(0.62, 0.028, 0.16), 0.60, 0.744, 1.66);            // visor overhang over the window
-  P.add('turretDark', box(0.44, 0.105, 0.05), 0.60, 0.6925, 1.70);             // cavity back panel
+  P.add('turret', box(0.56, 0.10, 0.56), 0.60, 0.69, 1.44);                    // KGPS housing right-front (top 2.40)
+  P.add('turret', box(0.07, 0.10, 0.52), 0.315, 0.69, 1.43);                   // left cheek wall
+  P.add('turret', box(0.07, 0.10, 0.52), 0.885, 0.69, 1.43);                   // right cheek wall
+  P.add('turretDetail', box(0.60, 0.019, 0.50), 0.60, 0.7305, 1.42);           // brow lid (top 2.400)
+  P.add('turretDetail', box(0.62, 0.028, 0.16), 0.60, 0.726, 1.66);            // visor overhang over the window (top 2.400)
+  P.add('turretDark', box(0.44, 0.095, 0.05), 0.60, 0.6875, 1.70);             // cavity back panel
   P.add('turretGlass', box(0.30, 0.065, 0.014), 0.60, 0.687, 1.725, -0.22, 0, 0); // recessed angled glass
   P.add('turret', cylY(0.24, 0.24, 0.05, 14), 0.55, 0.665, -0.75);             // commander cupola ring (top 2.35)
   P.add('turretDark', torus(0.24, 0.013, 14), 0.55, 0.692, -0.75);
@@ -1045,17 +1060,17 @@ function buildK2(P) {
   }
   P.add('turret', cylY(0.21, 0.21, 0.045, 14), -0.50, 0.6625, -0.60);          // loader hatch
   P.add('turretDark', box(0.30, 0.014, 0.03), -0.50, 0.688, -0.60);
-  P.add('turret', box(0.42, 0.12, 0.88), -0.62, 0.70, 0.86);                   // KCPS berth housing left-front (top 2.42)
-  P.add('turretDark', box(0.36, 0.04, 0.20), -0.62, 0.74, 0.42);               // berth rear notch
+  P.add('turret', box(0.42, 0.10, 0.88), -0.62, 0.69, 0.86);                   // KCPS berth housing left-front (top 2.40)
+  P.add('turretDark', box(0.36, 0.04, 0.20), -0.62, 0.72, 0.42);               // berth rear notch
   // pano tower = THE one heightM spike (type10 one-column law: r1 read
   // p95 2.74 from 4-5 spike cols — head/pedestal/cap now all inside a
   // ~0.12 z-footprint; wide in x for the read, thin along the hull axis)
-  P.add('turretDetail', cylY(0.048, 0.055, 0.10, 10), -0.62, 0.81, 0.86);      // pano pedestal
-  P.add('turretDark', box(0.28, 0.20, 0.12), -0.62, 0.96, 0.86);               // pano head (wide real head, z-thin per the one-column law)
-  P.add('turretDetail', box(0.30, 0.028, 0.13), -0.62, 1.074, 0.86);           // head hood lip
-  P.add('turretDark', box(0.14, 0.05, 0.125), -0.62, 1.105, 0.86);             // head cap (top 2.79)
-  P.add('turretGlass', box(0.18, 0.09, 0.015), -0.62, 0.965, 0.9275);          // pano window
-  P.add('turretDark', cylZ(0.028, 0.02, 10), -0.545, 0.965, 0.928);            // lens barrel
+  P.add('turretDetail', cylY(0.048, 0.055, 0.10, 10), -0.62, 0.79, 0.86);      // pano pedestal (seated on the 2.40 berth)
+  P.add('turretDark', box(0.28, 0.20, 0.12), -0.62, 0.94, 0.86);               // pano head (wide real head, z-thin per the one-column law)
+  P.add('turretDetail', box(0.30, 0.028, 0.13), -0.62, 1.054, 0.86);           // head hood lip
+  P.add('turretDark', box(0.14, 0.05, 0.125), -0.62, 1.085, 0.86);             // head cap (top 2.77)
+  P.add('turretGlass', box(0.18, 0.09, 0.015), -0.62, 0.945, 0.9275);          // pano window
+  P.add('turretDark', cylZ(0.028, 0.02, 10), -0.545, 0.945, 0.928);            // lens barrel
   P.add('turretDetail', box(0.08, 0.06, 0.08), 0.02, 0.67, -1.55);             // crosswind mast base
   P.add('turretDetail', cylY(0.016, 0.022, 0.17, 8), 0.02, 0.645, -1.55);      // mast stub (top 2.39 — off the spike budget)
   P.add('turretDark', box(0.05, 0.045, 0.05), 0.02, 0.7325, -1.62);            // base sensor box
@@ -1128,8 +1143,8 @@ function buildK2(P) {
   P.muzzleZ = 5.57;
   P.decal('turret', 'number', '325', 0.30, [1.505, 0.30, -0.85], Math.PI / 2, 0, 0.05);
   P.decal('turret', 'number', '325', 0.30, [-1.505, 0.30, -0.85], -Math.PI / 2, 0, -0.05);
-  P.decal('hull', 'number', '325', 0.24, [1.805, 1.00, 2.50], Math.PI / 2);
-  P.decal('hull', 'number', '325', 0.24, [-1.805, 1.00, 2.50], -Math.PI / 2);
+  P.decal('hull', 'number', '325', 0.24, [1.725, 1.00, 2.50], Math.PI / 2);
+  P.decal('hull', 'number', '325', 0.24, [-1.725, 1.00, 2.50], -Math.PI / 2);
   P.decal('hull', 'soot', null, 0.8, [0.92, 1.30, -3.74], Math.PI);
   P.topY = 1.20;
 }

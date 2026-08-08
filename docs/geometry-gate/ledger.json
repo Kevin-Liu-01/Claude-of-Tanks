@@ -1189,13 +1189,13 @@
   },
   {
    "id": "k2",
-   "geoMin": 0,
+   "geoMin": 48.4,
    "gatePassed": false,
    "components": {
-    "hullCurves": 38.8,
-    "wholeCurves": 44.5,
-    "turretCurves": 0,
-    "stations": 50.5,
+    "hullCurves": 56.1,
+    "wholeCurves": 48.4,
+    "turretCurves": 52.8,
+    "stations": 53.2,
     "dims": 100,
     "floaters": 100
    }
