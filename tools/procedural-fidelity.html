@@ -420,12 +420,6 @@ const LOCAL_REFERENCE_OVERRIDES = {
   // f01e1e00) ONLY; never gate kv2.
 };
 const source = LOCAL_REFERENCE_OVERRIDES[id] || MODEL_SOURCE[id];
-// [yawprobe TEMP §5.53 diagnosis] URL-param knob passthrough — removed at round end.
-// &restYaw=<rad> [&restYawC=x,z] sets cfg.turretRestYaw on the ref row for THIS load only.
-if (source?.glb && params.get('restYaw')) {
-  source.glb.turretRestYaw = parseFloat(params.get('restYaw'));
-  if (params.get('restYawC')) source.glb.turretRestYawCenter = params.get('restYawC').split(',').map(Number);
-}
 const sourceIds = ALL_TANK_IDS.filter((tankId) => MODEL_SOURCE[tankId]?.source === 'glb');
 window.__REFERENCE_IDS = [...new Set([...sourceIds, ...Object.keys(LOCAL_REFERENCE_OVERRIDES)])]
   .filter((tankId) => TANK_SPECS[tankId]);

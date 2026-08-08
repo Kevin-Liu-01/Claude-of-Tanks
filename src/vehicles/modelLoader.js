@@ -2376,17 +2376,23 @@ function prepareSwapStart(gltf, { spec, cfg }) {
   // same real-dimension normalization used by every sourced tank.
   scene.rotation.set(cfg.pitchOffset || 0, cfg.yawOffset || 0, cfg.rollOffset || 0);
   scene.updateMatrixWorld(true);
-  // ---- TURRET-LOCAL REST YAW (§5.53, AW rest-pose-rear rigs) --------------
-  // Some game-rig prints author the TURRET cluster ~180 reversed while the
-  // hull is forward-correct (t90/t90ms/t90a_burlak kojf series). The
-  // scene-level yawOffset above cannot fix an internal split — hull
-  // re-registration nullifies it (amx30 class). cfg.turretRestYaw rotates
-  // the resolved turret cluster (turret + followers + gun + gunFollowers)
-  // about the vertical axis through the TURRET node's own world bbox
-  // center, in the oriented world frame, BEFORE pivot derivation — so
-  // autoPivot, masks, and articulation all see the corrected rest pose.
-  // Opt-in only; parent-inverse composition keeps baked node transforms
-  // valid (the §5.49 byte-surgery lesson: never assume shared frames).
+  // ---- TURRET-LOCAL REST YAW (§5.53, split-authored rigs) -----------------
+  // For prints whose TURRET cluster is authored yawed relative to a
+  // forward-correct hull, cfg.turretRestYaw rotates the resolved cluster
+  // (turret + followers + gun + gunFollowers) about the vertical axis
+  // through the TURRET node's own world bbox center, in the oriented world
+  // frame, BEFORE pivot derivation — so autoPivot, masks, and articulation
+  // all see the corrected rest pose. Opt-in only; parent-inverse composition
+  // keeps baked node transforms valid (the §5.49 byte-surgery lesson: never
+  // assume shared frames). INSTRUMENT-VERIFIED (§5.53 round, 2026-08-08):
+  // the composition is exact — unit scales, clean quaternions, y-bounds
+  // preserved through grounding (probe receipts in the round report). The
+  // §5.50 "AW rest-pose-rear" reversal of t90/t90ms/t90a_burlak was
+  // DISPROVEN by accessor-bound + mask evidence (prints author fully
+  // forward-correct; no row may carry this key for them): activating the
+  // knob on a correct print flips its gun rearward, which trips the
+  // fidelity harness's rear-facing-gun auto-flip and reverses the whole
+  // ref presentation — the "crater" the two §5.53 attempts measured.
   if (cfg.turretRestYaw && turret) {
     const bb = new THREE.Box3().setFromObject(turret);
     const c = bb.getCenter(new THREE.Vector3());

@@ -2001,3 +2001,29 @@ honest turret read; §5.39/§5.49 sanity gates + .bak). LESSON
 (follower-law addendum): mixed-material nodes cannot be mask-assigned
 correctly — measure BOTH configs before ratifying any follower change,
 or go straight to §E when receipts show mixed bands.
+
+## 5.60 §5.50/§5.53 RETRACTED — THE TRIO WAS NEVER REVERSED
+(2026-08-08, instrument round verdict with accessor-bound receipts):
+all three prints are FORWARD-CORRECT in their bytes (t90/t90ms/burlak
+landmarks all correct-facing; no scales, no matrices — every §5.53
+suspect disproven; k1a1 re-verified clean too). THE PHANTOM CHAIN:
+(1) my §5.50 scene-yawOffset rows went LIVE before the t90-family
+builder measured — its "turret reversed" mask evidence read the
+artifact MY fix created; (2) the §5.53 knob's math was EXACT but a
+rearward-pointing gun trips procedural-fidelity's rear-facing-gun
+AUTO-FLIP (line ~534: ref root += PI) — the whole ref presented
+hull-reversed = the crater signature, "sunk masks" were probes of the
+flipped root. At HEAD refRootYaw=0 all three; presentation CLEAN; the
+trio's capped rows are ORDINARY build-vs-print deltas (russia-lane
+ladder work: t90 turret p95 13.3% antenna/roof cols, t90ms bustle-cage
+plan footprint, burlak plan footprint + §B7 width + dims-75
+proc-vs-published). LANDED: t90ms vertex REG over-strip repaired
+(gunNode/autoPivot restored), the swallowed temp hook removed from
+procedural-fidelity (4665869 had swept it — §5.44a class), loader
+§5.53 block comment true-up (knob stays dormant, code byte-unchanged).
+Acceptance x2 at knob-off matches the ledger exactly (t90 24.9 /
+t90ms 11.7 / burlak 0). TRIO CRITIC HOLD LIFTED. LESSON (§5.60 law):
+when a fix's evidence was gathered while an earlier fix was live,
+re-verify the ORIGINAL state before chaining — a fix can manufacture
+the artifact the next fix chases; and know the harness's own
+auto-behaviors (the rear-gun auto-flip) before interpreting masks.

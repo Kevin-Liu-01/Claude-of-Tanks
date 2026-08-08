@@ -613,8 +613,10 @@ const REG = {
     // hull+turret, aps/cage/smokecaps/detachparts turret followers).
     path: 'public/models/community-candidates/t90ms_kojf.glb',
     turretNode: '^vehicle#t-90ms_turret_t-90ms_6$',
-    // AW rest-pose-rear (§5.50/§5.53): turret presents ~180 reversed; the
-    // loader's turretRestYaw knob is DORMANT pending the §5.53 instrument fix.
+    // §5.60 instrument verdict: print verified FORWARD-CORRECT in its bytes
+    // (accessor-bound receipts) — no yaw keys, ever. gunNode/autoPivot
+    // restored (the b786a82 revert over-stripped them with the yaw line).
+    gunNode: '^vehicle#t-90ms_cannon_2a46m-5_8$', autoPivot: true,
     pubDims: { hullLengthM: 6.86, overallLengthM: 9.53, widthM: 3.78, heightM: 2.23 },
   },
   t90: {
