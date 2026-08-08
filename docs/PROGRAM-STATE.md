@@ -1872,3 +1872,15 @@ catch-light strips for pure front ortho, D3 basket rim -0.02. Owner's
 "fully model a custom type99a" order: EXECUTED (re-list + print-loft
 rebuild + dual verification). Fleet line read 23/93 mid-window — a
 parallel battery landed a pass; reconcile at its landing.
+
+## 5.46-PROVEN (2026-08-08): Sources print-catalog pixel evidence PASS
+both views (dev + VITE_PUBLIC_BUILD=1): 18 PRINT-ribboned cards, print
+selection renders the actual print on the pedestal with VIEW ONLY
+plate + CC-BY credit + no equipment/camo, forced BATTLE click leaves
+the garage intact (no battle entry), public Sources = all 22 shipped
+actual-tank models (4 playable prints + 18 print cards; newc_tiger =
+the delisted 5th playable, standing ask). Shots shots/print531b/
+(x6). Census: dev Cold War 21 / Modern 50 / WWII 23 / Sources 30;
+public 22/53/27/22 — the era groups carry the flipped customs. Tool
+note: the shots rig now freezes HMR (a mid-capture vite reload from a
+sibling lane killed run 1 — live-tree hazard, tmp-tool-only fix).
