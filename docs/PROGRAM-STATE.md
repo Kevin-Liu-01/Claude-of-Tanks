@@ -83,7 +83,7 @@ re-freeze NEW hash, all in ONE commit.
 | m46_patton | 108806c8 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | centurion3 | bad74e60 | RE-FROZEN 2026-08-08 (no-air graduate-change: crown-ridge pedestal + discharger webs, front-low 1810px->14, re-cert floor 9.0 x17 changed views, gate 91.1 exact; prior 50273080 bore-resit lineage) |
 | m1a2_sepv2 | e60878a9 | RE-FROZEN 2026-08-07 x2 (§5.19a tejas-platform rebuild, critic PASS 9.3 hash-bracketed; RE-ORACLED to m1a2_tejas.glb — old recovered-print registration retired for this id; ledger row FALSE-0 (works echo vs bare tejas hull, see §5.34); echo deletion = next abrams touch) |
-| m26_pershing | 65c564c0 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
+| m26_pershing | 2f006738 | RE-RECORDED 2026-08-08: hash moved by LANDED 5f39989 (armorM4 gunBarrel shadow-proxy 3.96->3.44; m26/m45 inherit m4a3e8 proxies — patton.js bytes unchanged); double-confirmed by builder bisect + m45-grad critic; prior 65c564c0 bore+winding re-cert lineage (floors 9.1-9.4) carries |
 | t90m | e345ee8a | GRADUATED 2026-08-06 (27th; floor 9.0 x14 second sitting; the owner's dedicated-agent arc 81.7 -> dual gate) |
 
 *Historical note: the 2026-08-05 INVISIBLE-LOD fix mass re-froze the
@@ -1748,3 +1748,23 @@ overrode; one-liner if the delist should win. (6) print-card
 portraits ride the base icon — after the pending icon regen they show
 the CUSTOM portrait until genIcons learns print ids (icons-lane
 follow-up).
+
+## 5.47 M45 GRADUATION: VISUAL FAIL 8.8 — TWO ORDERS, DO NOT FREEZE
+(2026-08-08): geometry 90.7 PASS independently CONFIRMED (x5 total,
+gate JSON byte-reproduced; hash bracket 9f5c94d0 held through all
+renders; sibs byte-held; §J yaw PASS; §B2 zero through-hull; all six
+brief identity checks TRUE incl. the bow-flush howitzer + §5.35
+item-11 closure flood-0). FAILS the family casting bar: (1) m45 dome
+ships the SLAB LOFT — no loft.smooth (patton.js ~3911) while
+m46/m47/m26-r2 all carry it; the m26-r1 8.8 precedent EXACTLY;
+acceptance = gate JSON BYTE-REPRODUCES post-smooth (SMOOTH-RE-EMIT
+law), kills the facet reads in 10/14 views. (2) commander cupola is a
+0.076-r knob where the print reads a ~0.63m split-hatch ring — the
+roof's second landmark; rebuild r~0.30 ring at the SAME station
+(x -0.765, z +0.27) carrying the SAME 2.55-2.625 crowns (side
+silhouette unchanged = gate-blind), plan-interior hw<=1.21, lid edge
+pinned ON the ref face (CORRELATED-TEETER law). Respawned to the
+patton lane; ANY geometry edit invalidates the verdict — next sitting
+re-adjudicates all 14 views fresh at the new hash. m26 §3 RE-RECORDED
+2f006738 this commit (double-confirmed). m48 new-build stays queued
+behind patton.js.
