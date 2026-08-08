@@ -115,3 +115,102 @@ pointing at the bow.
 - Trophy rear radar panels sit on the rack flank rails — verify the
   attachment read at yaw in the critic round.
 - No icons yet (icons are a §10/orchestrator artifact).
+
+## SEP REBUILD-ON-BASE ROUND (2026-08-07, abrams builder — §5.19 +
+## §5.19a owner orders: "rebuild them to use the M1A2 abrams base model
+## ... i meant the m1a2 abrams (ex tejas) is the correct base"; moves
+## 12ffb1f4 — FALSE-0 id, never gated, no re-cert gate row exists)
+
+### The rebase
+Profile entry is now `{ build: buildTejasFamily, station: 'crowslp',
+abramsKit: 'sepv3' }` — the M1A2C kit rides the TEJAS-GRADE platform
+(hull loft + fender/corner/taillight furniture, wheel/suspension dress,
+swept-cheek §B1 shell + raked left bulge, bustle basket, segmented M256
+jacket + bore, rear + tone kits — everything the base-m1a2 fit lacked;
+see the m1a2_sepv2.md audit this round). The buildM1a2 sep3 branches are
+dead code (cleanup flagged, orchestrator lane).
+
+### Kit reseat (M1A2C set on the tejas platform)
+1. CROWS-LP FORWARD: tejasRoofKit station 'crowslp' — the family CROWS
+   aim-frame with a SHORTER riser (hk -0.075) and the wide-flat LP head
+   (0.26 x 0.145 pod vs the II's 0.20 x 0.195; top edge shared so the
+   real gun-over-pod nest holds), apertures on the aim face, mast tops
+   2.874w (the CROWS-LP class; sepv2's II-tall tops 3.02w — the §H.4
+   pair splits at a glance).
+2. IFLIR: s3 1.16 CITV pot (left-forward, in the station's 3-column
+   window, faces to the 0.363 edge) + enlarged gunner's-sight optics
+   (flank cheek plates widening the tejas doghouse + the bigger
+   aperture band + glass).
+3. TROPHY APS: camo-bodied launchers (dark countermeasure faces +
+   louvered plates) canted on bracket posts through the roof-edge
+   shelves, riding ABOVE the wall-band top line both flanks; 4 radar
+   panels — forward pair on the wall/lip faces, rear pair on posts off
+   the rack bottom side rails. Turret-parented (yaw pair proves the
+   whole fit rotates).
+4. ARAT 9x2 per skirt, REBUILT BETTER than the buildM1a2 fit: tiles
+   ride the 1.812 skirt plane (inner faces ON it — §B2 no-air), outer
+   faces 1.824 + pale M32 face plates to 1.8275 — INSIDE the ±1.828 tab
+   anchor: ZERO width growth (the old fit read +0.33%); top mounting
+   rail + row/column seams; the pale-face grammar makes the grid READ
+   at garage range (family-strip proof).
+5. UAAPU: real housing at the LEFT REAR CORNER deck (x -1.735..-1.39,
+   top 1.966 — encloses the family grille pod; louver inset field +
+   3 seams + outboard exhaust stub with collar + access panel). The old
+   mid-sponson seat is a tejas-platform impossibility (the raised 1.81
+   engine deck swallows a 1.698-capped box; the corner sits OUTSIDE the
+   rack sweep, r >= 3.89 vs the 3.68 outer sweep — yaw-verified).
+6. ADL boxes: two flat electronics boxes + conduit bridge on the right
+   roof plate (tops 2.44w; clear of the loader ring r 0.243 + rear-roof
+   blocks by measured margins).
+7. Updated IFF: split twin panels both forward walls + rear panel HUNG
+   ON the rack rear top rail (left segment; overlap-connected, face
+   5 mm proud of the rail plane).
+8. Loader M240 + shield: the family skate station (station != tall —
+   the M240 branch), per the M1A2C fit.
+9. §B3.2: stowed-MAG census fitting in the rackDufMul-freed RIGHT slot
+   (muzzle toward the center duffel) + antenna pot, canvas satchel on
+   the left duffel crown, pioneer tools right glacis (x <= 1.04 —
+   inboard of the band inner face, the §B4 wrap-shell lesson), bow
+   tow-shackle stations, mid-glacis ring pair, dual whip pods.
+
+### §B8.1 four-box (probe tools/tmp-sep-fourbox.mjs, this round)
+- overall 3.658 x 2.889 x 9.759 (published 3.66 w / 9.77 overall)
+- hull box 3.656 wide x 7.925 long (published 3.66 / 7.93)
+- turret top 2.874 = the LP mast (3-column class); roof plateau 2.44
+- gun: muzzle z 5.788, tube y 1.56..2.14 (the real bore line)
+- rigs rig_hull/turret/gun/recoil/muzzle all present
+- WIDTH ANCHOR: widest solid ±1.828 (the family tab carriers) — the
+  ARAT fit adds ZERO width (§D anchor honored by construction).
+
+### Audits (final tree, clean-room worktree at HEAD be02f5d)
+- standard-check: clip 0/0 ✓, contig 0 ✓, decor mg1+1d ✓ ("no gate
+  json" line = the FALSE-0 law holding: never gate this id).
+- track-clip --exact: 0/0 band + 0/0 shoe.
+- turret-parent: 0/0/0 CLEAN.
+- winding-audit: census reversed 0 / mixed 0, deficit 0; mode-2 325 px
+  candidates = the APU corner housing + rear-deck furniture exposed at
+  yaw (correctly hull-parented deck kit, the merkava tail-pack class —
+  adjudicate LEAVE).
+- npm test 166/166 + track-geometry green.
+
+### Hash
+12ffb1f4 -> **2c9023d0** (47 meshes / 170072 verts). FALSE-0: record
+only, no gate row, no ledger row. Re-verified IDENTICAL at the delivery
+tree f2720c2 (HEAD moved mid-round; abrams.js untouched upstream).
+
+### Evidence
+shots/sep-rebase-r1/self-m1a2_sepv3/ (14 views) +
+yaw90-m1a2_sepv3/ (Trophy/IFF/radar/ADL rotate; ARAT/APU/hull kit stay)
++ family-strip/ (tejas | sepv2 | sepv3 — one platform, three kits).
+
+### Honest residuals
+- ARAT relief is 12-15 mm (tile body 1.824 + pale faces 1.8275 under
+  the 1.828 anchor); real M32 shingles are ~90 mm — the §D width anchor
+  still caps true depth; the pale-face grammar carries the read.
+- Trophy launcher inner faces bury into the shell shoulder band (the
+  §4.9999 connection); at some yaw angles the bracket posts read short
+  from below — posts embed 65 mm into the roof-edge shelves.
+- The LP head shares the II's aperture plate set at reduced heights —
+  a dedicated LP-face texture pass is a future nicety.
+- The prior round's "sponson hump" residual note is RETIRED (the
+  housing moved to the corner station with real clearance).

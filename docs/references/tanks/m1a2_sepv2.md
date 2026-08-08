@@ -516,3 +516,175 @@ round report (standard-check, track-clip --exact, turret-parent — the
 certified ORACLE-REGISTRATION-PINNED works-field classes expected
 byte-same, winding x2 modes). DELIVERED-PENDING-CRITIC; the orchestrator
 runs re-cert + re-freeze (§5.07).
+
+## SEP REBUILD-ON-BASE ROUND (2026-08-07, abrams builder — §5.19 +
+## §5.19a owner orders, verbatim: "for sepv2s and sepv3, we need to
+## rebuild them to use the M1A2 abrams base model and then start slapping
+## on extra stuff and decorations" + "i meant the m1a2 abrams (ex tejas)
+## is the correct base, the base m1a2 platform is WRONG."; graduate-change
+## — moves the frozen 7ef1c5ec)
+
+### The rebase (what changed)
+`m1a2_sepv2` no longer rides buildM1a2: profile entry is now
+`{ build: buildTejasFamily, station: 'crows2tall', abramsKit: 'sepv2' }` —
+the VISUAL PLATFORM IS the tejas-grade build (id m1a2_tejas, f7510d88,
+untouched): TEJAS_HULL loft (vertex-measured deck/splash/periscope-shelf
+knots, bow planTaper + headlight pods, raised engine deck, §B4 lane
+carve, clamped-panel skirts), fender wings + corner tongues + guard
+plates with taillight clusters, tejasWheelKit + tejasSuspensionDress
+(per-wheel rim/hub/bolt packages), abramsShell swept cheeks (§B1
+faceRake 34.8° + §B1.1 raked left bulge), abramsBustleRack open basket,
+tejasRoofKit (M250 clusters, wall bands, GPS doghouse, blow-off etch,
+cable drum), hand-rolled mantlet + segmented elliptical M256 jacket +
+stepped evac + MRS + §B3.1 bore, tejasRearKit + tejasToneKit. The old
+buildM1a2 base fit — the works-field box pile, box-core turret,
+print-matched deep skirts and inboard narrow tracks — is exactly what
+§5.19a ruled WRONG; its sep/wf branches inside buildM1a2 are now dead
+code (flagged for an r10-precedent cleanup pass, orchestrator lane).
+
+### Variant kit (kept/reseated on the new base + §B3.2 generosity)
+1. ELEVATED FORWARD CROWS II — tejasRoofKit station 'crows2tall': the
+   family CROWS-II aim-frame assembly with the riser grown +0.075 and
+   the whole head/gun group riding up (receiver lick tops 3.02w vs the
+   tejas's 2.95w — the mark's tall-mast §H.4 split survives the rebase)
+   + the §4.999a partial armor re-pinned (armored crown under the lick,
+   brow plate flush at the head top). Same z-local window [0.135..0.422]
+   — probe: EXACTLY 3 side spike columns @ 3.0274, 4th-tallest 2.4591
+   (knee class) -> dims heightM 0.78% inside grace.
+2. IMPROVED CITV: pot left-forward (drum base sunk into the 0.710 roof
+   line, head + crown + thermal window on the +z aim face) INSIDE the
+   station's 3 spike columns (z local [0.1615..0.3515], faces to 0.3615
+   < the 0.363 window edge) — side-interior, priced on front columns
+   (§5.07 class). GPS doghouse = the tejas fixture (already the improved
+   wedge + window grammar).
+3. TWIN FIFTIES (loader): the skate-rail M240 swaps for a second M2 —
+   fatter receiver + top-cover lick + spade grips + heavy barrel +
+   muzzle device + fat can + feed chute at the certified transverse rest
+   (§5.20 manned-rail class); shield kept; tops <= the 2.453w knee.
+4. UAAPU exhaust read: left band of the turbine grille field — frame
+   posts + outlet ring/throat cut into the lattice + junction box + vent
+   slot, everything <= 6.5 mm proud, rearmost -3.9435 (family law).
+5. REAR CIP THERMAL PANEL off the exhaust grille (dark frame + pale
+   panel on standoff arms into the -3.937 wall) — completes the CIP set
+   AND pins the rear body bin (dims mechanics below).
+6. CIP PANELS both forward flank walls (left wall-band bay face -1.695,
+   right lip face 1.612; 12 mm on-face) — the side-on garage tell.
+7. WORKS-FIELD PARITY ECHO (hull buckets, world coords): this id's
+   registration keeps the ten works nodes in the REF HULL mask (the
+   certified ORACLE-REGISTRATION-PINNED split) — the echo re-authors the
+   works A/A2/B/C blocks + tarp/saddle/strap/crate-lid dressing + the
+   glsaa_5 wind sensor at their certified world stations with every top
+   CLAMPED under the tejas shell roof at its own z (A 2.398->2.30,
+   stair 2.368->2.30, A2 2.328->2.295; B/C unclamped; C rear slices
+   trimmed at the shell/rack seam). At REST the echo is fully enclosed
+   by the tejas shell — the visible platform is pure tejas; at yaw it
+   reads as deck stowage, the print's own rig behavior. Mode-2
+   yaw-stranded: 490 px candidates (was 5519 on the old fit) — the same
+   certified class, adjudicate LEAVE.
+8. §B3.2 density: RIGHT-deck tow cable re-derived on the tejas deck
+   polyline (drapes the 1.51 periscope-shelf step; half-sunk class),
+   rigid ammo crate in the rack center slot (lid slats + strap +
+   bedroll on the lid, top 2.30w fill class) with the stowed-MAG census
+   fitting grazing its flank, helmet bag on the LEFT duffel crown
+   (mirrors the tejas right-bag), jerry can pair left rear deck (tusk-
+   proven sweep-clear seat), glacis spare links + pioneer tools (x <=
+   1.04, inboard of the 1.115 band inner face — see the §B4 lesson),
+   bow tow-shackle stations, mid-glacis ring pair, dual whip pods
+   (family).
+
+### Gate x2 (byte-identical runs, final tree) vs the 65.1 baseline
+**0 | hull 1.8 whole 0 turret 29.3 stations 25.3 dims 100 floaters 100**
+(frozen row was 65.1 | 93.3/65.1/80.6/83.6/100/100). The movement IS the
+owner's order: the old rows were achievable only by BEING the base-m1a2
+fit the owner ruled wrong. Registration is sane (side dAlong 0.057, dy
+0.014; front dy -0.002 — no rig break); per-class decomposition of the
+honest platform price (worst-list, camera-frame deltas):
+- FRONT rows (hull 1.8 / whole 0 drivers): the print carries NARROW
+  INBOARD tracks (band ~0.98..1.42) and nothing below y~0.60 at |x|
+  1.54-1.71; the tejas platform runs the real M1 wide gear (band
+  1.115..1.695 + wheels to ground) — err 0.52-0.84 on ~12 columns.
+- SIDE bottoms: the print's skirts brush the ground (its front columns
+  bottom ~0.14); the tejas skirt hem rides 0.69 with 40-70% §B8.1 wheel
+  exposure — err ~0.27-0.35 per skirt column. The print's own read is
+  the §B8.1 wheels-invisible auto-FAIL class; the owner's base look
+  wins by order.
+- SIDE bow tops: tejas headlight-pod/glacis lines vs the print's lower
+  bow band (err ~0.33-0.35, 3 columns).
+- STATION columns: the tall CROWS II mast vs the print's flattened 2.43
+  works band (+0.59, 3 columns) — the pre-existing owner-authorized
+  §B7 mast cap, carried from the 65.1 row.
+- PLAN spans: tejas full-length skirts/fenders vs the print's short
+  skirt band (cover 6.45%, ~1.0 m on the |x| 1.6-1.8 columns).
+- TURRET row 29.3: the tejas shell is longer (z -2.78..2.355w + rack to
+  -3.17w) and the bore line higher (1.88 vs the print's 1.68) — the
+  real-vehicle configuration vs the recovered print's.
+The works echo holds the works-band hull columns to the clamp residual
+(<= 0.10-0.13) — no works column ranks in any row's worst-12.
+DIMS MECHANICS: heightM 2.4591 p95 (3 spike columns exactly, probe
+banked); hullLengthM initially quantized 7.82 (-1.37%) on this pairing's
+grid phase — the bow shackle stations pin the pod column into the 12%
+body filter and the rear CIP panel owns the rear bin: 7.94 (+0.07%),
+dims 100. overall 9.78 (+0.15%), width 3.65 (-0.35%).
+
+### Audits (official rigs, final tree)
+- standard-check: clip 0/0 ✓, contig 0 ✓ (§B2 zero enclosed holes),
+  decor mg1+3d ✓ (stowed MAG + cable/links/cans fittings).
+- track-clip --exact: 0/0 band + 0/0 shoe (the first pass read shoeVox
+  front 1 — the pioneer shovel seat at x 1.24 sat inside the idler
+  shoe-wrap band's radial shell about (0.88, 3.02); tools re-seated
+  x <= 1.04 inboard of the 1.115 band inner face. §B4 LESSON, bank:
+  the WRAP BAND has a radial SHELL footprint over the glacis — deck
+  kit near the end wheels needs a radius check, not just an x check).
+- turret-parent: stranded 4 / abutting 2 / dangling 0 — ALL the works
+  echo + whole-bucket coarse-AABB smear (rig_hull 29%/29%/26%): the
+  certified ORACLE-REGISTRATION-PINNED class, same disposition as the
+  graduation-era stranded-2. Adjudicated LEAVE (re-parenting breaks the
+  proven ref split).
+- winding-audit: census reversed 0 / mixed 0, deficit 0 px, mode-2 490
+  px candidates = the echo class above (was 5519). No HARD.
+- npm test: 166/166 + track-geometry green (clean-room worktree).
+- Whole round measured in a CLEAN-ROOM worktree at HEAD be02f5d + this
+  file only (LIVE-TREE FROZEN-SIB law; the live tree carries foreign
+  owner WIP in materials.js/main.js/garage.js).
+- DELIVERY-TREE RE-VERIFICATION: HEAD moved be02f5d -> f2720c2 mid-round
+  (owner lanes landing; abrams.js + both SEP packets untouched
+  upstream). Re-proved at f2720c2 + this file: all 8 hashes IDENTICAL
+  (six guards + both candidates) and gate x2 BYTE-IDENTICAL
+  (0 | 1.8/0/29.3/25.3/100/100) — the round's numbers bind at the
+  delivery tree.
+
+### Hashes
+FROZEN SIBLINGS BYTE-EXACT through the whole round (verified at every
+milestone): m1a1 2f277528, m1a1ha aa7af504, m1a2_tejas f7510d88, m1a2
+636a4860, m1a2_tusk b1786e4c, abramsx d2d0ef48. THIS id:
+7ef1c5ec -> **e60878a9** (50 meshes / 172952 verts) — candidate for the
+orchestrator's re-cert + re-freeze (§5.19 protocol).
+
+### Evidence
+shots/sep-rebase-r1/: self-m1a2_sepv2/ (14 views, proc-only critic-rig
+replica), yaw90-m1a2_sepv2/ (yaw pair: shell/rack/CROWS/CITV/crate/CIPs
+rotate; echo + hull kit stay — the print-rig class), pairs-m1a2_sepv2/
+(official tmp-tank-critic 14-view pairs, zero console errors),
+family-strip/ (strip-left/hero/top: tejas | sepv2 | sepv3 in ONE scene —
+the shared platform + distinct kits at a glance). Probe tools banked:
+tools/tmp-sep-{selfshots,familystrip,fourbox,regprobe,invprobe,endcols}.*
+
+### Honest residuals (for the re-cert critic)
+- The gate rows above are the §5.19a platform price — scoring this id
+  against its print now measures the print's OWN divergence from the
+  owner-ordered base look (deep skirts, inboard tracks, short shell).
+  A §B7-class cap table per row is in the gate decomposition above; the
+  orchestrator may prefer re-oracling this id (the tejas GLB serves the
+  other five family members) — flagged as the clean long-term fix.
+- procShadow_gun (factory, spec-length 5.283 from the tejas trunnion
+  pivot z 1.91) tips at z 7.19 — 1.39 past the muzzle, the §C stale-
+  proxy size class. Harness-neutral TODAY (visibleBox/masks exclude
+  /shadow/i), but it is real shadow-pass geometry family-wide on the
+  tejas rig (tejas/m1a1/m1a1ha/tusk identical) — shared-file fix
+  (tankFactory), orchestrator lane.
+- The works echo pokes into the (hollow) shell interior at rest by
+  construction; the shell roof/walls occlude it everywhere (verified in
+  the 14-view set + yaw pair + toptilt).
+- ARAT-none, TUSK-none: variant identity is CROWS-II-tall + CIP + twin
+  fifties + APU read + urban stowage — §H.4 tells vs tejas (tall mast,
+  CIP pair, crate, twin fifties, cans, rear CIP) verified in the strip.
