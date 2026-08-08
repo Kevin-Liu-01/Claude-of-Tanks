@@ -2040,3 +2040,14 @@ critic's five ordered fixes; fresh sitting on new hashes at delivery.
 Batch-52 (k2 print surgery) may run in parallel — the builder is
 briefed to re-baseline through it. The bar is the bar: two §5.38
 tanks failing critics is the process WORKING (§K).
+
+## 5.62 KOREA FIX ROUND DELIVERED — SITTING 2 SPAWNED (2026-08-08):
+all six §5.61 orders built at k2 27c330c3 / k1a1 53b64e74, gates
+hold-or-improve x2 (k2 stations +8.7 from the print's-own rising
+bustle underside; k1a1 whole +1.6, turret +0.2), guards x7 held incl.
+frozen bradley, batch-52 confirmed NOT yet landed (k2 GLB md5
+unchanged — every row move is build-side). Measured revert receipt
+banked (smoke at |x|1.77 paid -7 front_whole vs the fender lane ->
+tucked 1.61). NEW ASK-OWNER: k1a1 K6-on-cupola is dims-law-blocked
+(receiver 0.26 over the 2.21 roof kills the 2.25 p95) — low-mount law
+applied; owner may trade heightM grace for the cupola-mounted read.
