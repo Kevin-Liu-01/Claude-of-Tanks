@@ -2095,3 +2095,28 @@ UNBLOCKED (k2 print surgery — §E queue). RESIDUAL BANK (next density
 round): skirt hems ~2x deeper than the prints' on both (wheel
 glance-read + likely side-row gains), k2 K6/pano scale pending the
 §5.62 heightM-grace ASK, k2 plan margin 86% vs print 82%.
+
+## 5.66 BATCH-52 NEGATIVE RECEIPT — REVERTED ON THE STATIONS CLAUSE
+(2026-08-08): the k2 print surgery executed with full law compliance
+(.bak first, byte-derived sanity, idempotence x2, accessor bounds
+rebuilt, authored as a proper disarmed REPAIRS batch) and DELIVERED
+ITS FORECAST on the target rows (hull 38.8->56.3, front_hull ->74.64,
+plan_turret cover deficit cleared) — but stations 50.5->41.7
+regressed and turret held 0, so the agent RESTORED pristine
+(4d6d7db3 verified) and disarmed the recipe. TWO ROOT CAUSES (byte
+receipts in k2.md §E): (1) LADDER-ANCHOR COUPLING — the Korea r7
+build anchored its front-half skirts at ±1.80 = the exact Object_22
+band the excision removes (the print's true run is ±1.72-class);
+(2) SECOND CARRIER — Object_19 (the GUN node) contains the left
+roadwheel/suspension colonnade (252 comps, six stacks at 0.9 pitch)
+= the refBot -2.0 in both states' worst rows; §5.59a's 22+23 scope
+could never open the side row alone. BATCH-52b QUEUED as a COUPLED
+landing: re-arm + Object_19 colonnade excision + Korea-lane skirt
+de-ladder to ±1.72, ONE landing -> then 70-85 + the honest turret
+read. TWO LAW CANDIDATES ADOPTED: ladder-anchor provenance check
+before any §E excision; full-cluster census before partition batches.
+NEW §E OPS BANKED (in repair_oracles.py, reusable): _detach_child_node
+(vladimir-class) + _index_surgery rebuild_bounds opt-in (GLTFLoader
+seeds bounds from accessor min/max — load-bearing). Load-deviation
+note: the <15 trough never arrived (owner QA fleet at ~21 for 8h) —
+x2 bit-identity carried the acceptance instead, all four runs exact.

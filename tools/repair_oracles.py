@@ -1402,7 +1402,7 @@ def _bin_append(gltf, binlist, payload, target=None):
 
 def _index_surgery(tank_id, node_name, *, prim_index=0, delete_rules=(),
                    gun_rules=(), expect_delete=None, expect_gun=None,
-                   gun_parent='Turret'):
+                   gun_parent='Turret', rebuild_bounds=False):
     """Builder for the batch-9 'py2' op (docstring at the batch-9 header).
 
     Rules are ((x0,x1,y0,y1,z0,z1), min_dx, min_dz) in glb-WORLD units: an
@@ -1410,10 +1410,20 @@ def _index_surgery(tank_id, node_name, *, prim_index=0, delete_rules=(),
     the box AND its x/z spans meet the minimums (the t90sm plate needs the
     size floor so genuine deck greebles inside the band stay). expect_* are
     exact (parts, verts, tris) censuses — any mismatch refuses to write.
+
+    rebuild_bounds (batch-52 extension, default False so every pre-existing
+    chain stays byte-identical — the batch-48b uint32 compat pattern): when
+    True, the kept prim's POSITION accessor min/max are re-derived from the
+    verts the NEW index accessor references (the batch-11 law: never the raw
+    buffer — orphaned rows keep their bytes and would re-poison the bounds).
+    GLTFLoader seeds geometry.boundingBox from accessor min/max, so a
+    band-excision that changes the prim's true extent NEEDS this or the
+    excised band keeps contributing to every box-keyed frame/mask court.
     """
     def op(gltf, chunks, _id=tank_id, node=node_name, pi=prim_index,
            drules=tuple(delete_rules), grules=tuple(gun_rules),
-           expd=expect_delete, expg=expect_gun, parent_name=gun_parent):
+           expd=expect_delete, expg=expect_gun, parent_name=gun_parent,
+           rbounds=rebuild_bounds):
         ni = find_node(gltf, node)
         mesh_index = gltf['nodes'][ni]['mesh']
         prim = gltf['meshes'][mesh_index]['primitives'][pi]
@@ -1496,6 +1506,13 @@ def _index_surgery(tank_id, node_name, *, prim_index=0, delete_rules=(),
         gltf['accessors'].append({'bufferView': nbv, 'componentType': itype,
                                   'count': len(kept), 'type': 'SCALAR'})
         prim['indices'] = len(gltf['accessors']) - 1
+        if rbounds:
+            used = sorted(set(kept))
+            if not used:
+                raise SystemExit(f'{_id}: rebuild_bounds on an emptied prim')
+            pos_acc = gltf['accessors'][prim['attributes']['POSITION']]
+            pos_acc['min'] = [min(pos[v][k] for v in used) for k in range(3)]
+            pos_acc['max'] = [max(pos[v][k] for v in used) for k in range(3)]
 
         if gun_roots:
             order = sorted({v for tri in moved for v in tri})
@@ -3557,6 +3574,114 @@ REPAIRS['m26_pershing'] = [
                        long_map=[(0.0882, -1.2144), (62.4062, 63.7087), (89.4215, 87.5036)],
                        y_top_max=31.90, expect=(2, 54984, 109998))),
 ]
+
+
+# =============================================================== batch 52 ===
+# K2 PRINT PARTITION SURGERY (§5.59a adopted plan; §E section in k2.md;
+# community-candidates path — LOCAL-ONLY quarantine, .glb + .bak both
+# gitignored, nothing pushes). The k2 print's turret row reads 0
+# STRUCTURALLY because two mixed-CONTENT nodes poison both masks, and the
+# follower-config adjudication (k2.md, measured x2 BOTH ways) proved mask
+# assignment cannot split them — byte surgery is the sanctioned recovery.
+# Batch-52 sanity census (re-derived from the pristine bytes per §5.39/
+# §5.49; world frame = the inspect frame, y-up after the Sketchfab root
+# matrix; k2.md §E carries the receipts):
+#  * Object_23 (301v/308t/31 comps, HULL-mask side): two bands with an
+#    EMPTY y 1.576..1.798 gap — 16 low comps (192v/184t, y 1.148..1.576,
+#    z -3.752..+3.822: full-length thin tow/cable strips) + 15 tall comps
+#    (109v/124t, y 1.798..2.701, z -0.504..+2.375: the turret-roof rail
+#    clusters that top the ref HULL mask at 2.2-2.7 raw over the 1.72-1.74
+#    deck = Δ~0.77 on EVERY front/side hull column). STRIP THE NODE:
+#    detach from its scene parent (the batch-9 vladimir mechanism, child-
+#    node variant — every harness consumer walks the scene graph:
+#    GLTFLoader instantiates scene nodes only, vertex-extract visits
+#    sceneDef.nodes). Zero bin-chunk bytes change.
+#  * Object_22 (5520v/3248t/1144 comps, TURRET follower in config A): two
+#    bands with an EMPTY y 1.512..1.703 gap and ZERO crossing components —
+#    433 low comps (2072v/1206t, x ±1.860, y 0.690..1.512, z -0.405..
+#    +2.985: glacis/skirt/fender furniture incl. the left mudguard-flare
+#    strip) drag the turret mask hull-deep (side refBot -2.03 -> turret 0
+#    structural); 711 tall comps (3448v/2042t, x ±1.661, y 1.703..2.498,
+#    z -0.376..+1.542: cheek-armor modules + center roof quads — pure
+#    turret-zone content). EXCISE the low band: component-inside-box rule
+#    with the split plane y 1.60 mid-gap (0.088 clear of the band top,
+#    0.103 clear of the cheek bottom). Object_22 STAYS in the turret
+#    follower set — config A unchanged in both mask-scoring maps.
+# Frame stability: the height-clamp anchor (Object_25 antenna 4.73) and
+# both z extremes are untouched; the excised band carries x ±1.859530 but
+# Object_5/6/14 hold +1.859530 EXACTLY and Object_29 holds -1.859400, so
+# the worst-case frame drift after the bounds rebuild is 0.00013 raw
+# units (0.13 mm) on the left edge — sub-pixel in every mask court.
+# Acceptance (gate-in-loop law): re-baseline --ids=k2 x2 bit-identical;
+# hull must HOLD >= 38.8, dims 100; forecast side/front hull -> the 70-85
+# band + the first honest non-zero turret read (§5.59a).
+#
+# GATE-IN-LOOP VERDICT (2026-08-08, x2 bit-identical both states — the
+# recipe is DISARMED below, GLB restored pristine 4d6d7db3, negative
+# receipt in k2.md §E): surgery bytes measured 56.3/48.5/0/41.7/100/100
+# vs baseline 38.8/44.5/0/50.5/100/100 — front_hull 38.76->74.64 (IN the
+# forecast band), side_hull 41.5->56.3, plan_turret 49.1->64.2 with its
+# 7.69 cover deficit CLEARED, side dy 0.083->0.029 — every in-scope mask
+# effect landed. But (1) STATIONS REGRESSED 50.5->41.7: the r7 build
+# ladder had widened the build's front-half skirts to ±1.80 expressly
+# against "the ref's Object_22 run" (k2.md r6->r7 receipt) — the band
+# batch-52 excises; the ref's true skirt run is the ±1.72-class
+# Object_29/4 content (byte census: Object_29 reaches 1.859 ONLY at the
+# z 3.5..4.0 front flare; 1.73-1.78 mid-hull), so the laddered build
+# reads ~4.5% wide at st6-12 (topPct all UNCHANGED). (2) side_turret
+# STAYS 0: Object_19 (the GUN node) carries the entire LEFT ROADWHEEL/
+# SUSPENSION COLONNADE — 252 loose comps, x -1.234..-1.084, y 0.261..
+# 0.852, z -2.226..+3.006, six stacks at ~0.9 z-pitch (k2.md's
+# "off-axis suspension-arm fragment" is the whole wheel rank) = the
+# refBot -2.0 across at 0.07..4.47 in BOTH states' worst rows. RE-ARM
+# PATH (batch-52b, orchestrator + Korea lane TOGETHER): re-enable this
+# recipe + excise the Object_19 colonnade (component-separable, none of
+# the 252 touch the tube) + de-ladder the build's front-half skirts to
+# the print-true ±1.72 run — then the 70-85 band and the honest turret
+# read are both reachable. Re-arm = delete the pop line below.
+def _detach_child_node(tank_id, name, *, expect_verts):
+    """Batch-52 variant of the batch-9 vladimir detach for NON-root nodes:
+    remove `name` from its parent's children (or a scene root list) so the
+    subtree drops out of the scene. Nodes/meshes/accessors stay in the
+    file, unreferenced — scene-walking consumers never see them and the
+    bin chunk passes through byte-identical."""
+    def op(gltf, _id=tank_id, name=name, expv=expect_verts):
+        ni = find_node(gltf, name)
+        node = gltf['nodes'][ni]
+        acc = gltf['accessors'][gltf['meshes'][node['mesh']]
+                                ['primitives'][0]['attributes']['POSITION']]
+        if acc['count'] != expv:
+            raise SystemExit(f'{_id}: {name} POSITION count {acc["count"]} '
+                             f'!= {expv}; refusing to write (wrong input file?)')
+        parents = [i for i, n in enumerate(gltf['nodes'])
+                   if ni in n.get('children', [])]
+        root_of = [s for s in gltf.get('scenes', []) if ni in s.get('nodes', [])]
+        if len(parents) + len(root_of) != 1:
+            raise SystemExit(f'{_id}: {name} has {len(parents)} parents + '
+                             f'{len(root_of)} scene-root refs; refusing')
+        if parents:
+            gltf['nodes'][parents[0]]['children'].remove(ni)
+        else:
+            root_of[0]['nodes'].remove(ni)
+        print(f'[repair] {_id}: detached {name} (node {ni}, {expv} verts) '
+              f'from the scene')
+    return op
+
+
+REPAIRS['k2'] = {
+    'path': 'public/models/community-candidates/k2_black_panther_armored_warfare.glb',
+    'ops': [
+        ('py', _detach_child_node('k2', 'Object_23', expect_verts=301)),
+        ('py2', _index_surgery('k2', 'Object_22',
+                               delete_rules=[((-1.87, 1.87, 0.60, 1.60, -0.45, 3.05), 0, 0)],
+                               expect_delete=(433, 2072, 1206),
+                               rebuild_bounds=True)),
+    ],
+}
+# DISARMED pending batch-52b (see the verdict above): the fleet baseline
+# pins the PRISTINE k2 print (4d6d7db3) while the negative receipt stands —
+# a stray `repair --all` must not re-apply the surgery under it.
+REPAIRS.pop('k2')
 
 
 if __name__ == '__main__':
