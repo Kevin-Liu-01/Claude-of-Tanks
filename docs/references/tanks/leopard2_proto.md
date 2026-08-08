@@ -391,3 +391,50 @@ read subtle at distance (real: they are small; acceptable).
   leo2a5 e215a738 / leo2a6 09912270 / kf51 9ac547ac / leo1a5 1c79188;
   family leo2a4 12db10a0 / leo2_revolution db70c929 (diff scoped to one
   +30-line hunk inside buildLeo2Proto — no shared-helper edits).
+
+## 2026-08-08 §5.73-3 RCWS RESTORE ROUND (leopard builder)
+Owner ruling §5.73-3 (interactive session): RESTORE the automated turret
+CROWS on leopard2_proto + leo2a4 — "§5.09 stands for ALL leopards"; the
+owner OVERRIDES the §SRCFIX-0808 historical default (gap-table row 9's
+REMOVED verdict is superseded by the newer order).
+
+### What changed
+- The §5.09-5 DIMS-SOVEREIGN SQUAT-WIDE leoFLW200 call re-enabled
+  VERBATIM (x 0.02, y 0.65, z -1.18, s 1.1, gunY 0.46, gunScale 0.92,
+  drumH 0.05, podY 0.70/podH 0.16, no shields, elev 0.07, tower top
+  1.06/z -1.52/w 0.16, seed 17) — the certified dims-100 recipe: wide
+  masses under the 2.5048 grace line, garage height in the narrow tower
+  (2.78w, <=3 side columns; anemometer+tower = the 4-col above-grace
+  budget). §5.07 CROWS-FORWARD holds BY CONSTRUCTION (fittingPintleMG
+  barrel is +z; no rotation passed) and in pixels.
+- BLANKED-OWS-RING RE-SEAT (the §5.55 clash): the SRCFIX blanking plate
+  trio sat exactly at the station seat — bolt torus top 0.680 was
+  COPLANAR with the restored base-plate top (z-fight) and plate+bolts
+  buried inside the base footprint. Resolved to ONE visible mount-ring
+  FLANGE (cylY r 0.31, top 0.666, under the 0.68 base top): the
+  walkaround's circular OWS opening now reads as the REAL mount the
+  station occupies — the ratified "deliberate ring" read survives as
+  the flange annulus around the base; torus + 8 bolt heads retired.
+- Ratified §5.55 reads verified surviving in pixels: unskirted 7-wheel
+  gear + 4 return rollers, rangefinder blisters + armored blocks, PT
+  periscope-ring cupola, wide cast mantlet, side bins + decals.
+
+### Close battery (2026-08-08, HEAD e898cdb)
+- geometry-gate x2 BIT-IDENTICAL:
+  `0 | hull 48.9 whole 0 turret 0 stations 0 dims 100 floaters 100`
+  — HOLD-OR-IMPROVE ✓: hull 48.7 -> 48.9, dims 100 + floaters 100 HOLD
+  with the station + tower aboard (the §5.09 battery replicated on the
+  §5.55 turret). NO heightM datum change (§5.73-1 verified: p95 stays
+  the cupola/grace class; the 16 mm trough crown lick reads sub-pixel
+  at the gate's ~10 mm/px mask — CPU-exact probe tmp-leorcws-p95 reads
+  2.52 only by counting that sliver; gate = authority on gated ids).
+- npm test 166 + track-geometry PASS.
+- Hash: 4f6360fe -> d900c8e2 (61 -> 63 meshes, 85691 -> 89255 verts —
+  moves by design; re-cert critic follows per §5.73-3). Guards
+  byte-held through the round (hashed before AND after): leo2a5
+  e215a738 / leo2a6 09912270 / kf51 9ac547ac / leo2_revolution
+  db70c929 / leo2a7v 3ca4af86 / leo1a5 1c79188 — no shared-helper
+  edits (leoFLW200 body untouched; per-tank call sites only).
+- Evidence: shots/leo-rcws/{before,after}/leopard2_proto (20 views:
+  9 orthos + 3 heroes + 2 closes + 6 garage) + after yaw90 pair (§B5
+  unity — station/tower translate with the turret).

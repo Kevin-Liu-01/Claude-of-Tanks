@@ -4740,12 +4740,18 @@ function buildLeo2A4(P) {
   }
   P.decal('turret', 'crossgrey', null, 0.32, [1.172, 0.40, -0.44], Math.PI / 2, 0, 0.042);
   P.decal('turret', 'crossgrey', null, 0.32, [-1.172, 0.40, -0.44], -Math.PI / 2, 0, -0.042);
-  // §SRCFIX-0808: the §5.09-5 FLW 200 RCWS is REMOVED from this id — the
-  // 2026-08-08 owner order ("fix the leopard 2a4, it doesn't match its
-  // source material at all") governs: no Bundeswehr 2A4 carries an RCWS;
-  // the roof reads low cupolas + PERI + MG3 only. Restoration if the owner
-  // still wants stations on the historicals is this one call:
-  // leoFLW200(P, { x: 0.05, y: 0.76, z: -1.12, s: 1.15, gunY: 0.90, shields: true, seed: 13 });
+  // §5.73-3 RCWS RESTORED (owner ruling 2026-08-08: restore the automated
+  // turret CROWS on the historicals — "§5.09 stands for ALL leopards"; the
+  // owner OVERRIDES the §SRCFIX-0808 historical default that removed it).
+  // The §5.09-5 FLW 200 station returns at its certified seat, verified
+  // clash-free against the §5.55 blunt-brick turret: base z -1.41..-0.83
+  // clears the hatch rings, front-corner EMES, PERI (z -0.32), the -1.60
+  // whips and the -2.12 rack; only the base-plate corner tucks 7 mm under
+  // the right hatch-zone plate top — the same stacked-plate lap the
+  // ratified §5.09 build carried. §5.07 CROWS-FORWARD rest; receiver
+  // ~2.74-2.92w / cap ~3.02w over the 2.48 roof = the real ~0.6 m FLW ride
+  // height (no oracle; §5.73-1 P95-envelope heightM datum note in packet).
+  leoFLW200(P, { x: 0.05, y: 0.76, z: -1.12, s: 1.15, gunY: 0.90, shields: true, seed: 13 });
   // ---- Rh 120 L/44 (§B3.1: tube cylinder + thermal sleeve segments with
   // clamp rings + mid-tube bore evacuator + MRS collar; plate mantlet on a
   // trunnion roll — never a prism). Trunnion world (0, 2.00, 0.87); muzzle
@@ -5309,23 +5315,25 @@ function buildLeo2Proto(P) {
   // cross decals pinned on the BIN faces (§5.04 vertical flank law)
   P.decal('turret', 'crossgrey', null, 0.26, [1.224, 0.26, -0.325], Math.PI / 2, 0, 0.042);
   P.decal('turret', 'crossgrey', null, 0.26, [-1.224, 0.26, -0.325], -Math.PI / 2, 0, -0.042);
-  // §SRCFIX-0808: the §5.09-5 FLW 200 RCWS + optic tower are REMOVED from
-  // this id — the 2026-08-08 owner order ("fix the leopard prototype, it
-  // doesn't match its source material at all") governs: no 1972-74 trials
-  // vehicle carries a modern weapon station, and the tall tower was the
-  // silhouette's loudest anachronism. The REAL walkaround detail stands in
-  // for it below: the Swedish PT's roof has a circular overhead-weapon
-  // mount opening CLOSED OFF WITH A PLATE (panzerplace) — modeled as the
-  // blanked ring aft of the hatches. Restoration if ordered:
-  // leoFLW200(P, { x: 0.02, y: 0.65, z: -1.18, s: 1.1, gunY: 0.46, gunScale: 0.92,
-  //   drumH: 0.05, podY: 0.70, podH: 0.16, shields: false, elev: 0.07,
-  //   towerTop: 1.06, towerZ: -1.52, towerW: 0.16, seed: 17 });
-  P.add('turret', cylY(0.20, 0.20, 0.022, P.q ? 20 : 14), 0.02, 0.658, -1.18); // blanked OWS ring plate
-  P.add('turretDark', KIT.torus(0.185, 0.008, P.q ? 20 : 14), 0.02, 0.672, -1.18); // bolt-ring seam
-  for (let k = 0; k < 8; k++) {
-    const a = (k / 8) * Math.PI * 2;
-    P.add('turretDark', box(0.022, 0.008, 0.022), 0.02 + Math.sin(a) * 0.165, 0.673, -1.18 + Math.cos(a) * 0.165);
-  }
+  // §5.73-3 RCWS RESTORED (owner ruling 2026-08-08: restore the automated
+  // turret CROWS on the historicals — "§5.09 stands for ALL leopards"; the
+  // owner OVERRIDES the §SRCFIX-0808 historical default that removed it).
+  // The §5.09-5 DIMS-SOVEREIGN SQUAT-WIDE fit returns verbatim (certified
+  // dims-100 recipe: every wide mass under the 2.5048 grace line — trough
+  // top 2.498w ring-well recessed, pod 2.50w, receiver cap 2.485w; garage
+  // height carried by the NARROW optic tower, top 2.78w in a 0.16 z-window
+  // = the 4-column above-grace budget with the anemometer; no shields,
+  // they would top 2.53w). §5.07 CROWS-FORWARD rest, slight elevation.
+  // The walkaround's circular OWS mount opening (the §SRCFIX blanked-ring
+  // stand-in) now reads as the REAL thing: the station occupies the ring —
+  // its flange survives as the visible mount annulus under the base plate
+  // (the ratified "deliberate ring" read); the blanking plate's bolt torus
+  // + bolt heads retire (buried inside the restored base, torus top was
+  // coplanar with the base-plate top = z-fight).
+  P.add('turret', cylY(0.31, 0.31, 0.016, P.q ? 20 : 14), 0.02, 0.658, -1.18); // OWS mount-ring flange (top 0.666 under the 0.68 base top)
+  leoFLW200(P, { x: 0.02, y: 0.65, z: -1.18, s: 1.1, gunY: 0.46, gunScale: 0.92,
+    drumH: 0.05, podY: 0.70, podH: 0.16, shields: false, elev: 0.07,
+    towerTop: 1.06, towerZ: -1.52, towerW: 0.16, seed: 17 });
 
   // ---- 105 mm smoothbore (§B3.1): ROUNDED cast mantlet — trunnion roll +
   // domed collar shoulders + tapered boot, never a prism; bare slim tube

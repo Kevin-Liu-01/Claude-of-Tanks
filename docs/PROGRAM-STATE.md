@@ -2297,3 +2297,17 @@ new module re-inserts at indexOf('merkava4') preserving carousel
 order), helpers stay owned by their original files and exported
 (never duplicated), npm test x3 green. russia splits (t90/t72/t80)
 remain sequenced behind t44/type59 per §5.75.
+
+## 5.76 LEOPARD RCWS RESTORED + LANDED (2026-08-08, §5.73-3): both
+calls re-enabled — a4 verbatim (clash-checked clean vs the §5.55
+blunt-brick roof), proto with ONE elegant re-seat (the blanked-OWS
+ring stand-in became the station's visible MOUNT FLANGE — the
+ratified "deliberate ring" read survives as the annulus). §5.09 read
+verified in pixels (full FLW anatomy ~0.6m over the a4 roof; squat
+station + 2.78w tower on proto); CROWS-FORWARD by construction; §B5
+yaw90 unity; ratified §5.55 reads survive BOTH. Proto gate x2: hull
+48.7->48.9 IMPROVED, dims 100 held. Hashes proto d900c8e2 / a4
+8fb73bdd. leo2a4 heightM 2.48->3.03 APPLIED (P95 law: the FLW band
+owns p95Top 3.020 — band-class not spike; m26/type99a precedent).
+Guards x3 sweeps EXACT (incl. leo2a7v/leo1a5 siblings). RE-CERT
+CRITIC SPAWNED (changes ratified reads).

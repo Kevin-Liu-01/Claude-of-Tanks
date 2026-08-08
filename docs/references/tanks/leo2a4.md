@@ -335,3 +335,56 @@ noseFillZFront): leo2a5 e215a738 / leo2a6 09912270 / kf51 9ac547ac
 (checked before AND after each helper edit); leo2_revolution bbae2c80
 (this round's own candidate). Independent §B8 critic adjudication
 PENDING (builder self-reads are not the bar).
+
+## 2026-08-08 §5.73-3 RCWS RESTORE ROUND (leopard builder)
+Owner ruling §5.73-3 (interactive session): RESTORE the automated turret
+CROWS on leopard2_proto + leo2a4 — "§5.09 stands for ALL leopards"; the
+owner OVERRIDES the §SRCFIX-0808 historical default (gap-table row 3's
+REMOVED verdict is superseded by the newer order).
+
+### What changed
+- The §5.09-5 FLW 200 leoFLW200 call re-enabled VERBATIM at the
+  certified seat (x 0.05, y 0.76, z -1.12, s 1.15, gunY 0.90, shields
+  true, seed 13): base plate + gussets -> powered slew ring/drum ->
+  pedestal + slew plate -> cradle arms + trunnion shaft -> armored gun
+  trough with flank shields + rear plate; m2 pintleMG FITTING-SUNK at
+  0.90 (receiver ~2.74-2.92w, cap ~3.02w — the real ~0.6 m ride over
+  the 2.48 roof); sensor pod on the aim face, ammo bin gun-left, IR
+  pointer, cable drop + conduit. §5.07 CROWS-FORWARD BY CONSTRUCTION
+  (fitting barrel +z, no rotation) and verified in pixels.
+- Clash-checked against the §5.55 blunt-brick turret: base z
+  -1.41..-0.83 clears the hatch rings / front-corner EMES / PERI
+  (z -0.32) / near-vertical whips (-1.60) / crosswind mast (-0.85,
+  -1.50) / bustle rack (-2.12). Only lap: the base-plate corner tucks
+  7 mm under the right hatch-zone plate top — the same stacked-plate
+  lap the ratified §5.09 build carried. NO geometry re-seat needed.
+- Ratified §5.55 reads verified surviving in pixels: blunt-brick plan,
+  EMES-15 at the right front corner, 3+6 bespoke skirts with 7 wheel
+  arcs countable, slatted bustle rack, Wegmann banks.
+
+### §5.73-1 P95-ENVELOPE heightM DATUM NOTE (for the landing)
+The RCWS is MANDATORY roof kit now; spec heightM 2.48 (modern2.js —
+OUTSIDE this file's ownership) is no longer the honest envelope.
+Law-verbatim derivation (tmp-leorcws-p95: 1024-column side silhouette,
+12%-of-rough band filter, p95 of body-column tops minus min bottom —
+the gate bodyExtent law, CPU-exact): h 3.029 (p95Top 3.020, minBot
+-0.008, 826 body cols; 261 cols above 2.48, 164 above 2.80 — the
+station trough/shields 2.91-2.94w + receiver/cap band own the p95, not
+a thin spike). RECOMMENDED DATUM: heightM 2.48 -> 3.03 at landing
+(m26/m45 over-mounted-M2 + type99a 2.86 precedents). FALSE-0/no-oracle
+id — no gate row moves; the spec edit is the orchestrator's landing
+action. Probe cross-check on the gated proto agrees with its gate
+verdict (see the proto packet).
+
+### Close battery (2026-08-08, HEAD e898cdb)
+- FALSE-0 law: no gate on this id (visual bar). npm test 166 +
+  track-geometry PASS.
+- Hash: b68e42c2 -> 8fb73bdd (62 -> 64 meshes, 86174 -> 90926 verts —
+  moves by design; re-cert critic follows per §5.73-3). Guards
+  byte-held through the round (hashed before AND after): leo2a5
+  e215a738 / leo2a6 09912270 / kf51 9ac547ac / leo2_revolution
+  db70c929 / leo2a7v 3ca4af86 / leo1a5 1c79188 — no shared-helper
+  edits (leoFLW200 body untouched; per-tank call sites only).
+- Evidence: shots/leo-rcws/{before,after}/leo2a4 (20 views: 9 orthos +
+  3 heroes + 2 closes + 6 garage) + after yaw90 pair (§B5 unity — the
+  station translates with the turret; gun stays with the aim frame).

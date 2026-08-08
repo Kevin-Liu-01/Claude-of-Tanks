@@ -189,7 +189,11 @@ export const MODERN2_SPECS = {
         shell('DM12 HE proxy', 'HE', 120, 40, 40, 560, 1000),
       ],
     },
-    dims: { hullLengthM: 7.72, overallLengthM: 9.67, widthM: 3.70, heightM: 2.48 },
+    // heightM 2.48 -> 3.03 (§5.73-1 P95-envelope law + §5.76 RCWS restore):
+    // the §5.09 FLW station is mandatory kit and its trough/shield/receiver
+    // BAND owns the p95 (probe: p95Top 3.020 across the 12%-filtered side
+    // silhouette — band-class, not a spike). m26/type99a precedent.
+    dims: { hullLengthM: 7.72, overallLengthM: 9.67, widthM: 3.70, heightM: 3.03 },
     armor: mbtArmor({
       hl: 3.86, hw: 1.85, roofY: 1.72, trkTop: 1.0, floor: 0.5,
       turretPivot: [0, 1.72, -0.15], gunPivot: [0, 0.42, 0.55],
