@@ -577,8 +577,17 @@ const REG = {
   type99a: {
     // "Type 99A2 (Armored Warfare)". Meters, z-up under root rotation, gun
     // -y (muzzle -7.41). Object_31 turret shell (incl. mast to 3.73 raw),
-    // Object_17 gun tube, Object_27 skirts/fenders, Object_25/26 hull,
-    // Object_5/18 tracks, Object_9 antenna (z 4.38 raw).
+    // Object_17 gun tube, Object_27 skirts/fenders/glacis, Object_25/26
+    // running gear + hull bands, Object_5/18 track belts, Object_9/20
+    // antenna masts. FOLLOWER CENSUS (§5.38 builder round, vertex-verified
+    // — the harness maps carry turretFollowers ^Object_(?:3|4|6|7|9|10|11|
+    // 12|13|15|16|19|20|21|23|30)$; this tool models split loss only, t14
+    // note): 3 roof trim, 4 cheek smoke banks (z_w 0.33..0.48 full-width),
+    // 6 roof plate, 7 mantlet, 10/23 cheek rails, 11/12/15/16/19 turret
+    // side bins (x to ±1.75), 13 center sight head, 21 sight wiper, 30
+    // gunner-sight tower (right-rear, top 3.14), 9/20 masts. Object_29
+    // stays hull (headlights + mirror stalks + glacis rails; its ~18-vert
+    // left roof-edge bits are a documented split residual).
     path: 'public/models/community-candidates/type_99a2_armored_warfare.glb',
     turretNode: '^Object_31$', gunNode: '^Object_17$', autoPivot: true,
     pubDims: { hullLengthM: 7.6, overallLengthM: 11.0, widthM: 3.7, heightM: 2.37 },
@@ -604,7 +613,10 @@ const REG = {
     // hull+turret, aps/cage/smokecaps/detachparts turret followers).
     path: 'public/models/community-candidates/t90ms_kojf.glb',
     turretNode: '^vehicle#t-90ms_turret_t-90ms_6$',
+    // AW rig rest-pose-rear convention (§5.50): turret clusters author ~180
+    // reversed; yawOffset corrects presentation (harness-mask verified).
     gunNode: '^vehicle#t-90ms_cannon_2a46m-5_8$', autoPivot: true,
+    yawOffset: Math.PI,
     pubDims: { hullLengthM: 6.86, overallLengthM: 9.53, widthM: 3.78, heightM: 2.23 },
   },
   t90: {
@@ -613,6 +625,7 @@ const REG = {
     path: 'public/models/community-candidates/t90_kojf.glb',
     turretNode: '^vehicle#t-90_turret_t-90_18$',
     gunNode: '^vehicle#t-90_cannon_2a46m2_20$', autoPivot: true,
+    yawOffset: Math.PI, // §5.50 AW rest-pose-rear turret convention
     pubDims: { hullLengthM: 6.86, overallLengthM: 9.53, widthM: 3.78, heightM: 2.23 },
   },
   t90a_burlak: {
@@ -623,6 +636,7 @@ const REG = {
     // t90a-class, height to the (taller) Burlak bustle roof est. 2.30.
     path: 'public/models/community-candidates/t-90a_burlak_armored_warfare.glb',
     turretNode: '^Object_2$', gunNode: '^Object_15$', autoPivot: true,
+    yawOffset: Math.PI, // §5.50 AW rest-pose-rear turret convention
     pubDims: { hullLengthM: 6.86, overallLengthM: 9.53, widthM: 3.78, heightM: 2.30 },
   },
   t14: {

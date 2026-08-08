@@ -1816,3 +1816,26 @@ map fixes on request from my lane. Interpen flags on all seven AW
 prints = the sunk-turret print class (§B7 caps; vladimir batch-50
 kin). Seven receipts land this commit (k2, amx40, k1a1, t90, t90ms,
 t90a_burlak, type99a) + type90's v2-oracle receipt.
+
+## 5.50 AW REST-POSE-REAR TURRET CONVENTION + REGISTRATION FIX
+(2026-08-08): the t90-family builder verified IN HARNESS MASKS (gate
+pair at load 10.4) that the three russia AW prints' TURRET CLUSTERS
+present ~180 reversed while hulls present forward-correct (antenna
+seats reading at mirrored z; flip center ~= ring z +0.45..0.47) — the
+AW game-rig convention authors turrets at rest facing REAR. This also
+explains the §5.49 assert soup (gun-sign reads). FIX APPLIED (my
+lane): yawOffset Math.PI on t90/t90ms/t90a_burlak rows in all three
+harness maps + vertex REG (perl edits grep-verified 1/1/1 per file
+per id). Other AW prints (k2/k1a1/type99a/amx40) NOT changed — their
+builders verify presentation per §5.49 and message evidence if
+reversed. RULINGS relayed to the builder: burlak width-normalization
+(±2.04 cheek modules shrink the hull read to 3.55 vs 3.78) = §B7
+PACKET CAP (no named-width mechanism in the harness; do not warp the
+print); burlak overallLengthM 9.76 honest-variant = ASK-OWNER banked,
+builder may set 9.76 with the ask note (spec-sovereignty ratification
+at landing). Baselines x1 landed honest (t90 20.1 / t90ms 16.8 /
+burlak 0-capped, floaters 100 all); 14 graduates verified EXACT
+mid-round. NOTE: this relay was MISDELIVERED to the owner's parallel
+camo/UI session and returned verbatim — cross-session relay routing
+is a known hazard; builders should SendMessage the orchestrator
+directly, not rely on relays.
