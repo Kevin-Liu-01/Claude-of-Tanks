@@ -1909,6 +1909,18 @@ async function startBattleLoading(specId, mapId = null) {
   for (const e of game.tanks) {
     if (e.visual && e.visual.setDestroyed && e.visual.resetDestroyed) {
       try { e.visual.setDestroyed({}); e.visual.resetDestroyed(); } catch (_) { /* warm only */ }
+      // MOBILE-QA r6: the thrown-track ribbon kit (tankFactory
+      // buildThrownKit) is a lazy per-visual latch that otherwise builds on
+      // the FIRST live de-track mid-fight (~100-200 ms mesh+material+link;
+      // ledger r5 born owner gearThrownRibbon). One broken->ok toggle here
+      // builds it behind the loading screen; the force-visible compile pass
+      // below links its program.
+      if (e.visual.setTrackState) {
+        try {
+          e.visual.setTrackState('trackL', true);
+          e.visual.setTrackState('trackL', false);
+        } catch (_) { /* warm only */ }
+      }
       // perf-r2f: one macrotask per tank — the dance bakes wreck canvases
       // (150-900 ms a family) and running all of them back-to-back pinned
       // the loading bar in one multi-second task on a rematch. The screen
