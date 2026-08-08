@@ -2286,3 +2286,14 @@ imports, hash-prove EVERY moved id byte-identical, npm test.
 SEQUENCE: challenger module NOW (uk.js+modern1.js free); russia
 splits AFTER t44/type59 lands, THEN §5.73-4 (t90-family measurement
 consistency) works in the fresh t90.js.
+
+## 5.75a CHALLENGER MODULE EXECUTED (2026-08-08): profiles/
+challenger.js (2188 lines) consolidates challenger1 (ex-uk.js,
+profiles-class) + challenger2/challenger_3 (ex-modern1.js,
+modern-class spec+build) — PURE-REFACTOR LAW satisfied: 15/15 ids
+byte-identical before/after (incl. FROZEN centurion3 bad74e60 +
+challenger1 5bf5f2ec), ALL_TANK_IDS roster order JSON-identical (the
+new module re-inserts at indexOf('merkava4') preserving carousel
+order), helpers stay owned by their original files and exported
+(never duplicated), npm test x3 green. russia splits (t90/t72/t80)
+remain sequenced behind t44/type59 per §5.75.

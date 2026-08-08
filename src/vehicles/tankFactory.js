@@ -39,6 +39,12 @@ import { MODERN2_BUILDERS } from './modern2.js'; // EXTENSION HOOK (see BUILDERS
 // modern1.js and merge into BUILDERS below. Deliberate module cycle — that
 // module reads our KIT bindings only at build time, never at module scope.
 import { MODERN1_BUILDERS } from './modern1.js';
+// EXTENSION HOOK (§5.75 challenger family module): challenger2/challenger_3
+// spec+build moved out of modern1.js (same self-contained pattern, same
+// module-cycle law). MUST stay imported ahead of the userdrops waves below —
+// userdrops5 clones the challenger2 spec row as the challenger1 donor at its
+// module scope.
+import { CHALLENGER_BUILDERS } from './profiles/challenger.js';
 import { PROFILED_BUILDERS } from './profiledProcedurals.js';
 // EXTENSION HOOK (modern expansion integration): importing variants.js
 // registers the CC-BY derivative vehicles (m1a1 / t90a / m1a2_tusk) into the
@@ -3391,8 +3397,10 @@ const BUILDERS = {
   m4a3e8: buildM4A3E8, tiger1: buildTiger, t34_85: buildT34, is2: buildIS2,
   panther_g: buildPanther, m1a2: buildM1A2, t90m: buildT90M, leo2a7: buildLeo2A7,
 };
-// EXTENSION HOOK (HD modern roster): t72b3 / challenger2 / merkava4 / leo2a6
+// EXTENSION HOOK (HD modern roster): t72b3 / merkava4 / leo2a6
 Object.assign(BUILDERS, MODERN1_BUILDERS);
+// EXTENSION HOOK (§5.75 challenger family module): challenger2 / challenger_3
+Object.assign(BUILDERS, CHALLENGER_BUILDERS);
 // EXTENSION HOOK (HD modern roster #2): leo2a4 / t80u / leclerc / type99a /
 // leo1a5 / t14 — builders + specs live in modern2.js (same pattern as above)
 Object.assign(BUILDERS, MODERN2_BUILDERS);

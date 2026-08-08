@@ -15,6 +15,9 @@ import { SOVIET_HEAVY_PROFILES } from './profiles/soviet-heavy.js';
 import { ABRAMS_PROFILES } from './profiles/abrams.js';
 import { RUSSIA_PROFILES } from './profiles/russia.js';
 import { UK_PROFILES } from './profiles/uk.js';
+// §5.75 family-module split: challenger1 moved out of uk.js (the module also
+// carries the modern-class challenger2/_3 — those merge via tankFactory).
+import { CHALLENGER_PROFILES } from './profiles/challenger.js';
 import { LEOPARD_PROFILES } from './profiles/leopard.js';
 import { MERKAVA_PROFILES } from './profiles/merkava.js';
 import { PATTON_PROFILES } from './profiles/patton.js';
@@ -27,6 +30,7 @@ export const PROCEDURAL_PROFILES = {
   ...ABRAMS_PROFILES,
   ...RUSSIA_PROFILES,
   ...UK_PROFILES,
+  ...CHALLENGER_PROFILES,
   ...LEOPARD_PROFILES,
   ...MERKAVA_PROFILES,
   ...PATTON_PROFILES,
