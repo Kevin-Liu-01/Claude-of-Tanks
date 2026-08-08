@@ -664,3 +664,25 @@ bytes), scratchpad crops (rear MG window, sleeve camber, roof).
 
 ## 2026-08-06 FLEET MUZZLE-BORE + §C.1 WINDING SWEEP (fleet-sweep one-liner)
 - §B3.1 bore on the L11 tube face (6.97); §C.1 0 reversed (uk sslab-guarded already); F-vs-D 0 (owner-named line verified CLEAN both before+after); gate HELD x2 EXACT 90.1 PASS; hash not frozen; mantlet mass verified per MANTLETS-MANDATORY (db9168c). Mechanism: kit.js muzzleBore shadow-named furniture + orientedSlab guard (3fca39b / 1017339); end-on+quarter crops shots/muzzle-sweep/{before,after}/.
+
+## 2026-08-08 NO-AIR ROUND r1 (uk see-through, §5.35 item 15 + §5.18) — HYGIENE CLOSURE
+Ordered defect: under-turret-skirt open band, hull-occluded at rest,
+yaw-overhang exposed — turret-only side views enclosed 1206px of sky
+(886px z 0.13..0.54 + 320px z 1.40..1.66 world) between the trunnion-mass
+top (1.505), the ring-collar rear (z 0.125), the gun cradle, and the
+casting/skirt-tier undersides (1.67/1.74). Raycast-attributed via
+tools/tmp-uknoair-probe.{html,mjs}; the volume between breech mass and
+casting belly was simply never built. Ref truth: the print carries it
+SOLID (turret-node trunnion band bottoms 0.942 across world z 0.09..1.64;
+front_turret bot 0.949 at |x| 0.51-0.85). Fix: one closed turretDark
+course box(1.55,0.26,1.58)@(0,0,1.09) continuing the breech mass to the
+casting — x/z coincide with the trunnion box, bottom 15 mm into its top,
+top at 1.75 world (10 mm past the 1.74 skirt-tier underside, 80 mm into
+the face-slab volume), collar overlap z 0.10..0.125 chains the rear.
+PIXELS (tree 00276fc): y0-side-l-T 1206->0, y0-side-r-T 1206->0; EVERY
+other view bit-equal (surgical: y45-fql 872 = GUN-AIR FP class unchanged,
+front-low 810 / rear-low 632 / y90-T 158-196 pre-existing non-ordered
+classes unchanged, islandViews 2=2). GATE x2 BIT-IDENTICAL: min 90.2 |
+hull 91.8 whole 90.2 turret 90.3 stations 90.6 dims 95 floaters 100 PASS
+— exact hold. HASH dbe33204 -> 5bf5f2ec. Evidence:
+shots/uk-noair/{before,after}/challenger1--y0-side-l-T*.

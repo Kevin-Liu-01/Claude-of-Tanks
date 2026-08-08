@@ -81,7 +81,7 @@ re-freeze NEW hash, all in ONE commit.
 | leo2a5 | e215a738 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | leo2_revolution | db70c929 | RE-FROZEN 2026-08-07 (photo-class record): §5.09 closure -85% + §5.17a turret-completion (real collar/chin/under-cheek/under-skirt walls — the floating shell is DEAD, owner diagnosis answered); re-cert 9.4/9.2/9.3 on changed families; §B7 gate caps stand (hull 94.3 trustworthy band) |
 | m46_patton | 108806c8 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
-| centurion3 | 50273080 | bore resit RATIFIED (end 9.2; occlusion class fixed) |
+| centurion3 | bad74e60 | RE-FROZEN 2026-08-08 (no-air graduate-change: crown-ridge pedestal + discharger webs, front-low 1810px->14, re-cert floor 9.0 x17 changed views, gate 91.1 exact; prior 50273080 bore-resit lineage) |
 | m1a2_sepv2 | e60878a9 | RE-FROZEN 2026-08-07 x2 (§5.19a tejas-platform rebuild, critic PASS 9.3 hash-bracketed; RE-ORACLED to m1a2_tejas.glb — old recovered-print registration retired for this id; ledger row FALSE-0 (works echo vs bare tejas hull, see §5.34); echo deletion = next abrams touch) |
 | m26_pershing | 65c564c0 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | t90m | e345ee8a | GRADUATED 2026-08-06 (27th; floor 9.0 x14 second sitting; the owner's dedicated-agent arc 81.7 -> dual gate) |
@@ -1643,3 +1643,22 @@ LESSON: verify the actual file per id BEFORE lane assignment; bmp2/
 bradley/type10/k2 all live in src/vehicles/modern3.js, NOT profiles/).
 modern3.js lands as ONE commit after bradley delivers+verifies;
 KOREA round spawns after that landing.
+
+## 5.43 UK NO-AIR ROUND LANDED (2026-08-08): critic verdict — Part 1
+centurion3 RE-CERT PASS floor 9.0 x17 changed views (machine truth:
+front-low 16px vs frozen-rig 44+slit, rear 1023->17, sides tighter
+than the print's own wheel-run daylight; pedestal fill reads as cast
+structure) -> RE-FROZEN bad74e60 (§3). Part 2 challenger1 GRADUATION
+FAIL 8.5 (bar 9.0) but the ordered hygiene closure is SOUND (0px on
+the band, gate 90.2 exact-held, identity unmistakable) -> ledger row
+stands, graduation stays OPEN with the critic's exact defect list
+banked in challenger1.md: (2) front-corner slots ~90-133px
+(bin-to-cheek + lamp-bracket-to-sponson, interior-fill class), (3)
+rear corner corridors ~252px (mud-flap class), (4) under-shelf bare
+slots ~130px, (1) cheek-course tone/chamfer lane (r11 ceiling). Next
+ch1 round = close 2+3, continue 1. vickers_mk1 NO-CHANGE adjudication
+STANDS (GUN-AIR FP, designed 2.5cm renders 1.5cm — sweep flag
+disproven with ray-attribution receipts). Ledger rows were already
+exact at HEAD (closures held every component). Critic + builder tmp
+rigs deleted at landing. NOTE: cot-shots FIFO lock now held by the
+owner's parallel shadowbisect session — respect it.

@@ -94,3 +94,39 @@ the box's own columns.
 
 ## 2026-08-06 FLEET MUZZLE-BORE + §C.1 WINDING SWEEP (fleet-sweep one-liner)
 - §B3.1 bore RE-SEATED onto the L7A1 tip collar face (4.69) after the first seat buried it behind the neck+collar (crop-caught); §C.1 8 reversed re-oriented; F-vs-D 79->0; gate HELD x2 EXACT 81.8; hash not frozen; mantlet mass verified per MANTLETS-MANDATORY (db9168c). Mechanism: kit.js muzzleBore shadow-named furniture + orientedSlab guard (3fca39b / 1017339); end-on+quarter crops shots/muzzle-sweep/{before,after}/.
+
+## 2026-08-08 NO-AIR ROUND r1 (uk see-through, §5.35 item 4) — ADJUDICATED NO-CHANGE
+Order: measure the flagged "sponson slit" (sweep 1090px y45-rqr / 351px
+garage-class y0-fql) against the documented 2.5 cm designed gap; close only
+if it renders wider than design or the reference shows solid. MEASURED
+(tools/tmp-uknoair-probe.{html,mjs} raycast attribution + world column
+scans, hash 2ca664cd):
+1. The flagged window is NOT the sponson slit — boundary rays attribute it
+   above=GUN underside y 1.88-1.90 (z 2.4..3.7), below=hull DECK 1.540,
+   aft=turret chin/face, forward=the travel-lock crutch struts (x
+   0.035/0.105, z 3.6). It is the real under-barrel daylight corridor,
+   enclosure-minted by the DESIGNED travel-lock length carrier (gate-r3
+   certified; absent from the z-short print, so the print never floods it).
+   REFERENCE SHOWS DAYLIGHT THERE TOO: ref side_hull tops 1.540-1.585 at
+   ext z 0.92-1.22 vs ref side_whole gun-only band (packet: bottom 1.89;
+   measured ref bot jumps to 1.887 exactly at the ext 2.652 crutch column).
+   Rendered gun bottom 1.88 vs ref 1.887: 7 mm. GUN-AIR FP class per §5.35
+   sweep law — ordered ignore class.
+2. The DOCUMENTED 2.5 cm gap (sponson floor 1.36 over sprocket wrap 1.335)
+   renders 1.5 cm at the wrap crown (z -3.00; column scan 1.345-1.360),
+   widening aft/forward as the wrap arc falls away (7.5-20 cm at z -2.85..
+   -2.40) — AT/UNDER design, real track-arc air, and it never floods
+   enclosed in any of the 41 views (the track owns it from the side).
+3. The 328/330px quarter clusters are the front-idler bay (y 0.42-1.09,
+   x 0.97-1.40) — wheel-train daylight, gear-tagged by the adjudicator
+   (§5.18 legit air class 1).
+4. The 96-145px side slits under the turret-bin overhangs (y 1.55-1.84,
+   z -0.7..-1.3) are the ref's own bracket-closed configuration (r2:
+   "brackets close the 1.653 strip", 3 brackets per side at the ref line).
+The sweep's world-mapped "sponson slit at y 1.65-1.85" was the center-plane
+projection of the under-barrel corridor (mapPt maps cluster centers onto
+the view plane) — the label, not the pixels, was wrong. NO geometry edit;
+hash 2ca664cd and gate row 81.8 (hull 82 / whole 81.8 / turret 84.1 /
+stations 88.9 / dims 99 / floaters 100) bit-identical throughout the round.
+Evidence: shots/uk-noair/before/vickers_mk1--*.png (annotated boundary
+rects), column tables in shots/uk-noair/after/vickers_mk1.json.

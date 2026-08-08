@@ -414,3 +414,41 @@ r6-era projection-gap micro-voids (identical coordinates, priced).
 ### BORE RESIT RATIFIED (2026-08-06): RE-FREEZE 50273080 CONFIRMED —
 end-on 9.2 (was 7.5), quarter 9.3; luma 35.7-flat == the chieftain5
 ratified family tone (campaign doc RESIT section).
+
+## 2026-08-08 NO-AIR ROUND r1 (uk see-through, §5.35 item 10 + §5.18) — GRADUATE-CHANGE
+Frozen 50273080 confirmed pre-touch. Two defect classes raycast-attributed
+(tools/tmp-uknoair-probe.{html,mjs}, boundary-ray attribution + world column
+scans) and closed with interior casting geometry, mk3-gated (centurion5
+byte-identical: hash 756fcfc0 + gate row 90.7 exact before/after):
+1. CROWN-RIDGE HOVER: the ridge plate (bottom 2.637 world) floated 67-78 mm
+   over the crown slabs (tops 2.50-2.57) — the 889px front-low headline, the
+   802px y90-side-l-T read, the 74px rear-low slit AND the rear-quarter
+   "floating cap" islands were all this one gap. Print truth: solid cast
+   swell (r2 extract 2.747-2.754 plateau; ref front_turret bot 1.491-1.531
+   under it). Fix: pedestal fill box(0.805,0.167,0.395)@(-0.4775,0.7935,
+   -0.7025) — plan 20 mm inside the plate footprint, top 20 mm into the
+   plate, bottom below the 0.723 crown minimum (§B2 chains both ends).
+2. UNDER-CHEEK POCKETS (±1.1): the r6 discharger banks stood off the
+   receding cheek/nose side faces — 480/412px front-low sky corridors
+   between bank outer slab and casting wall; residual r1 crack (212/154px)
+   raycast-pinned to the smoke-cluster bases at |x| 1.15 (z-local 0.86-1.16
+   exact). Print fuses banks INTO cheeks (ref front_turret solid 1.49-2.25+
+   across |x| 0.98-1.23). Fix: mounting web slab per side (bottom quad 3-6 mm
+   into the cheek/nose faces, top 10 mm into the bank undersides, outer
+   edges 5-15 mm inside the bank plan/front lines) + r1b chained filler
+   box(0.22,0.32,0.42)@(±1.06,0.14,0.99) web->cluster-base->bank; bottom
+   1.76 world keeps the honest 7 cm ring-air lane over the 1.69 fender.
+PIXELS (tools/tmp-sweep-seethrough, tree 00276fc): y0-front-low 1810->14,
+y90-side-l-T 826->12, y45-side-l-T 275->10, y0-side-l-T 225->15,
+side-r-T 160/108->0/0, y0-rear-low 74->0, y45-rql 217->62, full sides
+-20..-266 each; y0-top 307/garage 136/tilt55 103 pre-existing hull classes
+UNCHANGED; islandViews 14=14 (pre-existing MG/hood class, count-parity).
+GATE x2 BIT-IDENTICAL at final bytes: min 91.1 | hull 92.8 whole 91.2
+turret 91.1 stations 95.2 dims 100 floaters 100 PASS — every component
+EXACT-holds the frozen row (interior-only closure; outlines untouched).
+HASH 50273080 -> bad74e60 CANDIDATE (re-freeze = orchestrator re-cert).
+CHANGED VIEWS for the re-cert critic: y0/y45/y90-side-l-T, y0/y45/y90-
+side-r-T, y0-front-low, y0-rear-low, y0/y45/y90-side-l, y0/y45/y90-side-r,
+y45-rql, y0-fqr, y45-fqr-T. Evidence: shots/uk-noair/{before,after}/ (the
+y90-side-l-T + front-low pairs are the money shots; fill reads as the cast
+swell, §K).

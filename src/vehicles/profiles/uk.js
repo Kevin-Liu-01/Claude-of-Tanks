@@ -2058,6 +2058,20 @@ function challenger1Build(P) {
   // 1.44 floor hung 0.16 into the ring gap on the rear col).
   P.add('turret', box(1.3, 0.21, 0.11), 0, 0.075, -0.095);
   P.add('turret', box(1.3, 0.34, 0.34), 0, 0.01, 0.155);
+  // no-air r1 (§5.35 item 15 + §5.18, uk see-through round): the under-skirt
+  // band read through at turret overhang — the turret-only side views
+  // enclosed 1206px of sky between the trunnion-mass top (1.505 world), the
+  // ring-collar rear (z 0.125), the gun cradle, and the casting/skirt-tier
+  // undersides (1.67/1.74): the volume between breech mass and casting belly
+  // was never built. The ref carries it SOLID (its turret-node trunnion band
+  // bottoms 0.942 across world z 0.09..1.64; front_turret bot 0.949 at
+  // |x| 0.51-0.85). One closed course continues the breech mass up to the
+  // casting: x/z coincide with the trunnion box (plan-interior under the
+  // face-slab belly), bottom embeds 15 mm into its top, top rides 1.75
+  // world — 10 mm past the outer skirt-tier underside (1.74) and 80 mm into
+  // the face-slab volume; the z 0.10..0.125 collar overlap chains the rear
+  // (§B2 chain at every face).
+  P.add('turretDark', box(1.55, 0.26, 1.58), 0, 0, 1.09);
   liftEye(P, 'turretDetail', -0.95, 0.62, 0.55, 0.4);
   liftEye(P, 'turretDetail', 0.95, 0.62, 0.55, -0.4);
   // 2x5 smoke discharger banks on both cheeks (the print's 2.40-2.42
@@ -2824,6 +2838,18 @@ function centurionBuild(P, mk) {
   // the 0.9675 plate top at every shared x, bottoms on the crown plane —
   // front/side interior by construction.
   P.add('turret', box(0.845, 0.11, 0.435), -0.4775, 0.912, -0.7025);
+  // no-air r1 (§5.35 item 10 + §5.18, uk see-through round): the crown-ridge
+  // plate HOVERED 67-78 mm above the crown slabs (bottom 2.637 world over
+  // tops 2.50-2.57) — an enclosed-sky window from front-low (889px) and
+  // every traversed side (802px y90-T; the rear-low "floating cap" islands
+  // were the same gap). The print's ridge is a SOLID cast swell (r2 extract:
+  // 2.747-2.754 plateau with mass beneath; ref front_turret bot 1.491-1.531
+  // across these columns). Pedestal fill closes the under-plate volume:
+  // plan 20 mm inside the plate footprint each way, top embeds 20 mm into
+  // the plate, bottom embeds below the 0.723 crown-top minimum (§B2 chains
+  // both ends) — all three ortho outlines untouched (interior hole close).
+  // mk3 only: c5 keeps byte-identical (its own hover is that lane's order).
+  if (mk === 3) P.add('turret', box(0.805, 0.167, 0.395), -0.4775, 0.7935, -0.7025);
   // r9 (uk round 4, c5 ONLY — the CASTING-READ round; centurion3 is a
   // hash-frozen graduate bf0a45e8 and every strip below is mk-5-gated):
   // the r8 interior relief landed but the crown still tiles as rectangles
@@ -3236,6 +3262,33 @@ function centurionBuild(P, mk) {
       [i1, 0.26, 0.72], [o1, 0.26, 0.72], [o1, 0.14, 1.32], [i1, 0.14, 1.32],
       [i1, 0.36, 0.72], [o1, 0.36, 0.72], [o1, 0.22, 1.32], [i1, 0.22, 1.32]));
     P.add('turretDetail', box(0.15, 0.07, 0.11), s * 1.095, 0.215, 1.305);
+    // no-air r1 (§5.35 item 10 "under-cheek pockets" + §5.18 mounts-connect):
+    // the bank slabs stood off the receding cheek/nose side faces with a
+    // clear corridor beneath — front-low read 480/412px of sky between the
+    // bank outer slab and the casting wall (|x| 1.05-1.15, world y
+    // 1.79-1.95). The print fuses the banks INTO the cheeks (r6 note: plan
+    // fronts probed on the turret mesh; ref front_turret runs SOLID
+    // 1.49-2.25+ across |x| 0.98-1.23). One mounting web per side closes the
+    // corridor: bottom quad embedded 3-6 mm into the cheek/nose side faces,
+    // top quad 10 mm into the bank undersides, outer edges 5-15 mm inside
+    // the bank's own plan/front lines — the web silhouette lives inside
+    // casting ∪ bank in all three views (the |x| 1.06-1.18 front sliver
+    // lands inside the ref's own solid band). mk3 only: c5 byte-identical.
+    if (mk === 3) {
+      P.add('turret', slab(
+        [s * 0.92, -0.10, 0.74], [s * 1.024, -0.10, 0.74], [s * 0.685, -0.16, 1.26], [s * 0.60, -0.16, 1.26],
+        [s * 0.92, 0.27, 0.74], [s * 1.18, 0.27, 0.74], [s * 1.17, 0.165, 1.26], [s * 0.60, 0.165, 1.26]));
+      // no-air r1b: the first web left a 1-8 cm crack between its sloped
+      // outer face and the smoke-cluster bases standing at |x| 1.15
+      // (front-low residual 212/154px, raycast: right boundary z-local
+      // 0.86-1.16 exactly on the cluster seats). Chained filler box spans
+      // web -> cluster base -> bank undersides (all overlapped 10-15 mm);
+      // bottom 1.76 world keeps the honest 7 cm ring-air lane over the
+      // 1.69 fender. Same interior class: plan under the bank slabs, side
+      // under the cheek band, front sliver inside the ref's solid
+      // 1.49-2.25 band.
+      P.add('turret', box(0.22, 0.32, 0.42), s * 1.06, 0.14, 0.99);
+    }
     // r8 (c5 O8, §B3 NO-MYSTERY-BOXES — tone-first pass): the covered banks
     // read as bare dark slabs at the gun root; the ref presents the housing
     // + a scalloped tube-mouth row. Five dark mouth discs + a pale lip
