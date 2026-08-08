@@ -1515,3 +1515,29 @@ Gate x2 bit-identical 0 | hull 45.8->46.8, rest exact — NO RUNG TO 90
 on this oracle (melted turretless tub caps whole/turret/stations ~0
 BY CERTIFICATE; oracle-sourcing dependency noted in packet). New hash
 afb3cc3c (not frozen). Landed f40ea00-successor commit.
+
+## 5.37 CHEVRON+MG ROUND RATIFIED + LANDED (2026-08-08): independent
+critic RATIFY 9/9 at >=9.0 from FRESH self-shot evidence (one ticket,
+shots/critic-chevtip/). §5.29 tip-read PASS all nine (t80bv 9.5
+strongest — 3-course walls meeting at V-nose; t72b_1987 9.4 crisp
+collar-tip V); §5.29 MGs PASS all nine (t72bu's last-mg0 cleared);
+§5.30 VERIFIED (vladimir turret IS the t90a design — plan outline
+verbatim, kit seats aligned, own mast/gun kept; skid rectangle GONE
+with before/after pixel proof); §5.31 SPIN PASS with hard evidence
+(t72b_1987 dome orbited ~0.40 before, centered <=0.1 after; pivot
+moved to casting plan-chord center, world-identity at rest). HASHES
+LANDED (all 9 verified x3 by critic + orchestrator): t72b_1987
+d62c8140, t62mv1 db9507ac, t72bu 68082d79, t80 578b7f08, t80b
+99393970, t80bv 89769670, t90a 265610e2, t64bv1 f5222a1c, vladimir
+bdfe7d24. Graduates held byte-exact: t90m/pt91m/t84/t72b3m/t90sm.
+FILE-SHA ANOMALY resolved: builder reported russia.js ea20b889,
+critic measured 899d8458 — non-geometry bytes; geometry hashes bind
+x3 = the truth per protocol. Vladimir row 9 = documented §5.30
+print-cap (2.60m cast dome cannot corroborate 3.23m loft; §E batch-50
+bake-strip is the recovery). POLISH BANK (non-gating, next russia
+touch): vladimir '112' re-pin z fwd ~1m + x flush 1.435 (§5.04);
+t72b_1987 right-arm panel notch; t80/t80b NSVT prominence vs heightM
+grace = ASK-OWNER trade; t62mv1 DShK elev -0.32 -> -0.10..-0.15 +
+azimuth inboard. RUSSIA LANE FREES: next = t72b3m graduate-change
+(spin 0.20 + arc-grammar tips + §5.35 window/corridors) + vladimir
+batch-50 + t80/t80b ladders.

@@ -689,3 +689,13 @@ class) still binds hull/whole; the ±1.68..1.90 col rears teeter between
 (3.49 ONLY-PROC, err 9 x1) and the fat 0.34 tip band at 3.396 (ref
 0.16 sliver) are the §D dims-vs-curve trade carrying hullLengthM's
 front body column — priced, kept.
+
+## CHEVRON-TIP round adjudication (2026-08-07, chevtip builder — §5.29, NO TOUCH)
+Tip-read judged PRESENT: the welded prism's own nose facets converge at
+the mantlet (the '<' in plan is the turret geometry itself; approved
+§5.0 turret read, owner-approved, record d98f27dc pending critics) —
+the §5.29 re-shape does not demand movement. Byte-held this round
+(hash verified in the round sweep). NOTED for a future owner ask: the
+real T-90MS carries bar-armor arcs on the hull rear + bustle rear —
+adding them moves certified rear rows on a record-pending tank, so the
+equipment order was NOT spent here (§5.29 scope discipline).

@@ -325,3 +325,38 @@ for every legacy caller — proven by 14-tank hash hold before opt-in).
 Plan pairs verify the '<' on all three
 (shots/russia-chevron-fused/after/*/view-top.png).
 DELIVERED-PENDING-CRITIC; not committed.
+
+## CHEVRON-TIP round (2026-08-07, chevtip builder — owner §5.29 photo refinement + the critic wave's t80 plan-proudness conditional)
+TIP (§5.29, all three marks; §H.4 distinctness kept):
+- t80 (v0): the light banks become TWO flat K-1 panels MEETING AT THE
+  MANTLET HOOD — tip (±0.66, 1.56L) at the hood flank, outer (1.30,
+  0.94L); the face line rides 3-9cm PROUD of the dome plan-front
+  ellipse along the whole run (the critic's t80 conditional: the plan V
+  BREAKS the dome silhouette; tilt top-edge retreat priced). Lightest
+  fit: one clean 3-seg panel pair, no flank field.
+- t80b (v1): the three spread applique tiles per side become the same
+  panel pair on the old tile line (42.5deg ~ the landed 41deg), tile
+  grammar via seam grid; brow shelf + 902 bank stay.
+- t80bv (v2): full-height 3-course panels (h 0.56, rows 2) MEETING AT
+  THE V-NOSE COVER (tip ±0.30, 1.52L); arc brick 3 flank wrap byte-held
+  (banksOff); + the real BV 902B Tucha bank on the LEFT front cheek
+  (four angled tubes). Mid-run dome-bulge hug = the K-1-on-casting
+  class.
+MG (§5.29 + CROWS law): all three NSVTs leave the inboard-swung stow
+for FORWARD full posture (scale 0.54 -> 0.68/0.62, ammo cans on).
+DIMS INCIDENT (banked): the first cut's receiver top 2.31w blew heightM
+grace on BOTH v0/v1 (dims 98.9/100 -> 77.6/77.4 MEASURED — the
+receiver+ammo+barrel painted 5-6 over-grace side cols, past the ≤4 p95
+budget; "a cap never excuses dims"). r2 mount 0.62 -> 0.535: top ~2.22w
+inside grace, receiver still pokes ~3cm over the 2.19 crown plate —
+dims RESTORED (98.9/100 exact).
+GATE x2 (final bytes) vs baseline:
+- t80  82.2 | 88.7/82.2/84.6/88.3/98.9/100 (base 82.5 | .../82.5/84.7/
+  87.8/98.9) — whole -0.3 / turret -0.1 (§5.29 cap), stations +0.5.
+- t80b 81.0 | 87.6/81/85.5/89.8/100/100 (base 81.6 | .../81.6/86.2/
+  92.3/100) — whole -0.6 / turret -0.7 / stations -2.5 (§5.29 MG+tip
+  cap, documented; min moved -0.6).
+- t80bv 39.8 | 44.6/44.6/53.1/39.8/100/100 (base 33.7 | 44.6/45/52.5/
+  33.7) — MIN +6.1 (the full-height panels carry station slices the
+  banks missed), turret +0.6, whole -0.4.
+DELIVERED-PENDING-CRITIC; not committed.

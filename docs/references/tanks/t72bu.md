@@ -345,3 +345,28 @@ GATE: 52.8 | 52.8/59.2/68.3/81.8/100/100 vs baseline 52.8 | 52.8/59.2/
 68.4/81.8/100/100 (turret -0.1; min EXACT). Plan pair verifies the '<'
 (shots/russia-chevron-fused/after/t72bu/view-top.png).
 DELIVERED-PENDING-CRITIC; not committed.
+
+## CHEVRON-TIP round (2026-08-07, chevtip builder — owner §5.29 photo refinement + §5.31 spin check)
+TIP (§5.29): k5LeafOff — the clamshell leaves become TWO large flat K-5
+panels MEETING AT A POINTED TIP at the gun housing (tip ±0.19, 1.52w:
+inner caps tuck against the armored cover's flanks; the 2A46M emerges
+above/behind the tip). Outer ends (±1.25, 0.75w) embed into the cheek;
+mid-run half-buries in the dome bulge (the legacy out -0.05 hug class,
+§B2 no-air). 36deg shallow V (photo class — the §5.14 leaves ran 53deg
+and never met). K-5 lower lip + 4-seg clamshell grammar; flank tiles
+byte-held (k5LeafOff law).
+MG (§5.29 + §I migration — the roster's last mg0): hand nsvt() -> census
+FITTINGS.pintleMG at the same anchor (receiver top reproduces the hand
+carrier 2.14w within 6mm), barrel FORWARD (CROWS law) at the helper's
+own -0.06 droop, ammo can on. mg census 0 -> 1.
+EQUIPMENT (§5.29 photo grammar): 902A Tucha banks on BOTH upper cheeks
+flanking the Shtora eyes (six angled tubes per side, the b87 902B
+grammar). First seat (1.86-1.96w) cost side_whole -2.4 measured; r2
+dropped the banks onto the dome slope (tubes 0.24, y -0.06) -> -0.2.
+SPIN (§5.31 diagnosis): pivot-centered dome (cz 0) — yaw-90 top proof
+banked, turret-parent 0/0/0: NOT broken (minor print-asym dome bias
+only, ~0.1).
+GATE x2 (final bytes): 52.8 | 52.8/59/68.4/81.8/100/100 vs baseline
+52.8 | 52.8/59.2/68.3/81.8/100/100 — min EXACT, whole -0.2 (§5.29
+equipment cap, documented), turret +0.1. DELIVERED-PENDING-CRITIC;
+not committed.

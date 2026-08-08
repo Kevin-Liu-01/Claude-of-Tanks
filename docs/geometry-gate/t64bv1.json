@@ -770,15 +770,31 @@
    ]
   },
   "plan": {
-   "score": 86.18836295733851,
-   "meanPct": 1.05,
-   "p95Pct": 2.05,
+   "score": 83.32342197833468,
+   "meanPct": 1.28,
+   "p95Pct": 2.23,
    "coverPct": 0,
    "reg": {
     "dAlong": 0,
     "dy": 0.038
    },
    "worst": [
+    {
+     "at": 0.26,
+     "refTop": 3.42,
+     "refBot": 0.19,
+     "procTop": 3.45,
+     "procBot": -0.21,
+     "errM": 0.219
+    },
+    {
+     "at": -0.26,
+     "refTop": 3.42,
+     "refBot": 0.1,
+     "procTop": 3.32,
+     "procBot": -0.21,
+     "errM": 0.206
+    },
     {
      "at": -1.3,
      "refTop": 1.64,
@@ -812,12 +828,36 @@
      "errM": 0.181
     },
     {
+     "at": 0.37,
+     "refTop": 3.42,
+     "refBot": 0.19,
+     "procTop": 3.45,
+     "procBot": -0.12,
+     "errM": 0.175
+    },
+    {
      "at": 1.3,
      "refTop": 2.14,
      "refBot": 1.24,
      "procTop": 2.16,
      "procBot": 0.92,
      "errM": 0.171
+    },
+    {
+     "at": -0.36,
+     "refTop": 3.42,
+     "refBot": 0.09,
+     "procTop": 3.32,
+     "procBot": -0.12,
+     "errM": 0.157
+    },
+    {
+     "at": -0.16,
+     "refTop": 4.38,
+     "refBot": 0.09,
+     "procTop": 4.37,
+     "procBot": -0.2,
+     "errM": 0.152
     },
     {
      "at": -1.19,
@@ -834,46 +874,6 @@
      "procTop": 3.84,
      "procBot": 0.7,
      "errM": 0.136
-    },
-    {
-     "at": 0.57,
-     "refTop": 3.42,
-     "refBot": 0.19,
-     "procTop": 3.66,
-     "procBot": 0.17,
-     "errM": 0.132
-    },
-    {
-     "at": -0.67,
-     "refTop": 4.38,
-     "refBot": 0.13,
-     "procTop": 4.55,
-     "procBot": 0.21,
-     "errM": 0.126
-    },
-    {
-     "at": -0.98,
-     "refTop": 4.5,
-     "refBot": 0.28,
-     "procTop": 4.45,
-     "procBot": 0.45,
-     "errM": 0.112
-    },
-    {
-     "at": 0.37,
-     "refTop": 3.42,
-     "refBot": 0.19,
-     "procTop": 3.45,
-     "procBot": 0.01,
-     "errM": 0.107
-    },
-    {
-     "at": 0.47,
-     "refTop": 3.42,
-     "refBot": 0.19,
-     "procTop": 3.45,
-     "procBot": 0.02,
-     "errM": 0.102
     }
    ]
   }

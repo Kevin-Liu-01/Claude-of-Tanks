@@ -657,3 +657,51 @@ Evidence: shots/russia-chevron-fused/{before,after}/t90a_vladimir/ +
 after/yawpair-t90a_vladimir.png + after/yaw{0,90}-t90a_vladimir/
 (side pairs proving the separation + hero seam read + yaw sweep).
 DELIVERED-PENDING-CRITIC; not committed (builder law).
+
+## §5.30 T90A-TURRET REBASE round (2026-08-07, chevtip builder — owner:
+## "the goal for the vladimir is to make it based off the t90a,
+## especially the turret which just needs to be REPLACED")
+EXECUTED WHOLESALE: the T5F sharpened wedge is REPLACED by buildT90A's
+welded family loft + roof kit — outline/heights VERBATIM (nose +1.44L,
+shoulder ±1.36, rear -1.79L, h 0.497 + family crown plate); kit local
+y -0.105 so every world line lands at the t90a's own certified heights
+(ESSA 2.196w, cupola 2.005w, TKN head 2.145w, Kord receiver 2.013w).
+Pivot y 1.50 -> 1.44: shell base 1.418w seats INTO the 1.50-1.51 FUSE
+deck (§B2), roof 1.937w = the certified 1.935w apex line. K-5 clamshell
+chevron + apex pads + the §5.29 TIP inner pads (the V closes at the
+gun), red Shtora, right-flank bins, bustle band + flank walls — the
+t90a assembly. VLADIMIR-DISTINCT kept: '112' (re-pinned on the new
+flank-wall faces), its own mast stack (world-held; the ref's 2.60-spike
+zone carrier), its 2A46M (world-preserved: axis 1.55w, muzzle +4.775,
+gunG y 0.05 -> 0.11 pivot-compensated), the FUSE separation devices
+rebuilt on the new outline (base collar 1.345..1.418w + ring-gap shadow
+band 1.42..1.525w drawing the seam at the deck line). TKN/cross-wind
+spikes CAPPED 2.245w (dims insurance — its p95 anchors are its own
+mast/ref spikes; dims HELD 96.2 through the rebase). Kord PROMINENT at
+the t90a cupola seat (CROWS-forward, ry 0.35, ammo on).
+§5.30-b surgical recovery (measured): the ported t90a flank walls at
+x 1.475/1.625 were plan_turret ONLY-PROC monsters on the desirefx print
+(err ~1.0 x 4-6 cols — plan row 0) -> NARROWED to the shell chord
+(1.345/1.435); vladimir's own print-parity fender-strip rails RESTORED
+(|x| 1.545..1.79 turret-node fragments, rTAIL r13 class — deleted in
+the first port, their plan cols went only-REF). Aft deck stowage boxes
+re-seated -2.99/-3.02w + tops trimmed <=1.63 (the ported loft's bustle
+sweeps a 2.30 radius; the pivot drop lowers the m2 ring-audit gate to
+1.64). Winding-audit m2 on final bytes: 8 candidatePx, verdict CLEAN
+(the FUSE round's adjudicated 428 -> 8; §B5 unity proven at yaw).
+GATE x2 IDENTICAL (final bytes): 9 | 60.7/55.4/9/79.9/96.2/100 vs
+baseline 63.8 | 63.8/67.2/77.5/90.7/96.2/100.
+§B7/§5.30 OWNER-ORDER CAP (the whole movement documented): the desirefx
+print carries a 2.60m-long CAST DOME — the ordered 3.23m t90a loft
+overshoots it 0.38 fore / 0.25 aft and stands the t90a roof layout
+where the print's forward-block/low-rear dome reads (side_turret worst
+family: proc ESSA band z -1.17..+0.05w vs the print block +0.23..+1.16w
+— the ORDERED look, not chased). turret 77.5 -> 9, hull -3.1 (the aft
+box re-seat exposes the capped bake-zone cols), whole -11.8, stations
+-10.8; dims/floaters EXACT. ROW RECOVERY = the standing §E COUPLED
+ORACLE BAKE-STRIP escalation (orchestrator lane) — this print cannot
+corroborate the ordered turret; a re-source/no-oracle adjudication is
+the honest path (§5.33 90-bar note: oracle does NOT permit >=90 here).
+Evidence: shots/russia-chevtip/after/t90a_vladimir/ +
+after-yaw90/t90a_vladimir/ (rebased turret at rest + yaw; §B5 pair).
+DELIVERED-PENDING-CRITIC; not committed (builder law).
