@@ -2975,17 +2975,21 @@ REPAIRS['type90'] = [
     # sits just below the 1.46 identity knee; a global map would drag hull
     # furniture): chin sliver stretch, TUBE BAND RIGID +0.256 norm (bore
     # 1.562 -> 1.818 = the armor model's gunPivot), wall band x1.70, roof
-    # to the published 2.34 plane, furniture crowns rigid +0.44 (ridge
-    # 2.23-2.26 -> 2.67-2.70; shelves land ~2.24 = the build's rails).
+    # to the published 2.34 plane. 49-v2 CORRECTION (2026-08-08, owner
+    # verdict "type 90 turret huge and tall" + receipt bodyH 2.747/+17.4%):
+    # v1's crown tail (23.359 -> 27.642, "rigid +0.44") over-raised the
+    # furniture band to 2.67-2.84 m — a real Type 90 tops ~2.6 m at the
+    # sight head. v2 compresses the tail: crowns land 2.34-2.60 m (ridge
+    # raw ~21.7-22.0 -> ~2.51 m, sight top 23.359 -> 25.31 = 2.60 m).
     # Raw anchors (x9.734): identity <= 14.212; (14.455 -> 16.947);
-    # (15.954 -> 18.446); (18.495 -> 22.777); top 23.359 -> 27.642 (rigid
-    # tail slope 1.0). Turret subtree census probed on the post-27 state:
+    # (15.954 -> 18.446); (18.495 -> 22.777); top 23.359 -> 25.31.
+    # Turret subtree census probed on the post-27 state:
     # 1 prim / 3,308 verts / 2,589 tris; subtree y 13.91..23.36.
     ('py2', _axis_warp('type90', long_axis='x',
                        y_map=[(0, 0), (14.212, 14.212), (14.455, 16.947),
-                              (15.954, 18.446), (18.495, 22.777), (23.359, 27.642)],
+                              (15.954, 18.446), (18.495, 22.777), (23.359, 25.31)],
                        long_map=[(-39.0, -39.0), (52.0, 52.0)],
-                       y_top_max=27.70, expect=(1, 3308, 2589),
+                       y_top_max=25.35, expect=(1, 3308, 2589),
                        node_scope='^Turret$')),
 ]
 REPAIRS['ariete'] = {

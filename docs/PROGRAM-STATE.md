@@ -1541,3 +1541,19 @@ grace = ASK-OWNER trade; t62mv1 DShK elev -0.32 -> -0.10..-0.15 +
 azimuth inboard. RUSSIA LANE FREES: next = t72b3m graduate-change
 (spin 0.20 + arc-grammar tips + §5.35 window/corridors) + vladimir
 batch-50 + t80/t80b ladders.
+
+## 5.39 TYPE90 ORACLE 49-v2 (2026-08-08, OWNER VERDICT "lol why is
+type 90 turret huge and tall now?" + garage screenshot): batch-49 v1's
+crown tail (23.359->27.642, "furniture rigid +0.44") over-raised the
+print's turret band to 2.67-2.84m (receipt bodyH 2.747, +17.4%) and
+the live ladder agent faithfully built a giant turret to it — the
+owner saw it in the garage. v2 compresses the tail (23.359->25.31,
+y_top_max 25.35): roof stays at the published 2.34, ridge ~2.51,
+sight head 2.60. Byte-idempotent x2 fcfeb38a (md5 worktree == staged,
+oracle-bytes law). Ladder agent HELD mid-round, told to revert any
+turret-raise chasing the v1 band and re-baseline vs v2. LESSON (§E
+law bank): a normalize plan's ABSOLUTE height targets must be
+sanity-checked against the real vehicle's published profile BEFORE
+execution — batch-49 v1 encoded 2.67-2.70 crown targets no Type 90
+reaches; the receipt's heightPct (+17.4) was the tell, and the owner's
+eyes caught it before I did.
