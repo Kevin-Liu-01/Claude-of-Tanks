@@ -83,6 +83,7 @@ re-freeze NEW hash, all in ONE commit.
 | m46_patton | 108806c8 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | centurion3 | bad74e60 | RE-FROZEN 2026-08-08 (no-air graduate-change: crown-ridge pedestal + discharger webs, front-low 1810px->14, re-cert floor 9.0 x17 changed views, gate 91.1 exact; prior 50273080 bore-resit lineage) |
 | m1a2_sepv2 | e60878a9 | RE-FROZEN 2026-08-07 x2 (§5.19a tejas-platform rebuild, critic PASS 9.3 hash-bracketed; RE-ORACLED to m1a2_tejas.glb — old recovered-print registration retired for this id; ledger row FALSE-0 (works echo vs bare tejas hull, see §5.34); echo deletion = next abrams touch) |
+| m2a2_bradley | 90a5568c | GRADUATED 2026-08-08 (28th; dual gate: geometry 90.9 x2 every component >=90 landed 81bdad1 + visual floor 9.0 / mean 9.16 x14 views at freeze-verified bytes; oracle e699c868; dress-tier defect bank in the verdict: bow T-hooks, taillight fittings, TOW rear ports, lug stacks, ringed hubs) |
 | m26_pershing | 2f006738 | RE-RECORDED 2026-08-08: hash moved by LANDED 5f39989 (armorM4 gunBarrel shadow-proxy 3.96->3.44; m26/m45 inherit m4a3e8 proxies — patton.js bytes unchanged); double-confirmed by builder bisect + m45-grad critic; prior 65c564c0 bore+winding re-cert lineage (floors 9.1-9.4) carries |
 | t90m | e345ee8a | GRADUATED 2026-08-06 (27th; floor 9.0 x14 second sitting; the owner's dedicated-agent arc 81.7 -> dual gate) |
 
@@ -1884,3 +1885,13 @@ the delisted 5th playable, standing ask). Shots shots/print531b/
 public 22/53/27/22 — the era groups carry the flipped customs. Tool
 note: the shots rig now freezes HMR (a mid-capture vite reload from a
 sibling lane killed run 1 — live-tree hazard, tmp-tool-only fix).
+
+## 5.54 BRADLEY GRADUATED — 28th (2026-08-08): visual half PASS floor
+9.0 / mean 9.16 x14 at freeze-verified 90a5568c (critic battery:
+trough-run, KOREA-cohabitation audited clean — buildBradley outside
+every WIP hunk, hash EXACT through it; rig parity yawProxy <=2.1
+except rear 8 under the abort gate; both enclosed-void flags
+adjudicated benign in pixels). Dual gate complete (geometry landed
+81bdad1). Dress-tier bank (7 items, none <9.0) recorded in §3. The
+critic's m2a2_bradley override row in tmp-tank-critic.html already
+landed via §5.50 (attributed).
