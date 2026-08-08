@@ -297,6 +297,80 @@ width ±1.85 there. Four pieces per side inside buildLeo2Proto:
   track-air class, right twin already read 20 before), y0-rear-low
   8->26 (two 9 px annulus pinholes at ±1.72 — the <=3.5 cm class).
 
+## 2026-08-08 §SRCFIX ROUND (leopard builder) — OWNER: "fix the leopard
+## prototype and leopard 2a4, they dont match their source material at all"
+§B7 photo-class round; the owner rejected both tanks in the garage. Root
+reads from the before-evidence (shots/leo-sourcefix/before/): the tank
+presented as a SKIRTED FORTRESS — full-length skirt curtain + ambient-black
+gear = a Centurion-class hulk, plus a huge anachronistic RCWS tower. The
+certified print AGREES with the real 1972-74 trials configuration on the
+hull (plan full-width is FENDER-carried, "tracks: bottom 0"), so most of
+this round is print-corroborated, not print-fighting.
+
+### GAP TABLE (photo class = PT walkarounds/panzerplace + brief targets)
+| # | Photo read (real PT) | Baseline (was) | Fix (now) |
+|---|---|---|---|
+| 1 | UNSKIRTED early hull: 7 road wheels + return rollers + upper run exposed | full-length skirt curtain 0.46..1.36 at ±1.85; gear ambient-black | skirts OPTED OUT (leoHullV3 guard, byte-identical for all callers); fenders widened to the ±1.85 §D anchor (the print's own config), z -3.84..2.92 |
+| 2 | 4 return rollers/side visible | hidden behind skirts, default embed | explicit rollers z {2.28, 0.60, -1.08, -2.72}, y 0.775 r 0.11 — tops kiss the band underside |
+| 3 | shallow sponson-level side strip above the wheels | (was the full curtain) | 0.45 m side band y 0.91..1.36 at ±1.85 — the print's OWN extreme-column band (ref 0.91..1.33) + the walkaround plate; wheels/rollers stay exposed |
+| 4 | LOW WIDE turret, Leopard-1-like contour | low but narrow (2.24 walls), lost on the hull | plan widened ±1.12 -> ±1.18, bustle -1.60 -> -1.85; height held (roof 2.37w — family low-flat law) |
+| 5 | stereo rangefinder ends in ARMORED BLOCKS (panzerplace verbatim) | bare dome blisters | block housings under the domes + collar rings, §B1.1 symmetric |
+| 6 | spaced side stowage BINS on the walls | bare walls | two bins/side (§B3 grammar: lid seams + latches), rails re-seated on bin faces, crosses pinned on bin flanks (§5.04) |
+| 7 | big rounded cast mantlet filling the front | 0.56 w dome in an oversized slot ("pin head") | slot bay 0.88/±0.448 + cast dome widened to 0.82 w + trunnion roll 0.70 |
+| 8 | slim Rh 105 smoothbore, modest mid evacuator | evac bulge 1.8x tube (20-pdr/Centurion read) | evacR 1.45 |
+| 9 | NO RCWS on a 1972-74 trials vehicle | §5.09-5 FLW200 + 2.78 w optic tower | REMOVED (newer owner order supersedes §5.09-5 for this id; restoration = one commented call). The REAL roof detail stands in: the walkaround's circular OWS opening "closed off with a plate" — blanked bolt-ring plate aft of the hatches |
+| 10 | clean glacis (no V splash board) | type90-donor V board | deleted; Notek + low round lamps kept (early tells) |
+| 11 | under-nose recedes to the belly (no barn door) | open tunnel under the tub read as a flat wall over void | §5.18-class closure: receding lower front plate + belly run at 0.555, inter-track ±1.00 |
+
+### §5.35a corridor closure status (constraint: do not remove)
+RAIL KEPT both sides (main rail + raked front run + hanger seam) — with
+the skirts retired it reads as what its mechanism was named for: the
+sponson underside / empty skirt-mounting rail the trials photos show. The
+skirt-line JOINT FILLER retired WITH its host skirts (it would float).
+Corridor guarantees re-proven post-change: y0-top islands 78 px (<100
+target; §5.35a closed at 83), sweep worst 361px @ y0-side-r = open-gear
+track-air class (§B2-legit, fleet-normal band), adjudicator hole-count 3
+(several graduates carry 6).
+
+### Close battery (2026-08-08, §SRCFIX round; HEAD fdf0320 live-tree)
+- geometry-gate x2 IDENTICAL: `0 | hull 48.7 whole 0 turret 0 stations 0
+  dims 100 floaters 100` — HOLD-OR-IMPROVE ✓ hull 46.8 -> 48.7 (+1.9,
+  driver front_hull 46.83 -> 48.66; side_hull 60.71 -> 63.23). plan_hull
+  87.71 -> 86.83 (-0.9: fender-carried plan vs skirt-carried — segment
+  gaps + the -3.84 tail; the hull COLUMN improved, documented honestly).
+  dims 100 HOLDS: widthM +0.03% (fender/band at the ±1.85 anchor EXACT),
+  heightM +0.51%, hullLengthM +0.81%, overallLengthM +0.21%. Capped rows
+  (whole/turret/stations ~0 BY CERTIFICATE — melted turretless tub) hold;
+  NO RUNG TO 90 exists on this oracle (unchanged §5.35a finding).
+- WORK-ORDER-DRIVEN RECOVERY (law-bank candidate): the unskirt first cut
+  read hull 42.8 — the gate JSON's front_hull worst-columns decoded the
+  print's OWN shallow side band at ±1.85 (ref 0.91..1.33), which the real
+  vehicle also carries; building THAT band recovered +5.9 while keeping
+  the exposed gear. Measure -> read the work order -> build the real
+  piece the print asks for (§K).
+- track-clip --exact 0/0 band 0/0 shoe; turret-parent 0/0/0;
+  standard-check contig 0 ✓ decor mg1+3d ✓; winding m1 rev0/mix0
+  deficit 0 + m2 clean; npm test 166 + track-geometry PASS.
+- Hash: afb3cc3c -> 4f6360fe x2 deterministic (61 meshes / 85691 verts —
+  moves by design; no freeze). Graduates byte-held through EVERY batch
+  (x4 sweeps): leo2a5 e215a738 / leo2a6 09912270 / kf51 9ac547ac /
+  leo2_revolution db70c929.
+- Evidence: shots/leo-sourcefix/{before,after}/proto* (14-view + yaw-90
+  §B5 pair + 6-angle garage sets — the owner's judging view), crop-side
+  gear read, family strip. LIVE-TREE note: measured with foreign-lane WIP
+  present (misc/russia/tankFactory dirty by other agents); graduate
+  hashes constant x4 = the internal-consistency proof.
+
+### 14-view SELF-READS (§B8 builder estimates, NOT an acceptance bar —
+### independent critic adjudication pending)
+front 8.6 / frontleft 8.7 / left 8.7 / rearleft 8.5 / rear 8.4 /
+rearright 8.5 / right 8.7 / frontright 8.7 / top 8.6 / hero-fl 8.7 /
+hero-rr 8.5 / hero-toptilt 8.6 / close-front 8.4 / close-roof 8.5.
+Weakest named: rear (bustle basket + rear wall read plain vs trials
+photos — candidate: rear rack straps/convoy plate); close-front (cast
+mantlet renders smooth — casting-texture pass candidate); roller discs
+read subtle at distance (real: they are small; acceptable).
+
 ### Close battery (2026-08-08, HEAD bd3369c)
 - geometry-gate x2 BIT-IDENTICAL (full-json diff proof):
   `0 | hull 46.8 whole 0 turret 0 stations 0 dims 100 floaters 100`

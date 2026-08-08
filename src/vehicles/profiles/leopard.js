@@ -838,7 +838,13 @@ function leoHullV3(P, H) {
   // (the committed width guard: nothing on the vehicle stands wider).
   // Optional measured outer LIP course (FS.lip): the refs' widest face is a
   // narrower vertical band than the main block (front view 0.98-1.24 on a6).
+  // §SRCFIX-0808 OPT-OUT (source-material round): frontSkirt/rearSkirt may be
+  // omitted — the 1972-74 proto ran UNSKIRTED (its certified print's plan
+  // full-width is FENDER-carried, tracks read from bottom 0) and the a4
+  // builds its real two-band skirts bespoke. Every existing caller passes
+  // both params — guard alone is byte-identical (hash-proven x6).
   const FS = H.frontSkirt;
+  if (FS) {
   const fsTh = FS.th ?? 0.10;
   const fsX = FS.lip ? FS.lip.x - 0.04 : FS.x;
   segRun('hull', fsX, fsTh, FS.y0, FS.y1, FS.z0, FS.z1);
@@ -848,9 +854,10 @@ function leoHullV3(P, H) {
       P.add('hull', box(fsTh, 0.12, FS.z1 - FS.z0 - 0.06), s * (fsX - fsTh / 2 - 0.005), FS.y0 - 0.02, (FS.z0 + FS.z1) / 2, 0, 0, -s * 0.22);
     }
   }
+  }
   // thinner rear skirt run, inset under the fender lip
   const RS = H.rearSkirt;
-  segRun('hull', RS.x, RS.th ?? 0.045, RS.y0, RS.y1, RS.z0, RS.z1);
+  if (RS) segRun('hull', RS.x, RS.th ?? 0.045, RS.y0, RS.y1, RS.z0, RS.z1);
   leoGear(P, {
     xc: H.xc, trackW: H.trackW, wheelR: H.wheelR, wheelY: H.wheelY,
     span: H.span, sprocket: H.sprocket, idler: H.idler, topY: H.topY,
@@ -4381,20 +4388,13 @@ function buildLeo2A4(P) {
     // fender runs to 2.92 (photo class — the real plank ends just short of
     // the idler ramp; pad top on the flat run is 1.10 there, 0.44 clear).
     fender: { x0: 1.622, x1: 1.737, y0: 1.61, y1: 1.675, z0: -3.66, z1: 2.92 },
-    // A4 skirts: heavy sculpted blocks fore at ±1.85 EXACT (width guard),
-    // plain flat run aft. §B8 REWORK (photo-acceptance order 1, 2026-08-06:
-    // "skirt bottom at hub line; 7 wheels' lower halves visible"): bottoms
-    // 0.78/0.80 -> 0.40/0.42 — the real 2A4 skirt hangs to mid-wheel (hub
-    // line y 0.395) and the wheels' LOWER HALVES read below it (§B8.1
-    // exposure ~49%; the old above-crown skirts left the whole wheel zone
-    // an unreadable dark band). x-clearances unchanged (skirt inner 1.75
-    // vs track outer 1.6875 — §B4-safe at any y).
-    // Stepped lower line (photo class): the heavy fore blocks hang to 0.38
-    // — visibly DEEPER than the 0.44 aft run (the "heavy fore-block
-    // emphasis" of order 1; proud-face relief is width-guard-forbidden at
-    // the ±1.85 anchor, so the emphasis is the real vehicle's own step).
-    frontSkirt: { x: 1.85, z0: 1.60, z1: 3.64, y0: 0.38, y1: 1.36, th: 0.10 },
-    rearSkirt: { x: 1.80, z0: -3.60, z1: 1.55, y0: 0.44, y1: 1.36, th: 0.045 },
+    // §SRCFIX-0808: helper skirts OPTED OUT — the segRun curtain read as a
+    // uniform plank fence in the owner's garage view. The real 2A4 skirt is
+    // built BESPOKE below: heavy fore armor blocks at ±1.85 EXACT (the §D
+    // width anchor holds) with the real CHAMFERED leading edge, then a
+    // paneled aft run with the proud upper mounting band over a recessed
+    // lower band (the two-band photo read). Same y0/y1/x lines as the
+    // certified §B8 rework — silhouette class unchanged, §B4 x-clear same.
     wheelR: 0.37, wheelY: 0.395, span: [2.70, -2.34],
     idler: { z: 3.48, y: 1.11, r: 0.25 }, sprocket: { z: -3.19, y: 1.09, r: 0.295 },
     topY: 0.97, fans: { z: -2.55, x: 0.78, r: 0.38 },
@@ -4407,11 +4407,60 @@ function buildLeo2A4(P) {
     // hooked so it shades instead of dropping to pitch black. The seven
     // lower wheel halves render as readable tire-ringed discs below the
     // hub-line skirts.
-    gearFloor: true, tireHex: 0x24261f,
+    gearFloor: true, tireHex: 0x2b2d24,
   });
-  // flush splash deflector boards (a5 r3 recipe — the kit arms read as bare
-  // grey slabs; scheme-camo boards on the same footprint).
-  for (const s of [-1, 1]) P.add('hullDetail', box(0.85, 0.018, 0.05), s * 0.44, 1.505, 2.82, 0.41, s * 0.42, 0);
+  // §SRCFIX-0808 BESPOKE A4 SKIRTS (photo class, Bundeswehr mid-production).
+  // FORE z 1.60..3.64: three heavy armor blocks, outer face ±1.85 EXACT
+  // (the §D width anchor holds), hanging to 0.38, leading piece CHAMFERED
+  // (the 2A4's diagonal lower cut rising toward the idler — the identity
+  // read the segRun curtain could not carry). AFT z -3.60..1.55: six flat
+  // panels — proud upper mounting band (face 1.80) over a 13 mm recessed
+  // lower band with a horizontal joint shadow at 0.84 (the real two-band
+  // panel read), dark vertical joints. Same y0/y1/x lines as the certified
+  // §B8 rework (bottoms 0.38/0.44 hub-line class, §B4 x-clear unchanged).
+  // Bottom lines RAISED vs the §B8 hub-line cut (0.38/0.44 -> 0.46/0.52):
+  // calibrated against the owner-ACCEPTED a5 graduate read — at the hub line
+  // only sub-hub slivers showed and the garage counted zero wheels; at 0.52
+  // the lower wheel arcs + pale hubs read like the real 2A4 photo class
+  // (skirt covers the upper ~third of the wheel; §B8.1 exposure 67%/59%,
+  // inside the real 40-70% family band).
+  for (const s of [-1, 1]) {
+    for (const [za, zb] of [[1.60, 2.28], [2.30, 2.96]]) {
+      P.add('hull', box(0.10, 0.90, zb - za - 0.012), s * 1.80, 0.91, (za + zb) / 2);
+    }
+    P.add('hull', box(0.10, 0.90, 0.30), s * 1.80, 0.91, 3.13);                // third block, rect part (z 2.98..3.28)
+    P.add('hull', slab(                                                        // chamfered leader: bottom rises 0.46 -> 0.86 at the idler
+      [s * 1.75, 0.46, 3.28], [s * 1.85, 0.46, 3.28], [s * 1.85, 0.86, 3.64], [s * 1.75, 0.86, 3.64],
+      [s * 1.75, 1.36, 3.28], [s * 1.85, 1.36, 3.28], [s * 1.85, 1.36, 3.64], [s * 1.75, 1.36, 3.64]));
+    for (const zj of [2.29, 2.97]) {
+      P.add('hullDark', box(0.102, 0.78, 0.016), s * 1.80, 0.91, zj);          // fore block joints
+    }
+    const z0 = -3.60, z1 = 1.55, n = 6, L = (z1 - z0) / n;
+    for (let k = 0; k < n; k++) {
+      const zc = z0 + L * (k + 0.5);
+      P.add('hull', box(0.045, 0.54, L - 0.014), s * 1.7775, 1.09, zc);        // upper band y 0.82..1.36, face 1.80
+      P.add('hull', box(0.028, 0.34, L - 0.014), s * 1.773, 0.69, zc);         // lower band y 0.52..0.86, face 1.787 (recessed)
+    }
+    for (let k = 1; k < n; k++) {
+      P.add('hullDark', box(0.047, 0.50, 0.015), s * 1.7775, 1.09, z0 + L * k);
+      P.add('hullDark', box(0.030, 0.30, 0.015), s * 1.773, 0.69, z0 + L * k);
+    }
+    P.add('hullDark', box(0.047, 0.022, z1 - z0 - 0.02), s * 1.7775, 0.845, (z0 + z1) / 2); // horizontal band joint
+  }
+  // §SRCFIX-0808 UNDER-NOSE BELLY CLOSURE (the §5.18 AFV under-glacis
+  // procedure, owner: "eventually do this procedure for other tanks too"):
+  // the front sightline below the 0.62 belt foot ran an OPEN TUNNEL under
+  // the tub (fill face 3.36 + tub front 2.37 + sky between) — the garage
+  // read a flat barn-door band over a void. Real geometry: the lower front
+  // plate RECEDES from the belt foot to the belly line, then the belly
+  // runs flat to the tub front. Inter-track (±1.00 < the 1.02 §B4 lane).
+  P.add('hull', slab(
+    [-1.00, 0.555, 3.02], [1.00, 0.555, 3.02], [1.00, 0.615, 3.44], [-1.00, 0.615, 3.44],
+    [-1.00, 0.605, 3.04], [1.00, 0.605, 3.04], [1.00, 0.665, 3.46], [-1.00, 0.665, 3.46]));
+  P.add('hull', box(2.00, 0.05, 0.72), 0, 0.58, 2.70);                         // belly run to the tub front (z 2.34..3.06)
+  // §SRCFIX-0808: deflector boards REMOVED — the real Leopard 2 glacis is a
+  // CLEAN plate (the a5-recipe boards + the type90 V board read as floating
+  // pale sticks in the owner's garage view and match no 2A4 photo).
   // §B8 BOW (order 2b): the beak underside plane rendered BRIGHTER than
   // the glacis (measured 69-82 vs 53-63 — the flat-lit ambient makes the
   // down-facing plate read as a vertical WALL between the tracks: the
@@ -4449,20 +4498,22 @@ function buildLeo2A4(P) {
     P.hullG.add(st);
   }
   // rubber lower lip under the aft skirt run (the A4's wavy rubber edge),
-  // segmented per the station law. §B8 REWORK: rides the dropped run —
-  // bottoms 0.39 sit ON the hub line (0.395) so the lip reads as the real
-  // skirt edge kissing the wheel centers.
+  // segmented per the station law. §SRCFIX-0808: rides the raised 0.52 run
+  // (top 2 cm behind the band bottom — no slit); the wheels read below it.
   for (const s of [-1, 1]) {
     for (let k = 0; k < 6; k++) {
-      P.add('hullRubber', box(0.03, 0.05, 0.80), s * 1.79, 0.415, -3.45 + 0.858 * k + 0.42);
+      P.add('hullRubber', box(0.03, 0.05, 0.80), s * 1.79, 0.515, -3.45 + 0.858 * k + 0.42);
     }
   }
   // §B8 wheel-read (order 1b): seven pale hub discs per side on the road-
   // wheel outer faces (the revolution P-1 material-only recipe) — 2 mm
-  // proud at x ±1.486 (wheel face 1.4843), r 0.10 inside the wheel circle
-  // and inside the skirt plane: zero silhouette in every row; below the
-  // 0.40 skirt bottom they read as the real 2A4's pale hub caps, making
-  // the seven wheels COUNTABLE in the left view (§B8.1 gate 1).
+  // proud at x ±1.486 (wheel face 1.4843), inside the wheel circle and
+  // inside the skirt plane: zero silhouette in every row; below the 0.40
+  // skirt bottom they read as the real 2A4's pale hub caps, making the
+  // seven wheels COUNTABLE in the left view (§B8.1 gate 1).
+  // §SRCFIX-0808: r 0.10 -> 0.125 — at 0.10 the disc's visible half sat in
+  // the skirt's ambient shadow and the owner's garage view counted ZERO
+  // wheels; the bigger cap drops more pale area under the 0.44 band line.
   {
     const hubPale = P.mats.shadow.clone();
     hubPale.color.setHex(0x767963);
@@ -4473,7 +4524,7 @@ function buildLeo2A4(P) {
     P.disposables.push(hubPale);
     for (const s of [-1, 1]) {
       for (const hz of [2.70, 1.86, 1.02, 0.18, -0.66, -1.50, -2.34]) {
-        const hm = new THREE.Mesh(KIT.xform(KIT.cylX(0.10, 0.004, P.q ? 16 : 12), s * 1.486, 0.395, hz), hubPale);
+        const hm = new THREE.Mesh(KIT.xform(KIT.cylX(0.125, 0.004, P.q ? 16 : 12), s * 1.486, 0.395, hz), hubPale);
         hm.receiveShadow = true;
         P.hullG.add(hm);
         P.disposables.push(hm.geometry);
@@ -4512,17 +4563,14 @@ function buildLeo2A4(P) {
   // the fleet mid-grey (the revolution r9 B1 precedent — per-build
   // material instance, zero shared-tank impact).
   P.mats.rubber.color.setHex(0x33352b);
-  // §5.16 FAMILY HULL GRAMMAR (type90 donor tells on the leopard hull):
-  // V SPLASH BOARD riding the upper glacis (the donor's proud V strip —
-  // the real Leopard 2 carries the same board; arms lean back on the
-  // plate, +rx per the glacis-furniture sign law).
-  for (const s of [-1, 1]) P.add('hull', box(0.44, 0.10, 0.045), s * 0.38, 1.565, 2.70, 0.30, s * 0.40, 0);
-  P.add('hull', box(0.13, 0.10, 0.045), 0, 1.578, 2.775, 0.30, 0, 0);
-  // cross-country (Notek) light on the glacis left — hooded lamp + slit
+  // §SRCFIX-0808: the §5.16 "family V splash board" is DELETED — the real
+  // Leopard 2 glacis carries NO splash deflector (the board was a type90
+  // donor tell that landed on the wrong nation's hull; the packet's "the
+  // real Leopard 2 carries the same board" claim does not survive the
+  // photo class). Notek convoy light IS real Bundeswehr fit — kept.
   P.add('hullDetail', box(0.10, 0.052, 0.08), -0.70, 1.617, 2.545, 0.40, 0, 0);
   P.add('hullDark', box(0.084, 0.012, 0.014), -0.70, 1.612, 2.586, 0.40, 0, 0);
-  // stepped-deck course seams (the donor's clean deck-course read; thin
-  // tone lines ON the deck planes, mask-interior)
+  // stepped-deck course seams (real deck-course panel joints, mask-interior)
   P.add('hullDark', box(2.00, 0.005, 0.022), 0, 1.703, -1.00);
   P.add('hullDark', box(2.00, 0.005, 0.022), 0, 1.713, -2.40);
   P.decal('hull', 'number', '414', 0.26, [0.62, 1.22, -3.79], Math.PI, 0);
@@ -4540,22 +4588,28 @@ function buildLeo2A4(P) {
   // 2A4's RISING bottom line (fore walls 1.695w, bustle floats 1.74w over
   // the 1.71 aft deck — yaw-honest, the certified margin class).
   P.turretG.position.set(0, 1.72, -0.15);
+  // §SRCFIX-0808 (owner: "doesn't match source material"): the §5.16 rebase
+  // had swept the cheeks 45° to the shoulders — a pointed type90/dart plan.
+  // The REAL 2A4 turret is a BLUNT BRICK from above: wide near-transverse
+  // front face (~2/3 of turret width), SHORT ~40° corner chamfers, parallel
+  // sides. Family law keeps proportions (low flat roof 2.48, same footprint
+  // extremes); the plan grammar follows the tank's own photo class.
   const A4_PLAN = [
-    [-0.40, 1.10], [0.40, 1.10], [1.20, 0.30], [1.155, -0.75], [1.10, -1.75],
-    [-1.10, -1.75], [-1.155, -0.75], [-1.20, 0.30],
+    [-0.88, 1.10], [0.88, 1.10], [1.20, 0.70], [1.155, -0.75], [1.10, -1.75],
+    [-1.10, -1.75], [-1.155, -0.75], [-1.20, 0.70],
   ];
   P.add('turret', KIT.polyTurret(A4_PLAN, 0.74, 1.0, 1.0), 0, 0.02, 0);        // main band (walls 1.74..2.48w, closed fan roof 0.76)
   P.add('turret', KIT.polyTurret([                                             // fore lower band: cheeks meet the hull roof line (1.695w)
-    [-0.40, 1.10], [0.40, 1.10], [1.20, 0.30], [1.20, 0.22], [-1.20, 0.22],
+    [-0.88, 1.10], [0.88, 1.10], [1.20, 0.70], [1.20, 0.22], [-1.20, 0.22],
   ], 0.125, 1.0, 1.0), 0, -0.025, 0);
-  // weld seam engraving down each cheek/side knuckle (on the face planes;
+  // weld seam engraving down each face/chamfer knuckle (on the face planes;
   // mirrored with the corner-swap law — orientedSlab re-guards winding)
   P.add('turretDark', slab(
-    [1.185, 0.00, 0.316], [1.213, 0.00, 0.288], [1.213, 0.00, 0.272], [1.185, 0.00, 0.30],
-    [1.185, 0.72, 0.316], [1.213, 0.72, 0.288], [1.213, 0.72, 0.272], [1.185, 0.72, 0.30]));
+    [0.858, 0.02, 1.104], [0.900, 0.02, 1.082], [0.900, 0.02, 1.066], [0.858, 0.02, 1.088],
+    [0.858, 0.66, 1.104], [0.900, 0.66, 1.082], [0.900, 0.66, 1.066], [0.858, 0.66, 1.088]));
   P.add('turretDark', slab(
-    [-1.213, 0.00, 0.288], [-1.185, 0.00, 0.316], [-1.185, 0.00, 0.30], [-1.213, 0.00, 0.272],
-    [-1.213, 0.72, 0.288], [-1.185, 0.72, 0.316], [-1.185, 0.72, 0.30], [-1.213, 0.72, 0.272]));
+    [-0.900, 0.02, 1.082], [-0.858, 0.02, 1.104], [-0.858, 0.02, 1.088], [-0.900, 0.02, 1.066],
+    [-0.900, 0.66, 1.082], [-0.858, 0.66, 1.104], [-0.858, 0.66, 1.088], [-0.900, 0.66, 1.066]));
   // type90-family hatch-zone plates (raised course under the hatch rings —
   // the donor's hatch-zone read; tops 2.50w, inside the roof footprint)
   P.add('turret', box(0.62, 0.022, 0.62), 0.60, 0.771, -0.75);
@@ -4570,15 +4624,19 @@ function buildLeo2A4(P) {
   // turret ring plinth: closes the deck<->turret slit from every side
   // sight-line (§B2) and yaws with the mass.
   P.add('turret', cylY(1.00, 1.04, 0.09, P.q ? 26 : 16), 0, -0.02, -0.35);
-  // EMES-15 gunner sight hood at the RIGHT cheek roof (the A4 tell): hood
-  // walls + roof over a dark aperture + glass RECESSED inside the hood
-  // mouth (§B3 sight grammar — hood + lens; a first cut floated the glass
-  // 3 cm proud of the hood front and it read as a bright billboard).
-  P.add('turret', box(0.52, 0.13, 0.42), 0.62, 0.825, 0.63);                   // hood body (z 0.42..0.84, top 0.89)
-  P.add('turretDetail', box(0.56, 0.028, 0.46), 0.62, 0.904, 0.62);            // lid plate (top 2.638w)
-  P.add('turretDark', box(0.44, 0.115, 0.028), 0.62, 0.822, 0.806);            // aperture back panel (inside the mouth)
-  P.add('turretGlass', box(0.26, 0.06, 0.012), 0.62, 0.818, 0.824);            // sight glass (recessed 16 mm)
-  P.add('turretDark', box(0.56, 0.02, 0.44), 0.62, 0.768, 0.63);               // roof cutout shadow ring
+  // EMES-15 gunner sight hood at the RIGHT FRONT CORNER (the A4 tell).
+  // §SRCFIX-0808: the hood had floated mid-roof (z 0.42..0.84) — on the real
+  // 2A4 the doghouse rides the roof front edge, its aperture face reading in
+  // line with the right cheek top (the "sight aperture on the RIGHT turret
+  // face" photo read). Hood front 1.06 = 4 cm behind the 1.10 cheek tips;
+  // aperture = dark mouth + divider + twin windows RECESSED in the mouth.
+  P.add('turret', box(0.52, 0.13, 0.42), 0.62, 0.825, 0.85);                   // hood body (z 0.64..1.06, top 0.89)
+  P.add('turretDetail', box(0.56, 0.028, 0.46), 0.62, 0.904, 0.84);            // lid plate (top 2.638w)
+  P.add('turretDark', box(0.44, 0.115, 0.028), 0.62, 0.822, 1.026);            // aperture back panel (inside the mouth)
+  P.add('turretGlass', box(0.20, 0.06, 0.012), 0.55, 0.818, 1.044);            // main sight window (recessed 16 mm)
+  P.add('turretGlass', box(0.09, 0.055, 0.012), 0.76, 0.818, 1.044);           // laser/secondary window
+  P.add('turretDetail', box(0.03, 0.115, 0.022), 0.665, 0.822, 1.045);         // aperture divider bar
+  P.add('turretDark', box(0.56, 0.02, 0.44), 0.62, 0.768, 0.85);               // roof cutout shadow ring
   // PERI R17 panoramic periscope (commander, fwd-right of the hatch) — the
   // tallest fixed point (top 2.79w = the published-height spike budget).
   P.add('turretDetail', cylY(0.055, 0.065, 0.22, 12), 0.36, 0.87, -0.32);
@@ -4604,13 +4662,14 @@ function buildLeo2A4(P) {
     P.turretG.add(mg);
   }
   // crosswind sensor mast (rear-left roof) + twin whip antennas at the
-  // bustle corners. §5.16 family rebase: the whips take the type90 donor's
-  // RAKED-AFT read (FITTINGS.antennaWhip, rx aft) — the shared family
-  // identity cue; no oracle on this id so the taller sweep is legal.
+  // bustle corners. §SRCFIX-0808: the type90-donor RAKED-AFT sweep was an
+  // identity-foreign cue on this mark — real Bundeswehr 2A4s carry two thin
+  // NEAR-VERTICAL rod whips at the bustle corners (slight aft cant only).
+  // Family grammar stays in the proportions, not borrowed fittings.
   P.add('turretDetail', cylY(0.012, 0.016, 0.24, 8), -0.85, 0.885, -1.50);
   P.add('turretDark', box(0.04, 0.04, 0.11), -0.85, 1.015, -1.50);
   for (const s of [-1, 1]) {
-    const whip = FITTINGS.antennaWhip({ mats: P.mats, h: 0.46, r: 0.014, seed: 6 + s, rotation: [-0.72, 0, s * 0.05] });
+    const whip = FITTINGS.antennaWhip({ mats: P.mats, h: 0.46, r: 0.014, seed: 6 + s, rotation: [-0.20, 0, s * 0.05] });
     whip.position.set(s * 1.00, 0.78, -1.60);
     P.turretG.add(whip);
   }
@@ -4681,11 +4740,12 @@ function buildLeo2A4(P) {
   }
   P.decal('turret', 'crossgrey', null, 0.32, [1.172, 0.40, -0.44], Math.PI / 2, 0, 0.042);
   P.decal('turret', 'crossgrey', null, 0.32, [-1.172, 0.40, -0.44], -Math.PI / 2, 0, -0.042);
-  // ---- HUGE FLW 200 RCWS (owner order §5.09-5): center roof behind the
-  // hatch line, FORWARD rest (§5.07), full station anatomy + flank shields.
-  // No oracle on this id — the station rides high (gun origin 0.90 local =
-  // receiver band ~2.75-2.95w, the real FLW-on-2A4 ~0.6 m over the roof).
-  leoFLW200(P, { x: 0.05, y: 0.76, z: -1.12, s: 1.15, gunY: 0.90, shields: true, seed: 13 });
+  // §SRCFIX-0808: the §5.09-5 FLW 200 RCWS is REMOVED from this id — the
+  // 2026-08-08 owner order ("fix the leopard 2a4, it doesn't match its
+  // source material at all") governs: no Bundeswehr 2A4 carries an RCWS;
+  // the roof reads low cupolas + PERI + MG3 only. Restoration if the owner
+  // still wants stations on the historicals is this one call:
+  // leoFLW200(P, { x: 0.05, y: 0.76, z: -1.12, s: 1.15, gunY: 0.90, shields: true, seed: 13 });
   // ---- Rh 120 L/44 (§B3.1: tube cylinder + thermal sleeve segments with
   // clamp rings + mid-tube bore evacuator + MRS collar; plate mantlet on a
   // trunnion roll — never a prism). Trunnion world (0, 2.00, 0.87); muzzle
@@ -4941,21 +5001,39 @@ function buildLeo2Proto(P) {
     // production a4 pods ride higher on the glacis)
     headlightY: 1.32, headlightZ: 3.62, headlightX: 0.86,
     rear: { wallZ: -3.78, lipZ: -3.86, yTop: 1.71, yBot: 0.75 },
-    fender: { x0: 1.622, x1: 1.737, y0: 1.61, y1: 1.675, z0: -3.66, z1: 2.92 },
-    // prototype-era skirts: ONE plain flat full-length line at the ±1.85
-    // width anchor (print plan reads full width ±1.85; §D anchor held by
-    // the skirt faces), NO sculpted fore blocks (§H.4 tell vs the a4), no
-    // canted flap — plain early edge. Bottom 0.46 = hub-line class
-    // (§B8.1 wheel exposure (0.46-0.025)/0.74 = 59%, in the real 40-70%).
-    frontSkirt: { x: 1.85, z0: 1.60, z1: 3.64, y0: 0.46, y1: 1.36, th: 0.045, flap: false },
-    rearSkirt: { x: 1.85, z0: -3.60, z1: 1.55, y0: 0.46, y1: 1.36, th: 0.045 },
+    // §SRCFIX-0808 EARLY UNSKIRTED HULL (owner: "doesn't match source
+    // material"; §B7 photo class AND the certified print AGREE): the
+    // 1972-74 trials vehicles ran WITHOUT side skirts — exposed 7 road
+    // wheels, 4 return rollers, upper track run under the sponson. The
+    // print's own probe reads it: plan full width ±1.85 is FENDER-carried
+    // ("fenders full width") and the side shows "tracks: bottom 0". The
+    // old full-length skirt curtain (§H.4 "plain slab skirts") chased the
+    // WRONG read — it was never in the print and buried the running gear
+    // (the owner's fortress-hull garage read). skirts: OPTED OUT; the §D
+    // 3.70 width anchor moves to the FULL-WIDTH fenders at ±1.85 EXACT
+    // (x1 1.737 -> 1.85, the print's own configuration).
+    fender: { x0: 1.622, x1: 1.85, y0: 1.61, y1: 1.675, z0: -3.84, z1: 2.92 },
     wheelR: 0.37, wheelY: 0.395, span: [2.70, -2.34],
     idler: { z: 3.48, y: 1.11, r: 0.25 }, sprocket: { z: -3.19, y: 1.09, r: 0.295 },
+    // return rollers seated for the EXPOSED read (§B6): tops kiss the band
+    // underside (0.88) instead of the hidden default's 4.5 cm embed; real
+    // Leopard 2 stations — three between-wheel + one ahead of the sprocket.
+    rollers: [{ z: 2.28, y: 0.775, r: 0.11 }, { z: 0.60, y: 0.775, r: 0.11 },
+      { z: -1.08, y: 0.775, r: 0.11 }, { z: -2.72, y: 0.775, r: 0.11 }],
     topY: 0.97, fans: { z: -2.55, x: 0.78, r: 0.38 },
     dishR: 0.78, fanWell: true, splashArms: false,
     // §B8 wheel-read (a4 lineage): hooked gear floor + dark hooked tire
     gearFloor: true, tireHex: 0x24261f,
   });
+  // §SRCFIX-0808 GEAR-BAY BACK WALLS: with the skirts gone the sponson bay
+  // (band top 0.97 .. sponson floor 1.32) opened a side sightline onto the
+  // far tub wall's lit camo — a hollow read. Near-black AO walls at the tub
+  // faces close the bay the way the real shadowed sponson underside reads
+  // (the buildRunningGear bayShadow mechanism, seated per-tank). Fully
+  // inside the silhouette: |x| 1.01 < track inner face 1.0525.
+  for (const s of [-1, 1]) {
+    P.add('hullShadow', box(0.02, 0.78, 6.90), s * 1.01, 0.93, -0.25);
+  }
   // §B8 wheel-read: seven pale hub discs per side (the a4/revolution P-1
   // recipe — countable wheels under the hub-line skirts).
   {
@@ -4989,17 +5067,15 @@ function buildLeo2Proto(P) {
     P.add('hullDetail', box(0.07, 0.06, 0.20), s * 1.53, 1.60, -3.72);
     P.add('hullDetail', box(0.30, 0.035, 0.05), s * 1.53, 1.585, -3.795);
   }
-  // §5.35 TOP-CORRIDOR CLOSURE (owner §5.33 "see-through sides"; sweep
-  // islands 2498+2494px @ y0-top): the 6.8 cm hull-to-skirt air corridor
-  // (fender outer 1.737 -> skirt inner 1.805) read top-down sky the whole
-  // rear-skirt run and edge-on sky from the front. Mechanism: SPONSON
-  // UNDERSIDE / skirt-hanger RAIL — the real vehicle's sponson side runs
-  // near-flush with the skirt plane and the skirts hang FROM it (the print
-  // plan reads SOLID full width ±1.85). Every face rides INSIDE certified
-  // lines (skirt 1.85 §D anchor, fender 1.675 top, glacis side line) —
-  // §5.16 family silhouette untouched; proto-local, no leoHullV3 edits.
-  // Band annulus: rail inner 1.7075 keeps 2.0 cm off the band outer face
-  // 1.6875 (§B4 corridor-annulus <=3.5 cm = closed read, shoes 1.678 clear).
+  // §5.35a SPONSON RAIL (landed corridor closure — KEPT per the §SRCFIX
+  // brief). Originally it roofed the 6.8 cm fender-to-skirt air corridor;
+  // with the skirts retired (§SRCFIX-0808 unskirted early hull) the same
+  // pieces now read as what the mechanism was named for: the SPONSON
+  // UNDERSIDE / skirt-hanger rail — the fender's under-structure closing
+  // the fender-to-body edge-on line, exactly the empty mounting-rail band
+  // the real unskirted PTs show. Faces unchanged (inner 1.7075 keeps the
+  // §B4 2.0 cm band annulus, shoes 1.678 clear; top inside the fender and
+  // glacis side lines — §B1 silhouette-neutral).
   for (const s of [-1, 1]) {
     // main rail: laps the fender underside (bottoms 1.595..1.61) and the
     // skirt top band (1.32..1.36) — §B2 no-air: skirt->rail->fender->body.
@@ -5012,12 +5088,32 @@ function buildLeo2Proto(P) {
     P.add('hull', slab(
       [s * 1.7075, 1.24, 2.92], [s * 1.815, 1.24, 2.92], [s * 1.815, 1.24, 3.64], [s * 1.7075, 1.24, 3.64],
       [s * 1.7075, 1.47, 2.92], [s * 1.815, 1.47, 2.92], [s * 1.815, 1.36, 3.64], [s * 1.7075, 1.36, 3.64]));
-    // skirt-line joint filler: the 5 cm gap between the front/rear segRun
-    // courses (z 1.55..1.60) read a ground shaft from above — the PT skirt
-    // line is continuous; same course section, outer face AT the 1.85 anchor
-    P.add('hull', box(0.045, 0.90, 0.06), s * 1.8275, 0.91, 1.575);
-    // hinge seam over the skirt top edge (§B3 skirt-hanger tell)
-    P.add('hullDark', box(0.012, 0.03, 6.50), s * 1.8165, 1.38, -0.3675);
+    // §SRCFIX-0808: the §5.35a skirt-line JOINT FILLER retired WITH its
+    // host skirts (it filled a 5 cm gap between two skirt courses that no
+    // longer exist; kept, it would be a floating §B3 mystery plank). The
+    // RAIL pieces above STAY per the landing — unskirted they ARE the real
+    // sponson side / empty skirt-mounting rail the trials photos show.
+    // hanger-rail seam line (§B3 tell — the skirt-mount bolt line), pulled
+    // 2 mm inboard so it rides ON the rail face instead of the old skirt.
+    P.add('hullDark', box(0.012, 0.03, 6.50), s * 1.8145, 1.38, -0.3675);
+    // §SRCFIX-0808 SHALLOW SIDE BAND (gate work-order + photo class AGREE):
+    // the print's own front profile carries a 0.42 m band at ±1.85
+    // (ref 0.91..1.33 at the extreme columns — its sponson-level side
+    // strip), and the trials photos show the same shallow plate riding
+    // above the exposed wheels. Hung from the rail (top 1.36 laps rail
+    // bottom 1.32 — §B2), bottom 0.91 keeps wheels (top 0.765) AND return
+    // rollers fully in the open — the ordered exposed-gear read stands.
+    // Station-law segments + dark joints; §B4: inner face 1.805 keeps
+    // 12.7 cm off the shoe plane (1.678).
+    {
+      const z0 = -3.60, z1 = 3.40, n = 16, L = (z1 - z0) / n;
+      for (let k = 0; k < n; k++) {
+        P.add('hull', box(0.045, 0.45, L - 0.012), s * 1.8275, 1.135, z0 + L * (k + 0.5));
+      }
+      for (let k = 1; k < n; k++) {
+        P.add('hullDark', box(0.047, 0.40, 0.014), s * 1.8275, 1.135, z0 + L * k);
+      }
+    }
   }
   // §B8 BOW shade overlay (a4 lineage — same beak underside plane)
   {
@@ -5044,12 +5140,17 @@ function buildLeo2Proto(P) {
     P.add('hullDark', box(0.62, 0.016, 0.02), -1.34, 1.788, -1.05);            // lid seam
   }
   P.mats.rubber.color.setHex(0x33352b);
-  // §5.16 FAMILY HULL GRAMMAR (type90 donor tells; same leoHullV3 glacis
-  // planes as the a4 so the same seat recipes hold):
-  // V SPLASH BOARD on the upper glacis (+rx flush per the sign law)
-  for (const s of [-1, 1]) P.add('hull', box(0.44, 0.10, 0.045), s * 0.38, 1.565, 2.70, 0.30, s * 0.40, 0);
-  P.add('hull', box(0.13, 0.10, 0.045), 0, 1.578, 2.775, 0.30, 0, 0);
-  // cross-country (Notek) light on the glacis left
+  // §SRCFIX-0808 UNDER-NOSE BELLY CLOSURE (§5.18 procedure, a4 twin): the
+  // front sightline below the 0.62 belt foot ran an open tunnel under the
+  // tub — real receding lower front plate + flat belly run instead.
+  P.add('hull', slab(
+    [-1.00, 0.555, 3.02], [1.00, 0.555, 3.02], [1.00, 0.615, 3.44], [-1.00, 0.615, 3.44],
+    [-1.00, 0.605, 3.04], [1.00, 0.605, 3.04], [1.00, 0.665, 3.46], [-1.00, 0.665, 3.46]));
+  P.add('hull', box(2.00, 0.05, 0.72), 0, 0.58, 2.70);                         // belly run to the tub front (z 2.34..3.06)
+  // §SRCFIX-0808: the type90-donor V SPLASH BOARD is DELETED — no Leopard 2
+  // hull (prototype or production) carries one; the family basis stays in
+  // the proportions grammar, not borrowed fittings. Notek light kept (real
+  // Bundeswehr trials fit).
   P.add('hullDetail', box(0.10, 0.052, 0.08), -0.70, 1.617, 2.545, 0.40, 0, 0);
   P.add('hullDark', box(0.084, 0.012, 0.014), -0.70, 1.612, 2.586, 0.40, 0, 0);
   // stepped-deck course seams (clean deck-course family read)
@@ -5067,27 +5168,36 @@ function buildLeo2Proto(P) {
   // turret is the family's origin shape. Two stacked bands keep the rising
   // bottom line (fore walls 1.695w, mid/bustle 1.74w over the aft deck).
   P.turretG.position.set(0, 1.72, -0.15);
+  // §SRCFIX-0808: the plan WIDENS (shoulders ±1.12 -> ±1.18) and the bustle
+  // LENGTHENS (-1.60 -> -1.85) — the owner's read had the turret "lost" on
+  // the hull; the real PT turret is LOW and WIDE with a long squared
+  // bustle ("contour reminiscent of the Leopard 1", panzerplace). Height
+  // stays the certified low band (0.63, roof 2.37w) — family low-flat law.
   const PT_PLAN = [
-    [-0.40, 1.02], [0.40, 1.02], [0.86, 0.70], [1.12, 0.15], [1.08, -0.85],
-    [1.04, -1.60], [-1.04, -1.60], [-1.08, -0.85], [-1.12, 0.15], [-0.86, 0.70],
+    [-0.42, 1.02], [0.42, 1.02], [0.90, 0.68], [1.18, 0.10], [1.14, -0.90],
+    [1.10, -1.85], [-1.10, -1.85], [-1.14, -0.90], [-1.18, 0.10], [-0.90, 0.68],
   ];
   P.add('turret', KIT.polyTurret(PT_PLAN, 0.63, 1.0, 1.0), 0, 0.02, 0);        // main band (walls 1.74..2.34w + closed fan roof at 0.65)
   P.add('turret', KIT.polyTurret([                                             // fore lower band: cheek facets meet the hull roof (1.695w)
-    [-0.40, 1.02], [0.40, 1.02], [0.86, 0.70], [1.12, 0.15], [1.12, 0.10], [-1.12, 0.10], [-1.12, 0.15], [-0.86, 0.70],
+    [-0.42, 1.02], [0.42, 1.02], [0.90, 0.68], [1.18, 0.10], [1.18, 0.05], [-1.18, 0.05], [-1.18, 0.10], [-0.90, 0.68],
   ], 0.125, 1.0, 1.0), 0, -0.025, 0);
   // weld seams down the cheek knuckle lines (on the facet joints; mirrored
   // with the corner-swap law — orientedSlab re-guards winding)
   P.add('turretDark', slab(
-    [0.845, 0.02, 0.7255], [0.875, 0.02, 0.7045], [0.875, 0.02, 0.6885], [0.845, 0.02, 0.7095],
-    [0.845, 0.58, 0.7255], [0.875, 0.58, 0.7045], [0.875, 0.58, 0.6885], [0.845, 0.58, 0.7095]));
+    [0.885, 0.02, 0.7055], [0.915, 0.02, 0.6845], [0.915, 0.02, 0.6685], [0.885, 0.02, 0.6895],
+    [0.885, 0.58, 0.7055], [0.915, 0.58, 0.6845], [0.915, 0.58, 0.6685], [0.885, 0.58, 0.6895]));
   P.add('turretDark', slab(
-    [-0.875, 0.02, 0.7045], [-0.845, 0.02, 0.7255], [-0.845, 0.02, 0.7095], [-0.875, 0.02, 0.6885],
-    [-0.875, 0.58, 0.7045], [-0.845, 0.58, 0.7255], [-0.845, 0.58, 0.7095], [-0.875, 0.58, 0.6885]));
-  // center front: mantlet slot bay (armored embrasure grammar, §B3)
-  P.add('turret', box(0.80, 0.675, 0.24), 0, 0.3125, 0.80);                    // slot back wall (top 0.65 = the roof plane)
-  P.add('turret', box(0.84, 0.16, 0.16), 0, 0.57, 0.90);                       // brow strip (flush to the roof line)
-  P.add('turret', box(0.84, 0.08, 0.16), 0, 0.045, 0.90);                      // chin plate
-  for (const s of [-1, 1]) P.add('turretDark', box(0.028, 0.42, 0.18), s * 0.408, 0.29, 0.895);
+    [-0.915, 0.02, 0.6845], [-0.885, 0.02, 0.7055], [-0.885, 0.02, 0.6895], [-0.915, 0.02, 0.6685],
+    [-0.915, 0.58, 0.6845], [-0.885, 0.58, 0.7055], [-0.885, 0.58, 0.6895], [-0.915, 0.58, 0.6685]));
+  // center front: mantlet slot bay (armored embrasure grammar, §B3).
+  // §SRCFIX-0808: bay widened (back wall 0.88, cheeks ±0.448) to seat the
+  // REAL wide rounded cast mantlet (the brief's "distinctive rounded/
+  // angular cast-look mantlet area" — the old 0.56 dome floated in an
+  // oversized slot and read as a pin head).
+  P.add('turret', box(0.88, 0.675, 0.24), 0, 0.3125, 0.80);                    // slot back wall (top 0.65 = the roof plane)
+  P.add('turret', box(0.92, 0.16, 0.16), 0, 0.57, 0.90);                       // brow strip (flush to the roof line)
+  P.add('turret', box(0.92, 0.08, 0.16), 0, 0.045, 0.90);                      // chin plate
+  for (const s of [-1, 1]) P.add('turretDark', box(0.028, 0.42, 0.18), s * 0.448, 0.29, 0.895);
   // roof = the wall solids' own top faces at 0.65 (2.37w one plane — a
   // rectangular cap plate overhung the tapered plan as ledge corners in
   // the top view); ring plinth (§B2 slit closure, yaws with the mass)
@@ -5096,12 +5206,16 @@ function buildLeo2Proto(P) {
   // 1.69w clears the 1.71 aft deck to a 1.4 cm extreme-arc dip (family
   // margin class).
   P.add('turret', cylY(1.24, 1.30, 0.12, P.q ? 26 : 16, false), 0, 0.03, -0.28, 0, 0, 0, [1, 1, 1.18]);
-  // stereoscopic rangefinder blisters bulging from BOTH cheek sides at the
-  // shoulder tops (armored dome + dark optic cap outboard)
+  // stereoscopic rangefinder housings on BOTH cheek shoulders — the
+  // walkaround reads them as ARMOURED BLOCKS ("both ends of the range
+  // finder are hidden behind the armoured blocks at the turret sides"):
+  // §SRCFIX-0808 adds the block collar under each dome so they read as
+  // armored housings, not soap bubbles; dark optic cap outboard.
   for (const s of [-1, 1]) {
-    P.add('turret', xform(sph(0.17, P.q ? 16 : 10), 0, 0, 0, 0, 0, 0, [1.0, 0.74, 1.45]), s * 1.10, 0.55, 0.28);
-    P.add('turretDark', KIT.cylX(0.082, 0.030, 10), s * 1.195, 0.55, 0.28);
-    P.add('turretDetail', KIT.cylX(0.095, 0.012, 10), s * 1.176, 0.55, 0.28);  // blister collar ring
+    P.add('turret', box(0.22, 0.26, 0.40), s * 1.075, 0.44, 0.26);             // armored block base (outer face 1.185)
+    P.add('turret', xform(sph(0.17, P.q ? 16 : 10), 0, 0, 0, 0, 0, 0, [1.0, 0.74, 1.45]), s * 1.12, 0.55, 0.28);
+    P.add('turretDark', KIT.cylX(0.082, 0.030, 10), s * 1.215, 0.55, 0.28);
+    P.add('turretDetail', KIT.cylX(0.095, 0.012, 10), s * 1.196, 0.55, 0.28);  // blister collar ring
   }
   // commander cupola RIGHT — §5.16 PT PERISCOPE RING (the coordinator-named
   // V-series tell): TALL vision-block ring drum + 8 periscope blocks with
@@ -5127,14 +5241,13 @@ function buildLeo2Proto(P) {
   // anemometer mast rear-left + twin whip antennas at the bustle corners
   P.add('turretDetail', cylY(0.013, 0.017, 0.26, 8), -0.85, 0.76, -1.38);
   P.add('turretDark', box(0.14, 0.028, 0.028), -0.85, 0.905, -1.38);
-  // §5.16 family whips: the type90 donor's RAKED-AFT sweep, rooted on low
-  // side brackets so the tips stay 2.497w < the 2.5048 grace line (the
-  // dims heightM p95 budget stays mast(1) + RCWS tower — a6 fold-down
-  // precedent superseded by the raked family read at the same cost).
+  // low-raked whips on side brackets — tips stay 2.497w < the 2.5048 grace
+  // line (dims heightM p95 budget = mast + cupola class; §SRCFIX-0808:
+  // seats re-derived for the widened plan, wall 1.113 at z -1.55).
   for (const s of [-1, 1]) {
-    P.add('turretDetail', box(0.06, 0.05, 0.08), s * 1.015, 0.50, -1.55);      // side bracket seat
+    P.add('turretDetail', box(0.06, 0.05, 0.08), s * 1.105, 0.50, -1.55);      // side bracket seat
     const whip = FITTINGS.antennaWhip({ mats: P.mats, h: 0.32, r: 0.012, seed: 8 + s, rotation: [-1.05, 0, s * 0.05] });
-    whip.position.set(s * 1.00, 0.50, -1.55);
+    whip.position.set(s * 1.09, 0.50, -1.55);
     P.turretG.add(whip);
   }
   // loader MG3 pintle at the hatch rim (§B3 census weapon, mag class)
@@ -5147,62 +5260,88 @@ function buildLeo2Proto(P) {
     P.turretG.add(mg);
   }
   // early smoke mortars: 2x4 clusters per side LOW on the rear walls
+  // (§SRCFIX-0808: seats re-derived for the widened plan, wall 1.135@-1.02)
   for (const s of [-1, 1]) {
-    P.add('turret', box(0.06, 0.22, 0.50), s * 1.055, 0.26, -1.02, 0, s * 0.06, 0);
-    smokeCluster(P, s * 1.08, 0.34, -0.90, 4, s * 1.05, 0.85);
-    smokeCluster(P, s * 1.09, 0.19, -1.06, 4, s * 1.2, 0.85);
+    P.add('turret', box(0.06, 0.22, 0.50), s * 1.145, 0.26, -1.02, 0, s * 0.06, 0);
+    smokeCluster(P, s * 1.17, 0.34, -0.90, 4, s * 1.05, 0.85);
+    smokeCluster(P, s * 1.18, 0.19, -1.06, 4, s * 1.2, 0.85);
   }
-  // side grab rails (segmented) + lift eyes
+  // §SRCFIX-0808 SPACED-ARMOR SIDE BINS (the PT/2AV lineage side stowage —
+  // the brief's "spaced side bins"; §B3 bin grammar: body + lid seam +
+  // latches, never bare cuboids). Slight yaw follows the wall taper so
+  // both ends embed (no floats); outer faces 1.2225 / 1.187 stay inside
+  // the blister-cap width.
   for (const s of [-1, 1]) {
-    P.add('turretDetail', box(0.022, 0.022, 0.72), s * 1.135, 0.30, 0.02);
-    P.add('turretDetail', box(0.022, 0.022, 0.60), s * 1.075, 0.30, -1.05);
-    for (const zb of [0.30, -0.24, -0.80, -1.30]) {
-      P.add('turretDetail', box(0.02, 0.05, 0.02), s * (zb > -0.5 ? 1.125 : 1.065), 0.275, zb);
-    }
-    liftEye(P, 'turretDetail', s * 0.84, 0.63, -0.05, s * 0.4);
+    P.add('turret', box(0.07, 0.30, 0.75), s * 1.1875, 0.26, -0.325, 0, s * 0.043, 0);   // bin A (z 0.05..-0.70)
+    P.add('turretDark', box(0.072, 0.006, 0.71), s * 1.1875, 0.352, -0.325, 0, s * 0.043, 0);
+    P.add('turretDetail', box(0.014, 0.05, 0.06), s * 1.2245, 0.20, -0.115, 0, s * 0.043, 0);
+    P.add('turretDetail', box(0.014, 0.05, 0.06), s * 1.2055, 0.20, -0.555, 0, s * 0.043, 0);
+    P.add('turret', box(0.07, 0.28, 0.70), s * 1.152, 0.25, -1.20, 0, s * 0.040, 0);     // bin B (z -0.85..-1.55)
+    P.add('turretDark', box(0.072, 0.006, 0.66), s * 1.152, 0.336, -1.20, 0, s * 0.040, 0);
+    P.add('turretDetail', box(0.014, 0.05, 0.06), s * 1.1875, 0.19, -1.03, 0, s * 0.040, 0);
+    P.add('turretDetail', box(0.014, 0.05, 0.06), s * 1.171, 0.19, -1.42, 0, s * 0.040, 0);
   }
-  // bustle stowage: box + rail + strapped kit (light trials load, §B3.2)
-  P.add('turret', box(1.60, 0.32, 0.26), 0, 0.26, -1.74);
-  P.add('turretDetail', box(1.60, 0.035, 0.035), 0, 0.46, -1.76);
-  P.add('turretDark', box(1.48, 0.016, 0.24), 0, 0.425, -1.74);                // lid seam
+  // side grab rails seated ON the bin faces (segmented) + lift eyes
+  for (const s of [-1, 1]) {
+    P.add('turretDetail', box(0.022, 0.022, 0.66), s * 1.232, 0.40, -0.33);    // inner face 1.221 embeds bin A face 1.2225
+    P.add('turretDetail', box(0.022, 0.022, 0.58), s * 1.196, 0.38, -1.20);    // inner face 1.185 embeds bin B face 1.187
+    liftEye(P, 'turretDetail', s * 0.95, 0.63, -0.05, s * 0.4);
+  }
+  // bustle stowage: box + rail + strapped kit (light trials load, §B3.2).
+  // §SRCFIX-0808: the whole tail cluster shifts aft with the lengthened
+  // bustle (wall -1.60 -> -1.85) — box back -2.15, basket frame -2.20.
+  P.add('turret', box(1.60, 0.32, 0.26), 0, 0.26, -2.02);
+  P.add('turretDetail', box(1.60, 0.035, 0.035), 0, 0.46, -2.04);
+  P.add('turretDark', box(1.48, 0.016, 0.24), 0, 0.425, -2.02);                // lid seam
   stowage(P, 'turretCloth', P.rng, [
-    [-0.50, 0.50, -1.72, 0.55, 0.30, 0.24], [0.30, 0.49, -1.74, 0.48, 0.28, 0.22],
+    [-0.50, 0.50, -2.00, 0.55, 0.30, 0.24], [0.30, 0.49, -2.02, 0.48, 0.28, 0.22],
   ]);
-  tarpRoll(P, 'turretCloth', 0.82, 0.50, -1.70, 0.60, 0.075, true, P.q ? 12 : 8);
-  ammoCan(P, 'turretDark', -0.92, 0.48, -1.72, 0.18);
+  tarpRoll(P, 'turretCloth', 0.82, 0.50, -1.98, 0.60, 0.075, true, P.q ? 12 : 8);
+  ammoCan(P, 'turretDark', -0.92, 0.48, -2.00, 0.18);
   // §5.16 family: low overhung basket frame + mesh back behind the bustle
   // box (the type90 donor's rear-basket read; PT trials pipe-frame class)
-  P.add('turretDetail', box(1.64, 0.035, 0.035), 0, 0.46, -1.92);
-  P.add('turretDetail', box(1.64, 0.035, 0.035), 0, 0.24, -1.92);
+  P.add('turretDetail', box(1.64, 0.035, 0.035), 0, 0.46, -2.20);
+  P.add('turretDetail', box(1.64, 0.035, 0.035), 0, 0.24, -2.20);
   for (const bx of [-0.78, -0.26, 0.26, 0.78]) {
-    P.add('turretDetail', box(0.028, 0.24, 0.028), bx, 0.35, -1.92);
+    P.add('turretDetail', box(0.028, 0.24, 0.028), bx, 0.35, -2.20);
   }
-  P.add('turretDark', box(1.58, 0.19, 0.012), 0, 0.35, -1.905);                // mesh back panel
-  P.decal('turret', 'crossgrey', null, 0.30, [1.092, 0.26, -0.45], Math.PI / 2, 0, 0.040);
-  P.decal('turret', 'crossgrey', null, 0.30, [-1.092, 0.26, -0.45], -Math.PI / 2, 0, -0.040);
-  // ---- HUGE FLW 200 RCWS (owner order §5.09-5, anachronism BY ORDER on
-  // the PT — the owner wants the station on all four leopards): FORWARD
-  // rest (§5.07), dims-sovereign SQUAT-WIDE fit — every wide mass under
-  // the 2.5048 grace line (roof 0.65 local: trough top 2.498w, pod top
-  // 2.50w, fitting FITTING-SUNK at 0.46/scale 0.92 -> cap 2.485w, barrel
-  // 2.39w emerging from the armored trough), garage height carried by the
-  // NARROW optic tower (z-window 0.16 = <=3 side trace columns; above-
-  // grace columns = anemometer mast 1 + tower 3 = the 4-col budget, p95
-  // stays the 2.50 cupola/whip class inside grace).
-  leoFLW200(P, { x: 0.02, y: 0.65, z: -1.18, s: 1.1, gunY: 0.46, gunScale: 0.92,
-    drumH: 0.05, podY: 0.70, podH: 0.16, shields: false, elev: 0.07,
-    towerTop: 1.06, towerZ: -1.52, towerW: 0.16, seed: 17 });
+  P.add('turretDark', box(1.58, 0.19, 0.012), 0, 0.35, -2.185);                // mesh back panel
+  // cross decals pinned on the BIN faces (§5.04 vertical flank law)
+  P.decal('turret', 'crossgrey', null, 0.26, [1.224, 0.26, -0.325], Math.PI / 2, 0, 0.042);
+  P.decal('turret', 'crossgrey', null, 0.26, [-1.224, 0.26, -0.325], -Math.PI / 2, 0, -0.042);
+  // §SRCFIX-0808: the §5.09-5 FLW 200 RCWS + optic tower are REMOVED from
+  // this id — the 2026-08-08 owner order ("fix the leopard prototype, it
+  // doesn't match its source material at all") governs: no 1972-74 trials
+  // vehicle carries a modern weapon station, and the tall tower was the
+  // silhouette's loudest anachronism. The REAL walkaround detail stands in
+  // for it below: the Swedish PT's roof has a circular overhead-weapon
+  // mount opening CLOSED OFF WITH A PLATE (panzerplace) — modeled as the
+  // blanked ring aft of the hatches. Restoration if ordered:
+  // leoFLW200(P, { x: 0.02, y: 0.65, z: -1.18, s: 1.1, gunY: 0.46, gunScale: 0.92,
+  //   drumH: 0.05, podY: 0.70, podH: 0.16, shields: false, elev: 0.07,
+  //   towerTop: 1.06, towerZ: -1.52, towerW: 0.16, seed: 17 });
+  P.add('turret', cylY(0.20, 0.20, 0.022, P.q ? 20 : 14), 0.02, 0.658, -1.18); // blanked OWS ring plate
+  P.add('turretDark', KIT.torus(0.185, 0.008, P.q ? 20 : 14), 0.02, 0.672, -1.18); // bolt-ring seam
+  for (let k = 0; k < 8; k++) {
+    const a = (k / 8) * Math.PI * 2;
+    P.add('turretDark', box(0.022, 0.008, 0.022), 0.02 + Math.sin(a) * 0.165, 0.673, -1.18 + Math.cos(a) * 0.165);
+  }
 
   // ---- 105 mm smoothbore (§B3.1): ROUNDED cast mantlet — trunnion roll +
   // domed collar shoulders + tapered boot, never a prism; bare slim tube
   // (no thermal sleeve), mid-tube evacuator, muzzle bore. Axis y 1.98;
   // muzzle world +6.11 = the spec 9.97 overall over the -3.86 tail.
+  // §SRCFIX-0808: the cast dome WIDENS to the real casting (x radius 0.41
+  // filling the 0.448 slot — the old 0.28 dome read as a pin head in an
+  // oversized bay); trunnion roll follows (0.70); evacuator slimmed
+  // 1.8x -> 1.45x tube (the fat mid-bulge read 20-pdr/Centurion, not the
+  // slim Rheinmetall prototype tube).
   P.gunG.position.set(0, 0.26, 1.00);
-  P.addGunExtra(KIT.cylX(0.23, 0.54, P.q ? 16 : 12), 0, 0, 0);                 // trunnion roll
-  P.addGunExtra(xform(sph(0.215, P.q ? 18 : 12), 0, 0, 0, 0, 0, 0, [1.30, 1.0, 1.15]), 0, 0, 0.14); // rounded cast mantlet dome
+  P.addGunExtra(KIT.cylX(0.23, 0.70, P.q ? 16 : 12), 0, 0, 0);                 // trunnion roll
+  P.addGunExtra(xform(sph(0.215, P.q ? 18 : 12), 0, 0, 0, 0, 0, 0, [1.90, 1.08, 1.15]), 0, 0, 0.14); // rounded cast mantlet
   P.addGunExtra(cylZ(0.165, 0.30, P.q ? 16 : 12, 0.115), 0, 0, 0.36);          // tapered mantlet boot
   P.addGunExtraDark(cylZ(0.026, 0.10, 8), 0.20, 0.055, 0.24);                  // coax port (right)
-  KIT.buildGun(P, { len: 5.26, r: 0.064, sleeve: false, evac: 0.55, evacR: 1.8, collar: false, baseR: 0.105 });
+  KIT.buildGun(P, { len: 5.26, r: 0.064, sleeve: false, evac: 0.55, evacR: 1.45, collar: false, baseR: 0.105 });
   muzzleBore(P, { len: 5.26, r: 0.064 });                                      // §B3.1 (shadow-named, 3fca39b)
   P.topY = 1.24;
 }

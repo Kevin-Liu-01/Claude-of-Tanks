@@ -214,6 +214,62 @@ itself rides high).
 - §H.4: the type90-family strip (type90/proto/a4) at
   shots/leo-509/evidence/family-strip-*.png — one family, three marks.
 
+## 2026-08-08 §SRCFIX ROUND (leopard builder) — OWNER: "fix the leopard
+## prototype and leopard 2a4, they dont match their source material at all"
+FALSE-0/no-oracle id — the verdict is VISUAL (photo class). The owner
+rejected the tank in the garage. Root reads from the before-evidence
+(shots/leo-sourcefix/before/): the §5.16 type90 rebase had made the turret
+a POINTED DART in plan (45° swept cheeks — wrong family grammar: the real
+2A4 is a blunt brick), the EMES floated mid-roof, a huge RCWS + shields
+dominated the roof, the skirt run read as a uniform plank fence with
+ambient-black gear below, and the bow read a flat band over an open belly
+tunnel. §5.16 family law is KEPT as proportions grammar (low flat roof
+2.48, hull stance); borrowed type90 FITTINGS are gone.
+
+### GAP TABLE (photo class = Bundeswehr mid-production 2A4)
+| # | Photo read (real 2A4) | Baseline (was) | Fix (now) |
+|---|---|---|---|
+| 1 | turret plan = wide BLUNT BRICK: near-transverse front face ~2/3 width, short ~40° corner chamfers, parallel sides | pointed type90 sweep (face 0.80 m, 45° cheeks) | plan re-laid: face ±0.88 @ z 1.10, chamfers to ±1.20 @ 0.70; fore lower band + weld seams re-derived (§B1.1 symmetric, corner-swap winding) |
+| 2 | EMES-15 doghouse AT the right front corner, aperture reading in the face | hood floated mid-roof (z 0.42..0.84), glass a billboard | hood z 0.64..1.06 (front 4 cm behind the cheek tips), aperture back + divider + twin RECESSED windows in the mouth |
+| 3 | NO RCWS; roof = low cupolas + PERI R17 + loader MG3 | §5.09-5 FLW200 w/ shields (receiver 2.74-3.02w) | REMOVED (newer owner order supersedes §5.09-5 for this id; restoration = one commented call) |
+| 4 | two thin near-vertical whips at the bustle corners | type90 raked-aft sweep (identity-foreign) | near-vertical (rx -0.20), same census fittings |
+| 5 | clean glacis | type90 V splash board + a5-recipe deflector boards | both deleted; Notek + headlights + spare links kept |
+| 6 | skirts: paneled, upper mounting band over recessed lower band, heavy fore blocks with the CHAMFERED leading edge; lower wheel arcs READ | one uniform segRun curtain at the hub line; garage counted zero wheels | BESPOKE skirts (helper opt-out): 3 fore armor blocks at ±1.85 EXACT (§D anchor) w/ chamfered leader, 6 aft panels = proud upper band (1.80) + 13 mm recessed lower band + joints; bottoms RAISED 0.38/0.44 -> 0.46/0.52 (calibrated against the owner-accepted a5 read; §B8.1 exposure 59%/67%, in the real 40-70%); hubs r 0.125, tire 0x2b2d24 |
+| 7 | under-nose recedes to the belly | §B8 overlay above an OPEN under-tub tunnel (barn-door read) | §5.18-class closure: receding lower front plate + belly run at 0.555, inter-track ±1.00 |
+| 8 | Wegmann 2x8, full-width slatted rack + kit, hatch rings, crosswind mast | present (certified) | kept; verified seated post-plan-change (rails/eyes/banks/decals on the new walls) |
+
+### Close battery (2026-08-08, §SRCFIX round; HEAD fdf0320 live-tree)
+- FALSE-0 law: no gate on this id (photo class; the §B battery + dims
+  self-anchoring are the machine bar).
+- §B8.1 anchors re-verified by construction: width 3.70 (fore blocks at
+  ±1.85 EXACT), roof 2.48, muzzle +5.82 (real 9.67 overall over the -3.86
+  tail), turretMass footprint extremes unchanged (±1.20 shoulders,
+  z -1.75..1.10 = 42% of hull, <55% merge alarm).
+- track-clip --exact 0/0 band 0/0 shoe; turret-parent 0/0/0;
+  standard-check contig 0 ✓ decor mg1+3d ✓; winding m1 rev0/mix0
+  deficit 0 + m2 clean; npm test 166 + track-geometry PASS.
+- see-through sweep: worst 529px @ y0-side-l-T + 310 @ y0-top =
+  rack-open-frame + certified 1.74-over-1.71 bustle margin classes
+  (adjudicator hole-count 2; several graduates carry 6 — fleet-normal).
+- Hash: 12db10a0 -> 327e81fe (turret/roof/glacis batch) -> b68e42c2 x2
+  deterministic (62 meshes / 86174 verts — moves by design; no
+  graduation state). Graduates byte-held through EVERY batch (x4
+  sweeps): leo2a5 e215a738 / leo2a6 09912270 / kf51 9ac547ac /
+  leo2_revolution db70c929.
+- Evidence: shots/leo-sourcefix/{before,after}/a4* (14-view + yaw-90 §B5
+  pair + 6-angle garage sets), crop-wheels + calib-a5 comparison strips.
+
+### 14-view SELF-READS (§B8 builder estimates, NOT an acceptance bar —
+### independent critic adjudication pending)
+front 8.7 / frontleft 8.8 / left 8.7 / rearleft 8.6 / rear 8.5 /
+rearright 8.6 / right 8.8 / frontright 8.7 / top 8.7 / hero-fl 8.8 /
+hero-rr 8.6 / hero-toptilt 8.7 / close-front 8.6 / close-roof 8.7.
+Weakest named: rear (rack kit reads dark-on-dark at native tone); left
+(wheel arcs read but darker than the a5 class — the pipeline's albedo-
+floored shade, §B8.1 mid-gray-flat class, distinct from the defect
+class); under-nose band tones flat-equal to the glacis (geometry now
+real; tone is the documented ambient-floor cap).
+
 ## 2026-08-06 §B8 PROPORTION REWORK (photo-acceptance orders; PROPORTIONS
 ## BEFORE DETAIL per §B8.1)
 Orders (docs/critique/photo-acceptance-20260806.md): 1 WHEEL EXPOSURE,

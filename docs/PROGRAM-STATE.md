@@ -1895,3 +1895,18 @@ adjudicated benign in pixels). Dual gate complete (geometry landed
 81bdad1). Dress-tier bank (7 items, none <9.0) recorded in §3. The
 critic's m2a2_bradley override row in tmp-tank-critic.html already
 landed via §5.50 (attributed).
+
+## 5.55 LEOPARD SOURCEFIX RATIFIED + LANDED (2026-08-08): critic PASS
+both — proto 9.3 (unskirted early hull lands completely: 7 dual
+roadwheels + 4 return rollers countable with real daylight; PT turret
+with stereo-rangefinder blisters; cast mantlet fills the front; the
+blanked OWS ring reads deliberate), leo2a4 9.2 (blunt-brick plan —
+the dart is dead; EMES-15 recessed at the right front corner; 3+6
+skirt census exact with 7 wheel arcs countable; the owner's
+"counted zero wheels" fixed with real geometry). §5.18 bellies hold
+both; §5.16 family grammar held with no borrowed type90 fittings.
+Hashes landed: proto 4f6360fe, leo2a4 b68e42c2; graduates byte-held
+throughout (leo2a5/leo2a6/kf51/revolution). The owner's "they dont
+match their source material at all" is answered in the garage.
+leo2a4 = FALSE-0/no-oracle (no ledger row); proto row unchanged
+(0-capped, hull 48.7 inside it). RCWS ASK stands (§5.48).
