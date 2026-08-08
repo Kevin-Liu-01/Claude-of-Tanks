@@ -1786,3 +1786,33 @@ for these two historicals removed their RCWS; restoration is one
 commented call per tank if stations on historicals are still wanted.
 tools/tmp-srcfix-raypick.mjs deletes at landing; proto ledger row
 stages at landing.
+
+## 5.49 BACKWARDS-PRINT FLAGS ADJUDICATED: ASSERT MISFIRE, NOT PRINT
+DEFECT — MY REPAIR DIRECTION REVERSED (2026-08-08): the extract
+flagged t90/k1a1/type99a "hull BACKWARDS vs gun, DO NOT score"
+(t62_bergman class). I authored turret-cluster 180 rotations — WRONG
+on all three. COUNTER-EVIDENCE (type99a builder, six raw-vertex hull
+tells: center-lane dozer +z, glacis toe +3.30 vs grille wall -3.5,
+skirt bias, powerpack deck -z, log rack -z, driver +z; t90-family
+builder holds its own raw-probe counter-evidence): the prints are
+INTERNALLY COHERENT with bow +z; the flag is the DOCUMENTED §D
+orientation-assert misfire for hulls whose RAISED REAR DECK tops the
+bow run (99a 1.78 > 1.50 — T-90/K1A1 same class). My own experiment
+corroborates: physically flipping 99a's tube did NOT change the
+assert's gun read. TWO NEGATIVE RECEIPTS BANKED: (v1) cluster-bbox
+center is GUN-DRAGGED (99a turret would fly 5.6m off-station — caught
+pre-damage by re-inspection); (v2) the transform-path composition
+scattered blender-baked clusters (t90 len 7.03->4.57 garbage read =
+mesh-local centers are NOT shared-frame when nodes carry transforms).
+ALL THREE RESTORED PRISTINE (99a bbb31bfe from the owner drop;
+k1a1/t90 re-baked from OBJ sources — recoverable ONLY because sources
+existed: instrument bakes now get .bak mirrors like oracles). Pristine
+receipts verified to the digit vs the first honest sweep and
+COMMITTED with agree:false STANDING as ADJUDICATED-MISFIRE (FALSE-0
+analog — never read as a print defect; the §D assert needs a
+raised-rear-deck guard, filed). HOLDS LIFTED registration-only:
+builders verify presentation in their first pair renders; yawOffset
+map fixes on request from my lane. Interpen flags on all seven AW
+prints = the sunk-turret print class (§B7 caps; vladimir batch-50
+kin). Seven receipts land this commit (k2, amx40, k1a1, t90, t90ms,
+t90a_burlak, type99a) + type90's v2-oracle receipt.
