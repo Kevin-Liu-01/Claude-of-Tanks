@@ -1768,3 +1768,21 @@ patton lane; ANY geometry edit invalidates the verdict — next sitting
 re-adjudicates all 14 views fresh at the new hash. m26 §3 RE-RECORDED
 2f006738 this commit (double-confirmed). m48 new-build stays queued
 behind patton.js.
+
+## 5.48 LEOPARD SOURCEFIX DELIVERED (2026-08-08, pending critic):
+proto afb3cc3c->4f6360fe x2 (UNSKIRTED early hull — print + trials
+photos agree; 4 return rollers exposed; rangefinder-housing turret;
+RCWS removed, blanked OWS ring per walkaround; hull 46.8->48.7
+hold-improved, dims 100 held, §5.35a rail re-roled + corridor
+guarantees re-proven). leo2a4 12db10a0->b68e42c2 x2 (blunt-brick 2A4
+turret replaces the type90-dart §5.16 artifact; EMES right-front;
+bespoke 3+6 skirts calibrated to the a5 wheel-read; FALSE-0/no-oracle
+— visual verdict only). BOTH: §5.18 belly closures. Graduates
+byte-held x4 sweeps. Independent critic SPAWNED (source-fidelity
+scoring, garage-weighted). ASK-OWNER (banked, adjudicated
+newer-order-wins): §5.09 ordered "huge automated turret crows system
+on the revolution and OTHER leopards" — the source-material order
+for these two historicals removed their RCWS; restoration is one
+commented call per tank if stations on historicals are still wanted.
+tools/tmp-srcfix-raypick.mjs deletes at landing; proto ledger row
+stages at landing.
