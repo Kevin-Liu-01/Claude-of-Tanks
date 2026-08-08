@@ -2244,3 +2244,26 @@ t44/type59 in the russia lane.
 DISMISSED-PENDING (owner: "wait for next instruction" — NO ACTION):
 m45 6.6->6.47 row, newc_tiger era filing, AFV-stats meaning, Sources
 cards view-only-vs-playable. All stay at current defaults.
+
+## 5.74 OWNER ORDER — M1A2 LEGACY RETIREMENT + ABRAMS DISTINCTIVENESS
+ROUND (2026-08-08): "its time to retire this m1a2 (dont show it,
+clearly mark as legacy), but analyze all of its decorations, add ons,
+armor, era, and roof decorations, and apply them to sepv2, sepv3,
+tusk, and new m1a2 abrams to make them much more visually distinct
+based on different equipment types and passive era blocks on turret
+and sides of hull and so on and grass to cover stuff on the sepv3
+and even more massive crows automated machine gun systems on the
+top." EXECUTED NOW: m1a2 carousel-DELISTED (garage.js DELISTED set,
+newc_pziii precedent — stays tech-tree selectable) + spec name
+"M1A2 (Legacy)" (the mark travels everywhere the id still shows).
+QUEUED (abrams lane, BEHIND the live flank-panel round — builds on
+the pitched panels): the DISTINCTIVENESS ROUND — harvest the legacy
+m1a2 build's full kit inventory (works-field stowage grammar, ERA,
+roof kit) and redistribute as per-variant identity packages: sepv2 =
+elevated-CROWS signature + one ERA flavor, sepv3 = ADL/IFLIR + GRASS/
+FOLIAGE cover + its own package, tusk = ARAT-side ERA + loader shield
+emphasis, tejas/new-M1A2 = its own clean package; ALL FOUR get
+MORE-MASSIVE CROWS RWS on top (P95-envelope datum law §5.73-1 covers
+the height). Coordinated graduate-change wave (sepv2 54b35994 /
+tusk b1786e4c / tejas f7510d88 / m1a1-siblings byte-guarded; sepv3
+2c9023d0 binding) — re-cert critics + re-freeze wave at landing.

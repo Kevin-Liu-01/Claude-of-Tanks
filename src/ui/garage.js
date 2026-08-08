@@ -63,7 +63,7 @@ const TIER_BY_ID = {
   t72b3: 'VIII', challenger2: 'IX', merkava4: 'IX', leo2a6: 'IX',
   leo2a4: 'VIII', t80u: 'VIII', leclerc: 'IX', type99a: 'IX',
   leo1a5: 'VII', t14: 'X', chieftain_mk10: 'VII', k2: 'IX', type10: 'IX',
-  m2a2_bradley: 'VIII', bmp2: 'VII', ariete: 'VIII',
+  m2a2_bradley: 'VIII', bmp2: 'VII', ariete: 'VIII', k1a1: 'VIII',
   // user drops (2026-07-28)
   type74: 'VIII',
   // user drops wave 2 (recovered batch)
@@ -1375,7 +1375,11 @@ export function createGarage(opts) {
   // (attribution + playability preserved); only the carousel strip curates.
   // content_breadth r2: bmp1/m1128/m1296 defense-in-depth — registration is
   // already gated off in userdrops2.js (SHIP_USERDROP2_NEW).
-  const DELISTED = new Set(['newc_tiger', 'newc_pziii', 'bmp1', 'm1128', 'm1296']);
+  // §5.74 (owner, 2026-08-08): the legacy base M1A2 retires from the
+  // carousel ("dont show it, clearly mark as legacy") — its kit inventory
+  // redistributes across sepv2/sepv3/tusk/tejas in the distinctiveness
+  // round. Stays tech-tree selectable like the other delisted ids.
+  const DELISTED = new Set(['newc_tiger', 'newc_pziii', 'bmp1', 'm1128', 'm1296', 'm1a2']);
   const allSpecs = opts.specs || [];
   // §5.31b PRINT VIEWER: view-only Sources cards for every retired print.
   // Deliberately NOT merged into allSpecs — the tech tree (createTechTree

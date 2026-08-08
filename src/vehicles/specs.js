@@ -704,7 +704,9 @@ export const TANK_SPECS = {
     // base row keeps the id + geometry as the family anchor. If the owner
     // wants this TANK gone (not just the name), delist per the leo2a7
     // TANK_IDS mechanism.
-    id: 'm1a2', name: 'M1A2', nation: 'USA', era: 'modern', class: 'mbt',
+    // §5.74: RETIRED-LEGACY (owner 2026-08-08) — carousel-delisted in
+    // garage.js; name carries the LEGACY mark everywhere it still appears.
+    id: 'm1a2', name: 'M1A2 (Legacy)', nation: 'USA', era: 'modern', class: 'mbt',
     hp: 2600,
     // Real SEPv3 reverses at ~40 km/h, but that reads arcade-y next to the
     // 5-8 km/h WW2 roster and sits far outside the WoT-feel envelope
