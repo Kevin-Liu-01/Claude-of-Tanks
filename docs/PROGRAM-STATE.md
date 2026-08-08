@@ -1839,3 +1839,22 @@ mid-round. NOTE: this relay was MISDELIVERED to the owner's parallel
 camo/UI session and returned verbatim — cross-session relay routing
 is a known hazard; builders should SendMessage the orchestrator
 directly, not rely on relays.
+
+## 5.51 TYPE99A ROUND DELIVERED + TWO RULINGS (2026-08-08): re-list +
+full print-loft rebuild delivered uncommitted at 8d13f030 (r1 min 0 ->
+r7 hull 17.7 / whole 25.4 / turret 29.7 / stations 71.3 / dims 0 /
+floaters 100, x2 both ends; battery clean; residents byte-match HEAD;
+leo2a4 delta = leopard-lane WIP, expected). Presentation NOT reversed
+— no yawOffset on 99a rows (the AW rest-pose-rear convention is NOT
+uniform across the series; §5.50 applies to the russia trio only).
+Identity critic SPAWNED. RULINGS on its two asks: (1) heightM DATUM
+2.37 -> 2.86 APPROVED-WITH-ASK (t14 precedent: p95-envelope datum
+incl. mandatory tower+MG; receipt +55.7%; applies AT LANDING with
+re-gate x2; ASK-OWNER banked — revert to 2.37 on owner's word); (2)
+§E batch-51 QUEUED (99a print: Object_29 turret-handrail strand
+excision ~196 verts y>2.05, worth ~-25/-30 both hull rows + the
+warp menu body x1.062 / gun -0.21 / roof-mast band — §5.28 type90
+pattern) — SANITY GATE per §5.39 + §5.49 laws: warp targets checked
+vs the real ZTZ-99A published profile + raw-vertex tells BEFORE
+execution; .bak mirror BEFORE any byte surgery (quarantined
+instrument class).
