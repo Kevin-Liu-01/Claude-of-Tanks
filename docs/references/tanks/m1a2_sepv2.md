@@ -776,3 +776,15 @@ offsets and stay connected. Gate x2 byte-identical: 64.6 |
 69.5/64.6/78.9/77.4/100/100. Independent 14-view re-cert PASS, floor 9.1 /
 mean 9.18. RE-FREEZE **54b35994 -> c5bfbb70** (50 meshes / 165356 verts).
 Full verdict: `docs/critique/shaded-parity-abrams-panelpitch-recert.md`.
+
+## §5.74 DISTINCTIVENESS + P95 RE-FREEZE (2026-08-08)
+SEPv2 is now the tall passive-armor member: an elevated massive CROWS under a
+full rectangular armor hood, one broad rectangular hull cassette course, and
+four large pitched passive slabs per turret flank. This is deliberately unlike
+TUSK's two-course ARAT and SEPv3's fine grid. Mandatory-kit P95 = 3.4265 m;
+heightM 2.44 -> 3.43. Gate x2 exact: 37.3 |
+69.4/37.3/53/73.2/100/100 — owner-adjudicated oracle divergence caused by the
+mandatory new silhouette/datum, NOT a geometry PASS. Independent 14-view
+re-cert PASS, floor 9.2 / mean 9.31. RE-FREEZE **c5bfbb70 -> a0a4e87c**
+(50 meshes / 168548 verts). Full verdict:
+`docs/critique/shaded-parity-abrams-distinctiveness-recert.md`.

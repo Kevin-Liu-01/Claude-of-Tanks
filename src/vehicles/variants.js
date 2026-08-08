@@ -198,7 +198,9 @@ export const VARIANT_SPECS = {
         shell('M1147 AMP', 'HE', 120, 60, 60, 600, 1000),
       ],
     },
-    dims: { hullLengthM: 7.93, overallLengthM: 9.77, widthM: 3.66, heightM: 2.44 },
+    // §5.73-1 / §5.74 P95 datum: the mandatory armored CROWS band measures
+    // 3.2748 m on the authoritative 1024 mask.
+    dims: { hullLengthM: 7.93, overallLengthM: 9.77, widthM: 3.66, heightM: 3.27 },
     armor: (() => {
       const a = derivedArmor(m1a2.armor, 1.0);
       // roster §3.2 stat-level kit: ARAT rows on the sides, slats at the rear

@@ -268,3 +268,16 @@ Gate x2 byte-identical: 75.6 | 92/75.6/83.3/92.3/100/100. Independent
 14-view re-cert PASS, floor 9.1 / mean 9.22. RE-FREEZE
 **f7510d88 -> 3afe65f0** (48 meshes / 157880 verts). Full verdict:
 `docs/critique/shaded-parity-abrams-panelpitch-recert.md`.
+
+## §5.74 DISTINCTIVENESS + P95 RE-FREEZE (2026-08-08)
+The new/current M1A2 is the clean ERA-free member: a much broader forward
+unarmored CROWS with connected riser/slew/sensor/receiver/ammo/feed/IR anatomy,
+plus the retained spare-link strip, a compact sustainment roll and sealed
+relay/tool case. It intentionally carries none of TUSK's ARAT, SEPv2's broad
+passive slabs, or SEPv3's micro-ERA/foliage. Mandatory-kit P95 = 3.2441 m;
+heightM 2.44 -> 3.24 under §5.73-1. Gate x2 exact: 57.8 |
+91.7/57.8/63.3/91.9/100/100 — owner-adjudicated oracle divergence from the
+new silhouette/datum, NOT a geometry PASS. Independent 14-view re-cert PASS,
+floor 9.1 / mean 9.23. RE-FREEZE **3afe65f0 -> 01e698e8** (48 meshes /
+159596 verts). Full verdict:
+`docs/critique/shaded-parity-abrams-distinctiveness-recert.md`.

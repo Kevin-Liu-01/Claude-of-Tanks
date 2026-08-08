@@ -256,3 +256,14 @@ edited bytes reproduce 1.8 | 14.9/1.8/42.2/23.5/100/100; the deterministic
 Independent 14-view PASS, floor 9.0 / mean 9.13. Binding
 **b1786e4c -> bd371600** (58 meshes / 199244 verts). Full verdict:
 `docs/critique/shaded-parity-abrams-panelpitch-recert.md`.
+
+## §5.74 DISTINCTIVENESS + P95 BINDING (2026-08-08)
+TUSK is now the unmistakable heavy urban member: enlarged fully wrapped CROWS,
+strengthened loader shield/coping, four ARAT-style turret panels per flank,
+and the retained two-course hull ARAT, TIP, LAGS-M240, lights and rear slat
+cage. Mandatory-kit P95 = 3.2748 m; heightM 2.44 -> 3.27. Gate x2 exact: 0 |
+14.7/0/39/23.1/100/100 — the owner-ordered silhouette remains inside the
+documented chimera/oracle-divergence class, NOT a geometry PASS. Independent
+14-view identity PASS, floor 9.1 / mean 9.26. Binding **bd371600 -> 7620b020**
+(58 meshes / 200924 verts). Full verdict:
+`docs/critique/shaded-parity-abrams-distinctiveness-recert.md`.

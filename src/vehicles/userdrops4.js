@@ -11,6 +11,10 @@ const ALLOW_LOCAL_RECOVERED_MODELS = typeof import.meta !== 'undefined' &&
 const tejas = clone(TANK_SPECS.m1a2);
 tejas.id = 'm1a2_tejas';
 tejas.name = 'M1A2 Abrams';  // owner 2026-08-06: '(Tejas)' dropped from the display name
+// §5.73-1 / §5.74: height is the mandatory-kit P95 envelope.  The new
+// broad CROWS band measures 3.2441 m on the authoritative 1024 mask; 3.24
+// is the honest datum (the old 2.44 m row described the bare roof).
+tejas.dims = { ...tejas.dims, heightM: 3.24 };
 tejas.variantOf = 'm1a2';
 tejas.publicVisualFallback = 'm1a2';
 tejas.community = {

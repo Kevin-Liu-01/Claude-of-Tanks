@@ -222,3 +222,15 @@ invented. Fresh proc-only 14-view identity sitting PASS, floor 9.1 / mean
 9.20; Trophy/ARAT/APU/ADL and roof-kit reads survive. Binding
 **2c9023d0 -> 329ec520** (47 meshes / 169064 verts). Full verdict:
 `docs/critique/shaded-parity-abrams-panelpitch-recert.md`.
+
+## §5.74 DISTINCTIVENESS + P95 BINDING (2026-08-08)
+SEPv3 is the current wide-low mark: massive LP CROWS, retained
+ADL/IFLIR/Trophy/APU, fine 9x2 hull plus 5x2 turret micro-cassettes, and
+deterministic physical olive foliage over the turret roof, glacis, and side
+ERA. The foliage is merged lit geometry, not a paint alias, and the armor
+grammar stays visible beneath it. Mandatory-kit P95 = 3.1009 m; heightM
+2.44 -> 3.10. FALSE-0 law holds: no oracle registration, gate file, or ledger
+row was invented; the datum replica repeated exactly with dims sanity 100.
+Independent proc-only 14-view identity PASS, floor 9.0 / mean 9.20. Binding
+**329ec520 -> d6e87b0c** (51 meshes / 204812 verts). Full verdict:
+`docs/critique/shaded-parity-abrams-distinctiveness-recert.md`.

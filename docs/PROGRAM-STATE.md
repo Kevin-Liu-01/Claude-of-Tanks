@@ -64,7 +64,7 @@ re-freeze NEW hash, all in ONE commit.
 | leo2a6 | 09912270 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | m1a1 | 4e28ff40 | RE-FROZEN 2026-08-08 (§5.79 flank-panel pitch; re-cert floor 9.1 / mean 9.19 x14) |
 | m1a1ha | 99962364 | RE-FROZEN 2026-08-08 (§5.79 flank-panel pitch; re-cert floor 9.1 / mean 9.19 x14) |
-| m1a2_tejas | 3afe65f0 | RE-FROZEN 2026-08-08 (§5.79 flank-panel pitch; re-cert floor 9.1 / mean 9.22 x14) |
+| m1a2_tejas | 01e698e8 | RE-FROZEN 2026-08-08 (§5.80 distinctiveness; massive clean CROWS + sustainment kit; re-cert floor 9.1 / mean 9.23 x14) |
 | merkava3b | REMOVED BY OWNER 2026-08-06 (roster prune; was 8bb8d984, packet historical) |
 | merkava3c | aa74be6a | RE-FROZEN 2026-08-07 (§B2 under-roof closure wave §5.11: solid casting walls, gate rows EXACT, re-cert floor 9.0 on every changed view; sheets shots/critic-merkava-closure/) |
 | kf51 | 9ac547ac | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
@@ -82,7 +82,7 @@ re-freeze NEW hash, all in ONE commit.
 | leo2_revolution | db70c929 | RE-FROZEN 2026-08-07 (photo-class record): §5.09 closure -85% + §5.17a turret-completion (real collar/chin/under-cheek/under-skirt walls — the floating shell is DEAD, owner diagnosis answered); re-cert 9.4/9.2/9.3 on changed families; §B7 gate caps stand (hull 94.3 trustworthy band) |
 | m46_patton | 108806c8 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | centurion3 | bad74e60 | RE-FROZEN 2026-08-08 (no-air graduate-change: crown-ridge pedestal + discharger webs, front-low 1810px->14, re-cert floor 9.0 x17 changed views, gate 91.1 exact; prior 50273080 bore-resit lineage) |
-| m1a2_sepv2 | c5bfbb70 | RE-FROZEN 2026-08-08 (§5.79 flank-panel pitch; gate row 64.6 held x2, re-cert floor 9.1 / mean 9.18 x14) |
+| m1a2_sepv2 | a0a4e87c | RE-FROZEN 2026-08-08 (§5.80 distinctiveness; elevated armored CROWS + broad ERA; re-cert floor 9.2 / mean 9.31 x14) |
 | m2a2_bradley | 90a5568c | GRADUATED 2026-08-08 (28th; dual gate: geometry 90.9 x2 every component >=90 landed 81bdad1 + visual floor 9.0 / mean 9.16 x14 views at freeze-verified bytes; oracle e699c868; dress-tier defect bank in the verdict: bow T-hooks, taillight fittings, TOW rear ports, lug stacks, ringed hubs) |
 | m45_patton | 53caa687 | GRADUATED 2026-08-08 (29th; gate 90.7 x5 total + sitting-2 visual floor 9.0 mean 9.13 x14; sitting-1 orders executed: loft.smooth byte-reproduced, ring cupola adjudicated ring-class at station with the measured Ø0.57/x-0.65 deviation compliant; ring-prominence silhouette-tax residual certified) |
 | leclerc | 683be340 | GRADUATED 2026-08-08 (30th; gate 90.3 x2 every component >=90 + visual floor 9.0 mean 9.17 x14 at freeze-verified bytes; the §5.14 §K-exemplar turret standard held through the ladder — no gate-chasing artifacts; commander-well doc trued z_w 0.32..0.66) |
@@ -2360,3 +2360,34 @@ legacy m1a2 and abramsx remained hash- and pixel-exact (`636a4860` /
 `2c6eb344`). Full verdict:
 docs/critique/shaded-parity-abrams-panelpitch-recert.md. The §5.74
 DISTINCTIVENESS round is now unblocked and begins from these pitched carriers.
+
+## 5.80 ABRAMS DISTINCTIVENESS ROUND RATIFIED + RE-FROZEN
+(2026-08-08, §5.74 owner order): the retired legacy M1A2 inventory has been
+redistributed into four unmistakable current-mark packages on the certified
+pitched carriers. Tejas/new-M1A2 is the clean ERA-free mark with a broad
+unarmored CROWS, sustainment roll, and relay/tool case; TUSK carries the heavy
+armored CROWS, strengthened loader shield, four ARAT-style turret panels per
+flank, two-course hull ARAT and rear slat cage; SEPv2 carries the tallest
+armored CROWS, one broad hull ERA course and four large passive turret slabs
+per flank; SEPv3 carries the wide-low CROWS, 9x2 hull plus 5x2 turret micro-ERA,
+ADL/IFLIR/Trophy, and deterministic physical olive foliage over the turret,
+glacis, and side ERA. The retired `m1a2`, both CWS siblings, and `abramsx`
+remain byte guards: **636a4860 / 4e28ff40 / 99962364 / 2c6eb344**.
+
+§5.73-1 P95 DATUM APPLIED to the mandatory kit, replacing the old bare-roof
+2.44 row: tejas measured 3.2441 -> heightM 3.24; TUSK 3.2748 -> 3.27; SEPv2
+3.4265 -> 3.43; SEPv3 3.1009 -> 3.10. Two edited-tree hash batteries and two
+gate sittings reproduced exactly. The resulting oracle rows are tejas 57.8
+(91.7/57.8/63.3/91.9/100/100), TUSK 0
+(14.7/0/39/23.1/100/100), and SEPv2 37.3
+(69.4/37.3/53/73.2/100/100). These are NOT geometry PASSes: the lower mask
+scores are the documented, owner-adjudicated divergence caused by mandatory
+new CROWS/armor silhouettes plus the honest P95 datum; dims and floaters stay
+100. SEPv3 remains FALSE-0 with no invented gate or ledger row.
+
+Independent §B8 fresh sittings PASS all 56 views at >=9.0: tejas floor/mean
+9.1/9.23, TUSK 9.1/9.26, SEPv2 9.2/9.31, SEPv3 9.0/9.20. RE-FROZEN:
+tejas **01e698e8**, SEPv2 **a0a4e87c**. Bindings: TUSK **7620b020**,
+SEPv3 **d6e87b0c**. No fix round ordered. Full verdict and exact score sheets:
+docs/critique/shaded-parity-abrams-distinctiveness-recert.md. Fleet ledger
+remains **24/96**; graduate count remains **30**.

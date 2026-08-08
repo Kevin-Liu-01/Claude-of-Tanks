@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-08-08T19:55:25.756Z",
+ "generatedAt": "2026-08-08T23:21:21.250Z",
  "gate": "every component >= 90; min is the headline",
  "passed": 24,
  "total": 96,
@@ -227,13 +227,13 @@
   },
   {
    "id": "m1a2_tusk",
-   "geoMin": 1.8,
+   "geoMin": 0,
    "gatePassed": false,
    "components": {
-    "hullCurves": 14.9,
-    "wholeCurves": 1.8,
-    "turretCurves": 42.2,
-    "stations": 23.5,
+    "hullCurves": 14.7,
+    "wholeCurves": 0,
+    "turretCurves": 39,
+    "stations": 23.1,
     "dims": 100,
     "floaters": 100
    }
@@ -539,13 +539,13 @@
   },
   {
    "id": "m1a2_sepv2",
-   "geoMin": 64.6,
+   "geoMin": 37.3,
    "gatePassed": false,
    "components": {
-    "hullCurves": 69.5,
-    "wholeCurves": 64.6,
-    "turretCurves": 78.9,
-    "stations": 77.4,
+    "hullCurves": 69.4,
+    "wholeCurves": 37.3,
+    "turretCurves": 53,
+    "stations": 73.2,
     "dims": 100,
     "floaters": 100
    }
@@ -565,13 +565,13 @@
   },
   {
    "id": "m1a2_tejas",
-   "geoMin": 75.6,
+   "geoMin": 57.8,
    "gatePassed": false,
    "components": {
-    "hullCurves": 92,
-    "wholeCurves": 75.6,
-    "turretCurves": 83.3,
-    "stations": 92.3,
+    "hullCurves": 91.7,
+    "wholeCurves": 57.8,
+    "turretCurves": 63.3,
+    "stations": 91.9,
     "dims": 100,
     "floaters": 100
    }

@@ -21,7 +21,7 @@ import { vehicleAmbientFloorHook } from '../materials.js';
 // KIT is populated by tankFactory.js, which sits on the other side of an
 // import cycle with the profile modules — resolve members lazily.
 const {
-  box, cylX, cylY, cylZ, torus, slab, frustum, buildRunningGear, buildGun,
+  box, cylX, cylY, cylZ, sph, torus, slab, frustum, buildRunningGear, buildGun,
   liftEye, periscope, towCable, headlight, xform, mergeAll,
 } = new Proxy({}, { get: (_, name) => (...args) => KIT[name](...args) });
 
@@ -1280,10 +1280,16 @@ function tejasRoofKit(P, t, station = 'crows') {
     //   low-profile head (0.26 x 0.145 vs the II's 0.20 x 0.195), gun
     //   group nested lower. FALSE-0 id (never gates); knee/window
     //   discipline kept anyway for §B8.1 datum sanity.
-    // 'crows' (tejas/tusk) emits byte-identical geometry: tall = 0 and
-    // every lp ternary picks the original literal.
+    // §5.74 DISTINCTIVENESS: the old station was a tall but razor-thin
+    // three-column spike.  The owner asked for a MORE-MASSIVE CROWS on all
+    // four current M1A2 marks and §5.73-1 now defines published height from
+    // the mandatory-kit P95 envelope, so the station is allowed to occupy a
+    // real side-view band.  The common gun-over-sensor anatomy below is
+    // deliberately broad/deep; each mark then gets a different armor/riser
+    // treatment.  The cws branch above is untouched, keeping m1a1/m1a1ha
+    // byte-guarded.
     const tusk = P.spec.id === 'm1a2_tusk';
-    const tall = station === 'crows2tall' ? 0.075 : 0;
+    const tall = station === 'crows2tall' ? 0.15 : 0;
     const lp = station === 'crowslp';
     const A = 0;
     // TUSK GRID SHIFT (gate run 1 this round): the tusk chimera oracle's
@@ -1296,53 +1302,72 @@ function tejasRoofKit(P, t, station = 'crows') {
     // tejas stays byte-identical at tvk = 0. The sensor head fits BOTH
     // grids as-is (z [0.135..0.370]).
     const tvk = tusk ? -0.022 : 0;
-    // hk: head-group height key — riser height 0.235+hk with the bottom
-    // pinned at 0.8805 (the base plane), every part above rides +hk.
-    // crows: 0 (byte-identical); crows2tall: +0.075; crowslp: -0.075.
-    const hk = (lp ? 0.16 : 0.235 + tall) - 0.235;
     const cA = Math.cos(A), sA = Math.sin(A);
     const at = (u, v) => [-0.70 - u * cA + v * sA, 0.2565 + u * sA + v * cA];
     const part = (bk, geo, u, v, y) => { const [px, pz] = at(u, v); P.add(bk, geo, px, y, pz, 0, A, 0); };
-    part('turret', box(0.150, 0.235 + hk, 0.105), 0, 0, 0.998 + hk / 2);   // riser post
-    part('turretDark', box(0.170, 0.030, 0.125), 0, 0, 1.128 + hk);        // slew plate
-    P.add('turretDetail', cylY(0.075, 0.085, 0.045, 12), -0.70, 1.155 + hk, 0.2565); // slew drum (axisymmetric — stays put)
-    // Sensor cluster: CROWS II tall narrow pod vs CROWS-LP wide-flat pod
-    // (top edge shared at 1.3425+hk so the gun-over-pod nest is uniform).
-    part('turretDark', lp ? box(0.26, 0.145, 0.235) : box(0.200, 0.195, 0.235),
-      0, -0.004, (lp ? 1.270 : 1.245) + hk);                               // sensor cluster body (long axis ALONG aim; z [0.135..0.370] in-window)
-    part('turretDetail', lp ? box(0.265, 0.02, 0.24) : box(0.205, 0.02, 0.24),
-      0, -0.004, 1.348 + hk);                                              // cluster crown lick
-    part('turretDark', box(0.16, 0.020, 0.10), 0, 0.03 + tvk, 1.352 + hk); // head/receiver saddle frame (bridges head top 1.3425 -> receiver belly)
-    // Sensor apertures ON THE AIM FACE (head forward face at z local
-    // 0.370) — at A = 0 the pod looks WHERE THE GUN POINTS; plates 11 mm
-    // into the face with 1 mm proud (sub-AA class, §4.999a mechanics).
-    part('turretGlass', box(0.085, lp ? 0.062 : 0.075, 0.012), 0.0435, 0.108, 1.258 + hk); // day window
-    part('turretGlass', box(0.065, lp ? 0.046 : 0.055, 0.012), -0.0665, 0.108, 1.248 + hk); // thermal window
-    part('turretDark', box(0.04, 0.04, 0.012), 0.0435, 0.108, (lp ? 1.220 : 1.192) + hk); // LRF aperture
-    part('turretDark', box(0.055, 0.155, 0.035), -0.0715, -0.032, 1.10 + hk); // cable drop
-    part('turretDark', box(0.185, 0.105, 0.26), 0, 0.0355 + tvk, 1.315 + hk); // M2 receiver (long axis ALONG aim; nests the head top-rear, z [0.162..0.422] tejas / [0.140..0.400] tusk)
-    part('turretDetail', box(0.170, 0.012, 0.22), 0, 0.0355 + tvk, 1.373 + hk); // top cover lick
-    part('turretDark', box(0.055, 0.05, 0.032), 0, -0.1105 + tvk, 1.30 + hk); // spade grips / backplate (z 0.130 >= the window edge)
-    part('turretDetail', box(0.065, 0.115, 0.155), -0.13, tvk, 1.24 + hk);    // ammo can GUN-LEFT on the head flank
-    part('turretDark', box(0.02, 0.04, 0.04), -0.10, -0.045 + tvk, 1.21 + hk); // can bracket -> head flank
-    part('turretDark', box(0.02, 0.05, 0.10), -0.10, 0.06 + tvk, 1.315 + hk); // feed chute can top -> receiver left rail
+    const baseY = 0.8805;
+    const riserH = lp ? 0.24 : 0.30 + tall;
+    const slewY = baseY + riserH + 0.02;
+    const headH = lp ? 0.22 : 0.28;
+    const headW = lp ? 0.46 : 0.36;
+    const headD = lp ? 0.46 : 0.42;
+    const headV = 0.015;
+    const headY = slewY + 0.03 + headH / 2;
+    const headTop = headY + headH / 2;
+    const receiverH = lp ? 0.15 : 0.18;
+    const receiverW = lp ? 0.38 : 0.32;
+    const receiverD = lp ? 0.50 : 0.56;
+    const receiverV = 0.015 + tvk;
+    const receiverY = headTop + 0.055;
+    const receiverTop = receiverY + receiverH / 2;
+    const aimV = headV + headD / 2 + 0.006;
+
+    part('turret', box(0.22, riserH, 0.18), 0, 0, baseY + riserH / 2);       // broad powered riser
+    part('turretDark', box(0.25, 0.040, 0.22), 0, 0, slewY);                 // slew plate
+    P.add('turretDetail', cylY(0.11, 0.12, 0.055, 14), -0.70, slewY + 0.035, 0.2565); // slew drum
+    // Sensor pod + receiver are connected volumes, not a pin-mounted blade.
+    part('turretDark', box(headW, headH, headD), 0, headV, headY);
+    part('turretDetail', box(headW + 0.01, 0.025, headD + 0.01), 0, headV, headTop + 0.0125);
+    part('turretDark', box(receiverW * 0.76, 0.035, 0.22), 0, receiverV - 0.10, headTop + 0.025); // saddle
+    // Aim-face EO windows.  The apertures and the M2 share the same A=0
+    // frame, so the machine points where the sensors look.
+    part('turretGlass', box(0.13, lp ? 0.075 : 0.095, 0.014), 0.075, aimV, headY + 0.035);
+    part('turretGlass', box(0.10, lp ? 0.060 : 0.075, 0.014), -0.085, aimV, headY + 0.015);
+    part('turretDark', box(0.055, 0.050, 0.014), 0.075, aimV, headY - 0.075); // LRF aperture
+    part('turretDark', box(0.070, Math.max(0.16, headY - slewY), 0.050), -0.13, -0.10, (headY + slewY) / 2); // cable drop
+    part('turretDark', box(receiverW, receiverH, receiverD), 0, receiverV, receiverY); // M2 receiver
+    part('turretDetail', box(receiverW - 0.025, 0.018, receiverD - 0.045), 0, receiverV, receiverTop + 0.009); // top cover
+    part('turretDark', box(0.11, 0.065, 0.050), 0, receiverV - receiverD / 2 - 0.028, receiverY - 0.015); // spade grips
+    part('turretDetail', box(0.11, 0.18, 0.24), -0.23, headV - 0.02, headY - 0.02); // ammo can, gun-left
+    part('turretDark', box(0.035, 0.055, 0.08), -0.17, headV - 0.08, headY - 0.06); // can bracket
+    part('turretDark', box(0.03, 0.075, 0.16), -0.17, receiverV + 0.03, receiverY); // feed chute
     // IR pointer pod on the cradle right rail (§4.999a lights; aim-aligned).
-    part('turretDetail', cylZ(0.024, 0.10, 10), 0.115, 0.12 + tvk * 1.4, 1.30 + hk);
-    part('turretGlass', cylZ(0.018, 0.008, 10), 0.115, 0.172 + tvk * 1.4, 1.30 + hk);
+    part('turretDetail', cylZ(0.032, 0.14, 10), 0.205, receiverV + receiverD / 2 - 0.06, receiverY - 0.025);
+    part('turretGlass', cylZ(0.024, 0.010, 10), 0.205, receiverV + receiverD / 2 + 0.015, receiverY - 0.025);
     if (station === 'crows2tall') {
-      // §4.999a PARTIAL ARMOR (the sepv2 tall CROWS II, landed kit
-      // re-seated on the family station): armored crown plate under the
-      // receiver lick line + brow plate flush at the head top front edge.
-      part('turret', box(0.155, 0.012, 0.22), 0, 0.0355, 1.370 + hk);      // armored crown (under the 1.373+hk lick)
-      part('turret', box(0.205, 0.016, 0.06), 0, 0.055, 1.3345 + hk);      // head brow plate (top flush with the 1.3425+hk head top)
+      // SEPv2: the tallest mark gets a full rectangular armor hood and
+      // broad sensor brow — unmistakable even in a garage thumbnail.
+      part('turret', box(0.48, 0.025, receiverD + 0.05), 0, receiverV, receiverTop + 0.025);
+      for (const u of [-0.245, 0.245]) {
+        part('turret', box(0.022, receiverH + 0.12, receiverD + 0.04), u, receiverV, receiverY - 0.015);
+      }
+      part('turret', box(headW + 0.05, headH * 0.72, 0.022), 0, aimV + 0.012, headY - 0.01);
+    } else if (lp) {
+      // SEPv3: wide/low shroud around the LP head, leaving the face glass
+      // exposed.  This reads as a different station, not a lowered SEPv2.
+      part('turret', box(0.53, 0.022, headD + 0.045), 0, headV, headTop + 0.024);
+      for (const u of [-0.255, 0.255]) {
+        part('turret', box(0.020, headH + 0.07, headD + 0.025), u, headV, headY);
+      }
     }
     // Forward barrel run — SHADOW-NAMED (see shadowBarrel): collar + barrel
     // + §B3.1 dark tip continue the 1.322 bore line out of the receiver
-    // face (z local 0.422 tejas / 0.400 tusk).
+    // face.  It stays shadow-named because the long tube is render
+    // furniture, while the now-massive receiver is honest gate geometry.
     shadowBarrel(P, P.turretG, [
-      [0.0148, 0.115, -0.70, 1.322 + hk, 0.4795 + tvk],
-      [0.0145, 0.30, -0.70, 1.322 + hk, 0.687 + tvk],
-      [0.0155, 0.012, -0.70, 1.322 + hk, 0.843 + tvk],
+      [0.020, 0.16, -0.70, receiverY, receiverV + receiverD / 2 + 0.08],
+      [0.018, 0.42, -0.70, receiverY, receiverV + receiverD / 2 + 0.37],
+      [0.022, 0.025, -0.70, receiverY, receiverV + receiverD / 2 + 0.5925],
     ]);
     if (tusk) {
       // §4.999a ARMOR WRAP (TUSK CROWS II PROTECTOR kit — non-graduate,
@@ -1350,17 +1375,17 @@ function tejasRoofKit(P, t, station = 'crows') {
       // receiver face, left OUTBOARD of the re-hung can so the kit boxes
       // gun + feed together) + rear plate behind the grips + armored
       // crown lid over receiver AND can (under the 1.373 lick line).
-      part('turret', box(0.014, 0.125, 0.26), 0.0995, 0.0355 + tvk, 1.305); // right flank plate
-      part('turret', box(0.014, 0.125, 0.26), -0.19, 0.0355 + tvk, 1.285);  // left flank plate (outside the can)
-      // (the +90-era rear plate is RETIRED at forward rest: the legal space
-      // behind the backplate ends at the spike-window edge — a plate there
-      // would light a 4th spike column and break tusk's held dims 100; the
-      // backplate block carries the rear mass)
-      part('turret', box(0.36, 0.014, 0.26), -0.045, 0.0355 + tvk, 1.362);  // armored crown lid (receiver + can)
+      part('turret', box(0.022, receiverH + 0.13, receiverD + 0.05), 0.19, receiverV, receiverY - 0.015);
+      part('turret', box(0.022, receiverH + 0.13, receiverD + 0.05), -0.30, receiverV, receiverY - 0.015);
+      part('turret', box(0.55, 0.025, receiverD + 0.06), -0.055, receiverV, receiverTop + 0.026);
+      part('turret', box(0.50, receiverH + 0.04, 0.024), -0.055,
+        receiverV - receiverD / 2 - 0.018, receiverY);                      // rear shield
       // Urban spotlight on the wrap's left plate (the second §4.999a
       // light; the base spotlight below the knee stays).
-      part('turretDetail', cylZ(0.028, 0.09, 10), -0.165, 0.10 + tvk, 1.26);
-      part('turretGlass', cylZ(0.021, 0.008, 10), -0.165, 0.148 + tvk, 1.26);
+      part('turretDetail', cylZ(0.036, 0.12, 10), -0.275,
+        receiverV + receiverD / 2 - 0.07, receiverY - 0.04);
+      part('turretGlass', cylZ(0.027, 0.010, 10), -0.275,
+        receiverV + receiverD / 2 - 0.005, receiverY - 0.04);
     }
   }
   // Whip antennas at the ref's own x stations (world x -1.168/+1.096, still
@@ -1720,6 +1745,99 @@ function tejasRoofKit(P, t, station = 'crows') {
 // clear), tops under the skirt hem, silhouette-free in all gate views.
 // Overlays are static (hub bolts do not spin) — the fleet shadow-drum
 // precedent (isu122s r3).
+// SEPv3 §5.74 grass/foliage package.  This is physical, deterministic
+// geometry (not a paint alias): low-poly blade fans break the roof outline,
+// while leaf mats cover parts of the turret and hull ERA faces.  The custom
+// olive materials clone the vehicle cloth response so the cover receives the
+// same garage lighting/AO as the rest of the tank.  All hull-side leaves stay
+// at or inside the certified ±1.828 m width carrier.
+function sepv3Foliage(P) {
+  const makeMat = (hex) => {
+    const m = P.mats.canvasCloth.clone();
+    m.color.setHex(hex);
+    m.roughness = 1;
+    m.metalness = 0;
+    m.onBeforeCompile = vehicleAmbientFloorHook;
+    m.customProgramCacheKey = () => `abrams-sepv3-foliage-${hex.toString(16)}`;
+    return m;
+  };
+  const addMesh = (parent, geos, hex, name) => {
+    if (!geos.length) return;
+    const geo = mergeAll(geos);
+    const mat = makeMat(hex);
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.name = name;
+    mesh.castShadow = mesh.receiveShadow = true;
+    parent.add(mesh);
+    P.disposables.push(geo, mat);
+  };
+  const topA = [], topB = [], hullA = [], hullB = [];
+  const fans = [
+    [-1.16, 0.79, -2.20, 1.00], [-0.72, 0.82, -1.74, 0.95],
+    [-0.22, 0.80, -2.35, 1.12], [0.28, 0.81, -1.88, 0.88],
+    [0.72, 0.80, -2.45, 1.00], [1.08, 0.76, -1.55, 0.82],
+    [-1.15, 0.70, -0.88, 0.78], [1.10, 0.70, -0.98, 0.78],
+  ];
+  for (let i = 0; i < fans.length; i++) {
+    const [x, y, z, s] = fans[i];
+    // Five overlapping low-poly lobes make a continuous leafy mass; the
+    // blade fan then supplies the grass silhouette above it.
+    for (let l = 0; l < 5; l++) {
+      const dx = (l - 2) * 0.072 * s;
+      const dz = (((l * 3) % 5) - 2) * 0.038 * s;
+      const target = (i + l) % 2 ? topA : topB;
+      target.push(xform(sph(0.105 * s, 8), x + dx, y + 0.070 * s,
+        z + dz, 0, i * 0.37 + l, 0, [1.22, 0.72, 0.95]));
+    }
+    for (let k = 0; k < 7; k++) {
+      const h = s * (0.15 + (k % 3) * 0.035);
+      const dx = (k - 3) * 0.035 * s;
+      const dz = ((k * 5) % 7 - 3) * 0.025 * s;
+      const ry = (i * 0.47 + k * 0.81) % Math.PI;
+      const rz = (k - 3) * 0.075;
+      const target = (i + k) % 3 ? topA : topB;
+      target.push(xform(box(0.030 * s, h, 0.018 * s), x + dx, y + h * 0.44,
+        z + dz, 0, ry, rz));
+    }
+  }
+  // Glacis/deck cover — smaller fans, still below the CROWS P95 band.
+  for (let i = 0; i < 6; i++) {
+    const x = -1.05 + i * 0.42;
+    const z = 1.58 + (i % 2) * 0.42;
+    const y = 1.48 - (i % 2) * 0.055;
+    hullB.push(xform(sph(0.13, 8), x, y + 0.045, z,
+      0, i * 0.43, 0, [1.22, 0.48, 0.92]));
+    for (let k = 0; k < 5; k++) {
+      const h = 0.10 + (k % 2) * 0.045;
+      hullA.push(xform(box(0.025, h, 0.016), x + (k - 2) * 0.032,
+        y + h * 0.44, z + ((k * 3) % 5 - 2) * 0.025, 0,
+        i * 0.35 + k * 0.67, (k - 2) * 0.08));
+    }
+  }
+  // Foliage mats tied into the SEPv3 side-ERA seams.  They are thin in x
+  // and fragmented in y/z so the armor remains legible beneath the cover.
+  for (const side of [-1, 1]) {
+    for (let k = 0; k < 7; k++) {
+      const z = -1.72 + k * 0.57;
+      const y = 1.04 + (k % 2) * 0.20;
+      const target = (k + (side > 0 ? 1 : 0)) % 3 ? hullB : hullA;
+      for (let l = 0; l < 3; l++) {
+        target.push(xform(sph(0.075 + l * 0.006, 8), side * 1.825,
+          y + (l - 1) * 0.055, z + (l - 1) * 0.075,
+          0, k * 0.41 + l, 0, [0.032, 0.62, 1.08]));
+        target.push(xform(box(0.004, 0.13 + l * 0.02, 0.014),
+          side * 1.824, y + 0.035 + l * 0.035,
+          z - 0.075 + l * 0.075, 0, k * 0.32 + l * 0.8,
+          side * (l - 1) * 0.10));
+      }
+    }
+  }
+  addMesh(P.turretG, topA, 0x41532f, 'sepv3_foliage_light');
+  addMesh(P.turretG, topB, 0x2c3c25, 'sepv3_foliage_dark');
+  addMesh(P.hullG, hullA, 0x485b34, 'sepv3_grass_light');
+  addMesh(P.hullG, hullB, 0x304127, 'sepv3_grass_dark');
+}
+
 function tejasWheelKit(P, g) {
   const face = g.trackXc + Math.min(0.23, g.trackW * 0.38) / 2;   // 1.515
   for (const side of [-1, 1]) {
@@ -2610,6 +2728,24 @@ function buildTejasFamily(P, p) {
     P.add('turretDark', cylZ(0.013, 0.52, 8), -0.565, 0.60, 0.62);     // barrel through the notch
     P.add('turretDark', cylZ(0.016, 0.05, 8), -0.565, 0.60, 0.90);     // flash hider
     P.add('turretDetail', box(0.07, 0.09, 0.13), -0.66, 0.575, 0.12);  // ammo pouch
+    // §5.74 TUSK identity emphasis: laminated outer wings, coping frame and
+    // cheek-side ARAT-2 shingles make the loader shield the dominant roof
+    // tell.  All added shield solids stay below the 0.883 furniture knee.
+    P.add('turret', box(0.90, 0.09, 0.06), -0.58, 0.805, 0.325);       // heavy upper coping
+    P.add('turret', box(0.07, 0.48, 0.68), -1.00, 0.60, 0.04);        // enlarged outer wing
+    P.add('turret', box(0.46, 0.46, 0.07), -0.17, 0.60, 0.22, 0, -0.48, 0); // inner wing
+    P.add('turretDark', box(0.030, 0.39, 0.030), -0.92, 0.61, 0.35);  // perimeter upright
+    P.add('turretDark', box(0.72, 0.028, 0.030), -0.58, 0.405, 0.35); // bottom frame
+    for (const side of [-1, 1]) {
+      const xFace = side < 0 ? 1.704 : 1.621;
+      for (let k = 0; k < 4; k++) {
+        const z0 = -1.82 + k * 0.42;
+        flankSlab(P, 'turretDark', t, side, xFace, 0.03,
+          0.14, 0.48, z0, z0 + 0.35, 0.055);
+        flankSlab(P, 'turretDetail', t, side, xFace + 0.006, 0.03,
+          0.19, 0.44, z0 + 0.025, z0 + 0.325, 0.025);
+      }
+    }
     // CROWS-side urban spotlight on the left station base (drum + guard,
     // top 0.845 < the 0.883 knee).
     P.add('turretDetail', cylZ(0.048, 0.09, 12), -0.46, 0.80, 1.12, -0.24, 0, 0);
@@ -2677,6 +2813,29 @@ function buildTejasFamily(P, p) {
     // stowage) stays at its certified lines.
     const hb2 = (bk, x0, x1, y0, y1, z0, z1) =>   // world-corner box helper
       P.add(bk, box(x1 - x0, y1 - y0, z1 - z0), (x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
+    // §5.74 SEPv2 passive-armor flavor: ONE broad course of rectangular
+    // hull cassettes and four large bustle-side slabs per flank.  This is
+    // intentionally unlike TUSK's two-course ARAT shingles and SEPv3's
+    // fine 9x2 M32 grid.  Faces terminate at the existing ±1.828 carrier.
+    for (const side of [-1, 1]) {
+      P.add('hullDark', box(0.010, 0.055, 4.55), side * 1.817, 1.37, 0.05);
+      for (let k = 0; k < 10; k++) {
+        const z = -1.93 + k * 0.44;
+        P.add('hull', box(0.012, 0.30, 0.385), side * 1.820, 1.19, z);
+        P.add('hullDetail', box(0.003, 0.245, 0.325), side * 1.8265, 1.19, z);
+        P.add('hullDark', box(0.005, 0.045, 0.385), side * 1.824, 1.035, z);
+      }
+      const xFace = side < 0 ? 1.704 : 1.621;
+      for (let k = 0; k < 4; k++) {
+        const z0 = -2.30 + k * 0.48;
+        flankSlab(P, 'turretDark', t, side, xFace, 0.03,
+          0.17, 0.55, z0, z0 + 0.41, 0.06);
+        flankSlab(P, 'turretDetail', t, side, xFace + 0.007, 0.03,
+          0.22, 0.50, z0 + 0.03, z0 + 0.38, 0.025);
+        flankSlab(P, 'turretDark', t, side, xFace + 0.009, 0.03,
+          0.345, 0.38, z0 + 0.06, z0 + 0.35, 0.014);
+      }
+    }
     // Driver's wind SENSOR (print glsaa_5 — genuine hull-side kit): the
     // certified 1.925 head over the exact [2.612..2.642] window, slim
     // mast reaching the tejas 1.353 glacis line, base bracket embedded.
@@ -2776,6 +2935,20 @@ function buildTejasFamily(P, p) {
         P.add('hullDark', box(0.006, 0.05, 0.40), s * 1.8215, 1.058, zt);    // row seam
         if (k < 8) P.add('hullDark', box(0.006, 0.48, 0.055), s * 1.8215, 1.05, zt - 0.235); // column seam
       }
+      // Fine two-tier turret cassettes carry the same SEPv3 micro-grid
+      // language up onto the pitched bustle flanks.  Their smaller modules
+      // separate this mark from SEPv2's four broad passive slabs.
+      const xFace = s < 0 ? 1.704 : 1.621;
+      for (let k = 0; k < 5; k++) {
+        const z0 = -2.43 + k * 0.34;
+        for (let row = 0; row < 2; row++) {
+          const y0 = 0.15 + row * 0.19;
+          flankSlab(P, 'turretDark', t, s, xFace, 0.03,
+            y0, y0 + 0.17, z0, z0 + 0.285, 0.045);
+          flankSlab(P, 'turretDetail', t, s, xFace + 0.006, 0.03,
+            y0 + 0.025, y0 + 0.145, z0 + 0.025, z0 + 0.26, 0.018);
+        }
+      }
     }
     // TROPHY APS: launcher assemblies high on both flanks (bracket posts
     // seated through the roof-edge shelves, canted launcher body + louver
@@ -2848,6 +3021,9 @@ function buildTejasFamily(P, p) {
     P.add('hullDetail', box(0.115, 0.018, 0.20), 1.20, 1.362, 2.60);       // shovel blade
     P.add('hullDark', box(0.24, 0.014, 0.032), 1.14, 1.362, 2.78);         // clamp strap
     P.add('hullDark', box(0.24, 0.014, 0.032), 1.14, 1.362, 3.10);         // clamp strap
+    // Physical cover is applied last so it visibly drapes over the ADL /
+    // IFLIR / ERA package instead of being buried by it.
+    sepv3Foliage(P);
   }
 
   // ---- FAMILY VARIETY LOADOUTS (§B3/§I, owner directive 2026-08-03) -------
@@ -2932,6 +3108,18 @@ function buildTejasFamily(P, p) {
         P.hullG.add(ledgeLinks);
         P.add('hullDark', box(0.05, 0.030, 0.045), 1.750, 1.428, -0.24);
         P.add('hullDark', box(0.05, 0.030, 0.045), 1.750, 1.428, -0.96);
+        // §5.74 clean-package identity: ERA-free, with one compact
+        // sustainment roll and a sealed relay/tool case on the bustle roof.
+        // These harvest the legacy works-field stowage grammar without
+        // turning the new M1A2 into another urban-armor mark.
+        P.add('turretCloth', cylX(0.072, 0.56, 12), 0.43, 0.818, -1.34);
+        for (const sx of [0.28, 0.58]) {
+          P.add('turretTrack', torus(0.074, 0.010, 12), sx, 0.818, -1.34,
+            0, 0, Math.PI / 2);
+        }
+        P.add('turret', box(0.34, 0.12, 0.24), -0.24, 0.825, -1.30);
+        P.add('turretDetail', box(0.30, 0.014, 0.20), -0.24, 0.892, -1.30);
+        P.add('turretDark', box(0.035, 0.050, 0.020), -0.08, 0.825, -1.30);
       }
     } else if (vid === 'm1a2_sepv2') {
       // SEPV2 (§5.19a rebuild): stowed M240 in the left floor gap (the
