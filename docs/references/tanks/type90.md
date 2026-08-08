@@ -565,3 +565,151 @@ own mantlet station instead of a tube emerging from a bare wedge).
 §B battery (final bytes): track-clip --exact 0/0 band + 0/0 shoe;
 turret-parent 0/0/0; winding m1 clean / m2 clean; standard-check contig
 0, census mg1+5d; npm test green. Hash ea251927 -> d9b3fc88 (mantlet).
+
+## §B7 RE-PROPORTION ROUND (2026-08-07, type90 re-proportion agent) — §5.28 EXECUTED: the REAL 2.34 turret governs; gate x2 **3.0 | hull 88.5 / whole 16.4 / turret 3.0 / stations 18.5 / dims 100 / floaters 100** (baseline 83.6 | 88.5/84.9/84.6/83.6/100/100 — hull EXACT, dims 100 HELD, floaters 100; whole/turret/stations carry the ratified REF-WRONG divergence, per-column caps below)
+
+RULING (PROGRAM-STATE §5.28, ratified; §B7 owner-taste/photo class): the
+print is REF-WRONG on turret height — its post-warp roof PLATE reads 1.90
+(the France top-map's hatch domes 2.05-2.08 / sight ridge 2.23-2.26 /
+basket frame 2.31 are FURNITURE). Root cause measured this round on the
+PRE-WARP bytes (type90.glb.bak, direct vertex parse): the artist's own
+model carries deck 15.65 / roof-plate 22.0 / ridge 27.5 / tube-mid 18.43
+(glb units) — a turret face only 0.29 of total height (real 0.389) — and
+the batch-27 two-knee warp ("roof 2.90 -> 2.31") mapped the FURNITURE
+crown to the published line, squashing the real roof to 1.90. Twice
+stylized, never right: the REAL vehicle governs the region.
+
+MEASURED REAL-PROPORTION TABLE (what governs, §K measure-first):
+- roof 2.34 m — published, 2 sources (Wikipedia infobox; weaponsystems.net
+  "2.34 roof / 3.05 over sights+MG"). Spec heightM already reads 2.34 (the
+  published datum, userdrops5 make row) — NO datum true-up due; the m26
+  precedent check came back clean.
+- hull deck 1.408-1.454 (landed r6 knee map, print-corroborated, held).
+- turret FACE 1.43 -> 2.34 ≈ 0.90 m (print: 0.47 — the +0.43 divergence
+  IS the ruling). deck/roof ratio 0.615; face/overall 0.385 vs print 0.247.
+- BORE LINE 1.82 (was 1.562 = the print's squashed tube band 1.485..1.639):
+  three-source school constant — type10 build 1.82 (roof-bore 0.48, §B8
+  critic PASS 9.0), leo2a4 build 2.00 (roof-bore 0.48, §5.21 PASS), the
+  PRE-WARP type90 artist's own bore at 43.8% of HIS face -> 1.83 on the
+  real face. Corroboration: the spec's inherited armor model (type10 base)
+  already carries gunPivot bore 1.82 — visual now matches the hit model.
+- above-roof kit: commander sight tower top 2.60 (real ~2.65-2.75;
+  compressed to the p95 budget), M2 receiver 2.31 on a LOW right-side
+  swing mount (type10 "M2 height law" precedent — a roof-standing pintle
+  on a datum-height roof owns heightM p95), whips 2.35/2.24, everything
+  else <= 2.352.
+
+WHAT MOVED (all world-frame): walls 1.77 -> 2.13 (PLAN_LO band 0.70),
+extension 1.85 -> 2.21, roof plate ONE FLAT PLANE 2.34 x +-0.98
+(z_w -0.70..1.275; channel/hatch-plate mask-chasing pieces DELETED),
+bustle roof 1.885 -> 2.34 (x +-1.10), narrow roof-edge weld chamfers
+(wall top 2.21 -> roof 2.34; the old 0.33-0.42 rounded shoulder at
+1.82-2.06 was the print's squat crown), cheek-zone roof plate carried
+flat to the face top edge + the SHALLOW BROW over the throat (top at the
+roof plane, face flush with the plan nose 1.98), ROUNDED GUN-SHIELD
+CHEEK posts (r 0.075) flanking the embrasure on the 1.82 bore line,
+hatches re-seated FLUSH (coaming crowns 2.352-2.358), gunner sight ->
+embedded low hood (top 2.352) + recessed aperture, commander sight tower
+2.335..2.597 at z_w 0.165..0.380, pano flush head, M2 pintleMG fitting
+(scale 0.9) on the swing shelf at x 1.13 / z_w -0.10 (receiver top ~2.31,
+mask-interior in side AND plan), bustle flank shelves 1.84 -> 2.26 tops,
+smoke banks up the flank (base ~2.00, tips ~2.13), basket top rail
+1.90 -> 2.14 with 0.60 posts + taller mesh/cargo (floor rails held —
+print agrees there), whip R h 0.68 -> 0.63 (tip 2.35), turret decals to
+mid-wall 1.80, turret-top anchor 2.62. GUN: gunG y 0.162 -> 0.42 (bore
+1.82); the France §5.16 mantlet block/face/collar/strips/tapers +
+embrasure sealing + drums + MRS plate + muzzleBore all ride gunG and
+re-seat intact (muzzle z 5.96 held -> overallLengthM 9.82/0.63% held).
+
+heightM p95 DISCIPLINE (dims sovereign — caps never cover dims; the round
+held dims 100 x3 runs, heightM 2.353/0.54%):
+- side grid pitch 0.122 m -> ~60-62 body columns -> p95 = 4th-highest
+  column top: at most THREE columns may exceed the 1% grace line 2.3634.
+- PIXEL-CENTER CROWN LAW (banked): the 1024 trace reads pixel CENTERS up
+  to ~6 mm above a surface — crowns at 2.358 read 2.364 (r2 measured:
+  dims 99.8). Every non-tower crown holds <= 2.352; r1's loader-side
+  boxes at 2.375 (2 cols) put p95 at 2.38/-4.1 dims — re-seated 2.352.
+- the ONLY above-grace spender is the commander tower, z-window
+  0.165..0.380 pinned INSIDE the [0.150..0.394] column pair (phase is
+  stable: both models' x/z extents are byte-held by the round).
+
+PER-COLUMN §B7 CAPS (gate-parity worldtrace, PARITY PROVEN vs the
+official run to the decimal; "want" = the registered print, "have" = the
+real-proportioned build; every column where the print reads 1.90-class):
+1. SIDE BUSTLE-ROOF CLASS (~10 cols, z_w -0.70..-1.91): want top 1.885
+   (squat bustle) vs have 2.335 -> err 0.228 x10. The single largest
+   block of the ruling.
+2. SIDE GUN-BAND CLASS (~19 cols, z_w 1.86..4.06): want band
+   [1.43..1.70] (squashed tube) vs have [1.43..1.96] (bore 1.82 tube +
+   drums; mantlet cols to 2.34) -> err 0.222-0.279. Includes the w
+   1.74-1.86 mantlet/face cols (want 1.78-1.82 vs have 2.34, err ~0.28).
+3. SIDE CREW-ROOF CLASS (~13 cols, z_w -0.58..1.25): want 2.22-2.27 (the
+   print's ridge furniture ~= the real ROOF line!) vs have 2.34-2.59 ->
+   err 0.04-0.17 (the tower col 0.281 at w 0.28). The near-match here is
+   independent evidence the real roof is ~2.34: the artist put his sight
+   heads there.
+4. FRONT WALL CLASS (~11 cols, x +-1.18..1.37): want 1.82-1.85 vs have
+   2.26-2.28 -> err 0.20-0.23. FRONT CENTER/apron cols: want 1.89-2.31
+   vs have 2.34-2.35 -> err 0.03-0.23; TOWER cols x 0.25..0.62: want
+   2.06-2.18 vs have 2.60 -> err 0.21-0.27. (front_whole 86.9 -> 29.8;
+   front_hull 93.7-94.2 unchanged — hull rows are turret-blind.)
+5. STATIONS (14-slice table, proc z-ranges from the parity dump):
+   i3 2.31/2.36 (1.88) | i4 1.84/2.35 (21.33) | i5 1.85/2.35 (20.87) |
+   i6 2.26/2.37 (4.44) | i7 2.28/2.61 (13.79 — the tower slice) |
+   i8 2.28/2.37 (3.54) | i9 2.23/2.37 (5.80) | i10 1.83/2.35 (21.93 —
+   the FACE slice: the print's face top 1.83 vs the real 2.34) |
+   i11 1.72/1.98 (10.92) | i12 1.69/1.97 (11.53) | i13 1.72/1.97
+   (10.62 — the gun-band slices at bore 1.82). Trim eats i4+i10; i5
+   stays in the mean. i0-i2 hold 0.07-0.52 (the i2 whip-vs-mast pair now
+   MATCHES: 2.399 ref / 2.401 proc). wPct rows unchanged (the certified
+   LINK-OVERHANG lane class + the known i6 per-run dice).
+Uncapped rows: hull 88.5 EXACT x3 runs (side_hull 90.65/plan 88.46/front
+93.70-94.16 — side/front wobble +-0.2-0.5 is the pre-existing AA-teeter
+class, plan binds); plan_whole 88.73 / plan_turret 85.9 (footprint
+registration-neutral by design); dims 100 x3; floaters 100 x3.
+
+§5.33 NOTE (the 90-ladder bar vs this round): the owner's ">= 90
+wherever the oracle permits" cannot be met against THIS print in the
+§B7 region — the ruling itself is that the print is wrong there. The
+unlock is §5.33 route (b): an §E oracle repair. NORMALIZE PLAN FILED
+(orchestrator lane, verify-first per §E request-interception sim):
+piecewise y-map on the print's ^Turret$ node ONLY (its tube is FUSED in
+the turret mesh; y-maps are safe under the TURRET-FLIP census frame):
+  knees [(<=1.46, identity), (1.485 -> 1.741), (1.639 -> 1.895),
+         (1.90 -> 2.34), (>1.90 -> +0.44 rigid)]
+  = chin sliver stretch, TUBE BAND RIGID +0.256 (diameter preserved,
+  bore 1.562 -> 1.818), wall band x1.70, roof to the published plane,
+  furniture crowns ride +0.44 (ridge 2.23-2.26 -> 2.67-2.70, mast tail
+  2.40 -> 2.84; its shelves 1.84 land 2.24 ~= the build's 2.26 rails).
+  Post-warp the four cap classes above dissolve and the 90-ladder
+  reopens for type90 (route-a small-ladder class). Builders never touch
+  GLBs — filed, not run.
+
+LAWS BANKED (this round):
+1. PIXEL-CENTER CROWN LAW (§A/heightM): trace tops read pixel centers —
+   budget every crown >= 1 px (~11 mm at this frame) under the grace
+   line, not at it.
+2. P95-WINDOW PINNING: the above-grace budget is COLUMNS, not items —
+   co-locate tall furniture in one z-window pinned inside whole grid
+   columns (boundaries from the workorder u-steps); N-body ~60-62 gives
+   THREE slots, and a straddle eats one.
+3. SWING-MOUNT M2 (type10 law generalized): on any build whose roof IS
+   the published datum, roof-standing pintle fittings are dims-illegal —
+   the low side swing mount is the §B3-compliant seat (receiver <= datum,
+   plan-interior placement inside the wall line).
+4. PRE-WARP RATIO EVIDENCE (§E corollary): a wrongly-normalized print's
+   .bak still carries the artist's scale-free INTERNAL ratios (bore/face
+   0.438 here) — measure them before trusting any warped-band landmark.
+
+EVIDENCE: shots/critic-type90/ (14-view pairs, fresh at 741352c4);
+shots/type90-reproportion/garage-after/ (6 garage-angle shots — the
+owner's angle); shots/type90-reproportion/yaw0/ + yaw90/ (14-view §B5
+pair each). §B battery (final bytes): track-clip --exact 0/0 band +
+0/0 shoe; turret-parent 0/0/0; winding-audit m1 clean (rev 0 / mix 0 /
+deficit 25px 0.03% pre-existing rearleft sliver) + m2 clean (yaw-
+stranded 0); standard-check clip ✓ holes 0 ✓ census mg1+5d ✓; npm test
+green. GUARDED HASHES byte-held x2 (before+after): type74 7ba404c5 /
+ariete 324c3f12 / t80u af5e3ad9 / leclerc 206c5fd1 / amx30 f992548a /
+amx30b2 f7eecb20. type90 d9b3fc88 -> 741352c4 (50 meshes / 60271 verts).
+DELIVERED-PENDING-CRITIC (§B8 — the §B7 region is scored vs the
+real-vehicle photo class, ref parity elsewhere). NOT COMMITTED.
