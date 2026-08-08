@@ -54,7 +54,7 @@ const LOCAL_REFERENCE_OVERRIDES = {
   // measurement/influence only — playables are procedural). Textured
   // prints (no paintUntextured). Follower sets are AABB-census best-effort
   // (orchestrator owns corrections).
-  k2: { source:'glb', glb:{ path:'/models/community-candidates/k2_black_panther_armored_warfare.glb', turretNode:'^Object_21$', gunNode:'^Object_19$', autoPivot:true, turretFollowers:'^Object_(?:2|8|10|15|18|20|22|24|25)$' } },
+  k2: { source:'glb', glb:{ path:'/models/community-candidates/k2_black_panther_armored_warfare.glb', turretNode:'^Object_21$', gunNode:'^Object_19$', autoPivot:true, turretFollowers:'^Object_(?:2|8|10|15|18|20|23|24|25)$' } },
   type99a: { source:'glb', glb:{ path:'/models/community-candidates/type_99a2_armored_warfare.glb', turretNode:'^Object_31$', gunNode:'^Object_17$', autoPivot:true, turretFollowers:'^Object_(?:3|4|6|7|9|10|11|12|13|15|16|19|20|21|23|30)$' } },
   amx40: { source:'glb', glb:{ path:'/models/community-candidates/amx-40_armored_warfare.glb', turretNode:'^Object_12$', gunNode:'^Object_20$', autoPivot:true, turretFollowers:'^Object_(?:2|5|6|7|8|11|14|15|24)$' } },
   k1a1: { source:'glb', glb:{ path:'/models/community-candidates/k1a1_kojf.glb', turretNode:'^vehicle#k1a1_turret_0$', gunNode:'^vehicle#k1a1_cannon_10$', autoPivot:true, turretFollowers:'^vehicle#(?:k1a1_(?:cage|smokecaps|noeffect01)_turret_\\d+|k1a1_cannonbase_9|antenna_short_7)$' } },
@@ -420,6 +420,12 @@ const LOCAL_REFERENCE_OVERRIDES = {
   // f01e1e00) ONLY; never gate kv2.
 };
 const source = LOCAL_REFERENCE_OVERRIDES[id] || MODEL_SOURCE[id];
+// [yawprobe TEMP §5.53 diagnosis] URL-param knob passthrough — removed at round end.
+// &restYaw=<rad> [&restYawC=x,z] sets cfg.turretRestYaw on the ref row for THIS load only.
+if (source?.glb && params.get('restYaw')) {
+  source.glb.turretRestYaw = parseFloat(params.get('restYaw'));
+  if (params.get('restYawC')) source.glb.turretRestYawCenter = params.get('restYawC').split(',').map(Number);
+}
 const sourceIds = ALL_TANK_IDS.filter((tankId) => MODEL_SOURCE[tankId]?.source === 'glb');
 window.__REFERENCE_IDS = [...new Set([...sourceIds, ...Object.keys(LOCAL_REFERENCE_OVERRIDES)])]
   .filter((tankId) => TANK_SPECS[tankId]);

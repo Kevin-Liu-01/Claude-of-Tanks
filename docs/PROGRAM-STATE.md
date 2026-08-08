@@ -1973,3 +1973,15 @@ packet). FLEET 23/90 PASSING. Patton lane FREES -> m48 build spawns
 (m60a1 + m47 turret grammar donors, §5.45 queue). Round law-bank
 already landed §5.41 (workorder-flip, registration-sliver); both
 sitting tmp drivers swept at landing.
+
+## 5.59 KOREA DELIVERED + K2 FOLLOWER FIX (2026-08-08): k2 rebuilt to
+print lines (48d0f7e — arrowhead turret, KAPS/KSPAW flush cheek-plane
+device, dims 0->100 via the p95-spike census) + k1a1 NEW (2e210838 —
+baby-Abrams identity, presentation PASS no-flip dAlong 0.000, min
+46.2->54.8, dims 100). k2's capped rows = REF partition defects
+(numpy receipts): Object_22 carries glacis material (was in the
+turret mask), Object_23's turret-roof rails were misfiled hull-side.
+FOLLOWER FIX APPLIED (my lane, three maps): 22 OUT / 23 IN — forecast
+70-85 band; agent re-gating x2 both ids; identity critic spawns on
+its numbers. m48 NEW BUILD SPAWNED (patton lane freed by the m45
+graduation; §5.45 queue — m60a1+m47 donors, atmodeler print oracle).
