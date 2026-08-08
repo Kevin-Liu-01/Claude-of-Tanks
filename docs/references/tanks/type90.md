@@ -843,3 +843,111 @@ shots/type90-ladder49/{selfshots,yaw90,garage}/ (14-view set + yaw-90
 pair + 6 garage angles; the tmp-abramsx-garage --ref variant crashes on
 non-abrams ref layout — proc set only). DELIVERED-PENDING-CRITIC; NOT
 COMMITTED.
+
+## DATUM ROUND (2026-08-08, type90 datum agent) — §5.73-1 P95-ENVELOPE LAW EXECUTED: heightM 2.34 -> 2.55, the §5.57 crown-band cap DISSOLVED; gate x2 **79.5 | hull 88.4 / whole 86.6 / turret 79.5 / stations 93.8 / dims 100 / floaters 100** (baseline 68.9 | 88.4/80.0/68.9/93.6/100/100 — every component hold-or-improve, dims 100 HELD at the new datum)
+
+THE DERIVATION (owner law §5.73-1: heightM = the P95 ENVELOPE including
+mandatory roof kit; t14 3.16 / type99a 2.86 precedent made law):
+- PUBLISHED BRACKET (two-source): Wikipedia infobox 2.34 = the BARE
+  turret roof; weaponsystems.net "2.34 roof / 3.05 over sights+MG". The
+  real JGSDF Type 90 carries mandatory kit 0.1-0.7 m above the bare
+  roof (hatch domes / periscope ridge ~2.51 band, sight head real
+  ~2.65-2.75, swung M2 to ~3.05) — a bare-roof 2.34 P95 is unreachable
+  for any honest build that mounts the kit. The §5.57 cap was the
+  proof: ~20 columns want the print's 2.44-2.53 band vs a 3-bin crown
+  budget (4th above-grace bin = dims 44 measured).
+- WHY NOT 3.05: the published 3.05 is a MAX over the flexibly-mounted
+  M2 + sight head — a 1-2 column spike class, exactly what the gate's
+  antenna-robust p95 statistic EXCLUDES (dims replica: 12% body filter,
+  p95 = 4th-highest column top). No Type 90 silhouette carries a 3.05
+  P95; spec 3.05 would misdatum every honest build ~16% LOW (dims
+  46-class — worse than the 2.34 cap it replaces).
+- THE RECEIPTS VALUE: 2.55 = the corrected 49-v2 oracle's measured
+  bodyHeightM through the gate's own dims replica (vertex REG
+  docs/references/vertex/type90.json, generated 2026-08-08 at the v2
+  bytes fcfeb38a: measured.bodyHeightM 2.55 / bodyTopM 2.552 / box max
+  2.60 = the §5.39 sight head). The v2 print is the owner-ratified
+  authority for the kit lines ("the REAL lines govern": roof 2.34 /
+  ridge ~2.51 / sight head 2.60 max) and its lines are themselves
+  §5.39-receipt-checked against the published profile. BRACKET: 2.34
+  published roof < 2.55 p95-with-kit < 2.60 print max < 3.05 published
+  max-over-MG. Extract pubDims stays 2.34 (type99a precedent — §E warp
+  receipts keep comparing against the published roof).
+
+WHAT MOVED (spec + build, all under the new 2.5755 grace line unless
+noted; world frame):
+- SPEC: userdrops5.js make row heightM 2.34 -> 2.55 (§5.73-1 comment).
+- CROWN BAND UNLOCK (the §5.57 cap class, ~14 side cols z_w -0.58..1.25
+  want 2.435-2.526): commander cupola coaming 2.352 -> 2.395 + lid
+  2.415 + 4-block vision ring (crowns 2.462, inboard-forward arc x
+  0.36..0.49 — the v2 front dome band 0.251..0.445) + cupola outboard
+  ring segment top 2.40 (v2 band runs to x ~0.91); sight-housing REAR
+  RUN top 2.505 (z_w -0.17..0.30 behind the tower — the v2 center cols
+  2.516-2.526; its rear z-cap paints i6 [want 2.524], the END-CAP law
+  working FOR us); gunner sight hood 2.352 -> 2.49 (v2 wants 2.506 over
+  z_w 1.005..1.245; aperture re-seated flush after r2 measured the
+  proud boxes lerping 0.097 into the falling-roof col z_w 1.375);
+  loader coaming 2.352 -> 2.386 + offset periscope dome 2.4125 (v2
+  loader dome band: front cols x -0.33..-0.79 want 2.41-2.43).
+- REAR FRAME BAND (cap b): frame bars 2.3325 -> 2.533 = v2 2.549 less
+  bias (posts h 0.67, mast-base web re-seated 2.45..2.55 w) — 4 mm
+  under mast step B 2.537, i3 station top holds.
+- WHIPS (front cap): h 0.50/0.48 -> 0.68 both, rot -0.78/-0.60 ->
+  -0.55 STEEPENED — tips ~2.52 @ z_w ~-2.375 (R7 whatsat tip model:
+  tip_y = 1.94 + h*cos(rot), tip_z = -2.02 - h*sin(rot)); the v2 mast
+  tails 2.51-2.59 at x +-1.10/1.14 now read, and the tips stay inside
+  the mast bin (under its 2.584 head) and OUT of the [-2.52..-2.398]
+  deck bin (the r7 0.24-err trap).
+- p95 ANCHOR SET (new datum): 4th-highest column = frame bars 2.533 x2
+  / tower lid 2.519 x2 class -> measured ~2.54 vs spec 2.55 (err
+  <=0.6%, dims 100 x3 runs). The ONLY above-grace column left is the
+  rear antenna-mast bin (2.584); the tower is grace-FREE now. The
+  whip-rough coupling law checked: nothing new tops the mast trace max
+  — the 12% body filter threshold is unchanged, hullLengthM anchors
+  safe (dims hullLengthM/overall/width all held x3).
+
+CERTIFIED RESIDUALS at 79.5 (nothing left uncounted; see-saw math
+proven this round):
+- turret_side 79.5 BINDS on: (a) MAST/DECK CLIFF-LERP col z_w -2.405
+  want 2.596 (err 0.242, was 0.37): reading 2.596 there needs proc-col
+  content at z_w -2.459 up to ~2.6 — 4 mm inside the print's own plan
+  basket rear (-2.455) and the -2.523 deck col (want 1.456) would read
+  it lerped at ~2.0 (err ~0.55 net LOSS). Structural, capped. (b) HOOD
+  FRONT-EDGE CLIFF-LERP col z_w 1.375 want 2.176 (err 0.097): the hood
+  front (z_w 1.28, top 2.49) straddles the col-1.313 pixel window;
+  pulling the hood to 1.25 frees 1.375 but breaks col 1.313 (currently
+  free, ref cliff sits between cols) — measured see-saw, capped. (c)
+  GUN-RUN CHIN-BAND WARP-STRETCH cols z_w 2.1..2.6 (0.04 class): §E
+  chin-knee revision, FILED (§5.57 unlock #2), out of this lane. (d)
+  brow col z_w 1.855 (0.042): brow rides the print's own 2.16-2.22
+  line over a falling ref col — touching it regresses i10.
+- side_whole 86.6: the same caps + the 3.69 tube-only BAND-SOLVER col
+  (0.308, orchestrator-lane, unchanged), the -3.865 rear-anchor col
+  (0.104, hullLengthM-pinned), the -2.525 basket-cliff col (0.074).
+- front_whole 90.9: mudguard-tip low band 1.72/+-1.60 (0.052-0.082,
+  certified §A price), tower-edge alias col -0.10 (0.055), loader dome
+  edge -0.79 (0.049), lift-eye edge -1.22 (0.040).
+- plan rows/hull rows byte-class unchanged (footprints registration-
+  neutral; plan_hull 88.4 = the muzzle ISLAND + REGISTRATION-ANCHOR
+  locked rebalance, ceiling 90.0 exactly, r4-certified).
+- stations 93.8 (was 93.6): i6/i9 EXITED the trim slots (the housing
+  rear cap + hood raise hit their 2.524/2.509 wants); the two trim
+  slots now absorb the residual worst pair by design.
+
+§B BATTERY (final bytes): npm test green (166 equipment checks +
+track-geometry) x2 (post-edit + final). Gate x2 BIT-IDENTICAL (row
+JSON raw-md5 8e1f4170 both runs). Hash x2: type90 b9182ad4 ->
+**5d7bc85c** (50 meshes / 63511 verts, identical across consecutive
+runs). GUARDS byte-held on final bytes: type74 7ba404c5 / ariete
+9a4e9d00 / t80u af5e3ad9 / leclerc 683be340 (FROZEN #30) / amx30
+e2a7ae50 / amx30b2 3aeacbf9 — all six EXACT vs the round brief.
+FOREIGN LANDINGS survived mid-round (HEAD 4bb859c -> e898cdb ->
+2b5fba5; lane files marker-verified before every batch, snapshots in
+scratchpad). EVIDENCE: shots/type90-datum/garage/ (6 garage angles vs
+shots/type90-ladder49/garage/ — the §5.57 ratified 9.3 LOW-FLAT READ
+SURVIVES: turret body unchanged at the 2.34 roof plane, kit crowns
+went flush -> the real vehicle's proud-ring class within a 0.21 m
+window; no "huge and tall" regression). §5.57 dressing bank (basket
+lattice, cheek chamfers, dead-front slab) NOT touched — the datum
+round stayed on the crown-band unlock; bank remains open for the next
+polish touch. DELIVERED UNCOMMITTED-UNSTAGED.

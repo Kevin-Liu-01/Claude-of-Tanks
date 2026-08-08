@@ -2149,10 +2149,18 @@ function buildType90(P) {
   // pre-warp type90 artist bore at 43.8% of his own face -> 1.82 on the real
   // face; the spec's inherited armor model already carries gunPivot bore
   // 1.82). Per-column caps: docs/references/tanks/type90.md (this round).
+  // §5.73-1 P95-ENVELOPE DATUM (2026-08-08, owner law): spec heightM
+  // 2.34 -> 2.55 = the 49-v2 print's measured bodyHeightM (gate dims-replica
+  // p95; vertex REG at fcfeb38a) — heightM is the P95 envelope WITH mandatory
+  // roof kit, not the bare roof. New grace line 2.5755; the §5.57 crown-band
+  // dims-datum cap DISSOLVES: hatch/ridge kit rides at the print's own
+  // 2.44-2.53 band (below grace — no bin scarcity), and the only above-grace
+  // spender left is the rear antenna-mast bin (2.584). The datum-round p95
+  // anchor set = frame bars 2.533 x2 + tower lid 2.519 x2 (4th-highest
+  // column ~2.535-2.55, err <=0.6% vs 2.55).
   // heightM p95 DISCIPLINE (caps never cover dims): every roof crown
-  // <= 2.362 except the commander-sight tower, whose z window is pinned
-  // INSIDE two grid columns (side pitch 0.122, boundaries ~0.150/0.394 z_w
-  // — stable while both models' x/z extents hold byte-identical).
+  // <= 2.56 physical (pixel-center law: traces read +0.006..0.016); the
+  // rear mast bin is the sole above-grace column class.
   // (turret local frame: world y-1.40, world z+0.20)
   P.turretG.position.set(0, 1.40, -0.20);
   const RY = 0.94;                                                             // roof PLANE 2.34 = the published datum (was 0.66/2.06 chasing the squat print)
@@ -2200,15 +2208,30 @@ function buildType90(P) {
     P.add('turret', cylY(0.075, 0.075, 0.46, 12), s * 0.38, 0.42, 1.90);       // ROUNDED GUN-SHIELD CHEEKS flanking the embrasure (owner-named identity read; centered on the 1.82 bore line, faces ~flush with the throat plane)
   }
   P.add('turret', box(2.36, 0.135, 1.73), 0, 0.8725, -1.245);                  // bustle roof at the SAME 2.34 plane (y 2.2075..2.34, z_w -0.58..-2.31; the long parallel autoloader bustle roof is flat and continuous with the crew roof on the real vehicle — the print's 1.885 was the squash). r7: front cap moved -0.70 -> -0.58 (station i6, free slab) — the END-CAP law again; x-side faces at ±1.18 are x-normal and vanish mid-slab
-  // hatches: commander RIGHT / loader LEFT — FLUSH low-coaming class on the
-  // 2.34 roof (the real Type 90 lids sit near-flat; the print's 2.05-2.08
-  // "domes" were its squat-roof crowns). heightM: every crown <= 2.362.
-  P.add('turret', cylY(0.225, 0.225, 0.016, 14), 0.56, 0.944, -0.17);          // commander coaming ring (crown 2.352)
-  P.add('turretDark', torus(0.22, 0.011, 14), 0.56, 0.941, -0.17);
-  P.add('turret', cylY(0.195, 0.21, 0.018, 14), 0.56, 0.943, -0.17);           // lid (crown 2.352 — the 1024 trace reads pixel CENTERS ~6 mm above a crown, so every non-tower crown holds <=2.352 to stay under the 2.3634 grace line; the r2 2.358 lids read 2.364/-0.2 dims)
-  P.add('turretDark', box(0.36, 0.010, 0.03), 0.56, 0.947, -0.17);
-  P.add('turret', cylY(0.20, 0.20, 0.016, 14), -0.52, 0.944, -0.11);           // loader coaming
-  P.add('turretDark', cylY(0.205, 0.205, 0.010, 14), -0.52, 0.947, -0.11);
+  // hatches: commander RIGHT / loader LEFT. §5.73-1 DATUM ROUND: the v2
+  // print (and the real vehicle) carries a 2.44-2.53 hatch/ridge crown band
+  // across z_w -0.58..1.25 — under the old 2.34 datum these crowns were
+  // grace-capped at 2.352 (the §5.57 crown-band cap); at the 2.55 datum the
+  // band is FREE. Commander cupola raised to the real proud-ring read:
+  // coaming 2.395, lid 2.415, vision-block ring 2.462 (the print's front
+  // R-dome band 2.48-less-bias at x 0.25..0.45).
+  P.add('turret', cylY(0.225, 0.225, 0.055, 14), 0.56, 0.9675, -0.17);         // commander coaming ring (top 2.395 — the raised cupola base)
+  P.add('turretDark', torus(0.22, 0.011, 14), 0.56, 0.988, -0.17);
+  P.add('turret', cylY(0.195, 0.21, 0.020, 14), 0.56, 1.005, -0.17);           // lid (crown 2.415)
+  P.add('turretDark', box(0.36, 0.010, 0.03), 0.56, 1.017, -0.17);
+  P.add('turret', box(0.13, 0.06, 0.22), 0.855, 0.97, -0.17);                  // cupola outboard ring segment (grab rail/wiper stowage, top 2.40): the v2 cupola band runs to x ~0.91 (front cols 0.83..0.91 want 2.40-2.41, run-2 worst block) — low box seated on the roof plane, side-invisible under the 2.462 blocks
+  for (let vb = 0; vb < 4; vb++) {                                             // cupola VISION-BLOCK RING, inboard-forward arc (crowns 2.462): the v2
+    const va = (130 + vb * 30) * Math.PI / 180;                                // front dome band [x 0.251..0.445, want ~2.48] + the side crown-band cols
+    P.add('turretDetail', box(0.07, 0.122, 0.07),                              // z_w -0.53..-0.22 — housings seat ON the roof plane (§B2 connected).
+      0.56 + 0.20 * Math.cos(va), 1.001, -0.17 + 0.20 * Math.sin(va));         // r2: the 250-deg 5th block aliased col z_w -0.705 (bustle want 2.316) — 4 blocks end the arc at 220 deg
+  }
+  P.add('turret', cylY(0.20, 0.20, 0.05, 14), -0.52, 0.961, -0.11);            // loader coaming raised (top 2.386): r3 — run-2 unmasked the INBOARD dome-band cols x -0.33..-0.41 wanting 2.41 (the run-1 no-charge band was the cutoff hiding them, not a low ref line)
+  P.add('turretDark', cylY(0.205, 0.205, 0.010, 14), -0.52, 0.988, -0.11);
+  P.add('turret', cylY(0.14, 0.16, 0.055, 12), -0.60, 0.985, -0.11);           // loader PERISCOPE DOME, offset outboard on the lid (top 2.4125): r2 — the
+  //   v2 print DOES carry a loader-side dome band (front cols x -0.52..-0.79
+  //   want 2.42-2.43, the run-1 worst block); the offset cap covers x -0.44..
+  //   -0.76 while the inboard cols x -0.33..-0.48 keep their flush read
+  //   (their ref line is unproven — the run-1 no-charge band).
   periscope(P, 'turretDetail', 0.56, 0.905, 0.16);                             // flush periscope heads (box top = the roof plane)
   periscope(P, 'turretDetail', -0.30, 0.905, 0.06, 0.3);
   // ROOF SIGHT CLUSTER at the real proportions: the print's 2.19-2.26 "ridge"
@@ -2217,9 +2240,13 @@ function buildType90(P) {
   // commander's stabilized periscope sight is the TALL BOX forward-right
   // (identity cue; real cluster runs to ~3.05 over sights+MG — the p95
   // budget carries the tower on <=2 pinned columns, everything else flush).
-  P.add('turret', box(0.345, 0.045, 0.69), 0.2725, 0.9295, 1.135);             // gunner sight hood (top 2.352, z_w 0.59..1.28 — embedded-window read)
-  P.add('turretDark', box(0.30, 0.09, 0.03), 0.27, 0.90, 1.495);               // recessed aperture on the hood front
-  P.add('turretGlass', box(0.22, 0.06, 0.02), 0.27, 0.90, 1.51);
+  P.add('turret', box(0.345, 0.15, 0.69), 0.2725, 1.015, 1.135);               // gunner sight hood RAISED (top 2.49, z_w 0.59..1.28): the v2 ridge band
+  //   wants 2.506 across the z_w 1.005..1.245 cols (§5.57 crown-band class —
+  //   the print's sight-cluster housing run) — the old 2.352 "embedded" read
+  //   was the datum cap, not the print. Station i9 (want 2.509) exits the
+  //   trim slots on this raise.
+  P.add('turretDark', box(0.30, 0.09, 0.03), 0.27, 1.00, 1.462);               // recessed aperture FLUSH in the hood face (r2: proud boxes at z_w 1.295-1.31 lerped 0.097 into the falling-roof col z_w 1.375 — want there is the ref's 2.18 rake line)
+  P.add('turretGlass', box(0.22, 0.06, 0.02), 0.27, 1.00, 1.472);
   // COMMANDER SIGHT TOWER (r7 re-seat, batch-49 ladder): the re-normalized
   // print's sight ridge reads 2.66-2.72 across z_w -0.58..1.25 and its FRONT
   // crown sits x -0.06..0.22 — the old 2.597 tower at x 0.42 / z_w 0.165-0.380
@@ -2235,7 +2262,11 @@ function buildType90(P) {
   P.add('turret', box(0.285, 0.016, 0.15), 0.0775, 1.111, 0.57);               // lid (top 2.519 = the v2 print's own i7/i8 sight-head line 2.535-rel; caps at z_w 0.295/0.445, 20+ mm inside both bin edges)
   P.add('turretDark', box(0.22, 0.09, 0.02), 0.0775, 1.035, 0.65);             // glazed head band on the forward face (proud 10 mm, still inside the 0.519 bin edge)
   P.add('turretGlass', box(0.17, 0.05, 0.012), 0.0775, 1.035, 0.658);
-  P.add('turretDark', cylY(0.09, 0.09, 0.028, 12), -0.02, 0.938, 0.82);        // pano head (crown 2.352)
+  P.add('turret', box(0.265, 0.165, 0.47), 0.0775, 1.0225, 0.265);             // §5.73-1 sight-housing REAR RUN (top 2.505, z_w -0.17..0.30, butts the
+  //   tower rear face): the v2 ridge band continues BEHIND the tower at
+  //   2.516-2.526 across the center cols z_w -0.084..0.155 (§5.57 cap class,
+  //   now free under the 2.55 datum). Rear z-cap paints the 2.34..2.505 band
+  //   into station i6 (want 2.524) — the END-CAP law working FOR us.
   P.add('turretGlass', box(0.14, 0.020, 0.016), -0.02, 0.941, 0.90);
   // loader-side roof furniture re-seated on the 2.34 plane (r1 gate lesson:
   // at y 0.955 these two boxes topped 2.375 — two above-grace columns that
@@ -2312,10 +2343,10 @@ function buildType90(P) {
     // -2.281) tops i3, the i2/i3 slab boundary -2.303 falling in the gap.
     // Ref topH 2.839/2.752 rel = these tops + the measured +0.016 bias.
     for (const sx of [-1, 1]) {
-      P.add('turretDetail', box(0.035, 0.035, 0.33), sx * 0.08, 0.915, -1.965); // frame bar z_w -2.00..-2.33 (rear end under the mast feet — §B2 connected)
-      P.add('turretDetail', box(0.03, 0.46, 0.03), sx * 0.08, 0.68, -1.92);
-      P.add('turretDetail', box(0.03, 0.46, 0.03), sx * 0.08, 0.68, -2.08);
-      P.add('turretDetail', box(0.024, 0.10, 0.044), sx * 0.08, 0.98, -2.103); // mast base web off the frame-bar rear (y 2.33..2.43, inside the spent bin)
+      P.add('turretDetail', box(0.035, 0.035, 0.33), sx * 0.08, 1.1155, -1.965); // frame bar RAISED to the v2 line (top 2.533 = ref 2.549 less bias; §5.73-1: the §5.57 rear-frame cap [cols -2.037/-2.157 want 2.549] is free under the 2.55 datum and sits 4 mm under mast step B — i3's station top holds)
+      P.add('turretDetail', box(0.03, 0.67, 0.03), sx * 0.08, 0.77, -1.92);     // posts up to the raised bar (§B2 connected)
+      P.add('turretDetail', box(0.03, 0.67, 0.03), sx * 0.08, 0.77, -2.08);
+      P.add('turretDetail', box(0.024, 0.10, 0.044), sx * 0.08, 1.10, -2.103); // mast base web re-seated: bridges the raised bar rear to the mast heads (y 2.45..2.55 w)
       P.add('turretDetail', box(0.02, 0.254, 0.016), sx * 0.08, 1.057, -2.117); // mast head A: top 2.584 (v2 station i2 ref topH 2.600 less the +0.016 bias), z_w -2.325..-2.309
       P.add('turretDetail', box(0.02, 0.207, 0.016), sx * 0.08, 1.0335, -2.093); // mast step B: top 2.537 (v2 i3 ref 2.553), z_w -2.301..-2.285 (8 mm clear of the -2.277 bin edge — boundary phase carries ±3 mm)
     }
@@ -2326,8 +2357,15 @@ function buildType90(P) {
   // diagonal to the ref's -2.41 mast cliff (the half-phase lerp tax against
   // the deck at -2.535 is structural — CLIFF-LERP class, ~0.27 sum)
   for (const s of [-1, 1]) {
-    const whipA = FITTINGS.antennaWhip({ mats: P.mats, h: s > 0 ? 0.50 : 0.48, r: s > 0 ? 0.018 : 0.012, rake: -s * 0.02, seed: 2, rotation: [s > 0 ? -0.78 : -0.60, 0, 0] });        // (r6b: rake 0.05 -> 0.02 — fat-tip determinism law holds)
-    whipA.position.set(s * 1.11, 0.44, -1.72);                                 // raked corner whips (identity cue). r7: R h 0.63 -> 0.50 — the TRUE tip measured 2.386 @ z -2.46 (whatsat bbox; the §5.28 "~2.35" estimate was the TRUE-TIP law biting again): it was silently spending an above-grace heightM bin AND poking the [-2.52..-2.398] bin the -2.523 col lerps against (0.24 err). The freed bin is the rear-mast spend; tip now ~2.29 @ z ~-2.37
+    const whipA = FITTINGS.antennaWhip({ mats: P.mats, h: 0.68, r: s > 0 ? 0.018 : 0.012, rake: -s * 0.02, seed: 2, rotation: [-0.55, 0, 0] });        // (r6b: rake 0.05 -> 0.02 — fat-tip determinism law holds)
+    whipA.position.set(s * 1.11, 0.44, -1.72);                                 // raked corner whips (identity cue). §5.73-1 DATUM ROUND: h 0.50/0.48 ->
+    //   0.68 STEEPENED (rot -0.78/-0.60 -> -0.55) — the v2 front mast tails
+    //   want 2.51-2.59 at x ±1.10/1.14 (§5.57 front_whole cap, 0.128 x2 +
+    //   0.084) and the old short whips were the datum compromise. Tip model
+    //   (R7 whatsat calibration: tip_y = 1.94 + h*cos(rot), tip_z = -2.02 -
+    //   h*sin(rot)): tips ~2.52 @ z_w ~-2.375 — inside the mast bin (under
+    //   its 2.584 head, side-invisible) and OUT of the [-2.52..-2.398] deck
+    //   bin the -2.523 col lerps against (the r7 0.24-err trap).
     P.turretG.add(whipA);
   }
   P.decal('turret', 'number', '2274', 0.24, [1.21, 0.40, -0.5], Math.PI / 2, 0, 0.05);

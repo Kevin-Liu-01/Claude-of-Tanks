@@ -2311,3 +2311,20 @@ yaw90 unity; ratified §5.55 reads survive BOTH. Proto gate x2: hull
 owns p95Top 3.020 — band-class not spike; m26/type99a precedent).
 Guards x3 sweeps EXACT (incl. leo2a7v/leo1a5 siblings). RE-CERT
 CRITIC SPAWNED (changes ratified reads).
+
+## 5.77 TYPE90 DATUM APPLIED — 68.9 -> 79.5 (2026-08-08, §5.73-1):
+heightM 2.34 -> 2.55, derived AGAINST the naive 3.05 (a 1-2-column
+max-spike over the swung M2 that the gate's antenna-robust p95
+correctly excludes — spec'ing it would misdatum honest builds ~16%
+low). 2.55 = the ratified 49-v2 oracle's own bodyHeightM through the
+gate's dims replica (t14/type99a precedent flow; two-source bracket
+2.34 roof < 2.55 p95-kit < 2.60 print max < 3.05 published max). The
+§5.57 crown-band cap DISSOLVED: turret_side +10.6, front_whole 90.9,
+dims 100 HELD at the new datum via an engineered p95 anchor. Hash
+b9182ad4 -> 5d7bc85c x2; guards x6 exact; the ratified 9.3 low-flat
+read SURVIVES (kit crowns went flush -> the real proud-ring class).
+BRIEF-ERROR CAUGHT by the agent: my D1/D2/D3 dressing items were the
+type99a critic's bank, not type90's — the real §5.57 bank (basket
+lattice, cheek chamfers, dead-front slab) stays open; §E chin-knee is
+now type90's biggest chaseable class. LESSON: brief-writing pulls
+banks from the REGISTRY section named, not from memory.

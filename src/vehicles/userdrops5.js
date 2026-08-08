@@ -135,8 +135,21 @@ const SPECS = [
     { hp: 2400, weightTons: 48, topSpeedKmh: 72, gun: { reloadS: 6.4 },
       dims: { hullLengthM: 6.86, overallLengthM: 9.63, widthM: 3.78, heightM: 2.23 } }),
   make('type10', 'type90', 'Type 90 Kyu-maru', 'Japan',
+    // heightM DATUM 2.34 -> 2.55 (§5.73-1 P95-ENVELOPE LAW, owner-ratified;
+    // t14/type99a precedent): heightM = the P95 envelope including mandatory
+    // roof kit, NOT the bare 2.34 turret roof (Wikipedia infobox) and NOT the
+    // published 3.05 "over sights+MG" (weaponsystems.net) — 3.05 is a
+    // 1-2-column MAX over the swung M2, exactly the spike class the gate's
+    // antenna-robust p95 excludes. 2.55 = the corrected 49-v2 oracle's
+    // measured bodyHeightM (gate dims-replica: 12% body filter, p95 of column
+    // tops — docs/references/vertex/type90.json at fcfeb38a; §5.39 owner
+    // verdict re-compressed the print to the REAL lines: roof 2.34 / hatch+
+    // ridge band 2.44-2.53 / sight head 2.60 max). Bracket: 2.34 roof < 2.55
+    // p95-with-kit < 2.60 print max < 3.05 published max. Unlocks the §5.57
+    // crown-band dims-datum cap (turret_side 68.9). Receipts:
+    // docs/references/tanks/type90.md DATUM section.
     { hp: 2200, weightTons: 50.2, topSpeedKmh: 70, gun: { reloadS: 5.5 },
-      dims: { hullLengthM: 7.45, overallLengthM: 9.76, widthM: 3.43, heightM: 2.34 } }),
+      dims: { hullLengthM: 7.45, overallLengthM: 9.76, widthM: 3.43, heightM: 2.55 } }),
   make('t90a', 't90a_vladimir', 'T-90A Vladimir', 'Russia',
     { hp: 2150, topSpeedKmh: 65, gun: { reloadS: 6.8 } }),
 ];
