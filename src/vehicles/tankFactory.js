@@ -4657,48 +4657,37 @@ export function createTank(specId, engineCtx, opts = {}) {
     // burn-mask hook (uBurnT -1) on the staged materials and compile the
     // '|burn-r6' program variants off the render path — first-kill program
     // compiles were the visible pause before any destruction played.
-    const ctx = { spec, cfg: modelCfg.glb, hullG, turretG, recoilG, muzzle, burnU };
+    // MOBILE-QA r13: modelLoader owns the atomic commit -> finalize -> warm
+    // ordering. Decoration adds LOD meshes and prewarmBurn changes their
+    // program cache key, so both must finish before the committed subtree's
+    // force-visible compile and before any reveal frame.
+    const finalizeSwap = () => {
+      dressTank();
+      try { visual.prewarmBurn(); } catch (_) { /* warm only */ }
+    };
+    const ctx = {
+      spec, cfg: modelCfg.glb, hullG, turretG, recoilG, muzzle, burnU, finalizeSwap,
+    };
     if (_modelLoaderMod && _modelLoaderMod.hasCachedGlb(modelCfg.glb.path)) {
       // GLB already parsed (garage re-entry, icon generation): swap in the
       // same frame so the first render never shows the procedural model.
-      try { _modelLoaderMod.applyGlbModelSync(ctx); }
+      let swapped = false;
+      try { swapped = _modelLoaderMod.applyGlbModelSync(ctx); }
       catch (e) { console.warn(`[tankFactory] ${specId}: glb swap failed, procedural retained —`, e.message); }
-      dressTank(); // decor probes the just-swapped (or retained) geometry
+      if (!swapped) dressTank(); // retained procedural still needs its decor
     } else {
       import('./modelLoader.js')
         .then((m) => { _modelLoaderMod = m; return m.applyGlbModel(ctx); })
-        // PERF: the async swap lands MID-BATTLE on first boot (probe measured a
-        // 773 ms frame as ~8 GLB texture uploads + program compiles hit the
-        // first bound frame). Pre-upload every texture and pre-compile the
-        // swapped subtree's programs off the render path.
         .then((ok) => {
-          if (!ok || !engineCtx.renderer) return;
-          const R = engineCtx.renderer;
-          root.traverse((o) => {
-            const mats2 = Array.isArray(o.material) ? o.material : (o.material ? [o.material] : []);
-            for (const m of mats2) {
-              for (const k of Object.keys(m)) {
-                const v = m[k];
-                if (v && v.isTexture && v.image) { try { R.initTexture(v); } catch (_) { /* fine */ } }
-              }
-            }
-          });
-          // camo_spotting r5 (intermittent 'reading isReady' TypeError):
-          // compileAsync's setTimeout poll dereferences
-          // properties.get(material).currentProgram after a battle-start
-          // evict/dispose or a camo-repaint material swap races it — the
-          // timer callback throws an UNCAUGHT TypeError the promise .catch
-          // cannot intercept. The promise was never consumed; synchronous
-          // compile() does the same program warm-up (parallel shader
-          // compile still runs off-thread) with no poll to race.
-          if (engineCtx.camera && engineCtx.scene) {
-            try { R.compile(root, engineCtx.camera, engineCtx.scene); } catch (_) { /* fine */ }
-          }
+          // Success was finalized + warmed atomically by modelLoader. A
+          // rejected swap retained the procedural stand-in, which still
+          // needs its normal decoration seam.
+          if (!ok) dressTank();
         })
-        .catch((e) => console.warn(`[tankFactory] ${specId}: glb swap failed, procedural retained —`, e.message))
-        // decoration seam: dress once the swap settled either way (swapped
-        // GLB or retained procedural) — the attach probes live geometry
-        .then(dressTank);
+        .catch((e) => {
+          console.warn(`[tankFactory] ${specId}: glb swap failed, procedural retained —`, e.message);
+          dressTank();
+        });
     }
   } else {
     dressTank(); // procedural-of-record tanks dress at build
