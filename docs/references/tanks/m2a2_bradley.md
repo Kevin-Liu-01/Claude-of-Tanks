@@ -583,3 +583,173 @@ furniture class) + the lawful §B4 tub-to-band channel slivers
   designed clearance — real on the vehicle, left open.
 - rear 45/121 track-clip is the pre-existing stern §B4 item (standing
   lane debt, not this round's).
+
+## 90-LADDER round (2026-08-08, §5.33 campaign) — DUAL-GATE GEOMETRY HALF PASSED
+
+### Trajectory (gate x2 identical at close)
+84.7 -> **90.9 PASS, every component >=90** | hull 85.3 -> 91.0 / whole
+85.0 -> 90.9 / turret 84.7 -> 91.9 / stations 84.8 -> 93.4 / dims 100
+(heightM 0.52% / hullLengthM 0.41% / overall 0.15% / width 0.10%) /
+floaters 100. Rows at close: side_hull 92.0, side_whole 91.9, plan
+91.0/90.9, front_hull 91.9, front_whole 92.5, turret_side 93.1,
+turret_plan 91.9. Geometry hash 5a4cbadc -> 90a5568c (59 meshes /
+77180 verts). Oracle bytes e699c868 untouched (re-verified). npm test
+265 ok. Evaluator digests shots/visual-eval-m2a2_bradley/ (yawProxy
+<=2.1 deg, no RIG MISMATCH); self-shots shots/brad90/.
+
+### THE REGISTRATION SNAP (the round's central mechanism — BANK)
+The standing side dAlong -0.036 (r3..r4-certified as residual) was the
+r3c bow plate's unfinished 8 mm: the plate face at 3.268 covered the
+WORKORDER's 3.27-column but not the GATE's own window, whose proc read
+past 3.268 — my front BODY column dropped one column short and the
+side mid sat half a column off. Face plate split (center face 3.225 +
+two x 0.90..1.30 BODY TABS z 3.235..3.30, y 0.87..1.26): dAlong
+snapped to 0.000 ON EVERY ROW, side/turret cover fell to 0, and the
+whole r2 razor set (mast rear -1.555, duffel rear -1.80, tube tip)
+re-paired same-column. hullLengthM moved 6.50 -> 6.58 (0.41%, inside
+grace — the tabs are the front body col). LAW: a persistent +-half-
+column dAlong is a BODY-SPAN-END defect, not a residual — find the
+extreme column whose gate window is missed and fill it.
+
+### Worst-column fixes (all vertex-workorder absolute cols; ~60 edits)
+- GLACIS RE-PLANE: the ref runs ONE -0.50 plane from a z~1.66 knee
+  (cols 1.625@2.202 exact); the r3 crest (1.895@1.83, slope -0.54)
+  read +0.04..+0.09 over z 1.87..2.39. Crest moved to 1.66 (roof/spine
+  fronts pulled 1.80 -> 1.62), both frustums re-lined, driver plateau
+  rebuilt as a LOW hatch plinth (top 1.55) + 28-seg rods carrying the
+  ref's 1.607/1.57 side lines (station slices skip smooth cylinders —
+  the ref's own plateau prints st12/st13 tops 1.564/1.508) + one tiny
+  st13 top voter at 1.505.
+- GEAR RE-SEAT (instrumented): ref climbing bands zero at ~2.06/-2.12
+  with ~0.5 slope; contact pins 2.14/-2.16 -> 2.06/-2.12, idler y 0.74
+  -> 0.81 (z -> -2.68: its wrap rear cleared the -3.14 col, whose ref
+  bottom is the 0.72 wedge line), sprocket 2.55/0.60 -> 2.53/0.63 (the
+  interim 0.68 raise overshot the ARC zone: ref arc bottoms 0.23@2.55
+  / 0.35@2.84). ALL §B4 furniture over the wraps raised in the same
+  landing: flare bottom edges 1.13 -> 1.25, rear guards 1.345, stern
+  caps 1.36, mudguards 1.19 — the pre-existing rear 45/121 track-clip
+  debt is DEAD: §B4 0/0 front + 0/0 rear at --exact, 0 shoe, 0 blind.
+- STERN RE-LINE: recessed center face -3.15 + door -3.16 + PROUD
+  CORNER POSTS (asymmetric x: right 0.90..1.29, left -0.78..-1.29,
+  face -3.28, y 1.31..1.90 = the ref's own -3.23/-3.30 side band);
+  bumperettes re-cut to the ref's 1.22..1.40 band (right face x 1.53
+  for the 1.52 plan col whose ref rear is -3.28); undercut wedge
+  bottoms 0.47@-2.90 -> 0.72@-3.13. NOTE the ref stern center rear is
+  a UNIFORM -3.16 (an r5 "deeper-left" split chased a mirrored-frame
+  ghost and was reverted same-round — receipt in code).
+- LEFT FRONT FENDER (plan -1.51 col, err 0.425): the ref left flank
+  band runs to z 3.11 — four segmented plates (x -1.425..-1.50)
+  continue the skirt line to the bow; §C caps at 1.28/1.90/2.35/2.78/
+  3.11 (NO cap can land in st10 under boundary jitter — an interim
+  1.385 cap was 8 mm off the boundary and flickered wPct 1.97->3.82).
+  The face needs >=2 px INTO the col window: -1.4875 left a 1.6 cm
+  AA-sliver and the col stayed unserved; -1.50 landed it.
+- RIGHT SKIRT SEGMENTATION (stations 88.5 -> 93.4, the §C end-cap law
+  applied to my own build): the 6.08 m skirt monolith was slice-
+  INVISIBLE (axis-aligned box mid-spans render zero in station slabs)
+  while the ref's 1.64 skirt line paints ELEVEN slabs. Twelve ODS
+  plate sections, one cap-pair per slab, with CAP-LESS spans at st1 +
+  st7/st8 where the ref line dips to 1.55/1.56-1.58. Same mechanism
+  family: appliqué rear plate caps pulled inside st2 (its -2.61 cap
+  painted st1), engine deck z-front 0.655 + x to 1.13 (ref deck band
+  1.966 on the front 1.05-1.13 cols), fill-A hump replaced by a 28-seg
+  rail (side 2.807 patch, slice-skipped), sleeve r 0.041 / suppressor
+  r 0.044 (they ARE the st10-12 top painters; ref tops 2.291/2.281).
+- TURRET: core roof 2.555 -> 2.46 with the 2.72 riser proud (ref
+  stepped roof; hatches/sight hood re-seated on the new roof); collar
+  bottom 1.855 -> 1.905 (ref turret-mask floor 1.902, ~15 side cols);
+  front step bottom 1.9475 + CHIN WEDGE (ref mantlet underside RISES
+  1.902@0.39 -> 2.05@0.69); cheeks +0.07; M242 boot (§B3.1 mantlet
+  grammar, world z to ~1.08 — the ref -0.18 plan col teeters 0.95/1.21
+  run-to-run, band split); rotor block front 0.695 -> 0.595; tube
+  extended to tip 2.37 world (the 2.386 side col was ONLY-REF err-9;
+  2.41/2.425 tips each fed an ONLY-PROC col — 2.37 is frame-safe both
+  registrations) + §B3.1 BORE disc flush on the suppressor face;
+  muzzleZ 2.28 -> 2.23; bustle re-cut: tail duffel x -0.42..0.40 rear
+  -1.80 + solid tapered B-boxes (rounded ref tail -1.80@0 -> -1.58@
+  0.7) + C-duffel (-1.68@-0.5); mast trims (tall step rear -1.46, mid
+  step front -0.98, west block rear -1.555 — the ref cluster's own
+  spans); step1 re-cut to the r3 ORIGINAL 2.53 shelf (r4's 2.44
+  narrow-cut left the front -1.161 col 0.20 short); step2 split A/B
+  (ref rear taper -0.93/-0.79); TOW pod top now FALLS outboard (2.41
+  -> 2.175 at x -1.23 — the ref pod band; flat top + rib read +0.25 on
+  the front -1.2 cols), pod front diagonal re-cut, muzzle discs flush,
+  root bracket added (plan -0.769 ref front 0.691); banks y 0.42
+  z 0.92 (tips 2.42-high at z~0.70); MG y 0.31 (§C pintle allowance);
+  rack w 1.38; smoke/fill/riser trims per instrument.
+- FRONT ROWS: left roof camber re-lined (ref 1.905@-1.00 -> 1.772@
+  -1.235 then FLAT 1.772 to -1.46 — split B1/B2 with B2 z-short per
+  the ref's left flank plan band); crest halfW 1.20 (the ±1.26 edge
+  AA-lit ±1.235-1.272 cols at 1.883 vs ref 1.735-1.772); tarp 1.845;
+  vent shrunk; lift eyes x ±0.35 z 1.10; bag tops re-cut; brackets
+  xc -1.48 y 1.175.
+
+### §B table at close
+§B2 top-down flood 0; §B3 census mg1+9d; §B4 track-clip --exact
+0/0 front + 0/0 rear, 0 shoe, 0 blind spots (the standing 45/121 rear
+debt CLOSED by the gear+furniture re-seat); §B5 turret-parent 1
+stranded = the spare-links deck fitting (r4-adjudicated AABB-coarse
+artifact, unchanged seat — adjudication stands), 0 abutting, 0
+dangling; §B6 trapezoid both ends raised (sprocket 0.63 front, idler
+0.81 rear, contact 2.06/-2.12 at the ref's own ramp zeros); §C.1
+winding-audit m1 rev 0 / mix 0, m2 candidatePx 0 (verdict clean).
+npm test 265 ok. standard-check 1/1 pass.
+
+### Certified residuals + teeter classes (honest; ALL rows >=90 with
+### every one of these FIRED)
+- plan -1.51 col REF-TEETER (err ~0.92 when fired): the ref's own left
+  flank face sits ON a column boundary — reads full-flank [~-2.97..
+  3.11] on some runs, fender-lip-only [-1.26..2.97] on others (three
+  observed states across six runs). My faces are >=2px stable inside
+  the window; the fired state costs plan ~1.7 pts and plan still
+  reads >=90.9. AA-teeter family — single-run reads are NOT orders.
+- plan -1.66 col (0.177): the widthM bag anchor — dims sovereignty
+  (the 0.35 m band filter forces the bag longer than the ref's short
+  island). Standing r4 cert.
+- turret_plan x 1.37 col: the ref tower-corner read teeters between
+  the r4 ISLAND (z 0.10..0.19; my corner post's exact seat) and longer
+  band states; the r2 "shoulder" built against one teeter state scored
+  err 0.377 and was deleted (receipt in code).
+- boot/bin/tail rears + banks front: split down their observed teeter
+  bands (receipts in code); banks trade one side 0.772-col (~0.05) for
+  six clean plan cheek cols.
+- turret_plan cover 1.37 (~1.3 cols): unattributed only-* residual at
+  the trim margins; turret_plan 91.9 carries it.
+- The -0.036-frame instrument divergences documented in r4 close
+  ("page-vs-gate procTop") are RESOLVED by the registration snap — the
+  two tools now agree at dAlong 0.
+
+### LAW-BANK discoveries (for BUILD-STANDARD folding)
+1. REGISTRATION-SNAP LAW (§D): a persistent half-column dAlong is a
+   body-span-end defect (an extreme body column whose GATE window is
+   missed while the workorder's is covered). Fill the gate's window
+   (tabs past the nominal face) and every razor-tuned edge re-pairs.
+2. STATION SLICE-PAINT MECHANICS (§C, instrument-proven): axis-aligned
+   box MID-SPANS are invisible in station slabs (all six faces edge-on
+   or clipped); z-CAPS, SLOPED faces, and low-seg cylinders paint;
+   28-seg cylinders skip. Long members must be SEGMENTED per-slab to
+   carry a flank line (the ref's own fused body paints everywhere) —
+   and caps must sit >=20 mm from slab boundaries or they flicker
+   between slabs run-to-run (the st10 1.97->3.34->3.82 receipt).
+3. GUN-EXTRA PIVOT OFFSET: addGunExtra coords are gunPivot-relative
+   (bradley: x -0.075, z +0.155) — window math done in world against
+   rel-authored kit silently misplaces by the pivot offset (the r2
+   boot cut receipt).
+4. PLAN-MIRROR DISCIPLINE: the per-run plan mirror hits the GATE's own
+   detail JSON too, and mirror-state can differ between consecutive
+   runs of DIFFERENT tools. Anchor every plan sign decision on an
+   authored asymmetric feature probe (whatsat the bag box) in the SAME
+   run before authoring; treat any 'center-recess' style conclusion
+   derived without an anchor as suspect (the r5 stern ghost receipt).
+5. REF-SIDE AA-TEETER CERT CLASS: when the REF's own face rides a
+   column boundary, no authored value stabilizes the column — split
+   the observed band or hold the served state, and certify the fired
+   cost in the packet with the row floor proven >=90 either way.
+
+### Cohabitation note (landing discipline)
+This round cohabited the working tree with the bmp2/puma no-air lane
+(§5.42, "landing held for bradley cohabitation"): worktree-vs-HEAD
+hunks verified buildBradley-only for THIS round (function-mapped);
+bmp2/spz_puma hash movement belongs to that lane. Wide sweep at close:
+type89 b19aca94, is1 59882b30, is2 b09424cc, tiger1 7b76a8c6, m60a1
+912de524 — all byte-identical to the round's baseline.

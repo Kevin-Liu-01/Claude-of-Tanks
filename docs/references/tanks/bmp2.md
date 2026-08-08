@@ -512,3 +512,76 @@ views 0-6 px.
   plane A's top face and the bow corner wedges — sub-glance, bounded.
 - Wheel-train daylight under plane A's bottom edge (y<=0.36) is the
   real track class; the S-plate bottoms stop at 0.38 by design.
+
+## SEE-THROUGH / NO-AIR ROUND (2026-08-08, §5.35 fleet-#1 order + §5.18)
+
+MISSION: the fleet see-through sweep ranked bmp2 #1 — "turret hovers above
+ring pedestal: 1879px y0-side-l-T @[~0,2.22,-0.07]; bg through in FULL side
+view 243-272px (garage-visible); turret top islands 758-826px at yaw45/90,
+3098px front-low". Root cause MEASURED: not the ring seat — the ROOF
+FURNITURE floated. The gunner day-sight housing hung 0.17 m over the dome,
+the 9M113 tube rode only its -0.385 pedestal point, the IR stub sat 5 mm
+off the housing wall, and the LEFT dome handrail was a pure ref-band
+painter hovering in free air (dome plan at z 0.92 spans only +-0.35).
+
+WHAT CLOSED (all in buildBMP2, marker "see-through round 2026-08-08"):
+- HOUSING ROOF SEAT: day-sight housing extended DOWN into the casting
+  (box 0.29x0.37x0.30 @ -0.415,0.5975,-0.02; bottom 2.0725 world vs dome
+  surface 2.093..2.135 — every wall buried >=20 mm, §K merkava mechanism).
+  Top + all wall lines above the dome unchanged (2.4425 certified apex).
+- LAUNCHER CRADLE DECK: flat cradle 2.09..2.29 across x -0.28..0.11,
+  z -0.46..-0.15 (box 0.39x0.20x0.31 @ -0.085,0.53,-0.305) — housing wall
+  to tube east, pedestal line to housing band; sinks the tube cylinder to
+  its 0.0675 chord, swallows the yoke; hatch-lid east rim butts flush.
+- IR STUB: widened west to lap the housing (-0.305..-0.215; east flank
+  -0.215 holds the ref 2.37@-0.23 column).
+- LEFT-RAIL SEAT: gunner's stowage bin (0.14x0.11x0.20 @ -0.58,0.355,0.70
+  + lid seam) — dome flank laps its inner-lower corner; rail lengthened
+  rearward (z 0.76..1.03) to embed, mirroring the right rail's OU-3GA2
+  seat. Bin top 2.070 = the dome's own side line; front cols hide under
+  the dome's 2.07-2.10 front trace.
+- BOW-CORNER GUSSETS (§5.18 residue): one orientedSlab per side fusing
+  plane A / fender web / corner wedge / nose plate (bottom chord rides
+  inside plane A's raked slab: 0.88@2.90 -> 0.98@3.06) — killed the two
+  garage-view ray slits (27+18px at z~2.95).
+- CUPOLA SADDLE TRUE-UP: tiers 2-3 stepped EAST (0.44/0.46, r 0.20/0.21)
+  so the r3-documented ref saddle finally lands per column (2.105@0.20 /
+  2.1425@0.24-0.31 / 2.1665@0.34) — the co-axial stack was a front-view
+  rectangle paying +0.073 at x 0.2 (the standing p95 payer). p95 2.29 ->
+  2.09. Side/plan free (hatch lid + housing own those traces).
+- Belly-pan bottom true-up 0.36 -> 0.405 (ref belly line 0.411): proved
+  measurement-invisible (front bot line is the r3-certified stern ledge)
+  but rides closer to the print; kept.
+
+SWEEP BEFORE -> AFTER (same instrument, tools/tmp-sweep-seethrough.mjs):
+- y0-side-l-T 1879 -> 0; y0-side-r-T 1198 -> 20; y45-side-r-T 948 -> 0;
+  y90-fql-T 740 -> 0; worst residual -T sliver anywhere: 20px.
+- y0-side-l (garage class) 544 -> 256, of which turret 243 -> 0, bow
+  slits 45 -> 0; every remaining px is wheel-daylight (gear-tag y 0.33)
+  + one pre-existing 11px stern-hinge sliver.
+- Islands: 3098px front-low + 3076 rear-low + 826/793 yaw-90 sides
+  (housing+MG blob) -> ALL DEAD; y45 rail islands (619 -T / 98 full) ->
+  DEAD. Remaining islands: y0-top 968/966 rail-chunk rows over the dark
+  rubber skirts = the named DARK-COLLAR FP class (pre-existing), + 95/90
+  stern-corner (pre-existing).
+- Untouched pre-existing classes (identical px to the pre-fix sweep):
+  y0-fql 149 / y0-fqr 77 fender-root corridor (flat deck edge vs ref
+  camber — the honest next 90-ladder rung, station-instrumented);
+  tilt55 319-422 + rear-low 176 wheel daylight (gear class).
+
+GATE (x2 bit-identical, live tree, baseline same session):
+  BEFORE  min 84.0 | hull 85.2 whole 84.0 turret 84.8 stations 87.3 dims 100 floaters 100
+  AFTER   min 82.7 | hull 85.2 whole 82.7 turret 84.8 stations 87.3 dims 100 floaters 100
+  Every component byte-held EXCEPT whole (front_whole): -1.3, and the
+  full shape ladder is banked in the r8 code comment: THE PRINT'S OWN
+  LAUNCHER FLOATS (ref front cols -0.19..-0.04 read 2.151-2.181 under
+  its 2.39 tube), so ANY flood-proof closure >= the 2.243 tube chord
+  pays those 4-6 columns. Measured frontier: 2.245 split shapes leave
+  110-557px yaw-45/90 pockets at 83.0-83.2; the flat 2.29 deck sweeps 0
+  at 82.7 (net of +0.2 cupola). §B7 owner-law-over-print trade —
+  RATIFICATION FLAGGED; zero-cost route = §E oracle launcher re-seat
+  warp. Revert line for the 83.2 compromise is in the r8 comment.
+
+EVIDENCE: shots/modern3-noair/bmp2-BEFORE-*.png (pre-fix crops) +
+bmp2-AFTER-*.png (full frames, post-fix). Geometry hash 53046196
+(50 meshes / 61076 verts), tmp-hashgeo.

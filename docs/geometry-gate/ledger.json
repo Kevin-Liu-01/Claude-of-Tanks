@@ -244,9 +244,9 @@
    "gatePassed": false,
    "components": {
     "hullCurves": 39.9,
-    "wholeCurves": 18.1,
+    "wholeCurves": 17.9,
     "turretCurves": 0,
-    "stations": 20.3,
+    "stations": 21.1,
     "dims": 100,
     "floaters": 100
    }
@@ -812,11 +812,11 @@
   },
   {
    "id": "bmp2",
-   "geoMin": 84,
+   "geoMin": 82.7,
    "gatePassed": false,
    "components": {
     "hullCurves": 85.2,
-    "wholeCurves": 84,
+    "wholeCurves": 82.7,
     "turretCurves": 84.8,
     "stations": 87.3,
     "dims": 100,
@@ -825,13 +825,13 @@
   },
   {
    "id": "m2a2_bradley",
-   "geoMin": 84.7,
-   "gatePassed": false,
+   "geoMin": 90.9,
+   "gatePassed": true,
    "components": {
-    "hullCurves": 85.3,
-    "wholeCurves": 85,
-    "turretCurves": 84.7,
-    "stations": 84.8,
+    "hullCurves": 91,
+    "wholeCurves": 90.9,
+    "turretCurves": 91.9,
+    "stations": 93.4,
     "dims": 100,
     "floaters": 100
    }

@@ -237,13 +237,19 @@ if (TANK_SPECS.t80u && !TANK_SPECS.t80u.community) {
 // MODEL_SOURCE overrides — unconditional assignment REPLACES the
 // 'procedural' rows the spec modules registered at import time. Node names
 // verified against each GLB's JSON chunk (scratchpad glbtree.mjs).
+// §5.31b ERA-GROUP FLIP (owner, 2026-08-08): merkava4 renders the merkava.js
+// Mk.4M profile (buildMerkavaMark — §B1 slope-mass family recipe, authored to
+// the published 7.60/9.04/3.72/2.66 envelope) in EVERY build; the arlassar
+// print (foreshortened 6.9 m span — certified-defective oracle, see the
+// profile header) retires to candidateGlb (kv2/t30 pattern) so it stays
+// browsable for the Sources catalog and the A/B audit.
 MODEL_SOURCE.merkava4 = {
-  source: 'glb',
+  source: 'procedural',
   // authored 'Turret' node (ring origin y=1.95); gun fused into the turret —
   // no gun node, pitch stays virtual. No gun node also means the scale runs
   // on the full box: overallLengthM (9.04) matches the raw span exactly and
   // the r7 width clamp is the binding constraint (artist modeled wide).
-  glb: {
+  candidateGlb: {
     path: '/models/tanks/merkava4_arlassar.glb',
     turretNode: '^Turret$', autoPivot: true,
     yawOffset: -Math.PI / 2,

@@ -1662,3 +1662,21 @@ disproven with ray-attribution receipts). Ledger rows were already
 exact at HEAD (closures held every component). Critic + builder tmp
 rigs deleted at landing. NOTE: cot-shots FIFO lock now held by the
 owner's parallel shadowbisect session — respect it.
+
+## 5.44 BRADLEY 90-LADDER DELIVERED + MODERN3 COHABITATION LANDED
+(2026-08-08): m2a2_bradley 84.7 -> 90.9 PASS x2 EVERY component >=90
+(hull 91.0 / whole 90.9 / turret 91.9 / stations 93.4 / dims+floaters
+100) — candidate 90a5568c, FLEET 22/89. Round unlock = the
+REGISTRATION SNAP (bow-plate body tabs z 3.235-3.30 -> dAlong 0.000
+every row) + turret rebuild to ref lines (rotor boot, collar floor
+1.905, TOW pod fall, rounded bustle) + station slice-paint mechanics
+(12 ODS skirt sections; box mid-spans are invisible — z-caps/slopes/
+low-seg cylinders paint). §B4 rear 45/121 debt CLOSED (0/0 --exact).
+Five law-bank discoveries in m2a2_bradley.md (registration-snap,
+slice-paint, gun-extra pivot offset, plan-mirror discipline,
+ref-teeter cert class). Landed in ONE modern3.js commit with the
+§5.42 no-air round (bmp2 82.7 ratified + spz_puma) per the
+cohabitation design; guards byte-held (type89/is1/is2/tiger1/m60a1).
+GRADUATION: independent critic spawns at the landed bytes — freeze
+90a5568c in §3 only on its >=9.0. KOREA round unblocks (modern3.js
+clean post-landing).

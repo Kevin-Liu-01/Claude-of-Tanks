@@ -1755,32 +1755,41 @@ export const MODEL_SOURCE = {
 //   paintUntextured — box-UV untextured meshes onto the shared camo canvas
 //                     (material-upgrade pass for flat-color / CAD assets)
 Object.assign(MODEL_SOURCE, {
+  // §5.31b ERA-GROUP FLIP (owner, 2026-08-08 — "im not seeing our custom
+  // models on our deployed versions, only the actual comparison models"):
+  // every era-placed community id below with a dedicated procedural profile
+  // (ww2.js / casemate.js / soviet-heavy.js) flips to source 'procedural' —
+  // OUR custom build is the render of record in every build, and the
+  // community print retires to candidateGlb (kv2/t30 pattern: config kept
+  // verbatim for the repeatable A/B audit and as the machine-readable feed
+  // for the Sources print catalog). Sources-group leftovers (newc_tiger,
+  // recon_tank, q_heavy, is7, object279) keep source 'glb' per §5.31.
   strv103: {
-    source: 'glb',
+    source: 'procedural',
     // r9: paintUntextured routes the asset through the same material
     // normalization as the other community GLBs (tiny palette maps stripped,
     // shell box-UV'd onto the live camo canvas, gear split to dark steel) —
     // it was the one sourced tank skipping the cohesion pass.
-    glb: {
+    candidateGlb: {
       path: '/models/tanks/community/strv103_wesiora.glb', fixedMount: true,
       paintUntextured: true,
     },
   },
   is3: {
-    source: 'glb',
+    source: 'procedural', // §5.31b flip — soviet-heavy.js profile renders
     // content_breadth r2: stripBakedTextures — same cohesion treatment as
     // kv2/is7 (r1 TM #188): the baked albedo rendered flat single-tone lime
     // clay next to the camo-painted fleet; route the shell onto the shared
     // camo canvas + weathering instead.
-    glb: {
+    candidateGlb: {
       path: '/models/tanks/community/is3_panzerfactory.glb',
       turretNode: '^turret$', gunNode: '^gun$', autoPivot: true,
       paintUntextured: true, stripBakedTextures: true,
     },
   },
   t34_85_cad: {
-    source: 'glb',
-    glb: {
+    source: 'procedural', // §5.31b flip — ww2.js profile renders
+    candidateGlb: {
       path: '/models/tanks/community/t34_85_weihe.glb',
       turretNode: '^turret$', autoPivot: true, paintUntextured: true,
     },
@@ -1799,26 +1808,26 @@ Object.assign(MODEL_SOURCE, {
     },
   },
   newc_pziii: {
-    source: 'glb',
-    glb: {
+    source: 'procedural', // §5.31b flip — ww2.js profile renders
+    candidateGlb: {
       path: '/models/tanks/community/pziii_newc42.glb',
       turretNode: '^Turret$', gunNode: '^Gun$', autoPivot: true,
       paintUntextured: true,
     },
   },
   pziii_konserwa: {
-    source: 'glb',
+    source: 'procedural', // §5.31b flip — ww2.js profile renders
     // content_breadth r2: stripBakedTextures — kv2/is7 cohesion treatment;
     // the thumb rendered bare grey plastic next to the camo-painted fleet.
-    glb: {
+    candidateGlb: {
       path: '/models/tanks/community/pziii_konserwa.glb',
       turretNode: '^Plane000$', yawOffset: Math.PI, autoPivot: true,
       pivot: [0, 0.545, 0.12], paintUntextured: true, stripBakedTextures: true,
     },
   },
   leichttraktor: {
-    source: 'glb',
-    glb: {
+    source: 'procedural', // §5.31b flip — ww2.js profile renders
+    candidateGlb: {
       path: '/models/tanks/community/leichttraktor_newc42.glb',
       turretNode: '^Turret$', gunNode: '^Gun$', autoPivot: true,
       paintUntextured: true,
@@ -1868,7 +1877,7 @@ Object.assign(MODEL_SOURCE, {
     },
   },
   tiger2: {
-    source: 'glb',
+    source: 'procedural', // §5.31b flip — ww2.js profile renders
     // 20 flat sibling meshes; Object_2 = turret + gun (verified by isolation
     // render). Explicit pivot: the turret bbox includes the long 88 L/71, so
     // the footprint-center fallback would land ~1.3 m too far forward.
@@ -1877,45 +1886,45 @@ Object.assign(MODEL_SOURCE, {
     // running gear + welded-in hull furniture split in applyCommunityFixes
     // (the asset ships generic Object_N names, so the node-name gear regex
     // never fires — position classification instead).
-    glb: {
+    candidateGlb: {
       path: '/models/tanks/community/tiger2-maximus.glb',
       turretNode: '^Object_2$', autoPivot: true, pivot: [0, 1.9, -1.3],
       paintUntextured: true, stripBakedTextures: true,
     },
   },
   sherman_jumbo: {
-    source: 'glb',
+    source: 'procedural', // §5.31b flip — ww2.js profile renders
     // print plates re-assembled by the scout: hull/turret/tracks_l/tracks_r
     // named nodes. Explicit pivot from the turret base-rim centroid (the
     // fused 75mm tube drags the bbox-center fallback forward).
-    glb: {
+    candidateGlb: {
       path: '/models/tanks/community/sherman-jumbo.glb',
       turretNode: '^turret$', autoPivot: true, pivot: [0, 1.25, 0.0],
       paintUntextured: true,
     },
   },
   jagdtiger: {
-    source: 'glb',
-    glb: { path: '/models/tanks/community/jagdtiger-adipriatna.glb', fixedMount: true },
+    source: 'procedural', // §5.31b flip — casemate.js profile renders
+    candidateGlb: { path: '/models/tanks/community/jagdtiger-adipriatna.glb', fixedMount: true },
   },
   jpz_e100: {
-    source: 'glb',
-    glb: {
+    source: 'procedural', // §5.31b flip — casemate.js profile renders
+    candidateGlb: {
       path: '/models/tanks/community/jagdpanzer_e100_haphazard.glb',
       fixedMount: true, paintUntextured: true,
     },
   },
   sturmtiger: {
-    source: 'glb',
+    source: 'procedural', // §5.31b flip — casemate.js profile renders
     // asset faces +x — rotate to the +z convention
-    glb: {
+    candidateGlb: {
       path: '/models/tanks/community/sturmtiger-tomrs.glb',
       fixedMount: true, yawOffset: -Math.PI / 2,
     },
   },
   t95: {
-    source: 'glb',
-    glb: {
+    source: 'procedural', // §5.31b flip — casemate.js profile renders
+    candidateGlb: {
       path: '/models/tanks/community/t95_doomturtle_haphazard.glb',
       fixedMount: true, yawOffset: Math.PI, paintUntextured: true,
     },
@@ -1960,8 +1969,8 @@ Object.assign(MODEL_SOURCE, {
     },
   },
   is6b: {
-    source: 'glb',
-    glb: {
+    source: 'procedural', // §5.31b flip — soviet-heavy.js profile renders
+    candidateGlb: {
       path: '/models/tanks/community/is6b-snowleopard.glb',
       turretNode: '^Turret$', autoPivot: true, pivot: [0, 1.02, -0.37],
       paintUntextured: true,

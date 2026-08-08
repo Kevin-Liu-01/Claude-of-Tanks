@@ -85,16 +85,20 @@ if (ALLOW_LOCAL_RECOVERED_MODELS) {
   // and TUSK variants as well; public builds retain their redistributable
   // CC-BY visuals because this override is inside the quarantine gate.
   // m1a1: DUAL-GATE GRADUATE (2026-08-02, freeze hash 88a4a978) — no
-  // MODEL_SOURCE; the procedural build ships everywhere. m1a2_tusk keeps
-  // the tejas alias (chimera oracle-defect triage class, not graduated).
-  MODEL_SOURCE.m1a2_tusk = {
-    source: 'glb',
-    glb: {
-      path: '/models/tanks/m1a2_tejas.glb',
-      turretNode: '^Turret$', gunNode: '^Gun$', autoPivot: true,
-      yawOffset: -Math.PI / 2, paintUntextured: true, heroTex: true,
-    },
-  };
+  // MODEL_SOURCE; the procedural build ships everywhere.
+  // m1a2_tusk: §5.31b ERA-GROUP FLIP 2026-08-08 — the dev-only tejas alias
+  // is retired so dev renders the same abrams.js tusk profile deploys now
+  // show (variants.js carries the flip + the dannzjs candidateGlb). The
+  // tejas GLB stays this id's measurement oracle via the three override
+  // maps (chimera oracle class — §5.34 sepv2 precedent), NOT MODEL_SOURCE.
+  // FLIP-RETIRED: MODEL_SOURCE.m1a2_tusk = {
+  // FLIP-RETIRED:   source: 'glb',
+  // FLIP-RETIRED:   glb: {
+  // FLIP-RETIRED:     path: '/models/tanks/m1a2_tejas.glb',
+  // FLIP-RETIRED:     turretNode: '^Turret$', gunNode: '^Gun$', autoPivot: true,
+  // FLIP-RETIRED:     yawOffset: -Math.PI / 2, paintUntextured: true, heroTex: true,
+  // FLIP-RETIRED:   },
+  // FLIP-RETIRED: };
 }
 
 export const USERDROP4_TANK_IDS = ['m1a2_tejas', 'abramsx'];

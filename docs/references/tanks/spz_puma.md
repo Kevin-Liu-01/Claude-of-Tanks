@@ -303,3 +303,60 @@ inventoried here for that sweep.
 - The W1/W2 inner-wall bottom step at z 3.30 (0.50 vs 0.75) crosses
   the interior lower-bow/rise void — visible only from the low-rear
   track-lane angle, terminates each wall on its carrier solid.
+
+## SEE-THROUGH / NO-AIR ROUND (2026-08-08, §5.35 rank-9 order)
+
+MISSION: sweep verdict "rear-deck seam slot (top-down sky): y0-top 364px
+center slot @z-3.63 + 102px corner; §B2 filled-decks law".
+
+ROOT CAUSES MEASURED:
+- The stern-body rear face (-3.60) to ramp front face (-3.66) left a 6 cm
+  full-width z-gap; the rear deck step overhangs only to -3.61 — sky read
+  through a 2.5 m transverse slot between the corner posts.
+- The k-loop armor upper course stops at z -2.935; over the stern module
+  (z -3.32..-2.90) only the lower course exists, so the sponson-to-module
+  strip x 1.66..1.70 read sky top-down (102/34px).
+- Bonus same-class finds fixed in-round: the roof grab rail floated ~4 cm
+  over the raked roof (6 mm under-rail sliver, 320px y0-side-l-T / 396px
+  y45-fql-T; standoff feet only SEGMENTED it to 336px), and all four MUSS
+  heads + the jammer mast hovered over the raked roof plane — 129px
+  GARAGE-VISIBLE islands at yaw 45 sides + 595-1055px -T islands (the
+  t64bv1 hovering-bin class).
+
+WHAT CLOSED (all in buildPuma, marker "see-through round 2026-08-08"):
+- HINGE WEB PLATE: box 2.84x0.07x0.10 @ (0, 2.10, -3.63) — y tucks 15 mm
+  under the deck-step/body/ramp tops (side + rear traces unchanged; the
+  corner posts own that band in side view); z laps 20 mm into both faces.
+  Top-down now reads a recessed hinge deck.
+- STERN UPPER COURSE: box 0.14x0.42x0.42 @ (+-1.73, 1.79, -3.11) — the
+  k-loop course grammar continued over the idler module; meets the k10
+  module at -2.935; plan/side/rear interior (sponson wall + trim rail).
+- RAIL FLUSH SEAT: the rail now pitches with the roof plane (rx 0.0403 =
+  the wedge's own 0.06/1.50 slope) and sits 5 mm proud, bottom buried
+  along the whole 0.92 m run (r1 feet removed).
+- MUSS SEATS: per-corner y (0.70 / 0.71 / 0.749 / 0.749; jammer 0.76) —
+  each base buried >=10 mm into the wedge roof; caps ride.
+
+SWEEP BEFORE -> AFTER:
+- y0-top 573 -> 73 (364px seam DEAD, 102/34px corner slots DEAD; the
+  remaining 40/11/10px sit at the bow-corner pod region, pre-existing).
+- y0-side-l-T 376 -> 0; y45-fql-T 396 -> 0; under-rail sliver extinct.
+- MUSS islands: y45-side-l/r full-view 129px -> 0; y0-fqr-T 595 -> 0;
+  y45-side-l/r-T 1045-1055 -> 0.
+- Untouched FP/pre-existing classes (identical px to the pre-fix sweep):
+  y0-rql 967 + front-low 317 + under-fl/fr 236/228 = under-pod/gun-air
+  band (the named GUN-AIR FP class); rear-quarter 105-107px sensor-pod
+  islands (pre-existing, floaters gate 100); tilt55 835px island
+  (pre-existing, all yaws identical); y90 side 137/131 bustle-region
+  (pre-existing); gear-tag wheel daylight rows.
+
+GATE (x2 bit-identical, live tree, baseline same session):
+  BEFORE  min 0 | hull 39.9 whole 18.1 turret 0 stations 20.3 dims 100 floaters 100
+  AFTER   min 0 | hull 39.9 whole 17.9 turret 0 stations 21.1 dims 100 floaters 100
+  HOLD-OR-IMPROVE: hull =, whole -0.2 (in tolerance), turret =,
+  stations +0.8, dims/floaters =. (The row's 0-class is the known
+  42manako-oracle mapping issue, pre-existing and untouched.)
+
+EVIDENCE: shots/modern3-noair/spz_puma-BEFORE-top-364px.png +
+spz_puma-AFTER-*.png. Geometry hash 940912c8 (64 meshes / 69688 verts),
+tmp-hashgeo.

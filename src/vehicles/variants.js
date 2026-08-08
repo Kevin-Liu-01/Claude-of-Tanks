@@ -238,10 +238,18 @@ export const VARIANT_MODEL_SOURCE = {
   // t90a: FLEET FLIP 2026-08-04 (owner: every MBT renders procedural +
   // CUSTOM) — variant registration retired; the xarchenko GLB stays a
   // measurement oracle via the three override maps.
+  // m1a2_tusk: §5.31b ERA-GROUP FLIP 2026-08-08 (owner: "im not seeing our
+  // custom models on our deployed versions"). This row was the PUBLIC-build
+  // render of record: dev builds overwrote it with the quarantined tejas
+  // alias (userdrops4, now also retired), so deploys silently kept showing
+  // the dannzjs-lineage variant GLB — the exact m1a1 backfill class above.
+  // The abrams.js tusk profile (buildTejasFamily + real-scale ARAT/slat/TIP
+  // kit) renders everywhere now; the variant print retires to candidateGlb
+  // (kv2/t30 pattern) for the Sources catalog + A/B audit.
 
   m1a2_tusk: {
-    source: 'glb',
-    glb: {
+    source: 'procedural',
+    candidateGlb: {
       path: '/models/tanks/community/variants/m1a2_tusk_dannzjs_variant.glb',
       turretNode: 'TurretPivot',
       gunNode: 'GunPivot',

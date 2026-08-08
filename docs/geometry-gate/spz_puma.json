@@ -4,9 +4,9 @@
  "gatePassed": false,
  "components": {
   "hullCurves": 39.9,
-  "wholeCurves": 18.1,
+  "wholeCurves": 17.9,
   "turretCurves": 0,
-  "stations": 20.3,
+  "stations": 21.1,
   "dims": 100,
   "floaters": 100
  },
@@ -120,8 +120,8 @@
    ]
   },
   "side_whole": {
-   "score": 32.990862213457255,
-   "meanPct": 4.64,
+   "score": 33.3084973730221,
+   "meanPct": 4.61,
    "p95Pct": 13.25,
    "coverPct": 2.27,
    "reg": {
@@ -552,8 +552,8 @@
    ]
   },
   "front_whole": {
-   "score": 18.087076745106515,
-   "meanPct": 6.23,
+   "score": 17.935800179290453,
+   "meanPct": 6.24,
    "p95Pct": 11.92,
    "coverPct": 0,
    "reg": {
@@ -662,8 +662,8 @@
  },
  "turretRows": {
   "side": {
-   "score": 38.45150328693279,
-   "meanPct": 4.11,
+   "score": 38.93074229960959,
+   "meanPct": 4.07,
    "p95Pct": 9.85,
    "coverPct": 4.2,
    "reg": {
@@ -897,7 +897,7 @@
   {
    "i": 3,
    "wPct": 3.21,
-   "topPct": 4.66
+   "topPct": 3.71
   },
   {
    "i": 4,
