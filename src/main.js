@@ -4011,6 +4011,13 @@ function pumpStagedVisuals() {
 // pedestal hero's swap always wins the idle budget.
 function pumpGarageDressing() {
   if (garageDressing.isBuilt()) return;
+  // MOBILE-QA r2 (tools/tmp-clonestack verbatim stacks): the pump had NO
+  // battle gate — requestIdleCallback fires in battle frame gaps, and each
+  // repair-bay tank bake (50-170 ms, unhooked material clones, fresh
+  // program links) landed as the mid-fight >100 ms task storm the Lap kept
+  // measuring on fight/look/fire. Battle defers; the garage return path
+  // already force-finishes via ensureBuilt() (see enterGarage).
+  if (game.phase === 'battle') { _idle(pumpGarageDressing, 4000); return; }
   const glb = (typeof window !== 'undefined' && window.__GLB_STATS) || null;
   if (glb && glb.started > glb.settled) { _idle(pumpGarageDressing, 2500); return; }
   if (garageDressing.pump()) _idle(pumpGarageDressing, 1800);

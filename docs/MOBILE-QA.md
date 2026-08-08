@@ -96,11 +96,25 @@ frames, both caliber classes — changed nothing; reverted), NOT (e) caliber
 class alone (m1a2 births like the Bradley). PROVEN SHAPE (fxcycle): every
 shot/impact births programs with NEVER-REPEATING cacheKeys (shot1 +3,
 shot2 +7, zero re-links) on fx-group MeshBasicMaterials + camo-kit Decor_*
-mats — per-instance cacheKey variance, unwarmable by definition. NEXT
-DISCRIMINATOR: capture full cacheKey strings of born programs and diff
-against nearest base-set neighbor — the differing segment names the
-flipping parameter verbatim. Suspects: per-instance define injection on
-pooled-mesh growth, or CSM per-material registration state.
+mats — per-instance cacheKey variance, unwarmable by definition. RESOLVED (same
+date): cacheKey nearest-neighbor diff — every born key is its warmed
+neighbor MINUS the '|burn-r6' customProgramCacheKey suffix, i.e. unhooked
+transient clones. Material.clone stack capture named the cloner verbatim:
+**src/game/garageDressing.js buildBayA/buildBayB via pumpGarageDressing —
+the garage workshop-dressing idle pump has NO battle gate**, so
+requestIdleCallback keeps landing 50-170 ms repair-bay tank bakes (with
+fresh unhooked material clones + program links) in battle frame gaps.
+Combat correlation was coincidence; the same pump explains part of the
+garage_idle churn. FIX: pumpGarageDressing defers while
+game.phase === 'battle' (enterGarage already force-finishes via
+ensureBuilt, so the workshop is never half-dressed). RESULT (clean-window
+double-Lap, load 12): fire red -> GREEN both runs (100% ltf, prog+0);
+look red-both -> green/106ms-marginal-one-run (no longer confirmed-
+failing); fight worst halved 407 -> 152/176 ms, still red (+12/16 progs =
+kill-time unhooked clones, round-3 lead); battle_load 25 -> 17 s side
+benefit; garage stations unchanged (pump correctly still runs there).
+steady-state shots: births 7 -> 1 (fxcycle). 4+1 selftest suites green,
+6/6 pump-adjacent views green. LANDED.
 
 | round | date | worst station (baseline) | attribution (evidence) | fix | result | landed |
 |---|---|---|---|---|---|---|
