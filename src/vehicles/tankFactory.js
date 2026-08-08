@@ -33,6 +33,7 @@ import { fxNow, emitPopTrail } from '../fx/clock.js';
 // EXTENSION HOOK (HD modern roster, pack #3): chieftain_mk10 / k2 / type10 /
 // m2a2_bradley / bmp2 / ariete — merged into BUILDERS below.
 import { MODERN3_BUILDERS } from './modern3.js';
+import { FRANCE_BUILDERS } from './france.js';
 import { MODERN2_BUILDERS } from './modern2.js'; // EXTENSION HOOK (see BUILDERS)
 // EXTENSION HOOK (HD modern roster): extra per-spec constructors live in
 // modern1.js and merge into BUILDERS below. Deliberate module cycle — that
@@ -3392,6 +3393,9 @@ Object.assign(BUILDERS, MODERN2_BUILDERS);
 // EXTENSION HOOK (HD modern roster #3): chieftain_mk10 / k2 / type10 /
 // m2a2_bradley / bmp2 / ariete — builders + specs live in modern3.js
 Object.assign(BUILDERS, MODERN3_BUILDERS);
+// EXTENSION HOOK (§5.38 priority wave): amx40 — builders + specs live in
+// france.js (same self-contained pattern; stub-wired by the orchestrator).
+Object.assign(BUILDERS, FRANCE_BUILDERS);
 // Freeze the authored core/modern constructors before recovered procedural
 // variants are registered. A recovered Leopard, Abrams, T-72, etc. can now
 // begin with the complete production-quality family model and apply an exact

@@ -1573,3 +1573,55 @@ disc flat, right band modulation trails left, RCWS detail waits on
 the FILED dims-datum work order (orchestrator lane, the remaining
 identity headroom). Abrams lane FREES -> sepv2 works-echo deletion
 round (§5.34 chain) spawns next.
+
+## 5.38 OWNER PRIORITY WAVE — SEVEN AW-SERIES DROPS (2026-08-08): "bump
+this up in priority, fully model a custom <X> based on this model
+using our strongest visual comparison and geometric comparison
+techniques" x5 messages: K2 Black Panther, Type 99A2, AMX-40, K1A1,
+T-90MS Tagil, then "custom t90 and t90a burlak". ONBOARDED (orchestrator
+lane): all seven parked LOCAL-ONLY in public/models/community-candidates/
+(provenance inconclusive — ATTRIBUTION series entry; ASK-OWNER standing:
+type_89-strict deletion available on request); k1a1/t90ms/t90 re-baked
+from semantic OBJ sources (real turret/cannon nodes); vertex REG + three
+harness maps registered for all seven (k2 receipt already extracted:
+dims bind len -2.4/overall -3/width 0, height +20.9 = RWS band, t90m
+class). ROSTER DISCOVERIES: k2 spec+buildK2 DORMANT in modern3.js
+(owner-delisted 2026-08-06 "no glb" — reason VOIDED by the drop);
+type99a spec+buildType99A DORMANT in modern2.js (same). LANE PLAN:
+modern2 agent re-activates type99a vs its print; modern3/KOREA agent
+(waits for the live no-air round) re-lists k2 + builds k1a1 new;
+france.js agent builds amx40 (stub module wired into tankFactory by
+the orchestrator, empty-map no-op until filled); russia t90-family
+agent builds t90 + t90ms + t90a_burlak (specs userdrops7 make()
+pattern from t90a base, builds in profiles/russia.js — §5.13 family
+turret law: derive from the landed t90a/t90m/t90sm grammar, each with
+its own print-measured identity). Extract sweep for the six new
+receipts DEFERRED to a calm-load window (box hit a load-869 render
+wave this hour; starved measures read garbage).
+
+## 5.41 M45 LADDER DELIVERED 90.7 PASS x3 (2026-08-08): 84 -> 90.7
+(hull 91.4/whole 90.7/turret 92.2/stations 93.4/dims 92.2/floaters
+100), candidate 9f5c94d0 UNCOMMITTED — graduation critic RUNNING.
+Round root-find: r1 was authored from a Z-FLIPPED workorder plan frame
+(the r3 thin-end heuristic still loses on near-bow-flush muzzles —
+FLEET LAW CANDIDATE: landmark-verify every plan read); registration
+recovery via body-ends probe (dAlong 0.000 all rows). §5.35 item-11
+M2-window closed with real mount mass. m26_pershing DRIFT FLAGGED:
+reads 2f006738 vs registry 65c564c0 — builder bisected to LANDED
+5f39989 (armorM4 gunBarrel proxy 3.96->3.44; m26/m45 inherit m4a3e8
+proxies, patton.js bytes unchanged). RE-RECORD PENDING the m45
+critic's independent confirmation, then §3 updates with the proxy
+attribution note. Owner spec-row flag stands: m45 6.6 -> ~6.47 would
+restore dims ~100 (ASK-OWNER, non-blocking).
+
+## 5.31b OWNER CLARIFICATION (2026-08-08): "im not seeing our custom
+models on our deployed versions, only the actual comparison models" +
+re-send of the §5.31 move list + "then make sources have ALL actual
+tank models". READ: the 18 era-placed ids currently RENDER as their
+community GLB prints (MODEL_SOURCE=glb) — on deploy the owner sees
+the comparison models (or nothing where stripping applies), not OUR
+custom builds. DIAGNOSIS AGENT SPAWNING: map which of the 18 have
+procedural builders (dormant or live), what VITE_PUBLIC_BUILD strips,
+and design the flip (playables -> procedural in era groups; Sources
+keeps ALL actual-tank prints browsable). leopard2_proto MODEL_SOURCE
+flip is the mechanics precedent.

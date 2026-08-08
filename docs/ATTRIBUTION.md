@@ -798,3 +798,27 @@ check. Owner ruling on scope: the clean ones are measurement/influence reference
 - community-candidates/type10-source/ — the TYPE-10 source OBJ behind
   the registered community GLB (owner-supplied 2026-08-07; source
   material, not an instrument).
+
+## KojfDiscord "(Armored Warfare)" series (owner drops, 2026-08-08 — §5.38 priority wave; SEVEN vehicles)
+All by KojfDiscord (https://sketchfab.com/KojfDiscord), each carrying a
+CC-BY-4.0 tag in asset.extras. PROVENANCE INCONCLUSIVE per the
+PROVENANCE LAW: every title names the commercial game Armored Warfare,
+and the live pages checked (K2, 2026-08-08) show NO description and NO
+tags — the embedded CC-BY tag alone is not proof (type_89/leo2a4
+precedent recognizes game-titled uploads as extraction-suspect). Owner
+supplied all seven explicitly as modeling references ("fully model a
+custom X based on this model"), matching the standing owner ruling:
+measurement/influence references for OUR OWN procedural builds — so ALL
+SEVEN are **LOCAL-ONLY QUARANTINE, never ship**; every playable is a
+procedural build. If the owner wants type_89-strict treatment (delete,
+build from photos alone), say so and the files are pulled.
+- community-candidates/k2_black_panther_armored_warfare.glb (47MB GLB)
+- community-candidates/type_99a2_armored_warfare.glb (21MB GLB)
+- community-candidates/amx-40_armored_warfare.glb (31MB GLB)
+- community-candidates/t-90a_burlak_armored_warfare.glb (GLB)
+- community-candidates/k1a1_kojf.glb — RE-BAKED by us (blender obj2glb)
+  from the zip's SEMANTIC OBJ source (real turret/cannon/tread nodes);
+  original zip retained in ~/Downloads.
+- community-candidates/t90ms_kojf.glb — re-baked from OBJ source, same.
+- community-candidates/t90_kojf.glb — re-baked from OBJ source, same.
+Textures on the re-bakes are partial (geometry is the instrument).

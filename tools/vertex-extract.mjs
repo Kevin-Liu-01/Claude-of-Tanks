@@ -551,6 +551,80 @@ const REG = {
     turretNode: '^Object_6$', autoPivot: true,
     pubDims: { hullLengthM: 6.79, overallLengthM: 9.49, widthM: 3.24, heightM: 2.30 },
   },
+  k2: {
+    // "K2 Black Panther (Armored Warfare)" by KojfDiscord (Sketchfab,
+    // CC-BY-4.0 tag; owner-supplied 2026-08-08 as the PRIORITY modeling
+    // reference). PROVENANCE INCONCLUSIVE: title names a commercial game,
+    // live page has no description/tags (checked 2026-08-08) — LOCAL-ONLY
+    // QUARANTINE, measurement/influence ONLY, playable is procedural
+    // (buildK2). Meters-authored OBJ merge, z-up under the Sketchfab root
+    // rotation, gun -y raw (muzzle -7.05); flat Object_N material split:
+    // Object_21 turret shell, Object_19 gun+mantlet (with Object_24
+    // tube/roof-rail mix), Object_3/7 tracks, Object_29 skirts (x +-1.86),
+    // Object_26/27/28 hull bands, Object_25 rear antenna pair (z to 4.73
+    // raw — height read needs the antenna excluded or p95 class).
+    path: 'public/models/community-candidates/k2_black_panther_armored_warfare.glb',
+    turretNode: '^Object_21$', gunNode: '^Object_19$', autoPivot: true,
+    pubDims: { hullLengthM: 7.5, overallLengthM: 10.8, widthM: 3.6, heightM: 2.4 },
+  },
+  // ---- KojfDiscord "(Armored Warfare)" series (owner drops 2026-08-08,
+  // §5.38): ALL LOCAL-ONLY QUARANTINE (title names a commercial game; live
+  // pages have CC-BY-4.0 tags but no description/tags — provenance
+  // inconclusive, K2-page check 2026-08-08). Measurement/influence ONLY;
+  // every playable is procedural. k1a1/t90ms/t90 were re-baked from the
+  // zips' SEMANTIC OBJ sources (blender obj2glb, real turret/cannon nodes);
+  // k2/type99a/amx40/burlak are the flat Object_N Sketchfab GLBs.
+  type99a: {
+    // "Type 99A2 (Armored Warfare)". Meters, z-up under root rotation, gun
+    // -y (muzzle -7.41). Object_31 turret shell (incl. mast to 3.73 raw),
+    // Object_17 gun tube, Object_27 skirts/fenders, Object_25/26 hull,
+    // Object_5/18 tracks, Object_9 antenna (z 4.38 raw).
+    path: 'public/models/community-candidates/type_99a2_armored_warfare.glb',
+    turretNode: '^Object_31$', gunNode: '^Object_17$', autoPivot: true,
+    pubDims: { hullLengthM: 7.6, overallLengthM: 11.0, widthM: 3.7, heightM: 2.37 },
+  },
+  amx40: {
+    // "AMX-40 (Armored Warfare)". Object_12 turret shell (z 1.56..3.11),
+    // Object_20 gun tube (y -6.57..-2.86), Object_9 skirts, Object_10/19
+    // tracks, Object_15 mantlet, Object_24 masts (z to 5.12 raw).
+    path: 'public/models/community-candidates/amx-40_armored_warfare.glb',
+    turretNode: '^Object_12$', gunNode: '^Object_20$', autoPivot: true,
+    pubDims: { hullLengthM: 6.8, overallLengthM: 10.04, widthM: 3.36, heightM: 2.38 },
+  },
+  k1a1: {
+    // Re-baked from the zip's OBJ source — SEMANTIC nodes. Gun = cannon_10;
+    // cannonbase_9 + cage/smokecaps/noeffect01 _turret_ nodes follow.
+    path: 'public/models/community-candidates/k1a1_kojf.glb',
+    turretNode: '^vehicle#k1a1_turret_0$', gunNode: '^vehicle#k1a1_cannon_10$',
+    autoPivot: true,
+    pubDims: { hullLengthM: 7.48, overallLengthM: 9.71, widthM: 3.6, heightM: 2.25 },
+  },
+  t90ms: {
+    // Re-baked from OBJ source — semantic (turret_6, cannon_8, era01-10
+    // hull+turret, aps/cage/smokecaps/detachparts turret followers).
+    path: 'public/models/community-candidates/t90ms_kojf.glb',
+    turretNode: '^vehicle#t-90ms_turret_t-90ms_6$',
+    gunNode: '^vehicle#t-90ms_cannon_2a46m-5_8$', autoPivot: true,
+    pubDims: { hullLengthM: 6.86, overallLengthM: 9.53, widthM: 3.78, heightM: 2.23 },
+  },
+  t90: {
+    // Re-baked from OBJ source — semantic (turret_18, cannon_20, era
+    // hull+turret sets, hatch01/aps/smokecaps turret followers).
+    path: 'public/models/community-candidates/t90_kojf.glb',
+    turretNode: '^vehicle#t-90_turret_t-90_18$',
+    gunNode: '^vehicle#t-90_cannon_2a46m2_20$', autoPivot: true,
+    pubDims: { hullLengthM: 6.86, overallLengthM: 9.53, widthM: 3.78, heightM: 2.23 },
+  },
+  t90a_burlak: {
+    // "T-90A Burlak (Armored Warfare)" — flat Object_N. Object_2 turret
+    // shell (z 1.39..3.13), Object_15 gun tube (y -5.88..-1.23), Object_24
+    // skirts/fenders, Object_21 hull band, Object_5/13 tracks, Object_11
+    // antenna (z 4.63 raw). Experimental Burlak-turret T-90A: pub dims =
+    // t90a-class, height to the (taller) Burlak bustle roof est. 2.30.
+    path: 'public/models/community-candidates/t-90a_burlak_armored_warfare.glb',
+    turretNode: '^Object_2$', gunNode: '^Object_15$', autoPivot: true,
+    pubDims: { hullLengthM: 6.86, overallLengthM: 9.53, widthM: 3.78, heightM: 2.30 },
+  },
   t14: {
     // "T-14 Armara Uralvagon Factory" by 3DYAROSLAV2 (CC-BY-4.0; Russian
     // semantic materials BASHNYA/KORPUS/PULEMETORUDIE = original Blender
