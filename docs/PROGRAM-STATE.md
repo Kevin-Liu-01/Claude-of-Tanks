@@ -1468,3 +1468,19 @@ cent3+ch1; leopard: proto corridors); busy lanes queue their items
 behind live rounds (russia: t72b3m/t90m/t64bv1/t84/t72bu/t80bv/
 t80-floater; patton: m60a2+MG-mass rides the m45 ladder; misc: t80u+
 type74; abrams: sepv2 post slit rides the echo-deletion touch).
+
+## 5.31-EXECUTED GARAGE REGROUP (2026-08-07): owner's garage.js WIP
+cleared -> order executed. ERA_PLACED_SOURCES set (18 ids) exempts the
+named GLB-sourced customs from the Sources branch; t95 added to
+COLDWAR_IDS (spec era ww2, owner places it Cold War — coldwar check
+now precedes the era branch in groupOf; proven safe: no other
+COLDWAR_IDS member is era-ww2). Census: WW2 +12 (sherman_jumbo,
+leichttraktor, both pziii customs, sturmtiger, tiger2, jagdtiger,
+jpz_e100, t34_85_cad, t44, is3, is6b), Cold War +4 (type59, strv103,
+t95, m48), Modern +2 (merkava4, m1a2_tusk). Sources now = is7,
+object279, newc_tiger, q_heavy, recon_tank. ASK-OWNER (default held):
+newc_tiger is a Tiger I custom the order didn't name — same principle
+would file it WW2; q_heavy/recon_tank are fictional customs with no
+era home. "Sources have ALL actual tank models" read as the end-state
+description (remaining prints stay listed); if it means onboarding
+MORE playable prints, that's a new order.
