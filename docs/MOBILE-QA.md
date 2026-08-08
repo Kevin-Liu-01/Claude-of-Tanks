@@ -86,6 +86,22 @@ spot reveal < 50 ms · garage_idle > 95% clean frames
 
 ## Ledger
 
+Round 2 interim (2026-08-08, research gate OPEN — no fix landed): the
+in-battle compile leak is NOT (a) spotting reveals or kills (revealprobe:
+force-reveal all 13 enemies + wreck one = 0 births), NOT (b) camera/scope/
+prop-break (action bisect: 0 births each), NOT (c) fx.resetAll disposal
+(fxcycle probe: diedAtReset=0), NOT (d) missing warm coverage of the live
+shell pipeline (a boot-time REAL warm shell — mid-flight + impact warm
+frames, both caliber classes — changed nothing; reverted), NOT (e) caliber
+class alone (m1a2 births like the Bradley). PROVEN SHAPE (fxcycle): every
+shot/impact births programs with NEVER-REPEATING cacheKeys (shot1 +3,
+shot2 +7, zero re-links) on fx-group MeshBasicMaterials + camo-kit Decor_*
+mats — per-instance cacheKey variance, unwarmable by definition. NEXT
+DISCRIMINATOR: capture full cacheKey strings of born programs and diff
+against nearest base-set neighbor — the differing segment names the
+flipping parameter verbatim. Suspects: per-instance define injection on
+pooled-mesh growth, or CSM per-material registration state.
+
 | round | date | worst station (baseline) | attribution (evidence) | fix | result | landed |
 |---|---|---|---|---|---|---|
 | 0 (baseline) | 2026-08-08 | 6/8 FAIL — tank_switch worst 4890 ms (+142 programs), battle_load 26.5 s (+236 MB heap, worst 2827 ms), fire 435 ms, fight 276 ms, look 217 ms, garage_idle 5.6 >100ms/10s (+35 prog +55 MB while "idle"); drive + reveals clean | — (baseline only) | — | scorecard: scratchpad lap-baseline-1.json | harness landed |
