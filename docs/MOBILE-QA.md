@@ -84,6 +84,20 @@ tank_switch < 250 ms worst · battle_load/rematch < 8 s ·
 look/drive/fire/fight zero >100 ms tasks per 10 s window ·
 spot reveal < 50 ms · garage_idle > 95% clean frames
 
+## Rig B pass 1 (2026-08-08, round 3 — QA iPhone 16 sim, portrait, :7777)
+
+Functional: boot ✓ (tier=mobile dpr=3, lit+shadow=FAIL -> shadows-off
+rescue, expected on software GL) · garage renders + carousel/tabs work ✓ ·
+battle loads ✓ · touch HUD complete and thumb-reachable in portrait, above
+Safari's bar (safe areas ✓) · FIRE hold works (ammo 24 -> 23, MBT cadence)
+· swipe-to-aim works · audio live · battle sim runs (score/clock tick).
+FINDINGS (visual/UX, need rounds): (1) enemy NAMEPLATES overlap into an
+unreadable red/green smear at spawn sightlines in portrait FOV — needs
+range-based declutter/fade or collision layout; (2) the COT DIAG overlay
+persists after boot and covers the first garage carousel cards — should
+auto-hide post-splash; (3) the battlefield picker is absent in portrait
+garage (camo panel only) — confirm intended vs layout truncation.
+
 ## Ledger
 
 Round 2 interim (2026-08-08, research gate OPEN — no fix landed): the
@@ -119,4 +133,5 @@ steady-state shots: births 7 -> 1 (fxcycle). 4+1 selftest suites green,
 | round | date | worst station (baseline) | attribution (evidence) | fix | result | landed |
 |---|---|---|---|---|---|---|
 | 0 (baseline) | 2026-08-08 | 6/8 FAIL — tank_switch worst 4890 ms (+142 programs), battle_load 26.5 s (+236 MB heap, worst 2827 ms), fire 435 ms, fight 276 ms, look 217 ms, garage_idle 5.6 >100ms/10s (+35 prog +55 MB while "idle"); drive + reveals clean | — (baseline only) | — | scorecard: scratchpad lap-baseline-1.json | harness landed |
+| 3 | 2026-08-08 | fight residual: worst 152-178 ms, ~0.5 >100ms/10s (budget 0), prog +13/16 mid-fight; desktop-viewport profile shows compile family still top real cost ((program) 2.68 s / 20 s) | Kill-clone theory FALSIFIED (slayEnemies under clone logger = 0 clones — setDestroyed swaps to shared burnt, no clones). Pedestal prefetch properly phase-gated (not the leak). Born inventory (real path, 20 s fight): 2x anon#1301 (suspect: shadow-depth RGBA-packing variants for fx meshes absent at warm time), Decor_mesh#313 (hooked-length kit-decor variant on a battle tank), ~12 anon #250-313 incl. same-length pairs. Source system unidentified — Gate 2 NOT satisfied for a code fix; no change landed | none (protocol: no fix without clean attribution) | Rig B pass 1 DONE (see section above: 3 UX findings). Round 4 instrument: bind born programs to owning materials via renderer.properties INSIDE the fight probe (attribute() at capture time), plus castShadow census on fx meshes | docs-only |
 | 1 | 2026-08-08 | Gate-1 double-run fails: garage_idle, tank_switch, battle_load, fight. In-battle target = FIGHT (worst 212/323 ms, prog +15 both runs; fire + look passed a run each — baseline fire 435 ms was load contamination) | fightprof (real BATTLE-click entry, 20 s window): 11 programs compile MID-FIGHT — named leak TankWreckShadowProxy (world-prop wreck shadow caster, props.js) + 2× cacheKey-5009 CSM-standard monsters + 8 anonymous classes; compile family getParameters 592 + getProgram 455 + getProgramParameter 428 + (program) 2370 ms over 20 s, worst task 207 ms. Root cause: renderer.compile never builds shadow-DEPTH variant programs — each caster class links on its first shadow-pass render, i.e. when the player first drives it into a CSM cascade mid-fight. (Debug-path entry without loading warms shows the same storm at +33 programs incl. camo-r7 Decor_* kit mats — loading path covers those; the depth-variant class is the real-path residue.) | warmShadowPrograms(): one warm frame behind the loading screen with the far cascade's shadow camera stretched map-wide (existing sun light — adding a light would change light count and recompile every lit program, kill-cam warm lesson) | PARTIAL — TankWreckShadowProxy class provably eliminated from the mid-fight leak (fightprof re-run), fight prog delta run-B +3 (was +15/+15) BUT budget still red both verify runs (worst 407/102 ms; the per-run-variable REVEAL-TIME variant compiles dominate — they hit fire in verify-B too: +13 prog, 568 ms). No regression: drive clean, all 19 living screenshot views green, 5 selftest suites green. Scorecards: r1-verify-a/b.json | landed (kept: correct, evidenced, zero-regression). ROUND 2 TARGET: reveal-time variant compiles (Decor_* kit mats + cacheKey-5009 CSM monsters) — suspect a material define flip on spotting reveal / first visible render; instrument WHICH define differs by diffing cacheKeys of a warmed vs revealed material |
