@@ -3104,6 +3104,15 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
     impactDecalStats() { return impactDecals.stats(); },
 
     /**
+     * MOBILE-QA r4: clear one vehicle's impact decals — the per-battle warm
+     * stamps a scar on every fielded visual so the decal program compiles
+     * behind the loading screen (it re-links per battle otherwise), then
+     * clears the warm marks with this before the battle opens.
+     * @param {object} visual TankVisual
+     */
+    clearVehicleDecals(visual) { impactDecals.clearVehicle(visual); },
+
+    /**
      * Vehicle destruction: fireball, debris, persistent smoke column; calls
      * visual.setDestroyed() at t ≈ 0.15 s when visual given (turret pop only
      * on ammo-rack kills).

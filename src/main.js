@@ -1917,12 +1917,31 @@ async function startBattleLoading(specId, mapId = null) {
       await new Promise((r) => setTimeout(r, 16));
     }
   }
+  // MOBILE-QA r4 (owner-binding probe): the shared impact-decal program
+  // re-links PER BATTLE at the first live stamp — a ~100 ms class link that
+  // kept landing mid-fight. Stamp one warm scar on every fielded visual so
+  // the decal node meshes exist under the tank roots; the object-form
+  // compile below then builds the decal program behind the loading screen,
+  // and the warm marks are cleared before the battle opens.
+  for (const e of game.tanks) {
+    if (!e.visual || !e.visual.root || !e.state) continue;
+    _v1.copy(e.state.pos);
+    _v1.y += (e.spec && e.spec.dims ? e.spec.dims.heightM : 2.4) * 0.5;
+    _v2.set(0, 0, 1);
+    try { fx.armorScar(e.visual, _v1, _v2, 100); } catch (_) { /* warm only */ }
+  }
   // ...and the reveal-compile pass on the POST-SWAP hierarchies (see
   // compileHiddenVariants — swapped GLBs carry their own hidden addon nodes).
   compileHiddenVariants();
   // MOBILE-QA r1: depth-variant warm — per battle, AFTER the world exists
   // (each map bakes its own wreck/prop casters) and after the swaps landed.
   warmShadowPrograms();
+  // MOBILE-QA r4: drop the warm scars — programs survive; marks must not.
+  for (const e of game.tanks) {
+    if (e.visual && fx.clearVehicleDecals) {
+      try { fx.clearVehicleDecals(e.visual); } catch (_) { /* warm only */ }
+    }
+  }
   bltStage('wreckWarm');
   battleLoad.progress(1, 'Ready');
 
