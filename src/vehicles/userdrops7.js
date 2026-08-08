@@ -137,8 +137,13 @@ const SPECS = [
       dims: { hullLengthM: 6.59, overallLengthM: 9.48, widthM: 3.10, heightM: 2.29 },
       visual: { marking: 'number', number: '68' } }, AHAB_AMX30),
   make('m60a1', 'm48', 'M48A5 Patton', 'USA',
+    // hullLengthM 6.42 -> 6.87 (m48 build round 2026-08-08): the 6.42 row
+    // is an inetres A5-line defect — its own M48A3 row reads 6.882 m on the
+    // SAME hull (the A5 is a rebuilt A3), and the Hunnicutt-class table
+    // gives 687.1 cm "length without gun, with fenders" for A2/A3/A5
+    // (docs/references/tanks/m48.md, two-source rule).
     { hp: 1700, enginePowerHp: 750, weightTons: 49.6, gun: { reloadS: 7.8 },
-      dims: { hullLengthM: 6.42, overallLengthM: 9.31, widthM: 3.63, heightM: 3.09 },
+      dims: { hullLengthM: 6.87, overallLengthM: 9.31, widthM: 3.63, heightM: 3.09 },
       visual: { marking: 'star', number: 'A31' } }, ATMODELER),
   make('m60a1', 'm60a2', 'M60A2 Starship', 'USA',
     { hp: 1800, enginePowerHp: 750, weightTons: 52,
@@ -161,6 +166,34 @@ const SPECS = [
       gun: { reloadS: 6.8 },
       dims: { hullLengthM: 7.08, overallLengthM: 9.72, widthM: 3.56, heightM: 2.22 },
       visual: { number: '240' } }, T84_REMIX),
+  // -- §5.38 T-90 family (owner priority wave 2026-08-08) ---------------------
+  // Three new marks off the t90a base (variants.js donor — legal here, the
+  // userdrops5 t72bu precedent). The KojfDiscord AW-series prints are
+  // LOCAL-ONLY QUARANTINE measurement references (docs/ATTRIBUTION.md series
+  // entry): NO MODEL_SOURCE rows and no credit cards — every playable renders
+  // its OWN procedural build (profiles/russia.js, RUSSIA_PROFILES).
+  // t90: base 1992 obr. — V-84MS 840 hp, cast turret, K-5 clamshell, NSVT.
+  make('t90a', 't90', 'T-90', 'USSR/Russia',
+    { hp: 1880, enginePowerHp: 840, weightTons: 46.5,
+      gun: { reloadS: 7.8 },
+      visual: { number: '417' } }),
+  // t90ms: Tagil export demonstrator — V-92S2F 1130 hp, welded turret with
+  // the big bustle + rear cage + UDP T05BV-1 RWS; desert-sand factory paint
+  // (the export-demo look; also the garage tell vs the green t90sm).
+  make('t90a', 't90ms', 'T-90MS Tagil', 'USSR/Russia',
+    { hp: 2020, enginePowerHp: 1130, weightTons: 48, topSpeedKmh: 65,
+      gun: { reloadS: 7.1 },
+      visual: { scheme: 'solid', base: '#6a6047', weather: '#75694e', patches: [], number: '340' } }),
+  // t90a_burlak: experimental Burlak bustle-autoloader turret on the T-90A
+  // hull (t90a stats; height to the taller bustle roof; the rear-rack
+  // autoloader feeds a touch faster than the carousel). overallLengthM:
+  // the Burlak bustle overhangs the hull rear ~0.24 past the T-90A datum
+  // (print -3.66 corroborates) — 9.76 is the variant's honest gun-forward
+  // total (ASK-OWNER note in the packet; §5.38 named only heightM 2.30).
+  make('t90a', 't90a_burlak', 'T-90A Burlak', 'USSR/Russia',
+    { gun: { reloadS: 7.0 },
+      dims: { heightM: 2.30, overallLengthM: 9.76 },
+      visual: { number: '059' } }),
 ];
 
 for (const spec of SPECS) {
@@ -180,7 +213,15 @@ const glb = (file) => ({
 
 // shippable class (CC BY / CC BY-SA) — registered in every build
 MODEL_SOURCE.t44 = glb('t44_foxygamer.glb');
-MODEL_SOURCE.m48 = glb('m48a5_atmodeler.glb');
+// m48 §5.45 BUILD LANDED (patton lane 2026-08-08): the id renders OUR
+// procedural build everywhere (profiles/patton.js buildM48); the ATModeler
+// print retires to candidateGlb (kv2/t30 pattern — Sources print card +
+// the repeatable A/B audit). Measurement registration moved to the three
+// override maps (§10-pattern mirror, helper-expanded config).
+MODEL_SOURCE.m48 = {
+  source: 'procedural',
+  candidateGlb: { path: '/models/tanks/community/m48a5_atmodeler.glb', turretNode: '^Turret$', autoPivot: true, paintUntextured: true },
+};
 // FLEET FLIP 2026-08-04: MODEL_SOURCE_RETIRED.m60a2 = glb('m60a2_ahab.glb');
 // FRANCE ROUND 2026-08-07 (owner: "the amx 30bs' hulls are backwards"):
 // the ahab bakes carry an INTERNAL hull/turret 180 — build_gen2_tanks.py
@@ -213,5 +254,6 @@ if (ALLOW_LOCAL_RECOVERED_MODELS) {
 
 export const USERDROP7_TANK_IDS = SPECS.map((s) => s.id);
 // every wave-8 row is sourced-from-online (era bucketing intent, cf.
-// USERDROP5_SOURCED_IDS) — t84 graduated out (dual gate, §10)
-export const USERDROP7_SOURCED_IDS = USERDROP7_TANK_IDS.filter((id) => !['t84', 't80', 't80b', 't80bv', 'm60a2', 'vickers_mk1', 'amx30', 'amx30b2'].includes(id));
+// USERDROP5_SOURCED_IDS) — t84 graduated out (dual gate, §10); the §5.38
+// t90 family rows were born procedural (never sourced).
+export const USERDROP7_SOURCED_IDS = USERDROP7_TANK_IDS.filter((id) => !['t84', 't80', 't80b', 't80bv', 'm60a2', 'vickers_mk1', 'amx30', 'amx30b2', 't90', 't90ms', 't90a_burlak', 'm48'].includes(id));

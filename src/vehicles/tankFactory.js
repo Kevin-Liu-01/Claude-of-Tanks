@@ -888,8 +888,14 @@ function buildRunningGear(P, cfg) {
   // see-through slot between rim plates on the modern rigs.
   // r7b: the toothed carrier rings ride the BAND edges (ringSpan = trackW) so
   // the drive end reads toothed from the side; teeth spaced at the link pitch.
+  // cfg.endRingSpan opt-in (m48 r8, §F.2 — default byte-identical): the
+  // toothed carrier rings ride ringSpan = trackW (the r7b band-edge law),
+  // whose cluster reaches xc + ~0.553·trackW — on the m48's wide-track
+  // gear that authored past the committed W/2 and silently width-rescaled
+  // the whole build ×0.9921 (probe-frame law receipt in the m48 packet).
+  // Radial tooth reach is untouched; the rings pull inboard only.
   const sg = sprocketGeo(sprocket.r, trackW * 0.80, seg, 12, sprocket.r + bandOuterR,
-    mats.trackLinkM, trackW);
+    mats.trackLinkM, cfg.endRingSpan ?? trackW);
   const ig = idlerGeo(idler.r, trackW * 0.74, seg);
   P.disposables.push(sg.body, sg.dark, ig.body, ig.dark);
   // End-wheel BODIES always take scheme paint (crews paint sprocket/idler

@@ -142,7 +142,14 @@ function curveHull(P, H) {
     let [z1, y1] = deck[i + 1];
     if (z0 <= bandEnd) continue;
     if (z1 < bandEnd) { y1 = y0 + (y1 - y0) * ((bandEnd - z0) / (z1 - z0)); z1 = bandEnd; }
-    if (Math.abs(y1 - y0) < 0.004) y1 = y0 + 0.006;
+    // H.flatDeck opt-in (m48 r3, station slice-paint parity): keep exactly
+    // level deck pairs EXACTLY level — a nudged (+0.006) quad rasterizes a
+    // 1-2 px top line in every station z-slab while a true-flat quad is
+    // edge-on invisible, exactly like the reference prints' own flat decks
+    // (m48 ref st1/st2 read their fender fragments 1.56-1.60, not their
+    // 1.82 deck; my nudged deck painted 1.828 -> topPct 8-10 on two
+    // slices). Default byte-identical (the nudge stands for every sibling).
+    if (Math.abs(y1 - y0) < 0.004) y1 = H.flatDeck ? y0 : y0 + 0.006;
     const sb = (z) => (H.sponsonAftY != null && z <= H.sponsonAftZ ? H.sponsonAftY : spons - 0.03);
     P.add('hull', slab(
       [-bhw, sb(z0), z0], [bhw, sb(z0), z0], [bhw, sb(z1), z1], [-bhw, sb(z1), z1],
@@ -293,6 +300,9 @@ function curveHull(P, H) {
     // default 0.055 hangs link pads ~15 mm below y0 and the dims heightM
     // read (p95 top - min bot) pays it. Undefined = byte-identical.
     botY: G.botY,
+    // m48 r8 opt-in pass-through: sprocket carrier-ring span (see
+    // tankFactory buildRunningGear). Undefined = byte-identical.
+    endRingSpan: G.endRingSpan,
   });
   // readable hub ring + bolts on every outer wheel face
   for (const z of wheelZs) {
@@ -3146,6 +3156,243 @@ function buildM60A2(P, cfg) {
 }
 
 // ---------------------------------------------------------------------------
+// M48A5 Patton — NEW BUILD (§5.45 no-builder queue, 2026-08-08). Authored 1:1
+// from the vertex extract (docs/references/vertex/m48.json; authoring frame
+// z' = extract z + 1.413 so the print's 12%-band body mid sits at 0;
+// landmark-verified UNFLIPPED — muzzle band [2.98, 2.74] at extract +4.9,
+// stern at -5.02; game -x = starboard). Body ends pulled to the published
+// 6.87 m hull (packet: the 6.42 spec row is an inetres A5-line defect — its
+// own A3 row reads 6.882 on the same hull; Hunnicutt-class table 687.1 cm
+// for A2/A3/A5), interior stations 1:1 with the print so registration mids
+// pair at dAlong 0 by construction. §5.45 donor grammar: curveHull boat
+// hull + Patton gear (m60a1 lineage), t26Cast egg dome with the §5.47
+// ring-cupola class this print reads, and the m60 M68 105 mm recipe
+// verbatim (M48A5 = M48 hull + the M60 gun). The print's 12.6°
+// pitched-tube defect is NOT copied — the gun is LEVEL at the measured
+// trunnion (0, 2.00, z' 1.28); the resulting whole/turret-root/station-top
+// caps are certified in the packet with the §E _region_pitch repair plan.
+// ---------------------------------------------------------------------------
+function buildM48(P, cfg) {
+  const { box, cylX, cylZ, sph, buildGun } = KIT;
+  const slab = orientedSlab;                                  // §C.1 winding guard
+  const hull = curveHull(P, cfg.hull);
+  usKit(P, hull, cfg.fit);
+
+  // Bow fender platforms: the print's full-length fenders run the 1.700
+  // plate line over the track to the nose (side top 1.700 forward of the
+  // 1.861 driver plate; plan tips carry the front body extent). The tip
+  // stack (platform + lamp pods + brush-guard frame with its low cross
+  // plate) is the FRONT BODY COLUMN at +3.400: band 0.95..1.70 mirrors the
+  // print's own tip band (its guards hang low over the idler wrap;
+  // ref band 0.84..1.70 at its z' 3.52). §B4: guard bottom 0.95 clears the
+  // shoe orbit (idler wrap shoe top 0.83 at z 3.385) by 0.12.
+  for (const side of [-1, 1]) {
+    P.add('hull', box(0.73, 0.035, 1.085), side * 1.425, 1.6825, 2.844);
+    // tip cross plate (the whole-row front fat carrier at 3.3965) + guard
+    P.add('hull', box(0.64, 0.075, 0.055), side * 1.425, 1.6425, 3.369);
+    P.add('hullDetail', box(0.60, 0.045, 0.045), side * 1.425, 1.0325, 3.3665);
+    for (const dx of [-0.26, 0.02, 0.30]) { // guard verticals
+      P.add('hullDetail', box(0.035, 0.60, 0.035), side * (1.425 + dx), 1.32, 3.379);
+    }
+    // second (inboard IR) lamp pod beside the usKit headlight
+    P.add('hullDetail', cylZ(0.052, 0.075, 10), side * 1.20, 1.50, 3.3565, -0.18, 0, 0);
+    P.add('hullGlass', xformCyl(0.042), side * 1.20, 1.507, 3.3955, -0.18, 0, 0);
+    // fender edge ROD, full length, 28 segments (r7 root-cause receipt):
+    // the gate's plan column at ±1.86 is 12 cm wide ([1.7995..1.92]) and
+    // the ref's own 1.815-edge rail fills it full-span. The only content
+    // of mine that ever lit it was the sprocket's toothed carrier-ring
+    // cluster (band-edge riding per the r7b drive-end law, reaching
+    // ~±1.815-1.82 over z −2.9..−3.3) — a 0.4 m fragment vs the ref's 7 m
+    // band, errM 3.27 ×2 cols. Flat box rails/nubs at the same edge
+    // NEVER pixel-filled the column (2-triangle top faces flicker at the
+    // mask threshold) while the ring's dense curved silhouette did — so
+    // the carrier is a 28-seg ROD (dense curved AA like the ref's rail;
+    // 28-seg cylinders SKIP station slabs per the slice-paint law; side/
+    // front it hides inside the deck-band silhouette). Outer edge
+    // ±1.8155 = the committed width (WIDTH GUARD carrier). Reads as the
+    // M48's fender-edge stowage rod.
+    P.add('hull', KIT.cylZ(0.040, 6.72, 28), side * 1.7755, 1.652, -0.045);
+  }
+  // fender lip line: the ref's decks END at the ±1.705 plateau edge and a
+  // 1.70 fender lip carries the outer width (front ±1.72-1.78 columns read
+  // its thin line; the r11 full-height band edge there topped 1.86-1.88)
+  for (const side of [-1, 1]) {
+    P.add('hull', box(0.0775, 0.035, 6.83), side * 1.74375, 1.6825, -0.055);
+  }
+  // splash board chevron on the glacis below the knee (M60 family furniture
+  // the M48 carries too; tops 1.62 stay under the 1.861 driver plate line)
+  P.add('hullDetail', box(0.62, 0.045, 0.09), -0.30, 1.575, 2.47, -0.28, -0.15, 0);
+  P.add('hullDetail', box(0.62, 0.045, 0.09), 0.30, 1.575, 2.47, -0.28, 0.15, 0);
+  // driver periscope pods (the print's own ±0.51 bumps at 1.883 on the
+  // 1.861 plate — side pairs the ref's 1.881 read)
+  for (const side of [-1, 1]) {
+    P.add('hullDetail', box(0.30, 0.021, 0.24), side * 0.51, 1.8715, 1.86);
+  }
+  // RISE-pack air-cleaner bins on the rear fenders (asymmetric per the
+  // print): RIGHT (-x) — the tall sloped box rising 1.76 @ -0.45 to the
+  // 2.095 crown at -1.25, flat to -1.42, closed rear cheek; LEFT — two low
+  // 1.88 stowage boxes (z' +1.40 and -0.10). All solid bricks (§B2).
+  P.add('hull', slab(
+    [-1.795, 1.62, -0.45], [-1.50, 1.62, -0.45], [-1.50, 1.62, -1.25], [-1.795, 1.62, -1.25],
+    [-1.795, 1.76, -0.45], [-1.50, 1.76, -0.45], [-1.50, 2.095, -1.25], [-1.795, 2.095, -1.25]));
+  P.add('hull', box(0.295, 0.475, 0.12), -1.6475, 1.8575, -1.31);
+  P.add('hull', slab(
+    [-1.795, 1.62, -1.37], [-1.50, 1.62, -1.37], [-1.50, 1.62, -1.435], [-1.795, 1.62, -1.435],
+    [-1.795, 2.095, -1.37], [-1.50, 2.095, -1.37], [-1.50, 1.70, -1.435], [-1.795, 1.70, -1.435]));
+  P.add('hullDark', box(0.22, 0.030, 0.72), -1.6475, 1.925, -0.85, 0.397, 0, 0); // lid strap (pitched with the lid)
+  P.add('hull', box(0.40, 0.26, 0.44), 1.38, 1.748, 1.40);
+  P.add('hull', box(0.40, 0.26, 0.50), 1.42, 1.748, -0.10);
+  for (const [bx, bz, bd] of [[1.38, 1.40, 0.44], [1.42, -0.10, 0.50]]) { // lid seams + latches
+    P.add('hullDark', box(0.36, 0.012, bd - 0.06), bx, 1.879, bz);
+    P.add('hullDark', box(0.05, 0.06, 0.02), bx, 1.83, bz + bd / 2 - 0.005);
+  }
+  // left-fender tow cable with cleats (decoration minimum; outboard of the
+  // left bins, deck-flush run like the m60 recipe)
+  {
+    const { towCable } = KIT;
+    const cy = (z) => hull.deckAt(z) + 0.012;
+    towCable(P, [
+      [1.665, cy(0.55) - 0.008, 0.55], [1.70, cy(-0.30), -0.30],
+      [1.70, cy(-1.10), -1.10], [1.655, cy(-1.85) - 0.006, -1.85],
+    ], 0.017);
+    for (const cz of [-0.30, -1.10]) {
+      P.add('hullDetail', box(0.085, 0.030, 0.05), 1.70, hull.deckAt(cz) + 0.009, cz);
+    }
+  }
+  // rear fender mud flaps (the sprocket shoes pass below at wrap top 1.03
+  // — 0.12 clear)
+  for (const side of [-1, 1]) {
+    P.add('hullRubber', box(0.63, 0.31, 0.048), side * 1.475, 1.465, -3.410);
+    P.add('hullDetail', box(0.035, 0.10, 0.035), side * 1.475, 1.665, -3.405);
+  }
+  // sloped stern lower wedge — the print's own stern leans OUT going down
+  // (shelf edge -3.427 -> bottom lip ~-3.56 in its frame; ref side tops
+  // 1.59 -> 1.31 over the -3.44..-3.56 columns). The wedge is the REAR
+  // whole-row fat carrier: its -3.527 lip + the 3.400 bow plate average
+  // -0.0635 = the ref hull fat mid + 1.413 (registration) while the body
+  // span reads 6.93 (+0.83%, inside the 1% grace of the 6.87 row).
+  P.add('hull', slab(
+    [-1.00, 0.90, -3.47], [1.00, 0.90, -3.47], [0.96, 0.92, -3.5235], [-0.96, 0.92, -3.5235],
+    [-1.00, 1.70, -3.47], [1.00, 1.70, -3.47], [0.96, 1.30, -3.5235], [-0.96, 1.30, -3.5235]));
+  // stern towing pintle + jack block on the wedge face
+  P.add('hullDark', cylZ(0.048, 0.16, 8), 0, 1.10, -3.435);
+  P.add('hullDetail', box(0.30, 0.16, 0.05), 0, 1.10, -3.40);
+  P.add('hullDetail', box(0.16, 0.10, 0.04), 0.62, 1.45, -3.42);
+
+  // turret: measured egg dome + ring cupola + wrap rack (t26Cast grammar)
+  P.turretG.position.set(0, cfg.ring[0], cfg.ring[1]);
+  t26Cast(P, { ringY: cfg.ring[0], ringZ: cfg.ring[1], ...cfg.turret });
+  const yl = (y) => y - cfg.ring[0], zl = (z) => z - cfg.ring[1];
+  // crew tub: SHADOW-NAMED (§C render furniture) — the print carries NO
+  // basket (fused shell, its turret mask bottoms at the 1.78-1.83 skirt);
+  // a mask-visible tub painted my turret side bots 1.12 vs ref 1.84 across
+  // ~10 columns at r2. The tub renders in-game (turret contiguity under
+  // the ring at yaw) but is excluded from every measurement mask; parented
+  // to the turret (§B5).
+  {
+    const tubMat = P.mats.shadow.clone();
+    tubMat.color.setHex(0x22251f);
+    tubMat.roughness = 0.95;
+    tubMat.onBeforeCompile = vehicleAmbientFloorHook;
+    tubMat.customProgramCacheKey = () => 'veh-ambient-floor-v2';
+    P.disposables.push(tubMat);
+    const tubGeo = new THREE.BoxGeometry(1.30, 0.52, 1.35);
+    const tub = new THREE.Mesh(tubGeo, tubMat);
+    tub.name = 'basketShadowTub';
+    tub.position.set(0, yl(1.36), zl(0.52));
+    tub.castShadow = false;
+    tub.receiveShadow = true;
+    P.turretG.add(tub);
+    P.disposables.push(tubGeo);
+  }
+  // base skirt FLARE: the print's dome base lip runs WIDER than the wall
+  // band (±1.54 @ z' 0.46 vs wall 1.481) below y ~1.96 — separate rolled
+  // strips so the shared loft keeps its byte-identical band grammar.
+  // [z, flareHW, wallHW] pairs from the y<1.87 vertex census.
+  {
+    const F = [
+      [1.36, 1.300, 1.115], [1.06, 1.450, 1.30], [0.76, 1.517, 1.435],
+      [0.46, 1.540, 1.478], [0.16, 1.520, 1.462], [-0.14, 1.470, 1.375],
+    ];
+    for (let i = 0; i < F.length - 1; i++) {
+      const [z0, f0, w0] = F[i], [z1, f1, w1] = F[i + 1];
+      for (const side of [-1, 1]) {
+        const q = (v) => side * v;
+        P.add('turret', slab(
+          [q(f0), yl(1.80), zl(z0)], [q(w0 * 0.90), yl(1.80), zl(z0)],
+          [q(w1 * 0.90), yl(1.80), zl(z1)], [q(f1), yl(1.80), zl(z1)],
+          [q(w0), yl(1.965), zl(z0)], [q(w0 * 0.90), yl(1.965), zl(z0)],
+          [q(w1 * 0.90), yl(1.965), zl(z1)], [q(w1), yl(1.965), zl(z1)]));
+      }
+    }
+  }
+  // M2 pale crowns, sized to the COMPACT cluster (MG PHYSICS: sky-backed
+  // top-lit edges; the t26Cast two-tone strip set is m47-sized — its
+  // hardcoded 0.38x0.78 mid strip overhung this station to x -1.06 /
+  // z -1.13 and owned st4/st6 tops + three front columns at r2). Flush
+  // tops (the 3.105 cover stays the heightM carrier), widths wrap +0.02.
+  {
+    const crown = P.mats.shadow.clone();
+    crown.color.setHex(0x424635);
+    crown.roughness = 0.9;
+    crown.metalness = 0.02;
+    crown.envMapIntensity = 0.18;
+    crown.onBeforeCompile = vehicleAmbientFloorHook;
+    crown.customProgramCacheKey = () => 'veh-ambient-floor-v2';
+    P.disposables.push(crown);
+    const M = cfg.turret.mg;
+    const axis = M.topY - 0.10;
+    for (const [gw, gh, gd, gx, gy, gz] of [
+      [0.163, 0.030, 0.22, M.x, axis + 0.115, M.coverZ],           // cover crown
+      [0.274, 0.030, 0.32, M.x, axis + 0.070, M.z + M.rl / 2 - 0.14], // receiver crown
+    ]) {
+      const geo = KIT.box(gw, gh, gd);
+      const mesh = new THREE.Mesh(geo, crown);
+      mesh.position.set(gx, yl(gy), zl(gz));
+      mesh.receiveShadow = true;
+      P.turretG.add(mesh);
+      P.disposables.push(geo);
+    }
+  }
+  // loader hatch dome (left-forward, print: domed disc r ~0.245 topping
+  // 2.70 over the t26Cast loader ring)
+  P.add('turret', sph(0.245, P.q ? 18 : 12, Math.PI / 2), 0.285, yl(2.585), zl(0.09), 0, 0, 0, [1, 0.47, 1]);
+  P.add('turretDark', box(0.05, 0.018, 0.22), 0.10, yl(2.665), zl(0.09));
+  // gunner's primary sight hood, right cheek forward (M48A5 tell; interior
+  // to the crown roll — top 2.62 under the 2.66 loader-dome band line)
+  P.add('turret', box(0.22, 0.10, 0.26), -0.52, yl(2.565), zl(1.02));
+  P.add('turretGlass', box(0.14, 0.045, 0.02), -0.52, yl(2.575), zl(1.155));
+
+  // M68 105 mm — the m60a1 recipe verbatim (level axis at the measured
+  // trunnion; the print's pitched tube is the certified §E defect)
+  P.gunG.position.set(0, cfg.gun.axisY - cfg.ring[0], cfg.gun.rootZ - cfg.ring[1]);
+  // mantlet: the M48's wide rounded shield casting at the dome face —
+  // rounded core + shield slab + rotor boot (§B3.1 MANTLETS-MANDATORY),
+  // all riding the gun (gun-local coords)
+  P.addGunExtra(box(1.03, 0.42, 0.30), 0, 0.005, 0.575);
+  P.addGunExtra(KIT.xform(cylX(0.215, 0.98, P.q ? 16 : 12), 0, 0, 0), 0, 0.01, 0.72);
+  P.addGunExtraDark(box(0.84, 0.32, 0.16), 0, -0.015, 0.46);
+  P.addGunExtraDark(cylZ(0.155, 0.06, 12), 0, 0, 0.86);
+  P.addGunExtra(cylZ(0.150, 0.42, 12, 0.104), 0, 0, 1.12); // tapered root sleeve
+  buildGun(P, { len: cfg.gun.len, r: 0.082, sleeve: false, evac: null, evacR: 1.62, collar: false, baseR: 0.15 });
+  { // M68 bore-evacuator collar at the print's own band (world z' 4.26..4.42)
+    const gseg = P.q ? 20 : 12;
+    P.add('gun', cylZ(0.128, 0.16, gseg), 0, 0, 3.06);
+    P.add('gun', cylZ(0.128, 0.05, gseg, 0.098), 0, 0, 2.955);
+    P.add('gun', cylZ(0.098, 0.05, gseg, 0.128), 0, 0, 3.165);
+  }
+  muzzleBore(P, { len: cfg.gun.len, r: 0.082 });
+  P.topY = cfg.topWorld - cfg.ring[0] + 0.12;
+}
+// tiny helper: flush pale lens disc for the twin lamp pods (kept out of
+// KIT — m48-local dressing)
+function xformCyl(r, x, y, z) {
+  const g = new THREE.CylinderGeometry(r, r, 0.012, 10);
+  g.rotateX(Math.PI / 2);
+  return g;
+}
+
+// ---------------------------------------------------------------------------
 // Measured per-tank data (v6 true-camera work orders, world coords).
 // ---------------------------------------------------------------------------
 // M26 — VERTEX ROUND r3 (2026-08-05): POST-WARP RE-ANCHOR. batch-42
@@ -3407,6 +3654,63 @@ const M47_FIT = {
   // sat hidden inside the new tail band. Face 1 mm proud, 27 mm clear of
   // the -4.218 trace boundary, y-band interior to the core.
   rearGrilleY: 1.15, rearGrilleW: 0.56, rearGrilleZ: -4.176, noRearEyes: true,
+};
+
+// M48A5 — vertex-extract lines (docs/references/vertex/m48.json decoded in
+// the z' = extract+1.413 frame; docs/references/tanks/m48.md carries the
+// full tables). Glacis = ONE 26° plane knee (2.343, 1.58) -> toe (3.336,
+// 1.10) with the rounded prow under it (boat bow); driver plate 1.861,
+// dip 1.780, main deck 1.821-1.823, engine crown 1.883 @ -0.09..-0.34,
+// under-bustle dip to 1.775, aft deck 1.821 to -3.13, rear shelf 1.700 to
+// -3.427; belly plate 0.626 (the front-view 0.626 floor |x| <= 1.0);
+// stations 3.565 wide mid-hull (bandHW 1.7825) flaring 3.627 at the end
+// slices. Gear: 6 wheels pitch 0.76 (histogram peaks), LOW ground-running
+// tension idler at -2.487 (the print's own contact ends there), raised
+// sprocket -3.14 / idler +3.02 (§B6 trapezoid), 5 return rollers, track
+// band x 1.055..1.715, ground line ~0.01 (botY 0.02).
+const M48_HULL = {
+  // r1b registration lattice (census-calibrated): the side-view frame is
+  // the HULL row's 12%-fat mid, and BOTH my hull-row fat ends are the
+  // wrap-arc columns (hull-row thr ~0.23; the same arcs stay sub-threshold
+  // on the whole row, whose rough includes the M2 mast) — so the mid pins
+  // at (idlerZ+sprocketZ)/2. Ref hull fat mid -1.4765 (extract) ->
+  // idler 2.975 / sprocket -3.062 puts mine at -0.0635 = ref + 1.413
+  // (r2 empirical: the 2.955/-3.082 seat measured dAlong 1.393 — +0.02 both)
+  // exactly (interior stations authored at extract+1.413 pair at dAlong
+  // 1.413). Track inner edge 1.0855 (ref belly plate reaches ~1.04, its
+  // track inner ~1.08-1.10; the r1 1.0555 edge painted the ±1.04 front
+  // cols to ground). botY 0.045: pads land at 0.000 (r1: 0.02 hung them
+  // -0.025 and heightM paid p95top+0.025).
+  W: 3.631, bandHW: 1.705, trackW: 0.67, trackInset: 0.055, sponsonY: 1.32,
+  sponsonAftY: 1.45, sponsonAftZ: -2.60,
+  bellyY: 0.626, bellyHW: 1.00, noseW: 1.01, flatDeck: true,
+  glacisWingY0: 1.38, glacisWingDrop: 0.08,
+  darkGearFit: true,
+  deck: [[3.336, 1.100], [2.343, 1.580], [2.318, 1.861], [1.740, 1.861],
+    [1.726, 1.780], [1.445, 1.780], [1.432, 1.823], [0.05, 1.823],
+    [-0.09, 1.883], [-0.34, 1.883], [-0.52, 1.800], [-1.10, 1.775],
+    [-1.62, 1.821], [-3.13, 1.821], [-3.145, 1.700], [-3.50, 1.700]],
+  toeBot: 1.00, bellyFrontZ: 2.30, bellyRearZ: -2.60, tailBotY: 0.90,
+  gear: {
+    wheelR: 0.33, wheelY: 0.37, span: [2.063, -1.737], rollerN: 5, rollerY: 1.02,
+    contactZF: 2.46, contactZR: -2.49, botY: 0.045,
+    idler: { z: 2.941, y: 0.84, r: 0.26 }, sprocket: { z: -3.068, y: 0.94, r: 0.28 },
+    tension: { z: -2.487, y: 0.37, r: 0.28 },
+    // rings pulled to ±1.777 (endRingSpan 0.60·trackW-class): the default
+    // trackW span authored the toothed cluster to ±1.8294 — past the
+    // committed width; the whole build rendered ×0.9921 (r8 receipt)
+    endRingSpan: 0.60,
+  },
+};
+const M48_FIT = {
+  singleHatch: true, hatchX0: 0, hatchZ: 2.02,
+  lights: { x: 1.40, y: 1.52, z: 3.36, rx: -0.20 },
+  shackleY: 1.25, shackleZ: 3.30,
+  // rear-deck louver bays inset flush (bay seat under the 1.821 plate line
+  // — the m26 r4 mechanism; the deck's own silhouette never moves)
+  grille: { z0: -1.90, z1: -2.90, y: 1.60, rx: 0, x: 0.47, w: 0.80 },
+  caps: [0.75, 0.40],
+  rearGrilleY: 1.28, rearGrilleW: 1.55, rearGrilleZ: -3.420, noRearEyes: false,
 };
 
 const M60_HULL = {
@@ -4649,6 +4953,65 @@ export const PATTON_PROFILES = {
         // r4 D2: collar-seam rings (world z; all >= 0.16 clear of the 3.10
         // evac anchor, sub-cm proud of the r 0.115 tube)
         rings: [[2.50, 0.121, 0.035], [2.72, 0.1205, 0.028], [2.94, 0.121, 0.035]] },
+    }),
+  },
+  m48: {
+    // NEW BUILD r1 (§5.45 queue, 2026-08-08): M48A5 authored 1:1 from the
+    // vertex extract in the z' = extract+1.413 frame (docs/references/
+    // tanks/m48.md). Ring at the extract turretPivot (1.578, z' 0.679);
+    // egg dome lofted to the measured plan bands (wall 1.481 max @ z'
+    // 0.39, shoulder 1.207, crown 0.788, fractions 0.544/0.797/0.815/
+    // 0.532) with the base-skirt flare strips outside the shared loft;
+    // ring cupola right-aft (-0.88, z' -0.70, Ø0.57 — the print's
+    // Urdan-class low profile) + loader dome left-fwd (+0.285, z' +0.09).
+    // The M2 .50 station rides the cupola and carries the heightM 3.09
+    // p95 (m26/m45 over-mounted-MG convention; the print mounts NO roof
+    // gun and its low-cupola crown is 2.718 — the per-column cost is the
+    // packet's configuration-datum cert, ASK-OWNER row flag banked).
+    build: (P) => buildM48(P, {
+      hull: M48_HULL, fit: M48_FIT,
+      ring: [1.578, 0.679], topWorld: 3.08,
+      turret: {
+        loft: { wall: 0.544, mid: 0.797, midW: 0.815, crownW: 0.532, smooth: true },
+        sections: [
+          { z: 1.98, hw: 0.36, top: 2.20, bot: 1.800 },
+          { z: 1.89, hw: 0.51, top: 2.30, bot: 1.790 },
+          { z: 1.64, hw: 0.95, top: 2.43, bot: 1.786 },
+          { z: 1.39, hw: 1.13, top: 2.52, bot: 1.786 },
+          { z: 1.26, hw: 1.20, top: 2.556, bot: 1.790 },
+          { z: 1.14, hw: 1.28, top: 2.576, bot: 1.795 },
+          { z: 0.89, hw: 1.391, top: 2.596, bot: 1.805 },
+          { z: 0.64, hw: 1.458, top: 2.605, bot: 1.815 },
+          { z: 0.39, hw: 1.481, top: 2.609, bot: 1.823 },
+          { z: 0.14, hw: 1.458, top: 2.609, bot: 1.820 },
+          { z: -0.11, hw: 1.391, top: 2.601, bot: 1.805 },
+          { z: -0.31, hw: 1.32, top: 2.585, bot: 1.800 },
+          { z: -0.45, hw: 1.26, top: 2.565, bot: 1.800 },
+          { z: -0.58, hw: 1.20, top: 2.545, bot: 1.800 },
+          { z: -0.72, hw: 1.10, top: 2.500, bot: 1.800 },
+          { z: -0.84, hw: 0.90, top: 2.455, bot: 1.800 },
+          { z: -0.96, hw: 0.68, top: 2.380, bot: 1.800 },
+          { z: -1.05, hw: 0.44, top: 2.290, bot: 1.800 },
+          { z: -1.115, hw: 0.25, top: 2.160, bot: 1.800 },
+        ],
+        // the print's huge wrap rack: near-hull-width side rails over the
+        // bustle rear (x ±1.72 vs print 1.755), floor 1.755, rail 2.105
+        rack: { z0: -0.29, z1: -1.31, zC: -1.02, halfW: 1.72, floorY: 1.755, railY: 2.105, railW: 0.38, loadTop: 2.06, loadBucket: 'turretCloth' },
+        cupola: { x: -0.88, z: -0.70, r: 0.18, base: 2.50, h: 0.12,
+          ring: { r: 0.285, h: 0.16, top: 2.66, lidHalfW: 0.14, lidH: 0.05, lidD: 0.26 } },
+        loader: { x: 0.285, y: 2.635, z: 0.09 },
+        // compact .50 cluster ON the cupola (heightM carrier: cover top
+        // 3.08; rl 0.30 + no forward tube keeps the tall band ~0.64 m —
+        // the certified column budget)
+        mg: { x: -0.88, z: -0.79, baseY: 2.71, topY: 3.075, tipZ: -0.33, rl: 0.30,
+          w: 1.3, cans: [0.26], canY: 2.95, coverZ: -0.75, coverL: 0.20 },
+        antenna: { x: 0.95, y: 2.24, z: -0.70 },
+        stowMG: [0.35, 2.28, -0.85],
+        decalSec: 8,
+      },
+      // M68 level at the measured trunnion; muzzle at the published
+      // overall (raw rear = sprocket shoes -3.556 + 9.31 -> +5.754)
+      gun: { rootZ: 1.28, axisY: 2.00, len: 4.508 },
     }),
   },
   m60a2: {

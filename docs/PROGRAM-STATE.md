@@ -2136,3 +2136,25 @@ ladder-anchor provenance drove the de-ladder). NEXT (Korea lane):
 the k2 90-ladder vs the opened rows (side_whole 48.4 floor = the §B7
 pano/mast band -> the banked antenna y-warp is the next print move)
 + the density critic on the §5.65 residuals.
+
+## 5.68 M48 RATIFIED + LANDED (2026-08-08): identity critic PASS 9.15
+— boat-bow + egg-dome + Urdan-config A5 unmistakable in the fleet's
+densest family (exemplary §B8: the critic REJECTED a pre-existing
+shot set as self-reads and reshot everything). Hash 6dd253b0; row
+lands 0-capped honest (whole/turret = the unrepaired print's 12.6
+pitched tube+shield — §E TUBE-LEVEL batch queued from the packet's
+worked _region_pitch recipe + the critic's stern grille-door
+suggestion rides it). §5.31b ARC COMPLETE for m48 (MODEL_SOURCE
+flipped procedural + candidateGlb — our custom renders everywhere;
+the no-builder queue is now t44+type59 only). FLEET LAW LANDED:
+WIDTH-CARRIER (buildRunningGear ring-span authored past W/2 silently
+rescaled the whole build x0.9921 for five rounds — §F.2 endRingSpan
+opt-in in tankFactory, byte-identical default guard-proven) + the
+flat-deck slice-paint parity opt-in + three more in m48.md for
+BUILD-STANDARD folding. userdrops7 lands BOTH lanes' hunks with
+attribution (m48 dims 6.42->6.87 two-source correction + the trio's
+round-verified §5.38 spec rows — §5.44 precedent; if trio sitting-2
+orders spec changes, a follow-up edits them). ASK-OWNER added: m48
+heightM datum (print = low-cupola A5 crown 2.718 vs the 3.09
+M1-periscope row — the §E tube-level projection ~80s needs the
+ruling for graduation).
