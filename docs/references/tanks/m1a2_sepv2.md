@@ -700,3 +700,72 @@ mass the bare tejas print lacks. NEXT TOUCH (moves hash, per critic
 constraint): delete the echo + its wf dressing, then graduate-change
 chain (gate x2, re-cert changed views, re-freeze). Expected recovery:
 hull/whole/turret re-read as pure tejas platform + kit deltas.
+
+## WORKS-ECHO DELETION (2026-08-08, §5.34 chain — dedicated graduate-change touch)
+Pre-edit verified in the live tree: hash e60878a9 (50/172952) + all seven
+family guards at frozen values in one battery; abrams.js byte-clean vs
+HEAD 3d204b8 (HEAD moved 35cb17e -> a70aa18 -> 3d204b8 across the wait
+window with abrams.js untouched — delivery-tree law carries).
+
+DELETED from the `if (sep2)` block (src/vehicles/profiles/abrams.js):
+- the 14-box WORKS-FIELD PARITY ECHO (A/A2/B/C hull-bucket hb2 boxes,
+  tops clamped 2.30/2.295/2.281/2.262) — existed only to serve the
+  RETIRED recovered-print registration's REF-HULL mask (§5.34 FALSE-0
+  class; vs the bare-hulled tejas oracle it read as phantom hull mass).
+- the whole `if (P.q)` echo-dressing block (tarp bed + saddle trio +
+  straps + crate-lid ribs — the wf set).
+KEPT (genuine SEPv2 identity, certified lines, per the round order):
+glsaa_5 driver's wind sensor (code-labeled genuine hull-side kit; the
+hb2 world-corner helper stays for its two hullDetail boxes), RIGHT-deck
+tow cable, flank CIP pair + rear CIP thermal panel (dims service), UAAPU
+exhaust read, jerry cans, spare links, pioneer tools, bow shackles,
+mid-glacis rings; turret kit (CROWS-II-tall/CITV/twin fifties) untouched.
+Spec-map comment updated to the re-oracle truth (echo sentence removed).
+Diff: -52/+15 lines, both hunks sepv2-only. npm test 166/166 +
+track-geometry green.
+
+### Gate x2 (byte-identical, live tree, tejas oracle)
+**64.6 | hull 69.5 whole 64.6 turret 78.9 stations 77.4 dims 100
+floaters 100** — runs 1 and 2 cmp BIT-IDENTICAL on the full report
+(docs/geometry-gate/m1a2_sepv2.json). Recovery vs the §5.34 FALSE-0 row
+(0 | 0/17.3/19.8/77.4/100/100): hull +69.5, whole +47.3, turret +59.1;
+stations/dims/floaters carried exactly (the station read is the
+pre-existing owner-authorized CROWS-mast §B7 class, untouched by this
+deletion). The row now prices what §5.34 predicted: pure tejas platform
++ SEPv2 kit deltas vs the tejas print.
+
+### Hashes
+sepv2 e60878a9 -> **54b35994** (50 meshes / 166364 verts; -6588 verts =
+the echo mass; graduate-change — the freeze moves BY DESIGN, §5.34).
+sepv3 FIRST-CHECK: 2c9023d0 HELD (shared buildTejasFamily; deletion is
+sep2-gated in bytes). Family byte-guard 6/6 EXACT same battery: m1a1
+2f277528, m1a1ha aa7af504, m1a2 636a4860, m1a2_tejas f7510d88,
+m1a2_tusk b1786e4c, abramsx 2c6eb344.
+
+### Evidence (shots/sepv2-echodel/, before/after, same rigs)
+{before,after}-garage/ (6 garage angles), {before,after}-self/ (14-view
+critic-rig replica), {before,after}-yaw90/ (turret-swung pair — the arc
+where the echo lived). Deck verdict: NOT BALD — at yaw the exposed
+mid/rear deck reads the real tejas engine deck (grille field, panel
+seams, corner furniture) + the retained SEPv2 deck kit; no re-seat
+needed (the echo pile was phantom stowage OVER the real deck, never a
+substitute for it). Rest arc: front views byte-IDENTICAL across
+independent runs (renderer determinism proven); rear/side/top rest
+deltas are localized slivers where echo tops peeked at the shell/rack
+seam — pixdiff (tools/tmp-sepv2-echodel-pixdiff.mjs): worst view-rear
+1282 px (0.313%), all others <= 0.09%, bboxes inside the rack band.
+Changed views for the re-cert critic: the yaw90 set + view-rear/
+rearleft/rearright/left/right/top + garage-rear{left,right}/high-rl.
+
+### Mechanics
+LIVE-TREE ritual held: marker greps (hb2 17 -> 3, WORKS-ECHO DELETED
+== 1, old header == 0) + git log -1 immediately before every battery;
+pre/post-edit abrams.js mirrored to scratchpad. FIFO: one ticket per
+shot batch (3 rigs per ticket). Machine-storm discipline: the round
+waited out sustained load 250-1000 (parallel-lane batteries) and ran
+in the 8-21 trough per the starved-Chrome law. DELIVERY-TREE
+RE-VERIFICATION: HEAD moved 3d204b8 -> b0ea4f5 (docs-only landing,
+§5.46) after the measure batteries — full 8-id hash battery re-proven
+EXACT at b0ea4f5 (sepv2 54b35994; sepv3 + six guards frozen-identical),
+the round's numbers bind at the delivery tree. DELIVERED UNCOMMITTED
+for the orchestrator's re-cert critic + re-freeze (§10 graduate-change).

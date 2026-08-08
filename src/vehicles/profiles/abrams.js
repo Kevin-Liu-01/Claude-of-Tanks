@@ -2607,55 +2607,18 @@ function buildTejasFamily(P, p) {
     }
   }
   if (sep2) {
-    // ---- WORKS-FIELD PARITY ECHO (hull buckets, world coords) ----
-    // The id gates against its OWN print (recovered/m1a2_sepv2.glb) under
-    // the OLD-follower registration: the REF HULL mask keeps the ten
-    // works-band stowage nodes (the certified ORACLE-REGISTRATION-PINNED
-    // class, bc225318 lineage). The echo keeps those hull columns honest
-    // with every top CLAMPED under the tejas shell roof line at its own z
-    // (2.30 vs the loft's 2.32-2.36 here) so the REST READ IS PURE TEJAS —
-    // the shell encloses it; at yaw it reads as deck stowage, exactly the
-    // print's own rig behavior (its works field never yaws either; the
-    // §B5/mode-2 certification carries).
-    const hb2 = (bk, x0, x1, y0, y1, z0, z1) =>
+    // §5.34 WORKS-ECHO DELETED (echo-deletion round, 2026-08-08): the
+    // 14-box works-field parity echo (A/A2/B/C hull buckets clamped to
+    // y 2.30) + its P.q tarp/saddle/strap/crate-lid dressing existed
+    // ONLY to serve the RETIRED recovered-print registration's REF-HULL
+    // mask (ORACLE-REGISTRATION-PINNED class, bc225318 lineage). Against
+    // the bare-hulled tejas oracle (§5.34 re-oracle) it read as phantom
+    // hull mass and poisoned hull to 0 — deleted per the critic's own
+    // constraint. The platform now reads pure tejas; the genuine SEPv2
+    // hull kit below (wind sensor, cable, CIPs, APU read, rear panel,
+    // stowage) stays at its certified lines.
+    const hb2 = (bk, x0, x1, y0, y1, z0, z1) =>   // world-corner box helper
       P.add(bk, box(x1 - x0, y1 - y0, z1 - z0), (x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
-    hb2('hull', -0.28, -0.045, 1.36, 2.30, -0.492, 0.112);   // block A (print 2.398 — clamped)
-    hb2('hull', -0.315, -0.28, 1.36, 2.155, -0.42, 0.02);
-    hb2('hull', -0.28, -0.04, 1.36, 2.30, 0.115, 0.222);     // A stair (print 2.368 — clamped)
-    hb2('hull', -0.28, -0.04, 1.36, 2.281, 0.226, 0.332);
-    hb2('hull', -0.28, -0.04, 1.36, 2.055, 0.336, 0.442);
-    hb2('hull', 0.50, 0.94, 1.36, 2.295, 0.05, 0.30);        // block A2 (print 2.328 — clamped)
-    hb2('hull', -0.77, 0.50, 1.36, 2.178, -2.045, -0.86);    // block B field
-    hb2('hull', -0.50, 0.30, 1.36, 2.122, -0.875, -0.735);
-    hb2('hull', -0.50, 0.30, 1.36, 2.095, -0.735, -0.54);
-    hb2('hull', -0.30, -0.06, 1.36, 2.262, -2.72, -2.30);    // crates C (rear slices
-    hb2('hull', 0.52, 0.93, 1.36, 2.262, -2.72, -2.30);      // trimmed at the shell/rack seam)
-    hb2('hull', 0.33, 0.455, 1.36, 2.22, -2.30, -2.235);
-    hb2('hull', 0.50, 0.93, 1.36, 2.215, -2.30, -2.235);
-    hb2('hull', -0.30, -0.06, 1.36, 2.21, -2.30, -2.235);
-    if (P.q) {
-      // Echo dressing (the wf set, same world stations): tarp bed +
-      // saddle trio + straps + crate lid ribs — §B3 identity for the
-      // yaw-exposed read; every crown inside the certified hull lines.
-      P.add('hullCloth', box(1.21, 0.014, 1.13), -0.135, 2.183, -1.4525);
-      const sad = (x, z, r, l) => {
-        P.add('hullCloth', cylX(r, l, 14), x, 2.105, z);
-        P.add('hullCloth', cylX(r * 0.60, 0.05, 10), x - l / 2 - 0.018, 2.105, z);
-        P.add('hullCloth', cylX(r * 0.60, 0.05, 10), x + l / 2 + 0.018, 2.105, z);
-        P.add('hullDark', box(0.016, 0.010, r * 2.04), x - l * 0.24, 2.105 + r - 0.004, z);
-        P.add('hullDark', box(0.016, 0.010, r * 2.04), x + l * 0.26, 2.105 + r - 0.004, z);
-      };
-      sad(-0.13, -1.145, 0.100, 1.02);
-      sad(-0.20, -1.335, 0.100, 0.90);
-      sad(-0.11, -1.525, 0.100, 0.96);
-      P.add('hullDark', box(1.23, 0.008, 0.03), -0.135, 2.186, -1.72);
-      P.add('hullDark', box(1.23, 0.008, 0.03), -0.135, 2.186, -1.16);
-      for (const [cx0, cx1] of [[-0.30, -0.06], [0.52, 0.93]]) {   // crate lid ribs + straps
-        P.add('hullDetail', box(cx1 - cx0 - 0.04, 0.012, 0.36), (cx0 + cx1) / 2, 2.268, -2.51);
-        P.add('hullDark', box(cx1 - cx0 - 0.02, 0.007, 0.026), (cx0 + cx1) / 2, 2.272, -2.60);
-        P.add('hullDark', box(cx1 - cx0 - 0.02, 0.007, 0.026), (cx0 + cx1) / 2, 2.272, -2.42);
-      }
-    }
     // Driver's wind SENSOR (print glsaa_5 — genuine hull-side kit): the
     // certified 1.925 head over the exact [2.612..2.642] window, slim
     // mast reaching the tejas 1.353 glacis line, base bracket embedded.
@@ -6363,10 +6326,10 @@ export const ABRAMS_PROFILES = {
   // as §H param deltas — station variant + abramsKit layer on top.
   // SEPv2: elevated forward CROWS II ('crows2tall') + twin-fifty loader +
   // CITV + CIP panels + deck tow cable + rigid rack crate + UAAPU exhaust
-  // read + works-field parity echo (its OLD-follower print registration
-  // keeps the works nodes in the REF HULL mask — the echo keeps those
-  // columns honest, clamped under the tejas shell). Gates against its own
-  // print; the platform move re-prices rows (documented in the packet).
+  // read. RE-ORACLED to the tejas GLB (§5.34, 2026-08-07) — the old
+  // recovered-print registration is retired for this id, and the
+  // works-field parity echo that served its REF-HULL mask is DELETED
+  // (§5.34 echo-deletion round 2026-08-08; see the packet).
   m1a2_sepv2: { build: buildTejasFamily, station: 'crows2tall', abramsKit: 'sepv2' },
   // SEPv3/M1A2C: CROWS-LP forward ('crowslp') + Trophy APS + 4 radar
   // panels + ARAT 9x2 skirt grid + left-rear UAAPU housing + IFLIR-scale
