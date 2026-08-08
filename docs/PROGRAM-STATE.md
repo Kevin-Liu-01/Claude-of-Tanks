@@ -2081,3 +2081,17 @@ full order set + return-path pin (three prior reports misrouted to
 the owner's parallel session). Landing HOLDS; fresh sitting on new
 hashes. Wave ledger: 3 landed (type99a/type90/amx40), 5 in fix
 rounds (k2/k1a1 sitting-2 pending, trio fixing).
+
+## 5.65 KOREA RATIFIED + LANDED (2026-08-08): sitting 2 PASS both —
+k2 9.0 / k1a1 9.1 (from 6.8/6.4; all six §5.61 orders KILLED in real
+geometry: fusion carved with shadow gaps + the m1a1-comparator
+standard met, roof kit massed within caps, receding bows, k1a1's
+defining 3-step rotor + proud smoke + open pipe-frame racks, k2's
+faceted KAPS relief). Hashes k2 27c330c3 / k1a1 53b64e74; rows land
+(k2 38.8 cap-documented pending batch-52; k1a1 61.5). k2 RE-LISTED +
+k1a1 NEW both live in modern3.js. §5.38 WAVE: FIVE LANDED (type99a,
+type90, amx40, k2, k1a1) + the t90 trio in its fix round. BATCH-52
+UNBLOCKED (k2 print surgery — §E queue). RESIDUAL BANK (next density
+round): skirt hems ~2x deeper than the prints' on both (wheel
+glance-read + likely side-row gains), k2 K6/pano scale pending the
+§5.62 heightM-grace ASK, k2 plan margin 86% vs print 82%.

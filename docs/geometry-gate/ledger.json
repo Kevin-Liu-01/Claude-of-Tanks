@@ -1186,6 +1186,32 @@
     "dims": 100,
     "floaters": 100
    }
+  },
+  {
+   "id": "k2",
+   "geoMin": 0,
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 38.8,
+    "wholeCurves": 44.5,
+    "turretCurves": 0,
+    "stations": 50.5,
+    "dims": 100,
+    "floaters": 100
+   }
+  },
+  {
+   "id": "k1a1",
+   "geoMin": 56.4,
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 61.5,
+    "wholeCurves": 56.4,
+    "turretCurves": 65.6,
+    "stations": 61.1,
+    "dims": 100,
+    "floaters": 100
+   }
   }
  ]
 }
