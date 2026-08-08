@@ -1694,3 +1694,31 @@ git diff --cached --stat | tail && git commit` chain made the staged
 pre-check DECORATIVE (output printed, nothing gated). NEW LANDING
 LAW: the --cached inspection is a SEPARATE evaluated step — never
 chain it into the commit command (extends the camoKit lesson).
+
+## 5.45 §5.31b CLOSED — DEPLOY-RENDER ROOT CAUSE + 15 FLIPS RATIFIED
+(2026-08-08): root cause = the 18 era-placed ids' MODEL_SOURCE=glb
+registrations were UNCONDITIONAL (not dev-gated) — deploy swapped
+prints over our procedural builds everywhere (tankFactory 4629-class
+swap; strip-nc only strips quarantine trees; all 18 GLBs are CC-class
+and shipped). EXECUTED + RATIFIED (landed in 81bdad1, byte-verified
+worktree==HEAD, vite-ssr + public-view probes + npm test green): 15
+ids flipped to source:'procedural' with prints retired to candidateGlb
+(kv2/t30 pattern) — the ww2/casemate/soviet-heavy 13 + merkava4
+(userdrops3) + m1a2_tusk (variants.js + userdrops4 tejas-alias
+retirement; tejas stays the measurement oracle §5.34). Deploy-view
+glb-sourced 19->5 (exactly is7/object279/newc_tiger/q_heavy/
+recon_tank). NO-BUILDER QUEUE (donors named, §5.13-consistent): t44
+<- t54 profile, type59 <- t54 (print is a Type 69), m48 <- m60a1 +
+m47 turret grammar — russia lane x2 (queue behind t90-family) +
+patton lane (after m45 lands). 18 honest procedural ledger rows
+staged this commit (leichttraktor 15.9 / tiger2 29.2 lows = ladder
+candidates, owner-priority call). FOLLOW-UPS: Q3 SOURCES PRINT-CATALOG
+implementation (view-only print cards from candidateGlb rows + 1-line
+tankFactory seam + strip-nc candidateGlb guard) — round messaged to
+the diagnosis agent; ICON REGEN for the 15 + sepv3 at a calm-load
+window (genIcons reads MODEL_SOURCE live); two repo chips filed by
+the agent (dist ships *.glb.bak incl. quarantined tejas 18.3MB;
+strip-nc registry-probe blind spot). ASK-OWNER: (1) t44/type59/m48
+show prints in era groups until built — acceptable interim? (2)
+newc_tiger WW2 filing, (3) Sources cards view-only vs playable, (4)
+leichttraktor/tiger2 rough procedurals — ladder priority.
