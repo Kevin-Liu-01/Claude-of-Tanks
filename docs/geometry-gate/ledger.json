@@ -539,13 +539,13 @@
   },
   {
    "id": "m1a2_sepv2",
-   "geoMin": 60.3,
+   "geoMin": 0,
    "gatePassed": false,
    "components": {
-    "hullCurves": 93.2,
-    "wholeCurves": 60.3,
-    "turretCurves": 80.6,
-    "stations": 83.6,
+    "hullCurves": 0,
+    "wholeCurves": 17.3,
+    "turretCurves": 19.8,
+    "stations": 77.4,
     "dims": 100,
     "floaters": 100
    }

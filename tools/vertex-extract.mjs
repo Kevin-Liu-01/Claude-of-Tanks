@@ -190,11 +190,12 @@ const REG = {
     turretNode: '^Turret$', gunNode: '^misc_b$', autoPivot: true, yawOffset: Math.PI,
     pubDims: { hullLengthM: 7.93, overallLengthM: 9.77, widthM: 3.66, heightM: 2.44 },
   },
+  // RE-ORACLE (SEP-on-tejas ratification 2026-08-07): the sepv2 build now
+  // rides the tejas platform (§5.19a), so it measures against the tejas GLB.
+  // The recovered SEPv2 print stays registered for m1a2 above only.
   m1a2_sepv2: {
-    path: 'public/models/tanks/community/recovered/m1a2_sepv2.glb',
-    // Loader also carries a turretFollowers regex (userdrops5.js) that this
-    // tool does not model — affects hull/turret SPLIT only, not dims.
-    turretNode: '^Turret$', gunNode: '^misc_b$', autoPivot: true, yawOffset: Math.PI,
+    path: 'public/models/tanks/m1a2_tejas.glb',
+    turretNode: '^Turret$', gunNode: '^Gun$', autoPivot: true, yawOffset: -Math.PI / 2,
     pubDims: { hullLengthM: 7.93, overallLengthM: 9.77, widthM: 3.66, heightM: 2.44 },
   },
   abramsx: {

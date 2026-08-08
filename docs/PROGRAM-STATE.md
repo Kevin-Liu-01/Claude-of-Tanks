@@ -82,7 +82,7 @@ re-freeze NEW hash, all in ONE commit.
 | leo2_revolution | db70c929 | RE-FROZEN 2026-08-07 (photo-class record): §5.09 closure -85% + §5.17a turret-completion (real collar/chin/under-cheek/under-skirt walls — the floating shell is DEAD, owner diagnosis answered); re-cert 9.4/9.2/9.3 on changed families; §B7 gate caps stand (hull 94.3 trustworthy band) |
 | m46_patton | 108806c8 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | centurion3 | 50273080 | bore resit RATIFIED (end 9.2; occlusion class fixed) |
-| m1a2_sepv2 | 7ef1c5ec | RE-FROZEN 2026-08-07 (CROWS-FORWARD wave §5.07: forward pose improved whole +4.1..+14.1; re-cert floor 9.1-9.2 x14 views, sheets shots/critic-sep-crowsfwd/) |
+| m1a2_sepv2 | e60878a9 | RE-FROZEN 2026-08-07 x2 (§5.19a tejas-platform rebuild, critic PASS 9.3 hash-bracketed; RE-ORACLED to m1a2_tejas.glb — old recovered-print registration retired for this id; ledger row FALSE-0 (works echo vs bare tejas hull, see §5.34); echo deletion = next abrams touch) |
 | m26_pershing | 65c564c0 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | t90m | e345ee8a | GRADUATED 2026-08-06 (27th; floor 9.0 x14 second sitting; the owner's dedicated-agent arc 81.7 -> dual gate) |
 
@@ -1397,3 +1397,26 @@ Four interrupted agents RESUMED from transcripts (type90, chevron-
 tip, SEP critic, abramsx fix); four others verified already-landed.
 First ladder wave spawned: bradley (tankFactory), m45_patton
 (patton.js), the fleet see-through sweep.
+
+## 5.34 SEP-ON-TEJAS RATIFIED + SEPV2 RE-ORACLE EXECUTED (2026-08-07):
+fresh critic (prior lane's transcript lost to process exit) re-scored
+the 73 surviving shots under a fresh hash bracket (sepv2 e60878a9,
+sepv3 2c9023d0, tejas anchor f7510d88 — all MATCH): m1a2_sepv2 PASS
+9.3, m1a2_sepv3 PASS 9.3 — the §5.19a platform order READS in pixels
+(one platform, three kits; CROWS-forward holds). ACTIONS: sepv2
+RE-FROZEN e60878a9 (§3); sepv3 2c9023d0 recorded as the binding hash
+(stays FALSE-0/never-gate — no oracle of its own); critic's RE-ORACLE
+ruling EXECUTED in the registration lane — m1a2_sepv2 re-registered to
+/models/tanks/m1a2_tejas.glb in all four maps (procedural-fidelity,
+visual-evaluator, tmp-tank-critic, vertex-extract REG; tejas pattern
+^Turret$/^Gun$ yaw -PI/2), recovered/m1a2_sepv2.glb registration
+RETIRED for this id (m1a2 keeps it — separate instrument, separate
+adjudication). Honest baseline x2 bit-identical: min 0 (hull 0, whole
+17.3, turret 19.8, stations 77.4, dims 100, floaters 100) — FALSE-0
+CLASS: the WORKS-FIELD PARITY ECHO (14 hull-bucket boxes to y 2.30,
+abrams.js sep2 block) was built to serve the OLD print's REF-HULL mask
+split and now poisons hull vs the bare-hulled tejas print. Per the
+critic's own constraint the echo deletion MOVES THE HASH -> queued as
+the NEXT abrams-lane touch (graduate-change chain: delete echo ->
+gate x2 -> re-cert changed views -> re-freeze). Row lands with this
+annotation; never read sepv2's 0 as a regression.

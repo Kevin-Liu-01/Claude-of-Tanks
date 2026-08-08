@@ -688,3 +688,15 @@ tools/tmp-sep-{selfshots,familystrip,fourbox,regprobe,invprobe,endcols}.*
 - ARAT-none, TUSK-none: variant identity is CROWS-II-tall + CIP + twin
   fifties + APU read + urban stowage — §H.4 tells vs tejas (tall mast,
   CIP pair, crate, twin fifties, cans, rear CIP) verified in the strip.
+
+## RE-ORACLE (2026-08-07, SEP-on-tejas ratification §5.34)
+Ratified critic PASS 9.3 (hash bracket e60878a9 / tejas f7510d88).
+This id now measures against `/models/tanks/m1a2_tejas.glb` (the
+platform the §5.19a rebuild rides); the recovered-print registration
+above is HISTORY for this id (m1a2 still uses that print). Honest
+baseline x2: min 0 — FALSE-0: the works-field parity echo (sep2 block,
+abrams.js) serves the retired print's REF-HULL mask and reads as hull
+mass the bare tejas print lacks. NEXT TOUCH (moves hash, per critic
+constraint): delete the echo + its wf dressing, then graduate-change
+chain (gate x2, re-cert changed views, re-freeze). Expected recovery:
+hull/whole/turret re-read as pure tejas platform + kit deltas.

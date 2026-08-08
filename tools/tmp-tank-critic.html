@@ -52,7 +52,9 @@ const CRITIC_REFERENCE_OVERRIDES = {
   t90sm: { source:'glb', glb:{ path:'/models/tanks/community/recovered/t90sm.glb', paintUntextured:true, turretNode:'^misc_a$', gunNode:'^misc_b$', autoPivot:true, yawOffset:3.141592653589793 } },
   type90: { source:'glb', glb:{ path:'/models/tanks/community/recovered/type90.glb', paintUntextured:true, turretNode:'^Turret$', autoPivot:true, yawOffset:-1.5707963267948966 } },
   vickers_mk1: { source:'glb', glb:{ path:'/models/tanks/community/vickers_mk1_jack.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
-  m1a2_sepv2: { source:'glb', glb:{ path:'/models/tanks/community/recovered/m1a2_sepv2.glb', paintUntextured:true, turretNode:'^Turret$', gunNode:'^misc_b$', autoPivot:true, yawOffset:3.141592653589793, turretFollowers:'^(?:ammo_(?:5|box)|armor_turret|ex_armoc|ex_armor(?!_body)|ex_era_turret|ex_decor_04|glsaa_[6-8]|hatch_0[34]|mg_aamount_h|misc_a|optic_commander)$' } },
+  m1a2_sepv2: { source:'glb', glb:{ path:'/models/tanks/m1a2_tejas.glb',
+    turretNode:'^Turret', gunNode:'^Gun', autoPivot:true, yawOffset:-Math.PI/2,
+    paintUntextured:true } },
   // ariete (misc quarantine oracle — mirrors procedural-fidelity.html verbatim)
   ariete: { source:'glb', glb:{ path:'/models/tanks/community/ariete-dustymojito.glb',
     turretNode:'^Turret$', autoPivot:true } },
