@@ -86,7 +86,7 @@ const SHELL_CLASS_UNDERLINE = {
 };
 const SHELL_DEFAULT_COUNT = { AP: 24, APCR: 20, APFSDS: 24, HEAT: 16, HE: 12 };
 
-const CAUSE_LABEL = { shot: '', fire: 'FIRE', ammorack: 'AMMO RACK' };
+const CAUSE_LABEL = { shot: '', fire: 'FIRE', ammorack: 'AMMO RACK', ram: 'RAMMED' };
 
 // Roster identity: WoT rows read "Nickname (Vehicle)" with a tier numeral.
 // Bot nicknames are assigned deterministically per battle from this pool
@@ -116,7 +116,7 @@ const TIER_BY_ID = {
   t72b3: 'VIII', challenger2: 'IX', merkava4: 'IX', leo2a6: 'IX',
   leo2a4: 'VIII', t80u: 'VIII', leclerc: 'IX', type99a: 'IX',
   leo1a5: 'VII', t14: 'X', chieftain_mk10: 'VII', k2: 'IX', type10: 'IX',
-  m2a2_bradley: 'VIII', bmp2: 'VII', ariete: 'VIII',
+  m2a2_bradley: 'VIII', bmp2: 'VII', ariete: 'VIII', k1a1: 'VIII',
   // user drops (2026-07-28)
   type74: 'VIII',
   // user drops wave 2 (recovered batch)

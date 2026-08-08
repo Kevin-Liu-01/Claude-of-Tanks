@@ -1258,50 +1258,76 @@ export function createPost(renderer, scene, camera) {
   // buffer — the standard half-res-AO scheme. aoScale 1 (ultra) is unchanged
   // full-res; aoScale 0 disables the pass entirely.
   //
-  // ao-boil r2: ADAPTIVE TEMPORAL EMA on the denoised AO buffer. The r1
+  // ao-boil r2/r3: TEMPORAL ACCUMULATION on the denoised AO buffer. The r1
   // param retune (thickness 1.0 + wider Poisson denoise) halved the motion
   // boil, but half-res cutout re-aliasing still churns under-canopy AO
-  // frame to frame — a spatial denoiser cannot fix temporal variance. Blend
-  // each frame's denoised AO into a history buffer with a CHANGE-ADAPTIVE
-  // weight: small per-pixel deltas (the boil, |d| ≲ 0.15) keep ~70% history
-  // and settle; big deltas (real occluder arrivals — a tank driving into
-  // frame, a wall revealed) snap with k→0.9 so nothing ghosts. No motion
-  // vectors needed at this radius/duty — verified on the verdant corridor
-  // (cell-level dark flips, AO-on: 3.3%/frame raw → 1.5% r1 → target ≤1%).
+  // frame to frame — a spatial denoiser cannot fix temporal variance.
+  //
+  // r3 (owner: "the ambient occlusion is still there"): the r2 history was
+  // SCREEN-ALIGNED, so while driving every history texel compared against a
+  // DIFFERENT world point (~10-20 px/frame of slide) — the blend both
+  // smeared and failed to settle the boil. This is the exact problem
+  // three's WebGPU GTAONode solves with temporalFiltering+TRAA and the GTAO
+  // paper solves with temporal reprojection, so do the same here in WebGL:
+  //  - REPROJECT: reconstruct each AO texel's world point from the CURRENT
+  //    scene depth + inverse view-projection, project it through LAST
+  //    frame's view-projection, and sample the history there. The boil
+  //    sources (trees/terrain/props) are world-static, so camera-only
+  //    reprojection is exact for them — no motion vectors needed.
+  //  - RECTIFY: clamp the reprojected history to the min/max of the current
+  //    frame's 5-tap AO neighborhood (standard TAA neighborhood clamping).
+  //    Disocclusions and moving tanks can't ghost beyond local contrast by
+  //    construction, so no depth-history reject pass is needed.
+  //  - ACCUMULATE: fixed k=0.15 toward the current frame (~85% history).
+  //    Boil amplitude drops ~6x once the history tracks the world.
+  // Off-screen reprojections and the first frame after a >250 ms gap (map
+  // switch, AO re-enable, resize) take the current frame verbatim.
   // Integration: GTAOPass.OUTPUT.Off runs G-buffer + AO + denoise and skips
   // composition, so the wrapper below lets the stock pass do all the work,
-  // EMAs pdRenderTarget into a ping-pong pair, then reproduces the two-step
-  // Default composition (copy + multiply-blend) fed by the EMA result.
-  // Band tune (verdant corridor heat maps): the surviving blinkers are
-  // tree-cluster AO blobs whose per-pixel deltas are LARGE (cutout coverage
-  // re-aliasing flips whole half-res texels), so no band assignment can
-  // separate them from real change — cap the fast path at 0.5 instead. A
-  // real occluder arriving reaches 87% weight in 3 frames (~50 ms of soft
-  // AO lag — invisible for a multiply-darken term), while the strobe's
-  // alternating signs now cancel into the history instead of printing.
-  const AO_EMA = { kSlow: 0.15, kFast: 0.50, dLo: 0.25, dHi: 0.90 };
+  // reprojects pdRenderTarget into a ping-pong history, then reproduces the
+  // two-step Default composition (copy + multiply-blend) fed by the history.
+  const AO_TAA_K = 0.15;
   {
     if (GTAOPass.OUTPUT.Off !== -1 || GTAOPass.OUTPUT.Default !== 0) {
-      throw new Error('post.js: GTAOPass.OUTPUT enum changed — re-verify the ao-boil r2 render wrapper');
+      throw new Error('post.js: GTAOPass.OUTPUT enum changed — re-verify the ao-boil r3 render wrapper');
     }
     const emaMat = new THREE.ShaderMaterial({
       uniforms: {
         tNow: { value: null },
         tPrev: { value: null },
+        tDepth: { value: sceneDepth },
+        uInvViewProj: { value: new THREE.Matrix4() },
+        uPrevViewProj: { value: new THREE.Matrix4() },
+        uTexel: { value: new THREE.Vector2(1 / 512, 1 / 512) },
         uSeed: { value: 1 },
       },
       vertexShader: 'varying vec2 vUv;\nvoid main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
       fragmentShader: `
-        uniform sampler2D tNow, tPrev;
+        uniform sampler2D tNow, tPrev, tDepth;
+        uniform mat4 uInvViewProj, uPrevViewProj;
+        uniform vec2 uTexel;
         uniform float uSeed;
         varying vec2 vUv;
         void main() {
           vec4 now = texture2D(tNow, vUv);
-          vec4 prev = texture2D(tPrev, vUv);
-          float d = abs(now.r - prev.r);
-          float k = mix(${AO_EMA.kSlow.toFixed(2)}, ${AO_EMA.kFast.toFixed(2)},
-            smoothstep(${AO_EMA.dLo.toFixed(2)}, ${AO_EMA.dHi.toFixed(2)}, d));
-          gl_FragColor = mix(prev, now, max(k, uSeed));
+          float depth = texture2D(tDepth, vUv).x;
+          // world position of this texel, reprojected into last frame
+          vec4 world = uInvViewProj * vec4(vUv * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
+          world /= world.w;
+          vec4 pc = uPrevViewProj * world;
+          vec2 prevUv = (pc.xy / pc.w) * 0.5 + 0.5;
+          bool off = depth >= 1.0 || pc.w <= 0.0 ||
+            any(lessThan(prevUv, vec2(0.0))) || any(greaterThan(prevUv, vec2(1.0)));
+          // TAA neighborhood rectification (5-tap cross of the CURRENT AO)
+          vec3 n1 = texture2D(tNow, vUv + vec2(uTexel.x, 0.0)).rgb;
+          vec3 n2 = texture2D(tNow, vUv - vec2(uTexel.x, 0.0)).rgb;
+          vec3 n3 = texture2D(tNow, vUv + vec2(0.0, uTexel.y)).rgb;
+          vec3 n4 = texture2D(tNow, vUv - vec2(0.0, uTexel.y)).rgb;
+          vec3 mn = min(now.rgb, min(min(n1, n2), min(n3, n4)));
+          vec3 mx = max(now.rgb, max(max(n1, n2), max(n3, n4)));
+          vec3 hist = clamp(texture2D(tPrev, prevUv).rgb, mn, mx);
+          float k = (off || uSeed > 0.5) ? 1.0 : ${AO_TAA_K.toFixed(2)};
+          gl_FragColor = vec4(mix(hist, now.rgb, k), 1.0);
         }`,
       depthTest: false,
       depthWrite: false,
@@ -1310,16 +1336,21 @@ export function createPost(renderer, scene, camera) {
     let emaPrev = gtao.pdRenderTarget.clone();
     let emaCur = gtao.pdRenderTarget.clone();
     let emaLastMs = -1e9; // >250 ms without an AO render → history is stale
+    const prevViewProj = emaMat.uniforms.uPrevViewProj.value;
     const origSetSize = gtao.setSize.bind(gtao);
-    gtao.setSize = (w, h) => {
-      const s = preset.aoScale || 1;
-      const sw = Math.max(1, Math.round(w * s));
-      const sh = Math.max(1, Math.round(h * s));
-      origSetSize(sw, sh);
+    const syncEmaSize = () => {
       emaPrev.setSize(gtao.pdRenderTarget.width, gtao.pdRenderTarget.height);
       emaCur.setSize(gtao.pdRenderTarget.width, gtao.pdRenderTarget.height);
+      emaMat.uniforms.uTexel.value.set(
+        1 / gtao.pdRenderTarget.width, 1 / gtao.pdRenderTarget.height);
       emaLastMs = -1e9; // reseed — old history is the wrong resolution
     };
+    gtao.setSize = (w, h) => {
+      const s = preset.aoScale || 1;
+      origSetSize(Math.max(1, Math.round(w * s)), Math.max(1, Math.round(h * s)));
+      syncEmaSize();
+    };
+    syncEmaSize();
     gtao.render = function (renderer2, writeBuffer, readBuffer, deltaTime, maskActive) {
       if (this.output !== GTAOPass.OUTPUT.Default ||
           (typeof window !== 'undefined' && window.__AO_EMA_OFF)) { // bisect hook
@@ -1331,14 +1362,23 @@ export function createPost(renderer, scene, camera) {
       } finally {
         this.output = GTAOPass.OUTPUT.Default;
       }
+      const cam = this.camera;
+      emaMat.uniforms.uInvViewProj.value
+        .multiplyMatrices(cam.matrixWorld, cam.projectionMatrixInverse);
       const now = performance.now();
+      const seed = now - emaLastMs > 250;
+      if (seed) {
+        prevViewProj.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse);
+      }
+      emaLastMs = now;
       emaMat.uniforms.tNow.value = this.pdRenderTarget.texture;
       emaMat.uniforms.tPrev.value = emaPrev.texture;
-      emaMat.uniforms.uSeed.value = now - emaLastMs > 250 ? 1 : 0;
-      emaLastMs = now;
+      emaMat.uniforms.uSeed.value = seed ? 1 : 0;
       this._renderPass(renderer2, emaMat, emaCur, 0xffffff, 1.0);
+      // this frame's view-projection becomes next frame's reprojection source
+      prevViewProj.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse);
       // Default composition, verbatim from GTAOPass.prototype.render (r185)
-      // with the blend input rerouted to the EMA history.
+      // with the blend input rerouted to the reprojected history.
       this.copyMaterial.uniforms.tDiffuse.value = readBuffer.texture;
       this.copyMaterial.blending = THREE.NoBlending;
       this._renderPass(renderer2, this.copyMaterial, this.renderToScreen ? null : writeBuffer);

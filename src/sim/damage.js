@@ -146,6 +146,45 @@ function rollUniform(rng, avg) {
   return avg * (0.75 + rng() * 0.5);
 }
 
+// ---- RAMMING (gameplay: "add ramming and ram damage") ----------------------
+// WoT-style kinetic collision damage. The total pool is the two-body impact
+// energy — closing speed squared times the REDUCED mass (mA·mB/(mA+mB), the
+// physically meaningful inertia of a two-body crash) — and it splits by mass
+// share: the heavier vehicle both DEALS more (its mass dominates the pool)
+// and TAKES less (the victim's share scales with the RAMMER's mass fraction).
+// The rammer additionally keeps a WoT-style attacker discount so deliberate
+// heavy-on-light rams are a real tactic instead of a mutual suicide.
+// Tuning anchor: two 45 t mediums meeting at 8 m/s closing (~29 km/h): the
+// rammed side takes ~144 hp, the rammer ~94 (of 1500-2600 pools) —
+// punishing, not lethal; a 65 t heavy hitting a 20 t light at 12 m/s deals
+// ~337 and takes ~67.
+const RAM_MIN_CLOSING_MPS = 2.5; // parking bumps and column shuffles: free
+const RAM_K = 0.2;               // hp per (m/s)^2 per reduced ton
+const RAM_SELF_SCALE = 0.65;     // attacker discount on the rammer's share
+const RAM_MAX_TOTAL = 900;       // freight-train cap (60+ km/h closing)
+
+/**
+ * Kinetic ram damage split for a tank-tank collision.
+ * Pure — safe for selftests. Returns zeros below the closing-speed floor.
+ * @param {number} massAT rammer mass (tons; <=0 falls back to 40)
+ * @param {number} massBT victim mass (tons; <=0 falls back to 40)
+ * @param {number} closingMps closing speed along the contact normal (m/s)
+ * @returns {{total:number,toA:number,toB:number}} hp damage (toA = rammer)
+ */
+export function ramDamage(massAT, massBT, closingMps) {
+  const mA = massAT > 0 ? massAT : 40;
+  const mB = massBT > 0 ? massBT : 40;
+  const c = Math.abs(closingMps);
+  if (c < RAM_MIN_CLOSING_MPS) return { total: 0, toA: 0, toB: 0 };
+  const mRed = (mA * mB) / (mA + mB);
+  const total = Math.min(RAM_MAX_TOTAL, RAM_K * c * c * mRed);
+  return {
+    total,
+    toA: total * (mB / (mA + mB)) * RAM_SELF_SCALE,
+    toB: total * (mA / (mA + mB)),
+  };
+}
+
 /**
  * EQUIPMENT SYSTEM (game/equipment.js): multiplier off CombatState.equipMults,
  * defaulting to 1 so combat states without a loadout (probes, selftests,

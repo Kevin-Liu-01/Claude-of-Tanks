@@ -26,6 +26,7 @@ import {
   estimatePenRatio,
   blastRadiusM,
   isHeClass,
+  ramDamage,
 } from './damage.js';
 
 // ---------------------------------------------------------------- harness --
@@ -1298,6 +1299,26 @@ function mkShell(shellSpec, distM = 100) {
   assert(ev.kind === 'pen', `prism: side shot pens hull behind the track screen (got ${ev.kind})`);
   assert(ev.modulesHit.some((m) => m.module === 'trackR'), 'prism: track screen crossing rolled track damage');
   near(ev.penRollMm, 180, 1e-9, 'prism: decisive-plate pen roll = 200 minus the 20 mm track screen');
+}
+
+// ------------------------------------------------------------- ramming ----
+{
+  const eq = ramDamage(45, 45, 8); // two mediums, ~29 km/h closing
+  near(eq.total, 0.2 * 64 * 22.5, 1e-9, 'ram: equal-mass total = K*c^2*mRed');
+  near(eq.toB, eq.total * 0.5, 1e-9, 'ram: equal masses split the pool evenly to the victim');
+  near(eq.toA, eq.total * 0.5 * 0.65, 1e-9, 'ram: rammer keeps the attacker discount');
+  const hv = ramDamage(65, 20, 12); // heavy rams a light
+  assert(hv.toB > hv.toA * 4, 'ram: heavy-on-light deals far more than it takes');
+  const bump = ramDamage(45, 45, 2.0);
+  assert(bump.total === 0 && bump.toA === 0 && bump.toB === 0,
+    'ram: sub-threshold parking bump is free');
+  const cap = ramDamage(70, 70, 40);
+  near(cap.total, 900, 1e-9, 'ram: freight-train collisions cap at RAM_MAX_TOTAL');
+  const fb = ramDamage(0, -5, 8);
+  assert(fb.total > 0 && isFinite(fb.toA) && isFinite(fb.toB),
+    'ram: missing masses fall back sanely');
+  assert(ramDamage(45, 45, -8).total === ramDamage(45, 45, 8).total,
+    'ram: closing speed sign is ignored');
 }
 
 // ------------------------------------------------------------------ report --

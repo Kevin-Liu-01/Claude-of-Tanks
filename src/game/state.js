@@ -15,7 +15,7 @@ import {
 import { tankPoseFromState, traceTank } from '../sim/armor.js';
 import {
   createCombatState, resolveShellHit, resolveHeBurst, tickFire, tickModuleRepairs,
-  startReload, isHeClass,
+  startReload, isHeClass, ramDamage,
 } from '../sim/damage.js';
 import { createAI, roleOf } from './ai.js';
 import { getStoredDifficulty } from './input.js';
@@ -302,6 +302,7 @@ const SPEC_TIER = {
   t72b3: 8, challenger2: 9, merkava4: 9, leo2a6: 9,
   leo2a4: 8, t80u: 8, leclerc: 9, type99a: 9, leo1a5: 7, t14: 10,
   chieftain_mk10: 7, k2: 9, type10: 9, m2a2_bradley: 8, bmp2: 7, ariete: 8,
+  k1a1: 8,
   // USER DROPS (2026-07-28): Type 74 fills the Japan tier-8 ghost
   type74: 8,
   // USER DROPS wave 2 (recovered batch): Stryker pair + BMP-1
@@ -1131,6 +1132,7 @@ function measureContactGeom(ent) {
  * too). Below the threshold the trunk still resists a parked nudge; boulders,
  * buildings and every untagged prop stay permanently solid.
  */
+const RAM_PAIR_COOLDOWN_S = 0.5; // one damage event per pair per shove
 const CRUSH_MIN_MPS = 6 / 3.6;   // ~6 km/h — WoT fells small trees on any real overrun
 const CRUSH_SPEED_KEEP = 0.94;   // per-prop momentum bite (v *= keep on crush)
 // Below the speed threshold a trunk is solid — but a hull HOLDING drive
@@ -1145,6 +1147,12 @@ function makeCollide(game, world) {
   let self = null;
   const obstacles = world.getObstacles();
   const pendingCrush = [];
+  // RAMMING: tank-tank contacts this tick, resolved by simStep after the
+  // movement loop (mirror of pendingCrush). Each entry records the CONTACT
+  // normal and both hulls' velocity vectors AT detection time — resolving
+  // later from live state would read speeds the blocked-drive bleed has
+  // already zeroed and see every head-on ram as a 0 m/s kiss.
+  const pendingRams = [];
   function collide(pos, radiusM, outPush) {
     outPush.set(0, 0, 0);
     let pushed = false;
@@ -1194,6 +1202,20 @@ function makeCollide(game, world) {
           outPush.z += rz * minD;
         }
         pushed = true;
+        // RAMMING: queue the contact with closing speed along the contact
+        // normal (n points other → self). Hulls only move along their own
+        // forward axis, so v = fwd · signed speed captures each side fully.
+        if (self && self.state && d > 1e-4) {
+          const nx = wx / d, nz = wz / d;
+          const vSelf = self.state.speed;
+          const vOther = other.state.speed;
+          const relX = fx * vSelf - ofx * vOther;
+          const relZ = fz * vSelf - ofz * vOther;
+          const closing = -(relX * nx + relZ * nz); // >0 = approaching
+          if (closing > 0) {
+            pendingRams.push({ a: self, b: other, closing, nx, nz });
+          }
+        }
       }
     }
 
@@ -1270,7 +1292,7 @@ function makeCollide(game, world) {
     }
     return pushed;
   }
-  return { collide, setSelf(e) { self = e; }, pendingCrush };
+  return { collide, setSelf(e) { self = e; }, pendingCrush, pendingRams };
 }
 
 /** Emit the derived bus events flagged inside one HitEvent. */
@@ -1653,6 +1675,72 @@ export function simStep(game, bus, world, rig, collider) {
       });
     }
     pending.length = 0;
+  }
+
+  // b3. RAMMING — resolve the tank-tank contacts the collider queued this
+  // tick. Each collision is detected up to twice (once per side's movement
+  // update, with mirrored roles); dedupe by unordered pair keeping the
+  // detection with the highest closing speed. Damage split is mass-weighted
+  // kinetic (sim/damage.js ramDamage); wrecks still bruise the hull that
+  // plows into them but take nothing. The wall-impact clank/jolt feedback
+  // already fires from the movement blocked-drive path — this block adds hp,
+  // kill attribution ('ram' cause) and the tank:ram event only.
+  const rams = collider.pendingRams;
+  if (rams && rams.length) {
+    if (!game._ramPairT) game._ramPairT = new Map();
+    const best = new Map(); // pairKey -> contact with max closing
+    for (const q of rams) {
+      const key = q.a.id < q.b.id ? `${q.a.id}|${q.b.id}` : `${q.b.id}|${q.a.id}`;
+      const cur = best.get(key);
+      if (!cur || q.closing > cur.closing) best.set(key, q);
+    }
+    for (const [key, q] of best) {
+      const last = game._ramPairT.get(key);
+      // (timeS < last = stale entry from a previous battle — timeS reset)
+      if (last !== undefined && game.timeS >= last &&
+          game.timeS - last < RAM_PAIR_COOLDOWN_S) continue;
+      const a = q.a, b = q.b;
+      if (!a.combat || !b.combat || a.combat.destroyed) continue;
+      const dmg = ramDamage(
+        a.spec.weightTons, b.spec.weightTons,
+        // sub-tick overshoot: the recorded closing speed is the approach at
+        // contact detection — exactly the speed the pushback then absorbed
+        q.closing);
+      if (dmg.total <= 0) continue;
+      game._ramPairT.set(key, game.timeS);
+      const bWreck = b.combat.destroyed;
+      const dmgA = dmg.toA;
+      const dmgB = bWreck ? 0 : dmg.toB;
+      a.combat.hp = Math.max(0, a.combat.hp - dmgA);
+      if (!bWreck) b.combat.hp = Math.max(0, b.combat.hp - dmgB);
+      if (a.combat.hp <= 0) a.combat.destroyed = true;
+      if (!bWreck && b.combat.hp <= 0) b.combat.destroyed = true;
+      if (b.combat.destroyed && !bWreck && !b._destroyedAnnounced) {
+        announceDestroyed(game, bus, b, a.id, 'ram');
+      }
+      if (a.combat.destroyed && !a._destroyedAnnounced) {
+        announceDestroyed(game, bus, a, bWreck ? null : b.id, 'ram');
+      }
+      // extra camera bite when the PLAYER is in a damaging ram (the baseline
+      // wall-clank trauma from the movement path is tuned for scenery hits)
+      if (rig) {
+        const playerDmg = a.isPlayer ? dmgA : (b.isPlayer ? dmgB : 0);
+        if (playerDmg > 0) rig.addTrauma(Math.min(0.55, 0.12 + playerDmg * 0.0009));
+      }
+      bus.emit('tank:ram', {
+        aId: a.id, bId: b.id,
+        aSpecId: a.specId, bSpecId: b.specId,
+        dmgA, dmgB,
+        closingMps: q.closing,
+        aIsPlayer: !!a.isPlayer, bIsPlayer: !!b.isPlayer,
+        pos: [
+          (a.state.pos.x + b.state.pos.x) * 0.5,
+          (a.state.pos.y + b.state.pos.y) * 0.5,
+          (a.state.pos.z + b.state.pos.z) * 0.5,
+        ],
+      });
+    }
+    rams.length = 0;
   }
 
   // c. reload timers + firing
