@@ -1920,6 +1920,9 @@ async function startBattleLoading(specId, mapId = null) {
   // ...and the reveal-compile pass on the POST-SWAP hierarchies (see
   // compileHiddenVariants — swapped GLBs carry their own hidden addon nodes).
   compileHiddenVariants();
+  // MOBILE-QA r1: depth-variant warm — per battle, AFTER the world exists
+  // (each map bakes its own wreck/prop casters) and after the swaps landed.
+  warmShadowPrograms();
   bltStage('wreckWarm');
   battleLoad.progress(1, 'Ready');
 
@@ -3745,6 +3748,10 @@ function* warmCombatPipelineSteps() {
   try { renderer.compile(scene, camera); } catch (_) { /* fine */ }
   if (spotsWereOn) setGarageSpots(true);
   yield;
+  // MOBILE-QA r1: depth-variant warm for the boot/debug entry paths too —
+  // the loading-screen path re-runs it per battle (worlds swap casters).
+  warmShadowPrograms();
+  yield;
   yield* compileHiddenVariantsSteps();
 }
 
@@ -3762,6 +3769,40 @@ function* warmCombatPipelineSteps() {
  * and again after the GLB swap drain (swapped hierarchies carry their own
  * materials and addon nodes).
  */
+// MOBILE-QA r1 (tools/tmp-fightprof evidence, docs/MOBILE-QA.md ledger):
+// renderer.compile builds FORWARD programs only — shadow-DEPTH variants link
+// lazily on each caster class's first shadow-pass render, which lands
+// mid-fight the moment the player drives a baked wreck / prop cluster into
+// a CSM cascade (TankWreckShadowProxy + 10 anonymous classes, 100-300 ms
+// blocking links, worst 207 ms task on the REAL loading-path entry). One
+// warm frame with the far cascade's shadow camera stretched over the whole
+// map renders every caster into the depth pass behind the loading screen.
+// Reuses the EXISTING sun cascade: adding a throwaway shadow light would
+// change the light count and recompile every lit program (kill-cam warm
+// rig lesson — see killcam.js LIGHT-COUNT note).
+function warmShadowPrograms() {
+  const csm = lighting && lighting.csm;
+  const light = csm && csm.lights && csm.lights[csm.lights.length - 1];
+  if (!light || !light.shadow) return;
+  const cam = light.shadow.camera;
+  const save = {
+    left: cam.left, right: cam.right, top: cam.top, bottom: cam.bottom,
+    near: cam.near, far: cam.far, auto: light.shadow.autoUpdate,
+  };
+  cam.left = -520; cam.right = 520; cam.top = 520; cam.bottom = -520;
+  cam.near = 0.5; cam.far = 1600;
+  cam.updateProjectionMatrix();
+  light.shadow.autoUpdate = false;
+  light.shadow.needsUpdate = true;
+  try { warmRender(); } catch (_) { /* warm only */ }
+  cam.left = save.left; cam.right = save.right;
+  cam.top = save.top; cam.bottom = save.bottom;
+  cam.near = save.near; cam.far = save.far;
+  cam.updateProjectionMatrix();
+  light.shadow.autoUpdate = save.auto;
+  light.shadow.needsUpdate = true; // real cascade re-renders next frame
+}
+
 // perf-r5c: warm renders only need to TOUCH programs/textures — full-frame
 // rasterization at retina scale made each one a 400-730 ms slice. A quarter
 // viewport cuts the fragment bill ~16x while binding the same pipelines.

@@ -39,7 +39,7 @@ const server = await createServer({
 await server.listen();
 const url = `http://localhost:${server.config.server.port}/`;
 const browser = await puppeteer.launch({
-  headless: 'new',
+  headless: 'new', protocolTimeout: 600000,
   args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
 });
 const page = await browser.newPage();
