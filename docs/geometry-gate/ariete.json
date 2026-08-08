@@ -1,11 +1,11 @@
 {
  "id": "ariete",
- "geoMin": 82.3,
+ "geoMin": 83.1,
  "gatePassed": false,
  "components": {
   "hullCurves": 85,
-  "wholeCurves": 82.3,
-  "turretCurves": 83.3,
+  "wholeCurves": 83.1,
+  "turretCurves": 84.6,
   "stations": 87,
   "dims": 100,
   "floaters": 100
@@ -120,8 +120,8 @@
    ]
   },
   "side_whole": {
-   "score": 82.25854566098876,
-   "meanPct": 1.08,
+   "score": 83.09444079122515,
+   "meanPct": 1.01,
    "p95Pct": 3.34,
    "coverPct": 1.83,
    "reg": {
@@ -133,9 +133,9 @@
      "at": -2.45,
      "refTop": 0.58,
      "refBot": 0.35,
-     "procTop": 0.54,
+     "procTop": 0.57,
      "procBot": -0.11,
-     "errM": 0.253
+     "errM": 0.237
     },
     {
      "at": 4,
@@ -149,9 +149,9 @@
      "at": -2.21,
      "refTop": 0.58,
      "refBot": -0.46,
-     "procTop": 0.54,
+     "procTop": 0.57,
      "procBot": -0.65,
-     "errM": 0.114
+     "errM": 0.097
     },
     {
      "at": 2.21,
@@ -165,17 +165,9 @@
      "at": -2.33,
      "refTop": 0.58,
      "refBot": -0.46,
-     "procTop": 0.54,
+     "procTop": 0.57,
      "procBot": -0.58,
-     "errM": 0.079
-    },
-    {
-     "at": -2.09,
-     "refTop": 0.58,
-     "refBot": -0.67,
-     "procTop": 0.54,
-     "procBot": -0.77,
-     "errM": 0.073
+     "errM": 0.062
     },
     {
      "at": 2.45,
@@ -186,20 +178,20 @@
      "errM": 0.059
     },
     {
-     "at": 3.29,
-     "refTop": 1.07,
-     "refBot": -1.25,
-     "procTop": 0.97,
-     "procBot": -1.25,
-     "errM": 0.054
+     "at": -2.09,
+     "refTop": 0.58,
+     "refBot": -0.67,
+     "procTop": 0.57,
+     "procBot": -0.77,
+     "errM": 0.057
     },
     {
-     "at": -1.73,
-     "refTop": 0.58,
-     "refBot": -0.95,
-     "procTop": 0.54,
-     "procBot": -1,
-     "errM": 0.045
+     "at": 3.4,
+     "refTop": 0.88,
+     "refBot": -1.25,
+     "procTop": 0.98,
+     "procBot": -1.26,
+     "errM": 0.056
     },
     {
      "at": -0.41,
@@ -223,6 +215,14 @@
      "refBot": -1.25,
      "procTop": 1.1,
      "procBot": -1.25,
+     "errM": 0.042
+    },
+    {
+     "at": 4.84,
+     "refTop": 0.33,
+     "refBot": -0.57,
+     "procTop": 0.33,
+     "procBot": -0.65,
      "errM": 0.042
     }
    ]
@@ -552,8 +552,8 @@
    ]
   },
   "front_whole": {
-   "score": 87.07826231812892,
-   "meanPct": 0.97,
+   "score": 86.88744726240589,
+   "meanPct": 0.99,
    "p95Pct": 2.05,
    "coverPct": 0,
    "reg": {
@@ -570,12 +570,20 @@
      "errM": 0.108
     },
     {
-     "at": -0.3,
-     "refTop": 1.25,
+     "at": -0.18,
+     "refTop": 1.07,
      "refBot": -0.83,
-     "procTop": 1.1,
+     "procTop": 1.23,
      "procBot": -0.86,
-     "errM": 0.091
+     "errM": 0.097
+    },
+    {
+     "at": -0.14,
+     "refTop": 1.07,
+     "refBot": -0.83,
+     "procTop": 1.19,
+     "procBot": -0.86,
+     "errM": 0.076
     },
     {
      "at": -1.03,
@@ -648,22 +656,14 @@
      "procTop": 1.1,
      "procBot": -1.26,
      "errM": 0.044
-    },
-    {
-     "at": -1.32,
-     "refTop": 0.78,
-     "refBot": -1.25,
-     "procTop": 0.85,
-     "procBot": -1.26,
-     "errM": 0.042
     }
    ]
   }
  },
  "turretRows": {
   "side": {
-   "score": 83.25021053403542,
-   "meanPct": 1.15,
+   "score": 84.60217332357358,
+   "meanPct": 1.03,
    "p95Pct": 2.89,
    "coverPct": 0.85,
    "reg": {
@@ -712,20 +712,20 @@
      "errM": 0.064
     },
     {
-     "at": 3.29,
-     "refTop": 1.07,
-     "refBot": 0.42,
-     "procTop": 0.97,
-     "procBot": 0.41,
-     "errM": 0.054
-    },
-    {
      "at": -0.06,
      "refTop": 0.86,
      "refBot": 0.15,
      "procTop": 0.89,
      "procBot": 0.22,
      "errM": 0.053
+    },
+    {
+     "at": 3.4,
+     "refTop": 0.88,
+     "refBot": 0.42,
+     "procTop": 0.98,
+     "procBot": 0.42,
+     "errM": 0.05
     },
     {
      "at": -0.54,
@@ -770,8 +770,8 @@
    ]
   },
   "plan": {
-   "score": 88.72025435275027,
-   "meanPct": 0.86,
+   "score": 88.92079871757124,
+   "meanPct": 0.84,
    "p95Pct": 1.68,
    "coverPct": 0,
    "reg": {
@@ -844,14 +844,6 @@
      "errM": 0.089
     },
     {
-     "at": -1.61,
-     "refTop": 2.07,
-     "refBot": 2.04,
-     "procTop": 2.08,
-     "procBot": 1.9,
-     "errM": 0.078
-    },
-    {
      "at": -0.77,
      "refTop": 3.97,
      "refBot": -0.72,
@@ -874,6 +866,14 @@
      "procTop": 4.05,
      "procBot": -0.73,
      "errM": 0.073
+    },
+    {
+     "at": -1.01,
+     "refTop": 3.97,
+     "refBot": -0.6,
+     "procTop": 4.05,
+     "procBot": -0.65,
+     "errM": 0.067
     }
    ]
   }

@@ -620,7 +620,11 @@ front is NOT one 29-deg plane to the roof arris. Measured architecture:
 NEW ROOF FURNITURE at print seats: gunner sight HOUSING cluster (base
 2.32w + lid step 2.375w, z_w 0.06..0.68 — the ref's own 2.31-2.42 band),
 commander hatch WELL (recessed dish floor 2.075w, x -0.35..-0.85, z_w
-0.34..0.64, lid + rim inside), tower pedestal dropped to the mid roof
+0.32..0.66 — TRUED UP 2026-08-08 by a 90-ladders triangle-census
+measure run (tools/tmp-ladders-whatbox.mjs: cluster X[-0.850,-0.350]
+Y[2.068,2.148] Z[0.320,0.660]); the §5.14-era 0.34..0.64 claim was the
+interior-opening intent, the world-frame extents run 2 cm wider each
+end), tower pedestal dropped to the mid roof
 (real ~0.6 m tower prominence restored from BELOW; the 2.52 lid p95
 anchor untouched), window apron now reads ~0.44 m tall.
 
@@ -661,3 +665,93 @@ the -0.374..-0.817 owner-symmetry glass-housing band (unchanged);
 side cols 0.626/-1.147/-0.704 tower-head/block AA class (~0.05);
 front_hull -0.08 (IR caps). The M2 stations -0.5 is the documented
 pintle-allowance spend.
+
+## 90-LADDERS ROUND (2026-08-08, misc agent) — 86.2 -> **90.3 GATE PASS, every component >= 90**, x2 BIT-IDENTICAL on final bytes (§5.66 acceptance; the <15-load trough never arrived — owner QA fleet held the box at 20-120)
+
+GATE LINE (final bytes, x2 full-JSON bit-identical + 3 more identical
+headline runs): **90.3 | hull 92.0 / whole 90.3 / turret 90.5 / stations
+93.7 / dims 100 / floaters 100 — PASS** (baseline 86.2 | 86.6 / 86.2 /
+88.8 / 90.3 / 100 / 100). dims: heightM 2.51 / hullLengthM 6.87 /
+overall 9.84 / width 3.59. Geometry hash 206c5fd1 -> **683be340**
+(46 meshes / 85165 verts). FLAGGED FOR THE INDEPENDENT CRITIC (>=90).
+
+RUNGS (five batches, all worldtrace-decoded — tools/tmp-misc3-worldtrace
+PARITY-PROVEN per batch; attribution via tools/tmp-ladders-whatbox.mjs,
+a new triangle+instance-level AABB census probe):
+1. GUN PLAN RE-CENTER: the print's fat gun content (drum+sleeve) runs
+   OFF-CENTER +0.04 — plan col -0.166 carries NO ref muzzle while
+   -0.052..0.171 run to 6.214. Drum + fore sleeve x -> +0.045; collar#2
+   TRIMMED to end at world 3.985 and kept centered (the ref's own
+   centered fat content ends exactly there); NEW rear thermal-sleeve
+   section at the measured band [1.732..2.002] over 5.0..5.891.
+   plan_whole 87.87 -> 92+, plan_turret 88.76 -> 93.0, side_whole +2.
+2. FRONT RE-METER: belly 0.26 -> 0.281 (ref front bottoms 0.283 x46
+   cols); filler pots x-narrowed to the ref's ±1.033/1.073 cols; engine
+   deck re-stepped 1.607/1.627/1.631 (was flat 1.632); driver hatch +
+   periscopes cap-seated to the 1.534-1.544 deck line; fore-deck split
+   1.534/1.549. front_hull 88.08 -> 93.5.
+3. PRINT-ASYM ±1.64 KILL: the official rows read bot 0.083 right/0.501
+   left from SYMMETRIC track pads at x 1.623 — pixel-grid coin-flip at
+   the 1.619 window boundary. Track re-metered 0.64/1.28 -> 0.570/1.295
+   (shoes 0.987..1.603) + LEFT-only skirt rubber drop strip (x -1.606..
+   -1.655, hung from the sheet bottom) + RIGHT inner-lane tab at x 0.96
+   (the print wants ground at +0.953 and the 0.278 belly line at -0.951).
+4. WRAP FILLS (the ariete §B4 lane-local mechanism): bow two-slope
+   ramp -> knee -> crest -> 3.51 front block and stern ramp -> knee ->
+   tail in hullTrackTrimL/R, kit idler re-seated INSIDE (3.27/1.10/
+   0.075; sprocket -2.885/1.03/0.24, far edge -3.27 EXACT). Fill E's
+   3.51 face carries the plan front lane AND pads the 3.517 hullLengthM
+   body column. Stern boat-tail bottom re-laid to the measured 4-knot
+   rake. side_hull 86.6 -> 92.0.
+5. REAR/ROOF MICRO: step filler z -3.265 (its -3.30 face + 1.01 bottom
+   owned the -3.352 anchor col err 0.152); rear plate band 1.23..1.5705
+   (RAZOR-ANCHOR: the filler pull left the plate band 0.300 vs the
+   0.304 cut and hullLengthM silently read 6.76); rack rear cross-rail
+   SEGMENTED at the ref's plan gaps; strap-end rolls + right-side-only
+   pannier shelf (print asym); vents sunk to the 1.494 dip; sight block
+   z -0.862..-0.982; sensor base halved + widened to the ref's -1.073
+   col; loader periscope housing at the 2.351 line; mast bracket
+   (0.94..1.00, top 2.50); tail-lip fender 1.695; block lower lip
+   (±1.72 wants 0.779, ±1.762 wants 0.856 — per-column split); k0 block
+   z 1.235..1.53; k3/k4 tops taper 1.395/1.32 with the glacis.
+
+LAWS BANKED (this round):
+1. 12% JUNCTION LAW: two fat gun pieces sharing ONE trace column merge
+   their bands — sleeve[1.732..2.002] + drum[1.771..2.063] = 0.331 >
+   the 12% cut, and hullLengthM swallowed the gun (9.09, dims 0,
+   twice). Keep every column single-owner near the cut (sleeve rear
+   5.891 | boundary 5.899 | drum front 5.907).
+2. RAZOR-ANCHOR COROLLARY (§D): an anchor column's band needs >10%
+   margin over the 12% cut — the -3.352 rear anchor sat at 0.300 vs
+   0.304 and dropped SILENTLY (hullLengthM 6.76 while every curve row
+   improved). Check dims after ANY edit near an anchor window.
+3. BOX/GRID LAW (grid-coupling corollary, measured twice): ANY change
+   to the shared visible box re-derives all 96-col grids — strap rolls
+   at -3.587 (27 mm past the bag line) shifted side dAlong 0 -> -0.057,
+   exposed a ref-only col at -3.654 and re-priced the whole roof spike
+   field. Box extremes are FROZEN once tuned (z-min = bags -3.56).
+4. MIN-OF-WINDOW LAW: a trace column reports the ref's MINIMUM over its
+   window — a rising ref line's knots sit at window STARTS, not
+   centers. Author fill polylines through the window-start points
+   (2.574/2.91/3.02/3.13/3.24/3.35 here).
+5. GUN-FRAME double-subtract hazard: gunExtra local = world - (gunG.z +
+   turretG.z) ONCE — the first rear-sleeve seat subtracted the frame
+   twice and sat 0.4 m rearward (side_whole read the bare tube).
+6. PROBE PARITY: mask probes MUST render with the page's own override
+   material + baseVisible parking — a raw-material probe read the
+   parked hull shadow proxy and un-thresholded dark tones (two false
+   attributions before the gate-identical frontcol probe).
+
+CERTIFIED/DOCUMENTED RESIDUALS: tower lid-cap 2.52 band (heightM p95
+anchor, dims-sovereign — side_whole col 0.638 err 0.075); bow idler
+ramp/crest cols 3.29/3.07 (~0.10/0.04 — the circular-wrap residual
+INSIDE the authored fill: shoes ride the kit arc; far-edge guard bars
+a bigger idler); the -2.763-class stern ramp shoe corners; plan ±1.71
+mudguard-strip front (ref asym); owner-symmetry glass-housing band
+(unchanged, ratified). §B battery on final bytes: track-clip --exact
+front 14/rear 0 (better than the certified 24), shoe 0/0;
+turret-parent 0/0/0; standard-check clip ✓ contig 0 ✓ census mg2+0d ✓;
+winding 78 slabs REVERSED 0 (all new fill/wedge slabs through
+orientedSlab); npm test 166 + track-geometry green. Evidence:
+shots/misc-ladders/{before,after}/leclerc*.png (board + 4 garage
+angles each).

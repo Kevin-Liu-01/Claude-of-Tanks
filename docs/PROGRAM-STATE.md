@@ -2177,3 +2177,21 @@ t90ms 9.0, t90a_burlak 9.0 (nine builds from seven drops — type90
 rode the wave's oracle fix). NEXT (russia lane): the trio turret
 shape-ladder on the §5.60 worst-column receipts + t44+type59 builds
 (t54 donors — the last §5.45 no-builder ids).
+
+## 5.70 MISC LADDERS LANDED (2026-08-08): LECLERC 86.2 -> 90.3 GATE
+PASS every component >=90 x2 bit-identical (hash 206c5fd1 ->
+683be340) — FLEET 24/96; GRADUATION CRITIC SPAWNED (potential #30).
+Five decoded batches incl. the rear-plate razor-anchor rescue
+(hullLengthM 6.76-class caught) + the §5.14-era commander-well doc
+claim TRUED (measured z_w 0.32..0.66). ARIETE 82.3 -> 83.1 (r3
+ceiling broken via the print-band sleeve; new ceiling ~85-86; §E
+nose/tube/basket print work = the 90 path, filed). AMX30 PAIR §5.36
+ladder complete: floaters 0->100 both, dims 22.7/44.6 -> 99.4/98.1
+(hashes e2a7ae50/3aeacbf9); curves capped by the decoded TALL-HULL
+PRINT CLASS (print deck 1.68/roof 2.9 vs pub 2.29) — §E y-normalize
+escalation joins the queue. INCIDENT BANKED (amx30 packet): a
+first-match perl edit transiently hit type74's identical L7 gun line
+— caught by the hash battery, reverted byte-exact; LAW: shared-line
+edits anchor on unique context, and the guard battery is the net.
+Guards held on final bytes (type90 b9182ad4 / type74 7ba404c5 / t80u
+af5e3ad9); leclerc track-clip 14/0 BETTER than its certified 24.

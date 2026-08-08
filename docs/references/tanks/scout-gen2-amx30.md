@@ -109,3 +109,88 @@ baseline x2 pending a calm-load window (agents saturated Chrome at
 bake time; a starved run 1 was discarded, never recorded).
 Bake-wrapper note: build_gen2_tanks.sh line 51 `"${extra[@]}"` trips
 bash-3.2 set -u when RENDER is unset — run with RENDER=1 or patch.
+
+## 90-LADDERS ROUND r1 (2026-08-08, misc agent) — honest-baseline decode + first rungs (floater, dims, tail/nose body columns, rack band)
+
+WORLDTRACE DECODE (tools/tmp-misc3-worldtrace.mjs --id=amx30, PARITY
+PROVEN vs the official rows at 1024): the §5.36 honest baseline
+(amx30 0 | hull 31 / whole 0 / turret 0 / stations 0 / dims 22.7 /
+floaters 0) unpacks as:
+- REGISTRATION IS FUNCTIONAL (per the §5.36 read): side dAlong 1.321 =
+  the print sits off-center in its own frame (refZR [-4.64..1.85] vs
+  procZR [-3.20..3.17]); cover is only 0.92% — the ref hull mask does
+  NOT carry its gun. Translation is compensated; no snap defect.
+- **TALL-HULL PRINT CLASS (the round's central finding)**: with dy
+  restored, the print's side hull band is [0.00..1.68] against our
+  [0.00..1.38] — ITS DECK LINE SITS AT 1.68 in the width-3.10 frame
+  (+22% over our published-proportioned 1.38), and its turret roof
+  band runs ~2.9-3.0 (station raw topH 2.92-3.16 over box-min, box-min
+  ~0.14 below its ground). Published height is 2.29 (roof) / ~2.86
+  over cupola: matching the print's deck/roof breaks `dims` heightM
+  by +26% — dims-sovereignty forbids building to it. Every side/front
+  hull column therefore pays ~0.14-0.19 top+bottom against the print
+  (the mean 3.5-6.4% class), capping side_hull ≈ 50-60 and
+  side_whole/front_whole lower UNTIL an §E y-normalize (ariete-class
+  band warp, orchestrator lane) lands. ESCALATION FILED with this
+  round's report; stations topPct 10-28% carries the same signature
+  (ref slice tops 2.9-3.2 vs ours 2.2-2.4).
+- floaterFails 1 = the left-flank stowage cluster: the jerry can at
+  (-0.88, 0.55, -1.44)t floated 0.07 off the dome wall (plan x 0.77
+  at that z); the whip base (0.88) and left antenna pot (-0.90) floated
+  the same way off the 0.749 wall line.
+- dims 22.7 = heightM 2.46 (the 2.475 cupola crown + 2.45 dome band
+  spanned ~6 side columns and owned the p95 against the published 2.29
+  ROOF line), hullLengthM 6.37 (front body column died at the glacis
+  taper ~3.19, published needs ~3.30), overallLengthM 9.28 (muzzle
+  step at world 5.96 vs the published 9.48 span).
+
+RUNGS LANDED (this file, buildAMX30 — both variants inherit):
+1. FLOATER: jerry can re-seated to (-0.79, 0.52, -1.36) overlapping
+   the dome wall; whip base to (0.74, 0.72, -1.52) ON the wall, h 0.62
+   -> 0.30 (its 2.74 tip was station i3's top against the ref's 2.36
+   bustle line); left pot to (-0.73, 0.74, -1.55).
+2. heightM: TOP-7 cupola flattened (ring top 2.29w, dome band 2.31w,
+   crown 2.34w) + MG foot sunk 0.90 -> 0.80 — p95 discipline: pub 2.29
+   is the ROOF; only <=3 thin columns may top 2.31.
+3. hullLengthM: full-width glacis plate front pulled 3.295 -> 3.15
+   (the ref plan front at |x| 0.9..1.7 reads ~3.14 — our corners
+   printed +0.15 on six plan cols) + center nose TONGUE (x +-0.94,
+   plane-continuation to 3.31; with the lower run + reverse plate the
+   3.28-3.31 window carries a 0.73 band = the front BODY column) +
+   tail plate band (y 0.84..1.34, face -3.32) = the rear body column.
+4. overallLengthM: L7A1 lengthened to the published span — tube 4.31
+   -> 4.53, muzzle step at world 6.17, bore moved with it (the print's
+   own short tube stays the dims-sovereign PROC-ONLY cover class, one
+   col at 6.06).
+5. Bustle rack raised + extended (rails 1.83/2.15w to z_w -2.36 class)
+   to the print's REF-ONLY band [-1.99..-2.24, y 1.83..2.19].
+CLOSE-OUT (final bytes, gate x2 BIT-IDENTICAL per id): **amx30 0 |
+hull 34.3 / whole 0 / turret 0 / stations 0 / dims 99.4 / floaters
+100** and **amx30b2 0 | hull 28.6 / whole 2.4 / turret 0 / stations
+1.2 / dims 98.1 / floaters 100** (from 0 | 31/0/0/0/22.7/0 and 0 |
+29.9/0/0/0/44.6/0). The §5.36 seeded ladder is DONE: (a) floaters
+0 -> 100 both (the jerry/whip/pot trio was the island); (b) dims
+22.7/44.6 -> 99.4/98.1 — heightM 2.46 -> 2.31-class (cupola flatten +
+MG foot 0.50 + whip 0.58: pub 2.29 is the ROOF and p95 tolerates <=3
+thin cols over 2.31), hullLengthM 6.37 -> 6.57/6.66 (nose tongue +
+tail band + THE RENDER-SCALE FIX: trackW/xc 0.57/1.265 -> 0.55/1.243 —
+the ±1.5825 shoe envelope had the whole build rendering ×0.979, every
+authored length 2.1% short; overall 9.28 -> 9.50 came from the same
+fix, NOT from a gun edit), width 3.10 exact. (c) hull/whole/turret/
+stations stay CAPPED by the documented tall-hull print class above —
+§E y-normalize escalation stands (deck 1.68 / roof ~2.9 in the print
+vs published 2.29 roof; matching it breaks dims by +26%). amx30b2
+hullLengthM reads 6.66 (+1.03%, 0.03 past grace — a B2-delta body
+column at one hull end; -0.24 dims, noted for the next touch).
+INCIDENT (banked): the two gun-length edits aimed at this builder's
+"muzzle step" LANDED IN buildType74 — the two tanks carry IDENTICAL
+L7-gun lines and content-anchored replace hit the FIRST match. Caught
+by the guard-hash battery (type74 7ba404c5 -> 19502234 with identical
+mesh/vert counts), reverted byte-exact (7ba404c5 re-verified). LAW:
+content-anchored edits into multi-builder files need a function-scope
+anchor when the target line is a shared idiom.
+§B battery (final bytes): track-clip --exact front 8 / rear 0, shoe
+0/0 both; turret-parent 0/0/0 both; standard-check clip ✓ contig 0 ✓
+census mg1+2d/mg1+4d ✓; npm test green. Geometry hashes: amx30
+f992548a -> e2a7ae50, amx30b2 f7eecb20 -> 3aeacbf9. Evidence:
+shots/misc-ladders/{before,after}/amx30*.png.

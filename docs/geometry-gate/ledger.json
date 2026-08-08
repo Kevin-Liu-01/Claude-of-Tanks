@@ -178,12 +178,12 @@
    "geoMin": 0,
    "gatePassed": false,
    "components": {
-    "hullCurves": 31,
+    "hullCurves": 34.3,
     "wholeCurves": 0,
     "turretCurves": 0,
     "stations": 0,
-    "dims": 22.7,
-    "floaters": 0
+    "dims": 99.4,
+    "floaters": 100
    }
   },
   {
@@ -191,12 +191,12 @@
    "geoMin": 0,
    "gatePassed": false,
    "components": {
-    "hullCurves": 29.9,
-    "wholeCurves": 0,
+    "hullCurves": 28.6,
+    "wholeCurves": 2.4,
     "turretCurves": 0,
-    "stations": 0,
-    "dims": 44.6,
-    "floaters": 0
+    "stations": 1.2,
+    "dims": 98.1,
+    "floaters": 100
    }
   },
   {
@@ -760,12 +760,12 @@
   },
   {
    "id": "ariete",
-   "geoMin": 82.3,
+   "geoMin": 83.1,
    "gatePassed": false,
    "components": {
     "hullCurves": 85,
-    "wholeCurves": 82.3,
-    "turretCurves": 83.3,
+    "wholeCurves": 83.1,
+    "turretCurves": 84.6,
     "stations": 87,
     "dims": 100,
     "floaters": 100
@@ -864,13 +864,13 @@
   },
   {
    "id": "leclerc",
-   "geoMin": 86.2,
-   "gatePassed": false,
+   "geoMin": 90.3,
+   "gatePassed": true,
    "components": {
-    "hullCurves": 86.6,
-    "wholeCurves": 86.2,
-    "turretCurves": 88.8,
-    "stations": 90.3,
+    "hullCurves": 92,
+    "wholeCurves": 90.3,
+    "turretCurves": 90.5,
+    "stations": 93.7,
     "dims": 100,
     "floaters": 100
    }

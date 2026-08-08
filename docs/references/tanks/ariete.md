@@ -736,3 +736,70 @@ CERTIFIED/DOCUMENTED RESIDUALS: unchanged — the r3 measured-ceiling
 classes stand (side_whole 82.3 binder: cover 1.83%, nose FRAME-LOCK col,
 knee/apex pad taxes, cliff-lerp floors, pano 2.495 vs real ~2.7). dims
 100 robust. The winding fix moved NO mask row (that is the point).
+
+## 90-LADDERS ROUND (2026-08-08, misc agent) — 82.3 -> **83.1**, HOLD-OR-IMPROVE on every component, x2 BIT-IDENTICAL on final bytes; the r3 "82+ requires breaking a certified class" ceiling BROKEN by the sleeve re-band; NEW measured ceiling ~85-86 without §E print work
+
+GATE LINE (final bytes, x2 full-JSON bit-identical): **83.1 | hull 85.0
+/ whole 83.1 / turret 84.6 / stations 87.0 / dims 100 / floaters 100**
+(baseline 82.3 | 85.0 / 82.3 / 83.3 / 87.0 / 100 / 100 — hull and
+stations EXACT, whole +0.8, turret +1.3). Geometry hash 324c3f12 ->
+**9a4e9d00** (49 meshes / 82525 verts).
+
+WHAT LANDED (worldtrace-decoded, tools/tmp-misc3-worldtrace PARITY-
+PROVEN):
+1. FULL-LENGTH THERMAL SLEEVE at the print's measured band: the fresh
+   trace reads the ref tube band [1.613..1.837] CONSTANT over z 2.9..
+   5.7 (~20 side_whole cols wanted top 1.837 where our 0.183 kit
+   sleeve read 1.797 — +0.04/col, the largest uncertified class).
+   cylZ(0.111, 2.913, 24) at gun-local (0, 0.0174, 3.2755): RENDER-
+   SCALE authored = rendered/1.01266 (the first 0.1125/1.725 seat
+   rendered 1.861, +0.024 OVER); 24-seg per the STATION-PAINT law (the
+   ref's own smooth tube SKIPS its station slabs — its i13 top is the
+   1.628 glacis; a 12-seg would have painted 1.84 into i13). Gun cols
+   now read 1.831 vs want 1.837.
+2. PANO TOWER RE-SEAT (two-constraint): z_l -0.79 -> -0.81, head depth
+   0.14 — the tower front face (rendered -1.013) printed 2.38 into the
+   -0.972 col window over the ref's 2.217 notch line; the interim
+   -0.845 seat CROSSED the i4/i5 station boundary at rendered -1.209
+   (bradley 20 mm cap law: i4 topPct 1.09 -> 8.16, displacing the
+   trimmed i6/i13 pair — stations -3.8, the round's one big incident).
+   Head widened x -0.21..-0.305 per the banked push-2 order (the ref
+   2.499 front col at -0.304). Glass moved off the -1.027 window edge.
+3. SECOND SIGHT PEDESTAL -> 24-seg cylinders: its box z-caps PAINTED
+   station i6 at 2.495 vs the ref's 2.346 slab top (5.91 topPct,
+   pre-existing — the ref's spike content skips its own slabs).
+4. Banked orders landed: GALIX banks xc 1.36 -> 1.315 (the k3 tube tips
+   at rendered 1.606 poked the ±1.63 plan cols — plan_turret's worst
+   pair) + crowns dropped to the fresh front wants (L 2.024 / R 1.899);
+   L roof-edge rail widened inboard (its rendered -1.056 edge sat 1 mm
+   outside the -1.033 front col window: ref 2.457 vs the 2.346 plate);
+   bustle roof rear z_w -1.975 -> -2.035 (the -2.046 col's 2.329 line).
+5. REVERTED after measurement: a +0.035 sprocket raise (chased the
+   far-stern rake wants, printed +0.017 on five matched mid-ramp cols:
+   hull 85.0 -> 84.2); a hull-side 2.11 stowage crate at z -2.77 (the
+   -2.763 col's 2.116 want is REF-TURRET basket content — matching it
+   hull-side polluted the hull rows, and the turret-side answer is
+   forbidden by the r4 TURRET-ROW BBOX law; the col stays certified).
+
+LAWS BANKED: STATION-PAINT parity (build fitting geometry with the same
+slab-visibility class as the ref's — smooth cylinders skip, box z-caps
+paint; i6/i13 here are REF-SKIP columns and any painting proc content
+is a pure tax); the RENDER-SCALE division applies to EVERY authored
+want on this ×1.01266 build (three of five first seats missed it);
+MASK-SIDE ATTRIBUTION (the 2.116 want at -2.763 is turret-mask content
+— hull-side matching moves the WRONG row).
+
+CERTIFIED/DOCUMENTED RESIDUALS (measured ceiling ~85-86): the 3.686
+nose FRAME-LOCK col (0.237 — its [1.613..1.837] want band is 0.224 <
+the 0.302 body cut: matching it exactly forfeits the hullLengthM front
+column, dims -11); the -2.763 basket col (0.124, r4 bbox law); the bow
+knee/apex shoe-corner trio 3.33/3.45/3.57 (0.057/0.097/0.062 — kit
+shoes dip under the authored fill on the steep knee; the idler is at
+its §B4 wrap-top ceiling 1.175 and cannot rise); cover 1.83% (stubby-
+print class); the pano/TURMS half-phase spike taxes. 90 requires §E
+print work (nose/tube band + basket) — ESCALATION NOTED for the
+orchestrator lane. §B battery final bytes: track-clip --exact 0/0 band
++ 0/0 shoe ✓; turret-parent stranded-1/abutting-1 = the two certified
+turret-fix adjudications ✓; standard-check clip ✓ contig 0 ✓ mg1+3d ✓;
+winding 22 slabs REVERSED 0 ✓; npm test green. Evidence:
+shots/misc-ladders/{before,after}/ariete*.png.
