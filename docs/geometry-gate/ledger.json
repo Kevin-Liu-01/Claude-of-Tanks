@@ -1212,6 +1212,45 @@
     "dims": 100,
     "floaters": 100
    }
+  },
+  {
+   "id": "t90",
+   "geoMin": 29.8,
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 68.2,
+    "wholeCurves": 42.5,
+    "turretCurves": 43.2,
+    "stations": 29.8,
+    "dims": 95.2,
+    "floaters": 100
+   }
+  },
+  {
+   "id": "t90ms",
+   "geoMin": 20.7,
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 72.7,
+    "wholeCurves": 51.3,
+    "turretCurves": 20.7,
+    "stations": 41,
+    "dims": 95.4,
+    "floaters": 100
+   }
+  },
+  {
+   "id": "t90a_burlak",
+   "geoMin": 0,
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 52.7,
+    "wholeCurves": 23.1,
+    "turretCurves": 0,
+    "stations": 0,
+    "dims": 75,
+    "floaters": 100
+   }
   }
  ]
 }

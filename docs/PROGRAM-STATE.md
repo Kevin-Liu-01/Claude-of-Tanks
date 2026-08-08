@@ -2158,3 +2158,22 @@ orders spec changes, a follow-up edits them). ASK-OWNER added: m48
 heightM datum (print = low-cupola A5 crown 2.718 vs the 3.09
 M1-periscope row — the §E tube-level projection ~80s needs the
 ruling for graduation).
+
+## 5.69 T90 TRIO RATIFIED + LANDED — THE §5.38 WAVE IS COMPLETE
+(2026-08-08): sitting 2 PASS x3 (9.0/9.0/9.0 from 7.0/6.5/6.5; min
+views 8.5; all 17 defects dead in the critic's own pixels — real
+panel-bank chevrons x3, three distinct plan grammars, seated
+plate-true glacis ERA, stand-off slat lattice, burlak bustle
+hierarchy MEASURED 1.68m vs casting 3.05m; both ordered trades
+verified to the decimal and not penalized). Hashes land: t90
+fe57fdf4 / t90ms a8aceea0 / t90a_burlak 8ef4d428; rows 29.8 / 20.7 /
+0-capped. TWO LAWS RATIFIED (validated across both sittings):
+CHEVRON-PLAN-FOOTPRINT (chevron orders carry a plan-area number, not
+just a tip line) + GRILLE-INSET SLAT FALSE-FRIEND (slat orders
+specify STAND-OFF geometry with open air behind). ALL SEVEN §5.38
+OWNER-WAVE TANKS ARE NOW LANDED + INDEPENDENTLY RATIFIED: k2 9.0,
+type99a 9.05, k1a1 9.1, m48 9.15, amx40 9.2, type90 9.3, t90 9.0,
+t90ms 9.0, t90a_burlak 9.0 (nine builds from seven drops — type90
+rode the wave's oracle fix). NEXT (russia lane): the trio turret
+shape-ladder on the §5.60 worst-column receipts + t44+type59 builds
+(t54 donors — the last §5.45 no-builder ids).
