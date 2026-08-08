@@ -3780,7 +3780,19 @@ function* warmCombatPipelineSteps() {
   yield;
   const spotsWereOn = game.phase !== 'battle';
   if (spotsWereOn) setGarageSpots(false);
-  try { renderer.compile(scene, camera); } catch (_) { /* fine */ }
+  // MOBILE-QA r10 (idle profiler): this scene-wide compile ran as ONE
+  // generator slice on the post-ready idle pump — a +157-program burst
+  // measured 609-1130 ms of garage-idle jank. Same compile, chunked per
+  // top-level scene child with a yield between slices.
+  {
+    const kids = scene.children.slice();
+    for (const kid of kids) {
+      try { renderer.compile(kid, camera, scene); } catch (_) { /* fine */ }
+      if (spotsWereOn) setGarageSpots(true);
+      yield;
+      if (spotsWereOn) setGarageSpots(false);
+    }
+  }
   if (spotsWereOn) setGarageSpots(true);
   yield;
   // MOBILE-QA r1: depth-variant warm for the boot/debug entry paths too —
@@ -3922,9 +3934,15 @@ function* compileHiddenVariantsSteps() {
         compileAll(e.visual.root); // destroyed-state clones
         e.visual.resetDestroyed();
       }
+    } catch (_) { /* warm only */ }
+    // MOBILE-QA r10: yield BETWEEN the destroyed-state and live-state
+    // compiles — one whole tank per slice (heavier since r5's force-visible
+    // LOD coverage) was half of the garage-idle monster tasks.
+    yield;
+    try {
       compileAll(e.visual.root);   // live-state materials
     } catch (_) { /* warm only */ }
-    yield; // one tank's variant compiles per slice
+    yield; // one compile pass per slice
   }
   // perf-r4a (play-session rematch rows): this function compiled every TANK
   // subtree but never the WORLD group — and the real render below runs from
