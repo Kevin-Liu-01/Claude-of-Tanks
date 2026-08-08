@@ -1680,3 +1680,17 @@ cohabitation design; guards byte-held (type89/is1/is2/tiger1/m60a1).
 GRADUATION: independent critic spawns at the landed bytes — freeze
 90a5568c in §3 only on its >=9.0. KOREA round unblocks (modern3.js
 clean post-landing).
+
+## 5.44a LANDING ACCIDENT DOCUMENTED (2026-08-08): commit 81bdad1
+swept in TWO files the §5.31b diagnosis agent had STAGED but not yet
+reported — userdrops4.js + variants.js (the m1a2_tusk ERA-GROUP FLIP:
+MODEL_SOURCE retired, procedural tusk renders everywhere, dannzjs
+print retires to candidateGlb per the kv2/t30 pattern). Content
+INSPECTED post-land: coherent, precedent-cited (§5.34/kv2/t30/m1a1
+backfill), covered by the pre-commit npm test, and directly answers
+the owner's §5.31b complaint — KEPT PROVISIONALLY; the diagnosis
+agent's final report ratifies or amends. ROOT CAUSE: my `git add &&
+git diff --cached --stat | tail && git commit` chain made the staged
+pre-check DECORATIVE (output printed, nothing gated). NEW LANDING
+LAW: the --cached inspection is a SEPARATE evaluated step — never
+chain it into the commit command (extends the camoKit lesson).
