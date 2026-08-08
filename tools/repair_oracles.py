@@ -31,6 +31,7 @@ Repairs write <id>.glb in place, keeping the original at <id>.glb.bak
 re-runnable from the pristine original).
 """
 import json
+import re
 import struct
 import sys
 import shutil
@@ -2018,14 +2019,18 @@ def _pw_slope(pts, v):
 
 
 def _axis_warp(tank_id, *, long_axis, y_map, long_map, y_top_max, expect,
-               height_axis='y'):
+               height_axis='y', node_scope=None):
     """Batch-12 'py2' builder: axis-wise piecewise-linear vertex warp of every
     scene-reachable prim, in GLB-WORLD space (through each node's world
     matrix and its affine inverse). expect=(prims, verts, tris) is the exact
     reachable census — mismatch refuses to write (wrong input file?).
     height_axis (batch-28, chieftain5 Z-up print): the glb-world axis that
     carries HEIGHT (y_map applies to it); default 'y' keeps every prior
-    batch byte-identical. Width = the remaining axis, invariance-checked."""
+    batch byte-identical. Width = the remaining axis, invariance-checked.
+    node_scope (batch-49, type90 turret normalize): optional node-name
+    regex — when set, ONLY the matched node's subtree warps (fused-hull
+    prints where a global y-map would drag hull furniture). Default None
+    keeps every prior batch byte-identical (same walk, same order)."""
     if height_axis == long_axis:
         raise SystemExit(f'{tank_id}: height_axis == long_axis')
     for pts in (y_map, long_map):
@@ -2035,7 +2040,7 @@ def _axis_warp(tank_id, *, long_axis, y_map, long_map, y_top_max, expect,
 
     def op(gltf, chunks, _id=tank_id, ax=long_axis, ym=tuple(y_map),
            lm=tuple(long_map), ytop=y_top_max, exp=tuple(expect),
-           hax=height_axis):
+           hax=height_axis, scope=node_scope):
         li = {'x': 0, 'y': 1, 'z': 2}[ax]
         hi = {'x': 0, 'y': 1, 'z': 2}[hax]
         bi = _bin_chunk_index(chunks)
@@ -2046,15 +2051,18 @@ def _axis_warp(tank_id, *, long_axis, y_map, long_map, y_top_max, expect,
         reach = []
         seen_prims = set()
 
-        def visit(ni, parent):
+        scope_re = re.compile(scope) if scope else None
+        def visit(ni, parent, in_scope):
             node = gltf['nodes'][ni]
             world = mat_mul(parent, local_matrix(node))
-            if 'mesh' in node:
+            here = in_scope or (scope_re is not None
+                                and scope_re.match(node.get('name', '') or ''))
+            if 'mesh' in node and (scope_re is None or here):
                 reach.append((ni, node['mesh'], world))
             for ci in node.get('children', []):
-                visit(ci, world)
+                visit(ci, world, here)
         for ri in gltf['scenes'][gltf.get('scene', 0)]['nodes']:
-            visit(ri, IDENT)
+            visit(ri, IDENT, False)
 
         nprims = nverts = ntris = 0
         acc_seen = set()
@@ -2956,6 +2964,29 @@ REPAIRS['type90'] = [
                        y_map=[(0, 0), (15.1166, 13.822), (16.8686, 14.2113), (28.2279, 22.485), (43.0233, 23.3611)],
                        long_map=[(-38.7171, -37.6415), (35.7658, 34.8751), (51.5929, 57.3602)],
                        y_top_max=23.6531, expect=(3, 9272, 7711))),
+    # ========================================================= batch 49 ===
+    # TYPE90 TURRET RE-NORMALIZE (§E; the §5.28 re-proportion round's filed
+    # plan, type90.md "NORMALIZE PLAN FILED" — knee literals verbatim, in
+    # meters x the batch-27-derived 9.734 raw/m scale). batch-27 mapped the
+    # artist's FURNITURE CROWN to the published roof line, squashing the
+    # actual roof plate to 1.90 norm (pre-warp .bak parse: the artist's own
+    # face is 29% of height vs the real 38.9%). This op re-lifts the TURRET
+    # SUBTREE ONLY (first use of node_scope — hull deck 1.408-1.454 norm
+    # sits just below the 1.46 identity knee; a global map would drag hull
+    # furniture): chin sliver stretch, TUBE BAND RIGID +0.256 norm (bore
+    # 1.562 -> 1.818 = the armor model's gunPivot), wall band x1.70, roof
+    # to the published 2.34 plane, furniture crowns rigid +0.44 (ridge
+    # 2.23-2.26 -> 2.67-2.70; shelves land ~2.24 = the build's rails).
+    # Raw anchors (x9.734): identity <= 14.212; (14.455 -> 16.947);
+    # (15.954 -> 18.446); (18.495 -> 22.777); top 23.359 -> 27.642 (rigid
+    # tail slope 1.0). Turret subtree census probed on the post-27 state:
+    # 1 prim / 3,308 verts / 2,589 tris; subtree y 13.91..23.36.
+    ('py2', _axis_warp('type90', long_axis='x',
+                       y_map=[(0, 0), (14.212, 14.212), (14.455, 16.947),
+                              (15.954, 18.446), (18.495, 22.777), (23.359, 27.642)],
+                       long_map=[(-39.0, -39.0), (52.0, 52.0)],
+                       y_top_max=27.70, expect=(1, 3308, 2589),
+                       node_scope='^Turret$')),
 ]
 REPAIRS['ariete'] = {
     'path': 'public/models/tanks/community/ariete-dustymojito.glb',

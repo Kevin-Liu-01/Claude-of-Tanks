@@ -713,3 +713,13 @@ ariete 324c3f12 / t80u af5e3ad9 / leclerc 206c5fd1 / amx30 f992548a /
 amx30b2 f7eecb20. type90 d9b3fc88 -> 741352c4 (50 meshes / 60271 verts).
 DELIVERED-PENDING-CRITIC (§B8 — the §B7 region is scored vs the
 real-vehicle photo class, ref parity elsewhere). NOT COMMITTED.
+
+## batch-49 EXECUTED (2026-08-07, orchestrator §E) — the filed
+normalize ran verbatim: node-scoped y-map on ^Turret$ ONLY (the
+FIRST node_scope use — _axis_warp extended with a byte-proven None
+default; t90sm chain md5-held), knees exactly as filed, byte-
+idempotent x2 md5 b2ece521, top 27.642 as planned. Gate x2: 3.0 ->
+45.1 | hull 88.5 EXACT / whole 67.9 / turret 52.1 / stations 45.1 /
+dims 100. The print's tube/wall/roof bands now sit at the REAL
+proportions; the remaining gap is BUILD-side lifework — the route-a
+small-ladder round chases the re-aligned columns (spawned).
