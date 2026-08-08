@@ -1985,3 +1985,19 @@ FOLLOWER FIX APPLIED (my lane, three maps): 22 OUT / 23 IN — forecast
 70-85 band; agent re-gating x2 both ids; identity critic spawns on
 its numbers. m48 NEW BUILD SPAWNED (patton lane freed by the m45
 graduation; §5.45 queue — m60a1+m47 donors, atmodeler print oracle).
+
+## 5.59a K2 FOLLOWER SWAP DISPROVEN BY MEASUREMENT — REVERTED
+(2026-08-08): the §5.59 swap (22 out/23 in) cratered side_hull
+42.7->24.6 while plan/front hull gained — BOTH nodes are MIXED
+hull+turret materials; follower assignment only picks which mask eats
+the foreign half (config A strictly better on every moved row,
+x2-exact pairs both configs). Maps REVERTED to config A (grep 1/1/1);
+agent restoring the config-A ledger record. ADOPTED: the §E unlock —
+BATCH-52 queued (k2 print: bake-strip Object_23 entirely [301 verts:
+tow strips + three turret-roof rail clusters, receipts in k2.md] +
+split Object_22's sub-1.7 glacis/skirt band keeping the cheek-armor
+top as follower; forecast side/front hull -> 70-85 band + first
+honest turret read; §5.39/§5.49 sanity gates + .bak). LESSON
+(follower-law addendum): mixed-material nodes cannot be mask-assigned
+correctly — measure BOTH configs before ratifying any follower change,
+or go straight to §E when receipts show mixed bands.
