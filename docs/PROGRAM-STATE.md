@@ -1625,3 +1625,21 @@ procedural builders (dormant or live), what VITE_PUBLIC_BUILD strips,
 and design the flip (playables -> procedural in era groups; Sources
 keeps ALL actual-tank prints browsable). leopard2_proto MODEL_SOURCE
 flip is the mechanics precedent.
+
+## 5.42 MODERN3 NO-AIR DELIVERED + BMP2 RULING (2026-08-08): bmp2
+fleet-#1 killed with real geometry (side-T 1879->0, garage cluster
+243->0, front-low island 3098 dead; ROOT CAUSE was floating ROOF
+FURNITURE, not the ring seat — the adjudicator's hover guess was
+wrong, the builder measured). ORCHESTRATOR RULING: RATIFY 82.7 (-1.3
+whole) as the §B7 owner-law-over-print price — §5.18 NO-AIR is owner
+law; the print's OWN launcher floats (ref cols 2.151-2.181 under its
+2.39 tube) and sealing pays those columns. Receipts + shape ladder
+banked in the r8 comment; recovery = §E launcher re-seat warp
+(orchestrator queue). spz_puma: all ordered slots closed (top 573->73
+all pre-existing, -T rows 0), stations +0.8. Hashes bmp2 53046196 /
+spz_puma 940912c8. LANDING HELD: bradley ladder WIP cohabits
+modern3.js (spawn-brief path error made two lanes share the file —
+LESSON: verify the actual file per id BEFORE lane assignment; bmp2/
+bradley/type10/k2 all live in src/vehicles/modern3.js, NOT profiles/).
+modern3.js lands as ONE commit after bradley delivers+verifies;
+KOREA round spawns after that landing.
