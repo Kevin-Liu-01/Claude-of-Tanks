@@ -2267,3 +2267,22 @@ MORE-MASSIVE CROWS RWS on top (P95-envelope datum law §5.73-1 covers
 the height). Coordinated graduate-change wave (sepv2 54b35994 /
 tusk b1786e4c / tejas f7510d88 / m1a1-siblings byte-guarded; sepv3
 2c9023d0 binding) — re-cert critics + re-freeze wave at landing.
+
+## 5.75 OWNER ORDER — PROFILE-MODULE CONSISTENCY REFACTOR
+(2026-08-08): "make some more profile modules for tanks like t90,
+t72, t80, challengers, and so on to be consistent." PLAN: one family
+per module, PURE REFACTOR LAW = byte-identical tmp-hashgeo for every
+moved id (the guard battery IS the proof; zero geometry change).
+SPLITS: russia.js -> profiles/t90.js (t90/t90a/t90m/t90sm/vladimir/
+t90ms/t90a_burlak/pt91m) + profiles/t72.js (t72b_1987/t72bu/t72b3m)
++ profiles/t80.js (t80/t80b/t80bv/t84) + the t62/t64 residue stays
+russia.js (or soviet-mid.js if clean); challengers -> NEW
+profiles/challenger.js consolidating challenger1 (from uk.js) +
+challenger2/challenger_3 (from modern1.js); "and so on" = the
+standing principle for future splits (korea/china candidates noted).
+Each split: move builders + shared russia helpers stay importable
+(kit.js pattern), export <FAMILY>_PROFILES, wire profiledProcedurals
+imports, hash-prove EVERY moved id byte-identical, npm test.
+SEQUENCE: challenger module NOW (uk.js+modern1.js free); russia
+splits AFTER t44/type59 lands, THEN §5.73-4 (t90-family measurement
+consistency) works in the fresh t90.js.
