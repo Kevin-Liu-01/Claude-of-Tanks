@@ -613,10 +613,8 @@ const REG = {
     // hull+turret, aps/cage/smokecaps/detachparts turret followers).
     path: 'public/models/community-candidates/t90ms_kojf.glb',
     turretNode: '^vehicle#t-90ms_turret_t-90ms_6$',
-    // AW rig rest-pose-rear convention (§5.50): turret clusters author ~180
-    // reversed; yawOffset corrects presentation (harness-mask verified).
-    gunNode: '^vehicle#t-90ms_cannon_2a46m-5_8$', autoPivot: true,
-    yawOffset: Math.PI,
+    // AW rest-pose-rear (§5.50/§5.53): turret presents ~180 reversed; the
+    // loader's turretRestYaw knob is DORMANT pending the §5.53 instrument fix.
     pubDims: { hullLengthM: 6.86, overallLengthM: 9.53, widthM: 3.78, heightM: 2.23 },
   },
   t90: {
@@ -625,7 +623,6 @@ const REG = {
     path: 'public/models/community-candidates/t90_kojf.glb',
     turretNode: '^vehicle#t-90_turret_t-90_18$',
     gunNode: '^vehicle#t-90_cannon_2a46m2_20$', autoPivot: true,
-    yawOffset: Math.PI, // §5.50 AW rest-pose-rear turret convention
     pubDims: { hullLengthM: 6.86, overallLengthM: 9.53, widthM: 3.78, heightM: 2.23 },
   },
   t90a_burlak: {
@@ -636,7 +633,6 @@ const REG = {
     // t90a-class, height to the (taller) Burlak bustle roof est. 2.30.
     path: 'public/models/community-candidates/t-90a_burlak_armored_warfare.glb',
     turretNode: '^Object_2$', gunNode: '^Object_15$', autoPivot: true,
-    yawOffset: Math.PI, // §5.50 AW rest-pose-rear turret convention
     pubDims: { hullLengthM: 6.86, overallLengthM: 9.53, widthM: 3.78, heightM: 2.30 },
   },
   t14: {

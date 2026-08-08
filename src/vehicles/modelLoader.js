@@ -2356,6 +2356,41 @@ function prepareSwapStart(gltf, { spec, cfg }) {
   // same real-dimension normalization used by every sourced tank.
   scene.rotation.set(cfg.pitchOffset || 0, cfg.yawOffset || 0, cfg.rollOffset || 0);
   scene.updateMatrixWorld(true);
+  // ---- TURRET-LOCAL REST YAW (§5.53, AW rest-pose-rear rigs) --------------
+  // Some game-rig prints author the TURRET cluster ~180 reversed while the
+  // hull is forward-correct (t90/t90ms/t90a_burlak kojf series). The
+  // scene-level yawOffset above cannot fix an internal split — hull
+  // re-registration nullifies it (amx30 class). cfg.turretRestYaw rotates
+  // the resolved turret cluster (turret + followers + gun + gunFollowers)
+  // about the vertical axis through the TURRET node's own world bbox
+  // center, in the oriented world frame, BEFORE pivot derivation — so
+  // autoPivot, masks, and articulation all see the corrected rest pose.
+  // Opt-in only; parent-inverse composition keeps baked node transforms
+  // valid (the §5.49 byte-surgery lesson: never assume shared frames).
+  if (cfg.turretRestYaw && turret) {
+    const bb = new THREE.Box3().setFromObject(turret);
+    const c = bb.getCenter(new THREE.Vector3());
+    // Ring axis: the shell bbox center is rear-biased on bustled turrets —
+    // prints with a mask-measured flip center override it (t90 family:
+    // builder-measured z +0.46 from the reflection evidence).
+    if (cfg.turretRestYawCenter) {
+      c.x = cfg.turretRestYawCenter[0];
+      c.z = cfg.turretRestYawCenter[1];
+    }
+    const W = new THREE.Matrix4().makeTranslation(c.x, 0, c.z)
+      .multiply(new THREE.Matrix4().makeRotationY(cfg.turretRestYaw))
+      .multiply(new THREE.Matrix4().makeTranslation(-c.x, 0, -c.z));
+    const cluster = [turret, ...turretFollowers, ...(gun ? [gun] : []), ...gunFollowers];
+    const seen = new Set();
+    for (const node of cluster) {
+      if (!node || seen.has(node)) continue;
+      seen.add(node);
+      const pw = node.parent.matrixWorld.clone();
+      const m = pw.clone().invert().multiply(W).multiply(pw).multiply(node.matrix.clone());
+      m.decompose(node.position, node.quaternion, node.scale);
+    }
+    scene.updateMatrixWorld(true);
+  }
   // Hull-only box for the scale: the gun overhang would otherwise shrink the
   // whole vehicle by the barrel length (m1a2: -22%). cfg.scaleToOverall keeps
   // the full box for single-skinned-mesh models whose barrel verts cannot be

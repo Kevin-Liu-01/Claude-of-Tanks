@@ -1910,3 +1910,24 @@ throughout (leo2a5/leo2a6/kf51/revolution). The owner's "they dont
 match their source material at all" is answered in the garage.
 leo2a4 = FALSE-0/no-oracle (no ledger row); proto row unchanged
 (0-capped, hull 48.7 inside it). RCWS ASK stands (§5.48).
+
+## 5.53 TURRET-REST-YAW INSTRUMENT (WIP, knob DORMANT): the §5.50
+scene yawOffset was proven NULLIFIED for the AW trio (t90-family
+builder's mask evidence: turret rows value-identical pre/post, ref
+guns over engine decks in the board strips) — line ~2357 rotates the
+WHOLE SCENE and hull re-registration cancels it (amx30 class). A
+turret-LOCAL rest-yaw knob (cfg.turretRestYaw + turretRestYawCenter)
+was added to modelLoader (§5.53 block, pre-pivot, world-frame
+parent-inverse composition) but BOTH activation attempts CRATERED t90
+(hull 67.5->0, ref masks sunk, side_hull cover 3.76% — the transform
+chain scatters through the re-bakes' baked node frames, suspect scale
+in the chain; bbox-center axis also rear-biased vs the builder's
+measured flip center z+0.46). Two-strikes rule (§5.49): rows REVERTED
+to the known-scoring state (t90 24.9 verified restored; no yaw keys
+on the trio), the knob lands DORMANT (opt-in, no print carries it),
+and a FOCUSED INSTRUMENT ROUND spawns with the full evidence chain +
+the blender-source alternative (rotate the cluster at obj2glb time —
+the amx30 source-cure precedent). The t90-trio identity critic HOLDS
+until the instrument fix (reversed ref strips would poison pair
+scoring); turret/station/whole rows for the trio stay
+presentation-capped and documented.
