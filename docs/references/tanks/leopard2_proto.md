@@ -245,3 +245,75 @@ unchanged: gate x2 post-flip reproduces the HEAD ledger row exactly
 melted-print cap line; hull 45.6 IS the §B7-class cap, the print's
 turret reads half-height vs the build, refTop 0.71 vs procTop 1.39).
 Hash HELD f1af7ba8 across the flip.
+
+## 2026-08-08 §5.35 ROUND (leopard builder) — TOP-CORRIDOR CLOSURE
+Owner §5.33 "see-through sides", §5.35 ranked item 5: the sweep's
+foreground-island scan caught full-length 7 cm top corridors BOTH sides
+(y0-top islands 2498+2494 px, 0.074x5.165 m at x ±1.827 — the §B4
+corridor-annulus class; the enclosed-bg flood is blind to them because
+they are open-ended). ROOT: the plain PT skirts hang at the ±1.85 §D
+width anchor (faces 1.805..1.85) while the fender planks end at 1.737 —
+a 6.8 cm air corridor between fender outer face and skirt inner face,
+open to ground the whole rear-skirt run (z -3.60..1.55) and reading
+edge-on sky from the front between skirt top (1.36) and fender bottom
+(1.595..1.61).
+
+### Mechanism: SPONSON-UNDERSIDE / SKIRT-HANGER RAIL (proto-local, no
+### leoHullV3 edits — siblings byte-identical by construction)
+The real vehicle's sponson side runs near-flush with the skirt plane
+and the skirts hang FROM it; the certified print plan reads SOLID full
+width ±1.85 there. Four pieces per side inside buildLeo2Proto:
+- main rail x 1.7075..1.815, y 1.32..1.62, z -3.655..2.92: laps the
+  fender underside (bottoms 1.595..1.61), the skirt top band
+  (1.32..1.36) and the fender x-run (1.70..1.737) — §B2 no-air: the
+  skirt now connects skirt->rail->fender->body. Bottom AT the 1.32
+  sponson-floor line so skirt-uncovered columns (rear cap, segRun
+  joints) stay inside the existing body silhouette. Rail inner face
+  keeps a 2.0 cm annulus off the band outer face 1.6875 (§B4
+  corridor-annulus <=3.5 cm = closed read; shoes 1.678 stay clear —
+  track-clip --exact 0/0 band 0/0 shoe post-fix).
+- front run z 2.92..3.64 (past the fender end): ONE raked top falling
+  WITH the glacis side line (1.47@2.92 -> 1.36@3.64, stays 1.4-3.4 cm
+  under it — §B1 silhouette-neutral); bottom 1.24 laps the certified
+  mudguard post top (1.26).
+- skirt-line joint filler x-face 1.85, y 0.46..1.36, z 1.545..1.605:
+  the 5 cm gap between the front/rear segRun courses read a ground
+  shaft from above; the PT skirt line is continuous. Outer face AT the
+  anchor — width p95 unchanged.
+- hullDark hinge seam over the skirt top edge (§B3 skirt-hanger tell).
+
+### Evidence (before -> after, tools/tmp-sweep-seethrough re-run)
+- y0-top islands 4992 px (2498+2494) -> 0 (target <100). Before PNGs
+  preserved in shots/leo-noair/before/; after set in shots/leo-noair/
+  + shots/see-through-sweep/leopard2_proto--*.
+- oblique corridor manifestations closed: y0-rqr 11->0, y45-rql 12->0,
+  y90-rql 12->0, y0-rql 33->21, y45-rqr 127->116, y90-rqr 18->7 — every
+  removed cluster is the (±1.62, 1.58, 2.78) fender-end slot class;
+  every surviving cluster byte-identical pre-existing (RCWS-roof 68@
+  side-r, mantlet-throat 147@front-low, basket-class side islands
+  111/112/753 — §B2 legit open-structure, adjudicated no-order).
+- new enclosed counters are the previously-OPEN daylight now roofed by
+  the rail: y0-top 35->83 (48 px left mudguard-over-idler slot — §B2
+  track-air class, right twin already read 20 before), y0-rear-low
+  8->26 (two 9 px annulus pinholes at ±1.72 — the <=3.5 cm class).
+
+### Close battery (2026-08-08, HEAD bd3369c)
+- geometry-gate x2 BIT-IDENTICAL (full-json diff proof):
+  `0 | hull 46.8 whole 0 turret 0 stations 0 dims 100 floaters 100`
+  — HOLD-OR-IMPROVE ✓: hull 45.8 -> 46.8 (driver front_hull 45.81 ->
+  46.83: the corridor no longer reads sky edge-on where the print is
+  solid), dims 100 + floaters 100 HOLD, capped rows 0 hold. Sub-rows
+  side_hull 60.94->60.71 / plan_hull 88.02->87.71 (the joint-filler /
+  roofed-daylight columns, ±0.3 = the documented capped-row wobble
+  class; component-level all hold-or-improve).
+- NO RUNG TO 90 EXISTS on this oracle (confirmed live, mission check):
+  whole/turret/stations are capped ~0 BY CERTIFICATE (melted tub, no
+  turret in the print) — geoMin stays 0 until a real oracle replaces
+  the print (orchestrator/oracle-sourcing lane, outside this file).
+- track-clip --exact 0/0 band 0/0 shoe; standard-check clip ✓ contig 0
+  ✓ mg2+3d ✓; npm test 166 + track-geometry PASS.
+- Hash: 24bd57cc -> afb3cc3c x2 deterministic (62 meshes / 87227 verts,
+  +864 — moves by design; not frozen). Graduates byte-held at close:
+  leo2a5 e215a738 / leo2a6 09912270 / kf51 9ac547ac / leo1a5 1c79188;
+  family leo2a4 12db10a0 / leo2_revolution db70c929 (diff scoped to one
+  +30-line hunk inside buildLeo2Proto — no shared-helper edits).

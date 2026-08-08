@@ -4989,6 +4989,36 @@ function buildLeo2Proto(P) {
     P.add('hullDetail', box(0.07, 0.06, 0.20), s * 1.53, 1.60, -3.72);
     P.add('hullDetail', box(0.30, 0.035, 0.05), s * 1.53, 1.585, -3.795);
   }
+  // §5.35 TOP-CORRIDOR CLOSURE (owner §5.33 "see-through sides"; sweep
+  // islands 2498+2494px @ y0-top): the 6.8 cm hull-to-skirt air corridor
+  // (fender outer 1.737 -> skirt inner 1.805) read top-down sky the whole
+  // rear-skirt run and edge-on sky from the front. Mechanism: SPONSON
+  // UNDERSIDE / skirt-hanger RAIL — the real vehicle's sponson side runs
+  // near-flush with the skirt plane and the skirts hang FROM it (the print
+  // plan reads SOLID full width ±1.85). Every face rides INSIDE certified
+  // lines (skirt 1.85 §D anchor, fender 1.675 top, glacis side line) —
+  // §5.16 family silhouette untouched; proto-local, no leoHullV3 edits.
+  // Band annulus: rail inner 1.7075 keeps 2.0 cm off the band outer face
+  // 1.6875 (§B4 corridor-annulus <=3.5 cm = closed read, shoes 1.678 clear).
+  for (const s of [-1, 1]) {
+    // main rail: laps the fender underside (bottoms 1.595..1.61) and the
+    // skirt top band (1.32..1.36) — §B2 no-air: skirt->rail->fender->body.
+    // Bottom AT the 1.32 sponson-floor line: the skirt-uncovered columns
+    // (rear cap -3.60..-3.655, segRun joints) stay inside the body line
+    P.add('hull', box(0.1075, 0.30, 6.575), s * 1.76125, 1.47, -0.3675);
+    // front run past the fender end: ONE raked top falling WITH the glacis
+    // side line (1.491@2.92 / 1.381@3.64 — stays 1.4-3.4 cm under it, §B1
+    // silhouette-neutral); bottom 1.24 laps the mudguard post top (1.26)
+    P.add('hull', slab(
+      [s * 1.7075, 1.24, 2.92], [s * 1.815, 1.24, 2.92], [s * 1.815, 1.24, 3.64], [s * 1.7075, 1.24, 3.64],
+      [s * 1.7075, 1.47, 2.92], [s * 1.815, 1.47, 2.92], [s * 1.815, 1.36, 3.64], [s * 1.7075, 1.36, 3.64]));
+    // skirt-line joint filler: the 5 cm gap between the front/rear segRun
+    // courses (z 1.55..1.60) read a ground shaft from above — the PT skirt
+    // line is continuous; same course section, outer face AT the 1.85 anchor
+    P.add('hull', box(0.045, 0.90, 0.06), s * 1.8275, 0.91, 1.575);
+    // hinge seam over the skirt top edge (§B3 skirt-hanger tell)
+    P.add('hullDark', box(0.012, 0.03, 6.50), s * 1.8165, 1.38, -0.3675);
+  }
   // §B8 BOW shade overlay (a4 lineage — same beak underside plane)
   {
     const bowShade = P.mats.shadow.clone();

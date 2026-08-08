@@ -1505,3 +1505,13 @@ fv510 redesign, m1a1ha/tejas/tusk batch-15/16 tejas warp — receipt
 heightPct 34.8->1.6); 65 timestamp-only churns reverted unstaged.
 Extract CLI note: vertex-extract.mjs <id> arg does NOT filter — it
 sweeps all 75 registered ids every run.
+
+## 5.35a PROTO CORRIDOR CLOSURE LANDED (2026-08-08, §5.35 item 5):
+sponson-underside/skirt-hanger rail closes the 6.8cm full-length top
+corridors both sides — y0-top islands 4992px -> 0, oblique slots
+cleared, §B4 2cm annulus kept, §5.16 family silhouette untouched
+(no shared-helper edits; leo2a4/revolution/graduates byte-held).
+Gate x2 bit-identical 0 | hull 45.8->46.8, rest exact — NO RUNG TO 90
+on this oracle (melted turretless tub caps whole/turret/stations ~0
+BY CERTIFICATE; oracle-sourcing dependency noted in packet). New hash
+afb3cc3c (not frozen). Landed f40ea00-successor commit.
