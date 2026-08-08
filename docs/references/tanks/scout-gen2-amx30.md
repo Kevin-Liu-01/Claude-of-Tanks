@@ -92,3 +92,20 @@ SELF-SHOTS: shots/france-round/amx30-before/ (ahab GLBs — the backwards
 hull on record, 15 views x2 variants) vs amx30-after/ (procedural fix,
 15 views x2 variants); front/side pairs prove glacis-under-gun.
 NEXT: independent photo-parity critic (§B8 bar) + §E re-bake lane.
+
+## §E RE-BAKE EXECUTED (2026-08-08, orchestrator lane — §5.14 escalation)
+Manifest fix applied (tools/build_gen2_tanks.py: both hull entries
+RZ(-90) -> RZ(90)); amx30b_ahab.glb + amx30b2_ahab.glb re-baked
+(FORCE=1, blender 4.x; new md5 e28d68d5 / 4d1fc81d; .baks refreshed to
+the fixed pristine bytes — batch-22 stays disabled/obsolete: the source
+is cured). Vertex receipts regenerated: orientation
+{glacisSign:+1, gunSign:+1, agree:true} BOTH variants (was agree:false
+— the owner's backwards hull). Evidence renders shots/gen2-bake/
+amx30*_{side,front,top}.png — gun over the descending glacis, engine
+deck rear. Re-registered as measurement references in the three
+harness maps (turretNode ^Turret$, autoPivot, paintUntextured; the
+prior no-oracle FALSE-0 ledger rows become measurable). Honest
+baseline x2 pending a calm-load window (agents saturated Chrome at
+bake time; a starved run 1 was discarded, never recorded).
+Bake-wrapper note: build_gen2_tanks.sh line 51 `"${extra[@]}"` trips
+bash-3.2 set -u when RENDER is unset — run with RENDER=1 or patch.

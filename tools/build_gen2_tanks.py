@@ -121,15 +121,18 @@ MANIFEST = {
     },
     # Captain_Ahab_62 AMX-30B: hull authored X=length (front +X) / Z=up;
     # turret authored gun -X with the ring plug -Z. Parts not co-located.
+    # RE-BAKE 2026-08-07 (§5.14 backwards-hull root cause): hull was RZ(-90)
+    # vs turret RZ(90) — an INTERNAL 180 no scene yaw can fix. Both now +90.
     "amx30": {
-        "hull": [("amx30/amx30_hull_noskirt.stl", RZ(-90))],
+        "hull": [("amx30/amx30_hull_noskirt.stl", RZ(90))],
         "turret": [("amx30/amx30_turret_ir.stl", RZ(90))],
         "seat": {"frontFrac": 0.44, "sink": 7.5},
         "guessGun": True, "budget": 30000,
     },
     # AMX-30B2 spec variant: same turret on the side-skirt hull bake.
+    # RE-BAKE 2026-08-07: same hull RZ(-90) -> RZ(90) fix as amx30 above.
     "amx30b2": {
-        "hull": [("amx30/amx30_hull_skirt.stl", RZ(-90))],
+        "hull": [("amx30/amx30_hull_skirt.stl", RZ(90))],
         "turret": [("amx30/amx30_turret_ir.stl", RZ(90))],
         "seat": {"frontFrac": 0.44, "sink": 7.5},
         "guessGun": True, "budget": 30000,

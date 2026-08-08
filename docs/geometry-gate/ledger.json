@@ -178,12 +178,12 @@
    "geoMin": 0,
    "gatePassed": false,
    "components": {
-    "hullCurves": 0,
+    "hullCurves": 31,
     "wholeCurves": 0,
     "turretCurves": 0,
     "stations": 0,
-    "dims": 0,
-    "floaters": 100
+    "dims": 22.7,
+    "floaters": 0
    }
   },
   {
@@ -191,12 +191,12 @@
    "geoMin": 0,
    "gatePassed": false,
    "components": {
-    "hullCurves": 0,
+    "hullCurves": 29.9,
     "wholeCurves": 0,
     "turretCurves": 0,
     "stations": 0,
-    "dims": 0,
-    "floaters": 100
+    "dims": 44.6,
+    "floaters": 0
    }
   },
   {

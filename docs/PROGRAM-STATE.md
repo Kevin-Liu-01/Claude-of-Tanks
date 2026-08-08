@@ -1484,3 +1484,24 @@ would file it WW2; q_heavy/recon_tank are fictional customs with no
 era home. "Sources have ALL actual tank models" read as the end-state
 description (remaining prints stay listed); if it means onboarding
 MORE playable prints, that's a new order.
+
+## 5.36 AMX30 RE-BAKE + RE-ONBOARD EXECUTED (2026-08-08, §5.14 §E
+escalation): manifest RZ fix (build_gen2_tanks.py both hull entries
+RZ(-90)->RZ(90)), amx30b_ahab/amx30b2_ahab re-baked (md5 e28d68d5/
+4d1fc81d, .baks refreshed — batch-22 stays disabled: source cured),
+vertex receipts agree:true BOTH (was the owner's backwards hull),
+renders shots/gen2-bake/. Re-registered in the three harness maps —
+the no-oracle FALSE-0 rows become MEASURABLE. Honest baseline x2
+bit-identical: amx30 0 (hull 31, dims 22.7, floaters 0) / amx30b2 0
+(hull 29.9, dims 44.6, floaters 0) — HONEST photo-build-vs-print
+reads, not artifacts: proc measures heightM 2.46 vs pub 2.29 (+7.2%),
+hullLen 6.37 vs 6.59 (-3.3%), 1 floater fail, stations topPct to 22%.
+LADDER BRIEF SEEDED (misc.js lane, queue behind type90/leclerc/
+ariete): fix the floater, drop roof to pub height, stretch hull to
+6.59, then turret/whole curves vs the now-valid oracle. ALSO: 10
+stale-since-08-06 vertex receipts refreshed in this commit (amx30 x2,
+m1a2_sepv2->tejas per §5.34, type90 batch-49, ch2/ch3 batches 47/48,
+fv510 redesign, m1a1ha/tejas/tusk batch-15/16 tejas warp — receipt
+heightPct 34.8->1.6); 65 timestamp-only churns reverted unstaged.
+Extract CLI note: vertex-extract.mjs <id> arg does NOT filter — it
+sweeps all 75 registered ids every run.
