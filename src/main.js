@@ -3880,6 +3880,21 @@ async function compileHiddenVariantsChunked() {
   }
 }
 function* compileHiddenVariantsSteps() {
+  // MOBILE-QA r5: renderer.compile does NOT traverse visible:false subtrees
+  // (three's projectObject early-out — the old comment claiming otherwise
+  // was wrong), so non-active LOD levels and node-hidden addons never
+  // compiled here and linked mid-battle on their first distance flip (the
+  // last per-fight >100 ms task; owner-binding evidence in MOBILE-QA.md
+  // r4/r5: LOD>Mesh owners on GLB tanks + kit decor). Force-visible window
+  // around each compile, then restore.
+  const _cv = [];
+  const compileAll = (root) => {
+    _cv.length = 0;
+    root.traverse((o) => { if (o.visible === false) { _cv.push(o); o.visible = true; } });
+    try { renderer.compile(root, camera, scene); } finally {
+      for (const o of _cv) o.visible = false;
+    }
+  };
   for (const e of game.tanks) {
     if (!e.visual || !e.visual.root) continue;
     try {
@@ -3888,10 +3903,10 @@ function* compileHiddenVariantsSteps() {
         // popped-state addon keeps); a {} dance warmed a different clone
         // family and the pop set still linked on the first rack kill.
         e.visual.setDestroyed({ pop: true, ageS: 0 });
-        renderer.compile(e.visual.root, camera, scene); // destroyed-state clones
+        compileAll(e.visual.root); // destroyed-state clones
         e.visual.resetDestroyed();
       }
-      renderer.compile(e.visual.root, camera, scene);   // live-state materials
+      compileAll(e.visual.root);   // live-state materials
     } catch (_) { /* warm only */ }
     yield; // one tank's variant compiles per slice
   }

@@ -438,7 +438,11 @@ function prewarmBurnStaged(stagedScene, ctx) {
   if (!ctx || !ctx.burnU) return;
   try {
     stagedScene.traverse((o) => {
-      if (!o.isMesh || !o.visible) return;
+      // MOBILE-QA r5: hook INVISIBLE meshes too — non-active LOD levels are
+      // visible:false at stage time, but their materials render live after a
+      // distance flip; an unhooked (or never-compiled) variant linked
+      // mid-fight (~150-220 ms, owner-binding evidence in docs/MOBILE-QA.md).
+      if (!o.isMesh) return;
       const mm = Array.isArray(o.material) ? o.material : [o.material];
       if (!mm[0] || mm[0].colorWrite === false) return;
       for (const sm of mm) applyBurnHook(sm, ctx.burnU);
@@ -455,11 +459,27 @@ function precompileStaged(objectOrScene) {
   try {
     const D = typeof window !== 'undefined' ? window.__DEBUG : null;
     if (!D || !D.renderer || !D.camera || !D.scene) return;
-    // perf-r2f: callers pass single MESHES on a time budget (see the
-    // compileMesh phase) — a whole-scene call is a multi-second task on a
-    // many-material hero. Compiling vs the live scene keeps light defines
-    // correct either way.
-    D.renderer.compile(objectOrScene, D.camera, D.scene);
+    // MOBILE-QA r5: renderer.compile SKIPS visible:false subtrees (three's
+    // projectObject early-out) — non-active LOD levels of the staged clone
+    // never compiled, and their variants linked mid-battle on the first
+    // distance flip (the last per-fight >100 ms task; docs/MOBILE-QA.md r5).
+    // Force-visible window for the compile, exactly like main.js's warm
+    // passes (perf-r2d), then restore.
+    const flipped = [];
+    objectOrScene.traverse
+      ? objectOrScene.traverse((o) => {
+        if (o.visible === false) { flipped.push(o); o.visible = true; }
+      })
+      : null;
+    try {
+      // perf-r2f: callers pass single MESHES on a time budget (see the
+      // compileMesh phase) — a whole-scene call is a multi-second task on a
+      // many-material hero. Compiling vs the live scene keeps light defines
+      // correct either way.
+      D.renderer.compile(objectOrScene, D.camera, D.scene);
+    } finally {
+      for (const o of flipped) o.visible = false;
+    }
   } catch (_) { /* warm-up only — never block the swap */ }
 }
 
