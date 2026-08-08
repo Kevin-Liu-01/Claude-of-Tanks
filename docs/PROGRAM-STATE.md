@@ -1942,3 +1942,18 @@ ruled "the first honest sweep" (the echo had been visually colliding
 with the shell). §3 re-frozen 54b35994. FALSE-0 annotation RETIRED
 for sepv2 — the row is honest geometry now. Critic tmp tools deleted
 at landing.
+
+## 5.57 TYPE90 LADDER RATIFIED + LANDED (2026-08-08): identity critic
+PASS 9.3 — THE OWNER'S DEFECT IS DEAD, quantified twice (turret-band
+fraction front 0.281 proc vs 0.268 ref, side 0.203 vs 0.194;
+cross-family garage math: type90 = 0.940 x proto silhouette height =
+the real-dims 2.34/2.49 ratio EXACTLY). §5.16 mantlet order executed
+in pixels (recessed well, stepped collar, bore low-in-face). Gate
+45.1 -> 68.9 landed (stations 93.6 PASS, dims 100; turret 68.9 =
+crown-band dims-datum cap + chin-band warp receipts). Hash 741352c4
+-> b9182ad4. Round law-bank: HALF-PHASE LERP law + STATION END-CAP
+physics + three-bin crown allocation (in the packet R7). UNLOCKS
+QUEUED (my lane): §D type90 heightM datum reconciliation (2.34 roof
+vs published-3.05-over-sights class) + §E chin-knee revision
+(pre-warp 25mm receipt). Dressing bank (next touch): basket lattice,
+cheek chamfers, dead-front slab.

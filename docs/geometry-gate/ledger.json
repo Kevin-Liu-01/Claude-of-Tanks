@@ -786,13 +786,13 @@
   },
   {
    "id": "type90",
-   "geoMin": 45.1,
+   "geoMin": 68.9,
    "gatePassed": false,
    "components": {
-    "hullCurves": 88.5,
-    "wholeCurves": 67.9,
-    "turretCurves": 52.1,
-    "stations": 45.1,
+    "hullCurves": 88.4,
+    "wholeCurves": 80,
+    "turretCurves": 68.9,
+    "stations": 93.6,
     "dims": 100,
     "floaters": 100
    }

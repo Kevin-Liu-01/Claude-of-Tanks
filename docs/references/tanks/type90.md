@@ -723,3 +723,123 @@ idempotent x2 md5 b2ece521, top 27.642 as planned. Gate x2: 3.0 ->
 dims 100. The print's tube/wall/roof bands now sit at the REAL
 proportions; the remaining gap is BUILD-side lifework — the route-a
 small-ladder round chases the re-aligned columns (spawned).
+
+## R7 SMALL-LADDER (2026-08-08, type90 ladder agent) — batch-49/49-v2 alignment round: 45.1 -> 68.9 x2 (hull 88.4 / whole 80.0 / turret 68.9 / stations 93.6 / dims 100 / floaters 100); STATIONS PASS; remaining rows cap-bound (dims-datum crown class, receipts below)
+
+GATE x2 IDENTICAL at the v2 oracle (fcfeb38a, d4c2fec): **68.9 | hull 88.4 /
+whole 80.0 / turret 68.9 / stations 93.6 / dims 100 / floaters 100**
+(baselines this round: 45.1 vs 49-v1, 68.6 pre-fine-tune vs 49-v2; the mid-
+round 49-v1 numbers — 59.1 with stations 93.3 — are RETIRED with the v1 warp
+itself: the owner ruled the v1 crown band "huge and tall" and 49-v2
+re-compressed it to roof 2.34 / ridge ~2.51 / sight+mast 2.53-2.60).
+
+THE ROUND'S DECODE (bank, fleet-relevant):
+1. HALF-PHASE LERP LAW (§D addendum): with side dAlong 1.034 = 8.503 grid
+   pitches, EVERY proc sample the gate compares is a ~50/50 lerp of two
+   adjacent proc bins (bins sit at printed-col ± pitch/2; the printed col
+   values ARE the proc bin boundaries). Consequences: (a) "mystery" have
+   values decode as bin-pair averages (the 2.46x tower reads, the 1.90
+   -2.52-col read = mast-bin/deck-bin lerp); (b) chasing a printed col
+   needs BOTH its bins lit at the target height; (c) the heightM p95
+   budget counts PROC BINS, not printed columns.
+2. STATION FRONT-CLIP END-CAP PHYSICS (§C/§D): station slabs render
+   front-on — only faces with a z-normal component (end caps, plan-slanted
+   walls, curved surfaces) paint mid-slab; x-const walls/sheets VANISH.
+   The print is sheet-built, so its slab tops read its FURNITURE lines
+   (shelves 2.24-2.26 at i4/i5), while box-built proc geometry paints its
+   roof caps/chamfer slants into whatever slab they END in. The round
+   moved every 2.34-painting cap/transition out of i4/i5 into the free
+   slabs (roof caps + crew-chamfer rear to i6 at z_w -0.58; bustle chamfer
+   x-const 1.18->1.10 over -1.80..-2.31 only), split the shelves at z_w
+   -0.90 with per-slab tops (2.2435/2.2295 = ref topH 2.26/2.246 less the
+   measured +0.016 pixel-center bias), and stepped the rear walls to
+   x-const +-1.18 at z_w -1.355 (the print's own plan rear-wall line —
+   also the plan_turret 0.303-err fix).
+3. THREE-BIN CROWN ALLOCATION (dims sovereign): at heightM 2.34 published,
+   grace 2.3634, at most THREE proc bins may carry above-grace tops. Spent
+   on the ref's own three tallest stable wants: [-2.398..-2.277] = stepped
+   rear antenna masts (head 2.584 in i2 / step 2.537 in i3, the i2/i3 slab
+   boundary -2.303 falling in the 8 mm gap between heads — ONE bin, TWO
+   station slabs); [0.277..0.398]+[0.398..0.519] = the commander sight
+   tower re-seated to the print's own crown window (x -0.055..0.21, z_w
+   0.30..0.44 straddling the i7/i8 boundary 0.395, lid 2.519 = ref topH
+   2.535 - bias). heightM p95 held 2.353/0.54% across every run. The old
+   R whip (h 0.63) measured TRUE tip 2.386 @ z -2.46 — a silent FOURTH
+   above-grace bin; shortened to h 0.50 (tip ~2.29), freeing the mast bin.
+4. SHEET-TRACK CLASS (wPct floor, now decoded): the print's zero-thickness
+   track strips vanish from slab renders, so its gap slabs read wheels/
+   skirt-line at 3.093 while its PLAN cols demand solid shoes at +-1.60 —
+   mutually exclusive for solid geometry. Shoe lanes narrowed to the
+   optimum the plan col tolerates (xc 1.286 / trackW 0.582 -> faces
+   0.972/1.600, inner col exact, outer col kept lit at one full pixel):
+   panel slabs 3.217->3.200 (wPct 0.9->0.4), gap slabs floor at ~3.4.
+   Front armored panels widened to 1.691 (i12 0.86->0.2).
+
+ALSO LANDED: glacis re-pitched to the ref's two-plane line (1.400@1.90 ->
+1.270@1.99 -> 1.175@2.52 — the real two-step glacis; four side cols
++0.03..+0.07 cleared), bow belly lip pulled 3.34->3.20 (12 plan center
+cols at 3.33 vs want 3.21 cleared), louvres flush (i1), MRS plate left
+edge -0.15->-0.115 (the re-phased -0.183 plan col read err 1.21 — r6's
+-0.17 class again), basket rear faces pulled >= -2.378 (the batch-49 grid
+moved the bin edge onto the old -2.40 faces — r5b's -2.413 class again),
+cargo/rail/mesh z-tucks, folded-mirror lowered (top 1.00; front col
+0.13->0.08 with the dAlong counterweight band held at 0.34 > cut), the
+r7a mantlet deepened to the print band y [1.47..2.02] with recoil drum
+r 0.15 z 1.83..2.42 + sight-cable conduit (top 2.016 = i11 2.032-rel
+EXACT) + evac saddle z 3.13..3.45 (i13), cheek-zone roof RAKED 2.34 ->
+2.14 @ z_w 1.70 with the brow at 2.16 (the print's falling forward roof
+line; i10 4.77->0.76).
+
+CERTIFIED RESIDUALS / CAPS (the type10 evidence pattern — every row's
+distance to 90 is enumerated, no invention left on the table):
+- turret_side 68.9 BINDS. (a) CROWN-BAND DIMS-DATUM CLASS, ~14 cols z_w
+  -0.58..1.25: v2 wants 2.435-2.526 vs my grace-capped 2.343-2.352 crowns
+  (err 0.046-0.091) + center cols -0.084..0.155 (0.086-0.091): the print
+  (and the real vehicle: hatch domes, periscope ridge ~2.51) carries a
+  20-column 2.44-2.53 band; the 2.34-published heightM p95 permits THREE
+  above-grace bins (all spent, receipts in law 3). Chasing any more costs
+  dims 100 -> <=44 (measured math: 4th bin at 2.53 = 8.1% heightM err).
+  UNLOCK = heightM datum reconciliation (§D DIMS-DATUM class, published
+  "3.05 over sights+MG" vs the 2.34 roof datum) — orchestrator lane.
+  (b) REAR FRAME BAND, cols -2.037/-2.157 (0.206/0.235): v2 frame line
+  2.549 across bins my budget cannot reach (same class). (c) MAST/DECK
+  LERP col -2.403 (0.384->~0.37): the ref's 2.595 mast column lerps my
+  mast bin against the deck bin — a 4th-bin chase, capped. (d) GUN-RUN
+  CHIN-BAND WARP-STRETCH, cols 2.108-2.594 (0.05-0.13): the batch-27/49
+  knee stretched the print's 25 mm pre-warp chin sliver [1.46..1.485)
+  into a 0.28 m under-tube band z 2.1..2.5 (pre-warp receipt in the §B7
+  round); chased to the REAL mantlet depth/drum/conduit envelope, the
+  fiction below 1.55 at z>2.1 left capped. UNLOCK = §E chin-knee revision.
+- side_whole 80.0: the same crown/frame/mast caps diluted by hull cols +
+  the 3.69 tube-only col (0.309 — the r5/r6 BAND-SOLVER family,
+  no-authored-mesh band, ORCHESTRATOR-LANE, unchanged), the -3.865
+  rear-anchor col (0.105, hullLengthM-pinned), the 3.569 wrap-annulus col
+  (0.114, §B4-pinned: the idler+0.025 retune that matches it puts the
+  wrap crown 5 mm under the pod band — clip risk, declined).
+- front_whole 82.4: whip cols +-1.10/1.14 (0.084-0.128 x4: v2 mast tails
+  2.51-2.59 vs my 2.29 whips — any straight rod from the basket foot
+  crosses 2 sub-mast bins above grace before reaching 2.5, measured;
+  capped) + R-dome shoulder cols 0.251..0.445 (0.072 x6: ref dome band
+  2.48 vs my flush 2.35 coamings — coaming spans 4 side bins, dims-dead)
+  + the mirror counterweight col (0.082, §A price re-certified).
+- plan_hull 88.4 (the hull-row bind): the muzzle ISLAND col -0.057 (1.279
+  = ~1.66 pts, ref hull-node split artifact at the muzzle tip,
+  unmatchable without a floater — certified since r4) + the +-0.9-1.65
+  front/rear dressing rebalance (~0.06 x12 cols) which is LOCKED by the
+  REGISTRATION-ANCHOR law (the fix moves the flap/pod length anchors,
+  re-phasing every side row half a column) — both stand. Ceiling 90.0
+  exactly via the island alone.
+- stations 93.6 PASS: kept-mean mT 0.18 / mW 0.46; i6 (2.524-want) and
+  i9 (2.509) ride the two trim slots by design — the exact-2-unfixable-
+  slabs allocation (law 3).
+§B BATTERY (final bytes, all at b9182ad4): track-clip --exact 0/0 band +
+0/0 shoe; turret-parent 0/0/0; winding-audit m1 rev0/mix0 (26px rearleft
+pre-existing sliver) + m2 clean (coincidencePx == staticPx); standard-
+check clip ✓ holes 0 ✓ census mg1+5d ✓; npm test green (166 equipment
+checks). GUARDED byte-held x2: type74 7ba404c5 / ariete 324c3f12 / t80u
+af5e3ad9 / leclerc 206c5fd1 / amx30 f992548a / amx30b2 f7eecb20. type90
+741352c4 -> b9182ad4 (50 meshes / 61279 verts). EVIDENCE:
+shots/type90-ladder49/{selfshots,yaw90,garage}/ (14-view set + yaw-90
+pair + 6 garage angles; the tmp-abramsx-garage --ref variant crashes on
+non-abrams ref layout — proc set only). DELIVERED-PENDING-CRITIC; NOT
+COMMITTED.
