@@ -247,3 +247,12 @@ shield station faces frontal fire by design). GATE: the capped rows
 absorbed the flip EXACTLY — 0 | 14.9/0/42.3/39.2/100/100 unchanged,
 dims/floaters 100 held. Mode-2 425 px = the pre-existing deck-gear
 class, unchanged. Non-graduate: no freeze; hash in m1a1.md close table.
+
+## FLANK-PANEL PITCH BINDING (2026-08-08, owner order)
+Shared flank carriers now follow the shell tumblehome; TUSK's ARAT, slat,
+LAGS, and armored-CROWS identities remain intact. Three gate reports at the
+edited bytes reproduce 1.8 | 14.9/1.8/42.2/23.5/100/100; the deterministic
+42.3->42.2 plan slice remains inside the certified chimera-capped class.
+Independent 14-view PASS, floor 9.0 / mean 9.13. Binding
+**b1786e4c -> bd371600** (58 meshes / 199244 verts). Full verdict:
+`docs/critique/shaded-parity-abrams-panelpitch-recert.md`.

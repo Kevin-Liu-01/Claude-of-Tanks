@@ -49,7 +49,7 @@ at load.
 - Env for EVERY node run: `export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh"`
 - npm test before every landing (166 equipment checks + track-geometry).
 
-## 3. GRADUATE REGISTRY (27 graduates, hash-frozen)
+## 3. GRADUATE REGISTRY (30 graduates, hash-frozen)
 Freeze = deterministic geometry hash via `node tools/tmp-hashgeo.mjs
 --ids=...` (camoSeed 4242 pinned build; FNV-1a over position buffers +
 world matrices, mesh-order independent). Graduate-change protocol: fix ->
@@ -62,9 +62,9 @@ re-freeze NEW hash, all in ONE commit.
 | m60a3 | 097c35a2 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | kv2 | 382b2310 | freeze-verify only |
 | leo2a6 | 09912270 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
-| m1a1 | 2f277528 | RE-FROZEN 2026-08-07 (CROWS-FORWARD wave §5.07: forward pose improved whole +4.1..+14.1; re-cert floor 9.1-9.2 x14 views, sheets shots/critic-sep-crowsfwd/) |
-| m1a1ha | aa7af504 | RE-FROZEN 2026-08-07 (CROWS-FORWARD wave §5.07: forward pose improved whole +4.1..+14.1; re-cert floor 9.1-9.2 x14 views, sheets shots/critic-sep-crowsfwd/) |
-| m1a2_tejas | f7510d88 | RE-FROZEN 2026-08-07 (CROWS-FORWARD wave §5.07: forward pose improved whole +4.1..+14.1; re-cert floor 9.1-9.2 x14 views, sheets shots/critic-sep-crowsfwd/) |
+| m1a1 | 4e28ff40 | RE-FROZEN 2026-08-08 (§5.79 flank-panel pitch; re-cert floor 9.1 / mean 9.19 x14) |
+| m1a1ha | 99962364 | RE-FROZEN 2026-08-08 (§5.79 flank-panel pitch; re-cert floor 9.1 / mean 9.19 x14) |
+| m1a2_tejas | 3afe65f0 | RE-FROZEN 2026-08-08 (§5.79 flank-panel pitch; re-cert floor 9.1 / mean 9.22 x14) |
 | merkava3b | REMOVED BY OWNER 2026-08-06 (roster prune; was 8bb8d984, packet historical) |
 | merkava3c | aa74be6a | RE-FROZEN 2026-08-07 (§B2 under-roof closure wave §5.11: solid casting walls, gate rows EXACT, re-cert floor 9.0 on every changed view; sheets shots/critic-merkava-closure/) |
 | kf51 | 9ac547ac | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
@@ -82,7 +82,7 @@ re-freeze NEW hash, all in ONE commit.
 | leo2_revolution | db70c929 | RE-FROZEN 2026-08-07 (photo-class record): §5.09 closure -85% + §5.17a turret-completion (real collar/chin/under-cheek/under-skirt walls — the floating shell is DEAD, owner diagnosis answered); re-cert 9.4/9.2/9.3 on changed families; §B7 gate caps stand (hull 94.3 trustworthy band) |
 | m46_patton | 108806c8 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | centurion3 | bad74e60 | RE-FROZEN 2026-08-08 (no-air graduate-change: crown-ridge pedestal + discharger webs, front-low 1810px->14, re-cert floor 9.0 x17 changed views, gate 91.1 exact; prior 50273080 bore-resit lineage) |
-| m1a2_sepv2 | 54b35994 | RE-FROZEN 2026-08-08 (§5.34 chain complete: works-echo DELETED -6588 verts, gate FALSE-0 -> 64.6 honest x2, re-cert 9.2-9.4 x10 changed views w/ byte-authenticated evidence; tejas-oracle lineage e60878a9/7ef1c5ec) |
+| m1a2_sepv2 | c5bfbb70 | RE-FROZEN 2026-08-08 (§5.79 flank-panel pitch; gate row 64.6 held x2, re-cert floor 9.1 / mean 9.18 x14) |
 | m2a2_bradley | 90a5568c | GRADUATED 2026-08-08 (28th; dual gate: geometry 90.9 x2 every component >=90 landed 81bdad1 + visual floor 9.0 / mean 9.16 x14 views at freeze-verified bytes; oracle e699c868; dress-tier defect bank in the verdict: bow T-hooks, taillight fittings, TOW rear ports, lug stacks, ringed hubs) |
 | m45_patton | 53caa687 | GRADUATED 2026-08-08 (29th; gate 90.7 x5 total + sitting-2 visual floor 9.0 mean 9.13 x14; sitting-1 orders executed: loft.smooth byte-reproduced, ring cupola adjudicated ring-class at station with the measured Ø0.57/x-0.65 deviation compliant; ring-prominence silhouette-tax residual certified) |
 | leclerc | 683be340 | GRADUATED 2026-08-08 (30th; gate 90.3 x2 every component >=90 + visual floor 9.0 mean 9.17 x14 at freeze-verified bytes; the §5.14 §K-exemplar turret standard held through the ladder — no gate-chasing artifacts; commander-well doc trued z_w 0.32..0.66) |
@@ -2344,3 +2344,19 @@ coupled landing: authoritative hashes are proto **a9aba192** and a4
 the stale d900c8e2/8fb73bdd candidates are retired in both packets.
 Frozen guards remain exact: leo2a5 e215a738 / leo2a6 09912270 / kf51
 9ac547ac / revolution db70c929. No geometry changed in the correction.
+
+## 5.79 ABRAMS FLANK-PANEL PITCH RE-CERTIFIED + RE-FROZEN
+(2026-08-08, owner screenshot order): the shared tejas-family turret flank
+bins/lips, CIP and radar faces, seam rails, rear pouch, and drum mounts now
+follow the certified 16.9-degree tumblehome instead of standing vertically
+off the angled shell. Two full seven-id gate runs were byte-identical; TUSK
+reproduced a third time. dims/floaters 100 hold on every gate-able mark.
+Independent fresh 14-view sittings PASS all six changed variants: graduate
+floors/means m1a1 9.1/9.19, m1a1ha 9.1/9.19, tejas 9.1/9.22, sepv2
+9.1/9.18; TUSK 9.0/9.13; false-0 SEPv3 identity 9.1/9.20. RE-FROZEN:
+m1a1 **4e28ff40**, m1a1ha **99962364**, tejas **3afe65f0**, sepv2
+**c5bfbb70**. Bindings: TUSK **bd371600**, SEPv3 **329ec520**. Retired
+legacy m1a2 and abramsx remained hash- and pixel-exact (`636a4860` /
+`2c6eb344`). Full verdict:
+docs/critique/shaded-parity-abrams-panelpitch-recert.md. The §5.74
+DISTINCTIVENESS round is now unblocked and begins from these pitched carriers.

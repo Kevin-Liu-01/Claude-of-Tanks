@@ -254,3 +254,10 @@ re-cert critic's verdict.
 ### CROWS AIM-FRAME RE-CERT RATIFIED (2026-08-06): RE-FREEZE f1aaf80
 CONFIRMED (floor 9.1-9.2; owner both-halves YES — docs/critique/
 shaded-parity-abrams-crows-recert.md).
+
+## FLANK-PANEL PITCH + RE-CERT (2026-08-08, owner order)
+Inherits the shared pitched/flushed flank carriers and connected fittings.
+Gate x2 byte-identical: 83.1 | 91.7/83.1/85.6/92.5/100/100. Independent
+14-view re-cert PASS, floor 9.1 / mean 9.19. RE-FREEZE
+**aa7af504 -> 99962364** (47 meshes / 157232 verts). Full verdict:
+`docs/critique/shaded-parity-abrams-panelpitch-recert.md`.

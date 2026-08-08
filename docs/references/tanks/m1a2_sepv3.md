@@ -214,3 +214,11 @@ yaw90-m1a2_sepv3/ (Trophy/IFF/radar/ADL rotate; ARAT/APU/hull kit stay)
   a dedicated LP-face texture pass is a future nicety.
 - The prior round's "sponson hump" residual note is RETIRED (the
   housing moved to the corner station with real clearance).
+
+## FLANK-PANEL PITCH BINDING (2026-08-08, owner order)
+The shared bins/lips and Trophy radar faces now lie flush on the turret
+tumblehome. FALSE-0 remains law: no oracle registration or gate row was
+invented. Fresh proc-only 14-view identity sitting PASS, floor 9.1 / mean
+9.20; Trophy/ARAT/APU/ADL and roof-kit reads survive. Binding
+**2c9023d0 -> 329ec520** (47 meshes / 169064 verts). Full verdict:
+`docs/critique/shaded-parity-abrams-panelpitch-recert.md`.

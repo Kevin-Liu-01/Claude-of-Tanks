@@ -69,6 +69,33 @@ function sideSlab(P, bucket, side, b0, b1, b2, b3, t0, t1, t2, t3) {
     : slab(M(b1), M(b0), M(b3), M(b2), M(t1), M(t0), M(t3), M(t2)));
 }
 
+// PANEL-PITCH (owner order 2026-08-08: "the left and right side panels on
+// the abrams turrets ... theyre not flush with the turret, which is at an
+// angle, theyre pointing straight up which is wrong"): the turret flank
+// stowage walls/bins/plates lie FLUSH on the shell's tumblehome plane
+// instead of standing vertical off it. The cant comes from the certified
+// loft itself (abramsShell main body: ±tw at yBot -> ±(tw-inset) at
+// roofMain; tejas 0.30/0.985 = 16.9° from vertical) — the tejas print
+// corroborates the LOOK: its flank band is one fused mass filling
+// wall->face with zero air behind it (§5.18 NO-AIR).
+// Each panel anchors its OUTER face at its own certified bottom plan line
+// (xFaceA at yA, turret-local, +x magnitudes; side mirrors) and shears
+// inward with the wall. y-spans and z-runs are byte-preserved, so side
+// rows and the bottom-edge plan columns hold by construction. depth 'wall'
+// buries the inner face 2 cm into the loft (bin fills to the wall); a
+// number keeps a parallel inner face at that thickness.
+const wallSlope = (t) => (t.inset ?? 0.14) / (t.roofMain - t.yBot);
+function flankSlab(P, bucket, t, side, xFaceA, yA, y0, y1, z0, z1, depth) {
+  const S = wallSlope(t);
+  const face = (y) => xFaceA - S * (y - yA);
+  const inner = (y) => depth === 'wall'
+    ? (t.tw - S * (y - t.yBot)) - 0.02
+    : face(y) - depth;
+  sideSlab(P, bucket, side,
+    [inner(y0), y0, z1], [face(y0), y0, z1], [face(y0), y0, z0], [inner(y0), y0, z0],
+    [inner(y1), y1, z1], [face(y1), y1, z1], [face(y1), y1, z0], [inner(y1), y1, z0]);
+}
+
 const deckAt = (g, z) => lineAt(g.deck, z);
 
 // §B3.1 MUZZLE BORE hole disc (kf51 r6 #3a boreDark class, banked in
@@ -1496,25 +1523,35 @@ function tejasRoofKit(P, t, station = 'crows') {
   // (r5: every wall-band bay seam below rides the mid-shade channel — the
   // fleet law's "turret panel bars"; the ref wall band is one fused mass
   // with soft AO joints, and these read as bold ink verticals at 2x)
-  P.add('turret', box(0.115, 0.42, 0.94), -1.6375, 0.41, -2.59);
-  P.add('turretTrack', box(0.117, 0.36, 0.02), -1.6375, 0.39, -2.10);
-  P.add('turret', box(0.115, 0.52, 1.05), -1.6375, 0.36, -1.555);
-  P.add('turretTrack', box(0.117, 0.44, 0.02), -1.6375, 0.34, -1.01);
-  // (rear bay bottom at the ref's 1.77 line)
-  for (const [z0, z1] of [[-0.99, 0.04], [0.08, 1.09]]) {
-    P.add('turret', box(0.115, 0.59, z1 - z0), -1.6375, 0.325, (z0 + z1) / 2);
-    P.add('turretTrack', box(0.117, 0.50, 0.02), -1.6375, 0.31, z1 + 0.02);
+  // PANEL-PITCH (owner order 2026-08-08): the four bays + their seam strips
+  // lie on the tumblehome plane (flankSlab law above) — each bay anchors the
+  // certified -1.695 plan line at ITS OWN bottom (per-bay anchors: the rear
+  // bay bottoms at the ref's 1.77 line, the forward bays at 1.60/1.67), so
+  // every plan column's max is byte-preserved while the tops tuck into the
+  // wall. Bays fill to the loft ('wall' depth — the print's fused-mass read).
+  for (const [y0, z0, z1, sy0, sy1, sz] of [
+    [0.20, -3.06, -2.12, 0.21, 0.57, -2.10],
+    [0.10, -2.08, -1.03, 0.12, 0.56, -1.01],
+    [0.03, -0.99, 0.04, 0.06, 0.56, 0.06],
+    [0.03, 0.08, 1.09, 0.06, 0.56, 1.11],
+  ]) {
+    flankSlab(P, 'turret', t, -1, 1.695, y0, y0, 0.62, z0, z1, 'wall');
+    flankSlab(P, 'turretTrack', t, -1, 1.696, y0, sy0, sy1, sz - 0.01, sz + 0.01, 0.06);
   }
   // Rear flank stowage nub: ref plan at x -1.686 runs to z -2.815 world with
   // its side bottom ABOVE the shell line (1.78+) — a bustle-height tail bit.
-  P.add('turret', box(0.10, 0.30, 0.11), -1.645, 0.36, -3.11);
+  // PANEL-PITCH: pitched on its own bottom anchor (plan line preserved).
+  flankSlab(P, 'turret', t, -1, 1.695, 0.21, 0.21, 0.51, -3.165, -3.055, 0.10);
   // Rear-corner stowage pouches (visual r2 item 10): from dead rear the
   // stacked END FACES at both bustle corners (wall-band bay + ledge + tarp
   // sliver / roof-cap edge) read as invented square posts with caps. Soft
   // strapped lumps break the vertical line; tops under the local ledge /
   // rack silhouette lines, faces inside the wall-band / plan edges.
-  P.add('turretCloth', box(0.11, 0.30, 0.34), -1.625, 0.42, -2.92);
-  P.add('turretTrack', box(0.115, 0.024, 0.35), -1.625, 0.44, -2.92);
+  // PANEL-PITCH: the LEFT pouch rides the pitched rear bay (15 mm shy of its
+  // face plane, as before) + its cinch strap follows at the pitched face.
+  // The RIGHT pouch leans on the rear loft (no band there) — untouched.
+  flankSlab(P, 'turretCloth', t, -1, 1.6587, 0.27, 0.27, 0.57, -3.09, -2.75, 0.11);
+  P.add('turretTrack', box(0.115, 0.024, 0.35), -1.5519, 0.44, -2.92);
   P.add('turretCloth', box(0.10, 0.26, 0.35), 1.435, 0.44, -2.97);
   P.add('turretTrack', box(0.105, 0.022, 0.36), 1.435, 0.46, -2.97);
   // Right rack-side stowage bar: ref turret plan reaches z -3.09 world at
@@ -1524,8 +1561,15 @@ function tejasRoofKit(P, t, station = 'crows') {
   P.add('turretDetail', box(0.10, 0.05, 0.15), 1.15, 0.596, -3.365);
   // Strap rail seam — trimmed to end at the wall band's rear bay (-2.60):
   // the old -3.0 tail joined the corner end-face stack the critic read as
-  // invented L-bracket hardware (item 10).
-  P.add('turretTrack', box(0.02, 0.02, 3.59), -1.688, 0.55, -0.805);
+  // invented L-bracket hardware (item 10). PANEL-PITCH: the rail rides each
+  // bay's pitched plane (+3 mm proud at y 0.55, the certified -1.698 class),
+  // split at the bay seams — the 4 cm joints read as the bin joins.
+  for (const [yA, z0, z1] of [
+    [0.20, -2.60, -2.12], [0.10, -2.08, -1.03], [0.03, -0.99, 0.04], [0.03, 0.08, 0.99],
+  ]) {
+    const fx = 1.698 - wallSlope(t) * (0.55 - yA);
+    P.add('turretTrack', box(0.02, 0.02, z1 - z0), -(fx - 0.01), 0.55, (z0 + z1) / 2);
+  }
   // Tarp roll shifted outboard/up to the ref's 2.38 shoulder at x -1.5..-1.63
   // (at -1.52/2.35 it painted the -1.458 column the ref keeps at 2.286 and
   // ran a pixel short of the -1.499/-1.54 columns' 2.379-2.389).
@@ -1544,10 +1588,13 @@ function tejasRoofKit(P, t, station = 'crows') {
   P.add('turret', box(0.20, 0.05, 2.0), 1.39, 0.70, -1.85);
   // RIGHT wall lips: the oracle's right flank is NARROWER (wall face ~1.56)
   // with a short stowage lip at 1.578/1.612 spanning z -0.87..0.85/0.63.
-  P.add('turret', box(0.033, 0.59, 1.61), 1.5615, 0.325, -0.065);
-  P.add('turret', box(0.034, 0.55, 1.50), 1.595, 0.305, -0.12);
-  P.add('turretTrack', box(0.035, 0.46, 0.02), 1.595, 0.30, 0.30);
-  P.add('turretTrack', box(0.035, 0.46, 0.02), 1.595, 0.30, -0.55);
+  // PANEL-PITCH: both lips + their seam strips lie on the tumblehome plane,
+  // certified 1.578/1.612 plan lines anchored at the shared 0.03 bottom;
+  // the inner lip fills to the loft, the outer nests on it as before.
+  flankSlab(P, 'turret', t, 1, 1.578, 0.03, 0.03, 0.62, -0.87, 0.74, 'wall');
+  flankSlab(P, 'turret', t, 1, 1.612, 0.03, 0.03, 0.58, -0.87, 0.63, 0.034);
+  flankSlab(P, 'turretTrack', t, 1, 1.6125, 0.03, 0.07, 0.53, 0.29, 0.31, 0.05);
+  flankSlab(P, 'turretTrack', t, 1, 1.6125, 0.03, 0.07, 0.53, -0.56, -0.54, 0.05);
   // Width-plane stowage horns (plan z 0.40..0.62 world). The ref's LEFT horn
   // is TWO thin plates with a notch between: 2.234 top at x -1.73..-1.76 and
   // 2.19 at the committed -1.828 width plane, with the -1.79 bin dropping to
@@ -1564,8 +1611,13 @@ function tejasRoofKit(P, t, station = 'crows') {
   P.add('turretTrack', box(0.054, 0.05, 0.14), 1.641, 0.56, 0.125);
   // Flank stowage risers: ref front tops 2.37-2.39 at |x| 1.55..1.66 (both
   // sides) — above the 2.19 wall-band line, hidden in SIDE view under the
-  // station base's 2.46 span (z world 0.40..0.56).
+  // station base's 2.46 span (z world 0.40..0.56). Ref-true STANDING posts
+  // (kept vertical, the horn class). PANEL-PITCH: the left one sat on the
+  // old vertical band top — a dark mount bracket re-seats it on the pitched
+  // bay (buries into the bay solid + the riser bottom; the horn tie-arm
+  // precedent), so no floater is born.
   P.add('turret', box(0.06, 0.20, 0.16), -1.63, 0.72, 0.13);
+  P.add('turretDark', box(0.23, 0.05, 0.14), -1.555, 0.615, 0.13);
   P.add('turret', box(0.13, 0.20, 0.16), 1.595, 0.71, 0.13);
   P.add('turret', box(0.06, 0.60, 0.16), 1.645, 0.33, 0.13);
   // LEFT cheek RAKED BULGE (§B1.1 owner directive 2026-08-06: "left cheek of
@@ -1648,8 +1700,14 @@ function tejasRoofKit(P, t, station = 'crows') {
   P.add('turretDark', cylX(0.135, 0.06, 14), -1.615, 0.53, -2.85);
   P.add('turretDetail', cylX(0.055, 0.07, 10), -1.608, 0.53, -2.85);
   P.add('turretDark', torus(0.20, 0.014, 18), -1.6315, 0.53, -2.85, 0, 0, Math.PI / 2);
-  P.add('turretDark', box(0.05, 0.30, 0.06), -1.618, 0.36, -2.72);
-  P.add('turretDark', box(0.05, 0.30, 0.06), -1.618, 0.36, -2.98);
+  // PANEL-PITCH: the drum kept its buried-half seat in the old vertical bay
+  // — the pitched bay pulls away from it, so the two dark posts become REAL
+  // standoff mounts: widened inboard (bury into the pitched bay solid) and
+  // moved to the drum's rim (z overlap with the body) — the drum now hangs
+  // on its mounts off the leaning wall. Drum body/flange/front column
+  // (certified 2.395 riser-line read) byte-identical.
+  P.add('turretDark', box(0.10, 0.30, 0.06), -1.603, 0.36, -2.78);
+  P.add('turretDark', box(0.10, 0.30, 0.06), -1.603, 0.36, -2.92);
 }
 
 // Suspension fabrication (visual r2 item 1, isu122s wheel-package recipe):
@@ -2642,10 +2700,13 @@ function buildTejasFamily(P, p) {
     // §H.4 CIP PANELS on both forward flank walls (theater identification
     // panels — the side-on garage tell; the m1a2-platform footprint class
     // re-seated on the tejas wall-band / lip faces, 12 mm on-face).
-    P.add('turretDark', box(0.012, 0.40, 0.50), -1.700, 0.33, 0.56);       // left wall fwd bay
-    P.add('turretDetail', box(0.012, 0.30, 0.42), -1.706, 0.34, 0.56);
-    P.add('turretDark', box(0.012, 0.40, 0.50), 1.617, 0.28, 0.30);        // right lip face
-    P.add('turretDetail', box(0.012, 0.30, 0.42), 1.623, 0.29, 0.30);
+    // PANEL-PITCH: the plates ride their pitched carriers (left = fwd bay
+    // plane +11/+17 mm proud, right = outer lip plane +11/+17) — same
+    // certified proud offsets, now lying on the wall like the bays.
+    flankSlab(P, 'turretDark', t, -1, 1.706, 0.03, 0.13, 0.53, 0.31, 0.81, 0.012);   // left wall fwd bay
+    flankSlab(P, 'turretDetail', t, -1, 1.712, 0.03, 0.19, 0.49, 0.35, 0.77, 0.012);
+    flankSlab(P, 'turretDark', t, 1, 1.623, 0.03, 0.08, 0.48, 0.05, 0.55, 0.012);    // right lip face
+    flankSlab(P, 'turretDetail', t, 1, 1.629, 0.03, 0.14, 0.44, 0.09, 0.51, 0.012);
     // UAAPU exhaust read (the §5.07 wiki tell): the LEFT band of the
     // turbine grille field carries the APU exhaust — pale frame posts +
     // round outlet ring + throat cut into the lattice + junction box with
@@ -2736,10 +2797,13 @@ function buildTejasFamily(P, p) {
       P.add('turretDetail', box(0.016, 0.20, 0.16), s * 1.064, 0.55, -3.28, 0, s * -0.30, 0);
       P.add('turretDark', box(0.024, 0.42, 0.035), s * 1.056, 0.50, -3.30); // panel post -> bottom side rail
     }
-    P.add('turretDark', box(0.016, 0.26, 0.22), -1.703, 0.30, 0.88, 0, 0, -0.06);  // radar fwd L
-    P.add('turretDetail', box(0.012, 0.22, 0.18), -1.710, 0.30, 0.88, 0, 0, -0.06);
-    P.add('turretDark', box(0.016, 0.26, 0.22), 1.620, 0.30, 0.52, 0, 0, 0.06);    // radar fwd R
-    P.add('turretDetail', box(0.012, 0.22, 0.18), 1.627, 0.30, 0.52, 0, 0, 0.06);
+    // PANEL-PITCH: the forward radar pair rides its pitched carriers (left
+    // = fwd bay plane, right = outer lip plane; +16/+21 mm certified proud
+    // offsets) — the wall cant supersedes the old -0.06/+0.06 hint rolls.
+    flankSlab(P, 'turretDark', t, -1, 1.711, 0.03, 0.17, 0.43, 0.77, 0.99, 0.016);   // radar fwd L
+    flankSlab(P, 'turretDetail', t, -1, 1.716, 0.03, 0.19, 0.41, 0.79, 0.97, 0.012);
+    flankSlab(P, 'turretDark', t, 1, 1.628, 0.03, 0.17, 0.43, 0.41, 0.63, 0.016);    // radar fwd R
+    flankSlab(P, 'turretDetail', t, 1, 1.633, 0.03, 0.19, 0.41, 0.43, 0.61, 0.012);
     // UAAPU — the auxiliary power unit housing at the LEFT REAR corner
     // deck (the real left-rear sponson station; outside the rack sweep,
     // r >= 3.89 at every corner). Housing + top louver inset + seams +

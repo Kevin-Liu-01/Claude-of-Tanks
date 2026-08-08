@@ -769,3 +769,10 @@ RE-VERIFICATION: HEAD moved 3d204b8 -> b0ea4f5 (docs-only landing,
 EXACT at b0ea4f5 (sepv2 54b35994; sepv3 + six guards frozen-identical),
 the round's numbers bind at the delivery tree. DELIVERED UNCOMMITTED
 for the orchestrator's re-cert critic + re-freeze (§10 graduate-change).
+
+## FLANK-PANEL PITCH + RE-CERT (2026-08-08, owner order)
+The SEPv2 kit rides the shared pitched carriers; CIP faces retain their proud
+offsets and stay connected. Gate x2 byte-identical: 64.6 |
+69.5/64.6/78.9/77.4/100/100. Independent 14-view re-cert PASS, floor 9.1 /
+mean 9.18. RE-FREEZE **54b35994 -> c5bfbb70** (50 meshes / 165356 verts).
+Full verdict: `docs/critique/shaded-parity-abrams-panelpitch-recert.md`.

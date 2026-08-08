@@ -258,6 +258,17 @@ const LOCAL_REFERENCE_OVERRIDES = {
       turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true,
       yawOffset:-Math.PI/2, paintUntextured:true, heroTex:true },
   },
+  // m1a2_tusk (§5.31b ERA-GROUP FLIP 2026-08-08): MODEL_SOURCE retired; the
+  // flip's own declaration keeps the tejas GLB as this id's measurement
+  // oracle "via the three override maps" (chimera oracle class) — mirrored
+  // here in the panel-pitch round: the flip landing had left the maps bare
+  // and the gate errored "no local GLB reference".
+  m1a2_tusk: {
+    source:'glb',
+    glb:{ path:'/models/tanks/m1a2_tejas.glb',
+      turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true,
+      yawOffset:-Math.PI/2, paintUntextured:true, heroTex:true },
+  },
   isu122s: {
     source:'glb',
     glb:{ path:'/models/tanks/community/recovered/isu122s.glb',

@@ -770,7 +770,7 @@
    ]
   },
   "plan": {
-   "score": 95.0051781623287,
+   "score": 95.08292975568264,
    "meanPct": 0.38,
    "p95Pct": 0.67,
    "coverPct": 0,
@@ -820,14 +820,6 @@
      "errM": 0.057
     },
     {
-     "at": -1.49,
-     "refTop": 3.71,
-     "refBot": -1.03,
-     "procTop": 3.66,
-     "procBot": -1.08,
-     "errM": 0.054
-    },
-    {
      "at": -0.6,
      "refTop": 4.06,
      "refBot": -1.4,
@@ -873,6 +865,14 @@
      "refBot": -0.98,
      "procTop": 3.7,
      "procBot": -1.03,
+     "errM": 0.039
+    },
+    {
+     "at": -0.71,
+     "refTop": 4.06,
+     "refBot": -1.38,
+     "procTop": 4.03,
+     "procBot": -1.42,
      "errM": 0.039
     }
    ]

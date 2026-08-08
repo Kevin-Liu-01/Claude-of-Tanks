@@ -260,3 +260,11 @@ m1a1.md — re-freeze on re-cert.
 ### CROWS AIM-FRAME RE-CERT RATIFIED (2026-08-06): RE-FREEZE 89c9f260
 CONFIRMED (floor 9.1-9.2; owner both-halves YES — docs/critique/
 shaded-parity-abrams-crows-recert.md).
+
+## FLANK-PANEL PITCH + RE-CERT (2026-08-08, owner order)
+The four-bin left band, right lips, CIP/radar faces, rails, pouch, and drum
+mounts now follow the certified shell tumblehome with no air behind them.
+Gate x2 byte-identical: 75.6 | 92/75.6/83.3/92.3/100/100. Independent
+14-view re-cert PASS, floor 9.1 / mean 9.22. RE-FREEZE
+**f7510d88 -> 3afe65f0** (48 meshes / 157880 verts). Full verdict:
+`docs/critique/shaded-parity-abrams-panelpitch-recert.md`.

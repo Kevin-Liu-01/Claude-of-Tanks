@@ -142,6 +142,11 @@ const CRITIC_REFERENCE_OVERRIDES = {
   m1a1ha: { source:'glb', glb:{ path:'/models/tanks/m1a2_tejas.glb',
     turretNode:'^Turret', gunNode:'^Gun', autoPivot:true, yawOffset:-Math.PI/2,
     paintUntextured:true } },
+  // m1a2_tusk (§5.31b flip): tejas GLB stays the oracle via this map —
+  // mirrored in the panel-pitch round (the flip left the maps bare).
+  m1a2_tusk: { source:'glb', glb:{ path:'/models/tanks/m1a2_tejas.glb',
+    turretNode:'^Turret', gunNode:'^Gun', autoPivot:true, yawOffset:-Math.PI/2,
+    paintUntextured:true } },
   isu152: { source:'glb', glb:{ path:'/models/tanks/community/recovered/isu152.glb',
     fixedMount:true, paintUntextured:true } },
   isu122s: { source:'glb', glb:{ path:'/models/tanks/community/recovered/isu122s.glb',
