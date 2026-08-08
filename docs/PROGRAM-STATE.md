@@ -2221,3 +2221,26 @@ axis-aligned boxes, the t90ms +0.35 turret-seat class (check
 cluster-vs-hull seat before per-column chases). Next trio rungs are
 print-side (§B7 caps + the k2-class §E menu); russia lane FREES ->
 t44+type59 builds spawn (the last §5.45 no-builder ids).
+
+## 5.73 OWNER RULINGS (2026-08-08, interactive session):
+1. HEIGHT-DATUM LAW RATIFIED FLEET-WIDE: heightM = the P95 ENVELOPE
+including mandatory roof kit (t14/type99a precedent made law).
+type99a 2.86 CONFIRMED. APPLICATIONS QUEUED: type90 datum round
+(misc lane, receipts-derived envelope value — unlocks the §5.57
+crown-band cap), m48 datum (rides its §E tube-level landing), k1a1
+K6-to-cupola + datum (queued behind the k2 ladder, modern3 lane).
+2. AW-SERIES PROVENANCE: KEEP as local-only measurement references —
+standing state confirmed, ask closed.
+3. LEOPARD RCWS: RESTORE on leopard2_proto + leo2a4 (owner overrides
+the historical default — §5.09 stands for ALL leopards). Round
+spawned: uncomment both calls, gate x2 hold-or-improve, re-cert
+critic follows (changes ratified reads).
+4. BURLAK 9.76 CONFIRMED + NEW ORDER: "update our previous t90s to
+adhere to these new measurements and centering for consistency" —
+the older t90 marks (t90a/t90m/t90sm/vladimir incl. GRADUATES) get
+the honest-variant measurement approach + the §5.72 cluster-seat
+centering law; graduate-change chains per frozen tank; QUEUED behind
+t44/type59 in the russia lane.
+DISMISSED-PENDING (owner: "wait for next instruction" — NO ACTION):
+m45 6.6->6.47 row, newc_tiger era filing, AFV-stats meaning, Sources
+cards view-only-vs-playable. All stay at current defaults.
