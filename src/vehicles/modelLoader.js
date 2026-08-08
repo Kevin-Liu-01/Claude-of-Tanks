@@ -564,10 +564,9 @@ function warmSwappedModel(ctx) {
       }
     });
     if (D.scene && D.camera) {
-      // renderer.compile skips visible:false nodes. Spotting hides the tank
-      // root and LOD hides inactive levels, so expose every descendant only
-      // for this synchronous compile window and restore before the idle job
-      // yields back to a render frame.
+      // Spotting hides the tank root and LOD hides inactive levels at commit.
+      // Keep the same explicit force-visible window as the loading/countdown
+      // warm, then restore it before the idle job yields to a render frame.
       const flipped = [];
       root.traverse((o) => {
         if (o.visible === false) { flipped.push(o); o.visible = true; }
