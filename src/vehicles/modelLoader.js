@@ -2910,8 +2910,13 @@ export async function applyGlbModel(ctx) {
           // they aren't.
           const tc0 = performance.now();
           let batched = 0;
+          // FEEL r12 (switchprof, MOBILE-QA r9): the >=4-mesh floor ignored
+          // the 12 ms budget — four monster-material hero meshes in one
+          // slice produced the 600-1300 ms garage-switch hitches. Floor of
+          // ONE mesh guarantees progress; the time budget governs batching
+          // (cache-hit meshes still batch by the dozens inside 12 ms).
           while (st.mi < st.meshes.length
-            && (batched < 4 || performance.now() - tc0 < 12)) {
+            && (batched < 1 || performance.now() - tc0 < 12)) {
             precompileStaged(st.meshes[st.mi++]);
             batched++;
           }

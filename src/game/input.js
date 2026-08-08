@@ -63,6 +63,7 @@ export const ACTION_DEFS = [
   { id: 'zoomOut', label: 'Zoom Out', group: 'Camera' },
   { id: 'minimapZoom', label: 'Minimap Zoom', group: 'Interface' },
   { id: 'shotLog', label: 'Shot Info Log', group: 'Interface' }, // SHOT-INFO (shotInfo.js)
+  { id: 'perfHud', label: 'Performance Overlay', group: 'Interface' }, // FEEL r12 (perfHud.js)
   { id: 'settingsMenu', label: 'Settings Menu', group: 'Interface' },
 ];
 
@@ -99,6 +100,7 @@ export const DEFAULT_BINDINGS = {
   zoomOut: 'WheelDown',
   minimapZoom: 'KeyM',
   shotLog: 'KeyL', // SHOT-INFO: toggle the shot-info / received-damage log
+  perfHud: 'F8', // FEEL r12: fps / frame-time / stall overlay
   settingsMenu: 'Escape',
 };
 

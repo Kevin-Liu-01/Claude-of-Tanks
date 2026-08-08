@@ -925,6 +925,21 @@ export function createLighting(scene, camera, sunDir) {
      * or `camera.far` changes (window resize, sniper zoom FOV change).
      * @returns {void}
      */
+    /**
+     * FEEL r12 (desktop look-lag): fov-only refresh. The camera rig lerps
+     * fov CONTINUOUSLY during scope zoom / aim transitions / the per-shot
+     * recoil kick, and the old path ran the FULL updateFrustums every such
+     * frame — whose _updateUniforms sweeps EVERY CSM-registered material
+     * (hundreds; profiled at ~1 ms/frame, the "swinging the gun is laggy"
+     * report). Cascade split BREAKS depend only on near/far/lambda — fov
+     * changes only the frustum slice geometry and shadow bounds, so refresh
+     * exactly those. Full updateFrustums stays for resize/near/far changes.
+     */
+    updateFov() {
+      csm._initCascades();
+      csm._updateShadowBounds();
+    },
+
     updateFrustums() {
       csm.updateFrustums();
       forceFarCascades(); // cascade boxes jumped — stale far maps would smear

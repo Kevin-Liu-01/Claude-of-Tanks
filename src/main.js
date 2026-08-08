@@ -73,6 +73,8 @@ import { createGarageStage } from './ui/garageStage.js';
 // garage-scene r1: workshop set dressing (side repair bays, benches, racks) —
 // built lazily from post-ready idle slices, never on the boot-critical path.
 import { createGarageDressing } from './game/garageDressing.js';
+// FEEL r12: corner fps / frame-time / stall overlay (owner order)
+import { createPerfHud } from './ui/perfHud.js';
 import { createAudio } from './audio/audio.js';
 import { createInput } from './game/input.js';
 import { createSettings } from './ui/settings.js';
@@ -366,6 +368,11 @@ const garageStage = await bootStage('garage', () => {
 // for deterministic marketing captures.
 const garageDressing = createGarageDressing(engineCtx, GARAGE_POS);
 scene.add(garageDressing.group);
+// FEEL r12: corner perf overlay — fps / p95 frame time / worst stall /
+// draw calls / programs / heap / sim%. F8 toggles; probes read
+// window.__PERF_HUD.stats().
+const perfHud = createPerfHud({ renderer, game });
+if (typeof window !== 'undefined') window.__PERF_HUD = perfHud;
 // hud_ui r2: key 160 → 112, penumbra 0.45 → 0.6 — the warm key stacked with
 // the stage floods and clipped the turntable floor right of the tank to 255.
 // hud_ui r5 (+ tank_models r5 garage-key rolloff): 112 → 78 / 80 → 58 with
@@ -1731,6 +1738,8 @@ input.onAction('minimapZoom', () => {
 input.onAction('shotLog', () => {
   if (game.phase === 'battle') bus.emit('ui:shotLog', {});
 });
+// FEEL r12: perf overlay toggle works in every phase (garage included)
+input.onAction('perfHud', () => perfHud.toggle());
 
 bus.on('ui:shellSelect', ({ slot }) => {
   if (game.player && game.player.combat && !game.player.combat.destroyed) {
@@ -2895,9 +2904,15 @@ function tick(nowMs) {
   audio.update(dtR, _listenerPose, game.tanks);
 
   // 9-10. shadows + post
-  if (camera.fov !== lastFov) { lighting.updateFrustums(); lastFov = camera.fov; }
+  // FEEL r12: fov lerps (scope zoom / aim transitions / per-shot recoil
+  // kick) hit this EVERY frame of the animation — the full updateFrustums
+  // swept all CSM-registered materials each time (~1 ms/frame, the "look
+  // around is laggy" report). Splits are fov-independent; refresh only the
+  // cascade geometry.
+  if (camera.fov !== lastFov) { lighting.updateFov(); lastFov = camera.fov; }
   lighting.update();
   post.render(dtR);
+  perfHud.update(dtR * 1000); // FEEL r12: after render — info.render is fresh
 }
 
 function applyViewportSize() {

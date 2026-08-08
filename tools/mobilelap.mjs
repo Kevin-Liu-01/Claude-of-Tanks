@@ -14,14 +14,17 @@ const opt = (n, f) => { const i = argv.indexOf(`--${n}`); return i >= 0 ? argv[i
 const OUT = opt('out', '');
 const TANK = opt('tank', 'm2a2_bradley');
 
+// FEEL r12: gapP95 budgets added — the long-task budgets went green while
+// steady frame time sat at 20-26 ms (~40-50 fps) and the game FELT laggy.
+// 20 ms p95 = a 50+ fps floor; sim-time deltas flag host-throttle runs.
 const BUDGET = {
   garage_idle: { ltfPctMin: 95 },
   tank_switch: { worstMs: 250 },
   battle_load: { wallMs: 8000 },
-  look: { over100Per10s: 0 },
-  drive: { over100Per10s: 0 },
-  fire: { over100Per10s: 0 },
-  fight: { over100Per10s: 0, revealWorstMs: 50 },
+  look: { over100Per10s: 0, gapP95: 20 },
+  drive: { over100Per10s: 0, gapP95: 20 },
+  fire: { over100Per10s: 0, gapP95: 20 },
+  fight: { over100Per10s: 0, revealWorstMs: 50, gapP95: 20 },
   rematch: { wallMs: 8000 },
 };
 
@@ -295,6 +298,7 @@ for (const [k, b] of Object.entries(BUDGET)) {
   if (b.worstMs != null && st.worstMs > b.worstMs) pass = false;
   if (b.wallMs != null && st.wallMs > b.wallMs) pass = false;
   if (b.over100Per10s != null && st.over100Per10s > b.over100Per10s) pass = false;
+  if (b.gapP95 != null && st.gapP95 > b.gapP95) pass = false;
   if (b.revealWorstMs != null && raw.reveals.some((r) => r.worstMs > b.revealWorstMs)) pass = false;
   raw.verdicts[k] = pass ? 'PASS' : 'FAIL';
 }
