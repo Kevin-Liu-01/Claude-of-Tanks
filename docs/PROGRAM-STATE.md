@@ -84,6 +84,7 @@ re-freeze NEW hash, all in ONE commit.
 | centurion3 | bad74e60 | RE-FROZEN 2026-08-08 (no-air graduate-change: crown-ridge pedestal + discharger webs, front-low 1810px->14, re-cert floor 9.0 x17 changed views, gate 91.1 exact; prior 50273080 bore-resit lineage) |
 | m1a2_sepv2 | 54b35994 | RE-FROZEN 2026-08-08 (§5.34 chain complete: works-echo DELETED -6588 verts, gate FALSE-0 -> 64.6 honest x2, re-cert 9.2-9.4 x10 changed views w/ byte-authenticated evidence; tejas-oracle lineage e60878a9/7ef1c5ec) |
 | m2a2_bradley | 90a5568c | GRADUATED 2026-08-08 (28th; dual gate: geometry 90.9 x2 every component >=90 landed 81bdad1 + visual floor 9.0 / mean 9.16 x14 views at freeze-verified bytes; oracle e699c868; dress-tier defect bank in the verdict: bow T-hooks, taillight fittings, TOW rear ports, lug stacks, ringed hubs) |
+| m45_patton | 53caa687 | GRADUATED 2026-08-08 (29th; gate 90.7 x5 total + sitting-2 visual floor 9.0 mean 9.13 x14; sitting-1 orders executed: loft.smooth byte-reproduced, ring cupola adjudicated ring-class at station with the measured Ø0.57/x-0.65 deviation compliant; ring-prominence silhouette-tax residual certified) |
 | m26_pershing | 2f006738 | RE-RECORDED 2026-08-08: hash moved by LANDED 5f39989 (armorM4 gunBarrel shadow-proxy 3.96->3.44; m26/m45 inherit m4a3e8 proxies — patton.js bytes unchanged); double-confirmed by builder bisect + m45-grad critic; prior 65c564c0 bore+winding re-cert lineage (floors 9.1-9.4) carries |
 | t90m | e345ee8a | GRADUATED 2026-08-06 (27th; floor 9.0 x14 second sitting; the owner's dedicated-agent arc 81.7 -> dual gate) |
 
@@ -1957,3 +1958,18 @@ QUEUED (my lane): §D type90 heightM datum reconciliation (2.34 roof
 vs published-3.05-over-sights class) + §E chin-knee revision
 (pre-warp 25mm receipt). Dressing bank (next touch): basket lattice,
 cheek chamfers, dead-front slab.
+
+## 5.58 M45 GRADUATED — 29th (2026-08-08): sitting-2 PASS floor 9.0 /
+mean 9.13 x14 at 53caa687 (triple-bracketed through seven foreign
+landings). Order 1 verified in pixels (slab facet family GONE in all
+10 carrier views; crown = the m26-r2 anchor grade; hwL asymmetry
+survived the re-emit). Order 2 adjudicated RING-CLASS at the correct
+station — pixel-blend registration: outboard faces coincide ~6cm,
+hinge+lids at the ordered -0.765; the Ø0.57/x-0.65 deviation is
+measured-compliant (the ordered literal gates 88.4 by receipt; drum
+prominence is measured-impossible under the dual gate — certified
+silhouette-tax residual recorded beside the r3 close entry in the
+packet). FLEET 23/90 PASSING. Patton lane FREES -> m48 build spawns
+(m60a1 + m47 turret grammar donors, §5.45 queue). Round law-bank
+already landed §5.41 (workorder-flip, registration-sliver); both
+sitting tmp drivers swept at landing.

@@ -472,9 +472,14 @@ function m2Station(P, M, yl, zl) {
   emUp(box(0.11 * w, 0.05, M.coverL ?? rl * 0.45), M.x, yl(axis + 0.105), zl(M.coverZ ?? (M.z + 0.10)));
   P.add('turretDark', box(0.15 * w, 0.05, 0.07), M.x, yl(axis), zl(M.z - 0.16)); // spade grips
   // barrel: perforated jacket then tube, forward to tipZ
+  // M.jacketDy opt-in (m45 90-ladder r2): jacket/tube lift above the axis —
+  // the m45 ref's forward barrel band tops 2.977 while the default +0.02
+  // jacket read 3.005-3.014 (+0.037 on three side columns). Default
+  // byte-identical (+0.02) for every sibling.
+  const jdy = M.jacketDy ?? 0.02;
   const jl = 0.30;
   const j0 = M.z + rl - 0.10;
-  emUp(cylZ(0.055, jl, 8), M.x, yl(axis + 0.02), zl(j0 + jl / 2), 0.03);
+  emUp(cylZ(0.055, jl, 8), M.x, yl(axis + jdy), zl(j0 + jl / 2), 0.03);
   const bl = M.tipZ - (j0 + jl);
   if (bl > 0.05) {
     if (two) {
@@ -482,11 +487,11 @@ function m2Station(P, M, yl, zl) {
       // the hard corridor->dome column step never moves (anchor law); on
       // short-tube stations (m47: bl 0.054) the collar owns the whole run
       const cl = Math.min(0.055, bl);
-      if (bl - cl > 0.04) emUp(cylZ(0.033, bl - cl, 8, 0.038), M.x, yl(axis + 0.02), zl(j0 + jl + (bl - cl) / 2), 0.02);
-      emUp(cylZ(0.045, cl, 8), M.x, yl(axis + 0.02), zl(M.tipZ - cl / 2), 0.02);
-      P.add('turretDark', cylZ(0.024, 0.012, 8), M.x, yl(axis + 0.02), zl(M.tipZ - 0.005), 0.02, 0, 0);
+      if (bl - cl > 0.04) emUp(cylZ(0.033, bl - cl, 8, 0.038), M.x, yl(axis + jdy), zl(j0 + jl + (bl - cl) / 2), 0.02);
+      emUp(cylZ(0.045, cl, 8), M.x, yl(axis + jdy), zl(M.tipZ - cl / 2), 0.02);
+      P.add('turretDark', cylZ(0.024, 0.012, 8), M.x, yl(axis + jdy), zl(M.tipZ - 0.005), 0.02, 0, 0);
     } else {
-      P.add('turretDark', cylZ(0.038, bl, 8), M.x, yl(axis + 0.02), zl(j0 + jl + bl / 2), 0.02, 0, 0);
+      P.add('turretDark', cylZ(0.038, bl, 8), M.x, yl(axis + jdy), zl(j0 + jl + bl / 2), 0.02, 0, 0);
     }
   }
   for (const dx of M.cans ?? [0.22]) {
@@ -505,12 +510,19 @@ function bustleRack(P, R, yl, zl, rng) {
   for (const fx of [-0.8, 0, 0.8]) {
     P.add('turretDetail', box(0.05, 0.026, dC), fx * R.halfW, yl(R.floorY), zl((R.z0 + zC) / 2));
   }
+  // R.railW opt-in (m45 90-ladder r2): side-rail plan width — the default
+  // 0.03 rail at halfW covers the x 0.42-window by only ~8 mm (sub-pixel
+  // teeter: the plan_turret 0.421/-0.403 columns read the bustle tail
+  // instead of the ref's -1.28 rail reach). Wider rails grow INBOARD only
+  // (outer face pinned at halfW + 0.015). Default byte-identical.
+  const rw = R.railW ?? 0.03;
+  const rx = R.halfW + 0.015 - rw / 2;
   for (const side of [-1, 1]) {
-    P.add('turretDetail', box(0.03, 0.03, d), side * R.halfW, yl(R.railY), zl((R.z0 + R.z1) / 2));
+    P.add('turretDetail', box(rw, 0.03, d), side * rx, yl(R.railY), zl((R.z0 + R.z1) / 2));
     // R.sideFloorY opt-in (m46 r5): the warped ref rack reads a LOWER side
     // frame rail to the tail (side bots 2.10 over the rail span while the
     // centre floor stops at zC) — default absent, byte-identical.
-    if (R.sideFloorY) P.add('turretDetail', box(0.03, 0.03, d), side * R.halfW, yl(R.sideFloorY), zl((R.z0 + R.z1) / 2));
+    if (R.sideFloorY) P.add('turretDetail', box(rw, 0.03, d), side * rx, yl(R.sideFloorY), zl((R.z0 + R.z1) / 2));
     P.add('turretDetail', box(0.028, R.railY - R.floorY + 0.05, 0.028), side * R.halfW, yl((R.railY + R.floorY) / 2), zl(R.z0 - 0.03));
     // rear posts are SHORT drops (the reference rack floor lifts toward the
     // tail — a full-depth rear post painted the tail band too deep)
@@ -697,7 +709,37 @@ function t26Cast(P, T) {
     tarpRoll(P, 'turretDark', T.stowBump.x, yl(T.stowBump.y), zl(T.stowBump.z), T.stowBump.len, T.stowBump.r, true, P.q ? 12 : 8);
   }
   // commander cupola (vehicle right = world -x) + loader hatch (left)
-  cupola(P, 'turret', T.cupola.x, yl(T.cupola.base), zl(T.cupola.z), T.cupola.r, T.cupola.h, 6);
+  if (T.cupola.ring) {
+    // GRADUATION ORDER 2 (m45 §5.47): the print's ~0.63 m split-hatch RING
+    // class instead of the r-0.076 knob. Hand-built (KIT.cupola's scaled
+    // lid disc would poke a side sliver past the pod-cover window at big
+    // r): flat ring disc topping EXACTLY the local 2.55 roof line
+    // (silhouette-equal), split-lid pair + hinge spine confined to the
+    // ref's own lid window (side-covered by the ridge pods), lid outer
+    // edge pinned ON the ref's flickering face (CORRELATED-TEETER law —
+    // the front -0.884 column). Gate-blind by construction. Default
+    // absent — m26/m46 keep the knob byte-identical.
+    const C = T.cupola;
+    const cs = P.q ? 26 : 12;
+    const rx = C.ring.x ?? C.x, rz = C.ring.z ?? C.z;
+    P.add('turret', cylY(C.ring.r, C.ring.r * 1.02, C.ring.h, cs), rx, yl(C.ring.top - C.ring.h / 2), zl(rz));
+    for (const side of [-1, 1]) {
+      // split-lid halves about the HINGE line C.x (the ordered station);
+      // outer edge ref-pinned; a 0.02 hinge gap at the mast line
+      P.add('turret', box(C.ring.lidHalfW, C.ring.lidH, C.ring.lidD),
+        C.x + side * (C.ring.lidHalfW / 2 + 0.01), yl(C.ring.top + C.ring.lidH / 2), zl(C.z));
+    }
+    P.add('turretDark', box(0.02, C.ring.lidH + 0.006, C.ring.lidD),
+      C.x, yl(C.ring.top + (C.ring.lidH + 0.006) / 2), zl(C.z));
+    // forward vision-block arc (interior: 0.6r keeps the a=0 block's z
+    // reach inside the ridge-pod side-cover window ending 0.455)
+    for (const a of [-0.5, 0, 0.5]) {
+      P.add('turretDark', box(0.06, 0.045, 0.045),
+        rx + Math.sin(a) * C.ring.r * 0.6, yl(C.ring.top + 0.02), zl(rz + Math.cos(a) * C.ring.r * 0.6), 0, a, 0);
+    }
+  } else {
+    cupola(P, 'turret', T.cupola.x, yl(T.cupola.base), zl(T.cupola.z), T.cupola.r, T.cupola.h, 6);
+  }
   P.add('turret', cylY(0.17, 0.175, 0.05, 14), T.loader.x, yl(T.loader.y), zl(T.loader.z), 0, 0, 0, [1, 1, 1.25]);
   P.add('turretDark', box(0.05, 0.02, 0.16), T.loader.x + 0.14, yl(T.loader.y) + 0.028, zl(T.loader.z));
   if (T.vent) P.add('turret', sph(0.09, 12, Math.PI / 2), T.vent.x, yl(T.vent.y), zl(T.vent.z));
@@ -1378,6 +1420,14 @@ function pattonGun(P, G) {
   // 2.06-2.07 over |x| <= 0.20 only) — the S.w*0.7 default painted 0.09
   // plan overshoot across six centre columns. Default byte-identical.
   P.addGunExtra(xform(cylX(S.rotorR ?? Math.min(0.20, S.h * 0.3), S.rotorW ?? (S.w * 0.7), P.q ? 16 : 10), 0, 0, 0), 0, S.dy * 0.4, zF - 0.05);
+  if (S.lip) {
+    // S.lip opt-in (m45 90-ladder r2): M71 counterweight collar lip under
+    // the rotor throat — the ref side band hangs to 1.685 at the 2.033
+    // column where the bare rotor bottom read 1.818. World y band converted
+    // through the gun axis; interior to the rotor plan lane. Default absent.
+    P.addGunExtra(box(S.lip.w, S.lip.y1 - S.lip.y0, S.lip.z1 - S.lip.z0),
+      0, (S.lip.y0 + S.lip.y1) / 2 - G.axisY, w2l((S.lip.z0 + S.lip.z1) / 2));
+  }
   const sq = (r, l, at, sy = 1, sx = 1) => P.add('gun', xform(cylZ(r, l, seg), 0, 0, 0, 0, 0, 0, [sx, sy, 1]), 0, 0, at);
   if (G.device === 'm3') {
     // 90 mm M3: bare tube then the double-baffle brake — an oblong solid body
@@ -1480,6 +1530,16 @@ function buildPershing(P, cfg) {
     }
     const T = cfg.tailStack[cfg.tailStack.length - 1];
     P.add('hullDark', cylX(0.055, T.hw * 1.2, 8), 0, (T.y0 + T.y1) / 2, T.z1 + 0.04);
+    if (cfg.pintleHook) {
+      // m45 90-ladder r2: towing-pintle hook block projecting past the
+      // bracket face — the rear-most whole-mask read. Carries the ref's own
+      // tail-junk band (0.917..1.011 at the -3.284 column) where the fat
+      // bracket used to overshoot it, and holds the overallLengthM rear
+      // extent while the muzzle sits at the print's own station. Default
+      // absent — byte-identical.
+      const K = cfg.pintleHook;
+      P.add('hullDark', box(K.w, K.h, K.z0 - K.z1), 0, K.y, (K.z0 + K.z1) / 2);
+    }
     if (cfg.pintleKit) {
       // r4 order-3a (m26, graduation-retune polish): rear towing-pintle
       // BRACKET tell around the existing pintle cylinder — the verdict's
@@ -1584,6 +1644,12 @@ function buildPershing(P, cfg) {
     const slab = orientedSlab;                                  // §C.1 winding guard
     const S = cfg.deckShoulder;
     const dk = cfg.hull.deck;
+    // S.skirt opt-in (m45 90-ladder r2): wedge underside depth below the
+    // dropped edge — m45's fender plate sits 0.26 below its deck (m47's is
+    // 0.055 under), so the default 0.05 skirt leaves an open band between
+    // wedge bottom and fender lip (the owner's see-through class). Default
+    // byte-identical (m47 keeps 0.05).
+    const skirt = S.skirt ?? 0.05;
     for (let i = 1; i < dk.length - 1; i++) {
       let [z0, y0] = dk[i], [z1, y1] = dk[i + 1];
       if (z0 > S.zMax || z1 < S.zMin) continue;
@@ -1591,8 +1657,8 @@ function buildPershing(P, cfg) {
       if (z1 < S.zMin) { y1 = y0 + (y1 - y0) * ((S.zMin - z0) / (z1 - z0)); z1 = S.zMin; }
       for (const side of [-1, 1]) {
         P.add('hull', slab(
-          [side * S.x0, y0 - S.drop - 0.05, z0], [side * S.x1, y0 - S.drop - 0.05, z0],
-          [side * S.x1, y1 - S.drop - 0.05, z1], [side * S.x0, y1 - S.drop - 0.05, z1],
+          [side * S.x0, y0 - S.drop - skirt, z0], [side * S.x1, y0 - S.drop - skirt, z0],
+          [side * S.x1, y1 - S.drop - skirt, z1], [side * S.x0, y1 - S.drop - skirt, z1],
           [side * S.x0, y0, z0], [side * S.x1, y0 - S.drop, z0],
           [side * S.x1, y1 - S.drop, z1], [side * S.x0, y1, z1]));
       }
@@ -3162,7 +3228,12 @@ const M26_FIT = {
 // §B6 both-ends-raised holds; the small-radius residual is the m46
 // chopped-track class, documented in the packet).
 const M45_HULL = {
-  W: 3.51, bandHW: 1.60, trackW: 0.58, trackInset: 0.095, sponsonY: 1.05, bellyY: 0.46, noseW: 1.04,
+  // r2 (90-ladder): bandHW 1.60 -> 1.28 + cfg.deckShoulder (m47 r2 lane,
+  // skirt-deepened) — the ref front view rolls the deck edge down 1.5525 ->
+  // ~1.50 over |x| 1.28..1.61 (the flat 1.60 band read +0.02..+0.06 on ~17
+  // front columns, the row's err carpet). Fender plate widens inboard to
+  // the new band edge automatically ((bhw+fhw)/2 seat).
+  W: 3.51, bandHW: 1.28, trackW: 0.58, trackInset: 0.095, sponsonY: 1.05, bellyY: 0.46, noseW: 1.04,
   bellyHW: 1.04, glacisWingY0: 1.30, glacisWingDrop: 0.04,
   darkGearFit: true, // r1 tone transfer (m46 r7 A4 / m47 A3 recipe): muffler-leg
                      // class fittings off the pale bucket — bucket swap only
@@ -3171,6 +3242,12 @@ const M45_HULL = {
     [1.75, 1.5575], [1.69, 1.539], [1.63, 1.5245], [-0.28, 1.5245], [-0.34, 1.5525],
     [-1.66, 1.5525], [-1.73, 1.512], [-2.00, 1.4685], [-2.06, 1.477], [-2.13, 1.477],
     [-2.19, 1.4335], [-2.50, 1.372]],
+  // r2f: plate span RESTORED to r1 (2.48..-2.842) — the never-flipped SIDE
+  // rows pin the 1.29-line there, and station i13's 4.64% width deficit
+  // under the r2e mirror proved the ref's rear hanger stations are real
+  // (the r2e -2.49 cut chased a grid-phase flicker at the 1.72 lip column;
+  // that column is a certified ref-teeter — the ref's own hanger x-span
+  // ~1.66..1.70 drifts in and out of the lip window per grid).
   fenderY: [1.293, 2.48, -2.842], fenderHW: 1.676,
   toeBot: 1.005, bellyFrontZ: 2.10, bellyRearZ: -2.10,
   narrowTail: { hw: 0.81, z0: -2.50, z1: -2.885, top1: 1.29, botY: 0.55 },
@@ -3178,9 +3255,23 @@ const M45_HULL = {
   // front 230 / rear 176 voxels — flapF plane tangent to the idler wrap
   // face, flapR plane inside the sprocket wrap arc, platforms clipped by
   // the 1.11 wrap crest; idler lowered to the ref's own sub-lip wrap)
-  flapF: [2.97, 0.62, 1.04], flapR: [-2.81, 0.95, 1.27],
+  // r2 (90-ladder): flapF band raised 0.62 -> 1.005 — the ref's own bow-flap
+  // band at the 3.006 column is 1.011..1.099 (the old 0.62 skirt hung 0.39
+  // below it, the row's p95 carrier). The column stays dims-FAT via the
+  // side_whole gun-over-flap span (body filter is |top-bot|, harness ~1263);
+  // hull-row registration re-anchors on the idler-wrap fat column ~2.93
+  // (ref's own wrap class, §D counterweight verified in the workorder).
+  // r2g: flap plane 2.97 -> 2.925 — the flap face owned SIXTEEN plan track
+  // columns at 2.994 vs the ref's own 2.939 flap line; at the raised
+  // 1.005 band the plane clears the wrap arc's z-2.925 cross-section
+  // (y <= 0.80 there), so the r1 §B4 wrap-face constraint no longer binds.
+  flapF: [2.925, 1.005, 1.045], flapR: [-2.81, 0.95, 1.27],
   gear: {
-    wheelR: 0.33, span: [1.95, -1.65], rollerN: 5, rollerY: 0.98, contactZF: 1.97, contactZR: -1.79,
+    // r2b (90-ladder): contactZR -1.79 -> -1.705 — the loop eases ~0.1 m
+    // past the patch end, so the proc band sat at 0 through z -2.29 where
+    // the ref return line rises 0.074..0.24 (§B6 contact pins; the ref's
+    // own flat still reads to -1.78 within one column).
+    wheelR: 0.33, span: [1.95, -1.65], rollerN: 5, rollerY: 0.98, contactZF: 1.97, contactZR: -1.705,
     idler: { z: 2.56, y: 0.68, r: 0.21 }, sprocket: { z: -2.66, y: 0.74, r: 0.10 },
     tension: { z: -2.05, y: 0.30, r: 0.15, support: true },
   },
@@ -3190,7 +3281,9 @@ const M45_FIT = {
   lights: { x: 0.68, y: 1.40, z: 2.52, rx: -0.62 },
   shackleY: 0.98, shackleZ: 2.60,
   grille: { z0: -0.44, z1: -1.155, y: 1.532, rx: 0 }, caps: [0.25, -0.68],
-  rearGrilleY: 1.02, rearGrilleW: 0.56, rearGrilleZ: -3.225, noRearEyes: true,
+  // r2d: rearGrilleZ -3.225 -> -3.19 (its rear face fed the -3.269
+  // hull-row column's phantom fat band — see the tailStack bracket note).
+  rearGrilleY: 1.02, rearGrilleW: 0.56, rearGrilleZ: -3.19, noRearEyes: true,
 };
 
 // M46 — batch-8 re-trace (seated oracle): toe (2.42, 1.19) with fender
@@ -3733,27 +3826,125 @@ export const PATTON_PROFILES = {
       // 3.352 slice windows (i4/i6/i7/i8/i10/i13) and pinning the plan
       // extremes (front 2.486 / rear -2.845 vs ref 2.474-2.486 / -2.842).
       fenderHW: 1.676,
+      // r2f: the r1 stations RESTORED — the station-width slices (never
+      // flipped) adjudicated the r2e mirror experiment: i8/i10/i13 widths
+      // crashed 4.64% without the rear hangers (the ref HAS them), while
+      // the true BOW lip reach (2.845, found by the mirror) is carried by
+      // the platform-height outboard strips in bowTabs — the bump builder's
+      // 1.29 fender line reads 0.2 proud of the ref's diving bow band.
       fenderBumps: [[-2.845, -2.755], [-2.60, -2.52], [-2.16, -2.07], [-1.71, -1.62],
         [-0.815, -0.725], [0.90, 1.00], [1.87, 1.97], [2.37, 2.486]],
+      // r2 (90-ladder): deck-edge shoulder roll (m47 r2 mechanism, m45
+      // skirt-deepened to the 1.276 fender lip — see M45_HULL bandHW note).
+      deckShoulder: { x0: 1.28, x1: 1.61, drop: 0.048, zMin: -2.49, zMax: 2.35, skirt: 0.27 },
       tailStack: [
-        { hw: 0.665, y0: 0.90, y1: 1.256, z0: -2.885, z1: -3.06 },
-        { hw: 0.66, y0: 0.92, y1: 1.145, z0: -3.06, z1: -3.19 },
-        { hw: 0.605, y0: 0.92, y1: 1.14, z0: -3.19, z1: -3.235 },
+        // r2 (90-ladder) WIDE-TAIL WING: the r1 "narrow tail" plan read came
+        // from the workorder's FLIPPED plan frame (the tool's pre-r3
+        // degenerate orientation pick — flip constant c=-0.191 verified on
+        // four landmarks this round): the TRUE ref rear stays wide to
+        // -2.835..-2.854 at |x| 0.83..1.06 (census tools/tmp-m45-census.mjs).
+        // Plan-only mass: side profile stays under the tail slab lines,
+        // front interior, 15 mm clear of the 1.08 band inner face (§B4
+        // corridor <= 3.5 cm).
+        // r2c: tiers re-stepped to the ref's own THREE-step tail profile
+        // (workorder: tops 1.266 to -3.03, 1.229 to -3.10, 1.156 after;
+        // bots 0.807 stepping 0.917) — the two-step r1 read merged steps
+        // across windows (0.083-0.101 x3 columns both side rows).
+        // r2g: the wide-tail wing SPLIT on the ref's own x-step at ~0.89
+        // (un-flipped workorder: rear -2.886 inboard of x 0.885, -2.758/
+        // -2.813 outboard to 1.02 — the single -2.845 wing sat between
+        // both lines, 0.038-0.073 x6 columns).
+        { hw: 0.885, y0: 0.62, y1: 1.285, z0: -2.50, z1: -2.883 },
+        { hw: 1.055, y0: 0.62, y1: 1.285, z0: -2.50, z1: -2.785 },
+        // r2f: tier widths 0.665/0.66/0.64 -> 0.70/0.695/0.68 — the gate's
+        // +-0.70 plan columns read the ref tail to -3.18 while the 0.665
+        // tiers left them at the -2.885 narrowTail line (0.10 x2 columns).
+        { hw: 0.70, y0: 0.808, y1: 1.256, z0: -2.885, z1: -3.024 },
+        { hw: 0.695, y0: 0.92, y1: 1.222, z0: -3.024, z1: -3.096 },
+        { hw: 0.68, y0: 0.92, y1: 1.148, z0: -3.096, z1: -3.19 },
+        { hw: 0.605, y0: 0.92, y1: 1.14, z0: -3.19, z1: -3.208 },
+        // r2e PLAN TAIL SHELF: thin horizontal plate (the ref junk band's
+        // 0.96-1.0 exhaust-deflector shelf) restoring the plan rear the
+        // r2d registration fix pulled forward — y-band 0.04 stays UNDER
+        // the side-row 12% filter (registration-neutral) while the plan
+        // columns x <= 0.60 read the ref's own -3.24 tail line.
+        { hw: 0.60, y0: 0.96, y1: 1.00, z0: -3.19, z1: -3.245 },
         // narrow pintle-mount stack UNDER the tail tiers: the dims
         // hullLengthM body filter needs one >12%-band column chain to the
-        // -3.25 tail station (the ref's own tail band is sub-12% — its
-        // bodyZ ends -2.936 — but dims is sovereign to the published 6.33;
-        // the 0.75..0.92 under-bracket costs ~2.5 side columns -0.15 and
-        // matches the centre plan tip -3.24..-3.25 exactly).
-        { hw: 0.17, y0: 0.75, y1: 1.14, z0: -3.06, z1: -3.25 },
+        // published tail station (the ref's own tail band is sub-12% — its
+        // bodyZ ends -2.936 — but dims is sovereign to the published 6.33).
+        // r2: bracket z1 pulled -3.25 -> -3.235 (12 mm clear of the -3.2475
+        // trace boundary): the -3.284 column now reads ONLY the pintle
+        // cyl + hook at the ref's own 0.917..1.011 junk band (was the fat
+        // bracket sliver, -0.15 x 2.5 cols on both side rows). hullLengthM
+        // body rear moves -3.284 -> -3.209 (actual ~6.215, -1.82% => dims
+        // hullLengthM ~-6.5, traded for the side-row p95 tier).
+        // r2b: z0 -3.06 -> -3.045 — the bracket front face sat 1 mm off the
+        // -3.022 window edge (the hullLengthM chain must own its columns
+        // deterministically, DIMS RAZOR-BAND law). r2d: z1 -3.235 -> -3.196
+        // — the bracket's rear AA (2-8 mm from the -3.23 window edge; the
+        // PARTIAL-PIXEL law wants >=15-22 mm) made the proc's -3.269
+        // hull-row column FAT where the ref's is 0.11-thin: the body mid
+        // shifted a half-column and dAlong -0.037 smeared EVERY side row
+        // (bodyends probe, tools/tmp-m45-bodyends.mjs). The fat chain now
+        // ENDS at the ref's own last-fat station -3.196; the -3.269 column
+        // carries only the thin hook/pintle band (0.115) against the ref's
+        // thin junk — thin-vs-thin, registration-neutral, and the auto
+        // pintle cyl (seated at z1+0.04) pulls clear with the bracket.
+        { hw: 0.17, y0: 0.75, y1: 1.14, z0: -3.045, z1: -3.196 },
       ],
-      bowFenders: { x0: 1.02, x1: 1.665, y: 1.08, z0: 2.95, z1: 2.48 },
-      bowTabs: [{ x0: -0.71, x1: -0.665, y0: 1.007, y1: 1.099, z0: 3.046, z1: 2.90 }],
+      // r2c: hook rear face pinned at the REF'S OWN junk rear face -3.250
+      // (decoded across three grids: r0 lit -3.284, r2 lit -3.243, r2b
+      // missed -3.287 => ref face -3.250 +/- 3 mm). Matching faces make the
+      // AA teeter CORRELATED — both models light or miss the boundary
+      // window TOGETHER (the r2/-3.298 and r2b/-3.268 states each read
+      // ONLY-PROC err-9 on whichever window the ref missed). Also pins the
+      // shared plan/side box rear (both extents equal => stable grid).
+      pintleHook: { w: 0.09, h: 0.08, y: 0.965, z0: -3.20, z1: -3.250 },
+      // r2: x0 1.02 -> 1.065 — the ref platform inner edge sits past the
+      // 1.058 column window (census: ref zF at x 1.02 is 2.669 = glacis toe
+      // class, platforms own 1.095+ only).
+      bowFenders: { x0: 1.065, x1: 1.665, y: 1.08, z0: 2.95, z1: 2.48 },
+      bowTabs: [
+        // r2f: x0 -0.71 -> -0.735 — three grids triangulate the ref tab's
+        // outer edge at ~-0.735 (census col -0.702 lights, -0.777 doesn't;
+        // the gate's -0.77 window teeters): matching the face correlates
+        // the AA (basket/hook law).
+        { x0: -0.735, x1: -0.665, y0: 1.007, y1: 1.099, z0: 3.046, z1: 2.90 },
+        // (r2g: the r2f "outboard bow lip strips" are DEAD — the un-flipped
+        // workorder proved the ref lip front at x 1.68-1.75 is 2.481 = the
+        // plate front; the strips' 2.845 reach was authored off a flipped
+        // gate read and owned the two worst plan columns, 0.19 x2.)
+      ],
       flapWings: [[2.47, 0.77, 1.31], [-2.80, 0.77, 1.30]],
+      // r2f: guard RESTORED to the r1 seat — the r2b 2.655 re-seat chased a
+      // one-grid ref read (1.511@2.655) that inverted on the next grid
+      // (ref 1.195@2.64 vs the moved guard's 1.511: -0.19 x3 columns); the
+      // r1 seat was clean on the baseline grid and its worst recorded cost
+      // was 0.084 on one column of one grid.
       bowGuards: [[0.68, 1.4865, 2.57, 0.10]],
+      // r2b: ref front-view bottoms read 0.306 at |x| ~1.0 (final-drive /
+      // bump-stop masses between belly 0.42 and track edge — the
+      // buildPershing class the m45 never configured). Side-hidden behind
+      // the z 0.15 road wheel.
+      // (r2e: x 1.0 -> 1.02 — the box face teetered the front 0.97 column
+      // where the ref bottom is the 0.425 belly; the ref's 0.306 band
+      // lives at the 1.01-1.05 columns.)
+      bumpStops: [[1.02, 0.30, 0.45, 0.15]],
       turret: {
         ringY: 1.548, ringZ: 0.719,
-        loft: { wall: 0.40, mid: 0.72, midW: 0.92, crownW: 0.50, crownX: -0.02 },
+        // r2b: mid 0.72 -> 0.695 (ref left shoulder holds ~2.24 to x -1.0);
+        // crownX -0.02 -> +0.07, crownW 0.50 -> 0.55 — the ref crown is
+        // RIGHT-BIASED: its 2.54-2.55 roof plateau runs to x +0.74 and the
+        // right roll eases 2.52 @ 0.78 (the symmetric crown read -0.05..
+        // -0.09 across the right 0.66-0.86 front band).
+        // GRADUATION ORDER 1 (§5.47 critic, close-roof 8.8): smooth: true —
+        // the m26-r1 precedent exactly; smoothLoft re-emits the SAME ring
+        // corners (hwL parity per the m26-r4 SMOOTHLOFT-hwL law, lines
+        // ~792-794) as one indexed grid so the dome shades as a cast roll.
+        // SMOOTH-RE-EMIT acceptance: gate JSON byte-reproduced (verified
+        // this round — see the packet).
+        loft: { wall: 0.40, mid: 0.695, midW: 0.92, crownW: 0.55, crownX: 0.07, smooth: true },
         // hw = +x flank, hwL = -x flank (the dense plan raster shows the
         // casting asymmetric: the -x/cupola quarter bulges to 1.07-1.13
         // through z 0.10..1.24 while the +x flank retreats — the r2
@@ -3766,8 +3957,11 @@ export const PATTON_PROFILES = {
           { z: 1.20, hw: 1.015, hwL: 1.135, top: 2.43, bot: 1.523 },
           { z: 1.05, hw: 1.06, hwL: 1.10, top: 2.475, bot: 1.523 },
           { z: 0.90, hw: 1.13, hwL: 1.17, top: 2.52, bot: 1.523 },
-          { z: 0.72, hw: 1.185, hwL: 1.22, top: 2.545, bot: 1.523 },
-          { z: 0.55, hw: 1.20, hwL: 1.19, top: 2.55, bot: 1.523 },
+          // r2: hw 1.185/1.20 -> 1.18/1.19 at the widest pair — the +x wall
+          // face rode the plan x-1.245 column edge sub-pixel (AA-teeter; the
+          // ring-lip stub pod is that column's honest owner).
+          { z: 0.72, hw: 1.18, hwL: 1.22, top: 2.545, bot: 1.523 },
+          { z: 0.55, hw: 1.19, hwL: 1.19, top: 2.55, bot: 1.523 },
           { z: 0.44, hw: 1.15, hwL: 1.165, top: 2.552, bot: 1.523 },
           { z: 0.32, hw: 1.02, hwL: 1.14, top: 2.55, bot: 1.523 },
           { z: 0.19, hw: 0.945, hwL: 1.10, top: 2.545, bot: 1.523 },
@@ -3783,33 +3977,127 @@ export const PATTON_PROFILES = {
           { z: -0.59, hw: 0.73, hwL: 0.73, top: 2.428, bot: 1.76 },
           { z: -0.70, hw: 0.645, hwL: 0.65, top: 2.427, bot: 1.772 },
           { z: -0.88, hw: 0.60, hwL: 0.595, top: 2.427, bot: 1.786 },
-          { z: -0.93, hw: 0.575, hwL: 0.55, top: 2.348, bot: 1.79 },
-          { z: -1.05, hw: 0.44, hwL: 0.42, top: 2.21, bot: 1.83 },
+          // r2/r2c: bustle re-stepped to the ref profile — the 2.42 plateau
+          // ends ~-0.90 (was -0.93: the roll-off painted 2.40-2.42 into the
+          // ref's 2.349 window), the 2.34 band HOLDS to -1.043 (ref keeps
+          // 2.349 through the -1.012 column) then drops near-vertically to
+          // the rack-rail line at the loft tail; bots to the ref 1.835 line.
+          { z: -0.905, hw: 0.575, hwL: 0.55, top: 2.348, bot: 1.806 },
+          { z: -1.043, hw: 0.4465, hwL: 0.4263, top: 2.34, bot: 1.845 },
+          { z: -1.05, hw: 0.44, hwL: 0.42, top: 2.21, bot: 1.849 },
         ],
-        basket: { w: 1.55, x: 0.095, y0: 0.742, y1: 1.55, z0: 1.365, z1: 0.046 },
+        // r2d: z span pinned ON the ref basket's own faces (front 1.386,
+        // rear -0.028, both decoded across three grids) — the r1 1.365/
+        // 0.046 span missed ref-lit windows by 0-8 mm (two 0.39-err
+        // columns), and every non-matching span flickers a 0.39-err or
+        // only-col whenever the grid re-phases: matching faces make the AA
+        // teeter CORRELATED (both models light or miss together — the
+        // pintleHook law, same round).
+        basket: { w: 1.55, x: 0.095, y0: 0.742, y1: 1.55, z0: 1.386, z1: -0.028 },
         cheekPods: [
           // right crew-seat pod: the basket's far-right mass (plan zR
           // 0.20-0.42 / zF 1.20 at x 0.94-1.02, front bot 0.742 to +1.016)
           { x0: 0.86, x1: 1.016, y0: 0.742, y1: 1.55, z0: 1.20, z1: 0.20 },
           // LEFT roof ridge/crest (side tops 2.60-2.712 over z -0.19..+0.455;
-          // front-hidden under the M2 stack at x -0.05..-0.59)
+          // front-hidden under the M2 stack at x -0.05..-0.59). r2: the
+          // LOWER three pods widen to x0 -0.664 — the ref crest holds 2.665
+          // through the front x -0.647 column (the -0.56..-0.65 gap read the
+          // 2.55 crown, -0.054 x2 cols); the 2.712/2.685 pair stays at -0.56
+          // (their tops would overshoot the 2.665 band).
           { x0: -0.56, x1: -0.06, y0: 2.42, y1: 2.712, z0: 0.455, z1: 0.315 },
-          { x0: -0.54, x1: -0.08, y0: 2.42, y1: 2.652, z0: 0.505, z1: 0.455 },
+          { x0: -0.664, x1: -0.08, y0: 2.42, y1: 2.652, z0: 0.505, z1: 0.455 },
           { x0: -0.50, x1: -0.08, y0: 2.42, y1: 2.685, z0: 0.315, z1: 0.10 },
-          { x0: -0.45, x1: -0.10, y0: 2.42, y1: 2.645, z0: 0.10, z1: -0.045 },
-          { x0: -0.42, x1: -0.12, y0: 2.42, y1: 2.607, z0: -0.045, z1: -0.19 },
-          // commander-cupola shoulder ring (front band 2.56 at x -0.65..-0.90)
-          { x0: -0.90, x1: -0.65, y0: 2.485, y1: 2.558, z0: -0.01, z1: -0.19 },
-          // right lifting-eye sliver (plan 0.815..0.875 at x 1.19..1.245,
-          // front top 1.958 bot 1.903 — the measured +x flank tell)
-          { x0: 1.19, x1: 1.245, y0: 1.90, y1: 1.955, z0: 0.875, z1: 0.815 },
+          { x0: -0.664, x1: -0.10, y0: 2.42, y1: 2.645, z0: 0.10, z1: -0.045 },
+          { x0: -0.664, x1: -0.12, y0: 2.42, y1: 2.607, z0: -0.045, z1: -0.19 },
+          // commander-cupola shoulder ring. r2 RE-SEAT: the r1 z -0.01..-0.19
+          // came from the FLIPPED workorder plan frame (pre-r3 degenerate
+          // orientation pick, flip c=-0.191 landmark-verified) — the ref
+          // cupola/shoulder truly sits at z +0.17..+0.35. x0 widened to
+          // -0.935: the ref front holds the 2.557 shelf through x -0.923 and
+          // the plan x -0.927 column ends at the ref's own 0.142 rear line.
+          { x0: -0.935, x1: -0.65, y0: 2.485, y1: 2.558, z0: 0.35, z1: 0.17 },
+          // r2 RING-LIP STUB (was "lifting-eye" at y 1.90..1.955 — that
+          // front read belonged to the ref DECK EDGE 1.53: the pod painted
+          // an only-proc +0.42 front column at +1.249). The ref piece is a
+          // deck-height turret-ring lip: plan sliver z 0.835..0.872 at
+          // x 1.208..1.28 (census), top at the deck line. y 1.46..1.525
+          // rides UNDER the hatch-disc band (1.5525..1.5675) on the yaw
+          // orbit (r 1.23 crosses the hatch footprint — clip-checked).
+          { x0: 1.19, x1: 1.2225, y0: 1.46, y1: 1.525, z0: 0.875, z1: 0.815 },
+          // r2 LEFT PISTOL-PORT BULGE (the T26E2 loader-side casting bulge):
+          // the ref front holds a 2.083 wall top out to x -1.26 over the
+          // z 0.575..0.815 window only (plan census col -1.226 = 0.572..
+          // 0.816; front cols -1.239/-1.199 = 2.083). x1 buried in the loft
+          // wall (hwL 1.19-1.22), y0 1.58 clears the hatch-disc yaw orbit.
+          { x0: -1.245, x1: -1.15, y0: 1.58, y1: 2.083, z0: 0.815, z1: 0.575 },
+          // r2 RIGHT SHOULDER SHELF pair: the ref crown is RIGHT-BIASED — a
+          // long high shelf 2.40 @ x 1.01-1.05 easing 2.37 @ 1.13 (front
+          // census 2.399/2.409/2.369) over the plan z 0.46..1.10 flank
+          // window; the symmetric crown roll read -0.08..-0.11 across five
+          // front columns. Bottoms buried in the shoulder band (§B2).
+          { x0: 0.90, x1: 1.05, y0: 2.05, y1: 2.40, z0: 1.10, z1: 0.46 },
+          // r2h: the 2.372 step split at x 1.095 — the ref plan flank pulls
+          // its z-front from 1.199 to 0.906 at the 1.145 column while the
+          // FRONT still wants the 2.372 shelf top through x 1.15: outboard
+          // of 1.095 the shelf continues at the ref's own 0.90 z-front.
+          { x0: 1.05, x1: 1.095, y0: 2.05, y1: 2.372, z0: 1.10, z1: 0.46 },
+          { x0: 1.095, x1: 1.138, y0: 2.05, y1: 2.372, z0: 0.90, z1: 0.46 },
+          // r2b third step: ref 2.172 at the front x 1.17 column; z window
+          // kept inside the ref plan flank band. (r2h: the 2.372/2.172
+          // boundary sits at 1.138 — 12 mm clear of the 1.1505 front
+          // window edge; at 1.145 the taller step AA-leaked +0.19 into
+          // the 1.17 column.)
+          { x0: 1.138, x1: 1.166, y0: 2.0, y1: 2.172, z0: 0.90, z1: 0.46 },
+          // r2 M2 MOUNT GUSSET (§B3 mount mass; see-through sweep item 11):
+          // the thin pintle mast left a 125-326 px enclosed-bg window under
+          // the receiver at (x -0.37..-0.61, y 2.64..2.75) — solid skate
+          // mount mass, interior to side (receiver band covers z 0.62..1.48
+          // tops), front (receiver + crest cover x -0.35..-0.53) and plan.
+          { x0: -0.53, x1: -0.35, y0: 2.54, y1: 2.86, z0: 0.80, z1: 0.60 },
         ],
-        rack: { z0: -0.90, z1: -1.265, zC: -1.04, halfW: 0.465, floorY: 2.00, railY: 2.21, loadTop: 2.21 },
-        cupola: { x: -0.775, z: -0.15, r: 0.08, base: 2.55, h: 0.075 },
-        loader: { x: 0.52, z: 0.0, y: 2.577 },
+        // r2: zC -1.04 -> -1.10 (ref centre rack rear -1.113); railW 0.095 —
+        // the 0.03 rails covered the plan x 0.42 windows sub-pixel (the
+        // 0.421/-0.403 columns read the bustle tail, -0.24 vs the ref's
+        // -1.28 rail reach); sideFloorY 2.018 (m46 r5 lane) — the ref rack
+        // side frame hangs to 2.003 at the -1.187 column (was the top
+        // side_turret offender, 0.103).
+        // r2c: railY 2.21 -> 2.19 (rail top 2.238 read vs the ref's 2.202
+        // band) + sideFloorY 2.018 -> 2.038 (ref side-frame bots 1.99-2.055
+        // along the span).
+        rack: { z0: -0.90, z1: -1.265, zC: -1.10, halfW: 0.465, floorY: 2.00, railY: 2.19, loadTop: 2.21, railW: 0.095, sideFloorY: 2.038 },
+        // r2 RE-SEAT: r1's z -0.15 was the FLIPPED plan frame (see the
+        // shoulder-ring note) — the ref cupola sits at z +0.27. GRADUATION
+        // ORDER 2 (§5.47): the r-0.076 knob becomes the print's split-hatch
+        // RING class. The ORDERED r 0.30 @ x -0.765 was MEASURED IMPOSSIBLE
+        // at the 2.55 crown line (receipts: gate run at 88.4 — the ring's
+        // outboard arc rode 0.11-0.27 above the crown roll across three
+        // front columns the ref's own front keeps at 2.24-2.44, and its
+        // rear-left arc poked the plan window at x -0.91..-0.99): the
+        // MAXIMAL compliant ring is r 0.285 @ x -0.65 (Ø0.57, arc-level
+        // checks: front x0 -0.935 = the shoulder-pod cover edge; plan
+        // chord inside the loft window at every x; side z-reach 0.555 at
+        // the 2.55 loft-equal line). The HINGE LINE + split lids stay at
+        // the ORDERED -0.765 station (lid outer edge -0.87 = the ref's
+        // flickering face, CORRELATED-TEETER), lids z 0.19..0.35 (the
+        // ref's own lid window) topping the knob-era 2.672/2.678 crown
+        // reads. r/base/h stay for the shared else-branch signature.
+        cupola: { x: -0.765, z: 0.27, r: 0.076, base: 2.55, h: 0.075, ring: { x: -0.65, r: 0.285, h: 0.05, top: 2.55, lidHalfW: 0.095, lidH: 0.122, lidD: 0.16 } },
+        // r2: y 2.577 -> 2.505 — the loader ring owned four front columns
+        // at 2.606-2.616 where the ref right-roof band reads 2.507-2.537.
+        loader: { x: 0.52, z: 0.0, y: 2.505 },
         vent: { x: -0.01, z: 0.30, y: 2.44 },
-        stowBump: { x: -0.02, y: 2.51, z: -0.725, r: 0.085, len: 0.62 },
+        // r2b: x -0.02 -> -0.05 — the roll's +x edge (0.065) teetered the
+        // front +0.064 column at 2.596 where the ref roof reads 2.507 (the
+        // vent hemisphere is that column's honest 2.53 owner). r2c: y 2.51
+        // -> 2.49 (roll top 2.587 vs the ref 2.55 side band at -0.645).
+        stowBump: { x: -0.05, y: 2.49, z: -0.725, r: 0.085, len: 0.62 },
         antenna: { x: 0.60, z: -0.62, y: 2.30 },
+        // r2c: decal anchored EXPLICITLY on the -0.905 section (index 23) —
+        // the default secs[len-2] anchor lands on the new -1.043 tail
+        // section, and the old -0.93 anchor's rear edge (z -1.14) teetered
+        // the side -1.179 window at bot 1.972 vs the ref's 1.991 (decals
+        // ARE mask geometry, §C).
+        decalSec: 23,
         // §B3 census fitting (m46 r2 recipe): stowed FITTINGS 'mag' interior
         // to the casting silhouette — the measured m2Station stays the
         // gate-driven roof gun (§I packet justification).
@@ -3817,9 +4105,31 @@ export const PATTON_PROFILES = {
         // tone 'two-tone' = the m46-r7 B1 / m47-r4 B5 MG-PHYSICS recipe
         // (sky-backed station reads pale top-lit): pale upper works + crown
         // strips + barrel taper w/ collar END pinned at tipZ (anchor law).
-        mg: { x: -0.44, z: 0.76, baseY: 2.50, topY: 3.030, tipZ: 2.20, rl: 0.86, w: 1.5, coverZ: 0.635, coverL: 0.14, canY: 2.90, cans: [0.24, 0.34], tone: 'two-tone' },
+        // canY: the ref M2-can band tops 3.05 across five front columns
+        // (x -0.05..-0.21) — BOTH directions measured this round: 2.775
+        // (tops 2.865) cost -0.09 x5 front; 2.955 (tops 3.045) took the
+        // heightM p95 (3.03 -> 3.06, +2.06% = dims -8.5). 2.90 (tops 2.98)
+        // is the certified compromise: front -0.035 x5 under the spec-grace
+        // heightM ceiling — the same trade class as the receiver band.
+        // jacketDy 0.001 (ref forward barrel 2.977 vs default 3.005-3.014).
+        mg: { x: -0.44, z: 0.76, baseY: 2.50, topY: 3.030, tipZ: 2.20, rl: 0.86, w: 1.5, coverZ: 0.635, coverL: 0.14, canY: 2.90, cans: [0.24, 0.34], tone: 'two-tone', jacketDy: 0.001 },
       },
-      gun: { rootZ: 1.70, axisY: 1.948, muzzle: 3.39, r: 0.132, device: 'stub', shield: { w: 1.31, h: 0.72, dy: -0.02, zF: 1.99, d: 0.55, chinRise: 0.144, rotorR: 0.13, rotorW: 0.40 } },
+      // r2 (90-ladder): muzzle 3.39 -> 3.2615 — the pub-6.6 station parked
+      // 0.156 m of ONLY-PROC tube past the print's own 3.234 muzzle (2 side
+      // columns x err-9 on side_whole AND side_turret; the r1 convention
+      // tax). 3.2615 stays 20 mm clear of the 3.318 side window (empty
+      // deterministically) while pulling overallLengthM toward grace
+      // (~6.52, -1.1%; the -3.25 hook is the ref-correlated rear). The
+      // 6.6-vs-6.468 spec-row flag for the owner STANDS (userdrops6.js) —
+      // a ~6.47 row would seat the muzzle at exact print parity, dims 100.
+      // Shield: dy -0.02 -> -0.055 (r2b: chin@face lands exactly on the
+      // ref's 1.677 band at the 1.918-1.992 columns; the r2 -0.085 cut
+      // 0.03-0.05 BELOW the ref skirt) + the M71 collar lip under the
+      // rotor (y0 1.694 = ref 1.696 at the 2.065 column).
+      // r2h: shield w 1.31 -> 1.415 — the un-flipped plan reads the ref
+      // mantlet casting out to x +-0.70 at z 1.95 (the r1 1.31 span was
+      // authored from a flipped-frame x-window; two 0.16-err plan columns).
+      gun: { rootZ: 1.70, axisY: 1.948, muzzle: 3.2615, r: 0.132, device: 'stub', shield: { w: 1.415, h: 0.72, dy: -0.055, zF: 1.99, d: 0.55, chinRise: 0.144, rotorR: 0.13, rotorW: 0.40, lip: { z0: 1.99, z1: 2.06, y0: 1.694, y1: 1.82, w: 0.38 } } },
     }),
   },
   m46_patton: {

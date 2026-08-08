@@ -799,14 +799,14 @@
   },
   {
    "id": "m45_patton",
-   "geoMin": 84,
-   "gatePassed": false,
+   "geoMin": 90.7,
+   "gatePassed": true,
    "components": {
-    "hullCurves": 88.1,
-    "wholeCurves": 84,
-    "turretCurves": 89.6,
-    "stations": 91.2,
-    "dims": 100,
+    "hullCurves": 91.4,
+    "wholeCurves": 90.7,
+    "turretCurves": 92.2,
+    "stations": 93.4,
+    "dims": 92.2,
     "floaters": 100
    }
   },

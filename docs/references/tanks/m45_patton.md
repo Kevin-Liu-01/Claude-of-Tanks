@@ -319,4 +319,206 @@ x2 rows), rack side-frame deepening, front-flank wall-top work, then the
 visual pipeline (wheelMul dial + dressing variety per §H.4).
 
 ## 2026-08-06 FLEET MUZZLE-BORE + §C.1 WINDING SWEEP (fleet-sweep one-liner)
-- §B3.1 bore on the M4 howitzer collar (len-0.01); §C.1 3 reversed re-oriented; F-vs-D 34->0; gate HELD x2 EXACT 84 (fresh pre==post; 1 benign mixed strip); hash not frozen; mantlet mass verified per MANTLETS-MANDATORY (db9168c). Mechanism: kit.js muzzleBore shadow-named furniture + orientedSlab guard (3fca39b / 1017339); end-on+quarter crops shots/muzzle-sweep/{before,after}/.
+- §B3.1 bore on the M4 howitzer collar (len-0.01); §C.1 3 reversed re-oriented; F-vs-D 34->0; gate HELD x2 EXACT 84 (fresh pre==post; 1 benign mixed strip); hash not frozen; mantlet mass verified per MANTLETS-MANDATORY (db9168c). Mechanism: kit.js muzzleBore shadow-named furniture + orientedSlab guard (3fca9b / 1017339); end-on+quarter crops shots/muzzle-sweep/{before,after}/.
+
+## 90-LADDER r2 (2026-08-07/08, §5.33 wave 1) — 84 -> 90.7 GATE PASS x2, stop-rule RE-ADJUDICATED OPEN
+
+STOP-RULE ADJUDICATION: the r1 close declared "~84-85 is the structural
+ceiling under the muzzle convention". Re-audited against today's
+mechanisms, the ceiling was NOT structural — three since-banked unlocks
+opened it: (1) the r1 muzzle convention tax (2 err-9 only-proc columns
+x2 rows) was harvestable INSIDE the 6.6 row via the 1%-grace window +
+a ref-correlated rear extent (hook) — no owner ruling needed; (2) the
+r1 build was authored partly from a Z-FLIPPED workorder plan frame (the
+tool's pre-r3 degenerate orientation pick, t72bu class — fixed in the
+tool AFTER r1); every plan-sourced z seat was mirrored about the shared
+center (~0.058); (3) the PARTIAL-PIXEL / AA-TEETER laws (banked after
+r1) explained the "stuck" columns as razor-sliver artifacts, not shape
+limits. THE FLIP AUDIT (flip constant c = -0.191, verified on four
+landmarks: proc muzzle, pintle, ref muzzle, ref junk tail): the m45
+plan rows in vertex-workorder are STILL flipped today — m45's near-
+bow-flush print defeats the thin-end heuristic (nMn/nMx picks the tail
+junk as "front"). All plan authoring this round used a landmark-
+verified census decode (tools/tmp-m45-census.mjs, z = Cz - v).
+
+FLIP VICTIMS FOUND AND RE-SEATED (the r1 "workorder r2 finds" class):
+- cupola z -0.15 -> +0.27 (+ x/r trim -0.765/0.076 for a lid-edge
+  front teeter); commander shoulder ring z -0.19..-0.01 -> +0.17..+0.35
+  (x0 widened -0.935: the ref front holds 2.557 through x -0.923).
+- "narrow tail" INVERTED: the ref rear stays WIDE (-2.883/-2.785
+  stepped at x~0.89) where r1 narrowed it, and the ref NOSE narrows
+  instead — wide-tail wing pair added (plan-only mass, side/front
+  interior, 15+ mm §B4 clearance to the band).
+- "lifting-eye" pod y 1.90..1.955 was the ref DECK-EDGE line: it is a
+  deck-height ring-lip stub (y 1.46..1.525, under the hatch-disc yaw
+  orbit — clip-checked at r 1.23) with the plan sliver kept.
+- fender hanger-bump stations: the r2e full-mirror EXPERIMENT was
+  adjudicated by the never-flipped station slices (i8/i10/i13 widths
+  crashed 4.64% without the rear hangers): the r1 REAR stations are
+  REAL; restored. The flipped read's true finding was the BOW lip
+  front (dead lip strips — the un-flipped workorder later proved the
+  lip front is the 2.481 plate line; certified ref-teeter at the
+  +-1.72 lip columns, the ref hanger x-span ~1.66..1.70 drifts per
+  grid).
+- mantlet w 1.31 -> 1.415 (un-flipped plan: the M71 casting reaches
+  x +-0.70 at z 1.95); r1's 1.31 was a flipped-frame x-window.
+- flapF plane 2.97 -> 2.925 = the ref's own 2.939 flap line (16 plan
+  track columns); legal now the flap band rides 1.005..1.045 (clears
+  the wrap arc's z-2.925 cross-section — r1's §B4 constraint bound the
+  OLD 0.62-skirt flap only). Track-clip re-verified 34/20 + shoes 8/8.
+
+MEASURED FIXES (census/workorder-driven, non-flip):
+- front_whole ref-truths: LEFT pistol-port bulge (x -1.245..-1.15,
+  top 2.083, z 0.575..0.815 — plan col -1.226 = 0.572..0.816 exact);
+  RIGHT-BIASED CROWN: crownX -0.02 -> +0.07, crownW 0.50 -> 0.55,
+  midT 0.72 -> 0.695 (ref roof plateau runs to x +0.74, right roll
+  2.52@0.78) + right shelf pod ladder 2.40/2.372/2.172 with the
+  2.372/2.172 step at x 1.138 (12 mm window margins) and z-fronts
+  stepping 1.10 -> 0.90 at x 1.095 per the ref plan flank.
+- deck-edge shoulder roll: bandHW 1.60 -> 1.28 + deckShoulder
+  { x0 1.28, x1 1.61, drop 0.048, skirt 0.27 } — the flat band read
+  +0.02..+0.06 across ~17 front columns; the deepened skirt closes to
+  the 1.276 fender lip (§B2 see-through guard, m45's fender sits 0.26
+  under deck vs m47's 0.055).
+- M2 station: mount GUSSET (x -0.53..-0.35, y 2.54..2.86, z 0.60..
+  0.80) closes the see-through sweep item 11 garage window (125-326 px
+  enclosed bg -> closed; garage read 129 -> 110, remaining = the legal
+  open rack-frame class); jacketDy 0.001 (ref forward barrel 2.977);
+  canY BOTH directions measured (2.775 cost -0.09 x5 front; 2.955 took
+  heightM p95 +2.06% = dims -8.5) — 2.90 is the certified compromise.
+- bustle re-step: the 2.42 plateau ends -0.905, the 2.34 band HOLDS to
+  -1.043 then drops near-vertically at the loft tail; bots to the ref
+  1.835 line; basket span pinned ON the ref's own faces (1.386/-0.028);
+  rack: railW 0.095 (0.03 rails covered the x 0.42 plan windows
+  sub-pixel), zC -1.10, sideFloorY 2.038, railY 2.19; decalSec 23
+  (the default anchor's rear edge teetered a rail window — decals ARE
+  mask geometry).
+- tail: three-step tiers (1.256/1.222/1.148 wide 0.70/0.695/0.68 per
+  the +-0.70 plan columns), thin plan shelf (y 0.96..1.00 to -3.245),
+  pintle hook w 0.09 to z -3.250 = THE REF'S OWN JUNK REAR FACE
+  (decoded across three grids) — matching faces make the AA teeter
+  CORRELATED (both models light or miss together); bumpStops at
+  x 1.02 (ref front bottoms 0.306 at the 1.01-1.05 columns).
+
+REGISTRATION-COUNTERWEIGHT EXECUTION (the m26-r3 law, decisive here):
+the r1 dims bracket's rear AA slivers made the proc's -3.269 hull-row
+column FAT where the ref's is 0.11-thin -> body mid shifted a half
+column, dAlong -0.037, EVERY side row smeared (~-8 pts across six
+rows at the worst intermediate state). Fix: the fat chain ENDS at the
+ref's own last-fat station -3.196 (bodyends probe:
+tools/tmp-m45-bodyends.mjs — ref/proc midU now EQUAL, dAlong 0.000 on
+every row). hullLengthM pays honestly: 6.22 read (-1.74% => -5.9) —
+PROVEN structural: hull ⊂ whole makes a whole-only fat tail column
+impossible, and any hull-row fat past -3.196 re-shears registration.
+dims 92.2 = 100 - 5.9 (hullLengthM) - 1.4 (overall -1.34%, muzzle
+3.2615 + hook -3.250) - 0.5 (heightM 0.97% + width rounding). The r1
+OWNER ROW FLAG STANDS: a ~6.47 overallLengthM row (seated print truth
+6.468) would seat the muzzle at print parity; correcting hullLengthM
+to the print's own ~6.15-6.22 body would retire the -5.9 (the
+published 6.33 M26-chassis row is the binding constraint).
+
+ROUND CLOSE — gate **90.7 PASS x2** (components identical both runs):
+hull 91.4 / whole 90.7 / turret 92.2 / stations 93.4 / dims 92.2 /
+floaters 100. TRAJECTORY 84 -> 90.7 (+6.7): hull 88.1->91.4, whole
+84.0->90.7, turret 89.6->92.2, stations 91.2->93.4, dims 100->92.2
+(the honest registration trade), floaters held. Audits at close hash:
+track-clip 34/20 + shoeVox 8/8 (0 blind spots), standard-check clip ✓
+contig 0 ✓ decor mg1+0d ✓ (stowed FITTINGS 'mag' census, §I
+justification stands), winding rev 0 / mix 0 / yaw-stranded clean,
+turret-parent 0/0/0, npm test green (166 + track-geometry), critic 14
+views zero console errors (shots/critic-m45_patton/), see-through
+garage 110 (item-11 M2 window closed; worstT 640 = the certified
+open-rack class per §B2 exc. 3).
+
+CERTIFIED residuals (close workorder, dAlong 0.000 every row):
+- side rows -3.05..-3.20: bracket-bottom 0.75 vs ref 0.92 junk line
+  (0.08-0.12 x3 cols x2 rows) — the dims hullLengthM registration
+  price (above).
+- side_hull 2.67/2.74: bow-lip/platform-step class 0.10-0.15 x2 (r1
+  carry-over); -2.756: sprocket-wrap 0.057 (chopped-track class, §B6
+  outranks print matching).
+- side_turret -0.045: 0.41 HALF-FLICKER — the ref basket rear face
+  teeters its own boundary (~-0.02+-0.015, brackets contradictory
+  across grids); proc face at the mid (-0.028) is the EV optimum.
+- plan +-1.72: lip-column ref-teeter (hanger x-extent, above);
+  +-1.13..1.66 rear: proc wrap -2.941 vs ref -2.849 (print's rear
+  wrap z-short in plan; §B6/§B4 pin the proc's honest wrap) 0.046 x16.
+- front -0.015: can-edge 0.068 (the canY compromise); +-0.93..1.16
+  left-flank partials 0.04-0.06.
+HASHES at close: m45 re-authored -> candidate **9f5c94d0** (44 meshes /
+70169 verts, gate x2 + all audits at this hash). Siblings BYTE-HELD
+all round (verified after every batch): m46 **108806c8** (FROZEN ✓),
+m47 **2fc99c50** (FROZEN ✓), m26 **2f006738** — NOTE: the registry
+records m26 at 65c564c0; the drift is PRE-EXISTING and attributed this
+round by worktree bisect to landed commit **5f39989** (armorM4
+gunBarrel shadow-proxy true-up 3.96 -> 3.44; m26/m45 inherit the
+m4a3e8 base, m46/m47 do not — patton.js bytes unchanged). Orchestrator
+lane: re-record m26 at 2f006738 with that attribution (proxy-only,
+render-invisible) or decouple proxy sizes from frozen-hash coverage.
+NEW SHARED-CODE OPT-INS (defaults byte-identical, §F.2, hash-proven on
+all three graduates): m2Station M.jacketDy (default 0.02), bustleRack
+R.railW (default 0.03, outer face pinned), deckShoulder S.skirt
+(default 0.05 — m47/m60a2 unchanged), buildPershing cfg.pintleHook
+(default absent), pattonGun S.lip (default absent).
+LAW-BANK CANDIDATES (for BUILD-STANDARD folding at landing):
+1. WORKORDER-FLIP RESIDUAL: the r3 thin-end fix does NOT cover
+   near-bow-flush prints (m45 class) — plan rows can still flip
+   per-run; landmark-verify (muzzle/pintle) before authoring from ANY
+   plan read, and bank the per-tank flip constant.
+2. CORRELATED-TEETER LAW: when a ref face rides a column boundary, pin
+   the proc face ON the ref's own face (basket/hook/tab executions
+   here) — matching faces flicker TOGETHER (err ~0.01 either state);
+   any offset face half-flickers an err-9 or 0.4-class column.
+3. REGISTRATION-SLIVER LAW (§D extension): a 2-8 mm AA sliver can flip
+   a body-filter column FAT and shear dAlong half a column — body-end
+   columns need the same >=15 mm margins as boundary-critical faces,
+   and the bodyends probe (ref/proc firstFat/lastFat/midU) is the
+   direct instrument.
+4. GATE-JSON PLAN ROWS also carry the flip ambiguity (mode-picked):
+   'at'/value decode is only trustworthy after landmark verification.
+STATE: DELIVERED-PENDING-CRITIC at 9f5c94d0 (NOT committed, NOT
+frozen). Next: independent critic (dual-gate G), then graduation §10.
+
+## GRADUATION ORDERS r3 (2026-08-08, §5.47 verdict: geometry 90.7
+## CONFIRMED x5, visual FAIL floor 8.8 close-roof) — BOTH ORDERS DONE
+
+ORDER 1 — loft.smooth on the m45 dome (m26-r1 precedent): DONE, one
+key on the loft config; hwL parity via the m26-r4 SMOOTHLOFT-hwL
+expressions (profile lines ~792-802). SMOOTH-RE-EMIT ACCEPTANCE,
+decomposed by bisect (smooth-only gate run vs the pre-smooth JSON
+snapshot, field-level diff): components / dimRows / stationErr /
+every row's meanPct/p95Pct/coverPct/reg/worst BYTE-EQUAL; the single
+moving field fleet-wide was the front_whole raw score float
++0.008 (90.6746 -> 90.6826, sub-printed-precision, an improvement —
+the 1-dp gate line byte-reproduces at 90.7 with identical
+components). Receipts: scratchpad m45-gate-pre-smooth.json diff.
+
+ORDER 2 — commander cupola to the print's split-hatch RING class:
+DONE via a new t26Cast opt-in T.cupola.ring (default absent —
+m26/m46 keep the knob byte-identical, hash-proven). THE ORDERED
+r 0.30 @ x -0.765 WAS MEASURED IMPOSSIBLE at the 2.55 crown line:
+the first build's gate run (receipt: 88.4, front_whole -2.3,
+turret_plan -0.7) proved the outboard arc rides 0.11-0.27 above the
+crown roll across three front columns the ref's own front keeps at
+2.24-2.44, and the rear-left arc pokes the plan window at
+x -0.91..-0.99 (the interiority check must run at the ARC, not the
+extreme x — banked). MAXIMAL COMPLIANT RING: r 0.285 @ x -0.65
+(Ø0.57): front x0 -0.935 = the shoulder-pod cover edge exactly, plan
+chord inside the loft window at every x, side z-reach 0.555 on the
+2.55 loft-equal line. The HINGE LINE + split lids stay at the
+ORDERED -0.765 station (lid outer edge -0.87 = the ref's flickering
+face, CORRELATED-TEETER), lids z 0.19..0.35 topping the knob-era
+2.672/2.678 crown reads (front cols -0.68..-0.85 unchanged).
+Hold-or-improve: front_whole 90.675 -> 90.747 (+0.07), every other
+row byte-equal.
+
+CLOSE: gate 90.7 PASS x2 (final state; components identical:
+91.4/90.7/92.2/93.4/92.2/100), npm test green (166+track-geometry),
+fresh 14-view critic pairs at the close hash (zero console errors;
+close-roof shows the dome as ONE cast roll — the slab facet family
+is gone — with the ring + split lids reading at the commander
+station). Sibs byte-held: m47 2fc99c50 / m46 108806c8 / m26 2f006738
+(§3 row re-recorded, attribution ratified). NEW CANDIDATE HASH:
+**53caa687** (43 meshes / 68753 verts — the smooth grid consolidates
+the slab stack). DELIVERED UNCOMMITTED-UNSTAGED per §5.44a; the
+fresh 14-view critic sitting adjudicates at 53caa687.
