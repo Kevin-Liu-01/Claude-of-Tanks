@@ -1420,3 +1420,51 @@ critic's own constraint the echo deletion MOVES THE HASH -> queued as
 the NEXT abrams-lane touch (graduate-change chain: delete echo ->
 gate x2 -> re-cert changed views -> re-freeze). Row lands with this
 annotation; never read sepv2's 0 as a regression.
+
+## 5.34a TYPE90 GLB BYTE-HEAL (2026-08-07): d414664 committed the
+PARTIAL batch-27-only bytes (c286b555 — the state the NameError crash
+left on disk), not the healed byte-idempotent batch-49 output
+(b2ece521) the 45.1 ledger row (0184d73) was measured against. Caught
+by pre-commit staged-drift check (camoKit lesson). Worktree bytes
+b2ece521 committed here; ledger row already honest.
+
+## 5.35 FLEET SEE-THROUGH SWEEP DELIVERED (2026-08-07, §5.33 defect
+class 1): 58/58 procedural ids swept read-only (~41 scans each: §B2
+enclosed-bg flood + foreground-island CCL), 1403 evidence PNGs under
+shots/see-through-sweep/, tools left committed-adjacent as
+tools/tmp-sweep-seethrough.{html,mjs} + tmp-sweep-adjudicate.mjs for
+fix-round re-verification. TWO SWEEP-LAW DISCOVERIES banked: (1)
+GUN-AIR FP — under-barrel air enclosed by whip antennas floods as
+"hole" (merkava2d's 6849px headline was entirely this); gun-box
+y-band tagging removes it. (2) DARK-COLLAR ISLAND FP — near-bg cold
+collar tones fake disconnection (m26 muzzle). Flood is BLIND to
+open-ended corridors; the island scan is their detector
+(leopard2_proto/t80u proved it). RANKED HOLES (garage-visible first):
+1 bmp2 (turret FLOATS above ring, bg through in plain side; modern3),
+2 t72b3m GRADUATE (dome-rear<->hull-stack window + full-length top
+skirt corridors; graduate-change, couples w/ live t72-spin round),
+3 m60a2 (open sponson/fender channels + floating skirt seg; patton),
+4 vickers_mk1 (sponson slit; packet documents 2.5cm designed — verify
+width), 5 leopard2_proto (7cm full-length top corridors both sides),
+6 t90m (rear-overhang slot + skirt-front slots; russia LIVE),
+7 t64bv1 (hovering roof bins; russia LIVE), 8 t80u (right top
+corridor 6.3m + ERA standoffs; couple w/ §C reversed-slab), 9
+spz_puma (rear-deck seam; modern3), 10 centurion3 (mantlet-flank
+pockets; uk), 11 patton MG floaters m26/m45/m46/m47/m60a3 (§B3 mount
+mass; m45 ladder LIVE), 12 t84 (inter-armor-block gap), 13
+t72bu/t80bv (partial top corridors), 14 challenger_3 (skirt leading
+plates hover-read; verify), 15 challenger1 (under-turret-skirt band,
+hygiene), 16-18 minor (sepv2 post slit, type74 empty-rack, t80-family
+shared rear floater — one family-rig fix). CERTIFIED/LEGIT no-order:
+all five merkavas, challenger2 basket, abrams family (cleanest),
+kf51/ch3 RWS mount air, amx30 mast, type10 basket, pt91m/t62mv1.
+CLEAN <100px: kv2 0, type90 4, ariete 8, isu152 12, isu122s 14,
+centurion5 16, m1a2 20, chieftain5 20, leo2a5 42, revolution 46,
+t80b 56, t90a 99, leclerc, bradley, vladimir, leo2a6, m60a1.
+CAVEAT: russia.js dirty throughout the sweep -> its rows PROVISIONAL
+(live-tree hazard); abrams.js dirty only after final re-runs.
+LANE PLAN: free lanes fix first (modern3: bmp2+puma; uk: vickers+
+cent3+ch1; leopard: proto corridors); busy lanes queue their items
+behind live rounds (russia: t72b3m/t90m/t64bv1/t84/t72bu/t80bv/
+t80-floater; patton: m60a2+MG-mass rides the m45 ladder; misc: t80u+
+type74; abrams: sepv2 post slit rides the echo-deletion touch).
