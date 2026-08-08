@@ -85,6 +85,7 @@ re-freeze NEW hash, all in ONE commit.
 | m1a2_sepv2 | 54b35994 | RE-FROZEN 2026-08-08 (§5.34 chain complete: works-echo DELETED -6588 verts, gate FALSE-0 -> 64.6 honest x2, re-cert 9.2-9.4 x10 changed views w/ byte-authenticated evidence; tejas-oracle lineage e60878a9/7ef1c5ec) |
 | m2a2_bradley | 90a5568c | GRADUATED 2026-08-08 (28th; dual gate: geometry 90.9 x2 every component >=90 landed 81bdad1 + visual floor 9.0 / mean 9.16 x14 views at freeze-verified bytes; oracle e699c868; dress-tier defect bank in the verdict: bow T-hooks, taillight fittings, TOW rear ports, lug stacks, ringed hubs) |
 | m45_patton | 53caa687 | GRADUATED 2026-08-08 (29th; gate 90.7 x5 total + sitting-2 visual floor 9.0 mean 9.13 x14; sitting-1 orders executed: loft.smooth byte-reproduced, ring cupola adjudicated ring-class at station with the measured Ø0.57/x-0.65 deviation compliant; ring-prominence silhouette-tax residual certified) |
+| leclerc | 683be340 | GRADUATED 2026-08-08 (30th; gate 90.3 x2 every component >=90 + visual floor 9.0 mean 9.17 x14 at freeze-verified bytes; the §5.14 §K-exemplar turret standard held through the ladder — no gate-chasing artifacts; commander-well doc trued z_w 0.32..0.66) |
 | m26_pershing | 2f006738 | RE-RECORDED 2026-08-08: hash moved by LANDED 5f39989 (armorM4 gunBarrel shadow-proxy 3.96->3.44; m26/m45 inherit m4a3e8 proxies — patton.js bytes unchanged); double-confirmed by builder bisect + m45-grad critic; prior 65c564c0 bore+winding re-cert lineage (floors 9.1-9.4) carries |
 | t90m | e345ee8a | GRADUATED 2026-08-06 (27th; floor 9.0 x14 second sitting; the owner's dedicated-agent arc 81.7 -> dual gate) |
 
@@ -2195,3 +2196,14 @@ first-match perl edit transiently hit type74's identical L7 gun line
 edits anchor on unique context, and the guard battery is the net.
 Guards held on final bytes (type90 b9182ad4 / type74 7ba404c5 / t80u
 af5e3ad9); leclerc track-clip 14/0 BETTER than its certified 24.
+
+## 5.71 LECLERC GRADUATED — 30th (2026-08-08): the §K exemplar tank
+completes its dual gate — 90.3 x2 every component >=90 (§5.70) +
+graduation floor 9.0 / mean 9.17 x14 at freeze-verified 683be340
+(rig pixel-identical to the Aug-6 certified adjudication; every
+ladder-touched region adjudicated artifact-free: wrap fills read as
+fender assemblies, the drop strip as skirt hardware, gun dead-center
+in plan). 30 GRADUATES; FLEET 24/96. The §5.33 campaign's proven
+routes continue: ariete §E path (~85-86 ceiling -> print work),
+amx30-pair y-normalize, the trio turret ladder (live), k2 ladder vs
+the 52b-opened rows, m48 tube-level, type99a §E menu.
