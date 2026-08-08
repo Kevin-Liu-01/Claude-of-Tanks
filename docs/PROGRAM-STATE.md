@@ -2051,3 +2051,18 @@ banked (smoke at |x|1.77 paid -7 front_whole vs the fender lane ->
 tucked 1.61). NEW ASK-OWNER: k1a1 K6-on-cupola is dims-law-blocked
 (receiver 0.26 over the 2.21 roof kills the 2.25 p95) — low-mount law
 applied; owner may trade heightM grace for the cupola-mounted read.
+
+## 5.63 AMX40 RATIFIED + LANDED (2026-08-08): identity critic PASS
+9.2 — "reads as the Satory demonstrator at the fleet's ratified bar";
+every identity item census-confirmed (underbite beak, 45-degree ramp
+drums, one-plane front-left sweep + two-facet right cheek +
+right-deep bustle, LLLTV/F2 stations measured in-frame, bore 6.644 =
+overall 10.044 +0.04%); §J yaw-90 closed in pixels; two false alarms
+run down and cleared by census (camera-tilt leak + the critic's own
+px/m error — the adversarial process working). Hash 25633150; row
+38.6 lands cap-documented (print optics tower 2.43-3.09 + rod masts
+over the 2.38 published roof — the §E knee-2.39 normalize is FILED
+and now UNBLOCKED in the orchestrator queue; t90m batch-23 precedent
+forecasts the 64->90-class arc). france.js module goes live (stub ->
+full resident). Wave score: type99a landed, amx40 landed, type90
+landed; k2/k1a1 in sitting 2; t90 trio critic scoring.

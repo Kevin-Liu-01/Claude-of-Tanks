@@ -1173,6 +1173,19 @@
     "dims": 87.5,
     "floaters": 100
    }
+  },
+  {
+   "id": "amx40",
+   "geoMin": 38.6,
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 83.7,
+    "wholeCurves": 38.6,
+    "turretCurves": 62.4,
+    "stations": 52.2,
+    "dims": 100,
+    "floaters": 100
+   }
   }
  ]
 }
