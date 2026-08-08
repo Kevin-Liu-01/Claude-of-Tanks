@@ -2306,11 +2306,13 @@ ratified "deliberate ring" read survives as the annulus). §5.09 read
 verified in pixels (full FLW anatomy ~0.6m over the a4 roof; squat
 station + 2.78w tower on proto); CROWS-FORWARD by construction; §B5
 yaw90 unity; ratified §5.55 reads survive BOTH. Proto gate x2: hull
-48.7->48.9 IMPROVED, dims 100 held. Hashes proto d900c8e2 / a4
-8fb73bdd. leo2a4 heightM 2.48->3.03 APPLIED (P95 law: the FLW band
+48.7->48.9 IMPROVED, dims 100 held. Builder candidate hashes were proto
+d900c8e2 / a4 8fb73bdd (final coupled hashes corrected in §5.78).
+leo2a4 heightM 2.48->3.03 APPLIED (P95 law: the FLW band
 owns p95Top 3.020 — band-class not spike; m26/type99a precedent).
 Guards x3 sweeps EXACT (incl. leo2a7v/leo1a5 siblings). RE-CERT
-CRITIC SPAWNED (changes ratified reads).
+completed in §5.78; the candidate hashes printed here were corrected
+there to the hashes of the actual coupled landing.
 
 ## 5.77 TYPE90 DATUM APPLIED — 68.9 -> 79.5 (2026-08-08, §5.73-1):
 heightM 2.34 -> 2.55, derived AGAINST the naive 3.05 (a 1-2-column
@@ -2328,3 +2330,17 @@ type99a critic's bank, not type90's — the real §5.57 bank (basket
 lattice, cheek chamfers, dead-front slab) stays open; §E chin-knee is
 now type90's biggest chaseable class. LESSON: brief-writing pulls
 banks from the REGISTRY section named, not from memory.
+
+## 5.78 LEOPARD RCWS RE-CERT RATIFIED + HASH RECORD CORRECTED
+(2026-08-08): independent fresh sitting PASS x2 — leo2a4 floor 9.1 /
+mean 9.21, leopard2_proto floor 9.0 / mean 9.09 across 14 views each
+(`shots/critic-leo-rcws/`; full verdict
+docs/critique/shaded-parity-leopard-rcws-recert.md). §5.09 anatomy,
+CROWS-FORWARD, §B5 yaw-90 unity, mount connection, and the full §5.55
+source-fidelity reads all survive. Clean detached-HEAD verification
+caught that §5.76's builder candidates were not the hashes of the final
+coupled landing: authoritative hashes are proto **a9aba192** and a4
+**41587e99**, reproduced both at detached acc0a48 and in the live tree;
+the stale d900c8e2/8fb73bdd candidates are retired in both packets.
+Frozen guards remain exact: leo2a5 e215a738 / leo2a6 09912270 / kf51
+9ac547ac / revolution db70c929. No geometry changed in the correction.

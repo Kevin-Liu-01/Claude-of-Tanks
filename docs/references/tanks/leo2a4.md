@@ -379,8 +379,12 @@ verdict (see the proto packet).
 ### Close battery (2026-08-08, HEAD e898cdb)
 - FALSE-0 law: no gate on this id (visual bar). npm test 166 +
   track-geometry PASS.
-- Hash: b68e42c2 -> 8fb73bdd (62 -> 64 meshes, 86174 -> 90926 verts —
-  moves by design; re-cert critic follows per §5.73-3). Guards
+- Hash as first reported by the builder: b68e42c2 -> 8fb73bdd (62 -> 64
+  meshes, 86174 -> 90926 verts). LANDING CORRECTION: the orchestrator's
+  coupled P95 datum edit (heightM 2.48 -> 3.03) changes the spec-fed
+  procedural scale, so the authoritative clean-HEAD hash is **41587e99**
+  (64 / 90926), reproduced at acc0a48. The re-cert verdict below binds
+  41587e99, not the pre-datum candidate. Guards
   byte-held through the round (hashed before AND after): leo2a5
   e215a738 / leo2a6 09912270 / kf51 9ac547ac / leo2_revolution
   db70c929 / leo2a7v 3ca4af86 / leo1a5 1c79188 — no shared-helper
@@ -388,3 +392,24 @@ verdict (see the proto packet).
 - Evidence: shots/leo-rcws/{before,after}/leo2a4 (20 views: 9 orthos +
   3 heroes + 2 closes + 6 garage) + after yaw90 pair (§B5 unity — the
   station translates with the turret; gun stays with the aim frame).
+
+### Independent re-cert verdict (2026-08-08; §5.73-3)
+**PASS — floor 9.1 / mean 9.21 across the fresh 14-view sitting, at
+clean-HEAD hash 41587e99.** Scores in canonical view order:
+`9.2 / 9.3 / 9.1 / 9.1 / 9.1 / 9.1 / 9.2 / 9.3 / 9.2 / 9.3 /
+9.1 / 9.2 / 9.2 / 9.3`.
+
+- The restored FLW-200 reads as a complete automated station: powered
+  slew drum and pedestal, armored trough, receiver, forward M2, gun-left
+  ammunition bin, sensor/LRF pod, shields, cable drop, and roof conduit.
+  Nothing reads as an unexplained box or unsupported floater.
+- CROWS-FORWARD is unambiguous in both side crops; the yaw-90 plan/right/
+  hero battery proves the entire station follows `rig_turret` while the
+  gun stays in its aim frame.
+- The §SRCFIX identity survives in every fresh view: blunt-brick 2A4
+  turret, right-front EMES-15, 3+6 skirts, seven readable wheel arcs,
+  Wegmann banks, and slatted bustle rack. The station is additive owner-
+  ordered kit, not a return to the type90-dart silhouette.
+- Evidence: `shots/critic-leo-rcws/leo2a4/` (35 fresh sheets) plus the
+  unchanged-family garage controls. Full verdict:
+  `docs/critique/shaded-parity-leopard-rcws-recert.md`.

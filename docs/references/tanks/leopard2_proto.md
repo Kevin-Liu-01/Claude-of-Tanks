@@ -429,8 +429,12 @@ REMOVED verdict is superseded by the newer order).
   at the gate's ~10 mm/px mask — CPU-exact probe tmp-leorcws-p95 reads
   2.52 only by counting that sliver; gate = authority on gated ids).
 - npm test 166 + track-geometry PASS.
-- Hash: 4f6360fe -> d900c8e2 (61 -> 63 meshes, 85691 -> 89255 verts —
-  moves by design; re-cert critic follows per §5.73-3). Guards
+- Hash as first reported by the builder: 4f6360fe -> d900c8e2 (61 -> 63
+  meshes, 85691 -> 89255 verts). LANDING CORRECTION: a clean detached-
+  HEAD reproduction of the actually landed station + flange is
+  **a9aba192** (63 / 89255) at acc0a48. The earlier candidate came from
+  the live pre-landing tree and is retired; the re-cert verdict below
+  binds a9aba192. Guards
   byte-held through the round (hashed before AND after): leo2a5
   e215a738 / leo2a6 09912270 / kf51 9ac547ac / leo2_revolution
   db70c929 / leo2a7v 3ca4af86 / leo1a5 1c79188 — no shared-helper
@@ -438,3 +442,25 @@ REMOVED verdict is superseded by the newer order).
 - Evidence: shots/leo-rcws/{before,after}/leopard2_proto (20 views:
   9 orthos + 3 heroes + 2 closes + 6 garage) + after yaw90 pair (§B5
   unity — station/tower translate with the turret).
+
+### Independent re-cert verdict (2026-08-08; §5.73-3)
+**PASS — floor 9.0 / mean 9.09 across the fresh 14-view sitting, at
+clean-HEAD hash a9aba192.** Scores in canonical view order:
+`9.1 / 9.2 / 9.1 / 9.0 / 9.0 / 9.0 / 9.1 / 9.2 / 9.1 / 9.2 /
+9.0 / 9.1 / 9.1 / 9.0`.
+
+- The restored squat-wide OWS and separate proud panoramic tower satisfy
+  the owner's all-Leopards RCWS override without consuming the PT's low-
+  roof silhouette: receiver/trough, forward gun, ammo box, powered base,
+  optics, and tower are individually readable at garage range.
+- The replacement mount flange is visible as a continuous annulus around
+  the base, with no coplanar flicker and no sky between station and roof.
+  The yaw-90 close/plan/hero battery proves both the station and tower
+  follow `rig_turret`.
+- The §SRCFIX identity survives in every fresh view: unskirted seven-
+  wheel/return-roller gear, low PT turret, stereo-rangefinder blocks,
+  wide cast mantlet, clean glacis, and exposed mounting rails remain the
+  dominant read. The RCWS is variant kit, not a casemate-height rewrite.
+- Evidence: `shots/critic-leo-rcws/leopard2_proto/` (35 fresh sheets)
+  plus unchanged-family garage controls. Full verdict:
+  `docs/critique/shaded-parity-leopard-rcws-recert.md`.
