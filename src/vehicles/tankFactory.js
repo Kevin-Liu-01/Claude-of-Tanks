@@ -4626,7 +4626,13 @@ export function createTank(specId, engineCtx, opts = {}) {
   // Dynamic import keeps GLTFLoader out of the bundle-critical path; on any
   // failure (missing file, no articulable turret node) the procedural model
   // simply remains — it is the fallback of record.
-  const modelCfg = MODEL_SOURCE[specId];
+  // §5.31b PRINT-VIEWER SEAM (modelCfgOverride): a caller that owns its
+  // createTank invocation (fidelity boards, A/B tooling, previews) may force
+  // a specific model-source row — e.g. a retired candidateGlb print — without
+  // mutating the shared registry. The garage's Sources print cards do NOT
+  // pass this: their pedestal build runs through owner-WIP main.js, so they
+  // ride the 'print:<id>' registry rows from vehicles/printCatalog.js.
+  const modelCfg = opts.modelCfgOverride || MODEL_SOURCE[specId];
   // Local fidelity tooling needs to instantiate the authored procedural
   // fallback beside its sourced model without mutating the shared source
   // registry. This flag is deliberately opt-in and leaves every gameplay

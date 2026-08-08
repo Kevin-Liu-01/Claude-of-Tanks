@@ -50,4 +50,16 @@ for (const id of specs.ALL_TANK_IDS) {
   const p = src && src.glb && src.glb.path;
   if (p) sources[id] = p;
 }
-console.log(MARKER + JSON.stringify({ allIds: specs.ALL_TANK_IDS, sources }));
+// §5.31b PRINT VIEWER: candidateGlb rows (retired prints, kv2/flip-era
+// pattern) feed the public Sources print catalog — report them so the parent
+// guard can fail a build whose print catalog would reference a stripped path.
+// Iterates MODEL_SOURCE keys (not ALL_TANK_IDS) to mirror printCatalog.js:
+// a row registered by a module whose SPEC donor chain is node-hostile (e.g.
+// userdrops3's merkava4 row while modern1 fails under bare node) still counts.
+const candidates = {};
+for (const id of Object.keys(specs.MODEL_SOURCE)) {
+  const src = specs.MODEL_SOURCE[id];
+  const c = src && src.candidateGlb && src.candidateGlb.path;
+  if (c) candidates[id] = c;
+}
+console.log(MARKER + JSON.stringify({ allIds: specs.ALL_TANK_IDS, sources, candidates }));

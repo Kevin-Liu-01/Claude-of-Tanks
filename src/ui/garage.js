@@ -21,6 +21,12 @@ import { resolveCamoVisual, CLAUDE_CODE_MARK, CLAUDE_SPARK_MARK }
 // model, so it belongs with the custom fleet (a public build that strips the
 // registrations simply shows a larger custom fleet and no Sources chip).
 import { MODEL_SOURCE } from '../vehicles/specs.js';
+// §5.31b PRINT VIEWER: the Sources chip lists ALL actual-tank prints — the
+// playable-print rows (MODEL_SOURCE 'glb') keep their normal cards, and every
+// RETIRED print (candidateGlb rows, the flip-era pattern) gets a VIEW-ONLY
+// 'print:<id>' card. Catalog + pseudo-spec registration live in
+// vehicles/printCatalog.js (lazy — only the garage materializes them).
+import { getPrintCatalog, printBaseId } from '../vehicles/printCatalog.js';
 // EQUIPMENT SYSTEM: full catalog + slot logic (game/equipment.js), the
 // white-silhouette icon set (equipIcons.js), and the spotting-side math the
 // stat card folds into its view/camo rows so the garage can never disagree
@@ -141,7 +147,10 @@ const groupOf = (s) =>
     : COLDWAR_IDS.has(s.id) ? 'coldwar'
       : s.era === 'ww2' ? 'ww2' : 'modern';
 // The four catalog chips, in the owner's order. A chip with zero members
-// auto-hides (a public build strips the GLB registrations => no Sources).
+// auto-hides. §5.31b: Sources is no longer empty on public builds — besides
+// the playable-print rows it lists a VIEW-ONLY card per retired print
+// (candidateGlb rows via vehicles/printCatalog.js), so deploys show ALL
+// shipped actual-tank models there (the owner's §5.31b closing order).
 const CATALOG_GROUPS = [
   { id: 'coldwar', label: 'Cold War' },
   { id: 'modern', label: 'Modern' },
@@ -167,7 +176,9 @@ function catalogCompare(a, b) {
   if (g) return g;
   const n = (NATION_RANK.get(a.nation) ?? 99) - (NATION_RANK.get(b.nation) ?? 99);
   if (n) return n;
-  const t = (TIER_NUM[TIER_BY_ID[a.id]] || 999) - (TIER_NUM[TIER_BY_ID[b.id]] || 999);
+  // §5.31b PRINT VIEWER: 'print:<id>' cards rank by their base tank's tier
+  const tierOf = (s) => TIER_BY_ID[s.id] || TIER_BY_ID[printBaseId(s.id)];
+  const t = (TIER_NUM[tierOf(a)] || 999) - (TIER_NUM[tierOf(b)] || 999);
   if (t) return t;
   return String(a.name).localeCompare(String(b.name));
 }
@@ -332,6 +343,13 @@ const GARAGE_CSS = `
 .cot-card .era{float:right;font-size:8.5px;font-weight:700;letter-spacing:.12em;
   color:#8a97a3;padding:2px 0;}
 .cot-card.sel .era{color:#d8a04c;}
+/* §5.31b PRINT VIEWER: view-only community-print ribbon + disabled BATTLE */
+.cot-card .prtag{float:left;font-size:8.5px;font-weight:700;letter-spacing:.12em;
+  color:#7fb4d8;padding:2px 0;}
+.cot-card.sel .prtag{color:#9fd8ec;}
+.cot-battle:disabled{filter:grayscale(.85) brightness(.72);cursor:not-allowed;}
+.cot-battle:disabled:hover{filter:grayscale(.85) brightness(.72);}
+.cot-battle:disabled:active{transform:translateX(-50%);}
 .cot-card .ti{display:block;margin:1px auto 2px;width:106px;height:64px;
   object-fit:contain;filter:drop-shadow(0 3px 5px rgba(0,0,0,.5));}
 .cot-card .nm{font-size:10.5px;font-weight:600;color:#eef4f9;letter-spacing:-.01em;
@@ -1359,12 +1377,22 @@ export function createGarage(opts) {
   // already gated off in userdrops2.js (SHIP_USERDROP2_NEW).
   const DELISTED = new Set(['newc_tiger', 'newc_pziii', 'bmp1', 'm1128', 'm1296']);
   const allSpecs = opts.specs || [];
+  // §5.31b PRINT VIEWER: view-only Sources cards for every retired print.
+  // Deliberately NOT merged into allSpecs — the tech tree (createTechTree
+  // below) and the stat peer ranges read allSpecs and must stay print-free.
+  const printEntries = getPrintCatalog();
+  const isPrintId = (id) => !!printBaseId(id);
   // CATALOG v2: the carousel REORDERS the roster it receives — four catalog
   // groups in the owner's order (Cold War / Modern / WWII / Sources), nation
   // blocks + tier progression inside each (catalogCompare above). Cards,
   // arrow stepping and chip first-picks all read this one sorted array, so
   // the visual strip, keyboard walk and group hand-offs always agree.
-  const specs = allSpecs.filter((s) => !DELISTED.has(s.id)).sort(catalogCompare);
+  // Print cards ride the same array: groupOf files them under 'sources'
+  // automatically (their MODEL_SOURCE rows are 'glb' and never era-placed).
+  const specs = [
+    ...allSpecs.filter((s) => !DELISTED.has(s.id)),
+    ...printEntries.map((e) => e.spec),
+  ].sort(catalogCompare);
   ensureFonts();
   ensureStyle('cot-garage-style', GARAGE_CSS);
 
@@ -1502,6 +1530,8 @@ export function createGarage(opts) {
   // specById covers the FULL roster (incl. delisted community tanks) so a
   // tech-tree pick of a delisted vehicle still selects it for battle.
   for (const s of allSpecs) specById.set(s.id, s);
+  // §5.31b PRINT VIEWER: selection plumbing resolves print cards too
+  for (const e of printEntries) specById.set(e.id, e.spec);
 
   const emit = (ev, payload) => { if (bus && bus.emit) bus.emit(ev, payload); };
 
@@ -1886,9 +1916,14 @@ export function createGarage(opts) {
     // final model has loaded, so async GLB stand-ins can never replace a card.
     card.innerHTML =
       `<span class="era">${s.era === 'ww2' ? 'WWII' : 'MODERN'}</span>` +
+      // §5.31b PRINT VIEWER: view-only print cards wear a corner ribbon
+      (s.printViewer ? `<span class="prtag">PRINT</span>` : '') +
       `<span class="flag">${flagSVG(s.nation, s.era, 18, 12)}<i>${NATION_LABEL[s.nation] || s.nation}</i></span>` +
-      `<img class="ti" data-cot-thumb="${s.id}" src="${getTankThumb(s.id)}" alt="">` +
-      `<div class="nm"><b class="tiern">${TIER_BY_ID[s.id] || ''}</b><span class="nmt"></span></div>` +
+      // §5.31b PRINT VIEWER: no packaged /icons/ set exists for 'print:<id>'
+      // pseudo-specs — print cards ride their base id's portrait (today that
+      // packaged icon IS the print render; genIcons print-id rows can follow)
+      `<img class="ti" data-cot-thumb="${printBaseId(s.id) || s.id}" src="${getTankThumb(printBaseId(s.id) || s.id)}" alt="">` +
+      `<div class="nm"><b class="tiern">${TIER_BY_ID[s.id] || (s.printViewer && TIER_BY_ID[printBaseId(s.id)]) || ''}</b><span class="nmt"></span></div>` +
       `<div class="cls">${s.class}</div>`;
     card.querySelector('.nmt').textContent = s.name;
     card.addEventListener('click', () => {
@@ -1957,7 +1992,9 @@ export function createGarage(opts) {
     // the same multipliers/tables the battle sim reads (equipment.js +
     // spotting.js), so the card IS the loadout preview. Modified values tint
     // green with the stock number in the tooltip.
-    const eqIds = loadEquipment(spec.id, spec);
+    // §5.31b PRINT VIEWER: print cards show STOCK stats — no loadout is
+    // read (or ever written) for a view-only 'print:<id>' pseudo-spec.
+    const eqIds = spec.printViewer ? [] : loadEquipment(spec.id, spec);
     const eqM = computeEquipMults(eqIds);
     const eqNames = eqIds.map((id) => EQUIPMENT_BY_ID.get(id).name).join(', ');
     const reloadS = spec.gun.reloadS * eqM.reload;
@@ -2008,10 +2045,14 @@ export function createGarage(opts) {
       (spec.community
         ? `<div class="sep"></div><div class="armorline"><span>Community model</span><b class="cr"></b></div>`
         : '') +
-      // EQUIPMENT SYSTEM: the 3 loadout slots (picker opens on click)
-      `<div class="sep"></div>` +
-      `<div class="eqhead"><span>Equipment</span><i>${eqIds.length}/${EQUIP_SLOTS}</i></div>` +
-      `<div class="eqrow">${slotBoxes}</div>`;
+      // §5.31b PRINT VIEWER: view-only notice replaces the loadout slots —
+      // equipment cannot be mounted on (or saved for) a print pseudo-spec.
+      (spec.printViewer
+        ? `<div class="sep"></div><div class="armorline"><span>Sources print</span><b>view only</b></div>`
+        // EQUIPMENT SYSTEM: the 3 loadout slots (picker opens on click)
+        : `<div class="sep"></div>` +
+          `<div class="eqhead"><span>Equipment</span><i>${eqIds.length}/${EQUIP_SLOTS}</i></div>` +
+          `<div class="eqrow">${slotBoxes}</div>`);
     statsEl.querySelector('h3').textContent = spec.name;
     if (spec.community) {
       const cr = statsEl.querySelector('.cr');
@@ -2035,10 +2076,19 @@ export function createGarage(opts) {
       card.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
     }
     renderStats(spec);
+    // §5.31b PRINT VIEWER: print cards are VIEW-ONLY — BATTLE is disabled
+    // (the battle() guard is the hard stop; this is the visible state), the
+    // camo picker hides (a paint save for 'print:<id>' would be junk state),
+    // and the equipment picker never renders (renderStats above). The camo
+    // prewarm is skipped for the same reason.
+    const printSel = isPrintId(specId);
+    battleBtn.disabled = printSel;
+    battleBtn.textContent = printSel ? 'VIEW ONLY' : 'BATTLE';
+    camosEl.style.display = printSel ? 'none' : '';
     refreshCamoSel(); // CAMO PICKER SECTION: highlight this tank's pattern
     // camo r4: warm this tank's pattern bakes in the background so picker
     // clicks restore instantly instead of running the painter chain.
-    if (camoOpts && camoOpts.prewarm) camoOpts.prewarm(specId);
+    if (camoOpts && camoOpts.prewarm && !printSel) camoOpts.prewarm(specId);
     refreshEquipSel(); // EQUIPMENT PICKER: highlight this tank's loadout
     return true;
   }
@@ -2055,6 +2105,11 @@ export function createGarage(opts) {
 
   function battle() {
     if (!selectedId) return;
+    // §5.31b PRINT VIEWER: view-only print cards can NEVER enter battle —
+    // this guard covers every trigger (button click, Enter/NumpadEnter key,
+    // any future caller of battle()). Placed BEFORE the emits so no
+    // ui:battleStart event fires for a print either.
+    if (isPrintId(selectedId)) return;
     // Battle entry must be unstoppable: the pre-battle emits fan out to five+
     // subscribers (audio click, pointer-lock grab, killcam/shot-log resets…)
     // and any one of them throwing in an exotic environment would silently

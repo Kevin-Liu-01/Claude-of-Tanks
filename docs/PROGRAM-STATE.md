@@ -1722,3 +1722,29 @@ strip-nc registry-probe blind spot). ASK-OWNER: (1) t44/type59/m48
 show prints in era groups until built — acceptable interim? (2)
 newc_tiger WW2 filing, (3) Sources cards view-only vs playable, (4)
 leichttraktor/tiger2 rough procedurals — ladder priority.
+
+## 5.46 SOURCES PRINT-CATALOG LANDED (2026-08-08, §5.31b closing
+order "make sources have ALL actual tank models"): NEW
+src/vehicles/printCatalog.js — lazy, garage-only print catalog derives
+one VIEW-ONLY pseudo-spec `print:<baseId>` per candidateGlb row (18:
+the 15 flips + kv2/t30/is1); renders through the existing swap
+pipeline; CONTAINED (never in ALL_TANK_IDS 107==107, allSpecs
+print-free, bots/matchmaking/tools blind to prints). garage.js 11
+markered hunks (Sources chip cards: ribbon+thumb, VIEW ONLY battle
+guard layered: battle() hard-return before any emit + disabled button
++ no equipment/camo rows). tankFactory ONE markered seam
+(modelCfgOverride). strip-nc guard #2 now FAILS on candidateGlb rows
+referencing stripped paths + registry probe emits the candidates map
+(the two chip-filed gaps partially covered). VERIFIED on delivered
+bytes: dev + VITE_PUBLIC_BUILD=1 vite-ssr probes ALL PASS (deploy
+Sources = 5 playable prints + 18 print cards = every shipped
+actual-tank model), guard end-to-end OK exit 0, npm test 0. PIXEL
+EVIDENCE PENDING the agent's calm-load watcher (tools/
+tmp-print531b-shots.mjs self-asserts chip/cards/guard, exit 1 on
+miss — fix-forward if it finds a defect). ASK-OWNER additions: (5)
+print:newc_pziii shows in Sources though the base id is
+carousel-delisted ("Minecraft-grade" curation) — ALL-models read
+overrode; one-liner if the delist should win. (6) print-card
+portraits ride the base icon — after the pending icon regen they show
+the CUSTOM portrait until genIcons learns print ids (icons-lane
+follow-up).

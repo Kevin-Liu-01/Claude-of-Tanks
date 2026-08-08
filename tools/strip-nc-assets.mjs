@@ -109,22 +109,32 @@ async function main() {
     if (probe.err) console.error(`[strip-nc] probe error: ${probe.err.message}`);
     process.exit(1);
   }
-  const { allIds: ALL_TANK_IDS, sources } = JSON.parse(markerLine.slice(MARKER.length));
-  console.log(`[strip-nc] registry probe: ${ALL_TANK_IDS.length} playables, ${Object.keys(sources).length} GLB-sourced`);
+  const { allIds: ALL_TANK_IDS, sources, candidates = {} } = JSON.parse(markerLine.slice(MARKER.length));
+  console.log(`[strip-nc] registry probe: ${ALL_TANK_IDS.length} playables, ${Object.keys(sources).length} GLB-sourced, ${Object.keys(candidates).length} candidateGlb prints`);
 
   const offenders = [];
   for (const id of ALL_TANK_IDS) {
     const p = sources[id];
-    if (p && NC_PATH_RE.test(p)) offenders.push({ id, path: p });
+    if (p && NC_PATH_RE.test(p)) offenders.push({ id, path: p, kind: 'playable' });
+  }
+  // §5.31b PRINT VIEWER: candidateGlb rows feed the public Sources print
+  // catalog (src/vehicles/printCatalog.js filters by these same prefixes).
+  // A candidate on a stripped path must be a conscious decision, never a
+  // silent one — quarantined prints belong in the local-only override maps
+  // or FLIP-RETIRED comments, not in candidateGlb. Scanned over the probe's
+  // full candidates map (MODEL_SOURCE-keyed, not allIds-keyed).
+  for (const [id, c] of Object.entries(candidates)) {
+    if (NC_PATH_RE.test(c)) offenders.push({ id, path: c, kind: 'candidateGlb' });
   }
 
   if (offenders.length) {
-    console.error('[strip-nc] FAIL: registered playables still reference stripped NC/quarantine paths:');
-    for (const o of offenders) console.error(`[strip-nc]   ${o.id} -> ${o.path}`);
+    console.error('[strip-nc] FAIL: registered rows still reference stripped NC/quarantine paths:');
+    for (const o of offenders) console.error(`[strip-nc]   ${o.id} (${o.kind}) -> ${o.path}`);
     console.error('[strip-nc] Make a conscious ship/no-ship decision: either delist the id or relicense/replace the model.');
+    console.error('[strip-nc] (candidateGlb rows: retire the print to the local-only override maps / a FLIP-RETIRED comment instead.)');
     process.exit(1);
   }
-  console.log('[strip-nc] OK: no registered playable references a stripped path.');
+  console.log('[strip-nc] OK: no registered playable or candidateGlb print references a stripped path.');
 
   // 3. attribution sections that must be dropped for a public build
   const attribution = path.join(ROOT, 'docs', 'ATTRIBUTION.md');
