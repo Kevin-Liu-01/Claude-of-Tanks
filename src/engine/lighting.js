@@ -449,6 +449,9 @@ function buildCullRec(mesh) {
 
 /** onBeforeShadow half: compact the instance prefix to this cascade's frustum. */
 function shadowCullBefore(object, shadowCamera) {
+  // shadow-flicker bisect hook (probes): __SHADOW_DEBUG.noCull skips the
+  // instance compaction entirely; harmless in production (never set).
+  if (typeof window !== 'undefined' && window.__SHADOW_DEBUG && window.__SHADOW_DEBUG.noCull) return;
   if (!object.isInstancedMesh || object.count === 0) return;
   let rec = _cullState.get(object);
   if (rec === null) return; // permanently skipped
@@ -480,6 +483,12 @@ function shadowCullBefore(object, shadowCamera) {
   }
   // one frustum build per cascade render (cascades draw their objects
   // back-to-back, so a single {camera, tick} memo covers the whole pass)
+  // (shadow-flash forensics 2026-08-08: an earlier suspicion pinned driving
+  // flicker on this compaction and inflated the cull box 20% — same-corridor
+  // freezeMask/noCull A/Bs then showed the compaction contributes ZERO
+  // measurable flicker (the flash was GTAO boil, see post.js ao-boil r1/r2),
+  // so the box is exact again. SHADOW_CULL_MARGIN already absorbs sway and
+  // round-robin staleness.)
   if (_cullFrusCam !== shadowCamera || _cullFrusStamp !== _cullTick) {
     _cullProj.multiplyMatrices(shadowCamera.projectionMatrix, shadowCamera.matrixWorldInverse);
     _cullFrustum.setFromProjectionMatrix(_cullProj);
@@ -853,6 +862,22 @@ export function createLighting(scene, camera, sunDir) {
           }
         }
         if (force) forceFrames = Math.max(forceFrames, 1); // settle 1 extra frame
+      } else if (typeof window !== 'undefined' && window.__SHADOW_DEBUG && window.__SHADOW_DEBUG.forceAll) {
+        // bisect hook: every cascade re-renders every frame (no round-robin)
+        for (let i = 0; i < csm.lights.length; i++) csm.lights[i].shadow.needsUpdate = true;
+      } else if (typeof window !== 'undefined' && window.__SHADOW_DEBUG && window.__SHADOW_DEBUG.freezeMask !== undefined) {
+        // bisect hook: masked cascades stop re-rendering entirely (matrix
+        // freezes with content — consistent stale shadows); unmasked near
+        // cascades render every frame, unmasked far ones every frame too so
+        // robin staleness never confounds the freeze comparison.
+        const mask = window.__SHADOW_DEBUG.freezeMask | 0;
+        for (let i = 0; i < csm.lights.length; i++) {
+          const sh = csm.lights[i].shadow;
+          if (mask & (1 << i)) { sh.autoUpdate = false; sh.needsUpdate = false; } else {
+            sh.autoUpdate = i < FAR_CASCADE_START;
+            sh.needsUpdate = true;
+          }
+        }
       } else {
         const rate = shadowThrottle === 0 ? 1 : shadowThrottle === 1 ? 2 : 3;
         // near cascades: every `rate`-th frame, staggered so they never both

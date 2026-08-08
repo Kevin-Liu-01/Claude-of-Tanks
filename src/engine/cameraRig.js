@@ -1005,8 +1005,18 @@ export function createCameraRig(camera, deps) {
       // the first scope of a battle used to open on dirt ("aim 13 m" —
       // gameplay_feel r4). Once the player owns the aim, their pitch is
       // their pitch.
+      //
+      // TOUCH (owner: "double finger expanding shouldnt send me aiming at
+      // the sky"): the scan-lift is DESKTOP-ONLY. A touch player drives with
+      // the stick and pinches to scope without ever aim-dragging, so
+      // aimTouched is still false — and against rising ground or a tree wall
+      // the 2-degree ladder walked clear up to PITCH_MAX (+30 deg, open
+      // sky). On the touch layout the pinch itself is the deliberate aim
+      // act: always preserve the reticle's world point instead.
       const player = getPlayer();
-      if (!aimTouched && rig.aimDist < SNIPER_KEEP_AIM_M) {
+      const touchUi = typeof document !== 'undefined' &&
+        document.body.classList.contains('cot-touch-layout');
+      if (!aimTouched && !touchUi && rig.aimDist < SNIPER_KEEP_AIM_M) {
         aimPitch = Math.max(aimPitch, SNIPER_ENTRY_PITCH_RAD);
         // gameplay_feel r1: facing RISING ground the flat-ground scan pitch
         // still ray-hits the slope a few meters out (full-screen grass at

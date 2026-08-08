@@ -121,7 +121,25 @@ const HIGH_PASS_ANCHOR = 'gl_FragColor = mix( outputColor, texel, alpha );';
 // read as clear grounding under hulls/walls/trunks at 1080p; the shallow
 // dapple that motivated the 3.3 → 3.0 pullback is now removed by the kill
 // band + distance ladder below, not by weakening every corner.
-const GTAO_PARAMS = { radius: 2.3, distanceExponent: 2, thickness: 2.0, scale: 3.3, samples: 16 };
+// ao-boil r1 (owner: "when i drive by stuff, the shadows under stuff like
+// trees flash a lot repeatedly, only while moving"): bisected via cascade
+// freezeMask + trim A/B on a verdant corridor — the flashing dark blobs are
+// NOT shadow maps (freezing every cascade changed nothing) but GTAO boil:
+// alpha-tested leaf/blade cutouts live in the shared scene depth, and at
+// aoScale<1 their subpixel holes re-alias every frame in motion, churning
+// the occluder field. thickness 2.0 turned every thin leaf card into a
+// 2-metre-deep occluder, amplifying both the depth and the variance of
+// under-canopy AO (cell-level dark flips: AO on 3.3%/frame vs AO off 0.7%).
+// Halve the thickness heuristic — walls/hulls/trunks are real volumes and
+// keep their grounding; only the phantom depth of foliage cards thins out.
+const GTAO_PARAMS = { radius: 2.3, distanceExponent: 2, thickness: 1.0, scale: 3.3, samples: 16 };
+// ao-boil r1: denoiser retuned for temporal stability on foliage. depthPhi
+// 2 → 6 (weight = 1 - depthDiff/phi, so a LOW phi refuses to smooth across
+// depth edges — and leaf speckle is nothing but depth edges: the denoiser
+// was preserving the boil as "detail"); radius 8 → 10 and rings 2 → 3
+// spread each pixel's estimate over more of the half-res AO buffer, cutting
+// frame-to-frame variance of blob shapes.
+const GTAO_PD_PARAMS = { lumaPhi: 10, depthPhi: 6, normalPhi: 3, radius: 10, rings: 3, samples: 16 };
 const GTAO_BLEND_INTENSITY = 1.0;
 
 // Depth-driven aerial perspective (r3: "distant hills correctly shift
@@ -1177,6 +1195,7 @@ export function createPost(renderer, scene, camera) {
   // The scene depth is complete and resolved before this pass runs.
   gtao.setGBuffer(sceneDepth);
   gtao.updateGtaoMaterial(GTAO_PARAMS);
+  gtao.updatePdMaterial(GTAO_PD_PARAMS); // ao-boil r1: see GTAO_PD_PARAMS
   gtao.blendIntensity = GTAO_BLEND_INTENSITY;
   // View-distance AO fade. AO is a CONTACT cue: at establishing-shot ranges a
   // 1.6 m occlusion radius is subpixel, and on the horizon mountain ring
@@ -1238,11 +1257,95 @@ export function createPost(renderer, scene, camera) {
   // are LinearFilter, so the final multiply-blend bilinearly upsamples the AO
   // buffer — the standard half-res-AO scheme. aoScale 1 (ultra) is unchanged
   // full-res; aoScale 0 disables the pass entirely.
+  //
+  // ao-boil r2: ADAPTIVE TEMPORAL EMA on the denoised AO buffer. The r1
+  // param retune (thickness 1.0 + wider Poisson denoise) halved the motion
+  // boil, but half-res cutout re-aliasing still churns under-canopy AO
+  // frame to frame — a spatial denoiser cannot fix temporal variance. Blend
+  // each frame's denoised AO into a history buffer with a CHANGE-ADAPTIVE
+  // weight: small per-pixel deltas (the boil, |d| ≲ 0.15) keep ~70% history
+  // and settle; big deltas (real occluder arrivals — a tank driving into
+  // frame, a wall revealed) snap with k→0.9 so nothing ghosts. No motion
+  // vectors needed at this radius/duty — verified on the verdant corridor
+  // (cell-level dark flips, AO-on: 3.3%/frame raw → 1.5% r1 → target ≤1%).
+  // Integration: GTAOPass.OUTPUT.Off runs G-buffer + AO + denoise and skips
+  // composition, so the wrapper below lets the stock pass do all the work,
+  // EMAs pdRenderTarget into a ping-pong pair, then reproduces the two-step
+  // Default composition (copy + multiply-blend) fed by the EMA result.
+  // Band tune (verdant corridor heat maps): the surviving blinkers are
+  // tree-cluster AO blobs whose per-pixel deltas are LARGE (cutout coverage
+  // re-aliasing flips whole half-res texels), so no band assignment can
+  // separate them from real change — cap the fast path at 0.5 instead. A
+  // real occluder arriving reaches 87% weight in 3 frames (~50 ms of soft
+  // AO lag — invisible for a multiply-darken term), while the strobe's
+  // alternating signs now cancel into the history instead of printing.
+  const AO_EMA = { kSlow: 0.15, kFast: 0.50, dLo: 0.25, dHi: 0.90 };
   {
+    if (GTAOPass.OUTPUT.Off !== -1 || GTAOPass.OUTPUT.Default !== 0) {
+      throw new Error('post.js: GTAOPass.OUTPUT enum changed — re-verify the ao-boil r2 render wrapper');
+    }
+    const emaMat = new THREE.ShaderMaterial({
+      uniforms: {
+        tNow: { value: null },
+        tPrev: { value: null },
+        uSeed: { value: 1 },
+      },
+      vertexShader: 'varying vec2 vUv;\nvoid main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
+      fragmentShader: `
+        uniform sampler2D tNow, tPrev;
+        uniform float uSeed;
+        varying vec2 vUv;
+        void main() {
+          vec4 now = texture2D(tNow, vUv);
+          vec4 prev = texture2D(tPrev, vUv);
+          float d = abs(now.r - prev.r);
+          float k = mix(${AO_EMA.kSlow.toFixed(2)}, ${AO_EMA.kFast.toFixed(2)},
+            smoothstep(${AO_EMA.dLo.toFixed(2)}, ${AO_EMA.dHi.toFixed(2)}, d));
+          gl_FragColor = mix(prev, now, max(k, uSeed));
+        }`,
+      depthTest: false,
+      depthWrite: false,
+      blending: THREE.NoBlending,
+    });
+    let emaPrev = gtao.pdRenderTarget.clone();
+    let emaCur = gtao.pdRenderTarget.clone();
+    let emaLastMs = -1e9; // >250 ms without an AO render → history is stale
     const origSetSize = gtao.setSize.bind(gtao);
     gtao.setSize = (w, h) => {
       const s = preset.aoScale || 1;
-      origSetSize(Math.max(1, Math.round(w * s)), Math.max(1, Math.round(h * s)));
+      const sw = Math.max(1, Math.round(w * s));
+      const sh = Math.max(1, Math.round(h * s));
+      origSetSize(sw, sh);
+      emaPrev.setSize(gtao.pdRenderTarget.width, gtao.pdRenderTarget.height);
+      emaCur.setSize(gtao.pdRenderTarget.width, gtao.pdRenderTarget.height);
+      emaLastMs = -1e9; // reseed — old history is the wrong resolution
+    };
+    gtao.render = function (renderer2, writeBuffer, readBuffer, deltaTime, maskActive) {
+      if (this.output !== GTAOPass.OUTPUT.Default ||
+          (typeof window !== 'undefined' && window.__AO_EMA_OFF)) { // bisect hook
+        return GTAOPass.prototype.render.call(this, renderer2, writeBuffer, readBuffer, deltaTime, maskActive);
+      }
+      this.output = GTAOPass.OUTPUT.Off; // AO + denoise only, no composition
+      try {
+        GTAOPass.prototype.render.call(this, renderer2, writeBuffer, readBuffer, deltaTime, maskActive);
+      } finally {
+        this.output = GTAOPass.OUTPUT.Default;
+      }
+      const now = performance.now();
+      emaMat.uniforms.tNow.value = this.pdRenderTarget.texture;
+      emaMat.uniforms.tPrev.value = emaPrev.texture;
+      emaMat.uniforms.uSeed.value = now - emaLastMs > 250 ? 1 : 0;
+      emaLastMs = now;
+      this._renderPass(renderer2, emaMat, emaCur, 0xffffff, 1.0);
+      // Default composition, verbatim from GTAOPass.prototype.render (r185)
+      // with the blend input rerouted to the EMA history.
+      this.copyMaterial.uniforms.tDiffuse.value = readBuffer.texture;
+      this.copyMaterial.blending = THREE.NoBlending;
+      this._renderPass(renderer2, this.copyMaterial, this.renderToScreen ? null : writeBuffer);
+      this.blendMaterial.uniforms.intensity.value = this.blendIntensity;
+      this.blendMaterial.uniforms.tDiffuse.value = emaCur.texture;
+      this._renderPass(renderer2, this.blendMaterial, this.renderToScreen ? null : writeBuffer);
+      const t = emaPrev; emaPrev = emaCur; emaCur = t;
     };
     gtao.enabled = preset.aoScale > 0;
   }
