@@ -1118,6 +1118,7 @@ let damagePanel = null;
 const hud = await bootStage('hud', () => {
   const h = initHud(bus);
   const dp = createDamagePanel();
+  perfHud.mountCompact(dp.root);
   h.setDamagePanel(dp);
   damagePanel = dp;
   return h;
