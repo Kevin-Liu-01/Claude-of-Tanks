@@ -24,6 +24,7 @@
  */
 import * as THREE from 'three';
 import { createRenderer, onResize } from './engine/renderer.js';
+import { createOffscreenSceneWarmer } from './engine/offscreenWarm.js';
 import {
   installShaderErrorCollector, relaxShaderChecks, runDeviceDiag, applyDiagRescue,
   mountDiagOverlay, runSceneBlackWatchdog, reclaimShadows,
@@ -4202,18 +4203,12 @@ function warmShadowPrograms() {
 }
 
 // perf-r5c: warm renders only need to TOUCH programs/textures — full-frame
-// rasterization at retina scale made each one a 400-730 ms slice. A quarter
-// viewport cuts the fragment bill ~16x while binding the same pipelines.
-const _warmVp = new THREE.Vector4();
-function warmRender() {
-  renderer.getViewport(_warmVp);
-  const sz = renderer.getSize(_v2gp || (_v2gp = new THREE.Vector2()));
-  renderer.setViewport(0, 0, Math.max(8, sz.x * 0.25), Math.max(8, sz.y * 0.25));
-  try { renderer.render(scene, camera); } finally {
-    renderer.setViewport(_warmVp);
-  }
-}
-let _v2gp = null;
+// rasterization at retina scale made each one a 400-730 ms slice. Keep the
+// same quarter-resolution fragment bill, but render it into a private HDR
+// target. The old default-framebuffer quarter viewport could be presented
+// during the live countdown when a first-use compile blocked the next rAF,
+// producing a one-off black screen with the world in the lower-left corner.
+const warmRender = createOffscreenSceneWarmer(renderer, scene, camera);
 
 // MOBILE-QA r20: WebGLRenderer.compile() intentionally stops before uniform
 // discovery. The next real render then calls WebGLProgram.getUniforms() for
