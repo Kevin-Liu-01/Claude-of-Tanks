@@ -897,3 +897,22 @@ real geometry, prove it in pixels (owner-angle + yaw sweeps), and bank
 reverted experiments as receipts. Critics: hold acid reads to the
 exemplar standard; "close enough" silhouettes that would not survive
 the leclerc-turret comparison are orders.
+
+### §K.1 LECLERC-METHOD FLEET APPLICATION (owner, 2026-08-08)
+The Leclerc result is now an explicit construction method, not merely a
+quality reference. For every tank needing geometry work: (1) inventory the
+oracle by connected component and measured longitudinal/cross-width stations;
+(2) reproduce the real silhouette with joined station lofts, keeping separate
+roof, brow, cheek, bustle, and rack planes instead of averaging them into
+boxes; (3) preserve real asymmetry, gaps, and per-variant equipment stations;
+(4) normalize only the axis constrained by a ratified P95 datum, never the
+measured x/z footprint; (5) compare the same 14 reference/procedural views
+after each meaningful change, and reject any experiment that improves detail
+while worsening the gross form or gate. Raw oracle height is not authority
+when it violates the published P95 law: map that height into the certified
+band and retain its measured plan/rake, as proven by K2 Object_8/Object_18.
+
+Named priority applications: Challenger 2, Challenger 3, the full T-90 family,
+and AbramsX. AbramsX is a COMPLETE REDESIGN against both local reference kits,
+not a dressing pass or an inheritance of its prior visual re-cert. It follows
+the K2/Leclerc measured-loft sequence before lower-priority cleanup or K1A1.

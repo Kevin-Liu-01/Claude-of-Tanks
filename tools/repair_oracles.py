@@ -3717,5 +3717,37 @@ REPAIRS['k2'] = {
 # stays the pristine 4d6d7db3 bytes; the chain rebuilds from it every run.
 
 
+# =============================================================== batch 56 ===
+# K2 ANTENNA/PANO Y-NORMALIZE (§5.67 residual; the 90-ladder's print move).
+# Batch-52b opened the honest hull/turret masks but deliberately kept the
+# print's 4.731 m antenna pair and 2.64..3.05 m furniture band.  The first
+# global-y candidate correctly shortened both but FAILED the acceptance hold:
+# changing the scene's max-y re-framed every side/front court and hull fell
+# 58.7 -> 32.1 despite untouched hull bytes.  It was rolled back immediately.
+# The accepted candidate therefore follows the FRAME-PIN law: Object_25's two
+# hairline antennas remain byte-exact and keep max-y/camera framing exact,
+# while only the eight turret/gun nodes that carry the broad 2.50..3.05 band
+# normalize. Object_18 is the panoramic sight and follows the same published
+# furniture datum; its procedural counterpart keeps a narrow, sub-p95 2.77 m
+# head. 2.50 stays fixed and 3.05 -> 2.52; hull, running gear, antennas, width,
+# length, ring-seat, and every <=2.50 vertex remain exact. At the width-anchored
+# scale the broad furniture crest becomes ~2.44 m, matching the build's 2.40
+# broad band. Census is against the POST-52b indexed tree; the 8/54703/41921
+# guard refuses any lineage drift.
+REPAIRS['k2'] = {
+    'path': REPAIRS['k2']['path'],
+    'ops': [
+        *REPAIRS['k2']['ops'],
+        ('py2', _axis_warp('k2', long_axis='z',
+                           y_map=[(-0.01, -0.01), (2.50, 2.50),
+                                  (3.05, 2.52)],
+                           long_map=[(-3.80, -3.80), (7.06, 7.06)],
+                           y_top_max=2.53,
+                           expect=(8, 54703, 41921),
+                           node_scope=r'^Object_(8|10|15|18|19|20|21|22)$')),
+    ],
+}
+
+
 if __name__ == '__main__':
     sys.exit(main(sys.argv[1:]))

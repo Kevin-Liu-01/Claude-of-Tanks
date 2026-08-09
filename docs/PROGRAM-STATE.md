@@ -49,7 +49,7 @@ at load.
 - Env for EVERY node run: `export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh"`
 - npm test before every landing (166 equipment checks + track-geometry).
 
-## 3. GRADUATE REGISTRY (30 graduates, hash-frozen)
+## 3. GRADUATE REGISTRY (31 graduates, hash-frozen)
 Freeze = deterministic geometry hash via `node tools/tmp-hashgeo.mjs
 --ids=...` (camoSeed 4242 pinned build; FNV-1a over position buffers +
 world matrices, mesh-order independent). Graduate-change protocol: fix ->
@@ -86,6 +86,7 @@ re-freeze NEW hash, all in ONE commit.
 | m2a2_bradley | 90a5568c | GRADUATED 2026-08-08 (28th; dual gate: geometry 90.9 x2 every component >=90 landed 81bdad1 + visual floor 9.0 / mean 9.16 x14 views at freeze-verified bytes; oracle e699c868; dress-tier defect bank in the verdict: bow T-hooks, taillight fittings, TOW rear ports, lug stacks, ringed hubs) |
 | m45_patton | 53caa687 | GRADUATED 2026-08-08 (29th; gate 90.7 x5 total + sitting-2 visual floor 9.0 mean 9.13 x14; sitting-1 orders executed: loft.smooth byte-reproduced, ring cupola adjudicated ring-class at station with the measured Ø0.57/x-0.65 deviation compliant; ring-prominence silhouette-tax residual certified) |
 | leclerc | 683be340 | GRADUATED 2026-08-08 (30th; gate 90.3 x2 every component >=90 + visual floor 9.0 mean 9.17 x14 at freeze-verified bytes; the §5.14 §K-exemplar turret standard held through the ladder — no gate-chasing artifacts; commander-well doc trued z_w 0.32..0.66) |
+| k2 | 827d5ffc | GRADUATED 2026-08-08 (31st; Leclerc-method closed station loft; gate 90.1 x2 every component >=90; visual R26 floor 9.0 / mean 9.09 x14; exact Object_8/15/18/21 plan inventory, rounded asymmetric cage, countable six-station ISU gear; oracle 8d92cd1b reproducible from pristine .bak) |
 | m26_pershing | 2f006738 | RE-RECORDED 2026-08-08: hash moved by LANDED 5f39989 (armorM4 gunBarrel shadow-proxy 3.96->3.44; m26/m45 inherit m4a3e8 proxies — patton.js bytes unchanged); double-confirmed by builder bisect + m45-grad critic; prior 65c564c0 bore+winding re-cert lineage (floors 9.1-9.4) carries |
 | t90m | e345ee8a | GRADUATED 2026-08-06 (27th; floor 9.0 x14 second sitting; the owner's dedicated-agent arc 81.7 -> dual gate) |
 
@@ -2391,3 +2392,29 @@ tejas **01e698e8**, SEPv2 **a0a4e87c**. Bindings: TUSK **7620b020**,
 SEPv3 **d6e87b0c**. No fix round ordered. Full verdict and exact score sheets:
 docs/critique/shaded-parity-abrams-distinctiveness-recert.md. Fleet ledger
 remains **24/96**; graduate count remains **30**.
+
+## 5.81 K2 90-LADDER GRADUATED — 31st (2026-08-08): the Leclerc-method
+rebuild closed from §5.67's 48.4 floor to a dual PASS. The final gate is
+**90.1** x2 bit-identical: hull 90.6 / whole 90.1 / turret 90.6 / stations
+90.7 / dims 95.9 / floaters 100. Geometry hash **827d5ffc** reproduced x2
+(63 meshes / 115754 verts). Independent R26 §B8 PASS: all 14 views >=9.0,
+floor 9.0 / mean 9.09. Exact track audit is band 8/36 and shoe 14/42;
+contiguity 0, decor mg1+5d, turret parent 0/0/0. Batch-56 oracle recovery
+reproduced **8d92cd1b8a7421548824ca22ba8d660d4dbeba579c666a3bb893faaa647a69f1**
+twice from pristine `.bak` **3e514bedb40be0fde6787dad6513f625ba077cd0c1da04d29defe94e9c156140**.
+Fleet is **25/96**; graduates **31**. Verdict:
+docs/critique/shaded-parity-k2-graduation.md.
+
+## 5.82 OWNER PRIORITY — LECLERC METHOD + ABRAMSX COMPLETE REDESIGN
+(2026-08-08): the owner names Leclerc as the geometry/visual-comparison
+standard for every unfinished tank, specifically Challenger 2, Challenger 3,
+and all T-90s, then elevates AbramsX to the next full-redesign priority.
+Codified in BUILD-STANDARD §K.1: connected-component/station measurements,
+joined true-profile lofts, real asymmetry and gaps, P95-only axis
+normalization, and fresh 14-view comparisons after meaningful changes.
+AbramsX (`abramsx`, `buildAbramsX` in `profiles/abrams.js`) is REOPENED despite
+its historical 9.2 re-cert: compare both local references
+`community/abramsx-mortavex.glb` and `community-candidates/abrams_x_low_poly.glb`,
+replace its geometry comprehensively, and certify from fresh evidence. It
+runs immediately after K2 and ahead of K1A1/lower-priority cleanup. Frozen
+**2c6eb344** remains the pre-redesign guard only.
