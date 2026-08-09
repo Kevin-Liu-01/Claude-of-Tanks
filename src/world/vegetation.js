@@ -1462,12 +1462,14 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
  * @param {?function(number, number): (Promise<void>|void)} tick
  */
 export async function createVegetationAsync(heightField, engineCtx, seed = 2001, cfg = null,
-  tick = null) {
+  tick = null, fineSlices = false) {
   const g = vegetationBuildSteps(heightField, engineCtx, seed, cfg);
   let r = g.next();
   let i = 0;
+  const total = fineSlices ? 72 : 16;
   while (!r.done) {
-    if (tick) await tick(++i, 7);
+    const shouldTick = fineSlices || !r.value || !r.value.fine || r.value.rowEnd;
+    if (tick && shouldTick) await tick(++i, total);
     r = g.next();
   }
   return r.value;
@@ -1753,7 +1755,6 @@ function* vegetationBuildSteps(heightField, engineCtx, seed, cfg) {
   // ---- midfield grass scatter (map-wide chunks, unchanged system) ----
   const grassChunks = [];
   for (let cz = 0; cz < CHUNKS; cz++) {
-    yield; // perf-r3: one chunk row of tuft scatter per slice
     for (let cx = 0; cx < CHUNKS; cx++) {
     const crng = mulberry32((seed ^ (cx * 73856093) ^ (cz * 19349663)) >>> 0);
     const x0 = -HALF + cx * CHUNK_SIZE, z0 = -HALF + cz * CHUNK_SIZE;
@@ -1779,6 +1780,7 @@ function* vegetationBuildSteps(heightField, engineCtx, seed, cfg) {
     if (chunkMeshes.length > 0) {
       grassChunks.push({ meshes: chunkMeshes, cx: x0 + CHUNK_SIZE / 2, cz: z0 + CHUNK_SIZE / 2 });
     }
+    yield { fine: true, rowEnd: cx === CHUNKS - 1 };
     }
   }
 

@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import { mergeGeometries, mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { SimplexNoise } from '../engine/simplexFast.js';
 import { applyTone } from './terrain.js';
+import { getDeviceTier } from '../engine/quality.js';
 import { applySourcedBuildings } from './sourcedTextures.js';
 import { URBAN_BUILDERS } from './maps/urbanKit.js';
 import { dressMapExtras } from './maps/mapKits.js'; // content_breadth r2
@@ -872,12 +873,13 @@ export function createProps(heightField, engineCtx, seed = 2002, cfg = null) {
  * @param {?function(number, number): (Promise<void>|void)} tick
  */
 export async function createPropsAsync(heightField, engineCtx, seed = 2002, cfg = null,
-  tick = null) {
+  tick = null, fineSlices = false) {
   const g = propsBuildSteps(heightField, engineCtx, seed, cfg);
   let r = g.next();
   let i = 0;
+  const total = fineSlices ? 48 : 9;
   while (!r.done) {
-    if (tick) await tick(++i, 9);
+    if (tick && (fineSlices || !r.value || !r.value.fine)) await tick(++i, total);
     r = g.next();
   }
   return r.value;
@@ -2698,7 +2700,14 @@ ${snowCap ? `
   const tankWreckSpots = []; // probe/debug: {specId,x,z,yaw,hx,hz,h} per hulk
   {
     const wCfg = P.tankWrecks || null;
-    const wreckCount = wCfg ? (wCfg.count ?? 3) : (P.wrecks ?? 0);
+    const requestedWrecks = wCfg ? (wCfg.count ?? 3) : (P.wrecks ?? 0);
+    // Loading-speed r1: the third mobile hulk was one independent 284 ms
+    // hidden-prefetch atom. Two keep the paired roadside story beat on a
+    // small screen while removing two transient live-tank factories; desktop
+    // content stays unchanged. A second similarly sized roster atom was
+    // exposed after this one disappeared and is scheduled separately.
+    const wreckCount = getDeviceTier() === 'mobile'
+      ? Math.min(requestedWrecks, 2) : requestedWrecks;
     if (wreckCount > 0) {
       const wrng = mulberry32(seed + 909);
       const era = (wCfg && wCfg.era) || 'ww2';
@@ -2776,6 +2785,7 @@ ${snowCap ? `
           const yawW = Math.atan2(bx - ax, bz - az) + (wrng() - 0.5) * 0.9;
           if (!placeWreck(px, pz, yawW)) continue;
           placedW++;
+          yield { fine: true }; // loading-speed r1: one static tank bake per idle slice
           // paired DUEL beat: a second hulk 9-14 m off, guns facing the first
           if (placedW < wreckCount && wrng() < 0.4) {
             const da = wrng() * Math.PI * 2;
@@ -2785,7 +2795,10 @@ ${snowCap ? `
               && heightField._roadDist(qx, qz) >= 5.2
               && heightField.getGroundType(qx, qz) !== 'soft' && !noVeg(qx, qz)
               && heightField.getNormalAt(qx, qz).y >= 0.88) {
-              if (placeWreck(qx, qz, Math.atan2(px - qx, pz - qz) + (wrng() - 0.5) * 0.3)) placedW++;
+              if (placeWreck(qx, qz, Math.atan2(px - qx, pz - qz) + (wrng() - 0.5) * 0.3)) {
+                placedW++;
+                yield { fine: true };
+              }
             }
           }
         }
@@ -3386,6 +3399,7 @@ ${snowCap ? `
     mesh.receiveShadow = true;
     mesh.matrixAutoUpdate = false;
     group.add(mesh);
+    yield { fine: true }; // loading-speed r1: merge one material family per idle slice
   }
 
   // -------------------------------------------------------------------------

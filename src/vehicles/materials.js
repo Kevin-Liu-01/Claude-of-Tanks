@@ -12,7 +12,7 @@ import * as THREE from 'three';
 // unchanged; the mobile tier halves it and clamps to the device texture cap.
 // The painters are all canvas.width-relative, so this is a pure resolution
 // change — identical feature plan, quarter the pixels at scale 0.5.
-import { texSize } from '../engine/quality.js';
+import { getDeviceTier, texSize } from '../engine/quality.js';
 
 function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
   t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
@@ -3029,6 +3029,13 @@ const TEX_CACHE = new Map();
 const QUALITY_SIZES = {
   high: { albedo: ALBEDO_SIZE, map: MAP_SIZE },
   ai: { albedo: ALBEDO_SIZE / 2, map: MAP_SIZE / 2 },
+  // World dressing bakes a live tank only long enough to collapse its posed
+  // geometry into vertex-coloured static wreck meshes; none of these maps
+  // ever render. wrecks.js has requested `low` since its introduction, but
+  // the missing tier silently fell through to hero 2048/1024. Keep the
+  // painter contract with a tiny transient set; wrecks.js discards every
+  // texture after collapsing the posed model to vertex-coloured geometry.
+  low: { albedo: 256, map: 128 },
 };
 
 function bakeSharedCanvases(entry, quality) {
@@ -3047,7 +3054,16 @@ function* bakeSharedCanvasesSteps(entry, quality) {
   // sizes itself ('high' hero 2048/1024 → 1024/512 on mobile, 'ai' roster
   // 1024/512 → 512/256) — burnt/ember/camo repaints all derive from these.
   const szq = QUALITY_SIZES[quality] || QUALITY_SIZES.high;
-  const sz = { albedo: texSize(szq.albedo), map: texSize(szq.map) };
+  // Loading-speed r1: mobile AI is never inspected at garage distance and
+  // usually occupies fewer than ~150 screen pixels. Its former 512/256 set
+  // oversampled that projection while 13 families dominated battle entry.
+  // Keep the player/hero path unchanged; halve only the mobile AI backing
+  // canvases to 256/128 (same deterministic feature plan, quarter the work).
+  const aiMobileScale = quality === 'ai' && getDeviceTier() === 'mobile' ? 0.5 : 1;
+  const sz = {
+    albedo: texSize(szq.albedo * aiMobileScale),
+    map: texSize(szq.map * aiMobileScale),
+  };
   const { spec, seed } = entry;
   // modernWelds: welded-composite hulls draw no rivet/bolt rows (r10)
   // fleetAlbedoFloor: procedural-canvas dark-class floor (see paintCamo) —

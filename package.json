@@ -7,7 +7,7 @@
     "doc": "docs"
   },
   "scripts": {
-    "test": "node src/dev/perfTrace.selftest.mjs && node src/audio/voices.selftest.mjs && node src/sim/movement.selftest.mjs && node src/sim/combat.selftest.mjs && node src/sim/spotting.selftest.mjs && node src/game/equipment.selftest.mjs && node src/game/consumables.selftest.mjs && node src/game/mobileAutoAim.selftest.mjs && node src/game/replayPose.selftest.mjs && node src/fx/impactDecals.selftest.mjs && node src/vehicles/afvBalance.selftest.mjs && node src/world/topple.selftest.mjs && node src/world/collision.selftest.mjs && node src/ui/icons.selftest.mjs && node tools/track-geometry.selftest.mjs",
+    "test": "node src/dev/perfTrace.selftest.mjs && node src/audio/voices.selftest.mjs && node src/sim/movement.selftest.mjs && node src/sim/combat.selftest.mjs && node src/sim/spotting.selftest.mjs && node src/sim/ai.aim.selftest.mjs && node src/game/ai.selftest.mjs && node src/game/equipment.selftest.mjs && node src/game/consumables.selftest.mjs && node src/game/mobileAutoAim.selftest.mjs && node src/game/replayPose.selftest.mjs && node src/fx/impactDecals.selftest.mjs && node src/vehicles/afvBalance.selftest.mjs && node src/world/topple.selftest.mjs && node src/world/collision.selftest.mjs && node src/ui/icons.selftest.mjs && node tools/track-geometry.selftest.mjs",
     "build": "VITE_PUBLIC_BUILD=1 vite build && node tools/strip-nc-assets.mjs",
     "build:private": "vite build",
     "build:public": "VITE_PUBLIC_BUILD=1 vite build && node tools/strip-nc-assets.mjs",

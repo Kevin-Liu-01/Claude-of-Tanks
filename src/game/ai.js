@@ -1,5 +1,5 @@
 /**
- * ai.js — Enemy tank AI controller (pure logic, node-runnable).
+ * ai.js — Shared allied/enemy tank AI controller (pure logic, node-runnable).
  *
  * Implements ARCHITECTURE.md §3.6: waypoint navigation on the terrain heightfield,
  * line-of-sight target acquisition, hull-down / cover seeking, shell-travel-time
@@ -20,7 +20,7 @@ import { computeDispersionRadM } from '../sim/movement.js';
 // controls_gunnery r6: aimElevationRad import removed — tryFire (state.js)
 // owns the ballistic solution; see the aim-point comment in aimAndFire().
 import { tankPoseFromState, queryAimArmor } from '../sim/armor.js';
-import { estimatePenRatio, isHeClass } from '../sim/damage.js';
+import { blastRadiusM, estimatePenRatio, isHeClass } from '../sim/damage.js';
 
 /**
  * Canonical deterministic PRNG (ARCHITECTURE.md §1.4, copied verbatim).
@@ -51,7 +51,10 @@ const DIFFICULTY_TIERS = {
   // trade: r7 raised normal 330→400 and hard 420→500 so a known contact is
   // always worth advancing on at full throttle.
   easy:   { fireFactor: 0.6, reactionS: 1.2, aimErrMult: 2.0, playerSpreadMult: 1.3, probeLevel: 0, engageRangeM: 300, holdRangeM: 180, coverIQ: 0.35 },
-  normal: { fireFactor: 0.9, reactionS: 0.7, aimErrMult: 1.4, playerSpreadMult: 1.0, probeLevel: 1, engageRangeM: 400, holdRangeM: 240, coverIQ: 0.7  },
+  // Shared-combat r1: normal is the default live battle tier. Faster target
+  // confirmation, tighter lays and stronger reload-cover discipline make
+  // both allied and enemy bots competent without hard-tier perfect aim.
+  normal: { fireFactor: 1.0, reactionS: 0.55, aimErrMult: 1.25, playerSpreadMult: 0.85, probeLevel: 1, engageRangeM: 450, holdRangeM: 260, coverIQ: 0.82 },
   hard:   { fireFactor: 1.2, reactionS: 0.3, aimErrMult: 1.0, playerSpreadMult: 0,   probeLevel: 2, engageRangeM: 500, holdRangeM: 300, coverIQ: 1.0  },
 };
 
@@ -112,9 +115,27 @@ const ROLE_TUNE = {
 // scout kiting: closer than this to any live opponent → break off and orbit
 const SCOUT_KITE_M = 130;
 // retreat-toward-support (universal): hp fraction / window / cooldown
-const FALLBACK_HP_FRAC = 0.3;
-const FALLBACK_S = 6;
-const FALLBACK_CD_S = 22;
+const FALLBACK_HP_FRAC = {
+  brawler: 0.38,
+  flanker: 0.48,
+  sniper: 0.52,
+  scout: 0.55,
+};
+const FALLBACK_S = 8;
+const FALLBACK_CD_S = 14;
+const BURST_RETREAT_FRAC = 0.12;
+const BURST_RETREAT_WINDOW_S = 4;
+
+// Shared fire-discipline constants. Both teams run the same controller and
+// therefore obey the same corridor, moving-friendly prediction and HE splash
+// rules. The authoritative simulation repeats this check immediately before
+// spawning a bot shell (state.js), so a stale controller decision cannot hit
+// a teammate that crossed the muzzle between AI and fire phases.
+const FRIENDLY_CORRIDOR_PAD_M = 1.25;
+const FRIENDLY_HE_PAD_M = 1.5;
+const FRIENDLY_PREDICT_MAX_S = 1.5;
+const FRIENDLY_LANE_RELOCATE_S = 1.2;
+const FRIENDLY_SEPARATION_LOOK_M = 18;
 
 const LOS_INTERVAL_S    = 0.14;   // target-acquisition / LOS cadence
 const PROBE_INTERVAL_S  = 0.55;   // weak-spot + shell-slot probe cadence
@@ -233,12 +254,84 @@ function gauss(rng) {
   return Math.sqrt(-2 * Math.log(u)) * Math.cos(TAU * rng());
 }
 
+function tankSafetyRadius(ent) {
+  if (!ent || !ent.spec) return 2.5;
+  const dims = ent.spec.dims || {};
+  const hullR = Math.hypot(dims.widthM || 3, dims.lengthM || 6) * 0.38;
+  const armorR = ent.spec.armor && ent.spec.armor.boundingRadiusM;
+  return Math.max(2.2, hullR, armorR ? armorR * 0.72 : 0);
+}
+
+/**
+ * Predict whether a bot's intended shot can intersect a living teammate.
+ * This is deliberately team-symmetric and pure so both the controller and
+ * the authoritative fire path can use exactly the same rule.
+ *
+ * @param {object} shooter TankEntity-like shooter
+ * @param {{x:number,y:number,z:number}} aimPoint intended impact point
+ * @param {object} shellSpec gun shell spec
+ * @param {object[]} candidates tanks to inspect (all tanks or teammates)
+ * @returns {null|{allyId:string,kind:'corridor'|'blast',clearanceM:number}}
+ */
+export function botFriendlyFireRisk(shooter, aimPoint, shellSpec, candidates) {
+  if (!shooter || !shooter.state || !aimPoint || !shellSpec) return null;
+  const sp = shooter.state.pos;
+  const sx = sp.x, sz = sp.z;
+  let dx = aimPoint.x - sx, dz = aimPoint.z - sz;
+  const shotLen = Math.hypot(dx, dz);
+  if (shotLen < 4) return null;
+  dx /= shotLen;
+  dz /= shotLen;
+  const velocity = Math.max(100, shellSpec.velocityMps || 700);
+  const heRadius = isHeClass(shellSpec.type)
+    ? blastRadiusM(shellSpec.caliberMm || 0) : 0;
+  const list = candidates || [];
+
+  for (let i = 0; i < list.length; i++) {
+    const ally = list[i];
+    if (!ally || ally === shooter || !ally.state || !ally.spec ||
+        (ally.combat && ally.combat.destroyed)) continue;
+    if (shooter.team != null && ally.team != null && ally.team !== shooter.team) continue;
+
+    const ap = ally.state.pos;
+    const relX = ap.x - sx, relZ = ap.z - sz;
+    const initialAlong = relX * dx + relZ * dz;
+    const travelS = Math.min(FRIENDLY_PREDICT_MAX_S,
+      Math.max(0, initialAlong) / velocity);
+    const speed = ally.state.speed || 0;
+    const ax = ap.x + Math.sin(ally.state.yaw || 0) * speed * travelS;
+    const az = ap.z + Math.cos(ally.state.yaw || 0) * speed * travelS;
+    const px = ax - sx, pz = az - sz;
+    const along = px * dx + pz * dz;
+    const radius = tankSafetyRadius(ally);
+
+    // Ignore tanks behind the muzzle and beyond the intended impact. An ally
+    // at the target itself is handled by the blast check below for HE.
+    if (along > 2 && along < shotLen - 1) {
+      const lateral = Math.abs(px * dz - pz * dx);
+      const clearance = lateral - radius;
+      if (clearance < FRIENDLY_CORRIDOR_PAD_M) {
+        return { allyId: ally.id || '', kind: 'corridor', clearanceM: clearance };
+      }
+    }
+
+    if (heRadius > 0) {
+      const burstD = Math.hypot(ax - aimPoint.x, az - aimPoint.z);
+      const clearance = burstD - radius - heRadius;
+      if (clearance < FRIENDLY_HE_PAD_M) {
+        return { allyId: ally.id || '', kind: 'blast', clearanceM: clearance };
+      }
+    }
+  }
+  return null;
+}
+
 // ---------------------------------------------------------------------------
 // Controller factory
 // ---------------------------------------------------------------------------
 
 /**
- * Create an AI controller for one enemy tank.
+ * Create the shared AI controller for one non-player tank on either team.
  *
  * @param {object} entity TankEntity (§2.4) — `{ id, spec, state, combat, input, ai }`.
  *   The controller writes `entity.input` (throttle/steer/brake/fire/aimPoint/shellSlot)
@@ -407,6 +500,9 @@ export function createAI(entity, opts = {}) {
   let fallbackUntilS = -1;
   let fallbackCdS = -1;
   let fallbackReverse = true;
+  let lastHp = entity.combat && entity.combat.hp != null ? entity.combat.hp : 0;
+  let burstDamage = 0;
+  let burstDamageUntilS = -1;
   // scout kite/orbit: keep moving between cover, never brawl
   const kitePoint = { x: 0, z: 0 };
   let kiteUntilS = -1;
@@ -425,6 +521,13 @@ export function createAI(entity, opts = {}) {
   let settleUntilS = -1;
   let settleStreak = 0;
   let settleCdUntilS = -1;
+  // A friendly holding the shell corridor is a maneuver problem, not a reason
+  // to shoot through them or stare forever. Sustained blocks trigger a short
+  // lateral firing-lane relocation shared by both teams.
+  let friendlyBlockT = 0;
+  let friendlyBlockCount = 0;
+  let friendlyLaneMoves = 0;
+  let lastFriendlyRisk = null;
   let underFire = null;            // shooter entity revealed by hitting us/a teammate
   let underFireUntilS = -Infinity; // reaction window end (sim seconds)
   let playerAggro = null;          // sticky PLAYER attacker-of-record (r4)
@@ -544,6 +647,33 @@ export function createAI(entity, opts = {}) {
     return e && e !== entity && (!e.combat || !e.combat.destroyed);
   }
 
+  const focusCounts = new Map();
+  function refreshFocusCounts() {
+    focusCounts.clear();
+    if (!getAllies) return;
+    const friends = getAllies();
+    for (let i = 0; i < friends.length; i++) {
+      const ctl = friends[i] && friends[i].aiCtl;
+      const id = ctl && ctl.targetId;
+      if (id) focusCounts.set(id, (focusCounts.get(id) || 0) + 1);
+    }
+  }
+
+  // Shared focus-fire doctrine: prefer an opponent already engaged by one or
+  // two teammates, then taper the bonus so the whole team does not waste its
+  // guns on one nearly-dead hull. Counts refresh once per LOS scan; scoring
+  // every candidate is then allocation-free.
+  function focusWeight(e) {
+    if (!e) return 1;
+    const focus = focusCounts.get(e.id) || 0;
+    if (focus === 1) return 0.78;
+    if (focus === 2) return 0.66;
+    if (focus === 3) return 0.74;
+    if (focus === 4) return 0.9;
+    if (focus >= 5) return 1.12;
+    return 1;
+  }
+
   /** Line of sight between two eye points via the world raycast. */
   function hasLos(ax, ay, az, bx, by, bz) {
     _vA.set(ax, ay, az);
@@ -560,6 +690,7 @@ export function createAI(entity, opts = {}) {
   function acquireTarget(timeS) {
     const st = entity.state;
     const list = aliveEnemies();
+    refreshFocusCounts();
     const ex = st.pos.x, ey = st.pos.y + selfEyeM, ez = st.pos.z;
 
     // RETURN-FIRE LOCK (controls_gunnery r4): a live lock — or a live
@@ -777,9 +908,9 @@ export function createAI(entity, opts = {}) {
       const hpW = e.combat && e.combat.maxHp
         ? 0.55 + 0.45 * Math.max(0, e.combat.hp / e.combat.maxHp)
         : 1;
-      const eff = (e.isPlayer
+      const eff = ((e.isPlayer
         ? d2 * playerDistMult * (d2 < PLAYER_NEAR_BONUS_D2 ? 0.5 : 1)
-        : d2) * hpW;
+        : d2) * hpW) * focusWeight(e);
       if (eff >= bestD2) continue;
       if (!hasLos(ex, ey, ez, tp.x, eyeY(e), tp.z)) continue;
       best = e; bestD2 = eff;
@@ -1043,6 +1174,47 @@ export function createAI(entity, opts = {}) {
       input.throttle *= 0.6;
       return;
     }
+  }
+
+  /**
+   * Formation separation: steer around a teammate in the forward corridor
+   * and shed closing speed before the collision solver has to push the hulls
+   * apart. This keeps both teams from forming muzzle-blocking tank piles.
+   */
+  function avoidAllies(input) {
+    if (!getAllies || input.throttle <= 0.05) return;
+    const st = entity.state;
+    const fx = Math.sin(st.yaw), fz = Math.cos(st.yaw);
+    const look = FRIENDLY_SEPARATION_LOOK_M + Math.max(0, st.speed || 0) * 0.8;
+    const friends = getAllies();
+    const ownR = tankSafetyRadius(entity) * 0.72;
+    let best = null;
+    let bestAlong = Infinity;
+    let bestCross = 0;
+    let bestSafe = 0;
+    for (let i = 0; i < friends.length; i++) {
+      const ally = friends[i];
+      if (!ally || !ally.state || (ally.combat && ally.combat.destroyed)) continue;
+      const rx = ally.state.pos.x - st.pos.x;
+      const rz = ally.state.pos.z - st.pos.z;
+      const along = rx * fx + rz * fz;
+      if (along <= 0 || along >= look) continue;
+      const cross = fz * rx - fx * rz; // >0 = teammate to hull-right
+      const safe = ownR + tankSafetyRadius(ally) * 0.72 + 1.5;
+      if (Math.abs(cross) >= safe || along >= bestAlong) continue;
+      best = ally;
+      bestAlong = along;
+      bestCross = cross;
+      bestSafe = safe;
+    }
+    if (!best) return;
+    const side = Math.sign(bestCross || (entity.id < best.id ? 1 : -1));
+    input.steer = clamp(input.steer - side * 0.85, -1, 1);
+    const closing = Math.max(0, (st.speed || 0) - (best.state.speed || 0));
+    const cap = bestAlong < bestSafe * 1.15 ? 0.12
+      : bestAlong < bestSafe * 1.8 ? 0.35 : 0.6;
+    input.throttle = Math.min(input.throttle, Math.max(0.08, cap - closing * 0.025));
+    if (bestAlong < bestSafe * 0.9 && Math.abs(st.speed || 0) > 1.5) input.brake = true;
   }
 
   // BATTLE-AI r7 CORNER-HOP ROUTER: reactive avoidance + unstick could not
@@ -1330,6 +1502,7 @@ export function createAI(entity, opts = {}) {
     // 0.2 throttle and wedge; r7 autumn trace)
     if (!viaCorner) input.throttle *= clamp(dist / 10, 0.35, 1);
     avoidObstacles(input);
+    avoidAllies(input);
     return false;
   }
 
@@ -1793,6 +1966,45 @@ export function createAI(entity, opts = {}) {
     return found;
   }
 
+  /** Move sideways out of a teammate-blocked gun lane. Short, flat, LOS-safe
+   * candidates beat the normal 45-85 m shoot-and-scoot because this is a
+   * formation adjustment, not a full relocation. */
+  function pickFriendlyFireLane() {
+    if (!target || !target.state) return false;
+    const st = entity.state;
+    const tx = target.state.pos.x, tz = target.state.pos.z;
+    let dx = tx - st.pos.x, dz = tz - st.pos.z;
+    const d = Math.hypot(dx, dz) || 1;
+    dx /= d; dz /= d;
+    const px = dz, pz = -dx;
+    const friends = getAllies ? getAllies() : [];
+    let bestScore = -Infinity, bx = 0, bz = 0;
+    for (const r of [22, 34, 46]) {
+      for (const side of [angleSide, -angleSide]) {
+        const cx = st.pos.x + px * r * side - dx * 4;
+        const cz = st.pos.z + pz * r * side - dz * 4;
+        if (Math.max(Math.abs(cx), Math.abs(cz)) > 470) continue;
+        if (hf.getNormalAt && hf.getNormalAt(cx, cz).y < 0.9) continue;
+        const cy = hf.getHeightAt(cx, cz) + selfEyeM;
+        if (!hasLos(cx, cy, cz, tx, eyeY(target), tz)) continue;
+        let clearance = 80;
+        for (let i = 0; i < friends.length; i++) {
+          const f = friends[i];
+          if (!f || !f.state) continue;
+          clearance = Math.min(clearance,
+            Math.hypot(f.state.pos.x - cx, f.state.pos.z - cz));
+        }
+        const score = Math.min(40, clearance) - r * 0.12 + (side === angleSide ? 1 : 0);
+        if (score > bestScore) { bestScore = score; bx = cx; bz = cz; }
+      }
+      if (bestScore > 18) break;
+    }
+    if (bestScore === -Infinity) return false;
+    scootPoint.x = bx;
+    scootPoint.z = bz;
+    return true;
+  }
+
   // ---- aiming & firing -----------------------------------------------------
 
   function aimAndFire(input, dt, timeS) {
@@ -1978,12 +2190,23 @@ export function createAI(entity, opts = {}) {
     else dispGateT = Math.max(0, dispGateT - dt * 2);
     const dispersionPass = dispersionOk || dispGateT > 2.5;
 
-    input.fire = (gunReady && dispersionPass && alignOk &&
+    const wouldFire = (gunReady && dispersionPass && alignOk &&
         (penGateOk || chosenSlot === heSlot)) ||
       // blind bush-fire skips LOS/pen/dispersion gates — the lay itself is
       // the message — but still demands reaction time, a seated shell and
       // the gun actually pointed at the intel position.
       (blindFire && reactionOk && reloadReady && rangeOk && alignOk);
+    const friendlyRisk = wouldFire && getAllies
+      ? botFriendlyFireRisk(entity, input.aimPoint, shell, getAllies()) : null;
+    if (friendlyRisk) {
+      if (friendlyBlockT <= 0) friendlyBlockCount++;
+      friendlyBlockT += dt;
+      lastFriendlyRisk = friendlyRisk;
+    } else {
+      friendlyBlockT = Math.max(0, friendlyBlockT - dt * 2);
+      if (friendlyBlockT === 0) lastFriendlyRisk = null;
+    }
+    input.fire = wouldFire && !friendlyRisk;
     if (input.fire) lastFiredAtS = timeS; // STALEMATE BREAKER bookkeeping (r5)
     // controls_gunnery r5 debug surface (headless probes): why is/isn't this
     // bot firing right now? Plain snapshot object — no live references.
@@ -1992,6 +2215,9 @@ export function createAI(entity, opts = {}) {
     _dbg.dispersionOk = dispersionOk; _dbg.dispGateT = +dispGateT.toFixed(1);
     _dbg.alignOk = alignOk;
     _dbg.penGateOk = penGateOk; _dbg.slot = chosenSlot;
+    _dbg.friendlyBlocked = !!friendlyRisk;
+    _dbg.friendlyBlockKind = friendlyRisk ? friendlyRisk.kind : null;
+    _dbg.friendlyBlockId = friendlyRisk ? friendlyRisk.allyId : null;
     _dbg.penRatio = +cachedPenRatio.toFixed(2);
     _dbg.yawErrMrad = +(yawErr * 1000).toFixed(1);
     _dbg.pitchErrMrad = +(pitchErr * 1000).toFixed(1);
@@ -2098,6 +2324,18 @@ export function createAI(entity, opts = {}) {
     if (cb && cb.destroyed) {
       input.throttle = 0; input.steer = 0; input.brake = false; input.fire = false;
       return;
+    }
+
+    // Survival memory: a large burst of damage is actionable even when the
+    // remaining HP is still above the role threshold. The window is based on
+    // observed own HP only—no hidden enemy reload or damage information.
+    if (cb && cb.hp != null) {
+      if (timeS > burstDamageUntilS) burstDamage = 0;
+      if (cb.hp < lastHp) {
+        burstDamage += lastHp - cb.hp;
+        burstDamageUntilS = timeS + BURST_RETREAT_WINDOW_S;
+      }
+      lastHp = cb.hp;
     }
 
     losTimer -= dt; probeTimer -= dt; coverTimer -= dt; errTimer -= dt; obstacleTimer -= dt;
@@ -2231,8 +2469,11 @@ export function createAI(entity, opts = {}) {
         }
         probeMissT = 0;
       }
-      // Retreat-toward-support: tracked or low while a live threat sits
-      // inside the hold band — unless the target is nearly dead (finish it).
+      // Retreat-toward-support: tracked, role-low, or recently chunked while
+      // a live threat sits near the hold band—unless the target is nearly
+      // dead (finish it). A burst retreat requires the gun to be cycling or
+      // the hull to be genuinely isolated, so a supported loaded brawler does
+      // not abandon a favorable trade after every penetration.
       if (timeS >= fallbackUntilS && timeS >= fallbackCdS &&
           mode === 'engage' && target && getAllies) {
         const hpFrac = cb && cb.maxHp ? cb.hp / cb.maxHp : 1;
@@ -2241,8 +2482,12 @@ export function createAI(entity, opts = {}) {
            (cb.modules.trackR && cb.modules.trackR.state === 'red'));
         const tgtNearDead = target.combat && target.combat.maxHp &&
           target.combat.hp / target.combat.maxHp < 0.18;
-        if ((hpFrac < FALLBACK_HP_FRAC || trackRed) && !tgtNearDead &&
-            distToTarget < roleHoldR() * 1.15) {
+        const reloading = cb && cb.reload && cb.reload.t > 0.8;
+        const burstHit = cb && cb.maxHp && timeS <= burstDamageUntilS &&
+          burstDamage / cb.maxHp >= BURST_RETREAT_FRAC &&
+          (reloading || outnumberedSolo());
+        if ((hpFrac < FALLBACK_HP_FRAC[role] || trackRed || burstHit) &&
+            !tgtNearDead && distToTarget < roleHoldR() * 1.35) {
           let f = null, fd2 = Infinity;
           const friends = getAllies();
           for (let i = 0; i < friends.length; i++) {
@@ -2261,11 +2506,38 @@ export function createAI(entity, opts = {}) {
             const toF = Math.atan2(fallbackPoint.x - st.pos.x,
               fallbackPoint.z - st.pos.z);
             fallbackReverse = Math.abs(wrapAngle(toF - st.yaw)) > Math.PI * 0.55;
-            fallbackUntilS = timeS + FALLBACK_S;
-            fallbackCdS = timeS + FALLBACK_CD_S;
+          } else {
+            // No support in reach: create distance from the known threat
+            // instead of remaining exposed merely because the team is gone.
+            let ax = st.pos.x - target.state.pos.x;
+            let az = st.pos.z - target.state.pos.z;
+            const al = Math.hypot(ax, az) || 1;
+            ax /= al; az /= al;
+            fallbackPoint.x = clamp(st.pos.x + ax * 75, -470, 470);
+            fallbackPoint.z = clamp(st.pos.z + az * 75, -470, 470);
+            fallbackReverse = true;
           }
+          fallbackUntilS = timeS + FALLBACK_S;
+          fallbackCdS = timeS + FALLBACK_CD_S;
+          burstDamage = 0;
+          hasMoveTarget = false;
+          hasCoverPoint = false;
         }
       }
+    }
+
+    // A stable friendly obstruction should produce a better firing angle,
+    // not a blocked trigger forever. Movement begins on the tick after the
+    // fire-discipline gate observes the corridor, keeping AI/fire ordering
+    // deterministic and identical for both teams.
+    if (friendlyBlockT >= FRIENDLY_LANE_RELOCATE_S && target && losClear &&
+        timeS >= scootUntilS && pickFriendlyFireLane()) {
+      scootUntilS = timeS + 7;
+      friendlyBlockT = 0;
+      friendlyLaneMoves++;
+      hasMoveTarget = false;
+      hasCoverPoint = false;
+      if (mode === 'seekCover') mode = 'engage';
     }
 
     // ---- movement by mode ----
@@ -2606,12 +2878,23 @@ export function createAI(entity, opts = {}) {
     }
   }
 
+  /** Authoritative fire path callback when a same-tick friendly crossing was
+   * caught after the controller update. It feeds the same relocation timer. */
+  function notifyFriendlyBlocked(risk) {
+    if (!risk) return;
+    if (friendlyBlockT <= 0) friendlyBlockCount++;
+    friendlyBlockT = Math.max(friendlyBlockT, 0.25);
+    lastFriendlyRisk = risk;
+  }
+
   const controller = {
     update,
     setWaypoints,
     notifyShellResult,
     notifyUnderFire,
     notifyPlayerFired,
+    notifyFriendlyBlocked,
+    get targetId() { return target ? target.id : null; },
     /** Headless-probe introspection (controls_gunnery r5): gate snapshot. */
     debugInfo: () => ({
       mode, targetId: target ? target.id : null,
@@ -2622,6 +2905,14 @@ export function createAI(entity, opts = {}) {
       scooting: nowS < scootUntilS,
       kiting: nowS < kiteUntilS,
       fallingBack: nowS < fallbackUntilS,
+      hpFrac: entity.combat && entity.combat.maxHp
+        ? +(entity.combat.hp / entity.combat.maxHp).toFixed(2) : 1,
+      burstDamage: Math.round(burstDamage),
+      friendlyBlockT: +friendlyBlockT.toFixed(2),
+      friendlyBlockCount,
+      friendlyLaneMoves,
+      friendlyBlockKind: lastFriendlyRisk ? lastFriendlyRisk.kind : null,
+      friendlyBlockId: lastFriendlyRisk ? lastFriendlyRisk.allyId : null,
       losBlockedT: +losBlockedT.toFixed(1), hasVantage,
       navT: +navNoProgressT.toFixed(1), strikes: stuckStrikes, // r6 watchdog
       playerBudgetT: +(nowS - lastPlayerEngageS).toFixed(1),   // r6 budget arm

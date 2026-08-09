@@ -627,28 +627,35 @@ angles from plate normal):
 export function createAI(entity, opts) => AIController
 // opts = { difficulty: 'easy'|'normal'|'hard', rng, deps }
 // deps = { heightField, raycast /* World.raycast */, getEnemies: () => TankEntity[],
-//          getObstacles: () => AABB[] }
+//          getAllies: () => TankEntity[], getObstacles: () => AABB[], spotting }
 AIController = {
   update(dt, timeS),   // writes entity.input (§2.4 TankInput) — throttle/steer/aimPoint/
                        // fire/shellSlot. NOTHING else. Reads enemy state read-only.
   setWaypoints(points: [x,z][]),
+  notifyShellResult(hitEvent), notifyUnderFire(shooter),
+  notifyPlayerFired(shooter, distanceRank), notifyFriendlyBlocked(risk),
+  targetId: string|null,
   state: string,       // 'patrol'|'engage'|'seekCover'|'flank' (debug/HUD)
 }
 ```
-Behavior: waypoint drive on heightField (steer = signed angle to next point, slow for
-turns); acquire nearest visible enemy via `raycast` LOS from own turret top to target
-turret top; aim-lead using `ballistics.aimElevationRad` + travel-time lead
-(`t = dist/velocityMps`, lead = targetVel×t iterated twice); fire only when
-`computeDispersionRadM(spec,state,dist) < targetWidth/2 × difficultyFactor`
-(easy 0.6, normal 0.9, hard 1.2) and `estimatePenRatio ≥ 0.9` on the aimed zone (hard
-aims lower-glacis/side via queryAimArmor probes; easy aims center mass); hull-down: on
-'engage', sample heightField along retreat ray for a crest position; flank on
-'nonpen' feedback ×2 (subscribe not available — integration passes recent HitEvents? NO:
-LOCKED — ai reads `entity.combat` and tracks its own shot results via a callback field:
-`AIController.notifyShellResult(hitEvent)` called by integration for shells it fired).
-Difficulty also scales reaction delay (easy 1.2 s, normal 0.7, hard 0.3) and adds aim
-error by inflating sigmaRad ×(easy 2.0 / normal 1.4 / hard 1.0). All randomness via
-`opts.rng`.
+Behavior: every non-player tank on both teams uses this same controller and difficulty
+tier. Role comes only from its own TankSpec (`scout|sniper|brawler|flanker`). Target
+selection is spotting-gated, LOS-confirmed, HP/threat weighted, and coordinates focus
+fire in groups of 2–3 without dogpiling. Travel-time lead is iterated twice; state.js
+owns ballistic elevation. Armor probes choose weak spots/shells and two non-pens trigger
+a flank. Normal-tier locks are reaction 0.55 s, fire factor 1.0, aim error ×1.25;
+easy/hard remain 1.2/0.3 s, 0.6/1.2 and ×2.0/×1.0.
+
+Survival is role-aware: reload cover, hull-down search, outnumbered advance guard,
+shoot-and-scoot, scout kiting, damage-burst memory, and low-HP/track fallback toward
+support (or away from the threat when alone). Navigation includes obstacle corner hops,
+teammate separation, stuck recovery and firing-lane relocation.
+
+Before firing, `botFriendlyFireRisk()` predicts teammate motion through the shell
+corridor and HE blast radius. A blocked bot holds fire and moves laterally; state.js
+repeats the same guard authoritatively, makes bot HE splash team-safe, and applies zero
+same-team ram damage. The human player's trigger remains unrestricted. All randomness
+flows through `opts.rng`.
 
 ### 3.7 hud — `src/ui/`
 

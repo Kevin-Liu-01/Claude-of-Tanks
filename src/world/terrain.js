@@ -675,7 +675,7 @@ function drawWrapped(ctx, s, fn) {
 // Painted grass layer: noise macro base + thousands of individual blade
 // strokes so the near field reads as turf, not single-frequency speckle.
 function makeGrassLayer(seed, anisotropy, tone = null) {
-  const s = texSize(512); // MOBILE r1: tier-scaled layer bake
+  const s = texSize(256); // loading-speed r1: sourced 1K set replaces this fallback
   const noi = new SimplexNoise({ random: mulberry32(seed) });
   const rng = mulberry32(seed ^ 0x7f4a);
   const c = document.createElement('canvas');
@@ -760,7 +760,7 @@ function makeGrassLayer(seed, anisotropy, tone = null) {
 // Painted dirt layer: clods + drawn pebbles + cracks — real macro structure
 // for the sub-10 m ground and the road gravel pass.
 function makeDirtLayer(seed, anisotropy, tone = null) {
-  const s = texSize(512); // MOBILE r1: tier-scaled layer bake
+  const s = texSize(256); // loading-speed r1: sourced 1K set replaces this fallback
   const noi = new SimplexNoise({ random: mulberry32(seed) });
   const rng = mulberry32(seed ^ 0x2e91);
   const c = document.createElement('canvas');
@@ -853,7 +853,7 @@ function makeDirtLayer(seed, anisotropy, tone = null) {
 // Roughness (packed in alpha) is LOW on clear ice, high on the drifts, so the
 // sheet picks up sun/sky specular and reads as ice, not mud.
 function makeIceLayer(seed, anisotropy) {
-  const s = texSize(512); // MOBILE r1: tier-scaled layer bake
+  const s = texSize(256); // loading-speed r1: distant/fallback terrain tile
   const noi = new SimplexNoise({ random: mulberry32(seed) });
   const rng = mulberry32(seed ^ 0x1cE5);
   const c = document.createElement('canvas');
@@ -974,7 +974,7 @@ function makeIceLayer(seed, anisotropy) {
 // shader's marsh-gloss + fresnel terms give it the specular water identity —
 // and high on the foam streaks so they read matte.
 function makeSeaLayer(seed, anisotropy, tone = null) {
-  const s = texSize(512); // MOBILE r1: tier-scaled layer bake
+  const s = texSize(256); // loading-speed r1: distant/fallback terrain tile
   const noi = new SimplexNoise({ random: mulberry32(seed) });
   const rng = mulberry32(seed ^ 0x5EA1);
   const c = document.createElement('canvas');
@@ -1045,7 +1045,7 @@ function makeSeaLayer(seed, anisotropy, tone = null) {
 // splat shader's wall projection maps v to world height, so the beds land
 // horizontal on every cliff face regardless of orientation.
 function makeSandstoneLayer(seed, anisotropy, tone = null) {
-  const s = texSize(512); // MOBILE r1: tier-scaled layer bake
+  const s = texSize(256); // loading-speed r1: distant/fallback terrain tile
   const noi = new SimplexNoise({ random: mulberry32(seed) });
   const rng = mulberry32(seed ^ 0x5a4d);
   // bed table: resistant ledges, soft recessed beds, occasional dark markers
@@ -1117,7 +1117,7 @@ function makeSandstoneLayer(seed, anisotropy, tone = null) {
 }
 
 function makeGroundLayer(seed, kind, anisotropy, tone = null, roughMul = 1) {
-  const s = texSize(512); // MOBILE r1: tier-scaled layer bake
+  const s = texSize(256); // loading-speed r1: sourced 1K set replaces this fallback
   const noi = new SimplexNoise({ random: mulberry32(seed) });
   const px = new Uint8ClampedArray(s * s * 4);
   const hgt = new Float32Array(s * s);
@@ -1173,7 +1173,10 @@ function makeMaskTexture(seedNoi, layout, landformW = null) {
   // MOBILE r1: tier-scaled mask (features derive from T = s/MAP_SIZE, so the
   // bake is resolution-relative; mobile trades 0.5 m/texel road-edge crispness
   // for a 16 MB saving on its ~192 MB budget)
-  const s = texSize(2048), T = s / MAP_SIZE;
+  // Loading-speed r1: the mask covers a 1024 m battlefield; 512² gives one
+  // texel per 2 m, still finer than the rendered terrain grid (~2.7 m).
+  // The former 2048² bake spent 16x the pixels on sub-grid information.
+  const s = texSize(512), T = s / MAP_SIZE;
   // r6 terrain_environment: landform (mesa/rim) weight pre-sampled on a
   // coarse grid (the field is ~700 m wavelength; 4 m texels bilerped) so the
   // 2048^2 mask bake stays cheap — B channel carries it on landformW maps.
@@ -2479,11 +2482,12 @@ export function buildTerrainMeshes(heightField, engineCtx, cfg = null) {
  * Byte-identical output: both wrappers drain the same generator.
  * @param {?function(number, number): (Promise<void>|void)} tick
  */
-export async function buildTerrainMeshesAsync(heightField, engineCtx, cfg = null, tick = null) {
+export async function buildTerrainMeshesAsync(heightField, engineCtx, cfg = null, tick = null,
+  fineSlices = false) {
   const g = terrainBuildSteps(heightField, engineCtx, cfg);
   let r = g.next();
   while (!r.done) {
-    if (tick) await tick(r.value[0], r.value[1]);
+    if (tick && (fineSlices || r.value[2])) await tick(r.value[0], r.value[1]);
     r = g.next();
   }
   return r.value;
@@ -2493,11 +2497,11 @@ function* terrainBuildSteps(heightField, engineCtx, cfg) {
   const group = new THREE.Group();
   group.name = 'terrain';
   group.add(buildHorizonRing(engineCtx, cfg, 1337));
-  yield [0, CHUNKS + 2]; // horizon ring built — splat bake gets its own slice
+  yield [0, CHUNKS * CHUNKS + 2, true]; // horizon ring built — splat bake gets its own slice
   const mat = createSplatMaterial(engineCtx, heightField._layout, cfg ? cfg.splat : null,
     (cfg && cfg.id) || 'verdant', heightField._mesaW || null);
   const chunks = [];
-  yield [1, CHUNKS + 2]; // splat canvas bake done
+  yield [1, CHUNKS * CHUNKS + 2, true]; // splat canvas bake done
   for (let cz = 0; cz < CHUNKS; cz++) {
     for (let cx = 0; cx < CHUNKS; cx++) {
       const cx0 = -HALF + cx * CHUNK_SIZE, cz0 = -HALF + cz * CHUNK_SIZE;
@@ -2511,8 +2515,8 @@ function* terrainBuildSteps(heightField, engineCtx, cfg) {
       mesh.updateMatrix();
       group.add(mesh);
       chunks.push({ mesh, lods, level: 2, cx: cx0 + CHUNK_SIZE / 2, cz: cz0 + CHUNK_SIZE / 2 });
+      yield [2 + cz * CHUNKS + cx + 1, CHUNKS * CHUNKS + 2, cx === CHUNKS - 1];
     }
-    yield [cz + 2, CHUNKS + 2]; // one row of chunk grids per slice
   }
   group.userData.updateLOD = (camPos) => {
     for (const c of chunks) {

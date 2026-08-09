@@ -17,7 +17,7 @@ import {
   createCombatState, resolveShellHit, resolveHeBurst, tickFire, tickModuleRepairs,
   startReload, isHeClass, ramDamage,
 } from '../sim/damage.js';
-import { createAI, roleOf } from './ai.js';
+import { botFriendlyFireRisk, createAI, roleOf } from './ai.js';
 import { pushHullFromObstacle } from '../world/collision.js';
 import { getStoredDifficulty } from './input.js';
 // SPOTTING WIRING: concealment/spotting sim + camo-paint bonus source
@@ -269,6 +269,10 @@ export function ensureTankVisual(game, ent) {
   ent.visual = createTank(ent.specId, engineCtx, {
     camoSeed: ent._camoSeed, quality: hero ? 'high' : 'ai',
   });
+  // MOBILE-QA r26: post-ready staged tanks have no simulation state yet.
+  // Keep them out of normal garage renders until setupBattle poses/reveals
+  // them; compileHiddenVariants' force-visible window still warms them.
+  if (!ent.state) ent.visual.setVisible(false);
   engineCtx.scene.add(ent.visual.root);
   if (game._groundSampler && ent.visual.setGroundSampler) {
     ent.visual.setGroundSampler(game._groundSampler);
@@ -419,6 +423,27 @@ function pickParticipants(game, playerSpecId, randomize, mixedEra = false) {
     others = TANK_IDS.filter((id) => id !== playerSpecId).map((id) => game.tankById.get(id));
   }
   return [player, ...others.slice(0, enemySlots)];
+}
+
+/**
+ * Loading-speed r1: point the existing post-ready visual pump at the roster
+ * the NEXT real battle will deterministically choose. setupBattle increments
+ * battleCount before pickParticipants(), so preview against count+1. This is
+ * deliberately placement-free: entities keep null state/combat and any
+ * visual the idle pump creates stays hidden until setupBattle poses it.
+ *
+ * @param {object} game createGameState() result
+ * @param {string} playerSpecId selected garage vehicle
+ * @param {{random?:boolean,mixedEra?:boolean}} [opts]
+ * @returns {object[]} predicted next-battle participants
+ */
+export function stageNextBattleRoster(game, playerSpecId, opts = {}) {
+  const preview = Object.create(game);
+  preview.battleCount = game.battleCount + 1;
+  game.tanks = pickParticipants(
+    preview, playerSpecId, opts.random !== false, !!opts.mixedEra,
+  );
+  return game.tanks;
 }
 
 /**
@@ -777,6 +802,11 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
       game.player = ent;
       ent.aiCtl = null;
     } else {
+      // Reused team views: AI asks for these lists from movement, target and
+      // fire-discipline code. Refill stable per-controller arrays instead of
+      // allocating two `filter()` results across every bot/frame.
+      const aiEnemies = [];
+      const aiAllies = [];
       ent.aiCtl = createAI(ent, {
         difficulty: getStoredDifficulty(),
         rng: mulberry32(7000 + i),
@@ -784,12 +814,24 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
           ...aiDeps,
           // SYMMETRIC TEAMS: every bot fights the OPPOSING team (allied bots
           // hunt enemies; enemy bots engage the player AND the allies).
-          getEnemies: () => game.tanks.filter(
-            (t) => t.team !== ent.team && t.combat && !t.combat.destroyed),
+          getEnemies: () => {
+            aiEnemies.length = 0;
+            for (const t of game.tanks) {
+              if (t.team !== ent.team && t.combat && !t.combat.destroyed) aiEnemies.push(t);
+            }
+            return aiEnemies;
+          },
           // BATTLE-AI r7: living teammates — low-HP/tracked bots retreat
           // toward support instead of dying in the open (ai.js doctrine).
-          getAllies: () => game.tanks.filter(
-            (t) => t !== ent && t.team === ent.team && t.combat && !t.combat.destroyed),
+          getAllies: () => {
+            aiAllies.length = 0;
+            for (const t of game.tanks) {
+              if (t !== ent && t.team === ent.team && t.combat && !t.combat.destroyed) {
+                aiAllies.push(t);
+              }
+            }
+            return aiAllies;
+          },
           // AI target acquisition goes THROUGH the spotting sim (§camo
           // charter) from the bot's OWN team's intel, with the bot as the
           // radio-debuff receiver (simulation_correctness r1).
@@ -1392,6 +1434,20 @@ function tryFire(game, ent, bus, rig) {
   }
   const shellSpec = ent.spec.gun.shells[c.shellSlot];
 
+  // BOT FIRE DISCIPLINE: controller and simulation share the same predicted
+  // friendly corridor/HE-blast rule. This second check is authoritative and
+  // runs on the final aim point immediately before shell creation; players
+  // retain full trigger control, while a bot can never fire through a living
+  // teammate (including the human player on an allied bot's team).
+  if (ent.aiCtl) {
+    const risk = botFriendlyFireRisk(ent, ent.input.aimPoint, shellSpec, game.tanks);
+    if (risk) {
+      ent.input.fire = false;
+      if (ent.aiCtl.notifyFriendlyBlocked) ent.aiCtl.notifyFriendlyBlocked(risk);
+      return;
+    }
+  }
+
   // Barrel direction from the visual (already chasing input.aimPoint).
   // controls_gunnery r3 CRITICAL: use the articulated bore AXIS (recoil-group
   // +Z), NOT muzzle-minus-pivot — on GLB-swapped tanks the muzzle anchor is
@@ -1533,10 +1589,28 @@ function stepShells(game, bus, world) {
       if (t < bestT) { bestT = t; bestEnt = ent; bestHits = hits; }
     }
 
+    const shooter = game.tankById.get(shell.shooterId);
+    const botTeamSafe = !!(shooter && shooter.aiCtl && shooter.team);
     if (bestEnt && bestT <= worldT) {
-      if (isHeClass(shell.spec.type)) {
+      // Last-resort friendly-fire safety: prediction normally prevents this
+      // shot, but dispersion or a same-tick crossing can still put a teammate
+      // on the final segment. Bot ordnance is absorbed without damage; the
+      // event gives DEV telemetry a countable proof of the avoided accident.
+      if (botTeamSafe && bestEnt.team === shooter.team && !bestEnt.combat.destroyed) {
+        shell.dead = true;
+        const p = bestHits[0].point;
+        bus.emit('shell:friendly-blocked', {
+          shellId: shell.id, shooterId: shooter.id, allyId: bestEnt.id,
+          pos: [p.x, p.y, p.z],
+        });
+        bus.emit('shell:expired', {
+          shellId: shell.id, pos: [p.x, p.y, p.z], hitTerrain: false,
+        });
+      } else if (isHeClass(shell.spec.type)) {
         const burst = bestHits[0].point;
-        const events = resolveHeBurst(shell, burst, game.tanks, bestEnt, bestHits, game.combatRng);
+        const splashTanks = botTeamSafe
+          ? game.tanks.filter((t) => t.team !== shooter.team) : game.tanks;
+        const events = resolveHeBurst(shell, burst, splashTanks, bestEnt, bestHits, game.combatRng);
         for (const ev of events) emitHitOutcome(game, bus, ev);
       } else {
         const ev = resolveShellHit(shell, bestEnt, bestHits, game.combatRng);
@@ -1544,7 +1618,9 @@ function stepShells(game, bus, world) {
       }
     } else if (worldHit) {
       if (isHeClass(shell.spec.type)) {
-        const events = resolveHeBurst(shell, worldHit.point, game.tanks, null, null, game.combatRng);
+        const splashTanks = botTeamSafe
+          ? game.tanks.filter((t) => t.team !== shooter.team) : game.tanks;
+        const events = resolveHeBurst(shell, worldHit.point, splashTanks, null, null, game.combatRng);
         for (const ev of events) emitHitOutcome(game, bus, ev);
       } else {
         shell.dead = true;
@@ -1712,6 +1788,10 @@ export function simStep(game, bus, world, rig, collider) {
           game.timeS - last < RAM_PAIR_COOLDOWN_S) continue;
       const a = q.a, b = q.b;
       if (!a.combat || !b.combat || a.combat.destroyed) continue;
+      // Formation contacts remain physical, but teammates never damage one
+      // another by ramming. This protects the player from allied AI pile-ups
+      // and applies identically to the enemy team.
+      if (a.team && a.team === b.team) continue;
       const dmg = ramDamage(
         a.spec.weightTons, b.spec.weightTons,
         // sub-tick overshoot: the recorded closing speed is the approach at

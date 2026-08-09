@@ -42,7 +42,7 @@ export function createMap(engineCtx, { mapId = 'verdant', seed = 1337 } = {}) {
  * @returns {Promise<object>} World (ARCHITECTURE §2.7) + {mapId, config}
  */
 export async function createMapAsync(engineCtx, { mapId = 'verdant', seed = 1337 } = {},
-  onStep = null) {
+  onStep = null, { fineSlices = false } = {}) {
   const config = getMapConfig(mapId);
   const step = async (label, f) => { if (onStep) await onStep(label, f); };
   // perf-r3 (play-session probe): the old five-yield build left each
@@ -51,18 +51,18 @@ export async function createMapAsync(engineCtx, { mapId = 'verdant', seed = 1337
   // drains its chunked twin, yielding through `step` after every slice so
   // the bar creeps THROUGH a subsystem instead of jumping between them.
   const sub = (label, f0, f1) => (done, total) =>
-    step(label, f0 + (f1 - f0) * (done / Math.max(1, total)));
+    step(label, f0 + (f1 - f0) * Math.min(1, done / Math.max(1, total)));
   await step('Surveying terrain', 0.0);
   const heightField = createHeightField(seed, config);
   await step('Building terrain meshes', 0.34);
   const terrain = await buildTerrainMeshesAsync(heightField, engineCtx, config,
-    sub('Building terrain meshes', 0.34, 0.58));
+    sub('Building terrain meshes', 0.34, 0.58), fineSlices);
   await step('Planting vegetation', 0.58);
   const vegetation = await createVegetationAsync(heightField, engineCtx, 2001, config,
-    sub('Planting vegetation', 0.58, 0.82));
+    sub('Planting vegetation', 0.58, 0.82), fineSlices);
   await step('Placing structures', 0.82);
   const props = await createPropsAsync(heightField, engineCtx, 2002, config,
-    sub('Placing structures', 0.82, 0.96));
+    sub('Placing structures', 0.82, 0.96), fineSlices);
   await step('Sealing the battlefield', 0.96);
   return assembleWorld(engineCtx, config, heightField, terrain, vegetation, props);
 }
