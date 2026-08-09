@@ -2497,3 +2497,46 @@ Fleet is **28/96**; graduates **34**. Verdict:
 Leclerc-method lane now advances through the required T-44/Type 59 landing,
 Russia pure-refactor split, then T-90-family measurement consistency and
 complete redesign work in the fresh `t90.js`.
+
+## 5.86 OWNER RECOVERY-BRANCH RECONCILIATION (2026-08-09)
+
+All six named temporary branches were compared fragment-by-fragment against
+current `main`; none was merged wholesale and none was deleted during this
+accounting. Results:
+
+- `codex/salvage-challenger2-followup` @ **e641e23** — **REJECTED / SAFE TO
+  PRUNE**. It preserves the known ~89.5 generic-MAG/broad-fill intermediate.
+  The measured replacement graduated at 90.1 as **e83207b / 63ee160**, so no
+  code, gate row or ledger byte from the salvage commit is current.
+- `codex/salvage-k2-geometry-evidence` @ **c304245** — **SUPERSEDED / SAFE TO
+  PRUNE**. Its K2 row is 52.8 versus the landed 90.1 graduate row/freeze
+  **827d5ffc**. Its only useful helper fragment, T-44/Type 59 critic override
+  coverage, is already present in all current comparison helpers (main
+  lineage **7fca27d**); the old row and generated ledger are rejected.
+- `codex/salvage-provenance-tuning` @ **f741d73** — **REJECTED / SAFE TO
+  PRUNE**. The two one-line experiments would undo the owner-ratified Leopard
+  2A4 mandatory-RCWS P95 datum (3.03 -> 2.48) and shrink the Leopard prototype
+  source-matched OWS flange (0.31 -> 0.20) without a gate/critic chain. The
+  current §5.76/§5.78 values remain authoritative.
+- `codex/salvage-tejas-critic` @ **46fba99** — **SUPERSEDED / SAFE TO PRUNE**.
+  Its temporary proc-only Tejas capture page is replaced by the generic
+  reference/procedural harness and the landed 56-view Abrams distinctiveness
+  verdict (**fb5432b**); no shipping or evidence byte is missing.
+- `codex/salvage-type99a-geometry` @ **3ea4efa** — **SUPERSEDED / SAFE TO
+  PRUNE**. Its gate row is 0 and its 2.37 m datum is obsolete. The useful
+  expanded follower registration already landed at **6a8c5f8**; re-onboarding,
+  owner-ratified 2.86 m P95 datum and the current measurable 17.7 row landed
+  at **c940272**. The salvage gate/ledger/profile deltas are rejected.
+- `claude/festive-bell-2e3357` @ **5c76fae** — **PERFORMANCE-REJECTED / SAFE
+  TO PRUNE**. Two untouched real-entry controls on e83207b completed with
+  zero console errors, zero battle-open program births/freezes and battle-open
+  p95 18.2 ms normal / 18.4 ms constrained. Applying the 22-line per-battle
+  FX mini-volley made the first normal control DevTools-unresponsive past the
+  180 s bound and fail at `Input.dispatchKeyEvent`; the patch was removed and
+  `src/main.js` restored byte-clean. The pre-patch path already births zero
+  programs in the judged ten-second window, so there is no benefit to trade
+  for that regression.
+
+No temporary branch was pruned here; this section is the requested durable
+accept/reject accounting. All six listed branches are now safe for the owner
+to prune.
