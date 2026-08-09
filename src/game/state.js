@@ -17,9 +17,10 @@ import {
   createCombatState, resolveShellHit, resolveHeBurst, tickFire, tickModuleRepairs,
   startReload, isHeClass, ramDamage,
 } from '../sim/damage.js';
-import { botFriendlyFireRisk, createAI, roleOf } from './ai.js';
+import { createAI, roleOf } from './ai.js';
 import { pushHullFromObstacle } from '../world/collision.js';
 import { getStoredDifficulty } from './input.js';
+import { isGarageVisibleTankId, rankMatchCandidates } from './matchmaking.js';
 // SPOTTING WIRING: concealment/spotting sim + camo-paint bonus source
 import { createSpottingSystem, CAMO_PAINT_BONUS } from '../sim/spotting.js';
 import { hasCamoPaint, setCamoOverride, clearCamoOverrides, applyCamoPatterns } from '../vehicles/materials.js';
@@ -269,10 +270,6 @@ export function ensureTankVisual(game, ent) {
   ent.visual = createTank(ent.specId, engineCtx, {
     camoSeed: ent._camoSeed, quality: hero ? 'high' : 'ai',
   });
-  // MOBILE-QA r26: post-ready staged tanks have no simulation state yet.
-  // Keep them out of normal garage renders until setupBattle poses/reveals
-  // them; compileHiddenVariants' force-visible window still warms them.
-  if (!ent.state) ent.visual.setVisible(false);
   engineCtx.scene.add(ent.visual.root);
   if (game._groundSampler && ent.visual.setGroundSampler) {
     ent.visual.setGroundSampler(game._groundSampler);
@@ -354,7 +351,7 @@ const specTier = (specId) => SPEC_TIER[specId] != null ? SPEC_TIER[specId] : 6;
  * rosters include community vehicles.
  * @returns {object[]} TankEntity[] (player's entity included)
  */
-function pickParticipants(game, playerSpecId, randomize, mixedEra = false) {
+function pickParticipants(game, playerSpecId, randomize) {
   const player = game.tankById.get(playerSpecId);
   const enemySlots = randomize ? 13 : 7;
   // PERF (performance_budget r3, certification determinism): an explicit
@@ -380,7 +377,8 @@ function pickParticipants(game, playerSpecId, randomize, mixedEra = false) {
       window.__DEBUG.flags && window.__DEBUG.flags.rosterExact;
     if (randomize && !exact && list.length < enemySlots) {
       const rng = mulberry32(0x51e57 ^ (game.battleCount * 2654435761));
-      const pool = game.allTanks.filter((e) => e !== player && !list.includes(e));
+      const pool = game.allTanks.filter((e) =>
+        e !== player && !list.includes(e) && isGarageVisibleTankId(e.specId));
       for (let i = pool.length - 1; i > 0; i--) {
         const j = (rng() * (i + 1)) | 0;
         [pool[i], pool[j]] = [pool[j], pool[i]];
@@ -395,55 +393,21 @@ function pickParticipants(game, playerSpecId, randomize, mixedEra = false) {
   let others;
   if (randomize) {
     const rng = mulberry32(0x51e57 ^ (game.battleCount * 2654435761));
-    others = game.allTanks.filter((e) => e !== player);
+    others = game.allTanks.filter((e) => e !== player && isGarageVisibleTankId(e.specId));
     for (let i = others.length - 1; i > 0; i--) {       // Fisher-Yates
       const j = (rng() * (i + 1)) | 0;
       [others[i], others[j]] = [others[j], others[i]];
     }
-    // MODERN EXPANSION — era-matched matchmaking: a modern battle draws its
-    // roster from the modern pool, a WWII battle from the WWII pool. Only the
-    // RANDOM battlefield card rolls mixed-era rosters (mixedEra=true from
-    // main.js). Era mismatches still back-fill an under-populated pool
-    // (never fewer than 7 enemies), nearest-tier first.
-    const pEra = player && player.spec ? player.spec.era : null;
-    const eraOk = (e) => mixedEra || !pEra || e.spec.era === pEra;
-    // Tier cap (±2 template): stable partition of the shuffled pool — legal
-    // tiers keep their shuffle order and fill first; the remainder is sorted
-    // by tier distance so an under-filled pool degrades to the NEAREST tiers.
-    const pTier = specTier(playerSpecId);
-    const legal = others.filter((e) => eraOk(e) && Math.abs(specTier(e.specId) - pTier) <= 2);
-    const rest = others
-      .filter((e) => !(eraOk(e) && Math.abs(specTier(e.specId) - pTier) <= 2))
-      .sort((a, b) =>
-        (eraOk(a) === eraOk(b) ? 0 : eraOk(a) ? -1 : 1) ||
-        (Math.abs(specTier(a.specId) - pTier) - Math.abs(specTier(b.specId) - pTier)));
-    others = [...legal, ...rest];
+    // Curated matchmaking: same-era tanks always fill first, ordered by
+    // nearest tier. A cross-era tank is now an emergency fallback only when
+    // the visible garage roster cannot fill all 13 non-player slots; picking
+    // the Random battlefield no longer turns WWII vs modern back on.
+    others = rankMatchCandidates(others, player, specTier);
   } else {
     // deterministic staged battle (boot, screenshot contract): core roster
     others = TANK_IDS.filter((id) => id !== playerSpecId).map((id) => game.tankById.get(id));
   }
   return [player, ...others.slice(0, enemySlots)];
-}
-
-/**
- * Loading-speed r1: point the existing post-ready visual pump at the roster
- * the NEXT real battle will deterministically choose. setupBattle increments
- * battleCount before pickParticipants(), so preview against count+1. This is
- * deliberately placement-free: entities keep null state/combat and any
- * visual the idle pump creates stays hidden until setupBattle poses it.
- *
- * @param {object} game createGameState() result
- * @param {string} playerSpecId selected garage vehicle
- * @param {{random?:boolean,mixedEra?:boolean}} [opts]
- * @returns {object[]} predicted next-battle participants
- */
-export function stageNextBattleRoster(game, playerSpecId, opts = {}) {
-  const preview = Object.create(game);
-  preview.battleCount = game.battleCount + 1;
-  game.tanks = pickParticipants(
-    preview, playerSpecId, opts.random !== false, !!opts.mixedEra,
-  );
-  return game.tanks;
 }
 
 /**
@@ -483,7 +447,7 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
 
   // COMMUNITY TANKS: field the participants; park everyone else (hidden,
   // null state/combat — every sim/HUD/audio consumer guards on those).
-  game.tanks = pickParticipants(game, playerSpecId, !!opts.random, !!opts.mixedEra);
+  game.tanks = pickParticipants(game, playerSpecId, !!opts.random);
   // BOT BIOME CAMO (camo_spotting r5): non-player participants of a random
   // battle roll a 60% chance of fielding the biome-matched AUTO pattern so
   // snowfields/dunes stop being full of factory-green bots (the player's
@@ -802,11 +766,6 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
       game.player = ent;
       ent.aiCtl = null;
     } else {
-      // Reused team views: AI asks for these lists from movement, target and
-      // fire-discipline code. Refill stable per-controller arrays instead of
-      // allocating two `filter()` results across every bot/frame.
-      const aiEnemies = [];
-      const aiAllies = [];
       ent.aiCtl = createAI(ent, {
         difficulty: getStoredDifficulty(),
         rng: mulberry32(7000 + i),
@@ -814,24 +773,12 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
           ...aiDeps,
           // SYMMETRIC TEAMS: every bot fights the OPPOSING team (allied bots
           // hunt enemies; enemy bots engage the player AND the allies).
-          getEnemies: () => {
-            aiEnemies.length = 0;
-            for (const t of game.tanks) {
-              if (t.team !== ent.team && t.combat && !t.combat.destroyed) aiEnemies.push(t);
-            }
-            return aiEnemies;
-          },
+          getEnemies: () => game.tanks.filter(
+            (t) => t.team !== ent.team && t.combat && !t.combat.destroyed),
           // BATTLE-AI r7: living teammates — low-HP/tracked bots retreat
           // toward support instead of dying in the open (ai.js doctrine).
-          getAllies: () => {
-            aiAllies.length = 0;
-            for (const t of game.tanks) {
-              if (t !== ent && t.team === ent.team && t.combat && !t.combat.destroyed) {
-                aiAllies.push(t);
-              }
-            }
-            return aiAllies;
-          },
+          getAllies: () => game.tanks.filter(
+            (t) => t !== ent && t.team === ent.team && t.combat && !t.combat.destroyed),
           // AI target acquisition goes THROUGH the spotting sim (§camo
           // charter) from the bot's OWN team's intel, with the bot as the
           // radio-debuff receiver (simulation_correctness r1).
@@ -1434,20 +1381,6 @@ function tryFire(game, ent, bus, rig) {
   }
   const shellSpec = ent.spec.gun.shells[c.shellSlot];
 
-  // BOT FIRE DISCIPLINE: controller and simulation share the same predicted
-  // friendly corridor/HE-blast rule. This second check is authoritative and
-  // runs on the final aim point immediately before shell creation; players
-  // retain full trigger control, while a bot can never fire through a living
-  // teammate (including the human player on an allied bot's team).
-  if (ent.aiCtl) {
-    const risk = botFriendlyFireRisk(ent, ent.input.aimPoint, shellSpec, game.tanks);
-    if (risk) {
-      ent.input.fire = false;
-      if (ent.aiCtl.notifyFriendlyBlocked) ent.aiCtl.notifyFriendlyBlocked(risk);
-      return;
-    }
-  }
-
   // Barrel direction from the visual (already chasing input.aimPoint).
   // controls_gunnery r3 CRITICAL: use the articulated bore AXIS (recoil-group
   // +Z), NOT muzzle-minus-pivot — on GLB-swapped tanks the muzzle anchor is
@@ -1589,28 +1522,10 @@ function stepShells(game, bus, world) {
       if (t < bestT) { bestT = t; bestEnt = ent; bestHits = hits; }
     }
 
-    const shooter = game.tankById.get(shell.shooterId);
-    const botTeamSafe = !!(shooter && shooter.aiCtl && shooter.team);
     if (bestEnt && bestT <= worldT) {
-      // Last-resort friendly-fire safety: prediction normally prevents this
-      // shot, but dispersion or a same-tick crossing can still put a teammate
-      // on the final segment. Bot ordnance is absorbed without damage; the
-      // event gives DEV telemetry a countable proof of the avoided accident.
-      if (botTeamSafe && bestEnt.team === shooter.team && !bestEnt.combat.destroyed) {
-        shell.dead = true;
-        const p = bestHits[0].point;
-        bus.emit('shell:friendly-blocked', {
-          shellId: shell.id, shooterId: shooter.id, allyId: bestEnt.id,
-          pos: [p.x, p.y, p.z],
-        });
-        bus.emit('shell:expired', {
-          shellId: shell.id, pos: [p.x, p.y, p.z], hitTerrain: false,
-        });
-      } else if (isHeClass(shell.spec.type)) {
+      if (isHeClass(shell.spec.type)) {
         const burst = bestHits[0].point;
-        const splashTanks = botTeamSafe
-          ? game.tanks.filter((t) => t.team !== shooter.team) : game.tanks;
-        const events = resolveHeBurst(shell, burst, splashTanks, bestEnt, bestHits, game.combatRng);
+        const events = resolveHeBurst(shell, burst, game.tanks, bestEnt, bestHits, game.combatRng);
         for (const ev of events) emitHitOutcome(game, bus, ev);
       } else {
         const ev = resolveShellHit(shell, bestEnt, bestHits, game.combatRng);
@@ -1618,9 +1533,7 @@ function stepShells(game, bus, world) {
       }
     } else if (worldHit) {
       if (isHeClass(shell.spec.type)) {
-        const splashTanks = botTeamSafe
-          ? game.tanks.filter((t) => t.team !== shooter.team) : game.tanks;
-        const events = resolveHeBurst(shell, worldHit.point, splashTanks, null, null, game.combatRng);
+        const events = resolveHeBurst(shell, worldHit.point, game.tanks, null, null, game.combatRng);
         for (const ev of events) emitHitOutcome(game, bus, ev);
       } else {
         shell.dead = true;
@@ -1788,10 +1701,6 @@ export function simStep(game, bus, world, rig, collider) {
           game.timeS - last < RAM_PAIR_COOLDOWN_S) continue;
       const a = q.a, b = q.b;
       if (!a.combat || !b.combat || a.combat.destroyed) continue;
-      // Formation contacts remain physical, but teammates never damage one
-      // another by ramming. This protects the player from allied AI pile-ups
-      // and applies identically to the enemy team.
-      if (a.team && a.team === b.team) continue;
       const dmg = ramDamage(
         a.spec.weightTons, b.spec.weightTons,
         // sub-tick overshoot: the recorded closing speed is the approach at

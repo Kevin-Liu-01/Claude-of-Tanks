@@ -61,11 +61,10 @@ const SETTINGS_CSS = `
   background:linear-gradient(90deg,rgba(240,160,48,.25),#f0a030 16%,#f0a030 84%,rgba(240,160,48,.25));
   box-shadow:0 0 12px rgba(240,160,48,.35);}
 .cot-set-hdr{display:flex;align-items:center;gap:12px;padding:15px 22px 11px;}
-.cot-set-hdr h2{font-size:15px;font-weight:800;letter-spacing:.32em;color:#9fb0bf;
+.cot-set-hdr h2{font-size:15px;font-weight:800;letter-spacing:.18em;color:#d5dfe7;
   text-transform:uppercase;margin-right:auto;}
 .cot-set-hdr h2::before{content:'';display:inline-block;width:18px;height:3px;
   background:#f0a030;margin-right:12px;vertical-align:3px;}
-.cot-set-hdr h2 b{color:#f0a030;}
 /* PAUSE: battle-pause tag in the header — shown only while the open panel is
    actually freezing a live battle (root gets .paused; garage Esc never shows
    it). Era-chip plate + slow-pulsing amber lamp instead of the old blinking
@@ -381,7 +380,7 @@ export function createSettings(opts) {
   const root = el('div', 'cot-settings');
   root.innerHTML =
     `<div class="cot-set-panel">` +
-    `<div class="cot-set-hdr"><h2>SET<b>TINGS</b></h2>` +
+    `<div class="cot-set-hdr"><h2>Settings</h2>` +
     `<span class="cot-set-paused">Paused</span>` +
     `<button class="cot-set-close" type="button" title="Close">&#10005;</button></div>` +
     `<div class="cot-set-tabs">` +

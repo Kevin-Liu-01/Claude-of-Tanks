@@ -77,6 +77,7 @@ import { createGarageDressing } from './game/garageDressing.js';
 import { createPerfHud } from './ui/perfHud.js';
 import { createAudio } from './audio/audio.js';
 import { createInput } from './game/input.js';
+import { isGarageVisibleTankId } from './game/matchmaking.js';
 import {
   CONSUMABLE_RULES, cooldownRemaining, resetConsumableCooldowns,
   startConsumableCooldown,
@@ -86,7 +87,7 @@ import { createSettings } from './ui/settings.js';
 import { createTouchControls } from './ui/touchControls.js';
 import {
   createBus, createGameState, spawnTanks, setupBattle, simStep, createCollider,
-  mulberry32, ensureStagedVisuals, nextStagedBake, stageNextBattleRoster,
+  mulberry32, ensureStagedVisuals, nextStagedBake,
 } from './game/state.js';
 // BOOT SCREENS: the entry/loading gate (markup inline in index.html so first
 // paint never waits on this module graph) and the pre-battle roster screen.
@@ -105,13 +106,13 @@ const LAST_SPEC_KEY = 'cot.lastTank.v1';
 function loadLastSpecId() {
   try {
     const id = localStorage.getItem(LAST_SPEC_KEY);
-    if (id && ALL_TANK_IDS.includes(id)) return id;
+    if (id && ALL_TANK_IDS.includes(id) && isGarageVisibleTankId(id)) return id;
   } catch (_) { /* storage unavailable/private mode */ }
   return DEFAULT_SPEC_ID;
 }
 
 function rememberSpecId(id) {
-  if (!ALL_TANK_IDS.includes(id)) return; // Sources print cards are view-only
+  if (!ALL_TANK_IDS.includes(id) || !isGarageVisibleTankId(id)) return;
   try { localStorage.setItem(LAST_SPEC_KEY, id); } catch (_) { /* storage unavailable */ }
 }
 
@@ -155,7 +156,8 @@ const boot = createBootScreen();
     const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
     let lo = Infinity;
     let hi = -Infinity;
-    for (const id of ALL_TANK_IDS) {
+    const garageTankIds = ALL_TANK_IDS.filter(isGarageVisibleTankId);
+    for (const id of garageTankIds) {
       const t = ROMAN.indexOf(tierNumeral(id));
       if (t < 0) continue;
       if (t < lo) lo = t;
@@ -163,7 +165,7 @@ const boot = createBootScreen();
     }
     const tiers = lo <= hi ? ` · Tiers ${ROMAN[lo]}–${ROMAN[hi]}` : '';
     const text =
-      `${ALL_TANK_IDS.length} Vehicles · ${MAP_IDS.length} Battlefields${tiers}`;
+      `${garageTankIds.length} Vehicles · ${MAP_IDS.length} Battlefields${tiers}`;
     el.textContent = text;
     if (typeof window !== 'undefined') window.__BOOT_TAG = text;
   } catch (_) { /* splashless build — never block boot on chrome text */ }
@@ -300,24 +302,9 @@ initTopMaskRig(engineCtx);
 // entry (behind the pre-battle loading screen) and the __SHOTS staging path
 // call. Boot never touches them.
 const worldCache = new Map();
-// LOADING SPEED r1: a garage-idle prefetch and a BATTLE click may ask for the
-// same map at the same time. Keep one construction promise per map so the
-// byte-identical procedural build is never duplicated, and let a loading
-// screen attach to the remaining progress if it joins an idle build.
-const worldBuilds = new Map();
 let world = null;
 let pendingMapId = 'verdant';    // battlefield the garage is pointing at
-let pendingMixedEra = false;     // Random card changes next-roster matchmaking
 let worldDormant = false;        // garage: world hidden + per-frame update off
-let worldPrefetchTimer = 0;
-let backgroundLoadAfter = Infinity;
-const worldPrefetchStats = {
-  requested: 0, completed: 0, joined: 0, lastMap: null, lastMs: 0, active: null,
-  steps: [],
-};
-if (typeof window !== 'undefined') window.__WORLD_PREFETCH = worldPrefetchStats;
-const rosterPrefetchStats = { built: 0, totalMs: 0, lastSpec: null, steps: [] };
-if (typeof window !== 'undefined') window.__ROSTER_PREFETCH = rosterPrefetchStats;
 // The sky/fog preset the atmosphere is currently keyed to. Seeded with the
 // boot map so the FIRST activation of 'verdant' behaves exactly like the old
 // boot did (createSky's DEFAULT_PRESET + one applyFog, no applyPreset) —
@@ -470,26 +457,6 @@ let pedestalVisual = null;
 // First visit opens on the M1A1 Abrams; later visits resume the last playable
 // tank the user selected. Invalid/stale ids safely fall back to the M1A1.
 let selectedSpecId = loadLastSpecId();
-let lastGarageInteractionAt = -Infinity;
-// Focused idle ledger (mobile, clean window): these two procedural builders
-// are the only predicted-roster geometry atoms above 100 ms (122/159 ms),
-// and carousel contention stretched them to 282-368 ms. Keep the other 12
-// cheap prebuilds, but order these last and leave them to the covered loading
-// screen. This is a scheduling boundary only; the battle roster is re-picked
-// in its original deterministic order by setupBattle().
-const HEAVY_IDLE_ROSTER_SPECS = new Set(['merkava1b', 'm1a2_tusk']);
-function orderNextRosterForIdle() {
-  const [player, ...others] = game.tanks;
-  others.sort((a, b) =>
-    Number(HEAVY_IDLE_ROSTER_SPECS.has(a.specId)) -
-    Number(HEAVY_IDLE_ROSTER_SPECS.has(b.specId)));
-  game.tanks = [player, ...others];
-}
-// The random roster is seeded by the NEXT battleCount, so it is knowable in
-// the garage. Feed that roster to the existing one-visual-per-idle-slice pump
-// instead of spending the idle budget on the legacy screenshot-only eight.
-stageNextBattleRoster(game, selectedSpecId, { random: true });
-orderNextRosterForIdle();
 let pedestalPollToken = 0; // content_breadth r1: cancels stale GLB polls
 // switch-desync r1: convergence bookkeeping. A switch is "pending" from the
 // moment its call bumps pedestalPollToken until any reveal path records it
@@ -693,64 +660,6 @@ function buildPedestalVisual(specId) {
   touchCache(specId, vis);
   return vis;
 }
-
-// MOBILE-QA r30: a cold procedural hero used to become visible immediately,
-// so its first presented garage frame linked 20 M1A1 programs back-to-back
-// (one ~10-12 ms driver wait each, one repeatable 233-244 ms task). Compile
-// the currently-visible leaf set against the real post target and final
-// garage light scene one object at a time while the incoming root stays
-// hidden. Consuming each new program's uniforms before yielding preserves
-// Three's real cache keys but gives every blocking link a painted-frame seam.
-async function warmPedestalProgramsChunked(vis, token) {
-  if (!vis || !vis.root) return false;
-  const objects = [];
-  vis.root.traverseVisible((object) => {
-    if (object.isMesh || object.isPoints || object.isLine || object.isSprite) {
-      objects.push(object);
-    }
-  });
-  if (vis.setVisible) vis.setVisible(false);
-
-  // The first pedestal bake is intentionally asynchronous. Do not touch the
-  // post binding before the boot pipeline has created it and finalized lights.
-  while (!bootComplete) {
-    if (token !== pedestalPollToken || game.phase !== 'garage') return false;
-    await nextFrame();
-  }
-
-  let sliceAt = performance.now();
-  for (const object of objects) {
-    if (token !== pedestalPollToken || game.phase !== 'garage' || !vis.root.parent) {
-      return false;
-    }
-    const before = (renderer.info.programs || []).length;
-    const priorTarget = renderer.getRenderTarget();
-    try {
-      const postTarget = post && post.composer ? post.composer.renderTarget1 : null;
-      if (postTarget) renderer.setRenderTarget(postTarget);
-      renderer.compile(object, camera, scene);
-    } catch (_) { /* warm only — reveal fallback below remains valid */ }
-    finally { renderer.setRenderTarget(priorTarget); }
-
-    const programs = renderer.info.programs || [];
-    for (let i = before; i < programs.length; i++) {
-      try { programs[i].getUniforms(); } catch (_) { /* warm only */ }
-      await nextFrame();
-      sliceAt = performance.now();
-    }
-    if (performance.now() - sliceAt >= 8) {
-      await nextFrame();
-      sliceAt = performance.now();
-    }
-  }
-  const ready = token === pedestalPollToken && game.phase === 'garage' && !!vis.root.parent;
-  if (ready) {
-    vis.__pedestalProgramsWarm = true;
-    vis.__pedestalWarmRequired = false;
-  }
-  return ready;
-}
-
 let heroUpgradeTimer = 0;
 function scheduleHeroUpgrade(specId) {
   clearTimeout(heroUpgradeTimer);
@@ -869,8 +778,7 @@ function setPedestalTank(specId, force = false) {
     pedestalPose(cached);
     const src0 = MODEL_SOURCE[specId];
     const wantsGlb = wantsSourcedGlb(src0);
-    if ((!wantsGlb && (!cached.__pedestalWarmRequired || cached.__pedestalProgramsWarm)) ||
-        (wantsGlb && isGlbSwapped(cached))) {
+    if (!wantsGlb || isGlbSwapped(cached)) {
       if (cached.setVisible) cached.setVisible(true);
       retirePrev();
       scheduleHeroUpgrade(specId);
@@ -900,10 +808,6 @@ function setPedestalTank(specId, force = false) {
           return;
         }
         pedestalVisual = buildPedestalVisual(specId);
-        // Only the boot hero has no outgoing visual to cover its first draw.
-        // Carousel switches keep their established immediate procedural reveal;
-        // an interrupted boot warm carries this flag through the cached path.
-        pedestalVisual.__pedestalWarmRequired = !prev;
         parkHiddenPrev();
         proceedWithHero();
       });
@@ -991,35 +895,9 @@ function setPedestalTank(specId, force = false) {
       setTimeout(poll, 50);
     }).catch(retirePrev); // loader unavailable — keep the procedural stand-in
   } else {
-    const token = pedestalPollToken;
-    const vis = pedestalVisual;
-    if (!vis.__pedestalWarmRequired) {
-      retirePrev(); // normal procedural carousel switch: preserve instant reveal
-      scheduleHeroUpgrade(specId);
-      recordSwitch(specId, t0, 'procedural');
-      schedulePedestalPrefetch();
-      return;
-    }
-    const reveal = (path) => {
-      if (token !== pedestalPollToken || game.phase !== 'garage' ||
-          pedestalVisual !== vis || !vis.root.parent) {
-        retirePrev();
-        return;
-      }
-      vis.__pedestalWarmRequired = false;
-      if (vis.setVisible) vis.setVisible(true);
-      retirePrev();
-      scheduleHeroUpgrade(specId);
-      recordSwitch(specId, t0, path);
-    };
-    warmPedestalProgramsChunked(vis, token)
-      .then((ready) => {
-        if (ready) reveal('procedural-warm');
-        else if (token === pedestalPollToken && game.phase === 'garage') {
-          reveal('procedural-fallback');
-        }
-      })
-      .catch(() => reveal('procedural-fallback'));
+    retirePrev(); // procedural: instant
+    scheduleHeroUpgrade(specId);
+    recordSwitch(specId, t0, 'procedural');
   }
   schedulePedestalPrefetch();
   }
@@ -1140,67 +1018,6 @@ function switchMap(mapId) {
   return activateWorld(next);
 }
 
-/** Build and cache a world without activating it. The assembled group is
- * hidden in the same microtask in which it is attached to the scene, so no
- * garage frame can accidentally expose battlefield geometry. */
-function buildWorldCached(mapId, onProgress = null, fineSlices = false) {
-  const cached = worldCache.get(mapId);
-  if (cached) return Promise.resolve(cached);
-  let rec = worldBuilds.get(mapId);
-  if (rec) {
-    if (onProgress) rec.listeners.add(onProgress);
-    worldPrefetchStats.joined++;
-    return rec.promise.finally(() => { if (onProgress) rec.listeners.delete(onProgress); });
-  }
-  const listeners = new Set(onProgress ? [onProgress] : []);
-  const started = performance.now();
-  let stepMark = started;
-  rec = { listeners, promise: null };
-  worldPrefetchStats.active = mapId;
-  rec.promise = createMapAsync(engineCtx, { mapId, seed: 1337 }, async (label, f) => {
-    const now = performance.now();
-    worldPrefetchStats.steps.push({
-      map: mapId, label, progress: +f.toFixed(3), sliceMs: Math.round(now - stepMark),
-    });
-    if (worldPrefetchStats.steps.length > 160) worldPrefetchStats.steps.shift();
-    stepMark = now;
-    for (const fn of listeners) fn(f, label);
-    await nextFrame();
-    stepMark = performance.now();
-  }, { fineSlices }).then((next) => {
-    next.group.visible = false;
-    worldCache.set(mapId, next);
-    worldPrefetchStats.completed++;
-    worldPrefetchStats.lastMap = mapId;
-    worldPrefetchStats.lastMs = Math.round(performance.now() - started);
-    return next;
-  }).finally(() => {
-    worldBuilds.delete(mapId);
-    if (worldPrefetchStats.active === mapId) worldPrefetchStats.active = null;
-  });
-  worldBuilds.set(mapId, rec);
-  return rec.promise;
-}
-
-/** Predictive load: use otherwise-idle garage frames to construct the map the
- * picker currently points at. Cap proactive residency at two worlds; normal
- * battle-driven caching remains unchanged. */
-function prefetchWorld(mapId) {
-  if (!mapId || mapId === 'random' || worldCache.has(mapId) || worldBuilds.has(mapId)) return null;
-  if (worldCache.size >= 2) return null;
-  worldPrefetchStats.requested++;
-  return buildWorldCached(mapId, null, true).catch(() => null);
-}
-
-function queueWorldPrefetch(mapId, delay = 1200) {
-  if (worldPrefetchTimer) clearTimeout(worldPrefetchTimer);
-  if (!mapId || mapId === 'random' || !bootComplete) return;
-  worldPrefetchTimer = setTimeout(() => {
-    worldPrefetchTimer = 0;
-    if (game.phase === 'garage' && pendingMapId === mapId) prefetchWorld(mapId);
-  }, delay);
-}
-
 /**
  * BOOT DEFERRAL: guarantee a battlefield exists and is active, building it one
  * subsystem per frame so the caller's loading bar keeps animating.
@@ -1212,7 +1029,12 @@ async function ensureWorld(mapId, onProgress = null) {
   const id = mapId || pendingMapId;
   let next = worldCache.get(id);
   if (!next) {
-    next = await buildWorldCached(id, onProgress);
+    next = await createMapAsync(engineCtx, { mapId: id, seed: 1337 },
+      async (label, f) => {
+        if (onProgress) onProgress(f, label);
+        await nextFrame();
+      });
+    worldCache.set(id, next);
   }
   // perf-r3: assembleWorld and activateWorld (minimap top-down capture,
   // collider build, sky re-key) used to fuse into one ~1.6 s task — give the
@@ -1312,14 +1134,8 @@ const garage = await bootStage('ui', () => createGarage({
   specs: ALL_TANK_IDS.map(getSpec), // COMMUNITY TANKS: grown carousel
   bus,
   onSelect: (specId) => {
-    lastGarageInteractionAt = performance.now();
     selectedSpecId = specId;
     rememberSpecId(specId);
-    stageNextBattleRoster(game, specId, {
-      random: true, mixedEra: pendingMixedEra,
-    });
-    orderNextRosterForIdle();
-    scheduleStagedRosterPump();
     setPedestalTank(specId);
   },
   onBattle: (specId, mapId) => beginBattleEntry(specId, mapId), // loading screen owns entry
@@ -1353,17 +1169,6 @@ const garage = await bootStage('ui', () => createGarage({
   // inside setCamoBiome; startBattle re-calls setCamoBiome(world.mapId) after
   // the roll, so battle state is always correct regardless.
   onMapSelect: (mapId) => {
-    lastGarageInteractionAt = performance.now();
-    pendingMixedEra = mapId === 'random';
-    if (mapId !== 'random') {
-      pendingMapId = mapId;
-      queueWorldPrefetch(mapId);
-    }
-    stageNextBattleRoster(game, selectedSpecId, {
-      random: true, mixedEra: mapId === 'random',
-    });
-    orderNextRosterForIdle();
-    scheduleStagedRosterPump();
     setCamoBiome(mapId);
     // perf-r2f: chunked — the sync sweep froze the garage ~0.3-1.4 s PER
     // cached tank on a map-card click. The visible hero repaints in the
@@ -2346,12 +2151,11 @@ function startBattle(specId, mapId = null, opts = {}) {
   // CAMO WIRING: AUTO patterns resolve to the biome of the map being fought;
   // only tanks whose resolved pattern actually changed get repainted.
   setCamoBiome(world.mapId);
-  // COMMUNITY TANKS: garage battles roll a random enemy roster from the
-  // full pool (core + community), seeded per battle for reproducibility.
-  // MODERN EXPANSION: rosters are era-matched to the player's vehicle —
-  // mixed-era battles happen only on the RANDOM battlefield card.
+  // Normal matchmaking draws only from the curated garage roster, ranks the
+  // player's era first and prefers the closest tiers. The battlefield choice
+  // never changes vehicle-era matchmaking.
   setupBattle(game, specId, world, {
-    random: true, mixedEra: mapId === 'random', deferVisuals: !!opts.deferVisuals,
+    random: true, deferVisuals: !!opts.deferVisuals,
     deferCamoRepaint: true,
   });
   battleStaged = true;
@@ -2425,11 +2229,8 @@ function openBattle() {
   // edge after the AudioContext exists. Player entries emit at countdown zero.
   if (game.preBattleS <= 0) bus.emit('battle:rollout', {});
 }
-// Loading-speed r1: 2.5 seconds still displays the familiar 3-2-1 sequence
-// (the HUD rounds up) while returning control 2.5 seconds sooner. The old
-// five-second hold was charged to BATTLE-click -> controllable wall time even
-// after every loading stage had finished.
-const PRE_BATTLE_HOLD_S = 2.5;
+// battle_countdown r1: WoT-style pre-battle freeze length (player path only).
+const PRE_BATTLE_HOLD_S = 5;
 
 function enterGarage() {
   // battle_countdown r1: leaving mid-countdown (Esc -> garage) clears the hold.
@@ -4367,33 +4168,23 @@ function* compileHiddenVariantsSteps() {
     // force-visible flips apply and revert INSIDE each slice, so no
     // presented frame ever shows a hidden addon.
     const flips = [];
-    const collectFlips = (root = null) => {
+    const collectFlips = () => {
       flips.length = 0;
-      const roots = root
-        ? [root]
-        : game.tanks.filter((e) => e.visual && e.visual.root).map((e) => e.visual.root);
-      for (const tankRoot of roots) {
-        tankRoot.traverse((o) => {
+      for (const e of game.tanks) {
+        if (!e.visual || !e.visual.root) continue;
+        e.visual.root.traverse((o) => {
           if (o.visible === false) { flips.push(o); o.visible = true; }
         });
       }
     };
     const unflip = () => { for (const o of flips) o.visible = false; };
-    // MOBILE-QA r29: revealing every staged root in the first real warm frame
-    // concentrated +43 texture uploads and seven draw-only program births in
-    // one repeatable 107/108 ms task. Render the same roots one at a time so
-    // coverage and resource lifetime remain identical while each tank's real
-    // texture/program work gets its own painted-frame boundary.
-    if (lighting && lighting.updateFrustums) lighting.updateFrustums();
-    for (const e of game.tanks) {
-      if (!e.visual || !e.visual.root) continue;
-      try {
-        collectFlips(e.visual.root);
-        warmRender();
-        unflip();
-      } catch (_) { unflip(); }
-      yield;
-    }
+    try {
+      collectFlips();
+      if (lighting && lighting.updateFrustums) lighting.updateFrustums();
+      warmRender();
+      unflip();
+    } catch (_) { unflip(); }
+    yield;
     // perf-r2e: the FIRST sniper zoom paid a ~230 ms one-off with ZERO new
     // programs — FOV-dependent lazy work (vegetation repartition against
     // the narrow frustum). Render two hidden frames at scope FOVs so that
@@ -4443,40 +4234,8 @@ function* compileHiddenVariantsSteps() {
 // the garage dwell absorbs them without a single long freeze, then run the
 // combat warm (which needs a built enemy for the wreck-material compile).
 const _idle = (fn, t) => (window.requestIdleCallback || ((f) => setTimeout(f, 250)))(fn, { timeout: t });
-let stagedRosterPumpTimer = 0;
-function scheduleStagedRosterPump(delay = 500) {
-  if (!bootComplete || game.phase !== 'garage') return;
-  if (stagedRosterPumpTimer) clearTimeout(stagedRosterPumpTimer);
-  stagedRosterPumpTimer = setTimeout(() => {
-    stagedRosterPumpTimer = 0;
-    _idle(pumpStagedVisuals, 1500);
-  }, delay);
-}
 function pumpStagedVisuals() {
-  // Preserve the ratified first-10-second garage interaction window. The
-  // predicted roster and fine-sliced world are useful before BATTLE, but
-  // neither is user-visible enough to compete with the initial carousel.
-  if (performance.now() < backgroundLoadAfter) {
-    scheduleStagedRosterPump(Math.ceil(backgroundLoadAfter - performance.now()));
-    return;
-  }
-  // Lap-B attribution: letting this geometry bake and createMapAsync's next
-  // procedural slice become microtasks of the same idle turn produced the
-  // only switch-budget miss (331/368 ms; each producer alone stayed <=201).
-  // Keep both preloads, but serialize them: selected world first, then roster.
-  if (worldBuilds.size) {
-    scheduleStagedRosterPump(250);
-    return;
-  }
-  // Carousel reveals own the interaction lane. Even a 60-100 ms background
-  // geometry continuation can share their promise turn and turn a compliant
-  // 150 ms reveal into the repeatable 276 ms miss. Require one full 1.4 s
-  // browse cadence plus margin before resuming predictive roster builds.
-  const quietFor = performance.now() - lastGarageInteractionAt;
-  if (quietFor < 1600) {
-    scheduleStagedRosterPump(Math.ceil(1600 - quietFor));
-    return;
-  }
+  if (combatPipelineWarmed) return; // warm already ran synchronously — done
   // TANK-SWITCH PERF (switching r1): yield the idle slot while GLB parse/swap
   // jobs are in flight — a clicked pedestal hero's swap must not queue behind
   // 150-350 ms staged-roster bakes (real-browser session: early clicks paid
@@ -4491,28 +4250,13 @@ function pumpStagedVisuals() {
   // next family CHUNKED (painted frame between painter stages), then the
   // build itself is a cache hit + geometry only.
   const nextBake = nextStagedBake(game);
-  if (!nextBake) {
-    if (!combatPipelineWarmed) warmCombatPipelineChunked();
-    return;
-  }
-  if (nextBake.ent !== game.tanks[0] && HEAVY_IDLE_ROSTER_SPECS.has(nextBake.ent.specId)) return;
+  if (!nextBake) { warmCombatPipelineChunked(); return; }
   prebakeSharedTextures(getSpec(nextBake.ent.specId), engineCtx.anisotropy ?? 4,
     nextBake.quality, () => nextFrame())
     .catch(() => { /* warm only — the build below bakes as before */ })
     .then(() => {
-      if (game.phase !== 'garage') return;
-      const buildSpec = (nextStagedBake(game)?.ent || nextBake.ent).specId;
-      const buildAt = performance.now();
-      const complete = ensureStagedVisuals(game, 1);
-      const buildMs = Math.round(performance.now() - buildAt);
-      rosterPrefetchStats.built++;
-      rosterPrefetchStats.totalMs += buildMs;
-      rosterPrefetchStats.lastSpec = buildSpec;
-      rosterPrefetchStats.steps.push({ specId: buildSpec, ms: buildMs });
-      if (rosterPrefetchStats.steps.length > 80) rosterPrefetchStats.steps.shift();
-      if (complete) {
-        if (!combatPipelineWarmed) warmCombatPipelineChunked();
-      }
+      if (combatPipelineWarmed) return;
+      if (ensureStagedVisuals(game, 1)) warmCombatPipelineChunked();
       else _idle(pumpStagedVisuals, 1500);
     });
 }
@@ -4540,34 +4284,15 @@ function pumpGarageDressing() {
   if (garageDressing.pump()) _idle(pumpGarageDressing, 1800);
 }
 const postReadyIdleTasks = [
-  () => {
-    if (fx.warmTexturesChunked) return fx.warmTexturesChunked(nextFrame);
-    if (fx.warmTextures) fx.warmTextures();
-  },
+  () => { if (fx.warmTextures) fx.warmTextures(); },
   () => sky.ensureCloudTextures(),
-  // Loading-speed r1: this is the selected battlefield's exact production
-  // build, not a throwaway warm-up. A normal garage dwell removes its
-  // procedural construction from the BATTLE loading screen entirely. Wait
-  // through the first-interaction window: fine slices stay under the switch
-  // budget, but starting them during the first 10 s would lower the ratified
-  // garage clean-frame score for work the player has not asked to see yet.
-  () => queueWorldPrefetch(pendingMapId, 8000),
   () => pumpGarageDressing(),
   () => schedulePedestalPrefetch(),
 ];
 function pumpPostReadyIdle() {
   const task = postReadyIdleTasks.shift();
   if (!task) { pumpStagedVisuals(); return; }
-  try {
-    const result = task();
-    if (result && typeof result.then === 'function') {
-      Promise.resolve(result).then(
-        () => _idle(pumpPostReadyIdle, 1500),
-        () => _idle(pumpPostReadyIdle, 1500),
-      );
-      return;
-    }
-  } catch (_) { /* warm-up only */ }
+  try { task(); } catch (_) { /* warm-up only */ }
   _idle(pumpPostReadyIdle, 1500);
 }
 // Start AFTER the splash teardown window: dismiss() removes the splash root
@@ -5069,7 +4794,6 @@ boot.ready();
 // arming (behind the splash for a human, inside the settle window for
 // harnesses).
 if (typeof window !== 'undefined') window.__COT_BOOT_HOLD = false;
-backgroundLoadAfter = performance.now() + 10000;
 window.__GAME_READY = true;
 window.__BOOT_TIMINGS = BOOT_TIMINGS;
 window.__BOOT_MS = Math.round(performance.now() - BOOT_T0);

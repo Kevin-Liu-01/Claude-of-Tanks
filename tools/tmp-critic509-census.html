@@ -1,0 +1,54 @@
+<!doctype html>
+<!-- TEMP (critic-leopard-509): turret-mass AABB census — which turret-parented
+     (non-gun) meshes own the z-span extremes. Same factory call + LOD-0 pin as
+     tmp-b8-measure.html. NO renders. Deleted after the round. -->
+<meta charset="utf-8">
+<title>tmp-critic509-census</title>
+<style>body{margin:0;background:#151b20;color:#dde;font:12px monospace}</style>
+<div id="out">building…</div>
+<script type="module">
+import * as THREE from 'three';
+import { createTank } from '/src/vehicles/tankFactory.js';
+
+const params = new URLSearchParams(location.search);
+const id = params.get('id') || 'leo2a7v';
+const zfore = parseFloat(params.get('zfore') || '1.9');
+const zaft = parseFloat(params.get('zaft') || '-2.3');
+
+const renderer = new THREE.WebGLRenderer({ antialias: false, alpha: false });
+renderer.setSize(64, 64, false);
+const engineCtx = { setupShadowMaterial: (m) => m, anisotropy: 1, renderer };
+
+const tank = createTank(id, engineCtx, { camoSeed: 4242, quality: 'high', proceduralOnly: true });
+const root = tank.root;
+root.updateMatrixWorld(true);
+root.traverse((o) => {
+  if (!o.isLOD) return;
+  o.autoUpdate = false;
+  o.levels.forEach((level, i) => { if (level.object) level.object.visible = i === 0; });
+});
+root.updateMatrixWorld(true);
+
+const underNamed = (o, name) => { for (let p = o; p; p = p.parent) if (p.name === name) return true; return false; };
+const r3 = (v) => Math.round(v * 1000) / 1000;
+const rows = [];
+root.traverse((o) => {
+  if (!(o.isMesh || o.isInstancedMesh) || !o.geometry) return;
+  let vis = true;
+  for (let p = o; p; p = p.parent) if (!p.visible) { vis = false; break; }
+  if (!vis || /shadow/i.test(o.name || '')) return;
+  if (!underNamed(o, 'rig_turret') || underNamed(o, 'rig_gun')) return;
+  if (o.isInstancedMesh && o.count === 0) return;
+  if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+  const bb = o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld);
+  if (bb.max.z >= zfore || bb.min.z <= zaft) {
+    rows.push({ name: o.name || '(unnamed)', mat: (o.material && o.material.name) || '',
+      fitting: (o.userData && o.userData.fitting) || (o.parent && o.parent.userData && o.parent.userData.fitting) || null,
+      x: [r3(bb.min.x), r3(bb.max.x)], y: [r3(bb.min.y), r3(bb.max.y)], z: [r3(bb.min.z), r3(bb.max.z)] });
+  }
+});
+rows.sort((a, b) => b.z[1] - a.z[1]);
+window.__ROWS = rows;
+window.__ROWS_READY = true;
+document.getElementById('out').textContent = JSON.stringify(rows, null, 1);
+</script>

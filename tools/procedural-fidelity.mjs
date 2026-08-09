@@ -123,7 +123,7 @@ const md=[
   `Local sourced references: **${summary.references}**. Passing ${PASS}/100 overall and ${VIEW_FLOOR}/100 in every view: **${summary.passed}**. `+
     `Below target: **${summary.failed}**. Median: **${summary.median.toFixed(1)}**.`,'',
   'Red/cyan mask scoring uses identical normalized poses: 35% whole silhouette, 25% hull, '+
-    '20% upper assembly, 12% cannon overhang, and 8% lower track profile.','',
+    '20% direct articulated turret tree, 12% cannon overhang, and 8% lower track profile.','',
   '| Tank | Score | Whole | Hull | Turret | Gun | Tracks | Procedural fallback |',
   '|---|---:|---:|---:|---:|---:|---:|---|',
   ...rows.map((row)=>`| ${row.name} (${row.id}) | ${row.score.toFixed(1)} | ${cell(row.scores.overall)} | `+

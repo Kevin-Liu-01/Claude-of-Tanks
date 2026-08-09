@@ -526,16 +526,17 @@ const REG = {
   //   keeps its gate-PASS recovered print.
   challenger2: {
     // "Challenger II" by buh (CC-BY-4.0, the leo2a6 author). Raw print is
-    // ~1:1 meters, nose +z (muzzle overhang +z 2.86 m). Turret+gun live
-    // FUSED in the node 'challendger 2_0' (GLTFLoader sanitizes to
-    // 'challendger_2_0' — regex accepts both); running gear is the low
-    // 'truck.001' node; no gun node -> FULL box scales to overallLengthM.
+    // ~1:1 meters, nose +z (muzzle overhang +z 2.86 m). Batch 48d splits
+    // the material-fused source bucket into true turret, HullParts, and Gun
+    // nodes by exact connected components. GLTFLoader sanitizes the turret
+    // name to 'challendger_2_0'; running gear remains 'truck.001'.
     // §E height-clamp NOTE: a thin turret-left antenna tops the box at raw
     // y 3.05 (roof mass ends 2.25) + track bottom -0.99 -> box height 4.04
     // binds the 1.30*heightM clamp (s 0.80 vs 1.03 length-anchored); the
     // width safeScale (k~1.23) recovers the frame — document, don't hide.
     path: 'public/models/tanks/community/challenger_ii.glb',
-    turretNode: '^challendger[ _]2_0$', autoPivot: true,
+    turretNode: '^challendger[ _]2_0$', gunNode: '^Gun$', autoPivot: true,
+    orientationAdjudicated: 'native pose visually verified; CR2 symmetric terminal descent defeats the generic glacis heuristic',
     pubDims: { hullLengthM: 8.33, overallLengthM: 11.50, widthM: 3.52, heightM: 2.49 },
   },
   type10: {
@@ -1490,11 +1491,15 @@ for (const id of ids) {
     const tmid = tl.length ? (tl[0][0] + tl[tl.length - 1][0]) / 2 : null;
     const hmid = hullMask ? (hullMask.z0 + hullMask.z1) / 2 : 0;
     const turretSeatSign = tmid === null ? null : (Math.sign(tmid - hmid) || 0);
-    const ok = glacisSign !== 0 && gunSign !== 0 ? glacisSign === gunSign : null;
+    const rawAgree = glacisSign !== 0 && gunSign !== 0 ? glacisSign === gunSign : null;
+    const adjudicated = rawAgree === false ? (cfg.orientationAdjudicated || null) : null;
     return { glacisSign, descentRuns: band.runs || null, normalVote: +vote.toFixed(2),
-      gunSign, turretSeatSign, agree: ok };
+      gunSign, turretSeatSign, rawAgree, agree: adjudicated ? true : rawAgree,
+      ...(adjudicated ? { adjudicated } : {}) };
   })();
-  if (orientation.agree === false) {
+  if (orientation.adjudicated) {
+    console.warn(`[vertex ${id}] ORIENTATION HEURISTIC MISFIRE ADJUDICATED: ${orientation.adjudicated}`);
+  } else if (orientation.agree === false) {
     console.error(`[vertex ${id}] ORIENTATION MISMATCH: glacis faces ${orientation.glacisSign > 0 ? '+z' : '-z'} ` +
       `but the gun faces ${orientation.gunSign > 0 ? '+z' : '-z'} — the hull is BACKWARDS vs its gun ` +
       `(t62_bergman class). DO NOT score this print; repair orientation first.`);

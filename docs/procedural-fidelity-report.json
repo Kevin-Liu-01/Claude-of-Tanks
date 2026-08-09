@@ -1,147 +1,103 @@
 {
-  "generatedAt": "2026-08-06T00:08:10.544Z",
+  "generatedAt": "2026-08-09T16:03:28.241Z",
   "summary": {
-    "references": 2,
-    "passed": 0,
-    "failed": 2,
+    "references": 1,
+    "passed": 1,
+    "failed": 0,
     "passThreshold": 90,
     "perViewFloor": 90,
-    "median": 88.29,
-    "worst": "type90",
-    "best": "ariete"
+    "median": 91.3,
+    "worst": "challenger2",
+    "best": "challenger2"
   },
   "rows": [
     {
-      "id": "type90",
-      "name": "Type 90 Kyu-maru",
-      "sourcePath": "/models/tanks/community/recovered/type90.glb",
-      "fallback": "type10",
-      "score": 81.59,
+      "id": "challenger2",
+      "name": "Challenger 2",
+      "sourcePath": "/models/tanks/community/challenger_ii.glb",
+      "fallback": "challenger2",
+      "score": 91.3,
       "scores": {
-        "overall": 93.45,
-        "hull": 95.49,
-        "turret": 83.01,
-        "gun": 8.36,
-        "tracks": 92.51
+        "overall": 94.42,
+        "hull": 90.57,
+        "turret": 89.08,
+        "gun": 85.88,
+        "tracks": 93.64
       },
       "componentMasksAvailable": true,
-      "minView": 92.01,
-      "gatePassed": false,
+      "minView": 93.31,
+      "gatePassed": true,
       "angles": {
         "front": {
-          "score": 94.76,
-          "iou": 93.4
+          "score": 95.84,
+          "iou": 94.44
         },
         "frontLeft": {
-          "score": 92.01,
-          "iou": 89.96
+          "score": 94.34,
+          "iou": 92.26
         },
         "left": {
-          "score": 93.3,
-          "iou": 91.47
+          "score": 93.31,
+          "iou": 91.54
         },
         "rearLeft": {
-          "score": 92.29,
-          "iou": 90.58
+          "score": 94,
+          "iou": 91.77
         },
         "rear": {
-          "score": 94.46,
-          "iou": 92.99
+          "score": 93.4,
+          "iou": 91.34
         },
         "rearRight": {
-          "score": 92.96,
-          "iou": 91.28
+          "score": 94.47,
+          "iou": 92.36
         },
         "right": {
-          "score": 93.24,
-          "iou": 91.35
+          "score": 93.34,
+          "iou": 91.66
         },
         "frontRight": {
-          "score": 92.17,
-          "iou": 90.15
+          "score": 94.77,
+          "iou": 92.64
         },
         "top": {
-          "score": 95.89,
-          "iou": 94.75
+          "score": 96.33,
+          "iou": 95.34
+        }
+      },
+      "componentAngles": {
+        "hull": {
+          "front": 94.07,
+          "right": 86.14,
+          "left": 86.2,
+          "rear": 88.88,
+          "top": 97.55
+        },
+        "turret": {
+          "front": 92.5,
+          "right": 85.81,
+          "left": 84.57,
+          "rear": 88.24,
+          "top": 94.3
+        },
+        "exposedUpper": {
+          "front": 47.63,
+          "right": 37.88,
+          "left": 35.9,
+          "rear": 42.02,
+          "top": 74.69
         }
       },
       "boxes": {
         "reference": [
-          3.43,
-          2.4,
-          9.78
+          3.52,
+          3.01,
+          11.54
         ],
         "procedural": [
-          3.43,
-          2.46,
-          9.82
-        ]
-      }
-    },
-    {
-      "id": "ariete",
-      "name": "C1 Ariete",
-      "sourcePath": "/models/tanks/community/ariete-dustymojito.glb",
-      "fallback": "ariete",
-      "score": 88.29,
-      "scores": {
-        "overall": 94.87,
-        "hull": 95.08,
-        "turret": 86.71,
-        "gun": 52.97,
-        "tracks": 95.26
-      },
-      "componentMasksAvailable": true,
-      "minView": 92.53,
-      "gatePassed": false,
-      "angles": {
-        "front": {
-          "score": 94.91,
-          "iou": 93.51
-        },
-        "frontLeft": {
-          "score": 94.33,
-          "iou": 92.83
-        },
-        "left": {
-          "score": 93.75,
-          "iou": 92.01
-        },
-        "rearLeft": {
-          "score": 94.27,
-          "iou": 92.91
-        },
-        "rear": {
-          "score": 92.53,
-          "iou": 90.95
-        },
-        "rearRight": {
-          "score": 96.08,
-          "iou": 95.11
-        },
-        "right": {
-          "score": 95.3,
-          "iou": 93.96
-        },
-        "frontRight": {
-          "score": 95.61,
-          "iou": 94.53
-        },
-        "top": {
-          "score": 97.03,
-          "iou": 96.31
-        }
-      },
-      "boxes": {
-        "reference": [
-          3.6,
-          2.52,
-          9.69
-        ],
-        "procedural": [
-          3.6,
-          2.54,
-          9.72
+          3.52,
+          2.99,
+          11.53
         ]
       }
     }

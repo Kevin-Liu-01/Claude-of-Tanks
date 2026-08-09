@@ -1,0 +1,94 @@
+<!doctype html>
+<!-- TEMP (sep rebase round): family strip — m1a2_tejas | m1a2_sepv2 |
+     m1a2_sepv3 side by side in ONE scene (same light/camera class as the
+     critic rig) proving the shared tejas-grade platform + distinct kits.
+     Views: left profile / front-left hero / top. Never ships. -->
+<meta charset="utf-8">
+<style>body{margin:0;background:#151b20}</style>
+<script type="module">
+import * as THREE from '/node_modules/three/build/three.module.js';
+import { createTank } from '/src/vehicles/tankFactory.js';
+
+const W = 1920, H = 640;
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, preserveDrawingBuffer: true });
+renderer.setSize(W, H, false);
+renderer.setPixelRatio(1);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.setClearColor(0x151b20, 1);
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+const engineCtx = { setupShadowMaterial: (m) => m, anisotropy: 1, renderer };
+
+const IDS = ['m1a2_tejas', 'm1a2_sepv2', 'm1a2_sepv3'];
+const GAP = 5.2;
+const roots = [];
+for (let i = 0; i < IDS.length; i++) {
+  const t = createTank(IDS[i], engineCtx, { camoSeed: 4242, quality: 'high', proceduralOnly: true });
+  t.root.position.x = (i - 1) * GAP;
+  t.root.updateMatrixWorld(true);
+  t.root.traverse((o) => {
+    if (!o.isLOD) return;
+    o.autoUpdate = false;
+    o.levels.forEach((level, k) => { if (level.object) level.object.visible = k === 0; });
+  });
+  scene.add(t.root);
+  roots.push(t.root);
+}
+const hemi = new THREE.HemisphereLight(0xcfd8e0, 0x2a2f26, 1.05);
+const sun = new THREE.DirectionalLight(0xfff2dd, 2.2);
+sun.position.set(30, 42, 24);
+scene.add(hemi, sun);
+
+const canvas = document.createElement('canvas');
+canvas.width = W; canvas.height = H;
+const ctx = canvas.getContext('2d', { willReadFrequently: true });
+const label = (names) => {
+  ctx.fillStyle = '#e7edf0'; ctx.font = '22px monospace';
+  for (let i = 0; i < names.length; i++) ctx.fillText(names[i], (W / 3) * i + 16, 30);
+};
+const shots = {};
+function snap(name, camera, names) {
+  renderer.render(scene, camera);
+  ctx.drawImage(renderer.domElement, 0, 0);
+  label(names);
+  shots[name] = canvas.toDataURL('image/png');
+}
+// LEFT PROFILE strip: ortho from -x, all three hulls nose-right.
+{
+  const cam = new THREE.OrthographicCamera(-GAP * 1.6, GAP * 1.6, GAP * 1.6 / 3, -GAP * 1.6 / 3, 0.1, 200);
+  cam.position.set(-60, 1.45, 0);
+  cam.up.set(0, 1, 0);
+  cam.lookAt(0, 1.45, 0);
+  cam.updateProjectionMatrix(); cam.updateMatrixWorld(true);
+  // profile view along -x puts the three side by side along z: instead
+  // re-pose the tanks along Z for this shot so all three profiles show.
+  roots.forEach((r, i) => { r.position.set(0, 0, (i - 1) * 11.4); r.updateMatrixWorld(true); });
+  const cam2 = new THREE.OrthographicCamera(-17.4, 17.4, 17.4 / 3, -17.4 / 3, 0.1, 200);
+  cam2.position.set(-60, 1.45, 0); cam2.up.set(0, 1, 0); cam2.lookAt(0, 1.45, 0);
+  cam2.updateProjectionMatrix(); cam2.updateMatrixWorld(true);
+  snap('strip-left', cam2, ['m1a2_sepv3', 'm1a2_sepv2', 'm1a2_tejas']);
+  roots.forEach((r, i) => { r.position.set((i - 1) * GAP, 0, 0); r.updateMatrixWorld(true); });
+}
+// FRONT-LEFT hero strip (x-separated row, wide gap so the three don't
+// overlap at the 3/4 angle).
+{
+  roots.forEach((r, i) => { r.position.set((i - 1) * 8.6, 0, 0); r.updateMatrixWorld(true); });
+  const cam = new THREE.PerspectiveCamera(30, W / H, 0.1, 300);
+  cam.position.set(-6.5, 7.2, 21.5);
+  cam.lookAt(0, 1.2, 0);
+  cam.updateProjectionMatrix(); cam.updateMatrixWorld(true);
+  snap('strip-hero', cam, ['m1a2_tejas', 'm1a2_sepv2', 'm1a2_sepv3']);
+  roots.forEach((r, i) => { r.position.set((i - 1) * GAP, 0, 0); r.updateMatrixWorld(true); });
+}
+// TOP strip.
+{
+  const cam = new THREE.OrthographicCamera(-GAP * 1.55, GAP * 1.55, GAP * 1.55 / 3, -GAP * 1.55 / 3, 0.1, 200);
+  cam.position.set(0, 60, 0.02);
+  cam.up.set(0, 0, -1);
+  cam.lookAt(0, 0, 0);
+  cam.updateProjectionMatrix(); cam.updateMatrixWorld(true);
+  snap('strip-top', cam, ['m1a2_tejas', 'm1a2_sepv2', 'm1a2_sepv3']);
+}
+window.__SELF_SHOTS = shots;
+window.__SELF_READY = true;
+</script>

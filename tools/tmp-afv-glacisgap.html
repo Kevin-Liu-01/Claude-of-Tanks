@@ -1,0 +1,239 @@
+<!doctype html>
+<!-- TEMP (AFV §B2 NO-AIR under-glacis round, owner order 2026-08-07):
+     under-glacis air hunter — the tmp-merkava-roofgap.html enclosed-bg
+     scanner re-aimed at the BOW. Renders the full tank (game-truth
+     FrontSide materials) from garage/low-front/under-bow views framed on
+     the front hull, runs the §B2 enclosed-background flood (mask method
+     |px-0x151b20| maxch<=13 + blue-signature B-R>=8) per view, and adds a
+     vertical RAY CENSUS over the bow footprint (DoubleSide-forced clones)
+     reporting per-cell occupancy intervals so under-plate air pockets get
+     world coords. Diagnosis + evidence crops only, never verdict evidence. -->
+<meta charset="utf-8">
+<title>tmp-afv-glacisgap</title>
+<style>body{background:#151b20;margin:0;color:#e7edf0;font:12px monospace}</style>
+<div id="out">building…</div>
+<script type="module">
+import * as THREE from 'three';
+import { createTank } from '/src/vehicles/tankFactory.js';
+
+const params = new URLSearchParams(location.search);
+const id = params.get('id') || 'bmp2';
+const SIZE = 900;
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setSize(SIZE, SIZE);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+const engineCtx = { setupShadowMaterial: (m) => m, anisotropy: 1, renderer };
+const procedural = createTank(id, engineCtx, { camoSeed: 4242, quality: 'high', proceduralOnly: true });
+scene.add(procedural.root);
+const hemi = new THREE.HemisphereLight(0xcfd8e0, 0x2a2f26, 1.05);
+const sun = new THREE.DirectionalLight(0xfff2dd, 2.2);
+sun.position.set(30, 42, 24);
+scene.add(hemi, sun);
+
+procedural.root.updateMatrixWorld(true);
+procedural.root.traverse((o) => {
+  if (!o.isLOD) return;
+  o.autoUpdate = false;
+  o.levels.forEach((level, i) => { if (level.object) level.object.visible = i === 0; });
+});
+
+const hull = procedural.root.getObjectByName('rig_hull');
+
+function effVisible(o) {
+  for (let p = o; p; p = p.parent) if (!p.visible) return false;
+  return true;
+}
+function subtreeBox(node) {
+  const box = new THREE.Box3();
+  node.updateMatrixWorld(true);
+  node.traverse((o) => {
+    if (!(o.isMesh || o.isInstancedMesh) || !o.geometry) return;
+    if (!effVisible(o) || /shadow/i.test(o.name || '')) return;
+    if (o.isInstancedMesh) {
+      if (o.count === 0) return;
+      o.computeBoundingBox();
+      if (o.boundingBox && !o.boundingBox.isEmpty()) box.union(o.boundingBox.clone().applyMatrix4(o.matrixWorld));
+      return;
+    }
+    if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+    box.union(o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld));
+  });
+  return box;
+}
+
+const hullBox = subtreeBox(hull);
+// bow region = the front 48% of the hull box, full width/height, padded
+const bowBox = hullBox.clone();
+bowBox.min.z = hullBox.max.z - (hullBox.max.z - hullBox.min.z) * 0.48;
+bowBox.expandByVector(new THREE.Vector3(0.25, 0.20, 0.25));
+const fullBox = hullBox.clone().expandByVector(new THREE.Vector3(0.3, 0.3, 0.3));
+
+function orthoFor(box, direction) {
+  const center = box.getCenter(new THREE.Vector3());
+  const dir = direction.clone().normalize();
+  const nominalUp = Math.abs(dir.y) > 0.9 ? new THREE.Vector3(0, 0, -1) : new THREE.Vector3(0, 1, 0);
+  const right = new THREE.Vector3().crossVectors(nominalUp, dir).normalize();
+  const up = new THREE.Vector3().crossVectors(dir, right).normalize();
+  let ext = 0.3;
+  for (const cx of [box.min.x, box.max.x]) for (const cy of [box.min.y, box.max.y]) for (const cz of [box.min.z, box.max.z]) {
+    const d = new THREE.Vector3(cx, cy, cz).sub(center);
+    ext = Math.max(ext, Math.abs(d.dot(right)), Math.abs(d.dot(up)));
+  }
+  const half = ext * 1.05;
+  const camera = new THREE.OrthographicCamera(-half, half, half, -half, 0.1, 200);
+  camera.position.copy(center).addScaledVector(dir, 40);
+  camera.up.copy(up);
+  camera.lookAt(center);
+  camera.updateProjectionMatrix();
+  camera.updateMatrixWorld(true);
+  return { camera, center, right, up, half };
+}
+
+// [name, direction, frameBox] — negative y = camera below horizon looking up
+const VIEWS = [
+  ['garage', new THREE.Vector3(1, 0.35, 1), 'full'],
+  ['garage-l', new THREE.Vector3(-1, 0.35, 1), 'full'],
+  ['front-low', new THREE.Vector3(0, -0.08, 1), 'bow'],
+  ['front-under', new THREE.Vector3(0, -0.42, 1), 'bow'],
+  ['fql-low', new THREE.Vector3(-1, -0.09, 1.1), 'bow'],
+  ['fqr-low', new THREE.Vector3(1, -0.09, 1.1), 'bow'],
+  ['fql-under', new THREE.Vector3(-0.7, -0.38, 1), 'bow'],
+  ['fqr-under', new THREE.Vector3(0.7, -0.38, 1), 'bow'],
+  ['left-low', new THREE.Vector3(-1, -0.04, 0.30), 'bow'],
+  ['right-low', new THREE.Vector3(1, -0.04, 0.30), 'bow'],
+];
+
+function grab(camera) {
+  renderer.setRenderTarget(null);
+  renderer.setClearColor(0x151b20, 1);
+  renderer.clear(true, true, true);
+  renderer.render(scene, camera);
+  return renderer.domElement.toDataURL('image/png');
+}
+
+// §B2 enclosed-background flood on the current canvas
+const ctx2d = document.createElement('canvas');
+ctx2d.width = SIZE; ctx2d.height = SIZE;
+const c2 = ctx2d.getContext('2d', { willReadFrequently: true });
+function enclosedScan(view) {
+  c2.drawImage(renderer.domElement, 0, 0);
+  const img = c2.getImageData(0, 0, SIZE, SIZE).data;
+  const N = SIZE * SIZE;
+  const isBg = new Uint8Array(N);
+  for (let i = 0; i < N; i++) {
+    const r = img[i * 4], g = img[i * 4 + 1], b = img[i * 4 + 2];
+    if (Math.abs(r - 0x15) <= 13 && Math.abs(g - 0x1b) <= 13 && Math.abs(b - 0x20) <= 13 && (b - r) >= 8) isBg[i] = 1;
+  }
+  const open = new Uint8Array(N);
+  const stack = [];
+  for (let x = 0; x < SIZE; x++) { if (isBg[x]) stack.push(x); if (isBg[(SIZE - 1) * SIZE + x]) stack.push((SIZE - 1) * SIZE + x); }
+  for (let y = 0; y < SIZE; y++) { if (isBg[y * SIZE]) stack.push(y * SIZE); if (isBg[y * SIZE + SIZE - 1]) stack.push(y * SIZE + SIZE - 1); }
+  while (stack.length) {
+    const i = stack.pop();
+    if (open[i] || !isBg[i]) continue;
+    open[i] = 1;
+    const x = i % SIZE, y = (i / SIZE) | 0;
+    if (x > 0) stack.push(i - 1);
+    if (x < SIZE - 1) stack.push(i + 1);
+    if (y > 0) stack.push(i - SIZE);
+    if (y < SIZE - 1) stack.push(i + SIZE);
+  }
+  const seen = new Uint8Array(N);
+  const clusters = [];
+  for (let i = 0; i < N; i++) {
+    if (!isBg[i] || open[i] || seen[i]) continue;
+    let px = 0, minX = SIZE, maxX = 0, minY = SIZE, maxY = 0;
+    const st = [i];
+    seen[i] = 1;
+    while (st.length) {
+      const j = st.pop();
+      px++;
+      const x = j % SIZE, y = (j / SIZE) | 0;
+      if (x < minX) minX = x; if (x > maxX) maxX = x;
+      if (y < minY) minY = y; if (y > maxY) maxY = y;
+      for (const k of [j - 1, j + 1, j - SIZE, j + SIZE]) {
+        if (k < 0 || k >= N || seen[k] || !isBg[k] || open[k]) continue;
+        const kx = k % SIZE;
+        if (Math.abs(kx - x) > 1) continue;
+        seen[k] = 1; st.push(k);
+      }
+    }
+    if (px >= 4) clusters.push({ px, minX, maxX, minY, maxY });
+  }
+  clusters.sort((a, b) => b.px - a.px);
+  const mapped = clusters.slice(0, 12).map((cl) => {
+    const cx = (cl.minX + cl.maxX) / 2, cy = (cl.minY + cl.maxY) / 2;
+    const wx = (cx / SIZE * 2 - 1) * view.half;
+    const wy = (1 - cy / SIZE * 2) * view.half;
+    const wpt = view.center.clone().addScaledVector(view.right, wx).addScaledVector(view.up, wy);
+    return {
+      px: cl.px,
+      rect: [cl.minX, cl.minY, cl.maxX, cl.maxY],
+      world: [+wpt.x.toFixed(3), +wpt.y.toFixed(3), +wpt.z.toFixed(3)],
+      sizeM: [+((cl.maxX - cl.minX + 1) / SIZE * 2 * view.half).toFixed(3), +((cl.maxY - cl.minY + 1) / SIZE * 2 * view.half).toFixed(3)],
+    };
+  });
+  let total = 0;
+  for (const cl of clusters) total += cl.px;
+  return { enclosedPx: total, clusters: mapped };
+}
+
+// ---- vertical ray census over the bow footprint --------------------------
+// DoubleSide-forced so every plate face reports; instanced gear tagged.
+function rayCensus() {
+  const targets = [];
+  hull.traverse((o) => {
+    if (!(o.isMesh || o.isInstancedMesh) || !o.geometry) return;
+    if (!effVisible(o) || /shadow/i.test(o.name || '')) return;
+    const gear = !!(o.isInstancedMesh || o.userData.trackBucket ||
+      /track|wheel/i.test(o.material?.name || ''));
+    const m = o.material?.clone ? o.material.clone() : o.material;
+    if (m && m.side !== THREE.DoubleSide) { m.side = THREE.DoubleSide; o.material = m; }
+    o.userData.__gear = gear;
+    targets.push(o);
+  });
+  const ray = new THREE.Raycaster();
+  ray.far = 20;
+  const zMin = hullBox.max.z - (hullBox.max.z - hullBox.min.z) * 0.45;
+  const zMax = hullBox.max.z + 0.02;
+  const xMax = hullBox.max.x;
+  const cells = [];
+  const NX = 26, NZ = 30;
+  for (let ix = 0; ix < NX; ix++) {
+    const x = -xMax + (2 * xMax) * (ix + 0.5) / NX;
+    for (let iz = 0; iz < NZ; iz++) {
+      const z = zMin + (zMax - zMin) * (iz + 0.5) / NZ;
+      ray.set(new THREE.Vector3(x, hullBox.max.y + 1, z), new THREE.Vector3(0, -1, 0));
+      const hits = ray.intersectObjects(targets, false)
+        .map((h) => ({ y: +h.point.y.toFixed(3), gear: !!h.object.userData.__gear }))
+        .sort((a, b) => b.y - a.y);
+      // collapse to entry/exit intervals is ambiguous on merged shells;
+      // report raw hit ys (deduped 6 mm) + gear flags — analysis offline
+      const ys = [];
+      for (const h of hits) {
+        if (ys.length && Math.abs(ys[ys.length - 1].y - h.y) < 0.006 && ys[ys.length - 1].gear === h.gear) continue;
+        ys.push(h);
+      }
+      if (ys.length) cells.push({ x: +x.toFixed(3), z: +z.toFixed(3), hits: ys });
+    }
+  }
+  return { zMin: +zMin.toFixed(3), zMax: +zMax.toFixed(3), xMax: +xMax.toFixed(3), cells };
+}
+
+const shots = {};
+const report = { id, hullBox: { min: hullBox.min.toArray().map((v) => +v.toFixed(3)), max: hullBox.max.toArray().map((v) => +v.toFixed(3)) }, views: {} };
+for (const [vn, dir, frame] of VIEWS) {
+  const view = orthoFor(frame === 'full' ? fullBox : bowBox, dir);
+  shots[vn] = grab(view.camera);
+  report.views[vn] = enclosedScan(view);
+}
+report.rays = rayCensus();
+
+window.__GAP_SHOTS = shots;
+window.__GAP_REPORT = report;
+window.__GAP_READY = true;
+document.getElementById('out').textContent = `glacisgap shots ready (${id})`;
+</script>

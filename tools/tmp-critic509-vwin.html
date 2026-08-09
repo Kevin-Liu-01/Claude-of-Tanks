@@ -1,0 +1,64 @@
+<!doctype html>
+<!-- TEMP (critic-leopard-509): vertex-window scan over turret-mass meshes —
+     how much real geometry sits in a world-z window (merged buckets smear the
+     AABB census). Deleted after the round. -->
+<meta charset="utf-8">
+<title>tmp-critic509-vwin</title>
+<style>body{margin:0;background:#151b20;color:#dde;font:12px monospace}</style>
+<div id="out">building…</div>
+<script type="module">
+import * as THREE from 'three';
+import { createTank } from '/src/vehicles/tankFactory.js';
+
+const params = new URLSearchParams(location.search);
+const id = params.get('id') || 'leo2a7v';
+const z0 = parseFloat(params.get('z0') || '1.91');
+const z1 = parseFloat(params.get('z1') || '99');
+
+const renderer = new THREE.WebGLRenderer({ antialias: false, alpha: false });
+renderer.setSize(64, 64, false);
+const engineCtx = { setupShadowMaterial: (m) => m, anisotropy: 1, renderer };
+
+const tank = createTank(id, engineCtx, { camoSeed: 4242, quality: 'high', proceduralOnly: true });
+const root = tank.root;
+root.updateMatrixWorld(true);
+root.traverse((o) => {
+  if (!o.isLOD) return;
+  o.autoUpdate = false;
+  o.levels.forEach((level, i) => { if (level.object) level.object.visible = i === 0; });
+});
+root.updateMatrixWorld(true);
+
+const underNamed = (o, name) => { for (let p = o; p; p = p.parent) if (p.name === name) return true; return false; };
+const r2 = (v) => Math.round(v * 100) / 100;
+let total = 0;
+const cells = new Map(); // key: x-bin|y-bin (0.1 m) -> count
+const v = new THREE.Vector3();
+root.traverse((o) => {
+  if (!(o.isMesh || o.isInstancedMesh) || !o.geometry) return;
+  let vis = true;
+  for (let p = o; p; p = p.parent) if (!p.visible) { vis = false; break; }
+  if (!vis || /shadow/i.test(o.name || '')) return;
+  if (!underNamed(o, 'rig_turret') || underNamed(o, 'rig_gun')) return;
+  const pos = o.geometry.getAttribute('position');
+  if (!pos) return;
+  const counts = o.isInstancedMesh ? o.count : 1;
+  const m = new THREE.Matrix4();
+  for (let inst = 0; inst < counts; inst++) {
+    if (o.isInstancedMesh) { o.getMatrixAt(inst, m); m.premultiply(o.matrixWorld); } else { m.copy(o.matrixWorld); }
+    for (let i = 0; i < pos.count; i++) {
+      v.fromBufferAttribute(pos, i).applyMatrix4(m);
+      if (v.z >= z0 && v.z <= z1) {
+        total += 1;
+        const key = `${r2(Math.round(v.x * 10) / 10)}|${r2(Math.round(v.y * 10) / 10)}`;
+        cells.set(key, (cells.get(key) || 0) + 1);
+      }
+    }
+  }
+});
+const rows = [...cells.entries()].sort((a, b) => b[1] - a[1]).slice(0, 40)
+  .map(([k, n]) => `${k} : ${n}`);
+window.__VWIN = { id, z0, z1, total, topCells: rows };
+window.__VWIN_READY = true;
+document.getElementById('out').textContent = JSON.stringify(window.__VWIN, null, 1);
+</script>

@@ -933,3 +933,14 @@ at the measured knee rather than excused by its passing silhouette. Every
 joined loft therefore closes on three receipts together: source station
 curves, 14 shaded comparisons, and band-plus-shoe containment with no blind
 spot. This section law applies next to Challenger 2 and every T-90 rebuild.
+
+### §K.3 DIRECT-TREE COMPONENT FIDELITY (Challenger 2 graduation lesson)
+Component fidelity scores the articulated hull and turret trees directly.
+`whole - hull` is retained only as an exposed-band diagnostic: it changes
+when two otherwise matching models overlap the ring/deck by a few centimetres
+and can therefore report a false component failure while their direct trees
+and every whole view agree. A repaired oracle must expose true hull, turret,
+and gun nodes before this rule applies; fused references remain whole-mask
+only. Graduation still requires the independent geometry components, the
+whole-view floor, and the fourteen-view critic—direct-tree scoring cannot
+average away any of those gates.

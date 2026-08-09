@@ -1,0 +1,3330 @@
+diff --git a/docs/geometry-gate/ledger.json b/docs/geometry-gate/ledger.json
+index 7285cb1..60c67d2 100644
+--- a/docs/geometry-gate/ledger.json
++++ b/docs/geometry-gate/ledger.json
+@@ -1,5 +1,5 @@
+ {
+- "generatedAt": "2026-08-07T14:29:13.544Z",
++ "generatedAt": "2026-08-07T22:39:29.430Z",
+  "gate": "every component >= 90; min is the headline",
+  "passed": 21,
+  "total": 89,
+@@ -113,7 +113,7 @@
+    "geoMin": 0,
+    "gatePassed": false,
+    "components": {
+-    "hullCurves": 45.6,
++    "hullCurves": 45.8,
+     "wholeCurves": 0,
+     "turretCurves": 0,
+     "stations": 0,
+@@ -225,19 +225,6 @@
+     "floaters": 100
+    }
+   },
+-  {
+-   "id": "m1a2_tusk",
+-   "geoMin": 0,
+-   "gatePassed": false,
+-   "components": {
+-    "hullCurves": 14.9,
+-    "wholeCurves": 0,
+-    "turretCurves": 42.3,
+-    "stations": 39.2,
+-    "dims": 100,
+-    "floaters": 100
+-   }
+-  },
+   {
+    "id": "spz_puma",
+    "geoMin": 0,
+@@ -256,10 +243,10 @@
+    "geoMin": 0,
+    "gatePassed": false,
+    "components": {
+-    "hullCurves": 94.5,
+-    "wholeCurves": 70.3,
++    "hullCurves": 94.3,
++    "wholeCurves": 66.7,
+     "turretCurves": 0,
+-    "stations": 72.8,
++    "stations": 73.2,
+     "dims": 99.5,
+     "floaters": 100
+    }
+@@ -290,6 +277,19 @@
+     "floaters": 100
+    }
+   },
++  {
++   "id": "m1a2_tusk",
++   "geoMin": 1.8,
++   "gatePassed": false,
++   "components": {
++    "hullCurves": 14.9,
++    "wholeCurves": 1.8,
++    "turretCurves": 42.3,
++    "stations": 23.5,
++    "dims": 100,
++    "floaters": 100
++   }
++  },
+   {
+    "id": "comet",
+    "geoMin": 11.3,
+@@ -381,6 +381,19 @@
+     "floaters": 100
+    }
+   },
++  {
++   "id": "t80bv",
++   "geoMin": 33.7,
++   "gatePassed": false,
++   "components": {
++    "hullCurves": 44.6,
++    "wholeCurves": 45,
++    "turretCurves": 52.5,
++    "stations": 33.7,
++    "dims": 100,
++    "floaters": 100
++   }
++  },
+   {
+    "id": "merkava2d",
+    "geoMin": 34.9,
+@@ -394,19 +407,6 @@
+     "floaters": 100
+    }
+   },
+-  {
+-   "id": "t80bv",
+-   "geoMin": 35.5,
+-   "gatePassed": false,
+-   "components": {
+-    "hullCurves": 44.6,
+-    "wholeCurves": 45,
+-    "turretCurves": 55.2,
+-    "stations": 35.5,
+-    "dims": 100,
+-    "floaters": 100
+-   }
+-  },
+   {
+    "id": "strv103",
+    "geoMin": 37.1,
+@@ -472,19 +472,6 @@
+     "floaters": 100
+    }
+   },
+-  {
+-   "id": "abramsx",
+-   "geoMin": 62.8,
+-   "gatePassed": false,
+-   "components": {
+-    "hullCurves": 62.8,
+-    "wholeCurves": 69.7,
+-    "turretCurves": 77.2,
+-    "stations": 79,
+-    "dims": 100,
+-    "floaters": 100
+-   }
+-  },
+   {
+    "id": "t72bu",
+    "geoMin": 52.8,
+@@ -492,25 +479,12 @@
+    "components": {
+     "hullCurves": 52.8,
+     "wholeCurves": 59.2,
+-    "turretCurves": 68.4,
++    "turretCurves": 68.3,
+     "stations": 81.8,
+     "dims": 100,
+     "floaters": 100
+    }
+   },
+-  {
+-   "id": "t90sm",
+-   "geoMin": 75.8,
+-   "gatePassed": false,
+-   "components": {
+-    "hullCurves": 75.8,
+-    "wholeCurves": 77.4,
+-    "turretCurves": 81.4,
+-    "stations": 86.9,
+-    "dims": 100,
+-    "floaters": 100
+-   }
+-  },
+   {
+    "id": "t34_85_cad",
+    "geoMin": 59.5,
+@@ -526,52 +500,39 @@
+   },
+   {
+    "id": "t72b_1987",
+-   "geoMin": 60.2,
++   "geoMin": 59.8,
+    "gatePassed": false,
+    "components": {
+     "hullCurves": 63.3,
+     "wholeCurves": 60.7,
+-    "turretCurves": 60.2,
+-    "stations": 68.2,
++    "turretCurves": 59.8,
++    "stations": 68.4,
+     "dims": 96.7,
+     "floaters": 100
+    }
+   },
+-  {
+-   "id": "m1a2_sepv2",
+-   "geoMin": 60.3,
+-   "gatePassed": false,
+-   "components": {
+-    "hullCurves": 93.2,
+-    "wholeCurves": 60.3,
+-    "turretCurves": 80.6,
+-    "stations": 83.6,
+-    "dims": 100,
+-    "floaters": 100
+-   }
+-  },
+   {
+    "id": "challenger_3",
+-   "geoMin": 61.4,
++   "geoMin": 61.7,
+    "gatePassed": false,
+    "components": {
+     "hullCurves": 69.8,
+-    "wholeCurves": 61.4,
+-    "turretCurves": 71.1,
+-    "stations": 77.9,
++    "wholeCurves": 61.7,
++    "turretCurves": 72.1,
++    "stations": 79.7,
+     "dims": 99.8,
+     "floaters": 100
+    }
+   },
+   {
+-   "id": "m1a2_tejas",
+-   "geoMin": 61.5,
++   "id": "abramsx",
++   "geoMin": 62.8,
+    "gatePassed": false,
+    "components": {
+-    "hullCurves": 92,
+-    "wholeCurves": 61.5,
+-    "turretCurves": 83.4,
+-    "stations": 92.3,
++    "hullCurves": 62.8,
++    "wholeCurves": 69.7,
++    "turretCurves": 77.2,
++    "stations": 79,
+     "dims": 100,
+     "floaters": 100
+    }
+@@ -583,20 +544,33 @@
+    "components": {
+     "hullCurves": 63.7,
+     "wholeCurves": 65.2,
+-    "turretCurves": 69.1,
++    "turretCurves": 68.9,
+     "stations": 90.9,
+     "dims": 100,
+     "floaters": 100
+    }
+   },
+   {
+-   "id": "m1a2",
+-   "geoMin": 64.9,
++   "id": "t90a_vladimir",
++   "geoMin": 63.8,
++   "gatePassed": false,
++   "components": {
++    "hullCurves": 63.8,
++    "wholeCurves": 67.2,
++    "turretCurves": 77.5,
++    "stations": 90.7,
++    "dims": 96.2,
++    "floaters": 100
++   }
++  },
++  {
++   "id": "m1a2_sepv2",
++   "geoMin": 65.1,
+    "gatePassed": false,
+    "components": {
+     "hullCurves": 93.3,
+-    "wholeCurves": 64.9,
+-    "turretCurves": 84.1,
++    "wholeCurves": 65.1,
++    "turretCurves": 80.6,
+     "stations": 83.6,
+     "dims": 100,
+     "floaters": 100
+@@ -629,53 +603,66 @@
+    }
+   },
+   {
+-   "id": "t14",
+-   "geoMin": 73.7,
++   "id": "pziii_konserwa",
++   "geoMin": 72,
+    "gatePassed": false,
+    "components": {
+-    "hullCurves": 79.1,
+-    "wholeCurves": 74,
+-    "turretCurves": 73.7,
+-    "stations": 84.7,
++    "hullCurves": 77.4,
++    "wholeCurves": 72,
++    "turretCurves": 77.2,
++    "stations": 83.1,
+     "dims": 100,
+     "floaters": 100
+    }
+   },
+   {
+-   "id": "t90a_vladimir",
+-   "geoMin": 71,
++   "id": "t64bv1",
++   "geoMin": 73.4,
+    "gatePassed": false,
+    "components": {
+-    "hullCurves": 73.1,
+-    "wholeCurves": 71,
+-    "turretCurves": 79.9,
+-    "stations": 89,
+-    "dims": 96.2,
++    "hullCurves": 78.2,
++    "wholeCurves": 74.1,
++    "turretCurves": 73.4,
++    "stations": 84.4,
++    "dims": 100,
+     "floaters": 100
+    }
+   },
+   {
+-   "id": "pziii_konserwa",
+-   "geoMin": 72,
++   "id": "t14",
++   "geoMin": 73.7,
+    "gatePassed": false,
+    "components": {
+-    "hullCurves": 77.4,
+-    "wholeCurves": 72,
+-    "turretCurves": 77.2,
+-    "stations": 83.1,
++    "hullCurves": 79.1,
++    "wholeCurves": 74,
++    "turretCurves": 73.7,
++    "stations": 84.7,
+     "dims": 100,
+     "floaters": 100
+    }
+   },
+   {
+-   "id": "t64bv1",
+-   "geoMin": 73.4,
++   "id": "m1a2_tejas",
++   "geoMin": 75.6,
+    "gatePassed": false,
+    "components": {
+-    "hullCurves": 78.2,
+-    "wholeCurves": 74.1,
+-    "turretCurves": 73.4,
+-    "stations": 84.4,
++    "hullCurves": 92,
++    "wholeCurves": 75.6,
++    "turretCurves": 83.3,
++    "stations": 92.3,
++    "dims": 100,
++    "floaters": 100
++   }
++  },
++  {
++   "id": "t90sm",
++   "geoMin": 75.8,
++   "gatePassed": false,
++   "components": {
++    "hullCurves": 75.8,
++    "wholeCurves": 77.4,
++    "turretCurves": 81.4,
++    "stations": 86.9,
+     "dims": 100,
+     "floaters": 100
+    }
+@@ -694,40 +681,27 @@
+    }
+   },
+   {
+-   "id": "t90a",
+-   "geoMin": 76.1,
+-   "gatePassed": false,
+-   "components": {
+-    "hullCurves": 77.8,
+-    "wholeCurves": 78.5,
+-    "turretCurves": 76.1,
+-    "stations": 87.9,
+-    "dims": 100,
+-    "floaters": 100
+-   }
+-  },
+-  {
+-   "id": "m1a1ha",
+-   "geoMin": 79,
++   "id": "m1a2",
++   "geoMin": 76,
+    "gatePassed": false,
+    "components": {
+-    "hullCurves": 91.7,
+-    "wholeCurves": 79,
+-    "turretCurves": 85.7,
+-    "stations": 92.5,
++    "hullCurves": 93.3,
++    "wholeCurves": 76,
++    "turretCurves": 84.1,
++    "stations": 83.6,
+     "dims": 100,
+     "floaters": 100
+    }
+   },
+   {
+-   "id": "m1a1",
+-   "geoMin": 84.1,
++   "id": "t90a",
++   "geoMin": 76.1,
+    "gatePassed": false,
+    "components": {
+-    "hullCurves": 91.7,
+-    "wholeCurves": 84.1,
+-    "turretCurves": 85.6,
+-    "stations": 92.5,
++    "hullCurves": 77.7,
++    "wholeCurves": 78.6,
++    "turretCurves": 76.1,
++    "stations": 87.6,
+     "dims": 100,
+     "floaters": 100
+    }
+@@ -779,11 +753,24 @@
+     "hullCurves": 88.7,
+     "wholeCurves": 82.5,
+     "turretCurves": 84.7,
+-    "stations": 88.3,
++    "stations": 87.8,
+     "dims": 98.9,
+     "floaters": 100
+    }
+   },
++  {
++   "id": "m1a1ha",
++   "geoMin": 83.1,
++   "gatePassed": false,
++   "components": {
++    "hullCurves": 91.7,
++    "wholeCurves": 83.1,
++    "turretCurves": 85.6,
++    "stations": 92.5,
++    "dims": 100,
++    "floaters": 100
++   }
++  },
+   {
+    "id": "type90",
+    "geoMin": 83.6,
+@@ -791,7 +778,7 @@
+    "components": {
+     "hullCurves": 88.5,
+     "wholeCurves": 84.9,
+-    "turretCurves": 84.7,
++    "turretCurves": 84.6,
+     "stations": 83.6,
+     "dims": 100,
+     "floaters": 100
+@@ -823,6 +810,19 @@
+     "floaters": 100
+    }
+   },
++  {
++   "id": "m1a1",
++   "geoMin": 84.1,
++   "gatePassed": false,
++   "components": {
++    "hullCurves": 91.7,
++    "wholeCurves": 84.1,
++    "turretCurves": 85.6,
++    "stations": 92.5,
++    "dims": 100,
++    "floaters": 100
++   }
++  },
+   {
+    "id": "m2a2_bradley",
+    "geoMin": 84.7,
+diff --git a/docs/geometry-gate/m2a2_bradley.json b/docs/geometry-gate/m2a2_bradley.json
+index e9434ad..8c4a042 100644
+--- a/docs/geometry-gate/m2a2_bradley.json
++++ b/docs/geometry-gate/m2a2_bradley.json
+@@ -444,7 +444,7 @@
+    ]
+   },
+   "front_hull": {
+-   "score": 85.28839550908926,
++   "score": 85.30938100186505,
+    "meanPct": 1.11,
+    "p95Pct": 2.38,
+    "coverPct": 0,
+@@ -547,12 +547,12 @@
+      "refBot": -1.48,
+      "procTop": 0.4,
+      "procBot": -1.47,
+-     "errM": 0.056
++     "errM": 0.057
+     }
+    ]
+   },
+   "front_whole": {
+-   "score": 87.36794051084362,
++   "score": 87.38342161207169,
+    "meanPct": 0.94,
+    "p95Pct": 2.21,
+    "coverPct": 0,
+diff --git a/docs/geometry-gate/t62mv1.json b/docs/geometry-gate/t62mv1.json
+index 8849bc6..5a16f9d 100644
+--- a/docs/geometry-gate/t62mv1.json
++++ b/docs/geometry-gate/t62mv1.json
+@@ -5,7 +5,7 @@
+  "components": {
+   "hullCurves": 63.7,
+   "wholeCurves": 65.2,
+-  "turretCurves": 69.1,
++  "turretCurves": 68.9,
+   "stations": 90.9,
+   "dims": 100,
+   "floaters": 100
+@@ -120,7 +120,7 @@
+    ]
+   },
+   "side_whole": {
+-   "score": 65.2237764899072,
++   "score": 65.22418028297578,
+    "meanPct": 2.42,
+    "p95Pct": 8.08,
+    "coverPct": 0.56,
+@@ -662,15 +662,23 @@
+  },
+  "turretRows": {
+   "side": {
+-   "score": 69.1330355597829,
+-   "meanPct": 1.98,
+-   "p95Pct": 8.6,
++   "score": 68.92873597683959,
++   "meanPct": 2,
++   "p95Pct": 8.65,
+    "coverPct": 1.28,
+    "reg": {
+     "dAlong": -0.054,
+     "dy": 0.034
+    },
+    "worst": [
++    {
++     "at": -0.48,
++     "refTop": 0.83,
++     "refBot": 0.24,
++     "procTop": 0.9,
++     "procBot": -0.11,
++     "errM": 0.211
++    },
+     {
+      "at": 1.01,
+      "refTop": 1.12,
+@@ -679,21 +687,13 @@
+      "procBot": -0.1,
+      "errM": 0.21
+     },
+-    {
+-     "at": -0.48,
+-     "refTop": 0.83,
+-     "refBot": 0.24,
+-     "procTop": 0.9,
+-     "procBot": -0.11,
+-     "errM": 0.209
+-    },
+     {
+      "at": -0.9,
+      "refTop": 0.73,
+      "refBot": 0.27,
+      "procTop": 0.95,
+      "procBot": 0.3,
+-     "errM": 0.125
++     "errM": 0.127
+     },
+     {
+      "at": 0.05,
+@@ -724,8 +724,8 @@
+      "refTop": 1.14,
+      "refBot": 0.24,
+      "procTop": 1.03,
+-     "procBot": 0.24,
+-     "errM": 0.058
++     "procBot": 0.25,
++     "errM": 0.057
+     },
+     {
+      "at": -0.16,
+@@ -770,9 +770,9 @@
+    ]
+   },
+   "plan": {
+-   "score": 95.25935752263337,
+-   "meanPct": 0.36,
+-   "p95Pct": 0.69,
++   "score": 93.77264586757968,
++   "meanPct": 0.47,
++   "p95Pct": 1.05,
+    "coverPct": 0,
+    "reg": {
+     "dAlong": 0,
+@@ -780,19 +780,51 @@
+    },
+    "worst": [
+     {
+-     "at": -1.11,
+-     "refTop": 1.13,
+-     "refBot": -0.39,
+-     "procTop": 1.16,
+-     "procBot": -0.49,
+-     "errM": 0.064
++     "at": 0.69,
++     "refTop": 1.41,
++     "refBot": -0.74,
++     "procTop": 1.44,
++     "procBot": -0.52,
++     "errM": 0.123
++    },
++    {
++     "at": 0.58,
++     "refTop": 1.46,
++     "refBot": -0.79,
++     "procTop": 1.48,
++     "procBot": -0.61,
++     "errM": 0.098
++    },
++    {
++     "at": 0.79,
++     "refTop": 1.38,
++     "refBot": -0.69,
++     "procTop": 1.39,
++     "procBot": -0.51,
++     "errM": 0.093
+     },
+     {
+      "at": -0.37,
+      "refTop": 1.53,
+      "refBot": -0.94,
+      "procTop": 1.53,
+-     "procBot": -0.81,
++     "procBot": -0.8,
++     "errM": 0.069
++    },
++    {
++     "at": 0.48,
++     "refTop": 1.5,
++     "refBot": -0.84,
++     "procTop": 1.51,
++     "procBot": -0.71,
++     "errM": 0.068
++    },
++    {
++     "at": -1.11,
++     "refTop": 1.13,
++     "refBot": -0.39,
++     "procTop": 1.16,
++     "procBot": -0.49,
+      "errM": 0.064
+     },
+     {
+@@ -819,14 +851,6 @@
+      "procBot": -0.82,
+      "errM": 0.059
+     },
+-    {
+-     "at": 0.79,
+-     "refTop": 1.38,
+-     "refBot": -0.69,
+-     "procTop": 1.39,
+-     "procBot": -0.59,
+-     "errM": 0.053
+-    },
+     {
+      "at": 1.11,
+      "refTop": 1.14,
+@@ -850,30 +874,6 @@
+      "procTop": 1.26,
+      "procBot": -0.56,
+      "errM": 0.035
+-    },
+-    {
+-     "at": -0.26,
+-     "refTop": 1.54,
+-     "refBot": -0.99,
+-     "procTop": 1.55,
+-     "procBot": -1.05,
+-     "errM": 0.035
+-    },
+-    {
+-     "at": 1.22,
+-     "refTop": 1.02,
+-     "refBot": -0.25,
+-     "procTop": 1.06,
+-     "procBot": -0.27,
+-     "errM": 0.035
+-    },
+-    {
+-     "at": 0.69,
+-     "refTop": 1.41,
+-     "refBot": -0.74,
+-     "procTop": 1.44,
+-     "procBot": -0.7,
+-     "errM": 0.034
+     }
+    ]
+   }
+diff --git a/docs/geometry-gate/t64bv1.json b/docs/geometry-gate/t64bv1.json
+index 22aaa0d..59502bb 100644
+--- a/docs/geometry-gate/t64bv1.json
++++ b/docs/geometry-gate/t64bv1.json
+@@ -770,9 +770,9 @@
+    ]
+   },
+   "plan": {
+-   "score": 87.15558194643855,
+-   "meanPct": 0.97,
+-   "p95Pct": 1.99,
++   "score": 86.18836295733851,
++   "meanPct": 1.05,
++   "p95Pct": 2.05,
+    "coverPct": 0,
+    "reg": {
+     "dAlong": 0,
+@@ -787,6 +787,14 @@
+      "procBot": 0.92,
+      "errM": 0.195
+     },
++    {
++     "at": 0.99,
++     "refTop": 3.44,
++     "refBot": 0.3,
++     "procTop": 3.66,
++     "procBot": 0.45,
++     "errM": 0.189
++    },
+     {
+      "at": 0.89,
+      "refTop": 3.44,
+@@ -811,14 +819,6 @@
+      "procBot": 0.92,
+      "errM": 0.171
+     },
+-    {
+-     "at": 0.99,
+-     "refTop": 3.44,
+-     "refBot": 0.3,
+-     "procTop": 3.66,
+-     "procBot": 0.38,
+-     "errM": 0.155
+-    },
+     {
+      "at": -1.19,
+      "refTop": 2.13,
+@@ -840,40 +840,40 @@
+      "refTop": 3.42,
+      "refBot": 0.19,
+      "procTop": 3.66,
+-     "procBot": 0.18,
+-     "errM": 0.127
++     "procBot": 0.17,
++     "errM": 0.132
+     },
+     {
+-     "at": 1.4,
+-     "refTop": 1.95,
+-     "refBot": 1.28,
+-     "procTop": 2.16,
+-     "procBot": 1.28,
+-     "errM": 0.102
++     "at": -0.67,
++     "refTop": 4.38,
++     "refBot": 0.13,
++     "procTop": 4.55,
++     "procBot": 0.21,
++     "errM": 0.126
+     },
+     {
+-     "at": 1.09,
+-     "refTop": 3.82,
+-     "refBot": 0.38,
+-     "procTop": 3.84,
+-     "procBot": 0.56,
+-     "errM": 0.101
++     "at": -0.98,
++     "refTop": 4.5,
++     "refBot": 0.28,
++     "procTop": 4.45,
++     "procBot": 0.45,
++     "errM": 0.112
+     },
+     {
+-     "at": 0.68,
+-     "refTop": 4.38,
+-     "refBot": 0.31,
+-     "procTop": 4.37,
+-     "procBot": 0.12,
+-     "errM": 0.098
++     "at": 0.37,
++     "refTop": 3.42,
++     "refBot": 0.19,
++     "procTop": 3.45,
++     "procBot": 0.01,
++     "errM": 0.107
+     },
+     {
+-     "at": -0.67,
+-     "refTop": 4.38,
+-     "refBot": 0.13,
+-     "procTop": 4.55,
+-     "procBot": 0.11,
+-     "errM": 0.097
++     "at": 0.47,
++     "refTop": 3.42,
++     "refBot": 0.19,
++     "procTop": 3.45,
++     "procBot": 0.02,
++     "errM": 0.102
+     }
+    ]
+   }
+diff --git a/docs/geometry-gate/t72b_1987.json b/docs/geometry-gate/t72b_1987.json
+index 05d38ab..548f8ec 100644
+--- a/docs/geometry-gate/t72b_1987.json
++++ b/docs/geometry-gate/t72b_1987.json
+@@ -1,12 +1,12 @@
+ {
+  "id": "t72b_1987",
+- "geoMin": 60.2,
++ "geoMin": 59.8,
+  "gatePassed": false,
+  "components": {
+   "hullCurves": 63.3,
+   "wholeCurves": 60.7,
+-  "turretCurves": 60.2,
+-  "stations": 68.2,
++  "turretCurves": 59.8,
++  "stations": 68.4,
+   "dims": 96.7,
+   "floaters": 100
+  },
+@@ -120,8 +120,8 @@
+    ]
+   },
+   "side_whole": {
+-   "score": 73.9942582718598,
+-   "meanPct": 1.83,
++   "score": 73.8767661769088,
++   "meanPct": 1.84,
+    "p95Pct": 3.95,
+    "coverPct": 1.12,
+    "reg": {
+@@ -662,9 +662,9 @@
+  },
+  "turretRows": {
+   "side": {
+-   "score": 60.22204423582217,
+-   "meanPct": 2.21,
+-   "p95Pct": 5.64,
++   "score": 59.774975457626695,
++   "meanPct": 2.23,
++   "p95Pct": 5.85,
+    "coverPct": 6.6,
+    "reg": {
+     "dAlong": 0.053,
+@@ -692,16 +692,24 @@
+      "refTop": 1.04,
+      "refBot": 0.21,
+      "procTop": 0.81,
+-     "procBot": 0.17,
+-     "errM": 0.13
++     "procBot": 0.16,
++     "errM": 0.135
+     },
+     {
+      "at": -0.16,
+      "refTop": 0.52,
+      "refBot": 0.22,
+-     "procTop": 0.44,
++     "procTop": 0.45,
+      "procBot": 0.07,
+-     "errM": 0.112
++     "errM": 0.107
++    },
++    {
++     "at": 0.06,
++     "refTop": 0.61,
++     "refBot": 0.21,
++     "procTop": 0.68,
++     "procBot": 0.07,
++     "errM": 0.1
+     },
+     {
+      "at": 0.59,
+@@ -711,37 +719,29 @@
+      "procBot": 0.18,
+      "errM": 0.098
+     },
+-    {
+-     "at": 0.06,
+-     "refTop": 0.61,
+-     "refBot": 0.21,
+-     "procTop": 0.66,
+-     "procBot": 0.07,
+-     "errM": 0.093
+-    },
+     {
+      "at": 0.48,
+      "refTop": 1.03,
+      "refBot": 0.21,
+      "procTop": 0.87,
+-     "procBot": 0.18,
+-     "errM": 0.092
++     "procBot": 0.17,
++     "errM": 0.097
+     },
+     {
+      "at": -0.05,
+      "refTop": 0.53,
+      "refBot": 0.22,
+-     "procTop": 0.55,
++     "procTop": 0.56,
+      "procBot": 0.07,
+-     "errM": 0.085
++     "errM": 0.092
+     },
+     {
+      "at": 0.16,
+      "refTop": 0.64,
+      "refBot": 0.21,
+-     "procTop": 0.67,
++     "procTop": 0.69,
+      "procBot": 0.08,
+-     "errM": 0.08
++     "errM": 0.088
+     },
+     {
+      "at": 0.7,
+@@ -770,8 +770,8 @@
+    ]
+   },
+   "plan": {
+-   "score": 77.74120960531675,
+-   "meanPct": 1.47,
++   "score": 77.40898131255554,
++   "meanPct": 1.49,
+    "p95Pct": 3.67,
+    "coverPct": 1.64,
+    "reg": {
+@@ -803,14 +803,6 @@
+      "procBot": 0.98,
+      "errM": 0.236
+     },
+-    {
+-     "at": 0.48,
+-     "refTop": 2.83,
+-     "refBot": -0.07,
+-     "procTop": 2.49,
+-     "procBot": -0.13,
+-     "errM": 0.204
+-    },
+     {
+      "at": -1.34,
+      "refTop": 2.1,
+@@ -819,6 +811,30 @@
+      "procBot": 0.52,
+      "errM": 0.199
+     },
++    {
++     "at": -0.69,
++     "refTop": 2.28,
++     "refBot": -0.14,
++     "procTop": 2.43,
++     "procBot": 0.12,
++     "errM": 0.198
++    },
++    {
++     "at": -0.59,
++     "refTop": 2.23,
++     "refBot": -0.14,
++     "procTop": 2.46,
++     "procBot": 0.03,
++     "errM": 0.193
++    },
++    {
++     "at": 0.48,
++     "refTop": 2.83,
++     "refBot": -0.07,
++     "procTop": 2.49,
++     "procBot": -0.03,
++     "errM": 0.186
++    },
+     {
+      "at": 1.12,
+      "refTop": 2.36,
+@@ -852,28 +868,12 @@
+      "errM": 0.143
+     },
+     {
+-     "at": 0.59,
+-     "refTop": 2.23,
+-     "refBot": -0.04,
+-     "procTop": 2.46,
+-     "procBot": -0.09,
+-     "errM": 0.141
+-    },
+-    {
+-     "at": 0.7,
+-     "refTop": 2.28,
+-     "refBot": 0.04,
+-     "procTop": 2.43,
+-     "procBot": -0.09,
+-     "errM": 0.136
+-    },
+-    {
+-     "at": -0.59,
+-     "refTop": 2.23,
++     "at": -0.48,
++     "refTop": 2.3,
+      "refBot": -0.14,
+-     "procTop": 2.46,
+-     "procBot": -0.09,
+-     "errM": 0.133
++     "procTop": 2.49,
++     "procBot": -0.03,
++     "errM": 0.143
+     }
+    ]
+   }
+@@ -932,7 +932,7 @@
+   {
+    "i": 10,
+    "wPct": 0.11,
+-   "topPct": 5.87
++   "topPct": 5.7
+   },
+   {
+    "i": 11,
+diff --git a/docs/geometry-gate/t72bu.json b/docs/geometry-gate/t72bu.json
+index 87d525e..ee2625c 100644
+--- a/docs/geometry-gate/t72bu.json
++++ b/docs/geometry-gate/t72bu.json
+@@ -5,7 +5,7 @@
+  "components": {
+   "hullCurves": 52.8,
+   "wholeCurves": 59.2,
+-  "turretCurves": 68.4,
++  "turretCurves": 68.3,
+   "stations": 81.8,
+   "dims": 100,
+   "floaters": 100
+@@ -662,8 +662,8 @@
+  },
+  "turretRows": {
+   "side": {
+-   "score": 68.42141962134977,
+-   "meanPct": 2.26,
++   "score": 68.32760530863214,
++   "meanPct": 2.27,
+    "p95Pct": 5.08,
+    "coverPct": 0.96,
+    "reg": {
+@@ -760,19 +760,19 @@
+      "errM": 0.066
+     },
+     {
+-     "at": 1.67,
+-     "refTop": 0.62,
+-     "refBot": 0.11,
+-     "procTop": 0.73,
+-     "procBot": 0.12,
+-     "errM": 0.064
++     "at": 0.48,
++     "refTop": 0.95,
++     "refBot": 0.2,
++     "procTop": 1,
++     "procBot": 0.11,
++     "errM": 0.066
+     }
+    ]
+   },
+   "plan": {
+-   "score": 82.80442765024175,
+-   "meanPct": 1.28,
+-   "p95Pct": 3.03,
++   "score": 81.76265667237031,
++   "meanPct": 1.36,
++   "p95Pct": 3.26,
+    "coverPct": 0,
+    "reg": {
+     "dAlong": 0,
+@@ -787,6 +787,14 @@
+      "procBot": -0.65,
+      "errM": 0.324
+     },
++    {
++     "at": 0.92,
++     "refTop": 2.3,
++     "refBot": -0.04,
++     "procTop": 2.82,
++     "procBot": 0.07,
++     "errM": 0.311
++    },
+     {
+      "at": 0.7,
+      "refTop": 2.85,
+@@ -827,53 +835,45 @@
+      "procBot": -0.65,
+      "errM": 0.274
+     },
+-    {
+-     "at": 0.92,
+-     "refTop": 2.3,
+-     "refBot": -0.04,
+-     "procTop": 2.82,
+-     "procBot": -0.01,
+-     "errM": 0.27
+-    },
+     {
+      "at": -0.27,
+      "refTop": 2.83,
+      "refBot": -0.04,
+      "procTop": 2.82,
+-     "procBot": -0.35,
+-     "errM": 0.163
+-    },
+-    {
+-     "at": 1.45,
+-     "refTop": 1.91,
+-     "refBot": 0.29,
+-     "procTop": 1.76,
+-     "procBot": 0.44,
+-     "errM": 0.151
++     "procBot": -0.37,
++     "errM": 0.173
+     },
+     {
+      "at": 0.27,
+      "refTop": 2.82,
+      "refBot": -0.06,
+      "procTop": 2.82,
+-     "procBot": -0.35,
+-     "errM": 0.148
++     "procBot": -0.37,
++     "errM": 0.158
+     },
+     {
+      "at": -0.91,
+      "refTop": 2.31,
+      "refBot": -0.03,
+      "procTop": 2.11,
+-     "procBot": -0.01,
+-     "errM": 0.111
++     "procBot": 0.08,
++     "errM": 0.156
+     },
+     {
+-     "at": 1.35,
+-     "refTop": 2.04,
+-     "refBot": 0.15,
+-     "procTop": 1.94,
+-     "procBot": 0.27,
+-     "errM": 0.111
++     "at": 1.45,
++     "refTop": 1.91,
++     "refBot": 0.29,
++     "procTop": 1.76,
++     "procBot": 0.44,
++     "errM": 0.151
++    },
++    {
++     "at": 1.02,
++     "refTop": 2.32,
++     "refBot": 0.02,
++     "procTop": 2.2,
++     "procBot": 0.13,
++     "errM": 0.121
+     }
+    ]
+   }
+diff --git a/docs/geometry-gate/t80.json b/docs/geometry-gate/t80.json
+index 6a778cd..8909af7 100644
+--- a/docs/geometry-gate/t80.json
++++ b/docs/geometry-gate/t80.json
+@@ -6,7 +6,7 @@
+   "hullCurves": 88.7,
+   "wholeCurves": 82.5,
+   "turretCurves": 84.7,
+-  "stations": 88.3,
++  "stations": 87.8,
+   "dims": 98.9,
+   "floaters": 100
+  },
+@@ -120,8 +120,8 @@
+    ]
+   },
+   "side_whole": {
+-   "score": 87.09866854617792,
+-   "meanPct": 0.97,
++   "score": 87.02031454118645,
++   "meanPct": 0.98,
+    "p95Pct": 2.04,
+    "coverPct": 0,
+    "reg": {
+@@ -662,7 +662,7 @@
+  },
+  "turretRows": {
+   "side": {
+-   "score": 87.30918895584408,
++   "score": 87.24311716753344,
+    "meanPct": 0.96,
+    "p95Pct": 2.04,
+    "coverPct": 0,
+@@ -711,14 +711,6 @@
+      "procBot": 0.36,
+      "errM": 0.038
+     },
+-    {
+-     "at": 0.56,
+-     "refTop": 0.74,
+-     "refBot": 0.32,
+-     "procTop": 0.78,
+-     "procBot": 0.36,
+-     "errM": 0.038
+-    },
+     {
+      "at": 1.44,
+      "refTop": 0.95,
+@@ -735,6 +727,14 @@
+      "procBot": -0.49,
+      "errM": 0.038
+     },
++    {
++     "at": 0.69,
++     "refTop": 0.78,
++     "refBot": 0.31,
++     "procTop": 0.81,
++     "procBot": 0.27,
++     "errM": 0.035
++    },
+     {
+      "at": -1.69,
+      "refTop": 0.7,
+@@ -932,7 +932,7 @@
+   {
+    "i": 10,
+    "wPct": 2.32,
+-   "topPct": 1.03
++   "topPct": 1.68
+   },
+   {
+    "i": 11,
+diff --git a/docs/geometry-gate/t80b.json b/docs/geometry-gate/t80b.json
+index 5c44407..a9f7ccc 100644
+--- a/docs/geometry-gate/t80b.json
++++ b/docs/geometry-gate/t80b.json
+@@ -770,9 +770,9 @@
+    ]
+   },
+   "plan": {
+-   "score": 86.93969143281532,
+-   "meanPct": 0.96,
+-   "p95Pct": 2.56,
++   "score": 87.33532437526347,
++   "meanPct": 0.94,
++   "p95Pct": 2.39,
+    "coverPct": 0,
+    "reg": {
+     "dAlong": 0,
+@@ -787,21 +787,13 @@
+      "procBot": 1.11,
+      "errM": 0.265
+     },
+-    {
+-     "at": -1.19,
+-     "refTop": 2.58,
+-     "refBot": 1.09,
+-     "procTop": 2.79,
+-     "procBot": 0.8,
+-     "errM": 0.247
+-    },
+     {
+      "at": 1.19,
+      "refTop": 2.38,
+      "refBot": 0.84,
+      "procTop": 2.79,
+-     "procBot": 0.8,
+-     "errM": 0.224
++     "procBot": 0.9,
++     "errM": 0.231
+     },
+     {
+      "at": 1.45,
+@@ -812,28 +804,44 @@
+      "errM": 0.224
+     },
+     {
+-     "at": 1.07,
++     "at": -1.19,
+      "refTop": 2.58,
+-     "refBot": 0.83,
+-     "procTop": 2.86,
+-     "procBot": 0.75,
+-     "errM": 0.177
++     "refBot": 1.09,
++     "procTop": 2.79,
++     "procBot": 0.9,
++     "errM": 0.2
+     },
+     {
+      "at": -0.81,
+      "refTop": 3.82,
+      "refBot": 0.47,
+      "procTop": 3.76,
+-     "procBot": 0.64,
+-     "errM": 0.118
++     "procBot": 0.7,
++     "errM": 0.147
++    },
++    {
++     "at": 1.07,
++     "refTop": 2.58,
++     "refBot": 0.83,
++     "procTop": 2.86,
++     "procBot": 0.84,
++     "errM": 0.142
+     },
+     {
+      "at": -0.94,
+      "refTop": 3.14,
+      "refBot": 0.67,
+      "procTop": 2.96,
+-     "procBot": 0.68,
+-     "errM": 0.1
++     "procBot": 0.77,
++     "errM": 0.141
++    },
++    {
++     "at": -1.07,
++     "refTop": 2.71,
++     "refBot": 0.77,
++     "procTop": 2.85,
++     "procBot": 0.84,
++     "errM": 0.101
+     },
+     {
+      "at": -1.44,
+@@ -843,14 +851,6 @@
+      "procBot": 1.28,
+      "errM": 0.088
+     },
+-    {
+-     "at": 0.94,
+-     "refTop": 3.62,
+-     "refBot": 0.82,
+-     "procTop": 3.65,
+-     "procBot": 0.67,
+-     "errM": 0.088
+-    },
+     {
+      "at": -0.31,
+      "refTop": 3.79,
+diff --git a/docs/geometry-gate/t80bv.json b/docs/geometry-gate/t80bv.json
+index 6b5bff2..3057cae 100644
+--- a/docs/geometry-gate/t80bv.json
++++ b/docs/geometry-gate/t80bv.json
+@@ -1,12 +1,12 @@
+ {
+  "id": "t80bv",
+- "geoMin": 35.5,
++ "geoMin": 33.7,
+  "gatePassed": false,
+  "components": {
+   "hullCurves": 44.6,
+   "wholeCurves": 45,
+-  "turretCurves": 55.2,
+-  "stations": 35.5,
++  "turretCurves": 52.5,
++  "stations": 33.7,
+   "dims": 100,
+   "floaters": 100
+  },
+@@ -120,8 +120,8 @@
+    ]
+   },
+   "side_whole": {
+-   "score": 50.121052437468556,
+-   "meanPct": 3.44,
++   "score": 48.86533730750206,
++   "meanPct": 3.54,
+    "p95Pct": 7.93,
+    "coverPct": 2.56,
+    "reg": {
+@@ -161,6 +161,14 @@
+      "procBot": -0.69,
+      "errM": 0.172
+     },
++    {
++     "at": 0.68,
++     "refTop": 0.75,
++     "refBot": -1.1,
++     "procTop": 1.06,
++     "procBot": -1.12,
++     "errM": 0.166
++    },
+     {
+      "at": 5.45,
+      "refTop": 0.53,
+@@ -170,20 +178,20 @@
+      "errM": 0.155
+     },
+     {
+-     "at": 3.12,
+-     "refTop": 0.79,
++     "at": 0.55,
++     "refTop": 0.72,
+      "refBot": -1.1,
+-     "procTop": 1.05,
++     "procTop": 0.99,
+      "procBot": -1.12,
+-     "errM": 0.143
++     "errM": 0.148
+     },
+     {
+-     "at": 0.68,
+-     "refTop": 0.75,
++     "at": 3.12,
++     "refTop": 0.79,
+      "refBot": -1.1,
+-     "procTop": 1,
++     "procTop": 1.05,
+      "procBot": -1.12,
+-     "errM": 0.137
++     "errM": 0.143
+     },
+     {
+      "at": 3,
+@@ -193,37 +201,29 @@
+      "procBot": -1.12,
+      "errM": 0.126
+     },
+-    {
+-     "at": -1.04,
+-     "refTop": 0.66,
+-     "refBot": -0.38,
+-     "procTop": 0.73,
+-     "procBot": -0.54,
+-     "errM": 0.109
+-    },
+     {
+      "at": 0.8,
+      "refTop": 0.84,
+      "refBot": -1.1,
+-     "procTop": 1.02,
++     "procTop": 1.06,
+      "procBot": -1.12,
+-     "errM": 0.103
++     "errM": 0.12
+     },
+     {
+-     "at": 1.16,
+-     "refTop": 0.89,
+-     "refBot": -1.1,
+-     "procTop": 1.05,
+-     "procBot": -1.12,
+-     "errM": 0.092
++     "at": -1.04,
++     "refTop": 0.66,
++     "refBot": -0.38,
++     "procTop": 0.73,
++     "procBot": -0.54,
++     "errM": 0.109
+     },
+     {
+-     "at": 3.25,
+-     "refTop": 0.91,
++     "at": 0.92,
++     "refTop": 0.87,
+      "refBot": -1.1,
+-     "procTop": 1.07,
++     "procTop": 1.03,
+      "procBot": -1.12,
+-     "errM": 0.092
++     "errM": 0.093
+     }
+    ]
+   },
+@@ -662,9 +662,9 @@
+  },
+  "turretRows": {
+   "side": {
+-   "score": 55.152618689367685,
+-   "meanPct": 3.29,
+-   "p95Pct": 6.33,
++   "score": 52.542379003681035,
++   "meanPct": 3.47,
++   "p95Pct": 6.99,
+    "coverPct": 1.08,
+    "reg": {
+     "dAlong": 1.348,
+@@ -679,6 +679,14 @@
+      "procBot": 0.38,
+      "errM": 0.175
+     },
++    {
++     "at": 0.68,
++     "refTop": 0.75,
++     "refBot": 0.29,
++     "procTop": 1.06,
++     "procBot": 0.27,
++     "errM": 0.166
++    },
+     {
+      "at": 3.12,
+      "refTop": 0.79,
+@@ -688,12 +696,20 @@
+      "errM": 0.152
+     },
+     {
+-     "at": 0.68,
+-     "refTop": 0.75,
++     "at": 0.55,
++     "refTop": 0.72,
+      "refBot": 0.29,
+-     "procTop": 1,
+-     "procBot": 0.27,
+-     "errM": 0.137
++     "procTop": 0.99,
++     "procBot": 0.3,
++     "errM": 0.138
++    },
++    {
++     "at": 0.8,
++     "refTop": 0.84,
++     "refBot": 0.26,
++     "procTop": 1.06,
++     "procBot": 0.26,
++     "errM": 0.109
+     },
+     {
+      "at": 0.31,
+@@ -711,14 +727,6 @@
+      "procBot": 0.58,
+      "errM": 0.094
+     },
+-    {
+-     "at": 0.8,
+-     "refTop": 0.84,
+-     "refBot": 0.26,
+-     "procTop": 1.02,
+-     "procBot": 0.26,
+-     "errM": 0.092
+-    },
+     {
+      "at": -0.18,
+      "refTop": 0.64,
+@@ -758,21 +766,13 @@
+      "procTop": 0.71,
+      "procBot": 0.47,
+      "errM": 0.083
+-    },
+-    {
+-     "at": 0.06,
+-     "refTop": 0.63,
+-     "refBot": 0.4,
+-     "procTop": 0.71,
+-     "procBot": 0.47,
+-     "errM": 0.083
+     }
+    ]
+   },
+   "plan": {
+-   "score": 64.97404512904768,
+-   "meanPct": 2.42,
+-   "p95Pct": 5.29,
++   "score": 65.11905546782538,
++   "meanPct": 2.43,
++   "p95Pct": 4.86,
+    "coverPct": 1.89,
+    "reg": {
+     "dAlong": 0,
+@@ -792,16 +792,16 @@
+      "refTop": 3.7,
+      "refBot": 0.73,
+      "procTop": 2.82,
+-     "procBot": 0.64,
+-     "errM": 0.487
++     "procBot": 0.72,
++     "errM": 0.447
+     },
+     {
+      "at": 1.04,
+      "refTop": 3.66,
+      "refBot": 0.67,
+      "procTop": 2.82,
+-     "procBot": 0.64,
+-     "errM": 0.441
++     "procBot": 0.72,
++     "errM": 0.447
+     },
+     {
+      "at": 1.41,
+@@ -843,14 +843,6 @@
+      "procBot": -4.22,
+      "errM": 0.304
+     },
+-    {
+-     "at": 1.16,
+-     "refTop": 3.14,
+-     "refBot": 0.85,
+-     "procTop": 2.71,
+-     "procBot": 0.68,
+-     "errM": 0.298
+-    },
+     {
+      "at": -0.18,
+      "refTop": 3.84,
+@@ -868,12 +860,20 @@
+      "errM": 0.269
+     },
+     {
+-     "at": -1.16,
+-     "refTop": 2.92,
++     "at": 1.16,
++     "refTop": 3.14,
+      "refBot": 0.85,
+      "procTop": 2.71,
+-     "procBot": 0.68,
+-     "errM": 0.189
++     "procBot": 0.77,
++     "errM": 0.252
++    },
++    {
++     "at": -0.3,
++     "refTop": 3.84,
++     "refBot": 0.6,
++     "procTop": 3.68,
++     "procBot": 0.37,
++     "errM": 0.195
+     }
+    ]
+   }
+@@ -927,12 +927,12 @@
+   {
+    "i": 9,
+    "wPct": 0,
+-   "topPct": 8.28
++   "topPct": 9.47
+   },
+   {
+    "i": 10,
+    "wPct": 0,
+-   "topPct": 7.25
++   "topPct": 12.04
+   },
+   {
+    "i": 11,
+diff --git a/docs/geometry-gate/t90a_vladimir.json b/docs/geometry-gate/t90a_vladimir.json
+index 54e61b0..2db595c 100644
+--- a/docs/geometry-gate/t90a_vladimir.json
++++ b/docs/geometry-gate/t90a_vladimir.json
+@@ -1,229 +1,229 @@
+ {
+  "id": "t90a_vladimir",
+- "geoMin": 77.5,
++ "geoMin": 63.8,
+  "gatePassed": false,
+  "components": {
+-  "hullCurves": 77.5,
+-  "wholeCurves": 81.6,
+-  "turretCurves": 79.5,
+-  "stations": 90.5,
++  "hullCurves": 63.8,
++  "wholeCurves": 67.2,
++  "turretCurves": 77.5,
++  "stations": 90.7,
+   "dims": 96.2,
+   "floaters": 100
+  },
+  "curveRows": {
+   "side_hull": {
+-   "score": 77.4913486496065,
+-   "meanPct": 1.67,
+-   "p95Pct": 4.18,
++   "score": 65.69014566424006,
++   "meanPct": 2.56,
++   "p95Pct": 6,
+    "coverPct": 0,
+    "reg": {
+     "dAlong": 0,
+-    "dy": 0.002
++    "dy": 0.025
+    },
+    "worst": [
+     {
+-     "at": 4.46,
+-     "refTop": 0.42,
+-     "refBot": -0.15,
+-     "procTop": 0.37,
+-     "procBot": -0.45,
+-     "errM": 0.174
++     "at": 2.09,
++     "refTop": 0.55,
++     "refBot": -1.29,
++     "procTop": 0.23,
++     "procBot": -1.26,
++     "errM": 0.176
+     },
+     {
+-     "at": -1.98,
+-     "refTop": -0.08,
+-     "refBot": -0.38,
+-     "procTop": -0.04,
+-     "procBot": -0.64,
+-     "errM": 0.146
++     "at": 2.2,
++     "refTop": 0.54,
++     "refBot": -1.29,
++     "procTop": 0.23,
++     "procBot": -1.26,
++     "errM": 0.171
+     },
+     {
+-     "at": 3.92,
+-     "refTop": 0.23,
+-     "refBot": -0.53,
+-     "procTop": 0.2,
+-     "procBot": -0.75,
+-     "errM": 0.124
++     "at": 1.66,
++     "refTop": 0.51,
++     "refBot": -1.29,
++     "procTop": 0.23,
++     "procBot": -1.26,
++     "errM": 0.156
+     },
+     {
+-     "at": 4.02,
+-     "refTop": 0.27,
+-     "refBot": -0.56,
+-     "procTop": 0.2,
+-     "procBot": -0.71,
+-     "errM": 0.109
++     "at": 1.77,
++     "refTop": 0.51,
++     "refBot": -1.29,
++     "procTop": 0.23,
++     "procBot": -1.26,
++     "errM": 0.156
+     },
+     {
+-     "at": 1.56,
+-     "refTop": 0.52,
++     "at": 1.88,
++     "refTop": 0.5,
+      "refBot": -1.29,
+-     "procTop": 0.69,
+-     "procBot": -1.28,
+-     "errM": 0.093
++     "procTop": 0.23,
++     "procBot": -1.26,
++     "errM": 0.151
+     },
+     {
+-     "at": -1.55,
+-     "refTop": -0.01,
+-     "refBot": -0.93,
+-     "procTop": 0.08,
+-     "procBot": -1.03,
+-     "errM": 0.091
++     "at": 4.46,
++     "refTop": 0.42,
++     "refBot": -0.15,
++     "procTop": 0.39,
++     "procBot": -0.42,
++     "errM": 0.151
+     },
+     {
+-     "at": -1.23,
+-     "refTop": 0.03,
+-     "refBot": -1.22,
+-     "procTop": 0.15,
+-     "procBot": -1.28,
+-     "errM": 0.091
++     "at": -1.98,
++     "refTop": -0.08,
++     "refBot": -0.38,
++     "procTop": -0.02,
++     "procBot": -0.61,
++     "errM": 0.146
+     },
+     {
+-     "at": -1.66,
+-     "refTop": -0.02,
+-     "refBot": -0.84,
+-     "procTop": 0.09,
+-     "procBot": -0.9,
+-     "errM": 0.08
++     "at": 1.99,
++     "refTop": 0.49,
++     "refBot": -1.29,
++     "procTop": 0.23,
++     "procBot": -1.26,
++     "errM": 0.146
++    },
++    {
++     "at": 2.74,
++     "refTop": 0.44,
++     "refBot": -1.29,
++     "procTop": 0.23,
++     "procBot": -1.26,
++     "errM": 0.121
+     },
+     {
+      "at": -0.8,
+      "refTop": 0.11,
+      "refBot": -1.29,
+-     "procTop": 0.25,
+-     "procBot": -1.28,
+-     "errM": 0.077
++     "procTop": 0.27,
++     "procBot": -1.26,
++     "errM": 0.101
+     },
+     {
+-     "at": 3.17,
+-     "refTop": 0.21,
+-     "refBot": -1.16,
++     "at": 3.92,
++     "refTop": 0.23,
++     "refBot": -0.53,
+      "procTop": 0.22,
+-     "procBot": -1.29,
+-     "errM": 0.07
++     "procBot": -0.72,
++     "errM": 0.1
+     },
+     {
+-     "at": 3.27,
+-     "refTop": 0.21,
+-     "refBot": -1.1,
+-     "procTop": 0.21,
+-     "procBot": -1.24,
+-     "errM": 0.07
+-    },
+-    {
+-     "at": 0.92,
+-     "refTop": 0.52,
+-     "refBot": -1.29,
+-     "procTop": 0.64,
+-     "procBot": -1.28,
+-     "errM": 0.067
++     "at": -1.55,
++     "refTop": -0.01,
++     "refBot": -0.93,
++     "procTop": 0.1,
++     "procBot": -1.01,
++     "errM": 0.091
+     }
+    ]
+   },
+   "side_whole": {
+-   "score": 81.55032902294244,
+-   "meanPct": 1.39,
+-   "p95Pct": 2.98,
++   "score": 77.19762415036999,
++   "meanPct": 1.71,
++   "p95Pct": 3.86,
+    "coverPct": 0,
+    "reg": {
+     "dAlong": 0,
+-    "dy": 0.002
++    "dy": 0.025
+    },
+    "worst": [
+     {
+      "at": 4.46,
+      "refTop": 0.42,
+      "refBot": -0.15,
+-     "procTop": 0.37,
+-     "procBot": -0.45,
+-     "errM": 0.174
++     "procTop": 0.39,
++     "procBot": -0.42,
++     "errM": 0.151
+     },
+     {
+      "at": -1.98,
+      "refTop": 0.35,
+      "refBot": -0.38,
+-     "procTop": 0.36,
+-     "procBot": -0.64,
++     "procTop": 0.38,
++     "procBot": -0.61,
+      "errM": 0.136
+     },
++    {
++     "at": 2.74,
++     "refTop": 0.44,
++     "refBot": -1.29,
++     "procTop": 0.23,
++     "procBot": -1.26,
++     "errM": 0.121
++    },
+     {
+      "at": 3.92,
+      "refTop": 0.23,
+      "refBot": -0.53,
+-     "procTop": 0.2,
+-     "procBot": -0.75,
+-     "errM": 0.124
++     "procTop": 0.22,
++     "procBot": -0.72,
++     "errM": 0.101
++    },
++    {
++     "at": 1.99,
++     "refTop": 1.08,
++     "refBot": -1.29,
++     "procTop": 1.25,
++     "procBot": -1.26,
++     "errM": 0.1
+     },
+     {
+      "at": 4.02,
+      "refTop": 0.27,
+      "refBot": -0.56,
+-     "procTop": 0.2,
+-     "procBot": -0.71,
+-     "errM": 0.109
++     "procTop": 0.22,
++     "procBot": -0.68,
++     "errM": 0.086
+     },
+     {
+-     "at": 1.99,
+-     "refTop": 1.08,
++     "at": 4.24,
++     "refTop": 0.36,
++     "refBot": -0.59,
++     "procTop": 0.39,
++     "procBot": -0.46,
++     "errM": 0.08
++    },
++    {
++     "at": 2.41,
++     "refTop": 0.53,
+      "refBot": -1.29,
+-     "procTop": 1.22,
+-     "procBot": -1.28,
+-     "errM": 0.077
++     "procTop": 0.42,
++     "procBot": -1.26,
++     "errM": 0.07
+     },
+     {
+      "at": 3.17,
+      "refTop": 0.21,
+      "refBot": -1.16,
+-     "procTop": 0.22,
+-     "procBot": -1.29,
++     "procTop": 0.24,
++     "procBot": -1.27,
+      "errM": 0.07
+     },
+     {
+      "at": 3.27,
+      "refTop": 0.21,
+      "refBot": -1.1,
+-     "procTop": 0.21,
+-     "procBot": -1.24,
++     "procTop": 0.23,
++     "procBot": -1.22,
+      "errM": 0.07
+     },
+     {
+-     "at": 3.49,
+-     "refTop": 0.21,
+-     "refBot": -0.98,
+-     "procTop": 0.21,
+-     "procBot": -1.11,
+-     "errM": 0.065
+-    },
+-    {
+-     "at": 4.13,
+-     "refTop": 0.29,
+-     "refBot": -0.59,
+-     "procTop": 0.23,
+-     "procBot": -0.52,
++     "at": 2.09,
++     "refTop": 0.58,
++     "refBot": -1.29,
++     "procTop": 0.67,
++     "procBot": -1.26,
+      "errM": 0.065
+     },
+     {
+-     "at": 2.85,
+-     "refTop": 0.22,
++     "at": 2.52,
++     "refTop": 0.52,
+      "refBot": -1.29,
+-     "procTop": 0.33,
+-     "procBot": -1.28,
+-     "errM": 0.062
+-    },
+-    {
+-     "at": 3.38,
+-     "refTop": 0.21,
+-     "refBot": -1.04,
+-     "procTop": 0.21,
+-     "procBot": -1.16,
+-     "errM": 0.06
+-    },
+-    {
+-     "at": 4.24,
+-     "refTop": 0.36,
+-     "refBot": -0.59,
+-     "procTop": 0.37,
+-     "procBot": -0.49,
+-     "errM": 0.057
++     "procTop": 0.42,
++     "procBot": -1.26,
++     "errM": 0.065
+     }
+    ]
+   },
+@@ -444,327 +444,327 @@
+    ]
+   },
+   "front_hull": {
+-   "score": 87.5244873184091,
+-   "meanPct": 0.94,
+-   "p95Pct": 1.94,
++   "score": 63.75885519828334,
++   "meanPct": 2.77,
++   "p95Pct": 4.98,
+    "coverPct": 0,
+    "reg": {
+     "dAlong": 0,
+-    "dy": 0.018
++    "dy": 0.068
+    },
+    "worst": [
+     {
+-     "at": -1.81,
+-     "refTop": 0.48,
+-     "refBot": -0.57,
+-     "procTop": 0.51,
+-     "procBot": -0.69,
+-     "errM": 0.082
+-    },
+-    {
+-     "at": 1.81,
+-     "refTop": 0.11,
+-     "refBot": -0.57,
+-     "procTop": 0.08,
+-     "procBot": -0.69,
+-     "errM": 0.077
+-    },
+-    {
+-     "at": 1.77,
+-     "refTop": 0.12,
+-     "refBot": -1.28,
+-     "procTop": 0.16,
+-     "procBot": -1.18,
+-     "errM": 0.074
+-    },
+-    {
+-     "at": -1.76,
+-     "refTop": 0.5,
+-     "refBot": -1.28,
+-     "procTop": 0.52,
+-     "procBot": -1.18,
+-     "errM": 0.06
++     "at": 1.55,
++     "refTop": 0.52,
++     "refBot": -1.29,
++     "procTop": 0.28,
++     "procBot": -1.23,
++     "errM": 0.151
+     },
+     {
+-     "at": 1.68,
+-     "refTop": 0.42,
++     "at": -1.55,
++     "refTop": 0.51,
+      "refBot": -1.29,
+-     "procTop": 0.51,
+-     "procBot": -1.28,
+-     "errM": 0.05
++     "procTop": 0.28,
++     "procBot": -1.23,
++     "errM": 0.148
+     },
+     {
+-     "at": -0.06,
+-     "refTop": 0.52,
+-     "refBot": -0.91,
+-     "procTop": 0.54,
+-     "procBot": -0.86,
+-     "errM": 0.04
++     "at": -0.53,
++     "refTop": 0.69,
++     "refBot": -0.85,
++     "procTop": 0.46,
++     "procBot": -0.81,
++     "errM": 0.132
+     },
+     {
+-     "at": 0.06,
++     "at": -1.51,
+      "refTop": 0.52,
+-     "refBot": -0.91,
+-     "procTop": 0.54,
+-     "procBot": -0.86,
+-     "errM": 0.04
++     "refBot": -1.29,
++     "procTop": 0.33,
++     "procBot": -1.23,
++     "errM": 0.13
+     },
+     {
+-     "at": 0.7,
+-     "refTop": 0.4,
++     "at": -0.74,
++     "refTop": 0.69,
+      "refBot": -0.85,
+      "procTop": 0.47,
+-     "procBot": -0.86,
+-     "errM": 0.04
++     "procBot": -0.81,
++     "errM": 0.13
+     },
+     {
+-     "at": -0.02,
+-     "refTop": 0.52,
+-     "refBot": -0.91,
+-     "procTop": 0.54,
+-     "procBot": -0.86,
+-     "errM": 0.036
++     "at": -0.7,
++     "refTop": 0.69,
++     "refBot": -0.85,
++     "procTop": 0.47,
++     "procBot": -0.81,
++     "errM": 0.13
+     },
+     {
+-     "at": 0.02,
+-     "refTop": 0.52,
+-     "refBot": -0.91,
+-     "procTop": 0.54,
+-     "procBot": -0.86,
+-     "errM": 0.036
++     "at": -0.66,
++     "refTop": 0.69,
++     "refBot": -0.85,
++     "procTop": 0.47,
++     "procBot": -0.81,
++     "errM": 0.13
+     },
+     {
+-     "at": -1,
+-     "refTop": 0.49,
++     "at": -0.62,
++     "refTop": 0.69,
+      "refBot": -0.85,
+      "procTop": 0.47,
+-     "procBot": -0.9,
+-     "errM": 0.035
++     "procBot": -0.81,
++     "errM": 0.13
+     },
+     {
+-     "at": -0.49,
+-     "refTop": 0.54,
++     "at": -0.57,
++     "refTop": 0.69,
+      "refBot": -0.85,
+      "procTop": 0.47,
+-     "procBot": -0.86,
+-     "errM": 0.035
++     "procBot": -0.81,
++     "errM": 0.13
++    },
++    {
++     "at": 1.51,
++     "refTop": 0.51,
++     "refBot": -1.29,
++     "procTop": 0.33,
++     "procBot": -1.23,
++     "errM": 0.126
++    },
++    {
++     "at": 1.77,
++     "refTop": 0.12,
++     "refBot": -1.28,
++     "procTop": 0.21,
++     "procBot": -1.13,
++     "errM": 0.124
++    },
++    {
++     "at": -1.76,
++     "refTop": 0.5,
++     "refBot": -1.28,
++     "procTop": 0.57,
++     "procBot": -1.13,
++     "errM": 0.11
+     }
+    ]
+   },
+   "front_whole": {
+-   "score": 86.12804086732746,
+-   "meanPct": 1.04,
+-   "p95Pct": 2.3,
++   "score": 67.22086671590436,
++   "meanPct": 2.52,
++   "p95Pct": 4.15,
+    "coverPct": 0,
+    "reg": {
+     "dAlong": 0,
+-    "dy": 0.018
++    "dy": 0.068
+    },
+    "worst": [
+     {
+      "at": -0.19,
+      "refTop": 0.64,
+      "refBot": -0.89,
+-     "procTop": 0.79,
+-     "procBot": -0.86,
+-     "errM": 0.088
+-    },
+-    {
+-     "at": -1.81,
+-     "refTop": 0.48,
+-     "refBot": -0.57,
+-     "procTop": 0.51,
+-     "procBot": -0.69,
+-     "errM": 0.082
++     "procTop": 0.84,
++     "procBot": -0.81,
++     "errM": 0.138
+     },
+     {
+-     "at": 1.81,
+-     "refTop": 0.11,
+-     "refBot": -0.57,
+-     "procTop": 0.08,
+-     "procBot": -0.69,
+-     "errM": 0.078
++     "at": -1.51,
++     "refTop": 0.52,
++     "refBot": -1.29,
++     "procTop": 0.33,
++     "procBot": -1.23,
++     "errM": 0.128
+     },
+     {
+      "at": 1.77,
+      "refTop": 0.12,
+      "refBot": -1.28,
+-     "procTop": 0.16,
+-     "procBot": -1.18,
+-     "errM": 0.074
++     "procTop": 0.21,
++     "procBot": -1.13,
++     "errM": 0.124
+     },
+     {
+      "at": -1.76,
+      "refTop": 0.5,
+      "refBot": -1.28,
+-     "procTop": 0.52,
+-     "procBot": -1.18,
+-     "errM": 0.06
++     "procTop": 0.57,
++     "procBot": -1.13,
++     "errM": 0.11
+     },
+     {
+      "at": 1.21,
+      "refTop": 0.55,
+      "refBot": -1.29,
+-     "procTop": 0.66,
+-     "procBot": -1.28,
+-     "errM": 0.058
++     "procTop": 0.71,
++     "procBot": -1.23,
++     "errM": 0.108
++    },
++    {
++     "at": -1.47,
++     "refTop": 0.52,
++     "refBot": -1.29,
++     "procTop": 0.37,
++     "procBot": -1.23,
++     "errM": 0.106
+     },
+     {
+      "at": -0.06,
+      "refTop": 0.61,
+      "refBot": -0.91,
+-     "procTop": 0.65,
+-     "procBot": -0.86,
+-     "errM": 0.052
++     "procTop": 0.7,
++     "procBot": -0.81,
++     "errM": 0.102
+     },
+     {
+      "at": -0.02,
+      "refTop": 0.61,
+      "refBot": -0.91,
+-     "procTop": 0.65,
+-     "procBot": -0.86,
+-     "errM": 0.052
+-    },
+-    {
+-     "at": 1.68,
+-     "refTop": 0.42,
+-     "refBot": -1.29,
+-     "procTop": 0.51,
+-     "procBot": -1.28,
+-     "errM": 0.05
++     "procTop": 0.7,
++     "procBot": -0.81,
++     "errM": 0.102
+     },
+     {
+      "at": 0.02,
+      "refTop": 0.62,
+      "refBot": -0.91,
+-     "procTop": 0.65,
+-     "procBot": -0.86,
+-     "errM": 0.048
++     "procTop": 0.7,
++     "procBot": -0.81,
++     "errM": 0.098
+     },
+     {
+      "at": -0.23,
+      "refTop": 1.16,
+      "refBot": -0.87,
+-     "procTop": 1.24,
+-     "procBot": -0.86,
+-     "errM": 0.046
++     "procTop": 1.29,
++     "procBot": -0.81,
++     "errM": 0.096
+     },
+     {
+      "at": 0.06,
+      "refTop": 0.62,
+      "refBot": -0.91,
+-     "procTop": 0.65,
+-     "procBot": -0.86,
+-     "errM": 0.046
++     "procTop": 0.7,
++     "procBot": -0.81,
++     "errM": 0.096
++    },
++    {
++     "at": 0.24,
++     "refTop": 0.59,
++     "refBot": -0.88,
++     "procTop": 0.72,
++     "procBot": -0.81,
++     "errM": 0.096
+     }
+    ]
+   }
+  },
+  "turretRows": {
+   "side": {
+-   "score": 81.15185749025684,
+-   "meanPct": 1.42,
+-   "p95Pct": 3.1,
++   "score": 77.45113207767741,
++   "meanPct": 1.69,
++   "p95Pct": 3.86,
+    "coverPct": 0,
+    "reg": {
+     "dAlong": 0,
+-    "dy": 0.002
++    "dy": 0.025
+    },
+    "worst": [
++    {
++     "at": 1.99,
++     "refTop": 1.08,
++     "refBot": 0.18,
++     "procTop": 1.25,
++     "procBot": 0.28,
++     "errM": 0.136
++    },
++    {
++     "at": 1.66,
++     "refTop": 0.64,
++     "refBot": 0.12,
++     "procTop": 0.67,
++     "procBot": 0.28,
++     "errM": 0.1
++    },
++    {
++     "at": 2.09,
++     "refTop": 0.58,
++     "refBot": 0.18,
++     "procTop": 0.67,
++     "procBot": 0.28,
++     "errM": 0.1
++    },
++    {
++     "at": 1.88,
++     "refTop": 0.96,
++     "refBot": 0.12,
++     "procTop": 0.99,
++     "procBot": 0.28,
++     "errM": 0.095
++    },
+     {
+      "at": 2.31,
+      "refTop": 0.44,
+      "refBot": 0.37,
+-     "procTop": 0.56,
+-     "procBot": 0.31,
++     "procTop": 0.58,
++     "procBot": 0.33,
+      "errM": 0.091
+     },
++    {
++     "at": 1.77,
++     "refTop": 0.8,
++     "refBot": 0.12,
++     "procTop": 0.79,
++     "procBot": 0.28,
++     "errM": 0.085
++    },
+     {
+      "at": -0.48,
+      "refTop": 0.35,
+      "refBot": 0.23,
+-     "procTop": 0.41,
+-     "procBot": 0.13,
++     "procTop": 0.43,
++     "procBot": 0.15,
+      "errM": 0.08
+     },
+     {
+      "at": 2.2,
+      "refTop": 0.57,
+      "refBot": 0.18,
+-     "procTop": 0.63,
+-     "procBot": 0.08,
++     "procTop": 0.65,
++     "procBot": 0.1,
+      "errM": 0.08
+     },
+-    {
+-     "at": 1.99,
+-     "refTop": 1.08,
+-     "refBot": 0.18,
+-     "procTop": 1.22,
+-     "procBot": 0.19,
+-     "errM": 0.077
+-    },
+-    {
+-     "at": -0.37,
+-     "refTop": 0.85,
+-     "refBot": 0.23,
+-     "procTop": 0.82,
+-     "procBot": 0.12,
+-     "errM": 0.068
+-    },
+     {
+      "at": -2.63,
+      "refTop": 0.35,
+      "refBot": 0.22,
+-     "procTop": 0.37,
+-     "procBot": 0.14,
++     "procTop": 0.39,
++     "procBot": 0.16,
+      "errM": 0.05
+     },
+     {
+      "at": -2.2,
+      "refTop": 0.35,
+      "refBot": 0.24,
+-     "procTop": 0.36,
+-     "procBot": 0.15,
+-     "errM": 0.05
+-    },
+-    {
+-     "at": 1.45,
+-     "refTop": 0.67,
+-     "refBot": 0.12,
+-     "procTop": 0.64,
+-     "procBot": 0.19,
++     "procTop": 0.38,
++     "procBot": 0.17,
+      "errM": 0.05
+     },
+-    {
+-     "at": 1.77,
+-     "refTop": 0.8,
+-     "refBot": 0.12,
+-     "procTop": 0.77,
+-     "procBot": 0.19,
+-     "errM": 0.05
+-    },
+-    {
+-     "at": -0.05,
+-     "refTop": 0.88,
+-     "refBot": 0.18,
+-     "procTop": 0.85,
+-     "procBot": 0.11,
+-     "errM": 0.048
+-    },
+-    {
+-     "at": 1.34,
+-     "refTop": 0.67,
+-     "refBot": 0.12,
+-     "procTop": 0.69,
+-     "procBot": 0.19,
+-     "errM": 0.047
+-    },
+     {
+      "at": -2.52,
+      "refTop": 0.36,
+      "refBot": 0.22,
+-     "procTop": 0.37,
+-     "procBot": 0.14,
++     "procTop": 0.39,
++     "procBot": 0.16,
++     "errM": 0.045
++    },
++    {
++     "at": -2.09,
++     "refTop": 0.35,
++     "refBot": 0.24,
++     "procTop": 0.38,
++     "procBot": 0.18,
+      "errM": 0.045
+     }
+    ]
+@@ -897,12 +897,12 @@
+   {
+    "i": 3,
+    "wPct": 0,
+-   "topPct": 4.35
++   "topPct": 0.21
+   },
+   {
+    "i": 4,
+    "wPct": 0.44,
+-   "topPct": 0.41
++   "topPct": 5.01
+   },
+   {
+    "i": 5,
+diff --git a/src/engine/sky.js b/src/engine/sky.js
+index 1c5c64e..b561581 100644
+--- a/src/engine/sky.js
++++ b/src/engine/sky.js
+@@ -904,10 +904,12 @@ export function createSky(scene, renderer) {
+     tex.anisotropy = CLOUD_ANISOTROPY;
+     return tex;
+   };
+-  let cloudsBaked = false;
++  // perf-r5c: per-deck flags — the chunked twin bakes one deck per tick and
++  // a mid-chunk SYNC call (world activation is a finish-now guarantee) still
++  // bakes exactly the remainder.
++  let cirrusBaked = false;
++  let cumulusBaked = false;
+   const ensureCloudTextures = () => {
+-    if (cloudsBaked) return;
+-    cloudsBaked = true;
+     const swap = (deck, baked) => {
+       const tex = deck.material.uniforms.uMap.value;
+       // dispose BEFORE the image swap (same fix as particles.js sprite
+@@ -921,8 +923,21 @@ export function createSky(scene, renderer) {
+       tex.needsUpdate = true;
+       baked.dispose(); // wrapper never uploaded — frees only CPU-side state
+     };
+-    swap(cloudsFar, makeCirrusTexture());
+-    swap(clouds, makeCloudTexture());
++    if (!cirrusBaked) { cirrusBaked = true; swap(cloudsFar, makeCirrusTexture()); }
++    if (!cumulusBaked) { cumulusBaked = true; swap(clouds, makeCloudTexture()); }
++  };
++  /** perf-r5c: one ~350-600 ms fbm deck bake per tick (loading-bar path). */
++  const ensureCloudTexturesChunked = async (tick) => {
++    if (!cirrusBaked) {
++      cirrusBaked = true;
++      swap(cloudsFar, makeCirrusTexture());
++      if (tick) await tick();
++    }
++    if (!cumulusBaked) {
++      cumulusBaked = true;
++      swap(clouds, makeCloudTexture());
++      if (tick) await tick();
++    }
+   };
+   const cloudsFar = mkCloudDeck(
+     lazyCloudTex(), CIRRUS_ALT, CIRRUS_UV_METERS, CLOUD_LAYER2_OPACITY,
+@@ -1027,6 +1042,7 @@ export function createSky(scene, renderer) {
+      * main.js runs it on first world activation and from post-ready idle.
+      */
+     ensureCloudTextures,
++    ensureCloudTexturesChunked,
+ 
+     /**
+      * Bake the procedural sky into a PMREM environment map and install it as
+diff --git a/src/main.js b/src/main.js
+index 7bf5586..15784df 100644
+--- a/src/main.js
++++ b/src/main.js
+@@ -996,6 +996,35 @@ async function ensureWorld(mapId, onProgress = null) {
+   // collider build, sky re-key) used to fuse into one ~1.6 s task — give the
+   // loading bar a painted frame between them.
+   await nextFrame();
++  // perf-r5c (retina probe): activateWorld's minimap capture was the FIRST
++  // render touching the fresh world's programs — 55 links resolved in that
++  // one slice (630 ms). Submit the compiles now, let the parallel linker
++  // breathe, and bake the cloud decks one-per-frame; the capture then binds
++  // ready programs and baked clouds.
++  try { renderer.compile(next.group, camera, scene); } catch (_) { /* warm only */ }
++  for (const _ of linkerBreathingSlices(40)) await nextFrame();
++  // shadow-depth variants never build through compile() (r2d note) and the
++  // render that submits them also BINDS them — one full render resolved ~59
++  // links in a single slice (3 s under heavy host load). Render the world in
++  // SUBSETS instead (terrain -> +vegetation -> +props): each slice submits
++  // and resolves roughly a third, with linker breathing between.
++  {
++    const kids = next.group.children.slice();
++    for (let sub = 0; sub < kids.length; sub++) {
++      const hidden = [];
++      for (let j = sub + 1; j < kids.length; j++) {
++        if (kids[j].visible) { kids[j].visible = false; hidden.push(kids[j]); }
++      }
++      try {
++        if (lighting && lighting.updateFrustums) lighting.updateFrustums();
++        warmRender();
++      } catch (_) { /* warm only */ }
++      for (const o of hidden) o.visible = true;
++      for (const _ of linkerBreathingSlices(40)) await nextFrame();
++      await nextFrame();
++    }
++  }
++  if (sky.ensureCloudTexturesChunked) await sky.ensureCloudTexturesChunked(() => nextFrame());
+   if (world !== next || worldDormant) activateWorld(next);
+   return world;
+ }
+@@ -1836,7 +1865,7 @@ async function startBattleLoading(specId, mapId = null) {
+     if (glbTanks.length) {
+       const loader = await import('./vehicles/modelLoader.js').catch(() => null);
+       if (loader && loader.hasPendingSwap) {
+-        const deadline = performance.now() + 8000;
++        const deadline = performance.now() + 15000; // perf-r5c: typical broadband finishes the roster; countdown stragglers shrink
+         for (;;) {
+           const pending = glbTanks.filter(
+             (e) => !e.visual || loader.hasPendingSwap(e.visual.root),
+@@ -3682,6 +3711,13 @@ function* warmCombatPipelineSteps() {
+         _v2.set(0, 0, 1);
+         try { fx.armorScar(e.visual, _v1, _v2, 100); } catch (_) { /* warm only */ }
+       }
++      // perf-r5c (owner: first shot still blips): the volley used to be
++      // cleared WITHOUT ever rendering a frame — the fx materials' pipelines
++      // (blending/depth state against the live targets) still bound for the
++      // first time on the player's first real muzzle flash. One quarter-
++      // viewport frame with the volley alive warms them for real.
++      try { fx.update(0.016, game.shells, camera); } catch (_) { /* warm only */ }
++      warmRender();
+     } catch (err) {
+       console.warn('[warm] fx volley failed (continuing):', err);
+     }
+@@ -3720,6 +3756,46 @@ function* warmCombatPipelineSteps() {
+  * and again after the GLB swap drain (swapped hierarchies carry their own
+  * materials and addon nodes).
+  */
++// perf-r5c: warm renders only need to TOUCH programs/textures — full-frame
++// rasterization at retina scale made each one a 400-730 ms slice. A quarter
++// viewport cuts the fragment bill ~16x while binding the same pipelines.
++const _warmVp = new THREE.Vector4();
++function warmRender() {
++  renderer.getViewport(_warmVp);
++  const sz = renderer.getSize(_v2gp || (_v2gp = new THREE.Vector2()));
++  renderer.setViewport(0, 0, Math.max(8, sz.x * 0.25), Math.max(8, sz.y * 0.25));
++  try { renderer.render(scene, camera); } finally {
++    renderer.setViewport(_warmVp);
++  }
++}
++let _v2gp = null;
++
++let _linkExtMain;
++function* linkerBreathingSlices(maxSlices) {
++  try {
++    const gl = renderer.getContext();
++    if (_linkExtMain === undefined) {
++      _linkExtMain = gl.getExtension('KHR_parallel_shader_compile') || null;
++    }
++    if (!_linkExtMain) return;
++    let cursor = 0;
++    for (let i = 0; i < maxSlices; i++) {
++      const progs = renderer.info.programs || [];
++      let pending = false;
++      for (; cursor < progs.length; cursor++) {
++        const pr = progs[cursor];
++        if (pr && pr.program
++          && gl.getProgramParameter(pr.program, _linkExtMain.COMPLETION_STATUS_KHR) === false) {
++          pending = true;
++          break;
++        }
++      }
++      if (!pending) return;
++      yield;
++    }
++  } catch (_) { /* best-effort — the render below still resolves links */ }
++}
++
+ function compileHiddenVariants() {
+   const g = compileHiddenVariantsSteps();
+   let r = g.next();
+@@ -3763,6 +3839,12 @@ function* compileHiddenVariantsSteps() {
+   if (world && world.group) {
+     try { renderer.compile(world.group, camera, scene); } catch (_) { /* warm only */ }
+     yield;
++    // perf-r5c (retina probe: one slice resolved 55 links at once, 653 ms):
++    // give the driver's parallel linker breathing slices before any warm
++    // render binds the new programs. Local KHR poll (modelLoader stays a
++    // dynamic import — perf-budget rule) with an early-exit cursor, bounded
++    // so a linker that never reports done cannot stall the warm.
++    yield* linkerBreathingSlices(40);
+   }
+   // perf-r2d: renderer.compile() never builds SHADOW-PASS depth programs —
+   // they link the first time a mesh's material class actually renders into a
+@@ -3791,7 +3873,7 @@ function* compileHiddenVariantsSteps() {
+     try {
+       collectFlips();
+       if (lighting && lighting.updateFrustums) lighting.updateFrustums();
+-      renderer.render(scene, camera);
++      warmRender();
+       unflip();
+     } catch (_) { unflip(); }
+     yield;
+@@ -3806,7 +3888,7 @@ function* compileHiddenVariantsSteps() {
+         camera.fov = f;
+         camera.updateProjectionMatrix();
+         if (lighting && lighting.updateFrustums) lighting.updateFrustums();
+-        renderer.render(scene, camera);
++        warmRender();
+         camera.fov = fov0;
+         camera.updateProjectionMatrix();
+         unflip();
+@@ -3829,7 +3911,7 @@ function* compileHiddenVariantsSteps() {
+         camera.lookAt(_v2);
+         if (world && world.update) world.update(0.016, camera.position, null, null);
+         if (lighting && lighting.updateFrustums) lighting.updateFrustums();
+-        renderer.render(scene, camera);
++        warmRender();
+         camera.position.copy(camPos0);
+         camera.quaternion.copy(camQuat0);
+         if (world && world.update) world.update(0, camera.position, null, null);
+diff --git a/src/vehicles/modern3.js b/src/vehicles/modern3.js
+index 83f36ce..e7131dc 100644
+--- a/src/vehicles/modern3.js
++++ b/src/vehicles/modern3.js
+@@ -1410,6 +1410,44 @@ function buildBradley(P) {
+   P.add('hull', box(2.60, 0.39, 0.078), 0, 1.065, 3.229);                       // (r3c: face to 3.268 — the plate
+                                                                                 //   fell 8 mm short of the 3.27 side
+                                                                                 //   column and reg drifted to -0.036)
++  // ---- §B2 NO-AIR BOW CLOSURE (owner order 2026-08-07, AFV under-glacis
++  // round): the glacis stack hung over an OPEN bow cavity — from front-low
++  // the camera read the frustums' bare undersides through the belly slot
++  // (tub front 2.375 -> lower-bow rear 2.94), and the bow corners carried
++  // see-through windows under the lower glacis side edges (probe clusters
++  // +-1.39/1.03 front-low 284 px, -0.25/1.04 right-low 406 px). The real
++  // M2's hull bottom runs to the lower bow plate and its flank armor
++  // closes to the 0.876 ODS-hanger floor (the instrumented r4 ref line:
++  // its 1.495/1.534 front cols bottom 0.876; flank floor x 1.35..1.46).
++  // Pan +-0.945 stays 3.5 cm inside the 0.98 band inner face (§B4
++  // channel-pan class) and laps tub bottom (0.45) + lower-bow rect (0.42).
++  // Corner walls: outer face 1.415 under the +-1.42 glacis rect; inner
++  // face slopes 1.345 (3 cm off the 1.315 band outer face) -> 1.30 riding
++  // 3 cm over the 1.068 shoe-stack top (§B4); top chord sunk into the
++  // lower-glacis underside; bottom at the ref's own 0.876 — front rows
++  // stay top/bottom-neutral (cols already bottom 0.88 via the flap).
++  P.add('hull', box(1.89, 0.08, 0.60), 0, 0.48, 2.66);                          // belly pan y 0.44..0.52, z 2.36..2.96
++                                                                                //   (bottom 1 cm ABOVE the lower-bow
++                                                                                //   0.42 rect: the first 0.39 pan
++                                                                                //   read 2 cm under it in the front
++                                                                                //   mask — 25 center cols dropped +
++                                                                                //   reg dy walked 8 mm, front_hull
++                                                                                //   -2.3; behind the bow's own line
++                                                                                //   the pan is mask-invisible)
++  for (const s of [-1, 1]) {
++    const m = (x) => (s < 0 ? -x : x);
++    P.add('hull', orientedSlab(
++      [m(1.345), 0.876, 2.94], [m(1.415), 0.876, 2.94], [m(1.415), 0.876, 2.50], [m(1.345), 0.876, 2.50],
++      [m(1.30), 1.30, 2.94], [m(1.415), 1.30, 2.94], [m(1.415), 1.50, 2.50], [m(1.30), 1.50, 2.50]));
++    // forward extension to the flap plane (z 2.94..3.13, flat 1.30 top under
++    // the bow corner slab band 1.24..1.36): the 2.94..3.14 slot mouth was a
++    // FrontSide through-tunnel (rays tunnelled the cavity and exited the far
++    // flank's backfaces — right-low 333 px window). z 3.13 IS the ref's own
++    // +-1.44 plan-col top; x-max 1.415 stays out of the 1.423 col bound.
++    P.add('hull', orientedSlab(
++      [m(1.345), 0.876, 3.13], [m(1.415), 0.876, 3.13], [m(1.415), 0.876, 2.94], [m(1.345), 0.876, 2.94],
++      [m(1.345), 1.30, 3.13], [m(1.415), 1.30, 3.13], [m(1.415), 1.30, 2.94], [m(1.345), 1.30, 2.94]));
++  }
+   // driver hatch front-LEFT on the plateau + periscope row (§6.5)
+   P.add('hull', box(0.62, 0.075, 0.62), -0.85, 1.5325, 2.56, -0.14, 0, 0);      // hatch plinth (r3: -0.03 — the ref
+   P.add('hullDark', box(0.56, 0.02, 0.54), -0.85, 1.5675, 2.55, -0.14, 0, 0);   //   plateau reads 1.56-1.58 flat)
+@@ -1541,8 +1579,15 @@ function buildBradley(P) {
+                                                                                 //   its missing 3.12 read (ref
+                                                                                 //   3.126, flares alone 3.02). The
+                                                                                 //   -1.55 seam already feeds st3.
+-    for (const zc of (s > 0 ? [-2.4, -1.10, -0.70, 0.8, 2.1]
++    for (const zc of (s > 0 ? [-2.4, -1.10, -0.70, 0.8, 2.1, 2.62]
+       : [-1.65, -1.10, -0.70, 0.8])) {                                          // (r4f left -2.4 -> -1.65: st3 read
++                                                                                //   no-air round: right zc 2.62 —
++                                                                                //   the ref's ODS hanger row runs to
++                                                                                //   the bow (its 0.876 flank floor);
++                                                                                //   caps 2.47/2.77 inside st13, face
++                                                                                //   1.535 under the skirt's 1.6455
++                                                                                //   width — closes the right-low
++                                                                                //   333 px corner window lane
+                                                                                 //   r4m2: -0.70 pair added — st5
+                                                                                 //   collapsed to 2.89-wide with NO
+                                                                                 //   vote (ref 3.046); the -0.70
+@@ -1591,6 +1636,35 @@ function buildBradley(P) {
+     // the plan x ±1.44-1.51 columns with its z 3.18 front (the ref's flank
+     // there ends 2.97); the guard proper stays inside ±1.42.
+     P.add('hull', box(0.34, 0.045, 0.72), s * 1.25, 1.05, 2.82);
++    if (s > 0) P.add('hull', box(0.10, 0.045, 0.24), 1.47, 1.05, 2.80);         // no-air round: fender bridge to
++                                                                                //   the skirt lane (x 1.42..1.52,
++                                                                                //   z 2.68..2.92 — inside the ref's
++                                                                                //   own x 1.44-1.51 plan band that
++                                                                                //   ends 2.97; §C: caps 109+ mm off
++                                                                                //   the 2.811 slice boundary)
++    if (s > 0) P.add('hull', box(0.16, 0.035, 0.24), 1.495, 1.1125, 2.40);      // no-air round: fender tail over
++                                                                                //   the skirt lane (x 1.415..1.575,
++                                                                                //   y 1.095..1.13 laps the flare
++                                                                                //   bottom line; z 2.28..2.52 laps
++                                                                                //   the flare front) — the rail +
++                                                                                //   bracket + bridge enclosed the
++                                                                                //   plan chimney at (1.5, 2.41):
++                                                                                //   the real fender covers it from
++                                                                                //   above; §B2 top-down cell -> 0.
++                                                                                //   Interior to front/side rows
++                                                                                //   (appliqué band + skirt carry
++                                                                                //   those cols' tops/bottoms)
++    if (s > 0) P.add('hull', box(0.055, 0.19, 0.60), 1.4425, 0.9705, 2.60);     // no-air round: skirt-mount rail
++                                                                                //   segment x 1.415..1.47, bottom
++                                                                                //   0.876 = the ref's own hanger
++                                                                                //   floor — blocks the 3.5 cm front
++                                                                                //   through-tunnel inboard of the
++                                                                                //   hanger row (139 px front-low;
++                                                                                //   raypick: sky lane ran UNDER the
++                                                                                //   first 0.955 bottom); row-true:
++                                                                                //   ref 1.44-1.47 cols bottom 0.876
++                                                                                //   top 1.79; §B4 10 cm off the
++                                                                                //   1.31 pin-cap reach
+     if (s > 0) P.add('hull', box(0.075, 0.045, 0.48), 1.5625, 1.05, 2.70);      // st12 cap tab (right; y 1.05:
+                                                                                 //   r4i: x 1.525..1.60 — BOTH jobs:
+                                                                                 //   st12's 1.60 width read AND the
+@@ -1611,9 +1685,13 @@ function buildBradley(P) {
+                                                                                 //   top 0.975 (§B4)
+                                                                                 //   (x to -1.50, lapped onto the
+                                                                                 //   guard so it cannot float)
+-    P.add('hullRubber', box(0.30, 0.15, 0.04), s * 1.25, 0.955, 3.16);          // flap 0.88..1.03 (r4: the 0.71
++    P.add('hullRubber', box(0.34, 0.15, 0.04), s * 1.25, 0.955, 3.16);          // flap 0.88..1.03 (r4: the 0.71
+                                                                                 //   bottom under-ran the ref's
+-                                                                                //   0.876 flank floor at ±1.35-1.40)
++                                                                                //   0.876 flank floor at ±1.35-1.40;
++                                                                                //   no-air round: x 1.40 -> 1.42 —
++                                                                                //   matches the mudguard edge, kills
++                                                                                //   the 2 cm front sliver onto the
++                                                                                //   new corner wall)
+     if (s > 0) P.add('hull', box(0.34, 0.045, 0.55), 1.25, 1.16, -2.95);        // clear of the 1.09 wrap apex (§B4)
+     else P.add('hull', box(0.32, 0.045, 0.55), -1.245, 1.16, -2.95);            //   (r4i left: edge -1.42 -> -1.405
+                                                                                 //   — its 1 mm AA sliver fed the
+@@ -2071,6 +2149,43 @@ function buildBMP2(P) {
+       [-1.13, 1.28, 3.26], [-1.00, 1.28, 3.26], [-1.00, 1.40, 2.97], [-1.51, 1.24, 2.97],
+     ), 0, 0, 0);
+   }
++  // ---- §B2 NO-AIR BOW CLOSURE (owner order 2026-08-07, AFV under-glacis
++  // round): the boat bow was three floating planes — from low side/quarter
++  // views the whole triangle between the glacis underside, prow plane A and
++  // the tub front read as a see-through cave (probe: 1301/1702 enclosed px
++  // per side-low view, clusters y 1.37/1.22/0.36 over z 2.1..2.4), and a
++  // belly slot z 1.756..2.136 opened the cavity from below. The real BMP-2
++  // boat bow is CLOSED: side plates run from the sponson line forward to
++  // the nose (ref covered-run line (1.63,0.066)->(3.06,1.036); ref side
++  // bottoms read 0.25..0.39 over this z — the proc's 0.675 skirt bottom was
++  // the SHORT read, so closure moves side rows TOWARD the ref). All pieces
++  // interior to front/plan masks: plates at x 0.92..0.98 hide behind plane
++  // A/B (+-0.98..1.055) and under the glacis (+-1.06 min); pan +-0.98 rides
++  // behind plane A's own bottom rect. Edge lines are sunk 12-40 mm INTO the
++  // neighbour solids (frustum faces are planar at constant x — straight
++  // chords stay interior, merkava roofSolid mechanism). §B4: band inner
++  // face 1.055 — plates clear by 7.5 cm, pan by 7.5 cm; the sprocket wrap
++  // (z 1.99..2.52 at x 1.055..1.355) is outboard of every piece.
++  P.add('hull', box(1.96, 0.06, 0.56), 0, 0.39, 1.98);                          // belly pan: tub front -> plane A
++                                                                                //   bottom rect (y 0.36..0.42,
++                                                                                //   z 1.70..2.26, both seams lapped)
++  for (const s of [-1, 1]) {
++    const m = (x) => (s < 0 ? -x : x);
++    // S1 rear plate: inside the tub/crest-shoulder overlap band
++    P.add('hull', orientedSlab(
++      [m(0.92), 0.38, 1.90], [m(0.98), 0.38, 1.90], [m(0.98), 0.38, 1.72], [m(0.92), 0.38, 1.72],
++      [m(0.92), 1.518, 1.90], [m(0.98), 1.518, 1.90], [m(0.98), 1.518, 1.72], [m(0.92), 1.518, 1.72]));
++    // S2: crest-to-mid — top chord parallel to the glacis underside (+14 mm)
++    P.add('hull', orientedSlab(
++      [m(0.92), 0.38, 2.16], [m(0.98), 0.38, 2.16], [m(0.98), 0.38, 1.90], [m(0.92), 0.38, 1.90],
++      [m(0.92), 1.470, 2.16], [m(0.98), 1.470, 2.16], [m(0.98), 1.527, 1.90], [m(0.92), 1.527, 1.90]));
++    // S3: mid-to-nose — top chord under the glacis, bottom chord riding
++    // INSIDE prow plane A (rear-face line -0.03); front edge tucks into the
++    // glacis nose-plate band at z 2.94
++    P.add('hull', orientedSlab(
++      [m(0.92), 0.92, 2.94], [m(0.98), 0.92, 2.94], [m(0.98), 0.386, 2.16], [m(0.92), 0.386, 2.16],
++      [m(0.92), 1.298, 2.94], [m(0.98), 1.298, 2.94], [m(0.98), 1.470, 2.16], [m(0.92), 1.470, 2.16]));
++  }
+   // wave-breaker ribs on the glacis plane (ref sawtooth peaks +0.03)
+   P.add('hullDetail', box(2.00, 0.026, 0.065), 0, 1.553, 2.026, -0.22, 0, 0);
+   P.add('hullDetail', box(2.00, 0.026, 0.065), 0, 1.50, 2.19, -0.22, 0, 0);
+@@ -2552,6 +2667,36 @@ function buildPuma(P) {
+       [m(1.26), 1.44, 3.58], [m(1.42), 1.46, 3.42], [m(1.66), 1.64, 1.41], [m(1.42), 1.92, 1.63],
+       [m(1.18), 1.48, 3.56], [m(1.34), 1.50, 3.40], [m(1.58), 1.68, 1.43], [m(1.34), 1.96, 1.63]));
+   }
++  // ---- §B2 NO-AIR NOSE CLOSURE (owner order 2026-08-07, AFV under-glacis
++  // round, secondary check — class PRESENT): the bow plane hung over an
++  // open nose volume — side-low views read THROUGH under the plane's side
++  // edge, over the wrap front, out the far side (probe: 485/494 px windows
++  // at z 3.07 / y 1.41 per side; the nose-wedge top 1.30 vs plane underside
++  // ~1.44-1.54 left the interior slot the windows aligned with). The print
++  // is closed there: its side line sweeps unbroken to the nose lip
++  // (3.72,1.40) with the belly line rising to 1.23 at the nose. Inner
++  // walls continue the +-1.00 tub line under the plane (§B2 channel-pan:
++  // 3 cm inside the 1.03 band inner face; two z-segments so the top chords
++  // stay inside the plane wedge as it thins, bottoms riding the under-bow
++  // rise then the lower-bow body). Corner walls x 1.00..1.20 close the
++  // z 3.20..3.72 window — 3 cm clear of the wrap's z 3.17 reach (§B4),
++  // bottom on the face plate's own 1.00 line (the print's rising belly),
++  // top sunk into the plane; front tucks into the face-plate band, plan
++  // hides under the plane's +-1.26..1.33 nose taper.
++  for (const s of [-1, 1]) {
++    const m = (x) => (s < 0 ? -x : x);
++    // inner nose walls (tub-line continuation)
++    P.add('hull', orientedSlab(
++      [m(0.94), 0.50, 3.30], [m(1.00), 0.50, 3.30], [m(1.00), 0.64, 2.78], [m(0.94), 0.64, 2.78],
++      [m(0.94), 1.50, 3.30], [m(1.00), 1.50, 3.30], [m(1.00), 1.63, 2.78], [m(0.94), 1.63, 2.78]));
++    P.add('hull', orientedSlab(
++      [m(0.94), 0.68, 3.70], [m(1.00), 0.68, 3.70], [m(1.00), 0.75, 3.30], [m(0.94), 0.75, 3.30],
++      [m(0.94), 1.402, 3.70], [m(1.00), 1.402, 3.70], [m(1.00), 1.50, 3.30], [m(0.94), 1.50, 3.30]));
++    // bow corner walls (the see-through window closure)
++    P.add('hull', orientedSlab(
++      [m(1.00), 1.00, 3.72], [m(1.20), 1.00, 3.72], [m(1.20), 1.00, 3.20], [m(1.00), 1.00, 3.20],
++      [m(1.00), 1.40, 3.72], [m(1.20), 1.40, 3.72], [m(1.20), 1.52, 3.20], [m(1.00), 1.52, 3.20]));
++  }
+   // tow hooks on the face (plan 3.64@+-0.91 print -> 3.78; rings pulled
+   // inside the +-3.80 envelope, §B8 order 5)
+   for (const s of [-1, 1]) {
+diff --git a/src/vehicles/profiles/russia.js b/src/vehicles/profiles/russia.js
+index a20efb4..9b66aab 100644
+--- a/src/vehicles/profiles/russia.js
++++ b/src/vehicles/profiles/russia.js
+@@ -1129,7 +1129,13 @@ function buildT62MV1(P) {
+   const rings = [[1.30, -0.022], [1.34, 0.151], [1.325, 0.410], [1.22, 0.560], [0.97, 0.680], [0.62, 0.790], [0.30, 0.852], [0.02, 0.885]];
+   meshDome(P, rings, 0.74, 0, -0.30);
+   P.add('turret', cylY(0.68, 0.715, 0.74, 20), 0, -0.36, -0.05); // sunken race drum (ref 0.71 band z world 0.28..1.71)
+-  const pD = { rings, sz: 0.74, k1Y: 0.10, k1Pitch: 0.20, k1Out: -0.06, k1OutI: [0.03, 0.02, -0.06, -0.06, -0.06], k1N: 5, k1T0: 0.30, k1Step: 0.22, k1H: 0.20 };
++  // CHEV (§5.14 owner '<' order 2026-08-07): the MV's real fit carries the
++  // K-1 turret blocks in two angled banks beside the gun — bricks 0-2 bank
++  // at ~41deg from the brick-0 anchor (its k1OutI[0]=0.03 proud seat, the
++  // certified 2.03-2.16 inner staircase keeps its front extent); bricks
++  // 3-4 keep their arc seats (flank wrap to |x| 1.105). §B7 cap for the
++  // mid-arc tuck documented in the packet.
++  const pD = { rings, sz: 0.74, k1Y: 0.10, k1Pitch: 0.20, k1Out: -0.06, k1OutI: [0.03, 0.02, -0.06, -0.06, -0.06], k1N: 5, k1T0: 0.30, k1Step: 0.22, k1H: 0.20, k1Chevron: { yaw: 0.72, arcFrom: 3, pitch: 0.28, bw: 0.26, bd: 0.14, d0: 0.05 } };
+   eraRuCheeks(P, pD, 'k1');
+   // LEFT cheek raft (Luna shoulder bulge) — pulled aft to the ref's 1.84-1.95
+   // plan front staircase at |x| 0.88..1.17
+@@ -1389,12 +1395,21 @@ function buildT90AVladimir(P) {
+   // pano spike 2.60 @ -1.99 (thin). FUSED-GUN PRINT: axis ~1.55, my muzzle
+   // +4.775 for published overall. Orientation asserts: glacis +z / gun +z.
+   loftHull(P, {
+-    // rTAIL r13b: raised mid band LOWERED to 1.745 (ref front cols +0.71..
+-    // +0.75 read 1.70-1.74, -0.78..-0.86 read 1.754 — the 1.82 line is a
+-    // CENTER plateau only, authored as a box below) and the tail belly
+-    // dropped (ref side bots 0.831@-4.35 / 0.751@-4.03 / 0.778@-3.92 —
+-    // the r2 1.18@-4.31 read was the print's shadow-proxy line).
+-    deck: [[-4.755, 1.51], [-4.51, 1.655], [-4.29, 1.671], [-4.15, 1.50], [-3.85, 1.475], [-3.72, 1.51], [-3.05, 1.514], [-2.72, 1.66], [-2.55, 1.75], [-0.92, 1.745], [-0.86, 1.46], [0.36, 1.45], [0.77, 1.38], [1.68, 1.29]],
++    // rTAIL r13b: raised mid band 1.745 (ref front cols +0.71..+0.75 read
++    // 1.70-1.74, -0.78..-0.86 read 1.754) and the tail belly dropped (ref
++    // side bots 0.831@-4.35 / 0.751@-4.03 / 0.778@-3.92 — the r2 1.18@-4.31
++    // read was the print's shadow-proxy line).
++    // FUSE (owner order 2026-08-07, "the turret is literally fused with the
++    // hull"): the r13b raised band was the proc MIRRORING the print's
++    // hull-node turret bake (§E vlo-bake class — the ref RENDER shows a low
++    // deck + separate turret; only its polluted hull MASK carries the band;
++    // REF-RENDER OUTRANKS ROW ANALYSIS). Ring-zone deck drops to 1.50-1.51
++    // so the welded turret (base 1.48w) SITS ON the deck and the deck line
++    // breaks the side silhouette; a 1.655 stowage shoulder survives aft of
++    // the bustle swing (-2.62..-2.32, under the 1.70 ring-audit gate).
++    // OWNER-TASTE CAP (§B7): the ref's polluted band columns (side z
++    // -0.92..-2.3 ~1.7-1.75, front ±0.71..0.86) are not chased back.
++    deck: [[-4.755, 1.51], [-4.51, 1.655], [-4.29, 1.671], [-4.15, 1.50], [-3.85, 1.475], [-3.72, 1.51], [-3.05, 1.514], [-2.24, 1.51], [-0.92, 1.50], [-0.86, 1.46], [0.36, 1.45], [0.77, 1.38], [1.68, 1.29]],
+     // T5H-v: flat belly raised to the ref's own 0.404..0.447 front-view
+     // floor (15+ front cols read the 0.30 line 0.11-0.15 low; tracks own
+     // side bottoms, plan interior — same class as the t90sm belly fix).
+@@ -1448,26 +1463,42 @@ function buildT90AVladimir(P) {
+   P.add('hullDark', box(0.15, 0.13, 0.08), 0.85, 1.40, -4.67);           // jack block
+   P.add('hullDetail', box(0.10, 0.02, 0.06), 0.85, 1.475, -4.675);
+   ruDeck(P, { deckY: 1.46, hatchZ: 0.50, gz: -3.35, grilles: 5, gw: 1.5 });
+-  // rTAIL r13b: center 1.82 plateau over the lowered band (ref keeps 1.82
+-  // only near x 0) + the LEFT thin transverse frame the ref front reads at
+-  // 1.988 over x -0.51..-0.76 (z-thin like the ref's own — side raster
+-  // swallows it exactly as the ref side does).
+-  P.add('hull', box(0.80, 0.075, 1.70), 0, 1.7825, -1.80);
+-  P.add('hull', box(0.245, 0.185, 0.012), -0.6425, 1.8975, -1.52);
++  // FUSE (owner order 2026-08-07): the r13b center 1.82 plateau + the LEFT
++  // 1.988 transverse frame were ring-zone mirrors of the print's hull-node
++  // turret bake (§E vlo class) — DELETED with the band; their certified
++  // front/side columns are the packet's owner-taste cap.
++  // §K MEASURED RECEIPT (extract side_hull_96): ref deck fore of the ring
++  // reads 1.456-1.471 (my 1.46-1.50 plate = the measured continuation);
++  // the ref ring-zone hull band 1.79-1.85 over z -0.93..-2.72 is the
++  // print's baked stowage stack — the owner's fused-read order caps it.
++  // Aft of the bustle swing the stack is REAL rear-deck cargo: modeled as
++  // DISCRETE §B3 boxes on the 1.51 plate (lid seams + latch nubs), tops
++  // 1.70/1.64 (ref 1.82-1.85 there — residual documented), z -2.31..-2.66
++  // (bustle swing clears z >= -2.25).
++  for (const sB of [-1, 1]) {
++    P.add('hull', box(0.50, 0.19, 0.35), sB * 0.79, 1.605, -2.485);
++    P.add('hullDark', box(0.49, 0.005, 0.015), sB * 0.79, 1.694, -2.55);
++    P.add('hullDark', box(0.015, 0.032, 0.05), sB * 0.565, 1.672, -2.485);
++  }
++  P.add('hull', box(0.54, 0.13, 0.33), 0, 1.575, -2.475);
++  P.add('hullDark', box(0.53, 0.005, 0.014), 0, 1.635, -2.53);
+   // §B3.2 DENSITY (owner directive 2026-08-06): common kit FLUSH on the
+   // raised 1.745 mid-band (t84 flush-recess recipe — the hull mask is
+   // hull-only; certified front cols +0.71..+0.75 read 1.70-1.74 so nothing
+   // may ride proud of the plateau). Tail log skipped: the tail plateau
+   // 1.655-1.671 IS the loft top there — no visible lane (packet note).
+   {
+-    // spare track-link run flush right of the center plateau box
++    // spare track-link run flush on the ring-zone deck (FUSE re-seat: rides
++    // the new 1.50 deck under the bustle overhang — the t72b3m deck-pile
++    // class; top ~1.53 stays under the 1.70 ring-audit gate)
+     const links = FITTINGS.spareTrackLinks({ mats: P.mats, links: 4, width: 0.5, seed: 7 });
+-    links.position.set(0.62, 1.695, -1.60);
++    links.position.set(0.62, 1.455, -1.60);
+     P.hullG.add(links);
+-    // spare tow cable draped flush on the left band (tube tops <=1.738)
++    // spare tow cable draped flush on the new deck line (FUSE re-seat;
++    // tube tops <= the local 1.50-1.505 deck polyline)
+     const cable = FITTINGS.towCable({
+       mats: P.mats, eyes: false, r: 0.018,
+-      pts: [[-0.60, 1.722, -1.10], [-0.95, 1.712, -1.60], [-0.60, 1.722, -2.10]], seed: 5,
++      pts: [[-0.60, 1.478, -1.10], [-0.95, 1.468, -1.60], [-0.60, 1.478, -2.10]], seed: 5,
+     });
+     P.hullG.add(cable);
+   }
+@@ -1562,8 +1593,12 @@ function buildT90AVladimir(P) {
+   // it). Top 1.80 hides inside the 1.81 raised-deck side band.
+   // (r13c: stepped — ref front tops descend 1.786@1.643 / 1.712@1.685 /
+   // 1.69@1.728, the flat 1.80 top read 0.11 proud at the outer edge)
+-  P.add('hull', box(0.07, 0.25, 0.165), 1.635, 1.665, -1.185);
+-  P.add('hull', box(0.05, 0.16, 0.165), 1.695, 1.62, -1.185);
++  // (FUSE re-seat: with the ring-zone deck at 1.50 the bin pair dropped
++  // 0.095 to SIT on the fender-lip shelf (bottoms 1.445 on the 1.42-1.47
++  // lip at z -1.175) — the old 1.54 bottoms hovered over the lowered wall
++  // top, §B2 no-air; tops 1.695/1.605 also clear the 1.70 ring gate.)
++  P.add('hull', box(0.07, 0.25, 0.165), 1.635, 1.57, -1.185);
++  P.add('hull', box(0.05, 0.16, 0.165), 1.695, 1.525, -1.185);
+   ruSkirtBand(P, { x: 1.78, z0: -4.00, z1: 1.70, yTop: 1.30, yBot: 0.66, panels: 7 });
+   // K-5 heavy course (rTAIL r13 re-decode): the ref outer course band is
+   // TALLER and REARWARD of the r12 seat — AddOnWheel verts at x 1.82..1.89
+@@ -1606,12 +1641,33 @@ function buildT90AVladimir(P) {
+   // t90sm-class angular plan: nose face, one cheek facet per side, straight
+   // walls, clipped rear corners, flat rear. Bins/rails own the plan rear
+   // cols outboard/center, so the tighter rear is mask-free.)
+-  P.add('turret', polyTurret([
++  const wedgeOutline = [
+     [-0.22, 1.00], [0.22, 1.00],
+     [1.10, 0.48], [1.44, 0.02], [1.40, -0.55],
+     [1.02, -0.82], [-1.02, -0.82],
+     [-1.40, -0.55], [-1.44, 0.02], [-1.10, 0.48],
+-  ], 0.415, 1.0, 0.78), 0, -0.02, 0);
++  ];
++  P.add('turret', polyTurret(wedgeOutline, 0.415, 1.0, 0.78), 0, -0.02, 0);
++  // FUSE §K MEASURED COLLAR: the print's own turret bottom line reads 1.41w
++  // FLAT across the ring zone (extract side_turret_96, z -0.06..-1.83) —
++  // a real casting collar drops the prism base to the measured line
++  // (1.405..1.48w, walls 1% inset). It also seats the turret at every yaw
++  // (over the 1.45 fore-deck the bare 1.48 base floated 3cm, §B2).
++  P.add('turret', polyTurret(wedgeOutline, 0.075, 0.99, 1.0), 0, -0.095, 0);
++  // FUSE (owner order 2026-08-07) RING-GAP SHADOW BAND: the §C shadow-named
++  // device (muzzleBore pattern — renders in game/critic, excluded from
++  // every mask + framing recipe): a dark seam ring hugging the prism base
++  // (1.48..1.585w, walls 1.2% proud) draws the turret-over-hull separation
++  // line the owner ordered; parented to rig_turret (the turret casts it).
++  {
++    const g = polyTurret(wedgeOutline, 0.105, 1.012, 1.012);
++    const band = new THREE.Mesh(g, P.mats.shadow);
++    band.name = 'turretRingGapShadowBand';
++    band.position.set(0, -0.02, 0);
++    band.castShadow = false;
++    band.receiveShadow = true;
++    P.turretG.add(band);
++  }
+   // family crown plate at the certified apex line (front-center cols
+   // 1.892-1.914 ref; the narrow plateau reads over the prism roof)
+   P.add('turret', box(1.05, 0.04, 0.72), 0, 0.415, -0.06);
+@@ -1758,11 +1814,18 @@ function buildT90AVladimir(P) {
+   // loses its bulk — heights cut (bottoms rise off the ring shoulder) and
+   // fronts retreat under the dome plan cover, so the cast crown reads
+   // around the kit instead of walled in. Inner deep runs stay (tier 1).
+-  P.add('turret', box(0.30, 0.44, 0.86), -0.50, 0.20, -1.01);  // T3V-b2: inner deep run rear -2.19w (ref -2.15..-2.26 @ -0.58..-0.68)
++  // FUSE (owner order 2026-08-07): the deep-bin BOTTOMS rise 1.48 -> 1.60w
++  // (tops + rears byte-held, the T4V rim-thin law) — with the ring-zone
++  // deck at 1.50 the old bottoms met the deck line and the bustle read as
++  // one wall; the 10cm under-bustle daylight is the §B2 legal
++  // turret-overhang air (bins stay cantilevered off the prism rear — their
++  // front 0.24 embeds in it), and the side_turret bottoms move TOWARD the
++  // ref's own 1.7-class bin band.
++  P.add('turret', box(0.30, 0.37, 0.86), -0.50, 0.235, -1.01);  // T3V-b2: inner deep run rear -2.19w (ref -2.15..-2.26 @ -0.58..-0.68)
+   P.add('turret', box(0.26, 0.30, 0.42), -0.83, 0.27, -0.87);   // outer shallow rear -1.83w (ref -1.793 @ -0.9); T4V thinned
+-  P.add('turretDark', box(0.26, 0.36, 0.03), -0.50, 0.20, -1.455);
++  P.add('turretDark', box(0.26, 0.30, 0.03), -0.50, 0.23, -1.455);
+   P.add('turretDark', box(0.28, 0.016, 0.80), -0.50, 0.425, -1.01);  // T4V: deep-bin lid seam (§B3 bin identity)
+-  P.add('turret', box(0.40, 0.44, 0.62), 0.40, 0.215, -1.05);  // T3V-b2: inner deep rear -2.11w (ref -2.18 @ 0.6)
++  P.add('turret', box(0.40, 0.38, 0.62), 0.40, 0.245, -1.05);  // T3V-b2: inner deep rear -2.11w (ref -2.18 @ 0.6)
+   P.add('turretDark', box(0.38, 0.016, 0.56), 0.40, 0.44, -1.05);    // T4V: lid seam
+   P.add('turret', box(0.30, 0.30, 0.44), 0.75, 0.285, -0.89);   // outer rear -1.86w (ref -1.86..-1.94 @ 0.82-0.93); T4V thinned
+   for (const s2 of [-1, 1]) P.add('turret', box(0.14, 0.20, 0.26), s2 * 0.97, 0.25, -0.74);  // T4V thinned (tops/rears held)
+@@ -2041,13 +2104,20 @@ function buildT64BV1(P) {
+   // face line and gain the K-1 cassette grammar — dark seam grid + rim
+   // rails <=4 mm proud, strictly inside each plate's outline (mask-neutral
+   // by construction; gate HOLD proven 73.4 exact pre-revert).
++  // CHEV (§5.14 owner '<' order 2026-08-07): the real T-64BV wears its K-1
++  // cheek walls as the classic arrow — the two wing plates re-yaw from the
++  // r-round's near-flat 0.24/0.10 seats to one continuous ~0.62 sweep per
++  // side: inner plate's front tip meets the gun root (0.36, 1.25), outer
++  // plate continues the same line and keeps the certified flank rear end
++  // (~1.11, 0.21). Tile grammar rides the new yaws. §B7 cap vs the print's
++  // flatter seats documented in the packet.
+   for (const s of [-1, 1]) {
+-    P.add('turretTrack', box(0.10, 0.49, 0.70), s * 0.99, 0.27, 0.55, -0.15, s * -0.24, 0);
+-    P.add('turretTrack', box(0.09, 0.42, 0.58), s * 0.78, 0.29, 0.88, -0.18, s * -0.10, 0);
+-    eraTileFace(P, { w: 0.10, h: 0.49, d: 0.70, x: s * 0.99, y: 0.27, z: 0.55,
+-      rx: -0.15, ry: s * -0.24, sx: s, rows: 2, cols: 3, seam: 0.018 });
+-    eraTileFace(P, { w: 0.09, h: 0.42, d: 0.58, x: s * 0.78, y: 0.29, z: 0.88,
+-      rx: -0.18, ry: s * -0.10, sx: s, rows: 2, cols: 2, seam: 0.018 });
++    P.add('turretTrack', box(0.10, 0.49, 0.70), s * 0.903, 0.27, 0.495, -0.15, s * -0.62, 0);
++    P.add('turretTrack', box(0.09, 0.42, 0.58), s * 0.528, 0.29, 1.014, -0.18, s * -0.62, 0);
++    eraTileFace(P, { w: 0.10, h: 0.49, d: 0.70, x: s * 0.903, y: 0.27, z: 0.495,
++      rx: -0.15, ry: s * -0.62, sx: s, rows: 2, cols: 3, seam: 0.018 });
++    eraTileFace(P, { w: 0.09, h: 0.42, d: 0.58, x: s * 0.528, y: 0.29, z: 1.014,
++      rx: -0.18, ry: s * -0.62, sx: s, rows: 2, cols: 2, seam: 0.018 });
+   }
+   // LEFT roof gallery (rTAIL r13 full-profile re-decode): the ref roof
+   // UNDULATES — 2.183 plateau over world -1.73..-1.11 ONLY, then a 2.105
+@@ -3516,10 +3586,16 @@ function buildT80Line(P, v) {
+     // T-80B brow: forward shelf + spread applique tiles (t80b ref plan
+     // front reads 1.74 out to |x| 0.8, 1.43-1.56 to 1.15) + 902 tubes left
+     P.add('turret', box(0.50, 0.20, 0.30), -0.86, 0.32, 1.24, 0, -0.50, 0);
++    // CHEV (§5.14 owner '<' order 2026-08-07): the spread applique tiles
++    // re-line onto two straight banks sweeping back from the gun center
++    // (~41deg; the r26 arc read 1.74->1.32 was a 17deg fringe). Same tile
++    // grammar + count; a thin dark backer frame bridges each bank to the
++    // dome (§B2). §B7 cap vs the print's shallow staircase documented.
+     for (const s of [-1, 1]) {
+-      P.add('turretTrack', box(0.30, 0.16, 0.12), s * 0.40, 0.30, 1.52, -0.20, s * 0.35, 0);
+-      P.add('turretTrack', box(0.30, 0.16, 0.12), s * 0.74, 0.28, 1.46, -0.20, s * 0.35, 0);
+-      P.add('turretTrack', box(0.30, 0.16, 0.12), s * 1.06, 0.26, 1.32, -0.20, s * 0.35, 0);
++      P.add('turretTrack', box(0.30, 0.16, 0.12), s * 0.458, 0.30, 1.558, -0.20, s * 0.72, 0);
++      P.add('turretTrack', box(0.30, 0.16, 0.12), s * 0.714, 0.28, 1.334, -0.20, s * 0.72, 0);
++      P.add('turretTrack', box(0.30, 0.16, 0.12), s * 0.970, 0.26, 1.110, -0.20, s * 0.72, 0);
++      P.add('turretDark', box(1.02, 0.19, 0.024), s * 0.667, 0.28, 1.280, -0.20, s * 0.72, 0);
+     }
+     // r27c: 902 tubes dropped 0.52 -> 0.40 — their tops printed 2.10-2.15
+     // into the -1.19..-1.25 front columns where the compressed t80b ref
+@@ -3533,9 +3609,25 @@ function buildT80Line(P, v) {
+     // -0.97 side column read the bare lathe 2.005 vs the ref's 2.185)
+     P.add('turret', box(0.72, 0.13, 0.28), -0.35, 0.665, -0.92);
+   }
++  if (v === 0) {
++    // CHEV (§5.14 owner '<' order 2026-08-07, unconditional for the t80
++    // line per the round brief): the base T-80 print and real fit carry NO
++    // era front — the owner's '<' governs (§B7 owner-taste, documented):
++    // a LIGHT two-row K-1 twin-bank pair sweeping back from the gun center
++    // (~45deg), no arc/flank field so the mark stays the lightest of the
++    // three (§H.4 distinctness: t80 light banks / t80b applique banks +
++    // brow + 902 / t80bv full 3-row field + raft + skirt plates).
++    eraRuCheeks(P, { rings: ringsT, sz: 0.88, rCz: 0.22, k1Y: 0.10, k1Pitch: 0.24, k1T0: 0.26, k1Step: 0.22, k1N: 3, k1H: 0.20, k1Out: 0.02, k1Chevron: { yaw: 0.78, arcFrom: 3, rows: 2, pitch: 0.30, bw: 0.26, bd: 0.13, d0: 0.05, out: 0.07 } }, 'k1');
++  }
+   if (v === 2) {
+     // T-80BV Kontakt-1: cheek arc (shared k1 kit, opt-in params) + glacis raft
+-    eraRuCheeks(P, { rings: ringsT, sz: 1.05, rCz: 0.0, k1Y: 0.06, k1Pitch: 0.25, k1T0: 0.24, k1Step: 0.22, k1H: 0.22, k1Out: 0.02 }, 'k1');
++    // CHEV (§5.14 owner '<' order 2026-08-07): the BV's K-1 cheek field
++    // banks — bricks 0-2 leave the arc for two straight walls sweeping
++    // back from the gun center (~45deg, donor-grammar); brick 3 keeps its
++    // arc seat (the flank wrap the real BV carries). Owner-taste cap vs
++    // the print's arc read documented in the packet (§B7); turret row is
++    // the standing oracle-pinned class (dAlong 1.285) regardless.
++    eraRuCheeks(P, { rings: ringsT, sz: 1.05, rCz: 0.0, k1Y: 0.06, k1Pitch: 0.25, k1T0: 0.24, k1Step: 0.22, k1H: 0.22, k1Out: 0.02, k1Chevron: { yaw: 0.78, arcFrom: 3, pitch: 0.30, bw: 0.28, bd: 0.15, d0: 0.05, out: 0.07 } }, 'k1');
+     for (let r = 0; r < 3; r++) for (let c = 0; c < 5; c++) {
+       P.add('hullTrack', box(0.50, 0.11, 0.16), -1.00 + c * 0.50, 0.86 + r * 0.14, 3.20 - r * 0.25, -1.03, 0, 0);
+     }
+@@ -5164,7 +5256,16 @@ function buildT72B87(P) {
+   const rings = [[1.42, -0.03], [1.25, 0.18], [0.95, 0.34], [0.65, 0.48], [0.35, 0.60], [0.02, 0.66]];
+   meshDome(P, rings, 0.60, 0, -0.27);
+   const cheekRings = [[1.49, -0.03], [1.556, 0.10], [1.43, 0.30], [1.05, 0.44], [0.69, 0.52], [0.38, 0.60], [0.02, 0.68]];
+-  const pD = { rings: cheekRings, sz: 0.74, k1Y: 0.06, k1Pitch: 0.20, k1Out: -0.06 };
++  // CHEV (§5.14 owner '<' order 2026-08-07): the Super-Dolly K-1 field's
++  // front bricks bank into the '<' walls (0-2 banked at ~38deg — the wide
++  // cast collar keeps the sweep shallower than the t80/t62 banks; brick 3
++  // keeps its arc seat as the flank wrap). §B7 cap vs the print's arc
++  // documented in the packet.
++  // (arcTop: the third course keeps the print's contour arc OVER the two
++  // banked courses — the real T-72B wears its upper K-1 row wrapping the
++  // casting while the lower wall banks; restores the certified top-course
++  // columns the first cut deleted.)
++  const pD = { rings: cheekRings, sz: 0.74, k1Y: 0.06, k1Pitch: 0.20, k1Out: -0.06, k1Chevron: { yaw: 0.56, arcFrom: 3, pitch: 0.27, bw: 0.26, bd: 0.16, d0: 0.05, out: -0.05, rows: 2, arcTop: true } };
+   eraRuCheeks(P, pD, 'k1');
+   // 902B six-tube bank seated ON the left cheek skin
+   P.add('turret', box(0.44, 0.06, 0.34), -1.10, 0.24, 0.42, 0, -0.55, 0);  // T3B87: outer corner cleared the -1.442 window (it painted front 0.79 vs ref -0.20)
+@@ -6871,6 +6972,34 @@ function buildT72B3M(P) {
+   // its own shade class and the moat read persisted at 52 vs wall 64.)
+   P.add('turretTrack', KIT.lathe([[1.428, 0.001], [1.462, 0.013], [1.472, 0.030], [1.462, 0.047], [1.443, 0.056]],
+     P.q ? 30 : 16, 0.733), 0, 0, -0.20);
++  // FUSE (owner order 2026-08-07, "the turret is literally fused with the
++  // hull, like the t72b3m, which also needs to be fixed"): RING-GAP SHADOW
++  // BAND — the §C shadow-named device (muzzleBore pattern; renders in
++  // game/critic, excluded from every mask + framing recipe, so the
++  // graduate's rows hold byte-identical). The dome base bulge (1.4995 plan)
++  // runs flush into the fender-bin wall (1.42) from the side — this dark
++  // seam ring rides the bulge crest (1.468..1.522w, 4mm proud) and draws
++  // the turret-over-hull separation line; turret-parented (the turret
++  // casts it, §B5).
++  {
++    // §K MEASURED SEAT: the dome base bulge crest (rings 1.35@0.005 ->
++    // 1.50@0.08) is the turret's outermost ring-zone surface — the band
++    // shades its lower half (1.468..1.545w), the physical shadow-catcher;
++    // print turret bottoms read 1.379-1.51 (extract side_turret_96) and
++    // the print's own soft-case bags occlude its seam at the front flank
++    // exactly as here (like-for-like). Material: this tank's mats.shadow
++    // slot is the r17-lifted 0x323a25 scheme-shadow (camo-tone — the band
++    // pixel-probed 0 changed px) — the seam takes a dedicated deep-shade
++    // clone (§C tone law reserves near-black for shadow reads) and a 12mm
++    // standoff so the proud face survives AA at critic scale.
++    const g = KIT.lathe([[1.512, 0.048], [1.500, 0.125]], P.q ? 30 : 16, 0.733);
++    const band = new THREE.Mesh(g, rehookClone(P.mats.dark, 0x0c0e0a, 0x020302));
++    band.name = 'turretRingGapShadowBand';
++    band.position.set(0, 0, -0.20);
++    band.castShadow = false;
++    band.receiveShadow = true;
++    P.turretG.add(band);
++  }
+   P.add('turret', box(2.2, 0.04, 0.70), 0, -0.013, 0.05);
+   // r11: rear collar bottom 1.362 (gate cols -1.308/-1.528 read ref 1.356;
+   // the 1.360 bottom sat 1mm under the row line and printed 1.341)
+@@ -8847,7 +8976,13 @@ function buildT72BU(P) {
+   // r9: k5 wedges raised/shrunk (corners hung 1.21 where the ref mantlet
+   // floor is 1.452; inner tips poked z 1.68 vs ref 1.38) and the Shtora
+   // eyes ride the mantlet plane at local z 1.62 on skin brackets.
+-  const p5 = { rings, sz: 0.72, k5Len: 0.95, k5H: 0.30, k5Y: 0.26, eyeZ: 1.62 };
++  // CHEV (§5.14 owner '<' order 2026-08-07): the obr-92 K-5 clamshell takes
++  // the donor arrow yaw (buildT90A k5Yaw grammar) — banks sweep back from
++  // the mantlet center at ~53deg (k5T 0.55 + k5Yaw 0.38). k5Len 0.95 ->
++  // 0.90 keeps the yawed inner tips at z <= 1.41 (the r9 line pulled them
++  // off the 1.68 poke; ref mantlet floor class 1.38-1.45). k5Seg 4 =
++  // §B3.1 sectioned-clamshell grammar (flush seams, zero growth).
++  const p5 = { rings, sz: 0.72, k5Len: 0.90, k5H: 0.30, k5Y: 0.26, k5Yaw: 0.38, k5Seg: 4, eyeZ: 1.62 };
+   eraRuCheeks(P, p5, 'k5');
+   ruShtora(P, p5, 0.42);
+   for (const s of [-1, 1]) P.add('turret', box(0.24, 0.14, 0.55), s * 0.52, 0.43, 1.30);
+@@ -9668,11 +9803,59 @@ function eraRuCheeks(P, p, kind) {
+     // front courses stand proud toward the mantlet (plan 2.03-2.16 at
+     // |x| 0.3-0.6) while the flank arcs tuck to the casting; one scalar
+     // k1Out cannot follow it. Default byte-identical for every caller.
+-    for (const s of [1, -1]) for (let row = 0; row < 3; row++) {
+-      const y = (p.k1Y ?? 0.15) + row * (p.k1Pitch ?? 0.27);
+-      for (let i = 0; i < (p.k1N ?? 4); i++) {
+-        const t = Math.PI / 2 + s * ((p.k1T0 ?? 0.22) + i * (p.k1Step ?? 0.21));
+-        put(t, y, 0.30, p.k1H ?? 0.24, 0.16, -0.24 - row * 0.09, 'turretTrack', skinD(t, y) + (p.k1OutI?.[i] ?? p.k1Out ?? 0.03));
++    // CHEV k1Chevron (§5.14 owner '<' order 2026-08-07, opt-in): the front
++    // cheek bricks leave the ring arc and form TWO STRAIGHT BANKS sweeping
++    // back from the gun center in PLAN — the buildT90A/buildT90AVladimir
++    // k5Yaw arrow grammar, brick-built. Bank anchor = the brick-0 arc seat
++    // (self-derived from the same skinD math, so the certified inner-front
++    // extent holds); every bank brick shares the bank yaw (ry = -s*yaw, k5
++    // sign convention); rows stack plumb on one plan line (the real K-1
++    // cheek walls are planar frames, not skin shingles) with a small
++    // per-row inward tuck. Arc bricks at i >= arcFrom keep their legacy
++    // ring seats (the flank wrap the real fits carry). A thin dark backer
++    // frame bridges the bank to the casting (§B2 attached read) and shows
++    // through the inter-brick gaps as the K-1 seam grammar. Defaults
++    // byte-identical: absent param reproduces the legacy arc exactly.
++    const C = p.k1Chevron;
++    for (const s of [1, -1]) {
++      let bank = null;
++      if (C) {
++        const y0 = p.k1Y ?? 0.15;
++        const t0 = Math.PI / 2 + s * (C.t0 ?? p.k1T0 ?? 0.22);
++        const d0 = skinD(t0, y0) + (C.out ?? p.k1OutI?.[0] ?? p.k1Out ?? 0.03);
++        bank = { ax: Math.abs(Math.cos(t0) * d0) + (C.inX ?? 0), z0: Math.sin(t0) * d0 + (p.rCz ?? 0) + (C.inZ ?? 0), a: C.yaw };
++      }
++      const rowsN = C?.rows ?? 3;
++      for (let row = 0; row < 3; row++) {
++        const y = (p.k1Y ?? 0.15) + row * (p.k1Pitch ?? 0.27);
++        for (let i = 0; i < (p.k1N ?? 4); i++) {
++          if (C && i < (C.arcFrom ?? (p.k1N ?? 4)) && !(C.arcTop && row >= rowsN)) {
++            if (row >= rowsN) continue;
++            const along = (C.d0 ?? 0.06) + i * (C.pitch ?? 0.30);
++            const tuck = row * (C.rowTuck ?? 0.02);
++            const bx = bank.ax + along * Math.cos(bank.a) - tuck * Math.sin(bank.a);
++            const bz = bank.z0 - along * Math.sin(bank.a) - tuck * Math.cos(bank.a);
++            P.add(C.bucket ?? 'turretTrack', box(C.bw ?? 0.28, C.bh ?? (p.k1H ?? 0.24), C.bd ?? 0.15),
++              -s * bx, y, bz, (C.tilt ?? -0.20) - row * (C.tiltRow ?? 0.07), -s * bank.a, 0);
++          } else if (row < 3) {
++            const t = Math.PI / 2 + s * ((p.k1T0 ?? 0.22) + i * (p.k1Step ?? 0.21));
++            put(t, y, 0.30, p.k1H ?? 0.24, 0.16, -0.24 - row * 0.09, 'turretTrack', skinD(t, y) + (p.k1OutI?.[i] ?? p.k1Out ?? 0.03));
++          }
++        }
++      }
++      if (C) {
++        // backer frame: spans the banked bricks, sits behind their backs
++        // toward the casting (dark slot — reads as the mounting frame in
++        // the brick gaps; its inner half embeds into the dome skin).
++        const nBank = Math.min(C.arcFrom ?? (p.k1N ?? 4), p.k1N ?? 4);
++        const len = (nBank - 1) * (C.pitch ?? 0.30) + (C.bw ?? 0.28) + 0.05;
++        const mid = (C.d0 ?? 0.06) + ((nBank - 1) * (C.pitch ?? 0.30)) / 2;
++        const rowSpan = (rowsN - 1) * (p.k1Pitch ?? 0.27) + (C.bh ?? (p.k1H ?? 0.24)) + 0.03;
++        const yMid = (p.k1Y ?? 0.15) + ((rowsN - 1) * (p.k1Pitch ?? 0.27)) / 2;
++        const nOff = (C.bd ?? 0.15) / 2 + 0.012;
++        const bxm = bank.ax + mid * Math.cos(bank.a) - nOff * Math.sin(bank.a);
++        const bzm = bank.z0 - mid * Math.sin(bank.a) - nOff * Math.cos(bank.a);
++        P.add('turretDark', box(len, rowSpan, 0.024), -s * bxm, yMid, bzm, (C.tilt ?? -0.20), -s * bank.a, 0);
+       }
+     }
+   } else if (kind === 'erawa') {

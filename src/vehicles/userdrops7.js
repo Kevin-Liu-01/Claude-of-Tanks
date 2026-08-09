@@ -212,7 +212,15 @@ const glb = (file) => ({
 });
 
 // shippable class (CC BY / CC BY-SA) — registered in every build
-MODEL_SOURCE.t44 = glb('t44_foxygamer.glb');
+// t44 §5.45 BUILD LANDED (russia lane 2026-08-08): the id renders OUR
+// procedural build everywhere (profiles/russia.js buildT44); the Foxygamer
+// CC BY-SA print retires to candidateGlb (kv2/t30 pattern — Sources print
+// card via printCatalog is automatic). Measurement registration moved to
+// the three override maps (§10-pattern mirror, helper-expanded config).
+MODEL_SOURCE.t44 = {
+  source: 'procedural',
+  candidateGlb: { path: '/models/tanks/community/t44_foxygamer.glb', turretNode: '^Turret$', autoPivot: true, paintUntextured: true },
+};
 // m48 §5.45 BUILD LANDED (patton lane 2026-08-08): the id renders OUR
 // procedural build everywhere (profiles/patton.js buildM48); the ATModeler
 // print retires to candidateGlb (kv2/t30 pattern — Sources print card +
@@ -234,7 +242,13 @@ MODEL_SOURCE.m48 = {
 // re-baked GLBs can then re-register as measurement oracles.
 // MODEL_SOURCE_RETIRED.amx30 = glb('amx30b_ahab.glb');
 // MODEL_SOURCE_RETIRED.amx30b2 = glb('amx30b2_ahab.glb');
-MODEL_SOURCE.type59 = glb('type69_lasttriarius.glb');
+// type59 §5.45 BUILD LANDED (russia lane 2026-08-08): renders buildType59
+// everywhere; the LastTriarius Type 69 CC BY print retires to candidateGlb
+// (same flip pattern as t44/m48 above).
+MODEL_SOURCE.type59 = {
+  source: 'procedural',
+  candidateGlb: { path: '/models/tanks/community/type69_lasttriarius.glb', turretNode: '^Turret$', autoPivot: true, paintUntextured: true },
+};
 // FLEET FLIP 2026-08-04: MODEL_SOURCE_RETIRED.vickers_mk1 = glb('vickers_mk1_jack.glb');
 
 // quarantine class (NC-SA) — local builds only; public builds keep these ids
@@ -255,5 +269,6 @@ if (ALLOW_LOCAL_RECOVERED_MODELS) {
 export const USERDROP7_TANK_IDS = SPECS.map((s) => s.id);
 // every wave-8 row is sourced-from-online (era bucketing intent, cf.
 // USERDROP5_SOURCED_IDS) — t84 graduated out (dual gate, §10); the §5.38
-// t90 family rows were born procedural (never sourced).
-export const USERDROP7_SOURCED_IDS = USERDROP7_TANK_IDS.filter((id) => !['t84', 't80', 't80b', 't80bv', 'm60a2', 'vickers_mk1', 'amx30', 'amx30b2', 't90', 't90ms', 't90a_burlak', 'm48'].includes(id));
+// t90 family rows were born procedural (never sourced); t44/type59 flipped
+// procedural at their §5.45 builds (m48/m60a2/vickers precedent).
+export const USERDROP7_SOURCED_IDS = USERDROP7_TANK_IDS.filter((id) => !['t84', 't80', 't80b', 't80bv', 'm60a2', 'vickers_mk1', 'amx30', 'amx30b2', 't90', 't90ms', 't90a_burlak', 'm48', 't44', 'type59'].includes(id));

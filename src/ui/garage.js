@@ -37,6 +37,7 @@ import {
 } from '../game/equipment.js';
 import { equipIconSVG } from './equipIcons.js';
 import { uiIconSVG } from './uiIcons.js';
+import { isGarageVisibleTankId } from '../game/matchmaking.js';
 import {
   viewRangeOf, baseCamoOf, equipViewMult, equipCamoBonus,
 } from '../sim/spotting.js';
@@ -228,9 +229,9 @@ const GARAGE_CSS = `
 .cot-nav .nv:hover{color:#ffd27a;border-color:rgba(240,176,74,.6);}
 .cot-nav .nv.on{color:#f0b04a;border-color:rgba(240,176,74,.55);
   background:rgba(24,19,11,.82);cursor:default;}
-/* Shared 24-grid vector marks keep all three navigation actions in the same
-   stroke language and stay sharp at the compact 15px presentation size. */
-.cot-nav .nv .nvi{width:15px;height:15px;display:block;}
+/* Garage + Studio use the original authored navigation art; Home keeps the
+   shared vector mark. object-fit preserves both source assets at 15px. */
+.cot-nav .nv .nvi{width:15px;height:15px;display:block;object-fit:contain;}
 .cot-tech{position:absolute;top:108px;left:34px;pointer-events:auto;cursor:pointer;
   display:flex;align-items:center;gap:8px;
   font-family:${FONT_STACK};font-size:10.5px;font-weight:800;letter-spacing:.20em;
@@ -1368,18 +1369,6 @@ function frontArmorMm(plates, keys) {
  */
 export function createGarage(opts) {
   const { bus, onSelect, onBattle } = opts;
-  // r4: placeholder-grade community models are DELISTED from the default
-  // carousel — the Newc42 box-hull Tiger and untextured Panzer III J sat
-  // next to the hero roster as Minecraft-grade thumbnails (hud_ui r4 major).
-  // They stay researchable/selectable through the tech tree's COMMUNITY tab
-  // (attribution + playability preserved); only the carousel strip curates.
-  // content_breadth r2: bmp1/m1128/m1296 defense-in-depth — registration is
-  // already gated off in userdrops2.js (SHIP_USERDROP2_NEW).
-  // §5.74 (owner, 2026-08-08): the legacy base M1A2 retires from the
-  // carousel ("dont show it, clearly mark as legacy") — its kit inventory
-  // redistributes across sepv2/sepv3/tusk/tejas in the distinctiveness
-  // round. Stays tech-tree selectable like the other delisted ids.
-  const DELISTED = new Set(['newc_tiger', 'newc_pziii', 'bmp1', 'm1128', 'm1296', 'm1a2']);
   const allSpecs = opts.specs || [];
   // §5.31b PRINT VIEWER: view-only Sources cards for every retired print.
   // Deliberately NOT merged into allSpecs — the tech tree (createTechTree
@@ -1394,7 +1383,7 @@ export function createGarage(opts) {
   // Print cards ride the same array: groupOf files them under 'sources'
   // automatically (their MODEL_SOURCE rows are 'glb' and never era-placed).
   const specs = [
-    ...allSpecs.filter((s) => !DELISTED.has(s.id)),
+    ...allSpecs.filter((s) => isGarageVisibleTankId(s.id)),
     ...printEntries.map((e) => e.spec),
   ].sort(catalogCompare);
   ensureFonts();
@@ -1412,9 +1401,9 @@ export function createGarage(opts) {
     `<span>CLAUDE <b>OF TANKS</b></span></div>` +
     `<div class="cot-nav">` +
     `<button class="nv on" data-nav="garage" type="button">` +
-    `${uiIconSVG('garage', 15, 'currentColor', 'nvi')}Garage</button>` +
+    `<img class="nvi" src="/brand/nav/garage.svg" alt="" draggable="false">Garage</button>` +
     `<button class="nv" data-nav="studio" type="button">` +
-    `${uiIconSVG('studio', 15, 'currentColor', 'nvi')}Studio</button>` +
+    `<img class="nvi" src="/brand/nav/studio.png" alt="" draggable="false">Studio</button>` +
     `<button class="nv" data-nav="home" type="button">` +
     `${uiIconSVG('home', 15, 'currentColor', 'nvi')}Home</button>` +
     `</div>` +

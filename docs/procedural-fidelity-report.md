@@ -1,13 +1,12 @@
 # Procedural tank fidelity report
 
-Local sourced references: **2**. Passing 90/100 overall and 90/100 in every view: **0**. Below target: **2**. Median: **88.3**.
+Local sourced references: **1**. Passing 90/100 overall and 90/100 in every view: **1**. Below target: **0**. Median: **91.3**.
 
-Red/cyan mask scoring uses identical normalized poses: 35% whole silhouette, 25% hull, 20% upper assembly, 12% cannon overhang, and 8% lower track profile.
+Red/cyan mask scoring uses identical normalized poses: 35% whole silhouette, 25% hull, 20% direct articulated turret tree, 12% cannon overhang, and 8% lower track profile.
 
 | Tank | Score | Whole | Hull | Turret | Gun | Tracks | Procedural fallback |
 |---|---:|---:|---:|---:|---:|---:|---|
-| Type 90 Kyu-maru (type90) | 81.6 | 93.5 | 95.5 | 83.0 | 8.4 | 92.5 | type10 |
-| C1 Ariete (ariete) | 88.3 | 94.9 | 95.1 | 86.7 | 53.0 | 95.3 | ariete |
+| Challenger 2 (challenger2) | 91.3 | 94.4 | 90.6 | 89.1 | 85.9 | 93.6 | challenger2 |
 
 The local GLBs are measurement and visual-review oracles only. The game does not embed extracted source vertices in its procedural builders.
 

@@ -64,6 +64,11 @@ const CRITIC_REFERENCE_OVERRIDES = {
   // m48 §5.45 build flip (patton lane 2026-08-08): render = buildM48
   // procedural; the CC-BY print stays the measurement reference here.
   m48: { source:'glb', glb:{ path:'/models/tanks/community/m48a5_atmodeler.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
+  // t44/type59 §5.45 build flips (russia lane 2026-08-08): renders =
+  // buildT44/buildType59 procedurals; the CC prints stay the measurement
+  // references here (userdrops7 glb() helper expansion, verbatim).
+  t44: { source:'glb', glb:{ path:'/models/tanks/community/t44_foxygamer.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
+  type59: { source:'glb', glb:{ path:'/models/tanks/community/type69_lasttriarius.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
   amx30: { source:'glb', glb:{ path:'/models/tanks/community/amx30b_ahab.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
   amx30b2: { source:'glb', glb:{ path:'/models/tanks/community/amx30b2_ahab.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
   k2: { source:'glb', glb:{ path:'/models/community-candidates/k2_black_panther_armored_warfare.glb', turretNode:'^Object_21$', gunNode:'^Object_19$', autoPivot:true, turretFollowers:'^Object_(?:2|8|10|15|18|20|22|24|25)$' } },
@@ -117,7 +122,7 @@ const CRITIC_REFERENCE_OVERRIDES = {
   // notes + the leo2a4/type10 provenance refusals). t14's GLB is
   // LOCAL-ONLY (gitignored staging area).
   challenger2: { source:'glb', glb:{ path:'/models/tanks/community/challenger_ii.glb',
-    turretNode:'^challendger[ _]2_0$', autoPivot:true } },
+    turretNode:'^challendger[ _]2_0$', gunNode:'^Gun$', autoPivot:true } },
   type10: { source:'glb', glb:{ path:'/models/tanks/community/type-10_main_battle_tank.glb',
     turretNode:'^Object_6$', autoPivot:true } },
   t14: { source:'glb', glb:{ path:'/models/community-candidates/t-14_armara_uralvagon_factory.glb',

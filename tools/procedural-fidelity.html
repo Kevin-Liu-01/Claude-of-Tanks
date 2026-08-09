@@ -50,6 +50,11 @@ const LOCAL_REFERENCE_OVERRIDES = {
   // buildM48 procedural; the CC-BY ATModeler print stays the measurement
   // oracle here (userdrops7 glb() helper expansion, verbatim).
   m48: { source:'glb', glb:{ path:'/models/tanks/community/m48a5_atmodeler.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
+  // t44/type59 §5.45 build flips (russia lane 2026-08-08): playables render
+  // buildT44/buildType59; the CC prints stay measurement oracles here
+  // (userdrops7 glb() helper expansion, verbatim — the §10 mirror pattern).
+  t44: { source:'glb', glb:{ path:'/models/tanks/community/t44_foxygamer.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
+  type59: { source:'glb', glb:{ path:'/models/tanks/community/type69_lasttriarius.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
   // RE-ONBOARD (§5.36, 2026-08-08): ahab bakes re-baked with the hull
   // RZ(90) fix — orientation receipts agree:true; §5.14 §E escalation done.
   amx30: { source:'glb', glb:{ path:'/models/tanks/community/amx30b_ahab.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
@@ -152,17 +157,16 @@ const LOCAL_REFERENCE_OVERRIDES = {
   // ADJUDICATED CLEARED by the owner 2026-08-06 ("build the type 10 ...
   // using the real glbs") — registered below.
   challenger2: {
-    // "Challenger II" by buh (CC-BY-4.0). Turret+gun FUSED in the
-    // 'challendger 2_0' node (sanitized 'challendger_2_0' — regex takes
-    // both); print split is material-based (turret node spans the full
-    // length + dips into the hull) — turret rows print-capped, packet
-    // note. Nose +z; ~1:1 m; thin turret-left antenna (raw y 3.05) binds
+    // "Challenger II" by buh (CC-BY-4.0). Batch 48d repartitions the
+    // material-fused source bucket into true turret, HullParts, and Gun
+    // nodes by whole connected components. Nose +z; ~1:1 m; the thin
+    // turret-left antenna (raw y 3.05) binds
     // the §E height clamp, width safeScale recovers (extract: s 0.8007,
     // k 1.2318).
     source:'glb',
     glb:{
       path:'/models/tanks/community/challenger_ii.glb',
-      turretNode:'^challendger[ _]2_0$', autoPivot:true,
+      turretNode:'^challendger[ _]2_0$', gunNode:'^Gun$', autoPivot:true,
     },
   },
   t14: {
@@ -726,6 +730,7 @@ function overlayCanvas(name, refMask, procMask, metric) {
 const angleRows={};
 const hullRows={};
 const upperRows={};
+const directTurretRows={};
 const rawMasks={};
 for (const [name,dir] of Object.entries(ANGLES)) {
   const camera=cameraFor(dir);
@@ -737,8 +742,16 @@ for (const [name,dir] of Object.entries(ANGLES)) {
   angleRows[name]=overall;
   hullRows[name]=compare(refHull,procHull);
   upperRows[name]=compare(subtract(refWhole,refHull),subtract(procWhole,procHull));
+  const refTurret=renderMask(reference,procedural,camera,'turret');
+  const procTurret=renderMask(procedural,reference,camera,'turret');
+  directTurretRows[name]=compare(refTurret,procTurret);
   rawMasks[name]={refWhole,procWhole,refHull,procHull};
   overlayCanvas(name,refWhole,procWhole,overall);
+  if (params.get('components')) {
+    overlayCanvas(`${name} hull`,refHull,procHull,hullRows[name]);
+    overlayCanvas(`${name} turret`,subtract(refWhole,refHull),subtract(procWhole,procHull),upperRows[name]);
+    overlayCanvas(`${name} direct turret`,refTurret,procTurret,directTurretRows[name]);
+  }
 }
 
 // A number of recovered GLBs are intentionally kept as one fused mesh. They
@@ -770,7 +783,13 @@ const mean=(values) => values.reduce((sum,v)=>sum+v,0)/Math.max(values.length,1)
 const overallScore=mean(Object.values(angleRows).map((v)=>v.score));
 const COMPONENT_VIEWS=['front','right','left','rear','top'];
 const hullScore=componentMasksAvailable ? mean(COMPONENT_VIEWS.map((name)=>hullRows[name].score)) : null;
-const turretScore=componentMasksAvailable ? mean(COMPONENT_VIEWS.map((name)=>upperRows[name].score)) : null;
+// Score the articulated component directly. The legacy whole-minus-hull
+// subtraction is retained below as an occlusion diagnostic, but it is not a
+// stable component metric: two identical turret trees can expose different
+// pixel bands when their hull decks overlap the ring by a few centimetres.
+// Direct masks match the geometry gate's exact-tree semantics and compare the
+// complete assembly rather than only whichever fragments happen to be visible.
+const turretScore=componentMasksAvailable ? mean(COMPONENT_VIEWS.map((name)=>directTurretRows[name].score)) : null;
 const gunScore=gunMetric?.score ?? null;
 const tracksScore=trackMetric.score;
 const weighted=[
@@ -795,6 +814,11 @@ window.__FIDELITY_REPORT={
   fallback:spec.publicVisualFallback || spec.visualBase || spec.variantOf || id,
   score:rounded(totalScore),scores,componentMasksAvailable,minView:rounded(minView),gatePassed,
   angles:Object.fromEntries(Object.entries(angleRows).map(([name,row])=>[name,{score:rounded(row.score),iou:rounded(row.iou*100)}])),
+  componentAngles: componentMasksAvailable ? {
+    hull:Object.fromEntries(COMPONENT_VIEWS.map((name)=>[name,rounded(hullRows[name].score)])),
+    turret:Object.fromEntries(COMPONENT_VIEWS.map((name)=>[name,rounded(directTurretRows[name].score)])),
+    exposedUpper:Object.fromEntries(COMPONENT_VIEWS.map((name)=>[name,rounded(upperRows[name].score)])),
+  } : null,
   boxes:{reference:referenceBox.getSize(new THREE.Vector3()).toArray().map(rounded),procedural:proceduralBox.getSize(new THREE.Vector3()).toArray().map(rounded)},
 };
 // ---- HANDOFF-FABLE §6 board mode (&board=1, driver --board): shaded beauty
@@ -1273,6 +1297,8 @@ if (params.get('geo')) {
       };
       const r = meas(reference, procedural, refBoxG, refZR), p = meas(procedural, reference, procBoxS, procZR);
       if (r && p) stationErr.push({ i,
+        refW: +r.w.toFixed(3), procW: +p.w.toFixed(3),
+        refTop: +(r.top - refBoxG.min.y).toFixed(3), procTop: +(p.top - procBoxS.min.y).toFixed(3),
         wPct: +((Math.abs(r.w - p.w) / Math.max(r.w, 0.2)) * 100).toFixed(2),
         topPct: +((Math.abs((r.top - refBoxG.min.y) - (p.top - procBoxS.min.y)) / height) * 100).toFixed(2) });
       else if (r || p) stationErr.push({ i, wPct: 100, topPct: 100, onlyOne: true });
@@ -1379,14 +1405,17 @@ if (params.get('geo')) {
       mask = next;
     }
     const seen = new Uint8Array(mask.length);
-    let count = 0;
+    const regions = [];
     const stack = [];
     for (let i = 0; i < mask.length; i++) {
       if (!mask[i] || seen[i]) continue;
-      let area = 0; stack.push(i); seen[i] = 1;
+      let area = 0, minX = GSIZE, minY = GSIZE, maxX = -1, maxY = -1;
+      stack.push(i); seen[i] = 1;
       while (stack.length) {
         const j = stack.pop(); area++;
         const x = j % GSIZE, y = (j / GSIZE) | 0;
+        minX = Math.min(minX, x); minY = Math.min(minY, y);
+        maxX = Math.max(maxX, x); maxY = Math.max(maxY, y);
         for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
           const nx = x + dx, ny = y + dy;
           if (nx < 0 || ny < 0 || nx >= GSIZE || ny >= GSIZE) continue;
@@ -1394,11 +1423,12 @@ if (params.get('geo')) {
           if (mask[k] && !seen[k]) { seen[k] = 1; stack.push(k); }
         }
       }
-      if (area > 400) count++;              // chains/straps read as small islands
+      if (area > 400) regions.push({ area, minX, minY, maxX, maxY }); // chains/straps read as small islands
     }
-    return count;
+    return regions;
   };
   let floaterFails = 0;
+  const floaterRows = [];
   {
     const turretN = procedural.root.getObjectByName('rig_turret');
     const gunN = procedural.root.getObjectByName('rig_gun');
@@ -1409,7 +1439,10 @@ if (params.get('geo')) {
       if (turretN) turretN.rotation.y = yaw * Math.PI / 180;
       if (gunN) gunN.rotation.x = -pitch * Math.PI / 180;
       procedural.root.updateMatrixWorld(true);
-      if (islands(gMask(procedural, reference, camF, 'whole')) > 1) floaterFails++;
+      const rawFloaterMask = gMask(procedural, reference, camF, 'whole');
+      const regions = islands(rawFloaterMask);
+      floaterRows.push({ yaw, pitch, islandCount: regions.length, regions });
+      if (regions.length > 1) floaterFails++;
     }
     if (turretN) turretN.rotation.y = 0;
     if (gunN) gunN.rotation.x = 0;
@@ -1429,7 +1462,7 @@ if (params.get('geo')) {
     id, geoMin: +geoMin.toFixed(1), gatePassed: geoMin >= 90,
     components: Object.fromEntries(Object.entries(components).map(([k, v]) => [k, +(+v).toFixed(1)])),
     curveRows: Object.fromEntries(Object.entries(curveRows).map(([k, v]) => [k, v])),
-    turretRows, stationErr, dimRows, floaterFails,
+    turretRows, stationErr, dimRows, floaterFails, floaterRows,
   };
   setPart(reference.root, 'whole');
   setPart(procedural.root, 'whole');
