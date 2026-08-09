@@ -1,6 +1,6 @@
 # INDEX — where everything lives
 
-(2026-08-06. The navigation hub for the repo. Nothing here is law — it points at the
+(2026-08-09. The navigation hub for the repo. Nothing here is law — it points at the
 law. If a path listed here ever disagrees with docs/PROGRAM-STATE.md, PROGRAM-STATE
 wins.)
 
@@ -46,6 +46,11 @@ Skills (in .claude/skills/ — operational checklists distilled from the law):
 | DECORATIONS.md | The decoration/fittings system doc (decorations.js + KIT lineage) |
 | EVALUATION.md | Independent audit snapshot of the whole game (2026-07-27) |
 | SCREENSHOT_CONTRACT.md | The __GAME_READY / staged-frames contract every build must uphold |
+| QA-ARCHIVE.md | Durable index for performance/mobile rounds, raw logs, screenshots, post-round campaigns, retention status, and archive procedure |
+| MOBILE-QA.md | Sustained-performance Lap protocol, ratified budgets, Rig A/Rig B rules, and the complete rounds 0–31 evidence ledger |
+| DEV-PERF-TRACE.md | DEV flight-recorder schema plus normal, CPU-constrained, and software-renderer probe procedures |
+| THREE-PERF-OPTIONS.md | Evidence-led Three.js/library replacement shortlist and locally rejected approaches |
+| qa-evidence-manifest.json | SHA-256 inventory of current local QA artifacts; `tracked:false` entries still need durable byte storage |
 | STUDIO.md | Scene Studio staging rig + scripted-shot API |
 | GUNNERY-CAMERA-SPEC.md | Camera/aim coupling spec (empirically derived from the deployed build) |
 | RECOVERED-FLEET.md | The 2026-07-29 recovered-fleet integration report |
@@ -74,6 +79,9 @@ browser-render rigs self-ticket the /tmp/cot-shots.lock FIFO — never wrap them
 | tmp-modelsource-dump.mjs | `node tools/tmp-modelsource-dump.mjs [out.json]` | runtime MODEL_SOURCE dump (load-prove; helper-expanded mirrors) |
 | genIcons.mjs | `--tanks <id>` | 5 icons per tank — ICON TRAP discipline applies |
 | screenshot.mjs | `node tools/screenshot.mjs` | the 20-view game screenshot contract |
+| mobilelap.mjs | `node tools/mobilelap.mjs --out <scorecard>` | deterministic station-by-station mobile budget scorecard |
+| dev-perf-probe.mjs | `npm run perf:dev -- --profile=normal\|constrained\|software --out=<json>` | full DEV trace, first-10-second metrics, CPU profile, and synthetic-freeze falsification |
+| qa-evidence-manifest.mjs | `node tools/qa-evidence-manifest.mjs` | byte-size/SHA-256/media/tracking inventory for all local QA evidence roots |
 | perfprobe.mjs / quietcert.mjs | — | perf budgets; quiet-machine certification (refuses contention) |
 | strip-nc-assets.mjs | (via npm run build) | scrubs NC-quarantine assets from public artifacts |
 

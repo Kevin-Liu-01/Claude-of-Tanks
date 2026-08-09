@@ -1273,7 +1273,7 @@ export function createCameraRig(camera, deps) {
 //
 // Determinism: the pose is a pure function of (box, yaw, pitch, zoom, rect).
 // `reset()` snaps the orbit state back to the hero pose and re-solves, which
-// is what the __SHOTS garage/techtree recipes call — a staged capture is
+// is what the __SHOTS garage recipe calls — a staged capture is
 // therefore byte-identical whether or not the player had dragged the view.
 
 const SHOW_FOV_DEG = 42;               // stage lens (matches the authored bay)

@@ -24,6 +24,7 @@
  */
 import * as THREE from 'three';
 import { createRenderer, onResize } from './engine/renderer.js';
+import { createOffscreenSceneWarmer } from './engine/offscreenWarm.js';
 import {
   installShaderErrorCollector, relaxShaderChecks, runDeviceDiag, applyDiagRescue,
   mountDiagOverlay, runSceneBlackWatchdog, reclaimShadows,
@@ -68,7 +69,7 @@ import { createDamagePanel } from './ui/damagePanel.js';
 // the ACTUAL built vehicle — the rig needs the shared engine context once.
 import { initTopMaskRig } from './ui/tankThumbs.js';
 import { createGarage } from './ui/garage.js';
-import { getLastBattleEarnings } from './ui/techtree.js';
+import { getLastBattleEarnings, installBattleEconomy } from './game/economy.js';
 import { createGarageStage } from './ui/garageStage.js';
 // garage-scene r1: workshop set dressing (side repair bays, benches, racks) —
 // built lazily from post-ready idle slices, never on the boot-critical path.
@@ -327,6 +328,7 @@ const devTrace = import.meta.env.DEV
   ? (await import('./dev/perfTrace.js')).createDevTrace({ renderer })
   : null;
 const bus = createBus(devTrace ? (ev, payload) => devTrace.event(ev, payload) : null);
+installBattleEconomy(bus);
 const game = createGameState();
 devTrace?.configure({ game });
 spawnTanks(game, engineCtx);
@@ -1562,7 +1564,7 @@ endOverlay.style.cssText =
 endOverlay.className = 'cot-end';
 const endTitle = document.createElement('div');
 endTitle.style.cssText = 'font-size:52px;font-weight:800;letter-spacing:0.3em;text-shadow:0 2px 18px rgba(0,0,0,0.8);';
-// META-GAME: battle payout line (earned XP/credits persist via ui/techtree.js)
+// META-GAME: battle payout line (earned XP/credits persist via game/economy.js)
 const endEarn = document.createElement('div');
 endEarn.style.cssText =
   'font-size:15px;font-weight:700;letter-spacing:0.14em;color:#cfd9e2;' +
@@ -3078,7 +3080,6 @@ const VIEW_TIME = {
   combat_firing: 0.5,
   explosion: 1.5,
   garage: 0.7,
-  techtree: 0.7,
   battlefield_desert: 2.0,
   battlefield_winter: 2.0,
   battlefield_urban: 2.0,
@@ -3556,16 +3557,6 @@ const SHOT_VIEWS = {
     garageDressing.ensureBuilt(); // deterministic capture: workshop fully dressed
     showroom.reset();
   },
-  techtree() {
-    // research screen over the garage: Germany tab shows both eras
-    // (WWII insignia + modern flag) and three unlocked roster tanks.
-    hud.setMode('hidden');
-    setPedestalTank('m1a2');
-    garage.show('m1a2');
-    if (garage.drainThumbs) garage.drainThumbs(); // portraits finished for the capture
-    showroom.reset();
-    garage.showTechTree('germany');
-  },
   battlefield_desert() { mapEstablishingShot(); },
   battlefield_winter() { mapEstablishingShot(); },
   battlefield_urban() { mapEstablishingShot(); },
@@ -3670,7 +3661,7 @@ window.__SHOTS = {
   views: [
     'battlefield', 'player_view', 'sniper_view', 'tank_closeup_modern',
     'tank_closeup_ww2', 'tank_closeup_t90m', 'tank_closeup_leo2a7',
-    'detrack', 'combat_firing', 'explosion', 'garage', 'techtree',
+    'detrack', 'combat_firing', 'explosion', 'garage',
     'battlefield_desert', 'battlefield_winter', 'battlefield_urban',
     'battlefield_coastal', 'battlefield_autumn', 'battlefield_steppe',
     'battlefield_railyard', // MAPS r1
@@ -3706,7 +3697,7 @@ window.__SHOTS = {
     // camo_spotting r2: garage shot keeps the neutral pedestal key; every
     // battlefield shot gets the authored map sun.
     setGarageSunTrim(name === 'garage');
-    garage.hide(); // also closes the tech tree; recipes re-show what they need
+    garage.hide();
     endOverlay.style.display = 'none';
     fx.resetAll();
     fx.resetSeed(5000);
@@ -4003,18 +3994,12 @@ function warmShadowPrograms() {
 }
 
 // perf-r5c: warm renders only need to TOUCH programs/textures — full-frame
-// rasterization at retina scale made each one a 400-730 ms slice. A quarter
-// viewport cuts the fragment bill ~16x while binding the same pipelines.
-const _warmVp = new THREE.Vector4();
-function warmRender() {
-  renderer.getViewport(_warmVp);
-  const sz = renderer.getSize(_v2gp || (_v2gp = new THREE.Vector2()));
-  renderer.setViewport(0, 0, Math.max(8, sz.x * 0.25), Math.max(8, sz.y * 0.25));
-  try { renderer.render(scene, camera); } finally {
-    renderer.setViewport(_warmVp);
-  }
-}
-let _v2gp = null;
+// rasterization at retina scale made each one a 400-730 ms slice. Keep the
+// same quarter-resolution fragment bill, but render it into a private HDR
+// target. The old default-framebuffer quarter viewport could be presented
+// during the live countdown when a first-use compile blocked the next rAF,
+// producing a one-off black screen with the world in the lower-left corner.
+const warmRender = createOffscreenSceneWarmer(renderer, scene, camera);
 
 // MOBILE-QA r20: WebGLRenderer.compile() intentionally stops before uniform
 // discovery. The next real render then calls WebGLProgram.getUniforms() for

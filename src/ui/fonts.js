@@ -2,7 +2,7 @@
 // (Dinamo Typefaces — commercial face, owner-provided cut; see
 // docs/ATTRIBUTION.md) + the canonical font stacks and type tokens every UI
 // module imports. Injecting once here keeps all screens (garage, HUD,
-// settings, damage panel, tech tree, overlays) on the exact same system.
+// settings, damage panel, and overlays) on the exact same system.
 //
 // PROVENANCE: the owner originally asked for Klim's "Die Grotesk"
 // (unobtainable); Archivo shipped as the documented free substitute; then
@@ -68,11 +68,11 @@ const FONT_CSS = `@font-face{
   src:url('${FONT_DIR}/ABCMonumentGrotesk-Bold.woff2') format('woff2');
   font-weight:700 900;font-style:normal;font-display:swap;}
 /* stats and timers line up: lining tabular figures across every overlay */
-.cot-garage,.cot-hud,.cot-settings,.cot-dp,.cot-tt,.cot-hints,.cot-end{
+.cot-garage,.cot-hud,.cot-settings,.cot-dp,.cot-hints,.cot-end{
   font-variant-numeric:lining-nums tabular-nums;}
 /* weight floor 500 for every overlay root: unweighted text never renders at
    book/regular (explicit 600/700/800 hierarchy steps are unaffected) */
-.cot-garage,.cot-hud,.cot-settings,.cot-dp,.cot-tt,.cot-hints,.cot-end,
+.cot-garage,.cot-hud,.cot-settings,.cot-dp,.cot-hints,.cot-end,
 .cot-bl,.cot-si,.cot-kc,.cot-touch,.cot-studio{
   font-weight:500;font-optical-sizing:auto;}`;
 

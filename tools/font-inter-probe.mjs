@@ -1,7 +1,7 @@
 // font-inter-probe.mjs — verification harness for the Archivo→Inter swap
 // (owner-directed: rsms/inter v4.1 variable, UI weight floor 500 — see
 // docs/ATTRIBUTION.md). Boots its own vite on a 7xxx port, captures: boot
-// splash, garage, settings, tech tree, staged battle HUD (player_view /
+// splash, garage, settings, staged battle HUD (player_view /
 // sniper_view), killcam x-ray card, live-battle results report — and audits:
 // webfont actually rendering (canvas metric vs monospace), every usage weight
 // resolving (500/600/700/800), FOUT on the splash wordmark, computed-stack
@@ -256,14 +256,7 @@ try {
   out.garageOverflow = await page.evaluate(OVERFLOW_SCAN_JS);
   out.garageFloor = await page.evaluate(FLOOR_SCAN_JS);
 
-  // -------- 5. TECH TREE --------
-  await page.evaluate(() => window.__SHOTS.set('techtree'));
-  await new Promise((r) => setTimeout(r, 1500));
-  await snap('04_techtree');
-  out.techtreeOverflow = await page.evaluate(OVERFLOW_SCAN_JS);
-  out.techtreeFloor = await page.evaluate(FLOOR_SCAN_JS);
-
-  // -------- 6. STAGED BATTLE HUD --------
+  // -------- 5. STAGED BATTLE HUD --------
   await page.evaluate(() => window.__SHOTS.set('player_view'));
   await new Promise((r) => setTimeout(r, 1500));
   await snap('05_hud_player_view');
@@ -323,7 +316,7 @@ try {
 
 // verdicts the orchestrator cares about
 const r = out.readyFonts || {};
-const floors = [out.settingsFloor, out.garageFloor, out.techtreeFloor, out.hudFloor, out.resultsFloor]
+const floors = [out.settingsFloor, out.garageFloor, out.hudFloor, out.resultsFloor]
   .filter((f) => Array.isArray(f));
 const verdicts = {
   webfontRenders: r.wInter > 0 && Math.abs(r.wInter - r.wMono) > 0.5,

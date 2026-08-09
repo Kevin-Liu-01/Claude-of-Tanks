@@ -15,9 +15,9 @@
 //             (scratchpad ariete-restructure.mjs). Gun is fused into the
 //             turret meshes — yaw articulates, pitch stays virtual (kv2 rule).
 //   type74  — "Type 74" by NullOps (Sketchfab Standard — PERSONAL-USE
-//             QUARANTINE). NEW vehicle: lights up the Japan tech-tree ghost
-//             that was blocked on the STB-1 provenance conflict (variants.js
-//             note). Skinned armature rig: Tower_9 (yaw) > Gun_7 (pitch)
+//             QUARANTINE). NEW vehicle in the Japan modern roster, replacing
+//             the rejected STB-1 candidate (variants.js note). Skinned
+//             armature rig: Tower_9 (yaw) > Gun_7 (pitch)
 //             bones, wheels as individual bones — same bone-reparenting path
 //             as recon_tank; scaleToOverall because the gun bone carries no
 //             meshes of its own (barrel verts live in the skinned hull mesh).
@@ -132,8 +132,7 @@ function communityArmor(o) {
 }
 
 // ---------------------------------------------------------------------------
-// NEW VEHICLE: Type 74 (Japan tier VIII — the tech-tree ghost between Type 61
-// and Type 10 carries this spec id and lights up on registration).
+// NEW VEHICLE: Type 74 (Japan tier VIII, registered in the modern roster).
 // Class-template MBT spec in the 1st-gen 105mm envelope (leo1a5 peer, one
 // tier up on mobility+depression): L7 105 mm, 38 t, hydropneumatic
 // suspension = standout -10 gun depression, thin cast armor.
@@ -142,7 +141,7 @@ export const USERDROP_TANK_IDS = ['type74'];
 
 const TYPE74_SPEC = {
   id: 'type74', name: 'Type 74', nation: 'Japan', era: 'modern', class: 'mbt',
-  // variantOf self-marker (m1a1 rule, garage.js/techtree.js): nation-roster
+  // variantOf self-marker (m1a1 rule): nation-roster
   // vehicle with a sourced model — stays on the JAPAN tab / MODERN filter,
   // credit line still renders on its cards via `community`.
   variantOf: 'type74',

@@ -15,7 +15,7 @@ three days by a multi-agent pipeline: research → parallel subsystem builders �
 integration → repeated harsh-critic loops with per-dimension fix agents →
 independent evaluations. **48–55 playable vehicles** (mix of sourced models
 and procedural builds), 4 maps, plate-level armor simulation, kill cams with
-x-ray shot analysis, WoT-style HUD/garage/tech-tree, camo + spotting system.
+x-ray shot analysis, WoT-style HUD/garage, camo + spotting system.
 
 - Known not-yet-integrated candidates: the Tejas V. M1A2 Abrams and the
   Mortavex AbramsX concept. Check the recovered-drop folder for current files.
@@ -58,7 +58,7 @@ src/vehicles/  specs.js (stats/armor/roster tables), tankFactory.js (procedural 
 src/sim/       movement.js, ballistics.js, armor.js, damage.js, spotting.js (+ *.selftest.mjs)
 src/game/      state.js (bus, battle staging), ai.js, input.js, killcam.js
 src/fx/        effects.js, particles.js (muzzle, tracers, impacts, destruction, dust)
-src/ui/        hud.js, garage.js, techtree.js, settings.js, shotInfo.js, damagePanel.js,
+src/ui/        hud.js, garage.js, settings.js, shotInfo.js, damagePanel.js,
                bootScreen.js, battleLoad.js, tankThumbs.js, flags.js
 src/main.js    integration: boot order, game flow, update loop, __SHOTS/__DEBUG hooks
 tools/         verification gates (see §4), genIcons.mjs, blend2glb.sh, strip-nc-assets.mjs
@@ -74,7 +74,7 @@ selftests possible. Keep it that way.
 
 | Gate | Command | What it proves |
 |---|---|---|
-| Screenshot harness | `node tools/screenshot.mjs` | Boots the game headless, captures every contracted view (see `docs/SCREENSHOT_CONTRACT.md`, currently 16+ incl. 4 battlefields, closeups, garage, techtree, killcam_xray). **Must exit 0 with zero console errors.** The de-facto smoke test. |
+| Screenshot harness | `node tools/screenshot.mjs` | Boots the game headless, captures every contracted view (see `docs/SCREENSHOT_CONTRACT.md`, currently 16+ incl. battlefields, closeups, garage, and killcam_xray). **Must exit 0 with zero console errors.** The de-facto smoke test. |
 | Controls probe | `node tools/controls-probe.mjs` | 38+ assertions in BOTH pointer-lock and cursor-aim (stubbed SecurityError) modes. **Direction-aware**: asserts D turns the hull toward screen-right and mouse-right swings the gun right by projecting to screen space — a plain "A and D differ" check once let a full steering inversion ship. |
 | Combat selftest | `node src/sim/combat.selftest.mjs` | ~149 assertions: ricochet/normalization/overmatch order, ±25% RNG, HE splash, ERA, module/crew rolls. |
 | Spotting selftest | `node src/sim/spotting.selftest.mjs` | Concealment formula, firing bloom, bush stacking, sixth sense. |

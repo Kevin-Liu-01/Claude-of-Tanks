@@ -37,6 +37,21 @@ timeline. Full console mirroring is off by default because logging every hot
 event can itself create stalls; anomaly rows are stored, not printed, unless
 mirroring is explicitly enabled.
 
+## Persistence contract
+
+The flight recorder is a bounded in-memory ring, not automatic permanent
+storage. Reloading or closing the page discards a manual session unless
+`__DEV_TRACE.download()` ran first. The repeatable probes export it as part of
+their JSON automatically. Perf HUD numbers, browser console output, terminal
+buffers, and screenshots displayed only in a Codex task are likewise not Git
+artifacts unless the round archives them explicitly.
+
+Every release-grade run follows [QA-ARCHIVE.md](QA-ARCHIVE.md): store the raw
+trace/scorecard, required screenshots, and console failures; generate
+`docs/qa-evidence-manifest.json`; then give the bytes a tracked or external
+durable location. Do not describe a memory-only or `.qa-*`-only trace as
+“archived.”
+
 ## Repeatable desktop and lower-end probes
 
 Run one profile at a time:

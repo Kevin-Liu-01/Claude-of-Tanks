@@ -6,7 +6,7 @@
 //   <id>_top_silhouette.png   128x128  flat white fill (tint at runtime:
 //                                      green self / red enemies on minimap)
 //   <id>_angle.png            512x512  3/4 hero from above-front-left
-//                                      (garage carousel cards, tech tree)
+//                                      (garage carousel cards)
 //   <id>_side.png             512x256  orthographic side profile, front right
 //   <id>_side_silhouette.png  256x128  flat white fill (team panels,
 //                                      kill feed, damage panel)

@@ -1,7 +1,20 @@
 /** Regression coverage for the class-wide AFV durability package. */
 
 import './tankFactory.js'; // registers modern roster extension specs
-import { AFV_HP_BONUS, getSpec } from './specs.js';
+import {
+  AFV_DAMAGE_MULTIPLIER, AFV_HP_BONUS, AFV_PENETRATION_MULTIPLIER,
+  ALL_TANK_IDS, TANK_SPECS, getSpec,
+} from './specs.js';
+
+const afvIds = ALL_TANK_IDS.filter((id) => TANK_SPECS[id] && TANK_SPECS[id].class === 'ifv');
+const originalFirepower = new Map(afvIds.map((id) => [id,
+  TANK_SPECS[id].gun.shells.map((shell) => ({
+    dmg: shell.dmg,
+    pen100Mm: shell.pen100Mm,
+    pen1000Mm: shell.pen1000Mm,
+    pen2000Mm: shell.pen2000Mm,
+  })),
+]));
 
 const expected = [
   ['m2a2_bradley', 1300, 60],
@@ -25,5 +38,50 @@ for (const [id, baseHp, baseFrontKe] of expected) {
   }
   if (getSpec(id).hp !== spec.hp) {
     throw new Error(`${id}: repeated lookup applied the HP bonus twice`);
+  }
+}
+
+if (!afvIds.includes('fv510')) {
+  throw new Error('derived AFV coverage must include FV510 Warrior');
+}
+
+for (const id of afvIds) {
+  const spec = getSpec(id);
+  const originals = originalFirepower.get(id);
+  for (let i = 0; i < spec.gun.shells.length; i++) {
+    const shell = spec.gun.shells[i];
+    const original = originals[i];
+    if (shell.dmg !== original.dmg * AFV_DAMAGE_MULTIPLIER) {
+      throw new Error(`${id}/${shell.name}: damage was not doubled`);
+    }
+    for (const key of ['pen100Mm', 'pen1000Mm']) {
+      if (shell[key] !== original[key] * AFV_PENETRATION_MULTIPLIER) {
+        throw new Error(`${id}/${shell.name}: ${key} was not doubled`);
+      }
+    }
+    if (original.pen2000Mm !== undefined
+      && shell.pen2000Mm !== original.pen2000Mm * AFV_PENETRATION_MULTIPLIER) {
+      throw new Error(`${id}/${shell.name}: pen2000Mm was not doubled`);
+    }
+  }
+  const once = spec.gun.shells.map(
+    (shell) => [shell.dmg, shell.pen100Mm, shell.pen1000Mm, shell.pen2000Mm]);
+  getSpec(id);
+  const twice = spec.gun.shells.map(
+    (shell) => [shell.dmg, shell.pen100Mm, shell.pen1000Mm, shell.pen2000Mm]);
+  if (JSON.stringify(twice) !== JSON.stringify(once)) {
+    throw new Error(`${id}: repeated lookup stacked the firepower multiplier`);
+  }
+}
+
+{
+  const mbt = TANK_SPECS.m1a2;
+  const before = mbt.gun.shells.map(
+    (shell) => [shell.dmg, shell.pen100Mm, shell.pen1000Mm, shell.pen2000Mm]);
+  getSpec('m1a2');
+  const after = mbt.gun.shells.map(
+    (shell) => [shell.dmg, shell.pen100Mm, shell.pen1000Mm, shell.pen2000Mm]);
+  if (JSON.stringify(after) !== JSON.stringify(before)) {
+    throw new Error('AFV firepower multiplier leaked into an MBT');
   }
 }

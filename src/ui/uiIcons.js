@@ -9,7 +9,6 @@ const P = {
   credits: '<circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M14.8 8.3c-.7-.6-1.6-.9-2.7-.9-1.5 0-2.6.7-2.6 1.8 0 2.9 5.5 1.1 5.5 4.4 0 1.4-1.2 2.4-3 2.4-1.2 0-2.3-.4-3.1-1.1M12 5.3v13.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
   gold: '<path d="M12 2.8 20.5 8 17.2 19H6.8L3.5 8Z" fill="currentColor"/><path d="m3.8 8.2 8.2 3.2 8.2-3.2M12 11.4V19" fill="none" stroke="rgba(8,12,16,.52)" stroke-width="1.3"/>',
   bonds: '<path d="m12 2.5 2.2 6.1 6.3 2.3-6.3 2.2-2.2 6.4-2.2-6.4-6.3-2.2 6.3-2.3Z" fill="currentColor"/><circle cx="12" cy="10.9" r="2" fill="rgba(8,12,16,.5)"/>',
-  techTree: '<path d="M7 12h5M12 12V6h4M12 12v6h4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="4.5" cy="12" r="2.5" fill="currentColor"/><rect x="15" y="3.5" width="5" height="5" rx="1" fill="currentColor"/><rect x="15" y="15.5" width="5" height="5" rx="1" fill="currentColor"/>',
   chevronLeft: '<path d="m15.5 4-8 8 8 8" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>',
   chevronRight: '<path d="m8.5 4 8 8-8 8" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>',
   close: '<circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.7" opacity=".65"/><path d="m8.5 8.5 7 7m0-7-7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',

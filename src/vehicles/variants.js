@@ -102,7 +102,7 @@ export const VARIANT_SPECS = {
   m1a1: {
     id: 'm1a1', name: 'M1A1 Abrams', nation: 'USA', era: 'modern', class: 'mbt',
     // variantOf: nation-roster derivative (NOT a community-pool vehicle) —
-    // garage/tech-tree group these under their nation's MODERN ladder while
+    // garage groups these under their nation's MODERN roster while
     // keeping the CC-BY credit line from `community` visible on cards.
     variantOf: 'm1a2',
     community: {

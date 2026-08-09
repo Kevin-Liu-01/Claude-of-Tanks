@@ -142,8 +142,8 @@ const forceRoster = rosterOpt === 'random' ? null : rosterOpt.split(',').map((s)
 // tag them via the trend note so cross-map rows never read as regressions.
 const mapId = opt('map', 'verdant');
 // PERF r7: --scene garage measures the GARAGE screen instead of battle. The
-// garage is where a player spends most of their session (carousel browsing,
-// camo, tech tree) and it was never on the perf gate: the pedestal is staged
+// garage is where a player spends most of their session (carousel browsing
+// and camo selection) and it was never on the perf gate: the pedestal is staged
 // at (-1500,-1500) INSIDE the same THREE.Scene as the 1 km battlefield, so
 // every garage frame could be paying the battle world's traversal, LOD update
 // and shadow cascades. Garage mode skips startBattle + the drive script and

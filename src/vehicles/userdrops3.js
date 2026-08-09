@@ -28,8 +28,8 @@
 //
 // NEW VEHICLE (class-template spec, communityArmor rule):
 //   kf51     — "KF51 Panther - Woodland" by GRIP420 (model + textures by
-//              David Falke, CC-BY 4.0). Germany tier-X MBT: lights the
-//              pre-wired techtree ghost (spec 'kf51' from leo1a5, row 0).
+//              David Falke, CC-BY 4.0). Germany tier-X MBT in the modern
+//              garage roster.
 //              Fully articulated authored nodes: KF51_Turret_Msh (yaw) >
 //              Gun_Msh (pitch) > MG_Msh. Turret node origin sits at deck
 //              level (y≈0) — autoPivot would reject it and fall back to the
