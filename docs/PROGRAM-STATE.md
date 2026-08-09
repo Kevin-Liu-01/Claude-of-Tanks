@@ -2576,3 +2576,27 @@ Verdict: `docs/critique/shaded-parity-turret-attachment-recert.md`; evidence:
 `shots/critic-turret-attachment-closeout/{challenger_3,abramsx}/`. Graduate
 count remains **34** and fleet remains **28/96**. The owner-priority lane now
 advances to the complete harmonious T-90 family round.
+
+## 5.88 RUSSIA FAMILY-MODULE PURE REFACTOR (2026-08-09)
+
+The owner explicitly advanced the complete T-90 family immediately after the
+§5.87 attachment closeout, superseding the older §5.75 T-44/Type 59 sequencing
+clause for priority only. The §5.75 structural prerequisite itself is now
+executed before any new T-90 geometry: `profiles/t90.js` owns T-90/T-90A/
+T-90M/T-90SM/Vladimir/T-90MS/Burlak/PT-91M, `profiles/t72.js` owns the three
+T-72 builders, `profiles/t80.js` owns T-80/T-80B/T-80BV/T-84, and the
+T-62/T-64/T-54/T-44/Type 59 residue stays in `profiles/russia.js`. The assembly
+map explicitly preserves the prior Russia roster key order.
+
+PURE-REFACTOR proof against `main` at **4d36376** is byte-identical for all
+fifteen moved ids (hash / meshes / vertices):
+
+| Family | Receipts |
+|---|---|
+| T-90 | t90a `265610e2`/54/99,313; t90 `72104d14`/59/89,077; t90ms `034e1bac`/49/86,097; t90a_burlak `d588df50`/51/81,059; pt91m `2cf10e23`/50/93,280; t90sm `d98f27dc`/45/83,511; t90a_vladimir `bdfe7d24`/51/80,413; t90m `e345ee8a`/49/111,241 |
+| T-72 | t72b_1987 `d62c8140`/42/62,453; t72b3m `175be954`/122/222,702; t72bu `68082d79`/41/60,749 |
+| T-80 | t80 `578b7f08`/43/76,373; t80b `99393970`/43/77,477; t80bv `89769670`/43/78,905; t84 `04707a9c`/43/85,876 |
+
+`npm test` is green. No geometry gate receipt, fleet count, graduation state or
+freeze changes in this commit. The next commit may now change only T-90-family
+geometry in the fresh module under the normal measurement/gate/critic laws.
