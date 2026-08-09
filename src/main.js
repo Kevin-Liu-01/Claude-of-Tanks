@@ -603,7 +603,12 @@ function wantsSourcedGlb(src) {
 }
 
 function buildPedestalVisual(specId) {
-  const vis = createTank(specId, engineCtx, { camoSeed: 4200, quality: 'ai' });
+  // The showroom hero never enters the simulation. Avoid deriving movement
+  // contact metadata from its full rendered subtree; battle/player/AI builds
+  // still run that solve normally.
+  const vis = createTank(specId, engineCtx, {
+    camoSeed: 4200, quality: 'ai', staticPreview: true,
+  });
   const pedSpec = getSpec(specId);
   vis.spec = pedSpec;
   // camo_spotting r4: same front-3/4 presentation for every hero — long

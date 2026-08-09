@@ -3562,7 +3562,7 @@ function bakeDirt(geo, yOffset, strength = 1, deckEq = false) {
  * Build the articulated visual for one tank.
  * @param {string} specId one of TANK_IDS
  * @param {object} engineCtx EngineCtx (§2.8)
- * @param {{camoSeed?: number, quality?: 'high'|'ai'|'low'}} [opts] — PERF r3:
+ * @param {{camoSeed?: number, quality?: 'high'|'ai'|'low', staticPreview?: boolean}} [opts] — PERF r3:
  *   'ai' keeps full geometry detail but bakes the shared texture set at half
  *   resolution (materials.js QUALITY_SIZES); 'high' is hero-grade.
  * @returns {object} TankVisual (ARCHITECTURE §3.3.2)
@@ -3868,8 +3868,12 @@ export function createTank(specId, engineCtx, opts = {}) {
   // includes approach/departure ramps), while the scan owns the bottom (a
   // rebuilt hull keel can undercut the gear floor).
   if (P.gear) P.gear.update(0, 0);
-  const restScan = measureRestContact(root);
-  const gearCG = P.gear ? P.gear.contactGeom : null;
+  // MOBILE-QA r14: static showroom previews never enter game state, so their
+  // movement contact metadata has no consumer. The full-tree vertex scan was
+  // measurable cold-switch work; keep it for every simulated visual.
+  const staticPreview = opts.staticPreview === true;
+  const restScan = staticPreview ? null : measureRestContact(root);
+  const gearCG = staticPreview ? null : (P.gear ? P.gear.contactGeom : null);
   let contactGeom = null;
   if (gearCG || restScan) {
     // Floor selection: the gear's analytic flat-run underside is the
