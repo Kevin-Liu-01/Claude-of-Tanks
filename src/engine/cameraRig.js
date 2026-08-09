@@ -73,11 +73,13 @@ const SHAKE_FREQ = 11;
 const SHAKE_AMP_XY = 0.045;
 const SHAKE_AMP_Z = 0.03;
 const SNIPER_SHAKE_SCALE = 0.3;
+const AUTO_AIM_FOLLOW_TAU_S = 0.10; // Blitz-style lock settles quickly without snapping
 
 const _pivotTarget = new THREE.Vector3();
 const _desired = new THREE.Vector3();
 const _viewDir = new THREE.Vector3();
 const _rayDir = new THREE.Vector3();
+const _autoAimAnchor = new THREE.Vector3();
 // >>> gameplay_feel r4: uphill framing assist scratch
 const _lookTarget = new THREE.Vector3();
 // <<< gameplay_feel r4
@@ -121,6 +123,8 @@ function nearestZoomIndex(zoom, list) {
  *   already chases input.aimPoint). Mouse deltas are zero in this mode.
  * @property {number} [cursorX] - cursor NDC x (-1..1) when cursorAim
  * @property {number} [cursorY] - cursor NDC y (-1..1, +y up) when cursorAim
+ * @property {?THREE.Vector3} [autoAimPoint] - mobile lock center-mass point;
+ *   when present the shared view/aim angles smoothly follow it.
  */
 
 /**
@@ -732,6 +736,29 @@ export function createCameraRig(camera, deps) {
         if (camInput.mouseDX !== 0 || camInput.mouseDY !== 0) aimTouched = true;
         aimYaw += camInput.mouseDX * sens;
         aimPitch = THREE.MathUtils.clamp(aimPitch - camInput.mouseDY * sens, PITCH_MIN, PITCH_MAX);
+      }
+
+      // MOBILE AUTO-AIM: drive the same shared yaw/pitch pair used by manual
+      // aim, so arcade camera, sniper view, server reticle and turret all
+      // converge on one center-mass point. The short angular spring prevents
+      // a jarring camera teleport when the lock button is pressed.
+      if (camInput.autoAimPoint) {
+        if (rig.mode === 'SNIPER') sniperAnchorFor(player, _autoAimAnchor);
+        else pivotTargetFor(player, _autoAimAnchor);
+        const dx = camInput.autoAimPoint.x - _autoAimAnchor.x;
+        const dy = camInput.autoAimPoint.y - _autoAimAnchor.y;
+        const dz = camInput.autoAimPoint.z - _autoAimAnchor.z;
+        const horiz = Math.hypot(dx, dz);
+        if (horiz > 1e-3) {
+          const wantYaw = Math.atan2(dx, dz);
+          const wantPitch = THREE.MathUtils.clamp(
+            Math.atan2(dy, horiz), PITCH_MIN, PITCH_MAX);
+          const follow = 1 - Math.exp(-Math.max(dt, 0) / AUTO_AIM_FOLLOW_TAU_S);
+          aimYaw += wrapPi(wantYaw - aimYaw) * follow;
+          aimPitch += (wantPitch - aimPitch) * follow;
+          freeYaw = freePitch = 0;
+          aimTouched = true;
+        }
       }
 
       applyPlayerVisibility(player, rig.mode !== 'SNIPER');

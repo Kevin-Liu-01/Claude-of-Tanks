@@ -77,6 +77,9 @@ import { getSpec, ALL_TANK_IDS } from '../vehicles/specs.js';
 import { penAtDistanceMm } from '../sim/ballistics.js';
 import { iconUrl } from '../ui/icons.js';
 import { tierNumeral } from '../ui/battleLoad.js';
+import {
+  alignReplayPoseToShot, captureReplayPose, replayStateFromPose,
+} from './replayPose.js';
 
 const XRAY_HOLD_S = 7.0;
 const FLIGHT_MIN_S = 1.9;
@@ -1065,11 +1068,14 @@ function tube(a, b, radius, mat, parent, disposables) {
  * Create the kill-cam controller.
  * @param {{scene:THREE.Scene, camera:THREE.PerspectiveCamera,
  *   rig:{setExternalPose:Function}, heightField:{getHeightAt:Function},
- *   getPlayer:() => ?object}} deps injected by integration (main.js)
+ *   getPlayer:() => ?object, getEntity?:(id:string) => ?object}} deps injected by integration (main.js)
  * @returns {object} killcam API
  */
 export function createKillCam(deps) {
   const { scene, camera, rig, heightField, getPlayer } = deps;
+  const getEntity = deps.getEntity
+    || ((id) => (typeof window !== 'undefined' && window.__DEBUG && window.__DEBUG.game
+      && window.__DEBUG.game.tankById ? window.__DEBUG.game.tankById.get(id) : null));
   // World access for the flight LOS solve (r6 major): terrain/prop raycast +
   // the vegetation concealment discs the spotting sim itself uses. Prefer an
   // injected getter (docs/handoff/killcam_shotinfo-r6.md wires main.js to
@@ -1265,6 +1271,11 @@ export function createKillCam(deps) {
         yaw: st.yaw, pitch: st.visualPitch, roll: st.visualRoll,
         turretYaw: st.turretYaw, gunPitch: st.gunPitch,
       },
+      // The killer is a live scene tank, so playback must restage its exact
+      // shot-time hull/turret/gun pose too. Without this the frozen visual
+      // showed whatever direction the AI turned after firing.
+      attackerEnt: rec ? rec.attackerEnt : null,
+      attackerPose: rec && rec.attackerPose ? { ...rec.attackerPose, pos: rec.attackerPose.pos.slice() } : null,
       targetEnt: target,
       armor: target.spec.armor,
       heightM: target.spec.dims.heightM,
@@ -1281,9 +1292,15 @@ export function createKillCam(deps) {
       busRef = bus;
       bus.on('shell:fired', (p) => {
         if (traj.size >= TRAJ_KEEP) traj.delete(traj.keys().next().value);
+        const attackerEnt = getEntity ? getEntity(p.shooterId) : null;
+        const attackerPose = attackerEnt && attackerEnt.state
+          ? alignReplayPoseToShot(captureReplayPose(attackerEnt.state), p.dir, attackerEnt.spec)
+          : null;
         traj.set(p.shellId, {
           pts: [p.muzzlePos[0], p.muzzlePos[1], p.muzzlePos[2]],
           muzzle: p.muzzlePos.slice(),
+          attackerEnt,
+          attackerPose,
         });
       });
       bus.on('shell:expired', (p) => traj.delete(p.shellId));
@@ -1544,6 +1561,7 @@ export function createKillCam(deps) {
       dimmedLights: null, // x-ray backdrop light dim, restored in finish (r4)
       rewreck: null, // wreck look to re-apply in finish() (pre-wreck restage)
       snapPoseState: null, // snapshot pose as a syncFromState-shaped object
+      attackerPoseState: null, // shot-time killer pose (restored on teardown)
       wreck: null,   // killcam r2: live WRECK hold state (fresh own death)
       it: 0, itWall: 0, // killcam r2: IMPACT beat clocks (anim / wall)
       impactVis: null,  // victim visual driven through the impact beat
@@ -1585,6 +1603,11 @@ export function createKillCam(deps) {
         turretYaw: p0.turretYaw, gunPitch: p0.gunPitch,
         yawRate: 0, speed: 0, trackScroll: { l: 0, r: 0 },
       };
+    }
+    if (snap.attackerEnt && snap.attackerEnt !== snap.targetEnt && snap.attackerPose &&
+        snap.attackerEnt.visual && (!snap.attackerEnt.combat || !snap.attackerEnt.combat.destroyed)) {
+      pb.attackerPoseState = replayStateFromPose(snap.attackerPose);
+      snap.attackerEnt.visual.syncFromState(pb.attackerPoseState, 0);
     }
     // wreck-look bookkeeping for finish() — computed whether or not the
     // restage runs now (the WRECK hold defers it, see restageIntact)
@@ -3824,6 +3847,13 @@ export function createKillCam(deps) {
         vis.setDestroyed({ pop: pb.rewreck.pop, ageS: 12 });
         for (const m of pb.rewreck.brokenTracks) vis.setTrackState(m, true);
         if (vis.stripEra) for (const pl of pb.rewreck.eraSpent) vis.stripEra(pl);
+      }
+      // Release the temporary shot-time killer pose back to its authoritative
+      // live state. Mid-battle death replays may hand control to spectate, so
+      // leaving the shooter restaged would otherwise create a visual desync.
+      if (pb.attackerPoseState && pb.snap.attackerEnt && pb.snap.attackerEnt.visual &&
+          pb.snap.attackerEnt.state) {
+        pb.snap.attackerEnt.visual.syncFromState(pb.snap.attackerEnt.state, 0);
       }
       if (pb.fxHidden) for (const c of pb.fxHidden) c.visible = true; // FX resume
       if (pb.vegGroup) pb.vegGroup.visible = pb.vegWasVisible; // vegetation back

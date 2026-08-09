@@ -57,14 +57,15 @@ const C_DRAG = 0.65;             // quadratic drag fraction — asymptotic crawl
 const SPOOL_S = 1.2;             // s to full drive torque from a standing start
 const SPOOL_FLOOR = 0.22;        // torque fraction available instantly
 const SPOOL_DECAY_S = 0.45;      // s for the spool to unwind at closed throttle
-const BRAKE_MULT = 3.5;          // braking is this much stronger than driving
+const BRAKE_MULT = 3.0;          // softer service-brake force; avoids snap-stops
 // Brake decel cap scales with specific power (weight class): a 12 hp/t heavy
 // caps near 7 m/s² and coasts visibly longer than a 25+ hp/t light/MBT at 9.
 // cap = clamp(BRAKE_CAP_BASE + BRAKE_CAP_PER_HPT × hp/t, BRAKE_CAP_MIN, BRAKE_CAP_MAX)
-const BRAKE_CAP_BASE = 4;        // m/s²
-const BRAKE_CAP_PER_HPT = 0.25;  // m/s² per hp/t
-const BRAKE_CAP_MIN = 5;         // m/s² — even the heaviest sluggard stops eventually
-const BRAKE_CAP_MAX = 9;         // m/s² — ~2 s stop from 65 km/h, the old flat cap
+const BRAKE_CAP_BASE = 3.5;      // m/s²
+const BRAKE_CAP_PER_HPT = 0.20;  // m/s² per hp/t
+const BRAKE_CAP_MIN = 4.5;       // m/s² — even the heaviest sluggard stops eventually
+const BRAKE_CAP_MAX = 7.5;       // m/s² — ~2.4 s stop from 65 km/h
+const BRAKE_DIVE_MULT = 0.78;    // visual pitch/suspension response while shedding speed
 const COAST_MULT = 1.75;         // rolling-friction decel ≈ 0.5 × brake when W is released
 const TURN_SPEED_LOSS = 0.35;    // target-speed fraction lost in a full-rate turn
 // r4 crit: the three turn penalties STACKED (0.35 target scale + 0.5 power
@@ -808,8 +809,13 @@ export function updateTank(entity, heightField, dt, collide = null) {
   // height deficit over all contact samples (support-polygon clamp) so no
   // contact point renders below the heightfield and — since the max deficit
   // point sits exactly ON the ground — the patch can never fully levitate.
-  const dvdt = clamp((state.speed - state._prevSpeed) / dt, -DVDT_CLAMP, DVDT_CLAMP);
-  const inertialPitch = clamp(K_INERTIA * dvdt, -INERTIA_CLAMP, INERTIA_CLAMP);
+  const priorSpeed = state._prevSpeed;
+  const dvdt = clamp((state.speed - priorSpeed) / dt, -DVDT_CLAMP, DVDT_CLAMP);
+  // Braking in either direction gets a slightly softer visual transfer than
+  // acceleration. This removes the exaggerated nose lurch without muting
+  // launch squat or collision flinch.
+  const poseDvdt = priorSpeed * dvdt < 0 ? dvdt * BRAKE_DIVE_MULT : dvdt;
+  const inertialPitch = clamp(K_INERTIA * poseDvdt, -INERTIA_CLAMP, INERTIA_CLAMP);
   state._prevSpeed = state.speed;
 
   // Predicted visual turn-lean sway (tankFactory adds it to rotation.z): fold
@@ -868,7 +874,7 @@ export function updateTank(entity, heightField, dt, collide = null) {
   // replicate its spring tick-for-tick so the support solve below clears the
   // terrain at the pose that actually reaches the screen.
   {
-    const accel = clamp(dvdt, -SUSP_ACCEL_CLAMP, SUSP_ACCEL_CLAMP);
+    const accel = clamp(poseDvdt, -SUSP_ACCEL_CLAMP, SUSP_ACCEL_CLAMP);
     let pT = accel * SUSP_ACCEL_GAIN;
     let rT = 0;
     const hl2 = SUSP_FIT_LEN * spec.dims.hullLengthM;

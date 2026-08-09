@@ -46,6 +46,8 @@ import { mulberry32, makeFbm } from './particles.js';
 
 /** Per-vehicle decal budget (oldest evicted beyond this). */
 export const IMPACT_DECAL_CAP = 24;
+/** Millimetre-scale separation avoids z-fighting without a visible air gap. */
+export const IMPACT_DECAL_LIFT_M = 0.006;
 
 // --- atlas layout ------------------------------------------------------------
 const ATLAS = 1024;
@@ -418,10 +420,12 @@ function clampToSkin(node, pos, normal) {
   node.localToWorld(_wp);
   node.getWorldQuaternion(_wq);
   _wn.copy(normal).applyQuaternion(_wq).normalize();
-  _raycaster.ray.origin.copy(_wp).addScaledVector(_wn, 1.6);
+  // Stay close to the resolved armor contact. The old 1.6 m launch could hit
+  // an unrelated turret/greeble first and visibly suspend the scar in space.
+  _raycaster.ray.origin.copy(_wp).addScaledVector(_wn, 0.9);
   _raycaster.ray.direction.copy(_wn).negate();
   _raycaster.near = 0;
-  _raycaster.far = 2.3; // reach up to ~0.7 m behind the reported plate
+  _raycaster.far = 1.45; // still reaches spaced armor/skirts around the plate
   const hits = _raycaster.intersectObject(node, true);
   for (const h of hits) {
     const o = h.object;
@@ -757,7 +761,7 @@ export function createImpactDecals({ anisotropy = 4, seed = 0x51f7a3 } = {}) {
     const { w, h } = sizeFor(fam, caliberMm, sizeK);
     const w2 = w / 2;
     const h2 = (h || w) / 2;
-    const lift = 0.03 + rng() * 0.014;
+    const lift = IMPACT_DECAL_LIFT_M + rng() * 0.002;
     _c0.copy(pos).addScaledVector(_n, lift);
     const cells = FAMILY_CELLS[fam] || FAMILY_CELLS.pen;
     const cell = cells[(rng() * cells.length) | 0];

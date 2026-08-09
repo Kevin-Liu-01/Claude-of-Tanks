@@ -237,7 +237,10 @@ function assembleWorld(engineCtx, config, heightField, terrain, vegetation, prop
     },
     // DESTRUCTIBLES r1: rematch hook — startBattle restores every broken/
     // toppled destructible of the (cached, reused) world to its intact state.
-    resetDestructibles: () => { if (props.resetDestructibles) props.resetDestructibles(); },
+    resetDestructibles: () => {
+      if (props.resetDestructibles) props.resetDestructibles();
+      if (vegetation.resetToppled) vegetation.resetToppled();
+    },
     spawnPoints,
     /** @returns {{roads:Array, buildings:Array, treeClusters:Array, waterOrSoft:Array}} minimap features */
     getMinimapFeatures: () => ({

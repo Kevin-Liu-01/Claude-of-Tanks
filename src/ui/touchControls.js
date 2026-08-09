@@ -44,13 +44,18 @@ const CSS = `
 .cot-touch .fire{right:max(20px,env(safe-area-inset-right));bottom:max(22px,env(safe-area-inset-bottom));
   width:96px;height:96px;color:#ffd27a;}
 .cot-touch .fire svg{width:34px;height:54px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.8));}
-.cot-touch .fire .lb,.cot-touch .scope .lb,.cot-touch .brake .lb{position:absolute;bottom:-17px;
+.cot-touch .fire .lb,.cot-touch .scope .lb,.cot-touch .autoaim .lb,.cot-touch .brake .lb{position:absolute;bottom:-17px;
   left:50%;transform:translateX(-50%);font-family:${FONT_COND};font-size:8px;font-weight:800;
   letter-spacing:.13em;text-transform:uppercase;white-space:nowrap;text-shadow:0 1px 3px #000;}
 .cot-touch .fire.alt{left:166px;right:auto;bottom:156px;width:64px;height:64px;opacity:.86;}
 .cot-touch .fire.alt svg{width:20px;height:34px}.cot-touch .fire.alt .lb{display:none}
 .cot-touch .scope{right:134px;bottom:43px;width:62px;height:62px;color:#dce7ef;}
 .cot-touch .scope svg{width:32px;height:24px;filter:drop-shadow(0 2px 3px #000);}
+.cot-touch .autoaim{right:206px;bottom:43px;width:58px;height:58px;color:#dce7ef;}
+.cot-touch .autoaim svg{width:28px;height:28px;filter:drop-shadow(0 2px 3px #000);}
+.cot-touch .autoaim.on{color:#ffd27a;border-color:#f0ad45;
+  background:radial-gradient(circle at 35% 28%,rgba(120,83,28,.92),rgba(42,27,10,.96) 64%,rgba(8,7,5,.98));
+  box-shadow:0 0 18px rgba(240,150,40,.42),inset 0 1px 4px rgba(255,225,170,.2);}
 .cot-touch .brake{left:166px;bottom:45px;width:54px;height:54px;color:#dce7ef;}
 .cot-touch .brake b{font-family:${FONT_COND};font-size:16px;letter-spacing:.02em;}
 .cot-touch .back{position:absolute;z-index:4;top:max(8px,env(safe-area-inset-top));
@@ -107,6 +112,7 @@ body.cot-touch-layout .cot-bounce{top:31%;font-size:12px;}
   .cot-touch .joy{width:118px;height:118px}.cot-touch .arrow.u{left:51px}.cot-touch .arrow.d{left:51px}
   .cot-touch .arrow.l{top:48px}.cot-touch .arrow.r{top:48px}
   .cot-touch .fire{width:82px;height:82px}.cot-touch .scope{right:112px;width:54px;height:54px}
+  .cot-touch .autoaim{right:172px;width:54px;height:54px}
   .cot-touch .fire.alt{left:137px;bottom:136px;width:56px;height:56px}.cot-touch .brake{left:137px;width:48px;height:48px}
   body.cot-touch-layout .cot-cons{bottom:calc(max(22px,env(safe-area-inset-bottom)) + 110px);}
   body.cot-touch-layout .cot-minimap{width:92px!important;height:92px!important;}
@@ -119,6 +125,13 @@ body.cot-touch-layout .cot-bounce{top:31%;font-size:12px;}
      Drop the tray below the plate; the killfeed steps below the tray. */
   body.cot-touch-layout .cot-shells{top:calc(max(4px,env(safe-area-inset-top)) + 46px);}
   body.cot-touch-layout .cot-killfeed{top:calc(max(4px,env(safe-area-inset-top)) + 106px);}
+}
+@media (orientation:portrait) and (max-width:680px){
+  /* Keep the three right-hand actions clear of the handbrake on narrow
+     phones. Auto-aim becomes the upper point of the cluster; the secondary
+     fire button steps up by the same amount on the left. */
+  .cot-touch .autoaim{bottom:105px;}
+  .cot-touch .fire.alt{bottom:160px;}
 }
 /* MOBILE-QA r1: shell chip label/count collision — at the 48px touch chip the
    selected slot's long class label (APFSDS, 35px) ran under the ammo count
@@ -139,6 +152,7 @@ body.cot-touch-layout .cot-touch .back{padding:12px 16px;min-height:44px;}
 
 const SHELL = uiIconSVG('shell', 34);
 const SCOPE = uiIconSVG('scope', 34);
+const AUTO_AIM = uiIconSVG('autoAim', 30);
 
 export function createTouchControls({ input, bus, isBattleActive, onLeaveBattle, isSniper = () => false }) {
   if (!document.getElementById('cot-touch-style')) {
@@ -158,6 +172,7 @@ export function createTouchControls({ input, bus, isBattleActive, onLeaveBattle,
     `<span class="arrow l">&#9650;</span><span class="arrow r">&#9650;</span><div class="knob"></div></div>` +
     `<button class="round fire alt" type="button" aria-label="Fire gun left">${SHELL}<span class="lb">Fire</span></button>` +
     `<button class="round brake" type="button" aria-label="Handbrake"><b>HB</b><span class="lb">Brake</span></button>` +
+    `<button class="round autoaim" type="button" aria-label="Toggle auto-aim" aria-pressed="false">${AUTO_AIM}<span class="lb">Auto Aim</span></button>` +
     `<button class="round scope" type="button" aria-label="Toggle sniper mode">${SCOPE}<span class="lb">Scope</span></button>` +
     `<button class="round fire" type="button" aria-label="Fire gun">${SHELL}<span class="lb">Fire</span></button>`;
   document.body.appendChild(root);
@@ -323,6 +338,18 @@ export function createTouchControls({ input, bus, isBattleActive, onLeaveBattle,
   bindHold(root.querySelector('.brake'), 'handbrake');
   root.querySelector('.scope').addEventListener('pointerdown', (e) => {
     e.preventDefault(); e.stopPropagation(); input.tapVirtual('sniperToggle'); bus.emit('ui:click', {});
+  });
+  const autoAim = root.querySelector('.autoaim');
+  autoAim.addEventListener('pointerdown', (e) => {
+    e.preventDefault(); e.stopPropagation();
+    bus.emit('ui:autoAimToggle', {});
+    bus.emit('ui:click', {});
+  });
+  bus.on('ui:autoAimState', ({ on }) => {
+    autoAim.classList.toggle('on', !!on);
+    autoAim.setAttribute('aria-pressed', on ? 'true' : 'false');
+    const label = autoAim.querySelector('.lb');
+    if (label) label.textContent = on ? 'Locked' : 'Auto Aim';
   });
   root.querySelector('.back').addEventListener('click', (e) => {
     e.stopPropagation(); bus.emit('ui:click', {}); onLeaveBattle();

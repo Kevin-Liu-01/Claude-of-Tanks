@@ -13,7 +13,7 @@ import { dressMapExtras } from './maps/mapKits.js'; // content_breadth r2
 import { VILLAGE_BUILDERS } from './maps/villageKit.js';
 import { DESTRUCTIBLE_TYPES, FENCE_SEG, WALL_SEG, bSandbagBroken } from './maps/inhabitKit.js';
 import { registerWorldDestructibles, emitBreakFx, emitDestroyed } from './destructibles.js';
-import { setToppleAxis } from './topple.js';
+import { setToppleAxis, settledToppleAngle } from './topple.js';
 // DESTRUCTIBLES r1: real-roster tank wrecks baked to static geometry
 import { bakeTankWreck, wreckPool } from './wrecks.js';
 // Build-time-baked licensed models (see tools/bake-props-models.mjs +
@@ -3463,7 +3463,9 @@ ${snowCap ? `
       setToppleAxis(_cax, dx, dz);
       pushCrushAnim({
         im: pool.imI, index: rec.slot, x: rec.x, y: rec.y, z: rec.z,
-        ax: _cax.x, az: _cax.z, t: 0, placement: null, maxAng: 1.48,
+        ax: _cax.x, az: _cax.z, t: 0, placement: null,
+        maxAng: settledToppleAngle(heightField, rec.x, rec.y, rec.z, dx, dz,
+          rec.h, Math.max(0.05, Math.min(0.22, rec.r * 0.18))),
       });
     } else if (rec.cls === 'toss') {
       // DESTRUCTIBLES r1: rammed drums/churns go FLYING — short ballistic
@@ -3473,7 +3475,7 @@ ${snowCap ? `
       setToppleAxis(_cax, dx, dz);
       pushCrushAnim({
         type: 'toss', im: pool.imI, index: rec.slot,
-        x: rec.x, y: rec.y, z: rec.z, h: rec.h * rec.sc,
+        x: rec.x, y: rec.y, z: rec.z, h: rec.h,
         vx: (dx / l) * th + (drng() - 0.5) * 1.2,
         vz: (dz / l) * th + (drng() - 0.5) * 1.2,
         vy: 2.6 + Math.min(speed, 12) * 0.30,
@@ -3526,7 +3528,8 @@ ${snowCap ? `
     // right-handed rotation makes the pole fall along the ram direction.
     pushCrushAnim({
       im: poleIM, index: c.index, x: c.x, y: c.y, z: c.z,
-      ax: _cax.x, az: _cax.z, t: 0, placement: null, maxAng: 1.45,
+      ax: _cax.x, az: _cax.z, t: 0, placement: null,
+      maxAng: settledToppleAngle(heightField, c.x, c.y, c.z, dx, dz, c.h, 0.12),
     });
     return true;
   }

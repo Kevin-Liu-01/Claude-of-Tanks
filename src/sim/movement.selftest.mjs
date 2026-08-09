@@ -244,7 +244,37 @@ for (const [wl, amp] of [[8, 1.5], [8, 0.55], [4, 0.5], [2, 0.12]]) {
     `flat accel: ${(ent.state.speed * 3.6).toFixed(1)} km/h after 10 s (need >80% of top)`);
 }
 
-// ------------------------------------------- 7. gun-terrain muzzle clamp --
+// ------------------------------------------- 7. service-brake softness --
+// Forward and reverse braking must settle promptly but never erase a
+// full-speed forward tank in about one second or kick an oversized pitch.
+{
+  const field = makeField(() => 0);
+  const ent = makeEntity(field, 0, 0, 0);
+  ent.input.throttle = 1;
+  run(ent, field, 600);
+  const start = ent.state.speed;
+  ent.input.throttle = 0;
+  ent.input.brake = true;
+  let peakPitch = 0;
+  run(ent, field, 60, () => { peakPitch = Math.max(peakPitch, Math.abs(ent.state.visualPitch)); });
+  assert(ent.state.speed > start * 0.30,
+    `forward brake: one-second speed ${ent.state.speed.toFixed(2)} preserves momentum from ${start.toFixed(2)}`);
+  assert(peakPitch < 0.075, `forward brake: pitch lurch ${peakPitch.toFixed(3)} rad`);
+  run(ent, field, 180);
+  assert(Math.abs(ent.state.speed) < 0.05, 'forward brake: settles within four seconds');
+
+  const rev = makeEntity(field, 0, 0, 0);
+  rev.input.throttle = -1;
+  run(rev, field, 300);
+  rev.input.throttle = 0;
+  rev.input.brake = true;
+  peakPitch = 0;
+  run(rev, field, 90, () => { peakPitch = Math.max(peakPitch, Math.abs(rev.state.visualPitch)); });
+  assert(Math.abs(rev.state.speed) < 0.05, 'reverse brake: settles cleanly');
+  assert(peakPitch < 0.075, `reverse brake: pitch lurch ${peakPitch.toFixed(3)} rad`);
+}
+
+// ------------------------------------------- 8. gun-terrain muzzle clamp --
 // Aim at the foot of a steep rising wall: the level barrel line would sink the
 // muzzle ~0.8 m into the slope. The clamp must hold the muzzle above ground
 // and flag atGunLimit so the reticle pins.

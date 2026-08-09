@@ -49,12 +49,18 @@ const COL = {
 const ES_CSS = `
 .cot-es{position:fixed;inset:0;z-index:71;display:none;pointer-events:none;
   flex-direction:column;align-items:center;justify-content:center;
-  padding:2.6vh 0 3vh;overflow:hidden;font-family:${FONT_STACK};color:${COL.text};
+  padding:2.2vh 0 2.6vh;overflow:hidden;font-family:${FONT_STACK};color:${COL.text};
   background:
-    radial-gradient(120% 90% at 50% -8%,rgba(240,160,48,.10),rgba(240,160,48,0) 46%),
-    linear-gradient(180deg,rgba(5,8,12,.93),rgba(4,7,10,.86) 44%,rgba(3,5,8,.95));}
+    radial-gradient(110% 80% at 50% -10%,rgba(240,160,48,.13),rgba(240,160,48,0) 48%),
+    linear-gradient(180deg,rgba(5,8,12,.985),rgba(4,7,10,.955) 44%,rgba(3,5,8,.99));}
 .cot-es.show{display:flex;}
 .cot-es *{box-sizing:border-box;margin:0;padding:0;}
+.cot-es::before{content:"";position:fixed;left:0;right:0;top:0;height:4px;
+  background:linear-gradient(90deg,transparent 8%,${COL.amber} 50%,transparent 92%);
+  box-shadow:0 0 22px rgba(240,160,48,.5);}
+.cot-es.result-victory::before{background:linear-gradient(90deg,transparent 8%,${COL.green} 50%,transparent 92%);}
+.cot-es.result-defeat::before{background:linear-gradient(90deg,transparent 8%,${COL.red} 50%,transparent 92%);}
+.cot-es .es-hero{width:1040px;max-width:94vw;flex:0 0 auto;}
 /* staggered entrance: hero first, tallies cascade, buttons last (--i steps) */
 @keyframes cotEsIn{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:none;}}
 @keyframes cotEsHero{from{opacity:0;transform:translateY(-10px) scale(.96);letter-spacing:.5em;}
@@ -62,11 +68,11 @@ const ES_CSS = `
 .cot-es .es-in{opacity:0;animation:cotEsIn .55s cubic-bezier(.2,.7,.3,1) forwards;
   animation-delay:calc(var(--i,0)*85ms);}
 /* --- hero ----------------------------------------------------------------- */
-.cot-es .es-kick{font-family:${FONT_COND};font-weight:800;font-size:10.5px;
+.cot-es .es-kick{font-family:${FONT_COND};font-weight:800;font-size:11.5px;
   letter-spacing:.34em;text-indent:.34em;color:${COL.amber};text-transform:uppercase;
   text-align:center;}
-.cot-es .es-ban{margin-top:6px;font-weight:800;font-size:clamp(44px,6.2vw,72px);
-  line-height:1;letter-spacing:.3em;text-indent:.3em;text-align:center;
+.cot-es .es-ban{margin-top:6px;font-weight:800;font-size:clamp(44px,5.8vw,68px);
+  line-height:1;letter-spacing:.18em;text-indent:.18em;text-align:center;
   text-transform:uppercase;opacity:0;
   animation:cotEsHero .7s cubic-bezier(.16,.8,.3,1) forwards;
   text-shadow:0 3px 30px rgba(0,0,0,.85);}
@@ -78,69 +84,74 @@ const ES_CSS = `
   box-shadow:0 0 12px rgba(240,160,48,.55);}
 .cot-es .es-ban.v+.es-rule{background:linear-gradient(90deg,rgba(127,220,138,0),#5fcf74 30%,#a8f0b2 50%,#5fcf74 70%,rgba(127,220,138,0));box-shadow:0 0 12px rgba(127,220,138,.5);}
 .cot-es .es-ban.d+.es-rule{background:linear-gradient(90deg,rgba(242,110,100,0),#e06055 30%,#ffb0a6 50%,#e06055 70%,rgba(242,110,100,0));box-shadow:0 0 12px rgba(242,110,100,.5);}
-.cot-es .es-sub{margin-top:10px;text-align:center;font-size:13px;font-weight:600;
+.cot-es .es-sub{margin-top:11px;text-align:center;font-size:14.5px;font-weight:650;
   color:${COL.steel};letter-spacing:.04em;}
 .cot-es .es-sub b{color:#ffe4b0;font-weight:800;}
 .cot-es .es-meta{margin-top:4px;text-align:center;font-family:${FONT_COND};
-  font-weight:700;font-size:10px;letter-spacing:.22em;color:${COL.dim};
+  font-weight:700;font-size:11px;letter-spacing:.18em;color:#aab7c2;
   text-transform:uppercase;font-variant-numeric:tabular-nums;}
 .cot-es .es-meta b{color:#c8d4de;font-weight:800;}
 /* --- economy -------------------------------------------------------------- */
-.cot-es .es-econ{display:flex;gap:14px;margin-top:2.2vh;width:920px;max-width:92vw;}
+.cot-es .es-econ{display:flex;gap:12px;margin-top:2vh;width:1040px;max-width:94vw;}
 .cot-es .es-eco{flex:1;display:flex;align-items:baseline;justify-content:center;gap:12px;
-  background:linear-gradient(180deg,rgba(12,16,20,.92),rgba(7,10,13,.94));
-  border:1px solid rgba(146,164,180,.28);border-top:2px solid rgba(240,160,48,.55);
-  box-shadow:0 10px 34px rgba(0,0,0,.5);padding:12px 18px 13px;}
-.cot-es .es-eco .k{font-family:${FONT_COND};font-weight:800;font-size:10px;
-  letter-spacing:.26em;color:${COL.dim};text-transform:uppercase;}
-.cot-es .es-eco .v{font-family:${FONT_COND};font-weight:800;font-size:30px;
+  min-height:66px;background:linear-gradient(180deg,rgba(18,23,28,.97),rgba(8,12,16,.97));
+  border:1px solid rgba(177,195,210,.34);border-top:3px solid rgba(240,160,48,.72);
+  box-shadow:0 10px 34px rgba(0,0,0,.52);padding:13px 20px 14px;}
+.cot-es .es-eco .k{font-family:${FONT_COND};font-weight:800;font-size:11px;
+  letter-spacing:.22em;color:#aebbc6;text-transform:uppercase;}
+.cot-es .es-eco .v{font-family:${FONT_COND};font-weight:800;font-size:34px;
   letter-spacing:-.01em;font-variant-numeric:tabular-nums;line-height:1;}
 .cot-es .es-eco.cr .v{color:${COL.gold};}
 .cot-es .es-eco.xp .v{color:${COL.xp};}
-.cot-es .es-eco .s{font-size:9.5px;color:${COL.dim};letter-spacing:.06em;}
+.cot-es .es-eco .s{font-size:10px;color:#9aa8b4;letter-spacing:.06em;}
 /* --- tallies -------------------------------------------------------------- */
-.cot-es .es-tals{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;
-  margin-top:12px;width:920px;max-width:92vw;}
-.cot-es .es-tal{text-align:center;background:rgba(10,14,18,.72);
-  border:1px solid rgba(146,164,180,.2);padding:9px 6px 8px;}
+.cot-es .es-tals{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;
+  margin-top:10px;width:1040px;max-width:94vw;}
+.cot-es .es-tal{display:grid;grid-template-columns:1fr auto;align-items:center;gap:14px;
+  min-height:54px;text-align:left;background:rgba(13,18,23,.9);
+  border:1px solid rgba(166,184,199,.28);border-left:3px solid rgba(166,184,199,.35);
+  padding:10px 14px 10px 15px;}
 .cot-es .es-tal .v{font-family:${FONT_COND};font-weight:800;font-size:23px;
-  letter-spacing:-.01em;font-variant-numeric:tabular-nums;color:#f2f7fb;line-height:1.05;}
+  grid-column:2;grid-row:1;letter-spacing:-.01em;font-variant-numeric:tabular-nums;
+  color:#f2f7fb;line-height:1.05;text-align:right;}
 .cot-es .es-tal .v i{font-style:normal;font-size:12px;color:${COL.dim};font-weight:700;}
-.cot-es .es-tal .k{margin-top:3px;font-size:8.5px;font-weight:700;letter-spacing:.15em;
-  color:${COL.dim};text-transform:uppercase;font-family:${FONT_COND};}
-.cot-es .es-tal.hot .v{color:${COL.gold};}
+.cot-es .es-tal .k{grid-column:1;grid-row:1;font-size:10.5px;font-weight:800;letter-spacing:.13em;
+  color:#aab7c2;text-transform:uppercase;font-family:${FONT_COND};}
+.cot-es .es-tal.hot{border-left-color:${COL.gold};background:linear-gradient(90deg,rgba(255,209,102,.1),rgba(13,18,23,.9));}
+.cot-es .es-tal.hot .v{color:${COL.gold};font-size:27px;}
 /* --- best shot strip ------------------------------------------------------ */
 .cot-es .es-best{display:flex;align-items:center;gap:10px;margin-top:12px;
-  width:920px;max-width:92vw;padding:7px 14px;
+  width:1040px;max-width:94vw;padding:9px 15px;
   background:linear-gradient(90deg,rgba(240,160,48,.16),rgba(240,160,48,.03) 70%);
   border:1px solid rgba(240,160,48,.4);border-left:3px solid ${COL.amber};}
 .cot-es .es-best .bk{font-family:${FONT_COND};font-weight:800;font-size:9.5px;
   letter-spacing:.24em;color:${COL.amberHi};text-transform:uppercase;flex:0 0 auto;}
 .cot-es .es-best .bd{font-family:${FONT_COND};font-weight:800;font-size:17px;
   color:${COL.gold};font-variant-numeric:tabular-nums;flex:0 0 auto;letter-spacing:-.01em;}
-.cot-es .es-best .bt{font-size:11px;color:${COL.steel};letter-spacing:.03em;flex:1;
+.cot-es .es-best .bt{font-size:12px;color:${COL.steel};letter-spacing:.03em;flex:1;
   min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
   font-variant-numeric:tabular-nums;}
 .cot-es .es-best .bt b{color:#eef4f9;font-weight:700;}
 /* --- columns: kills + team panels ----------------------------------------- */
-.cot-es .es-cols{display:flex;gap:14px;margin-top:12px;width:1150px;max-width:95vw;
+.cot-es .es-cols{display:flex;gap:10px;margin-top:11px;width:1280px;max-width:97vw;
   min-height:0;flex:0 1 auto;overflow:hidden;align-items:stretch;}
 .cot-es .es-panel{background:linear-gradient(180deg,rgba(10,14,18,.92),rgba(6,9,12,.95));
-  border:1px solid rgba(146,164,180,.28);box-shadow:0 10px 34px rgba(0,0,0,.5);
-  padding:10px 14px 12px;min-height:0;overflow-y:auto;flex:1;pointer-events:auto;}
+  border:1px solid rgba(166,184,199,.34);box-shadow:0 10px 34px rgba(0,0,0,.5);
+  padding:11px 13px 12px;min-height:0;overflow-y:auto;flex:1;pointer-events:auto;}
+.cot-es .es-panel.kills{flex:0 0 280px;}
 /* the legacy integration overlay may flash its old button/earnings line in
    the frames between showEndOverlay() and the report flush — armed on
    battle:ended, this suppresses it outright (the end screen owns the frame;
    !important beats the inline display:flex showEndOverlay writes) */
 body.cot-es-armed .cot-end{display:none !important;}
-.cot-es .es-ph{font-size:9.5px;font-weight:800;letter-spacing:.24em;color:${COL.dim};
-  text-transform:uppercase;font-family:${FONT_COND};padding-bottom:6px;
-  border-bottom:1px solid rgba(146,164,180,.2);margin-bottom:6px;
+.cot-es .es-ph{font-size:11px;font-weight:800;letter-spacing:.18em;color:#aebbc6;
+  text-transform:uppercase;font-family:${FONT_COND};padding:1px 2px 8px;
+  border-bottom:1px solid rgba(166,184,199,.3);margin-bottom:7px;
   display:flex;justify-content:space-between;font-variant-numeric:tabular-nums;}
 .cot-es .es-ph.ally{color:${COL.green};border-bottom-color:rgba(127,220,138,.35);}
 .cot-es .es-ph.foe{color:${COL.red};border-bottom-color:rgba(242,122,114,.35);}
 /* team rows — battle-load roster grammar with dead-row strikes */
-.cot-es .es-tr{display:flex;align-items:center;gap:9px;height:30px;padding:0 7px;
+.cot-es .es-tr{display:flex;align-items:center;gap:9px;height:34px;padding:0 8px;
   background:rgba(255,255,255,.024);border-left:2px solid rgba(146,164,180,.25);
   margin-bottom:3px;font-variant-numeric:tabular-nums;}
 .cot-es .es-tr.ally{border-left-color:rgba(127,220,138,.45);}
@@ -150,22 +161,23 @@ body.cot-es-armed .cot-end{display:none !important;}
 .cot-es .es-tr .tier{flex:0 0 22px;text-align:center;font-family:${FONT_COND};
   font-size:10px;font-weight:700;color:${COL.amberHi};}
 .cot-es .es-tr .si{flex:0 0 44px;height:18px;}
-.cot-es .es-tr .nm{flex:1;min-width:0;font-size:11.5px;font-weight:600;color:#dfe8f0;
+.cot-es .es-tr .nm{flex:1;min-width:0;font-size:12.5px;font-weight:650;color:#e5edf4;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .cot-es .es-tr .nm .you{color:${COL.gold};font-family:${FONT_COND};font-weight:800;
   font-size:8.5px;letter-spacing:.12em;border:1px solid rgba(255,209,102,.6);
   padding:0 3px 1px;margin-right:5px;vertical-align:1px;}
 .cot-es .es-tr .k{flex:0 0 34px;text-align:right;font-family:${FONT_COND};font-weight:800;
-  font-size:10px;color:#dbe6ef;}
+  font-size:11px;color:#dbe6ef;}
 .cot-es .es-tr .dm{flex:0 0 46px;text-align:right;font-family:${FONT_COND};font-weight:800;
-  font-size:10px;color:${COL.gold};letter-spacing:-.01em;}
+  font-size:11px;color:${COL.gold};letter-spacing:-.01em;}
 .cot-es .es-tr .st{flex:0 0 40px;text-align:right;font-family:${FONT_COND};font-weight:800;
-  font-size:8.5px;letter-spacing:.1em;color:${COL.green};opacity:.8;}
-/* DEAD-ROW STRIKE: name struck through + row dimmed + red tag */
-.cot-es .es-tr.dead{opacity:.62;background:rgba(120,30,24,.08);}
-.cot-es .es-tr.dead .nm{color:#93a2af;text-decoration:line-through;
-  text-decoration-color:rgba(242,122,114,.75);text-decoration-thickness:1.5px;}
-.cot-es .es-tr.dead .st{color:${COL.red};opacity:1;}
+  font-size:8.5px;letter-spacing:.08em;color:${COL.green};opacity:1;
+  border:1px solid rgba(127,220,138,.35);padding:2px 3px;text-align:center;}
+/* Dead rows remain legible; status color carries the state instead of a
+   line-through that made player/tank names needlessly difficult to scan. */
+.cot-es .es-tr.dead{opacity:.78;background:rgba(120,30,24,.1);}
+.cot-es .es-tr.dead .nm{color:#aab7c2;}
+.cot-es .es-tr.dead .st{color:${COL.red};border-color:rgba(242,122,114,.45);opacity:1;}
 .cot-es .es-tr.dead .si{opacity:.75;}
 .cot-es .es-cap{display:flex;gap:9px;padding:0 7px 3px;
   font-family:${FONT_COND};font-weight:700;font-size:7.5px;letter-spacing:.12em;
@@ -175,10 +187,10 @@ body.cot-es-armed .cot-end{display:none !important;}
 .cot-es .es-cap .c{flex:0 0 46px;text-align:right;}
 .cot-es .es-cap .d{flex:0 0 40px;text-align:right;}
 /* your kill rows */
-.cot-es .es-kr{display:flex;align-items:center;gap:9px;height:28px;padding:0 7px;
+.cot-es .es-kr{display:flex;align-items:center;gap:9px;height:33px;padding:0 7px;
   border-bottom:1px solid rgba(146,164,180,.1);font-variant-numeric:tabular-nums;}
 .cot-es .es-kr .si{flex:0 0 44px;height:17px;}
-.cot-es .es-kr .nm{flex:1;min-width:0;font-size:11.5px;font-weight:600;color:#eef4f9;
+.cot-es .es-kr .nm{flex:1;min-width:0;font-size:12.5px;font-weight:650;color:#eef4f9;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .cot-es .es-kr .x{flex:0 0 auto;font-family:${FONT_COND};font-weight:800;font-size:9px;
   letter-spacing:.14em;color:${COL.red};}
@@ -186,10 +198,12 @@ body.cot-es-armed .cot-end{display:none !important;}
   font-size:11px;color:${COL.gold};letter-spacing:-.01em;}
 .cot-es .es-none{padding:8px 7px;font-size:10.5px;color:${COL.dim};letter-spacing:.04em;}
 /* --- actions -------------------------------------------------------------- */
-.cot-es .es-actions{display:flex;gap:14px;margin-top:2.2vh;pointer-events:auto;}
+.cot-es .es-actions{display:flex;gap:14px;margin-top:1.8vh;padding:4px 10px;
+  flex:0 0 auto;pointer-events:auto;z-index:2;}
 .cot-es .cot-es-btn{font-family:${FONT_COND};font-weight:800;font-size:13.5px;
   letter-spacing:.22em;text-indent:.11em;text-transform:uppercase;cursor:pointer;
-  padding:13px 40px;transition:transform .12s ease,box-shadow .12s ease,filter .12s ease;}
+  min-width:230px;min-height:52px;padding:13px 40px;
+  transition:transform .12s ease,box-shadow .12s ease,filter .12s ease;}
 .cot-es .cot-es-btn:hover{transform:translateY(-1px);filter:brightness(1.08);}
 .cot-es .cot-es-btn:active{transform:translateY(0);}
 .cot-es .cot-es-btn.prime{color:#1a0e02;border:1px solid #ffc169;
@@ -212,15 +226,21 @@ body.cot-es-armed .cot-end{display:none !important;}
    not leave the results screen at all. Top-anchor + scroll, compact the hero
    and tallies so the common case fits without scrolling anyway. */
 @media (max-height:480px){
-  .cot-es{justify-content:flex-start;overflow-y:auto;padding:10px 0 16px;}
+  .cot-es{justify-content:flex-start;overflow-y:auto;padding:10px 0 82px;}
   .cot-es .es-ban{font-size:clamp(24px,9vh,38px);}
   .cot-es .es-econ{margin-top:8px;}
   .cot-es .es-eco{padding:6px 12px 7px;}
   .cot-es .es-eco .v{font-size:19px;}
   .cot-es .es-tal .v{font-size:14px;}
+  .cot-es .es-tals{grid-template-columns:repeat(6,1fr);gap:5px;}
+  .cot-es .es-tal{display:block;min-height:0;text-align:center;padding:6px 4px;}
+  .cot-es .es-tal .v{text-align:center;}
+  .cot-es .es-tal .k{margin-top:3px;font-size:7.5px;letter-spacing:.08em;}
   .cot-es .es-cols{margin-top:8px;flex:0 0 auto;max-height:26vh;}
-  .cot-es .es-actions{margin-top:12px;flex:0 0 auto;}
-  .cot-es .cot-es-btn{padding:12px 30px;}
+  .cot-es .es-actions{position:fixed;left:0;right:0;bottom:0;justify-content:center;
+    margin:0;padding:8px 10px;background:linear-gradient(180deg,rgba(3,5,8,.15),rgba(3,5,8,.98) 30%);
+    border-top:1px solid rgba(166,184,199,.24);}
+  .cot-es .cot-es-btn{min-height:46px;padding:10px 30px;}
   /* narrow side panels: the tracked-out header wrapped mid-word
      ("TEAM ALIV") — drop the letterspacing and keep it on one line */
   .cot-es .es-ph{letter-spacing:.1em;white-space:nowrap;gap:8px;overflow:hidden;}
@@ -230,11 +250,18 @@ body.cot-es-armed .cot-end{display:none !important;}
    header AND the action row with no scroll. Same treatment as short
    landscape: top-anchor, scroll, stack the kills/team columns. */
 @media (max-width:520px) and (orientation:portrait){
-  .cot-es{justify-content:flex-start;overflow-y:auto;padding:12px 0 18px;}
+  .cot-es{justify-content:flex-start;overflow-y:auto;padding:12px 0 82px;}
   .cot-es .es-ban{font-size:clamp(30px,10vw,44px);}
+  .cot-es .es-econ{flex-direction:column;}
+  .cot-es .es-eco{min-height:60px;flex:0 0 auto;}
   .cot-es .es-cols{flex-direction:column;max-height:none;flex:0 0 auto;}
+  .cot-es .es-tals{grid-template-columns:repeat(2,1fr);}
   .cot-es .es-panel{max-height:30vh;}
-  .cot-es .es-actions{flex:0 0 auto;margin-top:14px;}
+  .cot-es .es-panel.kills{flex:0 0 auto;}
+  .cot-es .es-actions{position:fixed;left:0;right:0;bottom:0;justify-content:center;
+    margin:0;padding:8px 7px;background:linear-gradient(180deg,rgba(3,5,8,.15),rgba(3,5,8,.98) 30%);
+    border-top:1px solid rgba(166,184,199,.24);}
+  .cot-es .cot-es-btn{min-width:0;padding:12px 15px;font-size:11px;}
   .cot-es .es-ph{letter-spacing:.1em;white-space:nowrap;gap:8px;overflow:hidden;}
 }
 `;
@@ -268,6 +295,10 @@ export function createEndScreen(bus, host) {
     document.head.appendChild(s);
   }
   host.classList.add('cot-es');
+  host.setAttribute('role', 'dialog');
+  host.setAttribute('aria-modal', 'true');
+  host.setAttribute('aria-label', 'Battle results');
+  host.setAttribute('aria-hidden', 'true');
 
   let visible = false;
   let garageBtn = null;   // adopted main.js endBtn (survives re-renders by ref)
@@ -363,6 +394,8 @@ export function createEndScreen(bus, host) {
 
       const res = result || '';
       const st = sum.stats;
+      host.classList.remove('result-victory', 'result-defeat', 'result-draw');
+      host.classList.add(`result-${res === 'victory' || res === 'defeat' || res === 'draw' ? res : 'draw'}`);
 
       // --- hero -----------------------------------------------------------
       const hero = el('div', 'es-hero', host);
@@ -489,8 +522,7 @@ export function createEndScreen(bus, host) {
       };
       // left column: your kills (per-kill vehicle rows)
       {
-        const p = el('div', 'es-panel', cols);
-        p.style.flex = '0 0 330px';
+        const p = el('div', 'es-panel kills', cols);
         const ph = el('div', 'es-ph', p);
         ph.innerHTML = `<span>Vehicles destroyed</span><span>${sum.kills.length}</span>`;
         if (!sum.kills.length) {
@@ -534,6 +566,7 @@ export function createEndScreen(bus, host) {
       adoptEndOverlay(actions);
 
       host.classList.add('show');
+      host.setAttribute('aria-hidden', 'false');
       // battle-HUD chrome must not bleed through the results backdrop — the
       // class shotInfo's CSS already keys every chrome hide off
       document.body.classList.add('cot-si-report');
@@ -546,6 +579,7 @@ export function createEndScreen(bus, host) {
       visible = false;
       stopCounters();
       host.classList.remove('show');
+      host.setAttribute('aria-hidden', 'true');
       document.body.classList.remove('cot-si-report');
     },
   };

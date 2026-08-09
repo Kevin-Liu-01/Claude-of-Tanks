@@ -8,7 +8,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { sampleSplatNoise, applyTone } from './terrain.js';
-import { setToppleAxis } from './topple.js';
+import { setToppleAxis, settledToppleAngle } from './topple.js';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
 import { texSize } from '../engine/quality.js';
 
@@ -2400,6 +2400,8 @@ function* vegetationBuildSteps(heightField, engineCtx, seed, cfg) {
       // fslot mirrors slot for the far partition (incremental repartition).
       cy: y + 4.4 * sc, cr: 2.9 * sc, fade: 0, slot: -1, fslot: -1,
       dr: (species === 'pine' || species === 'birch' ? 1.3 : 1.8) * sc, // root-decal radius
+      fallH: (species === 'palm' ? 7.4 : 6.8) * sc,
+      fallR: (species === 'palm' ? 0.18 : 0.15) * sc,
     });
     if (withObstacle) {
       // gameplay_feel r6 (round critique MAJOR): tree trunks are CRUSHABLE —
@@ -3160,23 +3162,40 @@ function* vegetationBuildSteps(heightField, engineCtx, seed, cfg) {
   function crushTree(ob, dx, dz) {
     const t = trees[ob.treeIdx];
     if (!t || t.crushed) return false;
+    if (!t.uprightMat) t.uprightMat = t.mat.clone();
     t.crushed = true;
     setToppleAxis(_tcax, dx, dz);
     treeCrushAnims.push({
       t, base: t.mat.clone(), x: t.x, y: ob.min[1], z: t.z,
       ax: _tcax.x, az: _tcax.z, u: 0,
+      maxAng: settledToppleAngle(heightField, t.x, ob.min[1], t.z, dx, dz,
+        t.fallH, t.fallR),
     });
     return true;
+  }
+  function resetToppled() {
+    treeCrushAnims.length = 0;
+    for (const ob of treeObstacles) {
+      ob.crushed = false;
+      ob._pressS = 0;
+      ob._pressT = -1e9;
+      const t = trees[ob.treeIdx];
+      if (!t || !t.crushed || !t.uprightMat) continue;
+      t.crushed = false;
+      t.mat.copy(t.uprightMat);
+      if (t.slot >= 0) writeTreeSlot(nearMeshes[t.species][t.variant], t.slot, t, t.fade);
+      if (t.fslot >= 0) writeTreeSlot(farMeshes[t.species][t.fv], t.fslot, t, 0);
+    }
   }
   function updateTreeCrush(dt) {
     for (let k = treeCrushAnims.length - 1; k >= 0; k--) {
       const a = treeCrushAnims[k];
       a.u = Math.min(a.u + dt / 1.15, 1.1);
       const e = Math.min(a.u / 0.82, 1);
-      // eased fall to ~81° along the ram direction + settle bounce
-      let ang = 1.42 * e * e * (3 - 2 * e);
+      // Terrain-seated fall along the ram direction + a small settle bounce.
+      let ang = a.maxAng * e * e * (3 - 2 * e);
       if (a.u > 0.82) {
-        ang = 1.42 - 0.05 * Math.sin((a.u - 0.82) * 17) * Math.exp(-(a.u - 0.82) * 5.5);
+        ang = a.maxAng - 0.035 * Math.sin((a.u - 0.82) * 17) * Math.exp(-(a.u - 0.82) * 5.5);
       }
       _tcax.set(a.ax, 0, a.az).normalize();
       _tcq.setFromAxisAngle(_tcax, ang);
@@ -3285,5 +3304,5 @@ function* vegetationBuildSteps(heightField, engineCtx, seed, cfg) {
   }
 
   return { group, update, setWindTime, setSniperFade, treeObstacles, concealers,
-    crushTree, _clusters: clusters };
+    crushTree, resetToppled, _clusters: clusters };
 }

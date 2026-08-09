@@ -40,6 +40,9 @@ const RET_CEIL_FRAC = 0.15;
 // numeral/label hierarchy with tabular figures (weight floor 500).
 import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.js';
 import { uiIconSVG } from './uiIcons.js';
+import {
+  CONSUMABLE_READY_MARK, CONSUMABLE_RULES, cooldownRemaining,
+} from '../game/consumables.js';
 // Pre-rendered tank icons (tools/genIcons.mjs): side silhouettes drive the
 // kill feed + ambient nameplates. Minimap blips and team-panel rows use the
 // vector class-glyph/arrow language instead (WoT reads class + heading, not
@@ -159,15 +162,15 @@ const GRID_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'J', 'K'];
 const TRAY_INK = 'rgba(238,244,250,0.86)';
 const CONSUMABLES = [
   {
-    key: '4', label: 'Repair Kit', count: 2,
+    key: '4', label: CONSUMABLE_RULES[0].label, count: CONSUMABLE_READY_MARK,
     svg: uiIconSVG('repair', 20, TRAY_INK),
   },
   {
-    key: '5', label: 'First Aid Kit', count: 2,
+    key: '5', label: CONSUMABLE_RULES[1].label, count: CONSUMABLE_READY_MARK,
     svg: uiIconSVG('medkit', 20, TRAY_INK),
   },
   {
-    key: '6', label: 'Fire Extinguisher', count: 1,
+    key: '6', label: CONSUMABLE_RULES[2].label, count: CONSUMABLE_READY_MARK,
     svg: uiIconSVG('extinguisher', 20, TRAY_INK),
   },
 ];
@@ -554,12 +557,13 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-camoind{display:none !impo
 .cot-con:hover{border-color:rgba(210,225,240,.5);}
 .cot-con .key{position:absolute;top:3px;left:4px;font-size:9px;font-weight:700;color:#8a97a3;
   font-family:${FONT_COND};letter-spacing:-.01em;
-  border:1px solid rgba(146,164,180,.4);padding:0 3px;line-height:12px;}
+  border:1px solid rgba(146,164,180,.4);padding:0 3px;line-height:12px;z-index:2;}
 .cot-con .cnt{position:absolute;bottom:2px;right:4px;font-size:11px;font-weight:700;
   font-family:${FONT_COND};letter-spacing:-.01em;color:#cfd9e2;
-  font-variant-numeric:tabular-nums;text-shadow:0 1px 2px rgba(0,0,0,.9);}
+  font-variant-numeric:tabular-nums;text-shadow:0 1px 2px rgba(0,0,0,.9);z-index:2;}
 .cot-con .cool{position:absolute;inset:0;display:none;
-  background:conic-gradient(rgba(4,6,9,.8) var(--cool,0%),transparent 0);}
+  background:conic-gradient(rgba(4,6,9,.82) var(--cool,0%),transparent 0);z-index:1;pointer-events:none;}
+.cot-con.cooling{border-color:rgba(118,137,153,.38);cursor:not-allowed;}
 .cot-con.used{opacity:.35;filter:grayscale(1);}
 .cot-con.deny{animation:cotConDeny .3s;}
 @keyframes cotConDeny{0%,100%{border-color:rgba(146,164,180,.28);}50%{border-color:rgba(240,90,90,.9);}}
@@ -1044,6 +1048,8 @@ export function initHud(bus) {
   // — no box, no layout change; mobile tier re-parks it as a vertical column)
   const conBox = el('div', 'cot-cons', shellBox);
   const conEls = [];
+  const conReadyAt = [0, 0, 0];
+  const conCooldownS = CONSUMABLE_RULES.map((r) => r.cooldownS);
   for (let i = 0; i < CONSUMABLES.length; i++) {
     const c = CONSUMABLES[i];
     const s = el('div', 'cot-con', conBox);
@@ -1054,6 +1060,26 @@ export function initHud(bus) {
       bus.emit('ui:consumable', { slot: i });
     });
     conEls.push(s);
+  }
+
+  function updateConsumableCooldowns(timeS) {
+    for (let i = 0; i < conEls.length; i++) {
+      const s = conEls[i];
+      const remaining = cooldownRemaining(timeS, conReadyAt[i]);
+      const cool = s.querySelector('.cool');
+      const count = s.querySelector('.cnt');
+      if (remaining > 0) {
+        const pct = Math.max(0, Math.min(100, remaining / conCooldownS[i] * 100));
+        cool.style.display = 'block';
+        cool.style.setProperty('--cool', `${pct.toFixed(1)}%`);
+        count.textContent = String(Math.ceil(remaining));
+        s.classList.add('cooling');
+      } else {
+        cool.style.display = 'none';
+        count.textContent = CONSUMABLE_READY_MARK;
+        s.classList.remove('cooling');
+      }
+    }
   }
 
   // --- minimap ---
@@ -3176,25 +3202,35 @@ export function initHud(bus) {
       }
     }
   });
-  bus.on('ui:consumableUsed', ({ slot, left }) => {
+  bus.on('ui:consumableUsed', ({ slot, readyAt, cooldownS }) => {
     const s = conEls[slot];
     if (!s) return;
-    s.querySelector('.cnt').textContent = String(left);
-    s.classList.toggle('used', left <= 0);
+    conReadyAt[slot] = readyAt;
+    conCooldownS[slot] = cooldownS;
+    updateConsumableCooldowns(lastTimeS);
     showAlert(`${CONSUMABLES[slot].label.toUpperCase()} USED`, false);
   });
-  bus.on('ui:consumableDenied', ({ slot, reason }) => {
+  bus.on('ui:consumableDenied', ({ slot, reason, remainingS }) => {
     if (reason === 'NOTHING') {
       showAlert(slot === 2 ? 'NO FIRE TO EXTINGUISH' : slot === 1 ? 'CREW UNHARMED' : 'NOTHING TO REPAIR', false);
+    } else if (reason === 'COOLDOWN') {
+      showAlert(`READY IN ${Math.ceil(remainingS || 0)} S`, false);
     }
     const s = conEls[slot];
     if (s) { s.classList.remove('deny'); void s.offsetWidth; s.classList.add('deny'); }
   });
   bus.on('ui:consumableReset', () => {
     for (let i = 0; i < conEls.length; i++) {
-      conEls[i].querySelector('.cnt').textContent = String(CONSUMABLES[i].count);
-      conEls[i].classList.remove('used', 'deny');
+      conReadyAt[i] = 0;
+      conCooldownS[i] = CONSUMABLE_RULES[i].cooldownS;
+      conEls[i].querySelector('.cnt').textContent = CONSUMABLE_READY_MARK;
+      conEls[i].querySelector('.cool').style.display = 'none';
+      conEls[i].classList.remove('used', 'deny', 'cooling');
     }
+  });
+  bus.on('ui:autoAimState', ({ on, targetName, reason }) => {
+    if (on) showAlert(`AUTO-AIM: ${String(targetName || 'TARGET').toUpperCase()}`, false);
+    else if (reason) showAlert(reason, false);
   });
   // Minimap size cycle (3 steps) — the canvas keeps its fixed 2x internal
   // resolution; CSS scales it, so blips/labels stay proportionate.
@@ -3463,6 +3499,7 @@ export function initHud(bus) {
       lastTanksRef = frame.tanks || lastTanksRef;
       const dt = Math.max(0, Math.min(0.1, frame.timeS - lastTimeS)) || 1 / 60;
       lastTimeS = frame.timeS;
+      updateConsumableCooldowns(lastTimeS);
       if (frame.mode && frame.mode !== mode) { mode = frame.mode; applyMode(); mmDirty = true; }
       playerRef = frame.player || playerRef;
       if (frame.player) playerId = frame.player.id;

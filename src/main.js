@@ -77,6 +77,11 @@ import { createGarageDressing } from './game/garageDressing.js';
 import { createPerfHud } from './ui/perfHud.js';
 import { createAudio } from './audio/audio.js';
 import { createInput } from './game/input.js';
+import {
+  CONSUMABLE_RULES, cooldownRemaining, resetConsumableCooldowns,
+  startConsumableCooldown,
+} from './game/consumables.js';
+import { mobileAutoAimCenter, pickMobileAutoAimTarget } from './game/mobileAutoAim.js';
 import { createSettings } from './ui/settings.js';
 import { createTouchControls } from './ui/touchControls.js';
 import {
@@ -1347,6 +1352,7 @@ function updateSniperFill() {
 // (game.killcam); the camera is driven only via rig.setExternalPose.
 const killcam = createKillCam({
   scene, camera, rig, heightField: hfProxy, getPlayer: () => game.player,
+  getEntity: (id) => game.tankById.get(id),
   getWorld: () => world, // r6: flight-cam LOS solve (foliage/terrain/props)
   // killcam r2 (owner: "show the actual animations of popping turrets and
   // exploding, especially during kill cam"): the replay's live-action IMPACT
@@ -1623,6 +1629,42 @@ const touchControls = createTouchControls({
   isSniper: () => rig.mode === 'SNIPER',
 });
 
+// MOBILE AUTO-AIM: a separate Blitz-style lock button acquires the enemy
+// closest to screen center, then the camera rig and gun continuously follow
+// that tank's center mass until the player toggles it off or the target is
+// destroyed/lost. Desktop controls remain unchanged.
+let mobileAutoAimTargetId = null;
+const mobileAutoAimPoint = new THREE.Vector3();
+function mobileAutoAimVisible(ent) {
+  return !game.spotting || game.spotting.isSpotted(ent.id, 'player', game.player);
+}
+function setMobileAutoAimTarget(ent, reason = '') {
+  mobileAutoAimTargetId = ent ? ent.id : null;
+  bus.emit('ui:autoAimState', {
+    on: !!ent,
+    targetId: ent ? ent.id : null,
+    targetName: ent && ent.spec ? ent.spec.name : '',
+    reason,
+  });
+}
+bus.on('ui:autoAimToggle', () => {
+  if (game.phase !== 'battle' || !input.isTouchLayout() || !game.player ||
+      !game.player.combat || game.player.combat.destroyed) return;
+  if (mobileAutoAimTargetId) {
+    setMobileAutoAimTarget(null, 'AUTO-AIM OFF');
+    return;
+  }
+  const target = pickMobileAutoAimTarget(
+    game.tanks, game.player, camera, mobileAutoAimVisible);
+  setMobileAutoAimTarget(target, target ? '' : 'NO TARGET NEAR RETICLE');
+});
+bus.on('tank:destroyed', ({ id }) => {
+  if (id === mobileAutoAimTargetId) setMobileAutoAimTarget(null, 'TARGET DESTROYED');
+});
+bus.on('phase:change', ({ phase }) => {
+  if (phase !== 'battle' && mobileAutoAimTargetId) setMobileAutoAimTarget(null);
+});
+
 // CURSOR-AIM FALLBACK: pointer lock durably unavailable (sandboxed iframes,
 // embedded panes) — the input layer flips to cursor aim; tell the player ONCE
 // so the control change isn't mysterious. Battle input itself never depends
@@ -1714,11 +1756,9 @@ for (let slot = 0; slot < 3; slot++) {
 // Consumables — rebindable actions (Digit4/5/6 + pad X/Y/B default; HUD tray
 // clickable, which emits the same 'ui:consumable'). 0 = Repair Kit (all
 // damaged modules to full), 1 = First Aid (revive crew), 2 = Fire
-// Extinguisher. Per-battle stock 2/2/1, 5 s per-slot cooldown, and a kit is
-// NOT consumed when there is nothing for it to fix.
-const CONSUMABLE_STOCK = [2, 2, 1];
-const CONSUMABLE_COOLDOWN_S = 5;
-const consumableLeft = [...CONSUMABLE_STOCK];
+// Extinguisher. Kits have infinite uses for the whole battle and individual
+// cooldowns (repair 35 s, first aid 45 s, extinguisher 25 s). A no-op press
+// never starts a cooldown.
 const consumableReadyAt = [0, 0, 0];
 for (let slot = 0; slot < 3; slot++) {
   input.onAction(`consumable${slot + 1}`, () => {
@@ -1729,9 +1769,12 @@ for (let slot = 0; slot < 3; slot++) {
 bus.on('ui:consumable', ({ slot }) => {
   const p = game.player;
   if (game.phase !== 'battle' || settings.isOpen() || !p || !p.combat || p.combat.destroyed) return;
-  if (slot < 0 || slot > 2) return;
-  if (consumableLeft[slot] <= 0) { bus.emit('ui:consumableDenied', { slot, reason: 'EMPTY' }); return; }
-  if (game.timeS < consumableReadyAt[slot]) { bus.emit('ui:consumableDenied', { slot, reason: 'COOLDOWN' }); return; }
+  if (!CONSUMABLE_RULES[slot]) return;
+  const remainingS = cooldownRemaining(game.timeS, consumableReadyAt[slot]);
+  if (remainingS > 0) {
+    bus.emit('ui:consumableDenied', { slot, reason: 'COOLDOWN', remainingS });
+    return;
+  }
   const c = p.combat;
   let ok = false;
   if (slot === 0) {
@@ -1752,9 +1795,8 @@ bus.on('ui:consumable', ({ slot }) => {
     ok = true;
   }
   if (!ok) { bus.emit('ui:consumableDenied', { slot, reason: 'NOTHING' }); return; }
-  consumableLeft[slot] -= 1;
-  consumableReadyAt[slot] = game.timeS + CONSUMABLE_COOLDOWN_S;
-  bus.emit('ui:consumableUsed', { slot, left: consumableLeft[slot] });
+  const cooldown = startConsumableCooldown(consumableReadyAt, slot, game.timeS);
+  bus.emit('ui:consumableUsed', { slot, ...cooldown });
   bus.emit('ui:click', {});
 });
 input.onAction('minimapZoom', () => {
@@ -2128,7 +2170,7 @@ function startBattle(specId, mapId = null, opts = {}) {
   setGarageSpots(false); // PERF: no spot-light cost on battle draws
   setGarageSunTrim(false); // restore the map's authored warm sun
   bus.emit('phase:change', { phase: 'battle' });
-  for (let i = 0; i < 3; i++) { consumableLeft[i] = CONSUMABLE_STOCK[i]; consumableReadyAt[i] = 0; }
+  resetConsumableCooldowns(consumableReadyAt);
   bus.emit('ui:consumableReset', {});
   rig.release();
   rig.snapArcade(2, game.player.state.yaw, -10 * DEG);
@@ -2437,6 +2479,8 @@ const camInput = {
   aimHold: false,
   // CURSOR-AIM FALLBACK (no-pointer-lock environments — see input.isCursorAim)
   cursorAim: false, cursorX: 0, cursorY: 0,
+  // MOBILE AUTO-AIM: null when unlocked, live center-mass point when locked.
+  autoAimPoint: null,
 };
 const _cursorNdc = { x: 0, y: 0 };
 const _listenerPose = { pos: null, forward: _fwd }; // reused — no per-frame literal
@@ -2857,6 +2901,17 @@ function tick(nowMs) {
   }
 
   // 3. camera rig (kill-cam drives the camera through rig.setExternalPose)
+  camInput.autoAimPoint = null;
+  if (mobileAutoAimTargetId && inBattle && !paused && !kcActive) {
+    const target = game.tankById.get(mobileAutoAimTargetId);
+    if (!input.isTouchLayout() || !target || !target.combat || target.combat.destroyed ||
+        !mobileAutoAimVisible(target)) {
+      setMobileAutoAimTarget(null, 'TARGET LOST');
+    } else {
+      mobileAutoAimCenter(target, mobileAutoAimPoint);
+      camInput.autoAimPoint = mobileAutoAimPoint;
+    }
+  }
   if (inBattle && !paused && !kcActive) rig.update(dtR, camInput);
   if (kcActive) killcam.update(dtR);
   if (game.phase === 'garage') showroom.update(dtR);
