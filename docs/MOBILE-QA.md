@@ -6,6 +6,11 @@ rounds until the budgets hold. First target: IN-BATTLE SUSTAINED
 iteration follows it verbatim — and the ledger of what each round found,
 changed, and measured.
 
+Archive terminology and the cross-campaign screenshot/log index live in
+[QA-ARCHIVE.md](QA-ARCHIVE.md). A ledgered result is not automatically a
+durable raw-artifact archive; the archive retention contract defines the
+difference.
+
 ## Why the iOS simulator is NOT the perf rig
 
 The QA iPhone 16 simulator renders on SOFTWARE GL: absolute FPS there is
