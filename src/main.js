@@ -4272,7 +4272,10 @@ function pumpGarageDressing() {
   if (garageDressing.pump()) _idle(pumpGarageDressing, 1800);
 }
 const postReadyIdleTasks = [
-  () => { if (fx.warmTextures) fx.warmTextures(); },
+  () => {
+    if (fx.warmTexturesChunked) return fx.warmTexturesChunked(nextFrame);
+    if (fx.warmTextures) fx.warmTextures();
+  },
   () => sky.ensureCloudTextures(),
   () => pumpGarageDressing(),
   () => schedulePedestalPrefetch(),
@@ -4280,7 +4283,16 @@ const postReadyIdleTasks = [
 function pumpPostReadyIdle() {
   const task = postReadyIdleTasks.shift();
   if (!task) { pumpStagedVisuals(); return; }
-  try { task(); } catch (_) { /* warm-up only */ }
+  try {
+    const result = task();
+    if (result && typeof result.then === 'function') {
+      Promise.resolve(result).then(
+        () => _idle(pumpPostReadyIdle, 1500),
+        () => _idle(pumpPostReadyIdle, 1500),
+      );
+      return;
+    }
+  } catch (_) { /* warm-up only */ }
   _idle(pumpPostReadyIdle, 1500);
 }
 // Start AFTER the splash teardown window: dismiss() removes the splash root

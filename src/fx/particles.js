@@ -759,10 +759,10 @@ function applyFbmAlpha(cv, rng, strength) {
  * rolling, combusting media instead of a static sprite scaling up.
  * Alpha-only payload (RGB white); tiles ordered row-major, frame 0 top-left.
  * @param {() => number} rng
- * @param {'smoke'|'dust'|'fire'} style contrast/churn profile
- * @returns {THREE.CanvasTexture}
+ * @param {'smoke'|'dust'|'fire'|'prop'} style contrast/churn profile
+ * @returns {Generator<void, THREE.CanvasTexture, void>}
  */
-function makeFlipbookTexture(rng, style) {
+function* makeFlipbookTextureSteps(rng, style) {
   // fire tiles at 176 px with 5-octave churn (was 128/4-oct for all styles):
   // a destruction fireball card reaches 5-7 m, and the coarse noise scaled to
   // ~25 cm/texel is what read as GIF-dither stipple once the erosion front
@@ -825,6 +825,13 @@ function makeFlipbookTexture(rng, style) {
         d[i + 3] = Math.round(a * 255);
       }
     }
+    // MOBILE-QA r28: a whole six-atlas bake was a repeatable 204/213 ms
+    // Long Animation Frame just after splash teardown. A tile is the
+    // smallest deterministic boundary: all RNG consumption and pixel order
+    // stay byte-for-byte identical, while the garage idle path can paint
+    // between tiles. The synchronous combat fallback simply drains these
+    // yields before any effect becomes visible.
+    yield;
   }
   ctx.putImageData(img, 0, 0);
   const tex = new THREE.CanvasTexture(cv);
@@ -1169,8 +1176,9 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
   // by image-swap. DETERMINISM: the bakes still consume the SAME seeded
   // texRng stream in the SAME order as before — only later — so every frozen
   // capture keeps its exact noise layout. main.js calls warmTextures() from a
-  // post-ready idle slice and synchronously from warmCombatPipeline(), which
-  // startBattle()/__SHOTS.set() already run before any fx frame can render.
+  // post-ready painted-frame slices and synchronously from
+  // warmCombatPipeline(), which startBattle()/__SHOTS.set() already run
+  // before any fx frame can render.
   const lazyTex = () => {
     const cv = document.createElement('canvas');
     cv.width = cv.height = 4;
@@ -1185,34 +1193,83 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
   const flashTex = lazyTex();
   const jetTex = lazyTex();
   let texturesBaked = false;
+  let textureBakeGen = null;
+
+  function installBakedTexture(tex, baked) {
+    // STUDIO selftest fix: the 4×4 placeholder HAS usually been uploaded by
+    // now — pool meshes render every frame at instanceCount 0, and a zero-
+    // instance draw still binds the material and allocates the sampler's GL
+    // storage. Swapping `image` to a different-sized canvas with only
+    // needsUpdate re-uses that 4×4 allocation and the upload silently
+    // no-ops, leaving every puff pool sampling fully-transparent texels
+    // (fireballs/smoke/dust invisible in battle AND studio; proven by a
+    // dispose-then-recapture probe). dispose() first, so the next bind
+    // re-creates the GL object at the real sprite-sheet size.
+    tex.dispose();
+    tex.image = baked.image;
+    tex.needsUpdate = true;
+    // the baked wrapper itself was never uploaded; dropping it frees only
+    // CPU-side state
+    baked.dispose();
+  }
+
+  function* warmTextureSteps() {
+    // Exact original bake order — the shared RNG stream must not shift.
+    const flipbookJobs = [
+      [smokeTex, 'smoke'],
+      [fireTex, 'fire'],
+      [propTex, 'prop'],
+      [dustTex, 'dust'],
+    ];
+    for (const [tex, style] of flipbookJobs) {
+      const steps = makeFlipbookTextureSteps(texRng, style);
+      let result = steps.next();
+      while (!result.done) {
+        yield;
+        result = steps.next();
+      }
+      installBakedTexture(tex, result.value);
+      yield;
+    }
+    installBakedTexture(flashTex, makeFlashTexture(texRng));
+    yield;
+    installBakedTexture(jetTex, makeJetTexture(texRng));
+  }
+
+  function finishTextureBake(g) {
+    if (textureBakeGen !== g) return;
+    textureBakeGen = null;
+    texturesBaked = true;
+  }
+
   function warmTextures() {
     if (texturesBaked) return;
-    texturesBaked = true;
-    // exact original bake order — the shared rng stream must not shift
-    const swaps = [
-      [smokeTex, makeFlipbookTexture(texRng, 'smoke')],
-      [fireTex, makeFlipbookTexture(texRng, 'fire')],
-      [propTex, makeFlipbookTexture(texRng, 'prop')],
-      [dustTex, makeFlipbookTexture(texRng, 'dust')],
-      [flashTex, makeFlashTexture(texRng)],
-      [jetTex, makeJetTexture(texRng)],
-    ];
-    for (const [tex, baked] of swaps) {
-      // STUDIO selftest fix: the 4×4 placeholder HAS usually been uploaded by
-      // now — pool meshes render every frame at instanceCount 0, and a zero-
-      // instance draw still binds the material and allocates the sampler's GL
-      // storage. Swapping `image` to a different-sized canvas with only
-      // needsUpdate re-uses that 4×4 allocation and the upload silently
-      // no-ops, leaving every puff pool sampling fully-transparent texels
-      // (fireballs/smoke/dust invisible in battle AND studio; proven by a
-      // dispose-then-recapture probe). dispose() first, so the next bind
-      // re-creates the GL object at the real sprite-sheet size.
-      tex.dispose();
-      tex.image = baked.image;
-      tex.needsUpdate = true;
-      // the baked wrapper itself was never uploaded; dropping it frees only
-      // CPU-side state
-      baked.dispose();
+    const g = textureBakeGen || (textureBakeGen = warmTextureSteps());
+    try {
+      for (;;) {
+        if (textureBakeGen !== g) return;
+        const result = g.next();
+        if (result.done) { finishTextureBake(g); return; }
+      }
+    } catch (err) {
+      if (textureBakeGen === g) textureBakeGen = null;
+      throw err;
+    }
+  }
+
+  async function warmTexturesChunked(yieldFrame) {
+    if (texturesBaked) return;
+    const g = textureBakeGen || (textureBakeGen = warmTextureSteps());
+    try {
+      for (;;) {
+        if (textureBakeGen !== g) return;
+        const result = g.next();
+        if (result.done) { finishTextureBake(g); return; }
+        await yieldFrame();
+      }
+    } catch (err) {
+      if (textureBakeGen === g) textureBakeGen = null;
+      throw err;
     }
   }
 
@@ -1425,6 +1482,7 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
      * fx material — warmCombatPipeline() covers every battle/shot path.
      */
     warmTextures,
+    warmTexturesChunked,
 
     /** Current internal clock (seconds). @returns {number} */
     getTime() { return uTime.value; },

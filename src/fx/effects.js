@@ -2530,6 +2530,11 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
      */
     warmTextures() { particles.warmTextures(); },
 
+    /** Paint the deferred sprite sheets one deterministic tile per frame. */
+    warmTexturesChunked(yieldFrame) {
+      return particles.warmTexturesChunked(yieldFrame);
+    },
+
     /**
      * Per-render-frame advance: particle clock, timers, lights, smoke columns,
      * and tracer ribbons rebuilt from live shell entities.
