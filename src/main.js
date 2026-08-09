@@ -3889,6 +3889,7 @@ function* warmCombatPipelineSteps() {
       // first time on the player's first real muzzle flash. One quarter-
       // viewport frame with the volley alive warms them for real.
       try { fx.update(0.016, game.shells, camera); } catch (_) { /* warm only */ }
+      yield* initializeForwardProgramsSteps();
       warmRender();
     } catch (err) {
       console.warn('[warm] fx volley failed (continuing):', err);
@@ -3991,6 +3992,37 @@ function warmRender() {
   }
 }
 let _v2gp = null;
+
+// MOBILE-QA r20: WebGLRenderer.compile() intentionally stops before uniform
+// discovery. The next real render then calls WebGLProgram.getUniforms() for
+// every newly linked program in one queue flush; 0.2 ms profiles attributed
+// 1301-1466 ms of the garage warm to that exact WebGLUniforms/onFirstUse
+// stack. Three's official compileAsync path was falsified on the measured
+// ANGLE driver because COMPLETION_STATUS_KHR itself blocked for 10.34 s.
+// Fall back to the same Three program objects, but consume each newly-created
+// forward variant separately and yield before creating the next. The final
+// warmRender still owns real texture/state/depth initialization.
+function* initializeForwardProgramsSteps() {
+  let sliceAt = performance.now();
+  const objects = [];
+  scene.traverseVisible((object) => {
+    if (object.isMesh || object.isPoints || object.isLine || object.isSprite) objects.push(object);
+  });
+  for (const object of objects) {
+    const before = (renderer.info.programs || []).length;
+    try { renderer.compile(object, camera, scene); } catch (_) { /* warm only */ }
+    const programs = renderer.info.programs || [];
+    for (let i = before; i < programs.length; i++) {
+      try { programs[i].getUniforms(); } catch (_) { /* warm only */ }
+      yield;
+      sliceAt = performance.now();
+    }
+    if (performance.now() - sliceAt >= 8) {
+      yield;
+      sliceAt = performance.now();
+    }
+  }
+}
 
 let _linkExtMain;
 function* linkerBreathingSlices(maxSlices) {
