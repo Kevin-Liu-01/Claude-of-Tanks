@@ -269,6 +269,10 @@ export function ensureTankVisual(game, ent) {
   ent.visual = createTank(ent.specId, engineCtx, {
     camoSeed: ent._camoSeed, quality: hero ? 'high' : 'ai',
   });
+  // MOBILE-QA r26: post-ready staged tanks have no simulation state yet.
+  // Keep them out of normal garage renders until setupBattle poses/reveals
+  // them; compileHiddenVariants' force-visible window still warms them.
+  if (!ent.state) ent.visual.setVisible(false);
   engineCtx.scene.add(ent.visual.root);
   if (game._groundSampler && ent.visual.setGroundSampler) {
     ent.visual.setGroundSampler(game._groundSampler);
