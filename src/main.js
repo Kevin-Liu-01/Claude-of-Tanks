@@ -671,7 +671,11 @@ function scheduleHeroUpgrade(specId) {
     // laggy even after the tank appears" component).
     upgradeSharedTexturesChunked(specId, () => nextFrame())
       .catch(() => { /* upgrade is cosmetic — the 'ai' bake stays */ });
-  }, 350); // one settle beat after the reveal; superseded by the next switch
+  // MOBILE-QA r25: a 350 ms settle upgraded every intermediate hero during
+  // normal 1.4 s carousel browsing. The six-switch profile billed 1299.6 ms
+  // to these discarded high-res repaints alone. Keep the immediate ai-tier
+  // reveal, but require a real pause before spending on the cosmetic upgrade.
+  }, 3000); // superseded while browsing; the final hero still crispens in place
 }
 // TANK-SWITCH PERF (switching r1): idle-time neighbor prefetch. The carousel
 // is ordered by ALL_TANK_IDS (createGarage receives exactly that list), so
