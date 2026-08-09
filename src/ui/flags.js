@@ -1,6 +1,6 @@
 // src/ui/flags.js — crisp procedural nation flags/insignia as inline SVG.
 // No external images: every mark is drawn from primitives so it stays sharp
-// at any UI scale (tank cards, carousel chips, tech tree headers).
+// at any UI scale (tank cards and carousel chips).
 //
 // Era handling: modern nations use their current flags; for WWII Germany the
 // era flag is sensitive, so we render the neutral military vehicle insignia

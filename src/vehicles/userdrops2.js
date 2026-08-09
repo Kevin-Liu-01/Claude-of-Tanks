@@ -273,7 +273,7 @@ const USERDROP2_SPECS = {
 // content_breadth r2: the bergman quarantine swaps for the three NEW specs
 // render as placeholder boxes in-game — do not ship them as playables until
 // the GLB substitution actually lands (then flip this flag, re-add the
-// techtree.js spec wiring, and run `node tools/genIcons.mjs --tanks
+// roster spec wiring, and run `node tools/genIcons.mjs --tanks
 // bmp1,m1128,m1296`).
 // content_breadth r5: even when flipped, PUBLIC builds (build:public sets
 // VITE_PUBLIC_BUILD=1) never register quarantine-path sources — the specs

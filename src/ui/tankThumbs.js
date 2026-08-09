@@ -1,4 +1,4 @@
-// src/ui/tankThumbs.js — stable garage and tech-tree tank portraits.
+// src/ui/tankThumbs.js — stable garage tank portraits.
 //
 // The old implementation rebuilt every portrait in an offscreen WebGL
 // renderer after the garage opened. GLB-backed tanks were captured before
@@ -10,7 +10,7 @@
 // The icon generator already renders the final, fully loaded vehicle models
 // into transparent PNGs in public/icons/. Use those deterministic assets in
 // every UI surface and keep this module as the small compatibility layer used
-// by the garage, tech tree, and screenshot harness.
+// by the garage and screenshot harness.
 
 import { iconUrl } from './icons.js';
 // TOP-DOWN MASK RIG (damage panel r9) — see the section at the bottom of this
@@ -49,7 +49,7 @@ function installErrorGuard() {
   if (errorGuardInstalled || typeof document === 'undefined') return;
   errorGuardInstalled = true;
   // Resource errors do not bubble, so listen during capture. This also covers
-  // tech-tree nodes created after the initial garage setup.
+  // garage cards created after the initial setup.
   document.addEventListener('error', (event) => {
     const img = event.target;
     if (!(img instanceof HTMLImageElement) || !img.dataset.cotThumb) return;

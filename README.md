@@ -91,8 +91,8 @@ Everything resets for the rematch.
 </tr></table>
 
 ### Vehicles
-**102 playables in the deployed build** — 22 WWII · 48 modern · 32 community — across a multi-nation tech tree with
-era filters. Tanks are a judged mix of procedural constructions (spec-driven hulls, turrets, and running gear built
+**102 playables in the deployed build** — 22 WWII · 48 modern · 32 community — organized by era and source filters
+in the garage. Tanks are a judged mix of procedural constructions (spec-driven hulls, turrets, and running gear built
 to published dimensions, refined by a dual-gate fidelity program: geometric accuracy *and* an independent visual
 critic, both ≥90) and community CC models that won side-by-side render-offs. 16 camouflage schemes with real
 concealment values — including AUTO, which repaints to the biome you deploy into — plus an equipment system and
@@ -169,7 +169,7 @@ capture. Every marketing shot in this README was made with it — the scene file
 <table>
 <tr>
 <td width="50%"><img src="public/media/home/ui_garage.webp" alt="Garage: showroom, camouflage picker, era filters, tank carousel"></td>
-<td width="50%"><img src="public/media/home/ui_roster.webp" alt="Tech tree with nation tabs and tier ladders"></td>
+<td width="50%"><img src="public/media/home/ui_spectate.webp" alt="Spectator interface with live team status and vehicle switching"></td>
 </tr>
 <tr>
 <td width="50%"><img src="public/media/home/ui_battle.webp" alt="Battle HUD: reticle, minimap, damage panel schematic, team panels"></td>
@@ -206,7 +206,7 @@ src/vehicles/  specs (stats + armor zones), procedural tank factory, per-family 
                GLB loader, materials/camouflage painters
 src/sim/       ballistics, armor resolution, damage, movement, spotting  (pure logic — node-run selftests)
 src/fx/        muzzle flash, tracers, impacts, explosions, destruction, particles
-src/ui/        HUD, garage, tech tree, settings, damage panel, shot info, touch controls
+src/ui/        HUD, garage, settings, damage panel, shot info, touch controls
 src/game/      state, AI, input, killcam, scene studio
 ```
 

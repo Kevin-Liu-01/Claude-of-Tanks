@@ -7,10 +7,6 @@
 //             the HERO IS THE SOURCED GLB (local build: __glbSwapped nodes) and
 //             the card icon exists, then captures
 //             shots/gen2-integration/garage_<id>.png.
-//   techtree — opens the tech tree, walks the touched nation tabs, asserts every
-//             wave-8 node renders REAL (gold, battle-ready) with its CC credit
-//             line, that the Ukraine tab exists with its two ghost ancestors,
-//             then captures shots/gen2-integration/techtree_<tab>.png.
 //   battle  — selects one wave-8 vehicle, enters a real battle through the
 //             garage BATTLE button, drives (W) asserting displacement, fires
 //             (aimAtNearest + LMB) asserting a __DEBUG.playerShellLog row, and
@@ -44,17 +40,6 @@ const WAVE8 = {
   t80: 'modern', t80b: 'modern', t80bv: 'modern', t84: 'modern',
   m60a2: 'coldwar', vickers_mk1: 'coldwar',
 };
-// tech-tree tabs touched by the wave: tab id -> [[node label, kind]]
-const TREE_EXPECT = {
-  usa: [['M48A5 Patton', 'real'], ['M60A2 Starship', 'real']],
-  ussr: [['T-44', 'real'], ['T-54', 'real'], ['T-80', 'real'],
-    ['T-80B', 'real'], ['T-80BV', 'real']],
-  uk: [['Vickers MBT Mk.1', 'real']],
-  france: [['AMX-30B', 'real'], ['AMX-30B2', 'real'], ['Leclerc S2', 'real']],
-  china: [['Type 59', 'real']],
-  ukraine: [['T-64BV', 'ghost'], ['T-80UD Bereza', 'ghost'], ['T-84 Oplot', 'real']],
-};
-
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let failures = 0;
 const fail = (msg) => { failures++; console.error(`  [FAIL] ${msg}`); };
@@ -183,55 +168,7 @@ for (const [id, chip] of Object.entries(WAVE8)) {
 }
 
 // ---------------------------------------------------------------------------
-// Phase 2 — tech tree: nation tabs, node states, credits, screenshots
-// ---------------------------------------------------------------------------
-console.log('[gen2-verify] phase 2: tech tree');
-if (!(await clickSel('.cot-tech'))) fail('tech tree button not found');
-await sleep(600);
-const openOk = await page.evaluate(() => !!document.querySelector('.cot-tt.open'));
-if (!openOk) fail('tech tree did not open');
-for (const [tab, expects] of Object.entries(TREE_EXPECT)) {
-  const clicked = await page.evaluate((tid) => {
-    const btn = [...document.querySelectorAll('.cot-tt-tab')]
-      .find((b) => (b.querySelector('span')?.textContent || '') === ({
-        usa: 'USA', ussr: 'USSR · Russia', uk: 'UK', france: 'France',
-        china: 'China', ukraine: 'Ukraine',
-      }[tid] || tid));
-    if (!btn) return false;
-    btn.click();
-    return true;
-  }, tab);
-  if (!clicked) { fail(`tab '${tab}' not found`); continue; }
-  await sleep(500);
-  const rows = await page.evaluate(() => [...document.querySelectorAll('.cot-tt-node')]
-    .map((el) => ({
-      name: el.querySelector('.nm')?.textContent || '',
-      real: el.classList.contains('real'),
-      ghost: el.classList.contains('ghost'),
-      credit: el.querySelector('.credit')?.textContent || null,
-    })));
-  for (const [label, kind] of expects) {
-    // name collisions are legitimate (USSR carries BOTH the 1943 T-80 light
-    // ghost and the wave-8 T-80 MBT) — prefer the node matching the expected
-    // kind, so the assertion tests the wave-8 node, not its namesake.
-    const candidates = rows.filter((r) => r.name === label);
-    const row = candidates.find((r) => (kind === 'real' ? r.real : r.ghost)) || candidates[0];
-    if (!row) { fail(`tab ${tab}: node '${label}' missing`); continue; }
-    if (kind === 'real' && !row.real) fail(`tab ${tab}: '${label}' not battle-ready gold`);
-    else if (kind === 'ghost' && !row.ghost) fail(`tab ${tab}: '${label}' expected ghost`);
-    else ok(`tree ${tab}: ${label} ${kind}${row.credit ? ` · credit "${row.credit.slice(0, 44)}…"` : ''}`);
-    if (kind === 'real' && !row.credit) fail(`tab ${tab}: '${label}' missing CC credit line (local build)`);
-  }
-  await shoot(`techtree_${tab}`);
-}
-await page.evaluate(() => {
-  const btn = document.querySelector('.cot-tt-close');
-  if (btn) btn.click();
-});
-await sleep(400);
-
-// ---------------------------------------------------------------------------
-// Phase 3 — battle E2E in a wave-8 vehicle: drive + fire
+// Phase 2 — battle E2E in a wave-8 vehicle: drive + fire
 // ---------------------------------------------------------------------------
 console.log(`[gen2-verify] phase 3: battle E2E in ${BATTLE_ID}`);
 await clickSel(`.cot-era-chip[data-era="${WAVE8[BATTLE_ID] || 'modern'}"]`);
@@ -312,5 +249,5 @@ await browser.close();
 await server.close();
 console.log(failures
   ? `[gen2-verify] FAIL — ${failures} problem(s)`
-  : '[gen2-verify] PASS — garage walk, tech tree, battle E2E all clean');
+  : '[gen2-verify] PASS — garage walk and battle E2E both clean');
 process.exit(failures ? 1 : 0);

@@ -807,7 +807,7 @@ export const TANK_SPECS = {
 // ===========================================================================
 // COMMUNITY TANKS — sourced, permissively-licensed playable vehicles.
 // Each spec carries `community: { author, source, license }` (surfaced in the
-// tech tree COMMUNITY tab + docs/ATTRIBUTION.md — CC-BY credit requirement).
+// garage credit card + docs/ATTRIBUTION.md — CC-BY credit requirement).
 // Armor models are parametric class-template layouts (communityArmor), not
 // plate-by-plate research replicas: plausible thicknesses within the roster's
 // balance envelope.

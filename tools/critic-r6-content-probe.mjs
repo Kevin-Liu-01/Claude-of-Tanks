@@ -1,5 +1,5 @@
-// content_breadth r6 critic probe — fonts, techtree community tab + pan/zoom,
-// community tank E2E (select -> battle -> drive -> fire), icon usage.
+// content_breadth r6 critic probe — fonts, community tank E2E
+// (select -> battle -> drive -> fire), map picker, and icon usage.
 // Screenshots land in shots/critic_r6_content/. Prints a JSON summary.
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
@@ -96,62 +96,7 @@ try {
     return { total, nonInter: [...bad.entries()] };
   });
 
-  // ---------- 2. TECH TREE ----------
-  await page.evaluate(() => window.__SHOTS.set('techtree'));
-  await new Promise((r) => setTimeout(r, 1500));
-  const ttWorldSel = await page.evaluate(() => {
-    // find the element whose style.transform carries translate+scale
-    const all = document.querySelectorAll('div');
-    for (const el of all) {
-      if (el.style && /translate\(.+\) scale\(/.test(el.style.transform)) {
-        el.setAttribute('data-probe-world', '1');
-        return el.style.transform;
-      }
-    }
-    return null;
-  });
-  out.ttInitialTransform = ttWorldSel;
-
-  // pan test: drag on empty canvas area
-  await page.mouse.move(960, 600);
-  await page.mouse.down();
-  for (let i = 1; i <= 8; i++) await page.mouse.move(960 + i * 25, 600 + i * 12);
-  await page.mouse.up();
-  await new Promise((r) => setTimeout(r, 300));
-  const afterPan = await page.evaluate(() => document.querySelector('[data-probe-world]')?.style.transform || null);
-  out.ttAfterPan = afterPan;
-  out.ttPanWorks = !!(ttWorldSel && afterPan && ttWorldSel !== afterPan);
-
-  // zoom test: wheel
-  await page.mouse.move(960, 540);
-  await page.mouse.wheel({ deltaY: -400 });
-  await new Promise((r) => setTimeout(r, 400));
-  const afterZoom = await page.evaluate(() => document.querySelector('[data-probe-world]')?.style.transform || null);
-  out.ttAfterZoom = afterZoom;
-  const scaleOf = (t) => { const m = /scale\(([\d.]+)\)/.exec(t || ''); return m ? +m[1] : null; };
-  out.ttZoomWorks = scaleOf(afterZoom) !== null && scaleOf(afterPan) !== null && Math.abs(scaleOf(afterZoom) - scaleOf(afterPan)) > 0.01;
-
-  // COMMUNITY tab
-  const commTab = await page.evaluate(() => {
-    const tabs = [...document.querySelectorAll('*')].filter((e) => e.childElementCount <= 3 && /^\s*COMMUNITY\s*$/i.test(e.textContent || '') && e.closest('[class*=tt]'));
-    if (!tabs.length) return null;
-    const t = tabs[tabs.length - 1];
-    const r = t.getBoundingClientRect();
-    return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
-  });
-  out.communityTabFound = !!commTab;
-  if (commTab) {
-    await page.mouse.click(commTab.x, commTab.y);
-    await new Promise((r) => setTimeout(r, 1200));
-    await page.screenshot({ path: `${outDir}/tt_community.png` });
-    out.communityCredits = await page.evaluate(() => {
-      const texts = [...document.querySelectorAll('*')].map((e) => e.textContent || '').filter((t) => /by .+CC[- ]BY/is.test(t) && t.length < 200);
-      const cards = document.querySelectorAll('[class*=node]');
-      return { creditSamples: [...new Set(texts)].slice(0, 12), nodeCount: cards.length };
-    });
-  }
-
-  // ---------- 3. COMMUNITY TANK E2E ----------
+  // ---------- 2. COMMUNITY TANK E2E ----------
   const commIds = await page.evaluate(() => {
     const g = window.__DEBUG.game;
     const ids = [];
@@ -217,7 +162,7 @@ try {
     });
   }
 
-  // ---------- 4. GARAGE map picker + carousel icons ----------
+  // ---------- 3. GARAGE map picker + carousel icons ----------
   await page.evaluate(() => window.__SHOTS.set('garage'));
   await new Promise((r) => setTimeout(r, 3000));
   out.mapPicker = await page.evaluate(() => {

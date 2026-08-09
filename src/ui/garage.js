@@ -6,7 +6,6 @@
 import { FONT_STACK, ensureFonts } from './fonts.js';
 import { FEATURED_SHOTS } from './featuredShots.js';
 import { flagSVG } from './flags.js';
-import { createTechTree } from './techtree.js';
 import { ensureTankThumbs, drainTankThumbs, getTankThumb, requeueTankThumbs } from './tankThumbs.js';
 // CAMO PICKER SECTION: swatches preview the REAL resolved pattern (scheme +
 // palette from materials.js) instead of hand-approximated CSS gradients.
@@ -231,19 +230,6 @@ const GARAGE_CSS = `
 /* Shared 24-grid vector marks keep all three navigation actions in the same
    stroke language and stay sharp at the compact 15px presentation size. */
 .cot-nav .nv .nvi{width:15px;height:15px;display:block;}
-.cot-tech{position:absolute;top:108px;left:34px;pointer-events:auto;cursor:pointer;
-  display:flex;align-items:center;gap:8px;
-  font-family:${FONT_STACK};font-size:10.5px;font-weight:800;letter-spacing:.20em;
-  color:#c6d2dc;text-transform:uppercase;padding:8px 16px 7px;
-  background:rgba(11,15,20,.82);border:1px solid rgba(146,164,180,.35);
-  border-bottom:2px solid rgba(146,164,180,.45);
-  transition:color .15s,border-color .15s,background .15s;}
-.cot-tech:hover{color:#ffd27a;border-color:rgba(240,176,74,.65);
-  background:rgba(20,17,11,.88);}
-/* garage_ui: research-ladder glyph (SVG, currentColor) replaces the old
-   hamburger text glyph — crisper and it actually depicts a tech tree */
-.cot-tech .tt-ico{display:block;color:#f0b04a;transition:color .15s;}
-.cot-tech:hover .tt-ico{color:#ffd27a;}
 /* r7: ONE flat orange plate, no gloss, no bevel highlight, no text shadow —
    the r5 two-stop gradient + inset bevels + letterform shadow still read as
    2012 Flash-game chrome, and the clip-path chamfer aliased at 1080p. The
@@ -376,10 +362,8 @@ const GARAGE_CSS = `
 /* r9.1 (owner): the column runs down to just above the era chips
    (chips bottom:172px + ~26px tall) instead of reserving 36% — the freed
    space all goes to the BATTLEFIELD list (maps is the flexible section). */
-.cot-leftcol{position:absolute;left:34px;top:156px;bottom:210px;
+.cot-leftcol{position:absolute;left:34px;top:108px;bottom:210px;
   width:224px;display:flex;flex-direction:column;gap:8px;overflow:hidden;pointer-events:auto;}
-  /* MAPS r1: top 122 -> 110, gap 14 -> 12 — the doubled battlefield roster
-     needs the slack; the TECH TREE button ends ~98px so nothing collides */
 /* garage_polish r9: the battlefield + camo sections share ONE industrial
    plate treatment (translucent backdrop + hairline + amber title tick) so
    they read as a composed panel instead of loose elements on the floor.
@@ -569,8 +553,7 @@ const GARAGE_CSS = `
 /* garage polish (spacing/focus only): keyboard-visible focus affordance on
    the interactive chrome — one quiet amber ring, outline-based so nothing
    shifts layout. Mouse clicks stay ring-free via :focus-visible. */
-.cot-battle:focus-visible,.cot-tech:focus-visible,
-.cot-era-chip:focus-visible,.cot-car-arrow:focus-visible{
+.cot-battle:focus-visible,.cot-era-chip:focus-visible,.cot-car-arrow:focus-visible{
   outline:2px solid rgba(240,176,74,.8);outline-offset:2px;}
 .cot-eqpick .chip:focus-visible,.cot-eqpick .ph .x:focus-visible{
   outline:1px solid rgba(240,176,74,.8);outline-offset:1px;}
@@ -582,7 +565,7 @@ const GARAGE_CSS = `
 .cot-garage.enter .band-top,.cot-garage.enter .band-bot,
 .cot-garage.enter .band-l,.cot-garage.enter .band-r{
   animation:cot-g-fade .30s ease-out backwards;}
-.cot-garage.enter .title,.cot-garage.enter .cot-nav,.cot-garage.enter .cot-tech,
+.cot-garage.enter .title,.cot-garage.enter .cot-nav,
 .cot-garage.enter .cot-leftcol,.cot-garage.enter .cot-topbar,
 .cot-garage.enter .hint{animation:cot-g-fade .34s ease-out .05s backwards;}
 .cot-garage.enter .stats{animation:cot-g-rise .36s ease-out .08s backwards;}
@@ -644,7 +627,6 @@ const GARAGE_CSS = `
   .cot-garage .title .mark{width:22px;height:22px;}
   .cot-nav{top:38px;left:14px;gap:3px;}
   .cot-nav .nv{font-size:7px;padding:4px 7px 3px;letter-spacing:.12em;}
-  .cot-tech{top:68px;left:14px;padding:6px 10px 5px;font-size:8px;}
   .cot-battle{top:12px;width:214px;height:40px;font-size:15px;}
   .cot-garage .stats{display:none;}
   .cot-topbar{top:8px;right:8px;gap:3px;transform:scale(.72);transform-origin:right top;}
@@ -1371,19 +1353,19 @@ export function createGarage(opts) {
   // r4: placeholder-grade community models are DELISTED from the default
   // carousel — the Newc42 box-hull Tiger and untextured Panzer III J sat
   // next to the hero roster as Minecraft-grade thumbnails (hud_ui r4 major).
-  // They stay researchable/selectable through the tech tree's COMMUNITY tab
-  // (attribution + playability preserved); only the carousel strip curates.
+  // They remain registered for direct tooling/debug selection; only the
+  // player-facing carousel is curated.
   // content_breadth r2: bmp1/m1128/m1296 defense-in-depth — registration is
   // already gated off in userdrops2.js (SHIP_USERDROP2_NEW).
   // §5.74 (owner, 2026-08-08): the legacy base M1A2 retires from the
   // carousel ("dont show it, clearly mark as legacy") — its kit inventory
   // redistributes across sepv2/sepv3/tusk/tejas in the distinctiveness
-  // round. Stays tech-tree selectable like the other delisted ids.
+  // round. It remains available to direct tooling like other delisted ids.
   const DELISTED = new Set(['newc_tiger', 'newc_pziii', 'bmp1', 'm1128', 'm1296', 'm1a2']);
   const allSpecs = opts.specs || [];
   // §5.31b PRINT VIEWER: view-only Sources cards for every retired print.
-  // Deliberately NOT merged into allSpecs — the tech tree (createTechTree
-  // below) and the stat peer ranges read allSpecs and must stay print-free.
+  // Deliberately NOT merged into allSpecs — stat peer ranges read allSpecs
+  // and must stay print-free.
   const printEntries = getPrintCatalog();
   const isPrintId = (id) => !!printBaseId(id);
   // CATALOG v2: the carousel REORDERS the roster it receives — four catalog
@@ -1426,9 +1408,6 @@ export function createGarage(opts) {
     `<div class="res">${uiIconSVG('bonds', 13, '#9fd8ec')}` +
     `<span>48 250</span></div>` +
     `</div>` +
-    `<button class="cot-tech" type="button">` +
-    `${uiIconSVG('techTree', 13, 'currentColor', 'tt-ico')}` +
-    `TECH TREE</button>` +
     `<button class="cot-battle" type="button">BATTLE</button>` +
     `<div class="stats"></div>` +
     `<div class="cot-era-chips"></div>` +
@@ -1520,8 +1499,8 @@ export function createGarage(opts) {
   let selectedId = specs.length ? specs[0].id : null;
   const cardById = new Map();
   const specById = new Map();
-  // specById covers the FULL roster (incl. delisted community tanks) so a
-  // tech-tree pick of a delisted vehicle still selects it for battle.
+  // specById covers the FULL roster so direct tooling can still inspect a
+  // delisted vehicle without exposing it in the player-facing carousel.
   for (const s of allSpecs) specById.set(s.id, s);
   // §5.31b PRINT VIEWER: selection plumbing resolves print cards too
   for (const e of printEntries) specById.set(e.id, e.spec);
@@ -1930,7 +1909,7 @@ export function createGarage(opts) {
   // whole 100-card roster mixed together.
   applyEraFilter(eraFilter);
   // Packaged PNGs avoid per-card WebGL contexts and remain deterministic
-  // across the garage carousel, tech tree, and screenshot harness.
+  // across the garage carousel and screenshot harness.
   ensureTankThumbs(allSpecs, { canWork: () => api.isOpen });
 
   function statBar(label, valueText, frac, opts) {
@@ -2056,8 +2035,8 @@ export function createGarage(opts) {
     const spec = specById.get(specId);
     if (!spec) return false;
     selectedId = specId;
-    // era filter chips: selecting a vehicle from another group (tech tree
-    // pick, harness setSelected) switches the visible strip to its group
+    // era filter chips: direct selection from another group (for example the
+    // screenshot harness) switches the visible strip to its group
     if (cardById.has(specId) && groupOf(spec) !== eraFilter) {
       applyEraFilter(groupOf(spec));
     }
@@ -2218,18 +2197,6 @@ export function createGarage(opts) {
   }
   // --- END DRAG-SCROLL CAROUSEL ---------------------------------------------
 
-  // --- tech tree (research screen layered over the garage) ---
-  const techtree = createTechTree({
-    specs: allSpecs,
-    bus,
-    onPick: (specId) => { api.setSelected(specId); },
-    onClose: () => {},
-  });
-  const NATION_TAB = {
-    USA: 'usa', Germany: 'germany', USSR: 'ussr', Russia: 'ussr',
-    'USSR/Russia': 'ussr', UK: 'uk', France: 'france', Israel: 'israel',
-    China: 'china', 'South Korea': 'korea', Japan: 'japan', Italy: 'italy',
-  };
   // r9.1 header nav — Studio rides the exact F8 production path (studio.js
   // listens on window keydown and gates on game.phase === 'garage'); Home
   // goes to the landing page. Garage is the current screen (active chip).
@@ -2241,18 +2208,8 @@ export function createGarage(opts) {
     emit('ui:click', {});
     window.location.href = '/home'; // pretty route (vite.config.js rewrite)
   });
-  root.querySelector('.cot-tech').addEventListener('click', () => {
-    emit('ui:click', {});
-    const sel = specById.get(selectedId);
-    // COMMUNITY TANKS live on their own tech-tree tab; nation-roster
-    // variants (spec.variantOf) stay on their nation tab
-    techtree.show(sel
-      ? (sel.community && !sel.variantOf ? 'community' : NATION_TAB[sel.nation] || 'usa')
-      : 'usa');
-  });
-
   function onKey(e) {
-    if (!api.isOpen || techtree.isOpen) return;
+    if (!api.isOpen) return;
     if (e.code === 'ArrowLeft') { step(-1); e.preventDefault(); }
     else if (e.code === 'ArrowRight') { step(1); e.preventDefault(); }
     else if (e.code === 'Enter' || e.code === 'NumpadEnter') { battle(); e.preventDefault(); }
@@ -2278,16 +2235,12 @@ export function createGarage(opts) {
       api.setSelected(specById.has(selected) ? selected : selectedId);
     },
 
-    /** Close the garage screen (and any tech tree layered over it). */
+    /** Close the garage screen. */
     hide() {
       root.style.display = 'none';
-      if (techtree.isOpen) techtree.hide();
       if (api.isOpen) window.removeEventListener('keydown', onKey);
       api.isOpen = false;
     },
-
-    /** The research screen (created/owned by the garage). */
-    techtree,
 
     /** Normalize packaged tank portraits (screenshot compatibility). */
     drainThumbs() { drainTankThumbs(); },
@@ -2303,14 +2256,6 @@ export function createGarage(opts) {
       const y0 = rr.top + 78;
       const y1 = Math.min(rr.bottom, carousel && carousel.height ? carousel.top - 14 : rr.bottom - 190);
       return { x: x0, y: y0, w: Math.max(1, x1 - x0), h: Math.max(1, y1 - y0) };
-    },
-
-    /**
-     * Open the tech tree over the garage (used by the screenshot harness).
-     * @param {string} [nation='usa'] 'usa' | 'germany' | 'ussr'
-     */
-    showTechTree(nation = 'usa') {
-      techtree.show(nation);
     },
 
     /**

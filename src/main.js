@@ -69,7 +69,7 @@ import { createDamagePanel } from './ui/damagePanel.js';
 // the ACTUAL built vehicle — the rig needs the shared engine context once.
 import { initTopMaskRig } from './ui/tankThumbs.js';
 import { createGarage } from './ui/garage.js';
-import { getLastBattleEarnings } from './ui/techtree.js';
+import { getLastBattleEarnings, installBattleEconomy } from './game/economy.js';
 import { createGarageStage } from './ui/garageStage.js';
 // garage-scene r1: workshop set dressing (side repair bays, benches, racks) —
 // built lazily from post-ready idle slices, never on the boot-critical path.
@@ -341,6 +341,7 @@ const devTrace = import.meta.env.DEV
   ? (await import('./dev/perfTrace.js')).createDevTrace({ renderer })
   : null;
 const bus = createBus(devTrace ? (ev, payload) => devTrace.event(ev, payload) : null);
+installBattleEconomy(bus);
 const game = createGameState();
 devTrace?.configure({ game });
 spawnTanks(game, engineCtx);
@@ -1758,7 +1759,7 @@ endOverlay.style.cssText =
 endOverlay.className = 'cot-end';
 const endTitle = document.createElement('div');
 endTitle.style.cssText = 'font-size:52px;font-weight:800;letter-spacing:0.3em;text-shadow:0 2px 18px rgba(0,0,0,0.8);';
-// META-GAME: battle payout line (earned XP/credits persist via ui/techtree.js)
+// META-GAME: battle payout line (earned XP/credits persist via game/economy.js)
 const endEarn = document.createElement('div');
 endEarn.style.cssText =
   'font-size:15px;font-weight:700;letter-spacing:0.14em;color:#cfd9e2;' +
@@ -3278,7 +3279,6 @@ const VIEW_TIME = {
   combat_firing: 0.5,
   explosion: 1.5,
   garage: 0.7,
-  techtree: 0.7,
   battlefield_desert: 2.0,
   battlefield_winter: 2.0,
   battlefield_urban: 2.0,
@@ -3756,16 +3756,6 @@ const SHOT_VIEWS = {
     garageDressing.ensureBuilt(); // deterministic capture: workshop fully dressed
     showroom.reset();
   },
-  techtree() {
-    // research screen over the garage: Germany tab shows both eras
-    // (WWII insignia + modern flag) and three unlocked roster tanks.
-    hud.setMode('hidden');
-    setPedestalTank('m1a2');
-    garage.show('m1a2');
-    if (garage.drainThumbs) garage.drainThumbs(); // portraits finished for the capture
-    showroom.reset();
-    garage.showTechTree('germany');
-  },
   battlefield_desert() { mapEstablishingShot(); },
   battlefield_winter() { mapEstablishingShot(); },
   battlefield_urban() { mapEstablishingShot(); },
@@ -3870,7 +3860,7 @@ window.__SHOTS = {
   views: [
     'battlefield', 'player_view', 'sniper_view', 'tank_closeup_modern',
     'tank_closeup_ww2', 'tank_closeup_t90m', 'tank_closeup_leo2a7',
-    'detrack', 'combat_firing', 'explosion', 'garage', 'techtree',
+    'detrack', 'combat_firing', 'explosion', 'garage',
     'battlefield_desert', 'battlefield_winter', 'battlefield_urban',
     'battlefield_coastal', 'battlefield_autumn', 'battlefield_steppe',
     'battlefield_railyard', // MAPS r1
@@ -3906,7 +3896,7 @@ window.__SHOTS = {
     // camo_spotting r2: garage shot keeps the neutral pedestal key; every
     // battlefield shot gets the authored map sun.
     setGarageSunTrim(name === 'garage');
-    garage.hide(); // also closes the tech tree; recipes re-show what they need
+    garage.hide();
     endOverlay.style.display = 'none';
     fx.resetAll();
     fx.resetSeed(5000);

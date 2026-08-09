@@ -24,14 +24,14 @@
  *
  * DATA: every number is a resolved-event sum handed over by shotInfo
  * (buildSummary), and the credits/XP figures come straight from the
- * economy seam main.js itself prints — techtree.getLastBattleEarnings()
+ * economy seam main.js itself prints — economy.getLastBattleEarnings()
  * (recorded on battle:ended). Nothing here is recomputed or invented; the
  * game has no base-capture mechanic, so no capture stat is fabricated.
  */
 
 import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.js';
 import { maskIcon } from './icons.js';
-import { getLastBattleEarnings } from './techtree.js';
+import { getLastBattleEarnings } from '../game/economy.js';
 import { tierNumeral } from './battleLoad.js';
 
 const COL = {
@@ -429,7 +429,7 @@ export function createEndScreen(bus, host) {
       if (sum.map) host.dataset.map = sum.map;
       if (sum.timeS > 0) host.dataset.durationS = String(Math.floor(sum.timeS));
 
-      // --- economy: the seam main.js prints (techtree wallet award) --------
+      // --- economy: the seam main.js prints (battle wallet award) ----------
       const earn = getLastBattleEarnings();
       if (earn) {
         const econ = el('div', 'es-econ', host);
