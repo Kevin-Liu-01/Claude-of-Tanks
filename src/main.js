@@ -658,6 +658,64 @@ function buildPedestalVisual(specId) {
   touchCache(specId, vis);
   return vis;
 }
+
+// MOBILE-QA r30: a cold procedural hero used to become visible immediately,
+// so its first presented garage frame linked 20 M1A1 programs back-to-back
+// (one ~10-12 ms driver wait each, one repeatable 233-244 ms task). Compile
+// the currently-visible leaf set against the real post target and final
+// garage light scene one object at a time while the incoming root stays
+// hidden. Consuming each new program's uniforms before yielding preserves
+// Three's real cache keys but gives every blocking link a painted-frame seam.
+async function warmPedestalProgramsChunked(vis, token) {
+  if (!vis || !vis.root) return false;
+  const objects = [];
+  vis.root.traverseVisible((object) => {
+    if (object.isMesh || object.isPoints || object.isLine || object.isSprite) {
+      objects.push(object);
+    }
+  });
+  if (vis.setVisible) vis.setVisible(false);
+
+  // The first pedestal bake is intentionally asynchronous. Do not touch the
+  // post binding before the boot pipeline has created it and finalized lights.
+  while (!bootComplete) {
+    if (token !== pedestalPollToken || game.phase !== 'garage') return false;
+    await nextFrame();
+  }
+
+  let sliceAt = performance.now();
+  for (const object of objects) {
+    if (token !== pedestalPollToken || game.phase !== 'garage' || !vis.root.parent) {
+      return false;
+    }
+    const before = (renderer.info.programs || []).length;
+    const priorTarget = renderer.getRenderTarget();
+    try {
+      const postTarget = post && post.composer ? post.composer.renderTarget1 : null;
+      if (postTarget) renderer.setRenderTarget(postTarget);
+      renderer.compile(object, camera, scene);
+    } catch (_) { /* warm only — reveal fallback below remains valid */ }
+    finally { renderer.setRenderTarget(priorTarget); }
+
+    const programs = renderer.info.programs || [];
+    for (let i = before; i < programs.length; i++) {
+      try { programs[i].getUniforms(); } catch (_) { /* warm only */ }
+      await nextFrame();
+      sliceAt = performance.now();
+    }
+    if (performance.now() - sliceAt >= 8) {
+      await nextFrame();
+      sliceAt = performance.now();
+    }
+  }
+  const ready = token === pedestalPollToken && game.phase === 'garage' && !!vis.root.parent;
+  if (ready) {
+    vis.__pedestalProgramsWarm = true;
+    vis.__pedestalWarmRequired = false;
+  }
+  return ready;
+}
+
 let heroUpgradeTimer = 0;
 function scheduleHeroUpgrade(specId) {
   clearTimeout(heroUpgradeTimer);
@@ -776,7 +834,8 @@ function setPedestalTank(specId, force = false) {
     pedestalPose(cached);
     const src0 = MODEL_SOURCE[specId];
     const wantsGlb = wantsSourcedGlb(src0);
-    if (!wantsGlb || isGlbSwapped(cached)) {
+    if ((!wantsGlb && (!cached.__pedestalWarmRequired || cached.__pedestalProgramsWarm)) ||
+        (wantsGlb && isGlbSwapped(cached))) {
       if (cached.setVisible) cached.setVisible(true);
       retirePrev();
       scheduleHeroUpgrade(specId);
@@ -806,6 +865,10 @@ function setPedestalTank(specId, force = false) {
           return;
         }
         pedestalVisual = buildPedestalVisual(specId);
+        // Only the boot hero has no outgoing visual to cover its first draw.
+        // Carousel switches keep their established immediate procedural reveal;
+        // an interrupted boot warm carries this flag through the cached path.
+        pedestalVisual.__pedestalWarmRequired = !prev;
         parkHiddenPrev();
         proceedWithHero();
       });
@@ -893,9 +956,35 @@ function setPedestalTank(specId, force = false) {
       setTimeout(poll, 50);
     }).catch(retirePrev); // loader unavailable — keep the procedural stand-in
   } else {
-    retirePrev(); // procedural: instant
-    scheduleHeroUpgrade(specId);
-    recordSwitch(specId, t0, 'procedural');
+    const token = pedestalPollToken;
+    const vis = pedestalVisual;
+    if (!vis.__pedestalWarmRequired) {
+      retirePrev(); // normal procedural carousel switch: preserve instant reveal
+      scheduleHeroUpgrade(specId);
+      recordSwitch(specId, t0, 'procedural');
+      schedulePedestalPrefetch();
+      return;
+    }
+    const reveal = (path) => {
+      if (token !== pedestalPollToken || game.phase !== 'garage' ||
+          pedestalVisual !== vis || !vis.root.parent) {
+        retirePrev();
+        return;
+      }
+      vis.__pedestalWarmRequired = false;
+      if (vis.setVisible) vis.setVisible(true);
+      retirePrev();
+      scheduleHeroUpgrade(specId);
+      recordSwitch(specId, t0, path);
+    };
+    warmPedestalProgramsChunked(vis, token)
+      .then((ready) => {
+        if (ready) reveal('procedural-warm');
+        else if (token === pedestalPollToken && game.phase === 'garage') {
+          reveal('procedural-fallback');
+        }
+      })
+      .catch(() => reveal('procedural-fallback'));
   }
   schedulePedestalPrefetch();
   }
