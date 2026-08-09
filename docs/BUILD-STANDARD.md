@@ -916,3 +916,20 @@ Named priority applications: Challenger 2, Challenger 3, the full T-90 family,
 and AbramsX. AbramsX is a COMPLETE REDESIGN against both local reference kits,
 not a dressing pass or an inheritance of its prior visual re-cert. It follows
 the K2/Leclerc measured-loft sequence before lower-priority cleanup or K1A1.
+
+### §K.2 STATION-SECTION DISCIPLINE (Challenger 3 graduation lesson)
+The Leclerc method measures section width and section height independently;
+never force a circular primitive when the oracle carries an oval jacket,
+flattened fairing, or anisotropic casting. Challenger 3's L55A1 root sleeve
+needed its full 370 mm plan width but only a 230 mm side height, so an oval
+section matched both views where either circular diameter failed one. A
+one-pixel thickness error repeated along a long tube is systematic mass, not
+AA noise: tune the physical section until the entire raster band agrees.
+
+Likewise, preserve view-specific station truth without duplicating masses:
+two laterally separated whips may share one longitudinal side-view station,
+and a broad armor plane that intersects the track envelope must be re-lofted
+at the measured knee rather than excused by its passing silhouette. Every
+joined loft therefore closes on three receipts together: source station
+curves, 14 shaded comparisons, and band-plus-shoe containment with no blind
+spot. This section law applies next to Challenger 2 and every T-90 rebuild.

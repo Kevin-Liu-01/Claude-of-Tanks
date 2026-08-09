@@ -1,7 +1,7 @@
 {
  "generatedAt": "2026-08-09T12:15:41.343Z",
  "gate": "every component >= 90; min is the headline",
- "passed": 26,
+ "passed": 27,
  "total": 96,
  "rows": [
   {
@@ -552,14 +552,14 @@
   },
   {
    "id": "challenger_3",
-   "geoMin": 61.4,
-   "gatePassed": false,
+   "geoMin": 90.4,
+   "gatePassed": true,
    "components": {
-    "hullCurves": 69.8,
-    "wholeCurves": 61.4,
-    "turretCurves": 71.1,
-    "stations": 77.9,
-    "dims": 99.8,
+    "hullCurves": 90.8,
+    "wholeCurves": 90.4,
+    "turretCurves": 91,
+    "stations": 91.8,
+    "dims": 100,
     "floaters": 100
    }
   },

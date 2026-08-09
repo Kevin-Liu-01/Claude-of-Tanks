@@ -319,3 +319,33 @@ clean); turret-parent 0/0/0 (born-clean held); winding-audit mode-1
 clean), mode-2 clean; standard-check contig 0 / census mg1+6d; npm
 test 166 + track-geometry PASS. Evidence: shots/critic-challenger_3/
 (fresh pairs at the final tree). DELIVERED-PENDING-CRITIC.
+
+## LECLERC-METHOD COMPLETE REDESIGN + GRADUATION (2026-08-09)
+
+The owner-priority redesign supersedes the earlier CH1-base candidate above.
+The source was re-measured as connected components and independent longitudinal
+stations, then rebuilt as joined true-profile geometry: low hull shoulders and
+bow/stern courses; a five-station Rheinmetall turret with its collapsed forward
+brow, lower cheeks and raked bustle; a broad attached terminal rear course;
+open/faceted RWS and source-envelope sights; the large oval loader station; and
+the measured oval L55 jacket. Six 0.90 m road wheels now sit without overlap on
+the 0.91 m pitch, with 0.71-radius painted dishes and visible dark tires. Dense
+stern grilles and guard layering preserve the reference's rear identity.
+
+Final gate x2, bit-identical: **min 90.4 | hull 90.8 / whole 90.4 / turret
+91.0 / stations 91.8 / dims 100 / floaters 100**. Post-verdict freeze
+**2678f6c** reproduced x2 (60 meshes / 69,457 vertices). Exact-tree fidelity is
+**91.52** (minimum view 91.50; overall 93.21 / hull 94.73 / turret 81.22 / gun
+94.97 / tracks 94.64). Track exact: band 0/24, shoes 0/38; turret-parent
+0/0/0; winding reversed/mixed 0/0; standard contiguity 0 and mg1+5d. Oracle
+SHA-256 is
+**a5fcd8018279793fb62bf0ff97c25f110a3b43a2da714fc51138280b9cb35a25**
+from pristine `.bak`
+**5eaa24a25e3c200b80ab7d1f8301d2ca8d6aed87137940**.
+
+Independent §B8 graduation sitting on `shots/critic-challenger3-graduation/`
+PASSes all 14 fresh pairs: floor **9.0**, mean **9.04**. The preceding ordered
+corrections—physical wheel spacing, restored wheel scale, compact roof/RWS,
+wider stern course, 0.71 dish radius and the closed attached rear trapezoid—are
+present in the frozen tree. Verdict:
+`docs/critique/shaded-parity-challenger3-graduation.md`.

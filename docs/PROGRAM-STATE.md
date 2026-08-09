@@ -49,7 +49,7 @@ at load.
 - Env for EVERY node run: `export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh"`
 - npm test before every landing (166 equipment checks + track-geometry).
 
-## 3. GRADUATE REGISTRY (32 graduates, hash-frozen)
+## 3. GRADUATE REGISTRY (33 graduates, hash-frozen)
 Freeze = deterministic geometry hash via `node tools/tmp-hashgeo.mjs
 --ids=...` (camoSeed 4242 pinned build; FNV-1a over position buffers +
 world matrices, mesh-order independent). Graduate-change protocol: fix ->
@@ -88,6 +88,7 @@ re-freeze NEW hash, all in ONE commit.
 | leclerc | 683be340 | GRADUATED 2026-08-08 (30th; gate 90.3 x2 every component >=90 + visual floor 9.0 mean 9.17 x14 at freeze-verified bytes; the §5.14 §K-exemplar turret standard held through the ladder — no gate-chasing artifacts; commander-well doc trued z_w 0.32..0.66) |
 | k2 | 827d5ffc | GRADUATED 2026-08-08 (31st; Leclerc-method closed station loft; gate 90.1 x2 every component >=90; visual R26 floor 9.0 / mean 9.09 x14; exact Object_8/15/18/21 plan inventory, rounded asymmetric cage, countable six-station ISU gear; oracle 8d92cd1b reproducible from pristine .bak) |
 | abramsx | fe7f9852 | GRADUATED 2026-08-09 (32nd; complete Leclerc-method redesign; gate 90.2 x2 every component >=90; visual polish26 floor 9.0 / mean 9.04 x14; measured knife bow, running gear, station terraces, open D-hood sights, XM914 feed and bustle void; oracle 01acf03c reproducible from pristine .bak) |
+| challenger_3 | 2678f6c | GRADUATED 2026-08-09 (33rd; complete Leclerc-method redesign; gate 90.4 x2 every component >=90; visual floor 9.0 / mean 9.04 x14; exact-tree fidelity 91.52; joined five-station turret, oval L55 jacket, six correctly spaced wheels, open RWS and broad attached stern course; oracle a5fcd801 reproducible from pristine .bak) |
 | m26_pershing | 2f006738 | RE-RECORDED 2026-08-08: hash moved by LANDED 5f39989 (armorM4 gunBarrel shadow-proxy 3.96->3.44; m26/m45 inherit m4a3e8 proxies — patton.js bytes unchanged); double-confirmed by builder bisect + m45-grad critic; prior 65c564c0 bore+winding re-cert lineage (floors 9.1-9.4) carries |
 | t90m | e345ee8a | GRADUATED 2026-08-06 (27th; floor 9.0 x14 second sitting; the owner's dedicated-agent arc 81.7 -> dual gate) |
 
@@ -2436,3 +2437,26 @@ guard is retired to history. Fleet is **26/96**; graduates **32**. Verdict:
 docs/critique/shaded-parity-abramsx-redesign-graduation.md. The owner-priority
 Leclerc-method lane now advances to Challenger 2, Challenger 3 and the T-90
 family.
+
+## 5.84 CHALLENGER 3 LECLERC-METHOD REDESIGN GRADUATED — 33rd
+(2026-08-09)
+
+The owner-priority Challenger 3 rebuild is complete and supersedes the earlier
+CH1-base candidate. Source connected components and independent longitudinal
+stations drove a joined low-shoulder hull, five-station Rheinmetall turret,
+collapsed forward brow/lower cheeks, raked bustle, measured oval L55 jacket,
+open RWS, large oval loader station, six non-overlapping wheels on measured
+pitch, and a broad closed stern course with dense grille/guard layering.
+
+Final gate x2 is bit-identical: **90.4** | 90.8/90.4/91.0/91.8/100/100.
+Post-verdict freeze **2678f6c** reproduced x2 (60 meshes / 69,457 vertices).
+Exact-tree fidelity is **91.52**, minimum view 91.50. Oracle SHA-256
+**a5fcd8018279793fb62bf0ff97c25f110a3b43a2da714fc51138280b9cb35a25**
+is bound to pristine `.bak`
+**5eaa24a25e3c200b80ab7d1f8301d2ca8d6aed87137940**. Track exact is band
+0/24 and shoes 0/38; turret-parent 0/0/0; winding reversed/mixed 0/0;
+standard contiguity 0, mg1+5d; npm test green. Independent §B8 PASSes all
+14 fresh pairs at floor **9.0**, mean **9.04**. Fleet is **27/96**;
+graduates **33**. Verdict:
+`docs/critique/shaded-parity-challenger3-graduation.md`. The owner-priority
+Leclerc-method lane advances to Challenger 2, then the T-90 family.
