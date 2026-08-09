@@ -2119,7 +2119,10 @@ export function fitArmorToDims(armor, fromDims, toDims) {
  * @throws {Error} on unknown id
  */
 export const AFV_HP_BONUS = 700;
+export const AFV_DAMAGE_MULTIPLIER = 2;
+export const AFV_PENETRATION_MULTIPLIER = 2;
 const AFV_BALANCE_MARK = Symbol.for('claude-of-tanks.afv-balance.v1');
+const AFV_FIREPOWER_MARK = Symbol.for('claude-of-tanks.afv-firepower.v1');
 
 /**
  * Gameplay protection package for infantry fighting vehicles. Physical plate
@@ -2128,20 +2131,33 @@ const AFV_BALANCE_MARK = Symbol.for('claude-of-tanks.afv-balance.v1');
  * The symbol guard keeps lazy lookup and Vite HMR idempotent.
  */
 function applyAfvBalance(spec) {
-  if (!spec || spec.class !== 'ifv' || spec[AFV_BALANCE_MARK]) return spec;
-  spec.hp += AFV_HP_BONUS;
-  const armor = spec.armor || {};
-  for (const plate of [...(armor.hullPlates || []), ...(armor.turretPlates || [])]) {
-    if (plate.kind === 'external') continue; // tracks/screens keep their own values
-    const name = String(plate.name || '').toLowerCase();
-    const frontal = /front|glacis|cheek|mantlet/.test(name);
-    const flank = /side|skirt/.test(name);
-    const keAdd = frontal ? 45 : flank ? 25 : 15;
-    const ceAdd = frontal ? 90 : flank ? 55 : 30;
-    plate.keMm = (plate.keMm ?? plate.physicalMm ?? 0) + keAdd;
-    plate.ceMm = (plate.ceMm ?? plate.physicalMm ?? 0) + ceAdd;
+  if (!spec || spec.class !== 'ifv') return spec;
+  if (!spec[AFV_BALANCE_MARK]) {
+    spec.hp += AFV_HP_BONUS;
+    const armor = spec.armor || {};
+    for (const plate of [...(armor.hullPlates || []), ...(armor.turretPlates || [])]) {
+      if (plate.kind === 'external') continue; // tracks/screens keep their own values
+      const name = String(plate.name || '').toLowerCase();
+      const frontal = /front|glacis|cheek|mantlet/.test(name);
+      const flank = /side|skirt/.test(name);
+      const keAdd = frontal ? 45 : flank ? 25 : 15;
+      const ceAdd = frontal ? 90 : flank ? 55 : 30;
+      plate.keMm = (plate.keMm ?? plate.physicalMm ?? 0) + keAdd;
+      plate.ceMm = (plate.ceMm ?? plate.physicalMm ?? 0) + ceAdd;
+    }
+    Object.defineProperty(spec, AFV_BALANCE_MARK, { value: true });
   }
-  Object.defineProperty(spec, AFV_BALANCE_MARK, { value: true });
+  if (!spec[AFV_FIREPOWER_MARK]) {
+    for (const shellSpec of (spec.gun && spec.gun.shells) || []) {
+      shellSpec.dmg *= AFV_DAMAGE_MULTIPLIER;
+      shellSpec.pen100Mm *= AFV_PENETRATION_MULTIPLIER;
+      shellSpec.pen1000Mm *= AFV_PENETRATION_MULTIPLIER;
+      if (shellSpec.pen2000Mm !== undefined) {
+        shellSpec.pen2000Mm *= AFV_PENETRATION_MULTIPLIER;
+      }
+    }
+    Object.defineProperty(spec, AFV_FIREPOWER_MARK, { value: true });
+  }
   return spec;
 }
 
