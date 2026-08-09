@@ -153,7 +153,11 @@ const PROFILES = {
 // vertex colors, so one texture serves rock, forest, sand and snow zones.
 // ---------------------------------------------------------------------------
 function makeHorizonTexture(noi, { banding, snowline, treeline, grainAmp, gullyAmp = 1, coolRock = false }) {
-  const su = texSize(1536), sv = texSize(512); // MOBILE r1: tier-scaled bake
+  // Loading-speed r1: this texture is repeated around a backdrop hundreds of
+  // metres away. 1536x512 oversampled the projected ridge by ~4x and spent
+  // ~0.6 s in deterministic simplex work per map; 512x192 retains more than
+  // a screen pixel per visible texel even at the establishing camera.
+  const su = texSize(512), sv = texSize(192);
   const c = document.createElement('canvas');
   c.width = su; c.height = sv;
   const ctx = c.getContext('2d');
@@ -456,7 +460,7 @@ function makeTreeLineTexture(rng) {
   // and every tree carries INTERNAL shading — sun-lit upper tiers/crown lobes
   // over a darker shadow core — so the magnified skyline reads as lit forest
   // depth instead of flat paper cutouts.
-  const w = texSize(2048), h = texSize(320); // MOBILE r1: tier-scaled bake
+  const w = texSize(768), h = texSize(128); // distant alpha comb; see loading-speed r1 above
   const c = document.createElement('canvas');
   c.width = w; c.height = h;
   const ctx = c.getContext('2d');

@@ -426,6 +426,27 @@ function pickParticipants(game, playerSpecId, randomize, mixedEra = false) {
 }
 
 /**
+ * Loading-speed r1: point the existing post-ready visual pump at the roster
+ * the NEXT real battle will deterministically choose. setupBattle increments
+ * battleCount before pickParticipants(), so preview against count+1. This is
+ * deliberately placement-free: entities keep null state/combat and any
+ * visual the idle pump creates stays hidden until setupBattle poses it.
+ *
+ * @param {object} game createGameState() result
+ * @param {string} playerSpecId selected garage vehicle
+ * @param {{random?:boolean,mixedEra?:boolean}} [opts]
+ * @returns {object[]} predicted next-battle participants
+ */
+export function stageNextBattleRoster(game, playerSpecId, opts = {}) {
+  const preview = Object.create(game);
+  preview.battleCount = game.battleCount + 1;
+  game.tanks = pickParticipants(
+    preview, playerSpecId, opts.random !== false, !!opts.mixedEra,
+  );
+  return game.tanks;
+}
+
+/**
  * (Re)start a battle: place the chosen tank at the player spawn, the other
  * seven at the enemy spawns, reset movement/combat state and attach AI.
  * @param {object} game game state

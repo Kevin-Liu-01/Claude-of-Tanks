@@ -19,6 +19,8 @@ function option(name, fallback) {
   return i >= 0 ? argv[i + 1] : fallback;
 }
 const profileName = option('profile', 'normal');
+const entryMode = option('entry', 'debug');
+if (!['debug', 'real'].includes(entryMode)) throw new Error('--entry must be debug or real');
 const seconds = Math.max(4, Number(option('seconds', '12')) || 12);
 const openTimeoutMs = Math.max(10000, (Number(option('open-timeout', '180')) || 180) * 1000);
 const output = resolve(option('out', `.qa-dev/dev-perf-${profileName}.json`));
@@ -64,6 +66,8 @@ function frameWindow(trace, fromMs, toMs) {
 }
 function battleOpenWindow(trace) {
   const ix = Object.fromEntries(trace.frameSchema.map((name, i) => [name, i]));
+  const explicit = trace.events.find((row) => row.kind === 'mark' && row.name === 'battle:open');
+  if (explicit) return frameWindow(trace, explicit.tMs, explicit.tMs + 10000);
   const first = trace.frames.find((row) => row[ix.phase] === 'battle' && row[ix.preBattleS] <= 0);
   if (!first) return null;
   return frameWindow(trace, first[ix.tMs], first[ix.tMs] + 10000);
@@ -154,8 +158,14 @@ try {
   if (selected.cores) await cdpTry('Emulation.setHardwareConcurrencyOverride', { hardwareConcurrency: selected.cores });
   await cdp.send('Profiler.enable');
   await cdp.send('Profiler.setSamplingInterval', { interval: 500 });
-  await cdp.send('Profiler.start');
-  profilerRunning = true;
+  // A 0.5 ms sampler materially amplifies the real desktop path's cold GLB +
+  // shader loading. Keep the lossless in-page recorder on for that window,
+  // then start CPU sampling at battle-open so the diagnostic does not create
+  // the multi-minute CDP stall it is trying to measure.
+  if (entryMode === 'debug') {
+    await cdp.send('Profiler.start');
+    profilerRunning = true;
+  }
 
   url = `http://localhost:${server.config.server.port}/?nosplash=1&tier=desktop&gfxreset=1`;
   const bootStarted = Date.now();
@@ -170,17 +180,18 @@ try {
   await page.evaluate((metadata) => {
     window.__DEV_TRACE.clear();
     window.__DEV_TRACE.mark('probe:start', metadata);
-  }, { profile: profileName, seconds, syntheticFreezeExcluded: true });
+  }, { profile: profileName, entry: entryMode, seconds, syntheticFreezeExcluded: true });
 
   // Queue the synchronous battle constructor as a page task, so DevTools gets
   // control back before it starts. The two marks expose its exact wall block.
-  await page.evaluate(() => {
-    setTimeout(() => {
-      window.__DEV_TRACE.mark('battle:start-request', { tank: 'm1a2' });
-      window.__DEBUG.startBattle('m1a2');
-      window.__DEV_TRACE.mark('battle:start-returned', {});
+  await page.evaluate((entry) => {
+    setTimeout(async () => {
+      window.__DEV_TRACE.mark('battle:start-request', { tank: 'm1a2', entry });
+      if (entry === 'real') await window.__DEBUG.beginBattleEntry('m1a2', 'verdant');
+      else window.__DEBUG.startBattle('m1a2');
+      window.__DEV_TRACE.mark('battle:start-returned', { entry });
     }, 0);
-  });
+  }, entryMode);
   await page.waitForFunction(
     'window.__DEV_TRACE.tail(20, "mark").some((row) => row.name === "battle:start-returned")',
     { timeout: openTimeoutMs, polling: 50 });
@@ -192,6 +203,10 @@ try {
     'window.__DEBUG.game.phase === "battle" && window.__DEBUG.game.preBattleS <= 0',
     { timeout: openTimeoutMs, polling: 50 });
   disarmWatchdog();
+  if (!profilerRunning) {
+    await cdp.send('Profiler.start');
+    profilerRunning = true;
+  }
   if (selected.throttleStage === 'live') {
     await cdpTry('Emulation.setCPUThrottlingRate', { rate: selected.cpuRate });
     await page.evaluate((rate) => window.__DEV_TRACE.mark('probe:cpu-throttle', { rate }), selected.cpuRate);
@@ -218,6 +233,12 @@ try {
   profilerRunning = false;
   const naturalTrace = await page.evaluate(() => window.__DEV_TRACE.snapshot());
   naturalTrace.stats = naturalStats;
+  const loading = await page.evaluate(() => ({
+    battle: window.__BATTLE_LOAD || null,
+    glb: window.__GLB_STATS || null,
+    worldPrefetch: window.__WORLD_PREFETCH || null,
+    rosterPrefetch: window.__ROSTER_PREFETCH || null,
+  }));
 
   // Detector falsification: marked and kept out of naturalTrace/topSelf.
   await page.evaluate(() => new Promise((resolveWait) => {
@@ -238,14 +259,14 @@ try {
   const syntheticLongTask = trace.events.find((row) => row.kind === 'anomaly' && row.name === 'longtask'
     && row.seq > (syntheticStart?.seq || Infinity));
   const result = {
-    version: 1, generatedAt: new Date().toISOString(), profile: profileName,
+    version: 1, generatedAt: new Date().toISOString(), profile: profileName, entryMode,
     profileConfig: {
       ...selected,
       gpuMeaning: selected.softwareGPU
         ? 'SwiftShader software rasterizer: a severe GPU stress floor, not a calibrated low-end iGPU'
         : 'Host ANGLE renderer; CPU/device traits are the only calibrated constraints',
     },
-    cdp: emulation, url, readyWallMs, seconds, bootTrace,
+    cdp: emulation, url, readyWallMs, seconds, bootTrace, loading,
     natural: {
       stats: naturalTrace.stats,
       battleOpen10s: battleOpenWindow(naturalTrace),
