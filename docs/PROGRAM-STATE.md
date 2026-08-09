@@ -49,7 +49,7 @@ at load.
 - Env for EVERY node run: `export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh"`
 - npm test before every landing (166 equipment checks + track-geometry).
 
-## 3. GRADUATE REGISTRY (33 graduates, hash-frozen)
+## 3. GRADUATE REGISTRY (34 graduates, hash-frozen)
 Freeze = deterministic geometry hash via `node tools/tmp-hashgeo.mjs
 --ids=...` (camoSeed 4242 pinned build; FNV-1a over position buffers +
 world matrices, mesh-order independent). Graduate-change protocol: fix ->
@@ -89,6 +89,7 @@ re-freeze NEW hash, all in ONE commit.
 | k2 | 827d5ffc | GRADUATED 2026-08-08 (31st; Leclerc-method closed station loft; gate 90.1 x2 every component >=90; visual R26 floor 9.0 / mean 9.09 x14; exact Object_8/15/18/21 plan inventory, rounded asymmetric cage, countable six-station ISU gear; oracle 8d92cd1b reproducible from pristine .bak) |
 | abramsx | fe7f9852 | GRADUATED 2026-08-09 (32nd; complete Leclerc-method redesign; gate 90.2 x2 every component >=90; visual polish26 floor 9.0 / mean 9.04 x14; measured knife bow, running gear, station terraces, open D-hood sights, XM914 feed and bustle void; oracle 01acf03c reproducible from pristine .bak) |
 | challenger_3 | 2678f6c | GRADUATED 2026-08-09 (33rd; complete Leclerc-method redesign; gate 90.4 x2 every component >=90; visual floor 9.0 / mean 9.04 x14; exact-tree fidelity 91.52; joined five-station turret, oval L55 jacket, six correctly spaced wheels, open RWS and broad attached stern course; oracle a5fcd801 reproducible from pristine .bak) |
+| challenger2 | 63ee160 | GRADUATED 2026-08-09 (34th; complete Leclerc-method redesign; gate 90.1 x2 every component >=90; visual floor 9.0 / mean 9.03 x14; direct-tree fidelity 91.3; exact source profiles/plan bands, joined V-section hull ends, closed three-band turret, deep Hydrogas wheels and folded transverse L7A2/MAG; oracle d2e22673 reproducible from pristine .bak) |
 | m26_pershing | 2f006738 | RE-RECORDED 2026-08-08: hash moved by LANDED 5f39989 (armorM4 gunBarrel shadow-proxy 3.96->3.44; m26/m45 inherit m4a3e8 proxies — patton.js bytes unchanged); double-confirmed by builder bisect + m45-grad critic; prior 65c564c0 bore+winding re-cert lineage (floors 9.1-9.4) carries |
 | t90m | e345ee8a | GRADUATED 2026-08-06 (27th; floor 9.0 x14 second sitting; the owner's dedicated-agent arc 81.7 -> dual gate) |
 
@@ -2460,3 +2461,39 @@ standard contiguity 0, mg1+5d; npm test green. Independent §B8 PASSes all
 graduates **33**. Verdict:
 `docs/critique/shaded-parity-challenger3-graduation.md`. The owner-priority
 Leclerc-method lane advances to Challenger 2, then the T-90 family.
+
+## 5.85 CHALLENGER 2 LECLERC-METHOD REDESIGN GRADUATED — 34th
+(2026-08-09)
+
+The owner-priority Challenger 2 rebuild is complete and supersedes every
+earlier FINISH/CH1-base candidate. Connected-component and station evidence
+drove exact hull side profiles/plan bands, joined V-section bow and stern,
+a closed three-band turret with separate brow/cassette undercuts, six deep
+Hydrogas wheels, exact track runs, true single-lid roof grammar, open basket,
+recessed stern/service structure and the complete L30/remote-station stack.
+
+Final gate x2 is bit-identical: **90.1** |
+90.1/90.3/90.3/91.1/93.8/100. Freeze **63ee160** reproduced x2
+(42 meshes / 250,769 vertices). Direct-tree fidelity is **91.3**, minimum
+whole view **93.31**. Exact track clip is band 0/0 and shoes 0/0; standard
+contiguity 0, MG 1+1d; winding mode 1 reversed/mixed 0/0; npm test green.
+Fresh independent §B8 PASSes all 14 pairs at floor **9.0**, mean **9.03**,
+with zero browser/console errors. Oracle SHA-256
+**d2e22673103353436517c1d17be38531b530b8936538f921d996a26fcfab5f3f**
+is reproducible from pristine `.bak`
+**1be3ef855ac9c441e38262a4ae26600d14c763c70c867024554499a451f9ad48**.
+
+The closeout also codifies BUILD-STANDARD §K.4: source-exact visible fitting
+groups may carry the normal marker/AABB contract when a generic constructor
+would destroy certified variant geometry, and contiguity holes close with the
+smallest real local hardpoint rather than broad mask paint. Generic MAG and
+broad shoulder experiments both fell to 89.5 and were rejected; terminal
+housings 88.2 and proud cassette growth 88.6 remain rejected. The parent and
+yaw audit candidates were component-proved fixed driver/hull masses and are
+documented false positives in the verdict.
+
+Fleet is **28/96**; graduates **34**. Verdict:
+`docs/critique/shaded-parity-challenger2-graduation.md`. The owner-priority
+Leclerc-method lane now advances through the required T-44/Type 59 landing,
+Russia pure-refactor split, then T-90-family measurement consistency and
+complete redesign work in the fresh `t90.js`.

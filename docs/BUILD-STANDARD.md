@@ -944,3 +944,24 @@ and gun nodes before this rule applies; fused references remain whole-mask
 only. Graduation still requires the independent geometry components, the
 whole-view floor, and the fourteen-view critic—direct-tree scoring cannot
 average away any of those gates.
+
+### §K.4 SOURCE-EXACT FITTINGS + LOCAL CLOSURE (Challenger 2 lesson)
+A generic fitting constructor is a vocabulary default, not permission to
+replace a better source measurement. When the oracle carries a variant-
+specific receiver, cradle, folded weapon or other assembly whose already-
+certified exterior cannot fit the generic envelope, keep its real component
+geometry together in one visible group and register that group through the
+same fitting marker/AABB contract. The group must contain real visible
+meshes; marker-only census escapes are forbidden. Challenger 2's folded
+transverse L7A2/MAG proves the class: substituting the generic upright MAG
+dropped the geometry floor to 89.5, while marking the exact receiver+tube
+preserved the certified mask byte-for-byte and made the fitting census
+truthful.
+
+Likewise, a plan-contiguity hole is closed with the smallest source-owned
+hardpoint, seam, bracket or plate that actually occupies that location.
+Never flood the surrounding recess with a broad fill merely to satisfy the
+census. On Challenger 2, a narrow x=±1.12 rear-shoulder hardpoint closed both
+4x4 sky wells with the 90.1 gate unchanged; the broad shoulder fill was
+built, measured at 89.5, and rejected. Exact fitting census, contiguity,
+geometry gate and shaded comparison are one coupled receipt.

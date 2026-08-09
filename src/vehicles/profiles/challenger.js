@@ -2225,6 +2225,16 @@ function buildChallenger2(P) {
     P.add('hull', box(0.16, 0.30, 0.05), side * 1.05, 1.20, 4.08);
     P.add('hull', box(0.16, 0.30, 0.08), side * 1.05, 1.33, -4.06);
   }
+  // The source carries a narrow continuous rear-shoulder hardpoint between
+  // its -3.66 centre stern and -4.06 outboard service face. Leaving only the
+  // perimeter frames enclosed two 4x4 sky wells in the 6 cm plan census.
+  // Keep this bridge on the measured x=+-1.12 boss lane; a broad shoulder
+  // fill over-painted the surrounding recess and was rejected by the gate.
+  for (const side of [-1, 1]) {
+    P.add('hull', box(0.16, 0.20, 0.16), side * 1.12, 1.25, -3.94);
+    P.add('hull', box(0.16, 0.20, 0.40), side * 1.12, 1.25, -3.69);
+    P.add('hull', box(0.16, 0.20, 0.16), side * 1.12, 1.25, -3.40);
+  }
   // Surface-authored bow grammar: recessed centre plate, separate toe
   // ramps and fittings all remain behind the existing z=3.80 centre nose.
   P.add('hullDark', box(1.44, 0.15, 0.018), 0, 1.115, 3.770, -0.08, 0, 0);
@@ -2862,7 +2872,9 @@ function buildChallenger2(P) {
     0, 0, 0.38);
   P.add('turretDark', box(0.105, 0.090, 0.13), 0.655, 0.825, 0.15);
   P.add('turretDetail', box(0.075, 0.018, 0.10), 0.655, 0.878, 0.15);
-  P.add('turretDark', box(0.18, 0.080, 0.15), 0.775, 0.905, 0.20);
+  // The source-specific receiver and transverse tube are grouped below as a
+  // marker-carrying exact fitting; keeping them in the merged bucket would
+  // visually duplicate the certified assembly.
   P.add('turretGlass', box(0.11, 0.055, 0.012), 0.775, 0.855, 0.282);
   P.add('turret', box(0.11, 0.105, 0.20), 0.80, 0.865, 0.20);
   P.add('turretDark', cylX(0.022, 0.34, P.q ? 16 : 10), 0.98, 0.910, 0.20);
@@ -2872,7 +2884,21 @@ function buildChallenger2(P) {
   // z=-.28..+.30, a thicker receiver at .30..58, and a narrow articulated
   // boom to z=1.26.  Author those three masses separately rather than the
   // former monolithic tube or the temporary row of loose optic blocks.
-  P.add('turretDark', cylX(0.018, 0.64, P.q ? 16 : 10), 0.84, 0.925, 0.20);
+  // Challenger 2's source carries a folded transverse L7A2/MAG integrated
+  // into the remote cradle, not the generic free-standing pintle envelope.
+  // Preserve the already certified exterior byte-for-byte and register that
+  // real receiver+tube assembly through the exact-fitting contract.
+  const stationMg = new THREE.Group();
+  const stationReceiver = new THREE.Mesh(box(0.18, 0.080, 0.15), P.mats.dark);
+  stationReceiver.position.set(0.775, 0.905, 0.20);
+  stationReceiver.castShadow = stationReceiver.receiveShadow = true;
+  stationMg.add(stationReceiver);
+  const stationTube = new THREE.Mesh(cylX(0.018, 0.64, P.q ? 16 : 10), P.mats.dark);
+  stationTube.position.set(0.84, 0.925, 0.20);
+  stationTube.castShadow = stationTube.receiveShadow = true;
+  stationMg.add(stationTube);
+  FITTINGS.markExact(stationMg, 'pintleMG');
+  P.turretG.add(stationMg);
   for (const x of [0.685, 0.735]) {
     P.add('turretDark', cylZ(0.012, 0.58, P.q ? 14 : 10), x, 0.902, 0.015);
   }

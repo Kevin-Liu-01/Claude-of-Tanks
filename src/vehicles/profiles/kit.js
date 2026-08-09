@@ -1053,6 +1053,31 @@ function fittingUnditchingLog(opts = {}) {
   return fitAssemble('unditchingLog', parts, { ...opts, rotation: [r0[0] || 0, (r0[1] || 0) + Math.PI / 2, r0[2] || 0] });
 }
 
+// Register a source-measured fitting whose exterior cannot be represented by
+// one of the generic constructors without losing certified geometry. The
+// caller supplies the real mesh group; this helper only validates/stamps the
+// same marker and AABB contract as fitAssemble. It is intentionally not a
+// marker-only escape hatch: at least one visible mesh is mandatory and every
+// mesh in the group receives the fitting type for the integrity census.
+function fittingMarkExact(group, type) {
+  if (!group?.isGroup || !type) throw new Error('KIT.fittings.markExact: visible Group and type are required');
+  let meshCount = 0;
+  group.traverse((o) => {
+    if (!o.isMesh || !o.geometry || o.material?.colorWrite === false) return;
+    meshCount++;
+    o.userData.fitting = type;
+    o.userData.fittingExact = true;
+  });
+  if (!meshCount) throw new Error('KIT.fittings.markExact: group must contain visible mesh geometry');
+  group.name = `fitting_${type}_exact`;
+  group.userData.fitting = type;
+  group.userData.fittingRoot = true;
+  group.userData.fittingExact = true;
+  const bb = new THREE.Box3().setFromObject(group);
+  group.userData.aabb = { min: bb.min.toArray(), max: bb.max.toArray() };
+  return group;
+}
+
 export const FITTINGS = {
   pintleMG: fittingPintleMG,
   stowageRack: fittingStowageRack,
@@ -1063,6 +1088,7 @@ export const FITTINGS = {
   smokeBank: fittingSmokeBank,
   antennaWhip: fittingAntennaWhip,
   unditchingLog: fittingUnditchingLog,
+  markExact: fittingMarkExact,
 };
 
 // Attach on the shared KIT object so callers reach the fittings as

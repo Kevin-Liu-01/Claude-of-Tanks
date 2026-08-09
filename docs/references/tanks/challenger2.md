@@ -410,3 +410,54 @@ contig 0 / census mg1+5d; npm test 166 + track-geometry PASS. Evidence:
 shots/critic-challenger2/ (fresh pairs at the final tree). Guarded
 hashes at close: challenger1 dbe33204 / chieftain5 d4f2a9a6 /
 chieftain_mk10 59551064 — byte-identical. DELIVERED-PENDING-CRITIC.
+
+## LECLERC-METHOD COMPLETE REDESIGN + GRADUATION (2026-08-09)
+
+This rebuild supersedes every FINISH/CH1-base candidate above. The repaired
+oracle was inventoried by connected components, exact longitudinal side
+profiles, plan stations and direct articulated trees before construction.
+The final procedural uses exact center/shoulder side strips, joined V-section
+bow and stern lofts, stepped plan bands, a three-band closed turret shell with
+separate lower/upper brow and true cassette undercuts, six 0.403 m Hydrogas
+wheel faces at source spacing, nested dishes/hubs, and exact track runs. The
+roof follows the actual single flattened loader lid plus thin right plate;
+the L30 stack carries its boot, sleeve and extractor; the rear keeps its open
+basket, recessed shoulder/service structure and recovery beam. Guarded bow
+lights/tools and the full remote-station hierarchy preserve the source's
+asymmetry and readable equipment rather than averaging it into boxes.
+
+The final source-specific station receiver and folded transverse L7A2/MAG
+tube are grouped as one `FITTINGS.markExact(..., 'pintleMG')` assembly. This
+is real visible geometry with the standard marker/AABB contract, not a census
+escape. A generic upright MAG was built and measured at gate 89.5, so it was
+rejected in favor of the already-certified source exterior. Two 4x4 plan
+holes at the rear shoulder were closed by the narrow measured x=±1.12
+hardpoint; a broad fill also measured 89.5 and was rejected because it erased
+the surrounding recess. Earlier broad terminal housings (88.2) and proud
+12 mm cassette growth (88.6) remain rejected.
+
+### Graduation receipts
+
+- geometry gate x2 bit-identical: **90.1** |
+  hull 90.1 / whole 90.3 / turret 90.3 / stations 91.1 / dims 93.8 /
+  floaters 100; fleet row 28/96;
+- freeze x2: **63ee160** (42 meshes / 250,769 vertices);
+- direct-tree fidelity **91.3**, minimum whole view **93.31**;
+- exact track clip band 0/0, shoes 0/0; standard contiguity 0, MG 1+1d;
+- winding mode 1 clean (0 reversed / 0 mixed; 70 px / 0.12% worst deficit);
+- fresh independent §B8: **14/14 PASS**, floor **9.0**, mean **9.03**,
+  captured 2026-08-09 13:30:34 PDT with zero console/browser errors;
+- npm test green.
+
+The turret-parent 38% hit is a merged `hullDetail` AABB artifact: connected
+components prove the sole above-ring member is the 11 x 2.8 x 10.2 cm fixed
+driver periscope slit. The winding mode-2 `rig_hull/mesh#19` candidate is the
+measured fixed hull profiles, shoulder slabs and driver hood, all correctly
+static under turret yaw. Both are explicitly adjudicated false positives;
+neither justifies re-parenting real hull structure.
+
+Oracle SHA-256:
+`d2e22673103353436517c1d17be38531b530b8936538f921d996a26fcfab5f3f`;
+pristine `.bak`:
+`1be3ef855ac9c441e38262a4ae26600d14c763c70c867024554499a451f9ad48`.
+Verdict: `docs/critique/shaded-parity-challenger2-graduation.md`.
