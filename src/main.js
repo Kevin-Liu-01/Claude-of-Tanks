@@ -4156,23 +4156,33 @@ function* compileHiddenVariantsSteps() {
     // force-visible flips apply and revert INSIDE each slice, so no
     // presented frame ever shows a hidden addon.
     const flips = [];
-    const collectFlips = () => {
+    const collectFlips = (root = null) => {
       flips.length = 0;
-      for (const e of game.tanks) {
-        if (!e.visual || !e.visual.root) continue;
-        e.visual.root.traverse((o) => {
+      const roots = root
+        ? [root]
+        : game.tanks.filter((e) => e.visual && e.visual.root).map((e) => e.visual.root);
+      for (const tankRoot of roots) {
+        tankRoot.traverse((o) => {
           if (o.visible === false) { flips.push(o); o.visible = true; }
         });
       }
     };
     const unflip = () => { for (const o of flips) o.visible = false; };
-    try {
-      collectFlips();
-      if (lighting && lighting.updateFrustums) lighting.updateFrustums();
-      warmRender();
-      unflip();
-    } catch (_) { unflip(); }
-    yield;
+    // MOBILE-QA r29: revealing every staged root in the first real warm frame
+    // concentrated +43 texture uploads and seven draw-only program births in
+    // one repeatable 107/108 ms task. Render the same roots one at a time so
+    // coverage and resource lifetime remain identical while each tank's real
+    // texture/program work gets its own painted-frame boundary.
+    if (lighting && lighting.updateFrustums) lighting.updateFrustums();
+    for (const e of game.tanks) {
+      if (!e.visual || !e.visual.root) continue;
+      try {
+        collectFlips(e.visual.root);
+        warmRender();
+        unflip();
+      } catch (_) { unflip(); }
+      yield;
+    }
     // perf-r2e: the FIRST sniper zoom paid a ~230 ms one-off with ZERO new
     // programs — FOV-dependent lazy work (vegetation repartition against
     // the narrow frustum). Render two hidden frames at scope FOVs so that
