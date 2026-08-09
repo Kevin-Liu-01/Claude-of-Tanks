@@ -78,7 +78,8 @@ import { penAtDistanceMm } from '../sim/ballistics.js';
 import { iconUrl } from '../ui/icons.js';
 import { tierNumeral } from '../ui/battleLoad.js';
 import {
-  alignReplayPoseToShot, captureReplayPose, replayStateFromPose,
+  alignReplayPoseToShot, captureReplayPose, createReplayFlightTimeline,
+  replayDistanceAtTime, replayStateFromPose,
 } from './replayPose.js';
 
 const XRAY_HOLD_S = 7.0;
@@ -95,6 +96,7 @@ const APPROACH_S = 1.6;        // push-in orbit duration
 const SLOWMO_RATE = 0.25;      // terminal speed factor at the plate
 const SLOWMO_START_M = 44;     // ramp begins this far from impact
 const SLOWMO_FULL_M = 13;      // fully slow by here
+const CONTACT_HOLD_S = 0.12;   // one readable armor-contact beat before impact
 const EXIT_HOLD_MS = 430;      // letterbox close + fade-to-black duration
 const KILLER_CARD_AT_S = 0.85; // killer card reveal into the x-ray hold
 // killcam r2 — live-action destruction beats:
@@ -127,6 +129,12 @@ const ORBIT_RAD_S = 0.05;      // x-ray camera drift
 const VICTORY_WINDOW_S = 1.0;  // final blow must be this fresh at battle end
 
 const UP = new THREE.Vector3(0, 1, 0);
+
+function wrapPi(a) {
+  while (a > Math.PI) a -= Math.PI * 2;
+  while (a < -Math.PI) a += Math.PI * 2;
+  return a;
+}
 
 // module-scope scratch — no per-frame allocation
 const _p = new THREE.Vector3();
@@ -1276,6 +1284,10 @@ export function createKillCam(deps) {
       // showed whatever direction the AI turned after firing.
       attackerEnt: rec ? rec.attackerEnt : null,
       attackerPose: rec && rec.attackerPose ? { ...rec.attackerPose, pos: rec.attackerPose.pos.slice() } : null,
+      muzzle: rec ? rec.muzzle.slice() : null,
+      shotDir: rec ? rec.dir.slice() : null,
+      muzzleVelocityMps: rec ? rec.velocityMps : 0,
+      firedTimeS: rec ? rec.timeS : 0,
       targetEnt: target,
       armor: target.spec.armor,
       heightM: target.spec.dims.heightM,
@@ -1299,6 +1311,9 @@ export function createKillCam(deps) {
         traj.set(p.shellId, {
           pts: [p.muzzlePos[0], p.muzzlePos[1], p.muzzlePos[2]],
           muzzle: p.muzzlePos.slice(),
+          dir: p.dir.slice(),
+          velocityMps: Number(p.velocityMps) || 0,
+          timeS: Number(p.timeS) || 0,
           attackerEnt,
           attackerPose,
         });
@@ -1466,6 +1481,7 @@ export function createKillCam(deps) {
       if (pb.phase === 'wreck') updateWreck(dt);
       else if (pb.phase === 'approach') updateApproach(dt);
       else if (pb.phase === 'flight') updateFlight(dt);
+      else if (pb.phase === 'contact') updateContact(dt);
       else if (pb.phase === 'impact') updateImpact(dt);
       else if (pb.phase === 'xray') updateXray(dt);
       // 'exit': the closing letterbox + fade own the screen — camera holds
@@ -1474,6 +1490,27 @@ export function createKillCam(deps) {
 
     /** Debug/testing introspection. */
     get phase() { return pb ? pb.phase : null; },
+    get replayInfo() {
+      if (!pb) return null;
+      const attacker = pb.snap.attackerEnt;
+      const root = attacker && attacker.visual ? attacker.visual.root : null;
+      return {
+        phase: pb.phase,
+        attackerId: attacker ? attacker.id : null,
+        attackerPose: pb.snap.attackerPose ? pb.snap.attackerPose.pos.slice() : null,
+        attackerRenderedPos: root ? root.position.toArray() : null,
+        barrelDot: pb.barrelDot,
+        muzzle: pb.replayMuzzle ? pb.replayMuzzle.toArray() : null,
+        pathStart: pb.pts && pb.pts.length ? pb.pts[0].toArray() : null,
+        projectile: pb.core ? pb.core.position.toArray() : null,
+        impact: pb.pts && pb.pts.length ? pb.pts[pb.pts.length - 1].toArray() : null,
+        flightElapsedS: pb.t,
+        flightDurationS: pb.dur,
+        flightDistM: pb.flightDist,
+        flightTotalM: pb.total,
+        contactElapsedS: pb.contactT,
+      };
+    },
 
     /**
      * Fx-clock scale for THIS frame (killcam r2): main.js multiplies the
@@ -1514,7 +1551,7 @@ export function createKillCam(deps) {
     // "get me out" must never route through another 3 s of cinematic — and
     // teardown() re-applies the settled wreck, so the victim still ends up
     // destroyed however early the skip lands.
-    if (pb.phase === 'wreck' || pb.phase === 'approach' || pb.phase === 'flight') {
+    if (pb.phase === 'wreck' || pb.phase === 'approach' || pb.phase === 'flight' || pb.phase === 'contact') {
       beginXray();
     } else if (pb.phase === 'impact') {
       if (pb.isFinale) beginExit();
@@ -1549,7 +1586,8 @@ export function createKillCam(deps) {
       obstacles: null, // module/crew box screen rects (label repulsion, r3)
       pts: null, cum: null, total: 0, dur: 0, segIdx: 0,
       flightLift: null, // per-sample camera lift (flight LOS solve, r6)
-      flightDist: 0, flightSpeed: 0, // distance-driven retime (slow-mo ramp)
+      flightDist: 0, flightTimeline: null, // refresh-rate invariant retime
+      contactT: 0, contactDir: null, // readable shell-on-armor transition
       app: null, // death-sequence push-in approach state
       isDeathView: false, // player is the victim (grade + killer card + approach)
       killerShown: false,
@@ -1562,6 +1600,8 @@ export function createKillCam(deps) {
       rewreck: null, // wreck look to re-apply in finish() (pre-wreck restage)
       snapPoseState: null, // snapshot pose as a syncFromState-shaped object
       attackerPoseState: null, // shot-time killer pose (restored on teardown)
+      attackerRestore: null, // visibility/wreck state lifted for the replay
+      replayMuzzle: null, barrelDot: null, // launch-fidelity diagnostics
       wreck: null,   // killcam r2: live WRECK hold state (fresh own death)
       it: 0, itWall: 0, // killcam r2: IMPACT beat clocks (anim / wall)
       impactVis: null,  // victim visual driven through the impact beat
@@ -1604,11 +1644,7 @@ export function createKillCam(deps) {
         yawRate: 0, speed: 0, trackScroll: { l: 0, r: 0 },
       };
     }
-    if (snap.attackerEnt && snap.attackerEnt !== snap.targetEnt && snap.attackerPose &&
-        snap.attackerEnt.visual && (!snap.attackerEnt.combat || !snap.attackerEnt.combat.destroyed)) {
-      pb.attackerPoseState = replayStateFromPose(snap.attackerPose);
-      snap.attackerEnt.visual.syncFromState(pb.attackerPoseState, 0);
-    }
+    restageAttacker();
     // wreck-look bookkeeping for finish() — computed whether or not the
     // restage runs now (the WRECK hold defers it, see restageIntact)
     {
@@ -1789,6 +1825,27 @@ export function createKillCam(deps) {
         if (pts.length === 0 || v.distanceToSquared(pts[pts.length - 1]) > 1e-6) pts.push(v);
       }
       if (pts.length >= 2) {
+        // The replayed shell is born at the RESTAGED rendered muzzle, not at
+        // an entity origin or a stale trajectory sample. Normally the delta
+        // from the captured muzzle is only millimeters; distributing it down
+        // the path keeps imported rigs and synthetic probes smooth while the
+        // final point remains the sim-resolved armor contact exactly.
+        if (pb.replayMuzzle) {
+          const correction = pb.replayMuzzle.clone().sub(pts[0]);
+          let rawLen = 0;
+          const rawCum = new Float32Array(pts.length);
+          for (let i = 1; i < pts.length; i++) {
+            rawLen += pts[i].distanceTo(pts[i - 1]);
+            rawCum[i] = rawLen;
+          }
+          if (rawLen > 1e-5) {
+            for (let i = 0; i < pts.length - 1; i++) {
+              pts[i].addScaledVector(correction, 1 - rawCum[i] / rawLen);
+            }
+          } else {
+            pts[0].copy(pb.replayMuzzle);
+          }
+        }
         pb.pts = pts;
         pb.cum = new Float32Array(pts.length);
         let acc = 0;
@@ -1798,6 +1855,11 @@ export function createKillCam(deps) {
         }
         pb.total = acc;
         pb.dur = THREE.MathUtils.clamp(1.2 + acc * 0.005, FLIGHT_MIN_S, FLIGHT_MAX_S);
+        pb.flightTimeline = createReplayFlightTimeline(pb.total, pb.dur, {
+          slowRate: SLOWMO_RATE,
+          slowStartM: SLOWMO_START_M,
+          slowFullM: SLOWMO_FULL_M,
+        });
         pb.flightLift = solveFlightOcclusion();
         // trail polyline (drawRange grows with the shell); full-white vertex
         // colors during flight — beginXray rewrites them into the tail fade
@@ -1868,11 +1930,6 @@ export function createKillCam(deps) {
         pb.muzzleLight.intensity = 70;
         pb.muzzleLight.distance = 55;
         pb.muzzleLight.position.set(pts[0].x, pts[0].y + 2.5, pts[0].z);
-        // distance-driven retime (killcam_endscreen r1): the flight advances
-        // by arc length per frame — pb.dur keeps the legacy pacing as the
-        // NORMAL-speed baseline, and updateFlight ramps the rate down to
-        // SLOWMO_RATE through the final meters into the plate.
-        pb.flightSpeed = pb.total / Math.max(0.3, pb.dur);
         pb.flightDist = 0;
         // WRECK HOLD (killcam r2): a fresh battle-deciding own death plays
         // out LIVE on screen before the replay — the approach follows it.
@@ -1915,6 +1972,74 @@ export function createKillCam(deps) {
     if (!pb || !pb.fxHidden) return;
     for (const c of pb.fxHidden) c.visible = true;
     pb.fxHidden = null;
+  }
+
+  /**
+   * Put the shooter back at the firing snapshot and solve the rendered bore
+   * against the captured launch direction. The second, visual-space solve is
+   * important for imported tanks: their GLB barrel rig may carry a small
+   * authored correction that logical turretYaw/gunPitch alone cannot see.
+   */
+  function restageAttacker() {
+    if (!pb || !pb.snap) return;
+    const snap = pb.snap;
+    const ent = snap.attackerEnt;
+    const vis = ent && ent !== snap.targetEnt ? ent.visual : null;
+    if (!vis || !snap.attackerPose) return;
+
+    const wasDestroyed = !!(vis.isDestroyed && vis.isDestroyed());
+    pb.attackerRestore = {
+      wasDestroyed,
+      wasVisible: vis.root ? vis.root.visible : true,
+    };
+    if (wasDestroyed && vis.resetDestroyed) vis.resetDestroyed();
+    if (vis.setVisible) vis.setVisible(true);
+
+    const pose = {
+      ...snap.attackerPose,
+      pos: snap.attackerPose.pos.slice(),
+    };
+    const shot = snap.shotDir && snap.shotDir.length >= 3
+      ? new THREE.Vector3().fromArray(snap.shotDir).normalize() : null;
+    if (shot) alignReplayPoseToShot(pose, snap.shotDir, ent.spec);
+
+    const actual = new THREE.Vector3();
+    const state = replayStateFromPose(pose);
+    // Two iterations converge imported-rig offsets while keeping the hull at
+    // the exact recorded world position. Casemates spill out-of-arc yaw into
+    // the hull, just as alignReplayPoseToShot does for the initial solve.
+    for (let i = 0; i < (shot ? 3 : 1); i++) {
+      vis.syncFromState(state, 0);
+      if (vis.root) vis.root.updateMatrixWorld(true);
+      if (!shot || !vis.gunDirWorld) continue;
+      vis.gunDirWorld(actual).normalize();
+      const yawErr = wrapPi(Math.atan2(shot.x, shot.z) - Math.atan2(actual.x, actual.z));
+      const desiredPitch = Math.atan2(shot.y, Math.hypot(shot.x, shot.z));
+      const actualPitch = Math.atan2(actual.y, Math.hypot(actual.x, actual.z));
+      let turretYaw = state.turretYaw + yawErr;
+      const arc = ent.spec && Number.isFinite(ent.spec.gunArcDeg)
+        ? Math.abs(ent.spec.gunArcDeg) * Math.PI / 180 : Infinity;
+      if (Math.abs(turretYaw) > arc) {
+        const clamped = Math.max(-arc, Math.min(arc, turretYaw));
+        state.yaw = wrapPi(state.yaw + turretYaw - clamped);
+        turretYaw = clamped;
+      }
+      state.turretYaw = turretYaw;
+      const lo = -Math.abs((ent.spec && ent.spec.gunDepressionDeg) || 90) * Math.PI / 180;
+      const hi = Math.abs((ent.spec && ent.spec.gunElevationDeg) || 90) * Math.PI / 180;
+      state.gunPitch = Math.max(lo, Math.min(hi,
+        state.gunPitch + desiredPitch - actualPitch));
+    }
+    vis.syncFromState(state, 0);
+    if (vis.root) vis.root.updateMatrixWorld(true);
+    pb.attackerPoseState = state;
+    if (vis.gunMuzzleWorld) {
+      pb.replayMuzzle = vis.gunMuzzleWorld(new THREE.Vector3()).clone();
+    }
+    if (shot && vis.gunDirWorld) {
+      vis.gunDirWorld(actual).normalize();
+      pb.barrelDot = actual.dot(shot);
+    }
   }
 
   /**
@@ -2289,19 +2414,13 @@ export function createKillCam(deps) {
   }
 
   function updateFlight(dt) {
-    pb.t += dt;
-    // SLOW-MO SPEED RAMP (killcam_endscreen r1): the flight advances by arc
-    // length — normal replay speed over the approach, easing down to
-    // SLOWMO_RATE (~0.25x) through the final meters into the penetration.
-    // The x-ray blend (k below) rides the same distance parameter, so the
-    // camera glides into the frozen x-ray moment while time dilates.
-    const remaining = pb.total - pb.flightDist;
-    const ramp = THREE.MathUtils.smoothstep(remaining, SLOWMO_FULL_M, SLOWMO_START_M);
-    const rate = SLOWMO_RATE + (1 - SLOWMO_RATE) * ramp;
-    pb.flightDist = Math.min(pb.total, pb.flightDist + dt * pb.flightSpeed * rate);
-    // stall guard: whatever the numbers, the flight can never outlive its
-    // budget + the slow-mo tail (rAF gaps, zero-length arcs)
-    if (pb.t > pb.dur + 3.0) pb.flightDist = pb.total;
+    pb.t = Math.min(pb.dur, pb.t + Math.max(0, dt));
+    // Refresh-rate invariant timing: the normalized lookup contains the
+    // whole terminal slow-motion ramp, so it reaches the plate at exactly
+    // pb.dur. The previous per-frame integrator treated pb.dur as a baseline
+    // and then added slow-mo on top; short shots hit a stall guard and visibly
+    // teleported through their final meters.
+    pb.flightDist = replayDistanceAtTime(pb.flightTimeline, pb.t);
     const u = pb.total > 0 ? pb.flightDist / pb.total : 1;
     const dist = pb.flightDist;
     const idx = sampleTraj(dist, _p, _d);
@@ -2378,7 +2497,42 @@ export function createKillCam(deps) {
     // beat) before the analytical x-ray takes the frame. killcam r3: on an
     // OWN death that order is inverted — the tank the player just watched
     // arrive intact goes straight to the skeleton, and blows up after it.
-    if (u >= 1) {
+    if (u >= 1) beginContact();
+  }
+
+  /** Hold the shell on/just inside the plate for a readable rendered frame. */
+  function beginContact() {
+    if (!pb || pb.phase === 'contact' || pb.phase === 'impact' || pb.phase === 'xray') return;
+    pb.phase = 'contact';
+    pb.contactT = 0;
+    pb.segIdx = Math.max(0, pb.pts.length - 2);
+    sampleTraj(pb.total, _p, _d);
+    pb.contactDir = _d.clone();
+    updateContact(0);
+  }
+
+  function updateContact(dt) {
+    pb.contactT += Math.max(0, dt);
+    const f = Math.min(1, pb.contactT / CONTACT_HOLD_S);
+    const sink = 0.22 * THREE.MathUtils.smoothstep(f, 0, 1);
+    _p.copy(pb.pts[pb.pts.length - 1]).addScaledVector(pb.contactDir, sink);
+    if (pb.core) {
+      pb.core.position.copy(_p);
+      pb.core.quaternion.setFromUnitVectors(_Y, pb.contactDir);
+      pb.core.scale.setScalar(1 - 0.18 * f);
+    }
+    if (pb.streak) {
+      pb.streak.position.copy(_p).addScaledVector(pb.contactDir, -2.6);
+      pb.streak.quaternion.setFromUnitVectors(_Y, pb.contactDir);
+    }
+    if (pb.halo) pb.halo.position.copy(_p);
+    if (pb.tail) {
+      pb.tail.position.copy(_p).addScaledVector(pb.contactDir, -6.4);
+      pb.tail.quaternion.setFromUnitVectors(_Y, _s.copy(pb.contactDir).negate());
+    }
+    if (pb.shellLight) pb.shellLight.position.set(_p.x, _p.y + 0.5, _p.z);
+    rig.setExternalPose(pb.xcam.pos, pb.xcam.look, 42);
+    if (f >= 1) {
       if (pb.finalePending) beginXray();
       else beginImpact();
     }
@@ -3853,7 +4007,14 @@ export function createKillCam(deps) {
       // leaving the shooter restaged would otherwise create a visual desync.
       if (pb.attackerPoseState && pb.snap.attackerEnt && pb.snap.attackerEnt.visual &&
           pb.snap.attackerEnt.state) {
-        pb.snap.attackerEnt.visual.syncFromState(pb.snap.attackerEnt.state, 0);
+        const avis = pb.snap.attackerEnt.visual;
+        avis.syncFromState(pb.snap.attackerEnt.state, 0);
+        if (pb.attackerRestore && pb.attackerRestore.wasDestroyed && avis.setDestroyed) {
+          avis.setDestroyed({ pop: false, ageS: 12 });
+        }
+        if (pb.attackerRestore && !pb.attackerRestore.wasVisible && avis.setVisible) {
+          avis.setVisible(false);
+        }
       }
       if (pb.fxHidden) for (const c of pb.fxHidden) c.visible = true; // FX resume
       if (pb.vegGroup) pb.vegGroup.visible = pb.vegWasVisible; // vegetation back

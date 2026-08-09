@@ -4631,11 +4631,35 @@ function debugSpawnKillShell(aimYFrac = 0.45) {
   p.combat.hp = Math.min(p.combat.hp, 1);
   _v2.copy(p.state.pos);
   _v2.y += p.spec.dims.heightM * aimYFrac;
+  if (!shooter.visual || !shooter.visual.gunMuzzleWorld) return false;
+  const original = {
+    pos: shooter.state.pos.clone(), yaw: shooter.state.yaw,
+    turretYaw: shooter.state.turretYaw, gunPitch: shooter.state.gunPitch,
+  };
+  shooter.visual.gunMuzzleWorld(_rayO);
+  const groundOffset = shooter.state.pos.y - hfProxy.getHeightAt(
+    shooter.state.pos.x, shooter.state.pos.z);
   // probe bearings (flat side shots first — guaranteed pen) for clear LOS
   const RELS = [90, -90, 70, -70, 110, -110, 45, 135];
   for (let i = 0; i < RELS.length; i++) {
     const az = p.state.yaw + RELS[i] * DEG;
-    _v1.set(_v2.x + Math.sin(az) * 130, _v2.y + 7, _v2.z + Math.cos(az) * 130);
+    const sx = _v2.x + Math.sin(az) * 130;
+    const sz = _v2.z + Math.cos(az) * 130;
+    shooter.state.pos.set(sx, hfProxy.getHeightAt(sx, sz) + groundOffset, sz);
+    // Lay the actual rendered gun onto the target before sampling its muzzle.
+    // This keeps the probe honest: its kill cam starts at a real tank barrel,
+    // not at the old free-floating synthetic point 7 m above the battlefield.
+    for (let solve = 0; solve < 2; solve++) {
+      shooter.visual.syncFromState(shooter.state, 0);
+      shooter.visual.gunMuzzleWorld(_v1);
+      _v3.copy(_v2).sub(_v1).normalize();
+      shooter.state.yaw = Math.atan2(_v3.x, _v3.z);
+      shooter.state.turretYaw = 0;
+      shooter.state.gunPitch = Math.atan2(_v3.y, Math.hypot(_v3.x, _v3.z))
+        - (shooter.state.visualPitch || 0);
+    }
+    shooter.visual.syncFromState(shooter.state, 0);
+    shooter.visual.gunMuzzleWorld(_v1);
     _v3.copy(_v2).sub(_v1);
     const d = _v3.length();
     _v3.multiplyScalar(1 / d);
@@ -4647,11 +4671,17 @@ function debugSpawnKillShell(aimYFrac = 0.45) {
     bus.emit('shell:fired', {
       shellId: shell.id, shooterId: shooter.id, isPlayer: false,
       shellType: shellSpec.type, shellName: shellSpec.name,
-      caliberMm: shellSpec.caliberMm,
+      caliberMm: shellSpec.caliberMm, velocityMps: shellSpec.velocityMps,
+      timeS: game.timeS,
       muzzlePos: [_v1.x, _v1.y, _v1.z], dir: [_v3.x, _v3.y, _v3.z],
     });
     return true;
   }
+  shooter.state.pos.copy(original.pos);
+  shooter.state.yaw = original.yaw;
+  shooter.state.turretYaw = original.turretYaw;
+  shooter.state.gunPitch = original.gunPitch;
+  shooter.visual.syncFromState(shooter.state, 0);
   return false;
 }
 

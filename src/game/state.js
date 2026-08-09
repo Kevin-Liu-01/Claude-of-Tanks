@@ -79,7 +79,8 @@ function acquireShell(shellSpec, shooterId, isPlayer, muzzlePos, dir, id) {
 }
 const _firedEv = {
   shellId: 0, shooterId: '', isPlayer: false, shellType: '', shellName: '',
-  caliberMm: 0, muzzlePos: [0, 0, 0], dir: [0, 0, 0],
+  caliberMm: 0, velocityMps: 0, timeS: 0,
+  muzzlePos: [0, 0, 0], dir: [0, 0, 0],
 };
 
 /**
@@ -1450,6 +1451,8 @@ function tryFire(game, ent, bus, rig) {
   _firedEv.shellType = shellSpec.type;
   _firedEv.shellName = shellSpec.name; // SHOT-INFO ENRICHMENT (additive)
   _firedEv.caliberMm = shellSpec.caliberMm;
+  _firedEv.velocityMps = shellSpec.velocityMps;
+  _firedEv.timeS = game.timeS;
   _firedEv.muzzlePos[0] = _muzzle.x; _firedEv.muzzlePos[1] = _muzzle.y; _firedEv.muzzlePos[2] = _muzzle.z;
   _firedEv.dir[0] = _dir.x; _firedEv.dir[1] = _dir.y; _firedEv.dir[2] = _dir.z;
   bus.emit('shell:fired', _firedEv);
