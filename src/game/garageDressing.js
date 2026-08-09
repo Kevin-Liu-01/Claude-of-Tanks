@@ -50,6 +50,15 @@ export function createGarageDressing(engineCtx, pos) {
   const group = new THREE.Group();
   group.name = 'garage_dressing';
   group.position.copy(pos);
+
+  // Establish the dressing's final light set before the boot warm renders the
+  // hero. Adding this light from a later build chunk changes Three's lighting
+  // program keys and recompiles the already-visible tank mid-garage.
+  const bayFill = new THREE.PointLight(0xb9c6d6, 10, 30, 1.8);
+  bayFill.position.set(12.5, 6.2, 11.5);
+  bayFill.castShadow = false;
+  group.add(bayFill);
+
   const rng = mulberry32(48151);
   const aniso = (engineCtx && engineCtx.anisotropy) || 4;
   const shadowMat = (m) => {
@@ -362,14 +371,6 @@ export function createGarageDressing(engineCtx, pos) {
   // CHUNK 1 — static workshop clutter on every wall + floor decals
   // ==========================================================================
   chunks.push(function buildCore() {
-    // --- one whisper fill so the SE/NE bays never crush to pure black -------
-    // (mirrors the west-corner fill in garageStage; rides the dressing group
-    // so battle never sees the extra light — see main.js setGarageSpots)
-    const bayFill = new THREE.PointLight(0xb9c6d6, 10, 30, 1.8);
-    bayFill.position.set(12.5, 6.2, 11.5);
-    bayFill.castShadow = false;
-    group.add(bayFill);
-
     // --- EAST WALL (left of frame from the hero cam) ------------------------
     workbench(21.95, -7, -Math.PI / 2);
     pegboard(22.86, 2.62, -7, -Math.PI / 2);
