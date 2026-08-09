@@ -13,6 +13,7 @@ import { dressMapExtras } from './maps/mapKits.js'; // content_breadth r2
 import { VILLAGE_BUILDERS } from './maps/villageKit.js';
 import { DESTRUCTIBLE_TYPES, FENCE_SEG, WALL_SEG, bSandbagBroken } from './maps/inhabitKit.js';
 import { registerWorldDestructibles, emitBreakFx, emitDestroyed } from './destructibles.js';
+import { setToppleAxis } from './topple.js';
 // DESTRUCTIBLES r1: real-roster tank wrecks baked to static geometry
 import { bakeTankWreck, wreckPool } from './wrecks.js';
 // Build-time-baked licensed models (see tools/bake-props-models.mjs +
@@ -3459,22 +3460,24 @@ ${snowCap ? `
     if (rec.loopRef) rec.loopRef.toppled = true; // stop the main.js loop
     const l = Math.hypot(dx, dz) || 1;
     if (rec.cls === 'topple') {
+      setToppleAxis(_cax, dx, dz);
       pushCrushAnim({
         im: pool.imI, index: rec.slot, x: rec.x, y: rec.y, z: rec.z,
-        ax: -dz / l, az: dx / l, t: 0, placement: null, maxAng: 1.48,
+        ax: _cax.x, az: _cax.z, t: 0, placement: null, maxAng: 1.48,
       });
     } else if (rec.cls === 'toss') {
       // DESTRUCTIBLES r1: rammed drums/churns go FLYING — short ballistic
       // arc along the impact direction (speed-scaled), tumbling in flight,
       // settling on their side. Persists via the anim's final pose.
       const th = 2.2 + Math.min(speed, 12) * 0.55;    // horizontal throw m/s
+      setToppleAxis(_cax, dx, dz);
       pushCrushAnim({
         type: 'toss', im: pool.imI, index: rec.slot,
         x: rec.x, y: rec.y, z: rec.z, h: rec.h * rec.sc,
         vx: (dx / l) * th + (drng() - 0.5) * 1.2,
         vz: (dz / l) * th + (drng() - 0.5) * 1.2,
         vy: 2.6 + Math.min(speed, 12) * 0.30,
-        ax: -dz / l, az: dx / l,
+        ax: _cax.x, az: _cax.z,
         t: 0, placement: null, dur: 1.5,
       });
     } else {
@@ -3518,11 +3521,12 @@ ${snowCap ? `
     if (c.recIdx != null) { c.toppled = true; return breakRecord(c.recIdx, dx, dz, speed, 'ram'); }
     if (!poleIM) return false;
     c.toppled = true;
-    const l = Math.hypot(dx, dz) || 1;
-    // hinge axis: horizontal, perpendicular to travel — pole falls AWAY
+    setToppleAxis(_cax, dx, dz);
+    // Hinge axis is perpendicular to travel and oriented so a positive
+    // right-handed rotation makes the pole fall along the ram direction.
     pushCrushAnim({
       im: poleIM, index: c.index, x: c.x, y: c.y, z: c.z,
-      ax: -dz / l, az: dx / l, t: 0, placement: null, maxAng: 1.45,
+      ax: _cax.x, az: _cax.z, t: 0, placement: null, maxAng: 1.45,
     });
     return true;
   }

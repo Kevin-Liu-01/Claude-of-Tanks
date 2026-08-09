@@ -20,6 +20,7 @@ import { getTopDownMasks } from './tankThumbs.js';
 // EQUIPMENT SYSTEM: quiet mounted-loadout readout at the panel foot — the
 // same white-silhouette glyphs as the garage slots, at healthy-pip alpha.
 import { equipIconSVG } from './equipIcons.js';
+import { uiIconSVG } from './uiIcons.js';
 import { EQUIPMENT_BY_ID } from '../game/equipment.js';
 
 // WoT module-state ramp (ORANGE damaged, RED knocked out) + crew order come
@@ -31,24 +32,10 @@ import { STATE_COLOR, CREW_ORDER } from './moduleRegistry.js';
 // commander = binoculars, gunner = crosshair, driver = steering wheel,
 // loader = shell
 const CREW_SVG = {
-  commander: '<svg viewBox="0 0 12 12" width="14" height="14">' +
-    '<circle cx="3.4" cy="7.4" r="2.6" fill="currentColor"/>' +
-    '<circle cx="8.6" cy="7.4" r="2.6" fill="currentColor"/>' +
-    '<rect x="4.8" y="6.4" width="2.4" height="1.6" fill="currentColor"/>' +
-    '<rect x="2.4" y="2.6" width="2" height="2.6" fill="currentColor"/>' +
-    '<rect x="7.6" y="2.6" width="2" height="2.6" fill="currentColor"/></svg>',
-  gunner: '<svg viewBox="0 0 12 12" width="14" height="14">' +
-    '<circle cx="6" cy="6" r="3.4" fill="none" stroke="currentColor" stroke-width="1.4"/>' +
-    '<circle cx="6" cy="6" r="1" fill="currentColor"/>' +
-    '<path d="M6 .8v2.4M6 8.8v2.4M.8 6h2.4M8.8 6h2.4" stroke="currentColor" stroke-width="1.2"/></svg>',
-  driver: '<svg viewBox="0 0 12 12" width="14" height="14">' +
-    '<circle cx="6" cy="6" r="4.6" fill="none" stroke="currentColor" stroke-width="1.4"/>' +
-    '<circle cx="6" cy="6" r="1.4" fill="currentColor"/>' +
-    '<path d="M6 7.2v3.2M2 4.6l2.8 1.2M10 4.6 7.2 5.8" stroke="currentColor" stroke-width="1.2"/></svg>',
-  loader: '<svg viewBox="0 0 12 12" width="14" height="14">' +
-    '<path d="M4.4 4.6 6 1.2l1.6 3.4Z" fill="currentColor"/>' +
-    '<rect x="4.4" y="4.6" width="3.2" height="4.6" fill="currentColor"/>' +
-    '<rect x="3.9" y="9.6" width="4.2" height="1.4" fill="currentColor"/></svg>',
+  commander: uiIconSVG('crewCommander', 14),
+  gunner: uiIconSVG('crewGunner', 14),
+  driver: uiIconSVG('crewDriver', 14),
+  loader: uiIconSVG('crewLoader', 14),
 };
 
 const DP_CSS = `

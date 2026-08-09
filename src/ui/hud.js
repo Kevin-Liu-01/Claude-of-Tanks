@@ -39,6 +39,7 @@ const RET_CEIL_FRAC = 0.15;
 // Shared Inter type system (see src/ui/fonts.js): FONT_COND drives the
 // numeral/label hierarchy with tabular figures (weight floor 500).
 import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.js';
+import { uiIconSVG } from './uiIcons.js';
 // Pre-rendered tank icons (tools/genIcons.mjs): side silhouettes drive the
 // kill feed + ambient nameplates. Minimap blips and team-panel rows use the
 // vector class-glyph/arrow language instead (WoT reads class + heading, not
@@ -159,15 +160,15 @@ const TRAY_INK = 'rgba(238,244,250,0.86)';
 const CONSUMABLES = [
   {
     key: '4', label: 'Repair Kit', count: 2,
-    svg: `<svg viewBox="0 0 24 24" width="20" height="20"><path fill="${TRAY_INK}" d="M21.7 6.4a5.4 5.4 0 0 1-7.3 6.5L7 20.3a2.1 2.1 0 0 1-3-3l7.4-7.4a5.4 5.4 0 0 1 6.5-7.3L14.6 6l3.4 3.4 3.7-3Z"/></svg>`,
+    svg: uiIconSVG('repair', 20, TRAY_INK),
   },
   {
     key: '5', label: 'First Aid Kit', count: 2,
-    svg: `<svg viewBox="0 0 24 24" width="20" height="20"><path fill="${TRAY_INK}" fill-rule="evenodd" d="M4.5 6h15A2 2 0 0 1 21.5 8v10a2 2 0 0 1-2 2h-15a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2Zm5.2 3.4v2.5H7.2v2.7h2.5v2.5h2.7v-2.5h2.5v-2.7h-2.5V9.4Zm-.7-5.9h6v2.2h-6Z"/></svg>`,
+    svg: uiIconSVG('medkit', 20, TRAY_INK),
   },
   {
     key: '6', label: 'Fire Extinguisher', count: 1,
-    svg: `<svg viewBox="0 0 24 24" width="20" height="20"><path fill="${TRAY_INK}" d="M9.6 8.6a3.4 3.4 0 0 1 2-.9V6.2h1.6v1.5a3.4 3.4 0 0 1 2.8 3.3v8.2a1.8 1.8 0 0 1-1.8 1.8h-3a1.8 1.8 0 0 1-1.8-1.8v-8.2c0-.9.3-1.7.8-2.3ZM11.6 5.2c-.5-1-1.4-1.7-2.6-1.9L4.6 2.6v2l4.2 1c.6.15 1 .5 1.2 1h1.6ZM6.9 9.2 5 11.6v2l2.6-2.6Z"/></svg>`,
+    svg: uiIconSVG('extinguisher', 20, TRAY_INK),
   },
 ];
 

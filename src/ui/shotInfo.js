@@ -14,6 +14,7 @@
 // Mounted by the clearly-marked SHOT-INFO section in src/ui/hud.js.
 
 import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.js';
+import { uiIconSVG } from './uiIcons.js';
 import { maskIcon, iconUrl } from './icons.js';
 import { MODULE_LABEL, CREW_LABEL, STATE_COLOR } from './moduleRegistry.js';
 import { getSpec, ALL_TANK_IDS } from '../vehicles/specs.js';
@@ -54,21 +55,21 @@ const PEN_KINDS = new Set(['pen', 'he_pen']);
 // Crisp 12px module/crew glyphs (currentColor) — same visual language as the
 // damage panel's canvas icons, redrawn as inline SVG for DOM cards.
 const GLYPH = {
-  trackL: '<svg viewBox="0 0 12 12"><rect x="3.2" y="0.8" width="5.6" height="10.4" rx="2.6" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="6" cy="3.4" r="1" fill="currentColor"/><circle cx="6" cy="6" r="1" fill="currentColor"/><circle cx="6" cy="8.6" r="1" fill="currentColor"/></svg>',
-  engine: '<svg viewBox="0 0 12 12"><rect x="1.4" y="4" width="9.2" height="6" fill="currentColor"/><rect x="2.2" y="1.8" width="1.8" height="2" fill="currentColor"/><rect x="5.1" y="1.8" width="1.8" height="2" fill="currentColor"/><rect x="8" y="1.8" width="1.8" height="2" fill="currentColor"/></svg>',
-  fuelTank: '<svg viewBox="0 0 12 12"><rect x="1.8" y="2.6" width="8.4" height="8.4" fill="currentColor"/><rect x="6.6" y="0.8" width="2.6" height="1.8" fill="currentColor"/><path d="M3.4 4.8l5.2 4.4M8.6 4.8L3.4 9.2" stroke="#10161c" stroke-width="1.1"/></svg>',
-  ammoRack: '<svg viewBox="0 0 12 12"><path d="M3.4 4.4L4.6 0.8l1.2 3.6z" fill="currentColor"/><rect x="3.4" y="4.4" width="2.4" height="6.4" fill="currentColor"/><path d="M6.9 4.4L8.1 0.8l1.2 3.6z" fill="currentColor"/><rect x="6.9" y="4.4" width="2.4" height="6.4" fill="currentColor"/></svg>',
-  gun: '<svg viewBox="0 0 12 12"><rect x="4.6" y="0.8" width="2.8" height="8" fill="currentColor"/><rect x="3.4" y="0.8" width="5.2" height="1.8" fill="currentColor"/><rect x="3" y="9" width="6" height="2.2" fill="currentColor"/></svg>',
-  radio: '<svg viewBox="0 0 12 12"><rect x="1.4" y="7" width="9.2" height="4" fill="currentColor"/><path d="M4.4 7V1.4" stroke="currentColor" stroke-width="1.3"/><path d="M5.8 3.4a3 3 0 0 1 3 0M5.4 1.8a5 5 0 0 1 4.2 0" fill="none" stroke="currentColor" stroke-width="1"/></svg>',
-  optics: '<svg viewBox="0 0 12 12"><circle cx="6" cy="6" r="3.6" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="6" cy="6" r="1.3" fill="currentColor"/><path d="M6 0.6v2M6 9.4v2M0.6 6h2M9.4 6h2" stroke="currentColor" stroke-width="1.1"/></svg>',
-  turretRing: '<svg viewBox="0 0 12 12"><circle cx="6" cy="6" r="3.8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-dasharray="3.4 1.6"/></svg>',
-  crew: '<svg viewBox="0 0 12 12"><circle cx="6" cy="3.6" r="2.6" fill="currentColor"/><path d="M1.6 11.2a4.4 4.4 0 0 1 8.8 0z" fill="currentColor"/></svg>',
+  trackL: uiIconSVG('track', 12),
+  engine: uiIconSVG('engine', 12),
+  fuelTank: uiIconSVG('fuelTank', 12),
+  ammoRack: uiIconSVG('ammoRack', 12),
+  gun: uiIconSVG('gun', 12),
+  radio: uiIconSVG('radio', 12),
+  optics: uiIconSVG('optics', 12),
+  turretRing: uiIconSVG('turretRing', 12),
+  crew: uiIconSVG('crew', 12),
 };
 GLYPH.trackR = GLYPH.trackL;
 // commendation-ribbon glyphs (same 12px currentColor language)
-GLYPH.star = '<svg viewBox="0 0 12 12"><path d="M6 .7l1.55 3.25 3.55.42-2.62 2.44.7 3.5L6 8.6l-3.18 1.71.7-3.5L.9 4.37l3.55-.42z" fill="currentColor"/></svg>';
-GLYPH.shield = '<svg viewBox="0 0 12 12"><path d="M6 .7l4.7 1.6v3.3c0 2.9-1.9 4.7-4.7 5.7C3.2 10.3 1.3 8.5 1.3 5.6V2.3z" fill="currentColor"/></svg>';
-GLYPH.skull = '<svg viewBox="0 0 12 12"><path d="M6 .9a4.2 4.2 0 0 0-4.2 4.2c0 1.6.9 3 2.2 3.7v1.6h4V8.8a4.2 4.2 0 0 0 2.2-3.7A4.2 4.2 0 0 0 6 .9z" fill="currentColor"/><circle cx="4.3" cy="5" r="1.1" fill="#10161c"/><circle cx="7.7" cy="5" r="1.1" fill="#10161c"/><rect x="5.5" y="6.9" width="1" height="1.6" fill="#10161c"/></svg>';
+GLYPH.star = uiIconSVG('star', 12);
+GLYPH.shield = uiIconSVG('shield', 12);
+GLYPH.skull = uiIconSVG('skull', 12);
 
 const SI_CSS = `
 .cot-si{position:absolute;inset:0;pointer-events:none;font-family:${FONT_STACK};color:${COL.text};}

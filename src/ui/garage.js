@@ -36,6 +36,7 @@ import {
   loadEquipment, saveEquipment, equipEligible, computeEquipMults,
 } from '../game/equipment.js';
 import { equipIconSVG } from './equipIcons.js';
+import { uiIconSVG } from './uiIcons.js';
 import {
   viewRangeOf, baseCamoOf, equipViewMult, equipCamoBonus,
 } from '../sim/spotting.js';
@@ -89,12 +90,12 @@ const TIER_BY_ID = {
 };
 
 // ---------------------------------------------------------------------------
-// CATALOG GROUPS v2 (owner order 2026-08-06): the selection is catalogued into
+// CATALOG GROUPS v2: the selection is catalogued into
 // FOUR groups, shown in this order — the custom (procedural) fleet is the
 // source of truth, split cold-war / modern / WWII, and every vehicle that
 // still PLAYS a not-mine 3D model lives in its own trailing SOURCES group:
-//   (1) 'coldwar'  custom builds of cold-war-era vehicles;
-//   (2) 'modern'   custom builds of modern vehicles;
+//   (1) 'modern'   custom builds of modern vehicles;
+//   (2) 'coldwar'  custom builds of cold-war-era vehicles;
 //   (3) 'ww2'      custom builds of WWII vehicles (spec.era === 'ww2');
 //   (4) 'sources'  ids whose registered render is a community GLB — computed
 //                  AT LOAD from MODEL_SOURCE (runtime truth, see import note).
@@ -152,8 +153,8 @@ const groupOf = (s) =>
 // (candidateGlb rows via vehicles/printCatalog.js), so deploys show ALL
 // shipped actual-tank models there (the owner's §5.31b closing order).
 const CATALOG_GROUPS = [
-  { id: 'coldwar', label: 'Cold War' },
   { id: 'modern', label: 'Modern' },
+  { id: 'coldwar', label: 'Cold War' },
   { id: 'ww2', label: 'WWII' },
   { id: 'sources', label: 'Sources' },
 ];
@@ -227,10 +228,9 @@ const GARAGE_CSS = `
 .cot-nav .nv:hover{color:#ffd27a;border-color:rgba(240,176,74,.6);}
 .cot-nav .nv.on{color:#f0b04a;border-color:rgba(240,176,74,.55);
   background:rgba(24,19,11,.82);cursor:default;}
-/* r9.4 (owner): diff-language nav marks — studio is the owner's gate-diff
-   artwork (regenerated from the live LEFT-view diff, recolored red/green);
-   garage = tank on jack stands; home = the crest shield. */
-.cot-nav .nv .nvi{width:15px;height:15px;display:block;object-fit:contain;}
+/* Shared 24-grid vector marks keep all three navigation actions in the same
+   stroke language and stay sharp at the compact 15px presentation size. */
+.cot-nav .nv .nvi{width:15px;height:15px;display:block;}
 .cot-tech{position:absolute;top:108px;left:34px;pointer-events:auto;cursor:pointer;
   display:flex;align-items:center;gap:8px;
   font-family:${FONT_STACK};font-size:10.5px;font-weight:800;letter-spacing:.20em;
@@ -1387,7 +1387,7 @@ export function createGarage(opts) {
   const printEntries = getPrintCatalog();
   const isPrintId = (id) => !!printBaseId(id);
   // CATALOG v2: the carousel REORDERS the roster it receives — four catalog
-  // groups in the owner's order (Cold War / Modern / WWII / Sources), nation
+  // groups in the owner's order (Modern / Cold War / WWII / Sources), nation
   // blocks + tier progression inside each (catalogCompare above). Cards,
   // arrow stepping and chip first-picks all read this one sorted array, so
   // the visual strip, keyboard walk and group hand-offs always agree.
@@ -1412,43 +1412,32 @@ export function createGarage(opts) {
     `<span>CLAUDE <b>OF TANKS</b></span></div>` +
     `<div class="cot-nav">` +
     `<button class="nv on" data-nav="garage" type="button">` +
-    `<img class="nvi" src="/brand/nav/garage.svg" alt="" draggable="false">Garage</button>` +
+    `${uiIconSVG('garage', 15, 'currentColor', 'nvi')}Garage</button>` +
     `<button class="nv" data-nav="studio" type="button">` +
-    `<img class="nvi" src="/brand/nav/studio.png" alt="" draggable="false">Studio</button>` +
+    `${uiIconSVG('studio', 15, 'currentColor', 'nvi')}Studio</button>` +
     `<button class="nv" data-nav="home" type="button">` +
-    `<img class="nvi" src="/brand/nav/home.svg" alt="" draggable="false">Home</button>` +
+    `${uiIconSVG('home', 15, 'currentColor', 'nvi')}Home</button>` +
     `</div>` +
     `<div class="cot-topbar">` +
-    `<div class="res"><svg viewBox="0 0 14 14" width="13" height="13">` +
-    `<circle cx="7" cy="7" r="6" fill="#c8d2dc"/><circle cx="7" cy="7" r="4.4" fill="none" stroke="#8f9aa4" stroke-width="1"/>` +
-    `<path d="M7 3.6v6.8M5 5.4h4M5 8.6h4" stroke="#6d7883" stroke-width="1.1"/></svg>` +
+    `<div class="res">${uiIconSVG('credits', 13, '#c8d2dc')}` +
     `<span>2 458 300</span></div>` +
-    `<div class="res"><svg viewBox="0 0 14 14" width="13" height="13">` +
-    `<circle cx="7" cy="7" r="6" fill="#f0c04a"/><circle cx="7" cy="7" r="4.4" fill="none" stroke="#b98a1e" stroke-width="1"/>` +
-    `<circle cx="7" cy="7" r="1.9" fill="#b98a1e"/></svg>` +
+    `<div class="res">${uiIconSVG('gold', 13, '#f0c04a')}` +
     `<span>6 750</span></div>` +
-    `<div class="res"><svg viewBox="0 0 14 14" width="13" height="13">` +
-    `<path d="M7 .8 8.7 5.3 13.2 7 8.7 8.7 7 13.2 5.3 8.7 .8 7 5.3 5.3Z" fill="#9fd8ec"/></svg>` +
+    `<div class="res">${uiIconSVG('bonds', 13, '#9fd8ec')}` +
     `<span>48 250</span></div>` +
     `</div>` +
     `<button class="cot-tech" type="button">` +
-    `<svg class="tt-ico" viewBox="0 0 14 14" width="13" height="13" aria-hidden="true">` +
-    `<path d="M4.4 7h3M7.4 7V3.4h2.2M7.4 7v3.6h2.2" fill="none" stroke="currentColor" stroke-width="1.3"/>` +
-    `<circle cx="2.7" cy="7" r="1.9" fill="currentColor"/>` +
-    `<circle cx="11.3" cy="3.4" r="1.6" fill="currentColor"/>` +
-    `<circle cx="11.3" cy="10.6" r="1.6" fill="currentColor"/></svg>` +
+    `${uiIconSVG('techTree', 13, 'currentColor', 'tt-ico')}` +
     `TECH TREE</button>` +
     `<button class="cot-battle" type="button">BATTLE</button>` +
     `<div class="stats"></div>` +
     `<div class="cot-era-chips"></div>` +
     `<div class="cot-carousel">` +
     `<button class="cot-car-arrow prev" type="button" aria-label="Previous vehicle">` +
-    `<svg viewBox="0 0 10 16" width="9" height="15" aria-hidden="true">` +
-    `<path d="M8 1.6 2.4 8 8 14.4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg></button>` +
+    `${uiIconSVG('chevronLeft', 15)}</button>` +
     `<div class="cot-cards"></div>` +
     `<button class="cot-car-arrow next" type="button" aria-label="Next vehicle">` +
-    `<svg viewBox="0 0 10 16" width="9" height="15" aria-hidden="true">` +
-    `<path d="M2 1.6 7.6 8 2 14.4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg></button>` +
+    `${uiIconSVG('chevronRight', 15)}</button>` +
     `</div>` +
     `<div class="cot-leftcol"><div class="cot-maps"></div>` +
     `<div class="cot-camos"></div></div>` +
@@ -1678,9 +1667,7 @@ export function createGarage(opts) {
     }
     let tiles =
       `<div class="cot-eqtile remove" data-eq="">` +
-      `<svg viewBox="0 0 24 24" width="34" height="34" aria-hidden="true">` +
-      `<circle cx="12" cy="12" r="8.6" fill="none" stroke="rgba(238,244,250,.86)" stroke-width="1.8"/>` +
-      `<path d="M8.4 8.4l7.2 7.2M15.6 8.4l-7.2 7.2" stroke="rgba(238,244,250,.86)" stroke-width="1.8"/></svg>` +
+      `${uiIconSVG('close', 34, 'rgba(238,244,250,.86)')}` +
       `<div class="n">Empty</div><div class="e">remove equipment from this slot</div></div>`;
     for (const it of EQUIPMENT_CATALOG) {
       if (eqCat !== 'all' && it.cat !== eqCat) continue;
@@ -1848,10 +1835,10 @@ export function createGarage(opts) {
     return 0.14 + Math.max(0, Math.min(1, f)) * 0.86;
   }
 
-  // --- CATALOG FILTER CHIPS (COLD WAR / MODERN / WWII / SOURCES) ------------
+  // --- CATALOG FILTER CHIPS (MODERN / COLD WAR / WWII / SOURCES) ------------
   // The carousel shows ONE group at a time so a 100-vehicle roster stays
   // navigable. Exactly four chips in the owner's order (CATALOG_GROUPS at
-  // module scope): the custom cold-war fleet, the custom modern fleet, the
+  // module scope): the custom modern fleet, the custom cold-war fleet, the
   // custom WWII fleet, then every vehicle still playing a community GLB.
   // Partition, not overlay — the old LOCAL overlay chip (a tank in its era
   // group AND in local) double-listed 69 vehicles. A chip with zero members
@@ -2277,9 +2264,9 @@ export function createGarage(opts) {
 
     /**
      * Open the garage screen.
-     * @param {string} [selectedId='m1a2'] - initially highlighted tank id.
+     * @param {string} [selectedId='m1a1'] - initially highlighted tank id.
      */
-    show(selected = 'm1a2') {
+    show(selected = 'm1a1') {
       root.style.display = 'block';
       // garage_ui entrance: re-arm the chrome fade/rise on every open (boot
       // and battle-exit both used to hard-cut the whole screen in one frame)

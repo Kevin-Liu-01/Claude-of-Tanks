@@ -94,6 +94,21 @@ import { createStudio } from './game/studio.js';
 const DEG = Math.PI / 180;
 const GARAGE_POS = new THREE.Vector3(-1500, 0, -1500);
 const MAX_SIM_STEPS = 4;
+const DEFAULT_SPEC_ID = 'm1a1';
+const LAST_SPEC_KEY = 'cot.lastTank.v1';
+
+function loadLastSpecId() {
+  try {
+    const id = localStorage.getItem(LAST_SPEC_KEY);
+    if (id && ALL_TANK_IDS.includes(id)) return id;
+  } catch (_) { /* storage unavailable/private mode */ }
+  return DEFAULT_SPEC_ID;
+}
+
+function rememberSpecId(id) {
+  if (!ALL_TANK_IDS.includes(id)) return; // Sources print cards are view-only
+  try { localStorage.setItem(LAST_SPEC_KEY, id); } catch (_) { /* storage unavailable */ }
+}
 
 // scratch
 const _v1 = new THREE.Vector3();
@@ -428,7 +443,9 @@ function setGarageSunTrim(on) {
 }
 
 let pedestalVisual = null;
-let selectedSpecId = 'm1a2';
+// First visit opens on the M1A1 Abrams; later visits resume the last playable
+// tank the user selected. Invalid/stale ids safely fall back to the M1A1.
+let selectedSpecId = loadLastSpecId();
 let pedestalPollToken = 0; // content_breadth r1: cancels stale GLB polls
 // switch-desync r1: convergence bookkeeping. A switch is "pending" from the
 // moment its call bumps pedestalPollToken until any reveal path records it
@@ -1095,7 +1112,11 @@ const hud = await bootStage('hud', () => {
 const garage = await bootStage('ui', () => createGarage({
   specs: ALL_TANK_IDS.map(getSpec), // COMMUNITY TANKS: grown carousel
   bus,
-  onSelect: (specId) => { selectedSpecId = specId; setPedestalTank(specId); },
+  onSelect: (specId) => {
+    selectedSpecId = specId;
+    rememberSpecId(specId);
+    setPedestalTank(specId);
+  },
   onBattle: (specId, mapId) => beginBattleEntry(specId, mapId), // loading screen owns entry
   // MAP-CONFIG WIRING: battlefield picker cards (4 maps + Random)
   maps: [
@@ -2044,6 +2065,7 @@ function startBattle(specId, mapId = null, opts = {}) {
   // clobber the pristine materials resetDestroyed() just put back.
   killcam.cancel();
   selectedSpecId = specId;
+  rememberSpecId(specId);
   debugAimTargetId = null; // sticky drive-test aim never carries across battles
   // MAP-CONFIG WIRING: battle on the picked map ('random' rolls here)
   switchMap(resolveMapId(mapId || pendingMapId));
@@ -2522,6 +2544,10 @@ function updateDustAndSync(dtFrame) {
       // the hinge-topple (world.crushProp) + wood-splinter burst.
       if (sp > 1.2 && world && world.crushables && world.crushables.length) {
         const hl = ent.spec.dims.hullLengthM * 0.5 + 0.5;
+        // Lightweight loop-contact props bypass the sim collider, so derive
+        // the signed travel direction here. Facing direction alone made props
+        // rammed in reverse fall toward the moving tank.
+        _v2.copy(_fwd).multiplyScalar(Math.sign(ent.state.speed) || 1);
         for (let ci = 0; ci < world.crushables.length; ci++) {
           const c = world.crushables[ci];
           if (c.toppled) continue;
@@ -2529,9 +2555,9 @@ function updateDustAndSync(dtFrame) {
           if (dx * dx + dz * dz > hl * hl) continue;
           // DESTRUCTIBLES r1: the hull speed rides into the break so tossed
           // drums/debris inherit the rammer's velocity
-          if (world.crushProp(ci, _fwd.x, _fwd.z, sp)) {
+          if (world.crushProp(ci, _v2.x, _v2.z, sp)) {
             _v1.set(c.x, c.y, c.z);
-            fx.propCrush(_v1, _fwd, c.h);
+            fx.propCrush(_v1, _v2, c.h);
           }
         }
       }

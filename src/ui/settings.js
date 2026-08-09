@@ -30,6 +30,7 @@
 // Behavior is UNCHANGED: same classes, same rebind/persistence/pause flow.
 
 import { FONT_STACK, ensureFonts } from './fonts.js';
+import { uiIconSVG } from './uiIcons.js';
 import { getStoredChoice, setPresetName, PRESET_ORDER, PRESETS } from '../engine/quality.js';
 
 const SETTINGS_CSS = `
@@ -315,8 +316,7 @@ body.cot-touch-layout .cot-set-body button{min-height:40px;}
 body.cot-touch-layout .cot-set-ftr .cot-set-btn{min-height:42px;}
 `;
 
-const GEAR_SVG =
-  '<svg viewBox="0 0 24 24" width="22" height="22"><path fill="#9fb0bf" d="M12 8.2a3.8 3.8 0 1 0 0 7.6 3.8 3.8 0 0 0 0-7.6Zm9.4 5.3-2.1 1.7c.05-.4.08-.8.08-1.2s-.03-.8-.08-1.2l2.1-1.7a.5.5 0 0 0 .12-.64l-2-3.46a.5.5 0 0 0-.61-.22l-2.5 1a7.7 7.7 0 0 0-2.06-1.2l-.38-2.65A.5.5 0 0 0 13.45 3h-4a.5.5 0 0 0-.5.43l-.37 2.65c-.75.3-1.44.7-2.06 1.2l-2.5-1a.5.5 0 0 0-.61.22l-2 3.46a.5.5 0 0 0 .12.64l2.11 1.65a7.9 7.9 0 0 0 0 2.42l-2.1 1.65a.5.5 0 0 0-.13.64l2 3.46c.13.22.4.31.61.22l2.5-1c.62.5 1.31.9 2.06 1.2l.37 2.65c.04.25.25.43.5.43h4c.25 0 .46-.18.5-.43l.37-2.65a7.7 7.7 0 0 0 2.06-1.2l2.5 1c.22.09.48 0 .61-.22l2-3.46a.5.5 0 0 0-.12-.64Z" transform="translate(-1.45 -0.5)"/></svg>';
+const GEAR_SVG = uiIconSVG('settings', 22, '#9fb0bf');
 
 const ESC_HOLD_MS = 700; // hold Esc this long during capture to bind Escape itself
 const PAD_START_BUTTON = 9; // START closes the panel for controller players

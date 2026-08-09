@@ -8,6 +8,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { sampleSplatNoise, applyTone } from './terrain.js';
+import { setToppleAxis } from './topple.js';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
 import { texSize } from '../engine/quality.js';
 
@@ -3160,10 +3161,10 @@ function* vegetationBuildSteps(heightField, engineCtx, seed, cfg) {
     const t = trees[ob.treeIdx];
     if (!t || t.crushed) return false;
     t.crushed = true;
-    const l = Math.hypot(dx, dz) || 1;
+    setToppleAxis(_tcax, dx, dz);
     treeCrushAnims.push({
       t, base: t.mat.clone(), x: t.x, y: ob.min[1], z: t.z,
-      ax: -dz / l, az: dx / l, u: 0,
+      ax: _tcax.x, az: _tcax.z, u: 0,
     });
     return true;
   }
@@ -3172,7 +3173,7 @@ function* vegetationBuildSteps(heightField, engineCtx, seed, cfg) {
       const a = treeCrushAnims[k];
       a.u = Math.min(a.u + dt / 1.15, 1.1);
       const e = Math.min(a.u / 0.82, 1);
-      // eased fall to ~81° away from the travel direction + settle bounce
+      // eased fall to ~81° along the ram direction + settle bounce
       let ang = 1.42 * e * e * (3 - 2 * e);
       if (a.u > 0.82) {
         ang = 1.42 - 0.05 * Math.sin((a.u - 0.82) * 17) * Math.exp(-(a.u - 0.82) * 5.5);

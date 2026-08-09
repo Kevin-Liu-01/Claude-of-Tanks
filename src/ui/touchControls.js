@@ -3,6 +3,7 @@
 // vector used by keyboard, mouse, and gamepad controls.
 
 import { FONT_STACK, FONT_COND } from './fonts.js';
+import { uiIconSVG } from './uiIcons.js';
 
 const CSS = `
 .cot-touch{position:fixed;inset:0;z-index:39;display:none;pointer-events:none;
@@ -136,8 +137,8 @@ body.cot-touch-layout .cot-car-arrow{width:44px;}
 body.cot-touch-layout .cot-touch .back{padding:12px 16px;min-height:44px;}
 `;
 
-const SHELL = `<svg viewBox="0 0 34 56" aria-hidden="true"><path d="M17 2 24 15v27H10V15Z" fill="currentColor"/><path d="M8 42h18v10H8z" fill="currentColor"/><path d="M11 25h12" stroke="#1a2025" stroke-width="2"/></svg>`;
-const SCOPE = `<svg viewBox="0 0 42 28" aria-hidden="true"><path d="M7 8h8l3 5h6l3-5h8l4 13H25l-2-4h-4l-2 4H3Z" fill="currentColor"/><circle cx="11" cy="13" r="5" fill="#202a31"/><circle cx="31" cy="13" r="5" fill="#202a31"/></svg>`;
+const SHELL = uiIconSVG('shell', 34);
+const SCOPE = uiIconSVG('scope', 34);
 
 export function createTouchControls({ input, bus, isBattleActive, onLeaveBattle, isSniper = () => false }) {
   if (!document.getElementById('cot-touch-style')) {

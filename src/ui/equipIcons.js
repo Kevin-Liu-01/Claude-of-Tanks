@@ -1,9 +1,9 @@
 // src/ui/equipIcons.js — EQUIPMENT SYSTEM icon set.
-// One recognizable glyph per catalog item, drawn in the r5 HUD tray language:
-// a flat white ~85%-alpha silhouette (rgba(238,244,250,.86)), ONE ink, no
-// gradients, no second color — the same rules as the ammo/consumable
-// pictograms in hud.js. All paths live on a 24x24 grid and are built from
-// >=1.5px strokes / chunky fills so they stay crisp from 20 to 48 px.
+// One recognizable glyph per catalog item, refreshed into the shared armored
+// UI language: a flat white silhouette inside a quiet clipped-corner equipment
+// plate. All paths live on a 24x24 grid and are built from >=1.5px strokes /
+// chunky fills so they stay crisp from 20 to 48 px. The compact 15px battle
+// readout omits the frame to preserve maximum glyph legibility.
 //
 // equipIconSVG(id, size, ink) returns an inline <svg> string (or '' for
 // unknown ids). Consumers: the garage slot boxes + picker grid (garage.js)
@@ -132,7 +132,16 @@ const GLYPHS = {
 export function equipIconSVG(id, size = 24, ink = EQUIP_INK) {
   const g = GLYPHS[id];
   if (!g) return '';
-  return `<svg viewBox="0 0 24 24" width="${size}" height="${size}" aria-hidden="true">${g(ink)}</svg>`;
+  if (size < 20) {
+    return `<svg viewBox="0 0 24 24" width="${size}" height="${size}" aria-hidden="true">${g(ink)}</svg>`;
+  }
+  const frame =
+    `<path d="M6 1.5h12L22.5 6v12L18 22.5H6L1.5 18V6Z" fill="none" ` +
+    `stroke="${ink}" stroke-width="1.15" opacity=".28"/>` +
+    `<path d="M2.2 8V6.3L6.3 2.2H8M16 21.8h1.7l4.1-4.1V16" fill="none" ` +
+    `stroke="${ink}" stroke-width="1.35" stroke-linecap="round" opacity=".62"/>`;
+  return `<svg viewBox="0 0 24 24" width="${size}" height="${size}" aria-hidden="true">` +
+    `${frame}<g transform="translate(3 3) scale(.75)">${g(ink)}</g></svg>`;
 }
 
 /** All catalog ids this set covers (icon-sheet tooling + selftest). */

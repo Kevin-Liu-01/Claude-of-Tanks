@@ -2118,8 +2118,35 @@ export function fitArmorToDims(armor, fromDims, toDims) {
  * @returns {object} TankSpec (ARCHITECTURE §2.2)
  * @throws {Error} on unknown id
  */
+export const AFV_HP_BONUS = 700;
+const AFV_BALANCE_MARK = Symbol.for('claude-of-tanks.afv-balance.v1');
+
+/**
+ * Gameplay protection package for infantry fighting vehicles. Physical plate
+ * thickness remains truthful for overmatch calculations; add-on cage,
+ * applique and liner protection is represented as KE/CE effective armor.
+ * The symbol guard keeps lazy lookup and Vite HMR idempotent.
+ */
+function applyAfvBalance(spec) {
+  if (!spec || spec.class !== 'ifv' || spec[AFV_BALANCE_MARK]) return spec;
+  spec.hp += AFV_HP_BONUS;
+  const armor = spec.armor || {};
+  for (const plate of [...(armor.hullPlates || []), ...(armor.turretPlates || [])]) {
+    if (plate.kind === 'external') continue; // tracks/screens keep their own values
+    const name = String(plate.name || '').toLowerCase();
+    const frontal = /front|glacis|cheek|mantlet/.test(name);
+    const flank = /side|skirt/.test(name);
+    const keAdd = frontal ? 45 : flank ? 25 : 15;
+    const ceAdd = frontal ? 90 : flank ? 55 : 30;
+    plate.keMm = (plate.keMm ?? plate.physicalMm ?? 0) + keAdd;
+    plate.ceMm = (plate.ceMm ?? plate.physicalMm ?? 0) + ceAdd;
+  }
+  Object.defineProperty(spec, AFV_BALANCE_MARK, { value: true });
+  return spec;
+}
+
 export function getSpec(id) {
   const s = TANK_SPECS[id];
   if (!s) throw new Error(`Unknown tank id: ${id}`);
-  return s;
+  return applyAfvBalance(s);
 }
