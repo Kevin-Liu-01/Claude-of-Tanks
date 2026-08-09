@@ -646,3 +646,49 @@ by-design (unchanged), owner WIP files untouched (main.js/garage.js/
 materials.js/modelLoader.js), NOTHING committed.
 Evidence: shots/abramsx-dedicated-r1/{garage-newref, garage-relaunch-now,
 garage-after-r2, close-r2} + the audit logs in the session scratchpad.
+
+## §5.82 COMPLETE REDESIGN — LECLERC METHOD GRADUATION (2026-08-09)
+
+The historical dressed family shell was replaced by a component- and
+station-measured AbramsX build using the Leclerc method. Both local prints
+were read as geometry instruments: the registered
+`abramsx-mortavex.glb` supplies the certified frame and the independent
+unwarped `abrams_x_low_poly.glb` supplies the same 1,233-component shape
+inventory at its original proportions. The P95 envelope is now the mandatory
+XM914/RWS crest: `heightM` 3.47, while the two whip spikes remain excluded.
+
+Delivered geometry:
+
+- continuous knife-bow stations, exact high idler/sprocket and seven-wheel
+  centers, loaded shoe corridor, independent suspension links, recessed
+  0.5155 m decagonal wheel faces and ten-fastener circles;
+- true turret cross-sections rather than an AABB solid: deep lower wall,
+  two-stage shoulders, non-monotonic aft terraces/channels, finite-width
+  transverse casting at the widest source station, and a real under-bustle
+  air gap;
+- source-measured asymmetric roof inventory: two staggered open D-hood
+  sights with recessed twin lenses, open XM914 rail/saddle receiver and
+  articulated 28-round feed, service boxes, smoke banks and corner sensors;
+- XM360 tube/shroud/pepperpot run and the source's segmented stern vane,
+  spine, vent, socket, flap and tow architecture.
+
+The widest front-elevation wall exposed a useful station-loft lesson. A
+single maximum-width section between two narrower sections is a zero-depth
+mathematical apex and can disappear from a physical projection. The source
+carries that width for 0.06 m; authoring the measured transverse casting
+raised `front_whole` from 89.924 to a clean pass without widening the roof.
+
+Final gate x2 IDENTICAL: **90.2** | hull 90.2 / whole 90.5 / turret 91.0 /
+stations 93.4 / dims 99.8 / floaters 100. Standard audit: clip 37/26,
+contiguity 0, decor mg1+5d. Turret-parent audit 0/0/0. Procedural-fidelity
+93.0 (H96/T85/G90/R96). Geometry freeze reproduced x2:
+**fe7f9852** (75 meshes / 161040 verts). Batch-20 repair reproduced the
+oracle SHA-256 x2 from the standing pristine `.bak`:
+**01acf03c1027f08512a0bb7c04fa109b167a281fec0bea017b15638c1aec6816**.
+
+Independent R26 §B8 PASS: every one of 14 views >=9.0, floor 9.0 / mean
+9.04. Full verdict:
+`docs/critique/shaded-parity-abramsx-redesign-graduation.md`; evidence:
+`shots/abramsx-redesign-r2/polish26/`. Non-blocking residuals are slightly
+flat side end-track arcs, a more uniform rear bustle shadow, and marginally
+smoother top-view mid-shoulders.

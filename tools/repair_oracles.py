@@ -2789,24 +2789,34 @@ REPAIRS['m1a2_sepv2'] = [
 ]
 
 # =============================================================== batch 20 ===
-# ABRAMSX NORMALIZATION (abramsx-mortavex.glb). Body/width TRUE (-0.3%/0%);
-# +41% height = RWS bridge band (3.0-3.47 gate-m across z -0.83..+0.42,
-# ~15% of cols) + rear sensor rows 3.24-3.25 + antenna 4.13. Tejas-W1-class
-# compress: knee 2.30 (turret crown/roof <=2.3 untouched), RWS band lands
-# 2.44-2.451, antenna 2.468 — simulated p93/p95/p97/max = 2.448/2.449/
-# 2.451/2.468, inside dims grace at any percentile placement. Overall
-# +3.5% (tube long): body identity, tube segment x0.85 pins muzzle at
-# rear+9.77. 342-vert turret interpenetration is INTERIOR (below-deck
-# bustle content; silhouette unaffected — packet fused-shell cert stands).
-# Plan: vertex-normalize batch-20 entry. GLB has no .bak yet — first run
-# creates it (pristine kept).
+# ABRAMSX NORMALIZATION (abramsx-mortavex.glb). §5.82 COMPLETE-REDESIGN
+# supersedes batch-20's obsolete bare-roof interpretation. The pristine .bak
+# and the independent 53 MB abrams_x_low_poly.glb contain the SAME 1,233
+# triangle-connected components and the SAME measured envelopes: turret shell
+# 1.5621..2.4912 m, mandatory XM914/RWS 2.5670..3.4694 m, twin whip spikes to
+# 4.1310 m. Under the fleet-ratified §5.73-1 law the broad mandatory RWS owns
+# heightM's P95 envelope; it is not an outlier to crush into the 2.44 m bare-
+# roof datum. Restore the original y axis byte-for-shape and set the gameplay
+# datum to 3.47 m. The two hairline whips remain legal p95-excluded spikes.
+#
+# Overall +3.5% is only the final XM360 tube segment. Keep the pre-existing
+# published-overall correction (rear + 9.77 m); hull/turret x/z footprints
+# and every non-gun component remain the exact measured source coordinates.
 REPAIRS['abramsx'] = {
     'path': 'public/models/tanks/community/abramsx-mortavex.glb',
     'ops': [
+        # The exporter flattened the XM914 receiver (`korpus`) beside the
+        # main hull (`Korpus`), and the true turret-kit group (`Dekali`)
+        # beside a separate lowercase hull-marking group (`dekali`). Runtime
+        # follower matching is deliberately case-insensitive, so give both
+        # turret groups unambiguous semantic names before registration.
+        # Metadata only: every vertex/index byte remains untouched.
+        ('rename', 'korpus', 'RWSKorpus'),
+        ('rename', 'Dekali', 'TurretKit'),
         ('py2', _axis_warp('abramsx', long_axis='z',
-                           y_map=[(-12.7838, -12.7838), (305.4265, 305.4265), (402.2731, 324.7958), (568.2958, 328.9464)],
+                           y_map=[(-12.7838, -12.7838), (568.2958, 568.2958)],
                            long_map=[(-416.0945, -416.0945), (676.8885, 676.8885), (981.2635, 935.6073)],
-                           y_top_max=333.0969, expect=(28, 65255, 44719))),
+                           y_top_max=568.2958, expect=(28, 65255, 44719))),
     ],
 }
 

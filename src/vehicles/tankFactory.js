@@ -866,7 +866,18 @@ function buildRunningGear(P, cfg) {
     P.disposables.push(tireMat);
   }
   if (tire) mkInst(tire, tireMat, entries);
-  const dishMat = style === 'rubber' || style === 'holes' || style === 'dished' ? mats.wheels : mats.detail;
+  let dishMat = style === 'rubber' || style === 'holes' || style === 'dished' ? mats.wheels : mats.detail;
+  // Per-profile painted wheel tone.  Modern demonstrators often carry
+  // deeply shadowed, scheme-painted dishes; using the fleet wheel material
+  // can turn them into a row of pale toy discs.  Undefined is exactly the
+  // historical path for every existing profile.
+  if (cfg.wheelHex) {
+    dishMat = dishMat.clone();
+    dishMat.color = new THREE.Color(cfg.wheelHex);
+    dishMat.onBeforeCompile = vehicleAmbientFloorHook;
+    dishMat.customProgramCacheKey = () => 'veh-ambient-floor-v2';
+    P.disposables.push(dishMat);
+  }
   const proudList = entries.filter((e) => !e.rec);
   const recList = entries.filter((e) => e.rec);
   if (proudList.length) mkInst(disc, dishMat, proudList);

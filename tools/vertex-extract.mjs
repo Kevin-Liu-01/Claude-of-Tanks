@@ -201,7 +201,8 @@ const REG = {
   abramsx: {
     path: 'public/models/tanks/community/abramsx-mortavex.glb',
     turretNode: '^Turret$', gunNode: '^[Ss]tvol$', autoPivot: true,
-    pubDims: { hullLengthM: 7.93, overallLengthM: 9.77, widthM: 3.66, heightM: 2.44 },
+    // §5.73-1 / §5.82: mandatory-RWS P95 datum (whips remain spikes).
+    pubDims: { hullLengthM: 7.93, overallLengthM: 9.77, widthM: 3.66, heightM: 3.47 },
   },
   merkava3d: {
     path: 'public/models/tanks/community/recovered/merkava3d.glb',

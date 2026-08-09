@@ -1,7 +1,7 @@
 {
- "generatedAt": "2026-08-09T04:47:24.566Z",
+ "generatedAt": "2026-08-09T12:15:41.343Z",
  "gate": "every component >= 90; min is the headline",
- "passed": 25,
+ "passed": 26,
  "total": 96,
  "rows": [
   {
@@ -474,14 +474,14 @@
   },
   {
    "id": "abramsx",
-   "geoMin": 62.9,
-   "gatePassed": false,
+   "geoMin": 90.2,
+   "gatePassed": true,
    "components": {
-    "hullCurves": 62.9,
-    "wholeCurves": 69.3,
-    "turretCurves": 77.7,
-    "stations": 78.9,
-    "dims": 100,
+    "hullCurves": 90.2,
+    "wholeCurves": 90.5,
+    "turretCurves": 91,
+    "stations": 93.4,
+    "dims": 99.8,
     "floaters": 100
    }
   },

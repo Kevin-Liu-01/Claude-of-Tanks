@@ -27,6 +27,13 @@ tejas.visual.number = '23';
 const abramsx = clone(TANK_SPECS.m1a2);
 abramsx.id = 'abramsx';
 abramsx.name = 'AbramsX';
+// §5.73-1 / §5.82 P95 datum: the mandatory XM914/RWS is a broad roof-kit
+// band, not an antenna outlier. Both independent local Mortavex kits measure
+// its crest at 3.4694 m after the committed 3.66 m width registration; the
+// twin 4.131 m whips remain p95-excluded spikes. The old inherited 2.44 m
+// value described only the bare turret roof and caused batch-20 to crush the
+// defining AbramsX superstructure into a box.
+abramsx.dims = { ...abramsx.dims, heightM: 3.47 };
 abramsx.variantOf = 'm1a2';
 abramsx.publicVisualFallback = 'm1a2';
 abramsx.community = {
@@ -48,8 +55,17 @@ abramsx.gun.shells[0].name = 'XM1203 APFSDS';
 abramsx.gun.shells[1].name = 'XM1203 AMP';
 abramsx.visual = {
   ...abramsx.visual,
-  scheme: 'nato', base: '#3c4438', weather: '#596052',
-  patches: ['#1f2420', '#665746'], marking: 'star', number: 'X1', camoScale: 0.58,
+  // Matched from the registered 14-view evidence rather than the inherited
+  // bright M1 palette: source median RGB is ~55/59/48 and its brown fields
+  // are broad, subdued shapes.  The prior 60/68/56 base + bright weather
+  // layer made an objectively aligned shell read 3-9 luminance points
+  // larger/taller in every shaded comparison.
+  scheme: 'nato', base: '#373b30', weather: '#4b5144',
+  // The source atlas uses a few sweeping fields, not the default fleet's
+  // many small islands. camoScale <=.5 is world-normalized; patchK is the
+  // effective field-size control (measured against the 14-view crops).
+  patches: ['#232720', '#5b4d40'], marking: 'star', number: 'X1',
+  camoScale: 0.45, patchK: 1.55,
 };
 
 // Keep the gameplay rows in every build. Public artifacts use the legal
@@ -74,13 +90,16 @@ if (ALLOW_LOCAL_RECOVERED_MODELS) {
     glb: {
       path: '/models/tanks/community/abramsx-mortavex.glb',
       turretNode: '^Turret$', gunNode: '^[Ss]tvol$', autoPivot: true,
+      // §5.82 component proof: the Mortavex export flattened the complete
+      // turret kit beside the shell.  TurretKit carries the roof armor, sights
+      // and twin whips; stvol/puli/RWSKorpus are the XM914 barrel, ammunition
+      // pack and receiver.  Move the four siblings with the shell.  The
+      // explicit raw-frame ring pivot is the original shell-only autoPivot
+      // ([0, 2.157, -0.390] m after registration), so adding followers can
+      // never re-derive/shift the yaw axis from their larger bounding box.
+      turretFollowers: '^(TurretKit|stvol|puli|RWSKorpus)$',
+      pivot: [0, 285.639, 73.949],
       paintUntextured: true,
-      // COUPLED WHIP LANDING PARKED (2026-08-06 orchestrator attempt):
-      // turretFollowers '^Dekali$' cratered the gate to 0 — the group
-      // spans the full turret band and autoPivot re-derives the ring
-      // from the enlarged footprint (registration shift class). The
-      // follower set must be derived by the abrams lane with mode-2
-      // tooling; AX_WHIPS_TURRET in abrams.js rides the same commit.
     },
   };
 
