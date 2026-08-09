@@ -87,8 +87,8 @@ re-freeze NEW hash, all in ONE commit.
 | m45_patton | 53caa687 | GRADUATED 2026-08-08 (29th; gate 90.7 x5 total + sitting-2 visual floor 9.0 mean 9.13 x14; sitting-1 orders executed: loft.smooth byte-reproduced, ring cupola adjudicated ring-class at station with the measured Ø0.57/x-0.65 deviation compliant; ring-prominence silhouette-tax residual certified) |
 | leclerc | 683be340 | GRADUATED 2026-08-08 (30th; gate 90.3 x2 every component >=90 + visual floor 9.0 mean 9.17 x14 at freeze-verified bytes; the §5.14 §K-exemplar turret standard held through the ladder — no gate-chasing artifacts; commander-well doc trued z_w 0.32..0.66) |
 | k2 | 827d5ffc | GRADUATED 2026-08-08 (31st; Leclerc-method closed station loft; gate 90.1 x2 every component >=90; visual R26 floor 9.0 / mean 9.09 x14; exact Object_8/15/18/21 plan inventory, rounded asymmetric cage, countable six-station ISU gear; oracle 8d92cd1b reproducible from pristine .bak) |
-| abramsx | fe7f9852 | GRADUATED 2026-08-09 (32nd; complete Leclerc-method redesign; gate 90.2 x2 every component >=90; visual polish26 floor 9.0 / mean 9.04 x14; measured knife bow, running gear, station terraces, open D-hood sights, XM914 feed and bustle void; oracle 01acf03c reproducible from pristine .bak) |
-| challenger_3 | 2678f6c | GRADUATED 2026-08-09 (33rd; complete Leclerc-method redesign; gate 90.4 x2 every component >=90; visual floor 9.0 / mean 9.04 x14; exact-tree fidelity 91.52; joined five-station turret, oval L55 jacket, six correctly spaced wheels, open RWS and broad attached stern course; oracle a5fcd801 reproducible from pristine .bak) |
+| abramsx | d1dbfa2 | GRADUATED 2026-08-09 (32nd; §5.87 owner attachment closeout RE-FROZEN: roof-sight necks + XM914 buried foundation/recoil spine/equipment foot, no air seams; gate 90.2 x2 every component >=90; fresh §B8 floor 9.0 / mean 9.09 x14; oracle 01acf03c reproducible from pristine .bak; prior fe7f9852 complete-redesign freeze retired) |
+| challenger_3 | b0c172a4 | GRADUATED 2026-08-09 (33rd; §5.87 owner attachment closeout RE-FROZEN: Protector roof shoe/fork/receiver/optic supports + smoke backing shoes; gate 90.4 x2 every component >=90; fresh §B8 floor 9.0 / mean 9.06 x14; oracle a5fcd801 reproducible from pristine .bak; prior 2678f6c complete-redesign freeze retired) |
 | challenger2 | 63ee160 | GRADUATED 2026-08-09 (34th; complete Leclerc-method redesign; gate 90.1 x2 every component >=90; visual floor 9.0 / mean 9.03 x14; direct-tree fidelity 91.3; exact source profiles/plan bands, joined V-section hull ends, closed three-band turret, deep Hydrogas wheels and folded transverse L7A2/MAG; oracle d2e22673 reproducible from pristine .bak) |
 | m26_pershing | 2f006738 | RE-RECORDED 2026-08-08: hash moved by LANDED 5f39989 (armorM4 gunBarrel shadow-proxy 3.96->3.44; m26/m45 inherit m4a3e8 proxies — patton.js bytes unchanged); double-confirmed by builder bisect + m45-grad critic; prior 65c564c0 bore+winding re-cert lineage (floors 9.1-9.4) carries |
 | t90m | e345ee8a | GRADUATED 2026-08-06 (27th; floor 9.0 x14 second sitting; the owner's dedicated-agent arc 81.7 -> dual gate) |
@@ -2540,3 +2540,39 @@ accounting. Results:
 No temporary branch was pruned here; this section is the requested durable
 accept/reject accounting. All six listed branches are now safe for the owner
 to prune.
+
+## 5.87 OWNER TURRET-ATTACHMENT CLOSEOUT — CHALLENGER 3 + ABRAMSX (2026-08-09)
+
+The owner's close-up Challenger screenshot reopened both graduates: a correct
+outer envelope is insufficient when thin brackets disappear at garage range
+and make roof hardware read as pieces suspended over the turret. The binding
+rule is now explicit for these builds: intentional service openings may remain
+inside a mechanism, but every sight, launcher, receiver, rail and equipment
+case needs a visible continuous load path into the turret with no air seam at
+its seat.
+
+Challenger 3 now carries a half-buried Protector roof shoe, substantial fork
+cheeks, a central receiver spine, rail/terminal-optic and outboard-sensor
+brackets, plus armored backing shoes behind both five-tube smoke banks. AbramsX
+now carries buried necks under raised D-hood sights and a continuous XM914
+foundation, recoil spine and gun-right equipment foot. All additions are
+turret-parented and overlap the certified shell/roof courses physically; the
+open-cradle grammar remains only where real service space belongs.
+
+Geometry gate x2 remains bit-identical to the graduation rows:
+Challenger 3 **90.4** (90.8/90.4/91.0/91.8/100/100) and AbramsX **90.2**
+(90.2/90.5/91.0/93.4/99.8/100). Standard-check passes both with contiguity 0
+and mg1+5d; exact track receipts remain the pre-existing 0/24, shoes 0/38 for
+Challenger 3 and 37/26, shoes 10/0 for AbramsX, with zero blind spots. `npm test`
+is green. Independent §B8 fresh sittings pass every view: Challenger 3
+floor **9.0**, mean **9.06**; AbramsX floor **9.0**, mean **9.09**. The first
+Challenger evidence sitting correctly failed six invalid off-screen captures;
+those six were recaptured individually at unchanged geometry and all fourteen
+final files have distinct SHA-256 values.
+
+Post-verdict freezes reproduce x2: Challenger 3 **b0c172a4** (60 meshes /
+71,977 vertices) and AbramsX **d1dbfa2** (75 meshes / 162,372 vertices).
+Verdict: `docs/critique/shaded-parity-turret-attachment-recert.md`; evidence:
+`shots/critic-turret-attachment-closeout/{challenger_3,abramsx}/`. Graduate
+count remains **34** and fleet remains **28/96**. The owner-priority lane now
+advances to the complete harmonious T-90 family round.

@@ -692,3 +692,22 @@ Independent R26 §B8 PASS: every one of 14 views >=9.0, floor 9.0 / mean
 `shots/abramsx-redesign-r2/polish26/`. Non-blocking residuals are slightly
 flat side end-track arcs, a more uniform rear bustle shadow, and marginally
 smoother top-view mid-shoulders.
+
+## §5.87 owner turret-attachment closeout (2026-08-09)
+
+The owner's no-air order reopened the roof inventory after graduation. The
+forward D-hood's measured lower envelope began 46 mm above the local roof, and
+the XM914 turntable began 127 mm above its roof course; numerical AABB contact
+elsewhere was not an acceptable visible support. The sights now use buried
+necks at their raised seats. The XM914 uses a roof-overlapping foundation and
+cap, a compact central recoil spine from bearing to receiver, and a gun-right
+equipment foot that overlaps roof, foundation and service case. This preserves
+the open rail/saddle mechanism and articulated feed while removing every
+turret-to-decoration air seam.
+
+Gate x2 holds **90.2** (90.2/90.5/91.0/93.4/99.8/100); standard-check remains
+contiguity 0, mg1+5d, and exact track remains band 37/26, shoes 10/0 with no
+blind spot. Independent §B8 re-certification passes all fourteen fresh views,
+floor **9.0**, mean **9.09**. Freeze **d1dbfa2** reproduces x2 (75 meshes /
+162,372 vertices), replacing `fe7f9852`. Verdict:
+`docs/critique/shaded-parity-turret-attachment-recert.md`.

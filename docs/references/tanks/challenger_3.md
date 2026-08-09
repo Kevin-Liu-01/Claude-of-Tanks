@@ -349,3 +349,22 @@ corrections—physical wheel spacing, restored wheel scale, compact roof/RWS,
 wider stern course, 0.71 dish radius and the closed attached rear trapezoid—are
 present in the frozen tree. Verdict:
 `docs/critique/shaded-parity-challenger3-graduation.md`.
+
+## Owner turret-attachment closeout (2026-08-09)
+
+The owner's garage close-up exposed a failure that the outer silhouette gate
+could not see: the Protector's 35 mm fork/rails and tubes-only smoke helper
+lost their seats visually and read as floating decoration. The corrected
+station has one continuous roof-to-weapon chain: a half-buried 0.64 x 0.12 x
+0.58 m roof shoe, pedestal/body overlap, substantial fork cheeks, receiver
+spine, rail cross-member, terminal-optic neck and outboard-sensor bracket. Both
+five-tube banks now sit on armored backing shoes that overlap the turret
+shoulders. Mechanical openings remain inside the cradle; there is no empty-air
+seam beneath any fitting.
+
+Gate x2 holds **90.4** (90.8/90.4/91.0/91.8/100/100); standard-check remains
+contiguity 0, mg1+5d, and exact track remains band 0/24, shoes 0/38 with no
+blind spot. Independent §B8 re-certification passes all fourteen fresh views,
+floor **9.0**, mean **9.06**. Freeze **b0c172a4** reproduces x2 (60 meshes /
+71,977 vertices), replacing `2678f6c`. Verdict:
+`docs/critique/shaded-parity-turret-attachment-recert.md`.

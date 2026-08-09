@@ -6165,6 +6165,15 @@ function buildAbramsX(P) {
     const opticY = ly0 + h * 0.48;
     // Low turntable, seated inside the measured body band rather than on
     // the old extra 108 mm pedestal that made both stations tower-like.
+    // The forward station begins 46 mm above the local roof course in the
+    // measurement receipt.  Preserve that outer envelope, but bridge it
+    // with a buried neck so the hood cannot read as a floating decoration.
+    const roofSeatY = 2.420 - 1.95;
+    if (ly0 > roofSeatY) {
+      const seatH = ly0 - roofSeatY + 0.014;
+      P.add('turret', cylY(0.185, 0.205, seatH, 12), x,
+        roofSeatY + seatH / 2, lz);
+    }
     P.add('turretDark', cylY(0.210, 0.210, 0.055, 12), x,
       y0 - 1.95 + 0.030, z + 0.39);
     P.add('turret', cylY(0.190, 0.210, 0.052, 10), x,
@@ -6337,7 +6346,15 @@ function buildAbramsX(P) {
   };
   // Open turntable and fork.  Every major component follows its registered
   // AABB, but the negative space between them is equally important: the
-  // XM914 is an exposed mechanism, not a closed CROWS box.
+  // XM914 is an exposed mechanism, not a closed CROWS box. OWNER ATTACHMENT
+  // CLOSEOUT (2026-08-09): negative space is permitted inside the mechanism,
+  // never between the mechanism and the turret. The buried foundation below
+  // spans the former 127 mm roof-to-turntable air gap without changing the
+  // registered outer envelope.
+  P.add('turret', cylY(0.340, 0.370, 0.190, 18), 0,
+    2.515 - 1.95, -0.125 + 0.39);
+  P.add('turretDetail', box(0.48, 0.10, 0.36), 0,
+    2.565 - 1.95, -0.125 + 0.39);
   P.add('turretDark', cylY(0.370, 0.330, 0.075, 18), 0,
     2.6045 - 1.95, -0.125 + 0.39);
   P.add('turret', cylY(0.300, 0.225, 0.195, 14), 0,
@@ -6352,6 +6369,10 @@ function buildAbramsX(P) {
     P.add('turretDark', cylX(0.058, 0.115, 10), side * 0.235,
       3.175 - 1.95, -0.145 + 0.39);
   }
+  // Central recoil spine gives the receiver an unmistakable load path into
+  // the turntable. Side forks still expose serviceable mechanical openings.
+  P.add('turret', box(0.22, 0.28, 0.18), -0.02,
+    2.950 - 1.95, -0.145 + 0.39);
   // Exact receiver envelope, rebuilt as a compact irregular cradle.  The
   // previous broad side plates plus full-depth top/bottom bars preserved
   // the box numerically but read as a construction-site gantry.  Sparse
@@ -6410,6 +6431,10 @@ function buildAbramsX(P) {
     3.305 - 1.95, -0.025 + 0.39);
 
   // Gun-right electronics case, feed wheel and visible ammunition arc.
+  // Its registered bottom sat only tangent to the turntable radius. A
+  // half-buried equipment foot now overlaps both the roof and case.
+  P.add('turretDetail', box(0.34, 0.18, 0.32), 0.41,
+    2.515 - 1.95, -0.40 + 0.39);
   axRwsBox('turret', 0.365, 0.688, 2.579, 3.072, -0.668, -0.158);
   P.add('turretDark', box(0.018, 0.39, 0.42), 0.374,
     2.825 - 1.95, -0.413 + 0.39);

@@ -881,71 +881,127 @@
  "stationErr": [
   {
    "i": 0,
+   "refW": 3.612,
+   "procW": 3.655,
+   "refTop": -0.338,
+   "procTop": -0.333,
    "wPct": 1.21,
    "topPct": 0.11
   },
   {
    "i": 1,
+   "refW": 3.612,
+   "procW": 3.655,
+   "refTop": -0.285,
+   "procTop": -0.246,
    "wPct": 1.21,
    "topPct": 0.95
   },
   {
    "i": 2,
+   "refW": 3.655,
+   "procW": 3.655,
+   "refTop": 0.098,
+   "procTop": 0.072,
    "wPct": 0,
    "topPct": 0.63
   },
   {
    "i": 3,
+   "refW": 3.655,
+   "procW": 3.655,
+   "refTop": 2.063,
+   "procTop": 2.063,
    "wPct": 0,
    "topPct": 0
   },
   {
    "i": 4,
+   "refW": 3.655,
+   "procW": 3.655,
+   "refTop": 0.42,
+   "procTop": 0.381,
    "wPct": 0,
    "topPct": 0.95
   },
   {
    "i": 5,
+   "refW": 3.655,
+   "procW": 3.655,
+   "refTop": 1.348,
+   "procTop": 1.401,
    "wPct": 0,
    "topPct": 1.27
   },
   {
    "i": 6,
+   "refW": 3.655,
+   "procW": 3.655,
+   "refTop": 1.401,
+   "procTop": 1.47,
    "wPct": 0,
    "topPct": 1.69
   },
   {
    "i": 7,
+   "refW": 3.655,
+   "procW": 3.655,
+   "refTop": 1.205,
+   "procTop": 1.253,
    "wPct": 0,
    "topPct": 1.16
   },
   {
    "i": 8,
+   "refW": 3.655,
+   "procW": 3.655,
+   "refTop": 0.791,
+   "procTop": 0.791,
    "wPct": 0,
    "topPct": 0
   },
   {
    "i": 9,
+   "refW": 3.655,
+   "procW": 3.655,
+   "refTop": 1.183,
+   "procTop": 1.187,
    "wPct": 0,
    "topPct": 0.11
   },
   {
    "i": 10,
+   "refW": 3.655,
+   "procW": 3.655,
+   "refTop": 0.176,
+   "procTop": 0.15,
    "wPct": 0,
    "topPct": 0.63
   },
   {
    "i": 11,
+   "refW": 3.655,
+   "procW": 3.655,
+   "refTop": 0.007,
+   "procTop": 0.133,
    "wPct": 0,
    "topPct": 3.06
   },
   {
    "i": 12,
+   "refW": 3.655,
+   "procW": 3.655,
+   "refTop": -0.625,
+   "procTop": -0.002,
    "wPct": 0,
    "topPct": 15.08
   },
   {
    "i": 13,
+   "refW": 3.612,
+   "procW": 3.621,
+   "refTop": -0.015,
+   "procTop": -0.007,
    "wPct": 0.24,
    "topPct": 0.21
   }
@@ -976,5 +1032,77 @@
    "pct": 0.24
   }
  ],
- "floaterFails": 0
+ "floaterFails": 0,
+ "floaterRows": [
+  {
+   "yaw": 0,
+   "pitch": 0,
+   "islandCount": 1,
+   "regions": [
+    {
+     "area": 180542,
+     "minX": 157,
+     "minY": 294,
+     "maxX": 966,
+     "maxY": 734
+    }
+   ]
+  },
+  {
+   "yaw": 90,
+   "pitch": 0,
+   "islandCount": 1,
+   "regions": [
+    {
+     "area": 172264,
+     "minX": 183,
+     "minY": 294,
+     "maxX": 1023,
+     "maxY": 734
+    }
+   ]
+  },
+  {
+   "yaw": 180,
+   "pitch": 0,
+   "islandCount": 1,
+   "regions": [
+    {
+     "area": 177077,
+     "minX": 183,
+     "minY": 294,
+     "maxX": 1023,
+     "maxY": 712
+    }
+   ]
+  },
+  {
+   "yaw": 0,
+   "pitch": -10,
+   "islandCount": 1,
+   "regions": [
+    {
+     "area": 177718,
+     "minX": 161,
+     "minY": 294,
+     "maxX": 966,
+     "maxY": 734
+    }
+   ]
+  },
+  {
+   "yaw": 0,
+   "pitch": 20,
+   "islandCount": 1,
+   "regions": [
+    {
+     "area": 181245,
+     "minX": 172,
+     "minY": 294,
+     "maxX": 966,
+     "maxY": 734
+    }
+   ]
+  }
+ ]
 }

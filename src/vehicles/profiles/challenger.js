@@ -3386,24 +3386,35 @@ function buildChallenger3(P) {
   // Source station census (kitMerged_turret_1): x .27..1.15,
   // z .67..2.70, y 2.11..3.00.  Keep the real Protector/M2 grammar, but
   // seat and envelope it on those measured CR3 stations.
+  // OWNER ATTACHMENT CLOSEOUT (2026-08-09): an envelope match is not a
+  // load path.  The former 35 mm fork legs and bare twin rails disappeared
+  // at garage distance, making the complete station read as several pieces
+  // suspended over the turret.  A half-buried roof shoe, substantial fork
+  // cheeks and a central receiver now overlap continuously from the roof
+  // course into the gun rails.  The cradle still has real mechanical holes,
+  // but no component is supported by empty air.
+  P.add('turret', box(0.64, 0.12, 0.58), 0.72, C3H, -0.22);                   // roof shoe: bottom buried in the 0.84 roof
   P.add('turret', cylY(0.18, 0.24, 0.14, 8), 0.72, C3H + 0.06, -0.18);         // octagonal pedestal
   P.add('turretDetail', frustum(0.27, 0.28, -0.28, 0.20, 0.22, -0.22, 0, 0.26),
     0.72, C3H + 0.12, -0.22);                                                  // low faceted open-mount body
-  for (const sx of [-1, 1]) P.add('turretDetail', box(0.035, 0.28, 0.035), 0.72 + sx * 0.22, C3H + 0.36, -0.22);
-  P.add('turretDetail', box(0.50, 0.035, 0.035), 0.72, C3H + 0.50, -0.22);     // visible open cradle
+  for (const sx of [-1, 1]) P.add('turretDetail', box(0.075, 0.34, 0.10), 0.72 + sx * 0.22, C3H + 0.33, -0.22);
+  P.add('turretDetail', box(0.50, 0.055, 0.10), 0.72, C3H + 0.49, -0.22);      // visible but structurally continuous cradle
+  P.add('turret', box(0.28, 0.18, 0.50), 0.745, C3H + 0.43, 0.18);            // receiver spine: mount body -> recoil rails
   P.add('turretDark', cylY(0.105, 0.12, 0.18, 8), 0.43, C3H + 0.40, -0.22);   // faceted sensor head
   P.add('turretGlass', box(0.14, 0.08, 0.02), 0.43, C3H + 0.40, -0.11);
   // Forward open cradle follows the source RWS component's measured
   // z=.67..2.70 world run.  Twin rails + a faceted terminal optic give the
   // right silhouette mass without substituting the print's Boxer cannon
   // for the required M2.
-  for (const x of [0.61, 0.88]) P.add('turretDetail', box(0.035, 0.035, 1.08), x, C3H + 0.52, 0.40);
-  P.add('turretDetail', box(0.31, 0.035, 0.035), 0.745, C3H + 0.52, 0.93);
+  for (const x of [0.61, 0.88]) P.add('turretDetail', box(0.045, 0.045, 1.08), x, C3H + 0.52, 0.40);
+  P.add('turretDetail', box(0.31, 0.045, 0.045), 0.745, C3H + 0.52, 0.93);
   P.add('turretDetail', frustum(0.16, 0.13, -0.13, 0.12, 0.09, -0.09, 0, 0.20),
     0.75, C3H + 0.28, 0.93);
+  P.add('turretDetail', box(0.22, 0.16, 0.12), 0.75, C3H + 0.40, 0.82);        // terminal optic neck reaches both rails and head
   P.add('turretGlass', box(0.18, 0.09, 0.016), 0.75, C3H + 0.38, 1.05);
   P.add('turretDark', frustum(0.14, 0.13, -0.13, 0.11, 0.09, -0.09, 0, 0.23),
     1.01, C3H + 0.34, -0.15);                                                  // measured outer RWS sensor at x .87..1.15
+  P.add('turretDetail', box(0.14, 0.20, 0.12), 0.94, C3H + 0.24, -0.17);      // sensor bracket overlaps mount body and pod
   // Independent rear-left panoramic sight.  The source connected-component
   // seat is x -.59..-.14 / world z -1.21..-.86: the old front-center tower
   // was both misplaced and an unbroken rectangular proxy.
@@ -3522,7 +3533,13 @@ function buildChallenger3(P) {
     P.turretG.add(a2);
   }
   // smoke: 2x5 low banks on the flanks (print smoke a-j) + ch1 r10b tube
-  // tips + bores (circular mouths at 1x)
+  // tips + bores (circular mouths at 1x). The shared smokeCluster helper is
+  // tubes-only; explicit armored backing shoes close the visible air seam
+  // and carry every tube bank into the turret shoulder.
+  for (const s of [-1, 1]) {
+    P.add('turretDetail', box(0.40, 0.20, 0.10), s * 1.10, 0.27, 0.48,
+      -0.22, s * 0.85, 0);
+  }
   smokeCluster(P, 1.10, 0.30, 0.55, 5, 0.85, 0.7);
   smokeCluster(P, -1.10, 0.30, 0.55, 5, -0.85, 0.7);
   smokeTubeTips(P, [[1.10, 0.30, 0.55, 0.85, 0.7], [-1.10, 0.30, 0.55, -0.85, 0.7]]);
