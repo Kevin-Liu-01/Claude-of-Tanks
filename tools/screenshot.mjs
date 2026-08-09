@@ -1,5 +1,6 @@
 // Headless screenshot harness for critic agents.
-// Usage: node tools/screenshot.mjs [--out shots] [--views name1,name2] [--width 1920] [--height 1080]
+// Usage: node tools/screenshot.mjs [--out shots] [--views name1,name2]
+//   [--width 1920] [--height 1080] [--dpr 1] [--dyn-scale 0.8]
 // Starts a vite dev server, loads the game in headless Chromium, waits for
 // window.__GAME_READY, then iterates window.__SHOTS.views (or --views subset),
 // calling window.__SHOTS.set(name) before each capture.
@@ -96,6 +97,9 @@ function opt(name, fallback) {
 const outDir = resolve(opt('out', 'shots'));
 const width = parseInt(opt('width', '1920'), 10);
 const height = parseInt(opt('height', '1080'), 10);
+const dpr = parseFloat(opt('dpr', '1'));
+const dynScaleArg = opt('dyn-scale', '');
+const dynScale = dynScaleArg === '' ? null : parseFloat(dynScaleArg);
 const onlyViews = opt('views', '') ? opt('views', '').split(',') : null;
 mkdirSync(outDir, { recursive: true });
 
@@ -135,7 +139,7 @@ const browser = await puppeteer.launch({
   args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
 });
 const page = await browser.newPage();
-await page.setViewport({ width, height, deviceScaleFactor: 1 });
+await page.setViewport({ width, height, deviceScaleFactor: dpr });
 
 const consoleErrors = [];
 page.on('console', (msg) => {
@@ -169,6 +173,9 @@ try {
 
   for (const view of targets) {
     await page.evaluate((v) => window.__SHOTS.set(v), view);
+    if (Number.isFinite(dynScale)) {
+      await page.evaluate((scale) => window.__DEBUG.post.pinDynScale(scale), dynScale);
+    }
     // let the scene settle: post-processing, particles, LOD, shadows.
     // Map-switch views rebuild the whole world (terrain bake, props,
     // vegetation) — on cold vite transforms the fixed 1.2 s could capture
@@ -198,6 +205,17 @@ try {
     await new Promise((r) => setTimeout(r, settleMs));
     const file = `${outDir}/${view}.png`;
     await page.screenshot({ path: file });
+    const renderState = await page.evaluate(() => {
+      const canvas = window.__DEBUG.renderer.domElement;
+      return {
+        canvas: [canvas.width, canvas.height],
+        renderScale: canvas.dataset.renderScale,
+        dynScale: canvas.dataset.dynScale,
+        postAA: canvas.dataset.postAa,
+        softDepthCopies: window.__DEBUG.post.lateFx?.softDepthCopies ?? 0,
+      };
+    });
+    console.log(`[shots] state ${view} ${JSON.stringify(renderState)}`);
     // tank_models r3: fail instead of shipping an empty turntable.
     if (view === 'garage') {
       const heroOk = await page.evaluate(() => {

@@ -17,7 +17,7 @@
  *
  * - `maxPixelRatio` — cap on the EffectComposer's internal pixel ratio
  *   (AAA "render scale"): the 3D scene + post chain render at the capped
- *   resolution and the final pass upscales bilinearly to the native canvas.
+ *   resolution and the final FSR1 pass reconstructs to the native canvas.
  *   DOM/canvas HUD stays native-crisp. At dpr1 the renderer pixel ratio is
  *   1.0, below every cap, so dpr-1 output is UNCHANGED on every preset >= medium
  *   (the screenshot contract shots are bit-identical on auto/ultra/high).

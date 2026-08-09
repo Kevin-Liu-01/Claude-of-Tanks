@@ -14,6 +14,11 @@
  */
 import * as THREE from 'three';
 
+// Transparent combat FX render after the opaque/world post passes so their
+// shaders can sample resolved scene depth without a framebuffer feedback loop.
+// Layer 30 is reserved for this late pass by engine/post.js.
+export const LATE_FX_LAYER = 30;
+
 /** Canonical PRNG (ARCHITECTURE §1.4). @param {number} a seed @returns {() => number} */
 export function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
   t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
@@ -37,15 +42,23 @@ const FOG_V = `
 const FOG_PARS_F = `
 #ifdef USE_FOG
   uniform vec3 fogColor;
-  uniform float fogNear;
-  uniform float fogFar;
+  #ifdef FOG_EXP2
+    uniform float fogDensity;
+  #else
+    uniform float fogNear;
+    uniform float fogFar;
+  #endif
   varying float vFogDepth;
 #endif
 `;
 // Additive passes fade OUT with fog (never toward fog color).
 const FOG_SCALE_F = `
 #ifdef USE_FOG
-  float fogFactor = smoothstep( fogNear, fogFar, vFogDepth );
+  #ifdef FOG_EXP2
+    float fogFactor = 1.0 - exp( -fogDensity * fogDensity * vFogDepth * vFogDepth );
+  #else
+    float fogFactor = smoothstep( fogNear, fogFar, vFogDepth );
+  #endif
 #else
   float fogFactor = 0.0;
 #endif
@@ -65,12 +78,35 @@ vec3 particleDisplace( vec3 vel, float grav, float age, float drag ) {
 // few meters of the lens subtends most of the frame and — additively stacked —
 // floods it white (peek-fire over cover in sniper, impact sprays at 3-8 m).
 // Fade alpha out as the CARD CENTER approaches the camera; uNearFade =
-// (fullyGoneM, fullOnM) per pool. This is the classic lens-fade half of soft
-// particles (the depth-buffer half is not available mid-pass).
+// (fullyGoneM, fullOnM) per pool. The scene-depth half lives below.
 const NEARFADE_GLSL = `
 uniform vec2 uNearFade;
 float nearFade( vec3 wpos ) {
   return smoothstep( uNearFade.x, uNearFade.y, distance( wpos, cameraPosition ) );
+}
+`;
+
+// Depth-aware soft-particle intersection. post.js first renders the world,
+// resolves its DepthTexture, then draws the late-FX layer into a target whose
+// hardware depth attachment is a copy. The shader samples the resolved SOURCE
+// (never its attached destination) for exact terrain/vehicle occlusion and a
+// short contact fade instead of a hard slice at ridges, hulls and the ground.
+const SOFT_DEPTH_GLSL = `
+uniform sampler2D uSceneDepth;
+uniform vec2 uSoftViewport;
+uniform float uCameraNear;
+uniform float uCameraFar;
+varying float vParticleDepth;
+float perspectiveDepthToViewZSoft( float depth, float nearV, float farV ) {
+  return ( nearV * farV ) / ( ( farV - nearV ) * depth - farV );
+}
+float softDepthFade() {
+  vec2 suv = gl_FragCoord.xy / max( uSoftViewport, vec2( 1.0 ) );
+  float rawDepth = texture2D( uSceneDepth, suv ).x;
+  float sceneDepthM = -perspectiveDepthToViewZSoft( rawDepth, uCameraNear, uCameraFar );
+  float gapM = sceneDepthM - vParticleDepth;
+  float featherM = clamp( vParticleDepth * 0.005, 0.65, 3.5 );
+  return smoothstep( 0.0, featherM, gapM );
 }
 `;
 
@@ -106,6 +142,7 @@ varying float vFMix;
 varying vec4 vColor;
 varying float vT;
 varying vec2 vShade;
+varying float vParticleDepth;
 ${FOG_PARS_V}
 ${DISPLACE_GLSL}
 ${NEARFADE_GLSL}
@@ -115,6 +152,7 @@ void main() {
   if ( life <= 0.0 || age < 0.0 || age > life ) {
     vUv = uv; vUvA = uv; vUvB = uv; vFMix = 0.0;
     vColor = vec4( 0.0 ); vT = 0.0; vShade = vec2( 0.0 );
+    vParticleDepth = 1e9;
     gl_Position = vec4( 0.0, 0.0, 2.0, 1.0 );
     ${FOG_V.replace('-mvPosition.z','1.0')}
     return;
@@ -148,6 +186,7 @@ void main() {
   vColor = vec4( mix( aC0.rgb, aC1.rgb, smoothstep( 0.0, 1.0, t ) ), alpha );
   vUv = uv;
   vec4 mvPosition = viewMatrix * vec4( wpos, 1.0 );
+  vParticleDepth = -mvPosition.z;
   ${FOG_V}
   gl_Position = projectionMatrix * mvPosition;
 }
@@ -163,10 +202,11 @@ varying vec4 vColor;
 varying float vT;
 varying vec2 vShade;
 ${FOG_PARS_F}
+${SOFT_DEPTH_GLSL}
 void main() {
   float tex = mix( texture2D( uMap, vUvA ).a, texture2D( uMap, vUvB ).a, vFMix );
   // edges thin out with age so old puffs wisp away instead of popping
-  float a = pow( tex, 1.0 + vT * 1.2 ) * vColor.a;
+  float a = pow( tex, 1.0 + vT * 1.2 ) * vColor.a * softDepthFade();
   if ( a < 0.004 ) discard;
   // fake directional lighting: sun-facing side of the billboard brightens,
   // opposite side falls into shadow — smoke reads volumetric, not flat.
@@ -196,6 +236,7 @@ varying float vT;
 varying vec2 vShade;
 ${FOG_PARS_F}
 ${TONECAP_GLSL}
+${SOFT_DEPTH_GLSL}
 void main() {
   float tex = mix( texture2D( uMap, vUvA ).a, texture2D( uMap, vUvB ).a, vFMix );
   // erosion-style dissolve: the alpha threshold rises with age so the noisy
@@ -223,7 +264,7 @@ void main() {
   // gradients, never binarized speckle (r4 "dither-speckled additive cards
   // chewing every edge, hundreds of dark stipple dots").
   float er = vT * 0.30;
-  float a = smoothstep( er, er + 0.72 + 0.48 * vT, tex ) * vColor.a;
+  float a = smoothstep( er, er + 0.72 + 0.48 * vT, tex ) * vColor.a * softDepthFade();
   if ( a < 0.004 ) discard;
   ${FOG_SCALE_F}
   // blackbody interior: texels well above the erosion front read white-hot,
@@ -272,6 +313,7 @@ varying vec4 vColor;
 varying float vT;
 varying vec2 vShade;
 ${FOG_PARS_F}
+${SOFT_DEPTH_GLSL}
 void main() {
   float tex = mix( texture2D( uMap, vUvA ).a, texture2D( uMap, vUvB ).a, vFMix );
   // r2 anti-static: screen-space hash jitter removed (see PUFF_FRAG_ADDITIVE
@@ -282,7 +324,7 @@ void main() {
   // stipple source at 2x crops (r4 "screen-door dither chewing every edge");
   // 0.52 over-thinned the whole fireball body, 0.46 keeps the mass.
   float er = vT * 0.30;
-  float a = smoothstep( er, er + 0.46 + 0.45 * vT, tex ) * vColor.a;
+  float a = smoothstep( er, er + 0.46 + 0.45 * vT, tex ) * vColor.a * softDepthFade();
   if ( a < 0.004 ) discard;
   // blackbody interior: dense texels above the erosion front burn white-hot,
   // cooling through orange -> deep ember red -> soot as the card ages and
@@ -345,12 +387,13 @@ varying vec4 vColor;
 varying float vT;
 varying vec2 vShade;
 ${FOG_PARS_F}
+${SOFT_DEPTH_GLSL}
 void main() {
   float tex = mix( texture2D( uMap, vUvA ).a, texture2D( uMap, vUvB ).a, vFMix );
   // erosion dissolve: threshold rises with age, band widens so late edges go
   // translucent instead of binarizing (see PUFF_FRAG_ADDITIVE anti-stipple)
   float er = vT * 0.36;
-  float a = smoothstep( er, er + 0.44 + 0.50 * vT, tex ) * vColor.a;
+  float a = smoothstep( er, er + 0.44 + 0.50 * vT, tex ) * vColor.a * softDepthFade();
   if ( a < 0.004 ) discard;
   // density-weighted sun shading (same model as the normal smoke pool,
   // response toned down — the propellant mass must stay a grey-brown cloud,
@@ -1166,7 +1209,26 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
   group.matrixAutoUpdate = false;
 
   const uTime = { value: 0 };
+  const uSceneDepth = { value: null };
+  const uSoftViewport = { value: new THREE.Vector2(1, 1) };
+  const uCameraNear = { value: 0.5 };
+  const uCameraFar = { value: 4000 };
+  let lateFxUntil = -Infinity;
   let frozen = false;
+
+  // post.js owns the copied depth texture and updates these shared uniforms
+  // before drawing layer 30. Keeping one uniform object across every puff
+  // material avoids per-pool state churn and gives the post pass a tiny,
+  // explicit integration seam instead of reaching into materials by name.
+  const softParticles = {
+    layer: LATE_FX_LAYER,
+    uSceneDepth,
+    uSoftViewport,
+    uCameraNear,
+    uCameraFar,
+    isActive: () => uTime.value <= lateFxUntil,
+  };
+  group.userData.softParticles = softParticles;
 
   // LOADING PERF (boot r9): the six procedural sprite bakes (~200 ms of
   // canvas/fbm work) used to run inline here, on the boot-critical path — for
@@ -1290,6 +1352,10 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
         uTiles: { value: tiles },
         uSunDirW: { value: sunDirW },
         uNearFade: { value: new THREE.Vector2(nearFade[0], nearFade[1]) },
+        uSceneDepth,
+        uSoftViewport,
+        uCameraNear,
+        uCameraFar,
       }),
       transparent: true,
       depthWrite: false,
@@ -1397,6 +1463,12 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
   pools.jet.mesh.renderOrder = 23;
   pools.flash.mesh.renderOrder = 23;
   pools.sparks.mesh.renderOrder = 23;
+  for (const [key, pool] of Object.entries(pools)) {
+    // Opaque debris still belongs to the primary world pass. Every
+    // transparent combat card shares the late pass so their established
+    // renderOrder relationship remains intact after the layer split.
+    if (key !== 'debris') pool.mesh.layers.set(LATE_FX_LAYER);
+  }
   for (const key of Object.keys(pools)) group.add(pools[key].mesh);
 
   // --- emit dispatch --------------------------------------------------------
@@ -1413,6 +1485,7 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
     sr[j] = o.size0; sr[j + 1] = o.size1; sr[j + 2] = o.rot || 0; sr[j + 3] = o.rotVel || 0;
     c0[j] = o.col0[0]; c0[j + 1] = o.col0[1]; c0[j + 2] = o.col0[2]; c0[j + 3] = o.grav || 0;
     c1[j] = o.col1[0]; c1[j + 1] = o.col1[1]; c1[j + 2] = o.col1[2]; c1[j + 3] = o.alpha;
+    lateFxUntil = Math.max(lateFxUntil, birth + Math.max(0, o.life || 0));
     pool.dirty(i);
   }
 
@@ -1427,6 +1500,7 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
     ws[j] = o.width; ws[j + 1] = o.stretch; ws[j + 2] = (o.grav !== undefined ? o.grav : -21.6);
     ws[j + 3] = o.seed || 0;
     c[j] = o.col[0]; c[j + 1] = o.col[1]; c[j + 2] = o.col[2]; c[j + 3] = o.alpha;
+    lateFxUntil = Math.max(lateFxUntil, birth + Math.max(0, o.life || 0));
     pool.dirty(i);
   }
 
@@ -1457,6 +1531,7 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
     al[j] = o.axis[0]; al[j + 1] = o.axis[1]; al[j + 2] = o.axis[2]; al[j + 3] = o.life;
     wl[j] = o.width; wl[j + 1] = o.len0; wl[j + 2] = o.len1; wl[j + 3] = o.seed || 0;
     c[j] = o.col[0]; c[j + 1] = o.col[1]; c[j + 2] = o.col[2]; c[j + 3] = o.alpha;
+    lateFxUntil = Math.max(lateFxUntil, birth + Math.max(0, o.life || 0));
     pool.dirty(i);
   }
 
@@ -1475,6 +1550,7 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
   return {
     group,
     pools,
+    softParticles,
 
     /**
      * Bake the real sprite sheets into the placeholder textures (idempotent).
@@ -1540,11 +1616,13 @@ export function createParticleSystem(engineCtx, { seed = 5000 } = {}) {
         pb.addUpdateRange(0, n * 4);
         pb.needsUpdate = true;
       }
+      if (Number.isFinite(lateFxUntil)) lateFxUntil += delta;
     },
 
     /** Kill all live particles and reset every ring buffer. */
     resetAll() {
       for (const pool of poolList) pool.killAll();
+      lateFxUntil = -Infinity;
     },
   };
 }
