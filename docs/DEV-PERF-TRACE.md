@@ -34,7 +34,8 @@ __DEV_TRACE.console(true)           // opt-in mirror of every event (noisy)
 The downloaded JSON includes the environment and GPU renderer, summary
 percentiles, a `frameSchema` array, compact frame rows, and the ordered event
 timeline. Full console mirroring is off by default because logging every hot
-event can itself create stalls.
+event can itself create stalls; anomaly rows are stored, not printed, unless
+mirroring is explicitly enabled.
 
 ## Repeatable desktop and lower-end probes
 

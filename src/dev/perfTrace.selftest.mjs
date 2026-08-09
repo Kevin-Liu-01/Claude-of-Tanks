@@ -18,7 +18,7 @@ const input = {
   onAction(id, fn) { actionHandlers.set(id, fn); },
 };
 const trace = createDevTraceCore({
-  enabled: true, silent: true, now: () => clock,
+  enabled: true, now: () => clock,
   eventCapacity: 5, frameCapacity: 8,
 });
 trace.configure({ game, renderer, input, getContext: () => ({ cameraMode: 'CHASE' }) });

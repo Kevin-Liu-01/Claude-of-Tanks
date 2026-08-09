@@ -140,8 +140,7 @@ export function createDevTraceCore(options = {}) {
     return row;
   }
   function anomaly(name, data, at = now()) {
-    const row = push('anomaly', name, { ...data, lastEventSeq: eventNext, lastEventName }, at);
-    if (row && !options.silent && typeof console !== 'undefined') console.warn(`[COT trace] ${name}`, row.data);
+    return push('anomaly', name, { ...data, lastEventSeq: eventNext, lastEventName }, at);
   }
   function context() {
     try { return refs.getContext?.() || {}; }
