@@ -85,7 +85,7 @@ const _firedEv = {
  * Reference event bus (ARCHITECTURE.md §1.5).
  * @returns {{on:Function, off:Function, emit:Function}}
  */
-export function createBus() {
+export function createBus(onEmit = null) {
   const m = new Map();
   return {
     on(ev, fn) {
@@ -99,6 +99,12 @@ export function createBus() {
       if (a) { const i = a.indexOf(fn); if (i >= 0) a.splice(i, 1); }
     },
     emit(ev, payload) {
+      // DEV flight-recorder seam: snapshot at emission because several hot
+      // payloads are deliberately reused after listeners return. Diagnostics
+      // are isolated so a recorder failure can never affect gameplay.
+      if (onEmit) {
+        try { onEmit(ev, payload); } catch (_) { /* diagnostic only */ }
+      }
       const a = m.get(ev);
       if (a) for (const fn of a.slice()) fn(payload);
     },

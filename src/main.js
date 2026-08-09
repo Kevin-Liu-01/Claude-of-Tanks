@@ -321,8 +321,12 @@ const hfProxy = {
 function worldRaycast(o, d, m) { return world ? world.raycast(o, d, m) : null; }
 
 // --- game state + tanks -----------------------------------------------------
-const bus = createBus();
+const devTrace = import.meta.env.DEV
+  ? (await import('./dev/perfTrace.js')).createDevTrace({ renderer })
+  : null;
+const bus = createBus(devTrace ? (ev, payload) => devTrace.event(ev, payload) : null);
 const game = createGameState();
+devTrace?.configure({ game });
 spawnTanks(game, engineCtx);
 // The staged default battle (screenshot contract + first BATTLE press) needs a
 // world for its spawn points, so it is staged by ensureWorld() rather than
@@ -1628,6 +1632,16 @@ const touchControls = createTouchControls({
   // ENTERS the scope (sniperToggle lane) and further spread steps zoomIn.
   isSniper: () => rig.mode === 'SNIPER',
 });
+devTrace?.configure({
+  input,
+  getContext: () => ({
+    paused: settings.isOpen(),
+    killcam: killcam.isActive(),
+    shotMode,
+    studio: !!studio?.active,
+    cameraMode: rig.mode,
+  }),
+});
 
 // MOBILE AUTO-AIM: a separate Blitz-style lock button acquires the enemy
 // closest to screen center, then the camera rig and gun continuously follow
@@ -2661,6 +2675,7 @@ function tick(nowMs) {
   // whole gap. The PAUSE block below extends this on the resume edge.
   let dtR = Math.min(0.1, Math.max(0, (nowMs - lastMs) / 1000));
   lastMs = nowMs;
+  devTrace?.frame(dtR * 1000);
 
   // Sniper-zoom de-fog: at high zoom the exp2 fog + ACES crush distant
   // contrast to haze; scale density down toward 0.35x as FOV drops below 15
@@ -4677,6 +4692,7 @@ window.__DEBUG = {
   forceHitMark: (bounced) => hud.forceHitMark(!!bounced),
   // damage panel r9: pose/state hooks for probes + deterministic captures
   get damagePanel() { return damagePanel; },
+  devTrace,                              // DEV flight recorder; null in production
 };
 await bootStage('ready', null);
 // perf-r2: the boot pipeline is compiled and error-checked; battle-time
