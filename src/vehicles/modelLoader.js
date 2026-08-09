@@ -546,9 +546,15 @@ function warmSwappedModel(ctx) {
   try {
     const D = typeof window !== 'undefined' ? window.__DEBUG : null;
     if (!D || !D.renderer) return;
-    let root = ctx.hullG;
-    while (root.parent) root = root.parent;
-    ctx.hullG.traverse((o) => {
+    // MOBILE-QA r13: warm the committed TANK subtree, not the detached GLB
+    // scene (which does not yet include runtime kit/decor), and do it only
+    // after tankFactory's finalizeSwap has re-armed burn hooks and bolted the
+    // decoration kit on. Late swaps used to compile here first and dress
+    // afterward; their final instancing / vertex-color / |burn-r6 programs
+    // were then born on the first spotted draw 4-9 s after countdown zero.
+    const root = (ctx.hullG.parent && !ctx.hullG.parent.isScene)
+      ? ctx.hullG.parent : ctx.hullG;
+    root.traverse((o) => {
       const mats = Array.isArray(o.material) ? o.material : (o.material ? [o.material] : []);
       for (const m of mats) {
         for (const k of Object.keys(m)) {
@@ -557,9 +563,37 @@ function warmSwappedModel(ctx) {
         }
       }
     });
-    if (root.isScene && D.camera) D.renderer.compile(root, D.camera);
-    else if (D.scene && D.camera) D.renderer.compile(ctx.hullG, D.camera, D.scene);
+    if (D.scene && D.camera) {
+      // Spotting hides the tank root and LOD hides inactive levels at commit.
+      // Keep the same explicit force-visible window as the loading/countdown
+      // warm, then restore it before the idle job yields to a render frame.
+      const flipped = [];
+      root.traverse((o) => {
+        if (o.visible === false) { flipped.push(o); o.visible = true; }
+      });
+      // The live scene renders into post's linear HDR target. Compiling at
+      // the default framebuffer produces the otherwise-identical `srgb`
+      // key; first reveal then has to birth the real `srgb-linear` program.
+      const priorTarget = D.renderer.getRenderTarget();
+      const gameplayTarget = D.post && D.post.composer
+        ? D.post.composer.renderTarget1 : null;
+      try {
+        if (gameplayTarget) D.renderer.setRenderTarget(gameplayTarget);
+        D.renderer.compile(root, D.camera, D.scene);
+      } finally {
+        D.renderer.setRenderTarget(priorTarget);
+        for (const o of flipped) o.visible = false;
+      }
+    }
   } catch (_) { /* warm-up only — never block the swap */ }
+}
+
+/** Complete all post-commit material/kit work before the tank can reveal. */
+function finalizeSwappedModel(ctx) {
+  try {
+    if (ctx.finalizeSwap) ctx.finalizeSwap();
+  } catch (_) { /* cosmetic finalization must not reject a valid swap */ }
+  warmSwappedModel(ctx);
 }
 
 // ---------------------------------------------------------------------------
@@ -2776,8 +2810,9 @@ export function applyGlbModelSync(ctx) {
   if (!gltf) return false;
   const ok = applySwap(gltf, ctx);
   // Sync swaps run inside createTank (garage entry / battle staging, never a
-  // combat frame) — pay the texture uploads + program compiles here too.
-  if (ok) warmSwappedModel(ctx);
+  // combat frame) — finish camo/kit/decor, then pay uploads + the final-state
+  // force-visible program compile here too.
+  if (ok) finalizeSwappedModel(ctx);
   return ok;
 }
 
@@ -2944,6 +2979,11 @@ export async function applyGlbModel(ctx) {
         case 'commit': {
           if (!live()) return 'dead';
           const ok = commitSwap(st.staged, ctx);
+          // MOBILE-QA r13: commit is the last non-renderable point. Complete
+          // tankFactory's burn/camo-kit/decor finalization and compile that
+          // exact force-visible state before either the garage reveal below
+          // or battle spotting can expose it.
+          if (ok) finalizeSwappedModel(ctx);
           // tank_models r2 (critic major: pedestal placeholder/blank for
           // 15-45 s): main.js hides the garage hero while its GLB loads, but
           // its reveal poll waits for the WHOLE load queue to settle (~20

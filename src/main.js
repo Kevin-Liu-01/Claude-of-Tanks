@@ -620,7 +620,12 @@ function wantsSourcedGlb(src) {
 }
 
 function buildPedestalVisual(specId) {
-  const vis = createTank(specId, engineCtx, { camoSeed: 4200, quality: 'ai' });
+  // The showroom hero never enters the simulation. Avoid deriving movement
+  // contact metadata from its full rendered subtree; battle/player/AI builds
+  // still run that solve normally.
+  const vis = createTank(specId, engineCtx, {
+    camoSeed: 4200, quality: 'ai', staticPreview: true,
+  });
   const pedSpec = getSpec(specId);
   vis.spec = pedSpec;
   // camo_spotting r4: same front-3/4 presentation for every hero — long
@@ -3972,7 +3977,17 @@ function* compileHiddenVariantsSteps() {
   const compileAll = (root) => {
     _cv.length = 0;
     root.traverse((o) => { if (o.visible === false) { _cv.push(o); o.visible = true; } });
-    try { renderer.compile(root, camera, scene); } finally {
+    // MOBILE-QA r13: the live scene pass renders into post's linear HDR
+    // target. The default-framebuffer compile warms an `srgb` sibling, not
+    // the `srgb-linear` key used when a spotted tank first enters the post
+    // chain (owner-bound probe: exactly +5 programs at t+4.5..8.9 s).
+    const priorTarget = renderer.getRenderTarget();
+    const gameplayTarget = post && post.composer ? post.composer.renderTarget1 : null;
+    try {
+      if (gameplayTarget) renderer.setRenderTarget(gameplayTarget);
+      renderer.compile(root, camera, scene);
+    } finally {
+      renderer.setRenderTarget(priorTarget);
       for (const o of _cv) o.visible = false;
     }
   };
