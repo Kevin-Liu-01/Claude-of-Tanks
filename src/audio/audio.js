@@ -223,6 +223,9 @@ export function createAudio() {
   let heartbeatArmedBelow = 0;   // last hp fraction that triggered a pulse window
   let playerBurning = false;
   let battleOver = false;
+  let pendingResult = null;
+  let reloadCalled = false;
+  let lowHpCalled = false;
   let _uiVolEvents = 0;   // debug: ui:volumes deliveries (tools/audio-probe.mjs)
 
   // ---------------------------------------------------------------- graph ---
@@ -1741,7 +1744,36 @@ export function createAudio() {
     const mp = e.muzzlePos;
     gunshot(mp[0], mp[1], mp[2], e.caliberMm, !!e.isPlayer);
     if (!e.isPlayer) scheduleWhizz(e);
-    else radio.say('firing', { prob: 0.25 });
+    else radio.say('firing', { prob: 0.18, delayS: 0.08 });
+  }
+
+  const CREW_DAMAGE_CALL = {
+    commander: 'commander_down', gunner: 'gunner_down',
+    driver: 'driver_down', loader: 'loader_down',
+  };
+  const MODULE_DAMAGE_CALL = {
+    ammoRack: 'ammo_rack', gun: 'gun_damaged', trackL: 'track_gone',
+    trackR: 'track_gone', engine: 'engine_damaged', fuelTank: 'fuel_tank',
+    optics: 'optics_damaged', radio: 'radio_damaged',
+  };
+  const MODULE_DAMAGE_ORDER = ['ammoRack', 'gun', 'trackL', 'trackR', 'engine', 'fuelTank', 'optics', 'radio'];
+  const CREW_DAMAGE_ORDER = ['commander', 'gunner', 'driver', 'loader'];
+
+  /** One shell gets one context-accurate report, never a hit line plus a
+   *  backlog of module lines from the synchronous module:state fan-out. */
+  function incomingCallFor(e) {
+    if (e.destroyed || e.fireStarted) return null; // fire/death have dedicated edges
+    const crew = new Set(e.crewHit || []);
+    for (const role of CREW_DAMAGE_ORDER) if (crew.has(role)) return CREW_DAMAGE_CALL[role];
+    const modules = new Map((e.modulesHit || []).map((m) => [m.module, m.newState]));
+    for (const name of MODULE_DAMAGE_ORDER) {
+      if (!modules.has(name)) continue;
+      if ((name === 'trackL' || name === 'trackR') && modules.get(name) !== 'red') continue;
+      return MODULE_DAMAGE_CALL[name];
+    }
+    if ((e.damage || 0) > 0) return 'were_hit';
+    if (e.kind === 'ricochet' || e.kind === 'nonpen' || e.kind === 'spaced_absorb') return 'bounced_us';
+    return null;
   }
 
   function onShellHit(e) {
@@ -1781,16 +1813,32 @@ export function createAudio() {
       default:
         break;
     }
-    // Crew reactions — listener-side only, no new emitters (§3.9).
+    // Voice director — exactly one report per resolved shell. Incoming damage
+    // chooses the most actionable crew/module consequence; outgoing fire
+    // reports the final result only after the impact is known.
     if (playerId == null) return;
     if (e.targetId === playerId) {
-      if (e.kind === 'ricochet' || e.kind === 'nonpen' || e.kind === 'spaced_absorb') {
-        radio.say('bounced_us');
-      } else if ((e.damage || 0) > 0) {
-        radio.say('were_hit');
+      const call = incomingCallFor(e);
+      if (call) radio.say(call, { delayS: 0.12 });
+      if (!lowHpCalled && !e.destroyed && (e.damage || 0) > 0 &&
+          (e.targetMaxHp || 0) > 0 && e.targetHpAfter / e.targetMaxHp <= 0.25) {
+        // Only add the threshold warning when the shell had no more specific
+        // consequence; otherwise it would replace a gun/crew/fire warning.
+        if (!call || call === 'were_hit') {
+          lowHpCalled = true;
+          radio.say('low_hp', { delayS: 0.35 });
+        }
       }
-    } else if (e.attackerId === playerId && e.kind === 'ricochet') {
-      radio.say('ricochet');
+    } else if (e.attackerId === playerId && e.targetId != null && !e.destroyed) {
+      const rackHit = (e.modulesHit || []).some((m) => m.module === 'ammoRack');
+      if (rackHit) radio.say('enemy_ammo_rack', { delayS: 0.18 });
+      else if (((e.modulesHit && e.modulesHit.length) || (e.crewHit && e.crewHit.length)) &&
+          (e.damage || 0) > 0) radio.say('enemy_crit', { prob: 0.72, delayS: 0.18 });
+      else if ((e.kind === 'pen' || e.kind === 'he_pen') && (e.damage || 0) > 0) {
+        radio.say('penetration', { prob: 0.82, delayS: 0.18 });
+      } else if (e.kind === 'ricochet' || e.kind === 'nonpen' || e.kind === 'spaced_absorb') {
+        radio.say('ricochet', { prob: 0.8, delayS: 0.16 });
+      }
     }
   }
 
@@ -1811,9 +1859,10 @@ export function createAudio() {
       stopFireAlarm();
       stopTraverseRig();
       playerBurning = false;
+      radio.silence();
     } else if (playerId != null && e.killerId === playerId) {
       killSting();
-      radio.say('target_destroyed');
+      radio.say('target_destroyed', { delayS: 0.22 });
     }
   }
 
@@ -1831,17 +1880,23 @@ export function createAudio() {
       if (info && info.pos) trackSnap(info.pos.x, info.pos.y, info.pos.z);
     }
     if (playerId == null || e.id !== playerId || phase !== 'battle') return;
+    // The parent shell:hit already selected one best call from the entire hit.
+    // Keep alarms/world sounds above, but never enqueue each module again.
+    if (e.source === 'hit') {
+      if (worse && e.module === 'ammoRack') ammoRackWarning();
+      return;
+    }
     if (worse) {
-      switch (e.module) {
-        case 'ammoRack': ammoRackWarning(); radio.say('ammo_rack'); break;
-        case 'engine': radio.say('engine_damaged'); break;
-        case 'trackL':
-        case 'trackR': if (e.state === 'red') radio.say('track_gone'); break;
-        case 'gun': radio.say('gun_damaged'); break;
-        default: break;
+      if (e.module === 'ammoRack') ammoRackWarning();
+      const call = MODULE_DAMAGE_CALL[e.module];
+      if (call && (e.state === 'red' || e.module !== 'trackL' && e.module !== 'trackR')) {
+        radio.say(call, { delayS: 0.1 });
       }
-    } else {
-      radio.say('repairs', { prob: 0.7 });
+    } else if (e.repaired) {
+      const call = e.module === 'gun' ? 'gun_repaired'
+        : (e.module === 'trackL' || e.module === 'trackR') ? 'track_repaired'
+          : e.module === 'engine' ? 'engine_repaired' : 'repairs';
+      radio.say(call, { delayS: 0.12 });
     }
   }
 
@@ -1884,11 +1939,17 @@ export function createAudio() {
       if (ctx && e && e.hitTerrain && e.pos) dirtImpact(e.pos[0], e.pos[1], e.pos[2]);
     });
     bus.on('player:reload', (e) => {
-      if (!ctx || !e || !e.done) return;
-      reloadReadySound();
-      // Loader calls it every time (WoT "Loaded!"); the 3 s line cooldown and
-      // multi-second reloads keep it from ever spamming.
-      radio.say('reloaded');
+      if (!ctx || !e || phase !== 'battle' || battleOver) return;
+      if (e.done) {
+        reloadReadySound();
+        reloadCalled = false;
+        // Autocannon cycles keep their mechanical cue but do not flood the
+        // radio; spoken ready calls are for reloads the player had to wait on.
+        if ((e.total || 0) >= 1.25) radio.say('reloaded', { prob: 0.82, delayS: 0.08 });
+      } else if (!reloadCalled && (e.total || 0) >= 2.2) {
+        reloadCalled = true;
+        radio.say('reloading', { prob: 0.5, delayS: 0.1 });
+      }
     });
     bus.on('tank:destroyed', (e) => { if (ctx) onTankDestroyed(e); });
     // gameplay_feel r2: blocked-drive collision feedback (state.js emits once
@@ -1917,22 +1978,38 @@ export function createAudio() {
       if (!ctx || !e || phase !== 'battle') return;
       if (e.team !== 'player') return;
       const info = tankInfo.get(e.id);
-      if (info && info.team === 'enemy') radio.say('enemy_spotted');
+      // A crew call belongs to a contact this tank actually acquired, not a
+      // teammate's contact hundreds of metres away on the shared radio net.
+      if (info && info.team === 'enemy' && e.spotterId === playerId) {
+        radio.say('enemy_spotted', { delayS: 0.1 });
+      }
+    });
+    // Match the actual three-second sixth-sense fuse used by the HUD instead
+    // of announcing detection on the raw spotting edge.
+    bus.on('player:spotted', () => {
+      if (ctx && phase === 'battle' && !battleOver) radio.say('sixth_sense', { delayS: 3.0 });
+    });
+    bus.on('ui:consumableUsed', (e) => {
+      if (!ctx || !e || phase !== 'battle' || battleOver) return;
+      if (e.slot === 0) radio.say('repairs', { delayS: 0.12 });
+      else if (e.slot === 1) radio.say('crew_recovered', { delayS: 0.12 });
     });
     bus.on('ui:click', () => { if (ctx) uiClick(); });
-    // Phase flow: battle horn + crew move-out / garage workshop room tone.
+    // Phase flow only prepares the soundscape. The horn and command wait for
+    // battle:rollout, emitted exactly when the visible countdown reaches zero.
     bus.on('phase:change', (e) => {
       const next = (e && e.phase) || 'garage';
       const prev = phase;
       phase = next;
       battleOver = false;
+      pendingResult = null;
+      reloadCalled = false;
+      lowHpCalled = false;
       if (!ctx) return;
       if (next === 'battle' && prev !== 'battle') {
         garageToneStop();
         moduleState.clear();
         heartbeatArmedBelow = 0;
-        battleHorn();
-        setTimeout(() => { if (phase === 'battle') radio.say('on_the_move', { prob: 0.9 }); }, 1400);
       } else if (next === 'garage' && prev !== 'garage') {
         stopFireAlarm();
         stopTraverseRig();
@@ -1941,11 +2018,27 @@ export function createAudio() {
         garageToneStart();
       }
     });
+    bus.on('battle:rollout', () => {
+      if (!ctx || phase !== 'battle' || battleOver) return;
+      battleHorn();
+      radio.say('battle_start', { delayS: 0.48 });
+    });
     bus.on('battle:ended', (e) => {
       if (!ctx || battleOver) return;
       battleOver = true;
+      pendingResult = e && e.result ? e.result : 'draw';
+      radio.cancelPending(['shot_result'], true);
       stopFireAlarm();
-      resultFanfare(e && e.result ? e.result : 'draw');
+    });
+    // Results wait until the kill-cam/report gate hands presentation back to
+    // the battle-over UI. This keeps victory/defeat speech out of the replay.
+    bus.on('battle:presented', (e) => {
+      if (!ctx) return;
+      const result = (e && e.result) || pendingResult || 'draw';
+      resultFanfare(result);
+      radio.say(result === 'victory' ? 'victory' : result === 'defeat' ? 'defeat' : 'draw',
+        { delayS: 0.2 });
+      pendingResult = null;
     });
     // KILL-CAM: replay slow-mo ducks the battle beds under the narration.
     bus.on('killcam:begin', () => {

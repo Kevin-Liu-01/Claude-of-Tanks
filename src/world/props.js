@@ -14,6 +14,9 @@ import { VILLAGE_BUILDERS } from './maps/villageKit.js';
 import { DESTRUCTIBLE_TYPES, FENCE_SEG, WALL_SEG, bSandbagBroken } from './maps/inhabitKit.js';
 import { registerWorldDestructibles, emitBreakFx, emitDestroyed } from './destructibles.js';
 import { setToppleAxis, settledToppleAngle } from './topple.js';
+import {
+  cloneCollisionRecord, convexHull2, setCircleShape, setConvexShape, setObbShape,
+} from './collision.js';
 // DESTRUCTIBLES r1: real-roster tank wrecks baked to static geometry
 import { bakeTankWreck, wreckPool } from './wrecks.js';
 // Build-time-baked licensed models (see tools/bake-props-models.mjs +
@@ -1082,7 +1085,7 @@ ${snowCap ? `
     const meta = LOCAL_TYPES[kind] || DESTRUCTIBLE_TYPES[kind];
     if (!meta) throw new Error('world/props: unknown destructible kind ' + kind);
     let pool = dPools.get(kind);
-    if (!pool) { pool = { meta, mats4: [], imI: null, imB: null, nBroken: 0 }; dPools.set(kind, pool); }
+    if (!pool) { pool = { meta, mats4: [], records: [], imI: null, imB: null, nBroken: 0 }; dPools.set(kind, pool); }
     _de.set(tiltX, yaw, tiltZ, 'YXZ');
     _dq.setFromEuler(_de);
     _mat4.compose(_posv.set(x, y, z), _dq, new THREE.Vector3(sc, sc, sc));
@@ -1094,6 +1097,7 @@ ${snowCap ? `
     };
     const idx = destructibles.length;
     destructibles.push(rec);
+    pool.records.push(rec);
     if (meta.contact === 'ob') {
       const rr = (meta.fence || meta.wall) ? Math.max(meta.r * sc, 0.6) : rec.r;
       // fence/wall modules: tight oriented-ish AABB — run direction extents
@@ -1109,6 +1113,16 @@ ${snowCap ? `
         min: [x - hx, y, z - hz], max: [x + hx, y + rec.h, z + hz],
         crushable: true, crushed: false, propIdx: idx, kind,
       };
+      // Rotated fences/walls/trucks used to collide as their enclosing world
+      // AABB, making the empty triangular corners solid. Keep the AABB for
+      // the broad phase but publish the authored local footprint too.
+      if (meta.fence || meta.wall) {
+        const segLen = meta.wall ? WALL_SEG : FENCE_SEG;
+        const thick = meta.wall ? 0.35 : 0.2;
+        setObbShape(ob, x, z, thick * sc + 0.05, segLen * 0.5 * sc + 0.05, yaw);
+      } else {
+        setObbShape(ob, x, z, rr, rr, yaw);
+      }
       // DESTRUCTIBLES r1: per-kind overrun feel — momentum bite + threshold
       // ride the obstacle record into the state.js crush seam.
       if (meta.keep != null) ob.crushKeep = meta.keep;
@@ -1119,7 +1133,8 @@ ${snowCap ? `
       // modules and trucks are REAL cover while intact: their collider blocks
       // shells/LOS until the record breaks (flagged dead, restored on rematch).
       if (meta.collider) {
-        const col = { min: ob.min.slice(), max: ob.max.slice(), dead: false };
+        const col = cloneCollisionRecord(ob);
+        col.dead = false;
         rec.col = col;
         colliders.push(col);
       }
@@ -1214,8 +1229,11 @@ ${snowCap ? `
     return { y: Math.min(...hs), spread: Math.max(...hs) - Math.min(...hs), hx, hz };
   }
 
-  function addFootprintAABB(list, x, z, y, hx, hz, h) {
-    list.push({ min: [x - hx, y, z - hz], max: [x + hx, y + h, z + hz] });
+  function addFootprintAABB(list, x, z, y, hx, hz, h,
+    localHw = hx, localHl = hz, yaw = 0) {
+    const rec = { min: [x - hx, y, z - hz], max: [x + hx, y + h, z + hz] };
+    setObbShape(rec, x, z, localHw, localHl, yaw);
+    list.push(rec);
   }
 
   yield;
@@ -1322,8 +1340,10 @@ ${snowCap ? `
       _quat.setFromAxisAngle(_upAxis, rot);
       _mat4.compose(_posv.set(px, fit.y + 0.05, pz), _quat, _one);
       mergeInto(buckets, tmp, _mat4);
-      addFootprintAABB(obstacles, px, pz, fit.y, fit.hx, fit.hz, info.h);
-      addFootprintAABB(colliders, px, pz, fit.y, fit.hx, fit.hz, info.h);
+      addFootprintAABB(obstacles, px, pz, fit.y, fit.hx, fit.hz, info.h,
+        info.w * 0.5, info.d * 0.5, rot);
+      addFootprintAABB(colliders, px, pz, fit.y, fit.hx, fit.hz, info.h,
+        info.w * 0.5, info.d * 0.5, rot);
       buildingFeatures.push({ x: px, z: pz, w: info.w, d: info.d, rot });
       placedB.push({ x: px, z: pz, rr: Math.max(info.w, info.d) * 0.75 });
       bi++;
@@ -1388,8 +1408,10 @@ ${snowCap ? `
       beam.translate(x, y + pr * 0.4, z);
       buckets.wood.push(beam);
     }
-    obstacles.push({ min: [x - pr, y, z - pr], max: [x + pr, y + pr * 0.7, z + pr] });
-    colliders.push({ min: [x - pr, y, z - pr], max: [x + pr, y + pr * 0.7, z + pr] });
+    obstacles.push(setCircleShape(
+      { min: [x - pr, y, z - pr], max: [x + pr, y + pr * 0.7, z + pr] }, x, z, pr));
+    colliders.push(setCircleShape(
+      { min: [x - pr, y, z - pr], max: [x + pr, y + pr * 0.7, z + pr] }, x, z, pr));
   }
 
   yield;
@@ -1454,8 +1476,10 @@ ${snowCap ? `
           _quat.setFromAxisAngle(_upAxis, rot);
           _mat4.compose(_posv.set(px, fit.y + 0.05, pz), _quat, _one);
           mergeInto(buckets, tmp, _mat4);
-          addFootprintAABB(obstacles, px, pz, fit.y, fit.hx, fit.hz, info.h);
-          addFootprintAABB(colliders, px, pz, fit.y, fit.hx, fit.hz, info.h);
+          addFootprintAABB(obstacles, px, pz, fit.y, fit.hx, fit.hz, info.h,
+            info.w * 0.5, info.d * 0.5, rot);
+          addFootprintAABB(colliders, px, pz, fit.y, fit.hx, fit.hz, info.h,
+            info.w * 0.5, info.d * 0.5, rot);
           buildingFeatures.push({ x: px, z: pz, w: info.w, d: info.d, rot });
           placedB.push({ x: px, z: pz, rr: Math.max(info.w, info.d) * 0.75 });
           stripAABBs.push({ x: px, z: pz, hx, hz });
@@ -1549,8 +1573,10 @@ ${snowCap ? `
         _quat.setFromAxisAngle(_upAxis, rot);
         _mat4.compose(_posv.set(px, fit.y + 0.05, pz), _quat, _one);
         mergeInto(buckets, tmp, _mat4);
-        addFootprintAABB(obstacles, px, pz, fit.y, fit.hx, fit.hz, info.h);
-        addFootprintAABB(colliders, px, pz, fit.y, fit.hx, fit.hz, info.h);
+        addFootprintAABB(obstacles, px, pz, fit.y, fit.hx, fit.hz, info.h,
+          info.w * 0.5, info.d * 0.5, rot);
+        addFootprintAABB(colliders, px, pz, fit.y, fit.hx, fit.hz, info.h,
+          info.w * 0.5, info.d * 0.5, rot);
         buildingFeatures.push({ x: px, z: pz, w: info.w, d: info.d, rot });
         placedB.push({ x: px, z: pz, rr: Math.max(info.w, info.d) * 0.75 });
         bi++;
@@ -1768,8 +1794,10 @@ ${snowCap ? `
     wroof.rotateY(Math.PI / 2);
     wroof.translate(wx, wy + 1.9, wz);
     buckets.roof.push(wroof);
-    obstacles.push({ min: [wx - 1.1, wy, wz - 1.1], max: [wx + 1.1, wy + 2.6, wz + 1.1] });
-    colliders.push({ min: [wx - 1.1, wy, wz - 1.1], max: [wx + 1.1, wy + 2.6, wz + 1.1] });
+    obstacles.push(setCircleShape(
+      { min: [wx - 1.1, wy, wz - 1.1], max: [wx + 1.1, wy + 2.6, wz + 1.1] }, wx, wz, 1.1));
+    colliders.push(setCircleShape(
+      { min: [wx - 1.1, wy, wz - 1.1], max: [wx + 1.1, wy + 2.6, wz + 1.1] }, wx, wz, 1.1));
   }
 
   // --- INHABITING OBJECTS (world-dressing r1): themed destructible dressing
@@ -2199,6 +2227,7 @@ ${snowCap ? `
   // silhouettes, and a slope/height-keyed albedo blend (pale weathered top
   // vs darker base) so the tops read snow/lichen-capped per map tone.
   const rockGeos = [];
+  const rockHulls = [];
   // r7 terrain_environment: RIDGED FRACTURE displacement + crease shading —
   // the r3 boulders still read as "smooth grey blobs with no fracture
   // planes" (critique). A ridged octave (1-|noise|) carves crease valleys
@@ -2256,6 +2285,9 @@ ${snowCap ? `
     }
     g.setAttribute('color', new THREE.BufferAttribute(col, 3));
     rockGeos.push(g);
+    const projected = [];
+    for (let i = 0; i < p.count; i++) projected.push([p.getX(i), p.getZ(i)]);
+    rockHulls.push(convexHull2(projected));
   }
   const rockPlacements = [[], [], []];
   function tryRock(x, z, scMin, scMax, slopePref, sink = 0.22) {
@@ -2280,9 +2312,21 @@ ${snowCap ? `
     // sink <= 0.5: half-drifted surface rocks keep their cover role; only the
     // deep-embedded ground-clutter class (0.60) is drive-over
     if (sc >= 1.25 && sink <= 0.5) {
-      const e = sc * 1.15;
-      obstacles.push({ min: [x - e, y, z - e], max: [x + e, y + sc * 1.1, z + e] });
-      colliders.push({ min: [x - e, y, z - e], max: [x + e, y + sc * 1.1, z + e] });
+      // The old square ±1.15*scale AABB made its four empty corners solid;
+      // at a 3 m outcrop that stopped a hull more than a metre from the
+      // visible stone. Use the displaced mesh's actual projected convex hull.
+      const c = Math.cos(yawR), s = Math.sin(yawR);
+      const local = rockHulls[vv];
+      const points = new Array(local.length);
+      for (let i = 0; i < local.length; i += 2) {
+        const lx = local[i] * sc, lz = local[i + 1] * sc;
+        points[i] = x + lx * c + lz * s;
+        points[i + 1] = z - lx * s + lz * c;
+      }
+      const rec = setConvexShape(
+        { min: [x, y, z], max: [x, y + sc * 1.1, z] }, points);
+      obstacles.push(rec);
+      colliders.push(cloneCollisionRecord(rec));
     }
     return true;
   }
@@ -2567,8 +2611,10 @@ ${snowCap ? `
         buckets.dark.push(beam);
       }
       const e = 1.15 * scH;
-      obstacles.push({ min: [hx - e, y, hz - e], max: [hx + e, y + 1.3 * scH, hz + e] });
-      colliders.push({ min: [hx - e, y, hz - e], max: [hx + e, y + 1.3 * scH, hz + e] });
+      obstacles.push(setCircleShape(
+        { min: [hx - e, y, hz - e], max: [hx + e, y + 1.3 * scH, hz + e] }, hx, hz, e));
+      colliders.push(setCircleShape(
+        { min: [hx - e, y, hz - e], max: [hx + e, y + 1.3 * scH, hz + e] }, hx, hz, e));
       placed++;
     }
   }
@@ -2694,8 +2740,11 @@ ${snowCap ? `
         const cs = Math.abs(Math.cos(yaw)), sn = Math.abs(Math.sin(yaw));
         const hx = baked.hx * cs + baked.hz * sn + 0.2;
         const hz = baked.hx * sn + baked.hz * cs + 0.2;
-        obstacles.push({ min: [x - hx, y, z - hz], max: [x + hx, y + baked.h - 0.2, z + hz] });
-        colliders.push({ min: [x - hx, y, z - hz], max: [x + hx, y + baked.h - 0.2, z + hz] });
+        const rec = setObbShape(
+          { min: [x - hx, y, z - hz], max: [x + hx, y + baked.h - 0.2, z + hz] },
+          x, z, baked.hx + 0.2, baked.hz + 0.2, yaw);
+        obstacles.push(rec);
+        colliders.push(cloneCollisionRecord(rec));
         wreckScorch.push([x, z]);
         tankWreckSpots.push({ specId, x, z, yaw, hx, hz, h: baked.h });
         return true;
@@ -3357,6 +3406,28 @@ ${snowCap ? `
     // merged walls did; everything else keeps the r1 wood/straw/baked split.
     const mat = mats[meta.mat] || mats.baked;
     const geoI = meta.build(drng);
+    // Refit every destructible obstacle to the actual built geometry. The
+    // metadata radius was only a placement hint; using it as a square
+    // collider made carts, tents, crates and wall modules stop tanks in air.
+    // One convex hull is derived per type, then transformed per instance.
+    const pa = geoI.getAttribute && geoI.getAttribute('position');
+    if (pa && pool.records.length) {
+      const localPts = [];
+      for (let i = 0; i < pa.count; i++) localPts.push([pa.getX(i), pa.getZ(i)]);
+      const localHull = convexHull2(localPts);
+      for (const rec of pool.records) {
+        if (!rec.ob || localHull.length < 6) continue;
+        const c = Math.cos(rec.yaw), s = Math.sin(rec.yaw);
+        const points = new Array(localHull.length);
+        for (let i = 0; i < localHull.length; i += 2) {
+          const lx = localHull[i] * rec.sc, lz = localHull[i + 1] * rec.sc;
+          points[i] = rec.x + lx * c + lz * s;
+          points[i + 1] = rec.z - lx * s + lz * c;
+        }
+        setConvexShape(rec.ob, points);
+        if (rec.col) setConvexShape(rec.col, points.slice());
+      }
+    }
     const imI = new THREE.InstancedMesh(geoI, mat, pool.mats4.length);
     for (let i = 0; i < pool.mats4.length; i++) imI.setMatrixAt(i, pool.mats4[i]);
     // winter: sourced sandbag models take the dark wet-hessian tint the old

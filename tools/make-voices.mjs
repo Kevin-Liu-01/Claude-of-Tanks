@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-// make-voices.mjs — generate the battle announcer voice lines (VOICE round r2).
+// make-voices.mjs — generate the battle announcer voice lines (VOICE round r3).
 //
-// r2 DESIGN CHANGE (owner redirect): ONE American male voice for everything,
+// r2 DESIGN CHANGE (kept in r3): ONE American male voice for everything,
 // in the classic tank-game announcer style — the r1 four-persona crew is
 // retired (preserved at shots/voices-r2/r1-full/, A/B pairs in
 // shots/voices-r2/ab/). Same engine and pipeline as r1.
@@ -42,6 +42,7 @@
 // Usage:
 //   node tools/make-voices.mjs              # generate everything + verify
 //   node tools/make-voices.mjs --only fire  # regenerate one line id (+verify)
+//   node tools/make-voices.mjs --only fire,gun_damaged # comma-separated ids
 //   node tools/make-voices.mjs --verify     # checks only, no synthesis
 //   node tools/make-voices.mjs --bakeoff    # re-run the joe-vs-john metrics
 //
@@ -88,6 +89,7 @@ const LINES = [
   // ---- battle flow -----------------------------------------------------------
   ['battle_start',       'The battle has begun!',              { ls: 0.92 }],
   ['battle_start_b',     'Battle! Give them hell!',            { ls: 0.88, ns: 0.75 }],
+  ['battle_start_c',     'All units, advance!',                 { ls: 0.88, ns: 0.72 }],
   ['on_the_move',        'Move out!',                          { ls: 0.88, pad: 0.06 }],
   ['on_the_move_b',      'Forward! Roll out!',                 { ls: 0.88 }],
   ['victory',            'Victory!',                           { ls: 0.95, ns: 0.8, pad: 0.08 }],
@@ -101,39 +103,72 @@ const LINES = [
   ['firing_c',           "Shot's away!",                       { ls: 0.88 }],
   ['penetration',        'Penetration!',                       { ls: 0.88, ns: 0.75 }],
   ['penetration_b',      'Right through their armor!',         { ls: 0.87 }],
+  ['penetration_c',      'Solid hit! We punched through!',     { ls: 0.86, ns: 0.72 }],
   ['ricochet',           "Didn't go through!",                 { ls: 0.88 }],
   ['ricochet_b',         'Bounced off!',                       { ls: 0.88, pad: 0.06 }],
   ['enemy_crit',         'That one hurt them!',                { ls: 0.9 }],
   ['enemy_crit_b',       'Critical hit!',                      { ls: 0.9, pad: 0.06 }],
+  ['enemy_crit_c',       'Enemy systems damaged!',             { ls: 0.88, ns: 0.72 }],
   ['enemy_ammo_rack',    'We hit their ammo rack!',            { ls: 0.89, ns: 0.75 }],
   ['target_destroyed',   'Enemy vehicle destroyed!',           { ls: 0.92 }],
   ['target_destroyed_b', 'Target eliminated!',                 { ls: 0.92 }],
   ['target_destroyed_c', "That's a kill! Well done!",          { ls: 0.9, ns: 0.75 }],
+  ['target_destroyed_d', 'Hostile armor knocked out!',         { ls: 0.89, ns: 0.72 }],
   // ---- survival --------------------------------------------------------------
   ['were_hit',           "We're hit!",                         { ls: 0.84, ns: 0.75 }],
   ['were_hit_b',         'They got through!',                  { ls: 0.85, ns: 0.75 }],
+  ['were_hit_c',         'Hit taken! Still fighting!',         { ls: 0.86, ns: 0.72 }],
   ['bounced_us',         'Ricochet!',                          { ls: 0.87, ns: 0.75, pad: 0.06 }],
   ['bounced_us_b',       'Glanced right off!',                 { ls: 0.88 }],
+  ['bounced_us_c',       'Armor held! No damage!',             { ls: 0.87, ns: 0.72 }],
   ['ammo_rack',          "Ammo rack's hit!",                   { ls: 0.84, ns: 0.75 }],
+  ['ammo_rack_b',        'Ammo stowage damaged! Watch it!',    { ls: 0.84, ns: 0.78 }],
   ['fuel_tank',          "Fuel tank's hit!",                   { ls: 0.85, ns: 0.75 }],
+  ['fuel_tank_b',        'Fuel system damaged!',               { ls: 0.86, ns: 0.72 }],
   ['fire',               "We're on fire! Put it out!",         { ls: 0.84, ns: 0.75 }],
   ['fire_b',             'Fire! Fire!',                        { ls: 0.84, ns: 0.8, pad: 0.06 }],
   ['fire_out',           "Fire's out.",                        { ls: 0.97 }],
+  ['fire_out_b',         'Fire suppressed!',                   { ls: 0.93, ns: 0.7 }],
   ['engine_damaged',     "Engine's damaged!",                  { ls: 0.9 }],
   ['engine_damaged_b',   "Engine's hit! We're losing power!",  { ls: 0.87 }],
   ['track_gone',         "Track's gone!",                      { ls: 0.87 }],
   ['track_gone_b',       "We've lost a track!",                { ls: 0.88 }],
   ['gun_damaged',        "Gun's damaged!",                     { ls: 0.88 }],
+  ['gun_damaged_b',      "Main gun's hit!",                    { ls: 0.86, ns: 0.74 }],
   ['low_hp',             'Critical damage! Hold together!',    { ls: 0.86, ns: 0.75 }],
+  ['low_hp_b',           'Armor failing! Stay sharp!',         { ls: 0.86, ns: 0.75 }],
+  ['optics_damaged',     'Optics are damaged!',                { ls: 0.88 }],
+  ['optics_damaged_b',   'Sights are hit! Visibility reduced!', { ls: 0.86, ns: 0.72 }],
+  ['radio_damaged',      "Radio's damaged!",                   { ls: 0.88 }],
+  ['radio_damaged_b',    'Comms are hit! Signal is weak!',     { ls: 0.86, ns: 0.72 }],
+  ['commander_down',     "Commander's down!",                  { ls: 0.84, ns: 0.76 }],
+  ['commander_down_b',   "Commander hit! I'm taking over!",    { ls: 0.84, ns: 0.78 }],
+  ['gunner_down',        "Gunner's down!",                     { ls: 0.84, ns: 0.76 }],
+  ['gunner_down_b',      'Gunner hit! Get on the sights!',     { ls: 0.84, ns: 0.78 }],
+  ['driver_down',        "Driver's down!",                     { ls: 0.84, ns: 0.76 }],
+  ['driver_down_b',      'Driver hit! Controls are sluggish!', { ls: 0.84, ns: 0.78 }],
+  ['loader_down',        "Loader's down!",                     { ls: 0.84, ns: 0.76 }],
+  ['loader_down_b',      'Loader hit! Reload will be slower!', { ls: 0.84, ns: 0.78 }],
   ['repairs',            'Repairs complete.',                  { ls: 0.96 }],
   ['repairs_b',          "We're back in action!",              { ls: 0.92 }],
+  ['repairs_c',          'Systems restored.',                  { ls: 0.94 }],
+  ['crew_recovered',     'Crew is back in action!',            { ls: 0.92 }],
+  ['crew_recovered_b',   'Crew stations restored!',            { ls: 0.92 }],
+  ['track_repaired',     "Track's back on!",                   { ls: 0.9 }],
+  ['track_repaired_b',   'Mobility restored!',                 { ls: 0.92 }],
+  ['gun_repaired',       'Gun is operational!',                { ls: 0.92 }],
+  ['gun_repaired_b',     "Main gun's back up!",                { ls: 0.9 }],
+  ['engine_repaired',    "Engine's running again!",            { ls: 0.92 }],
+  ['engine_repaired_b',  'Power restored! We can move!',       { ls: 0.9 }],
   // ---- awareness -------------------------------------------------------------
   ['enemy_spotted',      'Enemy spotted!',                     { ls: 0.9 }],
   ['enemy_spotted_b',    'Enemy vehicle spotted!',             { ls: 0.9 }],
   ['enemy_spotted_c',    'Contact! Enemy armor!',              { ls: 0.88, ns: 0.75 }],
   ['sixth_sense',        'They see us!',                       { ls: 0.86, ns: 0.75 }],
   ['sixth_sense_b',      "We've been spotted!",                { ls: 0.86 }],
+  ['sixth_sense_c',      "Contact! We're detected!",           { ls: 0.85, ns: 0.75 }],
   ['reloading',          'Reloading!',                         { ls: 0.9, pad: 0.06 }],
+  ['reloading_b',        'Loading another round!',             { ls: 0.9 }],
   ['reloaded',           'Loaded!',                            { ls: 0.9, pad: 0.06 }],
   ['reloaded_b',         'Up!',                                { ls: 0.92, pad: 0.14 }],
   ['reloaded_c',         'Round loaded! Ready!',               { ls: 0.92 }],
@@ -260,6 +295,7 @@ function piperSynth(model, text, out, o = {}) {
 
 // --- generation ----------------------------------------------------------------
 function synthesize(only) {
+  const onlyIds = only ? String(only).split(',').map((s) => s.trim()).filter(Boolean) : null;
   ensurePiper([ANNOUNCER]);
   mkdirSync(OUT_DIR, { recursive: true });
   const tmp = mkdtempSync(path.join(tmpdir(), 'cot-voices-'));
@@ -268,7 +304,7 @@ function synthesize(only) {
   console.log(`\nannouncer: ${ANNOUNCER}\n`);
   console.log(`id                   pace  LUFS(pre→post)  bytes  text`);
   for (const [id, text, o] of LINES) {
-    if (only && id !== only && !id.startsWith(only + '_')) continue;
+    if (onlyIds && !onlyIds.some((pick) => id === pick || id.startsWith(pick + '_'))) continue;
     const raw = path.join(tmp, `${id}.raw.wav`);
     const proc = path.join(tmp, `${id}.proc.wav`);
     const out = path.join(OUT_DIR, `${id}.ogg`);

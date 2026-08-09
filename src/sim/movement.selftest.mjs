@@ -233,7 +233,33 @@ for (const [wl, amp] of [[8, 1.5], [8, 0.55], [4, 0.5], [2, 0.12]]) {
   assert(worstFloat < 0.07, `egg-crate drive: levitation (min gap up to ${worstFloat.toFixed(3)} m)`);
 }
 
-// ------------------------------------------------------ 6. accel sanity --
+// -------------------------------------------- 6. measured contact geometry --
+// Measured visual contact metadata must seat the actual track floor, not the
+// root origin, and a shorter sourced-model run must not perch on phantom
+// support beyond its rendered track ends.
+{
+  const field = makeField(() => 2.0);
+  const ent = makeEntity(field, 0, 0, 0);
+  ent.contactGeom = {
+    halfLenM: 2.0, halfWidM: 1.3, zCenterM: 0.15, bottomYM: 0.12,
+  };
+  run(ent, field, 180);
+  const renderedFloor = ent.state.pos.y + ent.contactGeom.bottomYM;
+  assert(renderedFloor >= 2.0 && renderedFloor < 2.04,
+    `measured floor seats on terrain (${renderedFloor.toFixed(3)} m)`);
+}
+{
+  const field = makeField((x, z) => (z > 2.45 && z < 2.95 ? 0.45 : 0));
+  const ent = makeEntity(field, 0, 0, 0);
+  ent.contactGeom = {
+    halfLenM: 2.0, halfWidM: 1.3, zCenterM: 0, bottomYM: 0,
+  };
+  run(ent, field, 240);
+  assert(ent.state.pos.y < 0.06,
+    `measured short track ignores phantom end support (height ${ent.state.pos.y.toFixed(3)} m)`);
+}
+
+// ------------------------------------------------------ 7. accel sanity --
 {
   const field = makeField(() => 0);
   const ent = makeEntity(field, 0, 0, 0);
@@ -244,7 +270,7 @@ for (const [wl, amp] of [[8, 1.5], [8, 0.55], [4, 0.5], [2, 0.12]]) {
     `flat accel: ${(ent.state.speed * 3.6).toFixed(1)} km/h after 10 s (need >80% of top)`);
 }
 
-// ------------------------------------------- 7. service-brake softness --
+// ------------------------------------------- 8. service-brake softness --
 // Forward and reverse braking must settle promptly but never erase a
 // full-speed forward tank in about one second or kick an oversized pitch.
 {
@@ -274,7 +300,7 @@ for (const [wl, amp] of [[8, 1.5], [8, 0.55], [4, 0.5], [2, 0.12]]) {
   assert(peakPitch < 0.075, `reverse brake: pitch lurch ${peakPitch.toFixed(3)} rad`);
 }
 
-// ------------------------------------------- 8. gun-terrain muzzle clamp --
+// ------------------------------------------- 9. gun-terrain muzzle clamp --
 // Aim at the foot of a steep rising wall: the level barrel line would sink the
 // muzzle ~0.8 m into the slope. The clamp must hold the muzzle above ground
 // and flag atGunLimit so the reticle pins.

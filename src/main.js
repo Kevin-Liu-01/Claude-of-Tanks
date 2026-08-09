@@ -2220,6 +2220,9 @@ function openBattle() {
   }
   audio.resume(); // the entry-gate keypress already unlocked the context
   audio.ambientOn(true);
+  // Probe/debug starts skip the visible countdown; they still get one rollout
+  // edge after the AudioContext exists. Player entries emit at countdown zero.
+  if (game.preBattleS <= 0) bus.emit('battle:rollout', {});
 }
 // battle_countdown r1: WoT-style pre-battle freeze length (player path only).
 const PRE_BATTLE_HOLD_S = 5;
@@ -2823,8 +2826,10 @@ function tick(nowMs) {
     // first-seconds jank lands while nothing can move or shoot.
     if (game.preBattleS > 0) {
       if (game.preBattleS !== Infinity) { // Infinity = still under the loading screen
+        const heldS = game.preBattleS;
         game.preBattleS = Math.max(0, game.preBattleS - dtR);
         hud.preBattleCountdown(game.preBattleS); // 0 on the crossing frame = release flash
+        if (heldS > 0 && game.preBattleS === 0) bus.emit('battle:rollout', {});
       }
       simAcc = 0;
     } else {
@@ -2843,6 +2848,7 @@ function tick(nowMs) {
       const finishBattle = () => {
         veilHud(false);
         showEndOverlay(game.result);
+        bus.emit('battle:presented', { result: game.result });
         rig.release();
         // Death-cam: slow orbit of the player's wreck behind the overlay.
         if (game.result === 'defeat' && rig.startDeathCam) rig.startDeathCam();

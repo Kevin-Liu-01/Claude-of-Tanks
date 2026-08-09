@@ -508,6 +508,7 @@ export function createAI(entity, opts = {}) {
   // wedge against each other at full throttle (probe: thr=1.0, spd=0.1).
   const vantageBias = (rng() - 0.5) * 0.9;
   let obstacles = deps.getObstacles();
+  const nearbyObstacles = [];
   let nowS = 0;                              // last timeS seen by update()
 
   resampleAimError();
@@ -1018,8 +1019,11 @@ export function createAI(entity, opts = {}) {
     const px = st.pos.x + fx * look;
     const pz = st.pos.z + fz * look;
     const margin = spec.dims.widthM * 0.5 + 1.2;
-    for (let i = 0; i < obstacles.length; i++) {
-      const o = obstacles[i];
+    const candidates = deps.queryObstacles
+      ? deps.queryObstacles(px - margin, pz - margin, px + margin, pz + margin, nearbyObstacles)
+      : obstacles;
+    for (let i = 0; i < candidates.length; i++) {
+      const o = candidates[i];
       if (o.crushed) continue; // gameplay_feel r6: felled crushables don't block
       if (px < o.min[0] - margin || px > o.max[0] + margin) continue;
       if (pz < o.min[2] - margin || pz > o.max[2] + margin) continue;

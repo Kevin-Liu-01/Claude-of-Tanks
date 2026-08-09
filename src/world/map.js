@@ -8,38 +8,10 @@ import { createHeightField, buildTerrainMeshes, buildTerrainMeshesAsync } from '
 import { createVegetation, createVegetationAsync } from './vegetation.js';
 import { createProps, createPropsAsync } from './props.js';
 import { getMapConfig } from './maps/index.js';
+import { createObstacleGrid, rayCollisionRecord } from './collision.js';
 
 const _pt = new THREE.Vector3();
 const _bisA = new THREE.Vector3();
-
-// slab-method ray vs AABB; returns entry t (>= 0) and entry-face normal, or null
-function rayAABB(origin, dir, aabb, maxDist, outNormal) {
-  let tmin = 0, tmax = maxDist;
-  let axis = -1, sign = 1;
-  for (let a = 0; a < 3; a++) {
-    const o = a === 0 ? origin.x : a === 1 ? origin.y : origin.z;
-    const d = a === 0 ? dir.x : a === 1 ? dir.y : dir.z;
-    const lo = aabb.min[a], hi = aabb.max[a];
-    if (Math.abs(d) < 1e-9) {
-      if (o < lo || o > hi) return -1;
-      continue;
-    }
-    const inv = 1 / d;
-    let t0 = (lo - o) * inv, t1 = (hi - o) * inv;
-    let s = -1;
-    if (t0 > t1) { const tt = t0; t0 = t1; t1 = tt; s = 1; }
-    if (t0 > tmin) { tmin = t0; axis = a; sign = s; }
-    if (t1 < tmax) tmax = t1;
-    if (tmin > tmax) return -1;
-  }
-  if (axis >= 0) {
-    outNormal.set(0, 0, 0);
-    outNormal.setComponent(axis, sign);
-  } else {
-    outNormal.copy(dir).multiplyScalar(-1); // started inside the box
-  }
-  return tmin;
-}
 
 /**
  * Build the full battlefield world for a map config and add it to the scene.
@@ -119,6 +91,12 @@ function assembleWorld(engineCtx, config, heightField, terrain, vegetation, prop
   group.traverse((o) => { o.matrixAutoUpdate = false; });
 
   const obstacles = [...props.obstacles, ...vegetation.treeObstacles];
+  // Static spatial broad phases: movement queries only the handful of props
+  // around a hull, and a shell/LOS ray only the cells spanned by its segment.
+  // The narrow phase still uses the authored OBB/circle/convex footprint.
+  const queryObstacles = createObstacleGrid(obstacles);
+  const queryColliders = createObstacleGrid(props.colliders);
+  const rayCandidates = [];
 
   const sp = layout.spawns;
   const spawnPoints = {
@@ -136,7 +114,7 @@ function assembleWorld(engineCtx, config, heightField, terrain, vegetation, prop
   const _bestNrm = new THREE.Vector3();
 
   /**
-   * Cheap world raycast: heightfield ray-march + prop AABB slab tests.
+   * Cheap world raycast: heightfield ray-march + tight prop-shape tests.
    * @param {THREE.Vector3} origin ray origin (world)
    * @param {THREE.Vector3} dir unit direction
    * @param {number} maxDist maximum distance, meters
@@ -151,12 +129,17 @@ function assembleWorld(engineCtx, config, heightField, terrain, vegetation, prop
   function raycast(origin, dir, maxDist) {
     // props first — they bound the terrain march
     let best = Infinity, bestKind = null;
-    for (const c of props.colliders) {
+    const ex = origin.x + dir.x * maxDist;
+    const ez = origin.z + dir.z * maxDist;
+    queryColliders(
+      Math.min(origin.x, ex), Math.min(origin.z, ez),
+      Math.max(origin.x, ex), Math.max(origin.z, ez), rayCandidates);
+    for (const c of rayCandidates) {
       // DESTRUCTIBLES r1: a destroyed wall segment / truck stops blocking
       // shells and AI line-of-sight — its collider is flagged dead in place
       // (O(1) rematch restore) rather than spliced out.
       if (c.dead) continue;
-      const t = rayAABB(origin, dir, c, Math.min(maxDist, best), _aabbNrm);
+      const t = rayCollisionRecord(origin, dir, c, Math.min(maxDist, best), _aabbNrm);
       if (t >= 0 && t < best) { best = t; bestKind = 'prop'; _bestNrm.copy(_aabbNrm); }
     }
     // terrain march with adaptive step + bisection refinement
@@ -206,6 +189,8 @@ function assembleWorld(engineCtx, config, heightField, terrain, vegetation, prop
     raycast,
     /** @returns {Array<{min:number[],max:number[]}>} static obstacle AABBs */
     getObstacles: () => obstacles,
+    /** Allocation-free local obstacle broad phase; caller owns `out`. */
+    queryObstacles,
     /**
      * SPOTTING WIRING: vegetation concealment discs for src/sim/spotting.js.
      * @returns {Array<{x:number,z:number,r:number,add:number}>}

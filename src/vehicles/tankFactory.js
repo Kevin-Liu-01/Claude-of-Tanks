@@ -1400,7 +1400,7 @@ function buildRunningGear(P, cfg) {
   // solve now seats on the terrain), not the y = 0 plane the pre-rebuild gear
   // happened to sit at. Without this, a bottomYM ≠ 0 rig would read a constant
   // ±bottomYM terrain deviation at every wheel and float/sink the whole wheel
-  // train by 1.35 × that at rest.
+  // train by that same deviation at rest.
   const conformPlaneY = gearContactGeom.bottomYM;
 
   // r1 per-bogie articulation: per-side sorted PROUD road wheels drive a
@@ -1492,15 +1492,20 @@ function buildRunningGear(P, cfg) {
           // seated when parked (garage/closeup safe).
           const amp = e.x < 0 ? bobAmpL : bobAmpR;
           const bob = e.road
-            ? (Math.sin(scroll * 2.7 + e.i * 1.93) * 0.052 +
-               Math.sin(scroll * 6.3 + e.i * 3.17) * 0.026 +
-               Math.sin(scroll * 1.35 + e.i * 2.61) * 0.030) * amp
+            ? (Math.sin(scroll * 2.7 + e.i * 1.93) * 0.018 +
+               Math.sin(scroll * 6.3 + e.i * 3.17) * 0.009 +
+               Math.sin(scroll * 1.35 + e.i * 2.61) * 0.010) * amp
             : 0;
           // gameplay_feel r1: clamp DOWNWARD chatter travel — the sim support
           // solve cannot pre-lift for per-wheel noise (probe: -0.115 m below
           // the heightfield at speed); upward compression keeps full read.
-          const voff = Math.max(bob + (e.off || 0), -0.02);
-          if (e.road) e.voff = voff;
+          const groundOff = e.off || 0;
+          const voff = Math.max(bob + groundOff, -0.02);
+          // The wheel can chatter against the suspension, but the track belt
+          // remains keyed to the sampled terrain offset. Feeding positive
+          // cosmetic bob into the belt lifted whole link runs 8-11 cm off
+          // flat ground at speed — the visible "floating tracks" defect.
+          if (e.road) e.voff = groundOff;
           _q.setFromAxisAngle(_X, scroll / e.r);
           _v.set(e.x, e.y + voff, e.z);
           _s.set(1, 1, 1);
@@ -1528,7 +1533,7 @@ function buildRunningGear(P, cfg) {
      * @param {number} [pitchEff] effective RENDERED pitch (see below)
      * @param {number} [rollEff] effective RENDERED roll (see below)
      */
-    conform(state, sampler, pitchEff, rollEff) {
+    conform(state, sampler, pitchEff, rollEff, dt = 1 / 60) {
       // gameplay_feel r5: conform at the RENDERED attitude. syncFromState
       // draws the hull at -(visualPitch + suspP·VIS) + flinchP (and roll +
       // suspR·VIS + sway); computing the wheel's hull-plane point with the
@@ -1578,23 +1583,25 @@ function buildRunningGear(P, cfg) {
           g2 = sampler(wx - gzX * hrZ, wz - gzZ * hrZ);
           if (g2 - 0.17 * e.r > g) g = g2 - 0.17 * e.r;
           const dev = g - wy;
-          // ±0.13 m travel, snappy response: wheels visibly drop into ruts
+          // Real suspension travel: wheels visibly drop into ruts
           // and ride crests instead of the r2 near-rigid ±7 cm creep
           // gameplay_feel r5 (terrain-contact hard gate): ASYMMETRIC clamp —
-          // droop stays at −0.17 m, but up-travel opens to +0.35 m so a bump
+          // droop opens to −0.22 m and up-travel to +0.30 m so a bump
           // the rigid hull plane straddles lifts the wheel over the crest
           // instead of burying the rim (r5 evidence: settled wheel rim
           // −18.3 cm below the heightfield). The movement.js lateral-fan
           // support solve now caps how far terrain can rise above the plane,
           // and the wheel rides the residual.
-          // r1: 1.35x gain on the deviation — the raw dev on the smooth
-          // interpolated heightfield was sub-pixel at gameplay framing, so
-          // the road-wheel line read rigidly parallel to the hull; the gain
-          // (clamped to the same travel limits) makes hollows/crests read as
-          // real per-bogie travel without breaking the contact solve.
-          const gdev = dev * 1.35;
-          const target = gdev < -0.17 ? -0.17 : (gdev > 0.35 ? 0.35 : gdev);
-          e.off += (target - e.off) * 0.55;
+          // The old 1.35 visual gain deliberately overshot the ground: a
+          // +10 cm crest moved the wheel/belt +13.5 cm and left daylight;
+          // hollows overshot in the other direction. One-to-one displacement
+          // is both physically correct and keeps the rendered contact honest.
+          const target = dev < -0.22 ? -0.22 : (dev > 0.30 ? 0.30 : dev);
+          // Frame-rate independent damping. Distant gear updates at 20 Hz,
+          // so the caller accumulates skipped dt and lands the same response
+          // as a near tank without doing extra terrain work.
+          const alpha = 1 - Math.exp(-Math.max(0, Math.min(dt, 0.12)) * 32);
+          e.off += (target - e.off) * alpha;
         }
       }
     },
@@ -3972,6 +3979,7 @@ export function createTank(specId, engineCtx, opts = {}) {
   const GLB_SPIN_RE = /wheel|sprocket|idler|roller|road/i;
   const _spinM = new THREE.Matrix4();
   const _spinM2 = new THREE.Matrix4();
+  const _spinLiftM = new THREE.Matrix4();
   const _spinV = new THREE.Vector3();
   function scanGlbSpinners() {
     const found = [];
@@ -3981,6 +3989,8 @@ export function createTank(specId, engineCtx, opts = {}) {
       const relM = new THREE.Matrix4();
       const axGeom = new THREE.Vector3();
       const axHull = new THREE.Vector3();
+      const upParent = new THREE.Vector3();
+      const upOrigin = new THREE.Vector3();
       const ctr = new THREE.Vector3();
       const size = new THREE.Vector3();
       hullG.traverse((o) => {
@@ -4012,6 +4022,14 @@ export function createTank(specId, engineCtx, opts = {}) {
         if (Math.abs(axHull.x) < 0.85) return;
         const cGeom = ctr.clone(); // spin pivot: wheel center in GEOMETRY space
         ctr.applyMatrix4(relM);    // wheel center in hull space -> which track
+        const scaleM = Math.cbrt(Math.abs(relM.determinant()));
+        const rM = r * (Number.isFinite(scaleM) ? scaleM : 1);
+        // Hull-local +Y expressed in this node's parent frame; suspension
+        // translation is composed there after the pivot spin.
+        const parentRel = new THREE.Matrix4().multiplyMatrices(inv, o.parent.matrixWorld);
+        const invParentRel = parentRel.clone().invert();
+        upOrigin.set(0, 0, 0).applyMatrix4(invParentRel);
+        upParent.set(0, 1, 0).applyMatrix4(invParentRel).sub(upOrigin);
         o.updateMatrix();
         o.matrixAutoUpdate = false; // this layer owns the node's local matrix
         found.push({
@@ -4019,7 +4037,10 @@ export function createTank(specId, engineCtx, opts = {}) {
           m0: o.matrix.clone(),
           axis: axGeom.clone(),
           c: cGeom,
-          r,
+          r: rM,
+          h: ctr.clone(),
+          up: upParent.clone(),
+          off: 0,
           side: ctr.x < 0 ? -1 : 1,
           sign: Math.sign(axHull.x) || 1,
         });
@@ -4030,6 +4051,7 @@ export function createTank(specId, engineCtx, opts = {}) {
 
   // ---- animation-layer state (visual only, self-timed at SIM_STEP) ---------
   let groundSampler = null;          // (x, z) => terrain height, set by integration
+  let gearAccumDt = 0;               // elapsed time across distance-cadence skips
   let sway = 0;                      // turn-lean roll (rad), smoothed
   let gearPhase = (_gearStaggerSeq++) % 3; // perf-r2: distant-gear cadence stagger
   let flinchP = 0, flinchR = 0;      // hit-reaction damped oscillator
@@ -4305,23 +4327,56 @@ export function createTank(specId, engineCtx, opts = {}) {
       // skipped frame delays the sub-pixel motion by <= 33 ms with no drift.
       // Callers that omit viewDistM (studio, killcam, staged one-shot poses,
       // probes) always take the full-rate path.
+      gearAccumDt += Math.max(0, dt || 0);
       const gearNow = viewDistM === undefined || viewDistM <= GEAR_FULL_RATE_M
         || ((gearPhase = (gearPhase + 1) % 3) === 0);
+      const gearStepDt = gearAccumDt;
       // per-wheel suspension conformance before the gear placement pass
       if (P.gear && groundSampler && !destroyed && gearNow) {
         // gameplay_feel r5: conform at the EXACT rendered attitude (see the
         // conform() jsdoc) — root.rotation was just set from these terms.
         P.gear.conform(state, groundSampler,
           state.visualPitch + suspP - flinchP,
-          state.visualRoll + suspR + sway + flinchR);
+          state.visualRoll + suspR + sway + flinchR, gearStepDt);
       }
-      if (P.gear && gearNow) P.gear.update(state.trackScroll.l, state.trackScroll.r);
+      if (P.gear && gearNow) {
+        P.gear.update(state.trackScroll.l, state.trackScroll.r);
+      }
       // GLB gear spin (see scanGlbSpinners): ground-speed-correct wheel
       // rotation for swapped visuals; wrecks freeze with everything else.
       if (!destroyed && hullG.userData.__glbSwapped) {
         if (glbSpinners === null) {
           glbSpinners = scanGlbSpinners();
           hullG.userData.__glbSpinnerCount = glbSpinners.length; // probe/debug
+        }
+        if (groundSampler && gearNow && glbSpinners.length) {
+          const pEff = state.visualPitch + suspP - flinchP;
+          const rEff = state.visualRoll + suspR + sway + flinchR;
+          const cb = Math.cos(state.yaw), sb = Math.sin(state.yaw);
+          const ca = Math.cos(-pEff), sa = Math.sin(-pEff);
+          const cr = Math.cos(rEff), sr = Math.sin(rEff);
+          const alpha = 1 - Math.exp(-Math.min(gearStepDt, 0.12) * 28);
+          for (let i = 0; i < glbSpinners.length; i++) {
+            const g = glbSpinners[i];
+            const yb = g.h.y - g.r;
+            const x1 = g.h.x * cr - yb * sr;
+            const y1 = g.h.x * sr + yb * cr;
+            const z2 = y1 * sa + g.h.z * ca;
+            const wx = state.pos.x + x1 * cb + z2 * sb;
+            const wy = state.pos.y + y1 * ca - g.h.z * sa;
+            const wz = state.pos.z - x1 * sb + z2 * cb;
+            let gh = groundSampler(wx, wz);
+            // A wheel is a disc: sample fore/aft rim support, subtracting the
+            // arc rise at half radius, just like procedural bogies.
+            const rr = g.r * 0.55;
+            let h2 = groundSampler(wx + sb * ca * rr, wz + cb * ca * rr) - g.r * 0.17;
+            if (h2 > gh) gh = h2;
+            h2 = groundSampler(wx - sb * ca * rr, wz - cb * ca * rr) - g.r * 0.17;
+            if (h2 > gh) gh = h2;
+            const dev = gh - wy;
+            const target = Math.max(-0.20, Math.min(0.28, dev));
+            g.off += (target - g.off) * alpha;
+          }
         }
         for (let i = 0; i < glbSpinners.length; i++) {
           const g = glbSpinners[i];
@@ -4332,10 +4387,15 @@ export function createTank(specId, engineCtx, opts = {}) {
           _spinV.copy(g.c).applyMatrix4(_spinM);
           _spinM.setPosition(g.c.x - _spinV.x, g.c.y - _spinV.y, g.c.z - _spinV.z);
           _spinM2.multiplyMatrices(g.m0, _spinM);
+          if (Math.abs(g.off) > 1e-5) {
+            _spinLiftM.makeTranslation(g.up.x * g.off, g.up.y * g.off, g.up.z * g.off);
+            _spinM2.premultiply(_spinLiftM);
+          }
           g.node.matrix.copy(_spinM2);
           g.node.matrixWorldNeedsUpdate = true;
         }
       }
+      if (gearNow) gearAccumDt = 0;
       if (recoilT < REC_BACK + REC_HOLD + REC_RETURN) {
         recoilT += adv; // r5: recuperator rides the fx clock (see lastFxS)
         const t = recoilT;

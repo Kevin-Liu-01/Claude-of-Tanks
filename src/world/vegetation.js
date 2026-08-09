@@ -9,6 +9,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { sampleSplatNoise, applyTone } from './terrain.js';
 import { setToppleAxis, settledToppleAngle } from './topple.js';
+import { setCircleShape } from './collision.js';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
 import { texSize } from '../engine/quality.js';
 
@@ -2408,10 +2409,10 @@ function* vegetationBuildSteps(heightField, engineCtx, seed, cfg) {
       // state.js's collider drives a moving hull THROUGH the tagged record,
       // marks it `crushed` and calls world.crushObstacle → crushTree below
       // for the hinge-topple. treeIdx links the record to its tree instance.
-      treeObstacles.push({
+      treeObstacles.push(setCircleShape({
         min: [x - 0.55, y, z - 0.55], max: [x + 0.55, y + 3.2 * sc, z + 0.55],
         crushable: true, crushed: false, treeIdx: trees.length - 1, kind: 'tree',
-      });
+      }, x, z, 0.55));
       // camo_spotting r3 forest balance: 0.13 stacked any clump to the bush
       // cap — bloom-hot forest campers at 250 m+ never lit up. Canopies
       // soft-conceal (0.08); bushes (0.35) stay the real hides. Pairs with

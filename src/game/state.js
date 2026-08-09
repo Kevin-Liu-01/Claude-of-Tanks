@@ -18,6 +18,7 @@ import {
   startReload, isHeClass, ramDamage,
 } from '../sim/damage.js';
 import { createAI, roleOf } from './ai.js';
+import { pushHullFromObstacle } from '../world/collision.js';
 import { getStoredDifficulty } from './input.js';
 // SPOTTING WIRING: concealment/spotting sim + camo-paint bonus source
 import { createSpottingSystem, CAMO_PAINT_BONUS } from '../sim/spotting.js';
@@ -542,6 +543,7 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
     heightField: world.heightField,
     raycast: world.raycast,
     getObstacles: () => world.getObstacles(),
+    queryObstacles: world.queryObstacles || null,
     // BATTLE-AI r7: vegetation concealment discs — scouts pick spotting legs
     // through real bushes (state.js nudges their waypoints; ai.js may sample
     // them for repositioning). Absent in headless fixtures.
@@ -1002,6 +1004,8 @@ function measureContactGeom(ent) {
   const root = ent.visual && ent.visual.root;
   const spec = ent.spec;
   if (!root || !spec || !spec.dims) return null;
+  const L = spec.dims.hullLengthM;
+  const W = spec.dims.widthM;
   try {
     root.updateMatrixWorld(true);
     const invRoot = new THREE.Matrix4().copy(root.matrixWorld).invert();
@@ -1032,6 +1036,7 @@ function measureContactGeom(ent) {
     // Mirrors tankFactory robustFloorY (MOVEMENT r1).
     const pts = [];
     const ys = [];
+    const trackYs = [];
     const v = new THREE.Vector3();
     for (const { o, pa } of meshes) {
       rel.multiplyMatrices(invRoot, o.matrixWorld);
@@ -1040,16 +1045,25 @@ function measureContactGeom(ent) {
         v.fromBufferAttribute(pa, i).applyMatrix4(rel);
         pts.push(v.x, v.y, v.z);
         ys.push(v.y);
+        // Track contact lives outboard. A dense center keel, mine plough tip,
+        // or low belly plate must not become the load-bearing floor and hold
+        // both visible track runs in the air.
+        if (Math.abs(v.x) >= W * 0.20) trackYs.push(v.y);
       }
     }
     if (!ys.length) return null;
-    ys.sort((a, b) => a - b);
-    let minY = ys[0];
-    if (ys.length >= 12) {
-      for (let i = 0; i + 11 < ys.length; i++) {
-        if (ys[i + 11] - ys[i] <= 0.015) { minY = ys[i]; break; }
+    const denseFloor = (list) => {
+      list.sort((a, b) => a - b);
+      let floor = list[0];
+      if (list.length >= 12) {
+        for (let i = 0; i + 11 < list.length; i++) {
+          if (list[i + 11] - list[i] <= 0.015) { floor = list[i]; break; }
+        }
       }
-    }
+      return floor;
+    };
+    const minY = trackYs.length >= CONTACT_MIN_SAMPLES
+      ? denseFloor(trackYs) : denseFloor(ys);
     // hull-pan floor for the belly guard — lowest root-local bbox bottom over
     // meshes whose bbox SPANS the centerline (vertex sampling cannot see a
     // wide belly plate; mirrors tankFactory measureRestContact). Floored
@@ -1085,6 +1099,7 @@ function measureContactGeom(ent) {
     for (let i = 0; i < pts.length; i += 3) {
       if (pts[i + 1] > band) continue;
       const x = pts[i], z = pts[i + 2];
+      if (trackYs.length >= CONTACT_MIN_SAMPLES && Math.abs(x) < W * 0.20) continue;
       if (z < zMin) zMin = z;
       if (z > zMax) zMax = z;
       if (x < xMin) xMin = x;
@@ -1092,8 +1107,6 @@ function measureContactGeom(ent) {
       n++;
     }
     if (n < CONTACT_MIN_SAMPLES || zMax - zMin < 1 || xMax - xMin < 0.5) return null;
-    const L = spec.dims.hullLengthM;
-    const W = spec.dims.widthM;
     const clamp = (x, lo, hi) => (x < lo ? lo : (x > hi ? hi : x));
     return {
       halfLenM: clamp((zMax - zMin) / 2, CONTACT_LEN_FRAC_MIN * L, CONTACT_LEN_FRAC_MAX * L),
@@ -1152,6 +1165,7 @@ const CRUSH_PRESS_GAP_S = 0.2;   // press bookkeeping resets after this gap
 function makeCollide(game, world) {
   let self = null;
   const obstacles = world.getObstacles();
+  const nearby = [];
   const pendingCrush = [];
   // RAMMING: tank-tank contacts this tick, resolved by simStep after the
   // movement loop (mirror of pendingCrush). Each entry records the CONTACT
@@ -1227,7 +1241,11 @@ function makeCollide(game, world) {
 
     // --- static obstacle AABBs: hull OBB vs box via 2D SAT -----------------
     const broadR = Math.sqrt(halfL * halfL + halfW * halfW) + 0.01;
-    for (const ob of obstacles) {
+    const candidates = world.queryObstacles
+      ? world.queryObstacles(pos.x - broadR, pos.z - broadR,
+        pos.x + broadR, pos.z + broadR, nearby)
+      : obstacles;
+    for (const ob of candidates) {
       if (ob.crushed) continue;                 // felled — ghosts for everyone
       if (pos.y > ob.max[1] + 0.5) continue;
       const ccx = Math.max(ob.min[0], Math.min(pos.x, ob.max[0]));
@@ -1235,30 +1253,12 @@ function makeCollide(game, world) {
       const bdx = pos.x - ccx;
       const bdz = pos.z - ccz;
       if (bdx * bdx + bdz * bdz >= broadR * broadR) continue;
-      // SAT over 4 axes: world X, world Z, hull forward, hull right.
-      const bhx = (ob.max[0] - ob.min[0]) * 0.5;
-      const bhz = (ob.max[2] - ob.min[2]) * 0.5;
-      const dx = pos.x - (ob.min[0] + bhx);     // box center → hull center
-      const dz = pos.z - (ob.min[2] + bhz);
-      let minOv = Infinity, mnx = 0, mnz = 0;
-      let separated = false;
-      for (let a = 0; a < 4; a++) {
-        const nx = a === 0 ? 1 : a === 1 ? 0 : a === 2 ? fx : rx;
-        const nz = a === 0 ? 0 : a === 1 ? 1 : a === 2 ? fz : rz;
-        const rA = halfL * Math.abs(fx * nx + fz * nz) +
-                   halfW * Math.abs(rx * nx + rz * nz);
-        const rB = bhx * Math.abs(nx) + bhz * Math.abs(nz);
-        const dist = dx * nx + dz * nz;
-        const ov = rA + rB - Math.abs(dist);
-        if (ov <= 0) { separated = true; break; }
-        if (ov < minOv) {
-          minOv = ov;
-          const sign = dist >= 0 ? 1 : -1;
-          mnx = nx * sign;
-          mnz = nz * sign;
-        }
-      }
-      if (separated) continue;
+      // Narrow phase honors a prop's projected shape: rotated structures are
+      // OBBs, trunks/round props are circles, and displaced rocks publish the
+      // convex hull of their rendered mesh. The helper adds the exact MTV to
+      // a scratch vector so a crushable can still choose to ignore it.
+      const beforeX = outPush.x, beforeZ = outPush.z;
+      if (!pushHullFromObstacle(pos, fx, fz, rx, rz, halfL, halfW, ob, outPush)) continue;
       if (ob.crushable && self) {
         // DESTRUCTIBLES r1: per-obstacle overrun threshold — heavy light-cover
         // (stone wall runs) resists a touch harder than a sapling before the
@@ -1289,11 +1289,11 @@ function makeCollide(game, world) {
             if (pendingCrush[qi].ob === ob) { queued = true; break; }
           }
           if (!queued) pendingCrush.push({ ob, ent: self });
+          // A crushed/queued prop carries no blocking push this tick.
+          outPush.x = beforeX; outPush.z = beforeZ;
           continue;
         }
       }
-      outPush.x += mnx * minOv;
-      outPush.z += mnz * minOv;
       pushed = true;
     }
     return pushed;
@@ -1324,7 +1324,9 @@ function emitHitOutcome(game, bus, ev) {
   bus.emit('shell:hit', ev);
   if (ev.modulesHit && ev.modulesHit.length && ev.targetId) {
     for (const m of ev.modulesHit) {
-      bus.emit('module:state', { id: ev.targetId, module: m.module, state: m.newState });
+      bus.emit('module:state', {
+        id: ev.targetId, module: m.module, state: m.newState, source: 'hit',
+      });
     }
   }
   if (ev.fireStarted && ev.targetId) {

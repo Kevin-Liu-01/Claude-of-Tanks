@@ -162,7 +162,7 @@ const SUPPORT_FAN = [
 // = outer-line max deficit − mean yOff=0 deficit (the critique's "spread
 // between max and mean contact deficit"). The yield is capped so the terrain
 // left proud under a wheel line never exceeds what the renderer's per-wheel
-// conform layer absorbs (tankFactory: 1.35× gain, +0.35 m up-travel, track
+// conform layer absorbs (tankFactory: one-to-one ground travel, +0.30 m,
 // band + link pads follow the wheels) — the rendered-vertex burial gate
 // holds by construction. Smooth/planar patches (roughness < FREE: every
 // live-map case, incl. the r5 parked-meadow wheel-rim evidence) keep the
@@ -1113,8 +1113,8 @@ export function updateTank(entity, heightField, dt, collide = null) {
     // renderer's per-wheel conform + articulated track band), and the belly
     // guard stays absolute.
     // r5 TERRAIN-CONTACT HARD GATE (round critique CRITICAL): the yield's
-    // whole premise is that tankFactory's per-wheel conform layer (1.35×
-    // gain, +0.35 m up-travel) absorbs the terrain left proud under the
+    // whole premise is that tankFactory's per-wheel conform layer (one-to-one
+    // ground travel, +0.30 m compression) absorbs terrain left proud under the
     // wheel lines. GLB-swapped visuals (modelLoader.applySwap — every modern
     // MBT incl. the default player M1A2) HIDE the procedural running gear
     // and render rigid GLB wheels with NO conform, so yielded crests cut
