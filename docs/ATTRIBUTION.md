@@ -9,6 +9,12 @@ served locally from `public/`, no CDN or network fetches in game code.
 | ABC Monument Grotesk (Regular/Medium/Bold, woff2 converted from the owner's OTF cut with fontTools, otherwise unmodified). OWNER-DIRECTED CHOICE (fonts r4, 2026-08-04) replacing Inter as the UI face — the owner supplied their own Dinamo cut; ABC Monument Grotesk is a COMMERCIAL typeface and is used here under the owner's own Dinamo license terms, NOT under this repo's asset licenses. It must not be copied out of this repo for reuse. Weight mapping via @font-face ranges: 100-400 Regular, 500-600 Medium, 700-900 Bold (UI usage floor stays 500). | Dinamo Typefaces | https://abcdinamo.com/typefaces/monument-grotesk | Commercial (Dinamo EULA, owner-held) — all rights reserved by Dinamo; not covered by the licenses in this file. | `public/fonts/abc-monument-grotesk/ABCMonumentGrotesk-{Regular,Medium,Bold}.woff2` |
 | Inter variable font v4.1 — RETIRED from the live UI (fonts r4 swap to ABC Monument Grotesk, 2026-08-04; previously the UI face per the r3 owner-directed swap from Archivo, which had replaced the unobtainable Klim "Die Grotesk"). InterVariable.woff2 itself is removed from public/; Inter survives ONLY as the two ~1.5 KB wordmark subsets embedded in the brand lockups (see the brand row below), so the OFL license file stays committed. | Rasmus Andersson (The Inter Project Authors) | https://rsms.me/inter/ (release: https://github.com/rsms/inter/releases/tag/v4.1) | SIL Open Font License 1.1 | license: `public/fonts/inter/OFL.txt` (font file removed; subsets embedded in `public/brand/logo-full.svg` + `logo-full-metal.svg`) |
 
+## Embedded open-source shader code
+
+| Software | Author | Source | License | Files |
+|---|---|---|---|---|
+| FidelityFX Super Resolution 1 spatial upscaler (EASU + RCAS), adapted to Three.js `ShaderMaterial`/`EffectComposer` conventions. | Advanced Micro Devices, Inc. | https://github.com/GPUOpen-Effects/FidelityFX-FSR | MIT | `src/engine/post.js` (copyright and MIT notice retained inline) |
+
 ## Brand / logo set (public/brand/) — added 2026-07-31
 
 The game logo is a hand-authored original flat-vector composition (stylized

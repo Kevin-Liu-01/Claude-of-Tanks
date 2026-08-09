@@ -11,7 +11,7 @@
  * through update(dt), so setFrozen() fully pins the frame for screenshots.
  */
 import * as THREE from 'three';
-import { createParticleSystem, mulberry32, makeFbm } from './particles.js';
+import { createParticleSystem, LATE_FX_LAYER, mulberry32, makeFbm } from './particles.js';
 import { registerFxClock, noteFxClockShift, registerPopTrail } from './clock.js';
 import { createImpactDecals } from './impactDecals.js';
 // world-dressing r1: destructible small-prop seam — fx registers the
@@ -520,6 +520,7 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
   tracerMesh.frustumCulled = false;
   tracerMesh.matrixAutoUpdate = false;
   tracerMesh.renderOrder = 24;
+  tracerMesh.layers.set(LATE_FX_LAYER);
   group.add(tracerMesh);
 
   // Static tracers (screenshot composers) survive per-frame rebuilds:
@@ -633,6 +634,7 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
     const m = new THREE.Mesh(shockGeo, mat);
     m.visible = false;
     m.renderOrder = 20;
+    m.layers.set(LATE_FX_LAYER);
     group.add(m);
     shockRings.push({ mesh: m, mat, bornAt: -1e9 });
   }
@@ -685,10 +687,21 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
     const m = new THREE.Mesh(muzzleRingGeo, mat);
     m.visible = false;
     m.renderOrder = 23;
+    m.layers.set(LATE_FX_LAYER);
     group.add(m);
     muzzleRings.push({ mesh: m, mat, bornAt: -1e9, att: 1, dir: new THREE.Vector3(0, 0, 1), origin: new THREE.Vector3() });
   }
   let muzzleRingCursor = 0;
+  // SceneAAPass discovers this state on the top-level fx group. The copied
+  // scene-depth uniforms come from the particle system; the activity gate
+  // also includes non-particle late FX so a lone tracer/ring is never skipped.
+  group.userData.softParticles = {
+    ...particles.softParticles,
+    isActive: () => particles.softParticles.isActive()
+      || tracerGeo.instanceCount > 0
+      || shockRings.some((r) => r.mesh.visible)
+      || muzzleRings.some((r) => r.mesh.visible),
+  };
   const _Z = new THREE.Vector3(0, 0, 1); // read-only
 
   function applyMuzzleRing(r) {

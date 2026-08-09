@@ -4100,8 +4100,19 @@ function* warmCombatPipelineSteps() {
       // first time on the player's first real muzzle flash. One quarter-
       // viewport frame with the volley alive warms them for real.
       try { fx.update(0.016, game.shells, camera); } catch (_) { /* warm only */ }
-      yield* initializeForwardProgramsSteps();
-      warmRender();
+      // Smoke/fire now lives on the dedicated late-FX layer so it can sample
+      // resolved scene depth. Force that layer visible during the hidden warm
+      // window: compile/bind every particle program and allocate both depth
+      // targets before the first real shot, then restore the gameplay mask.
+      post.prepareSoftParticles();
+      const warmLayerMask = camera.layers.mask;
+      camera.layers.enable(fx.group.userData.softParticles?.layer ?? 30);
+      try {
+        yield* initializeForwardProgramsSteps();
+        warmRender();
+      } finally {
+        camera.layers.mask = warmLayerMask;
+      }
     } catch (err) {
       console.warn('[warm] fx volley failed (continuing):', err);
     }

@@ -3,8 +3,8 @@
  *
  * Chain (extends ARCHITECTURE.md §3.1.4 / graphics-aaa.md §4 with a grade):
  *   SceneAAPass (MSAA render + resolve) → AerialPass (+ specular-AA firefly
- *   clamp) → GTAOPass → UnrealBloomPass → OutputPass → GradePass → SMAAPass →
- *   FXAAPass
+ *   clamp) → GTAOPass → LateFxPass (copied depth) → UnrealBloomPass →
+ *   OutputPass → GradePass → SMAAPass → FSR1 (EASU + RCAS)
  *
  * The scene renders into a quality-aware multisampled HalfFloat HDR target
  * with a DepthTexture, then resolves once into the composer's single-sampled
@@ -28,18 +28,16 @@
  *   - a pre-bloom FIREFLY clamp in the aerial pass (see FIREFLY_* consts):
  *     isolated HDR speculars are capped against their neighborhood so glints
  *     stop strobing and stop pulsing bloom;
- *   - a final SUB-PIXEL AA pass AFTER SMAA (the FXAA-3.11 sub-pixel term,
- *     standalone — see SubpixAAShader): precisely the dust damper SMAA
- *     lacks, without FXAA's edge-walk cost. It samples the composer output
- *     at NATIVE canvas resolution (it is the to-screen pass), so when the
- *     dynamic-res governor downscales the chain the AA still runs on
- *     post-upscale values. HUD/DOM never passes through the composer, so UI
- *     text keeps full sharpness.
+ *   - a final FSR1 EASU + RCAS pass AFTER SMAA: edge-adaptive spatial
+ *     reconstruction replaces bilinear enlargement, then contrast-adaptive
+ *     sharpening restores fine vehicle/terrain detail without sharpening
+ *     flat sky/fog. It lands at native canvas resolution; HUD/DOM never
+ *     passes through the composer, so UI text keeps full sharpness.
  */
 import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
-import { FullScreenQuad } from 'three/examples/jsm/postprocessing/Pass.js';
+import { FullScreenQuad, Pass } from 'three/examples/jsm/postprocessing/Pass.js';
 import { GTAOPass } from 'three/examples/jsm/postprocessing/GTAOPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { SMAAPass } from 'three/examples/jsm/postprocessing/SMAAPass.js';
@@ -47,6 +45,7 @@ import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { CopyShader } from 'three/examples/jsm/shaders/CopyShader.js';
 import { getPreset, onPresetChange, reportSustainedOverload } from './quality.js';
+import { LATE_FX_LAYER } from '../fx/particles.js';
 
 // r5 bloom retune ("muzzle flash is three enormous structureless gaussian
 // bloom blobs"): strength 0.34 → 0.20 and radius 0.4 → 0.28 so bloom is a
@@ -366,92 +365,223 @@ const FIREFLY_MIN = 1.70; // linear luma floor — below this, never touched
 const FIREFLY_TOL = 1.30; // allowed ratio over the brightest diagonal
 const FIREFLY_PAD = 0.06; // absolute headroom so dim neighborhoods don't crush
 
-// aa-r1 FINAL SUB-PIXEL DUST FILTER (the FXAA-3.11 sub-pixel component,
-// standalone). SMAA reconstructs geometric edges but by design ignores
-// isolated pixels — and the motion bursts showed the shimmer the owner
-// flagged is mostly exactly that: 1px leaf/blade dust and sub-pixel bright
-// trims swinging full-contrast between frames. Three's full FXAAShader fixes
-// it but pays the edge-walk loops on every high-contrast pixel — measured
-// 1.08 ms at 1600x900 on the reference chain (budget 0.6). This pass keeps
-// only FXAA's sub-pixel term: 4 edge neighbors + center, luma range test,
-// blend toward the 4-neighbor lowpass by smoothstep²(|lowpass-M|/range) x
-// SUBPIX_STRENGTH. Isolated dust (lowpass far from M) is crushed; clean
-// SMAA'd gradients (M ≈ lowpass) pass through untouched, so stacking after
-// SMAA cannot double-soften long edges. 5 half-float taps, no loops.
-const SUBPIX_STRENGTH = 1.0;  // full FXAA subpix quality — our only dust damper
-const SUBPIX_EDGE_MIN = 0.030; // absolute luma range floor (skip flat areas)
-const SUBPIX_EDGE_REL = 0.100; // relative-to-max range floor
-const SUBPIX_SPAN = 3.0;      // max directional blend reach in px (SMAA owns long edges)
+// FSR 1 spatial upscale (EASU + RCAS), adapted to a Three ShaderMaterial.
+// This replaces the old sequence of browser bilinear enlargement followed by
+// a 9-13 tap sub-pixel blur. EASU reconstructs the governor's reduced frame
+// along local edge direction; RCAS restores contrast without sharpening flat
+// sky/fog or adding halos. At native resolution EASU is skipped and RCAS is a
+// five-tap final pass. The DOM HUD remains outside this chain at native res.
+//
+// MIT License
+// Copyright (c) 2021 Advanced Micro Devices, Inc. All rights reserved.
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to
+// deal in the Software without restriction, including without limitation the
+// rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+// sell copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions: the above
+// copyright notice and this permission notice shall be included in all copies
+// or substantial portions of the Software. THE SOFTWARE IS PROVIDED "AS IS",
+// WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
+// TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+// NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+// LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+// CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+// SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+const FSR_EASU_FRAG = /* glsl */ `
+  precision highp float;
+  uniform sampler2D tDiffuse;
+  uniform vec2 uInputSize;
+  uniform vec2 uOutputSize;
+  varying vec2 vUv;
 
-const SubpixAAShader = {
-  name: 'SubpixAAShader',
-  uniforms: {
-    tDiffuse: { value: null },
-    resolution: { value: new THREE.Vector2(1 / 1024, 1 / 512) }, // 1/native px
-  },
-  vertexShader: /* glsl */ `
-    varying vec2 vUv;
-    void main() {
-      vUv = uv;
-      gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
-    }`,
-  // FXAA 3.11's neighborhood (4 edge + 4 corner taps, range/skip test on the
-  // edge cross) fused with the loop-free console-FXAA directional blend and
-  // FXAA-quality's sub-pixel term: edge pixels average along the estimated
-  // edge direction (span-capped — SMAA owns long edges), then blend toward
-  // the (edges*2+corners)/12 lowpass by smoothstep²(|lowpass-M|/range). A
-  // fully isolated dust pixel blends ~100% into its neighborhood; an
-  // already-antialiased SMAA gradient has M ≈ lowpass and passes unchanged.
-  // 9-13 half-float taps, no loops: ~0.2 ms at 1600x900.
-  fragmentShader: /* glsl */ `
-    uniform sampler2D tDiffuse;
-    uniform vec2 resolution;
-    varying vec2 vUv;
-    float slum( vec3 c ) { return dot( c, vec3( 0.299, 0.587, 0.114 ) ); }
-    void main() {
-      vec4 cM = texture2D( tDiffuse, vUv );
-      vec3 cN = texture2D( tDiffuse, vUv + vec2( 0.0, resolution.y ) ).rgb;
-      vec3 cS = texture2D( tDiffuse, vUv - vec2( 0.0, resolution.y ) ).rgb;
-      vec3 cE = texture2D( tDiffuse, vUv + vec2( resolution.x, 0.0 ) ).rgb;
-      vec3 cW = texture2D( tDiffuse, vUv - vec2( resolution.x, 0.0 ) ).rgb;
-      float lM = slum( cM.rgb ), lN = slum( cN ), lS = slum( cS ), lE = slum( cE ), lW = slum( cW );
-      float lMax = max( lM, max( max( lN, lS ), max( lE, lW ) ) );
-      float lMin = min( lM, min( min( lN, lS ), min( lE, lW ) ) );
-      float range = lMax - lMin;
-      if ( range < max( ${SUBPIX_EDGE_MIN.toFixed(4)}, lMax * ${SUBPIX_EDGE_REL.toFixed(4)} ) ) {
-        gl_FragColor = cM;
-        return;
-      }
-      vec3 cNE = texture2D( tDiffuse, vUv + resolution ).rgb;
-      vec3 cSW = texture2D( tDiffuse, vUv - resolution ).rgb;
-      vec3 cNW = texture2D( tDiffuse, vUv + vec2( -resolution.x, resolution.y ) ).rgb;
-      vec3 cSE = texture2D( tDiffuse, vUv + vec2( resolution.x, -resolution.y ) ).rgb;
-      float lNE = slum( cNE ), lNW = slum( cNW ), lSE = slum( cSE ), lSW = slum( cSW );
-      // console-FXAA directional blend (loop-free): estimate the local edge
-      // direction from the corner lumas and average two taps along it. Span
-      // capped at ${SUBPIX_SPAN.toFixed(1)} px — SMAA already reconstructed the long edges, this
-      // only has to smooth the 1-3 px foliage/trim clusters the bursts
-      // showed reshuffling between frames.
-      vec2 dir = vec2( -( ( lNW + lNE ) - ( lSW + lSE ) ), ( lNW + lSW ) - ( lNE + lSE ) );
-      float dirReduce = max( ( lNW + lNE + lSW + lSE ) * 0.125, 1.0 / 128.0 );
-      float rcpDirMin = 1.0 / ( min( abs( dir.x ), abs( dir.y ) ) + dirReduce );
-      dir = clamp( dir * rcpDirMin, vec2( -${SUBPIX_SPAN.toFixed(1)} ), vec2( ${SUBPIX_SPAN.toFixed(1)} ) ) * resolution;
-      vec3 rgbA = 0.5 * ( texture2D( tDiffuse, vUv + dir * ( 1.0 / 3.0 - 0.5 ) ).rgb
-                        + texture2D( tDiffuse, vUv + dir * ( 2.0 / 3.0 - 0.5 ) ).rgb );
-      vec3 rgbB = rgbA * 0.5 + 0.25 * ( texture2D( tDiffuse, vUv - dir * 0.5 ).rgb
-                                      + texture2D( tDiffuse, vUv + dir * 0.5 ).rgb );
-      float lB = slum( rgbB );
-      vec3 edgeCol = ( lB < lMin || lB > lMax ) ? rgbA : rgbB;
-      // FXAA-quality sub-pixel term on top: blend toward the 3x3 lowpass by
-      // how far this pixel sits from its neighborhood — isolated dust is
-      // crushed, clean gradients (M ≈ lowpass) pass through.
-      vec3 lowpass = ( ( cN + cS + cE + cW ) * 2.0 + cNE + cNW + cSE + cSW ) * ( 1.0 / 12.0 );
-      float sub = clamp( abs( slum( lowpass ) - lM ) / range, 0.0, 1.0 );
-      sub = smoothstep( 0.0, 1.0, sub );
-      sub = sub * sub * ${SUBPIX_STRENGTH.toFixed(3)};
-      gl_FragColor = vec4( mix( edgeCol, lowpass, sub ), cM.a );
-    }`,
-};
+  void fsrCon( out vec4 c0, out vec4 c1, out vec4 c2, out vec4 c3 ) {
+    c0 = vec4( uInputSize / uOutputSize,
+      0.5 * uInputSize / uOutputSize - 0.5 );
+    c1 = vec4( 1.0, 1.0, 1.0, -1.0 ) / uInputSize.xyxy;
+    c2 = vec4( -1.0, 2.0, 1.0, 2.0 ) / uInputSize.xyxy;
+    c3 = vec4( 0.0, 4.0, 0.0, 0.0 ) / uInputSize.xyxy;
+  }
+  void fsrTap( inout vec3 color, inout float weight, vec2 offset,
+    vec2 dir, vec2 len, float lob, float clp, vec3 sampleColor ) {
+    vec2 v = vec2( dot( offset, dir ), dot( offset, vec2( -dir.y, dir.x ) ) ) * len;
+    float d2 = min( dot( v, v ), clp );
+    float wb = 0.4 * d2 - 1.0;
+    float wa = lob * d2 - 1.0;
+    wb *= wb; wa *= wa;
+    wb = 1.5625 * wb - 0.5625;
+    float w = wb * wa;
+    color += sampleColor * w;
+    weight += w;
+  }
+  void fsrSet( inout vec2 dir, inout float len, float w,
+    float la, float lb, float lc, float ld, float le ) {
+    float lenX = max( abs( ld - lc ), abs( lc - lb ) );
+    float dirX = ld - lb;
+    dir.x += dirX * w;
+    lenX = clamp( abs( dirX ) / ( lenX + 1e-5 ), 0.0, 1.0 );
+    len += lenX * lenX * w;
+    float lenY = max( abs( le - lc ), abs( lc - la ) );
+    float dirY = le - la;
+    dir.y += dirY * w;
+    lenY = clamp( abs( dirY ) / ( lenY + 1e-5 ), 0.0, 1.0 );
+    len += lenY * lenY * w;
+  }
+  float fsrLuma( vec3 c ) { return c.g + 0.5 * ( c.r + c.b ); }
+  vec3 fsrEasu( vec2 ip, vec4 c0, vec4 c1, vec4 c2, vec4 c3 ) {
+    vec2 pp = ip * c0.xy + c0.zw;
+    vec2 fp = floor( pp );
+    pp -= fp;
+    vec2 p0 = fp * c1.xy + c1.zw;
+    vec2 p1 = p0 + c2.xy;
+    vec2 p2 = p0 + c2.zw;
+    vec2 p3 = p0 + c3.xy;
+    vec4 off = vec4( -0.5, 0.5, -0.5, 0.5 ) * c1.xxyy;
+    vec3 b = texture2D( tDiffuse, p0 + off.xw ).rgb;
+    vec3 c = texture2D( tDiffuse, p0 + off.yw ).rgb;
+    vec3 i = texture2D( tDiffuse, p1 + off.xw ).rgb;
+    vec3 j = texture2D( tDiffuse, p1 + off.yw ).rgb;
+    vec3 f = texture2D( tDiffuse, p1 + off.yz ).rgb;
+    vec3 e = texture2D( tDiffuse, p1 + off.xz ).rgb;
+    vec3 k = texture2D( tDiffuse, p2 + off.xw ).rgb;
+    vec3 l = texture2D( tDiffuse, p2 + off.yw ).rgb;
+    vec3 h = texture2D( tDiffuse, p2 + off.yz ).rgb;
+    vec3 g = texture2D( tDiffuse, p2 + off.xz ).rgb;
+    vec3 o = texture2D( tDiffuse, p3 + off.yz ).rgb;
+    vec3 n = texture2D( tDiffuse, p3 + off.xz ).rgb;
+    float bl=fsrLuma(b), cl=fsrLuma(c), il=fsrLuma(i), jl=fsrLuma(j);
+    float fl=fsrLuma(f), el=fsrLuma(e), kl=fsrLuma(k), ll=fsrLuma(l);
+    float hl=fsrLuma(h), gl=fsrLuma(g), ol=fsrLuma(o), nl=fsrLuma(n);
+    vec2 dir = vec2( 0.0 ); float len = 0.0;
+    fsrSet( dir, len, (1.0-pp.x)*(1.0-pp.y), bl, el, fl, gl, jl );
+    fsrSet( dir, len, pp.x*(1.0-pp.y), cl, fl, gl, hl, kl );
+    fsrSet( dir, len, (1.0-pp.x)*pp.y, fl, il, jl, kl, nl );
+    fsrSet( dir, len, pp.x*pp.y, gl, jl, kl, ll, ol );
+    float dirR = dot( dir, dir );
+    bool zeroDir = dirR < 1.0 / 32768.0;
+    dir = zeroDir ? vec2( 1.0, 0.0 ) : dir * inversesqrt( dirR );
+    len = 0.25 * len * len;
+    float stretch = 1.0 / max( abs( dir.x ), abs( dir.y ) );
+    vec2 len2 = vec2( 1.0 + (stretch-1.0)*len, 1.0 - 0.5*len );
+    float lob = 0.5 - 0.29 * len;
+    float clp = 1.0 / lob;
+    vec3 color = vec3( 0.0 ); float weight = 0.0;
+    fsrTap(color,weight,vec2( 0,-1)-pp,dir,len2,lob,clp,b);
+    fsrTap(color,weight,vec2( 1,-1)-pp,dir,len2,lob,clp,c);
+    fsrTap(color,weight,vec2(-1, 1)-pp,dir,len2,lob,clp,i);
+    fsrTap(color,weight,vec2( 0, 1)-pp,dir,len2,lob,clp,j);
+    fsrTap(color,weight,vec2( 0, 0)-pp,dir,len2,lob,clp,f);
+    fsrTap(color,weight,vec2(-1, 0)-pp,dir,len2,lob,clp,e);
+    fsrTap(color,weight,vec2( 1, 1)-pp,dir,len2,lob,clp,k);
+    fsrTap(color,weight,vec2( 2, 1)-pp,dir,len2,lob,clp,l);
+    fsrTap(color,weight,vec2( 2, 0)-pp,dir,len2,lob,clp,h);
+    fsrTap(color,weight,vec2( 1, 0)-pp,dir,len2,lob,clp,g);
+    fsrTap(color,weight,vec2( 1, 2)-pp,dir,len2,lob,clp,o);
+    fsrTap(color,weight,vec2( 0, 2)-pp,dir,len2,lob,clp,n);
+    vec3 min4 = min( min( f, g ), min( j, k ) );
+    vec3 max4 = max( max( f, g ), max( j, k ) );
+    return clamp( color / max( weight, 1e-5 ), min4, max4 );
+  }
+  void main() {
+    vec4 c0, c1, c2, c3; fsrCon( c0, c1, c2, c3 );
+    vec2 ip = gl_FragCoord.xy - vec2( 0.5 );
+    gl_FragColor = vec4( fsrEasu( ip, c0, c1, c2, c3 ), 1.0 );
+  }`;
+
+const FSR_RCAS_FRAG = /* glsl */ `
+  precision highp float;
+  uniform sampler2D tDiffuse;
+  uniform vec2 uTexelDelta;
+  uniform float uSharpness;
+  varying vec2 vUv;
+  const vec3 lumCoef = vec3( 0.2126, 0.7152, 0.0722 );
+  void main() {
+    vec3 c = texture2D( tDiffuse, vUv ).rgb;
+    vec3 n = texture2D( tDiffuse, vUv + vec2(0.0,-1.0)*uTexelDelta ).rgb;
+    vec3 w = texture2D( tDiffuse, vUv + vec2(-1.0,0.0)*uTexelDelta ).rgb;
+    vec3 e = texture2D( tDiffuse, vUv + vec2(1.0,0.0)*uTexelDelta ).rgb;
+    vec3 s = texture2D( tDiffuse, vUv + vec2(0.0,1.0)*uTexelDelta ).rgb;
+    vec3 minRgb = min( min( min( n, w ), min( e, s ) ), c );
+    vec3 maxRgb = max( max( max( n, w ), max( e, s ) ), c );
+    vec3 amp = clamp( min( minRgb, 2.0-maxRgb ) / ( maxRgb+1e-4 ), 0.0, 1.0 );
+    amp = inversesqrt( amp + 1e-4 );
+    float weight = -0.2 / max( dot( amp, lumCoef ), 1e-4 );
+    float centerL = dot( c, lumCoef );
+    float crossL = dot( n+w+e+s, lumCoef );
+    float sharpL = clamp( (crossL*weight+centerL) / (4.0*weight+1.0), 0.0, 1.0 );
+    vec3 sharpColor = c - vec3(centerL) + vec3(sharpL);
+    gl_FragColor = vec4( mix( c, sharpColor, uSharpness ), 1.0 );
+  }`;
+
+class FsrUpscalePass extends Pass {
+  constructor() {
+    super();
+    this.needsSwap = false;
+    this.outputSize = new THREE.Vector2(1, 1);
+    this.intermediate = new THREE.WebGLRenderTarget(1, 1, {
+      // EASU runs after OutputPass/grade/SMAA, so the input is display-space
+      // 0..1. RGBA8 halves native-resolution bandwidth/memory vs half-float
+      // with no HDR information left to preserve.
+      type: THREE.UnsignedByteType,
+      depthBuffer: false,
+      stencilBuffer: false,
+    });
+    this.intermediate.texture.name = 'FSR1.EASU';
+    this.easuMaterial = new THREE.ShaderMaterial({
+      name: 'FSR1.EASU', vertexShader: CopyShader.vertexShader,
+      fragmentShader: FSR_EASU_FRAG,
+      uniforms: { tDiffuse: { value: null }, uInputSize: { value: new THREE.Vector2(1, 1) },
+        uOutputSize: { value: this.outputSize } },
+      depthTest: false, depthWrite: false, blending: THREE.NoBlending, toneMapped: false,
+    });
+    this.rcasMaterial = new THREE.ShaderMaterial({
+      name: 'FSR1.RCAS', vertexShader: CopyShader.vertexShader,
+      fragmentShader: FSR_RCAS_FRAG,
+      uniforms: { tDiffuse: { value: null }, uTexelDelta: { value: new THREE.Vector2(1, 1) },
+        uSharpness: { value: 0.12 } },
+      depthTest: false, depthWrite: false, blending: THREE.NoBlending, toneMapped: false,
+    });
+    this.quad = new FullScreenQuad(this.easuMaterial);
+  }
+  setOutputSize(width, height) {
+    const w = Math.max(1, Math.round(width)), h = Math.max(1, Math.round(height));
+    if (this.outputSize.x === w && this.outputSize.y === h) return;
+    this.outputSize.set(w, h);
+    this.intermediate.setSize(w, h);
+  }
+  render(renderer, writeBuffer, readBuffer) {
+    const inW = readBuffer.width, inH = readBuffer.height;
+    const outW = this.outputSize.x, outH = this.outputSize.y;
+    const upscale = inW !== outW || inH !== outH;
+    let source = readBuffer.texture;
+    let sourceW = inW, sourceH = inH;
+    if (upscale) {
+      this.easuMaterial.uniforms.tDiffuse.value = source;
+      this.easuMaterial.uniforms.uInputSize.value.set(inW, inH);
+      this.quad.material = this.easuMaterial;
+      renderer.setRenderTarget(this.intermediate);
+      this.quad.render(renderer);
+      source = this.intermediate.texture;
+      sourceW = outW; sourceH = outH;
+    }
+    this.rcasMaterial.uniforms.tDiffuse.value = source;
+    this.rcasMaterial.uniforms.uTexelDelta.value.set(1 / sourceW, 1 / sourceH);
+    // EASU's reconstructed frame benefits from a little more recovery than a
+    // native frame; keep native RCAS deliberately restrained to avoid crunchy
+    // grass/tree halos on already-sharp 1× displays.
+    this.rcasMaterial.uniforms.uSharpness.value = upscale ? 0.28 : 0.12;
+    this.quad.material = this.rcasMaterial;
+    renderer.setRenderTarget(this.renderToScreen ? null : writeBuffer);
+    if (this.clear) renderer.clear(renderer.autoClearColor, renderer.autoClearDepth, renderer.autoClearStencil);
+    this.quad.render(renderer);
+  }
+  dispose() {
+    this.intermediate.dispose();
+    this.easuMaterial.dispose();
+    this.rcasMaterial.dispose();
+    this.quad.dispose();
+  }
+}
 
 const AerialShader = {
   name: 'AerialPerspectiveShader',
@@ -1102,17 +1232,116 @@ class SceneAAPass extends RenderPass {
 
   render(renderer, writeBuffer, readBuffer) {
     const oldAutoClear = renderer.autoClear;
+    const oldLayerMask = this.camera.layers.mask;
     renderer.autoClear = false;
+    try {
+      // Layer 30 is transparent combat media and must wait until the opaque
+      // scene depth is resolved. It is deliberately absent from this pass.
+      this.camera.layers.disable(LATE_FX_LAYER);
+      renderer.setRenderTarget(this.sceneTarget);
+      renderer.clear(renderer.autoClearColor, renderer.autoClearDepth, renderer.autoClearStencil);
+      renderer.render(this.scene, this.camera);
 
-    renderer.setRenderTarget(this.sceneTarget);
-    renderer.clear(renderer.autoClearColor, renderer.autoClearDepth, renderer.autoClearStencil);
-    renderer.render(this.scene, this.camera);
+      // One cheap full-screen draw hands the resolved scene to the composer's
+      // single-sampled ping-pong chain.
+      this.copyMaterial.uniforms.tDiffuse.value = this.sceneTarget.texture;
+      renderer.setRenderTarget(this.renderToScreen ? null : readBuffer);
+      this.copyQuad.render(renderer);
+    } finally {
+      this.camera.layers.mask = oldLayerMask;
+      renderer.autoClear = oldAutoClear;
+    }
+  }
+}
 
-    // Switching targets resolves both multisampled color and depth. The copy
-    // is one cheap full-screen draw; all later post passes remain 1x sampled.
-    renderer.setRenderTarget(this.renderToScreen ? null : readBuffer);
-    this.copyQuad.render(renderer);
-    renderer.autoClear = oldAutoClear;
+/**
+ * Composite transparent combat media after distance haze and GTAO. Puffs
+ * already fog themselves at their own camera-space depth; running them before
+ * the depth-driven post passes made the mountain/terrain depth behind a puff
+ * haze the puff a second time, visually stamping the ridge across a foreground
+ * smoke column. This pass avoids that category error and gives the shaders a
+ * resolved scene-depth source for soft intersections.
+ */
+class LateFxPass extends Pass {
+  constructor(scene, camera, sceneTarget, target, softState) {
+    super();
+    this.scene = scene;
+    this.camera = camera;
+    this.sceneTarget = sceneTarget;
+    this.target = target;
+    this.softState = softState;
+    this.needsSwap = false;
+    this.softDepthCopies = 0;
+    this.prepared = false;
+    this.copyMaterial = new THREE.ShaderMaterial({
+      name: 'LateFxPass.Copy',
+      uniforms: THREE.UniformsUtils.clone(CopyShader.uniforms),
+      vertexShader: CopyShader.vertexShader,
+      fragmentShader: CopyShader.fragmentShader,
+      depthTest: false,
+      depthWrite: false,
+      blending: THREE.NoBlending,
+      toneMapped: false,
+    });
+    this.copyQuad = new FullScreenQuad(this.copyMaterial);
+  }
+  setSize(width, height) {
+    this.target.setSize(width, height);
+    if (this.softState) this.softState.uSoftViewport.value.set(width, height);
+    this.prepared = false;
+  }
+  prepare(renderer) {
+    if (this.prepared) return;
+    renderer.initRenderTarget(this.sceneTarget);
+    renderer.initRenderTarget(this.target);
+    if (this.softState) {
+      this.softState.uSceneDepth.value = this.sceneTarget.depthTexture;
+      this.softState.uSoftViewport.value.set(this.target.width, this.target.height);
+      this.softState.uCameraNear.value = this.camera.near;
+      this.softState.uCameraFar.value = this.camera.far;
+    }
+    this.prepared = true;
+  }
+  render(renderer, writeBuffer, readBuffer) {
+    const active = !!(this.softState && this.softState.isActive());
+    this.needsSwap = active;
+    if (!active) return;
+    this.prepare(renderer);
+    const oldAutoClear = renderer.autoClear;
+    const oldLayerMask = this.camera.layers.mask;
+    renderer.autoClear = false;
+    try {
+      // Copy the already-hazed/AO-grounded opaque world, then attach a copy of
+      // its resolved depth. The shader samples sceneTarget.depthTexture while
+      // hardware depth testing uses target.depthTexture: source and attached
+      // destination are distinct, so there is no framebuffer feedback loop.
+      renderer.setRenderTarget(this.target);
+      renderer.clear(true, true, true);
+      this.copyMaterial.uniforms.tDiffuse.value = readBuffer.texture;
+      this.copyQuad.render(renderer);
+      renderer.copyTextureToTexture(this.sceneTarget.depthTexture, this.target.depthTexture);
+      this.softDepthCopies++;
+      this.softState.uSceneDepth.value = this.sceneTarget.depthTexture;
+      this.softState.uCameraNear.value = this.camera.near;
+      this.softState.uCameraFar.value = this.camera.far;
+
+      const oldBackground = this.scene.background;
+      this.scene.background = null;
+      try {
+        this.camera.layers.set(LATE_FX_LAYER);
+        renderer.setRenderTarget(this.target);
+        renderer.render(this.scene, this.camera);
+      } finally {
+        this.scene.background = oldBackground;
+      }
+
+      this.copyMaterial.uniforms.tDiffuse.value = this.target.texture;
+      renderer.setRenderTarget(this.renderToScreen ? null : writeBuffer);
+      this.copyQuad.render(renderer);
+    } finally {
+      this.camera.layers.mask = oldLayerMask;
+      renderer.autoClear = oldAutoClear;
+    }
   }
 }
 
@@ -1156,12 +1385,25 @@ export function createPost(renderer, scene, camera) {
   });
   sceneTarget.texture.name = 'SceneAAPass.color';
   sceneTarget.depthTexture.name = 'SceneAAPass.depth';
+  // Single-sample composite used only while transparent combat FX is alive.
+  // It receives the resolved world color and a depth copy; late cards render
+  // into it with normal hardware depth testing while sampling the SOURCE
+  // scene depth for their soft contact fade.
+  const lateTarget = new THREE.WebGLRenderTarget(size.x, size.y, {
+    type: THREE.HalfFloatType,
+    depthTexture: new THREE.DepthTexture(size.x, size.y),
+    stencilBuffer: false,
+  });
+  lateTarget.texture.name = 'SceneAAPass.lateColor';
+  lateTarget.depthTexture.name = 'SceneAAPass.lateDepth';
   const composer = new EffectComposer(renderer, target);
   const sceneDepth = sceneTarget.depthTexture;
+  const softState = scene.getObjectByName('fx')?.userData?.softParticles || null;
   const sceneAA = new SceneAAPass(scene, camera, sceneTarget);
+  const lateFx = new LateFxPass(scene, camera, sceneTarget, lateTarget, softState);
   const publishAAState = () => {
     renderer.domElement.dataset.sceneMsaaSamples = String(msaaSamples);
-    renderer.domElement.dataset.postAa = 'smaa-high+fxaa'; // aa-r1: sub-pixel stage added
+    renderer.domElement.dataset.postAa = 'smaa-high+fsr1';
   };
   publishAAState();
   composer.addPass(sceneAA); // 1. multisampled scene + single resolve/copy
@@ -1397,6 +1639,10 @@ export function createPost(renderer, scene, camera) {
   // backdrop AO (the reason horizon-ring was excluded) is fenced by the scene
   // clip box below instead.
   composer.addPass(gtao);
+  // Transparent combat media must follow every opaque-depth-driven pass.
+  // Otherwise aerial/GTAO use the mountain or hull BEHIND smoke and stamp
+  // that background depth across the foreground card (the reported glitch).
+  composer.addPass(lateFx);
 
   const bloom = new UnrealBloomPass(size.clone(), BLOOM_STRENGTH, BLOOM_RADIUS, BLOOM_THRESHOLD);
   {
@@ -1447,33 +1693,23 @@ export function createPost(renderer, scene, camera) {
   }
   composer.addPass(smaa); // 6. edge-pattern AA (geometric silhouettes)
 
-  // 7. aa-r1 FINAL sub-pixel AA (see SubpixAAShader block). Runs AFTER SMAA
-  // on purpose: SMAA reconstructs the long geometric edges crisply and
-  // deliberately skips isolated pixels, so by the time this runs, clean
-  // edges blend toward a lowpass they already equal (no double softening)
-  // while the surviving 1px foliage/trim dust is exactly what the sub-pixel
-  // term low-passes. This is the loudest single lever on the owner's
-  // "vegetation is anti-aliasing a lot" motion shimmer: the dust can no
-  // longer swing full-contrast between frames. It is the to-screen pass, so
-  // it rasterizes at NATIVE canvas resolution sampling the (possibly
-  // governor-downscaled) composer output — AA after the upscale, never
-  // before. HUD/DOM composites above the canvas and never enters the
-  // composer. On every preset: 'low' has no scene MSAA and needs it most.
-  // Perf: paired on/off medians at 1600x900 — see the aa-r1 report. Nothing
-  // may sharpen after this pass.
-  const fxaa = new ShaderPass(SubpixAAShader);
-  composer.addPass(fxaa);
+  // 7. Native-output FSR1 spatial reconstruction. SMAA first resolves the
+  // geometric pattern at internal resolution; EASU then follows those edges
+  // while enlarging and RCAS restores local contrast. This avoids both the
+  // browser's bilinear blur and the old post-upscale FXAA-style low-pass.
+  const upscaler = new FsrUpscalePass();
+  composer.addPass(upscaler);
 
   // --- Quality-aware sizing --------------------------------------------------
   // The composer's pixel ratio is the renderer's, CAPPED by the preset
   // (render scale). Every buffer in the chain — scene HDR target, its private
   // DepthTexture, GTAO (further scaled above), bloom, SMAA — follows through
-  // EffectComposer.setSize; the final renderToScreen pass upscales bilinearly
-  // to the native-resolution canvas, so the DOM/canvas HUD keeps full
+  // EffectComposer.setSize; the final renderToScreen pass reconstructs with
+  // FSR1 at the native-resolution canvas, so the DOM/canvas HUD keeps full
   // sharpness and only the 3D frame pays the reduced raster cost.
   let cssW = 0;
   let cssH = 0;
-  const _nativeSize = new THREE.Vector2(); // aa-r1: FXAA resolution scratch
+  const _nativeSize = new THREE.Vector2();
   // --- Dynamic resolution governor (performance_budget r5, REBUILT
   // engine-aa r1) ------------------------------------------------------------
   // EVALUATION.md F10 / critic r5 minor: the preset ladder is static, so
@@ -1646,15 +1882,15 @@ export function createPost(renderer, scene, camera) {
     composer.setSize(w, h);
     renderer.domElement.dataset.renderScale = renderScale.toFixed(3);
     renderer.domElement.dataset.dynScale = dynScale.toFixed(3);
-    // aa-r1: keep the two screen-space AA helpers in step with the buffers.
+    // Keep the screen-space helpers in step with both internal/native sizes.
     // The firefly clamp taps the COMPOSER buffer (the aerial pass' own input);
-    // FXAA is the to-screen pass and steps in NATIVE canvas pixels — the
-    // governor may shrink the chain, the AA always works post-upscale.
+    // FSR is the to-screen pass — the governor may shrink the chain, while
+    // reconstruction always lands on exact native canvas pixels.
     aerial.uniforms.uInvSize.value.set(
       1 / Math.max(1, Math.round(w * renderScale)),
       1 / Math.max(1, Math.round(h * renderScale)));
     const native = renderer.getDrawingBufferSize(_nativeSize);
-    fxaa.uniforms.resolution.value.set(1 / Math.max(1, native.x), 1 / Math.max(1, native.y));
+    upscaler.setOutputSize(native.x, native.y);
   }
   /** Advance the governor one frame; resizes the chain when a step fires. */
   function dynGovern(dt) {
@@ -1929,14 +2165,20 @@ export function createPost(renderer, scene, camera) {
       applySize(w, h);
     },
 
+    /** Allocate the late-FX color/depth targets behind a loading screen. */
+    prepareSoftParticles() {
+      lateFx.prepare(renderer);
+    },
+
     bloom,
     gtao,
-    // aa-r1: probe/measurement hooks — fxaa.enabled and the firefly uniform
-    // give the perf probe clean paired on/off runs on one build.
-    fxaa,
+    // Probe/measurement hooks for paired quality and depth-composite runs.
+    upscaler,
+    sceneAA,
+    lateFx,
     aerial,
 
-    /** Scene-only hardware AA. Display-space SMAA + final FXAA follow it. */
+    /** Scene-only hardware AA. Display-space SMAA + FSR1 follow it. */
     get msaaSamples() { return msaaSamples; },
 
     /** Live dynamic-resolution scale (1 = full preset resolution). Probe/
