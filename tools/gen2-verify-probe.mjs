@@ -117,13 +117,13 @@ for (const [id, chip] of Object.entries(WAVE8)) {
       visible: card.style.display !== 'none',
       icon: !!(img && img.getAttribute('src')),
       nation: card.querySelector('.flag i')?.textContent || null,
-      flagSvg: !!card.querySelector('.flag svg'),
+      flagIcon: !!card.querySelector('.flag img.cot-flag[data-country-code]'),
     };
   }, id);
   if (!cardInfo.present) { fail(`${id}: no carousel card`); continue; }
   if (!cardInfo.visible) fail(`${id}: card hidden under chip '${chip}'`);
   if (!cardInfo.icon) fail(`${id}: card has no icon src`);
-  if (!cardInfo.flagSvg) fail(`${id}: card has no nation flag`);
+  if (!cardInfo.flagIcon) fail(`${id}: card has no official nation flag icon`);
   if (!(await clickSel(`.cot-card[data-spec-id="${id}"]`))) {
     fail(`${id}: card unclickable`);
     continue;

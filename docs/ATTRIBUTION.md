@@ -15,6 +15,12 @@ served locally from `public/`, no CDN or network fetches in game code.
 |---|---|---|---|---|
 | FidelityFX Super Resolution 1 spatial upscaler (EASU + RCAS), adapted to Three.js `ShaderMaterial`/`EffectComposer` conventions. | Advanced Micro Devices, Inc. | https://github.com/GPUOpen-Effects/FidelityFX-FSR | MIT | `src/engine/post.js` (copyright and MIT notice retained inline) |
 
+## Open-source UI assets
+
+| Asset | Author | Source | License | Files |
+|---|---|---|---|---|
+| National and territory flags (selective 4x3 SVG imports; the build includes only roster nations rather than the complete catalog). | Panayiotis Lipiridis and flag-icons contributors | https://flagicons.lipis.dev/ / https://github.com/lipis/flag-icons | MIT | npm package `flag-icons`; mapping/render adapter in `src/ui/{flagCodes,flags}.js` |
+
 ## Brand / logo set (public/brand/) — added 2026-07-31
 
 The game logo is a hand-authored original flat-vector composition (stylized

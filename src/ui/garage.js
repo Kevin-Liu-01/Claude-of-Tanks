@@ -5,7 +5,7 @@
 
 import { FONT_STACK, ensureFonts } from './fonts.js';
 import { FEATURED_SHOTS } from './featuredShots.js';
-import { flagSVG } from './flags.js';
+import { flagIconHTML } from './flags.js';
 import { ensureTankThumbs, drainTankThumbs, getTankThumb, requeueTankThumbs } from './tankThumbs.js';
 // CAMO PICKER SECTION: swatches preview the REAL resolved pattern (scheme +
 // palette from materials.js) instead of hand-approximated CSS gradients.
@@ -45,6 +45,7 @@ const NATION_LABEL = {
   USA: 'USA', Germany: 'GER', USSR: 'USSR', Russia: 'RUS', 'USSR/Russia': 'RUS',
   Sweden: 'SWE', Community: 'COM', UK: 'UK', France: 'FRA', Israel: 'ISR',
   China: 'CHN', 'South Korea': 'KOR', Japan: 'JPN', Italy: 'ITA',
+  Poland: 'POL', Ukraine: 'UKR',
 };
 
 // WoT-style tier numerals per vehicle (mirrors hud.js TIER_BY_ID — r5: the
@@ -252,7 +253,8 @@ const GARAGE_CSS = `
 .cot-garage .stats h3{font-size:15px;font-weight:700;letter-spacing:.02em;color:#eef4f9;}
 .cot-garage .stats .sub{font-size:10px;font-weight:700;letter-spacing:.18em;color:#8a97a3;
   text-transform:uppercase;margin:4px 0 12px;display:flex;align-items:center;gap:7px;}
-.cot-garage .stats .sub svg{display:block;box-shadow:0 1px 3px rgba(0,0,0,.5);}
+.cot-garage .stats .sub .cot-flag{display:block;object-fit:cover;
+  box-shadow:0 1px 3px rgba(0,0,0,.5);}
 .cot-garage .srow{margin-bottom:9px;}
 .cot-garage .srow .lr{display:flex;justify-content:space-between;font-size:11px;
   letter-spacing:.08em;color:#9fb0bf;text-transform:uppercase;margin-bottom:3px;}
@@ -324,7 +326,8 @@ const GARAGE_CSS = `
   background:linear-gradient(180deg,rgba(32,24,12,.92),rgba(14,10,6,.94));}
 .cot-card .flag{display:inline-flex;align-items:center;gap:5px;margin-bottom:5px;
   font-size:8.5px;font-weight:800;letter-spacing:.14em;color:#9fb0bf;}
-.cot-card .flag svg{display:block;box-shadow:0 1px 3px rgba(0,0,0,.55);}
+.cot-card .flag .cot-flag{display:block;object-fit:cover;
+  box-shadow:0 1px 3px rgba(0,0,0,.55);}
 .cot-card .flag i{font-style:normal;}
 .cot-card.sel .flag{color:#d8c39a;}
 .cot-card .era{float:right;font-size:8.5px;font-weight:700;letter-spacing:.12em;
@@ -651,7 +654,7 @@ const GARAGE_CSS = `
   .cot-card{width:94px;padding:4px 5px 3px;}
   .cot-card.sel{transform:translateY(-3px);}
   .cot-card .flag{margin-bottom:1px;font-size:6px;gap:2px;}
-  .cot-card .flag svg{width:15px;height:auto;}.cot-card .era{font-size:6px;padding:1px 0;}
+  .cot-card .flag .cot-flag{width:15px;height:auto;}.cot-card .era{font-size:6px;padding:1px 0;}
   .cot-card .ti{width:76px;height:40px;margin:-3px auto -1px;}
   .cot-card .nm{font-size:7.5px;margin:0 -3px;}.cot-card .nm .tiern{margin-right:2px;}
   .cot-card .cls{font-size:6px;margin-top:0;letter-spacing:.12em;}
@@ -1877,7 +1880,7 @@ export function createGarage(opts) {
       `<span class="era">${s.era === 'ww2' ? 'WWII' : 'MODERN'}</span>` +
       // §5.31b PRINT VIEWER: view-only print cards wear a corner ribbon
       (s.printViewer ? `<span class="prtag">PRINT</span>` : '') +
-      `<span class="flag">${flagSVG(s.nation, s.era, 18, 12)}<i>${NATION_LABEL[s.nation] || s.nation}</i></span>` +
+      `<span class="flag">${flagIconHTML(s.nation, 20)}<i>${NATION_LABEL[s.nation] || s.nation}</i></span>` +
       // §5.31b PRINT VIEWER: no packaged /icons/ set exists for 'print:<id>'
       // pseudo-specs — print cards ride their base id's portrait (today that
       // packaged icon IS the print render; genIcons print-id rows can follow)
@@ -1978,7 +1981,7 @@ export function createGarage(opts) {
           `<span class="plus">+</span><span class="sl">Empty</span></div>`;
     }
     statsEl.innerHTML =
-      `<h3></h3><div class="sub">${flagSVG(spec.nation, spec.era, 20, 13)}<span>${spec.nation} &middot; ${spec.class} &middot; ${spec.era === 'ww2' ? 'WWII' : 'MODERN'}</span></div>` +
+      `<h3></h3><div class="sub">${flagIconHTML(spec.nation, 20)}<span>${spec.nation} &middot; ${spec.class} &middot; ${spec.era === 'ww2' ? 'WWII' : 'MODERN'}</span></div>` +
       statBar('Hit points', `${spec.hp}`, statFrac(grp, 'hp', spec.hp)) +
       statBar('Top speed', `${spec.topSpeedKmh} km/h`, statFrac(grp, 'speed', spec.topSpeedKmh)) +
       statBar('Power / weight', `${hpT.toFixed(1)} hp/t`, statFrac(grp, 'hpt', hpT)) +
