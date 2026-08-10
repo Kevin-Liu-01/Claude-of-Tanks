@@ -2865,3 +2865,29 @@ registry hashes and counts stay unchanged until a new genuinely independent
 §B8 sitting certifies the frozen candidate bytes. The owner-priority sequence
 then continues with the reopened Vladimir hull/turret partition and complete
 T-90SM redesign before the remaining T-90 family.
+
+## 5.96 TYPE 90 SOURCE-VIEW TURRET PARENTING REPAIR (2026-08-10)
+
+The owner's orange/white garage screenshot is the recovered Type 90 print,
+not the playable procedural geometry. The fleet flip removed its runtime GLB
+row but did not preserve a Sources-card `candidateGlb` articulation contract,
+so a source-view instance could present the rear cage, two circular roof
+stations and service boxes as if they were fused to the hull.
+
+The recovered GLB SHA-256 is
+`8ce5a2235d383e6f349026c96356a5931703ece7b04ae49f5f43f7c432e87e3f`.
+Its node inventory is unambiguous: two hull/running-gear meshes and one
+`TurretMesh`; the latter is the sole child of the authored `Turret` node and
+contains the complete welded upper assembly, gun, roof stations, boxes and
+bustle cage. `MODEL_SOURCE.type90` now remains `source: procedural` for
+gameplay while exposing the local-only recovered print as a candidate with
+explicit `turretNode: '^Turret$'`, automatic pivot resolution and the
+required -90-degree source yaw correction.
+
+A fresh Sources-card render at yaw 0/90 confirms that the whole print upper
+assembly moves under `rig_turret`; no cage, circular station, service box or
+gun remains hull-fixed. The procedural path independently keeps its authored
+rear basket and roof equipment under the same turret rig. This is a
+source-view parenting repair, not a Type 90 geometry graduation: the current
+79.5 geometry gate is unchanged and the graduate registry/count do not move.
+`npm test` and `npm run build:private` are green.

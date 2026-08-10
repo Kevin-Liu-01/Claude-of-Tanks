@@ -270,6 +270,23 @@ if (ALLOW_LOCAL_RECOVERED_MODELS) {
       turretNode: '^Turret$', autoPivot: true, yawOffset: -Math.PI / 2,
     });
   }
+  // TYPE 90 SOURCE-VIEW ARTICULATION (owner screenshot 2026-08-10): the
+  // recovered print has only three render meshes. Its complete upper vehicle
+  // — welded shell, the two circular roof stations, bustle cage, boxes and
+  // gun — is the single TurretMesh child of the authored Turret node. Keep
+  // gameplay on the procedural build, but register that print with the same
+  // explicit Turret contract so the Sources card cannot leave the cage/roof
+  // furniture fused to the hull when the turret is slewed.
+  MODEL_SOURCE.type90 = {
+    source: 'procedural',
+    candidateGlb: {
+      path: `${ROOT}type90.glb`,
+      turretNode: '^Turret$',
+      autoPivot: true,
+      yawOffset: -Math.PI / 2,
+      paintUntextured: true,
+    },
+  };
   // batch-13b RULING (no surgery): t72bu's batch-9 split already created a
   // Gun node under Turret, but this registration never DECLARED it — the
   // turret mask swallowed the whole tube subtree (plan_turret read the ref
