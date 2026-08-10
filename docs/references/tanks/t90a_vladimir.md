@@ -1,5 +1,10 @@
 # T-90A Vladimir (`t90a_vladimir`)
 
+> **CURRENT STATUS (§5.94, 2026-08-10): GRADUATED.** The final
+> Leclerc-method record appended below supersedes the old coupled-oracle
+> ceiling, delivered-pending and welded-family experiments retained here as
+> history.
+
 **Exact variant modeled:** T-90A (post-2006 ESSA fit) — cast turret,
 Kontakt-5, Shtora dazzlers, commander's roof cluster and tall antenna/met
 mast; visually distinguished from `t90a` by this GLB's heavier roof
@@ -705,3 +710,25 @@ the honest path (§5.33 90-bar note: oracle does NOT permit >=90 here).
 Evidence: shots/russia-chevtip/after/t90a_vladimir/ +
 after-yaw90/t90a_vladimir/ (rebased turret at rest + yaw; §B5 pair).
 DELIVERED-PENDING-CRITIC; not committed (builder law).
+
+## §5.94 LECLERC-METHOD GRADUATION (2026-08-10)
+
+The recovered source was re-registered and the tank rebuilt from its own
+physical stations. The final form is a low cast T-90A-family turret with a
+compact ESSA hierarchy, buried two-tone Kord shield, K-5/Shtora field,
+cupola/mast collars and unequal service transom. The tall optical cabinet and
+broad blank rear wall are retired; no variant identity is borrowed as a
+palette swap.
+
+Final gate reproduced twice at **90.0** | 90.2/90.0/91.2/92.2/96.2/100;
+gate JSON SHA-256 is
+`65f470e56fb30822e72680e4451c2039423245c50688f4ec5462a3cda2b2bb22`.
+Freeze **c13fec50** reproduces at 39 meshes / 71,113 vertices. Standard is
+band 54/0, shoes 52/0, contiguity 0 and mg1+0d; winding mode 1 is clean. The
+generic mode-2 `rig_hull` candidate is the correct fixed hull/deck assembly,
+visually adjudicated at yaw with no missing face, wound or detached island.
+
+Fresh §B8 passes all fourteen views at floor **9.0**, mean **9.01**;
+yaw/load paths pass **9.3**. The complete sight, Kord, K-5, cupola, mast,
+gun and their bases rotate coherently without empty-air seams. Verdict:
+`docs/critique/shaded-parity-t90a-vladimir-graduation.md`.

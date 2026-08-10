@@ -1,5 +1,9 @@
 # T-90SM (`t90sm`)
 
+> **CURRENT STATUS (§5.94, 2026-08-10): GRADUATED.** The final
+> Leclerc-method record appended below supersedes every older ceiling,
+> record-pending and continuation note retained here as history.
+
 **Exact variant modeled:** T-90MS/SM export (UVZ, 2011+) — welded flat-sided
 turret with Relikt ERA, large squared REMOVABLE BUSTLE with slat rear,
 PNM Sosna-U gunner sight, panoramic commander sight on tall mount, UDP
@@ -699,3 +703,25 @@ the §5.29 re-shape does not demand movement. Byte-held this round
 real T-90MS carries bar-armor arcs on the hull rear + bustle rear —
 adding them moves certified rear rows on a record-pending tank, so the
 equipment order was NOT spent here (§5.29 scope discipline).
+
+## §5.94 LECLERC-METHOD GRADUATION (2026-08-10)
+
+The owner's strongest legacy T-90 reference is now finished rather than
+merely look-protected. Source sections drive its low six-wheel hull, angular
+welded shell, square bustle, Relikt flank grammar and asymmetric sight/RWS
+stations. Rack webs, terminal toes, deck seats and contact knees are physical
+load paths, not mask proxies; every decoration is flush to real structure.
+
+Final gate reproduced twice at **90.0** | 90.2/90.3/90.8/90.0/100/100;
+gate JSON SHA-256 is
+`723648c49e6ef393b4b881bb2bfe7bcff7621d32a705f6c09c9e06000c840ca1`.
+Freeze **56324371** reproduces at 46 meshes / 87,171 vertices. Standard is
+band/shoes 0/0, contiguity 0 and mg1+3d; winding is 0 reversed / 0 mixed with
+only a 15 px (0.03%) FrontSide deficit and zero yaw candidates. The parent
+audit's tow-cable candidate is correctly fixed hull equipment.
+
+Fresh §B8 passes all fourteen views at floor **9.0**, mean **9.04**;
+yaw/load paths pass **9.1**. Sights, MG cradle, smoke banks, ERA, antennas,
+bustle modules and gun rotate as one seated assembly with no air gap or
+unsupported hardware. Verdict:
+`docs/critique/shaded-parity-t90sm-graduation.md`.

@@ -49,7 +49,7 @@ at load.
 - Env for EVERY node run: `export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh"`
 - npm test before every landing (166 equipment checks + track-geometry).
 
-## 3. GRADUATE REGISTRY (37 graduates, hash-frozen)
+## 3. GRADUATE REGISTRY (40 graduates, hash-frozen)
 Freeze = deterministic geometry hash via `node tools/tmp-hashgeo.mjs
 --ids=...` (camoSeed 4242 pinned build; FNV-1a over position buffers +
 world matrices, mesh-order independent). Graduate-change protocol: fix ->
@@ -95,6 +95,9 @@ re-freeze NEW hash, all in ONE commit.
 | amx40 | d2c73d96 | GRADUATED 2026-08-10 (§5.93 Leclerc-method owner-source completion: continuous low welded turret, canted source-height mantlet, seated asymmetric roof/flank kit, layered stern and source-traced hull on game-native six-wheel linked tracks; gate 90.1 x2; fidelity 94.7; standard/track/winding clean; independent §B8 floor 9.0 / mean 9.06 x14, yaw/load paths PASS) |
 | m26_pershing | 2f006738 | RE-RECORDED 2026-08-08: hash moved by LANDED 5f39989 (armorM4 gunBarrel shadow-proxy 3.96->3.44; m26/m45 inherit m4a3e8 proxies — patton.js bytes unchanged); double-confirmed by builder bisect + m45-grad critic; prior 65c564c0 bore+winding re-cert lineage (floors 9.1-9.4) carries |
 | t90m | e345ee8a | GRADUATED 2026-08-06 (27th; floor 9.0 x14 second sitting; the owner's dedicated-agent arc 81.7 -> dual gate) |
+| t90a | 810a6f18 | GRADUATED 2026-08-10 (§5.94 Leclerc-method cast-turret rebuild; gate 90.4 x2; standard/track/winding clean; independent §B8 floor 9.0 / mean 9.11 x14, yaw/load paths 9.2) |
+| t90a_vladimir | c13fec50 | GRADUATED 2026-08-10 (§5.94 source-specific compact ESSA/cast-turret/transom rebuild; gate 90.0 x2; standard/track/winding adjudicated; independent §B8 floor 9.0 / mean 9.01 x14, yaw/load paths 9.3) |
+| t90sm | 56324371 | GRADUATED 2026-08-10 (§5.94 welded T-90SM source completion with every turret fitting physically seated; gate 90.0 x2; standard/track/winding clean; independent §B8 floor 9.0 / mean 9.04 x14, yaw/load paths 9.1) |
 
 *Historical note: the 2026-08-05 INVISIBLE-LOD fix mass re-froze the
 then-24 stable graduates (old->new table in commit 9bf2a6d); every row
@@ -2786,3 +2789,38 @@ and no donor gear. Verdict:
 Fleet is **31/96** and graduates **37**. The owner-priority lane returns to
 the harmonious T-90 family, T-72B3M parenting repair, Leopard 2A7/Revolution
 turret closeout and T-14 proportion round.
+
+## 5.94 T-90 FAMILY FIRST WAVE GRADUATED — 38th–40th (2026-08-10)
+
+The stale dedicated family worktree was reconciled fragment-by-fragment onto
+current `main`; only `profiles/t90.js`, the required opt-in Russia helpers and
+three independent verdicts were recovered. Its unrelated fleet-wide gate
+churn and temporary critic page remain out of the landing. Current-main gate,
+hash and audit batteries reproduce the recovered final bytes exactly.
+
+T-90A finishes as the correct low cast primary mass with radial K-5 and its
+own ESSA/Shtora/cupola/Kord grammar; Vladimir keeps that cast lineage but uses
+its compact recovered sight train, roof asymmetry and unequal service
+transom; T-90SM retains the family's angular welded/bustle/Relikt identity.
+Shared logic is limited to physical fabrication, attachment and measured
+station rules. No tank is reduced to another variant with palette-swapped
+boxes, and every turret-owned decoration has a visible seat and coherent yaw
+load path.
+
+Final gate x2:
+
+- T-90A **90.4** | 90.6/90.5/90.4/90.4/97.8/100; freeze **810a6f18**.
+- Vladimir **90.0** | 90.2/90.0/91.2/92.2/96.2/100; freeze **c13fec50**.
+- T-90SM **90.0** | 90.2/90.3/90.8/90.0/100/100; freeze **56324371**.
+
+All standard checks pass; exact track maxima remain below 60 with no blind
+spot; contiguity is zero; winding mode 1 is clean. Independent §B8 passes all
+42 frozen-byte views: floor/mean T-90A 9.0/9.11, Vladimir 9.0/9.01 and T-90SM
+9.0/9.04; yaw/load paths pass 9.2/9.3/9.1. Verdicts:
+`docs/critique/shaded-parity-t90a-graduation.md`,
+`docs/critique/shaded-parity-t90a-vladimir-graduation.md`, and
+`docs/critique/shaded-parity-t90sm-graduation.md`.
+
+Fleet is **34/96** and graduates **40**. The same uninterrupted owner round
+continues with the raw T-90, T-90A Burlak and T-90MS Tagil before T-72B3M,
+Leopard 2A7/Revolution and T-14.
