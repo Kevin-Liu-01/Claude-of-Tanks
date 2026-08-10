@@ -17,11 +17,11 @@
  * hardware.
  *
  * Contract: ARCHITECTURE.md §3.9.
- *   - distance gain  = clamp(10/dist, 0, 1)^2 (tank-death explosions — the
+ *   - distance gain  = clamp(18/dist, 0, 1)^1.65 (tank-death explosions — the
  *     biggest sound in the game — carry further: clamp(26/dist,0,1)^1.6)
  *   - equal-power stereo pan from listener-relative azimuth (StereoPannerNode)
  *   - max ~24 simultaneous one-shot voices, steal oldest
- *   - bus graph: {combat, engine, ambience, ui, voice} → compressor →
+ *   - bus graph: {combat, cinematic, engine, ambience, ui, voice} → compressor →
  *     soft-clip stage → master (the tanh waveshaper is the COMBAT-SFX r2
  *     volley guard: a 7v7 simultaneous barrage saturates musically instead
  *     of folding into digital clip crackle)
@@ -43,6 +43,7 @@
  * What lives where:
  *   - combat one-shots (gunfire by caliber class, penetration clang, ricochet
  *     zing variants, HE / destruction, track snap, dirt splash)  → sfxBus
+ *   - slowed kill-cam destruction replay                       → cinematicBus
  *   - engine loops (UNTOUCHED diesel/turbine character), turret-traverse whir,
  *     suspension landing thumps                                   → engineBus
  *   - wind/birds battle bed, garage workshop room tone            → ambientBus
@@ -78,6 +79,12 @@ export function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math
 
 const MAX_VOICES = 24;
 const SPEED_OF_SOUND_MPS = 340;
+// SOUND r3: the former (10/d)^2 curve lost 96% of a neighboring tank at
+// 50 m, before channel/master gain. The wider reference and gentler rolloff
+// keep nearby engines, tracks and cannon reports present while distance LPF,
+// propagation delay and the voice cap preserve depth/headroom.
+const WORLD_REF_M = 18;
+const WORLD_ROLLOFF = 1.65;
 const ENGINE_HEAR_IN_M = 120;   // start an engine loop when a tank comes this close
 const ENGINE_HEAR_OUT_M = 140;  // stop it when it drifts beyond this (hysteresis)
 const MAX_ENGINE_VOICES = 8;
@@ -114,7 +121,8 @@ export function createAudio() {
   let master = null;      // final volume gain
   let comp = null;        // safety compressor (24 voices never clip)
   let limiter = null;     // tanh soft-clip stage (COMBAT-SFX r2 volley guard)
-  let sfxBus = null, engineBus = null, ambientBus = null, musicBus = null, voiceBus = null;
+  let sfxBus = null, cinematicBus = null, engineBus = null;
+  let ambientBus = null, musicBus = null, voiceBus = null;
   let whiteBuf = null;    // 2 s seeded white noise, looped everywhere
   let crackleBuf = null;  // sparse impulse train for fire crackle / debris
   let windBuf = null;     // pink-ish noise for wind bed
@@ -127,6 +135,9 @@ export function createAudio() {
   let sfxLoading = false;
   /** Probe trail (tools/sfx-smoke.mjs): {n,t,g,r} per baked sample played. */
   const sfxLog = [];
+  let sfxSeq = 0;
+  /** Replayed kill-cam impacts: auditable time-stretch/pitch trail. */
+  const killcamSfxLog = [];
 
   let masterVolume = 0.8;
   let muted = false;
@@ -179,6 +190,9 @@ export function createAudio() {
       }
     };
     set(sfxBus, 1.0 * chanVol.combat * duckK * pauseK);
+    // Replayed impact audio must remain legible while the live battle bed is
+    // ducked. It still obeys Combat, Master and Pause controls.
+    set(cinematicBus, 1.0 * chanVol.combat * pauseK);
     set(engineBus, 0.75 * chanVol.engine * duckK * pauseK);
     set(ambientBus, 0.55 * chanVol.ambience * duckK);
     set(musicBus, 0.9 * chanVol.ui);
@@ -192,6 +206,7 @@ export function createAudio() {
   let lx = 0, ly = 0, lz = 0;   // position
   let lfx = 0, lfz = 1;         // forward (XZ, normalized-ish)
   let listenerValid = false;
+  let listenerKind = 'camera';
 
   // Game context tracked listener-side (NO new emitter-side hooks needed):
   // player identity comes from update(tanks); phase from 'phase:change'.
@@ -263,6 +278,7 @@ export function createAudio() {
     master.connect(ctx.destination);
 
     sfxBus = ctx.createGain();     sfxBus.gain.value = 1.0;   sfxBus.connect(comp);
+    cinematicBus = ctx.createGain(); cinematicBus.gain.value = 1.0; cinematicBus.connect(comp);
     engineBus = ctx.createGain();  engineBus.gain.value = 0.75; engineBus.connect(comp);
     ambientBus = ctx.createGain(); ambientBus.gain.value = 0.55; ambientBus.connect(comp);
     musicBus = ctx.createGain();   musicBus.gain.value = 0.9;  musicBus.connect(comp);
@@ -384,8 +400,8 @@ export function createAudio() {
     const dx = x - lx, dy = y - ly, dz = z - lz;
     const d = Math.sqrt(dx * dx + dy * dy + dz * dz);
     _sp.dist = d < 0.5 ? 0.5 : d;
-    const g = Math.min(10 / _sp.dist, 1);
-    _sp.gain = g * g;
+    const g = Math.min(WORLD_REF_M / _sp.dist, 1);
+    _sp.gain = Math.pow(g, WORLD_ROLLOFF);
     if (d > 0.001) {
       // rightAxis of listener forward (fx,0,fz) is (fz, 0, -fx) — §1.1 convention.
       const lateral = (dx * lfz - dz * lfx) / d;
@@ -538,7 +554,37 @@ export function createAudio() {
     src.start(when);
     src.stop(when + dur + 0.05);
     v.sources.push(src);
-    sfxLog.push({ n: name, t: when, g: v.baseGain * layerGain, r: rate });
+    sfxLog.push({ seq: ++sfxSeq, n: name, t: when, g: v.baseGain * layerGain, r: rate });
+    if (sfxLog.length > 200) sfxLog.shift();
+    return when + dur;
+  }
+
+  /**
+   * Kill-cam layer retime: the visual impact opens at full speed, eases into
+   * its turret-launch slow-motion, holds, then recovers for the smoke settle.
+   * AudioBufferSource playbackRate changes both duration and pitch, giving the
+   * requested physically stretched cinematic sound instead of an unaffected
+   * sample merely played under a slow picture.
+   */
+  function sampleLayerRetime(v, name, when, layerGain, slowRate, through) {
+    const buf = sfxBufs.get(name);
+    if (!buf) return when;
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const r = Math.max(0.4, Math.min(1, Number(slowRate) || 0.55));
+    src.playbackRate.setValueAtTime(1, when);
+    src.playbackRate.linearRampToValueAtTime(r, when + 0.42);
+    src.playbackRate.setValueAtTime(r, when + 1.48);
+    src.playbackRate.linearRampToValueAtTime(0.92, when + 2.0);
+    const g = ctx.createGain();
+    g.gain.value = layerGain;
+    src.connect(g);
+    g.connect(through || v.in);
+    const dur = buf.duration / r + 0.25;
+    src.start(when);
+    src.stop(when + dur);
+    v.sources.push(src);
+    sfxLog.push({ seq: ++sfxSeq, n: name, t: when, g: v.baseGain * layerGain, r, killcam: true });
     if (sfxLog.length > 200) sfxLog.shift();
     return when + dur;
   }
@@ -673,6 +719,61 @@ export function createAudio() {
       // Turret-pop deep accent under the launch.
       sampleLayer(v, 'expl_turret_pop', when + 0.10 + rng() * 0.08, 0.95, jitterRate(), lp);
     }
+  }
+
+  /** Replayed destruction, routed outside the ducked live battle bed. */
+  function bakedKillcamImpact(x, y, z, cause, slowRate) {
+    const s = spat(x, y, z);
+    const gain = Math.pow(Math.min(1, 30 / s.dist), 1.45);
+    if (gain < 0.002) return;
+    const when = ctx.currentTime + 0.005;
+    const rack = cause === 'ammorack';
+    const r = Math.max(0.4, Math.min(1, Number(slowRate) || 0.55));
+    const v = spawnVoice(when, 7.0, gain * (rack ? 1 : 0.9), s.pan, cinematicBus);
+    const lp = distLowpass(s.dist * 0.65);
+    lp.connect(v.in);
+    // The blast front happens before the visual rate reaches its minimum.
+    sampleLayer(v, rng() < 0.5 ? 'expl_tank_core_a' : 'expl_tank_core_b',
+      when, 1.0, 0.96, lp);
+    // Debris and turret launch ride the visual's 0.55x stretch/pitch drop.
+    sampleLayerRetime(v, 'expl_tank_debris', when + 0.07, rack ? 0.95 : 0.78, r, lp);
+    if (rack) sampleLayerRetime(v, 'expl_turret_pop', when + 0.11, 1.0, r, lp);
+    // A dedicated sub fall reinforces the stretched pressure wave without
+    // replaying game events or affecting scores/destruction state.
+    const sub = osrc(v, 'sine', 48, when, 2.8);
+    sub.frequency.exponentialRampToValueAtTime(22, when + 1.9);
+    wire(v, sub, env(when, 0.008, rack ? 0.85 : 0.68, 2.1), lp);
+    killcamSfxLog.push({ t: when, cause, slowRate: r, baked: true, gain });
+    if (killcamSfxLog.length > 32) killcamSfxLog.shift();
+  }
+
+  /** Synth fallback for a replay that begins before baked assets decode. */
+  function synthKillcamImpact(x, y, z, cause, slowRate) {
+    const s = spat(x, y, z);
+    const gain = Math.pow(Math.min(1, 30 / s.dist), 1.45);
+    if (gain < 0.002) return;
+    const when = ctx.currentTime + 0.005;
+    const rack = cause === 'ammorack';
+    const r = Math.max(0.4, Math.min(1, Number(slowRate) || 0.55));
+    const v = spawnVoice(when, 6.5, gain * (rack ? 1 : 0.9), s.pan, cinematicBus);
+    const lp = distLowpass(s.dist * 0.65);
+    lp.connect(v.in);
+    const sub = osrc(v, 'sine', 48, when, 2.7 / r);
+    sub.frequency.exponentialRampToValueAtTime(20, when + 2.2 / r);
+    wire(v, sub, env(when, 0.008, rack ? 1.0 : 0.78, 2.4 / r), lp);
+    wire(v, nsrc(v, when, 2.2 / r, r), flt('lowpass', 1250, 0.7),
+      env(when, 0.006, 1.0, 1.7 / r), lp);
+    wire(v, nsrc(v, when + 0.08, 2.8 / r, r, crackleBuf),
+      flt('bandpass', rack ? 1150 : 850, 1.1), env(when + 0.08, 0.01, 0.62, 2.1 / r), lp);
+    killcamSfxLog.push({ t: when, cause, slowRate: r, baked: false, gain });
+    if (killcamSfxLog.length > 32) killcamSfxLog.shift();
+  }
+
+  function killcamImpact(e) {
+    if (!e || !e.pos) return;
+    const p = e.pos;
+    if (sfxReady) bakedKillcamImpact(p[0], p[1], p[2], e.cause, e.timeScale);
+    else synthKillcamImpact(p[0], p[1], p[2], e.cause, e.timeScale);
   }
 
   /** Baked ERA tile detonation. */
@@ -2051,6 +2152,7 @@ export function createAudio() {
       duckK = 1;
       applyChannelVolumes(true);
     });
+    bus.on('killcam:impact', (e) => { if (ctx) killcamImpact(e); });
     // PAUSE (Esc overlay over a live battle — main.js tick edge): duck the
     // battle beds to near-silence, restore on resume. pauseK is tracked even
     // before the context exists so a later resume() builds the graph with
@@ -2086,6 +2188,7 @@ export function createAudio() {
     if (!ctx) return;
     // Refresh listener pose (XZ forward, normalized defensively).
     lx = listener.pos.x; ly = listener.pos.y; lz = listener.pos.z;
+    listenerKind = listener.kind || 'camera';
     const fx = listener.forward.x, fz = listener.forward.z;
     const fl = Math.sqrt(fx * fx + fz * fz);
     if (fl > 0.001) { lfx = fx / fl; lfz = fz / fl; }
@@ -2231,6 +2334,9 @@ export function createAudio() {
       get sfxLog() { return sfxLog; },
       get sfxLoaded() { return sfxReady; },
       get sfxCount() { return sfxBufs.size; },
+      get killcamSfxLog() { return killcamSfxLog; },
+      listenerState() { return { x: lx, y: ly, z: lz, fx: lfx, fz: lfz, kind: listenerKind }; },
+      spatialAt(x, y, z) { return { ...spat(x, y, z) }; },
       // force: the probe tests the BUS level, not the radio discipline —
       // cooldowns must never turn a slider check into a false silence.
       sayVoice(id) { return radio.say(id, { force: true }); },
@@ -2289,17 +2395,19 @@ export function createAudio() {
         return {
           master: master.gain.value,
           sfx: sfxBus.gain.value,
+          cinematic: cinematicBus.gain.value,
           engine: engineBus.gain.value,
           ambient: ambientBus.gain.value,
           music: musicBus.gain.value,
           voice: voiceBus.gain.value,
           chanVol: { ...chanVol },
           pauseK, // PAUSE duck factor (tools/pause-probe.mjs)
+          duckK,
           uiVolEvents: _uiVolEvents,
         };
       },
       // Raw node handles — probe-only introspection, never used by the game.
-      get _nodes() { return { master, comp, limiter, sfxBus, engineBus, ambientBus, musicBus, voiceBus }; },
+      get _nodes() { return { master, comp, limiter, sfxBus, cinematicBus, engineBus, ambientBus, musicBus, voiceBus }; },
     };
   }
 

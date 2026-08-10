@@ -248,8 +248,10 @@ try {
       playerId: D.game.player ? D.game.player.id : null,
       enemyId: (D.game.tanks.find((t) => t.team === 'enemy' && t.state) || {}).id || null,
       emit(ev, p) { D.bus.emit(ev, p); },
-      sfxMark() { const A = window.__COT_AUDIO; return A.sfxLog ? A.sfxLog.length : 0; },
-      sfxSince(n) { const A = window.__COT_AUDIO; return A.sfxLog ? A.sfxLog.slice(n) : []; },
+      // The runtime trail is capped. A length cursor becomes stuck at 200
+      // during sustained bot fire, so use the monotonic sample sequence.
+      sfxMark() { const A = window.__COT_AUDIO; return A.sfxLog && A.sfxLog.length ? A.sfxLog.at(-1).seq : 0; },
+      sfxSince(n) { const A = window.__COT_AUDIO; return A.sfxLog ? A.sfxLog.filter((x) => x.seq > n) : []; },
     };
   });
 
@@ -290,8 +292,8 @@ try {
       expect: ['fire_large_sub', 'fire_large_crack', 'fire_large_tail'] },
     { name: 'fire_huge', ev: 'shell:fired', p: fire(152, -12, 10), holdMs: 3400, ab: true,
       expect: ['fire_huge_sub', 'fire_huge_crack', 'fire_huge_tail'] },
-    // ~180 m out: inherently faint under the (10/d)^2 falloff (the old system
-    // measured -75 dBFS rms here) — the real assertions are the sample names
+    // ~180 m out: intentionally faint under the world-distance rolloff — the
+    // real assertions are the sample names
     // + the tail-dominance ratio below, so the silence floor is just "not
     // literally zero".
     { name: 'fire_distant', ev: 'shell:fired', p: fire(122, 127, 127), holdMs: 3600,

@@ -310,14 +310,19 @@ try {
   capReport('combat-oneshots', await tapStopAndFetch());
 
   // ---- capture 2: alarms + crew voices --------------------------------------
+  // Freeze the sim and let earlier combat chatter drain. Without this clean
+  // window, live bot calls can legitimately pre-empt the lower-priority
+  // enemy-spotted/track lines and make the trigger gate nondeterministic.
+  await page.evaluate(() => { window.__DEBUG.game.preBattleS = 999; });
+  await sleep(4000);
   await tapStart();
   await sleep(200);
   await emit('tank:spotted', `{id:window.__P.enemyId, team:'player', timeS:1, spotterId:window.__P.playerId}`);
   await sleep(1400);
   await emit('module:state', `{id:window.__P.playerId, module:'ammoRack', state:'yellow'}`);
-  await sleep(1700);
+  await sleep(3000); // let the priority ammo-rack warning clear the mono radio
   await emit('module:state', `{id:window.__P.playerId, module:'trackL', state:'red'}`);
-  await sleep(1600);
+  await sleep(2400); // hear track-gone before the incoming-hit call can replace it
   await emit('shell:hit', `{kind:'ricochet', pos:window.__P.pos(0,0,2), targetId:window.__P.playerId, attackerId:window.__P.enemyId, damage:0, caliberMm:88, normal:[0,1,0], shellType:'AP', shellName:'p', shellId:9200}`);
   await sleep(1600);
   await emit('shell:hit', `{kind:'pen', pos:window.__P.pos(0,0,2), targetId:window.__P.playerId, attackerId:window.__P.enemyId, damage:150, caliberMm:88, normal:[0,1,0], shellType:'AP', shellName:'p', shellId:9200}`);
@@ -398,6 +403,7 @@ try {
 
   // ---- capture 5: live battle mix -------------------------------------------
   await page.evaluate(() => {
+    window.__DEBUG.game.preBattleS = 0;
     window.__DEBUG.flags.forceFire = true;
     window.__DEBUG.aimAtNearest();
   });

@@ -798,7 +798,9 @@ Audio = {
                        // "Enemy spotted"; player:reload(done) → breech latch +
                        // "Reloaded"; phase:change → battle horn / garage room tone;
                        // battle:ended → victory/defeat/draw fanfare; killcam:begin/done
-                       // → duck combat/engine/ambience ×0.35; ui:click → click;
+                       // → duck live combat/engine/ambience ×0.35; killcam:impact →
+                       // dedicated cinematic blast with slowed debris/turret-pop
+                       // playback matching the replay time scale; ui:click → click;
                        // ui:volumes → live 5-channel mix {master, engine, combat,
                        // ambience, ui, voice, alarmHeartbeat}
   update(dt, listener /* {pos: Vector3, forward: Vector3} */, tanks: TankEntity[]),
@@ -816,11 +818,15 @@ Audio = {
   hitConfirm(kind, damage),              // non-spatial player shot-result blip
 }
 ```
-Bus graph: `{combat, engine, ambience, ui/music, voice} → compressor → master`.
+Bus graph: `{combat, cinematic combat, engine, ambience, ui/music, voice} → compressor → master`.
 Channel gains follow the settings SOUND tab (`cot.settings.v1`, live via
 'ui:volumes'); crew radio + alarms sit on the voice bus. Distance model:
-gain = `clamp(10/dist, 0, 1)`², equal-power stereo pan from listener-relative
-azimuth, air-absorption lowpass + speed-of-sound delay for far events. Max ~24
+gain = `clamp(18/dist, 0, 1)`^1.65, equal-power stereo pan from listener-relative
+azimuth, air-absorption lowpass + speed-of-sound delay for far events. During
+live play distance is measured from the occupied/spectated tank while azimuth
+follows the camera; cinematic/garage distance follows the camera. This hybrid
+listener prevents third-person camera pullback from muting nearby vehicles.
+Max ~24
 simultaneous one-shot voices; steal oldest. Everything is synthesized at
 runtime (oscillators, seeded noise, pre-rendered gun beds) EXCEPT the crew
 radio lines: original macOS-TTS takes processed offline into ~48 KiB of Opus
@@ -829,6 +835,12 @@ Radio discipline lives in `src/audio/voices.js`: one line at a time, priority
 ladder (survival calls interrupt flavor), per-line cooldowns, ±3% rate jitter.
 Debug: `window.__COT_AUDIO` (after resume) exposes the ctx, a master PCM tap
 and the voice log for `tools/audio-probe.mjs`.
+
+Focused verification: `node tools/audio-spatial-killcam-probe.mjs` captures
+the same nearby cannon in arcade/sniper views, then drives a real lethal shell
+through the replay and asserts listener ownership, PCM audibility, ducking,
+headroom, and the 0.55x cinematic debris rate. `node tools/sfx-smoke.mjs`
+retains the full baked-layer and volley/no-clipping gate.
 
 ---
 

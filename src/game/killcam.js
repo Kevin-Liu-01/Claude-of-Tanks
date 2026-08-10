@@ -38,8 +38,8 @@
  *      main.js), the camera pushed out and eased back onto the x-ray
  *      vantage. Ammo-rack kills toss the turret (pop 1.0), plain kills jolt
  *      it (pop 0.22) — same setDestroyed grammar as live play, GLB and
- *      procedural alike. Emits 'killcam:impact' {cause,pos} on the bus as
- *      the audio seam for the replayed blast (additive — no listener yet).
+ *      procedural alike. Emits 'killcam:impact' {cause,pos,timeScale} on the
+ *      bus as the additive audio seam for the replayed cinematic blast.
  *   2. X-RAY  — the victim rendered ghost-translucent (view-dependent fresnel
  *      skin, alpha-over blending that saturates instead of stacking to white,
  *      no depth writes so GTAO never shades a phantom hull), recognizable
@@ -2671,10 +2671,17 @@ export function createKillCam(deps) {
     // AUDIO SEAM (killcam r2): the live blast/turret-pop samples fired at the
     // real kill (tank:destroyed) — re-emitting that event would double-count
     // kills, so the replayed detonation announces itself on a NEW additive
-    // event the sound round can subscribe to (sub-drop on this frame, pop
-    // accent ~0.15 s later matches the launch). No listener today = no-op.
+    // event the sound system subscribes to (sub-drop on this frame, slowed
+    // debris/pop accents through the launch).
     if (busRef) {
-      busRef.emit('killcam:impact', { cause, pos: snap.pose.pos.slice() });
+      busRef.emit('killcam:impact', {
+        cause,
+        pos: snap.pose.pos.slice(),
+        // Audio mirrors the same minimum rate used by impactRate(): the
+        // transient stays crisp, then debris/turret-pop samples stretch and
+        // pitch down through the visual launch window.
+        timeScale: IMPACT_SLOWMO,
+      });
     }
     // detonation flash — synced to the killing hit's replayed arrival
     if (dom) {

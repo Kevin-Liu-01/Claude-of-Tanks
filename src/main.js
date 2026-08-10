@@ -124,6 +124,10 @@ const _v3 = new THREE.Vector3();
 const _rayO = new THREE.Vector3();
 const _rayD = new THREE.Vector3();
 const _fwd = new THREE.Vector3();
+// SOUND r3: hybrid listener anchor. Direction follows the camera, but world
+// distance follows the tank the player inhabits/spectates so pulling the
+// third-person camera back cannot mute the tank and its immediate neighbors.
+const _audioPos = new THREE.Vector3();
 // chase-camera occlusion focus (player hull center, lifted to turret height)
 const _occlFocus = new THREE.Vector3();
 // PERF r3: reusable pose for the per-frame aim armor query (computeAimInfo
@@ -2537,7 +2541,7 @@ const camInput = {
   autoAimPoint: null,
 };
 const _cursorNdc = { x: 0, y: 0 };
-const _listenerPose = { pos: null, forward: _fwd }; // reused — no per-frame literal
+const _listenerPose = { pos: null, forward: _fwd, kind: 'camera' }; // reused — no per-frame literal
 let simAcc = 0;
 let lastMs = -1;
 // PAUSE (owner: "pause mid game if u press escape"): live-battle pause
@@ -3044,7 +3048,28 @@ function tick(nowMs) {
 
   // 8. audio
   camera.getWorldDirection(_fwd);
-  _listenerPose.pos = camera.position;
+  // World audio uses a HYBRID listener, matching vehicle games: azimuth comes
+  // from the camera (so looking around still pans correctly), while distance
+  // comes from the occupied vehicle. The old camera-position distance made a
+  // 24 m arcade chase offset attenuate even the player's own engine/cannon;
+  // entering sniper moved the camera to the trunnion and falsely made the
+  // whole nearby mix spring back. Kill-cam deliberately returns to the
+  // cinematic camera; spectator mode follows its current ally.
+  let audioEnt = null;
+  if (inBattle && !kcActive && !killcam.isActive()) {
+    const spectateId = killcam.spectate.active ? killcam.spectate.targetId : null;
+    audioEnt = spectateId ? game.tankById.get(spectateId) : game.player;
+  }
+  if (audioEnt && audioEnt.state && audioEnt.state.pos) {
+    _audioPos.copy(audioEnt.state.pos);
+    _audioPos.y += (audioEnt.spec && audioEnt.spec.dims
+      ? audioEnt.spec.dims.heightM * 0.68 : 1.6);
+    _listenerPose.pos = _audioPos;
+    _listenerPose.kind = killcam.spectate.active ? 'spectated-tank' : 'player-tank';
+  } else {
+    _listenerPose.pos = camera.position;
+    _listenerPose.kind = kcActive || killcam.isActive() ? 'killcam-camera' : 'camera';
+  }
   audio.update(dtR, _listenerPose, game.tanks);
 
   // 9-10. shadows + post
