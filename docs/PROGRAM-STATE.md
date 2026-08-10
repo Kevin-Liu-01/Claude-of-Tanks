@@ -49,7 +49,7 @@ at load.
 - Env for EVERY node run: `export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh"`
 - npm test before every landing (166 equipment checks + track-geometry).
 
-## 3. GRADUATE REGISTRY (35 graduates, hash-frozen)
+## 3. GRADUATE REGISTRY (37 graduates, hash-frozen)
 Freeze = deterministic geometry hash via `node tools/tmp-hashgeo.mjs
 --ids=...` (camoSeed 4242 pinned build; FNV-1a over position buffers +
 world matrices, mesh-order independent). Graduate-change protocol: fix ->
@@ -91,6 +91,8 @@ re-freeze NEW hash, all in ONE commit.
 | challenger_3 | b0c172a4 | GRADUATED 2026-08-09 (33rd; §5.87 owner attachment closeout RE-FROZEN: Protector roof shoe/fork/receiver/optic supports + smoke backing shoes; gate 90.4 x2 every component >=90; fresh §B8 floor 9.0 / mean 9.06 x14; oracle a5fcd801 reproducible from pristine .bak; prior 2678f6c complete-redesign freeze retired) |
 | challenger2 | 3b4bd5f0 | GRADUATED 2026-08-09; RE-FROZEN 2026-08-10 (§5.89 owner fused-block repair: material-fused casemate course removed from fixed hull and repartitioned into the articulated source tree; one low ring landing + one rotating turret; gate 90.1 x2 every component >=90; standard/parent/winding clean; fresh §B8 floor 9.0 / mean 9.06 x14, yaw/load paths 9.3; oracle f44e3b46 reproducible from pristine .bak; prior 63ee160 retired) |
 | fv510 | 927beeb2 | GRADUATED 2026-08-10; RE-FROZEN 2026-08-10 (§5.91 owner native-track correction: donor Track suppressed and 34 donor running-gear components removed at whole-component boundaries; exact Warrior upper geometry retained around one game-native six-station wheel/sprocket/idler/shoe system; gate 90.3 x2, every component >=90.3; fidelity 98.0; standard/parent/winding clean; independent §B8 floor 9.1 / mean 9.26 x14, yaw/load paths 9.4; prior exact-source freeze 7884762a retired) |
+| type10 | 84f5d108 | GRADUATED 2026-08-10 (§5.92 owner-source exact rebuild: semantic source payload around the game-native source-correct five-wheel running gear; donor track/wheels excluded; gate 94.6 x2; fidelity 97.4; independent §B8 floor 9.2 / mean 9.48 x14, yaw/load paths 9.7; mode-2 engine-deck candidate adjudicated hull-owned) |
+| amx40 | d2c73d96 | GRADUATED 2026-08-10 (§5.93 Leclerc-method owner-source completion: continuous low welded turret, canted source-height mantlet, seated asymmetric roof/flank kit, layered stern and source-traced hull on game-native six-wheel linked tracks; gate 90.1 x2; fidelity 94.7; standard/track/winding clean; independent §B8 floor 9.0 / mean 9.06 x14, yaw/load paths PASS) |
 | m26_pershing | 2f006738 | RE-RECORDED 2026-08-08: hash moved by LANDED 5f39989 (armorM4 gunBarrel shadow-proxy 3.96->3.44; m26/m45 inherit m4a3e8 proxies — patton.js bytes unchanged); double-confirmed by builder bisect + m45-grad critic; prior 65c564c0 bore+winding re-cert lineage (floors 9.1-9.4) carries |
 | t90m | e345ee8a | GRADUATED 2026-08-06 (27th; floor 9.0 x14 second sitting; the owner's dedicated-agent arc 81.7 -> dual gate) |
 
@@ -2745,3 +2747,42 @@ engine-deck adjudication. Verdict:
 
 Fleet is **30/96** and graduates **36**. The owner-priority lane advances
 directly to the AMX-40 completion round.
+
+## 5.93 AMX-40 LECLERC-METHOD COMPLETION GRADUATED — 37th (2026-08-10)
+
+The raw AMX-40 has been rebuilt against the registered measurement-only
+source with the Leclerc exact-geometry/paired-view method. The playable stays
+fully procedural; oracle SHA-256 is
+`570a12b0ced56299061fc0a57c3f86343d2aa45e2fb79d53e049f58da2e9849d`,
+reproducible from pristine `.bak`
+`2a510ae66a2355bc9766f043c7f42ae51164181ac9a6ed40d45c63993789d50e`.
+The local oracle remains ignored and never ships.
+
+The final tank uses one continuous low asymmetric welded turret loft, a
+source-height canted mantlet web with bounded oval tunnel, seated
+cupola/optic/smoke/flank/service hierarchy, full-width layered stern, and
+source-traced belly/bow/skirt courses. `buildRunningGear.loopPoints` is an
+optional additive centerline: AMX-40 uses it to match the source wraps while
+retaining the fleet's animated/damage-aware linked shoes, six wheels and
+terminal gears; every existing caller retains the historical path.
+
+Final gate reproduced twice at **90.1** |
+90.2/90.5/90.1/91.8/93.4/100; gate JSON SHA-256 is
+`bc02bdb21b99b004e847dbd5c153f1633957c6d5aeaa41aeb668a6e4ceb103b9`.
+Direct fidelity is **94.7** overall (H96.4 / T90.9 / G92.1 / R95.9), with
+every measured view >=95.57. Exact track containment is band 26/48 and shoes
+26/16, below the 60-voxel law with no blind spot; contiguity is 0, census is
+mg1+7d, winding is 0 reversed / 0 mixed and yaw-stranded candidates are 0.
+Freeze **d2c73d96** reproduces x2 (58 meshes / 83,226 vertices).
+
+Independent §B8 passes all fourteen frozen-byte views at floor **9.0** and
+mean **9.06**. Fresh yaw 0/90 confirms the complete turret, mantlet/gun,
+cupola, optics, smoke/flank/service kit and bases rotate together with no
+fixed duplicate, unsupported decoration or air seam. The game-native
+six-wheel linked-shoe system passes with coherent contact and terminal wraps
+and no donor gear. Verdict:
+`docs/critique/shaded-parity-amx40-source-graduation.md`.
+
+Fleet is **31/96** and graduates **37**. The owner-priority lane returns to
+the harmonious T-90 family, T-72B3M parenting repair, Leopard 2A7/Revolution
+turret closeout and T-14 proportion round.

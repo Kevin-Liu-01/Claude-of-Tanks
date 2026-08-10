@@ -1,108 +1,105 @@
 {
-  "generatedAt": "2026-08-10T09:21:02.974Z",
+  "generatedAt": "2026-08-10T14:06:15.095Z",
   "summary": {
     "references": 1,
     "passed": 1,
     "failed": 0,
     "passThreshold": 90,
     "perViewFloor": 90,
-    "median": 97.42,
-    "worst": "type10",
-    "best": "type10"
+    "median": 94.66,
+    "worst": "amx40",
+    "best": "amx40"
   },
   "rows": [
     {
-      "id": "type10",
-      "name": "Type 10",
-      "sourcePath": "/models/tanks/community/type-10_main_battle_tank_repaired.glb",
-      "fallback": "type10",
-      "score": 97.42,
+      "id": "amx40",
+      "name": "AMX-40",
+      "sourcePath": "/models/community-candidates/amx-40_armored_warfare.glb",
+      "fallback": "amx40",
+      "score": 94.66,
       "scores": {
-        "overall": 96.83,
-        "hull": 97.39,
-        "turret": 99.9,
-        "gun": 99.67,
-        "tracks": 90.58
+        "overall": 96.21,
+        "hull": 96.38,
+        "turret": 90.87,
+        "gun": 92.07,
+        "tracks": 95.89
       },
       "componentMasksAvailable": true,
-      "minView": 95.02,
+      "minView": 95.57,
       "gatePassed": true,
       "angles": {
         "front": {
-          "score": 97.61,
-          "iou": 96.76
+          "score": 96.23,
+          "iou": 95.06
         },
         "frontLeft": {
-          "score": 95.77,
-          "iou": 94.55
+          "score": 96.39,
+          "iou": 95.28
         },
         "left": {
-          "score": 95.07,
-          "iou": 93.51
+          "score": 95.64,
+          "iou": 93.86
         },
         "rearLeft": {
-          "score": 96.49,
-          "iou": 95.38
+          "score": 95.94,
+          "iou": 94.77
         },
         "rear": {
-          "score": 99.31,
-          "iou": 99.12
+          "score": 96.17,
+          "iou": 94.6
         },
         "rearRight": {
-          "score": 96.34,
-          "iou": 95.17
+          "score": 95.72,
+          "iou": 94.33
         },
         "right": {
-          "score": 95.02,
-          "iou": 93.45
+          "score": 95.57,
+          "iou": 93.85
         },
         "frontRight": {
-          "score": 96.09,
-          "iou": 94.96
+          "score": 96.83,
+          "iou": 95.68
         },
         "top": {
-          "score": 99.76,
-          "iou": 99.81
+          "score": 97.41,
+          "iou": 96.52
         }
       },
       "componentAngles": {
         "hull": {
-          "front": 97.35,
-          "right": 95.42,
-          "left": 95.26,
-          "rear": 99.16,
-          "top": 99.75
+          "front": 96.04,
+          "right": 96.51,
+          "left": 96.4,
+          "rear": 94.91,
+          "top": 98.06
         },
         "turret": {
-          "front": 99.85,
-          "right": 99.88,
-          "left": 99.92,
-          "rear": 99.86,
-          "top": 99.98
+          "front": 92.69,
+          "right": 90.53,
+          "left": 91.2,
+          "rear": 92.09,
+          "top": 87.84
         },
         "exposedUpper": {
-          "front": 99.71,
-          "right": 99.9,
-          "left": 99.91,
-          "rear": 99.8,
-          "top": 100
+          "front": 89,
+          "right": 90.32,
+          "left": 90.64,
+          "rear": 86.64,
+          "top": 72
         }
       },
       "boxes": {
         "reference": [
-          3.24,
-          3.47,
-          9.49
+          3.36,
+          2.81,
+          10.06
         ],
         "procedural": [
-          3.24,
-          3.47,
-          9.49
+          3.36,
+          2.81,
+          10.04
         ]
-      },
-      "errors": [
-        "Failed to load resource: the server responded with a status of 404 (Not Found)"
-      ]
+      }
     }
   ]
 }

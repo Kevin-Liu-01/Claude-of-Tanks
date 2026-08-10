@@ -188,6 +188,42 @@ function polyTurret(plan, h, flare = 1.08, inset = 0.78) {
   return g;
 }
 
+// Continuous faceted loft with per-station bottom/top heights. This is the
+// asymmetric sibling of polyTurret: it keeps one connected cheek/crown mesh
+// while allowing a real shell to rise toward the nose and fall toward the
+// bustle instead of approximating that curve with stacked boxes.
+function polyLoft(plan, bottom, top, inset = 0.78) {
+  const n = plan.length;
+  const cx = plan.reduce((s, p) => s + p[0], 0) / n;
+  const cz = plan.reduce((s, p) => s + p[1], 0) / n;
+  const at = (v, i) => Array.isArray(v) ? v[i] : (typeof v === 'function' ? v(plan[i], i) : v);
+  const b = plan.map(([x, z], i) => [x, at(bottom, i), z]);
+  const t = plan.map(([x, z], i) => {
+    const s = at(inset, i);
+    return [cx + (x - cx) * s, at(top, i), cz + (z - cz) * s];
+  });
+  const P = [];
+  const tri = (a, b2, c) => P.push(...a, ...b2, ...c);
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n;
+    const mx = (b[i][0] + b[j][0]) / 2 - cx, mz = (b[i][2] + b[j][2]) / 2 - cz;
+    const ex = b[j][0] - b[i][0], ez = b[j][2] - b[i][2];
+    if (ex * mz - ez * mx > 0) { tri(b[i], b[j], t[j]); tri(b[i], t[j], t[i]); }
+    else { tri(b[j], b[i], t[i]); tri(b[j], t[i], t[j]); }
+  }
+  const c = [cx, t.reduce((s, p) => s + p[1], 0) / n, cz];
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n;
+    const ny = (t[j][2] - t[i][2]) * (c[0] - t[i][0]) - (t[j][0] - t[i][0]) * (c[2] - t[i][2]);
+    if (ny > 0) tri(t[i], t[j], c); else tri(t[j], t[i], c);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(new Array((P.length / 3) * 2).fill(0), 2));
+  g.computeVertexNormals();
+  return g;
+}
+
 // World-scale box-projected UVs so camo density is uniform across all parts.
 function boxUV(geo, scale = 0.35) {
   const pos = geo.attributes.position, nor = geo.attributes.normal;
@@ -992,7 +1028,13 @@ function buildRunningGear(P, cfg) {
     zF: cfg.contactZF ?? Math.max(...wheelZs) + wheelR * 0.5,
     zR: cfg.contactZR ?? Math.min(...wheelZs) - wheelR * 0.5,
   };
-  const pts = trackLoopPoints({ idler: { ...frontEnd }, sprocket: { ...rearEnd }, botY, topY, sag, supports, contact });
+  // A measured source may require a non-circular approach/departure course
+  // while still using the native band, linked shoes, animation and spinner
+  // system. Optional loopPoints supplies only that (z,y) centerline; every
+  // historical profile remains byte-identical on the default path.
+  const pts = Array.isArray(cfg.loopPoints) && cfg.loopPoints.length >= 4
+    ? cfg.loopPoints.map((p) => [p[0], p[1]])
+    : trackLoopPoints({ idler: { ...frontEnd }, sprocket: { ...rearEnd }, botY, topY, sag, supports, contact });
   // Track-band normals and individual link orientation assume a clockwise
   // loop in (z,y): top rear->front, front wrap down, ground front->rear. Some
   // unusual front-drive/interleaved configs used to arrive reversed, placing
@@ -1982,7 +2024,7 @@ function spareTrackStrip(P, bucket, x, y, z, links, rx = 0, ry = 0) {
 // the core 8 builders use — extension builders must NOT fork these.
 // ---------------------------------------------------------------------------
 export const KIT = {
-  xform, box, cylX, cylY, cylZ, sph, torus, lathe, slab, frustum, polyTurret,
+  xform, box, cylX, cylY, cylZ, sph, torus, lathe, slab, frustum, polyTurret, polyLoft,
   mergeAll, trackBandGeo, trackLoopPoints, trackShoeGeometries, trackHitboxHull,
   buildRunningGear, buildGun,
   cupola, headlight, liftEye, periscope, pintleMG, smokeCluster, towCable,

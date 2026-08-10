@@ -1,5 +1,9 @@
 # AMX-40 (`amx40`) — NEW VEHICLE packet (FRANCE lane, §5.38 owner priority)
 
+> **CURRENT STATUS (§5.93, 2026-08-10): GRADUATED.** The r2
+> owner-source completion record at the end of this packet supersedes the r1
+> pre-normalization ceiling, next-arc list and old `25633150` freeze below.
+
 **Exact vehicle modeled:** AMX-40 export main battle tank prototype
 (GIAT/Atelier de Construction d'Issy-les-Moulineaux, 1983-85, 4 built —
 never adopted; the Satory/Saumur demonstrator fit): tall long hull with a
@@ -41,7 +45,7 @@ note below). Extract receipt: **docs/references/vertex/amx40.json**
 | Hull length | 6.8 m | |
 | Overall length | 10.04 m | gun forward |
 | Width | 3.36 m | over skirts |
-| Height | 2.38 m | TURRET ROOF datum (sight head ~3.08 — see stylization) |
+| Height | 2.62 m | r2 source-body/P95 envelope datum; the older 2.38 m bare-roof interpretation is superseded |
 | Weight | 43.7 t | export prototype |
 | Engine | 1100 hp Poyaud V12X | 70 km/h |
 | Gun | 120mm GIAT CN120-25 | manual loader (crew 4), 20mm F2 coax |
@@ -272,3 +276,83 @@ Post-warp expectation: whole/turret/station rows release toward the
 5. Icons = orchestrator lane (genIcons --tanks amx40).
 6. tools/tmp-amx40-whatsat.{html,mjs} = diagnosis probes, delete or
    keep per round-close convention.
+
+## r2 OWNER-SOURCE COMPLETION (§5.93, 2026-08-10) — SUPERSEDES r1
+
+The owner ordered the raw AMX-40 to be finished from the quarantined model
+with the Leclerc comparison standard. The playable remains fully procedural;
+the reference GLB is measurement-only and stays ignored. The repaired working
+oracle SHA-256 is
+`570a12b0ced56299061fc0a57c3f86343d2aa45e2fb79d53e049f58da2e9849d`;
+the pristine pre-bake `.bak` is
+`2a510ae66a2355bc9766f043c7f42ae51164181ac9a6ed40d45c63993789d50e`.
+The final vertex receipt measures 160,559 vertices / 142,137 triangles,
+body 2.615 m × 6.811 m, hull mask 6.868 m, overall 10.05 m and width 3.36 m
+against the filed 2.62 / 6.80 / 10.04 / 3.36 m envelope.
+
+### Final authored repair
+
+- Hull belly, bow knee, underbite, rear step and full skirt course were
+  re-traced from the source silhouettes. The native six-road-wheel course
+  uses source-measured non-circular front/rear wraps through the shared game
+  track system; donor track and donor wheels are never rendered.
+- The rear belly shoulder now stops at z -2.65 ahead of the sprocket wrap and
+  the undercut narrows to ±0.90. This is a real clearance channel, not an
+  audit exemption: exact band containment is 26/48 voxels and shoe
+  containment is 26/16, all below the 60-voxel law with no blind spot.
+- The low asymmetric welded turret was rebuilt as one continuous shell. The
+  right wing drops toward the source shoulder; the flank modules use
+  asymmetric inward-high/outward-low crowns. Their lid seams follow those
+  crowns instead of crossing above them as detached flat strips.
+- Roof furniture is seated through explicit crown courses, optic bridges,
+  cupola hinge, sight bases, MG pedestal and antenna pots. Smoke banks,
+  cupola, sights, MG and masts remain turret-owned. No decoration depends on
+  world-space placement.
+- The mantlet, LLLTV saddle, 20 mm coax and CN120-25 were re-proportioned from
+  source masks. The gun retains its source-correct no-evacuator thermal
+  sleeves and a modeled bore; the final muzzle fixes the 10.04 m overall
+  datum.
+- `buildRunningGear` gained an optional `loopPoints` centerline. Undefined is
+  the historical byte-identical path for all existing vehicles; AMX-40 alone
+  uses it to retain the common animated band, linked shoes, guide horns,
+  spinner and damage system while matching the source wrap.
+
+### Registration adjudication — FALSE-0 / rejected pose experiment
+
+The source extractor reports an internal raw orientation disagreement:
+`glacisSign -1`, `gunSign +1`, while the registered visual harness and every
+paired camera show the complete source and procedural vehicles facing the
+same direction. Applying an extra yaw/rest-pose correction to that diagnostic
+cratered the gate to a false zero by rotating an already registered oracle.
+That experiment is rejected and not present in final code. Authoritative
+registration remains `yawOffset 0`, `flip false`, auto-pivot true; the source
+file's internal hull/turret interpenetration is likewise oracle evidence, not
+playable geometry.
+
+### Final receipts
+
+- Clean geometry gate SHA-256
+  `bc02bdb21b99b004e847dbd5c153f1633957c6d5aeaa41aeb668a6e4ceb103b9`:
+  **90.1** | hull 90.2 / whole 90.5 / turret 90.1 / stations 91.8 /
+  dimensions 93.4 / floaters 100. A second clean run reproduced the row.
+- Direct fidelity: **94.7** overall; H96.4 / T90.9 / G92.1 / R95.9;
+  required-view floor 95.57. Standard check: gate PASS, exact band clip
+  26/48 and shoe clip 26/16 (all below the 60-voxel law), no shoe blind
+  spot, contiguity 0, decoration census mg1+7d.
+- Winding mode 1 is clean (0 reversed / 0 mixed; 11 px or 0.01% maximum
+  FrontSide deficit). Mode 2 reports zero yaw-stranded candidates. The
+  turret-parent audit's three coarse stranded candidates are the intended
+  hull-owned spare-link/cable/deck-furniture class; the yaw sitting confirms
+  that they remain with the hull while all turret equipment rotates.
+- Deterministic freeze: **`d2c73d96`**, 58 meshes / 83,226 vertices,
+  reproduced byte-for-byte twice.
+- Independent §B8 passes all fourteen frozen-byte views at floor **9.0**,
+  mean **9.06**. Fresh yaw 0/90 confirms one continuously seated turret,
+  gun/mantlet, cupola/optics, smoke/flank/service kit and bases; no fixed
+  duplicate turret mass, unsupported decoration or air seam. The native
+  six-wheel linked-shoe system passes with distinct terminals, continuous
+  contact/wrap courses and no donor gear. Verdict:
+  `docs/critique/shaded-parity-amx40-source-graduation.md`.
+- The former pre-warp ceiling, old source-height interpretation and r1
+  freeze are retained above only as an audit trail; they are not current
+  constraints or queue items.

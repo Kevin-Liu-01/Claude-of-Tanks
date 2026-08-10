@@ -594,7 +594,7 @@ const REG = {
     // tracks, Object_15 mantlet, Object_24 masts (z to 5.12 raw).
     path: 'public/models/community-candidates/amx-40_armored_warfare.glb',
     turretNode: '^Object_12$', gunNode: '^Object_20$', autoPivot: true,
-    pubDims: { hullLengthM: 6.8, overallLengthM: 10.04, widthM: 3.36, heightM: 2.38 },
+    pubDims: { hullLengthM: 6.8, overallLengthM: 10.04, widthM: 3.36, heightM: 2.62 },
   },
   k1a1: {
     // Re-baked from the zip's OBJ source — SEMANTIC nodes. Gun = cannon_10;
@@ -1190,6 +1190,30 @@ for (const id of ids) {
     else parts.turret.push(entry);
   }
 
+  // Named component boxes are the shaded-parity authoring receipt: flat
+  // Object_N donor files otherwise reduce every fitting to one undifferenced
+  // silhouette. Keep the boxes in normalized gate space so a procedural
+  // rebuild can reproduce the source's separate seated masses without ever
+  // importing donor vertices at runtime.
+  const components = parts.whole.map((entry) => {
+    const lo = [Infinity, Infinity, Infinity];
+    const hi = [-Infinity, -Infinity, -Infinity];
+    for (let i = 0; i < entry.pos.length; i += 3) {
+      if (entry.refd && !entry.refd[i / 3]) continue;
+      for (let d = 0; d < 3; d++) {
+        lo[d] = Math.min(lo[d], entry.pos[i + d]);
+        hi[d] = Math.max(hi[d], entry.pos[i + d]);
+      }
+    }
+    return {
+      name: entry.name,
+      lo: lo.map((v) => +v.toFixed(3)),
+      hi: hi.map((v) => +v.toFixed(3)),
+      verts: entry.pos.length / 3,
+      tris: entry.tris.length / 3,
+    };
+  });
+
   // gate-world box
   const box = { lo: [Infinity, Infinity, Infinity], hi: [-Infinity, -Infinity, -Infinity] };
   for (const e of parts.whole) {
@@ -1572,7 +1596,7 @@ for (const id of ids) {
     },
     glbToGate: { axisMap, offsetGate: offset.map((v) => +v.toFixed(4)) },
     pubDims: pub, measured, stylization,
-    orientation, interpen,
+    orientation, interpen, components,
     stations, landmarks, curves,
   };
   fs.writeFileSync(path.join(OUTDIR, `${id}.json`), JSON.stringify(report));
