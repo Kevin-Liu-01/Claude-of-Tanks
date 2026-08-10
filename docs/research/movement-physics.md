@@ -187,7 +187,9 @@ The hull's visual orientation is decoupled from the movement math (which runs on
    pitch-rate kick of ~8–15 °/s (heavier gun → bigger) rotating the hull *away* from the muzzle
    direction (project gun forward vector onto hull axes to split into pitch/roll kick), plus a
    small backward translation impulse (~0.3 m/s decaying in 0.4 s). Turret/gun get a separate
-   barrel slide-back animation (~0.25 m, return in 0.5 s) — visual only.
+   barrel slide-back animation (~0.25 m, return in 0.5 s) — visual only. Rapid (cycle <=1 s)
+   IFV autocannon rounds apply 18% of the ordinary hull, barrel, camera-shake and FOV recoil;
+   slower IFV guns and ATGM rails retain the full impulse.
 5. **Track/idle micro-shake**: optional ±0.15° noise on pitch/roll proportional to speed.
 
 ---

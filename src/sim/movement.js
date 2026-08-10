@@ -327,6 +327,10 @@ const LN6 = Math.log(6);
 // Slower IFV guns and missile rails retain their ordinary after-shot bloom.
 export const IFV_AUTOCANNON_AFTER_SHOT_BLOOM = 1.02;
 const IFV_AUTOCANNON_MAX_CYCLE_S = 1;
+// FEEL: an IFV's 25-35 mm stream should read as one stabilized burst, not as
+// repeated main-gun shocks. Apply this to every physical/presentation recoil
+// layer; slow IFV guns and ATGM rails remain full-strength.
+export const IFV_AUTOCANNON_RECOIL_SCALE = 0.18;
 const RECOIL_VEL_MPS = 0.3;      // backward hull translation impulse on firing
 const RECOIL_DECAY_TAU = 0.13;   // s — translation impulse decays in ~0.4 s
 const RECOIL_KICK_MIN_DEGS = 8;  // spring pitch-rate kick, light gun
@@ -1336,6 +1340,13 @@ export function updateTank(entity, heightField, dt, collide = null) {
   if (state.bloomF < 1) state.bloomF = 1;
 }
 
+/** Shared selector for sim, tank visual and camera presentation recoil. */
+export function shotRecoilScale(spec, shellSpec = null) {
+  const cycleS = (shellSpec && shellSpec.reloadS) || spec.gun.reloadS;
+  return spec.class === 'ifv' && cycleS <= IFV_AUTOCANNON_MAX_CYCLE_S
+    ? IFV_AUTOCANNON_RECOIL_SCALE : 1;
+}
+
 /**
  * Apply firing recoil (movement doc §6.4): a pitch/roll-rate kick to the hull
  * attitude spring that tips the hull away from the muzzle, a small backward
@@ -1353,21 +1364,21 @@ export function fireRecoil(state, spec, shellSpec = null) {
   const heavy = clamp((cal - 75) / 85, 0, 1); // 75 mm → light kick, 160 mm+ → max
   const kick = (RECOIL_KICK_MIN_DEGS + (RECOIL_KICK_MAX_DEGS - RECOIL_KICK_MIN_DEGS) * heavy)
     * DEG2RAD;
+  const recoilScale = shotRecoilScale(spec, shellSpec);
   const spr = state._spring;
   // Split the kick onto hull axes from the gun's hull-relative azimuth:
   // firing forward lifts the nose; firing over the right side rocks the hull
   // left-side-down (= right side UP: positive roll under the renderer's
   // rotation.z = +visualRoll composition — see the roll-sign note up top).
   const ct = Math.cos(state.turretYaw), st = Math.sin(state.turretYaw);
-  spr.pitchV += kick * ct;
-  spr.rollV += kick * st;
+  spr.pitchV += kick * ct * recoilScale;
+  spr.rollV += kick * st * recoilScale;
   // Backward translation impulse along the horizontal gun direction.
   const gunYawWorld = state.yaw + state.turretYaw;
-  const v = RECOIL_VEL_MPS * (0.7 + 0.6 * heavy);
+  const v = RECOIL_VEL_MPS * (0.7 + 0.6 * heavy) * recoilScale;
   spr.recoilVX -= Math.sin(gunYawWorld) * v;
   spr.recoilVZ -= Math.cos(gunYawWorld) * v;
-  const cycleS = (shellSpec && shellSpec.reloadS) || spec.gun.reloadS;
-  const rapidIfvShot = spec.class === 'ifv' && cycleS <= IFV_AUTOCANNON_MAX_CYCLE_S;
+  const rapidIfvShot = recoilScale < 1;
   const afterShotBloom = rapidIfvShot
     ? Math.min(spec.gun.bloom.afterShot, IFV_AUTOCANNON_AFTER_SHOT_BLOOM)
     : spec.gun.bloom.afterShot;

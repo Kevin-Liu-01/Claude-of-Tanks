@@ -830,14 +830,15 @@ export function createCameraRig(camera, deps) {
      * impulse (visual only — aim angles are untouched) that eases back in
      * ~0.25 s. Complements the noise-based trauma shake.
      * @param {number} [x=0.012] - pitch impulse in radians
+     * @param {number} [fovScale=1] - normalized FOV-punch strength
      * @returns {void}
      */
-    recoilKick(x = 0.012) {
+    recoilKick(x = 0.012, fovScale = 1) {
       // 2.4x the caller impulse (r5 motion capture: even the r7 1.5x kick was
       // imperceptible across a 13-frame burst from the 13 m chase orbit — a
       // 120 mm shot must visibly punch the camera) + arm the FOV punch.
       recoil = Math.min(0.055, recoil + x * 2.4);
-      fovKick = 1;
+      fovKick = Math.max(fovKick, Math.max(0, Math.min(1, fovScale)));
     },
 
     /**

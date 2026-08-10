@@ -7,7 +7,7 @@ import * as THREE from 'three';
 import { getSpec, TANK_IDS, ALL_TANK_IDS } from '../vehicles/specs.js';
 import { createTank } from '../vehicles/tankFactory.js';
 import {
-  createTankState, updateTank, fireRecoil, computeDispersionRadM, SIM_DT,
+  createTankState, updateTank, fireRecoil, shotRecoilScale, computeDispersionRadM, SIM_DT,
 } from '../sim/movement.js';
 import {
   createShell, stepShell, applyDispersion, aimElevationRad,
@@ -1426,16 +1426,19 @@ function tryFire(game, ent, bus, rig) {
   game.shells.push(shell);
   // The actual shell matters for IFVs: rapid autocannon belt rounds should
   // barely disturb the stabilized lay, while the same vehicle's ATGM rail
-  // still produces the normal full after-shot bloom.
+  // still produces full bloom and physical/presentation recoil.
+  const recoilScale = shotRecoilScale(ent.spec, shellSpec);
   fireRecoil(ent.state, ent.spec, shellSpec);
-  ent.visual.recoilKick();
+  ent.visual.recoilKick(0, recoilScale);
   if (ent.isPlayer && rig) {
     // Dedicated feel pass: the old fixed impulse made a 30 mm autocannon and
     // a 152 mm siege gun kick the camera identically. Scale both concussion
     // and pitch by bore size while preserving the former 120 mm baseline.
     const caliberK = Math.max(0, Math.min(1, (shellSpec.caliberMm - 30) / 122));
-    rig.addTrauma(0.10 + caliberK * 0.20);
-    if (rig.recoilKick) rig.recoilKick(0.006 + caliberK * 0.011);
+    rig.addTrauma((0.10 + caliberK * 0.20) * recoilScale);
+    if (rig.recoilKick) {
+      rig.recoilKick((0.006 + caliberK * 0.011) * recoilScale, recoilScale);
+    }
   }
   _firedEv.shellId = shell.id;
   _firedEv.shooterId = ent.id;

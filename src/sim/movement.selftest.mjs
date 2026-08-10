@@ -9,7 +9,8 @@
 
 import { Vector3 } from 'three';
 import {
-  createTankState, fireRecoil, IFV_AUTOCANNON_AFTER_SHOT_BLOOM,
+  createTankState, fireRecoil, shotRecoilScale,
+  IFV_AUTOCANNON_AFTER_SHOT_BLOOM, IFV_AUTOCANNON_RECOIL_SCALE,
   updateTank, SIM_DT,
 } from './movement.js';
 
@@ -362,14 +363,28 @@ for (const [wl, amp] of [[8, 1.5], [8, 0.55], [4, 0.5], [2, 0.12]]) {
   near(IFV_AUTOCANNON_AFTER_SHOT_BLOOM, 1.02, 1e-9,
     'IFV autocannon: per-round bloom nudge is two percent');
 
+  const rapidKickState = createTankState(rapidIfv, new Vector3(), 0);
+  fireRecoil(rapidKickState, rapidIfv, beltRound);
+  near(shotRecoilScale(rapidIfv, beltRound), IFV_AUTOCANNON_RECOIL_SCALE, 1e-9,
+    'IFV autocannon: shared recoil scale selected');
+  near(rapidKickState._spring.pitchV, 8 * Math.PI / 180 * IFV_AUTOCANNON_RECOIL_SCALE, 1e-9,
+    'IFV autocannon: hull pitch impulse reduced to 18 percent');
+  near(Math.hypot(rapidKickState._spring.recoilVX, rapidKickState._spring.recoilVZ),
+    0.3 * 0.7 * IFV_AUTOCANNON_RECOIL_SCALE, 1e-9,
+    'IFV autocannon: translation impulse reduced to 18 percent');
+
   ent.state.bloomF = 1;
   fireRecoil(ent.state, rapidIfv, { caliberMm: 152, reloadS: 14 });
   near(ent.state.bloomF, 2.2, 1e-9, 'IFV missile rail keeps full after-shot bloom');
+  near(shotRecoilScale(rapidIfv, { caliberMm: 152, reloadS: 14 }), 1, 1e-9,
+    'IFV missile rail keeps full physical/presentation recoil');
 
   const mbt = { ...rapidIfv, class: 'mbt' };
   const mbtState = createTankState(mbt, new Vector3(), 0);
   fireRecoil(mbtState, mbt, beltRound);
   near(mbtState.bloomF, 2.2, 1e-9, 'rapid non-IFV gun keeps normal after-shot bloom');
+  near(shotRecoilScale(mbt, beltRound), 1, 1e-9,
+    'rapid non-IFV gun keeps full physical/presentation recoil');
 }
 
 // ---------------------------------------------------------------- summary --

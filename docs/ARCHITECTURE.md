@@ -488,7 +488,7 @@ TankVisual = {
   gunMuzzleWorld(out: Vector3) => out,   // world-space muzzle tip
   gunPivotWorld(out: Vector3) => out,
   turretTopWorld(out: Vector3) => out,   // for camera pivot / HP bar anchor
-  recoilKick(),                          // barrel slide-back anim (visual only, self-timed
+  recoilKick(ageS=0, impulseScale=1),    // barrel slide-back anim (visual only, self-timed
                                          //   via dt accumulated in syncFromState)
   stripEra(plateName),                   // remove ERA brick cluster visual (t90m)
   setDestroyed(),                        // burnt: dark material, drooped gun, decapitated
@@ -520,7 +520,8 @@ export function updateTank(entity /* {spec, state, input, combat} */, heightFiel
 // collide: null | (pos: Vector3, radiusM: number, outPush: Vector3) => boolean
 //   (integration provides tank-vs-tank + tank-vs-obstacle circle pushback; movement
 //    adds outPush to pos after integration when it returns true)
-export function fireRecoil(state, spec)      // spring impulse per movement doc §6.4
+export function fireRecoil(state, spec, shellSpec) // spring impulse per movement doc §6.4;
+                                                // rapid IFV cannon recoil = 18%
 export function computeDispersionRadM(spec, state, distM) => number   // r(D) doc §8
 export const SIM_DT = 1/60;
 ```

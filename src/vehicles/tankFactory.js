@@ -4007,6 +4007,8 @@ export function createTank(specId, engineCtx, opts = {}) {
   let destroyed = false;
   let recoilT = 1e9;
   let recoilPending = false;         // hull-rock impulse queued by recoilKick
+  let recoilScale = 1;               // current recuperator stroke strength
+  let recoilPendingScale = 1;        // matching one-shot hull-rock strength
   // effects_combat r5 FX-CLOCK ADVANCEMENT: recoil/pop/wreck timelines no
   // longer trust the caller's dt directly — each syncFromState advances them
   // by the SHARED FX CLOCK's forward motion since the previous call (see
@@ -4306,9 +4308,11 @@ export function createTank(specId, engineCtx, opts = {}) {
           // r5: 3.4 -> 4.4 — the shot must visibly compress the rear
           // suspension ~2-3 deg for ~0.4 s from 13 m side-on (r4 minor:
           // "no perceptible rock/pitch between 17 ms and 300 ms")
-          const mag = 4.4 * Math.min(1.4, ((spec.gun && spec.gun.caliberMm) || 100) / 100);
+          const mag = 4.4 * Math.min(1.4, ((spec.gun && spec.gun.caliberMm) || 100) / 100)
+            * recoilPendingScale;
           visual.hitFlinch(-Math.sin(yawW), -Math.cos(yawW), mag, state.yaw);
         }
+        recoilPendingScale = 1;
       }
       // Hit-flinch: caliber-scaled damped rock layered onto pitch/roll.
       // Sim-mirrored path (terrain-contact guard): route pending impulses
@@ -4489,9 +4493,9 @@ export function createTank(specId, engineCtx, opts = {}) {
           const u = Math.min((t - REC_BACK - REC_HOLD) / REC_RETURN, 1);
           k = Math.pow(1 - u, 1.7);                          // hydraulic return
         }
-        recoilG.position.z = -REC_AMP * k;
+        recoilG.position.z = -REC_AMP * recoilScale * k;
         // cradle rock: the trunnion mount lifts a hair with the impulse
-        if (!destroyed) gunG.rotation.x -= 0.014 * k;
+        if (!destroyed) gunG.rotation.x -= 0.014 * recoilScale * k;
       } else if (recoilG.position.z !== 0) {
         recoilG.position.z = 0;
       }
@@ -4517,8 +4521,15 @@ export function createTank(specId, engineCtx, opts = {}) {
      * composers pass the composed moment's age so a pinned-clock capture
      * still shows the gun out of battery (r5: recoil rides the fx clock, so
      * stepping syncFromState no longer advances it under a pinned clock).
+     * @param {number} [impulseScale=1] per-shot strength (rapid IFV belts use
+     *   the shared 0.18 scale; studio/legacy callers retain full strength)
      */
-    recoilKick(ageS = 0) { recoilT = Math.max(0, ageS); recoilPending = true; },
+    recoilKick(ageS = 0, impulseScale = 1) {
+      recoilT = Math.max(0, ageS);
+      recoilScale = Math.max(0, Math.min(1, impulseScale));
+      recoilPendingScale = recoilScale;
+      recoilPending = true;
+    },
 
     /**
      * Give the visual a terrain sampler for per-wheel suspension conformance.
@@ -4724,6 +4735,8 @@ export function createTank(specId, engineCtx, opts = {}) {
       popScale = 1;
       recoilT = 1e9;
       recoilPending = false;
+      recoilScale = 1;
+      recoilPendingScale = 1;
       recoilG.position.z = 0;
       sway = 0;
       wreckAge = -1;
