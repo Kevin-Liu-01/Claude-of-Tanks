@@ -2,9 +2,12 @@
 """Verify or refresh the FV510 exact-source geometry payload.
 
 The repaired CC-BY oracle is the authoritative input.  This tool applies the
-same width-true, yaw-180 runtime frame used by the fidelity harness, compacts
-the repaired Hull index domain, and rewrites only the four base64 position /
-index literals in profiles/fv510-source-geometry.js.
+same width-true, yaw-180 runtime frame used by the fidelity harness, removes
+the donor running gear at whole spatial-component boundaries, compacts the
+repaired Hull index domain, and rewrites only the four base64 position/index
+literals in profiles/fv510-source-geometry.js.  The Track row is retained as
+reproducible source evidence but is never rendered; FV510 uses the native
+procedural running-gear system.
 
 Usage:
   python3 tools/fv510-source-bake.py --verify
@@ -39,10 +42,79 @@ NODES = {
 }
 EXPECTED = {
     'track': (558, 480),
-    'hull': (29689, 23703),
+    'hull': (24614, 19000),
     'turret': (4565, 3989),
     'gun': (438, 410),
 }
+
+
+def strip_donor_running_gear(points, indices):
+    """Remove source wheels/end-drums without cutting a triangle.
+
+    The repaired Hull has 593 spatially connected authored solids after
+    exact export-seam welding.  Road wheels and end drums occupy a strict
+    low/inboard envelope; Warrior skirts, strakes and guards sit farther
+    outboard or have higher/thinner bounds.  Classifying complete components
+    preserves every retained face and prevents donor/native wheel overlap.
+    """
+    parent = list(range(len(points)))
+
+    def find(a):
+        while parent[a] != a:
+            parent[a] = parent[parent[a]]
+            a = parent[a]
+        return a
+
+    def union(a, b):
+        a, b = find(a), find(b)
+        if a != b:
+            parent[a] = b
+
+    at = {}
+    used = set(indices)
+    for vi in sorted(used):
+        # Six decimals in runtime metres is sub-micron for this payload and
+        # exactly reunites the donor's UV/normal export splits.
+        key = tuple(round(v, 6) for v in points[vi])
+        if key in at:
+            union(vi, at[key])
+        else:
+            at[key] = vi
+    for k in range(0, len(indices), 3):
+        union(indices[k], indices[k + 1])
+        union(indices[k], indices[k + 2])
+    comps = {}
+    for k in range(0, len(indices), 3):
+        tri = indices[k:k + 3]
+        comps.setdefault(find(tri[0]), []).append(tri)
+    if len(comps) != 593:
+        raise SystemExit(f'hull: expected 593 spatial components, got '
+                         f'{len(comps)}')
+
+    removed = set()
+    for root, tris in comps.items():
+        vids = {v for tri in tris for v in tri}
+        pts = [points[v] for v in vids]
+        lo = [min(p[a] for p in pts) for a in range(3)]
+        hi = [max(p[a] for p in pts) for a in range(3)]
+        span = [hi[a] - lo[a] for a in range(3)]
+        center_x = (lo[0] + hi[0]) / 2
+        max_abs_x = max(abs(lo[0]), abs(hi[0]))
+        donor_gear = (hi[1] <= 1.10 and lo[1] < 0.80
+                      and span[1] > 0.12 and abs(center_x) > 0.65
+                      and max_abs_x < 1.29)
+        if donor_gear:
+            removed.add(root)
+    if len(removed) != 34:
+        raise SystemExit(f'hull: expected 34 donor-gear components, got '
+                         f'{len(removed)}')
+
+    flat = [v for root, tris in comps.items() if root not in removed
+            for tri in tris for v in tri]
+    order = sorted(set(flat))
+    remap = {old: new for new, old in enumerate(order)}
+    compact = [points[old] for old in order]
+    return compact, [remap[old] for old in flat]
 
 
 def encode_f32(values):
@@ -76,14 +148,12 @@ def payloads():
                             -z * SCALE - subtract[2]))
 
         # The repaired Hull intentionally retains the donor POSITION accessor
-        # while its index accessor names only hull-owned triangles. Compact it
-        # deterministically so the runtime payload contains no turret/gun
-        # vertices. The other repaired nodes are already compact.
+        # while its index accessor names only hull-owned triangles. Remove the
+        # donor wheel/end-drum components, then compact so the runtime payload
+        # contains neither turret/gun vertices nor duplicate running gear.
+        # The other repaired nodes are already compact.
         if key == 'hull':
-            order = sorted(set(indices))
-            remap = {old: new for new, old in enumerate(order)}
-            runtime = [runtime[old] for old in order]
-            indices = [remap[old] for old in indices]
+            runtime, indices = strip_donor_running_gear(runtime, indices)
 
         want_verts, want_tris = EXPECTED[key]
         got = (len(runtime), len(indices) // 3)
@@ -118,8 +188,9 @@ def main(argv):
     if args.verify:
         if mismatches:
             raise SystemExit('FV510 source bake drift: ' + ', '.join(mismatches))
-        print('fv510-source-bake: verified 4 payloads '
-              '(35,250 source vertices; 28,582 triangles)')
+        print('fv510-source-bake: verified 4 source-derived payloads '
+              '(30,175 encoded vertices; 23,879 triangles; donor track '
+              'evidence retained but not rendered)')
         return 0
     for key in NODES:
         replacement = f"{key}: {{ p: '{wanted[key]['p']}', i: '{wanted[key]['i']}' }}"

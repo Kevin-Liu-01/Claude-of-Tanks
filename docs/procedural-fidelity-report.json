@@ -1,105 +1,108 @@
 {
-  "generatedAt": "2026-08-09T16:03:28.241Z",
+  "generatedAt": "2026-08-10T08:29:55.450Z",
   "summary": {
     "references": 1,
     "passed": 1,
     "failed": 0,
     "passThreshold": 90,
     "perViewFloor": 90,
-    "median": 91.3,
-    "worst": "challenger2",
-    "best": "challenger2"
+    "median": 98,
+    "worst": "fv510",
+    "best": "fv510"
   },
   "rows": [
     {
-      "id": "challenger2",
-      "name": "Challenger 2",
-      "sourcePath": "/models/tanks/community/challenger_ii.glb",
-      "fallback": "challenger2",
-      "score": 91.3,
+      "id": "fv510",
+      "name": "FV510 Warrior",
+      "sourcePath": "/models/tanks/community/fv510_warrior.glb",
+      "fallback": "m2a2_bradley",
+      "score": 98,
       "scores": {
-        "overall": 94.42,
-        "hull": 90.57,
-        "turret": 89.08,
-        "gun": 85.88,
-        "tracks": 93.64
+        "overall": 97.04,
+        "hull": 97.22,
+        "turret": 100,
+        "gun": 100,
+        "tracks": 96.59
       },
       "componentMasksAvailable": true,
-      "minView": 93.31,
+      "minView": 95.79,
       "gatePassed": true,
       "angles": {
         "front": {
-          "score": 95.84,
-          "iou": 94.44
+          "score": 96.48,
+          "iou": 95.41
         },
         "frontLeft": {
-          "score": 94.34,
-          "iou": 92.26
+          "score": 96.87,
+          "iou": 95.94
         },
         "left": {
-          "score": 93.31,
-          "iou": 91.54
+          "score": 98.22,
+          "iou": 97.8
         },
         "rearLeft": {
-          "score": 94,
-          "iou": 91.77
+          "score": 97.72,
+          "iou": 97.24
         },
         "rear": {
-          "score": 93.4,
-          "iou": 91.34
+          "score": 96.85,
+          "iou": 95.88
         },
         "rearRight": {
-          "score": 94.47,
-          "iou": 92.36
+          "score": 95.79,
+          "iou": 94.43
         },
         "right": {
-          "score": 93.34,
-          "iou": 91.66
+          "score": 96.11,
+          "iou": 94.91
         },
         "frontRight": {
-          "score": 94.77,
-          "iou": 92.64
+          "score": 98,
+          "iou": 97.68
         },
         "top": {
-          "score": 96.33,
-          "iou": 95.34
+          "score": 97.34,
+          "iou": 96.74
         }
       },
       "componentAngles": {
         "hull": {
-          "front": 94.07,
-          "right": 86.14,
-          "left": 86.2,
-          "rear": 88.88,
-          "top": 97.55
+          "front": 96.36,
+          "right": 96.95,
+          "left": 97.95,
+          "rear": 97.53,
+          "top": 97.34
         },
         "turret": {
-          "front": 92.5,
-          "right": 85.81,
-          "left": 84.57,
-          "rear": 88.24,
-          "top": 94.3
+          "front": 100,
+          "right": 100,
+          "left": 100,
+          "rear": 100,
+          "top": 100
         },
         "exposedUpper": {
-          "front": 47.63,
-          "right": 37.88,
-          "left": 35.9,
-          "rear": 42.02,
-          "top": 74.69
+          "front": 100,
+          "right": 100,
+          "left": 100,
+          "rear": 100,
+          "top": 100
         }
       },
       "boxes": {
         "reference": [
-          3.52,
-          3.01,
-          11.54
+          3.03,
+          2.83,
+          6.34
         ],
         "procedural": [
-          3.52,
-          2.99,
-          11.53
+          3.03,
+          2.85,
+          6.34
         ]
-      }
+      },
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ]
     }
   ]
 }

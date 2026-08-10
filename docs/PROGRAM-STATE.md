@@ -90,7 +90,7 @@ re-freeze NEW hash, all in ONE commit.
 | abramsx | d1dbfa2 | GRADUATED 2026-08-09 (32nd; §5.87 owner attachment closeout RE-FROZEN: roof-sight necks + XM914 buried foundation/recoil spine/equipment foot, no air seams; gate 90.2 x2 every component >=90; fresh §B8 floor 9.0 / mean 9.09 x14; oracle 01acf03c reproducible from pristine .bak; prior fe7f9852 complete-redesign freeze retired) |
 | challenger_3 | b0c172a4 | GRADUATED 2026-08-09 (33rd; §5.87 owner attachment closeout RE-FROZEN: Protector roof shoe/fork/receiver/optic supports + smoke backing shoes; gate 90.4 x2 every component >=90; fresh §B8 floor 9.0 / mean 9.06 x14; oracle a5fcd801 reproducible from pristine .bak; prior 2678f6c complete-redesign freeze retired) |
 | challenger2 | 3b4bd5f0 | GRADUATED 2026-08-09; RE-FROZEN 2026-08-10 (§5.89 owner fused-block repair: material-fused casemate course removed from fixed hull and repartitioned into the articulated source tree; one low ring landing + one rotating turret; gate 90.1 x2 every component >=90; standard/parent/winding clean; fresh §B8 floor 9.0 / mean 9.06 x14, yaw/load paths 9.3; oracle f44e3b46 reproducible from pristine .bak; prior 63ee160 retired) |
-| fv510 | 7884762a | GRADUATED 2026-08-10 (35th; owner-supplied exact-source redesign: attributed CC-BY donor deterministically repartitioned Hull/Turret/Gun with no triangle cuts and baked into the synchronous public/private procedural path; gate 93.2 x2, every component >=93.2; fidelity 98.7; standard/parent/winding clean; independent §B8 floor 9.4 / mean 9.51 x14, yaw/load paths 9.4; repaired oracle 8bc9e6c1 reproducible from pristine d4bcad96 .bak) |
+| fv510 | 927beeb2 | GRADUATED 2026-08-10; RE-FROZEN 2026-08-10 (§5.91 owner native-track correction: donor Track suppressed and 34 donor running-gear components removed at whole-component boundaries; exact Warrior upper geometry retained around one game-native six-station wheel/sprocket/idler/shoe system; gate 90.3 x2, every component >=90.3; fidelity 98.0; standard/parent/winding clean; independent §B8 floor 9.1 / mean 9.26 x14, yaw/load paths 9.4; prior exact-source freeze 7884762a retired) |
 | m26_pershing | 2f006738 | RE-RECORDED 2026-08-08: hash moved by LANDED 5f39989 (armorM4 gunBarrel shadow-proxy 3.96->3.44; m26/m45 inherit m4a3e8 proxies — patton.js bytes unchanged); double-confirmed by builder bisect + m45-grad critic; prior 65c564c0 bore+winding re-cert lineage (floors 9.1-9.4) carries |
 | t90m | e345ee8a | GRADUATED 2026-08-06 (27th; floor 9.0 x14 second sitting; the owner's dedicated-agent arc 81.7 -> dual gate) |
 
@@ -2669,3 +2669,37 @@ mass. Verdict:
 **29/96** and graduates **35**. The owner-priority lane resumes the harmonious
 T-90 family, T-72B3M parenting repair, Leopard 2A7/Revolution closeout and T-14
 proportion round.
+
+## 5.91 FV510 GAME-NATIVE TRACK SYSTEM RE-FROZEN (2026-08-10)
+
+The owner required the exact-source Warrior to use the fleet's specific track
+system. The bake now removes all 34 donor wheel/end-drum spatial components
+from the Hull at whole-component boundaries and retains the encoded donor
+Track only as reproducible oracle evidence; neither donor running-gear class
+is rendered. The exact Warrior hull, side/bow guards, troop body, slat armor,
+stern and RARDEN assembly remain source-derived. One normal
+`buildRunningGear` course supplies six road-wheel stations per side, distinct
+front sprockets and rear idlers, animated/damage-aware linked shoes, chain and
+guide horns. Source guards are explicitly tagged `trackGuard`; the audit
+exemption is limited to those enclosures and cannot hide donor gear or primary
+hull structure.
+
+Final gate x2 is bit-identical: **90.3** |
+90.3/90.4/99.8/94.4/100/100. Direct fidelity is **98.0** overall (hull 97.2,
+turret/gun 100, tracks 96.6); standard exact containment is 4/3 with no holes
+or blind spot, decoration census is mg1+0d, turret-parent is 0/0/0, and winding
+is reversed/mixed 0/0 with yaw candidates 0. Freeze **927beeb2** reproduces
+x2 (23 meshes / 91,409 vertices). The generator verifies 30,175 encoded
+vertices and 23,879 triangles; source payload SHA-256 is
+`5b998049fa6397549440f1ed56a66bfa98a63f74f5662339de7d0a16f2e0d406`,
+with pre-bake `.bak` SHA-256
+`20c8e47be7e23ba29dad48d3eadbb2bd6e998fd3d32a68286c98266090fef372`
+retained out of tree.
+
+Independent §B8 passes all fourteen current-byte pairs at floor **9.1**,
+mean **9.26**; yaw/load paths pass **9.4**. The sitting confirms one coherent
+six-wheel station set, distinct terminal gears, continuous grounded native
+shoe wraps behind the source guards, and no donor belt, duplicate wheel,
+floater, guard penetration, collapsed arc, or upper-geometry regression.
+Verdict:
+`docs/critique/shaded-parity-fv510-native-track-recert.md`.

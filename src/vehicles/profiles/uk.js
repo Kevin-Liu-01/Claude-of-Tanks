@@ -3232,9 +3232,25 @@ function fv510PhotoBuild(P) {
 // bake then supplies those exact solids synchronously to the normal
 // procedural material/LOD pipeline.  This preserves public/fallback behavior
 // while giving every roof fitting the source's real seated load path and
-// making the complete turret and RARDEN articulate natively.
+// making the complete turret and RARDEN articulate natively. The donor track
+// and wheel/end-drum components are deliberately excluded: FV510 uses the
+// same animated, damage-aware running-gear system as the rest of the fleet.
 function fv510Build(P) {
   buildFv510SourceGeometry(P);
+  // Source-measured Warrior lane: six wheels, front drive sprocket, rear
+  // idler. The track envelope reproduces the donor's ±1.197 m x-band,
+  // z -2.631..+2.708 and 1.05 m return height while retaining our native
+  // link layers, wheel articulation, scroll and thrown-track behavior.
+  buildRunningGear(P, {
+    style: 'rubber', wheelR: 0.265, wheelW: 0.24, wheelY: 0.325, xc: 0.98,
+    wheelZs: evenStations(6, 3.55, 0.03),
+    sprocket: { z: 2.45, y: 0.895, r: 0.22 },
+    idler: { z: -2.38, y: 0.875, r: 0.22 },
+    trackW: 0.43, trackTh: 0.09, botY: 0.055, topY: 0.98,
+    coveredTop: true, arms: false, paintedEnds: true,
+    pinCapOuter: 0.217, padHex: 0x333429, chainHex: 0x2b2c24,
+    gearFloor: true,
+  });
 }
 
 // ---------------------------------------------------------------------------

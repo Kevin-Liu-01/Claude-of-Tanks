@@ -117,6 +117,13 @@ never excuses missing it.
    dressing buckets that RIDE the envelope by design (abrams wrap-pad
    taxonomy) are conformance-excluded and reported under
    dressingSkipped — audit the exclusions, never delete them silently.
+   Source-authored fender/skirt enclosures may be tagged `trackGuard` by
+   the factory and excluded from the hull-candidate set only when they are
+   visibly guards around the game's native belt. The tag is narrow: donor
+   belts, donor wheels/end drums, bow/stern plates, and generic trim may
+   never use it. A graduate-change critic must prove the native shoes remain
+   continuously visible behind/under the guards with no penetration or
+   duplicate running gear (FV510 native-track re-cert, 2026-08-10).
    Bars: bandVox ≤ ~60 per zone (kv2-graduate band, unchanged legacy
    trend line) AND shoeVox ≤ ~60 per zone with 0 the target for new
    builds; a blind spot (shoeVox > 0 while bandVox = 0) is a standing

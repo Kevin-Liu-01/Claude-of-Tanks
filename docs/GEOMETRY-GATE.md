@@ -284,6 +284,13 @@ That is the point: it is the definition of done, not a description of today.
    bow/stern close views on every round that moves nose/tail geometry
    or wheel positions; critics add a TRACK-CONTAINMENT check to front/
    rear/hero views.
+   A source-authored fender/skirt enclosure may be factory-tagged
+   `trackGuard` and excluded from hull candidates only when the game's native
+   track visibly runs behind it. This exemption never applies to donor track,
+   wheels/end drums, bow/stern structure, or generic trim. The required
+   visual proof is one native station set and one continuous shoe course,
+   without duplicate running gear, guard penetration, collapsed wrap arcs,
+   or an air gap.
 
 Enforcement: critics add four checks to every verdict — FRONT-SLOPE
 (abrams only), CONTIGUITY (all angles), DECORATION MINIMUM (roof MGs

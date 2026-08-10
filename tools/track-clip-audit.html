@@ -212,6 +212,11 @@ if (mode === 'list') {
       const zoneBox = new THREE.Box3(
         new THREE.Vector3(-1e3, y0, zone.z0), new THREE.Vector3(1e3, y1, zone.z1));
       for (const m of meshes) {
+        // Explicit source-authored fender/skirt enclosures are the guard
+        // around the native belt, not a hull plate pierced by it. Keep this
+        // narrower than trackBucket: only factory-tagged trackGuard solids
+        // receive the exclusion, so ordinary trim/dressing remains audited.
+        if (m.userData?.trackGuard) continue;
         bbox.setFromObject(m);
         if (!bbox.intersectsBox(zoneBox)) continue;
         const reach = Math.min(Math.abs(bbox.min.x), bbox.min.x <= 0 && bbox.max.x >= 0 ? 0 : Math.abs(bbox.max.x));
@@ -386,6 +391,7 @@ if (mode === 'list') {
             new THREE.Vector3(-1e3, sy0, zone.z0), new THREE.Vector3(1e3, sy1, zone.z1));
           const q = new THREE.Vector3();
           for (const m of meshes) {
+            if (m.userData?.trackGuard) continue;
             bbox.setFromObject(m);
             if (!bbox.intersectsBox(zoneBox)) continue;
             const reach = Math.min(Math.abs(bbox.min.x), bbox.min.x <= 0 && bbox.max.x >= 0 ? 0 : Math.abs(bbox.max.x));

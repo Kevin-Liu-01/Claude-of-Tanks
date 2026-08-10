@@ -3520,15 +3520,15 @@ const BUCKET_DEF = {
   // class above. Same material slot + LOD path as hullDetail — renders
   // byte-identical; /track/i name carries the §B4 trackBucket tag.
   hullTrackDetailL: ['hullG', 'detail'], hullTrackDetailR: ['hullG', 'detail'],
-  // Source-derived running gear kept separate from the center-spanning hull
-  // shell so §B4 can correctly identify it as lane-local gear. FV510 is the
-  // first consumer; material and rendered geometry are otherwise unchanged.
-  hullTrackWheelL: ['hullG', 'hull'], hullTrackWheelR: ['hullG', 'hull'],
+  // Source-authored skirt/strake/guard solids that enclose a native track
+  // lane. They remain camouflaged hull geometry, but the track tag prevents
+  // §B4 from reporting the enclosure intersecting the belt it is built over.
+  hullTrackGuardL: ['hullG', 'hull'], hullTrackGuardR: ['hullG', 'hull'],
 };
-const CAMO_BUCKETS = new Set(['hull', 'hullTrackWheelL', 'hullTrackWheelR', 'turret', 'gun', 'gunMount']);
+const CAMO_BUCKETS = new Set(['hull', 'hullTrackGuardL', 'hullTrackGuardR', 'turret', 'gun', 'gunMount']);
 // Buckets that survive past LOD1 — everything else is greeble-class and
 // disappears at range behind the silhouette shells.
-const LOD0_KEEP = new Set(['hull', 'hullTrackWheelL', 'hullTrackWheelR', 'turret', 'gun', 'gunDark', 'gunMount', 'hullRubber']);
+const LOD0_KEEP = new Set(['hull', 'hullTrackGuardL', 'hullTrackGuardR', 'turret', 'gun', 'gunDark', 'gunMount', 'hullRubber']);
 
 // Baked per-vertex weathering for camo surfaces: vertical dust gradient (heavy
 // at skirt bottoms / running gear height), downward-face AO, and a subtle
@@ -3803,7 +3803,10 @@ export function createTank(specId, engineCtx, opts = {}) {
     }
     disposables.push(merged);
     const mesh = new THREE.Mesh(merged, mats[matKey]);
-    if (bucket === 'hullTrackWheelL' || bucket === 'hullTrackWheelR') mesh.name = bucket;
+    if (bucket === 'hullTrackGuardL' || bucket === 'hullTrackGuardR') {
+      mesh.name = bucket;
+      mesh.userData.trackGuard = true;
+    }
     // Track-containment law (BUILD-STANDARD SS-B4): tag track-family bucket
     // meshes so the audit can measure hand-rolled track geometry (userData
     // only — geometry/hash-invariant; banded builds are unaffected).
