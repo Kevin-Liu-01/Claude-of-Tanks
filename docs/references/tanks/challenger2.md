@@ -461,3 +461,41 @@ Oracle SHA-256:
 pristine `.bak`:
 `1be3ef855ac9c441e38262a4ae26600d14c763c70c867024554499a451f9ad48`.
 Verdict: `docs/critique/shaded-parity-challenger2-graduation.md`.
+
+## OWNER FUSED-BLOCK REPAIR + RE-CERTIFICATION (2026-08-10)
+
+The owner's garage screenshot exposed a failure hidden by the prior source
+partition: a broad turret/casemate course was still owned by the fixed hull,
+overlapping the articulated turret and remaining behind at yaw. The corrected
+oracle repair classifies ring-crossing connected components out of the raw
+material-fused primitive and moves 572 components / 12,313 vertices / 14,546
+triangles into `TurretParts`. The procedural hull now follows the true 1.55 m
+deck/ring trace instead of the contaminated 2.07 m course. A 35 mm ring landing
+is the sole fixed load surface beneath the rotating turret.
+
+The centre bow strip and V-section loft also had two enclosed eight-centimetre
+seams over the idler station. A narrow measured-profile bridge closes them
+inside the existing glacis silhouette: standard contiguity 26 -> 0, with no
+change to the external plan or exact 0/0 track clip.
+
+### Frozen receipts
+
+- geometry gate x2: **90.1** minimum; hull 90.5 / whole 90.1 / turret 90.3 /
+  stations 91.8 / dims 93.1 / floaters 100;
+- standard: track 0/0, contiguity 0, MG 1+1d;
+- turret parent: 0 stranded / 0 abutting / 0 dangling;
+- winding: 0 reversed / 0 mixed, 80 px / 0.14% worst FrontSide deficit,
+  0 yaw-stranded candidates;
+- freeze x2: **3b4bd5f0** (42 meshes / 250,157 vertices);
+- fresh independent §B8: floor **9.0**, mean **9.06**, 14/14 pass;
+  yaw/load paths **9.3**;
+- `npm test` green.
+
+The critic specifically confirms one rotating turret footprint, no fixed
+duplicate shell, no empty-air seam, and continuously seated RWS, optics,
+hatches, smoke furniture and gun package. The narrow bow bridge is visually
+subordinate and creates no silhouette or track regression. Repaired oracle
+SHA-256: `f44e3b46ee07a457b04fff6cdf8950f880a45fd22d952226e2ef16a4bd3c49ba`;
+pristine `.bak`:
+`1be3ef855ac9c441e38262a4ae26600d14c763c70c867024554499a451f9ad48`.
+Verdict: `docs/critique/shaded-parity-challenger2-fused-block-recert.md`.

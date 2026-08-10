@@ -1808,10 +1808,10 @@ function cr2HullCrossLoft(P, sections) {
   for (let i = 0; i < sections.length - 1; i++) {
     const a = sections[i], b = sections[i + 1];
     for (const side of [-1, 1]) {
-      const ai = side < 0 ? -a.bw : 0.23, ao = side < 0 ? -0.23 : a.bw;
-      const bi = side < 0 ? -b.bw : 0.23, bo = side < 0 ? -0.23 : b.bw;
-      const ati = side < 0 ? -a.tw : 0.23, ato = side < 0 ? -0.23 : a.tw;
-      const bti = side < 0 ? -b.tw : 0.23, bto = side < 0 ? -0.23 : b.tw;
+      const ai = side < 0 ? -a.bw : 0.33, ao = side < 0 ? -0.33 : a.bw;
+      const bi = side < 0 ? -b.bw : 0.33, bo = side < 0 ? -0.33 : b.bw;
+      const ati = side < 0 ? -a.tw : 0.33, ato = side < 0 ? -0.33 : a.tw;
+      const bti = side < 0 ? -b.tw : 0.33, bto = side < 0 ? -0.33 : b.tw;
       P.add('hull', slab(
         [ai, a.bot, a.z], [ao, a.bot, a.z], [bo, b.bot, b.z], [bi, b.bot, b.z],
         [ati, a.top, a.z], [ato, a.top, a.z], [bto, b.top, b.z], [bti, b.top, b.z]));
@@ -2043,18 +2043,21 @@ function buildChallenger2(P) {
     }
   }
 
-  // Absolute side curves from docs/references/vertex/challenger2.json.
-  // The center and shoulder strips share the same surface, so the front read
-  // is a broad continuous casting rather than the legacy box-on-box tower.
+  // Structural hull side curves. The repaired source still leaves one
+  // material-fused turret/casemate course in its hull mask: copying that
+  // contaminated top trace raised the fixed hull to y=2.07 even though the
+  // real ring and the armor model are both at y=1.55. It visibly overlapped
+  // the articulated turret and stayed behind when the turret yawed. Preserve
+  // the measured belly/end courses, but keep the center deck on the physical
+  // CR2 roof/ring datum; the separate low turret below owns everything above
+  // it and can now articulate without a second hull-fixed turret silhouette.
   const hullTop = [
-    [-4.06, 1.38], [-3.80, 1.53], [-3.50, 1.56], [-3.20, 1.58],
-    [-2.90, 1.57], [-2.60, 1.57], [-2.30, 1.58], [-2.00, 1.90],
-    [-1.70, 1.93], [-1.40, 1.96], [-1.10, 1.99], [-0.80, 2.02],
-    [-0.50, 2.05], [-0.20, 2.07], [0.70, 2.07], [1.00, 2.03],
-    [1.30, 2.00], [1.60, 1.97], [1.90, 1.94], [2.20, 1.91],
-    [2.50, 1.80], [2.62, 1.74], [2.70, 1.69], [2.79, 1.63],
-    [2.87, 1.57], [2.95, 1.42], [3.10, 1.40], [3.40, 1.36],
-    [3.70, 1.36], [3.80, 1.31],
+    [-4.06, 1.37], [-3.80, 1.53], [-3.62, 1.60], [-3.45, 1.59],
+    [-3.28, 1.55], [-3.10, 1.58], [-2.30, 1.58], [-1.74, 1.56],
+    [-1.23, 1.55], [-1.14, 1.50], [-1.05, 1.48], [-0.20, 1.53],
+    [2.19, 1.53], [2.27, 1.47], [2.62, 1.46], [2.79, 1.44],
+    [3.13, 1.40], [3.39, 1.37], [3.56, 1.31], [3.64, 1.36],
+    [3.81, 1.35], [3.90, 1.20], [4.07, 1.16],
   ];
   const hullBottom = [
     [-4.06, 1.21], [-3.96, 1.14], [-3.88, 1.10], [-3.79, 1.05],
@@ -2066,8 +2069,8 @@ function buildChallenger2(P) {
   // The exact centerline terminates at -3.66; the shoulder/track courses
   // continue aft.  Keeping the centre belly at y=.49 is the decisive front
   // projection fact: only the tracks, out at x=+/-1.33, touch the ground.
-  const centerHullTop = [[-3.66, 1.52], ...hullTop.filter(([z]) => z >= -3.50)];
-  const centerHullBottom = [[-3.66, 1.00], ...hullBottom.filter(([z]) => z >= -3.50)];
+  const centerHullTop = [[-3.66, 1.52], ...hullTop.filter(([z]) => z >= -3.50 && z < 3.80), [3.80, 1.31]];
+  const centerHullBottom = [[-3.66, 1.00], ...hullBottom.filter(([z]) => z >= -3.50 && z < 3.80), [3.80, 1.02]];
   cr2ProfileStrip(P, 0, 0.25, centerHullTop, centerHullBottom);
   // The armored shoulder terminates inboard of the 1.12 m track inner face;
   // the earlier 1.20 m course was visually hidden but physically intersected
@@ -2082,6 +2085,11 @@ function buildChallenger2(P) {
     ...hullBottom.filter(([z]) => z > -2.90 && z < 2.80),
     [2.80, cr2At(hullBottom, 2.80)]];
   cr2ProfileStrip(P, 0.23, 1.10, midTop, midBottom);
+  // Narrow engine-deck hinge/vent spine: the source side trace carries this
+  // short crest, while its front trace proves it is not a broad deck slab.
+  cr2ProfileStrip(P, 0, 0.006,
+    [[-2.18, 1.58], [-2.10, 1.80], [-1.92, 1.80], [-1.82, 1.58]],
+    [[-2.18, 1.56], [-1.82, 1.56]]);
   cr2HullCrossLoft(P, [
     { z: -4.06, bw: 0.46, tw: 1.00, bot: 1.21, top: 1.38 },
     { z: -3.70, bw: 0.58, tw: 1.06, bot: 1.05, top: 1.54 },
@@ -2092,19 +2100,29 @@ function buildChallenger2(P) {
   cr2HullCrossLoft(P, [
     { z: 2.80, bw: 1.10, tw: 1.10, bot: 0.49, top: cr2At(hullTop, 2.80) },
     { z: 3.10, bw: 0.84, tw: 1.10, bot: 0.56, top: 1.40 },
-    { z: 3.40, bw: 0.70, tw: 1.10, bot: 0.72, top: 1.36 },
+    { z: 3.40, bw: 0.70, tw: 1.10, bot: 0.72, top: 1.37 },
     { z: 3.70, bw: 0.56, tw: 1.08, bot: 0.92, top: 1.36 },
     { z: 3.80, bw: 0.50, tw: 1.05, bot: 1.02, top: 1.31 },
   ]);
+  // Join the 0.25 m centre strip to the cross-loft's 0.33 m inner course.
+  // Leaving that eight-centimetre seam open produced two enclosed plan-view
+  // sky wells over the idler station even though both surrounding armor
+  // courses were otherwise closed.  This narrow bridge follows the same
+  // measured bow profile and stays wholly inside the existing silhouette.
+  cr2ProfileStrip(P, 0.25, 0.33,
+    [[2.80, cr2At(hullTop, 2.80)], ...hullTop.filter(([z]) => z > 2.80 && z < 3.80), [3.80, 1.31]],
+    [[2.80, cr2At(hullBottom, 2.80)], ...hullBottom.filter(([z]) => z > 2.80 && z < 3.80), [3.80, 1.02]]);
 
   // Side-mask carrier behind the proud Hydrogas discs.  Like Leclerc's
   // authored wrap fills, this is visible track structure, not a measurement
   // proxy: it follows the repaired print's exact rising bow/stern courses
   // while the real wheels remain proud of it in the judged side view.
   const gearTop = [
-    [-3.40, 1.58], [-2.18, 1.58], [-2.17, 1.76], [-2.00, 1.91],
-    [-1.60, 1.95], [-0.30, 2.07], [0.70, 2.07], [2.20, 1.91],
-    [2.80, 1.60], [2.95, 1.42], [3.10, 1.40], [3.40, 1.36], [3.85, 1.28],
+    [-3.40, 1.58], [-2.18, 1.58], [-1.60, 1.56], [-1.23, 1.55],
+    [-1.14, 1.50], [-1.05, 1.48], [-0.20, 1.47], [-0.19, 1.53],
+    [2.19, 1.53], [2.27, 1.47], [2.62, 1.46], [2.80, 1.44],
+    [2.95, 1.42], [3.10, 1.40], [3.40, 1.37], [3.56, 1.31],
+    [3.64, 1.36], [3.81, 1.35], [3.90, 1.20],
   ];
   const gearBottom = [
     [-3.45, 1.02], [-3.34, 1.02], [-3.339, 0.62], [-3.20, 0.58], [-3.05, 0.59], [-2.95, 0.52], [-2.80, 0.40],
@@ -2114,7 +2132,7 @@ function buildChallenger2(P) {
   cr2ProfileStrip(P, 1.06, 1.10, gearTop, gearBottom);
 
   // Plan bands reproduce the oracle's stepped shoulders: center front 3.80,
-  // ±1.2 shoulder front 4.11, outer corners 3.69; the stern similarly pulls
+  // ±1.2 shoulder front 4.08, outer corners 3.69; the stern similarly pulls
   // from -4.06 at the inner band to -2.52 at the track guards.
   for (const side of [-1, 1]) {
     const sx = (v) => side * v;
@@ -2122,26 +2140,26 @@ function buildChallenger2(P) {
       [sx(0.90), 0.90, 3.95], [sx(1.20), 0.90, 3.95], [sx(1.20), 0.55, 3.80], [sx(0.90), 0.55, 3.80],
       [sx(0.90), 1.22, 3.95], [sx(1.20), 1.22, 3.95], [sx(1.20), 1.31, 3.80], [sx(0.90), 1.31, 3.80]));
     P.add('hull', slab(
-      [sx(0.90), 1.08, 4.11], [sx(1.20), 1.08, 4.11], [sx(1.20), 0.90, 3.95], [sx(0.90), 0.90, 3.95],
-      [sx(0.90), 1.16, 4.11], [sx(1.20), 1.16, 4.11], [sx(1.20), 1.22, 3.95], [sx(0.90), 1.22, 3.95]));
+      [sx(0.90), 1.08, 4.08], [sx(1.20), 1.08, 4.08], [sx(1.20), 0.90, 3.95], [sx(0.90), 0.90, 3.95],
+      [sx(0.90), 1.16, 4.08], [sx(1.20), 1.16, 4.08], [sx(1.20), 1.22, 3.95], [sx(0.90), 1.22, 3.95]));
     P.add('hull', box(0.30, 0.14, 0.08), sx(0.60), 1.12, 3.82);
     P.add('hull', slab(
-      [sx(1.20), 1.08, 4.11], [sx(1.30), 1.08, 4.11], [sx(1.30), 1.44, -4.06], [sx(1.20), 1.44, -4.06],
-      [sx(1.20), 1.16, 4.11], [sx(1.30), 1.16, 4.11], [sx(1.30), 1.44, -4.06], [sx(1.20), 1.44, -4.06]));
+      [sx(1.00), 1.08, 4.08], [sx(1.23), 1.08, 4.08], [sx(1.23), 1.44, -4.06], [sx(1.00), 1.44, -4.06],
+      [sx(1.00), 1.16, 4.08], [sx(1.23), 1.16, 4.08], [sx(1.23), 1.44, -4.06], [sx(1.00), 1.44, -4.06]));
     P.add('hull', slab(
-      [sx(1.30), 1.08, 4.11], [sx(1.60), 1.08, 4.11], [sx(1.60), 1.42, -3.42], [sx(1.30), 1.42, -3.42],
-      [sx(1.30), 1.16, 4.11], [sx(1.60), 1.16, 4.11], [sx(1.60), 1.42, -3.42], [sx(1.30), 1.42, -3.42]));
+      [sx(1.23), 1.08, 4.08], [sx(1.60), 1.08, 4.08], [sx(1.60), 1.42, -3.42], [sx(1.23), 1.42, -3.42],
+      [sx(1.23), 1.16, 4.08], [sx(1.60), 1.16, 4.08], [sx(1.60), 1.42, -3.42], [sx(1.23), 1.42, -3.42]));
     // The source keeps its full front/rear run almost to x=1.735, then
     // closes through a razor-thin chamfer to the x=1.755 corner datum.
     P.add('hull', slab(
-      [sx(1.60), 1.08, 4.11], [sx(1.735), 1.08, 4.11], [sx(1.735), 1.10, -3.40], [sx(1.60), 1.10, -3.42],
-      [sx(1.60), 1.16, 4.11], [sx(1.735), 1.16, 4.11], [sx(1.735), 1.33, -3.40], [sx(1.60), 1.36, -3.42]));
+      [sx(1.60), 1.08, 4.08], [sx(1.735), 1.08, 4.08], [sx(1.735), 1.10, -3.40], [sx(1.60), 1.10, -3.42],
+      [sx(1.60), 1.16, 4.08], [sx(1.735), 1.16, 4.08], [sx(1.735), 1.33, -3.40], [sx(1.60), 1.36, -3.42]));
     // The source's ninth station (z 1.11..1.75) pulls the outer skirt from
     // ±1.755 to the ±1.736 inner-course seam before returning to the
     // published-width course.  It
     // is a real plan notch between bays, not a global width rescale.
     const skirtOuter = [
-      [sx(1.735), 4.11], [sx(1.755), 3.69], [sx(1.755), 1.76],
+      [sx(1.735), 4.08], [sx(1.755), 3.69], [sx(1.755), 1.76],
       [sx(1.736), 1.75], [sx(1.736), 1.11], [sx(1.755), 1.10],
       [sx(1.755), -2.52], [sx(1.735), -3.40],
     ];
@@ -2164,20 +2182,27 @@ function buildChallenger2(P) {
     }
   }
 
-  // Front-source cross-section.  The shoulder deck chamfers down from the
-  // 2.05 m center deck, and the print is deliberately asymmetric at the
-  // outer skirt: the left rubber course is taller than the right one.
+  // Ring cross-section. The old 2.05 m shoulder copied the same fused source
+  // course as hullTop and formed the broad hull-fixed block under the real
+  // turret. Both inner and outer shoulders now terminate at the 1.55 m ring.
+  // The formerly 1.82 m left rubber strip was the same contamination viewed
+  // edge-on, not a physical skirt asymmetry; the repaired source front row
+  // measures both outer courses at the common 1.54 m datum.
   for (const side of [-1, 1]) {
     const sx = (v) => side * v;
     const shoulderOuter = side < 0 ? 1.55 : 1.37;
     P.add('hull', slab(
       [sx(1.18), 1.48, -0.55], [sx(shoulderOuter), 1.48, -0.55], [sx(shoulderOuter), 1.48, 0.55], [sx(1.18), 1.48, 0.55],
-      [sx(1.18), 2.05, -0.55], [sx(shoulderOuter), side < 0 ? 1.95 : 1.94, -0.55],
-      [sx(shoulderOuter), side < 0 ? 1.95 : 1.94, 0.55], [sx(1.18), 2.05, 0.55]));
-    const skirtH = side < 0 ? 1.82 : 1.54;
+      [sx(1.18), 1.49, -0.55], [sx(shoulderOuter), side < 0 ? 1.48 : 1.47, -0.55],
+      [sx(shoulderOuter), side < 0 ? 1.48 : 1.47, 0.55], [sx(1.18), 1.49, 0.55]));
+    const skirtH = 1.54;
     P.add('hullRubber', box(side < 0 ? 0.08 : 0.14, skirtH, 0.08),
       sx(side < 0 ? 1.59 : 1.61), skirtH / 2, 0);
   }
+  // Continuous ring landing beneath the articulated assembly. This is the
+  // actual load surface (centered on armorChallenger2.turretPivot.z), not a
+  // second turret silhouette; it closes the former visual/physical seam.
+  P.add('hull', box(2.75, 0.035, 1.00), 0, 1.525, 1.00);
   P.add('hullRubber', box(0.030, 1.46, 0.08), -1.675, 0.73, 0);
   for (const side of [-1, 1]) P.add('hull', box(0.025, 0.12, 0.12), side * 1.005, 0.435, 0);
   P.add('hull', box(0.04, 0.04, 0.12), 1.72, 1.42, 0);
@@ -2185,21 +2210,21 @@ function buildChallenger2(P) {
   // Glacis/deck furniture and the characteristic CR2 engine field. All are
   // seated on the measured profile and remain inside its silhouette except
   // for the source-visible fittings.
-  P.add('hullDark', box(1.95, 0.022, 1.20), 0, 1.585, -3.05);
-  if (P.q) for (let k = 0; k < 7; k++) P.add('hullDetail', box(1.82, 0.022, 0.055), 0, 1.602, -3.50 + k * 0.15);
+  P.add('hullDark', box(1.95, 0.022, 1.20), 0, 1.550, -3.05);
+  if (P.q) for (let k = 0; k < 7; k++) P.add('hullDetail', box(1.82, 0.022, 0.055), 0, 1.567, -3.50 + k * 0.15);
   // Two-bay radiator field, inset below the existing 1.602 louvre crest.
   for (const side of [-1, 1]) {
-    P.add('hullDark', box(0.82, 0.012, 1.02), side * 0.50, 1.590, -3.05);
+    P.add('hullDark', box(0.82, 0.012, 1.02), side * 0.50, 1.555, -3.05);
     if (P.q) {
       for (const dx of [-0.34, 0, 0.34]) P.add('hullDetail', box(0.018, 0.010, 0.96),
-        side * 0.50 + dx, 1.599, -3.05);
+        side * 0.50 + dx, 1.564, -3.05);
       for (let k = 0; k < 8; k++) P.add('hullDark', box(0.74, 0.010, 0.020),
-        side * 0.50, 1.600, -3.48 + k * 0.125);
+        side * 0.50, 1.565, -3.48 + k * 0.125);
     }
   }
-  P.add('hull', box(0.70, 0.08, 0.58), 0, 1.99, 0.65);                         // driver hood merged into the raised foredeck
-  P.add('hullDark', box(0.54, 0.024, 0.42), 0, 2.02, 0.65);
-  periscope(P, 'hullDetail', 0, 1.99, 0.93);
+  P.add('hull', box(0.70, 0.055, 0.58), 0, 1.525, 0.65);                       // driver hood seated on the physical foredeck
+  P.add('hullDark', box(0.54, 0.018, 0.42), 0, 1.557, 0.65);
+  periscope(P, 'hullDetail', 0, 1.54, 0.93);
   for (const side of [-1, 1]) {
     P.add('hullDark', box(0.18, 0.10, 0.10), side * 1.20, 1.24, 3.45);
     P.add('hullGlass', box(0.10, 0.07, 0.015), side * 1.20, 1.25, 3.505);
@@ -2218,12 +2243,16 @@ function buildChallenger2(P) {
   }
   for (let k = 0; k < 5; k++) P.add('hullDetail', box(0.72, 0.035, 0.030), 0, 1.19 + k * 0.075, -3.55);
   P.add('hullDetail', box(0.30, 0.17, 0.035), 0, 1.45, -3.57);
-  // Published hull datum carriers: robust >12%-height terminal bands, kept
-  // in the oracle's own x=+/-1.05 plan lanes so they do not invent a new
-  // centerline nose or tail.
+  // Published hull datum carriers. The old .30 m bow boxes were tall enough
+  // to become a second glacis in side projection; the repaired source's
+  // terminal shoulder is the narrow 1.08..1.17 m course below.
   for (const side of [-1, 1]) {
-    P.add('hull', box(0.16, 0.30, 0.05), side * 1.05, 1.20, 4.08);
-    P.add('hull', box(0.16, 0.30, 0.08), side * 1.05, 1.33, -4.06);
+    P.add('hull', box(0.16, 0.09, 0.05), side * 1.05, 1.125, 4.08);
+    P.add('hull', slab(
+      [side * 0.97, 1.18, -4.00], [side * 1.13, 1.18, -4.00],
+      [side * 1.13, 1.30, -4.08], [side * 0.97, 1.30, -4.08],
+      [side * 0.97, 1.48, -4.00], [side * 1.13, 1.48, -4.00],
+      [side * 1.13, 1.36, -4.08], [side * 0.97, 1.36, -4.08]));
   }
   // The source carries a narrow continuous rear-shoulder hardpoint between
   // its -3.66 centre stern and -4.06 outboard service face. Leaving only the
@@ -2336,32 +2365,32 @@ function buildChallenger2(P) {
     // outside it.  Unequal width/depth and off-axis cover plates reproduce
     // the source shoulder density while retaining the exact frame outline.
     P.add('hull', box(0.20, 0.15, 0.040), side * 0.46, 1.22, -4.075);
-    P.add('hullDark', box(0.14, 0.09, 0.012), side * 0.46, 1.22, -4.101);
+    P.add('hullDark', box(0.14, 0.09, 0.012), side * 0.46, 1.22, -4.084);
     P.add('hull', box(0.16, 0.11, 0.032), side * 0.70, 1.27, -4.076,
       0, 0, side * 0.08);
-    P.add('hullDark', box(0.10, 0.045, 0.012), side * 0.70, 1.27, -4.098,
+    P.add('hullDark', box(0.10, 0.045, 0.012), side * 0.70, 1.27, -4.083,
       0, 0, side * 0.08);
     for (const [x, y] of [[0.39, 1.17], [0.52, 1.27], [0.73, 1.31]])
-      P.add('hullDetail', cylZ(0.012, 0.012, 8), side * x, y, -4.104);
-    P.add('hullDark', box(0.46, 0.012, 0.010), side * 0.67, 1.225, -4.086,
+      P.add('hullDetail', cylZ(0.012, 0.012, 8), side * x, y, -4.084);
+    P.add('hullDark', box(0.46, 0.012, 0.010), side * 0.67, 1.225, -4.080,
       0, 0, side * 0.45);
     P.add('hullDark', new THREE.RingGeometry(0.082, 0.145, P.q ? 24 : 16),
-      side * 0.95, 1.24, -4.085);
-    P.add('hullDetail', torus(0.123, 0.010, P.q ? 20 : 14), side * 0.95, 1.24, -4.094, Math.PI / 2, 0, 0);
+      side * 0.95, 1.24, -4.080);
+    P.add('hullDetail', torus(0.123, 0.010, P.q ? 20 : 14), side * 0.95, 1.24, -4.083, Math.PI / 2, 0, 0);
     P.add('hullDark', cylZ(0.072, 0.012, P.q ? 18 : 12), side * 0.95, 1.24, -4.010);
-    P.add('hullDetail', box(0.29, 0.020, 0.012), side * 0.95, 1.18, -4.096);
+    P.add('hullDetail', box(0.29, 0.020, 0.012), side * 0.95, 1.18, -4.084);
     for (const y of [1.08, 1.43]) P.add('hullDetail', box(0.60, 0.018, 0.012),
-      side * 0.78, y, -4.087);
+      side * 0.78, y, -4.081);
     for (const x of [0.50, 1.06]) P.add('hullDetail', box(0.018, 0.36, 0.012),
-      side * x, 1.255, -4.087);
+      side * x, 1.255, -4.081);
   }
   P.add('hullDetail', box(1.48, 0.020, 0.012), 0, 1.49, -3.665);
   P.add('hullDetail', box(1.48, 0.020, 0.012), 0, 1.21, -3.665);
   if (P.q) for (let k = -4; k <= 4; k++) P.add('hullDetail', box(0.014, 0.25, 0.012),
     k * 0.16, 1.35, -3.668);
   for (const side of [-1, 1]) {
-    P.add('hullGlass', box(0.10, 0.065, 0.014), side * 1.05, 1.34, -4.095);
-    P.add('hullDetail', torus(0.048, 0.010, 12), side * 0.94, 1.25, -4.09, Math.PI / 2, 0, 0);
+    P.add('hullGlass', box(0.10, 0.065, 0.014), side * 1.05, 1.34, -4.083);
+    P.add('hullDetail', torus(0.048, 0.010, 12), side * 0.94, 1.25, -4.082, Math.PI / 2, 0, 0);
   }
   // Three horizontal service drums sit under the already-published tail
   // deck crest; they supply the large round rear-quarter read in the print.
@@ -2456,11 +2485,11 @@ function buildChallenger2(P) {
     P.add('hullDark', cylZ(0.026, 0.024, P.q ? 12 : 8),
       side * 0.73, 1.20, -3.720);
     P.add('hullDetail', torus(0.070, 0.013, P.q ? 18 : 12),
-      side * 0.76, 1.075, -4.090, Math.PI / 2, 0, 0);
+      side * 0.76, 1.075, -4.082, Math.PI / 2, 0, 0);
     P.add('hullDark', cylZ(0.032, 0.020, P.q ? 14 : 10),
-      side * 0.76, 1.075, -4.096);
+      side * 0.76, 1.075, -4.084);
   }
-  KIT.towCable(P, [[-1.32, 1.63, 2.55], [-0.45, 1.88, 1.90], [0.55, 1.76, 2.25], [1.30, 1.42, 3.20]]);
+  KIT.towCable(P, [[-1.32, 1.43, 2.55], [-0.45, 1.49, 1.90], [0.55, 1.49, 2.25], [1.30, 1.40, 3.20]]);
 
   // Measured primary courses from the repaired reference component census.
   // The old single loft joined the ring underside straight to one continuous
@@ -2492,8 +2521,8 @@ function buildChallenger2(P) {
     [0.488, -0.03, 1.307], [1.463, -0.03, 1.307], [1.463, -0.03, 0.55], [0.488, -0.03, 0.55],
     [0.488, 0.345, 0.818], [1.365, 0.345, 0.818], [1.20, 0.42, 0.55], [0.49, 0.43, 0.55]));
   cr2FacetedShell(P, [
-    { z: 0.55, w: 1.46, tw: 1.20, inner: 0.49, bot: -0.03, outer: 0.42, center: 0.43 },
-    { z: -0.10, w: 1.455, tw: 1.12, inner: 0.49, bot: -0.01, outer: 0.44, center: 0.51 },
+    { z: 0.55, w: 1.46, tw: 1.20, inner: 0.49, bot: -0.03, outer: 0.34, center: 0.43 },
+    { z: -0.10, w: 1.455, tw: 1.12, inner: 0.49, bot: -0.01, outer: 0.35, center: 0.51 },
     { z: -1.05, w: 1.24, tw: 1.08, inner: 0.49, bot: 0.00, outer: 0.40, center: 0.44 },
     { z: -2.46, w: 1.18, tw: 1.12, inner: 0.49, bot: 0.05, outer: 0.39, center: 0.36 },
     { z: -2.99, w: 1.12, tw: 1.10, inner: 0.49, bot: 0.06, outer: 0.34, center: 0.30 },
@@ -2602,20 +2631,23 @@ function buildChallenger2(P) {
     // Forward Dorchester/smoke-bank shoulder. The source plan carries a
     // closed solid to the ±1.49 lane and local z≈1.95; omitting it left both
     // the outer plan-front and forward side-roof columns empty.
-    const cheekOuter = 1.50;
-    cr2Course(P, 'turret', [
+    const cheekOuter = side < 0 ? 1.50 : 1.46;
+    const cheekPlan = [
       [side * 0.90, 1.05], [side * cheekOuter, 1.05],
       [side * cheekOuter, 1.38], [side * 0.35, 1.42],
-    ], -0.03, [0.24, 0.00, 0.00, 0.24]);
+    ];
+    cr2Course(P, 'turret', cheekPlan, -0.03,
+      side < 0 ? [0.24, 0.38, 0.38, 0.24] : [0.24, 0.00, 0.00, 0.24]);
     // Outboard Dorchester cassette follows the shell face as one tapered,
     // closed solid.  Its upper course dies into the ruled roof instead of
     // carrying the former full-length cap/rail.
-    const cassetteOuter = side < 0 ? 1.55 : 1.505;
+    const cassetteOuter = side < 0 ? 1.55 : 1.46;
     const cassetteFront = side < 0 ? -0.64 : -0.67;
     const cassetteRear = side < 0 ? -1.22 : -2.77;
     cr2Course(P, 'turret', [
       [side * 1.40, cassetteFront + 0.10], [side * cassetteOuter, cassetteFront],
-      [side * cassetteOuter, cassetteRear], [side * 1.40, cassetteRear - 0.10],
+      [side * cassetteOuter, cassetteRear],
+      [side * 1.40, cassetteRear - 0.10],
     ], [0.12, 0.02, 0.05, 0.12], [0.35, 0.05, 0.08, 0.34]);
     // Cassette service fields are separate recessed pannier faces, not
     // painted-on stripes.  Preserve the print's strong left/right
@@ -2702,17 +2734,17 @@ function buildChallenger2(P) {
   // frame rails, but recess two unequal mesh fields toward the armor face.
   // Replacing the monolithic dark backing is what creates real rear depth.
   for (const y of [0.09, 0.41]) P.add('turretDark', box(2.56, 0.024, 0.018),
-    0, y, -3.092);
+    0, y, -3.000);
   for (const x of [-1.268, 1.268]) P.add('turretDark', box(0.024, 0.34, 0.014),
-    x, 0.25, -3.092);
+    x, 0.25, -3.000);
   P.add('turretDark', box(1.12, 0.27, 0.012), -0.61, 0.25, -2.995);
   P.add('turretDark', box(1.00, 0.23, 0.012), 0.67, 0.25, -2.993);
-  P.add('turretDetail', box(0.024, 0.29, 0.018), 0.02, 0.25, -3.094);
+  P.add('turretDetail', box(0.024, 0.29, 0.018), 0.02, 0.25, -3.000);
   for (const [x, a] of [[-0.68, -0.52], [0.68, 0.52]]) P.add('turretDetail',
-    box(0.030, 0.36, 0.018), x, 0.25, -3.096, 0, 0, a);
+    box(0.030, 0.36, 0.018), x, 0.25, -3.000, 0, 0, a);
   const bustleStrap = new THREE.CatmullRomCurve3([
-    [-1.12, 0.36, -3.100], [-0.62, 0.23, -3.102], [0, 0.16, -3.103],
-    [0.55, 0.24, -3.102], [1.10, 0.35, -3.100],
+    [-1.12, 0.36, -3.000], [-0.62, 0.23, -3.002], [0, 0.16, -3.003],
+    [0.55, 0.24, -3.002], [1.10, 0.35, -3.000],
   ].map((p) => new THREE.Vector3(...p)), false, 'centripetal');
   P.add('turretDark', new THREE.TubeGeometry(bustleStrap, P.q ? 20 : 10, 0.012, 6, false));
   for (const y of [0.09, 0.24, 0.40]) P.add('turretDetail', box(2.62, 0.024, 0.024), 0, y, -3.028);
@@ -2893,7 +2925,7 @@ function buildChallenger2(P) {
   stationReceiver.position.set(0.775, 0.905, 0.20);
   stationReceiver.castShadow = stationReceiver.receiveShadow = true;
   stationMg.add(stationReceiver);
-  const stationTube = new THREE.Mesh(cylX(0.018, 0.64, P.q ? 16 : 10), P.mats.dark);
+  const stationTube = new THREE.Mesh(cylX(0.018, 0.62, P.q ? 16 : 10), P.mats.dark);
   stationTube.position.set(0.84, 0.925, 0.20);
   stationTube.castShadow = stationTube.receiveShadow = true;
   stationMg.add(stationTube);

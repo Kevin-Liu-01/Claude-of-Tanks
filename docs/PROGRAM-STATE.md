@@ -89,7 +89,7 @@ re-freeze NEW hash, all in ONE commit.
 | k2 | 827d5ffc | GRADUATED 2026-08-08 (31st; Leclerc-method closed station loft; gate 90.1 x2 every component >=90; visual R26 floor 9.0 / mean 9.09 x14; exact Object_8/15/18/21 plan inventory, rounded asymmetric cage, countable six-station ISU gear; oracle 8d92cd1b reproducible from pristine .bak) |
 | abramsx | d1dbfa2 | GRADUATED 2026-08-09 (32nd; §5.87 owner attachment closeout RE-FROZEN: roof-sight necks + XM914 buried foundation/recoil spine/equipment foot, no air seams; gate 90.2 x2 every component >=90; fresh §B8 floor 9.0 / mean 9.09 x14; oracle 01acf03c reproducible from pristine .bak; prior fe7f9852 complete-redesign freeze retired) |
 | challenger_3 | b0c172a4 | GRADUATED 2026-08-09 (33rd; §5.87 owner attachment closeout RE-FROZEN: Protector roof shoe/fork/receiver/optic supports + smoke backing shoes; gate 90.4 x2 every component >=90; fresh §B8 floor 9.0 / mean 9.06 x14; oracle a5fcd801 reproducible from pristine .bak; prior 2678f6c complete-redesign freeze retired) |
-| challenger2 | 63ee160 | GRADUATED 2026-08-09 (34th; complete Leclerc-method redesign; gate 90.1 x2 every component >=90; visual floor 9.0 / mean 9.03 x14; direct-tree fidelity 91.3; exact source profiles/plan bands, joined V-section hull ends, closed three-band turret, deep Hydrogas wheels and folded transverse L7A2/MAG; oracle d2e22673 reproducible from pristine .bak) |
+| challenger2 | 3b4bd5f0 | GRADUATED 2026-08-09; RE-FROZEN 2026-08-10 (§5.89 owner fused-block repair: material-fused casemate course removed from fixed hull and repartitioned into the articulated source tree; one low ring landing + one rotating turret; gate 90.1 x2 every component >=90; standard/parent/winding clean; fresh §B8 floor 9.0 / mean 9.06 x14, yaw/load paths 9.3; oracle f44e3b46 reproducible from pristine .bak; prior 63ee160 retired) |
 | m26_pershing | 2f006738 | RE-RECORDED 2026-08-08: hash moved by LANDED 5f39989 (armorM4 gunBarrel shadow-proxy 3.96->3.44; m26/m45 inherit m4a3e8 proxies — patton.js bytes unchanged); double-confirmed by builder bisect + m45-grad critic; prior 65c564c0 bore+winding re-cert lineage (floors 9.1-9.4) carries |
 | t90m | e345ee8a | GRADUATED 2026-08-06 (27th; floor 9.0 x14 second sitting; the owner's dedicated-agent arc 81.7 -> dual gate) |
 
@@ -2600,3 +2600,35 @@ fifteen moved ids (hash / meshes / vertices):
 `npm test` is green. No geometry gate receipt, fleet count, graduation state or
 freeze changes in this commit. The next commit may now change only T-90-family
 geometry in the fresh module under the normal measurement/gate/critic laws.
+
+## 5.89 CHALLENGER 2 FUSED HULL/TURRET REPAIR (2026-08-10)
+
+The owner's garage screenshot proved that the Challenger 2 source's
+material-based split had left a broad turret/casemate course in the fixed hull,
+overlapping the real procedural turret and remaining behind at non-zero yaw.
+The repair now classifies the raw fused primitive by connected component and
+physical ring crossing: 572 components / 12,313 vertices / 14,546 triangles
+move into `TurretParts`, while the actual hull remains in `HullParts`. The
+procedural hull roof is rebuilt on the physical 1.55 m deck/ring datum rather
+than the contaminated 2.07 m trace. A thin continuous ring landing is the only
+fixed structure beneath the articulated shell; driver and rear-deck furniture
+remain correctly hull-owned.
+
+Two eight-centimetre seams between the centre bow strip and V-section
+cross-loft were closed with a narrow profile-following bridge entirely inside
+the existing glacis silhouette. This is structural closure, not a mask proxy:
+standard contiguity moved 26 -> 0 while exact track clipping stayed 0/0 and the
+geometry gate held at **90.1** x2 (hull 90.5 / whole 90.1 / turret 90.3 /
+stations 91.8 / dims 93.1 / floaters 100). Turret-parent is 0 stranded / 0
+abutting / 0 dangling; winding is 0 reversed / 0 mixed, 0 yaw candidates;
+`npm test` is green.
+
+Independent §B8 on `shots/critic-challenger2-fusedfix/` passes all fourteen
+fresh views: floor **9.0**, mean **9.06**. The yaw/load-path read passes **9.3**:
+the shell, gun, RWS, hatches, optics, smoke banks and bases rotate as one
+assembly with no fixed duplicate mass, unsupported hardware or air seam.
+Freeze **3b4bd5f0** reproduces x2 (42 meshes / 250,157 vertices). Repaired
+oracle SHA-256 is `f44e3b46ee07a457b04fff6cdf8950f880a45fd22d952226e2ef16a4bd3c49ba`,
+reproducible from pristine `.bak`
+`1be3ef855ac9c441e38262a4ae26600d14c763c70c867024554499a451f9ad48`.
+Verdict: `docs/critique/shaded-parity-challenger2-fused-block-recert.md`.

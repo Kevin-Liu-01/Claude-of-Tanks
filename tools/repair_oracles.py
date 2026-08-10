@@ -3700,10 +3700,16 @@ def _challenger2_repartition():
             gltf['meshes'].append({'name': name + 'Mesh', 'primitives': [out]})
             return len(gltf['meshes']) - 1
 
-        # The second material node also crosses semantics: 506 whole solids
-        # above the deck and inside the measured casting footprint are sights,
-        # hatches, smoke banks, and roof kit. Move them under the true turret
-        # node so every downstream subtree mask and yaw pose is honest.
+        # The second material node also crosses semantics. The first repair
+        # moved 506 components whose *entire* AABB started above the deck, but
+        # that rule missed 60 turret-side/casemate solids which dip through
+        # the y=.55 ring plane. Those are the owner's observed giant fixed
+        # block: their five primary courses span x +-1.39, z -2.46..+2.52 and
+        # top at y 1.11, so leaving them in the hull duplicates and overlaps
+        # the independently articulated turret. Move both the wholly-above
+        # kit and any ring-crossing component which rises above y=.63 while
+        # remaining inside the exact turret footprint. No triangle is cut;
+        # fixed deck/rear furniture outside that footprint stays hull-side.
         secondary = []
         for ci in gltf['nodes'][find_node(gltf, 'challendger 2')].get('children', []):
             node = gltf['nodes'][ci]
@@ -3750,8 +3756,17 @@ def _challenger2_repartition():
         for root, vids in sec_comps.items():
             lo = [min(sec_wpos[i][a] for i in vids) for a in range(3)]
             hi = [max(sec_wpos[i][a] for i in vids) for a in range(3)]
-            if (lo[1] >= 0.55 and lo[0] >= -1.60 and hi[0] <= 1.60
-                    and lo[2] >= -1.55 and hi[2] <= 4.10):
+            wholly_above_kit = (lo[1] >= 0.55 and lo[0] >= -1.60
+                                 and hi[0] <= 1.60 and lo[2] >= -1.55
+                                 and hi[2] <= 4.10)
+            # The paired left-side Dorchester/smoke housings extend to
+            # x=-1.674 while remaining wholly inside the rotating turret's
+            # -2.60..+2.60 plan run. Include that measured armor width; the
+            # fixed hull skirts/deck outside the z window are unaffected.
+            ring_crossing_turret = (hi[1] > 0.63 and lo[0] >= -1.70
+                                     and hi[0] <= 1.70 and lo[2] >= -2.60
+                                     and hi[2] <= 2.60)
+            if wholly_above_kit or ring_crossing_turret:
                 moved_roots.add(root)
         moved_tris, sec_kept = [], []
         for k in range(0, len(sec_idx) - 2, 3):
@@ -3761,7 +3776,7 @@ def _challenger2_repartition():
         kept_vids = {v for tri in sec_kept for v in tri}
         moved_got = (len(moved_roots), len(moved_vids), len(moved_tris))
         kept_got = (len(sec_comps) - len(moved_roots), len(kept_vids), len(sec_kept))
-        if moved_got != (506, 10602, 12556) or kept_got != (2043, 54930, 63131):
+        if moved_got != (572, 12313, 14546) or kept_got != (1977, 53219, 61141):
             raise SystemExit(f'{tank_id}: secondary split census drift — '
                              f'moved {moved_got}, kept {kept_got}')
         sec_flat = [v for tri in sec_kept for v in tri]
@@ -3800,7 +3815,7 @@ def _challenger2_repartition():
         print('[repair] challenger2: fused primitive repartitioned + '
               'tube pinned 11.50m — '
               'Gun 28/2027/3186, HullParts 231/6212/7918, '
-              'Turret 646/18040/23465, TurretParts 506/10602/12556 '
+              'Turret 646/18040/23465, TurretParts 572/12313/14546 '
               '(components/verts/tris)')
     return op
 
