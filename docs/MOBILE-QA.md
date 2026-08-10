@@ -38,7 +38,7 @@ only exist in real time), one JSON scorecard per run. Stations:
 | battle_load | real BATTLE click → controllable | < 8 s wall |
 | look | 12 s aimpad touch drags | zero tasks > 100 ms / 10 s |
 | drive | 15 s virtual-stick driving | zero tasks > 100 ms / 10 s |
-| fire | 8 s Bradley drag→release autocannon volley | zero tasks > 100 ms / 10 s |
+| fire | 8 s Bradley held auto-fire + fire-button aim drags | zero tasks > 100 ms / 10 s |
 | fight | 20 s drive-at-enemy + fire; records tank:spotted | zero tasks > 100 ms / 10 s; reveal worst task < 50 ms |
 | rematch | second battle start | < 8 s wall |
 
@@ -96,27 +96,37 @@ spot reveal < 50 ms · garage_idle > 95% clean frames
 Both thumb-side fire buttons use the same Dynamic Aim contract on every
 vehicle class:
 
-1. Touching FIRE arms one shot; it does not fire on contact or while held.
+1. Touching FIRE arms the hybrid gesture; it never fires merely from the
+   initial landing.
 2. Motion inside an 8 CSS-pixel radius is landing jitter and produces no aim.
 3. Past that radius, movement feeds the standard virtual-aim lane at the same
    sensitivity as the main aim pad. Pointer capture keeps aiming if the thumb
    leaves the circular button.
-4. Lifting fires exactly once at the final aim position. Dragging onto the
-   visible red cancel target before lifting, `pointercancel`, lost capture,
-   backgrounding, or leaving battle cancels without firing.
-5. One pointer owns FIRE, so a second thumb cannot steal or duplicate the shot.
+4. Lifting before the 320 ms hold threshold fires exactly once at the final
+   aim position.
+5. At 320 ms, the gesture becomes the standard held-fire action. IFVs keep
+   firing their autocannon while that thumb aims; conventional tanks fire
+   again automatically whenever reload completes. Lifting stops the held
+   action and never appends an extra release shot.
+6. Dragging onto the compact red × target stops held fire immediately and
+   cancels the release shot. `pointercancel`, lost capture, backgrounding, or
+   leaving battle also release/cancel safely.
+7. One pointer owns FIRE, so a second thumb cannot steal or duplicate the shot.
 
-This follows Wargaming's documented Blitz Dynamic Aim interaction—hold the
-fire button, move it to aim, release to shoot, with a red-cross cancellation
-path—and retains the separate free-interface aim surface. Sources:
+The quick gesture follows Wargaming's documented Blitz Dynamic Aim
+interaction—move the held fire button to aim, release to shoot, with a
+red-cross cancellation path. Our sustained-hold extension reuses the existing
+cross-platform full-auto input lane instead of creating tank-specific logic,
+and the separate free-interface aim surface remains available. Sources:
 [Update 6.11: Dynamic Aim](https://eu.wotblitz.com/en/news/updates/update-06-11/),
 [official touch-control customization](https://wargaming.net/support/en/products/wotb/article/15405/?redirect_lang=en).
 
 Functional evidence is `node tools/mobile-dynamic-aim-probe.mjs`: real CDP
-touch input must prove no press/hold/drag fire, deadzone suppression, aim
-deltas, one shot on release, cancel-without-fire, both fire buttons, an IFV,
-and an MBT. The normal Lap's `fire` station repeats real Bradley drag-release
-gestures; a static hold is deliberately no longer a mag dump.
+touch input must prove no landing fire, deadzone suppression, quick
+drag-release fire, cancel-without-fire, held Bradley multi-shot fire while
+aiming, MBT refire after reload, clean stop-on-release, both fire buttons, an
+IFV, and an MBT. The normal Lap's `fire` station holds one real Bradley touch
+for eight seconds and moves that same pointer through aim drags.
 
 ## Rig B pass 1 (2026-08-08, round 3 — QA iPhone 16 sim, portrait, :7777)
 

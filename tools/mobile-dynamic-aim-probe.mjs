@@ -1,7 +1,7 @@
 // Functional probe for mobile Dynamic Aim. It drives Chrome's real touch
-// input path (not direct input API calls) and proves release-only firing,
-// fire-button aim deltas, deadzone, cancellation, both fire buttons, and the
-// same behavior on an autocannon IFV and a conventional MBT.
+// input path (not direct input API calls) and proves quick release firing,
+// sustained hold-to-auto-fire, fire-button aim deltas, deadzone, cancellation,
+// both fire buttons, an autocannon IFV, and a conventional MBT.
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 
@@ -56,14 +56,14 @@ async function armDragRelease(selector, id, dx, dy) {
   const p = await box(selector);
   const before = await playerShots();
   await touch('touchStart', [{ x: p.x, y: p.y, id }]);
-  await sleep(180);
+  await sleep(35);
   const held = await playerShots();
-  if (held !== before) fail(`${selector} fired on touchStart/hold`);
+  if (held !== before) fail(`${selector} fired before the hold threshold`);
   await touch('touchMove', [{ x: p.x + 4, y: p.y + 3, id }]);
-  await sleep(80);
+  await sleep(15);
   const deadzoneCalls = await page.evaluate(() => window.__DA.aim.length);
   await touch('touchMove', [{ x: p.x + dx, y: p.y + dy, id }]);
-  await sleep(180);
+  await sleep(35);
   const during = await page.evaluate(() => ({
     shots: window.__DEBUG.playerShellLog.length,
     aim: window.__DA.aim.length,
@@ -77,6 +77,62 @@ async function armDragRelease(selector, id, dx, dy) {
   await page.waitForFunction((n) => window.__DEBUG.playerShellLog.length === n + 1,
     { timeout: 3000 }, before);
   return { before, after: await playerShots(), aimCalls: during.aim, deadzoneCalls };
+}
+
+async function holdBradleyAutoFire(selector, id) {
+  await sleep(300);
+  await page.evaluate(() => { window.__DEBUG.game.player.combat.reload.t = 0; });
+  const p = await box(selector);
+  const before = await playerShots();
+  const aimBefore = await page.evaluate(() => window.__DA.aim.length);
+  await touch('touchStart', [{ x: p.x, y: p.y, id }]);
+  await page.waitForFunction((n) => window.__DEBUG.playerShellLog.length >= n + 1,
+    { timeout: 3000 }, before);
+  for (let i = 0; i < 4; i++) {
+    await touch('touchMove', [{
+      x: p.x + (i % 2 ? -34 : 32),
+      y: p.y + (i % 3 ? -16 : 18),
+      id,
+    }]);
+    await sleep(330);
+  }
+  const live = await page.evaluate(() => ({
+    shots: window.__DEBUG.playerShellLog.length,
+    aim: window.__DA.aim.length,
+    auto: !!document.querySelector('.cot-touch .fire.autofire'),
+    label: document.querySelector('.cot-touch .fire:not(.alt) .lb')?.textContent,
+  }));
+  if (live.shots < before + 3) fail(`Bradley hold fired only ${live.shots - before} rounds`);
+  if (live.aim <= aimBefore || !live.auto || live.label !== 'Auto fire') {
+    fail(`Bradley hold did not preserve aim/auto feedback: ${JSON.stringify(live)}`);
+  }
+  await touch('touchEnd', []);
+  const released = await playerShots();
+  await sleep(800);
+  const settled = await playerShots();
+  if (settled !== released) fail('Bradley kept firing after release');
+  return { rounds: released - before, aimCalls: live.aim - aimBefore, stoppedAt: settled };
+}
+
+async function holdMbtThroughReload(selector, id) {
+  await sleep(300);
+  await page.evaluate(() => { window.__DEBUG.game.player.combat.reload.t = 0; });
+  const p = await box(selector);
+  const before = await playerShots();
+  await touch('touchStart', [{ x: p.x, y: p.y, id }]);
+  await page.waitForFunction((n) => window.__DEBUG.playerShellLog.length === n + 1,
+    { timeout: 3000 }, before);
+  await sleep(300); // expire the one press-edge buffer; only held fire remains
+  await page.evaluate(() => { window.__DEBUG.game.player.combat.reload.t = 0; });
+  await page.waitForFunction((n) => window.__DEBUG.playerShellLog.length === n + 2,
+    { timeout: 3000 }, before);
+  const auto = await page.$eval(selector, (el) => el.classList.contains('autofire'));
+  if (!auto) fail('MBT was not still in auto fire after reload');
+  await touch('touchEnd', []);
+  const released = await playerShots();
+  await sleep(350);
+  if (await playerShots() !== released) fail('MBT kept firing after release');
+  return { rounds: released - before, stopped: true };
 }
 
 try {
@@ -129,11 +185,19 @@ try {
   await sleep(350);
   if (await playerShots() !== cancelBefore) fail('cancel release fired a shot');
 
+  // The motivating IFV path: one held thumb keeps the real fire action down
+  // while the same pointer steers aim, yielding multiple 0.5 s Bradley shots.
+  const ifvAuto = await holdBradleyAutoFire('.cot-touch .fire:not(.alt)', 44);
+
   // Universal behavior: the alternate fire button on a conventional MBT
   // follows the exact same drag/release contract.
   await readyTank('m1a2');
   await page.evaluate(() => { window.__DA.aim.length = 0; });
   const mbt = await armDragRelease('.cot-touch .fire.alt', 51, 28, -16);
+
+  // A conventional tank uses the identical held action. Force its long reload
+  // ready inside the probe and prove it fires again without another touch.
+  const mbtAuto = await holdMbtThroughReload('.cot-touch .fire.alt', 52);
 
   await sleep(300); // release-edge buffer expiry; this is not a held control
   const finalState = await page.evaluate(() => ({
@@ -146,7 +210,10 @@ try {
     fail(`fire gesture left stuck state: ${JSON.stringify(finalState)}`);
   }
   if (errors.length) fail(`page errors: ${errors.join('; ')}`);
-  console.log(JSON.stringify({ pass: true, ifv, mbt, tapRelease: true, cancelNoFire: true, finalState }, null, 2));
+  console.log(JSON.stringify({
+    pass: true, ifv, ifvAuto, mbt, mbtAuto,
+    tapRelease: true, cancelNoFire: true, finalState,
+  }, null, 2));
 } finally {
   await browser.close();
   await server.close();

@@ -193,18 +193,28 @@ await begin('fire');
   if (btn) {
     const box = await btn.boundingBox();
     const cx = box.x + box.width / 2, cy = box.y + box.height / 2;
-    // Dynamic Aim is release-fire: repeat real drag -> lift gestures for the
-    // Bradley instead of holding the button (a hold now correctly arms one
-    // shot without firing it). Alternating drags exercise both aim axes.
+    // Suppressive-fire contract: keep one real touch held for the full
+    // station while moving that same pointer through alternating aim drags.
+    // The input layer refires the Bradley whenever its 0.5 s reload clears.
+    const id = 30;
+    await cdp.send('Input.dispatchTouchEvent', {
+      type: 'touchStart', touchPoints: [{ x: cx, y: cy, id }],
+    });
     const fireUntil = performance.now() + 8000;
-    let volley = 0;
+    let step = 0;
     while (performance.now() < fireUntil) {
-      const sx = volley % 2 ? -24 : 26;
-      const sy = volley % 3 ? -10 : 14;
-      await touchDrag(cx, cy, cx + sx, cy + sy, 120, 30 + volley);
-      volley += 1;
-      await sleep(350);
+      await cdp.send('Input.dispatchTouchEvent', {
+        type: 'touchMove',
+        touchPoints: [{
+          x: cx + (step % 2 ? -28 : 30),
+          y: cy + (step % 3 ? -12 : 16),
+          id,
+        }],
+      });
+      step += 1;
+      await sleep(320);
     }
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
   } else {
     await page.evaluate(() => { window.__DEBUG.flags.forceFire = true; });
     await sleep(8000);
