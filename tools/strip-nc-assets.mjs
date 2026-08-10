@@ -52,7 +52,10 @@ const RECOVERED_ICON_IDS = [
   // ids (t44, type59, amx30, amx30b2, m48, m60a2, vickers_mk1) SHIP.
   't54', 't80', 't80b', 't80bv', 't84',
 ];
-const ICON_SUFFIXES = ['angle', 'side', 'side_silhouette', 'top', 'top_silhouette'];
+const ICON_SUFFIXES = [
+  'angle', 'side', 'side_silhouette', 'top', 'top_silhouette',
+  'hit_zones_side', 'armor_side', 'modules_side',
+];
 const NC_PATH_RE = /(quarantine\/|community-candidates\/|candidates-gen2\/|community\/recovered\/|m1a2_tejas\.glb|abramsx-mortavex\.glb)/;
 
 async function main() {

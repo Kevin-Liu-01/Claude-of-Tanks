@@ -77,7 +77,9 @@ browser-render rigs self-ticket the /tmp/cot-shots.lock FIFO — never wrap them
 | vertex-normalize.mjs | `[--ids=] [--verify]` | warp-plan literals for repair batches |
 | repair_oracles.py | `inspect <glb>` / `repair <id>` | oracle repairs (orchestrator lane, §E) |
 | tmp-modelsource-dump.mjs | `node tools/tmp-modelsource-dump.mjs [out.json]` | runtime MODEL_SOURCE dump (load-prove; helper-expanded mirrors) |
-| genIcons.mjs | `--tanks <id>` | 5 icons per tank — ICON TRAP discipline applies |
+| genIcons.mjs | `--ids=<id>` / `--tanks <id>` | 8 hashed assets per tank + manifest (views, silhouettes, hit/armor/module diagrams) |
+| tank-assets-check.mjs | `--ids=<id>` | Fleet completeness, hashes/dimensions, live geometry+metadata freshness, cannon-bore gate |
+| tank-release-check.mjs | `--ids=<id> [--gate]` | Asset+bore gate → tank standard → npm test → private build |
 | screenshot.mjs | `node tools/screenshot.mjs` | the 20-view game screenshot contract |
 | mobilelap.mjs | `node tools/mobilelap.mjs --out <scorecard>` | deterministic station-by-station mobile budget scorecard |
 | dev-perf-probe.mjs | `npm run perf:dev -- --profile=normal\|constrained\|software --out=<json>` | full DEV trace, first-10-second metrics, CPU profile, and synthetic-freeze falsification |

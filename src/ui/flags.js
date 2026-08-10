@@ -20,6 +20,11 @@ import { flagIconCode } from './flagCodes.js';
 
 const FLAG_URL = Object.freeze({ cn, de, fr, gb, il, it, jp, kr, pl, ru, se, ua, us, xx });
 
+/** Bundled official flag URL for CSS backgrounds and image elements. */
+export function flagIconUrl(nation) {
+  return FLAG_URL[flagIconCode(nation)];
+}
+
 /**
  * Render the official flag-icons asset for a roster nation.
  * The adjacent garage text already names the nation, so the image is
@@ -29,6 +34,6 @@ export function flagIconHTML(nation, width = 24, height = 0) {
   const code = flagIconCode(nation);
   const w = Number.isFinite(width) && width > 0 ? Math.round(width) : 24;
   const h = Number.isFinite(height) && height > 0 ? Math.round(height) : Math.round(w * 0.75);
-  return `<img class="cot-flag" src="${FLAG_URL[code]}" width="${w}" height="${h}" ` +
+  return `<img class="cot-flag" src="${flagIconUrl(nation)}" width="${w}" height="${h}" ` +
     `data-country-code="${code}" alt="" aria-hidden="true" draggable="false">`;
 }

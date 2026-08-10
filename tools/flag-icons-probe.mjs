@@ -61,6 +61,8 @@ try {
       codes: [...new Set(flags.map((image) => image?.dataset.countryCode).filter(Boolean))].sort(),
       remote: flags.filter((image) => image && new URL(image.currentSrc).origin !== location.origin &&
         !image.currentSrc.startsWith('data:')).length,
+      backdrops: cards.filter((card) => card.style.getPropertyValue('--nation-flag').includes('url(') &&
+        getComputedStyle(card, '::before').backgroundImage !== 'none').length,
       oldInlineSvg: document.querySelectorAll('.cot-card .flag svg, .cot-garage .stats .sub svg').length,
       badAspect,
       statsLoaded: !!(stats?.complete && stats.naturalWidth > 0),
@@ -75,6 +77,8 @@ try {
   check('all roster mappings appear', JSON.stringify(audit.codes) === JSON.stringify(expectedCodes),
     audit.codes.join(','));
   check('no remote flag fetches', audit.remote === 0, String(audit.remote));
+  check('every card has an official flag backdrop', audit.backdrops === audit.cards,
+    `${audit.backdrops}/${audit.cards}`);
   check('old inline flag drawings are gone', audit.oldInlineSvg === 0, String(audit.oldInlineSvg));
   check('official 4x3 aspect ratio is preserved', audit.badAspect === 0, `${audit.badAspect} distorted`);
   check('selected-vehicle detail icon matches its card', audit.statsLoaded && audit.statsCode === audit.selectedCode,

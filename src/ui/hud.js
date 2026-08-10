@@ -48,6 +48,7 @@ import {
 // per-vehicle profiles, at those sizes).
 import { maskIcon, tintedIcon } from './icons.js';
 import { moduleAlertLabel } from './moduleRegistry.js';
+import { tierNumeral } from '../vehicles/tier.js';
 // SHOT-INFO SECTION: combat-intelligence panels (shot cards, armor diagrams,
 // incoming toasts, shot log, session stats) — logic lives in src/ui/shotInfo.js.
 import { createShotInfo } from './shotInfo.js';
@@ -102,48 +103,6 @@ const BOT_NICKS = [
   'CamoNet', 'LongStop', 'DerbyDozer', 'PakWagen',
 ];
 const PLAYER_NICK = 'Claude';
-// vehicle tier (WoT-style roman numeral badge) per spec id
-const TIER_BY_ID = {
-  m4a3e8: 'VI', t34_85: 'VI', tiger1: 'VII', is2: 'VII', panther_g: 'VII',
-  m1a2: 'X', t90m: 'X', leo2a7: 'X',
-  // COMMUNITY TANKS (sourced roster — see docs/ATTRIBUTION.md)
-  strv103: 'IX', is3: 'VIII', t34_85_cad: 'VI', newc_tiger: 'VII',
-  newc_pziii: 'IV', pziii_konserwa: 'III', leichttraktor: 'I',
-  recon_tank: 'VIII', q_heavy: 'IX',
-  // community waves 2+3
-  kv2: 'VI', tiger2: 'VIII', sherman_jumbo: 'VI', jagdtiger: 'IX',
-  jpz_e100: 'X', sturmtiger: 'VIII', t95: 'IX', t30: 'IX',
-  is7: 'X', object279: 'X', is6b: 'VIII', is1: 'V',
-  // MODERN EXPANSION (mirrors state.js SPEC_TIER / garage.js TIER_BY_ID)
-  m1a1: 'IX', t90a: 'IX', m1a2_tusk: 'X',
-  t72b3: 'VIII', challenger2: 'IX', merkava4: 'IX', leo2a6: 'IX',
-  leo2a4: 'VIII', t80u: 'VIII', leclerc: 'IX', type99a: 'IX',
-  leo1a5: 'VII', t14: 'X', chieftain_mk10: 'VII', k2: 'IX', type10: 'IX',
-  m2a2_bradley: 'VIII', bmp2: 'VII', ariete: 'VIII', k1a1: 'VIII',
-  // user drops (2026-07-28)
-  type74: 'VIII',
-  // user drops wave 2 (recovered batch)
-  bmp1: 'VI', m1128: 'VIII', m1296: 'VII',
-  // user drops wave 4 (recovered batch, final sweep)
-  kf51: 'X',
-  // recovered Abrams candidates
-  m1a2_tejas: 'X', abramsx: 'X',
-  challenger1: 'VIII', chieftain5: 'VII', fv510: 'VII',
-  leo2_revolution: 'X', leo2a5: 'IX', leo2a7v: 'X',
-  m1a1ha: 'IX', m1a2_sepv2: 'X', m60a1: 'VII', pt91m: 'VIII',
-  merkava1b: 'VII', merkava2b: 'VII', merkava2d: 'VIII',
-  merkava3b: 'VIII', merkava3c: 'VIII', merkava3d: 'IX', merkava4b: 'IX',
-  t62mv1: 'VII', t64bv1: 'VIII', t72b_1987: 'VIII', t72b3m: 'IX',
-  t72bu: 'VIII', t90sm: 'IX', type90: 'IX', t90a_vladimir: 'IX',
-  is3_bergman: 'VIII', isu152: 'VIII', isu122s: 'VIII',
-  centurion3: 'VII', centurion5: 'VIII', comet: 'VII', challenger_cruiser: 'VI', charioteer: 'VIII',
-  leopard2_proto: 'VIII', m1a1_aim: 'IX', m46_patton: 'VII', m47_patton: 'VII',
-  m26_pershing: 'VIII', m45_patton: 'VIII', m60a3: 'VIII',
-  // GEN2 WAVE 8 (userdrops7): tree tiers, mirrors state.js SPEC_TIER pools
-  t44: 'VII', t54: 'VII', type59: 'VII', t80: 'VIII', t80b: 'IX',
-  t80bv: 'X', amx30: 'VII', amx30b2: 'VIII', m48: 'VII', m60a2: 'VIII',
-  vickers_mk1: 'VII', t84: 'IX',
-};
 function hashStr(s) {
   let h = 2166136261;
   for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
@@ -851,7 +810,8 @@ export function initHud(bus) {
     const ent = (lastTanksRef || []).find((t) => t && t.id === p.id) || null;
     // same nickname the team panels show for this entity (nickById-backed)
     specNick.textContent = ent ? nickFor(ent) : (p.vehicle || String(p.id));
-    const tier = p.specId && TIER_BY_ID[p.specId] ? `${TIER_BY_ID[p.specId]} · ` : '';
+    const numeral = p.specId ? tierNumeral(p.specId) : '';
+    const tier = numeral ? `${numeral} · ` : '';
     specVeh.textContent = `${tier}${p.vehicle || ''}${p.count > 1 ? ` · ${p.count} allies alive` : ''}`;
     specBar.classList.add('show');
     document.body.classList.add('cot-spectating'); // own-tank furniture off
@@ -1294,7 +1254,7 @@ export function initHud(bus) {
         r.querySelector('.ic').innerHTML =
           classGlyphSVG(t.spec.class, color, 14, 12);
         if (t.isPlayer) r.classList.add('me');
-        r.querySelector('.tier').textContent = TIER_BY_ID[t.spec.id] || '–';
+        r.querySelector('.tier').textContent = tierNumeral(t.spec.id) || '–';
         r.querySelector('.nick').textContent = nickFor(t);
         r.querySelector('.vn').textContent = t.spec.name;
         (ally ? earL : earR).appendChild(r);
@@ -2243,7 +2203,7 @@ export function initHud(bus) {
     tgtEl.style.transform =
       `translate(${_sx.toFixed(1)}px,${(_sy - 24).toFixed(1)}px) translate(-50%,-100%)`;
     tgtRefs.nick.textContent = nickFor(best);
-    tgtRefs.tier.textContent = (best.spec && TIER_BY_ID[best.spec.id]) || '–';
+    tgtRefs.tier.textContent = (best.spec && tierNumeral(best.spec.id)) || '–';
     tgtRefs.veh.textContent = best.spec ? best.spec.name : String(best.id);
     // same class-glyph language as the team panels (r6-2)
     const tCls = best.spec ? best.spec.class : 'medium';

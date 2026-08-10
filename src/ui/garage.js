@@ -5,7 +5,7 @@
 
 import { FONT_STACK, ensureFonts } from './fonts.js';
 import { FEATURED_SHOTS } from './featuredShots.js';
-import { flagIconHTML } from './flags.js';
+import { flagIconHTML, flagIconUrl } from './flags.js';
 import { ensureTankThumbs, drainTankThumbs, getTankThumb, requeueTankThumbs } from './tankThumbs.js';
 // CAMO PICKER SECTION: swatches preview the REAL resolved pattern (scheme +
 // palette from materials.js) instead of hand-approximated CSS gradients.
@@ -37,6 +37,7 @@ import {
 import { equipIconSVG } from './equipIcons.js';
 import { uiIconSVG } from './uiIcons.js';
 import { isGarageVisibleTankId } from '../game/matchmaking.js';
+import { tierNumeral } from '../vehicles/tier.js';
 import {
   viewRangeOf, baseCamoOf, equipViewMult, equipCamoBonus,
 } from '../sim/spotting.js';
@@ -46,48 +47,6 @@ const NATION_LABEL = {
   Sweden: 'SWE', Community: 'COM', UK: 'UK', France: 'FRA', Israel: 'ISR',
   China: 'CHN', 'South Korea': 'KOR', Japan: 'JPN', Italy: 'ITA',
   Poland: 'POL', Ukraine: 'UKR',
-};
-
-// WoT-style tier numerals per vehicle (mirrors hud.js TIER_BY_ID — r5: the
-// carousel cards carried no tier at all, a core piece of WoT card info)
-const TIER_BY_ID = {
-  m4a3e8: 'VI', t34_85: 'VI', tiger1: 'VII', is2: 'VII', panther_g: 'VII',
-  m1a2: 'X', t90m: 'X', leo2a7: 'X',
-  strv103: 'IX', is3: 'VIII', t34_85_cad: 'VI', newc_tiger: 'VII',
-  newc_pziii: 'IV', pziii_konserwa: 'III', leichttraktor: 'I',
-  recon_tank: 'VIII', q_heavy: 'IX',
-  // community waves 2+3
-  kv2: 'VI', tiger2: 'VIII', sherman_jumbo: 'VI', jagdtiger: 'IX',
-  jpz_e100: 'X', sturmtiger: 'VIII', t95: 'IX', t30: 'IX',
-  is7: 'X', object279: 'X', is6b: 'VIII', is1: 'V',
-  // modern expansion (state.js SPEC_TIER mirrors these numerically)
-  m1a1: 'IX', t90a: 'IX', m1a2_tusk: 'X',
-  t72b3: 'VIII', challenger2: 'IX', merkava4: 'IX', leo2a6: 'IX',
-  leo2a4: 'VIII', t80u: 'VIII', leclerc: 'IX', type99a: 'IX',
-  leo1a5: 'VII', t14: 'X', chieftain_mk10: 'VII', k2: 'IX', type10: 'IX',
-  m2a2_bradley: 'VIII', bmp2: 'VII', ariete: 'VIII', k1a1: 'VIII',
-  // user drops (2026-07-28)
-  type74: 'VIII',
-  // user drops wave 2 (recovered batch)
-  bmp1: 'VI', m1128: 'VIII', m1296: 'VII',
-  // user drops wave 4 (recovered batch, final sweep)
-  kf51: 'X',
-  m1a2_tejas: 'X', abramsx: 'X',
-  challenger1: 'VIII', chieftain5: 'VII', fv510: 'VII',
-  leo2_revolution: 'X', leo2a5: 'IX', leo2a7v: 'X',
-  m1a1ha: 'IX', m1a2_sepv2: 'X', m60a1: 'VII', pt91m: 'VIII',
-  merkava1b: 'VII', merkava2b: 'VII', merkava2d: 'VIII',
-  merkava3b: 'VIII', merkava3c: 'VIII', merkava3d: 'IX', merkava4b: 'IX',
-  t62mv1: 'VII', t64bv1: 'VIII', t72b_1987: 'VIII', t72b3m: 'IX',
-  t72bu: 'VIII', t90sm: 'IX', type90: 'IX', t90a_vladimir: 'IX',
-  is3_bergman: 'VIII', isu152: 'VIII', isu122s: 'VIII',
-  centurion3: 'VII', centurion5: 'VIII', comet: 'VII', challenger_cruiser: 'VI', charioteer: 'VIII',
-  leopard2_proto: 'VIII', m1a1_aim: 'IX', m46_patton: 'VII', m47_patton: 'VII',
-  m26_pershing: 'VIII', m45_patton: 'VIII', m60a3: 'VIII',
-  // GEN2 WAVE 8 (userdrops7): tree tiers, mirrors state.js SPEC_TIER pools
-  t44: 'VII', t54: 'VII', type59: 'VII', t80: 'VIII', t80b: 'IX',
-  t80bv: 'X', amx30: 'VII', amx30b2: 'VIII', m48: 'VII', m60a2: 'VIII',
-  vickers_mk1: 'VII', t84: 'IX',
 };
 
 // ---------------------------------------------------------------------------
@@ -179,7 +138,7 @@ function catalogCompare(a, b) {
   const n = (NATION_RANK.get(a.nation) ?? 99) - (NATION_RANK.get(b.nation) ?? 99);
   if (n) return n;
   // §5.31b PRINT VIEWER: 'print:<id>' cards rank by their base tank's tier
-  const tierOf = (s) => TIER_BY_ID[s.id] || TIER_BY_ID[printBaseId(s.id)];
+  const tierOf = (s) => tierNumeral(s.id) || tierNumeral(printBaseId(s.id));
   const t = (TIER_NUM[tierOf(a)] || 999) - (TIER_NUM[tierOf(b)] || 999);
   if (t) return t;
   return String(a.name).localeCompare(String(b.name));
@@ -315,15 +274,25 @@ const GARAGE_CSS = `
 /* DRAG-SCROLL CAROUSEL: grabbing cursor while the strip is being panned */
 .cot-cards.dragging{cursor:grabbing;}
 .cot-cards.dragging .cot-card{cursor:grabbing;}
-.cot-card{width:132px;flex:0 0 auto;cursor:pointer;position:relative;
-  background:linear-gradient(180deg,rgba(13,18,23,.86),rgba(8,11,14,.92));
+.cot-card{width:156px;min-height:150px;flex:0 0 auto;cursor:pointer;position:relative;
+  isolation:isolate;overflow:hidden;
+  background:linear-gradient(180deg,rgba(13,18,23,.90),rgba(8,11,14,.96));
   border:1px solid rgba(146,164,180,.26);border-top:2px solid rgba(146,164,180,.26);
   padding:9px 10px 8px;transition:border-color .15s,transform .15s,box-shadow .15s;}
+.cot-card::before{content:"";position:absolute;z-index:-2;inset:-10%;pointer-events:none;
+  background-image:var(--nation-flag);background-size:cover;background-position:center;
+  opacity:.24;filter:saturate(.84) contrast(1.04);transform:scale(1.03);
+  transition:opacity .18s,filter .18s;}
+.cot-card::after{content:"";position:absolute;z-index:-1;inset:0;pointer-events:none;
+  background:linear-gradient(180deg,rgba(7,11,15,.08) 0%,rgba(7,11,15,.36) 46%,
+    rgba(7,11,15,.94) 82%,rgba(7,11,15,.98) 100%);}
 .cot-card:hover{border-color:rgba(210,225,240,.5);transform:translateY(-2px);}
+.cot-card:hover::before{opacity:.32;filter:saturate(.96) contrast(1.08);}
 .cot-card.sel:hover{transform:translateY(-6px);}
 .cot-card.sel{border-color:#f0a030;border-top-color:#f0a030;transform:translateY(-6px);
   box-shadow:0 8px 26px rgba(240,140,20,.28);
   background:linear-gradient(180deg,rgba(32,24,12,.92),rgba(14,10,6,.94));}
+.cot-card.sel::before{opacity:.38;filter:saturate(1.02) contrast(1.08);}
 .cot-card .flag{display:inline-flex;align-items:center;gap:5px;margin-bottom:5px;
   font-size:8.5px;font-weight:800;letter-spacing:.14em;color:#9fb0bf;}
 .cot-card .flag .cot-flag{display:block;object-fit:cover;
@@ -340,14 +309,15 @@ const GARAGE_CSS = `
 .cot-battle:disabled{filter:grayscale(.85) brightness(.72);cursor:not-allowed;}
 .cot-battle:disabled:hover{filter:grayscale(.85) brightness(.72);}
 .cot-battle:disabled:active{transform:translateX(-50%);}
-.cot-card .ti{display:block;margin:1px auto 2px;width:106px;height:64px;
-  object-fit:contain;filter:drop-shadow(0 3px 5px rgba(0,0,0,.5));}
-.cot-card .nm{font-size:10.5px;font-weight:600;color:#eef4f9;letter-spacing:-.01em;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:0 -5px;text-align:center;}
-.cot-card .nm .tiern{font-weight:800;color:#d8a04c;margin-right:4px;letter-spacing:.02em;}
+.cot-card .ti{display:block;margin:-2px auto -1px;width:136px;height:84px;
+  object-fit:contain;filter:drop-shadow(0 5px 7px rgba(0,0,0,.72));transform:scale(1.04);}
+.cot-card .nm{font-size:11px;font-weight:650;color:#f3f7fa;letter-spacing:-.01em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:0 -3px;text-align:left;
+  text-shadow:0 1px 3px rgba(0,0,0,.85);}
+.cot-card .nm .tiern{font-weight:900;color:#d8a04c;margin-right:5px;letter-spacing:.04em;}
 .cot-card.sel .nm .tiern{color:#f0b04a;}
-.cot-card .cls{font-size:9px;font-weight:700;letter-spacing:.18em;color:#8a97a3;
-  text-transform:uppercase;margin-top:2px;}
+.cot-card .cls{font-size:8.5px;font-weight:800;letter-spacing:.20em;color:#9aa8b5;
+  text-transform:uppercase;margin-top:3px;}
 .cot-garage .hint{position:absolute;bottom:4px;left:50%;transform:translateX(-50%);
   font-size:9.5px;letter-spacing:.14em;color:rgba(138,151,163,.7);text-transform:uppercase;}
 /* r5: top-right currency/XP strip (WoT garage constant — the screen read as
@@ -651,11 +621,12 @@ const GARAGE_CSS = `
   .cot-car-arrow{width:24px;font-size:16px;}
   .cot-cards{gap:4px;-webkit-mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 30px),transparent 100%);
     mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 30px),transparent 100%);}
-  .cot-card{width:94px;padding:4px 5px 3px;}
+  .cot-card{width:98px;min-height:72px;padding:4px 5px 3px;}
+  .cot-card::before{opacity:.20;}.cot-card.sel::before{opacity:.28;}
   .cot-card.sel{transform:translateY(-3px);}
   .cot-card .flag{margin-bottom:1px;font-size:6px;gap:2px;}
   .cot-card .flag .cot-flag{width:15px;height:auto;}.cot-card .era{font-size:6px;padding:1px 0;}
-  .cot-card .ti{width:76px;height:40px;margin:-3px auto -1px;}
+  .cot-card .ti{width:80px;height:40px;margin:-3px auto -1px;transform:none;}
   .cot-card .nm{font-size:7.5px;margin:0 -3px;}.cot-card .nm .tiern{margin-right:2px;}
   .cot-card .cls{font-size:6px;margin-top:0;letter-spacing:.12em;}
   .cot-garage .hint{display:none;}
@@ -1874,6 +1845,7 @@ export function createGarage(opts) {
     const card = document.createElement('div');
     card.className = 'cot-card';
     card.dataset.specId = s.id; // switch-desync r1: stable hook for tools/tests
+    card.style.setProperty('--nation-flag', `url("${flagIconUrl(s.nation)}")`);
     // Stable pre-rendered 3/4 portrait. These are generated only after the
     // final model has loaded, so async GLB stand-ins can never replace a card.
     card.innerHTML =
@@ -1885,7 +1857,7 @@ export function createGarage(opts) {
       // pseudo-specs — print cards ride their base id's portrait (today that
       // packaged icon IS the print render; genIcons print-id rows can follow)
       `<img class="ti" data-cot-thumb="${printBaseId(s.id) || s.id}" src="${getTankThumb(printBaseId(s.id) || s.id)}" alt="">` +
-      `<div class="nm"><b class="tiern">${TIER_BY_ID[s.id] || (s.printViewer && TIER_BY_ID[printBaseId(s.id)]) || ''}</b><span class="nmt"></span></div>` +
+      `<div class="nm"><b class="tiern">${tierNumeral(s.id) || (s.printViewer && tierNumeral(printBaseId(s.id))) || ''}</b><span class="nmt"></span></div>` +
       `<div class="cls">${s.class}</div>`;
     card.querySelector('.nmt').textContent = s.name;
     card.addEventListener('click', () => {

@@ -127,7 +127,7 @@ wrap them (§F.1).
 | tools/tmp-hashgeo.mjs (:1-3) + tmp-hashgeo.html | Deterministic geometry hash (FNV-1a over position buffers + world matrices, camoSeed 4242 pinned, mesh-order independent) — the graduate freeze instrument |
 | tools/tmp-modelsource-dump.mjs (:1) | Dumps runtime MODEL_SOURCE (full import chain) — the load-prove + HELPER-EXPANDED mirror source |
 | tools/tmp-lod-envelope-probe.mjs | Measures geometry outside the visible hull envelope at rest (invisible-LOD law's instrument) |
-| tools/genIcons.mjs (:1-16) | 5 icons per tank from the shipped model; REWRITES ALL ~520 — --tanks filter + stage-5-by-name + clean-HEAD-worktree discipline (the ICON TRAP) |
+| tools/genIcons.mjs + tools/tank-assets-check.mjs | 8 outputs per tank from the shipped model: hero/top/side, two silhouettes, hit-zone/KE-armor/module diagrams; manifest binds file hashes + dimensions to live geometry, tiers and combat volumes |
 | tools/repair_oracles.py (:1-33) | Append-only oracle repair recipes: node-level surgery, pristine .bak, byte-idempotent, census-guarded; sanctioned mesh-byte exceptions documented in its header (§E) |
 | tools/quietcert.mjs | Perf certification that REFUSES contended machines by design (docs/cert-r6-*) |
 | tools/screenshot.mjs | The 20-view deterministic screenshot contract (docs/SCREENSHOT_CONTRACT.md) — game-wide, not tank-specific |

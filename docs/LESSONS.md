@@ -146,9 +146,10 @@ the stash (recovered via `git checkout stash -- <file>`). Never stash in the fle
 tree — snapshot your own file to the scratchpad. The freeze-proof twin: foreign
 shared-module WIP moves EVERY family's hash, so clean-room worktrees (HEAD + your file)
 are the honest frame for freeze proofs, and handover sweeps can legitimately commit
-mid-round builder snapshots. genIcons has the same shape: it rewrites all ~520 icons
-from the LIVE tree, so graduates regenerate icons from a clean HEAD worktree with
-symlinked node_modules, `--tanks <id>`, staging exactly five files by name.
+mid-round builder snapshots. Tank assets have the same shape: they render the LIVE
+tree, so graduates regenerate from a clean landing-candidate worktree with
+`npm run tank:assets -- --ids=<id>`, then prove the exact eight files and manifest
+row against live geometry with `npm run tank:release:check -- --ids=<id>`.
 
 ## Measurement discipline: numbers with provenance or nothing
 

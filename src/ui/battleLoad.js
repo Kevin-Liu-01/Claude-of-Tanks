@@ -14,29 +14,10 @@
 
 import { FONT_STACK, FONT_COND } from './fonts.js';
 import { iconUrl } from './icons.js';
+import { tierNumeral } from '../vehicles/tier.js';
 
-// WoT tier numerals. Mirrors garage.js TIER_BY_ID / hud.js TIER_BY_ID /
-// state.js SPEC_TIER — an unknown id degrades to a blank plate rather than
-// blocking a newly dropped vehicle from appearing in a roster.
-const TIER_BY_ID = {
-  m4a3e8: 'VI', t34_85: 'VI', tiger1: 'VII', is2: 'VII', panther_g: 'VII',
-  m1a2: 'X', t90m: 'X', leo2a7: 'X',
-  strv103: 'IX', is3: 'VIII', t34_85_cad: 'VI', newc_tiger: 'VII',
-  newc_pziii: 'IV', pziii_konserwa: 'III', leichttraktor: 'I',
-  recon_tank: 'VIII', q_heavy: 'IX',
-  kv2: 'VI', tiger2: 'VIII', sherman_jumbo: 'VI', jagdtiger: 'IX',
-  jpz_e100: 'X', sturmtiger: 'VIII', t95: 'IX', t30: 'IX',
-  is7: 'X', object279: 'X', is6b: 'VIII', is1: 'V',
-  m1a1: 'IX', t90a: 'IX', m1a2_tusk: 'X',
-  t72b3: 'VIII', challenger2: 'IX', merkava4: 'IX', leo2a6: 'IX',
-  leo2a4: 'VIII', t80u: 'VIII', leclerc: 'IX', type99a: 'IX',
-  leo1a5: 'VII', t14: 'X', chieftain_mk10: 'VII', k2: 'IX', type10: 'IX',
-  m2a2_bradley: 'VIII', bmp2: 'VII', ariete: 'VIII',
-  type74: 'VIII', bmp1: 'VI', m1128: 'VIII', m1296: 'VII', kf51: 'X',
-};
-
-/** WoT tier numeral for a spec id. @param {string} id @returns {string} */
-export const tierNumeral = (id) => TIER_BY_ID[id] || '';
+// Backward-compatible re-export for main.js, killcam and end-screen callers.
+export { tierNumeral };
 
 const CSS = `
 .cot-bl{position:fixed;inset:0;z-index:150;display:none;flex-direction:column;

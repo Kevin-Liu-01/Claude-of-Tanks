@@ -218,11 +218,16 @@ hashes. Graduates are hash-frozen; any intentional change to a graduate
 re-runs gate + critic and re-freezes in the same commit.
 
 ### 5.7 `tools/genIcons.mjs` — THE ICON TRAP
-`node tools/genIcons.mjs --ids=<id>` REWRITES ALL ~520 icons from the current
-working tree, not just the target's. After running it:
-`git add public/icons/<id>_*.png` (the 5 target icons only), then
-`git restore public/icons/`. Violating this has shipped dirty-tree icons for
-unrelated tanks twice.
+The generator now honors both `--ids=<id>` and `--tanks <id>` and writes only
+the selected vehicle's eight files plus its manifest row. Run it from a clean
+landing-candidate worktree, because it renders the live shipped model:
+
+`npm run tank:assets -- --ids=<id>`
+
+Then run `npm run tank:release:check -- --ids=<id>`. The gate recomputes the
+live geometry + armor/module/tier fingerprints, verifies file hashes and
+dimensions, and refuses a solid/capped cannon tip. Full fleet bootstrap is
+`npm run tank:assets` followed by `npm run tank:assets:check`.
 
 ## 6. Certified oracle-defect caps (the only gate exemptions)
 

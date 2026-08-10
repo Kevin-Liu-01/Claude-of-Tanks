@@ -1,41 +1,77 @@
-// Tank icon generator: renders every roster tank's FINAL shipped model
-// (whatever specs.MODEL_SOURCE says — currently all procedural) in a headless
-// Chromium studio scene (tools/icons-page.html) and writes PNGs to
-// public/icons/:
-//   <id>_top.png              512x512  orthographic top-down, forward = up
-//   <id>_top_silhouette.png   128x128  flat white fill (tint at runtime:
-//                                      green self / red enemies on minimap)
-//   <id>_angle.png            512x512  3/4 hero from above-front-left
-//                                      (garage carousel cards)
-//   <id>_side.png             512x256  orthographic side profile, front right
-//   <id>_side_silhouette.png  256x128  flat white fill (team panels,
-//                                      kill feed, damage panel)
-// Framing is bounding-box normalized with a fixed margin so every tank fills
-// the frame identically. Transparent background, neutral studio lighting.
-// Usage: node tools/genIcons.mjs [--out public/icons] [--tanks id1,id2]
+// Fleet tank-asset generator. Each tank receives the five gameplay views plus
+// data-driven hit-zone, armor/penetration and module diagrams. A checked
+// manifest binds every file to the exact rendered geometry and gameplay data.
+//
+// Usage:
+//   node tools/genIcons.mjs
+//   node tools/genIcons.mjs --tanks m1a2,bmp2
+//   node tools/genIcons.mjs --ids=m1a2,bmp2   (compatibility alias)
+//   node tools/genIcons.mjs --out /tmp/icons --ids=m1a2 --allow-partial
 
+import { createHash } from 'node:crypto';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { TANK_ASSET_SCHEMA_VERSION, TANK_ASSET_VIEWS } from '../src/vehicles/tankAssets.js';
 
 const args = process.argv.slice(2);
-function opt(name, fallback) {
-  const i = args.indexOf(`--${name}`);
-  return i >= 0 ? args[i + 1] : fallback;
+function opt(name, fallback = '') {
+  const prefix = `--${name}=`;
+  const inline = args.find((arg) => arg.startsWith(prefix));
+  if (inline) return inline.slice(prefix.length);
+  const index = args.indexOf(`--${name}`);
+  return index >= 0 ? args[index + 1] : fallback;
 }
+
 const outDir = resolve(opt('out', 'public/icons'));
-const onlyTanks = opt('tanks', '') ? opt('tanks', '').split(',') : [];
+const selected = opt('tanks') || opt('ids');
+const onlyTanks = selected ? selected.split(',').map((id) => id.trim()).filter(Boolean) : [];
+const allowPartial = args.includes('--allow-partial');
+const manifestPath = resolve(outDir, 'tank-assets.json');
 mkdirSync(outDir, { recursive: true });
+
+function sha256(buffer) {
+  return createHash('sha256').update(buffer).digest('hex');
+}
+
+function readManifest() {
+  if (!existsSync(manifestPath)) return null;
+  return JSON.parse(readFileSync(manifestPath, 'utf8'));
+}
+
+const startingManifest = readManifest();
+if (onlyTanks.length && !startingManifest && !allowPartial) {
+  console.error('[tank-assets] Selective generation needs an existing complete manifest;');
+  console.error('[tank-assets] run the full fleet once or pass --allow-partial for scratch output.');
+  process.exit(1);
+}
+if (startingManifest && startingManifest.schemaVersion !== TANK_ASSET_SCHEMA_VERSION) {
+  console.error(`[tank-assets] Manifest schema ${startingManifest.schemaVersion} is incompatible with generator schema ${TANK_ASSET_SCHEMA_VERSION}; regenerate the full fleet.`);
+  process.exit(1);
+}
+
+function assetRecord(file, view) {
+  const def = TANK_ASSET_VIEWS[view];
+  const buffer = readFileSync(resolve(outDir, file));
+  return {
+    file,
+    width: def.width,
+    height: def.height,
+    mime: def.ext === 'png' ? 'image/png' : 'image/webp',
+    bytes: buffer.length,
+    sha256: sha256(buffer),
+  };
+}
 
 const server = await createServer({
   root: process.cwd(),
   logLevel: 'error',
-  server: { port: 5980, strictPort: false },
+  server: { port: 5980, strictPort: false, hmr: false, watch: null },
 });
 await server.listen();
 const url = `http://localhost:${server.config.server.port}/tools/icons-page.html`;
-console.log(`[icons] vite up at ${url}`);
+console.log(`[tank-assets] studio ${url}`);
 
 const browser = await puppeteer.launch({
   headless: 'new',
@@ -43,69 +79,74 @@ const browser = await puppeteer.launch({
 });
 const page = await browser.newPage();
 const pageErrors = [];
-page.on('pageerror', (e) => pageErrors.push(String(e)));
-page.on('console', (msg) => {
-  // ignore the dev server's missing-favicon 404 (same policy as screenshot.mjs)
-  if (msg.type() === 'error' && !msg.text().includes('favicon') &&
-      !msg.text().includes('404')) pageErrors.push(msg.text());
+page.on('pageerror', (error) => pageErrors.push(String(error)));
+page.on('console', (message) => {
+  if (message.type() === 'error' && !message.text().includes('favicon') && !message.text().includes('404')) {
+    pageErrors.push(message.text());
+  }
 });
 
 let failed = false;
 try {
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
   await page.waitForFunction('window.__ICONS_READY === true', { timeout: 60000 });
-  // GLB warm-up: tanks with MODEL_SOURCE 'glb' load their model async on
-  // first createTank. Trigger the loads with a throwaway generation pass,
-  // wait until every started load settles (window.__GLB_STATS, maintained by
-  // src/vehicles/modelLoader.js), then generate for real — the second pass
-  // hits tankFactory's synchronous cached-GLB path so icons show the shipped
-  // model. Zero-GLB rosters settle immediately (started === settled === 0).
-  await page.evaluate((ids) => window.__GEN(ids), onlyTanks);
-  // The load-deferral idle gate (performance_budget r1) made this wait racy
-  // in TWO ways: modelLoader.js is dynamic-imported (window.__GLB_STATS may
-  // not exist yet on the first poll, so "no stats" used to pass vacuously
-  // while loads were still queueing), and the parses themselves now drain
-  // through spaced idle slots. Require the stats object to exist and stay
-  // settled across two consecutive polls before trusting the cache.
+  await page.evaluate((ids) => window.__WARM(ids), onlyTanks);
   await page.waitForFunction(
     () => {
       window.__GLB_POLLS = (window.__GLB_POLLS || 0) + 1;
-      const s = window.__GLB_STATS;
-      // stats object missing: modelLoader.js was never imported — a truly
-      // procedural-only roster. Give the dynamic import ~4 s to appear
-      // before accepting that read.
-      if (!s) return window.__GLB_POLLS >= 10;
-      const settled = s.started === s.settled;
+      const stats = window.__GLB_STATS;
+      if (!stats) return window.__GLB_POLLS >= 10;
+      const settled = stats.started === stats.settled;
       window.__GLB_SETTLE_STREAK = settled ? (window.__GLB_SETTLE_STREAK || 0) + 1 : 0;
       return window.__GLB_SETTLE_STREAK >= 2;
     },
     { timeout: 120000, polling: 400 },
   );
-  const files = await page.evaluate((ids) => window.__GEN(ids), onlyTanks);
-  let n = 0;
-  for (const [name, dataUrl] of Object.entries(files)) {
+
+  const generated = await page.evaluate((ids) => window.__GEN(ids), onlyTanks);
+  for (const [name, dataUrl] of Object.entries(generated.files)) {
     if (name.endsWith('.error')) {
       failed = true;
-      console.error(`[icons] ${name}: ${dataUrl}`);
+      console.error(`[tank-assets] ${name}: ${dataUrl}`);
       continue;
     }
-    const buf = Buffer.from(dataUrl.split(',')[1], 'base64');
-    writeFileSync(resolve(outDir, name), buf);
-    console.log(`[icons] wrote ${name} (${Math.round(buf.length / 1024)} KB)`);
-    n++;
+    const buffer = Buffer.from(dataUrl.split(',')[1], 'base64');
+    writeFileSync(resolve(outDir, name), buffer);
+    console.log(`[tank-assets] wrote ${name} (${Math.round(buffer.length / 1024)} KB)`);
   }
-  console.log(`[icons] ${n} icons -> ${outDir}`);
-  if (n === 0) failed = true;
-} catch (err) {
+
+  if (!failed) {
+    const previous = startingManifest;
+    const tanks = onlyTanks.length && previous ? { ...previous.tanks } : {};
+    for (const [id, meta] of Object.entries(generated.tanks)) {
+      const assets = {};
+      for (const [view, file] of Object.entries(meta.requiredFiles)) assets[view] = assetRecord(file, view);
+      tanks[id] = { ...meta, assets };
+      delete tanks[id].requiredFiles;
+    }
+    const sortedTanks = Object.fromEntries(Object.entries(tanks).sort(([a], [b]) => a.localeCompare(b)));
+    const manifest = {
+      schemaVersion: TANK_ASSET_SCHEMA_VERSION,
+      partial: onlyTanks.length ? (previous ? !!previous.partial : true) : false,
+      generator: 'tools/genIcons.mjs',
+      requiredViews: Object.keys(TANK_ASSET_VIEWS),
+      tanks: sortedTanks,
+    };
+    writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+    console.log(`[tank-assets] ${Object.keys(generated.tanks).length} tanks, ${Object.keys(generated.files).length} files -> ${outDir}`);
+    console.log(`[tank-assets] manifest ${manifestPath}`);
+  }
+} catch (error) {
   failed = true;
-  console.error(`[icons] FAILED: ${err.message}`);
+  console.error(`[tank-assets] FAILED: ${error.message}`);
 } finally {
   if (pageErrors.length) {
     failed = true;
-    console.error(`[icons] page errors (${pageErrors.length}):`);
-    for (const e of pageErrors.slice(0, 20)) console.error(`  ${e}`);
+    console.error(`[tank-assets] page errors (${pageErrors.length}):`);
+    for (const error of pageErrors.slice(0, 20)) console.error(`  ${error}`);
   }
   await browser.close();
   await server.close();
 }
+
 process.exit(failed ? 1 : 0);

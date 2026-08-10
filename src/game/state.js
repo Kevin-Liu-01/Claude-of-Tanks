@@ -6,6 +6,7 @@
 import * as THREE from 'three';
 import { getSpec, TANK_IDS, ALL_TANK_IDS } from '../vehicles/specs.js';
 import { createTank } from '../vehicles/tankFactory.js';
+import { tankTier } from '../vehicles/tier.js';
 import {
   createTankState, updateTank, fireRecoil, shotRecoilScale, computeDispersionRadM, SIM_DT,
 } from '../sim/movement.js';
@@ -286,58 +287,9 @@ export function ensureTankVisual(game, ent) {
 // vehicle at 3-6 m — always hero texture tier regardless of roster role.
 const HERO_TEX_SPECS = new Set(['m1a2', 'tiger1', 't34_85', 't90m', 'leo2a7']);
 
-/**
- * MATCHMAKING TIERS (controls_gunnery r3): WoT-style tier per spec, keyed off
- * hp/gun class. Random rosters cap the spread at ±2 around the player's tier
- * — an M1A2 (X) vs a Panzer III (IV) match plinked 20 he_splash hits for
- * 0 damage across 90 s while nothing on the field could threaten the player.
- * Tanks beyond the cap only appear when the ±2 pool cannot fill 7 slots, and
- * then nearest-tier-first (never a tier-II/III vs a tier-X).
- */
-// numerically mirrors the HUD's roman-numeral badges (hud.js TIER_BY_ID) so
-// the matchmaking the player experiences matches the tiers the roster shows
-const SPEC_TIER = {
-  m4a3e8: 6, tiger1: 7, t34_85: 6, is2: 7, panther_g: 7,
-  m1a2: 10, t90m: 10, leo2a7: 10,
-  strv103: 9, is3: 8, t34_85_cad: 6, newc_tiger: 7,
-  newc_pziii: 4, pziii_konserwa: 3, leichttraktor: 1, recon_tank: 8, q_heavy: 9,
-  // community waves 2+3 (print-model crawl / IS-series hunt)
-  kv2: 6, tiger2: 8, sherman_jumbo: 6, jagdtiger: 9, jpz_e100: 10,
-  sturmtiger: 8, t95: 9, t30: 9, is7: 10, object279: 10, is6b: 8, is1: 5,
-  // MODERN EXPANSION (docs/research/modern-roster.md Appendix A ladder):
-  // cold-war 7 · 1st-gen 8 · 2nd-gen 9 · flagship 10 · IFV support 7-8
-  m1a1: 9, t90a: 9, m1a2_tusk: 10,
-  t72b3: 8, challenger2: 9, merkava4: 9, leo2a6: 9,
-  leo2a4: 8, t80u: 8, leclerc: 9, type99a: 9, leo1a5: 7, t14: 10,
-  chieftain_mk10: 7, k2: 9, type10: 9, m2a2_bradley: 8, bmp2: 7, ariete: 8,
-  k1a1: 8,
-  // USER DROPS (2026-07-28): Type 74 fills the Japan tier-8 ghost
-  type74: 8,
-  // USER DROPS wave 2 (recovered batch): Stryker pair + BMP-1
-  bmp1: 6, m1128: 8, m1296: 7,
-  // USER DROPS wave 4 (recovered batch, final sweep): KF51 tops the German ladder
-  kf51: 10,
-  // recovered Abrams candidates
-  m1a2_tejas: 10, abramsx: 10,
-  challenger1: 8, chieftain5: 7, fv510: 7,
-  leo2_revolution: 10, leo2a5: 9, leo2a7v: 10,
-  m1a1ha: 9, m1a2_sepv2: 10, m60a1: 7, pt91m: 8,
-  merkava1b: 7, merkava2b: 7, merkava2d: 8,
-  merkava3b: 8, merkava3c: 8, merkava3d: 9, merkava4b: 9,
-  t62mv1: 7, t64bv1: 8, t72b_1987: 8, t72b3m: 9,
-  t72bu: 8, t90sm: 9, type90: 9, t90a_vladimir: 9,
-  is3_bergman: 8, isu152: 8, isu122s: 8,
-  centurion3: 7, centurion5: 8, comet: 7, challenger_cruiser: 6, charioteer: 8,
-  leopard2_proto: 8, m1a1_aim: 9, m46_patton: 7, m47_patton: 7,
-  m26_pershing: 8, m45_patton: 8, m60a3: 8,
-  // USER DROPS wave 8 (scout-gen2, userdrops7.js): cold-war MBT generations.
-  // t44 is the lone ww2-era row (pools with tiger1/is2); the rest are modern.
-  // t80bv plays as the roster's T-80BVM proxy — modernization-refit tier
-  // (t72b3m/t90sm peer), not flagship.
-  t44: 7, t54: 7, type59: 7, t80: 8, t80b: 9, t80bv: 9,
-  amx30: 7, amx30b2: 8, m48: 7, m60a2: 8, vickers_mk1: 7, t84: 9,
-};
-const specTier = (specId) => SPEC_TIER[specId] != null ? SPEC_TIER[specId] : 6;
+// Matchmaking and every tier badge consume the same canonical table in
+// vehicles/tier.js. This prevents a newly added tank from showing one tier in
+// the garage while being matched as another.
 
 /**
  * COMMUNITY TANKS: pick this battle's participants — the player plus the
@@ -401,7 +353,7 @@ function pickParticipants(game, playerSpecId, randomize) {
     // nearest tier. A cross-era tank is now an emergency fallback only when
     // the visible garage roster cannot fill all 13 non-player slots; picking
     // the Random battlefield no longer turns WWII vs modern back on.
-    others = rankMatchCandidates(others, player, specTier);
+    others = rankMatchCandidates(others, player, tankTier);
   } else {
     // deterministic staged battle (boot, screenshot contract): core roster
     others = TANK_IDS.filter((id) => id !== playerSpecId).map((id) => game.tankById.get(id));
@@ -560,13 +512,13 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
     const allyCap = Math.min(exactCap, Math.max(1, nonPlayers.length - 1));
     const enemyCap = nonPlayers.length - allyCap;
     const byTier = nonPlayers.slice()
-      .sort((a, b) => specTier(b.specId) - specTier(a.specId)); // stable sort
-    let allySum = specTier(playerSpecId);
+      .sort((a, b) => tankTier(b.specId) - tankTier(a.specId)); // stable sort
+    let allySum = tankTier(playerSpecId);
     let enemySum = 0;
     let enemyN = 0;
     allyPick = [];
     for (const e of byTier) {
-      const t = specTier(e.specId);
+      const t = tankTier(e.specId);
       const allyRoom = allyPick.length < allyCap;
       const enemyRoom = enemyN < enemyCap;
       // ties go to the enemy side: it fields one more hull, so it fills first
