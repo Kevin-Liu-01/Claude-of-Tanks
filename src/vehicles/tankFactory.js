@@ -724,7 +724,8 @@ function sprocketGeo(r, w, seg, teeth = 12, toothOuter = null, linkM = 0.165, ri
 // Running gear: instanced road wheels + rollers, per-side sprocket/idler meshes,
 // and the two scrolling track bands.
 // ---------------------------------------------------------------------------
-function trackShoeGeometries(trackW, pitch, pinCapOuter = null) {
+function trackShoeGeometries(trackW, pitch, pinCapOuter = null,
+  radialScale = 1) {
   // Two physically distinct layers, as seen on real live tracks:
   //   1. the broad outer road-contact shoe with twin grousers;
   //   2. a recessed inner chain/connector layer carrying the pins and guide
@@ -761,6 +762,13 @@ function trackShoeGeometries(trackW, pitch, pinCapOuter = null) {
     ...[-1,1].flatMap((side)=>[-1,1].map((end)=>
       xform(cylX(0.047,0.058,10),side*(pinCapOuter!=null?pinCapOuter-0.029:trackW*0.49),-0.100,end*pitch*0.30))),
   ]);
+  // Some fine modern tracks use a materially shallower pad/guide stack than
+  // the fleet default. This scales only the shoe's radial profile; pitch,
+  // width, link count and the animated path remain native and unchanged.
+  if (radialScale !== 1) {
+    pad.scale(1, radialScale, 1);
+    inner.scale(1, radialScale, 1);
+  }
   return { pad, inner };
 }
 
@@ -961,8 +969,13 @@ function buildRunningGear(P, cfg) {
   // feeding them swapped made the band wrap the WRONG side of both end
   // wheels — a crossed bowtie loop that left the real sprocket/idler bare
   // with a mangled link jumble (r7 critique). Order geometrically instead.
-  const frontEnd = sprocket.z >= idler.z ? sprocket : idler;
-  const rearEnd = sprocket.z >= idler.z ? idler : sprocket;
+  const frontEndRaw = sprocket.z >= idler.z ? sprocket : idler;
+  const rearEndRaw = sprocket.z >= idler.z ? idler : sprocket;
+  // A few source-accurate end drums carry proud hub/teeth geometry while the
+  // belt seats on a smaller pitch radius. Optional trackR decouples only the
+  // native loop from the visible spinner; default rigs remain byte-identical.
+  const frontEnd = { ...frontEndRaw, r: frontEndRaw.trackR ?? frontEndRaw.r };
+  const rearEnd = { ...rearEndRaw, r: rearEndRaw.trackR ?? rearEndRaw.r };
   // r5 trapezoid gate: the flat ground run spans only the ROAD-WHEEL contact
   // patch; approach/departure rise tangentially to the raised end wraps
   // instead of running at ground level past both end wheels.
@@ -1024,7 +1037,8 @@ function buildRunningGear(P, cfg) {
   // instancing byte-identical.
   const nLinks = Math.max(24, Math.round(loopLen / (cfg.linkPitchM ?? 0.165)));
   const lp = loopLen / nLinks;
-  const shoe = trackShoeGeometries(trackW,lp,cfg.pinCapOuter ?? null);
+  const shoe = trackShoeGeometries(trackW, lp, cfg.pinCapOuter ?? null,
+    cfg.shoeRadialScale ?? 1);
   P.disposables.push(shoe.pad,shoe.inner);
   // Fixed neutral iron tones prevent the garage key light from turning the
   // now-thicker faces into a tan/white necklace.  The inner chain is only a

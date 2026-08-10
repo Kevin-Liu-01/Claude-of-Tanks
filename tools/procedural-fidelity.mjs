@@ -130,8 +130,9 @@ const md=[
     `${cell(row.scores.hull)} | ${cell(row.scores.turret)} | ${cell(row.scores.gun)} | `+
     `${cell(row.scores.tracks)} | ${row.fallback || 'placeholder'} |`),
   '',
-  'The local GLBs are measurement and visual-review oracles only. The game does not embed extracted source vertices '+
-    'in its procedural builders.','',
+  'Reference GLBs remain provenance-tracked measurement and visual-review oracles. '+
+    'A playable may use hand-authored procedural geometry or a documented, reproducible source-derived payload '+
+    'when the owner explicitly clears that source.','',
   'Component cells are N/A when a source GLB is fused and therefore cannot expose an independent hull/turret mask. '+
     'Its whole silhouette and lower running-gear profile remain scored.','',
 ].join('\n');

@@ -1,6 +1,6 @@
 # Type 10 (`type10`) — oracle packet
 
-Spec home: src/vehicles/modern3.js (dims 6.79 / 9.49 / 3.24 / 2.30).
+Spec home: src/vehicles/modern3.js (P95 datums 6.84 / 9.49 / 3.24 / 2.68).
 Build: buildType10 (modern3). Family guidance (owner 2026-08-06):
 type10 takes inspiration from type90 recipes.
 
@@ -158,3 +158,53 @@ Audits (r14): track-clip 0/0 band + 0/0 shoe; winding m1 clean (0 rev,
 check clip 0/0, holes 0, decor mg1+8d. Self-shots (14 views + gear
 zooms): shots/critic-type10/. DELIVERED-PENDING-CRITIC (§B8 — builder
 self-reads never accept).
+
+## OWNER SOURCE-EXACT REBUILD + NATIVE TRACKS (2026-08-10)
+
+The owner's `type-10-main-battle-tank.zip` (SHA-256
+`22bf48234c20edad51c9087dc4c02b99156c687af6a326533275eca9953d7468`)
+contains the OBJ already preserved in the ignored Type 10 source packet,
+byte-identical at SHA-256
+`c95211bba65d883700671373816c182c749f1973b638c42d21a562f244d686c5`.
+This supersedes the hand-estimated r1 shell. The pristine tracked GLB remains
+unchanged at
+`2cc5748e4357722fc1c21bf7759ec21c29f84b2cfaf1203b5bee995f4cfeca67`;
+`tools/type10-source-bake.py` deterministically classifies its 2,450 authored
+components and produces a semantic repair without cutting triangles.
+
+The playable source payload is Hull 30,754 vertices / 20,125 triangles,
+TrackGuards 15,030 / 10,488, Turret 31,174 / 21,492 and Gun 2,803 / 2,487.
+All 1,064 donor-track components and 60 donor wheel/end-drum components are
+excluded from rendering. Instead, the fleet-native running-gear system owns
+five Type 10 road-wheel stations per side, separate front idlers and rear
+sprockets, rollers, damage-aware linked shoes, chain and guide horns. Optional
+`trackR` and radial shoe compression are normal `buildRunningGear` inputs;
+their defaults are byte-identical for every existing vehicle.
+
+Published horizontal datums are applied directly. P95 vertical law compresses
+only geometry above the raw ring and two duplicate full-height whip courses;
+one complete antenna and all mandatory roof hardware remain. Final dimensions
+read body 2.646 m, hull 6.774 m, overall 9.478 m and width 3.169 m against
+2.68 / 6.84 / 9.49 / 3.24 sovereign datums. The repaired semantic oracle is
+SHA-256 `1d7fff3c390aef8898a05e2017e8abdd42f3b1a1df07ab86b7dd456a8c3bdfca`.
+
+Final geometry gate is bit-identical x2: **94.6** |
+94.6/95.1/96.6/99.9/96.7/100. Direct fidelity is **97.4** overall
+(hull 97, turret/gun 100, running gear 91). Standard-check reports zero band
+or shoe clips, zero contiguity holes and mg1+0d; turret-parent is 0/0/0.
+Winding mode 1 is clean (0 reversed / 0 mixed, one-pixel deficit). Mode 2's
+3,584-pixel `rig_hull/mesh#17` candidate is the source-exact engine-deck/stern
+service course behind the ring: current-byte yaw proves it remains correctly
+hull-owned while the complete turret, gun, bustle and roof kit rotate as one
+seated assembly. Freeze **84f5d108** reproduces x2 (25 meshes / 184,760
+vertices); `npm test` and `npm run build:private` are green.
+
+Independent §B8 passes every current-byte view at floor **9.2**, mean
+**9.48**. The standard vector is
+`[9.6,9.5,9.2,9.3,9.6,9.3,9.2,9.4,9.8,9.4,9.4,9.8,9.4,9.8]`.
+Yaw/load paths pass **9.7**: the complete turret equipment tree rotates and
+remains seated, while the adjudicated engine-deck course stays continuously
+attached to the hull. The sitting independently confirms five Type 10 road
+wheels per side plus front idler/rear sprocket, one clean native linked-shoe
+belt and no rendered donor track or donor wheel/end-drum set. Verdict:
+`docs/critique/shaded-parity-type10-source-graduation.md`.

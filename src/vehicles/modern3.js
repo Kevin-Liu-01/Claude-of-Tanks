@@ -15,6 +15,7 @@
 import * as THREE from 'three';
 import { KIT } from './tankFactory.js';
 import { FITTINGS } from './profiles/kit.js';
+import { buildType10SourceGeometry } from './profiles/type10-source-geometry.js';
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
 
 export const MODERN3_IDS = [
@@ -310,20 +311,21 @@ const MODERN3_SPECS = {
         shell('Type 10 HE', 'HE', 120, 45, 45, 570, 1000),
       ],
     },
-    dims: { hullLengthM: 6.79, overallLengthM: 9.49, widthM: 3.24, heightM: 2.30 },
-    // §B8 REBUILD (type10 r1, vs the a06f00c oracle): armor rig re-derived to
-    // the real-proportion visual — deck 1.44, ring pivot z -0.12, trunnion at
-    // the real L/44 station (world z +1.30, muzzle +6.09 = overall 9.49).
+    // P95 envelope: 2.30 m is the bare-roof publication; 2.68 m includes
+    // the mandatory panoramic/roof kit while excluding the thin full-height whip.
+    // The 6.79 m bare hull resolves to a 6.84 m P95 combat envelope once
+    // the authored nose/guard lips are included.
+    dims: { hullLengthM: 6.84, overallLengthM: 9.49, widthM: 3.24, heightM: 2.68 },
+    // Owner-source rebuild: the combat rig follows the semantically repaired
+    // source tree (ring world 1.59/+0.21, trunnion 1.94/+1.73) while the bore
+    // is normalized to the published 9.49 m overall datum.
     armor: modernArmor({
       hl: 3.42, hw: 1.62, inW: 1.04, floor: 0.45, trkTop: 0.95, roofY: 1.44,
-      turretPivot: [0, 1.50, -0.12], gunPivot: [0, 0.32, 1.42],
-      barrelLenM: 4.79, barrelRadM: 0.075,
+      turretPivot: [0, 1.59, 0.21], gunPivot: [0, 0.35, 1.52],
+      barrelLenM: 4.36, barrelRadM: 0.075,
       glacis: [45, 120, 150], lower: [450, 450, 600], side: [35, 60, 60],
       skirt: [60, 120, 300], rear: 35, roof: 40,
-      // r2 §B8 fix-round: turret rig follows the width cut (walls ±1.40 ->
-      // ±1.20 — the ±1.40 walls read CASEMATE in 5/6 view families; the
-      // print's above-deck body is halfW 0.91-1.22)
-      tw: 1.20, tFrontZ: 1.98, tRearZ: -1.88, tH: 0.78,
+      tw: 1.45, tFrontZ: 2.02, tRearZ: -2.34, tH: 0.72,
       cheek: [600, 600, 850], tSide: [250, 250, 350], tRear: 50, tRoof: 40,
       mantlet: [320, 380, 450], loader: false, bustleAmmo: true,
     }),
@@ -2075,7 +2077,7 @@ function buildK1A1(P) {
 // M2 12.7mm on a LOW right-side swing mount (type90 precedent: receiver at
 // the published height line — a roof-standing fitting owns p95 and zeroes
 // dims on a 2.30 datum).
-function buildType10(P) {
+function buildType10PhotoBuild(P) {
   const { box, cylX, cylY, cylZ, frustum, buildGun, buildRunningGear,
     fenders, headlight, liftEye, periscope, stowage, ammoCan, torus } = KIT;
   const slab = orientedSlab;                                                    // §C.1 winding guard on every mirrored slab
@@ -2416,6 +2418,40 @@ function buildType10(P) {
   P.decal('turret', 'number', '73', 0.24, [1.292, 0.33, -1.28], Math.PI / 2, 0, 0.05);   // on the bin-course face
   P.decal('turret', 'number', '73', 0.24, [-1.292, 0.33, -1.28], -Math.PI / 2, 0, -0.05);
   P.topY = 0.90;
+}
+
+// Owner-source exact reconstruction (2026-08-10). The supplied OBJ is
+// byte-identical to the source behind the registered GLB. The reproducible
+// bake classifies complete spatial components, moves roof equipment and the
+// rear bustle with the turret, isolates the elevating bore, and excludes all
+// donor pads/wheels. Published width/hull/height datums are applied in the
+// bake; only the source's stylized-short barrel is extended along its own
+// axis to the 9.49 m overall datum. The native gear below preserves the
+// game's scroll, suspension, damage and thrown-track behavior.
+function buildType10(P) {
+  const { box, buildRunningGear } = KIT;
+  buildType10SourceGeometry(P);
+  // The source's authored ±1.62 m guard tips are sub-P95 slivers. Seat a
+  // short inner doubler directly behind each tip so the combat-width datum
+  // remains readable without broadening the visible maximum envelope.
+  for (const side of [-1, 1]) {
+    P.add('hullDetail', box(0.024, 0.020, 0.36),
+      side * 1.608, 0.432, 2.030);
+  }
+  buildRunningGear(P, {
+    style: 'rubber', wheelR: 0.35, wheelW: 0.25, wheelY: 0.42, xc: 1.215,
+    wheelZs: [2.03, 1.09, 0.14, -0.80, -1.75],
+    sprocket: { z: -2.555, y: 0.777, r: 0.325, trackR: 0.239 },
+    idler: { z: 2.845, y: 0.843, r: 0.35, trackR: 0.315 },
+    rollers: [1.45, 0.15, -1.20].map((z) => ({ z, y: 0.99, r: 0.075 })),
+    trackW: 0.47, trackTh: 0.05, botY: 0.025, topY: 1.10,
+    contactZF: 2.24, contactZR: -1.95,
+    padCornerFloor: 0.012,
+    shoeRadialScale: 0.20,
+    coveredTop: true, arms: false, paintedEnds: true,
+    pinCapOuter: 0.237, padHex: 0x31322a, chainHex: 0x292a24,
+    gearFloor: true,
+  });
 }
 
 // ================================ M2A2 Bradley ==============================

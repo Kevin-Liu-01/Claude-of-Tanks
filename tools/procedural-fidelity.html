@@ -207,18 +207,15 @@ const LOCAL_REFERENCE_OVERRIDES = {
     },
   },
   type10: {
-    // "TYPE-10 MAIN BATTLE TANK" (Sketchfab OBJ merge; textured atlas).
-    // Author rip-history hold (2026-07-27 poster) ADJUDICATED CLEARED by
-    // the owner 2026-08-06 — un-quarantined from community-candidates.
-    // Flat 5-mesh MATERIAL split (challenger2 class): Object_6 =
-    // turret+gun FUSED (tube z 1.5..4.73 raw, trunnion y~0.5); Object_5
-    // mixes hull deck WITH the sight masts (raw y to 2.53) — turret rows
-    // print-capped by the split, packet note. Object_2/3 running gear,
-    // Object_4 skirts. Nose +z, no yaw.
+    // Owner-source deterministic repair: the original flat material split
+    // fused turret/gun and hull/roof furniture. The bake re-emits semantic
+    // Hull/TrackGuards/DonorRunningGear/Turret/Gun nodes at published data,
+    // without altering the owner-supplied source GLB.
     source:'glb',
     glb:{
-      path:'/models/tanks/community/type-10_main_battle_tank.glb',
-      turretNode:'^Object_6$', autoPivot:true,
+      path:'/models/tanks/community/type-10_main_battle_tank_repaired.glb',
+      turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true,
+      paintUntextured:true,
     },
   },
   // Same quarantine-oracle pattern as ariete: the NullOps Type 74 is

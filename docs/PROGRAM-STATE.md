@@ -2703,3 +2703,45 @@ shoe wraps behind the source guards, and no donor belt, duplicate wheel,
 floater, guard penetration, collapsed arc, or upper-geometry regression.
 Verdict:
 `docs/critique/shaded-parity-fv510-native-track-recert.md`.
+
+## 5.92 TYPE 10 OWNER-SOURCE EXACT REBUILD GRADUATED — 36th (2026-08-10)
+
+The owner's `type-10-main-battle-tank.zip` is byte-identical to the source OBJ
+already preserved in the ignored Type 10 packet. It supersedes the prior
+photo-built shell and confirms one authoritative geometry source: ZIP SHA-256
+`22bf48234c20edad51c9087dc4c02b99156c687af6a326533275eca9953d7468`,
+nested OBJ
+`c95211bba65d883700671373816c182c749f1973b638c42d21a562f244d686c5`.
+The pristine tracked GLB remains unchanged at
+`2cc5748e4357722fc1c21bf7759ec21c29f84b2cfaf1203b5bee995f4cfeca67`.
+
+A deterministic semantic bake classifies all 2,450 authored spatial
+components without cutting triangles. The playable source-derived payload is
+Hull 30,754 vertices / 20,125 triangles, TrackGuards 15,030 / 10,488, Turret
+31,174 / 21,492 and Gun 2,803 / 2,487. The repaired oracle is
+`1d7fff3c390aef8898a05e2017e8abdd42f3b1a1df07ab86b7dd456a8c3bdfca`.
+All 1,064 donor-track components and 60 donor wheel/end-drum components are
+excluded from the playable. The exact upper now rides the game's native
+five-wheel Type 10 gear, terminal sprocket/idler, rollers, linked shoes, guide
+horns and damage/animation system.
+
+Final gate x2 is bit-identical: **94.6** |
+94.6/95.1/96.6/99.9/96.7/100. Direct fidelity is **97.4** overall (hull 97,
+turret/gun 100, gear 91); exact band and shoe clipping are 0/0, contiguity is
+0 and turret-parent is 0/0/0. Freeze **84f5d108** reproduces x2 (25 meshes /
+184,760 vertices). Winding mode 1 is clean. The mode-2 candidate is visually
+adjudicated as the correct fixed engine-deck/stern service course behind the
+ring: the source-exact turret, gun, bustle, roof kit and antennae all rotate
+together with continuous seated load paths. All fourteen current-byte paired
+views and yaw 0/90 were inspected with zero browser console warnings/errors;
+`npm test` and `npm run build:private` are green.
+
+Independent §B8 passes all fourteen current-byte views at floor **9.2**,
+mean **9.48**; yaw/load paths pass **9.7**. The sitting confirms the correct
+five-road-wheel-per-side Type 10 layout, clean terminal wraps, complete donor
+gear suppression, continuous turret equipment attachment and the mode-2
+engine-deck adjudication. Verdict:
+`docs/critique/shaded-parity-type10-source-graduation.md`.
+
+Fleet is **30/96** and graduates **36**. The owner-priority lane advances
+directly to the AMX-40 completion round.

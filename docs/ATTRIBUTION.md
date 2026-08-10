@@ -775,8 +775,18 @@ fails the build if any registered playable still references a stripped path.
   OBJ merge, textured atlas, no ripper-tool markers). The owner
   adjudicated the hold ("build the type 10 and challenger 2 as a
   priority using the real glbs") — un-quarantined from
-  community-candidates and registered in the four harness maps.
-  Influence/measurement oracle; the playable stays procedural.
+  community-candidates and registered in the four harness maps. The owner's
+  2026-08-10 `type-10-main-battle-tank.zip` is the same source export: nested
+  OBJ SHA-256
+  `c95211bba65d883700671373816c182c749f1973b638c42d21a562f244d686c5`;
+  ZIP SHA-256
+  `22bf48234c20edad51c9087dc4c02b99156c687af6a326533275eca9953d7468`.
+  The pristine GLB remains unchanged at SHA-256
+  `2cc5748e4357722fc1c21bf7759ec21c29f84b2cfaf1203b5bee995f4cfeca67`.
+  The playable source-derived payload and semantic measurement oracle are
+  deterministically generated from that owner-cleared source; repaired GLB
+  SHA-256 is
+  `1d7fff3c390aef8898a05e2017e8abdd42f3b1a1df07ab86b7dd456a8c3bdfca`.
 - community-candidates/t-14_armara_uralvagon_factory.glb — "T-14 Armara Uralvagon Factory" by 3DYAROSLAV2, CC-BY-4.0, **223MB: exceeds GitHub's 100MB file limit — lives in the gitignored staging area, LOCAL-ONLY; onboarding extracts (small) are committed instead** (t14 oracle)
 - ~~community/leopard_2a4_otco.glb~~ — **REJECTED + DELETED 2026-08-06**:
   the live Sketchfab page describes it "Leopard 2A4 OTCO **from War

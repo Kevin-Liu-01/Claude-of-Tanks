@@ -1,103 +1,103 @@
 {
-  "generatedAt": "2026-08-10T08:29:55.450Z",
+  "generatedAt": "2026-08-10T09:21:02.974Z",
   "summary": {
     "references": 1,
     "passed": 1,
     "failed": 0,
     "passThreshold": 90,
     "perViewFloor": 90,
-    "median": 98,
-    "worst": "fv510",
-    "best": "fv510"
+    "median": 97.42,
+    "worst": "type10",
+    "best": "type10"
   },
   "rows": [
     {
-      "id": "fv510",
-      "name": "FV510 Warrior",
-      "sourcePath": "/models/tanks/community/fv510_warrior.glb",
-      "fallback": "m2a2_bradley",
-      "score": 98,
+      "id": "type10",
+      "name": "Type 10",
+      "sourcePath": "/models/tanks/community/type-10_main_battle_tank_repaired.glb",
+      "fallback": "type10",
+      "score": 97.42,
       "scores": {
-        "overall": 97.04,
-        "hull": 97.22,
-        "turret": 100,
-        "gun": 100,
-        "tracks": 96.59
+        "overall": 96.83,
+        "hull": 97.39,
+        "turret": 99.9,
+        "gun": 99.67,
+        "tracks": 90.58
       },
       "componentMasksAvailable": true,
-      "minView": 95.79,
+      "minView": 95.02,
       "gatePassed": true,
       "angles": {
         "front": {
-          "score": 96.48,
-          "iou": 95.41
+          "score": 97.61,
+          "iou": 96.76
         },
         "frontLeft": {
-          "score": 96.87,
-          "iou": 95.94
+          "score": 95.77,
+          "iou": 94.55
         },
         "left": {
-          "score": 98.22,
-          "iou": 97.8
+          "score": 95.07,
+          "iou": 93.51
         },
         "rearLeft": {
-          "score": 97.72,
-          "iou": 97.24
+          "score": 96.49,
+          "iou": 95.38
         },
         "rear": {
-          "score": 96.85,
-          "iou": 95.88
+          "score": 99.31,
+          "iou": 99.12
         },
         "rearRight": {
-          "score": 95.79,
-          "iou": 94.43
+          "score": 96.34,
+          "iou": 95.17
         },
         "right": {
-          "score": 96.11,
-          "iou": 94.91
+          "score": 95.02,
+          "iou": 93.45
         },
         "frontRight": {
-          "score": 98,
-          "iou": 97.68
+          "score": 96.09,
+          "iou": 94.96
         },
         "top": {
-          "score": 97.34,
-          "iou": 96.74
+          "score": 99.76,
+          "iou": 99.81
         }
       },
       "componentAngles": {
         "hull": {
-          "front": 96.36,
-          "right": 96.95,
-          "left": 97.95,
-          "rear": 97.53,
-          "top": 97.34
+          "front": 97.35,
+          "right": 95.42,
+          "left": 95.26,
+          "rear": 99.16,
+          "top": 99.75
         },
         "turret": {
-          "front": 100,
-          "right": 100,
-          "left": 100,
-          "rear": 100,
-          "top": 100
+          "front": 99.85,
+          "right": 99.88,
+          "left": 99.92,
+          "rear": 99.86,
+          "top": 99.98
         },
         "exposedUpper": {
-          "front": 100,
-          "right": 100,
-          "left": 100,
-          "rear": 100,
+          "front": 99.71,
+          "right": 99.9,
+          "left": 99.91,
+          "rear": 99.8,
           "top": 100
         }
       },
       "boxes": {
         "reference": [
-          3.03,
-          2.83,
-          6.34
+          3.24,
+          3.47,
+          9.49
         ],
         "procedural": [
-          3.03,
-          2.85,
-          6.34
+          3.24,
+          3.47,
+          9.49
         ]
       },
       "errors": [
