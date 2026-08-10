@@ -90,3 +90,14 @@ summaries above are reproducible with the commands in the probe header).
    aim went completely dead there (the deployment has this latent bug too; it
    never fires in a full-width browser tab). Width now only counts when the
    device has no fine pointer.
+4. **Authoritative cannon-marker parity (owner follow-up, 2026-08-10).** The
+   firing pipeline corrects a bore within two degrees onto the requested
+   server-aim point, but the first dual-reticle pass drew the raw bore ray.
+   That let a zero-dispersion round land at the camera marker while the
+   advertised cannon marker sat elsewhere. `resolveGunAimDirection()` is now
+   the single pre-ballistic shot-center authority for firing, the cannon
+   marker, penetration color, and muzzle-path warning. Inside the correction
+   window the two markers honestly merge; outside it the cannon marker stays
+   on the physically slewing/limited bore. Gate:
+   `node tools/reticle-shot-parity-probe.mjs` (controlled 1.27 degree case:
+   17.14 px marker/shot error before, <0.001 px after).

@@ -545,6 +545,9 @@ export function createShell(shellSpec, shooterId, isPlayer,
 export function stepShell(shell, dt) => void            // integrate; sets prevPos
 export function penAtDistanceMm(shellSpec, distM) => number   // lerp pen100→pen1000, clamp
 export function aimElevationRad(distM, velocityMps) => number // 0.5*asin(g*d/v²) clamped
+export function resolveGunAimDirection(out, muzzlePos, boreDir, aimPoint) => boolean
+//  LOCKED: authoritative PRE-BALLISTIC shot center shared by HUD + firing.
+//  Raw bore outside the 2° correction window; exact muzzle→aimPoint inside it.
 export function applyDispersion(dir: Vector3, dispersionRadM_at100 /* i.e. r(100)? NO — */,
                                 sigmaRad, rng) => void
 //  LOCKED: pass sigmaRad = (computeDispersionRadM(spec,state,100) / 2) / 100
@@ -685,7 +688,8 @@ FrameInfo = {
     dispersionRadM: number,              // world-space reticle radius at aim distance
     penRatio: number|null,               // → color: ≥1.15 green #7ee87e / 0.85–1.15
                                          //   orange #f0b04a / <0.85 red #f05a5a
-    gunMarker: Vector3|null, atGunLimit: boolean,
+    gunMarker: Vector3|null,              // authoritative pre-ballistic shot center
+    atGunLimit: boolean,
     reload: { t, totalS }, shellSlot: 0|1|2,
     shells: [{ name, type, dmg, penLabel }],   // for the 1/2/3 selector
     zoom: number,                        // sniper '×N'
@@ -693,8 +697,9 @@ FrameInfo = {
   killfeedHandledByBus: true,            // killfeed/damage numbers come from bus events
 }
 ```
-Elements: aim circle (projected at aim point, radius = dispersionRadM projected to
-pixels; blooms/shrinks as the value changes), center gun marker, reload ring around
+Elements: aim circle (centered on the authoritative gun marker, radius = dispersionRadM
+projected to pixels; blooms/shrinks as the value changes), camera-axis marker plus
+pen-colored gun marker, reload ring around
 reticle, shell selector (keys shown 1/2/3), pen-color reticle tint, sniper scope overlay
 (vignette + crosslines + ×N), enemy HP bars (project `turretTopWorld` + 2 m; hide when
 behind camera or dist > 500), minimap 220 px bottom-right with terrain shading + road

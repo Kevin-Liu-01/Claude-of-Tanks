@@ -60,7 +60,7 @@ import { tankPoseFromState, queryAimArmor, traceTank } from './sim/armor.js';
 import {
   estimatePenRatio, selectShell, resolveShellHit, createCombatState, repairAllModules,
 } from './sim/damage.js';
-import { createShell } from './sim/ballistics.js';
+import { createShell, resolveGunAimDirection } from './sim/ballistics.js';
 import { createKillCam } from './game/killcam.js';
 import { createFx } from './fx/effects.js';
 import { initHud } from './ui/hud.js';
@@ -2415,6 +2415,20 @@ function muzzlePathBlockDist(muzzle, aimPoint, dispersionRadM) {
   return null;
 }
 
+/**
+ * Resolve the exact pre-ballistic centerline used by tryFire and its endpoint
+ * at the requested range. This is the sole live source for the gun marker,
+ * penetration ray and blocked-path warning.
+ */
+function playerGunCenterRay(p, aimPoint, outOrigin, outDir, outTarget) {
+  p.visual.gunMuzzleWorld(outOrigin);
+  p.visual.gunDirWorld(outDir);
+  resolveGunAimDirection(outDir, outOrigin, outDir, aimPoint);
+  const rangeM = Math.max(outOrigin.distanceTo(aimPoint), 6);
+  outTarget.copy(outOrigin).addScaledVector(outDir, rangeM);
+  return rangeM;
+}
+
 function computeAimInfo() {
   const p = game.player;
   const aim = frameInfo.aim;
@@ -2431,27 +2445,22 @@ function computeAimInfo() {
 
   // WoT dual-reticle contract (official controls guide): the camera marker
   // communicates where the player LOOKS; the aiming circle + gun marker
-  // communicate where the gun can ACTUALLY fire. Use the articulated bore
-  // axis (not muzzle-minus-pivot — GLB muzzle anchors can sit off-axis), and
-  // resolve penetration from that physical ray below.
-  p.visual.gunMuzzleWorld(_v1);
-  p.visual.gunDirWorld(_v3);
-  _rayO.copy(_v1);
-  _rayD.copy(_v3);
-  aim.gunDistM = Math.max(rig.aimDist - 2, 6);
+  // communicate where the gun can ACTUALLY fire. The firing pipeline applies
+  // a server-aim correction once the articulated bore is within two degrees;
+  // resolve that SAME centerline here so a round can never land on the camera
+  // marker while the advertised cannon marker sits elsewhere.
+  aim.gunDistM = playerGunCenterRay(p, aim.point, _rayO, _rayD, _v2);
   aim.gunTargetId = null;
-  aim.gunMarker.copy(_rayO).addScaledVector(_rayD, aim.gunDistM);
+  aim.gunMarker.copy(_v2);
 
-  // BLOCKED-SHOT INDICATOR (controls_gunnery r2): the reticle ray comes from
-  // the camera, the shell leaves the muzzle — near crests/walls/poles they
-  // disagree and shells silently die meters out while the reticle reads
-  // clear. Raycast the actual muzzle→aimPoint path every HUD frame; the
-  // reticle turns red + prints the blocking distance when obstructed short
-  // of the aim point.
+  // BLOCKED-SHOT INDICATOR (controls_gunnery r2): the camera and muzzle have
+  // different origins — near crests/walls/poles the camera can see a point a
+  // shell cannot reach. Raycast the authoritative shot-center path every HUD
+  // frame; the reticle turns red + prints the blocking distance when an
+  // obstruction sits short of its requested range.
   // r4: raycast margin 6 m -> 1.5 m + dispersion-cone graze test — see
   // muzzlePathBlockDist. The old margin made hull-down crests invisible.
-  p.visual.gunMuzzleWorld(_v1);
-  aim.blockedDistM = muzzlePathBlockDist(_v1, aim.point, aim.dispersionRadM);
+  aim.blockedDistM = muzzlePathBlockDist(_rayO, _v2, aim.dispersionRadM);
   // gameplay_feel r7 (round critique MAJOR): the "PATH BLOCKED N m" TEXT
   // fired constantly during ordinary cross-country driving — every time
   // server-aim rested on a nearby rise (parked verdant 32 m, desert 10-11 m
@@ -4555,9 +4564,9 @@ function debugAimState() {
     // r4: same 1.5 m margin + dispersion graze test as the live reticle, so
     // the gate can never settle-fire a lay the reticle would call blocked.
     blockedDistM: (() => {
-      p.visual.gunMuzzleWorld(_v1);
+      playerGunCenterRay(p, p.input.aimPoint, _rayO, _rayD, _v2);
       return muzzlePathBlockDist(
-        _v1, p.input.aimPoint,
+        _rayO, _v2,
         computeDispersionRadM(p.spec, p.state, rig.aimDist));
     })(),
     leadHFrac: leadLatchTargetId ? leadLatchHFrac : null,

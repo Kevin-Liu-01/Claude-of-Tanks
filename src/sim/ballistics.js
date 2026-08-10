@@ -21,10 +21,43 @@ export const SHELL_MAX_LIFETIME_S = 6;
 /** Effective gravity applied to shells, m/s². */
 const G_SHELL = 9.81 * GRAVITY_SCALE;
 
+/** Cosine of the largest bore-to-aim error eligible for server-aim correction. */
+export const SERVER_AIM_SNAP_COS = 0.99939; // ~= cos(2 degrees)
+
 // Scratch vectors — module scope so update paths never allocate per call.
 const _basisRef = new Vector3();
 const _right = new Vector3();
 const _up = new Vector3();
+
+/**
+ * Resolve the authoritative, pre-ballistic centerline for the next shot.
+ *
+ * The articulated bore remains authoritative while it is visibly slewing or
+ * pinned. Once it is within the server-aim correction window, the centerline
+ * snaps exactly through the requested world point. HUD and firing code must
+ * both consume this function: showing the raw bore while firing used the
+ * corrected line made the gun marker disagree with where rounds landed.
+ *
+ * @param {Vector3} out receives a unit direction
+ * @param {Vector3} muzzlePos world-space muzzle origin
+ * @param {Vector3} boreDir articulated bore direction
+ * @param {?Vector3} aimPoint requested server-aim point
+ * @returns {boolean} true when server-aim correction was applied
+ */
+export function resolveGunAimDirection(out, muzzlePos, boreDir, aimPoint) {
+  out.copy(boreDir).normalize();
+  if (!aimPoint) return false;
+  const dx = aimPoint.x - muzzlePos.x;
+  const dy = aimPoint.y - muzzlePos.y;
+  const dz = aimPoint.z - muzzlePos.z;
+  const lenSq = dx * dx + dy * dy + dz * dz;
+  if (lenSq <= 16) return false;
+  const invLen = 1 / Math.sqrt(lenSq);
+  const dot = out.x * dx * invLen + out.y * dy * invLen + out.z * dz * invLen;
+  if (dot <= SERVER_AIM_SNAP_COS) return false;
+  out.set(dx * invLen, dy * invLen, dz * invLen);
+  return true;
+}
 
 /**
  * Create a live shell entity (ARCHITECTURE.md §2.5).

@@ -14,6 +14,7 @@ import {
   penAtDistanceMm,
   aimElevationRad,
   applyDispersion,
+  resolveGunAimDirection,
 } from './ballistics.js';
 import { tankPoseFromState, traceTank, queryAimArmor } from './armor.js';
 import {
@@ -188,6 +189,26 @@ function mkShell(shellSpec, distM = 100) {
   const dirB = V(0, 0, 1);
   applyDispersion(dirB, 999, sigma, mulberry32(42)); // 4-slot doc form
   near(dirB.angleTo(dirA), 0, 1e-9, '3-arg and 4-arg dispersion forms agree');
+
+  // HUD/fire parity: the authoritative centerline snaps inside the same
+  // two-degree window used by live firing, but keeps the bore outside it.
+  const muzzle = V(0, 2, 0);
+  const bore = V(0, 0, 1);
+  const inside = 1.25 * Math.PI / 180;
+  const aimInside = V(Math.sin(inside) * 300, 2, Math.cos(inside) * 300);
+  const center = V(0, 0, 0);
+  assert(resolveGunAimDirection(center, muzzle, bore, aimInside),
+    'server aim corrects a bore inside the two-degree window');
+  near(center.angleTo(aimInside.clone().sub(muzzle).normalize()), 0, 1e-12,
+    'corrected shot center passes exactly through the requested aim point');
+  const outside = 2.25 * Math.PI / 180;
+  const aimOutside = V(Math.sin(outside) * 300, 2, Math.cos(outside) * 300);
+  assert(!resolveGunAimDirection(center, muzzle, bore, aimOutside),
+    'server aim leaves a visibly slewing bore outside the correction window');
+  near(center.angleTo(bore), 0, 1e-12,
+    'uncorrected shot center remains on the articulated bore');
+  assert(!resolveGunAimDirection(center, muzzle, bore, V(0, 2, 3)),
+    'server aim does not correct an unsafe point inside four meters');
 }
 
 // --------------------------------------------- armor.js geometry & frames --

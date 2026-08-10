@@ -10,7 +10,7 @@ import {
   createTankState, updateTank, fireRecoil, shotRecoilScale, computeDispersionRadM, SIM_DT,
 } from '../sim/movement.js';
 import {
-  createShell, stepShell, applyDispersion, aimElevationRad,
+  createShell, stepShell, applyDispersion, aimElevationRad, resolveGunAimDirection,
 } from '../sim/ballistics.js';
 import { tankPoseFromState, traceTank } from '../sim/armor.js';
 import {
@@ -43,7 +43,6 @@ const BATTLE_TIME_LIMIT_S = 900; // 15:00 clock (HUD counts it down) — timeout
 const _muzzle = new THREE.Vector3();
 const _pivot = new THREE.Vector3();
 const _dir = new THREE.Vector3();
-const _aimDir = new THREE.Vector3();
 const _upOrtho = new THREE.Vector3();
 const _seg = new THREE.Vector3();
 const _toC = new THREE.Vector3();
@@ -1401,12 +1400,7 @@ function tryFire(game, ent, bus, rig) {
   // settled onto the aim point (within ~2°), fire exactly at it so the impact
   // matches the reticle at server-aim distance; while still slewing, the shell
   // follows the barrel.
-  _aimDir.copy(ent.input.aimPoint).sub(_muzzle);
-  const aimLen = _aimDir.length();
-  if (aimLen > 4) {
-    _aimDir.multiplyScalar(1 / aimLen);
-    if (_dir.dot(_aimDir) > 0.99939) _dir.copy(_aimDir); // cos ~2.0°
-  }
+  resolveGunAimDirection(_dir, _muzzle, _dir, ent.input.aimPoint);
 
   // Ballistic elevation for the aimed range (WoT-style auto-elevation).
   const dist = ent.input.aimPoint.distanceTo(_muzzle);
