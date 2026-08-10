@@ -189,6 +189,18 @@ const LOCAL_REFERENCE_OVERRIDES = {
   // (the t72b3 BASE-id entry that lived here moved to the t72b3m key
   // above: the owner delisted t72b3 from the roster AND overrode the
   // graduate's oracle to this print — see the t72b3m entry comment.)
+  abramsx: {
+    // Measurement-only Mortavex oracle.  The playable/private garage path
+    // deliberately uses the seated procedural reconstruction because the
+    // source's flattened roof kit contains the owner-reported stilt gaps.
+    source:'glb',
+    glb:{
+      path:'/models/tanks/community/abramsx-mortavex.glb',
+      turretNode:'^Turret$', gunNode:'^[Ss]tvol$', autoPivot:true,
+      turretFollowers:'^(TurretKit|stvol|puli|RWSKorpus)$',
+      pivot:[0,285.639,73.949], paintUntextured:true,
+    },
+  },
   challenger_3: {
     // "Challenger 3" by 42manako — CC-BY-NC-4.0: LOCAL-ONLY QUARANTINE
     // class (ATTRIBUTION precedent; NC = measurement/influence only, never

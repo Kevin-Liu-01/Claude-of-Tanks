@@ -161,6 +161,20 @@ never excuses missing it.
    full independent critic re-cert on the changed views instead.
    Floaters 100 ×2 + the yaw-90° rotating-furniture pair are required
    in every variant.
+   PHYSICAL-SEAT GATE (owner Challenger 3/AbramsX correction,
+   2026-08-10): coherent yaw proves PARENTING ONLY. It does not prove
+   that a sight, ERA cassette, weapon station, service box or bracket is
+   physically attached. Every turret-owned solid needs a continuous
+   overlapping load path into the actual local roof/cheek/bustle surface;
+   authored open mechanisms may contain real internal daylight, but no
+   complete component may be carried by empty air. Never seat forward or
+   aft equipment from a global peak-roof constant when the local crown is
+   sloped or stepped. The receipt must include low left/right garage-side
+   views at yaw 0 and 90 plus close-roof/top views. It must also identify
+   the model source used by the playable garage path: an oracle-only GLB
+   cannot silently replace a repaired procedural build. Challenger 3's
+   peak-datum fittings and the recovered AbramsX's stilted RWS are the
+   canonical false-pass cases.
 6. TRACK RUN SILHOUETTE (owner law 2026-08-04: "tracks are the shape
    \\________/ not /_____/"). Side view: the ground run is the SHORT base
    of a trapezoid — approach/departure ramps rise to RAISED end wheels at

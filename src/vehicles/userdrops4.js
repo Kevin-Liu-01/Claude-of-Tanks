@@ -85,23 +85,14 @@ if (ALLOW_LOCAL_RECOVERED_MODELS) {
   // everywhere (geo 90.5 gatePassed, critic 9.0 all nine views, r5).
   // Freeze hash b432d89d. The GLB stays as the trio's measurement oracle.
 
-  MODEL_SOURCE.abramsx = {
-    source: 'glb',
-    glb: {
-      path: '/models/tanks/community/abramsx-mortavex.glb',
-      turretNode: '^Turret$', gunNode: '^[Ss]tvol$', autoPivot: true,
-      // §5.82 component proof: the Mortavex export flattened the complete
-      // turret kit beside the shell.  TurretKit carries the roof armor, sights
-      // and twin whips; stvol/puli/RWSKorpus are the XM914 barrel, ammunition
-      // pack and receiver.  Move the four siblings with the shell.  The
-      // explicit raw-frame ring pivot is the original shell-only autoPivot
-      // ([0, 2.157, -0.390] m after registration), so adding followers can
-      // never re-derive/shift the yaw axis from their larger bounding box.
-      turretFollowers: '^(TurretKit|stvol|puli|RWSKorpus)$',
-      pivot: [0, 285.639, 73.949],
-      paintUntextured: true,
-    },
-  };
+  // OWNER GARAGE REPAIR (2026-08-10): do not install the recovered Mortavex
+  // GLB as the playable AbramsX.  Its flattened TurretKit/RWS siblings can be
+  // made to follow the yaw pivot, but the asset itself contains the enormous
+  // stilted receiver/deck and unsupported gaps visible in the owner's garage
+  // screenshot.  Rotation parenting is not physical attachment.  The GLB
+  // remains a measurement oracle on disk; the completed abrams.js procedural
+  // reconstruction is now the private/local garage visual as well as the
+  // deployable one, so both paths show the same seated turret and XM914 kit.
 
   // The locally supplied Tejas asset is the accurate, fully articulated
   // Abrams base the recovered roster was missing. Use it for the local M1A1

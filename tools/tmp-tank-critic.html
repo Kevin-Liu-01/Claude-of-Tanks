@@ -161,6 +161,13 @@ const CRITIC_REFERENCE_OVERRIDES = {
   t72b3m: { source:'glb', glb:{ path:'/models/tanks/community/t-72b3m_obr._2022.glb',
     turretNode:'^Object_14$', gunNode:'^Object_15$', autoPivot:true, yawOffset:Math.PI,
     turretFollowers:'^Object_3$' } },
+  // AbramsX graduate: the Mortavex asset is measurement-only.  Runtime no
+  // longer installs its visibly stilted kit, but critic comparisons retain
+  // the exact frozen source registration.
+  abramsx: { source:'glb', glb:{ path:'/models/tanks/community/abramsx-mortavex.glb',
+    turretNode:'^Turret$', gunNode:'^[Ss]tvol$', autoPivot:true,
+    turretFollowers:'^(TurretKit|stvol|puli|RWSKorpus)$',
+    pivot:[0,285.639,73.949], paintUntextured:true } },
   // challenger_3 NEW VEHICLE (owner greenlight 2026-08-06): 42manako
   // CC-BY-NC-4.0 — LOCAL-ONLY QUARANTINE oracle, never ships; mirrors the
   // fidelity harness row (gun 'weapon' under 'mount'; anchored regex

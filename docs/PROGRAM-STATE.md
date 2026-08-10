@@ -2824,3 +2824,44 @@ spot; contiguity is zero; winding mode 1 is clean. Independent §B8 passes all
 Fleet is **34/96** and graduates **40**. The same uninterrupted owner round
 continues with the raw T-90, T-90A Burlak and T-90MS Tagil before T-72B3M,
 Leopard 2A7/Revolution and T-14.
+
+## 5.95 OWNER SCREENSHOT REOPEN — CHALLENGER 3 / ABRAMSX ATTACHMENT (2026-08-10, CANDIDATE)
+
+The owner identified the two garage references explicitly as Challenger 3
+and AbramsX and demonstrated that §5.87's yaw-coherence verdict had not proved
+physical attachment. That attachment conclusion is therefore superseded and
+both tanks were reopened. Rotation with the turret is now treated only as a
+parenting receipt; a continuous visible load path into the local turret
+surface is a separate gate (§B5 PHYSICAL-SEAT).
+
+Challenger 3's defect was a datum error: forward fittings were seated from
+`C3H`, the peak of the inset crown, although the brow is much lower at their
+actual stations. The repair adds a tapered buried Protector foundation,
+re-seats the forward optic directly into the descending brow, closes the
+roof-to-ammunition tier with a buried service trunk, and authors the EPSOM
+hood on the real sloped face rather than translating it from peak height.
+Fresh low-side, top, close and yaw views show each complete component meeting
+solid turret structure. Candidate freeze reproduces x2 at **5c15b250**
+(60 meshes / 72,337 vertices).
+
+AbramsX's screenshot came from the local/private garage runtime installing
+the recovered Mortavex GLB. Although its flattened siblings had been made to
+yaw together, the asset itself contains the giant stilted receiver and empty
+attachment gaps. The GLB is now measurement-only in both critic harnesses;
+the playable and private garage paths both use the seated procedural AbramsX.
+Its geometry freeze remains **d1dbfa2** (75 meshes / 162,372 vertices).
+
+Fresh gate runs reproduce Challenger 3 at **90.4**
+(90.8/90.4/91.0/91.8/100/100) and AbramsX at **90.2**
+(90.2/90.5/91.0/93.4/99.8/100). Standard-check passes both: contiguity 0,
+decoration mg1+5d, track receipts 0/24 and 37/26 respectively. All 28 paired
+PNG receipts are 1280x640 with distinct SHA-256 values; `npm test` is green.
+Evidence lives in `shots/critic-challenger3-owner-gap-recert/` and
+`shots/critic-abramsx-owner-gap-recert/`.
+
+This is a **candidate repair, not a re-graduation**. The prior §5.87 critic
+sitting did not cover the owner-reported failure correctly, so the graduate
+registry hashes and counts stay unchanged until a new genuinely independent
+§B8 sitting certifies the frozen candidate bytes. The owner-priority sequence
+then continues with the reopened Vladimir hull/turret partition and complete
+T-90SM redesign before the remaining T-90 family.

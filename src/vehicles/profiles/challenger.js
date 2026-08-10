@@ -3425,7 +3425,15 @@ function buildChallenger3(P) {
   // cheeks and a central receiver now overlap continuously from the roof
   // course into the gun rails.  The cradle still has real mechanical holes,
   // but no component is supported by empty air.
-  P.add('turret', box(0.64, 0.12, 0.58), 0.72, C3H, -0.22);                   // roof shoe: bottom buried in the 0.84 roof
+  // GARAGE-SIDE ATTACHMENT REPAIR (owner 2026-08-10): C3H is the peak of
+  // the inset crown, not the roof height at this forward station.  Using it
+  // as a universal seat left the complete Protector foundation visibly in
+  // the air from a flat side camera.  This tapered trunk begins inside the
+  // real sloping roof course (about .63 local here) and overlaps the old
+  // shoe, giving the station a continuous armored load path.
+  P.add('turret', frustum(0.27, 0.25, -0.25, 0.22, 0.20, -0.20, 0, 0.24),
+    0.72, 0.59, -0.22);
+  P.add('turret', box(0.64, 0.12, 0.58), 0.72, C3H, -0.22);                   // roof shoe: foundation overlaps its underside
   P.add('turret', cylY(0.18, 0.24, 0.14, 8), 0.72, C3H + 0.06, -0.18);         // octagonal pedestal
   P.add('turretDetail', frustum(0.27, 0.28, -0.28, 0.20, 0.22, -0.22, 0, 0.26),
     0.72, C3H + 0.12, -0.22);                                                  // low faceted open-mount body
@@ -3440,10 +3448,14 @@ function buildChallenger3(P) {
   // for the required M2.
   for (const x of [0.61, 0.88]) P.add('turretDetail', box(0.045, 0.045, 1.08), x, C3H + 0.52, 0.40);
   P.add('turretDetail', box(0.31, 0.045, 0.045), 0.745, C3H + 0.52, 0.93);
+  // The forward optic is turret-face equipment, not a pod hanging from the
+  // elevated gun rails.  Seat its tapered body and neck directly into the
+  // descending brow at z .82..1.05; the old C3H-relative placement was the
+  // large isolated rectangle in the owner's garage-side screenshot.
   P.add('turretDetail', frustum(0.16, 0.13, -0.13, 0.12, 0.09, -0.09, 0, 0.20),
-    0.75, C3H + 0.28, 0.93);
-  P.add('turretDetail', box(0.22, 0.16, 0.12), 0.75, C3H + 0.40, 0.82);        // terminal optic neck reaches both rails and head
-  P.add('turretGlass', box(0.18, 0.09, 0.016), 0.75, C3H + 0.38, 1.05);
+    0.75, 0.075, 0.93);
+  P.add('turretDetail', box(0.22, 0.20, 0.14), 0.75, 0.18, 0.82);
+  P.add('turretGlass', box(0.18, 0.09, 0.016), 0.75, 0.245, 1.05);
   P.add('turretDark', frustum(0.14, 0.13, -0.13, 0.11, 0.09, -0.09, 0, 0.23),
     1.01, C3H + 0.34, -0.15);                                                  // measured outer RWS sensor at x .87..1.15
   P.add('turretDetail', box(0.14, 0.20, 0.12), 0.94, C3H + 0.24, -0.17);      // sensor bracket overlaps mount body and pod
@@ -3485,6 +3497,7 @@ function buildChallenger3(P) {
   // unchanged (the 2.85 mount body owns x -0.13..-0.47 tops).
   P.add('turretDetail', frustum(0.22, 0.16, -0.16, 0.18, 0.13, -0.13, 0, 0.30),
     0.72, C3H + 0.03, -0.42);                                                  // faceted ammunition/junction tier
+  P.add('turret', box(0.40, 0.25, 0.28), 0.72, 0.755, -0.42);                 // buried roof-to-tier service trunk
   P.add('turretDark', box(0.34, 0.025, 0.23), 0.72, C3H + 0.335, -0.42);       // lid seam
   P.add('turretDetail', frustum(0.22, 0.04, -0.04, 0.105, 0.03, -0.03, 0, 0.26),
     0.70, 1.17, -0.48);                                                        // source RWS rear face begins world z .67
@@ -3496,13 +3509,16 @@ function buildChallenger3(P) {
   }
   // sights: gunner's EPSOM housing recessed into the face top RIGHT (§B1.1
   // detail rides ON the plane), commander pano rear-right
+  // EPSOM follows the actual falling brow: rear points bury into the .4 m
+  // station while the forward edge lands on the low .83 m nose course.
+  // This replaces the peak-roof translation that suspended the entire hood
+  // roughly half a metre above the turret.
   P.add('turret', slab(
-    [0.22, 0, 0.83], [0.74, 0, 0.83], [0.70, 0, 0.40], [0.26, 0, 0.40],
-    [0.27, 0.13, 0.77], [0.69, 0.13, 0.77], [0.65, 0.10, 0.44], [0.31, 0.10, 0.44]),
-    0, C3H - 0.035, 0);                                                        // faceted gunner hood sunk into cheek
+    [0.22, 0.08, 0.83], [0.74, 0.08, 0.83], [0.70, 0.32, 0.40], [0.26, 0.32, 0.40],
+    [0.27, 0.22, 0.77], [0.69, 0.22, 0.77], [0.65, 0.45, 0.44], [0.31, 0.45, 0.44]));
   P.add('turretDark', frustum(0.19, 0.04, -0.04, 0.15, 0.025, -0.025, 0, 0.10),
-    0.48, C3H + 0.03, 0.78, -0.18, 0, 0);
-  P.add('turretGlass', box(0.27, 0.07, 0.014), 0.48, C3H + 0.08, 0.82, -0.18, 0, 0);
+    0.48, 0.215, 0.78, -0.18, 0, 0);
+  P.add('turretGlass', box(0.27, 0.07, 0.014), 0.48, 0.305, 0.82, -0.18, 0, 0);
   // uk round (ref front render + batch-47 rows): the ref's commander pano
   // is a TALL TOWER at the roof's right edge — front tops 2.88..2.95 across
   // x 0.80..1.15 (our old 0.55-seat drum read 0.4 short there), and the
