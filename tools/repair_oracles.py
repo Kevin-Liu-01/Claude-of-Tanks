@@ -6,7 +6,7 @@ translations, and re-parent nodes so each oracle assembles correctly
 (turret seated on the hull ring, gun on the mantlet). Mesh/vertex data is
 never modified — the binary chunk passes through byte-identical.
 
-BATCH-7 EXCEPTION (the ONE sanctioned vertex edit): `slim_radial` — a
+BATCH-7 EXCEPTION: `slim_radial` — a
 measured radial-only rescale of an ISOLATED fused gun tube about its own
 bore axis (isu122s / isu152 print authoring error: tube+brake modelled fat
 enough to pass the gate's 12%-band body rule, dragging registration off the
@@ -14,6 +14,14 @@ hull). Selection is provably tube-only (census guards refuse to run
 otherwise), z/length is never touched, and only the selected POSITION
 floats change in the binary chunk. Everything else still passes through
 byte-identical.
+
+BATCH-48E EXCEPTION (fv510 source onboarding): a census-guarded uniform-axis
+normalization followed by a no-triangle-cut semantic repartition of one
+material-fused Main_Body primitive into Hull/Turret/Gun. Spatially coincident
+export splits are welded only for connected-component classification; source
+vertices and complete source triangles are copied unchanged into the moving
+groups. Exact component/vertex/triangle counts and final SHA-256 are frozen in
+the FV510 packet, and the pristine `.bak` is never overwritten.
 
 BATCH-6 EXCEPTION (leo2a6): one 'py2' op class may rigidly ROTATE a proven,
 counted vertex subset in place (a stowed-antenna fold — the only mesh-byte
@@ -3853,6 +3861,198 @@ REPAIRS['challenger2'] = {
                                long_map=[(-4.60, -4.60), (6.60, 6.60)],
                                y_top_max=2.07, expect=(4, 129488, 141698))),
             ('py2', _challenger2_repartition())],
+}
+
+
+# ============================================================= batch 48e ===
+# FV510 WARRIOR COMMUNITY-ORACLE ONBOARDING.  The owner's supplied file is
+# byte-identical to the unregistered 42manako print already in community/.
+# Its material export has only Track and Main_Body nodes; the latter fuses
+# hull, turret, RARDEN and all furniture into one 28,102-triangle primitive.
+# A spatial-weld census reconnects UV/normal-split vertices at identical
+# positions and recovers 663 whole authored solids.  Whole-component rules
+# then separate the one long, narrow roof-height RARDEN run and the compact
+# fighting-compartment footprint.  No triangle is cut and every input vertex
+# belongs to exactly one output semantic group.
+def _fv510_warrior_repartition():
+    """Split the supplied material-fused Warrior into Hull/Turret/Gun."""
+    def op(gltf, chunks):
+        tank_id = 'fv510'
+        ni = find_node(gltf, 'Object_Main_Body.jpg_mat_1-Main_Body.jpg_0')
+        src_node = gltf['nodes'][ni]
+        prims = gltf['meshes'][src_node['mesh']]['primitives']
+        if len(prims) != 1:
+            raise SystemExit(f'{tank_id}: expected one Main_Body primitive')
+        prim = prims[0]
+        bi = _bin_chunk_index(chunks)
+        data = bytearray(chunks[bi][1])
+        idx_acc = gltf['accessors'][prim['indices']]
+        if idx_acc['componentType'] not in (5123, 5125):
+            raise SystemExit(f'{tank_id}: unexpected index type')
+        ichar = 'H' if idx_acc['componentType'] == 5123 else 'I'
+        itype = idx_acc['componentType']
+        idx = [r[0] for r in _read_rows(gltf, data, prim['indices'])]
+        pos = _read_rows(gltf, data, prim['attributes']['POSITION'])
+        if len(pos) != 34692 or len(idx) != 84306:
+            raise SystemExit(f'{tank_id}: Main_Body census drift')
+        world = node_world_matrix(gltf, ni)
+        wpos = [transform_point(world, p) for p in pos]
+
+        # Join exact spatial duplicates first (the exporter splits them for
+        # UVs/normals), then join every triangle.  Eight-decimal raw-world
+        # keys are ~2 microns after normalization: strict enough to avoid
+        # bridging neighbouring fittings while reuniting coincident seams.
+        parent = list(range(len(pos)))
+        def find(a):
+            while parent[a] != a:
+                parent[a] = parent[parent[a]]
+                a = parent[a]
+            return a
+        def union(a, b):
+            a, b = find(a), find(b)
+            if a != b:
+                parent[a] = b
+        at = {}
+        for vi, p in enumerate(wpos):
+            key = tuple(round(v, 8) for v in p)
+            if key in at:
+                union(vi, at[key])
+            else:
+                at[key] = vi
+        for k in range(0, len(idx), 3):
+            union(idx[k], idx[k + 1])
+            union(idx[k], idx[k + 2])
+        comps = {}
+        for k in range(0, len(idx), 3):
+            tri = (idx[k], idx[k + 1], idx[k + 2])
+            comps.setdefault(find(tri[0]), []).append(tri)
+        if len(comps) != 663:
+            raise SystemExit(f'{tank_id}: expected 663 spatial components, '
+                             f'got {len(comps)}')
+
+        # Work in width-true metres after the preceding normalization op.
+        lo = [min(p[a] for p in wpos) for a in range(3)]
+        hi = [max(p[a] for p in wpos) for a in range(3)]
+        scale = 3.03 / (hi[0] - lo[0])
+        # Ground is carried by the separate Track primitive, 0.236 mm raw
+        # below Main_Body.  Use that measured shared-model datum so the four
+        # low ring/support components are not misclassified as hull.
+        center = ((lo[0] + hi[0]) / 2, -0.0086133,
+                  (lo[2] + hi[2]) / 2)
+        bounds = {}
+        for root, tris in comps.items():
+            vids = {v for tri in tris for v in tri}
+            pts = [tuple((wpos[v][a] - center[a]) * scale for a in range(3))
+                   for v in vids]
+            bounds[root] = ([min(p[a] for p in pts) for a in range(3)],
+                            [max(p[a] for p in pts) for a in range(3)])
+
+        gun_roots = set()
+        for root, (clo, chi) in bounds.items():
+            span = [chi[a] - clo[a] for a in range(3)]
+            if (span[2] > 1.65 and span[0] < 0.20 and span[1] < 0.30
+                    and clo[1] > 1.80):
+                gun_roots.add(root)
+        turret_roots = set()
+        for root, (clo, chi) in bounds.items():
+            if root in gun_roots:
+                continue
+            if (clo[0] >= -1.08 and chi[0] <= 0.82
+                    and clo[2] >= -1.50 and chi[2] <= 1.60
+                    and chi[1] >= 1.70):
+                turret_roots.add(root)
+        hull_roots = set(comps) - gun_roots - turret_roots
+        groups = {'Gun': gun_roots, 'Turret': turret_roots,
+                  'Hull': hull_roots}
+        expected = {
+            'Gun': (1, 438, 410),
+            'Turret': (69, 4565, 3989),
+            'Hull': (593, 29689, 23703),
+        }
+        group_tris = {}
+        for name, roots in groups.items():
+            tris = [tri for root in roots for tri in comps[root]]
+            group_tris[name] = tris
+            got = (len(roots), len({v for tri in tris for v in tri}), len(tris))
+            if got != expected[name]:
+                raise SystemExit(f'{tank_id}: {name} split drift: expected '
+                                 f'{expected[name]}, got {got}')
+
+        def copied_primitive(name, source_prim, tris):
+            order = sorted({v for tri in tris for v in tri})
+            remap = {v: i for i, v in enumerate(order)}
+            attrs = {}
+            for semantic, ai in source_prim['attributes'].items():
+                acc, ncomp, fmt, offset, stride = _acc_reader(gltf, data, ai)
+                rows = [struct.unpack_from('<' + fmt * ncomp, data,
+                                           offset + i * stride) for i in order]
+                payload = b''.join(struct.pack('<' + fmt * ncomp, *r) for r in rows)
+                abv = _bin_append(gltf, data, payload, 34962)
+                new_acc = {'bufferView': abv,
+                           'componentType': acc['componentType'],
+                           'count': len(order), 'type': acc['type']}
+                if acc.get('normalized'):
+                    new_acc['normalized'] = True
+                if semantic == 'POSITION':
+                    new_acc['min'] = [min(r[a] for r in rows) for a in range(ncomp)]
+                    new_acc['max'] = [max(r[a] for r in rows) for a in range(ncomp)]
+                gltf['accessors'].append(new_acc)
+                attrs[semantic] = len(gltf['accessors']) - 1
+            flat = [remap[v] for tri in tris for v in tri]
+            ibv = _bin_append(gltf, data,
+                              struct.pack(f'<{len(flat)}{ichar}', *flat), 34963)
+            gltf['accessors'].append({'bufferView': ibv,
+                                      'componentType': itype,
+                                      'count': len(flat), 'type': 'SCALAR'})
+            out = {'attributes': attrs, 'indices': len(gltf['accessors']) - 1}
+            for key in ('material', 'mode'):
+                if key in source_prim:
+                    out[key] = source_prim[key]
+            gltf['meshes'].append({'name': name + 'Mesh', 'primitives': [out]})
+            return len(gltf['meshes']) - 1
+
+        # Keep the hull on the original primitive/accessors and add compact
+        # semantic copies for the two moving assemblies.
+        hull_flat = [v for tri in group_tris['Hull'] for v in tri]
+        hbv = _bin_append(gltf, data,
+                          struct.pack(f'<{len(hull_flat)}{ichar}', *hull_flat), 34963)
+        gltf['accessors'].append({'bufferView': hbv, 'componentType': itype,
+                                  'count': len(hull_flat), 'type': 'SCALAR'})
+        prim['indices'] = len(gltf['accessors']) - 1
+        hull_vids = sorted(set(hull_flat))
+        pacc = gltf['accessors'][prim['attributes']['POSITION']]
+        pacc['min'] = [min(pos[v][a] for v in hull_vids) for a in range(3)]
+        pacc['max'] = [max(pos[v][a] for v in hull_vids) for a in range(3)]
+        src_node['name'] = 'Hull'
+
+        parent_i = next((i for i, n in enumerate(gltf['nodes'])
+                         if ni in n.get('children', [])), None)
+        if parent_i is None:
+            raise SystemExit(f'{tank_id}: Main_Body parent missing')
+        for name in ('Turret', 'Gun'):
+            mi = copied_primitive(name, prim, group_tris[name])
+            gltf['nodes'].append({'name': name, 'mesh': mi})
+            gltf['nodes'][parent_i].setdefault('children', []).append(
+                len(gltf['nodes']) - 1)
+        gltf['buffers'][0]['byteLength'] = len(data)
+        chunks[bi] = (BIN_CHUNK, bytes(data))
+        print('[repair] fv510: supplied Main_Body repartitioned — '
+              'Hull 593/29689/23703, Turret 69/4565/3989, '
+              'Gun 1/438/410 (components/verts/tris)')
+    return op
+
+
+REPAIRS['fv510'] = {
+    'path': 'public/models/tanks/community/fv510_warrior.glb',
+    'ops': [
+        ('py2', _axis_warp('fv510', long_axis='z',
+                           y_map=[(-0.0086133, -0.0086133),
+                                  (0.0029, 0.0029), (0.004, 0.0037),
+                                  (0.0086133, 0.0039)],
+                           long_map=[(-0.0125, -0.014), (0.0125, 0.014)],
+                           y_top_max=0.0041, expect=(2, 35250, 28582))),
+        ('py2', _fv510_warrior_repartition()),
+    ],
 }
 
 

@@ -49,7 +49,7 @@ at load.
 - Env for EVERY node run: `export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh"`
 - npm test before every landing (166 equipment checks + track-geometry).
 
-## 3. GRADUATE REGISTRY (34 graduates, hash-frozen)
+## 3. GRADUATE REGISTRY (35 graduates, hash-frozen)
 Freeze = deterministic geometry hash via `node tools/tmp-hashgeo.mjs
 --ids=...` (camoSeed 4242 pinned build; FNV-1a over position buffers +
 world matrices, mesh-order independent). Graduate-change protocol: fix ->
@@ -90,6 +90,7 @@ re-freeze NEW hash, all in ONE commit.
 | abramsx | d1dbfa2 | GRADUATED 2026-08-09 (32nd; §5.87 owner attachment closeout RE-FROZEN: roof-sight necks + XM914 buried foundation/recoil spine/equipment foot, no air seams; gate 90.2 x2 every component >=90; fresh §B8 floor 9.0 / mean 9.09 x14; oracle 01acf03c reproducible from pristine .bak; prior fe7f9852 complete-redesign freeze retired) |
 | challenger_3 | b0c172a4 | GRADUATED 2026-08-09 (33rd; §5.87 owner attachment closeout RE-FROZEN: Protector roof shoe/fork/receiver/optic supports + smoke backing shoes; gate 90.4 x2 every component >=90; fresh §B8 floor 9.0 / mean 9.06 x14; oracle a5fcd801 reproducible from pristine .bak; prior 2678f6c complete-redesign freeze retired) |
 | challenger2 | 3b4bd5f0 | GRADUATED 2026-08-09; RE-FROZEN 2026-08-10 (§5.89 owner fused-block repair: material-fused casemate course removed from fixed hull and repartitioned into the articulated source tree; one low ring landing + one rotating turret; gate 90.1 x2 every component >=90; standard/parent/winding clean; fresh §B8 floor 9.0 / mean 9.06 x14, yaw/load paths 9.3; oracle f44e3b46 reproducible from pristine .bak; prior 63ee160 retired) |
+| fv510 | 7884762a | GRADUATED 2026-08-10 (35th; owner-supplied exact-source redesign: attributed CC-BY donor deterministically repartitioned Hull/Turret/Gun with no triangle cuts and baked into the synchronous public/private procedural path; gate 93.2 x2, every component >=93.2; fidelity 98.7; standard/parent/winding clean; independent §B8 floor 9.4 / mean 9.51 x14, yaw/load paths 9.4; repaired oracle 8bc9e6c1 reproducible from pristine d4bcad96 .bak) |
 | m26_pershing | 2f006738 | RE-RECORDED 2026-08-08: hash moved by LANDED 5f39989 (armorM4 gunBarrel shadow-proxy 3.96->3.44; m26/m45 inherit m4a3e8 proxies — patton.js bytes unchanged); double-confirmed by builder bisect + m45-grad critic; prior 65c564c0 bore+winding re-cert lineage (floors 9.1-9.4) carries |
 | t90m | e345ee8a | GRADUATED 2026-08-06 (27th; floor 9.0 x14 second sitting; the owner's dedicated-agent arc 81.7 -> dual gate) |
 
@@ -2632,3 +2633,39 @@ oracle SHA-256 is `f44e3b46ee07a457b04fff6cdf8950f880a45fd22d952226e2ef16a4bd3c4
 reproducible from pristine `.bak`
 `1be3ef855ac9c441e38262a4ae26600d14c763c70c867024554499a451f9ad48`.
 Verdict: `docs/critique/shaded-parity-challenger2-fused-block-recert.md`.
+
+## 5.90 FV510 OWNER-SOURCE EXACT REDESIGN GRADUATED — 35th (2026-08-10)
+
+The owner's supplied `fv510_warrior.glb` is byte-identical to the attributed
+42manako CC-BY-4.0 oracle already held locally. The previous photo-estimated
+Warrior shell is superseded by the source's exact component geometry. A
+census-guarded repair spatially reconnects export-split vertices for analysis
+and repartitions 663 complete authored solids without cutting any triangle:
+Hull 593 components / 29,689 vertices / 23,703 triangles; Turret 69 / 4,565 /
+3,989; Gun 1 / 438 / 410. Track remains 558 vertices / 480 triangles.
+
+The exact transformed positions/indices are now a synchronous generated
+profile payload, so private and public-fallback builds render the same Warrior
+while the runtime GLB registration is retired. The repaired oracle SHA-256 is
+`8bc9e6c1eb9a73794278cdb9ee4f6de2d540364d4772adc87e9c8224b40a2be6`,
+reproducible from pristine `.bak`
+`d4bcad966b92d0735f0affe65a926502eee9e2a158ff0b35cfe6c443453fa389`;
+`tools/fv510-source-bake.py --verify` reproduces all four encoded payloads.
+
+Final gate x2 is bit-identical: **93.2** |
+93.2/93.2/98.2/100/100/100. Direct fidelity is **98.7** overall (hull 98.3,
+turret/gun 100, tracks 99.9). Exact track/shoe is 5/39 with no blind spot;
+standard contiguity 0, mg1+0d; turret-parent 0/0/0; winding reversed/mixed 0/0
+and yaw candidates 0. Freeze **7884762a** reproduces x2 (10 meshes / 86,486
+vertices). `npm test` and `npm run build:private` are green.
+
+Independent §B8 passes all fourteen current-byte pairs at floor **9.4**, mean
+**9.51**. The yaw/load-path sitting passes **9.4**: the RARDEN, turret shell,
+sight pedestal, hatch/cupola equipment and turret rails rotate as one seated
+assembly; hull-owned deck furniture correctly remains fixed. There is no
+unsupported hardware, air seam, detached fitting or duplicate fixed turret
+mass. Verdict:
+`docs/critique/shaded-parity-fv510-exact-source-graduation.md`. Fleet is
+**29/96** and graduates **35**. The owner-priority lane resumes the harmonious
+T-90 family, T-72B3M parenting repair, Leopard 2A7/Revolution closeout and T-14
+proportion round.

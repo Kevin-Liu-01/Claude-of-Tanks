@@ -12,6 +12,7 @@
 // that module imports this file's shared UK kit (export block at the tail).
 import * as THREE from 'three';
 import { KIT, FITTINGS, evenStations, muzzleBore, orientedSlab } from './kit.js';
+import { buildFv510SourceGeometry } from './fv510-source-geometry.js';
 import { vehicleAmbientFloorHook } from '../materials.js';
 
 const {
@@ -2822,7 +2823,7 @@ const fvSeg = (a, b, step = 0.45) => {
   return out;
 };
 
-function fv510Build(P) {
+function fv510PhotoBuild(P) {
   const num = P.spec.visual.number || '';
   // ---- lower body (inter-track ±0.93 — clear of the 0.945 track channel,
   // §B4; station-segmented) ----
@@ -3222,6 +3223,18 @@ function fv510Build(P) {
   P.add('turretDark', cylZ(0.032, 0.02, 10), -0.42, 0.30, 0.52);
   P.add('turretDark', cylZ(0.014, 0.16, 8), -0.42, 0.30, 0.58);
   P.topY = 0.79;
+}
+
+// Owner-source redesign (2026-08-10).  The CC-BY Warrior drop is materially
+// better than the hand-estimated photo shell above, but arrived as one fused
+// Main_Body mesh.  repair_oracles.py first splits whole authored components
+// into Hull/Turret/Gun without cutting a triangle; the generated geometry
+// bake then supplies those exact solids synchronously to the normal
+// procedural material/LOD pipeline.  This preserves public/fallback behavior
+// while giving every roof fitting the source's real seated load path and
+// making the complete turret and RARDEN articulate natively.
+function fv510Build(P) {
+  buildFv510SourceGeometry(P);
 }
 
 // ---------------------------------------------------------------------------

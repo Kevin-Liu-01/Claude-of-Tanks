@@ -742,7 +742,13 @@ fails the build if any registered playable still references a stripped path.
   https://sketchfab.com/3d-models/fv510-warrior-b33ccded031f429ba719228a74a0d22b
   (Sketchfab download, license verified from embedded asset.extras).
   Replaces the shape-divergent recovered/fv510.glb print as fv510's
-  measurement oracle (onboarding: extract + registration + baseline).
+  measurement oracle. Owner's 2026-08-09 re-drop was byte-identical
+  (SHA-256 `d4bcad966b92d0735f0affe65a926502eee9e2a158ff0b35cfe6c443453fa389`).
+  The tracked GLB is a deterministic no-triangle-cut semantic repartition
+  (Hull/Turret/Gun) with SHA-256
+  `8bc9e6c1eb9a73794278cdb9ee4f6de2d540364d4772adc87e9c8224b40a2be6`;
+  the synchronous procedural FV510 uses source-derived geometry from this
+  attributed model under the same CC-BY-4.0 license.
 
 ## SPz Puma oracle drop (2026-08-06, owner-downloaded)
 - public/models/tanks/community/spz_puma.glb — "SPz Puma" by 42manako

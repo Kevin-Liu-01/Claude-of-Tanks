@@ -40,4 +40,5 @@ for (const d of digests) {
 }
 window.__GEOHASH = { id, hash: total.toString(16), meshCount, vertCount };
 window.__HASH_READY = true;
+document.body.textContent = JSON.stringify(window.__GEOHASH);
 </script>

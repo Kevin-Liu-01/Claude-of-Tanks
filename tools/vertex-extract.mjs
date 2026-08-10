@@ -233,7 +233,7 @@ const REG = {
     pubDims: { hullLengthM: 8.32, overallLengthM: 11.50, widthM: 3.52, heightM: 2.95 },
   },
   fv510: {
-    path: 'public/models/tanks/community/recovered/fv510.glb',
+    path: 'public/models/tanks/community/fv510_warrior.glb',
     turretNode: '^Turret$', gunNode: '^Gun$', autoPivot: true, yawOffset: Math.PI,
     pubDims: { hullLengthM: 6.34, overallLengthM: 6.34, widthM: 3.03, heightM: 2.80 },
   },

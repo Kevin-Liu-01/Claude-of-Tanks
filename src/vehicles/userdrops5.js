@@ -212,7 +212,10 @@ if (ALLOW_LOCAL_RECOVERED_MODELS) {
   // via tmp-hashgeo; the recovered Z-up print stays as the measurement
   // oracle (all three override maps carry the registration incl.
   // pitchOffset -PI/2).
-  articulated('fv510', { yawOffset: Math.PI });
+  // fv510: SOURCE REGISTRATION RETIRED (2026-08-10). The repaired CC-BY
+  // print remains the measurement oracle; its exact component geometry is
+  // baked into the synchronous generated build so public/private visuals and
+  // native turret/gun articulation are identical.
     // FLIP-RETIRED: articulated('leo2_revolution', { yawOffset: Math.PI });
   // leo2a5: DUAL-GATE GRADUATE (2026-08-04, the 21st — geometry 90.8 x2 +
   // critic 9.0 every view at r10; ladder 7.7 -> 9.0 over five rounds;
