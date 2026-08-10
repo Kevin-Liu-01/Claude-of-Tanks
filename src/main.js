@@ -2333,6 +2333,8 @@ const frameInfo = {
     blockedDistM: null,
     blockedLabel: false, // r7: dwell-gated PATH BLOCKED text (tint stays instant)
     gunMarker: new THREE.Vector3(),
+    gunDistM: 0,
+    gunTargetId: null,
     atGunLimit: false,
     gunLimitSpec: false, // GUN LIMIT label (movement.js r3: spec pins only)
     reload: { t: 0, totalS: 1 },
@@ -2423,12 +2425,18 @@ function computeAimInfo() {
   aim.shells = shellCards;
   aim.zoom = rig.mode === 'SNIPER' ? rig.zoom : 1;
 
-  // gun marker: where the barrel actually points, projected at aim distance.
-  // controls_gunnery r3: bore AXIS, not muzzle-minus-pivot — the GLB muzzle
-  // anchor sits off-axis and the anchor line parked the marker 2.5° off.
+  // WoT dual-reticle contract (official controls guide): the camera marker
+  // communicates where the player LOOKS; the aiming circle + gun marker
+  // communicate where the gun can ACTUALLY fire. Use the articulated bore
+  // axis (not muzzle-minus-pivot — GLB muzzle anchors can sit off-axis), and
+  // resolve penetration from that physical ray below.
   p.visual.gunMuzzleWorld(_v1);
   p.visual.gunDirWorld(_v3);
-  aim.gunMarker.copy(_v1).addScaledVector(_v3, Math.max(rig.aimDist - 2, 6));
+  _rayO.copy(_v1);
+  _rayD.copy(_v3);
+  aim.gunDistM = Math.max(rig.aimDist - 2, 6);
+  aim.gunTargetId = null;
+  aim.gunMarker.copy(_rayO).addScaledVector(_rayD, aim.gunDistM);
 
   // BLOCKED-SHOT INDICATOR (controls_gunnery r2): the reticle ray comes from
   // the camera, the shell leaves the muzzle — near crests/walls/poles they
@@ -2460,37 +2468,58 @@ function computeAimInfo() {
     aim.blockedLabel = false;
   }
 
-  // penetration indicator: first enemy plate under the aim ray.
-  // controls_gunnery r6: matches the sticky server reticle — the bounding
-  // gate is inflated ×1.15 like aimRaycastWithTanks, and the last resolved
-  // pen ratio is HELD for a short hysteresis window when the ray briefly
-  // slips off a mover, so the pen color never strobes while tracking.
+  // Penetration indicator: first enemy plate under the ACTUAL GUN ray. The
+  // old camera-ray query could paint the screen-center marker green while a
+  // depression/elevation/traverse clamp held the barrel somewhere else —
+  // exactly the false-ready state WoT's separate gun marker prevents.
+  // Keep the short anti-strobe hold, but bind the held color to its gun-ray
+  // target id so the HUD never assigns it to the camera marker.
   aim.penRatio = null;
-  rig.getAimRay(_rayO, _rayD);
   const shellSpec = p.spec.gun.shells[p.combat.shellSlot];
-  let bestDist = Infinity;
+  const gunWorldHit = worldRaycast(_rayO, _rayD, 800);
+  let bestDist = gunWorldHit ? gunWorldHit.dist : 800;
   let bestInfo = null;
+  let bestTargetId = null;
   for (const ent of game.tanks) {
-    if (ent.isPlayer || !ent.state || !ent.combat || ent.combat.destroyed) continue;
+    if (ent.isPlayer || ent.team === p.team || !ent.state || !ent.combat || ent.combat.destroyed) continue;
     _v1.copy(ent.state.pos);
     _v1.y += ent.spec.dims.heightM * 0.5;
     _v1.sub(_rayO);
     const proj = _v1.dot(_rayD);
-    if (proj < 0 || proj > 800) continue;
+    if (proj < 0 || proj > bestDist + ent.spec.armor.boundingRadiusM) continue;
     const r = ent.spec.armor.boundingRadiusM * AIM_STICKY_INFLATE;
     if (_v1.lengthSq() - proj * proj > r * r) continue;
-    const q = queryAimArmor(_rayO, _rayD, 800, tankPoseFromState(ent.state, _aimPose), ent.spec.armor);
-    if (q && q.distM < bestDist) { bestDist = q.distM; bestInfo = q; }
+    const q = queryAimArmor(
+      _rayO, _rayD, Math.min(800, bestDist + ent.spec.armor.boundingRadiusM),
+      tankPoseFromState(ent.state, _aimPose), ent.spec.armor,
+    );
+    if (q && q.distM < bestDist) {
+      bestDist = q.distM;
+      bestInfo = q;
+      bestTargetId = ent.id;
+    }
   }
   if (bestInfo) {
+    aim.gunMarker.copy(bestInfo.point);
+    aim.gunDistM = bestDist;
+    aim.gunTargetId = bestTargetId;
     aim.penRatio = estimatePenRatio(shellSpec, bestDist, bestInfo);
     lastPenRatio = aim.penRatio;
+    lastGunTargetId = bestTargetId;
     lastPenUntilMs = performance.now() + AIM_STICKY_HOLD_MS;
-  } else if (performance.now() < lastPenUntilMs) {
-    aim.penRatio = lastPenRatio; // sticky-reticle hysteresis (see above)
+  } else {
+    if (gunWorldHit) {
+      aim.gunMarker.copy(gunWorldHit.point);
+      aim.gunDistM = gunWorldHit.dist;
+    }
+    if (performance.now() < lastPenUntilMs) {
+      aim.penRatio = lastPenRatio; // sticky-reticle hysteresis (see above)
+      aim.gunTargetId = lastGunTargetId;
+    }
   }
 }
 let lastPenRatio = null;
+let lastGunTargetId = null;
 let lastPenUntilMs = -Infinity;
 // gameplay_feel r7: continuous-block dwell start for the PATH BLOCKED label
 let blockedSinceMs = -1;
@@ -3190,6 +3219,8 @@ function forcedHudFrame(mode, forcedAim) {
   aim.distM = forcedAim.distM;
   aim.dispersionRadM = forcedAim.dispersionRadM;
   aim.penRatio = forcedAim.penRatio;
+  aim.gunDistM = forcedAim.gunDistM != null ? forcedAim.gunDistM : forcedAim.distM;
+  aim.gunTargetId = forcedAim.gunTargetId != null ? forcedAim.gunTargetId : null;
   aim.blockedDistM = null; // screenshot views never show the blocked warning
   aim.blockedLabel = false;
   aim.atGunLimit = false;
@@ -3203,7 +3234,15 @@ function forcedHudFrame(mode, forcedAim) {
   aim.gunMarker.copy(rig.aimPoint);
   refreshSpotFrame(); // SPOTTING WIRING: camo indicator in forced HUD stills
   hud.update(frameInfo);
-  hud.forceAimDisplay(forcedAim);
+  // Preserve the live dual-reticle fields in deterministic screenshot views;
+  // the recipe only carries scalar aim values.
+  hud.forceAimDisplay({
+    ...forcedAim,
+    point: aim.point,
+    gunMarker: aim.gunMarker,
+    gunDistM: aim.gunDistM,
+    gunTargetId: aim.gunTargetId,
+  });
 }
 
 const SHOT_VIEWS = {

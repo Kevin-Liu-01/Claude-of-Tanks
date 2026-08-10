@@ -20,7 +20,6 @@ const PEN_NONE = 'rgba(236,242,248,0.95)';
 // WoT's sniper reticle visibly outweighs the arcade one.
 const CIRCLE_COL = 'rgba(208,233,211,0.85)';
 const SNIPER_COL = 'rgba(140,242,140,0.95)';      // sniper circle + furniture
-const SNIPER_NONE = 'rgba(186,248,186,0.97)';     // sniper neutral marker ink
 const RELOAD_ACCENT = 'rgba(240,160,48,0.95)';    // reload sweep + countdown
 // MOBILE-UX r1 (owner: "don't let the reticle grow too large — it should only
 // show the actual hit zones of shells"): the dispersion circle now draws the
@@ -1779,7 +1778,9 @@ export function initHud(bus) {
   function retCeilPx() { return Math.min(w, h) * RET_CEIL_FRAC; }
   function clampRetR(r) { return Math.max(RET_FLOOR_PX, Math.min(r, retCeilPx())); }
   let lastDrawnR = RET_FLOOR_PX;   // actual radius painted by drawReticle
-  let lastGunOutside = false;      // gun-off-circle hold-open engaged
+  let lastGunOutside = false;      // actual gun marker lies outside dispersion radius
+  let lastCircleX = 0, lastCircleY = 0;
+  let lastCameraMarkerCol = PEN_NONE, lastGunMarkerCol = PEN_NONE;
 
   function drawReticle(view, dt) {
     const cx = view.cx, cy = view.cy;
@@ -1788,48 +1789,28 @@ export function initHud(bus) {
     const k = 1 - Math.exp(-14 * dt);
     smoothRadPx += (targetR - smoothRadPx) * k;
     let r = clampRetR(smoothRadPx);
-    // controls_gunnery r3 (major): the aim circle BOUNDS shell landing (WoT
-    // contract). While the barrel still points OUTSIDE the drawn circle
-    // (slew in progress / residual lay error), a converged circle plus a
-    // pen-colored cross promises an impact the gun cannot deliver — hold
-    // the circle open to at least the gun-marker offset and drop the pen
-    // coloring to neutral until the gun is physically inside the circle.
-    // MOBILE-UX r1: the hold-open now respects the SAME display ceiling as
-    // the bloom (the old 0.46 cap let every fast traverse balloon the ring
-    // to half the frame). When the gun sits beyond the ceiling the circle
-    // parks there and the neutral marker + true-gun ghost carry the read.
+    // WoT contract: the dispersion circle belongs to the GUN, never to the
+    // camera. The old hold-open behavior enlarged a camera-centered circle
+    // until it swallowed an off-axis gun marker, making both reticles look
+    // aligned during the exact depression/limit state that needed separation.
     let gunOutside = false;
     let gunOffPx = 0;
     if (view.gunX != null && view.gunY != null) {
       gunOffPx = Math.hypot(view.gunX - cx, view.gunY - cy);
-      if (gunOffPx > r) {
-        gunOutside = true;
-        r = Math.min(Math.max(r, gunOffPx + 8), retCeilPx());
-      }
+      gunOutside = gunOffPx > r;
     }
     lastDrawnR = r;
     lastGunOutside = gunOutside;
-    // r7-2 MAJOR (WoT dual-element grammar): the DISPERSION CIRCLE belongs
-    // to the GUN — it is centered on the barrel's projected lay point and
-    // visibly lags/diverges from the camera-axis cross during a fast turret
-    // traverse, converging back as the gun settles. The old build drew both
-    // on the camera axis, so traverse never separated them and the circle
-    // read as camera furniture. (Once the gun is far outside, the circle is
-    // held open around the camera axis instead — a tiny circle riding the
-    // gun marker across the screen reads as a glitch, and the gunOutside
-    // clamp above already covers that regime.)
-    let ccx = cx, ccy = cy;
-    if (!gunOutside && view.gunX != null && view.gunY != null && gunOffPx > 1.5) {
-      ccx = view.gunX; ccy = view.gunY;
-    }
-    // r4 (WoT marker grammar): the center marker stays NEUTRAL over terrain
-    // and only takes the pen color when an enemy VEHICLE actually sits under
-    // the gun (aimTargetId — the same gate that shows the over-target plate).
-    // The old always-on pen tint painted a bright green cross on bare road.
-    // r5-2: sniper's neutral ink is its own bright green (sight identity).
+    const ccx = view.gunX != null ? view.gunX : cx;
+    const ccy = view.gunY != null ? view.gunY : cy;
+    lastCircleX = ccx; lastCircleY = ccy;
+    // Official WoT grammar: this screen-center marker follows the CAMERA and
+    // indicates only where the player is looking. It never carries armor/
+    // penetration color. A red camera marker is reserved for a physical gun
+    // limit; the colored gun marker below remains at the reachable shot point.
     const sniper = mode === 'sniper';
-    let col = penColor(gunOutside || aimTargetId == null ? null : view.penRatio);
-    if (sniper && col === PEN_NONE) col = SNIPER_NONE;
+    const cameraCol = view.atGunLimit ? PEN_RED : PEN_NONE;
+    lastCameraMarkerCol = cameraCol;
 
     // --- dispersion circle: ONE thin DASHED ring (stock WoT's aim circle),
     // NO outer tick marks. r7-2 MAJOR (round critique: "16-20 chunky
@@ -1872,8 +1853,8 @@ export function initHud(bus) {
     ctx.setLineDash([]);
 
     // --- central CAMERA-AXIS marker: a SMALL CLEAN CROSS (short gapped
-    // arms + a fine center dot), colored by penetration chance (green/
-    // orange/red, neutral off armor). r7-2 MAJOR (round critique: "the
+    // arms + a fine center dot), always neutral because it is direction-only.
+    // r7-2 MAJOR (round critique: "the
     // white center cross is oversized relative to the circle and sits on a
     // faint dark backing disc"): the whole marker shrinks ~40% (arms 13 px
     // → 8 px, strokes 2.4 → 1.6), the ink under-pass thins to a hairline
@@ -1907,8 +1888,8 @@ export function initHud(bus) {
     ctx.lineWidth = markLw + 1.2;
     markerPass(true);
     ctx.globalAlpha = 0.97;
-    ctx.strokeStyle = col;
-    ctx.fillStyle = col;
+    ctx.strokeStyle = cameraCol;
+    ctx.fillStyle = cameraCol;
     ctx.lineWidth = markLw;
     markerPass(false);
 
@@ -1957,16 +1938,13 @@ export function initHud(bus) {
     ctx.globalAlpha = 1;
     ctx.shadowBlur = 0;
 
-    // true-gun marker (where the barrel actually points while it lags the
-    // aim point) — r5-2: a DIMMED, SMALLER COPY of the main center marker
-    // (same gapped-cross grammar, same ink) instead of the old bare white
-    // circle-plus, which read as a rendering glitch next to the styled cross.
-    // r7-2: it sits at the DISPERSION CIRCLE's center (the circle now rides
-    // the gun), so cross-at-camera + circle-with-gun-dot visibly separate
-    // and re-converge during turret traverse — WoT's two-element read.
-    if (view.gunX != null && Math.hypot(view.gunX - cx, view.gunY - cy) > 6) {
+    // PRIMARY GUN MARKER: the colored marker and dispersion circle share the
+    // barrel's real reachable point. It draws even when aligned, overlaying a
+    // colored center dot on the neutral camera cross; when a gun limit pins,
+    // it separates and stays at the point where the next shell will go.
+    if (view.gunX != null && view.gunY != null) {
       const gx = view.gunX, gy = view.gunY;
-      const gzs = 0.72 * zs;
+      const gzs = 0.9 * zs;
       const gunPass = () => {
         ctx.beginPath();
         ctx.moveTo(gx - 8 * gzs, gy + 0.5); ctx.lineTo(gx - 2.8 * gzs, gy + 0.5);
@@ -1978,21 +1956,23 @@ export function initHud(bus) {
         ctx.arc(gx, gy, 1.1 * Math.min(gzs, 1.35), 0, Math.PI * 2);
         ctx.fill();
       };
-      // r6-2 (round critique: "two competing center markers with no visual
-      // hierarchy"): the lag marker is clearly SUBORDINATE — ~40% alpha,
-      // sniper included — so the pen-colored main gate owns the center.
-      const gCol = view.atGunLimit ? PEN_RED : sniper ? SNIPER_NONE : PEN_NONE;
-      ctx.globalAlpha = 0.26;
+      const gunOnTarget = aimTargetId != null &&
+        (forcedStill || view.gunTargetId === aimTargetId);
+      const gCol = blocked ? PEN_RED : penColor(gunOnTarget ? view.penRatio : null);
+      lastGunMarkerCol = gCol;
+      ctx.globalAlpha = 0.55;
       ctx.strokeStyle = 'rgba(6,9,12,0.9)';
       ctx.fillStyle = 'rgba(6,9,12,0.9)';
-      ctx.lineWidth = markLw * 0.72 + 1.1;
-      gunPass();
-      ctx.globalAlpha = view.atGunLimit ? 0.55 : 0.38;
-      ctx.strokeStyle = gCol;
-      ctx.fillStyle = gCol;
-      ctx.lineWidth = markLw * 0.72;
+      ctx.lineWidth = markLw * 0.9 + 1.3;
       gunPass();
       ctx.globalAlpha = 1;
+      ctx.strokeStyle = gCol;
+      ctx.fillStyle = gCol;
+      ctx.lineWidth = markLw * 0.9;
+      gunPass();
+      ctx.globalAlpha = 1;
+    } else {
+      lastGunMarkerCol = PEN_NONE;
     }
 
     // --- readouts (r7, WoT PC layout): everything hangs CENTERED below the
@@ -2214,9 +2194,16 @@ export function initHud(bus) {
     const cam = lastCamera;
     const tanks = lastTanksRef || [];
     if (cam && mode !== 'hidden' && aimView.distM != null) {
+      // Live battles bind the plate to the exact entity under the gun ray.
+      // Forced screenshot recipes predate gunTargetId and keep the legacy
+      // screen-space fallback below for deterministic documentation views.
+      if (!forcedStill && aimView.gunTargetId != null) {
+        best = tanks.find((t) => t && t.id === aimView.gunTargetId && !t.isPlayer &&
+          t.team !== 'player' && t.state && t.combat && !t.combat.destroyed && isSpotted(t.id)) || null;
+      }
       const rNow = Math.max(26, Math.min(smoothRadPx, Math.min(w, h) * 0.42));
       const gatePx = Math.max(rNow * 1.15, 70);
-      for (let i = 0; i < tanks.length; i++) {
+      for (let i = 0; !best && (forcedStill || aimView.gunTargetId == null) && i < tanks.length; i++) {
         const t = tanks[i];
         if (!t || t.isPlayer || !t.state || !t.combat || t.combat.destroyed) continue;
         if (t.team === 'player') continue;
@@ -3274,7 +3261,8 @@ export function initHud(bus) {
   const aimView = {
     cx: 0, cy: 0, radPx: 40, penRatio: null, distM: null, blockedDistM: null,
     blockedLabel: false, // gameplay_feel r7: dwell-gated PATH BLOCKED text
-    gunX: null, gunY: null, atGunLimit: false, gunLimitSpec: false,
+    gunX: null, gunY: null, gunDistM: null, gunTargetId: null,
+    atGunLimit: false, gunLimitSpec: false,
     reload: { t: 0, totalS: 1 }, zoom: 1,
     dispRadM: null, // MOBILE-UX r1: last assembled sim dispersion (probe seam)
   };
@@ -3282,6 +3270,8 @@ export function initHud(bus) {
   function assembleAimView(camera, aim) {
     aimView.dispRadM = aim.dispersionRadM != null ? aim.dispersionRadM : null;
     aimView.penRatio = aim.penRatio != null ? aim.penRatio : null;
+    aimView.gunDistM = aim.gunDistM != null ? aim.gunDistM : null;
+    aimView.gunTargetId = aim.gunTargetId != null ? aim.gunTargetId : null;
     aimView.blockedDistM = aim.blockedDistM != null ? aim.blockedDistM : null;
     aimView.blockedLabel = !!aim.blockedLabel;
     aimView.distM = aim.distM != null ? aim.distM : null;
@@ -3641,6 +3631,18 @@ export function initHud(bus) {
         smoothRadPx,
         drawnR: lastDrawnR,
         gunOutside: lastGunOutside,
+        desiredX: aimView.cx,
+        desiredY: aimView.cy,
+        gunX: aimView.gunX,
+        gunY: aimView.gunY,
+        circleX: lastCircleX,
+        circleY: lastCircleY,
+        gunOffsetPx: aimView.gunX == null ? null : Math.hypot(aimView.gunX - aimView.cx, aimView.gunY - aimView.cy),
+        atGunLimit: aimView.atGunLimit,
+        gunTargetId: aimView.gunTargetId,
+        penRatio: aimView.penRatio,
+        cameraMarkerColor: lastCameraMarkerCol,
+        gunMarkerColor: lastGunMarkerCol,
         floorPx: RET_FLOOR_PX,
         ceilPx: retCeilPx(),
       }),
