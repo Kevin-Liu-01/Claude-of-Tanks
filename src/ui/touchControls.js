@@ -49,6 +49,19 @@ const CSS = `
   letter-spacing:.13em;text-transform:uppercase;white-space:nowrap;text-shadow:0 1px 3px #000;}
 .cot-touch .fire.alt{left:166px;right:auto;bottom:156px;width:64px;height:64px;opacity:.86;}
 .cot-touch .fire.alt svg{width:20px;height:34px}.cot-touch .fire.alt .lb{display:none}
+.cot-touch .fire.aiming{border-color:#ffd27a;box-shadow:0 0 0 5px rgba(240,160,48,.13),
+  0 0 22px rgba(240,150,40,.45),inset 0 2px 7px rgba(0,0,0,.65);}
+.cot-touch .fire-cancel{position:fixed;z-index:5;width:94px;height:56px;margin:-28px -47px;
+  display:flex;align-items:center;justify-content:center;gap:7px;pointer-events:none;visibility:hidden;
+  opacity:0;transform:scale(.82);border-radius:28px;border:2px solid rgba(255,108,92,.75);
+  background:rgba(46,8,8,.9);color:#ffb0a7;box-shadow:0 5px 18px rgba(0,0,0,.55);
+  font-family:${FONT_COND};font-size:9px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;
+  transition:opacity 90ms ease,transform 90ms ease,border-color 90ms ease;}
+.cot-touch .fire-cancel b{font-size:24px;line-height:1;color:#ff695d;}
+.cot-touch.fire-armed .fire-cancel{visibility:visible;opacity:1;transform:scale(1);}
+.cot-touch.fire-armed .aimhint{opacity:0;}
+.cot-touch.fire-cancel-hot .fire-cancel{color:#fff;border-color:#ff4638;background:rgba(121,16,9,.96);
+  transform:scale(1.08);box-shadow:0 0 24px rgba(255,52,38,.55);}
 .cot-touch .scope{right:134px;bottom:43px;width:62px;height:62px;color:#dce7ef;}
 .cot-touch .scope svg{width:32px;height:24px;filter:drop-shadow(0 2px 3px #000);}
 .cot-touch .autoaim{right:206px;bottom:43px;width:58px;height:58px;color:#dce7ef;}
@@ -153,6 +166,67 @@ const SHELL = uiIconSVG('shell', 34);
 const SCOPE = uiIconSVG('scope', 34);
 const AUTO_AIM = uiIconSVG('autoAim', 30);
 
+// World of Tanks Blitz calls this interaction Dynamic Aim: landing on FIRE
+// arms the shot, dragging steers the sight, and lifting the finger fires at
+// the final sight position. Keep the recognizer DOM-free so its release-only
+// contract (especially cancel/lost-capture behavior) can be regression-tested
+// under plain Node as well as through a real CDP touch stream.
+export function createReleaseFireGesture({
+  onAim = () => {},
+  onFire = () => {},
+  onCancel = () => {},
+  isCancelPoint = () => false,
+  deadzonePx = 8,
+  aimScale = 1.18,
+} = {}) {
+  let pointerId = null;
+  let startX = 0, startY = 0, lastX = 0, lastY = 0;
+  let dragging = false;
+  let cancelHot = false;
+  const snapshot = () => ({
+    active: pointerId !== null, pointerId, dragging, cancelHot,
+  });
+  const clear = () => {
+    pointerId = null; dragging = false; cancelHot = false;
+  };
+  const move = (id, x, y) => {
+    if (pointerId === null || id !== pointerId) return snapshot();
+    const nx = Number(x) || 0, ny = Number(y) || 0;
+    const dx = nx - lastX, dy = ny - lastY;
+    lastX = nx; lastY = ny;
+    cancelHot = !!isCancelPoint(nx, ny);
+    if (cancelHot) return snapshot(); // no aim jump inside the cancel target
+    if (!dragging && Math.hypot(nx - startX, ny - startY) >= deadzonePx) dragging = true;
+    if (dragging && (dx || dy)) onAim(dx * aimScale, dy * aimScale);
+    return snapshot();
+  };
+  return {
+    begin(id, x, y) {
+      if (id === null || id === undefined || pointerId !== null) return false; // one fire thumb owns the shot
+      pointerId = id;
+      startX = lastX = Number(x) || 0;
+      startY = lastY = Number(y) || 0;
+      dragging = false; cancelHot = false;
+      return true;
+    },
+    move,
+    end(id, x, y) {
+      if (pointerId === null || id !== pointerId) return false;
+      // A platform may deliver the final coordinate only on pointerup.
+      move(id, x, y);
+      const cancelled = cancelHot;
+      clear();
+      if (cancelled) onCancel(); else onFire();
+      return !cancelled;
+    },
+    cancel(id = pointerId) {
+      if (pointerId === null || id !== pointerId) return false;
+      clear(); onCancel(); return true;
+    },
+    getState: snapshot,
+  };
+}
+
 export function createTouchControls({ input, bus, isBattleActive, onLeaveBattle, isSniper = () => false }) {
   if (!document.getElementById('cot-touch-style')) {
     const style = document.createElement('style');
@@ -173,7 +247,8 @@ export function createTouchControls({ input, bus, isBattleActive, onLeaveBattle,
     `<button class="round brake" type="button" aria-label="Handbrake"><b>HB</b><span class="lb">Brake</span></button>` +
     `<button class="round autoaim" type="button" aria-label="Toggle auto-aim" aria-pressed="false">${AUTO_AIM}<span class="lb">Auto Aim</span></button>` +
     `<button class="round scope" type="button" aria-label="Toggle sniper mode">${SCOPE}<span class="lb">Scope</span></button>` +
-    `<button class="round fire" type="button" aria-label="Fire gun">${SHELL}<span class="lb">Fire</span></button>`;
+    `<button class="round fire" type="button" aria-label="Fire gun">${SHELL}<span class="lb">Fire</span></button>` +
+    `<div class="fire-cancel" aria-hidden="true"><b>&times;</b><span>Cancel shot</span></div>`;
   document.body.appendChild(root);
 
   const joy = root.querySelector('.joy');
@@ -184,6 +259,7 @@ export function createTouchControls({ input, bus, isBattleActive, onLeaveBattle,
   let joyPointer = null;
   let aimPointer = null;
   let aimX = 0, aimY = 0;
+  let cancelFireGesture = () => {};
   // MOBILE-UX r1 PINCH = SCOPE: live touches on the aim surface. Two or more
   // fingers switch the pad from swipe-aim to a zoom gesture (aimPointer is
   // parked, so the joystick and one-finger aim are never disturbed).
@@ -202,7 +278,7 @@ export function createTouchControls({ input, bus, isBattleActive, onLeaveBattle,
     layout = wantsTouchLayout();
     document.body.classList.toggle('cot-touch-layout', layout);
     root.classList.toggle('on', layout && battle);
-    if (!layout || !battle) resetMove();
+    if (!layout || !battle) { resetMove(); cancelFireGesture(); }
   }
 
   // -------------------------------------------------------------------------
@@ -333,7 +409,75 @@ export function createTouchControls({ input, bus, isBattleActive, onLeaveBattle,
     button.addEventListener('pointerup', up); button.addEventListener('pointercancel', up);
     button.addEventListener('lostpointercapture', up);
   }
-  for (const fire of root.querySelectorAll('.fire')) bindHold(fire, 'fire');
+
+  // DYNAMIC AIM (all tanks, both fire buttons): unlike handbrake, FIRE is
+  // never pressed on pointerdown. A tap and a drag both fire exactly once on
+  // pointerup; pointercancel/lost capture/phase exit never fire. The 8 px
+  // deadzone prevents the thumb's landing wobble from jerking the gun.
+  const fireCancel = root.querySelector('.fire-cancel');
+  let activeFireButton = null;
+  const isFireCancelPoint = (x, y) => {
+    const r = fireCancel.getBoundingClientRect();
+    return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+  };
+  const fireGesture = createReleaseFireGesture({
+    onAim: (dx, dy) => input.addVirtualAim(dx, dy),
+    onFire: () => input.tapVirtual('fire'),
+    isCancelPoint: isFireCancelPoint,
+  });
+  function renderFireGesture() {
+    const st = fireGesture.getState();
+    root.classList.toggle('fire-armed', st.active);
+    root.classList.toggle('fire-cancel-hot', st.cancelHot);
+    if (!activeFireButton) return;
+    activeFireButton.classList.toggle('down', st.active);
+    activeFireButton.classList.toggle('aiming', st.dragging);
+    const label = activeFireButton.querySelector('.lb');
+    if (label) label.textContent = st.cancelHot ? 'Release cancels' : (st.active ? 'Release fires' : 'Fire');
+    activeFireButton.setAttribute('aria-label', st.active
+      ? (st.cancelHot ? 'Release to cancel shot' : 'Drag to aim; release to fire')
+      : (activeFireButton.classList.contains('alt') ? 'Fire gun left' : 'Fire gun'));
+  }
+  function parkFireCancel(button) {
+    const r = button.getBoundingClientRect();
+    const side = r.left + r.width / 2 > innerWidth / 2 ? -1 : 1;
+    const x = r.left + r.width / 2 + side * Math.max(112, r.width * 1.25);
+    const y = r.top + r.height / 2 - Math.max(66, r.height * 0.82);
+    fireCancel.style.left = `${Math.max(52, Math.min(innerWidth - 52, x)).toFixed(1)}px`;
+    fireCancel.style.top = `${Math.max(48, Math.min(innerHeight - 48, y)).toFixed(1)}px`;
+  }
+  function finishFire(e, shouldFire) {
+    if (!activeFireButton || e.pointerId !== fireGesture.getState().pointerId) return;
+    e.preventDefault(); e.stopPropagation();
+    if (shouldFire) fireGesture.end(e.pointerId, e.clientX, e.clientY);
+    else fireGesture.cancel(e.pointerId);
+    renderFireGesture();
+    activeFireButton = null;
+  }
+  for (const fire of root.querySelectorAll('.fire')) {
+    fire.addEventListener('pointerdown', (e) => {
+      e.preventDefault(); e.stopPropagation();
+      if (!fireGesture.begin(e.pointerId, e.clientX, e.clientY)) return;
+      activeFireButton = fire; parkFireCancel(fire); renderFireGesture();
+      try { fire.setPointerCapture(e.pointerId); } catch (_) { /* capture unavailable */ }
+    });
+    fire.addEventListener('pointermove', (e) => {
+      if (e.pointerId !== fireGesture.getState().pointerId) return;
+      e.preventDefault(); e.stopPropagation();
+      fireGesture.move(e.pointerId, e.clientX, e.clientY); renderFireGesture();
+    });
+    fire.addEventListener('pointerup', (e) => finishFire(e, true));
+    fire.addEventListener('pointercancel', (e) => finishFire(e, false));
+    fire.addEventListener('lostpointercapture', (e) => finishFire(e, false));
+  }
+  cancelFireGesture = () => {
+    if (!fireGesture.getState().active) return;
+    fireGesture.cancel(); renderFireGesture(); activeFireButton = null;
+  };
+  window.addEventListener('blur', cancelFireGesture);
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) cancelFireGesture();
+  });
   bindHold(root.querySelector('.brake'), 'handbrake');
   root.querySelector('.scope').addEventListener('pointerdown', (e) => {
     e.preventDefault(); e.stopPropagation(); input.tapVirtual('sniperToggle'); bus.emit('ui:click', {});

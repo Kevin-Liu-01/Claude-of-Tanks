@@ -38,7 +38,7 @@ only exist in real time), one JSON scorecard per run. Stations:
 | battle_load | real BATTLE click → controllable | < 8 s wall |
 | look | 12 s aimpad touch drags | zero tasks > 100 ms / 10 s |
 | drive | 15 s virtual-stick driving | zero tasks > 100 ms / 10 s |
-| fire | 8 s Bradley mag dump (touch hold) | zero tasks > 100 ms / 10 s |
+| fire | 8 s Bradley drag→release autocannon volley | zero tasks > 100 ms / 10 s |
 | fight | 20 s drive-at-enemy + fire; records tank:spotted | zero tasks > 100 ms / 10 s; reveal worst task < 50 ms |
 | rematch | second battle start | < 8 s wall |
 
@@ -90,6 +90,33 @@ look/drive/fire/fight zero >100 ms tasks per 10 s window AND frame-gap
 p95 <= 20 ms (50+ fps floor — FEEL r12: stall budgets alone went green
 while the game ran 40-50 fps and felt laggy; smoothness is now budgeted) ·
 spot reveal < 50 ms · garage_idle > 95% clean frames
+
+## Mobile fire-gesture contract
+
+Both thumb-side fire buttons use the same Dynamic Aim contract on every
+vehicle class:
+
+1. Touching FIRE arms one shot; it does not fire on contact or while held.
+2. Motion inside an 8 CSS-pixel radius is landing jitter and produces no aim.
+3. Past that radius, movement feeds the standard virtual-aim lane at the same
+   sensitivity as the main aim pad. Pointer capture keeps aiming if the thumb
+   leaves the circular button.
+4. Lifting fires exactly once at the final aim position. Dragging onto the
+   visible red cancel target before lifting, `pointercancel`, lost capture,
+   backgrounding, or leaving battle cancels without firing.
+5. One pointer owns FIRE, so a second thumb cannot steal or duplicate the shot.
+
+This follows Wargaming's documented Blitz Dynamic Aim interaction—hold the
+fire button, move it to aim, release to shoot, with a red-cross cancellation
+path—and retains the separate free-interface aim surface. Sources:
+[Update 6.11: Dynamic Aim](https://eu.wotblitz.com/en/news/updates/update-06-11/),
+[official touch-control customization](https://wargaming.net/support/en/products/wotb/article/15405/?redirect_lang=en).
+
+Functional evidence is `node tools/mobile-dynamic-aim-probe.mjs`: real CDP
+touch input must prove no press/hold/drag fire, deadzone suppression, aim
+deltas, one shot on release, cancel-without-fire, both fire buttons, an IFV,
+and an MBT. The normal Lap's `fire` station repeats real Bradley drag-release
+gestures; a static hold is deliberately no longer a mag dump.
 
 ## Rig B pass 1 (2026-08-08, round 3 — QA iPhone 16 sim, portrait, :7777)
 

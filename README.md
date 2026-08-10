@@ -48,7 +48,9 @@ pick a map (or Random), press **BATTLE**.
 Every binding is remappable in **Settings → Controls** and persists locally.
 
 **On phones and tablets:** a full touch layout — virtual joystick, swipe-to-aim, **pinch to scope and zoom**,
-thumb-side fire cluster, and a vertical equipment column. A device quality tier keeps GPU memory ~80% lower than
+and Dynamic Aim: hold either fire button, drag to refine aim, then lift to shoot (or drag to the red cancel target).
+The thumb-side fire cluster works identically on every vehicle, and a vertical equipment column keeps consumables
+reachable. A device quality tier keeps GPU memory ~80% lower than
 desktop, and a boot-time GPU self-test heals device-specific rendering faults automatically (add `?diag=1` to the
 URL to watch it work).
 
@@ -187,7 +189,8 @@ capture. Every marketing shot in this README was made with it — the scene file
 
 ## Mobile
 
-The same deployment runs on phones and tablets: touch HUD with virtual joystick, swipe-to-aim and pinch-to-scope,
+The same deployment runs on phones and tablets: touch HUD with virtual joystick, swipe-to-aim, pinch-to-scope,
+and release-fire Dynamic Aim on both fire buttons,
 a mobile device tier (procedural-only models, half-resolution texture generation, tuned shadow cascades — **~80%
 less GPU memory**), safe-area-aware layout, and a self-healing GPU pipeline: at boot the game renders test probes,
 validates the environment-lighting bake on-device, and degrades gracefully around device-specific driver faults

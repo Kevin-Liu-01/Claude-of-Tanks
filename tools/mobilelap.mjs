@@ -193,9 +193,18 @@ await begin('fire');
   if (btn) {
     const box = await btn.boundingBox();
     const cx = box.x + box.width / 2, cy = box.y + box.height / 2;
-    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: cx, y: cy, id: 3 }] });
-    await sleep(8000);
-    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    // Dynamic Aim is release-fire: repeat real drag -> lift gestures for the
+    // Bradley instead of holding the button (a hold now correctly arms one
+    // shot without firing it). Alternating drags exercise both aim axes.
+    const fireUntil = performance.now() + 8000;
+    let volley = 0;
+    while (performance.now() < fireUntil) {
+      const sx = volley % 2 ? -24 : 26;
+      const sy = volley % 3 ? -10 : 14;
+      await touchDrag(cx, cy, cx + sx, cy + sy, 120, 30 + volley);
+      volley += 1;
+      await sleep(350);
+    }
   } else {
     await page.evaluate(() => { window.__DEBUG.flags.forceFire = true; });
     await sleep(8000);
