@@ -321,6 +321,12 @@ const LN3 = Math.log(3);         // aimTime = time to shrink to 1/3 ⇒ tau = ai
 // BLOOM_GROW_TAU) — pairs with the smaller afterShot multipliers in specs.js
 // so post-shot re-settle under the fire gate lands ~2.3 s on modern MBTs.
 const LN6 = Math.log(6);
+// Rapid IFV cannon fire is a stabilized stream, not a sequence of full-size
+// cannon shocks. Keep each 1 s-or-faster belt round to a two-percent bloom
+// nudge; the normal aim decay clears almost all of it before the next round.
+// Slower IFV guns and missile rails retain their ordinary after-shot bloom.
+export const IFV_AUTOCANNON_AFTER_SHOT_BLOOM = 1.02;
+const IFV_AUTOCANNON_MAX_CYCLE_S = 1;
 const RECOIL_VEL_MPS = 0.3;      // backward hull translation impulse on firing
 const RECOIL_DECAY_TAU = 0.13;   // s — translation impulse decays in ~0.4 s
 const RECOIL_KICK_MIN_DEGS = 8;  // spring pitch-rate kick, light gun
@@ -1338,9 +1344,11 @@ export function updateTank(entity, heightField, dt, collide = null) {
  *
  * @param {object} state - TankState of the firing tank (mutated).
  * @param {object} spec - TankSpec of the firing tank.
+ * @param {object|null} shellSpec - Fired shell; distinguishes autocannon belts
+ *   from the slower missile rail carried by the same IFV.
  * @returns {void}
  */
-export function fireRecoil(state, spec) {
+export function fireRecoil(state, spec, shellSpec = null) {
   const cal = spec.gun.caliberMm;
   const heavy = clamp((cal - 75) / 85, 0, 1); // 75 mm → light kick, 160 mm+ → max
   const kick = (RECOIL_KICK_MIN_DEGS + (RECOIL_KICK_MAX_DEGS - RECOIL_KICK_MIN_DEGS) * heavy)
@@ -1358,7 +1366,12 @@ export function fireRecoil(state, spec) {
   const v = RECOIL_VEL_MPS * (0.7 + 0.6 * heavy);
   spr.recoilVX -= Math.sin(gunYawWorld) * v;
   spr.recoilVZ -= Math.cos(gunYawWorld) * v;
-  state.bloomF *= spec.gun.bloom.afterShot;
+  const cycleS = (shellSpec && shellSpec.reloadS) || spec.gun.reloadS;
+  const rapidIfvShot = spec.class === 'ifv' && cycleS <= IFV_AUTOCANNON_MAX_CYCLE_S;
+  const afterShotBloom = rapidIfvShot
+    ? Math.min(spec.gun.bloom.afterShot, IFV_AUTOCANNON_AFTER_SHOT_BLOOM)
+    : spec.gun.bloom.afterShot;
+  state.bloomF *= afterShotBloom;
 }
 
 /**

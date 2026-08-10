@@ -8,7 +8,10 @@
  */
 
 import { Vector3 } from 'three';
-import { createTankState, updateTank, SIM_DT } from './movement.js';
+import {
+  createTankState, fireRecoil, IFV_AUTOCANNON_AFTER_SHOT_BLOOM,
+  updateTank, SIM_DT,
+} from './movement.js';
 
 // ---------------------------------------------------------------- harness --
 let failures = 0;
@@ -323,6 +326,50 @@ for (const [wl, amp] of [[8, 1.5], [8, 0.55], [4, 0.5], [2, 0.12]]) {
   assert(muzzleY > ground + 0.1,
     `muzzle clamp: muzzle ${muzzleY.toFixed(2)} m vs ground ${ground.toFixed(2)} m (+0.1 min)`);
   assert(st.atGunLimit === true, 'muzzle clamp: atGunLimit flags the pinned gun');
+}
+
+// -------------------------------------- 10. IFV autocannon burst grouping --
+// Ten rounds at the roster's fastest 0.35 s cadence must remain close to the fully aimed cone.
+// The alternate missile rail and non-IFV guns retain normal cannon bloom.
+{
+  const field = makeField(() => 0);
+  const rapidIfv = {
+    ...SPEC,
+    class: 'ifv',
+    gun: {
+      ...SPEC.gun,
+      caliberMm: 30,
+      reloadS: 0.35,
+      aimTimeS: 1.4,
+      bloom: { ...SPEC.gun.bloom, afterShot: 2.2 },
+    },
+  };
+  const ent = {
+    spec: rapidIfv,
+    state: createTankState(rapidIfv, new Vector3(), 0),
+    input: { throttle: 0, steer: 0, brake: false, aimPoint: null },
+    combat: null,
+  };
+  const beltRound = { caliberMm: 30, reloadS: 0.35 };
+  let peakBloom = 1;
+  for (let shot = 0; shot < 10; shot++) {
+    fireRecoil(ent.state, rapidIfv, beltRound);
+    peakBloom = Math.max(peakBloom, ent.state.bloomF);
+    run(ent, field, Math.round(0.35 / SIM_DT));
+  }
+  assert(peakBloom < 1.06,
+    `IFV autocannon: ten-round peak bloom ${peakBloom.toFixed(3)} stays near fully aimed`);
+  near(IFV_AUTOCANNON_AFTER_SHOT_BLOOM, 1.02, 1e-9,
+    'IFV autocannon: per-round bloom nudge is two percent');
+
+  ent.state.bloomF = 1;
+  fireRecoil(ent.state, rapidIfv, { caliberMm: 152, reloadS: 14 });
+  near(ent.state.bloomF, 2.2, 1e-9, 'IFV missile rail keeps full after-shot bloom');
+
+  const mbt = { ...rapidIfv, class: 'mbt' };
+  const mbtState = createTankState(mbt, new Vector3(), 0);
+  fireRecoil(mbtState, mbt, beltRound);
+  near(mbtState.bloomF, 2.2, 1e-9, 'rapid non-IFV gun keeps normal after-shot bloom');
 }
 
 // ---------------------------------------------------------------- summary --

@@ -1424,7 +1424,10 @@ function tryFire(game, ent, bus, rig) {
 
   const shell = acquireShell(shellSpec, ent.id, ent.isPlayer, _muzzle, _dir, game.nextShellId++);
   game.shells.push(shell);
-  fireRecoil(ent.state, ent.spec);
+  // The actual shell matters for IFVs: rapid autocannon belt rounds should
+  // barely disturb the stabilized lay, while the same vehicle's ATGM rail
+  // still produces the normal full after-shot bloom.
+  fireRecoil(ent.state, ent.spec, shellSpec);
   ent.visual.recoilKick();
   if (ent.isPlayer && rig) {
     // Dedicated feel pass: the old fixed impulse made a 30 mm autocannon and
