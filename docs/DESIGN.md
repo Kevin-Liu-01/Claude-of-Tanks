@@ -128,6 +128,7 @@ wrap them (§F.1).
 | tools/tmp-modelsource-dump.mjs (:1) | Dumps runtime MODEL_SOURCE (full import chain) — the load-prove + HELPER-EXPANDED mirror source |
 | tools/tmp-lod-envelope-probe.mjs | Measures geometry outside the visible hull envelope at rest (invisible-LOD law's instrument) |
 | tools/genIcons.mjs + tools/tank-assets-check.mjs | 8 outputs per tank from the shipped model: hero/top/side, two silhouettes, hit-zone/KE-armor/module diagrams; manifest binds file hashes + dimensions to live geometry, tiers and combat volumes |
+| tools/muzzle-bore-probe.mjs | Visual fleet gate: straight-on render + center ray proves the machine-tagged cannon mouth is dark and exposed; emits per-tank PNGs and `report.json` |
 | tools/repair_oracles.py (:1-33) | Append-only oracle repair recipes: node-level surgery, pristine .bak, byte-idempotent, census-guarded; sanctioned mesh-byte exceptions documented in its header (§E) |
 | tools/quietcert.mjs | Perf certification that REFUSES contended machines by design (docs/cert-r6-*) |
 | tools/screenshot.mjs | The 20-view deterministic screenshot contract (docs/SCREENSHOT_CONTRACT.md) — game-wide, not tank-specific |

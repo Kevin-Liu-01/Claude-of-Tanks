@@ -2720,12 +2720,10 @@ function commitSwap(staged, { spec, cfg, hullG, turretG, recoilG, muzzle }) {
       const fallbackBore = muzzle.getObjectByName('muzzleBoreShadowFallback');
       if (fallbackBore) {
         // The GLB anchor intentionally sits 4 cm behind the measured vertex
-        // tip so muzzle FX originate inside the mouth. Keep the render-only
-        // fallback 3 cm beyond the sampled cap: print/CAD sources can contain
-        // overlapping bevel/end faces, including the wide Sturmtiger mouth.
-        // This remains visually flush at gameplay scale and does not move the
-        // firing/FX anchor.
-        fallbackBore.position.z = 0.070;
+        // tip so muzzle FX originate inside the mouth. The fallback ring sits
+        // 16 mm and its disc 6 mm beyond that sampled face, matching authored
+        // bores without moving the firing/FX anchor.
+        fallbackBore.position.set(0, 0, 0.056);
         const fallbackRim = fallbackBore.getObjectByName('muzzleBoreShadowFallbackRim');
         if (fallbackRim) fallbackRim.visible = true;
         fallbackBore.visible = true;

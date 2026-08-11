@@ -439,6 +439,7 @@ function boreShotOne(id) {
       muzzleBore: muzzleBoreCensus(root),
       boreDebug: {
         fallbackZ: muzzle.getObjectByName('muzzleBoreShadowFallback')?.position.z ?? null,
+        capOffsetM: muzzle.getObjectByName('muzzleBoreShadowFallback')?.userData.capOffsetM ?? null,
         centerHits,
       },
     };

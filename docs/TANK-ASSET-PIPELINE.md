@@ -79,6 +79,8 @@ diagnostic; only the default manifest-backed mode is a release proof.
 representative MBT, autocannon IFV, and howitzer under
 `/private/tmp/cot-muzzle-bore-proof/`, checks the dark-center contrast, and
 writes the per-tank metrics and center-ray evidence to `report.json` there.
+Procedural mouths are seated from a centerline cap ray (6 mm throat / 16 mm
+rim beyond the measured face); GLB mouths use the swap pipeline's sampled tip.
 Use `npm run tank:bore:probe -- --all` for the release-time visual sweep of
 every registered tank, or `--ids=id_a,id_b` while iterating on specific models.
 `--out=<directory>` relocates both proofs and the report for an evidence packet.

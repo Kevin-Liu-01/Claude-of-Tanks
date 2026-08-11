@@ -3947,11 +3947,9 @@ export function createTank(specId, engineCtx, opts = {}) {
   fallbackBore.userData.cannonBore = true;
   fallbackBore.userData.caliberMm = spec.gun.caliberMm;
   fallbackBore.visible = true;
-  // Procedural profile tips are not all normalized to rig_muzzle: legacy
-  // brake caps can end up to ~5.5 cm beyond that nominal anchor. Seat the
-  // render-only mouth 7.6 cm forward, leaving a ~2 cm visible lip while the
-  // firing anchor itself remains untouched.
-  fallbackBore.position.z = 0.076;
+  // The measured seating pass below replaces this nominal 16 mm lip. Keep a
+  // safe default for profiles whose center ray has no renderable cap.
+  fallbackBore.position.z = 0.016;
   const muzzleOuterR = Math.max(0.014, (armor.gunBarrel.radiusM || 0.04) * 0.92);
   const muzzleRimR = Math.max(0.0025, muzzleOuterR * 0.15);
   const boreSegments = spec.gun.caliberMm <= 40 ? 12 : 18;
@@ -3968,14 +3966,47 @@ export function createTank(specId, engineCtx, opts = {}) {
   const boreDisc = new THREE.Mesh(boreDiscGeo, mats.shadow);
   boreDisc.name = 'muzzleBoreShadowFallbackDisc';
   boreDisc.userData.cannonBoreFallbackPart = true;
-  // Keep the throat just proud of solid-cap legacy barrels. The rim projects
-  // farther toward the viewer, preserving the read as a recess without
-  // disabling depth testing (which would leak through tanks).
-  boreDisc.position.z = 0.004;
+  // The disc sits 10 mm behind the ring center: after seating, the throat is
+  // 6 mm and the lip is 16 mm beyond the actual cap. This preserves the read
+  // as a recess without disabling depth testing (which would leak through
+  // tanks when the cannon points away from the camera).
+  boreDisc.position.z = -0.010;
   for (const part of [boreRim, boreDisc]) {
     part.castShadow = false;
     part.receiveShadow = true;
     fallbackBore.add(part);
+  }
+  // Procedural profile tips are not normalized to rig_muzzle: the all-fleet
+  // visual gate measured legacy brake caps from behind the nominal anchor to
+  // 5.5 cm beyond it. Seat against the real centerline face instead of using
+  // a fleet-wide offset (which would float in front of already-correct tubes).
+  root.updateMatrixWorld(true);
+  let boreX = 0, boreY = 0;
+  if (authoredBore) {
+    const authoredLocal = muzzle.worldToLocal(authoredBore.getWorldPosition(new THREE.Vector3()));
+    boreX = authoredLocal.x;
+    boreY = authoredLocal.y;
+    fallbackBore.position.x = boreX;
+    fallbackBore.position.y = boreY;
+  }
+  const rayOrigin = recoilG.localToWorld(new THREE.Vector3(boreX, boreY, P.muzzleZ + 1));
+  const rayDirection = new THREE.Vector3(0, 0, -1).transformDirection(recoilG.matrixWorld);
+  const ray = new THREE.Raycaster(rayOrigin, rayDirection, 0, 3);
+  const capHit = ray.intersectObject(root, true).find((hit) => {
+    if (/muzzleBoreShadow/i.test(hit.object.name || '')) return false;
+    if ((hit.object.name || '').startsWith('procShadow_')) return false;
+    const hitMaterials = Array.isArray(hit.object.material) ? hit.object.material : [hit.object.material];
+    if (hitMaterials.some((material) => material && material.colorWrite === false)) return false;
+    for (let node = hit.object; node && node !== root; node = node.parent) {
+      if (!node.visible) return false;
+    }
+    return true;
+  });
+  if (capHit) {
+    const capLocal = recoilG.worldToLocal(capHit.point.clone());
+    const capOffset = Math.max(-0.2, Math.min(0.5, capLocal.z - P.muzzleZ));
+    fallbackBore.position.z = capOffset + 0.016;
+    fallbackBore.userData.capOffsetM = capOffset;
   }
   muzzle.add(fallbackBore);
   disposables.push(boreRimGeo, boreDiscGeo);

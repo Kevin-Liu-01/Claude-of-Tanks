@@ -80,6 +80,7 @@ browser-render rigs self-ticket the /tmp/cot-shots.lock FIFO — never wrap them
 | genIcons.mjs | `--ids=<id>` / `--tanks <id>` | 8 hashed assets per tank + manifest (views, silhouettes, hit/armor/module diagrams) |
 | tank-assets-check.mjs | `--ids=<id>` | Fleet completeness, hashes/dimensions, live geometry+metadata freshness, cannon-bore gate |
 | tank-release-check.mjs | `--ids=<id> [--gate]` | Asset+bore gate → tank standard → npm test → private build |
+| muzzle-bore-probe.mjs | `--ids=<id>` / `--all` | Straight-on muzzle renders, center rays, contrast metrics, PNG + JSON evidence |
 | screenshot.mjs | `node tools/screenshot.mjs` | the 20-view game screenshot contract |
 | mobilelap.mjs | `node tools/mobilelap.mjs --out <scorecard>` | deterministic station-by-station mobile budget scorecard |
 | dev-perf-probe.mjs | `npm run perf:dev -- --profile=normal\|constrained\|software --out=<json>` | full DEV trace, first-10-second metrics, CPU profile, and synthetic-freeze falsification |
