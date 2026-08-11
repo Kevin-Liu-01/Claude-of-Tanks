@@ -92,7 +92,7 @@ re-freeze NEW hash, all in ONE commit.
 | challenger_3 | b0c172a4 | GRADUATED 2026-08-09 (33rd; §5.87 owner attachment closeout RE-FROZEN: Protector roof shoe/fork/receiver/optic supports + smoke backing shoes; gate 90.4 x2 every component >=90; fresh §B8 floor 9.0 / mean 9.06 x14; oracle a5fcd801 reproducible from pristine .bak; prior 2678f6c complete-redesign freeze retired) |
 | challenger2 | 3b4bd5f0 | GRADUATED 2026-08-09; RE-FROZEN 2026-08-10 (§5.89 owner fused-block repair: material-fused casemate course removed from fixed hull and repartitioned into the articulated source tree; one low ring landing + one rotating turret; gate 90.1 x2 every component >=90; standard/parent/winding clean; fresh §B8 floor 9.0 / mean 9.06 x14, yaw/load paths 9.3; oracle f44e3b46 reproducible from pristine .bak; prior 63ee160 retired) |
 | fv510 | 927beeb2 | GRADUATED 2026-08-10; RE-FROZEN 2026-08-10 (§5.91 owner native-track correction: donor Track suppressed and 34 donor running-gear components removed at whole-component boundaries; exact Warrior upper geometry retained around one game-native six-station wheel/sprocket/idler/shoe system; gate 90.3 x2, every component >=90.3; fidelity 98.0; standard/parent/winding clean; independent §B8 floor 9.1 / mean 9.26 x14, yaw/load paths 9.4; prior exact-source freeze 7884762a retired) |
-| type10 | 84f5d108 | GRADUATED 2026-08-10 (§5.92 owner-source exact rebuild: semantic source payload around the game-native source-correct five-wheel running gear; donor track/wheels excluded; gate 94.6 x2; fidelity 97.4; independent §B8 floor 9.2 / mean 9.48 x14, yaw/load paths 9.7; mode-2 engine-deck candidate adjudicated hull-owned) |
+| type10 | 201d0a08 | GRADUATED 2026-08-10; RE-FROZEN §5.97 (owner correction: complete rear cage, circular spare-wheel forms, service boxes, rack rails and antennas reparented as whole source components to the seated turret; lower engine deck remains hull-owned; exact five-wheel native track 0/0; gate 94.6 x2; parent/winding clean; independent §B8 floor 9.4 / mean 9.59 x14, yaw load paths PASS; prior 84f5d108 retired) |
 | amx40 | d2c73d96 | GRADUATED 2026-08-10 (§5.93 Leclerc-method owner-source completion: continuous low welded turret, canted source-height mantlet, seated asymmetric roof/flank kit, layered stern and source-traced hull on game-native six-wheel linked tracks; gate 90.1 x2; fidelity 94.7; standard/track/winding clean; independent §B8 floor 9.0 / mean 9.06 x14, yaw/load paths PASS) |
 | m26_pershing | 2f006738 | RE-RECORDED 2026-08-08: hash moved by LANDED 5f39989 (armorM4 gunBarrel shadow-proxy 3.96->3.44; m26/m45 inherit m4a3e8 proxies — patton.js bytes unchanged); double-confirmed by builder bisect + m45-grad critic; prior 65c564c0 bore+winding re-cert lineage (floors 9.1-9.4) carries |
 | t90m | e345ee8a | GRADUATED 2026-08-06 (27th; floor 9.0 x14 second sitting; the owner's dedicated-agent arc 81.7 -> dual gate) |
@@ -2892,6 +2892,42 @@ rear basket and roof equipment under the same turret rig. This is a
 source-view parenting repair, not a Type 90 geometry graduation: the current
 79.5 geometry gate is unchanged and the graduate registry/count do not move.
 `npm test` and `npm run build:private` are green.
+
+## 5.97 OWNER CORRECTION — TYPE 10 REAR-BUSTLE PARENTING (2026-08-10, RE-GRADUATED)
+
+The owner clarified that the photographed rear cage, spare-wheel forms and
+service boxes belong to Type 10, not Type 90. Type 90 is removed from this
+ticket and remains untouched. The §5.92 source split left the rear
+`Object_5` equipment course and four `Object_6` rack rails on the hull.
+
+The deterministic bake now reclassifies only whole spatial components.
+Seventy-one complete above-deck bustle components move into the turret
+bucket; no source triangle is cut, duplicated or discarded. The corrected
+census is drop-track 1,064 / drop-gear 60 / hull 656 / guard 236 / turret
+424 / gun-barrel 9 / gun-root 1. Playable counts are hull
+26,294v/16,523t, guard 15,030v/10,488t, turret 35,634v/25,094t and gun
+2,803v/2,487t. The generated payload is SHA-256
+`7d9fc77e1b377a1f7073cbe4104e2eda54314ee33a90394bd53db5360d586008`;
+the repaired articulated oracle is
+`c3753b826975fc6eb9968be4343e0cb5a761f166c4d39ff6254374ae3475f485`.
+
+Gate reproduces x2 at **94.6** | 94.6/95.1/96.6/99.9/96.7/100.
+Standard check is clean (holes 0, contiguity 0, mg1+0d); exact native-track
+audit is band 0/0 and shoes 0/0. Parent audit is stranded 0 / abutting 0 /
+dangling 0. Winding is 0 reversed / 0 mixed, one non-visible deficit pixel,
+and zero yaw candidates. The source-correct running gear remains exactly five
+native road wheels per side; donor wheels and tracks never render. Bake
+verification, `npm test` and `npm run build:private` are green. Integrated
+geometry freeze reproduces x2 at **201d0a08** (27 meshes / 184,894 vertices).
+
+Forty-two fresh current-byte PNGs certify the change: fourteen paired source
+views plus fourteen yaw-0 and fourteen yaw-90 frames. Independent §B8 scores
+`[9.5,9.6,9.5,9.5,9.4,9.5,9.5,9.6,9.7,9.7,9.7,9.7,9.6,9.7]`, floor
+**9.4**, mean **9.59**. The complete cage, both circular forms, boxes, RWS,
+sights, gun and antennas rotate as one physically seated turret package. The
+lower engine deck remains correctly fixed and is cleanly exposed at yaw 90;
+no stranded component, duplicate turret mass, air attachment or disappearing
+surface remains. **RE-GRADUATED; KEEP `201d0a08`; retire `84f5d108`.**
 
 ## 5.100 LEOPARD 2A7V OWNER-SOURCE REBUILD (2026-08-10, GRADUATED)
 

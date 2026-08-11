@@ -18,6 +18,7 @@ import base64
 from collections import defaultdict
 import json
 import re
+import shutil
 import struct
 import sys
 from pathlib import Path
@@ -74,18 +75,18 @@ NODE_EXPECTED_COMPONENTS = {
 CLASS_EXPECTED_COMPONENTS = {
     'drop_track': 1064,
     'drop_gear': 60,
-    'hull': 727,
+    'hull': 656,
     'guard': 236,
-    'turret': 353,
+    'turret': 424,
     'gun_barrel': 9,
     'gun_root': 1,
 }
 # Filled after classification/compaction; changing these means source drift or
 # a semantic-rule change and must be reviewed, never silently regenerated.
 EXPECTED = {
-    'hull': (30754, 20125),
+    'hull': (26294, 16523),
     'guard': (15030, 10488),
-    'turret': (31174, 21492),
+    'turret': (35634, 25094),
     'gun': (2803, 2487),
 }
 
@@ -166,19 +167,29 @@ def classify(node_name, comp):
     if node_name == 'Object_4':
         return 'hull'
     if node_name == 'Object_5':
+        # The complete bustle cage reaches raw z=-3.064 behind the nominal
+        # shell. Its horizontal/vertical rails, two circular spare-wheel
+        # forms and service boxes all sit above the rear deck and must yaw
+        # with the turret. The former loZ>-2.20 test stranded that equipment
+        # on the hull. Keep the lower engine-deck field (centerY<=0.31) fixed.
+        rear_bustle = (
+            lo[2] > -3.10 and hi[2] < -1.90 and center[1] > 0.31
+        )
         turret = (
             (center[1] > 0.32 and lo[2] > -2.20 and hi[2] < 2.30)
             or (lo[1] > 0.85 and lo[2] > -2.60
                 and abs(center[0]) > 1.0)
+            or rear_bustle
         )
         return 'turret' if turret else 'hull'
 
     # Object_6 is the source's fused turret/gun material. Four authored rear
-    # rack rails extend to raw z -3.06 and stay hull-owned. The bore sequence
-    # is ten exact spatial components; only the nine forward components are
-    # length-normalized to the published 9.49 m overall datum.
+    # rack rails extend to raw z=-3.06; they are the outer courses of the same
+    # Object_5 bustle cage and therefore remain turret-owned. The bore
+    # sequence is ten exact spatial components; only the nine forward
+    # components are length-normalized to the published 9.49 m overall datum.
     if lo[2] < -2.30:
-        return 'hull'
+        return 'turret'
     barrel = (lo[2] >= 1.50 and hi[2] > 1.55 and max_abs_x < 0.45)
     gun_root = (0.70 < span[0] < 0.82 and lo[2] > 1.10
                 and hi[2] > 1.90 and abs(center[0]) < 0.10)
@@ -429,6 +440,10 @@ def main(argv):
             text, count=1)
         if count != 1:
             raise SystemExit(f'{OUTPUT}: failed to replace {key}')
+    shutil.copy2(OUTPUT, OUTPUT.with_suffix(OUTPUT.suffix + '.bak'))
+    if ORACLE_OUTPUT.exists():
+        shutil.copy2(ORACLE_OUTPUT,
+                     ORACLE_OUTPUT.with_suffix(ORACLE_OUTPUT.suffix + '.bak'))
     OUTPUT.write_text(text)
     ORACLE_OUTPUT.write_bytes(wanted_oracle)
     print(f'type10-source-bake: wrote {OUTPUT} and {ORACLE_OUTPUT}; '
