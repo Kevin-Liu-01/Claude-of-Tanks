@@ -824,7 +824,12 @@ check. Owner ruling on scope: the clean ones are measurement/influence reference
   **LOCAL-ONLY QUARANTINE** — owner-supplied 2026-08-07; census shows
   SPLIT mesh nodes (Body/Tracks/...) vs the old fused single-skin —
   candidate to REPLACE the type74 oracle and retire its re-rig
-  escalation (onboarding = orchestrator lane).
+  escalation (onboarding = orchestrator lane). The 2026-08-11 rebuild used
+  the owner's local `/Users/kevinliu/Downloads/type_74.glb` receipt,
+  SHA-256 `8cd9eb1a915a4bcba402ba86032a6111cdd8c7e1f5cc1698a5fe50bdbd7c726e`,
+  strictly as an ignored visual/measurement oracle. No source mesh, texture,
+  armature, animation, material or derivative payload byte is committed or
+  redistributed; the shipped playable remains original procedural geometry.
 - community-candidates/type10-source/ — the TYPE-10 source OBJ behind
   the registered community GLB (owner-supplied 2026-08-07; source
   material, not an instrument).

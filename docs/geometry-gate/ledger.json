@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-08-11T07:30:15.796Z",
+ "generatedAt": "2026-08-11T08:26:01.332Z",
  "gate": "every component >= 90; min is the headline",
  "passed": 38,
  "total": 97,
@@ -130,7 +130,7 @@
     "wholeCurves": 0,
     "turretCurves": 0,
     "stations": 0,
-    "dims": 100,
+    "dims": 94,
     "floaters": 100
    }
   },

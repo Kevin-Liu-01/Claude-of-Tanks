@@ -239,15 +239,15 @@ const LOCAL_REFERENCE_OVERRIDES = {
       paintUntextured:true,
     },
   },
-  // Same quarantine-oracle pattern as ariete: the NullOps Type 74 is
-  // PERSONAL-USE (docs/ATTRIBUTION.md) and never ships as a MODEL_SOURCE;
-  // the roster's type74 spec + procedural build live in profiles/misc.js.
-  // Skinned armature (bones carry no meshes) -> scaleToOverall, per the
-  // original userdrops.js registration notes.
+  // Owner-supplied high-detail NullOps Type 74 oracle (2026-08-11).  It is
+  // local-only reference material and never ships as MODEL_SOURCE or as a
+  // public asset.  Skinned armature (bones carry no meshes) requires
+  // scaleToOverall; the playable remains the original connected procedural
+  // reconstruction in profiles/misc.js.
   type74: {
     source:'glb',
     glb:{
-      path:'/models/tanks/community/type74-nullops.glb',
+      path:'/models/community-candidates/type_74_new.glb',
       turretNode:'^Tower_9$', gunNode:'^Gun_7$', autoPivot:true,
       scaleToOverall:true,
     },

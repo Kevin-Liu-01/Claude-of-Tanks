@@ -3402,3 +3402,51 @@ visible backface wound. Eight presentation assets and the manifest record are
 regenerated from the frozen playable. **KEEP `cf97a01b`; prior `8d13f030`
 and pre-release `d1ded13b` are retired. Fleet gate stays 38/97 and graduates
 stay 43.**
+
+## 5.110 TYPE 74 OWNER-SOURCE COMPLETE REBUILD (2026-08-11, RE-FROZEN)
+
+The supplied `/Users/kevinliu/Downloads/type_74.glb` is SHA-256
+`8cd9eb1a915a4bcba402ba86032a6111cdd8c7e1f5cc1698a5fe50bdbd7c726e`.
+Its Sketchfab Standard/commercial-reference provenance keeps it ignored and
+local-only. It served solely as a visual/measurement oracle; no source mesh,
+texture, material, armature, animation or derivative payload byte ships.
+
+The old six-small-wheel/oval-dome fallback is retired. A new original
+procedural build uses a compact folded hull, exactly five exposed wheels per
+side, one low asymmetric cast shell, rounded mantlet/gun root, source-side
+searchlight, broad seated MG/cupola, canted smoke banks and an open basket
+carried by side/diagonal turret returns. Compact twin-lamp cassettes land on
+the upper bow shoulders. Unequal radiator/service bays, offset latches, an
+exhaust coupling, recovery box and asymmetric tow/light fittings give the
+rear its source identity. The last hidden 126-cell lower-tub/transom pocket
+is closed by an inner bridge without changing the visible envelope.
+
+Five 0.455 m road wheels retain distinct rubber tires, recessed dishes, hubs
+and bolt cadence inside one native linked-shoe course. Exact band and shoe
+collisions are **0/0 front and rear**; contiguity is **0**. Parent audit's
+sole nominee is the supported fixed driver-periscope strip, with abutting 0 /
+dangling 0. Winding mode 1 is 0 reversed / 0 mixed / 0 deficit pixels; the
+456-pixel mode-2 nominee is the supported fixed forward lamp/shoulder package,
+confirmed hull-owned by the quarter-turn evidence.
+
+The P95 combat-height datum is corrected from 2.48 m to **2.70 m**. Dimension
+rows are 94.0 (actual/published height 2.70/2.70, hull 6.64/6.70, overall
+9.58/9.42, width 3.18/3.18) and floaters are 100. The skinned/fused local
+print still cannot provide honest hull/turret/station component masks, leaving
+the comparison row cap-documented at **0** | 0/0/0/0/94/100 rather than
+inventing a machine PASS. Gate JSON SHA-256 is
+`a1b7503c3225d6251d20f3d6a4e599181f94791ba954b1bba6dfa99e9bbb2c3e`.
+
+Freeze reproduces x2 at **`8319dbb8`** (49 meshes / 66,511 vertices).
+Fresh independent §B8 inspected 42 distinct r15 frames and a genuine
+quarter-turn. Its vector is
+`[9.2,9.3,9.2,9.2,9.1,9.2,9.2,9.3,9.4,9.4,9.3,9.5,9.3,9.5]`, floor
+**9.1**, mean **9.29**. It passes source fidelity, all turret equipment and
+basket load paths, hull ownership, lower-bridge closure, exact five-wheel
+native tracks and winding with no fused mass, stranded item, empty-air
+decoration or visible wound. Eight presentation assets and the manifest were
+regenerated; targeted asset/metadata and muzzle-bore checks, `npm test` and
+`npm run build:private` pass. The standard wrapper is red only because it
+correctly requires a >=90 machine row and will not waive the fused-oracle
+cap. **KEEP `8319dbb8`; all earlier Type 74 fallback/freezes are retired.
+Fleet gate remains 38/97 and graduates remain 43.**

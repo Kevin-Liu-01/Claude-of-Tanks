@@ -161,6 +161,10 @@ const CRITIC_REFERENCE_OVERRIDES = {
     turretNode:'^challendger[ _]2_0$', gunNode:'^Gun$', autoPivot:true } },
   type10: { source:'glb', glb:{ path:'/models/tanks/community/type-10_main_battle_tank_repaired.glb',
     turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, paintUntextured:true } },
+  // Owner 2026-08-10 high-detail NullOps Type 74 drop. Sketchfab Standard:
+  // local visual/measurement reference only; the playable stays procedural.
+  type74: { source:'glb', glb:{ path:'/models/community-candidates/type_74_new.glb',
+    turretNode:'^Tower_9$', gunNode:'^Gun_7$', autoPivot:true, scaleToOverall:true } },
   t14: { source:'glb', glb:{ path:'/models/community-candidates/t-14_armara_uralvagon_factory.glb',
     turretNode:'^Object_8$', gunNode:'^Object_14$', autoPivot:true, yawOffset:Math.PI,
     turretFollowers:'^Object_(?:9|10|11|15)$' } },

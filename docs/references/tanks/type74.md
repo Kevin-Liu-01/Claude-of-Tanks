@@ -391,3 +391,50 @@ head-on pairs, and this is NOT a build defect (pt91m-class note). The
 critic's order-1 option (b) applies — the r5 round PASSES as-landed
 at 9.0. Detail-class note banked (non-blocking): track band tone one
 step + shorter grouser horns at the next open round.
+
+## OWNER-SOURCE COMPLETE REBUILD (2026-08-11, RE-FROZEN)
+
+The owner-supplied `/Users/kevinliu/Downloads/type_74.glb` receipt is
+SHA-256 `8cd9eb1a915a4bcba402ba86032a6111cdd8c7e1f5cc1698a5fe50bdbd7c726e`.
+It is an ignored local visual/measurement oracle only. No source mesh,
+texture, material, armature, animation or derived payload byte enters the
+repository or playable.
+
+The old six-small-wheel/oval-dome fallback is retired. The replacement is
+original deterministic procedural geometry: a compact folded five-wheel
+hull with no skirts, one low asymmetric cast turret, rounded mantlet and gun
+root, source-side shallow searchlight, seated cupola/MG and smoke stations,
+and an open basket carried by side and diagonal returns. Compact twin-lamp
+cassettes meet the upper bow shoulders. Two unequal rear radiator/service
+bays, offset latches, exhaust coupling, recovery box and asymmetric tow/light
+hardware replace the former blank transom. A closed inner bridge joins the
+lower tub to the transom, removing the final 126-cell enclosed pocket.
+
+The native running gear has exactly five separately readable 0.455 m road
+wheels per side. Each has a dark tire, recessed dish, hub and bolt cadence;
+one linked-shoe course wraps coherent terminal gears. Exact band and shoe
+collision audits are **0/0 front and rear**, and contiguity is **0 holes**.
+Parent audit's sole nominee is the supported fixed driver-periscope strip;
+abutting and dangling counts are zero. Winding mode 1 is 0 reversed / 0 mixed
+/ 0 deficit pixels. Its 456-pixel mode-2 nominee is supported hull-owned
+forward lamp/shoulder geometry, confirmed fixed in the yaw packet.
+
+The configured P95 combat height is corrected from the obsolete 2.48 m roof
+datum to **2.70 m**. Gate dimensions are 94.0 (measured/published height
+2.70/2.70, hull 6.64/6.70, overall 9.58/9.42, width 3.18/3.18) and floaters
+are 100. The skinned/fused commercial-reference component masks still place
+hull, whole, turret and station rows at their documented zero cap; gate JSON
+SHA-256 is
+`a1b7503c3225d6251d20f3d6a4e599181f94791ba954b1bba6dfa99e9bbb2c3e`.
+This packet does not misstate that capped row as a machine graduation.
+
+Freeze reproduces x2 at **`8319dbb8`** (49 meshes / 66,511 vertices).
+Fresh independent §B8 inspected 42 distinct r15 frames and a genuine
+quarter-turn. Its vector is
+`[9.2,9.3,9.2,9.2,9.1,9.2,9.2,9.3,9.4,9.4,9.3,9.5,9.3,9.5]`, floor
+**9.1**, mean **9.29**. It passes source fidelity, all turret equipment and
+basket load paths, hull ownership, the lower bridge, five-wheel native track,
+and winding with no fused mass, stranded fitting, empty-air decoration or
+visible wound. All eight presentation assets, metadata and muzzle-bore proof
+were regenerated and pass; `npm test` and `npm run build:private` pass.
+**KEEP `8319dbb8`; all earlier Type 74 fallback/freezes are retired.**
