@@ -3210,3 +3210,37 @@ no donor residue or penetration. No fused turret mass, stranded decoration,
 air seam or visible winding wound remains. **KEEP `7efc69c9`; prior freeze
 `56324371` and its lower-detail sitting are retired. Fleet gate remains 38/97
 and graduates remain 43.**
+
+## 5.106 T-90A VLADIMIR HULL/TURRET DE-FUSION (2026-08-10, RE-FROZEN)
+
+The owner's yaw screenshot correctly identified a large hull-fixed mass beneath
+the rotating Vladimir turret. Source-node isolation established that the source
+owns an open fender/service frame in this station, not a second armored shell.
+The procedural solid center plateau and thin silhouette slivers are therefore
+retired. A narrow open hull frame now follows the measured source envelope: two
+long side rails, a transverse tie and deck-buried posts provide visible load
+paths while preserving negative space. The rotating assembly receives a buried
+collar, so the cast shell, gun, ERA, optics, RWS, smoke kit, hatches and antenna
+roots leave the deck together at yaw without exposing an impossible seam.
+
+The recovered source remains byte-unchanged at SHA-256
+`3ceda4972aa0e4cdba9ecf0353ab584ed61b6cd22e1af75d4c077f75c4a67400`.
+Freeze reproduces at **`52f98951`** (41 meshes / 74,100 vertices). Machine
+gate reproduces at **90.4** | 90.4/90.8/91.1/93.0/96.2/100; gate JSON
+SHA-256 is
+`8f467675eb17c98ee05d69586413a6ae8e1045cca7203adb98de06a311dd3c5d`.
+Direct fidelity is **91.58** (H95.23/T82.05/G89.38/R94.75), with every
+whole-vehicle view at least 92.04. Standard audit is green with track band
+54/0, contiguity 0 and mg1+0d. Parent audit reports stranded 0 / abutting 0 /
+dangling 0. Winding mode 1 is 0 reversed / 0 mixed / 0 deficit pixels; the
+mode-2 `rig_hull/mesh#17` nominee is the new supported fixed service frame,
+not stranded turret geometry. `npm test` and `npm run build:private` pass.
+
+Fresh independent §B8 inspected 42 uniquely hashed frames: fourteen paired
+source views plus fourteen yaw-0 and fourteen yaw-90 views. Its fixed vector is
+`[9.1,9.2,9.1,9.0,9.0,9.0,9.1,9.1,9.2,9.2,9.0,9.2,9.2,9.2]`, floor
+**9.0**, mean **9.11**. It confirms that the former fused mass is gone, the
+open replacement frame is supported and correctly hull-owned, and every turret
+fitting has a continuous rotating load path. Tracks and winding also pass with
+no visible wound. **KEEP `52f98951`; prior freeze `c13fec50` is retired.
+Fleet gate remains 38/97 and graduates remain 43.**

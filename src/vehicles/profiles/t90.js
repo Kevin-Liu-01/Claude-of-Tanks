@@ -793,12 +793,12 @@ function buildT90AVladimirLegacy(P) {
   // pano spike 2.60 @ -1.99 (thin). FUSED-GUN PRINT: axis ~1.55, my muzzle
   // +4.775 for published overall. Orientation asserts: glacis +z / gun +z.
   loftHull(P, {
-    // rTAIL r13b: raised mid band LOWERED to 1.745 (ref front cols +0.71..
-    // +0.75 read 1.70-1.74, -0.78..-0.86 read 1.754 — the 1.82 line is a
-    // CENTER plateau only, authored as a box below) and the tail belly
-    // dropped (ref side bots 0.831@-4.35 / 0.751@-4.03 / 0.778@-3.92 —
-    // the r2 1.18@-4.31 read was the print's shadow-proxy line).
-    deck: [[-4.755, 1.51], [-4.51, 1.655], [-4.29, 1.671], [-4.15, 1.50], [-4.13, 1.50], [-4.02, 1.56], [-3.92, 1.51], [-3.85, 1.475], [-3.72, 1.51], [-3.15, 1.49], [-3.05, 1.47], [-2.85, 1.47], [-2.72, 1.66], [-2.55, 1.75], [-0.92, 1.745], [-0.86, 1.46], [0.36, 1.45], [0.59, 1.33], [0.77, 1.38], [1.68, 1.29]],
+    // OWNER FUSED-HULL REOPEN: the raised 1.66..1.75 m mid band belonged to
+    // the source model's fused turret/casemate export. Reproducing it in the
+    // hull left a second full turret footprint fixed in place at yaw. Keep
+    // the real engine/ring deck at its measured 1.47..1.51 m height; the
+    // articulated casting below owns the only mass above the ring.
+    deck: [[-4.755, 1.51], [-4.51, 1.655], [-4.29, 1.671], [-4.15, 1.50], [-4.13, 1.50], [-4.02, 1.56], [-3.92, 1.51], [-3.85, 1.475], [-3.72, 1.51], [-3.15, 1.49], [-3.05, 1.47], [-2.85, 1.47], [-2.72, 1.50], [-2.55, 1.51], [-0.92, 1.50], [-0.86, 1.46], [0.36, 1.45], [0.59, 1.33], [0.77, 1.38], [1.68, 1.29]],
     // Current normalized print floor is 0.40-0.44 m through the center
     // hull.  The former 0.30 m plate created a false deep belly in every
     // frontal slice; lift only the flat center run, leaving both raked
@@ -883,16 +883,29 @@ function buildT90AVladimirLegacy(P) {
     P.add('hullDark', box(0.07, 0.18, 0.05), x, 1.23, -4.42);
   }
   ruDeck(P, { deckY: 1.46, hatchZ: 0.50, gz: -3.35, grilles: 5, gw: 1.5, periY: 1.37 });
-  // rTAIL r13b: center 1.82 plateau over the lowered band (ref keeps 1.82
-  // only near x 0) + the LEFT thin transverse frame the ref front reads at
-  // 1.988 over x -0.51..-0.76 (z-thin like the ref's own — side raster
-  // swallows it exactly as the ref side does).
-  P.add('hull', box(1.24, 0.075, 1.70), 0, 1.7825, -1.80);
-  P.add('hull', box(0.245, 0.185, 0.002), -0.6425, 1.8975, -1.52);
-  // r13d: RIGHT-side hull roof sliver (kitMerged hull verts x 1.02..1.16,
-  // y to 1.942, z -0.919) — the ref front_HULL reads 1.92-1.94 at x
-  // 1.05..1.18; z-thin so the side raster drops it like the ref's own.
-  P.add('hull', box(0.14, 0.20, 0.002), 1.093, 1.84, -0.919);
+  // The former 1.82 m centre plateau and two 1.90+ m sliver frames were the
+  // fixed duplicate turret visible in the owner's yaw screenshot. They are
+  // deliberately absent; real shallow engine-deck fittings remain below.
+  // The source envelope in this station belongs to an OPEN fender/service
+  // frame (long side rails plus one transverse tie), not to a solid deck
+  // slab. Reconstruct that load path with narrow seated members: it keeps
+  // the real hull profile while leaving the entire turret footprint open at
+  // yaw. Every upright enters the 1.47..1.51 m deck and every upper member
+  // meets another rail; none is a silhouette-only floater.
+  for (const s of [-1, 1]) {
+    P.add('hull', box(0.09, 0.07, 1.80), s * 1.55, 1.785, -1.82);
+    for (const z of [-2.60, -1.82, -1.04]) {
+      P.add('hull', box(0.09, 0.29, 0.08), s * 1.55, 1.64, z);
+    }
+  }
+  P.add('hull', box(3.10, 0.07, 0.08), 0, 1.785, -1.82);
+  // Two small asymmetric source service heads keep their measured stations.
+  // Each receives a narrow post buried through the local deck, so the
+  // high, thin source silhouette is preserved without a floating plate.
+  P.add('hull', box(0.245, 0.185, 0.004), -0.6425, 1.8975, -1.52);
+  P.add('hull', box(0.045, 0.32, 0.004), -0.6425, 1.66, -1.52);
+  P.add('hull', box(0.14, 0.20, 0.004), 1.093, 1.84, -0.919);
+  P.add('hull', box(0.045, 0.25, 0.004), 1.093, 1.625, -0.919);
   // The print's tow eyes sit on the lower center plate, inside the idler
   // lanes; its lamps sit on the upper glacis just above the live wrap.  The
   // old generic seats put both fittings through the front track envelope.
@@ -1000,6 +1013,10 @@ function buildT90AVladimirLegacy(P) {
     [1.45, -0.10], [1.25, -0.45], [1.05, -0.62], [0.80, -0.72], [0.30, -0.80],
     [-0.30, -0.80], [-0.80, -0.72], [-1.05, -0.62], [-1.25, -0.45], [-1.45, -0.10],
   ];
+  // One rotating collar enters the 1.47..1.51 m deck and overlaps the cast
+  // shell. At yaw it leaves with the turret instead of exposing a hull-fixed
+  // duplicate footprint.
+  P.add('turret', polyTurret(turretPlan, 0.125, 0.94, 1.02), 0, -0.015, 0);
   // The measured faceted perimeter owns the exact asymmetric plan, while a
   // shallow cast crown grows from its inset top ring.  This keeps the source
   // outline without the former pair of broad flat roof slabs.

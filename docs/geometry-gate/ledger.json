@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-08-11T05:10:16.779Z",
+ "generatedAt": "2026-08-11T05:26:58.425Z",
  "gate": "every component >= 90; min is the headline",
  "passed": 38,
  "total": 97,
@@ -772,19 +772,6 @@
    }
   },
   {
-   "id": "t90a_vladimir",
-   "geoMin": 90,
-   "gatePassed": true,
-   "components": {
-    "hullCurves": 90.2,
-    "wholeCurves": 90,
-    "turretCurves": 91.2,
-    "stations": 92.2,
-    "dims": 96.2,
-    "floaters": 100
-   }
-  },
-  {
    "id": "t90sm",
    "geoMin": 90,
    "gatePassed": true,
@@ -924,6 +911,19 @@
     "turretCurves": 100,
     "stations": 94.9,
     "dims": 98.3,
+    "floaters": 100
+   }
+  },
+  {
+   "id": "t90a_vladimir",
+   "geoMin": 90.4,
+   "gatePassed": true,
+   "components": {
+    "hullCurves": 90.4,
+    "wholeCurves": 90.8,
+    "turretCurves": 91.1,
+    "stations": 93,
+    "dims": 96.2,
     "floaters": 100
    }
   },

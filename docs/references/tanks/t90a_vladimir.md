@@ -1,8 +1,8 @@
 # T-90A Vladimir (`t90a_vladimir`)
 
-> **CURRENT STATUS (§5.94, 2026-08-10): GRADUATED.** The final
-> Leclerc-method record appended below supersedes the old coupled-oracle
-> ceiling, delivered-pending and welded-family experiments retained here as
+> **CURRENT STATUS (§5.106, 2026-08-10): GRADUATED / RE-FROZEN.** The
+> hull/turret de-fusion record appended below supersedes §5.94 while retaining
+> that Leclerc-method graduation and the older coupled-oracle experiments as
 > history.
 
 **Exact variant modeled:** T-90A (post-2006 ESSA fit) — cast turret,
@@ -732,3 +732,29 @@ Fresh §B8 passes all fourteen views at floor **9.0**, mean **9.01**;
 yaw/load paths pass **9.3**. The complete sight, Kord, K-5, cupola, mast,
 gun and their bases rotate coherently without empty-air seams. Verdict:
 `docs/critique/shaded-parity-t90a-vladimir-graduation.md`.
+
+## §5.106 HULL/TURRET DE-FUSION (2026-08-10)
+
+The owner correctly found that the ring-zone procedural hull contained a solid
+upper block under the rotating turret. Fresh source-node isolation showed the
+relevant source station is an open hull-owned service/fender frame, not a fused
+turret duplicate. The old solid plateau and thin mask slivers are removed. The
+replacement uses supported side rails, one transverse tie and multiple posts
+terminating into the fixed deck, while a buried rotating collar closes the
+cast-turret load path. Yaw 90 now exposes an open, physically supported hull
+frame and a clean ring; no turret armor or fitting is left behind.
+
+Final gate is **90.4** | 90.4/90.8/91.1/93.0/96.2/100; gate JSON SHA-256
+is `8f467675eb17c98ee05d69586413a6ae8e1045cca7203adb98de06a311dd3c5d`.
+The source GLB stays byte-identical at
+`3ceda4972aa0e4cdba9ecf0353ab584ed61b6cd22e1af75d4c077f75c4a67400`.
+Freeze **`52f98951`** reproduces at 41 meshes / 74,100 vertices. Standard,
+parenting, winding, tests and private build all pass.
+
+Fresh independent §B8 scores
+`[9.1,9.2,9.1,9.0,9.0,9.0,9.1,9.1,9.2,9.2,9.0,9.2,9.2,9.2]`, floor
+**9.0**, mean **9.11**. The critic explicitly identifies the open frame as
+legitimate hull-owned geometry and confirms coherent ownership/load paths for
+the entire cast turret, gun, collar, ERA, optics, RWS, hatches, smoke kit and
+antennas. Verdict:
+`docs/critique/shaded-parity-t90a-vladimir-defusion-recert.md`.
