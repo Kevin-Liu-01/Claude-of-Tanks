@@ -3598,3 +3598,65 @@ wound. Presentation assets and release gates are regenerated at landing.
 `80b76338` and the procedural approximation no longer define the playable.
 Fleet gate is honestly 36/97 because this exact-source dimension false zero
 replaces the old procedural machine PASS; graduates are 45.**
+
+## 5.114 T-72B OBR. 1987 OWNER-SOURCE REBUILD (2026-08-11, GRADUATED)
+
+The owner's archive
+`/Users/kevinliu/Downloads/t-72b-obr-1987-ussr.zip` is fixed at SHA-256
+`1585d7468a4b5c23f66c6b57e9a9440c2b49363a9b877d7d0d6a04852416c04d`.
+Its recovered local visual oracle,
+`public/models/tanks/community/recovered/t72b_1987.glb`, is fixed at SHA-256
+`75f1243ad7f3e3cf25fd7e29cb3a86091d7a833fa681ad9f3dafc7e63068c927`.
+The archive does not provide sufficient redistribution provenance, so both
+remain ignored, local-only review inputs: no source mesh, material or texture
+bytes ship in this graduate. The playable is an original procedural rebuild.
+
+The earlier print-tuned `d62c8140` freeze is retired after the new owner-source
+baseline exposed a 7.7 floor / 7.83 mean. Its high smooth dome, deep slab
+side, sparse upright Kontakt-1 proxies and simplified rear could not be
+finished by decoration alone. `buildT72B87Owner` replaces that presentation
+with a compact low loft hull, six large dished native road wheels, one linked
+shoe course, a low clipped pear/cast turret, dense buried and staggered K1
+front/flank courses, a restrained shielded commander/NSVT station, supported
+optics/periscopes/antennae, twin smoke banks, low rear turret packs and an
+unequal backed drum/louvre/service transom. The old builder remains only as an
+archaeological receipt; `T72_PROFILES.t72b_1987` selects the owner rebuild.
+
+Freeze reproduces at **`3f2483d4`** (39 rendered meshes / 117,587 rendered
+vertices). Exact track audit is band **0/0**, shoes **0/0**, blind spots zero.
+The turret-parent audit is stranded 0 / abutting 0 / dangling 0. Winding is
+rev 0 / mix 0 / deficit 0 px / yaw candidates 0. The geometry gate records
+headline 0 with hull 34 / whole 33 / turret 38.8 / stations 32.4 / dimensions
+0 / floaters 100; its JSON SHA-256 is
+`17951ae82c907d37e4e7ccaaf6df1a686c91c5d1e35961e6af0ec939bd3251f9`.
+The plan contiguity scan reports only two one-cell apertures at the supported
+rear recovery/service hardware (`x +/-1.18, z -2.92`). They are stable,
+intentional mechanical negative space rather than an open hull sheet: no
+background wound appears in any of the 42 standard/yaw frames. The combined
+release wrapper therefore remains red for the recorded silhouette gate and
+those conservative recovery-eye cells; its asset, bore, exact-track,
+parenting and winding constituents pass independently.
+This remains an honest machine false-zero against the recovered commercial
+scene masks rather than a hidden green override: measured dimensions are
+height 2.38 vs 2.23 m (+6.57%), hull 6.02 vs 6.67 m (-9.79%), overall 9.28 vs
+9.53 m (-2.58%) and width 3.58 vs 3.59 m (-0.14%). The independent registered
+source views, not distortion toward those batch masks, govern this visual
+owner-source graduation.
+
+Fresh immutable evidence contains fourteen source/procedural pairs plus
+fourteen yaw-0 and fourteen genuine yaw-90 frames: 42 PNGs / 42 distinct
+SHA-256 hashes. The fixed standard vector is
+`[9.2,9.2,9.1,9.1,9.0,9.1,9.1,9.2,9.1,9.2,9.1,9.2,9.2,9.1]`, floor
+**9.0**, mean **9.14**. It confirms source fidelity and a real quarter-turn:
+the gun, cast shell, full inner/outer K1 blanket, commander/NSVT, optics,
+hatches, antenna roots and rear turret packs rotate as one visibly seated
+assembly; glacis, deck, engine grilles, skirts, rear drums/log, transom service
+field and running gear remain fixed. No fused duplicate mass, stranded
+fitting, empty-air decoration, donor course, penetration, open sheet or
+backface wound is visible.
+
+All eight presentation assets were regenerated and their manifest geometry
+binding refreshed. The asset/currentness audit passes 1 tank / 8 files, the
+rendered bore proof passes, the full `npm test` suite passes and the private
+production build passes. **GRADUATED; KEEP `3f2483d4`; retire `d62c8140` as
+the playable freeze. Fleet gate remains honestly 36/97; graduates are 46.**
