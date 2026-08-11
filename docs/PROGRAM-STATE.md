@@ -3820,3 +3820,49 @@ wrapper is red only for the disclosed stale machine row. `npm test` and
 `npm run build:private` pass. **GRADUATED; KEEP `2e314ed8`; retire `175be954`
 and all intermediate sittings. Fleet gate remains honestly 36/97; graduates
 are 49.**
+
+## 5.118 T-90MS TAGIL OWNER-SOURCE COMPLETE REBUILD (2026-08-11, GRADUATED)
+
+The old `034e1bac` ladder candidate is retired. Its long rectangular
+cabinet-like turret, regular side belt, undersized buried wheel course and
+generic roof/rear treatment could not satisfy the recovered T-90MS source.
+The replacement builds one connected low clipped-diamond welded shell from
+measured longitudinal sections, buries irregular Relikt and the paired optics
+into that carrier, sharply tapers the removable bustle, and seats the
+panoramic/RWS head, Kord, smoke, antenna and supported rear cage on explicit
+load paths. The hull uses six large native rubber-tired/dished wheels, one
+linked-shoe course, a raised short side cover, unequal backed service bays and
+continuous source bow shoulders.
+
+Freeze reproduces twice at **`5076891c`** (53 rendered meshes / 102,052
+rendered vertices). Exact track containment is band **0/0**, shoes **0/0**
+and blind spots zero. Plan contiguity is **0**; fitting census is MG 1 + 5.
+The muzzle gate is tagged-first-hit PASS (14.2 inner, 130.6 surround, 116.4
+contrast). Parent audit's lone `fitting_spareTrackLinks` nominee is legitimate
+fixed deck stowage, independently cleared under yaw. Winding's 15-pixel /
+0.02% rear-quarter deficit and fixed-hull rear-service candidates have no
+visible pixel wound or ownership error in final evidence.
+
+The recorded recovered-print row is an honest incompatible-datum zero:
+**0** | hull 75.3 / whole 58.9 / turret 51.2 / stations 72.5 / dimensions 0
+/ floaters 100. The height tool compares the source-visible 2.85 m
+panoramic/RWS combat station to the published 2.23 m turret-roof datum, even
+though the packet and print explicitly distinguish them. Other measurements
+remain on datum: hull 6.93/6.86 m, overall 9.52/9.53 m, width 3.77/3.78 m.
+Gate JSON SHA-256 is
+`ee9b29301f3751d78998c6725f658451d61a5e661845fbe873845f03bc65bb71`.
+The stale silhouette/dimension row is disclosed rather than overridden.
+
+Fresh independent §B8 discarded the prior hash and inspected only 42 distinct
+r10 frames. Its vector is
+`[9.2,9.2,9.1,9.0,9.0,9.1,9.1,9.2,9.3,9.3,9.2,9.3,9.2,9.3]`, floor
+**9.0**, mean **9.18**. It confirms source fidelity, a true quarter-turn,
+complete seated turret ownership, fixed hull kit, clean bow-bridge seating,
+native track continuity and no fused/stranded mass, empty-air decoration,
+collision, open sheet, sky hole or visible backface wound.
+
+All eight presentation assets and the manifest binding are regenerated.
+Targeted asset/currentness and bore checks pass; `npm test` and
+`npm run build:private` pass. **GRADUATED; KEEP `5076891c`; retire every
+earlier T-90MS sitting. Fleet gate remains honestly 36/97; graduates are 50.
+The raw-trio queue now continues with T-90A Burlak and base T-90.**

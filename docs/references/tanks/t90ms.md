@@ -1,5 +1,10 @@
 # T-90MS Tagil (`t90ms`)
 
+> **CURRENT STATUS (2026-08-11): GRADUATED / RE-FROZEN.** The owner-source
+> rebuild and fresh final-byte §B8 receipt below supersede the 2026-08-08
+> ladder freeze and its presentation compromises. The old rows remain as
+> historical diagnosis only.
+
 **Exact variant modeled:** T-90MS "Tagil" export demonstrator (UVZ 2011+) —
 the modern WELDED turret with the big squared removable bustle + rear slat
 cage, UDP T05BV-1 RWS and pano sight riding the bustle roof, Relikt-era
@@ -99,3 +104,40 @@ tread/suspension nodes):
 | 2026-08-08 r2 ×2 | 11.7 | 71.5 | 50.8 | 11.7 | 45.8 | 95.4 | 100 | BIT-IDENTICAL PAIR (A==B, 3d204b8) — RATIFIED honest by the §5.60 acceptance ×2. dims 65.4→95.4 (hullLengthM 7.16→6.93: transom cage to face −3.47; heightM 2.25 held; width 3.77). NEXT-ROUND MAP (§5.60 receipt): plan-turret 11.7 = the bustle-cage plan footprint — ordinary shape work vs the print masks. Board (IoU lane): 83.5 — hull 93.4, tracks 94.4, gun 81.5, turret 61.6 (pre/post-§5.60 board scores identical — the board pipeline never carried the scene-yaw). |
 | 2026-08-08 FIX ×2 | 20.7 | 72.7 | 51.3 | 20.7 | 41 | 95.4 | 100 | CRITIC FIX ROUND (defects 1-6 shared, 10-13), gate ×2 BIT-IDENTICAL, min +9.0 IMPROVE (turret 11.7→20.7), dims HELD (stations 45.8→41 inside the §5.60 cap — the widened bustle trades station slabs for the ordered plan presence). Executed: buried tip + under-roots DELETED → Relikt WEDGE BANKS (inner+outer per side, proud, seamed, capped) whose edges are the plan silhouette + vertex gap plate; slat cage STAND-OFF lattice (backdrop plate deleted — open air behind bars, grille-inset false-friend law honored); perimeter cage = 5-bar field + dense verticals + transom weave (was one rail); bustle widened to ±1.08/roof 2.14w with SEAMED+LATCHED module rows both flanks; barrel neck → smooth cylindrical step-down; §B4 loft architecture (fender deck + sponson rake + glacis slab + lane tapers) → track-clip 16/0 band 14/0 shoe (≤60 bar, residual = a named fitting); §B2 cells 8→0 (rack-gap fillers + corner brackets, backdrop removal); rubber cooled. Hash a8aceea0. |
 | 2026-08-08 LADDER ×2 | 52.5 | 74.1 | 52.5 | 55.3 | 74.7 | 95.4 | 100 | §5.33 TURRET SHAPE-LADDER (§5.60 plan-turret receipts), gate ×2 BIT-IDENTICAL, min +31.8, EVERY component hold-or-improve (dims 95.4 byte-exact). THE HEADLINE MOVE: the print's whole turret cluster sits ~0.35 FORWARD of the r2 seat in the gate frame (ref prism front +1.45 / cage rear −2.87 vs our +1.05/−3.22 — the ref's hull-box recentre, not a print fact) — turretG re-seated +0.35 (−0.19→+0.16) with the tube −0.35 (muzzle world 6.10 + overallLengthM byte-held); every ratified turret-internal read moved together (bank proudness, module-row grammar, STAND-OFF cage with its ~0.3 m air gap — verified in pixels). Also: whip mast to the print seat (antenna01_24 x 0.55 z −1.30w tip 4.73 — st4 49.5%→0); pano head sunk to the 2.24w crown line (spike budget → the mast); module rows re-stepped as the print's 3-module TAPER (outer faces 1.35→1.275→1.135, seam/latch grammar kept); commander backup-sight stalk at the print's own 2.90w tip (turret_6_2, one column each view — front_whole +2.2, stations +10); forward flank run of the perimeter cage at the print's ±1.80 line (full-perimeter identity cue; st5 wPct) + transom weave widened ±1.70; wedge outer caps held at the ratified line; print-true bow dust flaps (t90 recipe). Plan self-check vs s2: prism+cage grammar, stand-off gap, tapered rows all read (shots/t90fam-ladder/t90ms). Hash 034e1bac. Guards x14 byte-held. |
+| 2026-08-11 OWNER FINAL | 0 | 75.3 | 58.9 | 51.2 | 72.5 | 0 | 100 | Honest incompatible-oracle row for the complete owner-source rebuild. The only zero is dimensions: the tool compares the source-visible 2.85 m panoramic/RWS combat station against the published 2.23 m turret-roof datum even though this packet and recovered print explicitly distinguish those heights. Hull 6.93/6.86 m, overall 9.52/9.53 m and width 3.77/3.78 m remain on datum. Exact registered pixels and fresh yaw evidence govern this graduation; the row is disclosed, not gamed. Freeze `5076891c`. |
+
+## Owner-source graduation (2026-08-11)
+
+The former long rectangular cabinet turret and small buried wheels are
+retired. `rebuildT90MSTurretExact` constructs one joined low clipped-diamond
+welded shell from measured longitudinal stations, then buries irregular
+Relikt cassettes, the frontal optic pair, crown plates and the tapered
+removable bustle into that carrier. The panoramic/RWS head, Kord, smoke banks,
+antenna and rear cage use visible plinths, collars, brackets or continuous
+returns. The hull now presents six large independently readable rubber-tired
+road wheels, a raised short side cover, one native linked-shoe course, unequal
+backed transom bays and a supported round service/recovery field. Thin bow
+shoulder plates join the center glacis to both fender tips and close the final
+6 cm plan pocket without entering the terminal shoe run.
+
+The final geometry reproduces twice at **`5076891c`** (53 rendered meshes /
+102,052 rendered vertices). Exact track containment is band **0/0** and shoes
+**0/0**; plan contiguity is **0**; muzzle-bore proof is tagged-first-hit PASS
+with 14.2/130.6 luminance and 116.4 contrast. The turret-parent tool reports
+only `fitting_spareTrackLinks`, independently adjudicated as legitimate fixed
+forward-deck stowage. Winding's conservative 15-pixel / 0.02% rear-quarter
+deficit and fixed-hull rear-service mode-2 nominees produce no visible open
+sheet, disappearing face or stranded mass in the complete yaw packet.
+
+Fresh independent §B8 inspected 42 distinct final-byte PNGs: fourteen paired
+1280x640 views plus fourteen yaw-0 and fourteen genuine yaw-90 frames at
+768x768. Its fixed vector is
+`[9.2,9.2,9.1,9.0,9.0,9.1,9.1,9.2,9.3,9.3,9.2,9.3,9.2,9.3]`, floor
+**9.0**, mean **9.18**. It confirms source fidelity, real quarter-turn,
+complete turret ownership, seated load paths, fixed hull kit, clean native
+track continuity and the bow-bridge repair. No fused/stranded mass,
+empty-air decoration, donor course, collision, open sheet, sky hole or
+visible backface wound remains. All eight presentation assets and their
+manifest binding are current; the full test suite and private production
+build pass. **GRADUATED; KEEP `5076891c`; every earlier T-90MS sitting is
+retired.**
