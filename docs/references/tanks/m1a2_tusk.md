@@ -267,3 +267,10 @@ documented chimera/oracle-divergence class, NOT a geometry PASS. Independent
 14-view identity PASS, floor 9.1 / mean 9.26. Binding **bd371600 -> 7620b020**
 (58 meshes / 200924 verts). Full verdict:
 `docs/critique/shaded-parity-abrams-distinctiveness-recert.md`.
+
+## FULL ARMOR/GHILLIE BINDING (2026-08-10, §5.107)
+The full cover is seated around the unmistakable ARAT/slat urban package;
+the rear cage remains open and hull-owned rather than being falsely sealed by
+cloth. P95 height is 3.29 m. Corrected yaw ownership PASS; independent §B8
+floor 9.4 / mean 9.47. Binding **7620b020 -> cfc006f2** (66 meshes / 261898
+verts). Full verdict: `docs/critique/shaded-parity-abrams-ghillie-recert.md`.

@@ -234,3 +234,11 @@ row was invented; the datum replica repeated exactly with dims sanity 100.
 Independent proc-only 14-view identity PASS, floor 9.0 / mean 9.20. Binding
 **329ec520 -> d6e87b0c** (51 meshes / 204812 verts). Full verdict:
 `docs/critique/shaded-parity-abrams-distinctiveness-recert.md`.
+
+## FULL ARMOR/GHILLIE BINDING (2026-08-10, §5.107)
+SEPv3 receives the densest full turret/hull/CROWS foliage package while its
+fine cassette, Trophy and wide-low identity remain legible. P95 height is now
+3.18 m. FALSE-0 still holds: no gate row was invented. Corrected yaw ownership
+PASS; independent §B8 floor 9.3 / mean 9.44. Binding **d6e87b0c -> 2cd6070**
+(55 meshes / 237010 verts). Full verdict:
+`docs/critique/shaded-parity-abrams-ghillie-recert.md`.

@@ -281,3 +281,10 @@ new silhouette/datum, NOT a geometry PASS. Independent 14-view re-cert PASS,
 floor 9.1 / mean 9.23. RE-FREEZE **3afe65f0 -> 01e698e8** (48 meshes /
 159596 verts). Full verdict:
 `docs/critique/shaded-parity-abrams-distinctiveness-recert.md`.
+
+## FULL ARMOR/GHILLIE RE-FREEZE (2026-08-10, §5.107)
+Full hull/turret/CROWS net and foliage now ride physical carriers while the
+massive clean CROWS glass and weapon remain exposed. P95 height is 3.30 m.
+Corrected yaw ownership PASS; independent §B8 floor 9.2 / mean 9.39.
+RE-FREEZE **01e698e8 -> 1adc0bde** (56 meshes / 214570 verts). Full verdict:
+`docs/critique/shaded-parity-abrams-ghillie-recert.md`.

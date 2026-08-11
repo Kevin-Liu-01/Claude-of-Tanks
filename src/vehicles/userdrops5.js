@@ -78,12 +78,17 @@ const SPECS = [
       // the 2.87 m envelope; antenna whips do not.
       dims: { hullLengthM: 7.72, overallLengthM: 10.97, widthM: 4.00, heightM: 2.87 } }),
   make('m1a1', 'm1a1ha', 'M1A1HA Abrams', 'USA',
-    { hp: 2350, weightTons: 62, gun: { reloadS: 6.3 } }),
+    { hp: 2350, weightTons: 62, gun: { reloadS: 6.3 },
+      // §5.73-1 P95 datum: the owner-mandatory full-vehicle ghillie now
+      // includes the shielded commander's weapon. Its broad, physically
+      // seated cover measures a 2.80 m combat envelope; 2.44 m remains the
+      // bare turret datum and is no longer honest for this configured mark.
+      dims: { heightM: 2.80 } }),
   make('m1a2', 'm1a2_sepv2', 'M1A2 Abrams SEPv2', 'USA',
     { hp: 2600, weightTons: 66.8, gun: { reloadS: 6.0 },
-      // §5.73-1 / §5.74 P95 datum: the mandatory elevated armored CROWS
-      // band measures 3.4265 m on the authoritative mask.
-      dims: { heightM: 3.43 } }),
+      // §5.73-1 P95 datum: elevated armored CROWS plus its seated ghillie
+      // cover measures 3.44 m on the authoritative mask.
+      dims: { heightM: 3.44 } }),
   // m1a2_sepv3 (§5.07 owner order 2026-08-07): M1A2 SEPv3 — redesignated
   // M1A2C in Sept 2018; first shown AUSA Oct 2015. PURE PROCEDURAL variant
   // on the m1a2 family rig (ABRAMS_PROFILES m1a2_sepv3) — NO recovered GLB
@@ -91,12 +96,13 @@ const SPECS = [
   // measurement-influence source only: its print is the adjudicated
   // mislabeled-Leopard/odd-dims asset, see docs/references/tanks/m1a2.md;
   // footprint stays 7.93/9.77/3.66; §5.73-1 now derives height from the
-  // mandatory-kit P95 envelope (3.10 below). community: null — original
+  // mandatory-kit P95 envelope (3.18 below). community: null — original
   // build, nothing recovered to credit.
   make('m1a2', 'm1a2_sepv3', 'M1A2 SEPv3', 'USA',
     { hp: 2700, weightTons: 67.5, gun: { reloadS: 5.8 },
-      // FALSE-0 four-box + 1024 datum replica: wide/low CROWS P95 3.1009 m.
-      dims: { heightM: 3.10 }, community: null, visual: { number: '34' } }),
+      // FALSE-0 four-box + temporary 1024 datum replica: the wide/low CROWS
+      // plus mandatory ghillie cover measures a 3.18 m P95 envelope.
+      dims: { heightM: 3.18 }, community: null, visual: { number: '34' } }),
   // DUAL-GATE GRADUATE (2026-07-31, commit 0f5cd55): m60a1's procedural build
   // passed geometry min 90.7 + shaded parity min 9/10 — the recovered GLB is
   // retired and the procedural model ships EVERYWHERE (local + public), so no

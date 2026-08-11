@@ -1774,20 +1774,76 @@ function tejasRoofKit(P, t, station = 'crows') {
 // clear), tops under the skirt hem, silhouette-free in all gate views.
 // Overlays are static (hub bolts do not spin) — the fleet shadow-drum
 // precedent (isu122s r3).
-// SEPv3 §5.74 grass/foliage package.  This is physical, deterministic
-// geometry (not a paint alias): low-poly blade fans break the roof outline,
-// while leaf mats cover parts of the turret and hull ERA faces.  The custom
-// olive materials clone the vehicle cloth response so the cover receives the
-// same garage lighting/AO as the rest of the tank.  All hull-side leaves stay
-// at or inside the certified ±1.828 m width carrier.
-function sepv3Foliage(P) {
+// Source-inventory armor finishing pass. The supplied SEPv2 package exposes
+// separate ex_armor_body / ex_armor_turret / ex_era_turret groups; this pass
+// reproduces that readable construction language with panel-face relief,
+// retention straps and buried fasteners. M1A1HA and clean M1A2 receive only
+// passive-armor seams (their protection is not mislabeled as external ERA),
+// while TUSK/SEPv2/SEPv3 keep their existing variant-specific reactive arrays.
+function abramsArmorHardware(P, variant, t) {
+  const reactive = ['m1a2_tusk', 'm1a2_sepv2', 'm1a2_sepv3'].includes(variant);
+  const rows = reactive ? [0.94, 1.20] : [1.10];
+  const count = reactive ? 9 : 7;
+  for (const side of [-1, 1]) {
+    // Hull-side face plates stay inside the certified ±1.828 m carrier.
+    P.add('hullDark', box(0.006, reactive ? 0.54 : 0.28, 4.55),
+      side * 1.822, reactive ? 1.07 : 1.10, 0.18);
+    for (let k = 0; k < count; k++) {
+      const z = 2.20 - k * (reactive ? 0.52 : 0.66);
+      for (const y of rows) {
+        P.add('hullDetail', box(0.005, reactive ? 0.16 : 0.13,
+          reactive ? 0.39 : 0.50), side * 1.826, y, z);
+        P.add('hullDark', cylX(0.015, 0.008, 8), side * 1.824,
+          y + 0.045, z - 0.12);
+        P.add('hullDark', cylX(0.015, 0.008, 8), side * 1.824,
+          y - 0.045, z + 0.12);
+      }
+      if (k < count - 1) {
+        P.add('hullDark', box(0.006, reactive ? 0.48 : 0.24, 0.028),
+          side * 1.824, reactive ? 1.07 : 1.10,
+          z - (reactive ? 0.26 : 0.33));
+      }
+    }
+
+    // Turret retention straps follow the certified 16.9-degree flank plane
+    // through flankSlab; no vertical plate is allowed to stand off the shell.
+    const xFaceA = side < 0 ? 1.704 : 1.621;
+    const straps = reactive ? [-2.42, -1.94, -1.46, -0.98] : [-2.28, -1.50];
+    for (const z of straps) {
+      flankSlab(P, 'turretDetail', t, side, xFaceA + 0.004, 0.03,
+        0.15, reactive ? 0.54 : 0.46, z, z + 0.045, 0.016);
+      P.add('turretDark', cylX(0.013, 0.010, 8), side * 1.61,
+        reactive ? 0.47 : 0.40, z + 0.022);
+      P.add('turretDark', cylX(0.013, 0.010, 8), side * 1.66,
+        0.21, z + 0.022);
+    }
+  }
+}
+
+// Owner full-vehicle Abrams ghillie package. This is physical deterministic
+// geometry, not a paint alias: a continuous net/vine layer is seated on the
+// hull, turret, armor modules and roof weapon before overlapping low-poly leaf
+// clusters are added. Every cluster intersects a carrier strip or another
+// cluster that reaches one, so no decoration is supported through empty air.
+// Palette/density changes split the five requested marks without hiding their
+// CWS/CROWS, Trophy, ERA or passive-armor silhouettes.
+function abramsGhillie(P, variant, t) {
+  const configs = {
+    m1a1ha: { density: 0.82, light: 0x647348, dark: 0x35442d, mgY: 1.075 },
+    m1a2_tejas: { density: 0.92, light: 0x596d3c, dark: 0x2f4128, mgY: 1.565 },
+    m1a2_tusk: { density: 0.90, light: 0x707145, dark: 0x41422b, mgY: 1.565 },
+    m1a2_sepv2: { density: 1.00, light: 0x53683a, dark: 0x293b25, mgY: 1.715 },
+    m1a2_sepv3: { density: 1.10, light: 0x496033, dark: 0x243622, mgY: 1.445 },
+  };
+  const cfg = configs[variant];
+  if (!cfg) return;
   const makeMat = (hex) => {
     const m = P.mats.canvasCloth.clone();
     m.color.setHex(hex);
     m.roughness = 1;
     m.metalness = 0;
     m.onBeforeCompile = vehicleAmbientFloorHook;
-    m.customProgramCacheKey = () => `abrams-sepv3-foliage-${hex.toString(16)}`;
+    m.customProgramCacheKey = () => `abrams-ghillie-${variant}-${hex.toString(16)}`;
     return m;
   };
   const addMesh = (parent, geos, hex, name) => {
@@ -1800,71 +1856,240 @@ function sepv3Foliage(P) {
     parent.add(mesh);
     P.disposables.push(geo, mat);
   };
-  const topA = [], topB = [], hullA = [], hullB = [];
-  const fans = [
-    [-1.16, 0.79, -2.20, 1.00], [-0.72, 0.82, -1.74, 0.95],
-    [-0.22, 0.80, -2.35, 1.12], [0.28, 0.81, -1.88, 0.88],
-    [0.72, 0.80, -2.45, 1.00], [1.08, 0.76, -1.55, 0.82],
-    [-1.15, 0.70, -0.88, 0.78], [1.10, 0.70, -0.98, 0.78],
-  ];
-  for (let i = 0; i < fans.length; i++) {
-    const [x, y, z, s] = fans[i];
-    // Five overlapping low-poly lobes make a continuous leafy mass; the
-    // blade fan then supplies the grass silhouette above it.
-    for (let l = 0; l < 5; l++) {
-      const dx = (l - 2) * 0.072 * s;
-      const dz = (((l * 3) % 5) - 2) * 0.038 * s;
-      const target = (i + l) % 2 ? topA : topB;
-      target.push(xform(sph(0.105 * s, 8), x + dx, y + 0.070 * s,
-        z + dz, 0, i * 0.37 + l, 0, [1.22, 0.72, 0.95]));
+  const addNetMesh = (parent, geos, name) => {
+    if (!geos.length) return;
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 128;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, 128, 128);
+    // Original deterministic cut-net texture: two diagonal cord courses and
+    // irregular leaf/rag diamonds. Transparent holes keep armor, ERA and
+    // optics readable through the cover.
+    ctx.strokeStyle = '#26351f'; ctx.lineWidth = 2;
+    for (let p = -128; p < 256; p += 16) {
+      ctx.beginPath(); ctx.moveTo(p, 0); ctx.lineTo(p + 128, 128); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(p + 128, 0); ctx.lineTo(p, 128); ctx.stroke();
     }
-    for (let k = 0; k < 7; k++) {
-      const h = s * (0.15 + (k % 3) * 0.035);
-      const dx = (k - 3) * 0.035 * s;
+    const cols = [cfg.light, cfg.dark, cfg.light].map((hex) => `#${hex.toString(16).padStart(6, '0')}`);
+    for (let i = 0; i < 52; i++) {
+      const x = (i * 47 + 13) % 128, y = (i * 71 + 29) % 128;
+      const w = 4 + (i % 3) * 2, h = 7 + (i % 4) * 2;
+      ctx.fillStyle = cols[i % cols.length];
+      ctx.beginPath();
+      ctx.moveTo(x, y - h); ctx.lineTo(x + w, y); ctx.lineTo(x, y + h);
+      ctx.lineTo(x - w, y); ctx.closePath(); ctx.fill();
+    }
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+    const mat = P.mats.canvasCloth.clone();
+    mat.color.setHex(0xffffff);
+    mat.map = texture;
+    mat.transparent = true;
+    mat.alphaTest = 0.18;
+    mat.side = THREE.DoubleSide;
+    mat.roughness = 1;
+    mat.metalness = 0;
+    mat.onBeforeCompile = vehicleAmbientFloorHook;
+    mat.customProgramCacheKey = () => `abrams-cut-net-${variant}`;
+    const geo = mergeAll(geos);
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.name = name;
+    mesh.castShadow = mesh.receiveShadow = true;
+    parent.add(mesh);
+    P.disposables.push(geo, mat, texture);
+  };
+  const turretA = [], turretB = [], hullA = [], hullB = [];
+  const turretNet = [], hullNet = [];
+  const leafDiamond = (w, d, h = 0.024) => slab(
+    [0, 0, -d], [w, 0, 0], [0, 0, d], [-w, 0, 0],
+    [0, h, -d], [w, h, 0], [0, h, d], [-w, h, 0]);
+  const flankSheet = (side, xFaceA, yA, y0, y1, z0, z1) => {
+    const slope = wallSlope(t);
+    const face = (y) => xFaceA - slope * (y - yA);
+    const inner = (y) => face(y) - 0.018;
+    const b0 = [inner(y0), y0, z1], b1 = [face(y0), y0, z1];
+    const b2 = [face(y0), y0, z0], b3 = [inner(y0), y0, z0];
+    const t0 = [inner(y1), y1, z1], t1 = [face(y1), y1, z1];
+    const t2 = [face(y1), y1, z0], t3 = [inner(y1), y1, z0];
+    const M = ([x, y, z]) => [side * x, y, z];
+    return side > 0 ? slab(b0, b1, b2, b3, t0, t1, t2, t3)
+      : slab(M(b1), M(b0), M(b3), M(b2), M(t1), M(t0), M(t3), M(t2));
+  };
+  const topCluster = (outA, outB, x, y, z, s, seed) => {
+    // Net pad is the explicit physical seat. Flat rotated leaf strips overlap
+    // it by 25-50 mm, avoiding the old isolated green-sphere/"pea" read.
+    outB.push(xform(box(0.42 * s, 0.022, 0.34 * s), x, y + 0.011, z,
+      0, seed * 0.17, 0));
+    outA.push(xform(box(0.045 * s, 0.030, 0.42 * s), x, y + 0.026, z,
+      0, seed * 0.31, 0));
+    const leaves = Math.max(11, Math.round(14 * cfg.density));
+    for (let l = 0; l < leaves; l++) {
+      const a = seed * 0.71 + l * 2.399;
+      const r = (0.035 + (l % 4) * 0.035) * s;
+      const dx = Math.sin(a) * r;
+      const dz = Math.cos(a) * r;
+      const target = (seed + l) % 2 ? outA : outB;
+      target.push(xform(leafDiamond((0.070 + (l % 3) * 0.014) * s,
+        (0.12 + (l % 2) * 0.030) * s, 0.030), x + dx, y + 0.040 * s,
+        z + dz, (l % 3 - 1) * 0.11, a, (l % 2 ? 1 : -1) * 0.08));
+    }
+    // Only one low rounded knot fills the center; it intersects both pad and
+    // leaf courses and never reads as a freestanding decorative ball.
+    outB.push(xform(sph(0.070 * s, 8), x, y + 0.045 * s, z,
+      0, seed * 0.37, 0, [1.35, 0.45, 1.15]));
+    const blades = Math.max(6, Math.round(9 * cfg.density));
+    for (let k = 0; k < blades; k++) {
+      const h = s * (0.13 + (k % 3) * 0.038);
+      const dx = (k - (blades - 1) / 2) * 0.034 * s;
       const dz = ((k * 5) % 7 - 3) * 0.025 * s;
-      const ry = (i * 0.47 + k * 0.81) % Math.PI;
-      const rz = (k - 3) * 0.075;
-      const target = (i + k) % 3 ? topA : topB;
-      target.push(xform(box(0.030 * s, h, 0.018 * s), x + dx, y + h * 0.44,
-        z + dz, 0, ry, rz));
+      const target = (seed + k) % 3 ? outA : outB;
+      target.push(xform(box(0.028 * s, h, 0.016 * s), x + dx,
+        y + h * 0.45, z + dz, 0, seed * 0.29 + k * 0.73,
+        (k - 3) * 0.07));
     }
+  };
+
+  // Turret blanket: connected longitudinal/cross net courses lie directly
+  // on the crown. The clusters cover cheeks, roof, bustle and ERA shoulders.
+  for (const x of [-1.18, -0.62, 0, 0.62, 1.18]) {
+    turretB.push(xform(box(0.035, 0.016, 3.30), x, 0.792, -0.95));
   }
-  // Glacis/deck cover — smaller fans, still below the CROWS P95 band.
-  for (let i = 0; i < 6; i++) {
-    const x = -1.05 + i * 0.42;
-    const z = 1.58 + (i % 2) * 0.42;
-    const y = 1.48 - (i % 2) * 0.055;
-    hullB.push(xform(sph(0.13, 8), x, y + 0.045, z,
-      0, i * 0.43, 0, [1.22, 0.48, 0.92]));
-    for (let k = 0; k < 5; k++) {
-      const h = 0.10 + (k % 2) * 0.045;
-      hullA.push(xform(box(0.025, h, 0.016), x + (k - 2) * 0.032,
-        y + h * 0.44, z + ((k * 3) % 5 - 2) * 0.025, 0,
-        i * 0.35 + k * 0.67, (k - 2) * 0.08));
-    }
+  for (const z of [-2.38, -1.72, -1.05, -0.38, 0.28]) {
+    turretB.push(xform(box(2.62, 0.016, 0.035), 0, 0.794, z));
   }
-  // Foliage mats tied into the SEPv3 side-ERA seams.  They are thin in x
-  // and fragmented in y/z so the armor remains legible beneath the cover.
+  // Broad cut-net blankets fill the spaces between the cord courses. They
+  // sit under hatches/stations but over the armor skin, and are split at the
+  // crown break so no flat sheet bridges a change in roof height.
+  turretNet.push(xform(box(2.72, 0.020, 1.70), 0, 0.792, -1.78));
+  turretNet.push(xform(box(2.50, 0.020, 1.05), 0, 0.785, -0.44));
+  turretNet.push(xform(box(2.20, 0.020, 0.64), 0, 0.565, 0.55, -0.16, 0, 0));
+  const turretFans = [
+    [-1.18, 0.80, -2.24, 1.02], [-0.67, 0.81, -1.83, 0.96],
+    [-0.14, 0.80, -2.40, 1.10], [0.38, 0.81, -1.95, 0.94],
+    [0.90, 0.79, -2.39, 0.98], [1.17, 0.76, -1.46, 0.84],
+    [-1.13, 0.72, -0.83, 0.82], [-0.55, 0.78, -0.45, 0.74],
+    [0.20, 0.79, -0.62, 0.78], [0.92, 0.72, -0.92, 0.82],
+    [-0.92, 0.63, 0.08, 0.70], [0.84, 0.62, 0.03, 0.72],
+    [-0.45, 0.59, 0.16, 0.68], [0.34, 0.61, 0.14, 0.70],
+    [-1.02, 0.51, 0.58, 0.65], [-0.28, 0.55, 0.62, 0.68],
+    [0.48, 0.54, 0.60, 0.66], [1.04, 0.49, 0.52, 0.64],
+    [-0.66, 0.47, 1.02, 0.58], [0.62, 0.47, 1.00, 0.58],
+  ];
+  const turretCount = turretFans.length;
+  for (let i = 0; i < turretCount; i++) {
+    const [x, y, z, s] = turretFans[i];
+    topCluster(turretA, turretB, x, y, z, s, i + 3);
+  }
+
+  // Cheek/flank curtains. Each carrier line is buried into the armor face;
+  // the flattened leaves overlap the line and each other.
   for (const side of [-1, 1]) {
+    const x = side * 1.66;
+    const xFaceA = side < 0 ? 1.704 : 1.621;
+    turretNet.push(flankSheet(side, xFaceA, 0.03, 0.12, 0.66, -0.85, 0.85));
+    turretNet.push(flankSheet(side, xFaceA, 0.03, 0.12, 0.66, -2.62, -0.92));
+    turretB.push(xform(box(0.020, 0.54, 3.05), x, 0.36, -1.00));
     for (let k = 0; k < 7; k++) {
-      const z = -1.72 + k * 0.57;
+      const z = -2.32 + k * 0.47;
+      const y = 0.28 + (k % 2) * 0.15;
+      const target = (k + (side > 0 ? 1 : 0)) % 2 ? turretA : turretB;
+      // Two crossed flattened strips make a torn-leaf curtain on the buried
+      // carrier, with a tail that hangs down the armor face.
+      target.push(xform(leafDiamond(0.10, 0.17, 0.026),
+        x + side * 0.010, y, z, 0, k * 0.49, side * Math.PI / 2));
+      target.push(xform(leafDiamond(0.085, 0.19, 0.026),
+        x + side * 0.012, y + 0.03, z + 0.02,
+        side * 0.13, -k * 0.38, side * (Math.PI / 2 - 0.15)));
+      target.push(xform(box(0.016, 0.29, 0.045), x + side * 0.004,
+        y - 0.08, z, 0, k * 0.41, side * 0.08));
+    }
+  }
+
+  // Hull blanket over the glacis, deck and both side armor/ERA carriers.
+  for (const x of [-1.18, -0.59, 0, 0.59, 1.18]) {
+    hullB.push(xform(box(0.040, 0.018, 2.15), x, 1.455, 1.88,
+      -0.10, 0, 0));
+  }
+  hullNet.push(xform(box(2.80, 0.020, 1.60), 0, 1.458, 2.08, -0.10, 0, 0));
+  // The turbine-deck cover ends inside the sloped rear shoulders. The first
+  // draft reached the square -3.98 corner although the Abrams deck below is
+  // clipped there, creating a one-cell enclosed-air pocket at x=-1.24.
+  hullNet.push(xform(box(2.60, 0.020, 1.00), 0, 1.685, -3.28));
+  for (let i = 0; i < 8; i++) {
+    const x = -1.30 + i * 0.37;
+    const z = 1.42 + (i % 3) * 0.48;
+    const y = 1.46 - (i % 3) * 0.045;
+    topCluster(hullA, hullB, x, y, z, 0.78 + (i % 2) * 0.10, i + 19);
+  }
+  // Rear engine-deck net stays sparse enough to leave the grilles readable.
+  for (const [x, z] of [[-1.16, -3.25], [-0.55, -3.55], [0.12, -3.28],
+    [0.76, -3.58], [1.20, -3.18]]) {
+    topCluster(hullA, hullB, x, 1.69, z, 0.72, Math.round((x + 2) * 9));
+  }
+  for (const side of [-1, 1]) {
+    // WIDTH GUARD: these side curtains sit over the 1.812 m skirt and under
+    // the certified 1.828 m armor carrier. Keep their normals thin and keep
+    // every torn strip in the local YZ plane; even a decorative 0.1 rad
+    // roll around Z turns a 0.3 m tail into width growth, which makes
+    // safeScale shrink the entire tank and falsifies every published datum.
+    hullNet.push(xform(box(0.010, 0.62, 5.10), side * 1.819, 1.08, 0.05));
+    hullB.push(xform(box(0.008, 0.52, 4.95), side * 1.819, 1.08, 0.05));
+    // Bow/rear shoulder continuations complete the full-hull cover and keep
+    // the raised CWS/CROWS envelope from excluding the real hull endpoints
+    // under the 12%-band P95 law. These are inward of the fender corners and
+    // overlap the underlying shoulder armor across their full area, so they
+    // are physical cover—not metrology tabs or detached end plates.
+    // An 8 cm torn fringe may hang past the 3.97 m armor end; the other
+    // 48 cm remains fully backed by the shoulder. This is the visible net
+    // edge and restores the configured vehicle's honest P95 end course.
+    hullNet.push(xform(box(0.010, 0.45, 1.12), side * 1.42, 1.18, 3.49,
+      0, side * 0.06, 0));
+    // TUSK already has a source-semantic open rear slat cage. A cloth panel
+    // across that opening would enclose two false sky pockets, so its rear
+    // course stops on the central skirt and the cage remains deliberately
+    // uncovered/open; all other marks use the backed turbine shoulder.
+    if (variant !== 'm1a2_tusk') {
+      hullNet.push(xform(box(0.010, 0.45, 1.12), side * 1.42, 1.20, -3.49,
+        0, side * -0.05, 0));
+    }
+    for (let k = 0; k < 10; k++) {
+      const z = -2.18 + k * 0.52;
       const y = 1.04 + (k % 2) * 0.20;
       const target = (k + (side > 0 ? 1 : 0)) % 3 ? hullB : hullA;
       for (let l = 0; l < 3; l++) {
-        target.push(xform(sph(0.075 + l * 0.006, 8), side * 1.825,
-          y + (l - 1) * 0.055, z + (l - 1) * 0.075,
-          0, k * 0.41 + l, 0, [0.032, 0.62, 1.08]));
-        target.push(xform(box(0.004, 0.13 + l * 0.02, 0.014),
-          side * 1.824, y + 0.035 + l * 0.035,
-          z - 0.075 + l * 0.075, 0, k * 0.32 + l * 0.8,
-          side * (l - 1) * 0.10));
+        target.push(xform(leafDiamond(0.085 + l * 0.010,
+          0.13 + l * 0.018, 0.008),
+          side * 1.819, y + (l - 1) * 0.055,
+          z + (l - 1) * 0.075, (l - 1) * 0.15,
+          0, side * Math.PI / 2));
+        target.push(xform(box(0.014, 0.24 + l * 0.035, 0.030),
+          side * 1.819, y + 0.035 + l * 0.035,
+          z - 0.075 + l * 0.075, (l - 1) * 0.08,
+          k * 0.32 + l * 0.8, 0));
       }
     }
   }
-  addMesh(P.turretG, topA, 0x41532f, 'sepv3_foliage_light');
-  addMesh(P.turretG, topB, 0x2c3c25, 'sepv3_foliage_dark');
-  addMesh(P.hullG, hullA, 0x485b34, 'sepv3_grass_light');
-  addMesh(P.hullG, hullB, 0x304127, 'sepv3_grass_dark');
+
+  // CWS/CROWS cover. A continuous vine rises from the roof/pedestal into the
+  // receiver, then two leaf knots wrap the receiver and one wraps the barrel.
+  // Sensor glass and muzzle remain exposed. Everything is turret-owned.
+  turretB.push(xform(box(0.030, Math.max(0.10, cfg.mgY - 0.79), 0.030),
+    -0.70, (cfg.mgY + 0.79) / 2, 0.13));
+  turretB.push(xform(box(0.46, 0.025, 0.48), -0.70, cfg.mgY + 0.10, 0.25));
+  turretNet.push(xform(box(0.50, 0.028, 0.52), -0.70, cfg.mgY + 0.115, 0.25));
+  for (const [dx, dz, s] of [[-0.17, 0.10, 0.70], [0.16, 0.12, 0.68],
+    [-0.12, 0.42, 0.58], [0.11, 0.63, 0.50]]) {
+    topCluster(turretA, turretB, -0.70 + dx, cfg.mgY + 0.11, dz, s,
+      41 + Math.round((dx + dz) * 20));
+  }
+
+  addMesh(P.turretG, turretA, cfg.light, `${variant}_ghillie_turret_light`);
+  addMesh(P.turretG, turretB, cfg.dark, `${variant}_ghillie_turret_dark`);
+  addMesh(P.hullG, hullA, cfg.light, `${variant}_ghillie_hull_light`);
+  addMesh(P.hullG, hullB, cfg.dark, `${variant}_ghillie_hull_dark`);
+  addNetMesh(P.turretG, turretNet, `${variant}_ghillie_turret_cut_net`);
+  addNetMesh(P.hullG, hullNet, `${variant}_ghillie_hull_cut_net`);
 }
 
 function tejasWheelKit(P, g) {
@@ -3050,9 +3275,6 @@ function buildTejasFamily(P, p) {
     P.add('hullDetail', box(0.115, 0.018, 0.20), 1.20, 1.362, 2.60);       // shovel blade
     P.add('hullDark', box(0.24, 0.014, 0.032), 1.14, 1.362, 2.78);         // clamp strap
     P.add('hullDark', box(0.24, 0.014, 0.032), 1.14, 1.362, 3.10);         // clamp strap
-    // Physical cover is applied last so it visibly drapes over the ADL /
-    // IFLIR / ERA package instead of being buried by it.
-    sepv3Foliage(P);
   }
 
   // ---- FAMILY VARIETY LOADOUTS (§B3/§I, owner directive 2026-08-03) -------
@@ -3213,6 +3435,12 @@ function buildTejasFamily(P, p) {
   for (const [dx, dz] of [[-0.55, 2.75], [0.55, 2.75], [-0.86, -2.20], [0.86, -2.20]]) {
     P.add('hullDetail', torus(0.028, 0.008, 10), dx, deckAt(g, dz) + 0.006, dz, Math.PI / 2, 0, 0);
   }
+  abramsArmorHardware(P, vid, t);
+  // Owner 2026-08-10: the five current Abrams marks receive full physical
+  // shrub/ghillie cover over hull, turret, armor and roof weapon. Apply it
+  // after every variant-specific ERA, APS, stowage and MG fit so the net lies
+  // visibly on top of those systems while their silhouettes remain legible.
+  abramsGhillie(P, vid, t);
 }
 
 // ---------------------------------------------------------------------------

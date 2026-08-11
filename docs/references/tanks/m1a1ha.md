@@ -261,3 +261,11 @@ Gate x2 byte-identical: 83.1 | 91.7/83.1/85.6/92.5/100/100. Independent
 14-view re-cert PASS, floor 9.1 / mean 9.19. RE-FREEZE
 **aa7af504 -> 99962364** (47 meshes / 157232 verts). Full verdict:
 `docs/critique/shaded-parity-abrams-panelpitch-recert.md`.
+
+## FULL ARMOR/GHILLIE RE-FREEZE (2026-08-10, §5.107)
+Original cut-net, foliage and passive-armor finishing now cover the complete
+configured hull, turret and shielded CWS while keeping the weapon line clear.
+Corrected yaw proves separated turret/hull ownership and continuous mounting.
+Independent §B8 floor 9.2 / mean 9.36. RE-FREEZE **99962364 -> d8a948cc**
+(55 meshes / 208210 verts). Full verdict:
+`docs/critique/shaded-parity-abrams-ghillie-recert.md`.

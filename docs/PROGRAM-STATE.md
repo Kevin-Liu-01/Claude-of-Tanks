@@ -63,8 +63,8 @@ re-freeze NEW hash, all in ONE commit.
 | kv2 | 382b2310 | freeze-verify only |
 | leo2a6 | 09912270 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | m1a1 | 4e28ff40 | RE-FROZEN 2026-08-08 (§5.79 flank-panel pitch; re-cert floor 9.1 / mean 9.19 x14) |
-| m1a1ha | 99962364 | RE-FROZEN 2026-08-08 (§5.79 flank-panel pitch; re-cert floor 9.1 / mean 9.19 x14) |
-| m1a2_tejas | 01e698e8 | RE-FROZEN 2026-08-08 (§5.80 distinctiveness; massive clean CROWS + sustainment kit; re-cert floor 9.1 / mean 9.23 x14) |
+| m1a1ha | d8a948cc | RE-FROZEN 2026-08-10 (§5.107 full armor/ghillie wave; seated CWS + full turret/hull/MG cover; re-cert floor 9.2 / mean 9.36 x14, corrected yaw0/90 ownership PASS; prior 99962364 retired) |
+| m1a2_tejas | 1adc0bde | RE-FROZEN 2026-08-10 (§5.107 full armor/ghillie wave; massive clean CROWS remains unobstructed and distinct; re-cert floor 9.2 / mean 9.39 x14, corrected yaw0/90 ownership PASS; prior 01e698e8 retired) |
 | merkava3b | REMOVED BY OWNER 2026-08-06 (roster prune; was 8bb8d984, packet historical) |
 | merkava3c | aa74be6a | RE-FROZEN 2026-08-07 (§B2 under-roof closure wave §5.11: solid casting walls, gate rows EXACT, re-cert floor 9.0 on every changed view; sheets shots/critic-merkava-closure/) |
 | kf51 | 9ac547ac | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
@@ -84,7 +84,7 @@ re-freeze NEW hash, all in ONE commit.
 | leo2a4 | f031f2fc | GRADUATED 2026-08-10 (§5.102 owner-source exact rebuild: source upper and camouflage on corrected source-plan stations, donor gear excluded for one shallow native seven-wheel linked-shoe course; gate 94.5 x2; exact track 18/27 band and 0/0 shoes; independent §B8 floor 9.4 / mean 9.52 x14, yaw0/90 load paths and rear-sheet pixel adjudication PASS; earlier f42ac010 candidate retired) |
 | m46_patton | 108806c8 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | centurion3 | bad74e60 | RE-FROZEN 2026-08-08 (no-air graduate-change: crown-ridge pedestal + discharger webs, front-low 1810px->14, re-cert floor 9.0 x17 changed views, gate 91.1 exact; prior 50273080 bore-resit lineage) |
-| m1a2_sepv2 | a0a4e87c | RE-FROZEN 2026-08-08 (§5.80 distinctiveness; elevated armored CROWS + broad ERA; re-cert floor 9.2 / mean 9.31 x14) |
+| m1a2_sepv2 | 7680a400 | RE-FROZEN 2026-08-10 (§5.107 full armor/ghillie wave; elevated armored CROWS + broad passive armor + full cover; re-cert floor 9.2 / mean 9.41 x14, corrected yaw0/90 ownership PASS; prior a0a4e87c retired) |
 | m2a2_bradley | 90a5568c | GRADUATED 2026-08-08 (28th; dual gate: geometry 90.9 x2 every component >=90 landed 81bdad1 + visual floor 9.0 / mean 9.16 x14 views at freeze-verified bytes; oracle e699c868; dress-tier defect bank in the verdict: bow T-hooks, taillight fittings, TOW rear ports, lug stacks, ringed hubs) |
 | m45_patton | 53caa687 | GRADUATED 2026-08-08 (29th; gate 90.7 x5 total + sitting-2 visual floor 9.0 mean 9.13 x14; sitting-1 orders executed: loft.smooth byte-reproduced, ring cupola adjudicated ring-class at station with the measured Ø0.57/x-0.65 deviation compliant; ring-prominence silhouette-tax residual certified) |
 | leclerc | 683be340 | GRADUATED 2026-08-08 (30th; gate 90.3 x2 every component >=90 + visual floor 9.0 mean 9.17 x14 at freeze-verified bytes; the §5.14 §K-exemplar turret standard held through the ladder — no gate-chasing artifacts; commander-well doc trued z_w 0.32..0.66) |
@@ -3244,3 +3244,58 @@ open replacement frame is supported and correctly hull-owned, and every turret
 fitting has a continuous rotating load path. Tracks and winding also pass with
 no visible wound. **KEEP `52f98951`; prior freeze `c13fec50` is retired.
 Fleet gate remains 38/97 and graduates remain 43.**
+
+## 5.107 ABRAMS FIVE-MARK ARMOR + FULL GHILLIE WAVE (2026-08-10, RE-FROZEN)
+
+The owner required substantially better visible armor/decorations and a real
+shrub/ghillie package covering the turret, hull and machine-gun stations on
+`m1a1ha`, `m1a2_tejas`, `m1a2_sepv2`, `m1a2_sepv3` and `m1a2_tusk`. The two
+supplied SEPv2 ZIPs are byte-identical (SHA-256
+`3cb26ee5bdb10c8cbcb2e4af127ff7e8eb30f4c5f260f3895debe33f091a87f0`)
+and carry no preserved redistribution license. They were used only as a
+local visual/inventory reference; no mesh, texture or archive byte ships.
+
+The implementation is original deterministic geometry. A transparent cut-net
+with diagonal cord courses sits directly on crown, cheeks, bustle, glacis,
+engine deck and side carriers. Overlapping leaf strips, knots, grass blades
+and vines all intersect those seats. Separate turret and hull packages enforce
+ownership: turret blankets and the covered CWS/CROWS rotate; glacis, deck,
+skirts, side armor/ERA and TUSK cage remain hull-fixed. Optical glass, gun
+lines and muzzles stay exposed. Passive seam/fastener language is used on
+M1A1HA and clean M1A2, while TUSK/SEPv2/SEPv3 retain their distinct existing
+reactive/passive array grammar instead of receiving one generic ERA skin.
+
+The mandatory configured P95 heights are now 2.80 m M1A1HA, 3.30 m M1A2,
+3.44 m SEPv2, 3.18 m SEPv3 and 3.29 m TUSK. Registered gate rows are 53.2,
+25.7, 14.3 and 0 for HA/M1A2/SEPv2/TUSK respectively. Their low shape scores
+record the owner-mandated armor/ghillie divergence from the bare Tejas oracle,
+not a dimension, floater or seating waiver: dims are 100/100/100/98.3 and
+floaters are 100 throughout. SEPv3 remains FALSE-0; no oracle registration,
+gate file or ledger row was invented.
+
+Exact track audits retain one native seven-wheel course. Front/rear band clips
+are 60/42 for HA, M1A2, SEPv2 and SEPv3 and 60/0 for TUSK; shoe clips are 0/0
+for every mark. Standard audit has zero enclosed-air holes and one connected
+MG/CROWS assembly per mark. Winding reports zero deficit pixels and no visible
+reversed/mixed sheet. The hull-ghillie candidates are correctly hull-owned,
+as the corrected quarter-turn evidence shows.
+
+Freezes reproduce twice: **`d8a948cc`** HA (55 meshes / 208,210 vertices),
+**`1adc0bde`** M1A2 (56 / 214,570), **`7680a400`** SEPv2 (58 / 232,258),
+**`2cd6070`** SEPv3 (55 / 237,010) and **`cfc006f2`** TUSK (66 / 261,898).
+The initial `r6-yaw90` capture was discarded because its driver
+double-converted degrees and produced only a 1–2 degree turn. Final evidence
+uses 42 distinct frames per mark: fourteen paired views plus freshly captured
+actual yaw-0/yaw-90 sets.
+
+Independent §B8 floors/means are HA 9.2/9.36, M1A2 9.2/9.39, SEPv2
+9.2/9.41, SEPv3 9.3/9.44 and TUSK 9.4/9.47. All five pass source/variant
+identity, attachment seating, turret/hull ownership, CWS/CROWS load paths,
+native tracks and winding with no blockers. Forty presentation assets were
+regenerated; live asset/metadata and muzzle-bore checks pass all five. The
+consolidated release wrapper intentionally exits nonzero at its standard-check
+phase because it requires a >=90 machine gate and therefore treats these
+documented owner-divergence/FALSE-0 rows as non-graduates. **KEEP all five
+freezes. The three existing graduates are re-frozen; SEPv3 FALSE-0 and TUSK
+owner-divergence bindings remain non-graduate. Fleet gate stays 38/97 and
+graduates stay 43.**
