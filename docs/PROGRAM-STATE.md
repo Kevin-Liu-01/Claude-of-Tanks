@@ -49,7 +49,7 @@ at load.
 - Env for EVERY node run: `export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh"`
 - npm test before every landing (166 equipment checks + track-geometry).
 
-## 3. GRADUATE REGISTRY (41 graduates, hash-frozen)
+## 3. GRADUATE REGISTRY (42 graduates, hash-frozen)
 Freeze = deterministic geometry hash via `node tools/tmp-hashgeo.mjs
 --ids=...` (camoSeed 4242 pinned build; FNV-1a over position buffers +
 world matrices, mesh-order independent). Graduate-change protocol: fix ->
@@ -81,6 +81,7 @@ re-freeze NEW hash, all in ONE commit.
 | leo2a5 | e215a738 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | leo2_revolution | 24658d8b | RE-FROZEN 2026-08-10 (§5.101 owner-source exact rebuild: complete AMAP/slat exterior on a physically completed rotating pressure core, donor gear excluded for one native seven-wheel linked-shoe system; gate 91.5 x2; standard/track/parent/winding clean; independent §B8 floor 9.2 / mean 9.35 x14, yaw0/90 load paths PASS; prior db70c929 retired) |
 | leo2a7v | 27b2d654 | GRADUATED 2026-08-10 (§5.100 owner-source exact rebuild: articulated source upper with donor gear excluded, native seven-wheel linked-shoe system, buried cage shelves and transom-seated recovery stays; gate 91.1 x2; exact track 0/15 band and 0/58 shoes; independent §B8 floor 9.1 / mean 9.27 x14, yaw0/90 rig/load paths PASS; failed 4628e504 sitting retired) |
+| leo2a4 | f031f2fc | GRADUATED 2026-08-10 (§5.102 owner-source exact rebuild: source upper and camouflage on corrected source-plan stations, donor gear excluded for one shallow native seven-wheel linked-shoe course; gate 94.5 x2; exact track 18/27 band and 0/0 shoes; independent §B8 floor 9.4 / mean 9.52 x14, yaw0/90 load paths and rear-sheet pixel adjudication PASS; earlier f42ac010 candidate retired) |
 | m46_patton | 108806c8 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | centurion3 | bad74e60 | RE-FROZEN 2026-08-08 (no-air graduate-change: crown-ridge pedestal + discharger webs, front-low 1810px->14, re-cert floor 9.0 x17 changed views, gate 91.1 exact; prior 50273080 bore-resit lineage) |
 | m1a2_sepv2 | a0a4e87c | RE-FROZEN 2026-08-08 (§5.80 distinctiveness; elevated armored CROWS + broad ERA; re-cert floor 9.2 / mean 9.31 x14) |
@@ -3028,3 +3029,41 @@ gear, correct fixed hull deck/fan/fender ownership, and one continuously
 seated rotating turret/gun/optics/RWS assembly with no floater, fused mass,
 air seam or disappearing face. **GRADUATED by the §5.101 landing commit; KEEP
 freeze `24658d8b`.**
+
+## 5.102 LEOPARD 2A4 OWNER-SOURCE REBUILD (2026-08-10, GRADUATED)
+
+Owner source `leopard-2a4-otco.zip` was repaired and deterministically baked
+into registered hull, hull-detail, hull-cloth, turret, turret-detail,
+turret-cloth and gun payloads. The bake excludes donor wheels, end drums and
+track. Payload SHA-256 is
+`55abf214396287f17f6a9b3c186775b2c560b6d6e385468752d4491bcba21892`;
+the repaired ignored oracle is
+`f46cabda3f928e8235e4080a394670ec11713c70ae86eec672f48fb27376a598`.
+The candidate keeps the exact source upper and camouflage while using one
+game-native seven-road-wheel linked-shoe course.
+
+Integrated preflight retired the earlier unlanded `f42ac010` candidate after
+the exact track audit exposed a source-plan transform omission: scale had been
+applied without the registered `z=-0.214625` plan center. The landed recipe
+applies `sourceZ=(z+0.214625)*1.055` to every running-gear station and uses a
+0.55 native shoe radial profile. Final exact audit reports front/rear bands
+18/27 and shoes 0/0, with no donor course, doubled terminal or blind spot.
+
+Machine gate reproduces x2 at **94.5** |
+94.5/95.0/96.7/97.3/99.8/100, with JSON SHA-256
+`d65573de3a71657c3d487b262cb2806882793e66a96c0fabbc46c078e773fc67`.
+Standard audit is clean (holes 0, contiguity 0, mg1+0d); parent audit is
+stranded 0 / abutting 0 / dangling 0. Winding reports 0 reversed and one tiny
+44-triangle rear-underbody mixed component (1,531 rear pixels / 0.99%), but
+all direct-rear, quarter, elevated and yaw pixels show a continuous sheet with
+no tear, disappearing face or silhouette pop. The deterministic bake verifies,
+`npm test` and `build:private` are green, and freeze reproduces x2 at
+**`f031f2fc`** (30 meshes / 538,821 vertices).
+
+Fresh independent §B8 review passes all fourteen source pairs at floor
+**9.4** / mean **9.52**. It independently confirms the source upper identity,
+one coherent native seven-wheel course, correct turret/hull ownership through
+yaw 0/90, continuous mounting for all roof and bustle equipment, and the
+rear-sheet winding adjudication. No donor gear, fused turret mass, decoration
+floater, empty-air load path or visible wound remains. **GRADUATED by the
+§5.102 landing commit; KEEP freeze `f031f2fc`.**

@@ -10,6 +10,7 @@
 // window.__CRITIC_PAIRS as data URLs for the puppeteer driver. Deleted after
 // the round.
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { createTank } from '/src/vehicles/tankFactory.js';
 import { MODEL_SOURCE, TANK_SPECS } from '/src/vehicles/specs.js';
 
@@ -36,6 +37,11 @@ const CRITIC_REFERENCE_OVERRIDES = {
   type59: { source:'glb', glb:{ path:'/models/tanks/community/type69_lasttriarius.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
   amx30: { source:'glb', glb:{ path:'/models/tanks/community/amx30b_ahab.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
   amx30b2: { source:'glb', glb:{ path:'/models/tanks/community/amx30b2_ahab.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
+  // Owner 2026-08-10 OTCo ZIP authority. The convenience GLB is a
+  // geometry-equivalent material merge, so it is safe for static pixels only;
+  // the playable bake restores articulation from the original OBJ names.
+  leo2a4: { source:'glb', glb:{ path:'/models/community-candidates/leopard_2a4_otco.glb',
+    fixedMount:true } },
   k2: { source:'glb', glb:{ path:'/models/community-candidates/k2_black_panther_armored_warfare.glb', turretNode:'^Object_21$', gunNode:'^Object_19$', autoPivot:true, turretFollowers:'^Object_(?:2|8|10|15|18|20|22|24|25)$' } },
   type99a: { source:'glb', glb:{ path:'/models/community-candidates/type_99a2_armored_warfare.glb', turretNode:'^Object_31$', gunNode:'^Object_17$', autoPivot:true, turretFollowers:'^Object_(?:3|4|6|7|9|10|11|12|13|15|16|19|20|21|23|30)$' } },
   amx40: { source:'glb', glb:{ path:'/models/community-candidates/amx-40_armored_warfare.glb', turretNode:'^Object_12$', gunNode:'^Object_20$', autoPivot:true, turretFollowers:'^Object_(?:2|5|6|7|8|11|14|15|24)$' } },
@@ -203,7 +209,20 @@ document.body.appendChild(renderer.domElement);
 const scene = new THREE.Scene();
 const engineCtx = { setupShadowMaterial: (m) => m, anisotropy: 1, renderer };
 
-const reference = createTank(id, engineCtx, { camoSeed: 4242, quality: 'high' });
+// The OTCo convenience GLB is intentionally material-merged and has no
+// trustworthy articulation nodes. For static source pixels only, allow its
+// complete raw scene through the fixed-mount loader path, then construct the
+// procedural side normally. This never changes runtime data and avoids
+// distorting the reference material buckets.
+const rawLeo2A4 = id === 'leo2a4';
+let reference;
+if (rawLeo2A4) {
+  const gltf = await new GLTFLoader().loadAsync(source.glb.path);
+  reference = { root: gltf.scene };
+  reference.root.userData.__glbSwapped = true;
+} else {
+  reference = createTank(id, engineCtx, { camoSeed: 4242, quality: 'high' });
+}
 const procedural = createTank(id, engineCtx, { camoSeed: 4242, quality: 'high', proceduralOnly: true });
 scene.add(reference.root, procedural.root);
 

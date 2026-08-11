@@ -9263,10 +9263,10 @@ function buildLeo1A5Profile(P) {
 export const LEOPARD_PROFILES = {
   leo2a6: { build: buildLeo2A6 },
   leo2a5: { build: buildLeo2A5 },
-  // BASE-21 modernization (2026-08-06): the family profile overrides the
-  // ancient modern2.js builder (PROFILED_BUILDERS is assigned last in
-  // tankFactory — "an exact per-vehicle profile wins").
-  leo2a4: { build: buildLeo2A4 },
+  // leo2a4 is intentionally not overridden here. Its owner-authoritative
+  // semantic OBJ rebuild lives in modern2.js; registering this older
+  // handcrafted profile last would silently replace the exact-source upper
+  // assembly and its correctly parented turret furniture.
   leo2a7v: { build: buildLeo2A7V },
   leopard2_proto: { build: buildLeo2Proto },
   leo2_revolution: { build: buildLeo2RevolutionSource },

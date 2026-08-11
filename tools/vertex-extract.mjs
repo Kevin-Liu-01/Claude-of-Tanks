@@ -510,11 +510,10 @@ const REG = {
   },
   // ---- BASE-21 ORACLE WAVE (owner drop 2026-08-06; ATTRIBUTION.md "Base-21
   // oracle wave"). PROVENANCE ADJUDICATIONS from this onboarding round:
-  // * leo2a4 <- leopard_2a4_otco.glb NOT REGISTERED — the live Sketchfab
-  //   description reads "Leopard 2A4 OTCO from War Thunder" (tag:
-  //   warthunder); same asset ATTRIBUTION.md already rejected 2026-07-27.
-  //   THE ONE ABSOLUTE RULE refuses it regardless of the CC-BY tag (the
-  //   type_89 precedent).
+  // * leo2a4's earlier hold is superseded by the owner's explicit
+  //   2026-08-10 instruction to use the newly supplied nested source. The
+  //   deterministic repaired GLB below preserves every triangle and restores
+  //   the OBJ's semantic Hull/Turret/Gun ownership.
   // * type10 <- type-10_main_battle_tank.glb ON HOLD — author
   //   nazidefenseforceofficial was adjudicated a game-rip poster
   //   2026-07-27 (T-90AM, *_dds ripper textures); no per-asset rip
@@ -524,6 +523,11 @@ const REG = {
   //   REGISTERED — Sketchfab page is tagged createdwithai +
   //   world-of-tanks (AI-generated); measurement-unusable. challenger1
   //   keeps its gate-PASS recovered print.
+  leo2a4: {
+    path: 'public/models/community-candidates/leopard_2a4_otco_repaired.glb',
+    turretNode: '^Turret$', gunNode: '^Gun$', autoPivot: true,
+    pubDims: { hullLengthM: 7.72, overallLengthM: 9.67, widthM: 3.70, heightM: 2.76 },
+  },
   challenger2: {
     // "Challenger II" by buh (CC-BY-4.0, the leo2a6 author). Raw print is
     // ~1:1 meters, nose +z (muzzle overhang +z 2.86 m). Batch 48d splits

@@ -64,6 +64,11 @@ const LOCAL_REFERENCE_OVERRIDES = {
   // prints (no paintUntextured). Follower sets are AABB-census best-effort
   // (orchestrator owns corrections).
   k2: { source:'glb', glb:{ path:'/models/community-candidates/k2_black_panther_armored_warfare.glb', turretNode:'^Object_21$', gunNode:'^Object_19$', autoPivot:true, turretFollowers:'^Object_(?:2|8|10|15|18|20|22|24|25)$' } },
+  // Owner-authoritative 2026-08-10 source rebuild. The nested OBJ preserves
+  // 102 semantic names while the convenient loose GLB merges them by
+  // material. The bake therefore emits this deterministic, locally ignored
+  // articulation oracle without altering any source triangle.
+  leo2a4: { source:'glb', glb:{ path:'/models/community-candidates/leopard_2a4_otco_repaired.glb', turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true } },
   // Owner-authoritative 2026-08-10 nested source rebuild. The deterministic
   // local oracle restores semantic Hull/Turret/Gun ownership without
   // altering any source triangle.

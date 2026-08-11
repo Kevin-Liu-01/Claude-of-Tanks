@@ -19,6 +19,7 @@
 
 import * as THREE from 'three';
 import { KIT } from './tankFactory.js';
+import { buildLeopard2A4SourceGeometry } from './profiles/leopard2a4-source-geometry.js';
 // §I fittings census: the FITTINGS import is the spelling that survives
 // synchronous top-level createTank rigs (kit.js attach-site note).
 import { FITTINGS, muzzleBore } from './profiles/kit.js';
@@ -189,11 +190,11 @@ export const MODERN2_SPECS = {
         shell('DM12 HE proxy', 'HE', 120, 40, 40, 560, 1000),
       ],
     },
-    // heightM 2.48 -> 3.03 (§5.73-1 P95-envelope law + §5.76 RCWS restore):
-    // the §5.09 FLW station is mandatory kit and its trough/shield/receiver
-    // BAND owns the p95 (probe: p95Top 3.020 across the 12%-filtered side
-    // silhouette — band-class, not a spike). m26/type99a precedent.
-    dims: { hullLengthM: 7.72, overallLengthM: 9.67, widthM: 3.70, heightM: 3.03 },
+    // The owner-authoritative OTCo source supersedes the former oversized
+    // procedural FLW envelope. Its actual 12%-filtered body course is 2.76 m;
+    // the taller antenna/MG lines remain legal spikes rather than a false
+    // broad 3.03 m body datum (§5.73-1 P95-envelope law).
+    dims: { hullLengthM: 7.72, overallLengthM: 9.67, widthM: 3.70, heightM: 2.76 },
     armor: mbtArmor({
       hl: 3.86, hw: 1.85, roofY: 1.72, trkTop: 1.0, floor: 0.5,
       turretPivot: [0, 1.72, -0.15], gunPivot: [0, 0.42, 0.55],
@@ -475,6 +476,45 @@ for (const id of MODERN2_IDS) {
 // plates meeting the mantlet slot, EMES-15 cutout in the right cheek top,
 // flat roof, round hatches, baskets across the whole turret rear, L/44.
 // ---------------------------------------------------------------------------
+// Owner-source rebuild (2026-08-10). The authoritative nested OTCo OBJ keeps
+// 102 named objects; the convenient GLB merges those into material buckets
+// and therefore cannot prove articulation. The generated payload uses the
+// original names so every hatch, sight, MG, ammunition box, antenna and camo
+// net follows the turret, while hull furniture remains fixed. Source wheels,
+// suspension, end drums and tracks are absent. The native seven-station gear
+// below is measured to the donor centers and retains scrolling, damage,
+// thrown-track and terrain-conformance behavior.
+function buildLeo2A4Source(P) {
+  const { buildRunningGear } = KIT;
+  const zScale = 1.055;
+  // The semantic bake plan-centres every source point by raw z=-0.214625
+  // before applying the longitudinal datum. Apply that same transform to the
+  // native gear stations; omitting the centre term shifted the whole course
+  // 22.6 cm rearward and drove both terminal wraps through the exact hull.
+  const sourceZ = (z) => (z + 0.214625) * zScale;
+  buildLeopard2A4SourceGeometry(P);
+  buildRunningGear(P, {
+    style: 'rubber', wheelR: 0.348, wheelW: 0.25, wheelY: 0.425,
+    xc: 1.36, dishR: 0.80,
+    wheelZs: [2.417, 1.569, 0.766, 0.004, -0.844, -1.686, -2.532]
+      .map(sourceZ),
+    sprocket: { z: sourceZ(-3.19), y: 0.895, r: 0.36 },
+    idler: { z: sourceZ(3.19), y: 0.895, r: 0.27 },
+    rollers: [1.97, 1.158, -0.372, -2.044]
+      .map((z) => ({ z: sourceZ(z), y: 1.087, r: 0.10 })),
+    trackW: 0.635, trackTh: 0.075, botY: 0.055, topY: 1.24,
+    contactZF: sourceZ(2.59), contactZR: sourceZ(-2.71),
+    paintedEnds: true, coveredTop: true, pinCapOuter: 0.285,
+    // The OTCo terminal enclosures hug the donor course closely. Use the
+    // native fine-modern shallow shoe profile so its physical rail/horn
+    // depth clears those enclosures without moving the measured stations.
+    shoeRadialScale: 0.55,
+    padCornerFloor: 0.012, gearFloor: true,
+  });
+  P.decal('turret', 'crossgrey', null, 0.36, [1.41, 0.62, -0.6], Math.PI / 2);
+  P.decal('turret', 'crossgrey', null, 0.36, [-1.41, 0.62, -0.6], -Math.PI / 2);
+}
+
 function buildLeo2A4(P) {
   const { box, frustum, cylY, cylX, cylZ, torus, slab,
     buildGun, buildRunningGear, fenders, headlight, liftEye, periscope,
@@ -1976,7 +2016,7 @@ function buildT14(P) {
 
 /** Builder table merged into tankFactory.BUILDERS by the extension hook. */
 export const MODERN2_BUILDERS = {
-  leo2a4: buildLeo2A4,
+  leo2a4: buildLeo2A4Source,
   t80u: buildT80U,
   leclerc: buildLeclerc,
   type99a: buildType99A,
