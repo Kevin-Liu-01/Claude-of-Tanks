@@ -77,6 +77,7 @@ browser-render rigs self-ticket the /tmp/cot-shots.lock FIFO — never wrap them
 | vertex-normalize.mjs | `[--ids=] [--verify]` | warp-plan literals for repair batches |
 | repair_oracles.py | `inspect <glb>` / `repair <id>` | oracle repairs (orchestrator lane, §E) |
 | t14-source-bake.py | `--verify` / `--write` | deterministic compact T-14 exact-source payload; verifies source SHA, semantic groups and donor-gear exclusion |
+| leopard2a6-source-bake.py | `--verify` / `--write` | deterministic CC-BY Leopard 2A6 articulated upper payload; verifies source SHA, semantic hull/turret/gun groups, rigid whip repair and donor-gear exclusion |
 | tmp-modelsource-dump.mjs | `node tools/tmp-modelsource-dump.mjs [out.json]` | runtime MODEL_SOURCE dump (load-prove; helper-expanded mirrors) |
 | genIcons.mjs | `--ids=<id>` / `--tanks <id>` | 8 hashed assets per tank + manifest (views, silhouettes, hit/armor/module diagrams) |
 | tank-assets-check.mjs | `--ids=<id>` | Fleet completeness, hashes/dimensions, live geometry+metadata freshness, cannon-bore gate |

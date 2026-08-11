@@ -33,6 +33,7 @@
 // hull z-extents below replicate each oracle's frame.
 import * as THREE from 'three';
 import { KIT, FITTINGS, evenStations, muzzleBore, orientedSlab } from './kit.js';
+import { buildLeopard2A6SourceUpper } from './leopard2a6-source-geometry.js';
 import { buildLeopardRevolutionSourceUpper } from './leopard-revolution-source-geometry.js';
 import { replaceLeopard2A7SourceUpper } from './leopard2a7-source-geometry.js';
 import { vehicleAmbientFloorHook } from '../materials.js';
@@ -2479,6 +2480,34 @@ function buildLeo2A6(P) {
     };
   }
   P.topY = 1.24;
+}
+
+// Owner-source rebuild (2026-08-11). The provided Buh GLB already carries a
+// clean semantic hull/turret/gun split, so its complete upper vehicle can be
+// used verbatim instead of re-approximating the casting with gate-shaped
+// primitives. The source's duplicated donor wheel/track objects are excluded
+// by the bake; this measured native course is the previously certified A6
+// fleet gear and remains animated, damage-aware and gameplay-consistent.
+function buildLeo2A6OwnerSource(P) {
+  buildLeopard2A6SourceUpper(P);
+  leoGear(P, {
+    // Preserve the source outer course (~1.62 m) while opening the real
+    // inter-track corridor at the lower glacis for native guide horns.
+    xc: 1.36, trackW: 0.52,
+    wheelR: 0.365, wheelY: 0.39, span: [2.66, -2.14],
+    dishR: 0.78,
+    // Terminal centers/radii are measured from the owner GLB after the same
+    // source normalization. The retired profile raised both ends into its
+    // hand-built guards; on the exact hull that became real shoe/sponson
+    // overlap. These source seats preserve the native animation with honest
+    // physical clearance.
+    // The source donor's outer idler drum is duplicated/oversized. The
+    // native terminal uses its inner running surface, tucked beneath the
+    // source mudguard so the scrolling shoes cannot cut through the guard.
+    idler: { z: 3.35, y: 0.65, r: 0.15 },
+    sprocket: { z: -3.095, y: 0.807, r: 0.31 },
+    topY: 1.10, botY: 0.058,
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -9261,7 +9290,7 @@ function buildLeo1A5Profile(P) {
 }
 
 export const LEOPARD_PROFILES = {
-  leo2a6: { build: buildLeo2A6 },
+  leo2a6: { build: buildLeo2A6OwnerSource },
   leo2a5: { build: buildLeo2A5 },
   // leo2a4 is intentionally not overridden here. Its owner-authoritative
   // semantic OBJ rebuild lives in modern2.js; registering this older

@@ -1121,3 +1121,30 @@ Fittings census mg0+0d unchanged (packet-justified hand-authored MG3,
 
 ## 2026-08-06 FLEET MUZZLE-BORE + §C.1 WINDING SWEEP (fleet-sweep one-liner)
 - §B3.1 existing dark-on-dark face ring kept; shadow furniture supplies the void read (z 5.5125); §C.1 39 reversed re-oriented (leoHullV3 sponson/glacis, wedgeTurretV3 LEFT complexes, nose trio); F-vs-D 253->0; gate HELD x2 EXACT 90.9 PASS; hash cff6f478 -> 09912270 CANDIDATE; mantlet mass verified per MANTLETS-MANDATORY (db9168c). Mechanism: kit.js muzzleBore shadow-named furniture + orientedSlab guard (3fca39b / 1017339); end-on+quarter crops shots/muzzle-sweep/{before,after}/.
+
+## 2026-08-11 OWNER-SOURCE UPPER REBUILD — GRADUATED
+
+Owner input `/Users/kevinliu/Downloads/leopard_2_a6.glb`, SHA-256
+`b98d81990ecf8a65e8d7f81158226f1bd55fe71d6e923c4f896151d7ee237477`,
+is the attributed buh CC-BY-4.0 source. `tools/leopard2a6-source-bake.py`
+deterministically bakes its semantic hull/turret/gun meshes into
+`src/vehicles/profiles/leopard2a6-source-geometry.js` while excluding donor
+running gear. The two raw tall whips use the documented rigid 104-vertex
+tied-down repair. Width normalization is 3.75 m and preserves the source plan
+aspect ratio.
+
+The playable now uses the exact source upper and one native seven-road-wheel
+animated linked-shoe system. Exact track audit is band 0/0 and shoes 0/0;
+contiguity is zero and fittings are `mg1+0d`. Freeze `961b625b` is 30 rendered
+meshes / 557,311 rendered vertices. Generated module SHA-256:
+`2d174631885c13341337c51ae50246dc556ea95fc60e38707d327b436cea96a8`.
+
+Gate shape components pass honestly at hull 90.7 / whole 90.3 / turret 91.4 /
+stations 100 / floaters 100. Headline 42.8 is dimension-only: exact source
+height and hull length differ 4.25% and 4.18% from the published rows. A
+height-compression falsification broke exact source fidelity and was reverted;
+the source is not distorted for a nominal row. The 42-frame final visual/yaw
+packet scores floor 9.4 / mean 9.58, proves a real quarter-turn and coherent
+turret/hull ownership, and finds no fused mass, stranded equipment, floating
+attachment or winding wound. Full receipt:
+`docs/critique/shaded-parity-leo2a6-owner-source-graduation.md`.

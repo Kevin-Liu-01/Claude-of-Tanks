@@ -61,7 +61,7 @@ re-freeze NEW hash, all in ONE commit.
 | m60a1 | 912de524 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | m60a3 | 097c35a2 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | kv2 | 382b2310 | freeze-verify only |
-| leo2a6 | 09912270 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
+| leo2a6 | 961b625b | GRADUATED 2026-08-11 (§5.113 exact CC-BY owner-source upper, native seven-wheel linked tracks, dimension-only false zero; visual floor 9.4) |
 | m1a1 | 4e28ff40 | RE-FROZEN 2026-08-08 (§5.79 flank-panel pitch; re-cert floor 9.1 / mean 9.19 x14) |
 | m1a1ha | d8a948cc | RE-FROZEN 2026-08-10 (§5.107 full armor/ghillie wave; seated CWS + full turret/hull/MG cover; re-cert floor 9.2 / mean 9.36 x14, corrected yaw0/90 ownership PASS; prior 99962364 retired) |
 | m1a2_tejas | 1adc0bde | RE-FROZEN 2026-08-10 (§5.107 full armor/ghillie wave; massive clean CROWS remains unobstructed and distinct; re-cert floor 9.2 / mean 9.39 x14, corrected yaw0/90 ownership PASS; prior 01e698e8 retired) |
@@ -3550,3 +3550,51 @@ record are regenerated from the freeze. Targeted asset and muzzle-bore checks,
 `cacb1337`; the old `5bf5f2ec` gate-shaped visual failure and every intermediate
 reconstruction sitting are retired. Fleet gate is honestly 37/97 and graduates
 are 44.**
+
+## 5.113 LEOPARD 2A6 OWNER-SOURCE UPPER REBUILD (2026-08-11, GRADUATED)
+
+The owner-supplied `/Users/kevinliu/Downloads/leopard_2_a6.glb` has SHA-256
+`b98d81990ecf8a65e8d7f81158226f1bd55fe71d6e923c4f896151d7ee237477`.
+It is the same CC-BY-4.0 buh Leopard 2 A6 lineage already recorded in
+`docs/ATTRIBUTION.md`. The deterministic `tools/leopard2a6-source-bake.py`
+fails closed on that hash, reads only the semantic hull, turret and gun
+meshes, and excludes donor wheels, tracks, rollers and terminal gears. Two
+authored 1.6 m bustle whips are rigidly folded into the source's documented
+Bundeswehr tied-down pose: exactly 104 source vertices rotate 90 degrees about
+their shared base line with no deletion, scaling or reshaping.
+
+The retired procedural approximation is replaced by the exact articulated
+source upper: 31,012 hull vertices / 34,888 triangles, 20,250 turret vertices /
+23,641 triangles and 1,949 gun vertices / 2,614 triangles. Authored hull plan,
+arrowhead AMAP cheeks, mantlet and complete L/55, EMES/PERI stations, roof
+furniture, bustle, deck and rear service geometry are retained. The source is
+width-normalized to 3.75 m while preserving its authored plan aspect ratio.
+One native seven-wheel linked-shoe course per side replaces the donor gear;
+its idler, sprocket, belt and shoe lane are reseated under the source
+mudguards. Exact audit is band **0/0**, shoes **0/0**, blind spots zero,
+standard contiguity zero and decoration census `mg1+0d`.
+
+Freeze reproduces at **`961b625b`** (30 rendered meshes / 557,311 rendered
+vertices / 185,949 triangles). The generated source module SHA-256 is
+`2d174631885c13341337c51ae50246dc556ea95fc60e38707d327b436cea96a8`.
+The shape gate confirms hull 90.7 / whole 90.3 / turret 91.4 / stations 100 /
+floaters 100. Its **42.8** headline is an adjudicated dimension-only false
+zero: exact owner geometry measures height 2.75 vs 2.64 m (4.25%), source hull
+7.40 vs published 7.72 m (4.18%), overall 10.78 vs 10.97 m (1.72%) and width
+3.75 vs 3.75 m (0.08%). A falsification pass that anisotropically compressed
+height improved the nominal dimension row but destroyed source fidelity
+(stations 100 -> 66.5); it was rejected. Distorting exact owner geometry to
+manufacture a green dimension row is forbidden.
+
+Fresh final evidence contains fourteen paired source/procedural views plus
+fourteen yaw-0 and fourteen genuine yaw-90 frames. The fixed vector is
+`[9.5,9.6,9.5,9.5,9.4,9.5,9.5,9.6,9.7,9.7,9.6,9.7,9.6,9.7]`, floor
+**9.4**, mean **9.58**. It confirms exact source fidelity, a genuine
+quarter-turn, the gun/mantlet/turret/roof/whip package moving as one seated
+assembly, hull/deck/native gear remaining fixed, and no fused duplicate mass,
+stranded fitting, empty-air decoration, track penetration or visible winding
+wound. Presentation assets and release gates are regenerated at landing.
+**GRADUATED; KEEP `961b625b`; retired freezes `09912270`, `cff6f478`,
+`80b76338` and the procedural approximation no longer define the playable.
+Fleet gate is honestly 36/97 because this exact-source dimension false zero
+replaces the old procedural machine PASS; graduates are 45.**
