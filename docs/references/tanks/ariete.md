@@ -803,3 +803,44 @@ orchestrator lane. §B battery final bytes: track-clip --exact 0/0 band
 turret-fix adjudications ✓; standard-check clip ✓ contig 0 ✓ mg1+3d ✓;
 winding 22 slabs REVERSED 0 ✓; npm test green. Evidence:
 shots/misc-ladders/{before,after}/ariete*.png.
+
+## OWNER-SOURCE COMPLETE REBUILD (2026-08-11)
+
+The owner supplied `/Users/kevinliu/Downloads/c1_ariete_italian_mbt.glb`
+(112,070,992 bytes; SHA-256
+`738505b3099016c938daa85f8eb82806cd6af19a2aa3e15b26810bc6c163607e`).
+Its DustyMojito/Sketchfab Standard provenance makes it a local visual and
+measurement reference only. No source mesh, texture, material, animation or
+derivative payload byte ships. The retired quarantined model swap remains
+disabled; gameplay uses the original procedural build.
+
+`buildArieteSource2026` replaces the old slab-heavy fallback with a long low
+hull, shallow layered bow, broad low connected turret, integrated rounded
+mantlet and corrected 4.38 m gun run. The roof has asymmetric cupola, TURMS,
+optic, MG/RWS and antenna stations on explicit collars or plinths. Both smoke
+banks meet cheek brackets. A shallow open basket returns into the bustle
+through continuous side, transverse and diagonal rails. Unequal backed rear
+service bays, horizontal courses, exhaust/recovery hardware, lamps and tow
+points stay hull-owned. The final 14 x 10 x 14 cm dark service seat closes the
+last single-cell recovery-rail pocket without changing the visible envelope.
+
+Exactly seven large road wheels per side retain distinct tire, dish and hub
+faces inside one fleet-native linked-shoe course. Exact band clips are 7/0 and
+shoe clips 8/0, within the sanctioned <=60 band. Contiguity is zero holes;
+parent audit is stranded 0 / abutting 0 / dangling 0. Winding is 0 reversed /
+0 mixed / 0 deficit pixels. The mode-2 57-pixel `rig_hull/mesh#21` nominee is
+the fixed backed rear service seat confirmed by yaw evidence, not stranded
+turret geometry.
+
+The final freeze reproduces at **`acea2100`** (49 meshes / 75,357 vertices).
+Dimensions score 99.4 and floaters 100. The raw commercial source's fused gun,
+sparse upper-component segmentation and unsuitable hull/turret mask topology
+cap the automated comparison honestly at **24.8** | hull 59.2 / whole 39.5 /
+turret 24.8 / stations 64.6 / dims 99.4 / floaters 100. This row is not
+presented as a machine PASS; JSON SHA-256 is
+`1f79dcc144078df83fc8128ca07c7487394537d35f7a6dd0fda4001cdae35ff3`.
+
+Fresh independent final evidence contains 42 uniquely hashed frames: fourteen
+paired source/procedural views and genuine yaw-0/yaw-90 sets. Only the
+immutable `acea2100` re-certification is valid; its final vector and
+disposition are recorded in `docs/PROGRAM-STATE.md` at landing.

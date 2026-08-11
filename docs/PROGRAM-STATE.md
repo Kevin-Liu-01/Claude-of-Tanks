@@ -3450,3 +3450,46 @@ regenerated; targeted asset/metadata and muzzle-bore checks, `npm test` and
 correctly requires a >=90 machine row and will not waive the fused-oracle
 cap. **KEEP `8319dbb8`; all earlier Type 74 fallback/freezes are retired.
 Fleet gate remains 38/97 and graduates remain 43.**
+
+## 5.111 C1 ARIETE OWNER-SOURCE COMPLETE REBUILD (2026-08-11, RE-FROZEN)
+
+The supplied `/Users/kevinliu/Downloads/c1_ariete_italian_mbt.glb` is
+112,070,992 bytes with SHA-256
+`738505b3099016c938daa85f8eb82806cd6af19a2aa3e15b26810bc6c163607e`.
+Its DustyMojito/Sketchfab Standard provenance keeps it local-only as a visual
+and measurement oracle. No source mesh, material, texture, animation or
+derived payload byte ships, and the historical quarantined model swap stays
+disabled.
+
+The old slab-heavy procedural fallback is retired. The original procedural
+replacement has a long low hull, shallow layered bow, a broad low connected
+turret and an integrated rounded mantlet with a source-measured shorter gun
+run. Asymmetric cupolas, TURMS/optic stations, MG/RWS, smoke banks and antenna
+whips all meet visible seats, collars or cheek brackets. The open rear basket
+returns into the bustle through side, transverse and diagonal rails. Unequal
+backed service bays and exhaust/recovery/light/tow hardware remain hull-owned.
+A small real backing seat inside the lower recovery rails closes the final
+single 5 cm top-down pocket without silhouette growth.
+
+Exactly seven native road wheels per side remain separately legible inside
+one continuous linked-shoe course. Exact band clips are 7/0 and shoes 8/0;
+standard contiguity is zero. Parent audit is stranded 0 / abutting 0 /
+dangling 0. Winding is 0 reversed / 0 mixed / 0 deficit pixels. The 57-pixel
+mode-2 nominee is the supported fixed rear service seat, not a turret item.
+
+Freeze reproduces x2 at **`acea2100`** (49 meshes / 75,357 vertices).
+Dimensions are 99.4 and floaters 100. The source GLB's fused gun and sparse,
+mask-incompatible component segmentation cap the automated source comparison
+at **24.8** | 59.2/39.5/24.8/64.6/99.4/100 rather than permitting a false
+machine PASS. Gate JSON SHA-256 is
+`1f79dcc144078df83fc8128ca07c7487394537d35f7a6dd0fda4001cdae35ff3`.
+
+Fresh independent §B8 uses only the 42 uniquely hashed `acea2100` r14 frames:
+fourteen paired views plus genuine yaw-0/yaw-90 sets. Its vector is
+`[9.3,9.3,9.2,9.1,9.0,9.1,9.2,9.3,9.3,9.4,9.2,9.4,9.3,9.4]`, floor
+**9.0**, mean **9.25**. It passes source fidelity, the rear-seat closure, all
+turret and basket load paths, hull ownership, seven-wheel native tracks and
+winding with no fused mass, stranded fitting, empty-air decoration or visible
+wound. Presentation assets and release gates are regenerated at landing.
+**KEEP `acea2100`; `5a99fca8` and every earlier Ariete freeze are retired.
+Fleet gate remains 38/97 and graduates remain 43.**
