@@ -3299,3 +3299,59 @@ documented owner-divergence/FALSE-0 rows as non-graduates. **KEEP all five
 freezes. The three existing graduates are re-frozen; SEPv3 FALSE-0 and TUSK
 owner-divergence bindings remain non-graduate. Fleet gate stays 38/97 and
 graduates stay 43.**
+
+## 5.108 K1A1 K6-ON-CUPOLA + STRUCTURAL FINISH (2026-08-10, RE-FROZEN)
+
+The owner's standing K6-to-cupola order supersedes the obsolete 2.25 m
+low-wall trade. The owner archive `k1a1-armored-warfare.zip` is SHA-256
+`d2e8eeb7d828b2cff23ee78d54657ebf97935f430151741f4dab8a23cbb6a96d`.
+Its nested Armored Warfare OBJ/textures have no preserved redistribution
+license and remain quarantined for local visual measurement only; no archive,
+mesh, material, texture or derivative payload byte ships. The ignored local
+visual oracle is SHA-256
+`b36b620f868cccbdbc2a874c6967273e2cc712b7df83c6e1bc054ec95bad24a0`.
+
+The old center-box/outer-slab turret is retired. One continuous twelve-station
+polyLoft now forms a short mantlet throat, swept cheeks, low rounded sides and
+tapered bustle. The K6 sits on a broad AA ring, hatch, vision drum and buried
+cupola seat; the loader MAG has an explicit hatch ring. Doghouse, periscopes,
+mast, folded whips and smoke banks all meet physical pads, collars or cheek
+bases. The open wrap basket directly contacts the bustle and returns through
+longitudinal rails, transverse brackets, corner uprights and a narrowed rear
+rack, so its negative space remains supported rather than becoming a wall or
+floater.
+
+Hull shoulders are canted, the prow flare follows the glacis rake, and shorter
+raised skirts expose a compact native six-wheel course. The six 0.36 m road
+wheels use 0.75 m cadence and shortened terminal transitions while retaining
+the game's linked-shoe animation/damage system. No donor wheel, drum, band or
+track byte enters the playable vehicle. The configured combat P95 height is
+2.58 m; measured broad-envelope height is 2.56 m.
+
+Freeze reproduces x2 at **`28c7f5f0`** (62 meshes / 73,566 vertices).
+Dimension and floater rows are 100: actual/published height 2.56/2.58, hull
+7.51/7.48, overall 9.67/9.71 and width 3.59/3.60. The quarantined print's
+source/material segmentation keeps its comparison gate cap-documented at
+**49.7** | 58.5/53.7/49.7/51.3/100/100; that row is not presented as a
+machine PASS. Winding is 0 reversed / 0 mixed, with a clean 131-pixel (0.184%)
+front-right deficit and a clean 112-pixel yaw nominee. Parent audit's sole
+candidate is the fixed driver-periscope strip; it reports no abutting or
+dangling fitting. Fresh yaw identifies the winding nominee as a supported
+hull-owned rear spare-track fitting.
+
+Fresh independent §B8 inspected 42 distinct frames and confirmed a genuine
+quarter-turn. Its vector is
+`[9.2,9.3,9.1,9.1,9.0,9.1,9.1,9.3,9.2,9.3,9.2,9.3,9.3,9.3]`, floor
+**9.0**, mean **9.21**. Gun, shell, K6, loader MG, smoke/optic/antenna suite
+and entire open basket rotate together with visible seats; driver optics,
+deck, transom and rear spare links remain hull-fixed. One coherent six-wheel
+native course passes with no donor duplication, penetration or broken wrap.
+No fused mass, stranded equipment, empty-air decoration or visible winding
+wound remains. All eight K1A1 presentation assets and its manifest record were
+regenerated; the targeted asset/metadata/geometry/muzzle-bore gate passes 1/1.
+`npm test` and `npm run build:private` pass. The all-fleet asset
+freshness checker remains independently red only on pre-existing unrelated
+`leo2a4`, `leo2a7v`, `leopard2_proto`, `m1a1` and `type10` stale records; the
+new K1A1 record is not among its failures. **KEEP
+`28c7f5f0`; prior `53b64e74` and its low-wall K6 trade are retired. Fleet
+gate stays 38/97 and graduates stay 43.**

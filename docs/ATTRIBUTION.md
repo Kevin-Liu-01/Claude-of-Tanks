@@ -848,7 +848,11 @@ build from photos alone), say so and the files are pulled.
 - community-candidates/t-90a_burlak_armored_warfare.glb (GLB)
 - community-candidates/k1a1_kojf.glb — RE-BAKED by us (blender obj2glb)
   from the zip's SEMANTIC OBJ source (real turret/cannon/tread nodes);
-  original zip retained in ~/Downloads.
+  original zip retained in ~/Downloads. The owner's 2026-08-10 copy is
+  SHA-256 `d2e8eeb7d828b2cff23ee78d54657ebf97935f430151741f4dab8a23cbb6a96d`;
+  the ignored GLB oracle is
+  `b36b620f868cccbdbc2a874c6967273e2cc712b7df83c6e1bc054ec95bad24a0`.
+  Neither source nor derived commercial-game geometry/textures ship.
 - community-candidates/t90ms_kojf.glb — re-baked from OBJ source, same.
 - community-candidates/t90_kojf.glb — re-baked from OBJ source, same.
 Textures on the re-bakes are partial (geometry is the instrument).
