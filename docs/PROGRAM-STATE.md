@@ -3355,3 +3355,50 @@ freshness checker remains independently red only on pre-existing unrelated
 new K1A1 record is not among its failures. **KEEP
 `28c7f5f0`; prior `53b64e74` and its low-wall K6 trade are retired. Fleet
 gate stays 38/97 and graduates stay 43.**
+
+## 5.109 TYPE 99A2 OWNER-SOURCE COMPLETE REBUILD (2026-08-11, RE-FROZEN)
+
+The owner-required Type 99A2 finishing wave retires the §5.51/§5.52
+block-stack/ERA-blanket builder. The supplied
+`type_99a2_armored_warfare.glb` is SHA-256
+`35024b8262ae065153da0f704f1c42a66b4a8e239a46a525af76ee12c405043f`.
+Because it is commercial-game-titled and lacks proven redistribution
+provenance, it remains a local measurement/visual reference only. No source
+mesh, material, texture, animation or derived payload byte ships.
+
+The new original procedural build has a long low hull, shallow sharp glacis,
+one connected low arrowhead turret, integrated gun root and lengthened
+chamfered aft shoulders. A backed full-width open bustle returns into the
+turret through upper/lower rails, deep end frames, corner uprights and diagonal
+braces. Hatches, dense periscopes, panoramic/compact sights, MG, smoke banks
+and antennas all meet physical plinths, collars or armor pads. The louvred
+engine deck and layered service transom stay hull-owned. Raised/scalloped
+skirts expose six unmistakable native road wheels inside one continuous
+linked-shoe course; donor running gear is absent.
+
+The release-only bow correction narrows the lower nose inside the native
+track lane and carries the outer shoulders on raised guard bridges. Exact
+band clips fall from 204/16 to **17/16**, shoe collisions from 227/0 to
+**0/0**, and the four tiny front-corner top-down pockets close to zero without
+changing the certified upper silhouette.
+
+Freeze reproduces x2 at **`cf97a01b`** (52 meshes / 76,251 vertices).
+Dimensions are 100: measured/published hull 7.33/7.35, overall 10.67/10.70,
+width 3.71/3.70 and P95 height 2.50/2.50. Floaters are 100; parent audit is
+stranded 0 / abutting 0 / dangling 0. Winding is 0 reversed / 0 mixed, with
+one rear-left pixel (0.00%) and zero visible wound. The quarantined print's
+fused/component registration keeps the automated comparison honestly
+cap-documented at **4.0** | 4.0/8.3/28.5/28.1/100/100; this is not claimed
+as a machine PASS. Gate JSON SHA-256 is
+`5f0d6cccd1bf9391128fd744927f7453065f3c3dfece58c8e0a7f636b79f59a7`.
+
+Fresh independent §B8 inspected 42 distinct frames and a genuine quarter-turn.
+Its vector is
+`[9.2,9.3,9.2,9.1,9.1,9.1,9.2,9.3,9.3,9.3,9.2,9.3,9.3,9.4]`, floor
+**9.1**, mean **9.24**. It confirms source proportions, seated roof/bustle
+load paths, correct turret/hull ownership, one coherent six-wheel native
+track course and no fused mass, stranded fitting, empty-air decoration or
+visible backface wound. Eight presentation assets and the manifest record are
+regenerated from the frozen playable. **KEEP `cf97a01b`; prior `8d13f030`
+and pre-release `d1ded13b` are retired. Fleet gate stays 38/97 and graduates
+stay 43.**

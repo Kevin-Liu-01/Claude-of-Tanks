@@ -843,7 +843,13 @@ SEVEN are **LOCAL-ONLY QUARANTINE, never ship**; every playable is a
 procedural build. If the owner wants type_89-strict treatment (delete,
 build from photos alone), say so and the files are pulled.
 - community-candidates/k2_black_panther_armored_warfare.glb (47MB GLB)
-- community-candidates/type_99a2_armored_warfare.glb (21MB GLB)
+- community-candidates/type_99a2_armored_warfare.glb (21MB GLB) — the
+  owner's 2026-08-10 copy is SHA-256
+  `35024b8262ae065153da0f704f1c42a66b4a8e239a46a525af76ee12c405043f`.
+  It is a commercial-game-titled, provenance-inconclusive visual/measurement
+  reference only. No source mesh, material, texture, animation, archive or
+  derived payload byte ships; the playable Type 99A2 is original procedural
+  geometry.
 - community-candidates/amx-40_armored_warfare.glb (31MB GLB)
 - community-candidates/t-90a_burlak_armored_warfare.glb (GLB)
 - community-candidates/k1a1_kojf.glb — RE-BAKED by us (blender obj2glb)

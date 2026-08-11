@@ -1,5 +1,11 @@
 # Type 99A / ZTZ-99A (`type99a`) — BASE-21 photo-class packet
 
+> **CURRENT AUTHORITY (2026-08-11):** §Source-fidelity re-freeze below
+> supersedes the historical no-oracle/build-ready state and the §5.51/§5.52
+> print-loft builder. The quarantined Armored Warfare GLB is measurement and
+> visual-comparison evidence only; the playable remains original procedural
+> geometry.
+
 **Exact variant to model:** Type 99A, PLA production fit — t72-lineage
 low hull carrying a WELDED angular turret with big wedge appliqué cheeks
 meeting the distinctive arrow-shaped front seam, FY-4 ERA arrays on
@@ -258,7 +264,68 @@ cluster + hatches vs shroud).
 - Spec gunBarrel.lengthM 6.25 → 6.55 proxy true-up (orchestrator lane).
 - p95 spikes over 2.35: pano 2.50, mast 2.64 — real fittings,
   documented (fold-down only if an oracle lands).
-- NO ORACLE: §E re-source lane open for a clean-license ZTZ-99A print.
+
+## Source-fidelity re-freeze (2026-08-11 — current authority)
+
+The owner-supplied `type_99a2_armored_warfare.glb` is SHA-256
+`35024b8262ae065153da0f704f1c42a66b4a8e239a46a525af76ee12c405043f`.
+Its game title and unproven redistribution provenance place it in the
+commercial-game quarantine: local visual measurement only, never a runtime
+asset. No mesh, texture, material, animation or derived payload byte ships.
+The obsolete §5.51/§5.52 block-stack/ERA-blanket builder is retired.
+
+`buildType99ASource` is a new deterministic procedural build. A long, low
+hull and sharp shallow glacis carry one connected low arrowhead turret with
+long cheeks and chamfered aft shoulders. The gun root is integrated into the
+primary shell instead of hidden behind proxy slabs. The open full-width
+bustle has a recessed backing, upper/lower rails, deep side returns, corner
+uprights and diagonal braces; its negative spaces are intentional cells, not
+sky holes. Circular hatches, periscope clusters, a panoramic housing, compact
+sights, smoke banks, MG and antenna collars reproduce the source roof cadence
+and all terminate in visible seats. A louvred engine deck and layered rear
+service field replace the former monolithic transom.
+
+The game's native six-wheel running gear is retained. Six 0.44 m road wheels
+use a compact 0.86 m cadence between distinct terminal gears, one continuous
+linked-shoe course and raised/scalloped skirts that leave every wheel disc
+legible. No donor wheel, end drum, band or track byte enters the vehicle.
+Configured P95 dimensions are 7.35 m hull / 10.70 m overall / 3.70 m width /
+2.50 m height; measured values are 7.33 / 10.67 / 3.71 / 2.50, so the
+dimension row is 100. Floater score is 100 and parent audit is stranded 0 /
+abutting 0 / dangling 0. Winding is zero reversed / zero mixed; the only
+residual is one rear-left pixel (0.00%) with no visible wound.
+
+The release-only bow correction narrows the lower nose inside the native
+track lane and carries the outer glacis shoulders over the idler on raised
+guard bridges. It preserves the certified upper silhouette while reducing
+exact band clips from 204/16 to **17/16**, shoe collisions from 227/0 to
+**0/0**, and enclosed top-down pockets from four cells to **zero**.
+
+Freeze reproduces x2 at **`cf97a01b`** (52 meshes / 76,251 vertices). The
+commercial print's fused/component registration is unusable as a shipping
+geometry target, so the comparison row remains honestly cap-documented at
+**4.0** | hull 4.0 / whole 8.3 / turret 28.5 / stations 28.1 / dims 100 /
+floaters 100; it is not presented as a machine PASS. Gate JSON SHA-256 is
+`5f0d6cccd1bf9391128fd744927f7453065f3c3dfece58c8e0a7f636b79f59a7`.
+
+Fresh independent §B8 reviewed 42 distinct frames: fourteen paired source
+views plus fourteen yaw-0 and fourteen true yaw-90 views. Its fixed vector is
+`[9.2,9.3,9.2,9.1,9.1,9.1,9.2,9.3,9.3,9.3,9.2,9.3,9.3,9.4]`, floor
+**9.1**, mean **9.24**. The entire gun, turret, roof suite and supported
+bustle rotate as one; driver/glacis, engine deck, service field, skirts and
+running gear remain hull-fixed. It found no fused duplicate mass, stranded
+fitting, empty-air decoration, donor track or visible backface wound.
+The critic explicitly confirms that the narrowed lower nose remains broad and
+source-like, while the raised shoulders clear the idler with supported
+continuity and no front-corner sky pocket. **KEEP `cf97a01b`; the §5.52
+`8d13f030` freeze and pre-release
+`d1ded13b` sitting are retired.**
+
+### Remaining provenance/gameplay notes
+
+- The historical NO-ORACLE flag is retired. The current commercial-game
+  reference remains quarantined, so a clean-license ZTZ-99A source would
+  still be welcome without changing the procedural-only shipping rule.
 - reverseSpeedKmh 12 (spec) — the real 99A's hydromechanical drive
   reverses faster; gameplay call, not mine.
 
