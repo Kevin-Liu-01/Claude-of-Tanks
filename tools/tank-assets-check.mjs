@@ -23,6 +23,7 @@ const onlyTanks = selected ? selected.split(',').map((id) => id.trim()).filter(B
 const outDir = resolve(opt('out', 'public/icons'));
 const manifestPath = resolve(outDir, 'tank-assets.json');
 const skipBore = args.includes('--skip-bore');
+const liveOnly = args.includes('--live-only');
 const failures = [];
 
 function sha256(buffer) {
@@ -59,17 +60,17 @@ function imageDimensions(buffer, ext) {
   return null;
 }
 
-if (!existsSync(manifestPath)) {
+if (!liveOnly && !existsSync(manifestPath)) {
   console.error(`[tank-assets-check] missing ${manifestPath}; run npm run tank:assets`);
   process.exit(2);
 }
 
-const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
-if (manifest.schemaVersion !== TANK_ASSET_SCHEMA_VERSION) {
+const manifest = liveOnly ? null : JSON.parse(readFileSync(manifestPath, 'utf8'));
+if (manifest && manifest.schemaVersion !== TANK_ASSET_SCHEMA_VERSION) {
   failures.push(`manifest schema ${manifest.schemaVersion} != ${TANK_ASSET_SCHEMA_VERSION}`);
 }
-if (!onlyTanks.length && manifest.partial) failures.push('manifest is partial; full-fleet release requires a complete manifest');
-if (JSON.stringify(manifest.requiredViews) !== JSON.stringify(Object.keys(TANK_ASSET_VIEWS))) {
+if (manifest && !onlyTanks.length && manifest.partial) failures.push('manifest is partial; full-fleet release requires a complete manifest');
+if (manifest && JSON.stringify(manifest.requiredViews) !== JSON.stringify(Object.keys(TANK_ASSET_VIEWS))) {
   failures.push('manifest required-view contract is stale');
 }
 
@@ -109,8 +110,8 @@ try {
   );
   const audit = await page.evaluate((ids) => window.__AUDIT(ids), onlyTanks);
   const liveIds = [...audit.ids].sort();
-  const manifestIds = Object.keys(manifest.tanks || {}).sort();
-  if (!onlyTanks.length && JSON.stringify(liveIds) !== JSON.stringify(manifestIds)) {
+  const manifestIds = manifest ? Object.keys(manifest.tanks || {}).sort() : [];
+  if (manifest && !onlyTanks.length && JSON.stringify(liveIds) !== JSON.stringify(manifestIds)) {
     const missing = liveIds.filter((id) => !manifestIds.includes(id));
     const extra = manifestIds.filter((id) => !liveIds.includes(id));
     failures.push(`fleet mismatch: missing [${missing.join(', ')}], extra [${extra.join(', ')}]`);
@@ -120,27 +121,28 @@ try {
   let checkedFiles = 0;
   for (const id of ids) {
     const live = audit.tanks[id];
-    const saved = manifest.tanks && manifest.tanks[id];
+    const saved = manifest && manifest.tanks && manifest.tanks[id];
     if (!live || live.error) {
       failures.push(`${id}: live audit failed (${live && live.error || 'missing result'})`);
       continue;
     }
-    if (!saved) {
+    if (!liveOnly && !saved) {
       failures.push(`${id}: missing manifest entry`);
       continue;
     }
-    if (saved.geometryHash !== live.geometryHash) failures.push(`${id}: stale geometry ${saved.geometryHash} != ${live.geometryHash}`);
-    if (saved.metadataHash !== live.metadataHash) failures.push(`${id}: stale tier/armor/module metadata ${saved.metadataHash} != ${live.metadataHash}`);
+    if (saved && saved.geometryHash !== live.geometryHash) failures.push(`${id}: stale geometry ${saved.geometryHash} != ${live.geometryHash}`);
+    if (saved && saved.metadataHash !== live.metadataHash) failures.push(`${id}: stale tier/armor/module metadata ${saved.metadataHash} != ${live.metadataHash}`);
     if (!Number.isInteger(live.tier) || live.tier < 1 || live.tier > 10 || !live.tierNumeral) failures.push(`${id}: invalid tier metadata`);
     if (!live.countryCode) failures.push(`${id}: missing country code`);
     if (!live.gun || !(live.gun.caliberMm > 0) || !live.gun.shells.length) failures.push(`${id}: incomplete gun/penetration metadata`);
     if (!live.armor || !live.armor.plates.length) failures.push(`${id}: no armor hit areas`);
     if (!live.armor || !live.armor.modules.length) failures.push(`${id}: no module volumes`);
     const bore = live.muzzleBore || {};
-    if (!skipBore && !(bore.tagged > 0 || (bore.rims > 0 && bore.discs > 0))) {
-      failures.push(`${id}: no verified cannon muzzle bore`);
+    if (!skipBore && !(bore.tagged > 0)) {
+      failures.push(`${id}: no verified cannon muzzle bore (${JSON.stringify(bore)})`);
     }
 
+    if (liveOnly) continue;
     for (const [view, def] of Object.entries(TANK_ASSET_VIEWS)) {
       const asset = saved.assets && saved.assets[view];
       if (!asset) {
@@ -163,7 +165,7 @@ try {
       checkedFiles++;
     }
   }
-  console.log(`[tank-assets-check] audited ${ids.length} tanks / ${checkedFiles} files`);
+  console.log(`[tank-assets-check] audited ${ids.length} tanks / ${checkedFiles} files${liveOnly ? ' (live-only)' : ''}`);
 } catch (error) {
   failures.push(`browser audit failed: ${error.message}`);
 } finally {
@@ -177,4 +179,8 @@ if (failures.length) {
   for (const failure of failures.slice(0, 80)) console.error(`  - ${failure}`);
   process.exit(2);
 }
-console.log(`[tank-assets-check] PASS — assets, metadata and geometry are current${skipBore ? ' (bore gate skipped)' : '; muzzle bores verified'}`);
+if (liveOnly) {
+  console.log(`[tank-assets-check] PASS — live registry metadata${skipBore ? '' : ' and muzzle bores'} verified`);
+} else {
+  console.log(`[tank-assets-check] PASS — assets, metadata and geometry are current${skipBore ? ' (bore gate skipped)' : '; muzzle bores verified'}`);
+}

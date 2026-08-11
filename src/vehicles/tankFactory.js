@@ -3936,6 +3936,49 @@ export function createTank(specId, engineCtx, opts = {}) {
   muzzle.name = 'rig_muzzle';
   muzzle.position.set(0, 0, P.muzzleZ);
   recoilG.add(muzzle);
+  // Fleet muzzle-bore fallback. Profile-authored lips stay authoritative;
+  // older solid-cap builds receive a mask-neutral dark throat attached to
+  // the recoil/FX anchor, and sourced GLB swaps re-seat the same fallback
+  // from their real tube-tip vertices.
+  const authoredBore = root.getObjectByName('muzzleBoreShadowDisc');
+  if (authoredBore) authoredBore.userData.cannonBore = true;
+  const fallbackBore = new THREE.Group();
+  fallbackBore.name = 'muzzleBoreShadowFallback';
+  fallbackBore.userData.cannonBore = true;
+  fallbackBore.userData.caliberMm = spec.gun.caliberMm;
+  fallbackBore.visible = true;
+  // Procedural profile tips are not all normalized to rig_muzzle: legacy
+  // brake caps can end up to ~5.5 cm beyond that nominal anchor. Seat the
+  // render-only mouth 7.6 cm forward, leaving a ~2 cm visible lip while the
+  // firing anchor itself remains untouched.
+  fallbackBore.position.z = 0.076;
+  const muzzleOuterR = Math.max(0.014, (armor.gunBarrel.radiusM || 0.04) * 0.92);
+  const muzzleRimR = Math.max(0.0025, muzzleOuterR * 0.15);
+  const boreSegments = spec.gun.caliberMm <= 40 ? 12 : 18;
+  const boreRimGeo = new THREE.TorusGeometry(
+    muzzleOuterR - muzzleRimR, muzzleRimR, 5, boreSegments);
+  const boreDiscGeo = new THREE.CircleGeometry(muzzleOuterR * 0.62, boreSegments);
+  const boreRim = new THREE.Mesh(boreRimGeo, mats.dark);
+  boreRim.name = 'muzzleBoreShadowFallbackRim';
+  boreRim.userData.cannonBoreFallbackPart = true;
+  // Existing profile-authored rings keep their deliberately modelled lip;
+  // the universal fallback disc still guarantees a dark open throat behind
+  // it. Sourced swaps reveal this rim when they replace the authored mesh.
+  boreRim.visible = !authoredBore;
+  const boreDisc = new THREE.Mesh(boreDiscGeo, mats.shadow);
+  boreDisc.name = 'muzzleBoreShadowFallbackDisc';
+  boreDisc.userData.cannonBoreFallbackPart = true;
+  // Keep the throat just proud of solid-cap legacy barrels. The rim projects
+  // farther toward the viewer, preserving the read as a recess without
+  // disabling depth testing (which would leak through tanks).
+  boreDisc.position.z = 0.004;
+  for (const part of [boreRim, boreDisc]) {
+    part.castShadow = false;
+    part.receiveShadow = true;
+    fallbackBore.add(part);
+  }
+  muzzle.add(fallbackBore);
+  disposables.push(boreRimGeo, boreDiscGeo);
   const turretTop = new THREE.Object3D();
   turretTop.position.set(0, P.topY, 0);
   turretG.add(turretTop);

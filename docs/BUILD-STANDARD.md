@@ -327,8 +327,9 @@ never excuses missing it.
    (`npm run tank:release:check -- --ids=<id>`). The release check requires
    current hashed hero/top/side views, both silhouettes, hit-zone/armor/module
    diagrams, one valid I-X tier, penetration + module metadata, and a visible
-   machine-tagged muzzle bore; it then runs the existing standard-check,
-   `npm test`, and the private production build. Packet round section is
+   machine-tagged muzzle bore. It also renders and ray-tests that bore
+   straight-on, then runs the existing standard-check, `npm test`, and the
+   private production build. Packet round section is
    WRITTEN (landing law — orchestrator writes a landing note if missing,
    and that costs the round a discipline flag), shots under shots/<round>/.
 4. Report format: per-tank before/after components, per-order done-gates

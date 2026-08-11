@@ -40,6 +40,7 @@ generator spelling. `tank:release:check` fails before commit/push when:
 - an asset has the wrong dimensions, bytes, or hash;
 - the live model geometry or combat metadata changed after generation;
 - the cannon has no machine-verifiable recessed muzzle bore;
+- the straight-on visual/raycast probe cannot see a dark muzzle opening;
 - the existing geometry/track/contiguity/fittings standard fails;
 - `npm test` or the private production build fails.
 
@@ -58,6 +59,15 @@ npm run tank:assets:check
 Selective generation requires an existing complete manifest. Scratch pilots
 may use `--out <temporary-directory> --allow-partial`; partial manifests never
 pass the full-fleet checker.
+
+`npm run tank:assets:check -- --live-only` audits the live registry and the
+fleet-wide bore/metadata invariants without reading generated files. It is a
+diagnostic; only the default manifest-backed mode is a release proof.
+`npm run tank:bore:probe` additionally saves straight-on visual proofs for a
+representative MBT, autocannon IFV, and howitzer under
+`/private/tmp/cot-muzzle-bore-proof/` and checks the dark-center contrast.
+Use `npm run tank:bore:probe -- --all` for the release-time visual sweep of
+every registered tank, or `--ids=id_a,id_b` while iterating on specific models.
 
 ## Ownership rules
 

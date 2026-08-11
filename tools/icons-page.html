@@ -307,11 +307,17 @@ function drawModuleDiagram(sideCanvas, metadata, projection) {
 }
 
 function muzzleBoreCensus(root) {
-  const result = { tagged: 0, rims: 0, discs: 0 };
+  const result = { tagged: 0, rims: 0, discs: 0, authored: 0, fallback: 0 };
   root.traverse((object) => {
+    for (let current = object; current; current = current.parent) {
+      if (!current.visible) return;
+      if (current === root) break;
+    }
     if (object.userData && object.userData.cannonBore) result.tagged++;
-    if (/muzzleBoreShadowRim/i.test(object.name || '')) result.rims++;
-    if (/muzzleBoreShadowDisc/i.test(object.name || '')) result.discs++;
+    if (/muzzleBoreShadow(?:Fallback)?Rim/i.test(object.name || '')) result.rims++;
+    if (/muzzleBoreShadow(?:Fallback)?Disc/i.test(object.name || '')) result.discs++;
+    if (object.name === 'muzzleBoreShadowDisc') result.authored++;
+    if (object.name === 'muzzleBoreShadowFallback') result.fallback++;
   });
   return result;
 }
@@ -369,6 +375,68 @@ function inspectOne(id, renderFiles) {
   }
 }
 
+function boreShotOne(id) {
+  const visual = createTank(id, null, { camoSeed: 4100, quality: 'high' });
+  const root = visual.root;
+  scene.add(root);
+  try {
+    root.updateMatrixWorld(true);
+    const muzzle = root.getObjectByName('rig_muzzle');
+    if (!muzzle) throw new Error('rig_muzzle missing');
+    const spec = getSpec(id);
+    const face = muzzle.getWorldPosition(new THREE.Vector3());
+    const direction = muzzle.getWorldDirection(new THREE.Vector3()).normalize();
+    const radius = Math.max(0.014, (spec.armor.gunBarrel.radiusM || 0.04) * 0.92);
+    const distance = Math.max(0.18, radius * 8);
+    const fov = 22;
+    const cam = new THREE.PerspectiveCamera(fov, 1, 0.002, distance * 8);
+    cam.position.copy(face).addScaledVector(direction, distance);
+    cam.up.set(0, 1, 0);
+    cam.lookAt(face);
+    cam.updateMatrixWorld(true);
+    const ray = new THREE.Raycaster(cam.position, direction.clone().negate(), 0, distance * 4);
+    const centerHits = ray.intersectObject(root, true).slice(0, 6).map((hit) => ({
+      distance: Number(hit.distance.toFixed(4)),
+      name: hit.object.name || hit.object.type,
+      fallback: !!(hit.object.userData && hit.object.userData.cannonBoreFallbackPart),
+    }));
+    const oldColor = renderer.getClearColor(new THREE.Color()).clone();
+    const oldAlpha = renderer.getClearAlpha();
+    renderer.setClearColor(0xaebac2, 1);
+    const canvas = capture(cam, 256, 256);
+    renderer.setClearColor(oldColor, oldAlpha);
+
+    const pixelsPerM = 256 / (2 * distance * Math.tan((fov / 2) * Math.PI / 180));
+    const radiusPx = Math.max(4, radius * pixelsPerM);
+    const data = canvas.getContext('2d').getImageData(0, 0, 256, 256).data;
+    let inner = 0, innerN = 0, surround = 0, surroundN = 0;
+    for (let y = 0; y < 256; y++) {
+      for (let x = 0; x < 256; x++) {
+        const d = Math.hypot(x - 127.5, y - 127.5) / radiusPx;
+        if (d > 1.65) continue;
+        const i = (y * 256 + x) * 4;
+        const luma = data[i] * 0.2126 + data[i + 1] * 0.7152 + data[i + 2] * 0.0722;
+        if (d <= 0.38) { inner += luma; innerN++; }
+        else if (d >= 1.15) { surround += luma; surroundN++; }
+      }
+    }
+    return {
+      image: canvas.toDataURL('image/png'),
+      innerLuma: innerN ? inner / innerN : 255,
+      surroundLuma: surroundN ? surround / surroundN : 0,
+      radiusPx,
+      muzzleBore: muzzleBoreCensus(root),
+      boreDebug: {
+        fallbackZ: muzzle.getObjectByName('muzzleBoreShadowFallback')?.position.z ?? null,
+        centerHits,
+      },
+    };
+  } finally {
+    scene.remove(root);
+    visual.dispose();
+  }
+}
+
 function idsOrFleet(ids) {
   return ids && ids.length ? ids : ALL_TANK_IDS;
 }
@@ -400,6 +468,15 @@ window.__AUDIT = (ids) => {
   for (const id of idsOrFleet(ids)) {
     try { result.tanks[id] = inspectOne(id, false).meta; }
     catch (error) { result.tanks[id] = { error: String(error && error.stack || error) }; }
+  }
+  return result;
+};
+
+window.__BORE_SHOTS = (ids) => {
+  const result = {};
+  for (const id of idsOrFleet(ids)) {
+    try { result[id] = boreShotOne(id); }
+    catch (error) { result[id] = { error: String(error && error.stack || error) }; }
   }
   return result;
 };

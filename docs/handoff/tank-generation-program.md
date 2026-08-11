@@ -226,7 +226,8 @@ landing-candidate worktree, because it renders the live shipped model:
 
 Then run `npm run tank:release:check -- --ids=<id>`. The gate recomputes the
 live geometry + armor/module/tier fingerprints, verifies file hashes and
-dimensions, and refuses a solid/capped cannon tip. Full fleet bootstrap is
+dimensions, and refuses a solid/capped cannon tip using a straight-on render
+plus center ray. Full fleet bootstrap is
 `npm run tank:assets` followed by `npm run tank:assets:check`.
 
 ## 6. Certified oracle-defect caps (the only gate exemptions)

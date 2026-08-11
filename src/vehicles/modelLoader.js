@@ -2681,14 +2681,19 @@ function commitSwap(staged, { spec, cfg, hullG, turretG, recoilG, muzzle }) {
   // the actual gun-mesh vertices in recoilG space (chain product cancels any
   // stale pose above recoilG). Bone-rigged guns without own meshes keep the
   // autoPivot/spec anchor.
-  if (gun && muzzle) {
+  // Many print/CAD assets fuse the cannon into the turret (or, for a
+  // casemate, the whole scene) and expose no named gun subtree. The farthest
+  // +Z vertices of that smallest articulated source still locate the real
+  // muzzle much better than the donor spec's procedural barrel length.
+  const muzzleSource = gun || turret || (cfg.fixedMount ? scene : null);
+  if (muzzleSource && muzzle) {
     recoilG.updateMatrixWorld(true);
     const invRec = new THREE.Matrix4().copy(recoilG.matrixWorld).invert();
     const rel = new THREE.Matrix4();
     const vtx = new THREE.Vector3();
     let tipZ = -Infinity;
     const tipPts = [];
-    gun.traverse((n) => {
+    muzzleSource.traverse((n) => {
       if (!n.isMesh || !n.geometry || !n.geometry.getAttribute) return;
       const pa = n.geometry.getAttribute('position');
       if (!pa) return;
@@ -2712,6 +2717,31 @@ function commitSwap(staged, { spec, cfg, hullG, turretG, recoilG, muzzle }) {
         if (tipPts[i + 2] > tipZ - 0.35) { cx += tipPts[i]; cy += tipPts[i + 1]; cn++; }
       }
       muzzle.position.set(cn ? cx / cn : 0, cn ? cy / cn : 0, tipZ - 0.04);
+      const fallbackBore = muzzle.getObjectByName('muzzleBoreShadowFallback');
+      if (fallbackBore) {
+        // The GLB anchor intentionally sits 4 cm behind the measured vertex
+        // tip so muzzle FX originate inside the mouth. Keep the render-only
+        // fallback 3 cm beyond the sampled cap: print/CAD sources can contain
+        // overlapping bevel/end faces, including the wide Sturmtiger mouth.
+        // This remains visually flush at gameplay scale and does not move the
+        // firing/FX anchor.
+        fallbackBore.position.z = 0.070;
+        const fallbackRim = fallbackBore.getObjectByName('muzzleBoreShadowFallbackRim');
+        if (fallbackRim) fallbackRim.visible = true;
+        fallbackBore.visible = true;
+      }
+    }
+  }
+  if (muzzle) {
+    // A sourced swap always replaces/hides the procedural muzzle furniture.
+    // Some fused or fixed-mount GLBs expose no separate gun subtree, so they
+    // cannot enter the vertex-centroid branch above; they still need the
+    // anchor-bound fallback revealed at the configured muzzle position.
+    const fallbackBore = muzzle.getObjectByName('muzzleBoreShadowFallback');
+    if (fallbackBore) {
+      const fallbackRim = fallbackBore.getObjectByName('muzzleBoreShadowFallbackRim');
+      if (fallbackRim) fallbackRim.visible = true;
+      fallbackBore.visible = true;
     }
   }
   if (turret) reparent(turret, turretG);
@@ -2737,6 +2767,7 @@ function commitSwap(staged, { spec, cfg, hullG, turretG, recoilG, muzzle }) {
   // construction and the swap commit gets cheaper.
   for (const node of proceduralRenderNodes) {
     if (node.name && node.name.startsWith('procShadow_')) continue;
+    if (node.userData && node.userData.cannonBoreFallbackPart) continue;
     node.visible = false;
   }
   // tank_models r1: flag the swap so later visibility toggles on procedural
