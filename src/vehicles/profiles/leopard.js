@@ -34,6 +34,7 @@
 import * as THREE from 'three';
 import { KIT, FITTINGS, evenStations, muzzleBore, orientedSlab } from './kit.js';
 import { buildLeopardRevolutionSourceUpper } from './leopard-revolution-source-geometry.js';
+import { replaceLeopard2A7SourceUpper } from './leopard2a7-source-geometry.js';
 import { vehicleAmbientFloorHook } from '../materials.js';
 
 // ---------------------------------------------------------------------------
@@ -4786,7 +4787,7 @@ function buildLeo2A4(P) {
 function buildLeo2A7V(P) {
   const { box, cylY, cylZ } = KIT;
   leoHullV3(P, {
-    bodyHW: 1.86, sponsonY: 1.24, trackW: 0.66, xc: 1.53,
+    bodyHW: 1.86, sponsonY: 1.24, trackW: 0.60, xc: 1.45,
     deck: [[2.05, 1.60], [0.5, 1.62], [-1.0, 1.72], [-2.6, 1.79], [-3.40, 1.82], [-3.78, 1.80]],
     // blunter, taller A7V prow (the frontal appliqué module identity) —
     // still ONE raked surface per segment (§B1).
@@ -4810,8 +4811,10 @@ function buildLeo2A7V(P) {
     rearSkirt: { x: 2.00, z0: -3.55, z1: 0.90, y0: 0.55, y1: 1.28, th: 0.12 },
     // §B6: raised idler AND sprocket at the real Leopard 2 end-wheel
     // geometry (the print-frame 0.56/0.64 centers gave a near-flat run).
-    wheelR: 0.365, wheelY: 0.39, span: [2.60, -2.40],
-    idler: { z: 3.40, y: 1.06, r: 0.25 }, sprocket: { z: -3.26, y: 1.05, r: 0.29 },
+    // Owner-source donor station trace, expressed through the native gear:
+    // seven averaged wheel stations plus distinct raised terminal centers.
+    wheelR: 0.33, wheelY: 0.39, span: [2.68, -2.24],
+    idler: { z: 3.46, y: 0.79, r: 0.20 }, sprocket: { z: -3.20, y: 1.155, r: 0.415 },
     topY: 0.95, fans: { z: -2.60, x: 0.80, r: 0.38 },
     dishR: 0.78, fanWell: true, splashArms: false,
   });
@@ -4976,6 +4979,40 @@ function buildLeo2A7V(P) {
   P.addGunExtra(KIT.box(0.50, 0.54, 0.90), 0, -0.02, 1.22);
   leoMantletGun(P, { rollR: 0.27, rollW: 0.66, plateW: 0.58, plateH: 0.48, len: 5.56, r: 0.084, evac: 0.58, evacR: 1.75 });
   P.topY = 1.24;
+  // Owner-authoritative A7V source replaces every legacy upper-vehicle
+  // primitive. The family track course remains game-native; the supplied
+  // fourth object is donor running gear and is deliberately never rendered.
+  replaceLeopard2A7SourceUpper(P);
+  // The AMAP side cages are intentionally open, but the standard's 6 cm plan
+  // scan finds three tiny sky wells between their source slats. Close only
+  // those measured wells with narrow, buried load shelves. Their 1.80..1.94
+  // lateral span stays inside the existing source cage silhouette; broader
+  // floors changed the outer plan curve and were rejected by the source gate.
+  for (const s of [-1, 1]) {
+    const guardBucket = s < 0 ? 'hullTrackGuardL' : 'hullTrackGuardR';
+    for (const [z, length] of [[-0.43, 0.62], [-2.90, 0.42]]) {
+      const shelf = box(0.14, 0.035, length);
+      // The encoded source payload carries no UV attribute. Keep the buried
+      // support attribute-compatible with the merged guard course.
+      shelf.deleteAttribute('uv');
+      P.add(guardBucket, shelf, s * 1.87, 0.76, z);
+    }
+  }
+  // Low rear recovery stays are hull-owned, physically tied into the
+  // transom.  Their compact terminal pads retain the measured tail datum;
+  // diagonal inboard arms and cross-ties make the load path legible without
+  // crossing the native sprocket/shoe course.
+  for (const s of [-1, 1]) {
+    const recoveryPad = box(0.35, 0.12, 0.08);
+    recoveryPad.deleteAttribute('uv');
+    P.add('hullDark', recoveryPad, s * 1.40, 0.47, -3.88);
+    const recoveryArm = box(0.035, 0.035, 0.435);
+    recoveryArm.deleteAttribute('uv');
+    P.add('hullDetail', recoveryArm, s * 1.05, 0.635, -3.65, 2.637, 0, 0);
+    const recoveryTie = box(0.39, 0.035, 0.035);
+    recoveryTie.deleteAttribute('uv');
+    P.add('hullDetail', recoveryTie, s * 1.225, 0.54, -3.845);
+  }
 }
 
 // ---------------------------------------------------------------------------

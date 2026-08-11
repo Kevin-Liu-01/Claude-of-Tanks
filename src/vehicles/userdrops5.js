@@ -74,7 +74,9 @@ const SPECS = [
       visual: { bakeDirtDeckEq: true } }),
   make('leo2a7', 'leo2a7v', 'Leopard 2A7V', 'Germany',
     { hp: 2650, weightTons: 66.5, topSpeedKmh: 63,
-      dims: { hullLengthM: 7.72, overallLengthM: 10.97, widthM: 4.00, heightM: 2.64 } }),
+      // Published P95 equipment datum: broad PERI/RWS/roof hardware defines
+      // the 2.87 m envelope; antenna whips do not.
+      dims: { hullLengthM: 7.72, overallLengthM: 10.97, widthM: 4.00, heightM: 2.87 } }),
   make('m1a1', 'm1a1ha', 'M1A1HA Abrams', 'USA',
     { hp: 2350, weightTons: 62, gun: { reloadS: 6.3 } }),
   make('m1a2', 'm1a2_sepv2', 'M1A2 Abrams SEPv2', 'USA',

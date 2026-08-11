@@ -604,6 +604,14 @@ const REG = {
     autoPivot: true,
     pubDims: { hullLengthM: 7.48, overallLengthM: 9.71, widthM: 3.6, heightM: 2.25 },
   },
+  leo2a7v: {
+    // Owner-authoritative nested OBJ, deterministically repartitioned into
+    // exact Hull/Turret/Gun and donor-running-gear nodes.
+    path: 'public/models/community-candidates/leopard_2a7v_repaired.glb',
+    turretNode: '^Turret$', gunNode: '^Gun$', autoPivot: true,
+    orientationAdjudicated: 'native +z muzzle/nose pose verified in paired front, side, top and yaw renders; the modular A7V bow defeats the generic glacis-descent heuristic',
+    pubDims: { hullLengthM: 7.72, overallLengthM: 10.97, widthM: 4.0, heightM: 2.87 },
+  },
   leo2_revolution: {
     // Owner-authoritative nested OBJ, semantically recovered and completed
     // with the omitted pressure-turret core/fender floors. Donor wheels and

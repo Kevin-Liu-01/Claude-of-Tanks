@@ -49,7 +49,7 @@ at load.
 - Env for EVERY node run: `export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh"`
 - npm test before every landing (166 equipment checks + track-geometry).
 
-## 3. GRADUATE REGISTRY (40 graduates, hash-frozen)
+## 3. GRADUATE REGISTRY (41 graduates, hash-frozen)
 Freeze = deterministic geometry hash via `node tools/tmp-hashgeo.mjs
 --ids=...` (camoSeed 4242 pinned build; FNV-1a over position buffers +
 world matrices, mesh-order independent). Graduate-change protocol: fix ->
@@ -80,6 +80,7 @@ re-freeze NEW hash, all in ONE commit.
 | m47_patton | 2fc99c50 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | leo2a5 | e215a738 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | leo2_revolution | 24658d8b | RE-FROZEN 2026-08-10 (§5.101 owner-source exact rebuild: complete AMAP/slat exterior on a physically completed rotating pressure core, donor gear excluded for one native seven-wheel linked-shoe system; gate 91.5 x2; standard/track/parent/winding clean; independent §B8 floor 9.2 / mean 9.35 x14, yaw0/90 load paths PASS; prior db70c929 retired) |
+| leo2a7v | 27b2d654 | GRADUATED 2026-08-10 (§5.100 owner-source exact rebuild: articulated source upper with donor gear excluded, native seven-wheel linked-shoe system, buried cage shelves and transom-seated recovery stays; gate 91.1 x2; exact track 0/15 band and 0/58 shoes; independent §B8 floor 9.1 / mean 9.27 x14, yaw0/90 rig/load paths PASS; failed 4628e504 sitting retired) |
 | m46_patton | 108806c8 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | centurion3 | bad74e60 | RE-FROZEN 2026-08-08 (no-air graduate-change: crown-ridge pedestal + discharger webs, front-low 1810px->14, re-cert floor 9.0 x17 changed views, gate 91.1 exact; prior 50273080 bore-resit lineage) |
 | m1a2_sepv2 | a0a4e87c | RE-FROZEN 2026-08-08 (§5.80 distinctiveness; elevated armored CROWS + broad ERA; re-cert floor 9.2 / mean 9.31 x14) |
@@ -2891,6 +2892,52 @@ rear basket and roof equipment under the same turret rig. This is a
 source-view parenting repair, not a Type 90 geometry graduation: the current
 79.5 geometry gate is unchanged and the graduate registry/count do not move.
 `npm test` and `npm run build:private` are green.
+
+## 5.100 LEOPARD 2A7V OWNER-SOURCE REBUILD (2026-08-10, GRADUATED)
+
+The owner-supplied `leopard-2a7v-main-battle-tank.zip` is now the Leopard
+2A7V geometry authority. Its outer archive is SHA-256
+`fef951b1794415aa5a9876efc8e9ecbdde2dbfe4c540357fc109209b254dc901` and
+its nested source archive is
+`54ff6b63f2ded1dbf35ec4a8dd68a86d2562e8475f76b650a3fb95c095a9f898`.
+The deterministic bake reads 332,136 source vertices / 110,712 triangles,
+splits the turret and L/55 only at welded connected-component boundaries,
+and never cuts, duplicates or moves a source triangle. The playable exact
+upper is 134,580 vertices / 44,860 triangles: hull 28,494v/9,498t,
+hull-detail 35,997v/11,999t, left/right guards 13,587v/4,529t and
+17,958v/5,986t, turret 29,046v/9,682t, and gun 9,498v/3,166t. The generated
+payload is SHA-256
+`295778221eccb26ea3b93be060fd97e5c90feffdfb036971b32876735dcba58a`;
+the locally ignored articulated oracle is
+`d8c02f1ea46497f156721428375a3014dbadf76cbc6bd410aa95010ddfb1d2da`.
+
+The donor 197,556v/65,852t belts, wheels, suspension and end drums never
+enter the playable assembly. One native seven-road-wheel linked-shoe course
+per side replaces them at the source stations. Exact clip audit reports
+front/rear band **0/15** and shoes **0/58**, with no blind spot or visible
+bow/stern penetration. Narrow buried shelves close the only measured sky
+wells in the open AMAP side cages without changing their exterior plan.
+The first visual sitting exposed two detached lower-rear registration pads
+and failed at floor 8.5. That freeze is retired. The final repair replaces
+them with compact recovery heads, each joined to the source transom by a
+diagonal inboard arm and transverse tie routed clear of the native gear.
+
+Machine gate PASS reproduces x2 at **91.1** |
+91.1/91.9/91.8/91.3/92/100. Standard check passes with holes 0,
+contiguity 0 and mg1+0d. Bake verification, vertex extraction, `npm test`
+and `npm run build:private` are green. The parent/winding tools nominate the
+merged fixed `rig_hull` when yaw exposes glacis, ring surround and engine
+deck; all 28 yaw frames independently falsify a stranded/fused turret mass
+and show no reversed, mixed-winding or disappearing surface. Geometry freeze
+reproduces x2 at **27b2d654** (33 meshes / 169,286 vertices).
+
+Fresh evidence is 42 unique current-byte PNGs: fourteen paired source views
+plus fourteen yaw-0 and fourteen yaw-90 frames. Independent §B8 scores
+`[9.3,9.2,9.2,9.1,9.1,9.1,9.2,9.2,9.5,9.4,9.1,9.5,9.4,9.5]`, floor
+**9.1**, mean **9.27**. The critic confirms source fidelity, one continuously
+seated rotating turret/gun/AMAP/roof package, correct fixed-hull ownership,
+native running-gear continuity, and physically attached rear recovery stays.
+**GRADUATED by the §5.100 landing commit; KEEP freeze `27b2d654`.**
 
 ## 5.101 LEOPARD 2 REVOLUTION OWNER-SOURCE REBUILD (2026-08-10, GRADUATED)
 
