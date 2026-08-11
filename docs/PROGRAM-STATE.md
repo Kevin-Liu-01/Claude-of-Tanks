@@ -94,7 +94,7 @@ re-freeze NEW hash, all in ONE commit.
 | challenger2 | 3b4bd5f0 | GRADUATED 2026-08-09; RE-FROZEN 2026-08-10 (§5.89 owner fused-block repair: material-fused casemate course removed from fixed hull and repartitioned into the articulated source tree; one low ring landing + one rotating turret; gate 90.1 x2 every component >=90; standard/parent/winding clean; fresh §B8 floor 9.0 / mean 9.06 x14, yaw/load paths 9.3; oracle f44e3b46 reproducible from pristine .bak; prior 63ee160 retired) |
 | fv510 | 927beeb2 | GRADUATED 2026-08-10; RE-FROZEN 2026-08-10 (§5.91 owner native-track correction: donor Track suppressed and 34 donor running-gear components removed at whole-component boundaries; exact Warrior upper geometry retained around one game-native six-station wheel/sprocket/idler/shoe system; gate 90.3 x2, every component >=90.3; fidelity 98.0; standard/parent/winding clean; independent §B8 floor 9.1 / mean 9.26 x14, yaw/load paths 9.4; prior exact-source freeze 7884762a retired) |
 | type10 | 201d0a08 | GRADUATED 2026-08-10; RE-FROZEN §5.97 (owner correction: complete rear cage, circular spare-wheel forms, service boxes, rack rails and antennas reparented as whole source components to the seated turret; lower engine deck remains hull-owned; exact five-wheel native track 0/0; gate 94.6 x2; parent/winding clean; independent §B8 floor 9.4 / mean 9.59 x14, yaw load paths PASS; prior 84f5d108 retired) |
-| amx40 | d2c73d96 | GRADUATED 2026-08-10 (§5.93 Leclerc-method owner-source completion: continuous low welded turret, canted source-height mantlet, seated asymmetric roof/flank kit, layered stern and source-traced hull on game-native six-wheel linked tracks; gate 90.1 x2; fidelity 94.7; standard/track/winding clean; independent §B8 floor 9.0 / mean 9.06 x14, yaw/load paths PASS) |
+| amx40 | 50710918 | RE-FROZEN 2026-08-10 (§5.103 owner screenshot front-half reopen: exact source upper hull, complete turret, mantlet/coax/LLLTV and CN120 replace the insufficient procedural front while donor gear stays excluded for one native six-wheel linked-shoe system; gate 92.6 x2; fidelity 98.5; exact track 0/0 band+shoes; independent §B8 floor 9.5 / mean 9.70 x14, yaw/load paths PASS; prior d2c73d96 retired) |
 | m26_pershing | 2f006738 | RE-RECORDED 2026-08-08: hash moved by LANDED 5f39989 (armorM4 gunBarrel shadow-proxy 3.96->3.44; m26/m45 inherit m4a3e8 proxies — patton.js bytes unchanged); double-confirmed by builder bisect + m45-grad critic; prior 65c564c0 bore+winding re-cert lineage (floors 9.1-9.4) carries |
 | t90m | e345ee8a | GRADUATED 2026-08-06 (27th; floor 9.0 x14 second sitting; the owner's dedicated-agent arc 81.7 -> dual gate) |
 | t90a | 810a6f18 | GRADUATED 2026-08-10 (§5.94 Leclerc-method cast-turret rebuild; gate 90.4 x2; standard/track/winding clean; independent §B8 floor 9.0 / mean 9.11 x14, yaw/load paths 9.2) |
@@ -3067,3 +3067,39 @@ yaw 0/90, continuous mounting for all roof and bustle equipment, and the
 rear-sheet winding adjudication. No donor gear, fused turret mass, decoration
 floater, empty-air load path or visible wound remains. **GRADUATED by the
 §5.102 landing commit; KEEP freeze `f031f2fc`.**
+
+## 5.103 AMX-40 EXACT-SOURCE FRONT-HALF REOPEN (2026-08-10, RE-FROZEN)
+
+The owner's close screenshot correctly showed that §5.93 had improved the
+turret and rear but left the old procedural front half visibly behind the
+source. This graduate-change replaces the upper hull, complete turret,
+mantlet/coax/LLLTV package and CN120 with deterministic exact-source payloads;
+donor wheels, terminals and track are excluded. The payload SHA-256 is
+`ed9e0ec4ffdb4d23719e3b2baba21118e4294e46c9abbb2c5b760c7753b2f443`
+and its bake verifies the five registered groups at hull 37,971/28,838,
+hull-detail 4,184/3,721, turret 25,923/20,574, turret-detail 4,393/3,722 and
+gun 4,281/3,850 vertices/triangles.
+
+The exact source upper is articulated at turret pivot
+`[-0.001,1.545,-0.421]` and gun world pivot `[0,1.94,1.30]`. It rides on one
+game-native six-road-wheel linked-shoe course, preserving animation,
+suspension, damage, scrolling and thrown-track behavior. Machine gate
+reproduces x2 at **92.6** | 92.6/93.5/96.9/100/95.1/100; gate JSON SHA-256 is
+`55044c099e02a2900488342d12f76f8e4a3e984e2da79a19b736bb2ccd49307d`.
+Direct fidelity is **98.5** (H98/T100/G100/R94), exact track containment is
+band 0/0 and shoes 0/0, standard check passes with contiguity 0 and mg1+0d,
+and parent audit is stranded 0 / abutting 0 / dangling 0.
+
+Winding mode 1 has no reversed component and only a three-pixel rear speck
+with no visible wound. Mode 2 nominates `rig_hull/mesh#17`, but both main and
+independent yaw inspection identify it as the continuous fixed rear
+engine-deck/service surface correctly revealed by turret rotation. The full
+release gate is green: deterministic bake, visible muzzle bore, `npm test`,
+private build, and all eight regenerated AMX-40 presentation assets/manifest.
+
+Freeze reproduces x2 at **`50710918`** (26 meshes / 201,673 vertices). Fresh
+independent §B8 passes all fourteen source pairs at floor **9.5** / mean
+**9.70**, confirming the exact front-half identity, coherent turret load
+paths, hull-owned engine deck, clean native running gear and absence of fused
+mass, floaters, empty-air attachments or visible backface wound. **KEEP
+`50710918`; prior graduate freeze `d2c73d96` is retired.**

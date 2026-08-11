@@ -2,7 +2,8 @@
 // modern3-style module: specs registered at import, builders exported.
 // First resident: amx40 (AMX-40 export prototype — the KojfDiscord AW print
 // at public/models/community-candidates/amx-40_armored_warfare.glb is the
-// LOCAL-ONLY measurement reference; the playable is procedural).
+// LOCAL-ONLY measurement reference; the playable embeds its exact upper
+// structure and uses the fleet-native running-gear system).
 // NOTE: leclerc/amx30/amx30b2 stay in profiles/misc.js (family migration
 // is a separate, owner-approvable move).
 //
@@ -14,6 +15,7 @@
 
 import { KIT } from './tankFactory.js';
 import { FITTINGS } from './profiles/kit.js';
+import { buildAMX40SourceGeometry } from './profiles/amx40-source-geometry.js';
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
 
 export const FRANCE_IDS = ['amx40'];
@@ -168,15 +170,16 @@ const FRANCE_SPECS = {
     // z -0.26, gun axis world 1.94 with the trunnion at world z 1.30.
     armor: modernArmor({
       hl: 3.4, hw: 1.66, inW: 1.00, floor: 0.44, trkTop: 1.28, roofY: 1.66,
-      // Procedural authoring frame is the donor's normalized combat seat;
-      // the raw Object_12 node pivot is filed separately in the receipt.
-      turretPivot: [0, 1.60, -0.26], gunPivot: [0, 0.34, 1.56],
-      barrelLenM: 5.34, barrelRadM: 0.075,
+      // Source-exact articulation frame. The visual gun axis is world
+      // [0,1.94,1.30], so the proxy and visible trunnion remain coupled.
+      turretPivot: [-0.001, 1.545, -0.421],
+      gunPivot: [0.001, 0.395, 1.721],
+      barrelLenM: 5.322, barrelRadM: 0.075,
       // Export-proto protection: composite nose, welded steel/spaced turret —
       // a class under leclerc everywhere (§5.38 brief "slightly lighter").
       glacis: [80, 380, 480], lower: [60, 120, 150], side: [40, 60, 70],
       skirt: [15, 40, 120], rear: 30, roof: 30,
-      tw: 1.34, tFrontZ: 1.79, tRearZ: -2.05, tH: 0.785,
+      tw: 1.55, tFrontZ: 1.96, tRearZ: -1.97, tH: 1.08,
       cheek: [420, 430, 620], tSide: [180, 200, 280], tRear: 45, tRoof: 35,
       mantlet: [320, 340, 430], loader: true, bustleAmmo: false,
     }),
@@ -821,4 +824,33 @@ function buildAMX40(P) {
   P.topY = 1.05;
 }
 
-export const FRANCE_BUILDERS = { amx40: buildAMX40 };
+// Owner screenshot reopen (2026-08-10): surface-detail additions could not
+// repair the old front-half silhouette. The upper hull, complete turret,
+// mantlet/coax/LLLTV package and CN120 now come from the supplied model's
+// exact source solids. Donor gear nodes are absent; this native six-wheel
+// course preserves animation, suspension, damage, scrolling and thrown-track
+// behavior while matching the source stations and terminal rises.
+function buildAMX40Source(P) {
+  const { buildRunningGear } = KIT;
+  buildAMX40SourceGeometry(P);
+  buildRunningGear(P, {
+    style: 'rubber', wheelR: 0.32, wheelW: 0.24, wheelY: 0.48,
+    xc: 1.27, wheelZs: [2.15, 1.29, 0.43, -0.43, -1.29, -2.15],
+    sprocket: { z: -2.70, y: 0.67, r: 0.24, trackR: 0.16 },
+    idler: { z: 2.72, y: 0.70, r: 0.28, trackR: 0.20 },
+    rollers: [1.72, 0.43, -0.86, -1.98]
+      .map((z) => ({ z, y: 0.98, r: 0.07 })),
+    trackW: 0.54, trackTh: 0.055, endRingSpan: 0.50,
+    topY: 1.03, contactZF: 2.30, contactZR: -2.00,
+    loopPoints: [
+      [-2.70, 1.03], [2.72, 1.03], [2.86, 0.98], [3.00, 0.74],
+      [2.96, 0.70], [2.72, 0.35], [2.48, 0.22], [2.35, 0.15],
+      [2.23, 0.10], [-2.075, 0.10], [-2.314, 0.29], [-2.65, 0.47],
+      [-3.00, 0.66], [-3.18, 0.76], [-3.02, 1.03],
+    ],
+    paintedEnds: true, coveredTop: true, padCornerFloor: 0.012,
+    gearFloor: true,
+  });
+}
+
+export const FRANCE_BUILDERS = { amx40: buildAMX40Source };
