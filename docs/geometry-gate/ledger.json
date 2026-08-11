@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-08-11T16:06:11.778Z",
+ "generatedAt": "2026-08-11T16:58:16.619Z",
  "gate": "every component >= 90; min is the headline",
  "passed": 36,
  "total": 97,
@@ -252,6 +252,19 @@
    }
   },
   {
+   "id": "t90",
+   "geoMin": 0,
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 71.8,
+    "wholeCurves": 45.4,
+    "turretCurves": 20,
+    "stations": 55.4,
+    "dims": 0,
+    "floaters": 0
+   }
+  },
+  {
    "id": "charioteer",
    "geoMin": 0.6,
    "gatePassed": false,
@@ -495,19 +508,6 @@
     "turretCurves": 100,
     "stations": 74.4,
     "dims": 100,
-    "floaters": 100
-   }
-  },
-  {
-   "id": "t90",
-   "geoMin": 47.8,
-   "gatePassed": false,
-   "components": {
-    "hullCurves": 73.5,
-    "wholeCurves": 47.8,
-    "turretCurves": 55.9,
-    "stations": 65.2,
-    "dims": 95.2,
     "floaters": 100
    }
   },

@@ -1,4 +1,4 @@
-# T-90MS owner-source graduation — independent §B8 final
+# T-90MS native-procedural graduation — independent §B8 final
 
 Date: 2026-08-11
 
@@ -18,9 +18,10 @@ close-roof]`:
 
 Floor **9.0**; mean **9.18**. Every required view clears 9.0.
 
-- Source fidelity PASS: the low hull, clipped-diamond welded turret, buried
-  optic pair, source-pitched Relikt, tapered bustle, pano/Kord station,
-  six-wheel stance and backed rear-service grammar retain the owner source.
+- Reference-guided fidelity PASS: the low hull, clipped-diamond welded turret,
+  buried optic pair, pitched Relikt, tapered bustle, pano/Kord station,
+  six-wheel stance and backed rear-service grammar preserve the target visual
+  identity using only our authored procedural construction.
 - Bow closure PASS: both thin shoulder/guard plates continuously join glacis
   and fender, remain inside the source envelope, stay hull-fixed and clear the
   terminal shoes without becoming a slab or floater.

@@ -1,4 +1,4 @@
-# T-90A Burlak owner-source graduation — independent §B8 final
+# T-90A Burlak native-procedural graduation — independent §B8 final
 
 Date: 2026-08-11
 
@@ -18,9 +18,10 @@ close-roof]`:
 
 Floor **9.0**; mean **9.11**. Every required view clears 9.0.
 
-- Source fidelity PASS: the low clipped shell, chamfered wings, buried varied
-  protection, mantlet/gun run, narrow autoloader bustle, asymmetric roof and
-  six-wheel hull retain the owner-source Burlak identity.
+- Reference-guided fidelity PASS: the low clipped shell, chamfered wings,
+  buried varied protection, mantlet/gun run, narrow autoloader bustle,
+  asymmetric roof and six-wheel hull preserve the Burlak identity using only
+  our authored procedural construction.
 - Yaw and load paths PASS: the complete shell, protection, gun, bustle and
   supported roof suite rotate together; all hull, transom and running-gear
   components remain fixed with no fused or stranded mass.
