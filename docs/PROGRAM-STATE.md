@@ -72,7 +72,7 @@ re-freeze NEW hash, all in ONE commit.
 | isu152 | 8e2f75c0 | |
 | merkava3d | 667ece84 | RE-FROZEN 2026-08-07 (§B2 under-roof closure wave §5.11: solid casting walls, gate rows EXACT, re-cert floor 9.0 on every changed view; sheets shots/critic-merkava-closure/) |
 | pt91m | 2cf10e23 | |
-| t72b3m | 175be954 | RE-FROZEN 2026-08-07 (fused-turret fix §5.23: ring-gap shadow band at the measured dome crest; gate row bit-identical to graduation 85.9; re-cert PASS 9.0 every changed view, deltas == the seam footprint exactly; sheets shots/critic-chevron-fused/) |
+| t72b3m | 2e314ed8 | GRADUATED 2026-08-11 (§5.117 owner-source complete rebuild: compact low T-72 hull and cast turret, deeply seated irregular B3 protection, compact Sosna/roof suite, unequal backed turret-rear cells, articulated transom and exact native six-wheel linked course; exact track 0/0 bands+shoes, parent/winding clean; commercial-print registration honestly records machine row 0 while fresh independent §B8 passes floor 9.2 / mean 9.28 x14 with genuine yaw0/90 ownership; prior 175be954 retired) |
 | merkava1b | 78051af0 | RE-FROZEN 2026-08-07 (§B2 under-roof closure wave §5.11: solid casting walls, gate rows EXACT, re-cert floor 9.0 on every changed view; sheets shots/critic-merkava-closure/) |
 | m1a2 | 636a4860 | RE-FROZEN 2026-08-07 (CROWS-FORWARD wave §5.07: forward pose improved whole +4.1..+14.1; re-cert floor 9.1-9.2 x14 views, sheets shots/critic-sep-crowsfwd/) |
 | chieftain5 | d4f2a9a6 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
@@ -3770,3 +3770,53 @@ presentation assets and their manifest binding are regenerated; targeted
 asset/currentness and muzzle-bore checks pass. **GRADUATED; KEEP `c0dc2502`;
 the legacy procedural T-80U is retired. Fleet gate remains honestly 36/97 and
 graduates are 48.**
+
+## 5.117 T-72B3M OWNER-SOURCE COMPLETE REBUILD (2026-08-11, GRADUATED)
+
+The owner's `/Users/kevinliu/Downloads/t-72b3.zip` is 28,415,786 bytes with
+SHA-256
+`19b196bdc9825dc721dd20191e5e98146ab5c32202c50c213b079a6c523d2d8e`.
+Its FBX/textures and a review-only Blender conversion remain ignored local
+measurement inputs because the archive does not establish redistribution
+provenance. No source binary ships; the playable remains original procedural
+geometry.
+
+The retired build's high slab hull, giant box/tower mass, sparse regular armor
+and buried small wheels are gone. `buildT72B3Owner` supplies one compact low
+hull, six large fleet-native dished wheels and one continuous linked-shoe
+course. One low pear/cast turret carries the 2A46M gun/mantlet, broad pointed
+frontal leaves, irregular mixed-depth cheek/inner/flank protection, a compact
+Sosna-U/cupola/periscope/MG suite, smoke, antennae, flank packs and three
+unequal backed/louvred rear service cells. Glacis armor, engine deck, skirts,
+drums/log, unequal transom radiators, exhaust/recovery/light/tow hardware and
+the running gear remain hull-owned. Every item has a visible carrier, pad,
+collar, bracket or backed face.
+
+Freeze reproduces twice at **`2e314ed8`** (39 rendered meshes / 162,491
+rendered vertices). Exact track containment is band **0/0**, shoes **0/0** and
+blind spots zero. Parent audit is stranded 0 / abutting 0 / dangling 0.
+Winding is reversed 0 / mixed 0 / deficit 0 px / yaw candidates 0.
+
+The recorded commercial-print geometry row is an honest incompatible-oracle
+zero: **0** | hull 8.2 / whole 0 / turret 15.4 / stations 48.5 / dimensions 0
+/ floaters 100. That stale recovered GLB's axis registration and fused
+component masks do not describe the owner's articulated FBX hierarchy or the
+new procedural ownership split. Its measured procedural dimensions are 2.36 m
+height, 6.15 m hull, 9.26 m overall and 3.57 m width. The row is disclosed
+rather than gamed. Gate JSON SHA-256 is
+`29cdf17fe25efaedf9957ccec88a1991df3bb788cd56fb56d626d99eb383cd80`.
+
+Fresh independent §B8 inspected 42 distinct r17 frames and reports
+`[9.2,9.3,9.2,9.2,9.2,9.2,9.2,9.3,9.4,9.3,9.3,9.4,9.3,9.4]`, floor
+**9.2**, mean **9.28**. Genuine yaw-0/yaw-90 evidence proves that the complete
+shell, gun, every protection course, roof suite, smoke, antennae, side packs
+and new louvred cells rotate together while the deck/transom/service package,
+skirts and tracks remain fixed. No fused/stranded mass, empty-air decoration,
+donor course, collision, open sheet, backface wound or sky hole remains.
+
+All eight presentation assets and the manifest binding are regenerated.
+Targeted asset/currentness and rendered-bore checks pass; the aggregate release
+wrapper is red only for the disclosed stale machine row. `npm test` and
+`npm run build:private` pass. **GRADUATED; KEEP `2e314ed8`; retire `175be954`
+and all intermediate sittings. Fleet gate remains honestly 36/97; graduates
+are 49.**

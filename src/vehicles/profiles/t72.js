@@ -313,8 +313,9 @@ function buildT72B87(P) {
 // 1987 vehicle.  This builder follows the visual source directly while
 // retaining the fleet-native linked track, articulated gun and explicit
 // turret/hull ownership rules.
-function buildT72B87Owner(P) {
+function buildT72B87Owner(P, variant = 'b87') {
   const { box, cylX, cylY, cylZ, torus, buildRunningGear } = KIT;
+  const b3 = variant === 'b3';
 
   // ---- compact low hull -------------------------------------------------
   loftHull(P, {
@@ -333,44 +334,82 @@ function buildT72B87Owner(P) {
     }
     for (let i = 0; i < 6; i++) {
       const z = -1.93 + i * 0.78;
-      P.add('hull', box(0.075, 0.44, 0.66), s * 1.69, 0.93, z);
-      P.add('hullDark', box(0.018, 0.34, 0.025), s * 1.733, 0.93, z + 0.34);
-      P.add('hullDetail', box(0.025, 0.025, 0.50), s * 1.735, 1.145, z);
+      const sh = b3 ? 0.265 + (i % 3) * 0.018 : 0.44;
+      const sy = b3 ? 1.065 + (i % 2) * 0.009 : 0.93;
+      const sd = b3 ? 0.58 + (i % 2) * 0.045 : 0.66;
+      P.add('hull', box(0.075, sh, sd), s * 1.69, sy, z, 0, 0, b3 ? s * (i % 2 ? 0.025 : -0.018) : 0);
+      P.add('hullDark', box(0.018, b3 ? sh * 0.72 : 0.34, 0.025), s * 1.733, sy, z + sd / 2);
+      P.add('hullDetail', box(0.025, 0.025, sd * 0.72), s * 1.735, sy + sh / 2 + 0.012, z);
     }
   }
 
+  const wheelZs = evenStations(6, b3 ? 4.02 : 3.92, 0.02);
   buildRunningGear(P, {
-    style: 'rubber', wheelR: 0.425, wheelW: 0.23, wheelY: 0.45, xc: 1.37,
-    dishR: 0.72, wheelZs: evenStations(6, 3.92, 0.02),
-    sprocket: { z: -2.36, y: 0.59, r: 0.31 },
-    idler: { z: 2.48, y: 0.55, r: 0.29 },
+    style: 'rubber', wheelR: b3 ? 0.455 : 0.425, wheelW: 0.23, wheelY: b3 ? 0.48 : 0.45, xc: 1.37,
+    dishR: b3 ? 0.77 : 0.72, wheelZs,
+    sprocket: { z: -2.36, y: b3 ? 0.63 : 0.59, r: b3 ? 0.33 : 0.31 },
+    idler: { z: 2.48, y: b3 ? 0.59 : 0.55, r: b3 ? 0.31 : 0.29 },
     contactZF: 2.22, contactZR: -2.05,
     rollers: [-1.35, -0.15, 1.10].map((z) => ({ z, y: 0.88, r: 0.082 })),
-    trackW: 0.56, topY: 0.92, botY: 0.025, paintedEnds: true,
+    trackW: 0.56, topY: b3 ? 0.98 : 0.92, botY: 0.025, paintedEnds: true,
     coveredTop: true, arms: true,
   });
+  if (b3) {
+    // B3M wheels retain the fleet-native course but need the source's
+    // unmistakable concentric dish/hub cadence at garage distance.  These
+    // rings sit on the existing wheel faces; they do not add a second wheel
+    // course or change the track corridor.
+    for (const s of [-1, 1]) for (const z of wheelZs) {
+      P.add('hull', cylX(0.205, 0.024, 18), s * 1.502, 0.48, z);
+      P.add('hullDark', torus(0.145, 0.009, 18), s * 1.516, 0.48, z, 0, Math.PI / 2, 0);
+      P.add('hullDetail', cylX(0.075, 0.030, 14), s * 1.522, 0.48, z);
+      for (let k = 0; k < 8; k++) {
+        const a = (k / 8) * Math.PI * 2;
+        P.add('hullDark', cylX(0.015, 0.026, 8), s * 1.528, 0.48 + Math.sin(a) * 0.105, z + Math.cos(a) * 0.105);
+      }
+    }
+    for (const [z, y, r] of [[-2.36, 0.63, 0.33], [2.48, 0.59, 0.31]]) {
+      for (const s of [-1, 1]) {
+        P.add('hullDetail', torus(r * 0.72, 0.014, 16), s * 1.505, y, z, 0, Math.PI / 2, 0);
+        P.add('hullDark', cylX(r * 0.25, 0.034, 12), s * 1.512, y, z);
+      }
+    }
+  }
 
   // Layered swept prow, compact lamps and inboard shackles.  Every plate
   // remains above/between the exact idler corridors.
   P.add('hull', box(2.88, 0.10, 0.56), 0, 1.24, 2.30, -0.30, 0, 0);
   P.add('hull', box(2.56, 0.10, 0.52), 0, 1.18, 2.57, -0.34, 0, 0);
   for (const s of [-1, 1]) {
-    P.add('hull', box(0.30, 0.18, 0.34), s * 1.46, 1.12, 2.67, -0.25, 0, 0);
+    P.add('hull', box(0.28, 0.15, 0.32), s * 1.42, 1.245, 2.64, -0.25, 0, 0);
     KIT.headlight(P, s * 1.15, 1.21, 2.35, -0.30, 0.045);
     P.add('hullDark', box(0.12, 0.10, 0.16), s * 0.84, 0.72, 2.72, -0.25, 0, 0);
     P.add('hullDark', torus(0.083, 0.018, 12), s * 0.84, 0.66, 2.77, Math.PI / 2, 0, 0);
   }
 
-  // Three dense, flush Kontakt-1 glacis courses.  Tiles are individually
-  // legible but share a buried carrier so they cannot float off the plate.
-  P.add('hullTrack', box(2.70, 0.06, 0.82), 0, 1.22, 1.92, -0.27, 0, 0);
-  for (let row = 0; row < 3; row++) {
-    const z = 1.67 + row * 0.27;
-    const y = 1.27 - row * 0.055;
-    for (let col = -4; col <= 4; col++) {
-      if (row === 0 && Math.abs(col) === 4) continue;
-      P.add('hullTrack', box(0.275, 0.105, 0.23), col * 0.295, y, z, -0.30, 0, 0);
-      P.add('hullDark', box(0.245, 0.012, 0.018), col * 0.295, y + 0.057, z + 0.105, -0.30, 0, 0);
+  if (b3) {
+    // B3 Kontakt-5 glacis: two broad, shallow cassette courses follow one
+    // buried carrier.  Segment seams carry the source's tiled cadence while
+    // the armor remains a continuous part of the fixed hull.
+    P.add('hullTrack', box(2.72, 0.055, 0.90), 0, 1.215, 1.94, -0.29, 0, 0);
+    for (let row = 0; row < 2; row++) for (let col = -4; col <= 4; col++) {
+      const z = 1.79 + row * 0.35;
+      const x = col * 0.305 + (row ? 0.035 : -0.025);
+      P.add('hullTrack', box(0.29, 0.115, 0.31), x, 1.275 - row * 0.07, z, -0.31, 0, 0);
+      P.add('hullDark', box(0.255, 0.012, 0.022), x, 1.338 - row * 0.07, z + 0.145, -0.31, 0, 0);
+    }
+  } else {
+    // Three dense, flush Kontakt-1 glacis courses. Tiles are individually
+    // legible but share a buried carrier so they cannot float off the plate.
+    P.add('hullTrack', box(2.70, 0.06, 0.82), 0, 1.22, 1.92, -0.27, 0, 0);
+    for (let row = 0; row < 3; row++) {
+      const z = 1.67 + row * 0.27;
+      const y = 1.27 - row * 0.055;
+      for (let col = -4; col <= 4; col++) {
+        if (row === 0 && Math.abs(col) === 4) continue;
+        P.add('hullTrack', box(0.275, 0.105, 0.23), col * 0.295, y, z, -0.30, 0, 0);
+        P.add('hullDark', box(0.245, 0.012, 0.018), col * 0.295, y + 0.057, z + 0.105, -0.30, 0, 0);
+      }
     }
   }
   KIT.towCable(P, [[-1.18, 1.28, 1.45], [0, 1.34, 1.18], [1.18, 1.28, 1.45]]);
@@ -382,7 +421,7 @@ function buildT72B87Owner(P) {
     P.add('hullDetail', box(1.56, 0.012, 0.016), 0.18, 1.397, -1.385 - i * 0.15);
   }
   // Backed, unequal transom bays with proud louvres/recovery fittings.
-  P.add('hull', box(2.62, 0.42, 0.10), 0, 1.05, -2.755);
+  P.add('hull', box(2.62, 0.31, 0.10), 0, 1.105, -2.755);
   P.add('hullDark', box(1.15, 0.30, 0.035), -0.61, 1.08, -2.815);
   P.add('hullDark', box(0.92, 0.25, 0.035), 0.64, 1.055, -2.815);
   for (let i = 0; i < 6; i++) {
@@ -423,6 +462,65 @@ function buildT72B87Owner(P) {
   for (const x of [-0.92, -0.44, 0.02, 0.54, 0.96]) {
     P.add('hullDark', box(0.035, 0.28, 0.035), x, 1.06, -2.86);
   }
+  if (b3) {
+    // Unequal B3 rear-service texture over the common backed transom. The
+    // dark log stays low; proud louvres, pipes, lamp boxes and recovery eyes
+    // form three depth planes without widening the certified hull envelope.
+    for (let i = 0; i < 7; i++) {
+      P.add('hullDetail', box(0.30 - i * 0.010, 0.023, 0.021), -0.95, 0.945 + i * 0.041, -2.852);
+      if (i < 6) P.add('hullDetail', box(0.42 - i * 0.014, 0.022, 0.022), 0.58, 0.96 + i * 0.043, -2.854);
+    }
+    P.add('hullDark', box(0.48, 0.045, 0.050), -0.44, 1.26, -2.86);
+    P.add('hullDark', box(0.72, 0.040, 0.052), 0.54, 1.22, -2.86);
+    P.add('hullDetail', box(0.23, 0.17, 0.035), 0.08, 1.04, -2.875);
+    P.add('hullDark', box(0.18, 0.025, 0.040), 0.08, 1.14, -2.90);
+    for (const [x, y, w] of [[-0.78, 0.87, 0.36], [0.02, 0.90, 0.46], [0.76, 0.85, 0.31]]) {
+      P.add('hullDark', cylX(0.040, w, 10), x, y, -2.91);
+      P.add('hullDark', box(0.045, 0.17, 0.042), x - w * 0.38, y + 0.04, -2.89);
+    }
+    for (const s of [-1, 1]) {
+      P.add('hullDetail', box(0.16, 0.095, 0.035), s * 1.20, 1.12, -2.89);
+      P.add('hullDark', torus(0.082, 0.018, 12), s * 0.70, 0.78, -2.91, Math.PI / 2, 0, 0);
+      P.add('hullDark', box(0.06, 0.15, 0.20), s * 1.22, 0.92, -2.88, 0, 0, s * 0.12);
+    }
+    // The B3 transom uses two unequal recessed radiator/service bays rather
+    // than blank doors.  Dark backings are continuous hull structure; every
+    // bright slat, divider, pipe and latch is proud of that backing.
+    P.add('hullDark', box(1.05, 0.28, 0.028), -0.64, 1.075, -2.885);
+    P.add('hullDark', box(0.86, 0.235, 0.028), 0.62, 1.055, -2.886);
+    for (let i = 0; i < 7; i++) {
+      P.add('hullDetail', box(0.92 - (i % 2) * 0.045, 0.018, 0.024), -0.64, 0.965 + i * 0.036, -2.906);
+      if (i < 6) P.add('hullDetail', box(0.73 - (i % 3) * 0.035, 0.018, 0.024), 0.62, 0.972 + i * 0.037, -2.907);
+    }
+    for (const x of [-1.12, -0.82, -0.47, -0.10, 0.22, 0.52, 0.90, 1.07]) {
+      P.add('hullDark', box(0.030, x < 0.15 ? 0.31 : 0.27, 0.026), x, 1.07, -2.914);
+    }
+    P.add('hullDark', cylX(0.060, 2.08, 12), -0.05, 0.86, -2.930);
+    P.add('hullDetail', cylX(0.048, 0.52, 12), 0.72, 1.23, -2.927);
+    P.add('hullDark', box(0.25, 0.15, 0.038), 0.08, 0.94, -2.930);
+    P.add('hullDetail', box(0.18, 0.08, 0.038), -1.08, 0.90, -2.932);
+    for (const [x, y] of [[-1.18, 1.20], [1.16, 1.14]]) {
+      P.add('hullDark', box(0.21, 0.15, 0.035), x, y, -2.925);
+      P.add('hullDetail', box(0.12, 0.065, 0.038), x, y + 0.01, -2.948);
+    }
+    // Unequal upper bay courses conceal the last plain door fields.  The
+    // left radiator is taller and finer; the right service bay is shorter,
+    // split by an exhaust elbow and a removable access cassette.
+    P.add('hullDark', box(0.95, 0.31, 0.030), -0.67, 1.20, -2.916);
+    P.add('hullDark', box(0.66, 0.25, 0.030), 0.55, 1.17, -2.917);
+    P.add('hullDark', box(0.24, 0.19, 0.032), 1.01, 1.13, -2.919);
+    for (let i = 0; i < 8; i++) {
+      P.add('hullDetail', box(0.83 - (i % 3) * 0.055, 0.016, 0.024), -0.67, 1.075 + i * 0.034, -2.936);
+      if (i < 6) P.add('hullDetail', box(0.54 - (i % 2) * 0.045, 0.017, 0.024), 0.55, 1.085 + i * 0.034, -2.938);
+    }
+    P.add('hullDetail', box(0.040, 0.31, 0.026), -0.96, 1.20, -2.944);
+    P.add('hullDetail', box(0.040, 0.27, 0.026), -0.39, 1.18, -2.944);
+    P.add('hullDark', cylZ(0.070, 0.16, 12), 0.90, 1.25, -2.945, Math.PI / 2, 0, 0);
+    P.add('hullDark', cylX(0.050, 0.34, 10), 0.74, 1.25, -2.946);
+    P.add('hullDetail', box(0.20, 0.13, 0.038), 1.01, 1.10, -2.944);
+    P.add('hullDark', box(0.10, 0.20, 0.038), 0.18, 1.16, -2.943);
+    P.add('hullDetail', box(0.18, 0.055, 0.038), 0.18, 1.26, -2.944);
+  }
 
   // ---- low cast T-72B turret -------------------------------------------
   P.turretG.position.set(0, 1.35, 0.02);
@@ -435,6 +533,7 @@ function buildT72B87Owner(P) {
   meshDomeCurved(P, rings, 0.79, 0, -0.02, { capR: 1.8 });
   P.add('turretDark', cylY(1.53, 1.53, 0.05, 28), 0, -0.025, -0.02);
 
+  if (!b3) {
   // Kontakt-1 follows the cast skin: two low V courses at the nose, then
   // smaller radial cassettes wrapping both flanks.  All blocks overlap a
   // continuous armor carrier and use seams instead of isolated proxy slabs.
@@ -472,32 +571,128 @@ function buildT72B87Owner(P) {
     const w = 0.20 + ((i + row) % 3) * 0.012;
     P.add('turretTrack', box(w, 0.137 + (i % 2) * 0.012, 0.205 + ((i + row) % 2) * 0.018), x, 0.078 + row * 0.145 - i * 0.007, z, 0, s * a, 0);
   }
+  } else {
+    // B3 turret protection: two large Kontakt-5 arrow leaves meet around
+    // the armored gun tunnel, with clipped flank cassettes and a restrained
+    // stagger at the crown. Each course overlaps the cast shoulder instead
+    // of standing on sparse rails.
+    eraRuCheeks(P, { tip: {
+      x: 0.18, z: 1.24, ox: 1.30, oz: 0.47, y: 0.23,
+      h: 0.31, d: 0.13, tilt: -0.16, segs: 5, rows: 0, gap: false,
+      lip: { h: 0.09, dy: 0, dPitch: 0.28, tuck: 0.04 },
+    } }, 'tip');
+    const k5W = [0.19, 0.24, 0.205, 0.26, 0.18, 0.23, 0.215, 0.25];
+    const k5H = [0.10, 0.14, 0.09, 0.125, 0.11, 0.15, 0.095, 0.13];
+    const k5D = [0.25, 0.31, 0.28, 0.34, 0.24, 0.32, 0.27, 0.30];
+    for (const s of [-1, 1]) for (let row = 0; row < 4; row++) for (let i = 0; i < 8; i++) {
+      if ((row === 0 && i === 6) || (row === 2 && i === 2) || (row === 3 && i === 5)) continue;
+      const q = (i + row * 3 + (s < 0 ? 2 : 0)) % 8;
+      const jitter = [0.0, 0.022, -0.018, 0.034, -0.025, 0.012, -0.011, 0.027][q];
+      const x = s * (0.89 + i * 0.071 + jitter + row * 0.015 + (i % 2 ? 0.012 : -0.008));
+      const z = 0.65 - i * 0.169 - row * 0.023 + (i % 3 - 1) * 0.021 + (s < 0 ? -0.010 : 0.012);
+      const yaw = s * (0.47 + i * 0.108 + jitter * 1.3 + row * 0.021);
+      const w = k5W[q];
+      const h = k5H[(q + row) % 8];
+      const d = k5D[(q + i) % 8];
+      const y = 0.038 + row * [0.102, 0.119, 0.108, 0.126][i % 4] - i * 0.003 + jitter;
+      P.add('turretTrack', box(w, h, d), x, y, z, -0.04 - (i % 3) * 0.012, yaw, -0.045 + (row % 2 ? 0.018 : -0.012));
+      if (row !== 0) P.add('turretDark', box(w * 0.76, 0.013, 0.027), x, y + h / 2 + 0.007, z + 0.15, 0, yaw, -0.035);
+    }
+    for (const s of [-1, 1]) for (let row = 0; row < 3; row++) for (let i = 0; i < 7; i++) {
+      const x = s * (0.16 + i * 0.165 + (i % 2 ? 0.014 : -0.010) + row * 0.008);
+      const z = 0.86 - i * 0.108 - row * 0.086 + (i % 3 - 1) * 0.010;
+      const w = 0.150 + ((i + row) % 3) * 0.016;
+      P.add('turretTrack', box(w, 0.078 + (i % 2) * 0.012, 0.155 + (row % 2) * 0.018), x, 0.405 + row * 0.084 - i * 0.008, z, -0.16, s * (0.18 + i * 0.105 + row * 0.018), -0.060);
+    }
+    // Irregular buried inserts close the last smooth valleys between the
+    // frontal leaves and inner horseshoe. Their mixed scales/pitches avoid
+    // turning the protection into a decorative metronome.
+    for (const s of [-1, 1]) for (const [x0, y, z, w, h, d, yaw] of [
+      [0.34, 0.29, 0.92, 0.19, 0.10, 0.18, 0.30],
+      [0.58, 0.34, 0.74, 0.16, 0.085, 0.21, 0.43],
+      [0.79, 0.27, 0.56, 0.22, 0.095, 0.17, 0.51],
+      [0.98, 0.18, 0.28, 0.17, 0.11, 0.23, 0.66],
+      [1.09, 0.11, -0.02, 0.21, 0.09, 0.19, 0.79],
+      [1.13, 0.07, -0.34, 0.16, 0.12, 0.24, 0.92],
+    ]) {
+      P.add('turretTrack', box(w, h, d), s * x0, y + (s < 0 ? 0.008 : -0.006), z + (s < 0 ? -0.014 : 0.010), -0.10, s * yaw, -0.05);
+    }
+    // Two lower cheek courses descend from the arrow leaves toward the gun
+    // tunnel. They are wider at the nose, then taper and twist into the
+    // flank array, eliminating the smooth exposed cast valleys seen head-on.
+    for (const s of [-1, 1]) for (let row = 0; row < 2; row++) for (let i = 0; i < 5; i++) {
+      const x = s * (0.28 + i * 0.235 + row * 0.018);
+      const z = 1.02 - i * 0.105 - row * 0.145 + (i % 2 ? 0.014 : -0.008);
+      const y = 0.075 + row * 0.118 + i * 0.010;
+      const w = 0.215 - i * 0.008 + (row ? 0.012 : 0);
+      P.add('turretTrack', box(w, 0.12 - row * 0.012, 0.27 - i * 0.012), x, y, z, -0.12, s * (0.34 + i * 0.065 + row * 0.025), -0.07);
+    }
+  }
 
   // Compact roof station hierarchy on broad seats.
-  P.add('turret', cylY(0.33, 0.35, 0.10, 18), -0.56, 0.56, -0.02);
-  chamferBox(P, 'turret', 0.86, 0.10, 0.62, -0.52, 0.525, -0.10, 0.09);
-  P.add('turret', cylY(0.28, 0.30, 0.10, 16), -0.56, 0.65, -0.02);
-  P.add('turretDark', cylY(0.25, 0.25, 0.025, 16), -0.56, 0.715, -0.02);
-  P.add('turret', cylY(0.28, 0.30, 0.09, 16), 0.48, 0.54, -0.10);
-  P.add('turretDark', cylY(0.24, 0.24, 0.024, 16), 0.48, 0.60, -0.10);
-  P.add('turret', box(0.34, 0.25, 0.32), -0.42, 0.53, 0.53);
-  P.add('turretGlass', box(0.23, 0.12, 0.025), -0.42, 0.56, 0.70);
+  P.add('turret', cylY(b3 ? 0.31 : 0.33, b3 ? 0.33 : 0.35, b3 ? 0.075 : 0.10, 18), -0.56, b3 ? 0.55 : 0.56, -0.02);
+  chamferBox(P, 'turret', b3 ? 0.72 : 0.86, b3 ? 0.07 : 0.10, b3 ? 0.52 : 0.62, b3 ? -0.48 : -0.52, b3 ? 0.515 : 0.525, -0.10, 0.09);
+  P.add('turret', cylY(b3 ? 0.27 : 0.28, b3 ? 0.29 : 0.30, b3 ? 0.075 : 0.10, 16), -0.56, b3 ? 0.625 : 0.65, -0.02);
+  P.add('turretDark', cylY(0.25, 0.25, 0.025, 16), -0.56, b3 ? 0.675 : 0.715, -0.02);
+  P.add('turret', cylY(b3 ? 0.27 : 0.28, b3 ? 0.29 : 0.30, b3 ? 0.075 : 0.09, 16), 0.48, b3 ? 0.525 : 0.54, -0.10);
+  P.add('turretDark', cylY(0.24, 0.24, 0.024, 16), 0.48, b3 ? 0.575 : 0.60, -0.10);
+  if (!b3) {
+    P.add('turret', box(0.34, 0.25, 0.32), -0.42, 0.53, 0.53);
+    P.add('turretGlass', box(0.23, 0.12, 0.025), -0.42, 0.56, 0.70);
+  }
   P.add('turret', cylZ(0.19, 0.18, 16), 0.54, 0.50, 0.57, -0.24, 0, 0);
   P.add('turretGlass', cylZ(0.16, 0.02, 16), 0.54, 0.51, 0.665, -0.24, 0, 0);
   for (const [x, z, ry] of [[-0.86, 0.02, -0.28], [-0.78, 0.20, -0.12], [-0.55, 0.28, 0], [-0.32, 0.20, 0.12], [-0.24, 0.02, 0.28]]) {
     P.add('turretGlass', box(0.12, 0.055, 0.07), x, 0.61, z, 0, ry, 0);
   }
-  // Armored commander/NSVT station: a broad cupola seat, frontal shield
-  // and short return wings.  The opening and weapon line remain clear.
-  P.add('turret', cylY(0.34, 0.36, 0.065, 18), -0.56, 0.715, -0.14);
-  chamferBox(P, 'turret', 0.51, 0.18, 0.05, -0.56, 0.775, 0.00, 0.06);
-  P.add('turret', box(0.045, 0.17, 0.27), -0.80, 0.765, -0.14, 0, -0.12, 0);
-  P.add('turret', box(0.045, 0.14, 0.24), -0.32, 0.75, -0.16, 0, 0.12, 0);
-  P.add('turretDark', box(0.11, 0.075, 0.022), -0.67, 0.79, 0.036);
-  P.add('turret', box(0.20, 0.16, 0.22), 0.73, 0.48, 0.12);
-  P.add('turretGlass', box(0.15, 0.08, 0.025), 0.73, 0.50, 0.245);
-  for (const [x, z] of [[0.30, 0.04], [0.46, 0.17], [0.63, 0.13], [0.74, -0.02]]) {
-    P.add('turretGlass', box(0.11, 0.05, 0.065), x, 0.615, z);
+  if (b3) {
+    // Sosna-U and commander's station are intentionally compact and
+    // asymmetric. Broad buried shoes carry the receivers; lenses stay
+    // exposed, and the MG/cupola opening is not hidden behind a tower.
+    chamferBox(P, 'turret', 0.38, 0.055, 0.36, -0.61, 0.558, 0.29, 0.065);
+    chamferBox(P, 'turret', 0.25, 0.14, 0.27, -0.61, 0.635, 0.33, 0.065);
+    P.add('turretDark', box(0.195, 0.080, 0.024), -0.61, 0.635, 0.475);
+    P.add('turretGlass', box(0.115, 0.058, 0.014), -0.56, 0.642, 0.489);
+    P.add('turret', box(0.045, 0.11, 0.23), -0.75, 0.625, 0.32, 0, -0.10, 0);
+    P.add('turret', box(0.045, 0.095, 0.20), -0.47, 0.615, 0.31, 0, 0.10, 0);
+    P.add('turret', cylY(0.31, 0.33, 0.065, 18), 0.48, 0.63, -0.10);
+    P.add('turretDark', cylY(0.25, 0.25, 0.024, 16), 0.48, 0.675, -0.10);
+    P.add('turret', box(0.20, 0.15, 0.22), 0.72, 0.50, 0.14);
+    P.add('turretGlass', box(0.15, 0.075, 0.024), 0.72, 0.515, 0.265);
+    for (const [x, z, ry] of [[0.25, 0.03, 0.18], [0.41, 0.17, 0.10], [0.59, 0.16, -0.05], [0.74, 0.02, -0.18]]) {
+      P.add('turretGlass', box(0.105, 0.05, 0.065), x, 0.61, z, 0, ry, 0);
+    }
+    for (const [x, z, ry] of [[-0.86, 0.02, -0.24], [-0.78, 0.19, -0.12], [-0.62, 0.26, 0.02], [-0.40, 0.18, 0.14]]) {
+      P.add('turretGlass', box(0.10, 0.046, 0.062), x, 0.605, z, 0, ry, 0);
+    }
+    P.add('turretDark', cylY(0.045, 0.050, 0.10, 10), -0.22, 0.58, -0.54);
+    P.add('turretDetail', box(0.025, 0.27, 0.025), -0.22, 0.75, -0.54);
+    P.add('turret', box(0.15, 0.055, 0.17), -0.22, 0.60, -0.54);
+    P.add('turret', box(0.19, 0.10, 0.22), 0.16, 0.53, -0.44, 0, 0.12, 0);
+    P.add('turretDark', box(0.12, 0.055, 0.020), 0.16, 0.54, -0.32, 0, 0.12, 0);
+    // Low, unequal periscope/receiver bridge connects the two stations and
+    // replaces the former pair of isolated optical cubes.
+    P.add('turret', box(0.42, 0.055, 0.16), -0.04, 0.555, -0.04, 0, -0.06, 0);
+    P.add('turretDark', box(0.16, 0.035, 0.025), -0.14, 0.575, 0.052, 0, -0.06, 0);
+    P.add('turretGlass', box(0.085, 0.035, 0.026), 0.08, 0.575, 0.052, 0, -0.06, 0);
+    for (const [x, z, ry, hh] of [[-0.78, -0.16, -0.20, 0.040], [-0.43, -0.31, -0.08, 0.050], [-0.04, -0.30, 0.06, 0.043], [0.35, -0.29, 0.14, 0.052], [0.69, -0.18, 0.23, 0.040]]) {
+      P.add('turretGlass', box(0.085, hh, 0.050), x, 0.575 + (x > 0 ? 0.008 : 0), z, 0, ry, 0);
+    }
+    P.add('turret', box(0.22, 0.060, 0.12), 0.63, 0.565, -0.38, 0, 0.12, 0);
+    P.add('turretDark', box(0.13, 0.032, 0.024), 0.63, 0.575, -0.31, 0, 0.12, 0);
+  } else {
+    // Armored commander/NSVT station: a broad cupola seat, frontal shield
+    // and short return wings. The opening and weapon line remain clear.
+    P.add('turret', cylY(0.34, 0.36, 0.065, 18), -0.56, 0.715, -0.14);
+    chamferBox(P, 'turret', 0.51, 0.18, 0.05, -0.56, 0.775, 0.00, 0.06);
+    P.add('turret', box(0.045, 0.17, 0.27), -0.80, 0.765, -0.14, 0, -0.12, 0);
+    P.add('turret', box(0.045, 0.14, 0.24), -0.32, 0.75, -0.16, 0, 0.12, 0);
+    P.add('turretDark', box(0.11, 0.075, 0.022), -0.67, 0.79, 0.036);
+    P.add('turret', box(0.20, 0.16, 0.22), 0.73, 0.48, 0.12);
+    P.add('turretGlass', box(0.15, 0.08, 0.025), 0.73, 0.50, 0.245);
+    for (const [x, z] of [[0.30, 0.04], [0.46, 0.17], [0.63, 0.13], [0.74, -0.02]]) {
+      P.add('turretGlass', box(0.11, 0.05, 0.065), x, 0.615, z);
+    }
   }
 
   // Twin 902B banks with buried cheek brackets.
@@ -525,6 +720,8 @@ function buildT72B87Owner(P) {
     P.add('turret', box(w, h, 0.30), x, 0.22 + h / 2, z);
     P.add('turretDark', box(w - 0.04, 0.018, 0.24), x, 0.23 + h, z);
     P.add('turretDark', box(0.045, h * 0.55, 0.022), x + w * 0.28, 0.22 + h * 0.48, z - 0.16);
+    P.add('turretDark', box(w - 0.055, 0.026, 0.018), x, 0.27 + h * 0.35, z - 0.158);
+    P.add('turretDetail', box(0.035, h * 0.62, 0.020), x - w * 0.22, 0.22 + h * 0.46, z - 0.161);
   }
   for (const [x, y, z, w] of [[-0.72, 0.26, -1.31, 0.20], [-0.34, 0.32, -1.35, 0.16], [0.22, 0.28, -1.37, 0.24], [0.66, 0.34, -1.28, 0.17]]) {
     P.add('turretDark', box(w, 0.055, 0.04), x, y, z);
@@ -535,6 +732,63 @@ function buildT72B87Owner(P) {
     P.add('turret', box(0.30, 0.24, 0.38), s * 0.88, 0.22, -0.92);
     P.add('turret', box(0.24, 0.20, 0.30), s * 1.08, 0.20, -0.72, 0, s * 0.20, 0);
     P.add('turretDark', box(0.18, 0.025, 0.24), s * 1.08, 0.315, -0.72, 0, s * 0.20, 0);
+  }
+  if (b3) {
+    // Modern rectangular flank packs and their low carrier rails wrap the
+    // cast rear shoulder. Every box has a lid seam and an inboard return;
+    // none is left on the hull when the turret traverses.
+    for (const s of [-1, 1]) {
+      for (let i = 0; i < 3; i++) {
+        const z = -0.42 - i * 0.35;
+        P.add('turret', box(0.34, 0.24 - i * 0.02, 0.30), s * (1.18 - i * 0.08), 0.22, z, 0, s * (0.18 + i * 0.08), 0);
+        P.add('turretDark', box(0.27, 0.018, 0.23), s * (1.18 - i * 0.08), 0.35 - i * 0.01, z, 0, s * (0.18 + i * 0.08), 0);
+        P.add('turretDark', box(0.05, 0.18, 0.27), s * (0.99 - i * 0.03), 0.22, z + 0.02, 0, s * (0.18 + i * 0.08), 0);
+      }
+    }
+    // Broken, backed bustle-service cadence.  The rails return into the
+    // existing shoulder packs and the three unequal fields close the blank
+    // rear rectangles without becoming a solid duplicate turret wall.
+    for (const [x, w, y] of [[-0.54, 0.42, 0.40], [-0.05, 0.47, 0.43], [0.48, 0.36, 0.38]]) {
+      P.add('turretDark', box(w, 0.035, 0.035), x, y, -1.345);
+      P.add('turretDark', box(w * 0.82, 0.028, 0.030), x, y - 0.11, -1.332);
+      P.add('turretDetail', box(0.035, 0.19, 0.035), x - w * 0.38, y - 0.055, -1.327);
+      P.add('turretDetail', box(0.035, 0.16, 0.035), x + w * 0.34, y - 0.055, -1.327);
+    }
+    for (const [x, y, w] of [[-0.70, 0.25, 0.24], [-0.28, 0.29, 0.30], [0.18, 0.24, 0.22], [0.61, 0.30, 0.26]]) {
+      P.add('turretDark', box(w, 0.042, 0.032), x, y, -1.365);
+      P.add('turretDark', box(0.035, 0.13, 0.035), x + w * 0.36, y - 0.045, -1.335, 0.12, 0, 0);
+    }
+    // Purposefully unequal shoulder kit breaks the bilateral rear read: a
+    // shallow tool roll and short bracketed can on the left, a compact
+    // electronics/service cassette on the right, all inside the rail frame.
+    P.add('turret', box(0.44, 0.13, 0.18), -0.46, 0.24, -1.20, 0, -0.08, 0);
+    P.add('turretDark', box(0.34, 0.020, 0.13), -0.46, 0.315, -1.20, 0, -0.08, 0);
+    P.add('turretDark', cylZ(0.075, 0.25, 12), -0.77, 0.31, -1.24, Math.PI / 2, 0, 0);
+    P.add('turret', box(0.30, 0.20, 0.20), 0.52, 0.28, -1.18, 0, 0.10, 0);
+    P.add('turretDark', box(0.22, 0.018, 0.15), 0.52, 0.39, -1.18, 0, 0.10, 0);
+    P.add('turretDetail', box(0.040, 0.16, 0.16), 0.35, 0.28, -1.19, 0, 0.10, 0);
+    // Rear-facing faces for the three unequal bustle cells.  These are
+    // individually backed and tied forward into the existing boxes so the
+    // direct rear reads as supported machinery rather than two blank doors.
+    for (const [x, w, h, y, rails] of [
+      [-0.57, 0.54, 0.21, 0.34, 5],
+      [-0.10, 0.30, 0.25, 0.36, 6],
+      [0.43, 0.43, 0.18, 0.31, 4],
+    ]) {
+      P.add('turretDark', box(w, h, 0.028), x, y, -1.405);
+      P.add('turretDark', box(0.045, h * 0.88, 0.20), x - w * 0.42, y, -1.31);
+      P.add('turretDark', box(0.045, h * 0.78, 0.20), x + w * 0.40, y - 0.01, -1.31);
+      for (let i = 0; i < rails; i++) {
+        const rw = w * (0.78 - (i % 3) * 0.07);
+        P.add('turretDetail', box(rw, 0.016, 0.022), x + (i % 2 ? 0.018 : -0.012), y - h * 0.34 + i * (h * 0.68 / Math.max(rails - 1, 1)), -1.426);
+      }
+    }
+    P.add('turretDark', cylZ(0.072, 0.12, 12), -0.91, 0.31, -1.43);
+    P.add('turretDetail', torus(0.072, 0.012, 12), -0.91, 0.31, -1.495);
+    P.add('turretDark', box(0.22, 0.10, 0.035), 0.78, 0.29, -1.425);
+    P.add('turretDetail', box(0.11, 0.045, 0.038), 0.80, 0.30, -1.447);
+    P.add('turretDark', box(0.34, 0.035, 0.18), -0.21, 0.19, -1.34, 0.18, 0, 0);
+    P.add('turretDark', box(0.28, 0.035, 0.16), 0.36, 0.18, -1.33, -0.14, 0, 0);
   }
 
   // 2A46M: retain the proven run, cast collar, articulation and bore.
@@ -547,6 +801,10 @@ function buildT72B87Owner(P) {
   });
   muzzleBore(P, { r: 0.116 });
   P.topY = 1.16;
+}
+
+function buildT72B3Owner(P) {
+  buildT72B87Owner(P, 'b3');
 }
 
 
@@ -4480,6 +4738,6 @@ function buildT72BUOwner(P) {
 
 export const T72_PROFILES = {
   t72b_1987: { build: buildT72B87Owner },
-  t72b3m: { build: buildT72B3M },
+  t72b3m: { build: buildT72B3Owner },
   t72bu: { build: buildT72BUOwner },
 };
