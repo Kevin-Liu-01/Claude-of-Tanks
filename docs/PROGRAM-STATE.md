@@ -89,8 +89,8 @@ re-freeze NEW hash, all in ONE commit.
 | m45_patton | 53caa687 | GRADUATED 2026-08-08 (29th; gate 90.7 x5 total + sitting-2 visual floor 9.0 mean 9.13 x14; sitting-1 orders executed: loft.smooth byte-reproduced, ring cupola adjudicated ring-class at station with the measured Ø0.57/x-0.65 deviation compliant; ring-prominence silhouette-tax residual certified) |
 | leclerc | 683be340 | GRADUATED 2026-08-08 (30th; gate 90.3 x2 every component >=90 + visual floor 9.0 mean 9.17 x14 at freeze-verified bytes; the §5.14 §K-exemplar turret standard held through the ladder — no gate-chasing artifacts; commander-well doc trued z_w 0.32..0.66) |
 | k2 | 827d5ffc | GRADUATED 2026-08-08 (31st; Leclerc-method closed station loft; gate 90.1 x2 every component >=90; visual R26 floor 9.0 / mean 9.09 x14; exact Object_8/15/18/21 plan inventory, rounded asymmetric cage, countable six-station ISU gear; oracle 8d92cd1b reproducible from pristine .bak) |
-| abramsx | d1dbfa2 | GRADUATED 2026-08-09 (32nd; §5.87 owner attachment closeout RE-FROZEN: roof-sight necks + XM914 buried foundation/recoil spine/equipment foot, no air seams; gate 90.2 x2 every component >=90; fresh §B8 floor 9.0 / mean 9.09 x14; oracle 01acf03c reproducible from pristine .bak; prior fe7f9852 complete-redesign freeze retired) |
-| challenger_3 | b0c172a4 | GRADUATED 2026-08-09 (33rd; §5.87 owner attachment closeout RE-FROZEN: Protector roof shoe/fork/receiver/optic supports + smoke backing shoes; gate 90.4 x2 every component >=90; fresh §B8 floor 9.0 / mean 9.06 x14; oracle a5fcd801 reproducible from pristine .bak; prior 2678f6c complete-redesign freeze retired) |
+| abramsx | 26b46ba0 | GRADUATED 2026-08-09; RE-FROZEN 2026-08-10 (§5.95 owner screenshot attachment re-cert on current main: broad stepped RWS pedestal, optic plinths, smoke rails and antenna collars visibly meet the turret in all standard/yaw views; gate 90.2, standard/parent clean; 10-pixel/0.01% winding nomination has no visible wound; independent §B8 floor 9.3 / mean 9.49 x14; prior d1dbfa2 retired) |
+| challenger_3 | 3e5a7797 | GRADUATED 2026-08-09; RE-FROZEN 2026-08-10 (§5.95 owner screenshot attachment re-cert on current main: multi-tier Protector foundation, tapered optic plinth, smoke/corner rails and antenna collars have continuous physical seats; gate 90.4, standard/parent/winding clean; independent §B8 floor 9.4 / mean 9.59 x14; prior b0c172a4 retired) |
 | challenger2 | 3b4bd5f0 | GRADUATED 2026-08-09; RE-FROZEN 2026-08-10 (§5.89 owner fused-block repair: material-fused casemate course removed from fixed hull and repartitioned into the articulated source tree; one low ring landing + one rotating turret; gate 90.1 x2 every component >=90; standard/parent/winding clean; fresh §B8 floor 9.0 / mean 9.06 x14, yaw/load paths 9.3; oracle f44e3b46 reproducible from pristine .bak; prior 63ee160 retired) |
 | fv510 | 927beeb2 | GRADUATED 2026-08-10; RE-FROZEN 2026-08-10 (§5.91 owner native-track correction: donor Track suppressed and 34 donor running-gear components removed at whole-component boundaries; exact Warrior upper geometry retained around one game-native six-station wheel/sprocket/idler/shoe system; gate 90.3 x2, every component >=90.3; fidelity 98.0; standard/parent/winding clean; independent §B8 floor 9.1 / mean 9.26 x14, yaw/load paths 9.4; prior exact-source freeze 7884762a retired) |
 | type10 | 201d0a08 | GRADUATED 2026-08-10; RE-FROZEN §5.97 (owner correction: complete rear cage, circular spare-wheel forms, service boxes, rack rails and antennas reparented as whole source components to the seated turret; lower engine deck remains hull-owned; exact five-wheel native track 0/0; gate 94.6 x2; parent/winding clean; independent §B8 floor 9.4 / mean 9.59 x14, yaw load paths PASS; prior 84f5d108 retired) |
@@ -2828,7 +2828,7 @@ Fleet is **34/96** and graduates **40**. The same uninterrupted owner round
 continues with the raw T-90, T-90A Burlak and T-90MS Tagil before T-72B3M,
 Leopard 2A7/Revolution and T-14.
 
-## 5.95 OWNER SCREENSHOT REOPEN — CHALLENGER 3 / ABRAMSX ATTACHMENT (2026-08-10, CANDIDATE)
+## 5.95 OWNER SCREENSHOT REOPEN — CHALLENGER 3 / ABRAMSX ATTACHMENT (2026-08-10, RE-CERTIFIED)
 
 The owner identified the two garage references explicitly as Challenger 3
 and AbramsX and demonstrated that §5.87's yaw-coherence verdict had not proved
@@ -2862,12 +2862,28 @@ PNG receipts are 1280x640 with distinct SHA-256 values; `npm test` is green.
 Evidence lives in `shots/critic-challenger3-owner-gap-recert/` and
 `shots/critic-abramsx-owner-gap-recert/`.
 
-This is a **candidate repair, not a re-graduation**. The prior §5.87 critic
-sitting did not cover the owner-reported failure correctly, so the graduate
-registry hashes and counts stay unchanged until a new genuinely independent
-§B8 sitting certifies the frozen candidate bytes. The owner-priority sequence
-then continues with the reopened Vladimir hull/turret partition and complete
-T-90SM redesign before the remaining T-90 family.
+The first §5.95 landing remained a **candidate repair**, because the prior
+§5.87 critic sitting did not cover the owner-reported failure correctly. A
+fresh current-main re-cert now closes that hold. Later universal visible-bore
+geometry moved the reproducible integrated freezes to AbramsX **26b46ba0**
+(77 meshes / 162,506 vertices) and Challenger 3 **3e5a7797** (62 meshes /
+72,471 vertices); both reproduce x2. Their geometry rows remain 90.2 and 90.4.
+Standard check, asset freshness, visible muzzle proof, parent 0/0/0, tests and
+private build pass. Challenger 3 winding is pixel-clean. AbramsX's mode-1
+nomination is only 10 top-view pixels / 0.01%; the full 42-frame independent
+inspection finds no open sheet, disappearing face or backface wound.
+
+Each final receipt is 42 unique current-byte PNGs: fourteen paired standard
+views plus fourteen yaw-0 and fourteen yaw-90 frames. Fresh independent §B8
+scores AbramsX
+`[9.4,9.5,9.4,9.3,9.3,9.4,9.4,9.5,9.6,9.6,9.5,9.7,9.6,9.7]`, floor
+**9.3**, mean **9.49**; Challenger 3
+`[9.5,9.6,9.5,9.5,9.4,9.5,9.5,9.6,9.7,9.7,9.6,9.8,9.6,9.8]`, floor
+**9.4**, mean **9.59**. The critic explicitly confirms continuous physical
+seats for every RWS, optic, smoke, antenna and roof-equipment course—not just
+shared yaw motion—and finds no fused duplicate turret mass, stranded part,
+empty-air gap, track wound or visible winding defect. **RE-CERTIFIED; KEEP
+`26b46ba0` and `3e5a7797`; retire `d1dbfa2` and `b0c172a4`.**
 
 ## 5.96 TYPE 90 SOURCE-VIEW TURRET PARENTING REPAIR (2026-08-10)
 
