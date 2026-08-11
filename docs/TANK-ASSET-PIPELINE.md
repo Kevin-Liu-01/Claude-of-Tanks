@@ -77,9 +77,11 @@ fleet-wide bore/metadata invariants without reading generated files. It is a
 diagnostic; only the default manifest-backed mode is a release proof.
 `npm run tank:bore:probe` additionally saves straight-on visual proofs for a
 representative MBT, autocannon IFV, and howitzer under
-`/private/tmp/cot-muzzle-bore-proof/` and checks the dark-center contrast.
+`/private/tmp/cot-muzzle-bore-proof/`, checks the dark-center contrast, and
+writes the per-tank metrics and center-ray evidence to `report.json` there.
 Use `npm run tank:bore:probe -- --all` for the release-time visual sweep of
 every registered tank, or `--ids=id_a,id_b` while iterating on specific models.
+`--out=<directory>` relocates both proofs and the report for an evidence packet.
 
 ## Ownership rules
 

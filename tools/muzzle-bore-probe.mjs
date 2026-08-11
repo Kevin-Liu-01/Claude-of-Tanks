@@ -8,9 +8,10 @@ import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 
 const idsArg = process.argv.find((arg) => arg.startsWith('--ids='));
+const outArg = process.argv.find((arg) => arg.startsWith('--out='));
 const all = process.argv.includes('--all');
 const ids = all ? [] : idsArg ? idsArg.slice(6).split(',').filter(Boolean) : ['m1a2', 'bmp2', 'kv2'];
-const outDir = resolve('/private/tmp/cot-muzzle-bore-proof');
+const outDir = resolve(outArg ? outArg.slice(6) : '/private/tmp/cot-muzzle-bore-proof');
 mkdirSync(outDir, { recursive: true });
 
 const server = await createServer({
@@ -25,6 +26,7 @@ const browser = await puppeteer.launch({
 const page = await browser.newPage();
 const failures = [];
 let checkedIds = ids;
+const report = { schemaVersion: 1, generatedAt: new Date().toISOString(), tanks: {} };
 try {
   await page.goto(`http://localhost:${server.config.server.port}/tools/icons-page.html`, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction('window.__ICONS_READY === true', { timeout: 60000 });
@@ -46,6 +48,7 @@ try {
     const shot = shots[id];
     if (!shot || shot.error) {
       failures.push(`${id}: ${shot && shot.error || 'missing shot'}`);
+      report.tanks[id] = { pass: false, error: shot && shot.error || 'missing shot' };
       continue;
     }
     const path = resolve(outDir, `${id}.png`);
@@ -60,6 +63,17 @@ try {
     // contrast at this macro framing. Accept that case only when the center
     // ray proves the near-black pixel belongs to the explicit bore disc.
     const readsAbsoluteBlack = shot.innerLuma < 20 && firstHitIsBore;
+    const pass = shot.muzzleBore.tagged > 0 && (readsRecessed || readsAbsoluteBlack);
+    report.tanks[id] = {
+      pass,
+      proof: `${id}.png`,
+      innerLuma: Number(shot.innerLuma.toFixed(2)),
+      surroundLuma: Number(shot.surroundLuma.toFixed(2)),
+      contrast: Number(contrast.toFixed(2)),
+      radiusPx: Number(shot.radiusPx.toFixed(2)),
+      muzzleBore: shot.muzzleBore,
+      boreDebug: shot.boreDebug,
+    };
     if (!(readsRecessed || readsAbsoluteBlack)) {
       failures.push(`${id}: center does not read as a recessed dark bore ${JSON.stringify(shot.boreDebug)}`);
     }
@@ -69,6 +83,11 @@ try {
   await server.close();
 }
 
+report.checked = Object.keys(report.tanks).length;
+report.pass = failures.length === 0;
+const reportPath = resolve(outDir, 'report.json');
+writeFileSync(reportPath, `${JSON.stringify(report, null, 2)}\n`);
+console.log(`[muzzle-bore] report ${reportPath}`);
 if (failures.length) {
   for (const failure of failures) console.error(`[muzzle-bore] FAIL ${failure}`);
   process.exit(2);
