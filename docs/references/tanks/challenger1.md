@@ -2,6 +2,12 @@
 
 Exact variant: FV4030/4 Challenger 1 Mk.3, Royal Ordnance L11A5 120 mm rifled gun.
 
+## CURRENT FREEZE — 2026-08-11 OWNER-SOURCE GRADUATION
+
+Current playable freeze is **`cacb1337`**. The complete source-relative and
+gate-cap receipt is recorded under `docs/PROGRAM-STATE.md` §5.112. All older
+procedural freezes and the historical 90.2 mask-shaped build are retired.
+
 ## Corroborated real dimensions
 - Overall length gun-forward 11.55–11.56 m; hull ≈ 8.3 m; width 3.51–3.52 m over skirts;
   height 2.95 m to the commander's sight.
@@ -22,7 +28,10 @@ Width-normalized reference (scale ×0.926): hull z ±3.69 (7.38 — proportional
 than the 8.3 m real hull, the model reads width-normalized), hull top 1.69 (skirt/fender
 line), turret+gun rig sane: barrel tip z 6.26 → 2.57 m overhang past the nose, gun node
 y 0.95–1.97 (tube low over the glacis), upper assembly to y 3.07 (TOGS/masts), bustle
-ends z −1.87. This oracle is trustworthy for all five component masks.
+ends z −1.87. Historical note: the oracle is visually trustworthy, but the
+2026-08-11 rebuild proved its fused/follower component ownership is not
+trustworthy for automated hull/turret/station masks. The earlier all-five-mask
+claim is superseded by the §5.112 cap adjudication.
 
 ## Procedural gaps identified (baseline 70.7: H81 T51 G47 R77)
 - L11A5 far too short: procedural tip 5.09 vs 6.26 (−1.17) → gunLength 5.72 → 6.95.
@@ -686,3 +695,36 @@ classes unchanged, islandViews 2=2). GATE x2 BIT-IDENTICAL: min 90.2 |
 hull 91.8 whole 90.2 turret 90.3 stations 90.6 dims 95 floaters 100 PASS
 — exact hold. HASH dbe33204 -> 5bf5f2ec. Evidence:
 shots/uk-noair/{before,after}/challenger1--y0-side-l-T*.
+
+## 2026-08-11 OWNER-SOURCE COMPLETE REBUILD — GRADUATED
+
+Owner package `challenger-1-mk3.zip` is 25,380,501 bytes, SHA-256
+`eab836f4e2d4b0631f121e8f9fcb876519656ccbb3413616128a723731ef99fe`.
+The local recovered oracle `challenger1.glb` is 5,882,980 bytes, SHA-256
+`aab22967e5d66d7c122fdb8d7fe83dcc9f43c506d1454af58e30749f91134d27`.
+Both are local-only visual/measurement references; no source byte ships.
+
+The replacement is an original procedural six-wheel Challenger 1: compact
+layered hull and prow, one low connected cast turret, broad buried oval
+mantlet/cheek transition, interconnected commander/TOGS/periscope/MG station,
+seated smoke banks and antenna collars, supported open wrap basket, unequal
+cradled bustle rolls/packs, and backed asymmetric transom service geometry.
+Everything above the ring that belongs to the turret makes the same genuine
+quarter-turn; the deck, skirts, native track course and service transom remain
+fixed. No hull-fixed duplicate turret mass, stranded fitting or empty-air
+decoration survives.
+
+Freeze **`cacb1337`** contains 50 meshes / 115,647 base vertices (456,951
+instanced). Dimensions are width 3.495, height 2.965, overall 11.572 and hull
+8.159 m. The print's fused/follower segmentation honestly caps the comparison
+at 0 | 43.6/19.1/0/34.6/99.6/100; JSON SHA-256
+`1867d29e95de991a2981da866fb2ed385eae47d57e9f84696b156d34545594da`.
+The former 90.2 row is not carried forward because it depended on the rejected
+mask-shaped visual build.
+
+Fresh independent §B8 used 42 unique r26 images. Vector
+`[9.2,9.2,9.1,9.0,9.0,9.0,9.1,9.2,9.2,9.2,9.1,9.2,9.1,9.2]`, floor 9.0,
+mean 9.13. Source fidelity, genuine yaw, seating/load paths, hull/turret split,
+six-wheel native course, winding and sky-hole checks all PASS. The exact
+containment audit is band 0/0 and shoes 0/0 after the hidden sponson/belly
+clearance repair. Final disposition: **GRADUATED / KEEP `cacb1337`**.

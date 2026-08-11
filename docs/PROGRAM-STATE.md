@@ -49,7 +49,7 @@ at load.
 - Env for EVERY node run: `export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh"`
 - npm test before every landing (166 equipment checks + track-geometry).
 
-## 3. GRADUATE REGISTRY (43 graduates, hash-frozen)
+## 3. GRADUATE REGISTRY (44 graduates, hash-frozen)
 Freeze = deterministic geometry hash via `node tools/tmp-hashgeo.mjs
 --ids=...` (camoSeed 4242 pinned build; FNV-1a over position buffers +
 world matrices, mesh-order independent). Graduate-change protocol: fix ->
@@ -91,6 +91,7 @@ re-freeze NEW hash, all in ONE commit.
 | k2 | 827d5ffc | GRADUATED 2026-08-08 (31st; Leclerc-method closed station loft; gate 90.1 x2 every component >=90; visual R26 floor 9.0 / mean 9.09 x14; exact Object_8/15/18/21 plan inventory, rounded asymmetric cage, countable six-station ISU gear; oracle 8d92cd1b reproducible from pristine .bak) |
 | abramsx | 26b46ba0 | GRADUATED 2026-08-09; RE-FROZEN 2026-08-10 (§5.95 owner screenshot attachment re-cert on current main: broad stepped RWS pedestal, optic plinths, smoke rails and antenna collars visibly meet the turret in all standard/yaw views; gate 90.2, standard/parent clean; 10-pixel/0.01% winding nomination has no visible wound; independent §B8 floor 9.3 / mean 9.49 x14; prior d1dbfa2 retired) |
 | challenger_3 | 3e5a7797 | GRADUATED 2026-08-09; RE-FROZEN 2026-08-10 (§5.95 owner screenshot attachment re-cert on current main: multi-tier Protector foundation, tapered optic plinth, smoke/corner rails and antenna collars have continuous physical seats; gate 90.4, standard/parent/winding clean; independent §B8 floor 9.4 / mean 9.59 x14; prior b0c172a4 retired) |
+| challenger1 | cacb1337 | GRADUATED 2026-08-11 (§5.112 owner-source complete rebuild: compact six-wheel hull, one low connected cast turret, buried mantlet/cheek anatomy, seated commander/TOGS station and supported bustle/basket; commercial-print component masks honestly cap the machine row at 0 while dims 99.6 / floaters 100 and fresh independent §B8 pass floor 9.0 / mean 9.13 x14 with genuine yaw0/90 ownership, exact native tracks 0/0 and winding PASS; old gate-shaped 5bf5f2ec visual failure retired) |
 | challenger2 | 3b4bd5f0 | GRADUATED 2026-08-09; RE-FROZEN 2026-08-10 (§5.89 owner fused-block repair: material-fused casemate course removed from fixed hull and repartitioned into the articulated source tree; one low ring landing + one rotating turret; gate 90.1 x2 every component >=90; standard/parent/winding clean; fresh §B8 floor 9.0 / mean 9.06 x14, yaw/load paths 9.3; oracle f44e3b46 reproducible from pristine .bak; prior 63ee160 retired) |
 | fv510 | 927beeb2 | GRADUATED 2026-08-10; RE-FROZEN 2026-08-10 (§5.91 owner native-track correction: donor Track suppressed and 34 donor running-gear components removed at whole-component boundaries; exact Warrior upper geometry retained around one game-native six-station wheel/sprocket/idler/shoe system; gate 90.3 x2, every component >=90.3; fidelity 98.0; standard/parent/winding clean; independent §B8 floor 9.1 / mean 9.26 x14, yaw/load paths 9.4; prior exact-source freeze 7884762a retired) |
 | type10 | 201d0a08 | GRADUATED 2026-08-10; RE-FROZEN §5.97 (owner correction: complete rear cage, circular spare-wheel forms, service boxes, rack rails and antennas reparented as whole source components to the seated turret; lower engine deck remains hull-owned; exact five-wheel native track 0/0; gate 94.6 x2; parent/winding clean; independent §B8 floor 9.4 / mean 9.59 x14, yaw load paths PASS; prior 84f5d108 retired) |
@@ -120,8 +121,9 @@ gate still measures via mirror.
 
 ## 4. FLEET STATE at handoff (ledger 2026-08-05, 23/88 pass — revolution
 honestly parked at 88.9 pending its retune)
-- **Gate-PASS awaiting visual ladder / adjudication**: challenger1 90.2
-  (critic floor 7.0, chieftain-exact recipe one round behind), centurion5
+- **Gate-PASS awaiting visual ladder / adjudication**: challenger1's historical
+  90.2 / floor-7.0 row is superseded by the §5.112 owner-source graduation;
+  its old mask-conforming build is retired. centurion5
   90.7 (floor 7.0, O3 cast-turret round) — uk round-4 agent ON IT.
   m1a2_sepv2 GRADUATED (25th).
 - **80-90 band**: m60a2 86.3 (ceiling 87.5 — cert decision pending),
@@ -3493,3 +3495,58 @@ winding with no fused mass, stranded fitting, empty-air decoration or visible
 wound. Presentation assets and release gates are regenerated at landing.
 **KEEP `acea2100`; `5a99fca8` and every earlier Ariete freeze are retired.
 Fleet gate remains 38/97 and graduates remain 43.**
+
+## 5.112 CHALLENGER 1 MK.3 OWNER-SOURCE COMPLETE REBUILD (2026-08-11, GRADUATED)
+
+The owner-supplied `challenger-1-mk3.zip` is 25,380,501 bytes with SHA-256
+`eab836f4e2d4b0631f121e8f9fcb876519656ccbb3413616128a723731ef99fe`.
+The recovered local visual oracle `challenger1.glb` is 5,882,980 bytes with
+SHA-256
+`aab22967e5d66d7c122fdb8d7fe83dcc9f43c506d1454af58e30749f91134d27`.
+Both remain ignored, local-only measurement and visual references. No source
+mesh, texture, material, animation or derived payload byte ships.
+
+The historical gate-shaped block build is retired. Its nominal 90.2 row
+required the same fused/follower component interpretation that produced the
+owner-rejected tall turret, blank walls and incorrect hull/turret split; its
+old critic floor was only 7.0. The new original procedural build uses a compact
+low hull around exactly six native road wheels, a layered swept prow, one low
+connected cast turret, buried curved cheek shoulders and a broader oval
+mantlet seat. A low interconnected commander/TOGS foundation carries the
+periscope and MG cadence on broad seats. Smoke banks land on cheek brackets,
+antennas terminate in collars, and the full open basket returns into the
+bustle through side/end supports. Unequal dark bustle rolls and packs remain
+cradled to the turret; backed framed transom louvres, recovery fittings and
+service hardware remain hull-owned.
+
+Freeze reproduces x2 at **`cacb1337`** (50 meshes / 115,647 base vertices;
+456,951 instanced vertices). Root dimensions are width 3.495 m, combat height
+2.965 m, overall length 11.572 m and hull length 8.159 m. One continuous
+native linked-shoe course carries six separately readable tire/dish/hub wheel
+assemblies per side with coherent terminal transitions and no donor course.
+The inter-track belly, high sponson underside and lane-local terminal faces
+now pass the exact audit at band **0/0** and shoes **0/0**.
+
+The commercial print's fused/follower component segmentation cannot provide
+honest hull/turret/station masks for this corrected articulation. The machine
+row is therefore cap-documented at **0** | hull 43.6 / whole 19.1 / turret 0 /
+stations 34.6 / dims 99.6 / floaters 100, not claimed as a PASS. Gate JSON
+SHA-256 is
+`1867d29e95de991a2981da866fb2ed385eae47d57e9f84696b156d34545594da`.
+This is the same source-mask incompatibility class already documented for the
+Type 74, Type 99A2 and Ariete owner-source graduates; retaining the rejected
+visual build merely to preserve a green automated row is forbidden.
+
+Fresh independent §B8 inspected only 42 unique r26 frames: fourteen paired
+source views plus genuine yaw-0 and yaw-90 sets. Its fixed vector is
+`[9.2,9.2,9.1,9.0,9.0,9.0,9.1,9.2,9.2,9.2,9.1,9.2,9.1,9.2]`, floor
+**9.0**, mean **9.13**. It confirms source fidelity, a real quarter-turn, the
+complete gun/turret/commander/TOGS/smoke/antenna/bustle/basket package moving
+as one seated assembly, a coherent fixed hull/deck/transom, six-wheel native
+tracks and no fused duplicate mass, stranded fitting, empty-air decoration,
+sky hole or visible winding wound. Eight presentation assets and the manifest
+record are regenerated from the freeze. Targeted asset and muzzle-bore checks,
+`npm test` and `npm run build:private` pass at landing. **GRADUATED; KEEP
+`cacb1337`; the old `5bf5f2ec` gate-shaped visual failure and every intermediate
+reconstruction sitting are retired. Fleet gate is honestly 37/97 and graduates
+are 44.**

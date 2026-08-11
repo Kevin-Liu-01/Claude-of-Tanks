@@ -1085,10 +1085,320 @@ function challenger1Build(P) {
   ], 0x13170d);
   P.topY = 1.35;
 }
+// OWNER-SOURCE REBUILD (2026-08-11). The recovered Challenger Mk.3 is a
+// quarantined local visual/measurement oracle only. This is original,
+// connected procedural geometry: a low six-wheel hull, one continuous
+// swept Challenger casting and explicit physical seats for every fitting.
+function challenger1Source2026(P) {
+  const {
+    cylX, sph, frustum, fenders, cupola,
+  } = KIT;
+
+  // ---- compact, low hull wrapped tightly around six native stations ----
+  // Inter-track belly: the old ±1.04 m wall clipped the rear band/shoes by
+  // 21 mm at the sprocket approach. The visible shoulders/skirts above keep
+  // the source width; the structural belly stays inside the 0.995 m lane.
+  P.add('hull', box(1.88, 0.72, 6.62), 0, 0.69, -0.03);
+  P.add('hull', slab(
+    // The broad sponson starts above the live shoe envelope. The previous
+    // 1.01 m lower plane occupied the rear sprocket wrap; the inner belly
+    // already carries the structure below this source-correct track well.
+    [-1.61, 1.31, 2.23], [1.61, 1.31, 2.23], [1.61, 1.31, -3.31], [-1.61, 1.31, -3.31],
+    [-1.42, 1.43, 2.23], [1.42, 1.43, 2.23], [1.42, 1.43, -3.31], [-1.42, 1.43, -3.31]));
+  P.add('hull', box(2.90, 0.055, 3.98), 0, 1.455, -1.02);
+  // One shallow glacis and a contained lower nose; no stair-step terraces.
+  P.add('hull', frustum(0.82, 3.98, 3.25, 0.95, 3.80, 2.76, 0.58, 0.74));
+  // Keep the lower nose inside the native idler lane through the full wrap.
+  // The former 1.26 m top half-width intersected 72 exact front shoe voxels
+  // even though the skirt hid the contact in ordinary renders; the next
+  // upper course supplies the broad shoulder above the track envelope.
+  P.add('hull', frustum(0.95, 3.70, 1.36, 0.93, 3.47, 1.28, 0.74, 1.08));
+  P.add('hull', frustum(1.26, 3.38, 1.28, 1.52, 3.20, 1.20, 1.08, 1.38));
+  P.add('hullDark', box(2.02, 0.035, 0.050), 0, 1.075, 3.20, -0.37, 0, 0);
+  P.add('hullDetail', box(1.72, 0.032, 0.050), 0, 0.745, 3.66, -0.30, 0, 0);
+  for (const s of [-1, 1]) {
+    P.add('hull', slab(
+      [s * 0.98, 1.02, 1.28], [s * 1.27, 1.08, 1.28], [s * 1.27, 1.08, 3.18], [s * 0.96, 0.96, 3.38],
+      [s * 1.26, 1.36, 1.22], [s * 1.52, 1.38, 1.22], [s * 1.52, 1.38, 3.03], [s * 1.10, 1.21, 3.27]));
+  }
+  // Low rear tub and layered transom/service field.
+  // Inter-track lower stern.  The service/transom courses above retain the
+  // source-wide rear, while this hidden tub clears the sprocket wrap instead
+  // of occupying the same 36 mm physical volume as the native shoes.
+  P.add('hull', frustum(0.93, -3.96, -2.86, 0.93, -3.90, -2.82, 0.58, 1.24));
+  // Rear sponson deck: retain the same 1.43 m crest and plan footprint, but
+  // remove the hidden deep wall that occupied the native sprocket wrap.
+  P.add('hull', box(3.00, 0.12, 0.52), 0, 1.37, -3.24);
+  P.add('hullDark', box(2.12, 0.42, 0.045), 0, 0.82, -3.985);
+  P.add('hull', box(0.72, 0.44, 0.052), -0.58, 0.82, -4.015);
+  P.add('hull', box(0.52, 0.35, 0.052), 0.12, 0.77, -4.015);
+  P.add('hull', box(0.57, 0.41, 0.052), 0.70, 0.84, -4.015);
+  // Three unequal louvre/service bays replace a single diagrammatic grille.
+  // Each bay is proud of the common transom backing and has its own datum,
+  // so the direct rear resolves as layered Challenger service architecture.
+  for (const [cx, w, y0, rows] of [[-0.68, 0.54, 0.72, 5], [-0.08, 0.44, 0.69, 4], [0.58, 0.62, 0.73, 5]]) {
+    P.add('hullDark', box(w, 0.28, 0.018), cx, y0 + 0.15, -4.081);
+    P.add('hull', box(w + 0.08, 0.030, 0.022), cx, y0 + 0.31, -4.087);
+    P.add('hull', box(w + 0.08, 0.030, 0.022), cx, y0 - 0.01, -4.087);
+    P.add('hull', box(0.030, 0.35, 0.022), cx - w / 2 - 0.025, y0 + 0.15, -4.087);
+    P.add('hull', box(0.030, 0.35, 0.022), cx + w / 2 + 0.025, y0 + 0.15, -4.087);
+    for (let k = 0; k < rows; k++) {
+      P.add('hullDetail', box(w - 0.05, 0.018, 0.018), cx, y0 + 0.05 + k * (0.20 / Math.max(rows - 1, 1)), -4.096);
+    }
+    P.add('hullDetail', box(0.026, 0.095, 0.020), cx + w * 0.27, y0 + 0.17, -4.102);
+    P.add('hullDetail', box(0.090, 0.026, 0.020), cx + w * 0.27, y0 + 0.20, -4.103);
+  }
+  for (const x of [-0.99, -0.37, 0.26, 0.93]) P.add('hullDetail', box(0.026, 0.34, 0.018), x, 0.87, -4.097);
+  P.add('hull', box(0.48, 0.24, 0.045), -0.78, 1.10, -4.035);
+  P.add('hull', box(0.64, 0.18, 0.045), -0.18, 1.05, -4.036);
+  P.add('hull', box(0.40, 0.28, 0.045), 0.62, 1.12, -4.035);
+  for (const x of [-0.90,-0.54,-0.10,0.23,0.53,0.78]) P.add('hullDetail', box(0.030, 0.085, 0.025), x, 1.10, -4.068);
+  for (const s of [-1, 1]) {
+    P.add('hullDark', box(0.38, 0.25, 0.038), s * 1.28, 1.00, -4.02);
+    P.add('hullDetail', cylZ(0.067, 0.045, 12), s * 1.28, 1.08, -4.07);
+    P.add('hullRubber', box(0.36, 0.30, 0.035), s * 1.51, 0.72, -3.93);
+    P.add('hullDetail', torus(0.086, 0.015, 14), s * 0.63, 0.57, -4.08, Math.PI / 2, 0, 0);
+  }
+  P.add('hullDetail', box(2.22, 0.035, 0.035), 0, 0.56, -4.08);
+  P.add('hullDetail', cylZ(0.085, 0.10, 12), 0, 0.58, -4.10);
+  P.add('hull', box(0.34, 0.24, 0.045), -1.06, 1.18, -4.035);
+  P.add('hullDark', box(0.28, 0.17, 0.025), -1.06, 1.18, -4.068);
+  P.add('hull', box(0.28, 0.19, 0.045), 1.02, 1.13, -4.035);
+  P.add('hullDetail', cylZ(0.050, 0.035, 10), 1.02, 1.18, -4.070);
+  {
+    const rearCable = FITTINGS.towCable({ mats: P.mats, pts: [[-0.94, 0.66, -4.09], [-0.45, 0.55, -4.10], [0.08, 0.64, -4.09], [0.62, 0.56, -4.10], [1.02, 0.69, -4.09]], r: 0.014, seed: 4031 });
+    P.hullG.add(rearCable);
+  }
+
+  // Shallow upper skirts expose six large wheel discs and retain the source
+  // panel cadence without becoming a continuous wall.
+  fenders(P, 1.06, 1.70, 1.34, -3.40, 3.34, 0.03);
+  for (const s of [-1, 1]) {
+    for (let k = 0; k < 12; k++) {
+      const z = -3.20 + k * 0.55;
+      P.add('hull', box(0.032, 0.50, 0.51), s * 1.69, 1.07, z);
+      P.add('hullDark', box(0.036, 0.20, 0.018), s * 1.710, 1.06, z + 0.255);
+      P.add('hullDetail', cylX(0.020, 0.035, 8), s * 1.73, 1.24, z);
+    }
+    P.add('hullRubber', box(0.034, 0.31, 0.42), s * 1.72, 0.76, 3.56);
+    P.add('hullRubber', box(0.034, 0.31, 0.42), s * 1.72, 0.76, -3.65);
+  }
+
+  // Driver, bow lights, guards, tow hardware and a physically routed cable.
+  P.add('hull', box(0.62, 0.045, 0.64), -0.48, 1.34, 1.55, -0.10, 0, 0);
+  for (const x of [-0.69, -0.48, -0.27]) periscope(P, 'hullDetail', x, 1.37, 1.76);
+  P.add('hullDetail', box(2.00, 0.055, 0.065), 0, 1.26, 2.70, -0.20, 0, 0);
+  for (const s of [-1, 1]) {
+    P.add('hull', box(0.43, 0.22, 0.18), s * 1.29, 1.32, 3.20, -0.17, 0, 0);
+    P.add('hullDark', box(0.35, 0.14, 0.025), s * 1.29, 1.32, 3.31, -0.17, 0, 0);
+    for (const dx of [-0.08, 0.08]) P.add('hullGlass', cylZ(0.045, 0.03, 12), s * 1.29 + dx, 1.33, 3.335, -0.17, 0, 0);
+    P.add('hullDetail', box(0.48, 0.025, 0.20), s * 1.29, 1.45, 3.20, -0.17, 0, 0);
+    P.add('hullDetail', box(0.028, 0.26, 0.20), s * 1.53, 1.33, 3.20, -0.17, 0, 0);
+    P.add('hullDetail', torus(0.09, 0.017, 14), s * 0.56, 0.62, 3.92, Math.PI / 2, 0, 0);
+    liftEye(P, 'hullDetail', s * 1.38, 1.39, -2.50);
+  }
+  {
+    const cable = FITTINGS.towCable({ mats: P.mats, pts: [[-1.20, 1.28, 2.70], [0, 1.39, 2.10], [1.20, 1.28, 2.70]], r: 0.018, seed: 4030 });
+    P.hullG.add(cable);
+  }
+  // Power deck and rear-fender kit.
+  for (let k = 0; k < 7; k++) P.add('hullDark', box(1.88, 0.016, 0.17), 0.22, 1.355, -1.48 - k * 0.24);
+  for (const x of [-0.74, 0.74]) {
+    P.add('hullDark', cylY(0.30, 0.32, 0.024, 20), x, 1.37, -2.75);
+    P.add('hullDetail', torus(0.26, 0.014, 18), x, 1.388, -2.75, Math.PI / 2, 0, 0);
+  }
+  P.add('hull', box(0.58, 0.13, 0.74), -1.18, 1.42, -2.78);
+  P.add('hull', box(0.52, 0.13, 0.84), 1.18, 1.42, -2.70);
+  P.add('hullDetail', box(2.62, 0.035, 0.035), 0, 1.51, -3.35);
+
+  // Six large Hydrogas stations and one linked native shoe course.
+  buildRunningGear(P, {
+    style: 'rubber', dishR: 0.74, wheelR: 0.42, wheelW: 0.27, wheelY: 0.470, xc: 1.265,
+    wheelZs: [2.45, 1.58, 0.71, -0.16, -1.03, -1.90],
+    sprocket: { z: -2.67, y: 0.80, r: 0.33 }, idler: { z: 3.55, y: 0.80, r: 0.29 },
+    rollers: [-1.74, -0.87, 0, 0.87, 1.74].map((z) => ({ z, y: 0.93, r: 0.075 })),
+    trackW: 0.54, trackTh: 0.068, topY: 1.12, botY: 0.035,
+    deadSag: 0.024, paintedEnds: true, coveredTop: false, arms: true,
+  });
+  // Source-readable Hydrogas faces. These are shallow outer dishes on the
+  // existing six native wheels, not a second wheel course: dark tyres remain
+  // visible around recessed olive dishes, with separate hubs and bolt rings.
+  for (const s of [-1, 1]) {
+    for (const z of [2.45, 1.58, 0.71, -0.16, -1.03, -1.90]) {
+      P.add('hullRubber', cylX(0.355, 0.026, 24), s * 1.411, 0.470, z);
+      P.add('hullDark', cylX(0.285, 0.032, 20), s * 1.430, 0.470, z);
+      P.add('hull', cylX(0.215, 0.034, 20), s * 1.447, 0.470, z);
+      P.add('hullDark', torus(0.245, 0.016, 18), s * 1.450, 0.470, z, 0, Math.PI / 2, 0);
+      P.add('hullDetail', cylX(0.074, 0.038, 16), s * 1.454, 0.470, z);
+      for (let k = 0; k < 8; k++) {
+        const a = k * Math.PI / 4;
+        P.add('hullDetail', cylX(0.013, 0.041, 8), s * 1.456, 0.470 + Math.sin(a) * 0.145, z + Math.cos(a) * 0.145);
+      }
+    }
+    // Distinct terminal caps make the end transitions read mechanically,
+    // while retaining the same idler/sprocket centres and track envelope.
+    const trackDark = s < 0 ? 'hullTrackTrimL' : 'hullTrackTrimR';
+    const trackDetail = s < 0 ? 'hullTrackDetailL' : 'hullTrackDetailR';
+    for (const [z, y, r] of [[-2.67, 0.80, 0.25], [3.55, 0.80, 0.22]]) {
+      // Keep legitimate terminal-gear faces out of center-spanning hull
+      // buckets so containment classifies them as lane-local running gear.
+      P.add(trackDark, cylX(r, 0.026, 20), s * 1.412, y, z);
+      P.add(trackDetail, cylX(r * 0.48, 0.035, 16), s * 1.438, y, z);
+    }
+  }
+
+  // ---- one low, swept Challenger casting on a buried ring seat ----
+  P.turretG.position.set(0, 1.62, -0.20);
+  P.add('turret', xform(cylY(0.88, 0.93, 0.10, 20), 0, 0, 0, 0, 0, 0, [1.10, 1, 0.82]), 0, 0.02, 0);
+  P.add('turret', box(1.70, 0.14, 1.04), 0, 0.08, 0);
+  // Longitudinal source sections (local to the 1.62 m turret pivot).  The
+  // underside dives only through the trunnion/cheek band and rises again
+  // toward both ends; this cannot be represented by a single plan fan.
+  cr2FacetedShell(P, [
+    { z: -1.92, w: 0.56, inner: 0.22, tw: 0.48, bot: 0.08, outer: 0.31, center: 0.38 },
+    { z: -1.64, w: 0.82, inner: 0.34, tw: 0.70, bot: 0.02, outer: 0.40, center: 0.50 },
+    { z: -1.34, w: 1.06, inner: 0.42, tw: 0.92, bot: -0.10, outer: 0.49, center: 0.61 },
+    { z: -0.80, w: 1.30, inner: 0.45, tw: 1.12, bot: -0.20, outer: 0.54, center: 0.69 },
+    { z: -0.25, w: 1.38, inner: 0.46, tw: 1.20, bot: -0.25, outer: 0.56, center: 0.72 },
+    { z:  0.30, w: 1.40, inner: 0.46, tw: 1.22, bot: -0.28, outer: 0.56, center: 0.74 },
+    { z:  0.85, w: 1.39, inner: 0.46, tw: 1.20, bot: -0.25, outer: 0.53, center: 0.70 },
+    { z:  1.38, w: 1.34, inner: 0.44, tw: 1.15, bot: -0.16, outer: 0.47, center: 0.62 },
+    { z:  1.92, w: 1.18, inner: 0.40, tw: 0.99, bot: -0.05, outer: 0.39, center: 0.53 },
+    { z:  2.45, w: 0.80, inner: 0.30, tw: 0.64, bot: 0.05, outer: 0.30, center: 0.43 },
+    { z:  2.70, w: 0.32, inner: 0.14, tw: 0.25, bot: 0.12, outer: 0.23, center: 0.34 },
+  ]);
+  // Chobham cheek courses and shallow side bins follow the shell planes.
+  for (const s of [-1, 1]) {
+    P.add('turret', slab(
+      [s * 0.18, 0.02, 2.02], [s * 1.18, 0.00, 1.42], [s * 1.36, 0.00, 0.80], [s * 0.55, 0.02, 1.08],
+      [s * 0.16, 0.48, 1.88], [s * 0.98, 0.53, 1.34], [s * 1.16, 0.48, 0.78], [s * 0.50, 0.50, 1.04]));
+    P.add('turretDark', slab(
+      [s * 0.22, 0.27, 1.93], [s * 0.91, 0.28, 1.45], [s * 1.09, 0.27, 0.92], [s * 0.51, 0.28, 1.15],
+      [s * 0.21, 0.30, 1.91], [s * 0.89, 0.31, 1.44], [s * 1.07, 0.30, 0.92], [s * 0.50, 0.31, 1.15]));
+    // A buried cast cheek shoulder rounds the cap-and-collar transition. It
+    // overlaps the primary shell and the layered Chobham slab on all axes.
+    P.add('turret', xform(sph(0.34, 18), 0, 0, 0, 0, 0, 0, [2.25, 1.04, 1.62]), s * 0.54, 0.26, 1.37);
+    P.add('turretDark', slab(
+      [s * 0.18, 0.10, 1.88], [s * 0.72, 0.06, 1.60], [s * 1.17, 0.02, 1.02], [s * 0.49, 0.05, 1.20],
+      [s * 0.17, 0.13, 1.86], [s * 0.70, 0.09, 1.58], [s * 1.14, 0.05, 1.02], [s * 0.48, 0.08, 1.20]));
+  }
+  // Thin cheek courses are buried into the casting; there are no stand-off
+  // side boxes or fence-like extensions outside the source load path.
+  for (const s of [-1, 1]) {
+    P.add('turret', box(0.08, 0.34, 1.16), s * 1.49, 0.26, 0.92, 0, s * 0.03, 0);
+    P.add('turretDark', box(0.085, 0.026, 1.02), s * 1.495, 0.44, 0.92, 0, s * 0.03, 0);
+  }
+
+  // Rounded fixed cheek collar blends the organic shell into the
+  // pitch-owned canvas mantlet without adding a disconnected second shell.
+  P.add('turret', xform(sph(0.36, 20), 0, 0, 0, 0, 0, 0, [2.38, 1.08, 0.74]), 0, 0.25, 1.90);
+  P.add('turretDark', torus(0.225, 0.014, 20), 0, 0.25, 2.15);
+
+  // Broad canvas/cast mantlet and the long L11A5 pitch-owned gun package.
+  P.gunG.position.set(0, 0.23, 0.62);
+  P.addGunExtra(xform(sph(0.38, 18), 0, 0, 0, 0, 0, 0, [1.35, 0.80, 0.82]), 0, 0, 0.10);
+  P.addGunExtraDark(torus(0.245, 0.025, 18), 0, 0, 0.39);
+  P.addGunExtra(cylZ(0.20, 0.34, 18, 0.15), 0, 0, 0.36);
+  buildGun(P, { len: 6.99, r: 0.087, sleeve: true, evac: 0.57, collar: true, baseR: 0.16 });
+  muzzleBore(P, { len: 6.99, r: 0.087 });
+
+  // Two low cupolas, TOGS/gunner sights and a commander MAG on real seats.
+  cupola(P, 'turret', -0.52, 0.91, -0.32, 0.25, 0.15, 10);
+  cupola(P, 'turret', 0.48, 0.89, -0.52, 0.23, 0.12, 10);
+  for (const p of [[-0.75,0.91,0.28],[-0.34,0.93,0.46],[0.23,0.92,0.56],[0.72,0.90,0.12]]) periscope(P, 'turretDetail', p[0], p[1], p[2]);
+  for (const p of [[-0.82,0.94,-0.06],[-0.62,0.97,-0.63],[-0.24,0.96,-0.78],[0.18,0.94,-0.84],[0.70,0.93,-0.74]]) periscope(P, 'turretDetail', p[0], p[1], p[2]);
+  P.add('turretDetail', torus(0.14, 0.015, 16), -0.18, 0.95, -1.12, Math.PI / 2, 0, 0);
+  P.add('turretDetail', box(0.32, 0.035, 0.24), 0.42, 0.94, -1.10, 0, 0.08, 0);
+  P.add('turretDark', box(0.26, 0.020, 0.18), 0.42, 0.96, -1.10, 0, 0.08, 0);
+  // One compact integrated commander/TOGS cluster, each upper body buried
+  // into a broad roof plinth. This replaces the old independent towers.
+  P.add('turret', xform(cylY(0.58, 0.70, 0.09, 18), -0.05, 0, 0, 0, 0, 0, [1.35, 1, 0.72]), -0.05, 0.73, 0.28);
+  for (const x of [-0.55, -0.30, -0.04, 0.22, 0.48]) periscope(P, 'turretDetail', x, 0.81, 0.60);
+  P.add('turret', box(0.58, 0.10, 0.48), -0.44, 0.76, 0.28);
+  P.add('turret', slab(
+    [-0.69, 0.78, 0.49], [-0.19, 0.78, 0.49], [-0.19, 0.78, 0.07], [-0.69, 0.78, 0.07],
+    [-0.64, 1.08, 0.45], [-0.24, 1.08, 0.45], [-0.24, 1.08, 0.11], [-0.64, 1.08, 0.11]));
+  P.add('turretDark', box(0.32, 0.06, 0.030), -0.44, 0.94, 0.486);
+  P.add('turretGlass', box(0.13, 0.045, 0.032), -0.55, 0.94, 0.489);
+  P.add('turret', box(0.35, 0.09, 0.30), 0.56, 0.75, 0.50);
+  P.add('turret', slab(
+    [0.42, 0.78, 0.63], [0.70, 0.78, 0.63], [0.70, 0.78, 0.37], [0.42, 0.78, 0.37],
+    [0.46, 0.98, 0.60], [0.66, 0.98, 0.60], [0.66, 0.98, 0.40], [0.46, 0.98, 0.40]));
+  P.add('turretGlass', box(0.14, 0.05, 0.028), 0.56, 0.88, 0.627);
+  {
+    P.add('turret', cylY(0.14, 0.19, 0.14, 12), -0.52, 1.02, -0.34);
+    P.add('turret', box(0.32, 0.30, 0.25), -0.76, 1.00, -0.36);
+    P.add('turretDark', box(0.035, 0.25, 0.20), -0.925, 1.00, -0.36);
+    P.add('turret', box(0.24, 0.27, 0.22), -0.30, 0.99, -0.35);
+    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag58', tone: 'two-tone', elev: -0.02, seed: 4030, scale: 1.08, ammo: true });
+    mg.position.set(-0.52, 0.60, -0.34); P.turretG.add(mg);
+  }
+  // Canted five-tube smoke banks are rooted in cheek brackets.
+  for (const s of [-1, 1]) {
+    P.add('turret', box(0.24, 0.20, 0.42), s * 1.27, 0.43, 1.27, 0, s * 0.33, 0);
+    const smoke = FITTINGS.smokeBank({ mats: P.mats, count: 5, r: 0.052, len: 0.32, splay: s * 0.85, pitch: -0.58, arc: 0.78, spacing: 0.11, rotation: [0, 0, -s * 0.14], seed: 4100 + s });
+    smoke.position.set(s * 1.29, 0.52, 1.32); P.turretG.add(smoke);
+    liftEye(P, 'turretDetail', s * 0.84, 0.59, 0.60, s * 0.28);
+  }
+
+  // Supported bustle basket, source side bins, stowage and whip collars.
+  for (const [s, ax, az] of [[-1, -1.375, -0.88], [1, 0.95, -0.62]]) {
+    for (const y of [0.25, 0.48]) P.add('turretDetail', box(0.03, 0.03, 1.08), s * 1.31, y, -1.55);
+    for (const z of [-1.02,-1.30,-1.55]) P.add('turretDetail', box(0.028, 0.25, 0.028), s * 1.31, 0.36, z);
+    P.add('turretDetail', box(0.035, 0.38, 0.035), s * 1.10, 0.37, -1.52, -0.48, 0, s * 0.42);
+    P.add('turret', cylY(0.05, 0.065, 0.13, 8), ax, 0.225, az);
+    P.add('turretDark', box(0.024, 1.10, 0.07), ax, 0.775, az);
+    P.add('turretDetail', box(0.03, 0.06, 0.076), ax, 1.30, az);
+  }
+  for (const y of [0.25, 0.48]) {
+    P.add('turretDetail', box(1.10, 0.03, 0.03), 0, y, -1.91);
+    for (const s of [-1, 1]) {
+      P.add('turretDetail', box(0.25, 0.03, 0.03), s * 0.675, y, -1.72);
+      P.add('turretDetail', box(0.13, 0.03, 0.03), s * 0.865, y, -1.56);
+    }
+  }
+  for (const [x,z] of [[-0.44,-1.91],[0,-1.91],[0.44,-1.91],[-0.68,-1.72],[0.68,-1.72],[-0.86,-1.56],[0.86,-1.56]]) {
+    P.add('turretDetail', box(0.028, 0.25, 0.028), x, 0.36, z);
+  }
+  P.add('turretCloth', box(0.68, 0.20, 0.36), -0.34, 0.39, -1.72);
+  P.add('turretCloth', box(0.46, 0.17, 0.32), 0.48, 0.38, -1.75);
+  P.add('turretCloth', box(0.52, 0.20, 0.42), -0.96, 0.47, -0.78);
+  P.add('turretCloth', box(0.48, 0.18, 0.40), 0.99, 0.46, -0.76);
+  // Mk.3 roof/bustle grammar: shallow stepped service plates and unequal
+  // rear modules stay inside the connected casting and basket returns.
+  P.add('turret', box(0.62, 0.055, 0.52), -0.24, 0.70, 0.18, 0, -0.04, 0);
+  P.add('turretDark', box(0.54, 0.015, 0.035), -0.24, 0.732, 0.18, 0, -0.04, 0);
+  P.add('turret', box(0.48, 0.18, 0.38), -0.74, 0.60, -1.62);
+  P.add('turret', box(0.62, 0.16, 0.36), -0.14, 0.58, -1.68);
+  P.add('turret', box(0.42, 0.20, 0.34), 0.45, 0.60, -1.66);
+  for (const x of [-0.72, -0.36, 0, 0.36, 0.72]) P.add('turretDetail', box(0.028, 0.18, 0.028), x, 0.49, -2.04);
+  P.add('turretDark', box(0.46, 0.15, 0.028), -0.76, 0.59, -1.835);
+  P.add('turretDark', box(0.58, 0.12, 0.028), -0.13, 0.56, -1.885);
+  P.add('turretDark', box(0.38, 0.17, 0.028), 0.46, 0.59, -1.855);
+  P.add('turretCloth', box(0.28, 0.20, 0.26), -1.04, 0.50, -1.78);
+  P.add('turret', box(0.24, 0.18, 0.28), 0.98, 0.50, -1.82);
+  P.add('turretDark', box(0.20, 0.12, 0.024), 0.98, 0.50, -1.975);
+  P.add('turretDetail', box(0.52, 0.030, 0.030), -0.72, 0.39, -2.08, 0, 0.10, 0);
+  P.add('turretDetail', box(0.38, 0.028, 0.028), 0.73, 0.43, -2.06, 0, -0.14, 0);
+  P.add('turretCloth', box(0.34, 0.16, 0.26), 0.06, 0.38, -1.98);
+  // Broken-up, low bustle rolls on explicit cradles. The unequal courses
+  // retain the source's rack/stowage read without recreating r22's bright
+  // full-width bar.
+  P.add('turretDark', cylX(0.085, 0.38, 14), -0.48, 0.48, -1.94, 0, 0, 0.05);
+  P.add('turretDark', cylX(0.072, 0.24, 14), 0.14, 0.46, -1.97, 0, 0, -0.04);
+  for (const x of [-0.68, -0.28, 0.01, 0.27]) P.add('turretDetail', box(0.025, 0.20, 0.028), x, 0.45, -1.95);
+  P.add('turret', box(0.34, 0.24, 0.15), -0.86, 0.48, -1.94);
+  P.add('turretDark', box(0.25, 0.15, 0.025), -0.86, 0.48, -2.03);
+  P.add('turret', box(0.26, 0.19, 0.14), 0.82, 0.45, -1.95);
+
+  P.decal('turret', 'number', P.spec.visual.number || '31', 0.22, [1.39, 0.35, -0.34], Math.PI / 2, 0, 0.04);
+  P.topY = 1.32;
+}
+
 // Profiles-class family map (merged by profiledProcedurals.js — the same
 // interface every ./profiles family module exports).
 export const CHALLENGER_PROFILES = {
-  challenger1: { build: challenger1Build },
+  challenger1: { build: challenger1Source2026 },
 };
 
 // ===========================================================================
