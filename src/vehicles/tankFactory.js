@@ -3986,8 +3986,9 @@ export function createTank(specId, engineCtx, opts = {}) {
     const authoredLocal = muzzle.worldToLocal(authoredBore.getWorldPosition(new THREE.Vector3()));
     boreX = authoredLocal.x;
     boreY = authoredLocal.y;
-    fallbackBore.position.x = boreX;
-    fallbackBore.position.y = boreY;
+    // If the nominal rig anchor is far from a hand-authored tube (M60A2),
+    // retain the authored face as the fallback before the cap ray refines it.
+    fallbackBore.position.set(boreX, boreY, authoredLocal.z + 0.018);
   }
   const rayOrigin = recoilG.localToWorld(new THREE.Vector3(boreX, boreY, P.muzzleZ + 1));
   const rayDirection = new THREE.Vector3(0, 0, -1).transformDirection(recoilG.matrixWorld);

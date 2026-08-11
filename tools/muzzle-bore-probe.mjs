@@ -57,13 +57,13 @@ try {
     console.log(`[muzzle-bore] ${id} inner ${shot.innerLuma.toFixed(1)} surround ${shot.surroundLuma.toFixed(1)} contrast ${contrast.toFixed(1)} ${JSON.stringify(shot.muzzleBore)} -> ${path}`);
     if (!(shot.muzzleBore.tagged > 0)) failures.push(`${id}: no visible tagged bore`);
     const firstHit = shot.boreDebug && shot.boreDebug.centerHits && shot.boreDebug.centerHits[0];
-    const firstHitIsBore = !!(firstHit && /muzzleBoreShadow.*Disc/i.test(firstHit.name));
+    const firstHitIsBore = !!(firstHit && firstHit.bore);
     const readsRecessed = shot.innerLuma < 80 && contrast > 15;
     // Very dark-painted barrel faces (Vickers Mk.1) have no useful outer
     // contrast at this macro framing. Accept that case only when the center
     // ray proves the near-black pixel belongs to the explicit bore disc.
-    const readsAbsoluteBlack = shot.innerLuma < 20 && firstHitIsBore;
-    const pass = shot.muzzleBore.tagged > 0 && (readsRecessed || readsAbsoluteBlack);
+    const readsAbsoluteBlack = shot.innerLuma < 20;
+    const pass = shot.muzzleBore.tagged > 0 && firstHitIsBore && (readsRecessed || readsAbsoluteBlack);
     report.tanks[id] = {
       pass,
       proof: `${id}.png`,
@@ -77,6 +77,7 @@ try {
     if (!(readsRecessed || readsAbsoluteBlack)) {
       failures.push(`${id}: center does not read as a recessed dark bore ${JSON.stringify(shot.boreDebug)}`);
     }
+    if (!firstHitIsBore) failures.push(`${id}: first visible center hit is not bore furniture ${JSON.stringify(firstHit)}`);
   }
 } finally {
   await browser.close();

@@ -397,7 +397,8 @@ function boreShotOne(id) {
     const muzzle = root.getObjectByName('rig_muzzle');
     if (!muzzle) throw new Error('rig_muzzle missing');
     const spec = getSpec(id);
-    const face = muzzle.getWorldPosition(new THREE.Vector3());
+    const fallback = muzzle.getObjectByName('muzzleBoreShadowFallback');
+    const face = (fallback || muzzle).getWorldPosition(new THREE.Vector3());
     const direction = muzzle.getWorldDirection(new THREE.Vector3()).normalize();
     const radius = Math.max(0.014, (spec.armor.gunBarrel.radiusM || 0.04) * 0.92);
     const distance = Math.max(0.18, radius * 8);
@@ -408,11 +409,25 @@ function boreShotOne(id) {
     cam.lookAt(face);
     cam.updateMatrixWorld(true);
     const ray = new THREE.Raycaster(cam.position, direction.clone().negate(), 0, distance * 4);
-    const centerHits = ray.intersectObject(root, true).slice(0, 6).map((hit) => ({
-      distance: Number(hit.distance.toFixed(4)),
-      name: hit.object.name || hit.object.type,
-      fallback: !!(hit.object.userData && hit.object.userData.cannonBoreFallbackPart),
-    }));
+    const centerHits = ray.intersectObject(root, true).filter((hit) => {
+      for (let node = hit.object; node; node = node.parent) {
+        if (!node.visible) return false;
+        if (node === root) break;
+      }
+      const materials = Array.isArray(hit.object.material) ? hit.object.material : [hit.object.material];
+      return !materials.length || materials.some((material) => !material || material.colorWrite !== false);
+    }).slice(0, 6).map((hit) => {
+      let bore = /muzzleBoreShadow/i.test(hit.object.name || '');
+      for (let node = hit.object; node && !bore; node = node.parent) {
+        bore = !!(node.userData && node.userData.cannonBore);
+      }
+      return {
+        distance: Number(hit.distance.toFixed(4)),
+        name: hit.object.name || hit.object.type,
+        fallback: !!(hit.object.userData && hit.object.userData.cannonBoreFallbackPart),
+        bore,
+      };
+    });
     const oldColor = renderer.getClearColor(new THREE.Color()).clone();
     const oldAlpha = renderer.getClearAlpha();
     renderer.setClearColor(0xaebac2, 1);
@@ -440,8 +455,11 @@ function boreShotOne(id) {
       radiusPx,
       muzzleBore: muzzleBoreCensus(root),
       boreDebug: {
-        fallbackZ: muzzle.getObjectByName('muzzleBoreShadowFallback')?.position.z ?? null,
-        capOffsetM: muzzle.getObjectByName('muzzleBoreShadowFallback')?.userData.capOffsetM ?? null,
+        fallbackZ: fallback?.position.z ?? null,
+        fallbackPosition: fallback?.position.toArray() ?? null,
+        fallbackWorld: fallback?.getWorldPosition(new THREE.Vector3()).toArray() ?? null,
+        authoredWorld: root.getObjectByName('muzzleBoreShadowDisc')?.getWorldPosition(new THREE.Vector3()).toArray() ?? null,
+        capOffsetM: fallback?.userData.capOffsetM ?? null,
         centerHits,
       },
     };
