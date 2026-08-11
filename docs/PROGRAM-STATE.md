@@ -3660,3 +3660,65 @@ binding refreshed. The asset/currentness audit passes 1 tank / 8 files, the
 rendered bore proof passes, the full `npm test` suite passes and the private
 production build passes. **GRADUATED; KEEP `3f2483d4`; retire `d62c8140` as
 the playable freeze. Fleet gate remains honestly 36/97; graduates are 46.**
+
+## 5.115 T-72BU OWNER-SOURCE REBUILD (2026-08-11, GRADUATED)
+
+The owner's `/Users/kevinliu/Downloads/t-72bu-ussr.zip` is 2,800,528 bytes
+with SHA-256
+`582bae1f9f268fdcedc9f61179ef7c33e3b2e8885a5dd2f977ab7d048a208310`.
+Its recovered local visual oracle,
+`public/models/tanks/community/recovered/t72bu.glb`, is 855,800 bytes with
+SHA-256
+`2957f8938e4e5c897ba680deb2ca986b270bbddb215fcddd52e495b3e4b9608b`.
+The archive does not establish sufficient redistribution provenance, so both
+remain ignored local measurement/review inputs. No owner mesh, material,
+texture, animation or derived payload byte ships; the playable is original
+procedural geometry.
+
+The rejected baseline had a 4.8 floor / 5.87 mean: a nearly hull-width smooth
+dome, tall slab hull, undersized wheels, sparse generic protection and roof
+pieces carried on implausibly thin links. `buildT72BUOwner` replaces it with a
+compact low loft hull, exactly six large dished native wheels, one continuous
+linked-shoe course, a low clipped pear/cast turret and an articulated 2A46M-4.
+Narrow deep irregular K5 courses bury into the cheek/roof transition. The
+source-side searchlight, commander cupola and shielded NSVT form one low
+asymmetric station on broad stepped seats; optics, smoke banks and antennae
+terminate in visible pads or collars. Four unequal strapped fuel drums,
+backed transom panels, low recovery hardware, terminal mudguards and the
+deep-wading snorkel remain hull-owned. Low unequal turret-rear packs and open
+rails return into the cast shoulder through visible brackets.
+
+Freeze reproduces x2 at **`4b66bf6c`** (38 rendered meshes / 108,803 rendered
+vertices). Exact track audit is band **0/0**, shoes **0/0**, blind spots zero.
+Turret-parent audit is stranded 0 / abutting 0 / dangling 0. Winding reports
+reversed 0 / mixed 0 and a visually null 2-pixel (0.00%) frontright deficit;
+the 95-pixel mode-2 `rig_hull/mesh#17` nominee is the supported fixed
+deck/rear-service package independently confirmed hull-owned under yaw.
+
+The recovered commercial scene's fused/component masks do not provide an
+honest automated comparison for the new articulated procedural. Its recorded
+machine row is therefore a transparent false zero: **0** | hull 26.7 / whole
+23 / turret 24.2 / stations 0 / dimensions 0 / floaters 100. Measured rows
+are height 2.43 vs 2.23 m, hull 6.32 vs 6.86 m, overall 9.69 vs 9.53 m and
+width 3.74 vs 3.78 m; exact registered source pixels govern the owner-source
+graduation rather than distorting the playable toward those incompatible
+masks. Gate JSON SHA-256 is
+`c795344de67f7423e05801de6d487b559e7633dda9ecf6ed949f924f3676e672`.
+
+Fresh independent §B8 inspected 42 distinct frozen r9 frames: fourteen paired
+source/procedural views plus fourteen yaw-0 and fourteen genuine yaw-90
+frames. Its fixed vector is
+`[9.1,9.2,9.2,9.2,9.0,9.1,9.2,9.2,9.3,9.3,9.2,9.3,9.1,9.3]`, floor
+**9.0**, mean **9.19**. It confirms source fidelity and a true quarter-turn:
+the gun/mantlet, full cast shell, every K5 cassette, compact combat station,
+optics, smoke, antennae and rear packs rotate as one visibly seated package;
+the snorkel, four drums/straps, mudguards, transom, engine deck and native
+running gear stay fixed. No fused duplicate mass, stranded fitting,
+empty-air decoration, donor course, collision, open sheet, sky hole or visible
+winding wound remains.
+
+All eight presentation assets and the manifest binding are regenerated.
+Targeted asset/currentness and rendered-bore checks pass; `npm test` and
+`npm run build:private` pass. **GRADUATED; KEEP `4b66bf6c`; retire the legacy
+`buildT72BU` presentation and every intermediate sitting. Fleet gate remains
+honestly 36/97; graduates are 47.**
