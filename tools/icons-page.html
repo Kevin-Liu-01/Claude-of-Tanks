@@ -200,12 +200,23 @@ function zoneColor(plate) {
   return 'rgba(224,163,55,.58)';
 }
 
+function penetrationReference(metadata) {
+  const shells = (metadata.gun && metadata.gun.shells || [])
+    .filter((shell) => Number.isFinite(shell.pen100Mm) && shell.pen100Mm > 0)
+    .sort((a, b) => b.pen100Mm - a.pen100Mm);
+  const shell = shells[0];
+  if (!shell) return 'effective mm · no penetration row';
+  const far = Number.isFinite(shell.pen2000Mm) ? shell.pen2000Mm
+    : Number.isFinite(shell.pen1000Mm) ? shell.pen1000Mm : shell.pen100Mm;
+  return `${shell.type || shell.name} ${Math.round(shell.pen100Mm)}→${Math.round(far)} mm · 100m→2km`;
+}
+
 function drawPlateDiagram(sideCanvas, metadata, projection, mode) {
   const armorMode = mode === 'armor';
   const out = technicalBase(
     sideCanvas, metadata,
-    armorMode ? 'Effective KE armor map' : 'Hit-area map',
-    armorMode ? 'mm · live reticle remains shell-relative' : 'actual collision plates',
+    armorMode ? 'Armor / penetration reference' : 'Hit-area map',
+    armorMode ? penetrationReference(metadata) : 'actual collision plates',
   );
   const c = out.getContext('2d');
   c.lineJoin = 'round';

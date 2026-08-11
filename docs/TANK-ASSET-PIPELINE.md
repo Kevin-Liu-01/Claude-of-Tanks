@@ -16,12 +16,24 @@ second hand-authored source of truth.
 | `<id>_top_silhouette.png` | minimap mask |
 | `<id>_side_silhouette.png` | team-panel / damage-panel mask |
 | `<id>_hit_zones_side.png` | actual collision-plate hit areas |
-| `<id>_armor_side.png` | effective KE armor values; live reticle remains shell-relative |
+| `<id>_armor_side.png` | effective KE armor values + best-shell penetration reference |
 | `<id>_modules_side.png` | actual module and crew damage volumes |
 
 The manifest also stores the official flag country code, tier, caliber, shell
 penetration values, plate/module data, live geometry fingerprint, metadata
 fingerprint, dimensions, byte sizes, and SHA-256 hashes.
+
+### Renderer choice
+
+The shaded source portraits stay on the game's WebGL/PBR render path. Three.js
+[`SVGRenderer`](https://threejs.org/docs/pages/SVGRenderer.html) is resolution
+independent, but its documented lack of textures, advanced shading, and shadows
+would discard the actual garage material read. Three.js
+[`EdgesGeometry`](https://threejs.org/docs/pages/EdgesGeometry.html) extracts
+visible mesh creases; it cannot represent the simulation's separate collision
+plates, armor values, module AABBs, or crew volumes. Those semantic layers are
+therefore drawn deterministically into PNGs over the WebGL side portrait from
+the combat spec, instead of inferred from cosmetic mesh edges.
 
 ## Tank landing procedure
 
