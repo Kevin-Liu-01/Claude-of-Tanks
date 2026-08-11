@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-08-11T15:37:14.877Z",
+ "generatedAt": "2026-08-11T16:06:11.778Z",
  "gate": "every component >= 90; min is the headline",
  "passed": 36,
  "total": 97,
@@ -239,6 +239,19 @@
    }
   },
   {
+   "id": "t90a_burlak",
+   "geoMin": 0,
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 43.2,
+    "wholeCurves": 24.6,
+    "turretCurves": 6.7,
+    "stations": 11,
+    "dims": 0,
+    "floaters": 100
+   }
+  },
+  {
    "id": "charioteer",
    "geoMin": 0.6,
    "gatePassed": false,
@@ -261,19 +274,6 @@
     "turretCurves": 28.5,
     "stations": 28.1,
     "dims": 100,
-    "floaters": 100
-   }
-  },
-  {
-   "id": "t90a_burlak",
-   "geoMin": 8.6,
-   "gatePassed": false,
-   "components": {
-    "hullCurves": 52.7,
-    "wholeCurves": 27.1,
-    "turretCurves": 14.7,
-    "stations": 8.6,
-    "dims": 88.3,
     "floaters": 100
    }
   },
