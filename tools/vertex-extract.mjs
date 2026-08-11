@@ -604,6 +604,15 @@ const REG = {
     autoPivot: true,
     pubDims: { hullLengthM: 7.48, overallLengthM: 9.71, widthM: 3.6, heightM: 2.25 },
   },
+  leo2_revolution: {
+    // Owner-authoritative nested OBJ, semantically recovered and completed
+    // with the omitted pressure-turret core/fender floors. Donor wheels and
+    // tracks remain reference-only; the playable build uses native gear.
+    path: 'public/models/community-candidates/leopard_revolution_repaired.glb',
+    turretNode: '^Turret$', gunNode: '^Gun$', autoPivot: true,
+    orientationAdjudicated: 'native +z muzzle/nose pose verified from the recovered OBJ and paired front, side, top and yaw renders',
+    pubDims: { hullLengthM: 7.72, overallLengthM: 9.97, widthM: 4.0, heightM: 2.64 },
+  },
   t90ms: {
     // Re-baked from OBJ source — semantic (turret_6, cannon_8, era01-10
     // hull+turret, aps/cage/smokecaps/detachparts turret followers).

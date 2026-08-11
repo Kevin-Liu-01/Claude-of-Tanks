@@ -79,7 +79,7 @@ re-freeze NEW hash, all in ONE commit.
 | t84 | 04707a9c | |
 | m47_patton | 2fc99c50 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | leo2a5 | e215a738 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
-| leo2_revolution | db70c929 | RE-FROZEN 2026-08-07 (photo-class record): §5.09 closure -85% + §5.17a turret-completion (real collar/chin/under-cheek/under-skirt walls — the floating shell is DEAD, owner diagnosis answered); re-cert 9.4/9.2/9.3 on changed families; §B7 gate caps stand (hull 94.3 trustworthy band) |
+| leo2_revolution | 24658d8b | RE-FROZEN 2026-08-10 (§5.101 owner-source exact rebuild: complete AMAP/slat exterior on a physically completed rotating pressure core, donor gear excluded for one native seven-wheel linked-shoe system; gate 91.5 x2; standard/track/parent/winding clean; independent §B8 floor 9.2 / mean 9.35 x14, yaw0/90 load paths PASS; prior db70c929 retired) |
 | m46_patton | 108806c8 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | centurion3 | bad74e60 | RE-FROZEN 2026-08-08 (no-air graduate-change: crown-ridge pedestal + discharger webs, front-low 1810px->14, re-cert floor 9.0 x17 changed views, gate 91.1 exact; prior 50273080 bore-resit lineage) |
 | m1a2_sepv2 | a0a4e87c | RE-FROZEN 2026-08-08 (§5.80 distinctiveness; elevated armored CROWS + broad ERA; re-cert floor 9.2 / mean 9.31 x14) |
@@ -2891,3 +2891,57 @@ rear basket and roof equipment under the same turret rig. This is a
 source-view parenting repair, not a Type 90 geometry graduation: the current
 79.5 geometry gate is unchanged and the graduate registry/count do not move.
 `npm test` and `npm run build:private` are green.
+
+## 5.101 LEOPARD 2 REVOLUTION OWNER-SOURCE REBUILD (2026-08-10, GRADUATED)
+
+The owner-supplied `leopard-2-mbt-revolution.zip` is now the Leopard 2
+Revolution geometry authority. Its outer archive is SHA-256
+`8577cb2ac53daf369dc2175b045207de4760246ec73f6434bbcfce38a0fc3e4f`;
+the nested source archive is
+`a14675098d77bc2a4adb9e6f8cfd0975384596dd55be7eef4ecc03b6f1079186`,
+and the authoritative OBJ is
+`d97595be419fee2c474a1cd4cfdc6b502e666070d4c746dda2e7b0d8c2d60481`.
+The source carries 64,126 vertices / 47,420 triangles with named hull,
+turret, gun and donor-running-gear groups. The playable preserves the exact
+source upper vehicle while excluding all 9,674 donor vertices / 9,272 donor
+triangles from rendering.
+
+The supplied exterior is topology-open at its turret pressure volume and
+several fender/rear-deck floors. The deterministic bake therefore completes
+only those physically required interior seats: a rotating pressure core and
+ring, bustle roots, and hull-owned fender/rear floors. It adds reverse faces
+only to source-sheet components proven open by a position-weld topology
+census; already closed solids are not doubled. This closes the former visible
+air corridors and FrontSide wounds without changing the authoritative outer
+silhouette. The final locally ignored articulated oracle is SHA-256
+`167d880bb093f70f31e0ae27df484424fe81e77ea8837f269bc6a3ed9f0bda26`.
+Playable source-exact groups are hull 19,473v/24,264t, turret
+10,404v/13,084t and gun 343v/287t, for 30,220v/37,635t before the game's
+native running gear.
+
+Donor belts, wheels, suspension, rollers and terminal drums never enter the
+playable assembly. They are replaced by one symmetric damage-aware native
+seven-road-wheel linked-shoe system measured to the source stations, with
+distinct idler/sprocket terminals and continuous grounded contact and wrap
+courses. Both normal and exact track-clip audits report 0/0 band and 0/0 shoe
+intersections. Fresh yaw 0/90 frames show the complete turret shell, gun,
+optics, RWS, braces and roof furniture rotating together while fans, rear deck
+and running gear remain correctly hull-owned. Parent audit is clean
+(stranded 0 / abutting 0 / dangling 0); winding audit is 0 reversed / 0 mixed
+with only 22 deficit pixels (0.03%) and no visible wound.
+
+Machine gate PASS reproduces at **91.5** |
+91.5/92.1/94.7/96.3/97.3/100. Standard check is clean (holes 0,
+contiguity 0, mg1+0d), the deterministic bake verifies, and geometry freeze
+reproduces x2 at **24658d8b** (24 meshes / 134,057 vertices). All fourteen
+fresh paired views plus fourteen yaw-0 and fourteen yaw-90 frames rendered
+from the frozen bytes; the sole HTTP miss is the critic page's irrelevant
+`favicon.ico`. `npm test` is green.
+
+Fresh independent §B8 review of the frozen evidence passes all fourteen views
+at floor **9.2** / mean **9.35**. The critic independently confirms the exact
+source upper, continuous native seven-wheel course, absence of donor running
+gear, correct fixed hull deck/fan/fender ownership, and one continuously
+seated rotating turret/gun/optics/RWS assembly with no floater, fused mass,
+air seam or disappearing face. **GRADUATED by the §5.101 landing commit; KEEP
+freeze `24658d8b`.**

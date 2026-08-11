@@ -1,7 +1,7 @@
 {
- "generatedAt": "2026-08-10T14:20:31.893Z",
+ "generatedAt": "2026-08-11T01:12:28.012Z",
  "gate": "every component >= 90; min is the headline",
- "passed": 34,
+ "passed": 35,
  "total": 96,
  "rows": [
   {
@@ -118,19 +118,6 @@
     "turretCurves": 0,
     "stations": 1.2,
     "dims": 98.1,
-    "floaters": 100
-   }
-  },
-  {
-   "id": "leo2_revolution",
-   "geoMin": 0,
-   "gatePassed": false,
-   "components": {
-    "hullCurves": 94.3,
-    "wholeCurves": 66.7,
-    "turretCurves": 0,
-    "stations": 73.2,
-    "dims": 99.5,
     "floaters": 100
    }
   },
@@ -1223,6 +1210,19 @@
     "turretCurves": 95,
     "stations": 92.8,
     "dims": 100,
+    "floaters": 100
+   }
+  },
+  {
+   "id": "leo2_revolution",
+   "geoMin": 91.5,
+   "gatePassed": true,
+   "components": {
+    "hullCurves": 91.5,
+    "wholeCurves": 92.1,
+    "turretCurves": 94.7,
+    "stations": 96.3,
+    "dims": 97.3,
     "floaters": 100
    }
   },

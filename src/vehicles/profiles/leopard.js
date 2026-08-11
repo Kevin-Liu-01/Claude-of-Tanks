@@ -33,6 +33,7 @@
 // hull z-extents below replicate each oracle's frame.
 import * as THREE from 'three';
 import { KIT, FITTINGS, evenStations, muzzleBore, orientedSlab } from './kit.js';
+import { buildLeopardRevolutionSourceUpper } from './leopard-revolution-source-geometry.js';
 import { vehicleAmbientFloorHook } from '../materials.js';
 
 // ---------------------------------------------------------------------------
@@ -60,10 +61,12 @@ function leoGear(P, g) {
     wheelZs: evenStations(7, g.span[0] - g.span[1], (g.span[0] + g.span[1]) / 2),
     sprocket: g.sprocket, idler: g.idler,
     rollers: g.rollers ?? [{ z: 1.95, y: 0.84, r: 0.085 }, { z: 0.75, y: 0.84, r: 0.085 }, { z: -0.55, y: 0.84, r: 0.085 }, { z: -1.80, y: 0.84, r: 0.085 }],
-    trackW: g.trackW, topY: g.topY, botY: g.botY ?? 0.075,
+    trackW: g.trackW, trackTh: g.trackTh, topY: g.topY,
+    botY: g.botY ?? 0.075,
     // linkPitchM opt-in (kf51 visual r1 #2): finer shoe pitch; undefined
     // keeps the kit default so every sibling stays byte-identical.
     linkPitchM: g.linkPitchM,
+    shoeRadialScale: g.shoeRadialScale,
     paintedEnds: true, coveredTop: true,
     // r9 leo2_revolution B1 opt-ins (merkava r12 gear-tone params via the
     // uk.js chieftain5 precedent): per-tank pad/chain tones + the ambient
@@ -7095,6 +7098,33 @@ function buildLeo2Revolution(P) {
   }
   P.topY = 1.9;
 }
+
+// Owner-source completion (2026-08-10): the designated Revolution archive
+// supplies the complete exact hull/turret/gun upper. Only donor running gear
+// is rejected; the game's animated, damage-aware seven-wheel linked-shoe
+// course is retained at source-measured stations. Keeping this as a fresh
+// builder prevents any retired handcrafted panel from surviving under the
+// source mesh.
+function buildLeo2RevolutionSource(P) {
+  leoGear(P, {
+    // Exact donor station/loop envelope expressed through the fleet-native
+    // linked-shoe system. The recovered OBJ is laterally asymmetric by about
+    // 7 cm; the symmetric game rig seats on the outer donor lane so its guide
+    // horns clear the intact belly/suspension faces on both sides.
+    xc: 1.35, trackW: 0.52, trackTh: 0.09,
+    wheelR: 0.33, wheelY: 0.41,
+    span: [2.386, -2.211],
+    sprocket: { z: -2.778, y: 0.836, r: 0.356 },
+    idler: { z: 3.202, y: 0.809, r: 0.278 },
+    topY: 1.10, botY: 0.055,
+    padHex: 0x343a29, chainHex: 0x2b3122, gearFloor: true,
+  });
+  // The deterministic source bake also completes the omitted pressure-
+  // turret core/ring and fender floors beneath the exact AMAP/slat exterior.
+  // All turret completion geometry is emitted directly into the rotating
+  // source payload—never as a hull-owned duplicate.
+  buildLeopardRevolutionSourceUpper(P);
+}
 // small rectangular mud flap helper (leopard family)
 function mudflapRect(P, x, y, z) {
   P.add('hullRubber', KIT.box(0.34, 0.44, 0.03), x, y, z);
@@ -9202,7 +9232,7 @@ export const LEOPARD_PROFILES = {
   leo2a4: { build: buildLeo2A4 },
   leo2a7v: { build: buildLeo2A7V },
   leopard2_proto: { build: buildLeo2Proto },
-  leo2_revolution: { build: buildLeo2Revolution },
+  leo2_revolution: { build: buildLeo2RevolutionSource },
   kf51: { build: buildKF51 },
   // BASE-21 scaffold (2026-08-07): first real 1A5 build — photo-class, no
   // usable oracle (FALSE-0 law; the leo1a4 scan is re-rig-class, unregistered).
