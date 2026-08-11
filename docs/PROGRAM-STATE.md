@@ -3722,3 +3722,51 @@ Targeted asset/currentness and rendered-bore checks pass; `npm test` and
 `npm run build:private` pass. **GRADUATED; KEEP `4b66bf6c`; retire the legacy
 `buildT72BU` presentation and every intermediate sitting. Fleet gate remains
 honestly 36/97; graduates are 47.**
+
+## 5.116 T-80U OWNER-SOURCE EXACT UPPER REBUILD (2026-08-11, GRADUATED)
+
+The owner's `t-80u-ussr.zip` (4,197,004 bytes; SHA-256
+`958e399cced2c24cb9dbcc23bce1b7f7edafd573c3b7af299ff2d076de96beb4`)
+and `tank_t-80u.glb` (3,437,024 bytes; SHA-256
+`8a4547d6f121fc5561d6f377bc6e70efc5321b66c0578503f060af554c19ee7f`)
+identify the same javanilga source lineage already attributed in the
+repository. No new third-party binary ships.
+
+The gate-shaped procedural approximation is retired. A deterministic,
+fail-closed source bake now supplies the exact articulated hull, turret and
+gun upper geometry from the repaired attributed asset: 25,655 source vertices
+and 25,379 source triangles. Donor wheels, tracks and terminal gears are
+excluded. One fleet-native six-road-wheel linked-shoe course per side replaces
+them at the source-measured wheel, sprocket, idler and terminal-wrap datum.
+The complete source gun/mantlet, cast shell, ERA, smoke, hatch/periscope/optic,
+commander/MG, antenna, rear-cylinder/cradle and basket package belongs to the
+turret; glacis/fender/deck/transom and native gear remain hull-owned.
+
+Presentation freeze reproduces at **`c0dc2502`** (32 rendered meshes / 108,979
+base vertices / 415,027 instanced vertices / 138,521 rendered triangles).
+Exact track containment is band **0/0** and shoes **0/0**. Turret-parent audit
+is stranded 0 / abutting 0 / dangling 0. Winding reports reversed 0 / mixed 0
+and yaw candidates 0; its conservative 932-pixel (0.40%) rear FrontSide
+deficit has no visible sheet wound in any standard or yaw frame.
+
+The recorded geometry row remains an honest legacy-oracle non-pass at
+**72.4** | hull 80 / whole 74.8 / turret 72.4 / stations 94.8 / dimensions
+77.7 / floaters 100. That reference path still applies the old hand-normalized
+and 130%-height-clamped print registration; an isolated 3.08 m antenna node
+historically shrinks the full source scene before mask measurement. It cannot
+truthfully judge an exact semantic-subtree bake at published hull scale. Gate
+JSON SHA-256 is
+`673801aa72d2d85884c39b5f902cf910d928c67264b46c149c22e6dca353f890`.
+The stale automated row is disclosed rather than overridden or gamed.
+
+Fresh independent §B8 inspected only 42 r2 frames: fourteen paired views and
+genuine yaw-0/yaw-90 sets. Its vector is
+`[9.7,9.6,9.4,9.5,9.7,9.5,9.4,9.6,9.8,9.7,9.7,9.8,9.7,9.8]`, floor
+**9.4**, mean **9.64**. It confirms one-for-one upper fidelity, real turret
+quarter-turn, visible attachment load paths, fixed hull ownership, exact
+six-wheel native-track continuity and no fused/stranded mass, empty-air
+decoration, collision, open sheet, backface wound or sky hole. Eight
+presentation assets and their manifest binding are regenerated; targeted
+asset/currentness and muzzle-bore checks pass. **GRADUATED; KEEP `c0dc2502`;
+the legacy procedural T-80U is retired. Fleet gate remains honestly 36/97 and
+graduates are 48.**

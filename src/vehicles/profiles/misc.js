@@ -25,6 +25,7 @@
 import * as THREE from 'three';
 import { KIT, FITTINGS, buildProfile, WESTERN } from './kit.js';
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from '../specs.js';
+import { buildT80USourceGeometry } from './t80u-source-geometry.js';
 
 // NOTE: KIT bindings are only dereferenced inside build-time functions —
 // never at module scope — because of the tankFactory extension-module cycle.
@@ -1825,7 +1826,7 @@ function buildLeclerc(P) {
 // reading ~2.9 wide, roof furniture to ~2.7; gun axis 1.66, muzzle
 // bow+2.7; 6 small dished wheels, rear sprocket; turbine exhaust box rear.
 // ---------------------------------------------------------------------------
-function buildT80U(P) {
+function buildT80ULegacy(P) {
   const { box, cylY, cylX, cylZ, frustum, lathe, torus, buildGun, buildRunningGear,
     fenders, headlight, liftEye, periscope, towCable, stowage, spareTrackStrip, cupola } = KIT;
   const slab = orientedSlab;                                                   // §C missing-side fix: winding-corrected slabs only (see orientedSlab)
@@ -2098,6 +2099,30 @@ function buildT80U(P) {
   buildGun(P, { len: 5.51, r: 0.068, sleeve: true, evac: 0.47, evacR: 1.45, collar: false, baseR: 0.15 });
   muzzleBore(P, 0.068, 5.49);                                                  // §B3.1 muzzle bore (shadow-named)
   P.topY = 1.15;
+}
+
+// Owner-source rebuild (2026-08-11). The user's GLB is the same attributed
+// javanilga source already repaired in the repository. Its complete exact
+// hull/turret/gun upper vehicle replaces the gate-shaped legacy primitives;
+// donor wheels, end drums and belts are excluded from the bake. These source-
+// measured native stations preserve scrolling links, damage and thrown-track
+// gameplay while matching the donor's six-wheel cadence and terminal rises.
+function buildT80U(P) {
+  buildT80USourceGeometry(P);
+  KIT.buildRunningGear(P, {
+    style: 'dished', wheelR: 0.337, wheelW: 0.21, wheelY: 0.346, xc: 1.42,
+    wheelZs: [2.165, 1.380, 0.519, -0.213, -1.087, -1.930],
+    // Source guards descend tightly over both terminal arcs. The visible
+    // native shoe pads sit ~9 cm proud of the smooth band, so their centers
+    // are correspondingly lower than the donor drum centers; this preserves
+    // the source outline while giving the player-visible pads honest air.
+    sprocket: { z: -2.55, y: 0.61, r: 0.27 },
+    idler: { z: 2.95, y: 0.63, r: 0.25 },
+    rollers: [1.75, 0.82, -0.10, -1.02].map((z) => ({ z, y: 0.88, r: 0.08 })),
+    trackW: 0.48, trackTh: 0.09, topY: 0.88, botY: 0.055,
+    coveredTop: true, arms: true, paintedEnds: true, gearFloor: true,
+    pinCapOuter: 0.21, padHex: 0x34362c, chainHex: 0x292b25,
+  });
 }
 
 // ---------------------------------------------------------------------------
