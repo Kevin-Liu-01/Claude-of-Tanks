@@ -91,7 +91,7 @@ re-freeze NEW hash, all in ONE commit.
 | k2 | 827d5ffc | GRADUATED 2026-08-08 (31st; Leclerc-method closed station loft; gate 90.1 x2 every component >=90; visual R26 floor 9.0 / mean 9.09 x14; exact Object_8/15/18/21 plan inventory, rounded asymmetric cage, countable six-station ISU gear; oracle 8d92cd1b reproducible from pristine .bak) |
 | abramsx | 26b46ba0 | GRADUATED 2026-08-09; RE-FROZEN 2026-08-10 (§5.95 owner screenshot attachment re-cert on current main: broad stepped RWS pedestal, optic plinths, smoke rails and antenna collars visibly meet the turret in all standard/yaw views; gate 90.2, standard/parent clean; 10-pixel/0.01% winding nomination has no visible wound; independent §B8 floor 9.3 / mean 9.49 x14; prior d1dbfa2 retired) |
 | challenger_3 | 3e5a7797 | GRADUATED 2026-08-09; RE-FROZEN 2026-08-10 (§5.95 owner screenshot attachment re-cert on current main: multi-tier Protector foundation, tapered optic plinth, smoke/corner rails and antenna collars have continuous physical seats; gate 90.4, standard/parent/winding clean; independent §B8 floor 9.4 / mean 9.59 x14; prior b0c172a4 retired) |
-| challenger1 | cacb1337 | GRADUATED 2026-08-11 (§5.112 owner-source complete rebuild: compact six-wheel hull, one low connected cast turret, buried mantlet/cheek anatomy, seated commander/TOGS station and supported bustle/basket; commercial-print component masks honestly cap the machine row at 0 while dims 99.6 / floaters 100 and fresh independent §B8 pass floor 9.0 / mean 9.13 x14 with genuine yaw0/90 ownership, exact native tracks 0/0 and winding PASS; old gate-shaped 5bf5f2ec visual failure retired) |
+| challenger1 | cacb1337 | GRADUATED 2026-08-11 (§5.112 native-procedural, reference-guided rebuild: compact six-wheel hull, one low connected cast turret, buried mantlet/cheek anatomy, seated commander/TOGS station and supported bustle/basket; no external mesh data ships; commercial-reference component masks honestly cap the machine row at 0 while dims 99.6 / floaters 100 and fresh independent §B8 pass floor 9.0 / mean 9.13 x14 with genuine yaw0/90 ownership, exact native tracks 0/0 and winding PASS; old gate-shaped 5bf5f2ec visual failure retired) |
 | challenger2 | 3b4bd5f0 | GRADUATED 2026-08-09; RE-FROZEN 2026-08-10 (§5.89 owner fused-block repair: material-fused casemate course removed from fixed hull and repartitioned into the articulated source tree; one low ring landing + one rotating turret; gate 90.1 x2 every component >=90; standard/parent/winding clean; fresh §B8 floor 9.0 / mean 9.06 x14, yaw/load paths 9.3; oracle f44e3b46 reproducible from pristine .bak; prior 63ee160 retired) |
 | fv510 | 927beeb2 | GRADUATED 2026-08-10; RE-FROZEN 2026-08-10 (§5.91 owner native-track correction: donor Track suppressed and 34 donor running-gear components removed at whole-component boundaries; exact Warrior upper geometry retained around one game-native six-station wheel/sprocket/idler/shoe system; gate 90.3 x2, every component >=90.3; fidelity 98.0; standard/parent/winding clean; independent §B8 floor 9.1 / mean 9.26 x14, yaw/load paths 9.4; prior exact-source freeze 7884762a retired) |
 | type10 | 201d0a08 | GRADUATED 2026-08-10; RE-FROZEN §5.97 (owner correction: complete rear cage, circular spare-wheel forms, service boxes, rack rails and antennas reparented as whole source components to the seated turret; lower engine deck remains hull-owned; exact five-wheel native track 0/0; gate 94.6 x2; parent/winding clean; independent §B8 floor 9.4 / mean 9.59 x14, yaw load paths PASS; prior 84f5d108 retired) |
@@ -123,7 +123,7 @@ gate still measures via mirror.
 ## 4. FLEET STATE at handoff (ledger 2026-08-05, 23/88 pass — revolution
 honestly parked at 88.9 pending its retune)
 - **Gate-PASS awaiting visual ladder / adjudication**: challenger1's historical
-  90.2 / floor-7.0 row is superseded by the §5.112 owner-source graduation;
+  90.2 / floor-7.0 row is superseded by the §5.112 native-procedural graduation;
   its old mask-conforming build is retired. centurion5
   90.7 (floor 7.0, O3 cast-turret round) — uk round-4 agent ON IT.
   m1a2_sepv2 GRADUATED (25th).
@@ -3454,9 +3454,9 @@ correctly requires a >=90 machine row and will not waive the fused-oracle
 cap. **KEEP `8319dbb8`; all earlier Type 74 fallback/freezes are retired.
 Fleet gate remains 38/97 and graduates remain 43.**
 
-## 5.111 C1 ARIETE OWNER-SOURCE COMPLETE REBUILD (2026-08-11, RE-FROZEN)
+## 5.111 C1 ARIETE NATIVE-PROCEDURAL REBUILD (2026-08-11, RE-FROZEN)
 
-The supplied `/Users/kevinliu/Downloads/c1_ariete_italian_mbt.glb` is
+A local comparison file, `/Users/kevinliu/Downloads/c1_ariete_italian_mbt.glb`, is
 112,070,992 bytes with SHA-256
 `738505b3099016c938daa85f8eb82806cd6af19a2aa3e15b26810bc6c163607e`.
 Its DustyMojito/Sketchfab Standard provenance keeps it local-only as a visual
@@ -3497,9 +3497,9 @@ wound. Presentation assets and release gates are regenerated at landing.
 **KEEP `acea2100`; `5a99fca8` and every earlier Ariete freeze are retired.
 Fleet gate remains 38/97 and graduates remain 43.**
 
-## 5.112 CHALLENGER 1 MK.3 OWNER-SOURCE COMPLETE REBUILD (2026-08-11, GRADUATED)
+## 5.112 CHALLENGER 1 MK.3 NATIVE-PROCEDURAL REBUILD (2026-08-11, GRADUATED)
 
-The owner-supplied `challenger-1-mk3.zip` is 25,380,501 bytes with SHA-256
+A local comparison archive, `challenger-1-mk3.zip`, is 25,380,501 bytes with SHA-256
 `eab836f4e2d4b0631f121e8f9fcb876519656ccbb3413616128a723731ef99fe`.
 The recovered local visual oracle `challenger1.glb` is 5,882,980 bytes with
 SHA-256
@@ -3534,12 +3534,12 @@ row is therefore cap-documented at **0** | hull 43.6 / whole 19.1 / turret 0 /
 stations 34.6 / dims 99.6 / floaters 100, not claimed as a PASS. Gate JSON
 SHA-256 is
 `1867d29e95de991a2981da866fb2ed385eae47d57e9f84696b156d34545594da`.
-This is the same source-mask incompatibility class already documented for the
-Type 74, Type 99A2 and Ariete owner-source graduates; retaining the rejected
+This is the same reference-mask incompatibility class already documented for
+the Type 74, Type 99A2 and Ariete native-procedural graduates; retaining the rejected
 visual build merely to preserve a green automated row is forbidden.
 
 Fresh independent §B8 inspected only 42 unique r26 frames: fourteen paired
-source views plus genuine yaw-0 and yaw-90 sets. Its fixed vector is
+reference views plus genuine yaw-0 and yaw-90 sets. Its fixed vector is
 `[9.2,9.2,9.1,9.0,9.0,9.0,9.1,9.2,9.2,9.2,9.1,9.2,9.1,9.2]`, floor
 **9.0**, mean **9.13**. It confirms source fidelity, a real quarter-turn, the
 complete gun/turret/commander/TOGS/smoke/antenna/bustle/basket package moving

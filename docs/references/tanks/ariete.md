@@ -804,9 +804,9 @@ turret-fix adjudications ✓; standard-check clip ✓ contig 0 ✓ mg1+3d ✓;
 winding 22 slabs REVERSED 0 ✓; npm test green. Evidence:
 shots/misc-ladders/{before,after}/ariete*.png.
 
-## OWNER-SOURCE COMPLETE REBUILD (2026-08-11)
+## NATIVE-PROCEDURAL REBUILD (2026-08-11)
 
-The owner supplied `/Users/kevinliu/Downloads/c1_ariete_italian_mbt.glb`
+A local comparison file, `/Users/kevinliu/Downloads/c1_ariete_italian_mbt.glb`, is
 (112,070,992 bytes; SHA-256
 `738505b3099016c938daa85f8eb82806cd6af19a2aa3e15b26810bc6c163607e`).
 Its DustyMojito/Sketchfab Standard provenance makes it a local visual and
@@ -814,7 +814,7 @@ measurement reference only. No source mesh, texture, material, animation or
 derivative payload byte ships. The retired quarantined model swap remains
 disabled; gameplay uses the original procedural build.
 
-`buildArieteSource2026` replaces the old slab-heavy fallback with a long low
+`buildArieteNative2026` replaces the old slab-heavy fallback with a long low
 hull, shallow layered bow, broad low connected turret, integrated rounded
 mantlet and corrected 4.38 m gun run. The roof has asymmetric cupola, TURMS,
 optic, MG/RWS and antenna stations on explicit collars or plinths. Both smoke
@@ -833,7 +833,7 @@ the fixed backed rear service seat confirmed by yaw evidence, not stranded
 turret geometry.
 
 The final freeze reproduces at **`acea2100`** (49 meshes / 75,357 vertices).
-Dimensions score 99.4 and floaters 100. The raw commercial source's fused gun,
+Dimensions score 99.4 and floaters 100. The commercial comparison model's fused gun,
 sparse upper-component segmentation and unsuitable hull/turret mask topology
 cap the automated comparison honestly at **24.8** | hull 59.2 / whole 39.5 /
 turret 24.8 / stations 64.6 / dims 99.4 / floaters 100. This row is not
@@ -841,6 +841,6 @@ presented as a machine PASS; JSON SHA-256 is
 `1f79dcc144078df83fc8128ca07c7487394537d35f7a6dd0fda4001cdae35ff3`.
 
 Fresh independent final evidence contains 42 uniquely hashed frames: fourteen
-paired source/procedural views and genuine yaw-0/yaw-90 sets. Only the
+paired reference/procedural views and genuine yaw-0/yaw-90 sets. Only the
 immutable `acea2100` re-certification is valid; its final vector and
 disposition are recorded in `docs/PROGRAM-STATE.md` at landing.

@@ -2,7 +2,7 @@
 
 Exact variant: FV4030/4 Challenger 1 Mk.3, Royal Ordnance L11A5 120 mm rifled gun.
 
-## CURRENT FREEZE — 2026-08-11 OWNER-SOURCE GRADUATION
+## CURRENT FREEZE — 2026-08-11 NATIVE-PROCEDURAL GRADUATION
 
 Current playable freeze is **`cacb1337`**. The complete source-relative and
 gate-cap receipt is recorded under `docs/PROGRAM-STATE.md` §5.112. All older
@@ -696,13 +696,14 @@ hull 91.8 whole 90.2 turret 90.3 stations 90.6 dims 95 floaters 100 PASS
 — exact hold. HASH dbe33204 -> 5bf5f2ec. Evidence:
 shots/uk-noair/{before,after}/challenger1--y0-side-l-T*.
 
-## 2026-08-11 OWNER-SOURCE COMPLETE REBUILD — GRADUATED
+## 2026-08-11 NATIVE-PROCEDURAL REBUILD — GRADUATED
 
-Owner package `challenger-1-mk3.zip` is 25,380,501 bytes, SHA-256
+Local comparison package `challenger-1-mk3.zip` is 25,380,501 bytes, SHA-256
 `eab836f4e2d4b0631f121e8f9fcb876519656ccbb3413616128a723731ef99fe`.
 The local recovered oracle `challenger1.glb` is 5,882,980 bytes, SHA-256
 `aab22967e5d66d7c122fdb8d7fe83dcc9f43c506d1454af58e30749f91134d27`.
-Both are local-only visual/measurement references; no source byte ships.
+Both are local-only visual/measurement references; no source byte ships. The
+playable builder uses only our profile primitives and native track library.
 
 The replacement is an original procedural six-wheel Challenger 1: compact
 layered hull and prow, one low connected cast turret, broad buried oval

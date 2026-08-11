@@ -766,12 +766,11 @@ function buildAriete(P) {
 // autoloader turret, side cheek armor + baskets, HL-70 box, thin pano mast,
 // GALIX corners, rear hull rack.
 // ---------------------------------------------------------------------------
-// OWNER-SOURCE REBUILD (2026-08-11). The raw DustyMojito GLB is a
-// quarantined local visual/measurement oracle only. This replacement is
-// original connected procedural geometry: low Ariete hull and turret masses,
-// seven game-native wheel stations, and explicit physical seats for every
-// combat/service fitting.
-function buildArieteSource2026(P) {
+// NATIVE PROCEDURAL REBUILD (2026-08-11). The comparison GLB is quarantined
+// visual-reference material only. This original construction uses our
+// primitives, seven-station native track system and explicit physical seats;
+// no reference mesh data is imported, sampled, converted or shipped.
+function buildArieteNative2026(P) {
   const {
     box, cylX, cylY, cylZ, sph, torus, polyLoft, xform,
     buildGun, buildRunningGear, fenders, headlight, liftEye, periscope, cupola,
@@ -3328,7 +3327,7 @@ export const MISC_PROFILES = {
     turret: 'ifv', turretWidth: 1.60, turretDepth: 1.70, turretHeight: 0.93, turretFront: 0.68, turretRear: -0.85, gunLength: 4.44, gunRadius: 0.035, sleeve: false, evac: null, pano: false, mg: false, smoke: false, antennas: false,
   },
   type90: { build: buildType90 },
-  ariete: { build: buildArieteSource2026 },
+  ariete: { build: buildArieteNative2026 },
   leclerc: { build: buildLeclerc },
   t80u: { build: buildT80U },
   type74: { build: buildType74Source2026 },

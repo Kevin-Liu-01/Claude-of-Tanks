@@ -1085,11 +1085,11 @@ function challenger1Build(P) {
   ], 0x13170d);
   P.topY = 1.35;
 }
-// OWNER-SOURCE REBUILD (2026-08-11). The recovered Challenger Mk.3 is a
-// quarantined local visual/measurement oracle only. This is original,
-// connected procedural geometry: a low six-wheel hull, one continuous
-// swept Challenger casting and explicit physical seats for every fitting.
-function challenger1Source2026(P) {
+// NATIVE PROCEDURAL REBUILD (2026-08-11). The comparison Challenger Mk.3 is
+// quarantined visual-reference material only. This original construction uses
+// our primitives, native track system and explicit seats for every fitting;
+// no reference mesh data is imported, sampled, converted or shipped.
+function challenger1Native2026(P) {
   const {
     cylX, sph, frustum, fenders, cupola,
   } = KIT;
@@ -1398,7 +1398,7 @@ function challenger1Source2026(P) {
 // Profiles-class family map (merged by profiledProcedurals.js — the same
 // interface every ./profiles family module exports).
 export const CHALLENGER_PROFILES = {
-  challenger1: { build: challenger1Source2026 },
+  challenger1: { build: challenger1Native2026 },
 };
 
 // ===========================================================================
