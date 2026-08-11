@@ -100,7 +100,7 @@ re-freeze NEW hash, all in ONE commit.
 | t90m | e345ee8a | GRADUATED 2026-08-06 (27th; floor 9.0 x14 second sitting; the owner's dedicated-agent arc 81.7 -> dual gate) |
 | t90a | 810a6f18 | GRADUATED 2026-08-10 (§5.94 Leclerc-method cast-turret rebuild; gate 90.4 x2; standard/track/winding clean; independent §B8 floor 9.0 / mean 9.11 x14, yaw/load paths 9.2) |
 | t90a_vladimir | c13fec50 | GRADUATED 2026-08-10 (§5.94 source-specific compact ESSA/cast-turret/transom rebuild; gate 90.0 x2; standard/track/winding adjudicated; independent §B8 floor 9.0 / mean 9.01 x14, yaw/load paths 9.3) |
-| t90sm | 56324371 | GRADUATED 2026-08-10 (§5.94 welded T-90SM source completion with every turret fitting physically seated; gate 90.0 x2; standard/track/winding clean; independent §B8 floor 9.0 / mean 9.04 x14, yaw/load paths 9.1) |
+| t90sm | 7efc69c9 | GRADUATED 2026-08-10; RE-FROZEN §5.105 (owner-priority complete redesign: source-measured low diamond shell retained, solid bustle steps replaced by backed slat cells, deep scalloped inboard skirts and layered rear service field added; gate 90.0 x2; standard/track/winding clean; independent §B8 floor 9.0 / mean 9.08 x14, all 28 yaw frames PASS; prior 56324371 retired) |
 
 *Historical note: the 2026-08-05 INVISIBLE-LOD fix mass re-froze the
 then-24 stable graduates (old->new table in commit 9bf2a6d); every row
@@ -3173,3 +3173,40 @@ turret/gun/sensor package, correct fixed-hull ownership, continuous native
 seven-wheel tracks and no visible winding wound. **GRADUATED; KEEP
 `a88afa6c`; the earlier `f95cf87e` sitting and procedural `60d7d14` record
 are retired. Fleet gate is 38/97 and graduates are 43.**
+
+## 5.105 T-90SM OWNER-PRIORITY COMPLETE REDESIGN (2026-08-10, RE-FROZEN)
+
+The owner correctly rejected the earlier T-90SM graduation as visually
+unfinished. The repair retains the source-section hull, gun, low welded
+turret core and variant-specific equipment rather than replacing them with a
+generic modern-family proxy. The former solid vertical bustle steps are now
+supported, backed slat cells: every stile terminates into upper/lower rails,
+the recessed backing closes sky-through, and buried carrier feet return the
+assembly into the rotating bustle. A low diamond cheek skin is embedded in
+the measured shell to recover the source's broad swept shoulders without a
+second turret or envelope growth. Deep inboard scalloped skirts restore the
+side silhouette without entering the native shoes, and unequal rear louvre,
+pipe and tow planes replace the former blank transom.
+
+Freeze reproduces x2 at **`7efc69c9`** (48 meshes / 93,257 vertices).
+Machine gate reproduces x2 at **90.0** | 90.2/90.3/90.9/90.0/100/100;
+gate JSON SHA-256 is
+`55c349c191fbb584620fe0cf0d88f315ff4a72c23156d19951b31a73b6a22c61`.
+Direct fidelity is **93.3** (H96/T88/G94/R91), with every whole-vehicle view
+above 93. Standard audit passes with clips 24/49, contiguity 0 and mg1+3d.
+Winding is 0 reversed / 0 mixed, with a 15-pixel (0.03%) left deficit and
+zero yaw candidates. The parent-audit nominee `fitting_towCable` is correctly
+hull-owned; fresh yaw proves it stays on the exposed fixed deck while the
+complete turret departs. `npm test` and `npm run build:private` are green.
+
+Fresh independent §B8 inspected 42 unique frames: fourteen paired source
+views, fourteen yaw-0 views and fourteen yaw-90 views. The fixed score vector
+is `[9.0,9.1,9.0,9.1,9.0,9.1,9.0,9.1,9.1,9.1,9.1,9.1,9.1,9.2]`, floor
+**9.0**, mean **9.08**. It confirms that the gun, cheek skin, turret, backed
+slat wrap, optics, RWS/MG, smoke kit and antennas rotate as one physically
+seated assembly; the scalloped skirts, rear service field and tow cable stay
+hull-fixed; and one continuous native six-road-wheel linked-shoe system has
+no donor residue or penetration. No fused turret mass, stranded decoration,
+air seam or visible winding wound remains. **KEEP `7efc69c9`; prior freeze
+`56324371` and its lower-detail sitting are retired. Fleet gate remains 38/97
+and graduates remain 43.**

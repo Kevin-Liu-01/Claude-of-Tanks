@@ -1,8 +1,9 @@
 # T-90SM (`t90sm`)
 
-> **CURRENT STATUS (§5.94, 2026-08-10): GRADUATED.** The final
-> Leclerc-method record appended below supersedes every older ceiling,
-> record-pending and continuation note retained here as history.
+> **CURRENT STATUS (§5.105, 2026-08-10): GRADUATED / RE-FROZEN.** The
+> owner-priority complete-redesign record appended below supersedes the
+> §5.94 freeze and every older ceiling, record-pending and continuation note
+> retained here as history.
 
 **Exact variant modeled:** T-90MS/SM export (UVZ, 2011+) — welded flat-sided
 turret with Relikt ERA, large squared REMOVABLE BUSTLE with slat rear,
@@ -725,3 +726,28 @@ yaw/load paths pass **9.1**. Sights, MG cradle, smoke banks, ERA, antennas,
 bustle modules and gun rotate as one seated assembly with no air gap or
 unsupported hardware. Verdict:
 `docs/critique/shaded-parity-t90sm-graduation.md`.
+
+## §5.105 OWNER-PRIORITY COMPLETE REDESIGN (2026-08-10)
+
+The §5.94 candidate was reopened because the owner correctly identified a
+still-generic turret/bustle read. The source-measured core is retained, but
+its solid side bustle steps are replaced by backed slat cells with explicit
+rails, stiles and buried carrier feet. A low embedded diamond cheek skin
+recovers the long swept shoulder; deep inboard scalloped skirts recover the
+source side silhouette while remaining clear of the native linked shoes; and
+a layered rear louvre/service/tow field replaces the blank transom.
+
+Freeze **`7efc69c9`** reproduces at 48 meshes / 93,257 vertices. Gate is
+**90.0** x2 | 90.2/90.3/90.9/90.0/100/100; JSON SHA-256 is
+`55c349c191fbb584620fe0cf0d88f315ff4a72c23156d19951b31a73b6a22c61`.
+Fidelity is **93.3** (H96/T88/G94/R91). Standard, winding and native-track
+checks pass; `fitting_towCable` is independently adjudicated as legitimate
+hull-owned deck equipment.
+
+Fresh §B8 inspected fourteen paired views and all twenty-eight yaw frames.
+Scores are `[9.0,9.1,9.0,9.1,9.0,9.1,9.0,9.1,9.1,9.1,9.1,9.1,9.1,9.2]`,
+floor **9.0**, mean **9.08**. Every turret decoration rotates with a visible
+seat; skirts, rear service geometry and tow cable remain correctly fixed;
+the single native six-road-wheel course remains continuous. No fused turret
+mass, floater, empty-air attachment or visible winding wound remains. **KEEP
+`7efc69c9`; prior `56324371` is retired.**

@@ -1,105 +1,108 @@
 {
-  "generatedAt": "2026-08-11T03:14:23.224Z",
+  "generatedAt": "2026-08-11T05:08:22.886Z",
   "summary": {
     "references": 1,
     "passed": 1,
     "failed": 0,
     "passThreshold": 90,
     "perViewFloor": 90,
-    "median": 92.57,
-    "worst": "t14",
-    "best": "t14"
+    "median": 93.31,
+    "worst": "t90sm",
+    "best": "t90sm"
   },
   "rows": [
     {
-      "id": "t14",
-      "name": "T-14 Armata",
-      "sourcePath": "/models/community-candidates/t-14_armara_uralvagon_factory.glb",
-      "fallback": "t14",
-      "score": 92.57,
+      "id": "t90sm",
+      "name": "T-90SM",
+      "sourcePath": "/models/tanks/community/recovered/t90sm.glb",
+      "fallback": "t90m",
+      "score": 93.31,
       "scores": {
-        "overall": 97.47,
-        "hull": 97.72,
-        "turret": 94.02,
-        "gun": 64.35,
-        "tracks": 93.72
+        "overall": 94.72,
+        "hull": 96.02,
+        "turret": 88.12,
+        "gun": 93.54,
+        "tracks": 91.21
       },
       "componentMasksAvailable": true,
-      "minView": 95.81,
+      "minView": 93.18,
       "gatePassed": true,
       "angles": {
         "front": {
-          "score": 97.73,
-          "iou": 96.97
+          "score": 96,
+          "iou": 94.68
         },
         "frontLeft": {
-          "score": 97.55,
-          "iou": 96.9
+          "score": 94.06,
+          "iou": 92.23
         },
         "left": {
-          "score": 95.86,
-          "iou": 94.94
+          "score": 93.18,
+          "iou": 90.74
         },
         "rearLeft": {
-          "score": 98.41,
-          "iou": 98.27
+          "score": 95.84,
+          "iou": 94.23
         },
         "rear": {
-          "score": 98.78,
-          "iou": 98.36
+          "score": 93.72,
+          "iou": 92.09
         },
         "rearRight": {
-          "score": 98.42,
-          "iou": 98.28
+          "score": 95.17,
+          "iou": 93.51
         },
         "right": {
-          "score": 95.81,
-          "iou": 94.87
+          "score": 93.25,
+          "iou": 90.7
         },
         "frontRight": {
-          "score": 97.53,
-          "iou": 96.85
+          "score": 94.88,
+          "iou": 93.15
         },
         "top": {
-          "score": 97.16,
-          "iou": 96.99
+          "score": 96.39,
+          "iou": 95.33
         }
       },
       "componentAngles": {
         "hull": {
-          "front": 97.04,
-          "right": 97.64,
-          "left": 97.64,
-          "rear": 98.38,
-          "top": 97.92
+          "front": 97,
+          "right": 95.98,
+          "left": 95.92,
+          "rear": 93.87,
+          "top": 97.35
         },
         "turret": {
-          "front": 99.99,
-          "right": 87.38,
-          "left": 87.69,
-          "rear": 99.9,
-          "top": 95.11
+          "front": 87.25,
+          "right": 88.65,
+          "left": 89.24,
+          "rear": 83.95,
+          "top": 91.53
         },
         "exposedUpper": {
-          "front": 99.99,
-          "right": 84.13,
-          "left": 84.6,
-          "rear": 99.85,
-          "top": 64.44
+          "front": 86.59,
+          "right": 89.31,
+          "left": 88.68,
+          "rear": 86.77,
+          "top": 65.9
         }
       },
       "boxes": {
         "reference": [
-          3.9,
-          3.77,
-          9.97
+          3.78,
+          2.26,
+          9.64
         ],
         "procedural": [
-          3.9,
-          3.77,
-          10.78
+          3.78,
+          2.26,
+          9.66
         ]
-      }
+      },
+      "errors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ]
     }
   ]
 }

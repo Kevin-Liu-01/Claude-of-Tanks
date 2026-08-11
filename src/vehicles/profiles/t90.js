@@ -3528,17 +3528,30 @@ function buildT90SMLegacy(P) {
   for (const bx of [-0.52, 0.52]) {
     P.add('turretDark', box(0.03, 0.03, 0.05), bx, 0.37, -2.472);        // standoff struts onto step3 (§B2 attached)
   }
+  const addSMBustleSideCell = (s, x, y, h, z, d) => {
+    const outerX = s * (x + 0.052);
+    // Recessed backing closes the bustle while four horizontal courses and
+    // three stiles recover the reference's low wraparound cage. Carrier
+    // feet penetrate the underlying bustle step; no rail is held by air.
+    P.add('turretDark', box(0.025, h * 0.82, d * 0.90), s * x, y, z);
+    for (const by of [-0.38, -0.12, 0.14, 0.40]) {
+      P.add('turretDetail', box(0.028, 0.026, d * 0.94), outerX, y + by * h, z);
+    }
+    for (const bz of [-0.40, 0, 0.40]) {
+      P.add('turretDetail', box(0.028, h * 0.88, 0.028), outerX, y, z + bz * d);
+    }
+    P.add('turret', box(0.12, 0.12, 0.16), s * (x - 0.02), y - h * 0.34, z + d * 0.28);
+  };
   for (const s of [-1, 1]) {
-    P.add('turret', box(0.15, s < 0 ? 0.235 : 0.36, s < 0 ? 0.90 : 0.78), s * 0.985, s < 0 ? 0.3525 : 0.29, s < 0 ? -1.63 : -1.57);   // T3R-b6/b7: rear -1.99w left / -1.87w right (print asym); the deeper left module follows the bustle's rising underside while retaining its 0.47 roof
-    // T3R mid step narrowed to x 1.075..1.205 — its 1.23 edge partial-lit
-    // the ±1.27 plan col (window 1.216..1.324) with rear -1.33 where the
-    // ref reads -0.97 (err 0.232/0.205, the plan row's worst live cols).
-    P.add('turret', box(0.10, 0.36, 0.38), s * 1.12, 0.29, -1.17);  // T3R-b3/b6: edge 1.17; rear -1.27w (ref 1.161 col)
-    P.add('turret', box(0.12, 0.34, 0.32), s * 1.24, 0.27, -0.90);   // T3R-b6: rear -0.97w (ref 1.27 col)
+    addSMBustleSideCell(s, 0.985, s < 0 ? 0.3525 : 0.29, s < 0 ? 0.235 : 0.36, s < 0 ? -1.63 : -1.57, s < 0 ? 0.90 : 0.78);
+    // The two forward cells retain the measured staircase but become one
+    // continuous slat language rather than solid vertical coffin blocks.
+    addSMBustleSideCell(s, 1.12, 0.29, 0.36, -1.17, 0.38);
+    addSMBustleSideCell(s, 1.24, 0.27, 0.34, -0.90, 0.32);
   }
   // T3R-b6 flank rear step: the welded staircase's first step (ref rear
   // -0.642w at x 1.33..1.43) bridging the poly rear onto the corner box.
-  for (const s of [-1, 1]) P.add('turret', box(0.085, 0.36, 0.33), s * 1.3725, 0.28, -0.56);  // T3R-b7: edge 1.415 (14mm clear of the ±1.46 window — 3.5mm partial-lit it)
+  for (const s of [-1, 1]) addSMBustleSideCell(s, 1.3725, 0.28, 0.36, -0.56, 0.33);
   // deep inner step is a LEFT-col read (ref -1.585 @ -1.125 vs -1.314 @
   // +1.152 — the step edge sits at |x|~1.10 and the grids sample it
   // asymmetrically): keep the deep box clear of the +1.152 col.
@@ -4410,10 +4423,73 @@ function buildT90AVladimir(P) {
   // that identity, so the measured legacy transom remains authoritative.
 }
 
-// The owner already identifies T-90SM as the strongest family member; keep
-// its measured 81.6 candidate intact while the lower-ranked marks are rebuilt.
+function finishT90SMOwnerRedesign(P) {
+  const { box } = KIT;
+
+  // Source-deep segmented skirts: the recovered demonstrator carries a
+  // continuous green curtain with a scalloped lower hem, not seven shallow
+  // rectangular plates above a fully exposed wheel course. These thin
+  // inboard leaves overlap the existing upper skirt band and remain clear of
+  // the native animated shoes.
+  const z0 = -2.50, z1 = 2.75, panels = 7, dz = (z1 - z0) / panels;
+  for (const s of [-1, 1]) {
+    // Inboard of the recovered outer skirt lip: side cameras retain the
+    // full scallop, while front cameras correctly see the shallow outer
+    // band at |x| 1.68..1.72 instead of an impossible full-depth curtain.
+    const xi = s * 1.610, xo = s * 1.640;
+    for (let i = 0; i < panels; i++) {
+      const a = z0 + i * dz, m = a + dz * 0.5, b = a + dz;
+      const edgeY = i === 0 || i === panels - 1 ? 0.68 : 0.72;
+      const lobeY = 0.43 + (i % 2) * 0.035;
+      P.add('hull', orientedSlab(
+        [xi, edgeY, a], [xo, edgeY, a], [xo, lobeY, m], [xi, lobeY, m],
+        [xi, 1.21, a], [xo, 1.21, a], [xo, 1.21, m], [xi, 1.21, m],
+      ));
+      P.add('hull', orientedSlab(
+        [xi, lobeY, m], [xo, lobeY, m], [xo, edgeY, b], [xi, edgeY, b],
+        [xi, 1.21, m], [xo, 1.21, m], [xo, 1.21, b], [xi, 1.21, b],
+      ));
+      P.add('hullDark', box(0.026, 0.44, 0.024), xo, 0.98, b - 0.012);
+    }
+  }
+
+  // Broad low diamond cheek skin. Both plates bury their rear half in the
+  // measured welded core and their upper edge follows its crown; they alter
+  // the read from a narrow vertical cabinet to long swept shoulders without
+  // adding another turret or extending the certified outer envelope.
+  for (const s of [-1, 1]) {
+    P.add('turret', orientedSlab(
+      [s * 0.22, 0.08, 1.40], [s * 1.64, 0.08, 0.48], [s * 1.58, 0.08, -0.30], [s * 0.28, 0.08, 0.52],
+      [s * 0.22, 0.40, 1.02], [s * 1.39, 0.40, 0.34], [s * 1.36, 0.37, -0.30], [s * 0.28, 0.49, 0.42],
+    ));
+    P.add('turretDark', box(0.026, 0.22, 0.36), s * 1.43, 0.27, 0.12, 0, 0, -s * 0.10);
+  }
+
+  // The official rear camera previously saw a broad blank plate. A shallow
+  // recessed service field, unequal vertical louvres, pipe rail and towing
+  // eyes create the source's transom hierarchy while remaining within the
+  // existing -2.92 m hull face.
+  P.add('hullDark', box(1.50, 0.42, 0.026), 0, 1.16, -2.934);
+  for (const [x, w, n] of [[-0.52, 0.42, 4], [0.08, 0.58, 6], [0.58, 0.30, 3]]) {
+    for (let i = 0; i < n; i++) {
+      P.add('hullDetail', box(0.028, 0.34, 0.030), x - w * 0.5 + (i + 0.5) * w / n, 1.16, -2.952);
+    }
+  }
+  P.add('hullDetail', box(1.38, 0.036, 0.040), 0, 0.98, -2.96);
+  for (const s of [-1, 1]) {
+    P.add('hullDetail', KIT.torus(0.085, 0.020, 14), s * 0.48, 0.90, -2.97, Math.PI / 2, 0, 0);
+    P.add('hullDark', box(0.045, 0.18, 0.045), s * 0.48, 0.99, -2.95);
+  }
+}
+
+// The source-measured T-90SM shell remains the redesign datum; owner-directed
+// refinements replace its equipment layer without discarding that geometry.
 function buildT90SM(P) {
   buildT90SMLegacy(P);
+  // Keep the source-specific cheek, crown and bustle stations and repair
+  // their ownership/seating in place rather than replacing them with a
+  // sparse modern-family proxy.
+  finishT90SMOwnerRedesign(P);
   // T6SM-d: narrow longitudinal belly-edge channels reproduce the recovered
   // front-view drop at |x|=1.13.  They lap the 0.44-m loft floor, remain
   // 6 mm inboard of the track lane, and are invisible in side/plan bounds.
@@ -4422,6 +4498,7 @@ function buildT90SM(P) {
   // front stations, seated into existing structure rather than free details.
   P.add('hull', KIT.box(0.09, 0.05, 4.40), 0, 0.425, 0);
   P.add('hullRubber', KIT.box(0.04, 0.37, 0.33), 1.68, 1.055, -1.70);
+  P.add('hull', KIT.box(0.020, 0.050, 0.18), -1.880, 1.365, -1.60);
   // Recovered rear-deck service module: the source front envelope carries a
   // 1.54 m asymmetric plateau from x -0.49..+0.89, and its side envelope
   // carries the same crest only through z -2.85..-2.72.  The module enters
