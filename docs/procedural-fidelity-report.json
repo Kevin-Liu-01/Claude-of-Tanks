@@ -1,103 +1,103 @@
 {
-  "generatedAt": "2026-08-10T14:06:15.095Z",
+  "generatedAt": "2026-08-11T03:14:23.224Z",
   "summary": {
     "references": 1,
     "passed": 1,
     "failed": 0,
     "passThreshold": 90,
     "perViewFloor": 90,
-    "median": 94.66,
-    "worst": "amx40",
-    "best": "amx40"
+    "median": 92.57,
+    "worst": "t14",
+    "best": "t14"
   },
   "rows": [
     {
-      "id": "amx40",
-      "name": "AMX-40",
-      "sourcePath": "/models/community-candidates/amx-40_armored_warfare.glb",
-      "fallback": "amx40",
-      "score": 94.66,
+      "id": "t14",
+      "name": "T-14 Armata",
+      "sourcePath": "/models/community-candidates/t-14_armara_uralvagon_factory.glb",
+      "fallback": "t14",
+      "score": 92.57,
       "scores": {
-        "overall": 96.21,
-        "hull": 96.38,
-        "turret": 90.87,
-        "gun": 92.07,
-        "tracks": 95.89
+        "overall": 97.47,
+        "hull": 97.72,
+        "turret": 94.02,
+        "gun": 64.35,
+        "tracks": 93.72
       },
       "componentMasksAvailable": true,
-      "minView": 95.57,
+      "minView": 95.81,
       "gatePassed": true,
       "angles": {
         "front": {
-          "score": 96.23,
-          "iou": 95.06
+          "score": 97.73,
+          "iou": 96.97
         },
         "frontLeft": {
-          "score": 96.39,
-          "iou": 95.28
+          "score": 97.55,
+          "iou": 96.9
         },
         "left": {
-          "score": 95.64,
-          "iou": 93.86
+          "score": 95.86,
+          "iou": 94.94
         },
         "rearLeft": {
-          "score": 95.94,
-          "iou": 94.77
+          "score": 98.41,
+          "iou": 98.27
         },
         "rear": {
-          "score": 96.17,
-          "iou": 94.6
+          "score": 98.78,
+          "iou": 98.36
         },
         "rearRight": {
-          "score": 95.72,
-          "iou": 94.33
+          "score": 98.42,
+          "iou": 98.28
         },
         "right": {
-          "score": 95.57,
-          "iou": 93.85
+          "score": 95.81,
+          "iou": 94.87
         },
         "frontRight": {
-          "score": 96.83,
-          "iou": 95.68
+          "score": 97.53,
+          "iou": 96.85
         },
         "top": {
-          "score": 97.41,
-          "iou": 96.52
+          "score": 97.16,
+          "iou": 96.99
         }
       },
       "componentAngles": {
         "hull": {
-          "front": 96.04,
-          "right": 96.51,
-          "left": 96.4,
-          "rear": 94.91,
-          "top": 98.06
+          "front": 97.04,
+          "right": 97.64,
+          "left": 97.64,
+          "rear": 98.38,
+          "top": 97.92
         },
         "turret": {
-          "front": 92.69,
-          "right": 90.53,
-          "left": 91.2,
-          "rear": 92.09,
-          "top": 87.84
+          "front": 99.99,
+          "right": 87.38,
+          "left": 87.69,
+          "rear": 99.9,
+          "top": 95.11
         },
         "exposedUpper": {
-          "front": 89,
-          "right": 90.32,
-          "left": 90.64,
-          "rear": 86.64,
-          "top": 72
+          "front": 99.99,
+          "right": 84.13,
+          "left": 84.6,
+          "rear": 99.85,
+          "top": 64.44
         }
       },
       "boxes": {
         "reference": [
-          3.36,
-          2.81,
-          10.06
+          3.9,
+          3.77,
+          9.97
         ],
         "procedural": [
-          3.36,
-          2.81,
-          10.04
+          3.9,
+          3.77,
+          10.78
         ]
       }
     }

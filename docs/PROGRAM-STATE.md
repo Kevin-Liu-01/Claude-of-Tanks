@@ -49,7 +49,7 @@ at load.
 - Env for EVERY node run: `export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh"`
 - npm test before every landing (166 equipment checks + track-geometry).
 
-## 3. GRADUATE REGISTRY (42 graduates, hash-frozen)
+## 3. GRADUATE REGISTRY (43 graduates, hash-frozen)
 Freeze = deterministic geometry hash via `node tools/tmp-hashgeo.mjs
 --ids=...` (camoSeed 4242 pinned build; FNV-1a over position buffers +
 world matrices, mesh-order independent). Graduate-change protocol: fix ->
@@ -94,6 +94,7 @@ re-freeze NEW hash, all in ONE commit.
 | challenger2 | 3b4bd5f0 | GRADUATED 2026-08-09; RE-FROZEN 2026-08-10 (§5.89 owner fused-block repair: material-fused casemate course removed from fixed hull and repartitioned into the articulated source tree; one low ring landing + one rotating turret; gate 90.1 x2 every component >=90; standard/parent/winding clean; fresh §B8 floor 9.0 / mean 9.06 x14, yaw/load paths 9.3; oracle f44e3b46 reproducible from pristine .bak; prior 63ee160 retired) |
 | fv510 | 927beeb2 | GRADUATED 2026-08-10; RE-FROZEN 2026-08-10 (§5.91 owner native-track correction: donor Track suppressed and 34 donor running-gear components removed at whole-component boundaries; exact Warrior upper geometry retained around one game-native six-station wheel/sprocket/idler/shoe system; gate 90.3 x2, every component >=90.3; fidelity 98.0; standard/parent/winding clean; independent §B8 floor 9.1 / mean 9.26 x14, yaw/load paths 9.4; prior exact-source freeze 7884762a retired) |
 | type10 | 201d0a08 | GRADUATED 2026-08-10; RE-FROZEN §5.97 (owner correction: complete rear cage, circular spare-wheel forms, service boxes, rack rails and antennas reparented as whole source components to the seated turret; lower engine deck remains hull-owned; exact five-wheel native track 0/0; gate 94.6 x2; parent/winding clean; independent §B8 floor 9.4 / mean 9.59 x14, yaw load paths PASS; prior 84f5d108 retired) |
+| t14 | a88afa6c | GRADUATED 2026-08-10 (§5.104 owner-source exact rebuild: source upper hull, compact unmanned turret, bustle, roof stations and 2A82 solids with a published-datum tube extension; donor gear excluded for one native seven-wheel linked-shoe system; cage skins receive buried hull-owned backing inside the source envelope; gate 90.7; fidelity 92.6 composite / 97.5 whole silhouette; standard/track/parent/winding clean; independent §B8 floor 9.5 / mean 9.60 x14, yaw/load paths PASS; prior procedural record 60d7d14 retired) |
 | amx40 | 50710918 | RE-FROZEN 2026-08-10 (§5.103 owner screenshot front-half reopen: exact source upper hull, complete turret, mantlet/coax/LLLTV and CN120 replace the insufficient procedural front while donor gear stays excluded for one native six-wheel linked-shoe system; gate 92.6 x2; fidelity 98.5; exact track 0/0 band+shoes; independent §B8 floor 9.5 / mean 9.70 x14, yaw/load paths PASS; prior d2c73d96 retired) |
 | m26_pershing | 2f006738 | RE-RECORDED 2026-08-08: hash moved by LANDED 5f39989 (armorM4 gunBarrel shadow-proxy 3.96->3.44; m26/m45 inherit m4a3e8 proxies — patton.js bytes unchanged); double-confirmed by builder bisect + m45-grad critic; prior 65c564c0 bore+winding re-cert lineage (floors 9.1-9.4) carries |
 | t90m | e345ee8a | GRADUATED 2026-08-06 (27th; floor 9.0 x14 second sitting; the owner's dedicated-agent arc 81.7 -> dual gate) |
@@ -3103,3 +3104,56 @@ independent §B8 passes all fourteen source pairs at floor **9.5** / mean
 paths, hull-owned engine deck, clean native running gear and absence of fused
 mass, floaters, empty-air attachments or visible backface wound. **KEEP
 `50710918`; prior graduate freeze `d2c73d96` is retired.**
+
+## 5.104 T-14 OWNER-SOURCE EXACT REBUILD (2026-08-10, GRADUATED)
+
+The owner's `t-14_armara_uralvagon_factory.glb` is now the T-14 geometry
+authority. Its SHA-256 is
+`02785328797c80090fd0e9c48b5bb6fe8e7a1e3fac4d340138fede6348c8d2b3`;
+the 223 MB CC-BY-4.0 GLB remains gitignored and local-only while a small
+deterministic source payload ships. The bake applies the registered width
+scale and source pivot, keeps the authored 8.639 m hull without stretching,
+and preserves the exact upper hull, compact unmanned turret, bustle, roof
+sensor/weapon hierarchy and 2A82 root. Only the source-short forward tube is
+extended from a 2.0 m knee to the published 10.8 m overall datum.
+
+The payload is SHA-256
+`8075dbfb6686dfd72c295d76f5b3f16c492b0e884ceff0b135e968cd47b1ade2`.
+Its verified vertex/triangle groups are left/right guards 10,128/11,680 and
+10,106/11,680, hull 44,814/51,616, hull detail 17,631/23,002, turret
+25,751/35,802, turret detail 17,271/21,436, turret weapon 7,408/10,128 and
+gun 6,461/7,112. Source Object_14 is split only at whole connected-component
+boundaries so the 2A82 elevates while the rear roof weapon remains turret
+owned. Open source-sheet components receive reverse triangles only where a
+position-weld topology census proves them open; already closed solids are
+not doubled.
+
+Donor Object_4..Object_7 tracks, wheels and terminal drums never enter the
+playable assembly. One fleet-native seven-road-wheel system supplies
+animation, suspension, damage, scrolling links and thrown-track behavior.
+The source's hollow rear side-cage presentation skins remain exterior-exact;
+thin enclosed backing surfaces sit inside their existing envelope and stay
+hull-owned, closing the former top/oblique sky-through without outline growth.
+
+Machine gate is **90.7** | 92.0/90.7/92.8/100/99.8/100; gate JSON SHA-256
+is `071c3c9a792165aa65d0b5b9c9b46ed68197d616fb7c4ef380c2c6bda9bf8bc6`.
+Direct fidelity is **92.6** composite with whole silhouette 97.5, hull 97.7,
+turret 94.0, tracks 93.7 and every whole view at least 95.81. The isolated
+gun score of 64.3 records the deliberate published-datum extension beyond
+the source-short tube, not a station or attachment defect. Normal and exact
+track audits are band 0/0 and shoes 0/0; standard check has contiguity 0 and
+mg1+0d; parent audit is stranded 0 / abutting 0 / dangling 0; winding is
+0 reversed / 0 mixed / 0 deficit pixels with no yaw candidate. The bake,
+visible muzzle-bore proof, all eight regenerated presentation assets,
+`npm test` and `npm run build:private` are green.
+
+Geometry freeze reproduces x2 at **`a88afa6c`** (29 meshes / 538,774
+vertices). Forty-two fresh unique PNGs cover fourteen paired views plus
+fourteen yaw-0 and fourteen yaw-90 frames. Independent §B8 scores
+`[9.5,9.6,9.5,9.5,9.5,9.5,9.5,9.6,9.7,9.7,9.6,9.8,9.6,9.8]`, floor
+**9.5**, mean **9.60**. The critic explicitly confirms source proportions,
+buried cage support with no remaining sky wound, one seated rotating
+turret/gun/sensor package, correct fixed-hull ownership, continuous native
+seven-wheel tracks and no visible winding wound. **GRADUATED; KEEP
+`a88afa6c`; the earlier `f95cf87e` sitting and procedural `60d7d14` record
+are retired. Fleet gate is 38/97 and graduates are 43.**
