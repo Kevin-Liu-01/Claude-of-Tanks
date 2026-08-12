@@ -19,7 +19,6 @@
 
 import * as THREE from 'three';
 import { KIT } from './tankFactory.js';
-import { buildT14SourceGeometry } from './profiles/t14-source-geometry.js';
 // §I fittings census: the FITTINGS import is the spelling that survives
 // synchronous top-level createTank rigs (kit.js attach-site note).
 import { FITTINGS, muzzleBore } from './profiles/kit.js';
@@ -2598,13 +2597,16 @@ function buildT14(P) {
   P.add('turretDark', cylY(0.05, 0.05, 0.045, 10), 0.05, 1.0575, -0.30);
   P.add('turretDetail', cylY(0.062, 0.062, 0.014, 10), 0.05, 1.028, -0.30);     // mount collar
   // clean 2A82 tube: thermal sleeve, NO evacuator (§16.1 key barrel read).
-  // Muzzle +6.45 world = the published 10.8 overall over the −4.32 tail;
+  // The current reference packet measures a 9.97 m overall envelope over
+  // the −4.32 m tail.  Preserve the wholly authored 2A82 construction but
+  // shorten its run to that datum; the old 6.45 m tube made the procedural
+  // vehicle roughly 0.8 m too long and was the dominant gun-profile miss.
   // bore line 2.03w level (the print's tube). Chin + boot at the ladder-r1
   // trough station (gun pivot world z 0.0).
   P.addGunExtra(box(0.44, 0.44, 0.3), 0, 0.02, 1.38);                           // shroud chin
   P.addGunExtra(cylZ(0.14, 0.36, 12, 0.17), 0, 0, 1.50);                        // boot collar
-  buildGun(P, { len: 6.45, r: 0.07, sleeve: true, evac: null, baseR: 0.15 });
-  muzzleBore(P, { len: 6.45, r: 0.07 });                                        // §B3.1 (shadow-named, 3fca39b)
+  buildGun(P, { len: 5.64, r: 0.07, sleeve: true, evac: null, baseR: 0.15 });
+  muzzleBore(P, { len: 5.64, r: 0.07 });                                        // §B3.1 (shadow-named, 3fca39b)
   // 7 road wheels (first Russian 7-wheel), sprocket rear, deep skirts hide
   // the top run. LADDER r1 gear re-seat (oracle ground truth): the print's
   // ground span is x 1.09..1.63 / z -2.47..+2.85 with HIGH-TUCKED end
@@ -2675,33 +2677,6 @@ function buildT14(P) {
   P.topY = AH + 0.85;                                                           // sensor mast top
 }
 
-// Owner-source rebuild (2026-08-10). The former measured procedural ladder
-// matched published dimensions but remained visibly too long/low and carried
-// an oversized proxy turret. The supplied model now provides the exact upper
-// hull, faceted unmanned turret, roof sensor/weapon hierarchy and 2A82 solids.
-// Its 8.639 m authored hull is kept source-true; only the source-short tube is
-// extended forward from a 2.0 m knee to the published 10.8 m overall datum.
-// Donor Object_4..Object_7 gear never enters the payload. The native system
-// below retains seven independently countable road wheels, animated links,
-// suspension, damage, scroll and thrown-track behavior.
-function buildT14Source(P) {
-  const { buildRunningGear } = KIT;
-  buildT14SourceGeometry(P);
-  buildRunningGear(P, {
-    style: 'rubber', wheelR: 0.35, wheelW: 0.44, wheelY: 0.43,
-    xc: 1.365, dishR: 0.76,
-    wheelZs: [2.85, 1.963, 1.076, 0.19, -0.697, -1.584, -2.47],
-    sprocket: { z: -2.84, y: 0.82, r: 0.28 },
-    idler: { z: 3.40, y: 0.94, r: 0.26 },
-    rollers: [2.2, 0.75, -0.75, -2.2]
-      .map((z) => ({ z, y: 0.90, r: 0.08 })),
-    trackW: 0.50, trackTh: 0.055, botY: 0.12, topY: 1.00,
-    contactZF: 2.92, contactZR: -2.50, pinCapOuter: 0.24,
-    paintedEnds: true, coveredTop: true, tireHex: '#4e5544',
-    padCornerFloor: 0.012, gearFloor: true,
-  });
-}
-
 /** Builder table merged into tankFactory.BUILDERS by the extension hook. */
 export const MODERN2_BUILDERS = {
   leo2a4: buildLeo2A4,
@@ -2716,5 +2691,5 @@ export const MODERN2_BUILDERS = {
   // and visual oracle, while every triangle below comes from KIT primitives.
   type99a: buildType99AFullNativeRebuild2026,
   leo1a5: buildLeo1A5,
-  t14: buildT14Source,
+  t14: buildT14,
 };
