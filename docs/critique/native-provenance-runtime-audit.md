@@ -65,8 +65,9 @@ depending on garage order.
 ## Visual work remains open
 
 Native provenance is a floor, not a fidelity waiver. Restored vehicles are
-being reworked and re-certified from fresh procedural renders. Current owner
-priority is the T-90M Proryv turret/protection/station/rear package, followed
-by the restored Leopard, Type 10, Challenger 1 and Ariete presentations. Old
+being reworked and re-certified from fresh procedural renders. Leopard,
+Type 10, T-90M Proryv and FV510 now have fresh native-only receipts. T-14 and
+T-80U remain the open provenance re-certifications; AbramsX and the broader
+Challenger/Ariete presentation set remain owner-priority quality audits. Old
 scores and freeze hashes for changed geometry are historical until replaced
 by fresh paired and yaw evidence.

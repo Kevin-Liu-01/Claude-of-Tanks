@@ -104,6 +104,7 @@ re-freeze NEW hash, all in ONE commit.
 | challenger_3 | 3e5a7797 | GRADUATED 2026-08-09; RE-FROZEN 2026-08-10 (§5.95 owner screenshot attachment re-cert on current main: multi-tier Protector foundation, tapered optic plinth, smoke/corner rails and antenna collars have continuous physical seats; gate 90.4, standard/parent/winding clean; independent §B8 floor 9.4 / mean 9.59 x14; prior b0c172a4 retired) |
 | challenger1 | cacb1337 | GRADUATED 2026-08-11 (§5.112 native-procedural, reference-guided rebuild: compact six-wheel hull, one low connected cast turret, buried mantlet/cheek anatomy, seated commander/TOGS station and supported bustle/basket; no external mesh data ships; commercial-reference component masks honestly cap the machine row at 0 while dims 99.6 / floaters 100 and fresh independent §B8 pass floor 9.0 / mean 9.13 x14 with genuine yaw0/90 ownership, exact native tracks 0/0 and winding PASS; old gate-shaped 5bf5f2ec visual failure retired) |
 | challenger2 | 3b4bd5f0 | GRADUATED 2026-08-09; RE-FROZEN 2026-08-10 (§5.89 owner fused-block repair: material-fused casemate course removed from fixed hull and repartitioned into the articulated source tree; one low ring landing + one rotating turret; gate 90.1 x2 every component >=90; standard/parent/winding clean; fresh §B8 floor 9.0 / mean 9.06 x14, yaw/load paths 9.3; oracle f44e3b46 reproducible from pristine .bak; prior 63ee160 retired) |
+| fv510 | 61023726 | RE-FROZEN 2026-08-12 (§5.129 first-party `fv510PhotoBuild`: compact six-wheel Warrior hull, authored RARDEN turret and supported slat/service package; machine fidelity 90.84 / minimum view 90.12; exact native track 0/0 and fresh 42-frame yaw/ownership floor 9.0 / mean 9.11; source-baked 7884762a/927beeb2 playables retired) |
 | m26_pershing | 2f006738 | RE-RECORDED 2026-08-08: hash moved by LANDED 5f39989 (armorM4 gunBarrel shadow-proxy 3.96->3.44; m26/m45 inherit m4a3e8 proxies — patton.js bytes unchanged); double-confirmed by builder bisect + m45-grad critic; prior 65c564c0 bore+winding re-cert lineage (floors 9.1-9.4) carries |
 | t90m | a21894b8 | RE-FROZEN 2026-08-12 (§5.127 first-party native V-bow hull, welded Proryv shell, supported bustle/rack and exact six-wheel course; machine fidelity 90.96 / minimum view 90.02; 42-frame yaw/ownership PASS; incompatible legacy contour row retained honestly rather than chased) |
 | t90 | da6f7fba | RE-FROZEN 2026-08-11 (native procedural, reference-guided: all runtime geometry remains our authored primitives; independent §B8 floor 9.1 / mean 9.19 x14 with genuine yaw ownership, exact native six-wheel track 0/0 bands+shoes, muzzle/assets PASS and no visible winding wound; registered-mask false zero disclosed rather than chased into copied geometry; prior 72104d14 retired) |
@@ -3950,13 +3951,14 @@ registry. Each received an authored procedural replacement; comparison files
 remain ignored local measurement/review material only. The four Leopard ids
 (`leo2a4`, `leo2a6`, `leo2a7v`, `leo2_revolution`) now have fresh first-party
 42-frame evidence and are re-frozen in §5.126. Type 10 is independently
-re-frozen in §5.128; AMX-40 is also restored and landed. The remaining
-provenance reopen set is `fv510`, `t14` and `t80u`; each still requires its own
-fresh native certification before re-freezing. Eight omitted native-procedural
-graduates were simultaneously backfilled into the registry; with Type 10 the
-reconciled current count is now **49**. The owner-priority T-90M Proryv quality rebuild
-remains open; its authored procedural builder is the only playable geometry
-and any local GLB remains an isolated visual oracle.
+re-frozen in §5.128; FV510 is independently re-frozen in §5.129; AMX-40 is
+also restored and landed. The remaining provenance reopen set is `t14` and
+`t80u`; each still requires its own fresh native certification before
+re-freezing. Eight omitted native-procedural graduates were simultaneously
+backfilled into the registry; with FV510 the reconciled current count is now
+**50**. The T-90M Proryv quality rebuild is complete at §5.127; its authored
+procedural builder is the only playable geometry and any local GLB remains an
+isolated visual oracle.
 
 ## 5.122 T-90MS FIRST-PARTY REPLACEMENT RE-CERTIFICATION (2026-08-11, GRADUATED)
 
@@ -4282,3 +4284,52 @@ stowage with visible hull contact after turret departure. No fused duplicate,
 stranded turret fitting, empty-air decoration, donor course, collision, open
 sheet, sky hole or visible winding wound remains. **RE-FROZEN / KEEP
 `7ac6d434`; retire the source-baked `84f5d108` playable.**
+
+## 5.129 FV510 WARRIOR FIRST-PARTY PROVENANCE RE-CERTIFICATION (2026-08-12, RE-FROZEN)
+
+The exact-source FV510 playables recorded in §5.90 and §5.91 are historical
+only and cannot satisfy the owner's all-first-party rule. The active mapping
+now resolves exclusively to `fv510PhotoBuild` in
+`src/vehicles/profiles/uk.js`. Its hull, six-wheel running gear, RARDEN
+turret/gun, roof stations, slat armor, rear door and service package are
+authored from repository primitives and the native linked-track generator.
+The community GLB remains an isolated visual/measurement oracle; no source
+mesh, vertex/index payload, material, texture, rig, animation or converted
+array enters the playable or public build.
+
+Freeze **`61023726`** reproduces twice at 70 rendered meshes / 59,949
+vertices. Independent procedural fidelity is **90.84 aggregate** with every
+required whole view at least **90.12**; components are overall **90.54**,
+hull **91.04**, turret **84.45**, gun **100.0** and native tracks **93.73**.
+The lower direct-turret row reflects the oracle's fused/component split and is
+not a whole-vehicle acceptance failure. Exact track containment is band
+**0/0** and shoes **0/0**, plan contiguity is zero holes, muzzle-bore passes,
+and decoration census is `mg1+15d`.
+
+The generated legacy geometry row remains an honest zero: hull 18.3 / whole
+9.0 / turret 42.7 / stations 68.8 / dimensions 0 / floaters 0. That gate is
+registered to the retired source-derived semantic/component tree and cannot
+measure the independent photo builder without rewarding copied topology. The
+red row is committed and disclosed rather than used to deform our authored
+vehicle.
+
+All 42 PNGs under `/tmp/critic-fv510-native-final-r9/fv510` are distinct.
+The fresh fixed vector is
+`[9.1,9.2,9.1,9.0,9.0,9.0,9.1,9.2,9.2,9.2,9.1,9.2,9.1,9.2]`, floor
+**9.0**, mean **9.11**. Every yaw pair proves a genuine quarter-turn: the
+RARDEN gun/mantlet, complete turret, sights, hatches, smoke, MG, antennae and
+turret service fittings rotate together over a fixed glacis, driver deck,
+engine deck, slat package, rear door/service field and six-wheel course.
+
+The parent nominee `hullGlass` is a legitimate fixed driver/periscope strip
+with visible deck contact after turret departure. Winding census is 0
+reversed / 0 mixed. Its 655-pixel/0.61% rear-quarter FrontSide difference is
+confined to thin slat/rail regions and remains stable through yaw; inspection
+finds no disappearing face, open sheet, sky wound or silhouette tear. No
+fused duplicate turret, stranded fitting, empty-air decoration, donor course
+or collision remains.
+
+All eight FV510 presentation assets and their manifest binding are
+regenerated. Targeted asset/currentness and bore checks pass, as do native
+provenance, family ordering, tests, and private/public builds. **RE-FROZEN /
+KEEP `61023726`; retire source-baked `7884762a` and `927beeb2` as playables.**
