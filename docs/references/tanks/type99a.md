@@ -1,8 +1,9 @@
 # Type 99A / ZTZ-99A (`type99a`) — BASE-21 photo-class packet
 
-> **CURRENT AUTHORITY (2026-08-11):** §Source-fidelity re-freeze below
-> supersedes the historical no-oracle/build-ready state and the §5.51/§5.52
-> print-loft builder. The quarantined Armored Warfare GLB is measurement and
+> **CURRENT AUTHORITY (2026-08-12):** the `50bbc9bc` first-party
+> measured-envelope freeze at the end of this packet supersedes the historical
+> no-oracle/build-ready state, the §5.51/§5.52 print-loft builder and the
+> `cf97a01b` freeze. The quarantined Armored Warfare GLB is measurement and
 > visual-comparison evidence only; the playable remains original procedural
 > geometry.
 
@@ -562,3 +563,36 @@ welded box + tower + sleeved 125 ✓), top/yaw90 clean.
    Object_N prints: AABB onboarding misses sub-1k-vert furniture; a
    vertex-level follower census (k2-depth) belongs to the first build
    round, with per-object evidence.
+
+## 2026-08-12 first-party measured-envelope re-freeze
+
+The owner rejected the prior hull, turret and running-gear geometry and
+required the whole vehicle to be re-based on the supplied model while keeping
+all playable geometry our own. The active `buildType99AFullNativeRebuild2026`
+therefore consumes no external geometry. It constructs a new tapered hull and
+two-plane prow, one six-station native linked course, one connected low welded
+turret, buried cheek courses, an integrated gun root, a supported open bustle
+and the complete seated roof/service cadence from repository primitives.
+
+The reference SHA-256 remains
+`35024b8262ae065153da0f704f1c42a66b4a8e239a46a525af76ee12c405043f`.
+Its measured 7.76 m hull / 11.66 m overall / 3.70 m width / 3.16 m combat-
+station envelope are now the declared physical datum. The playable freezes
+twice at `50bbc9bc` (53 meshes / 76,693 vertices).
+
+Release receipts:
+
+- machine fidelity 92.08; every valid whole view >=90.76; track profile 93.43;
+- geometry gate 90.8 minimum, dimensions 100, floaters 100;
+- exact native track band 0/0, shoes 0/0, blind spots 0;
+- winding 0 reversed / 0 mixed, with only seven invisible rear-quarter pixels;
+- 42 distinct final frames, genuine quarter-turn and fixed-vector floor 9.0 /
+  mean 9.11;
+- eight presentation assets current, muzzle-bore check PASS;
+- full tests, native-playable audit, family-order test and public build PASS.
+
+The winding yaw candidates are backed engine-deck louvres and the parent
+abutting nominee is the fixed driver-periscope strip. Both remain visibly
+hull-supported as the complete turret package rotates away. No comparison
+mesh or derived payload ships; the public build strips the candidate source
+directory. `cf97a01b` and all earlier Type 99 freezes are retired.

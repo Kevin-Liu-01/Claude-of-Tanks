@@ -107,7 +107,7 @@ re-freeze NEW hash, all in ONE commit.
 | t90a_vladimir | c13fec50 | GRADUATED 2026-08-10 (§5.94 source-specific compact ESSA/cast-turret/transom rebuild; gate 90.0 x2; standard/track/winding adjudicated; independent §B8 floor 9.0 / mean 9.01 x14, yaw/load paths 9.3) |
 | t90sm | 7efc69c9 | GRADUATED 2026-08-10; RE-FROZEN §5.105 (owner-priority complete redesign: source-measured low diamond shell retained, solid bustle steps replaced by backed slat cells, deep scalloped inboard skirts and layered rear service field added; gate 90.0 x2; standard/track/winding clean; independent §B8 floor 9.0 / mean 9.08 x14, all 28 yaw frames PASS; prior 56324371 retired) |
 | k1a1 | 28c7f5f0 | RE-FROZEN 2026-08-10 (§5.108 authored compact K1A1 shell/hull, native six-wheel course and cupola-seated K6; independent §B8 floor 9.0 / mean 9.21) |
-| type99a | cf97a01b | RE-FROZEN 2026-08-11 (§5.109 authored low arrowhead turret, supported bustle, compact six-wheel hull and clean bow clearance; independent §B8 floor 9.1 / mean 9.24) |
+| type99a | 50bbc9bc | RE-FROZEN 2026-08-12 (§5.125 first-party measured-envelope rebuild: broad two-plane hull, connected low welded turret, supported open bustle and exact native six-wheel course; machine fidelity 92.08 / min view 90.76; fresh 42-frame yaw/ownership floor 9.0 / mean 9.11) |
 | type74 | 8319dbb8 | RE-FROZEN 2026-08-11 (§5.110 authored low cast turret, five-wheel native course and supported combat/service suite; independent §B8 floor 9.1 / mean 9.29) |
 | ariete | acea2100 | RE-FROZEN 2026-08-11 (§5.111 native-procedural Ariete with seven-wheel course and supported low turret/rear service field; independent §B8 floor 9.0 / mean 9.25) |
 | t72b_1987 | 3f2483d4 | GRADUATED 2026-08-11 (§5.114 authored low B87 hull/turret, buried K1 and native six-wheel course; independent §B8 floor 9.0 / mean 9.14) |
@@ -4059,3 +4059,58 @@ open sheet, sky hole or visible winding wound remains.
 The full test suite, public build/quarantine stripping, native-playable audit
 (108 playables / 0 GLB-sourced), family-order test, standard check and geometry
 audits pass. **GRADUATED / KEEP `89a4cdf0` and `34076800`.**
+
+## 5.125 TYPE 99A2 FIRST-PARTY MEASURED-ENVELOPE REBUILD (2026-08-12, RE-FROZEN)
+
+This receipt supersedes the stale `cf97a01b` freeze in §5.109. The active
+playable is authored entirely in `src/vehicles/modern2.js` from repository
+primitives, fitting helpers and the native linked-track generator. The
+owner-supplied `type_99a2_armored_warfare.glb` (SHA-256
+`35024b8262ae065153da0f704f1c42a66b4a8e239a46a525af76ee12c405043f`)
+is an ignored local measurement and visual-comparison oracle only. No source
+mesh, vertex payload, material, texture, rig, animation or converted geometry
+enters the runtime model or public build.
+
+The rebuilt hull uses the measured 7.76 m physical envelope, one tapered
+pressure pan, broad two-plane prow, canted side shoulders, shallow segmented
+skirts and a raised backed engine/service deck. Exactly six large native
+rubber-tired/dished wheels use the measured 0.901 m cadence inside one linked
+course with compact raised terminal wraps. The upper assembly is one connected
+low welded shell with buried cheek laminates, canted side protection, an
+integrated mantlet and source-length ZPT-98. A full-width open bustle is carried
+by direct shell returns, transverse ties, corner uprights and side braces.
+Hatches, periscopes, panoramic and secondary sights, QJC-88, smoke banks and
+antennae all meet visible armor seats, plinths, brackets or collars.
+
+Freeze `50bbc9bc` reproduces twice at 53 rendered meshes / 76,693 vertices.
+Machine fidelity is **92.08 aggregate** with every registered whole view at
+least **90.76**; the valid whole row is 91.77 and the native track profile is
+93.43. Hull/turret/gun component rows remain honestly N/A because the
+comparison export fuses fixed and rotating regions in `Object_29` and exposes
+only the tube as `Object_17`; the build is not distorted to game those invalid
+masks. The independent geometry gate passes at **90.8 minimum**, dimensions
+100 and floaters 100.
+
+Exact containment is band **0/0**, shoes **0/0**, with no blind spots. Winding
+is 0 reversed / 0 mixed; the seven rear-quarter deficit pixels are 0.01% and
+produce no visible wound. The yaw audit's fixed candidates are the backed
+engine-deck louvre field at y 1.61..1.74, correctly hull-owned and exposed when
+the turret departs. The parent audit's sole abutting nominee is the fixed
+driver-periscope strip on the forward deck; stranded and dangling counts are
+zero.
+
+All 42 final files are distinct. The fresh fixed vector is
+`[9.1,9.1,9.0,9.0,9.0,9.0,9.0,9.1,9.2,9.2,9.1,9.2,9.1,9.2]`, floor
+**9.0**, mean **9.11**. A genuine yaw-0/yaw-90 quarter-turn proves that the
+complete shell, gun/mantlet, protection, bustle, sights, QJC-88, smoke and
+antennae rotate together while the prow, driver deck, skirts, six-wheel
+course, engine deck and transom remain fixed. No fused duplicate turret,
+stranded fitting, empty-air decoration, donor course, collision, open sheet,
+sky hole or visible backface wound remains.
+
+All eight Type 99 presentation assets and their manifest binding are
+regenerated. Targeted asset/currentness and muzzle-bore checks pass. `npm test`,
+the native-playable audit (108 playables / 0 GLB-sourced), the T-72/T-80/T-90
+family-order test and `npm run build:public` all pass; the public build strips
+the comparison-candidate directory. **RE-FROZEN / KEEP `50bbc9bc`; retire
+`cf97a01b` and every intermediate Type 99 sitting.**

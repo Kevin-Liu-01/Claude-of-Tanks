@@ -1705,6 +1705,47 @@ function buildType99AOwnerRedesign2026(P) {
   for (let i = 0; i < 10; i++) {
     P.add('turretDetail', box(0.030, 0.58, 0.045), -1.42 + i * 0.315, 0.51, -2.12);
   }
+  for (const side of [-1, 1]) {
+    P.add('turretDetail', box(0.045, 0.045, 0.62), side * 1.58, 0.79, -1.81);
+    P.add('turretDetail', box(0.045, 0.045, 0.62), side * 1.58, 0.25, -1.81);
+    P.add('turretDetail', box(0.045, 0.56, 0.045), side * 1.58, 0.51, -1.51);
+  }
+
+  // Source roof weapon and mast cadence. Each fitting starts on a physical
+  // cupola/plinth; antennas end in visible collars and stay turret-owned.
+  {
+    const mg = FITTINGS.pintleMG({
+      mats: P.mats, cls: 'nsvt', tone: 'dark', scale: 0.78, ammo: true,
+      elev: 0, rotation: [0, 0, 0], seed: 38,
+    });
+    mg.position.set(0.48, 0.75, -0.42);
+    P.turretG.add(mg);
+    for (const [x, z, h, seed] of [
+      [-1.14, -1.27, 0.92, 41], [0.98, -1.30, 0.72, 42], [0.18, -1.05, 0.52, 43],
+    ]) {
+      P.add('turretDetail', cylY(0.035, 0.045, 0.055, 10), x, 0.72, z);
+      const whip = FITTINGS.antennaWhip({ mats: P.mats, h, r: 0.010, seed });
+      whip.position.set(x, 0.75, z);
+      P.turretG.add(whip);
+    }
+  }
+  P.decal('turret', 'number', P.spec.visual.number || '211', 0.28,
+    [1.625, 0.36, -0.60], Math.PI / 2);
+  P.decal('turret', 'number', P.spec.visual.number || '211', 0.28,
+    [-1.625, 0.36, -0.60], -Math.PI / 2);
+
+  // Compact annular gun tunnel blended into the arrow cheeks, followed by
+  // the ZPT-98 tube. All carriers are round; firing and muzzle anchors stay
+  // on the authored bore axis.
+  P.addGunExtra(cylZ(0.25, 0.18, seg), 0, 0, 0.26);
+  P.addGunExtra(cylZ(0.205, 0.30, seg, 0.25), 0, 0, 0.50);
+  P.addGunExtraDark(torus(0.19, 0.025, seg), 0, 0, 0.66);
+  buildGun(P, { len: 6.30, r: 0.082, sleeve: true, evac: 0.53, baseR: 0.17, evacR: 1.30 });
+  muzzleBore99(P, 6.34, 0.082, 0.047, 14);
+  P.muzzleZ = 6.34;
+  P.topY = 0.80;
+}
+
 // First-party Type 99A hull/running-gear datum used by the complete rebuild.
 // The comparison GLB supplies measurements only.  This is a new connected
 // construction: one tapered lower pan between the native tracks, shallow
@@ -2077,47 +2118,6 @@ function buildType99AFullNativeRebuild2026(P) {
   muzzleBore99(P, 7.21, 0.108, 0.060, 14);
   P.muzzleZ = 7.21;
   P.topY = 1.54;
-}
-
-  for (const side of [-1, 1]) {
-    P.add('turretDetail', box(0.045, 0.045, 0.62), side * 1.58, 0.79, -1.81);
-    P.add('turretDetail', box(0.045, 0.045, 0.62), side * 1.58, 0.25, -1.81);
-    P.add('turretDetail', box(0.045, 0.56, 0.045), side * 1.58, 0.51, -1.51);
-  }
-
-  // Source roof weapon and mast cadence. Each fitting starts on a physical
-  // cupola/plinth; antennas end in visible collars and stay turret-owned.
-  {
-    const mg = FITTINGS.pintleMG({
-      mats: P.mats, cls: 'nsvt', tone: 'dark', scale: 0.78, ammo: true,
-      elev: 0, rotation: [0, 0, 0], seed: 38,
-    });
-    mg.position.set(0.48, 0.75, -0.42);
-    P.turretG.add(mg);
-    for (const [x, z, h, seed] of [
-      [-1.14, -1.27, 0.92, 41], [0.98, -1.30, 0.72, 42], [0.18, -1.05, 0.52, 43],
-    ]) {
-      P.add('turretDetail', cylY(0.035, 0.045, 0.055, 10), x, 0.72, z);
-      const whip = FITTINGS.antennaWhip({ mats: P.mats, h, r: 0.010, seed });
-      whip.position.set(x, 0.75, z);
-      P.turretG.add(whip);
-    }
-  }
-  P.decal('turret', 'number', P.spec.visual.number || '211', 0.28,
-    [1.625, 0.36, -0.60], Math.PI / 2);
-  P.decal('turret', 'number', P.spec.visual.number || '211', 0.28,
-    [-1.625, 0.36, -0.60], -Math.PI / 2);
-
-  // Compact annular gun tunnel blended into the arrow cheeks, followed by
-  // the ZPT-98 tube. All carriers are round; firing and muzzle anchors stay
-  // on the authored bore axis.
-  P.addGunExtra(cylZ(0.25, 0.18, seg), 0, 0, 0.26);
-  P.addGunExtra(cylZ(0.205, 0.30, seg, 0.25), 0, 0, 0.50);
-  P.addGunExtraDark(torus(0.19, 0.025, seg), 0, 0, 0.66);
-  buildGun(P, { len: 6.30, r: 0.082, sleeve: true, evac: 0.53, baseR: 0.17, evacR: 1.30 });
-  muzzleBore99(P, 6.34, 0.082, 0.047, 14);
-  P.muzzleZ = 6.34;
-  P.topY = 0.80;
 }
 
 // ---------------------------------------------------------------------------
