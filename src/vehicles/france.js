@@ -585,12 +585,18 @@ function buildAMX40(P) {
   // rear-shoulder stations instead of trying to disguise the shortfall with
   // larger stowage boxes.  Width and crown height are deliberately unchanged:
   // this is the long, low welded AMX-40 turret, not a scaled-up cabinet.
+  // Owner silhouette correction (2026-08-12): extend the connected fighting
+  // compartment forward around the gun seat.  Moving only the mantlet or the
+  // barrel would leave the characteristic long AMX-40 cheeks behind; these
+  // first eight stations carry the actual crown, lower shoulder, side armor,
+  // welds and attached forward cassettes into the new nose.  The aft half,
+  // turret ring and height are unchanged.
   const amx40ShellPlan = [
-    [-0.82, 1.68], [-0.20, 1.76], [0.38, 1.76], [0.76, 1.68], [1.03, 1.37],
-    [1.30, 1.02], [1.39, 0.50], [1.39, -0.42], [1.34, -1.02],
+    [-0.86, 1.98], [-0.20, 2.08], [0.38, 2.08], [0.80, 1.98], [1.10, 1.62],
+    [1.34, 1.12], [1.39, 0.50], [1.39, -0.42], [1.34, -1.02],
     [1.25, -1.55], [0.88, -1.87], [0.36, -2.02], [-0.36, -2.04],
     [-0.86, -1.94], [-1.21, -1.66], [-1.36, -1.18], [-1.41, -0.44],
-    [-1.39, 0.44], [-1.31, 0.93], [-1.00, 1.35],
+    [-1.39, 0.44], [-1.34, 1.08], [-1.08, 1.60],
   ];
   const shellBottom = amx40ShellPlan.map(([, z]) => {
     const aft = Math.max(0, Math.min(1, (1.30 - z) / 2.90));
@@ -654,15 +660,15 @@ function buildAMX40(P) {
       P.add('turretDetail', box(0.022, 0.07, 0.045), s * 1.465, 0.18, zc + d * 0.23);
       P.add('turretDetail', box(0.022, 0.07, 0.045), s * 1.465, 0.18, zc - d * 0.23);
     };
-    flankModule(0.86, 0.82);                                                    // forward cassette follows the extended cheek shoulder
+    flankModule(1.02, 0.98);                                                    // forward cassette follows the extended cheek shoulder
     flankModule(0.08, 0.70);                                                    // center service cassette
     flankModule(-0.86, 1.08, innerTop, innerTop - 0.04, 0.12, 0.30);            // long tapered aft lobe follows the connected rear shoulder
     P.add('turretDetail', box(0.07, 0.20, 2.62), s * 1.42, 0.33, -0.15);       // source-height inner lid rail, seated below the full stowage course
     for (const dz of [0.45, -0.30, -1.02]) P.add('turretDark', box(0.08, 0.43, 0.016), s * 1.42, 0.35, dz); // narrow vertical compartment seams
     // cheek-flank rail panels (print Object_6: x ±1.26-1.29, y 1.93..2.32,
     // z_w 1.07..1.38) — thin applique standing off the cheeks on brackets
-    P.add('turret', box(s < 0 ? 0.16 : 0.032, 0.36, 0.30), s * 1.272, s < 0 ? 0.62 : 0.52, 1.485);
-    P.add('turret', box(0.20, 0.10, s < 0 ? 0.35 : 0.25), s * 1.16, s < 0 ? 0.66 : 0.48, s < 0 ? 1.55 : 1.50); // asymmetric source cheek ties
+    P.add('turret', box(s < 0 ? 0.16 : 0.032, 0.36, 0.40), s * 1.272, s < 0 ? 0.62 : 0.52, 1.64);
+    P.add('turret', box(0.20, 0.10, s < 0 ? 0.46 : 0.36), s * 1.16, s < 0 ? 0.66 : 0.48, s < 0 ? 1.70 : 1.65); // asymmetric source cheek ties
     if (s < 0) P.add('turret', box(0.18, 0.30, 0.14), -1.27, 0.73, 0.54);     // raised left cheek shoulder, rooted into the source's sloped crown course
     P.add('turretDetail', box(0.08, 0.30, 0.16), s * 1.49, 0.30, -1.44);        // low seated flank latch at the source outer silhouette
     if (s > 0) P.add('turretDetail', box(0.06, 0.06, 0.57), 1.39, 0.58, 0.335); // asymmetric inner flank rail, below the outer cassette lip
