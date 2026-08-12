@@ -105,7 +105,7 @@ re-freeze NEW hash, all in ONE commit.
 | challenger1 | cacb1337 | GRADUATED 2026-08-11 (§5.112 native-procedural, reference-guided rebuild: compact six-wheel hull, one low connected cast turret, buried mantlet/cheek anatomy, seated commander/TOGS station and supported bustle/basket; no external mesh data ships; commercial-reference component masks honestly cap the machine row at 0 while dims 99.6 / floaters 100 and fresh independent §B8 pass floor 9.0 / mean 9.13 x14 with genuine yaw0/90 ownership, exact native tracks 0/0 and winding PASS; old gate-shaped 5bf5f2ec visual failure retired) |
 | challenger2 | 3b4bd5f0 | GRADUATED 2026-08-09; RE-FROZEN 2026-08-10 (§5.89 owner fused-block repair: material-fused casemate course removed from fixed hull and repartitioned into the articulated source tree; one low ring landing + one rotating turret; gate 90.1 x2 every component >=90; standard/parent/winding clean; fresh §B8 floor 9.0 / mean 9.06 x14, yaw/load paths 9.3; oracle f44e3b46 reproducible from pristine .bak; prior 63ee160 retired) |
 | m26_pershing | 2f006738 | RE-RECORDED 2026-08-08: hash moved by LANDED 5f39989 (armorM4 gunBarrel shadow-proxy 3.96->3.44; m26/m45 inherit m4a3e8 proxies — patton.js bytes unchanged); double-confirmed by builder bisect + m45-grad critic; prior 65c564c0 bore+winding re-cert lineage (floors 9.1-9.4) carries |
-| t90m | e345ee8a | GRADUATED 2026-08-06 (27th; floor 9.0 x14 second sitting; the owner's dedicated-agent arc 81.7 -> dual gate) |
+| t90m | a21894b8 | RE-FROZEN 2026-08-12 (§5.127 first-party native V-bow hull, welded Proryv shell, supported bustle/rack and exact six-wheel course; machine fidelity 90.96 / minimum view 90.02; 42-frame yaw/ownership PASS; incompatible legacy contour row retained honestly rather than chased) |
 | t90 | da6f7fba | RE-FROZEN 2026-08-11 (native procedural, reference-guided: all runtime geometry remains our authored primitives; independent §B8 floor 9.1 / mean 9.19 x14 with genuine yaw ownership, exact native six-wheel track 0/0 bands+shoes, muzzle/assets PASS and no visible winding wound; registered-mask false zero disclosed rather than chased into copied geometry; prior 72104d14 retired) |
 | t90a | 810a6f18 | GRADUATED 2026-08-10 (§5.94 Leclerc-method cast-turret rebuild; gate 90.4 x2; standard/track/winding clean; independent §B8 floor 9.0 / mean 9.11 x14, yaw/load paths 9.2) |
 | t90a_vladimir | c13fec50 | GRADUATED 2026-08-10 (§5.94 source-specific compact ESSA/cast-turret/transom rebuild; gate 90.0 x2; standard/track/winding adjudicated; independent §B8 floor 9.0 / mean 9.01 x14, yaw/load paths 9.3) |
@@ -4195,3 +4195,46 @@ public builds, the native-playable audit (108 playables / 0 GLB-sourced), the
 T-72/T-80/T-90 family-order test and the four-tank release check all pass. The
 public build strips all comparison-candidate and quarantine directories.
 **RE-FROZEN / KEEP `3a653cf9`, `e99f8490`, `a097ec` and `37139b70`.**
+
+## 5.127 T-90M PRORYV FIRST-PARTY REBUILD (2026-08-12, RE-FROZEN)
+
+The owner rejected the earlier gate-shaped T-90M as a slabby interpretation
+with the wrong primary hull, turret and running-gear presentation. The active
+playable now calls `buildT90MProryvNative2026` in
+`src/vehicles/profiles/t90.js`. It is authored entirely from repository
+primitives, fittings and the native linked-track generator. The isolated GLB
+is a render/measurement oracle only; no source mesh, vertices, materials,
+textures, rig, animation or converted payload enter runtime.
+
+The active hull is a compact low V-bow pressure body with raised track-clear
+shoulders, sculpted skirts and six large native road wheels. The complete
+rotating package is one connected welded fighting compartment with buried
+Relikt, an integrated gun/mantlet, enlarged commander/loader stations, seated
+panoramic/Kord equipment, a continuously tapered bustle, supported open rack
+and a strapped transverse rear cylinder on visible braces.
+
+Freeze **`a21894b8`** reproduces at 55 rendered meshes / 114,746 vertices.
+Independent procedural fidelity is **90.96 aggregate** with every required
+whole view at least **90.02**; components are whole **92.73**, hull **91.67**,
+direct turret **86.86** and native tracks **91.25**. The comparison export's
+`Main_barrel` node contains only the forward tube, leaving the sleeve/root as
+turret siblings, so its direct-turret component split is not an acceptance
+law. Exact containment is band **0/0** and shoes **0/0** at both terminals.
+Muzzle-bore and turret-parent audits pass. Winding is 0 reversed / 0 mixed;
+the four-pixel/0.01% nomination has no visible wound.
+
+All 42 distinct frames in
+`/tmp/critic-t90m-proryv-native-final-r4/t90m` were inspected. They prove a
+genuine quarter-turn and complete ownership: gun, shell, every Relikt course,
+roof suite, bustle, rack and cylinder rotate together over a fixed V-bow,
+deck, transom, skirts, six-wheel course and rear hull drums. All fittings keep
+visible armor roots, pads, collars, rails, straps or braces. No fused duplicate,
+stranded fitting, empty-air decoration, donor course, collision, open sheet,
+sky hole or visible backface wound remains.
+
+The generated legacy geometry-gate row remains an honest **27.1 FAIL**. Its
+contour/component calibration rewards the retired slab-shaped builder and is
+incompatible with the independently accepted native geometry and source node
+split. The red row is committed and disclosed rather than falsified or used to
+reshape our model toward comparison geometry. **RE-FROZEN / KEEP
+`a21894b8`; retire `e345ee8a`.**

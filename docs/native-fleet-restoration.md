@@ -42,7 +42,7 @@ one required view remains below 90.
 | 7 | C1 Ariete | The earlier, stronger first-party `buildAriete` is restored and active; its shallow skirt and seven separate dish/rim/hub faces are restored; the later `buildArieteNative2026` experiment remains available only for comparison | Preserve the 94.11 / every-view 92.90+ authored basis, exact 0/0 course and clean yaw/winding; never replace it with source mesh geometry or silently reactivate the weaker experiment |
 | 8 | AMX-40 | First-party connected-loft builder active; imported wrapper removed; lower bow/rear sponson clear the terminal shoes and the six existing road wheels again carry distinct authored dish/rim/hub faces | Preserve the 94.23 / every-view 94.44+ authored basis and exact 0/0 course; audit every refinement against it |
 | 9 | Type 99A / Type 99 family | The supplied/downloaded GLB is quarantined as a measurement and render oracle; the stronger earlier repository-authored print-measured builder is restored and redesigned in place | Preserve the new authored hull, welded turret and exact six-wheel course; continue any later micro-detail refinement on this native basis and never introduce source vertices or meshes |
-| 10 | T-90M Proryv | The stronger earlier first-party `buildT90MProryv` is restored directly; the later whole-hull/whole-turret replacement and non-uniform scaling wrapper is inactive | Preserve the 94.60 / every-view 94.26+ authored basis, direct turret 91.77 and exact 0/0 course; refine only this distinct welded Proryv in place |
+| 10 | T-90M Proryv | The owner-rejected slabby mask-shaped build is retired; `buildT90MProryvNative2026` is the active first-party low V-bow hull, welded fighting compartment, supported bustle and native six-wheel course | Preserve freeze `a21894b8`, its 90.96 / every-view 90.02+ native evidence and exact 0/0 course; refine only this distinct welded Proryv in place and never chase the incompatible legacy component mask |
 | 11 | T-72 family | Runtime playables native; lineage order explicit and self-tested; delisted base T-72B3 removed from the active progression; T-72BU restored as a hybrid of its stronger authored hull/gun/course and the lower first-party BU turret package | Preserve the 90.03 / every-view 90.05+ T-72BU basis, then standardize the remaining shared mechanical datums without flattening distinct turret/protection grammar |
 | 12 | T-80 family | Four-member authored lineage re-certified; T-80U imported wrapper removed and low cast/K-5/rear-service geometry repaired in place | Preserve the distinct T-80 / T-80B / T-80BV / T-80U bases, their current every-view 90+ scores and exact 0/0 native courses; retain T-80U's direct-turret surface score as refinement debt rather than replacing the vehicle |
 | 13 | T-90 family | Runtime playables native; lineage order explicit and self-tested; base T-90, Burlak, T-90MS and the restored high-detail Proryv remain distinct first-party builds | Preserve the validated base T-90, Burlak, T-90MS and Proryv, then re-run the whole family after shared changes without cross-copying primary shells |
@@ -143,23 +143,25 @@ declared complete.
   conservative mode-2 candidates are legitimate fixed powerpack and transom
   surfaces. The supplied GLB remains a quarantined visual/measurement oracle
   only.
-- T-90M Proryv: **94.60 aggregate**, every standard view at least **94.26**,
-  whole silhouette **95.53**, hull **95.76**, direct turret **91.77**, and
-  native running-gear profile **93.97**. The runtime once again calls the
-  stronger earlier repository-authored `buildT90MProryv` directly. The later
-  `buildT90MProryvNative2026` experiment—which replaced both primary masses
-  and then non-uniformly scaled the whole rotating package—remains in the file
-  for archaeology but is inactive. The restored authored hull is the compact
-  low V-bow pressure body with six-wheel native course; the rotating package
-  is its distinct welded Proryv shell, planted Relikt, mantlet/gun, low roof
-  stations and supported tapered bustle. Exact containment is **0/0** for the
-  smooth band and **0/0** for every individual shoe at both terminals. Winding
-  is **0 reversed / 0 mixed** with zero render deficit. Forty-two distinct
-  frames at `/tmp/critic-t90m-restored-original-r2` prove genuine yaw. The
-  conservative mode-2 candidate is the visibly seated hull-fixed deck tarp
-  and associated fixed service field revealed when the turret departs, not a
-  stranded turret component. The comparison GLB remains an isolated
-  render/measurement oracle only.
+- T-90M Proryv: **90.96 aggregate**, every standard view at least **90.02**,
+  whole silhouette **92.73**, hull **91.67**, direct turret **86.86**, and
+  native running-gear profile **91.25**. The runtime calls the fully authored
+  `buildT90MProryvNative2026`; the older mask-shaped slab hull/turret is
+  retired. The active hull is a compact low V-bow pressure body with a six-
+  wheel native course. The rotating package is one distinct welded Proryv
+  shell with planted Relikt, mantlet/gun, low roof stations, a supported
+  tapered bustle/rack and a strapped transverse rear cylinder. Exact
+  containment is **0/0** for the smooth band and **0/0** for every individual
+  shoe at both terminals. Winding is **0 reversed / 0 mixed**; its four-pixel
+  deficit produces no visible wound. Forty-two distinct frames at
+  `/tmp/critic-t90m-proryv-native-final-r4/t90m` prove genuine yaw, seated
+  equipment and a clean fixed/rotating split. Parent audit and muzzle probe
+  pass. The conservative mode-2 candidate is the visibly seated hull-fixed
+  rear drum/service assembly revealed when the turret departs. The generated
+  legacy contour gate remains an honest 27.1 fail because it is calibrated to
+  the retired source-shaped implementation; it is disclosed rather than
+  chased. Freeze **`a21894b8`** reproduces at 55 meshes / 114,746 vertices.
+  The comparison GLB remains an isolated render/measurement oracle only.
 - T-90A Burlak: 90.50 aggregate, every standard silhouette at least 90.20,
   and exact 0/0 smooth-band plus 0/0 individual-shoe containment at both
   terminals. The frozen first-party build `8d2f5d44` has 63 meshes / 103,357

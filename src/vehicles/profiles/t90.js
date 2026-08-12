@@ -5962,7 +5962,7 @@ function replaceT90MProryvHull(P) {
     sprocket: { z: -1.95, y: 0.78, r: 0.28 },
     idler: { z: 2.45, y: 0.75, r: 0.22 },
     rollers: [-1.10, 0.30, 1.70].map((z) => ({ z, y: 0.83, r: 0.086 })),
-    trackW: 0.50, topY: 0.84, botY: 0.05, paintedEnds: true,
+    trackW: 0.50, topY: 0.84, botY: 0.05, paintedEnds: false,
     coveredTop: true, arms: false, contactZF: 2.30, contactZR: -1.35,
     padCornerFloor: 0.012, padHugZ0: 2.0,
   });
@@ -6026,7 +6026,7 @@ function replaceT90MProryvHull(P) {
     // Fixed rear fuel drums sit on the transom cradle below the rotating
     // magazine. Their forward arcs overlap the backed hull rear and the
     // full straps return into a broad lower shoe.
-    P.add('hullCloth', cylX(0.135, 0.72, 14), s * 0.62, 1.46, -3.18);
+    P.add('hullCloth', cylX(0.20, 0.72, 14), s * 0.62, 1.46, -3.18);
     for (const x of [s * 0.35, s * 0.66, s * 0.92]) P.add('hullDark', box(0.035, 0.26, 0.30), x, 1.46, -3.18);
     P.add('hullDark', box(0.78, 0.055, 0.24), s * 0.62, 1.315, -3.13);
     P.add('hullDark', torus(0.095, 0.020, 14), s * 0.82, 0.62, -3.10, Math.PI / 2, 0, 0);
@@ -6213,10 +6213,10 @@ function replaceT90MProryvTurret(P) {
 
   // Two low crew stations, the Sosna sight and compact panoramic/Kord RWS.
   // Every vertical element begins in a broad roof collar or yoke.
-  P.add('turret', cylY(0.29, 0.32, 0.12, 18), -0.48, 0.94, -0.34);
-  P.add('turretDark', torus(0.285, 0.020, 20), -0.48, 1.005, -0.34);
-  P.add('turret', cylY(0.24, 0.27, 0.11, 16), 0.38, 0.93, -0.28);
-  P.add('turretDark', torus(0.235, 0.018, 18), 0.38, 0.99, -0.28);
+  P.add('turret', cylY(0.34, 0.36, 0.12, 20), -0.48, 0.94, -0.34);
+  P.add('turretDark', torus(0.335, 0.020, 22), -0.48, 1.005, -0.34);
+  P.add('turret', cylY(0.29, 0.31, 0.11, 18), 0.38, 0.93, -0.28);
+  P.add('turretDark', torus(0.285, 0.018, 20), 0.38, 0.99, -0.28);
   P.add('turret', box(0.36, 0.16, 0.30), 0.33, 0.98, 0.49);
   P.add('turretGlass', box(0.27, 0.10, 0.016), 0.33, 0.98, 0.648);
   P.add('turretDark', box(0.38, 0.025, 0.065), 0.33, 1.07, 0.62);
@@ -6253,7 +6253,7 @@ function replaceT90MProryvTurret(P) {
     smoke.rotation.y = s * 1.03;
     P.turretG.add(smoke);
   }
-  for (const [x, z, h, seed] of [[-0.96, -1.20, 0.16, 81], [0.90, -1.24, 0.14, 82]]) {
+  for (const [x, z, h, seed] of [[-0.96, -1.20, 0.50, 81], [0.90, -1.24, 0.38, 82]]) {
     const antenna = FITTINGS.antennaWhip({ mats: P.mats, h, r: 0.013, rake: x < 0 ? -0.025 : 0.025, seed });
     antenna.position.set(x, 0.55, z);
     P.turretG.add(antenna);
@@ -6265,7 +6265,7 @@ function replaceT90MProryvTurret(P) {
 }
 
 function enhanceT90MProryvSurface2026(P) {
-  const { box } = KIT;
+  const { box, cylX } = KIT;
 
   // Split the two broad native cheek carriers into the compact, irregular
   // Relikt cassette cadence visible on Proryv.  Every cassette is smaller
@@ -6314,6 +6314,20 @@ function enhanceT90MProryvSurface2026(P) {
     P.add('turretDetail', box(0.032, 0.030, 0.39), x, 0.57, -3.135);
   }
   for (const x of [-0.68, 0.68]) P.add('turretDetail', box(0.038, 0.30, 0.038), x, 0.44, rearFaceZ);
+
+  // The reference terminates the turret package with a transverse external
+  // cylinder carried inside the open rear frame.  The older procedural left
+  // that frame visually empty, shortening the turret in side/rear-quarter
+  // evidence.  This authored cylinder overlaps four longitudinal returns;
+  // straps and lower shoes take its load back into the backed magazine face.
+  P.add('turretCloth', cylX(0.22, 1.42, 16), 0, 0.47, -3.47);
+  for (const x of [-0.58, -0.20, 0.20, 0.58]) {
+    P.add('turretDark', box(0.040, 0.42, 0.18), x, 0.47, -3.47);
+    P.add('turretDetail', box(0.045, 0.045, 0.26), x, 0.30, -3.35);
+  }
+  for (const x of [-0.62, 0.62]) {
+    P.add('turretDetail', box(0.050, 0.050, 0.26), x, 0.61, -3.35);
+  }
 }
 
 // T-90M Proryv native reconstruction.  The complete low V-bow hull and native
@@ -6340,6 +6354,17 @@ function buildT90MProryvNative2026(P) {
   // ring instead of lifting the already-correct roof/station silhouette.
   P.turretG.position.y = 1.40;
   P.gunG.scale.set(1 / installedTurretX, 1 / installedTurretY, 1);
+
+  // Proryv's running gear is visually dark and recessive.  The first-party
+  // replacement reused the fleet's pale generic wheel steel, producing six
+  // bright target discs and pale terminal faces.  Keep the geometric tire /
+  // dish / hub separation while returning the complete course to dirty OD.
+  P.mats.wheels.color.setHex(0x33382c);
+  P.mats.wheels.emissive.setHex(0x080a07);
+  if (P.mats.wheelsRecessed) {
+    P.mats.wheelsRecessed.color.setHex(0x20251e);
+    P.mats.wheelsRecessed.emissive.setHex(0x050705);
+  }
 }
 
 // Burlak uses the proven T-90A chassis and native six-wheel course.  The
@@ -6606,5 +6631,5 @@ export const T90_PROFILES = {
   pt91m: { build: buildPT91M },
   t90sm: { build: buildT90SM },
   t90a_vladimir: { build: buildT90AVladimir },
-  t90m: { build: buildT90MProryv },
+  t90m: { build: buildT90MProryvNative2026 },
 };
