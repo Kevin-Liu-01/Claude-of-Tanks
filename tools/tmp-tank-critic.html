@@ -362,6 +362,11 @@ function pairURL(refImg, procImg) {
   return pairCanvas.toDataURL('image/png');
 }
 
+function soloURL(img) {
+  copyCtx.putImageData(img, 0, 0);
+  return copy2d.toDataURL('image/png');
+}
+
 reference.root.visible = true;
 procedural.root.visible = true;
 const refBox = visibleBox(reference.root);
@@ -406,9 +411,58 @@ for (const [name, dir, off, hs] of [
   if (lit < 2000) throw new Error(`procedural half near-empty (${lit} lit px) — refusing to write pairs`);
 }
 
+// Optional immutable final-evidence packet. Both yaw states use the union of
+// their visible bounds so the cameras, scale, and fixed-hull pixels stay
+// directly comparable instead of being independently reframed.
+let yaw0 = null;
+let yaw90 = null;
+if (params.get('final') === '1') {
+  const turret = procedural.root.getObjectByName('rig_turret');
+  if (!turret) throw new Error(`${id} procedural has no rig_turret`);
+  reference.root.visible = false;
+  procedural.root.visible = true;
+  turret.rotation.y = 0;
+  procedural.root.updateMatrixWorld(true);
+  const yaw0Box = visibleBox(procedural.root);
+  turret.rotation.y = Math.PI / 2;
+  procedural.root.updateMatrixWorld(true);
+  const yaw90Box = visibleBox(procedural.root);
+  const yawFrame = yaw0Box.clone().union(yaw90Box);
+
+  const captureYaw = (yaw) => {
+    turret.rotation.y = yaw;
+    procedural.root.updateMatrixWorld(true);
+    const frames = {};
+    for (const [name, dir] of Object.entries(VIEWS)) {
+      frames[`view-${name}`] = soloURL(renderModel(procedural, reference, orthoFor(yawFrame, dir)));
+    }
+    for (const [name, dir] of [
+      ['hero-frontleft', new THREE.Vector3(-1, 0.35, 1)],
+      ['hero-rearright', new THREE.Vector3(1, 0.35, -1)],
+      ['hero-toptilt', new THREE.Vector3(0.55, 1.35, -0.75)],
+    ]) {
+      frames[name] = soloURL(renderModel(procedural, reference, heroFor(yawFrame, dir)));
+    }
+    for (const [name, dir, off, hs] of [
+      ['close-front', new THREE.Vector3(-1, 0.22, 1), { x: 0, y: 0.12, z: 0.28 }, 0.26],
+      ['close-roof', new THREE.Vector3(1, 0.55, 0.35), { x: 0, y: 0.3, z: 0.05 }, 0.24],
+    ]) {
+      frames[name] = soloURL(renderModel(procedural, reference, orthoFor(yawFrame, dir, hs, off)));
+    }
+    return frames;
+  };
+
+  yaw0 = captureYaw(0);
+  yaw90 = captureYaw(Math.PI / 2);
+  turret.rotation.y = 0;
+  procedural.root.updateMatrixWorld(true);
+}
+
 window.__CRITIC_PAIRS = pairs;
+window.__CRITIC_YAW0 = yaw0;
+window.__CRITIC_YAW90 = yaw90;
 window.__CRITIC_READY = true;
-document.getElementById('out').textContent = `pairs ready: ${Object.keys(pairs).length}`;
+document.getElementById('out').textContent = `pairs ready: ${Object.keys(pairs).length}${yaw0 ? ' + yaw0/yaw90' : ''}`;
 if (params.get('show') === '1') {
   for (const [name, url] of Object.entries(pairs)) {
     const h = document.createElement('h2'); h.textContent = name;

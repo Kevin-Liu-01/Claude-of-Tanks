@@ -66,7 +66,7 @@ browser-render rigs self-ticket the /tmp/cot-shots.lock FIFO — never wrap them
 | Tool | Run | Output |
 |---|---|---|
 | geometry-gate.mjs | `node tools/geometry-gate.mjs --ids=a,b` | docs/geometry-gate/<id>.json + ledger merge; the score of record |
-| tmp-tank-critic.mjs | `--id=<id>` | shots/critic-<id>/ — the official 14 shaded pairs |
+| tmp-tank-critic.mjs | `--id=<id>` / `--ids=a,b --final --out=<dir>` | shots/critic-<id>/ pairs, or an immutable paired/yaw0/yaw90 final packet |
 | visual-evaluator.mjs | `--id=<id> [--views=...] [--selftest]` | shots/visual-eval-<id>/ report.json + overlays; exit 2 = RIG MISMATCH aborts scoring |
 | track-clip-audit.mjs | `--exact --ids=<id>` | band+shoe vox per zone; shots/track-clip*.json |
 | turret-parent-audit.mjs | `--ids=<id>` | stranded/dangling/abutting; shots/turret-parent.json |
