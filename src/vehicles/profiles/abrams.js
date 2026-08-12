@@ -6062,7 +6062,7 @@ function buildAbramsX(P) {
     // The reference wheel faces catch substantially more light than the
     // tires and skirt.  A medium olive steel keeps the nested 0.49 m face
     // countable at garage distance without turning it into a pale toy disc.
-    faceMat.color = new THREE.Color(0x2d332f);
+    faceMat.color = new THREE.Color(0x373d36);
     faceMat.onBeforeCompile = vehicleAmbientFloorHook;
     faceMat.customProgramCacheKey = () => 'veh-ambient-floor-v2';
     for (const side of [-1, 1]) {
@@ -6086,10 +6086,10 @@ function buildAbramsX(P) {
           g.wheelY, wz, 0, 0, Math.PI / 2));
         P.add('hullDark', torus(0.212, 0.014, 10), side * 1.585,
           g.wheelY, wz, 0, 0, Math.PI / 2);
-        faceGeos.push(KIT.xform(cylX(0.174, 0.018, 10), side * 1.575, g.wheelY, wz));
+        faceGeos.push(KIT.xform(cylX(0.180, 0.018, 10), side * 1.575, g.wheelY, wz));
         P.add('hullDark', torus(0.118, 0.012, 10), side * 1.590,
           g.wheelY, wz, 0, 0, Math.PI / 2);
-        faceGeos.push(KIT.xform(cylX(0.064, 0.026, 10), side * 1.615, g.wheelY, wz));
+        faceGeos.push(KIT.xform(cylX(0.070, 0.026, 10), side * 1.615, g.wheelY, wz));
         P.add('hullDark', cylX(0.022, 0.010, 8), side * 1.635, g.wheelY, wz);
         for (let b = 0; b < 10; b++) {
           const ba = (b / 10) * Math.PI * 2;
@@ -6429,6 +6429,14 @@ function buildAbramsX(P) {
     ];
     P.add('turret', polyTurret(hoodPlan, rearY1 - ly0, 1, 1), x, ly0, lz);
     P.add('turret', polyTurret(hoodPlan, ly1 - rearY1, 1, 0.72), x, rearY1, lz);
+    // AbramsX's paired panoramic heads finish in a clipped armored crown,
+    // not a square camera cube.  This shallow cap stays inside the measured
+    // hood envelope while giving the station a readable sloped shoulder in
+    // front, side and roof views.
+    P.add('turret', frustum(0.205, 0.205, -0.205, 0.155, 0.155, -0.155,
+      ly1 - 0.065, ly1), x, 0, lz - 0.025);
+    P.add('turretDark', box(0.23, 0.018, 0.045), x,
+      ly1 - 0.020, lz + 0.155);
     // Forward U-hood: cheeks and brow terminate at the measured +0.266 m
     // face plane, while the glass and dark back wall remain recessed.
     for (const side of [-1, 1]) {
@@ -6674,9 +6682,19 @@ function buildAbramsX(P) {
   // half-buried equipment foot now overlaps both the roof and case.
   P.add('turretDetail', box(0.34, 0.18, 0.32), 0.41,
     2.515 - 1.95, -0.40 + 0.39);
-  axRwsBox('turret', 0.365, 0.688, 2.579, 3.072, -0.668, -0.158);
+  // The gun-right electronics enclosure is a tapered armored cassette.
+  // Its previous rectangular AABB proxy made the otherwise open XM914
+  // mechanism read like a generic CROWS tower.  Keep the registered outer
+  // envelope at the buried foot, then chamfer the exposed upper half.
+  P.add('turret', frustum(0.1615, 0.255, -0.255,
+    0.136, 0.220, -0.215, 2.579 - 1.95, 3.072 - 1.95),
+    0.5265, 0, -0.413 + 0.39);
   P.add('turretDark', box(0.018, 0.39, 0.42), 0.374,
     2.825 - 1.95, -0.413 + 0.39);
+  for (const dy of [-0.12, 0, 0.12]) {
+    P.add('turretDetail', box(0.010, 0.025, 0.30), 0.690,
+      2.825 + dy - 1.95, -0.413 + 0.39);
+  }
   P.add('turretDark', cylX(0.105, 0.190, 16), 0.345,
     3.278 - 1.95, -0.390 + 0.39);
   P.add('turretDetail', torus(0.096, 0.014, 18), 0.452,
@@ -6730,6 +6748,15 @@ function buildAbramsX(P) {
     [0.305, 3.335, -0.345, -0.18],
     [0.370, 3.365, -0.372, 0.08],
   ]) P.add('turretDetail', box(0.105, 0.045, 0.065), x, y - 1.95, z + 0.39, 0, 0, rz);
+  // Flexible power/data return from the feed housing into the slew ring.
+  // The segmented run makes the mechanical load path explicit without
+  // closing the deliberate daylight around the receiver cage.
+  for (const [x, y, z, rz] of [
+    [0.515, 3.080, -0.505, 0.28],
+    [0.455, 2.990, -0.455, 0.48],
+    [0.390, 2.900, -0.390, 0.68],
+  ]) P.add('turretDark', box(0.032, 0.115, 0.032), x,
+    y - 1.95, z + 0.39, 0, 0, rz);
   // Broad mandatory-kit crest from the measured puli/feed enclosure.  Its
   // 0.32 m span is a real P95 band (not an antenna spike) and anchors the
   // published 3.47 m datum while visually reading as the belt's top guide.
@@ -7665,9 +7692,9 @@ function buildAbramsX(P) {
       const a = phase + hole * Math.PI / 2;
       const hx = Math.cos(a) * 0.104, hy = Math.sin(a) * 0.104;
       if (Math.abs(hx) > Math.abs(hy)) {
-        P.add('gunDark', cylX(0.013, 0.008, 8), hx, hy, hz);
+        P.add('gunDark', cylX(0.016, 0.010, 8), hx, hy, hz);
       } else {
-        P.add('gunDark', cylY(0.013, 0.013, 0.008, 8), hx, hy, hz);
+        P.add('gunDark', cylY(0.016, 0.016, 0.010, 8), hx, hy, hz);
       }
     }
   }
