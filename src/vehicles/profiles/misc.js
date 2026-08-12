@@ -530,6 +530,7 @@ function buildAriete(P) {
     sprocket: { z: -3.12, y: 0.86, r: 0.21 }, idler: { z: 3.30, y: 0.945, r: 0.09 },   // (90-ladder r2: a +0.035 sprocket raise chased the far-stern 0.58-0.70 rake wants and was REVERTED — the tangent ramp rose with the wrap and printed +0.017 on five matched mid-ramp cols: hull 85.0 -> 84.2; the 0.04-class far-stern bottoms stay the cheaper residual) (r3 wrap break: small HIGH idler — band annulus [0.79..1.10] at the 3.57 apex col ≈ the ref's [0.786..1.01]; band far 3.525/pads 3.545 stay clear of the certified 3.686 nose col at 3.581; wrap top 1.175 keeps 15 mm under the 1.19 crest bottom, §B4 exact-clear)
     rollers: [1.95, 0.70, -0.65, -1.80].map((z) => ({ z, y: 0.88, r: 0.08 })),
     trackW: 0.615, topY: 0.88, botY: 0.055, contactZF: 2.22, contactZR: -2.05, paintedEnds: true, coveredTop: true, arms: true,
+  });
   // Shallow concentric faces on the existing seven wheel stations.  The
   // physical rubber tires and course remain owned by buildRunningGear; these
   // sit within its original width and restore the olive dish/dark hub cadence
@@ -542,7 +543,6 @@ function buildAriete(P) {
         0, 0, Math.PI / 2);
     }
   }
-  });
   // (push-2: contactZF 2.36 -> 2.22 — the ref approach ramp lifts off at
   // ~2.33 and climbs SHALLOW [0.22@2.68, 0.28@2.92 authored] where the 2.36
   // patch held the belly grounded to 2.45 then climbed steep: 6 ramp cols
