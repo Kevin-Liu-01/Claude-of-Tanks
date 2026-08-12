@@ -34,7 +34,14 @@ function buildT80Line(P, v) {
     belly: [[-3.26, 1.35], [-3.16, 1.12], [-3.06, 0.90], [-2.96, 0.725], [-2.86, 0.73], [-2.60, 0.44], [2.60, 0.44], [2.88, 0.55], [3.05, 0.72]],
     wUp: [[-3.26, 1.28], [3.05, 1.28]],
     wLo: [[-3.26, 1.05], [3.05, 1.02]],
-    sponsonY: 0.82,
+    // First-party terminal corridor: the turbine hull keeps its low 0.82 m
+    // centre sponson datum, but the underside rises above the native
+    // sprocket/idler wraps before reaching either end.  The earlier scalar
+    // floor ran the full 2.56 m hull width straight through the visible shoe
+    // course; decorative strips below then disguised the penetration.  A
+    // real T-80 has open wheel wells beneath the overhanging stern and
+    // fender shoulders, so encode that structure in the loft itself.
+    sponsonY: [[-3.26, 1.42], [-2.32, 1.42], [-2.18, 0.82], [2.36, 0.82], [2.46, 1.20], [3.05, 1.20]],
   });
   // rear side-hump band (turbine deck): raked top 1.86 -> 1.70, recessed
   // center channel. r26: everything below the 1.24 lip pulls forward of
@@ -71,7 +78,10 @@ function buildT80Line(P, v) {
     // fender/stow runs at the 1.21-1.25 line feeding the long mid-deck cols
     // (r27b: widened to x 1.715 — the compressed ref's ±1.66..1.72 front
     // columns read the 1.22-1.23 fender line, not the skirt top)
-    P.add('hull', box(0.455, 0.14, 4.6), s * 1.4875, 1.19, 0.35);
+    // Stop the long fender before the idler climb.  The old z=2.65 end
+    // crossed the first two raised shoes; the separate bow shoulders below
+    // take over visually from z=2.40.
+    P.add('hull', box(0.455, 0.14, 4.35), s * 1.4875, 1.19, 0.225);
   }
   // engine-deck center furniture: louvre field + intake hump on the 1.503
   // plateau, dark grilles (decor; tops stay under the loft plateau line)
@@ -83,7 +93,7 @@ function buildT80Line(P, v) {
   P.add('hull', box(1.90, 0.045, 0.16), 0, 1.253, 2.78);
   // (r27c: eyeY 0.63 — the default 0.50 tori bottomed 0.40 in the z 3.03
   // window whose compressed-ref floor is 0.525)
-  ruGlacisKit(P, { w: 3.0, y: 1.06, z: 2.72, eyeZ: 3.02, eyeY: 0.63, hookY: 0.82, hookZ: 3.12, hlY: 1.13 });
+  ruGlacisKit(P, { w: 3.0, y: 1.15, z: 2.72, eyeX: 0.82, eyeZ: 3.02, eyeY: 0.82, hookY: 0.82, hookZ: 3.12, hlY: 1.26 });
   // bow fender corners: the ARROW plan — diagonal wedge edges 3.17@x0.40 ->
   // 3.44@x1.30 (ref staircase 3.13/3.22/3.31/3.41), corner shelves at 3.44
   // (half of the certified-long ref corners, inside the 1% grace), and the
@@ -125,7 +135,7 @@ function buildT80Line(P, v) {
   }
   P.add('hullWood', cylX(0.10, 1.95, 10), 0, 0.97, -3.00);
   for (const s of [-0.5, 0.5]) P.add('hullDark', cylX(0.107, 0.04, 10), s * 1.5, 0.97, -3.00);
-  KIT.towCable(P, [[-1.15, 1.05, 2.72], [0, 1.12, 2.42], [1.15, 1.05, 2.72]]);
+  KIT.towCable(P, [[-1.02, 1.30, 2.72], [0, 1.34, 2.42], [1.02, 1.30, 2.72]]);
   // §B3.2 DENSITY (owner directive 2026-08-06): common kit FLUSH on the
   // deck lines (t84 recipe — hull mask is hull-only, no tall deck kit).
   // §H.4 VARIANT VARIETY: mirrored seats + seeds per mark so the three
@@ -158,22 +168,9 @@ function buildT80Line(P, v) {
     // on t80's grid phase and pushed heightM to 2.225 (0.14% over grace).
     trackW: 0.58, topY: 0.85, botY: 0.06, paintedEnds: true, coveredTop: true, arms: true,
   });
-  // gear-fade strips on the ref ramp lines. r26 remap from the registered
-  // column table: rear line 0.24@-2.18 -> 0.52@-2.68 then the 0.775 jump at
-  // -2.81; front line 0.12@2.58 -> 0.68@3.33 (col minima carry the read).
-  for (const [sz2, sy] of [
-    [-2.10, 0.250], [-2.19, 0.295], [-2.28, 0.340], [-2.37, 0.385],
-    [-2.46, 0.430], [-2.55, 0.474], [-2.64, 0.518],
-    // (r27c: the -2.73 line is per-print — t80b's fade sits at 0.72 where
-    // t80's reads 0.56; its registration phase put this strip's 0.535
-    // bottom into a window whose t80b ref floor is 0.745)
-    [-2.73, v === 1 ? 0.72 : 0.560],
-    [-2.79, 0.700], [-2.86, 0.775],
-    [2.49, 0.088], [2.52, 0.118], [2.61, 0.190], [2.67, 0.245], [2.76, 0.320],
-    [2.90, 0.400], [3.02, 0.520], [3.14, 0.590], [3.27, 0.680], [3.34, 0.780],
-  ]) {
-    for (const s of [-1, 1]) P.add('hullDark', box(0.62, 0.05, 0.078), s * 1.345, sy + 0.025, sz2);
-  }
+  // The old "gear-fade" bars were hull-owned shadow geometry laid directly
+  // through the native shoe path.  The actual linked course and raised
+  // terminal loft now own this silhouette; no proxy solids occupy the lane.
   // skirts: outer face at the EXACT pub width (±1.76) but THICK panels
   // (r26: the ref front view fills x 1.64..1.76 — a 0.032 sheet left lerp
   // junk in the 1.68 column), band re-seated to the ref's 0.82..1.17 line.
@@ -195,7 +192,10 @@ function buildT80Line(P, v) {
   // stations/dims interplay pins the heights. The BV print's ~4.4%
   // under-scale after width normalization stays a structural residual for
   // a certification ruling next round.)
-  P.turretG.position.set(0, 1.45, 0.0);
+  // The BV's K-1 carrier raises the visual roof by itself; its cast ring is
+  // correspondingly seated 5 cm lower than the bare/applique marks.  This
+  // keeps the full protected assembly inside the compact T-80BV envelope.
+  P.turretG.position.set(0, v === 2 ? 1.40 : 1.45, 0.0);
   // r26 dome recalibration from the registered tables: the ref crown is
   // WIDE-FLAT at 2.22-2.25 (raised crown 2.23, +1.4% inside the dims-grace
   // budget) with a LOW front-edge falloff (front cols 2.03@±1.19, 2.07@±1.05
@@ -421,7 +421,10 @@ function buildT80Line(P, v) {
       P.add('turretDark', cylZ(0.040, 0.26, 8), -0.82 - k * 0.082, 0.64 + (k % 2) * 0.02, 0.98 - k * 0.088, -0.45, -(0.35 + k * 0.11), 0);
     }
     for (let r = 0; r < 3; r++) for (let c = 0; c < 5; c++) {
-      P.add('hullTrack', box(0.50, 0.11, 0.16), -1.00 + c * 0.50, 0.86 + r * 0.14, 3.20 - r * 0.25, -1.03, 0, 0);
+      // The glacis raft belongs on the centre armor plane, not inside the
+      // idler lanes.  Five narrower, overlapping seats preserve the heavy
+      // BV blanket while keeping its roots inboard of the native course.
+      P.add('hullTrack', box(0.36, 0.11, 0.16), -0.72 + c * 0.36, 0.86 + r * 0.14, 3.20 - r * 0.25, -1.03, 0, 0);
     }
   }
   const dxT = ringSkin(ringsT, 0.30) + 0.02;
@@ -440,16 +443,18 @@ function buildT80Line(P, v) {
   // column + turret cover otherwise). ----
   P.gunG.position.set(0, 0.315, 0.60);
   ruSaddle(P, { rollR: 0.15, rollW: 0.40, tubeR: 0.128, rootR: 0.28, rootL: 0.62 });
+  const gunEnd = v === 2 ? 5.22 : v === 1 ? 5.73 : 5.67;
   tubeGun(P, [
-    [0.55, 2.03, 0.128, 0.128, 0, -0.040], [2.03, 2.78, 0.130, 0.130, 0, -0.048], [2.78, v === 1 ? 5.73 : 5.67, 0.128, 0.128, 0, -0.054],
-  ], { rings: [[3.60, 0.132, 0, -0.054], [4.40, 0.132, 0, -0.054], [5.10, 0.132, 0, -0.054]], muzzle: v === 1 ? 5.73 : 5.67 });
+    [0.55, 2.03, 0.128, 0.128, 0, -0.040], [2.03, 2.78, 0.130, 0.130, 0, -0.048], [2.78, gunEnd, 0.128, 0.128, 0, -0.054],
+  ], { rings: [[3.60, 0.132, 0, -0.054], [4.40, 0.132, 0, -0.054], [Math.min(5.10, gunEnd - 0.18), 0.132, 0, -0.054]], muzzle: gunEnd });
   muzzleBore(P, { r: 0.128, y: -0.054 });  // §B3.1 turret-lane 2026-08-06 (shadow-named, mask/frame-neutral; all three marks)
   // r25f sleeve clamp plate (pt91m precedent): the ref tube's plan edges
   // (±0.19) own the ±0.16..0.19 plan columns — but only to world 6.04
   // (r26: the full-length plate owned the muzzle-tip plan columns 0.23
   // past the ref). Thin plate at the axis plane: side-invisible inside
   // the tube band, never a body column (0.014 band).
-  P.add('gun', box(0.37, 0.014, 4.89), -0.005, -0.056, 2.995);
+  if (v === 2) P.add('gun', box(0.37, 0.014, 4.45), -0.005, -0.056, 2.775);
+  else P.add('gun', box(0.37, 0.014, 4.89), -0.005, -0.056, 2.995);
   // r27: crest fin follows the re-seated band (compressed ref side band
   // 1.555..1.868 — the old 1.59..1.94 fin topped +0.07 over its columns)
   P.add('gun', box(0.022, 0.30, 0.75), 0, -0.054, 2.405);
@@ -601,7 +606,10 @@ function buildT84(P) {
   // as a thin 0.92..0.99 band (side col 2.23 reads 0.985..0.93 exactly);
   // the prong bodies stop at 2.16, clear of the idler wrap (front <=2.0)
   for (const s of [-1, 1]) {
-    P.add('hull', box(0.42, 0.37, 0.12), s * 1.07, 0.805, 2.10);           // prong body 2.04..2.16 (idler wrap runs to 2.02)
+    // Raised terminal shoulder: its lower face now starts above the final
+    // raised shoes and overlaps the first lip course.  The previous deep
+    // block reproduced the side outline by passing through the idler run.
+    P.add('hull', box(0.42, 0.28, 0.12), s * 1.07, 0.97, 2.10);            // prong body 2.04..2.16, bottom 0.83
     // nose lip, r33 three-stage stair per the fresh side row (ref tops
     // 1.122 @ [..2.066] / 1.04 @ [2.066..2.175] / 0.957 beyond — the flat
     // 0.99 lip read −0.06..−0.13 on the 2.01/2.12 cols); every stage
@@ -629,7 +637,9 @@ function buildT84(P) {
     // courses overlap each other and the upper keeps the r32 stub kiss.
     P.add('hullRubber', box(0.13, 0.175, 0.06), s * 1.655, 0.6625, 2.055); // upper course 0.575..0.75 @ 2.025..2.085
     P.add('hullRubber', box(0.13, 0.19, 0.04), s * 1.655, 0.505, 2.03);    // lower course 0.41..0.60 @ 2.01..2.05
-    P.add('hullDark', box(0.08, 0.42, 0.06), s * 1.40, 0.40, 1.91);
+    // Bracket follows the outboard splash-stub seat instead of piercing the
+    // idler lane at x=1.40.  Its companion outer bracket remains adjacent.
+    P.add('hullDark', box(0.08, 0.42, 0.06), s * 1.56, 0.40, 1.91);
     // r33 outer bracket pair: the fresh FRONT ±1.58/1.62 cols bottom at
     // 0.304 (ref mud-flap class) — hung in the brackets' z-lane where the
     // side col already bottoms 0.19, so no side row moves
@@ -824,7 +834,7 @@ function buildT84(P) {
     [-0.86, 0.3515, 1.80], [0.86, 0.3515, 1.80], [0.86, 0.5103, 0.79], [-0.86, 0.5103, 0.79]));
   // chamfer wedges fill the plan corner line (0.86,1.80)->(1.22,1.36)
   for (const s of [-1, 1]) {
-    P.add('turret', slab(
+    P.add('turret', orientedSlab(
       [s * 0.86, -0.0557, 1.80], [s * 0.86, -0.0557, 0.79], [s * 1.22, -0.0557, 0.79], [s * 1.22, -0.0557, 1.36],
       [s * 0.86, 0.2665, 1.80], [s * 0.86, 0.2665, 0.79], [s * 1.22, 0.2665, 0.79], [s * 1.22, 0.2665, 1.36]));
   }

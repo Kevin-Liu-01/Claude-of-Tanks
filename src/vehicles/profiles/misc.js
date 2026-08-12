@@ -25,7 +25,6 @@
 import * as THREE from 'three';
 import { KIT, FITTINGS, buildProfile, WESTERN } from './kit.js';
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from '../specs.js';
-import { buildT80USourceGeometry } from './t80u-source-geometry.js';
 
 // NOTE: KIT bindings are only dereferenced inside build-time functions —
 // never at module scope — because of the tankFactory extension-module cycle.
@@ -1871,8 +1870,8 @@ function buildLeclerc(P) {
 // reading ~2.9 wide, roof furniture to ~2.7; gun axis 1.66, muzzle
 // bow+2.7; 6 small dished wheels, rear sprocket; turbine exhaust box rear.
 // ---------------------------------------------------------------------------
-function buildT80ULegacy(P) {
-  const { box, cylY, cylX, cylZ, frustum, lathe, torus, buildGun, buildRunningGear,
+function buildT80UNative2026(P) {
+  const { box, cylY, cylX, cylZ, frustum, lathe, torus, polyLoft, buildGun, buildRunningGear,
     fenders, headlight, liftEye, periscope, towCable, stowage, spareTrackStrip, cupola } = KIT;
   const slab = orientedSlab;                                                   // §C missing-side fix: winding-corrected slabs only (see orientedSlab)
   const { rng } = P;
@@ -1888,7 +1887,14 @@ function buildT80ULegacy(P) {
   // ends (its 0.16 belly ran under the ref's climbing ramps); the outer
   // 1.68-1.79 fender strip is DELETED (ref front shows nothing above 1.06
   // outboard of x 1.70); plan front flares carried by low mudguard pods.
-  P.add('hull', box(2.28, 0.72, 4.70), 0, 0.62, 0.15);                         // tub z -2.20..2.50 (r3: belly 0.26 — ref front bottoms read 0.263)
+  // Tapered lower tub.  The old 2.28 x 4.70 rectangular box preserved the
+  // cardinal dimensions but painted excessive lower-hull area in both rear
+  // quarters.  This original loft keeps the full-width suspension bay amid
+  // ships, then closes toward the bow and stern inside the native tracks.
+  P.add('hull', polyLoft([
+    [-0.96, 2.50], [0.96, 2.50], [1.14, 1.72], [1.14, -1.72],
+    [0.96, -2.20], [-0.96, -2.20], [-1.14, -1.72], [-1.14, 1.72],
+  ], 0.26, 0.98, 0.98));
   P.add('hull', slab(                                                          // stern boat-tail (x ±1.14 inside the tracks)
     [-1.14, 0.26, -2.10], [1.14, 0.26, -2.10], [1.14, 0.26, -2.30], [-1.14, 0.26, -2.30],
     [-1.14, 0.62, -2.10], [1.14, 0.62, -2.10], [1.14, 0.62, -3.12], [-1.14, 0.62, -3.12]));
@@ -1949,7 +1955,11 @@ function buildT80ULegacy(P) {
     // rear sheet INBOARD at 1.74 (r3 workorder: ref front cols ±1.78 top out
     // at the 1.06 armored panels — its rear sheet does not reach that plane)
     for (let k = 0; k < 9; k++) {
-      P.add('hull', box(0.035, 0.62, 0.46), s * 1.7225, 0.93, -2.72 + 0.4833 * k);
+      const skirtH = 0.54;
+      const skirtY = 0.97;
+      const skirtD = s < 0 && k === 0 ? 0.34 : 0.46;
+      const skirtZ = s < 0 && k === 0 ? -2.66 : -2.72 + 0.4833 * k;
+      P.add('hull', box(0.035, skirtH, skirtD), s * 1.7225, skirtY, skirtZ);
     }
     for (let k = 0; k < 2; k++) P.add('hullDark', box(0.03, 0.40, 0.018), s * 1.784, 0.84, 3.10 - k * 1.00);
     for (let k = 2; k < 6; k++) P.add('hullDark', box(0.03, 0.54, 0.018), s * 1.745, 0.92, 3.10 - k * 1.00);
@@ -1957,7 +1967,7 @@ function buildT80ULegacy(P) {
     // rear INSET skirt segment: the ref sheet keeps covering the sprocket
     // (side bottom 0.60 out to -3.37) but sits inboard of the ±1.75 plan
     // columns there
-    P.add('hull', box(0.03, 0.62, 0.42), s * 1.70, 0.90, -3.10);               // (r3b: inboard — its 1.75 face printed the ±1.78 plan cols to -3.31 vs the ref's -2.94)
+    P.add('hull', box(0.03, 0.54, s < 0 ? 0.08 : 0.32), s * 1.7225, 0.97, s < 0 ? -2.94 : -3.05); // terminal guards sit outside the native shoe envelope
     // rear stanchion bracket (r3 dims anchor v2): the legal rear BODY column
     // at -3.43 (0.31 band > the 12% filter), hidden INSIDE the ref's own
     // plan shadow at x ~1.0 (its -3.46 pod columns) — the r3a outboard
@@ -1972,7 +1982,7 @@ function buildT80ULegacy(P) {
     P.add('hull', box(0.56, 0.31, 0.12), s * 1.40, 0.705, 3.40);
     // rear fender stubs = the ref's -3.46 plan columns at x 1.40-1.51 AND its
     // -3.43/-3.49 side lip band 1.169..1.223 (one mass explains both rows)
-    P.add('hull', box(0.11, 0.06, 0.16), s * 1.465, 1.19, -3.40);              // (r3e: narrowed to the ref's -3.46 plan column at x 1.41-1.52 — the 1.36 edge bled into the ±1.35 cols where ref ends -3.27)
+    P.add('hull', box(0.11, 0.06, s < 0 ? 0.04 : 0.12), s * (s < 0 ? 1.25 : 1.42), 1.19, s < 0 ? -3.24 : -3.34); // compact port stub stays inside its quarter outline
   }
   // TURBINE EXHAUST BOX jutting off the rear plate (T-80 tell) + drums + log
   // (r2: face -3.30; the ref plan rear is -3.27..-3.30 with ONLY the narrow
@@ -1980,10 +1990,15 @@ function buildT80ULegacy(P) {
   // (r3: whole group pulled in to the ref's plan rear -3.27; drums shortened
   // to the 0.66..1.19 band; tail pods thinned to the ref's -3.43 lip band
   // 1.148..1.202 — its ONLY content aft of -3.33)
-  P.add('hull', box(1.90, 0.55, 0.26), 0, 0.88, -3.145);
-  P.add('hullDark', box(1.55, 0.34, 0.05), 0, 0.88, -3.27);
-  for (let k = 0; k < 4; k++) P.add('hullDetail', box(1.50, 0.042, 0.04), 0, 0.74 + k * 0.10, -3.275);
-  P.add('hullDetail', box(1.70, 0.05, 0.12), 0, 1.18, -3.245);
+  // The turbine face is recessed ahead of the lower log/drum recovery
+  // cluster.  Keeping the full service wall flush with the aft guards made
+  // the right rear quarter a single upper cyan bulge; the source instead
+  // steps the hot exhaust field forward while its supported lower kit stays
+  // aft.
+  P.add('hull', box(1.90, 0.55, 0.18), 0, 0.88, -3.10);
+  P.add('hullDark', box(1.55, 0.34, 0.05), 0, 0.88, -3.20);
+  for (let k = 0; k < 4; k++) P.add('hullDetail', box(1.50, 0.042, 0.04), 0, 0.74 + k * 0.10, -3.205);
+  P.add('hullDetail', box(1.70, 0.05, 0.12), 0, 1.18, -3.19);
   for (const s of [-1, 1]) P.add('hull', box(0.09, 0.08, 0.18), s * 1.035, 1.17, -3.37); // tail mudguard pods = the ref's -3.43 side lip (1.13..1.21) + its plan -3.46 columns at x 0.99..1.08 ONLY (r3b: the 0.92..1.14 spread bled into the ±0.94/±1.13 plan cols)
   for (const s of [-1, 1]) {
     // r3 §B4: drums pulled inboard (x 0.98, lean 0.045) — the old ±1.05/0.10
@@ -1997,12 +2012,17 @@ function buildT80ULegacy(P) {
   // engine deck: turbine intake field + louvres + hump
   P.add('hullDark', box(1.70, 0.02, 1.10), 0, 1.358, -2.00);
   for (let k = 0; k < 6; k++) P.add('hullDetail', box(1.60, 0.018, 0.05), 0, 1.364, -1.60 - k * 0.16);
+  // Low raised perimeter rails around the turbine louvre bank.  They supply
+  // the shallow upper-rear shoulder visible in both rear quarters without
+  // inventing another deck box or changing the fixed hull envelope.
+  P.add('hullDetail', box(1.62, 0.04, 0.06), 0, 1.39, -1.54);
+  P.add('hullDetail', box(1.62, 0.04, 0.06), 0, 1.39, -2.46);
   P.add('hull', box(1.00, 0.045, 0.62), 0.45, 1.352, -1.20);
   P.add('hull', box(0.34, 0.15, 1.65), -1.44, 1.14, -1.725);                   // left fender fuel/stow run (r3d: rear -2.55 — its -2.80 face sat inside the sprocket wrap's upper shell)
   P.add('hullDark', box(0.35, 0.03, 0.03), -1.44, 1.22, -1.35);
   P.add('hullDark', box(0.35, 0.03, 0.03), -1.44, 1.22, -2.45);
-  bin(P, 1.44, 1.17, -1.35, 0.32, 0.18, 0.95);                                 // right fender bin row
-  bin(P, 1.44, 1.17, -2.31, 0.32, 0.18, 0.56);                                 // (r3d: rear face -2.59, clear of the forward-moved sprocket wrap §B4)
+  bin(P, 1.42, 1.18, -1.35, 0.26, 0.15, 0.88);                                 // restrained right fender bin row
+  bin(P, 1.42, 1.18, -2.27, 0.26, 0.15, 0.46);                                 // rear bin stays clear of the sprocket wrap
   // r3 §B4: pods pulled inboard of the band inner plane (the -1.42 pod sat
   // in the idler wrap) and re-seated proud of the narrowed nose face
   headlight(P, -1.02, 1.00, 3.26, -0.35, 0.05);
@@ -2011,7 +2031,9 @@ function buildT80ULegacy(P) {
   P.add('hullDetail', torus(0.085, 0.016, 10), 0.55, 0.55, 3.24, Math.PI / 2, 0, 0);
   liftEye(P, 'hullDetail', -1.15, 1.30, 0.9);
   liftEye(P, 'hullDetail', 1.15, 1.30, 0.9);
-  towCable(P, [[-1.25, 0.96, 2.85], [-0.35, 0.90, 3.02], [0.50, 0.94, 2.92]]);
+  // Keep the bow cable on the glacis, inboard of the left idler lane.  The
+  // former -1.25 m endpoint touched one visible shoe by 25 mm.
+  towCable(P, [[-1.02, 1.08, 2.85], [-0.35, 1.02, 3.02], [0.50, 1.04, 2.92]]);
   spareTrackStrip(P, 'hull', 1.05, 1.20, 1.55, 2, -0.35, 0);
   // §C.1 winding fix-round 2026-08-07 (fleet sweep item 3): the 1.0 soot
   // quad at z -3.42 floated 0.12 aft of the whole port group (r3 pulled the
@@ -2040,7 +2062,12 @@ function buildT80ULegacy(P) {
   wheelRecessAt(P, wheelZs, 1.42, 0.42, 0.335, 0.21);
 
   // ---- turret: wide full-shouldered dome under the K-5 CLAMSHELL ----
-  P.turretG.position.set(0, 1.38, 0.15);
+  // Raise the complete rotating package onto the source roof datum.  A
+  // buried collar below the casting keeps the four-centimetre correction
+  // physically seated on the 1.38 m deck instead of opening a yaw-visible
+  // gap at the ring.
+  P.turretG.position.set(0, 1.42, 0.11);
+  P.add('turretDark', cylY(0.82, 0.88, 0.09, 24), 0, -0.045, 0.02);
   const TH = 0.67;                                                             // crown 2.05 (ref front-view center: 2.06)
   P.add('turret', lathe([
     [1.00, 0.0], [1.15, 0.05], [1.16, 0.16], [1.12, 0.36], [1.00, 0.52],
@@ -2072,23 +2099,34 @@ function buildT80ULegacy(P) {
     // outboard RAIL (2.145w) to the z_w 1.49 cliff: LEFT full width; RIGHT
     // narrowed to x 0.58-0.78 (ref front cols 0.79-0.92 top out at 1.964;
     // stations slice the rails at z 0.95-1.15 — full deletion cost 6 pts)
-    if (s < 0) P.add('turret', box(0.34, 0.28, 1.44), -0.75, 0.625, 0.62);
+    if (s < 0) P.add('turret', box(0.30, 0.18, 1.18), -0.75, 0.58, 0.67, 0, 0.06, 0);
     else P.add('turret', box(0.20, 0.28, 1.44), 0.68, 0.625, 0.62);
     P.add('turretDetail', box(0.32, 0.18, 0.62), s * 1.30, 0.47, -0.10, 0, s * 0.10, 0); // shoulder stowage (top 1.95w)
   }
-  // (r3d L tower DELETED in r3f — it was tuned to the skewed registration)
-  P.add('turret', box(0.44, 0.44, 1.45), 1.34, 0.30, 0.30, 0, 0.14, 0);        // R shoulder box (front 1.20w)
-  P.add('turretDark', box(0.44, 0.05, 0.85), 1.35, 0.53, 0.15, 0, 0.14, 0);
-  P.add('turret', box(0.48, 0.44, 1.45), -1.28, 0.30, 0.30, 0, -0.14, 0);      // L shoulder box (r3e: widened to x -1.62 — ref front -1.595 col tops 1.883; ours read the 1.31 fender there)
-  P.add('turretDark', box(0.44, 0.05, 0.85), -1.29, 0.53, 0.15, 0, -0.14, 0);
-  // L outer plate: top 1.46w (ref -1.676 col tops 1.418) but bottom HELD at
-  // 1.36w — LAW (r3b/c/e triple-crash root cause): the turret-node AABB
-  // bottom is the gun roll at 1.34w; any turret mass below it re-frames the
-  // gate's turretRows camera and skews every column (72->61/63/64).
-  P.add('turret', box(0.045, 0.16, 1.09), -1.645, 0.06, -0.09);                // (r3g: top 1.52w — the gate front col -1.64 reads ref 1.61, the workorder said 1.42; split)
-  P.add('turret', box(0.045, 0.54, 0.99), 1.645, 0.25, -0.165);                // R outer plate TALL (ref 1.904 top; plan z_w 0.48..-0.51)
-  P.add('turretDetail', box(0.40, 0.26, 2.24), 1.36, 0.28, -0.33);             // R flank run LONG (ref plan rear -1.30w @ x1.38)
-  P.add('turretDetail', box(0.40, 0.26, 1.48), -1.36, 0.28, 0.05);             // L flank run SHORT (ref rear -0.54w)
+  // Continuous cast shoulder wedges.  These replace the old rectangular
+  // side towers: the lower edge is buried in the pear casting while the
+  // upper edge rises and narrows into the K-5 rail.  The result keeps the
+  // measured outer shoulder width but restores the T-80U's characteristic
+  // cheek undercut and rounded falloff into the rear quarter.
+  for (const s of [-1, 1]) {
+    // The cast/K-5 shoulder, not a stand-off box, supplies the source's
+    // 3.3 m frontal breadth.  Keep the broad point low in the casting so it
+    // widens front/top views without turning the side elevation into a wall.
+    const outer = s < 0 ? 1.60 : 1.57;
+    P.add('turret', slab(
+      [s * 0.72, 0.12, 1.06], [s * 1.22, 0.14, 0.74], [s * outer, 0.15, -0.58], [s * 0.82, 0.12, -0.48],
+      [s * 0.70, 0.45, 1.00], [s * 1.17, 0.52, 0.66], [s * (outer - 0.15), 0.45, -0.52], [s * 0.80, 0.41, -0.43]));
+    P.add('turretDark', box(0.34, 0.045, 0.76), s * 1.20, 0.50, 0.08, 0, s * 0.12, 0);
+  }
+  // Source-asymmetric thin exterior cheek plates stay shallow; they no
+  // longer manufacture a full-height rectangular side wall.
+  P.add('turret', box(0.045, 0.13, 0.82), -1.60, 0.19, -0.10);
+  P.add('turret', box(0.045, 0.18, 0.78), 1.57, 0.27, -0.16);
+  // Stowage returns follow the upper cast shoulders rather than forming
+  // full-height rectangular turret walls.  Preserve the source-asymmetric
+  // right/left run, but shorten and lift both courses into their brackets.
+  P.add('turretDetail', box(0.32, 0.13, 1.16), 1.40, 0.37, -0.14);             // R flank return, lifted into shoulder
+  P.add('turretDetail', box(0.34, 0.14, 1.14), -1.42, 0.34, -0.02);            // L flank run short
   P.add('turret', box(0.50, 0.22, 0.40), 0, 0.47, 1.16, -0.35, 0, 0);          // V apex over the gun (front 1.54w, top 2.02w — ref center notch 1.43-1.60w)
   // commander cupola RIGHT + Utyos NSVT on the AA ring; gunner hatch left
   // (receiver/barrel are the 1-2 spike columns; ring held at the 2.20 line)
@@ -2117,9 +2155,13 @@ function buildT80ULegacy(P) {
   // post-warp at -2.0..-2.2) — row extended, kit lowered onto it.
   P.add('turretDark', cylX(0.075, 1.55, 10), 0, 0.50, -1.05);
   P.add('turretDark', cylX(0.055, 0.30, 8), 0.88, 0.50, -1.05);
-  P.add('turret', box(2.60, 0.46, 0.95), 0, 0.24, -1.60);                      // stowage box row (ends w -1.92: ref bottom lifts past -1.85)
-  P.add('turretDark', box(2.45, 0.05, 0.86), 0, 0.49, -1.58);
-  P.add('turretCloth', box(1.30, 0.15, 0.80), 0.10, 0.54, -1.45);              // strapped kit on top
+  // Shallow supported bustle course.  The former 2.60 x .46 x .95 solid
+  // hung from world y=1.39 and made the rear quarters read as a rectangular
+  // welded turret.  T-80U's cast shoulder rises into a much thinner
+  // stowage band; the basket below supplies the open lower volume.
+  P.add('turret', box(2.34, 0.19, 0.78), 0, 0.365, -1.52);
+  P.add('turretDark', box(2.30, 0.05, 0.76), 0, 0.49, -1.55);
+  P.add('turretCloth', box(1.18, 0.12, 0.66), 0.10, 0.55, -1.43);              // strapped kit on top
   P.add('turretCloth', box(1.20, 0.26, 0.15), 0, 0.60, -1.205);                // snorkel saddle hump (ref side 2.131 @ z_w -1.0..-1.13)
   basket(P, 1.15, -1.96, -2.24, 0.25, 0.46, 0.5);
   P.add('turretDetail', box(0.05, 0.05, 0.72), 0.78, 0.50, -0.95, 0, 0.5, 0);  // grab rails
@@ -2144,30 +2186,6 @@ function buildT80ULegacy(P) {
   buildGun(P, { len: 5.51, r: 0.068, sleeve: true, evac: 0.47, evacR: 1.45, collar: false, baseR: 0.15 });
   muzzleBore(P, 0.068, 5.49);                                                  // §B3.1 muzzle bore (shadow-named)
   P.topY = 1.15;
-}
-
-// Owner-source rebuild (2026-08-11). The user's GLB is the same attributed
-// javanilga source already repaired in the repository. Its complete exact
-// hull/turret/gun upper vehicle replaces the gate-shaped legacy primitives;
-// donor wheels, end drums and belts are excluded from the bake. These source-
-// measured native stations preserve scrolling links, damage and thrown-track
-// gameplay while matching the donor's six-wheel cadence and terminal rises.
-function buildT80U(P) {
-  buildT80USourceGeometry(P);
-  KIT.buildRunningGear(P, {
-    style: 'dished', wheelR: 0.337, wheelW: 0.21, wheelY: 0.346, xc: 1.42,
-    wheelZs: [2.165, 1.380, 0.519, -0.213, -1.087, -1.930],
-    // Source guards descend tightly over both terminal arcs. The visible
-    // native shoe pads sit ~9 cm proud of the smooth band, so their centers
-    // are correspondingly lower than the donor drum centers; this preserves
-    // the source outline while giving the player-visible pads honest air.
-    sprocket: { z: -2.55, y: 0.61, r: 0.27 },
-    idler: { z: 2.95, y: 0.63, r: 0.25 },
-    rollers: [1.75, 0.82, -0.10, -1.02].map((z) => ({ z, y: 0.88, r: 0.08 })),
-    trackW: 0.48, trackTh: 0.09, topY: 0.88, botY: 0.055,
-    coveredTop: true, arms: true, paintedEnds: true, gearFloor: true,
-    pinCapOuter: 0.21, padHex: 0x34362c, chainHex: 0x292b25,
-  });
 }
 
 // ---------------------------------------------------------------------------
@@ -3379,7 +3397,7 @@ export const MISC_PROFILES = {
   // runtime.
   ariete: { build: buildAriete },
   leclerc: { build: buildLeclerc },
-  t80u: { build: buildT80U },
+  t80u: { build: buildT80UNative2026 },
   type74: { build: buildType74Source2026 },
   // FRANCE ROUND: the AMX-30s render procedural (the ahab GLBs carry a
   // baked-in hull/turret 180 — see the buildAMX30 header note)
