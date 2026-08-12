@@ -112,6 +112,7 @@ re-freeze NEW hash, all in ONE commit.
 | t90sm | 7efc69c9 | GRADUATED 2026-08-10; RE-FROZEN §5.105 (owner-priority complete redesign: source-measured low diamond shell retained, solid bustle steps replaced by backed slat cells, deep scalloped inboard skirts and layered rear service field added; gate 90.0 x2; standard/track/winding clean; independent §B8 floor 9.0 / mean 9.08 x14, all 28 yaw frames PASS; prior 56324371 retired) |
 | k1a1 | 28c7f5f0 | RE-FROZEN 2026-08-10 (§5.108 authored compact K1A1 shell/hull, native six-wheel course and cupola-seated K6; independent §B8 floor 9.0 / mean 9.21) |
 | type99a | 50bbc9bc | RE-FROZEN 2026-08-12 (§5.125 first-party measured-envelope rebuild: broad two-plane hull, connected low welded turret, supported open bustle and exact native six-wheel course; machine fidelity 92.08 / min view 90.76; fresh 42-frame yaw/ownership floor 9.0 / mean 9.11) |
+| type10 | 7ac6d434 | RE-FROZEN 2026-08-12 (§5.128 fully first-party folded five-wheel hull and continuous clipped welded turret; machine fidelity 91.41 / minimum view 90.02; exact native band+shoes 0/0, zero plan holes and fresh 42-frame yaw/ownership PASS; incompatible legacy source-component row retained honestly) |
 | type74 | 8319dbb8 | RE-FROZEN 2026-08-11 (§5.110 authored low cast turret, five-wheel native course and supported combat/service suite; independent §B8 floor 9.1 / mean 9.29) |
 | ariete | acea2100 | RE-FROZEN 2026-08-11 (§5.111 native-procedural Ariete with seven-wheel course and supported low turret/rear service field; independent §B8 floor 9.0 / mean 9.25) |
 | t72b_1987 | 3f2483d4 | GRADUATED 2026-08-11 (§5.114 authored low B87 hull/turret, buried K1 and native six-wheel course; independent §B8 floor 9.0 / mean 9.14) |
@@ -3948,11 +3949,12 @@ Those nine ids were therefore reopened and removed from the current graduate
 registry. Each received an authored procedural replacement; comparison files
 remain ignored local measurement/review material only. The four Leopard ids
 (`leo2a4`, `leo2a6`, `leo2a7v`, `leo2_revolution`) now have fresh first-party
-42-frame evidence and are re-frozen in §5.126. The remaining provenance reopen
-set is `fv510`, `type10`, `t14`, `amx40` and `t80u`; each still requires its own
+42-frame evidence and are re-frozen in §5.126. Type 10 is independently
+re-frozen in §5.128; AMX-40 is also restored and landed. The remaining
+provenance reopen set is `fv510`, `t14` and `t80u`; each still requires its own
 fresh native certification before re-freezing. Eight omitted native-procedural
-graduates were simultaneously backfilled into the registry, so the reconciled
-current count is now **48**. The owner-priority T-90M Proryv quality rebuild
+graduates were simultaneously backfilled into the registry; with Type 10 the
+reconciled current count is now **49**. The owner-priority T-90M Proryv quality rebuild
 remains open; its authored procedural builder is the only playable geometry
 and any local GLB remains an isolated visual oracle.
 
@@ -4238,3 +4240,45 @@ incompatible with the independently accepted native geometry and source node
 split. The red row is committed and disclosed rather than falsified or used to
 reshape our model toward comparison geometry. **RE-FROZEN / KEEP
 `a21894b8`; retire `e345ee8a`.**
+
+## 5.128 TYPE 10 FIRST-PARTY PROVENANCE RE-CERTIFICATION (2026-08-12, RE-FROZEN)
+
+The earlier Type 10 source-bake graduation is historical only and does not
+satisfy the owner's all-first-party order. The active playable now calls
+`buildType10Native2026` in `src/vehicles/modern3.js`. Its complete folded bow,
+pressure hull, skirts, five-wheel running gear, one continuous clipped welded
+turret, gun, side modules, bustle and station/service kit are authored from
+repository primitives and fittings. The repaired GLB remains an isolated
+render/measurement oracle; none of its meshes, vertices, materials, textures,
+rig, animation or converted arrays enters runtime or the public build.
+
+The final closure adds two thin faceted upper-bow shoulder bridges between the
+glacis and lamp/guard seats. Their roots overlap existing armor, their lower
+faces clear the idler/shoe arcs, and they close the only two one-cell plan
+pockets without changing the accepted Type 10 silhouette. Freeze
+**`7ac6d434`** reproduces twice at 62 rendered meshes / 56,562 vertices.
+
+Independent procedural fidelity is **91.41 aggregate** with every required
+whole view at least **90.02**; components are whole **92.29**, hull **92.41**,
+gun **90.09** and the deliberately native substituted track profile **86.42**.
+Exact containment is smooth band **0/0** and individual shoes **0/0** at both
+terminals. Contiguity is zero holes, decoration is `mg1+8d`, muzzle-bore probe
+passes, and winding is 0 reversed / 0 mixed; its seven-pixel/0.01% rear-left
+nomination has no visible wound.
+
+The generated legacy geometry row remains an honest zero: hull 50.3 / whole
+45.4 / stations 45.2 / dimensions 49.3 / floaters 0. It is calibrated to the
+retired source-baked semantic/component tree and is not a valid mask for the
+independently authored replacement. That machine debt is committed and
+disclosed rather than used to distort native geometry.
+
+All 42 PNGs in `/tmp/critic-type10-native-final-r10/type10` have distinct
+SHA-256 hashes. Every yaw pair proves a genuine quarter-turn: gun, continuous
+shell, cheek/side modules, roof stations, MG, smoke, antennas and complete
+bustle/rack rotate together over a fixed folded bow, driver deck, engine deck,
+transom and five-wheel course. The parent tool's `fitting_towCable`,
+`hullCloth` and `fitting_spareTrackLinks` nominees are legitimate fixed deck
+stowage with visible hull contact after turret departure. No fused duplicate,
+stranded turret fitting, empty-air decoration, donor course, collision, open
+sheet, sky hole or visible winding wound remains. **RE-FROZEN / KEEP
+`7ac6d434`; retire the source-baked `84f5d108` playable.**

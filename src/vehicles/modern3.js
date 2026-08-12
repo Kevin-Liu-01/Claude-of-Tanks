@@ -2120,6 +2120,17 @@ function buildType10Native2026(P) {
   P.add('hull', slab(                                                         // lower glacis: narrow folded toe opens into the armored shoulder course
     [-0.70, 0.45, 2.75], [0.70, 0.45, 2.75], [0.90, 1.20, 3.415], [-0.90, 1.20, 3.415],
     [-0.70, 0.80, 2.75], [0.70, 0.80, 2.75], [0.90, 1.30, 3.415], [-0.90, 1.30, 3.415]));
+  // Paired faceted shoulder bridges close the narrow inboard pockets between
+  // the folded glacis and the lamp/guard seats. Their lower faces stay above
+  // the idler wrap and their inner/outer edges bury into existing armor, so
+  // the bow reads as one supported Type 10 prow rather than two loose strips.
+  for (const s of [-1, 1]) {
+    P.add('hull', slab(
+      [s * 0.80, 1.24, 3.36], [s * 1.18, 1.22, 3.30],
+      [s * 1.28, 1.27, 3.03], [s * 0.88, 1.30, 3.08],
+      [s * 0.80, 1.252, 3.36], [s * 1.18, 1.232, 3.30],
+      [s * 1.28, 1.282, 3.03], [s * 0.88, 1.312, 3.08]));
+  }
   P.add('hull', box(2.90, 0.42, 0.08), 0, 1.17, -3.375);                        // compact raised rear plate above the terminal bucket
   P.add('hull', slab(                                                         // matching raised stern undercut; no full-length low rectangular tub
     [-0.855, 1.20, -3.415], [0.855, 1.20, -3.415], [0.855, 0.45, -2.80], [-0.855, 0.45, -2.80],

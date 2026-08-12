@@ -1,7 +1,7 @@
 {
- "generatedAt": "2026-08-12T20:38:47.667Z",
+ "generatedAt": "2026-08-12T21:07:56.053Z",
  "gate": "every component >= 90; min is the headline",
- "passed": 39,
+ "passed": 38,
  "total": 97,
  "rows": [
   {
@@ -235,6 +235,18 @@
     "turretCurves": 20,
     "stations": 55.4,
     "dims": 0,
+    "floaters": 0
+   }
+  },
+  {
+   "id": "type10",
+   "geoMin": 0,
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 50.3,
+    "stations": 45.2,
+    "wholeCurves": 45.4,
+    "dims": 49.3,
     "floaters": 0
    }
   },
@@ -1231,19 +1243,6 @@
     "turretCurves": 96.9,
     "stations": 100,
     "dims": 95.1,
-    "floaters": 100
-   }
-  },
-  {
-   "id": "type10",
-   "geoMin": 94.6,
-   "gatePassed": true,
-   "components": {
-    "hullCurves": 94.6,
-    "wholeCurves": 95.1,
-    "turretCurves": 96.6,
-    "stations": 99.9,
-    "dims": 96.7,
     "floaters": 100
    }
   }

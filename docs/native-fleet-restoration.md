@@ -33,7 +33,7 @@ one required view remains below 90.
 
 | Order | Family / vehicle | Native status | Current next action |
 |---:|---|---|---|
-| 1 | Type 10 | Detailed first-party builder restored; imported wrapper removed; continuous clipped weldment and native five-wheel course completed | Preserve the 91.39 / every-view 90.02+ authored basis and exact 0/0 course; continue visual refinement in place without reintroducing the deleted wrapper |
+| 1 | Type 10 | Detailed first-party builder restored; imported wrapper removed; continuous clipped weldment, fixed bow-shoulder bridges and native five-wheel course completed | Preserve freeze `7ac6d434`, its 91.41 / every-view 90.02+ authored basis and exact 0/0 course; continue visual refinement in place without reintroducing the retired source bake |
 | 2 | Leopard 2A4 | Detailed first-party builder restored; imported wrapper removed; recovered single-box turret replaced by our connected three-ring welded shell, lowered seated roof suite and fuller seven-wheel presentation | Preserve the 92.55 aggregate / every-view 90.55+ authored basis, gun 92.36, exact 0/0 course and clean yaw/winding; refine only in place |
 | 3 | Leopard 2A7V | Detailed first-party builder restored; crude post-assembly scaling and imported wrapper removed; connected crown, correctly sided EMES seat, fixed APU trunks and supported rear slat returns completed | Preserve the 91.17 / every-view 90.05+ native basis, passing geometry gate and exact zero band/zero shoe clearance; refine only in place |
 | 4 | Leopard 2 Revolution | Detailed first-party builder restored; imported wrapper removed; compact native SEOSS/electronics/RWS suite restored; false black ring-gap proxy removed | Preserve the 92.32 / every-view 92.11+ native basis, exact 0/0 terminal clearance and clean outward winding; refine only with connected authored armor and equipment |
@@ -315,24 +315,26 @@ declared complete.
   APU trunks and fender/service surfaces exposed when the turret departs—not
   stranded turret geometry. Winding is 0 reversed / 0 mixed; the 39-pixel
   front-left deficit is 0.06% and has no visible wound.
-- Type 10: **91.39 aggregate** with every standard silhouette at least
-  **90.02**, hull 92.39 and gun 90.09. The repository-authored primary rebuild
+- Type 10: **91.41 aggregate** with every standard silhouette at least
+  **90.02**, whole 92.29, hull 92.41 and gun 90.09. The repository-authored primary rebuild
   replaces the former cabinet-like section with one clipped, narrowed welded
   shell, a deeper connected cheek undercut, a more aggressively tapered
   bustle, narrower asymmetric side modules and a folded trapezoidal lower
-  bow. The shallow straight skirt now masks the road-wheel crowns without
+  bow. Two thin faceted shoulder bridges close the former inboard bow pockets
+  while remaining above both terminal courses. The shallow straight skirt now masks the road-wheel crowns without
   losing the exact five-station identity. The five authored stations are
   rendered by the native linked-track system only; exact containment is 0/0
   for the smooth band and all individual shoes at both terminals. Winding is
   0 reversed / 0 mixed (7-pixel rear-left FrontSide deficit, 0.01%, visually
   clean) and yaw mode-2 is clean with zero candidates. Forty-two distinct
-  current paired/yaw frames at `/tmp/critic-type10-native-final-r8` confirm
+  current paired/yaw frames at `/tmp/critic-type10-native-final-r10/type10` confirm
   the continuous turret/bustle/roof package rotates together while the folded
   bow, deck, five-wheel course and transom remain fixed. The older component
   geometry oracle remains a disclosed measurement-debt item for Type 10: its
   source masks are incompatibly registered and return nonsensical ~45-50
   curve/dimension values despite the independently normalized 90+ paired
-  silhouettes; it is not represented as a passing gate.
+  silhouettes; it is not represented as a passing gate. Freeze `7ac6d434`
+  reproduces at 62 meshes / 56,562 vertices.
 - Leopard 2A5: 94.9 aggregate with every standard view above 90 and exact 0/0
   smooth-band and 0/0 individual-shoe containment at both terminals.
   Forty-two distinct current frames at

@@ -11,7 +11,7 @@ payloads, source-backed mesh arrays, or a GLB runtime wrapper.
 | Challenger 1 | 93.5 | 0 / 0 | 0 / 0 | `/tmp/critic-challenger1-native-restoration-final` |
 | C1 Ariete | 94.0 | 0 / 0 | 0 / 0 | `/tmp/critic-ariete-native-restoration-final` |
 | AMX-40 | 94.1 | 0 / 0 | 0 / 0 | `/tmp/critic-amx40-native-restoration-final` |
-| Type 10 | 91.7 | 42 / 20 | 0 / 0 | `/tmp/critic-type10-native-restoration-final` |
+| Type 10 | 91.41 | 0 / 0 | 0 / 0 | `/tmp/critic-type10-native-final-r10/type10` |
 | Leopard 2A5 | 94.9 | 0 / 0 | 0 / 0 | `/tmp/critic-leo2a5-native-restoration-final` |
 
 Every evidence directory contains 42 PNGs with 42 distinct hashes. Paired
@@ -26,3 +26,8 @@ The AMX-40 terminal repair is deliberately structural rather than cosmetic:
 its inter-track lower bow narrows ahead of the idler lanes and its rear
 sponson floor rises above the sprocket shoe crown. The external authored hull
 and turret silhouettes remain unchanged at the scored scale.
+
+Type 10 now refers exclusively to `buildType10Native2026`. The earlier
+source-baked `84f5d108` evidence is retired; freeze `7ac6d434` is the current
+first-party candidate. Its paired faceted bow bridges close the two former plan
+pockets and retain exact 0/0 band/shoe clearance.

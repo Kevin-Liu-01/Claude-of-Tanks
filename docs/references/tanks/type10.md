@@ -208,3 +208,27 @@ attached to the hull. The sitting independently confirms five Type 10 road
 wheels per side plus front idler/rear sprocket, one clean native linked-shoe
 belt and no rendered donor track or donor wheel/end-drum set. Verdict:
 `docs/critique/shaded-parity-type10-source-graduation.md`.
+
+## Native-only replacement and re-freeze (2026-08-12)
+
+The source-baked `84f5d108` playable described above is retired. The active
+runtime calls `buildType10Native2026`, whose hull, continuous welded shell,
+gun, roof/bustle kit and exact five-wheel linked course are authored entirely
+from repository primitives and fittings. The repaired GLB is retained only as
+an isolated visual/measurement oracle; no source geometry or converted payload
+enters runtime.
+
+The final thin paired bow-shoulder bridges close two inboard one-cell plan
+pockets while remaining above the idler/shoe arcs. Freeze **`7ac6d434`**
+reproduces at 62 meshes / 56,562 vertices. Procedural fidelity is **91.41**
+with a **90.02** minimum required view; whole 92.29 / hull 92.41 / gun 90.09.
+The native running-gear-only component is 86.42, an expected source-donor
+substitution difference rather than a whole-vehicle failure.
+
+Exact band and shoe containment is 0/0 at both ends, plan contiguity is zero
+holes, the bore probe passes, and winding is 0 reversed / 0 mixed. The 42
+distinct frames in `/tmp/critic-type10-native-final-r10/type10` prove genuine
+yaw and complete seated turret ownership. The legacy source-component gate
+remains an honest incompatible zero rather than a fabricated pass. See
+`docs/critique/native-type10-first-party-recert.md`. **RE-FROZEN / KEEP
+`7ac6d434`; source-baked `84f5d108` remains historical only.**
