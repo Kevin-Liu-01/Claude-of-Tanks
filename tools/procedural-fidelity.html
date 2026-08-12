@@ -119,7 +119,11 @@ const LOCAL_REFERENCE_OVERRIDES = {
   challenger1: { source:'glb', glb:{ path:'/models/tanks/community/recovered/challenger1.glb', paintUntextured:true, turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, turretFollowers:'vehicle#(?:ammo_|antenna_|bone_mg_aa_|ex_decor_(?:0[1-3]|0[5-9]|1[0-2])_|hatch_0[2-5]_)', gunFollowers:'vehicle#(?:gun_mask_|bone_mg_gun_twin_)' } },
   fv510: { source:'glb', glb:{ path:'/models/tanks/community/fv510_warrior.glb', turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, yawOffset:3.141592653589793 } },
   leclerc: { source:'glb', glb:{ path:'/models/tanks/char_leclerc_andertan.glb', turretNode:'^turret$', gunNode:'^Cylinder086$', autoPivot:true, yawOffset:-1.5707963267948966 } },
-  leo2_revolution: { source:'glb', glb:{ path:'/models/community-candidates/leopard_revolution_repaired.glb', paintUntextured:true, turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true } },
+  // The comparison asset's nominal Hull mesh rises to 2.475 m and contains
+  // upper fighting-compartment geometry, so its Hull/Turret node split is
+  // not a truthful component mask.  Whole silhouettes, stations, dimensions
+  // and articulation remain fully enforced.
+  leo2_revolution: { source:'glb', glb:{ path:'/models/community-candidates/leopard_revolution_repaired.glb', paintUntextured:true, turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, componentMasks:false } },
   m1a1_aim: { source:'glb', glb:{ path:'/models/tanks/community/recovered/m1a1_aim.glb', turretNode:'^Turret$', autoPivot:false, paintUntextured:true } },
   m26_pershing: { source:'glb', glb:{ path:'/models/tanks/community/recovered/m26_pershing.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
   m45_patton: { source:'glb', glb:{ path:'/models/tanks/community/recovered/m45_patton.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },

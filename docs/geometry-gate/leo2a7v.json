@@ -661,11 +661,11 @@
  "turretRows": {
   "side": {
    "score": null,
-   "note": "unavailable (fused reference)"
+   "note": "unavailable (fused/misclassified turret tree)"
   },
   "plan": {
    "score": null,
-   "note": "unavailable (fused reference)"
+   "note": "unavailable (fused/misclassified turret tree)"
   }
  },
  "stationErr": [

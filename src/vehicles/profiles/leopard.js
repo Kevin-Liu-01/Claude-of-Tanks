@@ -1396,6 +1396,15 @@ function buildLeo2A6(P) {
       P.add('hull', box(0.08, 0.06, 0.115), s * 0.86, 1.11, 3.6575);          // hanger bracket (inboard corridor)
     }
   }
+  // Upper shoulder bridges close the narrow plan pocket between the cut
+  // glacis and each diving mudguard. They are real supported guards, not a
+  // hidden scan patch: the vertical root is buried in the inboard glacis and
+  // the shallow cap overlaps it. The cap stops inboard of the terminal shoe
+  // lane, preserving the native course without lifting the source shoulder.
+  for (const s of [-1, 1]) {
+    P.add('hull', box(0.08, 0.14, 0.40), s * 0.83, 1.25, 3.46);               // buried glacis root
+    P.add('hull', box(0.14, 0.06, 0.40), s * 0.89, 1.34, 3.46);               // supported shoulder cap, |x| <= 0.96
+  }
   // RIGHT-side lower skirt lip band: the print's right outer face carries a
   // 0.98..1.24 band at x 1.86-1.90 where the left reads only the 1.19 rail
   // (front-view asymmetry) — segmented per the station law
@@ -2001,25 +2010,22 @@ function buildLeo2A6(P) {
     P.add('turretDetail', torus(0.042, 0.012, 14), lx, ly + 0.005, lz);
     P.add('turretDark', KIT.cylY(0.018, 0.018, 0.008, 8), lx, ly + 0.006, lz);
   }
-  // r9 DECORATION MINIMUM (owner law — leo2a6 graduated before it): loader's
-  // MG3 on a pintle beside the hatch, STOWED pointing aft along the roofline.
-  // BUDGET (gate margins wholeCurves/dims 1.0): every part tops <= 0.895
-  // local = the 2.665w grace line — no new p95 spike columns; the receiver
-  // rides the PERI's certified side band (crown z -1.01..-0.73 / base
-  // -1.05..-0.69 at x-projection), so its side rows are pre-covered; the
-  // barrel run hugs the aft roof V (+0.02..0.04 over the 2.60-2.62w line =
-  // sub-row to 1 row on ~15 cols); front adds ~2 rows on the 4 receiver
-  // columns over the 2.605w lid line. MG PHYSICS: dark pintle/cradle/butt/
-  // muzzle, camo receiver + belt box, PALE barrel/top-cover (mgPale in the
-  // tone family below — top-lit rod against sky at the quarter skylines).
-  P.add('turretDark', KIT.cylY(0.017, 0.020, 0.086, 10), -0.60, 0.815, -0.78);  // pintle post rooted on the roof slope (0.780 at |x| 0.60)
-  P.add('turretDark', box(0.052, 0.035, 0.05), -0.60, 0.848, -0.78);            // cradle rocker
-  P.add('turret', box(0.095, 0.080, 0.34), -0.60, 0.855, -0.87);                // receiver body (z -0.70..-1.04, top 0.895 = grace line)
-  P.add('turretDark', box(0.05, 0.048, 0.07), -0.60, 0.852, -0.685);            // butt/spade at the stowed-forward end
-  P.add('turretDark', KIT.cylZ(0.019, 0.065, 10), -0.60, 0.845, -1.645);        // muzzle booster/flash-hider (dark)
-  P.add('turret', box(0.075, 0.095, 0.13), -0.515, 0.845, -0.90);               // belt box hung inboard, abutting the PERI base flank (contiguous)
-  P.add('turretDark', box(0.05, 0.04, 0.022), -0.552, 0.868, -0.90);            // belt tray into the receiver
-  P.add('turretDark', box(0.032, 0.045, 0.045), -0.60, 0.813, -1.45);           // barrel travel clamp rooted on the aft roof slope (no hovering rod)
+  // Loader MG3, stowed aft along the roofline. Use the canonical authored
+  // fitting so the gun carries the same marked, inspectable foot -> post ->
+  // cradle -> receiver load path as every other first-party family. The foot
+  // is deliberately sunk into the local roof slope; its two-tone MAG-class
+  // silhouette replaces the old collection of unmarked hand-built pieces.
+  {
+    const mg = FITTINGS.pintleMG({
+      mats: P.mats, cls: 'mag', tone: 'two-tone', seed: 6,
+      rotation: [0, Math.PI, 0],
+    });
+    // Sink the canonical foot 12 cm into the sloped plate: its post still
+    // emerges visibly, while the receiver/cap stays inside the measured
+    // Leopard 2A6 roof-height envelope.
+    mg.position.set(-0.60, 0.66, -0.78);
+    P.turretG.add(mg);
+  }
   // r9 CONTIGUITY: the two aft roof-V courses leave an 8 cm see-through seam
   // (course insets: body[4] V ends z -1.48, body[6] V starts -1.56) that the
   // stowed barrel above turned into an ENCLOSED side-view hole (ortho probe:
@@ -2034,10 +2040,6 @@ function buildLeo2A6(P) {
       ...ordS([[s2 * 0.06, 0.60, -1.47], [s2 * 0.87, 0.60, -1.47], [s2 * 0.87, 0.60, -1.57], [s2 * 0.06, 0.60, -1.57]]),
       ...ordS([[s2 * 0.06, 0.628, -1.47], [s2 * 0.87, 0.808, -1.47], [s2 * 0.87, 0.808, -1.57], [s2 * 0.06, 0.628, -1.57]])));
   }
-  // (barrel + receiver top cover are mgPale TONE meshes in the material
-  // block below — MG PHYSICS pale class, geometry/placement documented here:
-  // barrel cylZ r 0.0145 len 0.58 @(-0.60, 0.845, -1.33), cover box
-  // 0.078 x 0.012 x 0.30 @(-0.60, 0.888, -0.87).)
   // r2 #3: 2x4 Wegmann smoke banks per side, proud of the wall->roof chamfer
   // slope (plane (1.38,0.30)->(1.05,0.62): row1 centers sit ON it, row2 rides
   // 22 mm proud). MASK LAW: every tube+cap tops >=0.03 below the certified
@@ -2460,23 +2462,6 @@ function buildLeo2A6(P) {
     platePale.envMapIntensity = 0.25;
     P.disposables.push(platePale);
     rehook(platePale);
-    // r9 MG PHYSICS pale parts (kf51 r8 recipe, merkava r5 ruling: pintle
-    // guns read as PALE top-lit rods — the shared detail bucket tops out
-    // 70-85 where the M2/MG3 class reads 95-101L). Barrel + receiver top
-    // cover for the stowed loader MG3 placed in the roof-clutter block.
-    const mgPale = rehook(P.mats.shadow.clone());
-    mgPale.color.setHex(0x60624c);
-    mgPale.envMapIntensity = 0.18;
-    P.disposables.push(mgPale);
-    for (const g of [
-      KIT.xform(KIT.cylZ(0.0145, 0.58, 10), -0.60, 0.845, -1.33),
-      KIT.xform(KIT.box(0.078, 0.012, 0.30), -0.60, 0.888, -0.87),
-    ]) {
-      const mesh = new THREE.Mesh(g, mgPale);
-      mesh.receiveShadow = true;
-      P.turretG.add(mesh);
-      P.disposables.push(g);
-    }
     // r6 #1 TOP-GRIME HOOK (track-shoe clones only; the measured mechanism
     // behind the critic's 1.19-1.23x front wrap): the wrap corners read hot
     // because up-facing shoe surfaces take ~1.9x the key + full sky of a
@@ -4627,6 +4612,14 @@ function buildLeo2A4(P) {
       }
     }
   }
+  // Supported upper bow bridges span the small inboard shoulder pocket left
+  // by the track-safe glacis lane cut. The upright roots overlap the real
+  // glacis surface; the caps terminate before the terminal shoe lane, so the
+  // idler course remains fully native and collision-free.
+  for (const s of [-1, 1]) {
+    P.add('hull', box(0.08, 0.18, 0.38), s * 0.87, 1.34, 3.37);               // buried glacis root
+    P.add('hull', box(0.12, 0.06, 0.38), s * 0.94, 1.45, 3.37);               // supported shoulder cap, |x| <= 1.00
+  }
   // front mudguard assembly (photo class — the A4's fender line wraps the
   // idler): outboard mudguard post along the skirt's front inner face +
   // the over-track wing band (the a5's certified §B4 pieces — identical
@@ -4732,10 +4725,10 @@ function buildLeo2A4(P) {
   P.add('turretDark', box(0.56, 0.02, 0.44), 0.62, 0.648, 0.85);
   // PERI R17 panoramic periscope (commander, fwd-right of the hatch) — the
   // tallest fixed point (top 2.79w = the published-height spike budget).
-  P.add('turretDetail', cylY(0.055, 0.065, 0.22, 12), 0.36, 0.83, -0.32);
-  P.add('turretDetail', cylY(0.08, 0.08, 0.05, 12), 0.36, 0.945, -0.32);
-  P.add('turretDark', box(0.17, 0.20, 0.19), 0.36, 0.93, -0.32);
-  P.add('turretGlass', box(0.11, 0.10, 0.018), 0.36, 0.95, -0.222);
+  P.add('turretDetail', cylY(0.055, 0.065, 0.34, 12), 0.36, 0.89, -0.32);
+  P.add('turretDetail', cylY(0.08, 0.08, 0.05, 12), 0.36, 1.065, -0.32);
+  P.add('turretDark', box(0.17, 0.20, 0.19), 0.36, 1.06, -0.32);
+  P.add('turretGlass', box(0.11, 0.10, 0.018), 0.36, 1.08, -0.222);
   // hatches: commander right (ring + lid + periscope ring), loader left.
   for (const [st, lo] of [[{ x: 0.60, z: -0.75 }, false], [{ x: -0.64, z: -0.55 }, true]]) {
     P.add('turret', cylY(lo ? 0.22 : 0.24, lo ? 0.22 : 0.24, 0.05, 14), st.x, 0.665, st.z);
@@ -6593,9 +6586,9 @@ function buildLeo2Revolution(P) {
   // side/front reads flicker 2.24..2.72 across runs. Ours park SOLID at
   // mid-column (w -2.11) with tops 2.70 (the ref's printing-state read).
   P.add('turretDetail', box(0.06, 0.36, 0.044), -1.07, 0.68, -1.760);
-  P.add('turretDetail', box(0.022, 0.24, 0.022), -1.062, 0.98, -1.760);
+  P.add('turretDetail', box(0.022, 1.55, 0.022), -1.062, 1.635, -1.760);
   P.add('turretDetail', box(0.06, 0.36, 0.044), 0.84, 0.68, -1.760);
-  P.add('turretDetail', box(0.022, 0.24, 0.022), 0.836, 0.98, -1.760);
+  P.add('turretDetail', box(0.022, 1.55, 0.022), 0.836, 1.635, -1.760);
   // r5 FORE ANTENNA CARD (station-8 spike): the print's SECOND whip stands
   // on the fore-left cheek as a z-facing THIN CARD (raw GLB verts x 1.0,
   // z -0.4 -> world -1.05, +0.83) — it prints in the clipped station-8
@@ -6608,7 +6601,7 @@ function buildLeo2Revolution(P) {
   // instead of co-flickering (a ghost card left the sight pod's 2.38 as
   // the column read against a 2.511 ref state). Front -1.055 column is
   // already owned by whip-A's 2.70 rod.
-  P.add('turretDetail', box(0.018, 0.45, 0.012), -1.058, 0.725, 1.1965);    // r7-c: z 1.18 -> 1.1965 — the 0.824 edge AA-leaked 2.55 into the w 0.77 column (ref 2.361)
+  P.add('turretDetail', box(0.018, 1.85, 0.012), -1.058, 1.425, 1.1965);    // full source-height fore antenna, rooted through the cheek
   // Roof furniture: a compact EMES hood plus fully seated commander and
   // loader hatch groups.  Lid seams, hinges and periscopes restore the
   // authored mechanical cadence that was lost beneath the oversized pods.

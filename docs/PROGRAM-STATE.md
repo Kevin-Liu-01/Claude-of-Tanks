@@ -86,7 +86,11 @@ re-freeze NEW hash, all in ONE commit.
 | chieftain5 | d4f2a9a6 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | t84 | 04707a9c | |
 | m47_patton | 2fc99c50 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
+| leo2a4 | 3a653cf9 | RE-FROZEN 2026-08-12 (§5.126 first-party Leopard 2A4: compact seven-wheel hull, native welded turret, supported PERI/roof/MG suite and exact native course; machine fidelity 92.49 / min view 90.43; fresh 42-frame yaw/ownership floor 9.0 / mean 9.12) |
 | leo2a5 | e215a738 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
+| leo2a6 | e99f8490 | RE-FROZEN 2026-08-12 (§5.126 first-party Leopard 2A6: source-semantic wedge turret, canonical seated MG3, seven-wheel hull and exact native course; machine fidelity 95.43 / min view 95.32; fresh 42-frame yaw/ownership floor 9.3 / mean 9.46) |
+| leo2a7v | a097ec | RE-FROZEN 2026-08-12 (§5.126 first-party Leopard 2A7V: low arrowhead armor package, supported FLW/PERI stations, rear APU/service field and exact native course; machine fidelity 91.17 / min view 90.05; fresh 42-frame yaw/ownership floor 9.0 / mean 9.09) |
+| leo2_revolution | 37139b70 | RE-FROZEN 2026-08-12 (§5.126 first-party Leopard 2 Revolution: authored clipped wedge/AMAP package, full roof station, supported rear/service package and exact native course; machine fidelity 94.92 / min view 91.17; fresh 42-frame yaw/ownership floor 9.1 / mean 9.27) |
 | m46_patton | 108806c8 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | centurion3 | bad74e60 | RE-FROZEN 2026-08-08 (no-air graduate-change: crown-ridge pedestal + discharger webs, front-low 1810px->14, re-cert floor 9.0 x17 changed views, gate 91.1 exact; prior 50273080 bore-resit lineage) |
 | m1a2_sepv2 | 7680a400 | RE-FROZEN 2026-08-10 (§5.107 full armor/ghillie wave; elevated armored CROWS + broad passive armor + full cover; re-cert floor 9.2 / mean 9.41 x14, corrected yaw0/90 ownership PASS; prior a0a4e87c retired) |
@@ -3941,17 +3945,16 @@ nine playables that were still calling generated exact-source geometry modules:
 but exact-source certification cannot satisfy the native-only order.
 
 Those nine ids were therefore reopened and removed from the current graduate
-registry. Each now has an authored procedural replacement; fresh immutable
-42-frame evidence, native-track/parent/winding certification and a new frozen
-hash are still required before re-freezing. The comparison files remain local
-review material only. Eight omitted
-native-procedural graduates are simultaneously backfilled into the registry,
-so the reconciled current count remains **44** rather than the landing-local
-running totals in §5.108–§5.118. Owner priority now moves immediately to a
-native quality rebuild of `t90m` (T-90M Proryv); its authored procedural
-builder remains the only playable geometry and the local GLB remains an
-isolated visual oracle. The reopened `t80u` provenance replacement stays
-queued behind this owner-priority pass.
+registry. Each received an authored procedural replacement; comparison files
+remain ignored local measurement/review material only. The four Leopard ids
+(`leo2a4`, `leo2a6`, `leo2a7v`, `leo2_revolution`) now have fresh first-party
+42-frame evidence and are re-frozen in §5.126. The remaining provenance reopen
+set is `fv510`, `type10`, `t14`, `amx40` and `t80u`; each still requires its own
+fresh native certification before re-freezing. Eight omitted native-procedural
+graduates were simultaneously backfilled into the registry, so the reconciled
+current count is now **48**. The owner-priority T-90M Proryv quality rebuild
+remains open; its authored procedural builder is the only playable geometry
+and any local GLB remains an isolated visual oracle.
 
 ## 5.122 T-90MS FIRST-PARTY REPLACEMENT RE-CERTIFICATION (2026-08-11, GRADUATED)
 
@@ -4114,3 +4117,81 @@ the native-playable audit (108 playables / 0 GLB-sourced), the T-72/T-80/T-90
 family-order test and `npm run build:public` all pass; the public build strips
 the comparison-candidate directory. **RE-FROZEN / KEEP `50bbc9bc`; retire
 `cf97a01b` and every intermediate Type 99 sitting.**
+
+## 5.126 LEOPARD 2 FIRST-PARTY FAMILY RE-CERTIFICATION (2026-08-12, RE-FROZEN)
+
+This receipt closes the four Leopard provenance reopens from §5.121:
+`leo2a4`, `leo2a6`, `leo2a7v` and `leo2_revolution`. All active geometry is
+authored in `src/vehicles/profiles/leopard.js` from repository primitives,
+fitting helpers and the native linked-track generator. Ignored local GLBs are
+measurement and visual-comparison oracles only. No source mesh, vertex payload,
+material, texture, rig, animation or converted geometry enters any playable or
+public build.
+
+The 2A4 restores the compact seven-wheel hull, low welded turret, integrated
+mantlet, PERI/EMES roof grammar, supported MG and layered rear service field.
+The 2A6 retains its deeper arrowhead/wedge cheeks and bustle, but its former
+unmarked hand-built roof gun is replaced by the canonical first-party MG3
+fitting with a visible foot, post, cradle and receiver load path. Both receive
+small authored upper-shoulder bridges rooted in the glacis; the bridges close
+the inboard bow pockets without entering either terminal shoe lane. The 2A7V
+adds its low applique package, supported FLW/PERI station and fixed APU/cooling
+field. Revolution carries one clipped wedge/AMAP upper assembly, compact roof
+station, tapered bustle package and supported unequal rear/service grammar.
+
+Deterministic freezes reproduce twice as follows:
+
+- `leo2a4` **`3a653cf9`** — 66 rendered meshes / 87,331 vertices;
+  machine fidelity **92.49**, minimum standard view **90.43**, geometry gate
+  minimum 90.4 / whole 90.4 / dimensions 97.9 / floaters 100.
+- `leo2a6` **`e99f8490`** — 46 meshes / 145,547 vertices; machine fidelity
+  **95.43**, minimum view **95.32**, geometry gate minimum 91.0 / hull 91.3 /
+  whole 91.0 / turret 92.6 / stations 91.9 / dimensions 91.0 / floaters 100.
+- `leo2a7v` **`a097ec`** — 46 meshes / 108,003 vertices; machine fidelity
+  **91.17**, minimum view **90.05**, geometry gate minimum/whole 90.0 /
+  dimensions 97.0 / floaters 100.
+- `leo2_revolution` **`37139b70`** — 78 meshes / 104,145 vertices; machine
+  fidelity **94.92**, minimum view **91.17**, geometry gate minimum/whole 91.2 /
+  dimensions 99.5 / floaters 100.
+
+The 2A4, 2A7V and Revolution comparison exports fuse or misclassify fixed and
+rotating regions, so their invalid hull/turret-only component masks remain
+honestly N/A; all registered whole views, valid gun/track rows, dimensions and
+floater checks stay live. The procedural models are not distorted to game
+those invalid component trees.
+
+All four exact track receipts are band **0/0** and shoes **0/0**. The combined
+standard check reports 4/4 pass, zero enclosed top-plan cells and canonical MG
+censuses `mg2`, `mg1`, `mg2`, `mg1`. Winding reports 0 reversed / 0 mixed on
+every build. The 2A7V's 39-pixel (0.06%) front-left deficit and Revolution's
+65-pixel (0.09%) right deficit produce no disappearing face, open sheet or
+silhouette wound. Yaw confirms the 2A7V Mode-2/parent nominees are fixed
+hull-deck, APU, cooling and service geometry; Revolution's nominees are fixed
+hull-service courses. They correctly remain with the engine deck when the
+complete turret departs and are not stranded turret fittings.
+
+Each directory in `/tmp/critic-leopard-native-final-r2` contains 42 PNGs and
+42 distinct hashes. The fresh fixed vectors are:
+
+- 2A4 `[9.1,9.2,9.0,9.1,9.0,9.1,9.0,9.2,9.2,9.2,9.1,9.2,9.1,9.2]`, floor
+  **9.0**, mean **9.12**;
+- 2A6 `[9.4,9.5,9.4,9.4,9.3,9.4,9.4,9.5,9.6,9.5,9.4,9.5,9.5,9.6]`, floor
+  **9.3**, mean **9.46**;
+- 2A7V `[9.1,9.1,9.0,9.0,9.0,9.0,9.0,9.1,9.1,9.2,9.1,9.2,9.1,9.2]`, floor
+  **9.0**, mean **9.09**;
+- Revolution `[9.3,9.3,9.2,9.1,9.1,9.1,9.2,9.3,9.4,9.4,9.3,9.4,9.3,9.4]`,
+  floor **9.1**, mean **9.27**.
+
+Every yaw pair shows a genuine quarter-turn. Gun/mantlet, complete turret
+shell, roof stations, smoke, antennas and full bustle packages rotate together
+over fixed prow, skirts, wheels, engine decks and transoms. All equipment keeps
+visible plinths, collars, braces or broad armor seats; no fused duplicate,
+stranded fitting, empty-air decoration, donor course, collision, sky hole or
+visible backface wound remains.
+
+The four targeted eight-view asset sets and manifest bindings are regenerated;
+targeted asset/currentness and muzzle-bore checks pass. `npm test`, private and
+public builds, the native-playable audit (108 playables / 0 GLB-sourced), the
+T-72/T-80/T-90 family-order test and the four-tank release check all pass. The
+public build strips all comparison-candidate and quarantine directories.
+**RE-FROZEN / KEEP `3a653cf9`, `e99f8490`, `a097ec` and `37139b70`.**
