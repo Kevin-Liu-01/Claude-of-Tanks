@@ -579,12 +579,18 @@ function buildAMX40(P) {
   // shoulder ring keeps the broad AMX-40 cheek volume low, turns inward
   // progressively, and falls gently into the asymmetric rear lobes.  It is
   // a new repository-authored shell, not a sampled or converted source mesh.
+  // The former 3.30 m plan stopped well inside the AMX-40's own authored
+  // turret envelope and made the fighting compartment look undersized on
+  // the long hull.  Carry the *connected shell* to the measured cheek and
+  // rear-shoulder stations instead of trying to disguise the shortfall with
+  // larger stowage boxes.  Width and crown height are deliberately unchanged:
+  // this is the long, low welded AMX-40 turret, not a scaled-up cabinet.
   const amx40ShellPlan = [
-    [-0.82, 1.42], [-0.20, 1.49], [0.38, 1.49], [0.76, 1.42], [1.02, 1.12],
-    [1.30, 0.82], [1.39, 0.34], [1.38, -0.36], [1.32, -0.92],
-    [1.22, -1.40], [0.84, -1.68], [0.34, -1.80], [-0.34, -1.81],
-    [-0.82, -1.72], [-1.18, -1.50], [-1.34, -1.08], [-1.40, -0.38],
-    [-1.38, 0.30], [-1.30, 0.78], [-0.98, 1.12],
+    [-0.82, 1.68], [-0.20, 1.76], [0.38, 1.76], [0.76, 1.68], [1.03, 1.37],
+    [1.30, 1.02], [1.39, 0.50], [1.39, -0.42], [1.34, -1.02],
+    [1.25, -1.55], [0.88, -1.87], [0.36, -2.02], [-0.36, -2.04],
+    [-0.86, -1.94], [-1.21, -1.66], [-1.36, -1.18], [-1.41, -0.44],
+    [-1.39, 0.44], [-1.31, 0.93], [-1.00, 1.35],
   ];
   const shellBottom = amx40ShellPlan.map(([, z]) => {
     const aft = Math.max(0, Math.min(1, (1.30 - z) / 2.90));
@@ -610,8 +616,8 @@ function buildAMX40(P) {
     { height: shellShoulder, inset: 0.94 },
     { height: shellCrown, inset: crownInset },
   ]));
-  P.add('turretDetail', box(0.025, 0.025, 2.24), -0.82, 0.612, -0.08, 0, 0.045, 0); // roof welds lie directly on the inset crown
-  P.add('turretDetail', box(0.025, 0.025, 2.18), 0.80, 0.607, -0.10, 0, -0.045, 0);
+  P.add('turretDetail', box(0.025, 0.025, 2.78), -0.82, 0.612, -0.14, 0, 0.045, 0); // roof welds follow the lengthened connected crown
+  P.add('turretDetail', box(0.025, 0.025, 2.72), 0.80, 0.607, -0.16, 0, -0.045, 0);
   P.add('turretDetail', slab(                                                   // source right nose rail peaks inboard and recedes toward x=1.0
     [0.45, 0.53, 1.65], [0.62, 0.53, 2.35], [1.00, 0.53, 1.65], [0.62, 0.53, 1.58],
     [0.45, 0.57, 1.65], [0.62, 0.57, 2.35], [1.00, 0.57, 1.65], [0.62, 0.57, 1.58]));
@@ -648,11 +654,11 @@ function buildAMX40(P) {
       P.add('turretDetail', box(0.022, 0.07, 0.045), s * 1.465, 0.18, zc + d * 0.23);
       P.add('turretDetail', box(0.022, 0.07, 0.045), s * 1.465, 0.18, zc - d * 0.23);
     };
-    flankModule(0.72, 0.68);                                                    // Object_8 local z +0.38..+1.06
-    flankModule(0.05, 0.62);                                                    // center service cassette
-    flankModule(-0.73, 0.86, innerTop, innerTop - 0.02, 0.12, 0.28);            // source-tapered aft stowage lobe to local z -1.16
-    P.add('turretDetail', box(0.07, 0.20, 1.94), s * 1.42, 0.33, -0.18);       // source-height inner lid rail, seated below the sloping compartment faces
-    for (const dz of [0.38, -0.27]) P.add('turretDark', box(0.08, 0.43, 0.016), s * 1.42, 0.35, dz); // narrow vertical compartment seams
+    flankModule(0.86, 0.82);                                                    // forward cassette follows the extended cheek shoulder
+    flankModule(0.08, 0.70);                                                    // center service cassette
+    flankModule(-0.86, 1.08, innerTop, innerTop - 0.04, 0.12, 0.30);            // long tapered aft lobe follows the connected rear shoulder
+    P.add('turretDetail', box(0.07, 0.20, 2.62), s * 1.42, 0.33, -0.15);       // source-height inner lid rail, seated below the full stowage course
+    for (const dz of [0.45, -0.30, -1.02]) P.add('turretDark', box(0.08, 0.43, 0.016), s * 1.42, 0.35, dz); // narrow vertical compartment seams
     // cheek-flank rail panels (print Object_6: x ±1.26-1.29, y 1.93..2.32,
     // z_w 1.07..1.38) — thin applique standing off the cheeks on brackets
     P.add('turret', box(s < 0 ? 0.16 : 0.032, 0.36, 0.30), s * 1.272, s < 0 ? 0.62 : 0.52, 1.485);
