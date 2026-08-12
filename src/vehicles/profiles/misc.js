@@ -2571,7 +2571,7 @@ function buildType90(P) {
   P.add('turretDark', box(0.12, 0.030, 0.14), 1.14, 0.585, 0.10);              // support arm into the wall top band
   P.add('turretDark', box(0.028, 0.20, 0.028), 1.155, 0.49, 0.10);             // diagonal brace to the wall face (§B2 no-air: the mount is connected structure)
   const m2 = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', tone: 'two-tone', scale: 0.9, seed: 9 });
-  m2.position.set(1.13, 0.62, 0.10);                                           // foot 2.02, receiver top ~2.31, barrel fwd over the right cheek; envelope z_w -0.37..0.74 inside the plan front line (0.99 at this x)
+  m2.position.set(0.82, 0.49, 0.02);                                           // reseated on the corrected commander cupola; fitting retains its authored scale
   P.turretG.add(m2);
   // side SHELVES on the bustle flanks (r5 re-read of the +-1.29-1.39 band:
   // the ref's widest turret content is a SHELF SLIVER — plan z_w -0.687..
@@ -2597,7 +2597,7 @@ function buildType90(P) {
     P.add('turretDetail', box(xOut - xIn - 0.04, 0.02, 0.045), s * xc2, 0.815, -0.55); // lid ribs (recessed: tops stay under the per-slab shelf lines)
     P.add('turretDetail', box(xOut - xIn - 0.04, 0.02, 0.045), s * xc2, 0.80, -1.01);
     const smoke = FITTINGS.smokeBank({ mats: P.mats, count: 3, r: 0.040, len: 0.20, splay: s * 0.75, pitch: -0.45, seed: 3 + s });
-    smoke.position.set(s * 1.04, 0.60, -0.42);                                 // 2x3 dischargers ride the upper bustle flank (real fit; tips ~2.13, under the roof plane — x/z reach unchanged so the plan lanes hold)
+    smoke.position.set(s * 1.04, 0.30, -0.42);                                 // 2x3 dischargers follow the corrected half-height bustle flank
     P.turretG.add(smoke);
     liftEye(P, 'turretDetail', s * 1.16, 0.80, 0.75, s * 0.4);                 // roof-edge lifting eyes on the wall-top shoulder (crown ~2.30 <= grace)
   }
@@ -2645,7 +2645,7 @@ function buildType90(P) {
   // the deck at -2.535 is structural — CLIFF-LERP class, ~0.27 sum)
   for (const s of [-1, 1]) {
     const whipA = FITTINGS.antennaWhip({ mats: P.mats, h: 0.68, r: s > 0 ? 0.018 : 0.012, rake: -s * 0.02, seed: 2, rotation: [-0.55, 0, 0] });        // (r6b: rake 0.05 -> 0.02 — fat-tip determinism law holds)
-    whipA.position.set(s * 1.11, 0.44, -1.72);                                 // raked corner whips (identity cue). §5.73-1 DATUM ROUND: h 0.50/0.48 ->
+    whipA.position.set(s * 1.11, 0.22, -1.72);                                 // antenna collars remain seated after the turret-height correction
     //   0.68 STEEPENED (rot -0.78/-0.60 -> -0.55) — the v2 front mast tails
     //   want 2.51-2.59 at x ±1.10/1.14 (§5.57 front_whole cap, 0.128 x2 +
     //   0.084) and the old short whips were the datum compromise. Tip model
@@ -2666,7 +2666,7 @@ function buildType90(P) {
   // whose plan column reaches x 0.137-0.259 — the r4 bare 0.065 tube left
   // the ref's own plan tube col (front 5.769) and its evac col (front
   // 3.455) unmatched: 1.98 + 0.82 err on the two worst plan_turret cols.
-  P.gunG.position.set(0, 0.42, 0.55);                                          // §B7 bore line 1.82 (was 1.562 = the print's squashed tube band 1.485..1.639): three-source school constant — type10 build 1.82 (roof-bore 0.48, PASS 9.0), leo2a4 2.00 (roof-bore 0.48), pre-warp artist 43.8% of face; the spec's inherited armor gunPivot already reads 1.82. Muzzle z stays 5.96 (overall 9.76 sovereign); the France mantlet grammar rides gunG and re-seats intact
+  P.gunG.position.set(0, 0.30, 0.55);                                          // corrected bore line through the center of the half-height face
   trunnionRoll(P, 0.16, 0.50);
   // §B3 mantlet identity (no mystery boxes): the embrasure block reads as
   // the sealed Rh-120 mount — canvas bellows collar at the block/tube
@@ -2708,7 +2708,42 @@ function buildType90(P) {
   P.addGunExtraDark(box(0.07, 0.05, 0.06), 0.26, 0.10, 0.62);                  // coax hood
   buildGun(P, { len: 5.61, r: 0.065, sleeve: true, evac: 0.50, evacR: 2.12, collar: false, baseR: 0.15 });
   muzzleBore(P, 0.065, 5.59);                                                  // §B3.1 muzzle bore (shadow-named)
-  P.topY = 1.32;                                                               // turret-top anchor above the commander tower (2.72 world, r7 tower at 2.705)
+  // Owner correction (2026-08-12): the live garage silhouette showed the
+  // turret body at roughly twice the proper Type 90 section.  Compress every
+  // repository-authored turret surface and roof fitting in local Y while
+  // leaving X/Z plan, the circular gun geometry, and the articulated gun rig
+  // untouched.  Direct child fittings above were explicitly re-seated at the
+  // corresponding half-height roots, so yaw cannot reveal a floating bank,
+  // MG, or antenna collar.
+  P.scaleBuckets(
+    ['turret', 'turretDark', 'turretDetail', 'turretGlass', 'turretCloth'],
+    1, 0.50, 1,
+  );
+  // Rebuild the functional roof cadence at its real scale on the new
+  // 0.47-local roof.  These are added after the body-section compression so
+  // the cupolas, sight heads, periscopes and MG cradle do not become
+  // vertically squashed decorations.
+  P.add('turret', cylY(0.225, 0.235, 0.065, 16), 0.56, 0.505, -0.17);
+  P.add('turretDark', torus(0.215, 0.011, 16), 0.56, 0.535, -0.17);
+  P.add('turret', cylY(0.19, 0.205, 0.035, 16), 0.56, 0.555, -0.17);
+  P.add('turret', cylY(0.20, 0.205, 0.055, 16), -0.52, 0.505, -0.11);
+  P.add('turretDark', torus(0.19, 0.010, 16), -0.52, 0.535, -0.11);
+  for (let k = 0; k < 5; k++) {
+    const a = (125 + k * 27) * Math.PI / 180;
+    P.add('turretGlass', box(0.060, 0.070, 0.045),
+      0.56 + Math.cos(a) * 0.205, 0.555, -0.17 + Math.sin(a) * 0.205, 0, -a, 0);
+  }
+  P.add('turret', frustum(0.18, 0.34, -0.18, 0.145, 0.30, -0.15, 0.49, 0.70), 0.10, 0, 0.18);
+  P.add('turretDark', box(0.25, 0.11, 0.025), 0.10, 0.60, 0.515);
+  P.add('turretGlass', box(0.17, 0.065, 0.015), 0.10, 0.60, 0.530);
+  P.add('turret', box(0.36, 0.14, 0.44), 0.30, 0.545, 0.90);
+  P.add('turretDark', box(0.27, 0.075, 0.025), 0.30, 0.555, 1.135);
+  P.add('turretGlass', box(0.19, 0.045, 0.015), 0.30, 0.555, 1.150);
+  P.add('turretDetail', box(0.40, 0.045, 0.26), 0.70, 0.485, 0.02);            // broad MG swing-mount seat
+  for (const [x, z, ry] of [[-0.30, 0.16, 0.25], [-0.56, 0.22, -0.12], [0.35, 0.34, 0.18]]) {
+    periscope(P, 'turretDetail', x, 0.505, z, ry);
+  }
+  P.topY = 0.72;
 }
 
 // ---------------------------------------------------------------------------
