@@ -1871,6 +1871,9 @@ function buildLeclerc(P) {
 // bow+2.7; 6 small dished wheels, rear sprocket; turbine exhaust box rear.
 // ---------------------------------------------------------------------------
 function buildT80UNative2026(P) {
+  // First-party runtime geometry only. The local javanilga GLB is a visual
+  // and measurement oracle; no source vertices, indices, meshes, materials,
+  // rig data or converted payload enter this authored KIT/loft builder.
   const { box, cylY, cylX, cylZ, frustum, lathe, torus, polyLoft, buildGun, buildRunningGear,
     fenders, headlight, liftEye, periscope, towCable, stowage, spareTrackStrip, cupola } = KIT;
   const slab = orientedSlab;                                                   // §C missing-side fix: winding-corrected slabs only (see orientedSlab)

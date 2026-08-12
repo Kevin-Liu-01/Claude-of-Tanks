@@ -115,6 +115,7 @@ re-freeze NEW hash, all in ONE commit.
 | type99a | 50bbc9bc | RE-FROZEN 2026-08-12 (§5.125 first-party measured-envelope rebuild: broad two-plane hull, connected low welded turret, supported open bustle and exact native six-wheel course; machine fidelity 92.08 / min view 90.76; fresh 42-frame yaw/ownership floor 9.0 / mean 9.11) |
 | type10 | 7ac6d434 | RE-FROZEN 2026-08-12 (§5.128 fully first-party folded five-wheel hull and continuous clipped welded turret; machine fidelity 91.41 / minimum view 90.02; exact native band+shoes 0/0, zero plan holes and fresh 42-frame yaw/ownership PASS; incompatible legacy source-component row retained honestly) |
 | t14 | a94a2480 | RE-FROZEN 2026-08-12 (§5.131 fully first-party `buildT14`: low seven-wheel Armata hull, connected unmanned shroud, supported RWS/sensor package and exact native course; fidelity 90.53 / minimum view 91.52; 42 unique paired/yaw frames floor 9.0 / mean 9.04; source-baked `a88afa6c` playable retired) |
+| t80u | 77f9ae78 | RE-FROZEN 2026-08-12 (§5.132 fully first-party `buildT80UNative2026`: low turbine hull, connected cast/K-5 turret, supported combat/rear-service package and exact native six-wheel course; fidelity 91.51 / minimum view 90.20; 42 unique paired/yaw frames floor 9.0 / mean 9.04; source-baked `c0dc2502` playable retired) |
 | type74 | 8319dbb8 | RE-FROZEN 2026-08-11 (§5.110 authored low cast turret, five-wheel native course and supported combat/service suite; independent §B8 floor 9.1 / mean 9.29) |
 | ariete | acea2100 | RE-FROZEN 2026-08-11 (§5.111 native-procedural Ariete with seven-wheel course and supported low turret/rear service field; independent §B8 floor 9.0 / mean 9.25) |
 | t72b_1987 | 3f2483d4 | GRADUATED 2026-08-11 (§5.114 authored low B87 hull/turret, buried K1 and native six-wheel course; independent §B8 floor 9.0 / mean 9.14) |
@@ -3747,7 +3748,10 @@ Targeted asset/currentness and rendered-bore checks pass; `npm test` and
 `buildT72BU` presentation and every intermediate sitting. Fleet gate remains
 honestly 36/97; graduates are 47.**
 
-## 5.116 T-80U OWNER-SOURCE EXACT UPPER REBUILD (2026-08-11, GRADUATED)
+## 5.116 T-80U OWNER-SOURCE EXACT UPPER REBUILD (2026-08-11, HISTORICAL / RETIRED)
+
+> This source-baked playable was retired on 2026-08-12. The current runtime
+> is the fully first-party `buildT80UNative2026`; see §5.132 below.
 
 The owner's `t-80u-ussr.zip` (4,197,004 bytes; SHA-256
 `958e399cced2c24cb9dbcc23bce1b7f7edafd573c3b7af299ff2d076de96beb4`)
@@ -4425,3 +4429,46 @@ All eight T-14 presentation assets and manifest binding are regenerated.
 Targeted assets/bore, tests, native provenance, family ordering, and private
 and stripped-public builds pass. **RE-FROZEN / KEEP `a94a2480`; retire
 source-baked `a88afa6c` as a playable.**
+
+## 5.132 T-80U FIRST-PARTY RUNTIME RE-CERTIFICATION (2026-08-12, RE-FROZEN)
+
+The active T-80U resolves to the repository-authored
+`buildT80UNative2026` in `src/vehicles/profiles/misc.js`. Its tapered turbine
+hull, folded bow, skirts, six-wheel linked course, cast fighting compartment,
+Kontakt-5 clamshell, gun, cupolas, NSVT, optics, smoke banks, basket and rear
+service equipment are built exclusively from KIT primitives, original lofts
+and repository fittings. The javanilga GLB remains an isolated private
+measurement/render oracle. No source mesh, vertex/index payload, material,
+texture, rig, animation or converted array enters the playable or public
+build. The source-baked `c0dc2502` experiment in §5.116 is retired.
+
+Freeze **`77f9ae78`** reproduces twice at 43 rendered meshes / 61,979
+vertices. Independent fidelity is **91.51 aggregate** with every required
+whole view at least **90.20**; components are whole 92.88 / hull 96.23 /
+turret 83.21 / gun 89.66 / native tracks 94.32. The direct-turret component
+remains explicit refinement debt: improve the authored cast-shoulder and
+station surfaces in place, never by restoring source topology.
+
+The legacy component gate is retained honestly at **60.0**, with hull 76.1 /
+whole 65.7 / turret 60.0 / stations 75.1 / dimensions 85.0 / floaters 100.
+Its masks encode the retired fused source subtree and cannot grade the
+independently authored ownership split without rewarding copied topology.
+Exact track containment is band **0/0** and shoes **0/0**. Parent audit is 0
+stranded / 0 abutting / 0 dangling. Winding is 0 reversed / 0 mixed; the
+38-pixel/0.03% top FrontSide difference is a stable non-structural hairline,
+and yaw mode 2 has zero candidates.
+
+All 42 PNGs in `/tmp/critic-t80u-native-final-r3/t80u` are distinct. Fresh
+inspection records the fixed vector
+`[9.1,9.1,9.0,9.0,9.0,9.0,9.0,9.1,9.0,9.1,9.0,9.1,9.0,9.0]`, floor
+**9.0**, mean **9.04**. Every yaw pair shows the complete gun, cast shell,
+K-5 package, cupolas, NSVT, sights, smoke and supported rear package making a
+genuine quarter-turn while the glacis, turbine deck, transom, skirts and
+six-wheel course remain fixed. All equipment retains a visible armor seat,
+plinth, collar, basket return or cradle; no fused duplicate, stranded
+fitting, empty-air decoration, track collision or winding wound appears.
+
+All eight T-80U presentation assets and manifest binding are regenerated.
+Targeted assets/bore, tests, native provenance, family ordering, and private
+and stripped-public builds pass. **RE-FROZEN / KEEP `77f9ae78`; retire
+source-baked `c0dc2502` as a playable.**

@@ -44,9 +44,9 @@ one required view remains below 90.
 | 9 | Type 99A / Type 99 family | The supplied/downloaded GLB is quarantined as a measurement and render oracle; the stronger earlier repository-authored print-measured builder is restored and redesigned in place | Preserve the new authored hull, welded turret and exact six-wheel course; continue any later micro-detail refinement on this native basis and never introduce source vertices or meshes |
 | 10 | T-90M Proryv | The owner-rejected slabby mask-shaped build is retired; `buildT90MProryvNative2026` is the active first-party low V-bow hull, welded fighting compartment, supported bustle and native six-wheel course | Preserve freeze `a21894b8`, its 90.96 / every-view 90.02+ native evidence and exact 0/0 course; refine only this distinct welded Proryv in place and never chase the incompatible legacy component mask |
 | 11 | T-72 family | Runtime playables native; lineage order explicit and self-tested; delisted base T-72B3 removed from the active progression; T-72BU restored as a hybrid of its stronger authored hull/gun/course and the lower first-party BU turret package | Preserve the 90.03 / every-view 90.05+ T-72BU basis, then standardize the remaining shared mechanical datums without flattening distinct turret/protection grammar |
-| 12 | T-80 family | Four-member authored lineage re-certified; T-80U imported wrapper removed and low cast/K-5/rear-service geometry repaired in place | Preserve the distinct T-80 / T-80B / T-80BV / T-80U bases, their current every-view 90+ scores and exact 0/0 native courses; retain T-80U's direct-turret surface score as refinement debt rather than replacing the vehicle |
+| 12 | T-80 family | Four-member authored lineage re-certified; T-80U imported wrapper removed and low cast/K-5/rear-service geometry repaired and freshly re-certified in place | Preserve T-80U freeze `77f9ae78` and the distinct T-80 / T-80B / T-80BV bases, their current every-view 90+ scores and exact 0/0 native courses; retain T-80U's direct-turret surface score as refinement debt rather than replacing the vehicle |
 | 13 | T-90 family | Runtime playables native; lineage order explicit and self-tested; base T-90, Burlak, T-90MS and the restored high-detail Proryv remain distinct first-party builds | Preserve the validated base T-90, Burlak, T-90MS and Proryv, then re-run the whole family after shared changes without cross-copying primary shells |
-| 14 | Type 74, T-14, FV510 and remaining erased native work | Imported wrappers removed; first-party builders active; FV510 and T-14 now have fresh authored 90+ quantitative and 42-frame re-certifications; T-80U remains in the provenance re-cert queue | Preserve FV510 `61023726` and T-14 `a94a2480`, complete T-80U separately, then execute the ordered fleet-failure queue with repository-authored primitives only |
+| 14 | Type 74, T-14, FV510 and remaining erased native work | Imported wrappers removed; first-party builders active; FV510, T-14 and T-80U now have fresh authored 90+ quantitative and 42-frame re-certifications | Preserve FV510 `61023726`, T-14 `a94a2480` and T-80U `77f9ae78`, then execute the ordered fleet-failure queue with repository-authored primitives only |
 | 15 | AbramsX | Fully authored `buildAbramsX` retained; eight latent inward-wound lower-bow/tunnel/sight wedges corrected locally without changing its accepted source-measured envelope | Preserve freeze `976a1370`, its 94.29 / every-view 93.99+ fidelity and 0 reversed / 0 mixed winding receipt; refine only in place and keep both Mortavex files oracle-only |
 
 ## Current receipts
@@ -67,8 +67,10 @@ one required view remains below 90.
   winding receipts are recorded in §5.129. T-14 is re-frozen at
   **`a94a2480`**, passes at **90.53 aggregate / 91.52 minimum view** on the
   fully authored `buildT14`, and has a fresh 42-frame genuine-yaw packet;
-  source-baked `a88afa6c` is retired. T-80U remains separate provenance
-  re-certification work. The previously audited priority
+  source-baked `a88afa6c` is retired. T-80U is re-frozen at **`77f9ae78`**,
+  passes at **91.51 aggregate / 90.20 minimum view**, exact 0/0 band and
+  shoes, and has a fresh 42-frame genuine-yaw packet. The provenance
+  re-certification queue is therefore clear. The previously audited priority
   vehicles report **0/0
   smooth-band and 0/0 individual-shoe intersections** at both terminals in
   the undilated exact audit. `npm test`, native provenance and family-order
@@ -289,7 +291,7 @@ declared complete.
   six-wheel course; its monolithic port K-5 rail is replaced by a shorter
   planted course, its low cast shoulders and shallow bustle remain connected,
   and its turbine-deck/transom package stays hull-owned. Forty-two clean,
-  distinct current paired/yaw frames at `/tmp/critic-t80u-native-r2` prove a
+  distinct current paired/yaw frames at `/tmp/critic-t80u-native-final-r3/t80u` prove a
   genuine quarter-turn and coherent fixed deck. T-80U direct-turret score
   **83.21** remains recorded refinement debt; improve that authored casting
   and station detail in place rather than importing or flattening a sibling.

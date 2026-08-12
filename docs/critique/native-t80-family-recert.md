@@ -1,6 +1,6 @@
 # Native T-80 family re-certification
 
-T-80U candidate source blob: `c5cfd088f35c6644a764bd93ba0994b1f3b56ef6`.
+T-80U current authored freeze: `77f9ae78` (43 meshes / 61,979 vertices).
 
 ## Provenance and preservation decision
 
@@ -49,7 +49,7 @@ rear-right view is 90.20; all other required views are above it.
 - Winding audit for all four family members: 0 reversed and 0 mixed connected
   pieces. T-80U's worst FrontSide/DoubleSide difference is 38 pixels / 0.03%
   at top and is non-structural; all yaw candidate counts are zero.
-- `/tmp/critic-t80u-native-r2` contains exactly 42 files / 42 distinct hashes:
+- `/tmp/critic-t80u-native-final-r3/t80u` contains exactly 42 files / 42 distinct hashes:
   14 paired, 14 yaw0 and 14 yaw90.
 - The complete T-80U gun, casting, K-5 courses, cupolas, sights, smoke suite,
   NSVT and supported rear package rotate together through a genuine quarter
@@ -64,3 +64,13 @@ but T-80U direct-turret parity remains below the rest of the vehicle. Future
 work should refine the authored cast shoulder curvature, protection pitch and
 roof-station silhouettes in place. It must not replace this basis with source
 geometry or a sibling T-80 turret.
+
+## Final native re-certification
+
+The current first-party freeze reproduces twice as `77f9ae78`. Fidelity is
+91.51 with every whole view at least 90.20. Exact band and shoe containment is
+0/0 at both terminals; turret parent audit is 0/0/0; winding is 0 reversed / 0
+mixed with only a stable 38-pixel top hairline and no yaw candidate. The fresh
+fixed visual vector is
+`[9.1,9.1,9.0,9.0,9.0,9.0,9.0,9.1,9.0,9.1,9.0,9.1,9.0,9.0]`, floor 9.0,
+mean 9.04. Source-baked freeze `c0dc2502` is historical and retired.
