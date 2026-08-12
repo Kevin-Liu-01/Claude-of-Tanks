@@ -46,7 +46,7 @@ one required view remains below 90.
 | 11 | T-72 family | Runtime playables native; lineage order explicit and self-tested; delisted base T-72B3 removed from the active progression; T-72BU restored as a hybrid of its stronger authored hull/gun/course and the lower first-party BU turret package | Preserve the 90.03 / every-view 90.05+ T-72BU basis, then standardize the remaining shared mechanical datums without flattening distinct turret/protection grammar |
 | 12 | T-80 family | Four-member authored lineage re-certified; T-80U imported wrapper removed and low cast/K-5/rear-service geometry repaired in place | Preserve the distinct T-80 / T-80B / T-80BV / T-80U bases, their current every-view 90+ scores and exact 0/0 native courses; retain T-80U's direct-turret surface score as refinement debt rather than replacing the vehicle |
 | 13 | T-90 family | Runtime playables native; lineage order explicit and self-tested; base T-90, Burlak, T-90MS and the restored high-detail Proryv remain distinct first-party builds | Preserve the validated base T-90, Burlak, T-90MS and Proryv, then re-run the whole family after shared changes without cross-copying primary shells |
-| 14 | Type 74, T-14, FV510 and remaining erased native work | Imported wrappers removed; first-party builders active; FV510 now has a fresh authored 90+ quantitative and 42-frame re-certification; T-14 and T-80U remain in the provenance re-cert queue | Preserve FV510 freeze `61023726`, complete T-14 and T-80U separately, then execute the ordered fleet-failure queue with repository-authored primitives only |
+| 14 | Type 74, T-14, FV510 and remaining erased native work | Imported wrappers removed; first-party builders active; FV510 and T-14 now have fresh authored 90+ quantitative and 42-frame re-certifications; T-80U remains in the provenance re-cert queue | Preserve FV510 `61023726` and T-14 `a94a2480`, complete T-80U separately, then execute the ordered fleet-failure queue with repository-authored primitives only |
 | 15 | AbramsX | Fully authored `buildAbramsX` retained; eight latent inward-wound lower-bow/tunnel/sight wedges corrected locally without changing its accepted source-measured envelope | Preserve freeze `976a1370`, its 94.29 / every-view 93.99+ fidelity and 0 reversed / 0 mixed winding receipt; refine only in place and keep both Mortavex files oracle-only |
 
 ## Current receipts
@@ -64,8 +64,11 @@ one required view remains below 90.
   re-frozen at **`61023726`** and passes at **90.84 aggregate / 90.12 minimum
   view** on the authored `fv510PhotoBuild`; its exact-source playables and
   earlier 87.3 regression are retired. Its 42-frame packet, exact track and
-  winding receipts are recorded in §5.129. T-14 and T-80U remain separate
-  provenance re-certification work. The previously audited priority
+  winding receipts are recorded in §5.129. T-14 is re-frozen at
+  **`a94a2480`**, passes at **90.53 aggregate / 91.52 minimum view** on the
+  fully authored `buildT14`, and has a fresh 42-frame genuine-yaw packet;
+  source-baked `a88afa6c` is retired. T-80U remains separate provenance
+  re-certification work. The previously audited priority
   vehicles report **0/0
   smooth-band and 0/0 individual-shoe intersections** at both terminals in
   the undilated exact audit. `npm test`, native provenance and family-order

@@ -66,8 +66,8 @@ depending on garage order.
 
 Native provenance is a floor, not a fidelity waiver. Restored vehicles are
 being reworked and re-certified from fresh procedural renders. Leopard,
-Type 10, T-90M Proryv, FV510 and AbramsX now have fresh native-only receipts.
-T-14 and T-80U remain the open provenance re-certifications; the broader
+Type 10, T-90M Proryv, FV510, AbramsX and T-14 now have fresh native-only
+receipts. T-80U remains the open provenance re-certification; the broader
 Challenger/Ariete presentation set remains an owner-priority quality audit.
 Old scores and freeze hashes for changed geometry are historical until
 replaced by fresh paired and yaw evidence.

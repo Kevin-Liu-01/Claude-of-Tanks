@@ -114,6 +114,7 @@ re-freeze NEW hash, all in ONE commit.
 | k1a1 | 28c7f5f0 | RE-FROZEN 2026-08-10 (§5.108 authored compact K1A1 shell/hull, native six-wheel course and cupola-seated K6; independent §B8 floor 9.0 / mean 9.21) |
 | type99a | 50bbc9bc | RE-FROZEN 2026-08-12 (§5.125 first-party measured-envelope rebuild: broad two-plane hull, connected low welded turret, supported open bustle and exact native six-wheel course; machine fidelity 92.08 / min view 90.76; fresh 42-frame yaw/ownership floor 9.0 / mean 9.11) |
 | type10 | 7ac6d434 | RE-FROZEN 2026-08-12 (§5.128 fully first-party folded five-wheel hull and continuous clipped welded turret; machine fidelity 91.41 / minimum view 90.02; exact native band+shoes 0/0, zero plan holes and fresh 42-frame yaw/ownership PASS; incompatible legacy source-component row retained honestly) |
+| t14 | a94a2480 | RE-FROZEN 2026-08-12 (§5.131 fully first-party `buildT14`: low seven-wheel Armata hull, connected unmanned shroud, supported RWS/sensor package and exact native course; fidelity 90.53 / minimum view 91.52; 42 unique paired/yaw frames floor 9.0 / mean 9.04; source-baked `a88afa6c` playable retired) |
 | type74 | 8319dbb8 | RE-FROZEN 2026-08-11 (§5.110 authored low cast turret, five-wheel native course and supported combat/service suite; independent §B8 floor 9.1 / mean 9.29) |
 | ariete | acea2100 | RE-FROZEN 2026-08-11 (§5.111 native-procedural Ariete with seven-wheel course and supported low turret/rear service field; independent §B8 floor 9.0 / mean 9.25) |
 | t72b_1987 | 3f2483d4 | GRADUATED 2026-08-11 (§5.114 authored low B87 hull/turret, buried K1 and native six-wheel course; independent §B8 floor 9.0 / mean 9.14) |
@@ -3141,9 +3142,14 @@ paths, hull-owned engine deck, clean native running gear and absence of fused
 mass, floaters, empty-air attachments or visible backface wound. **KEEP
 `50710918`; prior graduate freeze `d2c73d96` is retired.**
 
-## 5.104 T-14 OWNER-SOURCE EXACT REBUILD (2026-08-10, GRADUATED)
+## 5.104 T-14 OWNER-SOURCE EXACT REBUILD (2026-08-10, HISTORICAL / RETIRED)
 
-The owner's `t-14_armara_uralvagon_factory.glb` is now the T-14 geometry
+This section records a retired source-baked experiment. It is superseded by
+the fully first-party runtime and fresh certification in §5.131; none of the
+payload described below remains in the playable or public build.
+
+At that historical snapshot, the owner's
+`t-14_armara_uralvagon_factory.glb` was treated as the T-14 geometry
 authority. Its SHA-256 is
 `02785328797c80090fd0e9c48b5bb6fe8e7a1e3fac4d340138fede6348c8d2b3`;
 the 223 MB CC-BY-4.0 GLB remains gitignored and local-only while a small
@@ -4374,3 +4380,48 @@ All eight AbramsX presentation assets and their manifest binding are
 regenerated. Targeted asset/currentness and bore checks, tests, native
 provenance, family ordering, and private/public builds pass. **RE-FROZEN /
 KEEP `976a1370`; retire `26b46ba0`.**
+
+## 5.131 T-14 FIRST-PARTY RUNTIME RESTORATION (2026-08-12, RE-FROZEN)
+
+The active T-14 is the repository-authored `buildT14` in
+`src/vehicles/modern2.js`. Its hull, seven-wheel running gear, linked shoes,
+unmanned faceted shroud, gun, bustle, Afganit/APS equipment, RWS, optics,
+sensor masts, cages and service hardware are assembled exclusively from KIT
+primitives and repository fittings. The local CC-BY comparison GLB is a
+private measurement/render oracle only. No source vertex/index payload,
+material, texture, rig, animation or converted array enters the playable or
+public build. The historical source-baked `a88afa6c` experiment in §5.104 is
+retired.
+
+The runtime metadata now matches the authored/reference envelope rather than
+the retired published-datum extension: overall length is **9.98 m** and the
+armor/gameplay barrel proxy is **5.64 m**, exactly matching the visible 2A82
+tube. Freeze **`a94a2480`** reproduces at 47 rendered meshes / 61,723
+vertices. Independent fidelity is **90.53 aggregate** with every whole view
+at least **91.52**; components are overall 93.14 / hull 93.53 / turret 86.66
+/ gun 83.97 / tracks 89.21. The direct whole-vehicle law passes even though
+the source file's fused, donor-track component masks do not match our
+independent primitive ownership split.
+
+The geometry row is therefore retained honestly at **72.3**, with hull 79.4
+/ whole 75.0 / turret 72.3 / stations 84.0 / dimensions 100 / floaters 100.
+It is diagnostic debt, not an excuse to replace the authored model with
+source topology. Exact native track containment is band **0/0** and shoes
+**0/0**. Parent audit is 0 stranded / 0 abutting / 0 dangling; winding is 0
+reversed / 0 mixed / 0 deficit pixels with no yaw candidate. Plan contiguity
+is zero and decoration census is `mg1+3d`.
+
+All 42 PNGs in `/tmp/critic-t14-native-final-r2/t14` are distinct. Fresh
+inspection records the fixed vector
+`[9.1,9.1,9.0,9.0,9.0,9.0,9.0,9.1,9.1,9.1,9.0,9.1,9.0,9.0]`, floor
+**9.0**, mean **9.04**. Every yaw pair shows the complete gun, connected
+shroud, bustle, RWS, optics, Afganit/APS equipment and sensor suite making a
+genuine quarter-turn while the crew-capsule bow, glacis, engine deck, rear
+service package, cages and seven-wheel course remain fixed. Seats, brackets,
+collars and cage returns remain visible; no fused duplicate, stranded
+fitting, empty-air decoration or winding wound appears.
+
+All eight T-14 presentation assets and manifest binding are regenerated.
+Targeted assets/bore, tests, native provenance, family ordering, and private
+and stripped-public builds pass. **RE-FROZEN / KEEP `a94a2480`; retire
+source-baked `a88afa6c` as a playable.**

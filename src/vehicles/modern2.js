@@ -429,7 +429,10 @@ export const MODERN2_SPECS = {
     // heightM is the mast-inclusive datum (packet-filed 2.7 -> 3.16, the
     // oracle extract's measured bodyHeightM: real T-14 masts carry the p95;
     // 2.7 is the unmanned-turret roof).
-    dims: { hullLengthM: 8.7, overallLengthM: 10.8, widthM: 3.9, heightM: 3.16 },
+    // Runtime/render datum. The private comparison print and the authored
+    // current vehicle both terminate at 9.97-9.98 m; 10.8 m is the published
+    // real-vehicle gun-forward figure and no longer describes this playable.
+    dims: { hullLengthM: 8.7, overallLengthM: 9.98, widthM: 3.9, heightM: 3.16 },
     armor: mbtArmor({
       // MEASURED-LADDER r1 (oracle 3DYAROSLAV2 print, §B8 proportion truth):
       // deck raised to the print's 1.685 line (the r7 eyeball cut 1.62->1.50
@@ -437,10 +440,10 @@ export const MODERN2_SPECS = {
       // the higher deck), gun bore-line 2.03 (print tube axis, level).
       hl: 4.35, hw: 1.95, roofY: 1.685, trkTop: 1.05, floor: 0.43,
       turretPivot: [0, 1.685, -0.60], gunPivot: [0, 0.345, 0.6],
-      // gunBarrel proxy true-up (packet-filed literal, §C shadow-proxy
-      // sizes law): the built 2A82 visible run is 6.45 (pivot world z 0.0,
-      // muzzle +6.45 = 10.8 overall) — was a stale 6.0.
-      barrelLenM: 6.45, barrelRadM: 0.07,
+      // Keep the gameplay/shadow proxy on the authored 2A82 tube below.
+      // The former 6.45 m value belonged to the retired 10.8 m datum and
+      // extended collision/armor truth beyond the visible 5.64 m barrel.
+      barrelLenM: 5.64, barrelRadM: 0.07,
       glacis: { ke: 900, ce: 1200, phys: 900 }, lower: { ke: 300, ce: 350 },
       side: { ke: 200, ce: 200 }, rear: 60, roof: 50,
       // UNMANNED turret shell — thin cladding; hits eat optics/gun, not crew
@@ -2235,6 +2238,9 @@ function buildT14(P) {
     buildGun, buildRunningGear, fenders, headlight, liftEye, periscope,
     towCable, stowage } = KIT;
   const { rng } = P;
+  // Fully first-party runtime geometry. The local CC-BY comparison GLB is
+  // used only by QA pages for measurements and visual pairs; no source
+  // vertices, indices, materials, textures, rig or animation enter here.
   // ---- hull -----------------------------------------------------------------
   // MEASURED LADDER r1 (2026-08-06, oracle "T-14 Armara Uralvagon Factory"
   // registered + load-proven; §B8: the oracle is the proportion truth).
