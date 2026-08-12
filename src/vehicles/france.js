@@ -1,9 +1,8 @@
 // FRANCE lane (§5.38 owner priority wave, 2026-08-08) — self-contained
 // modern3-style module: specs registered at import, builders exported.
 // First resident: amx40 (AMX-40 export prototype — the KojfDiscord AW print
-// at public/models/community-candidates/amx-40_armored_warfare.glb is the
-// LOCAL-ONLY measurement reference; the playable embeds its exact upper
-// structure and uses the fleet-native running-gear system).
+// at public/models/community-candidates/amx-40_armored_warfare.glb is a
+// LOCAL-ONLY visual reference; the playable is our authored construction.
 // NOTE: leclerc/amx30/amx30b2 stay in profiles/misc.js (family migration
 // is a separate, owner-approvable move).
 //
@@ -15,7 +14,6 @@
 
 import { KIT } from './tankFactory.js';
 import { FITTINGS } from './profiles/kit.js';
-import { buildAMX40SourceGeometry } from './profiles/amx40-source-geometry.js';
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
 
 export const FRANCE_IDS = ['amx40'];
@@ -270,7 +268,7 @@ function muzzleBore(P, faceZ, R, boreR, seg = 14, rearR) {
 // muzzle), roof 7.62 FORWARD on a LOW mount (type10 published-line
 // precedent: a roof-standing MG owns heightM p95).
 function buildAMX40(P) {
-  const { box, cylY, cylZ, frustum, polyLoft, buildGun, buildRunningGear,
+  const { box, cylX, cylY, cylZ, frustum, polyMultiLoft, buildGun, buildRunningGear,
     liftEye, periscope, torus, xform } = KIT;
   const slab = orientedSlab;                                                    // §C winding guard on every mirrored slab
   // ---- hull core (receipt side_hull / bellyCorners lines) ------------------
@@ -290,7 +288,7 @@ function buildAMX40(P) {
   };
   segZ('hull', 1.70, 0.62, 0, 0.75, -2.95, 2.70);                               // narrow belly tub between the two rising end courses
   for (const s of [-1, 1]) {                                                    // sloped belly shoulder lifts the ±0.92 channel columns
-    const n = 12, z0 = -2.65, pitch = (2.70 - z0) / n;                          // rear shoulder stops ahead of the native sprocket wrap
+    const n = 12, z0 = -2.65, pitch = (2.64 - z0) / n;                          // both terminal shoulders stop outside the animated wraps
     for (let k = 0; k < n; k++) {
       const za = z0 + k * pitch, zb = z0 + (k + 1) * pitch + 0.004;
       P.add('hull', slab(
@@ -299,7 +297,11 @@ function buildAMX40(P) {
     }
   }
   for (const s of [-1, 1]) P.add('hull', box(0.034, 0.10, 0.12), s * 0.93, 0.39, 0); // source belly-shoulder suspension rib at the inner shoe edge
-  segZ('hull', 3.22, 0.60, 0, 1.36, -3.36, 0.96);                               // sponson body x ±1.61, y 1.06..1.66
+  // The rear native sprocket shoes rise into the visual sponson line.  The
+  // terminal course keeps its upper contour but lifts the structural floor
+  // clear of that animated run; the full-depth body resumes ahead of it.
+  segZ('hull', 3.22, 0.52, 0, 1.40, -3.36, -2.64);                              // rear sponson floor 1.14, above the shoe crown
+  segZ('hull', 3.22, 0.60, 0, 1.36, -2.64, 0.96);                               // main sponson body x ±1.61, y 1.06..1.66
   P.add('hull', frustum(1.61, 1.50, 0.94, 1.61, 1.48, 0.94, 1.06, 1.62));       // fore-body course to the glacis crest (closes the sub-deck flank;
   P.add('hull', frustum(1.61, 2.06, 1.46, 1.61, 2.04, 1.46, 1.06, 1.62));       //   split at z 1.48 for the i9/i10 station windows)
   segZ('hull', 3.08, 0.045, 0, 1.636, -1.02, 2.06);                             // FORE DECK 1.658, inset behind the source's chamfered ±1.61 shoulder
@@ -353,12 +355,12 @@ function buildAMX40(P) {
     // envelope 1.245 (§B4 shoe-stack law).
     P.add('hull', box(0.30, 0.19, 0.46), s * 1.46, 1.365, 2.27);
   }
-  P.add('hull', slab(                                                           // lower bow reverse plate, shallow first course
-    [-1.00, 0.44, 2.70], [1.00, 0.44, 2.70], [1.00, 0.61, 3.12], [-1.00, 0.61, 3.12],
-    [-1.00, 0.46, 2.72], [1.00, 0.46, 2.72], [1.00, 0.63, 3.12], [-1.00, 0.63, 3.12]));
+  P.add('hull', slab(                                                           // lower bow reverse plate, shallow first course; inside native shoe lanes
+    [-0.90, 0.44, 2.70], [0.90, 0.44, 2.70], [0.90, 0.61, 3.12], [-0.90, 0.61, 3.12],
+    [-0.90, 0.46, 2.72], [0.90, 0.46, 2.72], [0.90, 0.63, 3.12], [-0.90, 0.63, 3.12]));
   P.add('hull', slab(                                                           // steep source knee into the jaw lip
-    [-1.00, 0.61, 3.12], [1.00, 0.61, 3.12], [1.00, 1.044, 3.41], [-1.00, 1.044, 3.41],
-    [-1.00, 0.63, 3.12], [1.00, 0.63, 3.12], [1.00, 1.048, 3.43], [-1.00, 1.048, 3.43]));
+    [-0.90, 0.61, 3.12], [0.90, 0.61, 3.12], [0.90, 1.044, 3.41], [-0.90, 1.044, 3.41],
+    [-0.90, 0.63, 3.12], [0.90, 0.63, 3.12], [0.90, 1.048, 3.43], [-0.90, 1.048, 3.43]));
   // stern: rear plate face -3.395 (the rear body-column anchor; receipt
   // plan rear -3.380/-3.403) + undercut wedge (bellyCorners 0.44 -> 0.599
   // @ -3.31 -> 0.70 lip @ -3.43)
@@ -383,14 +385,19 @@ function buildAMX40(P) {
     // ref's 1.648 line; the published 3.36 width anchor rides TWO ±1.68
     // carrier bands (front panel + the mid module) like the print's own
     // widest bands (its i5/i12 slices).
-    for (const [lo, hi, outer] of skirtBands) P.add('hull', box(0.034, 0.68, hi - lo + 0.004), s * (outer - 0.017), 0.99, (lo + hi) / 2); // measured main run
-    P.add('hull', box(0.034, 0.68, 0.184), s * 1.633, 0.99, -0.828);            // visible skirt stays below the absolute-width carrier
-    P.add('hull', box(0.034, 0.68, 0.184), s * 1.633, 0.99, -0.648);
-    segZ('hull', 0.030, 0.040, s * 1.665, 0.65, -0.918, -0.558);               // low i5 published-width datum; segmented so the station slab sees a physical cross-section
+    // The source presents six large wheels under a shallow armor band.  The
+    // old 0.65 m hem covered the tire shoulders and reduced each assembly to
+    // a small lower arc, giving the correct count but the wrong mechanical
+    // stance.  Keep the same authored panels and width datums, but lift their
+    // lower edge to 0.76 m and shorten the panel height accordingly.
+    for (const [lo, hi, outer] of skirtBands) P.add('hull', box(0.034, 0.57, hi - lo + 0.004), s * (outer - 0.017), 1.045, (lo + hi) / 2);
+    P.add('hull', box(0.034, 0.57, 0.184), s * 1.633, 1.045, -0.828);           // visible skirt stays below the absolute-width carrier
+    P.add('hull', box(0.034, 0.57, 0.184), s * 1.633, 1.045, -0.648);
+    segZ('hull', 0.030, 0.040, s * 1.665, 0.76, -0.918, -0.558);               // low i5 published-width datum; segmented so the station slab sees a physical cross-section
     P.add('hull', slab(                                                         // front panel: high plate ends at the measured shoulder; a separate low datum owns published width
       [s * 1.580, 0.65, 2.35], [s * 1.610, 0.65, 2.35], [s * 1.610, 1.14, 3.18], [s * 1.580, 1.14, 3.18],
       [s * 1.580, 1.33, 2.35], [s * 1.610, 1.33, 2.35], [s * 1.610, 1.33, 3.18], [s * 1.580, 1.33, 3.18]));
-    segZ('hull', 0.030, 0.040, s * 1.665, 0.65, 2.20, 3.20);                  // low i12/i13 published-width datum, continuous through both source stations
+    segZ('hull', 0.030, 0.040, s * 1.665, 0.76, 2.20, 3.20);                  // low i12/i13 published-width datum, continuous through both source stations
     for (let k = 0; k < 5; k++) P.add('hullDark', box(0.020, 0.60, 0.016), s * 1.640, 0.97, 1.85 - k * 1.04); // panel seams (2mm proud of the 1.648 face)
     P.add('hullRubber', box(0.28, 0.20, 0.028), s * 0.51, 1.10, 3.382);         // bow mud flaps INBOARD under the beak jaw (faces 3.396; the ref's own
                                                                                 //   3.433 lip is the thin jaw class)
@@ -410,7 +417,7 @@ function buildAMX40(P) {
     for (let k = 0; k < 8; k++) {                                              // flush skirt/fender articulation; outer face remains exactly ±1.68
       const zh = -2.55 + k * 0.68;
       const outer = skirtOuterAt(zh);
-      P.add('hullDark', box(0.008, 0.48, 0.022), s * (outer - 0.004), 0.98, zh); // panel break
+      P.add('hullDark', box(0.008, 0.39, 0.022), s * (outer - 0.004), 1.035, zh); // panel break
       P.add('hullDetail', box(0.008, 0.07, 0.10), s * (outer - 0.004), 1.28, zh); // hinge/latch
     }
     for (const zh of [2.46, 2.76, 3.04]) P.add('hullDark', box(0.012, 0.045, 0.22), s * 1.605, 1.315, zh); // bow-fender edge breaks
@@ -419,9 +426,10 @@ function buildAMX40(P) {
   // ---- running gear: 6 wheels behind the skirts, RAISED idler front +
   // sprocket rear (§B6 trapezoid; receipt wraps: front rise 0.28@2.68 ->
   // 0.76@3.18, rear 0.55@-3.17), ground contact ±2.30 ---------------------
+  const amx40WheelZs = [2.15, 1.29, 0.43, -0.43, -1.29, -2.15];
   buildRunningGear(P, {
-    style: 'rubber', wheelR: 0.32, wheelW: 0.24, wheelY: 0.48, xc: 1.27,
-    wheelZs: [2.15, 1.29, 0.43, -0.43, -1.29, -2.15],
+    style: 'rubber', wheelR: 0.36, wheelW: 0.24, wheelY: 0.49, xc: 1.27,
+    wheelZs: amx40WheelZs,
     // r2 gate ladder: smaller/higher end drums — the r1 0.27-0.28 drums at
     // y 0.55 dipped the wrap bottoms 0.2-0.35 UNDER the ref's visible wrap
     // lines (side_hull worst clusters z ±2.66..3.23 / -2.89..-3.11)
@@ -436,6 +444,18 @@ function buildAMX40(P) {
     ],
     paintedEnds: true, coveredTop: true,
   });
+  // Restore the earlier AMX-40 wheel-face authority without changing its
+  // mechanical course.  These shallow olive dishes, dark hubs and rim rings
+  // are concentric with the six existing road wheels and remain inside the
+  // original track/skirt width; they are not a donor or duplicate wheel set.
+  for (const side of [-1, 1]) {
+    for (const wz of amx40WheelZs) {
+      P.add('hullDetail', cylX(0.285, 0.032, 18), side * 1.565, 0.49, wz);
+      P.add('hullDark', cylX(0.095, 0.036, 14), side * 1.570, 0.49, wz);
+      P.add('hullDark', torus(0.215, 0.013, 18), side * 1.584, 0.49, wz,
+        0, 0, Math.PI / 2);
+    }
+  }
   // ---- hull furniture ----
   P.add('hull', cylY(0.26, 0.26, 0.026, 16), -0.52, 1.652, 1.30);               // driver hatch (front-LEFT) on the fore deck
   P.add('hullDark', torus(0.26, 0.012, 16), -0.52, 1.663, 1.30);
@@ -552,15 +572,44 @@ function buildAMX40(P) {
   // follows the narrow nose, expanding cheeks, broad mid-body and tapered
   // aft shoulders; the 0.76 roof inset creates the source's materially
   // narrower crown without any course breaks or rectangular cabinets.
-  P.add('turret', polyLoft([
-    [-0.56, 1.30], [0.62, 1.50], [1.02, 1.12], [1.34, 0.68],
-    [1.38, -0.36], [1.27, -1.38], [0.94, -1.58], [0.36, -1.76],
-    [-0.34, -1.78], [-0.92, -1.60], [-1.28, -1.40], [-1.39, -0.36],
-    [-1.34, 0.70], [-0.98, 1.12],
-  ],
-  [0.00, 0.00, 0.00, 0.08, 0.13, 0.13, 0.18, 0.18, 0.18, 0.18, 0.18, 0.13, 0.00, 0.00],
-  [0.61, 0.60, 0.62, 0.64, 0.81, 0.81, 0.80, 0.67, 0.68, 0.80, 0.81, 0.81, 0.64, 0.62],
-  [0.58, 0.58, 0.62, 0.66, 0.68, 0.68, 0.68, 0.68, 0.68, 0.68, 0.68, 0.66, 0.62, 0.58])); // front crown pinches harder than the unchanged broad waist/aft loft
+  // Three connected rings replace the former single long wall.  The old
+  // two-ring loft jumped directly from the flared base to its tiny crown;
+  // in shaded side/front views that made every segment read as one tall,
+  // planar cabinet even though its plan trace was accurate.  This authored
+  // shoulder ring keeps the broad AMX-40 cheek volume low, turns inward
+  // progressively, and falls gently into the asymmetric rear lobes.  It is
+  // a new repository-authored shell, not a sampled or converted source mesh.
+  const amx40ShellPlan = [
+    [-0.82, 1.42], [-0.20, 1.49], [0.38, 1.49], [0.76, 1.42], [1.02, 1.12],
+    [1.30, 0.82], [1.39, 0.34], [1.38, -0.36], [1.32, -0.92],
+    [1.22, -1.40], [0.84, -1.68], [0.34, -1.80], [-0.34, -1.81],
+    [-0.82, -1.72], [-1.18, -1.50], [-1.34, -1.08], [-1.40, -0.38],
+    [-1.38, 0.30], [-1.30, 0.78], [-0.98, 1.12],
+  ];
+  const shellBottom = amx40ShellPlan.map(([, z]) => {
+    const aft = Math.max(0, Math.min(1, (1.30 - z) / 2.90));
+    return 0.02 + aft * 0.15;
+  });
+  const shellShoulder = amx40ShellPlan.map(([x, z], i) => {
+    const side = Math.min(1, Math.abs(x) / 1.35);
+    const aft = Math.max(0, Math.min(1, (0.45 - z) / 2.10));
+    return shellBottom[i] + 0.36 + side * 0.040 + aft * 0.020;
+  });
+  const shellCrown = amx40ShellPlan.map(([x, z]) => {
+    const side = Math.min(1, Math.abs(x) / 1.35);
+    const aft = Math.max(0, Math.min(1, (0.25 - z) / 2.00));
+    return 0.585 + side * 0.070 + aft * 0.025;
+  });
+  const crownInset = amx40ShellPlan.map(([x, z]) => {
+    const cheek = Math.max(0, Math.min(1, (z + 0.10) / 1.55));
+    const side = Math.min(1, Math.abs(x) / 1.35);
+    return 0.84 - cheek * 0.035 + side * 0.010;
+  });
+  P.add('turret', polyMultiLoft(amx40ShellPlan, [
+    { height: shellBottom, inset: 1.00 },
+    { height: shellShoulder, inset: 0.94 },
+    { height: shellCrown, inset: crownInset },
+  ]));
   P.add('turretDetail', box(0.025, 0.025, 2.24), -0.82, 0.612, -0.08, 0, 0.045, 0); // roof welds lie directly on the inset crown
   P.add('turretDetail', box(0.025, 0.025, 2.18), 0.80, 0.607, -0.10, 0, -0.045, 0);
   P.add('turretDetail', slab(                                                   // source right nose rail peaks inboard and recedes toward x=1.0
@@ -824,33 +873,4 @@ function buildAMX40(P) {
   P.topY = 1.05;
 }
 
-// Owner screenshot reopen (2026-08-10): surface-detail additions could not
-// repair the old front-half silhouette. The upper hull, complete turret,
-// mantlet/coax/LLLTV package and CN120 now come from the supplied model's
-// exact source solids. Donor gear nodes are absent; this native six-wheel
-// course preserves animation, suspension, damage, scrolling and thrown-track
-// behavior while matching the source stations and terminal rises.
-function buildAMX40Source(P) {
-  const { buildRunningGear } = KIT;
-  buildAMX40SourceGeometry(P);
-  buildRunningGear(P, {
-    style: 'rubber', wheelR: 0.32, wheelW: 0.24, wheelY: 0.48,
-    xc: 1.27, wheelZs: [2.15, 1.29, 0.43, -0.43, -1.29, -2.15],
-    sprocket: { z: -2.70, y: 0.67, r: 0.24, trackR: 0.16 },
-    idler: { z: 2.72, y: 0.70, r: 0.28, trackR: 0.20 },
-    rollers: [1.72, 0.43, -0.86, -1.98]
-      .map((z) => ({ z, y: 0.98, r: 0.07 })),
-    trackW: 0.54, trackTh: 0.055, endRingSpan: 0.50,
-    topY: 1.03, contactZF: 2.30, contactZR: -2.00,
-    loopPoints: [
-      [-2.70, 1.03], [2.72, 1.03], [2.86, 0.98], [3.00, 0.74],
-      [2.96, 0.70], [2.72, 0.35], [2.48, 0.22], [2.35, 0.15],
-      [2.23, 0.10], [-2.075, 0.10], [-2.314, 0.29], [-2.65, 0.47],
-      [-3.00, 0.66], [-3.18, 0.76], [-3.02, 1.03],
-    ],
-    paintedEnds: true, coveredTop: true, padCornerFloor: 0.012,
-    gearFloor: true,
-  });
-}
-
-export const FRANCE_BUILDERS = { amx40: buildAMX40Source };
+export const FRANCE_BUILDERS = { amx40: buildAMX40 };
