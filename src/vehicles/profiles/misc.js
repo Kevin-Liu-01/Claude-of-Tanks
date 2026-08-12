@@ -507,17 +507,17 @@ function buildAriete(P) {
   fenders(P, 1.20, 1.56, 1.41, -3.55, 2.45, 0.028);                            // fenders END at the glacis knee (the 3.30 run printed a 1.44 shelf over the ref's bare 1.26-1.38 glacis line)
   fenders(P, 1.55, 1.67, 1.400, -3.71, 2.45, 0.024);                          // trench fill to the skirt inner face (turret-fix round: the bare 1.56..1.735 strip read as a black trench over the track top at every 3/4 angle — SS-B2). Top 1.412 stays UNDER both the 1.42 skirt line and the 1.424 fender top: the first 1.41-seat fill printed one extra side-row pixel line (side_hull 69.5 -> 68.9)
   for (const s of [-1, 1]) {
-    for (let k = 0; k < 12; k++) {                                             // skirt PLANE at +-1.7546 rendered ABOVE the exposed wheels (r4 board: the
-      P.add('hull', box(0.0265, 0.82, 0.455), s * 1.71925, 1.01, -2.98 + k * 0.4775); // ground-scraping panels were an identity error — the print's
-      P.add('hull', box(0.0225, 0.695, 0.455), s * 1.74375, 0.9475, -2.98 + k * 0.4775); // full-depth +-1.6-1.69 front cols are its WIDE TRACK PLANE); band 0.66-1.42 (push round: ref front-row skirt bottom 0.626 at +-1.76-1.80; wheels stay exposed below 0.66); depth 0.478 = the 0.4775 course pitch (turret-fix round: through-slots read as a picket fence — SS-B2).
+    for (let k = 0; k < 12; k++) {                                             // restore the authored seven-wheel read: retain the original panel crowns,
+      P.add('hull', box(0.0265, 0.62, 0.455), s * 1.71925, 1.11, -2.98 + k * 0.4775); // but lift the hem above the road-wheel crowns instead of hiding the
+      P.add('hull', box(0.0225, 0.495, 0.455), s * 1.74375, 1.0475, -2.98 + k * 0.4775); // complete suspension behind an almost continuous wall.
     }                                                                          // r3-1024 OUTER-SKIN SPLIT: main course tops 1.42 pull inboard to x 1.7325 (rendered 1.7546, 2px clear of the ±1.7625 col boundary) and a LOW outer skin (x 1.7325-1.755, top 1.295) rides the ±1.784 front cols — the ref's outermost skirt cols read tops 1.317 rendered, not 1.57; the full-height 1.755 faces printed +0.12 there
     P.add('hull', slab(                                                        // 13th course = the ref's SLANTED LEADING CUT (one raked lip 1.42@2.52 -> 1.34@2.98 — the flat 1.42 course printed 0.10-0.14 over the falling glacis line on four side cols + the +-1.797 front col)
-      [s * 1.706, 0.60, 2.5225], [s * 1.7325, 0.60, 2.5225], [s * 1.7325, 0.60, 2.98], [s * 1.706, 0.60, 2.98],
+      [s * 1.706, 0.80, 2.5225], [s * 1.7325, 0.80, 2.5225], [s * 1.7325, 0.80, 2.98], [s * 1.706, 0.80, 2.98],
       [s * 1.706, 1.42, 2.5225], [s * 1.7325, 1.42, 2.5225], [s * 1.7325, 1.34, 2.98], [s * 1.706, 1.34, 2.98]));
-    P.add('hull', box(0.0225, 0.695, 0.4575), s * 1.74375, 0.9475, 2.75125);   // 13th-course outer skin
-    P.add('hull', box(0.0265, 0.82, 0.34), s * 1.71925, 1.01, -3.39);          // 14th course over the sprocket
-    P.add('hull', box(0.0225, 0.695, 0.34), s * 1.74375, 0.9475, -3.39);       // 14th-course outer skin
-    if (s > 0) P.add('hull', box(0.055, 0.70, 0.38), s * 1.75, 0.95, 0.92);    // R SKIRT END PLATE x 1.7225-1.7775 (r8: the +1.81 front col wants the ref's full 0.59-1.31 skirt band and the +1.84 plan bin wants a short DOT [z_w ~0.92] — a 38 cm plate delivers both AND carries widthM's 3.58; a full-length plane here printed a 3.1-err plan column x2)
+    P.add('hull', box(0.0225, 0.495, 0.4575), s * 1.74375, 1.0475, 2.75125);  // 13th-course outer skin
+    P.add('hull', box(0.0265, 0.62, 0.34), s * 1.71925, 1.11, -3.39);          // 14th course over the sprocket
+    P.add('hull', box(0.0225, 0.495, 0.34), s * 1.74375, 1.0475, -3.39);       // 14th-course outer skin
+    if (s > 0) P.add('hull', box(0.055, 0.50, 0.38), s * 1.75, 1.05, 0.92);    // R SKIRT END PLATE, crown preserved / hem lifted
     else P.add('hull', box(0.055, 0.04, 0.38), s * 1.75, 1.275, 0.92);         // L MIRROR-DOT STRIP x -1.7225..-1.7775 (r3 1024: the ref's -1.822 front col is a 1.272-1.314 DOT — its L mirror arm — where the R col carries the full band; the symmetric full plate paid 0.332, THE worst front_hull col. The 0.38 z-band keeps the plan ±1.84 dot AND the widthM pixel column; max authored |x| stays 1.7775 = the render-scale k anchor)
     for (let k = 0; k < 6; k++) P.add('hullDark', box(0.036, 0.50, 0.016), s * 1.715, 1.05, 2.62 - k * 1.00); // seam strips ON the shaved panels
   }
@@ -531,6 +531,18 @@ function buildAriete(P) {
     sprocket: { z: -3.12, y: 0.86, r: 0.21 }, idler: { z: 3.30, y: 0.945, r: 0.09 },   // (90-ladder r2: a +0.035 sprocket raise chased the far-stern 0.58-0.70 rake wants and was REVERTED — the tangent ramp rose with the wrap and printed +0.017 on five matched mid-ramp cols: hull 85.0 -> 84.2; the 0.04-class far-stern bottoms stay the cheaper residual) (r3 wrap break: small HIGH idler — band annulus [0.79..1.10] at the 3.57 apex col ≈ the ref's [0.786..1.01]; band far 3.525/pads 3.545 stay clear of the certified 3.686 nose col at 3.581; wrap top 1.175 keeps 15 mm under the 1.19 crest bottom, §B4 exact-clear)
     rollers: [1.95, 0.70, -0.65, -1.80].map((z) => ({ z, y: 0.88, r: 0.08 })),
     trackW: 0.615, topY: 0.88, botY: 0.055, contactZF: 2.22, contactZR: -2.05, paintedEnds: true, coveredTop: true, arms: true,
+  // Shallow concentric faces on the existing seven wheel stations.  The
+  // physical rubber tires and course remain owned by buildRunningGear; these
+  // sit within its original width and restore the olive dish/dark hub cadence
+  // that distinguished the stronger first-party Ariete.
+  for (const side of [-1, 1]) {
+    for (const wz of wheelZs) {
+      P.add('hullDetail', cylX(0.275, 0.035, 18), side * 1.69, 0.43, wz);
+      P.add('hullDark', cylX(0.095, 0.039, 14), side * 1.695, 0.43, wz);
+      P.add('hullDark', torus(0.205, 0.014, 18), side * 1.711, 0.43, wz,
+        0, 0, Math.PI / 2);
+    }
+  }
   });
   // (push-2: contactZF 2.36 -> 2.22 — the ref approach ramp lifts off at
   // ~2.33 and climbs SHALLOW [0.22@2.68, 0.28@2.92 authored] where the 2.36
@@ -772,31 +784,38 @@ function buildAriete(P) {
 // no reference mesh data is imported, sampled, converted or shipped.
 function buildArieteNative2026(P) {
   const {
-    box, cylX, cylY, cylZ, sph, torus, polyLoft, xform,
+    box, cylX, cylY, cylZ, sph, torus, polyLoft, polyMultiLoft, xform,
     buildGun, buildRunningGear, fenders, headlight, liftEye, periscope, cupola,
   } = KIT;
   const slab = orientedSlab;
 
   // ---- long, low hull tightly draped around the native gear ----
   P.add('hull', box(2.00, 0.68, 6.35), 0, 0.66, -0.03);                       // inner lower tub, clear of track lanes
-  P.add('hull', box(3.28, 0.25, 5.18), 0, 1.17, -0.58);                       // low sponson course above the shoes
+  // Wide sponsons end before the sprocket uprun.  A narrower structural
+  // return continues between the two live courses, preserving the deck
+  // load path without putting a full-width wall through the rear shoes.
+  P.add('hull', box(3.28, 0.25, 4.91), 0, 1.17, -0.445);
+  P.add('hull', box(2.00, 0.25, 0.27), 0, 1.17, -3.035);
   P.add('hull', box(3.22, 0.055, 3.92), 0, 1.325, -1.08);                     // broad flat engine/crew deck
   for (const s of [-1, 1]) {
     // Shallow pointed bow: inner belly stays between the tracks while the
     // upper shoulders flare above the idler uprun.
     P.add('hull', slab(
-      [s * 0.01, 0.42, 1.52], [s * 1.00, 0.42, 1.52], [s * 0.94, 0.96, 3.38], [s * 0.01, 0.95, 3.54],
-      [s * 0.01, 1.30, 1.52], [s * 1.58, 1.30, 1.52], [s * 1.51, 1.04, 3.40], [s * 0.01, 1.01, 3.55]));
+      [s * 0.01, 0.42, 1.52], [s * 1.00, 0.72, 1.52], [s * 0.94, 1.27, 3.38], [s * 0.01, 1.25, 3.54],
+      [s * 0.01, 1.30, 1.52], [s * 1.58, 1.30, 1.52], [s * 1.51, 1.29, 3.40], [s * 0.01, 1.26, 3.55]));
     P.add('hull', slab(
-      [s * 1.04, 1.15, 1.55], [s * 1.58, 1.15, 1.55], [s * 1.51, 1.04, 3.40], [s * 1.10, 0.98, 3.41],
-      [s * 1.04, 1.36, 1.55], [s * 1.64, 1.36, 1.55], [s * 1.60, 1.17, 3.42], [s * 1.10, 1.13, 3.43]));
+      [s * 1.04, 1.15, 1.55], [s * 1.58, 1.15, 1.55], [s * 1.51, 1.27, 3.40], [s * 1.10, 1.25, 3.41],
+      [s * 1.04, 1.36, 1.55], [s * 1.64, 1.36, 1.55], [s * 1.60, 1.39, 3.42], [s * 1.10, 1.36, 3.43]));
   }
   // Rear lower return and low layered service transom.
   P.add('hullDark', box(1.98, 0.44, 0.40), 0, 0.76, -3.38);
   P.add('hull', box(0.60, 0.39, 0.045), -0.67, 0.79, -3.61);
   P.add('hull', box(0.67, 0.34, 0.045), 0.00, 0.76, -3.61);
   P.add('hull', box(0.49, 0.29, 0.045), 0.63, 0.80, -3.61);
-  P.add('hull', box(3.08, 0.24, 0.25), 0, 1.10, -3.48);
+  // The low service backing is central between the tracks; its two outer
+  // shoulders step above the sprocket course instead of intersecting it.
+  P.add('hull', box(1.92, 0.24, 0.25), 0, 1.10, -3.48);
+  for (const s of [-1, 1]) P.add('hull', box(0.54, 0.16, 0.25), s * 1.25, 1.34, -3.48);
   P.add('hullDark', box(1.18, 0.23, 0.035), -0.36, 0.98, -3.625);
   P.add('hullDark', box(0.70, 0.17, 0.035), 0.86, 1.00, -3.625);
   for (let k = 0; k < 5; k++) {
@@ -825,13 +844,17 @@ function buildArieteNative2026(P) {
   // the final 5 cm top-down contiguity cell at x 0.40 / z -3.68.
   P.add('hullDark', box(0.14, 0.010, 0.14), 0.40, 0.54, -3.68);
 
-  // Upper-half skirts leave all seven wheel centres and lower arcs legible.
+  // Shallow segmented skirts cover the return run and only the upper wheel
+  // shoulders.  The former 0.32 m course sat wholly above the wheel crowns,
+  // making the native gear look naked; this lower course restores the C1's
+  // draped hull-over-seven-wheels stance while retaining every lower arc.
   fenders(P, 1.10, 1.64, 1.35, -2.78, 2.72, 0.03);
   for (const s of [-1, 1]) {
     for (let k = 0; k < 11; k++) {
       const z = -2.72 + k * 0.50;
-      P.add('hull', box(0.030, 0.32, 0.47), s * 1.65, 1.15, z);
-      P.add('hullDark', box(0.034, 0.17, 0.016), s * 1.668, 1.14, z + 0.235);
+      const h = k === 0 ? 0.40 : 0.46;
+      P.add('hull', box(0.030, h, k === 0 ? 0.37 : 0.47), s * 1.65, 0.995, z);
+      P.add('hullDark', box(0.034, h * 0.72, 0.016), s * 1.668, 0.995, z + 0.235);
     }
     P.add('hullRubber', box(0.024, 0.24, 0.38), s * 1.72, 1.01, -3.22);
     P.add('hullRubber', box(0.024, 0.24, 0.36), s * 1.72, 1.01, 2.78);
@@ -842,7 +865,7 @@ function buildArieteNative2026(P) {
   P.add('hullDark', box(0.52, 0.018, 0.04), 0.48, 1.32, 1.78, -0.10, 0, 0);
   for (const x of [0.30, 0.48, 0.66]) periscope(P, 'hullDetail', x, 1.33, 2.02);
   for (const s of [-1, 1]) {
-    headlight(P, s * 1.22, 1.23, 3.12, -0.22, 0.05);
+    headlight(P, s * 1.22, 1.32, 3.12, -0.22, 0.05);
     P.add('hullDetail', box(0.38, 0.025, 0.18), s * 1.22, 1.34, 3.11, -0.22, 0, 0);
     liftEye(P, 'hullDetail', s * 1.30, 1.34, -2.54);
     P.add('hullDetail', torus(0.09, 0.016, 14), s * 0.58, 0.61, 3.43, Math.PI / 2, 0, 0);
@@ -869,40 +892,59 @@ function buildArieteNative2026(P) {
   P.add('hullDetail', box(0.055, 0.055, 1.40), -1.27, 1.38, -0.30, 0, 0.05, 0);
 
   // Seven large, closely spaced fleet-native wheels and one linked course.
-  const wheelZs = [2.28, 1.52, 0.76, 0.00, -0.76, -1.52, -2.28];
-  const XC = 1.37;
+  const wheelZs = [2.40, 1.65, 0.90, 0.15, -0.60, -1.35, -2.10];
+  const XC = 1.3725;
   buildRunningGear(P, {
     style: 'rubber', dishR: 0.74, tireHex: 0x34352d, wheelHex: 0x454a38,
-    wheelR: 0.490, wheelW: 0.255, wheelY: 0.490, xc: XC,
+    wheelR: 0.410, wheelW: 0.230, wheelY: 0.450, xc: XC,
     wheelZs,
-    sprocket: { z: -3.02, y: 0.50, r: 0.37 },
-    idler: { z: 3.03, y: 0.49, r: 0.36 },
-    rollers: [-1.82, -0.92, 0, 0.92, 1.82].map((z) => ({ z, y: 0.92, r: 0.075 })),
-    trackW: 0.59, trackTh: 0.070, topY: 0.92, botY: 0.015,
-    deadSag: 0.022, paintedEnds: true, coveredTop: false, arms: true,
+    sprocket: { z: -3.12, y: 0.86, r: 0.21 },
+    idler: { z: 3.30, y: 0.945, r: 0.09 },
+    rollers: [1.95, 0.70, -0.65, -1.80].map((z) => ({ z, y: 0.88, r: 0.08 })),
+    trackW: 0.615, topY: 0.88, botY: 0.055,
+    contactZF: 2.22, contactZR: -2.05,
+    deadSag: 0.022, paintedEnds: true, coveredTop: true, arms: true,
   });
-  tightenHullShadowProxy(P, { xc: XC, trackW: 0.35, y0: 0.12, y1: 0.68, z0: -2.76, z1: 2.76, hullZ0: -3.42, hullZ1: 3.48 });
+  tightenHullShadowProxy(P, { xc: XC, trackW: 0.34, y0: 0.15, y1: 0.58, z0: -2.40, z1: 2.60, hullZ0: -3.20, hullZ1: 3.20 });
 
   // ---- low, broad connected Ariete turret ----
   P.turretG.position.set(0, 1.38, -0.18);
   P.add('turret', xform(cylY(0.88, 0.94, 0.10, 22), 0, 0, 0, 0, 0, 0, [1.12, 1, 0.80]), 0, 0.02, 0.02);
   P.add('turret', box(1.78, 0.13, 1.06), 0, 0.08, -0.02);                    // buried ring/collar seat
   const turretPlan = [
-    [-0.38, 1.48], [0.38, 1.48], [1.00, 1.08], [1.34, 0.46],
-    [1.43, -1.34], [1.28, -2.08], [-1.28, -2.08], [-1.43, -1.34],
-    [-1.34, 0.46], [-1.00, 1.08],
+    [-0.34, 1.54], [0.34, 1.54], [0.92, 1.18], [1.28, 0.60],
+    [1.40, -0.32], [1.39, -1.32], [1.22, -2.06], [-1.22, -2.06],
+    [-1.39, -1.32], [-1.40, -0.32], [-1.28, 0.60], [-0.92, 1.18],
   ];
-  const topY = [0.38, 0.38, 0.45, 0.53, 0.51, 0.48, 0.48, 0.51, 0.53, 0.45];
-  const inset = [0.70, 0.70, 0.78, 0.84, 0.88, 0.89, 0.89, 0.88, 0.84, 0.78];
-  P.add('turret', polyLoft(turretPlan, 0.06, topY, inset), 0, 0, 0);
+  const shellShoulder = turretPlan.map(([x, z]) => {
+    const side = Math.min(1, Math.abs(x) / 1.40);
+    const fore = Math.max(0, Math.min(1, (z - 0.30) / 1.24));
+    const aft = Math.max(0, Math.min(1, (-z - 0.55) / 1.50));
+    return 0.45 + side * 0.035 - fore * 0.055 + aft * 0.025;
+  });
+  const shellCrown = turretPlan.map(([x, z]) => {
+    const side = Math.min(1, Math.abs(x) / 1.40);
+    const fore = Math.max(0, Math.min(1, (z - 0.25) / 1.29));
+    return 0.645 + side * 0.020 - fore * 0.075;
+  });
+  const crownInset = turretPlan.map(([x, z]) => {
+    const fore = Math.max(0, Math.min(1, (z - 0.20) / 1.34));
+    const side = Math.min(1, Math.abs(x) / 1.40);
+    return 0.91 - fore * 0.075 + side * 0.010;
+  });
+  P.add('turret', polyMultiLoft(turretPlan, [
+    { height: 0.06, inset: 1.00 },
+    { height: shellShoulder, inset: 0.98 },
+    { height: shellCrown, inset: crownInset },
+  ]));
   P.add('turretDark', box(1.72, 0.024, 0.92), 0, 0.07, -0.02);                // contact shadow remains inside shell
   // Swept cheek appliqué and low flank/bustle modules follow the primary skin.
   for (const s of [-1, 1]) {
     P.add('turret', slab(
       [s * 0.40, 0.12, 1.52], [s * 1.05, 0.15, 1.02], [s * 1.40, 0.17, 0.35], [s * 0.72, 0.13, 0.82],
-      [s * 0.36, 0.39, 1.45], [s * 0.91, 0.47, 0.98], [s * 1.20, 0.50, 0.34], [s * 0.64, 0.42, 0.82]));
-    P.add('turret', box(0.24, 0.20, 0.72), s * 1.32, 0.34, -0.56, 0, 0, 0);
-    P.add('turretDark', box(0.024, 0.14, 0.62), s * 1.455, 0.34, -0.56);
+      [s * 0.36, 0.62, 1.45], [s * 0.91, 0.70, 0.98], [s * 1.20, 0.73, 0.34], [s * 0.64, 0.65, 0.82]));
+    P.add('turret', box(0.24, 0.39, 0.72), s * 1.32, 0.455, -0.56, 0, 0, 0);
+    P.add('turretDark', box(0.024, 0.33, 0.62), s * 1.455, 0.455, -0.56);
   }
 
   // Rounded mantlet and gun root are a single pitch-owned sealed package.
@@ -914,23 +956,27 @@ function buildArieteNative2026(P) {
   muzzleBore(P, 0.075, 4.365);
 
   // Two low hatch/cupola wells, TURMS/panoramic sights and seated weapon.
-  cupola(P, 'turret', 0.52, 0.53, -0.62, 0.24, 0.12, 10);
-  cupola(P, 'turret', -0.50, 0.52, -0.66, 0.22, 0.10, 10);
+  // The station seats follow the authored 0.64 m crown.  Earlier values
+  // were inherited from the discarded capsule shell and buried most of the
+  // functional suite inside the roof, leaving a false empty plate in close
+  // and top views.
+  cupola(P, 'turret', 0.52, 0.675, -0.62, 0.24, 0.12, 10);
+  cupola(P, 'turret', -0.50, 0.670, -0.66, 0.22, 0.10, 10);
   for (let k = 0; k < 6; k++) {
     const a = k / 6 * Math.PI * 2;
-    P.add('turretGlass', box(0.050, 0.030, 0.018), 0.52 + Math.cos(a) * 0.20, 0.64, -0.62 + Math.sin(a) * 0.20, 0, -a, 0);
+    P.add('turretGlass', box(0.050, 0.030, 0.018), 0.52 + Math.cos(a) * 0.20, 0.785, -0.62 + Math.sin(a) * 0.20, 0, -a, 0);
   }
-  sightBox(P, 'turret', 0.50, 0.53, 0.31, 0.30, 0.21, 0.25, -0.06);
-  sightBox(P, 'turret', -0.28, 0.57, -0.94, 0.24, 0.27, 0.23, 0.02);
-  sightBox(P, 'turret', -0.83, 0.49, -0.18, 0.20, 0.16, 0.23, 0.04);
-  P.add('turret', box(0.30, 0.11, 0.24), 0.88, 0.53, -0.83, 0, -0.08, 0);
-  P.add('turretDark', box(0.24, 0.025, 0.18), 0.88, 0.60, -0.83, 0, -0.08, 0);
-  P.add('turretDetail', torus(0.12, 0.018, 16), -0.05, 0.59, -1.32, Math.PI / 2, 0, 0);
-  for (const p of [[-0.60,0.57,0.12],[0.08,0.54,0.50],[0.80,0.55,-0.10]]) periscope(P, 'turretDetail', p[0], p[1], p[2]);
+  sightBox(P, 'turret', 0.50, 0.685, 0.31, 0.32, 0.24, 0.27, -0.06);
+  sightBox(P, 'turret', -0.28, 0.710, -0.94, 0.25, 0.29, 0.24, 0.02);
+  sightBox(P, 'turret', -0.83, 0.675, -0.18, 0.21, 0.18, 0.24, 0.04);
+  P.add('turret', box(0.30, 0.11, 0.24), 0.88, 0.695, -0.83, 0, -0.08, 0);
+  P.add('turretDark', box(0.24, 0.025, 0.18), 0.88, 0.765, -0.83, 0, -0.08, 0);
+  P.add('turretDetail', torus(0.12, 0.018, 16), -0.05, 0.735, -1.32, Math.PI / 2, 0, 0);
+  for (const p of [[-0.60,0.715,0.12],[0.08,0.690,0.50],[0.80,0.705,-0.10]]) periscope(P, 'turretDetail', p[0], p[1], p[2]);
   {
-    P.add('turret', cylY(0.13, 0.17, 0.12, 12), -0.55, 0.64, -0.68);
-    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', tone: 'two-tone', elev: -0.02, seed: 118, scale: 1.05, ammo: true });
-    mg.position.set(-0.55, 0.70, -0.68); P.turretG.add(mg);
+    P.add('turret', cylY(0.13, 0.17, 0.12, 12), -0.55, 0.785, -0.68);
+    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', tone: 'two-tone', elev: -0.02, seed: 118, scale: 0.62, ammo: true });
+    mg.position.set(-0.55, 0.795, -0.68); P.turretG.add(mg);
   }
   for (const s of [-1, 1]) {
     P.add('turret', box(0.22, 0.16, 0.42), s * 1.28, 0.38, -0.12, 0, s * 0.18, 0);
@@ -947,9 +993,9 @@ function buildArieteNative2026(P) {
     P.add('turretDetail', box(0.032, 0.27, 0.032), s * 1.16, 0.34, -2.17);
     P.add('turretDetail', box(0.035, 0.36, 0.035), s * 0.98, 0.33, -1.96, -0.48, 0, s * 0.40);
     const antennaZ = s < 0 ? -0.60 : -1.50;
-    P.add('turretDetail', cylY(0.048, 0.068, 0.07, 10), s * 1.00, 0.55, antennaZ);
-    const whip = FITTINGS.antennaWhip({ mats: P.mats, h: s < 0 ? 2.62 : 0.72, r: 0.012, rake: s * 0.04, seed: 130 + s });
-    whip.position.set(s * 1.00, 0.59, antennaZ); P.turretG.add(whip);
+    P.add('turretDetail', cylY(0.048, 0.068, 0.07, 10), s * 1.00, 0.685, antennaZ);
+    const whip = FITTINGS.antennaWhip({ mats: P.mats, h: s < 0 ? 0.33 : 0.28, r: 0.010, rake: s * 0.04, seed: 130 + s });
+    whip.position.set(s * 1.00, 0.725, antennaZ); P.turretG.add(whip);
   }
   for (const y of [0.24, 0.43]) P.add('turretDetail', box(1.90, 0.03, 0.03), 0, y, -2.20);
   for (const x of [-0.80,-0.40,0,0.40,0.80]) P.add('turretDetail', box(0.028, 0.21, 0.028), x, 0.34, -2.20);
@@ -3327,7 +3373,11 @@ export const MISC_PROFILES = {
     turret: 'ifv', turretWidth: 1.60, turretDepth: 1.70, turretHeight: 0.93, turretFront: 0.68, turretRear: -0.85, gunLength: 4.44, gunRadius: 0.035, sleeve: false, evac: null, pano: false, mg: false, smoke: false, antennas: false,
   },
   type90: { build: buildType90 },
-  ariete: { build: buildArieteNative2026 },
+  // Runtime Ariete is the stronger earlier repository-authored construction.
+  // The weaker later Native2026 experiment remains historical comparison
+  // code only; neither a source mesh nor converted vertex payload is used at
+  // runtime.
+  ariete: { build: buildAriete },
   leclerc: { build: buildLeclerc },
   t80u: { build: buildT80U },
   type74: { build: buildType74Source2026 },
