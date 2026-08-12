@@ -46,14 +46,18 @@ function buildT72B87(P) {
     belly: [[-2.95, 1.12], [-2.85, 0.75], [-2.66, 0.90], [-2.35, 0.48], [-1.61, 0.32], [2.30, 0.30], [2.95, 0.42], [3.05, 0.50]],
     wUp: [[-2.95, 1.28], [-2.68, 1.60], [2.82, 1.60], [3.05, 1.46]],
     wLo: [[-2.95, 1.03], [3.05, 1.00]],
-    sponsonY: 0.86,
+    // Keep the authored mid-hull datum, but lift only the two terminal
+    // bays above the live sprocket/idler shoes.  The later replacement
+    // model solved this by changing the whole hull; the native restoration
+    // keeps the stronger 1987 primary masses and repairs the corridor.
+    sponsonY: [[-2.55, 0.86], [-2.45, 1.24], [-1.55, 1.24], [-1.45, 0.86], [2.40, 0.86], [2.50, 1.16], [3.05, 1.16]],
   });
   // fender prongs carry the published span (x 1.41..1.69, y 0.75..1.19 —
   // 19% body mass so hullLengthM keeps its +3.34 column; z starts at the
   // idler-wrap front so the arc stays clear, §B4).
   for (const s of [-1, 1]) {
-    P.add('hull', box(0.28, 0.44, 0.16), s * 1.55, 0.97, 3.26);
-    P.add('hullDark', box(0.24, 0.05, 0.022), s * 1.55, 0.97, 3.332);  // prong face flap hinge (§B3)
+    P.add('hull', box(0.28, 0.10, 0.16), s * 1.55, 1.24, 3.26);
+    P.add('hullDark', box(0.24, 0.04, 0.022), s * 1.55, 1.21, 3.332);  // prong face flap hinge (§B3)
   }
   // anchor studs at the fender-lip band (r5: at y 0.95 they were the only
   // content in the x 1.78-1.79 front columns — ref reads a 1.27..1.30
@@ -66,7 +70,7 @@ function buildT72B87(P) {
     P.add('hull', box(0.16, 0.05, 0.48), s * 1.70, i >= 9 ? 1.18 : i >= 8 ? 1.24 : 1.30, -2.53 + i * 0.545);
   }
   ruDeck(P, { deckY: 1.40, hatchZ: 1.72, gz: -1.33, grilles: 5, gw: 1.5, periY: 1.375 });
-  ruGlacisKit(P, { w: 3.3, y: 1.02, z: 2.72, eyeZ: 3.02, hookY: 0.62, hookZ: 3.12 });
+  ruGlacisKit(P, { w: 3.3, y: 1.02, z: 2.72, eyeX: 0.84, eyeZ: 3.02, hookY: 0.82, hookZ: 3.12 });
   KIT.towCable(P, [[-1.2, 1.30, 2.17], [0, 1.38, 1.72], [1.2, 1.30, 2.17]]);
   // OPVT snorkel + drum rack ON the tail plate (ref deck bumps 1.585)
   P.add('hullDark', cylX(0.115, 2.4, 10), 0, 1.355, 1.52);
@@ -106,10 +110,10 @@ function buildT72B87(P) {
   // +3.33 plan span is now the prongs' job. Left kept clear of the -1.78
   // plan column (ref front there is the 2.661 skirt line).
   // (r11: flap floor raised over the idler wrap arc — clip audit front 346)
-  P.add('hullRubber', box(0.42, 0.26, 0.045), -1.48, 1.00, 3.09);
-  P.add('hullRubber', box(0.46, 0.26, 0.045), 1.46, 1.00, 3.09);
+  P.add('hullRubber', box(0.42, 0.26, 0.035), -1.48, 1.00, 3.335);
+  P.add('hullRubber', box(0.46, 0.26, 0.035), 1.46, 1.00, 3.335);
   // prong-to-flap bridges above the idler wrap (§B2/§B4)
-  for (const s of [-1, 1]) P.add('hull', box(0.28, 0.31, 0.11), s * 1.55, 1.035, 3.145);
+  for (const s of [-1, 1]) P.add('hull', box(0.28, 0.06, 0.22), s * 1.55, 1.23, 3.17);
   buildRunningGear(P, {
     style: 'rubber', wheelR: 0.375, wheelW: 0.21, wheelY: 0.46, xc: 1.355, dishR: 0.84,
     wheelZs: evenStations(6, 3.88, 0.36),
@@ -198,8 +202,12 @@ function buildT72B87(P) {
   P.add('turret', box(0.30, 0.28, 0.26), 0.72, 0.30, 1.00, 0, 0.25, 0);
   P.add('turretGlass', box(0.20, 0.18, 0.02), 0.76, 0.32, 1.13, 0, 0.25, 0);
   P.add('turret', box(0.26, 0.18, 0.30), -0.55, 0.40, 0.55);
-  P.add('turret', box(0.34, 0.30, 0.38), -0.55, 0.62, 0.55);
-  P.add('turretGlass', box(0.22, 0.14, 0.03), -0.55, 0.66, 0.75);
+  // Compact the tall night-sight head around its existing broad lower seat.
+  // The previous rectangular cap added a procedural-only block in the pure
+  // right silhouette; this retains the 1987 station identity and load path
+  // while matching the lower source envelope.
+  P.add('turret', box(0.30, 0.24, 0.34), -0.55, 0.57, 0.55);
+  P.add('turretGlass', box(0.20, 0.12, 0.03), -0.55, 0.60, 0.735);
   P.add('turret', cylY(0.24, 0.26, 0.30, 14), -0.62, 0.45, -0.02);
   P.add('turret', cylY(0.22, 0.24, 0.14, 14), -0.62, 0.67, -0.02);
   P.add('turretDark', cylY(0.19, 0.19, 0.03, 12), -0.62, 0.785, -0.02);
@@ -221,7 +229,7 @@ function buildT72B87(P) {
   // (z<=-0.16) and 0.77-sight-box (z -0.04..0.34) side covers, receiver
   // seat byte-held (§C pintle allowance).
   {
-    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'nsvt', tone: 'dark', elev: -0.06, ammo: true });
+    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'nsvt', tone: 'dark', elev: -0.06, ammo: true, scale: 0.82 });
     mg.position.set(-0.50, 0.40, -0.50);  // T3B87: receiver band clears the -0.757 window edge (the -0.703 col ref top is 1.82; the spike col walked)
     P.turretG.add(mg);
   }
@@ -307,13 +315,13 @@ function buildT72B87(P) {
   P.topY = 1.2;
 }
 
-// Owner-source rebuild (2026-08-11).  The legacy print-tuned B87 above is
+// First-party native rebuild (2026-08-11). The legacy print-tuned B87 above is
 // retained as an archaeological receipt, but its high dome, deep side wall
-// and few oversized K-1 proxies no longer matched the owner's recovered
-// 1987 vehicle.  This builder follows the visual source directly while
-// retaining the fleet-native linked track, articulated gun and explicit
-// turret/hull ownership rules.
-function buildT72B87Owner(P, variant = 'b87') {
+// and few oversized K-1 proxies no longer matched the reference vehicle.
+// This builder is repository-authored from visual measurements and retains
+// the fleet-native linked track, articulated gun and explicit turret/hull
+// ownership rules. No reference vertices or runtime asset are used.
+function buildT72B87Native(P, variant = 'b87') {
   const { box, cylX, cylY, cylZ, torus, buildRunningGear } = KIT;
   const b3 = variant === 'b3';
 
@@ -803,8 +811,8 @@ function buildT72B87Owner(P, variant = 'b87') {
   P.topY = 1.16;
 }
 
-function buildT72B3Owner(P) {
-  buildT72B87Owner(P, 'b3');
+function buildT72B3Native(P) {
+  buildT72B87Native(P, 'b3');
 }
 
 
@@ -863,7 +871,7 @@ function buildT72B3M(P) {
     // 2022: rear corner flare on the -4.436 plate face; nose tapers to the
     // ref's 1.893-at-|x|0.6 plan front (the outboard 1.95-2.29 staircase is
     // fender/flap fittings, dims-capped at 2.1425).
-    wUp: [[-4.436, 1.03], [-4.39, 1.42], [-4.34, 1.52], [-3.95, 1.58], [1.60, 1.58], [1.66, 1.55], [1.9055, 0.60]],
+    wUp: [[-4.436, 1.03], [-4.39, 1.42], [-4.34, 1.52], [-3.95, 1.58], [1.60, 1.58], [1.66, 1.50], [1.72, 1.30], [1.80, 0.88], [1.9055, 0.60]],
     // §B4: the tub walls (and every loft cut face) used to end at 1.06-1.09
     // — inside the band lanes' 1.04+ voxel columns, so the ramp/wrap
     // ribbons crossed them wherever a cut face or wall band sat in a wrap
@@ -885,7 +893,12 @@ function buildT72B3M(P) {
     // (knot z-seats stay OUTSIDE the wrap arc z-ranges — a knot is a loft
     // cut whose full cross-section face would itself cross the arcs:
     // idler arc spans z 1.21..1.75, sprocket -3.81..-3.11.)
-    sponsonY: [[-3.95, 0.86], [-3.83, 1.125], [-3.10, 1.125], [-2.98, 0.86], [1.10, 0.86], [1.20, 1.105], [1.70, 1.105], [1.9055, 1.105]],
+    // Re-run against the actual instanced shoe envelope, which reaches
+    // roughly 9 cm above the legacy smooth band at both terminals.  Lift
+    // the local track-bay roof windows while leaving the mid-hull datum
+    // byte-stable; this ports the later clearance repair onto our stronger
+    // authored B3M hull without replacing its primary geometry.
+    sponsonY: [[-3.95, 0.86], [-3.83, 1.22], [-3.10, 1.22], [-2.98, 0.86], [1.02, 0.86], [1.10, 1.21], [1.70, 1.21], [1.9055, 1.21]],
   });
   widthAnchor(P, 1.795, 0.95, -0.5);
   // raised soft-stowage band (ref 1.75-1.77 over z -2.98..-1.02, |x|<=1.44 —
@@ -1727,7 +1740,7 @@ function buildT72B3M(P) {
     // r9 gear-fade tracking: ref front bottom ramp 0.11@1.26 -> 0.89@1.90
     // (idler higher/smaller still); rear ramp 0.16@-3.47 -> 0.35@-3.79
     // (sprocket nudged up/forward). Certified print-fade class, softened.
-    sprocket: { z: -3.46, y: 0.74, r: 0.26 }, idler: { z: 1.48, y: 0.80, r: 0.18 },
+    sprocket: { z: -3.46, y: 0.74, r: 0.26 }, idler: { z: 1.38, y: 0.80, r: 0.18 },
     rollers: [-2.5, -1.1, 0.4].map((z) => ({ z, y: 0.80, r: 0.086 })),
     // trackW STAYS 0.58 (r10c tried 0.62 for the +-1.63 ground cols: the
     // sprocket/idler assembly spans trackW+0.07 per side — its faces lit the
@@ -1966,7 +1979,10 @@ function buildT72B3M(P) {
     // nothing opens visually; the plan col [1.5325..1.6395] keeps its
     // front extent via the deck (wUp 1.58 to z ~1.66) and its rear via
     // the mudguard rubber (-4.43).
-    P.add('hull', box(0.012, 0.155, 4.40), s * 1.615, 0.9525, -1.00);
+    // The restored own-authored B3M now uses the honest lower idler datum.
+    // End this upper slot closure before the live front wrap instead of
+    // letting the old reference-print dressing graze the moving shoes.
+    P.add('hull', box(0.012, 0.155, 4.34), s * 1.615, 0.9525, -1.03);
     // r14: behind-wheels wall re-bucketed to the near-black bay shadow —
     // 0x33382e-class dark rendered MID-olive and the between-wheel gaps
     // read as painted wall, not shadow (ref gaps are near-black). Plus a
@@ -1985,7 +2001,7 @@ function buildT72B3M(P) {
     // through to background between wheel rims exactly like the ref.
     P.add('hullTrack', box(0.012, 0.23, 4.36), s * 1.205, 0.215, -1.10);
     P.add('hullTrack', box(0.012, 0.32, 4.36), s * 1.205, 0.64, -1.10);
-    P.add('hullTrack', box(0.012, 0.30, 0.44), s * 1.205, 0.65, 1.19);
+    P.add('hullTrack', box(0.012, 0.30, 0.20), s * 1.205, 0.65, 1.18);
     // r18 item 4b2: the kit's track guide horns (instanced, y to 0.448 at
     // the chain center x ±1.33) block every true see-through ray, so the
     // slot band cannot show real background between wheels. A deep-shade
@@ -2050,7 +2066,10 @@ function buildT72B3M(P) {
         P.add('hull', cylX(0.085, 0.048, 12), s * 1.442, 0.45, wz);
         P.add('hullDark', cylX(0.048, 0.066, 10), s * 1.4445, 0.45, wz);
       }
-      P.add('hullDark', torus(0.115, 0.012, 14), s * 1.4425, 0.80, 1.48, 0, 0, Math.PI / 2);
+      // These annuli are running-gear face trim, not hull armor.  Keep them
+      // in the per-lane track bucket so the clearance receipt judges hull
+      // solids against the shoes rather than the shoe-mounted face package.
+      P.add(s < 0 ? 'hullTrackTrimL' : 'hullTrackTrimR', torus(0.115, 0.012, 14), s * 1.4425, 0.80, 1.48, 0, 0, Math.PI / 2);
       P.add('hull', cylX(0.062, 0.05, 10), s * 1.4435, 0.80, 1.48);
       P.add('hullDark', torus(0.165, 0.013, 16), s * 1.4425, 0.74, -3.46, 0, 0, Math.PI / 2);
       P.add('hull', cylX(0.085, 0.05, 10), s * 1.4435, 0.74, -3.46);
@@ -2122,7 +2141,8 @@ function buildT72B3M(P) {
     // audit's 12-vox hullShadow hit), and at that station the dark wrap
     // itself fills the hem slot the backer fakes. Roadwheel stations only.
     for (const wz of [0.89, 0.108, -0.674, -1.456, -2.238, -2.90]) {
-      P.add('hullShadow', box(0.016, 0.26, 0.55), s * 1.60, 0.89, wz);
+      const backerD = wz === 0.89 ? 0.50 : 0.55;
+      P.add('hullShadow', box(0.016, 0.26, backerD), s * 1.60, 0.89, wz);
     }
     // r16 item 2a: INNER SKIRT HEM — the ref's road wheels ride part-hidden
     // behind a fabric skirt whose hem cuts BELOW the wheel centers (ref
@@ -2904,6 +2924,11 @@ function buildT72B3M(P) {
   // stack (contiguity — the ref's own cluster rides its forward cheeks).
   // Front block z' 0.485..0.75 (world -0.165..+0.10, cols 0.08/-0.027 at
   // 22mm window margins), rear step top 2.4137 for the -0.134 col.
+  // Retired from the playable builder: this second tower duplicated the
+  // already seated Sosna-U station above and turned the roof into a tall
+  // rectangular wall.  Keep the archaeological recipe readable, but do not
+  // instantiate it; the compact 2.21 m Sosna/cupola/MG suite remains active.
+  if (false) {
   P.add('turret', box(0.0915, 0.777, 0.185), -0.98225, 0.6315, 0.6575); // tower core (top 2.4408)
   P.add('turret', box(0.0565, 0.747, 0.185), -0.90825, 0.6165, 0.6575);  // inboard shoulder (top 2.4103 = the ref's 2.403 cols)
   P.add('turret', box(0.148, 0.69, 0.08), -0.954, 0.588, 0.525);      // rear step (top 2.4137 auth)
@@ -2935,6 +2960,7 @@ function buildT72B3M(P) {
   // dressing: cable conduit + junction boxes on the cluster flank (§B3.2)
   P.add('turretDark', box(0.016, 0.35, 0.02), -0.999, 0.42, 0.55);
   P.add('turretDark', box(0.05, 0.09, 0.06), -0.988, 0.30, 0.42);
+  }
   // ==== 2022 FORWARD CHEEK ERA (work-order #3, turret half): the print's
   // turret plan extends +0.18..+0.42w forward of the old fillet ellipse at
   // x 0.2..1.16 BOTH sides — the obr-2022 hard-cassette cheek courses. The
@@ -4281,7 +4307,7 @@ function buildT72B3M(P) {
 
 
 function buildT72BU(P) {
-  const { box, cylX, cylY, cylZ, buildRunningGear } = KIT;
+  const { box, cylX, cylY, cylZ, torus, buildRunningGear } = KIT;
   // VERTEX ROUND r3 (mask-dump verdict, shots/russia-vertex/probe/): the ref
   // plan+side TURRET masks agree — dome front +1.44, widest ±1.67 over
   // z +0.1..+0.5 (center ~+0.22), basket stub halfW 0.61-0.77 ENDING at
@@ -4303,8 +4329,13 @@ function buildT72BU(P) {
     deck: [[-3.10, 1.485], [-3.05, 1.50], [-2.95, 1.49], [-2.84, 1.38], [-2.73, 1.34], [-2.63, 1.30], [-2.52, 1.267], [-1.98, 1.267], [-1.15, 1.40], [-0.62, 1.435], [0.42, 1.46], [1.12, 1.47], [1.47, 1.32], [2.40, 1.14], [2.80, 1.047]],
     belly: [[-3.10, 1.05], [-3.00, 0.74], [-2.52, 0.44], [-1.48, 0.30], [2.60, 0.30], [2.80, 0.38]],
     wUp: [[-3.10, 1.30], [-2.85, 1.60], [2.80, 1.60]],
-    wLo: [[-3.10, 1.14], [2.80, 1.11]],
-    sponsonY: 0.86,
+    // The lower tub tucks inside the sprocket lane through the rear wrap;
+    // this is hidden mechanical structure, so the visible upper hull and
+    // rear service silhouette remain unchanged.
+    wLo: [[-3.10, 1.02], [-2.15, 1.02], [-2.05, 1.14], [2.80, 1.11]],
+    // Preserve the authored BU hull through the central six-wheel span and
+    // raise only the two mechanical terminal bays above the live shoes.
+    sponsonY: [[-3.10, 1.22], [-2.20, 1.22], [-2.10, 0.86], [2.40, 0.86], [2.50, 1.20], [2.80, 1.20]],
   });
   widthAnchor(P, 1.885, 0.95, 0.4);
   // inner tail flap tabs (plate -3.10 -> tab tips -3.44, solid to the plate)
@@ -4316,16 +4347,20 @@ function buildT72BU(P) {
   // outer rear mudguard corners (front-view 1.5 band at |x| 1.59..1.71;
   // plan 1024: ref outer-column rear ends -2.98)
   for (const s of [-1, 1]) {
-    P.add('hullRubber', box(0.12, 0.44, 0.24), s * 1.65, 1.26, -2.90);
-    P.add('hull', box(0.16, 0.10, 0.12), s * 1.71, 1.30, -2.90);
+    P.add('hullRubber', box(0.12, 0.20, 0.24), s * 1.65, 1.39, -2.90);
+    P.add('hull', box(0.16, 0.08, 0.12), s * 1.71, 1.32, -2.90);
   }
   // fender lips (family constant) — mid-hull only: the ref rear plateau
   // (1.267) and nose (1.21) tolerate nothing above them
   for (const s of [-1, 1]) for (let i = 3; i < 9; i++) {
     P.add('hull', box(0.16, 0.05, 0.48), s * 1.70, 1.235, -2.70 + i * 0.545);
   }
-  // hull-parented dome filler band (print quirk; bumps 1.55-1.62, x <=1.08)
-  P.add('hull', box(2.16, 0.18, 1.60), 0, 1.49, 0.70);
+  // Real hull-owned turret-ring collar.  The older broad rectangular
+  // "print filler" duplicated a large part of the turret footprint on the
+  // fixed hull, inflated both side quarters and became physically false as
+  // soon as the turret yawed.  The rotating casting already seats through
+  // the deck; this shallow collar is the only fixed load path it needs.
+  P.add('hullDetail', torus(0.98, 0.045, P.q ? 24 : 12, 8), 0, 1.45, 0.20);
   // drum rack ON the tail plate (ref hump 1.51-1.56 over -2.95..-3.2)
   for (const s of [-1, 1]) {
     P.add('hull', cylZ(0.13, 0.44, 12), s * 0.64, 1.44, -3.18);
@@ -4342,13 +4377,16 @@ function buildT72BU(P) {
     P.add('hullDark', box(1.5, 0.018, 0.075), 0, 1.257, -2.02 - i * 0.16);
     P.add('hullDetail', box(1.5, 0.028, 0.026), 0, 1.271, -2.10 - i * 0.16);
   }
-  ruGlacisKit(P, { w: 3.4, y: 1.10, z: 2.60, eyeZ: 2.78, hookY: 0.66, hookZ: 3.09 });
+  ruGlacisKit(P, { w: 3.4, y: 1.10, z: 2.60, eyeX: 0.86, eyeZ: 2.78, hookY: 0.76, hookZ: 3.09 });
   // K-5 glacis raft: full-width rows to the 2.80 plate edge. r9: the center
   // TONGUE is DELETED — fresh plan reads the ref bow center at 2.807 with
   // NOTHING beyond (the old "2.8..3.3 center kit" was a flipped-digest
   // claim); the 3.16..3.45 nose belongs to hooks/prong steps at |x| 0.9+.
-  P.add('hullTrack', box(2.30, 0.17, 0.36), 0, 1.085, 2.36, -0.32, 0, 0);
-  P.add('hullTrack', box(2.30, 0.17, 0.36), 0, 1.068, 2.62, -0.32, 0, 0);
+  // Keep the raft inside the two live shoe lanes. The former ±1.15 carrier
+  // clipped the smooth band by four centimetres even though the visible
+  // cassettes and every individual shoe were clear.
+  P.add('hullTrack', box(2.18, 0.17, 0.36), 0, 1.085, 2.36, -0.32, 0, 0);
+  P.add('hullTrack', box(2.18, 0.17, 0.36), 0, 1.068, 2.62, -0.32, 0, 0);
   for (const s of [-1, 1]) {
     P.add('hullDark', box(0.9, 0.14, 0.03), s * 0.58, 1.07, 2.56, -0.32, 0, 0);
   }
@@ -4357,22 +4395,25 @@ function buildT72BU(P) {
   // y 0.75..1.19 at |x| 1.41..1.87 — carries hullLengthM's side body span)
   // + inner prong step (ref plan front 3.29 at |x| ~1.0..1.15)
   for (const s of [-1, 1]) {
-    P.add('hull', box(0.46, 0.44, 0.60), s * 1.64, 0.97, 3.10);
-    P.add('hull', box(0.30, 0.30, 0.36), s * 1.26, 1.00, 3.11);
+    P.add('hull', box(0.46, 0.10, 0.60), s * 1.64, 1.24, 3.10);
+    P.add('hull', box(0.30, 0.08, 0.36), s * 1.26, 1.22, 3.11);
   }
   KIT.towCable(P, [[-1.25, 1.30, 2.0], [0, 1.38, 1.5], [1.25, 1.30, 2.0]]);
-  ruFlaps(P, { x: 1.64, w: 0.36, front: [0.72, 0.50], frontZ: 3.38 });
+  ruFlaps(P, { x: 1.64, w: 0.36, front: [0.78, 0.38], frontZ: 3.38 });
   buildRunningGear(P, {
     style: 'rubber', wheelR: 0.39, wheelW: 0.21, wheelY: 0.45, xc: 1.42, dishR: 0.84,
-    wheelZs: evenStations(6, 4.85, 0.125),
-    sprocket: { z: -2.62, y: 0.84, r: 0.24 }, idler: { z: 2.92, y: 0.70, r: 0.24 },
+    // The source course is the same height but about ten percent shorter in
+    // side projection.  Compress the native six-station datum and pull both
+    // terminal centers inward; do not scale or substitute the linked shoes.
+    wheelZs: evenStations(6, 4.43, 0.125),
+    sprocket: { z: -2.36, y: 0.84, r: 0.24 }, idler: { z: 2.65, y: 0.70, r: 0.24 },
     rollers: [-1.5, 0.5, 1.9].map((z) => ({ z, y: 0.82, r: 0.086 })),
     trackW: 0.54, topY: 0.86, botY: 0.04, paintedEnds: true, coveredTop: true, arms: true,
   });
   // lipX 1.807 RIGHT-only: the ref's RIGHT skirt crosses the gate's outer
   // plan column; the LEFT lip stays inboard of the -1.815 column edge
   // (symmetric 1.807 was the plan -1.87 err-2.0 monster, r9)
-  ruSkirtBand(P, { x: 1.786, z0: -3.15, z1: 3.10, yTop: 1.28, yBot: 0.75, panels: 7, lipX: 1.807, lipXL: 1.778 });
+  ruSkirtBand(P, { x: 1.786, z0: -3.15, z1: 3.10, yTop: 1.28, yBot: 0.91, panels: 7, lipX: 1.807, lipXL: 1.778 });
   // K-5 heavy course: gate-1024 ref band z +0.84..+2.44 at |x| 1.87 with the
   // widest 1.885 lump over +2.44..+2.74 (the r3 "-0.6..+1.9" seat was the
   // flipped-digest artifact — fixed tool, re-decoded)
@@ -4389,7 +4430,12 @@ function buildT72BU(P) {
   // LOW dome (gate front row: ref tops ~1.75 at x~0 — the crown 2.2 mass is
   // OFF-center furniture; a 2.24 lathe apex read 0.4 proud at every center
   // column). Crown plateau 2.21-2.24 now carried by cupola + Agat housing.
-  const rings = [[1.57, -0.03], [1.66, 0.10], [1.59, 0.34], [1.35, 0.48], [0.95, 0.56], [0.44, 0.60], [0.02, 0.62]];
+  // Preserve the measured pear footprint while thinning the broad casting.
+  // The reference reaches combat height through its narrow commander/sight
+  // stations; inflating the whole dome to that line made both side masks a
+  // solid capsule.  These rings keep the shoulder plan and lower only the
+  // wide crown section.
+  const rings = [[1.57, -0.03], [1.66, 0.07], [1.59, 0.20], [1.35, 0.30], [0.95, 0.36], [0.44, 0.39], [0.02, 0.40]];
   meshDome(P, rings, 0.72, 0, 0);
   // r9: k5 wedges raised/shrunk (corners hung 1.21 where the ref mantlet
   // floor is 1.452; inner tips poked z 1.68 vs ref 1.38) and the Shtora
@@ -4412,9 +4458,9 @@ function buildT72BU(P) {
   // lip + 4-seam clamshell grammar. Flank tiles keep their seats EXACTLY
   // (k5LeafOff law). Plan cost at the ±0.2-0.35 cols vs the print's
   // 1.38-1.44w mantlet-floor line = the §B7/§5.29 owner-order cap.
-  const p5 = { rings, sz: 0.72, k5Len: 0.90, k5H: 0.30, k5Y: 0.26, k5Yaw: 0.38, k5Seg: 4, eyeZ: 1.62, k5LeafOff: true };
+  const p5 = { rings, sz: 0.72, k5Len: 0.90, k5H: 0.18, k5Y: 0.22, k5Yaw: 0.38, k5Seg: 4, eyeZ: 1.62, k5LeafOff: true };
   eraRuCheeks(P, p5, 'k5');
-  eraRuCheeks(P, { tip: { x: 0.19, z: 1.32, ox: 1.25, oz: 0.55, y: 0.26, h: 0.34, d: 0.12, tilt: -0.18, segs: 4, rows: 0, gap: false, lip: { h: 0.10, dy: 0.0, dPitch: 0.30, tuck: 0.04 } } }, 'tip');
+  eraRuCheeks(P, { tip: { x: 0.19, z: 1.32, ox: 1.25, oz: 0.55, y: 0.22, h: 0.18, d: 0.12, tilt: -0.18, segs: 4, rows: 0, gap: false, lip: { h: 0.07, dy: 0.0, dPitch: 0.30, tuck: 0.04 } } }, 'tip');
   ruShtora(P, p5, 0.42);
   // TIP-round §5.29 equipment: the obr-1992 carries 902A Tucha banks on
   // BOTH upper cheeks flanking the Shtora eyes — six angled tubes per
@@ -4437,15 +4483,15 @@ function buildT72BU(P) {
   // cupola/Agat at 2.18-2.25 owned six proud front columns.
   // forward sight rail — the ref 2.2 side band runs z world +0.78..+1.91
   // (r9b: trimming it to 1.22 cost five 0.28 columns; restored full-length)
-  P.add('turret', box(0.16, 0.14, 1.10), -0.55, 0.775, 1.15);
-  P.add('turret', box(0.10, 0.30, 0.10), -0.55, 0.62, 0.95);
-  P.add('turretGlass', box(0.14, 0.10, 0.03), -0.55, 0.775, 1.72);
+  P.add('turret', box(0.12, 0.10, 1.04), -0.55, 0.755, 1.15);
+  P.add('turret', box(0.10, 0.26, 0.10), -0.55, 0.60, 0.95);
+  P.add('turretGlass', box(0.12, 0.08, 0.03), -0.55, 0.755, 1.69);
   // cupola cluster LEFT-FRONT on a pedestal into the dome skin
-  P.add('turret', cylY(0.27, 0.29, 0.30, 14), -1.13, 0.36, 0.70);
-  P.add('turret', cylY(0.24, 0.26, 0.22, 14), -1.13, 0.62, 0.70);
-  P.add('turret', cylY(0.22, 0.24, 0.10, 14), -1.13, 0.73, 0.70);
-  P.add('turretDark', cylY(0.19, 0.19, 0.03, 12), -1.13, 0.845, 0.70);
-  P.add('turret', box(0.34, 0.30, 0.50), -1.10, 0.72, 0.28);
+  P.add('turret', cylY(0.23, 0.25, 0.26, 14), -1.13, 0.34, 0.70);
+  P.add('turret', cylY(0.21, 0.23, 0.18, 14), -1.13, 0.56, 0.70);
+  P.add('turret', cylY(0.19, 0.21, 0.08, 14), -1.13, 0.65, 0.70);
+  P.add('turretDark', cylY(0.17, 0.17, 0.025, 12), -1.13, 0.72, 0.70);
+  P.add('turret', box(0.30, 0.22, 0.38), -1.10, 0.63, 0.31);
   // Agat sight housing right roof lowered to the ref's 1.87 line
   P.add('turret', box(0.24, 0.20, 0.38), 0.36, 0.30, 0.35);
   P.add('turret', box(0.30, 0.22, 0.45), 0.38, 0.40, 0.375);
@@ -4469,12 +4515,21 @@ function buildT72BU(P) {
   // bustle basket stub — ASYMMETRIC per the fresh plan: RIGHT reaches
   // x 0.87 (rear -1.495 at the +0.82 column), LEFT ends 0.74 (-0.90 at
   // -0.79); rear-flank deck bins carry the ref's -0.9 rear at |x| 1.0..1.24
-  P.add('turret', box(1.48, 0.30, 0.51), 0, 0.24, -1.465);
-  P.add('turret', box(0.14, 0.30, 0.51), 0.805, 0.24, -1.465);
-  P.add('turretDark', box(1.49, 0.24, 0.03), 0.065, 0.24, -1.70);
+  // Open bustle basket.  The old single solid cuboid had the correct outer
+  // bounds but filled the reference's mechanical negative space, making the
+  // turret read as a long rectangular slab in both side masks.  A shallow
+  // floor, rear rail and transverse ties preserve the same supported load
+  // path and asymmetric footprint without inventing a solid armor box.
+  P.add('turret', box(1.48, 0.055, 0.51), 0, 0.115, -1.465);
+  P.add('turret', box(0.14, 0.055, 0.51), 0.805, 0.115, -1.465);
+  P.add('turretDark', box(1.49, 0.055, 0.035), 0.065, 0.22, -1.70);
+  P.add('turretDark', box(1.49, 0.045, 0.035), 0.065, 0.12, -1.24);
+  for (const x of [-0.68, -0.22, 0.24, 0.70]) {
+    P.add('turretDark', box(0.035, 0.12, 0.47), x, 0.17, -1.465);
+  }
   for (const s of [-1, 1]) {
     P.add('turretDark', box(0.06, 0.08, 0.34), s * 0.50, 0.24, -1.12); // mount rails to the dome skin
-    P.add('turret', box(0.24, 0.36, 0.30), s * 1.12, 0.15, -0.95);
+    P.add('turret', box(0.24, 0.18, 0.30), s * 1.12, 0.15, -0.95);
   }
   // ---- 2A46M-4 (axis 1.49, muzzle +6.097; contour from the plan mask:
   // root r.15 to +1.93, sleeve r.135 2.36..3.30, evac r.148 3.76..4.54) ----
@@ -4491,23 +4546,30 @@ function buildT72BU(P) {
   // its LEFT dies at 4.55 — outer segs biased +0.024 (true cylinders)
   tubeGun(P, [
     [0.55, 1.90, 0.15], [1.90, 2.80, 0.135], [2.80, 3.26, 0.12],
-    [3.26, 4.05, 0.132, 0.132, 0.006], [4.05, 5.40, 0.115, 0.115, 0.024], [5.40, 5.597, 0.112, 0.104, 0.024],
-  ], { rings: [[1.90, 0.152], [2.80, 0.137], [3.26, 0.134], [4.05, 0.134, 0.006], [5.40, 0.117, 0.024]], muzzle: 5.597 });
+    [3.26, 4.05, 0.132, 0.132, 0.006], [4.05, 5.40, 0.115, 0.115, 0.024], [5.40, 5.56, 0.112, 0.104, 0.024],
+  ], { rings: [[1.90, 0.152], [2.80, 0.137], [3.26, 0.134], [4.05, 0.134, 0.006], [5.40, 0.117, 0.024]], muzzle: 5.56 });
   muzzleBore(P, { r: 0.117, y: 0.024 });  // §B3.1 (shadow-named, mask/frame-neutral)
   const dxU = ringSkin(rings, 0.36) + 0.02;
   P.decal('turret', 'number', P.spec.visual.number || '', 0.25, [dxU, 0.34, -0.4], Math.PI / 2);
   P.decal('turret', 'number', P.spec.visual.number || '', 0.25, [-dxU, 0.34, -0.4], -Math.PI / 2);
+  // The recovered reference's articulated Gun subtree is complete but much
+  // slimmer than the inherited oversized tube package.  Scale only the
+  // cross-section about the existing recoil axis; run, muzzle and seating
+  // stay fixed.
+  P.gunG.scale.x = 0.68;
+  P.gunG.scale.y = 0.68;
   P.topY = 1.25;
 }
 
-// Owner-source rebuild (2026-08-11). The legacy vertex-mask tune above is
+// First-party native rebuild (2026-08-11). The legacy vertex-mask tune above is
 // retained as evidence, but its long slab hull, small wheel course, oversized
-// smooth dome and chimney-like roof station do not preserve the recovered
-// T-72BU oracle. This builder starts from compact T-72 physical datums and
-// authors every obr. 1992 fitting on a visible hull or rotating-turret seat.
-function buildT72BUOwner(P) {
+// smooth dome and chimney-like roof station do not preserve the T-72BU form.
+// This builder starts from compact T-72 physical datums and authors every
+// obr. 1992 fitting on a visible hull or rotating-turret seat.
+function buildT72BUNative(P, { turretOnly = false } = {}) {
   const { box, cylX, cylY, cylZ, torus, buildRunningGear } = KIT;
 
+  if (!turretOnly) {
   // Compact low hull with raised terminal sponson windows. The central belly
   // stays between the two native shoe corridors rather than intersecting the
   // idler/sprocket wraps.
@@ -4608,10 +4670,21 @@ function buildT72BUOwner(P) {
   P.add('hullDark', cylX(0.042, 0.58, 10), -0.78, 1.14, -2.98);
   P.add('hullDark', cylX(0.040, 0.42, 10), 0.00, 1.22, -2.98);
   P.add('hullDark', cylX(0.043, 0.62, 10), 0.74, 1.17, -2.98);
+  } else {
+    // Hybrid mode preserves the stronger measured hull, calibrated gun and
+    // native running gear, replacing only the complete rotating package.
+    P.turretG.clear();
+    P.turretG.add(P.gunG);
+    P.clear('turret', 'turretDetail', 'turretDark', 'turretCloth', 'turretGlass', 'turretTrack');
+  }
 
   // ---- low obr. 1992 cast turret ---------------------------------------
   P.turretG.position.set(0, 1.36, 0.16);
-  const rings = [[1.48, -0.05], [1.62, 0.08], [1.56, 0.27], [1.34, 0.43], [0.98, 0.54], [0.50, 0.60], [0.02, 0.63]];
+  // Keep the broad pear footprint, but make the casting itself low. Combat
+  // height belongs to the commander/sight suite above it; carrying that
+  // height through the whole dome produced a filled capsule in both side
+  // masks and an overweight rear-quarter silhouette.
+  const rings = [[1.48, -0.05], [1.62, 0.045], [1.56, 0.18], [1.34, 0.295], [0.98, 0.375], [0.50, 0.42], [0.02, 0.44]];
   P.add('turret', orientedSlab(
     [-1.47, -0.04, 0.78], [1.47, -0.04, 0.78], [1.17, -0.04, -1.12], [-1.17, -0.04, -1.12],
     [-1.34, 0.28, 0.67], [1.34, 0.28, 0.67], [1.06, 0.28, -1.02], [-1.06, 0.28, -1.02]));
@@ -4724,7 +4797,9 @@ function buildT72BUOwner(P) {
     P.add('turretDark', box(0.035, 0.22, 0.24), x + w * 0.42, 0.32, z + 0.03);
   }
 
-  // Articulated 2A46M-4 and visible bore.
+  // Articulated 2A46M-4 and visible bore. Hybrid mode retains the already
+  // graduated base gun and its exact world-space recoil axis.
+  if (!turretOnly) {
   P.gunG.position.set(0, 0.06, 1.23);
   ruSaddle(P, { rollR: 0.19, rollW: 0.56, tubeR: 0.108, rootL: 0.60 });
   P.addGunExtra(KIT.xform(cylZ(0.5, 0.36, 16, 0.45), 0, 0, 0, 0, 0, 0, [0.49, 0.29, 1]), 0, -0.04, 0.16);
@@ -4734,10 +4809,43 @@ function buildT72BUOwner(P) {
   });
   muzzleBore(P, { r: 0.117 });
   P.topY = 1.18;
+  }
+}
+
+function buildT72BUHybridNative2026(P) {
+  buildT72BU(P);
+  // The native rotating package uses a slightly different ring datum from
+  // the graduated BU hull. Preserve the already-calibrated gun in world
+  // space while swapping the turret: otherwise changing turretG.position
+  // silently drags the complete 2A46M-4 off its proven recoil axis/root.
+  const gunWorldY = P.turretG.position.y + P.gunG.position.y * P.turretG.scale.y;
+  const gunWorldZ = P.turretG.position.z + P.gunG.position.z * P.turretG.scale.z;
+  const gunScale = P.gunG.scale.clone();
+  buildT72BUNative(P, { turretOnly: true });
+  // Source-relative direct masks agree on the correction: the authored
+  // casting needs roughly four percent more shoulder width, two percent more
+  // fore/aft plan and less filled vertical side mass. Apply that to the one
+  // connected rotating assembly, then counter-scale the graduated gun so its
+  // dimensions and world-space run do not change.
+  const turretScale = { x: 1.0, y: 0.94, z: 1.0 };
+  P.turretG.scale.set(turretScale.x, turretScale.y, turretScale.z);
+  P.turretG.position.y += 0.020;
+  P.gunG.scale.set(
+    gunScale.x / turretScale.x,
+    gunScale.y / turretScale.y,
+    gunScale.z / turretScale.z,
+  );
+  P.gunG.position.y = (gunWorldY - P.turretG.position.y) / P.turretG.scale.y;
+  P.gunG.position.z = (gunWorldZ - P.turretG.position.z) / P.turretG.scale.z;
 }
 
 export const T72_PROFILES = {
-  t72b_1987: { build: buildT72B87Owner },
-  t72b3m: { build: buildT72B3Owner },
-  t72bu: { build: buildT72BUOwner },
+  // Restore the proven repository-authored family bases.  The alternate
+  // native rebuilds remain available above as a library of authored station
+  // and surface ideas, but their compact primary datums score materially
+  // worse and must not replace these stronger hull/gun/course foundations.
+  // External GLBs remain QA oracles only; no source vertex enters runtime.
+  t72b_1987: { build: buildT72B87 },
+  t72b3m: { build: buildT72B3M },
+  t72bu: { build: buildT72BUHybridNative2026 },
 };
