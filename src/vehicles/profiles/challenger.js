@@ -3728,24 +3728,30 @@ function buildChallenger3(P) {
     shoulderXF: 1.34, shoulderXR: 1.34, shoulderYF: 0.56, shoulderYR: 0.66,
     roofXF: 1.15, roofXR: 1.05, roofYF: 0.56, roofYR: 0.66,
   });
-  c3ShellSegment(0.88, 0.22, {
+  // Owner silhouette correction (2026-08-12): the old front station
+  // collapsed to a paper-thin brow at z=.88, so the turret's numerical
+  // envelope was long while the visible fighting compartment stopped well
+  // behind the mantlet.  Carry the connected outer wall, shoulder and crown
+  // forward as one station; the open center remains reserved for the gun
+  // seat and no detached applique is used to fake the length.
+  c3ShellSegment(1.22, 0.22, {
     bottomF: 0.02, bottomR: 0.02, outerF: 1.40, outerR: 1.40,
     // The oracle's broad turret roof ENDS at world z=1.42.  At z=2.085
     // its main component contains only the 1.566 m lower-cheek course.
     // Collapse this station to that course so the forward shell becomes
     // the real descending brow instead of a second superstructure.
-    shoulderXF: 1.40, shoulderXR: 1.34, shoulderYF: 0.025, shoulderYR: 0.56,
-    roofXF: 0.70, roofXR: 1.15, roofYF: 0.05, roofYR: 0.56,
+    shoulderXF: 1.30, shoulderXR: 1.34, shoulderYF: 0.30, shoulderYR: 0.56,
+    roofXF: 0.78, roofXR: 1.15, roofYF: 0.32, roofYR: 0.56,
   });
   // The oracle's nose is a low armored throat plus independently faceted
   // lower cheeks, not a second full-height turret box.
   P.add('turret', slab(
-    [-0.52, 0.02, 1.38], [0.52, 0.02, 1.38], [0.70, 0.02, 0.88], [-0.70, 0.02, 0.88],
-    [-0.40, 0.15, 1.28], [0.40, 0.15, 1.28], [0.42, 0.58, 0.88], [-0.42, 0.58, 0.88]));
+    [-0.52, 0.02, 1.70], [0.52, 0.02, 1.70], [0.78, 0.02, 1.22], [-0.78, 0.02, 1.22],
+    [-0.40, 0.17, 1.60], [0.40, 0.17, 1.60], [0.50, 0.34, 1.22], [-0.50, 0.34, 1.22]));
   for (const s of [-1, 1]) {
     P.add('turret', mslab1(s,
-      [0.40, 0.02, 1.38], [0.94, 0.02, 1.20], [1.40, 0.02, 0.88], [0.70, 0.02, 0.88],
-      [0.40, 0.15, 1.28], [0.88, 0.38, 1.10], [1.08, 0.28, 0.88], [0.42, 0.58, 0.88]));
+      [0.40, 0.02, 1.70], [0.98, 0.02, 1.52], [1.40, 0.02, 1.22], [0.78, 0.02, 1.22],
+      [0.40, 0.17, 1.60], [0.92, 0.42, 1.43], [1.20, 0.30, 1.22], [0.50, 0.34, 1.22]));
     P.add('turretDetail', box(0.025, 0.07, 1.20), s * 1.325, 0.635, -0.84, 0, 0, s * 0.045);
   }
   // embrasure: recessed collar + canvas boot (§B3.1 — no bare notch);
