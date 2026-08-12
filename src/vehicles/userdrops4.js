@@ -5,8 +5,10 @@
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
-const ALLOW_LOCAL_RECOVERED_MODELS = typeof import.meta !== 'undefined' &&
-  import.meta.env && !import.meta.env.VITE_PUBLIC_BUILD;
+// External recovered models are reference-only. Dev and public playables use
+// the same authored procedural path so local testing cannot silently swap in
+// a third-party mesh.
+const ALLOW_LOCAL_RECOVERED_MODELS = false;
 
 const tejas = clone(TANK_SPECS.m1a2);
 tejas.id = 'm1a2_tejas';

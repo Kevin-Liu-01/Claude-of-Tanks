@@ -27,6 +27,15 @@ graduation in the same commit. Program ends when ledger min >=90
 fleet-wide, every graduate hash-frozen, no tank registers a reference GLB
 at load.
 
+**2026-08-11 native provenance reset:** the runtime rule is now stronger than
+the historical graduate registry: all 108 registered battle playables must be
+our authored procedural geometry. `npm run tank:native:check` currently
+reports 108/108 native and zero GLB-sourced. Source-derived geometry modules
+and bake scripts for the Leopard/Type 10/T-80U/T-14/AMX-40/FV510 reopen set
+were deleted. Any freeze row whose builder changed in this reset is historical
+until fresh native paired+yaw evidence replaces it. See
+`docs/critique/native-provenance-runtime-audit.md`.
+
 ## 2. ABSOLUTE RULES (verbatim-critical)
 - THE ONE ABSOLUTE RULE: no assets extracted from commercial games, ever.
 - Private local project — never publish, never create accounts.
@@ -49,7 +58,7 @@ at load.
 - Env for EVERY node run: `export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh"`
 - npm test before every landing (166 equipment checks + track-geometry).
 
-## 3. GRADUATE REGISTRY (44 graduates, hash-frozen)
+## 3. HISTORICAL GRADUATE REGISTRY (reopened native builds require re-freeze)
 Freeze = deterministic geometry hash via `node tools/tmp-hashgeo.mjs
 --ids=...` (camoSeed 4242 pinned build; FNV-1a over position buffers +
 world matrices, mesh-order independent). Graduate-change protocol: fix ->
@@ -61,7 +70,6 @@ re-freeze NEW hash, all in ONE commit.
 | m60a1 | 912de524 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | m60a3 | 097c35a2 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | kv2 | 382b2310 | freeze-verify only |
-| leo2a6 | 961b625b | GRADUATED 2026-08-11 (§5.113 exact CC-BY owner-source upper, native seven-wheel linked tracks, dimension-only false zero; visual floor 9.4) |
 | m1a1 | 4e28ff40 | RE-FROZEN 2026-08-08 (§5.79 flank-panel pitch; re-cert floor 9.1 / mean 9.19 x14) |
 | m1a1ha | d8a948cc | RE-FROZEN 2026-08-10 (§5.107 full armor/ghillie wave; seated CWS + full turret/hull/MG cover; re-cert floor 9.2 / mean 9.36 x14, corrected yaw0/90 ownership PASS; prior 99962364 retired) |
 | m1a2_tejas | 1adc0bde | RE-FROZEN 2026-08-10 (§5.107 full armor/ghillie wave; massive clean CROWS remains unobstructed and distinct; re-cert floor 9.2 / mean 9.39 x14, corrected yaw0/90 ownership PASS; prior 01e698e8 retired) |
@@ -79,9 +87,6 @@ re-freeze NEW hash, all in ONE commit.
 | t84 | 04707a9c | |
 | m47_patton | 2fc99c50 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | leo2a5 | e215a738 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
-| leo2_revolution | 24658d8b | RE-FROZEN 2026-08-10 (§5.101 owner-source exact rebuild: complete AMAP/slat exterior on a physically completed rotating pressure core, donor gear excluded for one native seven-wheel linked-shoe system; gate 91.5 x2; standard/track/parent/winding clean; independent §B8 floor 9.2 / mean 9.35 x14, yaw0/90 load paths PASS; prior db70c929 retired) |
-| leo2a7v | 27b2d654 | GRADUATED 2026-08-10 (§5.100 owner-source exact rebuild: articulated source upper with donor gear excluded, native seven-wheel linked-shoe system, buried cage shelves and transom-seated recovery stays; gate 91.1 x2; exact track 0/15 band and 0/58 shoes; independent §B8 floor 9.1 / mean 9.27 x14, yaw0/90 rig/load paths PASS; failed 4628e504 sitting retired) |
-| leo2a4 | f031f2fc | GRADUATED 2026-08-10 (§5.102 owner-source exact rebuild: source upper and camouflage on corrected source-plan stations, donor gear excluded for one shallow native seven-wheel linked-shoe course; gate 94.5 x2; exact track 18/27 band and 0/0 shoes; independent §B8 floor 9.4 / mean 9.52 x14, yaw0/90 load paths and rear-sheet pixel adjudication PASS; earlier f42ac010 candidate retired) |
 | m46_patton | 108806c8 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | centurion3 | bad74e60 | RE-FROZEN 2026-08-08 (no-air graduate-change: crown-ridge pedestal + discharger webs, front-low 1810px->14, re-cert floor 9.0 x17 changed views, gate 91.1 exact; prior 50273080 bore-resit lineage) |
 | m1a2_sepv2 | 7680a400 | RE-FROZEN 2026-08-10 (§5.107 full armor/ghillie wave; elevated armored CROWS + broad passive armor + full cover; re-cert floor 9.2 / mean 9.41 x14, corrected yaw0/90 ownership PASS; prior a0a4e87c retired) |
@@ -93,16 +98,20 @@ re-freeze NEW hash, all in ONE commit.
 | challenger_3 | 3e5a7797 | GRADUATED 2026-08-09; RE-FROZEN 2026-08-10 (§5.95 owner screenshot attachment re-cert on current main: multi-tier Protector foundation, tapered optic plinth, smoke/corner rails and antenna collars have continuous physical seats; gate 90.4, standard/parent/winding clean; independent §B8 floor 9.4 / mean 9.59 x14; prior b0c172a4 retired) |
 | challenger1 | cacb1337 | GRADUATED 2026-08-11 (§5.112 native-procedural, reference-guided rebuild: compact six-wheel hull, one low connected cast turret, buried mantlet/cheek anatomy, seated commander/TOGS station and supported bustle/basket; no external mesh data ships; commercial-reference component masks honestly cap the machine row at 0 while dims 99.6 / floaters 100 and fresh independent §B8 pass floor 9.0 / mean 9.13 x14 with genuine yaw0/90 ownership, exact native tracks 0/0 and winding PASS; old gate-shaped 5bf5f2ec visual failure retired) |
 | challenger2 | 3b4bd5f0 | GRADUATED 2026-08-09; RE-FROZEN 2026-08-10 (§5.89 owner fused-block repair: material-fused casemate course removed from fixed hull and repartitioned into the articulated source tree; one low ring landing + one rotating turret; gate 90.1 x2 every component >=90; standard/parent/winding clean; fresh §B8 floor 9.0 / mean 9.06 x14, yaw/load paths 9.3; oracle f44e3b46 reproducible from pristine .bak; prior 63ee160 retired) |
-| fv510 | 927beeb2 | GRADUATED 2026-08-10; RE-FROZEN 2026-08-10 (§5.91 owner native-track correction: donor Track suppressed and 34 donor running-gear components removed at whole-component boundaries; exact Warrior upper geometry retained around one game-native six-station wheel/sprocket/idler/shoe system; gate 90.3 x2, every component >=90.3; fidelity 98.0; standard/parent/winding clean; independent §B8 floor 9.1 / mean 9.26 x14, yaw/load paths 9.4; prior exact-source freeze 7884762a retired) |
-| type10 | 201d0a08 | GRADUATED 2026-08-10; RE-FROZEN §5.97 (owner correction: complete rear cage, circular spare-wheel forms, service boxes, rack rails and antennas reparented as whole source components to the seated turret; lower engine deck remains hull-owned; exact five-wheel native track 0/0; gate 94.6 x2; parent/winding clean; independent §B8 floor 9.4 / mean 9.59 x14, yaw load paths PASS; prior 84f5d108 retired) |
-| t14 | a88afa6c | GRADUATED 2026-08-10 (§5.104 owner-source exact rebuild: source upper hull, compact unmanned turret, bustle, roof stations and 2A82 solids with a published-datum tube extension; donor gear excluded for one native seven-wheel linked-shoe system; cage skins receive buried hull-owned backing inside the source envelope; gate 90.7; fidelity 92.6 composite / 97.5 whole silhouette; standard/track/parent/winding clean; independent §B8 floor 9.5 / mean 9.60 x14, yaw/load paths PASS; prior procedural record 60d7d14 retired) |
-| amx40 | 50710918 | RE-FROZEN 2026-08-10 (§5.103 owner screenshot front-half reopen: exact source upper hull, complete turret, mantlet/coax/LLLTV and CN120 replace the insufficient procedural front while donor gear stays excluded for one native six-wheel linked-shoe system; gate 92.6 x2; fidelity 98.5; exact track 0/0 band+shoes; independent §B8 floor 9.5 / mean 9.70 x14, yaw/load paths PASS; prior d2c73d96 retired) |
 | m26_pershing | 2f006738 | RE-RECORDED 2026-08-08: hash moved by LANDED 5f39989 (armorM4 gunBarrel shadow-proxy 3.96->3.44; m26/m45 inherit m4a3e8 proxies — patton.js bytes unchanged); double-confirmed by builder bisect + m45-grad critic; prior 65c564c0 bore+winding re-cert lineage (floors 9.1-9.4) carries |
 | t90m | e345ee8a | GRADUATED 2026-08-06 (27th; floor 9.0 x14 second sitting; the owner's dedicated-agent arc 81.7 -> dual gate) |
 | t90 | da6f7fba | RE-FROZEN 2026-08-11 (native procedural, reference-guided: all runtime geometry remains our authored primitives; independent §B8 floor 9.1 / mean 9.19 x14 with genuine yaw ownership, exact native six-wheel track 0/0 bands+shoes, muzzle/assets PASS and no visible winding wound; registered-mask false zero disclosed rather than chased into copied geometry; prior 72104d14 retired) |
 | t90a | 810a6f18 | GRADUATED 2026-08-10 (§5.94 Leclerc-method cast-turret rebuild; gate 90.4 x2; standard/track/winding clean; independent §B8 floor 9.0 / mean 9.11 x14, yaw/load paths 9.2) |
 | t90a_vladimir | c13fec50 | GRADUATED 2026-08-10 (§5.94 source-specific compact ESSA/cast-turret/transom rebuild; gate 90.0 x2; standard/track/winding adjudicated; independent §B8 floor 9.0 / mean 9.01 x14, yaw/load paths 9.3) |
 | t90sm | 7efc69c9 | GRADUATED 2026-08-10; RE-FROZEN §5.105 (owner-priority complete redesign: source-measured low diamond shell retained, solid bustle steps replaced by backed slat cells, deep scalloped inboard skirts and layered rear service field added; gate 90.0 x2; standard/track/winding clean; independent §B8 floor 9.0 / mean 9.08 x14, all 28 yaw frames PASS; prior 56324371 retired) |
+| k1a1 | 28c7f5f0 | RE-FROZEN 2026-08-10 (§5.108 authored compact K1A1 shell/hull, native six-wheel course and cupola-seated K6; independent §B8 floor 9.0 / mean 9.21) |
+| type99a | cf97a01b | RE-FROZEN 2026-08-11 (§5.109 authored low arrowhead turret, supported bustle, compact six-wheel hull and clean bow clearance; independent §B8 floor 9.1 / mean 9.24) |
+| type74 | 8319dbb8 | RE-FROZEN 2026-08-11 (§5.110 authored low cast turret, five-wheel native course and supported combat/service suite; independent §B8 floor 9.1 / mean 9.29) |
+| ariete | acea2100 | RE-FROZEN 2026-08-11 (§5.111 native-procedural Ariete with seven-wheel course and supported low turret/rear service field; independent §B8 floor 9.0 / mean 9.25) |
+| t72b_1987 | 3f2483d4 | GRADUATED 2026-08-11 (§5.114 authored low B87 hull/turret, buried K1 and native six-wheel course; independent §B8 floor 9.0 / mean 9.14) |
+| t72bu | 4b66bf6c | GRADUATED 2026-08-11 (§5.115 authored compact BU protection/station/rear package on one native six-wheel course; independent §B8 floor 9.0 / mean 9.19) |
+| t90ms | 5076891c | GRADUATED 2026-08-11 (§5.118 authored clipped-diamond shell, Relikt, supported bustle/station and native six-wheel course; independent §B8 floor 9.0 / mean 9.18) |
+| t90a_burlak | 8d2f5d44 | RE-FROZEN 2026-08-11 (first-party clipped casting, planted protection wings, continuous shallow autoloader bustle and exact 0/0 native six-wheel course; 42-frame yaw/ownership PASS, floor 9.0 / mean 9.06; legacy registration-incompatible geometry row remains honestly unresolved) |
 
 *Historical note: the 2026-08-05 INVISIBLE-LOD fix mass re-froze the
 then-24 stable graduates (old->new table in commit 9bf2a6d); every row
@@ -3865,5 +3874,137 @@ collision, open sheet, sky hole or visible backface wound.
 All eight presentation assets and the manifest binding are regenerated.
 Targeted asset/currentness and bore checks pass; `npm test` and
 `npm run build:private` pass. **GRADUATED; KEEP `5076891c`; retire every
-earlier T-90MS sitting. Fleet gate remains honestly 36/97; graduates are 50.
-The raw-trio queue now continues with T-90A Burlak and base T-90.**
+earlier T-90MS sitting. Fleet gate remains honestly 36/97. The raw-trio queue
+continues in §5.119 and §5.120; the full current graduate count is reconciled
+under the native-only order in §5.121.**
+
+## 5.119 T-90A BURLAK NATIVE-PROCEDURAL REBUILD (2026-08-11, GRADUATED)
+
+The prior box-stack presentation is retired. The replacement is authored in
+`src/vehicles/profiles/t90.js` from the shared primitive, fitting and native
+track libraries: one low clipped casting, broad chamfered protection wings,
+five varied buried armor courses, an integrated mantlet/gun root and one long
+shallow autoloader bustle with real forward roots, ribs, lids, rails and end
+framing. The panoramic station, MG/shield, cupolas, sights, smoke fans and
+antennae meet explicit pads, collars or cheek brackets. No external mesh,
+vertex, texture, material, rig, animation or converted payload enters the
+playable.
+
+Freeze **`5ae80a4`** reproduces twice at 61 meshes / 93,412 vertices. Exact
+track containment is band **0/0**, shoes **0/0**; parent audit is stranded 0 /
+abutting 0 / dangling 0. The live reference row is retained as an honest
+incompatible-mask zero: 0 | hull 43.2 / whole 24.6 / turret 6.7 / stations
+11 / dimensions 0 / floaters 100; JSON SHA-256 is
+`159748c7840b34ddc7ca77e498a5c352e148cd92ac433febfdbf8ee193de0bac`.
+
+Fresh independent §B8 inspected 42 distinct final frames. Its vector is
+`[9.2,9.2,9.0,9.0,9.1,9.0,9.0,9.1,9.2,9.2,9.1,9.2,9.1,9.2]`, floor
+**9.0**, mean **9.11**. It confirms a genuine quarter-turn, complete seated
+turret/bustle ownership, fixed hull service geometry, six-wheel native-course
+continuity and no fused/stranded mass, empty-air item, collision, open sheet,
+sky hole or visible winding wound. Assets, muzzle, tests and private build
+pass. **GRADUATED / KEEP `5ae80a4`.**
+
+## 5.120 BASE T-90 NATIVE-PROCEDURAL REBUILD (2026-08-11, RE-FROZEN)
+
+The final base T-90 is generated entirely by `src/vehicles/profiles/t90.js`
+and the shared authored primitive/fitting library. Its connected low cast
+dome, irregular buried K-5/Shtora blanket, mantlet/gun, supported
+commander/NSVT/night-sight and smoke suite, rear turret packs, low hull,
+six-wheel course, strapped log and backed service field contain no imported
+or converted comparison geometry.
+
+Freeze **`da6f7fba`** reproduces at 68 meshes / 120,036 vertices. Exact track
+containment is band **0/0**, shoes **0/0**. Muzzle contrast is 93.2 and the
+asset/currentness check passes. The registered comparison row remains an
+honest incompatible-mask zero: 0 | hull 71.8 / whole 45.4 / turret 20 /
+stations 55.4 / dimensions 0 / floaters 0; JSON SHA-256 is
+`2c257f87bf25f91e7ebb94d4ce8ec636b6ace9eae26b33ee8eb0eb03708da4d9`.
+
+Fresh independent §B8 inspected only 42 distinct r11 frames. Its vector is
+`[9.2,9.2,9.1,9.1,9.1,9.1,9.1,9.2,9.2,9.3,9.2,9.3,9.3,9.3]`, floor
+**9.1**, mean **9.19**. Genuine yaw proves complete seated turret ownership;
+the lone fixed `fitting_spareTrackLinks` nominee is legitimate deck stowage.
+No visible winding wound, fused duplicate, stranded fitting, donor course or
+collision remains. Tests and private build pass. **RE-FROZEN / KEEP
+`da6f7fba`; prior `72104d14` is retired.**
+
+## 5.121 NATIVE-ONLY RUNTIME PROVENANCE RECONCILIATION (2026-08-11, OPEN)
+
+The owner clarified that comparison models may guide visual judgment only:
+playable geometry must remain our own design. A runtime import audit found
+nine playables that were still calling generated exact-source geometry modules:
+`leo2a4`, `leo2a6`, `leo2a7v`, `leo2_revolution`, `fv510`, `type10`, `t14`,
+`amx40` and `t80u`. Their prior visual/mechanical evidence remains useful,
+but exact-source certification cannot satisfy the native-only order.
+
+Those nine ids were therefore reopened and removed from the current graduate
+registry. Each now has an authored procedural replacement; fresh immutable
+42-frame evidence, native-track/parent/winding certification and a new frozen
+hash are still required before re-freezing. The comparison files remain local
+review material only. Eight omitted
+native-procedural graduates are simultaneously backfilled into the registry,
+so the reconciled current count remains **44** rather than the landing-local
+running totals in §5.108–§5.118. Owner priority now moves immediately to a
+native quality rebuild of `t90m` (T-90M Proryv); its authored procedural
+builder remains the only playable geometry and the local GLB remains an
+isolated visual oracle. The reopened `t80u` provenance replacement stays
+queued behind this owner-priority pass.
+
+## 5.122 T-90MS FIRST-PARTY REPLACEMENT RE-CERTIFICATION (2026-08-11, GRADUATED)
+
+The superseded comparison-geometry T-90MS certification in §5.118 is not a
+native-playable receipt. The active replacement is authored entirely in
+`src/vehicles/profiles/t90.js` from repository primitive, fitting and native
+running-gear libraries. No comparison mesh, converted vertex array, material,
+texture, rig, animation or runtime wrapper is used.
+
+The current build has one connected clipped-diamond shell, buried cheek and
+roof-edge Relikt, compact paired optics, a corrected 125 mm gun run, sharply
+tapered bustle and one supported rear cage. A faceted panoramic head, raised
+Kord mount, commander optics, smoke banks and antenna sit on explicit
+plinths, yokes, brackets and collars. The hull retains a compact six-wheel
+native course, short raised side cover, sculpted bow and backed unequal rear
+service grammar.
+
+Freeze `59de23ce` reproduces at 53 meshes / 107,956 vertices. Native fidelity
+is **90.91 aggregate** with every standard silhouette at least **90.34**;
+components are whole 91.79 / hull 93.77 / turret 83.91 / gun 92.25 / tracks
+93.67. Exact containment is band **0/0** and shoes **0/0**. Winding reports 0
+reversed / 0 mixed with one visually null rear-left deficit pixel.
+
+All 42 distinct frames in `/tmp/critic-t90ms-native-final-r3` were inspected.
+They prove a genuine quarter-turn and complete seated turret ownership. The
+fixed `fitting_spareTrackLinks` nominee is legitimate forward-deck stowage;
+the fixed rear candidates are supported engine/service covers. No fused
+duplicate turret, stranded fitting, empty-air object, donor course, collision,
+open sheet, sky hole or visible winding wound remains. **GRADUATED / KEEP
+`59de23ce`; the §5.118 comparison-geometry implementation remains retired.**
+
+## 5.123 BASE T-90 FIRST-PARTY GEOMETRY CORRECTION (2026-08-11, GRADUATED)
+
+This receipt supersedes the older base T-90 freeze in §5.120. The active
+playable remains entirely authored in `src/vehicles/profiles/t90.js`; no
+comparison mesh, converted vertex payload, material, texture, rig, animation
+or runtime source wrapper is used.
+
+The hull pressure corridor and sponson underside were rebuilt around the real
+native shoe path, the bow glacis was narrowed and closed without penetrating
+the terminal course, and the overlong mudflaps were restrained. Six larger
+dished road wheels now fill the compact T-90 side elevation. The cast turret
+is seated on the correct deck datum and the 2A46M run, sleeve and bore reach
+the measured authored envelope. A supported rear service cross-member closes
+the stern reach without stretching the pressure hull or creating a floater.
+
+Freeze `35a932c0` reproduces twice at 68 meshes / 120,828 vertices. Native
+fidelity is **90.47 aggregate** with every standard silhouette at least
+**90.29**; components are whole 91.77 / hull 92.12 / turret 82.55 / gun 93.27
+/ tracks 95.21. Exact containment is band **0/0** and shoes **0/0**. Winding
+reports 0 reversed / 0 mixed and zero deficit pixels.
+
+All 42 distinct frames in `/tmp/critic-t90-native-final-r3` were inspected.
+They prove a genuine quarter-turn and complete seated turret ownership. The
+fixed `fitting_spareTrackLinks` candidate is legitimate forward-deck stowage.
+No fused duplicate turret, stranded fitting, empty-air item, donor course,
+collision, open sheet, sky hole or visible winding wound remains.
+**GRADUATED / KEEP `35a932c0`; the §5.120 hash is retired.**

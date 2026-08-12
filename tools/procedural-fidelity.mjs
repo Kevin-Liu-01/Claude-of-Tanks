@@ -19,6 +19,7 @@ const option = (name, fallback = null) => {
 const requested = option('ids')?.split(',').map((id) => id.trim()).filter(Boolean) || null;
 const shotCount = Math.max(0, Number(option('shots', '0')) || 0);
 const BOARD = args.includes('--board'); // per-id shaded + articulation boards
+const COMPONENTS = args.includes('--components'); // expanded hull/turret mask diagnostics
 const CHECK = args.includes('--check');
 const PASS = 90;
 const VIEW_FLOOR = 90;
@@ -46,7 +47,7 @@ page.on('console', (message) => {
   if (text.includes('glb swap failed')) browserErrors.push(text);
 });
 
-const urlFor = (id) => `http://localhost:${server.config.server.port}/tools/procedural-fidelity.html?id=${encodeURIComponent(id)}`;
+const urlFor = (id) => `http://localhost:${server.config.server.port}/tools/procedural-fidelity.html?id=${encodeURIComponent(id)}${COMPONENTS ? '&components=1' : ''}`;
 try {
   await page.goto(urlFor(requested?.[0] || 'm1a2'), { waitUntil:'domcontentloaded', timeout:90000 });
   await page.waitForFunction('Array.isArray(window.__REFERENCE_IDS)', { timeout:90000 });
@@ -120,7 +121,7 @@ fs.writeFileSync(path.join(ROOT,'docs','procedural-fidelity-report.json'),`${JSO
 const cell = (value) => Number.isFinite(value) ? value.toFixed(1) : 'N/A';
 const md=[
   '# Procedural tank fidelity report','',
-  `Local sourced references: **${summary.references}**. Passing ${PASS}/100 overall and ${VIEW_FLOOR}/100 in every view: **${summary.passed}**. `+
+  `Local comparison references: **${summary.references}**. Passing ${PASS}/100 overall and ${VIEW_FLOOR}/100 in every view: **${summary.passed}**. `+
     `Below target: **${summary.failed}**. Median: **${summary.median.toFixed(1)}**.`,'',
   'Red/cyan mask scoring uses identical normalized poses: 35% whole silhouette, 25% hull, '+
     '20% direct articulated turret tree, 12% cannon overhang, and 8% lower track profile.','',
@@ -130,9 +131,9 @@ const md=[
     `${cell(row.scores.hull)} | ${cell(row.scores.turret)} | ${cell(row.scores.gun)} | `+
     `${cell(row.scores.tracks)} | ${row.fallback || 'placeholder'} |`),
   '',
-  'Reference GLBs remain provenance-tracked measurement and visual-review oracles. '+
-    'A playable may use hand-authored procedural geometry or a documented, reproducible source-derived payload '+
-    'when the owner explicitly clears that source.','',
+  'Reference GLBs remain quarantined measurement and visual-review oracles only. '+
+    'Every playable must be repository-authored procedural geometry; copied meshes, converted vertices, '+
+    'opaque payloads and source-backed wrappers are forbidden.','',
   'Component cells are N/A when a source GLB is fused and therefore cannot expose an independent hull/turret mask. '+
     'Its whole silhouette and lower running-gear profile remain scored.','',
 ].join('\n');

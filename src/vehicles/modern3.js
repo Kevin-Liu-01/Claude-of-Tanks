@@ -1781,7 +1781,7 @@ function buildK2(P) {
 // evacuator. §H.4 vs k2: shorter blunter turret, no KAPS cheek radars, no
 // pano tower, bare tube (k2 carries the sleeved L/55 + arrowhead wedge).
 function buildK1A1(P) {
-  const { box, cylX, cylY, cylZ, frustum, polyLoft, buildGun, buildRunningGear,
+  const { box, cylX, cylY, cylZ, frustum, polyLoft, polyMultiLoft, buildGun, buildRunningGear,
     liftEye, periscope, smokeCluster, stowage, ammoCan, torus } = KIT;
   const slab = orientedSlab;                                                   // §C.1 winding guard on every mirrored slab
   const { rng } = P;

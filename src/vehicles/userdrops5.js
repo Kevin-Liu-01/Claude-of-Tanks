@@ -5,8 +5,8 @@
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS, fitArmorToDims } from './specs.js';
 
 const copy = (v) => JSON.parse(JSON.stringify(v));
-const ALLOW_LOCAL_RECOVERED_MODELS = typeof import.meta !== 'undefined' &&
-  import.meta.env && !import.meta.env.VITE_PUBLIC_BUILD;
+// Reference assets never become playables, including in local development.
+const ALLOW_LOCAL_RECOVERED_MODELS = false;
 const make = (baseId, id, name, nation, patch = {}) => {
   const spec = copy(TANK_SPECS[baseId]);
   spec.id = id;
@@ -74,9 +74,13 @@ const SPECS = [
       visual: { bakeDirtDeckEq: true } }),
   make('leo2a7', 'leo2a7v', 'Leopard 2A7V', 'Germany',
     { hp: 2650, weightTons: 66.5, topSpeedKmh: 63,
-      // Published P95 equipment datum: broad PERI/RWS/roof hardware defines
-      // the 2.87 m envelope; antenna whips do not.
-      dims: { hullLengthM: 7.72, overallLengthM: 10.97, widthM: 4.00, heightM: 2.87 } }),
+      // 2.87 m remains the published configured-vehicle envelope.  Geometry
+      // validation uses the authored broad-body P95 (2.50 m) rather than
+      // pretending the narrow PERI/antenna equipment peak fills the roof.
+      // The retained reference measures its broad welded roof around 2.44 m;
+      // this target therefore remains source-close without copying its mesh.
+      dims: { hullLengthM: 7.72, overallLengthM: 10.97, widthM: 4.00,
+        heightM: 2.87, silhouetteHeightM: 2.50 } }),
   make('m1a1', 'm1a1ha', 'M1A1HA Abrams', 'USA',
     { hp: 2350, weightTons: 62, gun: { reloadS: 6.3 },
       // §5.73-1 P95 datum: the owner-mandatory full-vehicle ghillie now
@@ -221,19 +225,15 @@ if (ALLOW_LOCAL_RECOVERED_MODELS) {
   // oracle (all three override maps carry the registration incl.
   // pitchOffset -PI/2).
   // fv510: SOURCE REGISTRATION RETIRED (2026-08-10). The repaired CC-BY
-  // print remains the measurement oracle; its exact component geometry is
-  // baked into the synchronous generated build so public/private visuals and
-  // native turret/gun articulation are identical.
+  // print remains a comparison oracle only; the playable is authored by the
+  // repository's native procedural builder.
     // FLIP-RETIRED: articulated('leo2_revolution', { yawOffset: Math.PI });
   // leo2a5: DUAL-GATE GRADUATE (2026-08-04, the 21st — geometry 90.8 x2 +
   // critic 9.0 every view at r10; ladder 7.7 -> 9.0 over five rounds;
   // 04c3e11). Registration retired per §10; freeze hash bc9bad30; the
   // recovered print stays a measurement oracle via the three maps.
-  source('leo2a7v', {
-    // The author exported the complete upper fighting compartment (including
-    // the L/55 and mantlet) as this distinct mesh.
-    turretNode: '^desirefx_me_003$', autoPivot: true,
-  });
+  // leo2a7v: runtime source registration retired. The local print remains a
+  // comparison oracle only; buildLeo2A7V owns every playable vertex.
   // m1a1ha: DUAL-GATE GRADUATE (2026-08-02, freeze hash 88a4a978) — no
   // MODEL_SOURCE; procedural ships everywhere (tejas GLB stays as oracle).
     // FLIP-RETIRED: source('m1a2_sepv2', {

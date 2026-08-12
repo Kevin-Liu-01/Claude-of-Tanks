@@ -2924,15 +2924,13 @@ function buildType74(P) {
   P.topY = 1.15;
 }
 
-// OWNER-SOURCE REBUILD (2026-08-11).  The quarantined high-detail Type 74
-// GLB is a visual/measurement oracle only: no donor mesh, texture, vertex or
-// animation data enters the playable.  This connected procedural build keeps
-// the fleet-native articulated track system while reproducing the source's
-// compact five-wheel hull, low asymmetric cast turret and complete JGSDF
-// combat-station grammar.  All roof/bustle hardware is authored in turretG;
-// all deck/service hardware is authored in hullG so a quarter-turn is a real
-// ownership proof rather than a coincident silhouette.
-function buildType74Source2026(P) {
+// FIRST-PARTY PROCEDURAL TYPE 74 (2026-08-11). No external mesh, texture,
+// vertex array, animation, or converted payload enters this playable. The
+// compact five-wheel hull, asymmetric cast turret, JGSDF combat stations,
+// running gear, and every load path below are authored from repository
+// primitives. Comparison assets may be used only to review proportions and
+// equipment semantics after the geometry is built.
+function buildType74Native2026(P) {
   const {
     box, cylY, cylZ, sph, torus, frustum, lathe, buildGun, buildRunningGear,
     fenders, liftEye, periscope, cupola, xform,
@@ -3398,7 +3396,7 @@ export const MISC_PROFILES = {
   ariete: { build: buildAriete },
   leclerc: { build: buildLeclerc },
   t80u: { build: buildT80UNative2026 },
-  type74: { build: buildType74Source2026 },
+  type74: { build: buildType74Native2026 },
   // FRANCE ROUND: the AMX-30s render procedural (the ahab GLBs carry a
   // baked-in hull/turret 180 — see the buildAMX30 header note)
   amx30: { build: buildAMX30B },

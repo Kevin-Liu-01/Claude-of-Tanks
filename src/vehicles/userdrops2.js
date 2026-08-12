@@ -3,8 +3,7 @@
 // (judged 3/4-angle renders; provenance + license records in
 // docs/licenses/user-drops-recovered/).
 //
-// REPLACEMENTS (model source swap only — gameplay stats stay in their spec
-// modules):
+// HISTORICAL COMPARISON CANDIDATES (runtime swaps permanently retired):
 //   t90m    — "T-90M" by minehffd (CC-BY 4.0, license stamped in
 //             asset.copyright + scene extras). Turret node 'Turret' parents
 //             all 46 turret meshes (Kord RWS, ERA, baskets); gun node
@@ -35,11 +34,10 @@
 // directory + section before any public distribution or commercialization of
 // this private project.
 //
-// Registration contract identical to userdrops.js: pure data + side effect on
-// the shared specs.js roster tables; imported by tankFactory.js AFTER the
-// modern spec modules so the MODEL_SOURCE assignments override 'procedural'.
+// This module contributes gameplay/spec rows only. External files remain
+// isolated tooling references and never override procedural runtime geometry.
 
-import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
+import { TANK_SPECS, ALL_TANK_IDS } from './specs.js';
 
 // --- local mirrors of specs.js module-private helpers (schema-identical,
 // same duplication rule as modern1.js / variants.js / userdrops.js) ---------
@@ -324,10 +322,8 @@ if (SHIP_USERDROP2_NEW) {
   }
 }
 
-// MODEL_SOURCE overrides — unconditional assignment REPLACES the
-// 'procedural' rows the spec modules registered at import time. Node names
-// verified against each GLB's JSON chunk (scratchpad glbtree.mjs; GLTFLoader
-// sanitizes names: spaces -> underscores, dots stripped).
+// Historical runtime overrides remain below only as commented migration
+// notes. No executable MODEL_SOURCE assignment exists in this module.
 // FLIP-RETIRED: MODEL_SOURCE.t90m = {
 // FLIP-RETIRED:   source: 'glb',
 // FLIP-RETIRED:   // 'Turret' yaw shell parents all turret meshes; 'Main barrel' pitch node.
@@ -354,42 +350,8 @@ if (SHIP_USERDROP2_NEW) {
 // FLIP-RETIRED:     yawOffset: -Math.PI / 2,
 // FLIP-RETIRED:   },
 // FLIP-RETIRED: };
-if (SHIP_USERDROP2_NEW) {
-  // r3 QUARANTINE DELIST: leo2a4/bmp2 ride their procedural builders until a
-  // clean-license substitution lands (see the spec-credit gate above).
-  MODEL_SOURCE.leo2a4 = {
-    source: 'glb',
-    glb: {
-      path: '/models/tanks/community/leo2a4_bergman.glb',
-      turretNode: '^Turret$', autoPivot: true, paintUntextured: true,
-    },
-  };
-  MODEL_SOURCE.bmp2 = {
-    source: 'glb',
-    glb: {
-      path: '/models/tanks/community/bmp2_bergman.glb',
-      turretNode: '^Turret$', autoPivot: true, paintUntextured: true,
-    },
-  };
-  MODEL_SOURCE.bmp1 = {
-    source: 'glb',
-    glb: {
-      path: '/models/tanks/community/bmp1_bergman.glb',
-      turretNode: '^Turret$', autoPivot: true, paintUntextured: true,
-    },
-  };
-  MODEL_SOURCE.m1128 = {
-    source: 'glb',
-    glb: {
-      path: '/models/tanks/community/m1128_mgs_bergman.glb',
-      turretNode: '^Turret$', autoPivot: true, paintUntextured: true,
-    },
-  };
-  MODEL_SOURCE.m1296 = {
-    source: 'glb',
-    glb: {
-      path: '/models/tanks/community/m1296_dragoon_bergman.glb',
-      turretNode: '^Turret$', autoPivot: true, paintUntextured: true,
-    },
-  };
-}
+// Runtime source swaps are permanently retired for this wave. The recovered
+// files remain isolated comparison/measurement candidates, but leo2a4, bmp2,
+// bmp1, m1128 and m1296 can only resolve through repository-authored builders.
+// This is intentionally stronger than a disabled shipping flag: no future
+// environment change can silently replace their native geometry.

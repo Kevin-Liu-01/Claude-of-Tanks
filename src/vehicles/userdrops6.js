@@ -3,8 +3,8 @@
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS, fitArmorToDims } from './specs.js';
 
 const copy = (v) => JSON.parse(JSON.stringify(v));
-const ALLOW_LOCAL_RECOVERED_MODELS = typeof import.meta !== 'undefined' &&
-  import.meta.env && !import.meta.env.VITE_PUBLIC_BUILD;
+// Reference assets never become playables, including in local development.
+const ALLOW_LOCAL_RECOVERED_MODELS = false;
 const make = (baseId, id, name, nation, patch = {}) => {
   const s = copy(TANK_SPECS[baseId]);
   s.id = id; s.name = name; s.nation = nation || s.nation; s.variantOf = baseId;

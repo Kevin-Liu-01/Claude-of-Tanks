@@ -17,8 +17,8 @@
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS, fitArmorToDims } from './specs.js';
 
 const copy = (v) => JSON.parse(JSON.stringify(v));
-const ALLOW_LOCAL_RECOVERED_MODELS = typeof import.meta !== 'undefined' &&
-  import.meta.env && !import.meta.env.VITE_PUBLIC_BUILD;
+// Reference assets never become playables, including in local development.
+const ALLOW_LOCAL_RECOVERED_MODELS = false;
 
 // credit rows (author/source/license verified in candidates-gen2 PROVENANCE)
 const BERGMAN = {

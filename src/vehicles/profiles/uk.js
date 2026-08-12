@@ -3638,7 +3638,11 @@ export const UK_PROFILES = {
     gunLength: 3.49, noBins: true, bandHalfW: 1.26, apronY: 1.54, sprocketInset: 0.50,
     trackXc: 1.30, // ref ground band |x| ~1.10..1.50 (v2 front row; the v1 narrow read was dy-shifted)
     // Comet cue: FOUR return rollers between the big Christie wheels.
-    rollers: evenStations(4, 3.3).map((z) => ({ z, y: 0.76, r: 0.085 })),
+    // Keep profile data inert at module evaluation time.  Calling the kit's
+    // station helper here re-entered tankFactory through the profile import
+    // cycle before KIT had initialized.  These are the exact four evenly
+    // spaced stations produced by evenStations(4, 3.3).
+    rollers: [1.65, 0.55, -0.55, -1.65].map((z) => ({ z, y: 0.76, r: 0.085 })),
   },
   challenger_cruiser: {
     build: a30Build, width: 2.91, hullLength: 8.03, roofY: 1.50, bandY: 0.88, trackW: 0.44,

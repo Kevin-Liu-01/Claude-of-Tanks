@@ -18,6 +18,8 @@
     "tank:assets": "node tools/genIcons.mjs",
     "tank:assets:check": "node tools/tank-assets-check.mjs",
     "tank:release:check": "node tools/tank-release-check.mjs",
+    "tank:native:check": "node tools/native-playables-audit.mjs",
+    "tank:family:check": "node src/vehicles/fleetOrder.selftest.mjs",
     "tank:bore:probe": "node tools/muzzle-bore-probe.mjs",
     "shots": "node tools/screenshot.mjs",
     "perf:dev": "node tools/dev-perf-probe.mjs"

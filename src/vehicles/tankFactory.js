@@ -67,6 +67,11 @@ import './userdrops4.js';
 import './userdrops5.js';
 // USER DROPS wave 7: second m_bergman tank-pack mining pass.
 import './userdrops6.js';
+// All extension rows now exist. Normalize player-facing family progression
+// independently of the historical module-registration order.
+import { applyNativeFamilyOrder } from './fleetOrder.js';
+
+applyNativeFamilyOrder();
 
 function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
   t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
@@ -217,6 +222,49 @@ function polyLoft(plan, bottom, top, inset = 0.78) {
     const ny = (t[j][2] - t[i][2]) * (c[0] - t[i][0]) - (t[j][0] - t[i][0]) * (c[2] - t[i][2]);
     if (ny > 0) tri(t[i], t[j], c); else tri(t[j], t[i], c);
   }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(new Array((P.length / 3) * 2).fill(0), 2));
+  g.computeVertexNormals();
+  return g;
+}
+
+// One connected faceted shell through any number of vertical rings. This is
+// the welded-turret sibling of polyLoft: a near-vertical lower armor belt can
+// turn through a real shoulder break into an inset crown without stacking
+// intersecting boxes or manufacturing a second shell. Each ring accepts a
+// scalar/array/function height and inset using polyLoft station semantics.
+function polyMultiLoft(plan, rings) {
+  if (!Array.isArray(rings) || rings.length < 2) throw new Error('polyMultiLoft requires at least two rings');
+  const n = plan.length;
+  const cx = plan.reduce((s, p) => s + p[0], 0) / n;
+  const cz = plan.reduce((s, p) => s + p[1], 0) / n;
+  const at = (v, i) => Array.isArray(v) ? v[i] : (typeof v === 'function' ? v(plan[i], i) : v);
+  const rr = rings.map(({ height, inset = 1 }) => plan.map(([x, z], i) => {
+    const s = at(inset, i);
+    return [cx + (x - cx) * s, at(height, i), cz + (z - cz) * s];
+  }));
+  const P = [];
+  const tri = (a, b, c) => P.push(...a, ...b, ...c);
+  for (let r = 0; r < rr.length - 1; r++) {
+    const a = rr[r], b = rr[r + 1];
+    for (let i = 0; i < n; i++) {
+      const j = (i + 1) % n;
+      const mx = (a[i][0] + a[j][0]) / 2 - cx, mz = (a[i][2] + a[j][2]) / 2 - cz;
+      const ex = a[j][0] - a[i][0], ez = a[j][2] - a[i][2];
+      if (ex * mz - ez * mx > 0) { tri(a[i], a[j], b[j]); tri(a[i], b[j], b[i]); }
+      else { tri(a[j], a[i], b[i]); tri(a[j], b[i], b[j]); }
+    }
+  }
+  const cap = (ring, top, centerHeight) => {
+    const c = [cx, centerHeight ?? (ring.reduce((s, p) => s + p[1], 0) / n), cz];
+    for (let i = 0; i < n; i++) {
+      const j = (i + 1) % n;
+      if (top) tri(ring[i], ring[j], c); else tri(ring[j], ring[i], c);
+    }
+  };
+  cap(rr[0], false, rings[0].centerHeight);
+  cap(rr.at(-1), true, rings.at(-1).centerHeight);
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
   g.setAttribute('uv', new THREE.Float32BufferAttribute(new Array((P.length / 3) * 2).fill(0), 2));
@@ -813,6 +861,7 @@ function buildRunningGear(P, cfg) {
   const seg = q ? 26 : 12;
   const {
     style = 'rubber', wheelR, wheelW, wheelZs, xc,
+    wheelZScale = 1,                    // elliptical road-wheel profile in side elevation
     layers = null,                       // interleaved x offsets pattern, else null
     sprocket, idler, rollers = [], rollerR = 0.09,
     trackW, trackTh = 0.09, topY, botY = 0.055,
@@ -824,6 +873,10 @@ function buildRunningGear(P, cfg) {
   } = cfg;
 
   const wheelY = cfg.wheelY ?? wheelR + 0.10;
+  // Machine-readable family receipt. Variant builders still choose their
+  // own radius, cadence, terminal geometry and protection; this records only
+  // the native mechanical station count for lineage/provenance checks.
+  hullG.userData.nativeRoadWheelStations = wheelZs.length;
 
   // torsion arms: static axle stub + trailing arm per wheel station (merged
   // into the hull detail bucket — zero extra draw calls)
@@ -883,9 +936,22 @@ function buildRunningGear(P, cfg) {
   }
 
   const { tire, disc, dark } = wheelGeo(style, wheelR, wheelW, seg, cfg.dishR ?? 0.90);
+  // Some modern pressed-steel wheel assemblies are measurably oval in the
+  // normalized side reference (vertical tire diameter exceeds the fore/aft
+  // diameter).  Scaling the authored wheel geometry, rather than faking the
+  // cadence or hiding it behind a skirt, preserves a real tire/dish/hub
+  // assembly and keeps the suspension stations mechanically honest.  The
+  // option is opt-in so every established family remains byte-for-byte on
+  // the historical circular path.
+  if (wheelZScale !== 1) {
+    tire?.scale(1, 1, wheelZScale);
+    disc?.scale(1, 1, wheelZScale);
+    dark?.scale(1, 1, wheelZScale);
+  }
   const made = [];
   const mkInst = (geo, mat, list) => {
     const im = new THREE.InstancedMesh(geo, mat, list.length);
+    im.userData.runningGear = true;
     // PERF: wheels/rollers sit inside the hull + track-band ground shadow —
     // their own cast contribution is invisible, but costs a draw per cascade
     // per tank. The track band (tl/tr below) still casts the silhouette.
@@ -972,6 +1038,7 @@ function buildRunningGear(P, cfg) {
       // orphaned steel wheels floating beside sourced tanks).
       for (const [geo, mat] of [[gp.body, steelMat], [gp.dark, darkMat]]) {
         const m = new THREE.Mesh(geo, mat);
+        m.userData.runningGear = true;
         m.position.set(side * xc, end.y, end.z);
         // PERF: sprocket/idler are wrapped by the casting track band — no cast
         m.castShadow = false;
@@ -1057,8 +1124,10 @@ function buildRunningGear(P, cfg) {
   const bandBasePos = tg.getAttribute('position').array.slice();
   P.disposables.push(tgL, tgR);
   const tl = new THREE.Mesh(tgL, mats.trackL);
+  tl.userData.runningGear = true;
   tl.position.x = -xc;
   const tr = new THREE.Mesh(tgR, mats.trackR);
+  tr.userData.runningGear = true;
   tr.position.x = xc;
   tl.castShadow = tl.receiveShadow = tr.castShadow = tr.receiveShadow = true;
   hullG.add(tl, tr);
@@ -1119,6 +1188,7 @@ function buildRunningGear(P, cfg) {
   // continuous shadow. The extra layer costs one instanced draw per tank,
   // not one draw per shoe.
   for(const mesh of linkMeshes) {
+    mesh.userData.runningGear = true;
     mesh.castShadow=false;
     mesh.receiveShadow=true;
     mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
@@ -2024,7 +2094,7 @@ function spareTrackStrip(P, bucket, x, y, z, links, rx = 0, ry = 0) {
 // the core 8 builders use — extension builders must NOT fork these.
 // ---------------------------------------------------------------------------
 export const KIT = {
-  xform, box, cylX, cylY, cylZ, sph, torus, lathe, slab, frustum, polyTurret, polyLoft,
+  xform, box, cylX, cylY, cylZ, sph, torus, lathe, slab, frustum, polyTurret, polyLoft, polyMultiLoft,
   mergeAll, trackBandGeo, trackLoopPoints, trackShoeGeometries, trackHitboxHull,
   buildRunningGear, buildGun,
   cupola, headlight, liftEye, periscope, pintleMG, smokeCluster, towCable,
@@ -3780,11 +3850,62 @@ function measureRestContact(root) {
   }
 }
 
+function createGeometryReceiptMaterials() {
+  const owned = [];
+  const make = (color, extra = {}) => {
+    const material = new THREE.MeshStandardMaterial({
+      color,
+      roughness: 0.9,
+      metalness: 0.05,
+      vertexColors: true,
+      ...extra,
+    });
+    owned.push(material);
+    return material;
+  };
+  const trackTexL = new THREE.Texture();
+  const trackTexR = new THREE.Texture();
+  trackTexL.offset.set(0, 0);
+  trackTexR.offset.set(0, 0);
+  owned.push(trackTexL, trackTexR);
+  const mats = {
+    hull: make(0x667055),
+    wheels: make(0x545b48),
+    wheelsRecessed: make(0x34382f),
+    rubber: make(0x1d201c),
+    detail: make(0x4a5040),
+    dark: make(0x20231f),
+    shadow: make(0x181a17),
+    trackLink: make(0x2d302b),
+    spareTrack: make(0x292c27),
+    glass: make(0x243e49, { transparent: true, opacity: 0.7 }),
+    barrel: make(0x555d49),
+    canvasCloth: make(0x41452f),
+    wood: make(0x5b4732),
+    burnt: make(0x171713),
+    trackL: make(0x2d302b),
+    trackR: make(0x2d302b),
+    trackTexL,
+    trackTexR,
+    trackLinkM: 0.165 * 4,
+  };
+  mats.decal = () => mats.detail;
+  mats.dispose = () => { for (const resource of owned) resource.dispose(); };
+  return mats;
+}
+
 export function createTank(specId, engineCtx, opts = {}) {
-  const { camoSeed = 4000, quality = 'high', proceduralOnly = false } = opts;
+  const {
+    camoSeed = 4000,
+    quality = 'high',
+    proceduralOnly = false,
+    geometryReceipt = false,
+  } = opts;
   const spec = getSpec(specId);
   const armor = spec.armor;
-  const mats = createTankMaterials(spec, engineCtx, camoSeed, quality);
+  const mats = geometryReceipt
+    ? createGeometryReceiptMaterials()
+    : createTankMaterials(spec, engineCtx, camoSeed, quality);
   const rng = mulberry32((camoSeed | 0) ^ 0x9e37);
 
   const root = new THREE.Group();
@@ -3815,6 +3936,12 @@ export function createTank(specId, engineCtx, opts = {}) {
     // (killcam closeups frame AI vehicles at arm's length)
     spec, mats, rng, q: quality !== 'low', hullG, turretG, gunG, recoilG,
     disposables, gear: null, muzzleZ: armor.gunBarrel.lengthM, topY: 0.8,
+    // Optional profile-owned final visual composition. This runs after the
+    // authored buckets, decals, and ERA instances exist, but before shadow
+    // proxies and anchors are installed. It is reserved for native builders
+    // that need to regroup their own authored pieces without touching the
+    // shared articulation rig (gunG remains independently pitchable).
+    postAssemble: null,
     add(bucket, geo, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, s = 1) {
       (buckets[bucket] || (buckets[bucket] = [])).push(xform(geo, x, y, z, rx, ry, rz, s));
     },
@@ -3824,6 +3951,28 @@ export function createTank(specId, engineCtx, opts = {}) {
     // hidden duplicate geometry or floating donor gun survives the delta.
     clear(...names) {
       for (const name of names.flat()) buckets[name] = [];
+    },
+    // Section-correction utility for authored family variants. Bucket
+    // geometry is still unmerged here, so scaling these native pieces
+    // preserves their topology, materials and articulation ownership. This
+    // must never be used on imported payloads (none enter this builder).
+    scaleBuckets(names, x = 1, y = 1, z = 1) {
+      for (const name of names.flat()) {
+        for (const geo of buckets[name] || []) geo.scale(x, y, z);
+      }
+    },
+    offsetBuckets(names, x = 0, y = 0, z = 0) {
+      for (const name of names.flat()) {
+        for (const geo of buckets[name] || []) geo.translate(x, y, z);
+      }
+    },
+    forEachBucketPart(names, visitor) {
+      for (const name of names.flat()) {
+        for (const geo of buckets[name] || []) {
+          if (!geo.boundingBox) geo.computeBoundingBox();
+          visitor(geo, geo.boundingBox, name);
+        }
+      }
     },
     // Mantlet & cradle parts: pitch with the gun but do NOT recoil.
     addGunExtra(geo, x, y, z) {
@@ -3838,7 +3987,12 @@ export function createTank(specId, engineCtx, opts = {}) {
     // ERA cluster: brick placements in HULL frame (or turret frame if turretLocal)
     eraCluster(plateName, fill, turretLocal = false) {
       const start = eraPlacements.length;
-      fill((x, y, z, rx = 0, ry = 0, rz = 0) => eraPlacements.push({ x, y, z, rx, ry, rz, turretLocal }));
+      // Optional per-placement scale lets a native builder author a real
+      // large cassette from the same destructible ERA primitive instead of
+      // leaving permanent decorative panels behind after stripEra().  Every
+      // historical caller takes the exact 1×1×1 path.
+      fill((x, y, z, rx = 0, ry = 0, rz = 0, sx = 1, sy = 1, sz = 1) =>
+        eraPlacements.push({ x, y, z, rx, ry, rz, sx, sy, sz, turretLocal }));
       eraClusters.set(plateName, { start, end: eraPlacements.length, turretLocal });
     },
   };
@@ -3859,8 +4013,8 @@ export function createTank(specId, engineCtx, opts = {}) {
     }
     disposables.push(merged);
     const mesh = new THREE.Mesh(merged, mats[matKey]);
+    mesh.name = bucket;
     if (bucket === 'hullTrackGuardL' || bucket === 'hullTrackGuardR') {
-      mesh.name = bucket;
       mesh.userData.trackGuard = true;
     }
     // Track-containment law (BUILD-STANDARD SS-B4): tag track-family bucket
@@ -3912,6 +4066,10 @@ export function createTank(specId, engineCtx, opts = {}) {
     seatEraBricks();
   }
 
+  if (typeof P.postAssemble === 'function') {
+    P.postAssemble({ root, hullG, turretG, gunG, recoilG });
+  }
+
   installProceduralShadowProxies(spec, hullG, turretG, recoilG, disposables);
 
   /** (Re)compose every ERA brick at its as-built placement (undoes stripEra). */
@@ -3924,7 +4082,7 @@ export function createTank(specId, engineCtx, opts = {}) {
         e.turretLocal ? e.y - armor.turretPivot[1] : e.y,
         e.turretLocal ? e.z - armor.turretPivot[2] : e.z,
       );
-      _s.set(1, 1, 1);
+      _s.set(e.sx ?? 1, e.sy ?? 1, e.sz ?? 1);
       _m.compose(_v, _q, _s);
       e._mesh.setMatrixAt(e._index, _m);
     }

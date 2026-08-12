@@ -196,7 +196,9 @@ export function spawnTanks(game, engineCtx) {
     game.allTanks.push(ent);
     game.tankById.set(ent.id, ent);
   });
-  game.tanks = game.allTanks.slice(0, TANK_IDS.length); // staged default battle
+  // ALL_TANK_IDS is garage/family ordered; the staged screenshot battle is
+  // the explicitly locked core roster and must not depend on carousel order.
+  game.tanks = TANK_IDS.map((id) => game.tankById.get(id)).filter(Boolean);
   // PERF (performance_budget r3): the staged battle's 7 ENEMY bakes are the
   // single biggest load-to-ready block (~2.2 s of 2048² canvas painting +
   // SimplexNoise + first-use GPU uploads on the boot path; bootprobe:

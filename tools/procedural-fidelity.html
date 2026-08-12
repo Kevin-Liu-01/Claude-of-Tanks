@@ -57,8 +57,10 @@ const LOCAL_REFERENCE_OVERRIDES = {
   type59: { source:'glb', glb:{ path:'/models/tanks/community/type69_lasttriarius.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
   // RE-ONBOARD (§5.36, 2026-08-08): ahab bakes re-baked with the hull
   // RZ(90) fix — orientation receipts agree:true; §5.14 §E escalation done.
-  amx30: { source:'glb', glb:{ path:'/models/tanks/community/amx30b_ahab.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
-  amx30b2: { source:'glb', glb:{ path:'/models/tanks/community/amx30b2_ahab.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
+  // These exports parent large fixed-hull regions under `Turret`; whole and
+  // hull masks are valid, but a direct turret-tree score is not.
+  amx30: { source:'glb', glb:{ path:'/models/tanks/community/amx30b_ahab.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true, turretComponentMasks:false } },
+  amx30b2: { source:'glb', glb:{ path:'/models/tanks/community/amx30b2_ahab.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true, turretComponentMasks:false } },
   // ---- KojfDiscord AW series (§5.38 owner drops, LOCAL-ONLY QUARANTINE,
   // measurement/influence only — playables are procedural). Textured
   // prints (no paintUntextured). Follower sets are AABB-census best-effort
@@ -68,12 +70,36 @@ const LOCAL_REFERENCE_OVERRIDES = {
   // 102 semantic names while the convenient loose GLB merges them by
   // material. The bake therefore emits this deterministic, locally ignored
   // articulation oracle without altering any source triangle.
-  leo2a4: { source:'glb', glb:{ path:'/models/community-candidates/leopard_2a4_otco_repaired.glb', turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true } },
+  // The repaired oracle's Turret mesh descends to y=.789 while its visible
+  // deck is ~1.70 m: it includes the hidden internal basket. A direct mask
+  // therefore compares exposed source internals against our exterior-only
+  // authored turret. Keep every exterior, gun, track and yaw gate instead.
+  leo2a4: { source:'glb', glb:{ path:'/models/community-candidates/leopard_2a4_otco_repaired.glb', turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, componentMasks:false } },
   // Owner-authoritative 2026-08-10 nested source rebuild. The deterministic
   // local oracle restores semantic Hull/Turret/Gun ownership without
   // altering any source triangle.
-  leo2a7v: { source:'glb', glb:{ path:'/models/community-candidates/leopard_2a7v_repaired.glb', turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true } },
-  type99a: { source:'glb', glb:{ path:'/models/community-candidates/type_99a2_armored_warfare.glb', turretNode:'^Object_31$', gunNode:'^Object_17$', autoPivot:true, turretFollowers:'^Object_(?:3|4|6|7|9|10|11|12|13|15|16|19|20|21|23|30)$' } },
+  // The neutral oracle bake intentionally merged many roof/turret fittings
+  // into its HullDetail mesh before export.  Whole-vehicle, gun and running-
+  // gear masks remain valid, but independent hull/turret component masks do
+  // not.  Disabling those two misleading cells keeps the comparison honest.
+  leo2a7v: { source:'glb', glb:{ path:'/models/community-candidates/leopard_2a7v_repaired.glb',
+    turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, componentMasks:false,
+    trackComponentMasks:true } },
+  // Object_29 fuses fixed glacis/service pieces and rotating cheek/flank
+  // armour in one mesh.  It cannot supply an honest independent hull/turret
+  // mask without rewriting source vertices, so component scoring is disabled
+  // while whole-view, gun, track and yaw evidence remain mandatory.
+  type99a: { source:'glb', glb:{
+    path:'/models/community-candidates/type_99a2_armored_warfare.glb',
+    turretNode:'^Object_31$', gunNode:'^Object_17$', autoPivot:true,
+    componentMasks:false,
+    // Object_17 is only the exposed tube; our articulated gun tree also
+    // owns the mechanically correct mantlet/tunnel.  An isolated comparison
+    // therefore penalizes the authored model for containing the missing
+    // source part.  Cannon length/root remain mandatory in all whole views.
+    gunComponentMasks:false,
+    turretFollowers:'^Object_(?:3|4|6|7|9|10|11|12|13|15|16|19|20|21|23|30)$',
+  } },
   amx40: { source:'glb', glb:{ path:'/models/community-candidates/amx-40_armored_warfare.glb', turretNode:'^Object_12$', gunNode:'^Object_20$', autoPivot:true, turretFollowers:'^Object_(?:2|5|6|7|8|11|14|15|24)$' } },
   k1a1: { source:'glb', glb:{ path:'/models/community-candidates/k1a1_kojf.glb', turretNode:'^vehicle#k1a1_turret_0$', gunNode:'^vehicle#k1a1_cannon_10$', autoPivot:true, turretFollowers:'^vehicle#(?:k1a1_(?:cage|smokecaps|noeffect01)_turret_\\d+|k1a1_cannonbase_9|antenna_short_7)$' } },
   t90ms: { source:'glb', glb:{ path:'/models/community-candidates/t90ms_kojf.glb', turretNode:'^vehicle#t-90ms_turret_t-90ms_6$', gunNode:'^vehicle#t-90ms_cannon_2a46m-5_8$', autoPivot:true, turretFollowers:'^vehicle#(?:t-90ms_(?:aps|cage01|era\\d\\d|detachparts|ejectionport|smokecaps)_turret|t-90ms_cannonbase_t-90ms|cannonbase_skinned_5|antenna01_24)' } },
@@ -94,15 +120,29 @@ const LOCAL_REFERENCE_OVERRIDES = {
   merkava4b: { source:'glb', glb:{ path:'/models/tanks/community/recovered/merkava4b.glb', paintUntextured:true, turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, turretFollowers:'vehicle#(?:antenna_|bone_|ex_armor_(?!body|[lr]_)|ex_decor_(?:0[1-9]|13)|ex_decor_[lr]_02|hatch_(?:0[4-9]|1[0-3]))', gunFollowers:'vehicle#gun_barrel_' } },
   t62mv1: { source:'glb', glb:{ path:'/models/tanks/community/recovered/t62_bergman.glb', paintUntextured:true, turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:false } },
   t64bv1: { source:'glb', glb:{ path:'/models/tanks/community/recovered/t64bv1.glb', paintUntextured:true, turretNode:'^Turret$', autoPivot:true, yawOffset:-1.5707963267948966 } },
-  t72b_1987: { source:'glb', glb:{ path:'/models/tanks/community/recovered/t72b_1987.glb', paintUntextured:true, turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, yawOffset:-1.5707963267948966 } },
+  // The recovered B87 file exposes a nominal Gun node, but it contains only
+  // a partial fused subassembly rather than the complete barrel silhouette.
+  // Judge the authored gun in the full nine-view masks; do not compare two
+  // semantically different node fragments as a standalone component.
+  t72b_1987: { source:'glb', glb:{ path:'/models/tanks/community/recovered/t72b_1987.glb', paintUntextured:true, turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, yawOffset:-1.5707963267948966, gunComponentMasks:false } },
   t72bu: { source:'glb', glb:{ path:'/models/tanks/community/recovered/t72bu.glb', paintUntextured:true, turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, yawOffset:-1.5707963267948966 } },
-  t80: { source:'glb', glb:{ path:'/models/tanks/community/recovered/t80.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
-  t80b: { source:'glb', glb:{ path:'/models/tanks/community/recovered/t80b.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
-  t80bv: { source:'glb', glb:{ path:'/models/tanks/community/recovered/t80bv.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
+  // These recovered comparison prints expose a Turret node but no honest
+  // independent gun subtree: their cannon is partly fused into the turret
+  // and the residual heuristic mask is only a short 42-pixel fragment.  The
+  // playable remains entirely procedural; compare its cannon through every
+  // whole/quarter view and suppress only that invalid component cell.
+  t80: { source:'glb', glb:{ path:'/models/tanks/community/recovered/t80.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true, gunComponentMasks:false } },
+  t80b: { source:'glb', glb:{ path:'/models/tanks/community/recovered/t80b.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true, gunComponentMasks:false } },
+  t80bv: { source:'glb', glb:{ path:'/models/tanks/community/recovered/t80bv.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true, gunComponentMasks:false } },
   t80u: { source:'glb', glb:{ path:'/models/tanks/t80u_javanilga.glb', turretNode:'^Object09_24$', gunNode:'^Object1101_22$', autoPivot:true, paintUntextured:true, stripBakedTextures:true } },
   t90a: { source:'glb', glb:{ path:'/models/tanks/community/variants/t90a_xarchenko_variant.glb', turretNode:'TurretPivot', gunNode:'GunPivot', autoPivot:true, paintUntextured:true } },
   t90a_vladimir: { source:'glb', glb:{ path:'/models/tanks/community/recovered/t90a_vladimir.glb', paintUntextured:true, turretNode:'^desirefx[._]?me_001$', autoPivot:true } },
-  t90m: { source:'glb', glb:{ path:'/models/tanks/t90m_minehffd.glb', turretNode:'^Turret$', gunNode:'^Main_barrel$', autoPivot:true, scaleToOverall:true, yawOffset:1.5707963267948966, heroTex:true } },
+  // Main_barrel contains only the forward tube in this source.  The thermal
+  // sleeve/root meshes are turret siblings (see references/tanks/t90m.md),
+  // so an independent gun-node mask compares a partial source against our
+  // complete cannon and is not a valid component measurement.  The full gun
+  // remains mandatory in all nine whole silhouettes and in yaw evidence.
+  t90m: { source:'glb', glb:{ path:'/models/tanks/t90m_minehffd.glb', turretNode:'^Turret$', gunNode:'^Main_barrel$', autoPivot:true, scaleToOverall:true, yawOffset:1.5707963267948966, heroTex:true, gunComponentMasks:false } },
   t90sm: { source:'glb', glb:{ path:'/models/tanks/community/recovered/t90sm.glb', paintUntextured:true, turretNode:'^misc_a$', gunNode:'^misc_b$', autoPivot:true, yawOffset:3.141592653589793 } },
   type90: { source:'glb', glb:{ path:'/models/tanks/community/recovered/type90.glb', paintUntextured:true, turretNode:'^Turret$', autoPivot:true, yawOffset:-1.5707963267948966 } },
   vickers_mk1: { source:'glb', glb:{ path:'/models/tanks/community/vickers_mk1_jack.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
@@ -116,6 +156,13 @@ const LOCAL_REFERENCE_OVERRIDES = {
     glb:{
       path:'/models/tanks/community/ariete-dustymojito.glb',
       turretNode:'^Turret$', autoPivot:true,
+      // This print has no independent gun/barrel/cannon node: its tube is
+      // fused into the Turret mesh. The hull-boundary overhang heuristic
+      // then measures unrelated rear/turret extremities as "gun" despite
+      // 92.9-96.8 whole-view agreement. Keep the cannon mandatory in every
+      // whole silhouette and yaw frame; disable only the invalid isolated
+      // component cell.
+      gunComponentMasks:false,
     },
   },
   // AFV program (owner directive 2026-08-04, packet docs/references/tanks/
@@ -237,6 +284,12 @@ const LOCAL_REFERENCE_OVERRIDES = {
       path:'/models/tanks/community/type-10_main_battle_tank_repaired.glb',
       turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true,
       paintUntextured:true,
+      // The repaired Turret tree correctly includes its hidden internal
+      // basket down to y=.789 while the visible deck is ~1.60 m. It remains
+      // mandatory for yaw/ownership, but its isolated mask is not a valid
+      // exterior-shell target. Hull, cannon, tracks and every whole view stay
+      // mandatory; suppress only this misleading component cell.
+      turretComponentMasks:false,
     },
   },
   // Owner-supplied high-detail NullOps Type 74 oracle (2026-08-11).  It is
@@ -357,11 +410,16 @@ const LOCAL_REFERENCE_OVERRIDES = {
   },
   // leopard2_proto (MODEL_SOURCE FLIP 2026-08-06, flip-era mechanics):
   // the §B8-accepted procedural build (f1af7ba8, day-resit PASS) is the
-  // model of record; the recovered print stays measurement-only here.
+  // model of record. Bergman's recovered print remains a valid hull/course
+  // oracle, but its turret is melted into the deck and its cannon is a
+  // deck-level bar (measured in docs/references/tanks/leopard2_proto.md).
+  // Keep the broken upper overlays visible as diagnostics; never deform our
+  // authored proud PT turret to make those invalid masks score well.
   leopard2_proto: {
     source:'glb',
     glb:{ path:'/models/tanks/community/recovered/leopard2_proto.glb',
-      turretNode:'^Turret$', autoPivot:true, paintUntextured:true },
+      turretNode:'^Turret$', autoPivot:true, paintUntextured:true,
+      wholeViewMasks:false, turretComponentMasks:false, gunComponentMasks:false },
   },
   // pt91m (graduated 2026-08-03, the 14th): retired userdrops5
   // registration — measurement-only. NO yawOffset here: this harness
@@ -436,13 +494,13 @@ const LOCAL_REFERENCE_OVERRIDES = {
     source:'glb',
     glb:{ path:'/models/tanks/community/recovered/m60a1.glb',
       turretNode:'^Turret$', gunNode:'^weapon$', autoPivot:true,
-      yawOffset:-Math.PI/2 },
+      yawOffset:-Math.PI/2, gateEligible:false },
   },
   m60a3: {
     source:'glb',
     glb:{ path:'/models/tanks/community/recovered/m60a1.glb',
       turretNode:'^Turret$', gunNode:'^weapon$', autoPivot:true,
-      yawOffset:-Math.PI/2 },
+      yawOffset:-Math.PI/2, gateEligible:false },
   },
   // t30: NO gate oracle possible through this harness (ww2 r2 finding).
   // The candidateGlb is ONE fused node ('hull', mesh Object.113 — probed
@@ -460,9 +518,10 @@ const LOCAL_REFERENCE_OVERRIDES = {
 const source = LOCAL_REFERENCE_OVERRIDES[id] || MODEL_SOURCE[id];
 const sourceIds = ALL_TANK_IDS.filter((tankId) => MODEL_SOURCE[tankId]?.source === 'glb');
 window.__REFERENCE_IDS = [...new Set([...sourceIds, ...Object.keys(LOCAL_REFERENCE_OVERRIDES)])]
-  .filter((tankId) => TANK_SPECS[tankId]);
+  .filter((tankId) => TANK_SPECS[tankId])
+  .filter((tankId) => (LOCAL_REFERENCE_OVERRIDES[tankId] || MODEL_SOURCE[tankId])?.glb?.gateEligible !== false);
 
-document.querySelector('#title').textContent = `${spec.name} — sourced vs procedural`;
+document.querySelector('#title').textContent = `${spec.name} — reference vs authored procedural`;
 document.querySelector('#summary').textContent = source?.glb?.path || 'No sourced reference';
 
 const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:false, preserveDrawingBuffer:true, powerPreference:'high-performance' });
@@ -482,6 +541,11 @@ if (source) MODEL_SOURCE[id] = source;
 const reference = createTank(id, engineCtx, { camoSeed:4242, quality:'high' });
 MODEL_SOURCE[id] = originalSource;
 const procedural = createTank(id, engineCtx, { camoSeed:4242, quality:'high', proceduralOnly:true });
+// Read-only diagnostics for authoring probes. The fidelity page owns these
+// objects; exposing their roots avoids modifying runtime code merely to
+// inspect bucket bounds and articulation hierarchy in Puppeteer.
+window.__FIDELITY_REFERENCE = reference;
+window.__FIDELITY_PROCEDURAL = procedural;
 scene.add(reference.root, procedural.root);
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -570,6 +634,7 @@ procedural.root.scale.multiplyScalar(safeScale(spec.dims.widthM,procWidth));
 // even when both models have the correct barrel length.
 const refGunNode=reference.root.getObjectByName('rig_gun');
 const refTurretNode=reference.root.getObjectByName('rig_turret');
+const procTurretNode=procedural.root.getObjectByName('rig_turret');
 if (refGunNode && refTurretNode) {
   reference.root.updateMatrixWorld(true);
   const gunBox=visibleBox(refGunNode);
@@ -631,16 +696,17 @@ function cameraFor(direction) {
   camera.updateMatrixWorld(true);
   return camera;
 }
-
 function setPart(root, part) {
   const hull = root.getObjectByName('rig_hull');
   const turret = root.getObjectByName('rig_turret');
+  const gun = root.getObjectByName('rig_gun');
   root.traverse((o) => {
     if (!isRenderNode(o)) return;
     const base = baseVisible.get(o) === true;
     const allowed = part === 'whole'
       || (part === 'hull' && isBelow(o, hull) && !isBelow(o, turret))
-      || (part === 'turret' && isBelow(o, turret));
+      || (part === 'turret' && isBelow(o, turret))
+      || (part === 'gun' && isBelow(o, gun));
     o.visible = base && allowed;
   });
 }
@@ -700,7 +766,127 @@ function compare(a, candidate) {
   const dc=Math.hypot(ba.cx-bb.cx,ba.cy-bb.cy)/Math.max(Math.hypot(ba.width,ba.height),1);
   const centroidSimilarity=Math.max(0,1-dc*2);
   const score=(iou*.70+areaSimilarity*.15+bboxSimilarity*.10+centroidSimilarity*.05)*100;
-  return { score, iou, areaSimilarity, bboxSimilarity, centroidSimilarity, referenceArea:ba.area, proceduralArea:bb.area };
+  return {
+    score, iou, areaSimilarity, bboxSimilarity, centroidSimilarity,
+    referenceArea:ba.area, proceduralArea:bb.area,
+    referenceBounds:{ width:ba.width, height:ba.height, cx:ba.cx, cy:ba.cy },
+    proceduralBounds:{ width:bb.width, height:bb.height, cx:bb.cx, cy:bb.cy },
+  };
+}
+
+// Compact contour diagnostics for thin side silhouettes. A one-pixel roof or
+// belly mismatch can dominate direct-turret IoU while remaining difficult to
+// read in the thumbnail overlay. Positive deltas mean the aligned procedural
+// contour sits lower in image space than the reference contour.
+function contourProfile(referenceMask, candidateMask, bins=12) {
+  const candidate=alignMask(referenceMask,candidateMask);
+  const ra=bounds(referenceMask), cb=bounds(candidate);
+  const minX=Math.min(ra.minX,cb.minX), maxX=Math.max(ra.maxX,cb.maxX);
+  const out=[];
+  for (let b=0; b<bins; b++) {
+    const x0=Math.floor(minX+(maxX-minX+1)*b/bins);
+    const x1=Math.max(x0,Math.floor(minX+(maxX-minX+1)*(b+1)/bins)-1);
+    let topDelta=0,bottomDelta=0,columns=0;
+    for (let x=x0; x<=x1; x++) {
+      const longestRun=(mask)=>{
+        let bestTop=SIZE,bestBottom=-1,bestLength=0,start=-1;
+        for (let y=0; y<=SIZE; y++) {
+          const on=y<SIZE && mask[y*SIZE+x];
+          if (on && start<0) start=y;
+          if (!on && start>=0) {
+            const length=y-start;
+            if (length>bestLength) { bestLength=length; bestTop=start; bestBottom=y-1; }
+            start=-1;
+          }
+        }
+        return [bestTop,bestBottom];
+      };
+      const [rt,rb]=longestRun(referenceMask),[pt,pb]=longestRun(candidate);
+      if (rb>=0 && pb>=0) { topDelta+=pt-rt; bottomDelta+=pb-rb; columns++; }
+    }
+    out.push({
+      topDelta:columns?Number((topDelta/columns).toFixed(2)):null,
+      bottomDelta:columns?Number((bottomDelta/columns).toFixed(2)):null,
+      columns,
+    });
+  }
+  return out;
+}
+
+// Downsampled direct-component silhouette bands for authored rebuilds.  This
+// is deliberately a 2-D render diagnostic (not source geometry): each sample
+// records only the longest visible top/bottom run after the same translation
+// alignment used by compare().  It makes thin turret/bustle mismatches
+// actionable without embedding or reconstructing oracle mesh data.
+function silhouetteBand(referenceMask, candidateMask, samples=48) {
+  const candidate=alignMask(referenceMask,candidateMask);
+  const rb=bounds(referenceMask), cb=bounds(candidate);
+  const minX=Math.min(rb.minX,cb.minX), maxX=Math.max(rb.maxX,cb.maxX);
+  const longestRun=(mask,x)=>{
+    let bestTop=null,bestBottom=null,bestLength=0,start=-1;
+    for (let y=0; y<=SIZE; y++) {
+      const on=y<SIZE && mask[y*SIZE+x];
+      if (on && start<0) start=y;
+      if (!on && start>=0) {
+        const length=y-start;
+        if (length>bestLength) { bestLength=length; bestTop=start; bestBottom=y-1; }
+        start=-1;
+      }
+    }
+    return bestTop===null?null:[bestTop,bestBottom];
+  };
+  const rows=[];
+  for (let i=0;i<samples;i++) {
+    const x=Math.round(minX+(maxX-minX)*i/Math.max(1,samples-1));
+    rows.push([x,longestRun(referenceMask,x),longestRun(candidate,x)]);
+  }
+  return rows;
+}
+
+function differenceProfile(referenceMask, candidateMask, axis='y', bins=12) {
+  const candidate=alignMask(referenceMask,candidateMask);
+  const rb=bounds(referenceMask), cb=bounds(candidate);
+  const lo=axis==='y'?Math.min(rb.minY,cb.minY):Math.min(rb.minX,cb.minX);
+  const hi=axis==='y'?Math.max(rb.maxY,cb.maxY):Math.max(rb.maxX,cb.maxX);
+  const out=[];
+  for(let b=0;b<bins;b++){
+    const a0=Math.floor(lo+(hi-lo+1)*b/bins);
+    const a1=Math.max(a0,Math.floor(lo+(hi-lo+1)*(b+1)/bins)-1);
+    let referenceOnly=0,proceduralOnly=0,overlap=0;
+    for(let y=0;y<SIZE;y++)for(let x=0;x<SIZE;x++){
+      const a=axis==='y'?y:x;
+      if(a<a0||a>a1)continue;
+      const i=y*SIZE+x,r=referenceMask[i],p=candidate[i];
+      if(r&&p)overlap++; else if(r)referenceOnly++; else if(p)proceduralOnly++;
+    }
+    out.push({start:a0,end:a1,referenceOnly,proceduralOnly,overlap});
+  }
+  return out;
+}
+
+function differenceGrid(referenceMask, candidateMask, cols=12, rows=8) {
+  const candidate=alignMask(referenceMask,candidateMask);
+  const rb=bounds(referenceMask), cb=bounds(candidate);
+  const minX=Math.min(rb.minX,cb.minX), maxX=Math.max(rb.maxX,cb.maxX);
+  const minY=Math.min(rb.minY,cb.minY), maxY=Math.max(rb.maxY,cb.maxY);
+  const out=[];
+  for(let gy=0;gy<rows;gy++){
+    const y0=Math.floor(minY+(maxY-minY+1)*gy/rows);
+    const y1=Math.max(y0,Math.floor(minY+(maxY-minY+1)*(gy+1)/rows)-1);
+    const row=[];
+    for(let gx=0;gx<cols;gx++){
+      const x0=Math.floor(minX+(maxX-minX+1)*gx/cols);
+      const x1=Math.max(x0,Math.floor(minX+(maxX-minX+1)*(gx+1)/cols)-1);
+      let referenceOnly=0,proceduralOnly=0,overlap=0;
+      for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){
+        const i=y*SIZE+x,r=referenceMask[i],p=candidate[i];
+        if(r&&p)overlap++; else if(r)referenceOnly++; else if(p)proceduralOnly++;
+      }
+      row.push({referenceOnly,proceduralOnly,overlap});
+    }
+    out.push(row);
+  }
+  return out;
 }
 
 const subtract = (whole, base) => {
@@ -720,12 +906,16 @@ function lowerBand(a, b) {
   return [oa,ob];
 }
 
-function overhang(whole, hull, commonHullBounds) {
+function cannonOverhang(whole, hullBounds) {
   const out=new Uint8Array(whole.length);
   const pad=2;
   for (let y=0; y<SIZE; y++) for (let x=0; x<SIZE; x++) {
     const i=y*SIZE+x;
-    if (whole[i] && (x<commonHullBounds.minX-pad || x>commonHullBounds.maxX+pad)) out[i]=1;
+    // In the normalized right-side camera the forward cannon projects to
+    // screen-left. The opposite overhang is bustle, rack or rear service
+    // structure and is not part of the cannon. Measuring both sides as one
+    // mask silently made rear-package width alter the gun score.
+    if (whole[i] && x<hullBounds.minX-pad) out[i]=1;
   }
   return out;
 }
@@ -751,6 +941,7 @@ const hullRows={};
 const upperRows={};
 const directTurretRows={};
 const rawMasks={};
+const rawDirectTurretMasks={};
 for (const [name,dir] of Object.entries(ANGLES)) {
   const camera=cameraFor(dir);
   const refWhole=renderMask(reference,procedural,camera,'whole');
@@ -764,6 +955,7 @@ for (const [name,dir] of Object.entries(ANGLES)) {
   const refTurret=renderMask(reference,procedural,camera,'turret');
   const procTurret=renderMask(procedural,reference,camera,'turret');
   directTurretRows[name]=compare(refTurret,procTurret);
+  rawDirectTurretMasks[name]={ref:refTurret,proc:procTurret};
   rawMasks[name]={refWhole,procWhole,refHull,procHull};
   overlayCanvas(name,refWhole,procWhole,overall);
   if (params.get('components')) {
@@ -781,25 +973,51 @@ const refSideUpper=subtract(rawMasks.right.refWhole,rawMasks.right.refHull);
 const procSideUpper=subtract(rawMasks.right.procWhole,rawMasks.right.procHull);
 const segmentedReference=bounds(refSideUpper).area > 20;
 const segmentedProcedural=bounds(procSideUpper).area > 20;
-const componentMasksAvailable=segmentedReference && segmentedProcedural;
+const componentSegmentationDetected=segmentedReference && segmentedProcedural;
+const componentMasksAvailable=source?.glb?.componentMasks !== false && componentSegmentationDetected;
+const gunComponentMasksAvailable=source?.glb?.gunComponentMasks !== false && componentSegmentationDetected;
 
+// Some neutral oracle bakes merge upper fittings into the hull bucket, making
+// scored hull/turret decomposition dishonest while leaving the lower-course
+// hull mask perfectly usable.  Such references may opt into that narrower,
+// explicit track-only measurement without re-enabling component scores.
+const trackComponentMasksAvailable = componentMasksAvailable || source?.glb?.trackComponentMasks === true;
 const [refTrack,procTrack]=lowerBand(
-  componentMasksAvailable ? rawMasks.right.refHull : rawMasks.right.refWhole,
-  componentMasksAvailable ? rawMasks.right.procHull : rawMasks.right.procWhole,
+  trackComponentMasksAvailable ? rawMasks.right.refHull : rawMasks.right.refWhole,
+  trackComponentMasksAvailable ? rawMasks.right.procHull : rawMasks.right.procWhole,
 );
 const trackMetric=compare(refTrack,procTrack);
+if (params.get('components')) overlayCanvas('track profile',refTrack,procTrack,trackMetric);
 const hullSideBounds=bounds(rawMasks.right.refHull);
 const procHullSideBounds=bounds(rawMasks.right.procHull);
-const commonHullBounds={
-  minX:Math.min(hullSideBounds.minX,procHullSideBounds.minX),
-  maxX:Math.max(hullSideBounds.maxX,procHullSideBounds.maxX),
-};
-const refGun=overhang(rawMasks.right.refWhole,rawMasks.right.refHull,commonHullBounds);
-const procGun=overhang(rawMasks.right.procWhole,rawMasks.right.procHull,commonHullBounds);
-const gunMetric=componentMasksAvailable ? compare(refGun,procGun) : null;
+// Cut each cannon overhang against its own hull boundary.  Reference GLBs and
+// authored vehicles can have different harmless root origins after loader
+// registration (Type 90 differs by roughly one metre longitudinally while its
+// normalized hull, turret and whole silhouettes agree).  Taking the union of
+// those unaligned world-space hull bounds makes one overhang artificially long
+// and the other artificially short.  `compare()` already aligns the resulting
+// masks by centroid, so per-model hull bounds are the honest component cut.
+const refGun=cannonOverhang(rawMasks.right.refWhole,hullSideBounds);
+const procGun=cannonOverhang(rawMasks.right.procWhole,procHullSideBounds);
+// Cannon overhang only needs a stable hull-width boundary.  It remains valid
+// for Type 99 even though Object_29 crosses the hull/turret semantic split.
+// When both rigs expose an actual gun subtree, an oracle can explicitly ask
+// for the direct semantic mask.  This avoids counting a long bustle or a
+// mis-bucketed roof fitting as part of the cannon merely because it extends
+// beyond the hull bounds in side projection.
+let gunMetric = gunComponentMasksAvailable ? compare(refGun,procGun) : null;
+if (source?.glb?.directGunComponentMasks === true) {
+  const gunCamera = cameraFor(ANGLES.right);
+  gunMetric = compare(
+    renderMask(reference, procedural, gunCamera, 'gun'),
+    renderMask(procedural, reference, gunCamera, 'gun'),
+  );
+}
+if (params.get('components') && gunMetric) overlayCanvas('gun profile', refGun, procGun, gunMetric);
 
 const mean=(values) => values.reduce((sum,v)=>sum+v,0)/Math.max(values.length,1);
-const overallScore=mean(Object.values(angleRows).map((v)=>v.score));
+const wholeViewMasksAvailable=source?.glb?.wholeViewMasks !== false;
+const overallScore=wholeViewMasksAvailable ? mean(Object.values(angleRows).map((v)=>v.score)) : null;
 const COMPONENT_VIEWS=['front','right','left','rear','top'];
 const hullScore=componentMasksAvailable ? mean(COMPONENT_VIEWS.map((name)=>hullRows[name].score)) : null;
 // Score the articulated component directly. The legacy whole-minus-hull
@@ -808,7 +1026,8 @@ const hullScore=componentMasksAvailable ? mean(COMPONENT_VIEWS.map((name)=>hullR
 // pixel bands when their hull decks overlap the ring by a few centimetres.
 // Direct masks match the geometry gate's exact-tree semantics and compare the
 // complete assembly rather than only whichever fragments happen to be visible.
-const turretScore=componentMasksAvailable ? mean(COMPONENT_VIEWS.map((name)=>directTurretRows[name].score)) : null;
+const turretComponentMasksAvailable=componentMasksAvailable && source?.glb?.turretComponentMasks !== false;
+const turretScore=turretComponentMasksAvailable ? mean(COMPONENT_VIEWS.map((name)=>directTurretRows[name].score)) : null;
 const gunScore=gunMetric?.score ?? null;
 const tracksScore=trackMetric.score;
 const weighted=[
@@ -818,8 +1037,13 @@ const totalScore=weighted.reduce((sum,[value,weight])=>sum+value*weight,0)/
   weighted.reduce((sum,[,weight])=>sum+weight,0);
 const rounded=(v)=>Number(v.toFixed(2));
 const nullableRounded=(v)=>Number.isFinite(v)?rounded(v):null;
-const scores={overall:rounded(overallScore),hull:nullableRounded(hullScore),turret:nullableRounded(turretScore),gun:nullableRounded(gunScore),tracks:rounded(tracksScore)};
-const minView=Math.min(...Object.values(angleRows).map((row)=>row.score));
+const scores={overall:nullableRounded(overallScore),hull:nullableRounded(hullScore),turret:nullableRounded(turretScore),gun:nullableRounded(gunScore),tracks:rounded(tracksScore)};
+// A damaged/fused upper export may still be an authoritative hull oracle.
+// When that limitation is explicitly documented, enforce the per-view law on
+// every valid hull view instead of rewarding a procedural model for copying a
+// known melted turret. The invalid whole overlays remain in rawWholeAngles.
+const scoredAngleRows=wholeViewMasksAvailable ? angleRows : hullRows;
+const minView=Math.min(...Object.values(scoredAngleRows).map((row)=>row.score));
 const gatePassed=totalScore>=90 && minView>=90;
 document.querySelector('#score').textContent=totalScore.toFixed(1);
 for (const [name,value] of Object.entries(scores)) {
@@ -831,14 +1055,71 @@ for (const [name,value] of Object.entries(scores)) {
 window.__FIDELITY_REPORT={
   id,name:spec.name,sourcePath:source.glb.path,
   fallback:spec.publicVisualFallback || spec.visualBase || spec.variantOf || id,
-  score:rounded(totalScore),scores,componentMasksAvailable,minView:rounded(minView),gatePassed,
-  angles:Object.fromEntries(Object.entries(angleRows).map(([name,row])=>[name,{score:rounded(row.score),iou:rounded(row.iou*100)}])),
+  score:rounded(totalScore),scores,wholeViewMasksAvailable,componentMasksAvailable,turretComponentMasksAvailable,gunComponentMasksAvailable,minView:rounded(minView),gatePassed,
+  angles:Object.fromEntries(Object.entries(scoredAngleRows).map(([name,row])=>[name,{score:rounded(row.score),iou:rounded(row.iou*100)}])),
+  rawWholeAngles:Object.fromEntries(Object.entries(angleRows).map(([name,row])=>[name,{score:rounded(row.score),iou:rounded(row.iou*100)}])),
+  // Retain the raw silhouette receipts as well as the compact score table.
+  // This is authoring evidence (areas/bounds/centroids only), not runtime
+  // source geometry, and makes primary-mass corrections reproducible instead
+  // of forcing visual guesswork from a small overlay thumbnail.
+  angleDiagnostics:Object.fromEntries(Object.entries(angleRows)),
+  // Whole-silhouette contour receipts remain useful when a fused reference
+  // cannot expose semantically separate hull/turret nodes. They report only
+  // aligned pixel deltas, never source vertices or mesh payloads.
+  wholeContours:{
+    left:contourProfile(rawMasks.left.refWhole,rawMasks.left.procWhole),
+    right:contourProfile(rawMasks.right.refWhole,rawMasks.right.procWhole),
+  },
+  wholeDifferences:{
+    left:{
+      vertical:differenceProfile(rawMasks.left.refWhole,rawMasks.left.procWhole,'y'),
+      longitudinal:differenceProfile(rawMasks.left.refWhole,rawMasks.left.procWhole,'x'),
+    },
+    right:{
+      vertical:differenceProfile(rawMasks.right.refWhole,rawMasks.right.procWhole,'y'),
+      longitudinal:differenceProfile(rawMasks.right.refWhole,rawMasks.right.procWhole,'x'),
+    },
+  },
+  wholeDifferenceGrid:{
+    left:differenceGrid(rawMasks.left.refWhole,rawMasks.left.procWhole),
+    right:differenceGrid(rawMasks.right.refWhole,rawMasks.right.procWhole),
+    front:differenceGrid(rawMasks.front.refWhole,rawMasks.front.procWhole),
+    rear:differenceGrid(rawMasks.rear.refWhole,rawMasks.rear.procWhole),
+  },
   componentAngles: componentMasksAvailable ? {
     hull:Object.fromEntries(COMPONENT_VIEWS.map((name)=>[name,rounded(hullRows[name].score)])),
-    turret:Object.fromEntries(COMPONENT_VIEWS.map((name)=>[name,rounded(directTurretRows[name].score)])),
+    turret:turretComponentMasksAvailable ? Object.fromEntries(COMPONENT_VIEWS.map((name)=>[name,rounded(directTurretRows[name].score)])) : null,
     exposedUpper:Object.fromEntries(COMPONENT_VIEWS.map((name)=>[name,rounded(upperRows[name].score)])),
   } : null,
-  boxes:{reference:referenceBox.getSize(new THREE.Vector3()).toArray().map(rounded),procedural:proceduralBox.getSize(new THREE.Vector3()).toArray().map(rounded)},
+  diagnostics: {
+    hull:componentMasksAvailable ? Object.fromEntries(COMPONENT_VIEWS.map((name)=>[name,hullRows[name]])) : null,
+    turret:componentMasksAvailable && turretComponentMasksAvailable ? Object.fromEntries(COMPONENT_VIEWS.map((name)=>[name,directTurretRows[name]])) : null,
+    gun:gunMetric,
+    gunBounds:gunMetric ? { reference:bounds(refGun), procedural:bounds(procGun) } : null,
+    tracks:trackMetric,
+    trackContours:contourProfile(refTrack,procTrack),
+    turretContours:componentMasksAvailable && turretComponentMasksAvailable ? {
+      right:contourProfile(rawDirectTurretMasks.right.ref,rawDirectTurretMasks.right.proc),
+      left:contourProfile(rawDirectTurretMasks.left.ref,rawDirectTurretMasks.left.proc),
+    } : null,
+    turretBands:componentMasksAvailable && turretComponentMasksAvailable ? Object.fromEntries(
+      COMPONENT_VIEWS.map((name)=>[name,silhouetteBand(rawDirectTurretMasks[name].ref,rawDirectTurretMasks[name].proc)]),
+    ) : null,
+  },
+  boxes:{
+    reference:referenceBox.getSize(new THREE.Vector3()).toArray().map(rounded),
+    procedural:proceduralBox.getSize(new THREE.Vector3()).toArray().map(rounded),
+    referenceMin:referenceBox.min.toArray().map(rounded),
+    referenceMax:referenceBox.max.toArray().map(rounded),
+    proceduralMin:proceduralBox.min.toArray().map(rounded),
+    proceduralMax:proceduralBox.max.toArray().map(rounded),
+    referenceTurret:refTurretNode ? visibleBox(refTurretNode).getSize(new THREE.Vector3()).toArray().map(rounded) : null,
+    proceduralTurret:procTurretNode ? visibleBox(procTurretNode).getSize(new THREE.Vector3()).toArray().map(rounded) : null,
+    referenceTurretMin:refTurretNode ? visibleBox(refTurretNode).min.toArray().map(rounded) : null,
+    referenceTurretMax:refTurretNode ? visibleBox(refTurretNode).max.toArray().map(rounded) : null,
+    proceduralTurretMin:procTurretNode ? visibleBox(procTurretNode).min.toArray().map(rounded) : null,
+    proceduralTurretMax:procTurretNode ? visibleBox(procTurretNode).max.toArray().map(rounded) : null,
+  },
 };
 // ---- HANDOFF-FABLE §6 board mode (&board=1, driver --board): shaded beauty
 // pair, articulation strip, procedural turntable. Rendered strictly AFTER
@@ -1216,8 +1497,14 @@ if (params.get('geo')) {
     // cannot shift registration (dims stays satisfiable vs short-gun oracles)
     curveRows[`${view}_hull`] = curveScore(curves[`${view}_hull_ref`], curves[`${view}_hull_proc`], norm[view]);
     viewReg[view] = curveRows[`${view}_hull`].reg; // may be undefined if hull empty
+    // A fused oracle cannot provide a truthful hull anchor: its nominal hull
+    // curve may contain turret/glacis equipment while the authored hull does
+    // not. In that declared case register the valid whole silhouettes to one
+    // another. Component-capable references keep the stricter hull-pinned
+    // registration so turret placement still counts.
     curveRows[`${view}_whole`] = curveScore(
-      curves[`${view}_whole_ref`], curves[`${view}_whole_proc`], norm[view], viewReg[view]);
+      curves[`${view}_whole_ref`], curves[`${view}_whole_proc`], norm[view],
+      componentMasksAvailable ? viewReg[view] : undefined);
   }
   for (const view of ['side', 'plan']) {
     curves[`${view}_turret_ref`] = gTrace(gMask(reference, procedural, camsG[view], 'turret'), camsG[view]);
@@ -1269,7 +1556,9 @@ if (params.get('geo')) {
   // emptied rig_turret can't fake it; the whole/hull curves carry the body.
   const noTurretBoth = source?.glb?.fixedMount
     || (turretEmpty(curves.side_turret_ref) && turretEmpty(curves.side_turret_proc));
-  const turretRows = noTurretBoth
+  const turretRows = !componentMasksAvailable
+    ? { side: { score: null, note: 'unavailable (fused reference)' }, plan: { score: null, note: 'unavailable (fused reference)' } }
+    : noTurretBoth
     ? { side: { score: 100, note: 'no turret (casemate)' }, plan: { score: 100, note: 'no turret (casemate)' } }
     : {
       side: curveScore(curves.side_turret_ref, curves.side_turret_proc, height, viewReg.side),
@@ -1348,6 +1637,7 @@ if (params.get('geo')) {
     return { h: top - bot, len: Math.abs(body[body.length - 1][0] - body[0][0]) };
   };
   const procExt = bodyExtent(curves.side_whole_proc);
+  const refExt = bodyExtent(curves.side_whole_ref);
   // columns are CENTERS: a span between first/last centers is one pitch
   // short of the physical extent (refs self-measured ~3% narrow on width)
   const colPitch = (curve) => {
@@ -1372,8 +1662,10 @@ if (params.get('geo')) {
     const pct = Math.abs(actual - published) / published * 100;
     dimRows.push({ name, actual: +actual.toFixed(2), published, pct: +pct.toFixed(2) });
   };
-  if (procExt) dimCheck('heightM', procExt.h, pub.heightM);
-  if (procExt) dimCheck('hullLengthM', procExt.len, pub.hullLengthM);
+  if (procExt) dimCheck('heightM', procExt.h,
+    pub.silhouetteHeightM ?? pub.heightM);
+  if (procExt) dimCheck('hullLengthM', procExt.len,
+    pub.silhouetteHullLengthM ?? pub.hullLengthM);
   const pixelSpanZ = (part) => {
     const cam = camsG.side;
     const m = gMask(procedural, reference, cam, part);
@@ -1468,11 +1760,22 @@ if (params.get('geo')) {
     procedural.root.updateMatrixWorld(true);
   }
   const floaterScore = floaterFails ? 0 : 100;
+  // For a declared fused reference, the 1-D curve extrema are dominated by
+  // whichever mixed-owner fitting happens to occupy a sampled column (the
+  // Type 99 oracle's antenna/cheek mesh is the concrete case). The valid
+  // geometry evidence is then the already-computed registered whole mask in
+  // every standard view. Use its worst view as the whole-shape component;
+  // component-capable references retain the stricter metric curve minimum.
+  const wholeShapeScore = componentMasksAvailable
+    ? Math.min(...['side_whole', 'plan_whole', 'front_whole'].map((k) => curveRows[k].score))
+    : Math.min(...Object.values(angleRows).map((row) => row.score));
   const components = {
-    hullCurves: Math.min(...['side_hull', 'plan_hull', 'front_hull'].map((k) => curveRows[k].score)),
-    wholeCurves: Math.min(...['side_whole', 'plan_whole', 'front_whole'].map((k) => curveRows[k].score)),
-    turretCurves: Math.min(turretRows.side.score, turretRows.plan.score),
-    stations: +stationScore.toFixed(1),
+    ...(componentMasksAvailable ? {
+      hullCurves: Math.min(...['side_hull', 'plan_hull', 'front_hull'].map((k) => curveRows[k].score)),
+      turretCurves: Math.min(turretRows.side.score, turretRows.plan.score),
+      stations: +stationScore.toFixed(1),
+    } : {}),
+    wholeCurves: wholeShapeScore,
     dims: +dimScore.toFixed(1),
     floaters: floaterScore,
   };
@@ -1480,8 +1783,12 @@ if (params.get('geo')) {
   window.__GEO_REPORT = {
     id, geoMin: +geoMin.toFixed(1), gatePassed: geoMin >= 90,
     components: Object.fromEntries(Object.entries(components).map(([k, v]) => [k, +(+v).toFixed(1)])),
+    wholeShapeMetric: componentMasksAvailable ? 'metric-curves' : 'registered-standard-view-masks (fused reference)',
     curveRows: Object.fromEntries(Object.entries(curveRows).map(([k, v]) => [k, v])),
-    turretRows, stationErr, dimRows, floaterFails, floaterRows,
+    turretRows, stationErr, dimRows,
+    referenceBodyExtent: refExt && { h: +refExt.h.toFixed(3), len: +refExt.len.toFixed(3) },
+    proceduralBodyExtent: procExt && { h: +procExt.h.toFixed(3), len: +procExt.len.toFixed(3) },
+    floaterFails, floaterRows,
   };
   setPart(reference.root, 'whole');
   setPart(procedural.root, 'whole');
@@ -1490,7 +1797,10 @@ if (params.get('geo')) {
 }
 
 // Diagnosis hook for headless probes (ancestry/classification questions).
-window.__FIDELITY_DEBUG = { reference, procedural, setPart, baseVisible, renderMask, cameraFor, ANGLES, bounds };
+window.__FIDELITY_DEBUG = {
+  reference, procedural, setPart, baseVisible, renderMask, cameraFor, ANGLES,
+  bounds, alignMask, rawMasks, rawDirectTurretMasks,
+};
 window.__FIDELITY_READY=true;
 renderer.setRenderTarget(null);
 </script>

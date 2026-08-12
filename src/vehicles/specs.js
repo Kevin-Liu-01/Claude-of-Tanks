@@ -1764,8 +1764,8 @@ Object.assign(MODEL_SOURCE, {
   // OUR custom build is the render of record in every build, and the
   // community print retires to candidateGlb (kv2/t30 pattern: config kept
   // verbatim for the repeatable A/B audit and as the machine-readable feed
-  // for the Sources print catalog). Sources-group leftovers (newc_tiger,
-  // recon_tank, q_heavy, is7, object279) keep source 'glb' per §5.31.
+  // for the Sources print catalog). Every playable now resolves through our
+  // authored procedural profile; comparison GLBs are candidate-only inputs.
   strv103: {
     source: 'procedural',
     // r9: paintUntextured routes the asset through the same material
@@ -1802,8 +1802,8 @@ Object.assign(MODEL_SOURCE, {
   // strips tiny palette maps and box-UVs the shell onto the live camo canvas,
   // with node-name material separation for tracks/wheels.
   newc_tiger: {
-    source: 'glb',
-    glb: {
+    source: 'procedural',
+    candidateGlb: {
       path: '/models/tanks/community/tiger_newc42.glb',
       turretNode: '^Turret$', gunNode: '^Barrel$', autoPivot: true,
       paintUntextured: true,
@@ -1836,16 +1836,16 @@ Object.assign(MODEL_SOURCE, {
     },
   },
   recon_tank: {
-    source: 'glb',
-    glb: {
+    source: 'procedural',
+    candidateGlb: {
       path: '/models/tanks/community/recon_tank_mophs.glb',
       turretNode: '^Turret$', gunNode: '^Barrel$', autoPivot: true,
       scaleToOverall: true,
     },
   },
   q_heavy: {
-    source: 'glb',
-    glb: {
+    source: 'procedural',
+    candidateGlb: {
       path: '/models/tanks/community/tank_quaternius_fa5.glb',
       turretNode: '^Tank_Turret$', gunNode: '^Tank_Gun$',
       yawOffset: Math.PI / 2, autoPivot: true,
@@ -1954,17 +1954,17 @@ Object.assign(MODEL_SOURCE, {
   // virtual (kv2 rule). All untextured prints ride the shared camo canvas.
   // -------------------------------------------------------------------------
   is7: {
-    source: 'glb',
-    glb: {
+    source: 'procedural',
+    candidateGlb: {
       path: '/models/tanks/community/is7-snowleopard.glb',
       turretNode: '^Turret$', autoPivot: true, pivot: [0, 1.08, -1.37],
       paintUntextured: true,
     },
   },
   object279: {
-    source: 'glb',
+    source: 'procedural',
     // quad-track pods live under Hull (TracksL/TracksR nodes stay hull-fixed)
-    glb: {
+    candidateGlb: {
       path: '/models/tanks/community/object279-snowleopard.glb',
       turretNode: '^Turret$', autoPivot: true, pivot: [0, 1.4, -1.3],
       paintUntextured: true,

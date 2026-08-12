@@ -51,20 +51,19 @@ PNG exports are produced by `tools/brand-render.mjs` (export mode) and the og
 composition script; regenerate any raster from its SVG master rather than
 editing pixels.
 
-## Vehicles (public/models/tanks/) — 2 shipped assets (M1A2, Leopard 2A6)
+## Vehicles (public/models/tanks/) — comparison/reference assets
 
-6 of 8 core tank models (Tiger I, T-34-85, IS-2, Panther G, M4A3E8 Sherman,
-T-90M, Leopard 2A7 — minus the two below) are 100% procedural
-(`src/vehicles/tankFactory.js`). The M1A2 Abrams SEPv3 ships as a sourced GLB
-(deep-hunt winner, integrated 2026-07-27), and the Leopard 2A6 model was
-replaced by a CC-BY user drop (integrated 2026-07-28):
+All playable tank geometry is authored procedurally in this repository. The
+files listed below are retained only as isolated comparison inputs and license
+records; no `MODEL_SOURCE` runtime row points at them, and public builds strip
+candidate/reference paths.
 
 | Asset | Author | Source | License | Files |
 |---|---|---|---|---|
 | Abrams M1A2 SEPv3 | dannzjs | https://sketchfab.com/3d-models/abrams-m1a2-sepv3-eb6f5560198740269507e9948376414c (obtained without login via public GitHub mirror DhruvBhargava007/Morv_AI @ Dhruv) | CC-BY-4.0 — "This work is based on \"Abrams M1A2 SEPv3\" (https://sketchfab.com/3d-models/abrams-m1a2-sepv3-eb6f5560198740269507e9948376414c) by dannzjs (https://sketchfab.com/dannzjs) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)" | `public/models/tanks/m1a2_sepv3_dannzjs.glb` (offline preprocess: textures downscaled 1K/512 + WebP, TurretPivot/GunPivot articulation grouping baked in; original license.txt + Sketchfab API license record + geometry notes preserved in `docs/licenses/m1a2_sepv3_dannzjs/`) |
 
 > **Identity correction (2026-08-03):** the dannzjs asset above is a mislabeled **Leopard 2A5**, not an Abrams (owner-identified from parity renders). Authorship and CC-BY-4.0 license stand as recorded; the file remains on disk but no tank registers it — `m1a2` now measures against the recovered SEPv2 drop (local-only quarantine, not this table's concern).
-| Leopard 2 A6 | buh | https://sketchfab.com/buh-late (user-supplied download, batch user-drops 2026-07-28; refreshed owner GLB 2026-08-11) | CC-BY 4.0 | `public/models/tanks/leo2a6_buh.glb`; exact attributed hull/turret/gun geometry is also deterministically baked into `src/vehicles/profiles/leopard2a6-source-geometry.js` by `tools/leopard2a6-source-bake.py` (donor gear excluded; native animated tracks retained) — gameplay stats unchanged |
+| Leopard 2 A6 comparison print | buh | https://sketchfab.com/buh-late (user-supplied download, batch user-drops 2026-07-28; refreshed owner GLB 2026-08-11) | CC-BY 4.0 | `public/models/tanks/leo2a6_buh.glb` — critic/reference use only. The retired source-geometry module and bake script were deleted; the playable uses `buildLeo2A6` in `src/vehicles/profiles/leopard.js`. |
 
 Integration verdict (harness renders `tank_closeup_modern`, `garage`,
 `player_view`, `combat_firing`, icons): the sourced model decisively beats the
@@ -73,9 +72,9 @@ side skirts), turret yaw / gun pitch / recoil / camo tint / killcam all work
 through `modelLoader.js`'s re-parenting path.
 
 The per-tank source-of-truth switch is `MODEL_SOURCE` in
-`src/vehicles/specs.js`; the GLB ingestion path (hull-length scale
-normalization, material upgrade, turret/gun re-parenting, synchronous
-cached-GLB path for icons/garage) is `src/vehicles/modelLoader.js`.
+`src/vehicles/specs.js`. Battle playables must resolve to `procedural`; the
+GLB ingestion path in `src/vehicles/modelLoader.js` exists for isolated review
+and non-battle presentation tooling, not fleet geometry.
 
 ### Evaluation record — vehicle model scouting (2026-07-27)
 
@@ -149,7 +148,7 @@ CC-BY 3.0: https://creativecommons.org/licenses/by/3.0/ (attribution below)
 
 ### Judging record — environment props (2026-07-27)
 
-Method: side-by-side rendered screenshots (sourced vs procedural) via the
+Method: side-by-side rendered screenshots (reference vs authored procedural) via the
 screenshot harness plus custom close-up camera poses; per-category verdicts.
 
 **KEPT (winners, files above remain in repo):**
@@ -498,7 +497,7 @@ recompressed to WebP at <=2k for the shipped copies.
 
 | Vehicle (spec id) | Author | Source | License | Shipped file | Role |
 |---|---|---|---|---|---|
-| Leopard 2 A6 (`leo2a6`) | buh | https://sketchfab.com/buh-late (user-supplied download) | CC-BY 4.0 | `public/models/tanks/leo2a6_buh.glb` plus attributed generated upper in `src/vehicles/profiles/leopard2a6-source-geometry.js` | Exact articulated source hull/turret/gun replaces the procedural upper; donor wheels/tracks are deliberately excluded in favor of the fleet-native seven-wheel linked system. Credit line renders on its garage card via `spec.community`. |
+| Leopard 2 A6 (`leo2a6`) | buh | https://sketchfab.com/buh-late (user-supplied download) | CC-BY 4.0 | `public/models/tanks/leo2a6_buh.glb` | Retained local comparison print only. The playable is our native procedural Leopard builder; no source mesh or generated source geometry is used at runtime. |
 | Type 74 (`type74`) | NullOps | https://sketchfab.com/nullops (user-supplied download) | Sketchfab Standard — QUARANTINE (below) | `public/models/tanks/community/quarantine/type74-nullops.glb` | NEW Japan tier-VIII playable (the STB-1 print base stays rejected — see the evaluation record above). Skinned rig: Tower_9 yaw / Gun_7 pitch bones. |
 | C1 Ariete (`ariete`) | DustyMojito | https://sketchfab.com/DustyMojito (user-supplied download) | Sketchfab Standard — QUARANTINE (below) | `public/models/tanks/community/ariete-dustymojito.glb` (retained local oracle only) | RETIRED model swap. Since 2026-08-11 the playable is an original procedural rebuild; the quarantined GLB is never registered or shipped as the vehicle. |
 
@@ -737,8 +736,8 @@ fails the build if any registered playable still references a stripped path.
 | Asset | Author | Source | License | Files | Notes |
 |---|---|---|---|---|---|
 | M1A2 Abrams (user drop, batch abrams-suspects 2026-07-28) | Tejas V. (@tejasv_) | https://sketchfab.com/3d-models/m1a2-abrams-c85846177bfc4018b6a8f3b40754655c | CC BY-NC-ND 4.0 | `public/models/community-candidates/user-drops/m1a2-abrams/{m1a2-abrams.glb,RENDER.png,LICENSE-RECORD.txt}` | Original artist work (Blender + Substance, ArtStation-linked; identity confirmed by exact 1,253,928 face-count match vs Sketchfab API). ND: the decimated GLB is an adaptation — never redistribute. Candidate to replace the shipped CC-BY dannzjs `m1a2` GLB in-game; if adopted, the CC-BY model remains the only one shippable publicly. |
-| Type 74 (user drop, integrated 2026-07-28 as spec `type74`) | NullOps | https://sketchfab.com/nullops (user-supplied download) | Sketchfab Standard (free download; author states 'feel free to use however you like' but the license is not CC) | `public/models/tanks/community/quarantine/type74-nullops.glb`, `public/icons/type74_*.png` (derivative renders), judging copies in `public/models/community-candidates/user-drops/type-74/` | SHIPPED PLAYABLE in this private build (Japan tier-VIII roster). Remove the GLB + icons + spec registration (src/vehicles/userdrops.js) before any public distribution or commercialization. |
-| C1 Ariete (user drop, model swap retired 2026-08-11) | DustyMojito | https://sketchfab.com/DustyMojito (user-supplied download) | Sketchfab Standard (free download; use-in-project OK, no raw redistribution — not CC) | `public/models/tanks/community/ariete-dustymojito.glb` (local comparison only) | The playable uses our native procedural `buildArieteNative2026`; `MODEL_SOURCE.ariete` remains disabled. A separate full-resolution `c1_ariete_italian_mbt.glb` (SHA-256 `738505b3099016c938daa85f8eb82806cd6af19a2aa3e15b26810bc6c163607e`) was used locally for visual comparison only and was never copied into the repository. No mesh, vertex, texture, material, rig or derived conversion from either file enters the playable builder. |
+| Type 74 (local comparison drop) | NullOps | https://sketchfab.com/nullops (user-supplied download) | Sketchfab Standard (free download; author states 'feel free to use however you like' but the license is not CC) | quarantined comparison copies only | **NOT PLAYABLE GEOMETRY.** The active Type 74 is repository-authored procedural construction; no mesh, converted vertex data or source-backed wrapper enters runtime. |
+| C1 Ariete (local comparison drop; model swap retired 2026-08-11) | DustyMojito | https://sketchfab.com/DustyMojito (user-supplied download) | Sketchfab Standard (free download; use-in-project OK, no raw redistribution — not CC) | local comparison only | The playable uses our earlier authored procedural `buildAriete`; `MODEL_SOURCE.ariete` is disabled. The comparison was never copied into the builder. No mesh, vertex, texture, material, rig or derived conversion enters the playable. |
 | 1:100 Modern Tanks and Vehicles pack — 5 vehicles (user drops wave 2, integrated 2026-07-28 as specs `leo2a4`, `bmp2`, `bmp1`, `m1128`, `m1296`) | m_bergman (Thingiverse) | https://www.thingiverse.com/thing:4718232 (user-supplied download; original Solidworks-drawn wargame print masters — author's own custom license note ONLY narrows "commercial" to selling the prints, the CC-BY-NC-SA grant itself stands) | CC-BY-NC-SA | `public/models/tanks/community/quarantine/{leo2a4_bergman,bmp2_bergman,bmp1_bergman,m1128_mgs_bergman,m1296_dragoon_bergman}.glb`, `public/icons/{leo2a4,bmp2,bmp1,m1128,m1296}_*.png` (derivative renders) | SHIPPED in this private build: 2 model swaps (leo2a4/bmp2 — revert their `MODEL_SOURCE` rows) + 3 new playables (bmp1/m1128/m1296 — remove the specs and roster/tier-table rows in src/vehicles/userdrops2.js, src/game/state.js, src/ui/{garage,hud}.js). Remove GLBs + icons before any public distribution or commercialization; NC-SA also bars selling the game while these ship. |
 | 1:100 Modern Tanks and Vehicles pack, part 1 (user drop, batch bergman 2026-07-28) | m_bergman (Thingiverse) | https://www.thingiverse.com/thing:4718232 (user-supplied download; LICENSE.txt + README.txt in archive) | CC BY-NC-SA (Thingiverse license marker in archive) | 12 converted candidate GLBs + renders in `public/models/community-candidates/user-drops-recovered/bergman-p1/{glb,renders}/` (leo2a4, leo2a5, leo2a6, m1a1_aim, bmp1, bmp2, m1128_mgs, m1296_dragoon, lav25, cougar_6x6, btr70, brdm2 — `*_bergman.glb`) | Original Solidworks-drawn wargame print minis (author ships Parasolid `.x_t` sources alongside every STL — not a game rip). Untextured single-material CAD; hull + yaw-articulated `Turret` pivot authored at ring center, gun fused (virtual pitch). NC-SA: candidates for this private build only — delete all GLBs/renders (and any icons if integrated) before public distribution or commercialization. |
 | Recovered fleet waves 5–7 (42 local-only model sets) | Tejas V.; Mortavex; m_bergman; authors not preserved in the remaining direct archives | See “User drops waves 5–7” above | CC BY-NC-ND / CC BY-NC-SA / unverified; all treated as local-only | `public/models/tanks/m1a2_tejas.glb`, `public/models/tanks/community/abramsx-mortavex.glb`, `public/models/tanks/community/recovered/**`, and the 42 matching five-view icon sets | Model trees and derivative icons are removed by `tools/strip-nc-assets.mjs`; public gameplay rows use distributable procedural family visuals/icons. |
@@ -755,8 +754,8 @@ fails the build if any registered playable still references a stripped path.
   The tracked GLB is a deterministic no-triangle-cut semantic repartition
   (Hull/Turret/Gun) with SHA-256
   `8bc9e6c1eb9a73794278cdb9ee4f6de2d540364d4772adc87e9c8224b40a2be6`;
-  the synchronous procedural FV510 uses source-derived geometry from this
-  attributed model under the same CC-BY-4.0 license.
+  the active FV510 is our earlier repository-authored procedural build. The
+  reference contributes no runtime mesh, converted vertex data or payload.
 
 ## SPz Puma oracle drop (2026-08-06, owner-downloaded)
 - public/models/tanks/community/spz_puma.glb — "SPz Puma" by 42manako
@@ -791,10 +790,9 @@ fails the build if any registered playable still references a stripped path.
   `22bf48234c20edad51c9087dc4c02b99156c687af6a326533275eca9953d7468`.
   The pristine GLB remains unchanged at SHA-256
   `2cc5748e4357722fc1c21bf7759ec21c29f84b2cfaf1203b5bee995f4cfeca67`.
-  The playable source-derived payload and semantic measurement oracle are
-  deterministically generated from that owner-cleared source; repaired GLB
-  SHA-256 is
-  `1d7fff3c390aef8898a05e2017e8abdd42f3b1a1df07ab86b7dd456a8c3bdfca`.
+  The GLB is now a quarantined visual/measurement comparison only. The active
+  Type 10 is our repository-authored `buildType10Native2026`; the former
+  converted payload/wrapper was deleted and may not be regenerated.
 - community-candidates/t-14_armara_uralvagon_factory.glb — "T-14 Armara Uralvagon Factory" by 3DYAROSLAV2, CC-BY-4.0, **223MB: exceeds GitHub's 100MB file limit — lives in the gitignored staging area, LOCAL-ONLY; onboarding extracts (small) are committed instead** (t14 oracle). Owner-supplied GLB SHA-256 is `02785328797c80090fd0e9c48b5bb6fe8e7a1e3fac4d340138fede6348c8d2b3`; the 2026-08-10 exact-source graduation commits only the deterministic compact payload generated by `tools/t14-source-bake.py`, with donor tracks/wheels excluded.
 - ~~community/leopard_2a4_otco.glb~~ — **REJECTED + DELETED 2026-08-06**:
   the live Sketchfab page describes it "Leopard 2A4 OTCO **from War

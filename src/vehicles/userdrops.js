@@ -2,12 +2,10 @@
 // Sketchfab winners hand-delivered by the user (judged 3/4-angle renders in
 // public/models/community-candidates/user-drops/<slug>/RENDER.png).
 //
-//   leo2a6  — "Leopard 2 A6" by buh (CC-BY 4.0). REPLACES the procedural
-//             modern1.js Leopard 2A6 model (gameplay stats untouched).
-//             Clean body / turret / gun node splits with authored origins.
+//   leo2a6  — historical comparison print by buh (CC-BY 4.0); runtime-retired.
 //   ariete  — "C1 Ariete Italian MBT" by DustyMojito (Sketchfab Standard —
-//             PERSONAL-USE QUARANTINE, see docs/ATTRIBUTION.md). REPLACES the
-//             procedural modern3.js C1 Ariete model. The raw asset ships the
+//             PERSONAL-USE QUARANTINE, see docs/ATTRIBUTION.md). Comparison
+//             only; the raw asset ships the
 //             turret as two sibling nodes (Turret_Base + Turret_Accent
 //             material groups); preprocessed offline into an authored
 //             Hull/Turret hierarchy with a ring-center Turret origin and the
@@ -15,8 +13,8 @@
 //             (scratchpad ariete-restructure.mjs). Gun is fused into the
 //             turret meshes — yaw articulates, pitch stays virtual (kv2 rule).
 //   type74  — "Type 74" by NullOps (Sketchfab Standard — PERSONAL-USE
-//             QUARANTINE). NEW vehicle in the Japan modern roster, replacing
-//             the rejected STB-1 candidate (variants.js note). Skinned
+//             QUARANTINE). Comparison only; the playable Type 74 is authored
+//             procedurally in this repository. Skinned
 //             armature rig: Tower_9 (yaw) > Gun_7 (pitch)
 //             bones, wheels as individual bones — same bone-reparenting path
 //             as recon_tank; scaleToOverall because the gun bone carries no
@@ -27,12 +25,10 @@
 // remove that whole directory + section before any public distribution or
 // commercialization of this private project.
 //
-// Same registration contract as variants.js: pure data + side effect on the
-// shared roster tables. Imported by tankFactory.js AFTER the modern spec
-// modules, so the MODEL_SOURCE assignments below override the 'procedural'
-// rows those modules registered.
+// This module contributes gameplay/spec rows only. The external prints remain
+// isolated tooling references and never override procedural runtime geometry.
 
-import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
+import { TANK_SPECS, ALL_TANK_IDS } from './specs.js';
 
 // --- local mirrors of specs.js module-private helpers (schema-identical,
 // same duplication rule as modern1.js / variants.js) -----------------------
@@ -228,32 +224,12 @@ if (SHIP_QUARANTINE_USERDROPS && TANK_SPECS.ariete && !TANK_SPECS.ariete.communi
   };
 }
 
-// MODEL_SOURCE overrides — unconditional assignment REPLACES the
-// 'procedural' rows the modern spec modules registered at import time.
-// Node names verified offline against each GLB's node tree (scratchpad
-// glbtree.mjs probes; GLTFLoader sanitizes dots out of names).
+// Historical runtime overrides are fully retired; external files are usable
+// only through isolated comparison tooling.
 // leo2a6: NO MODEL_SOURCE — dual-gate graduate; the procedural build ships
 // in every flavor (freeze hash 37cc0789, tools/tmp-hashgeo.mjs). The
 // reference file /models/tanks/leo2a6_buh.glb stays for measurement.
-if (SHIP_QUARANTINE_USERDROPS) {
-  MODEL_SOURCE.ariete = {
-    source: 'glb',
-    // authored Turret node (offline restructure) with ring-center origin;
-    // gun fused into the turret meshes — yaw only, pitch stays virtual
-    glb: {
-      path: '/models/tanks/community/ariete-dustymojito.glb',
-      turretNode: '^Turret$', autoPivot: true,
-    },
-  };
-  MODEL_SOURCE.type74 = {
-    source: 'glb',
-    // skinned armature: Tower_9 yaw bone > Gun_7 pitch bone (bone reparenting,
-    // recon_tank rule); bones carry no meshes, so the barrel cannot be excluded
-    // from the scale bbox -> scaleToOverall
-    glb: {
-      path: '/models/tanks/community/type74-nullops.glb',
-      turretNode: '^Tower_9$', gunNode: '^Gun_7$', autoPivot: true,
-      scaleToOverall: true,
-    },
-  };
-}
+// Runtime source swaps for Ariete and Type 74 are permanently retired. Their
+// external prints remain tooling-only visual/measurement references; battle
+// playables always resolve through the stronger repository-authored builders,
+// regardless of local quarantine flags.
