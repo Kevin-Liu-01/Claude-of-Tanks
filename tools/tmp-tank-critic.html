@@ -272,6 +272,12 @@ const VIEWS = {
   frontright: new THREE.Vector3(1, 0.08, 1),
   top: new THREE.Vector3(0, 1, 0.02),
 };
+// Owner-standard modern-tank profile (2026-08-12): a repeatable near-side
+// elevation with just enough downward pitch to expose the complete turret
+// roof.  It is opt-in (`?profile=1`) so the immutable 14-view certification
+// packet remains exactly 42 frames, while design/parenting reviews can add
+// the same silhouette/attachment proof for every modern family.
+const ELEVATED_PROFILE = ['profile-elevated-left', new THREE.Vector3(-1, 0.24, 0.04)];
 
 function visibleBox(root) {
   const box = new THREE.Box3();
@@ -407,6 +413,12 @@ for (const [name, dir, off, hs] of [
   const p = renderModel(procedural, reference, orthoFor(procBox, dir, hs, off));
   pairs[name] = pairURL(r, p);
 }
+if (params.get('profile') === '1') {
+  const [name, dir] = ELEVATED_PROFILE;
+  const r = renderModel(reference, procedural, orthoFor(refBox, dir, 0.47));
+  const p = renderModel(procedural, reference, orthoFor(procBox, dir, 0.47));
+  pairs[name] = pairURL(r, p);
+}
 // sanity: refuse to publish pairs whose procedural half is empty
 {
   const probe = renderModel(procedural, reference, orthoFor(procBox, VIEWS.left));
@@ -454,6 +466,10 @@ if (params.get('final') === '1') {
       ['close-roof', new THREE.Vector3(1, 0.55, 0.35), { x: 0, y: 0.3, z: 0.05 }, 0.24],
     ]) {
       frames[name] = soloURL(renderModel(procedural, reference, orthoFor(yawFrame, dir, hs, off)));
+    }
+    if (params.get('profile') === '1') {
+      const [name, dir] = ELEVATED_PROFILE;
+      frames[name] = soloURL(renderModel(procedural, reference, orthoFor(yawFrame, dir, 0.47)));
     }
     return frames;
   };

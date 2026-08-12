@@ -11,6 +11,7 @@ const arg = (name, fallback = null) => {
 };
 const ids = (arg('ids', arg('id', 'isu122s')) || '').split(',').map((v) => v.trim()).filter(Boolean);
 const finalEvidence = process.argv.includes('--final');
+const profileEvidence = process.argv.includes('--profile');
 const outRoot = path.resolve(arg('out', 'shots'));
 const port = Number(arg('port', '4197'));
 
@@ -50,7 +51,11 @@ try {
     const errors = [];
     page.on('console', (msg) => { if (msg.type() === 'error') errors.push(msg.text()); });
     page.on('pageerror', (err) => errors.push(err.message));
-    const query = new URLSearchParams({ id, ...(finalEvidence ? { final: '1' } : {}) });
+    const query = new URLSearchParams({
+      id,
+      ...(finalEvidence ? { final: '1' } : {}),
+      ...(profileEvidence ? { profile: '1' } : {}),
+    });
     await page.goto(`http://127.0.0.1:${port}/tools/tmp-tank-critic.html?${query}`, {
       waitUntil: 'networkidle0', timeout: 120_000,
     });
