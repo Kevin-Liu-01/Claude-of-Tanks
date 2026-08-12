@@ -100,7 +100,7 @@ re-freeze NEW hash, all in ONE commit.
 | amx30 | 89a4cdf0 | GRADUATED 2026-08-12 (§5.124 first-party low five-wheel AMX hull, compact cast turret, supported commander/optic/MG station and native exact 0/0 course; machine fidelity 91.81 / min view 90.01; fresh 42-frame yaw/ownership floor 9.0 / mean 9.16) |
 | amx30b2 | 34076800 | GRADUATED 2026-08-12 (§5.124 first-party B2 cast/rear-station and service package on the exact native five-wheel course; machine fidelity 91.51 / min view 90.14; fresh 42-frame yaw/ownership floor 9.0 / mean 9.12) |
 | k2 | 827d5ffc | GRADUATED 2026-08-08 (31st; Leclerc-method closed station loft; gate 90.1 x2 every component >=90; visual R26 floor 9.0 / mean 9.09 x14; exact Object_8/15/18/21 plan inventory, rounded asymmetric cage, countable six-station ISU gear; oracle 8d92cd1b reproducible from pristine .bak) |
-| abramsx | 26b46ba0 | GRADUATED 2026-08-09; RE-FROZEN 2026-08-10 (§5.95 owner screenshot attachment re-cert on current main: broad stepped RWS pedestal, optic plinths, smoke rails and antenna collars visibly meet the turret in all standard/yaw views; gate 90.2, standard/parent clean; 10-pixel/0.01% winding nomination has no visible wound; independent §B8 floor 9.3 / mean 9.49 x14; prior d1dbfa2 retired) |
+| abramsx | 976a1370 | GRADUATED 2026-08-09; RE-FROZEN 2026-08-12 (§5.130 first-party winding closure: outward lower-bow facets, XM360 tunnel jambs and open D-hood sight cheeks; fidelity 94.29 / minimum view 93.99, gate 90.4, winding 0 reversed / 0 mixed, parent clean; fresh 42-frame floor 9.3 / mean 9.49; prior 26b46ba0 retired) |
 | challenger_3 | 3e5a7797 | GRADUATED 2026-08-09; RE-FROZEN 2026-08-10 (§5.95 owner screenshot attachment re-cert on current main: multi-tier Protector foundation, tapered optic plinth, smoke/corner rails and antenna collars have continuous physical seats; gate 90.4, standard/parent/winding clean; independent §B8 floor 9.4 / mean 9.59 x14; prior b0c172a4 retired) |
 | challenger1 | cacb1337 | GRADUATED 2026-08-11 (§5.112 native-procedural, reference-guided rebuild: compact six-wheel hull, one low connected cast turret, buried mantlet/cheek anatomy, seated commander/TOGS station and supported bustle/basket; no external mesh data ships; commercial-reference component masks honestly cap the machine row at 0 while dims 99.6 / floaters 100 and fresh independent §B8 pass floor 9.0 / mean 9.13 x14 with genuine yaw0/90 ownership, exact native tracks 0/0 and winding PASS; old gate-shaped 5bf5f2ec visual failure retired) |
 | challenger2 | 3b4bd5f0 | GRADUATED 2026-08-09; RE-FROZEN 2026-08-10 (§5.89 owner fused-block repair: material-fused casemate course removed from fixed hull and repartitioned into the articulated source tree; one low ring landing + one rotating turret; gate 90.1 x2 every component >=90; standard/parent/winding clean; fresh §B8 floor 9.0 / mean 9.06 x14, yaw/load paths 9.3; oracle f44e3b46 reproducible from pristine .bak; prior 63ee160 retired) |
@@ -4333,3 +4333,44 @@ All eight FV510 presentation assets and their manifest binding are
 regenerated. Targeted asset/currentness and bore checks pass, as do native
 provenance, family ordering, tests, and private/public builds. **RE-FROZEN /
 KEEP `61023726`; retire source-baked `7884762a` and `927beeb2` as playables.**
+
+## 5.130 ABRAMSX FIRST-PARTY WINDING + RENDER-TRUTH UPDATE (2026-08-12, RE-FROZEN)
+
+AbramsX remains the repository-authored `buildAbramsX` in
+`src/vehicles/profiles/abrams.js`. The Mortavex GLB is a private comparison
+and measurement oracle only; it is stripped from public builds and none of
+its geometry, materials, textures, rig or animation enters the playable.
+
+This update corrects a latent authored-mesh defect without changing the
+accepted silhouette or source-measured stations. An AbramsX-local
+`orientedSlab` guard now gives outward triangle order to the mirrored lower
+bow facets, central keel recesses, both XM360 tunnel jambs and the cheek pairs
+of both open D-hood sight housings. The family helper remains untouched, so no
+other Abrams geometry or freeze changes. Winding census improves from 8
+reversed connected pieces to **0 reversed / 0 mixed**; the remaining
+10-pixel/0.01% top FrontSide difference is a stable rear-edge hairline with no
+open sheet, disappearance or silhouette wound.
+
+Freeze **`976a1370`** reproduces twice at 77 meshes / 162,506 vertices.
+Procedural fidelity remains **94.29 aggregate** with minimum whole view
+**93.99** and components overall 95.56 / hull 96.15 / turret 92.13 / gun
+89.05 / tracks 96.25. Geometry gate holds **90.4** (hull 90.4 / whole 90.6 /
+turret 91.0 / stations 93.4 / dimensions 99.8 / floaters 100). Standard
+contiguity is zero, decoration is `mg1+5d`, muzzle-bore passes and parent
+audit is 0 stranded / 0 abutting / 0 dangling. The standing exact track
+receipt remains within its certified loaded-contact class: band 37/26 and
+shoes 10/0 with no blind spot or visible penetration.
+
+All 42 PNGs in `/tmp/critic-abramsx-native-final-r2/abramsx` are distinct.
+Fresh inspection retains the fixed vector
+`[9.4,9.5,9.4,9.3,9.3,9.4,9.4,9.5,9.6,9.6,9.5,9.7,9.6,9.7]`, floor
+**9.3**, mean **9.49**. Every yaw pair proves that the complete turret, gun,
+RWS, D-hood sights, smoke, antennae and roof kit rotate together while the
+knife bow, engine deck, service field and native seven-wheel course remain
+fixed. Every fitting keeps a visible armor seat, plinth, bracket or collar;
+no fused duplicate, stranded part or empty-air decoration appears.
+
+All eight AbramsX presentation assets and their manifest binding are
+regenerated. Targeted asset/currentness and bore checks, tests, native
+provenance, family ordering, and private/public builds pass. **RE-FROZEN /
+KEEP `976a1370`; retire `26b46ba0`.**

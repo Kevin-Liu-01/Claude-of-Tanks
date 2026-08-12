@@ -711,3 +711,28 @@ blind spot. Independent §B8 re-certification passes all fourteen fresh views,
 floor **9.0**, mean **9.09**. Freeze **d1dbfa2** reproduces x2 (75 meshes /
 162,372 vertices), replacing `fe7f9852`. Verdict:
 `docs/critique/shaded-parity-turret-attachment-recert.md`.
+
+## FIRST-PARTY WINDING CLOSURE (2026-08-12)
+
+The active runtime remains the fully authored `buildAbramsX`; both Mortavex
+files remain private visual/measurement oracles and never supply playable
+geometry. The update binds the fleet `orientedSlab` guard locally to eight
+formerly inward-wound authored pieces: paired lower-bow facets, central keel
+recesses, XM360 tunnel jambs and both pairs of open D-hood sight cheeks. No
+vertex position, envelope or station changes; other Abrams variants remain
+hash-stable.
+
+- Freeze **`976a1370`** x2 (77 meshes / 162,506 vertices).
+- Fidelity **94.29**, minimum view **93.99**; gate **90.4**
+  (90.4/90.6/91.0/93.4/99.8/100).
+- Winding **0 reversed / 0 mixed**, down from 8 reversed; stable 10-pixel
+  top hairline has no visible wound.
+- Parent 0/0/0; contiguity 0; `mg1+5d`; muzzle bore PASS.
+- Exact loaded-contact track receipt remains band 37/26, shoes 10/0, no
+  blind spot and no visible course penetration.
+- Fresh evidence `/tmp/critic-abramsx-native-final-r2/abramsx`: 42/42 unique,
+  fixed vector
+  `[9.4,9.5,9.4,9.3,9.3,9.4,9.4,9.5,9.6,9.6,9.5,9.7,9.6,9.7]`, floor
+  **9.3**, mean **9.49**, genuine yaw and complete load paths.
+
+**KEEP `976a1370`; retire `26b46ba0`.**

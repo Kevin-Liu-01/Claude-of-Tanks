@@ -47,6 +47,7 @@ one required view remains below 90.
 | 12 | T-80 family | Four-member authored lineage re-certified; T-80U imported wrapper removed and low cast/K-5/rear-service geometry repaired in place | Preserve the distinct T-80 / T-80B / T-80BV / T-80U bases, their current every-view 90+ scores and exact 0/0 native courses; retain T-80U's direct-turret surface score as refinement debt rather than replacing the vehicle |
 | 13 | T-90 family | Runtime playables native; lineage order explicit and self-tested; base T-90, Burlak, T-90MS and the restored high-detail Proryv remain distinct first-party builds | Preserve the validated base T-90, Burlak, T-90MS and Proryv, then re-run the whole family after shared changes without cross-copying primary shells |
 | 14 | Type 74, T-14, FV510 and remaining erased native work | Imported wrappers removed; first-party builders active; FV510 now has a fresh authored 90+ quantitative and 42-frame re-certification; T-14 and T-80U remain in the provenance re-cert queue | Preserve FV510 freeze `61023726`, complete T-14 and T-80U separately, then execute the ordered fleet-failure queue with repository-authored primitives only |
+| 15 | AbramsX | Fully authored `buildAbramsX` retained; eight latent inward-wound lower-bow/tunnel/sight wedges corrected locally without changing its accepted source-measured envelope | Preserve freeze `976a1370`, its 94.29 / every-view 93.99+ fidelity and 0 reversed / 0 mixed winding receipt; refine only in place and keep both Mortavex files oracle-only |
 
 ## Current receipts
 

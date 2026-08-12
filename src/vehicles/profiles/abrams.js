@@ -15,7 +15,7 @@
 // tires/flaps/skirt lips, *Glass = optics, *Cloth = stowage canvas,
 // *Detail = unpainted fittings. Camo lives on hull/turret/gun/gunMount only.
 import * as THREE from 'three';
-import { KIT, FITTINGS } from './kit.js';
+import { KIT, FITTINGS, orientedSlab } from './kit.js';
 import { vehicleAmbientFloorHook } from '../materials.js';
 
 // KIT is populated by tankFactory.js, which sits on the other side of an
@@ -5943,6 +5943,16 @@ const AX_HULL = {
 
 function buildAbramsX(P) {
   const g = AX_HULL;
+  // AbramsX-local mirrored slab guard. The family helper preserves legacy
+  // hashes for every other Abrams, while these authored bow/tunnel wedges
+  // need the fleet §C.1 outward-order check on both mirrored sides.
+  const axSideSlab = (bucket, side, b0, b1, b2, b3, t0, t1, t2, t3) => {
+    const M = ([x, y, z]) => [side * x, y, z];
+    P.add(bucket, side > 0
+      ? orientedSlab(b0, b1, b2, b3, t0, t1, t2, t3)
+      : orientedSlab(M(b1), M(b0), M(b3), M(b2),
+        M(t1), M(t0), M(t3), M(t2)));
+  };
   abramsHull(P, g);
   // Track-corridor roof closures. Widening the lane for the exact guide-horn
   // envelope exposes a narrow top-down slot at its inboard shoulder; these
@@ -6167,7 +6177,7 @@ function buildAbramsX(P) {
     // The panel is an INBOARD keel face. Its former 1.45 m lower corner
     // crossed the high-idler track arc; stop at the measured 1.0 m lane
     // wall and let the separate fender armor own the outer shoulder.
-    sideSlab(P, 'hullDark', side,
+    axSideSlab('hullDark', side,
       [0.45, 0.52, 3.20], [0.92, 0.52, 3.20], [0.86, 1.08, 3.78], [0.25, 1.08, 3.78],
       [0.45, 0.532, 3.20], [0.92, 0.532, 3.20], [0.86, 1.092, 3.78], [0.25, 1.092, 3.78]);
     P.add('hullDetail', box(0.018, 0.016, 0.72), side * 0.38,
@@ -6178,7 +6188,7 @@ function buildAbramsX(P) {
   // frontal views; these narrow recessed planes create the deep V without
   // changing the measured nose, belly, or track envelopes.
   for (const side of [-1, 1]) {
-    sideSlab(P, 'hullShadow', side,
+    axSideSlab('hullShadow', side,
       [0.015, 0.43, 3.18], [0.52, 0.43, 3.18], [0.18, 1.13, 3.86], [0.015, 1.13, 3.86],
       [0.015, 0.445, 3.18], [0.52, 0.445, 3.18], [0.18, 1.145, 3.86], [0.015, 1.145, 3.86]);
   }
@@ -6429,8 +6439,9 @@ function buildAbramsX(P) {
       const t2 = [b2[0], cy1, b2[2]], t3 = [b3[0], cy1, b3[2]];
       const M = ([px, py, pz]) => [side * px, py, pz];
       const geo = side > 0
-        ? slab(b0, b1, b2, b3, t0, t1, t2, t3)
-        : slab(M(b1), M(b0), M(b3), M(b2), M(t1), M(t0), M(t3), M(t2));
+        ? orientedSlab(b0, b1, b2, b3, t0, t1, t2, t3)
+        : orientedSlab(M(b1), M(b0), M(b3), M(b2),
+          M(t1), M(t0), M(t3), M(t2));
       P.add('turret', geo, x, 0, lz);
     }
     P.add('turret', box(0.490, 0.055, 0.176), x,
@@ -7513,7 +7524,7 @@ function buildAbramsX(P) {
   // Dark tapered jambs follow the true opening edges from +/-0.217 at the
   // throat to +/-0.435 at the cheek tips.
   for (const side of [-1, 1]) {
-    sideSlab(P, 'turretDark', side,
+    axSideSlab('turretDark', side,
       [0.217, -0.22, 1.939], [0.245, -0.22, 1.939],
       [0.463, -0.22, 2.794], [0.435, -0.22, 2.794],
       [0.217, 0.25, 1.939], [0.245, 0.25, 1.939],

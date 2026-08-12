@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-08-12T21:09:36.469Z",
+ "generatedAt": "2026-08-12T21:19:16.621Z",
  "gate": "every component >= 90; min is the headline",
  "passed": 37,
  "total": 97,
@@ -879,19 +879,6 @@
    }
   },
   {
-   "id": "abramsx",
-   "geoMin": 90.2,
-   "gatePassed": true,
-   "components": {
-    "hullCurves": 90.2,
-    "wholeCurves": 90.5,
-    "turretCurves": 91,
-    "stations": 93.4,
-    "dims": 99.8,
-    "floaters": 100
-   }
-  },
-  {
    "id": "kv2",
    "geoMin": 90.2,
    "gatePassed": true,
@@ -927,6 +914,19 @@
     "turretCurves": 100,
     "stations": 94.9,
     "dims": 98.3,
+    "floaters": 100
+   }
+  },
+  {
+   "id": "abramsx",
+   "geoMin": 90.4,
+   "gatePassed": true,
+   "components": {
+    "hullCurves": 90.4,
+    "stations": 93.4,
+    "turretCurves": 91,
+    "wholeCurves": 90.6,
+    "dims": 99.8,
     "floaters": 100
    }
   },
