@@ -31,11 +31,17 @@ import * as THREE from 'three';
 import { createTank } from '/src/vehicles/tankFactory.js';
 import { ALL_TANK_IDS, MODEL_SOURCE, TANK_SPECS } from '/src/vehicles/specs.js';
 
+window.__FIDELITY_ERROR = null;
+const failFidelity = (message) => {
+  window.__FIDELITY_ERROR = message;
+  throw new Error(message);
+};
+
 const SIZE = 384;
 const params = new URLSearchParams(location.search);
 const id = params.get('id') || 'm1a2';
 const spec = TANK_SPECS[id];
-if (!spec) throw new Error(`Unknown tank id: ${id}`);
+if (!spec) failFidelity(`Unknown tank id: ${id}`);
 
 // Private/local oracle only. The asset remains quarantined and is never
 // registered by the public build; the generated procedural code stays an
@@ -59,8 +65,12 @@ const LOCAL_REFERENCE_OVERRIDES = {
   // RZ(90) fix — orientation receipts agree:true; §5.14 §E escalation done.
   // These exports parent large fixed-hull regions under `Turret`; whole and
   // hull masks are valid, but a direct turret-tree score is not.
-  amx30: { source:'glb', glb:{ path:'/models/tanks/community/amx30b_ahab.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true, turretComponentMasks:false } },
-  amx30b2: { source:'glb', glb:{ path:'/models/tanks/community/amx30b2_ahab.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true, turretComponentMasks:false } },
+  // The B2 print carries outboard kit wider than its hull.  Width-normalizing
+  // the complete tree therefore shrinks the same 6.59 m hull by almost 9%.
+  // Register both AMX variants on their valid, published hull-length datum;
+  // outboard equipment then remains an honest silhouette difference.
+  amx30: { source:'glb', glb:{ path:'/models/tanks/community/amx30b_ahab.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true, turretComponentMasks:false, geometryComponentMasks:false, fidelityScaleAnchor:'hullLength' } },
+  amx30b2: { source:'glb', glb:{ path:'/models/tanks/community/amx30b2_ahab.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true, turretComponentMasks:false, geometryComponentMasks:false, fidelityScaleAnchor:'hullLength' } },
   // ---- KojfDiscord AW series (§5.38 owner drops, LOCAL-ONLY QUARANTINE,
   // measurement/influence only — playables are procedural). Textured
   // prints (no paintUntextured). Follower sets are AABB-census best-effort
@@ -516,6 +526,7 @@ const LOCAL_REFERENCE_OVERRIDES = {
   // f01e1e00) ONLY; never gate kv2.
 };
 const source = LOCAL_REFERENCE_OVERRIDES[id] || MODEL_SOURCE[id];
+window.__FIDELITY_SOURCE_PATH = source?.glb?.path || null;
 const sourceIds = ALL_TANK_IDS.filter((tankId) => MODEL_SOURCE[tankId]?.source === 'glb');
 window.__REFERENCE_IDS = [...new Set([...sourceIds, ...Object.keys(LOCAL_REFERENCE_OVERRIDES)])]
   .filter((tankId) => TANK_SPECS[tankId])
@@ -561,9 +572,9 @@ const swapped = (visual) => {
   visual.root.traverse((o) => { if (o.userData?.__glbSwapped) yes = true; });
   return yes;
 };
-if (source?.source !== 'glb') throw new Error(`${id} has no local GLB reference`);
+if (source?.source !== 'glb') failFidelity(`${id} has no local GLB reference`);
 for (let i=0; i<600 && !swapped(reference); i++) await sleep(50);
-if (!swapped(reference)) throw new Error(`${id} reference GLB did not load`);
+if (!swapped(reference)) failFidelity(`${id} reference GLB did not load`);
 
 reference.root.updateMatrixWorld(true);
 procedural.root.updateMatrixWorld(true);
@@ -625,8 +636,17 @@ const proceduralBox = visibleBox(procedural.root);
 const refWidth=referenceBox.getSize(new THREE.Vector3()).x;
 const procWidth=proceduralBox.getSize(new THREE.Vector3()).x;
 const safeScale=(target,current)=>THREE.MathUtils.clamp(target/Math.max(current,1e-3),0.68,1.65);
-reference.root.scale.multiplyScalar(safeScale(spec.dims.widthM,refWidth));
-procedural.root.scale.multiplyScalar(safeScale(spec.dims.widthM,procWidth));
+const hullLength=(visual)=>{
+  const hull=visual.root.getObjectByName('rig_hull');
+  if (!hull) return 0;
+  return visibleBox(hull).getSize(new THREE.Vector3()).z;
+};
+const useHullLengthAnchor=source?.glb?.fidelityScaleAnchor === 'hullLength';
+const refAnchor=useHullLengthAnchor ? hullLength(reference) : refWidth;
+const procAnchor=useHullLengthAnchor ? hullLength(procedural) : procWidth;
+const targetAnchor=useHullLengthAnchor ? spec.dims.hullLengthM : spec.dims.widthM;
+reference.root.scale.multiplyScalar(safeScale(targetAnchor,refAnchor));
+procedural.root.scale.multiplyScalar(safeScale(targetAnchor,procAnchor));
 
 // Some recovered files use -Z as forward after their authored yaw.  Compare
 // the articulated gun centre with the turret centre and rotate the complete
@@ -1107,6 +1127,8 @@ window.__FIDELITY_REPORT={
     ) : null,
   },
   boxes:{
+    normalization:{ anchor:useHullLengthAnchor?'hullLength':'width', target:rounded(targetAnchor),
+      referenceRaw:rounded(refAnchor), proceduralRaw:rounded(procAnchor) },
     reference:referenceBox.getSize(new THREE.Vector3()).toArray().map(rounded),
     procedural:proceduralBox.getSize(new THREE.Vector3()).toArray().map(rounded),
     referenceMin:referenceBox.min.toArray().map(rounded),
@@ -1490,6 +1512,8 @@ if (params.get('geo')) {
   }
   // plan-view band errors live on the LENGTH axis (z); side/front on height
   const norm = { side: height, plan: length, front: height };
+  const geometryComponentMasksAvailable = componentMasksAvailable
+    && source?.glb?.geometryComponentMasks !== false;
   const curveRows = {};
   const viewReg = {};
   for (const view of ['side', 'plan', 'front']) {
@@ -1504,7 +1528,7 @@ if (params.get('geo')) {
     // registration so turret placement still counts.
     curveRows[`${view}_whole`] = curveScore(
       curves[`${view}_whole_ref`], curves[`${view}_whole_proc`], norm[view],
-      componentMasksAvailable ? viewReg[view] : undefined);
+      geometryComponentMasksAvailable ? viewReg[view] : undefined);
   }
   for (const view of ['side', 'plan']) {
     curves[`${view}_turret_ref`] = gTrace(gMask(reference, procedural, camsG[view], 'turret'), camsG[view]);
@@ -1556,8 +1580,8 @@ if (params.get('geo')) {
   // emptied rig_turret can't fake it; the whole/hull curves carry the body.
   const noTurretBoth = source?.glb?.fixedMount
     || (turretEmpty(curves.side_turret_ref) && turretEmpty(curves.side_turret_proc));
-  const turretRows = !componentMasksAvailable
-    ? { side: { score: null, note: 'unavailable (fused reference)' }, plan: { score: null, note: 'unavailable (fused reference)' } }
+  const turretRows = !turretComponentMasksAvailable
+    ? { side: { score: null, note: 'unavailable (fused/misclassified turret tree)' }, plan: { score: null, note: 'unavailable (fused/misclassified turret tree)' } }
     : noTurretBoth
     ? { side: { score: 100, note: 'no turret (casemate)' }, plan: { score: 100, note: 'no turret (casemate)' } }
     : {
@@ -1700,7 +1724,7 @@ if (params.get('geo')) {
     }
     return minX === null ? 0 : (maxX - minX + 1) * px;
   })();
-  dimCheck('widthM', pixelWidth, pub.widthM);
+  dimCheck('widthM', pixelWidth, pub.silhouetteWidthM ?? pub.widthM);
   const dimScore = clamp01(100 - dimRows.reduce((s, d) => s + Math.max(0, d.pct - 1) * 8, 0));
   // Floater detection: connected components of the whole mask across poses.
   const islands = (raw) => {
@@ -1766,14 +1790,16 @@ if (params.get('geo')) {
   // geometry evidence is then the already-computed registered whole mask in
   // every standard view. Use its worst view as the whole-shape component;
   // component-capable references retain the stricter metric curve minimum.
-  const wholeShapeScore = componentMasksAvailable
+  const wholeShapeScore = geometryComponentMasksAvailable
     ? Math.min(...['side_whole', 'plan_whole', 'front_whole'].map((k) => curveRows[k].score))
     : Math.min(...Object.values(angleRows).map((row) => row.score));
   const components = {
-    ...(componentMasksAvailable ? {
+    ...(geometryComponentMasksAvailable ? {
       hullCurves: Math.min(...['side_hull', 'plan_hull', 'front_hull'].map((k) => curveRows[k].score)),
-      turretCurves: Math.min(turretRows.side.score, turretRows.plan.score),
       stations: +stationScore.toFixed(1),
+    } : {}),
+    ...(turretComponentMasksAvailable ? {
+      turretCurves: Math.min(turretRows.side.score, turretRows.plan.score),
     } : {}),
     wholeCurves: wholeShapeScore,
     dims: +dimScore.toFixed(1),
@@ -1783,7 +1809,7 @@ if (params.get('geo')) {
   window.__GEO_REPORT = {
     id, geoMin: +geoMin.toFixed(1), gatePassed: geoMin >= 90,
     components: Object.fromEntries(Object.entries(components).map(([k, v]) => [k, +(+v).toFixed(1)])),
-    wholeShapeMetric: componentMasksAvailable ? 'metric-curves' : 'registered-standard-view-masks (fused reference)',
+    wholeShapeMetric: geometryComponentMasksAvailable ? 'metric-curves' : 'registered-standard-view-masks (fused reference)',
     curveRows: Object.fromEntries(Object.entries(curveRows).map(([k, v]) => [k, v])),
     turretRows, stationErr, dimRows,
     referenceBodyExtent: refExt && { h: +refExt.h.toFixed(3), len: +refExt.len.toFixed(3) },

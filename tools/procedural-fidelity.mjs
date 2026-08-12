@@ -59,7 +59,21 @@ try {
     const errorStart = browserErrors.length;
     try {
       await page.goto(urlFor(id), { waitUntil:'domcontentloaded', timeout:90000 });
-      await page.waitForFunction('window.__FIDELITY_READY === true', { timeout:90000, polling:60 });
+      await page.waitForFunction(
+        'window.__FIDELITY_SOURCE_PATH !== undefined || typeof window.__FIDELITY_ERROR === "string"',
+        { timeout:5000, polling:30 },
+      );
+      const sourcePath = await page.evaluate('window.__FIDELITY_SOURCE_PATH');
+      if (sourcePath?.startsWith('/')) {
+        const sourceFile = path.join(ROOT, 'public', sourcePath.replace(/^\/+/, ''));
+        if (!fs.existsSync(sourceFile)) throw new Error(`${id} reference file is unavailable: ${sourcePath}`);
+      }
+      await page.waitForFunction(
+        'window.__FIDELITY_READY === true || typeof window.__FIDELITY_ERROR === "string"',
+        { timeout:90000, polling:60 },
+      );
+      const runtimeError = await page.evaluate('window.__FIDELITY_ERROR');
+      if (runtimeError) throw new Error(runtimeError);
       const row = await page.evaluate('window.__FIDELITY_REPORT');
       const errors = browserErrors.slice(errorStart);
       if (errors.length) row.errors = errors;
@@ -68,17 +82,23 @@ try {
         `${row.score.toFixed(1)}  H${metric(row.scores.hull)} T${metric(row.scores.turret)} ` +
         `G${metric(row.scores.gun)} R${metric(row.scores.tracks)}`);
     } catch (error) {
-      const row = { id, name:id, score:0, scores:{ overall:0,hull:0,turret:0,gun:0,tracks:0 }, error:String(error) };
+      const message = String(error);
+      const unavailable = /reference (?:GLB did not load|file is unavailable)|no local GLB reference/.test(message);
+      const row = {
+        id, name:id, score:unavailable ? null : 0,
+        scores:{ overall:null,hull:null,turret:null,gun:null,tracks:null },
+        error:message, unavailable,
+      };
       rows.push(row);
       console.error(`[fidelity ${String(index+1).padStart(2)}/${ids.length}] ${id}: ${error.message}`);
     }
   }
 
-  rows.sort((a,b) => a.score-b.score || a.id.localeCompare(b.id));
+  rows.sort((a,b) => (a.score ?? Infinity) - (b.score ?? Infinity) || a.id.localeCompare(b.id));
   if (shotCount) {
     const shotDir = path.join(ROOT,'shots','procedural-fidelity');
     fs.mkdirSync(shotDir,{recursive:true});
-    for (const row of rows.slice(0,shotCount)) {
+    for (const row of rows.filter((candidate) => Number.isFinite(candidate.score)).slice(0,shotCount)) {
       await page.goto(urlFor(row.id), { waitUntil:'domcontentloaded', timeout:90000 });
       await page.waitForFunction('window.__FIDELITY_READY === true', { timeout:90000, polling:60 });
       await page.screenshot({ path:path.join(shotDir,`${row.id}.png`), fullPage:true });
@@ -104,30 +124,35 @@ try {
   await server.close();
 }
 
-const scores = rows.map((row) => row.score).sort((a,b)=>a-b);
+const scoredRows = rows.filter((row) => Number.isFinite(row.score));
+const scores = scoredRows.map((row) => row.score).sort((a,b)=>a-b);
 const median = scores.length ? scores[Math.floor(scores.length/2)] : 0;
 const summary = {
-  references:rows.length,
-  passed:rows.filter((row)=>row.gatePassed).length,
-  failed:rows.filter((row)=>!row.gatePassed).length,
+  discovered:rows.length,
+  references:scoredRows.length,
+  unavailable:rows.filter((row)=>row.unavailable).length,
+  passed:scoredRows.filter((row)=>row.gatePassed).length,
+  failed:scoredRows.filter((row)=>!row.gatePassed).length,
   passThreshold:PASS,
   perViewFloor:VIEW_FLOOR,
   median:Number(median.toFixed(2)),
-  worst:rows[0]?.id || null,
-  best:rows.at(-1)?.id || null,
+  worst:scoredRows.toSorted((a,b)=>a.score-b.score)[0]?.id || null,
+  best:scoredRows.toSorted((a,b)=>a.score-b.score).at(-1)?.id || null,
 };
 const report={ generatedAt:new Date().toISOString(),summary,rows };
 fs.writeFileSync(path.join(ROOT,'docs','procedural-fidelity-report.json'),`${JSON.stringify(report,null,2)}\n`);
 const cell = (value) => Number.isFinite(value) ? value.toFixed(1) : 'N/A';
 const md=[
   '# Procedural tank fidelity report','',
-  `Local comparison references: **${summary.references}**. Passing ${PASS}/100 overall and ${VIEW_FLOOR}/100 in every view: **${summary.passed}**. `+
-    `Below target: **${summary.failed}**. Median: **${summary.median.toFixed(1)}**.`,'',
+  `Available local comparison references: **${summary.references}/${summary.discovered}**. `+
+    `Passing ${PASS}/100 overall and ${VIEW_FLOOR}/100 in every view: **${summary.passed}**. `+
+    `Below target: **${summary.failed}**. Unavailable references: **${summary.unavailable}**. `+
+    `Median: **${summary.median.toFixed(1)}**.`,'',
   'Red/cyan mask scoring uses identical normalized poses: 35% whole silhouette, 25% hull, '+
     '20% direct articulated turret tree, 12% cannon overhang, and 8% lower track profile.','',
   '| Tank | Score | Whole | Hull | Turret | Gun | Tracks | Procedural fallback |',
   '|---|---:|---:|---:|---:|---:|---:|---|',
-  ...rows.map((row)=>`| ${row.name} (${row.id}) | ${row.score.toFixed(1)} | ${cell(row.scores.overall)} | `+
+  ...rows.map((row)=>`| ${row.name} (${row.id}) | ${cell(row.score)} | ${cell(row.scores.overall)} | `+
     `${cell(row.scores.hull)} | ${cell(row.scores.turret)} | ${cell(row.scores.gun)} | `+
     `${cell(row.scores.tracks)} | ${row.fallback || 'placeholder'} |`),
   '',
@@ -139,6 +164,7 @@ const md=[
 ].join('\n');
 fs.writeFileSync(path.join(ROOT,'docs','procedural-fidelity-report.md'),md);
 
-console.log(`\nprocedural-fidelity: ${summary.passed}/${summary.references} pass ${PASS}+ overall / ${VIEW_FLOOR}+ each view; `+
+console.log(`\nprocedural-fidelity: ${summary.passed}/${summary.references} available references pass `+
+  `${PASS}+ overall / ${VIEW_FLOOR}+ each view; ${summary.unavailable} unavailable; `+
   `median ${summary.median.toFixed(1)}; worst ${summary.worst}; best ${summary.best}`);
-if (CHECK && summary.failed) process.exitCode=1;
+if (CHECK && (summary.failed || summary.unavailable)) process.exitCode=1;

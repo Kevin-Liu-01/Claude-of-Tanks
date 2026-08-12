@@ -1,7 +1,7 @@
 {
- "generatedAt": "2026-08-11T16:58:16.619Z",
+ "generatedAt": "2026-08-12T19:43:57.340Z",
  "gate": "every component >= 90; min is the headline",
- "passed": 36,
+ "passed": 38,
  "total": 97,
  "rows": [
   {
@@ -79,32 +79,6 @@
     "turretCurves": 0,
     "stations": 0,
     "dims": 96.9,
-    "floaters": 100
-   }
-  },
-  {
-   "id": "amx30",
-   "geoMin": 0,
-   "gatePassed": false,
-   "components": {
-    "hullCurves": 34.3,
-    "wholeCurves": 0,
-    "turretCurves": 0,
-    "stations": 0,
-    "dims": 99.4,
-    "floaters": 100
-   }
-  },
-  {
-   "id": "amx30b2",
-   "geoMin": 0,
-   "gatePassed": false,
-   "components": {
-    "hullCurves": 28.6,
-    "wholeCurves": 2.4,
-    "turretCurves": 0,
-    "stations": 1.2,
-    "dims": 98.1,
     "floaters": 100
    }
   },
@@ -798,6 +772,16 @@
    }
   },
   {
+   "id": "amx30",
+   "geoMin": 90,
+   "gatePassed": true,
+   "components": {
+    "wholeCurves": 90,
+    "dims": 97.6,
+    "floaters": 100
+   }
+  },
+  {
    "id": "t90sm",
    "geoMin": 90,
    "gatePassed": true,
@@ -833,6 +817,16 @@
     "turretCurves": 91,
     "stations": 91.4,
     "dims": 100,
+    "floaters": 100
+   }
+  },
+  {
+   "id": "amx30b2",
+   "geoMin": 90.1,
+   "gatePassed": true,
+   "components": {
+    "wholeCurves": 90.1,
+    "dims": 95.7,
     "floaters": 100
    }
   },

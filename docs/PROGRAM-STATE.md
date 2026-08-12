@@ -93,6 +93,8 @@ re-freeze NEW hash, all in ONE commit.
 | m2a2_bradley | 90a5568c | GRADUATED 2026-08-08 (28th; dual gate: geometry 90.9 x2 every component >=90 landed 81bdad1 + visual floor 9.0 / mean 9.16 x14 views at freeze-verified bytes; oracle e699c868; dress-tier defect bank in the verdict: bow T-hooks, taillight fittings, TOW rear ports, lug stacks, ringed hubs) |
 | m45_patton | 53caa687 | GRADUATED 2026-08-08 (29th; gate 90.7 x5 total + sitting-2 visual floor 9.0 mean 9.13 x14; sitting-1 orders executed: loft.smooth byte-reproduced, ring cupola adjudicated ring-class at station with the measured Ø0.57/x-0.65 deviation compliant; ring-prominence silhouette-tax residual certified) |
 | leclerc | 683be340 | GRADUATED 2026-08-08 (30th; gate 90.3 x2 every component >=90 + visual floor 9.0 mean 9.17 x14 at freeze-verified bytes; the §5.14 §K-exemplar turret standard held through the ladder — no gate-chasing artifacts; commander-well doc trued z_w 0.32..0.66) |
+| amx30 | 89a4cdf0 | GRADUATED 2026-08-12 (§5.124 first-party low five-wheel AMX hull, compact cast turret, supported commander/optic/MG station and native exact 0/0 course; machine fidelity 91.81 / min view 90.01; fresh 42-frame yaw/ownership floor 9.0 / mean 9.16) |
+| amx30b2 | 34076800 | GRADUATED 2026-08-12 (§5.124 first-party B2 cast/rear-station and service package on the exact native five-wheel course; machine fidelity 91.51 / min view 90.14; fresh 42-frame yaw/ownership floor 9.0 / mean 9.12) |
 | k2 | 827d5ffc | GRADUATED 2026-08-08 (31st; Leclerc-method closed station loft; gate 90.1 x2 every component >=90; visual R26 floor 9.0 / mean 9.09 x14; exact Object_8/15/18/21 plan inventory, rounded asymmetric cage, countable six-station ISU gear; oracle 8d92cd1b reproducible from pristine .bak) |
 | abramsx | 26b46ba0 | GRADUATED 2026-08-09; RE-FROZEN 2026-08-10 (§5.95 owner screenshot attachment re-cert on current main: broad stepped RWS pedestal, optic plinths, smoke rails and antenna collars visibly meet the turret in all standard/yaw views; gate 90.2, standard/parent clean; 10-pixel/0.01% winding nomination has no visible wound; independent §B8 floor 9.3 / mean 9.49 x14; prior d1dbfa2 retired) |
 | challenger_3 | 3e5a7797 | GRADUATED 2026-08-09; RE-FROZEN 2026-08-10 (§5.95 owner screenshot attachment re-cert on current main: multi-tier Protector foundation, tapered optic plinth, smoke/corner rails and antenna collars have continuous physical seats; gate 90.4, standard/parent/winding clean; independent §B8 floor 9.4 / mean 9.59 x14; prior b0c172a4 retired) |
@@ -4008,3 +4010,52 @@ fixed `fitting_spareTrackLinks` candidate is legitimate forward-deck stowage.
 No fused duplicate turret, stranded fitting, empty-air item, donor course,
 collision, open sheet, sky hole or visible winding wound remains.
 **GRADUATED / KEEP `35a932c0`; the §5.120 hash is retired.**
+
+## 5.124 AMX-30B / AMX-30B2 FIRST-PARTY FAMILY REBUILD (2026-08-12, GRADUATED)
+
+Both active playables are authored entirely in
+`src/vehicles/profiles/misc.js` from repository primitives, fitting helpers
+and the native linked-track generator. The two Ahab GLBs remain local
+measurement/comparison material only; no mesh, vertex, texture, material,
+rig, animation or converted payload enters either runtime model.
+
+The shared rebuild replaces the former small wheels and tall side enclosure
+with a compact low 6.59 m pressure hull, five large dished road wheels, close
+terminal transitions, raised short sponson shoulders and one exact native
+course. A clipped two-stage cast turret now carries the integrated 105 mm gun,
+visible 20 mm coax, PH-8-B/searchlight grammar, supported commander/optic/MG
+station, smoke banks, antennas and a low braced bustle rack. The B2 adds its
+fuller rear cast shoulder, backed service cells and mantlet camera without
+changing the family datum.
+
+AMX-30B freezes twice at **`89a4cdf0`** (49 meshes / 51,609 vertices).
+Machine fidelity is **91.81** with every standard view at least **90.01**;
+components are whole 91.67 / hull 91.58 / gun 93.73 / tracks 90.25. Its
+geometry gate is 90.0 minimum / whole 90.0 / dimensions 97.6 / floaters 100.
+
+AMX-30B2 freezes twice at **`34076800`** (49 meshes / 55,365 vertices).
+Machine fidelity is **91.51** with every standard view at least **90.14**;
+components are whole 91.35 / hull 92.56 / gun 90.73 / tracks 90.03. Its
+geometry gate is 90.1 minimum / whole 90.1 / dimensions 95.7 / floaters 100.
+The source exports fuse fixed hull regions beneath their turret nodes, so
+turret-only geometry masks are honestly N/A while all nine registered whole
+views, valid hull/gun/track masks, dimensions and floater checks remain live.
+
+Both exact track receipts are band **0/0** and shoes **0/0**. Winding is 0
+reversed / 0 mixed / 0 deficit pixels / 0 yaw candidates. Parent audits are
+stranded 0 / dangling 0; the sole abutting nominee is a fixed fender/deck tow
+cable outside the cast turret envelope, visibly supported and correctly
+hull-owned in yaw.
+
+All 84 fresh files in `/tmp/critic-amx30-final` are distinct. AMX-30B's final
+vector is `[9.2,9.2,9.0,9.1,9.1,9.0,9.0,9.2,9.4,9.2,9.1,9.3,9.2,9.2]`,
+floor **9.0**, mean **9.16**. AMX-30B2's is
+`[9.1,9.2,9.0,9.1,9.0,9.0,9.0,9.2,9.2,9.2,9.1,9.2,9.2,9.2]`, floor
+**9.0**, mean **9.12**. Genuine quarter-turns prove complete seated turret
+ownership over fixed hull/service/running-gear packages. No fused duplicate,
+stranded or empty-air fitting, donor course, collision, disappearing face,
+open sheet, sky hole or visible winding wound remains.
+
+The full test suite, public build/quarantine stripping, native-playable audit
+(108 playables / 0 GLB-sourced), family-order test, standard check and geometry
+audits pass. **GRADUATED / KEEP `89a4cdf0` and `34076800`.**
