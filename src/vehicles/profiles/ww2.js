@@ -813,15 +813,15 @@ function buildTiger2(P) {
   });
 
   // hull
-  P.add('hull', box(2.12, 0.62, 6.50), 0, 0.80, -1.25);                      // belly (ref front bot 0.49)
+  P.add('hull', box(2.00, 0.62, 6.50), 0, 0.80, -1.25);                      // inter-track belly (ref front bot 0.49)
   P.add('hull', box(3.14, 0.90, 5.45), 0, 1.41, -1.87);                      // upper hull ±1.57
   P.add('hull', box(3.10, 0.05, 5.42), 0, 1.855, -1.88);                     // roof plate
   P.add('hull', slab(                                                        // 50° glacis, full width
     [-1.56, 0.90, 2.30], [1.56, 0.90, 2.30], [1.57, 0.95, 2.10], [-1.57, 0.95, 2.10],
     [-1.56, 0.94, 2.28], [1.56, 0.94, 2.28], [1.57, 1.86, 0.88], [-1.57, 1.86, 0.88]));
   P.add('hull', slab(                                                        // lower nose plate
-    [-1.52, 0.30, 1.92], [1.52, 0.30, 1.92], [1.54, 0.55, 2.16], [-1.54, 0.55, 2.16],
-    [-1.52, 0.34, 1.94], [1.52, 0.34, 1.94], [1.56, 0.90, 2.30], [-1.56, 0.90, 2.30]));
+    [-1.00, 0.30, 1.92], [1.00, 0.30, 1.92], [1.00, 0.55, 2.16], [-1.00, 0.55, 2.16],
+    [-1.00, 0.34, 1.94], [1.00, 0.34, 1.94], [1.00, 0.90, 2.30], [-1.00, 0.90, 2.30]));
   P.add('hull', slab(                                                        // overhung tail plate
     [-1.30, 0.95, -4.42], [1.30, 0.95, -4.42], [1.26, 0.95, -4.52], [-1.26, 0.95, -4.52],
     [-1.30, 0.99, -4.44], [1.30, 0.99, -4.44], [1.28, 1.84, -4.70], [-1.28, 1.84, -4.70]));
@@ -831,8 +831,8 @@ function buildTiger2(P) {
     P.add('hullDark', box(0.02, 0.46, 5.85), s * 1.878, 1.18, -1.35);
   }
   for (const s of [-1, 1]) {
-    P.add('hull', box(0.30, 0.44, 0.05), s * 1.66, 1.12, 2.42);               // front mud flaps (hullLengthM F anchor)
-    P.add('hull', box(0.30, 0.42, 0.05), s * 1.40, 1.08, -4.86);              // rear mud flaps (hullLengthM R anchor)
+    P.add('hull', box(0.30, 0.16, 0.05), s * 1.66, 1.26, 2.42);               // front mud flaps above the sprocket course
+    P.add('hull', box(0.30, 0.12, 0.05), s * 1.40, 1.23, -4.86);              // rear mud flaps above the idler course
     for (let i = 0; i < 8; i++) {                                            // fender edge bolt row
       P.add('hullDark', box(0.045, 0.02, 0.045), s * 1.80, 1.295, 1.3 - i * 0.70);
     }
@@ -932,6 +932,7 @@ function buildTiger2(P) {
   P.add('gun', cylZ(0.102, 1.45, 14), 0, 0, 1.42);                           // fat rear tube section
   P.add('gun', cylZ(0.110, 0.08, 14), 0, 0, 2.18);                           // step ring
   P.add('gunDark', cylZ(0.103, 0.018, 14), 0, 0, 2.235);
+  P.raiseTrackCorridor(['hull', 'hullDetail', 'hullDark'], { laneInnerX: 1.02, floorY: 1.18 });
   P.topY = 1.35;
 }
 
