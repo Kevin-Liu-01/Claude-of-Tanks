@@ -4867,14 +4867,13 @@ function buildLeo2A7V(P) {
     // lane faces at 1.17 = track inner face 1.20 MINUS the 0.03 family
     // clearance (a 1.20 first cut was coplanar with the band/shoe inner
     // faces and voxelized 378/184 band + 146/51 shoe at x ±1.2).
-    glacisLaneCut: { x: 1.10, z0: 3.00 },
+    glacisLaneCut: { x: 1.10, z0: 2.90 },
     beakWings: { z: 3.835, x0: 0.55, th: 0.20, x1: 1.10 },
-    // lift window derived for THIS gear (sprocket shoe orbit r 0.465:
-    // crest 1.515 over z -3.68..-2.84).
-    // Shoe-pad crowns, not just the smooth band, reach 1.523 m across the
-    // rear wrap.  Keep a real service gap beneath the sponson instead of
-    // letting the procedural deck shave those pads at grazing angles.
-    sponsonLaneLift: { z0: -3.70, z1: -2.82, x0: 1.10, y: 1.62 },
+    // The static terminal wrap and the articulated suspension sweep both
+    // need a true outboard service corridor. Lift the over-track underside
+    // from the forward lane cut through the sprocket instead of letting the
+    // low deck-band floor enter the moving course between the terminals.
+    sponsonLaneLift: { z0: -3.70, z1: 3.10, x0: 1.10, y: 1.62 },
     rearWallHW: 1.17,
     beltY: 0.66, bellyY: 0.615, headlightY: 1.42, headlightZ: 3.55, headlightX: 0.95,
     // The A7V transom is a shallow service face above the terminal course,
@@ -4960,7 +4959,12 @@ function buildLeo2A7V(P) {
   // further 0.10 m from the shell, leaving a 2.44 m broad silhouette against
   // the published 2.87 m vehicle.  The native track fix never required that
   // collapse: the deep undercut below remains seated above the fixed deck.
-  P.turretG.position.set(0, 1.46, 0.35);
+  // The completed native shell still read fused into the hull at elevated
+  // profile.  Lift the complete rotating package by a restrained 1 cm and
+  // expose a dark annular ring seam below it; this creates a readable
+  // separation line without over-lifting the side silhouette.  Every sight,
+  // weapon, bustle and armor course keeps its authored parent/load path.
+  P.turretG.position.set(0, 1.47, 0.35);
   wedgeTurretV3(P, {
     h: 0.64, apexY: 0.22, gunW: 0.36, slotZ: 1.18,
     chamferY: 0.55, roofX: 1.06, crestTail: 0.62, crestTailDrop: 0.005,
@@ -4996,8 +5000,12 @@ function buildLeo2A7V(P) {
     hatchTop: 0.88, hatchRound: true,
     mastX: -0.45, mastZ: -2.30, mastTop: 0.84,
     whips: [
+      // Preserve the authored whip lengths; the complete antenna mounts rise
+      // with the turret, but the rods do not grow to chase the global box.
+      // The secondary whip is deliberately shorter, matching the asymmetric
+      // rear silhouette instead of forming two near-equal masts.
       { x: -1.00, baseY: 0.66, z: -2.35, top: 3.06 },
-      { x: 1.00, baseY: 0.66, z: -2.35, top: 2.94 },
+      { x: 1.00, baseY: 0.66, z: -2.35, top: 2.44 },
     ],
     smoke: { x: 1.22, y: 0.40, z: -1.35 },
   });
@@ -5054,8 +5062,21 @@ function buildLeo2A7V(P) {
   // completely inside the existing rack envelope and rooted into the shell.
   P.add('turret', box(2.20, 0.42, 0.72), 0, 0.34, -2.69);
   P.add('turretDark', box(2.04, 0.018, 0.58), 0, 0.558, -2.69);
+  // Asymmetric backed bustle service cassette visible in direct rear.  The
+  // reference carries a short horizontal louvre field here; author it as a
+  // recessed panel with supported ribs, fully inside the welded bustle.
+  P.add('turretDark', box(0.58, 0.22, 0.014), -0.48, 0.37, -3.318);
+  for (const x of [-0.79, -0.17]) {
+    P.add('turretDetail', box(0.022, 0.45, 0.022), x, 0.365, -3.307);
+  }
+  for (let k = 0; k < 5; k++) {
+    P.add('turretDetail', box(0.52, 0.012, 0.010), -0.48, 0.29 + k * 0.041, -3.329);
+  }
   // turret ring plinth: closes the deck<->shell slit from the side
   // sight-lines (§B2) and yaws with the mass.
+  // A thin dark annulus exposes the lifted plinth/deck joint without adding
+  // a new rear-facing neck below the certified turret envelope.
+  P.add('turretDark', KIT.torus(1.10, 0.012, P.q ? 26 : 16), 0, -0.122, -0.55);
   P.add('turret', cylY(1.10, 1.14, 0.14, P.q ? 26 : 16), 0, -0.055, -0.55);
   // Authored roof-station restoration: the old first-party build had a much
   // clearer crew-station cadence than the later sparse roof.  Reintroduce

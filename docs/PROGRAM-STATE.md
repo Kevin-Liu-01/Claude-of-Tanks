@@ -89,7 +89,7 @@ re-freeze NEW hash, all in ONE commit.
 | leo2a4 | 4011c71c | RE-FROZEN 2026-08-12 (§5.139 first-party forward welded-loft restoration: longer connected turret and basket, re-seated mantlet/EMES/roof suite, supported zero-hole bow shoulders, seven native wheels and exact band+shoe+sweep 0/0; machine fidelity 92.14 / min view 90.18; fresh 45-frame yaw/ownership floor 9.1 / mean 9.19; prior 3a653cf9 retired) |
 | leo2a5 | e215a738 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | leo2a6 | e99f8490 | RE-FROZEN 2026-08-12 (§5.126 first-party Leopard 2A6: source-semantic wedge turret, canonical seated MG3, seven-wheel hull and exact native course; machine fidelity 95.43 / min view 95.32; fresh 42-frame yaw/ownership floor 9.3 / mean 9.46) |
-| leo2a7v | a097ec | RE-FROZEN 2026-08-12 (§5.126 first-party Leopard 2A7V: low arrowhead armor package, supported FLW/PERI stations, rear APU/service field and exact native course; machine fidelity 91.17 / min view 90.05; fresh 42-frame yaw/ownership floor 9.0 / mean 9.09) |
+| leo2a7v | ec69fe94 | RE-FROZEN 2026-08-12 (§5.140 first-party Leopard 2A7V turret separation: complete rotating package raised 1 cm over a visible annular ring seam, asymmetric mast/rear-service cadence, full articulated sponson clearance; machine fidelity 90.23 / min view 90.02; 45-frame yaw/ownership floor 9.0 / mean 9.16) |
 | leo2_revolution | 37139b70 | RE-FROZEN 2026-08-12 (§5.126 first-party Leopard 2 Revolution: authored clipped wedge/AMAP package, full roof station, supported rear/service package and exact native course; machine fidelity 94.92 / min view 91.17; fresh 42-frame yaw/ownership floor 9.1 / mean 9.27) |
 | m46_patton | 108806c8 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | centurion3 | bad74e60 | RE-FROZEN 2026-08-08 (no-air graduate-change: crown-ridge pedestal + discharger webs, front-low 1810px->14, re-cert floor 9.0 x17 changed views, gate 91.1 exact; prior 50273080 bore-resit lineage) |
@@ -4766,3 +4766,47 @@ dangling; winding is 0 reversed / 0 mixed with 0 deficit pixels and clean mode
 2. Rig, zero-hole standard, exact tracks, native-only provenance and the
 targeted evidence battery pass. **KEEP / RE-FROZEN `4011c71c`; retire
 `3a653cf9` and all earlier Leopard 2A4 freezes.**
+
+## 5.140 LEOPARD 2A7V TURRET-SEPARATION + FULL-SWEEP TRACK RE-CERTIFICATION (2026-08-12, RE-FROZEN)
+
+The gameplay Leopard 2A7V remains the fully first-party `buildLeo2A7V`
+implementation in `src/vehicles/profiles/leopard.js`. Its private recovered
+GLB is a quarantined read-only comparison oracle. No source mesh, converted
+vertex/index payload, material, texture, animation or runtime node enters the
+playable or public build.
+
+The complete rotating package is raised **1 cm** as one unit so its lower
+cheeks and apron no longer visually merge into the fixed deck. A thin dark
+annular weld seam exposes the existing load-bearing ring without adding a
+floating neck. The gun, wedge shell, armor courses, bustle, FLW/PERI suite,
+smoke, hatches, roof fittings and antenna bases retain their existing turret
+parent and broad seats. The secondary whip is shortened to an asymmetric
+source-semantic service length, and a backed horizontal louvre cassette with
+full-height frame returns replaces the formerly blank bustle-rear bay.
+
+The track-clearance pass lifts only the outboard sponson underside over the
+complete articulated course and moves the glacis lane cut 10 cm aft of the
+idler transition. The compact central tub and external armor silhouette stay
+unchanged. Exact containment is band front/rear **0/0**, individual shoes
+**0/0**, and strict suspension sweep **0/0**. Seven primary road wheels remain
+between a distinct front idler and rear drive sprocket in one continuous
+linked course. Plan contiguity is **0 holes**.
+
+Freeze **`ec69fe94`** reproduces at 46 meshes / 110,055 vertices. The final
+packet in `/private/tmp/leo2a7v-final-r5/leo2a7v` contains 15 paired, 15 yaw0
+and 15 yaw90 frames including the standardized elevated-left profile: **45
+PNGs / 45 distinct hashes**. Fresh semantic inspection records
+`[9.2,9.2,9.1,9.0,9.0,9.0,9.1,9.2,9.2,9.3,9.2,9.3,9.2,9.3]`, floor **9.0**
+and mean **9.16**. Quantitative fidelity is **90.23**, every view is at least
+**90.02**, and the curve gate remains **90.0** with dimensions **97** and
+floaters **100**.
+
+All yaw pairs show a genuine quarter-turn. The complete turret package moves
+together and exposes one coherent fixed deck/ring seat. The parent audit's
+broad `hullDetail`/`hullDark` candidates and winding mode-2 candidates
+`hull#17`, `hullDark#18` and `hullDetail#19` are visibly continuous fixed
+engine-deck, APU and service surfaces; no turret fitting is stranded. Winding
+is 0 reversed / 0 mixed with a 41-pixel (0.06%) antialias-only deficit and no
+visible wound. Rig, native provenance, family order and standard gates pass.
+**KEEP / RE-FROZEN `ec69fe94`; retire `a097ec` and all earlier Leopard 2A7V
+freezes.**

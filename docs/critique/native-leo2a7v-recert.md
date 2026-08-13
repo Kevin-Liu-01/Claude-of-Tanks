@@ -1,36 +1,52 @@
-# Leopard 2A7V native-procedural re-certification
+# Leopard 2A7V native-procedural turret-separation re-certification
 
-Date: 2026-08-11
+Date: 2026-08-12
 
-Evidence: `/tmp/critic-leo2a7v-native-final-r10` (14 paired, 14 yaw-0 and
-14 yaw-90 PNGs; 42/42 distinct hashes).
+Frozen candidate: `ec69fe94` (46 meshes / 110,055 vertices).
+
+Evidence: `/private/tmp/leo2a7v-final-r5/leo2a7v` contains 15 paired,
+15 yaw-0 and 15 yaw-90 PNGs, including the standardized elevated-left
+profile. All 45 files have distinct SHA-256 hashes.
 
 ## Verdict: PASS / KEEP
 
-The repository-authored builder scores **90.98** overall with a **90.02**
-minimum standard view.  Fixed-angle scores are front 90.72, front-left 90.74,
-left 90.02, rear-left 90.17, rear 90.17, rear-right 91.28, right 90.17,
-front-right 92.00 and top 92.77.
+The fully repository-authored builder scores **90.23** overall with a
+**90.02** minimum standard view. Fixed-angle scores are front 90.98,
+front-left 90.82, left 90.07, rear-left 90.97, rear 90.02, rear-right 90.96,
+right 90.17, front-right 91.83 and top 92.98. The curve gate is 90.0 with
+dimensions 97 and floaters 100.
 
-The final clearance audit reports zero smooth-band and zero individual-shoe
-intersections at both terminal wraps.  The buried bow/tub corridors remain
-inside the track lanes while the supported upper shoulder and cantilevered
-mudguard courses retain the full visual envelope.
+The complete turret package is raised 1 cm and remains seated over a thin
+annular ring seam. The elevated profile now exposes a readable deck/turret
+joint without a stilt, empty gap or floating armor course. The backed
+asymmetric bustle louvre cassette returns into full-height supports, and the
+shorter secondary whip preserves a plausible asymmetric antenna cadence.
 
-All yaw pairs show a genuine quarter-turn.  Gun, mantlet, connected wedge
-shell, bustle, roof stations, smoke equipment and antennas rotate together;
-glacis, fenders, engine deck, APU housings, terminal guards and running gear
-remain hull-fixed.  All exterior fittings retain visible seats, returns or
-collars.  No fused duplicate, stranded fitting, empty-air decoration,
-disappearing face, open sheet or yaw-dependent wound is visible.
+Exact containment reports zero smooth-band and zero individual-shoe
+intersections at both terminals and **0/0** across the strict articulated
+suspension sweep. The forward glacis lane cut and raised outboard sponson
+underside stay outside the track corridor. Seven primary road wheels remain
+between a distinct front idler and rear drive sprocket in one continuous
+native linked course. Plan-contiguity reports zero holes.
 
-The render-truth yaw audit reports a fixed-hull candidate over the ring zone.
-Direct comparison of all yaw states shows that `hull#17`, `hullDark#18` and
-`hullDetail#19` are the continuous deck, sponson and engine-service package;
-they remain correctly hull-owned when the turret leaves and expose no duplicate
-shell or stranded turret fitting. The parent audit's broad `hullDetail` and
-`hullDark` overlaps are the same supported fixed-hull class, not defects.
+All yaw pairs show a genuine quarter-turn. Gun, mantlet, connected wedge
+shell, armor, bustle, louvre cassette, roof stations, FLW/PERI hardware,
+smoke equipment and antenna bases rotate together. Glacis, sponsons, fenders,
+engine deck, APU housings, transom and running gear remain hull-fixed. Every
+exterior fitting retains a visible seat, return, frame, plinth or collar.
 
-This receipt certifies only the first-party procedural builder.  The isolated
-external GLB used by the comparison harness is a visual oracle and is not
+The render-truth yaw audit reports fixed-hull candidates over the ring zone.
+Direct inspection of all yaw states shows `hull#17`, `hullDark#18` and
+`hullDetail#19` are the continuous deck, sponson, APU and engine-service
+package. They remain correctly hull-owned when the turret departs and expose
+no duplicate shell or stranded fitting. The parent audit's broad
+`hullDetail`/`hullDark` overlaps are the same supported fixed-hull class.
+
+Winding is 0 reversed / 0 mixed. The 41-pixel (0.06%) front-left difference
+is antialias-only and produces no visible wound, disappearance or open sheet.
+Rig articulation, native-only playable provenance, family order and tank
+asset metadata pass.
+
+This receipt certifies only the first-party procedural builder. The isolated
+external GLB used by the comparison harness is a visual oracle and is never
 loaded by the playable.

@@ -258,3 +258,27 @@ d <= pitch - 2AA - margin EACH, or one of them cedes.
   report.
 - Renders: shots/leo-509/final/leo2a7v{,-yaw90}. Hash: 2a9fa8c0 ->
   3ca4af86 (44 meshes / 105997 verts; no freeze — capped id).
+
+## 2026-08-12 owner turret-separation and full-sweep clearance pass
+
+The owner-standard elevated-left profile showed the otherwise accepted A7V
+turret reading too tightly fused into the deck. The complete authored turret
+group is raised 0.01 m at its ring pivot, preserving every child relationship.
+A thin dark annulus exposes the joint without creating a vertical stilt or
+moving any fixed deck surface. The reference's asymmetric rear cadence is
+reinforced with a shorter secondary whip and one backed horizontal bustle
+louvre cassette carried by full-height frame members.
+
+The strict track audit also exposed a 46-voxel moving-band contact with the
+low outboard sponson floor. Extending the existing over-track lift through
+the full return run reduced it to 12 voxels at the forward boundary; moving
+the glacis lane cut from z 3.00 to 2.90 clears that last transition. Final
+receipt is band front/rear 0/0, shoes 0/0 and sweep 0/0, with no change to the
+seven primary road-wheel stations, front idler, rear sprocket or linked
+course.
+
+Final native freeze: `ec69fe94`, 46 meshes / 110,055 vertices. Fidelity
+90.23, minimum view 90.02; geometry floor 90.0, dimensions 97, floaters 100;
+0 plan holes. The 45-frame evidence packet is unique and proves genuine yaw,
+complete turret ownership and fixed engine-deck/APU ownership. No source
+geometry is used by the playable.
