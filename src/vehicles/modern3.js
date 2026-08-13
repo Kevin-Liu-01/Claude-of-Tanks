@@ -317,9 +317,12 @@ const MODERN3_SPECS = {
     dims: { hullLengthM: 6.79, overallLengthM: 9.49, widthM: 3.24, heightM: 2.30 },
     // Native authored rig: deck 1.44, ring pivot z -0.12 and the L/44
     // trunnion/muzzle relationship follow the published vehicle envelope.
+    // Keep the yaw group buried into the roof shoulder: the former y=1.50
+    // datum exposed the complete bearing as a tall neck in side/profile
+    // views even though the local shell was continuous.
     armor: modernArmor({
       hl: 3.42, hw: 1.62, inW: 1.04, floor: 0.45, trkTop: 0.95, roofY: 1.44,
-      turretPivot: [0, 1.50, -0.12], gunPivot: [0, 0.32, 1.42],
+      turretPivot: [0, 1.40, -0.12], gunPivot: [0, 0.32, 1.42],
       barrelLenM: 4.79, barrelRadM: 0.075,
       glacis: [45, 120, 150], lower: [450, 450, 600], side: [35, 60, 60],
       skirt: [60, 120, 300], rear: 35, roof: 40,
@@ -2303,8 +2306,8 @@ function buildType10Native2026(P) {
   // soot ON the rear plate face (§C: decals are mask geometry — the r2 float
   // at z -3.10 hung a phantom plane 0.3 m off the plate)
   P.decal('hull', 'soot', null, 0.55, [-0.62, 1.16, -3.45], Math.PI);
-  // ---- turret: modular welded wedge (local frame; pivot world y1.50 z-0.12;
-  // roof plateau 0.78 local = 2.28 world). Cheeks are ONE raked plane each
+  // ---- turret: modular welded wedge (local frame; pivot world y1.40 z-0.12;
+  // roof plateau 0.78 local = 2.18 world). Cheeks are ONE raked plane each
   // (plan-swept, equal 0.62 pull-back = exactly planar), cores carry the
   // SWEPT-PLANAR fronts under the cheek top edges (K2/§B1 pattern), sides
   // near-vertical with a 0.04 inward roof cant.
