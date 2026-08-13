@@ -194,17 +194,22 @@ declared complete.
   with zero render-deficit pixels. The conservative mode-2 candidate is the
   supported fixed engine/deck cover, not stranded turret equipment. No comparison geometry is
   present in the playable.
-- Base T-90: 90.38 aggregate with every standard silhouette at least 90.24;
-  whole 91.66, hull 92.12, turret 82.78, gun 92.50 and tracks 95.21 under the
-  corrected directional cannon-overhang audit. The
-  frozen first-party build `35a932c0` has 68 meshes / 120,828 vertices and
+- Base T-90: 90.63 aggregate with every standard silhouette at least 90.53;
+  whole 91.77, hull 92.02, turret 83.96, gun 92.50 and tracks 95.21 under the
+  corrected directional cannon-overhang audit. The spherical core is retired:
+  eight explicit asymmetric cast sections now author the mantlet valley,
+  lower cheeks, swollen shoulders, narrow crown and sharp rear falloff. The
+  frozen first-party build `1966d2e8` has 68 meshes / 114,144 vertices and
   exact 0/0 smooth-band plus 0/0 individual-shoe containment at both
-  terminals. Forty-two distinct current frames at
-  `/tmp/critic-t90-family-final-r4` prove a genuine quarter-turn and show the
+  terminals. Forty-five distinct current frames at
+  `/tmp/critic-t90-final-r14.TFQaOj/t90` prove a genuine quarter-turn and show the
   complete cast shell, gun, planted protection, Shtora, commander/NSVT suite,
   smoke, antennae and rear turret rack rotating together while the corrected
   pressure tub, glacis, deck, backed service field and six-wheel course remain
-  fixed. Winding is 0 reversed / 0 mixed with one visually null rear-left
+  fixed. The track order is asserted as front idler, six suspension-backed
+  road wheels, three support rollers and rear final-drive sprocket. The rear
+  service overhang now has a continuous hull-owned backing (0 contiguity
+  holes). Winding is 0 reversed / 0 mixed with one visually null rear-left
   deficit pixel. The fixed
   `fitting_spareTrackLinks` nominee is legitimate deck stowage; no comparison
   geometry is present in the playable.

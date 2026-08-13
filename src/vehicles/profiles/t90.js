@@ -116,6 +116,61 @@ function weldedStationLoft(stations) {
   return geometry;
 }
 
+// Low cast-turret loft from explicit longitudinal sections.  Unlike the
+// rotational dome helper, this preserves independent lower cheek, shoulder,
+// upper cheek and crown widths at every fore/aft station, including real
+// left/right asymmetry.  It is intentionally faceted at the large foundry
+// breaks while vertex normals keep each authored armor plane coherent.
+function castSectionLoft(stations) {
+  const positions = [];
+  const tri = (a, b, c, expect) => {
+    const ab = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+    const ac = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
+    const n = [ab[1] * ac[2] - ab[2] * ac[1], ab[2] * ac[0] - ab[0] * ac[2], ab[0] * ac[1] - ab[1] * ac[0]];
+    if (n[0] * expect[0] + n[1] * expect[1] + n[2] * expect[2] < 0) positions.push(...a, ...c, ...b);
+    else positions.push(...a, ...b, ...c);
+  };
+  const quad = (a, b, c, d, expect) => { tri(a, b, c, expect); tri(a, c, d, expect); };
+  const rings = stations.map(([z, levels]) => levels.map(([y, xl, xr]) => [[xl, y, z], [xr, y, z]]));
+  const levelCount = rings[0].length;
+  for (let i = 0; i < rings.length - 1; i++) {
+    const a = rings[i], b = rings[i + 1];
+    for (let k = 0; k < levelCount - 1; k++) {
+      quad(a[k][0], b[k][0], b[k + 1][0], a[k + 1][0], [-1, 0, 0]);
+      quad(a[k][1], a[k + 1][1], b[k + 1][1], b[k][1], [1, 0, 0]);
+    }
+    quad(a[levelCount - 1][0], a[levelCount - 1][1], b[levelCount - 1][1], b[levelCount - 1][0], [0, 1, 0]);
+    quad(a[0][0], b[0][0], b[0][1], a[0][1], [0, -1, 0]);
+  }
+  const zDirection = Math.sign(stations[stations.length - 1][0] - stations[0][0]) || 1;
+  const cap = (r, expect) => {
+    for (let k = 0; k < levelCount - 1; k++) quad(r[k][0], r[k][1], r[k + 1][1], r[k + 1][0], expect);
+  };
+  cap(rings[0], [0, 0, -zDirection]);
+  cap(rings[rings.length - 1], [0, 0, zDirection]);
+  // Weld coincident section vertices before computing normals.  This rounds
+  // the transition along the authored cast stations without reverting to a
+  // rotational primitive or erasing the explicit pear/cheek asymmetry.
+  const unique = [], indices = [], indexByPosition = new Map();
+  for (let i = 0; i < positions.length; i += 3) {
+    const x = positions[i], y = positions[i + 1], z = positions[i + 2];
+    const key = `${x.toFixed(6)},${y.toFixed(6)},${z.toFixed(6)}`;
+    let index = indexByPosition.get(key);
+    if (index === undefined) {
+      index = unique.length / 3;
+      indexByPosition.set(key, index);
+      unique.push(x, y, z);
+    }
+    indices.push(index);
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(unique, 3));
+  geometry.setIndex(indices);
+  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(new Array((unique.length / 3) * 2).fill(0), 2));
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
 function addT90RadialArmorBelt(P, rings, sz, { y = 0.16, cz = 0, scale = 1 } = {}) {
   const { box } = KIT;
   const A = ringSkin(rings, y);
@@ -3822,7 +3877,7 @@ function buildT90(P) {
     links.position.set(0.55, 1.495, 0.55);
     P.hullG.add(links);
   }
-  buildRunningGear(P, {
+  const t90Gear = {
     // the print's tread/suspension nodes are BYTE-SHARED with the burlak
     // print (same T-90 gear family) — params inherit the t90a-certified
     // §B4-clean set on this same hull grammar.
@@ -3835,7 +3890,17 @@ function buildT90(P) {
     rollers: [-1.38, 0.14, 1.65].map((z) => ({ z, y: 0.82, r: 0.086 })),
     trackW: 0.61, topY: 0.86, botY: 0.05, paintedEnds: true, coveredTop: true, arms: true,
     tireHex: 0x292a25, wheelHex: 0x394431,
-  });
+  };
+  const frontRoad = Math.max(...t90Gear.wheelZs);
+  const rearRoad = Math.min(...t90Gear.wheelZs);
+  if (!(t90Gear.idler.z > frontRoad && t90Gear.sprocket.z < rearRoad)) {
+    throw new Error('T-90 running-gear law: front idler -> road wheels -> rear final-drive sprocket');
+  }
+  buildRunningGear(P, t90Gear);
+  P.hullG.userData.runningGearOrder = {
+    front: 'idler', frontWheelPairs: 1, roadWheelPairs: t90Gear.wheelZs.length,
+    supportRollerPairs: t90Gear.rollers.length, suspension: 'torsion-arm', rear: 'final-drive-sprocket',
+  };
   // skirt-front ERA course (print era05-10_hull: three tall panels per
   // side, faces at the 3.78 width line) + rubber run behind/below
   for (const s of [-1, 1]) for (let i = 0; i < 3; i++) {
@@ -4175,6 +4240,7 @@ function finishT90BaseReferenceGuided(P) {
   // Supported stern overhang: two short longitudinal brackets and a backed
   // cross-member recover the source's compact -3.74 m service reach without
   // stretching the pressure hull or placing a loose bar in empty air.
+  P.add('hullDark', box(1.44, 0.10, 0.30), 0, 1.04, -3.60);
   for (const s of [-1, 1]) {
     P.add('hullDetail', box(0.045, 0.055, 0.30), s * 0.72, 1.04, -3.62);
     P.add('hullDark', box(0.10, 0.10, 0.08), s * 0.72, 1.04, -3.49);
@@ -4298,7 +4364,22 @@ function replaceT90ACastTurret(P, { vladimir = false } = {}) {
     [1.46, -0.04], [1.61, 0.10], [1.58, 0.27], [1.43, 0.43],
     [1.18, 0.57], [0.84, 0.68], [0.44, 0.745], [0.05, 0.775],
   ];
-  meshDomeCurved(P, rings, 0.72, 0, 0, { capR: 2.7 });
+  // Base T-90 casting: explicit source-guided sections replace the former
+  // half-sphere.  The lower shoulders swell beyond the crown, the mantlet
+  // valley pinches forward, the rear casting drops sharply, and the unequal
+  // left/right widths leave room for the real asymmetric station package.
+  // All coordinates are authored in this repository; no external geometry
+  // is imported, sampled, converted or shipped.
+  P.add('turret', castSectionLoft([
+    [1.31, [[-0.02, -0.61, 0.65], [0.13, -0.88, 0.91], [0.29, -0.73, 0.77], [0.43, -0.37, 0.43]]],
+    [1.04, [[-0.03, -1.08, 1.13], [0.17, -1.41, 1.48], [0.40, -1.31, 1.40], [0.56, -0.70, 0.82]]],
+    [0.64, [[-0.04, -1.30, 1.36], [0.16, -1.56, 1.62], [0.43, -1.46, 1.56], [0.64, -0.96, 1.08]]],
+    [0.17, [[-0.05, -1.40, 1.45], [0.15, -1.61, 1.63], [0.44, -1.47, 1.55], [0.70, -1.00, 1.11]]],
+    [-0.34, [[-0.05, -1.41, 1.45], [0.15, -1.58, 1.61], [0.43, -1.44, 1.52], [0.71, -0.97, 1.08]]],
+    [-0.77, [[-0.04, -1.34, 1.40], [0.14, -1.50, 1.55], [0.39, -1.33, 1.42], [0.65, -0.88, 1.00]]],
+    [-1.12, [[-0.02, -1.20, 1.30], [0.13, -1.35, 1.41], [0.34, -1.18, 1.31], [0.56, -0.74, 0.90]]],
+    [-1.43, [[0.00, -0.89, 1.02], [0.11, -1.12, 1.21], [0.27, -0.98, 1.11], [0.42, -0.60, 0.78]]],
+  ]));
   P.add('turret', cylY(1.26, 1.44, 0.12, 28), 0, -0.055, 0);
   P.add('turretDark', cylY(1.30, 1.30, 0.022, 28), 0, -0.105, 0);
 
