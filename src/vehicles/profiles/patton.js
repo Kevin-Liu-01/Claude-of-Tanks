@@ -2320,6 +2320,11 @@ function buildPershing(P, cfg) {
       }
     }
   }
+  if (cfg.trackClear) {
+    // Lift the real outboard hull/suspension-hanger skin above the native
+    // linked-shoe return while retaining the cast belly inboard.
+    P.raiseTrackCorridor(['hull', 'hullDark'], cfg.trackClear);
+  }
   P.topY = cfg.topWorld - cfg.ring[0] + 0.12;
 }
 
@@ -2861,6 +2866,10 @@ function buildM60(P, cfg) {
   // shared kit helper (MANDATORY shadow-named mechanism, 3fca39b): rim
   // torus + recessed shadow disc, mask/frame-excluded by construction.
   muzzleBore(P, { len: cfg.gunLen, r: cfg.sleeve ? 0.076 : 0.082 });
+  // The measured low sponson used to pass through the high M60 terminal
+  // ramps.  Keep the center boat hull low and form a real sloped clearance
+  // over the idler, road-wheel return and rear drive lanes.
+  P.raiseTrackCorridor(['hull'], { laneInnerX: 1.08, floorY: 1.40 });
   P.topY = 3.26 - py + 0.12;
 }
 
@@ -3388,6 +3397,11 @@ function buildM48(P, cfg) {
     P.add('gun', cylZ(0.098, 0.05, gseg, 0.128), 0, 0, 3.165);
   }
   muzzleBore(P, { len: cfg.gun.len, r: 0.082 });
+  // A small port bow-wing corner touched the raised idler shoes.  Lift only
+  // the low outboard vertices; the long fender and inboard boat hull stay.
+  // The builder's authored Z frame is shifted by fleet normalization, so
+  // select the lane by X/Y rather than a post-normalization station range.
+  P.raiseTrackCorridor(['hull'], { laneInnerX: 1.08, floorY: 1.50 });
   P.topY = cfg.topWorld - cfg.ring[0] + 0.12;
 }
 // tiny helper: flush pale lens disc for the twin lamp pods (kept out of
@@ -4724,6 +4738,7 @@ export const PATTON_PROFILES = {
       // proxies (§C mask-excluded, verified per-harness) + ramp-wedge
       // backers + wheel-rim glints; N1/N2 hue+drum work rides gearTone.
       gearTone: true, gearShade: true, fenderSkirtB: 'hullDark', hoodScopes: true, deckKit: true,
+      trackClear: { laneInnerX: 1.04, floorY: 1.30, zMin: -2.70, zMax: 1.40 },
       // (r8 cycle-3: fenderSkirtSlim [0.012, 0.006] tried for the rear-view
       // ±1.707 tab pair — the slim tabs did NOT merge into the ±1.751 fender
       // line; instead the uncovered track band printed a NEW 0.72 m vertical
