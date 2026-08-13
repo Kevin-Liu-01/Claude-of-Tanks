@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-08-13T04:45:54.952Z",
+ "generatedAt": "2026-08-13T04:52:49.976Z",
  "gate": "every component >= 90; min is the headline",
  "passed": 35,
  "total": 97,
@@ -328,6 +328,19 @@
    }
   },
   {
+   "id": "t90m",
+   "geoMin": 20.6,
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 42.1,
+    "stations": 65.7,
+    "turretCurves": 20.6,
+    "wholeCurves": 35.2,
+    "dims": 70.6,
+    "floaters": 100
+   }
+  },
+  {
    "id": "m1a2_tejas",
    "geoMin": 25.7,
    "gatePassed": false,
@@ -350,19 +363,6 @@
     "turretCurves": 43,
     "stations": 32.4,
     "dims": 100,
-    "floaters": 100
-   }
-  },
-  {
-   "id": "t90m",
-   "geoMin": 27.1,
-   "gatePassed": false,
-   "components": {
-    "hullCurves": 35,
-    "stations": 68.6,
-    "turretCurves": 27.1,
-    "wholeCurves": 33.9,
-    "dims": 66,
     "floaters": 100
    }
   },

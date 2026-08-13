@@ -86440,7 +86440,7 @@
           }
         ]
       },
-      "geometryHash": "256851f2",
+      "geometryHash": "ab9b1106",
       "metadataHash": "7d4ace38",
       "muzzleBore": {
         "tagged": 1,
@@ -86455,8 +86455,8 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 15300,
-          "sha256": "a19c1350c68d036d050022cb7286d0d4b5b2371b478140327aba97f44fd5e684"
+          "bytes": 15540,
+          "sha256": "0c669548e70233a26666a23f4317f3fa40ea38b1546a0997bfcdc5e8a4f15493"
         },
         "top": {
           "file": "t90m_top.webp",
@@ -86471,8 +86471,8 @@
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 8824,
-          "sha256": "14b5cf76462c99510125fbc72db8ffa4bfea7a929f709712811edb89de676534"
+          "bytes": 8844,
+          "sha256": "f3f05f927b0cb57ba45bb104aa42ac4e924974079e72e74f76e236e2aa9b1d9f"
         },
         "topSilhouette": {
           "file": "t90m_top_silhouette.png",
@@ -86487,32 +86487,32 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4623,
-          "sha256": "23b25928d390fabfd5ef76bcb9925bae977911863d6efad901e5358e66d16262"
+          "bytes": 4624,
+          "sha256": "6b8036cdee9359ab65a53d0a53441603dcb124eac0a5b74df58239a791e0f564"
         },
         "hitZonesSide": {
           "file": "t90m_hit_zones_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 60970,
-          "sha256": "15e85d13b1763fe1e5eea62728511042189c2d68ca93b6cc524c7fae8f7278b2"
+          "bytes": 61089,
+          "sha256": "19b7b66df9018ba4b645acdf2524effc5be5f319800afea804bc41617a47a64f"
         },
         "armorSide": {
           "file": "t90m_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 60414,
-          "sha256": "368c2b7cc4fe0b4a2236ce4f24e48297c703add0aed4a5f9acd9567ad7368582"
+          "bytes": 60694,
+          "sha256": "7ef8e1ce71277863c8d8af2ea062bb17893740d5187938a769b7bf8fd6fc720b"
         },
         "modulesSide": {
           "file": "t90m_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 59483,
-          "sha256": "aeb58fa446ca8b08bb7af0f6242e792d38acee101dbd5103b5945b838b8c3f06"
+          "bytes": 59402,
+          "sha256": "1c0d95e3381ad3effc81f67112f9cecc2176071a65e8f8ae9555fe21717a5835"
         }
       }
     },

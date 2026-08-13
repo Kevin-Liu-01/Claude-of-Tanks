@@ -27,12 +27,17 @@ Current authored candidate: `buildT90MProryvNative2026`.
   siblings, so the direct-turret component is not a valid acceptance law. The
   complete seated vehicle clears every required view.
 - Exact track containment: front/rear smooth band **0/0**; front/rear
-  individual shoes **0/0**; blind spots **0**.
+  individual shoes **0/0**; strict full-sweep band/shoes **0/0**; blind spots
+  **0**. The central sponson underside now maintains a real gap over the
+  return band, and concentric rims/hubs/fasteners are explicitly
+  suspension-owned rather than misclassified as hull armor.
 - Reference/procedural overall boxes are 3.78×2.25×9.64 m and
   3.78×2.26×9.31 m. The authored hull is 6.71 m versus the published 6.86 m;
   the shorter overall box is the deliberate compact gun/bustle envelope, not
   a scale or registration error.
-- The legacy geometry-gate minimum is an honest **27.1 FAIL**. That contour
+- The legacy geometry-gate minimum is an honest **20.6 FAIL** (hull 42.1 /
+  whole 35.2 / turret 20.6 / stations 65.7 / dimensions 70.6 / floaters 100).
+  That contour
   gate was fitted to the retired slabby builder and its source component tree;
   it conflicts with the independently reviewed native shape. The generated
   red row is retained and disclosed rather than reshaping our model back
@@ -45,8 +50,12 @@ Current authored candidate: `buildT90MProryvNative2026`.
 - Muzzle probe: **PASS**; inner 12.6, surround 102.5, contrast 89.9, with a
   visible open bore and tagged rim/disc structure.
 - Turret-parent audit: **PASS**, stranded 0 / abutting 0 / dangling 0.
-- Evidence packet: `/tmp/critic-t90m-proryv-native-final-r4/t90m`, containing
-  **42 PNGs / 42 distinct SHA-256 hashes**.
+- Evidence packet: `/private/tmp/t90m-clearance-final-r5/t90m`, containing
+  **45 PNGs / 45 distinct SHA-256 hashes**, including the elevated-left
+  profile.
+- Fresh standard-order vector:
+  `[9.2,9.3,9.1,9.1,9.1,9.1,9.1,9.3,9.3,9.4,9.2,9.4,9.3,9.3]`;
+  floor **9.1**, mean **9.23**.
 - Yaw0 to yaw90 is a genuine quarter-turn. Gun/mantlet, closed shell, all
   Relikt, bustle/lids/rack, both cupola stations, Sosna/periscopes,
   panoramic/Kord, smoke banks and antennas rotate together.
@@ -59,7 +68,7 @@ Current authored candidate: `buildT90MProryvNative2026`.
 
 ## Preserve / next refinement
 
-Preserve freeze **`a21894b8`**: 55 rendered meshes / 114,746 vertices, one
+Preserve freeze **`dc760de0`**: 53 rendered meshes / 114,986 vertices, one
 connected primary shell, exact native track corridor, calibrated 2A46M-5 axis,
 supported bustle and roof ownership. Later refinements must be made on this
 authored basis and cannot reactivate the retired mask-shaped builder, use

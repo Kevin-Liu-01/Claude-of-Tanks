@@ -5998,7 +5998,7 @@ function replaceT90MProryvHull(P) {
     // knees sit beyond the rotating arcs, preserving a true empty corridor.
     sponsonY: [
       [-3.05, 0.82], [-2.50, 0.82], [-2.45, 1.21], [-1.45, 1.21],
-      [-1.40, 0.82], [2.00, 0.82], [2.05, 1.20], [2.90, 1.20],
+      [-1.40, 1.12], [2.00, 1.12], [2.05, 1.20], [2.90, 1.20],
       [2.95, 0.82], [3.25, 0.82],
     ],
   });
@@ -6048,8 +6048,12 @@ function replaceT90MProryvHull(P) {
     padCornerFloor: 0.012, padHugZ0: 2.0,
   });
   for (const s of [-1, 1]) {
-    const det = s < 0 ? 'hullTrackDetailL' : 'hullTrackDetailR';
-    const trm = s < 0 ? 'hullTrackTrimL' : 'hullTrackTrimR';
+    // Concentric faces and fasteners are suspension-owned wheel furniture,
+    // not armor or hand-rolled track solids. Dedicated running-gear buckets
+    // retain the exact materials while keeping the strict track audit from
+    // treating a road wheel's own rim/bolts as hull penetrating its course.
+    const det = 'hullRunningGearDetail';
+    const trm = 'hullRunningGearDark';
     for (const wz of wheelZs) {
       P.add(det, torus(0.365, 0.010, 24), s * 1.544, wheelY, wz, 0, 0, Math.PI / 2);
       P.add(det, torus(0.205, 0.007, 18), s * 1.545, wheelY, wz, 0, 0, Math.PI / 2);
