@@ -110,9 +110,9 @@ re-freeze NEW hash, all in ONE commit.
 | chieftain5 | d4f2a9a6 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | t84 | 6d66a6a9 | RE-FROZEN 2026-08-13 (§5.169 first-party T-84/T-80-family standardization: legacy reconstructed slab/tower retired from the active route; standardized turbine chassis with explicit front idler, six road wheels, support rollers and rear drive; distinct low welded/faceted T-84 shell, irregular planted protection and supported combat/rear suite; exact band+shoes+sweep 0/0/0, parent 0/0/0, fresh 45-frame floor 9.0 / mean 9.11; prior 04707a9c retired) |
 | t62mv1 | 7b92f462 | RE-FROZEN 2026-08-13 (§5.177 wholly first-party T-62MV-1 restoration: lower asymmetric cast shell, dense planted K-1 arc, seated DShK/periscopes/902B/rear kit, dedicated radial wheels and compact front-idler/five-road-wheel/no-return-roller/rear-drive course; fidelity 93.53 / minimum view 90.41 / tracks 90.30, exact band+shoes+sweep 0/0/0, parent 0/0/0, winding clean, runtime 10/10, bore PASS and fresh 45-frame elevated/yaw floor 9.0 / mean 9.09; prior 5576ccf0 retired) |
-| t80 | 448b1161 | RE-FROZEN 2026-08-13 (§5.152 first-party family standardization: explicit low pear/cast section loft replaces the rotational dome/patch stack; light applique, supported combat/rear suite, native six-wheel course, exact band+shoes+sweep 0/0, parent 0/0/0, fresh 45-frame floor 9.0 / mean 9.06) |
-| t80b | f90b060 | RE-FROZEN 2026-08-13 (§5.152 heavier authored brow/station package on the same physical turbine-hull datum; exact native course, parent and winding clean; fresh 45-frame floor 9.0 / mean 9.08) |
-| t80bv | f4bc0d40 | RE-FROZEN 2026-08-13 (§5.152 two-level irregular planted Kontakt-1 plus supported flank return, complete roof/rear service suite and exact native course; fresh 45-frame floor 9.0 / mean 9.14) |
+| t80 | 26ca49a8 | RE-FROZEN 2026-08-13 (§5.180 first-party family visual closeout: planted cheek-joint language, low roof-service cadence, layered inboard bow and unequal backed turbine transom on the existing low pear casting; front-idler/six-road-wheel/five-return-roller/rear-drive course retained; exact band+shoes+sweep 0/0/0, contiguity 0, parent 0/0/0, winding clean and fresh 45-frame floor 9.0 / mean 9.15) |
+| t80b | d00cb6f6 | RE-FROZEN 2026-08-13 (§5.180 heavier authored brow/station mark on the same first-party turbine-hull datum, with the same layered bow/rear closeout; exact course/contiguity/parent/winding clean; fresh 45-frame floor 9.1 / mean 9.18) |
+| t80bv | 455daa6 | RE-FROZEN 2026-08-13 (§5.180 two-level irregular planted Kontakt-1, supported flank return and BV shoulder bridges over the standardized native course; exact course/contiguity/parent/winding clean; fresh 45-frame floor 9.1 / mean 9.24) |
 | m47_patton | 2fc99c50 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | leopard2_proto | a7eae06a | RE-FROZEN 2026-08-12; RECONCILED 2026-08-13 (§5.138 wholly first-party forward welded-loft restoration: armored nose +0.16 m, bustle +0.15 m and complete turret +0.10 m forward, with mantlet/gun, roof foundations, welds, latches and basket re-seated on the longer shell; seven native road wheels with front idler/rear drive, exact band+shoes+sweep 0/0/0, parent 0/0/0, winding clean, runtime 10/10, bore PASS and 45-frame elevated-profile/yaw floor 9.1 / mean 9.22) |
 | leo2a4 | 4011c71c | RE-FROZEN 2026-08-12 (§5.139 first-party forward welded-loft restoration: longer connected turret and basket, re-seated mantlet/EMES/roof suite, supported zero-hole bow shoulders, seven native wheels and exact band+shoe+sweep 0/0; machine fidelity 92.14 / min view 90.18; fresh 45-frame yaw/ownership floor 9.1 / mean 9.19; prior 3a653cf9 retired) |
@@ -6440,3 +6440,63 @@ evidence, immutable authored hash and strict mechanical gates are the current
 acceptance evidence.
 
 **PASS / KEEP `beff1034`; supersede `f5222a1c`. Ordered blockers: none.**
+
+## 5.180 T-80 / T-80B / T-80BV SHARED VISUAL + SERVICE CLOSEOUT (2026-08-13)
+
+The active T-80 family remains wholly repository-authored procedural
+geometry. Quarantined comparison binaries are read-only visual oracles; no
+mesh, converted vertex/index payload, material, texture, rig or animation
+from them enters gameplay or the public build.
+
+The accepted low asymmetric pear/cast section loft and standardized turbine
+chassis remain the primary structure. This pass makes each replaceable cheek
+pad readable against the identically painted casting using narrow buried
+lower and outboard armor joints. The T-80 retains the lightest planted
+applique, T-80B retains the heavier brow and T-80BV retains the dense two-
+level irregular Kontakt-1 blanket plus its supported flank return. Small
+planted periscope/service heads close the broad empty crown without adding a
+second tall roof silhouette; the existing cupolas, NSVT, Luna, sight, smoke,
+antennas, bins and supported basket remain seated on the common casting.
+
+The former blank nose is now a shallow two-course wedge with an inboard seam,
+rib, latch and tow-eye cadence. All new bow pieces stay inside the track
+lanes and above the front return. The turbine rear changes from one dark slab
+to two unequal backed louvre fields with frames, latches, asymmetric service
+plates and a broad internal transom tray. BV receives shallow hull-owned
+shoulder bridges that close its skirt/fender plan pockets while remaining
+above the terminal shoe orbit.
+
+Running order is unchanged and explicit: **front free idler -> six dished
+road wheels -> five return rollers -> rear final-drive sprocket**. One
+continuous native linked-shoe course follows those stations. Exact band,
+instanced-shoe and strict moving-sweep clearance is **0/0/0** on all three
+marks. Contiguity is 0 holes, parent audit is 0 stranded / 0 abutting / 0
+dangling, winding is 0 reversed / 0 mixed with only two visually null rear-
+left pixels, and live runtime articulation passes all 28 checks. Muzzle-bore
+contrast passes at 35.0 / 35.4 / 39.9.
+
+Deterministic freezes reproduce twice:
+
+- T-80 **`26ca49a8`**, 52 meshes / 94,356 vertices;
+- T-80B **`d00cb6f6`**, 52 meshes / 94,740 vertices;
+- T-80BV **`455daa6`**, 52 meshes / 110,796 vertices.
+
+Each directory under `/private/tmp/t80-family-final-r4` contains 15 paired,
+15 yaw0 and 15 yaw90 frames including the standardized elevated-left profile:
+**45 PNGs / 45 distinct hashes per variant**. Fresh standard-order vectors are
+T-80 `[9.1,9.2,9.1,9.0,9.1,9.0,9.1,9.2,9.2,9.3,9.1,9.3,9.2,9.2]`
+(floor 9.0, mean 9.15), T-80B
+`[9.2,9.2,9.1,9.1,9.1,9.1,9.1,9.2,9.2,9.3,9.2,9.3,9.2,9.2]`
+(floor 9.1, mean 9.18), and T-80BV
+`[9.2,9.3,9.2,9.1,9.1,9.1,9.2,9.3,9.3,9.4,9.2,9.4,9.3,9.3]`
+(floor 9.1, mean 9.24).
+
+Every yaw pair shows the complete shell, gun/mantlet, variant protection,
+cupolas/NSVT, sights, smoke, antennas, rear bins and basket rotating together.
+The layered bow, idler-to-sprocket course, turbine deck, transom tray/louvres
+and recovery field remain fixed. No copied geometry, duplicate turret,
+stranded fitting, empty-air decoration, track collision, open sheet or yaw
+wound appears.
+
+**PASS / KEEP `26ca49a8`, `d00cb6f6`, `455daa6`; supersede `448b1161`,
+`f90b060`, `f4bc0d40`. Ordered blockers: none.**

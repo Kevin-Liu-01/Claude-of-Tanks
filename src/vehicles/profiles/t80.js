@@ -141,6 +141,12 @@ function rebuildT80FamilyTurret2026(P, v) {
       P.add('turretDark', box(width * 0.78, height * 0.58, depth * 0.62), s * x * 0.97, y - 0.035, z * 0.97, -0.24, -s * yaw, 0);
       P.add('turret', box(width, height, depth), s * x, y, z, -0.24 - (i % 2) * 0.035, -s * yaw, 0);
       P.add('turretDark', box(width * 0.76, 0.016, depth * 0.58), s * x, y + height * 0.52, z + 0.025, -0.24, -s * yaw, 0);
+      // A narrow lower break and outboard edge keep each replaceable pad
+      // legible against the identically painted casting.  Both strips stay
+      // inside the cassette footprint; they are armor joints, not a second
+      // stand-off protection layer.
+      P.add('turretDark', box(width * 0.70, 0.018, depth * 0.54), s * x, y - height * 0.46, z - 0.012, -0.24, -s * yaw, 0);
+      P.add('turretDark', box(0.020, height * 0.66, depth * 0.58), s * (x + width * 0.46), y, z - 0.010, -0.24, -s * yaw, 0);
     }
     if (v === 2) {
       // Upper stagger and side return transform the sparse old BV blocks
@@ -213,6 +219,16 @@ function rebuildT80FamilyTurret2026(P, v) {
   P.add('turretGlass', box(0.15, 0.09, 0.025), -0.88, 0.75, 0.145, -0.12, 0, 0);
   P.add('turretDetail', box(0.22, 0.16, 0.28), 0.05, 0.76, 0.18, -0.08, 0, 0);
   P.add('turretDark', box(0.16, 0.055, 0.08), 0.05, 0.79, 0.35, -0.08, 0, 0);
+  // Low foundry/service cadence across the otherwise broad cast crown.
+  // These pieces are deliberately small and planted on the roof plates so
+  // the commander's station remains the only tall silhouette.
+  P.add('turretDetail', box(0.20, 0.055, 0.16), -0.15, 0.745, -0.72, 0, 0.08, 0);
+  P.add('turretDark', box(0.13, 0.022, 0.10), -0.15, 0.778, -0.72, 0, 0.08, 0);
+  P.add('turretDetail', box(0.15, 0.050, 0.20), 0.12, 0.748, -0.78, 0, -0.10, 0);
+  P.add('turretDark', box(0.09, 0.020, 0.14), 0.12, 0.778, -0.78, 0, -0.10, 0);
+  for (const [x, z, yaw] of [[-0.82, -0.30, -0.18], [-0.67, -0.48, -0.08], [0.02, 0.45, 0.08], [0.22, 0.38, 0.14]]) {
+    P.add('turretGlass', box(0.095, 0.045, 0.040), x, 0.765, z, 0, yaw, 0);
+  }
 
   // Angled 902B smoke banks.  Broad cheek pads remain visible beneath the
   // launchers at both yaw states.
@@ -462,13 +478,33 @@ function addT80HullServiceDetail(P, v) {
   // Backed turbine transom: unequal louvre bays, exhaust/service plate,
   // recovery eyes and light clusters.  All parts stay between the track
   // lanes and above the raised shoe transitions.
-  P.add('hullDark', box(1.64, 0.46, 0.035), -0.05, 1.18, -3.365);
-  for (let i = 0; i < 5; i++) {
-    P.add('hullDetail', box(i < 3 ? 0.76 : 0.62, 0.028, 0.045), i < 3 ? -0.39 : 0.47, 1.03 + (i % 3) * 0.11, -3.39);
+  // A shallow inboard tray joins the outer service face to the lower
+  // transom.  Without this bridge the framed panel enclosed a small blind
+  // plan pocket even though its rear face looked backed in orthographic
+  // pixels.
+  P.add('hull', box(1.66, 0.13, 0.18), -0.02, 1.15, -3.285);
+  P.add('hull', box(1.72, 0.48, 0.040), -0.03, 1.18, -3.365);
+  // Two differently sized, fully backed louvre fields replace the old
+  // full-width dark rectangle.  Their frames and centre break land on the
+  // camouflaged transom, so direct rear reads as machinery rather than a
+  // floating black wall.
+  for (let i = 0; i < 4; i++) {
+    P.add('hullDark', box(0.70 - (i % 2) * 0.05, 0.028, 0.045), -0.46, 1.02 + i * 0.085, -3.392);
   }
-  P.add('hull', box(0.58, 0.32, 0.055), -0.54, 1.27, -3.39);
-  P.add('hull', box(0.48, 0.25, 0.055), 0.58, 1.30, -3.39);
-  P.add('hullDark', box(0.44, 0.17, 0.025), 0.58, 1.30, -3.423);
+  for (let i = 0; i < 3; i++) {
+    P.add('hullDark', box(0.50 + (i % 2) * 0.06, 0.028, 0.045), 0.53, 1.05 + i * 0.105, -3.392);
+  }
+  for (const [x, y, h] of [[-0.84, 1.18, 0.42], [-0.08, 1.17, 0.44], [0.83, 1.19, 0.40]]) {
+    P.add('hullRearDetail', box(0.035, h, 0.050), x, y, -3.395);
+  }
+  P.add('hullRearDetail', box(1.62, 0.035, 0.050), -0.02, 0.97, -3.395);
+  P.add('hullRearDetail', box(1.62, 0.035, 0.050), -0.02, 1.41, -3.395);
+  P.add('hull', box(0.52, 0.29, 0.055), -0.58, 1.29, -3.39);
+  P.add('hull', box(0.39, 0.23, 0.055), 0.61, 1.31, -3.39);
+  P.add('hullDark', box(0.34, 0.15, 0.025), 0.61, 1.31, -3.423);
+  for (const [x, y] of [[-0.70, 1.30], [-0.47, 1.25], [0.48, 1.34], [0.72, 1.28]]) {
+    P.add('hullRearDetail', box(0.060, 0.10, 0.055), x, y, -3.425);
+  }
   for (const s of [-1, 1]) {
     P.add('hullDetail', box(0.19, 0.15, 0.06), s * 1.02, 1.20 + (s > 0 ? 0.06 : 0), -3.36);
     P.add('hullDark', box(0.12, 0.07, 0.025), s * 1.02, 1.23 + (s > 0 ? 0.06 : 0), -3.397);
@@ -479,7 +515,26 @@ function addT80HullServiceDetail(P, v) {
 
   // Engine-deck and bow service cadence visible from the elevated profile.
   P.add('hullDark', box(1.70, 0.022, 0.68), 0, 1.495, -2.08);
-  for (let i = 0; i < 7; i++) P.add('hullDetail', box(1.58, 0.018, 0.035), 0, 1.512, -1.80 - i * 0.09);
+  for (let i = 0; i < 7; i++) P.add('hullEngineDetail', box(1.58, 0.018, 0.035), 0, 1.512, -1.80 - i * 0.09);
+  // The family nose is a shallow layered wedge, not one blank vertical
+  // slab.  Everything here stays inside |x| < 0.82, safely inboard of the
+  // terminal track lanes and below the shoulder lamps.
+  P.add('hull', box(1.58, 0.18, 0.20), 0, 0.91, 3.015, -0.28, 0, 0);
+  P.add('hull', box(1.92, 0.105, 0.18), 0, 1.13, 2.965, -0.24, 0, 0);
+  P.add('hullDark', box(1.44, 0.024, 0.055), 0, 1.06, 3.075, -0.24, 0, 0);
+  for (const x of [-0.62, -0.31, 0, 0.34, 0.65]) {
+    P.add('hullBowDetail', box(0.035, 0.20 + (Math.abs(x) < 0.1 ? 0.04 : 0), 0.060), x, 0.99, 3.105, -0.28, 0, 0);
+  }
+  for (const s of [-1, 1]) {
+    P.add('hullBowDetail', cylZ(0.075, 0.060, 12), s * 0.60, 0.84, 3.135, Math.PI / 2, 0, 0);
+    P.add('hullBowDetail', box(0.18, 0.055, 0.075), s * 0.60, 0.91, 3.105, -0.18, 0, 0);
+    if (v === 2) {
+      // The BV's taller leading skirt and corner shelf otherwise enclose a
+      // small pocket above the idler.  This real shoulder bridge lands on
+      // both faces and remains above the complete terminal shoe orbit.
+      P.add('hull', box(1.08, 0.055, 0.20), s * 1.20, 1.16, 3.105, -0.10, 0, 0);
+    }
+  }
   for (const s of [-1, 1]) {
     // Shoulder cassettes sit above the idler wrap; the first pass reused the
     // old low light datum and entered the raised terminal shoes by 3 cm.

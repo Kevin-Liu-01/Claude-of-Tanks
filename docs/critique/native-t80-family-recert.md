@@ -2,9 +2,9 @@
 
 Current authored freezes:
 
-- T-80 `448b1161` (49 rendered meshes / 91,404 vertices)
-- T-80B `f90b060` (49 rendered meshes / 91,788 vertices)
-- T-80BV `f4bc0d40` (49 rendered meshes / 107,628 vertices)
+- T-80 `26ca49a8` (52 rendered meshes / 94,356 vertices)
+- T-80B `d00cb6f6` (52 rendered meshes / 94,740 vertices)
+- T-80BV `455daa6` (52 rendered meshes / 110,796 vertices)
 - T-80U `77f9ae78` (43 rendered meshes / 61,979 vertices; unchanged)
 
 ## Provenance and preservation decision
@@ -23,16 +23,16 @@ Current authored freezes:
 
 ## Current family visual receipt
 
-The current immutable packet is `/private/tmp/t80-family-final-r6`. Each of
+The current immutable packet is `/private/tmp/t80-family-final-r4`. Each of
 T-80, T-80B and T-80BV has 15 paired, 15 yaw0 and 15 yaw90 frames, including
 the standardized elevated-left profile. The 14 mandatory view vectors are:
 
-- T-80: `[9.1,9.1,9.0,9.0,9.0,9.0,9.0,9.1,9.1,9.1,9.0,9.1,9.1,9.1]`
-  (floor 9.0, mean 9.06).
-- T-80B: `[9.1,9.2,9.0,9.0,9.0,9.0,9.0,9.1,9.1,9.2,9.0,9.1,9.1,9.1]`
-  (floor 9.0, mean 9.08).
-- T-80BV: `[9.2,9.2,9.1,9.0,9.0,9.0,9.1,9.2,9.2,9.2,9.1,9.2,9.2,9.2]`
-  (floor 9.0, mean 9.14).
+- T-80: `[9.1,9.2,9.1,9.0,9.1,9.0,9.1,9.2,9.2,9.3,9.1,9.3,9.2,9.2]`
+  (floor 9.0, mean 9.15).
+- T-80B: `[9.2,9.2,9.1,9.1,9.1,9.1,9.1,9.2,9.2,9.3,9.2,9.3,9.2,9.2]`
+  (floor 9.1, mean 9.18).
+- T-80BV: `[9.2,9.3,9.2,9.1,9.1,9.1,9.2,9.3,9.3,9.4,9.2,9.4,9.3,9.3]`
+  (floor 9.1, mean 9.24).
 
 The T-80 keeps the lightest planted cheek applique, the T-80B carries a
 heavier brow and commander package, and the T-80BV carries two irregular
@@ -40,6 +40,9 @@ Kontakt-1 levels plus a supported flank return. The family now shares a
 layered mantlet, seated Luna/sight housings, two unequal hatch groups,
 periscopes, a visible NSVT cradle, angled smoke banks, antenna collars,
 supported rear bins/basket and a turbine-specific transom/service field.
+Narrow buried armor joints keep the planted cheek cassettes readable against
+the casting. The hull now carries a layered inboard nose/service package and
+two unequal backed turbine louvre fields rather than broad blank panels.
 
 ## Mechanical, ownership and winding receipt
 
@@ -55,6 +58,9 @@ supported rear bins/basket and a turbine-specific transom/service field.
   defended as decoration.
 - Winding audit is 0 reversed / 0 mixed; the stable two-pixel rear-left
   FrontSide difference is 0.00% and no yaw-stranded candidate exists.
+- Top-down contiguity is 0 holes. The transom receives a real internal tray,
+  and BV's two front pockets close with broad shoulder bridges above the
+  idler orbit rather than audit exemptions.
 - Muzzle-bore contrast passes all three (35.0 / 35.4 / 39.9).
 
 Yaw evidence shows the complete cast shell, protection, gun/mantlet, cupola
@@ -65,5 +71,5 @@ fitting, open sheet or yaw-dependent wound is visible.
 
 ## Final native disposition
 
-**PASS / KEEP T-80 `448b1161`, T-80B `f90b060`, T-80BV `f4bc0d40`; keep
+**PASS / KEEP T-80 `26ca49a8`, T-80B `d00cb6f6`, T-80BV `455daa6`; keep
 T-80U `77f9ae78`. Ordered blockers: none.**
