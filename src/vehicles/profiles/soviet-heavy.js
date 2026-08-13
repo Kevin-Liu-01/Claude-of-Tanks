@@ -485,6 +485,10 @@ function is3Hull(P) {
   // the ref's +-2.35 line instead of sagging flat (bottom targets: 0.03@2.2
   // -> 0.15@2.45 -> 0.42@3.02 front; 0.14@-2.6 -> 0.25@-2.93 rear)
   sovGear(P, { xc: 1.185, trackW: 0.58, wheels: 6, wheelR: 0.33, wheelY: 0.36, span: 4.64, zc: -0.05, topY: 0.94, botY: 0.04, sprocketY: 0.68, sprocketR: 0.26, sprocketDz: 0.38, idlerY: 0.72, idlerR: 0.24, idlerDz: 0.44 });
+  // Preserve the narrow centre keel while lifting the pike/stern shoulders
+  // and mudflap undersides above the complete linked-shoe sweep.
+  P.raiseTrackCorridor(['hull', 'hullDetail', 'hullDark'], { laneInnerX: 0.66, floorY: 1.15 });
+  P.raiseTrackCorridor(['hull', 'hullDetail', 'hullDark'], { laneInnerX: 0.45, floorY: 1.15, zMin: 2.0 });
 }
 
 // Squat proud IS-3 casting + D-25T, shared by is3 and (r2) is3_bergman.
