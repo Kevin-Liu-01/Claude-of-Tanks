@@ -3809,6 +3809,15 @@ function buildLeo2A7(P) {
     // fender line (same fix as the T-90M).
     trackW: 0.635, topY: 0.92, paintedEnds: true, coveredTop: true,
   });
+  // Fleet track-clearance law: the legacy heavy skirt lips, front/rear
+  // mudflaps and the outboard lower bow corners used to occupy the linked
+  // shoe sweep.  Keep them as physical hull parts, but trim their lower
+  // vertices to one continuous clearance floor above the complete course.
+  // The inboard belly and rear service plate remain untouched.
+  P.raiseTrackCorridor(
+    ['hull', 'hullDark', 'hullDetail', 'hullRubber', 'hullWood'],
+    { laneInnerX: 1.20, floorY: 1.04 },
+  );
   // r5: crosses re-seated on the rebuilt (narrower) turret side wall, ahead
   // of the stowage baskets — at the old ±1.61 they floated in mid-air.
   P.decal('turret', 'crossgrey', null, 0.38, [1.23, 0.44, -0.22], Math.PI / 2);
