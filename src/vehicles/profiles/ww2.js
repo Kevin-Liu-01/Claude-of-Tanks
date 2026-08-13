@@ -956,32 +956,32 @@ function buildT3485(P) {
   wheelShadows(P, 1.25, wheelZs, 0.42, 0.22, -0.10);
 
   // hull: sloped side band over the tracks, flat roof, long glacis
-  P.add('hull', box(2.06, 0.75, 5.35), 0, 0.55, zc);                         // belly
+  P.add('hull', box(1.92, 0.75, 5.35), 0, 0.55, zc);                         // narrow keel between the courses
   P.add('hull', frustum(1.46, 0.52, -3.62, 1.385, 0.47, -3.58, 0.86, 1.60)); // sloped sponson band
   P.add('hull', box(2.78, 0.05, 4.05), 0, 1.595, -1.55);                     // roof plate
   P.add('hull', slab(                                                        // 60° glacis
     [-1.44, 0.90, 1.70], [1.44, 0.90, 1.70], [1.44, 0.92, 1.62], [-1.44, 0.92, 1.62],
     [-1.44, 0.94, 1.68], [1.44, 0.94, 1.68], [1.44, 1.60, 0.44], [-1.44, 1.60, 0.44]));
   P.add('hull', slab(                                                        // lower nose back to the idler
-    [-1.30, 0.48, 1.28], [1.30, 0.48, 1.28], [1.42, 0.50, 1.66], [-1.42, 0.50, 1.66],
-    [-1.30, 0.52, 1.30], [1.30, 0.52, 1.30], [1.44, 0.90, 1.72], [-1.44, 0.90, 1.72]));
+    [-0.96, 0.48, 1.28], [0.96, 0.48, 1.28], [0.98, 0.50, 1.66], [-0.98, 0.50, 1.66],
+    [-0.96, 0.52, 1.30], [0.96, 0.52, 1.30], [0.98, 0.90, 1.72], [-0.98, 0.90, 1.72]));
   P.add('hull', box(2.60, 0.05, 0.55), 0, 1.53, -2.16);                      // grille recess deck
   for (let i = 0; i < 3; i++) P.add('hullDark', box(2.2, 0.02, 0.10), 0, 1.545, -1.95 - i * 0.18);
   P.add('hull', box(2.30, 0.09, 0.62), 0, 1.575, -2.75);                     // raised vent hump
   P.add('hullDark', box(2.0, 0.02, 0.42), 0, 1.625, -2.75);                  // mesh square
   P.add('hull', slab(                                                        // tail slope w/ round hatch
-    [-1.28, 0.90, -3.10], [1.28, 0.90, -3.10], [1.18, 0.92, -3.88], [-1.18, 0.92, -3.88],
+    [-0.78, 0.90, -3.10], [0.78, 0.90, -3.10], [0.78, 0.92, -3.88], [-0.78, 0.92, -3.88],
     [-1.28, 1.55, -3.06], [1.28, 1.55, -3.06], [1.18, 1.00, -3.86], [-1.18, 1.00, -3.86]));
   P.add('hullDetail', cylY(0.28, 0.28, 0.035, 16), 0, 1.34, -3.38, 0.62, 0, 0); // transmission hatch
-  P.add('hull', box(2.42, 0.34, 0.08), 0, 0.72, -3.88);                      // tail plate
+  P.add('hull', box(1.76, 0.34, 0.08), 0, 0.72, -3.88);                      // low center tail between courses
   for (const s of [-1, 1]) {
     P.add('hullDark', cylZ(0.065, 0.22, 10), s * 0.55, 1.10, -3.86, 0.5, 0, 0);   // twin exhausts
     P.add('hullDetail', cylZ(0.078, 0.05, 10), s * 0.55, 1.115, -3.92, 0.5, 0, 0);
   }
   KIT.fenders(P, 1.04, 1.46, 0.93, -3.90, 1.85, 0.032);                      // fenders ±1.46 (tracks own ±1.50)
   for (const s of [-1, 1]) {
-    P.add('hull', box(0.40, 0.38, 0.045), s * 1.22, 0.74, -4.075);           // rear mud flaps (R anchor -> body mid
-    P.add('hullDark', box(0.41, 0.05, 0.05), s * 1.22, 0.955, -4.07);        //  -1.05, span 6.09, overall 8.07)
+    P.add('hull', box(0.40, 0.14, 0.045), s * 1.22, 1.21, -4.075);           // shallow rear mud flaps above wrap
+    P.add('hullDark', box(0.41, 0.05, 0.05), s * 1.22, 1.305, -4.07);        //  -1.05, span 6.09, overall 8.07)
     P.add('hullDetail', box(0.018, 0.018, 2.0), s * 1.435, 1.30, -1.4);      // sponson handrails
     for (const dz of [-2.2, -1.4, -0.6]) P.add('hullDetail', box(0.014, 0.09, 0.014), s * 1.435, 1.25, dz);
   }
@@ -1010,6 +1010,14 @@ function buildT3485(P) {
   P.add('hull', box(0.24, 0.40, 0.26), 0.50, 0.78, 1.90);                    // headlight/horn cluster box
   P.add('hullDark', box(0.25, 0.32, 0.025), 0.50, 0.78, 2.035);
   KIT.headlight(P, 0.50, 1.02, 2.02, -0.15);
+
+  // Preserve the compact inter-track keel and terminal armor while moving
+  // complete lane-local fenders, bins, tools and cable courses above the
+  // native shoe corridor.  Whole-part lifting avoids inverted small boxes.
+  P.liftTrackCorridorParts(['hull', 'hullDetail', 'hullDark', 'hullCloth'], {
+    laneInnerX: 0.98, floorY: 1.14,
+  });
+  P.raiseTrackCorridor(['hull'], { laneInnerX: 0.98, floorY: 1.14, zMax: 1.10 });
 
   // cast egg turret, forward on the hull
   P.turretG.position.set(0, 1.63, -0.35);
