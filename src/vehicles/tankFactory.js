@@ -2992,10 +2992,10 @@ function buildIS2(P) {
 
 function buildPanther(P) {
   const { rng } = P;
-  P.add('hull', box(2.1, 0.63, 6.4), 0, 0.835, -0.05);                          // lower hull
+  P.add('hull', box(2.0, 0.63, 6.4), 0, 0.835, -0.05);                          // inter-track lower hull
   P.add('hull', frustum(1.71, 2.35, -3.1, 1.32, 1.80, -3.35, 1.15, 1.85));      // sloped superstructure
-  P.add('hull', frustum(1.55, 3.30, 2.3, 1.32, 1.80, 2.3, 0.8, 1.85));          // huge 55° glacis
-  P.add('hull', frustum(1.55, 2.90, 2.75, 1.55, 3.30, 2.75, 0.52, 0.8));        // lower glacis
+  P.add('hull', frustum(0.95, 3.30, 2.3, 1.32, 1.80, 2.3, 0.8, 1.85));          // huge 55° glacis above narrow prow
+  P.add('hull', frustum(0.95, 2.90, 2.75, 0.95, 3.30, 2.75, 0.52, 0.8));        // lane-clear lower glacis
   P.add('hullDetail', sph(0.09, 10), 0.6, 1.62, 2.62);                          // ball MG in glacis
   fenders(P, 1.05, 1.71, 1.18, -3.35, 3.3, 0.03);
   // TWO rear exhaust stacks in sheet-metal shrouds (the flanking stowage
@@ -3011,8 +3011,7 @@ function buildPanther(P) {
   for (const s of [-1, 1]) {
     for (let k = 0; k < 6; k++) {
       if (s > 0 && k === 4) continue;                                            // missing plate
-      const bent = s < 0 && k === 2 ? 0.07 : 0;
-      P.add('hull', box(0.02, 0.40, 0.98), s * 1.73, 0.98, 2.45 - k * 1.02, bent, s * bent, 0);
+      P.add('hull', box(0.012, 0.40, 0.98), s * 1.75, 0.98, 2.45 - k * 1.02);
     }
   }
   towCable(P, [[-1.6, 1.75, -2.4], [-1.7, 1.8, 0], [-1.6, 1.75, 2.2]]);
