@@ -5094,3 +5094,48 @@ binding are regenerated for this exact geometry.
 
 **KEEP / RE-FROZEN `6c24e284`. Any later terminal repair must obey §5.146:
 wheel/wrap only, never hull or side-armor subtraction.**
+
+## 5.148 BASE T-90 TURRET-EQUIPMENT RESEATING (2026-08-13, LIVE)
+
+The plain `t90` route remains fully repository-authored procedural geometry.
+Its existing hull, glacis, complete skirts, mudguards, six-road-wheel row,
+terminal wheels and native linked course are untouched by this round. The
+quarantined comparison GLB is used only for transient visual/metrology QA and
+is neither imported nor shipped.
+
+The pear-section cast turret is retained instead of reverting to a hemisphere.
+The old finish pass was still decorating it at superseded dome coordinates,
+which produced a second K-5 belt, duplicate cupola/platform mass and a broad
+rear box field. That duplicate layer is retired. One source-relative package
+now owns the turret: seven planted frontal K-5 cassettes per side, a short
+buried inner stagger, four falling flank cassettes, enlarged and re-seated
+Shtora housings, inboard 902B banks, one compact commander/night-sight station,
+low unequal periscopes, two collared radio whips and a supported broken rear
+rail/strap/coil cadence. The complete package is narrowed 1.8% as one assembly
+against the measured cast envelope; the nested gun cross-section is preserved.
+
+Geometry fingerprint **`da0ea477`** reproduces with regenerated angle, top,
+side, silhouette, hit-zone, armor and module assets. Quantitative first-party
+fidelity is **90.02 aggregate** with overall silhouette **91.40**, hull
+**92.04**, turret display class **82**, gun **92.07** and tracks **95.26**.
+The raw mask floor is **89.81** in direct rear; that residual belongs to the
+protected inherited hull/transom silhouette and is not hidden by subtracting
+or lifting lower-vehicle geometry. Fresh source-semantic review of the 14
+mandatory pairs records
+`[9.0,9.1,9.0,9.0,9.0,9.0,9.0,9.1,9.2,9.2,9.1,9.2,9.1,9.2]`, floor **9.0**
+and mean **9.09**.
+
+The final packet at `/private/tmp/t90-decoration-final-r7/t90` contains 15
+paired, 15 yaw0 and 15 yaw90 frames including the elevated-left profile: **45
+PNGs / 45 distinct hashes**. Every yaw pair shows a genuine quarter-turn; the
+gun, connected cast shell, all K-5, Shtora, smoke, cupolas, optics, MG, whips
+and rear rails rotate together while the hull/deck/course remain fixed. The
+parent audit's only nominee is legitimate fixed-deck spare-track stowage.
+Winding is 0 reversed / 0 mixed with no mode-2 candidate. Exact native band
+and shoe contact is front/rear **0/0**; the strict sweep's 661 `sweep:hull`
+pixels are the unchanged inherited hull bucket and are not "repaired" by
+deleting armor. Rig, muzzle bore, assets, native provenance, family order,
+unit tests and the production build pass.
+
+**KEEP / RE-FROZEN `da0ea477`. Future work on this tank must preserve the
+lower vehicle and may refine only additive or re-seated turret-owned detail.**
