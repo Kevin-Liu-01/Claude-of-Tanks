@@ -2573,7 +2573,7 @@ function buildLeo2A5(P) {
   // slid the louvre med 82.4 -> 80.6 under its 82 floor)
 
   leoHullV3(P, {
-    bodyHW: 1.638, sponsonY: 1.32, trackW: 0.64, xc: 1.37,
+    bodyHW: 1.638, sponsonY: 1.38, trackW: 0.64, xc: 1.37,
     // deck staircase re-laid to the fresh 96-col trace (1.684 mid, the
     // −1.95..−2.29 dip at 1.768, 1.825 aft — the old flat-1.84 aft band and
     // the 1.81 upstand lip rode 0.06-0.13 over ~25 side columns)
@@ -2588,7 +2588,7 @@ function buildLeo2A5(P) {
     // columns deck+rim-owned, side is centre-carried); headlight pods slide
     // inboard off the crest; rear wall narrows between the sprockets; the
     // sponson floor lifts to 1.50 over the wrap crest z -3.36..-2.86.
-    glacisLaneCut: { x: 1.02, z0: 3.14 },
+    glacisLaneCut: { x: 1.02, z0: 3.02 },
     beakWings: { z: 3.845, x0: 0.55, th: 0.21, x1: 1.02 },
     beltY: 0.62, bellyY: 0.615, headlightY: 1.40, headlightZ: 3.58, headlightX: 0.90,
     // §B4 shoe round (2026-08-06): crest sub-window — the 1.50 floor was
@@ -2655,83 +2655,19 @@ function buildLeo2A5(P) {
   // line outboard of the 1.638 body (the ref's intake armor lip runs to
   // ±1.685); z-parked on the aft deck, under the 1.825 side deck line
   for (const s of [-1, 1]) P.add('hull', box(0.047, 0.06, 0.80), s * 1.6615, 1.76, -2.90);
-  // r6 idler mudflap stack INSIDE the track x-band (front/plan invisible):
-  // the ref side bottoms fall 0.29..0.72 over z 3.27..3.83 where the bare
-  // wrap ramp read 0.06-0.11 high — thin plates carry the measured line.
-  // r4 CONTAINMENT: the old flat 0.93 tops ran THROUGH the departure ramp
-  // and the wrap's lower quadrant — each plate's top now SLOPES parallel to
-  // the band's lower surface at >=0.028 clearance (ramp lower y = 0.841 -
-  // 1.047*(3.693-z) - then the arc past the tangent point). The certified
-  // side bottoms are untouched; the sliver above each plate is pad-covered
-  // (shoes hang ~0.03-0.08 below the band surface), so nothing reads open.
-  {
-    const steps = [
-      [3.275, 3.385, 0.30, 0.373, 0.488], [3.387, 3.497, 0.41, 0.492, 0.607],
-      [3.499, 3.609, 0.50, 0.609, 0.724], [3.611, 3.721, 0.61, 0.726, 0.813],
-      [3.723, 3.833, 0.72, 0.842, 0.940],
-    ];
-    const slab = orientedSlab;                                // §C.1 winding guard
-    for (const s of [-1, 1]) {
-      for (const [za, zb, yb, ta, tb] of steps) {
-        const x0 = s * 1.11, x1 = s * 1.61;
-        const zA = za + 0.004, zB = zb - 0.004;
-        const bot = [[x0, yb, zA], [x1, yb, zA], [x1, yb, zB], [x0, yb, zB]];
-        const top = [[x0, ta, zA], [x1, ta, zA], [x1, tb, zB], [x0, tb, zB]];
-        const ord = (r) => (s < 0 ? [r[1], r[0], r[3], r[2]] : r);
-        P.add('hullDark', slab(...ord(bot), ...ord(top)));
-      }
-    }
-  }
+  // Running-gear ownership law: the idler wrap and animated shoes alone own
+  // the lane below the fender.  The former five-piece static "mudflap
+  // stack" was planted inside that swept volume to imitate the side trace;
+  // in shaded gameplay it became the rectangular plate seen through the
+  // moving links.  Do not replace it with track-coloured hull geometry.
   // r6 front skirt corner flap: ref front ±1.83 cols read a 0.812..1.416
   // mudflap band over the skirt face; z-parked behind the skirt front edge
   // so the plan ±1.84 cols cannot move. r3: x-narrowed to 1.812..1.848 —
   // the ±1.87 front cols read the ref's bare 1.339 skirt-face line
   for (const s of [-1, 1]) P.add('hull', box(0.036, 0.60, 0.10), s * 1.830, 1.11, 3.59);
-  // VISUAL r6 1a FRONT MUD FLAPS (critic driver A): the ref print covers its
-  // whole track front — flap plate + smooth track face read (front window
-  // sd 3.63 / vgrad 0.22 vs our naked comb 10.49/6.54). Two z-thin tiers,
-  // clear of the audited band shell (far edge 3.818 + 0.02 — the wing band
-  // itself sits legally at 3.845 inside the PAD orbit, which only the
-  // shaded 4x tooth-over-plate check governs; every plate top here stays
-  // >=0.02 under the local pad-arc lower rim so no tooth crosses it):
-  // - tier 3 (upper flap): z 3.845..3.857 (the wing-band z-slab), y
-  //   0.68..0.88 (pad arc lower 0.902 at z 3.857), x 1.06..1.70. Lives in
-  //   the SAME side column as the r6 stack slab-5/wing band — an already-
-  //   BODY column, so the 12%-band registration mid CANNOT move (a first
-  //   cut at z 3.93 lit a NEW body column at the bow: dAlong slid 0.058
-  //   and every curve row smeared — the r5 dAlong-flip law's cousin).
-  // - tier 2 (track-face cover): z 3.585..3.597, y 0.08..0.68 — behind the
-  //   descending ramp's lower line (0.728 at z 3.585) and under the wrap
-  //   arc's lower rim (0.707 at z 3.597, 0.027 clear); shares the r6 stack
-  //   slab-3 z-band so the side column keeps ONE flap-class owner. The
-  //   0.02 seam between tiers reads as the ref's own flap bottom edge.
-  // Plate bottoms ride the REF's OWN side-bottom staircase (r6 stack bins:
-  // 0.50 at z 3.55, 0.72 at 3.83): tier-2 bottoms 0.44 (err 0.03 on its
-  // column vs the 0.50 bin — a 0.08 first cut read err 0.258 and bound the
-  // whole gate at side_hull 89.1); the comb below y 0.44 is TONE-covered
-  // by the z-face mud term on the shoe clones (see the regrime hook).
-  for (const s of [-1, 1]) {
-    // ONE FLUSH UPPER PLATE (z 3.845..3.857, y 0.395..0.88): a three-tier
-    // z-stepped ladder left the mid-plate rows dipping 47 — the COMB'S CAST
-    // SHADOWS land mid-face when the receiving plane sits 0.3-0.5 m deeper
-    // (pad row at 3.90 casting onto a 3.59 plate drops ~0.28 in y). On the
-    // flush 3.851 plane every caster is <=0.06 ahead, so shadows hug the
-    // pad line at the very top. Bottom 0.395 prices ~0.16 on its side
-    // column vs the ref's 0.72 stack bin (banked; the split option priced
-    // 0.05+0.16 across two columns AND kept the shadow bands).
-    // far edges at z 3.854/3.852 — the first cut's 3.857/3.860 edges sat
-    // 15-18 mm (1.4 px) off a gate column boundary and the ONE-PIXEL AA
-    // LEAK printed the cap's 0.878 band into the bow neighbour column,
-    // promoting it to body: dAlong slid 0.058 again and the whole side
-    // smeared (hull 91.8 -> 86.4). 20+ mm setbacks per the r3 law.
-    P.add('hullTrack', box(0.69, 0.485, 0.012), s * 1.365, 0.6375, 3.848);
-    P.add('hullDetail', box(0.69, 0.012, 0.010), s * 1.365, 0.884, 3.847);   // flap top-edge cap (lifts the dark slit under the pad line)
-    // tier-2b: the lowest cover, z-parked in the r6 stack slab-1/2 band
-    // (ref side bins bottom 0.30 there — plate bottom 0.10 prices ~0.10 on
-    // one column); top 0.40 tucks 5 mm under the flush plate's 0.395 line
-    // (no gap, no caster ahead of it below y 0.55).
-    P.add('hullTrack', box(0.69, 0.24, 0.012), s * 1.365, 0.28, 3.302);
-  }
+  // Likewise, no flush "track-face cover" is permitted ahead of the idler.
+  // The real linked shoes remain readable from the front and keep exclusive
+  // ownership of their animated orbit.
   // r4 CONTAINMENT rear flap package (replaces the kit rearFlaps + the r6
   // second plate, both of which crossed the sprocket-wrap rear rim): three
   // boards whose tops STAIRCASE under the wrap rim (rim tip z -3.57, y 1.09;
@@ -3709,6 +3645,7 @@ function buildLeo2A5(P) {
         [KIT.xform(KIT.cylX(0.125, 0.014, 12), s * 1.733, 1.11, 3.48), discDark],
       ]) {
         const mesh = new THREE.Mesh(g, mat);
+        mesh.userData.runningGear = true;
         mesh.receiveShadow = true;
         mesh.castShadow = false;
         P.hullG.add(mesh);
@@ -3839,8 +3776,10 @@ function buildLeo2A5(P) {
       // The r8-b window rebalance also trims the hero-rr-facing pile (x
       // +0.55) to one strap + a narrower patch: the 2c p75 plateau (>=69
       // HELD gate) reads that pile's faces.
-      blob(camoRed, P.hullG, KIT.xform(KIT.box(0.15, 0.390, 0.430), -1.05, 1.642, -3.58));
-      blob(camoOlv, P.hullG, KIT.xform(KIT.box(0.12, 0.390, 0.430), -0.58, 1.642, -3.58));
+      // Rear pile bindings clear the live sprocket-shoe crown.  Their old
+      // lower-front corners entered the animated pad volume by 3 cm.
+      blob(camoRed, P.hullG, KIT.xform(KIT.box(0.15, 0.390, 0.430), -1.05, 1.70, -3.58));
+      blob(camoOlv, P.hullG, KIT.xform(KIT.box(0.12, 0.390, 0.430), -0.58, 1.70, -3.58));
       // §B4 shoe round (2026-08-06): bottom 1.4456 -> 1.52 — the pile-edge
       // slab's bottom-front corner sat 3.0 cm inside the sprocket-crown shoe
       // pads (4 exact voxels; the corner rode the pad slab band at z -3.36).
@@ -4168,15 +4107,16 @@ function buildLeo2A5(P) {
       }
       // merged single-material meshes (draw-call economy); the stern frame
       // KEEPS casting (structural members, not tone dressing)
-      for (const [geos, mat, parent, cast] of [
-        [rimT, rimBand, P.turretG, false], [litT, litKit, P.turretG, false],
-        [litCrownGeos, litKit, P.hullG, false],
+      for (const [geos, mat, parent, cast, runningGear] of [
+        [rimT, rimBand, P.turretG, false, false], [litT, litKit, P.turretG, false, false],
+        [litCrownGeos, litKit, P.hullG, false, false],
 
-        [tireGeos, tireRing, P.hullG, false], [rimGeos, rimRing, P.hullG, false],
+        [tireGeos, tireRing, P.hullG, false, true], [rimGeos, rimRing, P.hullG, false, true],
       ]) {
         if (!geos.length) continue;
         const merged = KIT.mergeAll(geos);
         const mesh = new THREE.Mesh(merged, mat);
+        if (runningGear) mesh.userData.runningGear = true;
         mesh.receiveShadow = true;
         mesh.castShadow = cast;
         parent.add(mesh);
@@ -4254,6 +4194,7 @@ function buildLeo2A5(P) {
           [KIT.xform(new THREE.TorusGeometry(0.322, 0.013, 8, P.q ? 30 : 22, 5.40), s * 1.7045, 1.11, 3.48, -1.124, Math.PI / 2, 0), rimMud],
         ]) {
           const mesh = new THREE.Mesh(g2, mt);
+          mesh.userData.runningGear = true;
           mesh.receiveShadow = true;
           mesh.castShadow = false;
           P.hullG.add(mesh);
