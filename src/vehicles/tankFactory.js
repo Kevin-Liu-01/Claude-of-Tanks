@@ -3869,9 +3869,13 @@ function buildLeo2A7(P) {
   // sleeve/evac/MRS steps in buildGun scale off r so they thicken with it.
   buildGun(P, { len: 6.6, r: 0.079, sleeve: true, evac: 0.62, collar: true, baseR: 0.16 });
   buildRunningGear(P, {
-    style: 'rubber', wheelR: 0.35, wheelW: 0.22, xc: 1.55,
+    style: 'rubber', wheelR: 0.35, wheelW: 0.22, wheelY: 0.45, xc: 1.55,
     wheelZs: [2.95, 2.0, 1.25, 0.28, -0.69, -1.66, -2.63],
-    sprocket: { z: -3.5, y: 0.46, r: 0.34 }, idler: { z: 3.45, y: 0.44, r: 0.32 },
+    // Both terminals sit above the seven road-wheel centres.  The old
+    // 0.44/0.46 m centres made the first and last drums read as two more
+    // road wheels and flattened the Leopard course instead of producing
+    // the required rising approach and final-drive transitions.
+    sprocket: { z: -3.5, y: 0.60, r: 0.34 }, idler: { z: 3.45, y: 0.60, r: 0.32 },
     // r3: skirts cover the real 2A7's return run — no horn comb above the
     // fender line (same fix as the T-90M).
     trackW: 0.635, topY: 0.92, paintedEnds: true, coveredTop: true,

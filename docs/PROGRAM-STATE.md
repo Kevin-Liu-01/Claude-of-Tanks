@@ -38,7 +38,7 @@ until fresh native paired+yaw evidence replaces it. See
 
 **2026-08-13 program closure snapshot:** the native reset is complete and is
 now the authoritative fleet state. `npm run tank:native:check` reports **108
-battle playables / 108 first-party procedural / 0 GLB-sourced**, with **26
+battle playables / 108 first-party procedural / 0 GLB-sourced**, with **23
 comparison candidates isolated** from runtime. The exact strict clearance
 audit covers all **110 registered procedural variants** and reports **0 band
 intersections, 0 shoe intersections, 0 full-sweep intersections, 0 blind
@@ -51,6 +51,20 @@ N/A/low records rather than false passes; currentness is established by the
 native runtime, exact mechanical gates and the per-tank fresh fidelity/yaw
 receipts recorded below.
 
+**2026-08-13 post-closure reconciliation:** commit `5ecd7f77` repaired the
+fleet-wide hollow-hull regression by replacing destructive per-vertex track-
+corridor clamping with a geometry-preserving suspension-tunnel operation. It
+also carried the owner's route corrections for Challenger 1, Ariete and the
+T-72 family, the plain T-90 turret replacement, T-90SM hull-only refinement
+and several terminal-clearance repairs. Those are real geometry changes, so
+the older freeze rows for every changed builder are **REOPENED**, even where
+their source-semantic shape remains recognizable. Current deterministic
+hashes are recorded in §5.189 as byte receipts, not as silent re-graduations;
+each family still requires a fresh applicable paired/yaw re-cert before its
+historical row can be replaced. The subsequent live provenance count is 108
+battle playables / 108 authored procedural / 0 GLB-sourced with **23**
+isolated comparison candidates.
+
 The generated gameplay asset cache is also current: **108 tanks / 864 files**
 pass metadata, live-geometry and muzzle-bore verification. This mechanical and
 provenance closure must not be confused with blanket legacy packet migration:
@@ -61,6 +75,10 @@ silently promoted to measured >=90 passes.
 
 ## 2. ABSOLUTE RULES (verbatim-critical)
 - THE ONE ABSOLUTE RULE: no assets extracted from commercial games, ever.
+- All runtime tanks are already our authored procedural models. "First-party"
+  describes provenance, not visual quality: when a newer authored route is a
+  downgrade, say that it is being replaced by the stronger earlier authored
+  design. Never imply that an earlier model was someone else's work.
 - Private local project — never publish, never create accounts.
 - docs/geometry-gate/ledger.json is TOOL-WRITTEN only.
 - NEVER gate m60a1 / m60a3 / kv2 (kv2's oracle is unrecoverable by design —
@@ -6817,3 +6835,81 @@ three return rollers / hybrid suspension -> rear toothed final drive -> one
 continuous linked-shoe course**.
 
 **PASS / KEEP `b5218c44`; retire `28c7f5f0`. Ordered blockers: none.**
+
+## 5.189 POST-CLOSURE HULL / TERMINAL RECONCILIATION (2026-08-13, REOPENED FREEZES)
+
+The owner-reported hollow-hull regression was real. The former generic track
+corridor repair clamped every low outboard vertex to one Y plane. When both
+the upper and lower vertices of a box or armor prism were below that plane,
+the operation collapsed its faces to zero height and could erase the tank's
+side hull in profile. `tankFactory.raiseTrackCorridor` now groups coincident
+X/Z columns: wholly low sections move rigidly, crossing columns retain an
+ordered lower section, and upper armor remains untouched. Family-local bow,
+stern, skirt, cable and sponson repairs then clear the actual linked shoes
+without relabeling real hull geometry as suspension.
+
+The same landing restores the owner-selected stronger earlier authored
+Challenger 1, Ariete and T-72 routes; both the earlier and later alternatives
+are repository-authored. Plain `t90` receives the new closed clipped-pear
+casting while its armor and stations remain seated; `t90sm` keeps its turret
+and changes only its suspension tunnel, wheel presentation and shallow skirt.
+This wording is deliberate: these are quality/route corrections among our
+own models, not provenance restorations.
+
+Because `5ecd7f77` changes both route selection and the shared corridor
+operation, the following deterministic hashes supersede the bytes in their
+historical freeze rows but are **not yet blanket re-graduations**:
+
+```text
+t62mv1 aa4120fc   t64bv1 90565544   t72b_1987 bac62bb8
+t72b3m d31695b0   t72bu 53e2c734    t80 c9cd0816
+t80b f1114c82     t80bv cd553f16    t80u 57393df8
+t84 8142f266      t90 719765f1      t90a 6d22730d
+t90a_vladimir 206505a0               t90a_burlak b2f5f2b4
+t90sm 8c0be368    t90ms 6fb2a268    t90m ef532148
+merkava1b 50dda750 merkava2b 770f2226 merkava2d 7addb1bc
+merkava3c e0f64914 merkava3d e9758994 merkava4 3603a024
+type10 bf6134d4   m60a1 e75dcee4    m60a3 5efe36e0
+type74 394d3498   m2a2_bradley cfb6c4e4
+challenger1 17fd58d8                  ariete 9b0ceebe
+recon_tank 61605364                   k1a1 4798b350
+```
+
+The full current mechanical census—not a 37-id subset—covers all **110**
+procedural variants and reports zero band intersections, zero individual-shoe
+intersections, zero strict-sweep intersections, zero blind spots and zero
+errors. `npm run tank:native:check` reports **108/108 authored procedural**
+playables with zero GLB-sourced runtime models and 23 isolated comparison
+candidates. `npm run tank:family:check` keeps all four Russian lineages
+contiguous and ordered.
+
+The terminal-rise lint initially exposed two delisted audit-only variants
+that were absent from the representative selftest: legacy `leo2a7` and
+photo-class `t72b3`. Their native layouts now use visibly elevated front
+idlers and rear final drives; T-72B3's glacis cable is reseated above and
+inboard of the corrected idler shoes. The expanded selftest instantiates the
+complete Node-buildable modern roster and verifies **73 modern running-gear
+receipts**; any running-gear exception is fatal even when a builder later
+requires a browser-only decoration context.
+
+`leo2a7` reproduces as **`6a38d086`** (40 meshes / 85,046 vertices) and
+`t72b3` as **`8715745c`** (45 meshes / 59,255 vertices). Both are deliberately
+delisted, so absence from the generated gameplay asset manifest is expected
+and is not a release-row claim. `/private/tmp/terminal-rise-final-r2`
+contains 15 authored appraisal frames, 15 yaw0 and 15 yaw90 frames for each
+variant: **45/45 distinct PNG hashes each**. Elevated profiles show the
+rising terminal courses; yaw evidence keeps both complete turrets moving over
+fixed solid hulls. Winding is 0 reversed / 0 mixed with no yaw-stranded
+candidates for either variant.
+
+The live asset-currentness gate initially exposed **50 stale manifest rows**
+left by the geometry-changing route/corridor landing. Only those 50 registered
+playables were regenerated, along with `public/icons/tank-assets.json`; the
+post-generation full-fleet audit now passes **108 tanks / 864 required files**,
+including metadata, exact live-geometry bindings and muzzle-bore checks. This
+cache repair records the current authored bytes but does not override the
+explicitly reopened visual freezes above.
+
+Disposition: mechanical/provenance regression **PASS**. Historical freezes
+listed above remain explicitly **REOPENED** until their applicable family
+paired/yaw re-cert rounds replace the old rows.

@@ -438,7 +438,10 @@ function buildT72B3(P) {
   headlight(P, 1.42, 1.10, 3.02, -0.2, 0.05);                                   // right-fender light
   liftEye(P, 'hullDetail', -1.18, 1.40, 1.5);
   liftEye(P, 'hullDetail', 1.18, 1.40, 1.5);
-  towCable(P, [[-1.25, 1.02, 2.9], [-0.35, 0.96, 3.06], [0.55, 1.0, 2.96]]);    // glacis lip cable
+  // Keep the cable on the glacis carrier, inboard and above the raised
+  // idler shoe orbit.  Its former left eye grazed two shoe voxels after the
+  // terminal was corrected, even though the center band remained clear.
+  towCable(P, [[-1.10, 1.12, 2.82], [-0.35, 1.07, 3.00], [0.55, 1.09, 2.90]]);
   spareTrackStrip(P, 'hull', -1.28, 1.14, 2.4, 2, -1.15, 0);
   // turret: squat CAST DOME (half-egg lathe, plan-stretched), not a welded box
   P.add('turret', lathe([
@@ -495,9 +498,13 @@ function buildT72B3(P) {
   // 6 big stamped wheels (bigger/flatter than T-90 — §14.5), 3 rollers,
   // sprocket REAR
   buildRunningGear(P, {
-    style: 'rubber', wheelR: 0.39, wheelW: 0.21, xc: 1.50,
+    style: 'rubber', wheelR: 0.39, wheelW: 0.21, wheelY: 0.49, xc: 1.50,
     wheelZs: [2.48, 1.49, 0.50, -0.49, -1.48, -2.47],
-    sprocket: { z: -3.0, y: 0.53, r: 0.27 }, idler: { z: 2.95, y: 0.51, r: 0.25 },
+    // The delisted photo-class B3 remains part of the procedural audit
+    // roster, so its native course obeys the same mechanical silhouette as
+    // the live T-72 family: raised leading idler, six road wheels, support
+    // return, and raised rear final drive.
+    sprocket: { z: -3.0, y: 0.65, r: 0.27 }, idler: { z: 2.95, y: 0.63, r: 0.25 },
     rollers: [1.45, 0, -1.45].map((z) => ({ z, y: 0.92, r: 0.09 })),
     // r3: rubber-flap skirts cover the T-72B3 return run — no horn comb.
     trackW: 0.58, topY: 0.85, arms: true, paintedEnds: true, coveredTop: true,

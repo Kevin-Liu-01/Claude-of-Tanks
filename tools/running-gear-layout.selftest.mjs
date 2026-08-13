@@ -5,6 +5,7 @@ import {
   MODERN_TERMINAL_RISE_FLOOR_M,
   runningGearLayoutReceipt,
 } from '../src/vehicles/tankFactory.js';
+import { TANK_SPECS } from '../src/vehicles/specs.js';
 
 const rearDrive = {
   sprocket: { z: -3.2 },
@@ -116,4 +117,33 @@ for (const [id, frontEnd] of [
   t90m.dispose();
 }
 
-console.log('running-gear-layout: visible front idler, road-wheel span, support rollers, rear drive and explicit front-drive exceptions verified');
+// Full modern roster regression: profile registration happens through the
+// tankFactory import above, so Object.keys includes active playables and the
+// two delisted procedural comparison variants audited by the geometry tools.
+// Some decoration-only builders require a browser DOM; unrelated environment
+// failures are left to the browser release gate, but no running-gear failure
+// may be hidden behind that distinction.
+let modernReceipts = 0;
+for (const id of Object.keys(TANK_SPECS).filter((id) => TANK_SPECS[id]?.era === 'modern')) {
+  let tank;
+  try {
+    tank = createTank(id, engineCtx, {
+      geometryReceipt: true, proceduralOnly: true, quality: 'low', staticPreview: true,
+    });
+  } catch (err) {
+    assert.doesNotMatch(String(err?.message || err), /running-gear|idler|final-drive|road-wheel/,
+      `${id} must not hide a running-gear law failure behind a builder exception`);
+    continue;
+  }
+  const layouts = tank.root.getObjectByName('rig_hull')?.userData?.nativeRunningGearLayouts || [];
+  for (const layout of layouts) {
+    if (layout.terminalRiseFloor == null) continue;
+    assert.ok(layout.idlerRise >= layout.terminalRiseFloor, `${id} idler rises above road wheels`);
+    assert.ok(layout.sprocketRise >= layout.terminalRiseFloor, `${id} final drive rises above road wheels`);
+    modernReceipts++;
+  }
+  tank.dispose();
+}
+assert.ok(modernReceipts >= 70, `full modern roster publishes terminal-rise receipts (${modernReceipts})`);
+
+console.log(`running-gear-layout: ${modernReceipts} modern receipts plus representative order/scale/terminal checks verified`);
