@@ -845,11 +845,11 @@ export function buildT54(P) {
   P.add('hullDark', box(0.26, 0.02, 0.03), -1.44, 1.44, 0.74);
   // rear plate: transverse fuel drums ON the ramp (the print's 1.26/1.27
   // deck bumps at -2.81/-2.62) + unditching log low on the tail plate
-  P.add('hullDetail', cylX(0.15, 2.00, 12), 0, 1.11, -2.83);
-  P.add('hullDetail', cylX(0.15, 2.00, 12), 0, 1.13, -2.58);
+  P.add('hullDetail', cylX(0.15, 1.92, 12), 0, 1.11, -2.83);
+  P.add('hullDetail', cylX(0.15, 1.92, 12), 0, 1.13, -2.58);
   for (const s of [-1, 1]) {
-    P.add('hullDark', cylX(0.154, 0.04, 12), s * 1.00, 1.11, -2.83);
-    P.add('hullDark', cylX(0.154, 0.04, 12), s * 1.00, 1.13, -2.58);
+    P.add('hullDark', cylX(0.154, 0.04, 12), s * 0.96, 1.11, -2.83);
+    P.add('hullDark', cylX(0.154, 0.04, 12), s * 0.96, 1.13, -2.58);
     P.add('hullDark', box(0.04, 0.30, 0.02), s * 0.62, 1.10, -2.71);
   }
   {
@@ -936,6 +936,9 @@ export function buildT54(P) {
   const dxT = ringSkin(rings, 0.45) + 0.02;
   P.decal('turret', 'number', P.spec.visual.number || '', 0.26, [dxT * 0.98, 0.35, 0.35], Math.PI / 2);
   P.decal('turret', 'number', P.spec.visual.number || '', 0.26, [-dxT * 0.98, 0.35, 0.35], -Math.PI / 2);
+  // Preserve the low cast belly inboard, but lift the outboard hull skin
+  // clear of the complete idler/road-wheel/sprocket shoe corridor.
+  P.raiseTrackCorridor(['hull'], { laneInnerX: 1.00, floorY: 1.10 });
   P.topY = 1.25;
 }
 
@@ -1342,6 +1345,15 @@ export function buildType59(P) {
   const dxT59 = ringSkin(rings59, 0.40) + 0.02;
   P.decal('turret', 'number', P.spec.visual.number || '', 0.26, [dxT59 * 0.98, 0.40, 0.065], Math.PI / 2);
   P.decal('turret', 'number', P.spec.visual.number || '', 0.26, [-dxT59 * 0.98, 0.40, 0.065], -Math.PI / 2);
+  // The print-derived side floors, end flaps and hidden turret apron used to
+  // occupy the native linked-shoe lane.  Form a real sloped clearance above
+  // the course while retaining the inboard belly and supported flap tops.
+  P.raiseTrackCorridor(['hull', 'hullRubber', 'hullDark'], {
+    laneInnerX: 0.94, floorY: 1.08,
+  });
+  // Turret buckets are authored in turret-local Y; -0.22 becomes 1.08 m in
+  // world space at this ring seat, keeping the apron buried but shoe-clear.
+  P.raiseTrackCorridor(['turretDark'], { laneInnerX: 0.94, floorY: -0.22 });
   P.topY = 1.32;
 }
 
