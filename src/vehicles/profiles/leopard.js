@@ -4639,10 +4639,10 @@ function buildLeo2A4(P) {
   // primary shell itself.  The prior basket made the overall package look
   // long while the connected armor stopped short at both ends; this
   // 10-point plan carries real cheek and rear-shoulder mass instead.
-  P.turretG.position.set(0, 1.62, -0.05);
+  P.turretG.position.set(0, 1.62, 0.30);
   const A4_PLAN = [
-    [-0.92, 1.20], [0.92, 1.20], [1.24, 0.78], [1.20, -0.74], [1.12, -1.58],
-    [1.02, -1.92], [-1.02, -1.92], [-1.12, -1.58], [-1.20, -0.74], [-1.24, 0.78],
+    [-0.92, 1.20], [0.92, 1.20], [1.24, 0.78], [1.20, -0.82], [1.13, -1.80],
+    [1.04, -2.30], [-1.04, -2.30], [-1.13, -1.80], [-1.20, -0.82], [-1.24, 0.78],
   ];
   P.add('turret', polyMultiLoft(A4_PLAN, [
     { height: 0.015, inset: 1.00 },
@@ -4684,13 +4684,18 @@ function buildLeo2A4(P) {
   // line with the right cheek top (the "sight aperture on the RIGHT turret
   // face" photo read). Hood front 1.06 = 4 cm behind the 1.10 cheek tips;
   // aperture = dark mouth + divider + twin windows RECESSED in the mouth.
-  P.add('turret', box(0.52, 0.13, 0.42), 0.62, 0.705, 0.97);                   // hood body, buried into the lowered crown
-  P.add('turretDetail', box(0.56, 0.028, 0.46), 0.62, 0.784, 0.96);
-  P.add('turretDark', box(0.44, 0.115, 0.028), 0.62, 0.702, 1.146);
-  P.add('turretGlass', box(0.20, 0.06, 0.012), 0.55, 0.698, 1.164);
-  P.add('turretGlass', box(0.09, 0.055, 0.012), 0.76, 0.698, 1.164);
-  P.add('turretDetail', box(0.03, 0.115, 0.022), 0.665, 0.702, 1.165);
-  P.add('turretDark', box(0.56, 0.02, 0.44), 0.62, 0.648, 0.97);
+  // The enlarged package remains an armor-bonded doghouse: a broad flange
+  // penetrates the roof course and the stepped cap overhangs the housing.
+  P.add('turret', box(0.72, 0.50, 0.62), 0.64, 0.59, 0.75);                    // giant armored body, buried into roof
+  P.add('turret', box(0.82, 0.10, 0.70), 0.64, 0.88, 0.72);                    // overhanging cap course
+  P.add('turretDark', box(0.62, 0.32, 0.045), 0.64, 0.61, 1.032);              // deep aperture mouth
+  P.add('turretGlass', box(0.34, 0.20, 0.016), 0.52, 0.64, 1.061);             // primary sight window
+  P.add('turretGlass', box(0.15, 0.20, 0.016), 0.78, 0.64, 1.061);             // laser/secondary window
+  P.add('turretDetail', box(0.035, 0.31, 0.026), 0.695, 0.61, 1.062);          // aperture divider
+  P.add('turretDark', cylZ(0.080, 0.075, 14), 0.79, 0.39, 1.035);              // round rangefinder well
+  P.add('turretGlass', cylZ(0.057, 0.016, 14), 0.79, 0.39, 1.082);
+  P.add('turretDetail', torus(0.080, 0.011, 14), 0.79, 0.39, 1.085, Math.PI / 2, 0, 0);
+  P.add('turretDark', box(0.78, 0.025, 0.66), 0.64, 0.325, 0.75);              // roof attachment flange
   // PERI R17 panoramic periscope (commander, fwd-right of the hatch) — the
   // tallest fixed point (top 2.79w = the published-height spike budget).
   P.add('turretDetail', cylY(0.055, 0.065, 0.34, 12), 0.36, 0.89, -0.32);
@@ -4720,8 +4725,8 @@ function buildLeo2A4(P) {
   // identity-foreign cue on this mark — real Bundeswehr 2A4s carry two thin
   // NEAR-VERTICAL rod whips at the bustle corners (slight aft cant only).
   // Family grammar stays in the proportions, not borrowed fittings.
-  P.add('turretDetail', cylY(0.012, 0.016, 0.24, 8), -0.85, 0.765, -1.50);
-  P.add('turretDark', box(0.04, 0.04, 0.11), -0.85, 0.895, -1.50);
+  P.add('turretDetail', cylY(0.012, 0.016, 0.24, 8), -0.85, 0.765, -1.92);
+  P.add('turretDark', box(0.04, 0.04, 0.11), -0.85, 0.895, -1.92);
   for (const s of [-1, 1]) {
     // Full-height SEM 25 whips.  The short 0.46 m placeholders were the
     // largest surviving regression in the recovered native A4: they cut the
@@ -4730,7 +4735,7 @@ function buildLeo2A4(P) {
     // Keep these authored primitives slender, but carry the real roof-to-tip
     // cadence seen in the measurement oracle.
     const whip = FITTINGS.antennaWhip({ mats: P.mats, h: 1.39, r: 0.011, seed: 6 + s, rotation: [-0.10, 0, s * 0.035] });
-    whip.position.set(s * 1.00, 0.66, -1.60);
+    whip.position.set(s * 1.00, 0.66, -2.04);
     P.turretG.add(whip);
   }
   // 2x4 Wegmann smoke mortars per side on the rear side walls (§B3
@@ -4740,13 +4745,13 @@ function buildLeo2A4(P) {
   // support arm into the wall — the bank reads as a mounted BLOCK from
   // the side, not loose pips.
   for (const s of [-1, 1]) {
-    P.add('turret', box(0.07, 0.26, 0.58), s * 1.14, 0.38, -1.14, 0, s * 0.05, 0);
-    P.add('turretDetail', box(0.05, 0.05, 0.30), s * 1.155, 0.225, -1.14, 0, s * 0.05, 0); // support arm under the banks
-    smokeCluster(P, s * 1.16, 0.47, -1.00, 4, s * 1.05, 0.85);
-    smokeCluster(P, s * 1.175, 0.30, -1.18, 4, s * 1.2, 0.85);
+    P.add('turret', box(0.07, 0.26, 0.58), s * 1.14, 0.38, -1.38, 0, s * 0.05, 0);
+    P.add('turretDetail', box(0.05, 0.05, 0.30), s * 1.155, 0.225, -1.38, 0, s * 0.05, 0); // support arm under the banks
+    smokeCluster(P, s * 1.16, 0.47, -1.24, 4, s * 1.05, 0.85);
+    smokeCluster(P, s * 1.175, 0.30, -1.42, 4, s * 1.2, 0.85);
     // muzzle collar rings riding each fanned tube mouth (same fan math as
     // smokeCluster: offsets f*0.095 along the bank line, tubes raked -0.5)
-    for (const [bx, by, bz, yaw] of [[1.16, 0.47, -1.00, 1.05], [1.175, 0.30, -1.18, 1.2]]) {
+    for (const [bx, by, bz, yaw] of [[1.16, 0.47, -1.24, 1.05], [1.175, 0.30, -1.42, 1.2]]) {
       for (let k = 0; k < 4; k++) {
         const f = k - 1.5;
         const a = s * yaw + f * (0.85 / 4);
@@ -4761,8 +4766,8 @@ function buildLeo2A4(P) {
   for (const s of [-1, 1]) {
     P.add('turretDetail', box(0.022, 0.022, 0.78), s * 1.218, 0.42, 0.26);
     P.add('turretDetail', box(0.022, 0.022, 1.00), s * 1.175, 0.42, -0.92);
-    P.add('turretDetail', box(0.022, 0.022, 0.42), s * 1.105, 0.39, -1.70);
-    for (const zb of [0.58, -0.06, -0.40, -1.04, -1.48, -1.90]) {
+    P.add('turretDetail', box(0.022, 0.022, 0.82), s * 1.105, 0.39, -1.94);
+    for (const zb of [0.58, -0.06, -0.40, -1.04, -1.48, -1.90, -2.25]) {
       P.add('turretDetail', box(0.02, 0.05, 0.02), s * (zb > -0.2 ? 1.208 : 1.165), 0.395, zb);
     }
     liftEye(P, 'turretDetail', s * 0.92, 0.65, 0.05, s * 0.4);
@@ -4771,18 +4776,18 @@ function buildLeo2A4(P) {
   // deliberately shallow and buried in the longer primary shell: they
   // restore the authored A4 service grammar without creating stand-off
   // decoration or a second bustle mass.
-  P.add('turretDark', box(1.70, 0.012, 0.025), 0, 0.684, -1.48);
+  P.add('turretDark', box(1.70, 0.012, 0.025), 0, 0.684, -1.82);
   for (const s of [-1, 1]) {
-    P.add('turretDetail', box(0.08, 0.040, 0.12), s * 0.72, 0.685, -1.66);
-    P.add('turretDark', box(0.045, 0.030, 0.035), s * 0.72, 0.711, -1.61);
-    P.add('turretDetail', box(0.055, 0.12, 0.025), s * 0.74, 0.35, -1.918);
+    P.add('turretDetail', box(0.08, 0.040, 0.12), s * 0.72, 0.685, -2.02);
+    P.add('turretDark', box(0.045, 0.030, 0.035), s * 0.72, 0.711, -1.97);
+    P.add('turretDetail', box(0.055, 0.12, 0.025), s * 0.74, 0.35, -2.28);
   }
   // full-width slatted bustle rack + strapped kit (the A4's rear basket).
   // §B8 detail order 3b ("bustle rack reads weak in profile"): mid rail +
   // closed end frames + side slats — the basket reads as a real slatted
   // frame from the side, not two floating bars.
   {
-    const rackZ = -2.25, rackT = 0.60, rackB = 0.06;
+    const rackZ = -2.70, rackT = 0.60, rackB = 0.06;
     P.add('turretDetail', box(2.30, 0.045, 0.045), 0, rackT, rackZ);
     P.add('turretDetail', box(2.30, 0.045, 0.045), 0, (rackT + rackB) / 2, rackZ); // mid rail
     P.add('turretDetail', box(2.30, 0.045, 0.045), 0, rackB, rackZ);
@@ -4790,26 +4795,26 @@ function buildLeo2A4(P) {
       P.add('turretDetail', box(0.032, rackT - rackB, 0.032), -1.10 + k * 0.22, (rackT + rackB) / 2, rackZ);
     }
     for (const s of [-1, 1]) {
-      P.add('turretDetail', box(0.045, 0.045, 0.34), s * 1.11, rackT, -2.06);
-      P.add('turretDetail', box(0.045, 0.045, 0.34), s * 1.11, (rackT + rackB) / 2, -2.06); // end mid rail
-      P.add('turretDetail', box(0.045, 0.045, 0.34), s * 1.11, rackB, -2.06);
-      P.add('turretDetail', box(0.045, rackT - rackB, 0.045), s * 1.11, (rackT + rackB) / 2, -2.25); // end post (closes the frame corner)
-      P.add('turretDetail', box(0.045, rackT - rackB, 0.045), s * 1.11, (rackT + rackB) / 2, -1.91); // fore end post into the wall
+      P.add('turretDetail', box(0.045, 0.045, 0.40), s * 1.11, rackT, -2.48);
+      P.add('turretDetail', box(0.045, 0.045, 0.40), s * 1.11, (rackT + rackB) / 2, -2.48); // end mid rail
+      P.add('turretDetail', box(0.045, 0.045, 0.40), s * 1.11, rackB, -2.48);
+      P.add('turretDetail', box(0.045, rackT - rackB, 0.045), s * 1.11, (rackT + rackB) / 2, -2.70); // end post
+      P.add('turretDetail', box(0.045, rackT - rackB, 0.045), s * 1.11, (rackT + rackB) / 2, -2.28); // fore post into wall
     }
-    P.add('turretDark', box(2.16, 0.018, 0.32), 0, rackB + 0.03, -2.08);
+    P.add('turretDark', box(2.16, 0.018, 0.38), 0, rackB + 0.03, -2.49);
     // §5.16 family: mesh back panel closing the rack rear (type90 donor's
     // low overhung basket read — frame + mesh, not floating bars)
     for (let k = 0; k < 11; k++) {
-      P.add('turretDark', box(0.026, rackT - rackB - 0.14, 0.014), -1.05 + k * 0.21, (rackT + rackB) / 2, -2.275);
+      P.add('turretDark', box(0.026, rackT - rackB - 0.14, 0.014), -1.05 + k * 0.21, (rackT + rackB) / 2, -2.725);
     }
     stowage(P, 'turretCloth', P.rng, [
-      [-0.62, 0.32, -2.10, 0.68, 0.38, 0.30], [0.12, 0.30, -2.12, 0.58, 0.34, 0.28],
-      [0.80, 0.31, -2.10, 0.46, 0.36, 0.26],
+      [-0.62, 0.32, -2.55, 0.68, 0.38, 0.30], [0.12, 0.30, -2.57, 0.58, 0.34, 0.28],
+      [0.80, 0.31, -2.55, 0.46, 0.36, 0.26],
     ]);
-    jerryCan(P, 'turretCloth', -1.02, 0.30, -2.11, 0.15);
-    tarpRoll(P, 'turretCloth', 0.42, 0.50, -2.07, 0.95, 0.085, true, P.q ? 12 : 8);
-    ammoCan(P, 'turretDark', 1.05, 0.27, -2.12, 0.2);
-    spareTrackStrip(P, 'turret', -0.30, 0.53, -2.09, 2, 0, 0);
+    jerryCan(P, 'turretCloth', -1.02, 0.30, -2.56, 0.15);
+    tarpRoll(P, 'turretCloth', 0.42, 0.50, -2.52, 0.95, 0.085, true, P.q ? 12 : 8);
+    ammoCan(P, 'turretDark', 1.05, 0.27, -2.57, 0.2);
+    spareTrackStrip(P, 'turret', -0.30, 0.53, -2.54, 2, 0, 0);
   }
   P.decal('turret', 'crossgrey', null, 0.32, [1.172, 0.40, -0.44], Math.PI / 2, 0, 0.042);
   P.decal('turret', 'crossgrey', null, 0.32, [-1.172, 0.40, -0.44], -Math.PI / 2, 0, -0.042);
@@ -4828,12 +4833,9 @@ function buildLeo2A4(P) {
   // ---- Rh 120 L/44 (§B3.1: tube cylinder + thermal sleeve segments with
   // clamp rings + mid-tube bore evacuator + MRS collar; plate mantlet on a
   // trunnion roll — never a prism). Trunnion world (0, 2.00, 0.87); muzzle
-  // world +5.82 = the real 9.67 overall over the -3.86 tail.
+  // world +6.26 = the extended 10.12 overall over the -3.86 tail.
   P.gunG.position.set(0, 0.27, 1.13);
-  // Shorten only the exposed tube by the same amount that the trunnion
-  // moved forward.  The owner-requested turret correction therefore keeps
-  // the certified L/44 muzzle envelope instead of silently lengthening it.
-  leoMantletGun(P, { rollR: 0.25, rollW: 0.62, plateW: 0.56, plateH: 0.42, len: 4.87, r: 0.084, evac: 0.56, evacR: 1.78 });
+  leoMantletGun(P, { rollR: 0.26, rollW: 0.62, plateW: 0.56, plateH: 0.44, len: 4.95, r: 0.084, evac: 0.56, evacR: 1.78 });
   P.topY = 1.24;
 }
 
@@ -5374,10 +5376,10 @@ function buildLeo2Proto(P) {
   // the published low roof datum while giving the prototype its broad
   // shoulders, inward-falling crown and long early bustle.  No reference
   // vertices or source geometry enter this construction.
-  P.turretG.position.set(0, 1.72, -0.05);
+  P.turretG.position.set(0, 1.72, 0.55);
   const PT_PLAN = [
-    [-0.44, 1.18], [0.44, 1.18], [0.94, 0.78], [1.22, 0.16], [1.18, -0.92],
-    [1.12, -2.00], [-1.12, -2.00], [-1.18, -0.92], [-1.22, 0.16], [-0.94, 0.78],
+    [-0.44, 1.18], [0.44, 1.18], [0.94, 0.78], [1.22, 0.16], [1.18, -1.18],
+    [1.10, -2.75], [-1.10, -2.75], [-1.18, -1.18], [-1.22, 0.16], [-0.94, 0.78],
   ];
   P.add('turret', polyMultiLoft(PT_PLAN, [
     { height: 0.015, inset: 1.00 },
@@ -5496,36 +5498,36 @@ function buildLeo2Proto(P) {
     P.add('turretDark', box(0.072, 0.006, 0.71), s * 1.1875, 0.352, -0.325, 0, s * 0.043, 0);
     P.add('turretDetail', box(0.014, 0.05, 0.06), s * 1.2245, 0.20, -0.115, 0, s * 0.043, 0);
     P.add('turretDetail', box(0.014, 0.05, 0.06), s * 1.2055, 0.20, -0.555, 0, s * 0.043, 0);
-    P.add('turret', box(0.07, 0.28, 0.70), s * 1.152, 0.25, -1.20, 0, s * 0.040, 0);     // bin B (z -0.85..-1.55)
-    P.add('turretDark', box(0.072, 0.006, 0.66), s * 1.152, 0.336, -1.20, 0, s * 0.040, 0);
-    P.add('turretDetail', box(0.014, 0.05, 0.06), s * 1.1875, 0.19, -1.03, 0, s * 0.040, 0);
-    P.add('turretDetail', box(0.014, 0.05, 0.06), s * 1.171, 0.19, -1.42, 0, s * 0.040, 0);
+    P.add('turret', box(0.07, 0.28, 1.55), s * 1.152, 0.25, -1.79, 0, s * 0.024, 0);     // stretched bin B follows long bustle
+    P.add('turretDark', box(0.072, 0.006, 1.49), s * 1.152, 0.336, -1.79, 0, s * 0.024, 0);
+    P.add('turretDetail', box(0.014, 0.05, 0.06), s * 1.1875, 0.19, -1.18, 0, s * 0.024, 0);
+    P.add('turretDetail', box(0.014, 0.05, 0.06), s * 1.171, 0.19, -2.38, 0, s * 0.024, 0);
   }
   // side grab rails seated ON the bin faces (segmented) + lift eyes
   for (const s of [-1, 1]) {
     P.add('turretDetail', box(0.022, 0.022, 0.66), s * 1.232, 0.40, -0.33);    // inner face 1.221 embeds bin A face 1.2225
-    P.add('turretDetail', box(0.022, 0.022, 0.58), s * 1.196, 0.38, -1.20);    // inner face 1.185 embeds bin B face 1.187
+    P.add('turretDetail', box(0.022, 0.022, 1.42), s * 1.196, 0.38, -1.79);    // inner face embeds stretched bin B
     liftEye(P, 'turretDetail', s * 0.95, 0.63, -0.05, s * 0.4);
   }
   // bustle stowage: box + rail + strapped kit (light trials load, §B3.2).
   // §SRCFIX-0808: the whole tail cluster shifts aft with the lengthened
-  // bustle (wall -1.60 -> -1.85) — box back -2.15, basket frame -2.20.
-  P.add('turret', box(1.60, 0.32, 0.26), 0, 0.26, -2.02);
-  P.add('turretDetail', box(1.60, 0.035, 0.035), 0, 0.46, -2.04);
-  P.add('turretDark', box(1.48, 0.016, 0.24), 0, 0.425, -2.02);                // lid seam
+  // bustle (wall -2.75) — deep armored box and overhung basket.
+  P.add('turret', box(1.92, 0.36, 0.54), 0, 0.27, -2.86);
+  P.add('turretDetail', box(1.92, 0.035, 0.035), 0, 0.49, -2.88);
+  P.add('turretDark', box(1.80, 0.016, 0.50), 0, 0.455, -2.86);                // lid seam
   stowage(P, 'turretCloth', P.rng, [
-    [-0.50, 0.50, -2.00, 0.55, 0.30, 0.24], [0.30, 0.49, -2.02, 0.48, 0.28, 0.22],
+    [-0.56, 0.52, -2.86, 0.60, 0.30, 0.34], [0.30, 0.51, -2.88, 0.54, 0.28, 0.32],
   ]);
-  tarpRoll(P, 'turretCloth', 0.82, 0.50, -1.98, 0.60, 0.075, true, P.q ? 12 : 8);
-  ammoCan(P, 'turretDark', -0.92, 0.48, -2.00, 0.18);
+  tarpRoll(P, 'turretCloth', 0.88, 0.52, -2.82, 0.68, 0.075, true, P.q ? 12 : 8);
+  ammoCan(P, 'turretDark', -1.02, 0.50, -2.84, 0.18);
   // §5.16 family: low overhung basket frame + mesh back behind the bustle
   // box (the type90 donor's rear-basket read; PT trials pipe-frame class)
-  P.add('turretDetail', box(1.64, 0.035, 0.035), 0, 0.46, -2.20);
-  P.add('turretDetail', box(1.64, 0.035, 0.035), 0, 0.24, -2.20);
+  P.add('turretDetail', box(2.10, 0.035, 0.035), 0, 0.49, -3.23);
+  P.add('turretDetail', box(2.10, 0.035, 0.035), 0, 0.22, -3.23);
   for (const bx of [-0.78, -0.26, 0.26, 0.78]) {
-    P.add('turretDetail', box(0.028, 0.24, 0.028), bx, 0.35, -2.20);
+    P.add('turretDetail', box(0.028, 0.29, 0.028), bx, 0.355, -3.23);
   }
-  P.add('turretDark', box(1.58, 0.19, 0.012), 0, 0.35, -2.185);                // mesh back panel
+  P.add('turretDark', box(2.02, 0.23, 0.012), 0, 0.355, -3.215);               // mesh back panel
   // cross decals pinned on the BIN faces (§5.04 vertical flank law)
   P.decal('turret', 'crossgrey', null, 0.26, [1.224, 0.26, -0.325], Math.PI / 2, 0, 0.042);
   P.decal('turret', 'crossgrey', null, 0.26, [-1.224, 0.26, -0.325], -Math.PI / 2, 0, -0.042);
@@ -5544,30 +5546,27 @@ function buildLeo2Proto(P) {
   // (the ratified "deliberate ring" read); the blanking plate's bolt torus
   // + bolt heads retire (buried inside the restored base, torus top was
   // coplanar with the base-plate top = z-fight).
-  P.add('turret', cylY(0.31, 0.31, 0.016, P.q ? 20 : 14), 0.02, 0.658, -1.18); // OWS mount-ring flange (top 0.666 under the 0.68 base top)
-  leoFLW200(P, { x: 0.02, y: 0.65, z: -1.18, s: 1.1, gunY: 0.46, gunScale: 0.92,
+  P.add('turret', cylY(0.31, 0.31, 0.016, P.q ? 20 : 14), 0.02, 0.658, -1.58); // OWS mount-ring flange
+  leoFLW200(P, { x: 0.02, y: 0.65, z: -1.58, s: 1.1, gunY: 0.46, gunScale: 0.92,
     drumH: 0.05, podY: 0.70, podH: 0.16, shields: false, elev: 0.07,
     towerTop: 1.06, towerZ: -1.52, towerW: 0.16, seed: 17 });
 
   // ---- 105 mm smoothbore (§B3.1): ROUNDED cast mantlet — trunnion roll +
   // domed collar shoulders + tapered boot, never a prism; bare slim tube
   // (no thermal sleeve), mid-tube evacuator, muzzle bore. Axis y 1.98;
-  // muzzle world +6.11 = the spec 9.97 overall over the -3.86 tail.
+  // muzzle world +6.81 = the spec 10.67 overall over the -3.86 tail.
   // §SRCFIX-0808: the cast dome WIDENS to the real casting (x radius 0.41
   // filling the 0.448 slot — the old 0.28 dome read as a pin head in an
   // oversized bay); trunnion roll follows (0.70); evacuator slimmed
   // 1.8x -> 1.45x tube (the fat mid-bulge read 20-pdr/Centurion, not the
   // slim Rheinmetall prototype tube).
-  P.gunG.position.set(0, 0.26, 1.16);
+  P.gunG.position.set(0, 0.26, 1.00);
   P.addGunExtra(KIT.cylX(0.23, 0.70, P.q ? 16 : 12), 0, 0, 0);                 // trunnion roll
   P.addGunExtra(xform(sph(0.215, P.q ? 18 : 12), 0, 0, 0, 0, 0, 0, [1.90, 1.08, 1.15]), 0, 0, 0.14); // rounded cast mantlet
   P.addGunExtra(cylZ(0.165, 0.30, P.q ? 16 : 12, 0.115), 0, 0, 0.36);          // tapered mantlet boot
   P.addGunExtraDark(cylZ(0.026, 0.10, 8), 0.20, 0.055, 0.24);                  // coax port (right)
-  // The complete turret moved 0.10 m forward and its armored nose gained
-  // 0.16 m; shorten only the exposed tube by the same 0.26 m so published
-  // overall length and muzzle station remain unchanged.
-  KIT.buildGun(P, { len: 5.00, r: 0.064, sleeve: false, evac: 0.55, evacR: 1.45, collar: false, baseR: 0.105 });
-  muzzleBore(P, { len: 5.00, r: 0.064 });                                      // §B3.1 (shadow-named, 3fca39b)
+  KIT.buildGun(P, { len: 5.26, r: 0.064, sleeve: false, evac: 0.55, evacR: 1.45, collar: false, baseR: 0.105 });
+  muzzleBore(P, { len: 5.26, r: 0.064 });                                      // §B3.1 (shadow-named, 3fca39b)
   P.topY = 1.24;
 }
 

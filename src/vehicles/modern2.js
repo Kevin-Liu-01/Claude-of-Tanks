@@ -193,16 +193,16 @@ export const MODERN2_SPECS = {
     // procedural FLW envelope. Its actual 12%-filtered body course is 2.76 m;
     // the taller antenna/MG lines remain legal spikes rather than a false
     // broad 3.03 m body datum (§5.73-1 P95-envelope law).
-    dims: { hullLengthM: 7.72, overallLengthM: 9.67, widthM: 3.70, heightM: 2.76 },
+    dims: { hullLengthM: 7.72, overallLengthM: 10.12, widthM: 3.70, heightM: 2.76 },
     armor: mbtArmor({
       hl: 3.86, hw: 1.85, roofY: 1.72, trkTop: 1.0, floor: 0.5,
-      turretPivot: [0, 1.72, -0.15], gunPivot: [0, 0.42, 0.55],
-      barrelLenM: 5.28, barrelRadM: 0.079,
+      turretPivot: [0, 1.72, 0.30], gunPivot: [0, 0.42, 0.55],
+      barrelLenM: 5.36, barrelRadM: 0.079,
       glacis: { ke: 400, ce: 600, phys: 450 }, lower: { ke: 250, ce: 300 },
       side: { ke: 80, ce: 80 }, rear: 45, roof: 40,
       cheek: { ke: 420, ce: 700, phys: 600 }, tSide: { ke: 300, ce: 420 },
       tRear: 60, tRoof: 40, mantlet: { ke: 350, ce: 420 },
-      tHalfW: 1.20, tFrontZ: 0.95, tRearZ: -1.90, tH: 0.76,
+      tHalfW: 1.24, tFrontZ: 1.20, tRearZ: -2.30, tH: 0.76,
       glacisNoseZ: 3.83, glacisTopZ: 1.0, crew4: true,
     }),
     visual: {
