@@ -6063,7 +6063,8 @@ function buildAbramsX(P) {
   // over the certified ground-contact run; wheel and outer-track datums stay
   // untouched, and the strip is fully connected to the existing band.
   for (const side of [-1, 1]) {
-    P.add('hullTrack', box(0.055, 0.055, 4.69), side * 1.0625, 0.0275, -0.025);
+    P.add(side < 0 ? 'hullTrackTrimL' : 'hullTrackTrimR',
+      box(0.055, 0.055, 4.69), side * 1.0625, 0.0275, -0.025);
   }
   // AXDED-R1 RUNNING-GEAR FACE DRESSING (§B8.1 wheel countability, owner
   // verdict 1: "wheels invisible at garage angles"): the stock discs
@@ -6193,6 +6194,7 @@ function buildAbramsX(P) {
       const faceGeo = KIT.mergeAll(faceGeos);
       const faceMesh = new THREE.Mesh(faceGeo, faceMat);
       faceMesh.name = 'abramsxWheelFaceDressing';
+      faceMesh.userData.runningGear = true;
       faceMesh.castShadow = false;
       faceMesh.receiveShadow = true;
       P.hullG.add(faceMesh);
@@ -7802,6 +7804,29 @@ function buildAbramsX(P) {
       P.add('hullDetail', torus(0.028, 0.008, 10), dx, deckAt(AX_HULL, dz) + 0.006, dz, Math.PI / 2, 0, 0);
     }
   }
+  // AbramsX predates the strict ownership buckets: its visibly concentric
+  // road-wheel/terminal rings, bolts, spokes and torsion links were added in
+  // ordinary dark/detail materials.  Reclassify only that low outboard
+  // mechanism.  Bow armor, skirts, flap hangers and service hardware remain
+  // hull-owned and continue through the physical intersection gate.
+  const axGearPart = (_geo, b) => {
+    const cx = (b.min.x + b.max.x) * 0.5;
+    const cz = (b.min.z + b.max.z) * 0.5;
+    return Math.abs(cx) >= 1.54 && b.max.y <= 1.21
+      && cz >= -3.45 && cz <= 3.45;
+  };
+  P.rebucketParts(['hullDark'], 'hullRunningGearDark', axGearPart);
+  P.rebucketParts(['hullDetail'], 'hullRunningGearDetail', axGearPart);
+  // One shallow inboard foredeck seam still grazed the articulated idler
+  // shoe by 26 mm.  Reseat the complete local supported strip instead of
+  // warping just the vertices inside an audit window (which would leave a
+  // diagonal face crossing the same shoe path).
+  P.forEachBucketPart(['hullDark'], (geo, b) => {
+    const reachesLane = b.max.x >= 1.04 || b.min.x <= -1.04;
+    const crossesWrap = b.min.z <= 3.18 && b.max.z >= 3.08;
+    const lowSeam = b.min.y <= 1.23 && b.max.y >= 1.17;
+    if (reachesLane && crossesWrap && lowSeam) geo.translate(0, 0.15, 0);
+  });
   // §C proxy-size law (leclerc stale-proxy class): without an explicit
   // muzzleZ the gun shadow proxy runs to the spec's cloned 5.28 m barrel
   // (world z +7.48, 1.7 m past the real XM360 tip) — pin it to the real
