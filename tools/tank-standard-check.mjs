@@ -87,11 +87,12 @@ if (forceGate && ids.length) {
 const clip = new Map();
 if (ids.length) {
   try {
-    const out = execFileSync('node', ['tools/track-clip-audit.mjs', '--exact', `--ids=${ids.join(',')}`],
+    const out = execFileSync('node', ['tools/track-clip-audit.mjs', '--exact', '--strict', `--ids=${ids.join(',')}`],
       { encoding: 'utf8' });
     for (const line of out.split('\n')) {
       const m = line.match(/\[track-clip\] (\S+)\s+front\s+(\S+) rear\s+(\S+)/);
-      if (m) clip.set(m[1], { front: m[2], rear: m[3] });
+      const s = line.match(/\| strict sweep (\S+)\/(\S+)/);
+      if (m) clip.set(m[1], { front: m[2], rear: m[3], sweepBand: s?.[1] ?? '—', sweepShoe: s?.[2] ?? '—' });
     }
   } catch (e) {
     console.error('[standard-check] track-clip audit failed:', e.message.slice(0, 120));
@@ -169,9 +170,9 @@ if (fixture) {
 }
 
 // --- per-tank table ----------------------------------------------------------
-const CLIP_BAND = 60; // kv2-graduate band (BUILD-STANDARD §B4)
-console.log('id                 | gateMin | components (h/w/t/st/d/f)      | age  | clip f/r  | contig | decor');
-console.log('-------------------|---------|--------------------------------|------|-----------|--------|------------');
+const CLIP_BAND = 0; // strict owner law: no non-running-gear solid may enter the animated sweep
+console.log('id                 | gateMin | components (h/w/t/st/d/f)      | age  | clip f/r+sweep | contig | decor');
+console.log('-------------------|---------|--------------------------------|------|----------------|--------|------------');
 let fails = 0;
 for (const id of ids) {
   let row = 'no gate json', min = '—', age = '—';
@@ -184,8 +185,9 @@ for (const id of ids) {
     age = `${Math.round((Date.now() - statSync(p).mtimeMs) / 60000)}m`;
   } catch { /* keep placeholder */ }
   const cl = clip.get(id);
-  const clipStr = cl ? `${cl.front}/${cl.rear}` : '—';
-  const clipOk = cl && Number(cl.front) <= CLIP_BAND && Number(cl.rear) <= CLIP_BAND;
+  const clipStr = cl ? `${cl.front}/${cl.rear}+${cl.sweepBand}/${cl.sweepShoe}` : '—';
+  const clipOk = cl && Number(cl.front) <= CLIP_BAND && Number(cl.rear) <= CLIP_BAND
+    && Number(cl.sweepBand) <= CLIP_BAND && Number(cl.sweepShoe) <= CLIP_BAND;
   const gateOk = typeof min === 'number' && min >= 90;
 
   const st = standard.get(id);
@@ -214,7 +216,7 @@ for (const id of ids) {
   if (!gateOk || (cl && !clipOk) || !contigOk || !decorOk) fails++;
   console.log(
     `${id.padEnd(19)}| ${String(min).padStart(7)} | ${String(row).padEnd(31)}| ${String(age).padStart(4)} | ` +
-    `${clipStr.padStart(9)}${cl ? (clipOk ? ' ✓' : ' ✗') : '  '}| ${contigStr.padStart(6)} | ${decorStr}`);
+    `${clipStr.padStart(14)}${cl ? (clipOk ? ' ✓' : ' ✗') : '  '}| ${contigStr.padStart(6)} | ${decorStr}`);
 }
 if (ids.length) {
   console.log(`\n[standard-check] ${ids.length - fails}/${ids.length} pass the machine-checkable gates ` +

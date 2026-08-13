@@ -63,6 +63,13 @@ import { MODEL_SOURCE, TANK_SPECS } from '/src/vehicles/specs.js';
 
 const params = new URLSearchParams(location.search);
 const mode = params.get('mode') || 'audit';
+// Strict mode is the authored-running-gear law.  Historical containment
+// scans allowed any one-sided, lane-local mesh to bypass the hull test; that
+// let a decorative mudflap/guard/fill plate masquerade as track geometry.
+// In strict mode only nodes explicitly created by buildRunningGear and tagged
+// `runningGear` are gear.  Every other rendered solid is audited across the
+// complete animated loop as well as the legacy bow/stern windows.
+const strict = params.get('strict') === '1';
 
 if (mode === 'list') {
   const ids = Object.keys(TANK_SPECS).filter((id) => {
@@ -89,7 +96,8 @@ if (mode === 'list') {
     if (o.isMesh && !o.isInstancedMesh && o.geometry) {
       const pos = o.geometry.getAttribute('position');
       if (pos && pos.usage === THREE.DynamicDrawUsage) bands.push(o);
-      else if (!o.material || o.material.colorWrite !== false) meshes.push(o);
+      else if ((!strict || !o.userData?.runningGear)
+          && (!o.material || o.material.colorWrite !== false)) meshes.push(o);
     } else if (o.isInstancedMesh && o.parent && o.parent.isLOD && o.count >= 8
         && o.geometry && o.geometry.getAttribute('position')) {
       // shoe/pad + inner chain layers: buildRunningGear lodWraps exactly
@@ -157,6 +165,7 @@ if (mode === 'list') {
     const zones = [
       { name: 'front', z0: zMax - 0.50, z1: zMax + 0.06 },
       { name: 'rear', z0: zMin - 0.06, z1: zMin + 0.50 },
+      ...(strict ? [{ name: 'sweep', z0: zMin - 0.06, z1: zMax + 0.06 }] : []),
     ];
     const y0 = yBot + 0.02, y1 = yTop + 0.06;
 
@@ -216,11 +225,11 @@ if (mode === 'list') {
         // around the native belt, not a hull plate pierced by it. Keep this
         // narrower than trackBucket: only factory-tagged trackGuard solids
         // receive the exclusion, so ordinary trim/dressing remains audited.
-        if (m.userData?.trackGuard) continue;
+        if (!strict && m.userData?.trackGuard) continue;
         bbox.setFromObject(m);
         if (!bbox.intersectsBox(zoneBox)) continue;
         const reach = Math.min(Math.abs(bbox.min.x), bbox.min.x <= 0 && bbox.max.x >= 0 ? 0 : Math.abs(bbox.max.x));
-        if (reach > Math.max(0.05, laneInnerX - 0.15)) continue; // lane-local gear: skip
+        if (!strict && reach > Math.max(0.05, laneInnerX - 0.15)) continue; // legacy lane-local gear skip
         const set = new Set();
         sampleMesh(m, zone.z0, zone.z1, set, null);
         let ov = 0; let lo = [1e9, 1e9, 1e9]; let hi = [-1e9, -1e9, -1e9];
@@ -282,6 +291,7 @@ if (mode === 'list') {
         const sZones = [
           { name: 'front', z0: senv.max.z - 0.50, z1: senv.max.z + 0.06 },
           { name: 'rear', z0: senv.min.z - 0.06, z1: senv.min.z + 0.50 },
+          ...(strict ? [{ name: 'sweep', z0: senv.min.z - 0.06, z1: senv.max.z + 0.06 }] : []),
         ];
         const sy0 = senv.min.y + 0.02, sy1 = senv.max.y + 0.06;
         // SOLID-CROSSING metric (not surface-vs-surface): the band pass's
@@ -391,11 +401,11 @@ if (mode === 'list') {
             new THREE.Vector3(-1e3, sy0, zone.z0), new THREE.Vector3(1e3, sy1, zone.z1));
           const q = new THREE.Vector3();
           for (const m of meshes) {
-            if (m.userData?.trackGuard) continue;
+            if (!strict && m.userData?.trackGuard) continue;
             bbox.setFromObject(m);
             if (!bbox.intersectsBox(zoneBox)) continue;
             const reach = Math.min(Math.abs(bbox.min.x), bbox.min.x <= 0 && bbox.max.x >= 0 ? 0 : Math.abs(bbox.max.x));
-            if (reach > Math.max(0.05, laneInnerX - 0.15)) continue; // lane-local gear: skip
+            if (!strict && reach > Math.max(0.05, laneInnerX - 0.15)) continue; // legacy lane-local gear skip
             const set = new Set();
             sampleTris(m.geometry, m.matrixWorld, zone.z0, zone.z1, sy0, sy1, set, null);
             let ov = 0; let inShell = 0; let maxDepth = -1;
@@ -433,7 +443,7 @@ if (mode === 'list') {
                 maxDepthM: +maxDepth.toFixed(3),
                 box: [lo.map((v) => +(v * V).toFixed(3)), hi.map((v) => +(v * V).toFixed(3))],
               };
-              if (set.size > 0 && inShell / set.size >= 0.7) dressed.push(rec);
+              if (!strict && set.size > 0 && inShell / set.size >= 0.7) dressed.push(rec);
               else hits.set(m.uuid, rec);
             }
           }

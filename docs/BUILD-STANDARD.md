@@ -95,12 +95,15 @@ never excuses missing it.
    / gun roots / armor faces are a failing read: replace with the real
    equipment (KIT fittings first) or delete. Critics: unidentifiable
    rectangles are an order, everywhere, especially around guns.
-4. TRACK CONTAINMENT: tracks never clip through the bow/stern — wrap arcs
-   stay clear of hull solids (plates, fenders, flaps). Tracks are the
+4. TRACK CONTAINMENT: tracks never clip through any static hull solid — at
+   the bow, stern, straight runs, or swept end transitions. Tracks are the
    two-layer shoe system (pads + inner chain/guide horns) riding real
-   wheels; no clipping, no floating bands.
-   Check: `node tools/track-clip-audit.mjs --exact --ids=<id>` — the check
-   is now BOTH columns per zone, `bandVox + shoeVox`, and shoeVox is the
+   wheels; no clipping, no floating bands, and no static silhouette fill
+   may duplicate or occupy the animated course.
+   Mandatory check: `node tools/track-clip-audit.mjs --exact --strict
+   --ids=<id>` — strict checks BOTH columns per zone plus the entire course
+   sweep, reports `bandVox + shoeVox`, and requires every total to be zero.
+   `shoeVox` is the
    PLAYER-VISIBLE bar (m1a1ha lesson, owner report 2026-08-05: shoes
    glitched through the rear plates while the band test read 0/0 — the
    band is NOT the visible surface). The visible track surface is the
@@ -113,22 +116,14 @@ never excuses missing it.
    Semantics: shoeVox counts hull-candidate surface voxels ≥1.5 cm
    INSIDE the world-transformed shoe instance solids at --exact
    (near-contact margin on the default run); hidden pads (coveredTop,
-   thrown sides) don't count; per-side wrap-pad meshes and full-width
-   dressing buckets that RIDE the envelope by design (abrams wrap-pad
-   taxonomy) are conformance-excluded and reported under
-   dressingSkipped — audit the exclusions, never delete them silently.
-   Source-authored fender/skirt enclosures may be tagged `trackGuard` by
-   the factory and excluded from the hull-candidate set only when they are
-   visibly guards around the game's native belt. The tag is narrow: donor
-   belts, donor wheels/end drums, bow/stern plates, and generic trim may
-   never use it. A graduate-change critic must prove the native shoes remain
-   continuously visible behind/under the guards with no penetration or
-   duplicate running gear (FV510 native-track re-cert, 2026-08-10).
-   Bars: bandVox ≤ ~60 per zone (kv2-graduate band, unchanged legacy
-   trend line) AND shoeVox ≤ ~60 per zone with 0 the target for new
-   builds; a blind spot (shoeVox > 0 while bandVox = 0) is a standing
-   order for the owning family lane. Fleet comparison lives in
-   shots/track-clip-shoes.json (blindSpots ranked worst-first).
+   thrown sides) don't count. In strict mode, only meshes explicitly owned
+   as `userData.runningGear` are excluded; names, lane position,
+   `trackGuard`, wrap dressing, and shadow/trim taxonomy cannot bypass the
+   check. Real skirts and guards stay outside the swept solid. End caps,
+   wrap pads, wheel faces, support rollers, suspension arms, idlers and
+   final-drive sprockets must be authored as running gear. Any visible
+   band/shoe count is a release blocker. Fleet comparison lives in
+   `shots/track-clip-shoes.json` (blind spots ranked worst-first).
 5. TURRET FURNITURE PARENTING (owner law 2026-08-04: "stuff in the back of
    the turrets … just stays there and isn't rotating with the turret").
    Everything that visually belongs to the turret — bustle racks, duffels,

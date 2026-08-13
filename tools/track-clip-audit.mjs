@@ -93,7 +93,7 @@ try {
   console.log(`[track-clip] auditing ${ids.length} procedural ids`);
   for (const id of ids) {
     try {
-      await page.goto(`http://localhost:${port}/tools/track-clip-audit.html?id=${id}${process.argv.includes('--exact') ? '&dilate=0' : ''}`, { waitUntil: 'domcontentloaded' });
+      await page.goto(`http://localhost:${port}/tools/track-clip-audit.html?id=${id}${process.argv.includes('--exact') ? '&dilate=0' : ''}${process.argv.includes('--strict') ? '&strict=1' : ''}`, { waitUntil: 'domcontentloaded' });
       await page.waitForFunction('window.__CLIP_READY === true', { polling: 50 });
       const r = await page.evaluate('window.__CLIP_RESULT');
       results.push(r);
@@ -101,11 +101,14 @@ try {
       const b = r.zones?.[1]?.overlapVox ?? '?';
       const sf = r.zones?.[0]?.shoeVox ?? '?';
       const sb = r.zones?.[1]?.shoeVox ?? '?';
+      const sweep = r.zones?.find((z) => z.name === 'sweep');
       const worst = r.zones?.flatMap((z) => z.hits.map((h) => `${z.name}:${h.mesh}(${h.vox})`)).slice(0, 3).join(' ') || '';
       const shoeWorst = r.zones?.flatMap((z) => (z.shoeHits || []).map((h) => `${z.name}:${h.mesh}(${h.vox})`)).slice(0, 3).join(' ') || '';
       // NOTE: `front N rear N` stays the FIRST match on the line — the shoe
       // columns append after it (tank-standard-check regex compatibility).
-      console.log(`[track-clip] ${id.padEnd(18)} front ${String(f).padStart(5)} rear ${String(b).padStart(5)} | shoe front ${String(sf).padStart(5)} rear ${String(sb).padStart(5)} ${r.mode && r.mode !== 'bands' ? r.mode + ' ' : ''}${r.shoe && r.shoe.mode !== 'instanced' ? r.shoe.mode + ' ' : ''}${r.anomaly || ''} ${worst}${shoeWorst ? ' | shoeHits ' + shoeWorst : ''}`);
+      console.log(`[track-clip] ${id.padEnd(18)} front ${String(f).padStart(5)} rear ${String(b).padStart(5)} | shoe front ${String(sf).padStart(5)} rear ${String(sb).padStart(5)}` +
+        `${sweep ? ` | strict sweep ${sweep.overlapVox}/${sweep.shoeVox ?? '?'}` : ''} ` +
+        `${r.mode && r.mode !== 'bands' ? r.mode + ' ' : ''}${r.shoe && r.shoe.mode !== 'instanced' ? r.shoe.mode + ' ' : ''}${r.anomaly || ''} ${worst}${shoeWorst ? ' | shoeHits ' + shoeWorst : ''}`);
     } catch (e) {
       results.push({ id, error: e.message.slice(0, 120) });
       console.log(`[track-clip] ${id.padEnd(18)} ERROR ${e.message.slice(0, 80)}`);

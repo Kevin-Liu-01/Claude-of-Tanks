@@ -872,6 +872,16 @@ function buildRunningGear(P, cfg) {
                                          // read as blue die-cast toys)
   } = cfg;
 
+  // Some source-authored hulls carry a small left/right track-lane offset.
+  // Keep one shared `xc` as the fleet default, while allowing a profile to
+  // place the complete native running-gear assembly per side.  This moves
+  // wheels, end drums, band, links and thrown-track visuals together; it is
+  // never permissible to fake an asymmetric lane with static hull tabs in
+  // the animated shoe sweep.
+  const xcLeft = cfg.xcLeft ?? xc;
+  const xcRight = cfg.xcRight ?? xc;
+  const xcForSide = (side) => side < 0 ? xcLeft : xcRight;
+
   const wheelY = cfg.wheelY ?? wheelR + 0.10;
   // Machine-readable family receipt. Variant builders still choose their
   // own radius, cadence, terminal geometry and protection; this records only
@@ -883,10 +893,11 @@ function buildRunningGear(P, cfg) {
   if (arms) {
     wheelZs.forEach((z, i) => {
       for (const side of [-1, 1]) {
-        const xa = side * (xc - wheelW * 0.7);
+        const sideXc = xcForSide(side);
+        const xa = side * (sideXc - wheelW * 0.7);
         P.add('hullDetail', cylX(wheelR * 0.16, wheelW * 0.9, 10), xa, wheelY, z);
         P.add('hullDetail', box(0.07, 0.09, wheelR * 0.95),
-          side * (xc - wheelW * 1.1), wheelY + wheelR * 0.28, z + wheelR * 0.38, 0.6, 0, 0);
+          side * (sideXc - wheelW * 1.1), wheelY + wheelR * 0.28, z + wheelR * 0.38, 0.6, 0, 0);
       }
     });
   }
@@ -895,6 +906,7 @@ function buildRunningGear(P, cfg) {
   wheelZs.forEach((z, i) => {
     const offs = layers ? layers[i % layers.length] : [0];
     for (const side of [-1, 1]) {
+      const sideXc = xcForSide(side);
       // off: per-wheel suspension travel from terrain conformance (smoothed)
       // rec: recessed interleave row — rendered with the shadowed wheel
       // material so the Schachtellaufwerk layers read as depth (r5 hard gate)
@@ -906,7 +918,7 @@ function buildRunningGear(P, cfg) {
       // on both sides now: x = side * (xc + o).
       for (const o of offs) {
         entries.push({
-          x: side * (xc + o), y: wheelY, z, r: wheelR, road: true, i, off: 0,
+          x: side * (sideXc + o), y: wheelY, z, r: wheelR, road: true, i, off: 0,
           // only rows well behind the proud face bake shadow (middle rows of a
           // triple interleave keep paint). tank_models r4: cfg.recessDepth —
           // TWO-row interleaves (Panther, HVSS pairs) keep BOTH rows painted;
@@ -926,13 +938,14 @@ function buildRunningGear(P, cfg) {
     // see-through slit above the lower hull box.
     const shadowH = cfg.bayShadowTop ?? (topY + 0.1);
     for (const side of [-1, 1]) {
+      const sideXc = xcForSide(side);
       P.add('hullShadow', new THREE.BoxGeometry(0.02, shadowH, z1 - z0),
-        side * (xc - wheelW * 2.0), shadowH / 2 + 0.03, (z0 + z1) / 2);
+        side * (sideXc - wheelW * 2.0), shadowH / 2 + 0.03, (z0 + z1) / 2);
     }
   }
   const rollerEntries = [];
   for (const rl of rollers) {
-    for (const side of [-1, 1]) rollerEntries.push({ x: side * xc, y: rl.y, z: rl.z, r: rl.r ?? rollerR, road: false, i: 0 });
+    for (const side of [-1, 1]) rollerEntries.push({ x: side * xcForSide(side), y: rl.y, z: rl.z, r: rl.r ?? rollerR, road: false, i: 0 });
   }
 
   const { tire, disc, dark } = wheelGeo(style, wheelR, wheelW, seg, cfg.dishR ?? 0.90);
@@ -1031,6 +1044,7 @@ function buildRunningGear(P, cfg) {
   const steelMat = mats.wheels || (paintedEnds ? mats.detail : mats.trackLink);
   const darkMat = mats.spareTrack || mats.dark;
   for (const side of [-1, 1]) {
+    const sideXc = xcForSide(side);
     for (const [gp, end] of [[sg, sprocket], [ig, idler]]) {
       // body + dark as SIBLING MESHES directly under hullG (never a Group:
       // modelLoader.applySwap hides procedural Mesh/LOD/InstancedMesh children
@@ -1039,7 +1053,7 @@ function buildRunningGear(P, cfg) {
       for (const [geo, mat] of [[gp.body, steelMat], [gp.dark, darkMat]]) {
         const m = new THREE.Mesh(geo, mat);
         m.userData.runningGear = true;
-        m.position.set(side * xc, end.y, end.z);
+        m.position.set(side * sideXc, end.y, end.z);
         // PERF: sprocket/idler are wrapped by the casting track band — no cast
         m.castShadow = false;
         m.receiveShadow = true;
@@ -1125,10 +1139,10 @@ function buildRunningGear(P, cfg) {
   P.disposables.push(tgL, tgR);
   const tl = new THREE.Mesh(tgL, mats.trackL);
   tl.userData.runningGear = true;
-  tl.position.x = -xc;
+  tl.position.x = -xcLeft;
   const tr = new THREE.Mesh(tgR, mats.trackR);
   tr.userData.runningGear = true;
-  tr.position.x = xc;
+  tr.position.x = xcRight;
   tl.castShadow = tl.receiveShadow = tr.castShadow = tr.receiveShadow = true;
   hullG.add(tl, tr);
 
@@ -1222,7 +1236,7 @@ function buildRunningGear(P, cfg) {
         continue;
       }
       _q.setFromAxisAngle(_X, Math.atan2(-sg.ty, sg.tz));
-      _v.set(side * xc, y + sg.tz * rOut, z - sg.ty * rOut);
+      _v.set(side * xcForSide(side), y + sg.tz * rOut, z - sg.ty * rOut);
       // gameplay_feel r5 (terrain-contact hard gate): on the GROUND RUN the
       // outward rOut offset plus the flipped pad geometry (pad face 0.03 +
       // grouser bar to 0.07) hung the grouser tips ~7 cm below the sim's
@@ -1251,7 +1265,8 @@ function buildRunningGear(P, cfg) {
       }
       // 7.2 cm pad plus the raised grouser needs a slightly higher centre
       // than the old paper-thin shoe to keep its tread face on the terrain.
-      if (_v.y < 0.078) _v.y = 0.078;
+      const padGroundCenter = cfg.padGroundCenter ?? 0.078;
+      if (_v.y < padGroundCenter) _v.y = padGroundCenter;
       // cfg.padCornerFloor opt-in (uk 90-push, centurion r6): on the approach/
       // departure RAMPS the tilted pads' lower corners dip below the ground
       // plane (probe: -0.008..-0.016 m at 30-40 deg tilt) — the gate's front
@@ -1431,7 +1446,7 @@ function buildRunningGear(P, cfg) {
     for (const side of [-1, 1]) {
       const rm = new THREE.Mesh(ribbonGeo, ribMat);
       rm.name = 'gearThrownRibbon';
-      rm.position.x = side * xc;
+      rm.position.x = side * xcForSide(side);
       // mirror + slight per-side yaw so L/R throws never read identical
       rm.scale.x = side;
       rm.rotation.y = side * 0.07;
@@ -1442,7 +1457,7 @@ function buildRunningGear(P, cfg) {
       thrownRibbons[side] = rm;
       const sm = new THREE.Mesh(slumpGeo, ribMat);
       sm.name = 'gearSlumpBand';
-      sm.position.x = side * xc;
+      sm.position.x = side * xcForSide(side);
       sm.scale.x = side;
       sm.castShadow = false;
       sm.receiveShadow = true;
@@ -1494,7 +1509,7 @@ function buildRunningGear(P, cfg) {
   const gearContactGeom = {
     halfLenM: (contact.zF - contact.zR) / 2,
     zCenterM: (contact.zF + contact.zR) / 2,
-    halfWidM: xc + trackW / 2,
+    halfWidM: Math.max(xcLeft, xcRight) + trackW / 2,
     bottomYM: Math.min(gearBandBotY, gearPadBotY, gearWheelBotY, gearEndBotY),
   };
   // Wrap approach-rise: lowest band-centerline height in the 0.45 m just
@@ -3646,6 +3661,11 @@ const BUCKET_DEF = {
   // class above. Same material slot + LOD path as hullDetail — renders
   // byte-identical; /track/i name carries the §B4 trackBucket tag.
   hullTrackDetailL: ['hullG', 'detail'], hullTrackDetailR: ['hullG', 'detail'],
+  // Wheel-bay recess/backing geometry belongs to the suspension assembly,
+  // not the hull skin.  A dedicated bucket lets strict swept-track lint
+  // exclude it by authored ownership instead of the old positional
+  // "lane-local" heuristic that also hid real guard/mudflap intrusions.
+  hullRunningGearDark: ['hullG', 'dark'],
   // Source-authored skirt/strake/guard solids that enclose a native track
   // lane. They remain camouflaged hull geometry, but the track tag prevents
   // §B4 from reporting the enclosure intersecting the belt it is built over.
@@ -4017,6 +4037,7 @@ export function createTank(specId, engineCtx, opts = {}) {
     if (bucket === 'hullTrackGuardL' || bucket === 'hullTrackGuardR') {
       mesh.userData.trackGuard = true;
     }
+    if (bucket === 'hullRunningGearDark') mesh.userData.runningGear = true;
     // Track-containment law (BUILD-STANDARD SS-B4): tag track-family bucket
     // meshes so the audit can measure hand-rolled track geometry (userData
     // only — geometry/hash-invariant; banded builds are unaffected).
