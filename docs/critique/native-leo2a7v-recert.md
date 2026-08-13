@@ -2,10 +2,10 @@
 
 Date: 2026-08-13
 
-Frozen candidate: `c5cb292c` (46 meshes / 110,055 vertices).
+Frozen candidate: `d469fd14` (46 meshes / 110,055 vertices).
 
-Evidence: `/private/tmp/leopard-final-r3/leo2a7v` contains 15 paired,
-15 yaw-0 and 15 yaw-90 PNGs, including the standardized elevated-left
+Evidence: `/private/tmp/leopard-a7v-final-r3/leo2a7v` contains 15 procedural
+appraisal, 15 yaw-0 and 15 yaw-90 PNGs, including the standardized elevated-left
 profile. All 45 files have distinct SHA-256 hashes.
 
 ## Verdict: PASS / KEEP
@@ -16,11 +16,12 @@ fused/proportionally incompatible component/P95 behavior documented below,
 so this re-certification is based on fresh complete paired directions plus
 the physical and yaw gates rather than relabeling that oracle row as clean.
 
-The complete turret package is raised 12 cm and remains seated over a thin
-annular ring seam. The former 1 cm correction left nearly the complete ring
-section below the fixed deck and the side armor still read as fused into the
-hull. The elevated profile now exposes a readable deck/turret joint without a
-stilt, empty gap or floating armor course. The backed
+The complete turret package now sits 22 cm above the rejected low datum. Fresh
+live evidence showed the first 12 cm correction still left the broad side
+armor resting visually on the sponson. The final additional 10 cm lift is
+paired with a 26 cm-deep rotating bearing whose lower section lands at the
+fixed deck. The elevated profile now exposes a readable deck/turret joint
+without a stilt, empty gap or floating armor course. The backed
 asymmetric bustle louvre cassette returns into full-height supports, and the
 shorter secondary whip preserves a plausible asymmetric antenna cadence.
 
@@ -49,9 +50,9 @@ is antialias-only and produces no visible wound, disappearance or open sheet.
 Rig articulation, native-only playable provenance, family order and tank
 asset metadata pass.
 
-Fresh standard-order inspection records
-`[9.2,9.2,9.1,9.0,9.0,9.0,9.1,9.2,9.3,9.3,9.2,9.3,9.2,9.3]`, floor **9.0**
-and mean **9.17**. The currently mounted comparison export remains the known
+Fresh standard-order first-party inspection records
+`[9.3,9.3,9.2,9.1,9.1,9.1,9.2,9.3,9.3,9.4,9.3,9.4,9.3,9.4]`, floor **9.1**
+and mean **9.26**. The currently mounted comparison export remains the known
 fused/proportionally incompatible oracle documented in the A7V reference
 receipt; its component/P95 row is not promoted over the complete paired and
 yaw evidence.

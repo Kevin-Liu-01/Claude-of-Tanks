@@ -4957,15 +4957,13 @@ function buildLeo2A7V(P) {
   // further 0.10 m from the shell, leaving a 2.44 m broad silhouette against
   // the published 2.87 m vehicle.  The native track fix never required that
   // collapse: the deep undercut below remains seated above the fixed deck.
-  // Fresh elevated-profile and yaw evidence showed the old 1 cm correction
-  // was not remotely enough: the ring cylinder still spent nearly its whole
-  // section below the 1.60-1.70 m fixed deck and the side armor visually
-  // fused into the hull.  Lift the complete rotating package by 12 cm: the
-  // bearing still retains a broad buried overlap with the fixed deck, while
-  // the side armor now clears it with a readable annular seam instead of
-  // looking cast into the hull.  Gun, armor, sights, basket and antennas all
-  // move together because the correction is applied at the turret root.
-  P.turretG.position.set(0, 1.78, 0.35);
+  // Fresh live elevated-profile evidence showed the earlier 12 cm repair
+  // still left the broad side modules sitting directly on the sponson line.
+  // Raise the complete rotating package another 10 cm and carry that new
+  // datum through the bearing below.  The visible annular neck remains
+  // seated on the fixed deck, while gun, armor, sights, basket, roof kit and
+  // antennas all retain one coherent turret ownership transform.
+  P.turretG.position.set(0, 1.88, 0.35);
   wedgeTurretV3(P, {
     h: 0.64, apexY: 0.22, gunW: 0.36, slotZ: 1.18,
     chamferY: 0.55, roofX: 1.06, crestTail: 0.62, crestTailDrop: 0.005,
@@ -5077,8 +5075,8 @@ function buildLeo2A7V(P) {
   // sight-lines (§B2) and yaws with the mass.
   // A thin dark annulus exposes the lifted plinth/deck joint without adding
   // a new rear-facing neck below the certified turret envelope.
-  P.add('turretDark', KIT.torus(1.10, 0.012, P.q ? 26 : 16), 0, -0.122, -0.55);
-  P.add('turret', cylY(1.10, 1.14, 0.14, P.q ? 26 : 16), 0, -0.055, -0.55);
+  P.add('turretDark', KIT.torus(1.10, 0.012, P.q ? 26 : 16), 0, -0.182, -0.55);
+  P.add('turret', cylY(1.10, 1.14, 0.26, P.q ? 26 : 16), 0, -0.055, -0.55);
   // Authored roof-station restoration: the old first-party build had a much
   // clearer crew-station cadence than the later sparse roof.  Reintroduce
   // that information as low, supported hardware on the corrected shell,
