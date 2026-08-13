@@ -623,14 +623,6 @@ const REG = {
     gunNode: '^vehicle#t-90ms_cannon_2a46m-5_8$', autoPivot: true,
     pubDims: { hullLengthM: 6.86, overallLengthM: 9.53, widthM: 3.78, heightM: 2.23 },
   },
-  t90: {
-    // Re-baked from OBJ source — semantic (turret_18, cannon_20, era
-    // hull+turret sets, hatch01/aps/smokecaps turret followers).
-    path: 'public/models/community-candidates/t90_kojf.glb',
-    turretNode: '^vehicle#t-90_turret_t-90_18$',
-    gunNode: '^vehicle#t-90_cannon_2a46m2_20$', autoPivot: true,
-    pubDims: { hullLengthM: 6.86, overallLengthM: 9.53, widthM: 3.78, heightM: 2.23 },
-  },
   t90a_burlak: {
     // "T-90A Burlak (Armored Warfare)" — flat Object_N. Object_2 turret
     // shell (z 1.39..3.13), Object_15 gun tube (y -5.88..-1.23), Object_24

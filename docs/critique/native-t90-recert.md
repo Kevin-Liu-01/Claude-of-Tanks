@@ -5,6 +5,37 @@ The private comparison GLB was used only as a quarantined visual reference;
 no comparison mesh, vertex/index payload, material, texture, rig, animation or
 runtime wrapper enters the playable or this commit.
 
+## Superseding pear-casting equipment closeout — 2026-08-13
+
+- Geometry hash: `80b4b851` (67 meshes / 118,488 vertices)
+- Evidence: `/private/tmp/t90-armor-refit-final-r6/t90`
+- Integrity: 15 procedural appraisal + 15 yaw0 + 15 yaw90 PNGs, including
+  elevated-left profile; 45 files / 45 distinct SHA-256 hashes
+- Standard-order live first-party visual appraisal:
+  `[9.2,9.2,9.1,9.0,9.0,9.0,9.1,9.2,9.2,9.3,9.1,9.3,9.2,9.3]`
+  (floor 9.0; mean 9.16)
+- Exact terminal band / shoe / strict sweep: `0/0`, `0/0`, `0/0`
+- Parent audit: 0 stranded / 0 abutting / 0 dangling
+- Winding: 0 reversed / 0 mixed, one visually null deficit pixel and zero
+  yaw-stranded candidate pixels
+- Runtime rig: 10/10; muzzle-bore contrast 107.2
+
+The hand-authored asymmetric pear loft remains the primary volume. Its four
+main K-5 banks, three lower returns, three crown returns and four aft flank
+leaves are broadened and moved onto the actual cast shoulder/falloff rather
+than the retired round-turret datum. Shtora housings, carrier brows and cables
+follow that same armor field. Both 902B banks use broader buried shoes and
+braces. Commander cupola, NSVT, night sight, periscope bridge and antenna
+collars are widened and shifted outward on the asymmetric crown.
+
+All 45 frames show supported geometry and a genuine quarter-turn. The complete
+casting, armor, gun, smoke, optics, command station, antennas and rear packs
+rotate together; hull and running gear stay fixed. The missing historical GLB
+is not restored: stale critic/evaluator/normalizer routes have been removed so
+the evidence path is explicitly first-party procedural.
+
+**PASS / KEEP `80b4b851`; supersede `54f4138`. Ordered blockers: none.**
+
 ## Superseding radial armor/equipment refit — 2026-08-13
 
 - Geometry hash: `54f4138` (67 meshes / 116,472 vertices)

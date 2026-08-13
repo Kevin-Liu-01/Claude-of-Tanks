@@ -861,5 +861,7 @@ build from photos alone), say so and the files are pulled.
   `b36b620f868cccbdbc2a874c6967273e2cc712b7df83c6e1bc054ec95bad24a0`.
   Neither source nor derived commercial-game geometry/textures ship.
 - community-candidates/t90ms_kojf.glb — re-baked from OBJ source, same.
-- community-candidates/t90_kojf.glb — re-baked from OBJ source, same.
+- community-candidates/t90_kojf.glb — retired historical visual reference;
+  binary absent and every active evaluator/normalizer route removed. The
+  playable base T-90 is wholly repository-authored procedural geometry.
 Textures on the re-bakes are partial (geometry is the instrument).

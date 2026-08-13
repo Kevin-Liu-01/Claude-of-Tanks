@@ -18,6 +18,7 @@ import { MODEL_SOURCE, TANK_SPECS } from '/src/vehicles/specs.js';
 const SIZE = 640;
 const params = new URLSearchParams(location.search);
 const id = params.get('id') || 'isu122s';
+const proceduralOnlyEvidence = params.get('proceduralonly') === '1';
 // Graduate fallback (2026-08-02): graduates have no MODEL_SOURCE — resolve
 // through the SAME override map the fidelity harness uses. Kept in sync by
 // hand with tools/procedural-fidelity.html LOCAL_REFERENCE_OVERRIDES (the
@@ -50,7 +51,6 @@ const CRITIC_REFERENCE_OVERRIDES = {
   amx40: { source:'glb', glb:{ path:'/models/community-candidates/amx-40_armored_warfare.glb', turretNode:'^Object_12$', gunNode:'^Object_20$', autoPivot:true, turretFollowers:'^Object_(?:2|5|6|7|8|11|14|15|24)$' } },
   k1a1: { source:'glb', glb:{ path:'/models/community-candidates/k1a1_kojf.glb', turretNode:'^vehicle#k1a1_turret_0$', gunNode:'^vehicle#k1a1_cannon_10$', autoPivot:true, turretFollowers:'^vehicle#(?:k1a1_(?:cage|smokecaps|noeffect01)_turret_\\d+|k1a1_cannonbase_9|antenna_short_7)$' } },
   t90ms: { source:'glb', glb:{ path:'/models/community-candidates/t90ms_kojf.glb', turretNode:'^vehicle#t-90ms_turret_t-90ms_6$', gunNode:'^vehicle#t-90ms_cannon_2a46m-5_8$', autoPivot:true, turretFollowers:'^vehicle#(?:t-90ms_(?:aps|cage01|era\\d\\d|detachparts|ejectionport|smokecaps)_turret|t-90ms_cannonbase_t-90ms|cannonbase_skinned_5|antenna01_24)' } },
-  t90: { source:'glb', glb:{ path:'/models/community-candidates/t90_kojf.glb', turretNode:'^vehicle#t-90_turret_t-90_18$', gunNode:'^vehicle#t-90_cannon_2a46m2_20$', autoPivot:true, turretFollowers:'^vehicle#(?:t-90_(?:aps|era\\d\\d|hatch01|smokecaps)_turret|t-90_cannonbase|cannonbase_t-90|antenna01_(?:17|21))' } },
   t90a_burlak: { source:'glb', glb:{ path:'/models/community-candidates/t-90a_burlak_armored_warfare.glb', turretNode:'^Object_2$', gunNode:'^Object_15$', autoPivot:true, turretFollowers:'^Object_(?:3|4|7|11|16|17|18|20|23)$' } },
   centurion5: { source:'glb', glb:{ path:'/models/tanks/community/recovered/centurion5.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
   challenger1: { source:'glb', glb:{ path:'/models/tanks/community/recovered/challenger1.glb', paintUntextured:true, turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, turretFollowers:'vehicle#(?:ammo_|antenna_|bone_mg_aa_|ex_decor_(?:0[1-3]|0[5-9]|1[0-2])_|hatch_0[2-5]_)', gunFollowers:'vehicle#(?:gun_mask_|bone_mg_gun_twin_)' } },
@@ -190,7 +190,7 @@ const CRITIC_REFERENCE_OVERRIDES = {
 // graduates carry a truthy {source:'procedural'} marker, and createTank
 // reads MODEL_SOURCE internally — checking alone is not enough: INJECT the
 // override into MODEL_SOURCE (page-local module instance; never ships).
-if (MODEL_SOURCE[id]?.source !== 'glb' && CRITIC_REFERENCE_OVERRIDES[id]) {
+if (!proceduralOnlyEvidence && MODEL_SOURCE[id]?.source !== 'glb' && CRITIC_REFERENCE_OVERRIDES[id]) {
   MODEL_SOURCE[id] = CRITIC_REFERENCE_OVERRIDES[id];
 }
 // pt91m (2026-08-03, first critic round): the recovered print is authored
@@ -204,7 +204,7 @@ if (id === 'pt91m' && MODEL_SOURCE[id]?.glb && MODEL_SOURCE[id].glb.yawOffset ==
   MODEL_SOURCE[id] = { ...MODEL_SOURCE[id], glb: { ...MODEL_SOURCE[id].glb, yawOffset: Math.PI } };
 }
 const source = MODEL_SOURCE[id];
-if (source?.source !== 'glb') throw new Error(`${id} has no GLB reference registered`);
+if (!proceduralOnlyEvidence && source?.source !== 'glb') throw new Error(`${id} has no GLB reference registered`);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, preserveDrawingBuffer: true });
 renderer.setSize(SIZE, SIZE, false);
@@ -221,8 +221,10 @@ const engineCtx = { setupShadowMaterial: (m) => m, anisotropy: 1, renderer };
 // procedural side normally. This never changes runtime data and avoids
 // distorting the reference material buckets.
 const rawLeo2A4 = id === 'leo2a4';
-let reference;
-if (rawLeo2A4) {
+let reference = null;
+if (proceduralOnlyEvidence) {
+  reference = null;
+} else if (rawLeo2A4) {
   const gltf = await new GLTFLoader().loadAsync(source.glb.path);
   reference = { root: gltf.scene };
   reference.root.userData.__glbSwapped = true;
@@ -230,7 +232,8 @@ if (rawLeo2A4) {
   reference = createTank(id, engineCtx, { camoSeed: 4242, quality: 'high' });
 }
 const procedural = createTank(id, engineCtx, { camoSeed: 4242, quality: 'high', proceduralOnly: true });
-scene.add(reference.root, procedural.root);
+if (reference) scene.add(reference.root);
+scene.add(procedural.root);
 
 // fidelity board's exact rig
 const hemi = new THREE.HemisphereLight(0xcfd8e0, 0x2a2f26, 1.05);
@@ -244,12 +247,15 @@ const swapped = (visual) => {
   visual.root.traverse((o) => { if (o.userData?.__glbSwapped) yes = true; });
   return yes;
 };
-for (let i = 0; i < 600 && !swapped(reference); i++) await sleep(50);
-if (!swapped(reference)) throw new Error(`${id} reference GLB did not load`);
-await sleep(400);
-reference.root.updateMatrixWorld(true);
+if (reference) {
+  for (let i = 0; i < 600 && !swapped(reference); i++) await sleep(50);
+  if (!swapped(reference)) throw new Error(`${id} reference GLB did not load`);
+  await sleep(400);
+  reference.root.updateMatrixWorld(true);
+}
 procedural.root.updateMatrixWorld(true);
-for (const root of [reference.root, procedural.root]) {
+for (const root of [reference?.root, procedural.root]) {
+  if (!root) continue;
   root.traverse((o) => {
     if (!o.isLOD) return;
     o.autoUpdate = false;
@@ -349,7 +355,7 @@ copy2d.width = copy2d.height = SIZE;
 const copyCtx = copy2d.getContext('2d', { willReadFrequently: true });
 function renderModel(visual, other, camera) {
   visual.root.visible = true;
-  other.root.visible = false;
+  if (other) other.root.visible = false;
   renderer.setRenderTarget(null);
   renderer.setClearColor(0x151b20, 1);
   renderer.clear(true, true, true);
@@ -375,18 +381,18 @@ function soloURL(img) {
   return copy2d.toDataURL('image/png');
 }
 
-reference.root.visible = true;
+if (reference) reference.root.visible = true;
 procedural.root.visible = true;
-const refBox = visibleBox(reference.root);
+const refBox = reference ? visibleBox(reference.root) : null;
 const procBox = visibleBox(procedural.root);
 const badBox = (b) => !isFinite(b.min.x) || !isFinite(b.max.x) || b.getSize(new THREE.Vector3()).length() < 0.5;
-if (badBox(refBox) || badBox(procBox)) throw new Error('degenerate bounding box — model failed to build');
+if ((refBox && badBox(refBox)) || badBox(procBox)) throw new Error('degenerate bounding box — model failed to build');
 
 const pairs = {};
 for (const [name, dir] of Object.entries(VIEWS)) {
-  const r = renderModel(reference, procedural, orthoFor(refBox, dir));
   const p = renderModel(procedural, reference, orthoFor(procBox, dir));
-  pairs[`view-${name}`] = pairURL(r, p);
+  const r = reference ? renderModel(reference, procedural, orthoFor(refBox, dir)) : null;
+  pairs[`view-${name}`] = r ? pairURL(r, p) : soloURL(p);
 }
 for (const [name, dir] of [
   ['hero-frontleft', new THREE.Vector3(-1, 0.35, 1)],
@@ -396,24 +402,24 @@ for (const [name, dir] of [
   // defects that pure orthos hide.
   ['hero-toptilt', new THREE.Vector3(0.55, 1.35, -0.75)],
 ]) {
-  const r = renderModel(reference, procedural, heroFor(refBox, dir));
   const p = renderModel(procedural, reference, heroFor(procBox, dir));
-  pairs[name] = pairURL(r, p);
+  const r = reference ? renderModel(reference, procedural, heroFor(refBox, dir)) : null;
+  pairs[name] = r ? pairURL(r, p) : soloURL(p);
 }
 // closeups: casemate face + ball mantlet (forward third), roof cluster (top third)
 for (const [name, dir, off, hs] of [
   ['close-front', new THREE.Vector3(-1, 0.22, 1), { x: 0, y: 0.12, z: 0.28 }, 0.26],
   ['close-roof', new THREE.Vector3(1, 0.55, 0.35), { x: 0, y: 0.3, z: 0.05 }, 0.24],
 ]) {
-  const r = renderModel(reference, procedural, orthoFor(refBox, dir, hs, off));
   const p = renderModel(procedural, reference, orthoFor(procBox, dir, hs, off));
-  pairs[name] = pairURL(r, p);
+  const r = reference ? renderModel(reference, procedural, orthoFor(refBox, dir, hs, off)) : null;
+  pairs[name] = r ? pairURL(r, p) : soloURL(p);
 }
 if (params.get('profile') === '1') {
   const [name, dir] = ELEVATED_PROFILE;
-  const r = renderModel(reference, procedural, orthoFor(refBox, dir, 0.47));
   const p = renderModel(procedural, reference, orthoFor(procBox, dir, 0.47));
-  pairs[name] = pairURL(r, p);
+  const r = reference ? renderModel(reference, procedural, orthoFor(refBox, dir, 0.47)) : null;
+  pairs[name] = r ? pairURL(r, p) : soloURL(p);
 }
 // sanity: refuse to publish pairs whose procedural half is empty
 {
@@ -433,7 +439,7 @@ let yaw90 = null;
 if (params.get('final') === '1') {
   const turret = procedural.root.getObjectByName('rig_turret');
   if (!turret) throw new Error(`${id} procedural has no rig_turret`);
-  reference.root.visible = false;
+  if (reference) reference.root.visible = false;
   procedural.root.visible = true;
   turret.rotation.y = 0;
   procedural.root.updateMatrixWorld(true);
