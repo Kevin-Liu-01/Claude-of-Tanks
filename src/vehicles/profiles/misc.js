@@ -1068,13 +1068,28 @@ function buildLeclerc(P) {
     [-0.94, 0.66, -2.98], [0.94, 0.66, -2.98], [0.94, 0.88, -3.28], [-0.94, 0.88, -3.28],
     [-0.94, 1.05, -2.98], [0.94, 1.05, -2.98], [0.94, 1.05, -3.28], [-0.94, 1.05, -3.28]));
   P.add('hullDetail', box(2.88, 0.05, 0.08), 0, 1.43, 2.24, -0.20, 0, 0);      // splash ridge on the plane
-  // OUTER mudguard strips only (x 1.70..1.785 — clear of the 1.66 pad
-  // plane): raked 1.445 @ z1.30 -> 1.235 @ 3.32 so the falling glacis owns
-  // the side line; they carry the plan's outer-column 3.32 front edge
+  // Long outer fender rails (x 1.70..1.785 — clear of the 1.66 pad plane):
+  // raked 1.445 @ z1.30 -> 1.235 @ 3.32 so the falling glacis owns the side
+  // line.  The broad front mudguards below bridge these rails back into the
+  // narrow bow; they are not replacements for the animated terminal shoes.
   for (const s2 of [-1, 1]) {
     P.add('hull', slab(
       [s2 * 1.70, 1.415, 1.30], [s2 * 1.785, 1.415, 1.30], [s2 * 1.785, 1.205, 3.32], [s2 * 1.70, 1.205, 3.32],
       [s2 * 1.70, 1.445, 1.30], [s2 * 1.785, 1.445, 1.30], [s2 * 1.785, 1.235, 3.32], [s2 * 1.70, 1.235, 3.32]));
+
+    // Proper Leclerc front mudguard: a shallow raked steel cap above the
+    // idler crest plus a flexible front lip AHEAD of the shoe orbit.  The
+    // deleted legacy flap sat at z=3.28/y=0.775, directly through the live
+    // terminal links.  This cap stays above them; its rubber lip begins
+    // beyond their forward sweep.  Both supports are hull-owned: the inner
+    // knee enters the narrow bow and the outer knee enters the fender rail.
+    P.add('hull', slab(
+      [s2 * 0.90, 1.480, 2.95], [s2 * 1.785, 1.480, 2.95], [s2 * 1.720, 1.480, 3.58], [s2 * 0.98, 1.480, 3.58],
+      [s2 * 0.90, 1.525, 2.95], [s2 * 1.785, 1.525, 2.95], [s2 * 1.720, 1.525, 3.58], [s2 * 0.98, 1.525, 3.58]));
+    P.add('hull', box(0.08, 0.27, 0.30), s2 * 0.90, 1.365, 3.10);             // inboard bow knee (inside the shoe lane)
+    P.add('hull', box(0.07, 0.30, 0.28), s2 * 1.7425, 1.345, 3.25);           // outboard fender knee (outside the shoe lane)
+    P.add('hullRubber', box(0.64, 0.15, 0.035), s2 * 1.37, 1.405, 3.58);      // shallow flexible lip, ahead of terminal shoes
+    P.add('hullDark', box(0.52, 0.025, 0.018), s2 * 1.36, 1.515, 3.555);      // cap hinge/seam
   }
   // driver LEFT: flush hatch + 3 episcopes (90-ladder r1 CAP-SEAT: ref deck
   // line reads 1.534-1.544 over z 0.2..1.25 — the 1.573/1.576 hatch crowns
@@ -1114,9 +1129,9 @@ function buildLeclerc(P) {
     }
     for (let k = 0; k < 5; k++) P.add('hullDark', box(0.03, 0.90, 0.016), s * 1.684, 0.975, 0.72 - k * 0.86);
     P.add('hullDark', box(0.02, 0.05, 5.82), s * 1.688, 0.505, 0.31);
-    // The animated idler/shoes exclusively own the forward track lane.  A
-    // former static rubber flap at this location visibly crossed the moving
-    // shoe run in gameplay and is intentionally not replaced.
+    // The animated idler/shoes exclusively own the forward track lane.  The
+    // restored mudguard is authored above/ahead of this lane, not at the old
+    // intersecting z=3.28/y=0.775 seat.
     // §B2 CONTIG FIX (missing-left-side round, 2026-08-06; pre-existing at
     // HEAD — the r2 build predates the v2 standard-check top-down scan):
     // the 8 cm fender slot between the track outer plane (1.60) and the

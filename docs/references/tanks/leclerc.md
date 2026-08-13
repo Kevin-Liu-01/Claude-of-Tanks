@@ -755,3 +755,26 @@ winding 78 slabs REVERSED 0 (all new fill/wedge slabs through
 orientedSlab); npm test 166 + track-geometry green. Evidence:
 shots/misc-ladders/{before,after}/leclerc*.png (board + 4 garage
 angles each).
+
+## FRONT MUDGUARD RESTORATION (2026-08-12)
+
+Owner review correctly identified that the native-track conversion had fixed
+the visible front-course collision by deleting the old low rubber flap, but
+had also removed the recognizable Leclerc front mudguards. The old plate was
+centered at z=3.28/y=0.775 and physically occupied the moving idler/shoe
+envelope; it remains retired.
+
+The replacement is an original procedural assembly on each side: a tapered
+0.885 m steel cap above the idler crest, a shallow 0.64 m rubber leading lip
+ahead of the forward shoe sweep, an inboard bow knee and an outboard fender
+knee. The cap narrows toward the front rather than reading as a rectangular
+track-cover slab. Both knees visibly intersect real hull structure, while the
+rubber lip meets the cap along its upper edge. No source vertices, meshes or
+opaque geometry payloads enter the playable.
+
+Final exact `track-clip-audit --strict --exact`: band front/rear 0/0, shoes
+0/0, full sweep 0/0. Freeze `5fa68984` reproduces twice (47 meshes / 85,191
+vertices). The 45-frame paired/yaw packet is hash-distinct and includes the
+standard elevated-left profile. Fidelity 94.0 (hull 95 / turret 91 / gun 91 /
+tracks 93); parent, winding, rig, bore, provenance, family order, asset,
+tests and both build lanes pass.

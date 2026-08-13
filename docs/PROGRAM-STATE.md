@@ -96,7 +96,7 @@ re-freeze NEW hash, all in ONE commit.
 | m1a2_sepv2 | 7680a400 | RE-FROZEN 2026-08-10 (§5.107 full armor/ghillie wave; elevated armored CROWS + broad passive armor + full cover; re-cert floor 9.2 / mean 9.41 x14, corrected yaw0/90 ownership PASS; prior a0a4e87c retired) |
 | m2a2_bradley | 90a5568c | GRADUATED 2026-08-08 (28th; dual gate: geometry 90.9 x2 every component >=90 landed 81bdad1 + visual floor 9.0 / mean 9.16 x14 views at freeze-verified bytes; oracle e699c868; dress-tier defect bank in the verdict: bow T-hooks, taillight fittings, TOW rear ports, lug stacks, ringed hubs) |
 | m45_patton | 53caa687 | GRADUATED 2026-08-08 (29th; gate 90.7 x5 total + sitting-2 visual floor 9.0 mean 9.13 x14; sitting-1 orders executed: loft.smooth byte-reproduced, ring cupola adjudicated ring-class at station with the measured Ø0.57/x-0.65 deviation compliant; ring-prominence silhouette-tax residual certified) |
-| leclerc | 683be340 | GRADUATED 2026-08-08 (30th; gate 90.3 x2 every component >=90 + visual floor 9.0 mean 9.17 x14 at freeze-verified bytes; the §5.14 §K-exemplar turret standard held through the ladder — no gate-chasing artifacts; commander-well doc trued z_w 0.32..0.66) |
+| leclerc | 5fa68984 | RE-FROZEN 2026-08-12 (§5.137 restored first-party front mudguards: paired raked steel caps, inboard/outboard hull knees and shallow rubber lips sit above/ahead of the live idler shoes; exact native band+shoes+sweep 0/0, fidelity 94.0 with every scored view/component >=90, fresh 45-frame receipt; prior 683be340 retired) |
 | amx30 | 89a4cdf0 | GRADUATED 2026-08-12 (§5.124 first-party low five-wheel AMX hull, compact cast turret, supported commander/optic/MG station and native exact 0/0 course; machine fidelity 91.81 / min view 90.01; fresh 42-frame yaw/ownership floor 9.0 / mean 9.16) |
 | amx30b2 | 34076800 | GRADUATED 2026-08-12 (§5.124 first-party B2 cast/rear-station and service package on the exact native five-wheel course; machine fidelity 91.51 / min view 90.14; fresh 42-frame yaw/ownership floor 9.0 / mean 9.12) |
 | amx40 | 3d312bde | RE-FROZEN 2026-08-12 (§5.135 fully first-party forward-section + owner-height re-cert: connected cheek/crown loft retained forward, complete turret section exactly 20% taller with smoke/MG re-seated; fidelity 92.94 / minimum whole view 91.90, strict native band+shoes+sweep 0/0, fresh 45-frame yaw/ownership floor 9.0 / mean 9.07; all source-baked playables retired) |
@@ -4653,3 +4653,30 @@ curve/component row is retained honestly at 83.3 because it grades retired
 aft/edge plan masks rather than this owner-directed forward profile. **KEEP /
 RE-FROZEN `564057a4`; retire `3e5a7797` and all earlier Challenger 3
 freezes.**
+
+## 5.137 LECLERC FRONT MUDGUARD RESTORATION + TRACK-CLEARANCE RE-CERTIFICATION (2026-08-12, RE-FROZEN)
+
+The prior native-track repair correctly deleted a low static rubber plate that
+occupied the animated idler/shoe path, but it left the Leclerc without a
+convincing pair of front mudguards. This round restores them as first-party
+geometry rather than reintroducing the intersecting plate. Each side now has
+a broad tapered steel cap above the idler crest, a shallow flexible leading
+lip ahead of the terminal-shoe orbit, an inboard knee buried into the narrow
+bow and an outboard knee buried into the existing fender rail. The two load
+paths keep the caps hull-owned and prevent a floating-decorative-panel read.
+
+Exact native containment is band front/rear **0/0**, individual shoes **0/0**
+and strict full sweep **0/0**. The front idlers, six road wheels, rear drive
+sprockets and continuous linked courses remain fully visible; no static guard
+or shadow proxy substitutes for a track surface. The restored guards remain
+fixed at yaw 0 and 90 degrees while the complete turret departs normally.
+
+Freeze **`5fa68984`** reproduces twice at 47 meshes / 85,191 vertices. The
+fresh evidence packet contains 15 paired + 15 yaw0 + 15 yaw90 frames,
+including the elevated-left profile: **45 PNGs / 45 distinct hashes**.
+Quantitative fidelity is **94.0** (hull 95, turret 91, gun 91, tracks 93),
+with every scored view and component at least 90. Parent audit is 0 stranded /
+0 abutting / 0 dangling; winding is 0 reversed / 0 mixed with a 0-pixel
+deficit and clean mode 2. Rig, bore, native-playable provenance, family order,
+targeted assets, the complete test suite, and private/public builds pass.
+**KEEP / RE-FROZEN `5fa68984`; retire `683be340`.**
