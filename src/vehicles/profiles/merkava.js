@@ -6022,6 +6022,44 @@ function buildMerkavaMark(P, p) {
     roofLift(P.mats.dark, Math.min(2.4, 1.75 * rlK));
   }
 
+  // Fleet running-gear law: Merkava is an explicit real front-drive
+  // exception (front sprocket, six road wheels, rear idler), but its native
+  // linked course must still remain physically clear.  Keep only true
+  // wheel-face/suspension/backer skins in the running-gear ownership class;
+  // mudflaps, skirt chords, wood curtains and service kit remain real hull
+  // geometry and are lifted above the complete terminal-wrap envelope.
+  const gearOuter = p.gearOut ?? p.width / 2 - 0.036;
+  const gearInner = gearOuter - p.trackW;
+  const gearSkin = (_geo, b) => {
+    const oneSide = b.min.x > 0 || b.max.x < 0;
+    const innerX = oneSide ? Math.min(Math.abs(b.min.x), Math.abs(b.max.x)) : 0;
+    return oneSide && innerX >= gearInner - 0.03
+      && b.max.y <= p.trackTop + 0.13
+      && (b.max.x - b.min.x) <= 0.026;
+  };
+  P.rebucketParts(['hullDark'], 'hullRunningGearDark', gearSkin);
+  P.rebucketParts(['hullDetail'], 'hullRunningGearDetail', gearSkin);
+  const wrapFloor = Math.max(
+    p.trackTop,
+    p.sprocket.y + p.sprocket.r,
+    p.idler.y + p.idler.r,
+  ) + 0.20;
+  P.raiseTrackCorridor(
+    ['hull', 'hullDark', 'hullDetail', 'hullRubber', 'hullCloth', 'hullWood'],
+    { laneInnerX: gearInner - 0.08, floorY: wrapFloor },
+  );
+  // A few broad stern-canvas panels cross the centreline, so their inner
+  // vertices do not satisfy the per-lane vertex lift even though their
+  // outboard corners enter the rear wrap.  Reseat each complete low panel
+  // on the new floor; this preserves its rectangular fabric construction.
+  P.forEachBucketPart(['hullCloth'], (geo, b) => {
+    const reachesLane = Math.max(Math.abs(b.min.x), Math.abs(b.max.x)) >= gearInner - 0.08;
+    if (!reachesLane || b.min.z > -3.20 || b.min.y >= wrapFloor) return;
+    geo.translate(0, wrapFloor - b.min.y, 0);
+    geo.computeBoundingBox();
+    geo.computeBoundingSphere();
+  });
+
   // p.noDecal (3D structure r3, critic delete item): the turret-side number
   // decal read as a TEXT STICKER ("Militek") at the hero distances — the
   // monochrome refs carry no side text.
