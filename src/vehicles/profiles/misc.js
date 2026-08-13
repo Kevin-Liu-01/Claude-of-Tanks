@@ -2121,6 +2121,36 @@ function buildT80UNative2026(P) {
     else P.add('turret', box(0.20, 0.28, 1.44), 0.68, 0.625, 0.62);
     P.add('turretDetail', box(0.32, 0.18, 0.62), s * 1.30, 0.47, -0.10, 0, s * 0.10, 0); // shoulder stowage (top 1.95w)
   }
+  // Readable Kontakt-5 modules on top of the structural clamshell.  The
+  // former silhouette had the correct broad carriers, but their unbroken
+  // faces made the T-80U look like a smooth appliqué turret.  Five varied
+  // front leaves and four falling flank cassettes now follow each cast
+  // shoulder.  Every leaf overlaps the large carrier above, so this is a
+  // planted armor package rather than a necklace of stand-off boxes.
+  for (const s of [-1, 1]) {
+    for (const [x, y, z, yaw, roll, w, h, d] of [
+      [0.30, 0.43, 1.37, 0.17, -0.37, 0.34, 0.18, 0.36],
+      [0.53, 0.49, 1.24, 0.31, -0.40, 0.39, 0.19, 0.40],
+      [0.78, 0.51, 1.07, 0.44, -0.37, 0.43, 0.20, 0.42],
+      [1.03, 0.49, 0.84, 0.56, -0.33, 0.42, 0.19, 0.39],
+      [1.25, 0.44, 0.57, 0.66, -0.29, 0.38, 0.18, 0.35],
+    ]) {
+      P.add('turret', KIT.xform(box(w * 0.84, h * 0.58, d * 0.78), 0, -h * 0.20, -0.08), s * (x - 0.035), y, z, roll, -s * yaw, 0);
+      P.add('turret', KIT.xform(box(w, h, d), 0, 0, -0.05), s * x, y, z, roll, -s * yaw, 0);
+      P.add('turretDark', KIT.xform(box(w * 0.76, 0.012, d * 0.68), 0, h * 0.52, 0.035), s * x, y, z, roll, -s * yaw, 0);
+      P.add('turretDark', KIT.xform(box(0.018, h * 0.74, d * 0.64), w * 0.44, 0, 0.03), s * x, y, z, roll, -s * yaw, 0);
+    }
+    for (const [x, y, z, yaw, w, h, d] of [
+      [1.43, 0.38, 0.26, 0.42, 0.30, 0.17, 0.31],
+      [1.49, 0.36, -0.04, 0.24, 0.29, 0.17, 0.30],
+      [1.48, 0.35, -0.34, 0.08, 0.30, 0.16, 0.30],
+      [1.40, 0.34, -0.64, -0.10, 0.28, 0.15, 0.28],
+    ]) {
+      P.add('turret', box(w * 0.84, h * 0.60, d * 0.80), s * (x - 0.045), y - 0.035, z, -0.08, -s * yaw, 0);
+      P.add('turret', box(w, h, d), s * x, y, z, -0.08, -s * yaw, 0);
+      P.add('turretDark', box(w * 0.74, 0.012, d * 0.68), s * x, y + h * 0.54, z, -0.08, -s * yaw, 0);
+    }
+  }
   // Continuous cast shoulder wedges.  These replace the old rectangular
   // side towers: the lower edge is buried in the pear casting while the
   // upper edge rises and narrows into the K-5 rail.  The result keeps the
@@ -2162,12 +2192,24 @@ function buildT80UNative2026(P) {
   P.add('turret', box(0.44, 0.045, 0.44), -0.52, 0.822, 0.26);                 // doghouse lid (top 2.225 = heightM p95 anchor with the wings)
   P.add('turretDetail', box(0.26, 0.24, 0.24), 0.55, 0.40, 0.96);
   P.add('turretGlass', box(0.18, 0.16, 0.02), 0.55, 0.40, 1.09);
-  // 902 smoke tubes clustered LEFT side, raised to the post-warp cluster
-  // line (~2.20 world at the -1.05..-1.45 columns)
-  // (r3g RAKE: ref front band 2.18 at x -0.95..-1.11 falling to 1.90 by
-  // -1.50 — the flat 2.05 bank was low inboard AND high at the tips)
-  for (let k = 0; k < 5; k++) P.add('turretDark', cylZ(0.042, 0.28, 8), -1.02 - k * 0.09, 0.76 - k * 0.05 + (k % 2) * 0.02, 0.48 - k * 0.11, -0.48, -(0.85 + k * 0.12), 0);
-  for (let k = 0; k < 4; k++) P.add('turretDark', cylZ(0.042, 0.28, 8), -1.10 - k * 0.09, 0.59 - k * 0.04, 0.24 - k * 0.11, -0.38, -(1.0 + k * 0.14), 0);
+  // Cupola/periscope cadence remains low and asymmetric, but is large
+  // enough to survive normal gameplay distance.  These windows sit on the
+  // cupola rim rather than hovering above the roof.
+  for (const [x, z, yaw] of [[0.28, -0.22, 0.42], [0.40, -0.05, 0.20], [0.58, -0.02, -0.08], [0.75, -0.15, -0.34]]) {
+    P.add('turretDark', box(0.12, 0.055, 0.065), x, 0.64, z, 0, yaw, 0);
+    P.add('turretGlass', box(0.080, 0.032, 0.012), x, 0.65, z + 0.038, 0, yaw, 0);
+  }
+  // Bilateral 902B banks on explicit shoulder shoes.  The former single
+  // nine-tube hand-authored spray over-weighted the left silhouette and
+  // provided no clear base.  Four launchers per side preserve the T-80U's
+  // compact source cadence and stay clear of the K-5 fan.
+  for (const s of [-1, 1]) {
+    P.add('turret', box(0.20, 0.18, 0.48), s * 1.30, 0.38, -0.05, 0, 0, -s * 0.18);
+    const smoke = FITTINGS.smokeBank({ mats: P.mats, count: 4, r: 0.043, len: 0.28, pitch: -0.40, splay: 0.30, arc: 0.52, spacing: 0.10 });
+    smoke.position.set(s * 1.31, 0.49, -0.03);
+    smoke.rotation.y = s * 1.04;
+    P.turretG.add(smoke);
+  }
   // bustle: transverse OPVT snorkel + stowage band + basket + rails.
   // VERTEX ROUND: the ref bustle hump runs to world -2.25 (band 1.60..1.84
   // post-warp at -2.0..-2.2) — row extended, kit lowered onto it.
@@ -2184,7 +2226,13 @@ function buildT80UNative2026(P) {
   basket(P, 1.15, -1.96, -2.24, 0.25, 0.46, 0.5);
   P.add('turretDetail', box(0.05, 0.05, 0.72), 0.78, 0.50, -0.95, 0, 0.5, 0);  // grab rails
   P.add('turretDetail', box(0.05, 0.05, 0.72), -0.78, 0.50, -0.95, 0, -0.5, 0);
-  P.add('turretDetail', box(0.06, 0.07, 0.06), -0.62, 0.575, -0.85);           // whip base pot ONLY (r3: the r2 stub rod printed 2.31w over the ref's 2.05 line at 3 cols)
+  P.add('turretDetail', box(0.08, 0.07, 0.08), -0.62, 0.575, -0.85);
+  P.add('turretDark', cylY(0.045, 0.052, 0.12, 10), -0.62, 0.60, -0.85);
+  {
+    const antenna = FITTINGS.antennaWhip({ mats: P.mats, h: 1.34, r: 0.012, rake: -0.035, seed: 18 });
+    antenna.position.set(-0.62, 0.62, -0.85);
+    P.turretG.add(antenna);
+  }
   P.decal('turret', 'number', '518', 0.28, [1.05, 0.28, -0.15], Math.PI / 2, 0, 0.1);
   P.decal('turret', 'number', '518', 0.28, [-1.05, 0.28, -0.15], -Math.PI / 2, 0, -0.1);
   // 2A46M-1 at axis 1.66: sealed embrasure roll, sleeve pair, fat evacuator
