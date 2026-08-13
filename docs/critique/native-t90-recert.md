@@ -5,6 +5,46 @@ The private comparison GLB was used only as a quarantined visual reference;
 no comparison mesh, vertex/index payload, material, texture, rig, animation or
 runtime wrapper enters the playable or this commit.
 
+## Superseding pear-turret clamshell/equipment closeout — 2026-08-13
+
+- Geometry hash: `fcb77d1` (67 meshes / 118,344 vertices)
+- Evidence: `/private/tmp/t90-pear-armour-final-r5/t90`
+- Integrity: 15 procedural appraisal + 15 yaw0 + 15 yaw90 PNGs, including
+  elevated-left profile; 45 files / 45 distinct SHA-256 hashes
+- Standard-order live first-party visual appraisal:
+  `[9.2,9.2,9.1,9.0,9.0,9.0,9.1,9.2,9.3,9.3,9.1,9.3,9.2,9.3]`
+  (floor 9.0; mean 9.16)
+- Exact terminal band / shoe / strict sweep: `0/0`, `0/0`, `0/0`
+- Parent audit: 0 stranded / 0 abutting / 0 dangling
+- Winding: 0 reversed / 0 mixed, one visually null deficit pixel and zero
+  yaw-stranded candidate pixels
+- Runtime rig: 10/10; muzzle-bore contrast 99.9
+
+The rejected sphere remains absent: the primary mass is still the explicit
+asymmetric pear/cast loft. The complete rotating package is widened from the
+over-compressed prior fit so that equipment seats again occupy its real
+shoulders. Four broad overlapping Kontakt-5 leaves per side replace the five
+small square-looking tiles. Their yaw, pitch and front-plane cant increase
+progressively from the mantlet valley to the falling flank. Three shallow
+lower returns close the cheek without rebuilding a second collar, while three
+diminishing aft leaves continue the same cast falloff.
+
+Shtora housings, brows and conduits remain buried in the inner armor field.
+Both six-tube smoke banks retain broad shoulder carriers and braces. The
+commander cupola, NSVT, tapered shield, night sight, periscopes, antenna
+collars, OPVT and unequal rear packs all remain on visible foundations around
+the final pear shape. The final yaw packet shows the complete shell, armor,
+gun and equipment moving together while the hull and six-wheel native course
+stay fixed.
+
+The quarantined comparison GLB remains unavailable to runtime, so an
+automated reference-mask score is not fabricated. The fresh procedural
+appraisal, historical read-only reference imagery, immutable hash, yaw packet
+and mechanical gates are the acceptance evidence.
+
+**PASS / KEEP `fcb77d1`; supersede `9cf4471c`. Ordered blockers: none for
+the pear-turret armor/equipment closeout.**
+
 ## Superseding post-loft armor and station refit — 2026-08-13
 
 - Geometry hash: `9cf4471c` (67 meshes / 121,320 vertices)
