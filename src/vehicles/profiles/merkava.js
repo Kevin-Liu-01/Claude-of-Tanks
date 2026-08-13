@@ -15,7 +15,7 @@
 // aft-set turret, rear hull clamshell door, turret bustle basket +
 // ball-and-chain curtain. Mk.1B keeps exposed running gear under a narrow
 // fender line; every later mark hangs deep scalloped skirts.
-import { KIT, muzzleBore, orientedSlab } from './kit.js';
+import { KIT, FITTINGS, muzzleBore, orientedSlab } from './kit.js';
 import { vehicleAmbientFloorHook } from '../materials.js';
 
 // ---------------------------------------------------------------------------
@@ -6251,13 +6251,77 @@ function merkavaRakeX(P, z0, z1, xA, yA, xB, yB, mat = 'turret') {
 
 // ---- per-mark turret kits ---------------------------------------------------
 function merkava4Kit(P, p, t) {
-  // MG crowns capped under the dims p95 height line (low pintles, Mk.4M).
+  const { box, cylY } = KIT;
+  const slab = orientedSlab;
+  // Mk.4M roof package authored from public IDF/Wikimedia photographs.  The
+  // previous two tiny generic pintles and half-buried cupola left the whole
+  // roof reading as an empty rectangular plate.  Each replacement below
+  // starts on the existing roof/cupola seat and remains turret-owned.
   const cap = t.capY ?? (t.roof[0][1] + 0.04);
   merkavaSidePanels(P, p, t, { radar: true });
-  merkavaMG(P, 0.14, cap - 0.24, t.roof[0][0] + 0.04, 0.7);
-  merkavaMG(P, -t.cupolaX, cap - 0.22, t.cupolaZ - 0.30, 0.7);
+  // Forward coaxial roof M2 and the commander's .50: broad cradles, ammo
+  // boxes, shields and full barrel runs instead of the former T-shaped pegs.
+  const coaxRoofMG = FITTINGS.pintleMG({
+    mats: P.mats, cls: 'm2', scale: 0.82, tone: 'two-tone', elev: 0.045,
+    ammo: true, shield: false, seed: 44,
+  });
+  coaxRoofMG.position.set(0.14, t.roof[0][1] + 0.005, t.roof[0][0] + 0.02);
+  P.turretG.add(coaxRoofMG);
+  merkavaMG(P, t.cupolaX, cap - 0.53, t.cupolaZ - 0.16, 0.88, true,
+    { dy: 0.28, dz: 0.49, len: 0.78 });
+
+  // Broad commander's seat and the distinctive rear/side ballistic shields.
+  // The pad overlaps the roof by 3 cm; the shield posts overlap the pad and
+  // plates, so the yaw package has an explicit load path rather than stilts.
+  const cy = t.roof[0][1] + 0.035;
+  P.add('turret', box(0.78, 0.07, 0.68), t.cupolaX, cy, t.cupolaZ - 0.08);
+  P.add('turretDetail', slab(
+    [t.cupolaX - 0.34, cy + 0.02, t.cupolaZ - 0.37], [t.cupolaX + 0.34, cy + 0.02, t.cupolaZ - 0.37],
+    [t.cupolaX + 0.34, cy + 0.02, t.cupolaZ - 0.43], [t.cupolaX - 0.34, cy + 0.02, t.cupolaZ - 0.43],
+    [t.cupolaX - 0.27, cy + 0.38, t.cupolaZ - 0.37], [t.cupolaX + 0.27, cy + 0.38, t.cupolaZ - 0.37],
+    [t.cupolaX + 0.27, cy + 0.38, t.cupolaZ - 0.43], [t.cupolaX - 0.27, cy + 0.38, t.cupolaZ - 0.43]));
+  P.add('turretDetail', box(0.055, 0.34, 0.46), t.cupolaX + 0.35, cy + 0.18, t.cupolaZ - 0.17, 0, 0, -0.08);
+  P.add('turretDark', box(0.58, 0.025, 0.035), t.cupolaX, cy + 0.40, t.cupolaZ - 0.37);
+  for (const a of [-0.72, -0.36, 0, 0.36, 0.72]) {
+    P.add('turretDark', box(0.075, 0.045, 0.055),
+      t.cupolaX + Math.sin(a) * 0.29, cy + 0.07, t.cupolaZ + Math.cos(a) * 0.27, 0, a, 0);
+  }
+
+  // Separate stabilized panoramic/sight head on a wide tapered pedestal.
+  // It deliberately sits opposite the commander's ring so the two stations
+  // remain readable in plan, elevated profile and both yaw states.
+  const px = -0.46, pz = t.cupolaZ - 0.06;
+  P.add('turret', cylY(0.20, 0.26, 0.18, 12), px, t.roof[0][1] + 0.10, pz);
+  P.add('turretDetail', box(0.34, 0.28, 0.30), px, t.roof[0][1] + 0.29, pz, 0, -0.08, 0);
+  P.add('turretDark', box(0.25, 0.12, 0.022), px, t.roof[0][1] + 0.31, pz + 0.16, 0, -0.08, 0);
+  P.add('turretGlass', box(0.16, 0.075, 0.026), px, t.roof[0][1] + 0.32, pz + 0.17, 0, -0.08, 0);
+  P.add('turret', box(0.38, 0.035, 0.34), px, t.roof[0][1] + 0.445, pz, 0, -0.08, 0);
+
+  // Low access covers, lifting eyes and unequal periscope blocks break up
+  // the broad roof without creating a second story.  Every cover overlaps
+  // the roof skin and every upright has a visible pad.
+  for (const [x, z, w, d, a] of [
+    [-0.20, t.roof[0][0] - 0.48, 0.54, 0.34, -0.08],
+    [0.18, t.roof[0][0] - 0.92, 0.44, 0.31, 0.06],
+    [-0.62, t.roof[0][0] - 1.16, 0.31, 0.27, -0.04],
+  ]) {
+    P.add('turretDetail', box(w, 0.024, d), x, t.roof[0][1] + 0.006, z, 0, a, 0);
+    P.add('turretDark', box(w * 0.78, 0.009, 0.018), x, t.roof[0][1] + 0.020, z + d * 0.34, 0, a, 0);
+  }
+  for (const [x, z, a] of [[-0.12, 0.42, -0.12], [0.24, 0.18, 0.08], [-0.72, -0.05, -0.15]]) {
+    P.add('turret', box(0.13, 0.035, 0.13), x, t.roof[0][1] + 0.025, z);
+    P.add('turretDark', box(0.09, 0.045, 0.045), x, t.roof[0][1] + 0.052, z + 0.055, 0, a, 0);
+  }
+  // Unequal rear controller/stowage boxes, explicitly founded on the
+  // falling roof shoulder rather than hung from the basket rail.
+  const rearDeckY = t.roof.at(-1)[1] + 0.02;
+  P.add('turret', box(0.42, 0.16, 0.34), -0.58, rearDeckY + 0.06, t.roof.at(-1)[0] + 0.12, 0, -0.05, 0);
+  P.add('turretDetail', box(0.30, 0.11, 0.26), 0.47, rearDeckY + 0.035, t.roof.at(-1)[0] + 0.18, 0, 0.08, 0);
+  P.add('turretDark', box(0.31, 0.012, 0.025), -0.58, rearDeckY + 0.135, t.roof.at(-1)[0] + 0.28, 0, -0.05, 0);
+
   const sc = merkavaCheekPoint(t, 0.58, 0.80);
-  merkavaSmokeCluster(P, -sc.x, sc.y - 0.01, sc.z, -0.30, 4, { recessed: true, pitch: -0.24 });
+  merkavaSmokeCluster(P, -sc.x, sc.y - 0.01, sc.z, -0.30, 6,
+    { recessed: true, pitch: -0.24, pale: true, soft: true });
   KIT.tarpRoll(P, 'turretCloth', -0.28, t.roof.at(-1)[1] - 0.07, t.roof.at(-1)[0] + 0.25, 0.85, 0.105);
 }
 
@@ -9031,6 +9095,10 @@ export const MERKAVA_PROFILES = {
     // print; the mark is authored to the published Mk.4M shape).
     tailRack: {
       z0: -3.42, z1: -3.96, top: 1.68, bot: 0.60, hw: 1.75, x0: 0.45,
+      // The forward rack face overlaps the rear idler station in plan.
+      // Lift only that front segment above the full instanced-shoe crest;
+      // the aft segment keeps the low rear service silhouette.
+      frontClear: { z: -3.62, bot: 1.15 },
       wings: [
         { x0: 0.60, x1: 1.10, z1: -4.02, top: 1.50, bot: 1.20 },
       ],
@@ -9069,8 +9137,8 @@ export const MERKAVA_PROFILES = {
     // published-envelope authoring note (v6-v8) governs; dims anchors
     // (toe 3.53 / rack −4.02 / muzzle 4.78 / skirts ±1.86 / p95 ≤ 2.655)
     // are untouched, every new top ≤ 2.64.
-    apexZ: 2.60, notchHW: 0.30, hwMax: 1.57, roofHW: 1.06, roofInset: 0.86, rearWide: 0.97,
-    shellFrontZ: 1.30, noseZ: 0.42, noseHW: 1.26, maxWZ: -0.35, shellRearZ: -2.25,
+    apexZ: 2.60, notchHW: 0.30, hwMax: 1.57, roofHW: 1.02, roofInset: 0.78, rearWide: 0.84,
+    shellFrontZ: 1.30, noseZ: 0.42, noseHW: 1.26, maxWZ: -0.35, shellRearZ: -1.78,
     shellBotY: 1.58, shellTopY: 2.42,
     // §B3.1 rakeTop: the gun hood's flanks lean (real Mk.4M ridge), the
     // old vertical-walled slab read as the owner's "rectangular block"
@@ -9084,19 +9152,38 @@ export const MERKAVA_PROFILES = {
     // chin clamped to the notch lane (first cut ran hw 0.95: its +0.45 top
     // face crossed the raked cheek planes and the intersection rendered as
     // a §B1 tooth row along the wedge — measured on the r-A hero pair)
-    chin: { z0: 2.35, z1: 0.40, bot0: 1.66, bot1: 1.54, hw: 0.42 },
-    roofLine: [[0.55, 2.62], [0.02, 2.62], [-0.90, 2.62], [-1.95, 2.55]],
-    bustleZ1: -2.34, bustleBot: 1.90,
-    basket: { z0: -2.36, z1: -4.00, top: 2.40, topRear: 2.30, bot: 1.95 }, basketHW: 1.20,
-    chainDrop: 0.12, chainGap: -0.30,
-    kitCapY: 2.655,
-    cupolaX: 0.55, cupolaZ: -0.55, cupolaRaise: -0.14, noLoaderHatch: true,
-    pano: { x: 0.32, z: -0.62, top: 2.64, plinth: 0.88 }, sightX: 0.45,
+    // Tight under-gun carrier: the former 0.84 m-wide front face read as a
+    // square mantlet box in direct front.  The narrower wedge remains
+    // buried under both cheek roots while allowing the round fabric boot
+    // and layered sleeve to define the gun seat.
+    chin: { z0: 2.32, z1: 0.48, bot0: 1.66, bot1: 1.54, hw: 0.31 },
+    // Owner-authored Mk.4M silhouette pass (public-photo reference, no
+    // donor geometry): the old rear roof widened from 1.06 to 1.43 m half
+    // width and stayed nearly level all the way to z=-1.95.  In profile it
+    // read as a rectangular second turret.  The real turret narrows and
+    // falls into a short solid shoulder before the open chain basket.
+    roofLine: [[0.55, 2.58], [0.02, 2.62], [-0.78, 2.58], [-1.62, 2.42]],
+    rearRoofHW: 0.90,
+    bustleZ1: -1.92, bustleBot: 1.88,
+    basket: { z0: -1.90, z1: -3.48, top: 2.34, topRear: 2.18, bot: 1.86 }, basketHW: 1.14,
+    chainDrop: 0.31, chainGap: 0.12,
+    // Published height is the armor-roof datum, not a ban on operational
+    // cupola/MG/sight furniture.  The former 2.655 cap buried the cupola
+    // and reduced the three prominent whips to 12 cm pegs.
+    kitCapY: 3.12,
+    cupolaX: 0.55, cupolaZ: -0.48, cupolaRaise: 0.04, cupolaR: 0.29, noLoaderHatch: true,
+    pano: { x: -0.46, z: -0.54, top: 3.00, plinth: 0.42, seat: true }, sightX: 0.45,
     antennas: [
-      { x: -0.85, y: 2.50, z: -2.30, h: 0.13, stem: 0.35 },
-      { x: 0.85, y: 2.50, z: -2.55, h: 0.13, stem: 0.35 },
-      { x: 0.40, y: 2.48, z: -2.90, h: 0.12, stem: 0.30 },
+      { x: -0.88, y: 2.48, z: -1.70, h: 1.45, stem: 0.13, thin: 0.42 },
+      { x: 0.90, y: 2.46, z: -1.82, h: 1.26, stem: 0.13, thin: 0.40 },
+      { x: 0.36, y: 2.44, z: -2.04, h: 0.94, stem: 0.12, thin: 0.34 },
     ],
+    paleKit: true,
+    softGoods: true,
+    basketVoids: true,
+    chainFringe: true,
+    roofMerge: true,
+    glassTiles: false,
     turretKit: merkava4Kit,
   },
 

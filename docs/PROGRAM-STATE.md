@@ -102,6 +102,7 @@ re-freeze NEW hash, all in ONE commit.
 | isu122s | a24764b5 | RE-FROZEN 2026-08-13 (§5.151 full native-course closure: inter-track core and over-track sponson corridor corrected, suspension dressing explicitly owned, terminal stowage reseated; exact band/shoe/sweep 0/0, geometry 91.3 x2, fidelity 94.3; prior 8f420d18 retired) |
 | isu152 | 540f9d6e | RE-FROZEN 2026-08-13 (§5.151 full native-course closure: continuous inter-track core, shoe-safe wing floor, semantic wheel/bay ownership and physically cleared rear skin; exact band/shoe/sweep 0/0, geometry 92.1 x2, fidelity 94.7; prior 8e2f75c0 retired) |
 | merkava3d | 667ece84 | RE-FROZEN 2026-08-07 (§B2 under-roof closure wave §5.11: solid casting walls, gate rows EXACT, re-cert floor 9.0 on every changed view; sheets shots/critic-merkava-closure/) |
+| merkava4 | df0a5768 | RE-FROZEN 2026-08-13 (§5.159 wholly first-party Windbreaker restoration: low clipped/falling turret, open supported chain basket, seated commander/M2/panoramic/smoke/antenna suite, physical rear-rack/idler clearance, exact band+shoes+sweep 0/0, parent 0/0/0, winding clean and fresh 30-frame yaw/ownership PASS; defective imported print fully removed from runtime/candidate/UI provenance) |
 | pt91m | 2cf10e23 | |
 | t72b3m | 2e314ed8 | GRADUATED 2026-08-11 (§5.117 owner-source complete rebuild: compact low T-72 hull and cast turret, deeply seated irregular B3 protection, compact Sosna/roof suite, unequal backed turret-rear cells, articulated transom and exact native six-wheel linked course; exact track 0/0 bands+shoes, parent/winding clean; commercial-print registration honestly records machine row 0 while fresh independent §B8 passes floor 9.2 / mean 9.28 x14 with genuine yaw0/90 ownership; prior 175be954 retired) |
 | merkava1b | 78051af0 | RE-FROZEN 2026-08-07 (§B2 under-roof closure wave §5.11: solid casting walls, gate rows EXACT, re-cert floor 9.0 on every changed view; sheets shots/critic-merkava-closure/) |
@@ -5558,3 +5559,39 @@ fitting, course collision, open sheet or yaw-dependent wound is visible.
 
 **PASS / KEEP `9339e895`; retire `1c79188`. Ordered blockers: none for this
 photo-class first-party restoration.**
+
+## 5.159 MERKAVA MK.4M FIRST-PARTY WIND BREAKER RESTORATION (2026-08-13, RE-FROZEN)
+
+The active `merkava4` is now unambiguously first-party procedural geometry.
+The old arlassar comparison print is no longer registered as a playable,
+candidate or UI credit and contributes no mesh, vertex/index payload,
+material, texture, rig, animation or converted source geometry. Public IDF
+and Wikimedia photographs plus published dimensions govern the rebuild.
+
+The former long rectangular roof/rear block is replaced by a low clipped
+wedge whose crown narrows and falls into a short shoulder before the open
+chain basket. Cheeks, mantlet carrier and crown remain one connected casting.
+The basket is shorter, lower and visibly braced. A broad commander seat,
+ballistic shield, standardized seated M2, second roof gun, stabilized
+panoramic sight, smoke bank, unequal roof fittings and three full-height
+antenna whips are re-seated on explicit pads, cradles, collars and cheek
+roots. The rear rack's forward hull-owned segment is physically lifted over
+the idler wrap while the aft service face keeps its silhouette.
+
+Freeze **`df0a5768`** reproduces twice at 44 meshes / 79,959 vertices. Exact
+band, instanced-shoe and strict full-sweep receipts are **0/0**. Parent audit
+is **0 stranded / 0 abutting / 0 dangling**; winding is fully clean, runtime
+articulation passes 10/10 and muzzle-bore contrast is 107.2. The standard
+fitting census records `mg1+0d`. The defective historic comparison row stays
+honestly zero; the published-dimension component remains 91.8 and is not
+misrepresented as a clean source-component score.
+
+The final packet at `/private/tmp/merkava4-final-r5` contains 15 yaw0 and 15
+yaw90 views including elevated profile: **30 PNGs / 30 distinct hashes**.
+They show the complete gun/turret/roof/basket package making a genuine
+quarter-turn over the fixed hull and six-wheel native course. No fused
+duplicate, stranded fitting, empty-air decoration, course collision, open
+sheet or yaw-dependent wound is visible.
+
+**PASS / KEEP `df0a5768`. Ordered blockers: none for this first-party
+restoration.**
