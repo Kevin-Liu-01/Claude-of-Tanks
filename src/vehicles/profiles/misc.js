@@ -3332,7 +3332,7 @@ function buildAMX30(P, b2) {
     P.add('hullDetail', box(0.08, 0.08, 4.10), s * 1.54, 1.27, -0.20);         // supported fender edge rail
     if (b2) {
       P.add('hull', box(0.18, 0.18, 0.82), s * 1.58, 1.34, -1.74);             // B2 unequal fender service bin
-      P.add('hullDetail', box(0.12, 0.22, 0.72), s * 1.54, 1.22, -1.74);       // broad inboard return
+      P.add('hullDetail', box(0.12, 0.12, 0.72), s * 1.54, 1.27, -1.74);       // broad inboard return; underside stays above the return shoes
       P.add('hull', box(0.18, 0.20, 0.72), s * 1.58, 1.30, -2.73);             // rear fender service shoulder above the terminal wrap
       P.add('hullDetail', box(0.12, 0.20, 0.62), s * 1.50, 1.30, -2.73);       // broad structural return into the raised sponson
       P.add('hullDark', box(0.13, 0.34, 0.025), s * 1.58, 0.98, -3.095);      // backed rear service recess
@@ -3355,8 +3355,8 @@ function buildAMX30(P, b2) {
   P.hullG.add(cable);
   liftEye(P, 'hullDetail', -1.35, 1.40, 0.20);
   liftEye(P, 'hullDetail', 1.35, 1.40, 0.20);
-  P.decal('hull', 'number', b2 ? '68' : '53', 0.30, [1.51, 1.05, 0.4], Math.PI / 2);
-  P.decal('hull', 'number', b2 ? '68' : '53', 0.30, [-1.51, 1.05, 0.4], -Math.PI / 2);
+  P.decal('hull', 'number', b2 ? '68' : '53', 0.30, [1.51, 1.43, 0.4], Math.PI / 2);
+  P.decal('hull', 'number', b2 ? '68' : '53', 0.30, [-1.51, 1.43, 0.4], -Math.PI / 2);
   // ---- running gear: 5 BIG roadwheels + 5 rollers, front idler ----
   // The comparison side profile carries a tighter five-wheel cadence than
   // the old generic AMX course.  Keep the physical hull datum unchanged and
@@ -3378,7 +3378,7 @@ function buildAMX30(P, b2) {
     shoeRadialScale: b2 ? 0.74 : 1,
     paintedEnds: true, coveredTop: true, arms: true,
   });
-  wheelRecessAt(P, wheelZs, 1.243, roadWheelY, roadWheelR, 0.24);
+  wheelRecessAt(P, wheelZs, 1.243, roadWheelY, roadWheelR, 0.24, 'hullRunningGearDark');
   // (B2 skirts DROPPED: the shoe envelope prints xc+-(W/2+0.023) = +-1.573
   // — a skirt outside it breaks the +-1.55 widthM anchor (§D WIDTH-GUARD),
   // inside it gets swept by the shoes. "Side skirts optional — bare wheels
