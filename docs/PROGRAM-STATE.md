@@ -4906,3 +4906,53 @@ public build pass. Full evidence and vectors are recorded in
 
 **PASS / KEEP all five; retire `d8a948cc`, `1adc0bde`, `7680a400` and every
 earlier conflicting owner-scope freeze. Ordered blockers: none.**
+
+## 5.143 POST-REGRESSION ROLLBACK AUTHORITY + SAFE MODERN RESTORATION (2026-08-13, LIVE)
+
+The running-gear incident is governed by
+`docs/POSTMORTEM-RUNNING-GEAR-REGRESSION-2026-08-13.md`. Commit `90e853af`
+restored the tracked vehicle tree to owner-approved boundary `68c20cc`.
+Sections above this one remain useful historical evidence, but their old
+freeze hashes are **not** permission to reintroduce later hull deletion,
+raised/missing skirt, source-route, or replacement-builder changes. Live
+`origin/main` plus this section is the controlling state.
+
+The safe post-rollback modern sequence now landed on `main` is:
+
+| commit | live closure |
+|---|---|
+| `e03324bd` | Added an explicitly labelled authored-only comparison mode; absent private comparison files can no longer pressure runtime geometry back onto a source route. |
+| `c69c85af`, `fe555e7e`, `b2fb876d` | Rebuilt the Leopard 2 Revolution cheek/mantlet, removed the one-sided cheek card, and separated/seated the complete 2A7V rotating package; regenerated both Leopard asset sets. |
+| `23d86bcc` | Restored Leclerc return rollers and the complete visible upper linked-shoe run without deleting hull, skirt, or mudguard structure. |
+| `e9fa7950` | Regenerated the missing T-72B3M presentation assets. |
+| `1c41e599` | Lowered the complete Type 10 turret package as one assembly and re-seated its gun and roof equipment. |
+| `74e4a6db`, `78afcb00` | Replaced the base T-90 hemisphere with a repository-authored pear casting, then re-planted and re-oriented its Kontakt-5 and station hardware on that casting. |
+| `bdae8fdd`, `7455403c` | Restored the first-party T-80U modular Kontakt-5 clamshell and corrected its asymmetric smoke-bank grammar. |
+| `381ccf1e` | Standardized the T-80/T-80B/T-80BV family around the shared authored base while preserving historically correct variant protection and equipment. |
+| `b42f3401` | Restored the T-72B obr. 1987 dense Kontakt-1 wrap and roof cadence without touching its hull or native course. |
+| `828a162d` | Added broad turret-side carriers, cheek ties, aft returns and rear supports to the T-72B3M so its flank/rear armor and service package visibly belong to and yaw with the turret; moved the B3M beside the T-72 family. |
+
+Live provenance is authoritative: `node tools/native-playables-audit.mjs`
+passes **108 battle playables / 0 GLB-sourced / 26 isolated comparison
+candidates**. Comparison GLBs are optional, private measurement/visual
+oracles only. They never enter a battle playable, public build, converted
+vertex module, or replacement runtime route.
+
+The owner's Challenger 1 and Ariete recovery ruling is also explicit. The
+live routes stay on the earlier stronger repository-authored
+`challenger1Build` and `buildAriete` implementations. The later
+`challenger1Native2026` and `buildArieteNative2026` experiments are rejected
+comparison history: do not switch either runtime route to them. Future
+fidelity work must refine the live first-party builders in place and preserve
+their complete hulls, skirts, mudguards and running-gear corridors.
+
+Fresh same-camera authored and paired packets on this boundary verify the
+current T-90 family plus Challenger 1 and Ariete directly from live code.
+Track/yaw claims must continue to come from newly generated packets; no
+pre-rollback graduation note may override current pixels. Remaining modern
+work proceeds as additive/reseating rounds on these live builders, one tank
+and one atomic pushed commit at a time. The next visual queue is: complete
+family-scale/equipment reconciliation for the older T-90 marks; then the
+owner-named Challenger 1/Ariete in-place polish; then the remaining modern
+Leopard/AMX/Type 99/AbramsX verification re-sits. WWII work stays behind the
+modern queue.
