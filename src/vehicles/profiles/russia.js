@@ -1015,21 +1015,21 @@ export function buildT44(P) {
     // grace) + hanger strut into the step + BAND-THIN tip strip covering
     // the ref's last nose columns to 2.50 (0.28 band < the 12% body filter
     // → hullLengthM anchor unmoved; whip-rough margin 0.046)
-    P.add('hullRubber', box(0.34, 0.39, 0.045), s * 1.32, 0.855, 2.425);
+    P.add('hullRubber', box(0.34, 0.18, 0.045), s * 1.32, 1.20, 2.425);
     P.add('hullDark', box(0.04, 0.06, 0.12), s * 1.32, 1.02, 2.36);
     // (strip sits CLEAR of the flap face in z — an overlapping col unioned
     // flap-top∪strip-bot to a 0.31 band and rode the 12% body filter:
     // hullLengthM read 6.17 twice, the m48 AA-razor class)
-    P.add('hullRubber', box(0.30, 0.24, 0.04), s * 1.32, 0.86, 2.478);
+    P.add('hullRubber', box(0.30, 0.10, 0.04), s * 1.32, 1.16, 2.478);
     // front skirt-flap plates at the ±1.589 plane (ref st11/12 bot 0.0-0.1
     // + front-view outer band 0.38..1.31 — hang beside the idler wrap,
     // outboard of the ±1.445 track, §B4 clear)
     P.add('hullRubber', box(0.03, 0.72, 0.35), s * 1.573, 0.67, 1.575);
     // rear flaps at the ±1.589 st1 column (ref st1 bot 0.185; z -3.10 keeps
     // them clear of the st0/st1 slab boundary at -3.22 — bradley ≥20mm law)
-    P.add('hullRubber', box(0.34, 0.34, 0.045), s * 1.42, 0.78, -3.10);
-    P.add('hullRubber', box(0.34, 0.30, 0.04), s * 1.42, 0.42, -3.08);
-    P.add('hullDark', box(0.04, 0.36, 0.07), s * 1.42, 1.10, -3.045);
+    P.add('hullRubber', box(0.34, 0.18, 0.045), s * 1.42, 1.20, -3.10);
+    P.add('hullRubber', box(0.34, 0.10, 0.04), s * 1.42, 1.16, -3.08);
+    P.add('hullDark', box(0.04, 0.14, 0.07), s * 1.42, 1.20, -3.045);
     // rear fender extension to the ref's -3.33 fender tail (st0 ±1.494)
     P.add('hull', box(0.24, 0.03, 0.15), s * 1.37, 1.285, -3.255);
     // mid-fender bin pair at the ±1.52 st3/st5 bulges (gap keeps st4 clean)
@@ -1068,6 +1068,13 @@ export function buildT44(P) {
     contactZF: 1.50, contactZR: -2.26,
   });
   widthAnchor(P, 1.59, 1.30, -2.80);
+
+  // Keep the T-44's low inter-track keel, but seat complete lane-local
+  // fittings above the shoes and lift the outer loft into one continuous
+  // sponson shoulder.  This clears both terminal wraps and the full sweep
+  // without hiding the five-wheel Christie cadence behind a deeper skirt.
+  P.liftTrackCorridorParts(['hull', 'hullDetail', 'hullDark'], { laneInnerX: 0.90, floorY: 1.10 });
+  P.raiseTrackCorridor(['hull'], { laneInnerX: 0.90, floorY: 1.10 });
 
   // ---- LOW WIDE FLAT-ROOF casting: three overlapping lathes loft the
   // measured egg (nose drum + main body + rear shoulders — one contiguous
