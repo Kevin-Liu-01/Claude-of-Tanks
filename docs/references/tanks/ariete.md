@@ -845,3 +845,25 @@ Fresh independent final evidence contains 42 uniquely hashed frames: fourteen
 paired reference/procedural views and genuine yaw-0/yaw-90 sets. Only the
 immutable `acea2100` re-certification is valid; its final vector and
 disposition are recorded in `docs/PROGRAM-STATE.md` at landing.
+
+## FIRST-PARTY ROUTE RESTORATION / EXACT TRACK CLOSEOUT (2026-08-13)
+
+Live visual comparison proved that the dormant repository-authored
+`buildArieteNative2026` preserved the intended low, broad Ariete casting and
+supported combat suite substantially better than the active slab-heavy legacy
+route. The native builder is active again. It consumes no external geometry,
+converted payload, texture, material, rig or animation.
+
+Its running gear now records the explicit order front idler, seven road-wheel
+pairs, four supported return rollers and rear final drive. A readable painted
+idler replaces the former nominal 9 cm terminal. The low bow is narrowed
+inside the live lanes, the shoulder flare begins above the course, the wide
+sponson becomes a shallow deck-edge beam and the segmented skirts hang clear
+of the return run. Exact band/shoe/sweep clearance is 0/0/0.
+
+The active freeze is `151906a0` (50 meshes / 76,599 vertices). Parent audit is
+0/0/0, winding is clean, articulation is 10/10 and the bore passes. Fresh
+elevated-profile and yaw evidence is retained at
+`/private/tmp/ariete-native-final-r3/ariete` (45 unique PNGs). The complete
+turret, gun, cupolas, TURMS/optics, MG, smoke fans, antennas and supported rear
+basket rotate together over a fixed hull and unobstructed native course.

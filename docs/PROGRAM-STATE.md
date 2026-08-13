@@ -151,7 +151,7 @@ re-freeze NEW hash, all in ONE commit.
 | type74 | 8319dbb8 | RE-FROZEN 2026-08-11 (§5.110 authored low cast turret, five-wheel native course and supported combat/service suite; independent §B8 floor 9.1 / mean 9.29) |
 | strv103 | f4deeb6b | RE-FROZEN 2026-08-13 (§5.160 wholly first-party fixed-mount restoration: low louvred wedge, fixed L74, four large hydropneumatic road wheels, correct front-drive/rear-idler exception, supported return rollers and backed deck/rear-service suite; exact band+shoes+sweep 0/0, parent 0/0/0, winding clean, runtime 10/10 and fresh paired floor 9.0 / mean 9.03; retired external print removed from public/runtime/candidate/UI provenance) |
 | is3 | 46539231 | RE-FROZEN 2026-08-13 (§5.161 wholly first-party IS-3 restoration: pike hull, organic undercut cast dome and short race, seated DShK/roof suite, six enlarged dished road wheels with front idler/rear final drive, three return rollers and backed asymmetric stern service field; exact band+shoes+sweep 0/0, parent 0/0/0, winding clean, runtime 10/10 and fresh 45-frame paired/yaw floor 9.0 / mean 9.03; retired external print removed from public/runtime/candidate/UI provenance) |
-| ariete | 9b0ceebe | RE-FROZEN 2026-08-13 (§5.165 wholly first-party terminal-order closeout: a separate large non-driven front idler now precedes seven road wheels/four return rollers and a bolted rear final drive; exact band/shoes/sweep 0/0/0, parent 0/0/0, winding clean and fresh 45-frame elevated-profile/yaw PASS; historical comparison binary and active oracle routes removed; prior c0aa8658 retired) |
+| ariete | 151906a0 | RE-FROZEN 2026-08-13 (§5.174 restored wholly first-party `buildArieteNative2026`: low broad cast-form turret, supported TURMS/MG/smoke/basket suite, distinct front idler + seven road wheels + four return rollers + rear final drive; bow, sponson and skirts rebuilt outside the animated course; exact band/shoes/sweep 0/0/0, parent 0/0/0, winding clean and fresh 45-frame elevated-profile/yaw PASS; prior 9b0ceebe retired) |
 | t72b_1987 | 3f2483d4 | GRADUATED 2026-08-11 (§5.114 authored low B87 hull/turret, buried K1 and native six-wheel course; independent §B8 floor 9.0 / mean 9.14) |
 | t72bu | 4b66bf6c | GRADUATED 2026-08-11 (§5.115 authored compact BU protection/station/rear package on one native six-wheel course; independent §B8 floor 9.0 / mean 9.19) |
 | t90ms | 5076891c | GRADUATED 2026-08-11 (§5.118 authored clipped-diamond shell, Relikt, supported bustle/station and native six-wheel course; independent §B8 floor 9.0 / mean 9.18) |
@@ -6164,3 +6164,40 @@ gates are the acceptance evidence.
 
 **PASS / KEEP `fcb77d1`; supersede `9cf4471c`. Ordered blockers: none for the
 pear-turret armor/equipment closeout.**
+
+## 5.174 C1 ARIETE FIRST-PARTY RESTORATION / TRACK CLOSEOUT (2026-08-13, RE-FROZEN)
+
+The active `ariete` route is restored to the stronger wholly repository-
+authored `buildArieteNative2026`. No source mesh, converted vertex payload,
+texture, material, rig or animation enters runtime. The retired slab-heavy
+builder remains inactive; comparison binaries are not runtime dependencies.
+
+The restored build carries the intended long low hull, broad asymmetric
+cast-form turret, integrated rounded mantlet and corrected gun run. Both
+cupola wells, TURMS/optic stations, pintle MG, four-tube smoke fans, antenna
+collars and the complete open rear basket have visible plinths, brackets or
+rail returns and execute one coherent quarter-turn.
+
+Running order is explicit and independently readable: **front non-driven
+idler -> seven large road-wheel pairs -> four supported return-roller pairs ->
+rear final-drive sprocket**. The former tiny nominal idler is replaced by a
+painted terminal assembly. The lower bow stays inside the live lanes, its
+shoulders flare only above the course, the full-width sponson is a shallow
+deck-edge beam, and segmented skirts hang from the fender instead of filling
+the animated return sweep.
+
+Freeze **`151906a0`** reproduces at 50 meshes / 76,599 vertices. Exact band,
+instanced-shoe and strict moving-sweep clearance is **0/0/0**. Parent audit is
+**0 stranded / 0 abutting / 0 dangling**. Winding is 0 reversed / 0 mixed /
+0 deficit pixels; the 57-pixel mode-2 nominee is the fixed backed rear-service
+seat confirmed by yaw. Runtime articulation passes 10/10 and the explicit
+muzzle bore passes at 124.5 contrast.
+
+`/private/tmp/ariete-native-final-r3/ariete` contains 15 appraisal, 15 yaw0
+and 15 yaw90 frames including elevated-left profile: **45 PNGs / 45 distinct
+hashes**. Fresh standard order is
+`[9.1,9.1,9.0,9.0,9.0,9.0,9.0,9.1,9.1,9.2,9.1,9.2,9.1,9.2]`, floor **9.0**
+and mean **9.09**. No copied geometry, duplicate turret, stranded fitting,
+empty-air decoration, track collision, open sheet or yaw wound appears.
+
+**PASS / KEEP `151906a0`; supersede `9b0ceebe`. Ordered blockers: none.**

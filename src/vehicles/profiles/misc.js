@@ -798,7 +798,9 @@ function buildArieteNative2026(P) {
   // Wide sponsons end before the sprocket uprun.  A narrower structural
   // return continues between the two live courses, preserving the deck
   // load path without putting a full-width wall through the rear shoes.
-  P.add('hull', box(3.28, 0.25, 4.91), 0, 1.17, -0.445);
+  // Keep the full-width sponson as a shallow deck-edge beam above the native
+  // return course.  Its former 25 cm drop occupied the animated band sweep.
+  P.add('hull', box(3.28, 0.10, 4.91), 0, 1.30, -0.445);
   P.add('hull', box(2.00, 0.25, 0.27), 0, 1.17, -3.035);
   P.add('hull', box(3.22, 0.055, 3.92), 0, 1.325, -1.08);                     // broad flat engine/crew deck
   for (const s of [-1, 1]) {
@@ -806,10 +808,10 @@ function buildArieteNative2026(P) {
     // upper shoulders flare above the idler uprun.
     P.add('hull', slab(
       [s * 0.01, 0.42, 1.52], [s * 1.00, 0.72, 1.52], [s * 0.94, 1.27, 3.38], [s * 0.01, 1.25, 3.54],
-      [s * 0.01, 1.30, 1.52], [s * 1.58, 1.30, 1.52], [s * 1.51, 1.29, 3.40], [s * 0.01, 1.26, 3.55]));
+      [s * 0.01, 1.30, 1.52], [s * 0.94, 1.30, 1.52], [s * 0.94, 1.31, 3.40], [s * 0.01, 1.26, 3.55]));
     P.add('hull', slab(
-      [s * 1.04, 1.15, 1.55], [s * 1.58, 1.15, 1.55], [s * 1.51, 1.27, 3.40], [s * 1.10, 1.25, 3.41],
-      [s * 1.04, 1.36, 1.55], [s * 1.64, 1.36, 1.55], [s * 1.60, 1.39, 3.42], [s * 1.10, 1.36, 3.43]));
+      [s * 1.04, 1.28, 1.55], [s * 1.58, 1.28, 1.55], [s * 1.51, 1.30, 3.40], [s * 1.10, 1.30, 3.41],
+      [s * 1.04, 1.38, 1.55], [s * 1.64, 1.38, 1.55], [s * 1.60, 1.41, 3.42], [s * 1.10, 1.38, 3.43]));
   }
   // Rear lower return and low layered service transom.
   P.add('hullDark', box(1.98, 0.44, 0.40), 0, 0.76, -3.38);
@@ -848,17 +850,16 @@ function buildArieteNative2026(P) {
   // the final 5 cm top-down contiguity cell at x 0.40 / z -3.68.
   P.add('hullDark', box(0.14, 0.010, 0.14), 0.40, 0.54, -3.68);
 
-  // Shallow segmented skirts cover the return run and only the upper wheel
-  // shoulders.  The former 0.32 m course sat wholly above the wheel crowns,
-  // making the native gear look naked; this lower course restores the C1's
-  // draped hull-over-seven-wheels stance while retaining every lower arc.
+  // Shallow segmented skirts hang from the fender edge above the complete
+  // animated return run.  They may visually frame the upper wheel shoulders,
+  // but no static panel is allowed to occupy the band/shoe sweep.
   fenders(P, 1.10, 1.64, 1.35, -2.78, 2.72, 0.03);
   for (const s of [-1, 1]) {
     for (let k = 0; k < 11; k++) {
       const z = -2.72 + k * 0.50;
-      const h = k === 0 ? 0.40 : 0.46;
-      P.add('hull', box(0.030, h, k === 0 ? 0.37 : 0.47), s * 1.65, 0.995, z);
-      P.add('hullDark', box(0.034, h * 0.72, 0.016), s * 1.668, 0.995, z + 0.235);
+      const h = k === 0 ? 0.13 : 0.15;
+      P.add('hull', box(0.030, h, k === 0 ? 0.37 : 0.47), s * 1.65, 1.355, z);
+      P.add('hullDark', box(0.034, h * 0.62, 0.016), s * 1.668, 1.365, z + 0.235);
     }
     P.add('hullRubber', box(0.024, 0.24, 0.38), s * 1.72, 1.01, -3.22);
     P.add('hullRubber', box(0.024, 0.24, 0.36), s * 1.72, 1.01, 2.78);
@@ -873,8 +874,8 @@ function buildArieteNative2026(P) {
     P.add('hullDetail', box(0.38, 0.025, 0.18), s * 1.22, 1.34, 3.11, -0.22, 0, 0);
     liftEye(P, 'hullDetail', s * 1.30, 1.34, -2.54);
     P.add('hullDetail', torus(0.09, 0.016, 14), s * 0.58, 0.61, 3.43, Math.PI / 2, 0, 0);
-    P.add('hullDetail', box(0.32, 0.035, 0.035), s * 0.80, 0.91, 3.31, -0.22, 0, s * 0.12);
-    P.add('hullDetail', box(0.20, 0.028, 0.028), s * 1.12, 0.98, 3.23, -0.22, 0, -s * 0.15);
+    P.add('hullDetail', box(0.30, 0.035, 0.035), s * 0.76, 1.22, 3.27, -0.22, 0, s * 0.12);
+    P.add('hullDetail', box(0.16, 0.028, 0.028), s * 1.03, 1.25, 3.20, -0.22, 0, -s * 0.15);
   }
   P.add('hullDark', box(1.80, 0.025, 0.028), 0, 0.81, 3.40, -0.18, 0, 0);
   P.add('hullDetail', box(1.42, 0.028, 0.032), 0, 1.03, 3.36, -0.18, 0, 0);
@@ -895,20 +896,28 @@ function buildArieteNative2026(P) {
   P.add('hullDetail', box(1.60, 0.035, 0.035), 0.20, 1.40, -3.10);
   P.add('hullDetail', box(0.055, 0.055, 1.40), -1.27, 1.38, -0.30, 0, 0.05, 0);
 
-  // Seven large, closely spaced fleet-native wheels and one linked course.
+  // Seven large, closely spaced fleet-native wheels, a distinct non-driven
+  // front idler, rear final drive, supported return rollers and one linked
+  // course.  The terminal radii are intentionally smaller than the road
+  // wheels but remain readable at the standardized elevated profile.
   const wheelZs = [2.40, 1.65, 0.90, 0.15, -0.60, -1.35, -2.10];
   const XC = 1.3725;
   buildRunningGear(P, {
     style: 'rubber', dishR: 0.74, tireHex: 0x34352d, wheelHex: 0x454a38,
     wheelR: 0.410, wheelW: 0.230, wheelY: 0.450, xc: XC,
     wheelZs,
-    sprocket: { z: -3.12, y: 0.86, r: 0.21 },
-    idler: { z: 3.30, y: 0.945, r: 0.09 },
+    sprocket: { z: -3.12, y: 0.78, r: 0.255, trackR: 0.285 },
+    idler: { z: 3.18, y: 0.67, r: 0.265, trackR: 0.285 },
     rollers: [1.95, 0.70, -0.65, -1.80].map((z) => ({ z, y: 0.88, r: 0.08 })),
     trackW: 0.615, topY: 0.88, botY: 0.055,
     contactZF: 2.22, contactZR: -2.05,
     deadSag: 0.022, paintedEnds: true, coveredTop: true, arms: true,
   });
+  P.hullG.userData.runningGearOrder = {
+    front: 'idler', frontWheelPairs: 1, roadWheelPairs: wheelZs.length,
+    supportRollerPairs: 4, suspension: 'torsion-arm',
+    rear: 'final-drive-sprocket',
+  };
   tightenHullShadowProxy(P, { xc: XC, trackW: 0.34, y0: 0.15, y1: 0.58, z0: -2.40, z1: 2.60, hullZ0: -3.20, hullZ1: 3.20 });
 
   // ---- low, broad connected Ariete turret ----
@@ -3635,10 +3644,10 @@ export const MISC_PROFILES = {
   },
   type90: { build: buildType90 },
   // Runtime Ariete is the stronger earlier repository-authored construction.
-  // The weaker later Native2026 experiment remains historical comparison
-  // code only; neither a source mesh nor converted vertex payload is used at
-  // runtime.
-  ariete: { build: buildAriete },
+  // Restored first-party Native2026 route: this is repository-authored
+  // procedural geometry only; no source mesh or converted vertex payload is
+  // used at runtime.
+  ariete: { build: buildArieteNative2026 },
   leclerc: { build: buildLeclerc },
   t80u: { build: buildT80UNative2026 },
   type74: { build: buildType74Native2026 },
