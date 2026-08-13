@@ -6406,10 +6406,9 @@ function buildLeo2Revolution(P) {
   P.add('turret', slab(
     [-0.93, 0.47, 2.44], [-1.62, 0.47, 2.40], [-1.64, 0.47, 0.60], [-0.93, 0.47, 0.60],
     [-0.93, 0.54, 2.42], [-1.58, 0.52, 2.38], [-1.62, 0.52, 0.60], [-0.93, 0.54, 0.60]));
-  // Formerly a 30 cm-tall near-black "seam" spanning most of the left
-  // cheek.  It is a real face/cap; keep it armor-coloured and let the small
-  // supported hardware provide the panel breaks.
-  P.add('turret', box(0.68, 0.30, 0.03), -1.28, 0.32, 2.43);                   // cheek face cap
+  // The former standalone face cap remained visible as the square card in
+  // the owner's elevated screenshot. The primary loft and broad cheek slab
+  // already overlap here, so no independent patch is needed or permitted.
   // side walls: left to -2.14w, right STOPS at 2.04w (ref ±1.63 plan col)
   P.add('turret', box(0.07, 0.10, 0.91), -1.465, 0.50, 0.645);                 // left wall inner fore-rear (floor 2.05w)
   // r5: fore-front walls z0 1.10 -> 1.185L (the ref 0.765w column reads its
@@ -6422,21 +6421,19 @@ function buildLeo2Revolution(P) {
   // columns, the slivers keep their certified reads either side
   P.add('turret', box(0.07, 0.19, 0.7835), -1.465, 0.455, -0.20175);           // left inner sliver FORE (floor 1.96, w -0.16..-0.94)
   P.add('turret', box(0.07, 0.19, 0.8885), -1.465, 0.455, -1.38575);           // left inner sliver REAR (w -1.29..-2.18)
-  P.add('turret', box(0.15, 0.10, 0.91), -1.575, 0.50, 0.645);                 // left wall outer fore-rear (floor 2.05w)
-  P.add('turret', box(0.15, 0.24, 0.605), -1.575, 0.40, 1.4875);               // left wall outer fore-front (floor 1.88w)
+  // One continuous outer armor course replaces the two cuboids whose end
+  // faces formed the second square-cheek failure. Its inboard root overlaps
+  // the inner wall while the outboard crown and nose recede into the cheek.
+  P.add('turret', slab(
+    [-1.64, 0.33, 0.19], [-1.50, 0.33, 0.19], [-1.50, 0.28, 1.790], [-1.60, 0.28, 1.700],
+    [-1.56, 0.52, 0.19], [-1.50, 0.52, 0.19], [-1.50, 0.52, 1.735], [-1.54, 0.52, 1.670]));
   P.add('turret', box(0.15, 0.19, 0.7835), -1.575, 0.455, -0.20175);           // left wall outer rear FORE
   P.add('turret', box(0.15, 0.19, 0.1385), -1.575, 0.455, -1.01075);           // left wall outer rear TAIL (keeps the -1.43w plan rear)
   P.add('turret', box(3.04, 0.17, 0.083), 0, 0.475, -0.663);                   // floor step 1.99 (w -1.01)
   P.add('turret', box(3.04, 0.14, 0.083), 0, 0.49, -0.774);                    // floor step 2.02 (w -1.12)
   P.add('turret', box(3.04, 0.08, 0.083), 0, 0.52, -0.886);                    // floor step 2.08 (w -1.24)
-  // r5: tabs' front pulled 2.05w -> 1.99w (ref plan fronts 1.988/1.960 at
-  // x ±1.71..1.74) with tops at the walls' 2.12 line
-  P.add('turret', box(0.09, 0.32, 0.16), -1.715, 0.40, 2.26);                  // cheek corner tab (r16-b: top 2.12 -> 2.16 — novlo turret ±1.73 cols read 2.16-2.17)
-  // r7: right tab x 1.67..1.76 -> 1.670..1.746 — its edge sat 0.5mm from
-  // the settled 1.7605 front-bin boundary and AA-printed 2.093 into the
-  // 1.780 column (ref jacket line 1.711 there; err 0.236, the #2 front
-  // defect). Still prints the 1.738 front column and the 1.737 plan lane.
-  P.add('turret', box(0.076, 0.32, 0.16), 1.708, 0.40, 2.26);                  // right corner tab (r16-b: top 2.16 with the left)
+  // No independent corner tabs: the raked cheek walls close the fighting
+  // compartment themselves and leave no square ornament proud of the armor.
   P.add('turret', box(0.22, 0.09, 0.91), 1.50, 0.495, 0.645);                  // right wall fore-rear x 1.61 (floor 2.05w)
   // r7: fore-front wall x 1.61 -> 1.6395 — the ref wall-corner 2.161 line
   // runs to the +1.64 front column (proc read the 1.85 shoulder strip).
@@ -6446,9 +6443,9 @@ function buildLeo2Revolution(P) {
   // 2.04w — the "boxy vertical cheek" close-front read. Top-front pulled
   // back 15deg (2.39 -> 2.3257 local); the bottom edge keeps the 2.04 plan
   // line and the st8 end-cap x, the top keeps the 2.12w wall-top line.
-  P.add('turret', slab(                                                        // right wall fore-front (floor 1.88w), raked face
+  P.add('turret', slab(                                                        // right wall fore-front: raked and inward-tapered
     [1.39005, 0.28, 1.185], [1.64955, 0.28, 1.185], [1.64955, 0.28, 2.39], [1.39005, 0.28, 2.39],
-    [1.39005, 0.52, 1.185], [1.64955, 0.52, 1.185], [1.64955, 0.52, 2.3257], [1.39005, 0.52, 2.3257]));
+    [1.39005, 0.52, 1.185], [1.57000, 0.52, 1.185], [1.57000, 0.52, 2.2850], [1.39005, 0.52, 2.3257]));
   P.add('turret', box(0.22, 0.17, 0.8945), 1.50, 0.455, -0.25725);             // right wall rear (floor 1.96, to -1.05w — the 1.01w col is step-owned)
   P.add('turret', box(0.10, 0.17, 0.8235), 1.50, 0.455, -1.35325);             // right inner sliver (floor 1.97, w -1.29..-2.12)
   // RESTORED COMPACT REVOLUTION COMBAT SUITE (native authored geometry).
@@ -6665,19 +6662,19 @@ function buildLeo2Revolution(P) {
   // plan line — the old 2.58w reach was the top plan-turret error)
   // r5: top 2.15 -> 2.02 (its AA read 2.185 on the lone 2.21w column where
   // the ref falls to 2.056)
-  P.add('turret', box(0.80, 0.25, 0.08), 0, 0.295, 2.55);
-  for (const s of [-1, 1]) P.add('turretDark', box(0.05, 0.24, 0.42), s * 0.41, 0.31, 2.44);
+  P.add('turret', box(0.92, 0.29, 0.10), 0, 0.315, 2.55);
+  for (const s of [-1, 1]) P.add('turretDark', box(0.065, 0.27, 0.44), s * 0.47, 0.32, 2.43);
   // P-1 (defuse-recert critic order): the mantlet cheek blocks read as
   // bare grey "posts" over the black ring window at close-front. Tells:
   // the RIGHT cheek carries the coax MG port (pale collar + dark bore on
   // its front face — the real 2A46/L44 coax spot), the LEFT a bolt row.
   // All faces interior to the turret silhouette (core 2.2525 line owns
   // every column here; y stays inside the blocks' own 0.19..0.43 band).
-  P.add('turretDetail', KIT.cylZ(0.030, 0.012, 12), 0.41, 0.355, 2.652);       // coax port collar
-  P.add('turretDark', KIT.cylZ(0.017, 0.020, 10), 0.41, 0.355, 2.654);         // coax bore stub
-  P.add('turretDetail', box(0.012, 0.012, 0.006), -0.41, 0.385, 2.652);        // left cheek bolt row
-  P.add('turretDetail', box(0.012, 0.012, 0.006), -0.41, 0.330, 2.652);
-  P.add('turretDetail', box(0.012, 0.012, 0.006), -0.41, 0.275, 2.652);
+  P.add('turretDetail', KIT.cylZ(0.032, 0.014, 12), 0.47, 0.365, 2.662);       // coax port collar
+  P.add('turretDark', KIT.cylZ(0.018, 0.022, 10), 0.47, 0.365, 2.664);         // coax bore stub
+  P.add('turretDetail', box(0.012, 0.012, 0.007), -0.47, 0.405, 2.662);        // left cheek bolt row
+  P.add('turretDetail', box(0.012, 0.012, 0.007), -0.47, 0.345, 2.662);
+  P.add('turretDetail', box(0.012, 0.012, 0.007), -0.47, 0.285, 2.662);
   // ---- L/44 at axis 1.85 (band 1.76..1.94): muzzle 6.005 (published
   // overall 9.97; print tube ends 5.934). r7: 6.02 -> 6.005 — the settled
   // grid's pitch shrank the 0.75-pitch cover margin to 0.083 and the 6.02
@@ -6687,9 +6684,12 @@ function buildLeo2Revolution(P) {
   // plan camera enough to land the ±2.0 jacket faces on plan-bin
   // boundaries (ONLY-PROC flicker at ±2.04, plan 96.4 -> 92.3). ----
   P.gunG.position.set(0, 0.25, 1.35);
-  P.addGunExtra(KIT.cylX(0.10, 0.56, P.q ? 18 : 12), 0, 0.10, 0);
-  P.addGunExtra(box(0.46, 0.24, 0.30), 0, 0.12, 0.32);
-  P.addGunExtra(cylZ(0.10, 0.5, 12, 0.12), 0, 0.03, 0.90);
+  P.addGunExtra(KIT.cylX(0.135, 0.70, P.q ? 20 : 14), 0, 0.08, 0);
+  P.addGunExtra(slab(
+    [-0.35, -0.14, 0.16], [0.35, -0.14, 0.16], [0.25, -0.11, 0.70], [-0.25, -0.11, 0.70],
+    [-0.31,  0.17, 0.16], [0.31,  0.17, 0.16], [0.21,  0.14, 0.70], [-0.21,  0.14, 0.70]));
+  P.addGunExtraDark(box(0.48, 0.045, 0.42), 0, -0.135, 0.43);                 // mantlet boot lower fold
+  P.addGunExtra(cylZ(0.115, 0.56, 14, 0.14), 0, 0.03, 0.90);
   P.addGunExtraDark(cylZ(0.026, 0.10, 8), 0.23, 0.08, 0.50);
   // r9 A1 mantlet-face relief (critic order — ref paints "mantlet drum +
   // bolted flange"): flange disc proud of the drum's front face (r 0.126 >
@@ -6707,7 +6707,8 @@ function buildLeo2Revolution(P) {
   // bottom across w 0.93..1.47 where the ref turret floor reads 1.890 (the
   // ref breech lives INSIDE its shell) — the box mantlet block carries the
   // visual root.
-  KIT.buildGun(P, { len: 5.005, r: 0.078, sleeve: false, evac: null, collar: false, baseR: 0.001 });
+  KIT.buildGun(P, { len: 5.005, r: 0.078, sleeve: true, evac: 0.56, evacR: 1.70,
+    collar: true, baseR: 0.001 });
   // r9 A1 GUN FACE (critic order — "no gun read dead-front; camo end-cap
   // vanishes"): dark bore end-disc INSIDE the 0.078 tube radius, face 0.5 mm
   // proud of the tube's own camo cap (buildGun tube ends at len-0.02 =
