@@ -6,14 +6,13 @@ at the right cheek roof, PERI R17, loader MG3, 2x8 Wegmann smoke
 mortars, full-width slatted bustle rack, flat-panel skirts with heavy
 sculpted fore blocks, Rh 120 L/44.
 
-## ORACLE STATE (adjudicated 2026-08-06, BASE-21 starter round)
-**NO reference oracle.** MODEL_SOURCE is `procedural` (the bergman
-CC-BY-NC-SA print is quarantine-DELISTED behind `SHIP_USERDROP2_NEW =
-false` in userdrops2.js and never registers), there is NO ledger row and
-tmp-tank-critic refuses the id ("no GLB reference registered").
-**FALSE-0 LAW: never run the gate on this id.** The bar is the VISUAL
-photo class + published dims + the §B battery + 14-view self-reads
-(rendered on the critic's exact view set via tools/tmp-leo-photoclass).
+## ORACLE STATE (superseded 2026-08-12)
+The gameplay source remains `procedural` and fully first-party. A repaired
+private GLB is registered only for the read-only QA/measurement harness. It is
+not shipped, instantiated at runtime, converted into a playable payload or
+used as source topology. The earlier false-zero/no-oracle notes below are
+historical context; current certification uses the private oracle for
+silhouette and station comparison while preserving authored geometry.
 
 ## Corroborated dimensions (photo-class targets)
 
@@ -413,3 +412,26 @@ clean-HEAD hash 41587e99.** Scores in canonical view order:
 - Evidence: `shots/critic-leo-rcws/leo2a4/` (35 fresh sheets) plus the
   unchanged-family garage controls. Full verdict:
   `docs/critique/shaded-parity-leopard-rcws-recert.md`.
+
+## 2026-08-12 FORWARD WELDED-LOFT / STRICT COURSE FINAL
+
+Owner order: move the Leopard 2A4 turret forward, make it longer and better
+shaped, restore supported decoration, and prohibit every track intersection.
+
+- Primary turret: one connected ten-point authored loft, forward **0.10 m**,
+  with extended nose, clipped shoulders and longer aft walls. No imported
+  geometry or detached extension plate.
+- Mantlet/EMES/gun: all re-seated on the new shell; exposed L/44 tube shortened
+  by the matching offset so the muzzle envelope stays source-correct.
+- Service grammar: extended grab rails, shallow roof weld, rear-shoulder
+  latches and a rear-shifted full slatted basket with supported stowage.
+- Hull/course: outboard sponson floor lifted over the full return; skirts moved
+  outside the shoe lane and carried by a visible rail/hanger course; supported
+  shoulder/mudguard caps close the remaining front plan pockets.
+- Machine receipt: hash **`4011c71c`** twice, 66 meshes / 89,443 vertices;
+  bands **0/0**, shoes **0/0**, strict sweep **0/0**, plan holes **0**, parent
+  **0/0/0**, winding **0/0 with 0 px deficit**.
+- Fidelity: **92.14** composite, **90.18** minimum whole view, gun **91.53**,
+  tracks **96.03**. Fresh final evidence is 15 paired + 15 yaw0 + 15 yaw90,
+  **45/45 distinct hashes**. Full verdict:
+  `docs/critique/native-leo2a4-forward-loft-recert.md`.

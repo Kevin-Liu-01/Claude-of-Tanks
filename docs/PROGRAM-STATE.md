@@ -86,7 +86,7 @@ re-freeze NEW hash, all in ONE commit.
 | chieftain5 | d4f2a9a6 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | t84 | 04707a9c | |
 | m47_patton | 2fc99c50 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
-| leo2a4 | 3a653cf9 | RE-FROZEN 2026-08-12 (§5.126 first-party Leopard 2A4: compact seven-wheel hull, native welded turret, supported PERI/roof/MG suite and exact native course; machine fidelity 92.49 / min view 90.43; fresh 42-frame yaw/ownership floor 9.0 / mean 9.12) |
+| leo2a4 | 4011c71c | RE-FROZEN 2026-08-12 (§5.139 first-party forward welded-loft restoration: longer connected turret and basket, re-seated mantlet/EMES/roof suite, supported zero-hole bow shoulders, seven native wheels and exact band+shoe+sweep 0/0; machine fidelity 92.14 / min view 90.18; fresh 45-frame yaw/ownership floor 9.1 / mean 9.19; prior 3a653cf9 retired) |
 | leo2a5 | e215a738 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | leo2a6 | e99f8490 | RE-FROZEN 2026-08-12 (§5.126 first-party Leopard 2A6: source-semantic wedge turret, canonical seated MG3, seven-wheel hull and exact native course; machine fidelity 95.43 / min view 95.32; fresh 42-frame yaw/ownership floor 9.3 / mean 9.46) |
 | leo2a7v | a097ec | RE-FROZEN 2026-08-12 (§5.126 first-party Leopard 2A7V: low arrowhead armor package, supported FLW/PERI stations, rear APU/service field and exact native course; machine fidelity 91.17 / min view 90.05; fresh 42-frame yaw/ownership floor 9.0 / mean 9.09) |
@@ -4721,3 +4721,48 @@ bore, native-only provenance, family order and all eight targeted presentation
 assets pass.  The complete test suite and both private and stripped-public
 production builds also pass.  **KEEP / RE-FROZEN `a7eae06a`; retire
 `27f9212e` and all earlier prototype freezes.**
+
+## 5.139 LEOPARD 2A4 FORWARD WELDED-LOFT + ZERO-HOLE TRACK-CLEAR RE-CERTIFICATION (2026-08-12, RE-FROZEN)
+
+The playable Leopard 2A4 remains the fully first-party `buildLeo2A4`
+implementation in `src/vehicles/profiles/leopard.js`. The private recovered
+GLB is a quarantined, read-only measurement/visual oracle used by the QA
+harness only. No source mesh, converted vertex payload, texture, material or
+runtime node enters the playable.
+
+The former short central box is replaced by a longer connected ten-point
+welded loft. Its armored nose, clipped shoulders and aft walls now carry the
+full fighting-compartment silhouette 0.10 m farther forward, while the rear
+shoulders and supported slatted basket extend into the correct long A4
+profile. The mantlet bay, gun seat and EMES-15 housing move with that shell;
+the exposed L/44 tube is shortened by the corresponding amount so the muzzle
+envelope remains correct. Shallow roof welds, rear-shoulder latches, extended
+grab rails and the existing PERI, cupolas, smoke banks, MG3, antennas and
+basket kit all meet broad native surfaces or frames.
+
+The side-body repair lifts only the outboard sponson floor over the complete
+return run while retaining the compact central tub. Thin outboard skirts are
+carried by a visible fender rail and localized hangers. Supported inboard
+shoulder and outboard mudguard caps close three tiny front plan pockets without
+entering the shoe lane. Exact native containment is band front/rear **0/0**,
+individual shoes **0/0**, and strict full sweep **0/0**. Plan-contiguity is
+**0 holes**. Seven primary road wheels remain between a distinct front idler
+and rear drive sprocket in one continuous linked course.
+
+Freeze **`4011c71c`** reproduces twice at 66 meshes / 89,443 vertices. The
+fresh packet contains 15 paired + 15 yaw0 + 15 yaw90 frames, including the
+standard elevated-left profile: **45 PNGs / 45 distinct hashes**. Fresh
+semantic inspection records
+`[9.2,9.2,9.1,9.1,9.1,9.1,9.1,9.2,9.2,9.3,9.2,9.3,9.2,9.3]`, floor **9.1**
+and mean **9.19**. Quantitative fidelity is **92.14**, with whole-view floor
+**90.18**, gun **91.53**, tracks **96.03**, dimensions **97.9** and floater
+score **100**.
+
+All yaw pairs show a genuine quarter-turn. The complete shell, gun/mantlet,
+EMES, PERI/cupolas, MG3, smoke, antennas, weld/latch courses and full basket
+move together. Bow shoulders, skirts/hangers, seven-wheel course, deck and
+rear service field remain fixed. Parent audit is 0 stranded / 0 abutting / 0
+dangling; winding is 0 reversed / 0 mixed with 0 deficit pixels and clean mode
+2. Rig, zero-hole standard, exact tracks, native-only provenance and the
+targeted evidence battery pass. **KEEP / RE-FROZEN `4011c71c`; retire
+`3a653cf9` and all earlier Leopard 2A4 freezes.**

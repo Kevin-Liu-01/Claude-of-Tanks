@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-08-13T02:35:46.415Z",
+ "generatedAt": "2026-08-13T03:00:58.064Z",
  "gate": "every component >= 90; min is the headline",
  "passed": 34,
  "total": 97,
@@ -917,6 +917,16 @@
    }
   },
   {
+   "id": "leo2a4",
+   "geoMin": 90.2,
+   "gatePassed": true,
+   "components": {
+    "wholeCurves": 90.2,
+    "dims": 97.9,
+    "floaters": 100
+   }
+  },
+  {
    "id": "kv2",
    "geoMin": 90.2,
    "gatePassed": true,
@@ -965,16 +975,6 @@
     "turretCurves": 91,
     "wholeCurves": 90.6,
     "dims": 99.8,
-    "floaters": 100
-   }
-  },
-  {
-   "id": "leo2a4",
-   "geoMin": 90.4,
-   "gatePassed": true,
-   "components": {
-    "wholeCurves": 90.4,
-    "dims": 97.9,
     "floaters": 100
    }
   },
