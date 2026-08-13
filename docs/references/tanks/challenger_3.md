@@ -368,3 +368,20 @@ blind spot. Independent §B8 re-certification passes all fourteen fresh views,
 floor **9.0**, mean **9.06**. Freeze **b0c172a4** reproduces x2 (60 meshes /
 71,977 vertices), replacing `2678f6c`. Verdict:
 `docs/critique/shaded-parity-turret-attachment-recert.md`.
+
+## First-party forward-profile and strict-track re-cert (2026-08-12)
+
+The runtime remains entirely repository-authored. The owner-standard elevated
+profile confirms that the connected forward brow, outer walls and lower cheek
+mass continue to the mantlet and retain the intended long fighting-compartment
+silhouette. Fresh yaw 0/90 evidence keeps the complete shell, gun, bustle and
+all roof/protection equipment together.
+
+The clearance-only hull pass re-seats the rear drive transition, narrows the
+inner spine and shoulder return, lifts the left cable endpoint and moves the
+fake underside shadow out of both linked-shoe lanes. Exact native containment
+is now band 0/0, shoes 0/0 and strict sweep 0/0. Freeze `564057a4` reproduces
+twice at 62 meshes / 72,471 vertices. Fidelity is 93.02 with minimum whole
+view 92.17; 45 fresh paired/yaw frames are all distinct and the independent
+visual floor is 9.0. Full verdict:
+`docs/critique/shaded-parity-challenger3-strict-clearance-recert.md`.

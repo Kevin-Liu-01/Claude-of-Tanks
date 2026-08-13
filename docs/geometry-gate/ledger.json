@@ -1,7 +1,7 @@
 {
- "generatedAt": "2026-08-13T01:55:37.328Z",
+ "generatedAt": "2026-08-13T02:03:40.589Z",
  "gate": "every component >= 90; min is the headline",
- "passed": 35,
+ "passed": 34,
  "total": 97,
  "rows": [
   {
@@ -771,6 +771,19 @@
    }
   },
   {
+   "id": "challenger_3",
+   "geoMin": 83.3,
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 90.6,
+    "stations": 88.6,
+    "turretCurves": 83.3,
+    "wholeCurves": 90.1,
+    "dims": 100,
+    "floaters": 100
+   }
+  },
+  {
    "id": "m1a1",
    "geoMin": 84.1,
    "gatePassed": false,
@@ -989,19 +1002,6 @@
     "turretCurves": 90.4,
     "stations": 90.4,
     "dims": 97.8,
-    "floaters": 100
-   }
-  },
-  {
-   "id": "challenger_3",
-   "geoMin": 90.4,
-   "gatePassed": true,
-   "components": {
-    "hullCurves": 90.8,
-    "wholeCurves": 90.4,
-    "turretCurves": 91,
-    "stations": 91.8,
-    "dims": 100,
     "floaters": 100
    }
   },

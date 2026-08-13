@@ -3460,7 +3460,11 @@ function buildChallenger3(P) {
     // Hydrogas discs are the measured final; retain the new tire/rim tones.
     style: 'rubber', wheelR: 0.45, wheelW: 0.30, wheelY: 0.46, dishR: 0.71, xc: 1.2825,
     wheelZs: [2.55, 1.64, 0.73, -0.18, -1.09, -2.00],
-    sprocket: { z: -2.60, y: 1.27, r: 0.28 }, idler: { z: 3.35, y: 0.81, r: 0.28 },
+    // The final drive is rear-owned but must remain below the sponson floor.
+    // y=1.27 put the linked-shoe crown physically through the 1.475 floor;
+    // the source-correct compact transition remains readable at y=.98 and
+    // now clears the complete shoe envelope instead of hiding penetration.
+    sprocket: { z: -2.60, y: 0.98, r: 0.28 }, idler: { z: 3.35, y: 0.81, r: 0.28 },
     rollers: [1.95, 0.55, -0.85, -1.75].map((z) => ({ z, y: 1.10, r: 0.08 })),
     trackW: 0.555, topY: 1.26, contactZF: 2.75, contactZR: -2.10,
     // §B8.1 NATIVE-TONE wheel countability (acceptance-flagged "wheels
@@ -3485,12 +3489,12 @@ function buildChallenger3(P) {
   // (plan-grid law, measured this round: plan columns pitch 0.13 — the
   // ±1.72 column window spans 1.655..1.785; the print keeps its band
   // walls INSIDE 1.63 there, only the skirts reach further out)
-  P.add('hull', box(1.92, 0.30, 5.85), 0, 1.17, -0.625);                       // low inner spine; sloped shoulders below carry it to the deck
+  P.add('hull', box(1.68, 0.30, 5.85), 0, 1.17, -0.625);                       // low inner spine stays inside the shoe inner faces; shoulders carry it to the deck
   for (const s of [-1, 1]) {
     P.add('hull', box(0.57, 0.075, 5.85), s * 1.345, 1.5125, -0.625);          // sponson floor 1.06..1.63, ends -3.55
     P.add('hull', box(0.04, 0.34, 5.85), s * 1.61, 1.35, -0.625);              // source-low outer wall 1.18..1.52, not a full-height plinth
     P.add('hull', mslab1(s,                                                    // continuous upper-hull shoulder: inner spine -> sponson deck
-      [0.82, 1.30, 2.30], [1.08, 1.18, 2.30], [1.08, 1.18, -3.55], [0.82, 1.30, -3.55],
+      [0.78, 1.30, 2.30], [0.88, 1.18, 2.30], [0.88, 1.18, -3.55], [0.78, 1.30, -3.55],
       [0.68, 1.55, 2.30], [1.08, 1.475, 2.30], [1.08, 1.475, -3.55], [0.68, 1.55, -3.55]));
     P.add('hull', mslab1(s,                                                    // sharp source chamfer -3.55 -> -3.62
       [1.06, 1.475, -3.55], [1.63, 1.475, -3.55], [1.15, 1.475, -3.62], [1.06, 1.475, -3.62],
@@ -3565,7 +3569,7 @@ function buildChallenger3(P) {
   }
   {
     const tc = FITTINGS.towCable({ mats: P.mats, r: 0.021, seed: 9,
-      pts: [[-1.25, 1.28, 2.60], [-0.35, 1.44, 2.05], [0.60, 1.33, 2.50], [1.20, 1.32, 2.90]] });
+      pts: [[-0.90, 1.40, 2.60], [-0.35, 1.44, 2.05], [0.60, 1.33, 2.50], [1.20, 1.32, 2.90]] });
     P.hullG.add(tc);
   }
   // ---- stern: raked boat tail + upper plate with the CR3 print's rear
@@ -3672,7 +3676,10 @@ function buildChallenger3(P) {
     for (const zg of [2.10, 1.19, 0.28]) {                                     // scallop tabs between wheels (tops weld into the 0.95 bay hem, outer
       P.add('hull', box(0.06, 0.27, 0.30), s * 1.67, 0.835, zg);               // face 1.70 overlaps the 1.695 bay inner plane — §B2 attached)
     }
-    P.add('hullShadow', new THREE.BoxGeometry(0.30, 0.03, 7.0), s * 1.45, 1.05, -0.15);
+    // AO belongs below the skirt lip, not inside the animated shoe lane.
+    // The former 30 cm strip spanned x 1.30..1.60 directly through the
+    // course. Keep only a thin outboard seam behind the skirt face.
+    P.add('hullShadow', new THREE.BoxGeometry(0.03, 0.03, 7.0), s * 1.69, 1.05, -0.15);
   }
 
   // ---- turret: the NEW Rheinmetall wedge (§B8 print form: face ~2.45w,

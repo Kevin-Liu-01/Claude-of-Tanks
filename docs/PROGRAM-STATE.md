@@ -102,7 +102,7 @@ re-freeze NEW hash, all in ONE commit.
 | amx40 | 3d312bde | RE-FROZEN 2026-08-12 (§5.135 fully first-party forward-section + owner-height re-cert: connected cheek/crown loft retained forward, complete turret section exactly 20% taller with smoke/MG re-seated; fidelity 92.94 / minimum whole view 91.90, strict native band+shoes+sweep 0/0, fresh 45-frame yaw/ownership floor 9.0 / mean 9.07; all source-baked playables retired) |
 | k2 | 827d5ffc | GRADUATED 2026-08-08 (31st; Leclerc-method closed station loft; gate 90.1 x2 every component >=90; visual R26 floor 9.0 / mean 9.09 x14; exact Object_8/15/18/21 plan inventory, rounded asymmetric cage, countable six-station ISU gear; oracle 8d92cd1b reproducible from pristine .bak) |
 | abramsx | 976a1370 | GRADUATED 2026-08-09; RE-FROZEN 2026-08-12 (§5.130 first-party winding closure: outward lower-bow facets, XM360 tunnel jambs and open D-hood sight cheeks; fidelity 94.29 / minimum view 93.99, gate 90.4, winding 0 reversed / 0 mixed, parent clean; fresh 42-frame floor 9.3 / mean 9.49; prior 26b46ba0 retired) |
-| challenger_3 | 3e5a7797 | GRADUATED 2026-08-09; RE-FROZEN 2026-08-10 (§5.95 owner screenshot attachment re-cert on current main: multi-tier Protector foundation, tapered optic plinth, smoke/corner rails and antenna collars have continuous physical seats; gate 90.4, standard/parent/winding clean; independent §B8 floor 9.4 / mean 9.59 x14; prior b0c172a4 retired) |
+| challenger_3 | 564057a4 | RE-FROZEN 2026-08-12 (§5.136 first-party forward-profile + strict-track re-cert: connected brow/cheeks remain extended to the mantlet, all turret fittings seated through yaw, exact native band+shoes+sweep 0/0; fidelity 93.02 / minimum whole view 92.17, fresh 45-frame floor 9.0 / mean 9.07; prior 3e5a7797 retired) |
 | challenger1 | cacb1337 | GRADUATED 2026-08-11 (§5.112 native-procedural, reference-guided rebuild: compact six-wheel hull, one low connected cast turret, buried mantlet/cheek anatomy, seated commander/TOGS station and supported bustle/basket; no external mesh data ships; commercial-reference component masks honestly cap the machine row at 0 while dims 99.6 / floaters 100 and fresh independent §B8 pass floor 9.0 / mean 9.13 x14 with genuine yaw0/90 ownership, exact native tracks 0/0 and winding PASS; old gate-shaped 5bf5f2ec visual failure retired) |
 | challenger2 | 3b4bd5f0 | GRADUATED 2026-08-09; RE-FROZEN 2026-08-10 (§5.89 owner fused-block repair: material-fused casemate course removed from fixed hull and repartitioned into the articulated source tree; one low ring landing + one rotating turret; gate 90.1 x2 every component >=90; standard/parent/winding clean; fresh §B8 floor 9.0 / mean 9.06 x14, yaw/load paths 9.3; oracle f44e3b46 reproducible from pristine .bak; prior 63ee160 retired) |
 | fv510 | 61023726 | RE-FROZEN 2026-08-12 (§5.129 first-party `fv510PhotoBuild`: compact six-wheel Warrior hull, authored RARDEN turret and supported slat/service package; machine fidelity 90.84 / minimum view 90.12; exact native track 0/0 and fresh 42-frame yaw/ownership floor 9.0 / mean 9.11; source-baked 7884762a/927beeb2 playables retired) |
@@ -4613,3 +4613,43 @@ muzzle, targeted assets, strict track and all-view fidelity pass. All eight
 presentation assets are regenerated. **RE-FROZEN / KEEP `3d312bde`; retire
 all source-baked AMX-40 playables and the pre-height forward-extension
 freeze.**
+
+## 5.136 CHALLENGER 3 FORWARD-PROFILE + STRICT TRACK RE-CERTIFICATION (2026-08-12, RE-FROZEN)
+
+The playable Challenger 3 remains the fully first-party `buildChallenger3`
+implementation in `src/vehicles/profiles/challenger.js`. Its hull, turret,
+gun, running gear, protection, stations and service equipment are authored
+from repository primitives and original lofts. Comparison assets remain
+private read-only visual/measurement oracles; no source geometry or payload is
+shipped or instantiated.
+
+The standardized elevated-left profile confirms the prior owner-directed
+turret correction: the connected outer walls, crown and lower cheeks continue
+forward to the mantlet as a full fighting-compartment silhouette. They remain
+joined to the aft casting and bustle and rotate with the gun, Protector, roof
+suite, smoke/APS fittings and antennas at yaw 0 and 90 degrees. No detached
+plate is used to fake length and no second over-extension is warranted.
+
+This wave closes the remaining physical course defects without changing that
+accepted turret. The rear final drive is re-seated below the sponson floor;
+the inner spine and lower shoulder return are narrowed inside both shoe lanes;
+the forward cable anchor moves onto the glacis; and a wide fake-AO strip inside
+the tracks becomes a thin outboard skirt seam. Exact native containment is
+band front/rear **0/0**, shoes **0/0**, and strict full sweep **0/0**. Six road
+wheels remain readable between a front idler and rear drive sprocket in one
+continuous linked course.
+
+Freeze **`564057a4`** reproduces twice at 62 meshes / 72,471 vertices. The
+fresh packet contains 15 paired + 15 yaw0 + 15 yaw90 frames, including the
+elevated-left profile: 45 PNGs / 45 distinct hashes. Fresh inspection records
+`[9.1,9.1,9.0,9.0,9.0,9.0,9.0,9.1,9.2,9.1,9.0,9.2,9.1,9.1]`, floor **9.0**
+and mean **9.07**. Quantitative fidelity is **93.02**, with every whole view
+at least **92.17**.
+
+Parent audit is 0 stranded / 0 abutting / 0 dangling. Winding is 0 reversed /
+0 mixed, with a 25-pixel/0.04% antialias deficit and no visible wound; mode 2
+is clean. Rig, bore and targeted presentation assets pass. The legacy
+curve/component row is retained honestly at 83.3 because it grades retired
+aft/edge plan masks rather than this owner-directed forward profile. **KEEP /
+RE-FROZEN `564057a4`; retire `3e5a7797` and all earlier Challenger 3
+freezes.**
