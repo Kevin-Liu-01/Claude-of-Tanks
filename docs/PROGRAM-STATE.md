@@ -136,7 +136,7 @@ re-freeze NEW hash, all in ONE commit.
 | fv510 | 61023726 | RE-FROZEN 2026-08-12 (§5.129 first-party `fv510PhotoBuild`: compact six-wheel Warrior hull, authored RARDEN turret and supported slat/service package; machine fidelity 90.84 / minimum view 90.12; exact native track 0/0 and fresh 42-frame yaw/ownership floor 9.0 / mean 9.11; source-baked 7884762a/927beeb2 playables retired) |
 | m26_pershing | 2f006738 | RE-RECORDED 2026-08-08: hash moved by LANDED 5f39989 (armorM4 gunBarrel shadow-proxy 3.96->3.44; m26/m45 inherit m4a3e8 proxies — patton.js bytes unchanged); double-confirmed by builder bisect + m45-grad critic; prior 65c564c0 bore+winding re-cert lineage (floors 9.1-9.4) carries |
 | t90m | dc760de0 | RE-FROZEN 2026-08-12 (§5.148 first-party Proryv strict full-course closeout; machine fidelity 90.96 / minimum view 90.02; exact band/shoes/full sweep 0/0/0, parent 0/0/0 and fresh 45-frame elevated-profile/yaw PASS; incompatible legacy contour row retained honestly rather than chased) |
-| t90 | 27d1c5d8 | RE-FROZEN 2026-08-13 (§5.152 superseding first-party cast-shape rebuild: explicit five-level/eight-section pear loft, armor carriers/K-5/Shtora/smoke/station package re-seated to the new casting, 67 meshes / 128,016 vertices, exact track 0/0, fresh r14 paired/elevated-profile/yaw PASS; prior 692a0eb9 retired) |
+| t90 | dcb1946c | RE-FROZEN 2026-08-13 (§5.153 superseding first-party cast-shape armor/equipment refit: six unequal main K-5 stations per side plus lower/crown/flank returns follow the asymmetric pear loft; Shtora, smoke, sights, NSVT, OPVT and roof/rear kit re-seated; 67 meshes / 121,272 vertices, exact track 0/0, parent 0/0/0 and fresh 45-frame yaw/ownership PASS; prior 27d1c5d8 retired) |
 | t90a | 810a6f18 | GRADUATED 2026-08-10 (§5.94 Leclerc-method cast-turret rebuild; gate 90.4 x2; standard/track/winding clean; independent §B8 floor 9.0 / mean 9.11 x14, yaw/load paths 9.2) |
 | t90a_vladimir | c13fec50 | GRADUATED 2026-08-10 (§5.94 source-specific compact ESSA/cast-turret/transom rebuild; gate 90.0 x2; standard/track/winding adjudicated; independent §B8 floor 9.0 / mean 9.01 x14, yaw/load paths 9.3) |
 | t90sm | 7efc69c9 | GRADUATED 2026-08-10; RE-FROZEN §5.105 (owner-priority complete redesign: source-measured low diamond shell retained, solid bustle steps replaced by backed slat cells, deep scalloped inboard skirts and layered rear service field added; gate 90.0 x2; standard/track/winding clean; independent §B8 floor 9.0 / mean 9.08 x14, all 28 yaw frames PASS; prior 56324371 retired) |
@@ -5417,3 +5417,40 @@ builders and the standard fixture continue to import the canonical `FITTINGS`
 export directly, so no geometry, fitting, hash or runtime ownership changes.
 Fresh `npm run model:audit` reports **108/108 selected playables pass**, 2/26
 comparison candidates rejected, median 9.00.
+
+## 5.155 MODERN TERMINAL RUNNING-GEAR IDENTITY / LECLERC MUDGUARD RE-CERTIFICATION (2026-08-13)
+
+Fresh live pixels supersede the older Leclerc, Ariete and Type 90 terminal
+receipts. All three remain wholly repository-authored procedural models;
+private comparison assets remain quarantined visual oracles and contribute no
+runtime mesh, vertex/index payload, material, texture, rig, animation or
+wrapper.
+
+Leclerc retains its raised tapered steel cap, bow/fender knees and shallow lip,
+and now carries a short supported flexible apron ahead of the idler sweep. The
+apron is backed into the cap/knee structure instead of occupying the linked
+course. Concentric front-idler and rear-final-drive faces now sit inside the
+existing carrier rings. Ariete retains exactly seven road wheels and Type 90
+exactly six; both now carry separately readable high front-idler and rear-drive
+faces at their established terminal centers. No road-wheel station was added,
+removed or reclassified. Type 90's accepted 0.80 turret section and all
+re-seated equipment remain unchanged.
+
+Deterministic freezes reproduce twice: Leclerc **`126a4e90`** (48 meshes /
+103,431 vertices), Ariete **`c0aa8658`** (51 / 104,955) and Type 90
+**`b77a57f6`** (54 / 83,829). Exact band front/rear, shoe front/rear and strict
+moving-sweep receipts are **0/0** for all three. Parent audit is **0 stranded /
+0 abutting / 0 dangling** for all three. Winding pixels are clean (Leclerc
+zero; Ariete 31 / 0.04%; Type 90 16 / 0.03%, neither a visible wound) and
+muzzle-bore contrast passes at 67.2, 38.8 and 114.5 respectively.
+
+Each final packet under `/private/tmp/modern-drift-final-r3` contains 15
+paired, 15 yaw0 and 15 yaw90 frames: **45 PNGs / 45 distinct hashes** per tank
+and no byte-identical yaw pair. Elevated profile, cardinal, hero and close
+views show the terminal assemblies fixed to the hull while every complete
+turret/gun/equipment package performs a genuine quarter-turn. No course
+collision, fused duplicate, stranded fitting, empty-air decoration, open
+sheet or yaw-dependent wound is visible.
+
+**PASS / KEEP Leclerc `126a4e90`, Ariete `c0aa8658` and Type 90 `b77a57f6`.
+Ordered blockers: none for this terminal/mudguard batch.**
