@@ -951,3 +951,45 @@ window; no "huge and tall" regression). §5.57 dressing bank (basket
 lattice, cheek chamfers, dead-front slab) NOT touched — the datum
 round stayed on the crown-band unlock; bank remains open for the next
 polish touch. DELIVERED UNCOMMITTED-UNSTAGED.
+
+## OWNER HEIGHT + STRICT TRACK RE-CERT (2026-08-12, RE-FROZEN)
+
+The active vehicle is the repository-authored Type 90 in
+`src/vehicles/profiles/misc.js`. The recovered GLB remains a private
+measurement/render oracle only; no source mesh, converted vertex/index
+payload, material, texture, rig, animation or runtime GLB node enters the
+playable or public build.
+
+The owner's live correction supersedes the historical bare-roof ladder above.
+After the body was temporarily compressed to 50% local Y, the explicit order
+was to make the turret 50% taller. The final authored body uses a controlled
+0.80 local-Y section, retains its plan and gun datum, and re-seats every hatch,
+sight, MG, smoke bank, decal and antenna root on the raised armor. That extra
+five-point section closure is the first first-party silhouette with every
+machine-scored whole view at least 90: fidelity **92.22**, minimum whole view
+**90.53**.
+
+The native course is also strict-clean. Mid-skirts share one outboard armor
+datum, wheel-bay shadows are running-gear-owned, and the audit reports band
+front/rear **0/0**, individual shoes **0/0**, and full strict sweep **0/0**.
+Exactly six road wheels remain readable with coherent front-idler and rear-
+drive transitions. Parent audit is 0 stranded / 0 abutting / 0 dangling;
+winding is 0 reversed / 0 mixed with a visually clean 16-pixel/0.03% right
+hairline; rig and bore probes pass.
+
+All 45 current frames under `/tmp/critic-type90-clearance-final/type90` are
+distinct: 15 paired, 15 yaw0 and 15 yaw90 including the elevated-left profile.
+Fresh inspection records
+`[9.1,9.1,9.0,9.0,9.0,9.0,9.0,9.1,9.2,9.1,9.0,9.2,9.1,9.2]`, floor **9.0**
+and mean **9.08**. The complete turret, gun and roof suite make a genuine
+quarter-turn while the coherent deck, skirts, rear service field and course
+remain fixed. No fused duplicate, stranded fitting, empty-air decoration,
+track intrusion or yaw-dependent wound appears.
+
+The generated legacy curve/component row is retained honestly at **27.5**
+(hull 88.4 / whole 56.0 / turret 43.7 / stations 27.5 / dimensions 64 /
+floaters 100). It is a diagnostic for the retired low-turret component mask,
+not permission to undo the owner-ordered section or restore source topology.
+Deterministic freeze **`d8f8a3a8`** reproduces twice at 53 rendered meshes /
+67,557 vertices. All eight presentation assets are regenerated from those
+bytes. **KEEP; retire `5d7bc85c` and all earlier Type 90 freezes.**
