@@ -196,6 +196,7 @@ function pziiiHull(P, o) {
   const front = zc + o.len / 2, rear = zc - o.len / 2;
   const deckY = o.noseDeckY ?? 1.27;        // flat transmission deck height
   const xc = o.trackXc ?? 1.10;             // konserwa ref tracks end ±1.31
+  const sideFloorY = o.sideFloorY ?? 1.14;  // clear the real linked return, not only nominal topY
 
   // gear: 6 small wheels, 3 return rollers, HIGH front sprocket / rear idler
   const wheelZs = evenStations(6, 3.05, zc + o.gearBias);
@@ -211,7 +212,7 @@ function pziiiHull(P, o) {
 
   // hull boxes
   P.add('hull', box(1.94, 0.66, o.len * 0.90), 0, 0.72, zc);                 // belly (ref front clearance 0.38)
-  P.add('hull', box(o.superW * 2, roof - 1.02, o.superLen), 0, (roof + 1.02) / 2, zc + o.superBias); // superstructure
+  P.add('hull', box(o.superW * 2, roof - sideFloorY, o.superLen), 0, (roof + sideFloorY) / 2, zc + o.superBias); // superstructure
   if (o.topW) P.add('hull', box(o.topW * 2, 0.10, o.superLen * 0.94), 0, roof - 0.05, zc + o.superBias); // narrow top cap
   P.add('hull', slab(                                                        // flat transmission deck, floating bow lip
     [-0.90, 1.00, front - 0.19], [0.90, 1.00, front - 0.19], [0.90, 0.42, front - 0.95], [-0.90, 0.42, front - 0.95],
@@ -229,7 +230,7 @@ function pziiiHull(P, o) {
     [-0.78, 0.42, front - 0.64], [0.78, 0.42, front - 0.64], [0.78, 0.40, front - 0.72], [-0.78, 0.40, front - 0.72], // rising 0.43..0.76 bow
     [-0.78, 0.75, front + (o.noseFaceDz ?? -0.155)], [0.78, 0.75, front + (o.noseFaceDz ?? -0.155)], [0.78, 0.46, front - 0.64], [-0.78, 0.46, front - 0.64])); // line; face on the ref's own
   P.add('hull', slab(                                                        // long gentle rear deck fall (1.58 -> 1.43)
-    [-1.42, 1.02, rear + 1.05], [1.42, 1.02, rear + 1.05], [1.34, 1.02, rear + 0.12], [-1.34, 1.02, rear + 0.12],
+    [-1.42, sideFloorY, rear + 1.05], [1.42, sideFloorY, rear + 1.05], [1.34, sideFloorY, rear + 0.12], [-1.34, sideFloorY, rear + 0.12],
     [-1.42, roof - 0.005, rear + 1.05], [1.42, roof - 0.005, rear + 1.05], [1.34, o.tailY, rear + 0.12], [-1.34, o.tailY, rear + 0.12]));
   P.add('hull', box(2.60, 0.45, 0.10), 0, 1.175, rear + 0.09);               // tail plate (ref tail FLOATS: its
                                                                              //  bottom line reads 0.93-1.01)
