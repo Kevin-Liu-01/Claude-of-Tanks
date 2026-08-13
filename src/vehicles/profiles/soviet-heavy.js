@@ -74,7 +74,7 @@ function sovGear(P, g) {
     // 'holes' carries its 6 big dark pocket voids in the same instanced list
     // as the dish, so the pockets SPIN+BOB with the wheel — the only
     // kit-supported way to deep spoke pockets without a static-overlay
-    // rotation artifact. Default stays 'steel' (other family ids unchanged).
+  // rotation artifact. Default stays 'steel' (other family ids unchanged).
     style: g.style ?? 'steel', wheelR: g.wheelR, wheelW,
     wheelY: g.wheelY + lift, xc: g.xc, wheelZs,
     // v10: sprocketDz/idlerDz overrides — the KV oracle runs a high SMALL
@@ -90,9 +90,10 @@ function sovGear(P, g) {
   // steel wheels merged every face feature into one painted material. A dark
   // recess field sits BEHIND the painted rim ring / spoke ribs / hub drum /
   // bolt ring (all of which stand proud of it), so hubs and rims read out of
-  // the wheel-bay shadow under any camo. Merged into hullDark — zero draws.
+  // the wheel-bay shadow under any camo. Keep it in the running-gear shadow
+  // bucket: it is part of each wheel assembly, never fixed hull armor.
   for (const z of wheelZs) for (const s of [-1, 1]) {
-    P.add('hullDark', cylX(g.wheelR * 0.72, wheelW * 1.06, 12), s * g.xc, g.wheelY + lift, z);
+    P.add('hullRunningGearShadow', cylX(g.wheelR * 0.72, wheelW * 1.06, 12), s * g.xc, g.wheelY + lift, z);
   }
 }
 
