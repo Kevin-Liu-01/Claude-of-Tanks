@@ -67,6 +67,7 @@ for (const id of ['m4a3e8', 'bmp2', 'fv510', 'merkava1b', 'merkava4']) {
 // IFV/Merkava exceptions are deliberate rather than swapped parameters.
 const engineCtx = { setupShadowMaterial: (m) => m, anisotropy: 1, renderer: null };
 for (const [id, frontEnd] of [
+  ['ariete', 'idler'],
   ['leo2a5', 'idler'],
   ['leclerc', 'idler'],
   ['t90', 'idler'],

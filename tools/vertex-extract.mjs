@@ -305,11 +305,6 @@ const REG = {
     turretNode: '^Turret$', autoPivot: true, yawOffset: -Math.PI / 2,
     pubDims: { hullLengthM: 7.45, overallLengthM: 9.76, widthM: 3.43, heightM: 2.34 },
   },
-  ariete: {
-    path: 'public/models/tanks/community/ariete-dustymojito.glb',
-    turretNode: '^Turret$', autoPivot: true,
-    pubDims: { hullLengthM: 7.59, overallLengthM: 9.67, widthM: 3.60, heightM: 2.50 },
-  },
   type74: {
     path: 'public/models/tanks/community/type74-nullops.glb',
     turretNode: '^Tower_9$', gunNode: '^Gun_7$', autoPivot: true,

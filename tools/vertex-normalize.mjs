@@ -455,19 +455,6 @@ export const PLANS = {
     z: [[-4.639, -4.5285], [3.013, 2.9215], [4.639, 5.2315]],
     yTopMax: 2.41,
   },
-  // ariete (dustymojito, quarantine oracle): SHORT print — hullMask -4%
-  // (7.29 vs 7.59), overall -6.3% (9.059 vs 9.67); roof plateau 2.25-2.35
-  // honest (under pub 2.50), +5.3% p95 is the 12-col pano/sight band
-  // 2.55-2.78. y: identity to 2.40, band -> 2.50, tail 2.784 -> 2.52. Sim
-  // p90/93/95/97/max = 2.495/2.499/2.500/2.500/2.520 (h -0.1%). z: body
-  // x1.0412 about hull-mask center -0.884 (rear -4.679, nose 2.911);
-  // muzzle 4.529 -> rear'+9.67 = 4.991 (slope 1.176).
-  ariete: {
-    file: 'ariete-dustymojito',
-    y: [[0, 0], [2.40, 2.40], [2.634, 2.50], [2.784, 2.52]],
-    z: [[-4.529, -4.679], [2.761, 2.911], [4.529, 4.991]],
-    yTopMax: 2.53,
-  },
   // type74 (nullops, quarantine oracle; scaleToOverall registration — the
   // loader re-normalizes post-warp, verify must re-check): near-uniform
   // +14% tall print — deck band 1.5-1.6, dome/cupola band to 2.827 (18

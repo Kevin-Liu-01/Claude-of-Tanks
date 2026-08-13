@@ -151,7 +151,7 @@ re-freeze NEW hash, all in ONE commit.
 | type74 | 8319dbb8 | RE-FROZEN 2026-08-11 (§5.110 authored low cast turret, five-wheel native course and supported combat/service suite; independent §B8 floor 9.1 / mean 9.29) |
 | strv103 | f4deeb6b | RE-FROZEN 2026-08-13 (§5.160 wholly first-party fixed-mount restoration: low louvred wedge, fixed L74, four large hydropneumatic road wheels, correct front-drive/rear-idler exception, supported return rollers and backed deck/rear-service suite; exact band+shoes+sweep 0/0, parent 0/0/0, winding clean, runtime 10/10 and fresh paired floor 9.0 / mean 9.03; retired external print removed from public/runtime/candidate/UI provenance) |
 | is3 | 46539231 | RE-FROZEN 2026-08-13 (§5.161 wholly first-party IS-3 restoration: pike hull, organic undercut cast dome and short race, seated DShK/roof suite, six enlarged dished road wheels with front idler/rear final drive, three return rollers and backed asymmetric stern service field; exact band+shoes+sweep 0/0, parent 0/0/0, winding clean, runtime 10/10 and fresh 45-frame paired/yaw floor 9.0 / mean 9.03; retired external print removed from public/runtime/candidate/UI provenance) |
-| ariete | c0aa8658 | RE-FROZEN 2026-08-13 (§5.155 preferred first-party seven-road-wheel Ariete retained; explicit front-idler/rear-final-drive faces restore terminal identity without changing the exact native course, parent 0/0/0 and fresh 45-frame yaw/ownership PASS; prior a7b1fd05 retired) |
+| ariete | 9b0ceebe | RE-FROZEN 2026-08-13 (§5.165 wholly first-party terminal-order closeout: a separate large non-driven front idler now precedes seven road wheels/four return rollers and a bolted rear final drive; exact band/shoes/sweep 0/0/0, parent 0/0/0, winding clean and fresh 45-frame elevated-profile/yaw PASS; historical comparison binary and active oracle routes removed; prior c0aa8658 retired) |
 | t72b_1987 | 3f2483d4 | GRADUATED 2026-08-11 (§5.114 authored low B87 hull/turret, buried K1 and native six-wheel course; independent §B8 floor 9.0 / mean 9.14) |
 | t72bu | 4b66bf6c | GRADUATED 2026-08-11 (§5.115 authored compact BU protection/station/rear package on one native six-wheel course; independent §B8 floor 9.0 / mean 9.19) |
 | t90ms | 5076891c | GRADUATED 2026-08-11 (§5.118 authored clipped-diamond shell, Relikt, supported bustle/station and native six-wheel course; independent §B8 floor 9.0 / mean 9.18) |
@@ -5799,3 +5799,41 @@ yaw-dependent wound appears.
 
 **PASS / KEEP `158157f4`; supersede `126a4e90`. Ordered blockers: none for
 this first-party Leclerc running-gear and mudguard closeout.**
+
+## 5.165 ARIETE FIRST-PARTY TERMINAL-ORDER CLOSEOUT (2026-08-13, RE-FROZEN)
+
+The active Ariete remains the stronger repository-authored `buildAriete`.
+The old DustyMojito comparison binary is removed from `public/`, its dormant
+player-credit branch is removed and every live critic/evaluator/normalizer
+route to that file is retired. No source mesh, vertex/index payload, texture,
+material, UV, hierarchy, rig, animation or converted wrapper enters the
+playable tank or shipped tree.
+
+The earlier repair enlarged only the terminal labels while leaving the live
+profile too close to a black track knot. This closeout gives the native course
+a separate r=0.30 non-driven front idler at z=3.18, followed by the original
+seven road wheels and four supported return rollers, then a separate r=0.28
+rear final-drive sprocket at z=-3.10. The front face has a clean free-idler
+dish/rim/hub hierarchy; the rear face has a distinct eight-bolt drive cadence.
+The declared family metadata and automated layout lint now enforce **front
+idler -> seven road wheels -> return rollers/suspension -> rear final drive**.
+No extra road-wheel station, duplicate course or static shoe layer is added.
+
+Freeze **`9b0ceebe`** reproduces at 51 meshes / 107,067 vertices. Exact
+terminal bands, instanced shoes and strict moving sweep are **0/0**. Parent
+audit is **0 stranded / 0 abutting / 0 dangling**. Winding reports 0 reversed
+/ 0 mixed, a visually null 31-pixel (0.04%) deficit and zero yaw-stranded
+candidates. The running-gear-order check passes.
+
+The immutable packet at `/private/tmp/ariete-idler-final-r4/ariete` contains
+15 paired, 15 yaw0 and 15 yaw90 frames including the standardized elevated
+left profile: **45 PNGs / 45 distinct hashes**. Fresh fixed-order visual
+appraisal is `[9.1,9.1,9.0,9.0,9.0,9.0,9.0,9.1,9.1,9.1,9.0,9.1,9.1,9.1]`,
+floor **9.0** and mean **9.06**. Side/elevated/quarter pixels show the idler
+ahead of all seven road wheels and the bolted drive behind them. Both terminal
+assemblies stay fixed while the complete gun/turret/roof/basket package makes
+a genuine quarter-turn. No course collision, fused duplicate, stranded
+fitting, empty-air decoration, open sheet or yaw-dependent wound appears.
+
+**PASS / KEEP `9b0ceebe`; supersede `c0aa8658`. Ordered blockers: none for
+this Ariete terminal-order closeout.**

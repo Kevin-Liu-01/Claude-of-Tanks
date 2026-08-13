@@ -164,20 +164,6 @@ const LOCAL_REFERENCE_OVERRIDES = {
   // (§5.19a). Recovered-print registration retired for THIS id only; the
   // m1a2 row below still uses it (separate adjudication).
   m1a2_sepv2: { source:'glb', glb:{ path:'/models/tanks/m1a2_tejas.glb', turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, yawOffset:-Math.PI/2, paintUntextured:true, heroTex:true } },
-  ariete: {
-    source:'glb',
-    glb:{
-      path:'/models/tanks/community/ariete-dustymojito.glb',
-      turretNode:'^Turret$', autoPivot:true,
-      // This print has no independent gun/barrel/cannon node: its tube is
-      // fused into the Turret mesh. The hull-boundary overhang heuristic
-      // then measures unrelated rear/turret extremities as "gun" despite
-      // 92.9-96.8 whole-view agreement. Keep the cannon mandatory in every
-      // whole silhouette and yaw frame; disable only the invalid isolated
-      // component cell.
-      gunComponentMasks:false,
-    },
-  },
   // AFV program (owner directive 2026-08-04, packet docs/references/tanks/
   // bmp2.md): the m_bergman BMP-2 print is QUARANTINE class — gate/measure
   // local-only through this override; the in-game MODEL_SOURCE registration

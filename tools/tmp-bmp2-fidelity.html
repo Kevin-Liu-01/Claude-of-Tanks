@@ -37,17 +37,7 @@ const id = params.get('id') || 'm1a2';
 const spec = TANK_SPECS[id];
 if (!spec) throw new Error(`Unknown tank id: ${id}`);
 
-// Private/local oracle only. The asset remains quarantined and is never
-// registered by the public build; the generated procedural code stays an
-// original primitive construction rather than embedding source mesh data.
 const LOCAL_REFERENCE_OVERRIDES = {
-  ariete: {
-    source:'glb',
-    glb:{
-      path:'/models/tanks/community/ariete-dustymojito.glb',
-      turretNode:'^Turret$', autoPivot:true,
-    },
-  },
   // AFV program (owner directive 2026-08-04, packet docs/references/tanks/
   // bmp2.md): the m_bergman BMP-2 print is QUARANTINE class — gate/measure
   // local-only through this override; the in-game MODEL_SOURCE registration

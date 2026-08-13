@@ -53,9 +53,6 @@ const SKEW_MIN = 0.15;            // min |skew| for a meaningful flip read
 // CRITIC_REFERENCE_OVERRIDES (graduates have no MODEL_SOURCE; the recovered
 // GLBs stay measurement oracles). Page-local injection; never ships.
 const CRITIC_REFERENCE_OVERRIDES = {
-  // ariete (misc quarantine oracle — mirrors procedural-fidelity.html verbatim)
-  ariete: { source:'glb', glb:{ path:'/models/tanks/community/ariete-dustymojito.glb',
-    turretNode:'^Turret$', autoPivot:true } },
   // ---- FLEET FLIP (owner directive 2026-08-04, commit-batch wave 1):
   // registrations retired fleet-wide so every MBT renders procedural +
   // CUSTOM; these mirrors keep gate/critic/evaluator coverage. Generated

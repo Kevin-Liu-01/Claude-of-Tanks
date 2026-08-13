@@ -39,10 +39,11 @@ no PSO/AMV appliqué package.
 3. https://www.army-technology.com/projects/ariete/ — TURMS, layout notes
 4. https://tanknutdave.com/the-italian-c1-ariete-main-battle-tank/ — walkaround-style detail notes
 
-## Local GLB oracle notes
+## Historical comparison notes
 
-Path: `public/models/tanks/community/ariete-dustymojito.glb` (LOCAL-ONLY
-quarantine; registered for the lab through LOCAL_REFERENCE_OVERRIDES).
+The former local comparison binary was removed on 2026-08-13 after the
+first-party rebuild and final evidence were frozen. It is not registered by
+runtime or evaluator tooling and is not present in the shipped tree.
 Width-normalized to 3.60: overall length reads 9.07, hull ≈ 7.0, height 2.79
 (over pano/antennas). The asset is proportionally STUBBIER than the published
 hull (7.0 vs 7.59 at the same width, ~8%) and its fused gun carries a slight
@@ -809,10 +810,10 @@ shots/misc-ladders/{before,after}/ariete*.png.
 A local comparison file, `/Users/kevinliu/Downloads/c1_ariete_italian_mbt.glb`, is
 (112,070,992 bytes; SHA-256
 `738505b3099016c938daa85f8eb82806cd6af19a2aa3e15b26810bc6c163607e`).
-Its DustyMojito/Sketchfab Standard provenance makes it a local visual and
-measurement reference only. No source mesh, texture, material, animation or
-derivative payload byte ships. The retired quarantined model swap remains
-disabled; gameplay uses the original procedural build.
+Its DustyMojito/Sketchfab Standard provenance restricted it to historical
+read-only comparison. No source mesh, texture, material, animation or
+derivative payload byte ships. The binary and its evaluator routes are now
+removed; gameplay uses the original procedural build.
 
 `buildArieteNative2026` replaces the old slab-heavy fallback with a long low
 hull, shallow layered bow, broad low connected turret, integrated rounded

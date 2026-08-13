@@ -1,6 +1,6 @@
 // Euro/Asia-moderns family procedural profiles (fidelity oracles:
-// ariete-dustymojito, char_leclerc_andertan, t80u_javanilga, recovered
-// type90, type74-nullops). Owned by the misc/Euro-Asia family agent.
+// archived visual measurements for Ariete/Leclerc/T-80U/Type 90/Type 74).
+// Owned by the misc/Euro-Asia family agent.
 //
 // Wave-2 rebuild (docs/critique/shaded-parity-r1.md lessons applied in ONE
 // pass): every tank is a bespoke build measured against the width-normalized
@@ -506,16 +506,22 @@ function buildAriete(P) {
   // small idler (far 3.68 = plan 3.71 lane) + sprocket (far -3.48 = plan
   // -3.46); lanes x 1.04..1.64 like the print's front columns
   const wheelZs = [2.40, 1.65, 0.90, 0.15, -0.60, -1.35, -2.10];
-  buildRunningGear(P, {
+  const arieteGear = {
     style: 'rubber', wheelR: 0.345, wheelW: 0.21, wheelY: 0.43, xc: 1.3725,
     wheelZs,
     // The former r=.09 nominal idler vanished behind the first road wheel and
     // forced the linked course into a near-vertical stack.  Restore a real
     // visible non-driven terminal ahead of the seven road wheels.
-    sprocket: { z: -3.12, y: 0.86, r: 0.21 }, idler: { z: 3.18, y: 0.70, r: 0.24 },
+    sprocket: { z: -3.10, y: 0.82, r: 0.28 }, idler: { z: 3.18, y: 0.73, r: 0.30 },
     rollers: [1.95, 0.70, -0.65, -1.80].map((z) => ({ z, y: 0.88, r: 0.08 })),
     trackW: 0.615, topY: 0.88, botY: 0.055, contactZF: 2.55, contactZR: -2.05, paintedEnds: true, coveredTop: true, arms: true,
-  });
+  };
+  buildRunningGear(P, arieteGear);
+  P.hullG.userData.runningGearOrder = {
+    front: 'idler', frontWheelPairs: 1, roadWheelPairs: wheelZs.length,
+    supportRollerPairs: arieteGear.rollers.length, suspension: 'hydropneumatic-arm',
+    rear: 'final-drive-sprocket',
+  };
   // Shallow concentric faces on the existing seven wheel stations.  The
   // physical rubber tires and course remain owned by buildRunningGear; these
   // sit within its original width and restore the olive dish/dark hub cadence
@@ -530,12 +536,17 @@ function buildAriete(P) {
     // Match the seven road-wheel faces with visibly concentric terminal
     // assemblies. The idler and final drive remain distinct from the road
     // row, while the native loop remains the only authored track course.
-    P.add('hullRunningGearDetail', cylX(0.185, 0.030, 18), side * 1.690, 0.70, 3.18);
-    P.add('hullRunningGearDark', torus(0.142, 0.013, 18), side * 1.707, 0.70, 3.18, 0, 0, Math.PI / 2);
-    P.add('hullRunningGearDark', cylX(0.055, 0.037, 12), side * 1.711, 0.70, 3.18);
-    P.add('hullRunningGearDetail', cylX(0.165, 0.030, 18), side * 1.690, 0.86, -3.12);
-    P.add('hullRunningGearDark', torus(0.126, 0.013, 18), side * 1.707, 0.86, -3.12, 0, 0, Math.PI / 2);
-    P.add('hullRunningGearDark', cylX(0.065, 0.037, 12), side * 1.711, 0.86, -3.12);
+    P.add('hullRunningGearDetail', cylX(0.255, 0.030, 20), side * 1.690, 0.73, 3.18);
+    P.add('hullRunningGearDark', torus(0.205, 0.014, 20), side * 1.707, 0.73, 3.18, 0, 0, Math.PI / 2);
+    P.add('hullRunningGearDark', cylX(0.072, 0.037, 14), side * 1.711, 0.73, 3.18);
+    P.add('hullRunningGearDetail', cylX(0.238, 0.030, 20), side * 1.690, 0.82, -3.10);
+    P.add('hullRunningGearDark', torus(0.188, 0.014, 20), side * 1.707, 0.82, -3.10, 0, 0, Math.PI / 2);
+    P.add('hullRunningGearDark', cylX(0.078, 0.037, 14), side * 1.711, 0.82, -3.10);
+    for (let k = 0; k < 8; k++) {
+      const a = (k / 8) * Math.PI * 2;
+      P.add('hullRunningGearDark', cylX(0.020, 0.041, 8), side * 1.713,
+        0.82 + Math.sin(a) * 0.135, -3.10 + Math.cos(a) * 0.135);
+    }
   }
   // (push-2: contactZF 2.36 -> 2.22 — the ref approach ramp lifts off at
   // ~2.33 and climbs SHALLOW [0.22@2.68, 0.28@2.92 authored] where the 2.36
