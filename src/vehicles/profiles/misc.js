@@ -2199,15 +2199,14 @@ function buildT80UNative2026(P) {
     P.add('turretDark', box(0.12, 0.055, 0.065), x, 0.64, z, 0, yaw, 0);
     P.add('turretGlass', box(0.080, 0.032, 0.012), x, 0.65, z + 0.038, 0, yaw, 0);
   }
-  // Bilateral 902B banks on explicit shoulder shoes.  The former single
-  // nine-tube hand-authored spray over-weighted the left silhouette and
-  // provided no clear base.  Four launchers per side preserve the T-80U's
-  // compact source cadence and stay clear of the K-5 fan.
-  for (const s of [-1, 1]) {
-    P.add('turret', box(0.20, 0.18, 0.48), s * 1.30, 0.38, -0.05, 0, 0, -s * 0.18);
+  // The production T-80U carries one compact four-launcher bank on the
+  // left cheek.  A broad buried shoe supports the bank and leaves the
+  // opposite cheek free for its circular optic/equipment cadence.
+  P.add('turret', box(0.20, 0.18, 0.48), -1.30, 0.38, -0.05, 0, 0, -0.18);
+  {
     const smoke = FITTINGS.smokeBank({ mats: P.mats, count: 4, r: 0.043, len: 0.28, pitch: -0.40, splay: 0.30, arc: 0.52, spacing: 0.10 });
-    smoke.position.set(s * 1.31, 0.49, -0.03);
-    smoke.rotation.y = s * 1.04;
+    smoke.position.set(-1.31, 0.49, -0.03);
+    smoke.rotation.y = -1.04;
     P.turretG.add(smoke);
   }
   // bustle: transverse OPVT snorkel + stowage band + basket + rails.

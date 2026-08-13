@@ -80810,7 +80810,7 @@
           }
         ]
       },
-      "geometryHash": "72070835",
+      "geometryHash": "618d1a21",
       "metadataHash": "aa89334d",
       "muzzleBore": {
         "tagged": 2,
@@ -80825,16 +80825,16 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 18764,
-          "sha256": "b6ce05c3e25d643dc7948e2767988f37d387efae90b96653e3d4a85425e67f9c"
+          "bytes": 18746,
+          "sha256": "46fd7b321d62de1bc010723bbf9d315c0de9109a13b3af449a4acfa548349588"
         },
         "top": {
           "file": "t80u_top.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 10750,
-          "sha256": "1a407a86d2619291e44188f66b5e60d9c795aa269b39a4b73727be49ea987d93"
+          "bytes": 10704,
+          "sha256": "b38c469ac7085d33e439b6b33df8d52fdd09ba1815112c1835d92e8ba3704f32"
         },
         "side": {
           "file": "t80u_side.webp",
