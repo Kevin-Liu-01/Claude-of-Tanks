@@ -5368,3 +5368,37 @@ hashes are the honest current record.
 
 **PASS / KEEP `27d1c5d8`, `448b1161`, `f90b060`, `f4bc0d40`; retain T-80U
 `77f9ae78`. Ordered blockers: none.**
+
+## 5.153 BASE T-90 ARMOUR / EQUIPMENT REFIT (2026-08-13, RE-FROZEN)
+
+The base `t90` remains wholly repository-authored procedural geometry. The
+private comparison GLB was used only as a quarantined visual oracle and
+contributes no runtime mesh, converted vertex/index payload, material, texture,
+rig, animation or wrapper.
+
+The accepted asymmetric pear/cast loft remains the primary shell. This pass
+rebuilds the protection and equipment around that new shape: six unequal
+tapered main Kontakt-5 stations per side, four smaller lower-cheek cassettes,
+four crown returns and five flank stations now follow individual cast planes
+with buried roots, caps and side seams. Reduced dark Shtora housings transition
+through tapered mantlet shoulders. Both six-tube 902B banks sit on supported
+tapered shoes and cant upward/outward. The commander night sight, hatch and
+periscope cadence, NSVT cradle, antenna collars, stored OPVT tube and rear
+turret kit are explicitly re-seated on the new crown and tail.
+
+Freeze **`dcb1946c`** reproduces twice at 67 meshes / 121,272 vertices. The
+final packet at `/private/tmp/t90-armor-final-r16/t90` contains 15 paired, 15
+yaw0 and 15 yaw90 images including the standardized elevated-left profile:
+**45 PNGs / 45 distinct hashes**. All frames were inspected. They show a
+genuine quarter-turn with the complete shell, gun, armour, Shtora, smoke,
+cupolas, sights, NSVT, antennas, OPVT and rear turret equipment moving together
+over a fixed coherent hull and six-wheel native course.
+
+Exact band, shoe and strict moving-sweep containment is **0/0**. Parent audit
+is **0 stranded / 0 abutting / 0 dangling**. Winding is 0 reversed / 0 mixed
+with one visually null pixel (0.00%); muzzle-bore contrast is 105.3. No fused
+duplicate, floating fitting, collision, open sheet or yaw-dependent wound is
+visible.
+
+**PASS / KEEP `dcb1946c`; supersede base T-90 `27d1c5d8`. Ordered blockers:
+none for this armour/equipment refit.**
