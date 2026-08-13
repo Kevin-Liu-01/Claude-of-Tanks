@@ -372,11 +372,11 @@ function buildT72B3(P) {
   // hull: flat pancake — lower box + shallow tapered deck band to the 1.38 roof
   P.add('hull', box(2.35, 0.55, 6.45), 0, 0.70, -0.05);
   P.add('hull', frustum(1.70, 2.92, -3.22, 1.44, 2.86, -3.18, 1.06, 1.38));     // tapered deck band
-  fenders(P, 1.28, 1.86, 1.045, -3.28, 3.12, 0.035);
+  fenders(P, 1.28, 1.86, 1.15, -3.28, 3.12, 0.035);
   P.add('hull', frustum(1.60, 3.24, 1.92, 1.64, 1.88, 1.92, 0.80, 1.38));       // 68 deg glacis
   P.add('hull', frustum(1.60, 2.94, 3.0, 1.60, 3.24, 3.0, 0.42, 0.80));         // lower front
   for (const s of [-1, 1]) {                                                    // fender-underside AO
-    P.add('hullShadow', new THREE.BoxGeometry(0.55, 0.026, 6.2), s * 1.52, 1.035, -0.05);
+    P.add('hullRunningGearShadow', new THREE.BoxGeometry(0.55, 0.026, 6.2), s * 1.52, 1.035, -0.05);
   }
   // driver centered on the glacis (§14.5) + V-splash board
   P.add('hull', box(0.5, 0.05, 0.45), 0, 1.27, 2.16, -1.19, 0, 0);
@@ -409,19 +409,19 @@ function buildT72B3(P) {
   });
   // rubber-flap skirts, K-1 brick clusters on the forward third (§14.5)
   for (const s of [-1, 1]) {
-    P.add('hull', box(0.035, 0.40, 6.25), s * 1.85, 0.84, -0.08);
-    P.add('hullRubber', box(0.028, 0.10, 6.2), s * 1.85, 0.60, -0.08);          // dust lip
+    P.add('hull', box(0.035, 0.14, 6.25), s * 1.85, 1.22, -0.08);
+    P.add('hullRubber', box(0.028, 0.06, 6.2), s * 1.85, 1.12, -0.08);          // dust lip
     for (let k = 0; k < 4; k++) {
-      P.add('hullDark', box(0.042, 0.32, 0.02), s * 1.85, 0.82, -1.4 - k * 0.5);
+      P.add('hullDark', box(0.042, 0.12, 0.02), s * 1.85, 1.22, -1.4 - k * 0.5);
     }
   }
   P.eraCluster('skirt_era_R', (put) => {
     for (let c = 0; c < 4; c++) for (let row = 0; row < 2; row++)
-      put(1.885, 0.72 + row * 0.20, 2.85 - c * 0.42, 0, Math.PI / 2, 0);
+      put(1.885, 1.18 + row * 0.12, 2.85 - c * 0.42, 0, Math.PI / 2, 0);
   });
   P.eraCluster('skirt_era_L', (put) => {
     for (let c = 0; c < 4; c++) for (let row = 0; row < 2; row++)
-      put(-1.885, 0.72 + row * 0.20, 2.85 - c * 0.42, 0, -Math.PI / 2, 0);
+      put(-1.885, 1.18 + row * 0.12, 2.85 - c * 0.42, 0, -Math.PI / 2, 0);
   });
   // rear plate: unditching log + twin saddle fuel drums on rails (§14.5)
   P.add('hullWood', cylX(0.11, 2.05, 12), 0, 1.18, -3.24);
@@ -495,16 +495,23 @@ function buildT72B3(P) {
   // 6 big stamped wheels (bigger/flatter than T-90 — §14.5), 3 rollers,
   // sprocket REAR
   buildRunningGear(P, {
-    style: 'rubber', wheelR: 0.39, wheelW: 0.21, xc: 1.58,
+    style: 'rubber', wheelR: 0.39, wheelW: 0.21, xc: 1.50,
     wheelZs: [2.48, 1.49, 0.50, -0.49, -1.48, -2.47],
     sprocket: { z: -3.0, y: 0.53, r: 0.27 }, idler: { z: 2.95, y: 0.51, r: 0.25 },
     rollers: [1.45, 0, -1.45].map((z) => ({ z, y: 0.92, r: 0.09 })),
     // r3: rubber-flap skirts cover the T-72B3 return run — no horn comb.
     trackW: 0.58, topY: 0.85, arms: true, paintedEnds: true, coveredTop: true,
   });
+  // The compacted native course sits inboard of the skirts, but the old
+  // full-width lower shoulder crossed its continuous return band and rising
+  // idler wraps. Preserve the low center belly and lift only the two
+  // outboard shoulder vertices into a real full-length chamfer.
+  P.raiseTrackCorridor(['hull'], {
+    laneInnerX: 1.18, floorY: 1.14,
+  });
   P.decal('turret', 'number', '312', 0.30, [0.98, 0.24, -0.30], Math.PI / 2, 0, 0.18);
   P.decal('turret', 'number', '312', 0.30, [-0.98, 0.24, -0.30], -Math.PI / 2, 0, -0.18);
-  P.decal('hull', 'soot', null, 0.7, [-1.6, 0.95, -1.8], -Math.PI / 2);         // left exhaust soot
+  P.decal('hull', 'soot', null, 0.38, [-1.856, 0.86, -1.8], -Math.PI / 2);     // left exhaust soot, seated on the skirt skin
   P.topY = 0.85;
 }
 
