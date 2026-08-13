@@ -1589,9 +1589,15 @@ function buildT84(P) {
   // Standardize the family chassis first: front idler, six road wheels,
   // three supported return rollers and rear final-drive sprocket on one
   // native linked course.  Then atomically replace the inherited BV turret
-  // with the distinct first-party welded T-84 package above.
+  // with the distinct authored welded T-84 package above.
   buildT80Line(P, 2);
   rebuildT84FirstParty2026(P);
+  // The geometry-preserving suspension tunnel exposes two small enclosed
+  // plan pockets on the right fender handoffs.  Short camouflaged tie plates
+  // bridge the authored long fender into the bow shoulder and aft deck edge.
+  // Both stay inside the existing outline and well above the return course.
+  P.add('hull', KIT.box(0.20, 0.055, 0.62), 1.64, 1.49, 2.70);
+  P.add('hull', KIT.box(0.20, 0.055, 0.20), 1.64, 1.40, -2.07);
   P.topY = 1.45;
 }
 
