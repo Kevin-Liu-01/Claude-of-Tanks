@@ -3206,11 +3206,11 @@ function buildBradley(P) {
     const pads = [];
     for (let k = 2; k < 21; k++) pads.push([-2.55 + k * 0.222, 0]);            // (r2: k<21 — the 2.112 pad poked
     for (const [pz] of pads) {                                                  //   past the new 2.06 patch end and
-      P.add('hullTrack', box(0.15, 0.075, 0.16), 1.385, 0.075, pz);             //   grounded the approach ramp; y
-      P.add('hullTrack', box(0.16, 0.075, 0.16), -0.90, 0.075, pz);             //   0.092 -> 0.075: the ref treads
+      P.add('hullRunningGearTrack', box(0.15, 0.075, 0.16), 1.385, 0.075, pz);  //   grounded the approach ramp; y
+      P.add('hullRunningGearTrack', box(0.16, 0.075, 0.16), -0.90, 0.075, pz);  //   0.092 -> 0.075: the ref treads
     }                                                                           //   ground to 0 on the 1.35-1.46
                                                                                 //   front cols, mine read 0.055)
-    P.add('hullTrack', box(0.15, 0.05, 4.4), 1.385, 0.60, -0.25);               // return-run cover strip
+    P.add('hullRunningGearTrack', box(0.15, 0.05, 4.4), 1.385, 0.60, -0.25);    // return-run cover strip
   }
   // ---- turret cluster (ring plane 1.895 at the print's z -0.45 seat) ------
   // core box (print: bottom 1.89 over world -1.44..+0.36, roof 2.76-2.80)
