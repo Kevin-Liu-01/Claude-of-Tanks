@@ -12,6 +12,7 @@ const arg = (name, fallback = null) => {
 const ids = (arg('ids', arg('id', 'isu122s')) || '').split(',').map((v) => v.trim()).filter(Boolean);
 const finalEvidence = process.argv.includes('--final');
 const profileEvidence = process.argv.includes('--profile');
+const proceduralOnlyEvidence = process.argv.includes('--procedural-only');
 const outRoot = path.resolve(arg('out', 'shots'));
 const port = Number(arg('port', '4197'));
 
@@ -55,6 +56,7 @@ try {
       id,
       ...(finalEvidence ? { final: '1' } : {}),
       ...(profileEvidence ? { profile: '1' } : {}),
+      ...(proceduralOnlyEvidence ? { proceduralOnly: '1' } : {}),
     });
     await page.goto(`http://127.0.0.1:${port}/tools/tmp-tank-critic.html?${query}`, {
       waitUntil: 'networkidle0', timeout: 120_000,

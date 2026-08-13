@@ -18,6 +18,7 @@ import { MODEL_SOURCE, TANK_SPECS } from '/src/vehicles/specs.js';
 const SIZE = 640;
 const params = new URLSearchParams(location.search);
 const id = params.get('id') || 'isu122s';
+const proceduralOnlyEvidence = params.get('proceduralOnly') === '1';
 // Graduate fallback (2026-08-02): graduates have no MODEL_SOURCE — resolve
 // through the SAME override map the fidelity harness uses. Kept in sync by
 // hand with tools/procedural-fidelity.html LOCAL_REFERENCE_OVERRIDES (the
@@ -208,7 +209,7 @@ if (id === 'pt91m' && MODEL_SOURCE[id]?.glb && MODEL_SOURCE[id].glb.yawOffset ==
   MODEL_SOURCE[id] = { ...MODEL_SOURCE[id], glb: { ...MODEL_SOURCE[id].glb, yawOffset: Math.PI } };
 }
 const source = MODEL_SOURCE[id];
-if (source?.source !== 'glb') throw new Error(`${id} has no GLB reference registered`);
+if (!proceduralOnlyEvidence && source?.source !== 'glb') throw new Error(`${id} has no GLB reference registered`);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, preserveDrawingBuffer: true });
 renderer.setSize(SIZE, SIZE, false);
@@ -226,7 +227,16 @@ const engineCtx = { setupShadowMaterial: (m) => m, anisotropy: 1, renderer };
 // distorting the reference material buckets.
 const rawLeo2A4 = id === 'leo2a4';
 let reference;
-if (rawLeo2A4) {
+if (proceduralOnlyEvidence) {
+  // Authored-only recovery/audit mode.  This is deliberately NOT source
+  // evidence: it exists so removed or unavailable comparison assets never
+  // block elevated-profile and yaw inspection of our own procedural model.
+  // A second deterministic authored build occupies the left panel solely to
+  // preserve the board framing contract.  The labels below make the mode
+  // impossible to mistake for a source-relative score packet.
+  reference = createTank(id, engineCtx, { camoSeed: 4242, quality: 'high', proceduralOnly: true });
+  reference.root.userData.__glbSwapped = true;
+} else if (rawLeo2A4) {
   const gltf = await new GLTFLoader().loadAsync(source.glb.path);
   reference = { root: gltf.scene };
   reference.root.userData.__glbSwapped = true;
@@ -369,8 +379,8 @@ function pairURL(refImg, procImg) {
   copyCtx.putImageData(refImg, 0, 0); pairCtx.drawImage(copy2d, 0, 0);
   copyCtx.putImageData(procImg, 0, 0); pairCtx.drawImage(copy2d, SIZE, 0);
   pairCtx.fillStyle = '#e7edf0'; pairCtx.font = '18px monospace';
-  pairCtx.fillText('REFERENCE', 12, 24);
-  pairCtx.fillText('PROCEDURAL', SIZE + 12, 24);
+  pairCtx.fillText(proceduralOnlyEvidence ? 'AUTHORED BASELINE COPY' : 'REFERENCE', 12, 24);
+  pairCtx.fillText(proceduralOnlyEvidence ? 'AUTHORED MODEL' : 'PROCEDURAL', SIZE + 12, 24);
   return pairCanvas.toDataURL('image/png');
 }
 
