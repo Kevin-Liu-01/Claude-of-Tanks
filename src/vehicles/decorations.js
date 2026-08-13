@@ -1324,6 +1324,20 @@ const TANK_MANIFESTS = {
     { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
   ],
   // --- Modern ---
+  leo2a4: () => [
+    // Dense field camouflage uses equipment-like fabric geometry only:
+    // three tied rolls and two armor-hugging open-mesh side veils.
+    { kit: 'camonet', p: 1, v: { v: 'roll', len: 1.70 }, slot: ['turretRear', { low: true }] },
+    { kit: 'camonet', p: 1, v: { v: 'roll', len: 1.45 }, slot: ['turretSide', { side: 1 }] },
+    { kit: 'camonet', p: 1, v: { v: 'roll', len: 1.45 }, slot: ['turretSide', { side: -1 }] },
+    { kit: 'camonet', p: 1, v: { v: 'drape', len: 1.80, w: 1.05 }, slot: ['turretVeil', { side: 1 }] },
+    { kit: 'camonet', p: 1, v: { v: 'drape', len: 1.80, w: 1.05 }, slot: ['turretVeil', { side: -1 }] },
+    { kit: 'packs', p: 1, v: { n: 4 }, slot: ['turretRear', { onBasket: true }] },
+    { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.15 }, slot: ['rearDeck', { corner: 1 }] },
+    { kit: 'antenna', p: 1, v: { v: 'whip_long' }, slot: ['turretRoof', { rear: true, side: 1 }] },
+    { kit: 'antenna', p: 1, v: { v: 'whip_short' }, slot: ['turretRoof', { rear: true, side: -1 }] },
+    { kit: 'cable', p: 1, v: { len: 2.5 }, slot: ['hullSideTop', { side: 1 }] },
+  ],
   leo2a6: () => [
     { kit: 'basket', p: 1, v: { w: 1.5, d: 0.4, h: 0.3 }, slot: ['turretRearFrame', {}] },
     { kit: 'packs', p: 1, v: { n: 3 }, slot: ['turretRear', { onBasket: true }] },
@@ -1357,6 +1371,42 @@ const TANK_MANIFESTS = {
     { kit: 'antenna', p: 1, v: { v: 'whip_long' }, slot: ['turretRoof', { rear: true, side: -1 }] },
     { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
     { kit: 'rations', p: 1, v: { n: 2 }, slot: ['rearDeck', { center: true, small: true }] },
+  ],
+  m1a2_tusk: () => [
+    // Urban hard kit only: no foliage or grass-like camouflage geometry.
+    { kit: 'basket', p: 1, v: { w: 1.75, d: 0.48, h: 0.36 }, slot: ['turretRearFrame', {}] },
+    { kit: 'packs', p: 1, v: { n: 5 }, slot: ['turretRear', { onBasket: true }] },
+    { kit: 'bin', p: 1, v: { v: 'steel', w: 0.70, h: 0.36, d: 0.48 }, slot: ['rearDeck', { corner: -1 }] },
+    { kit: 'jerry', p: 1, v: { n: 3, water: true }, slot: ['rearDeck', { corner: 1 }] },
+    { kit: 'cable', p: 1, v: { len: 2.7 }, slot: ['hullSideTop', { side: 1 }] },
+    { kit: 'tools', p: 1, v: { set: ['shovel', 'axe', 'crowbar'] }, slot: ['fender', { side: -1, zFrac: -0.05, along: true }] },
+    { kit: 'antenna', p: 1, v: { v: 'whip_long' }, slot: ['turretRoof', { rear: true, side: -1 }] },
+    { kit: 'antenna', p: 1, v: { v: 'whip_short' }, slot: ['turretRoof', { rear: true, side: 1 }] },
+    { kit: 'light', p: 1, v: { v: 'ir_large' }, slot: ['turretRoof', { rear: false, side: 1 }] },
+    { kit: 'rations', p: 1, v: { n: 3 }, slot: ['rearDeck', { center: true, small: true }] },
+  ],
+  m1a2_sepv2: () => [
+    { kit: 'basket', p: 1, v: { w: 1.65, d: 0.46, h: 0.35 }, slot: ['turretRearFrame', {}] },
+    { kit: 'packs', p: 1, v: { n: 4 }, slot: ['turretRear', { onBasket: true }] },
+    { kit: 'bin', p: 1, v: { v: 'steel', w: 0.66, h: 0.34, d: 0.46 }, slot: ['rearDeck', { corner: -1 }] },
+    { kit: 'jerry', p: 1, v: { n: 3, water: true }, slot: ['rearDeck', { corner: 1 }] },
+    { kit: 'cable', p: 1, v: { len: 2.6 }, slot: ['hullSideTop', { side: -1 }] },
+    { kit: 'antenna', p: 1, v: { v: 'whip_long' }, slot: ['turretRoof', { rear: true, side: -1 }] },
+    { kit: 'antenna', p: 1, v: { v: 'whip_long' }, slot: ['turretRoof', { rear: true, side: 1 }] },
+    { kit: 'light', p: 1, v: { v: 'ir_large' }, slot: ['turretRoof', { rear: false, side: 1 }] },
+    { kit: 'tools', p: 1, v: { set: ['shovel', 'sledge'] }, slot: ['fender', { side: 1, zFrac: 0.12, along: true }] },
+  ],
+  m1a2_sepv3: () => [
+    { kit: 'basket', p: 1, v: { w: 1.70, d: 0.47, h: 0.35 }, slot: ['turretRearFrame', {}] },
+    { kit: 'packs', p: 1, v: { n: 4 }, slot: ['turretRear', { onBasket: true }] },
+    { kit: 'bin', p: 1, v: { v: 'steel', w: 0.72, h: 0.35, d: 0.48 }, slot: ['rearDeck', { corner: -1 }] },
+    { kit: 'jerry', p: 1, v: { n: 2, water: true }, slot: ['rearDeck', { corner: 1 }] },
+    { kit: 'cable', p: 1, v: { len: 2.7 }, slot: ['hullSideTop', { side: 1 }] },
+    { kit: 'antenna', p: 1, v: { v: 'whip_long' }, slot: ['turretRoof', { rear: true, side: -1 }] },
+    { kit: 'antenna', p: 1, v: { v: 'whip_short' }, slot: ['turretRoof', { rear: true, side: 1 }] },
+    { kit: 'light', p: 1, v: { v: 'ir_large' }, slot: ['turretRoof', { rear: false, side: -1 }] },
+    { kit: 'tools', p: 1, v: { set: ['shovel', 'axe'] }, slot: ['fender', { side: -1, zFrac: 0.10, along: true }] },
+    { kit: 'rations', p: 1, v: { n: 3 }, slot: ['rearDeck', { center: true, small: true }] },
   ],
   t90m: () => [
     { kit: 'log', p: 1, v: { len: 2.6 }, slot: ['hullRearLow', {}] },
@@ -2046,6 +2096,24 @@ export function attachTankDecorations(a) {
           const seat = seatProbe(turP, 0, z, Math.min(bb.max.x - bb.min.x, 0.5), Math.min(d, 0.35), 3.5, 0.2);
           if (!seat) continue;
           if (commit(name, parts, 'turret', V(0, seat.y - 0.01, z), E(0, (rng() - 0.5) * 0.3, 0), placedTurret)) return true;
+        }
+        disposePartList(parts);
+        return false;
+      },
+      // Open-mesh veil bonded to a turret side. Rotation maps the kit's
+      // horizontal X/Z sheet onto the vertical Y/Z armor face.
+      turretVeil(args, parts, name) {
+        const side = args.side || 1;
+        const zs = args.rear ? [-1.25, -0.95, -1.55, -0.65] : [-0.2, -0.45, 0.05];
+        for (const z of zs) {
+          for (const yf of args.high ? [0.56, 0.48] : [0.35, 0.5]) {
+            const y = Math.max(0.26, pivotTopY() * yf);
+            const h = turP.side(y, z, side, W / 2 + 1);
+            if (!h || Math.abs(h.n.x) < 0.55) continue;
+            if (commit(name, parts, 'turret', V(h.p.x + side * 0.075, y, z),
+              E(0, 0, side > 0 ? Math.PI / 2 : -Math.PI / 2), placedTurret,
+              { allowOverlap: true })) return true;
+          }
         }
         disposePartList(parts);
         return false;

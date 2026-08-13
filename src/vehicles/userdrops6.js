@@ -63,8 +63,17 @@ const SPECS = [
       dims: { hullLengthM: 6.55, overallLengthM: 9.20, widthM: 3.05, heightM: 2.58 },
     }),
   make('leo2a4', 'leopard2_proto', 'Leopard 2 Prototype', 'Germany',
-    { hp: 2050, weightTons: 55, topSpeedKmh: 68, gun: { reloadS: 6.8 },
-      dims: { hullLengthM: 7.72, overallLengthM: 9.97, widthM: 3.70, heightM: 2.48 } }),
+    {
+      hp: 2050, weightTons: 55, topSpeedKmh: 68, gun: { reloadS: 6.8 },
+      dims: { hullLengthM: 7.72, overallLengthM: 10.67, widthM: 3.70, heightM: 2.48 },
+      // The prototype now owns its elongated visual rig instead of silently
+      // inheriting the production A4 pivot and bustle envelope.
+      armor: {
+        ...TANK_SPECS.leo2a4.armor,
+        turretPivot: [0, 1.72, 0.55], gunPivot: [0, 0.26, 1.00],
+        barrelLenM: 5.26, tHalfW: 1.22, tFrontZ: 1.18, tRearZ: -2.75,
+      },
+    }),
   // m1a1_aim REMOVED BY OWNER 2026-08-06 ('also remove the AIM abrams') —
   // builder code dormant in abrams.js; packet historical.
   make('m60a1', 'm46_patton', 'M46 Patton', 'USA',

@@ -1838,12 +1838,11 @@ function abramsArmorHardware(P, variant, t) {
 // clusters are added. Every cluster intersects a carrier strip or another
 // cluster that reaches one, so no decoration is supported through empty air.
 // The final owner scope is deliberately narrow: heavy cover belongs only to
-// M1A1HA and M1A2 SEPv3. Base/Tejas M1A2, SEPv2 and TUSK remain clean so their
-// armor, CROWS and urban-kit silhouettes are not buried under shared foliage.
+// M1A1HA. The TUSK/SEP variants remain vegetation-free so their ARAT, Trophy,
+// CROWS and urban-kit silhouettes stay readable as hard-surface technology.
 function abramsGhillie(P, variant, t) {
   const configs = {
     m1a1ha: { density: 1.18, light: 0x647348, dark: 0x35442d, mgY: 1.075 },
-    m1a2_sepv3: { density: 1.35, light: 0x496033, dark: 0x243622, mgY: 1.445 },
   };
   const cfg = configs[variant];
   if (!cfg) return;
