@@ -7127,7 +7127,11 @@ function buildKF51(P) {
     // and the z -3.30 segment end-caps stop slicing the crest. Same outer
     // shape; the vacated rear-view slot is the real sponson-over-sprocket
     // configuration and sits behind the wrap/pads.
-    const LW0 = -3.55, LW1 = -2.81, LX0 = 0.945, LY = 1.50;
+    // The sprocket shoe crown remains above the nominal band farther forward
+    // than the old analytic window.  Continue the real sponson notch to
+    // -2.55 so the complete articulated shoe, not only the legacy band,
+    // clears the deck underside.
+    const LW0 = -3.55, LW1 = -2.55, LX0 = 0.945, LY = 1.50;
     if (Math.min(zF, zR) >= LW1 || Math.max(zF, zR) <= LW0) {
       P.add('hull', slab(                                                      // untouched segments: exact certified recipe
         [-w0, yB, zF], [w0, yB, zF], [w0, yB, zR], [-w0, yB, zR],
@@ -7180,7 +7184,13 @@ function buildKF51(P) {
   // deck-carried, side is centre-carried, plan front is pad-carried
   // (3.76-3.79). The glacisTan tone shell below splits identically.
   P.add('hull', slab(
-    [-1.56, 1.24, 2.55], [1.56, 1.24, 2.55], [1.5449, 1.1695, 3.13], [-1.5449, 1.1695, 3.13],
+    [-0.94, 1.24, 2.55], [0.94, 1.24, 2.55], [0.94, 1.1695, 3.13], [-0.94, 1.1695, 3.13],
+    [-0.94, 1.43, 2.55], [0.94, 1.43, 2.55], [0.94, 1.3417, 3.13], [-0.94, 1.3417, 3.13]));
+  // Thin load-bearing glacis skin keeps the accepted full-width top plane
+  // while its underside stays above the climbing idler shoes.  The deep
+  // pressure body is now correctly confined between the two courses.
+  P.add('hull', slab(
+    [-1.60, 1.38, 2.55], [1.60, 1.38, 2.55], [1.5849, 1.3217, 3.13], [-1.5849, 1.3217, 3.13],
     [-1.685, 1.43, 2.55], [1.685, 1.43, 2.55], [1.6699, 1.3417, 3.13], [-1.6699, 1.3417, 3.13]));
   P.add('hull', slab(
     [-0.94, 1.1695, 3.13], [0.94, 1.1695, 3.13], [0.94, 1.10, 3.70], [-0.94, 1.10, 3.70],
@@ -7218,7 +7228,11 @@ function buildKF51(P) {
   P.add('hull', slab(
     [-0.94, 1.04, 3.79], [0.94, 1.04, 3.79], [0.94, 0.462, 3.42], [-0.94, 0.462, 3.42],
     [-0.94, 1.10, 3.79], [0.94, 1.10, 3.79], [0.94, 1.28, 3.42], [-0.94, 1.28, 3.42]));
-  P.add('hull', box(3.10, 0.858, 0.56), 0, 0.891, 2.85);                       // lower glacis fill (belly 0.462), full width to z 3.13
+  // Keep the structural lower glacis inside the two courses.  The former
+  // 3.10 m fill crossed the rising idler shoes even though the surface band
+  // snapshot happened to be clear; the native course itself now owns those
+  // outboard front pixels.
+  P.add('hull', box(1.88, 0.858, 0.56), 0, 0.891, 2.85);                       // lower glacis fill (belly 0.462), inter-track width to z 3.13
   P.add('hull', box(1.88, 0.858, 0.30), 0, 0.891, 3.28);                       // fill centre run z 3.13..3.43 (lane vacated for the wrap)
   // rear plate at −3.60 + louvres/taillights; tail stowage lip to −3.78
   // (the ref tail band ends −3.79 — the old −3.83 slats were proc-only).
@@ -8893,6 +8907,21 @@ function buildKF51(P) {
       col.needsUpdate = true;
     }
   });
+  // Sprocket/idler face rings and the low wheel-row dressing were authored
+  // before strict ownership metadata existed.  They are concentric parts of
+  // the running gear, not rear armor.  Keep the selection tightly on the two
+  // terminal stations (plus the low wheel row), leaving real guards and
+  // service fittings under the physical clearance gate.
+  const kf51GearPart = (_geo, b) => {
+    const cx = (b.min.x + b.max.x) * 0.5;
+    const cy = (b.min.y + b.max.y) * 0.5;
+    const cz = (b.min.z + b.max.z) * 0.5;
+    const terminal = Math.abs(cz - 3.28) <= 0.30 || Math.abs(cz + 3.18) <= 0.30;
+    return Math.abs(cx) >= 1.40 && b.max.y <= 1.31
+      && (terminal || (cy <= 0.78 && cz >= -2.50 && cz <= 2.70));
+  };
+  P.rebucketParts(['hullDark', 'hullShadow'], 'hullRunningGearDark', kf51GearPart);
+  P.rebucketParts(['hullDetail'], 'hullRunningGearDetail', kf51GearPart);
   P.topY = 1.9;
 }
 
