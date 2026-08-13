@@ -1,6 +1,6 @@
 // Euro/Asia-moderns family procedural profiles (fidelity oracles:
-// archived visual measurements for Ariete/Leclerc/T-80U/Type 90/Type 74).
-// Owned by the misc/Euro-Asia family agent.
+// ariete-dustymojito, char_leclerc_andertan, t80u_javanilga, recovered
+// type90, type74-nullops). Owned by the misc/Euro-Asia family agent.
 //
 // Wave-2 rebuild (docs/critique/shaded-parity-r1.md lessons applied in ONE
 // pass): every tank is a bespoke build measured against the width-normalized
@@ -413,10 +413,28 @@ function buildAriete(P) {
     P.add('hull', box(0.13, 0.41, 0.14), s * 1.615, 1.395, 3.35);              // crest block inner (top 1.60, x 1.55-1.68, z 3.28-3.42; bottom 1.19 clears the idler wrap)
     P.add('hull', box(0.057, 0.355, 0.14), s * 1.7085, 1.3675, 3.35);          // crest OUTER CROWN step (top 1.545 — push-2: the ref front crest FALLS outboard: 1.567@1.726 / 1.557@1.767 vs the flat 1.60 block's +0.05; r3-1024: outer face 1.737 — the 1.745 face rendered 1.7671, a 4.6 mm coin-flip sliver in the ±1.784 col whose ref top is the 1.317 skirt skin)
     P.add('hullRubber', box(0.50, 0.05, 0.12), s * 1.32, 1.235, 3.40);         // rubber lip under the crest (r3-1024: raised+pulled to z 3.34-3.46 / y 1.21-1.26 — the raised wrap circle climbs to 1.175 under it, and any content in the z 3.464-3.577 apex window above ~1.0 prints the 3.568 col over the ref's [0.786..1.01] annulus band)
-    // Track-law closure (2026-08-12): the raised native idler and linked
-    // shoes own this silhouette.  Do not add static hull wedges inside the
-    // same lane; the former duplicate course intersected 91% of the moving
-    // front shoes even though the legacy lane-local audit skipped it.
+    // NON-CIRCULAR WRAP FILL (r3, the packet's banked wrap-authoring break):
+    // the ref's front gear silhouette is a shallow 0.39-slope ramp to z 3.17,
+    // a HARD KNEE climbing ~1.8 to the wrap bottom 0.79@3.34, and a thin
+    // [0.78..1.00] annulus apex ending 3.575 — no tangent+circle the kit can
+    // build passes through all three (measured: ramp cols read +0.05..0.09,
+    // the knee cols -0.07..-0.21, the apex col err 0.23). The visible shape
+    // is AUTHORED here as per-side track-tone slabs riding INSIDE the track
+    // x-band (1.08..1.68); the kit band+pads tuck inside/above it. Buckets
+    // hullTrackTrimL/R (russia t72b3m §B4 lane-local class): one-sided AABBs
+    // so track-clip-audit's lane-local skip classifies them as the running
+    // gear they are; /track/i carries the §B4 tag. Plan: the fill's 3.575
+    // front face takes over the plan front lane the flap carried.
+    const FX0 = 1.08, FX1 = 1.68;
+    const fillBucket = s < 0 ? 'hullTrackTrimL' : 'hullTrackTrimR';
+    const fseg = (zA, yA, zB, yB, yC, yD) => P.add(fillBucket, slab(
+      [s * FX0, yA, zA], [s * FX1, yA, zA], [s * FX1, yB, zB], [s * FX0, yB, zB],
+      [s * FX0, yC, zA], [s * FX1, yC, zA], [s * FX1, yD, zB], [s * FX0, yD, zB]));
+    fseg(2.37, 0.055, 3.17, 0.367, 0.35, 0.65);                                // approach ramp (ref slope 0.39, liftoff 2.33)
+    fseg(3.17, 0.367, 3.223, 0.588, 0.65, 1.15);                               // knee riser
+    fseg(3.223, 0.588, 3.343, 0.788, 1.15, 1.15);                              // knee to the wrap-bottom line
+    fseg(3.343, 0.788, 3.44, 0.888, 1.15, 0.998);                              // wrap shoulder (top closes toward the apex)
+    fseg(3.44, 0.888, 3.575, 0.992, 0.998, 0.994);                             // apex wedge: front face 3.575 = the plan front lane; top 0.99 = the ref annulus top in the 3.568 side col
   }
   // stern: rake wedge + plate + thin tail lip + CENTER tail block anchor
   P.add('hull', slab(                                                          // center rake (x +-0.82 — push-2: the +-0.92 slab printed the ref's 0.85-0.97 rear-notch cols at -3.71): bottoms 0.38@-2.60 -> 0.74@-3.66
@@ -458,14 +476,14 @@ function buildAriete(P) {
   P.add('hullDark', box(0.56, 0.013, 0.03), 0.52, 1.387, 1.95, -0.06, 0, 0);
   for (let k = -1; k <= 1; k++) periscope(P, 'hullDetail', 0.52 + k * 0.17, 1.376, 2.16, k * 0.08);
   for (const s of [-1, 1]) P.add('hullDetail', box(0.80, 0.04, 0.05), s * 0.40, 1.315, 2.62, -0.06, s * 0.42, 0); // V splash rail HUGGING the glacis (r3: the -0.16 tilt topped 1.42 over the ref's bare 1.26-1.35 line)
-  headlight(P, -1.40, 1.27, 3.30, -0.25, 0.048);                              // seated above the idler return; strict shoe clearance retained
-  headlight(P, 1.40, 1.27, 3.30, -0.25, 0.048);
+  headlight(P, -1.40, 1.20, 3.30, -0.25, 0.048);                              // (r3-1024: sunk — the 1.35 guard crowns printed the 3.21 side col over the ref's 1.279 line)                               // tucked at the crest shoulders (the 1.42-high pods printed 1.47 over the ref's bare 1.28 glacis line)
+  headlight(P, 1.40, 1.20, 3.30, -0.25, 0.048);
   P.add('hullDetail', torus(0.08, 0.015, 10), -0.60, 0.62, 3.40, Math.PI / 2, 0, 0); // tow eyes
   P.add('hullDetail', torus(0.08, 0.015, 10), 0.60, 0.62, 3.40, Math.PI / 2, 0, 0);
   liftEye(P, 'hullDetail', -1.40, 1.42, 0.55);
   liftEye(P, 'hullDetail', 1.40, 1.42, 0.55);
   towCable(P, [[-1.10, 1.27, 2.68], [0, 1.425, 2.18], [1.10, 1.27, 2.68]]);   // (r3-1024: re-draped — the 1.42@2.30 knot printed 1.446 across the z 2.37-2.6 cols over the re-laid 1.358 glacis)
-  stowage(P, 'hullCloth', rng, [[1.30, 1.555, -3.10, 0.44, 0.10, 0.46]]);      // compact aft-deck roll, outside the complete turret yaw envelope
+  stowage(P, 'hullCloth', rng, [[-1.30, 1.555, -2.15, 0.44, 0.10, 0.8]]);      // deck roll FLAT (push round: the 1.66/0.14 roll topped 1.75 across five side cols + four front cols where the ref line is 1.585-1.66)
   // deck dressing (turret-fix: the bare 3.1 m fore deck + no baked AO fused
   // hull and turret into one wall at 3/4 angles) — all paper-thin interior
   // pieces, zero silhouette
@@ -475,13 +493,13 @@ function buildAriete(P) {
   P.add('hullDark', box(0.50, 0.008, 0.34), 1.06, 1.449, 0.95);                // stowage panel R
   {
     const links = FITTINGS.spareTrackLinks({ mats: P.mats, links: 4, width: 0.46, seed: 7 });
-    links.position.set(-0.70, 1.478, -3.35);                                   // hull-owned aft-deck links remain clear of the rotating basket envelope
+    links.position.set(-0.70, 1.478, -2.98);                                   // spare links SUNK to tops 1.578 (r3 1024: the 1.645 tops printed the 0.57-1.05 front cols where the ref line is 1.598 rendered; 1.578 renders 1.598 exactly — the front want AND the low edge of the side 1.598-1.631 band)
     P.hullG.add(links);
   }
   P.add('hull', box(0.14, 0.125, 0.18), 0, 1.5755, -2.85);                     // CENTER EXHAUST STACK top 1.638 (r3 1024: the ref center dome — front ±0.04 cols want 1.659 rendered AND side -2.76..-2.88 wants 1.66 — is one x ±0.07 mass on the tail deck; §B3: stack body with a dark grate cap)
   P.add('hullDark', box(0.10, 0.02, 0.12), 0, 1.6255, -2.85);                  // stack grate inlay (top 1.6355, inside the body crown)
   P.decal('hull', 'number', 'EI 118', 0.26, [-0.92, 1.279, 3.06], 0, -0.21);  // ON the glacis plane (push round r2: the 3.66 nose seat became a floating band in the tube-only 3.643 col after the nose pull)
-  P.decal('hull', 'soot', null, 0.30, [-1.45, 1.39, -2.95], -Math.PI / 2);    // exhaust stain stays above the rear return/shoes
+  P.decal('hull', 'soot', null, 0.55, [-1.45, 1.10, -2.95], -Math.PI / 2);
   // skirts: full-length panels at +-1.78 + the widthM edge strip at exactly
   // +-1.80 (WIDTH GUARD; ref stations read ~3.54-3.60 the whole run).
   // Band 0.60..1.42 under the deck edge; courses segmented ~0.47 (SS C).
@@ -506,46 +524,23 @@ function buildAriete(P) {
   // small idler (far 3.68 = plan 3.71 lane) + sprocket (far -3.48 = plan
   // -3.46); lanes x 1.04..1.64 like the print's front columns
   const wheelZs = [2.40, 1.65, 0.90, 0.15, -0.60, -1.35, -2.10];
-  const arieteGear = {
+  buildRunningGear(P, {
     style: 'rubber', wheelR: 0.345, wheelW: 0.21, wheelY: 0.43, xc: 1.3725,
     wheelZs,
-    // The former r=.09 nominal idler vanished behind the first road wheel and
-    // forced the linked course into a near-vertical stack.  Restore a real
-    // visible non-driven terminal ahead of the seven road wheels.
-    sprocket: { z: -3.10, y: 0.82, r: 0.28 }, idler: { z: 3.18, y: 0.73, r: 0.30 },
+    sprocket: { z: -3.12, y: 0.86, r: 0.21 }, idler: { z: 3.30, y: 0.945, r: 0.09 },   // (90-ladder r2: a +0.035 sprocket raise chased the far-stern 0.58-0.70 rake wants and was REVERTED — the tangent ramp rose with the wrap and printed +0.017 on five matched mid-ramp cols: hull 85.0 -> 84.2; the 0.04-class far-stern bottoms stay the cheaper residual) (r3 wrap break: small HIGH idler — band annulus [0.79..1.10] at the 3.57 apex col ≈ the ref's [0.786..1.01]; band far 3.525/pads 3.545 stay clear of the certified 3.686 nose col at 3.581; wrap top 1.175 keeps 15 mm under the 1.19 crest bottom, §B4 exact-clear)
     rollers: [1.95, 0.70, -0.65, -1.80].map((z) => ({ z, y: 0.88, r: 0.08 })),
-    trackW: 0.615, topY: 0.88, botY: 0.055, contactZF: 2.55, contactZR: -2.05, paintedEnds: true, coveredTop: true, arms: true,
-  };
-  buildRunningGear(P, arieteGear);
-  P.hullG.userData.runningGearOrder = {
-    front: 'idler', frontWheelPairs: 1, roadWheelPairs: wheelZs.length,
-    supportRollerPairs: arieteGear.rollers.length, suspension: 'hydropneumatic-arm',
-    rear: 'final-drive-sprocket',
-  };
+    trackW: 0.615, topY: 0.88, botY: 0.055, contactZF: 2.22, contactZR: -2.05, paintedEnds: true, coveredTop: true, arms: true,
+  });
   // Shallow concentric faces on the existing seven wheel stations.  The
   // physical rubber tires and course remain owned by buildRunningGear; these
   // sit within its original width and restore the olive dish/dark hub cadence
   // that distinguished the stronger first-party Ariete.
   for (const side of [-1, 1]) {
     for (const wz of wheelZs) {
-      P.add('hullRunningGearDetail', cylX(0.275, 0.035, 18), side * 1.69, 0.43, wz);
-      P.add('hullRunningGearDark', cylX(0.095, 0.039, 14), side * 1.695, 0.43, wz);
-      P.add('hullRunningGearDark', torus(0.205, 0.014, 18), side * 1.711, 0.43, wz,
+      P.add('hullDetail', cylX(0.275, 0.035, 18), side * 1.69, 0.43, wz);
+      P.add('hullDark', cylX(0.095, 0.039, 14), side * 1.695, 0.43, wz);
+      P.add('hullDark', torus(0.205, 0.014, 18), side * 1.711, 0.43, wz,
         0, 0, Math.PI / 2);
-    }
-    // Match the seven road-wheel faces with visibly concentric terminal
-    // assemblies. The idler and final drive remain distinct from the road
-    // row, while the native loop remains the only authored track course.
-    P.add('hullRunningGearDetail', cylX(0.255, 0.030, 20), side * 1.690, 0.73, 3.18);
-    P.add('hullRunningGearDark', torus(0.205, 0.014, 20), side * 1.707, 0.73, 3.18, 0, 0, Math.PI / 2);
-    P.add('hullRunningGearDark', cylX(0.072, 0.037, 14), side * 1.711, 0.73, 3.18);
-    P.add('hullRunningGearDetail', cylX(0.238, 0.030, 20), side * 1.690, 0.82, -3.10);
-    P.add('hullRunningGearDark', torus(0.188, 0.014, 20), side * 1.707, 0.82, -3.10, 0, 0, Math.PI / 2);
-    P.add('hullRunningGearDark', cylX(0.078, 0.037, 14), side * 1.711, 0.82, -3.10);
-    for (let k = 0; k < 8; k++) {
-      const a = (k / 8) * Math.PI * 2;
-      P.add('hullRunningGearDark', cylX(0.020, 0.041, 8), side * 1.713,
-        0.82 + Math.sin(a) * 0.135, -3.10 + Math.cos(a) * 0.135);
     }
   }
   // (push-2: contactZF 2.36 -> 2.22 — the ref approach ramp lifts off at
@@ -559,7 +554,7 @@ function buildAriete(P) {
   // the track widened INBOARD (xc 1.385, inner face 1.075 — the ref front
   // rows reach near-ground at +-1.07-1.13; outer face stays 1.695; tub +-1.03
   // keeps 4.5 cm to the inner band plane, audit dilates 2)
-  wheelRecessAt(P, wheelZs, 1.3725, 0.43, 0.345, 0.21, 'hullRunningGearDark');
+  wheelRecessAt(P, wheelZs, 1.3725, 0.43, 0.345, 0.21);
   tightenHullShadowProxy(P, { xc: 1.3725, trackW: 0.34, y0: 0.15, y1: 0.58, z0: -2.40, z1: 2.60, hullZ0: -3.20, hullZ1: 3.20 });
 
   // ---- turret: canted-wall welded slab + raised front roof + TURMS +
@@ -798,9 +793,7 @@ function buildArieteNative2026(P) {
   // Wide sponsons end before the sprocket uprun.  A narrower structural
   // return continues between the two live courses, preserving the deck
   // load path without putting a full-width wall through the rear shoes.
-  // Keep the full-width sponson as a shallow deck-edge beam above the native
-  // return course.  Its former 25 cm drop occupied the animated band sweep.
-  P.add('hull', box(3.28, 0.10, 4.91), 0, 1.30, -0.445);
+  P.add('hull', box(3.28, 0.25, 4.91), 0, 1.17, -0.445);
   P.add('hull', box(2.00, 0.25, 0.27), 0, 1.17, -3.035);
   P.add('hull', box(3.22, 0.055, 3.92), 0, 1.325, -1.08);                     // broad flat engine/crew deck
   for (const s of [-1, 1]) {
@@ -808,10 +801,10 @@ function buildArieteNative2026(P) {
     // upper shoulders flare above the idler uprun.
     P.add('hull', slab(
       [s * 0.01, 0.42, 1.52], [s * 1.00, 0.72, 1.52], [s * 0.94, 1.27, 3.38], [s * 0.01, 1.25, 3.54],
-      [s * 0.01, 1.30, 1.52], [s * 0.94, 1.30, 1.52], [s * 0.94, 1.31, 3.40], [s * 0.01, 1.26, 3.55]));
+      [s * 0.01, 1.30, 1.52], [s * 1.58, 1.30, 1.52], [s * 1.51, 1.29, 3.40], [s * 0.01, 1.26, 3.55]));
     P.add('hull', slab(
-      [s * 1.04, 1.28, 1.55], [s * 1.58, 1.28, 1.55], [s * 1.51, 1.30, 3.40], [s * 1.10, 1.30, 3.41],
-      [s * 1.04, 1.38, 1.55], [s * 1.64, 1.38, 1.55], [s * 1.60, 1.41, 3.42], [s * 1.10, 1.38, 3.43]));
+      [s * 1.04, 1.15, 1.55], [s * 1.58, 1.15, 1.55], [s * 1.51, 1.27, 3.40], [s * 1.10, 1.25, 3.41],
+      [s * 1.04, 1.36, 1.55], [s * 1.64, 1.36, 1.55], [s * 1.60, 1.39, 3.42], [s * 1.10, 1.36, 3.43]));
   }
   // Rear lower return and low layered service transom.
   P.add('hullDark', box(1.98, 0.44, 0.40), 0, 0.76, -3.38);
@@ -850,16 +843,17 @@ function buildArieteNative2026(P) {
   // the final 5 cm top-down contiguity cell at x 0.40 / z -3.68.
   P.add('hullDark', box(0.14, 0.010, 0.14), 0.40, 0.54, -3.68);
 
-  // Shallow segmented skirts hang from the fender edge above the complete
-  // animated return run.  They may visually frame the upper wheel shoulders,
-  // but no static panel is allowed to occupy the band/shoe sweep.
+  // Shallow segmented skirts cover the return run and only the upper wheel
+  // shoulders.  The former 0.32 m course sat wholly above the wheel crowns,
+  // making the native gear look naked; this lower course restores the C1's
+  // draped hull-over-seven-wheels stance while retaining every lower arc.
   fenders(P, 1.10, 1.64, 1.35, -2.78, 2.72, 0.03);
   for (const s of [-1, 1]) {
     for (let k = 0; k < 11; k++) {
       const z = -2.72 + k * 0.50;
-      const h = k === 0 ? 0.13 : 0.15;
-      P.add('hull', box(0.030, h, k === 0 ? 0.37 : 0.47), s * 1.65, 1.355, z);
-      P.add('hullDark', box(0.034, h * 0.62, 0.016), s * 1.668, 1.365, z + 0.235);
+      const h = k === 0 ? 0.40 : 0.46;
+      P.add('hull', box(0.030, h, k === 0 ? 0.37 : 0.47), s * 1.65, 0.995, z);
+      P.add('hullDark', box(0.034, h * 0.72, 0.016), s * 1.668, 0.995, z + 0.235);
     }
     P.add('hullRubber', box(0.024, 0.24, 0.38), s * 1.72, 1.01, -3.22);
     P.add('hullRubber', box(0.024, 0.24, 0.36), s * 1.72, 1.01, 2.78);
@@ -874,8 +868,8 @@ function buildArieteNative2026(P) {
     P.add('hullDetail', box(0.38, 0.025, 0.18), s * 1.22, 1.34, 3.11, -0.22, 0, 0);
     liftEye(P, 'hullDetail', s * 1.30, 1.34, -2.54);
     P.add('hullDetail', torus(0.09, 0.016, 14), s * 0.58, 0.61, 3.43, Math.PI / 2, 0, 0);
-    P.add('hullDetail', box(0.30, 0.035, 0.035), s * 0.76, 1.22, 3.27, -0.22, 0, s * 0.12);
-    P.add('hullDetail', box(0.16, 0.028, 0.028), s * 1.03, 1.25, 3.20, -0.22, 0, -s * 0.15);
+    P.add('hullDetail', box(0.32, 0.035, 0.035), s * 0.80, 0.91, 3.31, -0.22, 0, s * 0.12);
+    P.add('hullDetail', box(0.20, 0.028, 0.028), s * 1.12, 0.98, 3.23, -0.22, 0, -s * 0.15);
   }
   P.add('hullDark', box(1.80, 0.025, 0.028), 0, 0.81, 3.40, -0.18, 0, 0);
   P.add('hullDetail', box(1.42, 0.028, 0.032), 0, 1.03, 3.36, -0.18, 0, 0);
@@ -896,47 +890,20 @@ function buildArieteNative2026(P) {
   P.add('hullDetail', box(1.60, 0.035, 0.035), 0.20, 1.40, -3.10);
   P.add('hullDetail', box(0.055, 0.055, 1.40), -1.27, 1.38, -0.30, 0, 0.05, 0);
 
-  // Seven large, closely spaced fleet-native wheels, a distinct non-driven
-  // front idler, rear final drive, supported return rollers and one linked
-  // course.  The terminal radii are intentionally smaller than the road
-  // wheels but remain readable at the standardized elevated profile.
+  // Seven large, closely spaced fleet-native wheels and one linked course.
   const wheelZs = [2.40, 1.65, 0.90, 0.15, -0.60, -1.35, -2.10];
   const XC = 1.3725;
   buildRunningGear(P, {
     style: 'rubber', dishR: 0.74, tireHex: 0x34352d, wheelHex: 0x454a38,
     wheelR: 0.410, wheelW: 0.230, wheelY: 0.450, xc: XC,
     wheelZs,
-    sprocket: { z: -3.12, y: 0.78, r: 0.255, trackR: 0.285 },
-    idler: { z: 3.18, y: 0.67, r: 0.265, trackR: 0.285 },
+    sprocket: { z: -3.12, y: 0.86, r: 0.21 },
+    idler: { z: 3.30, y: 0.945, r: 0.09 },
     rollers: [1.95, 0.70, -0.65, -1.80].map((z) => ({ z, y: 0.88, r: 0.08 })),
     trackW: 0.615, topY: 0.88, botY: 0.055,
     contactZF: 2.22, contactZR: -2.05,
     deadSag: 0.022, paintedEnds: true, coveredTop: true, arms: true,
   });
-  // The native loop owns the entire moving course, but its terminal faces
-  // sit inboard of the outer shoe plane.  Give the free front idler and rear
-  // final drive their own concentric, outboard-readable assemblies so the
-  // two ends cannot collapse into dark holes in the fleet profile view.
-  for (const side of [-1, 1]) {
-    const faceX = side * 1.690;
-    P.add('hullRunningGearDetail', cylX(0.215, 0.030, 24), faceX, 0.67, 3.18);
-    P.add('hullRunningGearDark', torus(0.168, 0.014, 20), side * 1.708, 0.67, 3.18, 0, 0, Math.PI / 2);
-    P.add('hullRunningGearDetail', cylX(0.066, 0.038, 14), side * 1.712, 0.67, 3.18);
-
-    P.add('hullRunningGearDetail', cylX(0.225, 0.030, 24), faceX, 0.78, -3.12);
-    P.add('hullRunningGearDark', torus(0.178, 0.014, 20), side * 1.708, 0.78, -3.12, 0, 0, Math.PI / 2);
-    P.add('hullRunningGearDetail', cylX(0.072, 0.038, 14), side * 1.712, 0.78, -3.12);
-    for (let k = 0; k < 8; k++) {
-      const a = k * Math.PI / 4;
-      P.add('hullRunningGearDark', cylX(0.013, 0.040, 8), side * 1.714,
-        0.78 + Math.sin(a) * 0.125, -3.12 + Math.cos(a) * 0.125);
-    }
-  }
-  P.hullG.userData.runningGearOrder = {
-    front: 'idler', frontWheelPairs: 1, roadWheelPairs: wheelZs.length,
-    supportRollerPairs: 4, suspension: 'torsion-arm',
-    rear: 'final-drive-sprocket',
-  };
   tightenHullShadowProxy(P, { xc: XC, trackW: 0.34, y0: 0.15, y1: 0.58, z0: -2.40, z1: 2.60, hullZ0: -3.20, hullZ1: 3.20 });
 
   // ---- low, broad connected Ariete turret ----
@@ -1040,7 +1007,7 @@ function buildArieteNative2026(P) {
 }
 
 function buildLeclerc(P) {
-  const { box, cylX, cylY, cylZ, frustum, torus, buildGun, buildRunningGear,
+  const { box, cylY, cylZ, frustum, torus, buildGun, buildRunningGear,
     fenders, headlight, liftEye, periscope, towCable, stowage, jerryCan, ammoCan,
     spareTrackStrip, shovelTool } = KIT;
   const slab = orientedSlab;                                                   // §C missing-side fix: winding-corrected slabs only (see orientedSlab)
@@ -1085,7 +1052,6 @@ function buildLeclerc(P) {
   P.add('hull', frustum(1.66, 2.66, 1.60, 1.66, 1.64, 1.60, 1.363, 1.55));
   P.add('hull', frustum(1.00, 2.74, 2.62, 1.66, 2.66, 2.62, 1.348, 1.363));
   P.add('hull', frustum(0.94, 3.46, 2.76, 0.94, 2.82, 2.76, 1.21, 1.34));
-  P.add('hull', box(1.84, 0.38, 0.22), 0, 1.035, 3.46);                       // inset nose/guard bridge owns the raised tip silhouette, inside both track lanes
   // lower bow: narrow (x ±0.94 INSIDE the track inner faces)
   P.add('hull', frustum(0.94, 2.95, 2.42, 0.94, 3.02, 2.58, 0.27, 1.19));
   // stern boat-tail wedge, same containment narrowing
@@ -1111,33 +1077,19 @@ function buildLeclerc(P) {
       [s2 * 1.70, 1.415, 1.30], [s2 * 1.785, 1.415, 1.30], [s2 * 1.785, 1.205, 3.32], [s2 * 1.70, 1.205, 3.32],
       [s2 * 1.70, 1.445, 1.30], [s2 * 1.785, 1.445, 1.30], [s2 * 1.785, 1.235, 3.32], [s2 * 1.70, 1.235, 3.32]));
 
-    // Proper Leclerc front mudguard: a visibly raked steel cap that follows
-    // the idler crest, then turns down into a flexible apron AHEAD of the
-    // shoe orbit.  The previous repair kept the cap collision-free by
-    // parking its whole lower face at y=1.48.  In live profile pixels that
-    // made it disappear into the upper shoulder and left the terminal links
-    // reading as a bare vertical ladder.  The rear edge still enters the
-    // fender at the old height, but the leading edge now falls with the
-    // native wrap.  Both knees remain outside the moving lane: the inner one
-    // is inboard of the track and the outer one is beyond the shoe width.
+    // Proper Leclerc front mudguard: a shallow raked steel cap above the
+    // idler crest plus a flexible front lip AHEAD of the shoe orbit.  The
+    // deleted legacy flap sat at z=3.28/y=0.775, directly through the live
+    // terminal links.  This cap stays above them; its rubber lip begins
+    // beyond their forward sweep.  Both supports are hull-owned: the inner
+    // knee enters the narrow bow and the outer knee enters the fender rail.
     P.add('hull', slab(
-      [s2 * 0.90, 1.300, 2.88], [s2 * 1.785, 1.300, 2.88], [s2 * 1.720, 1.245, 3.60], [s2 * 0.98, 1.245, 3.60],
-      [s2 * 0.90, 1.360, 2.88], [s2 * 1.785, 1.360, 2.88], [s2 * 1.720, 1.310, 3.60], [s2 * 0.98, 1.310, 3.60]));
-    P.add('hull', box(0.08, 0.12, 0.30), s2 * 0.90, 1.300, 3.08);             // inboard bow knee (inside the shoe lane)
-    P.add('hull', box(0.07, 0.12, 0.30), s2 * 1.7425, 1.310, 3.18);           // outboard fender knee (outside the shoe lane)
-    P.add('hullRubber', slab(                                                  // tapered hinge overlap projects beyond the terminal shoe envelope
-      [s2 * 0.98, 1.205, 3.595], [s2 * 1.72, 1.205, 3.595], [s2 * 1.72, 1.285, 3.595], [s2 * 0.98, 1.285, 3.595],
-      [s2 * 1.00, 1.205, 3.630], [s2 * 1.70, 1.205, 3.630], [s2 * 1.70, 1.285, 3.630], [s2 * 1.00, 1.285, 3.630]));
-    P.add('hull', slab(                                                        // shallow camouflaged guard face; it must frame, not mask, the idler
-      [s2 * 1.10, 1.10, 3.630], [s2 * 1.62, 1.04, 3.630], [s2 * 1.70, 1.245, 3.630], [s2 * 1.00, 1.245, 3.630],
-      [s2 * 1.14, 1.14, 3.675], [s2 * 1.58, 1.08, 3.675], [s2 * 1.64, 1.235, 3.675], [s2 * 1.06, 1.235, 3.675]));
-    P.add('hullRubber', slab(                                                  // narrow flexible lip follows the guard's lower rake
-      [s2 * 1.10, 1.01, 3.630], [s2 * 1.62, 0.96, 3.630], [s2 * 1.62, 1.05, 3.630], [s2 * 1.10, 1.10, 3.630],
-      [s2 * 1.14, 1.05, 3.675], [s2 * 1.58, 1.00, 3.675], [s2 * 1.58, 1.09, 3.675], [s2 * 1.14, 1.14, 3.675]));
-    P.add('hullDark', box(0.54, 0.024, 0.024), s2 * 1.35, 1.294, 3.610);      // hinge seam follows the cap's forward arris
-    for (const bx of [1.08, 1.62]) {
-      P.add('hullDark', box(0.035, 0.12, 0.035), s2 * bx, 1.135, 3.650);     // two real apron stiffeners, seated through the overlap
-    }
+      [s2 * 0.90, 1.480, 2.95], [s2 * 1.785, 1.480, 2.95], [s2 * 1.720, 1.480, 3.58], [s2 * 0.98, 1.480, 3.58],
+      [s2 * 0.90, 1.525, 2.95], [s2 * 1.785, 1.525, 2.95], [s2 * 1.720, 1.525, 3.58], [s2 * 0.98, 1.525, 3.58]));
+    P.add('hull', box(0.08, 0.27, 0.30), s2 * 0.90, 1.365, 3.10);             // inboard bow knee (inside the shoe lane)
+    P.add('hull', box(0.07, 0.30, 0.28), s2 * 1.7425, 1.345, 3.25);           // outboard fender knee (outside the shoe lane)
+    P.add('hullRubber', box(0.64, 0.15, 0.035), s2 * 1.37, 1.405, 3.58);      // shallow flexible lip, ahead of terminal shoes
+    P.add('hullDark', box(0.52, 0.025, 0.018), s2 * 1.36, 1.515, 3.555);      // cap hinge/seam
   }
   // driver LEFT: flush hatch + 3 episcopes (90-ladder r1 CAP-SEAT: ref deck
   // line reads 1.534-1.544 over z 0.2..1.25 — the 1.573/1.576 hatch crowns
@@ -1159,17 +1111,15 @@ function buildLeclerc(P) {
     // ±1.828 starts z 1.229 — the old 1.11 edge printed -0.116 x2 cols);
     // k3/k4 tops TAPER 1.395/1.32 with the falling glacis (ref side tops
     // read 1.399@2.63 -> 1.306@3.07 where the flat 1.425 row sat +0.02..
-    // +0.12).  The lower edge rises across the forward three panels into
-    // the mudguard instead of forming the old flat wall through the idler.
+    // +0.12; bottoms hold 0.865 for the front ±1.76 band).
     for (let k = 0; k < 5; k++) {
       const bt = k === 3 ? 1.395 : (k === 4 ? 1.32 : 1.425);
-      const bb = [0.925, 0.94, 1.06, 1.20, 1.24][k];
       const zc = k === 0 ? 1.3825 : 1.32 + 0.43 * k;
       const zd = k === 0 ? 0.295 : 0.42;
-      P.add('hull', box(0.09, bt - bb, zd), s * 1.755, (bt + bb) / 2, zc);
+      P.add('hull', box(0.09, bt - 0.925, zd), s * 1.755, (bt + 0.925) / 2, zc);
     }
     P.add('hull', box(0.012, 0.15, 2.0), s * 1.706, 0.855, 2.24);              // mounting lip bridges the raised blocks to the fender shoulder
-    P.add('hull', box(0.09, 0.150, 0.09), s * 1.725, 1.165, 3.265);            // compact sixth block remains clear of the idler/shoe run
+    P.add('hull', box(0.09, 0.315, 0.09), s * 1.725, 1.0825, 3.265);           // compact sixth block remains clear of the idler/shoe run
     for (let k = 0; k < 3; k++) P.add('hullDark', box(0.07, 0.50, 0.016), s * 1.76, 1.15, 2.85 - k * 0.72);
     for (let k = 0; k < 10; k++) {
       // LAST course is the ref's short cut-high panel over the sprocket
@@ -1335,57 +1285,36 @@ function buildLeclerc(P) {
   // silhouette while occupying the same space as the animated band and
   // linked shoes.  The native loop below now authors the complete visible
   // course, including both end transitions.
-  const leclercGear = {
+  buildRunningGear(P, {
     style: 'rubber', wheelR: 0.36, wheelW: 0.22, wheelY: 0.45, xc: 1.295,
     // The source's forward lanes are mildly asymmetric.  Move the complete
     // native assemblies—not static hull tabs—so wheels, wraps, bands and
     // individual shoes remain concentric and share one authored ownership.
     xcLeft: 1.315, xcRight: 1.280,
     wheelZs,
-    // Real painted terminal assemblies replace the tiny r=.14 drums.  The
-    // native tangent solver now owns both transitions; the retired hand-laid
-    // loop was the source of the vertical front shoe pile and kinked rear run.
-    sprocket: { z: -2.72, y: 0.80, r: 0.23, trackR: 0.27 },
-    idler: { z: 3.08, y: 0.75, r: 0.21, trackR: 0.27 },
-    // Source-profiled native centerline. Unlike retired static hull wedges,
-    // these knots drive the real continuous band and every linked shoe. The
-    // The source uses a compact forward wrap around its smaller free idler;
-    // the explicit points retain that clipped profile while the visible end
-    // faces identify the non-driven front and final-drive rear stations.
+    sprocket: { z: -3.00, y: 0.84, r: 0.14 },
+    idler: { z: 3.27, y: 1.10, r: 0.14 },
+    // Source-profiled native loop.  These are track centreline knots, not
+    // hull fills: the animated band and linked shoes follow the measured
+    // Leclerc ramp/knee/crest silhouette themselves.  The former solid
+    // `hullTrackTrim` wedges duplicated this envelope inside the moving
+    // course and produced the visible plates in front of the tracks.
     loopPoints: [
-      [-3.04, 0.90], [-2.93, 0.90], [-2.82, 0.89], [-2.68, 0.82],
-      [-1.95, 0.90], [1.95, 0.90], [2.84, 0.90], [3.00, 1.00],
-      [3.12, 1.055], [3.19, 0.95], [3.24, 0.75], [3.22, 0.60],
-      [3.14, 0.50], [3.03, 0.42], [2.88, 0.35], [2.65, 0.22],
-      [2.34, 0.055], [-2.12, 0.055], [-2.48, 0.25], [-2.72, 0.43],
-      [-2.87, 0.55], [-2.98, 0.70], [-3.04, 0.90],
+      [-3.18, 0.91], [-3.07, 0.91], [-2.96, 0.91], [-2.85, 0.86],
+      [-2.19, 0.86], [2.46, 0.91], [2.574, 0.91], [2.91, 0.91],
+      [3.02, 0.91], [3.13, 1.26], [3.24, 1.36], [3.30, 1.36],
+      [3.42, 1.16], [3.42, 0.915], [3.30, 0.895], [3.20, 0.728],
+      [3.10, 0.546], [3.00, 0.448], [2.91, 0.385], [2.574, 0.193],
+      [2.46, 0.141], [2.30, 0.095], [-2.19, 0.126], [-2.85, 0.515],
+      [-2.96, 0.687], [-3.07, 0.691], [-3.18, 0.915],
     ],
     rollers: [1.95, 1.05, 0.15, -0.80, -1.70].map((z) => ({ z, y: 0.88, r: 0.08 })),
     trackW: 0.630, trackTh: 0.07, topY: 0.90, botY: 0.055,
-    contactZF: 2.34, contactZR: -2.12,
     endRingSpan: 0.56,
     linkPitchM: 0.11, shoeRadialScale: 0.61, padGroundCenter: 0.069,
     padCornerFloor: 0.02, padHugZ0: 2.40,
-    // Bring the actual dished idler face close to the broad shoe plane.  The
-    // terminal remains concentric with—and radially clear inside—the wrap;
-    // this replaces the retired static outboard face rather than duplicating
-    // it.
-    idlerWidthScale: 0.90,
-    endWheelHex: 0x596253,
     paintedEnds: true, coveredTop: true, arms: true,
-  };
-  buildRunningGear(P, leclercGear);
-  P.hullG.userData.runningGearOrder = {
-    front: 'idler', frontWheelPairs: 1, roadWheelPairs: wheelZs.length,
-    supportRollerPairs: leclercGear.rollers.length, suspension: 'hydropneumatic-arm',
-    rear: 'final-drive-sprocket',
-  };
-  // The native builder above already authors painted, dished idler and
-  // toothed final-drive assemblies inside the sole linked-shoe course.  Do
-  // not add a second outboard wheel-face layer here: the former decorative
-  // discs occupied the shoe plane and turned a correct mechanical terminal
-  // into an apparent track intersection in both the exact audit and close
-  // profile pixels.
+  });
   // 90-ladder r1 track re-meter: the 0.64-band's pads reached x 1.623 and
   // COIN-FLIPPED into the front ±1.64 col windows ([1.619..]; official run
   // read bot 0.083 right / 0.501 left from the same symmetric content —
@@ -2144,7 +2073,7 @@ function buildT80UNative2026(P) {
     rollers: [1.80, 0.90, 0, -0.90, -1.80].map((z) => ({ z, y: 0.90, r: 0.08 })),
     trackW: 0.48, topY: 0.87, botY: 0.055, paintedEnds: true, coveredTop: true, arms: true,
   });
-  wheelRecessAt(P, wheelZs, 1.42, 0.42, 0.335, 0.21, 'hullRunningGearDark');
+  wheelRecessAt(P, wheelZs, 1.42, 0.42, 0.335, 0.21);
 
   // ---- turret: wide full-shouldered dome under the K-5 CLAMSHELL ----
   // Raise the complete rotating package onto the source roof datum.  A
@@ -2270,13 +2199,6 @@ function buildT80UNative2026(P) {
   // row and the 0.115 band at z 2.6-3.2 moved that row's registration)
   buildGun(P, { len: 5.51, r: 0.068, sleeve: true, evac: 0.47, evacR: 1.45, collar: false, baseR: 0.15 });
   muzzleBore(P, 0.068, 5.49);                                                  // §B3.1 muzzle bore (shadow-named)
-  // The shallow dark strips at wheel height are suspension-bay backing;
-  // identify only those low parts as running gear.  The camouflaged
-  // sponson underside remains hull-owned and is physically raised above the
-  // six-wheel return without moving the accepted deck or turret envelope.
-  P.raiseTrackCorridor(['hull'], {
-    laneInnerX: 0.95, floorY: 1.22, zMin: -2.62, zMax: 1.26,
-  });
   P.topY = 1.15;
 }
 
@@ -2312,7 +2234,7 @@ function buildT80UNative2026(P) {
 // band 0.159 + evac 0.246 both under the ~0.28 side body cut).
 // ---------------------------------------------------------------------------
 function buildType90(P) {
-  const { box, cylX, cylY, cylZ, frustum, torus, buildGun, buildRunningGear,
+  const { box, cylY, cylZ, frustum, torus, buildGun, buildRunningGear,
     fenders, headlight, liftEye, periscope } = KIT;
   const slab = orientedSlab;                                                   // §C missing-side fix: winding-corrected slabs only (see orientedSlab)
   const { rng } = P;
@@ -2496,20 +2418,10 @@ function buildType90(P) {
     // patch PINNED 2.24/-2.40 (ref ramp liftoffs read 2.28/-2.42 — the free
     // patch ran to the wheel extremes and held the belly grounded 0.15-0.25
     // past both liftoffs, 0.08-0.12 deep across 10 ramp cols)
-    sprocket: { z: -2.98, y: 0.84, r: 0.17 }, idler: { z: 3.24, y: 0.73, r: 0.19 },
+    sprocket: { z: -2.98, y: 0.84, r: 0.14 }, idler: { z: 3.24, y: 0.73, r: 0.19 },   // (r6c §B4: idler y 0.77 -> 0.73 — the raised top-run/wrap crown shared 2 cm voxels with hull content at y 1.02-1.06 / z 3.06-3.22; the wrap-annulus col scores are y-symmetric about the band center and hold at 0.73)
     rollers: [1.70, 0.60, -0.50, -1.60].map((z) => ({ z, y: 0.95, r: 0.08 })),
     trackW: 0.582, topY: 0.92, botY: 0.055, contactZF: 2.18, contactZR: -2.26, paintedEnds: true, coveredTop: true, arms: true,
   });
-  // Restore end-wheel section identity at normal profile scale. Both faces
-  // stay inside the linked-course envelope and remain running-gear-owned.
-  for (const side of [-1, 1]) {
-    P.add('hullRunningGearDetail', cylX(0.150, 0.026, 18), side * 1.565, 0.73, 3.24);
-    P.add('hullRunningGearDark', torus(0.112, 0.012, 16), side * 1.581, 0.73, 3.24, 0, 0, Math.PI / 2);
-    P.add('hullRunningGearDark', cylX(0.050, 0.032, 12), side * 1.585, 0.73, 3.24);
-    P.add('hullRunningGearDetail', cylX(0.132, 0.026, 18), side * 1.565, 0.84, -2.98);
-    P.add('hullRunningGearDark', torus(0.098, 0.012, 16), side * 1.581, 0.84, -2.98, 0, 0, Math.PI / 2);
-    P.add('hullRunningGearDark', cylX(0.058, 0.032, 12), side * 1.585, 0.84, -2.98);
-  }
   // (r5b: contactZR -2.40 -> -2.32 — the VISIBLE rear liftoff lagged the
   // pin ~0.12 [ref -2.42, mine read -2.52; the front pin took exactly]:
   // the short -2.40..sprocket tangent run absorbs part of the pin.)
@@ -3193,7 +3105,7 @@ function buildType74Native2026(P) {
   P.add('hullDark', box(0.36, 0.035, 0.055), -1.12, 1.41, 1.10, 0, 0.10, 0);
   P.add('hullDetail', box(0.52, 0.035, 0.045), 0.74, 1.42, 1.37, 0, -0.16, 0);
   {
-    const cable = FITTINGS.towCable({ mats: P.mats, pts: [[-0.90, 1.20, 2.32], [-0.08, 1.31, 1.78], [0.88, 1.20, 2.30]], r: 0.017, seed: 74 });
+    const cable = FITTINGS.towCable({ mats: P.mats, pts: [[-1.02, 1.16, 2.32], [-0.08, 1.31, 1.78], [0.94, 1.15, 2.30]], r: 0.017, seed: 74 });
     P.hullG.add(cable);
   }
 
@@ -3203,10 +3115,8 @@ function buildType74Native2026(P) {
   buildRunningGear(P, {
     style: 'rubber', dishR: 0.80, wheelR: 0.455, wheelW: 0.27, wheelY: 0.49, xc: XC,
     wheelZs,
-    sprocket: { z: -2.55, y: 0.72, r: 0.32 },
-    // The front idler owns the rising terminal, matching the raised rear
-    // drive and the fleet's required /____\\ course silhouette.
-    idler: { z: 2.55, y: 0.72, r: 0.32 },
+    sprocket: { z: -2.55, y: 0.55, r: 0.32 },
+    idler: { z: 2.55, y: 0.51, r: 0.32 },
     rollers: [-1.22, -0.41, 0.41, 1.22].map((z) => ({ z, y: 1.00, r: 0.08 })),
     trackW: 0.55, trackTh: 0.065, topY: 1.02, botY: 0.035,
     deadSag: 0.025, paintedEnds: true, coveredTop: false, arms: true,
@@ -3440,7 +3350,7 @@ function buildAMX30(P, b2) {
     P.add('hullDetail', box(0.08, 0.08, 4.10), s * 1.54, 1.27, -0.20);         // supported fender edge rail
     if (b2) {
       P.add('hull', box(0.18, 0.18, 0.82), s * 1.58, 1.34, -1.74);             // B2 unequal fender service bin
-      P.add('hullDetail', box(0.12, 0.12, 0.72), s * 1.54, 1.27, -1.74);       // broad inboard return; underside stays above the return shoes
+      P.add('hullDetail', box(0.12, 0.22, 0.72), s * 1.54, 1.22, -1.74);       // broad inboard return
       P.add('hull', box(0.18, 0.20, 0.72), s * 1.58, 1.30, -2.73);             // rear fender service shoulder above the terminal wrap
       P.add('hullDetail', box(0.12, 0.20, 0.62), s * 1.50, 1.30, -2.73);       // broad structural return into the raised sponson
       P.add('hullDark', box(0.13, 0.34, 0.025), s * 1.58, 0.98, -3.095);      // backed rear service recess
@@ -3463,8 +3373,8 @@ function buildAMX30(P, b2) {
   P.hullG.add(cable);
   liftEye(P, 'hullDetail', -1.35, 1.40, 0.20);
   liftEye(P, 'hullDetail', 1.35, 1.40, 0.20);
-  P.decal('hull', 'number', b2 ? '68' : '53', 0.30, [1.51, 1.43, 0.4], Math.PI / 2);
-  P.decal('hull', 'number', b2 ? '68' : '53', 0.30, [-1.51, 1.43, 0.4], -Math.PI / 2);
+  P.decal('hull', 'number', b2 ? '68' : '53', 0.30, [1.51, 1.05, 0.4], Math.PI / 2);
+  P.decal('hull', 'number', b2 ? '68' : '53', 0.30, [-1.51, 1.05, 0.4], -Math.PI / 2);
   // ---- running gear: 5 BIG roadwheels + 5 rollers, front idler ----
   // The comparison side profile carries a tighter five-wheel cadence than
   // the old generic AMX course.  Keep the physical hull datum unchanged and
@@ -3486,7 +3396,7 @@ function buildAMX30(P, b2) {
     shoeRadialScale: b2 ? 0.74 : 1,
     paintedEnds: true, coveredTop: true, arms: true,
   });
-  wheelRecessAt(P, wheelZs, 1.243, roadWheelY, roadWheelR, 0.24, 'hullRunningGearDark');
+  wheelRecessAt(P, wheelZs, 1.243, roadWheelY, roadWheelR, 0.24);
   // (B2 skirts DROPPED: the shoe envelope prints xc+-(W/2+0.023) = +-1.573
   // — a skirt outside it breaks the +-1.55 widthM anchor (§D WIDTH-GUARD),
   // inside it gets swept by the shoes. "Side skirts optional — bare wheels
@@ -3649,22 +3559,15 @@ function buildAMX30B2(P) { buildAMX30(P, true); }
 export const MISC_PROFILES = {
   recon_tank: {
     // spec dims are sovereign: hull 6.2, overall 7.2, height 2.5, width 3.0
-    hull: 'ifv', width: 3.0, hullLength: 6.2, roofY: 1.62, trackTop: 0.91, trackW: 0.40, wheels: 5, skirts: true,
-    // Keep the light reconnaissance hull visibly draped over, rather than
-    // through, its native course.  The shallow upper skirt and lamp seat
-    // expose the idler/road-wheel/sprocket sequence; the corridor lift only
-    // forms the narrow outboard chamfer, leaving the center belly low.
-    skirtY: 1.20, skirtHeight: 0.16, headlightY: 1.13,
-    // Both terminals sit above the five road-wheel centres so the profile
-    // reads as one rising native course instead of seven equal wheels.
-    idlerY: 0.68, sprocketY: 0.68,
-    trackClearance: { laneInnerX: 1.04, floorY: 1.24, buckets: ['hull', 'hullDetail', 'hullDark'] },
+    hull: 'ifv', width: 3.0, hullLength: 6.2, roofY: 1.62, trackTop: 0.66, trackW: 0.40, wheels: 5, skirts: true,
     turret: 'ifv', turretWidth: 1.60, turretDepth: 1.70, turretHeight: 0.93, turretFront: 0.68, turretRear: -0.85, gunLength: 4.44, gunRadius: 0.035, sleeve: false, evac: null, pano: false, mg: false, smoke: false, antennas: false,
   },
   type90: { build: buildType90 },
-  // Keep the stronger earlier authored Ariete. The later experimental route
-  // was also ours, but visibly weakened the accepted hull/turret silhouette.
-  ariete: { build: buildArieteNative2026 },
+  // Runtime Ariete is the stronger earlier repository-authored construction.
+  // The weaker later Native2026 experiment remains historical comparison
+  // code only; neither a source mesh nor converted vertex payload is used at
+  // runtime.
+  ariete: { build: buildAriete },
   leclerc: { build: buildLeclerc },
   t80u: { build: buildT80UNative2026 },
   type74: { build: buildType74Native2026 },

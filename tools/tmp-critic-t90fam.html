@@ -1,12 +1,11 @@
 <!doctype html>
 <meta charset="utf-8">
 <title>tmp critic t90fam</title>
-<link rel="icon" href="data:,">
 <style>:root{color-scheme:dark;background:#0b0f12;color:#e7edf0;font:13px monospace}</style>
 <div id="out">booting…</div>
 <script type="module">
 // TEMP (t90-family trio independent critic §5.38/§B8): 14-view REF|PROC
-// sheets vs the remaining LOCAL-ONLY prints (t90ms_kojf semantic bake and
+// sheets vs the LOCAL-ONLY prints (t90_kojf / t90ms_kojf semantic bakes,
 // t-90a_burlak armored_warfare drop — same override rows as
 // tools/tmp-tank-critic.html, the ratified critic render path), plus §B5
 // yaw90 proc panels, garage-angle proc panels (tmp-abramsx-garage.html
@@ -21,18 +20,18 @@ const SIZE = 640;
 const params = new URLSearchParams(location.search);
 const id = params.get('id') || 't90';
 const garageOnly = params.get('garageonly') === '1';
-const proceduralOnlyEvidence = params.get('proceduralonly') === '1';
 
 // Oracle rows — verbatim from tools/tmp-tank-critic.html (ratified critic
 // path) for the three print-registered trio ids.
 const CRITIC_REFERENCE_OVERRIDES = {
   t90ms: { source:'glb', glb:{ path:'/models/community-candidates/t90ms_kojf.glb', turretNode:'^vehicle#t-90ms_turret_t-90ms_6$', gunNode:'^vehicle#t-90ms_cannon_2a46m-5_8$', autoPivot:true, turretFollowers:'^vehicle#(?:t-90ms_(?:aps|cage01|era\\d\\d|detachparts|ejectionport|smokecaps)_turret|t-90ms_cannonbase_t-90ms|cannonbase_skinned_5|antenna01_24)' } },
+  t90: { source:'glb', glb:{ path:'/models/community-candidates/t90_kojf.glb', turretNode:'^vehicle#t-90_turret_t-90_18$', gunNode:'^vehicle#t-90_cannon_2a46m2_20$', autoPivot:true, turretFollowers:'^vehicle#(?:t-90_(?:aps|era\\d\\d|hatch01|smokecaps)_turret|t-90_cannonbase|cannonbase_t-90|antenna01_(?:17|21))' } },
   t90a_burlak: { source:'glb', glb:{ path:'/models/community-candidates/t-90a_burlak_armored_warfare.glb', turretNode:'^Object_2$', gunNode:'^Object_15$', autoPivot:true, turretFollowers:'^Object_(?:3|4|7|11|16|17|18|20|23)$' } },
 };
-if (!garageOnly && !proceduralOnlyEvidence && MODEL_SOURCE[id]?.source !== 'glb' && CRITIC_REFERENCE_OVERRIDES[id]) {
+if (!garageOnly && MODEL_SOURCE[id]?.source !== 'glb' && CRITIC_REFERENCE_OVERRIDES[id]) {
   MODEL_SOURCE[id] = CRITIC_REFERENCE_OVERRIDES[id];
 }
-const hasRef = !garageOnly && !proceduralOnlyEvidence && MODEL_SOURCE[id]?.source === 'glb';
+const hasRef = !garageOnly && MODEL_SOURCE[id]?.source === 'glb';
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, preserveDrawingBuffer: true });
 renderer.setSize(SIZE, SIZE, false);

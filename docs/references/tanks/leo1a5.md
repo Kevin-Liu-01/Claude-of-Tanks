@@ -26,10 +26,9 @@ graduates (leo2a5/leo2a4 grammar) are the influence sources.
    ("welded turret with the big flat-faced EMES-18 sight embrasure, vs
    A4's cast" — the program's 1A5 wears the angular welded-family
    turret grammar the brief orders).
-2. **Low cast shell with angular applique**: the A1A5 conversion retains the
-   rounded Leopard 1 pear casting under Blohm+Voss add-on cheek/side armor.
-   Lower foundry shoulders must remain visible beneath the clipped plates;
-   neither a bare dome nor a tall regular welded box is correct.
+2. **Angular low welded turret**: flat inward-leaning walls, long flat
+   cheek planes converging on the mantlet zone, squared bustle —
+   nothing drum- or dome-like; plan is a tapering hexagon.
 3. **Wide cast saddle mantlet** at the turret face (the Leopard 1
    signature §B3.1 mantlet mass): a rounded horizontal casting
    spanning most of the turret front, gun central, coax port right,
@@ -106,9 +105,8 @@ Spec dims row (modern2.js TANK_SPECS.leo1a5):
 - GEAR: KIT.buildRunningGear direct (leoGear hard-codes the Leopard 2
   coveredTop/rollers — not this vehicle): 7 duals r 0.315, 4 rollers,
   raised ends, open top run, arms.
-- TURRET: closed four-ring cast pear loft plus buried angular applique
-  (orientedSlab facets, §C.1 winding guard on every mirrored slab), ring
-  plinth (§B2 slit closure), EMES-18
+- TURRET: welded wedge (orientedSlab facets, §C.1 winding guard on
+  every mirrored slab), ring plinth (§B2 slit closure), EMES-18
   flat-faced housing + twin dark apertures + recessed glass + lid,
   commander/loader hatch rings, loader MG3 = FITTINGS.pintleMG (§B3
   census), 2×4 Wegmann smoke banks per side, grab rails, lift eyes,
@@ -243,36 +241,3 @@ photo-class source. If the §E outlier-strip lands, re-extract and
 re-evaluate as a real leo1a5-family oracle candidate (the 1A4/1A5
 turret differences — B&V add-on armor, EMES-18 vs the 1A4's EMES-12A1 —
 must be priced as parity deviations, never chased).
-
-## r2 FIRST-PARTY CAST/APPLIQUE RESTORATION (2026-08-13, RE-FROZEN)
-
-The old r1 geometry was fully authored but retained the program brief's tall
-regular welded-frustum interpretation. Fresh public-photo review showed the
-German 1A5 retaining the low Leopard 1 cast pear shell beneath angular add-on
-armor. The active first-party builder now uses four closed native loft rings
-for the foundry body, broad forward applique following the mantlet cheeks, a
-falling aft-side course and explicit seams/fasteners. No reference geometry or
-converted payload is loaded, sampled or shipped.
-
-EMES-18, both hatch/cupola groups, TRP, periscopes, loader MG3, two smoke-bank
-courses, lift eyes and antenna collars are lowered onto the new crown. The L7
-saddle is narrowed and buried into the cast throat. The rear basket is an open
-frame with side/end returns, braces, floor, cargo and rail-supported load paths
-rather than a dark wall.
-
-- Freeze: **`9339e895`**, repeatable twice, 47 meshes / 61,659 vertices.
-- Evidence: `/private/tmp/leo1a5-final-r3`, 15 yaw0 + 15 yaw90 PNGs, all 30
-  hashes distinct, including the standardized elevated-left profile.
-- Track: exact band front/rear 0/0, shoe front/rear 0/0, strict sweep 0/0.
-- Ownership: 0 stranded / 0 abutting / 0 dangling; winding 0 reversed / 0
-  mixed / 0 deficit pixels; live rig 10/10.
-- Standard photo-class subgates: zero plan holes, `mg1+1d`; no numeric geometry
-  row is fabricated because this id still has no usable oracle.
-- Muzzle: explicit bore PASS, contrast 171.4.
-
-All yaw directions retain gun, mantlet, complete casting/applique, EMES,
-cupolas, MG, smoke, antennas and basket as one seated rotating package over a
-fixed seven-wheel native hull. No fused duplicate, stranded fitting, empty-air
-rail, track collision, open sheet or yaw-dependent wound is visible.
-
-**PASS / KEEP `9339e895`; retire `1c79188`.**

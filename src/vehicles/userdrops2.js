@@ -10,6 +10,9 @@
 //             'Main barrel' (GLTFLoader sanitizes to 'Main_barrel'). The gun
 //             mantlet is a turret SIBLING mesh, so it stays put while the
 //             barrel elevates (known minor). Nose = raw -X.
+//   leclerc — "Char Leclerc (retextured 2024-9-21)" by andertan (CC-BY 4.0).
+//             Authored 'turret' node with child gun mesh 'Cylinder.086'
+//             (sanitized 'Cylinder086'). Nose = raw +X.
 //   leo2a4  — "Leopard 2A4" by m_bergman (Thingiverse thing:4718232,
 //             CC-BY-NC-SA — QUARANTINE). 1:100 wargame print master,
 //             hull+turret STL pair with an authored ring-center 'Turret'
@@ -284,7 +287,7 @@ if (SHIP_USERDROP2_NEW) {
   }
 }
 
-// Remaining sourced-model credit line (m1a1 rule: variantOf
+// Sourced-model credit lines on the four replaced specs (m1a1 rule: variantOf
 // self-marker keeps them off the COMMUNITY tab; gameplay stats in
 // specs.js/modern2/modern3 are untouched — only the model source changes).
 if (TANK_SPECS.t90m && !TANK_SPECS.t90m.community) {
@@ -292,6 +295,14 @@ if (TANK_SPECS.t90m && !TANK_SPECS.t90m.community) {
   TANK_SPECS.t90m.community = {
     author: 'minehffd',
     source: 'https://sketchfab.com/3d-models/t-90m-2e31a3cf16b04f0180b9387df5198c9a',
+    license: 'CC-BY 4.0',
+  };
+}
+if (TANK_SPECS.leclerc && !TANK_SPECS.leclerc.community) {
+  TANK_SPECS.leclerc.variantOf = 'leclerc';
+  TANK_SPECS.leclerc.community = {
+    author: 'andertan',
+    source: 'https://sketchfab.com/3d-models/char-leclerc-84a0918d2f534c2eb003ab3cb3029c03',
     license: 'CC-BY 4.0',
   };
 }
@@ -327,6 +338,16 @@ if (SHIP_USERDROP2_NEW) {
 // FLIP-RETIRED:     // PERF (performance_budget r3): tank_closeup_t90m contract hero —
 // FLIP-RETIRED:     // keeps 2048 color maps at import (see specs.js m1a2 heroTex note).
 // FLIP-RETIRED:     heroTex: true,
+// FLIP-RETIRED:   },
+// FLIP-RETIRED: };
+// FLIP-RETIRED: MODEL_SOURCE.leclerc = {
+// FLIP-RETIRED:   source: 'glb',
+// FLIP-RETIRED:   // authored 'turret' node (yaw) with child gun mesh 'Cylinder.086'
+// FLIP-RETIRED:   // (elevation). Nose = raw +X -> yawOffset -90°.
+// FLIP-RETIRED:   glb: {
+// FLIP-RETIRED:     path: '/models/tanks/char_leclerc_andertan.glb',
+// FLIP-RETIRED:     turretNode: '^turret$', gunNode: '^Cylinder086$', autoPivot: true,
+// FLIP-RETIRED:     yawOffset: -Math.PI / 2,
 // FLIP-RETIRED:   },
 // FLIP-RETIRED: };
 // Runtime source swaps are permanently retired for this wave. The recovered

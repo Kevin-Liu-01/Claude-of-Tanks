@@ -100,7 +100,7 @@ High-value examples for the owner's reported failures:
 | Leopard 2 | `leo2a6_buh.glb`, `community/leo2a4_bergman.glb`, `community/recovered/leo2_revolution.glb`, `leo2a5.glb`, `leo2a7v.glb`, `leopard2_proto.glb` |
 | Merkava | `merkava4_arlassar.glb`, plus `community/recovered/merkava1b.glb` through `merkava4b.glb` |
 | Challenger/Warrior | `community/recovered/challenger1.glb`, `community/recovered/fv510.glb` |
-| Ariete | historical comparison removed; playable is repository-authored procedural geometry |
+| Ariete | `community/ariete-dustymojito.glb` and the raw recovered Ariete drops |
 | Russian/Japanese | `t80u_javanilga.glb`, `t90m_minehffd.glb`, recovered T-62/T-64/T-72/T-90 variants, and `community/recovered/type90.glb` |
 
 `docs/RECOVERED-FLEET.md` lists the 42 recovered additions and explains their

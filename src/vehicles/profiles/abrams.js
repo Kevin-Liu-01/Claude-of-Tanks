@@ -599,7 +599,6 @@ function abramsHull(P, g) {
     contactZF: g.contactZF, contactZR: g.contactZR,
     endRingSpan: g.endRingSpan, pinCapOuter: g.pinCapOuter,
     padCornerFloor: g.padCornerFloor, padHugZ0: g.padHugZ0,
-    idlerWidthScale: g.idlerWidthScale, endWheelHex: g.endWheelHex,
   });
 
   // Glacis furniture — kept FLUSH: the v6 curves show a clean glacis line
@@ -3854,7 +3853,7 @@ function buildM1a2(P, V) {
     // the first cut's mid-shadow wall caught the key light through the
     // wheel gaps and read L~50 flat — the discs need the ref's dark-bay
     // contrast (ref gap shadow under the hem, near-black class).
-    sb('hullRunningGearDark', s, 1.05, 1.09, 0.30, 0.74, -2.62, 2.35);
+    sb('hullDark', s, 1.05, 1.09, 0.30, 0.74, -2.62, 2.35);
     // Tail-bay wall: same 0.90..0.92 plane as the r4-certified sponson
     // closure wall above it (5.7 cm inboard of the wrap band — the
     // audit-proven clearance). z stops at the -2.62 carve line (the
@@ -3862,7 +3861,7 @@ function buildM1a2(P, V) {
     // bottom rides 0.50 — above the 0.44 belly front bins and the rising
     // wrap-arc side line (the first cut's 0.30 floor hung 0.17-low flat
     // bottoms on four side columns and 0.11-low front columns at ±0.91).
-    sb('hullRunningGearDark', s, 0.90, 0.92, 0.50, 0.95, -2.62, -2.27);
+    sb('hullDark', s, 0.90, 0.92, 0.50, 0.95, -2.62, -2.27);
   }
   // Visual r4 order 4 — SUN-FLANK SCALLOP CROWNS (tone-only, the ordered
   // "brighter slot"): the right-side link-pad crown bars ride a dedicated
@@ -3976,13 +3975,13 @@ function buildM1a2(P, V) {
       [1.625, 0.018], [1.70, 0.05], [1.80, 0.082], [1.92, 0.14],
       [1.965, 0.145], [2.30, 0.145]];
     for (const s of [-1, 1]) {
-      band('hullRunningGearTrack', s > 0 ? 0.977 : -1.419, s > 0 ? 1.419 : -0.977,
+      band('hullTrack', s > 0 ? 0.977 : -1.419, s > 0 ? 1.419 : -0.977,
         [[-4, 0.24], [4, 0.24]], RUNB, -2.60, 2.30);
       // Cert bow shoe stack (the r1 idler-shoe block class): z >= 3.30 =
       // 2+ cells clear of the 3.2225 wrap end, entirely aft of the front
       // audit zone; carries the cert 0.53/0.465 side bins to 3.595.
-      sb('hullRunningGearTrack', s, 0.955, 1.41, 0.53, 0.88, 3.30, 3.465);
-      sb('hullRunningGearTrack', s, 0.955, 1.41, 0.465, 0.88, 3.48, 3.595);
+      sb('hullTrack', s, 0.955, 1.41, 0.53, 0.88, 3.30, 3.465);
+      sb('hullTrack', s, 0.955, 1.41, 0.465, 0.88, 3.48, 3.595);
       {
         // §B3 BOX-CLEANUP (sepv2 round, 2026-08-05; PORTED to m1a2 in its
         // graduate-change round the same day — family-shared, both
@@ -4000,27 +3999,21 @@ function buildM1a2(P, V) {
           const step = (zB - zA - 0.02) / n;
           for (let k = 0; k < n; k++) {
             const zc = zA + 0.01 + step * (k + 0.5);
-            sb('hullRunningGearTrack', s, 1.41, 1.417, y0 + 0.03, 0.85, zc - step * 0.36, zc + step * 0.36);
-            sb('hullRunningGearDetail', s, 1.41, 1.4185, 0.665, 0.695, zc - 0.012, zc + 0.012);
+            sb('hullTrack', s, 1.41, 1.417, y0 + 0.03, 0.85, zc - step * 0.36, zc + step * 0.36);
+            sb('hullDetail', s, 1.41, 1.4185, 0.665, 0.695, zc - 0.012, zc + 0.012);
           }
         }
       }
       // Cert tail shoe under the shelf (keyed 1 cm into the tail solid —
       // floater contract; bottom rides the ref's 0.65-0.685 tail line).
-      sb('hullRunningGearTrack', s, 0.955, 1.41, 0.655, 0.90, -3.555, -3.42);
+      sb('hullTrack', s, 0.955, 1.41, 0.655, 0.90, -3.555, -3.42);
       // Head-on corridor baffles between the runs (bare-drum daylight fix,
       // r2 precedent) — seated above the ground-run band, outside both
       // audit zones.
-      sb('hullRunningGearDark', s, 0.955, 1.41, 0.36, 0.84, 2.34, 2.36);
-      sb('hullRunningGearDark', s, 0.955, 1.41, 0.36, 0.84, -2.67, -2.65);
+      sb('hullDark', s, 0.955, 1.41, 0.36, 0.84, 2.34, 2.36);
+      sb('hullDark', s, 0.955, 1.41, 0.36, 0.84, -2.67, -2.65);
     }
   }
-  // The real forward skirt remains hull-owned; trim only its terminal-ramp
-  // vertices above the top shoe envelope instead of hiding the collision by
-  // semantic tagging.
-  P.raiseTrackCorridor(['hull'], {
-    laneInnerX: 0.95, floorY: 1.32, zMin: 2.38, zMax: 2.72,
-  });
 
   // ---- sponson stowage walls (front-view 1.96-2.12 at |x| 1.29..1.63) ----
   // §B5 r2 COORDINATED NORMALIZE (owner law: turret furniture yaws): these
@@ -5973,10 +5966,6 @@ const AX_HULL = {
   trackXc: 1.375, trackW: 0.57, endRingSpan: 0.42, pinCapOuter: 0.275,
   padCornerFloor: 0, padHugZ0: 2.0, wheelR: 0.2992, wheelY: 0.4184,
   dishR: 0.74, tireHex: 0x232220, wheelHex: 0x343830, arms: true,
-  // Keep both end mechanisms on the sole native running-gear assembly.
-  // The broader painted faces replace the retired outboard face/spoke
-  // overlays, which occupied the articulated shoe sweep at both terminals.
-  idlerWidthScale: 0.90, endWheelHex: 0x40463e,
   contactZF: 2.32, contactZR: -2.37,
   deadSag: 0.03, beltCoreTop: 0.47,
   // Component AABBs from the registered oracle: seven 0.5984 m road
@@ -6074,8 +6063,7 @@ function buildAbramsX(P) {
   // over the certified ground-contact run; wheel and outer-track datums stay
   // untouched, and the strip is fully connected to the existing band.
   for (const side of [-1, 1]) {
-    P.add(side < 0 ? 'hullTrackTrimL' : 'hullTrackTrimR',
-      box(0.055, 0.055, 4.69), side * 1.0625, 0.0275, -0.025);
+    P.add('hullTrack', box(0.055, 0.055, 4.69), side * 1.0625, 0.0275, -0.025);
   }
   // AXDED-R1 RUNNING-GEAR FACE DRESSING (§B8.1 wheel countability, owner
   // verdict 1: "wheels invisible at garage angles"): the stock discs
@@ -6153,10 +6141,49 @@ function buildAbramsX(P) {
             g.wheelY + Math.sin(ba) * 0.129, wz + Math.cos(ba) * 0.129);
         }
       });
-      // The shared native builder now owns both raised terminal faces.  Do
-      // not add a second outboard idler/sprocket, spoke or bolt layer here:
-      // those static solids sat in the same plane as the rising linked-shoe
-      // arcs and made correct terminals look physically interpenetrated.
+      // High end mechanisms are independently countable in the source:
+      // idler center y=.865/r=.279 and sprocket center y=.869/r=.331.
+      // Broad recessed faces expose the rising track arcs instead of
+      // letting the skirt and black band swallow both mechanisms.
+      faceGeos.push(KIT.xform(cylX(0.252, 0.014, 12), side * 1.604,
+        g.idlerY, g.idlerZ));
+      P.add('hullDark', torus(0.212, 0.017, 12), side * 1.619,
+        g.idlerY, g.idlerZ, 0, 0, Math.PI / 2);
+      faceGeos.push(KIT.xform(cylX(0.150, 0.016, 12), side * 1.631,
+        g.idlerY, g.idlerZ));
+      faceGeos.push(KIT.xform(cylX(0.270, 0.014, 12), side * 1.604,
+        g.sprocketY, g.sprocketZ));
+      P.add('hullDark', torus(0.226, 0.017, 12), side * 1.619,
+        g.sprocketY, g.sprocketZ, 0, 0, Math.PI / 2);
+      faceGeos.push(KIT.xform(cylX(0.154, 0.016, 12), side * 1.631,
+        g.sprocketY, g.sprocketZ));
+      // Raised end mechanisms use different spoke rhythms: six open idler
+      // webs forward, eight tighter powered-sprocket webs aft.  Their
+      // centers/radii remain the measured source datums; this only restores
+      // the non-uniform mechanical read lost in seven repeated road dishes.
+      for (const [cy, cz, count, orbit, span] of [
+        [g.idlerY, g.idlerZ, 6, 0.100, 0.190],
+        [g.sprocketY, g.sprocketZ, 8, 0.105, 0.205],
+      ]) {
+        for (let si = 0; si < count; si++) {
+          const a = (si / count) * Math.PI * 2;
+          faceGeos.push(KIT.xform(box(0.018, 0.035, span), side * 1.646,
+            cy + Math.sin(a) * orbit, cz + Math.cos(a) * orbit, -a, 0, 0));
+        }
+      }
+      for (const [cy, cz, rr, count] of [
+        [g.idlerY, g.idlerZ, 0.168, 8],
+        [g.sprocketY, g.sprocketZ, 0.180, 10],
+      ]) {
+        for (let si = 0; si < count; si++) {
+          const a = (si / count) * Math.PI * 2;
+          P.add('hullDark', cylX(0.028, 0.014, 8), side * 1.650,
+            cy + Math.sin(a) * rr, cz + Math.cos(a) * rr);
+          P.add('hullDetail', box(0.024, 0.036, 0.088), side * 1.653,
+            cy + Math.sin(a) * (rr + 0.095),
+            cz + Math.cos(a) * (rr + 0.095), -a, 0, 0);
+        }
+      }
       // Alternating exposed torsion links break the ruler-straight wheel
       // row and make the suspension/load path legible between dishes.
       g.wheelZs.forEach((wz, wi) => {
@@ -6166,13 +6193,22 @@ function buildAbramsX(P) {
       const faceGeo = KIT.mergeAll(faceGeos);
       const faceMesh = new THREE.Mesh(faceGeo, faceMat);
       faceMesh.name = 'abramsxWheelFaceDressing';
-      faceMesh.userData.runningGear = true;
       faceMesh.castShadow = false;
       faceMesh.receiveShadow = true;
       P.hullG.add(faceMesh);
       P.disposables.push(faceGeo);
     }
     P.disposables.push(faceMat);
+  }
+  for (const side of [-1, 1]) {
+    // idler/sprocket: hub dots + a TIGHT hub collar ring UNDER the 0.13
+    // chain-annulus floor (the 0.235/0.255 drum-face rings measured shoe
+    // 111/26 in the wrap windows — the wrap chain sweeps radial 0.13-0.40
+    // off these centers; §B4 audit-driven retreat, AXDED-R2)
+    P.add('hullDetail', cylX(0.075, 0.030, 12), side * 1.620, g.idlerY, g.idlerZ);
+    P.add('hullDark', torus(0.112, 0.012, 16), side * 1.624, g.idlerY, g.idlerZ, 0, 0, Math.PI / 2);
+    P.add('hullDetail', cylX(0.080, 0.030, 12), side * 1.640, g.sprocketY, g.sprocketZ);
+    P.add('hullDark', torus(0.115, 0.012, 16), side * 1.644, g.sprocketY, g.sprocketZ, 0, 0, Math.PI / 2);
   }
   // Splitter lip under the blade bow.  Seat it on the measured knife-edge
   // rake (the old y=.98 bar hung 15 cm below the source and turned the
@@ -7766,29 +7802,6 @@ function buildAbramsX(P) {
       P.add('hullDetail', torus(0.028, 0.008, 10), dx, deckAt(AX_HULL, dz) + 0.006, dz, Math.PI / 2, 0, 0);
     }
   }
-  // AbramsX predates the strict ownership buckets: its visibly concentric
-  // road-wheel/terminal rings, bolts, spokes and torsion links were added in
-  // ordinary dark/detail materials.  Reclassify only that low outboard
-  // mechanism.  Bow armor, skirts, flap hangers and service hardware remain
-  // hull-owned and continue through the physical intersection gate.
-  const axGearPart = (_geo, b) => {
-    const cx = (b.min.x + b.max.x) * 0.5;
-    const cz = (b.min.z + b.max.z) * 0.5;
-    return Math.abs(cx) >= 1.54 && b.max.y <= 1.21
-      && cz >= -3.45 && cz <= 3.45;
-  };
-  P.rebucketParts(['hullDark'], 'hullRunningGearDark', axGearPart);
-  P.rebucketParts(['hullDetail'], 'hullRunningGearDetail', axGearPart);
-  // One shallow inboard foredeck seam still grazed the articulated idler
-  // shoe by 26 mm.  Reseat the complete local supported strip instead of
-  // warping just the vertices inside an audit window (which would leave a
-  // diagonal face crossing the same shoe path).
-  P.forEachBucketPart(['hullDark'], (geo, b) => {
-    const reachesLane = b.max.x >= 1.04 || b.min.x <= -1.04;
-    const crossesWrap = b.min.z <= 3.18 && b.max.z >= 3.08;
-    const lowSeam = b.min.y <= 1.23 && b.max.y >= 1.17;
-    if (reachesLane && crossesWrap && lowSeam) geo.translate(0, 0.15, 0);
-  });
   // §C proxy-size law (leclerc stale-proxy class): without an explicit
   // muzzleZ the gun shadow proxy runs to the spec's cloned 5.28 m barrel
   // (world z +7.48, 1.7 m past the real XM360 tip) — pin it to the real

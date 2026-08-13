@@ -51,7 +51,6 @@ shoe.inner.dispose();
   const materials = [mat(), mat(), mat(), mat(), mat(), mat(), mat(), mat()];
   const [trackL, trackR, trackLink, dark, detail, rubber, wheels, wheelsRecessed] = materials;
   const P = {
-    specId: 'track_geometry_front_drive_fixture',
     mats: {
       trackL, trackR, trackLink, dark, detail, rubber, wheels, wheelsRecessed,
       spareTrack: dark,
@@ -70,7 +69,6 @@ shoe.inner.dispose();
     wheelZs: [-2, -1, 0, 1, 2],
     sprocket: { z: 2.75, y: 0.47, r: 0.35 },
     idler: { z: -2.75, y: 0.45, r: 0.33 },
-    frontDrive: true,
     trackW: 0.56, topY: 1.05,
   });
   const belt = P.hullG.getObjectByName('gearTrackBandL');

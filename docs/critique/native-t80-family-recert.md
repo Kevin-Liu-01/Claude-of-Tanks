@@ -1,75 +1,76 @@
 # Native T-80 family re-certification
 
-Current authored freezes:
-
-- T-80 `26ca49a8` (52 rendered meshes / 94,356 vertices)
-- T-80B `d00cb6f6` (52 rendered meshes / 94,740 vertices)
-- T-80BV `455daa6` (52 rendered meshes / 110,796 vertices)
-- T-80U `77f9ae78` (43 rendered meshes / 61,979 vertices; unchanged)
+T-80U current authored freeze: `77f9ae78` (43 meshes / 61,979 vertices).
 
 ## Provenance and preservation decision
 
 - Every playable in the T-80 lineage is repository-authored procedural
-  geometry. Private/community GLBs remain visual and measurement oracles;
-  no source mesh, vertex/index payload, material, texture, rig or animation
-  enters gameplay or the public build.
-- The compact turbine hull, front-idler/six-road-wheel/support-roller/rear-
-  drive order and one native linked course remain the shared mechanical
-  foundation. Each mark keeps its own protection and station identity.
-- The old T-80/T-80B/T-80BV rotational `meshDome` and its gate-tuned patch
-  boxes are retired. One explicit first-party longitudinal section loft now
-  forms the asymmetric low pear casting, including real lower shoulders,
-  upper cheek planes, crown falloff and a pinched mantlet throat.
+  geometry. The isolated T-80U GLB remains a visual and measurement oracle;
+  no source vertex payload, converted mesh array or runtime GLB node enters
+  battle.
+- The stronger T-80U hull, calibrated gun, turbine service deck and native
+  six-wheel linked course are preserved. The weaker source-backed wrapper was
+  rejected and removed.
+- The T-80, T-80B, T-80BV and T-80U remain separate authored variants. Their
+  turret protection and station grammar are not cross-copied or collapsed
+  into a shared replacement shell.
 
-## Current family visual receipt
+## Current family receipt
 
-The current immutable packet is `/private/tmp/t80-family-final-r4`. Each of
-T-80, T-80B and T-80BV has 15 paired, 15 yaw0 and 15 yaw90 frames, including
-the standardized elevated-left profile. The 14 mandatory view vectors are:
+| Vehicle | Fidelity | Required-view floor | Exact band front/rear | Exact shoes front/rear |
+|---|---:|---:|---:|---:|
+| T-80 | 93.75 | 94.07 | 0 / 0 | 0 / 0 |
+| T-80B | 93.46 | 93.01 | 0 / 0 | 0 / 0 |
+| T-80BV | 90.97 | 91.84 | 0 / 0 | 0 / 0 |
+| T-80U | 91.51 | 90.20 | 0 / 0 | 0 / 0 |
 
-- T-80: `[9.1,9.2,9.1,9.0,9.1,9.0,9.1,9.2,9.2,9.3,9.1,9.3,9.2,9.2]`
-  (floor 9.0, mean 9.15).
-- T-80B: `[9.2,9.2,9.1,9.1,9.1,9.1,9.1,9.2,9.2,9.3,9.2,9.3,9.2,9.2]`
-  (floor 9.1, mean 9.18).
-- T-80BV: `[9.2,9.3,9.2,9.1,9.1,9.1,9.2,9.3,9.3,9.4,9.2,9.4,9.3,9.3]`
-  (floor 9.1, mean 9.24).
+T-80U component receipt: whole silhouette 92.88, hull 96.23, direct turret
+83.21, gun 89.66 and native running-gear profile 94.32. Its repaired
+rear-right view is 90.20; all other required views are above it.
 
-The T-80 keeps the lightest planted cheek applique, the T-80B carries a
-heavier brow and commander package, and the T-80BV carries two irregular
-Kontakt-1 levels plus a supported flank return. The family now shares a
-layered mantlet, seated Luna/sight housings, two unequal hatch groups,
-periscopes, a visible NSVT cradle, angled smoke banks, antenna collars,
-supported rear bins/basket and a turbine-specific transom/service field.
-Narrow buried armor joints keep the planted cheek cassettes readable against
-the casting. The hull now carries a layered inboard nose/service package and
-two unequal backed turbine louvre fields rather than broad blank panels.
+## T-80U structural closure
 
-## Mechanical, ownership and winding receipt
+- The primary pear casting remains a connected low authored volume. Broader
+  low cast shoulders replace rectangular side towers and preserve the source
+  cheek undercut without growing a slab wall.
+- The former monolithic 1.44 m port K-5 roof rail is replaced by a shorter,
+  lower planted course. That geometry change raises the isolated right-side
+  turret score from roughly 76.6 to 81.4 and closes the rear-right 90 floor.
+- The rear stowage course is shallower and supported by its basket/rails. The
+  turbine exhaust field steps forward of its fixed lower log/drum/recovery
+  cluster, while segmented skirts and terminal guards sit outside the live
+  shoe envelope.
+- Track clearance is exact: no smooth-band voxel, individual shoe, blind spot,
+  bow penetration or stern penetration remains.
 
-- Deterministic hashes reproduce twice for all three changed variants.
-- Strict exact animated-course clearance is 0/0 at the front/rear for the
-  continuous band, individual shoes and complete moving sweep on all three.
-- The first front-light pass intersected the raised idler shoes by 3 cm. The
-  shoulder cassettes were physically raised and the final exact receipt is
-  clean; no semantic exemption hides that repair.
-- Turret parent audit is 0 stranded / 0 abutting / 0 dangling for all three.
-  A rear cable whose middle span stood away from the casting and an old fixed
-  deck cable hidden beneath the turret footprint were removed rather than
-  defended as decoration.
-- Winding audit is 0 reversed / 0 mixed; the stable two-pixel rear-left
-  FrontSide difference is 0.00% and no yaw-stranded candidate exists.
-- Top-down contiguity is 0 holes. The transom receives a real internal tray,
-  and BV's two front pockets close with broad shoulder bridges above the
-  idler orbit rather than audit exemptions.
-- Muzzle-bore contrast passes all three (35.0 / 35.4 / 39.9).
+## Ownership, winding and evidence
 
-Yaw evidence shows the complete cast shell, protection, gun/mantlet, cupola
-and NSVT assembly, sights, smoke banks, antennas, bins and open basket rotate
-together. Glacis hardware, turbine deck, skirts, wheels, tracks, backed
-transom and recovery field remain fixed. No fused duplicate, floating
-fitting, open sheet or yaw-dependent wound is visible.
+- Turret-parent audit: 0 stranded, 0 abutting, 0 dangling.
+- Winding audit for all four family members: 0 reversed and 0 mixed connected
+  pieces. T-80U's worst FrontSide/DoubleSide difference is 38 pixels / 0.03%
+  at top and is non-structural; all yaw candidate counts are zero.
+- `/tmp/critic-t80u-native-final-r3/t80u` contains exactly 42 files / 42 distinct hashes:
+  14 paired, 14 yaw0 and 14 yaw90.
+- The complete T-80U gun, casting, K-5 courses, cupolas, sights, smoke suite,
+  NSVT and supported rear package rotate together through a genuine quarter
+  turn. Glacis, skirts, six-wheel course, turbine deck and transom remain
+  fixed; the yaw90 evidence exposes one coherent hull deck with no duplicate
+  turret mass or unsupported decoration.
 
-## Final native disposition
+## Recorded refinement debt
 
-**PASS / KEEP T-80 `26ca49a8`, T-80B `d00cb6f6`, T-80BV `455daa6`; keep
-T-80U `77f9ae78`. Ordered blockers: none.**
+The family is standardized mechanically and clears the mandatory visual gate,
+but T-80U direct-turret parity remains below the rest of the vehicle. Future
+work should refine the authored cast shoulder curvature, protection pitch and
+roof-station silhouettes in place. It must not replace this basis with source
+geometry or a sibling T-80 turret.
+
+## Final native re-certification
+
+The current first-party freeze reproduces twice as `77f9ae78`. Fidelity is
+91.51 with every whole view at least 90.20. Exact band and shoe containment is
+0/0 at both terminals; turret parent audit is 0/0/0; winding is 0 reversed / 0
+mixed with only a stable 38-pixel top hairline and no yaw candidate. The fresh
+fixed visual vector is
+`[9.1,9.1,9.0,9.0,9.0,9.0,9.0,9.1,9.0,9.1,9.0,9.1,9.0,9.0]`, floor 9.0,
+mean 9.04. Source-baked freeze `c0dc2502` is historical and retired.

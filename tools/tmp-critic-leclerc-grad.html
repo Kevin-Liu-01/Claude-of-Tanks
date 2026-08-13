@@ -17,6 +17,7 @@ const SIZE = 640;
 const id = 'leclerc';
 // mirrors tools/tmp-tank-critic.html CRITIC_REFERENCE_OVERRIDES.leclerc
 const CRITIC_REFERENCE_OVERRIDES = {
+  leclerc: { source:'glb', glb:{ path:'/models/tanks/char_leclerc_andertan.glb', turretNode:'^turret$', gunNode:'^Cylinder086$', autoPivot:true, yawOffset:-1.5707963267948966 } },
 };
 if (MODEL_SOURCE[id]?.source !== 'glb' && CRITIC_REFERENCE_OVERRIDES[id]) {
   MODEL_SOURCE[id] = CRITIC_REFERENCE_OVERRIDES[id];

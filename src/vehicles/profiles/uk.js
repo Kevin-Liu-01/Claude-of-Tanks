@@ -367,10 +367,10 @@ function chieftain5Build(P) {
   // Right inner-track ground filler: the certified left-shifted print
   // grounds |x| 0.89..1.05 on the RIGHT side only (left track owns
   // 1.05..1.49 on both) — a dark sponson-shadow wall fills the band.
-  segBoxZ(P, 'hullRunningGearDark', 0.225, 0.456, 4.8, 1.0025, 0.228, 0);
-  segBoxZ(P, 'hullRunningGearDark', 0.045, 0.05, 4.4, 1.4625, 0.025, -0.1);
-  segBoxZ(P, 'hullRunningGearDark', 0.045, 0.05, 4.4, -1.4625, 0.025, -0.1);
-  segBoxZ(P, 'hullRunningGearDark', 0.04, 0.05, 4.4, -1.0965, 0.025, -0.1);
+  segBoxZ(P, 'hullDark', 0.225, 0.456, 4.8, 1.0025, 0.228, 0);
+  segBoxZ(P, 'hullDark', 0.045, 0.05, 4.4, 1.4625, 0.025, -0.1);
+  segBoxZ(P, 'hullDark', 0.045, 0.05, 4.4, -1.4625, 0.025, -0.1);
+  segBoxZ(P, 'hullDark', 0.04, 0.05, 4.4, -1.0965, 0.025, -0.1);
   // Cast belly cross-section (ref front-view floor): center keel line at
   // 0.46 (x -0.14..-0.09 — the print's 0.08 left shift), a shallow V rising
   // 0.49 -> 0.555 outboard, and the two deep sponson-floor channels at 0.37
@@ -522,13 +522,13 @@ function chieftain5Build(P) {
   // before (0.005), the 0.10..0.63 band was interval-interior, and the
   // 'dark teeth over the gear' 3/4 read dies with the pillar mass.
   for (const zTab of [1.86, 0.98, 0.10, -0.78, -1.66]) {
-    P.add('hullRunningGearShadow', box(0.203, 0.10, 0.045), -1.6115, 0.055, zTab);
+    P.add('hullShadow', box(0.203, 0.10, 0.045), -1.6115, 0.055, zTab);
   }
   // Wheel-bay backdrop: with the hem raised the wheel gaps see the olive
   // belt face — a near-black panel inboard of the wheel faces keeps the
   // bays reading as shadow (ref gear-zone p5 ~26). Interval-interior on
   // every row (top deck-owned, bottom track-owned, plan wing-owned).
-  P.add('hullRunningGearShadow', box(0.02, 0.66, 5.0), -1.105, 0.43, 0.075);
+  P.add('hullShadow', box(0.02, 0.66, 5.0), -1.105, 0.43, 0.075);
   // r5 O2b: front corner flaps tucked behind the bow-wing undersides,
   // FORWARD of the idler wrap (wrap ends z ~3.02; flaps at 3.08..3.16 —
   // containment-clear) with bottoms 0.31 ≥ the ref's own side-column
@@ -943,9 +943,6 @@ function chieftain5Build(P) {
   muzzleBore(P, { len: 6.40, r: 0.105 });                     // §B3.1 (shadow-named, 3fca39b)
   P.add('gun', cylZ(0.104, 0.09, 12), 0, 0, 6.40 - 0.5);
   P.decal('turret', 'number', P.spec.visual.number || '', 0.25, [1.1, 0.3, -0.6], Math.PI / 2);
-  // Raise only real outboard hull skin above the complete raised-idler and
-  // high-sprocket shoe envelope; the inboard cast belly is unchanged.
-  P.raiseTrackCorridor(['hull'], { laneInnerX: 1.08, floorY: 1.20 });
   P.topY = 1.15;
 }
 
@@ -1099,7 +1096,6 @@ function ukGearAirBackers(P, plates, hex = 0x20261c) {
       const geo = new THREE.BoxGeometry(w, h, d);
       const mesh = new THREE.Mesh(geo, m);
       mesh.name = 'gearAirShadowBacker';
-      mesh.userData.runningGear = true;
       mesh.position.set(side * x, y, z);
       mesh.castShadow = false;
       mesh.receiveShadow = true;
@@ -1421,7 +1417,6 @@ function chieftainMk10Build(P) {
   buildGun(P, { len: 6.38, r: 0.105, sleeve: true, evac: 0.60, evacR: 1.45, collar: true, baseR: 0.16 });
   muzzleBore(P, { len: 6.38, r: 0.105 });                 // §B3.1 (shadow-named)
   P.decal('turret', 'number', P.spec.visual.number || '', 0.25, [1.19, 0.30, -1.0], Math.PI / 2);
-  P.raiseTrackCorridor(['hull'], { laneInnerX: 1.08, floorY: 1.20 });
   // family tone kit (glass calm + wheel/band tones; gear pad/chain tones
   // ride the MK10_HULL params like the graduate's)
   ukToneKit(P, { cloth: 0x3e4532 });
@@ -2469,11 +2464,6 @@ function centurionBuild(P, mk) {
     [0.52, 0.72, 0.02, 1.23, 0.76, -2.68],
     [0.008, 0.20, 5.90, 1.632, 0.705, -0.075],
   ]);
-  // The remaining band-only touch is the short bow-side hull course, not a
-  // suspension proxy. Lift that local face while preserving the long skirt.
-  P.raiseTrackCorridor(['hull'], {
-    laneInnerX: 0.93, floorY: 1.08, zMin: 2.45, zMax: 2.65,
-  });
   P.topY = 1.2;
 }
 
@@ -2499,11 +2489,7 @@ function cromwellHull(P, o) {
   P.add('hull', box(innerW, bandY - 0.14, halfL * 0.99 + rearL * 0.98), 0, 0.24 + (bandY - 0.14) / 2, (halfL * 0.99 - rearL * 0.98) / 2);
   // Containment law: the end-wheel wrap circles top out at hornY + 0.72R +
   // 0.135 band — full-width solids stay above that line in the wrap zones.
-  // The linked shoes rise a few centimetres above the idealized end-wheel
-  // circle.  Keep the pannier, bow return and guard underside above that
-  // physical course instead of letting the old nominal circle become a
-  // hidden overlap (most visible on the A30 and Charioteer).
-  const wrapTop = (o.hornY ?? 0.62) + o.wheelR * 0.72 + 0.215;
+  const wrapTop = (o.hornY ?? 0.62) + o.wheelR * 0.72 + 0.155;
   // Pannier band: vertical sides ending at the vertical driver's plate.
   // Split at the wrap line: the full-length slice rides above it, the lower
   // slice stops short of the sprocket wrap (silhouette owned by the tracks).
@@ -2511,24 +2497,16 @@ function cromwellHull(P, o) {
   P.add('hull', box(bandW, roofY - ySplit, rearL + bowZ), 0, (roofY + ySplit) / 2, (bowZ - rearL) / 2);
   const zRearLow = -(rearL - (o.sprocketInset ?? 0.38)) + o.wheelR * 0.72 + 0.155;
   if (ySplit > bandY + 0.01) {
-    // The low pannier backing lives between the tracks.  Extending this
-    // slice to the upper side-armor width made a hidden full-length plate
-    // pass through the linked return course on all three chassis.
-    const lowerBandW = Math.min(bandW, chanIn * 2);
-    P.add('hull', box(lowerBandW, ySplit - bandY, bowZ - zRearLow), 0, (ySplit + bandY) / 2, (bowZ + zRearLow) / 2);
+    P.add('hull', box(bandW, ySplit - bandY, bowZ - zRearLow), 0, (ySplit + bandY) / 2, (bowZ + zRearLow) / 2);
   }
   // Low bow deck from the driver's plate to the nose, then the short glacis
   // (lower edge held above the idler wrap line).
   const bowLo = Math.min(bowY - 0.02, Math.max(bandY - 0.05, wrapTop));
-  const noseShoulderX = Math.min(
-    bandW / 2 * 0.98,
-    chanIn - (o.noseShoulderInset ?? 0),
-  );
   P.add('hull', slab(
     [-bandW / 2, bowLo, bowZ], [bandW / 2, bowLo, bowZ],
-    [noseShoulderX, bowLo + 0.12, halfL * 0.99], [-noseShoulderX, bowLo + 0.12, halfL * 0.99],
+    [bandW / 2, bowLo + 0.12, halfL * 0.99], [-bandW / 2, bowLo + 0.12, halfL * 0.99],
     [-bandW / 2 * 0.98, bowY, bowZ], [bandW / 2 * 0.98, bowY, bowZ],
-    [noseShoulderX, noseTipY, halfL], [-noseShoulderX, noseTipY, halfL]));
+    [bandW / 2 * 0.98, noseTipY, halfL], [-bandW / 2 * 0.98, noseTipY, halfL]));
   // §C.1 per-face adjudication (sweep 2026-08-06): the authored rings
   // CROSSED in y along the run (bottom ring above the top ring at the bowZ
   // end) — a twisted prism the winding guard cannot repair (out2/6 mixed;
@@ -2556,9 +2534,7 @@ function cromwellHull(P, o) {
   for (const s of [-1, 1]) {
     const px = s * (bandW / 2 + 0.006);
     P.add('hullDark', box(0.012, 0.016, rearL + bowZ - 0.3), px, roofY - 0.055, (bowZ - rearL) / 2);
-    // This is a pannier seam, not track dressing: keep it on the raised
-    // armor face rather than drawing it through the upper shoe course.
-    P.add('hullDark', box(0.012, 0.016, rearL + bowZ - 0.3), px, ySplit + 0.04, (bowZ - rearL) / 2);
+    P.add('hullDark', box(0.012, 0.016, rearL + bowZ - 0.3), px, bandY + 0.1, (bowZ - rearL) / 2);
     if (P.q) for (let i = 0; i < 11; i++) {
       P.add('hullDark', cylX(0.016, 0.024, 6), px, roofY - 0.13, -halfL * 0.9 + i * (o.hullLength * 0.78 / 10));
     }
@@ -3645,7 +3621,6 @@ function vickersMk1Build(P) {
   // len-0.02 buried the furniture behind the collar; crop-caught).
   muzzleBore(P, { z: 4.69, r: 0.132 });
   P.decal('turret', 'number', P.spec.visual.number || '', 0.24, [1.03, 0.35, -0.35], Math.PI / 2);
-  P.raiseTrackCorridor(['hull'], { laneInnerX: 0.92, floorY: 1.23 });
   P.topY = 1.2;
 }
 
@@ -3672,7 +3647,7 @@ export const UK_PROFILES = {
   challenger_cruiser: {
     build: a30Build, width: 2.91, hullLength: 8.03, roofY: 1.50, bandY: 0.88, trackW: 0.44,
     bowZ: 2.85, bowY: 1.40, noseTipY: 0.96, tailTrim: 0.03, wheels: 6, wheelR: 0.41, wheelSpan: 5.9,
-    gunLength: 3.67, mgBall: false, noseShoulderInset: 0.17,
+    gunLength: 3.67, mgBall: false,
   },
   charioteer: {
     build: charioteerBuild, width: 3.05, hullLength: 6.55, roofY: 1.62, bandY: 0.94, trackW: 0.40,

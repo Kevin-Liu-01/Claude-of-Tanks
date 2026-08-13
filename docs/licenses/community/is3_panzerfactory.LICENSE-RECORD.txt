@@ -1,0 +1,16 @@
+Model: Object 703 IS-3 (Moving Parts) (Thingiverse thing:4137773)
+Author: Nick Tallon (PanzerFactory)
+License: CC-BY 4.0
+Downloaded from (mirror): https://archive.org/details/thingiverse-4137773
+  file: Object_703_IS-3_Moving_Parts_4137773.zip
+Original page: https://www.thingiverse.com/thing:4137773
+License line quoted from the archive.org asset item metadata (download source):
+  "licenseurl": "https://creativecommons.org/licenses/by/4.0/"
+Bundled LICENSE.txt inside the zip:
+  "This thing was created by Thingiverse user PanzerFactory, and is licensed under cc."
+Processing: single STL contained hull, turret, and gun as separate loose shells
+laid out for printing; reassembled programmatically (turret peg into hull ring,
+gun into mantlet socket), PBR flat materials, scaled to 1u=1m (6.9m hull),
+floor z=0, front = -Y. Nodes: hull, turret (yaw pivot at ring axis),
+gun (pivot origin at breech/crossbar).
+Attribution required in credits: "Object 703 IS-3 (Moving Parts)" by Nick Tallon (PanzerFactory), CC-BY 4.0.

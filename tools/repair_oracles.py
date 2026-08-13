@@ -3035,6 +3035,15 @@ REPAIRS['type90'] = [
                        y_top_max=25.35, expect=(1, 3308, 2589),
                        node_scope='^Turret$')),
 ]
+REPAIRS['ariete'] = {
+    'path': 'public/models/tanks/community/ariete-dustymojito.glb',
+    'ops': [
+        ('py2', _axis_warp('ariete', long_axis='z',
+                           y_map=[(-1.5023, -1.5023), (1.0557, 1.0557), (1.3052, 1.1623), (1.465, 1.1836)],
+                           long_map=[(-4.108, -4.2679), (3.6622, 3.8221), (5.5467, 6.0391)],
+                           y_top_max=1.2156, expect=(6, 189181, 139776))),
+    ],
+}
 REPAIRS['type74'] = {
     'path': 'public/models/tanks/community/type74-nullops.glb',
     'ops': [

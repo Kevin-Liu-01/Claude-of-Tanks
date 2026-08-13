@@ -13,16 +13,9 @@ steel road wheels, external fuel tanks on the rear sponsons.
   class figures (9.8 m overall, ~3.1 m wide, 2.45 m high).
 - Game spec `specs.js is3.dims`: hull 6.77, overall 9.85, w 3.15, h 2.45.
 
-## Retired offline comparison notes
-
-An external CC-BY print was used historically as a read-only comparison,
-never as a geometry donor. It has now been removed from `public/`, runtime and
-candidate registration, UI provenance and the shipped license inventory. The
-frozen 2026-08-13 paired/yaw packet remains an audit artifact only. Published
-dimensions and the public identity inventory above are the design authority.
-
-The historical width-normalized probe below is retained only to explain the
-old gate incompatibility and must not be treated as a source payload.
+## GLB oracle
+`/models/tanks/community/is3_panzerfactory.glb` (Nick Tallon / PanzerFactory,
+CC-BY 4.0), articulated turret+gun nodes, hull-centered by the loader.
 
 Width-normalized probe of the oracle (meters, ground y=0):
 - hull mask z −3.41..+3.41 (len 6.82); roof: rear deck 1.55 with raised
@@ -39,28 +32,8 @@ Width-normalized probe of the oracle (meters, ground y=0):
 - whole len 9.07, top 3.12 (AA DShK).
 
 ## Build notes
-Hull-centered on the published 6.77 m envelope. Turret pivot near dome center (z ≈ +0.1),
+Hull-centered like the oracle. Turret pivot near dome center (z ≈ +0.1),
 gun axis 2.02, brake via KIT buildGun `brake:'discs'` (D-25T pattern).
-
-## First-party restoration (2026-08-13)
-
-Freeze `46539231` (41 meshes / 70,146 vertices) is wholly repository-authored
-procedural geometry in `src/vehicles/profiles/soviet-heavy.js`. The restoration
-replaces the old deep cylindrical ring wall and fake height rod with a short
-overlapped race, one organic undercut cast dome and a fully seated DShK fitting.
-It enlarges and re-dishes the six road-wheel assemblies, preserves the correct
-front idler / rear final-drive sprocket order, adds three supported return
-rollers, moves the hull-owned shovel clear of the turret sweep, and backs the
-unequal stern louvre/recovery field against the physical transom.
-
-Fresh evidence at `/private/tmp/is3-owner-final-r5/is3` contains 15 paired,
-15 yaw0 and 15 yaw90 frames including the fleet-standard elevated-left profile.
-Exact band, instanced-shoe and strict moving-sweep receipts are 0/0. Parent
-audit is 0 stranded / 0 abutting / 0 dangling; winding mode 1 is clean;
-runtime articulation passes 10/10; bore contrast is 63.9; standard census is
-zero plan holes with `mg1+1d`. The old comparison row remains honestly capped
-because its published height and gun run conflict with the dimension-locked
-build. No 90+ machine score is fabricated from that incompatible print.
 
 ## Final fidelity (2026-07-30)
 64.4 → 88.6 (H93 T79 G89 R87; overall ≈91.4). D-25T rebuilt with a fat

@@ -1,7 +1,7 @@
 {
- "generatedAt": "2026-08-13T08:02:53.202Z",
+ "generatedAt": "2026-08-13T03:35:52.473Z",
  "gate": "every component >= 90; min is the headline",
- "passed": 35,
+ "passed": 34,
  "total": 97,
  "rows": [
   {
@@ -147,6 +147,19 @@
    }
   },
   {
+   "id": "challenger1",
+   "geoMin": 0,
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 43.6,
+    "wholeCurves": 19.1,
+    "turretCurves": 0,
+    "stations": 34.6,
+    "dims": 99.6,
+    "floaters": 100
+   }
+  },
+  {
    "id": "t72b_1987",
    "geoMin": 0,
    "gatePassed": false,
@@ -216,10 +229,10 @@
    "geoMin": 0,
    "gatePassed": false,
    "components": {
-    "hullCurves": 68.7,
-    "wholeCurves": 56.8,
-    "turretCurves": 48.4,
-    "stations": 81.8,
+    "hullCurves": 71.8,
+    "wholeCurves": 45.4,
+    "turretCurves": 20,
+    "stations": 55.4,
     "dims": 0,
     "floaters": 0
    }
@@ -229,9 +242,9 @@
    "geoMin": 0,
    "gatePassed": false,
    "components": {
-    "hullCurves": 50.2,
-    "stations": 42.7,
-    "wholeCurves": 34.5,
+    "hullCurves": 50.3,
+    "stations": 45.2,
+    "wholeCurves": 45.4,
     "dims": 49.3,
     "floaters": 0
    }
@@ -328,15 +341,15 @@
    }
   },
   {
-   "id": "t90m",
-   "geoMin": 20.6,
+   "id": "ariete",
+   "geoMin": 24.8,
    "gatePassed": false,
    "components": {
-    "hullCurves": 42.1,
-    "stations": 65.7,
-    "turretCurves": 20.6,
-    "wholeCurves": 35.2,
-    "dims": 70.6,
+    "hullCurves": 59.2,
+    "wholeCurves": 39.5,
+    "turretCurves": 24.8,
+    "stations": 64.6,
+    "dims": 99.4,
     "floaters": 100
    }
   },
@@ -363,6 +376,19 @@
     "turretCurves": 43,
     "stations": 32.4,
     "dims": 100,
+    "floaters": 100
+   }
+  },
+  {
+   "id": "t90m",
+   "geoMin": 27.1,
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 35,
+    "stations": 68.6,
+    "turretCurves": 27.1,
+    "wholeCurves": 33.9,
+    "dims": 66,
     "floaters": 100
    }
   },
@@ -705,19 +731,6 @@
    }
   },
   {
-   "id": "ariete",
-   "geoMin": 81.7,
-   "gatePassed": false,
-   "components": {
-    "hullCurves": 83,
-    "stations": 87,
-    "turretCurves": 85.1,
-    "wholeCurves": 81.7,
-    "dims": 100,
-    "floaters": 100
-   }
-  },
-  {
    "id": "vickers_mk1",
    "geoMin": 81.8,
    "gatePassed": false,
@@ -868,19 +881,6 @@
    }
   },
   {
-   "id": "challenger1",
-   "geoMin": 90.1,
-   "gatePassed": true,
-   "components": {
-    "hullCurves": 90.5,
-    "stations": 90.6,
-    "turretCurves": 90.4,
-    "wholeCurves": 90.1,
-    "dims": 95,
-    "floaters": 100
-   }
-  },
-  {
    "id": "amx30b2",
    "geoMin": 90.1,
    "gatePassed": true,
@@ -950,19 +950,6 @@
    }
   },
   {
-   "id": "leo2a5",
-   "geoMin": 90.2,
-   "gatePassed": true,
-   "components": {
-    "hullCurves": 90.7,
-    "stations": 94.3,
-    "turretCurves": 90.2,
-    "wholeCurves": 90.5,
-    "dims": 100,
-    "floaters": 100
-   }
-  },
-  {
    "id": "leclerc",
    "geoMin": 90.3,
    "gatePassed": true,
@@ -972,6 +959,19 @@
     "turretCurves": 90.5,
     "stations": 93.7,
     "dims": 100,
+    "floaters": 100
+   }
+  },
+  {
+   "id": "isu122s",
+   "geoMin": 90.3,
+   "gatePassed": true,
+   "components": {
+    "hullCurves": 90.3,
+    "wholeCurves": 90.3,
+    "turretCurves": 100,
+    "stations": 94.9,
+    "dims": 98.3,
     "floaters": 100
    }
   },
@@ -1116,6 +1116,19 @@
    }
   },
   {
+   "id": "leo2a5",
+   "geoMin": 90.8,
+   "gatePassed": true,
+   "components": {
+    "hullCurves": 90.8,
+    "wholeCurves": 91,
+    "turretCurves": 91.5,
+    "stations": 94.3,
+    "dims": 100,
+    "floaters": 100
+   }
+  },
+  {
    "id": "m2a2_bradley",
    "geoMin": 90.9,
    "gatePassed": true,
@@ -1181,6 +1194,19 @@
    }
   },
   {
+   "id": "isu152",
+   "geoMin": 91.2,
+   "gatePassed": true,
+   "components": {
+    "hullCurves": 91.2,
+    "wholeCurves": 91.2,
+    "turretCurves": 100,
+    "stations": 94,
+    "dims": 100,
+    "floaters": 100
+   }
+  },
+  {
    "id": "chieftain5",
    "geoMin": 91.2,
    "gatePassed": true,
@@ -1194,16 +1220,6 @@
    }
   },
   {
-   "id": "isu122s",
-   "geoMin": 91.3,
-   "gatePassed": true,
-   "components": {
-    "wholeCurves": 91.3,
-    "dims": 98.3,
-    "floaters": 100
-   }
-  },
-  {
    "id": "pt91m",
    "geoMin": 91.3,
    "gatePassed": true,
@@ -1212,16 +1228,6 @@
     "wholeCurves": 91.3,
     "turretCurves": 95,
     "stations": 92.8,
-    "dims": 100,
-    "floaters": 100
-   }
-  },
-  {
-   "id": "isu152",
-   "geoMin": 92.1,
-   "gatePassed": true,
-   "components": {
-    "wholeCurves": 92.1,
     "dims": 100,
     "floaters": 100
    }

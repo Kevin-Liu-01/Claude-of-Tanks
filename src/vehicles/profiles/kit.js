@@ -185,9 +185,8 @@ export function buildHull(P,p) {
     P.add('hullDark',cylZ(0.022,0.018,8),side*(width/2+0.035),p.skirtY ?? trackTop*0.78,z,0,side*Math.PI/2,0);
   }
   for (const side of [-1,1]) P.add('hullDetail',torus(0.09,0.018,10),side*width*0.27,0.48,halfL*0.94,Math.PI/2,0,0);
-  const lampY=p.headlightY ?? trackTop+0.10;
-  headlight(P,-width*0.35,lampY,halfL*0.88,-0.34,0.05);
-  headlight(P,width*0.35,lampY,halfL*0.88,-0.34,0.05);
+  headlight(P,-width*0.35,trackTop+0.10,halfL*0.88,-0.34,0.05);
+  headlight(P,width*0.35,trackTop+0.10,halfL*0.88,-0.34,0.05);
   towCable(P,[[-width*0.34,roofY-0.15,halfL*0.72],[0,roofY-0.01,halfL*0.48],[width*0.34,roofY-0.15,halfL*0.72]]);
 
   const wheelCount=p.wheels || (style === 'ifv' ? 6 : 7);
@@ -195,25 +194,16 @@ export function buildHull(P,p) {
   const wheelSpan=p.wheelSpan || length*0.74;
   const wheelZs=evenStations(wheelCount,wheelSpan,p.wheelBias || 0);
   const xc=width/2-trackW/2;
-  const wheelY=p.wheelY || wheelR+0.09;
   buildRunningGear(P,{
-    style:p.wheelStyle || 'rubber',wheelR,wheelW:Math.min(0.22,trackW*0.36),wheelY,xc,
+    style:p.wheelStyle || 'rubber',wheelR,wheelW:Math.min(0.22,trackW*0.36),wheelY:p.wheelY || wheelR+0.09,xc,
     wheelZs,
-    sprocket:{z:p.frontSprocket ? halfL*0.88 : -halfL*0.88,y:p.sprocketY ?? wheelR+0.10,r:wheelR*0.88},
-    idler:{z:p.frontSprocket ? -halfL*0.88 : halfL*0.88,y:p.idlerY ?? wheelR+0.08,r:wheelR*0.84},
+    sprocket:{z:p.frontSprocket ? halfL*0.88 : -halfL*0.88,y:wheelR+0.10,r:wheelR*0.88},
+    idler:{z:p.frontSprocket ? -halfL*0.88 : halfL*0.88,y:wheelR+0.08,r:wheelR*0.84},
     rollers:evenStations(Math.max(3,Math.floor(wheelCount/2)),wheelSpan*0.68).map((z)=>({z,y:trackTop*0.84,r:wheelR*0.23})),
     trackW,topY:trackTop*0.86,paintedEnds:true,coveredTop:p.coveredTop ?? (p.skirts !== false),arms:p.arms !== false,
   });
   if (p.skirts !== false) addSegmentedSkirts(P,width,p.skirtLength ?? length*0.86,
     p.skirtY ?? trackTop*0.72,p.skirtHeight ?? trackTop*0.60,p.skirtPanels || wheelCount);
-  if (p.trackClearance) {
-    P.raiseTrackCorridor(p.trackClearance.buckets || ['hull'], {
-      laneInnerX:p.trackClearance.laneInnerX,
-      floorY:p.trackClearance.floorY,
-      zMin:p.trackClearance.zMin ?? -Infinity,
-      zMax:p.trackClearance.zMax ?? Infinity,
-    });
-  }
   return {width,length,halfL,roofY,trackTop};
 }
 
@@ -1118,16 +1108,5 @@ export const FITTINGS = {
 try {
   KIT.fittings = FITTINGS;
 } catch (_) {
-  // Vite's SSR evaluator exposes the cyclic namespace before tankFactory's
-  // `KIT` value is initialized.  In that path the imported binding is
-  // temporarily `undefined` rather than a native-ESM TDZ throw.  The former
-  // callback dereferenced it unconditionally and crashed read-only fleet
-  // auditors after their module graph had otherwise loaded successfully.
-  // Runtime/profile consumers import FITTINGS directly, so a missing shared
-  // alias during this one deferred tick is harmless; attach it whenever the
-  // value is present and never turn an optional compatibility alias into an
-  // audit-fatal exception.
-  queueMicrotask(() => {
-    if (KIT && !KIT.fittings) KIT.fittings = FITTINGS;
-  });
+  queueMicrotask(() => { if (!KIT.fittings) KIT.fittings = FITTINGS; });
 }

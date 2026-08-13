@@ -28,11 +28,6 @@ L/52, HL-70 gunner sight in roof, HL-15 panoramic, GALIX, no AZUR urban kit.
   driver hatch LEFT with 3 episcopes, splash ridge across the plate.
 - Running gear + skirts: 6 wheels; front third of the skirts are thick
   armored blocks, rear two-thirds rubber sheet with vertical seams.
-- Terminal and mudguard law: a free front idler precedes all six road wheels;
-  the rear terminal is the final drive. The paired front guards are shallow,
-  raked hull pieces supported by an inboard bow knee and outboard fender knee.
-  They frame the idler but never enter or visually replace its linked-shoe
-  wrap.
 - Signature equipment: GALIX 80 mm dischargers splayed on both rear turret
   corners; side stowage baskets along the turret flanks; rear hull stowage
   rack/panniers; crosswind mast + two whip antennas on the bustle.
@@ -46,10 +41,7 @@ L/52, HL-70 gunner sight in roof, HL-15 panoramic, GALIX, no AZUR urban kit.
 
 ## Local GLB oracle notes
 
-Historical local path (now retired and deleted from `public/`):
-`public/models/tanks/char_leclerc_andertan.glb` (CC-BY 4.0). It was used
-read-only for measurement/comparison and never contributes geometry to the
-active procedural model.
+Path: `public/models/tanks/char_leclerc_andertan.glb` (CC-BY 4.0).
 Width-normalized to 3.60: overall 9.80, height 3.07 (over masts). Gun axis
 reads ≈ 1.93 m, roof plateau ≈ 2.35–2.40 m (slightly under the published
 2.53 — small cap), pano/sight heads to ≈ 2.83 m, masts to ≈ 3.19 m; turret
@@ -786,55 +778,3 @@ vertices). The 45-frame paired/yaw packet is hash-distinct and includes the
 standard elevated-left profile. Fidelity 94.0 (hull 95 / turret 91 / gun 91 /
 tracks 93); parent, winding, rig, bore, provenance, family order, asset,
 tests and both build lanes pass.
-
-## NATIVE IDLER / MUDGUARD FINAL CLOSEOUT (2026-08-13)
-
-Live elevated-left and side pixels superseded the earlier flap-only diagnosis.
-The raised guard was present, but the moving links projected too far through
-its forward silhouette and made the terminal read as an anonymous knot. The
-final first-party assembly keeps the raked cap, tapered overlap, flexible
-apron, inboard bow knee and outboard fender knee, then tightens the native
-forward loop around a distinct non-driven idler. A narrow inset nose/guard
-bridge stays between the two moving lanes and owns the raised tip silhouette.
-The declared sequence is front idler, six road-wheel pairs, five return-roller
-pairs with hydropneumatic arms, and rear final-drive sprocket.
-
-Freeze `158157f4` reproduces twice at 48 meshes / 104,451 vertices. Final
-machine floor is 90.5; exact band, linked-shoe and strict moving-sweep receipts
-are 0/0/0. Parent is 0/0/0, winding/runtime/bore and the running-gear-order
-self-test pass. The fresh 45-frame packet is fully hash-distinct and scores a
-9.0 visual floor / 9.08 mean. The historical comparison GLB is no longer
-shipped or player-attributed; it remains documented only as prior read-only
-measurement provenance.
-
-## LIVE MUDGUARD VISIBILITY SUPERSESSION (2026-08-13)
-
-The collision-clean assembly above was still visually incomplete: its cap sat
-behind the forward shoes and its apron was only 4.5 cm tall, so front/close
-pixels continued to show a bare terminal loop. Freeze `9c47c650` replaces only
-that presentation with forward raked camouflaged guard faces, narrow rubber
-lower lips, hinge overlaps and two stiffeners per side. All faces remain ahead
-of the native terminal orbit and tied into the existing cap/knee/fender load
-path.
-
-Exact band/shoe/sweep is 0/0/0; parent is 0/0/0; winding, runtime and bore
-pass. The fresh 45-frame packet at
-`/private/tmp/leclerc-mudguard-final-r4/leclerc` has 45 distinct hashes and a
-9.3 visual floor / 9.46 mean. `158157f4` is retired.
-
-## SOLE-NATIVE TERMINAL SUPERSESSION (2026-08-13)
-
-The subsequent fleet strict audit proved the added terminal face courses were
-independent hull meshes intersecting the shoe plane: front/rear band 172/207
-and shoes 79/0. They are removed rather than semantically exempted. The actual
-native dished idler is widened toward the inside of the shoe plane and both
-native end bodies receive restrained olive contrast; no duplicate terminal
-geometry survives.
-
-Freeze `0fab6ef8` reproduces twice at 48 meshes / 97,419 vertices. Exact
-band/shoe/strict-sweep is genuinely 0/0/0; parent is 0/0/0; winding, runtime
-and bore pass. `/private/tmp/leclerc-native-terminal-final-r2/leclerc`
-contains 45 distinct authored/yaw frames including the elevated profile. The
-visible and declared sequence is front free idler, six road-wheel pairs, five
-return-roller pairs with hydropneumatic arms, rear toothed final drive and one
-continuous linked-shoe course. `cf383a52` is retired.

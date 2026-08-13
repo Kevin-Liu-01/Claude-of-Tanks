@@ -289,12 +289,20 @@ const REG = {
     pubDims: { hullLengthM: 6.33, overallLengthM: 8.51, widthM: 3.51, heightM: 3.35 },
   },
   // ---- misc/Euro-Asia moderns family (append-only, 2026-08-03) -------------
-  // Lab registrations mirrored verbatim: t80u
+  // Lab registrations mirrored verbatim: leclerc userdrops2.js, t80u
   // userdrops3.js, type90 userdrops5.js source(), ariete + type74 from the
   // fidelity harness LOCAL_REFERENCE_OVERRIDES (quarantine oracles),
   // recon_tank specs.js MODEL_SOURCE. pubDims from the spec dims rows
   // (modern2.js t80u/leclerc, modern3.js ariete, userdrops5 type90 make(),
   // misc.js TYPE74_SPEC, specs.js recon_tank).
+  leclerc: {
+    path: 'public/models/tanks/char_leclerc_andertan.glb',
+    // raw GLB name is 'Cylinder.086' — GLTFLoader sanitizes the dot out;
+    // the extract matches raw names, so the regex accepts both forms.
+    turretNode: '^turret$', gunNode: '^Cylinder\\.?086$', autoPivot: true,
+    yawOffset: -Math.PI / 2,
+    pubDims: { hullLengthM: 6.88, overallLengthM: 9.87, widthM: 3.60, heightM: 2.53 },
+  },
   t80u: {
     path: 'public/models/tanks/t80u_javanilga.glb',
     turretNode: '^Object09_24$', gunNode: '^Object1101_22$', autoPivot: true,
@@ -304,6 +312,11 @@ const REG = {
     path: 'public/models/tanks/community/recovered/type90.glb',
     turretNode: '^Turret$', autoPivot: true, yawOffset: -Math.PI / 2,
     pubDims: { hullLengthM: 7.45, overallLengthM: 9.76, widthM: 3.43, heightM: 2.34 },
+  },
+  ariete: {
+    path: 'public/models/tanks/community/ariete-dustymojito.glb',
+    turretNode: '^Turret$', autoPivot: true,
+    pubDims: { hullLengthM: 7.59, overallLengthM: 9.67, widthM: 3.60, heightM: 2.50 },
   },
   type74: {
     path: 'public/models/tanks/community/type74-nullops.glb',
@@ -621,6 +634,14 @@ const REG = {
     // (accessor-bound receipts) — no yaw keys, ever. gunNode/autoPivot
     // restored (the b786a82 revert over-stripped them with the yaw line).
     gunNode: '^vehicle#t-90ms_cannon_2a46m-5_8$', autoPivot: true,
+    pubDims: { hullLengthM: 6.86, overallLengthM: 9.53, widthM: 3.78, heightM: 2.23 },
+  },
+  t90: {
+    // Re-baked from OBJ source — semantic (turret_18, cannon_20, era
+    // hull+turret sets, hatch01/aps/smokecaps turret followers).
+    path: 'public/models/community-candidates/t90_kojf.glb',
+    turretNode: '^vehicle#t-90_turret_t-90_18$',
+    gunNode: '^vehicle#t-90_cannon_2a46m2_20$', autoPivot: true,
     pubDims: { hullLengthM: 6.86, overallLengthM: 9.53, widthM: 3.78, heightM: 2.23 },
   },
   t90a_burlak: {

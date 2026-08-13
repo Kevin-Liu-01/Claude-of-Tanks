@@ -39,7 +39,7 @@ Conventions (match `tank-roster.md` + `src/vehicles/specs.js`):
 - `m1a2` M1A2 Abrams SEPv3 — sourced GLB (`m1a2_sepv3_dannzjs.glb`, CC-BY 4.0, dannzjs)
 - `t90m` T-90M Proryv — procedural (post-round-5 rebuild, meets visual bar)
 - `leo2a7` Leopard 2A7 — procedural (post-round-5 rebuild, meets visual bar)
-- `strv103` Stridsvagn 103 — first-party procedural fixed-mount TD
+- `strv103` Stridsvagn 103 — sourced GLB (CC-BY 3.0, Lukasz Wesiora), community TD
 
 **Hunt deposits relevant to the modern roster** (`public/models/community-candidates/`,
 license records verified in each folder; renders reviewed for this plan):
@@ -78,7 +78,7 @@ ripped channels (see ATTRIBUTION.md evaluation records), so they are procedural 
 | 1 | M1A2 Abrams SEPv3 | USA | MBT | sourced-ready (SHIPPED) | m1a2_sepv3_dannzjs.glb | 1 |
 | 2 | T-90M Proryv | Russia | MBT | procedural (SHIPPED) | tankFactory | 1 |
 | 3 | Leopard 2A7 | Germany | MBT | procedural (SHIPPED) | tankFactory | 1 |
-| 4 | Stridsvagn 103 | Sweden | TD | first-party procedural (SHIPPED) | profiles/casemate.js | 1 |
+| 4 | Stridsvagn 103 | Sweden | TD | sourced-ready (SHIPPED) | strv103_wesiora.glb | 1 |
 | 5 | M1A1 Abrams | USA | MBT | variant | dannzjs M1A2 SEPv3 (strip SEP kit) | 2 |
 | 6 | M60A3 Patton | USA | MBT | sourced-ready | m60a3-toshueyi | 2 |
 | 7 | T-90A | Russia | MBT | variant | alexxx_xarchenko T-90 (re-material) | 2 |
@@ -1013,10 +1013,8 @@ low-contrast); white "EI" registration on hull front.
 ## Part XI — Sweden
 
 ## 27. Stridsvagn 103 — SHIPPED
-See `specs.js` (`strv103`), `profiles/casemate.js` and the native restoration
-record in PROGRAM-STATE.md. It is the roster's wholly first-party fixed-mount
-casemate TD; no external mesh, material, texture, rig or animation ships or
-registers for it.
+See `specs.js` (`strv103`) and ATTRIBUTION.md. Counts as the roster's casemate TD.
+No changes planned; already meets bar as a sourced community vehicle.
 
 ---
 

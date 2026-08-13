@@ -883,11 +883,7 @@ function communityArmor(o) {
   };
 }
 
-/**
- * Legacy extension-roster ids (garage carousel order, appended after the
- * original core 8). The exported name is retained for save/API compatibility;
- * every playable resolves to repository-authored procedural geometry.
- */
+/** Community roster ids (garage carousel order, appended after the core 8). */
 export const COMMUNITY_TANK_IDS = [
   'strv103', 'is3', 't34_85_cad', 'newc_tiger', 'newc_pziii',
   'pziii_konserwa', 'leichttraktor', 'recon_tank', 'q_heavy',
@@ -901,6 +897,11 @@ export const COMMUNITY_TANK_IDS = [
 const COMMUNITY_SPECS = {
   strv103: {
     id: 'strv103', name: 'Stridsvagn 103', nation: 'Sweden', era: 'modern', class: 'td',
+    community: {
+      author: 'Lukasz Wesiora (canisferus)',
+      source: 'https://opengameart.org/content/stridsvagn-103',
+      license: 'CC-BY 3.0',
+    },
     hp: 1100,
     enginePowerHp: 730, weightTons: 39.7, topSpeedKmh: 50, reverseSpeedKmh: 25,
     hullTraverseDegS: 44,
@@ -936,6 +937,11 @@ const COMMUNITY_SPECS = {
 
   is3: {
     id: 'is3', name: 'IS-3', nation: 'USSR', era: 'ww2', class: 'heavy',
+    community: {
+      author: 'Nick Tallon (PanzerFactory)',
+      source: 'https://www.thingiverse.com/thing:4137773',
+      license: 'CC-BY 4.0',
+    },
     hp: 1250,
     enginePowerHp: 520, weightTons: 46.5, topSpeedKmh: 40, reverseSpeedKmh: 6,
     hullTraverseDegS: 22,
@@ -1734,10 +1740,7 @@ export const MODEL_SOURCE = {
   if (!allowLocalRecovered && MODEL_SOURCE.m1a2 && MODEL_SOURCE.m1a2.source === 'glb') delete MODEL_SOURCE.m1a2;
 }
 
-// LEGACY EXTENSION ROSTER: procedural playables with optional quarantined
-// comparison prints. MODEL_SOURCE controls runtime geometry; all entries below
-// remain procedural unless an explicit, separately reviewed GLB row says
-// otherwise.
+// COMMUNITY TANKS: all sourced GLBs (public/models/tanks/community/*.glb).
 // Node names below were verified offline against each asset's node tree
 // (GLTFLoader sanitizes names: dots stripped, e.g. 'Plane.000' -> 'Plane000').
 // glb config extensions understood by modelLoader.applySwap:
@@ -1765,14 +1768,26 @@ Object.assign(MODEL_SOURCE, {
   // authored procedural profile; comparison GLBs are candidate-only inputs.
   strv103: {
     source: 'procedural',
-    // First-party fixed-mount profile in profiles/casemate.js. External
-    // prints may be used in offline comparison harnesses only; no donor mesh
-    // is registered as a runtime candidate or displayed as model provenance.
+    // r9: paintUntextured routes the asset through the same material
+    // normalization as the other community GLBs (tiny palette maps stripped,
+    // shell box-UV'd onto the live camo canvas, gear split to dark steel) —
+    // it was the one sourced tank skipping the cohesion pass.
+    candidateGlb: {
+      path: '/models/tanks/community/strv103_wesiora.glb', fixedMount: true,
+      paintUntextured: true,
+    },
   },
   is3: {
-    source: 'procedural',
-    // Wholly first-party build in profiles/soviet-heavy.js.  External prints
-    // are not shipped, registered as candidates or displayed as provenance.
+    source: 'procedural', // §5.31b flip — soviet-heavy.js profile renders
+    // content_breadth r2: stripBakedTextures — same cohesion treatment as
+    // kv2/is7 (r1 TM #188): the baked albedo rendered flat single-tone lime
+    // clay next to the camo-painted fleet; route the shell onto the shared
+    // camo canvas + weathering instead.
+    candidateGlb: {
+      path: '/models/tanks/community/is3_panzerfactory.glb',
+      turretNode: '^turret$', gunNode: '^gun$', autoPivot: true,
+      paintUntextured: true, stripBakedTextures: true,
+    },
   },
   t34_85_cad: {
     source: 'procedural', // §5.31b flip — ww2.js profile renders

@@ -115,11 +115,7 @@ if (mode === 'list') {
   // excludes spare-link stowage on glacis/turret, which shares the bucket
   // material) and audit those as the track set instead.
   let trackSet = bands;
-  // One native unit contributes a left/right pair.  Multi-unit vehicles such
-  // as the historical four-track T95 legitimately contribute two pairs and
-  // must be audited together, not rejected as a duplicate-course anomaly.
-  const completeBandPairs = bands.length >= 2 && bands.length % 2 === 0;
-  if (!completeBandPairs) {
+  if (bands.length !== 2) {
     const bbp = new THREE.Box3();
     const handRolled = meshes.filter((m) => {
       if (!m.userData || !m.userData.trackBucket) return false;
@@ -132,7 +128,7 @@ if (mode === 'list') {
       // hand-rolled meshes are hull-side candidates no longer
       for (const m of handRolled) meshes.splice(meshes.indexOf(m), 1);
     } else {
-      out.anomaly = `expected complete left/right band pairs, found ${bands.length} meshes (no ground-riding track buckets either)`;
+      out.anomaly = `expected 2 band meshes, found ${bands.length} (no ground-riding track buckets either)`;
       window.__CLIP_RESULT = out; window.__CLIP_READY = true;
     }
   }
@@ -237,12 +233,10 @@ if (mode === 'list') {
         const set = new Set();
         sampleMesh(m, zone.z0, zone.z1, set, null);
         let ov = 0; let lo = [1e9, 1e9, 1e9]; let hi = [-1e9, -1e9, -1e9];
-        const samples = [];
         for (const k of set) {
           if (!dilated.has(k)) continue;
           ov++;
           const [x, y, z] = k.split(',').map(Number);
-          if (samples.length < 32) samples.push([x * V, y * V, z * V].map((v) => +v.toFixed(3)));
           lo = [Math.min(lo[0], x), Math.min(lo[1], y), Math.min(lo[2], z)];
           hi = [Math.max(hi[0], x), Math.max(hi[1], y), Math.max(hi[2], z)];
         }
@@ -254,7 +248,6 @@ if (mode === 'list') {
             name: m.name || m.parent?.name || '(unnamed)',
             vox: ov,
             box: [lo.map((v) => +(v * V).toFixed(3)), hi.map((v) => +(v * V).toFixed(3))],
-            samples,
           });
         }
       }
@@ -262,7 +255,7 @@ if (mode === 'list') {
       out.zones.push({
         name: zone.name, overlapVox: total,
         hits: [...hits.values()].sort((x, y) => y.vox - x.vox).slice(0, 6)
-          .map((h) => ({ mesh: h.name, vox: h.vox, box: h.box, samples: h.samples })),
+          .map((h) => ({ mesh: h.name, vox: h.vox, box: h.box })),
       });
     }
 

@@ -36,13 +36,13 @@ louvres ON the glacis, flotation-screen rim around the hull top.
 2. https://www.globalsecurity.org/military/world/europe/strv-103.htm — layout
 3. https://www.militaryfactory.com/armor/detail.php?armor_id=104 — table
 
-## Retired offline comparison notes
+## Local GLB oracle notes
 
-An external CC-BY print was used historically as a read-only visual comparison,
-never as a geometry donor. It has now been removed from `public/`, from runtime
-registration, from candidate registration and from UI provenance. The frozen
-2026-08-13 comparison packet remains an audit artifact only. Published
-dimensions and the identity inventory above are the continuing design authority.
+Path: `public/models/tanks/community/strv103_wesiora.glb` (fixedMount,
+CC-BY). Width-normalized to 3.63 m: 9.17 m long × 2.82 m tall — height is
+the two whip antennas over a ~2.1 m hull; gun projects ~2 m past the nose.
+Oracle shows the louvred glacis, cupola, fender rib line and exposed wheel
+run. Fused mesh: component masks N/A.
 
 ## Mismatch log (before → after per fidelity iteration)
 
@@ -50,11 +50,11 @@ dimensions and the identity inventory above are the continuing design authority.
 |---|---|---|---|---|---|
 | 2026-07-30 | 80.0 | 75.3 | 83.4 | 65.3 | baseline (slab box, tracks fully hidden — worst tracks band in family) |
 | 2026-07-30 | 82.4 | 73.3 | 83.8 | 76.1 | bespoke rebuild: raked louvred glacis w/ splash rail, fixed L74 exiting mid-glacis + travel clamp, dozer blade, flotation-screen rim, cupola + obs dome + fender MG box, ribbed skirt band over 4 exposed wheels + raised idler, dark bay walls (tracks band 65→76) |
-| 2026-08-13 | first-party | 9.0 | 9.03 mean | exact 0/0 | full native restoration: four large dished road wheels, front drive sprocket/rear idler, supported returns, fixed L74, deck/cupola suite, backed rear service field and no shipped donor asset |
 
-The older oracle-relative rows below are retained only as historical context.
-They are not current graduation claims and do not describe the active
-first-party geometry.
+Remaining gap: left/right ≈73 — the wesiora oracle carries a busier rear
+deck massing and larger wheel read than the packet photos; its baked
+texture also 404s one map in the lab (oracle-side quirk). Next lever:
+deck piping + rear stowage massing.
 
 
 ## Geometry gate v9 (2026-07-31, from-scratch agent)

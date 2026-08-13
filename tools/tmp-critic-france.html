@@ -22,6 +22,7 @@ const id = params.get('id') || 'leclerc';
 // Oracle rows — verbatim from tools/tmp-tank-critic.html (the ratified
 // critic render path) for the two oracle-registered ids this round.
 const CRITIC_REFERENCE_OVERRIDES = {
+  leclerc: { source:'glb', glb:{ path:'/models/tanks/char_leclerc_andertan.glb', turretNode:'^turret$', gunNode:'^Cylinder086$', autoPivot:true, yawOffset:-1.5707963267948966 } },
   type90: { source:'glb', glb:{ path:'/models/tanks/community/recovered/type90.glb', paintUntextured:true, turretNode:'^Turret$', autoPivot:true, yawOffset:-1.5707963267948966 } },
 };
 if (MODEL_SOURCE[id]?.source !== 'glb' && CRITIC_REFERENCE_OVERRIDES[id]) {

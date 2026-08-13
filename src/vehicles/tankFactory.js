@@ -700,29 +700,6 @@ function wheelGeo(style, r, w, seg, dishR = 0.90) {
     }
     return { tire, disc: mergeAll(discs), dark: mergeAll(dk) };
   }
-  if (style === 'sovietRadial') {
-    // Post-war Soviet stamped road wheel: narrow rubber tire, broad painted
-    // face and six deep radial reinforcing channels.  This is deliberately
-    // separate from the T-34 `holes` wheel—the latter's circular inserts
-    // turn a T-54/T-62 side profile into a row of polka-dot discs.  The
-    // channels stand on the visible face as dark recesses while the hub,
-    // bolt ring and outer dish remain raised painted steel.
-    const tire = mergeAll([
-      cylX(r, w, seg),
-      cylX(r * 0.93, w * 1.02, seg),
-    ]);
-    discs.push(cylX(r * 0.84, w * 1.10, seg));
-    discs.push(cylX(r * 0.27, w * 1.34, 12));
-    discs.push(cylX(r * 0.15, w * 1.50, 10));
-    boltRing(discs, r * 0.78, w, 10);
-    const dk = [cylX(r * 0.34, w * 1.11, 14)];
-    for (let k = 0; k < 6; k++) {
-      const a = (k / 6) * Math.PI * 2 + 0.15;
-      dk.push(xform(box(w * 1.18, r * 0.09, r * 0.43),
-        0, Math.sin(a) * r * 0.55, Math.cos(a) * r * 0.55, a, 0, 0));
-    }
-    return { tire, disc: mergeAll(discs), dark: mergeAll(dk) };
-  }
   if (style === 'dished') {
     // Tiger/Panther Schachtellaufwerk wheel (r4 "poker chip" hard fix): the
     // face is a real CONCAVE DISH — proud outer face ring, twin cones falling
@@ -943,112 +920,6 @@ function trackShoeGeometries(trackW, pitch, pinCapOuter = null,
   return { pad, inner };
 }
 
-// The fleet default is deliberately mechanical, not cosmetic: the leading
-// end is a non-driven idler and the rear end is the final-drive sprocket.
-// These are the real front-drive exceptions represented by authored models;
-// every new exception must be named here so a swapped/mislabelled end wheel
-// cannot silently enter the roster.
-export const FRONT_DRIVE_EXCEPTION_IDS = Object.freeze([
-  // Historical front-drive layouts.
-  'm4a3e8', 'sherman_jumbo',
-  'tiger1', 'tiger2', 'panther_g', 'newc_tiger', 'newc_pziii',
-  'pziii_konserwa', 'jagdtiger', 'sturmtiger',
-  'strv103',
-  // Modern IFV/APC front powerpacks.
-  'm2a2_bradley', 'bmp2', 'spz_puma', 'type89', 'fv510',
-  // Merkava family front-drive chassis.
-  'merkava1b', 'merkava2b', 'merkava2d', 'merkava3c', 'merkava3d', 'merkava4',
-]);
-const FRONT_DRIVE_EXCEPTION_SET = new Set(FRONT_DRIVE_EXCEPTION_IDS);
-
-// Modern tracked vehicles must present a visibly raised terminal at both
-// ends of the road-wheel run. A merely different radius is not enough: a
-// low idler centre flattens the approach into another road-wheel station
-// instead of the expected /____\ course silhouette. WWII layouts remain
-// source-specific and deliberately sit outside this modern-family law.
-export const MODERN_TERMINAL_RISE_FLOOR_M = 0.10;
-
-export function runningGearLayoutReceipt(tankId, cfg) {
-  const {
-    sprocket, idler, wheelZs = [], rollers = [], wheelR = null,
-    wheelY = null,
-  } = cfg;
-  if (!sprocket || !idler || !wheelZs.length) {
-    throw new Error(`${tankId}: running gear requires sprocket, idler and road-wheel stations`);
-  }
-  const frontIsSprocket = sprocket.z > idler.z;
-  const expectedFrontDrive = cfg.frontDrive === true || FRONT_DRIVE_EXCEPTION_SET.has(tankId);
-  if (frontIsSprocket !== expectedFrontDrive) {
-    const expected = expectedFrontDrive ? 'front sprocket / rear idler exception'
-      : 'front idler / rear final-drive sprocket';
-    throw new Error(`${tankId}: running-gear order violates ${expected}`);
-  }
-  const zFront = Math.max(sprocket.z, idler.z);
-  const zRear = Math.min(sprocket.z, idler.z);
-  const roadZFront = Math.max(...wheelZs);
-  const roadZRear = Math.min(...wheelZs);
-  if (!(roadZRear > zRear && roadZFront < zFront)) {
-    throw new Error(`${tankId}: road-wheel centers must remain between both terminal wheels`);
-  }
-  const frontTerminal = expectedFrontDrive ? sprocket : idler;
-  const rearTerminal = expectedFrontDrive ? idler : sprocket;
-  const frontTerminalMargin = wheelR
-    ? (frontTerminal.z + frontTerminal.r) - (roadZFront + wheelR)
-    : null;
-  const rearTerminalMargin = wheelR
-    ? (roadZRear - wheelR) - (rearTerminal.z - rearTerminal.r)
-    : null;
-  const terminalRatioFloor = cfg.terminalRatioFloor ?? 0.45;
-  if (wheelR && cfg.terminalScaleException !== true) {
-    if (idler.r / wheelR + 1e-6 < terminalRatioFloor
-        || sprocket.r / wheelR + 1e-6 < terminalRatioFloor) {
-      throw new Error(`${tankId}: idler and final-drive sprocket must remain visibly distinct terminal wheels`);
-    }
-    if (frontTerminalMargin < -1e-6 || rearTerminalMargin < -1e-6) {
-      throw new Error(`${tankId}: road-wheel silhouette must remain between both terminal-wheel silhouettes`);
-    }
-  }
-  const terminalRiseFloor = cfg.terminalRiseFloor
-    ?? (TANK_SPECS[tankId]?.era === 'modern' ? MODERN_TERMINAL_RISE_FLOOR_M : null);
-  const idlerRise = wheelY != null && idler.y != null ? idler.y - wheelY : null;
-  const sprocketRise = wheelY != null && sprocket.y != null ? sprocket.y - wheelY : null;
-  if (terminalRiseFloor != null && cfg.terminalRiseException !== true
-      && (idlerRise == null || sprocketRise == null
-        || idlerRise + 1e-6 < terminalRiseFloor
-        || sprocketRise + 1e-6 < terminalRiseFloor)) {
-    throw new Error(`${tankId}: modern idler and final-drive centers must rise at least ${terminalRiseFloor.toFixed(2)} m above road-wheel centers`);
-  }
-  return Object.freeze({
-    tankId,
-    frontEnd: frontIsSprocket ? 'sprocket' : 'idler',
-    rearEnd: frontIsSprocket ? 'idler' : 'sprocket',
-    frontDriveException: expectedFrontDrive,
-    roadWheelStations: wheelZs.length,
-    supportRollers: rollers.length,
-    zFront,
-    zRear,
-    roadZFront,
-    roadZRear,
-    roadWheelRadius: wheelR,
-    roadWheelY: wheelY,
-    idlerRadius: idler.r,
-    idlerY: idler.y ?? null,
-    sprocketRadius: sprocket.r,
-    sprocketY: sprocket.y ?? null,
-    idlerRise,
-    sprocketRise,
-    terminalRiseFloor,
-    idlerToRoadRatio: wheelR ? idler.r / wheelR : null,
-    sprocketToRoadRatio: wheelR ? sprocket.r / wheelR : null,
-    // A terminal must lead the complete road-wheel silhouette, not merely
-    // have its centre a few centimetres farther forward.  Publishing both
-    // outer-envelope margins lets the fleet lint catch the exact failure
-    // where a tiny nominal idler disappears behind the first road wheel.
-    frontTerminalMargin,
-    rearTerminalMargin,
-  });
-}
-
 function buildRunningGear(P, cfg) {
   const { mats, hullG, q } = P;
   const seg = q ? 26 : 12;
@@ -1063,12 +934,6 @@ function buildRunningGear(P, cfg) {
                                          // paint (modern MBTs paint the whole
                                          // wheel train; the bare-steel drums
                                          // read as blue die-cast toys)
-    idlerWidthScale = 0.74,              // opt-in wider native idler face for
-                                         // broad modern shoe planes; changes
-                                         // the real terminal, never an overlay
-    frontDrive = false,                  // explicit real-world exception to
-                                         // the fleet default: front idler,
-                                         // rear final-drive sprocket
   } = cfg;
 
   // Some source-authored hulls carry a small left/right track-lane offset.
@@ -1086,26 +951,16 @@ function buildRunningGear(P, cfg) {
   // own radius, cadence, terminal geometry and protection; this records only
   // the native mechanical station count for lineage/provenance checks.
   hullG.userData.nativeRoadWheelStations = wheelZs.length;
-  (hullG.userData.nativeRunningGearLayouts ||= []).push(
-    runningGearLayoutReceipt(P.specId, {
-      sprocket, idler, wheelZs, rollers, wheelR, wheelY, frontDrive,
-      terminalRatioFloor: cfg.terminalRatioFloor,
-      terminalScaleException: cfg.terminalScaleException,
-      terminalRiseFloor: cfg.terminalRiseFloor,
-      terminalRiseException: cfg.terminalRiseException,
-    }),
-  );
 
-  // Torsion arms are suspension-owned geometry. Keep them in the dedicated
-  // running-gear detail bucket so strict shoe-sweep lint does not mistake a
-  // real axle/arm for hull armor penetrating the track it supports.
+  // torsion arms: static axle stub + trailing arm per wheel station (merged
+  // into the hull detail bucket — zero extra draw calls)
   if (arms) {
     wheelZs.forEach((z, i) => {
       for (const side of [-1, 1]) {
         const sideXc = xcForSide(side);
         const xa = side * (sideXc - wheelW * 0.7);
-        P.add('hullRunningGearDetail', cylX(wheelR * 0.16, wheelW * 0.9, 10), xa, wheelY, z);
-        P.add('hullRunningGearDetail', box(0.07, 0.09, wheelR * 0.95),
+        P.add('hullDetail', cylX(wheelR * 0.16, wheelW * 0.9, 10), xa, wheelY, z);
+        P.add('hullDetail', box(0.07, 0.09, wheelR * 0.95),
           side * (sideXc - wheelW * 1.1), wheelY + wheelR * 0.28, z + wheelR * 0.38, 0.6, 0, 0);
       }
     });
@@ -1148,7 +1003,7 @@ function buildRunningGear(P, cfg) {
     const shadowH = cfg.bayShadowTop ?? (topY + 0.1);
     for (const side of [-1, 1]) {
       const sideXc = xcForSide(side);
-      P.add('hullRunningGearShadow', new THREE.BoxGeometry(0.02, shadowH, z1 - z0),
+      P.add('hullShadow', new THREE.BoxGeometry(0.02, shadowH, z1 - z0),
         side * (sideXc - wheelW * 2.0), shadowH / 2 + 0.03, (z0 + z1) / 2);
     }
   }
@@ -1245,23 +1100,12 @@ function buildRunningGear(P, cfg) {
   // Radial tooth reach is untouched; the rings pull inboard only.
   const sg = sprocketGeo(sprocket.r, trackW * 0.80, seg, 12, sprocket.r + bandOuterR,
     mats.trackLinkM, cfg.endRingSpan ?? trackW);
-  const ig = idlerGeo(idler.r, trackW * idlerWidthScale, seg);
+  const ig = idlerGeo(idler.r, trackW * 0.74, seg);
   P.disposables.push(sg.body, sg.dark, ig.body, ig.dark);
   // End-wheel BODIES always take scheme paint (crews paint sprocket/idler
   // with the vehicle; the bare near-black drums were the r5 "hollow wrap" /
   // "track circles a void" read) — teeth, recess rings and bolts stay dark.
-  let steelMat = mats.wheels || (paintedEnds ? mats.detail : mats.trackLink);
-  // Optional terminal-only paint contrast.  Wide linked shoes can shadow an
-  // otherwise correct idler/sprocket face until it reads as an empty black
-  // wrap.  This colors the native terminal bodies themselves; it never adds a
-  // second disc or other geometry in the shoe plane.
-  if (cfg.endWheelHex) {
-    steelMat = steelMat.clone();
-    steelMat.color = new THREE.Color(cfg.endWheelHex);
-    steelMat.onBeforeCompile = vehicleAmbientFloorHook;
-    steelMat.customProgramCacheKey = () => 'veh-ambient-floor-v2';
-    P.disposables.push(steelMat);
-  }
+  const steelMat = mats.wheels || (paintedEnds ? mats.detail : mats.trackLink);
   const darkMat = mats.spareTrack || mats.dark;
   for (const side of [-1, 1]) {
     const sideXc = xcForSide(side);
@@ -2338,8 +2182,8 @@ function cupola(P, bucket, x, y, z, r, h, periscopes = 6) {
 }
 
 // Headlight: armored drum + glass lens face (lens offset baked pre-rotation).
-function headlight(P, x, y, z, rx = 0, r = 0.055, detailBucket = 'hullDetail') {
-  P.add(detailBucket, cylZ(r, r * 1.35, 12), x, y, z, rx, 0, 0);
+function headlight(P, x, y, z, rx = 0, r = 0.055) {
+  P.add('hullDetail', cylZ(r, r * 1.35, 12), x, y, z, rx, 0, 0);
   P.add('hullGlass', xform(cylZ(r * 0.8, 0.02, 12), 0, 0, r * 0.72), x, y, z, rx, 0, 0);
   P.add('hullDark', xform(box(0.02, r * 2.3, 0.02), 0, 0, r * 0.5), x, y, z, rx, 0, 0); // brush guard rib
 }
@@ -2374,9 +2218,9 @@ function smokeCluster(P, x, y, z, n, yaw, arc = 0.5) {
   }
 }
 
-function towCable(P, pts, r = 0.022, bucket = 'hullDark') {
+function towCable(P, pts, r = 0.022) {
   const curve = new THREE.CatmullRomCurve3(pts.map((p) => new THREE.Vector3(...p)), false, 'centripetal');
-  P.add(bucket, new THREE.TubeGeometry(curve, P.q ? 20 : 10, r, 6, false));
+  P.add('hullDark', new THREE.TubeGeometry(curve, P.q ? 20 : 10, r, 6, false));
 }
 
 function fenders(P, xInner, xOuter, y, z0, z1, th = 0.035) {
@@ -2964,13 +2808,13 @@ function buildT34(P) {
 
 function buildIS2(P) {
   const { rng } = P;
-  P.add('hull', box(1.70, 0.65, 5.72), 0, 0.775, 0.05);                         // inter-track lower hull
+  P.add('hull', box(1.8, 0.65, 5.72), 0, 0.775, 0.05);                          // lower hull
   // r7 hull rework: the sponson band starts at the FENDER LINE (1.22), not at
   // the track top — the full-height 1.10-1.80 slab wall read as a German
   // sponson barn. A dark AO ceiling closes the gap over the track run.
   P.add('hull', frustum(1.545, 1.85, -2.85, 1.42, 1.85, -2.85, 1.22, 1.80));    // sponson slab
   for (const s of [-1, 1]) {
-    P.add('hullShadow', new THREE.BoxGeometry(0.62, 0.026, 4.7), s * 1.23, 1.265, -0.5);
+    P.add('hullShadow', new THREE.BoxGeometry(0.62, 0.026, 4.7), s * 1.23, 1.205, -0.5);
   }
   // 60° upper glacis with a PLAN TAPER to the prow — the model-1944
   // "straightened nose" narrows toward the bow instead of running the full
@@ -2979,8 +2823,8 @@ function buildIS2(P) {
     [-1.06, 0.95, 3.30], [1.06, 0.95, 3.30], [1.45, 0.95, 1.90], [-1.45, 0.95, 1.90],
     [-0.98, 1.80, 1.83], [0.98, 1.80, 1.83], [1.42, 1.80, 1.86], [-1.42, 1.80, 1.86]));
   P.add('hull', slab(                                                            // 30° lower glacis, tapered
-    [-0.84, 0.45, 3.01], [0.84, 0.45, 3.01], [0.84, 0.45, 2.35], [-0.84, 0.45, 2.35],
-    [-0.84, 0.95, 3.30], [0.84, 0.95, 3.30], [0.84, 0.95, 1.95], [-0.84, 0.95, 1.95]));
+    [-0.96, 0.45, 3.01], [0.96, 0.45, 3.01], [1.30, 0.45, 2.35], [-1.30, 0.45, 2.35],
+    [-1.06, 0.95, 3.30], [1.06, 0.95, 3.30], [1.45, 0.95, 1.95], [-1.45, 0.95, 1.95]));
   // sloped rear — top-ring zF/zR were swapped (zF -3.38 < zR -3.0 inverted
   // the slab ring => inside-out since authorship; §5.03 sweep item 1)
   P.add('hull', frustum(1.4, -2.86, -2.86, 1.4, -3.0, -3.38, 1.2, 1.8));
@@ -3026,7 +2870,7 @@ function buildIS2(P) {
   P.add('turretDetail', torus(0.26, 0.025, P.q ? 22 : 10), 0.42, 0.68, -0.25);
   pintleMG(P, 0.42, 0.68, -0.25);
   for (const s of [-1, 1]) {
-    towCable(P, [[s * 0.85, 0.28, 0.4], [s * 0.95, 0.33, -0.2], [s * 0.85, 0.28, -0.6]], 0.016, 'turretDark');
+    towCable(P, [[s * 0.85, 0.28, 0.4], [s * 0.95, 0.33, -0.2], [s * 0.85, 0.28, -0.6]], 0.016);
   }
   // Mantlet group seated ON the (longer) cast face, not buried inside it:
   // broad cast cradle, rounded rocking roll, and the bulge under the barrel
@@ -3047,9 +2891,6 @@ function buildIS2(P) {
   });
   headlight(P, -0.6, 1.9, 1.75, -0.5);
   stowage(P, 'hullDetail', rng, [[1.25, 1.2, 1.4, 0.3, 0.24, 0.9]]);
-  // Keep the pike center and belly low between the lanes, but lift the
-  // real sponson, fender and service hardware above the complete shoe sweep.
-  P.raiseTrackCorridor(['hull', 'hullDetail', 'hullDark'], { laneInnerX: 0.87, floorY: 1.25 });
   P.decal('turret', 'number', '432', 0.38, [1.02, 0.28, -0.3], Math.PI / 2, 0, 0.20);
   P.decal('turret', 'number', '432', 0.38, [-1.02, 0.28, -0.3], -Math.PI / 2, 0, -0.20);
   P.topY = 0.72;
@@ -3057,10 +2898,10 @@ function buildIS2(P) {
 
 function buildPanther(P) {
   const { rng } = P;
-  P.add('hull', box(2.0, 0.63, 6.4), 0, 0.835, -0.05);                          // inter-track lower hull
+  P.add('hull', box(2.1, 0.63, 6.4), 0, 0.835, -0.05);                          // lower hull
   P.add('hull', frustum(1.71, 2.35, -3.1, 1.32, 1.80, -3.35, 1.15, 1.85));      // sloped superstructure
-  P.add('hull', frustum(0.95, 3.30, 2.3, 1.32, 1.80, 2.3, 0.8, 1.85));          // huge 55° glacis above narrow prow
-  P.add('hull', frustum(0.95, 2.90, 2.75, 0.95, 3.30, 2.75, 0.52, 0.8));        // lane-clear lower glacis
+  P.add('hull', frustum(1.55, 3.30, 2.3, 1.32, 1.80, 2.3, 0.8, 1.85));          // huge 55° glacis
+  P.add('hull', frustum(1.55, 2.90, 2.75, 1.55, 3.30, 2.75, 0.52, 0.8));        // lower glacis
   P.add('hullDetail', sph(0.09, 10), 0.6, 1.62, 2.62);                          // ball MG in glacis
   fenders(P, 1.05, 1.71, 1.18, -3.35, 3.3, 0.03);
   // TWO rear exhaust stacks in sheet-metal shrouds (the flanking stowage
@@ -3076,7 +2917,8 @@ function buildPanther(P) {
   for (const s of [-1, 1]) {
     for (let k = 0; k < 6; k++) {
       if (s > 0 && k === 4) continue;                                            // missing plate
-      P.add('hull', box(0.012, 0.40, 0.98), s * 1.75, 0.98, 2.45 - k * 1.02);
+      const bent = s < 0 && k === 2 ? 0.07 : 0;
+      P.add('hull', box(0.02, 0.40, 0.98), s * 1.73, 0.98, 2.45 - k * 1.02, bent, s * bent, 0);
     }
   }
   towCable(P, [[-1.6, 1.75, -2.4], [-1.7, 1.8, 0], [-1.6, 1.75, 2.2]]);
@@ -3869,26 +3711,13 @@ function buildLeo2A7(P) {
   // sleeve/evac/MRS steps in buildGun scale off r so they thicken with it.
   buildGun(P, { len: 6.6, r: 0.079, sleeve: true, evac: 0.62, collar: true, baseR: 0.16 });
   buildRunningGear(P, {
-    style: 'rubber', wheelR: 0.35, wheelW: 0.22, wheelY: 0.45, xc: 1.55,
+    style: 'rubber', wheelR: 0.35, wheelW: 0.22, xc: 1.55,
     wheelZs: [2.95, 2.0, 1.25, 0.28, -0.69, -1.66, -2.63],
-    // Both terminals sit above the seven road-wheel centres.  The old
-    // 0.44/0.46 m centres made the first and last drums read as two more
-    // road wheels and flattened the Leopard course instead of producing
-    // the required rising approach and final-drive transitions.
-    sprocket: { z: -3.5, y: 0.60, r: 0.34 }, idler: { z: 3.45, y: 0.60, r: 0.32 },
+    sprocket: { z: -3.5, y: 0.46, r: 0.34 }, idler: { z: 3.45, y: 0.44, r: 0.32 },
     // r3: skirts cover the real 2A7's return run — no horn comb above the
     // fender line (same fix as the T-90M).
     trackW: 0.635, topY: 0.92, paintedEnds: true, coveredTop: true,
   });
-  // Fleet track-clearance law: the legacy heavy skirt lips, front/rear
-  // mudflaps and the outboard lower bow corners used to occupy the linked
-  // shoe sweep.  Keep them as physical hull parts, but trim their lower
-  // vertices to one continuous clearance floor above the complete course.
-  // The inboard belly and rear service plate remain untouched.
-  P.raiseTrackCorridor(
-    ['hull', 'hullDark', 'hullDetail', 'hullRubber', 'hullWood'],
-    { laneInnerX: 1.20, floorY: 1.04 },
-  );
   // r5: crosses re-seated on the rebuilt (narrower) turret side wall, ahead
   // of the stowage baskets — at the old ±1.61 they floated in mid-air.
   P.decal('turret', 'crossgrey', null, 0.38, [1.23, 0.44, -0.22], Math.PI / 2);
@@ -3983,12 +3812,6 @@ function buildCommunityPlaceholder(P) {
 // Bucket -> [parent group key, material key]
 const BUCKET_DEF = {
   hull: ['hullG', 'hull'], hullDetail: ['hullG', 'detail'], hullDark: ['hullG', 'dark'],
-  // Material-identical spatial buckets for fixed hull stations.  Keeping
-  // bow, driver, engine and transom detail separate prevents their merged
-  // AABB from falsely spanning an entire rotating-turret envelope while
-  // preserving the exact material, owner and LOD behavior.
-  hullBowDetail: ['hullG', 'detail'], hullDriverDetail: ['hullG', 'detail'],
-  hullEngineDetail: ['hullG', 'detail'], hullRearDetail: ['hullG', 'detail'],
   hullRubber: ['hullG', 'rubber'], hullWood: ['hullG', 'wood'], hullCloth: ['hullG', 'canvasCloth'],
   hullGlass: ['hullG', 'glass'],
   turret: ['turretG', 'hull'], turretDetail: ['turretG', 'detail'], turretDark: ['turretG', 'dark'],
@@ -4020,22 +3843,6 @@ const BUCKET_DEF = {
   // exclude it by authored ownership instead of the old positional
   // "lane-local" heuristic that also hid real guard/mudflap intrusions.
   hullRunningGearDark: ['hullG', 'dark'],
-  // Track-course filler shoes/pads authored outside buildRunningGear still
-  // belong to the native suspension. Preserve the oily spare-track material
-  // while giving strict clearance lint truthful ownership metadata.
-  hullRunningGearTrack: ['hullG', 'spareTrack'],
-  // Shadow-material wheel-gap tabs and bay backers are suspension geometry,
-  // not hull armor. Keep their render tone while exposing true ownership to
-  // the strict swept-course audit.
-  hullRunningGearShadow: ['hullG', 'shadow'],
-  // Some high-detail profiles paint their wheel faces with dedicated
-  // canvas/wood material variants. Preserve those authored tones while
-  // recording truthful suspension ownership for strict swept-track lint.
-  hullRunningGearCloth: ['hullG', 'canvasCloth'],
-  hullRunningGearWood: ['hullG', 'wood'],
-  // Some authored suspension beams share the hull camouflage. Preserve the
-  // exact hull material and dirt bake while recording their true ownership.
-  hullRunningGearHull: ['hullG', 'hull'],
   // Painted wheel faces, rims and hub caps are suspension-owned just like
   // the dark wheel-bay recesses above.  Keep a material-correct detail
   // bucket so strict swept-track lint does not misclassify concentric wheel
@@ -4046,7 +3853,7 @@ const BUCKET_DEF = {
   // §B4 from reporting the enclosure intersecting the belt it is built over.
   hullTrackGuardL: ['hullG', 'hull'], hullTrackGuardR: ['hullG', 'hull'],
 };
-const CAMO_BUCKETS = new Set(['hull', 'hullRunningGearHull', 'hullTrackGuardL', 'hullTrackGuardR', 'turret', 'gun', 'gunMount']);
+const CAMO_BUCKETS = new Set(['hull', 'hullTrackGuardL', 'hullTrackGuardR', 'turret', 'gun', 'gunMount']);
 // Buckets that survive past LOD1 — everything else is greeble-class and
 // disappears at range behind the silhouette shells.
 const LOD0_KEEP = new Set(['hull', 'hullTrackGuardL', 'hullTrackGuardR', 'turret', 'gun', 'gunDark', 'gunMount', 'hullRubber']);
@@ -4329,7 +4136,7 @@ export function createTank(specId, engineCtx, opts = {}) {
   const P = {
     // PERF r3: 'ai' is a TEXTURE tier only — geometry detail stays hero
     // (killcam closeups frame AI vehicles at arm's length)
-    specId, spec, mats, rng, q: quality !== 'low', hullG, turretG, gunG, recoilG,
+    spec, mats, rng, q: quality !== 'low', hullG, turretG, gunG, recoilG,
     disposables, gear: null, muzzleZ: armor.gunBarrel.lengthM, topY: 0.8,
     // Optional profile-owned final visual composition. This runs after the
     // authored buckets, decals, and ERA instances exist, but before shadow
@@ -4365,103 +4172,6 @@ export function createTank(specId, engineCtx, opts = {}) {
     offsetBuckets(names, x = 0, y = 0, z = 0) {
       for (const name of names.flat()) {
         for (const geo of buckets[name] || []) geo.translate(x, y, z);
-      }
-    },
-    // Move an authored primitive between material-equivalent ownership
-    // buckets before merge.  This is deliberately predicate-driven: strict
-    // track lint may exempt a real wheel-bay backer or hub fitting only when
-    // the profile names that exact part as suspension-owned.  It must never
-    // blanket-exempt a hull/skirt bucket by proximity alone.
-    rebucketParts(fromNames, toName, predicate) {
-      const dst = buckets[toName] || (buckets[toName] = []);
-      for (const fromName of fromNames.flat()) {
-        const src = buckets[fromName] || [];
-        const keep = [];
-        for (const geo of src) {
-          if (!geo.boundingBox) geo.computeBoundingBox();
-          if (predicate(geo, geo.boundingBox, fromName)) dst.push(geo);
-          else keep.push(geo);
-        }
-        buckets[fromName] = keep;
-      }
-    },
-    // Geometry-preserving suspension-tunnel repair.  The retired version
-    // clamped every low outboard vertex to one Y plane; when both the lower
-    // and upper vertices of a box/armor prism were below that plane, complete
-    // faces collapsed to zero height and whole tank sides appeared hollow.
-    // Group coincident X/Z columns first.  A wholly low column translates as
-    // one rigid section; a column crossing the clearance floor retains a
-    // small ordered lower section before meeting the untouched upper armor.
-    // This keeps topology, thickness, plan, and the complete upper silhouette
-    // while creating the explicitly requested local suspension tunnel.
-    raiseTrackCorridor(names, { laneInnerX, floorY, zMin = -Infinity, zMax = Infinity }) {
-      const EPS = 1e-5;
-      for (const name of names.flat()) {
-        for (const geo of buckets[name] || []) {
-          const pos = geo.getAttribute('position');
-          if (!pos) continue;
-          const columns = new Map();
-          for (let i = 0; i < pos.count; i++) {
-            const x = pos.getX(i), z = pos.getZ(i);
-            if (Math.abs(x) + EPS < laneInnerX || z < zMin || z > zMax) continue;
-            const key = `${x.toFixed(5)}:${z.toFixed(5)}`;
-            const column = columns.get(key) || [];
-            column.push(i);
-            columns.set(key, column);
-          }
-          let changed = false;
-          for (const indices of columns.values()) {
-            let minY = Infinity, maxY = -Infinity;
-            for (const i of indices) {
-              const y = pos.getY(i);
-              minY = Math.min(minY, y);
-              maxY = Math.max(maxY, y);
-            }
-            if (minY + EPS >= floorY) continue;
-            if (maxY <= floorY + EPS) {
-              const dy = floorY - minY;
-              for (const i of indices) pos.setY(i, pos.getY(i) + dy);
-              changed = true;
-              continue;
-            }
-            let lowMax = -Infinity, nextAbove = Infinity;
-            for (const i of indices) {
-              const y = pos.getY(i);
-              if (y < floorY) lowMax = Math.max(lowMax, y);
-              else nextAbove = Math.min(nextAbove, y);
-            }
-            const sourceSpan = Math.max(0, lowMax - minY);
-            const headroom = Number.isFinite(nextAbove) ? Math.max(0, nextAbove - floorY) : 0;
-            const keepSpan = Math.min(sourceSpan, headroom * 0.35, 0.08);
-            for (const i of indices) {
-              const y = pos.getY(i);
-              if (y >= floorY) continue;
-              const t = sourceSpan > EPS ? (y - minY) / sourceSpan : 0;
-              pos.setY(i, floorY + t * keepSpan);
-            }
-            changed = true;
-          }
-          if (!changed) continue;
-          pos.needsUpdate = true;
-          geo.computeVertexNormals();
-          geo.computeBoundingBox();
-          geo.computeBoundingSphere();
-        }
-      }
-    },
-    // Complete lane-local guards/fittings can be reseated rigidly; unlike the
-    // retired vertex clamp this never changes their dimensions or topology.
-    liftTrackCorridorParts(names, { laneInnerX, floorY, zMin = -Infinity, zMax = Infinity }) {
-      for (const name of names.flat()) {
-        for (const geo of buckets[name] || []) {
-          if (!geo.boundingBox) geo.computeBoundingBox();
-          const bb = geo.boundingBox;
-          const laneLocal = bb.min.x >= laneInnerX - 1e-6 || bb.max.x <= -laneInnerX + 1e-6;
-          if (!laneLocal || bb.max.z < zMin || bb.min.z > zMax || bb.min.y >= floorY - 1e-6) continue;
-          geo.translate(0, floorY - bb.min.y, 0);
-          geo.computeBoundingBox();
-          geo.computeBoundingSphere();
-        }
       }
     },
     forEachBucketPart(names, visitor) {
@@ -4506,7 +4216,7 @@ export function createTank(specId, engineCtx, opts = {}) {
     const merged = mergeAll(list);
     if (CAMO_BUCKETS.has(bucket)) {
       boxUV(merged, spec.visual.camoScale ?? 0.34);
-      bakeDirt(merged, DIRT_Y[parentKey], bucket === 'hull' || bucket === 'hullRunningGearHull' ? 1 : 0.5,
+      bakeDirt(merged, DIRT_Y[parentKey], bucket === 'hull' ? 1 : 0.5,
         !!spec.visual.bakeDirtDeckEq);
     }
     disposables.push(merged);
@@ -4515,11 +4225,7 @@ export function createTank(specId, engineCtx, opts = {}) {
     if (bucket === 'hullTrackGuardL' || bucket === 'hullTrackGuardR') {
       mesh.userData.trackGuard = true;
     }
-    if (bucket === 'hullRunningGearDark' || bucket === 'hullRunningGearDetail'
-        || bucket === 'hullRunningGearTrack' || bucket === 'hullRunningGearShadow'
-        || bucket === 'hullRunningGearCloth' || bucket === 'hullRunningGearWood'
-        || bucket === 'hullRunningGearHull'
-        || bucket === 'hullTrackTrimL' || bucket === 'hullTrackTrimR') {
+    if (bucket === 'hullRunningGearDark' || bucket === 'hullRunningGearDetail') {
       mesh.userData.runningGear = true;
     }
     // Track-containment law (BUILD-STANDARD SS-B4): tag track-family bucket

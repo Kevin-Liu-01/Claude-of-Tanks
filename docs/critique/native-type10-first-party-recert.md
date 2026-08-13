@@ -1,6 +1,6 @@
 # Type 10 first-party provenance re-certification
 
-Active authored candidate: `buildType10Native2026` / freeze `434c7928`.
+Active authored candidate: `buildType10Native2026` / freeze `7ac6d434`.
 
 ## Provenance
 
@@ -13,22 +13,16 @@ Active authored candidate: `buildType10Native2026` / freeze `434c7928`.
 
 ## Geometry and evidence
 
-- Deterministic freeze: **62 meshes / 56,802 vertices**, reproduced twice.
-- Procedural fidelity: **91.42**, required-view floor **90.17**; whole 92.21,
-  hull 92.53, gun 90.09 and native track profile 86.47.
-- The accepted shoulder bridges remain, while the long sponson, upper-glacis
-  underside and fender shelf now maintain a real air gap over the complete
-  native return course. Exact band/shoe clearance is **0/0** at both terminals
-  and **0/0 through the strict full moving sweep**.
+- Deterministic freeze: **62 meshes / 56,562 vertices**.
+- Procedural fidelity: **91.41**, required-view floor **90.02**; whole 92.29,
+  hull 92.41, gun 90.09 and native track profile 86.42.
+- The two thin final shoulder bridges close the only bow plan pockets while
+  keeping exact band/shoe clearance **0/0** at both terminals.
 - Contiguity: zero holes. Decoration: `mg1+8d`. Muzzle bore: PASS.
 - Winding: 0 reversed / 0 mixed. The seven-pixel rear-left deficit is 0.01%
   and has no visible surface wound.
-- Parent audit: **0 stranded / 0 abutting / 0 dangling**. Live rig: 10/10.
-- Final packet: `/private/tmp/type10-clearance-final-r11/type10`, 45 PNGs / 45
-  distinct SHA-256 hashes, including the elevated-left profile.
-- Fresh standard-order vector:
-  `[9.2,9.3,9.1,9.2,9.2,9.2,9.1,9.3,9.4,9.4,9.3,9.4,9.3,9.4]`;
-  floor **9.1**, mean **9.27**.
+- Final packet: `/tmp/critic-type10-native-final-r10/type10`, 42 PNGs / 42
+  distinct SHA-256 hashes.
 
 ## Ownership and load paths
 
@@ -37,17 +31,17 @@ welded shell, cheek and side modules, roof stations, MG, smoke, antennas and
 the complete bustle/rack rotate together. Folded bow, lamps/guards, driver
 deck, engine deck, transom and the exact five-wheel course remain fixed.
 
-The fixed tow cable now follows the outer fender edge, while cloth and spare
-links occupy supported aft-rack seats outside the complete yaw envelope. Every
-actual turret fitting retains an armor root, broad plinth, collar, bracket or
-rail return. No fused duplicate, stranded fitting or empty-air decoration
-appears.
+The parent audit nominates `fitting_towCable`, `hullCloth` and
+`fitting_spareTrackLinks`. Yaw90 exposes all three as legitimate fixed deck or
+stern stowage with visible hull seats; none has turret semantics. Every actual
+turret fitting retains an armor root, broad plinth, collar, bracket or rail
+return. No fused duplicate, stranded fitting or empty-air decoration appears.
 
 ## Disclosed legacy mask debt
 
-The source-bake-calibrated geometry row reports an honest zero (hull 50.2 /
-whole 34.5 / stations 42.7 / dimensions 49.3 / floaters 0). Its source
+The source-bake-calibrated geometry row reports an honest zero (hull 50.3 /
+whole 45.4 / stations 45.2 / dimensions 49.3 / floaters 0). Its source
 component/registration tree is not compatible with the independent native
 builder. The row is preserved as red evidence rather than gamed into a pass.
 
-**Final disposition: RE-FROZEN / KEEP `434c7928`; retire `7ac6d434`.**
+**Final disposition: RE-FROZEN / KEEP `7ac6d434`.**

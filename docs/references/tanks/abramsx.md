@@ -736,31 +736,3 @@ hash-stable.
   **9.3**, mean **9.49**, genuine yaw and complete load paths.
 
 **KEEP `976a1370`; retire `26b46ba0`.**
-
-## SOLE-NATIVE TERMINAL CORRECTION (2026-08-13)
-
-The strict fleet receipt reopened the earlier loaded-contact allowance.  The
-native running-gear builder already supplied the high free idler and rear
-toothed final drive, but AbramsX added an independent outboard face/spoke/
-bolt set at the same two centers.  Those decorative solids intersected the
-articulated wrap even though their profile pixels looked concentric.
-
-The duplicate terminal layer is removed rather than exempted or renamed.
-Only the real native end mechanisms remain; their dish is widened toward the
-inside of the shoe plane and receives a restrained painted-steel material.
-Road-wheel faces and the authored seven-station suspension remain intact.
-
-- Freeze **`7180bec0`** x2 (80 meshes / 150,014 vertices).
-- Fidelity **94.3** and geometry gate **90.2**.
-- Exact band / shoe / moving-sweep clearance **0/0/0**.
-- Parent **0/0/0**, winding **0/0**, yaw candidates **0**, runtime rig
-  **10/10**, muzzle-bore contrast **73.4**.
-- Fresh evidence
-  `/private/tmp/abramsx-native-terminal-final-r1/abramsx`: 45/45 unique
-  paired/yaw/profile frames, every standard view >=9.3.
-
-The playable remains wholly repository-authored procedural geometry.  The
-comparison GLB is measurement/render-only and supplies no runtime geometry,
-material, texture, rig, animation or converted payload.
-
-**KEEP `7180bec0`; retire `976a1370`.**

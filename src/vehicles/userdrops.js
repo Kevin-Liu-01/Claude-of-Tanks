@@ -3,8 +3,15 @@
 // public/models/community-candidates/user-drops/<slug>/RENDER.png).
 //
 //   leo2a6  — historical comparison print by buh (CC-BY 4.0); runtime-retired.
-//   ariete  — historical comparison print retired and removed; the active
-//             C1 Ariete is wholly repository-authored procedural geometry.
+//   ariete  — "C1 Ariete Italian MBT" by DustyMojito (Sketchfab Standard —
+//             PERSONAL-USE QUARANTINE, see docs/ATTRIBUTION.md). Comparison
+//             only; the raw asset ships the
+//             turret as two sibling nodes (Turret_Base + Turret_Accent
+//             material groups); preprocessed offline into an authored
+//             Hull/Turret hierarchy with a ring-center Turret origin and the
+//             whip antennas clamped under the height-clamp normalization
+//             (scratchpad ariete-restructure.mjs). Gun is fused into the
+//             turret meshes — yaw articulates, pitch stays virtual (kv2 rule).
 //   type74  — "Type 74" by NullOps (Sketchfab Standard — PERSONAL-USE
 //             QUARANTINE). Comparison only; the playable Type 74 is authored
 //             procedurally in this repository. Skinned
@@ -204,11 +211,25 @@ if (SHIP_QUARANTINE_USERDROPS) {
 // critic 9.0 on all nine views, round 8). The buh GLB (CC-BY 4.0) remains
 // on disk as the measurement oracle only; provenance in ATTRIBUTION.md.
 // The credit block below is retired with the model source.
+// r3 QUARANTINE DELIST: the DustyMojito Ariete swap is personal-use only —
+// the C1 Ariete now ships its PROCEDURAL modern3.js model (no credit line,
+// no 'QUARANTINE' text in the player-facing panel). Restore the block below
+// only with a relicensed asset.
+if (SHIP_QUARANTINE_USERDROPS && TANK_SPECS.ariete && !TANK_SPECS.ariete.community) {
+  TANK_SPECS.ariete.variantOf = 'ariete';
+  TANK_SPECS.ariete.community = {
+    author: 'DustyMojito',
+    source: 'https://sketchfab.com/DustyMojito',
+    license: 'Sketchfab Standard — PERSONAL-USE QUARANTINE (docs/ATTRIBUTION.md)',
+  };
+}
+
 // Historical runtime overrides are fully retired; external files are usable
 // only through isolated comparison tooling.
 // leo2a6: NO MODEL_SOURCE — dual-gate graduate; the procedural build ships
 // in every flavor (freeze hash 37cc0789, tools/tmp-hashgeo.mjs). The
 // reference file /models/tanks/leo2a6_buh.glb stays for measurement.
-// Runtime source swaps for Ariete and Type 74 are permanently retired. Ariete
-// is repository-authored in every build and its old comparison binary has
-// also been removed; Type 74 remains a separate quarantined reference case.
+// Runtime source swaps for Ariete and Type 74 are permanently retired. Their
+// external prints remain tooling-only visual/measurement references; battle
+// playables always resolve through the stronger repository-authored builders,
+// regardless of local quarantine flags.

@@ -14,8 +14,6 @@ const finalEvidence = process.argv.includes('--final');
 const profileEvidence = process.argv.includes('--profile');
 const outRoot = path.resolve(arg('out', 'shots'));
 const port = Number(arg('port', '4197'));
-const pagePath = arg('page', 'tools/tmp-tank-critic.html').replace(/^\//, '');
-const extraQuery = new URLSearchParams(arg('query', ''));
 
 const vite = spawn(path.resolve('node_modules/.bin/vite'), [
   '--host', '127.0.0.1', '--port', String(port), '--strictPort',
@@ -25,7 +23,7 @@ vite.stdout.on('data', (b) => { viteLog += b; });
 vite.stderr.on('data', (b) => { viteLog += b; });
 
 async function waitForServer() {
-  const url = `http://127.0.0.1:${port}/${pagePath}`;
+  const url = `http://127.0.0.1:${port}/tools/tmp-tank-critic.html`;
   for (let i = 0; i < 120; i++) {
     try {
       const res = await fetch(url);
@@ -58,8 +56,7 @@ try {
       ...(finalEvidence ? { final: '1' } : {}),
       ...(profileEvidence ? { profile: '1' } : {}),
     });
-    for (const [key, value] of extraQuery) query.set(key, value);
-    await page.goto(`http://127.0.0.1:${port}/${pagePath}?${query}`, {
+    await page.goto(`http://127.0.0.1:${port}/tools/tmp-tank-critic.html?${query}`, {
       waitUntil: 'networkidle0', timeout: 120_000,
     });
     await page.waitForFunction(() => window.__CRITIC_READY === true, { timeout: 120_000 });
