@@ -4957,12 +4957,14 @@ function buildLeo2A7V(P) {
   // further 0.10 m from the shell, leaving a 2.44 m broad silhouette against
   // the published 2.87 m vehicle.  The native track fix never required that
   // collapse: the deep undercut below remains seated above the fixed deck.
-  // The completed native shell still read fused into the hull at elevated
-  // profile.  Lift the complete rotating package by a restrained 1 cm and
-  // expose a dark annular ring seam below it; this creates a readable
-  // separation line without over-lifting the side silhouette.  Every sight,
-  // weapon, bustle and armor course keeps its authored parent/load path.
-  P.turretG.position.set(0, 1.47, 0.35);
+  // Fresh elevated-profile evidence showed the old 1 cm correction was not
+  // remotely enough: the annular dark ring bottomed at ~1.38 m while the
+  // fixed deck runs at ~1.60-1.70 m, burying the rotating shell into the
+  // hull.  Raise the complete package to its authored ring datum.  The helper
+  // ring still overlaps the deck, so this is a seated turret rather than a
+  // floating visual offset; gun, armor, sights, basket and antennas all move
+  // together because the correction is applied at the turret root.
+  P.turretG.position.set(0, 1.66, 0.35);
   wedgeTurretV3(P, {
     h: 0.64, apexY: 0.22, gunW: 0.36, slotZ: 1.18,
     chamferY: 0.55, roofX: 1.06, crestTail: 0.62, crestTailDrop: 0.005,
@@ -5842,7 +5844,8 @@ function buildLeo2Revolution(P) {
     for (let k = 0; k < 7; k++) {
       P.add('hull', box(0.060, 0.77, 0.468), s * 1.640, 0.915, -2.86 + 0.48 * k + 0.24);
     }
-    P.add('hullDark', box(0.01, 0.05, 3.36), s * 1.19, 0.335, -1.18);          // under-tub gap filler (y 0.31..0.36 — above the pad crown, behind the wheels)
+    // The wheel and track course themselves close the lower bay; the former
+    // hidden filler intersected shoe corners at the rear road-wheel station.
     // r14-e CORRIDOR ROOF: pulling the wing to 1.553 exposed the 6cm
     // deck-edge<->skirt corridor to the top-down flood over the bow zone
     // (two 3px x ~40px slivers at x ±1.58) — the ref reads its own DECK
@@ -6169,7 +6172,10 @@ function buildLeo2Revolution(P) {
     // the wrap far edge sits ~3.76 and the crown line rides the ref's
     // 1.21 wrap read; the 3.887 ramp-end columns stay the r3-certified
     // dims-guard carry (ref's last ramp columns uncovered).
-    sprocket: { z: -3.46, y: 1.12, r: 0.10 }, idler: { z: 3.44, y: 1.06, r: 0.15 },
+    // Keep both terminals visibly distinct without letting their wraps climb
+    // back into the low AMAP nose/tail courses.  r=.16 is still >45% of the
+    // .355 road-wheel radius and clears the exact animated band envelope.
+    sprocket: { z: -3.46, y: 1.06, r: 0.16 }, idler: { z: 3.44, y: 1.02, r: 0.16 },
     topY: 0.95, botY: 0.058,
     // r15 R5-1 (§B6 kit approach-ramp, the r14 floor holder): contactZF
     // 2.5975 (default) -> 2.22 flattens the front tangent 41.4deg -> 32.3deg
@@ -6404,10 +6410,13 @@ function buildLeo2Revolution(P) {
   P.add('turret', slab(
     [-0.93, 0.47, 2.44], [-1.62, 0.47, 2.40], [-1.64, 0.47, 0.60], [-0.93, 0.47, 0.60],
     [-0.93, 0.54, 2.42], [-1.58, 0.52, 2.38], [-1.62, 0.52, 0.60], [-0.93, 0.54, 0.60]));
-  // Formerly a 30 cm-tall near-black "seam" spanning most of the left
-  // cheek.  It is a real face/cap; keep it armor-coloured and let the small
-  // supported hardware provide the panel breaks.
-  P.add('turret', box(0.68, 0.30, 0.03), -1.28, 0.32, 2.43);                   // cheek face cap
+  // Replace the conspicuous rectangular cheek cap seen in the fresh
+  // front-left/close-front renders.  A tapered continuation follows the
+  // adjacent lower-cheek rake, stays buried on all four rear vertices and
+  // closes the same physical face without leaving a square stuck-on block.
+  P.add('turret', slab(
+    [-1.57, 0.18, 2.405], [-0.99, 0.18, 2.435], [-0.99, 0.18, 2.455], [-1.57, 0.18, 2.425],
+    [-1.49, 0.47, 2.385], [-1.05, 0.47, 2.415], [-1.05, 0.47, 2.435], [-1.49, 0.47, 2.405]));
   // side walls: left to -2.14w, right STOPS at 2.04w (ref ±1.63 plan col)
   P.add('turret', box(0.07, 0.10, 0.91), -1.465, 0.50, 0.645);                 // left wall inner fore-rear (floor 2.05w)
   // r5: fore-front walls z0 1.10 -> 1.185L (the ref 0.765w column reads its
