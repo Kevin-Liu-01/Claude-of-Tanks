@@ -15,7 +15,10 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const server = await createServer({
   root: process.cwd(), logLevel: 'error',
-  server: { port: 6500 + Math.floor(Math.random() * 250), strictPort: false, hmr: false, watch: null },
+  // Chromium blocks the IRC-family 6665-6669 ports. Keep the randomized QA
+  // server range above that forbidden band so a valid rig never fails at
+  // navigation before the probe begins.
+  server: { port: 6800 + Math.floor(Math.random() * 250), strictPort: false, hmr: false, watch: null },
 });
 await server.listen();
 const browser = await puppeteer.launch({
@@ -149,8 +152,10 @@ try {
     check(`${row.id}: turret hierarchy`, result.sourceTurretSeated !== false, result.sourceTurretName || 'procedural/fixed');
     check(`${row.id}: cannon hierarchy`, result.sourceGunSeated !== false, result.sourceGunName || 'procedural/fused');
     if (row.source === 'procedural') {
-      check(`${row.id}: procedural turret visible`, result.proceduralTurretMesh === true);
-      check(`${row.id}: procedural cannon visible`, result.proceduralGunMesh === true);
+      check(`${row.id}: procedural turret visible`, row.turretless || result.proceduralTurretMesh === true,
+        row.turretless ? 'not applicable: fixed-mount hull' : 'rotating turret');
+      check(`${row.id}: procedural cannon visible`, row.turretless || result.proceduralGunMesh === true,
+        row.turretless ? 'not applicable: fixed hull gun' : 'recoil-mounted gun');
     }
     check(`${row.id}: fixed-mount contract`, result.fixedContract !== false);
     check(`${row.id}: no load errors`, browserErrors.length === errorStart,
