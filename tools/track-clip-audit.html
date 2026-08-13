@@ -115,7 +115,11 @@ if (mode === 'list') {
   // excludes spare-link stowage on glacis/turret, which shares the bucket
   // material) and audit those as the track set instead.
   let trackSet = bands;
-  if (bands.length !== 2) {
+  // One native unit contributes a left/right pair.  Multi-unit vehicles such
+  // as the historical four-track T95 legitimately contribute two pairs and
+  // must be audited together, not rejected as a duplicate-course anomaly.
+  const completeBandPairs = bands.length >= 2 && bands.length % 2 === 0;
+  if (!completeBandPairs) {
     const bbp = new THREE.Box3();
     const handRolled = meshes.filter((m) => {
       if (!m.userData || !m.userData.trackBucket) return false;
@@ -128,7 +132,7 @@ if (mode === 'list') {
       // hand-rolled meshes are hull-side candidates no longer
       for (const m of handRolled) meshes.splice(meshes.indexOf(m), 1);
     } else {
-      out.anomaly = `expected 2 band meshes, found ${bands.length} (no ground-riding track buckets either)`;
+      out.anomaly = `expected complete left/right band pairs, found ${bands.length} meshes (no ground-riding track buckets either)`;
       window.__CLIP_RESULT = out; window.__CLIP_READY = true;
     }
   }

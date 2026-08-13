@@ -961,6 +961,12 @@ function buildT95(P) {
   P.decal('hull', 'star', null, 0.40, [-1.895, 0.92, 1.1], -Math.PI / 2, 0, 0);
   P.decal('hull', 'number', P.spec.visual.number || '95', 0.28, [1.895, 0.90, -1.5], Math.PI / 2, 0, 0);
   P.decal('hull', 'number', P.spec.visual.number || '95', 0.28, [-1.895, 0.90, -1.5], -Math.PI / 2, 0, 0);
+  // The four-track T95 carries two native courses per side.  Cut one real
+  // continuous corridor through the low hull wings, inter-unit shadows and
+  // outer suspension plates so neither inner nor detachable outer shoes
+  // pass through armor at the wraps or along the full animated sweep.
+  P.raiseTrackCorridor(['hull', 'hullDetail', 'hullDark'], { laneInnerX: 0.98, floorY: 0.82 });
+  P.raiseTrackCorridor(['hull'], { laneInnerX: 0.75, floorY: 0.82, zMin: 2.40 });
   P.topY = 1.55;
 }
 
