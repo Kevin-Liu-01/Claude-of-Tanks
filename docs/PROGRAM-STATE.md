@@ -109,6 +109,7 @@ re-freeze NEW hash, all in ONE commit.
 | m1a2 | 636a4860 | RE-FROZEN 2026-08-07 (CROWS-FORWARD wave §5.07: forward pose improved whole +4.1..+14.1; re-cert floor 9.1-9.2 x14 views, sheets shots/critic-sep-crowsfwd/) |
 | chieftain5 | d4f2a9a6 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | t84 | 6d66a6a9 | RE-FROZEN 2026-08-13 (§5.169 first-party T-84/T-80-family standardization: legacy reconstructed slab/tower retired from the active route; standardized turbine chassis with explicit front idler, six road wheels, support rollers and rear drive; distinct low welded/faceted T-84 shell, irregular planted protection and supported combat/rear suite; exact band+shoes+sweep 0/0/0, parent 0/0/0, fresh 45-frame floor 9.0 / mean 9.11; prior 04707a9c retired) |
+| t62mv1 | 7b92f462 | RE-FROZEN 2026-08-13 (§5.177 wholly first-party T-62MV-1 restoration: lower asymmetric cast shell, dense planted K-1 arc, seated DShK/periscopes/902B/rear kit, dedicated radial wheels and compact front-idler/five-road-wheel/no-return-roller/rear-drive course; fidelity 93.53 / minimum view 90.41 / tracks 90.30, exact band+shoes+sweep 0/0/0, parent 0/0/0, winding clean, runtime 10/10, bore PASS and fresh 45-frame elevated/yaw floor 9.0 / mean 9.09; prior 5576ccf0 retired) |
 | t80 | 448b1161 | RE-FROZEN 2026-08-13 (§5.152 first-party family standardization: explicit low pear/cast section loft replaces the rotational dome/patch stack; light applique, supported combat/rear suite, native six-wheel course, exact band+shoes+sweep 0/0, parent 0/0/0, fresh 45-frame floor 9.0 / mean 9.06) |
 | t80b | f90b060 | RE-FROZEN 2026-08-13 (§5.152 heavier authored brow/station package on the same physical turbine-hull datum; exact native course, parent and winding clean; fresh 45-frame floor 9.0 / mean 9.08) |
 | t80bv | f4bc0d40 | RE-FROZEN 2026-08-13 (§5.152 two-level irregular planted Kontakt-1 plus supported flank return, complete roof/rear service suite and exact native course; fresh 45-frame floor 9.0 / mean 9.14) |
@@ -6288,3 +6289,57 @@ acceptance evidence.
 
 **PASS / KEEP `d8341464`; supersede `fcb77d1`. Ordered blockers: none for the
 post-loft armor/decor fit.**
+
+## 5.177 T-62MV-1 FIRST-PARTY CAST / NATIVE-COURSE RESTORATION (2026-08-13, RE-FROZEN)
+
+The active `t62mv1` remains wholly repository-authored procedural geometry.
+The recovered Bergman binary is quarantined comparison evidence only; no mesh,
+converted vertex payload, texture, material, rig or animation enters runtime.
+Fresh paired and elevated-profile review rejected the old live shape: five
+small wheels sat inside an overlong course, the upper return was deeply
+scalloped, the turret read as a high regular hemisphere, and two oversized
+chevron slabs substituted for the MV's conformal protection and station field.
+
+The replacement casting is lower, broader at the shoulder and slightly deeper
+in plan, with a restrained crown rather than a half-sphere. Three courses of
+six smaller unequal K-1 bricks per side now bury into the cast arc from the
+mantlet valley to the flank. The rounded mantlet, KTD-2 and Luna remain gun-
+seated; commander/loader rings, compact periscopes, DShK cradle, unequal 902B
+banks, antenna/rangefinder hardware and supported rear bins/rails all meet the
+final casting and rotate with it.
+
+Running order is explicit: **front free idler -> five large radial-stamped road
+wheel pairs -> no return rollers (the supported upper run lies over the wheel
+crowns) -> rear final-drive sprocket**. A dedicated `sovietRadial` authored
+wheel face replaces the generic polka-dot wheel. Both terminal centers move
+inboard under real hull overhang, the return sag is restrained and the course
+is thinner. Raised outboard hull corridors and reseated rear lamps clear the
+entire animated lane. The spare-link set now rests on the aft engine deck and
+the fixed tow cable on the forward glacis, eliminating the former parent-audit
+stranding candidates.
+
+Freeze **`7b92f462`** reproduces at 47 meshes / 72,943 vertices. Read-only
+reference fidelity is **93.53 overall**, **94.56 hull**, **91.09 turret**,
+**91.07 gun**, **90.30 tracks**, with minimum whole view **90.41**. Exact band,
+instanced-shoe and strict moving-sweep clearance is **0/0/0**. Parent audit is
+**0 stranded / 0 abutting / 0 dangling**. Winding is 0 reversed / 0 mixed /
+0 deficit pixels with no yaw candidate. Runtime articulation passes 10/10 and
+the explicit U-5TS bore passes at 33.0 contrast. All eight targeted gameplay
+presentation assets and their manifest row are regenerated from the freeze.
+
+`/private/tmp/t62mv1-final-r8/t62mv1` contains 15 paired, 15 yaw0 and 15 yaw90
+frames including the standardized elevated-left profile: **45 PNGs / 45
+distinct hashes**. Fresh standard order is
+`[9.1,9.2,9.0,9.0,9.1,9.0,9.0,9.1,9.2,9.2,9.0,9.2,9.1,9.1]`, floor **9.0**
+and mean **9.09**. The genuine quarter-turn keeps the complete shell, gun,
+K-1, smoke banks, DShK, cupolas/periscopes, antennas and rear kit together
+over a fixed hull, compact native course, engine deck and transom.
+
+The older contour-only geometry gate remains an honest **64.2** ceiling because
+the quarantined comparison print fuses track/hull and equipment into component
+masks incompatible with the mandatory native articulated split. It is not
+misrepresented as a pass. The current whole-view/component fidelity gate,
+strict mechanical gates, immutable authored hash and yaw evidence are the
+acceptance evidence.
+
+**PASS / KEEP `7b92f462`; supersede `5576ccf0`. Ordered blockers: none.**

@@ -700,6 +700,29 @@ function wheelGeo(style, r, w, seg, dishR = 0.90) {
     }
     return { tire, disc: mergeAll(discs), dark: mergeAll(dk) };
   }
+  if (style === 'sovietRadial') {
+    // Post-war Soviet stamped road wheel: narrow rubber tire, broad painted
+    // face and six deep radial reinforcing channels.  This is deliberately
+    // separate from the T-34 `holes` wheel—the latter's circular inserts
+    // turn a T-54/T-62 side profile into a row of polka-dot discs.  The
+    // channels stand on the visible face as dark recesses while the hub,
+    // bolt ring and outer dish remain raised painted steel.
+    const tire = mergeAll([
+      cylX(r, w, seg),
+      cylX(r * 0.93, w * 1.02, seg),
+    ]);
+    discs.push(cylX(r * 0.84, w * 1.10, seg));
+    discs.push(cylX(r * 0.27, w * 1.34, 12));
+    discs.push(cylX(r * 0.15, w * 1.50, 10));
+    boltRing(discs, r * 0.78, w, 10);
+    const dk = [cylX(r * 0.34, w * 1.11, 14)];
+    for (let k = 0; k < 6; k++) {
+      const a = (k / 6) * Math.PI * 2 + 0.15;
+      dk.push(xform(box(w * 1.18, r * 0.09, r * 0.43),
+        0, Math.sin(a) * r * 0.55, Math.cos(a) * r * 0.55, a, 0, 0));
+    }
+    return { tire, disc: mergeAll(discs), dark: mergeAll(dk) };
+  }
   if (style === 'dished') {
     // Tiger/Panther Schachtellaufwerk wheel (r4 "poker chip" hard fix): the
     // face is a real CONCAVE DISH — proud outer face ring, twin cones falling
