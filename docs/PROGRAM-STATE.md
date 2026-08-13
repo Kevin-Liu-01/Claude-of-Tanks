@@ -87,7 +87,7 @@ re-freeze NEW hash, all in ONE commit.
 | t84 | 04707a9c | |
 | m47_patton | 2fc99c50 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | leo2a4 | 4011c71c | RE-FROZEN 2026-08-12 (§5.139 first-party forward welded-loft restoration: longer connected turret and basket, re-seated mantlet/EMES/roof suite, supported zero-hole bow shoulders, seven native wheels and exact band+shoe+sweep 0/0; machine fidelity 92.14 / min view 90.18; fresh 45-frame yaw/ownership floor 9.1 / mean 9.19; prior 3a653cf9 retired) |
-| leo2a5 | e215a738 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
+| leo2a5 | dd139150 | RE-FROZEN 2026-08-12 (§5.150 inherited first-party Leopard-family/track repair re-certified and loader MG3 migrated to the canonical seated fitting: exact band/shoes/full sweep 0/0/0, parent 0/0/0, geometry 90.2, fidelity 95.09 / minimum view 95.06 and fresh 45-frame elevated-profile/yaw floor 9.3 / mean 9.44; prior e215a738 retired) |
 | leo2a6 | 8b139b48 | RE-FROZEN 2026-08-12 (§5.146 first-party Leopard 2A6 strict full-course clearance closure: supported bow shoulder, seven-wheel native course and clean sprocket/idler transitions; machine fidelity 95.4, fresh 45-frame floor 9.3 / mean 9.46; prior e99f8490 retired) |
 | leo2a7v | ec69fe94 | RE-FROZEN 2026-08-12 (§5.140 first-party Leopard 2A7V turret separation: complete rotating package raised 1 cm over a visible annular ring seam, asymmetric mast/rear-service cadence, full articulated sponson clearance; machine fidelity 90.23 / min view 90.02; 45-frame yaw/ownership floor 9.0 / mean 9.16) |
 | leo2_revolution | fe2dc714 | RE-FROZEN 2026-08-12 (§5.141 first-party Leopard 2 Revolution left-hull artifact + complete track-clearance repair: erroneous side cuboid retired, inter-track belly/sponson structure made physically honest, exact band/shoe/strict sweep 0/0; machine fidelity 94.2, geometry 90.2, dimensions 99.5, floaters 100; fresh 45-frame yaw/ownership floor 9.1 / mean 9.27) |
@@ -5208,3 +5208,45 @@ standard aggregator retains only the disclosed incompatible legacy geometry
 row; strict clearance, rig, ownership and visual evidence are green.
 
 **PASS / KEEP `692a0eb9`; retire `da6f7fba`. Ordered blockers: none.**
+
+## 5.150 LEOPARD 2A5 STRICT FULL-COURSE RE-CERTIFICATION (2026-08-12, RE-FROZEN)
+
+The active `leo2a5` remains the repository-authored procedural Leopard 2A5.
+Its comparison GLB is a quarantined measurement/render oracle only; no source
+mesh, converted payload, material, texture, rig or animation enters gameplay
+or the public build.
+
+The owner screenshot showed old bow/mudguard pieces intruding ahead of the
+track. The current first-party Leopard-family and running-gear foundation has
+retired that state: the bow shoulders, mudguards and lower hull terminate
+above/behind the raised front idler path, all seven road wheels remain visible,
+support rollers stay inside the upper course and the rear drive transition is
+unobstructed. The inherited geometry change moved the live hash, so the model
+was re-certified rather than allowed to keep a stale graduation receipt.
+
+Exact band front/rear, shoe front/rear and full strict moving sweep receipts
+are all **0/0**. Parent audit is **0 stranded / 0 abutting / 0 dangling**;
+winding is 0 reversed / 0 mixed with zero deficit pixels and the rig passes
+10/10. Geometry gate is **90.2** (hull 90.7 / whole 90.5 / turret 90.2 /
+stations 94.3 / dimensions 100 / floaters 100). Quantitative fidelity is
+**95.09**, every measured view at least **95.06**, with whole 96.54 / hull
+97.21 / turret 92.67 / gun 89.75 / native tracks 96.18.
+
+The existing first-party loader MG3 was also migrated from hand-assembled
+primitive pieces to the canonical seated pintle fitting. The separately
+authored stowed bustle MG remains unchanged. Standard equipment census now
+passes **mg1+4d**, and the compact replacement retains the same visible roof
+seat and turret ownership without changing the accepted silhouette.
+
+Freeze **`dd139150`** reproduces twice at 143 rendered meshes / 138,463
+vertices. The final packet at
+`/private/tmp/leo2a5-clearance-final-r3/leo2a5` contains 15 paired, 15 yaw0
+and 15 yaw90 frames including the standardized elevated-left profile:
+**45 PNGs / 45 distinct hashes**. Fresh standard-order inspection records
+`[9.4,9.5,9.4,9.4,9.3,9.4,9.4,9.5,9.5,9.5,9.4,9.5,9.4,9.5]`, floor
+**9.3** and mean **9.44**. Gun/mantlet, complete wedge turret, roof stations,
+side armor and rear basket turn together over the fixed cleared hull, deck,
+seven-wheel course and backed rear service field. No fused, stranded,
+floating, collision, winding or sky-hole defect is visible.
+
+**PASS / KEEP `dd139150`; retire `e215a738`. Ordered blockers: none.**

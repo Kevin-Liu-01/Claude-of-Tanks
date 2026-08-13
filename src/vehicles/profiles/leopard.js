@@ -3212,27 +3212,18 @@ function buildLeo2A5(P) {
       }
     }
   }
-  // r6 loader pintle MG (owner decoration law): thin members riding BELOW
-  // the cluster line inside already-lit side/front columns — mask-free.
-  // r3 POST-WARP: whole assembly dropped ~0.045 with the 2.697→2.653 line.
+  // Canonical loader MG3 fitting: its flanged foot and tapered pintle are
+  // seated directly on the loader ring, while the compact MAG-class body
+  // stays below the certified roof-cluster line. This replaces the older
+  // hand-authored box/rod shorthand without adding a second weapon or
+  // changing the accepted turret envelope.
   {
-    const { box, cylY, cylZ } = KIT;
-    P.add('turretDetail', cylY(0.018, 0.018, 0.10, 8), -0.52, 0.815, -0.10);  // pintle post on the loader ring
-    // VISUAL r6 3a (owner-law-mandatory MG READ): the r5 verdict measured the
-    // barrel at 1.5 px — no gun read in any view. Upscaled to the MG-physics
-    // floor (barrel Ø 0.038 = 2.1 px at the 54 px/m side rigs, receiver
-    // MASS): every top stays under the certified 2.638/2.653 lines (receiver
-    // 2.635w, barrel 2.645w, hider ends 0.49L inside the 0.79w col).
-    P.add('turretDark', box(0.075, 0.062, 0.46), -0.50, 0.824, 0.02);         // receiver mass (top 2.635w)
-    // barrel flat-forward (an AA-elevated cut was tried and REVERTED: a
-    // diagonal rod above the 2.6564 anchor lights a STAIRCASE of side
-    // columns — p95 anchor slid to 2.70, dims -10; the r5 anchor law
-    // generalizes: any above-anchor member must fit ONE column of z).
-    P.add('turretDark', cylZ(0.019, 0.40, 8), -0.50, 0.846, 0.27);            // barrel to 0.77w (clear of the 0.86 col)
-    P.add('turretDark', box(0.045, 0.045, 0.07), -0.50, 0.846, 0.455);        // flash hider (stays inside 0.79w)
-    P.add('turretDetail', box(0.11, 0.09, 0.14), -0.615, 0.822, -0.02);       // ammo box
-    P.add('turretDark', box(0.024, 0.11, 0.18), -0.50, 0.80, -0.21);          // grip frame + stock
-    P.add('turretDark', box(0.03, 0.032, 0.03), -0.50, 0.852, 0.10);          // rear sight block (top 0.868L < the 0.873 anchor line)
+    const mg = FITTINGS.pintleMG({
+      mats: P.mats, cls: 'mag', tone: 'two-tone', scale: 0.80,
+      elev: 0.0, ammo: true, seed: 5,
+    });
+    mg.position.set(-0.50, 0.65, -0.10);
+    P.turretG.add(mg);
     // VISUAL r6 3a STOWED MG3 on the certified mount (top 2.55w) — the ref's
     // own spare gun reads from rear/left. Laid TRANSVERSE (along x) so the
     // rear/top rigs see the full 0.55 m run at 146 px/m while the side rig
