@@ -471,23 +471,18 @@ function buildShermanJumbo(P) {
   });
   wheelShadows(P, 1.11, wheelZs.slice(1, -1), 0.22, 0.16, -0.05);
   for (const z of bogies) for (const s of [-1, 1]) {                         // VVSS bogie brackets
-    P.add('hullDetail', box(0.14, 0.34, 0.72), s * 1.05, 0.38, z);
-    P.add('hullDetail', box(0.16, 0.10, 0.30), s * 1.05, 0.62, z - 0.28);
+    P.add('hullRunningGearDetail', box(0.14, 0.34, 0.72), s * 1.05, 0.38, z);
+    P.add('hullRunningGearDetail', box(0.16, 0.10, 0.30), s * 1.05, 0.62, z - 0.28);
   }
 
   // hull: belly raised between the tracks (ref nose undercut 0.47), slab
   // side band ±1.475 to y 1.80, chamfered sponson tops into the 2.01 roof.
   // DOCUMENTED RESIDENT FIX (ww2 ladder r1, coordinator-sanctioned): the
   // one-piece ±1.05 belly ran its corner strips through BOTH shoe wrap
-  // sweeps (22/10 band + 34/6 shoe at 2.9 cm depth, hit boxes = the belly
-  // end faces; lanes are 0.81..1.41). Split: full-length center slab
-  // inside ±0.78 + outer 0.78..1.05 strips ending clear of both wrap
-  // discs (front reach 1.90, rear −2.14). Same silhouette everywhere (the
-  // E2 skirts + hullDark backing own the side view; masks unchanged).
+  // sweeps. The structural belly stays entirely between the track lanes;
+  // the real E2 sand shields and suspension backing own the side read.
   P.add('hull', box(1.56, 0.72, 5.70), 0, 0.845, -0.20);                     // belly center 0.485..1.205
-  P.add('hull', box(0.27, 0.72, 3.96), -0.915, 0.845, -0.10);                // belly outer strips, wrap-clear
-  P.add('hull', box(0.27, 0.72, 3.96), 0.915, 0.845, -0.10);
-  P.add('hull', box(2.95, 1.19, 4.80), 0, 1.205, -0.06);                     // slab side band ±1.475, 0.61..1.80, z 2.34..-2.46
+  P.add('hull', box(2.95, 0.63, 4.80), 0, 1.485, -0.06);                     // raised sponson band ±1.475, 1.17..1.80
   // E2 sand-shield skirts to near ground (ref side bottom 0.01 mid-hull) —
   // SEGMENTED per the edge-on prism law: 6 plates per side with real end
   // faces and alternating x so mid-span station slices keep reading them.
@@ -517,7 +512,7 @@ function buildShermanJumbo(P) {
     // (silhouette masks have no occlusion), and mid-lane wedges clip the
     // wrap ramps — the skirts' own rising cutout line carries the side
     // bottom profile instead.
-    P.add('hullDark', box(0.05, 0.55, 4.40), s * 0.865, 0.42, 0.10);         // z -2.10..2.30, y 0.145..0.695
+    P.add('hullRunningGearDark', box(0.05, 0.55, 4.40), s * 0.865, 0.42, 0.10); // z -2.10..2.30, y 0.145..0.695
   }
   P.add('hull', slab(                                                        // 47° glacis lower run (1.60 -> 1.81)
     [-1.44, 1.55, 2.42], [1.44, 1.55, 2.42], [1.44, 1.59, 2.36], [-1.44, 1.59, 2.36],
