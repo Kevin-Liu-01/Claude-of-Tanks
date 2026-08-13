@@ -4680,3 +4680,44 @@ with every scored view and component at least 90. Parent audit is 0 stranded /
 deficit and clean mode 2. Rig, bore, native-playable provenance, family order,
 targeted assets, the complete test suite, and private/public builds pass.
 **KEEP / RE-FROZEN `5fa68984`; retire `683be340`.**
+
+## 5.138 LEOPARD 2 PROTOTYPE FORWARD WELDED-LOFT + STRICT TRACK RE-CERTIFICATION (2026-08-12, RE-FROZEN)
+
+The gameplay prototype remains the fully first-party `buildLeo2Proto`
+implementation in `src/vehicles/profiles/leopard.js`.  Its private recovered
+GLB is a quarantined comparison oracle only; no source mesh, converted vertex
+payload, material, texture or runtime node enters the playable build.
+
+The owner-identified short slab turret is replaced by one connected native
+three-ring welded loft.  The lower belt retains broad clipped shoulders, the
+long plan now reaches 0.16 m farther through the armored nose and 0.15 m
+farther through the bustle, and the whole rotating package is seated 0.10 m
+farther forward.  An inset crown produces the low fabricated shoulder break
+without changing the published roof height.  The mantlet bay and gun seat move
+with the shell; the exposed tube is shortened by the corresponding amount so
+the overall muzzle station remains unchanged.  Hatch foundations, weld
+courses and bustle latches add supported prototype detail.
+
+The front glacis lane transition moves aft of the rising idler arc.  Exact
+native containment improves from a hidden 21-voxel hull sweep contact to band
+front/rear **0/0**, individual shoes **0/0**, and strict full sweep **0/0**.
+Seven primary road wheels remain behind a distinct front idler and rear drive
+sprocket in one continuous linked course.
+
+Freeze **`a7eae06a`** reproduces twice at 65 meshes / 90,127 vertices.  The
+fresh evidence packet contains 15 paired + 15 yaw0 + 15 yaw90 frames,
+including the standardized elevated-left profile: **45 PNGs / 45 distinct
+hashes**.  Fresh semantic inspection records
+`[9.2,9.3,9.2,9.1,9.1,9.1,9.2,9.3,9.3,9.3,9.2,9.3,9.2,9.3]`, floor **9.1**
+and mean **9.22**.
+
+Quantitative fidelity is **93.71** with hull 94.03, tracks 92.69 and every
+available direction at least 92.52.  Turret and gun masks remain unavailable
+because the recovered print has a certified sunken turret and deck-level gun;
+its legacy zero curve row is retained honestly rather than repaired by source
+topology copying.  Parent audit is 0 stranded / 0 abutting / 0 dangling;
+winding is 0 reversed / 0 mixed with a 0-pixel deficit and clean mode 2.  Rig,
+bore, native-only provenance, family order and all eight targeted presentation
+assets pass.  The complete test suite and both private and stripped-public
+production builds also pass.  **KEEP / RE-FROZEN `a7eae06a`; retire
+`27f9212e` and all earlier prototype freezes.**

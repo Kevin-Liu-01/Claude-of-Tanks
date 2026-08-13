@@ -6,6 +6,30 @@ Maffei) — 16 hulls / 17 turrets built; TEN turrets carried the Rheinmetall
 armor turret: slab-sided welded turret with stereoscopic-rangefinder blisters
 on both cheeks and the turret-base side bulge, Leopard 2 hull layout.
 
+## 2026-08-12 first-party forward-loft re-certification
+
+The playable remains wholly repository-authored procedural geometry.  The
+private recovered print below is a read-only QA oracle and contributes no
+vertices, indices, materials, textures, rig nodes or runtime geometry.
+
+The former single-height turret polygon has been replaced by one connected
+three-ring welded loft.  Its longer clipped plan, inward-falling crown and
+forward 0.10 m seat answer the owner order without raising the low prototype
+roof or moving the published overall muzzle station.  Mantlet bay, gun seat,
+rangefinder blocks, roof stations, smoke banks, side bins and basket remain
+supported parts of the rotating assembly.  New hatch foundations, weld
+courses and bustle latches are shallow and backed rather than decorative
+floaters.
+
+The front glacis lane transition also moves aft of the rising idler arc,
+closing the only hidden full-suspension contact.  Exact band, individual shoe
+and full sweep receipts are all 0/0.  Freeze `a7eae06a` reproduces twice at 65
+meshes / 90,127 vertices.  The 45-frame packet (15 paired + yaw0 + yaw90)
+contains 45 distinct hashes; fresh visual scores have floor 9.1 and mean 9.22.
+Usable quantitative fidelity is 93.71 with a 92.52 directional floor.  The
+legacy zero turret/gun curve rows remain documented oracle defects, not a
+license to copy or rebuild the melted source topology.
+
 ## Corroborated dimensions
 
 | Measure | Value | Sources (2+ independent) |

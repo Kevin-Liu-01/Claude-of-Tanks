@@ -5123,14 +5123,19 @@ function buildLeo2A7V(P) {
 // dims + floaters MUST hold 100. The visual bar is the §B8 photo class.
 // ---------------------------------------------------------------------------
 function buildLeo2Proto(P) {
-  const { box, cylY, cylZ, sph, xform, periscope, liftEye, smokeCluster, stowage, tarpRoll, ammoCan } = KIT;
+  const { box, cylY, cylZ, sph, xform, periscope, liftEye, smokeCluster, stowage, tarpRoll, ammoCan, polyMultiLoft } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
   leoHullV3(P, {
     bodyHW: 1.638, sponsonY: 1.32, trackW: 0.635, xc: 1.37,
     // production one-plane deck (the a4 §B8 true-up line — same hull)
     deck: [[2.42, 1.665], [1.95, 1.685], [-1.00, 1.70], [-1.50, 1.70], [-2.40, 1.71], [-3.78, 1.71]],
     glacis: [[2.42, 1.665], [2.68, 1.555], [2.98, 1.475], [3.58, 1.42], [3.86, 1.24]],
-    glacisLaneCut: { x: 1.02, z0: 3.14 },
+    // Start the narrow inter-track glacis before the rising idler arc.  The
+    // former z=3.14 transition was visually hidden, but the exact suspension
+    // sweep still found 21 hull voxels on that knife-edge.  Moving the same
+    // authored transition aft preserves the bow outline while establishing
+    // real clearance for every future shoe position.
+    glacisLaneCut: { x: 1.02, z0: 3.00 },
     beakWings: { z: 3.835, x0: 0.55, th: 0.20, x1: 1.02 },
     noseFillZFront: 3.36,                                                      // §B8 bow law (a4 lineage)
     sponsonLaneLift: { z0: -3.56, z1: -2.82, x0: 1.02, y: 1.545 },
@@ -5297,29 +5302,30 @@ function buildLeo2Proto(P) {
   P.add('hullDark', box(2.00, 0.005, 0.022), 0, 1.713, -2.40);
   P.decal('hull', 'number', 'Y-014', 0.26, [0.62, 1.22, -3.79], Math.PI, 0);   // PT trials number on the rear wall
 
-  // ---- PT turret: LOW slab welded box, rounded-in-plan cheek front (§B1.1
-  // both cheeks identical, TWO co-planar facets each — no staircase), NO
-  // wedge, blisters + base bulge. Family ring pivot (§H.1).
-  // §5.16 FAMILY REBASE (owner 2026-08-07: "the type 90 is based off of it
-  // [the leopard 2 prototype] so they can share a basis"): the shell is the
-  // type90-donor CLOSED POLYGON construction (KIT.polyTurret, vertical
-  // walls) on the SAME certified footprint — the V-series early slab
-  // turret is the family's origin shape. Two stacked bands keep the rising
-  // bottom line (fore walls 1.695w, mid/bustle 1.74w over the aft deck).
-  P.turretG.position.set(0, 1.72, -0.15);
-  // §SRCFIX-0808: the plan WIDENS (shoulders ±1.12 -> ±1.18) and the bustle
-  // LENGTHENS (-1.60 -> -1.85) — the owner's read had the turret "lost" on
-  // the hull; the real PT turret is LOW and WIDE with a long squared
-  // bustle ("contour reminiscent of the Leopard 1", panzerplace). Height
-  // stays the certified low band (0.63, roof 2.37w) — family low-flat law.
+  // ---- PT turret: a first-party connected welded loft.  The previous
+  // single-height polygon was mathematically closed but read as a vertical
+  // slab with a flat lid — exactly the weak half-box silhouette called out
+  // by the owner.  This longer, slightly forward-set three-ring shell keeps
+  // the published low roof datum while giving the prototype its broad
+  // shoulders, inward-falling crown and long early bustle.  No reference
+  // vertices or source geometry enter this construction.
+  P.turretG.position.set(0, 1.72, -0.05);
   const PT_PLAN = [
-    [-0.42, 1.02], [0.42, 1.02], [0.90, 0.68], [1.18, 0.10], [1.14, -0.90],
-    [1.10, -1.85], [-1.10, -1.85], [-1.14, -0.90], [-1.18, 0.10], [-0.90, 0.68],
+    [-0.44, 1.18], [0.44, 1.18], [0.94, 0.78], [1.22, 0.16], [1.18, -0.92],
+    [1.12, -2.00], [-1.12, -2.00], [-1.18, -0.92], [-1.22, 0.16], [-0.94, 0.78],
   ];
-  P.add('turret', KIT.polyTurret(PT_PLAN, 0.63, 1.0, 1.0), 0, 0.02, 0);        // main band (walls 1.74..2.34w + closed fan roof at 0.65)
-  P.add('turret', KIT.polyTurret([                                             // fore lower band: cheek facets meet the hull roof (1.695w)
-    [-0.42, 1.02], [0.42, 1.02], [0.90, 0.68], [1.18, 0.10], [1.18, 0.05], [-1.18, 0.05], [-1.18, 0.10], [-0.90, 0.68],
-  ], 0.125, 1.0, 1.0), 0, -0.025, 0);
+  P.add('turret', polyMultiLoft(PT_PLAN, [
+    { height: 0.015, inset: 1.00 },
+    { height: 0.40, inset: 0.995 },
+    { height: 0.65, inset: 0.92 },
+  ]));
+  P.add('turret', polyMultiLoft([                                             // buried fore apron: no ring/deck slit
+    [-0.44, 1.18], [0.44, 1.18], [0.94, 0.78], [1.22, 0.16], [1.22, 0.08],
+    [-1.22, 0.08], [-1.22, 0.16], [-0.94, 0.78],
+  ], [
+    { height: -0.035, inset: 1.00 },
+    { height: 0.11, inset: 0.985 },
+  ]));
   // weld seams down the cheek knuckle lines (on the facet joints; mirrored
   // with the corner-swap law — orientedSlab re-guards winding)
   P.add('turretDark', slab(
@@ -5333,10 +5339,10 @@ function buildLeo2Proto(P) {
   // REAL wide rounded cast mantlet (the brief's "distinctive rounded/
   // angular cast-look mantlet area" — the old 0.56 dome floated in an
   // oversized slot and read as a pin head).
-  P.add('turret', box(0.88, 0.675, 0.24), 0, 0.3125, 0.80);                    // slot back wall (top 0.65 = the roof plane)
-  P.add('turret', box(0.92, 0.16, 0.16), 0, 0.57, 0.90);                       // brow strip (flush to the roof line)
-  P.add('turret', box(0.92, 0.08, 0.16), 0, 0.045, 0.90);                      // chin plate
-  for (const s of [-1, 1]) P.add('turretDark', box(0.028, 0.42, 0.18), s * 0.448, 0.29, 0.895);
+  P.add('turret', box(0.88, 0.675, 0.24), 0, 0.3125, 0.96);                    // slot back wall (top 0.65 = the roof plane)
+  P.add('turret', box(0.92, 0.16, 0.16), 0, 0.57, 1.06);                       // brow strip (flush to the roof line)
+  P.add('turret', box(0.92, 0.08, 0.16), 0, 0.045, 1.06);                      // chin plate
+  for (const s of [-1, 1]) P.add('turretDark', box(0.028, 0.42, 0.18), s * 0.448, 0.29, 1.055);
   // roof = the wall solids' own top faces at 0.65 (2.37w one plane — a
   // rectangular cap plate overhung the tapered plan as ledge corners in
   // the top view); ring plinth (§B2 slit closure, yaws with the mass)
@@ -5372,6 +5378,16 @@ function buildLeo2Proto(P) {
   P.add('turret', cylY(0.21, 0.21, 0.045, 14), -0.60, 0.6725, -0.45);
   P.add('turretDark', box(0.36, 0.014, 0.035), -0.60, 0.702, -0.45);
   periscope(P, 'turretDetail', 0.30, 0.66, 0.12);                              // gunner roof periscope (hood under the 2.48 line)
+  // Low hatch-zone foundations, weld courses and unequal service latches
+  // make the early roof read as fabricated armor rather than an empty cap.
+  // Every strip is buried in the 0.65 roof plane or backed by the bustle.
+  P.add('turret', box(0.58, 0.024, 0.58), 0.55, 0.648, -0.55);
+  P.add('turret', box(0.54, 0.024, 0.54), -0.60, 0.648, -0.45);
+  P.add('turretDark', box(0.68, 0.010, 0.024), 0.10, 0.657, -1.56);
+  P.add('turretDark', box(0.026, 0.010, 0.62), -0.18, 0.657, -1.43);
+  for (const [x, z] of [[-0.74, -1.68], [-0.22, -1.78], [0.34, -1.74], [0.78, -1.63]]) {
+    P.add('turretDetail', box(0.12, 0.032, 0.055), x, 0.665, z);
+  }
   // early IR/white-light searchlight box on the roof left-front (hood +
   // recessed lens — §B3 sight grammar)
   P.add('turretDetail', box(0.30, 0.22, 0.26), -0.52, 0.64, 0.28);            // top 2.47w — under the published line
@@ -5477,13 +5493,16 @@ function buildLeo2Proto(P) {
   // oversized bay); trunnion roll follows (0.70); evacuator slimmed
   // 1.8x -> 1.45x tube (the fat mid-bulge read 20-pdr/Centurion, not the
   // slim Rheinmetall prototype tube).
-  P.gunG.position.set(0, 0.26, 1.00);
+  P.gunG.position.set(0, 0.26, 1.16);
   P.addGunExtra(KIT.cylX(0.23, 0.70, P.q ? 16 : 12), 0, 0, 0);                 // trunnion roll
   P.addGunExtra(xform(sph(0.215, P.q ? 18 : 12), 0, 0, 0, 0, 0, 0, [1.90, 1.08, 1.15]), 0, 0, 0.14); // rounded cast mantlet
   P.addGunExtra(cylZ(0.165, 0.30, P.q ? 16 : 12, 0.115), 0, 0, 0.36);          // tapered mantlet boot
   P.addGunExtraDark(cylZ(0.026, 0.10, 8), 0.20, 0.055, 0.24);                  // coax port (right)
-  KIT.buildGun(P, { len: 5.26, r: 0.064, sleeve: false, evac: 0.55, evacR: 1.45, collar: false, baseR: 0.105 });
-  muzzleBore(P, { len: 5.26, r: 0.064 });                                      // §B3.1 (shadow-named, 3fca39b)
+  // The complete turret moved 0.10 m forward and its armored nose gained
+  // 0.16 m; shorten only the exposed tube by the same 0.26 m so published
+  // overall length and muzzle station remain unchanged.
+  KIT.buildGun(P, { len: 5.00, r: 0.064, sleeve: false, evac: 0.55, evacR: 1.45, collar: false, baseR: 0.105 });
+  muzzleBore(P, { len: 5.00, r: 0.064 });                                      // §B3.1 (shadow-named, 3fca39b)
   P.topY = 1.24;
 }
 
