@@ -108,6 +108,9 @@ re-freeze NEW hash, all in ONE commit.
 | m1a2 | 636a4860 | RE-FROZEN 2026-08-07 (CROWS-FORWARD wave §5.07: forward pose improved whole +4.1..+14.1; re-cert floor 9.1-9.2 x14 views, sheets shots/critic-sep-crowsfwd/) |
 | chieftain5 | d4f2a9a6 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | t84 | 04707a9c | |
+| t80 | 448b1161 | RE-FROZEN 2026-08-13 (§5.152 first-party family standardization: explicit low pear/cast section loft replaces the rotational dome/patch stack; light applique, supported combat/rear suite, native six-wheel course, exact band+shoes+sweep 0/0, parent 0/0/0, fresh 45-frame floor 9.0 / mean 9.06) |
+| t80b | f90b060 | RE-FROZEN 2026-08-13 (§5.152 heavier authored brow/station package on the same physical turbine-hull datum; exact native course, parent and winding clean; fresh 45-frame floor 9.0 / mean 9.08) |
+| t80bv | f4bc0d40 | RE-FROZEN 2026-08-13 (§5.152 two-level irregular planted Kontakt-1 plus supported flank return, complete roof/rear service suite and exact native course; fresh 45-frame floor 9.0 / mean 9.14) |
 | m47_patton | 2fc99c50 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | leo2a4 | 4011c71c | RE-FROZEN 2026-08-12 (§5.139 first-party forward welded-loft restoration: longer connected turret and basket, re-seated mantlet/EMES/roof suite, supported zero-hole bow shoulders, seven native wheels and exact band+shoe+sweep 0/0; machine fidelity 92.14 / min view 90.18; fresh 45-frame yaw/ownership floor 9.1 / mean 9.19; prior 3a653cf9 retired) |
 | leo2a5 | dd139150 | RE-FROZEN 2026-08-12 (§5.150 inherited first-party Leopard-family/track repair re-certified and loader MG3 migrated to the canonical seated fitting: exact band/shoes/full sweep 0/0/0, parent 0/0/0, geometry 90.2, fidelity 95.09 / minimum view 95.06 and fresh 45-frame elevated-profile/yaw floor 9.3 / mean 9.44; prior e215a738 retired) |
@@ -133,7 +136,7 @@ re-freeze NEW hash, all in ONE commit.
 | fv510 | 61023726 | RE-FROZEN 2026-08-12 (§5.129 first-party `fv510PhotoBuild`: compact six-wheel Warrior hull, authored RARDEN turret and supported slat/service package; machine fidelity 90.84 / minimum view 90.12; exact native track 0/0 and fresh 42-frame yaw/ownership floor 9.0 / mean 9.11; source-baked 7884762a/927beeb2 playables retired) |
 | m26_pershing | 2f006738 | RE-RECORDED 2026-08-08: hash moved by LANDED 5f39989 (armorM4 gunBarrel shadow-proxy 3.96->3.44; m26/m45 inherit m4a3e8 proxies — patton.js bytes unchanged); double-confirmed by builder bisect + m45-grad critic; prior 65c564c0 bore+winding re-cert lineage (floors 9.1-9.4) carries |
 | t90m | dc760de0 | RE-FROZEN 2026-08-12 (§5.148 first-party Proryv strict full-course closeout; machine fidelity 90.96 / minimum view 90.02; exact band/shoes/full sweep 0/0/0, parent 0/0/0 and fresh 45-frame elevated-profile/yaw PASS; incompatible legacy contour row retained honestly rather than chased) |
-| t90 | 692a0eb9 | RE-FROZEN 2026-08-12 (§5.149 first-party cast-turret and strict full-course closeout: explicit eight-section pear/cast loft, exact band/shoes/full sweep 0/0/0, parent 0/0/0 and fresh 45-frame elevated-profile/yaw PASS; machine fidelity 90.60 / minimum view 90.55; prior da6f7fba retired) |
+| t90 | 27d1c5d8 | RE-FROZEN 2026-08-13 (§5.152 superseding first-party cast-shape rebuild: explicit five-level/eight-section pear loft, armor carriers/K-5/Shtora/smoke/station package re-seated to the new casting, 67 meshes / 128,016 vertices, exact track 0/0, fresh r14 paired/elevated-profile/yaw PASS; prior 692a0eb9 retired) |
 | t90a | 810a6f18 | GRADUATED 2026-08-10 (§5.94 Leclerc-method cast-turret rebuild; gate 90.4 x2; standard/track/winding clean; independent §B8 floor 9.0 / mean 9.11 x14, yaw/load paths 9.2) |
 | t90a_vladimir | c13fec50 | GRADUATED 2026-08-10 (§5.94 source-specific compact ESSA/cast-turret/transom rebuild; gate 90.0 x2; standard/track/winding adjudicated; independent §B8 floor 9.0 / mean 9.01 x14, yaw/load paths 9.3) |
 | t90sm | 7efc69c9 | GRADUATED 2026-08-10; RE-FROZEN §5.105 (owner-priority complete redesign: source-measured low diamond shell retained, solid bustle steps replaced by backed slat cells, deep scalloped inboard skirts and layered rear service field added; gate 90.0 x2; standard/track/winding clean; independent §B8 floor 9.0 / mean 9.08 x14, all 28 yaw frames PASS; prior 56324371 retired) |
@@ -5330,3 +5333,38 @@ mechanical/provenance closeout and is not represented as a false fleet-wide
 **PROGRAM MECHANICAL/PROVENANCE DISPOSITION: PASS. Native playables 108/108;
 strict procedural clearance 110/110; generated assets 108/108 current. Legacy
 combined standard-packet migration: 24/108. Mechanical blockers: none.**
+
+## 5.152 BASE T-90 / T-80 FAMILY LIVE-VISUAL SUPERSESSION (2026-08-13, RE-FROZEN)
+
+Live paired pixels supersede the stale gate-era graduate notes for the base
+T-90 and T-80/T-80B/T-80BV. All four remain wholly repository-authored; the
+private/community GLBs used beside the procedural renders are quarantined
+comparison oracles only and contribute no runtime geometry or payload.
+
+Base T-90 `27d1c5d8` is the current authored freeze from commit `0779a22e`.
+Its explicit five-level/eight-section asymmetric pear loft, buried carrier
+cheeks and re-seated K-5, Shtora, smoke, sight, NSVT and roof package replace
+the former sphere-like casting. The final r14 packet contains 15 paired, 15
+yaw0 and 15 yaw90 views; exact native-course clearance and yaw ownership pass.
+
+The T-80 family no longer uses one rotational `meshDome` hidden beneath
+gate-tuned boxes. A common explicit cast section loft establishes the ring,
+mantlet throat, low pear shoulders and crown; variant-owned protection and
+station packages remain distinct. T-80 `448b1161`, T-80B `f90b060` and T-80BV
+`f4bc0d40` reproduce twice. Their final r6 packets each contain 15 paired, 15
+yaw0 and 15 yaw90 frames. Required-view floors are 9.0; exact band, shoe and
+full-sweep clearance is 0/0; parent audit is 0/0/0; winding is clean and all
+three muzzle classes pass. The front light cassettes were physically raised
+after the exact auditor found a 3 cm idler-shoe strike—no bucket exemption was
+used. Two visually ambiguous cable spans were removed, leaving the supported
+bins, basket, straps and transom service grammar intact.
+
+The historical geometry-gate rows for these recovered/fused comparison trees
+remain deliberately unchanged. A forced rerun cannot expose independent
+source components and collapses to a meaningless fused-reference 100; that
+output was rejected instead of being committed as a false machine pass. Fresh
+paired/elevated-profile/yaw evidence, strict physical audits and deterministic
+hashes are the honest current record.
+
+**PASS / KEEP `27d1c5d8`, `448b1161`, `f90b060`, `f4bc0d40`; retain T-80U
+`77f9ae78`. Ordered blockers: none.**

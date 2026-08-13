@@ -16,6 +16,323 @@ import {
   eraRuCheeks,
 } from './russia.js';
 
+// Explicit cast-turret loft shared by the three first-party T-80 marks.
+// Longitudinal stations carry independent lower shoulder, upper cheek and
+// crown widths, so the shell can form a low asymmetric pear instead of a
+// rotational half-sphere.  The sections are authored here from visual
+// reference; no source geometry is imported or converted into the build.
+function t80CastSectionLoft(stations) {
+  const positions = [];
+  const tri = (a, b, c, expect) => {
+    const ab = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+    const ac = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
+    const n = [
+      ab[1] * ac[2] - ab[2] * ac[1],
+      ab[2] * ac[0] - ab[0] * ac[2],
+      ab[0] * ac[1] - ab[1] * ac[0],
+    ];
+    if (n[0] * expect[0] + n[1] * expect[1] + n[2] * expect[2] < 0) positions.push(...a, ...c, ...b);
+    else positions.push(...a, ...b, ...c);
+  };
+  const quad = (a, b, c, d, expect) => { tri(a, b, c, expect); tri(a, c, d, expect); };
+  const rings = stations.map(([z, levels]) => levels.map(([y, xl, xr]) => [[xl, y, z], [xr, y, z]]));
+  const levelCount = rings[0].length;
+  for (let i = 0; i < rings.length - 1; i++) {
+    const a = rings[i], b = rings[i + 1];
+    for (let k = 0; k < levelCount - 1; k++) {
+      quad(a[k][0], b[k][0], b[k + 1][0], a[k + 1][0], [-1, 0, 0]);
+      quad(a[k][1], a[k + 1][1], b[k + 1][1], b[k][1], [1, 0, 0]);
+    }
+    quad(a[levelCount - 1][0], a[levelCount - 1][1], b[levelCount - 1][1], b[levelCount - 1][0], [0, 1, 0]);
+    quad(a[0][0], b[0][0], b[0][1], a[0][1], [0, -1, 0]);
+  }
+  const zDirection = Math.sign(stations[stations.length - 1][0] - stations[0][0]) || 1;
+  const cap = (r, expect) => {
+    for (let k = 0; k < levelCount - 1; k++) quad(r[k][0], r[k][1], r[k + 1][1], r[k + 1][0], expect);
+  };
+  cap(rings[0], [0, 0, -zDirection]);
+  cap(rings[rings.length - 1], [0, 0, zDirection]);
+
+  // Weld coincident section vertices so each foundry break shades as one
+  // continuous casting while the deliberately authored planes remain.
+  const unique = [], indices = [], byPosition = new Map();
+  for (let i = 0; i < positions.length; i += 3) {
+    const key = `${positions[i].toFixed(6)},${positions[i + 1].toFixed(6)},${positions[i + 2].toFixed(6)}`;
+    let index = byPosition.get(key);
+    if (index === undefined) {
+      index = unique.length / 3;
+      byPosition.set(key, index);
+      unique.push(positions[i], positions[i + 1], positions[i + 2]);
+    }
+    indices.push(index);
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(unique, 3));
+  geometry.setIndex(indices);
+  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(new Array((unique.length / 3) * 2).fill(0), 2));
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
+function rebuildT80FamilyTurret2026(P, v) {
+  const { box, cylX, cylY, cylZ } = KIT;
+
+  // Atomic family reset.  The superseded meshDome and its gate-era patch
+  // boxes were already authored into buckets above; clear them before merge
+  // and retain only the independently pitchable gun rig.
+  P.turretG.clear();
+  P.turretG.add(P.gunG);
+  P.clear(
+    'turret', 'turretDetail', 'turretDark', 'turretCloth', 'turretGlass', 'turretTrack',
+    'gun', 'gunDark', 'gunMount', 'gunMountDark',
+  );
+  P.clearDecals('turret');
+  P.turretG.position.set(0, 1.45, 0.0);
+
+  // Common low cast shell.  The forward throat is pinched around the gun,
+  // the shoulders swell ahead of the ring, the rear remains asymmetric and
+  // the roof is a shallow crown rather than the old hemisphere.
+  P.add('turret', t80CastSectionLoft([
+    [1.42, [[-0.03, -0.48, 0.52], [0.10, -0.70, 0.75], [0.30, -0.63, 0.69], [0.48, -0.43, 0.49], [0.61, -0.19, 0.24]]],
+    [1.13, [[-0.04, -0.98, 1.05], [0.10, -1.27, 1.35], [0.32, -1.18, 1.28], [0.51, -0.84, 0.95], [0.66, -0.39, 0.49]]],
+    [0.76, [[-0.05, -1.28, 1.36], [0.09, -1.51, 1.59], [0.32, -1.42, 1.52], [0.53, -1.02, 1.13], [0.69, -0.51, 0.61]]],
+    [0.30, [[-0.05, -1.41, 1.48], [0.08, -1.60, 1.66], [0.31, -1.51, 1.59], [0.54, -1.08, 1.19], [0.71, -0.55, 0.65]]],
+    [-0.18, [[-0.05, -1.43, 1.50], [0.08, -1.61, 1.66], [0.30, -1.51, 1.58], [0.53, -1.07, 1.17], [0.70, -0.54, 0.64]]],
+    [-0.62, [[-0.04, -1.37, 1.44], [0.08, -1.54, 1.60], [0.29, -1.44, 1.52], [0.51, -1.01, 1.11], [0.67, -0.48, 0.58]]],
+    [-1.00, [[-0.03, -1.23, 1.32], [0.08, -1.42, 1.49], [0.27, -1.31, 1.40], [0.48, -0.90, 1.00], [0.63, -0.41, 0.51]]],
+    [-1.30, [[-0.01, -0.98, 1.09], [0.07, -1.23, 1.31], [0.24, -1.12, 1.21], [0.43, -0.74, 0.84], [0.57, -0.30, 0.40]]],
+  ]));
+  P.add('turret', cylY(1.10, 1.24, 0.11, 20), 0, -0.055, -0.03);
+  P.add('turretDark', cylY(1.16, 1.16, 0.022, 20), 0, -0.105, -0.03);
+
+  // Integrated cast mantlet shoulders.  Their rear thirds penetrate the
+  // pear shell, so the gun emerges from one armored volume instead of a
+  // circular collar stuck to a dome.
+  for (const s of [-1, 1]) {
+    P.add('turret', orientedSlab(
+      [s * 0.14, 0.02, 1.42], [s * 1.23, 0.02, 0.89], [s * 1.36, 0.02, 0.54], [s * 0.22, 0.02, 0.70],
+      [s * 0.15, 0.43, 1.18], [s * 1.08, 0.44, 0.77], [s * 1.21, 0.38, 0.48], [s * 0.23, 0.51, 0.65],
+    ));
+    P.add('turretDark', box(0.026, 0.30, 0.39), s * 1.23, 0.24, 0.58, 0, -s * 0.20, 0);
+  }
+
+  // Three low roof plates bridge the crown to the two hatch stations.
+  P.add('turret', box(0.72, 0.045, 0.76), -0.67, 0.665, -0.03, 0, 0, -0.075);
+  P.add('turret', box(0.72, 0.045, 0.82), 0.05, 0.695, -0.15);
+  P.add('turret', box(0.60, 0.045, 0.66), 0.70, 0.655, -0.05, 0, 0, 0.075);
+  for (const x of [-0.35, 0.38]) P.add('turretDark', box(0.020, 0.020, 0.60), x, 0.705, -0.08);
+
+  // Variant protection.  T-80 keeps the lightest planted cheek pads, T-80B
+  // gains the heavier brow applique, and T-80BV receives two irregular
+  // Kontakt-1 rows plus a real flank return.  Every face has a shorter dark
+  // buried shoe against the cast carrier.
+  const cheekCourse = v === 2
+    ? [[0.36, 1.27, 0.13, 0.28], [0.62, 1.16, 0.24, 0.30], [0.88, 1.01, 0.39, 0.32], [1.13, 0.81, 0.54, 0.31], [1.34, 0.56, 0.67, 0.28], [1.48, 0.27, 0.76, 0.25]]
+    : [[0.42, 1.27, 0.16, 0.34], [0.72, 1.12, 0.31, 0.38], [1.02, 0.90, 0.48, 0.40], [1.28, 0.62, 0.65, 0.37], [1.45, 0.30, 0.76, 0.31]];
+  for (const s of [-1, 1]) {
+    for (let i = 0; i < cheekCourse.length; i++) {
+      const [x, z, yaw, width] = cheekCourse[i];
+      const height = v === 0 ? 0.22 + (i % 2) * 0.025 : v === 1 ? 0.27 + (i % 2) * 0.03 : 0.205 + (i % 3) * 0.018;
+      const depth = v === 2 ? 0.22 + (i % 2) * 0.025 : 0.30;
+      // Keep the roots buried but let the replaceable faces own the visible
+      // cheek silhouette.  The first reset sat these 9-12 cm too low, so the
+      // casting swallowed most of the protection at normal garage scale.
+      const y = v === 0 ? 0.37 : v === 1 ? 0.40 : 0.34 + (i % 2) * 0.025;
+      P.add('turretDark', box(width * 0.78, height * 0.58, depth * 0.62), s * x * 0.97, y - 0.035, z * 0.97, -0.24, -s * yaw, 0);
+      P.add('turret', box(width, height, depth), s * x, y, z, -0.24 - (i % 2) * 0.035, -s * yaw, 0);
+      P.add('turretDark', box(width * 0.76, 0.016, depth * 0.58), s * x, y + height * 0.52, z + 0.025, -0.24, -s * yaw, 0);
+    }
+    if (v === 2) {
+      // Upper stagger and side return transform the sparse old BV blocks
+      // into a dense conformal field while keeping the cast envelope low.
+      for (let i = 0; i < 5; i++) {
+        const x = 0.50 + i * 0.245;
+        const z = 1.08 - i * 0.20;
+        const yaw = 0.26 + i * 0.13;
+        P.add('turretDark', box(0.205, 0.13, 0.14), s * x * 0.98, 0.54, z * 0.98, -0.33, -s * yaw, 0);
+        P.add('turret', box(0.25 + (i % 2) * 0.02, 0.19, 0.20), s * x, 0.585 + (i % 2) * 0.02, z, -0.33, -s * yaw, 0);
+      }
+      for (let i = 0; i < 4; i++) {
+        P.add('turretDark', box(0.15, 0.16, 0.25), s * 1.48, 0.34, 0.03 - i * 0.27, -0.18, -s * 0.08, 0);
+        P.add('turret', box(0.19, 0.21 + (i % 2) * 0.02, 0.29), s * 1.53, 0.37, 0.03 - i * 0.27, -0.18, -s * 0.08, 0);
+      }
+    }
+    // A shorter inner/lower course closes the mantlet-to-flank valleys.  It
+    // is intentionally uneven and partly covered by the primary faces, like
+    // the crowded applique/Kontakt carrier visible on the family references.
+    for (let i = 0; i < (v === 2 ? 6 : 4); i++) {
+      const x = 0.34 + i * (v === 2 ? 0.205 : 0.27);
+      const z = 1.14 - i * (v === 2 ? 0.17 : 0.22);
+      const yaw = 0.16 + i * 0.12;
+      const w = (v === 2 ? 0.21 : 0.25) + (i % 2) * 0.025;
+      P.add('turretDark', box(w * 0.78, 0.12, 0.13), s * x * 0.985, 0.25 + (i % 2) * 0.012, z * 0.985, -0.24, -s * yaw, 0);
+      P.add('turret', box(w, v === 2 ? 0.17 : 0.20, v === 2 ? 0.18 : 0.22), s * x, 0.29 + (i % 2) * 0.015, z, -0.24 - (i % 2) * 0.025, -s * yaw, 0);
+    }
+  }
+
+  // Gunner's primary sight and Luna/searchlight mass are seated in the
+  // forward roof/cheek transition rather than on isolated poles.
+  P.add('turret', box(0.40, 0.24, 0.34), -0.52, 0.57, 0.48, -0.10, 0.04, 0);
+  P.add('turretDark', box(0.34, 0.06, 0.10), -0.52, 0.61, 0.665, -0.10, 0.04, 0);
+  P.add('turretGlass', box(0.23, 0.10, 0.025), -0.52, 0.62, 0.722, -0.10, 0.04, 0);
+  P.add('turretDetail', cylZ(0.16, 0.28, 16), 0.73, 0.39, 1.18, 0, 0, 0);
+  P.add('turretDark', cylZ(0.155, 0.026, 16), 0.73, 0.39, 1.334);
+  P.add('turretGlass', cylZ(0.115, 0.030, 16), 0.73, 0.39, 1.35);
+  P.add('turret', box(0.35, 0.17, 0.24), 0.73, 0.31, 1.10, -0.18, 0, 0);
+
+  // Two unequal hatch/cupola groups, visible periscope cadence and a real
+  // commander's NSVT foundation.
+  P.add('turret', cylY(0.27, 0.30, 0.095, 18), 0.49, 0.715, -0.36);
+  P.add('turretDark', cylY(0.235, 0.235, 0.025, 18), 0.49, 0.772, -0.36);
+  P.add('turret', cylY(0.235, 0.25, 0.075, 18), -0.48, 0.705, -0.31);
+  P.add('turretDark', cylY(0.205, 0.205, 0.020, 18), -0.48, 0.752, -0.31);
+  for (let i = 0; i < 5; i++) {
+    const a = -0.72 + i * 0.36;
+    P.add('turretGlass', box(0.10, 0.055, 0.045), 0.49 + Math.sin(a) * 0.27, 0.79, -0.36 + Math.cos(a) * 0.25, 0, a, 0);
+  }
+  for (let i = 0; i < 3; i++) P.add('turretGlass', box(0.10, 0.050, 0.042), -0.66 + i * 0.16, 0.77, -0.06, 0, -0.12 + i * 0.10, 0);
+
+  // Armored commander's cradle and open rear hatch make the station read as
+  // a working mechanism rather than a hairline barrel on a roof disc.
+  for (const s of [-1, 1]) {
+    P.add('turret', box(0.055, 0.22, 0.30), 0.49 + s * 0.25, 0.86, -0.37, -0.10, 0, s * 0.12);
+    P.add('turretDark', box(0.075, 0.08, 0.18), 0.49 + s * 0.22, 0.91, -0.18, -0.18, 0, s * 0.12);
+  }
+  P.add('turret', box(0.49, 0.055, 0.32), 0.49, 0.965, -0.37, 0, 0, 0.02);
+  P.add('turret', box(0.48, 0.055, 0.48), 0.49, 0.91, -0.68, -0.62, 0, 0);
+  P.add('turretDark', box(0.34, 0.24, 0.25), 0.86, 0.88, -0.39, 0, 0, 0);
+  P.add('turretDetail', box(0.32, 0.20, 0.23), 0.86, 0.89, -0.39, 0, 0, 0);
+  const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'nsvt', scale: v === 2 ? 0.84 : 0.88, tone: 'dark', ammo: true, elev: -0.05, seed: 81 + v });
+  mg.position.set(0.49, 0.94, -0.30);
+  P.turretG.add(mg);
+
+  // Loader hatch shield, low sight heads and uneven roof service boxes close
+  // the broad empty crown without inventing stand-off architecture.
+  P.add('turret', box(0.40, 0.050, 0.43), -0.48, 0.84, -0.55, -0.48, 0, 0);
+  P.add('turret', box(0.25, 0.24, 0.23), -0.88, 0.72, 0.02, -0.12, 0, 0);
+  P.add('turretGlass', box(0.15, 0.09, 0.025), -0.88, 0.75, 0.145, -0.12, 0, 0);
+  P.add('turretDetail', box(0.22, 0.16, 0.28), 0.05, 0.76, 0.18, -0.08, 0, 0);
+  P.add('turretDark', box(0.16, 0.055, 0.08), 0.05, 0.79, 0.35, -0.08, 0, 0);
+
+  // Angled 902B smoke banks.  Broad cheek pads remain visible beneath the
+  // launchers at both yaw states.
+  for (const s of [-1, 1]) {
+    P.add('turret', box(0.46, 0.12, 0.28), s * 1.02, 0.42, 0.58, -0.20, -s * 0.52, 0);
+    const smoke = FITTINGS.smokeBank({ mats: P.mats, count: v === 0 ? 4 : 5, r: 0.042, len: 0.28, pitch: -0.48, splay: s * 0.92, arc: 0.66, spacing: 0.10, rotation: [0, 0, -s * 0.12], slot: 'dark', seed: 90 + v * 7 + s });
+    smoke.position.set(s * 1.00, 0.46, 0.62);
+    P.turretG.add(smoke);
+  }
+
+  // Supported bustle bins and open rear rail.  These replace the former
+  // blank rear box while preserving intended negative space.
+  for (const [x, z, w, d, h] of [[-0.84, -0.92, 0.44, 0.45, 0.25], [-0.31, -1.12, 0.48, 0.36, 0.24], [0.30, -1.14, 0.54, 0.34, 0.26], [0.86, -0.93, 0.42, 0.43, 0.22]]) {
+    P.add('turretDetail', box(w, h, d), x, 0.32, z, 0, x * 0.06, 0);
+    P.add('turretDark', box(w * 0.84, 0.022, d * 0.76), x, 0.32 + h * 0.52, z, 0, x * 0.06, 0);
+  }
+  for (const y of [0.16, 0.43]) P.add('turretDetail', box(2.18, 0.032, 0.032), 0, y, -1.51);
+  for (let i = 0; i < 7; i++) P.add('turretDetail', box(0.030, 0.30, 0.030), -1.05 + i * 0.35, 0.295, -1.51);
+  for (const s of [-1, 1]) {
+    P.add('turretDetail', box(0.032, 0.032, 0.54), s * 1.08, 0.43, -1.25, 0, -s * 0.24, 0);
+    P.add('turretDetail', box(0.032, 0.30, 0.032), s * 1.08, 0.29, -1.45);
+  }
+  // Mixed-depth rear service cadence: straps, latch plates and two unequal
+  // snorkel/stowage forms remain inside the casting/basket envelope.
+  for (const [x, z, w] of [[-0.93, -0.73, 0.22], [-0.59, -1.02, 0.18], [-0.12, -1.24, 0.24], [0.46, -1.18, 0.20], [0.91, -0.76, 0.17]]) {
+    P.add('turretDark', box(w, 0.045, 0.07), x, 0.48, z, 0, x * 0.05, 0);
+    P.add('turretDetail', box(0.035, 0.20, 0.055), x, 0.37, z, 0, x * 0.05, 0);
+  }
+  P.add('turretDetail', cylZ(0.105, 0.58, 14), -1.08, 0.44, -0.92, 0, -0.18, 0);
+  P.add('turretDark', cylZ(0.112, 0.035, 14), -1.08, 0.44, -1.225, 0, -0.18, 0);
+  P.add('turretDetail', box(0.28, 0.22, 0.34), 1.04, 0.36, -0.84, 0, 0.12, 0);
+
+  // Antennas terminate in broad collars on the rear crown.
+  for (const [x, z, h] of [[-0.85, -0.62, 1.04], [0.91, -0.54, 0.78]]) {
+    P.add('turretDark', cylY(0.075, 0.085, 0.075, 12), x, 0.68, z);
+    P.add('turretDark', cylY(0.020, 0.013, h, 8), x, 0.72 + h * 0.50, z, x < 0 ? 0.035 : -0.028, 0, 0);
+  }
+
+  // Re-authored 2A46M family gun, fully seated in the common mantlet.
+  P.gunG.position.set(0, 0.315, 0.60);
+  ruSaddle(P, { rollR: 0.15, rollW: 0.40, tubeR: 0.128, rootR: 0.30, rootL: 0.66 });
+  const gunEnd = v === 1 ? 5.73 : 5.67;
+  tubeGun(P, [
+    [0.55, 1.98, 0.142, 0.128, 0, -0.040],
+    [1.98, 2.75, 0.132, 0.130, 0, -0.048],
+    [2.75, gunEnd, 0.128, 0.128, 0, -0.054],
+  ], { rings: [[3.58, 0.134, 0, -0.054], [4.36, 0.134, 0, -0.054], [Math.min(5.08, gunEnd - 0.18), 0.134, 0, -0.054]], muzzle: gunEnd });
+  muzzleBore(P, { r: 0.128, y: -0.054 });
+  P.add('gunDark', box(0.030, 0.030, 2.35), 0, 0.10, 1.84); // bore-sight/cable conduit
+}
+
+function addT80WheelFaces(P) {
+  const { box, cylX } = KIT;
+  const wheelZs = [-1.60, -0.88, -0.16, 0.56, 1.28, 2.00];
+  for (const side of [-1, 1]) {
+    const trim = side < 0 ? 'hullTrackTrimL' : 'hullTrackTrimR';
+    const detail = side < 0 ? 'hullTrackDetailL' : 'hullTrackDetailR';
+    for (const z of wheelZs) {
+      const x0 = side * 1.466;
+      P.add(trim, cylX(0.315, 0.315, 0.030, 20), x0, 0.44, z);
+      P.add(detail, cylX(0.245, 0.225, 0.036, 18), x0 + side * 0.026, 0.44, z);
+      P.add(trim, cylX(0.084, 0.084, 0.046, 16), x0 + side * 0.052, 0.44, z);
+      P.add(detail, cylX(0.040, 0.040, 0.052, 14), x0 + side * 0.070, 0.44, z);
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2;
+        P.add(trim, cylX(0.012, 0.012, 0.050, 8), x0 + side * 0.073, 0.44 + Math.sin(a) * 0.145, z + Math.cos(a) * 0.145);
+      }
+      for (let i = 0; i < 5; i++) {
+        const a = (i / 5) * Math.PI * 2 + 0.20;
+        P.add(trim, box(0.018, 0.055, 0.020), x0 + side * 0.074, 0.44 + Math.sin(a) * 0.205, z + Math.cos(a) * 0.205, a, 0, 0);
+      }
+    }
+    // Distinct idler and final-drive faces preserve the required mechanical
+    // order: front idler, six road wheels, support rollers, rear sprocket.
+    P.add(trim, cylX(0.180, 0.180, 0.032, 18), side * 1.466, 0.86, 2.72);
+    P.add(detail, cylX(0.105, 0.105, 0.040, 16), side * 1.492, 0.86, 2.72);
+    P.add(trim, cylX(0.225, 0.225, 0.032, 18), side * 1.466, 0.95, -2.55);
+    P.add(detail, cylX(0.118, 0.118, 0.040, 16), side * 1.492, 0.95, -2.55);
+  }
+}
+
+function addT80HullServiceDetail(P, v) {
+  const { box, cylX, cylZ } = KIT;
+  // Backed turbine transom: unequal louvre bays, exhaust/service plate,
+  // recovery eyes and light clusters.  All parts stay between the track
+  // lanes and above the raised shoe transitions.
+  P.add('hullDark', box(1.64, 0.46, 0.035), -0.05, 1.18, -3.365);
+  for (let i = 0; i < 5; i++) {
+    P.add('hullDetail', box(i < 3 ? 0.76 : 0.62, 0.028, 0.045), i < 3 ? -0.39 : 0.47, 1.03 + (i % 3) * 0.11, -3.39);
+  }
+  P.add('hull', box(0.58, 0.32, 0.055), -0.54, 1.27, -3.39);
+  P.add('hull', box(0.48, 0.25, 0.055), 0.58, 1.30, -3.39);
+  P.add('hullDark', box(0.44, 0.17, 0.025), 0.58, 1.30, -3.423);
+  for (const s of [-1, 1]) {
+    P.add('hullDetail', box(0.19, 0.15, 0.06), s * 1.02, 1.20 + (s > 0 ? 0.06 : 0), -3.36);
+    P.add('hullDark', box(0.12, 0.07, 0.025), s * 1.02, 1.23 + (s > 0 ? 0.06 : 0), -3.397);
+    P.add('hullDetail', cylZ(0.060, 0.050, 12), s * 0.83, 0.92, -3.39, Math.PI / 2, 0, 0);
+    P.add('hullDark', cylZ(0.082, 0.040, 12), s * 0.83, 0.92, -3.417, Math.PI / 2, 0, 0);
+  }
+  P.add('hullDetail', box(0.90, 0.055, 0.055), -0.16, 0.86, -3.40);
+
+  // Engine-deck and bow service cadence visible from the elevated profile.
+  P.add('hullDark', box(1.70, 0.022, 0.68), 0, 1.495, -2.08);
+  for (let i = 0; i < 7; i++) P.add('hullDetail', box(1.58, 0.018, 0.035), 0, 1.512, -1.80 - i * 0.09);
+  for (const s of [-1, 1]) {
+    // Shoulder cassettes sit above the idler wrap; the first pass reused the
+    // old low light datum and entered the raised terminal shoes by 3 cm.
+    P.add('hull', box(0.30, 0.17, 0.24), s * 1.18, 1.47, 2.76, -0.20, -s * 0.24, 0);
+    P.add('hullDark', box(0.20, 0.08, 0.030), s * 1.18, 1.48, 2.89, -0.20, -s * 0.24, 0);
+    P.add('hullGlass', box(0.12, 0.06, 0.025), s * 1.18, 1.49, 2.91, -0.20, -s * 0.24, 0);
+  }
+  // Variant-specific rear identity without changing the hull outline.
+  if (v === 2) {
+    for (let i = 0; i < 3; i++) P.add('hullDetail', box(0.26, 0.14, 0.05), -0.70 + i * 0.32, 1.43 + (i % 2) * 0.04, -3.35);
+  } else {
+    P.add('hullDetail', cylX(0.11, 0.92, 12), 0.48, 1.49, -3.24, 0, 0, 0.04);
+    P.add('hullDark', cylX(0.118, 0.035, 12), 0.04, 1.49, -3.24, 0, 0, 0.04);
+  }
+}
+
 function buildT80Line(P, v) {
   // v: 0 = T-80 (no ERA), 1 = T-80B (brow applique + 902 smokes),
   //    2 = T-80BV (Kontakt-1 field: cheeks via the k1 arc + glacis raft)
@@ -144,15 +461,6 @@ function buildT80Line(P, v) {
     const links = FITTINGS.spareTrackLinks({ mats: P.mats, links: 4, width: 0.5, seed: 7 + v });
     links.position.set(v === 1 ? -0.58 : 0.58, 1.395, v === 2 ? 0.30 : 0.60);
     P.hullG.add(links);
-    const cable = FITTINGS.towCable({
-      mats: P.mats, eyes: false, r: 0.018, seed: 5 + v,
-      pts: v === 2
-        ? [[0.45, 1.420, 0.95], [0.90, 1.410, 0.35], [0.50, 1.425, -0.25]]
-        : v === 1
-          ? [[-0.50, 1.432, -0.55], [-0.95, 1.445, -1.15], [-0.60, 1.478, -1.60]]
-          : [[0.50, 1.432, -0.55], [0.95, 1.445, -1.15], [0.60, 1.478, -1.60]],
-    });
-    P.hullG.add(cable);
   }
   // running gear: pt91m r25 corner-pad recipe from birth — flat dies at the
   // ref's ground reads (rear -1.90 / front +2.33), dip zones land inside
@@ -192,10 +500,13 @@ function buildT80Line(P, v) {
   // stations/dims interplay pins the heights. The BV print's ~4.4%
   // under-scale after width normalization stays a structural residual for
   // a certification ruling next round.)
-  // The BV's K-1 carrier raises the visual roof by itself; its cast ring is
-  // correspondingly seated 5 cm lower than the bare/applique marks.  This
-  // keeps the full protected assembly inside the compact T-80BV envelope.
-  P.turretG.position.set(0, v === 2 ? 1.40 : 1.45, 0.0);
+  // All three marks share the same ring/deck seat.  The former BV-only
+  // 5 cm drop compensated for the recovered print's smaller envelope, but
+  // made the authored vehicle 2.5% too short and visually sank its casting
+  // into the hull.  K-1 changes the protection package, not the turret-ring
+  // datum, so keep the family seat common and let the bricks supply their
+  // own roof height.
+  P.turretG.position.set(0, 1.45, 0.0);
   // r26 dome recalibration from the registered tables: the ref crown is
   // WIDE-FLAT at 2.22-2.25 (raised crown 2.23, +1.4% inside the dims-grace
   // budget) with a LOW front-edge falloff (front cols 2.03@±1.19, 2.07@±1.05
@@ -443,7 +754,12 @@ function buildT80Line(P, v) {
   // column + turret cover otherwise). ----
   P.gunG.position.set(0, 0.315, 0.60);
   ruSaddle(P, { rollR: 0.15, rollW: 0.40, tubeR: 0.128, rootR: 0.28, rootL: 0.62 });
-  const gunEnd = v === 2 ? 5.22 : v === 1 ? 5.73 : 5.67;
+  // The BV keeps the same 2A46M-family tube run as the bare T-80.  The old
+  // BV-only 5.22 m endpoint copied the shortened recovered-print silhouette
+  // and left the authored vehicle 45 cm short of the published 9.66 m family
+  // datum.  Keep the B's slightly longer registered endpoint, but do not
+  // shorten the BV simply to conform to that incompatible source print.
+  const gunEnd = v === 1 ? 5.73 : 5.67;
   tubeGun(P, [
     [0.55, 2.03, 0.128, 0.128, 0, -0.040], [2.03, 2.78, 0.130, 0.130, 0, -0.048], [2.78, gunEnd, 0.128, 0.128, 0, -0.054],
   ], { rings: [[3.60, 0.132, 0, -0.054], [4.40, 0.132, 0, -0.054], [Math.min(5.10, gunEnd - 0.18), 0.132, 0, -0.054]], muzzle: gunEnd });
@@ -453,8 +769,7 @@ function buildT80Line(P, v) {
   // (r26: the full-length plate owned the muzzle-tip plan columns 0.23
   // past the ref). Thin plate at the axis plane: side-invisible inside
   // the tube band, never a body column (0.014 band).
-  if (v === 2) P.add('gun', box(0.37, 0.014, 4.45), -0.005, -0.056, 2.775);
-  else P.add('gun', box(0.37, 0.014, 4.89), -0.005, -0.056, 2.995);
+  P.add('gun', box(0.37, 0.014, 4.89), -0.005, -0.056, 2.995);
   // r27: crest fin follows the re-seated band (compressed ref side band
   // 1.555..1.868 — the old 1.59..1.94 fin topped +0.07 over its columns)
   P.add('gun', box(0.022, 0.30, 0.75), 0, -0.054, 2.405);
@@ -505,6 +820,13 @@ function buildT80Line(P, v) {
     mg.position.set(0.42, 0.54, -0.55);
     P.turretG.add(mg);
   }
+  // Replace the inherited gate-tuned dome and patch boxes atomically with
+  // the current first-party family casting, equipment and cannon package.
+  // This deliberately happens after the legacy authoring above so one clear
+  // operation removes every old turret bucket and direct fitting together.
+  rebuildT80FamilyTurret2026(P, v);
+  addT80WheelFaces(P);
+  addT80HullServiceDetail(P, v);
   // Open the turbine-hull suspension tunnel over the native six-wheel
   // return.  Only the lower outer sponson vertices move; the arrow bow,
   // overhanging stern, deck and turret stations retain their certified
