@@ -1,6 +1,6 @@
 <!doctype html>
 <!-- TEMP (sep rebase round): proc-only replica of the tmp-tank-critic camera
-     rig (9 orthos + 3 heroes + 2 closeups, camoSeed 4242, same light) for
+     rig (9 orthos + elevated profile + 3 heroes + 2 closeups, camoSeed 4242, same light) for
      ids without a GLB reference (m1a2_sepv3 FALSE-0 law) and for yaw-pair
      proofs (?yaw=90). Never ships; deleted after round. -->
 <meta charset="utf-8">
@@ -126,6 +126,10 @@ function snap(camera) {
   return renderer.domElement.toDataURL('image/png');
 }
 for (const [name, dir] of Object.entries(VIEWS)) shots[`view-${name}`] = snap(orthoFor(box, dir));
+// Fleet-standard elevated left profile: same direction and orthographic
+// framing as tmp-tank-critic's supplemental profile evidence. It exposes the
+// complete turret length, gun seat and turret-equipment load paths at yaw 0/90.
+shots['profile-elevated-left'] = snap(orthoFor(box, new THREE.Vector3(-1, 0.24, 0.04)));
 for (const [name, dir] of [
   ['hero-frontleft', new THREE.Vector3(-1, 0.35, 1)],
   ['hero-rearright', new THREE.Vector3(1, 0.35, -1)],

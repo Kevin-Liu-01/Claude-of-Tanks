@@ -71,8 +71,8 @@ re-freeze NEW hash, all in ONE commit.
 | m60a3 | 097c35a2 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | kv2 | 382b2310 | freeze-verify only |
 | m1a1 | 4e28ff40 | RE-FROZEN 2026-08-08 (§5.79 flank-panel pitch; re-cert floor 9.1 / mean 9.19 x14) |
-| m1a1ha | d8a948cc | RE-FROZEN 2026-08-10 (§5.107 full armor/ghillie wave; seated CWS + full turret/hull/MG cover; re-cert floor 9.2 / mean 9.36 x14, corrected yaw0/90 ownership PASS; prior 99962364 retired) |
-| m1a2_tejas | 1adc0bde | RE-FROZEN 2026-08-10 (§5.107 full armor/ghillie wave; massive clean CROWS remains unobstructed and distinct; re-cert floor 9.2 / mean 9.39 x14, corrected yaw0/90 ownership PASS; prior 01e698e8 retired) |
+| m1a1ha | 9fb09dfc | RE-FROZEN 2026-08-12 (§5.142 owner-scope dense supported net/shrub package on HA only, strict native-course clearance and yaw ownership; prior d8a948cc retired) |
+| m1a2_tejas | ed044ac8 | RE-FROZEN 2026-08-12 (§5.142 restored clean first-party base-M1A2 presentation, reclassified native running-gear dress and strict course clearance; prior 1adc0bde retired) |
 | merkava3b | REMOVED BY OWNER 2026-08-06 (roster prune; was 8bb8d984, packet historical) |
 | merkava3c | aa74be6a | RE-FROZEN 2026-08-07 (§B2 under-roof closure wave §5.11: solid casting walls, gate rows EXACT, re-cert floor 9.0 on every changed view; sheets shots/critic-merkava-closure/) |
 | kf51 | 9ac547ac | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
@@ -90,10 +90,12 @@ re-freeze NEW hash, all in ONE commit.
 | leo2a5 | e215a738 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | leo2a6 | e99f8490 | RE-FROZEN 2026-08-12 (§5.126 first-party Leopard 2A6: source-semantic wedge turret, canonical seated MG3, seven-wheel hull and exact native course; machine fidelity 95.43 / min view 95.32; fresh 42-frame yaw/ownership floor 9.3 / mean 9.46) |
 | leo2a7v | ec69fe94 | RE-FROZEN 2026-08-12 (§5.140 first-party Leopard 2A7V turret separation: complete rotating package raised 1 cm over a visible annular ring seam, asymmetric mast/rear-service cadence, full articulated sponson clearance; machine fidelity 90.23 / min view 90.02; 45-frame yaw/ownership floor 9.0 / mean 9.16) |
-| leo2_revolution | fe2dc714 | RE-FROZEN 2026-08-12 (§5.128 first-party Leopard 2 Revolution left-hull artifact + complete track-clearance repair: erroneous side cuboid retired, inter-track belly/sponson structure made physically honest, exact band/shoe/strict sweep 0/0; machine fidelity 94.2, geometry 90.2, dimensions 99.5, floaters 100; fresh 45-frame yaw/ownership floor 9.1 / mean 9.27) |
+| leo2_revolution | fe2dc714 | RE-FROZEN 2026-08-12 (§5.141 first-party Leopard 2 Revolution left-hull artifact + complete track-clearance repair: erroneous side cuboid retired, inter-track belly/sponson structure made physically honest, exact band/shoe/strict sweep 0/0; machine fidelity 94.2, geometry 90.2, dimensions 99.5, floaters 100; fresh 45-frame yaw/ownership floor 9.1 / mean 9.27) |
 | m46_patton | 108806c8 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | centurion3 | bad74e60 | RE-FROZEN 2026-08-08 (no-air graduate-change: crown-ridge pedestal + discharger webs, front-low 1810px->14, re-cert floor 9.0 x17 changed views, gate 91.1 exact; prior 50273080 bore-resit lineage) |
-| m1a2_sepv2 | 7680a400 | RE-FROZEN 2026-08-10 (§5.107 full armor/ghillie wave; elevated armored CROWS + broad passive armor + full cover; re-cert floor 9.2 / mean 9.41 x14, corrected yaw0/90 ownership PASS; prior a0a4e87c retired) |
+| m1a2_sepv2 | e8589ad6 | RE-FROZEN 2026-08-12 (§5.142 restored clean first-party SEPv2 armor/CROWS presentation, exact track corridor and yaw ownership; prior 7680a400 retired) |
+| m1a2_sepv3 | d34f9818 | RE-FROZEN 2026-08-12 (§5.142 owner-scope densest supported net/shrub package on SEPv3, exposed optics/weapons and exact native-course clearance) |
+| m1a2_tusk | 978d507c | RE-FROZEN 2026-08-12 (§5.142 restored clean first-party urban-kit presentation, supported local ARAT brackets, closed rear service return and exact track corridor) |
 | m2a2_bradley | 90a5568c | GRADUATED 2026-08-08 (28th; dual gate: geometry 90.9 x2 every component >=90 landed 81bdad1 + visual floor 9.0 / mean 9.16 x14 views at freeze-verified bytes; oracle e699c868; dress-tier defect bank in the verdict: bow T-hooks, taillight fittings, TOW rear ports, lug stacks, ringed hubs) |
 | m45_patton | 53caa687 | GRADUATED 2026-08-08 (29th; gate 90.7 x5 total + sitting-2 visual floor 9.0 mean 9.13 x14; sitting-1 orders executed: loft.smooth byte-reproduced, ring cupola adjudicated ring-class at station with the measured Ø0.57/x-0.65 deviation compliant; ring-prominence silhouette-tax residual certified) |
 | leclerc | 5fa68984 | RE-FROZEN 2026-08-12 (§5.137 restored first-party front mudguards: paired raked steel caps, inboard/outboard hull knees and shallow rubber lips sit above/ahead of the live idler shoes; exact native band+shoes+sweep 0/0, fidelity 94.0 with every scored view/component >=90, fresh 45-frame receipt; prior 683be340 retired) |
@@ -4811,7 +4813,7 @@ visible wound. Rig, native provenance, family order and standard gates pass.
 **KEEP / RE-FROZEN `ec69fe94`; retire `a097ec` and all earlier Leopard 2A7V
 freezes.**
 
-## 5.128 LEOPARD 2 REVOLUTION LEFT-HULL / TRACK-CLEARANCE CLOSEOUT (2026-08-12, RE-FROZEN)
+## 5.141 LEOPARD 2 REVOLUTION LEFT-HULL / TRACK-CLEARANCE CLOSEOUT (2026-08-12, RE-FROZEN)
 
 The owner's singular left-hull rectangle was isolated with an identical-camera
 A/B. It was the one-sided raw `hullDark` cuboid previously described as a
@@ -4851,3 +4853,56 @@ equipment. Winding is 0 reversed / 0 mixed; the 65-pixel (0.09%) right-view
 deficit is antialias-only with no visible wound. Rig, assets, muzzle bore,
 standard, release, test and private/public build gates pass. **KEEP /
 RE-FROZEN `fe2dc714`; retire `37139b70` and all earlier Revolution freezes.**
+
+## 5.142 ABRAMS OWNER-SCOPE GHILLIE + STRICT-COURSE CLOSEOUT (2026-08-12, RE-FROZEN)
+
+The owner's final cover order is exact: dense physical net/shrub camouflage is
+present only on M1A1HA and M1A2 SEPv3. The base M1A2 (`m1a2_tejas`), SEPv2 and
+TUSK are clean again, exposing their armor, CROWS and urban-kit identities.
+The two covered marks use a denser 12-pixel cut-net weave with 72 deterministic
+leaf/rag elements, but muzzle lines, sight glass and weapon apertures stay
+open. All cover is first-party procedural geometry rooted on armor, deck,
+bustle, carrier rails or other rooted cover. No private mesh or texture enters
+the runtime or repository.
+
+The simultaneous clearance pass retires the net shoulder sheets that entered
+the idler/sprocket arcs, explicitly tags wheel/hub/bay and wrap-pad dress as
+running gear, keeps the belly rim inboard of the course, and hands the
+full-width sponson into the narrow central structure before the rear wrap. TUSK
+uses short local ARAT brackets rather than track-crossing arms and gains two
+backed lower-tail return flanges that close its former clean-variant service
+pockets without reaching the shoes. Every mark retains seven primary road
+wheels between a distinct front idler and rear final-drive sprocket, support
+rollers and suspension inside one continuous native linked course.
+
+Exact front band/shoe, rear band/shoe and strict full-sweep receipts are **0/0
+for all five**, and plan contiguity is **0 holes**. Standard decor, asset, rig,
+muzzle-bore, native-provenance and family-order checks pass. Winding reports 0
+HARD failures; the small authored-leaf/mode-2 candidate counts have no visible
+missing face, open sheet or wound and resolve through yaw as supported hull
+cover or fixed deck/service structure. Existing commercial-style geometry
+rows remain honestly unavailable/capped and are not promoted into false
+scores; authored/no-oracle SEPv3 and TUSK receive no fabricated paired vector.
+
+The final first-party freezes are:
+
+| id | freeze | meshes / vertices | fresh independent result |
+|---|---|---:|---|
+| `m1a1ha` | `9fb09dfc` | 60 / 222,370 | floor 9.4 / mean 9.49 |
+| `m1a2_tejas` | `ed044ac8` | 55 / 165,322 | floor 9.3 / mean 9.39 |
+| `m1a2_sepv2` | `e8589ad6` | 57 / 180,346 | floor 9.0 / mean 9.20 |
+| `m1a2_sepv3` | `d34f9818` | 60 / 245,842 | authored/no-oracle yaw PASS |
+| `m1a2_tusk` | `978d507c` | 65 / 212,722 | authored/no-oracle yaw PASS |
+
+The final evidence at `/private/tmp/abrams-ghillie-final-r2` is **195 PNGs /
+195 distinct hashes**. HA, base M1A2 and SEPv2 each have fifteen paired,
+fifteen yaw0 and fifteen yaw90 frames; SEPv3 and TUSK each have fifteen yaw0
+and fifteen yaw90 frames. Every set includes the standardized elevated-left
+profile. Fresh review proves a genuine quarter-turn, correct turret/hull cover
+split, broad CWS/CROWS and equipment seats, a fixed TUSK hull cage, clean
+courses and no fused, stranded or empty-air mass. `npm test`, private build and
+public build pass. Full evidence and vectors are recorded in
+`docs/critique/shaded-parity-abrams-owner-scope-recert.md`.
+
+**PASS / KEEP all five; retire `d8a948cc`, `1adc0bde`, `7680a400` and every
+earlier conflicting owner-scope freeze. Ordered blockers: none.**

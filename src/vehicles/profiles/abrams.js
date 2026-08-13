@@ -377,11 +377,21 @@ function abramsHull(P, g) {
       g.nose, bowZ, noseRake.map((p) => p[0]));
   }
   // Full-depth sponson band from the glacis break to the stern break.
-  loftBand(P, 'hull', bw, g.deckInset ?? 0.05, g.deck, () => g.beltTop, bowZ, sternZ);
+  // A lane carve may begin slightly forward of the measured lower-tail
+  // break. In that case the full-width band must stop at the carve start;
+  // the narrow, load-bearing center wedge continues aft from the same plane.
+  const sponsonSternZ = Math.max(sternZ, LC?.sternZ?.[1] ?? sternZ);
+  loftBand(P, 'hull', bw, g.deckInset ?? 0.05, g.deck, () => g.beltTop, bowZ, sponsonSternZ);
   // Stern wedge down the measured tail rake.
   if (LC?.sternZ) {
-    loftBand(P, 'hull', bw * 0.94, 0.05, g.deck, (z) => lineAt(tailRake, z),
-      sternZ, LC.sternZ[1], tailRake.map((p) => p[0]));
+    // When the carve begins exactly at the stern break there is no legal
+    // full-width lead-in.  Skipping that degenerate sliver prevents a single
+    // terminal voxel from re-entering the sprocket wrap while preserving the
+    // old segment for every caller whose carve genuinely begins aft of it.
+    if (LC.sternZ[1] < sternZ - 0.002) {
+      loftBand(P, 'hull', bw * 0.94, 0.05, g.deck, (z) => lineAt(tailRake, z),
+        sternZ, LC.sternZ[1], tailRake.map((p) => p[0]));
+    }
     loftBand(P, 'hull', LC.x, 0.05, g.deck, (z) => lineAt(tailRake, z),
       LC.sternZ[1] + 0.001, LC.sternZ[0], tailRake.map((p) => p[0]));
     // §B4 resume segment (aim round 2026-08-06): on hulls whose tail rake
@@ -991,7 +1001,9 @@ const TEJAS_HULL = {
     [1.30, 1.48],
     [-0.95, 1.48], [-1.73, 1.66], [-2.25, 1.71], [-3.64, 1.713], [-3.877, 1.693],
     [-3.933, 1.405], [-3.937, 1.404]],
-  beltTop: 1.05, belly: 0.42,
+  // Keep the full-width sponson bottom above the upper shoe envelope.  The
+  // narrow central belly still carries the hull between the two courses.
+  beltTop: 1.17, belly: 0.42,
   noseRake: [[2.60, 0.44], [3.10, 0.48], [3.38, 0.50], [3.54, 0.64], [3.62, 0.82],
     [3.76, 1.01], [3.83, 0.94], [3.881, 1.17]],
   // Tail at the ref's own -3.937 plan rear (a -3.97 tail left the -3.99 side
@@ -1073,7 +1085,7 @@ const TEJAS_HULL = {
   // extent across both windows, the ±1.08 center keeps the side profile,
   // and the front columns keep their envelopes from the uncarved runs
   // (band/pins own the bottoms, deck band the tops). Gate-verified hold.
-  laneCarve: { x: 1.08, bowZ: [2.60, 3.49], sternZ: [-3.61, -2.90] },
+  laneCarve: { x: 1.08, bowZ: [2.60, 3.49], sternZ: [-3.61, -2.50] },
 };
 
 // Ring (0, 1.57, 0.35). World targets (vertex r1 plan_turret_96): center
@@ -1825,15 +1837,13 @@ function abramsArmorHardware(P, variant, t) {
 // hull, turret, armor modules and roof weapon before overlapping low-poly leaf
 // clusters are added. Every cluster intersects a carrier strip or another
 // cluster that reaches one, so no decoration is supported through empty air.
-// Palette/density changes split the five requested marks without hiding their
-// CWS/CROWS, Trophy, ERA or passive-armor silhouettes.
+// The final owner scope is deliberately narrow: heavy cover belongs only to
+// M1A1HA and M1A2 SEPv3. Base/Tejas M1A2, SEPv2 and TUSK remain clean so their
+// armor, CROWS and urban-kit silhouettes are not buried under shared foliage.
 function abramsGhillie(P, variant, t) {
   const configs = {
-    m1a1ha: { density: 0.82, light: 0x647348, dark: 0x35442d, mgY: 1.075 },
-    m1a2_tejas: { density: 0.92, light: 0x596d3c, dark: 0x2f4128, mgY: 1.565 },
-    m1a2_tusk: { density: 0.90, light: 0x707145, dark: 0x41422b, mgY: 1.565 },
-    m1a2_sepv2: { density: 1.00, light: 0x53683a, dark: 0x293b25, mgY: 1.715 },
-    m1a2_sepv3: { density: 1.10, light: 0x496033, dark: 0x243622, mgY: 1.445 },
+    m1a1ha: { density: 1.18, light: 0x647348, dark: 0x35442d, mgY: 1.075 },
+    m1a2_sepv3: { density: 1.35, light: 0x496033, dark: 0x243622, mgY: 1.445 },
   };
   const cfg = configs[variant];
   if (!cfg) return;
@@ -1866,12 +1876,12 @@ function abramsGhillie(P, variant, t) {
     // irregular leaf/rag diamonds. Transparent holes keep armor, ERA and
     // optics readable through the cover.
     ctx.strokeStyle = '#26351f'; ctx.lineWidth = 2;
-    for (let p = -128; p < 256; p += 16) {
+    for (let p = -128; p < 256; p += 12) {
       ctx.beginPath(); ctx.moveTo(p, 0); ctx.lineTo(p + 128, 128); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(p + 128, 0); ctx.lineTo(p, 128); ctx.stroke();
     }
     const cols = [cfg.light, cfg.dark, cfg.light].map((hex) => `#${hex.toString(16).padStart(6, '0')}`);
-    for (let i = 0; i < 52; i++) {
+    for (let i = 0; i < 72; i++) {
       const x = (i * 47 + 13) % 128, y = (i * 71 + 29) % 128;
       const w = 4 + (i % 3) * 2, h = 7 + (i % 4) * 2;
       ctx.fillStyle = cols[i % cols.length];
@@ -2035,24 +2045,10 @@ function abramsGhillie(P, variant, t) {
     // safeScale shrink the entire tank and falsifies every published datum.
     hullNet.push(xform(box(0.010, 0.62, 5.10), side * 1.819, 1.08, 0.05));
     hullB.push(xform(box(0.008, 0.52, 4.95), side * 1.819, 1.08, 0.05));
-    // Bow/rear shoulder continuations complete the full-hull cover and keep
-    // the raised CWS/CROWS envelope from excluding the real hull endpoints
-    // under the 12%-band P95 law. These are inward of the fender corners and
-    // overlap the underlying shoulder armor across their full area, so they
-    // are physical cover—not metrology tabs or detached end plates.
-    // An 8 cm torn fringe may hang past the 3.97 m armor end; the other
-    // 48 cm remains fully backed by the shoulder. This is the visible net
-    // edge and restores the configured vehicle's honest P95 end course.
-    hullNet.push(xform(box(0.010, 0.45, 1.12), side * 1.42, 1.18, 3.49,
-      0, side * 0.06, 0));
-    // TUSK already has a source-semantic open rear slat cage. A cloth panel
-    // across that opening would enclose two false sky pockets, so its rear
-    // course stops on the central skirt and the cage remains deliberately
-    // uncovered/open; all other marks use the backed turbine shoulder.
-    if (variant !== 'm1a2_tusk') {
-      hullNet.push(xform(box(0.010, 0.45, 1.12), side * 1.42, 1.20, -3.49,
-        0, side * -0.05, 0));
-    }
+    // Keep the cloth on the long, fully backed side carrier. Earlier
+    // shoulder-extension sheets overlapped the rising idler/sprocket shoe
+    // envelopes at both ends; dense foliage remains on the deck above while
+    // the terminal track arcs stay completely unobstructed.
     for (let k = 0; k < 10; k++) {
       const z = -2.18 + k * 0.52;
       const y = 1.04 + (k % 2) * 0.20;
@@ -2094,33 +2090,53 @@ function abramsGhillie(P, variant, t) {
 
 function tejasWheelKit(P, g) {
   const face = g.trackXc + Math.min(0.23, g.trackW * 0.38) / 2;   // 1.515
+  // Keep all wheel-face, hub and bay-shadow geometry in explicit tagged
+  // running-gear meshes.  These pieces live inside the animated track loop
+  // by design; merging them into the generic hull buckets made the strict
+  // track audit treat the suspension itself as an intersecting hull plate.
+  const gearGeos = { dark: [], detail: [], hull: [], shadow: [] };
+  const addGear = (bucket, geo, x, y, z, rx = 0, ry = 0, rz = 0) => {
+    gearGeos[bucket].push(xform(geo, x, y, z, rx, ry, rz));
+  };
   for (const side of [-1, 1]) {
     for (const wz of g.wheelZs) {
       // KIT.torus is pre-baked FLAT (XZ plane, hatch convention) — rz PI/2
       // stands it up facing +-X (a ry rotation on a flat ring is a no-op;
       // the r1 pancake rings spanned x 1.91 and safeScale shrank the tank
       // 4.4% — the gate-collapse incident of this round).
-      P.add('hullDark', torus(0.385, 0.011, 18), side * (face + 0.002), g.wheelY, wz, 0, 0, Math.PI / 2);
-      P.add('hullDetail', torus(0.300, 0.027, 18), side * (face + 0.014), g.wheelY, wz, 0, 0, Math.PI / 2);
-      P.add('hull', cylX(0.108, 0.030, 12), side * (face + 0.008), g.wheelY, wz);
-      P.add('hullDark', cylX(0.052, 0.024, 10), side * (face + 0.020), g.wheelY, wz);
+      addGear('dark', torus(0.385, 0.011, 18), side * (face + 0.002), g.wheelY, wz, 0, 0, Math.PI / 2);
+      addGear('detail', torus(0.300, 0.027, 18), side * (face + 0.014), g.wheelY, wz, 0, 0, Math.PI / 2);
+      addGear('hull', cylX(0.108, 0.030, 12), side * (face + 0.008), g.wheelY, wz);
+      addGear('dark', cylX(0.052, 0.024, 10), side * (face + 0.020), g.wheelY, wz);
       if (P.q) for (let b = 0; b < 6; b++) {
         const ba = (b / 6) * Math.PI * 2;
-        P.add('hullDark', box(0.022, 0.03, 0.03), side * (face + 0.012),
+        addGear('dark', box(0.022, 0.03, 0.03), side * (face + 0.012),
           g.wheelY + Math.sin(ba) * 0.165, wz + Math.cos(ba) * 0.165);
       }
     }
     // Idler + sprocket hub packages (the bare drum faces read as untextured
     // gray placeholder slabs between the band wraps — critic item 5).
     const iFace = g.trackXc + g.trackW * 0.37;
-    P.add('hullDetail', torus(0.225, 0.016, 18), side * iFace, g.idlerY, g.idlerZ, 0, 0, Math.PI / 2);
-    P.add('hullDark', cylX(0.062, 0.026, 10), side * (iFace + 0.006), g.idlerY, g.idlerZ);
-    P.add('hullDetail', torus(0.205, 0.016, 18), side * (g.trackXc + g.trackW * 0.40), g.sprocketY, g.sprocketZ, 0, 0, Math.PI / 2);
-    P.add('hullDark', cylX(0.075, 0.028, 10), side * (g.trackXc + g.trackW * 0.40 + 0.006), g.sprocketY, g.sprocketZ);
+    addGear('detail', torus(0.225, 0.016, 18), side * iFace, g.idlerY, g.idlerZ, 0, 0, Math.PI / 2);
+    addGear('dark', cylX(0.062, 0.026, 10), side * (iFace + 0.006), g.idlerY, g.idlerZ);
+    addGear('detail', torus(0.205, 0.016, 18), side * (g.trackXc + g.trackW * 0.40), g.sprocketY, g.sprocketZ, 0, 0, Math.PI / 2);
+    addGear('dark', cylX(0.075, 0.028, 10), side * (g.trackXc + g.trackW * 0.40 + 0.006), g.sprocketY, g.sprocketZ);
     // Bay AO wall: near-black backer behind the wheel row — the inter-wheel
     // gaps showed the far-side gear in scheme green and the row fused.
     // Overlaps the belly box at x 1.09..1.095 (floater contract).
-    P.add('hullShadow', box(0.13, 0.66, 4.85), side * 1.155, 0.42, 0.0);
+    addGear('shadow', box(0.13, 0.66, 4.85), side * 1.155, 0.42, 0.0);
+  }
+  for (const [bucket, geos] of Object.entries(gearGeos)) {
+    if (!geos.length) continue;
+    const mat = bucket === 'dark' ? P.mats.dark
+      : bucket === 'detail' ? P.mats.detail
+        : bucket === 'shadow' ? P.mats.shadow : P.mats.hull;
+    const mesh = new THREE.Mesh(mergeAll(geos), mat);
+    mesh.name = `gear_wheelDress_${bucket}`;
+    mesh.userData.runningGear = true;
+    mesh.castShadow = mesh.receiveShadow = true;
+    P.hullG.add(mesh);
+    P.disposables.push(mesh.geometry);
   }
 }
 
@@ -2143,6 +2159,8 @@ function tejasWheelKit(P, g) {
 //    Static overlays — the fleet shadow-drum precedent.
 function tejasSuspensionDress(P, g) {
   const skx = g.skirt.x;                        // 1.812 — skirt face plane
+  const bayGeos = [];
+  const padBeltGeos = [];
   for (const side of [-1, 1]) {
     // -- 1. hem shadow segmentation (panel z-centers from the 7-panel table)
     for (const [hz, hw, hh, hy] of [
@@ -2164,10 +2182,10 @@ function tejasSuspensionDress(P, g) {
     // sampled ~49/255 in the gaps — the scaled dark bucket is the only
     // channel that renders the ref's true void down here)
     for (const zm of [1.80, 1.11, 0.35, -0.41, -1.17, -1.825]) {
-      P.add('hullDark', box(0.24, 0.55, 0.20), side * 1.32, 0.47, zm);
+      bayGeos.push(xform(box(0.24, 0.55, 0.20), side * 1.32, 0.47, zm));
     }
-    P.add('hullDark', box(0.24, 0.45, 0.26), side * 1.32, 0.52, 2.53);
-    P.add('hullDark', box(0.24, 0.50, 0.32), side * 1.32, 0.55, -2.56);
+    bayGeos.push(xform(box(0.24, 0.45, 0.26), side * 1.32, 0.52, 2.53));
+    bayGeos.push(xform(box(0.24, 0.50, 0.32), side * 1.32, 0.55, -2.56));
     // -- 2b. skirt-hull gap cap: from the top the warm band run + pin caps
     // showed in the 1.74..1.81 slot as rust-toned dashes (r4 item 6's
     // top-view read) — a cap floors the slot. Top 1.328 stays under every
@@ -2198,7 +2216,7 @@ function tejasSuspensionDress(P, g) {
       [2.55, 0.112], [2.71, 0.192], [2.87, 0.280], [3.03, 0.368], [3.19, 0.456],
     ]) {
       for (const f of [-1, 1]) {
-        P.add('hullCloth', box(0.245, 0.07, 0.150), side * (1.405 + f * 0.1525), py - 0.0280, pz + 0.0154, -0.503, 0, 0);
+        padBeltGeos.push(xform(box(0.245, 0.07, 0.150), side * (1.405 + f * 0.1525), py - 0.0280, pz + 0.0154, -0.503, 0, 0));
       }
     }
     // §B4 audit taxonomy (family variety round): every wrap-arc/ramp pad in
@@ -2252,10 +2270,24 @@ function tejasSuspensionDress(P, g) {
     }
     const wrapMesh = new THREE.Mesh(mergeAll(wrapPads), P.mats.spareTrack);
     wrapMesh.name = side > 0 ? 'gear_wrapPadsR' : 'gear_wrapPadsL';
+    wrapMesh.userData.runningGear = true;
     wrapMesh.castShadow = wrapMesh.receiveShadow = true;
     P.hullG.add(wrapMesh);
     P.disposables.push(wrapMesh.geometry);
   }
+  const bayMesh = new THREE.Mesh(mergeAll(bayGeos), P.mats.dark);
+  bayMesh.name = 'gear_wheelBayVoidDress';
+  bayMesh.userData.runningGear = true;
+  bayMesh.castShadow = bayMesh.receiveShadow = true;
+  P.hullG.add(bayMesh);
+  P.disposables.push(bayMesh.geometry);
+
+  const padBelt = new THREE.Mesh(mergeAll(padBeltGeos), P.mats.canvasCloth);
+  padBelt.name = 'gear_frontRampPadBelt';
+  padBelt.userData.runningGear = true;
+  padBelt.castShadow = padBelt.receiveShadow = true;
+  P.hullG.add(padBelt);
+  P.disposables.push(padBelt.geometry);
 }
 
 // Rear-plate kit (visual r2 item 3, leo2a6 tilted-slat law): the shared
@@ -2618,9 +2650,10 @@ function buildTejasFamily(P, p) {
     // -3.66 skirt line there (the col improves).
     P.add('hull', box(0.032, 0.05, 1.225), side * 1.740, 1.6825, -2.9825);
     P.add('hull', box(0.075, 0.075, 0.026), side * 1.7085, 1.6575, -3.596);
-    // Belly rim: ref front-view floor 0.36-0.39 at |x| 1.00..1.06 (the belly
-    // loft stops at 0.42); z-span inside the track ramps so no side change.
-    P.add('hull', box(0.10, 0.08, 5.8), side * 1.06, 0.395, 0);
+    // Belly rim: ref front-view floor 0.36-0.39 at |x| 0.96..1.06 (the belly
+    // loft stops at 0.42). Keep its outer edge at 1.06, fully inboard of the
+    // 1.115 track-band inner face and the animated shoe/pin envelope.
+    P.add('hull', box(0.10, 0.08, 5.8), side * 1.01, 0.395, 0);
   }
   // Headlight-pod bow wings: the ref plan's 3.933 columns live at x
   // 0.95..1.05 only (r2: a 0.93..1.05 pod lit the ±0.919 bins the ref keeps
@@ -2649,6 +2682,15 @@ function buildTejasFamily(P, p) {
   // read -3.82 ON the ref's own -3.83 step class (they read the -3.65
   // skirt before — the col IMPROVES).
   P.add('hull', box(2.17, 0.715, 0.19), 0, 1.3275, -3.73);
+  // The clean (non-ghillie) TUSK exposed two tiny plan pockets where the
+  // ±0.95 tail shelf steps out to the ±1.085 service bay.  These recessed
+  // return flanges touch the shelf inboard and the tall mid-step forward;
+  // their aft edge remains 5 cm behind the last live shoe, so they close the
+  // service tray without entering the sprocket course or changing the outer
+  // silhouette.
+  for (const side of [-1, 1]) {
+    P.add('hull', box(0.135, 0.08, 0.112), side * 1.0175, 1.36, -3.881);
+  }
   // Rear-deck grille pods: the 1.759 hump lives OUTBOARD (|x| 1.39..1.73 —
   // r6 front rows: pods reaching in to 1.15 painted the 1.14..1.43 bins the
   // ref keeps at its 1.709 deck line).
@@ -2858,10 +2900,12 @@ function buildTejasFamily(P, p) {
         P.add('hullDark', box(0.03, 0.25, 0.05), side * 1.67, 1.24, z - 0.163, 0, 0, side * -0.20);
       }
       // Mounting rails + standoff arms + hanger straps (the ARAT rack).
-      for (const [ry, rx] of [[0.94, 1.70], [1.24, 1.665]]) {
+      for (const [ry, rx] of [[0.94, 1.775], [1.24, 1.665]]) {
         P.add('hullDark', box(0.06, 0.066, 4.81), side * rx, ry, 0);
         for (const az of [-2.0, -1.0, 0, 1.0, 2.0]) {
-          P.add('hullDark', box(0.35, 0.05, 0.05), side * 1.52, ry, az);
+          // Short local brackets tie each rail into the skirt/armor carrier
+          // without crossing the animated shoe lane.
+          P.add('hullDark', box(0.10, 0.05, 0.05), side * 1.78, ry, az);
         }
       }
       for (const hz of [-1.785, -0.485, 0.815, 1.79]) {      // hanger straps
@@ -3436,10 +3480,10 @@ function buildTejasFamily(P, p) {
     P.add('hullDetail', torus(0.028, 0.008, 10), dx, deckAt(g, dz) + 0.006, dz, Math.PI / 2, 0, 0);
   }
   abramsArmorHardware(P, vid, t);
-  // Owner 2026-08-10: the five current Abrams marks receive full physical
-  // shrub/ghillie cover over hull, turret, armor and roof weapon. Apply it
-  // after every variant-specific ERA, APS, stowage and MG fit so the net lies
-  // visibly on top of those systems while their silhouettes remain legible.
+  // Owner final correction: only M1A1HA and M1A2 SEPv3 receive the dense
+  // physical shrub/ghillie package. Apply it after their variant equipment so
+  // the net is visibly seated on the armor and roof weapon; all other Abrams
+  // marks pass through this call clean because they have no config entry.
   abramsGhillie(P, vid, t);
 }
 
