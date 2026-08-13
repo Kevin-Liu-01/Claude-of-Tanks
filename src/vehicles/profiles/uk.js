@@ -2499,7 +2499,11 @@ function cromwellHull(P, o) {
   P.add('hull', box(innerW, bandY - 0.14, halfL * 0.99 + rearL * 0.98), 0, 0.24 + (bandY - 0.14) / 2, (halfL * 0.99 - rearL * 0.98) / 2);
   // Containment law: the end-wheel wrap circles top out at hornY + 0.72R +
   // 0.135 band — full-width solids stay above that line in the wrap zones.
-  const wrapTop = (o.hornY ?? 0.62) + o.wheelR * 0.72 + 0.155;
+  // The linked shoes rise a few centimetres above the idealized end-wheel
+  // circle.  Keep the pannier, bow return and guard underside above that
+  // physical course instead of letting the old nominal circle become a
+  // hidden overlap (most visible on the A30 and Charioteer).
+  const wrapTop = (o.hornY ?? 0.62) + o.wheelR * 0.72 + 0.215;
   // Pannier band: vertical sides ending at the vertical driver's plate.
   // Split at the wrap line: the full-length slice rides above it, the lower
   // slice stops short of the sprocket wrap (silhouette owned by the tracks).
@@ -2507,16 +2511,24 @@ function cromwellHull(P, o) {
   P.add('hull', box(bandW, roofY - ySplit, rearL + bowZ), 0, (roofY + ySplit) / 2, (bowZ - rearL) / 2);
   const zRearLow = -(rearL - (o.sprocketInset ?? 0.38)) + o.wheelR * 0.72 + 0.155;
   if (ySplit > bandY + 0.01) {
-    P.add('hull', box(bandW, ySplit - bandY, bowZ - zRearLow), 0, (ySplit + bandY) / 2, (bowZ + zRearLow) / 2);
+    // The low pannier backing lives between the tracks.  Extending this
+    // slice to the upper side-armor width made a hidden full-length plate
+    // pass through the linked return course on all three chassis.
+    const lowerBandW = Math.min(bandW, chanIn * 2);
+    P.add('hull', box(lowerBandW, ySplit - bandY, bowZ - zRearLow), 0, (ySplit + bandY) / 2, (bowZ + zRearLow) / 2);
   }
   // Low bow deck from the driver's plate to the nose, then the short glacis
   // (lower edge held above the idler wrap line).
   const bowLo = Math.min(bowY - 0.02, Math.max(bandY - 0.05, wrapTop));
+  const noseShoulderX = Math.min(
+    bandW / 2 * 0.98,
+    chanIn - (o.noseShoulderInset ?? 0),
+  );
   P.add('hull', slab(
     [-bandW / 2, bowLo, bowZ], [bandW / 2, bowLo, bowZ],
-    [bandW / 2, bowLo + 0.12, halfL * 0.99], [-bandW / 2, bowLo + 0.12, halfL * 0.99],
+    [noseShoulderX, bowLo + 0.12, halfL * 0.99], [-noseShoulderX, bowLo + 0.12, halfL * 0.99],
     [-bandW / 2 * 0.98, bowY, bowZ], [bandW / 2 * 0.98, bowY, bowZ],
-    [bandW / 2 * 0.98, noseTipY, halfL], [-bandW / 2 * 0.98, noseTipY, halfL]));
+    [noseShoulderX, noseTipY, halfL], [-noseShoulderX, noseTipY, halfL]));
   // §C.1 per-face adjudication (sweep 2026-08-06): the authored rings
   // CROSSED in y along the run (bottom ring above the top ring at the bowZ
   // end) — a twisted prism the winding guard cannot repair (out2/6 mixed;
@@ -2544,7 +2556,9 @@ function cromwellHull(P, o) {
   for (const s of [-1, 1]) {
     const px = s * (bandW / 2 + 0.006);
     P.add('hullDark', box(0.012, 0.016, rearL + bowZ - 0.3), px, roofY - 0.055, (bowZ - rearL) / 2);
-    P.add('hullDark', box(0.012, 0.016, rearL + bowZ - 0.3), px, bandY + 0.1, (bowZ - rearL) / 2);
+    // This is a pannier seam, not track dressing: keep it on the raised
+    // armor face rather than drawing it through the upper shoe course.
+    P.add('hullDark', box(0.012, 0.016, rearL + bowZ - 0.3), px, ySplit + 0.04, (bowZ - rearL) / 2);
     if (P.q) for (let i = 0; i < 11; i++) {
       P.add('hullDark', cylX(0.016, 0.024, 6), px, roofY - 0.13, -halfL * 0.9 + i * (o.hullLength * 0.78 / 10));
     }
@@ -3658,7 +3672,7 @@ export const UK_PROFILES = {
   challenger_cruiser: {
     build: a30Build, width: 2.91, hullLength: 8.03, roofY: 1.50, bandY: 0.88, trackW: 0.44,
     bowZ: 2.85, bowY: 1.40, noseTipY: 0.96, tailTrim: 0.03, wheels: 6, wheelR: 0.41, wheelSpan: 5.9,
-    gunLength: 3.67, mgBall: false,
+    gunLength: 3.67, mgBall: false, noseShoulderInset: 0.17,
   },
   charioteer: {
     build: charioteerBuild, width: 3.05, hullLength: 6.55, roofY: 1.62, bandY: 0.94, trackW: 0.40,
