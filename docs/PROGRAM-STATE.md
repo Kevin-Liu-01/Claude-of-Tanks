@@ -5402,3 +5402,18 @@ visible.
 
 **PASS / KEEP `dcb1946c`; supersede base T-90 `27d1c5d8`. Ordered blockers:
 none for this armour/equipment refit.**
+
+## 5.154 QUALITY-AUDIT CYCLE GUARD (2026-08-13)
+
+The fleet quality audit is live again under the current Vite/Node evaluator.
+During the deliberate `tankFactory -> profiledProcedurals -> kit.js` cycle,
+Vite SSR can expose the imported `KIT` binding as temporarily `undefined`
+rather than throwing a native-ESM TDZ error. The deferred compatibility-alias
+callback previously dereferenced that transient value and crashed
+`model-quality-audit.mjs` after the module graph otherwise loaded.
+
+The callback now attaches `KIT.fittings` only when `KIT` is present. Profile
+builders and the standard fixture continue to import the canonical `FITTINGS`
+export directly, so no geometry, fitting, hash or runtime ownership changes.
+Fresh `npm run model:audit` reports **108/108 selected playables pass**, 2/26
+comparison candidates rejected, median 9.00.

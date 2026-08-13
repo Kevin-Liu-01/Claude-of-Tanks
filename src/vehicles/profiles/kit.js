@@ -1117,5 +1117,16 @@ export const FITTINGS = {
 try {
   KIT.fittings = FITTINGS;
 } catch (_) {
-  queueMicrotask(() => { if (!KIT.fittings) KIT.fittings = FITTINGS; });
+  // Vite's SSR evaluator exposes the cyclic namespace before tankFactory's
+  // `KIT` value is initialized.  In that path the imported binding is
+  // temporarily `undefined` rather than a native-ESM TDZ throw.  The former
+  // callback dereferenced it unconditionally and crashed read-only fleet
+  // auditors after their module graph had otherwise loaded successfully.
+  // Runtime/profile consumers import FITTINGS directly, so a missing shared
+  // alias during this one deferred tick is harmless; attach it whenever the
+  // value is present and never turn an optional compatibility alias into an
+  // audit-fatal exception.
+  queueMicrotask(() => {
+    if (KIT && !KIT.fittings) KIT.fittings = FITTINGS;
+  });
 }
