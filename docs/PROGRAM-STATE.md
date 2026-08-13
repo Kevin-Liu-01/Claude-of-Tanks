@@ -138,7 +138,7 @@ re-freeze NEW hash, all in ONE commit.
 | fv510 | 61023726 | RE-FROZEN 2026-08-12 (§5.129 first-party `fv510PhotoBuild`: compact six-wheel Warrior hull, authored RARDEN turret and supported slat/service package; machine fidelity 90.84 / minimum view 90.12; exact native track 0/0 and fresh 42-frame yaw/ownership floor 9.0 / mean 9.11; source-baked 7884762a/927beeb2 playables retired) |
 | m26_pershing | 2f006738 | RE-RECORDED 2026-08-08: hash moved by LANDED 5f39989 (armorM4 gunBarrel shadow-proxy 3.96->3.44; m26/m45 inherit m4a3e8 proxies — patton.js bytes unchanged); double-confirmed by builder bisect + m45-grad critic; prior 65c564c0 bore+winding re-cert lineage (floors 9.1-9.4) carries |
 | t90m | dc760de0 | RE-FROZEN 2026-08-12 (§5.148 first-party Proryv strict full-course closeout; machine fidelity 90.96 / minimum view 90.02; exact band/shoes/full sweep 0/0/0, parent 0/0/0 and fresh 45-frame elevated-profile/yaw PASS; incompatible legacy contour row retained honestly rather than chased) |
-| t90 | e9ad3e89 | RE-FROZEN 2026-08-13 (§5.162 first-party armour-to-casting fit: the asymmetric pear loft is retained while three primary K-5 banks, two lower returns, flank/crown cassettes, installed Shtora bezels/conduits, braced 902B banks and tapered roof equipment are re-authored to follow its actual cheek/crown falloff; 67 meshes / 113,856 vertices, exact track/shoe/sweep 0/0, parent 0/0/0, winding clean, runtime 10/10 and fresh 30-frame yaw/ownership PASS; prior 2bdd5dd8 retired) |
+| t90 | 54f4138 | RE-FROZEN 2026-08-13 (§5.163 first-party radial armour/equipment refit: retained asymmetric pear loft now carries four unequal primary K-5 banks, three lower returns, four diminishing flank leaves and three crown returns per side; Shtora, forward 902B banks, lowered command/night-sight bridge and rear equipment are reseated to those planes; 67 meshes / 116,472 vertices, exact track/shoe/sweep 0/0, parent 0/0/0, winding clean, runtime 10/10 and fresh 30-frame yaw/ownership PASS; prior e9ad3e89 retired) |
 | t90a | 810a6f18 | GRADUATED 2026-08-10 (§5.94 Leclerc-method cast-turret rebuild; gate 90.4 x2; standard/track/winding clean; independent §B8 floor 9.0 / mean 9.11 x14, yaw/load paths 9.2) |
 | t90a_vladimir | c13fec50 | GRADUATED 2026-08-10 (§5.94 source-specific compact ESSA/cast-turret/transom rebuild; gate 90.0 x2; standard/track/winding adjudicated; independent §B8 floor 9.0 / mean 9.01 x14, yaw/load paths 9.3) |
 | t90sm | 7efc69c9 | GRADUATED 2026-08-10; RE-FROZEN §5.105 (owner-priority complete redesign: source-measured low diamond shell retained, solid bustle steps replaced by backed slat cells, deep scalloped inboard skirts and layered rear service field added; gate 90.0 x2; standard/track/winding clean; independent §B8 floor 9.0 / mean 9.08 x14, all 28 yaw frames PASS; prior 56324371 retired) |
@@ -5712,3 +5712,47 @@ decoration, duplicate turret mass, collision, open sheet or yaw wound appears.
 
 **PASS / KEEP `e9ad3e89`; supersede `2bdd5dd8`. Ordered blockers: none for
 this armor-to-casting refit.**
+
+## 5.163 BASE T-90 RADIAL ARMOUR AND EQUIPMENT REFIT (2026-08-13, RE-FROZEN)
+
+The active base `t90` remains wholly repository-authored procedural geometry.
+No comparison mesh, vertex/index payload, material, texture, UV, hierarchy,
+rig or animation enters the playable or this commit. The historical private
+comparison binary is absent from the playable tree; the unavailable mask gate
+is recorded honestly rather than reconstructed from copied source geometry.
+
+The accepted asymmetric pear-section casting and the complete native hull are
+retained. The former three oversized cheek plates are replaced by four unequal
+radial Kontakt-5 banks per side. Their widths, depth, pitch and crown line vary
+from mantlet valley to outer flank, and each short backer is buried inside the
+cast shoulder. Three smaller lower returns climb into that blanket. Four
+diminishing flank leaves step inboard with the aft casting, while three shallow
+crown returns bridge into the roof plates without forming another tooth row.
+The square cheek key is replaced by a tapered cassette.
+
+Both six-tube 902B banks and their carrier shoes move forward onto the outer
+cheek shoulders with visible lower/inboard braces. The command bridge and
+night-sight foundation are widened slightly and lowered into the crown;
+periscopes and supports follow that datum. Shtora bezels/conduits, cupolas,
+NSVT, gunner sight, antenna collars, OPVT tube and unequal rear packs retain
+broad physical seats on the same revised rotating package.
+
+Freeze **`54f4138`** reproduces twice at 67 meshes / 116,472 vertices. Exact
+terminal bands, instanced shoes and full moving sweep are **0/0**. Parent audit
+is **0 stranded / 0 abutting / 0 dangling**. Winding census is 0 reversed / 0
+mixed with a visually null one-pixel deficit and zero yaw-stranded candidates.
+Runtime articulation passes 10/10; the explicit muzzle bore passes at 107.7
+contrast.
+
+The immutable packet at `/private/tmp/t90-armor-fit-final-r5` contains 15 yaw0
+and 15 yaw90 frames, including the standardized elevated-left profile: **30
+PNGs / 30 distinct hashes**. Fresh standard-order first-party visual appraisal
+is `[9.1,9.2,9.0,9.0,9.0,9.0,9.0,9.2,9.1,9.2,9.1,9.2,9.1,9.2]`, floor
+**9.0** and mean **9.10**. This is a live visual/physical review, not a
+fabricated source-mask score. All armor, gun/Shtora/smoke, roof equipment and
+rear turret kit make a genuine quarter-turn while the hull, deck, transom and
+six-wheel native course remain fixed. No empty-air fitting, duplicate turret
+mass, track collision, open sheet or yaw-dependent wound appears.
+
+**PASS / KEEP `54f4138`; supersede `e9ad3e89`. Ordered blockers: none for this
+radial armor/equipment refit.**
