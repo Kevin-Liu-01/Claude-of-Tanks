@@ -810,12 +810,13 @@ function buildK2(P) {
   // Keeping left/right as separate meshes preserves that honest AABB for the
   // containment audit; the old merged hullRubber bucket spanned the centre
   // and falsely classified both lanes as one hull solid cutting the bands.
-  const hullRubberLane = (side, geo, x, y, z) => {
+  const hullRubberLane = (side, geo, x, y, z, runningGear = false) => {
     const m = new THREE.Mesh(geo, P.mats.rubber);
     m.name = `k2_track_rubber_${side < 0 ? 'L' : 'R'}`;
     m.position.set(x, y, z);
     m.castShadow = false;
     m.receiveShadow = true;
+    if (runningGear) m.userData.runningGear = true;
     P.hullG.add(m);
     P.disposables.push(geo);
     return m;
@@ -840,17 +841,17 @@ function buildK2(P) {
   // nested visual discs restore the full idler/sprocket mass visible through
   // the band without moving that certified outer track envelope.
   for (const s of [-1, 1]) {
-    hullRubberLane(s, cylX(0.34, 0.19, P.q ? 22 : 14), s * 1.375, 0.72, 3.08);
-    P.add('hullDetail', cylX(0.23, 0.205, P.q ? 18 : 12), s * 1.375, 0.72, 3.08);
-    hullRubberLane(s, cylX(0.34, 0.19, P.q ? 22 : 14), s * 1.375, 1.10, -3.08);
-    P.add('hullDetail', cylX(0.23, 0.205, P.q ? 18 : 12), s * 1.375, 1.10, -3.08);
+    hullRubberLane(s, cylX(0.34, 0.19, P.q ? 22 : 14), s * 1.375, 0.72, 3.08, true);
+    P.add('hullRunningGearDetail', cylX(0.23, 0.205, P.q ? 18 : 12), s * 1.375, 0.72, 3.08);
+    hullRubberLane(s, cylX(0.34, 0.19, P.q ? 22 : 14), s * 1.375, 1.10, -3.08, true);
+    P.add('hullRunningGearDetail', cylX(0.23, 0.205, P.q ? 18 : 12), s * 1.375, 1.10, -3.08);
     // Visible ISU knuckles and canted arms sit in the open skirt cuts.  They
     // are nested inside the certified shoe lane, adding the source model's
     // suspension depth without widening the running-gear silhouette.
     for (const z of [2.48, 1.49, 0.50, -0.49, -1.48, -2.47]) {
-      P.add('hullDetail', cylX(0.105, 0.245, P.q ? 16 : 10), s * 1.39, 0.55, z);
-      P.add('hullDark', cylX(0.045, 0.258, P.q ? 14 : 8), s * 1.39, 0.55, z);
-      P.add('hullDetail', box(0.070, 0.075, 0.42), s * 1.46, 0.83, z + 0.16, s * 0.62, 0, 0);
+      P.add('hullRunningGearDetail', cylX(0.105, 0.245, P.q ? 16 : 10), s * 1.39, 0.55, z);
+      P.add('hullRunningGearDark', cylX(0.045, 0.258, P.q ? 14 : 8), s * 1.39, 0.55, z);
+      P.add('hullRunningGearDetail', box(0.070, 0.075, 0.42), s * 1.46, 0.83, z + 0.16, s * 0.62, 0, 0);
     }
   }
   // Near-black bay walls behind the wheel line (type10 §B8.1 device).  The
@@ -858,8 +859,8 @@ function buildK2(P) {
   // wall continued at ground level behind both end wheels and manufactured
   // the same two "hanging track" strips even after the real band was fixed.
   for (const s of [-1, 1]) {
-    P.add('hullShadow', box(0.02, 1.23, 2.70), s * 1.10, 0.69, 0.15);
-    const bayWall = (z0, b0, z1, b1) => P.add('hullShadow', slab(
+    P.add('hullRunningGearDark', box(0.02, 1.23, 2.70), s * 1.10, 0.69, 0.15);
+    const bayWall = (z0, b0, z1, b1) => P.add('hullRunningGearDark', slab(
       [s * 0.94, b0, z0], [s * 0.96, b0, z0], [s * 0.96, b1, z1], [s * 0.94, b1, z1],
       [s * 0.94, 1.305, z0], [s * 0.96, 1.305, z0], [s * 0.96, 1.305, z1], [s * 0.94, 1.305, z1]));
     bayWall(-1.20, 0.075, -2.70, 0.40);
@@ -906,7 +907,8 @@ function buildK2(P) {
       [-1.05, ba, za], [1.05, ba, za], [1.05, bb, zb], [-1.05, bb, zb],
       [-1.05, ta, za], [1.05, ta, za], [1.05, tb, zb], [-1.05, tb, zb]));
   }
-  P.add('hull', box(3.32, 0.50, 2.50), 0, 1.41, -2.25);                        // rear upper band, z -3.50..-1.00
+  P.add('hull', box(2.10, 0.50, 2.50), 0, 1.41, -2.25);                        // deep rear core remains between the track lanes
+  P.add('hull', box(3.32, 0.09, 2.50), 0, 1.615, -2.25);                      // full-width armored skin stays above the complete shoe return
   P.add('hull', box(3.32, 0.40, 2.30), 0, 1.36, 0.15);                         // lower mid deck, z -1.00..1.30
   P.add('hull', slab(                                                          // raked stern face: lower edge rises into the rear plate
     [-1.66, 1.04, -3.50], [1.66, 1.04, -3.50], [1.66, 1.35, -3.74], [-1.66, 1.35, -3.74],
@@ -1799,15 +1801,15 @@ function buildK1A1(P) {
   // near-black bay walls behind the wheel line (type10 §B8.1 device,
   // critic r1 gear-read order)
   for (const s of [-1, 1]) {
-    P.add('hullShadow', box(0.02, 0.90, 5.60), s * 1.06, 0.52, 0.05);
+    P.add('hullRunningGearDark', box(0.02, 0.90, 5.60), s * 1.06, 0.52, 0.05);
   }
 
   // hull: belly tub, sponson band with the print's TWO deck levels (raised
   // 1.61 engine deck aft of −2.00, 1.475 forward deck), §B1 ONE 6.4°
   // glacis plane to the 1.24 bow lip, pointed prow over the 40° chin.
-  P.add('hull', box(2.04, 0.60, 6.90), 0, 0.70, -0.05);                        // belly ±1.02, y 0.40..1.00, z -3.50..+3.40
+  P.add('hull', box(1.94, 0.60, 6.90), 0, 0.70, -0.05);                        // belly ±0.97 stays between the native shoe lanes
   P.add('hull', slab(                                                          // outward-canted sponson shoulders replace the former vertical body box
-    [-1.42, 1.10, 1.75], [1.42, 1.10, 1.75], [1.42, 1.10, -3.70], [-1.42, 1.10, -3.70],
+    [-1.42, 1.16, 1.75], [1.42, 1.16, 1.75], [1.42, 1.16, -3.70], [-1.42, 1.16, -3.70],
     [-1.685, 1.475, 1.75], [1.685, 1.475, 1.75], [1.685, 1.475, -3.70], [-1.685, 1.475, -3.70]));
   P.add('hull', slab(                                                          // raised engine deck retains the same sovereign top plane
     [-1.60, 1.475, -2.00], [1.60, 1.475, -2.00], [1.60, 1.475, -3.70], [-1.60, 1.475, -3.70],
@@ -1816,16 +1818,16 @@ function buildK1A1(P) {
     [-1.20, 1.24, 3.70], [1.20, 1.24, 3.70], [1.25, 1.20, 3.58], [-1.25, 1.20, 3.58],
     [-1.685, 1.475, 1.60], [1.685, 1.475, 1.60], [1.685, 1.475, 1.42], [-1.685, 1.475, 1.42]));
   P.add('hull', slab(                                                          // nose lip face — RECEDING (critic r1: no vertical bow faces)
-    [-1.02, 1.02, 3.68], [1.02, 1.02, 3.68], [1.02, 1.02, 3.62], [-1.02, 1.02, 3.62],
-    [-1.02, 1.24, 3.72], [1.02, 1.24, 3.72], [1.02, 1.22, 3.64], [-1.02, 1.22, 3.64]));
+    [-0.96, 1.02, 3.68], [0.96, 1.02, 3.68], [0.96, 1.02, 3.62], [-0.96, 1.02, 3.62],
+    [-0.96, 1.24, 3.72], [0.96, 1.24, 3.72], [0.96, 1.22, 3.64], [-0.96, 1.22, 3.64]));
   P.add('hull', slab(                                                          // 40° chin plane up to the lip (the K1 pointed prow)
-    [-1.02, 0.40, 3.00], [1.02, 0.40, 3.00], [1.02, 0.40, 2.80], [-1.02, 0.40, 2.80],
-    [-1.02, 1.02, 3.68], [1.02, 1.02, 3.68], [1.02, 1.00, 3.58], [-1.02, 1.00, 3.58]));
-  P.add('hull', box(2.00, 0.12, 0.24), 0, 0.36, 3.10);                         // toe beam under the chin root
+    [-0.96, 0.40, 3.00], [0.96, 0.40, 3.00], [0.96, 0.40, 2.80], [-0.96, 0.40, 2.80],
+    [-0.96, 1.02, 3.68], [0.96, 1.02, 3.68], [0.96, 1.00, 3.58], [-0.96, 1.00, 3.58]));
+  P.add('hull', box(1.88, 0.12, 0.24), 0, 0.36, 3.10);                         // toe beam stays between the idler lanes
   for (const s of [-1, 1]) P.add('hullDetail', box(0.13, 0.11, 0.15), s * 0.60, 0.62, 3.42); // bow tow hooks
   // rear: center-lane lower plate + full-width upper, louvred exhaust
   // grilles, taillights, convoy plate, flaps.
-  P.add('hull', box(2.04, 0.60, 0.10), 0, 0.70, -3.66);
+  P.add('hull', box(1.94, 0.60, 0.10), 0, 0.70, -3.66);
   P.add('hull', box(3.37, 0.32, 0.10), 0, 1.30, -3.66);
   for (const s of [-1, 1]) {
     P.add('hullDark', box(0.66, 0.34, 0.05), s * 0.88, 1.30, -3.715);          // exhaust grilles
