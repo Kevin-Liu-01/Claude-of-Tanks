@@ -312,6 +312,12 @@ function buildT72B87(P) {
   const dxB = 1.503;
   P.decal('turret', 'number', P.spec.visual.number || '', 0.22, [dxB, 0.105, -0.20], Math.PI / 2);
   P.decal('turret', 'number', P.spec.visual.number || '', 0.22, [-dxB, 0.105, -0.20], -Math.PI / 2);
+  // Preserve the accepted upper hull and raise only its broad sponson
+  // underside above the native six-wheel return.  The old flat underside
+  // occupied the same 18 cm vertical band as the animated loop.
+  P.raiseTrackCorridor(['hull'], {
+    laneInnerX: 1.42, floorY: 1.14, zMin: -1.58, zMax: 2.52,
+  });
   P.topY = 1.2;
 }
 
@@ -1318,6 +1324,7 @@ function buildT72B3M(P) {
       P.disposables.push(slotFlat);
       const slotMesh = new THREE.Mesh(
         KIT.xform(box(0.011, 0.21, 0.64), s * 1.7055, 1.205, -3.97 + rj), slotFlat);
+      slotMesh.userData.runningGear = true;
       P.hullG.add(slotMesh);
       P.disposables.push(slotMesh.geometry);
     }
@@ -1877,6 +1884,7 @@ function buildT72B3M(P) {
     P.disposables.push(gapFlat);
     const gapMesh = (w, h, d, x, y, z) => {
       const mesh = new THREE.Mesh(KIT.xform(box(w, h, d), x, y, z), gapFlat);
+      mesh.userData.runningGear = true;
       P.hullG.add(mesh);
       P.disposables.push(mesh.geometry);
     };
@@ -2166,7 +2174,8 @@ function buildT72B3M(P) {
     // 0.51 -> 0.50 (one AA row). The r10 "15 rows LOW" decodes as the TONE
     // hem (bright tabs ending at 0.745) vs the ref's 0.50 wall foot — the
     // fix is the dark-gap disc band below 0.50, not a hem move.
-    P.add('hull', box(0.014, 0.40, 4.36), s * 1.606, 0.70, -1.10);
+    P.add(s < 0 ? 'hullTrackGuardL' : 'hullTrackGuardR',
+      box(0.014, 0.40, 4.36), s * 1.700, 0.70, -1.10);
     // r11 glacis lash-rail stubs: ref side tops staircase 1.341@0.719 /
     // 1.341@0.826 / 1.315@0.933 (deck) / 1.341@1.041 — three 1.347-top
     // stubs seated in the col interiors, the 0.933 window left to the deck
@@ -4302,6 +4311,18 @@ function buildT72B3M(P) {
       }
     });
   });
+  // The dark walls and thin shadow sheets below the skirt are authored
+  // suspension-bay occlusion, not armor.  Move only those low, lane-bound
+  // parts to explicit running-gear buckets; spare links and deck hardware
+  // remain ordinary hull-owned stowage.  The actual camouflaged hull floor
+  // is then lifted into a supported sponson tunnel above the shoe course.
+  P.rebucketParts(['hullShadow', 'hullTrack'], 'hullRunningGearDark', (_geo, b) =>
+    b.max.y <= 1.10 && (Math.abs(b.min.x) >= 1.05 || Math.abs(b.max.x) >= 1.05));
+  P.rebucketParts(['hullDark'], 'hullRunningGearDark', (_geo, b) =>
+    b.max.y <= 0.36 && b.min.z >= -3.32 && b.max.z <= 1.18);
+  P.raiseTrackCorridor(['hull'], {
+    laneInnerX: 0.95, floorY: 1.14, zMin: -3.32, zMax: 1.22,
+  });
   P.topY = 1.3;
 }
 
@@ -4558,6 +4579,9 @@ function buildT72BU(P) {
   // stay fixed.
   P.gunG.scale.x = 0.68;
   P.gunG.scale.y = 0.68;
+  P.raiseTrackCorridor(['hull'], {
+    laneInnerX: 1.42, floorY: 1.22, zMin: -2.26, zMax: 2.54,
+  });
   P.topY = 1.25;
 }
 

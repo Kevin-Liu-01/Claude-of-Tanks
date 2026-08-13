@@ -509,9 +509,12 @@ function buildAriete(P) {
   buildRunningGear(P, {
     style: 'rubber', wheelR: 0.345, wheelW: 0.21, wheelY: 0.43, xc: 1.3725,
     wheelZs,
-    sprocket: { z: -3.12, y: 0.86, r: 0.21 }, idler: { z: 3.30, y: 0.945, r: 0.09 },   // (90-ladder r2: a +0.035 sprocket raise chased the far-stern 0.58-0.70 rake wants and was REVERTED — the tangent ramp rose with the wrap and printed +0.017 on five matched mid-ramp cols: hull 85.0 -> 84.2; the 0.04-class far-stern bottoms stay the cheaper residual) (r3 wrap break: small HIGH idler — band annulus [0.79..1.10] at the 3.57 apex col ≈ the ref's [0.786..1.01]; band far 3.525/pads 3.545 stay clear of the certified 3.686 nose col at 3.581; wrap top 1.175 keeps 15 mm under the 1.19 crest bottom, §B4 exact-clear)
+    // The former r=.09 nominal idler vanished behind the first road wheel and
+    // forced the linked course into a near-vertical stack.  Restore a real
+    // visible non-driven terminal ahead of the seven road wheels.
+    sprocket: { z: -3.12, y: 0.86, r: 0.21 }, idler: { z: 3.18, y: 0.70, r: 0.24 },
     rollers: [1.95, 0.70, -0.65, -1.80].map((z) => ({ z, y: 0.88, r: 0.08 })),
-    trackW: 0.615, topY: 0.88, botY: 0.055, contactZF: 2.22, contactZR: -2.05, paintedEnds: true, coveredTop: true, arms: true,
+    trackW: 0.615, topY: 0.88, botY: 0.055, contactZF: 2.55, contactZR: -2.05, paintedEnds: true, coveredTop: true, arms: true,
   });
   // Shallow concentric faces on the existing seven wheel stations.  The
   // physical rubber tires and course remain owned by buildRunningGear; these
@@ -1274,24 +1277,14 @@ function buildLeclerc(P) {
     // individual shoes remain concentric and share one authored ownership.
     xcLeft: 1.315, xcRight: 1.280,
     wheelZs,
-    sprocket: { z: -3.00, y: 0.84, r: 0.14 },
-    idler: { z: 3.27, y: 1.10, r: 0.14 },
-    // Source-profiled native loop.  These are track centreline knots, not
-    // hull fills: the animated band and linked shoes follow the measured
-    // Leclerc ramp/knee/crest silhouette themselves.  The former solid
-    // `hullTrackTrim` wedges duplicated this envelope inside the moving
-    // course and produced the visible plates in front of the tracks.
-    loopPoints: [
-      [-3.18, 0.91], [-3.07, 0.91], [-2.96, 0.91], [-2.85, 0.86],
-      [-2.19, 0.86], [2.46, 0.91], [2.574, 0.91], [2.91, 0.91],
-      [3.02, 0.91], [3.13, 1.26], [3.24, 1.36], [3.30, 1.36],
-      [3.42, 1.16], [3.42, 0.915], [3.30, 0.895], [3.20, 0.728],
-      [3.10, 0.546], [3.00, 0.448], [2.91, 0.385], [2.574, 0.193],
-      [2.46, 0.141], [2.30, 0.095], [-2.19, 0.126], [-2.85, 0.515],
-      [-2.96, 0.687], [-3.07, 0.691], [-3.18, 0.915],
-    ],
+    // Real painted terminal assemblies replace the tiny r=.14 drums.  The
+    // native tangent solver now owns both transitions; the retired hand-laid
+    // loop was the source of the vertical front shoe pile and kinked rear run.
+    sprocket: { z: -2.85, y: 0.82, r: 0.27 },
+    idler: { z: 3.18, y: 0.78, r: 0.27 },
     rollers: [1.95, 1.05, 0.15, -0.80, -1.70].map((z) => ({ z, y: 0.88, r: 0.08 })),
     trackW: 0.630, trackTh: 0.07, topY: 0.90, botY: 0.055,
+    contactZF: 2.34, contactZR: -2.12,
     endRingSpan: 0.56,
     linkPitchM: 0.11, shoeRadialScale: 0.61, padGroundCenter: 0.069,
     padCornerFloor: 0.02, padHugZ0: 2.40,
@@ -2055,7 +2048,7 @@ function buildT80UNative2026(P) {
     rollers: [1.80, 0.90, 0, -0.90, -1.80].map((z) => ({ z, y: 0.90, r: 0.08 })),
     trackW: 0.48, topY: 0.87, botY: 0.055, paintedEnds: true, coveredTop: true, arms: true,
   });
-  wheelRecessAt(P, wheelZs, 1.42, 0.42, 0.335, 0.21);
+  wheelRecessAt(P, wheelZs, 1.42, 0.42, 0.335, 0.21, 'hullRunningGearDark');
 
   // ---- turret: wide full-shouldered dome under the K-5 CLAMSHELL ----
   // Raise the complete rotating package onto the source roof datum.  A
@@ -2181,6 +2174,13 @@ function buildT80UNative2026(P) {
   // row and the 0.115 band at z 2.6-3.2 moved that row's registration)
   buildGun(P, { len: 5.51, r: 0.068, sleeve: true, evac: 0.47, evacR: 1.45, collar: false, baseR: 0.15 });
   muzzleBore(P, 0.068, 5.49);                                                  // §B3.1 muzzle bore (shadow-named)
+  // The shallow dark strips at wheel height are suspension-bay backing;
+  // identify only those low parts as running gear.  The camouflaged
+  // sponson underside remains hull-owned and is physically raised above the
+  // six-wheel return without moving the accepted deck or turret envelope.
+  P.raiseTrackCorridor(['hull'], {
+    laneInnerX: 0.95, floorY: 1.22, zMin: -2.62, zMax: 1.26,
+  });
   P.topY = 1.15;
 }
 
@@ -2400,7 +2400,7 @@ function buildType90(P) {
     // patch PINNED 2.24/-2.40 (ref ramp liftoffs read 2.28/-2.42 — the free
     // patch ran to the wheel extremes and held the belly grounded 0.15-0.25
     // past both liftoffs, 0.08-0.12 deep across 10 ramp cols)
-    sprocket: { z: -2.98, y: 0.84, r: 0.14 }, idler: { z: 3.24, y: 0.73, r: 0.19 },   // (r6c §B4: idler y 0.77 -> 0.73 — the raised top-run/wrap crown shared 2 cm voxels with hull content at y 1.02-1.06 / z 3.06-3.22; the wrap-annulus col scores are y-symmetric about the band center and hold at 0.73)
+    sprocket: { z: -2.98, y: 0.84, r: 0.17 }, idler: { z: 3.24, y: 0.73, r: 0.19 },
     rollers: [1.70, 0.60, -0.50, -1.60].map((z) => ({ z, y: 0.95, r: 0.08 })),
     trackW: 0.582, topY: 0.92, botY: 0.055, contactZF: 2.18, contactZR: -2.26, paintedEnds: true, coveredTop: true, arms: true,
   });

@@ -939,7 +939,7 @@ export const FRONT_DRIVE_EXCEPTION_IDS = Object.freeze([
 const FRONT_DRIVE_EXCEPTION_SET = new Set(FRONT_DRIVE_EXCEPTION_IDS);
 
 export function runningGearLayoutReceipt(tankId, cfg) {
-  const { sprocket, idler, wheelZs = [], rollers = [] } = cfg;
+  const { sprocket, idler, wheelZs = [], rollers = [], wheelR = null } = cfg;
   if (!sprocket || !idler || !wheelZs.length) {
     throw new Error(`${tankId}: running gear requires sprocket, idler and road-wheel stations`);
   }
@@ -957,6 +957,24 @@ export function runningGearLayoutReceipt(tankId, cfg) {
   if (!(roadZRear > zRear && roadZFront < zFront)) {
     throw new Error(`${tankId}: road-wheel centers must remain between both terminal wheels`);
   }
+  const frontTerminal = expectedFrontDrive ? sprocket : idler;
+  const rearTerminal = expectedFrontDrive ? idler : sprocket;
+  const frontTerminalMargin = wheelR
+    ? (frontTerminal.z + frontTerminal.r) - (roadZFront + wheelR)
+    : null;
+  const rearTerminalMargin = wheelR
+    ? (roadZRear - wheelR) - (rearTerminal.z - rearTerminal.r)
+    : null;
+  const terminalRatioFloor = cfg.terminalRatioFloor ?? 0.45;
+  if (wheelR && cfg.terminalScaleException !== true) {
+    if (idler.r / wheelR + 1e-6 < terminalRatioFloor
+        || sprocket.r / wheelR + 1e-6 < terminalRatioFloor) {
+      throw new Error(`${tankId}: idler and final-drive sprocket must remain visibly distinct terminal wheels`);
+    }
+    if (frontTerminalMargin < -1e-6 || rearTerminalMargin < -1e-6) {
+      throw new Error(`${tankId}: road-wheel silhouette must remain between both terminal-wheel silhouettes`);
+    }
+  }
   return Object.freeze({
     tankId,
     frontEnd: frontIsSprocket ? 'sprocket' : 'idler',
@@ -968,6 +986,17 @@ export function runningGearLayoutReceipt(tankId, cfg) {
     zRear,
     roadZFront,
     roadZRear,
+    roadWheelRadius: wheelR,
+    idlerRadius: idler.r,
+    sprocketRadius: sprocket.r,
+    idlerToRoadRatio: wheelR ? idler.r / wheelR : null,
+    sprocketToRoadRatio: wheelR ? sprocket.r / wheelR : null,
+    // A terminal must lead the complete road-wheel silhouette, not merely
+    // have its centre a few centimetres farther forward.  Publishing both
+    // outer-envelope margins lets the fleet lint catch the exact failure
+    // where a tiny nominal idler disappears behind the first road wheel.
+    frontTerminalMargin,
+    rearTerminalMargin,
   });
 }
 
@@ -1006,7 +1035,11 @@ function buildRunningGear(P, cfg) {
   // the native mechanical station count for lineage/provenance checks.
   hullG.userData.nativeRoadWheelStations = wheelZs.length;
   (hullG.userData.nativeRunningGearLayouts ||= []).push(
-    runningGearLayoutReceipt(P.specId, { sprocket, idler, wheelZs, rollers, frontDrive }),
+    runningGearLayoutReceipt(P.specId, {
+      sprocket, idler, wheelZs, rollers, wheelR, frontDrive,
+      terminalRatioFloor: cfg.terminalRatioFloor,
+      terminalScaleException: cfg.terminalScaleException,
+    }),
   );
 
   // Torsion arms are suspension-owned geometry. Keep them in the dedicated
@@ -4232,6 +4265,49 @@ export function createTank(specId, engineCtx, opts = {}) {
         for (const geo of buckets[name] || []) geo.translate(x, y, z);
       }
     },
+    // Move an authored primitive between material-equivalent ownership
+    // buckets before merge.  This is deliberately predicate-driven: strict
+    // track lint may exempt a real wheel-bay backer or hub fitting only when
+    // the profile names that exact part as suspension-owned.  It must never
+    // blanket-exempt a hull/skirt bucket by proximity alone.
+    rebucketParts(fromNames, toName, predicate) {
+      const dst = buckets[toName] || (buckets[toName] = []);
+      for (const fromName of fromNames.flat()) {
+        const src = buckets[fromName] || [];
+        const keep = [];
+        for (const geo of src) {
+          if (!geo.boundingBox) geo.computeBoundingBox();
+          if (predicate(geo, geo.boundingBox, fromName)) dst.push(geo);
+          else keep.push(geo);
+        }
+        buckets[fromName] = keep;
+      }
+    },
+    // Raise only the underside vertices of explicitly named hull buckets out
+    // of a native track lane.  Upper armor, width, plan and station geometry
+    // remain untouched; the result is a real sloped sponson/keel clearance,
+    // not an audit exclusion.  Profiles provide their measured lane start
+    // and required floor because terminal radii differ by family.
+    raiseTrackCorridor(names, { laneInnerX, floorY, zMin = -Infinity, zMax = Infinity }) {
+      for (const name of names.flat()) {
+        for (const geo of buckets[name] || []) {
+          const pos = geo.getAttribute('position');
+          if (!pos) continue;
+          let changed = false;
+          for (let i = 0; i < pos.count; i++) {
+            const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+            if (Math.abs(x) + 1e-6 < laneInnerX || y + 1e-6 >= floorY || z < zMin || z > zMax) continue;
+            pos.setY(i, floorY);
+            changed = true;
+          }
+          if (!changed) continue;
+          pos.needsUpdate = true;
+          geo.computeVertexNormals();
+          geo.computeBoundingBox();
+          geo.computeBoundingSphere();
+        }
+      }
+    },
     forEachBucketPart(names, visitor) {
       for (const name of names.flat()) {
         for (const geo of buckets[name] || []) {
@@ -4283,7 +4359,8 @@ export function createTank(specId, engineCtx, opts = {}) {
     if (bucket === 'hullTrackGuardL' || bucket === 'hullTrackGuardR') {
       mesh.userData.trackGuard = true;
     }
-    if (bucket === 'hullRunningGearDark' || bucket === 'hullRunningGearDetail') {
+    if (bucket === 'hullRunningGearDark' || bucket === 'hullRunningGearDetail'
+        || bucket === 'hullTrackTrimL' || bucket === 'hullTrackTrimR') {
       mesh.userData.runningGear = true;
     }
     // Track-containment law (BUILD-STANDARD SS-B4): tag track-family bucket

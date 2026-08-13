@@ -505,6 +505,13 @@ function buildT80Line(P, v) {
     mg.position.set(0.42, 0.54, -0.55);
     P.turretG.add(mg);
   }
+  // Open the turbine-hull suspension tunnel over the native six-wheel
+  // return.  Only the lower outer sponson vertices move; the arrow bow,
+  // overhanging stern, deck and turret stations retain their certified
+  // silhouettes for all three marks.
+  P.raiseTrackCorridor(['hull'], {
+    laneInnerX: 1.00, floorY: 1.28, zMin: -2.36, zMax: 2.52,
+  });
   P.topY = 1.20;
 }
 
@@ -756,7 +763,9 @@ function buildT84(P) {
     // outside the ±0.9720 tub-step bins (measured, tmp-t84-aabbprobe).
     style: 'rubber', wheelR: 0.35, wheelW: 0.24, wheelY: 0.40, xc: 1.24, dishR: 0.85,
     wheelZs: evenStations(6, 4.11, -1.225),
-    sprocket: { z: -3.88, y: 0.74, r: 0.27 }, idler: { z: 1.78, y: 0.74, r: 0.15 },
+    // The front terminal remains distinct at 46% of the road-wheel radius,
+    // but its course is lowered below the T-84 bow instead of cutting it.
+    sprocket: { z: -3.88, y: 0.74, r: 0.27 }, idler: { z: 1.78, y: 0.65, r: 0.16 },
     rollers: [-2.30, -0.70, 0.90].map((z) => ({ z, y: 0.80, r: 0.08 })),
     trackW: 0.50, topY: 0.82, botY: 0.05, paintedEnds: true, coveredTop: true, arms: false,
     contactZF: 0.63, contactZR: -3.10,
@@ -795,7 +804,8 @@ function buildT84(P) {
   ruSkirtBand(P, { x: 1.72, th: 0.05, z0: -2.20, z1: -0.10, yTop: 1.3701, yBot: 0.64, panels: 5, lipX: 1.737, lipY: 0.95 });
   ruSkirtBand(P, { x: 1.72, th: 0.05, z0: -0.10, z1: 0.86, yTop: 1.2965, yBot: 0.64, panels: 3, lipX: 1.737, lipY: 0.95 });
   for (const s of [-1, 1]) for (let i = 0; i < 10; i++) {
-    P.add('hull', box(0.045, 0.40, 0.426), s * 1.6825, 0.46, -3.55 + (i + 0.5) * 0.441);
+    P.add(s < 0 ? 'hullTrackGuardL' : 'hullTrackGuardR',
+      box(0.045, 0.40, 0.426), s * 1.6825, 0.46, -3.55 + (i + 0.5) * 0.441);
   }
   // continuous lip rail at EXACTLY ±1.78 (widthM anchor; plan front 2.21 /
   // rear −4.36 at the outermost columns ride here, y 0.93..0.97 per the
@@ -1029,6 +1039,9 @@ function buildT84(P) {
   P.addGunExtra(box(0.40, 0.235, 0.71), 0, 0.018, 2.15);       // evac box: band 1.582..1.817 @ world 2.40..3.11, plan halfW 0.20 (gun-local seat unchanged — rides the axis)
   P.decal('turret', 'number', P.spec.visual.number || '', 0.26, [1.215, 0.2665, 0.20], Math.PI / 2);
   P.decal('turret', 'number', P.spec.visual.number || '', 0.26, [-1.215, 0.2665, 0.20], -Math.PI / 2);
+  P.raiseTrackCorridor(['hull'], {
+    laneInnerX: 0.60, floorY: 1.12, zMin: -4.34, zMax: 1.94,
+  });
   P.topY = 1.40;
 }
 

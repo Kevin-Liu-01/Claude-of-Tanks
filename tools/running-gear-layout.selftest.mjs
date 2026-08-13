@@ -41,6 +41,20 @@ assert.throws(
   }),
   /road-wheel centers must remain between/,
 );
+assert.throws(
+  () => runningGearLayoutReceipt('tiny_idler_fixture', {
+    sprocket: { z: -3.2, r: 0.28 }, idler: { z: 3.3, r: 0.09 },
+    wheelR: 0.36, wheelZs: [-2.4, -1.6, -0.8, 0, 0.8, 1.6, 2.4],
+  }),
+  /visibly distinct terminal wheels/,
+);
+assert.throws(
+  () => runningGearLayoutReceipt('road_wheel_ahead_fixture', {
+    sprocket: { z: -3.2, r: 0.28 }, idler: { z: 2.65, r: 0.24 },
+    wheelR: 0.50, wheelZs: [-2.4, -1.6, -0.8, 0, 0.8, 1.6, 2.4],
+  }),
+  /road-wheel silhouette must remain between/,
+);
 
 assert.equal(new Set(FRONT_DRIVE_EXCEPTION_IDS).size, FRONT_DRIVE_EXCEPTION_IDS.length,
   'front-drive exception registry must not contain duplicate ids');
@@ -69,7 +83,20 @@ for (const [id, frontEnd] of [
   const layouts = tank.root.getObjectByName('rig_hull')?.userData?.nativeRunningGearLayouts;
   assert.ok(layouts?.length, `${id} publishes native running-gear layout metadata`);
   assert.equal(layouts[0].frontEnd, frontEnd, `${id} terminal order`);
+  assert.ok(layouts[0].idlerToRoadRatio >= 0.45, `${id} has a visibly readable idler`);
+  assert.ok(layouts[0].sprocketToRoadRatio >= 0.45, `${id} has a visibly readable final-drive sprocket`);
+  assert.ok(layouts[0].frontTerminalMargin >= 0, `${id} has no road wheel ahead of its front terminal`);
+  assert.ok(layouts[0].rearTerminalMargin >= 0, `${id} has no road wheel behind its rear terminal`);
   tank.dispose();
 }
 
-console.log('running-gear-layout: front idler, road-wheel span, support rollers, rear drive and explicit front-drive exceptions verified');
+{
+  const t90m = createTank('t90m', engineCtx, {
+    geometryReceipt: true, proceduralOnly: true, quality: 'low', staticPreview: true,
+  });
+  const layouts = t90m.root.getObjectByName('rig_hull')?.userData?.nativeRunningGearLayouts;
+  assert.equal(layouts?.length, 1, 'T-90M replacement hull publishes exactly one live native course');
+  t90m.dispose();
+}
+
+console.log('running-gear-layout: visible front idler, road-wheel span, support rollers, rear drive and explicit front-drive exceptions verified');

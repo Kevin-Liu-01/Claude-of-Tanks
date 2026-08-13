@@ -780,6 +780,9 @@ export function buildT62MV1(P) {
   const dx = ringSkin(rings, 0.18) + 0.006;
   P.decal('turret', 'number', P.spec.visual.number || '', 0.22, [dx, 0.29, -0.30], Math.PI / 2);
   P.decal('turret', 'number', P.spec.visual.number || '', 0.22, [-dx, 0.29, -0.30], -Math.PI / 2);
+  P.raiseTrackCorridor(['hull'], {
+    laneInnerX: 1.28, floorY: 1.14, zMin: -2.78, zMax: 1.68,
+  });
   P.topY = 1.10;
 }
 
@@ -1378,7 +1381,7 @@ export function buildT64BV1(P) {
     belly: [[-4.29, 0.47], [-3.92, 0.40], [1.23, 0.40], [1.62, 0.47]],
     wUp: [[-4.29, 1.30], [-4.12, 1.42], [1.53, 1.42], [1.62, 1.40]],
     wLo: [[-4.29, 0.96], [1.62, 0.94]],
-    sponsonY: 0.80,
+    sponsonY: 1.14,
   });
   // sponson-top strips carry the ref's 1.197 side plateau (z -3.50..0.24,
   // tapering 1.16 to z 0.83) — segmented per the prism law
@@ -1393,8 +1396,8 @@ export function buildT64BV1(P) {
   // exact 0.78..0.91 nose band (sub-body: neither registration nor
   // hullLengthM may move; the ref's own nose cols are 0.13 thin)
   for (const s of [-1, 1]) {
-    P.add('hull', box(0.48, 0.13, 0.34), s * 1.09, 0.845, 1.755);
-    P.add('hull', box(0.40, 0.10, 0.20), s * 1.06, 0.90, 1.60, -0.45, 0, 0); // root wedge onto the glacis
+    P.add('hull', box(0.48, 0.13, 0.34), s * 1.09, 1.205, 1.755);
+    P.add('hull', box(0.40, 0.10, 0.20), s * 1.06, 1.20, 1.60, -0.45, 0, 0); // root wedge onto the glacis
   }
   ruDeck(P, { deckY: 1.045, hatchZ: 0.35, gz: -2.50, grilles: 5, gw: 1.4 });
   // rTAIL r13: hooks/eyes pulled BACK (hookZ 1.78 -> 1.60, eyeZ 1.77 ->
@@ -1404,11 +1407,15 @@ export function buildT64BV1(P) {
   // (r13e clip audit: eyes/hooks pulled INBOARD off the track lane — at the
   // default w-fraction seats they voxel-clipped the idler wrap: eyeX 1.152
   // and hook edge 1.01 vs band inner 0.99)
-  ruGlacisKit(P, { w: 3.2, y: 0.93, z: 1.53, eyeX: 0.80, eyeZ: 1.62, hookX: 0.85, hookY: 0.46, hookZ: 1.60 });
+  ruGlacisKit(P, {
+    w: 3.2, y: 1.10, z: 1.53,
+    eyeX: 0.80, eyeY: 1.05, eyeZ: 1.62,
+    hookX: 0.85, hookY: 1.10, hookZ: 1.60,
+  });
   // glacis edge mid-steps: ref plan bow is a rounded V (1.76-1.83 over
   // |x| 0.66..0.79 between the 1.55 center and the 1.93 prongs)
   for (const s of [-1, 1]) {
-    P.add('hull', box(0.30, 0.11, 0.30), s * 0.72, 0.87, 1.68);
+    P.add('hull', box(0.30, 0.11, 0.30), s * 0.72, 1.195, 1.68);
   }
   // §B3 (prism sweep 2026-08-06): the two bare glacis chevron strips become
   // the ref's K-1 cassette rows — 3 cassettes per strip at the SAME seat,
@@ -1732,8 +1739,8 @@ export function buildT64BV1(P) {
   // line. Also x -1.455 grazed the -1.442 plan boundary (2 mm) and bled
   // the whole rail band into the -1.39 col (the 2.52 plan monster; the
   // ref's -1.6 sliver there is the little bracket, which now owns it).
-  P.add('turretDetail', box(0.041, 0.198, 5.216), -1.4995, 0.055, -0.203);
-  P.add('turretDetail', box(0.03, 0.198, 2.94), 1.20, 0.055, -0.96);
+  P.add('turretDetail', box(0.041, 0.198, 5.216), -1.4995, 0.205, -0.203);
+  P.add('turretDetail', box(0.03, 0.198, 2.94), 1.20, 0.205, -0.96);
   // MG lowered to the ref's 1.845-1.847 rear-roof line (receiver top was
   // 1.936 — rTAIL r13)
   // §B3.2/§I (2026-08-06): hand nsvt() -> census FITTINGS.pintleMG. The
@@ -1790,6 +1797,15 @@ export function buildT64BV1(P) {
   const dx4 = ringSkin(rings, 0.36) + 0.02;
   P.decal('turret', 'number', P.spec.visual.number || '', 0.24, [dx4 * 0.99, 0.34, -0.55], Math.PI / 2);
   P.decal('turret', 'number', P.spec.visual.number || '', 0.24, [-dx4 * 0.99, 0.34, -0.55], -Math.PI / 2);
+  P.raiseTrackCorridor(['hull'], {
+    laneInnerX: 0.80, floorY: 1.14, zMin: -4.62, zMax: 1.90,
+  });
+  // Front tow/guard fittings and the two shallow rear seam courses are real
+  // hull hardware, so reseat the complete primitives above the return rather
+  // than relabeling them as suspension.
+  P.forEachBucketPart(['hullDark'], (geo, b) => {
+    if (b.min.z <= -3.50 && b.min.y < 1.14) geo.translate(0, 1.14 - b.min.y, 0);
+  });
   P.topY = 1.09;
 }
 
