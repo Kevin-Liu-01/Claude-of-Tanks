@@ -5,7 +5,40 @@ The private comparison GLB was used only as a quarantined visual reference;
 no comparison mesh, vertex/index payload, material, texture, rig, animation or
 runtime wrapper enters the playable or this commit.
 
-## Frozen candidate
+## Superseding armour-to-casting fit — 2026-08-13
+
+- Geometry hash: `e9ad3e89` (67 meshes / 113,856 vertices)
+- Evidence: `/private/tmp/t90-armor-fit-final-r4`
+- Integrity: 15 yaw0 + 15 yaw90 PNGs, including elevated-left profile; 30
+  files / 30 distinct SHA-256 hashes
+- Standard-order live first-party visual appraisal:
+  `[9.1,9.1,9.0,9.0,9.0,9.0,9.0,9.1,9.1,9.2,9.1,9.2,9.1,9.2]`
+  (floor 9.0; mean 9.09)
+- Exact terminal band / shoe / strict sweep: `0/0`, `0/0`, `0/0`
+- Parent audit: 0 stranded / 0 abutting / 0 dangling
+- Winding: 0 reversed / 0 mixed, zero render deficit and zero yaw-stranded
+  candidate pixels
+- Runtime rig: 10/10; muzzle-bore contrast 108.6
+
+The asymmetric pear-section casting remains unchanged. The carried armor now
+uses one coherent front-to-rear datum: inner K-5 rises into the mantlet valley,
+the middle bank owns the full cheek, the broad terminal bank turns down into
+the flank, and the lower/crown/rear-side returns share those planes. Shtora
+housings gain recessed bezels, armored brows, lower returns, latches and
+surface conduits. Both 902B banks sit on tapered shoes with visible inner
+carriers and lower braces. The command bridge is tapered to the crown while
+cupolas, sights, periscopes, NSVT, antennas, OPVT and rear packs retain broad
+turret-owned foundations.
+
+All 30 frames show a genuine quarter-turn. The complete casting, K-5 field,
+Shtora, smoke banks, gun/mantlet and roof/rear equipment move together while
+the hull and native six-wheel course remain fixed. No armor plate or fitting
+hangs over empty air, and no collision, duplicate turret mass, open sheet or
+yaw-dependent wound is visible. This explicitly supersedes `2bdd5dd8`.
+
+**PASS / KEEP `e9ad3e89`. Ordered blockers: none for this refit.**
+
+## Retired prior candidate
 
 - Geometry hash: `2bdd5dd8` (repeatable twice)
 - Meshes / vertices: 67 / 110,616
