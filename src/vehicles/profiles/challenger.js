@@ -3437,6 +3437,29 @@ function buildChallenger2(P) {
   P.decal('turret', 'number', P.spec.visual.number || '22', 0.30, [-1.48, 0.28, -1.45], -Math.PI / 2, 0, -0.05);
   P.decal('hull', 'number', 'KC91AA', 0.30, [0.80, 1.34, 3.58], 0, -1.25);
   P.decal('hull', 'soot', null, 0.55, [-0.60, 1.28, -4.075], Math.PI);
+
+  // Strict native-course ownership (owner running-gear law, 2026-08-12).
+  // The detailed Hydrogas dishes, rims, hubs, fasteners, swing arms and
+  // wheel-bay shade were historically authored into ordinary hull material
+  // buckets.  They are suspension, not armor, and legitimately occupy the
+  // same swept volume as their own wheel/shoe assembly.  Move only the low,
+  // outboard six-station hardware; real skirts, flaps and hull plates stay
+  // hull-owned and are physically lifted clear below.
+  const cr2GearPart = (_geo, b) => {
+    const cx = (b.min.x + b.max.x) * 0.5;
+    const cy = (b.min.y + b.max.y) * 0.5;
+    const cz = (b.min.z + b.max.z) * 0.5;
+    return Math.abs(cx) >= 1.24 && cy <= 0.80 && b.max.y <= 0.93
+      && cz >= -2.30 && cz <= 2.80;
+  };
+  P.rebucketParts(['hullDark'], 'hullRunningGearDark', cr2GearPart);
+  P.rebucketParts(['hullDetail'], 'hullRunningGearDetail', cr2GearPart);
+  // Preserve the accepted upper side silhouette while turning the former
+  // coincident lower curtain into a real sponson air gap.  This also raises
+  // the tips of the physical rubber flaps above both terminal wraps.
+  P.raiseTrackCorridor(['hull', 'hullDark', 'hullRubber'], {
+    laneInnerX: 1.08, floorY: 1.10, zMin: -3.55, zMax: 3.80,
+  });
   P.topY = 1.03;
 }
 // ---------------------------------------------------------------------------
