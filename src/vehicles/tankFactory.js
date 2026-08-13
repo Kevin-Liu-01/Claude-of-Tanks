@@ -4327,6 +4327,23 @@ export function createTank(specId, engineCtx, opts = {}) {
         }
       }
     },
+    // Translate complete lane-local fittings above a native shoe corridor.
+    // Unlike raiseTrackCorridor this preserves small boxes, drums, cables,
+    // tools and guard sections whose entire height starts below floorY;
+    // raising only their bottom vertices could invert those primitives.
+    liftTrackCorridorParts(names, { laneInnerX, floorY, zMin = -Infinity, zMax = Infinity }) {
+      for (const name of names.flat()) {
+        for (const geo of buckets[name] || []) {
+          if (!geo.boundingBox) geo.computeBoundingBox();
+          const bb = geo.boundingBox;
+          const laneLocal = bb.min.x >= laneInnerX - 1e-6 || bb.max.x <= -laneInnerX + 1e-6;
+          if (!laneLocal || bb.max.z < zMin || bb.min.z > zMax || bb.min.y >= floorY - 1e-6) continue;
+          geo.translate(0, floorY - bb.min.y, 0);
+          geo.computeBoundingBox();
+          geo.computeBoundingSphere();
+        }
+      }
+    },
     forEachBucketPart(names, visitor) {
       for (const name of names.flat()) {
         for (const geo of buckets[name] || []) {

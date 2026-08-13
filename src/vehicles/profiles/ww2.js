@@ -2084,6 +2084,13 @@ function buildT3485Base(P) {
   towCable(P, [[1.40, 0.97, -0.60], [1.435, 0.99, 0.35], [1.38, 0.97, 1.30]]);
   shovelTool(P, 1.41, 0.955, 1.75, 0.85);
 
+  // The terminal ramps already clear both end wheels. Lift the intact
+  // lane-local mid-span fenders/stowage above the upper shoes, then slope
+  // only the broad side-band vertices out of the same corridor.
+  const midTrackClear = { laneInnerX: 1.00, floorY: 1.14, zMin: -2.20, zMax: 2.35 };
+  P.liftTrackCorridorParts(['hull', 'hullDetail', 'hullDark', 'hullCloth', 'hullWood'], midTrackClear);
+  P.raiseTrackCorridor(['hull', 'hullDetail', 'hullDark'], midTrackClear);
+
   // ---- composite cast turret (pivot = spec armor rig: world y 1.70, ring
   // z +0.55). §B8 RESIT order 2 (TURRET RESHAPE): the faceted polyTurret
   // slab-wedge read IS/Panther-class — replaced with ONE smooth cast lathe
