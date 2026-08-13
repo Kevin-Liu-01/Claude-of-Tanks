@@ -4885,11 +4885,11 @@ function buildT72BUHybridNative2026(P) {
 }
 
 export const T72_PROFILES = {
-  // Use the previously accepted detailed family. The later compact
-  // Native2026 route was also ours, but simplified/morphed the silhouettes
-  // into visibly weaker T-72s. External GLBs remain read-only comparison
-  // oracles; no source vertex or source mesh enters runtime.
-  t72b_1987: { build: buildT72B87 },
-  t72b3m: { build: buildT72B3M },
-  t72bu: { build: buildT72BUHybridNative2026 },
+  // Keep the stronger earlier authored native family. The later route was
+  // also ours, but it visibly weakened the hull, running-gear and turret
+  // silhouettes. External GLBs remain read-only comparison oracles; no
+  // source vertex or source mesh enters runtime.
+  t72b_1987: { build: buildT72B87Native },
+  t72b3m: { build: buildT72B3Native },
+  t72bu: { build: buildT72BUNative },
 };

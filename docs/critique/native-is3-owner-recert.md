@@ -61,7 +61,7 @@ The historical comparison geometry gate remains 45.2 because that print is
 about 23–28% too tall and its gun run is about 8% short against the published
 dimensions. It is not represented as a 90+ machine score. Live visual,
 physical, track, parenting, winding and runtime evidence govern this
-first-party restoration without fabricating compatibility with the retired
+authored redesign without fabricating compatibility with the retired
 print.
 
 Final disposition: **PASS / KEEP `46539231`**. Ordered owner-visible blockers:

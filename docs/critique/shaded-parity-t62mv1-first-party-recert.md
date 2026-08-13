@@ -1,4 +1,4 @@
-# T-62MV-1 first-party restoration re-certification
+# T-62MV-1 authored redesign re-certification
 
 Date: 2026-08-13
 Candidate: `t62mv1` / `7b92f462`

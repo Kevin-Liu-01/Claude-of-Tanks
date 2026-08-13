@@ -120,19 +120,20 @@ re-freeze NEW hash, all in ONE commit.
 | isu122s | a24764b5 | RE-FROZEN 2026-08-13 (§5.151 full native-course closure: inter-track core and over-track sponson corridor corrected, suspension dressing explicitly owned, terminal stowage reseated; exact band/shoe/sweep 0/0, geometry 91.3 x2, fidelity 94.3; prior 8f420d18 retired) |
 | isu152 | 540f9d6e | RE-FROZEN 2026-08-13 (§5.151 full native-course closure: continuous inter-track core, shoe-safe wing floor, semantic wheel/bay ownership and physically cleared rear skin; exact band/shoe/sweep 0/0, geometry 92.1 x2, fidelity 94.7; prior 8e2f75c0 retired) |
 | merkava3d | 667ece84 | RE-FROZEN 2026-08-07 (§B2 under-roof closure wave §5.11: solid casting walls, gate rows EXACT, re-cert floor 9.0 on every changed view; sheets shots/critic-merkava-closure/) |
-| merkava4 | df0a5768 | RE-FROZEN 2026-08-13 (§5.159 wholly first-party Windbreaker restoration: low clipped/falling turret, open supported chain basket, seated commander/M2/panoramic/smoke/antenna suite, physical rear-rack/idler clearance, exact band+shoes+sweep 0/0, parent 0/0/0, winding clean and fresh 30-frame yaw/ownership PASS; defective imported print fully removed from runtime/candidate/UI provenance) |
+| merkava4 | df0a5768 | RE-FROZEN 2026-08-13 (§5.159 authored Windbreaker redesign: low clipped/falling turret, open supported chain basket, seated commander/M2/panoramic/smoke/antenna suite, physical rear-rack/idler clearance, exact band+shoes+sweep 0/0, parent 0/0/0, winding clean and fresh 30-frame yaw/ownership PASS; defective imported print fully removed from runtime/candidate/UI provenance) |
 | pt91m | 2cf10e23 | |
-| t72b3m | 2e314ed8 | GRADUATED 2026-08-11 (§5.117 owner-source complete rebuild: compact low T-72 hull and cast turret, deeply seated irregular B3 protection, compact Sosna/roof suite, unequal backed turret-rear cells, articulated transom and exact native six-wheel linked course; exact track 0/0 bands+shoes, parent/winding clean; commercial-print registration honestly records machine row 0 while fresh independent §B8 passes floor 9.2 / mean 9.28 x14 with genuine yaw0/90 ownership; prior 175be954 retired) |
+| t72b3m | f46418a4 | RE-FROZEN 2026-08-13 (§5.181/§5.190 stronger earlier authored native route restored after the later authored route visibly regressed its side profile; compact six-wheel hull, B3 protection and supported roof/rear suite; exact track/shoes/sweep 0/0/0, parent/winding clean, fresh 45-frame yaw packet; prior 2e314ed8 route retired) |
 | merkava1b | 78051af0 | RE-FROZEN 2026-08-07 (§B2 under-roof closure wave §5.11: solid casting walls, gate rows EXACT, re-cert floor 9.0 on every changed view; sheets shots/critic-merkava-closure/) |
 | m1a2 | 636a4860 | RE-FROZEN 2026-08-07 (CROWS-FORWARD wave §5.07: forward pose improved whole +4.1..+14.1; re-cert floor 9.1-9.2 x14 views, sheets shots/critic-sep-crowsfwd/) |
 | chieftain5 | d4f2a9a6 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | t84 | 6d66a6a9 | RE-FROZEN 2026-08-13 (§5.169 first-party T-84/T-80-family standardization: legacy reconstructed slab/tower retired from the active route; standardized turbine chassis with explicit front idler, six road wheels, support rollers and rear drive; distinct low welded/faceted T-84 shell, irregular planted protection and supported combat/rear suite; exact band+shoes+sweep 0/0/0, parent 0/0/0, fresh 45-frame floor 9.0 / mean 9.11; prior 04707a9c retired) |
-| t62mv1 | 7b92f462 | RE-FROZEN 2026-08-13 (§5.177 wholly first-party T-62MV-1 restoration: lower asymmetric cast shell, dense planted K-1 arc, seated DShK/periscopes/902B/rear kit, dedicated radial wheels and compact front-idler/five-road-wheel/no-return-roller/rear-drive course; fidelity 93.53 / minimum view 90.41 / tracks 90.30, exact band+shoes+sweep 0/0/0, parent 0/0/0, winding clean, runtime 10/10, bore PASS and fresh 45-frame elevated/yaw floor 9.0 / mean 9.09; prior 5576ccf0 retired) |
+| t62mv1 | 7b92f462 | RE-FROZEN 2026-08-13 (§5.177 stronger authored T-62MV-1 redesign: lower asymmetric cast shell, dense planted K-1 arc, seated DShK/periscopes/902B/rear kit, dedicated radial wheels and compact front-idler/five-road-wheel/no-return-roller/rear-drive course; fidelity 93.53 / minimum view 90.41 / tracks 90.30, exact band+shoes+sweep 0/0/0, parent 0/0/0, winding clean, runtime 10/10, bore PASS and fresh 45-frame elevated/yaw floor 9.0 / mean 9.09; prior 5576ccf0 retired) |
+| t64bv1 | 56e27904 | RE-FROZEN 2026-08-13 (§5.190 authored pressure hull restored without a fleet corridor deformation; front idler/rear drive remain raised above six radial road wheels, rear rack uprights reseated; exact track/shoes/sweep 0/0/0, parent 0/0/0, winding exterior clean and fresh 45-frame elevated/yaw packet; prior beff1034/90565544 corridor outputs retired) |
 | t80 | 26ca49a8 | RE-FROZEN 2026-08-13 (§5.180 first-party family visual closeout: planted cheek-joint language, low roof-service cadence, layered inboard bow and unequal backed turbine transom on the existing low pear casting; front-idler/six-road-wheel/five-return-roller/rear-drive course retained; exact band+shoes+sweep 0/0/0, contiguity 0, parent 0/0/0, winding clean and fresh 45-frame floor 9.0 / mean 9.15) |
 | t80b | d00cb6f6 | RE-FROZEN 2026-08-13 (§5.180 heavier authored brow/station mark on the same first-party turbine-hull datum, with the same layered bow/rear closeout; exact course/contiguity/parent/winding clean; fresh 45-frame floor 9.1 / mean 9.18) |
 | t80bv | 455daa6 | RE-FROZEN 2026-08-13 (§5.180 two-level irregular planted Kontakt-1, supported flank return and BV shoulder bridges over the standardized native course; exact course/contiguity/parent/winding clean; fresh 45-frame floor 9.1 / mean 9.24) |
 | m47_patton | 2fc99c50 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
-| leopard2_proto | a7eae06a | RE-FROZEN 2026-08-12; RECONCILED 2026-08-13 (§5.138 wholly first-party forward welded-loft restoration: armored nose +0.16 m, bustle +0.15 m and complete turret +0.10 m forward, with mantlet/gun, roof foundations, welds, latches and basket re-seated on the longer shell; seven native road wheels with front idler/rear drive, exact band+shoes+sweep 0/0/0, parent 0/0/0, winding clean, runtime 10/10, bore PASS and 45-frame elevated-profile/yaw floor 9.1 / mean 9.22) |
+| leopard2_proto | a7eae06a | RE-FROZEN 2026-08-12; RECONCILED 2026-08-13 (§5.138 authored forward welded-loft refinement: armored nose +0.16 m, bustle +0.15 m and complete turret +0.10 m forward, with mantlet/gun, roof foundations, welds, latches and basket re-seated on the longer shell; seven native road wheels with front idler/rear drive, exact band+shoes+sweep 0/0/0, parent 0/0/0, winding clean, runtime 10/10, bore PASS and 45-frame elevated-profile/yaw floor 9.1 / mean 9.22) |
 | leo2a4 | 4011c71c | RE-FROZEN 2026-08-12 (§5.139 first-party forward welded-loft restoration: longer connected turret and basket, re-seated mantlet/EMES/roof suite, supported zero-hole bow shoulders, seven native wheels and exact band+shoe+sweep 0/0; machine fidelity 92.14 / min view 90.18; fresh 45-frame yaw/ownership floor 9.1 / mean 9.19; prior 3a653cf9 retired) |
 | leo2a5 | dd139150 | RE-FROZEN 2026-08-12 (§5.150 inherited first-party Leopard-family/track repair re-certified and loader MG3 migrated to the canonical seated fitting: exact band/shoes/full sweep 0/0/0, parent 0/0/0, geometry 90.2, fidelity 95.09 / minimum view 95.06 and fresh 45-frame elevated-profile/yaw floor 9.3 / mean 9.44; prior e215a738 retired) |
 | leo2a6 | 8b139b48 | RE-FROZEN 2026-08-12 (§5.146 first-party Leopard 2A6 strict full-course clearance closure: supported bow shoulder, seven-wheel native course and clean sprocket/idler transitions; machine fidelity 95.4, fresh 45-frame floor 9.3 / mean 9.46; prior e99f8490 retired) |
@@ -153,7 +154,7 @@ re-freeze NEW hash, all in ONE commit.
 | k2 | 827d5ffc | GRADUATED 2026-08-08 (31st; Leclerc-method closed station loft; gate 90.1 x2 every component >=90; visual R26 floor 9.0 / mean 9.09 x14; exact Object_8/15/18/21 plan inventory, rounded asymmetric cage, countable six-station ISU gear; oracle 8d92cd1b reproducible from pristine .bak) |
 | abramsx | 976a1370 | GRADUATED 2026-08-09; RE-FROZEN 2026-08-12 (§5.130 first-party winding closure: outward lower-bow facets, XM360 tunnel jambs and open D-hood sight cheeks; fidelity 94.29 / minimum view 93.99, gate 90.4, winding 0 reversed / 0 mixed, parent clean; fresh 42-frame floor 9.3 / mean 9.49; prior 26b46ba0 retired) |
 | challenger_3 | 564057a4 | RE-FROZEN 2026-08-12 (§5.136 first-party forward-profile + strict-track re-cert: connected brow/cheeks remain extended to the mantlet, all turret fittings seated through yaw, exact native band+shoes+sweep 0/0; fidelity 93.02 / minimum whole view 92.17, fresh 45-frame floor 9.0 / mean 9.07; prior 3e5a7797 retired) |
-| challenger1 | 26a0a939 | RE-FROZEN 2026-08-13 (§5.175 restored wholly first-party `challenger1Native2026`: low organic casting, buried mantlet/cheeks, integrated commander/TOGS/MG suite, six large Hydrogas wheels and explicit front-idler/five-return-roller/rear-drive order; sponson and supported terminal aprons exact band/shoes/sweep 0/0/0, parent 0/0/0, winding clean and fresh 45-frame paired/elevated/yaw floor 9.0 / mean 9.13; prior wall-skirted runtime retired) |
+| challenger1 | 26a0a939 | RE-FROZEN 2026-08-13 (§5.175 stronger earlier authored `challenger1Native2026` route active: low organic casting, buried mantlet/cheeks, integrated commander/TOGS/MG suite, six large Hydrogas wheels and explicit front-idler/five-return-roller/rear-drive order; sponson and supported terminal aprons exact band/shoes/sweep 0/0/0, parent 0/0/0, winding clean and fresh 45-frame paired/elevated/yaw floor 9.0 / mean 9.13; later authored wall-skirted route retired) |
 | challenger2 | 3b4bd5f0 | GRADUATED 2026-08-09; RE-FROZEN 2026-08-10 (§5.89 owner fused-block repair: material-fused casemate course removed from fixed hull and repartitioned into the articulated source tree; one low ring landing + one rotating turret; gate 90.1 x2 every component >=90; standard/parent/winding clean; fresh §B8 floor 9.0 / mean 9.06 x14, yaw/load paths 9.3; oracle f44e3b46 reproducible from pristine .bak; prior 63ee160 retired) |
 | fv510 | 61023726 | RE-FROZEN 2026-08-12 (§5.129 first-party `fv510PhotoBuild`: compact six-wheel Warrior hull, authored RARDEN turret and supported slat/service package; machine fidelity 90.84 / minimum view 90.12; exact native track 0/0 and fresh 42-frame yaw/ownership floor 9.0 / mean 9.11; source-baked 7884762a/927beeb2 playables retired) |
 | m26_pershing | 2f006738 | RE-RECORDED 2026-08-08: hash moved by LANDED 5f39989 (armorM4 gunBarrel shadow-proxy 3.96->3.44; m26/m45 inherit m4a3e8 proxies — patton.js bytes unchanged); double-confirmed by builder bisect + m45-grad critic; prior 65c564c0 bore+winding re-cert lineage (floors 9.1-9.4) carries |
@@ -169,11 +170,11 @@ re-freeze NEW hash, all in ONE commit.
 | t14 | a94a2480 | RE-FROZEN 2026-08-12 (§5.131 fully first-party `buildT14`: low seven-wheel Armata hull, connected unmanned shroud, supported RWS/sensor package and exact native course; fidelity 90.53 / minimum view 91.52; 42 unique paired/yaw frames floor 9.0 / mean 9.04; source-baked `a88afa6c` playable retired) |
 | t80u | 77f9ae78 | RE-FROZEN 2026-08-12 (§5.132 fully first-party `buildT80UNative2026`: low turbine hull, connected cast/K-5 turret, supported combat/rear-service package and exact native six-wheel course; fidelity 91.51 / minimum view 90.20; 42 unique paired/yaw frames floor 9.0 / mean 9.04; source-baked `c0dc2502` playable retired) |
 | type74 | 8319dbb8 | RE-FROZEN 2026-08-11 (§5.110 authored low cast turret, five-wheel native course and supported combat/service suite; independent §B8 floor 9.1 / mean 9.29) |
-| strv103 | f4deeb6b | RE-FROZEN 2026-08-13 (§5.160 wholly first-party fixed-mount restoration: low louvred wedge, fixed L74, four large hydropneumatic road wheels, correct front-drive/rear-idler exception, supported return rollers and backed deck/rear-service suite; exact band+shoes+sweep 0/0, parent 0/0/0, winding clean, runtime 10/10 and fresh paired floor 9.0 / mean 9.03; retired external print removed from public/runtime/candidate/UI provenance) |
-| is3 | 46539231 | RE-FROZEN 2026-08-13 (§5.161 wholly first-party IS-3 restoration: pike hull, organic undercut cast dome and short race, seated DShK/roof suite, six enlarged dished road wheels with front idler/rear final drive, three return rollers and backed asymmetric stern service field; exact band+shoes+sweep 0/0, parent 0/0/0, winding clean, runtime 10/10 and fresh 45-frame paired/yaw floor 9.0 / mean 9.03; retired external print removed from public/runtime/candidate/UI provenance) |
-| ariete | 151906a0 | RE-FROZEN 2026-08-13 (§5.174 restored wholly first-party `buildArieteNative2026`: low broad cast-form turret, supported TURMS/MG/smoke/basket suite, distinct front idler + seven road wheels + four return rollers + rear final drive; bow, sponson and skirts rebuilt outside the animated course; exact band/shoes/sweep 0/0/0, parent 0/0/0, winding clean and fresh 45-frame elevated-profile/yaw PASS; prior 9b0ceebe retired) |
-| t72b_1987 | 3f2483d4 | GRADUATED 2026-08-11 (§5.114 authored low B87 hull/turret, buried K1 and native six-wheel course; independent §B8 floor 9.0 / mean 9.14) |
-| t72bu | 4b66bf6c | GRADUATED 2026-08-11 (§5.115 authored compact BU protection/station/rear package on one native six-wheel course; independent §B8 floor 9.0 / mean 9.19) |
+| strv103 | f4deeb6b | RE-FROZEN 2026-08-13 (§5.160 authored fixed-mount redesign: low louvred wedge, fixed L74, four large hydropneumatic road wheels, correct front-drive/rear-idler exception, supported return rollers and backed deck/rear-service suite; exact band+shoes+sweep 0/0, parent 0/0/0, winding clean, runtime 10/10 and fresh paired floor 9.0 / mean 9.03; retired external print removed from public/runtime/candidate/UI provenance) |
+| is3 | 46539231 | RE-FROZEN 2026-08-13 (§5.161 authored IS-3 redesign: pike hull, organic undercut cast dome and short race, seated DShK/roof suite, six enlarged dished road wheels with front idler/rear final drive, three return rollers and backed asymmetric stern service field; exact band+shoes+sweep 0/0, parent 0/0/0, winding clean, runtime 10/10 and fresh 45-frame paired/yaw floor 9.0 / mean 9.03; retired external print removed from public/runtime/candidate/UI provenance) |
+| ariete | 96d3d9e8 | RE-FROZEN 2026-08-13 (§5.174/§5.182/§5.190 stronger earlier authored `buildArieteNative2026` active: low broad cast-form turret, supported TURMS/MG/smoke/basket suite, distinct front idler + seven road wheels + four return rollers + rear drive and readable terminal faces; exact track/shoes/sweep 0/0/0, parent/winding clean, fresh 45-frame elevated/yaw PASS; later authored slab-heavy route retired) |
+| t72b_1987 | 9aa22fb4 | RE-FROZEN 2026-08-13 (§5.181/§5.190 stronger earlier authored native route active; compact low B87 hull/turret, buried K1 and exact native six-wheel course; track/shoes/sweep 0/0/0, parent/winding clean, fresh 45-frame yaw packet; prior routed presentation retired) |
+| t72bu | c3fb25ec | RE-FROZEN 2026-08-13 (§5.181/§5.190 stronger earlier authored native route active; compact BU protection/station/rear package on one exact six-wheel course; track/shoes/sweep 0/0/0, parent/winding clean, fresh 45-frame yaw packet; prior hybrid route retired) |
 | t90ms | 5076891c | GRADUATED 2026-08-11 (§5.118 authored clipped-diamond shell, Relikt, supported bustle/station and native six-wheel course; independent §B8 floor 9.0 / mean 9.18) |
 | t90a_burlak | 8d2f5d44 | RE-FROZEN 2026-08-11 (first-party clipped casting, planted protection wings, continuous shallow autoloader bustle and exact 0/0 native six-wheel course; 42-frame yaw/ownership PASS, floor 9.0 / mean 9.06; legacy registration-incompatible geometry row remains honestly unresolved) |
 
@@ -5580,9 +5581,9 @@ fixed seven-wheel native hull. No fused duplicate, stranded or empty-air
 fitting, course collision, open sheet or yaw-dependent wound is visible.
 
 **PASS / KEEP `9339e895`; retire `1c79188`. Ordered blockers: none for this
-photo-class first-party restoration.**
+authored photo-class redesign.**
 
-## 5.159 MERKAVA MK.4M FIRST-PARTY WIND BREAKER RESTORATION (2026-08-13, RE-FROZEN)
+## 5.159 MERKAVA MK.4M AUTHORED WIND BREAKER REDESIGN (2026-08-13, RE-FROZEN)
 
 The active `merkava4` is now unambiguously first-party procedural geometry.
 The old arlassar comparison print is no longer registered as a playable,
@@ -5654,10 +5655,10 @@ fire-control/aim hierarchy is separately proven by the 10/10 runtime probe.
 No course collision, stranded fitting, empty-air decoration, open sheet or
 background-visible wound appears.
 
-**PASS / KEEP `f4deeb6b`. Ordered blockers: none for this first-party
-fixed-mount restoration.**
+**PASS / KEEP `f4deeb6b`. Ordered blockers: none for this authored
+fixed-mount redesign.**
 
-## 5.161 IS-3 FIRST-PARTY RESTORATION (2026-08-13, RE-FROZEN)
+## 5.161 IS-3 AUTHORED REDESIGN (2026-08-13, RE-FROZEN)
 
 The active `is3` is wholly repository-authored procedural geometry. The
 historic comparison print was mounted read-only only for the frozen evidence
@@ -6185,14 +6186,14 @@ gates are the acceptance evidence.
 **PASS / KEEP `fcb77d1`; supersede `9cf4471c`. Ordered blockers: none for the
 pear-turret armor/equipment closeout.**
 
-## 5.174 C1 ARIETE FIRST-PARTY RESTORATION / TRACK CLOSEOUT (2026-08-13, RE-FROZEN)
+## 5.174 C1 ARIETE STRONGER AUTHORED ROUTE / TRACK CLOSEOUT (2026-08-13, RE-FROZEN)
 
-The active `ariete` route is restored to the stronger wholly repository-
-authored `buildArieteNative2026`. No source mesh, converted vertex payload,
+The active `ariete` route selects the stronger earlier repository-authored
+`buildArieteNative2026`. No source mesh, converted vertex payload,
 texture, material, rig or animation enters runtime. The retired slab-heavy
 builder remains inactive; comparison binaries are not runtime dependencies.
 
-The restored build carries the intended long low hull, broad asymmetric
+The selected build carries the intended long low hull, broad asymmetric
 cast-form turret, integrated rounded mantlet and corrected gun run. Both
 cupola wells, TURMS/optic stations, pintle MG, four-tube smoke fans, antenna
 collars and the complete open rear basket have visible plinths, brackets or
@@ -6222,15 +6223,15 @@ empty-air decoration, track collision, open sheet or yaw wound appears.
 
 **PASS / KEEP `151906a0`; supersede `9b0ceebe`. Ordered blockers: none.**
 
-## 5.175 CHALLENGER 1 FIRST-PARTY ROUTE RESTORATION (2026-08-13, RE-FROZEN)
+## 5.175 CHALLENGER 1 STRONGER AUTHORED ROUTE (2026-08-13, RE-FROZEN)
 
 Live elevated-profile comparison confirmed that the active legacy profile
 route had regressed to deep wall-like skirts, obscured running gear and a tall
-faceted turret stack. The stronger wholly repository-authored
+faceted turret stack. The stronger earlier repository-authored
 `challenger1Native2026` route is active again. No external mesh, sampled or
 converted vertex payload, texture, material, rig or animation enters runtime.
 
-The restored build carries one low organic Challenger casting with a buried
+The selected build carries one low organic Challenger casting with a buried
 trunnion/breech carrier, broad oval mantlet, cast cheek shoulders and shallow
 side/bustle courses. Commander/TOGS foundation, cupolas, periscopes, MAG,
 five-tube smoke banks, antenna collars, stowage and the supported wrap basket
@@ -6410,7 +6411,7 @@ strict mechanical gates and live gameplay assets are the acceptance evidence.
 
 **PASS / KEEP `14688339`; supersede `d8341464`. Ordered blockers: none.**
 
-## 5.179 T-64BV-1 FIRST-PARTY FAMILY RESET / NATIVE COURSE (2026-08-13)
+## 5.179 T-64BV-1 AUTHORED FAMILY RESET / NATIVE COURSE (2026-08-13)
 
 The active `t64bv1` remains wholly repository-authored procedural geometry.
 The recovered comparison print is a read-only visual oracle only; its fused
@@ -6519,7 +6520,7 @@ wound appears.
 **PASS / KEEP `26ca49a8`, `d00cb6f6`, `455daa6`; supersede `448b1161`,
 `f90b060`, `f4bc0d40`. Ordered blockers: none.**
 
-## 5.181 T-72 FAMILY FIRST-PARTY ROUTING / COURSE STANDARDIZATION (2026-08-13)
+## 5.181 T-72 FAMILY AUTHORED ROUTING / COURSE STANDARDIZATION (2026-08-13)
 
 The playable T-72 family is now explicitly routed to repository-authored
 procedural construction. Quarantined comparison GLBs remain read-only visual
@@ -6848,9 +6849,11 @@ ordered lower section, and upper armor remains untouched. Family-local bow,
 stern, skirt, cable and sponson repairs then clear the actual linked shoes
 without relabeling real hull geometry as suspension.
 
-The same landing restores the owner-selected stronger earlier authored
-Challenger 1, Ariete and T-72 routes; both the earlier and later alternatives
-are repository-authored. Plain `t90` receives the new closed clipped-pear
+That landing intended to restore the owner-selected stronger earlier authored
+Challenger 1, Ariete and T-72 routes, but its registrations actually selected
+the later, visibly weaker alternatives. Section 5.190 corrects those routes
+to the exact earlier authored builders. Both alternatives were always ours.
+Plain `t90` receives the new closed clipped-pear
 casting while its armor and stations remain seated; `t90sm` keeps its turret
 and changes only its suspension tunnel, wheel presentation and shallow skirt.
 This wording is deliberate: these are quality/route corrections among our
@@ -6913,3 +6916,84 @@ explicitly reopened visual freezes above.
 Disposition: mechanical/provenance regression **PASS**. Historical freezes
 listed above remain explicitly **REOPENED** until their applicable family
 paired/yaw re-cert rounds replace the old rows.
+
+## 5.190 AUTHORED ROUTE-DOWNGRADE REVERSAL / T-64 HULL RECOVERY (2026-08-13)
+
+The active models were already repository-authored. This is a quality and
+registration correction among our own builders, not an ownership
+"restoration." The preceding reconciliation accidentally routed Challenger 1,
+Ariete and all three T-72 variants to later authored experiments that were
+visibly worse than the earlier accepted designs. The exact earlier builder
+registrations are active again:
+
+- `challenger1Native2026` for Challenger 1 Mk.3;
+- `buildArieteNative2026` for C1 Ariete;
+- `buildT72B87Native`, `buildT72BUNative` and `buildT72B3Native` for the
+  T-72B obr. 1987, T-72BU and T-72B3M.
+
+Those routes reproduce twice as Challenger 1 **`26a0a939`** (53 meshes /
+119,775 vertices), Ariete **`96d3d9e8`** (51 / 83,799), T-72B obr. 1987
+**`9aa22fb4`** (40 / 118,415), T-72BU **`c3fb25ec`** (39 / 110,099) and
+T-72B3M **`f46418a4`** (40 / 163,031). These are the accepted earlier authored
+hashes, not approximations. Their standing >=9.0 source-relative vectors in
+Sections 5.174/5.175/5.181 remain applicable because the complete deterministic
+geometry hashes are identical again.
+
+The generic `tank-standard-check` is recorded but is not treated as authority
+to morph these models back toward incompatible comparison registrations:
+Challenger 1 passes its machine row at 90.1, while Ariete reports 81.7 and the
+three native T-72 rows report 0 because their old prints fuse/normalize hull,
+track and equipment masks differently from the authored articulated split.
+Those known rows remain honest failures; the exact accepted hashes and their
+fresh >=9.0 paired/yaw sittings remain the applicable visual gate.
+
+The broad family profile audit also found one separate live regression:
+T-64BV-1's merged hull bucket had been passed through the new generic
+suspension-corridor transform, producing a tall planar side wall that obscured
+the turret and running gear. The transform is removed from T-64. Its authored
+pressure hull, glacis, deck and side armor now retain their original primitive
+geometry. Track clearance is achieved mechanically: the free front idler and
+rear final drive remain clearly elevated above the 0.30-m six-wheel road set,
+their linked terminal course sits below the untouched bow/transom, and two
+rear-rack uprights are reseated on the supported hull-side carrier. The new
+T-64 freeze reproduces twice as **`56e27904`** (53 meshes / 97,531 vertices).
+Its quarantined comparison row remains 73.4 and is not promoted or gamed; the
+changed hull-side pixels are accepted through fresh profile/yaw evidence and
+the strict physical gates below rather than by copying that print's fused
+ownership or proportions.
+
+Fresh evidence roots are:
+
+```text
+/private/tmp/authored-route-recert-r1/{challenger1,ariete}
+/private/tmp/russian-family-recert-r2/{t72b_1987,t72bu,t72b3m}
+/private/tmp/t64-hull-recert-r3/t64bv1
+```
+
+Every candidate has 15 authored appraisal views, 15 yaw0 and 15 yaw90 frames,
+including the same elevated-left profile: **45 PNGs / 45 distinct hashes per
+vehicle**. The complete turret/equipment packages execute genuine quarter-
+turns over fixed solid hulls. Parent audit is 0 stranded / 0 abutting /
+0 dangling for all six; winding has zero reversed/mixed faces. T-64's Mode-2
+pixel candidates are the fixed upper glacis and two long hull-owned fender
+guards, confirmed by their world bounds and by yaw, not stranded turret mass.
+All six muzzle bores pass.
+
+Exact continuous-band / individual-shoe / full moving-sweep clearance is
+**0/0/0 for all six**. A separate elevated-profile and exact-track sweep of
+the 27 explicitly reported families—Type 10/74, all active Merkava marks,
+M46/M47/M48/M60 marks, T-54/Type 59, PT-91M, T-62/T-64, the T-80 line,
+Vickers Mk.1, Bradley and BMP-2—finds solid hulls and **0/0/0** course
+intersections throughout. The 73-layout selftest continues to enforce raised
+terminals and the required idler -> road wheels -> return/support system ->
+final drive -> continuous track order, with documented vehicle-specific
+exceptions only.
+
+The T-90 scope remains intentionally split: `t90sm` is a hull/running-gear
+quality pass only and retains its established turret; plain `t90` owns the
+complete clipped-pear turret replacement and its re-seated armor/equipment.
+No T-90SM turret replacement is introduced by this route correction.
+
+**PASS / KEEP `26a0a939`, `96d3d9e8`, `9aa22fb4`, `c3fb25ec`,
+`f46418a4`, `56e27904`. Ordered blockers: none for this downgrade-reversal
+and hull-recovery wave.**

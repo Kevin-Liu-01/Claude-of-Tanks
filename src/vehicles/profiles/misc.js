@@ -3662,10 +3662,9 @@ export const MISC_PROFILES = {
     turret: 'ifv', turretWidth: 1.60, turretDepth: 1.70, turretHeight: 0.93, turretFront: 0.68, turretRear: -0.85, gunLength: 4.44, gunRadius: 0.035, sleeve: false, evac: null, pano: false, mg: false, smoke: false, antennas: false,
   },
   type90: { build: buildType90 },
-  // Runtime Ariete is the stronger earlier detailed construction.
-  // The later Native2026 experiment remains available above for comparison,
-  // but must not replace the accepted, more detailed model.
-  ariete: { build: buildAriete },
+  // Keep the stronger earlier authored Ariete. The later experimental route
+  // was also ours, but visibly weakened the accepted hull/turret silhouette.
+  ariete: { build: buildArieteNative2026 },
   leclerc: { build: buildLeclerc },
   t80u: { build: buildT80UNative2026 },
   type74: { build: buildType74Native2026 },

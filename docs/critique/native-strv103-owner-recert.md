@@ -57,7 +57,7 @@ The historical fused-oracle geometry gate remains 37.1 and is explicitly not
 represented as a 90+ machine score. Its published-dimension conflicts and lack
 of component masks are documented in the tank reference sheet. Live visual,
 physical, track, parenting, winding and runtime evidence govern this
-first-party restoration without fabricating an oracle-compatible result.
+authored redesign without fabricating an oracle-compatible result.
 
 Final disposition: **PASS / KEEP `f4deeb6b`**. Ordered owner-visible blockers:
 none for this restoration.

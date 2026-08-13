@@ -1504,11 +1504,10 @@ function challenger1Native2026(P) {
 // Profiles-class family map (merged by profiledProcedurals.js — the same
 // interface every ./profiles family module exports).
 export const CHALLENGER_PROFILES = {
-  // Use the previously accepted detailed Mk.3. The later Native2026
-  // experiment simplified/morphed its hull and fighting compartment into a
-  // visibly weaker model. Both builders are ours; this route selects the
-  // stronger authored design.
-  challenger1: { build: challenger1Build },
+  // Keep the stronger earlier authored Mk.3. The later experimental route
+  // was also ours, but visibly weakened the hull and fighting-compartment
+  // silhouettes.
+  challenger1: { build: challenger1Native2026 },
 };
 
 // ===========================================================================

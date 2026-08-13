@@ -1618,8 +1618,10 @@ export function buildT64BV1(P) {
     P.add('hullRearDetail', box(0.11, 0.16, 0.05), s * 0.58, 1.00, -4.42);
   }
   for (const s of [-1, 1]) {
-    P.add('hullDark', box(0.05, 0.22, 0.08), s * 1.38, 0.95, -4.30);
-    P.add('hullDark', box(0.05, 0.22, 0.08), s * 1.38, 0.95, -3.60);
+    // Rear rack uprights land on the hull-side carrier above the return run;
+    // the old 0.95-m seat clipped the rising sprocket course.
+    P.add('hullDark', box(0.05, 0.22, 0.08), s * 1.38, 1.09, -4.30);
+    P.add('hullDark', box(0.05, 0.22, 0.08), s * 1.38, 1.09, -3.60);
   }
   // low cross-bar at -4.55: at -4.59 it UNIONED with the rack-plate sliver
   // in the -4.665 trace window (band 0.235 > 12%) and pinned hullLengthM
@@ -1637,12 +1639,16 @@ export function buildT64BV1(P) {
     // band; 1.845 clears the 1.852 boundary). r11 history: at 1.59/0.23 the
     // wrap lit the 2.01 column (hullLengthM 6.66); at z 1.50 the ref's 1.9
     // front gear line went uncovered.
-    sprocket: { z: -3.92, y: 0.66, r: 0.26 }, idler: { z: 1.53, y: 0.66, r: 0.205 },
+    // Both terminals remain decisively above the 0.30-m road-wheel centres,
+    // but sit 10 cm lower than the rejected corridor-deformation setup. That
+    // preserves the authored /____\\ course while clearing the untouched
+    // bow and transom by more than the former 3.3-cm penetration depth.
+    sprocket: { z: -3.92, y: 0.56, r: 0.26 }, idler: { z: 1.53, y: 0.56, r: 0.205 },
     rollers: [-3.04, -1.79, -0.54, 0.72].map((z) => ({ z, y: 0.72, r: 0.066 })),
     // xc 1.265 / trackW 0.55: ref front keeps the 0.356 belly line at
     // x +-0.94 (inner edge 0.99) AND ground content at 1.55 (outer 1.54 +
     // pads 1.58) — the r8 0.52 narrowing dropped the 1.55 ground columns
-    trackW: 0.55, trackTh: 0.072, topY: 0.76, botY: 0.02,
+    trackW: 0.55, trackTh: 0.072, topY: 0.68, botY: 0.02,
     contactZF: 1.44, contactZR: -3.72, paintedEnds: true, coveredTop: true, arms: true, deadSag: 0.018,
   });
   // rTAIL r13: anchor stud into the ref's 0.558..0.731 outer-tab band and
@@ -1895,9 +1901,11 @@ export function buildT64BV1(P) {
   const dx4 = ringSkin(rings, 0.36) + 0.02;
   P.decal('turret', 'number', P.spec.visual.number || '', 0.24, [dx4 * 0.99, 0.34, -0.55], Math.PI / 2);
   P.decal('turret', 'number', P.spec.visual.number || '', 0.24, [-dx4 * 0.99, 0.34, -0.55], -Math.PI / 2);
-  P.raiseTrackCorridor(['hull', 'hullDark'], {
-    laneInnerX: 0.80, floorY: 1.20, zMin: -4.62, zMax: 1.90,
-  });
+  // Preserve the authored T-64 hull verbatim.  A fleet-wide suspension-
+  // corridor transform turned its merged side/hull bucket into a tall planar
+  // wall and concealed the turret and running gear in profile.  Clearance is
+  // authored by the native track/terminal layout below, not by deforming the
+  // pressure hull after construction.
   P.topY = 1.09;
 }
 
