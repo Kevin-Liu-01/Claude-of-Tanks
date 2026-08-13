@@ -116,7 +116,7 @@ re-freeze NEW hash, all in ONE commit.
 | leo2a5 | dd139150 | RE-FROZEN 2026-08-12 (§5.150 inherited first-party Leopard-family/track repair re-certified and loader MG3 migrated to the canonical seated fitting: exact band/shoes/full sweep 0/0/0, parent 0/0/0, geometry 90.2, fidelity 95.09 / minimum view 95.06 and fresh 45-frame elevated-profile/yaw floor 9.3 / mean 9.44; prior e215a738 retired) |
 | leo2a6 | 8b139b48 | RE-FROZEN 2026-08-12 (§5.146 first-party Leopard 2A6 strict full-course clearance closure: supported bow shoulder, seven-wheel native course and clean sprocket/idler transitions; machine fidelity 95.4, fresh 45-frame floor 9.3 / mean 9.46; prior e99f8490 retired) |
 | leo2a7v | c5cb292c | RE-FROZEN 2026-08-13 (§5.156 first-party Leopard 2A7V turret-separation closeout: complete rotating package raised 12 cm with the annular bearing still broadly seated, exact track 0/0, parent 0/0/0 and fresh 45-frame paired/elevated/yaw floor 9.0 / mean 9.17; prior ec69fe94 retired) |
-| leo2_revolution | fe2dc714 | RE-FROZEN 2026-08-12 (§5.141 first-party Leopard 2 Revolution left-hull artifact + complete track-clearance repair: erroneous side cuboid retired, inter-track belly/sponson structure made physically honest, exact band/shoe/strict sweep 0/0; machine fidelity 94.2, geometry 90.2, dimensions 99.5, floaters 100; fresh 45-frame yaw/ownership floor 9.1 / mean 9.27) |
+| leo2_revolution | 2e3c3ce0 | RE-FROZEN 2026-08-13 (§5.157 first-party Leopard 2 Revolution cheek-artifact closeout: redundant 2 cm standalone card retired so the continuous loft/mid-cheek own the face; exact track 0/0, fresh 45-frame floor 9.1 / mean 9.29; prior fe2dc714 retired) |
 | m46_patton | 108806c8 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | centurion3 | bad74e60 | RE-FROZEN 2026-08-08 (no-air graduate-change: crown-ridge pedestal + discharger webs, front-low 1810px->14, re-cert floor 9.0 x17 changed views, gate 91.1 exact; prior 50273080 bore-resit lineage) |
 | m1a2_sepv2 | e8589ad6 | RE-FROZEN 2026-08-12 (§5.142 restored clean first-party SEPv2 armor/CROWS presentation, exact track corridor and yaw ownership; prior 7680a400 retired) |
@@ -5490,3 +5490,33 @@ source-component gate over the current paired, physical and ownership truth.
 
 **PASS / KEEP A7V `c5cb292c`; retire `ec69fe94`. Ordered blockers: none for
 this owner-visible turret-seat defect.**
+
+## 5.157 LEOPARD 2 REVOLUTION CHEEK CLOSEOUT (2026-08-13, RE-FROZEN)
+
+The gameplay Revolution remains fully repository-authored procedural geometry.
+Its ignored comparison GLB was mounted read-only only long enough to generate
+the paired packet, then removed; it contributes no runtime or committed asset.
+
+The owner's square artifact was a redundant 2 cm-thick standalone cheek card,
+not the primary AMAP shell. The continuous loft and broad mid-cheek slab
+already close that station. Retiring the card removes the stuck-on rectangle
+in direct front-left and close pixels without exposing a hole, changing the
+accepted outer envelope or introducing another cosmetic patch.
+
+Freeze **`2e3c3ce0`** reproduces twice at 76 meshes / 101,337 vertices. Exact
+band, shoe and strict moving-sweep containment is **0/0**; muzzle-bore contrast
+passes at 97.1. The two broad parent nominees remain fixed backed deck/service
+buckets, not turret equipment. The final packet at
+`/private/tmp/leopard-final-r3/leo2_revolution` contains 15 paired, 15 yaw0 and
+15 yaw90 frames: **45 PNGs / 45 distinct hashes**. Fresh standard-order
+inspection records
+`[9.3,9.4,9.2,9.1,9.1,9.1,9.2,9.3,9.4,9.4,9.3,9.4,9.4,9.4]`, floor **9.1**
+and mean **9.29**.
+
+The complete gun/mantlet, connected turret shell, AMAP courses, roof stations,
+smoke, antennas and bustle package perform a genuine quarter-turn over the
+fixed hull. No face disappears, and no fused duplicate, stranded fitting,
+open sheet, sky hole, track collision or yaw-dependent wound appears.
+
+**PASS / KEEP Revolution `2e3c3ce0`; retire `fe2dc714`. Ordered blockers:
+none for the cheek-artifact repair.**

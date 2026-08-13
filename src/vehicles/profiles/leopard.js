@@ -6411,13 +6411,11 @@ function buildLeo2Revolution(P) {
   P.add('turret', slab(
     [-0.93, 0.47, 2.44], [-1.62, 0.47, 2.40], [-1.64, 0.47, 0.60], [-0.93, 0.47, 0.60],
     [-0.93, 0.54, 2.42], [-1.58, 0.52, 2.38], [-1.62, 0.52, 0.60], [-0.93, 0.54, 0.60]));
-  // Replace the conspicuous rectangular cheek cap seen in the fresh
-  // front-left/close-front renders.  A tapered continuation follows the
-  // adjacent lower-cheek rake, stays buried on all four rear vertices and
-  // closes the same physical face without leaving a square stuck-on block.
-  P.add('turret', slab(
-    [-1.57, 0.18, 2.405], [-0.99, 0.18, 2.435], [-0.99, 0.18, 2.455], [-1.57, 0.18, 2.425],
-    [-1.49, 0.47, 2.385], [-1.05, 0.47, 2.415], [-1.05, 0.47, 2.435], [-1.49, 0.47, 2.405]));
+  // The former 2 cm-thick standalone "cheek continuation" remained visible
+  // as a square card stuck into the left cheek.  The primary loft and the
+  // broad mid-cheek slab already overlap across this station, so let those
+  // continuous load-bearing surfaces own the face instead of papering the
+  // seam with another independent patch.
   // side walls: left to -2.14w, right STOPS at 2.04w (ref ±1.63 plan col)
   P.add('turret', box(0.07, 0.10, 0.91), -1.465, 0.50, 0.645);                 // left wall inner fore-rear (floor 2.05w)
   // r5: fore-front walls z0 1.10 -> 1.185L (the ref 0.765w column reads its
