@@ -121,7 +121,7 @@ re-freeze NEW hash, all in ONE commit.
 | t14 | a94a2480 | RE-FROZEN 2026-08-12 (§5.131 fully first-party `buildT14`: low seven-wheel Armata hull, connected unmanned shroud, supported RWS/sensor package and exact native course; fidelity 90.53 / minimum view 91.52; 42 unique paired/yaw frames floor 9.0 / mean 9.04; source-baked `a88afa6c` playable retired) |
 | t80u | 77f9ae78 | RE-FROZEN 2026-08-12 (§5.132 fully first-party `buildT80UNative2026`: low turbine hull, connected cast/K-5 turret, supported combat/rear-service package and exact native six-wheel course; fidelity 91.51 / minimum view 90.20; 42 unique paired/yaw frames floor 9.0 / mean 9.04; source-baked `c0dc2502` playable retired) |
 | type74 | 8319dbb8 | RE-FROZEN 2026-08-11 (§5.110 authored low cast turret, five-wheel native course and supported combat/service suite; independent §B8 floor 9.1 / mean 9.29) |
-| ariete | acea2100 | RE-FROZEN 2026-08-11 (§5.111 native-procedural Ariete with seven-wheel course and supported low turret/rear service field; independent §B8 floor 9.0 / mean 9.25) |
+| ariete | a7b1fd05 | RE-FROZEN 2026-08-12 (§5.145 preferred first-party Ariete retained with duplicate front wrap retired, exact strict native course, clean yaw envelope and 45-frame floor 9.0 / mean 9.14; prior acea2100 retired) |
 | t72b_1987 | 3f2483d4 | GRADUATED 2026-08-11 (§5.114 authored low B87 hull/turret, buried K1 and native six-wheel course; independent §B8 floor 9.0 / mean 9.14) |
 | t72bu | 4b66bf6c | GRADUATED 2026-08-11 (§5.115 authored compact BU protection/station/rear package on one native six-wheel course; independent §B8 floor 9.0 / mean 9.19) |
 | t90ms | 5076891c | GRADUATED 2026-08-11 (§5.118 authored clipped-diamond shell, Relikt, supported bustle/station and native six-wheel course; independent §B8 floor 9.0 / mean 9.18) |
@@ -4978,3 +4978,44 @@ is visible. Full evidence is recorded in
 `docs/critique/shaded-parity-challenger1-track-clearance-recert.md`.
 
 **PASS / KEEP `17fd58d8`; ordered blockers: none.**
+
+## 5.145 C1 ARIETE STRICT-TRACK + YAW-ENVELOPE RE-CERTIFICATION (2026-08-12, RE-FROZEN)
+
+The preferred detailed first-party `buildAriete` remains active. The weaker
+later `buildArieteNative2026` experiment was re-run against the same live
+oracle and rejected; no private source mesh, converted vertex/index payload,
+material, texture, rig or animation enters gameplay or the public build.
+
+The front return previously combined the real native band/shoes with five
+static per-side `hullTrackTrim` wedges occupying the same lane. Those wedges
+intersected 91% of the moving front shoes and are retired rather than hidden
+behind a classification exemption. The high front idler, rear final-drive
+sprocket, seven road-wheel stations, four support rollers, suspension and one
+continuous native linked course now own the complete running-gear silhouette.
+Wheel faces, hubs, recessed dishes and torsion arms use explicit suspension
+ownership; headlights and the exhaust stain are reseated above the terminal
+returns. Exact band front/rear, shoe front/rear and strict full-sweep band/shoe
+receipts are all **0/0**.
+
+The hull deck roll and spare links are moved to real aft-deck seats outside the
+complete turret/basket yaw envelope. Parent audit is **0 stranded / 0 abutting
+/ 0 dangling**, contiguity is **0 holes**, winding is 0 reversed / 0 mixed
+with only a 30-pixel (0.04%) antialias deficit, and model-rig probe passes
+10/10. Quantitative multi-view fidelity remains **94.0** with every available
+view at least **90**. The older fused-source curve/component row remains
+honestly incompatible at **81.7** (dimensions/floaters 100/100); it is not
+promoted into a false pass or chased by copying source geometry.
+
+Freeze **`a7b1fd05`** reproduces twice at 51 meshes / 100,011 vertices. The
+final packet at `/private/tmp/ariete-clearance-final-r2/ariete` contains 15
+paired, 15 yaw0 and 15 yaw90 frames including the standardized elevated-left
+profile: **45 PNGs / 45 distinct hashes**. Fresh semantic inspection records
+`[9.2,9.2,9.1,9.0,9.0,9.0,9.1,9.2,9.2,9.3,9.1,9.3,9.2,9.2]`, floor **9.0**
+and mean **9.14**. All yaw pairs show the complete gun, shell, TURMS/pano,
+hatches, MG, GALIX banks, antennas and supported basket rotating together over
+the fixed cleared course, engine deck and rear service field. No fused,
+stranded, floating, winding or sky-hole defect is visible. Full evidence is
+recorded in `docs/critique/shaded-parity-ariete-track-clearance-recert.md`.
+
+**PASS / KEEP `a7b1fd05`; retire `acea2100` and all earlier Ariete freezes.
+Ordered blockers: none.**

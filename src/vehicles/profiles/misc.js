@@ -413,28 +413,10 @@ function buildAriete(P) {
     P.add('hull', box(0.13, 0.41, 0.14), s * 1.615, 1.395, 3.35);              // crest block inner (top 1.60, x 1.55-1.68, z 3.28-3.42; bottom 1.19 clears the idler wrap)
     P.add('hull', box(0.057, 0.355, 0.14), s * 1.7085, 1.3675, 3.35);          // crest OUTER CROWN step (top 1.545 — push-2: the ref front crest FALLS outboard: 1.567@1.726 / 1.557@1.767 vs the flat 1.60 block's +0.05; r3-1024: outer face 1.737 — the 1.745 face rendered 1.7671, a 4.6 mm coin-flip sliver in the ±1.784 col whose ref top is the 1.317 skirt skin)
     P.add('hullRubber', box(0.50, 0.05, 0.12), s * 1.32, 1.235, 3.40);         // rubber lip under the crest (r3-1024: raised+pulled to z 3.34-3.46 / y 1.21-1.26 — the raised wrap circle climbs to 1.175 under it, and any content in the z 3.464-3.577 apex window above ~1.0 prints the 3.568 col over the ref's [0.786..1.01] annulus band)
-    // NON-CIRCULAR WRAP FILL (r3, the packet's banked wrap-authoring break):
-    // the ref's front gear silhouette is a shallow 0.39-slope ramp to z 3.17,
-    // a HARD KNEE climbing ~1.8 to the wrap bottom 0.79@3.34, and a thin
-    // [0.78..1.00] annulus apex ending 3.575 — no tangent+circle the kit can
-    // build passes through all three (measured: ramp cols read +0.05..0.09,
-    // the knee cols -0.07..-0.21, the apex col err 0.23). The visible shape
-    // is AUTHORED here as per-side track-tone slabs riding INSIDE the track
-    // x-band (1.08..1.68); the kit band+pads tuck inside/above it. Buckets
-    // hullTrackTrimL/R (russia t72b3m §B4 lane-local class): one-sided AABBs
-    // so track-clip-audit's lane-local skip classifies them as the running
-    // gear they are; /track/i carries the §B4 tag. Plan: the fill's 3.575
-    // front face takes over the plan front lane the flap carried.
-    const FX0 = 1.08, FX1 = 1.68;
-    const fillBucket = s < 0 ? 'hullTrackTrimL' : 'hullTrackTrimR';
-    const fseg = (zA, yA, zB, yB, yC, yD) => P.add(fillBucket, slab(
-      [s * FX0, yA, zA], [s * FX1, yA, zA], [s * FX1, yB, zB], [s * FX0, yB, zB],
-      [s * FX0, yC, zA], [s * FX1, yC, zA], [s * FX1, yD, zB], [s * FX0, yD, zB]));
-    fseg(2.37, 0.055, 3.17, 0.367, 0.35, 0.65);                                // approach ramp (ref slope 0.39, liftoff 2.33)
-    fseg(3.17, 0.367, 3.223, 0.588, 0.65, 1.15);                               // knee riser
-    fseg(3.223, 0.588, 3.343, 0.788, 1.15, 1.15);                              // knee to the wrap-bottom line
-    fseg(3.343, 0.788, 3.44, 0.888, 1.15, 0.998);                              // wrap shoulder (top closes toward the apex)
-    fseg(3.44, 0.888, 3.575, 0.992, 0.998, 0.994);                             // apex wedge: front face 3.575 = the plan front lane; top 0.99 = the ref annulus top in the 3.568 side col
+    // Track-law closure (2026-08-12): the raised native idler and linked
+    // shoes own this silhouette.  Do not add static hull wedges inside the
+    // same lane; the former duplicate course intersected 91% of the moving
+    // front shoes even though the legacy lane-local audit skipped it.
   }
   // stern: rake wedge + plate + thin tail lip + CENTER tail block anchor
   P.add('hull', slab(                                                          // center rake (x +-0.82 — push-2: the +-0.92 slab printed the ref's 0.85-0.97 rear-notch cols at -3.71): bottoms 0.38@-2.60 -> 0.74@-3.66
@@ -476,14 +458,14 @@ function buildAriete(P) {
   P.add('hullDark', box(0.56, 0.013, 0.03), 0.52, 1.387, 1.95, -0.06, 0, 0);
   for (let k = -1; k <= 1; k++) periscope(P, 'hullDetail', 0.52 + k * 0.17, 1.376, 2.16, k * 0.08);
   for (const s of [-1, 1]) P.add('hullDetail', box(0.80, 0.04, 0.05), s * 0.40, 1.315, 2.62, -0.06, s * 0.42, 0); // V splash rail HUGGING the glacis (r3: the -0.16 tilt topped 1.42 over the ref's bare 1.26-1.35 line)
-  headlight(P, -1.40, 1.20, 3.30, -0.25, 0.048);                              // (r3-1024: sunk — the 1.35 guard crowns printed the 3.21 side col over the ref's 1.279 line)                               // tucked at the crest shoulders (the 1.42-high pods printed 1.47 over the ref's bare 1.28 glacis line)
-  headlight(P, 1.40, 1.20, 3.30, -0.25, 0.048);
+  headlight(P, -1.40, 1.27, 3.30, -0.25, 0.048);                              // seated above the idler return; strict shoe clearance retained
+  headlight(P, 1.40, 1.27, 3.30, -0.25, 0.048);
   P.add('hullDetail', torus(0.08, 0.015, 10), -0.60, 0.62, 3.40, Math.PI / 2, 0, 0); // tow eyes
   P.add('hullDetail', torus(0.08, 0.015, 10), 0.60, 0.62, 3.40, Math.PI / 2, 0, 0);
   liftEye(P, 'hullDetail', -1.40, 1.42, 0.55);
   liftEye(P, 'hullDetail', 1.40, 1.42, 0.55);
   towCable(P, [[-1.10, 1.27, 2.68], [0, 1.425, 2.18], [1.10, 1.27, 2.68]]);   // (r3-1024: re-draped — the 1.42@2.30 knot printed 1.446 across the z 2.37-2.6 cols over the re-laid 1.358 glacis)
-  stowage(P, 'hullCloth', rng, [[-1.30, 1.555, -2.15, 0.44, 0.10, 0.8]]);      // deck roll FLAT (push round: the 1.66/0.14 roll topped 1.75 across five side cols + four front cols where the ref line is 1.585-1.66)
+  stowage(P, 'hullCloth', rng, [[1.30, 1.555, -3.10, 0.44, 0.10, 0.46]]);      // compact aft-deck roll, outside the complete turret yaw envelope
   // deck dressing (turret-fix: the bare 3.1 m fore deck + no baked AO fused
   // hull and turret into one wall at 3/4 angles) — all paper-thin interior
   // pieces, zero silhouette
@@ -493,13 +475,13 @@ function buildAriete(P) {
   P.add('hullDark', box(0.50, 0.008, 0.34), 1.06, 1.449, 0.95);                // stowage panel R
   {
     const links = FITTINGS.spareTrackLinks({ mats: P.mats, links: 4, width: 0.46, seed: 7 });
-    links.position.set(-0.70, 1.478, -2.98);                                   // spare links SUNK to tops 1.578 (r3 1024: the 1.645 tops printed the 0.57-1.05 front cols where the ref line is 1.598 rendered; 1.578 renders 1.598 exactly — the front want AND the low edge of the side 1.598-1.631 band)
+    links.position.set(-0.70, 1.478, -3.35);                                   // hull-owned aft-deck links remain clear of the rotating basket envelope
     P.hullG.add(links);
   }
   P.add('hull', box(0.14, 0.125, 0.18), 0, 1.5755, -2.85);                     // CENTER EXHAUST STACK top 1.638 (r3 1024: the ref center dome — front ±0.04 cols want 1.659 rendered AND side -2.76..-2.88 wants 1.66 — is one x ±0.07 mass on the tail deck; §B3: stack body with a dark grate cap)
   P.add('hullDark', box(0.10, 0.02, 0.12), 0, 1.6255, -2.85);                  // stack grate inlay (top 1.6355, inside the body crown)
   P.decal('hull', 'number', 'EI 118', 0.26, [-0.92, 1.279, 3.06], 0, -0.21);  // ON the glacis plane (push round r2: the 3.66 nose seat became a floating band in the tube-only 3.643 col after the nose pull)
-  P.decal('hull', 'soot', null, 0.55, [-1.45, 1.10, -2.95], -Math.PI / 2);
+  P.decal('hull', 'soot', null, 0.30, [-1.45, 1.39, -2.95], -Math.PI / 2);    // exhaust stain stays above the rear return/shoes
   // skirts: full-length panels at +-1.78 + the widthM edge strip at exactly
   // +-1.80 (WIDTH GUARD; ref stations read ~3.54-3.60 the whole run).
   // Band 0.60..1.42 under the deck edge; courses segmented ~0.47 (SS C).
@@ -537,9 +519,9 @@ function buildAriete(P) {
   // that distinguished the stronger first-party Ariete.
   for (const side of [-1, 1]) {
     for (const wz of wheelZs) {
-      P.add('hullDetail', cylX(0.275, 0.035, 18), side * 1.69, 0.43, wz);
-      P.add('hullDark', cylX(0.095, 0.039, 14), side * 1.695, 0.43, wz);
-      P.add('hullDark', torus(0.205, 0.014, 18), side * 1.711, 0.43, wz,
+      P.add('hullRunningGearDetail', cylX(0.275, 0.035, 18), side * 1.69, 0.43, wz);
+      P.add('hullRunningGearDark', cylX(0.095, 0.039, 14), side * 1.695, 0.43, wz);
+      P.add('hullRunningGearDark', torus(0.205, 0.014, 18), side * 1.711, 0.43, wz,
         0, 0, Math.PI / 2);
     }
   }
@@ -554,7 +536,7 @@ function buildAriete(P) {
   // the track widened INBOARD (xc 1.385, inner face 1.075 — the ref front
   // rows reach near-ground at +-1.07-1.13; outer face stays 1.695; tub +-1.03
   // keeps 4.5 cm to the inner band plane, audit dilates 2)
-  wheelRecessAt(P, wheelZs, 1.3725, 0.43, 0.345, 0.21);
+  wheelRecessAt(P, wheelZs, 1.3725, 0.43, 0.345, 0.21, 'hullRunningGearDark');
   tightenHullShadowProxy(P, { xc: 1.3725, trackW: 0.34, y0: 0.15, y1: 0.58, z0: -2.40, z1: 2.60, hullZ0: -3.20, hullZ1: 3.20 });
 
   // ---- turret: canted-wall welded slab + raised front roof + TURMS +

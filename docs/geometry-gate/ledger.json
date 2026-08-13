@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-08-13T04:23:48.797Z",
+ "generatedAt": "2026-08-13T04:33:54.471Z",
  "gate": "every component >= 90; min is the headline",
  "passed": 35,
  "total": 97,
@@ -324,19 +324,6 @@
     "turretCurves": 58.4,
     "stations": 23.3,
     "dims": 97.2,
-    "floaters": 100
-   }
-  },
-  {
-   "id": "ariete",
-   "geoMin": 24.8,
-   "gatePassed": false,
-   "components": {
-    "hullCurves": 59.2,
-    "wholeCurves": 39.5,
-    "turretCurves": 24.8,
-    "stations": 64.6,
-    "dims": 99.4,
     "floaters": 100
    }
   },
@@ -713,6 +700,19 @@
     "wholeCurves": 81,
     "turretCurves": 85.5,
     "stations": 89.8,
+    "dims": 100,
+    "floaters": 100
+   }
+  },
+  {
+   "id": "ariete",
+   "geoMin": 81.7,
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 83,
+    "stations": 87,
+    "turretCurves": 85.1,
+    "wholeCurves": 81.7,
     "dims": 100,
     "floaters": 100
    }

@@ -1009,15 +1009,16 @@ function buildRunningGear(P, cfg) {
     runningGearLayoutReceipt(P.specId, { sprocket, idler, wheelZs, rollers, frontDrive }),
   );
 
-  // torsion arms: static axle stub + trailing arm per wheel station (merged
-  // into the hull detail bucket — zero extra draw calls)
+  // Torsion arms are suspension-owned geometry. Keep them in the dedicated
+  // running-gear detail bucket so strict shoe-sweep lint does not mistake a
+  // real axle/arm for hull armor penetrating the track it supports.
   if (arms) {
     wheelZs.forEach((z, i) => {
       for (const side of [-1, 1]) {
         const sideXc = xcForSide(side);
         const xa = side * (sideXc - wheelW * 0.7);
-        P.add('hullDetail', cylX(wheelR * 0.16, wheelW * 0.9, 10), xa, wheelY, z);
-        P.add('hullDetail', box(0.07, 0.09, wheelR * 0.95),
+        P.add('hullRunningGearDetail', cylX(wheelR * 0.16, wheelW * 0.9, 10), xa, wheelY, z);
+        P.add('hullRunningGearDetail', box(0.07, 0.09, wheelR * 0.95),
           side * (sideXc - wheelW * 1.1), wheelY + wheelR * 0.28, z + wheelR * 0.38, 0.6, 0, 0);
       }
     });
