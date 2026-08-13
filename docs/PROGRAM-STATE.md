@@ -4940,3 +4940,41 @@ explicitly reclassified from pixels/load paths before legacy/WWII closure.
 
 **Layout lint: PASS. Fleet strict-clearance program: ACTIVE; no false global
 completion claim.**
+
+## 5.144 CHALLENGER 1 MK.3 STRICT-TRACK + SILHOUETTE RE-CERTIFICATION (2026-08-12, RE-FROZEN)
+
+The preferred detailed first-party `challenger1Build` remains active. The
+private recovered print is a read-only comparison oracle only; no source mesh,
+converted vertex stream, material, texture, rig or animation enters gameplay
+or the public build.
+
+The four real mudflap panels, bridges and stems no longer sit inside the
+idler/sprocket shoe wraps. They are reseated just beyond the measured terminal
+envelopes with visible bow-wing/rear-skirt load paths. The first bow-guard
+chord rises continuously over the climbing return rather than crossing it.
+Only the actual Hydrogas dish/hub faces and gear-bay shadow catchers carry
+running-gear semantics; hull armor and guard panels remain strictly gated.
+Exact band front/rear, individual-shoe front/rear and full-sweep band/shoe
+receipts are all **0/0**. The layout remains front idler, six Hydrogas road
+wheels, supported return and rear final-drive sprocket in one linked course.
+
+The two turret whips keep separate collars and lateral positions but share the
+correct aft longitudinal station, eliminating a false duplicate side spike
+without losing the front/plan two-whip read. Freeze **`17fd58d8`** reproduces
+twice at 89 meshes / 99,159 vertices. Geometry gate now passes at **90.1**
+(hull 90.5 / whole 90.1 / turret 90.4 / stations 90.6 / dimensions 95 /
+floaters 100), quantitative fidelity is **93.3**, contiguity is 0 holes,
+decor is `mg1+0d`, and model-rig probe passes 10/10.
+
+The final packet at
+`/private/tmp/challenger1-clearance-final-r2/challenger1` contains 15 paired,
+15 yaw0 and 15 yaw90 views including the elevated-left profile: **45 PNGs /
+45 distinct hashes**. Fresh semantic inspection records
+`[9.1,9.2,9.1,9.1,9.0,9.1,9.1,9.2,9.2,9.3,9.2,9.3,9.1,9.2]`, floor **9.0**
+and mean **9.16**. Yaw proves the complete turret/gun/station/basket package
+rotates together over the fixed cleared guards, six-wheel course, deck and
+rear service field. No fused, stranded, floating, winding or sky-hole defect
+is visible. Full evidence is recorded in
+`docs/critique/shaded-parity-challenger1-track-clearance-recert.md`.
+
+**PASS / KEEP `17fd58d8`; ordered blockers: none.**

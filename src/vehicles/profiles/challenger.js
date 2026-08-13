@@ -161,12 +161,24 @@ function challenger1Build(P) {
   // the existing wheel width and restore the older Challenger's readable
   // six-station dish/hub cadence.  They are fixed hull detail, never donor
   // wheels and never an additional running-gear course.
+  const addHydrogasFace = (geo, mat, x, z, role) => {
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.name = `challenger1_${role}`;
+    mesh.position.set(x, g.wheelY, z);
+    mesh.rotation.z = Math.PI / 2;
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    mesh.userData.runningGear = true;
+    mesh.userData.runningGearRole = role;
+    P.hullG.add(mesh);
+    P.disposables.push(geo);
+  };
   for (const side of [-1, 1]) {
     for (const wz of g.wheelZs) {
-      P.add('hullDetail', cylY(0.29, 0.29, 0.032, 16),
-        side * 1.505, g.wheelY, wz, 0, 0, Math.PI / 2);
-      P.add('hullDark', cylY(0.105, 0.105, 0.038, 14),
-        side * 1.510, g.wheelY, wz, 0, 0, Math.PI / 2);
+      addHydrogasFace(cylY(0.29, 0.29, 0.032, 16), P.mats.detail,
+        side * 1.505, wz, 'roadWheelDish');
+      addHydrogasFace(cylY(0.105, 0.105, 0.038, 14), P.mats.dark,
+        side * 1.510, wz, 'roadWheelHub');
     }
   }
   // BOW GUARD COURSE — NO-STAIRCASES r1 (§B1 law 5f4cfae, owner screenshot).
@@ -195,8 +207,12 @@ function challenger1Build(P) {
     // surface, not steps); it is side-mask INVISIBLE (the wrap paints below
     // it on every column) and the tip segment keeps the ref's own
     // 0.974@4.112 wing-belly column. Segments <=0.35 (§C station caps).
-    W(0.95, 1.65, 3.30, 2.95, () => 1.00);
-    W(0.95, 1.65, 3.50, 3.30, (z) => 1.00 + (z - 3.30) * 1.225);
+    // Lift the first guard chord above the full linked-band sweep. The old
+    // 1.00 m underside shared 264 strict voxels with the climbing course at
+    // z 3.08..3.36; this continuous rise reaches the existing 1.245 m arch
+    // without adding a step or changing the visible upper rake.
+    W(0.95, 1.65, 3.30, 2.95, (z) => 1.12 + (z - 2.95) * (0.125 / 0.35));
+    W(0.95, 1.65, 3.50, 3.30, () => 1.245);
     W(0.95, 1.65, 3.85, 3.50, () => 1.245);
     W(0.95, 1.65, 4.06, 3.85, (z) => 1.245 - (z - 3.85) * 1.19);
     W(0.95, 1.65, 4.165, 4.06, () => 0.995);
@@ -632,12 +648,17 @@ function challenger1Build(P) {
   // tail-box kit lump (ref side col -1.993 reads 2.306 over our bare
   // 2.165 course; the -2.123 col stays on the 2.14 line).
   P.add('turretCloth', box(0.60, 0.14, 0.12), 0, 0.615, -1.77);
-  // Kneed whip antennas: thin masts to the print's 2.975 spikes at
-  // (x -1.37, z -1.08) and (x +0.95, z -0.82), potted on the basket/bins.
+  // Kneed whip antennas: thin masts to the print's 2.975 spikes at unequal
+  // lateral roots x -1.37/+0.95 and a common aft station z -0.82 world,
+  // potted on the basket/bins.
   // (pots shortened: the old 0.30-tall pots hung to 1.585 world INSIDE the
   // hull body — invisible in renders but painting the TURRET mask 0.15-0.19
   // below the ref's 1.77-1.79 bottoms on four side columns)
-  for (const [ax, az] of [[-1.375, -0.88], [0.95, -0.62]]) {
+  // Both whips share the same aft longitudinal station but retain unequal
+  // lateral roots. The previous -0.88/-0.62 stagger minted a false second
+  // spike in the pure side silhouette; aligning their z seats preserves the
+  // correct two-whip front/plan cadence and one source-like side course.
+  for (const [ax, az] of [[-1.375, -0.62], [0.95, -0.62]]) {
     P.add('turret', cylY(0.05, 0.065, 0.13, 8), ax, 0.225, az);
     P.add('turret', box(0.024, 1.10, 0.07), ax, 0.775, az);
     P.add('turret', box(0.03, 0.06, 0.076), ax, 1.30, az);
@@ -985,20 +1006,15 @@ function challenger1Build(P) {
   // 0.87 under the 0.878 plateau line the left slab already paints, low
   // end 0.717 under the left face line at z 1.40.
   P.add('turretDetail', box(0.012, 0.06, 0.55), 0, 0.795, 1.13, -0.178, 0, 0);
-  // O3 — mud flaps, all four corners: the ref hangs big pale-buff flap
-  // panels at the track fronts/rears (front rects luma 64.3, rear 57.0);
-  // proc carried only the outboard guard-tip stubs. Every legal z sits
-  // BEHIND the wrap-shoe sweep (law-5: no free z between the sweep and the
-  // 4.047 §C boundary), so the panels hang inside the wrap silhouette —
-  // the pale plate reads through the comb gaps and around the arc bands
-  // (the ref's own corner read once O2 calms the shoes). Mask-safe by
-  // interval-interiority: every part sits y-inside its columns' existing
-  // top/bottom intervals (front cols ground-run-owned; side cols in the
-  // fenced padHug band read the wrap's own deeper bottoms; plan bracketed
-  // by wing/panel). Clip-threaded: panels/bars sit between the shoe
-  // annulus bands (front dz 0.27-0.29: y<=0.53 / >=1.07; rear dz 0.325:
-  // y<=0.604 / >=0.996); stems ride OUTBOARD of the shoe x-band (1.535)
-  // and bond to the wing belly / rear skirt panel (§B2 chain).
+  // O3 — mud flaps, all four corners. These are real guard panels, not track
+  // decoration, so they must sit wholly beyond the terminal shoe envelopes.
+  // The former z=3.90/-2.965 seats crossed the idler/sprocket wraps by about
+  // 44 mm and produced exactly the owner-reported plate-through-track read.
+  // The front guard remains beneath the authored wing (which reaches 4.165)
+  // at z=4.11; the rear guard moves aft to z=-3.18 where its inner face is
+  // still backed by the long rear-skirt/service structure. Both now retain a
+  // visible load path while leaving a minimum 19 mm longitudinal air gap to
+  // the measured linked-shoe envelopes (front 4.072, rear -3.137).
   {
     const flapMat = P.mats.rubber.clone();
     flapMat.color.setHex(0x4a453a);
@@ -1018,14 +1034,14 @@ function challenger1Build(P) {
       P.disposables.push(geo);
     };
     for (const s of [-1, 1]) {
-      // front corner (idler, sweep <= 4.065)
-      flapBox(0.42, 0.42, 0.028, s * 1.30, 0.79, 3.90);         // panel
-      flapBox(0.06, 0.04, 0.028, s * 1.53, 1.00, 3.90);         // bridge
-      flapBox(0.02, 0.24, 0.028, s * 1.555, 1.10, 3.90);        // stem -> wing belly
-      // rear corner (sprocket, sweep <= -3.095)
-      flapBox(0.42, 0.34, 0.028, s * 1.30, 0.80, -2.965);       // panel
-      flapBox(0.06, 0.05, 0.028, s * 1.53, 0.655, -2.965);      // bridge
-      flapBox(0.04, 0.37, 0.028, s * 1.568, 0.815, -2.965);     // stem -> rear panel
+      // front corner, ahead of the idler terminal wrap
+      flapBox(0.42, 0.42, 0.028, s * 1.30, 0.79, 4.11);         // panel
+      flapBox(0.06, 0.04, 0.028, s * 1.53, 1.00, 4.11);         // bridge
+      flapBox(0.02, 0.24, 0.028, s * 1.555, 1.10, 4.11);        // stem -> wing belly
+      // rear corner, aft of the sprocket terminal wrap
+      flapBox(0.42, 0.34, 0.028, s * 1.30, 0.80, -3.18);        // panel
+      flapBox(0.06, 0.05, 0.028, s * 1.53, 0.655, -3.18);       // bridge
+      flapBox(0.04, 0.37, 0.028, s * 1.568, 0.815, -3.18);      // stem -> rear panel
     }
   }
   // r9 O4 (shaded-parity r8 — glacis-plan tone, gate-free): the LEFT glacis
@@ -1107,6 +1123,15 @@ function challenger1Build(P) {
     [0.016, 0.35, 4.90, 0.985, 0.425, 0.35],
     [0.40, 0.02, 0.65, 0.80, 0.30, 2.825],
   ], 0x13170d);
+  // These deliberately non-structural catch plates are part of the running-
+  // gear presentation (inter-wheel/ramp-bay occlusion), not hull armor.
+  // Declare that semantic explicitly so strict clearance continues to gate
+  // the actual hull and the mudflaps above without misclassifying bay AO.
+  P.hullG.traverse((ob) => {
+    if (ob.name !== 'gearAirShadowBacker') return;
+    ob.userData.runningGear = true;
+    ob.userData.runningGearRole = 'gearBayOcclusion';
+  });
   P.topY = 1.35;
 }
 // NATIVE PROCEDURAL REBUILD (2026-08-11). The comparison Challenger Mk.3 is
