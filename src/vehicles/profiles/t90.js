@@ -4958,6 +4958,23 @@ function buildT90AVladimir(P) {
   // Vladimir's recovered transom narrows to its own drum/rack stations.
   // The generic family stern face widened station 0 by 17.5% and covered
   // that identity, so the measured legacy transom remains authoritative.
+  // Family-scale reconciliation: the recovered roof retained its rigid
+  // meteorological fins but lost the two flexible radio courses that give
+  // the T-90A family its full operational silhouette.  Restore them at
+  // Vladimir-specific aft stations instead of scaling the complete tank.
+  // Each shoe overlaps an existing rear-bin crown, its collar is buried in
+  // the shoe, and the whip is parented directly to rig_turret.
+  for (const [x, z, h, rake, seed] of [
+    [-0.82, -1.12, 0.96, -0.028, 51],
+    [0.76, -0.88, 0.78, 0.025, 52],
+  ]) {
+    P.add('turret', KIT.box(0.17, 0.11, 0.22), x, 0.36, z);
+    P.add('turretDark', KIT.cylY(0.042, 0.058, 0.14, 10), x, 0.425, z);
+    P.add('turretDetail', KIT.box(0.032, 0.17, 0.26), x * 0.93, 0.35, z + 0.14, -0.40, 0, 0);
+    const whip = FITTINGS.antennaWhip({ mats: P.mats, h, r: 0.013, rake, seed });
+    whip.position.set(x, 0.43, z);
+    P.turretG.add(whip);
+  }
 }
 
 function finishT90SMOwnerRedesign(P) {
