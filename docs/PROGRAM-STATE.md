@@ -108,7 +108,7 @@ re-freeze NEW hash, all in ONE commit.
 | merkava1b | 78051af0 | RE-FROZEN 2026-08-07 (§B2 under-roof closure wave §5.11: solid casting walls, gate rows EXACT, re-cert floor 9.0 on every changed view; sheets shots/critic-merkava-closure/) |
 | m1a2 | 636a4860 | RE-FROZEN 2026-08-07 (CROWS-FORWARD wave §5.07: forward pose improved whole +4.1..+14.1; re-cert floor 9.1-9.2 x14 views, sheets shots/critic-sep-crowsfwd/) |
 | chieftain5 | d4f2a9a6 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
-| t84 | 04707a9c | |
+| t84 | 6d66a6a9 | RE-FROZEN 2026-08-13 (§5.169 first-party T-84/T-80-family standardization: legacy reconstructed slab/tower retired from the active route; standardized turbine chassis with explicit front idler, six road wheels, support rollers and rear drive; distinct low welded/faceted T-84 shell, irregular planted protection and supported combat/rear suite; exact band+shoes+sweep 0/0/0, parent 0/0/0, fresh 45-frame floor 9.0 / mean 9.11; prior 04707a9c retired) |
 | t80 | 448b1161 | RE-FROZEN 2026-08-13 (§5.152 first-party family standardization: explicit low pear/cast section loft replaces the rotational dome/patch stack; light applique, supported combat/rear suite, native six-wheel course, exact band+shoes+sweep 0/0, parent 0/0/0, fresh 45-frame floor 9.0 / mean 9.06) |
 | t80b | f90b060 | RE-FROZEN 2026-08-13 (§5.152 heavier authored brow/station package on the same physical turbine-hull datum; exact native course, parent and winding clean; fresh 45-frame floor 9.0 / mean 9.08) |
 | t80bv | f4bc0d40 | RE-FROZEN 2026-08-13 (§5.152 two-level irregular planted Kontakt-1 plus supported flank return, complete roof/rear service suite and exact native course; fresh 45-frame floor 9.0 / mean 9.14) |
@@ -5957,3 +5957,44 @@ track collision, open sheet or yaw-dependent wound.
 
 **PASS / KEEP `d469fd14`; supersede `c5cb292c`. Ordered blockers: none for
 the 2A7V turret-seat correction.**
+
+## 5.169 T-84 FIRST-PARTY T-80-FAMILY STANDARDIZATION (2026-08-13, RE-FROZEN)
+
+The active `t84` route is now wholly repository-authored procedural geometry.
+The stale graduate builder's high rectangular fighting compartment, small
+buried running gear and source-reconstruction assumptions are retired from
+runtime. The current builder begins from the same physical first-party
+turbine-chassis datum as T-80/T-80B/T-80BV, preserving the required order of
+front idler, six road wheels, supported return rollers and rear final-drive
+sprocket on one native linked course.
+
+The rotating package is not an inherited T-80 dome. It is atomically replaced
+by a distinct T-84 welded section loft with a pinched gun throat, broad clipped
+shoulders, five explicit vertical planes and an asymmetric compact rear. The
+loft is non-indexed at its authored breaks so it reads as welded facets rather
+than a smoothed half-sphere. Buried mantlet shoulders, two irregular planted
+protection courses, separate flank returns, unequal sight heads, loader and
+commander hatch groups, a broad-seated NSVT cradle, unequal smoke fans, antenna
+collars and a braced rear service basket all use visible physical roots.
+
+Freeze **`6d66a6a9`** reproduces at 52 meshes / 99,469 vertices. Exact terminal
+bands, instanced shoes and strict moving sweep are **0/0/0**. Parent audit is
+**0 stranded / 0 abutting / 0 dangling**. Winding is 0 reversed / 0 mixed with
+a visually null 3-pixel (0.01%) antialias deficit and zero yaw-stranded
+candidates. Runtime articulation passes 10/10 and the explicit muzzle bore
+passes at 32.2 contrast.
+
+The immutable procedural-only packet at
+`/private/tmp/t84-family-final-r5/t84` contains 15 appraisal frames, 15 yaw0
+and 15 yaw90 frames including the standardized elevated-left profile: **45
+PNGs / 45 distinct hashes**. Fresh standard-order first-party appraisal is
+`[9.1,9.2,9.1,9.0,9.0,9.0,9.1,9.2,9.1,9.2,9.1,9.2,9.1,9.2]`, floor **9.0**
+and mean **9.11**. Top, elevated profile and hero yaw evidence show a genuine
+quarter-turn: gun, welded shell, every protection cassette, sights, hatches,
+NSVT, smoke, antennas, rear bins and braced basket move as one assembly while
+hull, engine deck, service field and native running gear remain fixed. No
+fused duplicate, stranded fitting, empty-air decoration, collision, open
+sheet or yaw-dependent wound appears.
+
+**PASS / KEEP `6d66a6a9`; supersede `04707a9c`. Ordered blockers: none for
+this first-party T-84 family closeout.**
