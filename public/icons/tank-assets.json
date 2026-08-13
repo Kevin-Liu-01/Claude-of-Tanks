@@ -3555,7 +3555,7 @@
           }
         ]
       },
-      "geometryHash": "eb10f5cd",
+      "geometryHash": "167c0c24",
       "metadataHash": "16351292",
       "muzzleBore": {
         "tagged": 1,
@@ -3570,24 +3570,24 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 19304,
-          "sha256": "dcc30f88e23bb5971ce8731253fe5f5490618d89f76b815f9018cdc0bbc11987"
+          "bytes": 20176,
+          "sha256": "eec9c8992381a85d3114dcbb239d85540219bf11453a452a0d088a7eb7fd7238"
         },
         "top": {
           "file": "amx40_top.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 9600,
-          "sha256": "26f05ef4cbb55b8f2d8ad99427cf1e13c2545a78b385b936b4bae8756c830901"
+          "bytes": 9658,
+          "sha256": "7fd7a6aa7f1fa0e0f663ad0b1378c66e2d43eb2567cf81413086f1ad00121c75"
         },
         "side": {
           "file": "amx40_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 11540,
-          "sha256": "b1c8cf8e2fe2893b51c67b07bb6a1d77f6257d996ac90948debbdc438ec0829f"
+          "bytes": 11754,
+          "sha256": "e9337155adfb07a84a487e00e14ef3c4e3d2bf40513022c43a3aa5fc7971fa0f"
         },
         "topSilhouette": {
           "file": "amx40_top_silhouette.png",
@@ -3602,32 +3602,32 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4926,
-          "sha256": "ec41bd3541e86b61bbb276e494ecbe61c01951eccaf115683f1b88c16e3b3afe"
+          "bytes": 4995,
+          "sha256": "05c9c2a184c541512f4c86808e36394c450696c1a34abcec9a33f4563cff2504"
         },
         "hitZonesSide": {
           "file": "amx40_hit_zones_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 60362,
-          "sha256": "8776cfe66a5790ed59751fb0409fdaaf63556a52862a09389dfafb8ec2f1e40f"
+          "bytes": 62191,
+          "sha256": "f2c993c8809f1ae5431f66052c0abac7b1e9262eb90f88672408a1756e27dfeb"
         },
         "armorSide": {
           "file": "amx40_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 61366,
-          "sha256": "cdeff57a11aa9e403d2c01dc1640ef6870dbb08ba0cc5ab40afc8a3aa7f1a53f"
+          "bytes": 63587,
+          "sha256": "0966c344526ae7a401de62a342a465c65aaf5f9102987ff168e0138d3bd44838"
         },
         "modulesSide": {
           "file": "amx40_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 60966,
-          "sha256": "aa6826de8ffa13c2d8f7059ce01e1d728d51a1488bc8420d05e8f1e15d22074d"
+          "bytes": 61929,
+          "sha256": "75c496f5b1da69ab4bb2db8cd66b1f3559a7e455c40cd91465fbe97733348721"
         }
       }
     },

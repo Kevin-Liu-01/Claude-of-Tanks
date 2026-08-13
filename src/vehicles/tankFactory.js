@@ -3666,6 +3666,11 @@ const BUCKET_DEF = {
   // exclude it by authored ownership instead of the old positional
   // "lane-local" heuristic that also hid real guard/mudflap intrusions.
   hullRunningGearDark: ['hullG', 'dark'],
+  // Painted wheel faces, rims and hub caps are suspension-owned just like
+  // the dark wheel-bay recesses above.  Keep a material-correct detail
+  // bucket so strict swept-track lint does not misclassify concentric wheel
+  // furniture as armor penetrating its own shoe course.
+  hullRunningGearDetail: ['hullG', 'detail'],
   // Source-authored skirt/strake/guard solids that enclose a native track
   // lane. They remain camouflaged hull geometry, but the track tag prevents
   // §B4 from reporting the enclosure intersecting the belt it is built over.
@@ -4037,7 +4042,9 @@ export function createTank(specId, engineCtx, opts = {}) {
     if (bucket === 'hullTrackGuardL' || bucket === 'hullTrackGuardR') {
       mesh.userData.trackGuard = true;
     }
-    if (bucket === 'hullRunningGearDark') mesh.userData.runningGear = true;
+    if (bucket === 'hullRunningGearDark' || bucket === 'hullRunningGearDetail') {
+      mesh.userData.runningGear = true;
+    }
     // Track-containment law (BUILD-STANDARD SS-B4): tag track-family bucket
     // meshes so the audit can measure hand-rolled track geometry (userData
     // only — geometry/hash-invariant; banded builds are unaffected).

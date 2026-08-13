@@ -356,3 +356,47 @@ playable geometry.
 - The former pre-warp ceiling, old source-height interpretation and r1
   freeze are retained above only as an audit trail; they are not current
   constraints or queue items.
+
+## OWNER FORWARD-SECTION + 20% HEIGHT / STRICT TRACK RE-CERT (2026-08-12)
+
+The active AMX-40 remains the first-party `buildAMX40` implementation in
+`src/vehicles/france.js`. The local Armored Warfare file remains an isolated
+private measurement/render oracle only. No source vertices, converted mesh
+payload, material, texture, rig, animation or source-backed wrapper enters
+the runtime.
+
+The owner-standard elevated side profile now governs the live silhouette.
+The connected 20-station turret loft retains the previous 0.20-0.32 m forward
+extension around the gun seat, carrying the actual shoulders, cheeks, crown,
+welds and cassettes rather than moving the barrel. The complete authored
+fighting-compartment section is then raised exactly **20%** in local Y,
+including shell, bustle, roof suite and mantlet/cradle. Smoke banks and roof
+MG are explicitly re-seated at the same 1.20 datum.
+
+The strict course is repaired independently of the silhouette change. Lower
+belly shoulders stop inside the shoe inner edge, while the existing painted
+wheel dishes/rims/hubs use explicit running-gear buckets. Track containment
+is now band front/rear **0/0**, shoes **0/0**, and full sweep **0/0** (from
+318/128 sweep). Six native road wheels remain between a distinct front idler
+and rear drive sprocket; one continuous linked course and its terminal wraps
+remain unchanged.
+
+Direct fidelity is **92.94**, with every whole direction at least **91.90**;
+components are overall 93.43 / hull 96.39 / turret 85.53 / gun 94.11 / tracks
+96.80. The old curve/component mask reports an honest diagnostic **51.3**
+because it encodes the lower retired section. That row is not authority to
+undo the owner correction or copy source topology.
+
+The 45 distinct final frames in
+`/tmp/critic-amx40-owner-height-final/amx40` include paired, yaw0 and yaw90
+evidence for all 14 mandatory views plus elevated-left profile. Fresh visual
+vector is
+`[9.1,9.1,9.0,9.0,9.0,9.0,9.0,9.1,9.2,9.1,9.0,9.2,9.1,9.1]`, floor **9.0**
+and mean **9.07**. Yaw proves complete seated turret ownership; fixed parent
+nominees are supported hull cable, spare-link stowage and driver/periscope
+geometry. Winding is 0 reversed / 0 mixed / 0 missing pixels, rig 10/10, and
+muzzle/assets pass.
+
+Freeze **`3d312bde`** reproduces twice at 62 meshes / 98,642 vertices. **KEEP;
+retire the pre-height forward-extension freeze and all source-baked AMX-40
+playables.**

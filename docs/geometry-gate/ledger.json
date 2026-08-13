@@ -1,7 +1,7 @@
 {
- "generatedAt": "2026-08-13T01:46:09.229Z",
+ "generatedAt": "2026-08-13T01:55:37.328Z",
  "gate": "every component >= 90; min is the headline",
- "passed": 36,
+ "passed": 35,
  "total": 97,
  "rows": [
   {
@@ -533,6 +533,19 @@
     "turretCurves": 49.7,
     "stations": 51.3,
     "dims": 100,
+    "floaters": 100
+   }
+  },
+  {
+   "id": "amx40",
+   "geoMin": 51.3,
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 90.4,
+    "stations": 51.3,
+    "turretCurves": 61.9,
+    "wholeCurves": 68.3,
+    "dims": 63.5,
     "floaters": 100
    }
   },
@@ -1230,19 +1243,6 @@
     "turretCurves": 93.2,
     "stations": 96.1,
     "dims": 99.1,
-    "floaters": 100
-   }
-  },
-  {
-   "id": "amx40",
-   "geoMin": 92.6,
-   "gatePassed": true,
-   "components": {
-    "hullCurves": 92.6,
-    "wholeCurves": 93.5,
-    "turretCurves": 96.9,
-    "stations": 100,
-    "dims": 95.1,
     "floaters": 100
    }
   }

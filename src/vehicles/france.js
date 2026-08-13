@@ -292,8 +292,8 @@ function buildAMX40(P) {
     for (let k = 0; k < n; k++) {
       const za = z0 + k * pitch, zb = z0 + (k + 1) * pitch + 0.004;
       P.add('hull', slab(
-        [s * 0.85, 0.44, za], [s * 1.00, 0.67, za], [s * 1.00, 0.67, zb], [s * 0.85, 0.44, zb],
-        [s * 0.85, 1.06, za], [s * 1.00, 1.06, za], [s * 1.00, 1.06, zb], [s * 0.85, 1.06, zb]));
+        [s * 0.85, 0.44, za], [s * 0.97, 0.67, za], [s * 0.97, 0.67, zb], [s * 0.85, 0.44, zb],
+        [s * 0.85, 1.06, za], [s * 0.97, 1.06, za], [s * 0.97, 1.06, zb], [s * 0.85, 1.06, zb]));
     }
   }
   for (const s of [-1, 1]) P.add('hull', box(0.034, 0.10, 0.12), s * 0.93, 0.39, 0); // source belly-shoulder suspension rib at the inner shoe edge
@@ -450,9 +450,9 @@ function buildAMX40(P) {
   // original track/skirt width; they are not a donor or duplicate wheel set.
   for (const side of [-1, 1]) {
     for (const wz of amx40WheelZs) {
-      P.add('hullDetail', cylX(0.285, 0.032, 18), side * 1.565, 0.49, wz);
-      P.add('hullDark', cylX(0.095, 0.036, 14), side * 1.570, 0.49, wz);
-      P.add('hullDark', torus(0.215, 0.013, 18), side * 1.584, 0.49, wz,
+      P.add('hullRunningGearDetail', cylX(0.285, 0.032, 18), side * 1.565, 0.49, wz);
+      P.add('hullRunningGearDark', cylX(0.095, 0.036, 14), side * 1.570, 0.49, wz);
+      P.add('hullRunningGearDark', torus(0.215, 0.013, 18), side * 1.584, 0.49, wz,
         0, 0, Math.PI / 2);
     }
   }
@@ -749,16 +749,16 @@ function buildAMX40(P) {
   // so the roof plateau keeps heightM p95)
   {
     const smL = FITTINGS.smokeBank({ mats: P.mats, count: 6, r: 0.050, len: 0.31, splay: -0.68, pitch: -0.34, seed: 5 });
-    smL.position.set(-1.13, 0.40, -0.45);
+    smL.position.set(-1.13, 0.48, -0.45);
     P.turretG.add(smL);
     const smR = FITTINGS.smokeBank({ mats: P.mats, count: 6, r: 0.050, len: 0.31, splay: 0.68, pitch: -0.34, seed: 6 });
-    smR.position.set(1.13, 0.40, -0.45);
+    smR.position.set(1.13, 0.48, -0.45);
     P.turretG.add(smR);
     // roof 7.62 AANF1 beside the cupola — LOW mount, FORWARD rest
     // (CROWS-forward law; type10 precedent: receiver at the published
     // height line so heightM p95 stays on the roof plateau)
     const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone', scale: 0.9, seed: 12, elev: -0.03, ammo: true });
-    mg.position.set(-0.46, 0.72, 0.30);                                         // source-height seated receiver course
+    mg.position.set(-0.46, 0.864, 0.30);                                        // re-seated on the owner-raised connected turret section
     P.turretG.add(mg);
     P.add('turret', box(0.12, 0.18, 0.12), -0.46, 0.84, 0.30);                 // continuous roof-to-receiver pedestal
     // antenna whips CLIPPED LOW over the aft roof, both raked hard aft
@@ -882,7 +882,19 @@ function buildAMX40(P) {
   P.add('gun', cylZ(0.100, 0.24, P.q ? 18 : 12), 0, 0, 5.20);                   // muzzle collar run
   muzzleBore(P, 5.34, 0.100, 0.060, 14);                                        // §B3.1 bore; face world 6.64 = overall 10.04
   P.muzzleZ = 5.34;
-  P.topY = 1.05;
+  // Owner silhouette correction (2026-08-12): the lengthened first-party
+  // shell remained visibly too shallow in the elevated side/profile view.
+  // Raise the COMPLETE connected fighting-compartment section by exactly
+  // 20% in local Y. This includes the shell, cheek/stowage courses, bustle,
+  // roof suite and articulated mantlet/cradle, but never stretches the hull
+  // or cannon run. The two direct smoke fittings and roof MG are re-seated
+  // above at the same 1.20 datum so yaw cannot expose a floating attachment.
+  P.scaleBuckets(
+    ['turret', 'turretDark', 'turretDetail', 'turretGlass', 'turretCloth',
+      'gunMount', 'gunMountDark'],
+    1, 1.20, 1,
+  );
+  P.topY = 1.26;
 }
 
 export const FRANCE_BUILDERS = { amx40: buildAMX40 };

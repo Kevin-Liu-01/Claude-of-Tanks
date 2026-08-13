@@ -99,6 +99,7 @@ re-freeze NEW hash, all in ONE commit.
 | leclerc | 683be340 | GRADUATED 2026-08-08 (30th; gate 90.3 x2 every component >=90 + visual floor 9.0 mean 9.17 x14 at freeze-verified bytes; the §5.14 §K-exemplar turret standard held through the ladder — no gate-chasing artifacts; commander-well doc trued z_w 0.32..0.66) |
 | amx30 | 89a4cdf0 | GRADUATED 2026-08-12 (§5.124 first-party low five-wheel AMX hull, compact cast turret, supported commander/optic/MG station and native exact 0/0 course; machine fidelity 91.81 / min view 90.01; fresh 42-frame yaw/ownership floor 9.0 / mean 9.16) |
 | amx30b2 | 34076800 | GRADUATED 2026-08-12 (§5.124 first-party B2 cast/rear-station and service package on the exact native five-wheel course; machine fidelity 91.51 / min view 90.14; fresh 42-frame yaw/ownership floor 9.0 / mean 9.12) |
+| amx40 | 3d312bde | RE-FROZEN 2026-08-12 (§5.135 fully first-party forward-section + owner-height re-cert: connected cheek/crown loft retained forward, complete turret section exactly 20% taller with smoke/MG re-seated; fidelity 92.94 / minimum whole view 91.90, strict native band+shoes+sweep 0/0, fresh 45-frame yaw/ownership floor 9.0 / mean 9.07; all source-baked playables retired) |
 | k2 | 827d5ffc | GRADUATED 2026-08-08 (31st; Leclerc-method closed station loft; gate 90.1 x2 every component >=90; visual R26 floor 9.0 / mean 9.09 x14; exact Object_8/15/18/21 plan inventory, rounded asymmetric cage, countable six-station ISU gear; oracle 8d92cd1b reproducible from pristine .bak) |
 | abramsx | 976a1370 | GRADUATED 2026-08-09; RE-FROZEN 2026-08-12 (§5.130 first-party winding closure: outward lower-bow facets, XM360 tunnel jambs and open D-hood sight cheeks; fidelity 94.29 / minimum view 93.99, gate 90.4, winding 0 reversed / 0 mixed, parent clean; fresh 42-frame floor 9.3 / mean 9.49; prior 26b46ba0 retired) |
 | challenger_3 | 3e5a7797 | GRADUATED 2026-08-09; RE-FROZEN 2026-08-10 (§5.95 owner screenshot attachment re-cert on current main: multi-tier Protector foundation, tapered optic plinth, smoke/corner rails and antenna collars have continuous physical seats; gate 90.4, standard/parent/winding clean; independent §B8 floor 9.4 / mean 9.59 x14; prior b0c172a4 retired) |
@@ -4565,3 +4566,50 @@ reason to distort first-party geometry or restore source topology. All eight
 presentation assets and their manifest binding are regenerated; targeted
 assets, bore, rig, strict track, parent and winding checks pass. **RE-FROZEN /
 KEEP `d8f8a3a8`; retire `5d7bc85c` and all earlier Type 90 freezes.**
+
+## 5.135 AMX-40 OWNER FORWARD/HEIGHT + STRICT TRACK RE-CERTIFICATION (2026-08-12, RE-FROZEN)
+
+The playable AMX-40 is the first-party `buildAMX40` implementation in
+`src/vehicles/france.js`. The local Armored Warfare GLB is a private visual
+and measurement oracle only. No source mesh, converted vertex/index payload,
+material, texture, rig, animation or source-backed runtime node enters the
+playable or public build.
+
+The owner-standard elevated profile confirms the earlier connected forward
+turret extension and this pass executes the later height order. The lower
+shoulders, cheeks, crown, welds and forward cassettes remain carried forward
+around the gun seat as one loft. The complete fighting-compartment section is
+then raised exactly **20%** in local Y: shell, bustle, roof suite and
+mantlet/cradle scale together, while the hull and gun run remain unchanged.
+Both direct smoke banks and the roof MG are re-seated at the same 1.20 datum.
+
+The strict running-gear pass fixes two hidden full-sweep defects. Lower belly
+shoulders now stop inside the shoe inner edge, and the existing painted wheel
+faces, rims and hubs carry explicit running-gear ownership through a new
+material-correct bucket. Exact containment improves from 318 band / 128 shoe
+sweep intersections to band front/rear **0/0**, shoes **0/0**, and complete
+sweep **0/0**. Six native road wheels remain between a distinct front idler
+and rear drive sprocket inside one continuous linked course.
+
+Machine fidelity is **92.94** with every whole direction at least **91.90**;
+components are overall 93.43 / hull 96.39 / turret 85.53 / gun 94.11 / tracks
+96.80. The legacy component gate is retained honestly at **51.3** (hull 90.4
+/ whole 68.3 / turret 61.9 / stations 51.3 / dimensions 63.5 / floaters 100)
+because its retired lower-section masks cannot grade the explicit owner
+correction without rewarding source-topology restoration.
+
+Freeze **`3d312bde`** reproduces twice at 62 meshes / 98,642 vertices. The
+final packet contains 15 paired + 15 yaw0 + 15 yaw90 frames including the
+elevated-left profile: 45 PNGs / 45 distinct hashes. Fresh inspection records
+`[9.1,9.1,9.0,9.0,9.0,9.0,9.0,9.1,9.2,9.1,9.0,9.2,9.1,9.1]`, floor **9.0**
+and mean **9.07**. The entire turret, gun, roof suite, smoke, MG, flank bins
+and rear package rotate together. Hull deck, service field and native course
+stay fixed. Parent nominees are visibly supported hull cable, spare-link
+stowage and driver/periscope geometry; no turret item is stranded.
+
+Winding is 0 reversed / 0 mixed / 0 deficit pixels. Mode-2's fixed-deck
+candidate is coherent hull structure revealed by turret departure. Rig,
+muzzle, targeted assets, strict track and all-view fidelity pass. All eight
+presentation assets are regenerated. **RE-FROZEN / KEEP `3d312bde`; retire
+all source-baked AMX-40 playables and the pre-height forward-extension
+freeze.**
