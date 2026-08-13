@@ -2309,9 +2309,9 @@ function smokeCluster(P, x, y, z, n, yaw, arc = 0.5) {
   }
 }
 
-function towCable(P, pts, r = 0.022) {
+function towCable(P, pts, r = 0.022, bucket = 'hullDark') {
   const curve = new THREE.CatmullRomCurve3(pts.map((p) => new THREE.Vector3(...p)), false, 'centripetal');
-  P.add('hullDark', new THREE.TubeGeometry(curve, P.q ? 20 : 10, r, 6, false));
+  P.add(bucket, new THREE.TubeGeometry(curve, P.q ? 20 : 10, r, 6, false));
 }
 
 function fenders(P, xInner, xOuter, y, z0, z1, th = 0.035) {
@@ -2899,13 +2899,13 @@ function buildT34(P) {
 
 function buildIS2(P) {
   const { rng } = P;
-  P.add('hull', box(1.8, 0.65, 5.72), 0, 0.775, 0.05);                          // lower hull
+  P.add('hull', box(1.70, 0.65, 5.72), 0, 0.775, 0.05);                         // inter-track lower hull
   // r7 hull rework: the sponson band starts at the FENDER LINE (1.22), not at
   // the track top — the full-height 1.10-1.80 slab wall read as a German
   // sponson barn. A dark AO ceiling closes the gap over the track run.
   P.add('hull', frustum(1.545, 1.85, -2.85, 1.42, 1.85, -2.85, 1.22, 1.80));    // sponson slab
   for (const s of [-1, 1]) {
-    P.add('hullShadow', new THREE.BoxGeometry(0.62, 0.026, 4.7), s * 1.23, 1.205, -0.5);
+    P.add('hullShadow', new THREE.BoxGeometry(0.62, 0.026, 4.7), s * 1.23, 1.265, -0.5);
   }
   // 60° upper glacis with a PLAN TAPER to the prow — the model-1944
   // "straightened nose" narrows toward the bow instead of running the full
@@ -2914,8 +2914,8 @@ function buildIS2(P) {
     [-1.06, 0.95, 3.30], [1.06, 0.95, 3.30], [1.45, 0.95, 1.90], [-1.45, 0.95, 1.90],
     [-0.98, 1.80, 1.83], [0.98, 1.80, 1.83], [1.42, 1.80, 1.86], [-1.42, 1.80, 1.86]));
   P.add('hull', slab(                                                            // 30° lower glacis, tapered
-    [-0.96, 0.45, 3.01], [0.96, 0.45, 3.01], [1.30, 0.45, 2.35], [-1.30, 0.45, 2.35],
-    [-1.06, 0.95, 3.30], [1.06, 0.95, 3.30], [1.45, 0.95, 1.95], [-1.45, 0.95, 1.95]));
+    [-0.84, 0.45, 3.01], [0.84, 0.45, 3.01], [0.84, 0.45, 2.35], [-0.84, 0.45, 2.35],
+    [-0.84, 0.95, 3.30], [0.84, 0.95, 3.30], [0.84, 0.95, 1.95], [-0.84, 0.95, 1.95]));
   // sloped rear — top-ring zF/zR were swapped (zF -3.38 < zR -3.0 inverted
   // the slab ring => inside-out since authorship; §5.03 sweep item 1)
   P.add('hull', frustum(1.4, -2.86, -2.86, 1.4, -3.0, -3.38, 1.2, 1.8));
@@ -2961,7 +2961,7 @@ function buildIS2(P) {
   P.add('turretDetail', torus(0.26, 0.025, P.q ? 22 : 10), 0.42, 0.68, -0.25);
   pintleMG(P, 0.42, 0.68, -0.25);
   for (const s of [-1, 1]) {
-    towCable(P, [[s * 0.85, 0.28, 0.4], [s * 0.95, 0.33, -0.2], [s * 0.85, 0.28, -0.6]], 0.016);
+    towCable(P, [[s * 0.85, 0.28, 0.4], [s * 0.95, 0.33, -0.2], [s * 0.85, 0.28, -0.6]], 0.016, 'turretDark');
   }
   // Mantlet group seated ON the (longer) cast face, not buried inside it:
   // broad cast cradle, rounded rocking roll, and the bulge under the barrel
@@ -2982,6 +2982,9 @@ function buildIS2(P) {
   });
   headlight(P, -0.6, 1.9, 1.75, -0.5);
   stowage(P, 'hullDetail', rng, [[1.25, 1.2, 1.4, 0.3, 0.24, 0.9]]);
+  // Keep the pike center and belly low between the lanes, but lift the
+  // real sponson, fender and service hardware above the complete shoe sweep.
+  P.raiseTrackCorridor(['hull', 'hullDetail', 'hullDark'], { laneInnerX: 0.87, floorY: 1.25 });
   P.decal('turret', 'number', '432', 0.38, [1.02, 0.28, -0.3], Math.PI / 2, 0, 0.20);
   P.decal('turret', 'number', '432', 0.38, [-1.02, 0.28, -0.3], -Math.PI / 2, 0, -0.20);
   P.topY = 0.72;
