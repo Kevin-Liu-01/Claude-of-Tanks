@@ -643,6 +643,13 @@ function buildObject279(P) {
       P.add('hullDark', KIT.cylX(0.16, 0.36, 10), s * 0.56, 0.36, zc + e * 2.85); // inner idler hub shadow
     }
   }
+  // The four-course layout keeps its low central beams; only the outer
+  // elliptical hull shoulders rise clear of the native linked shoes.
+  P.raiseTrackCorridor(['hull', 'hullDetail', 'hullDark'], { laneInnerX: 0.95, floorY: 0.84 });
+  // The cylinder-based tail cap has a centre-fan underside; lift that short
+  // terminal section as a whole so its triangles cannot sag into either
+  // rear wrap while the long central beams remain low.
+  P.raiseTrackCorridor(['hull'], { laneInnerX: 0, floorY: 0.84, zMin: zc - 3.24, zMax: zc - 2.54 });
   P.decal('hull', 'number', P.spec.visual.number || '279', 0.30, [1.55, 1.0, 0.6], Math.PI / 2, 0, 0);
 
   // flat wide dome — no cupola spikes on the oracle. v10: upper rings +0.035
