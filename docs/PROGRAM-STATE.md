@@ -36,6 +36,29 @@ were deleted. Any freeze row whose builder changed in this reset is historical
 until fresh native paired+yaw evidence replaces it. See
 `docs/critique/native-provenance-runtime-audit.md`.
 
+**2026-08-13 program closure snapshot:** the native reset is complete and is
+now the authoritative fleet state. `npm run tank:native:check` reports **108
+battle playables / 108 first-party procedural / 0 GLB-sourced**, with **26
+comparison candidates isolated** from runtime. The exact strict clearance
+audit covers all **110 registered procedural variants** and reports **0 band
+intersections, 0 shoe intersections, 0 full-sweep intersections, 0 blind
+spots and 0 anomalies**. `npm run tank:family:check` keeps the T-72, T-80 and
+T-90 lineages contiguous and ordered; the fleet running-gear law verifies a
+front idler, road-wheel span, support return and rear final drive except for
+explicit historically correct front-drive vehicles. Historical geometry rows
+whose reference is missing, fused or registration-incompatible remain honest
+N/A/low records rather than false passes; currentness is established by the
+native runtime, exact mechanical gates and the per-tank fresh fidelity/yaw
+receipts recorded below.
+
+The generated gameplay asset cache is also current: **108 tanks / 864 files**
+pass metadata, live-geometry and muzzle-bore verification. This mechanical and
+provenance closure must not be confused with blanket legacy packet migration:
+the 2026-08-13 all-fleet standard census reports **24/108** rows satisfying its
+combined fresh geometry-packet + contiguity + fittings-library marker gate.
+Older or reference-incompatible rows remain disclosed below and are not
+silently promoted to measured >=90 passes.
+
 ## 2. ABSOLUTE RULES (verbatim-critical)
 - THE ONE ABSOLUTE RULE: no assets extracted from commercial games, ever.
 - Private local project — never publish, never create accounts.
@@ -76,8 +99,8 @@ re-freeze NEW hash, all in ONE commit.
 | merkava3b | REMOVED BY OWNER 2026-08-06 (roster prune; was 8bb8d984, packet historical) |
 | merkava3c | aa74be6a | RE-FROZEN 2026-08-07 (§B2 under-roof closure wave §5.11: solid casting walls, gate rows EXACT, re-cert floor 9.0 on every changed view; sheets shots/critic-merkava-closure/) |
 | kf51 | 9ac547ac | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
-| isu122s | 8f420d18 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
-| isu152 | 8e2f75c0 | |
+| isu122s | a24764b5 | RE-FROZEN 2026-08-13 (§5.151 full native-course closure: inter-track core and over-track sponson corridor corrected, suspension dressing explicitly owned, terminal stowage reseated; exact band/shoe/sweep 0/0, geometry 91.3 x2, fidelity 94.3; prior 8f420d18 retired) |
+| isu152 | 540f9d6e | RE-FROZEN 2026-08-13 (§5.151 full native-course closure: continuous inter-track core, shoe-safe wing floor, semantic wheel/bay ownership and physically cleared rear skin; exact band/shoe/sweep 0/0, geometry 92.1 x2, fidelity 94.7; prior 8e2f75c0 retired) |
 | merkava3d | 667ece84 | RE-FROZEN 2026-08-07 (§B2 under-roof closure wave §5.11: solid casting walls, gate rows EXACT, re-cert floor 9.0 on every changed view; sheets shots/critic-merkava-closure/) |
 | pt91m | 2cf10e23 | |
 | t72b3m | 2e314ed8 | GRADUATED 2026-08-11 (§5.117 owner-source complete rebuild: compact low T-72 hull and cast turret, deeply seated irregular B3 protection, compact Sosna/roof suite, unequal backed turret-rear cells, articulated transom and exact native six-wheel linked course; exact track 0/0 bands+shoes, parent/winding clean; commercial-print registration honestly records machine row 0 while fresh independent §B8 passes floor 9.2 / mean 9.28 x14 with genuine yaw0/90 ownership; prior 175be954 retired) |
@@ -143,8 +166,14 @@ cratered leo2a5 to min 0 at load-prove). Load-prove = `node
 tools/tmp-modelsource-dump.mjs` shows the id ABSENT from the glb map +
 gate still measures via mirror.
 
-## 4. FLEET STATE at handoff (ledger 2026-08-05, 23/88 pass — revolution
-honestly parked at 88.9 pending its retune)
+## 4. HISTORICAL FLEET STATE AT 2026-08-05 HANDOFF
+
+This section is retained as the chronological takeover record and is fully
+superseded by the 2026-08-13 closure snapshot in §1 and §5.151. Its queues,
+counts and “active” labels must not be read as current work.
+
+(Original ledger snapshot: 23/88 pass — Revolution honestly parked at 88.9
+pending its retune.)
 - **Gate-PASS awaiting visual ladder / adjudication**: challenger1's historical
   90.2 / floor-7.0 row is superseded by the §5.112 native-procedural graduation;
   its old mask-conforming build is retired. centurion5
@@ -5250,3 +5279,54 @@ seven-wheel course and backed rear service field. No fused, stranded,
 floating, collision, winding or sky-hole defect is visible.
 
 **PASS / KEEP `dd139150`; retire `e215a738`. Ordered blockers: none.**
+
+## 5.151 FIRST-PARTY FLEET / STRICT RUNNING-GEAR PROGRAM CLOSURE (2026-08-13)
+
+The gameplay fleet is now authoritatively first-party. The live native audit
+reports **108 battle playables, 108 repository-authored procedural models and
+0 GLB-sourced playables**. Twenty-six private/community candidates remain
+isolated comparison oracles only; none supplies runtime meshes, converted
+vertices, materials, textures, rigs, animations or source-backed wrappers.
+
+The final strict audit evaluates all **110 registered procedural variants**,
+including disabled comparison variants and the legitimate four-course T95.
+Every row passes exact front, rear and full moving sweep against both the
+continuous band and individual linked-shoe volumes: **0 offenders / 0 shoe
+offenders / 0 blind spots / 0 anomalies**. The law is physical, not cosmetic:
+ordinary hulls, mudguards, flaps, sponsons, transoms and service fittings were
+reshaped or reseated; only explicitly authored wheel faces, suspension
+backers, hubs, axle members and course dressing carry running-gear ownership.
+
+The last two offenders were the first-party ISU casemates. ISU-152 now uses a
+continuous narrow inter-track core and shoe-safe over-track wing floor; its
+wheel/bay presentation retains the authored canvas and shadow tones while the
+rear skin and axle hardware have valid clearance/load paths. ISU-122S uses the
+same continuous corridor principle, a correctly narrowed lower tub, cleared
+flange/rear service geometry and inboard rear spare links. Both preserve six
+readable road-wheel stations, front idler, supported return, rear final drive
+and one native linked course. Elevated side/front/rear-quarter inspection
+shows no wheel loss, broken terminal, floating fitting or silhouette wound.
+
+The changed graduates hold the measured gates twice: ISU-152 geometry **92.1**
+and fidelity **94.7**; ISU-122S geometry **91.3** and fidelity **94.3**, with
+every available fidelity view >=90. Deterministic freezes reproduce twice:
+ISU-152 **`540f9d6e`** (50 meshes / 395,966 vertices) and ISU-122S
+**`a24764b5`** (37 meshes / 362,440 vertices).
+
+Fleet ordering and geometry tests pass: native track winding/two-layer shoes,
+visible front idler/road-wheel/support-roller/rear-drive cadence with explicit
+historical exceptions, and contiguous T-72/T-80/T-90 family order. The modern
+fleet remains unchanged by the final legacy closure; its prior per-tank
+paired/yaw/fidelity freezes remain the model of record.
+
+The regenerated gameplay cache passes currentness for **108 tanks / 864
+files**, including registry metadata, live geometry hashes and muzzle bores.
+The broader standard census remains **24/108** because it additionally requires
+every historical row to have a compatible fresh geometry packet and canonical
+fittings-library marker; that migration debt is explicitly outside this
+mechanical/provenance closeout and is not represented as a false fleet-wide
+>=90 result.
+
+**PROGRAM MECHANICAL/PROVENANCE DISPOSITION: PASS. Native playables 108/108;
+strict procedural clearance 110/110; generated assets 108/108 current. Legacy
+combined standard-packet migration: 24/108. Mechanical blockers: none.**

@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-08-13T05:06:34.701Z",
+ "generatedAt": "2026-08-13T08:02:53.202Z",
  "gate": "every component >= 90; min is the headline",
  "passed": 35,
  "total": 97,
@@ -976,19 +976,6 @@
    }
   },
   {
-   "id": "isu122s",
-   "geoMin": 90.3,
-   "gatePassed": true,
-   "components": {
-    "hullCurves": 90.3,
-    "wholeCurves": 90.3,
-    "turretCurves": 100,
-    "stations": 94.9,
-    "dims": 98.3,
-    "floaters": 100
-   }
-  },
-  {
    "id": "abramsx",
    "geoMin": 90.4,
    "gatePassed": true,
@@ -1194,19 +1181,6 @@
    }
   },
   {
-   "id": "isu152",
-   "geoMin": 91.2,
-   "gatePassed": true,
-   "components": {
-    "hullCurves": 91.2,
-    "wholeCurves": 91.2,
-    "turretCurves": 100,
-    "stations": 94,
-    "dims": 100,
-    "floaters": 100
-   }
-  },
-  {
    "id": "chieftain5",
    "geoMin": 91.2,
    "gatePassed": true,
@@ -1220,6 +1194,16 @@
    }
   },
   {
+   "id": "isu122s",
+   "geoMin": 91.3,
+   "gatePassed": true,
+   "components": {
+    "wholeCurves": 91.3,
+    "dims": 98.3,
+    "floaters": 100
+   }
+  },
+  {
    "id": "pt91m",
    "geoMin": 91.3,
    "gatePassed": true,
@@ -1228,6 +1212,16 @@
     "wholeCurves": 91.3,
     "turretCurves": 95,
     "stations": 92.8,
+    "dims": 100,
+    "floaters": 100
+   }
+  },
+  {
+   "id": "isu152",
+   "geoMin": 92.1,
+   "gatePassed": true,
+   "components": {
+    "wholeCurves": 92.1,
     "dims": 100,
     "floaters": 100
    }
