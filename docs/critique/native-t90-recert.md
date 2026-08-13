@@ -5,6 +5,35 @@ The private comparison GLB was used only as a quarantined visual reference;
 no comparison mesh, vertex/index payload, material, texture, rig, animation or
 runtime wrapper enters the playable or this commit.
 
+## Superseding post-loft armor and station refit — 2026-08-13
+
+- Geometry hash: `9cf4471c` (67 meshes / 121,320 vertices)
+- Evidence: `/private/tmp/t90-newshape-final-r5/t90`
+- Integrity: 15 procedural appraisal + 15 yaw0 + 15 yaw90 PNGs, including
+  elevated-left profile; 45 files / 45 distinct SHA-256 hashes
+- Standard-order live first-party visual appraisal:
+  `[9.3,9.3,9.2,9.1,9.1,9.1,9.2,9.3,9.3,9.4,9.3,9.4,9.3,9.4]`
+  (floor 9.1; mean 9.26)
+- Exact terminal band / shoe / strict sweep: `0/0`, `0/0`, `0/0`
+- Parent audit: 0 stranded / 0 abutting / 0 dangling
+- Winding: 0 reversed / 0 mixed, one visually null deficit pixel and zero
+  yaw-stranded candidate pixels
+- Runtime rig: 10/10; muzzle-bore contrast 101.2
+
+The existing asymmetric pear loft remains the load-bearing shell; no sphere,
+external geometry or imported data is introduced. Its narrow mechanical race
+is now visually subordinate. Five unequal primary K-5 banks, four lower
+returns, three crown returns and four diminishing aft leaves follow the final
+cheek heights and plan taper. Shtora shoulders, six-tube smoke carriers and the
+commander/night-sight mechanism are rebuilt on broader buried shoes around
+that exact casting instead of retaining the retired round-turret datum.
+
+All 45 frames show a genuine quarter-turn and continuous load paths. The
+complete casting, armor, gun, Shtora, smoke, optics, cupolas, NSVT, antennas,
+OPVT and rear package rotate together; hull and running gear remain fixed.
+
+**PASS / KEEP `9cf4471c`; supersede `80b4b851`. Ordered blockers: none.**
+
 ## Superseding pear-casting equipment closeout — 2026-08-13
 
 - Geometry hash: `80b4b851` (67 meshes / 118,488 vertices)
