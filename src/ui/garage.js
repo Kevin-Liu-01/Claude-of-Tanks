@@ -36,6 +36,7 @@ import {
 } from '../game/equipment.js';
 import { equipIconSVG } from './equipIcons.js';
 import { uiIconSVG } from './uiIcons.js';
+import { compareNationThenName } from './garageOrder.js';
 import { isGarageVisibleTankId } from '../game/matchmaking.js';
 import { tierNumeral } from '../vehicles/tier.js';
 import {
@@ -121,27 +122,22 @@ const CATALOG_GROUPS = [
 const GROUP_RANK = new Map(CATALOG_GROUPS.map((g, i) => [g.id, i]));
 // Within a group the carousel reads nation-block first (WoT convention:
 // USA, Germany, the Soviet/Russian line as one run, UK, France, then the
-// rest, Community fictional last), then tier ascending (era progression
-// within the nation), then name. Unknown nations/tiers park at the end of
-// their block so curated runs stay in front.
+// rest, Community fictional last), then display name. Unknown nations park at
+// the end of their block. Name sorting keeps related variants adjacent without
+// hard-coded family exceptions.
 const NATION_RANK = new Map([
-  'USA', 'Germany', 'USSR', 'USSR/Russia', 'Russia', 'UK', 'France',
-  'China', 'Israel', 'Italy', 'Japan', 'Poland', 'South Korea', 'Sweden',
-  'Ukraine', 'Community',
-].map((n, i) => [n, i]));
-const TIER_NUM = {
-  I: 1, II: 2, III: 3, IV: 4, V: 5, VI: 6, VII: 7, VIII: 8, IX: 9, X: 10,
-};
+  ['USA', 0], ['Germany', 1],
+  // These three legacy spec labels render as one Soviet/Russian garage
+  // category. Give them one rank so their cards interleave by display name.
+  ['USSR', 2], ['USSR/Russia', 2], ['Russia', 2],
+  ['UK', 3], ['France', 4], ['China', 5], ['Israel', 6], ['Italy', 7],
+  ['Japan', 8], ['Poland', 9], ['South Korea', 10], ['Sweden', 11],
+  ['Ukraine', 12], ['Community', 13],
+]);
 function catalogCompare(a, b) {
   const g = (GROUP_RANK.get(groupOf(a)) ?? 9) - (GROUP_RANK.get(groupOf(b)) ?? 9);
   if (g) return g;
-  const n = (NATION_RANK.get(a.nation) ?? 99) - (NATION_RANK.get(b.nation) ?? 99);
-  if (n) return n;
-  // §5.31b PRINT VIEWER: 'print:<id>' cards rank by their base tank's tier
-  const tierOf = (s) => tierNumeral(s.id) || tierNumeral(printBaseId(s.id));
-  const t = (TIER_NUM[tierOf(a)] || 999) - (TIER_NUM[tierOf(b)] || 999);
-  if (t) return t;
-  return String(a.name).localeCompare(String(b.name));
+  return compareNationThenName(a, b, NATION_RANK);
 }
 
 const SHELL_TYPE_COLOR = {

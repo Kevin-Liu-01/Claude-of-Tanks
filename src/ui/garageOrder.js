@@ -1,0 +1,20 @@
+// Pure garage ordering helpers. Kept separate from garage.js so the ordering
+// contract can be verified in Node without importing browser-only flag assets.
+
+const NAME_COLLATOR = new Intl.Collator('en', {
+  numeric: true,
+  sensitivity: 'base',
+});
+
+/**
+ * Order cards inside one catalog group by nation block, then display name.
+ * The id tie-break keeps the result deterministic if two variants share a
+ * public name.
+ */
+export function compareNationThenName(a, b, nationRank) {
+  const nationDelta = (nationRank.get(a.nation) ?? 99) - (nationRank.get(b.nation) ?? 99);
+  if (nationDelta) return nationDelta;
+  const nameDelta = NAME_COLLATOR.compare(String(a.name || ''), String(b.name || ''));
+  if (nameDelta) return nameDelta;
+  return NAME_COLLATOR.compare(String(a.id || ''), String(b.id || ''));
+}
