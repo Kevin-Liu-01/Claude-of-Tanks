@@ -1799,9 +1799,11 @@ function buildK1A1(P) {
     trackW: 0.57, topY: 0.95, paintedEnds: true, coveredTop: 1.0,
   });
   // near-black bay walls behind the wheel line (type10 §B8.1 device,
-  // critic r1 gear-read order)
+  // critic r1 gear-read order). Keep the backer behind the six road-wheel
+  // span only: the previous full 5.60 m card continued into both raised end
+  // wraps and physically occupied the idler/sprocket shoe corridor.
   for (const s of [-1, 1]) {
-    P.add('hullRunningGearDark', box(0.02, 0.90, 5.60), s * 1.06, 0.52, 0.05);
+    P.add('hullRunningGearDark', box(0.02, 0.90, 4.32), s * 1.06, 0.52, 0.18);
   }
 
   // hull: belly tub, sponson band with the print's TWO deck levels (raised

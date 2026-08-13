@@ -144,7 +144,7 @@ re-freeze NEW hash, all in ONE commit.
 | t90a | 810a6f18 | GRADUATED 2026-08-10 (§5.94 Leclerc-method cast-turret rebuild; gate 90.4 x2; standard/track/winding clean; independent §B8 floor 9.0 / mean 9.11 x14, yaw/load paths 9.2) |
 | t90a_vladimir | c13fec50 | GRADUATED 2026-08-10 (§5.94 source-specific compact ESSA/cast-turret/transom rebuild; gate 90.0 x2; standard/track/winding adjudicated; independent §B8 floor 9.0 / mean 9.01 x14, yaw/load paths 9.3) |
 | t90sm | 7efc69c9 | GRADUATED 2026-08-10; RE-FROZEN §5.105 (owner-priority complete redesign: source-measured low diamond shell retained, solid bustle steps replaced by backed slat cells, deep scalloped inboard skirts and layered rear service field added; gate 90.0 x2; standard/track/winding clean; independent §B8 floor 9.0 / mean 9.08 x14, all 28 yaw frames PASS; prior 56324371 retired) |
-| k1a1 | 28c7f5f0 | RE-FROZEN 2026-08-10 (§5.108 authored compact K1A1 shell/hull, native six-wheel course and cupola-seated K6; independent §B8 floor 9.0 / mean 9.21) |
+| k1a1 | b5218c44 | RE-FROZEN 2026-08-13 (§5.188 authored compact K1A1 shell/hull and cupola-seated K6 retained; road-bay backing shortened to the six-road-wheel span, leaving sole-native front-idler/rear-drive wraps exact 0/0/0; independent §B8 floor 9.0 / mean 9.21 retained) |
 | type99a | 6d52abda | RE-FROZEN 2026-08-12 (§5.133 strict-clearance re-cert: first-party measured-envelope hull/turret retained, native six-wheel return and shoes exact 0/0 through the full sweep, rear U-cable fully backed, gate 90.7 / fidelity 93.0; fresh 45-frame yaw/ownership floor 9.3 / mean 9.39; prior 50bbc9bc retired) |
 | type90 | b77a57f6 | RE-FROZEN 2026-08-13 (§5.155 corrected 0.80 first-party turret section retained with all roof kit seated; explicit front-idler/rear-final-drive faces now close the six-road-wheel native course identity; exact band+shoes+sweep 0/0, parent 0/0/0 and fresh 45-frame yaw/ownership PASS; prior d8f8a3a8 retired) |
 | type10 | 84dacef8 | RE-FROZEN 2026-08-13 (§5.172 first-party modular-turret re-cert: six buried cheek carriers, broader panoramic pedestal, cupola-owned M2 and denser low roof cadence; explicit front-idler/five-road-wheel/three-return-roller/rear-final-drive law, fidelity 91.56 / minimum view 90.15, exact band+shoes+sweep 0/0/0, parent 0/0/0 and fresh 45-frame elevated-profile/yaw PASS; prior 434c7928 retired) |
@@ -6776,3 +6776,44 @@ Required order: **front free idler -> six road wheels -> three return rollers
 course**. The playable remains wholly first-party procedural geometry.
 
 **PASS / KEEP `765d7460`; retire `827d5ffc`. Ordered blockers: none.**
+
+## 5.188 K1A1 NATIVE TERMINAL-CORRIDOR RE-CERT (2026-08-13)
+
+The fleet-wide exact audit found that K1A1's near-black wheel-bay backing card
+continued beyond the six-road-wheel span and into both raised terminal wraps.
+The native running gear itself already had the correct mechanisms and order;
+the offender was a fixed visual backer, not a missing or incorrectly placed
+idler or final drive.
+
+The backer is shortened and centered behind the road-wheel stations only. It
+still supplies the intended suspension-bay depth and contrast, but ends before
+the front free idler and rear toothed final-drive corridors. No terminal wheel,
+track band, shoe, suspension arm, hull silhouette, turret mass or combat
+station was replaced. The playable remains the authored first-party procedural
+K1A1; no quarantined comparison mesh, material, texture or converted payload
+enters runtime.
+
+Deterministic geometry reproduces twice as **`b5218c44`** (63 meshes / 73,854
+vertices). `/private/tmp/k1a1-road-bay-final-r1/k1a1` contains 15 authored
+views, 15 yaw0 and 15 yaw90 frames including elevated-left profile: **45 PNGs /
+45 distinct hashes**. Exact continuous-band, individual-shoe and strict
+moving-sweep clearance is **0/0/0**. Runtime articulation passes 10/10 and
+muzzle-bore contrast is 105.5. Winding is 0 reversed / 0 mixed; its small
+fixed-hull yaw nominee remains the supported rear spare-track fitting. Parent
+audit's sole `hullGlass` nominee is the already adjudicated driver-periscope
+strip, visibly seated on and fixed to the hull deck.
+
+The quarantined Armored Warfare comparison file is unavailable to the current
+fidelity renderer and has a recorded raised-engine-deck registration misfire,
+sunk-turret/interpenetration defect and commercial provenance restriction.
+Accordingly this isolated track correction does not fabricate a fresh paired
+score from it. The prior independent 42-frame authored/source-semantic vector
+`[9.2,9.3,9.1,9.1,9.0,9.1,9.1,9.3,9.2,9.3,9.2,9.3,9.3,9.3]` remains the
+shape baseline because no hull/turret/equipment silhouette changed; fresh
+authored/yaw/profile pixels confirm that full geometry is preserved.
+
+Required native order is explicit: **front free idler -> six road wheels ->
+three return rollers / hybrid suspension -> rear toothed final drive -> one
+continuous linked-shoe course**.
+
+**PASS / KEEP `b5218c44`; retire `28c7f5f0`. Ordered blockers: none.**
