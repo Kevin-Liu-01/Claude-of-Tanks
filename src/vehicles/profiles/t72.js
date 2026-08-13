@@ -2293,6 +2293,14 @@ function buildT72B3M(P) {
   // Ring [1.20,0.26]: the old 0.30 seat put the ring's front rim (z 0.03)
   // at 1.72 where the ref shoulder reads 1.663.
   const rings = [[1.35, 0.005], [1.50, 0.08], [1.42, 0.185], [1.20, 0.26], [0.84, 0.36], [0.40, 0.39], [0.02, 0.40]];
+  // A shallow clipped pear shoulder makes the later B3M protection package
+  // read as a developed member of the same T-72 casting family as the B87.
+  // It stays largely buried in the curved shell, but carries the outboard
+  // Kontakt-5 and rear carrier roots on real turret volume instead of
+  // letting the accessories define the silhouette by themselves.
+  P.add('turret', orientedSlab(
+    [-1.47, -0.035, 0.84], [1.47, -0.035, 0.84], [1.20, -0.035, -1.20], [-1.20, -0.035, -1.20],
+    [-1.34, 0.15, 0.75], [1.34, 0.15, 0.75], [1.05, 0.15, -1.08], [-1.05, 0.15, -1.08]));
   // r15 item 1: CURVED shell at the exact certified polyline — flat-plate
   // read came from near-constant normals, not from wrong rows. capR tuned
   // by gradient sample against the ref half (view-left done-gate).
@@ -3595,6 +3603,36 @@ function buildT72B3M(P) {
   // flank stowage bins (ref plan turret content at x 1.42..1.60 over world
   // z -0.67..-1.53 right / -0.71..-0.91 left, plus a LOW right bracket
   // sliver at x 1.60..1.69 z -1.19..-1.26 — was 3 ONLY-REF columns)
+  // FAMILY COHESION / LOAD-PATH PASS (2026-08-13): the bins and the rear
+  // rack were already turret-parented, but the side view reduced their
+  // physical connection to a few narrow seams.  A low buried shoulder
+  // carrier now runs behind each bin course, with a forward cheek shoe and
+  // an aft diagonal return into a split rear root.  These pieces overlap
+  // the cast dome and the existing rack walls; they do not form a solid
+  // bustle or move any hull/fender geometry into the turret.  The bottom
+  // edge intentionally sinks into the ring/deck seat so the whole package
+  // reads as one traversing T-72 turret at yaw 0 and yaw 90.
+  for (const s of [-1, 1]) {
+    P.add('turret', box(0.18, 0.18, 0.96), s * 1.35, 0.055, -0.18, 0, s * 0.05, 0);
+    P.add('turretTrack', box(0.035, 0.045, 0.82), s * 1.445, 0.135, -0.18, 0, s * 0.05, 0);
+    P.add('turret', box(0.34, 0.14, 0.38), s * 1.22, 0.035, 0.34, 0, s * -0.42, 0);
+    P.add('turret', box(0.28, 0.15, 0.62), s * 1.18, 0.035, -0.72, 0, s * 0.32, 0);
+    P.add('turretDark', box(0.045, 0.16, 0.43), s * 1.04, 0.060, -0.90, 0, s * 0.42, 0);
+    P.add('turret', box(0.34, 0.12, 0.30), s * 0.78, 0.045, -1.13, 0, s * 0.24, 0);
+    for (const [z, yaw] of [[0.22, -0.22], [-0.12, 0.04], [-0.49, 0.16]]) {
+      P.add('turretTrack', box(0.46, 0.15, 0.28), s * 1.26, 0.105, z, 0, s * yaw, 0);
+      P.add('turretDark', box(0.36, 0.018, 0.20), s * 1.26, 0.190, z, 0, s * yaw, 0);
+    }
+    for (const [z, yaw] of [[-0.04, 0.10], [-0.43, 0.18]]) {
+      P.add('turretDetail', box(0.54, 0.035, 0.060), s * 1.18, 0.285, z, 0, s * yaw, 0);
+      P.add('turretDark', box(0.035, 0.19, 0.20), s * 1.02, 0.175, z, 0, s * yaw, 0);
+    }
+    P.add('turretDark', box(0.42, 0.045, 0.055), s * 0.91, 0.235, -0.90, 0, s * 0.46, 0);
+    P.add('turretDetail', box(0.48, 0.035, 0.055), s * 0.82, 0.305, -0.91, 0, s * 0.50, 0);
+    P.add('turretDetail', box(0.045, 0.23, 0.18), s * 0.66, 0.145, -1.12, 0.18, s * 0.12, 0);
+  }
+  P.add('turret', box(1.44, 0.14, 0.22), 0, 0.035, -1.02);
+  P.add('turretDark', box(1.24, 0.028, 0.16), 0, 0.112, -1.02);
   // r10d bin SPLIT: ref front 1.706@x1.52 stepping 1.615@1.56..1.60, floor
   // 1.368 (the batch-3 y-drop sank the whole bin floor to 1.32)
   // 2022: right flank bin re-spans to the print's z' 0.18..-0.73w band

@@ -12,7 +12,7 @@ export const NATIVE_VARIANT_FAMILIES = Object.freeze({
   t72: Object.freeze([
     // The base T-72B3 was explicitly delisted and has no active comparison
     // oracle. Keep only battle-playable members in this progression.
-    't72b_1987', 't72bu', 'pt91m', 't72b3m',
+    't72b_1987', 't72b3m', 't72bu', 'pt91m',
   ]),
   t80: Object.freeze([
     't80', 't80b', 't80bv', 't80u', 't84',
