@@ -1048,12 +1048,10 @@ function buildT90AVladimirLegacy(P) {
     // 0.914@1.985) — tangent from (1.29,0.05) to circle (1.62,0.95,r0.32)
     // reproduces all four within 0.04. Rear: ground ends -2.91, slope 0.5
     // to the sprocket (y 0.70 tangent fits exactly).
-    // Preserve the authored terminal wheel while extending the flat contact
-    // run through the complete leading road tire below.
     sprocket: { z: -3.30, y: 0.70, r: 0.29 }, idler: { z: 1.62, y: 0.95, r: 0.18 },
     // The recovered front run leaves the ground at z≈1.15; the former
     // 1.29 pin held the shoe floor flat through four source-rising slices.
-    contactZF: 1.60, contactZR: -2.91,
+    contactZF: 1.00, contactZR: -2.91,
     rollers: [-2.3, -0.83, 0.6].map((z) => ({ z, y: 0.86, r: 0.086 })),
     // rTAIL r13b: xc 1.46 / trackW 0.60 — the ref grounds its track band
     // out to x 1.76-1.79 (front ±1.728/1.77 cols read bot 0.011) while the
@@ -2433,20 +2431,19 @@ function buildT90MProryv(P) {
     });
     P.hullG.add(cable);
   }
-  const proryvWheelZs = [2.52, 1.63, 0.74, -0.15, -1.04, -1.93];
   buildRunningGear(P, {
     // r26a: ref ground contact spans -1.49..2.52 with the track band at
     // |x| 1.12..1.73 (front view) — wheels re-seated, arms off (the strip
     // fade owns the lower-run line).
-    style: 'rubber', wheelR: 0.435, wheelW: 0.21, wheelY: 0.49, xc: 1.435, dishR: 0.84,
-    wheelZs: proryvWheelZs,
+    style: 'rubber', wheelR: 0.410, wheelW: 0.21, wheelY: 0.46, xc: 1.435, dishR: 0.84,
+    wheelZs: evenStations(6, 4.01, 0.515),
     // r27: idler 2.90 -> 2.65 — the ref's side-hull bottoms at z 2.99-3.36
     // are its RAMP LINE (0.50@3.06 / 0.57@3.14 = the fade strips, exact),
     // and the five worst side_hull cols (0.19-0.22 x3 + partials) were my
     // idler wrap + belt dive hanging BELOW that line 0.4 m forward of the
     // ref's own gear end (~2.6; its contact stops 2.52). Wrap front now
     // 2.915; the strips own the bow-col bottoms ref-exact.
-    sprocket: { z: -2.72, y: 0.88, r: 0.30 }, idler: { z: 3.28, y: 0.92, r: 0.27 },
+    sprocket: { z: -2.10, y: 0.78, r: 0.28 }, idler: { z: 2.65, y: 0.78, r: 0.22 },
     rollers: [-1.10, 0.30, 1.70].map((z) => ({ z, y: 0.80, r: 0.086 })),
     // r27: trackW 0.58 -> 0.50: the link shoes (band + ~0.023) reached
     // +-1.748 and painted the +-1.76/1.77 front cols to the ground (err
@@ -2458,7 +2455,7 @@ function buildT90MProryv(P) {
     // raised the belt ends and cost side_hull 2.3 — the warped ref's own
     // belt IS ground-flat at -1.9..-2.4/+2.9 (the r26 note reads the REF,
     // not the proc): flat botY MATCHES it. Certified partial class.)
-    trackW: 0.50, topY: 0.95, botY: 0.05, paintedEnds: true, coveredTop: true, arms: false,
+    trackW: 0.50, topY: 0.83, botY: 0.05, paintedEnds: true, coveredTop: true, arms: false,
     // r30 LAW FIND: `contact: {zF,zR}` (introduced r27) is a SILENT NO-OP —
     // tankFactory reads cfg.contactZF/contactZR ONLY (line ~869; defaults
     // wheel-span ±wheelR*0.5 = 2.71/-1.68 here). Every r27 contact "result"
@@ -2469,7 +2466,7 @@ function buildT90MProryv(P) {
     // r4: contactZF 2.45 -> 2.56 — the front ramp read 0.035-0.066 LOW at
     // z 2.72-2.85 then 0.058 HIGH at the wrap (my knee sat too far forward;
     // ref ramp line 0.16@2.72 / 0.29@2.85 / 0.38@2.97).
-    contactZF: 2.96, contactZR: -2.37,
+    contactZF: 2.50, contactZR: -1.50,
     // PERFECTION r1 (centurion r6 class, banked in tankFactory): the pad
     // corners sagged to -0.015 — procBox.min.y biased EVERY station topPct
     // +0.67% and the front rows read procBottom -0.012 vs the ref's 0.04
@@ -2528,17 +2525,16 @@ function buildT90MProryv(P) {
     for (const s of [-1, 1]) {
       const det = s < 0 ? 'hullTrackDetailL' : 'hullTrackDetailR';
       const trm = s < 0 ? 'hullTrackTrimL' : 'hullTrackTrimR';
-      for (const wz of proryvWheelZs) {
-        P.add(det, cylX(0.350, 0.036, 18), s * 1.542, 0.49, wz);
-        P.add(det, torus(0.380, 0.008, 22), s * 1.544, 0.49, wz, 0, 0, Math.PI / 2);
-        P.add(det, torus(0.205, 0.006, 16), s * 1.5445, 0.49, wz, 0, 0, Math.PI / 2);
-        P.add(det, cylX(0.105, 0.048, 12), s * 1.5425, 0.49, wz);
-        P.add(trm, cylX(0.052, 0.066, 10), s * 1.5455, 0.49, wz);
+      for (const wz of [2.52, 1.718, 0.916, 0.114, -0.688, -1.49]) {
+        P.add(det, torus(0.355, 0.008, 22), s * 1.544, 0.46, wz, 0, 0, Math.PI / 2);
+        P.add(det, torus(0.190, 0.006, 16), s * 1.5445, 0.46, wz, 0, 0, Math.PI / 2);
+        P.add(det, cylX(0.092, 0.048, 12), s * 1.5425, 0.46, wz);
+        P.add(trm, cylX(0.052, 0.066, 10), s * 1.5455, 0.46, wz);
       }
-      P.add(trm, torus(0.200, 0.012, 18), s * 1.6225, 0.92, 3.28, 0, 0, Math.PI / 2);
-      P.add(det, cylX(0.100, 0.05, 12), s * 1.6235, 0.92, 3.28);
-      P.add(trm, torus(0.205, 0.012, 18), s * 1.6375, 0.88, -2.72, 0, 0, Math.PI / 2);
-      P.add(det, cylX(0.105, 0.05, 12), s * 1.6385, 0.88, -2.72);
+      P.add(trm, torus(0.115, 0.010, 14), s * 1.6225, 0.78, 2.65, 0, 0, Math.PI / 2);
+      P.add(det, cylX(0.062, 0.05, 10), s * 1.6235, 0.78, 2.65);
+      P.add(trm, torus(0.15, 0.012, 16), s * 1.6375, 0.78, -2.10, 0, 0, Math.PI / 2);
+      P.add(det, cylX(0.085, 0.05, 10), s * 1.6385, 0.78, -2.10);
     }
   }
   // gear-fade strips on the ref's rendered ramp lines (rear 0.12@-1.68 ->
