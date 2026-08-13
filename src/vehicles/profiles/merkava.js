@@ -6044,14 +6044,15 @@ function buildMerkavaMark(P, p) {
     p.sprocket.y + p.sprocket.r,
     p.idler.y + p.idler.r,
   ) + 0.20;
+  // The factory repair now preserves complete X/Z columns and part
+  // thickness, so this authors a real suspension tunnel without flattening
+  // the Merkava's side armor or making the hull disappear in profile.
   P.raiseTrackCorridor(
     ['hull', 'hullDark', 'hullDetail', 'hullRubber', 'hullCloth', 'hullWood'],
     { laneInnerX: gearInner - 0.08, floorY: wrapFloor },
   );
-  // A few broad stern-canvas panels cross the centreline, so their inner
-  // vertices do not satisfy the per-lane vertex lift even though their
-  // outboard corners enter the rear wrap.  Reseat each complete low panel
-  // on the new floor; this preserves its rectangular fabric construction.
+  // Wide stern-canvas panels cross the centreline.  Move each complete low
+  // panel rigidly onto its rear carrier; never clamp its individual faces.
   P.forEachBucketPart(['hullCloth'], (geo, b) => {
     const reachesLane = Math.max(Math.abs(b.min.x), Math.abs(b.max.x)) >= gearInner - 0.08;
     if (!reachesLane || b.min.z > -3.20 || b.min.y >= wrapFloor) return;
@@ -8036,7 +8037,7 @@ export const MERKAVA_PROFILES = {
     fenderPlank: { x0: 1.40, x1: 1.80, z0: 2.94, z1: -4.02, y: 1.47 },
     fenderLip: { x: 1.84, w: 0.07, z0: 2.42, z1: -3.58, y: 1.22 },
     wheelZs: [1.75, 0.89, 0.03, -0.83, -1.69, -2.55],
-    sprocket: { z: 2.05, y: 0.54, r: 0.29 }, idler: { z: -3.32, y: 0.70, r: 0.27 },
+    sprocket: { z: 2.05, y: 0.60, r: 0.29 }, idler: { z: -3.32, y: 0.70, r: 0.27 },
     rollers: [1.35, 0.5, -0.4, -1.3, -2.15],
     skirt: { z0: 2.50, z1: -2.65, top: 1.14, bot: 0.62, scallop: true, x: 1.83 },
     // Rack wall hangs LOW on the repaired print (band 0.46..1.62); wings
@@ -8119,7 +8120,7 @@ export const MERKAVA_PROFILES = {
     fenderPlank: { x0: 1.40, x1: 1.80, z0: 2.94, z1: -4.00, y: 1.47 },
     fenderLip: { x: 1.84, w: 0.07, z0: 2.42, z1: -3.58, y: 1.22 },
     wheelZs: [1.75, 0.89, 0.03, -0.83, -1.69, -2.55],
-    sprocket: { z: 2.05, y: 0.54, r: 0.29 }, idler: { z: -3.32, y: 0.70, r: 0.27 },
+    sprocket: { z: 2.05, y: 0.60, r: 0.29 }, idler: { z: -3.32, y: 0.70, r: 0.27 },
     rollers: [1.35, 0.5, -0.4, -1.3, -2.15],
     skirt: { z0: 2.46, z1: -2.65, top: 1.14, bot: 0.62, scallop: true, x: 1.83 },
     markerRods: { x: 1.76, y: 1.62, z: -3.50, h: [0.93, 0.89] },
@@ -9086,7 +9087,7 @@ export const MERKAVA_PROFILES = {
     // slat line slightly inboard.
     fenderLip: { x: 1.86, w: 0.07, z0: -0.90, z1: -2.30, y: 1.00 },
     wheelZs: [1.95, 0.95, -0.05, -1.00, -1.90, -2.60],
-    sprocket: { z: 2.50, y: 0.54, r: 0.31 }, idler: { z: -3.30, y: 0.64, r: 0.28 },
+    sprocket: { z: 2.50, y: 0.62, r: 0.31 }, idler: { z: -3.30, y: 0.64, r: 0.28 },
     rollers: [1.45, 0.5, -0.45, -1.35, -2.25],
     skirt: { z0: 2.48, z1: -3.00, top: 1.30, bot: 0.62, scallop: true, flaps: false, x: 1.80 },
     hump: { x0: 0.22, x1: 0.98, z0: 0.75, z1: 1.90, top: 2.04 },

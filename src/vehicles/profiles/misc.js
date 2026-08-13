@@ -3193,7 +3193,7 @@ function buildType74Native2026(P) {
   P.add('hullDark', box(0.36, 0.035, 0.055), -1.12, 1.41, 1.10, 0, 0.10, 0);
   P.add('hullDetail', box(0.52, 0.035, 0.045), 0.74, 1.42, 1.37, 0, -0.16, 0);
   {
-    const cable = FITTINGS.towCable({ mats: P.mats, pts: [[-1.02, 1.16, 2.32], [-0.08, 1.31, 1.78], [0.94, 1.15, 2.30]], r: 0.017, seed: 74 });
+    const cable = FITTINGS.towCable({ mats: P.mats, pts: [[-0.90, 1.20, 2.32], [-0.08, 1.31, 1.78], [0.88, 1.20, 2.30]], r: 0.017, seed: 74 });
     P.hullG.add(cable);
   }
 
@@ -3203,8 +3203,10 @@ function buildType74Native2026(P) {
   buildRunningGear(P, {
     style: 'rubber', dishR: 0.80, wheelR: 0.455, wheelW: 0.27, wheelY: 0.49, xc: XC,
     wheelZs,
-    sprocket: { z: -2.55, y: 0.55, r: 0.32 },
-    idler: { z: 2.55, y: 0.51, r: 0.32 },
+    sprocket: { z: -2.55, y: 0.72, r: 0.32 },
+    // The front idler owns the rising terminal, matching the raised rear
+    // drive and the fleet's required /____\\ course silhouette.
+    idler: { z: 2.55, y: 0.72, r: 0.32 },
     rollers: [-1.22, -0.41, 0.41, 1.22].map((z) => ({ z, y: 1.00, r: 0.08 })),
     trackW: 0.55, trackTh: 0.065, topY: 1.02, botY: 0.035,
     deadSag: 0.025, paintedEnds: true, coveredTop: false, arms: true,
@@ -3653,15 +3655,17 @@ export const MISC_PROFILES = {
     // expose the idler/road-wheel/sprocket sequence; the corridor lift only
     // forms the narrow outboard chamfer, leaving the center belly low.
     skirtY: 1.20, skirtHeight: 0.16, headlightY: 1.13,
-    trackClearance: { laneInnerX: 1.04, floorY: 1.08, buckets: ['hull'] },
+    // Both terminals sit above the five road-wheel centres so the profile
+    // reads as one rising native course instead of seven equal wheels.
+    idlerY: 0.68, sprocketY: 0.68,
+    trackClearance: { laneInnerX: 1.04, floorY: 1.24, buckets: ['hull', 'hullDetail', 'hullDark'] },
     turret: 'ifv', turretWidth: 1.60, turretDepth: 1.70, turretHeight: 0.93, turretFront: 0.68, turretRear: -0.85, gunLength: 4.44, gunRadius: 0.035, sleeve: false, evac: null, pano: false, mg: false, smoke: false, antennas: false,
   },
   type90: { build: buildType90 },
-  // Runtime Ariete is the stronger earlier repository-authored construction.
-  // Restored first-party Native2026 route: this is repository-authored
-  // procedural geometry only; no source mesh or converted vertex payload is
-  // used at runtime.
-  ariete: { build: buildArieteNative2026 },
+  // Runtime Ariete is the stronger earlier detailed construction.
+  // The later Native2026 experiment remains available above for comparison,
+  // but must not replace the accepted, more detailed model.
+  ariete: { build: buildAriete },
   leclerc: { build: buildLeclerc },
   t80u: { build: buildT80UNative2026 },
   type74: { build: buildType74Native2026 },

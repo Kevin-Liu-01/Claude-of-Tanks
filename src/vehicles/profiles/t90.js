@@ -3109,7 +3109,11 @@ function buildT90SMLegacy(P) {
     // found the wrap shoes 23mm INSIDE the 1.18 roof at z -2.44..-2.40
     // (full width, the m1a1ha blind-spot class: band 0 while shoes hit).
     // Interior everywhere (deck 1.40-1.45 above; §B4 recipe).
-    sponsonY: [[-2.92, 0.81], [-2.84, 1.31], [-2.06, 1.31], [-1.78, 0.81], [2.52, 0.81], [2.64, 1.15], [3.02, 1.15]],
+    // A real raised suspension tunnel follows the upper return.  Earlier
+    // global corridor clamping flattened this authored hull section; keeping
+    // the same loft stations and lifting only their underside preserves the
+    // side armor while clearing the complete animated course.
+    sponsonY: [[-2.92, 1.12], [-2.84, 1.31], [-2.06, 1.31], [-1.78, 1.12], [2.52, 1.12], [2.64, 1.15], [3.02, 1.15]],
   });
   // r10 BOW STAIRCASE (fresh workorder): ref plan front steps 3.186-3.24 at
   // |x| 0.8..0.95 and 3.43 at |x| 1.14..1.37 ONLY — the old 0.855..1.295
@@ -3283,7 +3287,11 @@ function buildT90SMLegacy(P) {
   // Sprocket 0.84 -> 0.80: the raised seat poked the sponson floor (clip
   // audit 198 rear; ramp read holds at 0.32@-2.28 vs ref 0.298).
   buildRunningGear(P, {
-    style: 'rubber', wheelR: 0.385, wheelW: 0.21, wheelY: 0.46, xc: 1.405, dishR: 0.84,
+    // Keep the mature T-90SM hull and expose its suspension properly.  The
+    // former 385-mm faces were visually swallowed by the demonstrator skirt;
+    // these fuller wheels retain the exact six-station span and terminal
+    // clearance while restoring the low-hull/large-wheel family stance.
+    style: 'rubber', wheelR: 0.415, wheelW: 0.21, wheelY: 0.48, xc: 1.405, dishR: 0.78,
     wheelZs: evenStations(6, 4.05, 0.135),
     sprocket: { z: -2.42, y: 0.90, r: 0.258 }, idler: { z: 2.90, y: 0.78, r: 0.21 },
     rollers: [-1.40, 0, 1.44].map((z) => ({ z, y: 0.80, r: 0.086 })),
@@ -3292,7 +3300,7 @@ function buildT90SMLegacy(P) {
     // 0.08 low over six cols); rear ramp 0.218@-2.189 -> 0.655@-2.735 (my
     // ground ran to -2.19 where the ref lifts).
     contactZF: 2.20, contactZR: -1.45,
-    trackW: 0.44, trackTh: 0.03, topY: 0.83, botY: 0.05, paintedEnds: true, coveredTop: true, arms: true,
+    trackW: 0.44, trackTh: 0.03, topY: 0.88, botY: 0.05, paintedEnds: true, coveredTop: true, arms: true,
   });
   // The recovered loop holds one loaded shoe flat at the rear contact knee
   // before climbing to the sprocket.  Bed the paired shoes through the
@@ -3309,7 +3317,7 @@ function buildT90SMLegacy(P) {
   // mask dump.)
   // r11: band at 1.765 (faces 1.725/1.805) — the ref carries the 0.946..
   // 1.286 skirt band INTO the ±1.717 col family my 1.74-face missed.
-  ruSkirtBand(P, { x: 1.765, z0: -1.86, z1: 3.10, yTop: 1.24, yBot: 0.94, panels: 7, th: 0.08, lipYL: 0.985 });
+  ruSkirtBand(P, { x: 1.765, z0: -1.86, z1: 3.10, yTop: 1.24, yBot: 1.02, panels: 7, th: 0.08, lipYL: 1.045 });
   // bow skirt end-caps: standard-check found enclosed top-down cells at
   // (±1.7, z 3.02) between the lip-row end (3.00) and the flap (3.10) —
   // §B2 NO-HOLES caps close the ring.
@@ -4427,7 +4435,7 @@ function addT90AFamilyFinish(P, { vladimir = false, base = false } = {}) {
 }
 
 function replaceT90ACastTurret(P, { vladimir = false } = {}) {
-  const { box, cylY, cylZ } = KIT;
+  const { box, cylY, cylZ, polyMultiLoft, polyTurret } = KIT;
 
   // Atomic turret replacement: keep the variant's measured hull, discard the
   // superseded tall welded candidate and rebuild one closed cast assembly.
@@ -4445,31 +4453,46 @@ function replaceT90ACastTurret(P, { vladimir = false } = {}) {
     [1.46, -0.04], [1.61, 0.10], [1.58, 0.27], [1.43, 0.43],
     [1.18, 0.57], [0.84, 0.68], [0.44, 0.745], [0.05, 0.775],
   ];
-  // Base T-90 casting: explicit source-guided sections replace the former
-  // half-sphere.  The lower shoulders swell beyond the crown, the mantlet
-  // valley pinches forward, the rear casting drops sharply, and the unequal
-  // left/right widths leave room for the real asymmetric station package.
-  // All coordinates are authored in this repository; no external geometry
-  // is imported, sampled, converted or shipped.
-  P.add('turret', castSectionLoft([
-    // Five independent vertical levels replace the old four-arc profile.
-    // A broad lower shoulder, clipped upper cheek and shallow roof shelf now
-    // carry the silhouette; the narrow crown is only the final foundry roll.
-    // Unequal left/right widths preserve the real cast asymmetry.
-    [1.36, [[-0.02, -0.58, 0.62], [0.10, -0.82, 0.86], [0.27, -0.76, 0.80], [0.44, -0.56, 0.61], [0.58, -0.25, 0.31]]],
-    [1.08, [[-0.03, -1.06, 1.11], [0.11, -1.43, 1.49], [0.31, -1.34, 1.42], [0.50, -1.02, 1.12], [0.64, -0.48, 0.58]]],
-    [0.68, [[-0.04, -1.32, 1.39], [0.10, -1.59, 1.66], [0.32, -1.51, 1.59], [0.53, -1.13, 1.22], [0.69, -0.58, 0.69]]],
-    [0.18, [[-0.05, -1.42, 1.48], [0.09, -1.64, 1.67], [0.31, -1.54, 1.61], [0.54, -1.16, 1.25], [0.73, -0.61, 0.73]]],
-    [-0.35, [[-0.05, -1.43, 1.48], [0.09, -1.61, 1.65], [0.30, -1.51, 1.59], [0.53, -1.13, 1.22], [0.72, -0.58, 0.70]]],
-    [-0.80, [[-0.04, -1.36, 1.42], [0.09, -1.53, 1.58], [0.29, -1.42, 1.50], [0.50, -1.04, 1.14], [0.67, -0.50, 0.62]]],
-    [-1.17, [[-0.02, -1.21, 1.31], [0.08, -1.38, 1.44], [0.26, -1.27, 1.36], [0.45, -0.91, 1.02], [0.59, -0.40, 0.52]]],
-    [-1.47, [[0.00, -0.90, 1.02], [0.07, -1.14, 1.23], [0.22, -1.04, 1.14], [0.37, -0.72, 0.84], [0.49, -0.30, 0.42]]],
+  // Plain T-90 primary casting.  This is one authored, closed, clipped-pear
+  // loft—not a sphere with armor pasted over it.  A broad low foundry belt
+  // turns through two independent shoulder breaks into an inset asymmetric
+  // crown.  The forward valley, oblique cheeks, clipped flanks and falling
+  // rear shoulder are visible even before Kontakt-5 is attached.
+  const castPlan = [
+    [-0.26, 1.38], [0.26, 1.38], [0.76, 1.14], [1.27, 0.82],
+    [1.58, 0.38], [1.64, -0.10], [1.51, -0.62], [1.18, -1.08],
+    [0.66, -1.43], [-0.62, -1.46], [-1.10, -1.16], [-1.45, -0.73],
+    [-1.60, -0.18], [-1.54, 0.34], [-1.24, 0.78], [-0.72, 1.12],
+  ];
+  const lowerShoulder = [
+    0.24, 0.24, 0.30, 0.35, 0.38, 0.38, 0.34, 0.30,
+    0.27, 0.28, 0.31, 0.35, 0.39, 0.39, 0.35, 0.30,
+  ];
+  const upperCheek = [
+    0.46, 0.46, 0.54, 0.60, 0.62, 0.59, 0.53, 0.47,
+    0.42, 0.43, 0.48, 0.55, 0.62, 0.64, 0.60, 0.53,
+  ];
+  const crown = [
+    0.56, 0.56, 0.62, 0.68, 0.70, 0.66, 0.59, 0.52,
+    0.47, 0.48, 0.54, 0.62, 0.69, 0.72, 0.68, 0.61,
+  ];
+  P.add('turret', polyMultiLoft(castPlan, [
+    { height: -0.03, inset: 1.00 },
+    { height: lowerShoulder, inset: 0.985 },
+    { height: upperCheek, inset: 0.84 },
+    { height: crown, inset: 0.64 },
   ]));
-  // Keep the ring as a low mechanical seat rather than a second circular
-  // turret body.  The previous 1.44 m cap remained visible below the new
-  // faceted cheeks and recreated a literal half-sphere silhouette.
-  P.add('turret', cylY(1.02, 1.16, 0.10, 16), 0, -0.050, -0.06);
-  P.add('turretDark', cylY(1.08, 1.08, 0.020, 16), 0, -0.094, -0.06);
+
+  // A matching clipped apron overlaps the turret ring and casting floor.
+  // Its straight segments eliminate the circular bowl that used to remain
+  // visible below the cheek armor in front and side views.
+  const apronPlan = [
+    [-0.22, 1.02], [0.22, 1.02], [0.86, 0.76], [1.30, 0.24],
+    [1.28, -0.52], [0.88, -0.98], [-0.82, -1.00], [-1.24, -0.56],
+    [-1.32, 0.20], [-0.86, 0.74],
+  ];
+  P.add('turret', polyTurret(apronPlan, 0.16, 0.97, 0.98), 0, -0.15, -0.05);
+  P.add('turretDark', polyTurret(apronPlan, 0.020, 0.98, 0.99), 0, 0.012, -0.05);
 
   // Three low Kontakt-5 crown plates follow the casting and are split by
   // flush seams.  Tapered cassettes replace the old rectangular roof cards:
@@ -5110,11 +5133,10 @@ function buildT90AVladimir(P) {
 function finishT90SMOwnerRedesign(P) {
   const { box } = KIT;
 
-  // Source-deep segmented skirts: the recovered demonstrator carries a
-  // continuous green curtain with a scalloped lower hem, not seven shallow
-  // rectangular plates above a fully exposed wheel course. These thin
-  // inboard leaves overlap the existing upper skirt band and remain clear of
-  // the native animated shoes.
+  // Shallow segmented skirts retain the demonstrator's scalloped cadence
+  // without erasing the six-wheel T-90 hull.  The former near-ground curtain
+  // made the vehicle read as a hollow side wall with six tiny hubs; every
+  // lower point now stays above the wheel centres and outside the shoe lane.
   const z0 = -2.50, z1 = 2.75, panels = 7, dz = (z1 - z0) / panels;
   for (const s of [-1, 1]) {
     // Inboard of the recovered outer skirt lip: side cameras retain the
@@ -5127,8 +5149,8 @@ function finishT90SMOwnerRedesign(P) {
     const xi = s * 1.675, xo = s * 1.705;
     for (let i = 0; i < panels; i++) {
       const a = z0 + i * dz, m = a + dz * 0.5, b = a + dz;
-      const edgeY = i === 0 || i === panels - 1 ? 0.68 : 0.72;
-      const lobeY = 0.43 + (i % 2) * 0.035;
+      const edgeY = i === 0 || i === panels - 1 ? 1.10 : 1.12;
+      const lobeY = 1.05 + (i % 2) * 0.025;
       P.add('hull', orientedSlab(
         [xi, edgeY, a], [xo, edgeY, a], [xo, lobeY, m], [xi, lobeY, m],
         [xi, 1.21, a], [xo, 1.21, a], [xo, 1.21, m], [xi, 1.21, m],
@@ -5137,7 +5159,7 @@ function finishT90SMOwnerRedesign(P) {
         [xi, lobeY, m], [xo, lobeY, m], [xo, edgeY, b], [xi, edgeY, b],
         [xi, 1.21, m], [xo, 1.21, m], [xo, 1.21, b], [xi, 1.21, b],
       ));
-      P.add('hullDark', box(0.026, 0.44, 0.024), xo, 0.98, b - 0.012);
+      P.add('hullDark', box(0.026, 0.12, 0.024), xo, 1.15, b - 0.012);
     }
   }
 
@@ -6219,8 +6241,8 @@ function replaceT90MProryvHull(P) {
   // narrow at the track line and broad only above the idler crown, avoiding
   // the rejected full-width vertical slab seen in the old front view.
   P.add('hull', orientedSlab(
-    [-1.00, 0.62, 3.16], [1.00, 0.62, 3.16], [1.42, 1.20, 2.63], [-1.42, 1.20, 2.63],
-    [-0.96, 0.69, 3.11], [0.96, 0.69, 3.11], [1.38, 1.27, 2.58], [-1.38, 1.27, 2.58],
+    [-0.82, 0.62, 3.16], [0.82, 0.62, 3.16], [1.28, 1.20, 2.63], [-1.28, 1.20, 2.63],
+    [-0.80, 0.69, 3.11], [0.80, 0.69, 3.11], [1.25, 1.27, 2.58], [-1.25, 1.27, 2.58],
   ));
   P.add('hullDark', box(1.72, 0.035, 0.055), 0, 0.78, 3.055, -0.50, 0, 0);
   for (const s of [-1, 1]) {
@@ -6253,7 +6275,7 @@ function replaceT90MProryvHull(P) {
     style: 'rubber', wheelR: 0.425, wheelW: 0.22, wheelY, xc: 1.435,
     dishR: 0.86, wheelZs,
     sprocket: { z: -1.95, y: 0.78, r: 0.28 },
-    idler: { z: 2.72, y: 0.54, r: 0.25 },
+    idler: { z: 2.72, y: 0.72, r: 0.25 },
     rollers: [-1.10, 0.30, 1.70].map((z) => ({ z, y: 0.83, r: 0.086 })),
     trackW: 0.50, topY: 0.84, botY: 0.05, paintedEnds: false,
     coveredTop: true, arms: false, contactZF: 2.30, contactZR: -1.35,
@@ -6266,7 +6288,13 @@ function replaceT90MProryvHull(P) {
     // treating a road wheel's own rim/bolts as hull penetrating its course.
     const det = 'hullRunningGearDetail';
     const trm = 'hullRunningGearDark';
+    const frontRoadZ = Math.max(...wheelZs);
     for (const wz of wheelZs) {
+      // The native wheel already supplies its tire, dish and hub.  At the
+      // leading road station the extra proud rim/face package entered the
+      // idler's rising shoe ramp; keep that station native-only while the
+      // five straight-run stations retain their non-intersecting fasteners.
+      if (wz === frontRoadZ) continue;
       P.add(det, torus(0.365, 0.010, 24), s * 1.544, wheelY, wz, 0, 0, Math.PI / 2);
       P.add(det, torus(0.205, 0.007, 18), s * 1.545, wheelY, wz, 0, 0, Math.PI / 2);
       P.add(det, cylX(0.100, 0.052, 14), s * 1.543, wheelY, wz);

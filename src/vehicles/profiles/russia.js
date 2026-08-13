@@ -651,7 +651,7 @@ export function buildT62MV1(P) {
     // The hull overhangs both terminal drums on the real vehicle.  Keeping
     // the terminals inside the bow/transom, instead of stretching the band
     // to the full body length, closes the former 242px-vs-223px track span.
-    sprocket: { z: -2.38, y: 0.62, r: 0.26 }, idler: { z: 2.09, y: 0.57, r: 0.25 },
+    sprocket: { z: -2.38, y: 0.62, r: 0.26 }, idler: { z: 2.09, y: 0.70, r: 0.25 },
     rollers: [], trackW: 0.52, trackTh: 0.075, topY: 0.92, botY: 0.05, contactZF: 1.92, contactZR: -2.08,
     paintedEnds: true, coveredTop: true, arms: true, deadSag: 0.025,
   });
@@ -1895,14 +1895,8 @@ export function buildT64BV1(P) {
   const dx4 = ringSkin(rings, 0.36) + 0.02;
   P.decal('turret', 'number', P.spec.visual.number || '', 0.24, [dx4 * 0.99, 0.34, -0.55], Math.PI / 2);
   P.decal('turret', 'number', P.spec.visual.number || '', 0.24, [-dx4 * 0.99, 0.34, -0.55], -Math.PI / 2);
-  P.raiseTrackCorridor(['hull'], {
+  P.raiseTrackCorridor(['hull', 'hullDark'], {
     laneInnerX: 0.80, floorY: 1.20, zMin: -4.62, zMax: 1.90,
-  });
-  // Front tow/guard fittings and the two shallow rear seam courses are real
-  // hull hardware, so reseat the complete primitives above the return rather
-  // than relabeling them as suspension.
-  P.forEachBucketPart(['hullDark'], (geo, b) => {
-    if (b.min.z <= -3.50 && b.min.y < 1.20) geo.translate(0, 1.20 - b.min.y, 0);
   });
   P.topY = 1.09;
 }

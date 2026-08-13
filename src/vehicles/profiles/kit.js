@@ -195,11 +195,12 @@ export function buildHull(P,p) {
   const wheelSpan=p.wheelSpan || length*0.74;
   const wheelZs=evenStations(wheelCount,wheelSpan,p.wheelBias || 0);
   const xc=width/2-trackW/2;
+  const wheelY=p.wheelY || wheelR+0.09;
   buildRunningGear(P,{
-    style:p.wheelStyle || 'rubber',wheelR,wheelW:Math.min(0.22,trackW*0.36),wheelY:p.wheelY || wheelR+0.09,xc,
+    style:p.wheelStyle || 'rubber',wheelR,wheelW:Math.min(0.22,trackW*0.36),wheelY,xc,
     wheelZs,
-    sprocket:{z:p.frontSprocket ? halfL*0.88 : -halfL*0.88,y:wheelR+0.10,r:wheelR*0.88},
-    idler:{z:p.frontSprocket ? -halfL*0.88 : halfL*0.88,y:wheelR+0.08,r:wheelR*0.84},
+    sprocket:{z:p.frontSprocket ? halfL*0.88 : -halfL*0.88,y:p.sprocketY ?? wheelR+0.10,r:wheelR*0.88},
+    idler:{z:p.frontSprocket ? -halfL*0.88 : halfL*0.88,y:p.idlerY ?? wheelR+0.08,r:wheelR*0.84},
     rollers:evenStations(Math.max(3,Math.floor(wheelCount/2)),wheelSpan*0.68).map((z)=>({z,y:trackTop*0.84,r:wheelR*0.23})),
     trackW,topY:trackTop*0.86,paintedEnds:true,coveredTop:p.coveredTop ?? (p.skirts !== false),arms:p.arms !== false,
   });

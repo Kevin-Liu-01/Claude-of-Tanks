@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {
   createTank,
   FRONT_DRIVE_EXCEPTION_IDS,
+  MODERN_TERMINAL_RISE_FLOOR_M,
   runningGearLayoutReceipt,
 } from '../src/vehicles/tankFactory.js';
 
@@ -55,6 +56,15 @@ assert.throws(
   }),
   /road-wheel silhouette must remain between/,
 );
+assert.throws(
+  () => runningGearLayoutReceipt('t90m', {
+    sprocket: { z: -3.2, y: 0.72, r: 0.28 },
+    idler: { z: 3.3, y: 0.54, r: 0.24 },
+    wheelR: 0.40, wheelY: 0.51,
+    wheelZs: [-2.4, -1.6, -0.8, 0, 0.8, 1.6, 2.4],
+  }),
+  /modern idler and final-drive centers must rise/,
+);
 
 assert.equal(new Set(FRONT_DRIVE_EXCEPTION_IDS).size, FRONT_DRIVE_EXCEPTION_IDS.length,
   'front-drive exception registry must not contain duplicate ids');
@@ -89,6 +99,10 @@ for (const [id, frontEnd] of [
   assert.ok(layouts[0].sprocketToRoadRatio >= 0.45, `${id} has a visibly readable final-drive sprocket`);
   assert.ok(layouts[0].frontTerminalMargin >= 0, `${id} has no road wheel ahead of its front terminal`);
   assert.ok(layouts[0].rearTerminalMargin >= 0, `${id} has no road wheel behind its rear terminal`);
+  if (layouts[0].terminalRiseFloor != null) {
+    assert.ok(layouts[0].idlerRise >= MODERN_TERMINAL_RISE_FLOOR_M, `${id} idler rises above road wheels`);
+    assert.ok(layouts[0].sprocketRise >= MODERN_TERMINAL_RISE_FLOOR_M, `${id} final drive rises above road wheels`);
+  }
   tank.dispose();
 }
 
@@ -98,6 +112,7 @@ for (const [id, frontEnd] of [
   });
   const layouts = t90m.root.getObjectByName('rig_hull')?.userData?.nativeRunningGearLayouts;
   assert.equal(layouts?.length, 1, 'T-90M replacement hull publishes exactly one live native course');
+  assert.ok(layouts[0].idlerRise >= MODERN_TERMINAL_RISE_FLOOR_M, 'T-90M has an elevated leading idler');
   t90m.dispose();
 }
 

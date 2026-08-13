@@ -961,8 +961,18 @@ export const FRONT_DRIVE_EXCEPTION_IDS = Object.freeze([
 ]);
 const FRONT_DRIVE_EXCEPTION_SET = new Set(FRONT_DRIVE_EXCEPTION_IDS);
 
+// Modern tracked vehicles must present a visibly raised terminal at both
+// ends of the road-wheel run. A merely different radius is not enough: a
+// low idler centre flattens the approach into another road-wheel station
+// instead of the expected /____\ course silhouette. WWII layouts remain
+// source-specific and deliberately sit outside this modern-family law.
+export const MODERN_TERMINAL_RISE_FLOOR_M = 0.10;
+
 export function runningGearLayoutReceipt(tankId, cfg) {
-  const { sprocket, idler, wheelZs = [], rollers = [], wheelR = null } = cfg;
+  const {
+    sprocket, idler, wheelZs = [], rollers = [], wheelR = null,
+    wheelY = null,
+  } = cfg;
   if (!sprocket || !idler || !wheelZs.length) {
     throw new Error(`${tankId}: running gear requires sprocket, idler and road-wheel stations`);
   }
@@ -998,6 +1008,16 @@ export function runningGearLayoutReceipt(tankId, cfg) {
       throw new Error(`${tankId}: road-wheel silhouette must remain between both terminal-wheel silhouettes`);
     }
   }
+  const terminalRiseFloor = cfg.terminalRiseFloor
+    ?? (TANK_SPECS[tankId]?.era === 'modern' ? MODERN_TERMINAL_RISE_FLOOR_M : null);
+  const idlerRise = wheelY != null && idler.y != null ? idler.y - wheelY : null;
+  const sprocketRise = wheelY != null && sprocket.y != null ? sprocket.y - wheelY : null;
+  if (terminalRiseFloor != null && cfg.terminalRiseException !== true
+      && (idlerRise == null || sprocketRise == null
+        || idlerRise + 1e-6 < terminalRiseFloor
+        || sprocketRise + 1e-6 < terminalRiseFloor)) {
+    throw new Error(`${tankId}: modern idler and final-drive centers must rise at least ${terminalRiseFloor.toFixed(2)} m above road-wheel centers`);
+  }
   return Object.freeze({
     tankId,
     frontEnd: frontIsSprocket ? 'sprocket' : 'idler',
@@ -1010,8 +1030,14 @@ export function runningGearLayoutReceipt(tankId, cfg) {
     roadZFront,
     roadZRear,
     roadWheelRadius: wheelR,
+    roadWheelY: wheelY,
     idlerRadius: idler.r,
+    idlerY: idler.y ?? null,
     sprocketRadius: sprocket.r,
+    sprocketY: sprocket.y ?? null,
+    idlerRise,
+    sprocketRise,
+    terminalRiseFloor,
     idlerToRoadRatio: wheelR ? idler.r / wheelR : null,
     sprocketToRoadRatio: wheelR ? sprocket.r / wheelR : null,
     // A terminal must lead the complete road-wheel silhouette, not merely
@@ -1062,9 +1088,11 @@ function buildRunningGear(P, cfg) {
   hullG.userData.nativeRoadWheelStations = wheelZs.length;
   (hullG.userData.nativeRunningGearLayouts ||= []).push(
     runningGearLayoutReceipt(P.specId, {
-      sprocket, idler, wheelZs, rollers, wheelR, frontDrive,
+      sprocket, idler, wheelZs, rollers, wheelR, wheelY, frontDrive,
       terminalRatioFloor: cfg.terminalRatioFloor,
       terminalScaleException: cfg.terminalScaleException,
+      terminalRiseFloor: cfg.terminalRiseFloor,
+      terminalRiseException: cfg.terminalRiseException,
     }),
   );
 
@@ -4353,21 +4381,60 @@ export function createTank(specId, engineCtx, opts = {}) {
         buckets[fromName] = keep;
       }
     },
-    // Raise only the underside vertices of explicitly named hull buckets out
-    // of a native track lane.  Upper armor, width, plan and station geometry
-    // remain untouched; the result is a real sloped sponson/keel clearance,
-    // not an audit exclusion.  Profiles provide their measured lane start
-    // and required floor because terminal radii differ by family.
+    // Geometry-preserving suspension-tunnel repair.  The retired version
+    // clamped every low outboard vertex to one Y plane; when both the lower
+    // and upper vertices of a box/armor prism were below that plane, complete
+    // faces collapsed to zero height and whole tank sides appeared hollow.
+    // Group coincident X/Z columns first.  A wholly low column translates as
+    // one rigid section; a column crossing the clearance floor retains a
+    // small ordered lower section before meeting the untouched upper armor.
+    // This keeps topology, thickness, plan, and the complete upper silhouette
+    // while creating the explicitly requested local suspension tunnel.
     raiseTrackCorridor(names, { laneInnerX, floorY, zMin = -Infinity, zMax = Infinity }) {
+      const EPS = 1e-5;
       for (const name of names.flat()) {
         for (const geo of buckets[name] || []) {
           const pos = geo.getAttribute('position');
           if (!pos) continue;
-          let changed = false;
+          const columns = new Map();
           for (let i = 0; i < pos.count; i++) {
-            const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
-            if (Math.abs(x) + 1e-6 < laneInnerX || y + 1e-6 >= floorY || z < zMin || z > zMax) continue;
-            pos.setY(i, floorY);
+            const x = pos.getX(i), z = pos.getZ(i);
+            if (Math.abs(x) + EPS < laneInnerX || z < zMin || z > zMax) continue;
+            const key = `${x.toFixed(5)}:${z.toFixed(5)}`;
+            const column = columns.get(key) || [];
+            column.push(i);
+            columns.set(key, column);
+          }
+          let changed = false;
+          for (const indices of columns.values()) {
+            let minY = Infinity, maxY = -Infinity;
+            for (const i of indices) {
+              const y = pos.getY(i);
+              minY = Math.min(minY, y);
+              maxY = Math.max(maxY, y);
+            }
+            if (minY + EPS >= floorY) continue;
+            if (maxY <= floorY + EPS) {
+              const dy = floorY - minY;
+              for (const i of indices) pos.setY(i, pos.getY(i) + dy);
+              changed = true;
+              continue;
+            }
+            let lowMax = -Infinity, nextAbove = Infinity;
+            for (const i of indices) {
+              const y = pos.getY(i);
+              if (y < floorY) lowMax = Math.max(lowMax, y);
+              else nextAbove = Math.min(nextAbove, y);
+            }
+            const sourceSpan = Math.max(0, lowMax - minY);
+            const headroom = Number.isFinite(nextAbove) ? Math.max(0, nextAbove - floorY) : 0;
+            const keepSpan = Math.min(sourceSpan, headroom * 0.35, 0.08);
+            for (const i of indices) {
+              const y = pos.getY(i);
+              if (y >= floorY) continue;
+              const t = sourceSpan > EPS ? (y - minY) / sourceSpan : 0;
+              pos.setY(i, floorY + t * keepSpan);
+            }
             changed = true;
           }
           if (!changed) continue;
@@ -4378,10 +4445,8 @@ export function createTank(specId, engineCtx, opts = {}) {
         }
       }
     },
-    // Translate complete lane-local fittings above a native shoe corridor.
-    // Unlike raiseTrackCorridor this preserves small boxes, drums, cables,
-    // tools and guard sections whose entire height starts below floorY;
-    // raising only their bottom vertices could invert those primitives.
+    // Complete lane-local guards/fittings can be reseated rigidly; unlike the
+    // retired vertex clamp this never changes their dimensions or topology.
     liftTrackCorridorParts(names, { laneInnerX, floorY, zMin = -Infinity, zMax = Infinity }) {
       for (const name of names.flat()) {
         for (const geo of buckets[name] || []) {

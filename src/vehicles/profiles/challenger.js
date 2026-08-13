@@ -1504,11 +1504,11 @@ function challenger1Native2026(P) {
 // Profiles-class family map (merged by profiledProcedurals.js — the same
 // interface every ./profiles family module exports).
 export const CHALLENGER_PROFILES = {
-  // Restored first-party Native2026 route. It is assembled exclusively from
-  // repository-authored procedural primitives and fittings plus the native
-  // linked course; no external mesh or converted vertex payload enters the
-  // playable.
-  challenger1: { build: challenger1Native2026 },
+  // Use the previously accepted detailed Mk.3. The later Native2026
+  // experiment simplified/morphed its hull and fighting compartment into a
+  // visibly weaker model. Both builders are ours; this route selects the
+  // stronger authored design.
+  challenger1: { build: challenger1Build },
 };
 
 // ===========================================================================
