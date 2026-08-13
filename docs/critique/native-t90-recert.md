@@ -5,6 +5,46 @@ The private comparison GLB was used only as a quarantined visual reference;
 no comparison mesh, vertex/index payload, material, texture, rig, animation or
 runtime wrapper enters the playable or this commit.
 
+## Superseding segmented-carrier armor/decor closeout — 2026-08-13
+
+- Geometry hash: `86499168` (67 meshes / 119,400 vertices), reproduced twice
+- Evidence: `/private/tmp/t90-cast-decoration-final-r1/t90`
+- Integrity: 15 procedural appraisal + 15 yaw0 + 15 yaw90 PNGs, including
+  elevated-left profile; 45 files / 45 distinct SHA-256 hashes
+- Fresh standard-order authored visual appraisal:
+  `[9.3,9.3,9.2,9.1,9.1,9.1,9.2,9.3,9.4,9.4,9.3,9.4,9.3,9.4]`
+  (floor 9.1; mean 9.27)
+- Exact terminal band / shoe / strict sweep: `0/0`, `0/0`, `0/0`
+- Parent audit: 0 stranded / 0 abutting / 0 dangling
+- Winding: 0 reversed / 0 mixed, one visually null deficit pixel and zero
+  yaw-stranded candidate pixels
+- Runtime rig: 10/10; muzzle-bore contrast 103.1
+
+The asymmetric section loft remains the only primary turret body. The broad
+single-piece cheek carrier that visually flattened that new casting is gone.
+Each side now uses three overlapping load-bearing shoulder sections: a steep
+mantlet root, full middle cheek and clipped falling flank. Six unequal K-5
+cassettes change width, height, pitch, yaw and cant along those sections;
+their final two leaves descend into the flank instead of extending a straight
+armor wall around the turret.
+
+The three crown plates are tapered, buried cassettes rather than rectangular
+roof cards. Both Shtora housings are smaller, darker and recessed into new
+mantlet-side shoes; brows, latches and the surface conduit terminate on the
+same armor field. Smoke carriers, commander/NSVT/night-sight foundations,
+periscopes, antenna collars, OPVT, aft leaves and rear packs retain broad
+contacts around the final cast contour. Every yaw pair shows this complete
+armor/equipment package rotating together over the fixed hull and native
+idler-first six-wheel course.
+
+The historical private comparison binary remains unavailable to runtime, so
+the stale contour score is not presented as a current source gate. Acceptance
+is based on the deterministic first-party geometry, fresh authored views,
+true yaw packet and strict mechanical/runtime gates.
+
+**PASS / KEEP `86499168`; supersede `14688339`. Ordered blockers: none for
+this turret armor/equipment refit.**
+
 ## Superseding cast-contour armor and equipment closeout — 2026-08-13
 
 - Geometry hash: `14688339` (67 meshes / 119,256 vertices)

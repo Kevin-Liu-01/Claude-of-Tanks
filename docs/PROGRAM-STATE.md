@@ -6639,3 +6639,37 @@ remain entirely first-party procedural geometry; isolated comparison assets
 are not loaded or transformed into runtime content.
 
 **PASS / KEEP `5c68747e`, `5d5e95ac`. Ordered blockers: none.**
+
+## 5.184 BASE T-90 SEGMENTED CHEEK-CARRIER / EQUIPMENT REFIT (2026-08-13)
+
+The live base T-90 already used our own asymmetric section-lofted cast shell,
+but one broad applied carrier still hid that shape behind a flat trapezoidal
+front. The complete carrier is now rebuilt as three overlapping authored
+sections per side: steep mantlet root, full middle cheek and a clipped flank
+that drops into the casting. Six unequal K-5 banks follow those three sections
+with progressive pitch/yaw/cant and a smaller terminal cadence. The protection
+now reads as planted replacement armor on the casting rather than a second
+polygonal turret wrapped around it.
+
+The crown cards are replaced by tapered buried cassettes. Both Shtora units
+are reduced and recessed into the mantlet shoulders, with the bezel, brow,
+latch and conduit re-seated to the same armor field. Existing smoke carriers,
+commander/NSVT/night-sight mechanism, cupolas, periscopes, antenna collars,
+OPVT, aft leaves and rear packs keep visible seats around the final loft.
+
+Deterministic geometry reproduces twice as **`86499168`** (67 meshes / 119,400
+vertices). `/private/tmp/t90-cast-decoration-final-r1/t90` contains 15 fresh
+authored views, 15 yaw0 and 15 yaw90 frames including the standardized
+elevated-left profile: **45 PNGs / 45 distinct hashes**. Exact continuous-band,
+individual-shoe and moving-sweep clearance remains **0/0/0**. Parent audit is
+0 stranded / 0 abutting / 0 dangling. Winding is 0 reversed / 0 mixed with one
+visually null pixel and zero yaw candidates. Runtime articulation passes all
+10 checks and muzzle-bore contrast is 103.1.
+
+The active playable remains wholly first-party procedural geometry. No
+comparison mesh, vertex/index buffer, converted payload, material, texture or
+rig enters runtime. The quarantined historical comparison binary is not used
+to fabricate a new contour-gate score; the immutable geometry, 45-frame packet
+and mechanical/runtime receipts are the acceptance evidence.
+
+**PASS / KEEP `86499168`; retire `14688339`. Ordered blockers: none.**
