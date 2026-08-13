@@ -1192,35 +1192,35 @@ function buildKV2(P) {
     const wzs = Array.from({ length: 6 }, (_, i) => -0.075 + 2.36 - i * 0.944);
     for (const sx of [-1, 1]) {
       for (const wz of wzs) {
-        P.add('hullTrack', KIT.torus(0.268, 0.012, 12), sx * 1.4335, 0.33, wz, 0, 0, Math.PI / 2); // faceted rim ring
+        P.add('hullRunningGearTrack', KIT.torus(0.268, 0.012, 12), sx * 1.4335, 0.33, wz, 0, 0, Math.PI / 2); // faceted rim ring
         // dark mid-annulus just behind the six spinning pocket voids: the
         // pocket band reads as one recessed slotted annulus with AO floors
         // (the pocket inserts themselves are retinted near-black below).
-        P.add('hullDark', KIT.torus(0.162, 0.014, 14), sx * 1.4160, 0.33, wz, 0, 0, Math.PI / 2);
+        P.add('hullRunningGearShadow', KIT.torus(0.162, 0.014, 14), sx * 1.4160, 0.33, wz, 0, 0, Math.PI / 2);
       }
       // idler face (ref: open spoked wheel you can see through): big dark
       // void annulus PROUD of the kit hub drum (face 1.5712) + six warm
       // steel spokes + rim/hub rings; the kit hub cap (1.5835) pokes
       // through the hub ring like the ref's small center hub.
-      P.add('hullShadow', cylX(0.235, 0.006, 18), sx * 1.578, 0.76, 2.79);
-      P.add('hullTrack', KIT.torus(0.236, 0.011, 14), sx * 1.5825, 0.76, 2.79, 0, 0, Math.PI / 2);
+      P.add('hullRunningGearShadow', cylX(0.235, 0.006, 18), sx * 1.578, 0.76, 2.79);
+      P.add('hullRunningGearTrack', KIT.torus(0.236, 0.011, 14), sx * 1.5825, 0.76, 2.79, 0, 0, Math.PI / 2);
       for (let k = 0; k < 6; k++) {
         const a = (k / 6) * Math.PI * 2 + 0.26;
-        P.add('hullTrack', KIT.xform(box(0.012, 0.052, 0.15), 0, Math.sin(a) * 0.15, Math.cos(a) * 0.15, a, 0, 0),
+        P.add('hullRunningGearTrack', KIT.xform(box(0.012, 0.052, 0.15), 0, Math.sin(a) * 0.15, Math.cos(a) * 0.15, a, 0, 0),
           sx * 1.5835, 0.76, 2.79);
       }
-      P.add('hullTrack', KIT.torus(0.060, 0.010, 10), sx * 1.5875, 0.76, 2.79, 0, 0, Math.PI / 2);
+      P.add('hullRunningGearTrack', KIT.torus(0.060, 0.010, 10), sx * 1.5875, 0.76, 2.79, 0, 0, Math.PI / 2);
       // sprocket face: dark recessed core + hub bolt ring + hub ring ON the
       // carrier-ring plane (1.6492) — with the drum/carrier steel darkened
       // below and the teeth riding the warm spareTrack family, the drive
       // end reads dark drum / recessed core / integrated teeth like the ref.
-      P.add('hullDark', cylX(0.150, 0.006, 16), sx * 1.6515, 0.73, -3.02);
-      P.add('hullTrack', KIT.torus(0.152, 0.007, 14), sx * 1.6510, 0.73, -3.02, 0, 0, Math.PI / 2);
+      P.add('hullRunningGearShadow', cylX(0.150, 0.006, 16), sx * 1.6515, 0.73, -3.02);
+      P.add('hullRunningGearTrack', KIT.torus(0.152, 0.007, 14), sx * 1.6510, 0.73, -3.02, 0, 0, Math.PI / 2);
       for (let k = 0; k < 6; k++) {
         const a = (k / 6) * Math.PI * 2 + 0.3;
-        P.add('hullTrack', cylX(0.015, 0.010, 6), sx * 1.6525, 0.73 + Math.sin(a) * 0.100, -3.02 + Math.cos(a) * 0.100);
+        P.add('hullRunningGearTrack', cylX(0.015, 0.010, 6), sx * 1.6525, 0.73 + Math.sin(a) * 0.100, -3.02 + Math.cos(a) * 0.100);
       }
-      P.add('hullTrack', KIT.torus(0.055, 0.008, 10), sx * 1.6505, 0.73, -3.02, 0, 0, Math.PI / 2);
+      P.add('hullRunningGearTrack', KIT.torus(0.055, 0.008, 10), sx * 1.6505, 0.73, -3.02, 0, 0, Math.PI / 2);
     }
   }
   // shaded-parity r4 tell 1 — retone the WHOLE running-gear hardware family.
@@ -1272,6 +1272,11 @@ function buildKV2(P) {
       }
     });
   }
+
+  // Clear the complete high KV wrap: keep the 1.86 m inter-track belly and
+  // centre tow hardware low, but lift nose/stern shoulders, pannier rails,
+  // and handrail feet out of the shoe lanes.
+  P.raiseTrackCorridor(['hull', 'hullDetail', 'hullDark'], { laneInnerX: 0.95, floorY: 1.34 });
 
   // MT-1 slab turret re-laid on the world-trace (r3). Measured ref lines:
   // skirt bottom 1.67 full width to the well deck; walls x ±0.94 rising to
