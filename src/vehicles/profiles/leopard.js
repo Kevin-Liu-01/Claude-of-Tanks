@@ -4959,12 +4959,11 @@ function buildLeo2A7V(P) {
   // further 0.10 m from the shell, leaving a 2.44 m broad silhouette against
   // the published 2.87 m vehicle.  The native track fix never required that
   // collapse: the deep undercut below remains seated above the fixed deck.
-  // Elevated-profile evidence showed that the old 1 cm correction was not
-  // enough: the shell still disappeared into the fixed deck. Raise the
-  // complete authored rotating package to a readable combat-height datum.
-  // The longer bearing below reaches back down into the deck, so gun, armor,
-  // sights and bustle gain separation without becoming a floating assembly.
-  P.turretG.position.set(0, 1.98, 0.35);
+  // The first de-fusion pass over-corrected the datum to 1.98 m and exposed
+  // a tall cylindrical neck in side/quarter views.  Keep the complete
+  // authored rotating package above the deck, but lower it to a restrained
+  // combat-height datum where the shallow bearing overlaps the ring seat.
+  P.turretG.position.set(0, 1.72, 0.35);
   wedgeTurretV3(P, {
     h: 0.64, apexY: 0.22, gunW: 0.36, slotZ: 1.18,
     chamferY: 0.55, roofX: 1.06, crestTail: 0.62, crestTailDrop: 0.005,
@@ -5074,10 +5073,10 @@ function buildLeo2A7V(P) {
   }
   // turret ring plinth: closes the deck<->shell slit from the side
   // sight-lines (§B2) and yaws with the mass.
-  // A thin dark annulus exposes the lifted plinth/deck joint without adding
-  // a new rear-facing neck below the certified turret envelope.
-  P.add('turretDark', KIT.torus(1.10, 0.012, P.q ? 26 : 16), 0, -0.282, -0.55);
-  P.add('turret', cylY(1.10, 1.14, 0.36, P.q ? 26 : 16), 0, -0.105, -0.55);
+  // A shallow bearing overlaps both the fixed ring seat and the shell.  Its
+  // dark lower seam remains readable without becoming a visible pedestal.
+  P.add('turretDark', KIT.torus(1.10, 0.012, P.q ? 26 : 16), 0, -0.105, -0.55);
+  P.add('turret', cylY(1.10, 1.14, 0.22, P.q ? 26 : 16), 0, 0.005, -0.55);
   // Authored roof-station restoration: the old first-party build had a much
   // clearer crew-station cadence than the later sparse roof.  Reintroduce
   // that information as low, supported hardware on the corrected shell,
@@ -6368,19 +6367,18 @@ function buildLeo2Revolution(P) {
   // unchanged; the oblique top line now falls instead of running dead-flat
   // to a square corner). The nose lip narrows to the inboard half so it
   // reads as the sight housing the tilt flows around.
-  P.add('turret', slab(                                                        // wing x 0.10..1.553, z 2.57..3.91L (top 1.90w inboard, tilted)
-    [0.10, 0.19, 2.57], [1.553, 0.19, 2.57], [1.553, 0.19, 3.91], [0.10, 0.19, 3.91],
-    [0.10, 0.30, 2.57], [1.553, 0.225, 2.57], [1.553, 0.225, 3.91], [0.10, 0.30, 3.91]));
-  // This is the structural upper cheek cover, not a shadow cavity.  The
-  // historical dark bucket turned its complete front edge into a black
-  // horizontal hole in every frontal/quarter render.
-  P.add('turret', slab(                                                        // armor cover top 1.915w inboard (ref 1.917), tilted with the wing
-    [0.14, 0.30, 2.61], [1.545, 0.226, 2.61], [1.545, 0.226, 3.87], [0.14, 0.30, 3.87],
-    [0.14, 0.315, 2.61], [1.545, 0.241, 2.61], [1.545, 0.241, 3.87], [0.14, 0.315, 3.87]));
-  P.add('turret', slab(                                                        // wing nose lip ramp (top 1.90w -> 1.97w, inboard half)
-    [0.10, 0.28, 3.74], [0.85, 0.28, 3.74], [0.85, 0.28, 3.82], [0.10, 0.28, 3.82],
-    [0.10, 0.30, 3.74], [0.85, 0.30, 3.74], [0.85, 0.37, 3.82], [0.10, 0.37, 3.82]));
-  P.add('turret', box(0.75, 0.09, 0.08), 0.475, 0.325, 3.86);                  // lip crest 1.97w (ref side cols 3.42/3.53)
+  // One rooted cheek wedge replaces the old full rectangular wing.  Its
+  // inboard edge remains buried in the mantlet shoulder, while the outboard
+  // edge sweeps aft and inward so no square card projects beyond the armor.
+  P.add('turret', slab(
+    [0.10, 0.19, 2.57], [1.42, 0.19, 2.61], [1.18, 0.19, 3.46], [0.10, 0.19, 3.82],
+    [0.10, 0.30, 2.57], [1.42, 0.225, 2.61], [1.18, 0.235, 3.43], [0.10, 0.30, 3.82]));
+  // Do not add a second thin cover over this wing.  That former overlapping
+  // slab projected beyond the cheek as a free rectangular card in elevated
+  // views; the structural wing already supplies the complete armor surface.
+  P.add('turret', slab(                                                        // tapered nose lip, buried into the inboard shoulder
+    [0.10, 0.28, 3.67], [0.62, 0.28, 3.63], [0.48, 0.28, 3.76], [0.10, 0.28, 3.82],
+    [0.10, 0.30, 3.67], [0.62, 0.30, 3.63], [0.48, 0.35, 3.76], [0.10, 0.37, 3.82]));
   // LEFT cheek: nose line (-0.1,2.35w)->(-0.43,2.23w), step 1.79w at
   // -0.43..-0.54, notch at -0.54..-0.93 (1.33w)
   // r5: cheek rear pulled to 1.7405L (world 1.39) — its 1.79 underside read
