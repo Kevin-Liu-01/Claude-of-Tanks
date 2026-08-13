@@ -121,7 +121,7 @@ function weldedStationLoft(stations) {
 // upper cheek and crown widths at every fore/aft station, including real
 // left/right asymmetry.  It is intentionally faceted at the large foundry
 // breaks while vertex normals keep each authored armor plane coherent.
-function castSectionLoft(stations) {
+function castSectionLoft(stations, { faceted = false } = {}) {
   const positions = [];
   const tri = (a, b, c, expect) => {
     const ab = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
@@ -148,9 +148,19 @@ function castSectionLoft(stations) {
   };
   cap(rings[0], [0, 0, -zDirection]);
   cap(rings[rings.length - 1], [0, 0, zDirection]);
+  if (faceted) {
+    // Keep the large authored foundry breaks crisp.  Each quad remains a
+    // coherent armor plane, but adjacent lower-cheek, shoulder, upper-cheek
+    // and crown courses no longer blend into a rotational half-sphere.
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geometry.setAttribute('uv', new THREE.Float32BufferAttribute(new Array((positions.length / 3) * 2).fill(0), 2));
+    geometry.computeVertexNormals();
+    return geometry;
+  }
   // Weld coincident section vertices before computing normals.  This rounds
-  // the transition along the authored cast stations without reverting to a
-  // rotational primitive or erasing the explicit pear/cheek asymmetry.
+  // the transition along authored cast stations when a softer casting is
+  // explicitly wanted.
   const unique = [], indices = [], indexByPosition = new Map();
   for (let i = 0; i < positions.length; i += 3) {
     const x = positions[i], y = positions[i + 1], z = positions[i + 2];
@@ -4094,11 +4104,11 @@ function buildT90(P) {
   // entirely from our primitives; external models are visual references only
   // and are never imported, sampled, converted or shipped by this builder.
   replaceT90ACastTurret(P, { vladimir: false });
-  finishT90BaseReferenceGuided(P);
+  finishT90BaseAuthored(P);
   P.topY = 0.80;
 }
 
-function finishT90BaseReferenceGuided(P) {
+function finishT90BaseAuthored(P) {
   const { box, cylY, cylZ } = KIT;
 
   // Dense but conformal flank K-5: each small cassette overlaps a cast-side
@@ -4111,7 +4121,7 @@ function finishT90BaseReferenceGuided(P) {
       [1.37, 0.35, -0.55, -0.10, 0.34, 0.35],
       [1.25, 0.38, -0.84, -0.18, 0.27, 0.30],
     ]) {
-      P.add('turret', box(w, 0.19, d), s * x, y, z, -0.08, -s * yaw, 0);
+      P.add('turretTrack', box(w, 0.19, d), s * x, y, z, -0.08, -s * yaw, 0);
       P.add('turretDark', box(w * 0.82, 0.012, d * 0.78), s * x, y + 0.101, z, -0.08, -s * yaw, 0);
     }
   }
@@ -4126,12 +4136,12 @@ function finishT90BaseReferenceGuided(P) {
       [0.94, 0.47, 0.61, 0.59, 0.32, 0.16, 0.30],
       [1.18, 0.41, 0.34, 0.38, 0.27, 0.17, 0.28],
     ]) {
-      P.add('turret', KIT.xform(box(w, h, d), 0, 0, -0.07), s * x, y, z, -0.20, -s * yaw, 0);
+      P.add('turretTrack', KIT.xform(box(w, h, d), 0, 0, -0.07), s * x, y, z, -0.20, -s * yaw, 0);
       P.add('turretDark', KIT.xform(box(w * 0.76, 0.010, d * 0.72), 0, h * 0.52, 0.035), s * x, y, z, -0.20, -s * yaw, 0);
     }
   }
 
-  // Source-measured roof cadence: two whip stations and the stored OPVT
+  // Authored roof cadence: two whip stations and the stored OPVT
   // tube all enter broad collars.  Compact periscopes bridge the hatch/sight
   // foundations rather than standing as isolated blue blocks.
   for (const [x, z, h, seed] of [[-0.27, -0.98, 2.28, 51], [1.04, 0.60, 2.04, 52]]) {
@@ -4364,30 +4374,36 @@ function replaceT90ACastTurret(P, { vladimir = false } = {}) {
     [1.46, -0.04], [1.61, 0.10], [1.58, 0.27], [1.43, 0.43],
     [1.18, 0.57], [0.84, 0.68], [0.44, 0.745], [0.05, 0.775],
   ];
-  // Base T-90 casting: explicit source-guided sections replace the former
-  // half-sphere.  The lower shoulders swell beyond the crown, the mantlet
-  // valley pinches forward, the rear casting drops sharply, and the unequal
-  // left/right widths leave room for the real asymmetric station package.
-  // All coordinates are authored in this repository; no external geometry
-  // is imported, sampled, converted or shipped.
+  // Base T-90 casting: the shell is authored from independent longitudinal
+  // sections, not revolved from a sphere.  A broad lower pear shoulder,
+  // clipped mantlet valley, flatter crown and rapidly narrowing cast tail
+  // produce the characteristic foundry form.  Left/right section widths are
+  // intentionally unequal so the station package does not sit on a generic
+  // symmetric dome.  All coordinates are authored in this repository; no
+  // external geometry is imported, sampled, converted or shipped.
   P.add('turret', castSectionLoft([
-    [1.31, [[-0.02, -0.61, 0.65], [0.13, -0.88, 0.91], [0.29, -0.73, 0.77], [0.43, -0.37, 0.43]]],
-    [1.04, [[-0.03, -1.08, 1.13], [0.17, -1.41, 1.48], [0.40, -1.31, 1.40], [0.56, -0.70, 0.82]]],
-    [0.64, [[-0.04, -1.30, 1.36], [0.16, -1.56, 1.62], [0.43, -1.46, 1.56], [0.64, -0.96, 1.08]]],
-    [0.17, [[-0.05, -1.40, 1.45], [0.15, -1.61, 1.63], [0.44, -1.47, 1.55], [0.70, -1.00, 1.11]]],
-    [-0.34, [[-0.05, -1.41, 1.45], [0.15, -1.58, 1.61], [0.43, -1.44, 1.52], [0.71, -0.97, 1.08]]],
-    [-0.77, [[-0.04, -1.34, 1.40], [0.14, -1.50, 1.55], [0.39, -1.33, 1.42], [0.65, -0.88, 1.00]]],
-    [-1.12, [[-0.02, -1.20, 1.30], [0.13, -1.35, 1.41], [0.34, -1.18, 1.31], [0.56, -0.74, 0.90]]],
-    [-1.43, [[0.00, -0.89, 1.02], [0.11, -1.12, 1.21], [0.27, -0.98, 1.11], [0.42, -0.60, 0.78]]],
-  ]));
-  P.add('turret', cylY(1.26, 1.44, 0.12, 28), 0, -0.055, 0);
-  P.add('turretDark', cylY(1.30, 1.30, 0.022, 28), 0, -0.105, 0);
+    [1.38, [[-0.04, -0.54, 0.58], [0.10, -0.82, 0.86], [0.29, -0.70, 0.74], [0.48, -0.42, 0.46], [0.58, -0.22, 0.26]]],
+    [1.10, [[-0.05, -0.98, 1.04], [0.12, -1.34, 1.40], [0.34, -1.22, 1.31], [0.54, -0.86, 0.94], [0.64, -0.46, 0.54]]],
+    [0.70, [[-0.06, -1.25, 1.31], [0.13, -1.55, 1.60], [0.37, -1.42, 1.51], [0.58, -1.00, 1.10], [0.69, -0.61, 0.70]]],
+    [0.20, [[-0.06, -1.39, 1.44], [0.13, -1.62, 1.64], [0.39, -1.46, 1.55], [0.61, -1.02, 1.12], [0.71, -0.68, 0.76]]],
+    [-0.34, [[-0.06, -1.40, 1.44], [0.13, -1.58, 1.61], [0.39, -1.42, 1.51], [0.61, -1.00, 1.10], [0.71, -0.66, 0.74]]],
+    [-0.79, [[-0.05, -1.31, 1.38], [0.12, -1.47, 1.53], [0.35, -1.29, 1.39], [0.57, -0.88, 0.98], [0.66, -0.56, 0.64]]],
+    [-1.16, [[-0.03, -1.12, 1.23], [0.11, -1.29, 1.37], [0.30, -1.11, 1.23], [0.49, -0.72, 0.84], [0.57, -0.43, 0.52]]],
+    [-1.46, [[-0.01, -0.78, 0.91], [0.09, -1.00, 1.10], [0.24, -0.86, 0.98], [0.40, -0.53, 0.66], [0.46, -0.31, 0.40]]],
+  ], { faceted: true }));
+  const castSeatPlan = [
+    [-0.48, 1.30], [0.48, 1.30], [1.12, 0.98], [1.42, 0.48],
+    [1.48, -0.30], [1.25, -1.03], [0.84, -1.46], [-0.76, -1.46],
+    [-1.22, -1.04], [-1.46, -0.32], [-1.41, 0.48], [-1.10, 0.98],
+  ];
+  P.add('turret', KIT.polyTurret(castSeatPlan, 0.13, 1.0, 0.96), 0, -0.09, 0);
+  P.add('turretDark', KIT.polyTurret(castSeatPlan, 0.020, 0.965, 0.955), 0, -0.108, 0);
 
   // Three low Kontakt-5 crown plates follow the casting and are split by
   // flush seams.  Nothing floats above the shell.
-  P.add('turret', box(0.70, 0.055, 0.72), -0.70, 0.715, 0.02, 0, 0, -0.09);
-  P.add('turret', box(0.74, 0.055, 0.82), 0, 0.765, -0.16);
-  P.add('turret', box(0.70, 0.055, 0.72), 0.70, 0.715, 0.02, 0, 0, 0.09);
+  P.add('turretTrack', box(0.70, 0.055, 0.72), -0.70, 0.715, 0.02, 0, 0, -0.09);
+  P.add('turretTrack', box(0.74, 0.055, 0.82), 0, 0.765, -0.16);
+  P.add('turretTrack', box(0.70, 0.055, 0.72), 0.70, 0.715, 0.02, 0, 0, 0.09);
   for (const x of [-0.38, 0.38]) P.add('turretDark', box(0.026, 0.052, 0.66), x, 0.775, -0.05);
 
   // K-5 clamshell: five varied planted cassettes per side follow the source
@@ -4403,7 +4419,7 @@ function replaceT90ACastTurret(P, { vladimir = false } = {}) {
       [1.36, 0.28, 0.37, 0.38, -0.29, 0.31, 0.20, 0.29],
       [1.47, 0.31, 0.07, 0.27, -0.25, 0.26, 0.23, 0.34],
     ]) {
-      P.add('turret', KIT.xform(box(w, h, d), 0, 0, -0.08), s * x, y, z, roll, -s * yaw, 0);
+      P.add('turretTrack', KIT.xform(box(w, h, d), 0, 0, -0.08), s * x, y, z, roll, -s * yaw, 0);
       P.add('turretDark', KIT.xform(box(w * 0.82, 0.012, d * 0.78), 0, h * 0.52, 0.055), s * x, y, z, roll, -s * yaw, 0);
     }
     P.add('turret', box(0.20, 0.26, 0.58), s * 1.14, 0.26, 0.20, 0, 0, -s * 0.16);
