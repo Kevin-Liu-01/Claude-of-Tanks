@@ -1,7 +1,21 @@
-# Type 10 (`type10`) — oracle packet
+# Type 10 (`type10`) — first-party authored record
+
+## Active ownership status
+
+The active playable is **entirely repository-authored procedural geometry**.
+`buildType10Native2026` constructs the hull, folded bow, five-wheel native
+running gear, linked shoes, welded turret, modular cheek armor, gun, roof
+stations and bustle/service kit from shared primitives and fittings. No GLB,
+OBJ, copied vertices, source material, texture, rig, animation or converted
+payload is loaded by the runtime Type 10 route.
+
+The external-model material recorded below is historical comparison and audit
+history only. It is not an active builder, fallback, candidate, wrapper or
+shipping dependency. Its presence in this document must never be interpreted
+as ownership of the playable model.
 
 Spec home: src/vehicles/modern3.js (P95 datums 6.84 / 9.49 / 3.24 / 2.68).
-Build: buildType10 (modern3). Family guidance (owner 2026-08-06):
+Build: `buildType10Native2026` (modern3). Family guidance (owner 2026-08-06):
 type10 takes inspiration from type90 recipes.
 
 ## ORACLE HOLD (2026-08-06 base-21 wave — provenance, §E ORACLE PROVENANCE law)
@@ -232,3 +246,30 @@ yaw and complete seated turret ownership. The legacy source-component gate
 remains an honest incompatible zero rather than a fabricated pass. See
 `docs/critique/native-type10-first-party-recert.md`. **RE-FROZEN / KEEP
 `7ac6d434`; source-baked `84f5d108` remains historical only.**
+
+## Modular turret and explicit running-gear re-cert (2026-08-13)
+
+Fresh live evidence found that the authored shell still read too smoothly
+through the mantlet-to-flank transition and that the M2 disappeared against a
+low outboard wall mount. Three shallow overlapping cheek carriers per side now
+follow and bury into the welded pear-plan core, with visible replacement seams
+and no source-envelope growth. The panoramic head is broader on a buried
+pedestal, the M2 is cupola-owned on a broad rotating cradle, and four additional
+low roof fittings restore the asymmetric mechanical cadence.
+
+The running-gear order is now an executable build invariant and recorded on
+the hull: **front idler -> five road-wheel pairs -> three supported return
+roller pairs -> rear final-drive sprocket**. The geometry remains a single
+repository-native linked course. Freeze **`84dacef8`** reproduces at 62 meshes
+/ 60,150 vertices. Procedural fidelity is **91.56** overall with minimum whole
+view **90.15**; whole/hull/gun are 92.52/92.53/90.09.
+
+Exact terminal bands, instanced shoes and strict moving sweep are **0/0/0**.
+Parent audit is **0 stranded / 0 abutting / 0 dangling**. Winding is 0 reversed
+/ 0 mixed with only a visually null 7-pixel antialias deficit and zero yaw
+candidates. Runtime articulation passes 10/10 and the muzzle bore passes at
+134.3 contrast. The immutable procedural-only packet contains 15 appraisal,
+15 yaw0 and 15 yaw90 frames: **45 PNGs / 45 distinct hashes**.
+
+**PASS / KEEP `84dacef8`; supersede `434c7928`. The active Type 10 remains
+wholly first-party.**

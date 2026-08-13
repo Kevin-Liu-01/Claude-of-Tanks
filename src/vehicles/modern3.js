@@ -2189,7 +2189,7 @@ function buildType10Native2026(P) {
   }
   // ---- running gear: FIVE wheels (hard identity), raised idler+sprocket
   // (§B6 trapezoid), rubber-tired, skirt hem 0.40 = ~47% exposure ----------
-  buildRunningGear(P, {
+  const type10Gear = {
     // r9 photo-class gear: BIG tightly-packed wheels (the real T10's five
     // nearly-touching R~0.34 wheels; the r8 1.05-pitch R0.32 line read
     // sparse+buried — §B8.1 gate-1)
@@ -2214,7 +2214,18 @@ function buildType10Native2026(P) {
     paintedEnds: true, coveredTop: true, arms: false,
     pinCapOuter: 0.237, padHex: 0x31322a, chainHex: 0x292a24,
     gearFloor: true,
-  });
+  };
+  const type10FrontRoad = Math.max(...type10Gear.wheelZs);
+  const type10RearRoad = Math.min(...type10Gear.wheelZs);
+  if (!(type10Gear.idler.z > type10FrontRoad && type10Gear.sprocket.z < type10RearRoad)) {
+    throw new Error('Type 10 running-gear law: front idler -> five road wheels -> rear final-drive sprocket');
+  }
+  buildRunningGear(P, type10Gear);
+  P.hullG.userData.runningGearOrder = {
+    front: 'idler', frontWheelPairs: 1, roadWheelPairs: type10Gear.wheelZs.length,
+    supportRollerPairs: type10Gear.rollers.length, suspension: 'hydropneumatic-arm',
+    rear: 'final-drive-sprocket',
+  };
   // near-black AO bay walls behind the wheel line (the buildRunningGear
   // Schachtellaufwerk device, hand-placed for the single-row T10 gear): the
   // lit camo tub read BETWEEN the wheels and inverted the ref's light-wheels-
@@ -2364,6 +2375,19 @@ function buildType10Native2026(P) {
   P.add('turret', slab(
     [-1.28, 0.12 + shellLift, 0.62], [-0.24, 0.12 + shellLift, 1.64], [-0.24, 0.12 + shellLift, -1.42], [-1.22, 0.12 + shellLift, -1.42],
     [-1.36, 0.25 + shellLift, 0.62], [-0.24, 0.25 + shellLift, 1.64], [-0.24, 0.25 + shellLift, -1.34], [-1.22, 0.25 + shellLift, -1.34]));
+  // Type 10's removable modular cheek armor is visibly distinct from the
+  // welded core.  Three broad, shallow, overlapping carriers per side follow
+  // the pear-plan shoulder and bury their inner faces into the loft.  They
+  // break the former smooth oval into the source's clipped mantlet-to-flank
+  // cadence without becoming stand-off boxes or widening the accepted shell.
+  for (const s of [-1, 1]) {
+    P.add('turret', box(0.34, 0.24, 0.68), s * 0.68, 0.39 + shellLift, 1.61, 0, s * -0.68, 0);
+    P.add('turret', box(0.30, 0.27, 0.72), s * 1.08, 0.39 + shellLift, 1.20, 0, s * -0.46, 0);
+    P.add('turret', box(0.18, 0.25, 0.68), s * 1.30, 0.39 + shellLift, 0.74, 0, s * -0.15, 0);
+    P.add('turretDark', box(0.025, 0.18, 0.43), s * 0.875, 0.40 + shellLift, 1.405, 0, s * -0.56, 0);
+    P.add('turretDark', box(0.022, 0.19, 0.38), s * 1.205, 0.40 + shellLift, 0.975, 0, s * -0.30, 0);
+    P.add('turretDetail', box(0.035, 0.035, 0.24), s * 1.345, 0.43 + shellLift, 0.76);
+  }
   // stepped LOWER bin course (§4.999993 order 1 side presence): a distinct
   // sub-mass at the deck band — outer face ±1.29 (<=±1.30), y 0.13..0.53
   // local (1.63..2.03 world, undercut 0.19 above the 1.44 deck), inner edge
@@ -2417,12 +2441,13 @@ function buildType10Native2026(P) {
   // 0.494..0.608 = 0.114 <= the ~0.117 column pitch so the spike can NEVER
   // own more than the TWO budgeted p95 columns; the print's own fused sight
   // cluster tops 2.8-2.87 in this zone, so the spike moves TOWARD the ref):
-  P.add('turret', box(0.22, 0.10, 0.18), -0.30, 0.67, 0.55);                  // buried panoramic plinth on the restored roof datum
-  P.add('turret', box(0.32, 0.045, 0.30), -0.30, 0.71, 0.55);
-  P.add('turretDark', cylY(0.052, 0.058, 0.13, 12), -0.30, 0.81, 0.55);
-  P.add('turret', box(0.28, 0.095, 0.13), -0.30, 0.92, 0.55);
-  P.add('turretDark', box(0.29, 0.026, 0.132), -0.30, 0.96, 0.55);
-  P.add('turretGlass', box(0.21, 0.05, 0.014), -0.30, 0.915, 0.611);
+  P.add('turret', box(0.28, 0.11, 0.24), -0.30, 0.67, 0.55);                  // buried panoramic plinth on the restored roof datum
+  P.add('turret', box(0.38, 0.05, 0.34), -0.30, 0.715, 0.55);
+  P.add('turretDark', cylY(0.065, 0.072, 0.13, 12), -0.30, 0.82, 0.55);
+  P.add('turret', box(0.34, 0.105, 0.17), -0.30, 0.925, 0.55);
+  P.add('turretDark', box(0.35, 0.028, 0.172), -0.30, 0.971, 0.55);
+  P.add('turretGlass', box(0.25, 0.055, 0.016), -0.30, 0.922, 0.627);
+  P.add('turretGlass', box(0.016, 0.055, 0.105), -0.465, 0.922, 0.55);         // narrow side aperture keeps the head visibly asymmetric
   P.add('turret', cylY(0.27, 0.28, 0.09, 16), 0.46, 0.665, -0.30);            // commander collar bridges the shell roof to the hatch ring
   P.add('turret', cylY(0.26, 0.27, 0.032, 16), 0.46, 0.716, -0.30);
   P.add('turretDark', torus(0.255, 0.011, 16), 0.46, 0.726, -0.30);
@@ -2435,19 +2460,21 @@ function buildType10Native2026(P) {
   P.add('turretDark', box(0.32, 0.012, 0.032), -0.46, 0.732, -0.32);
   periscope(P, 'turretDetail', 0.20, 0.695, -0.02);
   periscope(P, 'turretDetail', -0.16, 0.695, -0.60);
-  // M2 12.7mm on the LOW right-side swing mount (§B3 fitting census; receiver
-  // top 2.31 world — the type90 published-line precedent). r2: the whole
-  // mount FOLLOWS the narrowed wall inboard (§4.999993 order 1/3) and now
-  // silhouettes above the ±1.16 roof edge instead of dying against the old
-  // ±1.40 slab; the right bin course starts aft (-0.38) to keep this wall
-  // band clear:
-  P.add('turretDetail', box(0.05, 0.26, 0.22), 1.175, 0.60, -0.05);             // wall bracket (embeds the 1.17 wall line)
-  P.add('turretDetail', box(0.22, 0.035, 0.26), 1.14, 0.488, -0.05);            // swing platform (outer 1.25)
+  periscope(P, 'turretDetail', 0.08, 0.700, 0.30);
+  periscope(P, 'turretDetail', -0.62, 0.690, 0.08);
+  P.add('turretDetail', box(0.26, 0.025, 0.035), 0.72, 0.715, 0.08, 0, 0.38, 0); // low roof cable/bracket cadence
+  P.add('turretDark', box(0.14, 0.020, 0.20), -0.76, 0.685, -0.76, 0, -0.18, 0);
+  // M2 12.7mm on the commander's cupola cradle (§B3 fitting census). The
+  // receiver keeps the compact published roof silhouette while the broad
+  // rotating seat makes ownership readable from both elevated profiles.
+  P.add('turretDetail', box(0.34, 0.055, 0.30), 0.46, 0.755, -0.30);            // broad commander-cupola cradle
+  P.add('turretDark', box(0.22, 0.035, 0.24), 0.46, 0.785, -0.30);              // visible rotating pintle seat
   {
-    // yaw INBOARD (-0.28): an outboard-yawed barrel tip at x ~1.69 broke the
-    // +-1.62 width anchor and rescaled every dim -3.9% (§B3.2 width guard)
-    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', tone: 'two-tone', scale: 0.9, seed: 12, elev: -0.02, ammo: false, rotation: [0, -0.28, 0] });
-    mg.position.set(1.185, 0.505, -0.05);
+    // The M2 is cupola-owned, not an outboard hull-like wall fitting.  Its
+    // inboard yaw preserves the width carrier while the cradle makes the yaw
+    // load path unambiguous in front, roof and elevated-profile evidence.
+    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', tone: 'two-tone', scale: 0.88, seed: 12, elev: -0.02, ammo: true, rotation: [0, -0.12, 0] });
+    mg.position.set(0.46, 0.79, -0.30);
     P.turretG.add(mg);
     // smoke dischargers: two 4-tube curved banks on the wall shoulders,
     // riding above the bin course (followed inboard with the width cut)

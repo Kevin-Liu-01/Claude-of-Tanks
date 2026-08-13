@@ -145,7 +145,7 @@ re-freeze NEW hash, all in ONE commit.
 | k1a1 | 28c7f5f0 | RE-FROZEN 2026-08-10 (§5.108 authored compact K1A1 shell/hull, native six-wheel course and cupola-seated K6; independent §B8 floor 9.0 / mean 9.21) |
 | type99a | 6d52abda | RE-FROZEN 2026-08-12 (§5.133 strict-clearance re-cert: first-party measured-envelope hull/turret retained, native six-wheel return and shoes exact 0/0 through the full sweep, rear U-cable fully backed, gate 90.7 / fidelity 93.0; fresh 45-frame yaw/ownership floor 9.3 / mean 9.39; prior 50bbc9bc retired) |
 | type90 | b77a57f6 | RE-FROZEN 2026-08-13 (§5.155 corrected 0.80 first-party turret section retained with all roof kit seated; explicit front-idler/rear-final-drive faces now close the six-road-wheel native course identity; exact band+shoes+sweep 0/0, parent 0/0/0 and fresh 45-frame yaw/ownership PASS; prior d8f8a3a8 retired) |
-| type10 | 434c7928 | RE-FROZEN 2026-08-12 (§5.147 first-party strict full-course clearance and parent closeout; machine fidelity 91.42 / minimum view 90.17; exact native band/shoes/full sweep 0/0/0, parent 0/0/0 and fresh 45-frame elevated-profile/yaw PASS; incompatible legacy source-component row retained honestly) |
+| type10 | 84dacef8 | RE-FROZEN 2026-08-13 (§5.172 first-party modular-turret re-cert: six buried cheek carriers, broader panoramic pedestal, cupola-owned M2 and denser low roof cadence; explicit front-idler/five-road-wheel/three-return-roller/rear-final-drive law, fidelity 91.56 / minimum view 90.15, exact band+shoes+sweep 0/0/0, parent 0/0/0 and fresh 45-frame elevated-profile/yaw PASS; prior 434c7928 retired) |
 | t14 | a94a2480 | RE-FROZEN 2026-08-12 (§5.131 fully first-party `buildT14`: low seven-wheel Armata hull, connected unmanned shroud, supported RWS/sensor package and exact native course; fidelity 90.53 / minimum view 91.52; 42 unique paired/yaw frames floor 9.0 / mean 9.04; source-baked `a88afa6c` playable retired) |
 | t80u | 77f9ae78 | RE-FROZEN 2026-08-12 (§5.132 fully first-party `buildT80UNative2026`: low turbine hull, connected cast/K-5 turret, supported combat/rear-service package and exact native six-wheel course; fidelity 91.51 / minimum view 90.20; 42 unique paired/yaw frames floor 9.0 / mean 9.04; source-baked `c0dc2502` playable retired) |
 | type74 | 8319dbb8 | RE-FROZEN 2026-08-11 (§5.110 authored low cast turret, five-wheel native course and supported combat/service suite; independent §B8 floor 9.1 / mean 9.29) |
@@ -6080,3 +6080,40 @@ yaw-dependent wound appears.
 
 **PASS / KEEP `9cf4471c`; supersede `80b4b851`. Ordered blockers: none for
 the post-loft armor/equipment fit.**
+
+## 5.172 TYPE 10 FIRST-PARTY MODULAR-TURRET RE-CERT (2026-08-13, RE-FROZEN)
+
+The active `type10` route remains wholly repository-authored procedural
+geometry through `buildType10Native2026`; no external mesh, converted vertex
+payload, material, texture, rig or animation enters runtime. Fresh live
+front/elevated/roof review found that the accepted welded shell remained too
+smooth through the mantlet-to-flank transition and its low outboard M2 mount
+disappeared against the side belt.
+
+Three shallow overlapping modular cheek carriers per side now follow and bury
+into the pear-plan loft. Dark replacement seams and outer grab fittings break
+the old uninterrupted oval without stand-off gaps or envelope growth. The
+panoramic head is broadened on a buried pedestal with front/side apertures.
+The M2 moves onto a broad commander-cupola cradle, and four low asymmetric
+periscope/bracket courses complete the roof station grammar. Every new item is
+turret-owned and visibly seated through yaw.
+
+The build now enforces and records its running-gear law directly: **front
+idler -> five road-wheel pairs -> three supported return-roller pairs -> rear
+final-drive sprocket**. Freeze **`84dacef8`** reproduces at 62 meshes / 60,150
+vertices. Procedural fidelity is **91.56** with minimum whole view **90.15**;
+whole/hull/gun score 92.52/92.53/90.09.
+
+Exact band, shoe and strict moving-sweep containment is **0/0/0**. Parent
+audit is **0 stranded / 0 abutting / 0 dangling**. Winding is 0 reversed / 0
+mixed with a visually null 7-pixel antialias deficit and zero yaw candidates.
+Runtime articulation passes 10/10 and the muzzle bore passes at 134.3
+contrast. `/private/tmp/type10-native-final-r3/type10` contains 15 appraisal,
+15 yaw0 and 15 yaw90 frames: **45 PNGs / 45 distinct hashes**. Fresh standard
+order is `[9.1,9.2,9.1,9.0,9.0,9.0,9.1,9.2,9.2,9.3,9.2,9.3,9.2,9.3]`, floor
+**9.0** and mean **9.16**. The genuine quarter-turn preserves the complete
+gun/shell/armor/panoramic/M2/smoke/antenna/bustle package over a fixed bow,
+deck, five-wheel course and rear service field. No copied geometry, duplicate
+turret, stranded fitting, track collision, open sheet or yaw wound appears.
+
+**PASS / KEEP `84dacef8`; supersede `434c7928`. Ordered blockers: none.**
