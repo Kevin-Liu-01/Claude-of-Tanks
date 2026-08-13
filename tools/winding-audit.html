@@ -543,7 +543,19 @@ if (mode === 'list') {
           }
         }
       }
-      if (sweptR === 0) yaw.note = 'no turret-body meshes (casemate class?)';
+      // Fixed-mount/casemate profiles intentionally keep an empty
+      // rig_turret so the simulation can expose a virtual aim solution.
+      // Running a three-yaw stranded-mass test against that empty group
+      // makes the complete (correctly fixed) hull appear as one giant
+      // candidate. Mode 1 remains authoritative for winding; Mode 2 has no
+      // rotating ownership contract to test and must be skipped explicitly.
+      if (sweptR === 0) {
+        out.yaw = { skipped: 'fixed-mount / no turret-body meshes' };
+        restoreVis();
+        window.__WIND_RESULT = out;
+        window.__WIND_READY = true;
+        return;
+      }
       const BUSTLE_M = 0.9; // bustle-overhang allowance beyond the swept body
       const R = sweptR + BUSTLE_M;
       yaw.sweptRadiusM = +sweptR.toFixed(3);
