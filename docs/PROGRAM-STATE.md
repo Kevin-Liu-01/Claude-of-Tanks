@@ -150,6 +150,7 @@ re-freeze NEW hash, all in ONE commit.
 | t80u | 77f9ae78 | RE-FROZEN 2026-08-12 (§5.132 fully first-party `buildT80UNative2026`: low turbine hull, connected cast/K-5 turret, supported combat/rear-service package and exact native six-wheel course; fidelity 91.51 / minimum view 90.20; 42 unique paired/yaw frames floor 9.0 / mean 9.04; source-baked `c0dc2502` playable retired) |
 | type74 | 8319dbb8 | RE-FROZEN 2026-08-11 (§5.110 authored low cast turret, five-wheel native course and supported combat/service suite; independent §B8 floor 9.1 / mean 9.29) |
 | strv103 | f4deeb6b | RE-FROZEN 2026-08-13 (§5.160 wholly first-party fixed-mount restoration: low louvred wedge, fixed L74, four large hydropneumatic road wheels, correct front-drive/rear-idler exception, supported return rollers and backed deck/rear-service suite; exact band+shoes+sweep 0/0, parent 0/0/0, winding clean, runtime 10/10 and fresh paired floor 9.0 / mean 9.03; retired external print removed from public/runtime/candidate/UI provenance) |
+| is3 | 46539231 | RE-FROZEN 2026-08-13 (§5.161 wholly first-party IS-3 restoration: pike hull, organic undercut cast dome and short race, seated DShK/roof suite, six enlarged dished road wheels with front idler/rear final drive, three return rollers and backed asymmetric stern service field; exact band+shoes+sweep 0/0, parent 0/0/0, winding clean, runtime 10/10 and fresh 45-frame paired/yaw floor 9.0 / mean 9.03; retired external print removed from public/runtime/candidate/UI provenance) |
 | ariete | c0aa8658 | RE-FROZEN 2026-08-13 (§5.155 preferred first-party seven-road-wheel Ariete retained; explicit front-idler/rear-final-drive faces restore terminal identity without changing the exact native course, parent 0/0/0 and fresh 45-frame yaw/ownership PASS; prior a7b1fd05 retired) |
 | t72b_1987 | 3f2483d4 | GRADUATED 2026-08-11 (§5.114 authored low B87 hull/turret, buried K1 and native six-wheel course; independent §B8 floor 9.0 / mean 9.14) |
 | t72bu | 4b66bf6c | GRADUATED 2026-08-11 (§5.115 authored compact BU protection/station/rear package on one native six-wheel course; independent §B8 floor 9.0 / mean 9.19) |
@@ -5635,3 +5636,42 @@ background-visible wound appears.
 
 **PASS / KEEP `f4deeb6b`. Ordered blockers: none for this first-party
 fixed-mount restoration.**
+
+## 5.161 IS-3 FIRST-PARTY RESTORATION (2026-08-13, RE-FROZEN)
+
+The active `is3` is wholly repository-authored procedural geometry. The
+historic comparison print was mounted read-only only for the frozen evidence
+packet and contributes no mesh, vertex/index payload, material, texture, UV,
+rig, animation, hierarchy or converted source geometry. Its candidate/runtime
+row, public binary, license record and UI attribution are removed here.
+
+The restoration preserves the published pike hull and D-25T run while
+replacing the old flat 0.60 m turret-ring wall and fake height rod with one
+short overlapped race, a low organic undercut cast dome and a real seated DShK
+assembly. Six large road-wheel assemblies gain deeper dishes and readable
+hubs; the forward terminal is explicitly the idler, the rear terminal the
+final-drive sprocket, and three supported return rollers carry the top run.
+The hull-owned shovel moves clear of the turret sweep. Unequal louvred service
+bays, frames, access boss and offset cover are backed against the physical
+stern rather than added as a floating wall.
+
+Freeze **`46539231`** reproduces twice at 41 meshes / 70,146 vertices. Exact
+band front/rear, instanced-shoe front/rear and strict moving-sweep receipts are
+**0/0**. Parent audit is **0 stranded / 0 abutting / 0 dangling**; winding mode
+1 is clean, runtime articulation passes 10/10 and muzzle-bore contrast is 63.9.
+The standard plan/census row reports zero holes and `mg1+1d`. The historical
+print gate remains honestly capped at 45.2 because its crown is 23–28% too tall
+and its cannon run about 8% short against published dimensions; no 90+ machine
+score is fabricated.
+
+The packet at `/private/tmp/is3-owner-final-r5/is3` contains 15 paired, 15
+yaw0 and 15 yaw90 frames including elevated profile: **45 PNGs / 45 distinct
+hashes**. Fresh standard-order first-party source-semantic appraisal is
+`[9.0,9.1,9.0,9.0,9.0,9.0,9.0,9.1,9.0,9.1,9.0,9.1,9.0,9.0]`, floor **9.0**
+and mean **9.03**. The complete turret/gun/DShK/roof package makes a genuine
+quarter-turn while the hull, deck, stern and native course stay fixed. No
+fused duplicate, stranded fitting, empty-air decoration, track collision,
+open sheet or yaw-dependent wound appears.
+
+**PASS / KEEP `46539231`. Ordered blockers: none for this first-party
+restoration.**

@@ -44,7 +44,7 @@
 // each build's committed max width (is7 anchor 3.379, is3 drums 3.15,
 // object279 flare 3.39, is6b 3.20, kv2 fenders 3.31) or the whole model
 // rescales and every mask shifts.
-import { KIT } from './kit.js';
+import { KIT, FITTINGS } from './kit.js';
 // kv2 shaded-parity r4 tell 1 (r5 round): the WoT-style readability floor is
 // what keeps shade-side hardware in the ref's tonal family — but the link
 // pad/inner materials are CLONES made inside buildRunningGear, and
@@ -76,6 +76,7 @@ function sovGear(P, g) {
     // kit-supported way to deep spoke pockets without a static-overlay
   // rotation artifact. Default stays 'steel' (other family ids unchanged).
     style: g.style ?? 'steel', wheelR: g.wheelR, wheelW,
+    dishR: g.dishR,
     wheelY: g.wheelY + lift, xc: g.xc, wheelZs,
     // v10: sprocketDz/idlerDz overrides — the KV oracle runs a high SMALL
     // idler close to the last wheel (short ground run), which the default
@@ -334,7 +335,7 @@ function sideSlab(P, bucket, side, b0, b1, b2, b3, t0, t1, t2, t3) {
 // WIDTH GUARD: fenders 1.545+... stay the committed 3.15 anchor; track pads
 // reach 1.525 only (ref front shows nothing at ground past 1.54).
 function is3Hull(P) {
-  const { box, cylY, frustum, headlight, towCable } = KIT;
+  const { box, cylY, cylZ, frustum, headlight, towCable } = KIT;
   // belly: centre keel 0.455 + lower tub strips 0.275 (ref front bottoms)
   P.add('hull', box(1.30, 0.55, 5.10), 0, 0.73, -0.35);                        // centre belly 0.455..1.005
   for (const s of [-1, 1]) {
@@ -355,6 +356,23 @@ function is3Hull(P) {
     [-1.42, 1.30, -3.10], [1.42, 1.30, -3.10], [1.40, 1.30, -3.225], [-1.40, 1.30, -3.225], // then flat to plate A (the ref line
     [-1.42, 1.585, -3.10], [1.42, 1.585, -3.10], [1.40, 1.448, -3.225], [-1.40, 1.448, -3.225])); // is convex: 1.573 already @-3.14)
   P.add('hull', box(2.84, 0.04, 0.07), 0, 1.567, -3.075);                      // slope-to-deck filler (1.587)
+  // Backed, unequal stern service bays.  These live on the real tail plate
+  // and carry their own frames/louvres instead of hovering as a decorative
+  // wall behind it.
+  for (const [x, w, h, rows] of [[-0.63, 0.94, 0.27, 4], [0.55, 0.78, 0.23, 3]]) {
+    P.add('hullDark', box(w, h, 0.022), x, 1.275, -3.216);
+    P.add('hullDetail', box(w + 0.05, 0.035, 0.038), x, 1.275 + h / 2, -3.220);
+    P.add('hullDetail', box(w + 0.05, 0.035, 0.038), x, 1.275 - h / 2, -3.220);
+    P.add('hullDetail', box(0.035, h, 0.038), x - w / 2, 1.275, -3.220);
+    P.add('hullDetail', box(0.035, h, 0.038), x + w / 2, 1.275, -3.220);
+    for (let i = 0; i < rows; i++) {
+      P.add('hullDetail', box(w * 0.84, 0.025, 0.040), x,
+        1.275 - h * 0.34 + i * (h * 0.68 / Math.max(1, rows - 1)), -3.232);
+    }
+  }
+  P.add('hullDetail', cylZ(0.10, 0.035, 14), 0.10, 1.06, -3.255);             // central recovery/access boss
+  P.add('hullDark', cylZ(0.055, 0.040, 12), 0.10, 1.06, -3.276);
+  P.add('hullDetail', box(0.22, 0.07, 0.04), 0.88, 1.08, -3.235);             // offset service cover
   for (const s of [-1, 1]) {
     // BDSh smoke canisters tucked under the deck-slope line (close-up read;
     // tops 1.49 stay under the 1.51-1.60 slope silhouette)
@@ -402,7 +420,10 @@ function is3Hull(P) {
   // run pokes over the ref's flat 1.510 roof line)
   towCable(P, [[-0.95, 1.60, -2.2], [-1.02, 1.598, -1.3], [-0.95, 1.60, -0.5]], 0.024);
   towCable(P, [[0.95, 1.60, -2.2], [1.02, 1.598, -1.3], [0.95, 1.60, -0.5]], 0.024);
-  KIT.shovelTool(P, -0.85, 1.575, 0.30);                                       // pioneer tools flush on the roof step
+  // The shovel is hull-owned.  Keep it on the rear engine deck instead of
+  // hiding its center under the turret footprint (where a yaw audit quite
+  // reasonably mistook it for stranded turret equipment).
+  KIT.shovelTool(P, -0.85, 1.575, -2.68);
   P.add('hullDark', KIT.torus(0.045, 0.011, 10), -0.85, 1.594, -2.55);         // flat deck lift rings (a proud liftEye
   P.add('hullDark', KIT.torus(0.045, 0.011, 10), 0.85, 1.594, -2.55);          // owned the x 0.87 front column in r1)
   // ---- driver station (hump plateau 1.598, fall-in 1.543@2.01) ----
@@ -485,37 +506,39 @@ function is3Hull(P) {
   // idler/sprocket close behind the end wheels so the wrap RISE starts at
   // the ref's +-2.35 line instead of sagging flat (bottom targets: 0.03@2.2
   // -> 0.15@2.45 -> 0.42@3.02 front; 0.14@-2.6 -> 0.25@-2.93 rear)
-  sovGear(P, { xc: 1.185, trackW: 0.58, wheels: 6, wheelR: 0.33, wheelY: 0.36, span: 4.64, zc: -0.05, topY: 0.94, botY: 0.04, sprocketY: 0.68, sprocketR: 0.26, sprocketDz: 0.38, idlerY: 0.72, idlerR: 0.24, idlerDz: 0.44 });
+  sovGear(P, {
+    xc: 1.185, trackW: 0.58, wheels: 6,
+    wheelR: 0.395, wheelY: 0.425, dishR: 0.78,
+    span: 4.64, zc: -0.05, topY: 0.93, botY: 0.04,
+    // Fleet law: the forward terminal is the freely rotating idler; the
+    // rear terminal is the final-drive sprocket.  Their larger pressed-steel
+    // faces now close the end cadence instead of looking like two tiny hubs.
+    idlerY: 0.67, idlerR: 0.295, idlerDz: 0.38,
+    sprocketY: 0.65, sprocketR: 0.305, sprocketDz: 0.36,
+    rollers: [1.38, 0.05, -1.30].map((z) => ({ z, y: 0.82, r: 0.09 })),
+  });
   // Preserve the narrow centre keel while lifting the pike/stern shoulders
   // and mudflap undersides above the complete linked-shoe sweep.
   P.raiseTrackCorridor(['hull', 'hullDetail', 'hullDark'], { laneInnerX: 0.66, floorY: 1.15 });
   P.raiseTrackCorridor(['hull', 'hullDetail', 'hullDark'], { laneInnerX: 0.45, floorY: 1.15, zMin: 2.0 });
 }
 
-// Squat proud IS-3 casting + D-25T, shared by is3 and (r2) is3_bergman.
-// r6 vertex re-lay: authored to the POST-WARP oracle (crown band 2.42-2.44,
-// DShK/cupola cluster flattened to <=2.455 over world z -1.13..-0.73, ring
-// basket down to 0.92 in the turret mask, muzzle 6.465 = published 9.85).
-// The tall DShK mast shrinks to ONE thin rod to 2.82: it holds rough height
-// >= 2.80 so the 12% body filter keeps the 0.33-band brake discs out of
-// hullLengthM (v10 law), while costing only ~2 thin columns vs the warped
-// ref's flat cluster (heightM p95 spike budget: 2 of 4).
+// Squat proud IS-3 casting + D-25T, shared by is3 and is3_bergman.
+// The first-party build follows the published IS-3 identity and dimensions:
+// organic undercut cast dome, low race, and a fully seated roof DShK.  Do not
+// reintroduce the old flat 0.6 m ring wall or its fake p95 height rod.
 function is3TurretAndGun(P, num) {
-  const { box, cylY, cylZ, buildGun, liftEye } = KIT;
-  // ring pivot at the print's own race (extract turretPivot z -0.17 -> the
-  // dome centres near world -0.09); crown 2.435, near-circular plan (sz 1.03)
+  const { box, cylY, cylZ, buildGun } = KIT;
+  // The driver's-deck opening and hull proportions put the ring just aft of
+  // the pike shoulder; keep the low dome centred over that physical seat.
   P.turretG.position.set(0, 1.505, -0.09);
-  P.add('turret', cylY(0.56, 0.56, 0.60, 16), 0, -0.29, -0.11);                // ring basket (turret-mask parity: ref
-                                                                               // bottom 0.92 over world z -0.76..+0.36)
+  // A short, broad race overlaps the hull ring and the dome.  The former
+  // narrow 0.60 m cylinder became a conspicuous flat vertical wall.
+  P.add('turret', cylY(0.72, 0.64, 0.18, 20), 0, 0.01, -0.08);
   panDome(P, [
-    [1.42, 0.205], [1.455, 0.335], [1.44, 0.525], [1.33, 0.685],
-    [1.10, 0.805], [0.64, 0.895], [0.30, 0.925], [0.02, 0.930],
-  ], 1.026, 0.0, 0.0);
-  panDome(P, [                                                                 // rear crown cap: the warped ref dome
-    [0.94, 0.84], [0.80, 0.885], [0.44, 0.920], [0.02, 0.925],                 // holds 2.42-2.46 from world -1.40 to
-  ], 0.87, 0.0, -0.55);                                                        // +0.20 (fat end aft); base ring stops
-                                                                               // at -1.46 — a 1.28-sz cap swept to
-                                                                               // -2.02 and owned four whole-row cols
+    [1.16, 0.075], [1.39, 0.185], [1.47, 0.355], [1.42, 0.535],
+    [1.24, 0.715], [0.91, 0.855], [0.48, 0.925], [0.02, 0.955],
+  ], 1.105, 0.0, -0.04);
   P.add('turret', cylY(0.21, 0.225, 0.055, 14), -0.44, 0.845, -1.01);          // commander ring (top 2.40)
   P.add('turret', cylY(0.185, 0.185, 0.026, 14), -0.44, 0.885, -1.01);         // cupola lid (top 2.416)
   P.add('turretDark', cylY(0.215, 0.215, 0.012, 14), -0.44, 0.881, -1.01);     // lid seam ring
@@ -523,24 +546,60 @@ function is3TurretAndGun(P, num) {
   P.add('turret', cylY(0.165, 0.165, 0.026, 12), 0.44, 0.908, -0.26);          // loader lid
   KIT.periscope(P, 'turretDetail', -0.44, 0.90, -0.82);                        // cupola periscope
   KIT.periscope(P, 'turretDetail', 0.10, 0.905, -0.02);                        // gunner periscope
-  // DShK cluster: compact folded mount matching the warped ref's flat
-  // 2.44-2.455 band (world z -1.13..-0.73) + the thin rough-lifter rod
-  P.add('turret', box(0.42, 0.26, 0.38), 0.14, 0.815, -0.75);                  // mount pedestal (top 2.45)
-  aaMG(P, 0.15, 0.42, -0.86);                                                  // DShK folded at the ceiling (receiver 2.36, barrel 2.43)
-  P.add('turret', box(0.032, 0.60, 0.032), 0.15, 1.015, -0.76);                // rough-lifter rod to 2.82 (2 thin cols)
+  // Full DShK on a real loader-hatch pintle.  The standard fitting supplies
+  // the foot, tapered post, receiver, barrel, ammunition can and AA ring as
+  // one turret-owned assembly, so nothing is balanced on a decorative rod.
+  {
+    const mg = FITTINGS.pintleMG({
+      mats: P.mats, cls: 'dshk', tone: 'two-tone', seed: 703,
+      elev: 0.12, scale: 1.48, ammo: true, shield: true,
+      ring: { r: 0.22, stubs: 3 },
+      rotation: [0, -0.42, 0],
+    });
+    mg.position.set(0.40, 0.93, -0.31);
+    P.turretG.add(mg);
+  }
+  {
+    const antenna = FITTINGS.antennaWhip({
+      mats: P.mats, h: 0.72, r: 0.010, rake: 0.035, seed: 704,
+    });
+    antenna.position.set(-0.92, 0.67, -0.70);
+    P.turretG.add(antenna);
+  }
+  // Shallow cast/weld courses follow the dome itself.  They give the broad
+  // roof its characteristic segmented cadence without becoming stand-off
+  // applique or crossing empty space.
   for (const s of [-1, 1]) {
-    domeRail(P, s * 1.465, 0.46, -0.10, 0.95);                                 // dome grab rails (LEFT shows rails)
-    liftEye(P, 'turretDetail', s * 0.96, 0.86, 0.38, s * 0.4);                 // lifting bosses
-    liftEye(P, 'turretDetail', s * 0.96, 0.85, -0.76, s * -0.4);
+    KIT.towCable(P, [
+      [s * 0.18, 0.958, -0.10],
+      [s * 0.42, 0.920, -0.38],
+      [s * 0.66, 0.825, -0.66],
+      [s * 0.84, 0.675, -0.92],
+    ], 0.011, 'turretDark');
+    for (const [x, y, z, len, yaw] of [
+      [0.38, 0.735, -0.78, 0.62, 0.05],
+      [0.74, 0.650, -0.72, 0.54, 0.16],
+    ]) {
+      P.add('turretDetail', box(0.075, 0.040, len), s * x, y, z,
+        -0.38, s * yaw, 0);
+      P.add('turretDark', box(0.028, 0.045, len * 0.82), s * x, y + 0.012, z,
+        -0.38, s * yaw, 0);
+    }
+  }
+  for (const s of [-1, 1]) {
+    domeRail(P, s * 1.32, 0.45, -0.10, 0.90);                                 // dome grab rails
+    // Compact welded lifting lugs seated into the shoulder.  The old torus
+    // helper produced four oversized figure-eight ornaments at close range.
+    for (const z of [0.34, -0.72]) {
+      P.add('turretDetail', box(0.075, 0.085, 0.050), s * 0.98, 0.72, z, 0, s * 0.30, 0);
+      P.add('turretDark', box(0.028, 0.040, 0.055), s * 0.98, 0.75, z, 0, s * 0.30, 0);
+    }
   }
   P.decal('turret', 'number', P.spec.visual.number || num, 0.32, [1.34, 0.50, -0.15], Math.PI / 2, 0, 0.12);
   P.decal('turret', 'number', P.spec.visual.number || num, 0.32, [-1.34, 0.50, -0.15], -Math.PI / 2, 0, -0.12);
-  // 122 mm D-25T: axis 2.02 (warp keeps it: y<2.30 identity), muzzle 6.465
-  // world = tail'(-3.385) + published 9.85. Warped brake zone 5.35..6.465
-  // (the z map stretches the print's short tube x1.369 past the bow).
-  // mantlet cluster hugs the dome face: the warped ref's plan-turret front
-  // is 1.13@x0.6 / 1.40@x0.4 — the old 1.64 seat pushed the saddle roll to
-  // 1.85 and cost plan_turret 0.25 errM across the mantlet columns
+  // 122 mm D-25T: axis 2.02, muzzle 6.465 world.  The mantlet cluster hugs
+  // the dome face while the tube reaches the published 9.85 m gun-forward
+  // envelope measured from the tail.
   P.gunG.position.set(0, 0.515, 1.20);
   saddle(P, { rollR: 0.30, rollW: 0.84, ballR: 0.30, ballZ: 0.32, boltR: 0.309, boltX: [-0.33, 0.33] });
   P.addGunExtra(cylZ(0.17, 0.42, 12, 0.20), 0, 0, 0.40);                       // bulged root (plan nose 1.81@x<0.2 = ref 1.76)
@@ -548,9 +607,8 @@ function is3TurretAndGun(P, num) {
   for (const s of [-1, 1]) {
     P.add('turret', box(0.22, 0.44, 0.38), s * 0.50, 0.50, 1.10, -0.10, s * -0.50, 0); // cheek castings hugging the roll ends
   }
-  // double-baffle brake at the warped-oracle seat: discs r 0.165 (band 0.33
-  // stays under rough 2.82 x 12% = 0.338), dark slot core + face rings +
-  // gas-divider spine (the r3 readability build, re-seated for 6.465)
+  // D-25T double-baffle brake: dark slot core, face rings and gas-divider
+  // spine remain separately readable at fleet camera distance.
   buildGun(P, { len: 5.30, r: 0.148, brake: null, baseR: 0.185, sleeve: false, evac: null });
   P.add('gunDark', cylZ(0.10, 0.70, 12), 0, 0, 4.96);                          // dark core through the side windows
   P.add('gun', cylZ(0.165, 0.11, 16), 0, 0, 4.74);                             // REAR baffle disc (world 5.85)
@@ -569,20 +627,13 @@ function buildIS3(P) {
   is3TurretAndGun(P, '703');
 }
 
-// The recovered bergman print's Turret node is degenerate (fenders and drums
-// parented into it; the turret shell itself sits SUNKEN inside the hull) —
-// see the packet. r1 matched that visible truth with a flush cap + stub gun;
-// the shaded-parity critique (correctly) rejected the result as "a flat cone
-// lid flush on the deck". r2 rebuilds the REAL proud IS-3 dome + full D-25T:
-// identity beats the metric — the turret/gun component scores are knowingly
-// sacrificed against the broken oracle (cost logged in the packet).
+// First-party IS-3 variant: retain the same proud dome, connected D-25T and
+// native running gear, then apply the variant's own finish and stations.
 function buildIS3Bergman(P) {
   is3Hull(P);
   is3TurretAndGun(P, '703');
-  // r3: the degenerate bergman print frames the shared is3 build on its own
-  // pixel grid — heightM read 2.49 vs pub 2.45 (1.45%) after the kit track
-  // round while is3 itself read 2.47 (in grace). Seat the turret 25mm lower
-  // on THIS id only; its curve/station rows are print-capped anyway.
+  // Seat the variant turret 25 mm lower while remaining within the published
+  // height envelope; all roof stations stay connected to the turret package.
   P.turretG.position.y -= 0.025;
 }
 

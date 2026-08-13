@@ -366,7 +366,7 @@ CC-BY candidates recorded in the scouting report wishlist instead.
 Verdict: **sourced wins for M1A2 Abrams (pending integration); procedural
 stays the winner for T-90M and Leopard 2A7.**
 
-## Community reference vehicles (public/models/tanks/community/) — 16 retained comparison assets
+## Community reference vehicles (public/models/tanks/community/) — 15 retained comparison assets
 
 Community-crawl winners (2026-07-27), retained as isolated comparison inputs;
 the active playables are repository-authored procedural geometry. Every
@@ -376,7 +376,6 @@ line for each retained asset is preserved in
 
 | In-game vehicle (spec id) | Asset | Author | Source | License | File |
 |---|---|---|---|---|---|
-| IS-3 (`is3`) | IS-3 (Object 703, moving parts) | Nick Tallon (PanzerFactory) | https://www.thingiverse.com/thing:4137773 (via archive.org mirror thingiverse-4137773) | CC-BY 4.0 | `public/models/tanks/community/is3_panzerfactory.glb` (print STLs reassembled: turret peg seated in hull ring, gun in mantlet socket; hull/turret/gun articulation nodes) |
 | T-34-85 (Wei He) (`t34_85_cad`) | T-34-85 detailed CAD | Wei He (Xdhsqj) | https://www.thingiverse.com/thing:4326802 (via archive.org mirror thingiverse-4326802) | CC-BY 4.0 | `public/models/tanks/community/t34_85_weihe.glb` (SolidWorks 1:1 export decimated 3.49M→~220k tris; turret+gun separated at the ring plane, yaw pivot at ring center) |
 | Tiger I (Newc42) (`newc_tiger`) | Panzer VI Tiger I, Low Poly German WWII Tanks | Newc42 | https://newc-42.itch.io/german-low-poly-wwii-tanks | CC0-1.0 (itch.io "Asset license: Creative Commons Zero v1.0 Universal") | `public/models/tanks/community/tiger_newc42.glb` |
 | Panzer III Ausf. J (`newc_pziii`) | Low Poly German WWII Tanks | Newc42 | https://newc-42.itch.io/german-low-poly-wwii-tanks | CC0-1.0 | `public/models/tanks/community/pziii_newc42.glb` |

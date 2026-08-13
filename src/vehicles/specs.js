@@ -936,11 +936,6 @@ const COMMUNITY_SPECS = {
 
   is3: {
     id: 'is3', name: 'IS-3', nation: 'USSR', era: 'ww2', class: 'heavy',
-    community: {
-      author: 'Nick Tallon (PanzerFactory)',
-      source: 'https://www.thingiverse.com/thing:4137773',
-      license: 'CC-BY 4.0',
-    },
     hp: 1250,
     enginePowerHp: 520, weightTons: 46.5, topSpeedKmh: 40, reverseSpeedKmh: 6,
     hullTraverseDegS: 22,
@@ -1775,16 +1770,9 @@ Object.assign(MODEL_SOURCE, {
     // is registered as a runtime candidate or displayed as model provenance.
   },
   is3: {
-    source: 'procedural', // §5.31b flip — soviet-heavy.js profile renders
-    // content_breadth r2: stripBakedTextures — same cohesion treatment as
-    // kv2/is7 (r1 TM #188): the baked albedo rendered flat single-tone lime
-    // clay next to the camo-painted fleet; route the shell onto the shared
-    // camo canvas + weathering instead.
-    candidateGlb: {
-      path: '/models/tanks/community/is3_panzerfactory.glb',
-      turretNode: '^turret$', gunNode: '^gun$', autoPivot: true,
-      paintUntextured: true, stripBakedTextures: true,
-    },
+    source: 'procedural',
+    // Wholly first-party build in profiles/soviet-heavy.js.  External prints
+    // are not shipped, registered as candidates or displayed as provenance.
   },
   t34_85_cad: {
     source: 'procedural', // §5.31b flip — ww2.js profile renders
