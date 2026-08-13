@@ -6602,3 +6602,40 @@ fields and sole linked courses remain fixed and physically seated.
 All sixteen presentation assets are regenerated from these exact builders.
 **PASS / KEEP `96d3d9e8`, `cf383a52`; retire `151906a0` and `9c47c650`.
 Ordered blockers: none.**
+
+## 5.183 LEOPARD 2 REVOLUTION CHEEK / 2A7V TURRET-SEAT CORRECTION (2026-08-13)
+
+The owner-standard elevated profile confirmed two live visual defects after
+the earlier Leopard graduation. Revolution's old continuation card had been
+removed, but a short rectangular left-outboard wall plus a second nose cap
+still resolved as one square stuck into the cheek. Those two pieces are now
+one continuous inward-tapering armor course: the inboard edge overlaps the
+load-bearing cheek wall for its full run while the outboard, upper and nose
+edges recede into the primary casting. There is no independent card, cuboid
+or end cap left to reproduce the glitch.
+
+Leopard 2A7V's full rotating package is raised a further 0.10 m. The annular
+bearing is extended downward by exactly the same amount, keeping its lower
+contact at the accepted fixed-deck datum. The elevated profile now exposes a
+readable turret/deck joint while the collar remains broad, continuous and
+visibly seated at yaw 0 and 90; no roof station, gun, armor module, basket or
+antenna was moved outside the turret hierarchy.
+
+Deterministic geometry reproduces twice as Revolution **`5c68747e`** (76
+meshes / 100,077 vertices) and 2A7V **`5d5e95ac`** (46 / 110,055). The
+machine gates pass at **90.2** and **90.0** respectively, with 0/0 continuous-
+band and 0/0 individual-shoe terminal intersections, zero plan holes and
+passing bores. Winding is 0 reversed / 0 mixed; the 65/93-pixel differences
+are sub-0.13% antialias-only. Revolution's coarse parent report still names
+two merged fixed-hull material buckets, but the yaw-pixel audit reduces the
+only non-coincident candidate to five pixels and every 90-degree frame shows
+the entire AMAP shell and equipment package departing together.
+
+`/private/tmp/leopard-defects-final-r1` contains 15 authored views, 15 yaw0
+and 15 yaw90 frames per vehicle, including the common elevated-left profile:
+**90 PNGs / 90 distinct hashes** across the packet. All sixteen presentation
+assets were regenerated from the exact corrected builders. Both playables
+remain entirely first-party procedural geometry; isolated comparison assets
+are not loaded or transformed into runtime content.
+
+**PASS / KEEP `5c68747e`, `5d5e95ac`. Ordered blockers: none.**

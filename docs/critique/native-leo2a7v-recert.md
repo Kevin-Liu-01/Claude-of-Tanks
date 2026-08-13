@@ -60,3 +60,19 @@ yaw evidence.
 This receipt certifies only the first-party procedural builder. The isolated
 external GLB used by the comparison harness is a visual oracle and is never
 loaded by the playable.
+
+## 2026-08-13 final owner turret-seat correction
+
+The standardized elevated profile showed that the accepted separation was
+still visually too shallow. The entire turret hierarchy is raised another
+0.10 m, while the annular bearing grows downward by the same amount. Its
+lower edge therefore remains at the established hull-deck contact line and
+its upper section overlaps the shell: the result is a readable turret neck,
+not a stilt or empty gap.
+
+Fresh deterministic freeze: `5d5e95ac`, 46 meshes / 110,055 vertices. The
+geometry gate remains 90.0, exact band/shoe clearance is 0/0, parent audit is
+0/0/0 and winding is clean. All 45 files in
+`/private/tmp/leopard-defects-final-r1/leo2a7v` are unique. Yaw evidence shows
+the complete shell, gun, armor, bustle, roof equipment and antennas moving
+together over the fixed deck and continuously seated bearing.

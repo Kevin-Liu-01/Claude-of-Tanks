@@ -40,3 +40,20 @@ material groups. Fresh yaw frames show
 them staying with the hull while the complete AMAP turret moves away. The tiny
 five-pixel winding-yaw candidates are likewise supported fixed rear-deck/service
 pieces and produce no duplicate turret mass or floating decoration.
+
+## 2026-08-13 final owner cheek correction
+
+The previous correction removed the paper-thin continuation card but retained
+a short rectangular left-outboard wall followed by a separate tapered cap.
+The shared end face was still visible as the reported square in the elevated
+profile. Both pieces are replaced by one continuous four-sided cheek course
+whose upper, outboard and nose boundaries taper into the primary shell. Its
+broad inboard overlap remains load-bearing and no independent face or patch
+survives.
+
+Fresh deterministic freeze: `5c68747e`, 76 meshes / 100,077 vertices. Exact
+band/shoe clearance is 0/0, winding is clean, the geometry gate remains 90.2,
+and `/private/tmp/leopard-defects-final-r1/leo2_revolution` contains 45 unique
+authored/yaw frames including the elevated profile. The complete cheek,
+mantlet, gun, AMAP package and equipment rotate together; the five-pixel yaw
+candidate belongs to supported fixed hull service material.

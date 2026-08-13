@@ -4963,7 +4963,12 @@ function buildLeo2A7V(P) {
   // datum through the bearing below.  The visible annular neck remains
   // seated on the fixed deck, while gun, armor, sights, basket, roof kit and
   // antennas all retain one coherent turret ownership transform.
-  P.turretG.position.set(0, 1.88, 0.35);
+  // Owner visual correction (2026-08): the accepted armor package still sat
+  // too deeply in the hull in the elevated profile.  Lift the complete
+  // rotating package 10 cm; the bearing below is lengthened downward by the
+  // same amount so the shell gains a readable neck without becoming a
+  // floating turret or changing the hull-deck contact line.
+  P.turretG.position.set(0, 1.98, 0.35);
   wedgeTurretV3(P, {
     h: 0.64, apexY: 0.22, gunW: 0.36, slotZ: 1.18,
     chamferY: 0.55, roofX: 1.06, crestTail: 0.62, crestTailDrop: 0.005,
@@ -5075,8 +5080,8 @@ function buildLeo2A7V(P) {
   // sight-lines (§B2) and yaws with the mass.
   // A thin dark annulus exposes the lifted plinth/deck joint without adding
   // a new rear-facing neck below the certified turret envelope.
-  P.add('turretDark', KIT.torus(1.10, 0.012, P.q ? 26 : 16), 0, -0.182, -0.55);
-  P.add('turret', cylY(1.10, 1.14, 0.26, P.q ? 26 : 16), 0, -0.055, -0.55);
+  P.add('turretDark', KIT.torus(1.10, 0.012, P.q ? 26 : 16), 0, -0.282, -0.55);
+  P.add('turret', cylY(1.10, 1.14, 0.36, P.q ? 26 : 16), 0, -0.105, -0.55);
   // Authored roof-station restoration: the old first-party build had a much
   // clearer crew-station cadence than the later sparse roof.  Reintroduce
   // that information as low, supported hardware on the corrected shell,
@@ -6426,16 +6431,15 @@ function buildLeo2Revolution(P) {
   // columns, the slivers keep their certified reads either side
   P.add('turret', box(0.07, 0.19, 0.7835), -1.465, 0.455, -0.20175);           // left inner sliver FORE (floor 1.96, w -0.16..-0.94)
   P.add('turret', box(0.07, 0.19, 0.8885), -1.465, 0.455, -1.38575);           // left inner sliver REAR (w -1.29..-2.18)
-  P.add('turret', box(0.15, 0.10, 0.91), -1.575, 0.50, 0.645);                 // left wall outer fore-rear (floor 2.05w)
-  // The outboard fore-wall used to terminate in a perfectly vertical
-  // 15 cm cuboid.  In front/elevated views that face survived as the
-  // owner's square cheek glitch even after the redundant continuation card
-  // was removed.  Close it with a buried, inward-tapering armor wedge: the
-  // lower root still overlaps the inner wall while the outer/top/front
-  // edges fall into the primary cheek instead of forming a separate box.
+  // Owner visual correction (2026-08): the former short outer box plus a
+  // second nose cap still resolved as a square stuck into the LEFT cheek.
+  // Author the whole course as one continuous, inward-tapering armor wedge.
+  // Its inboard edge overlaps the inner wall for the full run, while its
+  // outboard edge recedes toward the crown and the nose.  There is now no
+  // independent cuboid/cap whose end face can survive as a cheek glitch.
   P.add('turret', slab(
-    [-1.65, 0.28, 1.185], [-1.50, 0.28, 1.185], [-1.50, 0.28, 1.790], [-1.62, 0.28, 1.735],
-    [-1.57, 0.52, 1.185], [-1.50, 0.52, 1.185], [-1.50, 0.52, 1.735], [-1.56, 0.52, 1.690]));
+    [-1.64, 0.33, 0.19], [-1.50, 0.33, 0.19], [-1.50, 0.28, 1.790], [-1.60, 0.28, 1.700],
+    [-1.56, 0.52, 0.19], [-1.50, 0.52, 0.19], [-1.50, 0.52, 1.735], [-1.54, 0.52, 1.670]));
   P.add('turret', box(0.15, 0.19, 0.7835), -1.575, 0.455, -0.20175);           // left wall outer rear FORE
   P.add('turret', box(0.15, 0.19, 0.1385), -1.575, 0.455, -1.01075);           // left wall outer rear TAIL (keeps the -1.43w plan rear)
   P.add('turret', box(3.04, 0.17, 0.083), 0, 0.475, -0.663);                   // floor step 1.99 (w -1.01)
