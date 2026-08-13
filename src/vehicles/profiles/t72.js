@@ -194,6 +194,31 @@ function buildT72B87(P) {
   // edge advanced past the collar-front line at the ±0.17-0.3 plan cols;
   // measured turret -2.0 — tip pulled onto the collar front.)
   eraRuCheeks(P, { tip: { x: 0.145, z: 1.76, ox: 0.95, oz: 1.24, y: 0.16, h: 0.40, d: 0.14, tilt: -0.14, segs: 4, rows: 1, gap: false } }, 'tip');
+  // Restore the dense 1987 Kontakt-1 read without replacing the proven
+  // casting.  Two irregular inner courses bridge the large V carriers into
+  // the crown, while a falling flank course follows the pear shoulder.
+  // Every cassette overlaps an inner shoe; dark caps keep the individual
+  // modules readable through the common olive camouflage.
+  for (const s of [-1, 1]) {
+    for (let row = 0; row < 2; row++) for (let i = 0; i < 6; i++) {
+      const x = 0.26 + i * 0.176 + row * 0.012;
+      const z = 1.35 - i * 0.120 - row * 0.105 + (i % 2 ? 0.014 : -0.009);
+      const w = 0.175 + ((i + row) % 3) * 0.015;
+      const d = 0.205 + (i % 2) * 0.025;
+      const yaw = 0.18 + i * 0.105 + row * 0.025;
+      P.add('turretTrack', box(w * 0.82, 0.075, d * 0.78), s * (x - 0.025), 0.29 + row * 0.105 - i * 0.008, z - 0.025, -0.12, s * yaw, 0);
+      P.add('turretTrack', box(w, 0.11, d), s * x, 0.33 + row * 0.105 - i * 0.008, z, -0.12, s * yaw, 0);
+      P.add('turretDark', box(w * 0.74, 0.012, d * 0.62), s * x, 0.392 + row * 0.105 - i * 0.008, z + 0.012, -0.12, s * yaw, 0);
+    }
+    for (let i = 0; i < 7; i++) {
+      const x = 1.19 + i * 0.047;
+      const z = 0.54 - i * 0.225;
+      const yaw = 0.63 + i * 0.11;
+      P.add('turretTrack', box(0.19, 0.12, 0.21), s * (x - 0.035), 0.10 - i * 0.004, z, -0.05, s * yaw, 0);
+      P.add('turretTrack', box(0.22, 0.145, 0.23), s * x, 0.14 - i * 0.004, z, -0.05, s * yaw, 0);
+      P.add('turretDark', box(0.17, 0.012, 0.16), s * x, 0.219 - i * 0.004, z, -0.05, s * yaw, 0);
+    }
+  }
   // 902B six-tube bank seated ON the left cheek skin
   P.add('turret', box(0.44, 0.06, 0.34), -1.10, 0.24, 0.82, 0, -0.55, 0);  // T3B87: outer corner cleared the -1.442 window (it painted front 0.79 vs ref -0.20)
   for (let i = 0; i < 6; i++) {
@@ -211,6 +236,10 @@ function buildT72B87(P) {
   P.add('turret', cylY(0.24, 0.26, 0.30, 14), -0.62, 0.45, -0.02);
   P.add('turret', cylY(0.22, 0.24, 0.14, 14), -0.62, 0.67, -0.02);
   P.add('turretDark', cylY(0.19, 0.19, 0.03, 12), -0.62, 0.785, -0.02);
+  for (const [x, z, ry] of [[-0.92, -0.07, -0.36], [-0.82, 0.09, -0.16], [-0.64, 0.16, 0.03], [-0.45, 0.08, 0.23]]) {
+    P.add('turretDark', box(0.115, 0.052, 0.067), x, 0.735, z, 0, ry, 0);
+    P.add('turretGlass', box(0.078, 0.030, 0.012), x, 0.754, z + 0.039, 0, ry, 0);
+  }
   // NSVT at the roof seat; the ref's 2.30 spike at world -0.79 is a 1-col
   // ANTENNA BASE (r6 lesson: moving the whole NSVT there read 0.35 x 4 cols)
   // r8: NSVT receiver pulled out of the -0.573 col (ref top there is 1.847
@@ -241,6 +270,13 @@ function buildT72B87(P) {
   P.add('turret', cylY(0.18, 0.20, 0.10, 12), 0.92, 0.59, 0.05);
   P.add('turretDark', cylY(0.155, 0.155, 0.02, 12), 0.92, 0.655, 0.05);
   mast(P, -0.55, 0.50, 0.0, 0.85, 0.020, 0.04);
+  P.add('turret', cylY(0.070, 0.078, 0.065, 12), 0.90, 0.60, -0.54);
+  P.add('turretDark', cylY(0.042, 0.047, 0.055, 10), 0.90, 0.66, -0.54);
+  {
+    const antenna = FITTINGS.antennaWhip({ mats: P.mats, h: 1.22, r: 0.011, rake: -0.028, seed: 72 });
+    antenna.position.set(0.90, 0.68, -0.54);
+    P.turretG.add(antenna);
+  }
   // RIGHT K-1 flank slivers (print asymmetry: plan content at x 1.55-1.68).
   // r8 SUNKEN SEAT: ref front tops those x at 1.343 (hull class) — the
   // turret-node content there is BELOW the deck line (t80 apron class), so
