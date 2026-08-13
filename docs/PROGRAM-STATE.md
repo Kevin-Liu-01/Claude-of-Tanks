@@ -117,7 +117,7 @@ re-freeze NEW hash, all in ONE commit.
 | leo2a5 | dd139150 | RE-FROZEN 2026-08-12 (§5.150 inherited first-party Leopard-family/track repair re-certified and loader MG3 migrated to the canonical seated fitting: exact band/shoes/full sweep 0/0/0, parent 0/0/0, geometry 90.2, fidelity 95.09 / minimum view 95.06 and fresh 45-frame elevated-profile/yaw floor 9.3 / mean 9.44; prior e215a738 retired) |
 | leo2a6 | 8b139b48 | RE-FROZEN 2026-08-12 (§5.146 first-party Leopard 2A6 strict full-course clearance closure: supported bow shoulder, seven-wheel native course and clean sprocket/idler transitions; machine fidelity 95.4, fresh 45-frame floor 9.3 / mean 9.46; prior e99f8490 retired) |
 | leo2a7v | c5cb292c | RE-FROZEN 2026-08-13 (§5.156 first-party Leopard 2A7V turret-separation closeout: complete rotating package raised 12 cm with the annular bearing still broadly seated, exact track 0/0, parent 0/0/0 and fresh 45-frame paired/elevated/yaw floor 9.0 / mean 9.17; prior ec69fe94 retired) |
-| leo2_revolution | 2e3c3ce0 | RE-FROZEN 2026-08-13 (§5.157 first-party Leopard 2 Revolution cheek-artifact closeout: redundant 2 cm standalone card retired so the continuous loft/mid-cheek own the face; exact track 0/0, fresh 45-frame floor 9.1 / mean 9.29; prior fe2dc714 retired) |
+| leo2_revolution | 3ead2acc | RE-FROZEN 2026-08-13 (§5.167 first-party Leopard 2 Revolution cheek-wall closeout: the remaining independent outer corner caps are replaced by buried inward-tapering armor wedges, eliminating the live square-cheek pixels while retaining the continuous AMAP shell; exact track/shoes/sweep 0/0, fresh 45-frame yaw/ownership PASS; prior 2e3c3ce0 retired) |
 | leo1a5 | 9339e895 | RE-FROZEN 2026-08-13 (§5.158 first-party photo-class turret restoration: closed cast pear loft plus buried angular applique replaces the tall regular box, with EMES/cupolas/MG/smoke/antennas/open basket re-seated; exact band/shoes/sweep 0/0, parent 0/0/0, winding clean and fresh 30-frame yaw/ownership PASS; no false geometry row because no usable oracle; prior 1c79188 retired) |
 | m46_patton | 108806c8 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | centurion3 | bad74e60 | RE-FROZEN 2026-08-08 (no-air graduate-change: crown-ridge pedestal + discharger webs, front-low 1810px->14, re-cert floor 9.0 x17 changed views, gate 91.1 exact; prior 50273080 bore-resit lineage) |
@@ -5881,3 +5881,41 @@ turret mass, collision, open sheet or yaw-dependent wound appears.
 
 **PASS / KEEP `80b4b851`; supersede `54f4138`. Ordered blockers: none for
 this armor/equipment-to-casting closeout.**
+
+## 5.167 LEOPARD 2 REVOLUTION FIRST-PARTY CHEEK-WALL CLOSEOUT (2026-08-13, RE-FROZEN)
+
+The active `leo2_revolution` remains wholly repository-authored procedural
+geometry. Fresh live renders disproved the stale claim that retiring the old
+2 cm continuation card had removed the owner's cheek artifact completely.
+Two small independent outer wall caps still ended as vertical cuboids beyond
+the continuous AMAP shell, leaving square blocks in direct-front and elevated
+front-quarter pixels.
+
+Both caps are removed. The left outer fore-wall is rebuilt as one buried
+eight-corner wedge whose lower root overlaps the inner wall and whose outer,
+top and forward edges taper into the primary cheek. The right fore-wall keeps
+its existing deep root and raked front but now contracts in both width and
+forward reach toward the crown. The result is a continuous pair of faceted
+armor shoulders rather than a decorative box at either cheek corner; no
+replacement card, exposed seam or empty-air load path is introduced.
+
+Freeze **`3ead2acc`** reproduces at 76 meshes / 100,401 vertices. Exact
+terminal bands, instanced shoes and strict moving sweep are **0/0/0**.
+Winding reports 0 reversed / 0 mixed with a visually null 65-pixel (0.09%)
+deficit and clean yaw candidates. Runtime articulation passes 10/10 and the
+explicit muzzle bore passes at 97.1 contrast. The parent tool's two broad
+merged-material candidates are the same fixed, backed hull deck/service
+groups adjudicated in yaw; neither carries a turret silhouette or fitting.
+
+The immutable procedural-only packet at
+`/private/tmp/leopard-revolution-final-r4/leo2_revolution` contains 15
+appraisal frames, 15 yaw0 and 15 yaw90 frames including the standardized
+elevated-left profile: **45 PNGs / 45 distinct hashes**. Front, both quarters,
+top and elevated profile show the square wall caps gone. The complete shell,
+gun/mantlet, roof stations, antennas and rear package make a genuine
+quarter-turn while the hull, deck, seven-wheel native course and rear service
+field remain fixed. No fused duplicate, stranded fitting, track collision,
+open sheet or yaw-dependent wound appears.
+
+**PASS / KEEP `3ead2acc`; supersede `2e3c3ce0`. Ordered blockers: none for
+the Revolution cheek-wall artifact.**

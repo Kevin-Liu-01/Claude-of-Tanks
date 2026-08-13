@@ -6429,20 +6429,27 @@ function buildLeo2Revolution(P) {
   P.add('turret', box(0.07, 0.19, 0.7835), -1.465, 0.455, -0.20175);           // left inner sliver FORE (floor 1.96, w -0.16..-0.94)
   P.add('turret', box(0.07, 0.19, 0.8885), -1.465, 0.455, -1.38575);           // left inner sliver REAR (w -1.29..-2.18)
   P.add('turret', box(0.15, 0.10, 0.91), -1.575, 0.50, 0.645);                 // left wall outer fore-rear (floor 2.05w)
-  P.add('turret', box(0.15, 0.24, 0.605), -1.575, 0.40, 1.4875);               // left wall outer fore-front (floor 1.88w)
+  // The outboard fore-wall used to terminate in a perfectly vertical
+  // 15 cm cuboid.  In front/elevated views that face survived as the
+  // owner's square cheek glitch even after the redundant continuation card
+  // was removed.  Close it with a buried, inward-tapering armor wedge: the
+  // lower root still overlaps the inner wall while the outer/top/front
+  // edges fall into the primary cheek instead of forming a separate box.
+  P.add('turret', slab(
+    [-1.65, 0.28, 1.185], [-1.50, 0.28, 1.185], [-1.50, 0.28, 1.790], [-1.62, 0.28, 1.735],
+    [-1.57, 0.52, 1.185], [-1.50, 0.52, 1.185], [-1.50, 0.52, 1.735], [-1.56, 0.52, 1.690]));
   P.add('turret', box(0.15, 0.19, 0.7835), -1.575, 0.455, -0.20175);           // left wall outer rear FORE
   P.add('turret', box(0.15, 0.19, 0.1385), -1.575, 0.455, -1.01075);           // left wall outer rear TAIL (keeps the -1.43w plan rear)
   P.add('turret', box(3.04, 0.17, 0.083), 0, 0.475, -0.663);                   // floor step 1.99 (w -1.01)
   P.add('turret', box(3.04, 0.14, 0.083), 0, 0.49, -0.774);                    // floor step 2.02 (w -1.12)
   P.add('turret', box(3.04, 0.08, 0.083), 0, 0.52, -0.886);                    // floor step 2.08 (w -1.24)
-  // r5: tabs' front pulled 2.05w -> 1.99w (ref plan fronts 1.988/1.960 at
-  // x ±1.71..1.74) with tops at the walls' 2.12 line
-  P.add('turret', box(0.09, 0.32, 0.16), -1.715, 0.40, 2.26);                  // cheek corner tab (r16-b: top 2.12 -> 2.16 — novlo turret ±1.73 cols read 2.16-2.17)
-  // r7: right tab x 1.67..1.76 -> 1.670..1.746 — its edge sat 0.5mm from
-  // the settled 1.7605 front-bin boundary and AA-printed 2.093 into the
-  // 1.780 column (ref jacket line 1.711 there; err 0.236, the #2 front
-  // defect). Still prints the 1.738 front column and the 1.737 plan lane.
-  P.add('turret', box(0.076, 0.32, 0.16), 1.708, 0.40, 2.26);                  // right corner tab (r16-b: top 2.16 with the left)
+  // Do not cap the cheek corners with independent cuboids.  Those old
+  // print-fit tabs sat just beyond the continuous wall surfaces and read as
+  // square blocks glitched into the armor in elevated/front-quarter views.
+  // The authored mid-cheek slabs and raked side walls already close the
+  // fighting compartment; leaving their faceted termination exposed gives
+  // the Revolution a cleaner, continuous AMAP cheek without a stand-alone
+  // decoration or an ambiguous load path.
   P.add('turret', box(0.22, 0.09, 0.91), 1.50, 0.495, 0.645);                  // right wall fore-rear x 1.61 (floor 2.05w)
   // r7: fore-front wall x 1.61 -> 1.6395 — the ref wall-corner 2.161 line
   // runs to the +1.64 front column (proc read the 1.85 shoulder strip).
@@ -6452,9 +6459,9 @@ function buildLeo2Revolution(P) {
   // 2.04w — the "boxy vertical cheek" close-front read. Top-front pulled
   // back 15deg (2.39 -> 2.3257 local); the bottom edge keeps the 2.04 plan
   // line and the st8 end-cap x, the top keeps the 2.12w wall-top line.
-  P.add('turret', slab(                                                        // right wall fore-front (floor 1.88w), raked face
+  P.add('turret', slab(                                                        // right wall fore-front: raked in z and tapered in x
     [1.39005, 0.28, 1.185], [1.64955, 0.28, 1.185], [1.64955, 0.28, 2.39], [1.39005, 0.28, 2.39],
-    [1.39005, 0.52, 1.185], [1.64955, 0.52, 1.185], [1.64955, 0.52, 2.3257], [1.39005, 0.52, 2.3257]));
+    [1.39005, 0.52, 1.185], [1.57000, 0.52, 1.185], [1.57000, 0.52, 2.2850], [1.39005, 0.52, 2.3257]));
   P.add('turret', box(0.22, 0.17, 0.8945), 1.50, 0.455, -0.25725);             // right wall rear (floor 1.96, to -1.05w — the 1.01w col is step-owned)
   P.add('turret', box(0.10, 0.17, 0.8235), 1.50, 0.455, -1.35325);             // right inner sliver (floor 1.97, w -1.29..-2.12)
   // RESTORED COMPACT REVOLUTION COMBAT SUITE (native authored geometry).
