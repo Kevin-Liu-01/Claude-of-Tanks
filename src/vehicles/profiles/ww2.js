@@ -120,11 +120,13 @@ function buildQHeavy(P) {
   // hull: belly between the tracks + full-width shoulder slab over them
   P.add('hull', box(2.20, 0.96, 6.48), 0, 1.01, 0);
   P.add('hull', box(3.60, 0.49, 6.16), 0, 1.545, 0);                          // shoulder deck +-1.80
-  P.add('hull', box(3.56, 1.26, 0.48), 0, 1.16, 3.36);                        // bow block
-  P.add('hull', box(3.56, 1.09, 0.45), 0, 1.09, -3.37);                       // stern block
+  P.add('hull', box(2.20, 1.26, 0.48), 0, 1.16, 3.36);                        // low bow center between tracks
+  P.add('hull', box(3.56, 0.69, 0.48), 0, 1.445, 3.36);                       // raised full-width bow shoulder
+  P.add('hull', box(2.20, 1.09, 0.45), 0, 1.09, -3.37);                       // low stern center between tracks
+  P.add('hull', box(3.56, 0.535, 0.45), 0, 1.3675, -3.37);                    // raised full-width stern shoulder
   P.add('hull', slab(                                                         // bow underside chamfer
-    [-1.76, 0.53, 3.60], [1.76, 0.53, 3.60], [1.78, 0.53, 3.12], [-1.78, 0.53, 3.12],
-    [-1.76, 1.09, 3.60], [1.76, 1.09, 3.60], [1.78, 1.79, 3.15], [-1.78, 1.79, 3.15]));
+    [-1.08, 0.53, 3.60], [1.08, 0.53, 3.60], [1.08, 0.53, 3.12], [-1.08, 0.53, 3.12],
+    [-1.08, 1.12, 3.60], [1.08, 1.12, 3.60], [1.08, 1.79, 3.15], [-1.08, 1.79, 3.15]));
   // center cab band +-1.09 with the long glacis running down the nose
   P.add('hull', box(2.18, 0.30, 4.43), 0, 1.90, -0.41);                       // cab roof band to 2.05
   P.add('hull', slab(
@@ -148,8 +150,8 @@ function buildQHeavy(P) {
   towHook(P, -0.55, 1.26, 3.56); towHook(P, 0.55, 1.26, 3.56);
   for (const s of [-1, 1]) {                                                  // fender edge bolts
     for (let i = 0; i < 7; i++) P.add('hullDark', box(0.05, 0.022, 0.07), s * 1.70, 1.81, 2.72 - i * 0.90);
-    P.add('hull', box(0.30, 0.60, 0.045), s * 1.45, 0.74, 3.59);              // front mud flaps
-    P.add('hull', box(0.30, 0.53, 0.045), s * 1.45, 0.70, -3.59);             // rear mud flaps
+    P.add('hull', box(0.30, 0.30, 0.045), s * 1.45, 1.23, 3.59);              // front mud flaps, clear of shoes
+    P.add('hull', box(0.30, 0.28, 0.045), s * 1.45, 1.22, -3.59);             // rear mud flaps, clear of shoes
   }
   KIT.towCable(P, [[-1.55, 1.81, -1.78], [-1.66, 1.84, 0.27], [-1.55, 1.81, 2.19]]);
 
