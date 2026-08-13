@@ -835,16 +835,16 @@ function buildK2(P) {
     rollers: [1.55, 0.05, -1.45].map((z) => ({ z, y: 0.93, r: 0.08 })),
     trackW: 0.60, topY: 0.96, contactZF: 2.40, contactZR: -2.10,
     paintedEnds: true, coveredTop: 1.0, padCornerFloor: 0,
+    // Make the real native end mechanisms readable at the broad shoe plane.
+    // No independent face cylinders are allowed inside either wrap arc.
+    idlerWidthScale: 0.90, endWheelHex: 0x4a5047,
     padHex: 0x25251f, chainHex: 0x34332c,
   });
-  // The track solver's small end hubs preserve the measured contact arc;
-  // nested visual discs restore the full idler/sprocket mass visible through
-  // the band without moving that certified outer track envelope.
+  // The native builder above owns the complete front free idler and rear
+  // final drive.  The former nested visual cylinders were a second pair of
+  // static wheels occupying those same articulated shoe sweeps; removing
+  // them leaves one mechanically coherent terminal at each end.
   for (const s of [-1, 1]) {
-    hullRubberLane(s, cylX(0.34, 0.19, P.q ? 22 : 14), s * 1.375, 0.72, 3.08, true);
-    P.add('hullRunningGearDetail', cylX(0.23, 0.205, P.q ? 18 : 12), s * 1.375, 0.72, 3.08);
-    hullRubberLane(s, cylX(0.34, 0.19, P.q ? 22 : 14), s * 1.375, 1.10, -3.08, true);
-    P.add('hullRunningGearDetail', cylX(0.23, 0.205, P.q ? 18 : 12), s * 1.375, 1.10, -3.08);
     // Visible ISU knuckles and canted arms sit in the open skirt cuts.  They
     // are nested inside the certified shoe lane, adding the source model's
     // suspension depth without widening the running-gear silhouette.

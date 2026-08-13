@@ -6741,3 +6741,38 @@ geometry; no comparison vertices, indices, meshes or converted payload enter
 runtime.
 
 **PASS / KEEP `7180bec0`; retire `976a1370`. Ordered blockers: none.**
+
+## 5.187 K2 SOLE-NATIVE TERMINAL CORRECTION (2026-08-13)
+
+The post-AbramsX fleet audit identified K2 as the largest remaining modern
+terminal offender at 8/28 continuous-band intersections. Its six-road-wheel
+native course already contained the correct front free idler and rear final
+drive. The profile then added two oversized rubber cylinders and two painted
+face cylinders over those native mechanisms. They were duplicate static
+wheels, not legitimate track or suspension detail.
+
+All four duplicate end-wheel cylinders are removed. The real native idler
+and sprocket now use the default-preserving wider terminal face and restrained
+painted-steel tone. The six measured road wheels, their open ISU knuckles and
+arms, three return rollers, one linked-shoe course, hull, turret and combat
+equipment remain unchanged.
+
+Deterministic geometry reproduces twice as **`765d7460`** (62 meshes / 114,996
+vertices). The standing source-relative geometry gate remains **90.1**
+(90.6 / 90.1 / 90.6 / 90.7 / 95.9 / 100). Exact continuous-band,
+individual-shoe and strict moving-sweep clearance is **0/0/0**. Parent is
+0/0/0; winding is 0 reversed / 0 mixed with zero yaw candidates; runtime rig
+passes 10/10 and muzzle-bore contrast is 120.1.
+
+`/private/tmp/k2-native-terminal-final-r1/k2` contains 15 authored views, 15
+yaw0 and 15 yaw90 frames including elevated-left profile: **45 PNGs / 45
+distinct hashes**. The local reference binary was unavailable to the live
+fidelity renderer, so this update does not fabricate a new paired vector.
+Acceptance rests on the standing >=90 source-relative gate plus the fresh
+authored/yaw/mechanical evidence for the isolated terminal change.
+
+Required order: **front free idler -> six road wheels -> three return rollers
+/ ISU suspension -> rear toothed final drive -> one continuous linked-shoe
+course**. The playable remains wholly first-party procedural geometry.
+
+**PASS / KEEP `765d7460`; retire `827d5ffc`. Ordered blockers: none.**

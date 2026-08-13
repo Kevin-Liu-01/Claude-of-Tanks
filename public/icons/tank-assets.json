@@ -24349,7 +24349,7 @@
           }
         ]
       },
-      "geometryHash": "da14947b",
+      "geometryHash": "294576f4",
       "metadataHash": "1827c260",
       "muzzleBore": {
         "tagged": 1,
@@ -24364,24 +24364,24 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 18306,
-          "sha256": "b1c972820559de1a888ff14d6b98c3ebf08e8559e7ccb20bb92892bd375b797f"
+          "bytes": 18318,
+          "sha256": "b40c11b4521cf0e02386834f5bd26fe8a892e02ec5b6d9f33ff74f88fd67977a"
         },
         "top": {
           "file": "k2_top.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 9246,
-          "sha256": "a67bfaed7d0288a484147e6467bba786e6cd551ef25de6e7c30e2cbc1f16f28e"
+          "bytes": 9236,
+          "sha256": "38c5352f6423be0a59d2a31a06c432c69f75ed08e1700a77983c92413f16021f"
         },
         "side": {
           "file": "k2_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 8082,
-          "sha256": "f4b73cef49fcb3c6a9d5f12971e05baa05f4944e723c9e0f6e196ecb6b388e29"
+          "bytes": 8084,
+          "sha256": "9f7b4afe9938d0b32a2beaffef2ec42a8175a95f77da7569bdaebd9c7b17010c"
         },
         "topSilhouette": {
           "file": "k2_top_silhouette.png",
@@ -24404,24 +24404,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 63252,
-          "sha256": "7de76c32a46e66a3decfbe7eaafb87059a2e696ded77432524df4ebf07a07124"
+          "bytes": 63211,
+          "sha256": "a40e8d437da8a7e1c5309b60e327e0c0c6fc347d7882caedc4fcd44ef5e30d2d"
         },
         "armorSide": {
           "file": "k2_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 63484,
-          "sha256": "903926027346e9183da654c16e12ff259bfe73050a8c3f559040224172dfe626"
+          "bytes": 63483,
+          "sha256": "caa857c06eabbe415b7fccaf8c5c00436957585454e8dc647d295deb6b50e585"
         },
         "modulesSide": {
           "file": "k2_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 62133,
-          "sha256": "7ee425c6f36b9af25333bf6fe23f39912ca1c8f3e6af0b53aef93a951bcd1fd7"
+          "bytes": 62144,
+          "sha256": "32b50b21a032616c0867d1c20bfd173ce1c24ae4d7e06d3f606fdb8319c50b31"
         }
       }
     },
