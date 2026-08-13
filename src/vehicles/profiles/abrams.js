@@ -599,6 +599,7 @@ function abramsHull(P, g) {
     contactZF: g.contactZF, contactZR: g.contactZR,
     endRingSpan: g.endRingSpan, pinCapOuter: g.pinCapOuter,
     padCornerFloor: g.padCornerFloor, padHugZ0: g.padHugZ0,
+    idlerWidthScale: g.idlerWidthScale, endWheelHex: g.endWheelHex,
   });
 
   // Glacis furniture — kept FLUSH: the v6 curves show a clean glacis line
@@ -5972,6 +5973,10 @@ const AX_HULL = {
   trackXc: 1.375, trackW: 0.57, endRingSpan: 0.42, pinCapOuter: 0.275,
   padCornerFloor: 0, padHugZ0: 2.0, wheelR: 0.2992, wheelY: 0.4184,
   dishR: 0.74, tireHex: 0x232220, wheelHex: 0x343830, arms: true,
+  // Keep both end mechanisms on the sole native running-gear assembly.
+  // The broader painted faces replace the retired outboard face/spoke
+  // overlays, which occupied the articulated shoe sweep at both terminals.
+  idlerWidthScale: 0.90, endWheelHex: 0x40463e,
   contactZF: 2.32, contactZR: -2.37,
   deadSag: 0.03, beltCoreTop: 0.47,
   // Component AABBs from the registered oracle: seven 0.5984 m road
@@ -6148,49 +6153,10 @@ function buildAbramsX(P) {
             g.wheelY + Math.sin(ba) * 0.129, wz + Math.cos(ba) * 0.129);
         }
       });
-      // High end mechanisms are independently countable in the source:
-      // idler center y=.865/r=.279 and sprocket center y=.869/r=.331.
-      // Broad recessed faces expose the rising track arcs instead of
-      // letting the skirt and black band swallow both mechanisms.
-      faceGeos.push(KIT.xform(cylX(0.252, 0.014, 12), side * 1.604,
-        g.idlerY, g.idlerZ));
-      P.add('hullDark', torus(0.212, 0.017, 12), side * 1.619,
-        g.idlerY, g.idlerZ, 0, 0, Math.PI / 2);
-      faceGeos.push(KIT.xform(cylX(0.150, 0.016, 12), side * 1.631,
-        g.idlerY, g.idlerZ));
-      faceGeos.push(KIT.xform(cylX(0.270, 0.014, 12), side * 1.604,
-        g.sprocketY, g.sprocketZ));
-      P.add('hullDark', torus(0.226, 0.017, 12), side * 1.619,
-        g.sprocketY, g.sprocketZ, 0, 0, Math.PI / 2);
-      faceGeos.push(KIT.xform(cylX(0.154, 0.016, 12), side * 1.631,
-        g.sprocketY, g.sprocketZ));
-      // Raised end mechanisms use different spoke rhythms: six open idler
-      // webs forward, eight tighter powered-sprocket webs aft.  Their
-      // centers/radii remain the measured source datums; this only restores
-      // the non-uniform mechanical read lost in seven repeated road dishes.
-      for (const [cy, cz, count, orbit, span] of [
-        [g.idlerY, g.idlerZ, 6, 0.100, 0.190],
-        [g.sprocketY, g.sprocketZ, 8, 0.105, 0.205],
-      ]) {
-        for (let si = 0; si < count; si++) {
-          const a = (si / count) * Math.PI * 2;
-          faceGeos.push(KIT.xform(box(0.018, 0.035, span), side * 1.646,
-            cy + Math.sin(a) * orbit, cz + Math.cos(a) * orbit, -a, 0, 0));
-        }
-      }
-      for (const [cy, cz, rr, count] of [
-        [g.idlerY, g.idlerZ, 0.168, 8],
-        [g.sprocketY, g.sprocketZ, 0.180, 10],
-      ]) {
-        for (let si = 0; si < count; si++) {
-          const a = (si / count) * Math.PI * 2;
-          P.add('hullDark', cylX(0.028, 0.014, 8), side * 1.650,
-            cy + Math.sin(a) * rr, cz + Math.cos(a) * rr);
-          P.add('hullDetail', box(0.024, 0.036, 0.088), side * 1.653,
-            cy + Math.sin(a) * (rr + 0.095),
-            cz + Math.cos(a) * (rr + 0.095), -a, 0, 0);
-        }
-      }
+      // The shared native builder now owns both raised terminal faces.  Do
+      // not add a second outboard idler/sprocket, spoke or bolt layer here:
+      // those static solids sat in the same plane as the rising linked-shoe
+      // arcs and made correct terminals look physically interpenetrated.
       // Alternating exposed torsion links break the ruler-straight wheel
       // row and make the suspension/load path legible between dishes.
       g.wheelZs.forEach((wz, wi) => {
@@ -6207,16 +6173,6 @@ function buildAbramsX(P) {
       P.disposables.push(faceGeo);
     }
     P.disposables.push(faceMat);
-  }
-  for (const side of [-1, 1]) {
-    // idler/sprocket: hub dots + a TIGHT hub collar ring UNDER the 0.13
-    // chain-annulus floor (the 0.235/0.255 drum-face rings measured shoe
-    // 111/26 in the wrap windows — the wrap chain sweeps radial 0.13-0.40
-    // off these centers; §B4 audit-driven retreat, AXDED-R2)
-    P.add('hullDetail', cylX(0.075, 0.030, 12), side * 1.620, g.idlerY, g.idlerZ);
-    P.add('hullDark', torus(0.112, 0.012, 16), side * 1.624, g.idlerY, g.idlerZ, 0, 0, Math.PI / 2);
-    P.add('hullDetail', cylX(0.080, 0.030, 12), side * 1.640, g.sprocketY, g.sprocketZ);
-    P.add('hullDark', torus(0.115, 0.012, 16), side * 1.644, g.sprocketY, g.sprocketZ, 0, 0, Math.PI / 2);
   }
   // Splitter lip under the blade bow.  Seat it on the measured knife-edge
   // rake (the old y=.98 bar hung 15 cm below the source and turned the

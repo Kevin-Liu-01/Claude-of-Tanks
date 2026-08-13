@@ -38,3 +38,37 @@ seat, bracket, plinth or collar; no fused duplicate, stranded fitting or
 empty-air decoration appears.
 
 **Final verdict: KEEP `976a1370`.**
+
+## Sole-native terminal supersession — 2026-08-13
+
+The fleet-wide exact audit invalidated the prior `37/26` band and `10/0`
+shoe allowance.  The raised idler and final drive were already complete in
+the native `buildRunningGear` course; the AbramsX profile then added a second
+outboard set of face cylinders, rings, spokes, bolts and hub collars.  Those
+static overlays were visually concentric but physically occupied the rising
+linked-shoe arcs.
+
+All duplicate terminal decoration is removed.  The actual native idler and
+sprocket now use the optional wider terminal face and restrained painted-steel
+tone, so they remain readable without any independent solid in the shoe
+plane.  The seven road-wheel face assemblies, suspension links, hull,
+turret and service equipment are unchanged.
+
+- Deterministic freeze **`7180bec0`** x2 (80 meshes / 150,014 vertices).
+- Exact continuous-band / individual-shoe / strict-sweep receipt:
+  **0/0/0**.
+- Procedural fidelity **94.3**; geometry gate **90.2**.
+- Parent 0 stranded / 0 abutting / 0 dangling; winding 0 reversed / 0 mixed
+  with a visually null 10-pixel top hairline and zero yaw candidates.
+- Runtime articulation 10/10; muzzle-bore contrast 73.4.
+- `/private/tmp/abramsx-native-terminal-final-r1/abramsx` contains 15 paired,
+  15 yaw0 and 15 yaw90 views including the standardized elevated-left
+  profile: **45 PNGs / 45 distinct hashes**.  Fresh fixed vector remains
+  `[9.4,9.5,9.4,9.3,9.3,9.4,9.4,9.5,9.6,9.6,9.5,9.7,9.6,9.7]`, floor
+  **9.3**, mean **9.49**.
+
+The required mechanical order is explicit: **front free idler -> seven road
+wheels -> return/support system -> rear toothed final drive -> one continuous
+linked-shoe course**.  No comparison geometry enters runtime.
+
+**Final verdict: KEEP `7180bec0`; retire `976a1370`.**

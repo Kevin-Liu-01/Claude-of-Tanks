@@ -6707,3 +6707,37 @@ one continuous linked-shoe course**. The playable remains wholly first-party
 procedural geometry; no comparison mesh or converted payload enters runtime.
 
 **PASS / KEEP `0fab6ef8`; retire `cf383a52`. Ordered blockers: none.**
+
+## 5.186 ABRAMSX SOLE-NATIVE TERMINAL CORRECTION (2026-08-13)
+
+The authoritative 110-vehicle exact audit reopened AbramsX with 28/26
+continuous-band and 6/0 individual-shoe intersections.  The hull already
+used the correct high free idler and rear drive emitted by the native
+running-gear builder.  A later hand-authored profile pass had placed a second
+outboard family of terminal faces, rings, spokes, bolts and hub collars at
+those same centers.  Visual concentricity did not make those static solids
+part of the linked course.
+
+The duplicate end-wheel layer is deleted in full.  The real native idler and
+sprocket now take the default-preserving wider end-face option and a restrained
+painted-steel tone.  This preserves terminal readability while ensuring the
+only geometry inside the articulated wrap is the actual running-gear
+assembly.  Seven road wheels, their recessed dishes/fasteners and suspension
+links remain unchanged.
+
+Deterministic geometry reproduces twice as **`7180bec0`** (80 meshes / 150,014
+vertices).  `/private/tmp/abramsx-native-terminal-final-r1/abramsx` contains
+15 paired, 15 yaw0 and 15 yaw90 frames including elevated-left profile:
+**45 PNGs / 45 distinct hashes**.  Procedural fidelity is **94.3** and the
+geometry gate is **90.2**.  Exact continuous-band, individual-shoe and strict
+moving-sweep clearance is now **0/0/0**.  Parent is 0 stranded / 0 abutting /
+0 dangling; winding is 0 reversed / 0 mixed with no yaw candidate; runtime
+articulation passes 10/10 and muzzle-bore contrast is 73.4.
+
+The running order is now unambiguous: **front free idler -> seven road wheels
+-> support/return system -> rear toothed final drive -> one continuous linked
+course**.  The active playable remains entirely first-party procedural
+geometry; no comparison vertices, indices, meshes or converted payload enter
+runtime.
+
+**PASS / KEEP `7180bec0`; retire `976a1370`. Ordered blockers: none.**
