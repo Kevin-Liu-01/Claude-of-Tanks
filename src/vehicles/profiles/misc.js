@@ -3541,7 +3541,13 @@ function buildAMX30B2(P) { buildAMX30(P, true); }
 export const MISC_PROFILES = {
   recon_tank: {
     // spec dims are sovereign: hull 6.2, overall 7.2, height 2.5, width 3.0
-    hull: 'ifv', width: 3.0, hullLength: 6.2, roofY: 1.62, trackTop: 0.66, trackW: 0.40, wheels: 5, skirts: true,
+    hull: 'ifv', width: 3.0, hullLength: 6.2, roofY: 1.62, trackTop: 0.91, trackW: 0.40, wheels: 5, skirts: true,
+    // Keep the light reconnaissance hull visibly draped over, rather than
+    // through, its native course.  The shallow upper skirt and lamp seat
+    // expose the idler/road-wheel/sprocket sequence; the corridor lift only
+    // forms the narrow outboard chamfer, leaving the center belly low.
+    skirtY: 1.20, skirtHeight: 0.16, headlightY: 1.13,
+    trackClearance: { laneInnerX: 1.04, floorY: 1.08, buckets: ['hull'] },
     turret: 'ifv', turretWidth: 1.60, turretDepth: 1.70, turretHeight: 0.93, turretFront: 0.68, turretRear: -0.85, gunLength: 4.44, gunRadius: 0.035, sleeve: false, evac: null, pano: false, mg: false, smoke: false, antennas: false,
   },
   type90: { build: buildType90 },

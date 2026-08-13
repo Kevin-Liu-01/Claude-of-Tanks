@@ -185,8 +185,9 @@ export function buildHull(P,p) {
     P.add('hullDark',cylZ(0.022,0.018,8),side*(width/2+0.035),p.skirtY ?? trackTop*0.78,z,0,side*Math.PI/2,0);
   }
   for (const side of [-1,1]) P.add('hullDetail',torus(0.09,0.018,10),side*width*0.27,0.48,halfL*0.94,Math.PI/2,0,0);
-  headlight(P,-width*0.35,trackTop+0.10,halfL*0.88,-0.34,0.05);
-  headlight(P,width*0.35,trackTop+0.10,halfL*0.88,-0.34,0.05);
+  const lampY=p.headlightY ?? trackTop+0.10;
+  headlight(P,-width*0.35,lampY,halfL*0.88,-0.34,0.05);
+  headlight(P,width*0.35,lampY,halfL*0.88,-0.34,0.05);
   towCable(P,[[-width*0.34,roofY-0.15,halfL*0.72],[0,roofY-0.01,halfL*0.48],[width*0.34,roofY-0.15,halfL*0.72]]);
 
   const wheelCount=p.wheels || (style === 'ifv' ? 6 : 7);
@@ -204,6 +205,14 @@ export function buildHull(P,p) {
   });
   if (p.skirts !== false) addSegmentedSkirts(P,width,p.skirtLength ?? length*0.86,
     p.skirtY ?? trackTop*0.72,p.skirtHeight ?? trackTop*0.60,p.skirtPanels || wheelCount);
+  if (p.trackClearance) {
+    P.raiseTrackCorridor(p.trackClearance.buckets || ['hull'], {
+      laneInnerX:p.trackClearance.laneInnerX,
+      floorY:p.trackClearance.floorY,
+      zMin:p.trackClearance.zMin ?? -Infinity,
+      zMax:p.trackClearance.zMax ?? Infinity,
+    });
+  }
   return {width,length,halfL,roofY,trackTop};
 }
 
