@@ -937,8 +937,21 @@ function buildT72B3M(P) {
     sponsonY: [[-3.95, 0.86], [-3.83, 1.22], [-3.10, 1.22], [-2.98, 0.86], [1.02, 0.86], [1.10, 1.21], [1.70, 1.21], [1.9055, 1.21]],
   });
   widthAnchor(P, 1.795, 0.95, -0.5);
-  // raised soft-stowage band (ref 1.75-1.77 over z -2.98..-1.02, |x|<=1.44 —
+  // TURRET-OWNED raised soft-stowage band (ref 1.75-1.77 over
+  // z -2.98..-1.02, |x|<=1.44 —
   // front cols beyond 1.5 read the 1.39 deck) — segmented per the prism law.
+  // This complete band was historically emitted into hullG even though it
+  // forms the visible side/back pack course around the rotating turret.  The
+  // bug only becomes undeniable at yaw 90, where the entire pack stayed on
+  // the engine deck.  Keep the authored world-space recipe and material
+  // grammar, but convert it to turret-local coordinates and turret buckets.
+  const turretPackBucket = {
+    hull: 'turret', hullDetail: 'turretDetail', hullDark: 'turretDark',
+    hullCloth: 'turretCloth', hullShadow: 'turretDark',
+  };
+  const addTurretPackWorld = (bucket, geo, x, y, z, rx = 0, ry = 0, rz = 0) => {
+    P.add(turretPackBucket[bucket], geo, x, y - 1.42, z + 0.65, rx, ry, rz);
+  };
   // r9: 5 segments so the seams miss the station-i4 window (topPct 8.6).
   // r9c: the band is WIDE after all — ref front cols read 1.727-1.757 out
   // to |x| 1.63 (only 1.641+ drops to the 1.39 deck); r4's +-1.44 narrowing
@@ -975,7 +988,7 @@ function buildT72B3M(P) {
   // edge +0.13, rear +0.10 vs the retired print) with tops 1.785-1.819w —
   // every band piece shifts +0.106 authored and the top line re-bases
   // (front zone 1.7995, mid crest 1.8255, rear 1.8145 authored).
-  P.add('hull', box(2.88, 0.33, 0.06), 0, 1.6345, -0.909);
+  addTurretPackWorld('hull', box(2.88, 0.33, 0.06), 0, 1.6345, -0.909);
   // r24 item 2a: the center-spine's rear-segment cTops rise 1.69/1.72 ->
   // 1.746/1.749 — their staircase step edges were the dead-rear band's
   // strongest slat line (rows 268-270, 56.6 vs the ref's steady 82 wall).
@@ -990,17 +1003,17 @@ function buildT72B3M(P) {
     [-1.8695, 1.803, 1.7825, 1.76, 1.67],
     [-1.4685, 1.803, 1.791, 1.783, 1.70],
     [-1.0675, 1.7995, 1.7995, 1.773, 1.72]]) {
-    P.add('hull', box(0.72, top - 1.462, 0.375), -0.91, (1.462 + top) / 2, zc);   // left pile (x -0.55..-1.27)
-    P.add('hull', box(0.17, cTop - 1.462, 0.375), -0.465, (1.462 + cTop) / 2, zc); // pile skirt col
-    P.add('hull', box(1.00, cTop - 1.462, 0.375), 0.045, (1.462 + cTop) / 2, zc);  // center mound spine
-    P.add('hull', box(0.45, s1Top - 1.462, 0.375), 0.725, (1.462 + s1Top) / 2, zc); // right shoulder 1
-    P.add('hull', box(0.49, s2Top - 1.462, 0.375), 1.195, (1.462 + s2Top) / 2, zc); // right shoulder 2
-    P.add('hull', box(0.17, s2Top - 1.462, 0.375), -1.355, (1.462 + s2Top) / 2, zc); // left outboard sag
+    addTurretPackWorld('hull', box(0.72, top - 1.462, 0.375), -0.91, (1.462 + top) / 2, zc);   // left pile (x -0.55..-1.27)
+    addTurretPackWorld('hull', box(0.17, cTop - 1.462, 0.375), -0.465, (1.462 + cTop) / 2, zc); // pile skirt col
+    addTurretPackWorld('hull', box(1.00, cTop - 1.462, 0.375), 0.045, (1.462 + cTop) / 2, zc);  // center mound spine
+    addTurretPackWorld('hull', box(0.45, s1Top - 1.462, 0.375), 0.725, (1.462 + s1Top) / 2, zc); // right shoulder 1
+    addTurretPackWorld('hull', box(0.49, s2Top - 1.462, 0.375), 1.195, (1.462 + s2Top) / 2, zc); // right shoulder 2
+    addTurretPackWorld('hull', box(0.17, s2Top - 1.462, 0.375), -1.355, (1.462 + s2Top) / 2, zc); // left outboard sag
   }
   // yawed mound caps ride the NEW local tops (bag-pile read; sub-quantum
   // pokes stay under the front lip's 1.792 print and the pile's side rows)
   for (const [mx, mz, mw, mtop, myaw] of [[-0.91, -2.274, 0.62, 1.8205, 0.22], [0.55, -2.204, 0.50, 1.7375, -0.18], [-0.20, -1.874, 0.56, 1.7915, 0.15], [0.90, -1.824, 0.48, 1.6955, -0.24], [0.15, -1.064, 0.60, 1.794, 0.19], [-0.95, -1.014, 0.44, 1.794, -0.15]]) {
-    P.add('hull', box(mw, 0.05, 0.30), mx, mtop - 0.025, mz, 0, myaw, 0);
+    addTurretPackWorld('hull', box(mw, 0.05, 0.30), mx, mtop - 0.025, mz, 0, myaw, 0);
   }
   // r15 item 3b: REAL BAG MOUNDS — the band walls recess to x ±1.595/1.46
   // and a row of vertical half-round lobes carries the certified outer
@@ -1018,10 +1031,10 @@ function buildT72B3M(P) {
   // planes (corner extent computed per yaw), bottoms hold the 1.4415 row.
   // Walls split tall-front/low-rear so the rear quarter loses the crate
   // wall while front cols keep their 1.727-1.732 prints (max-over-z).
-  P.add('hull', box(0.155, 0.28, 0.615), -1.5175, 1.623, -1.1865);
-  P.add('hull', box(0.155, 0.168, 1.365), -1.5175, 1.567, -2.1765);
-  P.add('hull', box(0.03, 0.28, 0.615), 1.455, 1.623, -1.1865);
-  P.add('hull', box(0.03, 0.168, 1.365), 1.455, 1.567, -2.1765);
+  addTurretPackWorld('hull', box(0.155, 0.28, 0.615), -1.5175, 1.623, -1.1865);
+  addTurretPackWorld('hull', box(0.155, 0.168, 1.365), -1.5175, 1.567, -2.1765);
+  addTurretPackWorld('hull', box(0.03, 0.28, 0.615), 1.455, 1.623, -1.1865);
+  addTurretPackWorld('hull', box(0.03, 0.168, 1.365), 1.455, 1.567, -2.1765);
   for (let k = 0; k < 6; k++) {
     const lz = -2.724 + k * 0.345;
     const wTopL = [1.77, 1.6915, 1.7315, 1.763, 1.763, 1.763][k];
@@ -1031,7 +1044,7 @@ function buildT72B3M(P) {
       const ext = 0.16 * Math.abs(Math.cos(ry)) + 0.085 * Math.abs(Math.sin(ry));
       const top = s < 0 ? wTopL : wTopR;
       const plane = s < 0 ? 1.6475 : 1.494;
-      P.add('hull', box(0.32, top - 1.4415, 0.17), s * (plane - ext - 0.002), (1.4415 + top) / 2, lz, 0, ry, 0);
+      addTurretPackWorld('hull', box(0.32, top - 1.4415, 0.17), s * (plane - ext - 0.002), (1.4415 + top) / 2, lz, 0, ry, 0);
     }
   }
   // r24 item 2b: the band-top shadow plate softens hullDark->hullCloth and
@@ -1039,7 +1052,7 @@ function buildT72B3M(P) {
   // sliver over the sagged center/right pile tops was one of the dead-rear
   // slat lines (the row-268 dip); the top-view between-mound dark keeps
   // reading via the same footprint (segment gap at -2.176 still covered).
-  P.add('hullCloth', box(2.75, 0.02, 0.42), -0.075, 1.747, -1.904);
+  addTurretPackWorld('hullCloth', box(2.75, 0.02, 0.42), -0.075, 1.747, -1.904);
   // r22 item 6 (REDECODED: view-front rows 246-268 = world y 1.47-1.62 —
   // the band FRONT FACE + turret-collar band, not the glacis): the ref
   // reads 66.7 med with 2362 over-80 px there (lit conduit + clamp
@@ -1047,12 +1060,12 @@ function buildT72B3M(P) {
   // with clamp blocks rides the band's front face (z -0.9805, +4 mm
   // proud of the -0.9845 face — 2 mm-law class; the face is plan/side
   // interior) plus junction boxes at the pillow seams.
-  P.add('hullDetail', box(2.60, 0.024, 0.008), -0.075, 1.6065, -0.8745);
+  addTurretPackWorld('hullDetail', box(2.60, 0.024, 0.008), -0.075, 1.6065, -0.8745);
   for (const ccx of [-1.15, -0.62, -0.08, 0.45, 0.99]) {
-    P.add('hullDetail', box(0.06, 0.05, 0.010), ccx, 1.6065, -0.8735);
+    addTurretPackWorld('hullDetail', box(0.06, 0.05, 0.010), ccx, 1.6065, -0.8735);
   }
-  P.add('hullDetail', box(0.16, 0.10, 0.010), -0.86, 1.5765, -0.8735);
-  P.add('hullDetail', box(0.13, 0.08, 0.010), 0.72, 1.5815, -0.8735);
+  addTurretPackWorld('hullDetail', box(0.16, 0.10, 0.010), -0.86, 1.5765, -0.8735);
+  addTurretPackWorld('hullDetail', box(0.13, 0.08, 0.010), 0.72, 1.5815, -0.8735);
   // cinch straps (r18: re-seated on the asymmetric pile — full-width straps
   // would float over the sagged center/right mounds; the ref's cinch lines
   // read on its tall LEFT stack. Right verticals deleted with the sag.)
@@ -1067,14 +1080,14 @@ function buildT72B3M(P) {
   // x -1.33..-1.45 (cols -1.348/-1.388/-1.429 refund 0.014 -> ~0), and its
   // view-front row 203 joins the ref's own 201-205 skyline band.
   for (const [zc, py] of [[-2.774, 1.809], [-2.414, 1.820], [-1.914, 1.7975], [-1.574, 1.7975], [-1.114, 1.794]]) {
-    P.add('hullDark', box(0.72, 0.008, 0.05), -0.91, py, zc);
+    addTurretPackWorld('hullDark', box(0.72, 0.008, 0.05), -0.91, py, zc);
     // (drops capped per the r24/r25 window lessons, shifted with the band)
-    P.add('hullDark', box(0.008, zc === -2.774 ? 0.20 : 0.26, 0.05), -1.4415, zc === -2.774 ? 1.5715 : 1.6015, zc);
+    addTurretPackWorld('hullDark', box(0.008, zc === -2.774 ? 0.20 : 0.26, 0.05), -1.4415, zc === -2.774 ? 1.5715 : 1.6015, zc);
   }
   // (r25 second cut: shelf extends inboard to the pile edge -1.27 — belt
   // for image cols 121-126 once the sag-plate dash above them is trimmed;
   // top 1.762 stays under the lip/pile 1.792 prints on every shared col.)
-  P.add('hull', box(0.18, 0.095, 0.30), -1.36, 1.746, -1.4685);
+  addTurretPackWorld('hull', box(0.18, 0.095, 0.30), -1.36, 1.746, -1.4685);
   // side walls: SAME bag-lobe recipe both sides (fixes the r2 right-side
   // two-tone H69-vs-H82 — the old right wall mixed bare hull + cloth
   // pillows). Pale camo lobes 1.5mm proud of the certified planes with
@@ -1091,8 +1104,8 @@ function buildT72B3M(P) {
       // r18: parting creases hug the split walls — rear creases shorten to
       // the low-wall top so nothing pokes over the sagged run.
       const zc2 = -2.5515 + k * 0.345;
-      if (zc2 < -1.494) P.add('hullDark', box(0.004, 0.15, 0.024), xc2, 1.5635, zc2);
-      else P.add('hullDark', box(0.004, 0.26, 0.024), xc2, 1.6235, zc2);
+      if (zc2 < -1.494) addTurretPackWorld('hullDark', box(0.004, 0.15, 0.024), xc2, 1.5635, zc2);
+      else addTurretPackWorld('hullDark', box(0.004, 0.26, 0.024), xc2, 1.6235, zc2);
     }
   }
   // r20 item 1c (owner DECORATION law — "skirt bands rear 2/3 dead flat"):
@@ -1115,21 +1128,21 @@ function buildT72B3M(P) {
     for (let k = 0; k < 5; k++) {
       const zr = -2.5515 + k * 0.345;
       const tall = zr >= -1.494;
-      P.add('hull', box(0.02, tall ? 0.24 : 0.155, 0.055), s * wallX, tall ? 1.6065 : 1.559, zr);
-      P.add('hullDetail', box(0.022, 0.013, 0.058), s * wallX, tall ? 1.733 : 1.643, zr);
-      P.add('hullDark', box(0.021, 0.013, 0.059), s * wallX, tall ? 1.7195 : 1.6295, zr);
-      P.add('hullDark', box(0.021, 0.014, 0.058), s * wallX, tall ? 1.4485 : 1.4435, zr);
+      addTurretPackWorld('hull', box(0.02, tall ? 0.24 : 0.155, 0.055), s * wallX, tall ? 1.6065 : 1.559, zr);
+      addTurretPackWorld('hullDetail', box(0.022, 0.013, 0.058), s * wallX, tall ? 1.733 : 1.643, zr);
+      addTurretPackWorld('hullDark', box(0.021, 0.013, 0.059), s * wallX, tall ? 1.7195 : 1.6295, zr);
+      addTurretPackWorld('hullDark', box(0.021, 0.014, 0.058), s * wallX, tall ? 1.4485 : 1.4435, zr);
     }
     for (const [zm, hm] of [[-2.439, 0.13], [-2.134, 0.15], [-1.794, 0.12], [-1.439, 0.14], [-1.954, 0.10]]) {
-      P.add('hullShadow', box(0.005, hm, 0.038), s * (s < 0 ? 1.599 : 1.4745), 1.4515 + hm / 2, zm);
+      addTurretPackWorld('hullShadow', box(0.005, hm, 0.038), s * (s < 0 ? 1.599 : 1.4745), 1.4515 + hm / 2, zm);
     }
     for (let k = 0; k < 5; k++) {
       const zt = -2.724 + (k + 1) * 0.345;
-      P.add('hullDark', box(0.018, 0.048, 0.042), s * (s < 0 ? 1.602 : 1.477), 1.421, zt);
+      addTurretPackWorld('hullDark', box(0.018, 0.048, 0.042), s * (s < 0 ? 1.602 : 1.477), 1.421, zt);
     }
     for (let k = 0; k < 6; k++) {
       const zd = -2.724 + k * 0.345 + 0.055;
-      P.add('hullDark', box(0.016, 0.016, 0.016), s * (s < 0 ? 1.639 : 1.484), 1.6565, zd);
+      addTurretPackWorld('hullDark', box(0.016, 0.016, 0.016), s * (s < 0 ? 1.639 : 1.484), 1.6565, zd);
     }
   }
   // dark under-hem strips: drop the visual skirt line (item 5). ASYMMETRIC
@@ -1140,11 +1153,11 @@ function buildT72B3M(P) {
   // (z-span 1.94 = INSIDE the band's -0.985..-2.966 run — the first 3.90
   // cut overhung both ends and stood 1.46-1.47 strips over the bare 1.40
   // deck: four new side_hull cells + station-top hits, whatsat-decoded.)
-  P.add('hullDark', box(0.012, 0.030, 1.94), -1.636, 1.457, -1.8695);
-  P.add('hullDark', box(0.011, 0.023, 1.94), 1.4825, 1.4505, -1.8695);
+  addTurretPackWorld('hullDark', box(0.012, 0.030, 1.94), -1.636, 1.457, -1.8695);
+  addTurretPackWorld('hullDark', box(0.011, 0.023, 1.94), 1.4825, 1.4505, -1.8695);
   // band FRONT face pillows (2mm proud of the shifted -0.8805 face)
   for (const [px2, pw2] of [[-1.08, 0.52], [-0.42, 0.60], [0.28, 0.56], [0.98, 0.52]]) {
-    P.add('hullCloth', box(pw2, 0.22, 0.005), px2, 1.6615, -0.8785);
+    addTurretPackWorld('hullCloth', box(pw2, 0.22, 0.005), px2, 1.6615, -0.8785);
   }
   // band REAR face (z -2.965): bag-end lobes + dark creases — the bare
   // 2.88-wide camo face read as a full-width billboard from dead rear
@@ -1165,8 +1178,8 @@ function buildT72B3M(P) {
   // is pure hemi. Top edges lean 0.05-0.07 m forward into the pile —
   // plan/side interior either way.)
   for (const [px3, pw3, pt3] of [[-1.02, 0.48, 1.7665], [-0.33, 0.55, 1.7315], [0.36, 0.50, 1.6615], [1.02, 0.46, 1.6065]]) {
-    P.add('hullDetail', box(pw3, pt3 - 1.495, 0.005), px3, (1.495 + pt3) / 2, -2.8615, 0.30, 0, 0);
-    P.add('hullDark', box(0.016, pt3 - 1.475, 0.004), px3 + pw3 / 2 + 0.055, (1.475 + pt3) / 2, -2.8605, 0.30, 0, 0);
+    addTurretPackWorld('hullDetail', box(pw3, pt3 - 1.495, 0.005), px3, (1.495 + pt3) / 2, -2.8615, 0.30, 0, 0);
+    addTurretPackWorld('hullDark', box(0.016, pt3 - 1.475, 0.004), px3 + pw3 / 2 + 0.055, (1.475 + pt3) / 2, -2.8605, 0.30, 0, 0);
   }
   // glacis fender prongs (ref side nose 1.9..2.06 is a thin 0.89..1.15 band).
   // r9c: the ref plan nose RAKES 1.714@0.68 -> 1.875@0.93 -> 2.063@1.11..1.52
