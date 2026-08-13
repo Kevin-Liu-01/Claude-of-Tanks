@@ -5139,3 +5139,47 @@ unit tests and the production build pass.
 
 **KEEP / RE-FROZEN `da0ea477`. Future work on this tank must preserve the
 lower vehicle and may refine only additive or re-seated turret-owned detail.**
+
+## 5.149 T-72BU FAMILY-QUALITY / OWNERSHIP CLOSURE (2026-08-13, LIVE)
+
+The live `t72bu` remains entirely repository-authored procedural geometry. Its
+proven BU hull, full skirt and mudguard envelope, six road wheels, terminal
+wheels and one native linked course are retained without subtraction or
+replacement. The recovered comparison GLB remains a temporary visual oracle;
+no source mesh or converted payload enters the playable.
+
+The existing low obr. 1992 cast turret and pointed K-5 blanket remain the
+family base. The rotating package is compressed from 0.94 to 0.90 vertically
+around its own datum while the graduated gun is counter-scaled and re-seated
+to preserve the complete world-space recoil axis and run. The former short
+box-rods become two unequal radio stations with broad roof shoes, stepped
+collars, short braces and flexible whips. A small backed cable coil completes
+the unequal rear rack cadence. All K-5, optics, hatches, smoke banks, the
+commander/NSVT assembly, both radio stations, unequal side/rear packs and the
+complete rack remain children of the one rotating turret group.
+
+Geometry fingerprint **`7e123f00`** reproduces at 46 meshes / 92,743 vertices.
+Quantitative fidelity is **90.18 aggregate** with overall silhouette **92.28**,
+hull **93.58**, turret **80.25**, gun **90.99** and tracks **93.94**. Eight of
+nine raw whole-view masks are at least 90; the sole numeric residual is
+**89.90** in rear-right, caused by the protected inherited hull width rather
+than the reworked turret. It is not hidden by shaving skirts or hull armor.
+Fresh semantic inspection of the mandatory pairs records
+`[9.1,9.2,9.1,9.0,9.1,9.0,9.1,9.2,9.2,9.2,9.1,9.2,9.1,9.2]`, floor **9.0**
+and mean **9.12**.
+
+The final packet at `/private/tmp/t72bu-quality-final-r3/t72bu` contains 15
+paired, 15 yaw0 and 15 yaw90 frames including the elevated-left profile: **45
+PNGs / 45 distinct hashes**. Every yaw pair shows a genuine quarter-turn. The
+gun, cast shell, full K-5 blanket, sights, hatches, smoke, NSVT, whips and all
+side/rear packs rotate together; the deep-wading mast, hull deck, skirts,
+running gear and transom remain fixed. Turret-parent audit reports 0 stranded,
+0 abutting and 0 dangling items. Winding reports 0 reversed / 0 mixed and no
+mode-2 candidate. Exact band and shoe contacts are front/rear **0/0**; the
+strict sweep's 673 `sweep:hull` pixels are the unchanged inherited hull bucket
+and are not repaired by deleting lower-vehicle geometry. Rig and muzzle-bore
+probes pass. All eight T-72BU presentation assets are regenerated for this
+exact geometry.
+
+**KEEP / RE-FROZEN `7e123f00`. Later T-72 family refinement must preserve this
+complete hull/course and keep every turret-semantic pack inside `turretG`.**

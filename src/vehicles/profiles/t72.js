@@ -4894,9 +4894,20 @@ function buildT72BUNative(P, { turretOnly = false } = {}) {
     mg.position.set(-0.46, 0.70, -0.18);
     P.turretG.add(mg);
   }
-  for (const [x, z, h] of [[-0.90, -0.48, 0.52], [0.88, -0.50, 0.34]]) {
-    P.add('turretDark', cylY(0.042, 0.047, 0.11, 10), x, 0.60, z);
-    P.add('turretDetail', box(0.024, h, 0.024), x, 0.84, z);
+  // Two complete radio stations replace the old short box-rods.  Each whip
+  // enters a stepped collar and has a shallow roof shoe, so the long lines
+  // still read as turret equipment in profile and at ninety-degree traverse.
+  for (const [x, z, h, rake, seed] of [
+    [-0.90, -0.48, 0.38, -0.025, 92],
+    [0.88, -0.50, 0.29, 0.022, 93],
+  ]) {
+    P.add('turret', box(0.22, 0.045, 0.20), x, 0.57, z);
+    P.add('turretDark', cylY(0.070, 0.078, 0.070, 12), x, 0.61, z);
+    P.add('turret', cylY(0.050, 0.060, 0.105, 10), x, 0.69, z);
+    const antenna = FITTINGS.antennaWhip({ mats: P.mats, h, r: 0.012, rake, seed });
+    antenna.position.set(x, 0.72, z);
+    P.turretG.add(antenna);
+    P.add('turretDark', box(0.030, 0.12, 0.14), x - Math.sign(x) * 0.070, 0.63, z + 0.035, 0, Math.sign(x) * 0.16, 0);
   }
 
   // Low asymmetric rear packs and open service rails with visible returns
@@ -4920,6 +4931,9 @@ function buildT72BUNative(P, { turretOnly = false } = {}) {
     P.add('turretDark', box(0.035, 0.22, 0.24), x - w * 0.42, 0.32, z + 0.03);
     P.add('turretDark', box(0.035, 0.22, 0.24), x + w * 0.42, 0.32, z + 0.03);
   }
+  // A cable coil adds asymmetry while remaining within the established rear
+  // silhouette and preserving the rack's negative space.
+  P.add('turretDark', torus(0.145, 0.016, 20), 0.55, 0.42, -1.34, Math.PI / 2, 0, 0);
 
   // Articulated 2A46M-4 and visible bore. Hybrid mode retains the already
   // graduated base gun and its exact world-space recoil axis.
@@ -4951,7 +4965,7 @@ function buildT72BUHybridNative2026(P) {
   // fore/aft plan and less filled vertical side mass. Apply that to the one
   // connected rotating assembly, then counter-scale the graduated gun so its
   // dimensions and world-space run do not change.
-  const turretScale = { x: 1.0, y: 0.94, z: 1.0 };
+  const turretScale = { x: 1.0, y: 0.90, z: 1.0 };
   P.turretG.scale.set(turretScale.x, turretScale.y, turretScale.z);
   P.turretG.position.y += 0.020;
   P.gunG.scale.set(
