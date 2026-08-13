@@ -2425,3 +2425,29 @@ RESIDUALS (measured, named):
 - Carried untouched: §5.09 documented residuals (under-barrel/whip
   station air, bustle-overhang daylight, ring-dip top slivers 4-9 px),
   fills' certified tones, batch-46 oracle 0-at-cap state.
+
+## 2026-08-12 OWNER LEFT-HULL RECTANGLE + PHYSICAL TRACK-CLEARANCE CLOSEOUT
+
+The anomalous left-side rectangle was the one-sided raw cuboid labeled as a
+left-hull exhaust outlet. An isolated identical-camera A/B changed only the
+left-rear owner-angle patch (82×47 pixels); it did not affect any symmetric
+AMAP panel or other owner view. The side cuboid is removed. Rear exhaust and
+service geometry remains intact.
+
+This round also replaces legacy reference-profile painters with physical
+geometry. In-track rear dip plates, front ramp planks and band-edge strips are
+gone. The lower tub is narrowed to the 2.04 m inter-track corridor and raised
+to 0.58 m ground clearance; upper deck/sponson courses begin above the native
+shoe crown. Inner side walls and bow mudguards start 27.5 mm outside the lane.
+Exact audit: band front/rear 0/0, shoes front/rear 0/0, strict band/shoe sweep
+0/0. Six primary wheels, the distinct front idler, rear drive sprocket and one
+continuous native linked course remain visually unchanged.
+
+Final authored freeze: `fe2dc714`, 76 meshes / 101,445 vertices. Read-only
+oracle QA: fidelity 94.2 (gun 96, tracks 98); geometry 90.2, dimensions 99.5,
+floaters 100. Final evidence: 15 paired + 15 yaw0 + 15 yaw90, 45 unique PNG
+hashes, including the standardized elevated-left profile. Yaw proves the whole
+turret/AMAP/roof/bustle package rotates together over fixed cleared hull
+geometry. Parent candidates are fixed deck/service buckets; winding is clean.
+The oracle remains ignored QA data only and no source mesh/vertex payload is
+used by the game.

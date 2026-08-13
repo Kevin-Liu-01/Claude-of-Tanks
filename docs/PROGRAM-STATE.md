@@ -90,7 +90,7 @@ re-freeze NEW hash, all in ONE commit.
 | leo2a5 | e215a738 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | leo2a6 | e99f8490 | RE-FROZEN 2026-08-12 (§5.126 first-party Leopard 2A6: source-semantic wedge turret, canonical seated MG3, seven-wheel hull and exact native course; machine fidelity 95.43 / min view 95.32; fresh 42-frame yaw/ownership floor 9.3 / mean 9.46) |
 | leo2a7v | ec69fe94 | RE-FROZEN 2026-08-12 (§5.140 first-party Leopard 2A7V turret separation: complete rotating package raised 1 cm over a visible annular ring seam, asymmetric mast/rear-service cadence, full articulated sponson clearance; machine fidelity 90.23 / min view 90.02; 45-frame yaw/ownership floor 9.0 / mean 9.16) |
-| leo2_revolution | 37139b70 | RE-FROZEN 2026-08-12 (§5.126 first-party Leopard 2 Revolution: authored clipped wedge/AMAP package, full roof station, supported rear/service package and exact native course; machine fidelity 94.92 / min view 91.17; fresh 42-frame yaw/ownership floor 9.1 / mean 9.27) |
+| leo2_revolution | fe2dc714 | RE-FROZEN 2026-08-12 (§5.128 first-party Leopard 2 Revolution left-hull artifact + complete track-clearance repair: erroneous side cuboid retired, inter-track belly/sponson structure made physically honest, exact band/shoe/strict sweep 0/0; machine fidelity 94.2, geometry 90.2, dimensions 99.5, floaters 100; fresh 45-frame yaw/ownership floor 9.1 / mean 9.27) |
 | m46_patton | 108806c8 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | centurion3 | bad74e60 | RE-FROZEN 2026-08-08 (no-air graduate-change: crown-ridge pedestal + discharger webs, front-low 1810px->14, re-cert floor 9.0 x17 changed views, gate 91.1 exact; prior 50273080 bore-resit lineage) |
 | m1a2_sepv2 | 7680a400 | RE-FROZEN 2026-08-10 (§5.107 full armor/ghillie wave; elevated armored CROWS + broad passive armor + full cover; re-cert floor 9.2 / mean 9.41 x14, corrected yaw0/90 ownership PASS; prior a0a4e87c retired) |
@@ -4810,3 +4810,44 @@ is 0 reversed / 0 mixed with a 41-pixel (0.06%) antialias-only deficit and no
 visible wound. Rig, native provenance, family order and standard gates pass.
 **KEEP / RE-FROZEN `ec69fe94`; retire `a097ec` and all earlier Leopard 2A7V
 freezes.**
+
+## 5.128 LEOPARD 2 REVOLUTION LEFT-HULL / TRACK-CLEARANCE CLOSEOUT (2026-08-12, RE-FROZEN)
+
+The owner's singular left-hull rectangle was isolated with an identical-camera
+A/B. It was the one-sided raw `hullDark` cuboid previously described as a
+left-hull exhaust outlet. Removing it changed only an 82×47-pixel patch in the
+left-rear owner-angle view; the symmetric AMAP courses and all other owner
+views were byte-identical. Leopard 2 exhaust/service grammar is already carried
+at the rear, so the erroneous side cuboid is retired rather than cosmetically
+hidden.
+
+The refreshed strict track gate also exposed legacy profile-painter geometry
+inside the live linked course. Both rear dip plates, both front ramp trim
+planks and the asymmetric band-edge strips are retired. The lower tub is now an
+honest 2.04 m inter-track belly with 0.58 m ground clearance; broad deck/sponson
+courses begin above the 1.402 m shoe crown. Mid-gap walls and front mudguard
+planks remain visually continuous but start 27.5 mm outside the native shoe
+lane. The exterior AMAP/skirt silhouette is preserved while the complete
+physical corridor now reads band front/rear **0/0**, individual shoes **0/0**,
+strict band sweep **0/0** and strict shoe sweep **0/0**.
+
+Freeze **`fe2dc714`** reproduces at 76 meshes / 101,445 vertices. The ignored
+private oracle was mounted read-only for QA and is neither imported nor
+shipped. Fresh machine fidelity is **94.2** (gun 96 / tracks 98); geometry gate
+minimum is **90.2**, dimensions **99.5**, floaters **100**, contiguity **0
+holes**, and the live decor census is `mg1+4d`. The final packet at
+`/private/tmp/leo2rev-final-r2/leo2_revolution` contains 15 paired, 15 yaw0 and
+15 yaw90 frames including the standardized elevated-left profile: **45 PNGs /
+45 distinct hashes**. Fresh semantic inspection records
+`[9.3,9.3,9.2,9.1,9.1,9.1,9.2,9.3,9.4,9.4,9.3,9.4,9.3,9.4]`, floor **9.1**
+and mean **9.27**.
+
+Every yaw pair shows a genuine quarter-turn. Gun/mantlet, complete connected
+turret shell, AMAP courses, roof stations, smoke, antennas and bustle package
+rotate together over the fixed prow, cleared skirts/sponsons, wheels, engine
+deck and transom. The parent audit's broad `hullDetail`/`hullDark` candidates
+remain visibly continuous engine-deck/service buckets, not stranded turret
+equipment. Winding is 0 reversed / 0 mixed; the 65-pixel (0.09%) right-view
+deficit is antialias-only with no visible wound. Rig, assets, muzzle bore,
+standard, release, test and private/public build gates pass. **KEEP /
+RE-FROZEN `fe2dc714`; retire `37139b70` and all earlier Revolution freezes.**

@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-08-13T03:18:44.287Z",
+ "generatedAt": "2026-08-13T03:35:52.473Z",
  "gate": "every component >= 90; min is the headline",
  "passed": 34,
  "total": 97,
@@ -940,6 +940,16 @@
    }
   },
   {
+   "id": "leo2_revolution",
+   "geoMin": 90.2,
+   "gatePassed": true,
+   "components": {
+    "wholeCurves": 90.2,
+    "dims": 99.5,
+    "floaters": 100
+   }
+  },
+  {
    "id": "leclerc",
    "geoMin": 90.3,
    "gatePassed": true,
@@ -1167,16 +1177,6 @@
     "turretCurves": 91.1,
     "stations": 95.2,
     "dims": 100,
-    "floaters": 100
-   }
-  },
-  {
-   "id": "leo2_revolution",
-   "geoMin": 91.2,
-   "gatePassed": true,
-   "components": {
-    "wholeCurves": 91.2,
-    "dims": 99.5,
     "floaters": 100
    }
   },

@@ -5597,20 +5597,13 @@ function buildLeo2Revolution(P) {
   const r9jacket = [];                                                         // [geo, tint]
   const r9jkT = [0.875, 0.905, 0.885, 0.910, 0.880, 0.900];                    // F2 per-plate jitter (±2-3 L about the -8 target)
   let r9jkN = 0;
-  // r13 §B4: the B1 gear-trim accumulator splits PER SIDE (t72b3m
-  // hullTrackTrimL/R recipe, e3918e6): merged into ONE center-spanning mesh
-  // its AABB read reach 0 and defeated track-clip-audit's designed
-  // lane-local skip (294 of the rear 429). Split, each merged mesh keeps an
-  // honest one-sided AABB (reach 1.27 L / 0.972 R > laneInnerX-0.15 =
-  // 0.903) and the audit classifies it as the in-lane gear trim it is —
-  // the dip plates stay deliberately bedded in the tucked wrap (they paint
-  // the ref's 0.556/0.35/0.667 stair bottoms the band cannot own; the
-  // t72b3m "strips must stay bedded" class). ZERO transforms touched:
-  // same triangles, same gearOlv instance, +1 draw call.
-  const r9gearL = [];                                                          // B1 near-black band trim -> olive-dark clone (left lane)
-  const r9gearR = [];                                                          // (right lane)
   // ---- hull ----
-  P.add('hull', box(2.40, 1.022, 5.80), 0, 0.849, 0.0);                        // tub y 0.338..1.36, z -2.9..2.9 (r17: bottom 0.36 -> 0.338 — the honest ref belly prints 0.337 across ~30 mid front columns; side/plan blind to it, tracks own every side bottom)
+  // TRACK-CLEARANCE LAW (2026-08 owner correction): the old 2.40 m-wide
+  // belly entered both 1.05 m track lanes.  Keep the same top and length,
+  // but make the lower tub an honest inter-track hull with Leopard-class
+  // ground clearance.  The broad exterior is carried by the deck/sponson
+  // courses above the shoe crown, not by hidden geometry inside the tracks.
+  P.add('hull', box(2.04, 0.78, 5.80), 0, 0.97, 0.0);                          // belly x ±1.02, y 0.58..1.36, z -2.9..2.9
   // §B5 DE-FUSION r16 (owner report "turret fused with hull"): the old
   // raised deck (plate 2.06 + underfill + 1.99 fore shelf + 2.06-2.19 bow
   // humps + 2.13-2.21 riser stair + 2.21 engine course + 2.33 corner posts)
@@ -5623,9 +5616,12 @@ function buildLeo2Revolution(P) {
   // the TRUE deck at the de-baked ref hull line (novlo trace, 0.05 m grid):
   // flat 1.619 midship, 1.54 ring dip, 1.585/1.60 aft bands, 1.655/1.672
   // risers to the 1.694/1.701 engine flat, bow shelf 1.50/1.44 falling to
-  // the beak. Bottoms 1.30 (tub top 1.36 overlap = §B2 side-through solid).
+  // the beak. The wide courses now start at 1.42, above the 1.402 shoe
+  // crown; their inner edge overlaps the narrow tub in plan, while the
+  // outer underside remains a real suspension clearance instead of a
+  // track intersection.
   const deckBand = (top, z0, z1, w = 3.10) =>
-    P.add('hull', box(w, top - 1.30, z1 - z0), 0, (top + 1.30) / 2, (z0 + z1) / 2);
+    P.add('hull', box(w, top - 1.42, z1 - z0), 0, (top + 1.42) / 2, (z0 + z1) / 2);
   deckBand(1.619, -0.32, 1.32);                                                // main deck flat (ref 1.619 x33 cols)
   deckBand(1.542, -0.52, -0.32);                                               // ring recess dip (ref 1.537-1.547)
   deckBand(1.585, -0.95, -0.52);                                               // aft band (ref 1.578-1.592)
@@ -5702,12 +5698,12 @@ function buildLeo2Revolution(P) {
     // 1.294-1.318 columns there better than any §B4-legal plank could).
     // Underside stays CLEAR of the shoe envelope: 1.10@2.83 -> 1.32@3.20
     // (wrap top at 3.20 = 1.279 + 0.02 law margin = 1.299 < 1.32).
-    P.add('hull', slab(                                                        // over-track mudguard plank A (root; top falls with the ref's own 1.435->1.36 line)
-      [s2 * 1.02, 1.10, 2.83], [s2 * 1.63, 1.10, 2.83], [s2 * 1.63, 1.2135, 3.00], [s2 * 1.02, 1.2135, 3.00],
-      [s2 * 1.02, 1.43, 2.83], [s2 * 1.63, 1.40, 2.83], [s2 * 1.63, 1.35, 3.00], [s2 * 1.02, 1.36, 3.00]));
+    P.add('hull', slab(                                                        // over-track mudguard plank A; outer guard only, 27.5 mm clear of the shoe lane
+      [s2 * 1.55, 1.10, 2.83], [s2 * 1.63, 1.10, 2.83], [s2 * 1.63, 1.2135, 3.00], [s2 * 1.55, 1.2135, 3.00],
+      [s2 * 1.55, 1.43, 2.83], [s2 * 1.63, 1.40, 2.83], [s2 * 1.63, 1.35, 3.00], [s2 * 1.55, 1.36, 3.00]));
     P.add('hull', slab(                                                        // plank B (ends 3.20; wrap crests open past it — its 1.28-1.385 crown IS the ref's 1.29-1.32 line)
-      [s2 * 1.02, 1.2135, 3.00], [s2 * 1.63, 1.2135, 3.00], [s2 * 1.63, 1.32, 3.20], [s2 * 1.02, 1.32, 3.20],
-      [s2 * 1.02, 1.36, 3.00], [s2 * 1.63, 1.35, 3.00], [s2 * 1.63, 1.31, 3.20], [s2 * 1.02, 1.335, 3.20]));
+      [s2 * 1.55, 1.2135, 3.00], [s2 * 1.63, 1.2135, 3.00], [s2 * 1.63, 1.32, 3.20], [s2 * 1.55, 1.32, 3.20],
+      [s2 * 1.55, 1.36, 3.00], [s2 * 1.63, 1.35, 3.00], [s2 * 1.63, 1.31, 3.20], [s2 * 1.55, 1.335, 3.20]));
     // r14 plan-toe sweep (the top-view Δ-10.5 order): the cap's front edge
     // now falls back at the ref's own 10.4deg plan taper (top edge m 0.184,
     // bottom m 0.14 closing to a knife at the outer corner 3.785 — every
@@ -5824,8 +5820,8 @@ function buildLeo2Revolution(P) {
     // mid-gap inner wall: the ref stations 8-9 read a bare ±1.59 band
     // (two pieces so each station slice window catches an end cap)
     // §B5 r16: tops 1.62 -> 1.53 (novlo mid-gap line 1.537-1.561)
-    P.add('hull', box(0.08, 0.81, 0.56), s * 1.55, 1.125, 0.80);
-    P.add('hull', box(0.08, 0.81, 0.56), s * 1.55, 1.125, 1.40);
+    P.add('hull', box(0.06, 0.81, 0.56), s * 1.58, 1.125, 0.80);              // inner wall starts 27.5 mm outside the native shoe lane
+    P.add('hull', box(0.06, 0.81, 0.56), s * 1.58, 1.125, 1.40);
     // r5 INNER SKIRT COURSES (front-row ledger): the ref carries a wheel-
     // covering skirt layer at x ±1.63-1.67 with bottom 0.352 (front cols
     // ±1.574..±1.665 read it; its plan front edge is the 3.766 line at the
@@ -5966,11 +5962,9 @@ function buildLeo2Revolution(P) {
   // settled -1.547 front column reads the ref's left band to ground (its
   // 1.63 band edge) where our 1.5225 band edge left the col at the track's
   // AA fringe.
-  // r9 B1: the two band-edge guard strips leave hullDark for the olive-dark
-  // gear-trim clone (geometry byte-identical — they own the -1.547/+0.983
-  // front ground columns; §C material splits are gate-free).
-  r9gearL.push(KIT.xform(box(0.0815, 0.38, 0.20), -1.57925, 0.21, -0.60));
-  r9gearR.push(KIT.xform(box(0.026, 0.31, 0.20), 0.985, 0.2435, -0.60));      // §B5 r16: bottom 0.02 -> 0.0885 — the old 0.011 ground read was the vlo bake's 0-stripe; the honest ref +0.97 col bottoms 0.09
+  // The former band-edge guard strips were render-profile painters embedded
+  // in the live track lanes.  Track silhouettes now come only from the
+  // native linked course and wheel/end-wheel geometry.
   // r9 D3 §B2 CHANNEL END-CAPS (r7 critic mandatory order): the 6 cm
   // corridor between the deck edge (x ±1.55) and the skirt/jacket faces
   // (x ±1.61..1.64) is open LENGTHWISE — px-calibrated on the critic pairs
@@ -6134,7 +6128,6 @@ function buildLeo2Revolution(P) {
   P.add('hullDetail', box(1.72, 0.010, 0.055), -0.04, 1.687, -2.14);
   P.add('hullDetail', box(1.80, 0.010, 0.055), 0, 1.687, -2.02);
   P.add('hullDetail', box(1.64, 0.010, 0.055), 0.05, 1.687, -1.90);
-  P.add('hullDark', box(0.15, 0.45, 0.30), -1.70, 1.475, -2.35);               // left-hull exhaust outlet (top 1.70 = the honest -2.35 line)
   // r9-d REARRIGHT POCKET BLOCKER (137 px, ray-traced): the quarter-view
   // rays fly the diagonal corridor x+z = -3.65..-3.37 at y 1.83..2.04 over
   // the open left sponson-top behind the deck. An intake housing hung off
@@ -6153,31 +6146,9 @@ function buildLeo2Revolution(P) {
   liftEye(P, 'hullDetail', -1.30, 1.51, 0.2);
   liftEye(P, 'hullDetail', 1.30, 1.51, 0.2);
   P.decal('hull', 'number', 'Y-660', 0.26, [0.62, 1.2, -3.84], Math.PI, 0);
-  // sprocket-tooth dip: the ref side bottoms stair 0.556@-3.24 / 0.35@-3.35 /
-  // 0.667@-3.46 (r5 ledger — the old single -3.30..-3.41 plate AA-leaked its
-  // 0.35 bottom into the -3.46 column and left -3.24 on the bare 0.64 wall);
-  // three per-column plates hang from the tail box, 14mm inside the bins
-  for (const s of [-1, 1]) {
-    // r9 B1: dip plates -> olive-dark gear-trim clone (geometry identical)
-    const r9g = s < 0 ? r9gearL : r9gearR;                                     // r13 §B4 per-side buckets (identical transforms)
-    r9g.push(KIT.xform(box(0.30, 0.94, 0.103), s * 1.42, 1.02, -3.2365));      // 0.55 bottom (col -3.24)
-    r9g.push(KIT.xform(box(0.30, 1.14, 0.086), s * 1.42, 0.92, -3.345));       // 0.35 bottom (col -3.35)
-    r9g.push(KIT.xform(box(0.30, 0.83, 0.084), s * 1.42, 1.075, -3.458));      // 0.66 bottom (col -3.46)
-    // r15 R5-1 FRONT RAMP TRIM PLANK (the r13 dip-plate class at the FRONT):
-    // the contactZF flatten lifts the kit tangent behind the 0.36 skirt
-    // window, so the band can no longer own the ref's visible ramp line
-    // (side bottoms 0.20@2.85 / 0.26@2.96 / 0.31@3.07 rising ~26.6deg to the
-    // hem corner). One raked-bottom strip per side paints that line: bottom
-    // edge 0.176@2.74 -> 0.446@3.2585 (27.5deg, co-linear with hem facet A's
-    // 26.1deg — the arch-to-beak diagonal reads as ONE line, §B1 no-stairs);
-    // x 1.46..1.54 beds into the pad envelope (in-lane, wheels end 1.386,
-    // courses 1.61 own y>=0.36 outboard); top rides 0.50->0.62 inside the
-    // band envelope so the strip stays bedded end-to-end (t72b3m law).
-    // Plan-interior (z<=3.2585 << 3.765 pad edge), front bottoms band-owned.
-    r9g.push(slab(
-      [s * 1.46, 0.176, 2.74], [s * 1.54, 0.176, 2.74], [s * 1.54, 0.446, 3.2585], [s * 1.46, 0.446, 3.2585],
-      [s * 1.46, 0.50, 2.74], [s * 1.54, 0.50, 2.74], [s * 1.54, 0.62, 3.2585], [s * 1.46, 0.62, 3.2585]));
-  }
+  // The former rear dip plates and front ramp trim planks deliberately
+  // occupied the linked-course envelope to paint profile pixels. They are
+  // retired: the physical track is authoritative.
   // gear: HIGH raised end wheels, kit-native tangent ramps (fresh probe:
   // flat ends 2.60/-2.42, front ramp 0.13@2.77 -> 0.96@3.88 far edge 3.94,
   // rear ramp 0.07@-2.46 -> 0.91@-3.68 far edge <=-3.76)
@@ -6811,18 +6782,6 @@ function buildLeo2Revolution(P) {
     // tint base 0.885 cycling ±0.02 (real armor: casts shadows like the
     // bucket path it replaces).
     meshUp(KIT.mergeAll(r9jacket.map(([g, t]) => prepCamo(g, 0, 1, t))), P.mats.hull, P.hullG, true);
-    // -- B1 gear trim: dip plates + band-edge strips in pad-family
-    // olive-dark (kills the pure-black bricks at the band corners).
-    const gearOlv = rehook(P.mats.shadow.clone());
-    gearOlv.color.setHex(0x343a29);
-    gearOlv.roughness = 0.97;
-    gearOlv.metalness = 0.05;
-    gearOlv.envMapIntensity = 0.06;
-    P.disposables.push(gearOlv);
-    // r13 §B4: two per-side meshes (honest one-sided AABBs for the audit's
-    // lane-local gear rule) — same gearOlv instance, same triangles.
-    meshUp(KIT.mergeAll(r9gearL), gearOlv, P.hullG, true).name = 'leoGearTrimL';
-    meshUp(KIT.mergeAll(r9gearR), gearOlv, P.hullG, true).name = 'leoGearTrimR';
     // -- B1 rubber: the tires + left jacket flap out of near-black into the
     // a5-family weathered olive-grey (per-tank material instance).
     P.mats.rubber.color.setHex(0x35362c);
