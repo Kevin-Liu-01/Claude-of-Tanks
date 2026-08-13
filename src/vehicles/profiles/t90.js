@@ -4917,6 +4917,24 @@ function buildT90A(P) {
   // The mature T4A/T5F assembly already passed its independent 14-view
   // sitting.  Family harmony is not permission to replace its measured
   // wedge, K-5 and roof kit with a generic shared casting.
+  // Its legacy radio fittings, however, stopped at short mast stubs.  That
+  // made the complete T-90A look materially smaller than the base T-90 in
+  // the garage even though both hulls retain the same 3.78 m authored
+  // envelope.  Restore the two source-semantic radio courses as equipment,
+  // not by scaling the tank: each broad shoe overlaps the aft cast shoulder,
+  // the collar is half buried in that shoe, and the flexible whip is a child
+  // of rig_turret so the full station follows yaw.
+  for (const [x, z, h, rake, seed] of [
+    [-0.86, -1.02, 0.98, -0.035, 41],
+    [0.82, -0.89, 0.82, 0.030, 42],
+  ]) {
+    P.add('turret', KIT.box(0.18, 0.12, 0.24), x, 0.45, z);
+    P.add('turretDark', KIT.cylY(0.045, 0.062, 0.15, 10), x, 0.525, z);
+    P.add('turretDetail', KIT.box(0.035, 0.20, 0.30), x * 0.93, 0.43, z + 0.16, -0.42, 0, 0);
+    const whip = FITTINGS.antennaWhip({ mats: P.mats, h, r: 0.014, rake, seed });
+    whip.position.set(x, 0.53, z);
+    P.turretG.add(whip);
+  }
   for (const s of [-1, 1]) {
     P.add('hull', KIT.box(0.20, 0.08, 0.20), s * 0.95, 1.30, -2.43);
     // The hardpoint is one continuous deck fitting in the source.  Carry its
