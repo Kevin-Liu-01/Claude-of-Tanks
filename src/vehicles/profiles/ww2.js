@@ -1448,17 +1448,17 @@ function buildShermanE8(P) {
   // lane-local, audit-exempt like the wheels).
   for (const zb of [1.74, 0.0, -1.74]) {
     for (const s of [-1, 1]) {
-      P.add('hullDetail', box(0.34, 0.26, 0.62), s * 1.02, 0.45, zb);          // bogie bracket (roots into the ±0.89 belly)
-      P.add('hullDetail', box(0.10, 0.09, 0.50), s * 1.17, 0.40, zb + 0.30, -0.30, 0, 0); // trailing arms
-      P.add('hullDetail', box(0.10, 0.09, 0.50), s * 1.17, 0.40, zb - 0.30, 0.30, 0, 0);
-      P.add('hullDark', cylZ(0.065, 0.42, 8), s * 1.21, 0.66, zb);             // volute spring drum in the dual gap
-      P.add('hullDetail', cylX(0.045, 0.14, 8), s * 1.19, 0.43, zb + 0.375);   // axle stubs at the wheel pairs
-      P.add('hullDetail', cylX(0.045, 0.14, 8), s * 1.19, 0.43, zb - 0.375);
+      P.add('hullRunningGearDetail', box(0.34, 0.26, 0.62), s * 1.02, 0.45, zb); // bogie bracket (roots into the ±0.89 belly)
+      P.add('hullRunningGearDetail', box(0.10, 0.09, 0.50), s * 1.17, 0.40, zb + 0.30, -0.30, 0, 0); // trailing arms
+      P.add('hullRunningGearDetail', box(0.10, 0.09, 0.50), s * 1.17, 0.40, zb - 0.30, 0.30, 0, 0);
+      P.add('hullRunningGearDark', cylZ(0.065, 0.42, 8), s * 1.21, 0.66, zb);  // volute spring drum in the dual gap
+      P.add('hullRunningGearDetail', cylX(0.045, 0.14, 8), s * 1.19, 0.43, zb + 0.375); // axle stubs at the wheel pairs
+      P.add('hullRunningGearDetail', cylX(0.045, 0.14, 8), s * 1.19, 0.43, zb - 0.375);
     }
   }
   for (const zr of [1.74, 0.87, 0.0, -0.87, -1.74]) {
     for (const s of [-1, 1]) {
-      P.add('hullDetail', box(0.06, 0.10, 0.11), s * 1.21, 1.09, zr + 0.05);   // return-roller brackets off the sponson floor
+      P.add('hullRunningGearDetail', box(0.06, 0.10, 0.11), s * 1.21, 1.09, zr + 0.05); // return-roller brackets off the sponson floor
     }
   }
 
@@ -1475,8 +1475,8 @@ function buildShermanE8(P) {
   // (0.88, 2.86) to the deck crest (2.18, 1.466): full-width wedge above
   // the sponson line, ±0.89 center strip to the joint, cast nose ≤40% of
   // front height; sponson body + roof pulled back to the crest.
-  P.add('hull', box(2.98, 1.02, 3.30), 0, 1.665, -0.21);                     // sponson body ±1.49, y 1.155..2.175, z -1.86..1.44
-  P.add('hull', box(2.98, 0.865, 1.02), 0, 1.5875, -2.37);                   // aft body, top at the stepped 2.02 deck line, rear closed by the plate
+  P.add('hull', box(2.98, 0.97, 3.30), 0, 1.69, -0.21);                      // sponson body ±1.49, y 1.205..2.175, z -1.86..1.44
+  P.add('hull', box(2.98, 0.815, 1.02), 0, 1.6125, -2.37);                   // aft body, track-clear floor to the stepped 2.02 deck line
   P.add('hull', box(2.98, 0.05, 3.31), 0, 2.155, -0.205);                    // roof plate to 2.18, crest z 1.45, ends at the step -1.86
   P.add('hull', slab(                                                        // glacis wedge, full width between fenders
     [-1.49, 1.155, 2.565], [1.49, 1.155, 2.565], [1.49, 1.155, 1.44], [-1.49, 1.155, 1.44],
@@ -1514,11 +1514,11 @@ function buildShermanE8(P) {
   }
   // sponson floor over the tracks (§B2 top-down containment) + mudguards;
   // §B8 order 3 (SPONSON LINE): a near-black under-lip strip along the
-  // floor's underside makes the 1.145 split line READ against the track
+  // floor's underside makes the 1.20 split line READ against the track
   // top (the wheelShadows AO practice, hull mass on the hull).
-  fenders(P, 0.92, 1.50, 1.145, -2.90, 2.52, 0.028);
+  fenders(P, 0.92, 1.50, 1.20, -2.90, 2.52, 0.028);
   for (const s of [-1, 1]) {
-    P.add('hullShadow', new THREE.BoxGeometry(0.54, 0.032, 5.30), s * 1.22, 1.112, -0.20);
+    P.add('hullShadow', new THREE.BoxGeometry(0.54, 0.024, 5.30), s * 1.22, 1.178, -0.20);
   }
   for (const s of [-1, 1]) {
     // front mudguard rising over the sprocket wrap (orbit top 1.075):
@@ -1647,6 +1647,10 @@ function buildShermanE8(P) {
   // (0.60x tube r, face +1.5 mm — solid-face occlusion forbids a true
   // recess; the double brake's dark slot core carries the baffle windows).
   P.add('gunDark', cylZ(0.031, 0.02, 12), 0, 0, 3.4315);
+  // The HVSS return and its raised terminals must remain mechanically free
+  // beneath the full-width sponson. Keep the inter-track belly low, while
+  // lifting only outboard hull/under-lip vertices above the shoe envelope.
+  P.raiseTrackCorridor(['hull', 'hullShadow'], { laneInnerX: 0.89, floorY: 1.24 });
   P.topY = 0.76;
 }
 
