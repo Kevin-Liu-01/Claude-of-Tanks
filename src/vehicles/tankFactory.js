@@ -3943,6 +3943,10 @@ const BUCKET_DEF = {
   // exclude it by authored ownership instead of the old positional
   // "lane-local" heuristic that also hid real guard/mudflap intrusions.
   hullRunningGearDark: ['hullG', 'dark'],
+  // Track-course filler shoes/pads authored outside buildRunningGear still
+  // belong to the native suspension. Preserve the oily spare-track material
+  // while giving strict clearance lint truthful ownership metadata.
+  hullRunningGearTrack: ['hullG', 'spareTrack'],
   // Painted wheel faces, rims and hub caps are suspension-owned just like
   // the dark wheel-bay recesses above.  Keep a material-correct detail
   // bucket so strict swept-track lint does not misclassify concentric wheel
@@ -4369,6 +4373,7 @@ export function createTank(specId, engineCtx, opts = {}) {
       mesh.userData.trackGuard = true;
     }
     if (bucket === 'hullRunningGearDark' || bucket === 'hullRunningGearDetail'
+        || bucket === 'hullRunningGearTrack'
         || bucket === 'hullTrackTrimL' || bucket === 'hullTrackTrimR') {
       mesh.userData.runningGear = true;
     }

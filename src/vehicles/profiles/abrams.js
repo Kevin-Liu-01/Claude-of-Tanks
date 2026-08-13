@@ -3853,7 +3853,7 @@ function buildM1a2(P, V) {
     // the first cut's mid-shadow wall caught the key light through the
     // wheel gaps and read L~50 flat — the discs need the ref's dark-bay
     // contrast (ref gap shadow under the hem, near-black class).
-    sb('hullDark', s, 1.05, 1.09, 0.30, 0.74, -2.62, 2.35);
+    sb('hullRunningGearDark', s, 1.05, 1.09, 0.30, 0.74, -2.62, 2.35);
     // Tail-bay wall: same 0.90..0.92 plane as the r4-certified sponson
     // closure wall above it (5.7 cm inboard of the wrap band — the
     // audit-proven clearance). z stops at the -2.62 carve line (the
@@ -3861,7 +3861,7 @@ function buildM1a2(P, V) {
     // bottom rides 0.50 — above the 0.44 belly front bins and the rising
     // wrap-arc side line (the first cut's 0.30 floor hung 0.17-low flat
     // bottoms on four side columns and 0.11-low front columns at ±0.91).
-    sb('hullDark', s, 0.90, 0.92, 0.50, 0.95, -2.62, -2.27);
+    sb('hullRunningGearDark', s, 0.90, 0.92, 0.50, 0.95, -2.62, -2.27);
   }
   // Visual r4 order 4 — SUN-FLANK SCALLOP CROWNS (tone-only, the ordered
   // "brighter slot"): the right-side link-pad crown bars ride a dedicated
@@ -3975,13 +3975,13 @@ function buildM1a2(P, V) {
       [1.625, 0.018], [1.70, 0.05], [1.80, 0.082], [1.92, 0.14],
       [1.965, 0.145], [2.30, 0.145]];
     for (const s of [-1, 1]) {
-      band('hullTrack', s > 0 ? 0.977 : -1.419, s > 0 ? 1.419 : -0.977,
+      band('hullRunningGearTrack', s > 0 ? 0.977 : -1.419, s > 0 ? 1.419 : -0.977,
         [[-4, 0.24], [4, 0.24]], RUNB, -2.60, 2.30);
       // Cert bow shoe stack (the r1 idler-shoe block class): z >= 3.30 =
       // 2+ cells clear of the 3.2225 wrap end, entirely aft of the front
       // audit zone; carries the cert 0.53/0.465 side bins to 3.595.
-      sb('hullTrack', s, 0.955, 1.41, 0.53, 0.88, 3.30, 3.465);
-      sb('hullTrack', s, 0.955, 1.41, 0.465, 0.88, 3.48, 3.595);
+      sb('hullRunningGearTrack', s, 0.955, 1.41, 0.53, 0.88, 3.30, 3.465);
+      sb('hullRunningGearTrack', s, 0.955, 1.41, 0.465, 0.88, 3.48, 3.595);
       {
         // §B3 BOX-CLEANUP (sepv2 round, 2026-08-05; PORTED to m1a2 in its
         // graduate-change round the same day — family-shared, both
@@ -3999,21 +3999,27 @@ function buildM1a2(P, V) {
           const step = (zB - zA - 0.02) / n;
           for (let k = 0; k < n; k++) {
             const zc = zA + 0.01 + step * (k + 0.5);
-            sb('hullTrack', s, 1.41, 1.417, y0 + 0.03, 0.85, zc - step * 0.36, zc + step * 0.36);
-            sb('hullDetail', s, 1.41, 1.4185, 0.665, 0.695, zc - 0.012, zc + 0.012);
+            sb('hullRunningGearTrack', s, 1.41, 1.417, y0 + 0.03, 0.85, zc - step * 0.36, zc + step * 0.36);
+            sb('hullRunningGearDetail', s, 1.41, 1.4185, 0.665, 0.695, zc - 0.012, zc + 0.012);
           }
         }
       }
       // Cert tail shoe under the shelf (keyed 1 cm into the tail solid —
       // floater contract; bottom rides the ref's 0.65-0.685 tail line).
-      sb('hullTrack', s, 0.955, 1.41, 0.655, 0.90, -3.555, -3.42);
+      sb('hullRunningGearTrack', s, 0.955, 1.41, 0.655, 0.90, -3.555, -3.42);
       // Head-on corridor baffles between the runs (bare-drum daylight fix,
       // r2 precedent) — seated above the ground-run band, outside both
       // audit zones.
-      sb('hullDark', s, 0.955, 1.41, 0.36, 0.84, 2.34, 2.36);
-      sb('hullDark', s, 0.955, 1.41, 0.36, 0.84, -2.67, -2.65);
+      sb('hullRunningGearDark', s, 0.955, 1.41, 0.36, 0.84, 2.34, 2.36);
+      sb('hullRunningGearDark', s, 0.955, 1.41, 0.36, 0.84, -2.67, -2.65);
     }
   }
+  // The real forward skirt remains hull-owned; trim only its terminal-ramp
+  // vertices above the top shoe envelope instead of hiding the collision by
+  // semantic tagging.
+  P.raiseTrackCorridor(['hull'], {
+    laneInnerX: 0.95, floorY: 1.32, zMin: 2.38, zMax: 2.72,
+  });
 
   // ---- sponson stowage walls (front-view 1.96-2.12 at |x| 1.29..1.63) ----
   // §B5 r2 COORDINATED NORMALIZE (owner law: turret furniture yaws): these
