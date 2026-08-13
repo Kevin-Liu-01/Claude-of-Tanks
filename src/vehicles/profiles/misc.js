@@ -1308,12 +1308,16 @@ function buildLeclerc(P) {
       [2.46, 0.141], [2.30, 0.095], [-2.19, 0.126], [-2.85, 0.515],
       [-2.96, 0.687], [-3.07, 0.691], [-3.18, 0.915],
     ],
-    rollers: [1.95, 1.05, 0.15, -0.80, -1.70].map((z) => ({ z, y: 0.88, r: 0.08 })),
+    // Five real return rollers sit directly beneath the upper course.  The
+    // previous 0.88/0.08 placement put their crowns above the 0.91 m loop
+    // centreline while `coveredTop` deleted every shoe, producing an empty
+    // black slot.  Seat larger rollers just under the restored linked run.
+    rollers: [1.95, 1.05, 0.15, -0.80, -1.70].map((z) => ({ z, y: 0.80, r: 0.10 })),
     trackW: 0.630, trackTh: 0.07, topY: 0.90, botY: 0.055,
     endRingSpan: 0.56,
     linkPitchM: 0.11, shoeRadialScale: 0.61, padGroundCenter: 0.069,
     padCornerFloor: 0.02, padHugZ0: 2.40,
-    paintedEnds: true, coveredTop: true, arms: true,
+    paintedEnds: true, coveredTop: false, arms: true,
   });
   // 90-ladder r1 track re-meter: the 0.64-band's pads reached x 1.623 and
   // COIN-FLIPPED into the front ±1.64 col windows ([1.619..]; official run
