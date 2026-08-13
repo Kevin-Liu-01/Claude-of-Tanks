@@ -2296,8 +2296,8 @@ function cupola(P, bucket, x, y, z, r, h, periscopes = 6) {
 }
 
 // Headlight: armored drum + glass lens face (lens offset baked pre-rotation).
-function headlight(P, x, y, z, rx = 0, r = 0.055) {
-  P.add('hullDetail', cylZ(r, r * 1.35, 12), x, y, z, rx, 0, 0);
+function headlight(P, x, y, z, rx = 0, r = 0.055, detailBucket = 'hullDetail') {
+  P.add(detailBucket, cylZ(r, r * 1.35, 12), x, y, z, rx, 0, 0);
   P.add('hullGlass', xform(cylZ(r * 0.8, 0.02, 12), 0, 0, r * 0.72), x, y, z, rx, 0, 0);
   P.add('hullDark', xform(box(0.02, r * 2.3, 0.02), 0, 0, r * 0.5), x, y, z, rx, 0, 0); // brush guard rib
 }
@@ -3937,6 +3937,12 @@ function buildCommunityPlaceholder(P) {
 // Bucket -> [parent group key, material key]
 const BUCKET_DEF = {
   hull: ['hullG', 'hull'], hullDetail: ['hullG', 'detail'], hullDark: ['hullG', 'dark'],
+  // Material-identical spatial buckets for fixed hull stations.  Keeping
+  // bow, driver, engine and transom detail separate prevents their merged
+  // AABB from falsely spanning an entire rotating-turret envelope while
+  // preserving the exact material, owner and LOD behavior.
+  hullBowDetail: ['hullG', 'detail'], hullDriverDetail: ['hullG', 'detail'],
+  hullEngineDetail: ['hullG', 'detail'], hullRearDetail: ['hullG', 'detail'],
   hullRubber: ['hullG', 'rubber'], hullWood: ['hullG', 'wood'], hullCloth: ['hullG', 'canvasCloth'],
   hullGlass: ['hullG', 'glass'],
   turret: ['turretG', 'hull'], turretDetail: ['turretG', 'detail'], turretDark: ['turretG', 'dark'],

@@ -6391,3 +6391,52 @@ reference-mask score. The immutable first-party hash, fresh visual packet,
 strict mechanical gates and live gameplay assets are the acceptance evidence.
 
 **PASS / KEEP `14688339`; supersede `d8341464`. Ordered blockers: none.**
+
+## 5.179 T-64BV-1 FIRST-PARTY FAMILY RESET / NATIVE COURSE (2026-08-13)
+
+The active `t64bv1` remains wholly repository-authored procedural geometry.
+The recovered comparison print is a read-only visual oracle only; its fused
+component ownership (including hull fender rails and rear service equipment
+inside its Turret node) is explicitly not reproduced in runtime geometry.
+
+The former long smooth capsule is replaced by a compact curved-normal pear
+casting with a low right crown and raised left combat station. Six unequal
+Kontakt-1 positions per side form a deliberately staggered two-level blanket,
+with buried carrier shoulders, lower flank returns and non-repeating width,
+depth, pitch and yaw. The rounded Luna housing, commander ring, compact NSVT,
+TPN optic, unequal periscopes and 902B banks are re-seated on that casting.
+The aft mass terminates in a compact supported basket with unequal bins,
+transverse service cylinders, straps and braces rather than source-mistaken
+five-metre rotating fender/log hardware.
+
+Running order is explicit: **front free idler -> six small dual radial road
+wheels -> four return rollers -> rear final-drive sprocket**. One continuous
+native linked-shoe course follows those stations. The right unditching log is
+fully inboard of the animated lane, and both long fender rails are truthful
+fixed hull guards. Bow, deck, engine and rear detail use material-identical
+spatial buckets so ownership audits evaluate the real fixed stations instead
+of one artificial vehicle-spanning merged box.
+
+Freeze **`beff1034`** reproduces at 53 meshes / 97,531 vertices. Exact band,
+instanced-shoe and strict moving-sweep clearance is **0/0/0**. Parent audit is
+**0 stranded / 0 abutting / 0 dangling**. Winding is 0 reversed / 0 mixed
+with seven visually null deficit pixels (0.01%) and no exterior wound.
+Runtime articulation passes 10/10 and the explicit 2A46 bore passes at 113.7
+contrast. All eight gameplay presentation assets and their manifest row are
+regenerated from the freeze.
+
+`/private/tmp/t64bv1-final-r10/t64bv1` contains 15 paired, 15 yaw0 and 15
+yaw90 frames including the standardized elevated-left profile: **45 PNGs / 45
+distinct hashes**. Fresh standard order is
+`[9.1,9.2,9.1,9.0,9.0,9.0,9.1,9.2,9.2,9.2,9.1,9.2,9.1,9.2]`, floor **9.0**
+and mean **9.11**. The true quarter-turn keeps the complete shell, gun,
+Kontakt blanket, Luna, smoke, cupola/NSVT, optics, antennas, basket, cylinders
+and rear packs together over a fixed hull, deck, transom and native course.
+
+The older contour/component gate remains capped by the quarantined print's
+fused masks and incorrect ownership split. It is not misrepresented as a
+first-party structural failure or gamed by copying those defects. Fresh visual
+evidence, immutable authored hash and strict mechanical gates are the current
+acceptance evidence.
+
+**PASS / KEEP `beff1034`; supersede `f5222a1c`. Ordered blockers: none.**
