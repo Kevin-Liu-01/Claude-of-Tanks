@@ -110,7 +110,7 @@ re-freeze NEW hash, all in ONE commit.
 | fv510 | 61023726 | RE-FROZEN 2026-08-12 (§5.129 first-party `fv510PhotoBuild`: compact six-wheel Warrior hull, authored RARDEN turret and supported slat/service package; machine fidelity 90.84 / minimum view 90.12; exact native track 0/0 and fresh 42-frame yaw/ownership floor 9.0 / mean 9.11; source-baked 7884762a/927beeb2 playables retired) |
 | m26_pershing | 2f006738 | RE-RECORDED 2026-08-08: hash moved by LANDED 5f39989 (armorM4 gunBarrel shadow-proxy 3.96->3.44; m26/m45 inherit m4a3e8 proxies — patton.js bytes unchanged); double-confirmed by builder bisect + m45-grad critic; prior 65c564c0 bore+winding re-cert lineage (floors 9.1-9.4) carries |
 | t90m | dc760de0 | RE-FROZEN 2026-08-12 (§5.148 first-party Proryv strict full-course closeout; machine fidelity 90.96 / minimum view 90.02; exact band/shoes/full sweep 0/0/0, parent 0/0/0 and fresh 45-frame elevated-profile/yaw PASS; incompatible legacy contour row retained honestly rather than chased) |
-| t90 | da6f7fba | RE-FROZEN 2026-08-11 (native procedural, reference-guided: all runtime geometry remains our authored primitives; independent §B8 floor 9.1 / mean 9.19 x14 with genuine yaw ownership, exact native six-wheel track 0/0 bands+shoes, muzzle/assets PASS and no visible winding wound; registered-mask false zero disclosed rather than chased into copied geometry; prior 72104d14 retired) |
+| t90 | 692a0eb9 | RE-FROZEN 2026-08-12 (§5.149 first-party cast-turret and strict full-course closeout: explicit eight-section pear/cast loft, exact band/shoes/full sweep 0/0/0, parent 0/0/0 and fresh 45-frame elevated-profile/yaw PASS; machine fidelity 90.60 / minimum view 90.55; prior da6f7fba retired) |
 | t90a | 810a6f18 | GRADUATED 2026-08-10 (§5.94 Leclerc-method cast-turret rebuild; gate 90.4 x2; standard/track/winding clean; independent §B8 floor 9.0 / mean 9.11 x14, yaw/load paths 9.2) |
 | t90a_vladimir | c13fec50 | GRADUATED 2026-08-10 (§5.94 source-specific compact ESSA/cast-turret/transom rebuild; gate 90.0 x2; standard/track/winding adjudicated; independent §B8 floor 9.0 / mean 9.01 x14, yaw/load paths 9.3) |
 | t90sm | 7efc69c9 | GRADUATED 2026-08-10; RE-FROZEN §5.105 (owner-priority complete redesign: source-measured low diamond shell retained, solid bustle steps replaced by backed slat cells, deep scalloped inboard skirts and layered rear service field added; gate 90.0 x2; standard/track/winding clean; independent §B8 floor 9.0 / mean 9.08 x14, all 28 yaw frames PASS; prior 56324371 retired) |
@@ -5159,3 +5159,52 @@ only the disclosed incompatible legacy geometry row; clearance, contiguity and
 decoration subgates are green.
 
 **PASS / KEEP `dc760de0`; retire `a21894b8`. Ordered blockers: none.**
+
+## 5.149 BASE T-90 CAST-TURRET / STRICT FULL-COURSE RE-CERTIFICATION (2026-08-12, RE-FROZEN)
+
+The active `t90` playable remains fully first-party procedural geometry in
+`src/vehicles/profiles/t90.js`. The comparison GLB is quarantined private
+measurement/render material only; no source mesh, vertex/index payload,
+material, texture, rig, animation or runtime wrapper enters gameplay or the
+public build.
+
+The rejected sphere primitive remains retired. The current casting is one
+explicit eight-section asymmetric pear/cast loft: its lower shoulders swell
+beyond the crown, the forward mantlet valley pinches, the rear drops sharply,
+and unequal left/right widths carry the planted K-5, buried Shtora, smoke and
+commander/NSVT/night-sight suite. This round preserves that accepted authored
+turret and closes the last mechanical defects beneath it. The broad central
+sponson underside now rises above the complete return band while the deck and
+outer silhouette stay fixed. Fixed spare links move from beneath the rotating
+casting to a shallow pitched seat on the forward glacis outside the complete
+turret-yaw envelope.
+
+Exact band front/rear, shoe front/rear and strict full moving sweep receipts
+are all **0/0**. Parent audit is **0 stranded / 0 abutting / 0 dangling**;
+winding is 0 reversed / 0 mixed with one visually null rear-left pixel
+(0.00%), the complete rig passes 10/10 and muzzle-bore contrast is 103.2.
+
+Freeze **`692a0eb9`** reproduces twice at 69 rendered meshes / 114,432
+vertices. Quantitative fidelity is **90.60 aggregate**, required-view floor
+**90.55**, with whole **91.72**, hull **91.93**, gun **92.50** and native
+tracks **95.26**. The direct turret mask remains **83.96** because the authored
+section loft and planted modules are not a copied instance of the comparison
+mesh. The source-component-calibrated legacy geometry row remains an honest
+incompatible **0** (hull 68.7 / whole 56.8 / turret 48.4 / stations 81.8 /
+dimensions 0 / floaters 0); neither row is gamed into a false pass.
+
+The final packet at `/private/tmp/t90-clearance-final-r12/t90` contains 15
+paired, 15 yaw0 and 15 yaw90 views including the standardized elevated-left
+profile: **45 PNGs / 45 distinct hashes**. Fresh standard-order inspection
+records `[9.2,9.2,9.1,9.1,9.1,9.1,9.1,9.2,9.2,9.3,9.2,9.3,9.3,9.3]`,
+floor **9.1** and mean **9.19**. The gun/mantlet, complete cast loft, every K-5
+course, both Shtora units, smoke, cupolas, sights, NSVT, roof fittings,
+antennas and rear turret package perform a genuine quarter-turn over the fixed
+cleared hull, glacis stowage, service field and six-wheel native course. No
+fused, stranded, floating, collision, winding or sky-hole defect is visible.
+
+Targeted assets/currentness, muzzle and native-playable provenance pass. The
+standard aggregator retains only the disclosed incompatible legacy geometry
+row; strict clearance, rig, ownership and visual evidence are green.
+
+**PASS / KEEP `692a0eb9`; retire `da6f7fba`. Ordered blockers: none.**

@@ -3772,7 +3772,7 @@ function buildT90(P) {
     // underside above it while the narrowed pressure tub remains inboard of
     // the inner pad edge; this preserves the outer silhouette with a real
     // mechanical corridor instead of intersecting hidden track geometry.
-    sponsonY: [[-3.43, 1.10], [-2.90, 1.22], [-2.82, 1.40], [-2.05, 1.40], [-1.80, 1.02], [2.42, 0.86], [2.52, 1.18], [3.43, 1.18]],
+    sponsonY: [[-3.43, 1.10], [-2.90, 1.22], [-2.82, 1.40], [-2.05, 1.40], [-1.80, 1.20], [2.42, 1.20], [2.52, 1.18], [3.43, 1.18]],
   });
   // CENTER GLACIS SLAB — the print's true falling plate (1.46 @ 1.75 ->
   // the 0.84 bow edge; the hull-era rows lie ON it), full closed slab at
@@ -3872,9 +3872,13 @@ function buildT90(P) {
   KIT.towCable(P, [[-1.25, 1.46, 2.30], [0, 1.38, 1.90], [1.25, 1.46, 2.30]]);
   stowage(P, 'hull', P.rng, [[-0.85, 1.42, -2.86, 1.19, 0.09, 0.30]]);
   {
-    // spare track links flat on the forward deck (flush-recess law)
+    // Spare links follow the forward glacis outside the complete turret yaw
+    // envelope. Their shallow pitch matches the falling plate so the fixed
+    // hull stowage remains visibly seated instead of hiding beneath the
+    // rotating casting.
     const links = FITTINGS.spareTrackLinks({ mats: P.mats, links: 4, width: 0.5, seed: 7 });
-    links.position.set(0.55, 1.495, 0.55);
+    links.position.set(0.55, 1.445, 2.20);
+    links.rotation.x = 0.11;
     P.hullG.add(links);
   }
   const t90Gear = {

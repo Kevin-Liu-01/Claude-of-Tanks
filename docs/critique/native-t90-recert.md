@@ -1,41 +1,45 @@
-# Base T-90 first-party re-certification
+# Base T-90 first-party cast-turret and clearance re-certification
 
 The active `t90` playable is entirely repository-authored procedural geometry.
-The comparison model is isolated to measurement and visual review; no
+The private comparison model is isolated to measurement and visual review; no
 comparison vertices, converted arrays, materials, textures, rig, animation or
 runtime wrapper enter the playable.
 
 ## Frozen candidate
 
-- Geometry hash: `35a932c0`
-- Meshes / vertices: 68 / 120,828
-- Fidelity: 90.47 aggregate, every required silhouette at least 90.29
-- Components: whole 91.77, hull 92.12, turret 82.55, gun 93.27, tracks 95.21
-- Exact terminal containment: 0 / 0 smooth-band and 0 / 0 individual-shoe
-  intersections, front and rear
-- Winding: 0 reversed, 0 mixed and zero render-deficit pixels
-- Evidence: `/tmp/critic-t90-native-final-r3` contains 42 PNGs with 42
-  distinct hashes
+- Geometry hash: `692a0eb9` (repeatable twice)
+- Meshes / vertices: 69 / 114,432
+- Fidelity: 90.60 aggregate, every measured silhouette at least 90.55
+- Components: whole 91.72, hull 91.93, turret 83.96, gun 92.50, tracks 95.26
+- Exact containment: terminal bands 0/0, shoes 0/0, full strict sweep 0/0
+- Parent audit: 0 stranded / 0 abutting / 0 dangling
+- Winding: 0 reversed / 0 mixed; one visually null pixel (0.00%)
+- Rig: 10/10; muzzle contrast: 103.2
+- Evidence: `/private/tmp/t90-clearance-final-r12/t90`, 45 PNGs / 45 hashes
 
 ## Geometry and pixel review
 
-The previous under-wheeled, high-sided presentation is retired. The authored
-hull now has a narrowed pressure-tub corridor, lifted sponson undersides, a
-closed tapered center glacis, restrained mudflaps and supported stern service
-reach. Six full-size native road wheels fill one continuous linked-shoe course
-without touching the bow, stern, belly or sponson. The low cast turret is
-seated on the deck datum and carries irregular planted protection, buried
-Shtora, a corrected full-length gun, commander/NSVT/night-sight station,
-smoke banks, roof equipment and a supported rear rack.
+The rejected half-sphere primitive is not used. The turret is one explicit
+eight-section asymmetric pear/cast loft whose shoulder, crown, mantlet valley
+and rear-drop sections are authored in this repository. Irregular buried K-5,
+Shtora shoulders, unequal smoke banks, roof stations, NSVT and rear fittings
+break up and physically seat on that casting without copying comparison
+geometry.
 
-All fourteen paired directions and all twenty-eight yaw frames were inspected.
-They show a genuine quarter-turn: gun and mantlet, complete cast shell,
-protection, sights, cupola/NSVT, smoke, antennas and rear turret rack rotate as
-one supported package. Glacis, lamps, deck, skirts, service field, wheels and
-tracks remain fixed. The parent-audit `fitting_spareTrackLinks` nominee is
-legitimate fixed forward-deck stowage revealed when the turret turns.
+The central sponson underside now clears the complete native return course
+while retaining the accepted deck and side silhouette. Six full-size road
+wheels remain inside one continuous linked-shoe course with clean idler and
+sprocket transitions. The forward spare-link course now follows the glacis on
+a visible fixed seat outside the complete turret yaw envelope.
 
-No fused duplicate turret, stranded turret fitting, empty-air decoration,
-donor running gear, open sheet, sky-through wound or yaw-dependent backface
-pop is visible. Keep `35a932c0` as the first-party base T-90 and make future
-surface or station improvements in place.
+Fresh vector:
+`[9.2,9.2,9.1,9.1,9.1,9.1,9.1,9.2,9.2,9.3,9.2,9.3,9.3,9.3]`;
+floor 9.1, mean 9.19. All 45 frames were inspected. They show a genuine
+quarter-turn: gun/mantlet, complete cast loft, K-5/Shtora, sights, cupolas,
+NSVT, smoke, antennas and rear turret package rotate together. Glacis,
+forward links, deck, skirts, rear service field, wheels and tracks stay fixed.
+
+No fused duplicate turret, stranded fitting, empty-air decoration, donor
+running gear, track collision, open sheet, sky-through wound or yaw-dependent
+backface pop is visible. **PASS / KEEP `692a0eb9`; retire `35a932c0` and
+`da6f7fba`.**
