@@ -1094,7 +1094,7 @@ function buildRunningGear(P, cfg) {
     const shadowH = cfg.bayShadowTop ?? (topY + 0.1);
     for (const side of [-1, 1]) {
       const sideXc = xcForSide(side);
-      P.add('hullShadow', new THREE.BoxGeometry(0.02, shadowH, z1 - z0),
+      P.add('hullRunningGearShadow', new THREE.BoxGeometry(0.02, shadowH, z1 - z0),
         side * (sideXc - wheelW * 2.0), shadowH / 2 + 0.03, (z0 + z1) / 2);
     }
   }

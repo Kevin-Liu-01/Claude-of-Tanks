@@ -1691,7 +1691,7 @@ function buildTigerI(P) {
   // BOTH wrap discs (sprocket 2.53, idler −2.62) and the merged wall pair
   // reads as a center-crossing audit candidate. Re-authored identically
   // but ending at ±2.50, outside both zone windows.
-  P.clear('hullShadow');
+  P.clear('hullRunningGearShadow');
   for (const s of [-1, 1]) {
     P.add('hullRunningGearDark', new THREE.BoxGeometry(0.02, 1.27, 5.00), s * 1.22, 0.665, 0);
   }
