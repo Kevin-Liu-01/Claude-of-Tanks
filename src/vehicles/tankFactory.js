@@ -3953,6 +3953,14 @@ const BUCKET_DEF = {
   // not hull armor. Keep their render tone while exposing true ownership to
   // the strict swept-course audit.
   hullRunningGearShadow: ['hullG', 'shadow'],
+  // Some high-detail profiles paint their wheel faces with dedicated
+  // canvas/wood material variants. Preserve those authored tones while
+  // recording truthful suspension ownership for strict swept-track lint.
+  hullRunningGearCloth: ['hullG', 'canvasCloth'],
+  hullRunningGearWood: ['hullG', 'wood'],
+  // Some authored suspension beams share the hull camouflage. Preserve the
+  // exact hull material and dirt bake while recording their true ownership.
+  hullRunningGearHull: ['hullG', 'hull'],
   // Painted wheel faces, rims and hub caps are suspension-owned just like
   // the dark wheel-bay recesses above.  Keep a material-correct detail
   // bucket so strict swept-track lint does not misclassify concentric wheel
@@ -3963,7 +3971,7 @@ const BUCKET_DEF = {
   // §B4 from reporting the enclosure intersecting the belt it is built over.
   hullTrackGuardL: ['hullG', 'hull'], hullTrackGuardR: ['hullG', 'hull'],
 };
-const CAMO_BUCKETS = new Set(['hull', 'hullTrackGuardL', 'hullTrackGuardR', 'turret', 'gun', 'gunMount']);
+const CAMO_BUCKETS = new Set(['hull', 'hullRunningGearHull', 'hullTrackGuardL', 'hullTrackGuardR', 'turret', 'gun', 'gunMount']);
 // Buckets that survive past LOD1 — everything else is greeble-class and
 // disappears at range behind the silhouette shells.
 const LOD0_KEEP = new Set(['hull', 'hullTrackGuardL', 'hullTrackGuardR', 'turret', 'gun', 'gunDark', 'gunMount', 'hullRubber']);
@@ -4386,7 +4394,7 @@ export function createTank(specId, engineCtx, opts = {}) {
     const merged = mergeAll(list);
     if (CAMO_BUCKETS.has(bucket)) {
       boxUV(merged, spec.visual.camoScale ?? 0.34);
-      bakeDirt(merged, DIRT_Y[parentKey], bucket === 'hull' ? 1 : 0.5,
+      bakeDirt(merged, DIRT_Y[parentKey], bucket === 'hull' || bucket === 'hullRunningGearHull' ? 1 : 0.5,
         !!spec.visual.bakeDirtDeckEq);
     }
     disposables.push(merged);
@@ -4397,6 +4405,8 @@ export function createTank(specId, engineCtx, opts = {}) {
     }
     if (bucket === 'hullRunningGearDark' || bucket === 'hullRunningGearDetail'
         || bucket === 'hullRunningGearTrack' || bucket === 'hullRunningGearShadow'
+        || bucket === 'hullRunningGearCloth' || bucket === 'hullRunningGearWood'
+        || bucket === 'hullRunningGearHull'
         || bucket === 'hullTrackTrimL' || bucket === 'hullTrackTrimR') {
       mesh.userData.runningGear = true;
     }

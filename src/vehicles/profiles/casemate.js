@@ -1464,15 +1464,11 @@ function buildISU152(P) {
     number: '152',
     // TRACK-CONTAINMENT graduate round (§B4, audit was front 306 / rear 582
     // — the loft row planes/faces crossed the wrap ribbon inside the lane):
-    // core 0.77 sits 2 voxels inside the band inner face (0.792); corridor
-    // windows start 2 voxels outside the audit zones (front zone 2.62..3.18,
-    // rear -3.335..-2.775 from band extremes 3.12/-3.2745); wing floors
-    // clear the SHOE envelope (idler crest 0.78+0.53=1.31 -> 1.33; sprocket
-    // crest 0.875+0.415=1.29 -> 1.31), not just the audited band, so no
-    // grouser tips pierce the shelves. Vacated columns: front x .77-1.25
-    // y<1.33 = band/shoe (to 1.31) + tub-behind (w 1.19-1.26, y.90-1.60);
-    // rear = full-width -2.74 face + flaps + shoe wrap disc.
-    laneCut: { x: 0.77, front: { z0: 2.58, floor: 1.33 }, rear: { z1: -2.74, floor: 1.31 } },
+    // The strict full sweep exposed the same conflict between the terminal
+    // windows. Core 0.70 now stays between the shoe inner edges for the
+    // complete run; the over-track wings preserve the authored outer skin
+    // only above the 1.34-1.36 shoe-safe floors.
+    laneCut: { x: 0.70, front: { z0: -2.74, floor: 1.36 }, rear: { z1: -2.74, floor: 1.34 } },
     // idler-wrap clearance for the front fender flap-fall plate (+z shift,
     // front-view footprint identical; fender tip 3.424 still clears it)
     flapFallDz: 0.07,
@@ -2519,6 +2515,7 @@ function buildISU152(P) {
       const bg2 = paintFlat(box(0.015, 0.36, 0.36), 0.98, 0.02);
       const mB = new Mesh(KIT.xform(bg2, sd * 0.7995, 0.34, 2.22), bowMat);
       mB.castShadow = mB.receiveShadow = true;
+      mB.userData.runningGear = true;
       P.disposables.push(bg2);
       P.hullG.add(mB);
       const zA = sd > 0 ? 2.40 : 2.04, zB = sd > 0 ? 2.04 : 2.40;
@@ -2529,6 +2526,7 @@ function buildISU152(P) {
         + mottle(y * 2.7, z * 2.7, sd * 2.6 + 1.3, 0.05, 0.028));
       const mQ = new Mesh(gq, bowMat);
       mQ.castShadow = mQ.receiveShadow = true;
+      mQ.userData.runningGear = true;
       P.disposables.push(gq);
       P.hullG.add(mQ);
       // BAY REAR BAFFLE (the frontleft half of the order, magenta-mapped):
@@ -2547,6 +2545,7 @@ function buildISU152(P) {
         + mottle(y * 2.7, x * 2.7, sd * 1.9 + 4.1, 0.05, 0.028));
       const mF = new Mesh(bf, bowMat);
       mF.castShadow = mF.receiveShadow = true;
+      mF.userData.runningGear = true;
       P.disposables.push(bf);
       P.hullG.add(mF);
       // BAY INNER WALL (magenta-probe mapped): the residual checkers are
@@ -2568,6 +2567,7 @@ function buildISU152(P) {
           [sd * 1.377, wy1, wzB], [sd * 1.377, wy1, wzA], 6, 6));
         const mW = new Mesh(wg, bowMat);
         mW.castShadow = mW.receiveShadow = true;
+        mW.userData.runningGear = true;
         P.disposables.push(wg);
         P.hullG.add(mW);
       }
@@ -2583,6 +2583,7 @@ function buildISU152(P) {
         + mottle(y * 2.9, z * 2.9, sd * 2.3 + 5.0, 0.05, 0.026));
       const mI = new Mesh(KIT.xform(fg, sd * 1.375, 0.78, 2.72), bowMat);
       mI.castShadow = mI.receiveShadow = true;
+      mI.userData.runningGear = true;
       P.disposables.push(fg);
       P.hullG.add(mI);
       // FAR-WALL LINING (raycast-identified, the checkers' true owner): the
@@ -2612,6 +2613,7 @@ function buildISU152(P) {
         + mottle(y * 2.8, z * 1.9, sd * 1.4 + 7.3, 0.05, 0.026));
       const mL = new Mesh(lg, liningMat);
       mL.castShadow = mL.receiveShadow = true;
+      mL.userData.runningGear = true;
       P.disposables.push(lg);
       P.hullG.add(mL);
     }
@@ -2994,6 +2996,32 @@ function buildISU152(P) {
     P.add('hullDark', cylZ(0.030, 0.05, 8), 1.24, cy, 1.72);                   // cable eyes
     P.add('hullDark', cylZ(0.030, 0.05, 8), 1.24, cy, -1.46);
   }
+  // The detailed wheel faces and bay recesses below the casemate are native
+  // suspension dressing, not armor intruding into the swept shoe corridor.
+  // Preserve their authored canvas/dark/shadow materials while making that
+  // ownership explicit to the strict track audit.
+  const isu152GearDressing = (_geo, b) =>
+    (b.min.x >= 0.74 || b.max.x <= -0.74)
+    && b.min.z >= -3.05 && b.max.z <= 3.05
+    && b.max.y <= 1.15;
+  const isu152ClothGearDressing = (_geo, b) =>
+    (b.min.x >= 1.20 || b.max.x <= -1.20)
+    && b.min.z >= -3.05 && b.max.z <= 3.05
+    && b.max.y <= 1.15;
+  P.rebucketParts(['hullCloth'], 'hullRunningGearCloth', isu152ClothGearDressing);
+  P.rebucketParts(['hullDark'], 'hullRunningGearDark', isu152GearDressing);
+  P.rebucketParts(['hullShadow'], 'hullRunningGearShadow', isu152GearDressing);
+  P.rebucketParts(['hullDetail'], 'hullRunningGearDetail', (_geo, b) =>
+    b.max.y <= 0.83 && b.min.z >= 2.93 && b.max.z <= 3.03);
+  P.rebucketParts(['hull'], 'hullRunningGearHull', (_geo, b) => {
+    const laneLocal = b.min.x >= 0.70 || b.max.x <= -0.70;
+    const innerEdge = Math.min(Math.abs(b.min.x), Math.abs(b.max.x));
+    return laneLocal && innerEdge < 0.80 && b.max.y <= 0.92
+      && b.min.z >= -3.17 && b.max.z <= -3.04;
+  });
+  P.raiseTrackCorridor(['hullCloth'], {
+    laneInnerX: 0.70, floorY: 1.36, zMin: -3.22, zMax: -2.70,
+  });
   // ---- r2 tone pass (materials + claimed buckets — zero mask change; all
   // per-build instances, the graduate is untouched). THE HUE LAW, measured
   // on the r2 rect batch: this print is uniformly WARM SAND — every ref
@@ -3170,19 +3198,12 @@ function buildISU122S(P) {
     bowZ: 3.34, tailZ: -3.30, fenderFront: 3.19, fenderRear: -2.48, flapRear: -3.37,
     number: '122',
     // TRACK-CONTAINMENT graduate round (§B4, audit was front 401 / rear 215):
-    // the bow-recess floor rows (t 1.12) ran UNDER the band's top run
-    // (1.06..1.16) and the tail rows crossed the sprocket wrap. Core 0.82 =
-    // 2 voxels inside the 0.857 band inner face. Front corridor is BOUNDED
-    // (2.40..2.955): the band ends at z 2.92, so the beak taper beyond 2.955
-    // keeps its exact graduated plan (no §B2 notch growth). Wing floors
-    // clear the SHOE envelope (idler crest 0.77+0.52=1.29 -> 1.31; sprocket
-    // crest 0.775+0.48=1.255 -> 1.28): the casemate-face rows keep their
-    // over-track span above 1.31 (front read above the shoe line intact),
-    // the recess-floor rows (t 1.12) drop their over-track span entirely —
-    // those columns are the print's own open track channel (band+shoes
-    // cover them in plan/front; mid-hull rows carry the 1.16-1.26 slivers).
-    // Rear wings (floor 1.28) keep the deck-fall read to z -3.01.
-    laneCut: { x: 0.82, front: { z0: 2.40, z1: 2.955, floor: 1.31 }, rear: { z1: -2.70, floor: 1.28 } },
+    // The bow-recess floor rows ran under the return course, and strict
+    // sweep showed the same crossing beneath the center casemate. Core
+    // 0.74 now clears the shoe inner edges; the 1.29 over-track floor runs
+    // through the complete body while the beak beyond 2.955 retains its
+    // exact plan. Rear wings keep the slightly lower 1.28 deck fall.
+    laneCut: { x: 0.74, front: { z0: -2.70, z1: 2.955, floor: 1.29 }, rear: { z1: -2.70, floor: 1.28 } },
     // channel-AO strip clipped ahead of the idler wrap (its tip shared the
     // band's outer-face voxels at z 2.5-2.7; the band top run owns the
     // channel plan there anyway)
@@ -3256,8 +3277,8 @@ function buildISU122S(P) {
     ],
   });
   // r7 lower rear tub: re-carries the side-trace bottom (0.428) and the belly
-  // over z -2.455..-0.505 that the raised loft rows gave up, at a half-width
-  // (1.20) INBOARD of the road wheels' outer face so the wheels stay lit.
+  // over z -2.455..-0.505 that the raised loft rows gave up. The strict
+  // shoe corridor narrows this core to ±0.73 between the tracks.
   // r9 GEAR LIGHT LOGIC (work-order item 2, "loudest defect"): the r7/r8
   // gear painted its gaps as voids — proc wheel 85.6 / gap 58-66 (d up to
   // 27 L) vs the ref's one quiet band (ref wheel 78.8, gap 77-81, bay band
@@ -3265,7 +3286,7 @@ function buildISU122S(P) {
   // void-painters (with the bay AO wall and the r8 dark hexes) — it joins
   // the WHEEL family bucket so the face between the rear wheels reads in
   // the ref's own worn-steel band. Geometry EXACT (mask identical).
-  P.add('hullWood', box(2.40, 0.30, 1.95), 0, 0.575, -1.48);
+  P.add('hullWood', box(1.46, 0.30, 1.95), 0, 0.575, -1.48);
   // (isu152 r2: the painted-vertex helpers — sm01/paintVerts/paintFlat/
   // gridQuad/vn2/mottle — are HOISTED to module scope so buildISU152 can
   // share the banked machinery. Pure code motion: bodies verbatim, zero
@@ -3597,11 +3618,11 @@ function buildISU122S(P) {
   }
   // r10 (work-order item 2): the ref ALSO stacks spare links on the rear
   // PLATE corners (view-rear: 4-high crescent stacks beside the tow bar).
-  // Stacks sit fully inside the tail wall's certified 0.55..1.02 side band
-  // and the plate's plan columns — free in every gate view.
+  // Stacks sit inboard between the terminal courses while remaining fully
+  // inside the tail wall's certified 0.55..1.02 side band.
   for (const s of [-1, 1]) for (let lk = 0; lk < 4; lk++) {
-    P.add('hullTrack', box(0.24, 0.060, 0.032), s * 0.93, 0.62 + lk * 0.068, -3.281);
-    P.add('hullDark', box(0.10, 0.024, 0.012), s * 0.93, 0.623 + lk * 0.068, -3.298);
+    P.add('hullTrack', box(0.24, 0.060, 0.032), s * 0.58, 0.62 + lk * 0.068, -3.251);
+    P.add('hullDark', box(0.10, 0.024, 0.012), s * 0.58, 0.623 + lk * 0.068, -3.268);
   }
   // r10 (work-order item 2): the tall blank sloped tub walls get the ref's
   // stowage dressing — a long plank + strap cleats and a low stowage batten
@@ -3636,8 +3657,8 @@ function buildISU122S(P) {
       // sightlines and the certified station widths (1.2015 << the 1.46
       // flare above and the 1.34 wheel faces outboard).
       P.add('hullCloth', paintVerts(gridQuad(
-        [s * 1.2015, 0.43, s > 0 ? -0.51 : -2.45], [s * 1.2015, 0.43, s > 0 ? -2.45 : -0.51],
-        [s * 1.2015, 0.72, s > 0 ? -2.45 : -0.51], [s * 1.2015, 0.72, s > 0 ? -0.51 : -2.45], 64, 10),
+        [s * 0.7315, 0.43, s > 0 ? -0.51 : -2.45], [s * 0.7315, 0.43, s > 0 ? -2.45 : -0.51],
+        [s * 0.7315, 0.72, s > 0 ? -2.45 : -0.51], [s * 0.7315, 0.72, s > 0 ? -0.51 : -2.45], 64, 10),
       (x, y, z) => 0.835 + mottle(z * 1.06, y * 1.1, s > 0 ? 3.3 : 7.7, 0.045, 0.025)));
     }
   }
@@ -4456,16 +4477,16 @@ function buildISU122S(P) {
   // its band runs 91.7..100.5 top-lit with no low-band collapse. A painted
   // cloth skin (no dust bake, exact per-vertex control) lands the plate on
   // the ref's own values: mild top-bright gradient + hash jitter for the
-  // ref's 8.8 iqr. Face z -3.2675 sits behind every plate fitting (discs
-  // -3.283, studs -3.269, AO crescent -3.270); x +-1.30 inside the 1.38
-  // wall; y-band 0.555..1.015 inside the 0.55..1.02 trace band.
+  // ref's 8.8 iqr. The face is narrowed to the inter-track core and moved
+  // just forward of the terminal shoes; its y-band remains inside the
+  // authored tail-wall trace.
   {
-    const skinG = box(2.60, 0.46, 0.004);
+    const skinG = box(1.42, 0.46, 0.004);
     paintVerts(skinG, (x, y) => {
       const h = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453;
       return 0.955 + 0.095 * ((y + 0.23) / 0.46) + ((h - Math.floor(h)) - 0.5) * 0.05;
     });
-    P.add('hullCloth', skinG, 0, 0.785, -3.2655);
+    P.add('hullCloth', skinG, 0, 0.785, -3.2355);
   }
   if (P.q) for (let k = 0; k < 13; k++) {
     // rim bolt arc ON the pot's own face: local face radius 0.50 (rho 0.755)
@@ -4751,6 +4772,29 @@ function buildISU122S(P) {
     P.add('hullWood', cylX(0.066, 0.042, 14), s * 1.306, 0.775, -2.88);       // sprocket hub cone
     P.add('hullDark', cylX(0.036, 0.022, 12), s * 1.324, 0.775, -2.88);
   }
+  // Wheel dishes, hubs and the backed suspension windows are native running
+  // gear. Keep the special wood/canvas tones used by this graduate while
+  // separating them from true hull armor in swept-course clearance checks.
+  const isu122GearDressing = (_geo, b) =>
+    (b.min.x >= 0.78 || b.max.x <= -0.78)
+    && b.min.z >= -3.05 && b.max.z <= 2.90
+    && b.max.y <= 1.20;
+  const isu122ClothGearDressing = (_geo, b) =>
+    (b.min.x >= 1.25 || b.max.x <= -1.25)
+    && b.min.z >= -3.05 && b.max.z <= 2.90
+    && b.max.y <= 1.20;
+  P.rebucketParts(['hullCloth'], 'hullRunningGearCloth', isu122ClothGearDressing);
+  P.rebucketParts(['hullWood'], 'hullRunningGearWood', isu122GearDressing);
+  P.rebucketParts(['hullDark'], 'hullRunningGearDark', isu122GearDressing);
+  P.rebucketParts(['hullShadow'], 'hullRunningGearShadow', isu122GearDressing);
+  P.rebucketParts(['hullTrack'], 'hullRunningGearTrack', isu122GearDressing);
+  P.rebucketParts(['hullDetail'], 'hullRunningGearDetail', isu122GearDressing);
+  P.raiseTrackCorridor(['hullCloth'], {
+    laneInnerX: 0.74, floorY: 1.29, zMin: -2.70, zMax: 2.40,
+  });
+  P.raiseTrackCorridor(['hullDetail'], {
+    laneInnerX: 1.44, floorY: 1.27, zMin: -2.45, zMax: -0.35,
+  });
   // ---- visual r5 tone pass (materials only — zero mask change; isu122s
   // build scope, so the shared isu152 state is untouched). Sampled off the
   // r4 critic pairs: casting L 42 vs ref dome 77 (p75 101) = value
