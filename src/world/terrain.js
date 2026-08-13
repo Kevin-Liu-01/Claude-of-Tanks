@@ -632,31 +632,39 @@ function fieldSample(g, u, v) {
   let x = u * s - 0.5, y = v * s - 0.5;
   let x0 = Math.floor(x), y0 = Math.floor(y);
   const fx = x - x0, fy = y - y0;
-  x0 = ((x0 % s) + s) % s; y0 = ((y0 % s) + s) % s;
-  const x1 = (x0 + 1) % s, y1 = (y0 + 1) % s;
+  // SPLAT_FIELD_S is a power of two and callers pass wrapped coordinates.
+  // Masking keeps the exact repeat-wrap result while avoiding four modulo
+  // operations for each of the millions of grass-scatter grid reads.
+  const mask = s - 1;
+  x0 &= mask; y0 &= mask;
+  const x1 = (x0 + 1) & mask, y1 = (y0 + 1) & mask;
   const g00 = g[y0 * s + x0], g10 = g[y0 * s + x1];
   const g01 = g[y1 * s + x0], g11 = g[y1 * s + x1];
   return g00 + (g10 - g00) * fx + (g01 - g00) * fy + (g00 - g10 - g01 + g11) * fx * fy;
 }
-export function sampleSplatNoise(x, z) {
+function wrapUnit(t) { return t - Math.floor(t); }
+export function sampleSplatNoise(x, z, out = null) {
   const f = splatFields();
-  const w = (t) => ((t % 1) + 1) % 1;
   // r6: mirror the shader's domain warp (wOff in splatCompute) — the dirt/
   // clump fields are sampled at WARPED coordinates on the GPU, so vegetation
   // thinning must read the same warped fields or grass and dirt de-correlate
-  const uw = w(x * 0.0009 + 0.53), vw = w(z * 0.0009 + 0.17);
+  const uw = wrapUnit(x * 0.0009 + 0.53), vw = wrapUnit(z * 0.0009 + 0.17);
   const wr = fieldSample(f.a, uw, vw);
   const wg = fieldSample(f.b, uw, vw);
   const wx = x + wr * 0.5 * 48, wz = z + wg * 0.5 * 48;
-  const n1 = fieldSample(f.a, w(wx * 0.0117), w(wz * 0.0117));
-  const n2 = fieldSample(f.b, w(wx * 0.0031 + 0.41), w(wz * 0.0031 + 0.13));
+  const n1 = fieldSample(f.a, wrapUnit(wx * 0.0117), wrapUnit(wz * 0.0117));
+  const n2 = fieldSample(f.b, wrapUnit(wx * 0.0031 + 0.41), wrapUnit(wz * 0.0031 + 0.13));
   // mA: the CPU twin of the shader's meadowA field — the dry-straw patchwork
   // tint. Grass tufts read it so the blade carpet carries the same yellow-
   // brown patches the ground albedo shows. r7: TWO-SCALE composite matching
   // the shader (0.0121 .r x0.62 + 0.00779 .g x0.38 — the 83 m repeat break).
-  const mA = fieldSample(f.a, w(wx * 0.0121 + 0.63), w(wz * 0.0121 + 0.29)) * 0.62
-    + fieldSample(f.b, w(wx * 0.00779 + 0.19), w(wz * 0.00779 + 0.71)) * 0.38;
-  return { n1: n1 * 0.5 + 0.5, n2: n2 * 0.5 + 0.5, mA: mA * 0.5 + 0.5 };
+  const mA = fieldSample(f.a, wrapUnit(wx * 0.0121 + 0.63), wrapUnit(wz * 0.0121 + 0.29)) * 0.62
+    + fieldSample(f.b, wrapUnit(wx * 0.00779 + 0.19), wrapUnit(wz * 0.00779 + 0.71)) * 0.38;
+  const result = out || {};
+  result.n1 = n1 * 0.5 + 0.5;
+  result.n2 = n2 * 0.5 + 0.5;
+  result.mA = mA * 0.5 + 0.5;
+  return result;
 }
 
 const _col = new THREE.Color();

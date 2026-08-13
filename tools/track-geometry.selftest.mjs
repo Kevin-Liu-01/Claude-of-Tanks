@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import * as THREE from 'three';
 import { KIT } from '../src/vehicles/tankFactory.js';
 
 const signedArea2 = (points) => points.reduce((sum, a, i) => {
@@ -41,6 +42,87 @@ assert.ok(innerBox.min.y<padBox.min.y-0.24,'inner chain and guide horn must form
 assert.ok(innerBox.max.x>=0.30&&innerBox.min.x<=-0.30,'transverse pin caps must reach both outer faces');
 shoe.pad.dispose();
 shoe.inner.dispose();
+
+// The loaded run must physically bend with its bogies. This catches both
+// historical clamps that made the wheels move behind an unchanged ruler-flat
+// belt: deformBand's -2 cm floor and the link pad's absolute Y floor.
+{
+  const mat = () => new THREE.MeshBasicMaterial();
+  const materials = [mat(), mat(), mat(), mat(), mat(), mat(), mat(), mat()];
+  const [trackL, trackR, trackLink, dark, detail, rubber, wheels, wheelsRecessed] = materials;
+  const P = {
+    mats: {
+      trackL, trackR, trackLink, dark, detail, rubber, wheels, wheelsRecessed,
+      spareTrack: dark,
+      trackLinkM: 0.66,
+      trackTexL: { offset: { y: 0 } },
+      trackTexR: { offset: { y: 0 } },
+    },
+    hullG: new THREE.Group(),
+    q: false,
+    disposables: [],
+    gear: null,
+    add() {},
+  };
+  KIT.buildRunningGear(P, {
+    style: 'rubber', wheelR: 0.34, wheelW: 0.13, xc: 1.2,
+    wheelZs: [-2, -1, 0, 1, 2],
+    sprocket: { z: 2.75, y: 0.47, r: 0.35 },
+    idler: { z: -2.75, y: 0.45, r: 0.33 },
+    trackW: 0.56, topY: 1.05,
+  });
+  const belt = P.hullG.getObjectByName('gearTrackBandL');
+  assert.ok(belt, 'procedural gear exposes its deformable left belt');
+  const attr = belt.geometry.getAttribute('position');
+  const before = attr.array.slice();
+  const rootY = -P.gear.contactGeom.bottomYM;
+  const state = {
+    pos: new THREE.Vector3(0, rootY, 0), yaw: 0,
+    visualPitch: 0, visualRoll: 0,
+  };
+  const rut = (x, z) => Math.abs(z) < 0.55 ? -0.14 : 0;
+  for (let i = 0; i < 8; i++) P.gear.conform(state, rut, 0, 0, 1 / 30);
+  P.gear.update(0, 0);
+  let centerDrop = 0;
+  let centerN = 0;
+  let shoulderDrop = 0;
+  let shoulderN = 0;
+  for (let i = 0; i < attr.count; i++) {
+    const j = i * 3;
+    if (before[j + 1] > 0.16) continue; // loaded lower run only
+    const drop = before[j + 1] - attr.array[j + 1];
+    const z = before[j + 2];
+    if (Math.abs(z) < 0.35) { centerDrop += drop; centerN++; }
+    if (Math.abs(Math.abs(z) - 1.0) < 0.25) { shoulderDrop += drop; shoulderN++; }
+  }
+  centerDrop /= Math.max(centerN, 1);
+  shoulderDrop /= Math.max(shoulderN, 1);
+  assert.ok(centerDrop > 0.08,
+    `loaded track run follows a 14 cm rut (center drop ${centerDrop.toFixed(3)} m)`);
+  assert.ok(centerDrop > shoulderDrop + 0.05,
+    `track belt bends locally instead of translating rigidly (${centerDrop.toFixed(3)} vs ${shoulderDrop.toFixed(3)} m)`);
+
+  // Shoes must rotate with that curve as well as translate. A V-shaped
+  // loaded run with every pad still parallel to the hull was the remaining
+  // visual tell that the tracks were a texture strip rather than a chain.
+  const pads = P.hullG.getObjectByName('gearTrackPads');
+  assert.ok(pads?.isInstancedMesh, 'procedural gear exposes linked track pads');
+  const matrix = new THREE.Matrix4();
+  const p = new THREE.Vector3(), q = new THREE.Quaternion(), s = new THREE.Vector3();
+  const e = new THREE.Euler();
+  let maxLoadedPitch = 0;
+  for (let i = 0; i < pads.count; i++) {
+    pads.getMatrixAt(i, matrix);
+    matrix.decompose(p, q, s);
+    if (p.x > 0 || p.y > 0.16 || Math.abs(p.z) > 0.80 || Math.abs(p.z) < 0.12) continue;
+    e.setFromQuaternion(q, 'XYZ');
+    maxLoadedPitch = Math.max(maxLoadedPitch, Math.abs(e.x));
+  }
+  assert.ok(maxLoadedPitch > 0.07,
+    `individual shoes rotate onto the locally bent run (${maxLoadedPitch.toFixed(3)} rad)`);
+  for (const disposable of P.disposables) disposable.dispose?.();
+  for (const material of materials) material.dispose();
+}
 
 // ---- TRACK-HITBOX derivation (owner order 2026-08-06) ----------------------
 // trackHitboxHull turns the band loop into the hit-test silhouette: a small

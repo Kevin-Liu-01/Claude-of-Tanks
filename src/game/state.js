@@ -31,6 +31,7 @@ import { hasCamoPaint, setCamoOverride, clearCamoOverrides, applyCamoPatterns } 
 import {
   loadEquipment as loadEquipmentCatalog, applyEquipmentToCombat, defaultLoadoutFor,
 } from './equipment.js';
+import { getDeviceTier } from '../engine/quality.js';
 
 export function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
   t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
@@ -182,8 +183,9 @@ export function spawnTanks(game, engineCtx) {
         aimPoint: new THREE.Vector3(), shellSlot: 0,
       },
       visual: null,
-      // gameplay_feel r5: true once the visual GLB-swaps (rigid running gear,
-      // no per-wheel conform) — movement.js hard-clamps its support fan then.
+      // True when the rendered running gear lacks a complete wheel + belt
+      // terrain-conformance layer. Some comparison GLBs remain rigid; newer
+      // imports publish __glbConformingGear after both layers are discovered.
       rigidGear: false,
       // gameplay_feel r7: measured GLB contact footprint (null = procedural
       // spec fractions). Stamped with rigidGear — see measureContactGeom.
@@ -246,7 +248,7 @@ export function ensureStagedVisuals(game, limit = Infinity) {
 export function nextStagedBake(game) {
   const ent = game.tanks.find((e) => !e.visual);
   if (!ent) return null;
-  const hero = ent.isPlayer || ent === game.tanks[0] || HERO_TEX_SPECS.has(ent.specId);
+  const hero = usesHeroTextureTier(game, ent);
   return { ent, quality: hero ? 'high' : 'ai' };
 }
 
@@ -268,7 +270,7 @@ export function ensureTankVisual(game, ent) {
   // place). AI roster fills bake at half size: 5-7 full hero sets per battle
   // measured 666-685 MB scene textures vs the FROZEN 512 MB gate, and each
   // 2048² bake costs 250-350 ms of main-thread canvas work.
-  const hero = ent.isPlayer || ent === game.tanks[0] || HERO_TEX_SPECS.has(ent.specId);
+  const hero = usesHeroTextureTier(game, ent);
   ent.visual = createTank(ent.specId, engineCtx, {
     camoSeed: ent._camoSeed, quality: hero ? 'high' : 'ai',
   });
@@ -288,6 +290,14 @@ export function ensureTankVisual(game, ent) {
 // PERF r3: specs whose closeup contract shots (tank_closeup_*) frame the
 // vehicle at 3-6 m — always hero texture tier regardless of roster role.
 const HERO_TEX_SPECS = new Set(['m1a2', 'tiger1', 't34_85', 't90m', 'leo2a7']);
+
+function usesHeroTextureTier(game, ent) {
+  // The first participant is the player before setupBattle stamps isPlayer.
+  // Mobile keeps that close camera subject at hero resolution, but distant
+  // bots use the AI tier. Garage selection still upgrades its shared entry.
+  if (ent.isPlayer || ent === game.tanks[0]) return true;
+  return getDeviceTier() !== 'mobile' && HERO_TEX_SPECS.has(ent.specId);
+}
 
 // Matchmaking and every tier badge consume the same canonical table in
 // vehicles/tier.js. This prevents a newly added tank from showing one tier in
@@ -458,6 +468,7 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
     // a recycled slot may get a procedural (conform-capable) visual next.
     ent.rigidGear = false;
     ent.contactGeom = null; // r7: measured footprint dies with the visual too
+    ent._glbContactStampedVisual = null;
     if (ent.visual) {
       if (ent.visual.resetDestroyed) ent.visual.resetDestroyed();
       ent.visual.setVisible(false);
@@ -842,31 +853,30 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
 // ---------------------------------------------------------------------------
 
 /**
- * gameplay_feel r5 (terrain-contact hard gate): stamp `ent.rigidGear = true`
- * once the entity's visual has GLB-swapped. movement.js softens its wheel-run
- * support lines (FAN_YIELD) only on the premise that tankFactory's per-wheel
- * conform layer absorbs the yielded terrain — modelLoader.applySwap HIDES the
- * procedural running gear (stamping hullG.userData.__glbSwapped on the hull
- * group, a direct child of the visual root) and renders rigid GLB wheels
- * with no conform, so the yield buried them up to 9 cm on rough corridors.
- * The swap is one-way and can land any time after the visual builds (deferred
- * stream-in), so poll the direct root children each tick until found — a
- * handful of flag reads per tank, no traversal. movement.js reads the flag
- * and hard-clamps every support line for rigid gear.
+ * Track whether the active visual has genuinely terrain-conforming running
+ * gear. A comparison GLB starts in conservative rigid mode; tankFactory only
+ * publishes __glbConformingGear after both live wheel suspension and a
+ * deformable track run are found. This preserves the no-clip hard clamp for
+ * incomplete imports while capable gear uses the compliant support solve.
+ * Poll direct root children because a swap/capability bit may land after
+ * staging. The measured footprint itself is scanned once per visual.
  * @param {object} ent pool entity
  * @returns {void}
  */
 function refreshRigidGear(ent) {
-  if (ent.rigidGear || !ent.visual || !ent.visual.root) return;
+  if (!ent.visual || !ent.visual.root) return;
   const kids = ent.visual.root.children;
   for (let i = 0; i < kids.length; i++) {
     const ud = kids[i].userData;
     if (ud && ud.__glbSwapped) {
-      ent.rigidGear = true;
+      ent.rigidGear = ud.__glbConformingGear !== true;
       // gameplay_feel r7 (terrain-contact hard gate, FLOAT side): measure the
       // swapped visual's true ground-contact footprint and publish it for the
       // movement.js support solve — see measureContactGeom.
-      ent.contactGeom = measureContactGeom(ent);
+      if (ent._glbContactStampedVisual !== ent.visual) {
+        ent.contactGeom = measureContactGeom(ent);
+        ent._glbContactStampedVisual = ent.visual;
+      }
       return;
     }
   }

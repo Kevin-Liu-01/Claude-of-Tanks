@@ -11,7 +11,7 @@ import { sampleSplatNoise, applyTone } from './terrain.js';
 import { setToppleAxis, settledToppleAngle } from './topple.js';
 import { setCircleShape } from './collision.js';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
-import { texSize } from '../engine/quality.js';
+import { getDeviceTier, texSize } from '../engine/quality.js';
 
 export function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
   t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
@@ -1446,7 +1446,7 @@ function buildBushCards(rng, pal = {}) {
  *   setWindTime:function(number):void, treeObstacles:Array<{min:number[],max:number[]}>}}
  */
 export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null) {
-  const g = vegetationBuildSteps(heightField, engineCtx, seed, cfg);
+  const g = vegetationBuildSteps(heightField, engineCtx, seed, cfg, false);
   let r = g.next();
   while (!r.done) r = g.next();
   return r.value;
@@ -1463,19 +1463,33 @@ export function createVegetation(heightField, engineCtx, seed = 2001, cfg = null
  */
 export async function createVegetationAsync(heightField, engineCtx, seed = 2001, cfg = null,
   tick = null, fineSlices = false) {
-  const g = vegetationBuildSteps(heightField, engineCtx, seed, cfg);
+  // A phone only needs the grass chunks around its first spawn immediately;
+  // deterministic far chunks stream well ahead of the camera afterward.
+  const g = vegetationBuildSteps(heightField, engineCtx, seed, cfg,
+    getDeviceTier() === 'mobile');
+  const stageTimings = {};
+  let stepStarted = performance.now();
   let r = g.next();
+  const recordStep = (result) => {
+    const key = result.done ? 'finalize' : (result.value?.stage || 'other');
+    stageTimings[key] = (stageTimings[key] || 0) + performance.now() - stepStarted;
+  };
+  recordStep(r);
   let i = 0;
   const total = fineSlices ? 72 : 16;
   while (!r.done) {
     const shouldTick = fineSlices || !r.value || !r.value.fine || r.value.rowEnd;
     if (tick && shouldTick) await tick(++i, total);
+    stepStarted = performance.now();
     r = g.next();
+    recordStep(r);
   }
+  r.value._buildDetail = Object.fromEntries(
+    Object.entries(stageTimings).map(([key, ms]) => [key, Math.round(ms)]));
   return r.value;
 }
 
-function* vegetationBuildSteps(heightField, engineCtx, seed, cfg) {
+function* vegetationBuildSteps(heightField, engineCtx, seed, cfg, deferFarGrass) {
   const veg = {
     species: ['pine', 'oak'],
     clusterMix: [['pine', 0.55], ['oak', 0.45]],
@@ -1637,6 +1651,9 @@ function* vegetationBuildSteps(heightField, engineCtx, seed, cfg) {
   // before calling makeTuft again. This ran hot enough to top the allocation
   // profile while driving (new carpet cells stream in as the camera moves).
   const _tuftScratch = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+  // Map-wide scatter evaluates this field hundreds of thousands of times.
+  // Reuse the result record so those reads stay allocation-free.
+  const _splatScratch = { n1: 0, n2: 0, mA: 0 };
   // r5 terrain_environment: map-authored no-vegetation discs (desert uses one
   // to keep the establishing camera's foreground frame edge clear — a squat
   // palm sat clipped at the bottom-left of battlefield_desert.png)
@@ -1661,7 +1678,7 @@ function* vegetationBuildSteps(heightField, engineCtx, seed, cfg) {
     if (gt === 'soft') { if (roll > 0.3) return null; sy *= 1.5; dry = 0.5; } // sparse marsh reeds
     if (heightField._villageMask(x, z) > 0.35 && roll > (carpet ? 0.35 : 0.15)) return null;
     // splat-aware thinning: drier + thinner on dirt patches, dense in meadows
-    const sn = sampleSplatNoise(x, z);
+    const sn = sampleSplatNoise(x, z, _splatScratch);
     // (thresholds track the shader's `worn` band — r4: 0.55/0.80 + warp)
     const dirtPatch = smoothstepJs(0.55, 0.80, sn.n2 + (sn.n1 - 0.5) * 0.45);
     if (dirtPatch > 0.35 && clJ < dirtPatch * 0.9) dry = Math.max(dry, 0.55);
@@ -1743,31 +1760,72 @@ function* vegetationBuildSteps(heightField, engineCtx, seed, cfg) {
 
   // write a tuft stored at offset o of an indexable array (flat-packed cells)
   function writeTuftAt(mesh, i, t, o) {
-    _q.setFromAxisAngle(_up, t[o + 3]);
-    _m4.compose(_pv.set(t[o], t[o + 1], t[o + 2]), _q, _sv.set(t[o + 4], t[o + 5], t[o + 4]));
-    mesh.setMatrixAt(i, _m4);
-    _c.setRGB(t[o + 6], t[o + 7], t[o + 8]);
-    mesh.setColorAt(i, _c);
+    // This is a yaw-only transform. Writing its column-major matrix/color
+    // directly avoids Quaternion/Vector/Matrix method traffic for every one
+    // of the hundreds of thousands of grass instances while producing the
+    // same transform as Matrix4.compose(position, yawQuaternion, scale).
+    const yaw = t[o + 3], sn = Math.sin(yaw), cs = Math.cos(yaw);
+    const sxz = t[o + 4], sy = t[o + 5];
+    const ma = mesh.instanceMatrix.array, mi = i * 16;
+    ma[mi] = cs * sxz; ma[mi + 1] = 0; ma[mi + 2] = -sn * sxz; ma[mi + 3] = 0;
+    ma[mi + 4] = 0; ma[mi + 5] = sy; ma[mi + 6] = 0; ma[mi + 7] = 0;
+    ma[mi + 8] = sn * sxz; ma[mi + 9] = 0; ma[mi + 10] = cs * sxz; ma[mi + 11] = 0;
+    ma[mi + 12] = t[o]; ma[mi + 13] = t[o + 1]; ma[mi + 14] = t[o + 2]; ma[mi + 15] = 1;
+    if (!mesh.instanceColor) {
+      mesh.instanceColor = new THREE.InstancedBufferAttribute(
+        new Float32Array(mesh.instanceMatrix.count * 3), 3);
+    }
+    const ca = mesh.instanceColor.array, ci = i * 3;
+    ca[ci] = t[o + 6]; ca[ci + 1] = t[o + 7]; ca[ci + 2] = t[o + 8];
   }
-  function writeTuft(mesh, i, t) { writeTuftAt(mesh, i, t, 0); }
-
-  yield; // perf-r3: grass textures/materials prepped — yield before scatter
+  yield { stage: 'grassPrep' }; // perf-r3: yield before scatter
   // ---- midfield grass scatter (map-wide chunks, unchanged system) ----
   const grassChunks = [];
-  for (let cz = 0; cz < CHUNKS; cz++) {
-    for (let cx = 0; cx < CHUNKS; cx++) {
-    const crng = mulberry32((seed ^ (cx * 73856093) ^ (cz * 19349663)) >>> 0);
-    const x0 = -HALF + cx * CHUNK_SIZE, z0 = -HALF + cz * CHUNK_SIZE;
-    const tufts = [[], []];
-    for (let i = 0; i < grassPerChunk; i++) {
-      const t = makeTuft(x0 + crng() * CHUNK_SIZE, z0 + crng() * CHUNK_SIZE, crng, false);
-      if (t) tufts[t[9]].push(t.slice()); // copy — makeTuft returns a scratch
+  // Each accepted tuft used to become a standalone 10-number JS Array via
+  // slice(), then die immediately after its chunk's instance buffers were
+  // written. Across the 64 chunks that is hundreds of thousands of tiny
+  // allocations and a large young-generation GC bill. Two reusable flat
+  // Float64 buffers retain the exact numeric values/output while making the
+  // entire staging pass allocation-free per tuft.
+  const midTuftScratch = [
+    new Float64Array(grassPerChunk * 10),
+    new Float64Array(grassPerChunk * 10),
+  ];
+  let grassBuildJob = null;
+  function beginGrassChunk(gc) {
+    grassBuildJob = gc;
+    gc.job = {
+      crng: mulberry32((seed ^ (gc.ix * 73856093) ^ (gc.iz * 19349663)) >>> 0),
+      candidate: 0,
+      counts: [0, 0],
+    };
+  }
+  function advanceGrassChunk(gc, candidateBudget) {
+    if (!gc.job) beginGrassChunk(gc);
+    const job = gc.job;
+    const end = Math.min(grassPerChunk, job.candidate + candidateBudget);
+    for (; job.candidate < end; job.candidate++) {
+      const t = makeTuft(
+        gc.x0 + job.crng() * CHUNK_SIZE,
+        gc.z0 + job.crng() * CHUNK_SIZE,
+        job.crng, false);
+      if (t) {
+        const vv = t[9];
+        midTuftScratch[vv].set(t, job.counts[vv] * 10);
+        job.counts[vv]++;
+      }
     }
+    if (job.candidate < grassPerChunk) return false;
+
     const chunkMeshes = [];
     for (let vv = 0; vv < 2; vv++) {
-      if (tufts[vv].length === 0) continue;
-      const mesh = new THREE.InstancedMesh(grassVariants[vv].geo, grassVariants[vv].matMid, tufts[vv].length);
-      for (let i = 0; i < tufts[vv].length; i++) writeTuft(mesh, i, tufts[vv][i]);
+      const count = job.counts[vv];
+      if (count === 0) continue;
+      const mesh = new THREE.InstancedMesh(
+        grassVariants[vv].geo, grassVariants[vv].matMid, count);
+      for (let i = 0; i < count; i++) {
+        writeTuftAt(mesh, i, midTuftScratch[vv], i * 10);
+      }
       mesh.castShadow = false;
       mesh.receiveShadow = true;
       mesh.frustumCulled = false; // visibility handled per-chunk in update()
@@ -1775,16 +1833,42 @@ function* vegetationBuildSteps(heightField, engineCtx, seed, cfg) {
       mesh.matrixAutoUpdate = false;
       mesh.userData.aoExclude = true; // GTAO override prepass ignores alphaTest
       group.add(mesh);
-      chunkMeshes.push({ mesh, total: tufts[vv].length, geoNear: grassVariants[vv].geo, geoFar: grassVariants[vv].geoFar });
+      chunkMeshes.push({
+        mesh, total: count,
+        geoNear: grassVariants[vv].geo,
+        geoFar: grassVariants[vv].geoFar,
+      });
     }
-    if (chunkMeshes.length > 0) {
-      grassChunks.push({ meshes: chunkMeshes, cx: x0 + CHUNK_SIZE / 2, cz: z0 + CHUNK_SIZE / 2 });
-    }
-    yield { fine: true, rowEnd: cx === CHUNKS - 1 };
+    gc.meshes = chunkMeshes;
+    gc.built = true;
+    gc.job = null;
+    if (grassBuildJob === gc) grassBuildJob = null;
+    return true;
+  }
+  const spawn = L.spawns.player;
+  const initialGrassRadius = GRASS_FADE_END + CHUNK_SIZE * 0.71 + 32;
+  for (let cz = 0; cz < CHUNKS; cz++) {
+    for (let cx = 0; cx < CHUNKS; cx++) {
+      const x0 = -HALF + cx * CHUNK_SIZE, z0 = -HALF + cz * CHUNK_SIZE;
+      const gc = {
+        ix: cx, iz: cz, x0, z0,
+        cx: x0 + CHUNK_SIZE / 2,
+        cz: z0 + CHUNK_SIZE / 2,
+        meshes: null, built: false, job: null, lod: false,
+      };
+      grassChunks.push(gc);
+      // Desktop and synchronous screenshot builds retain the exact eager
+      // path. Mobile builds only the complete first-view ring; no rendered
+      // tuft/count/placement changes, just when distant chunks are generated.
+      if (!deferFarGrass || Math.hypot(spawn.x - gc.cx, spawn.z - gc.cz) < initialGrassRadius) {
+        beginGrassChunk(gc);
+        advanceGrassChunk(gc, grassPerChunk);
+      }
+      yield { stage: 'grassScatter', fine: true, rowEnd: cx === CHUNKS - 1 };
     }
   }
 
-  yield;
+  yield { stage: 'grassScatter' };
   // ---- near grass carpet (camera-centred, dense, cell-cached) ----
   // PERF (performance_budget r5): DOUBLE-BUFFERED. A rebuild used to
   // bufferSubData 3.9 MB into the instance buffers the GPU was still reading
@@ -1889,7 +1973,7 @@ function* vegetationBuildSteps(heightField, engineCtx, seed, cfg) {
     }
   }
 
-  yield;
+  yield { stage: 'grassCarpet' };
   // ---- trees ----
   // Every tree material carries the per-instance occlusion fade (aFadeI,
   // 0 = solid → 1 = dithered to ~12%) plus a near-camera dissolve: WoT fades
@@ -2462,7 +2546,7 @@ function* vegetationBuildSteps(heightField, engineCtx, seed, cfg) {
     }
     if (placed > 2) clusters.push({ x, z, r });
   }
-  yield;
+  yield { stage: 'treeClusters' };
   for (let i = 0, placed = 0; i < 700 && placed < veg.loneCount; i++) { // lone trees + pairs
     const x = (rng() * 2 - 1) * 460, z = (rng() * 2 - 1) * 460;
     if (addTree(x, z, pickSpecies(veg.loneMix, rng()))) {
@@ -2507,7 +2591,7 @@ function* vegetationBuildSteps(heightField, engineCtx, seed, cfg) {
   // emergent scatter fills the saddles so gaps read as thin forest, not
   // clean breaks between identical tufts.
   const _standTint = new THREE.Color();
-  yield;
+  yield { stage: 'treeLoneAndBelts' };
   for (let c = 0; c < veg.rimCount; c++) {
     const slot = (c + (rng() - 0.5)) / Math.max(1, veg.rimCount);
     const a = slot * Math.PI * 2 + (rng() - 0.5) * 0.22;
@@ -2651,7 +2735,7 @@ function* vegetationBuildSteps(heightField, engineCtx, seed, cfg) {
     });
   }
 
-  yield;
+  yield { stage: 'treeRimAndMeshes' };
   // ---- tree root decals (r7) ---------------------------------------------
   // Terrain-conformed dark elliptical blend discs under every trunk: the
   // trunk-meets-ground contact was a hard unshaded seam and trees read as
@@ -2735,7 +2819,7 @@ function* vegetationBuildSteps(heightField, engineCtx, seed, cfg) {
   // ~1.5 hull radii of the player join the dither set (see updateOcclusionFade).
   const bushFadeReg = [];
 
-  yield;
+  yield { stage: 'treeRootDecals' };
   // ---- bushes (hedgerow / field-edge cover, purely visual) ----
   {
     const bushPal = palOf(bushSpecies);
@@ -2753,7 +2837,7 @@ function* vegetationBuildSteps(heightField, engineCtx, seed, cfg) {
         // r6 two-scale clustering (matches makeTuft): biome moisture belts x
         // thicket cores — shrubs knot into dense washes/hollow thickets with
         // clean ground between, instead of the r5 near-uniform pepper noise
-        const sb = sampleSplatNoise(x, z);
+        const sb = sampleSplatNoise(x, z, _splatScratch);
         const biome = smoothstepJs(0.42, 0.70, sb.n2);
         const thicket = smoothstepJs(0.44, 0.78, sb.n1);
         clump = biome * (0.12 + 0.88 * thicket);
@@ -2835,7 +2919,7 @@ function* vegetationBuildSteps(heightField, engineCtx, seed, cfg) {
     }
   }
 
-  yield;
+  yield { stage: 'bushes' };
   // ---- chase-camera foliage occlusion fade -------------------------------
   // WoT behavior: any tree standing between the camera and the player's tank
   // fades to near-transparency so the third-person loop stays readable on
@@ -3223,8 +3307,45 @@ function* vegetationBuildSteps(heightField, engineCtx, seed, cfg) {
     if (camFwd) uCamFwd.value.copy(camFwd);
     uSniperFade.value += (sniperFadeTarget - uSniperFade.value) *
       (1 - Math.exp(-(dt || 0) / 0.08));
+    let urgentGrass = null, aheadGrass = null, aheadDist = Infinity;
+    // Do not spend the opening/countdown frames filling an invisible outer
+    // ring while the tank is parked. Once the camera has travelled roughly
+    // two hull lengths, stream a full chunk-width ahead of the fade band.
+    const movedFromSpawn = Math.hypot(camPos.x - spawn.x, camPos.z - spawn.z);
+    const grassAhead = GRASS_FADE_END + (movedFromSpawn > 28 ? CHUNK_SIZE : 32);
     for (const gc of grassChunks) {
-      const d = Math.max(0, Math.hypot(camPos.x - gc.cx, camPos.z - gc.cz) - CHUNK_SIZE * 0.71);
+      const d = Math.max(0,
+        Math.hypot(camPos.x - gc.cx, camPos.z - gc.cz) - CHUNK_SIZE * 0.71);
+      gc.cameraDist = d;
+      if (!gc.built) {
+        if (d < GRASS_FADE_END && !urgentGrass) urgentGrass = gc;
+        else if (d < grassAhead && d < aheadDist) {
+          aheadGrass = gc;
+          aheadDist = d;
+        }
+      }
+    }
+    if (deferFarGrass) {
+      // Normal driving starts the nearest missing chunk a full chunk-width
+      // before its fade band, then advances ~4% of it per frame. A teleport
+      // is the exceptional urgent path: complete what must render now rather
+      // than exposing a bald square for several frames.
+      if (urgentGrass) {
+        if (grassBuildJob && grassBuildJob !== urgentGrass) {
+          advanceGrassChunk(grassBuildJob, grassPerChunk);
+        }
+        if (!urgentGrass.built) {
+          beginGrassChunk(urgentGrass);
+          advanceGrassChunk(urgentGrass, grassPerChunk);
+        }
+      } else {
+        if (!grassBuildJob && aheadGrass) beginGrassChunk(aheadGrass);
+        if (grassBuildJob) advanceGrassChunk(grassBuildJob, 250);
+      }
+    }
+    for (const gc of grassChunks) {
+      if (!gc.built) continue;
+      const d = gc.cameraDist;
       // continuous density rolloff (no stepped 1 -> 0.45 pop at 64 m);
       // eased 0.52 -> 0.36 (r5): the far half of the meadow kept its tufts
       // PERF (performance_budget r3): far-band taper deepened (keep 70% ->

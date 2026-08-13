@@ -22,7 +22,8 @@
     "tank:family:check": "node src/vehicles/fleetOrder.selftest.mjs",
     "tank:bore:probe": "node tools/muzzle-bore-probe.mjs",
     "shots": "node tools/screenshot.mjs",
-    "perf:dev": "node tools/dev-perf-probe.mjs"
+    "perf:dev": "node tools/dev-perf-probe.mjs",
+    "perf:cold": "node tools/cold-load-probe.mjs"
   },
   "keywords": [],
   "author": "",

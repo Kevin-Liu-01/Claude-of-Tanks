@@ -124,7 +124,7 @@ const HALF_WID_FRAC = 0.5;       // contact-line half-width = 0.5 × widthM (tra
 // peaks at speed) and PARKED hovering 21 cm — photographed daylight under
 // the whole wheel run on desert. state.js therefore scans the swapped
 // visual's low band (vertices within 5 cm of min-Y, exactly like the r7
-// probe) when it stamps rigidGear and publishes the measured geometry as
+// probe) when it detects the swap and publishes the measured geometry as
 // `entity.contactGeom = { halfLenM, halfWidM, zCenterM }`; the solve below
 // uses it for the line half-length, half-width and longitudinal center.
 // Procedural gear keeps the 0.45 L / 0.5 W spec fractions (they match
@@ -244,6 +244,19 @@ const SUPPORT_MARGIN_M = 0.017;
 // −3 cm gate. Still exactly zero cost on flat ground.
 const SUPPORT_MARGIN_ATT_M = 0.017;
 const SUPPORT_MARGIN_ATT_RAD = 35 * (Math.PI / 180);
+// Vertical ride dynamics. The support solve below computes the minimum safe
+// chassis height, but assigning pos.y to that value every fixed tick made the
+// whole vehicle trace the heightfield like a rigid magnet. Keep the support
+// value as a hard compression floor, then let the sprung mass follow it with
+// bounded droop. Procedural bogies travel 0.22 m and sourced GLB wheels travel
+// 0.20 m, so the limits below keep the chassis inside the visual suspension
+// envelope while giving it enough inertia to round crests instead of snapping.
+const RIDE_OMEGA = 2 * Math.PI * 1.8; // 1.8 Hz sprung-mass heave
+const RIDE_ZETA = 0.84;               // quick settle, one restrained rebound
+const RIDE_COMPRESSION_M = 0.20;      // track/wheel up-travel over a local crest
+const RIDE_DROOP_M = 0.18;            // max chassis separation from support plane
+const RIDE_GROUND_V_TAU = 0.09;       // smooth noisy max-contact handoffs
+const RIDE_SUPPORT_V_CAP = 12;         // m/s; rejects pathological height steps
 // Mirror of tankFactory's turn-lean sway (visual layer adds it to rotation.z):
 // the support solve folds the predicted sway into the effective roll so a hard
 // fast turn cannot dip the leaned-into track edge below the terrain.
@@ -521,8 +534,10 @@ export function createTankState(spec, pos, yaw) {
     _swayEst: 0,                   // predicted visual turn-lean sway (rad)
     _susp: { p: 0, r: 0, pv: 0, rv: 0 }, // mirror of the visual susp rock layer
     _flinch: { p: 0, r: 0, pv: 0, rv: 0 }, // hit-flinch rock (impulses fed by the visual)
+    _ride: { y: pos.y, v: 0, supportY: NaN, groundV: 0 }, // sprung vertical chassis motion
     _sup: {                        // static-pose support cache (skip resampling)
-      x: NaN, z: NaN, yaw: 0, pitch: 0, roll: 0, y: pos.y, rigid: false, cg: null,
+      x: NaN, z: NaN, yaw: 0, pitch: 0, roll: 0,
+      y: pos.y, floorY: pos.y, rigid: false, cg: null,
     },
   };
 }
@@ -535,8 +550,8 @@ export function createTankState(spec, pos, yaw) {
  * Mutates `entity.state` in place; touches nothing else.
  *
  * @param {object} entity - `{ spec, state, input, combat }` (combat may be null ⇒ healthy).
- *   Optional `entity.rigidGear === true` (stamped by state.js when the visual
- *   is GLB-swapped, i.e. has NO per-wheel conform layer) hard-clamps every
+ *   Optional `entity.rigidGear === true` (stamped by state.js when the active
+ *   visual lacks a complete wheel + track conformance layer) hard-clamps every
  *   support fan line — see the FAN_YIELD_* / r5 hard-gate note in the solve.
  * @param {object} heightField - `{ getHeightAt(x,z), getNormalAt(x,z), getGroundType(x,z) }`.
  * @param {number} dt - Timestep in seconds (SIM_DT in-game).
@@ -1125,18 +1140,13 @@ export function updateTank(entity, heightField, dt, collide = null) {
     // r5 TERRAIN-CONTACT HARD GATE (round critique CRITICAL): the yield's
     // whole premise is that tankFactory's per-wheel conform layer (one-to-one
     // ground travel, +0.30 m compression) absorbs terrain left proud under the
-    // wheel lines. GLB-swapped visuals (modelLoader.applySwap — every modern
-    // MBT incl. the default player M1A2) HIDE the procedural running gear
-    // and render rigid GLB wheels with NO conform, so yielded crests cut
-    // straight through them (drive gate: −9.2 cm at 28 km/h, worst vertex at
-    // hull-contact height; the procedural Tiger I on the same corridor never
-    // exceeded −2.8 cm). state.js stamps entity.rigidGear once it sees the
-    // swap land (hullG.userData.__glbSwapped); rigid gear takes the FULL
-    // hard clamp on every fan/belly line — the yield want collapses to 0 and
-    // the instant-closing branch below zeroes any previously-open yield on
-    // the very tick the swap is detected. Entities without a visual (selftest
-    // fixtures, headless sim, pre-build pool entries) keep procedural
-    // semantics — nothing renders for them until a visual exists.
+    // wheel lines. GLB-swapped visuals hide the procedural gear. Imports that
+    // do not expose BOTH detectable wheel pivots and a deformable belt still
+    // take the FULL hard clamp on every fan/belly line. Imports with both
+    // layers clear rigidGear after their first visual sync and may spend the
+    // same bounded suspension travel as procedural gear. Entities without a
+    // visual (selftest fixtures, headless sim, pre-build pool entries) keep
+    // procedural semantics — nothing renders for them until a visual exists.
     const rough = outerMaxS - sumD / nD; // settle-frame: pose-decoupled (see above)
     const yieldWant = rigidGear
       ? 0
@@ -1156,7 +1166,8 @@ export function updateTank(entity, heightField, dt, collide = null) {
     // metadata the guard line sits at the real plate and clamps HARD — see
     // the panY note above (the is1 ridge burial).
     const bellyYield = panY !== null ? 0 : fanYield;
-    if (bellyMax - bellyYield > supportY) supportY = bellyMax - bellyYield;
+    const bellySupportY = bellyMax - bellyYield;
+    if (bellySupportY > supportY) supportY = bellySupportY;
     // Least-squares plane: pitch from the along-track height gradient (Σz = 0
     // by symmetry), roll from the mean left/right line difference. RENDERER
     // ROLL SIGN: positive roll lifts the right side, so ground higher on the
@@ -1200,15 +1211,62 @@ export function updateTank(entity, heightField, dt, collide = null) {
     // and no levitation gate riding on the margin (the selftest fixture is
     // procedural), so headroom beats float there.
     const perchCut = rigidGear ? 0 : 0.7 * state._perch;
-    supportY += SUPPORT_MARGIN_M + SUPPORT_MARGIN_ATT_M * (1 - perchCut) *
+    const supportMargin = SUPPORT_MARGIN_M + SUPPORT_MARGIN_ATT_M * (1 - perchCut) *
       Math.min(1, (Math.abs(pitchEff) + Math.abs(rollEff)) / SUPPORT_MARGIN_ATT_RAD);
-    state.pos.y = supportY;
+    // Track/wheel contact may compress into the suspension, but a measured
+    // hull pan is rigid and remains an absolute floor. If a visual publishes
+    // a keel below its gear plane, that undercut is also rigid: do not spend
+    // suspension travel by pushing the hull itself through the terrain.
+    const rigidUndercut = cg && Number.isFinite(cg.gearBottomYM) &&
+      Number.isFinite(cg.bottomYM) && cg.bottomYM < cg.gearBottomYM - 0.01;
+    const compressionFloorY = (rigidUndercut
+      ? supportY
+      : Math.max(bellySupportY, supportY - RIDE_COMPRESSION_M)) + supportMargin;
+    supportY += supportMargin;
     sup.x = state.pos.x; sup.z = state.pos.z; sup.yaw = state.yaw;
-    sup.pitch = pitchEff; sup.roll = rollEff; sup.y = supportY;
+    sup.pitch = pitchEff; sup.roll = rollEff;
+    sup.y = supportY; sup.floorY = compressionFloorY;
     sup.rigid = rigidGear;
     sup.cg = cg; // measured-footprint identity: a new stamp re-solves a parked tank
-  } else {
-    state.pos.y = sup.y;
+  }
+
+  // Sprung-mass heave: supportY is the neutral track-contact height, while
+  // floorY is the lowest position allowed after wheel/track compression and
+  // rigid-pan clearance. A falling support lets the belt droop; a rising one
+  // compresses before it lifts the hull. Feed-forward the smoothed support-
+  // plane velocity so steady grades do not create artificial hover — only
+  // changes in grade/curvature produce suspension travel.
+  {
+    const supportY = sup.y;
+    const floorY = Number.isFinite(sup.floorY) ? sup.floorY : supportY;
+    const ride = state._ride || (state._ride = {
+      y: supportY, v: 0, supportY, groundV: 0,
+    });
+    if (!Number.isFinite(ride.supportY) || !Number.isFinite(ride.y)) {
+      ride.y = supportY;
+      ride.v = 0;
+      ride.supportY = supportY;
+      ride.groundV = 0;
+    } else {
+      const rawGroundV = clamp((supportY - ride.supportY) / dt,
+        -RIDE_SUPPORT_V_CAP, RIDE_SUPPORT_V_CAP);
+      const groundAlpha = 1 - Math.exp(-dt / RIDE_GROUND_V_TAU);
+      ride.groundV += (rawGroundV - ride.groundV) * groundAlpha;
+      ride.supportY = supportY;
+
+      ride.v += (RIDE_OMEGA * RIDE_OMEGA * (supportY - ride.y) +
+        2 * RIDE_ZETA * RIDE_OMEGA * (ride.groundV - ride.v)) * dt;
+      ride.y += ride.v * dt;
+
+      if (ride.y < floorY) {
+        ride.y = floorY;
+        if (ride.v < ride.groundV) ride.v = ride.groundV;
+      } else if (ride.y > supportY + RIDE_DROOP_M) {
+        ride.y = supportY + RIDE_DROOP_M;
+        if (ride.v > ride.groundV) ride.v = ride.groundV;
+      }
+    }
+    state.pos.y = ride.y;
   }
 
   // ---- turret & gun chase the world aim point (limits in hull space) ----

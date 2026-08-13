@@ -21,7 +21,15 @@ function option(name, fallback) {
 const profileName = option('profile', 'normal');
 const entryMode = option('entry', 'debug');
 if (!['debug', 'real'].includes(entryMode)) throw new Error('--entry must be debug or real');
+const deviceTier = option('tier', 'desktop');
+if (!['desktop', 'mobile'].includes(deviceTier)) throw new Error('--tier must be desktop or mobile');
+const viewport = {
+  width: Math.max(320, Number(option('width', '1365')) || 1365),
+  height: Math.max(320, Number(option('height', '768')) || 768),
+  deviceScaleFactor: Math.max(1, Number(option('dpr', '1')) || 1),
+};
 const seconds = Math.max(4, Number(option('seconds', '12')) || 12);
+const garageWaitMs = Math.max(0, (Number(option('garage-wait', '0')) || 0) * 1000);
 const openTimeoutMs = Math.max(10000, (Number(option('open-timeout', '180')) || 180) * 1000);
 const output = resolve(option('out', `.qa-dev/dev-perf-${profileName}.json`));
 const profiles = {
@@ -31,6 +39,9 @@ const profiles = {
 };
 if (!profiles[profileName]) throw new Error(`unknown --profile=${profileName}; use normal, constrained, or software`);
 const selected = { ...profiles[profileName] };
+selected.deviceTier = deviceTier;
+selected.viewport = viewport;
+selected.garageWaitMs = garageWaitMs;
 const cpuOverride = Number(option('cpu', ''));
 if (cpuOverride > 0) selected.cpuRate = cpuOverride;
 const coresOverride = Number(option('cores', ''));
@@ -89,7 +100,10 @@ function topSelf(profile, limit = 30) {
     .slice(0, limit);
 }
 
-const port = 6200 + Math.floor(Math.random() * 500);
+// Keep the randomized dev port away from Chromium's network-service blocked
+// list (the previous 6200-6699 range could land on 6666 and fail before any
+// game code ran).
+const port = 7200 + Math.floor(Math.random() * 500);
 const server = await createServer({
   root: process.cwd(), logLevel: 'error',
   server: { port, strictPort: false, hmr: false, watch: { ignored: ['**/*'] } },
@@ -107,6 +121,7 @@ let browser, page, cdp;
 let profilerRunning = false;
 let readyWallMs = null;
 let bootTrace = null;
+let garageDwell = null;
 let url = '';
 const consoleErrors = [];
 let watchdogTimer = null, watchdogStage = null;
@@ -132,7 +147,7 @@ try {
     args: launchArgs,
   });
   page = await browser.newPage();
-  await page.setViewport({ width: 1365, height: 768, deviceScaleFactor: 1 });
+  await page.setViewport(viewport);
   page.on('pageerror', (error) => consoleErrors.push(`pageerror: ${error.message}`));
   page.on('console', (message) => {
     if (message.type() === 'error' && !message.text().includes('favicon')) {
@@ -167,7 +182,7 @@ try {
     profilerRunning = true;
   }
 
-  url = `http://localhost:${server.config.server.port}/?nosplash=1&tier=desktop&gfxreset=1`;
+  url = `http://localhost:${server.config.server.port}/?nosplash=1&tier=${deviceTier}&gfxreset=1`;
   const bootStarted = Date.now();
   armWatchdog('game-ready-or-battle-open');
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 180000 });
@@ -177,6 +192,13 @@ try {
   // Preserve boot events/long tasks before the play window gets a fresh clock.
   // Defer the optional driver query so it cannot contaminate boot attribution.
   bootTrace = await page.evaluate(() => window.__DEV_TRACE.snapshot({ gpu: false }));
+  if (garageWaitMs) {
+    await new Promise((resolveWait) => setTimeout(resolveWait, garageWaitMs));
+    garageDwell = await page.evaluate(() => ({
+      stats: window.__DEV_TRACE.stats(),
+      worldPrefetch: window.__WORLD_PREFETCH || null,
+    }));
+  }
   await page.evaluate((metadata) => {
     window.__DEV_TRACE.clear();
     window.__DEV_TRACE.mark('probe:start', metadata);
@@ -207,30 +229,44 @@ try {
     await cdp.send('Profiler.start');
     profilerRunning = true;
   }
-  if (selected.throttleStage === 'live') {
-    await cdpTry('Emulation.setCPUThrottlingRate', { rate: selected.cpuRate });
-    await page.evaluate((rate) => window.__DEV_TRACE.mark('probe:cpu-throttle', { rate }), selected.cpuRate);
-  }
-  await page.evaluate(() => {
+  // Install the complete drive before live throttling. DevTools page/Input
+  // commands can themselves starve behind a 4x-throttled, 0.5 ms-sampled V8
+  // isolate even when rAF remains healthy; an in-page timer keeps the tested
+  // workload independent of that transport artifact.
+  await page.evaluate((durationMs) => {
     window.__DEV_TRACE.mark('battle:open', {});
     window.__DEBUG.aimAtNearest();
     window.__DEBUG.flags.forceFire = true;
-  });
-  await page.keyboard.down('w');
-  await new Promise((resolveWait) => setTimeout(resolveWait, Math.round(seconds * 500)));
-  await page.keyboard.press('r');
-  await new Promise((resolveWait) => setTimeout(resolveWait, Math.round(seconds * 500)));
-  await page.keyboard.up('w');
-  await page.evaluate(() => {
-    window.__DEBUG.flags.forceFire = false;
-    const player = window.__DEBUG.game.player;
-    if (player?.input) { player.input.throttle = 0; player.input.steer = 0; }
-    window.__DEV_TRACE.mark('probe:natural-end', {});
-  });
-
-  const naturalStats = await page.evaluate(() => window.__DEV_TRACE.stats());
+    window.dispatchEvent(new KeyboardEvent('keydown', {
+      code: 'KeyW', key: 'w', bubbles: true,
+    }));
+    let finished = false;
+    window.__PERF_FINISH_DRIVE = () => {
+      if (finished) return;
+      finished = true;
+      window.dispatchEvent(new KeyboardEvent('keyup', {
+        code: 'KeyW', key: 'w', bubbles: true,
+      }));
+      window.__DEBUG.flags.forceFire = false;
+      const player = window.__DEBUG.game.player;
+      if (player?.input) { player.input.throttle = 0; player.input.steer = 0; }
+      window.__DEV_TRACE.mark('probe:natural-end', {});
+    };
+    setTimeout(window.__PERF_FINISH_DRIVE, durationMs);
+  }, Math.round(seconds * 1000));
+  if (selected.throttleStage === 'live') {
+    await cdpTry('Emulation.setCPUThrottlingRate', { rate: selected.cpuRate });
+  }
+  await new Promise((resolveWait) => setTimeout(resolveWait, Math.round(seconds * 1000 + 350)));
   const { profile } = await cdp.send('Profiler.stop');
   profilerRunning = false;
+  if (selected.cpuRate !== 1 && selected.throttleStage !== 'boot') {
+    await cdpTry('Emulation.setCPUThrottlingRate', { rate: 1 });
+  }
+  const naturalStats = await page.evaluate(() => {
+    window.__PERF_FINISH_DRIVE?.();
+    return window.__DEV_TRACE.stats();
+  });
   const naturalTrace = await page.evaluate(() => window.__DEV_TRACE.snapshot());
   naturalTrace.stats = naturalStats;
   const loading = await page.evaluate(() => ({
@@ -266,7 +302,7 @@ try {
         ? 'SwiftShader software rasterizer: a severe GPU stress floor, not a calibrated low-end iGPU'
         : 'Host ANGLE renderer; CPU/device traits are the only calibrated constraints',
     },
-    cdp: emulation, url, readyWallMs, seconds, bootTrace, loading,
+    cdp: emulation, url, readyWallMs, seconds, bootTrace, garageDwell, loading,
     natural: {
       stats: naturalTrace.stats,
       battleOpen10s: battleOpenWindow(naturalTrace),

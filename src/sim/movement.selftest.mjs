@@ -1,7 +1,8 @@
 /**
  * movement.selftest.mjs — standalone verification of tank movement, hull
- * attitude and TERRAIN CONTACT (the r5 hard gate: no track/wheel geometry may
- * render below the heightfield or fully levitate above it).
+ * attitude, sprung-mass heave, and TERRAIN CONTACT. The chassis may now move
+ * inside the visible suspension envelope; the wheels and deforming belt own
+ * final contact instead of a rigid root plane tracing the heightfield.
  * Run with: node src/sim/movement.selftest.mjs
  * Exits 0 quietly on pass, non-zero with messages on failure.
  * Uses inline fixtures only — no dependency on vehicles/specs.js.
@@ -96,7 +97,9 @@ function makeEntity(field, x = 0, z = 0, yaw = 0) {
 //   worldY = pos.y + x·sin(roll)·cos(pitch) + z·sin(pitch)
 //   worldXZ per the same YXZ composition.
 // We sample BOTH track lines at 0.1 m spacing (3.5× denser than the solve) and
-// report the worst penetration (< 0 gap) and the smallest gap (contact proof).
+// report the worst penetration (< 0 gap) and the smallest root-plane gap.
+// During motion that plane may sit inside the ±suspension travel envelope;
+// procedural/GLB wheels and track belts deform by the matching amount.
 const SUSP_VIS_P = 2.6;
 const SUSP_VIS_R = 2.1;
 // MOVEMENT r1: 2.3 was a stale mirror — movement.js/tankFactory lock SWAY_VIS
@@ -186,8 +189,9 @@ function run(ent, field, ticks, perTick = null) {
 // Critic-specified synthetic fields: bumps + gullies at 2–8 m wavelengths.
 // Amplitudes follow the game's spectral falloff (fine wavelengths carry small
 // amplitudes — verdant's finest octave is ~0.14 m). A cross-track ripple adds
-// roll action. HARD GATE per frame after spring settle: contact-line
-// penetration < 0.05 m and no full-patch levitation (some point within 5 cm).
+// roll action. HARD GATE per frame after spring settle: the rigid root plane
+// stays inside the visual suspension envelope and the sprung mass never uses
+// more than its authored compression/droop travel.
 // (8, 0.55) is fully climbable (~23° faces) and proves sustained cross-country
 // driving; the steeper pairs stress the contact solve while the tank wallows
 // in troughs walled by >MAX_CLIMB faces (stalling there is correct physics).
@@ -201,6 +205,8 @@ for (const [wl, amp] of [[8, 1.5], [8, 0.55], [4, 0.5], [2, 0.12]]) {
   ent.input.throttle = 1;
   let worstPen = 0;
   let worstFloat = 0;
+  let worstCompression = 0;
+  let worstDroop = 0;
   let path = 0; // integrated |v| — steep faces (>MAX_CLIMB) stall correctly,
   //              so wallowing/sliding counts as motion, displacement does not
   run(ent, field, 900, (i) => {
@@ -209,11 +215,18 @@ for (const [wl, amp] of [[8, 1.5], [8, 0.55], [4, 0.5], [2, 0.12]]) {
     const { penetration, minGap } = contactStats(ent.state, field);
     if (penetration > worstPen) worstPen = penetration;
     if (minGap > worstFloat) worstFloat = minGap;
+    const travel = ent.state._sup.y - ent.state.pos.y;
+    if (travel > worstCompression) worstCompression = travel;
+    if (-travel > worstDroop) worstDroop = -travel;
   });
-  assert(worstPen < 0.05,
-    `sine drive λ=${wl} A=${amp}: track penetration ${worstPen.toFixed(3)} m ≥ 0.05`);
-  assert(worstFloat < 0.07,
-    `sine drive λ=${wl} A=${amp}: full contact patch airborne (min gap up to ${worstFloat.toFixed(3)} m)`);
+  assert(worstPen < 0.22,
+    `sine drive λ=${wl} A=${amp}: root plane exceeds track up-travel (${worstPen.toFixed(3)} m)`);
+  assert(worstFloat < 0.23,
+    `sine drive λ=${wl} A=${amp}: root plane exceeds track droop (${worstFloat.toFixed(3)} m)`);
+  assert(worstCompression <= 0.201,
+    `sine drive λ=${wl} A=${amp}: compression travel ${worstCompression.toFixed(3)} m`);
+  assert(worstDroop <= 0.181,
+    `sine drive λ=${wl} A=${amp}: droop travel ${worstDroop.toFixed(3)} m`);
   assert(path > (amp / wl > 0.1 ? 3 : 40),
     `sine drive λ=${wl} A=${amp}: tank actually drove (path ${path.toFixed(1)} m)`);
 }
@@ -227,17 +240,66 @@ for (const [wl, amp] of [[8, 1.5], [8, 0.55], [4, 0.5], [2, 0.12]]) {
   ent.input.throttle = 1;
   let worstPen = 0;
   let worstFloat = 0;
+  let worstCompression = 0;
+  let worstDroop = 0;
   run(ent, field, 900, (i) => {
     if (i < 60) return;
     const { penetration, minGap } = contactStats(ent.state, field);
     if (penetration > worstPen) worstPen = penetration;
     if (minGap > worstFloat) worstFloat = minGap;
+    const travel = ent.state._sup.y - ent.state.pos.y;
+    if (travel > worstCompression) worstCompression = travel;
+    if (-travel > worstDroop) worstDroop = -travel;
   });
-  assert(worstPen < 0.05, `egg-crate drive: penetration ${worstPen.toFixed(3)} m ≥ 0.05`);
-  assert(worstFloat < 0.07, `egg-crate drive: levitation (min gap up to ${worstFloat.toFixed(3)} m)`);
+  assert(worstPen < 0.22, `egg-crate drive: root plane exceeds up-travel (${worstPen.toFixed(3)} m)`);
+  assert(worstFloat < 0.23, `egg-crate drive: root plane exceeds droop (${worstFloat.toFixed(3)} m)`);
+  assert(worstCompression <= 0.201,
+    `egg-crate drive: compression travel ${worstCompression.toFixed(3)} m`);
+  assert(worstDroop <= 0.181,
+    `egg-crate drive: droop travel ${worstDroop.toFixed(3)} m`);
 }
 
-// -------------------------------------------- 6. measured contact geometry --
+// ------------------------------------------ 6. sprung heave on terrain step --
+// A support-plane step is the most direct regression for the old "tracks
+// taped to the ground" motion: pos.y used to consume the entire height change
+// in one tick. The new sprung mass must initially absorb it in wheel/belt
+// travel, then settle without exceeding either physical stop.
+{
+  let ground = 0;
+  const field = makeField(() => ground);
+  const ent = makeEntity(field);
+  run(ent, field, 240);
+  const before = ent.state.pos.y;
+  ground = -0.16;
+  ent.state._sup.x = NaN; // mutable fixture: force the static support cache to resample
+  run(ent, field, 1);
+  assert(before - ent.state.pos.y < 0.04,
+    `16 cm hollow: chassis does not snap down in one tick (${(before - ent.state.pos.y).toFixed(3)} m)`);
+  assert(ent.state.pos.y - ent.state._sup.y > 0.10,
+    `16 cm hollow: track droop absorbs the first hit (${(ent.state.pos.y - ent.state._sup.y).toFixed(3)} m)`);
+  run(ent, field, 300);
+  near(ent.state.pos.y, ent.state._sup.y, 0.01, '16 cm hollow: sprung mass settles onto support');
+}
+{
+  let ground = 0;
+  const field = makeField(() => ground);
+  const ent = makeEntity(field);
+  run(ent, field, 240);
+  const before = ent.state.pos.y;
+  ground = 0.14;
+  ent.state._sup.x = NaN;
+  run(ent, field, 1);
+  assert(ent.state.pos.y - before < 0.04,
+    `14 cm crest: chassis does not snap up in one tick (${(ent.state.pos.y - before).toFixed(3)} m)`);
+  assert(ent.state._sup.y - ent.state.pos.y > 0.08,
+    `14 cm crest: suspension compresses first (${(ent.state._sup.y - ent.state.pos.y).toFixed(3)} m)`);
+  assert(ent.state.pos.y >= ent.state._sup.floorY - 1e-9,
+    '14 cm crest: compression stop remains collision-safe');
+  run(ent, field, 300);
+  near(ent.state.pos.y, ent.state._sup.y, 0.01, '14 cm crest: sprung mass settles onto support');
+}
+
+// -------------------------------------------- 7. measured contact geometry --
 // Measured visual contact metadata must seat the actual track floor, not the
 // root origin, and a shorter sourced-model run must not perch on phantom
 // support beyond its rendered track ends.

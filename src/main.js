@@ -33,7 +33,7 @@ import {
 // mobile tier (modelLoader gates its own pipeline; the checks here are the UI
 // bookkeeping that must not WAIT for swaps that will never arrive).
 import {
-  glbModelsEnabled, resolveDeviceTier, resolvePresetName, resolveAutoTier,
+  glbModelsEnabled, getDeviceTier, resolveDeviceTier, resolvePresetName, resolveAutoTier,
   reportSustainedOverload, setPresetName, noteGpuRenderer,
 } from './engine/quality.js';
 import { createSky } from './engine/sky.js';
@@ -202,6 +202,19 @@ function nextFrame() {
     setTimeout(fin, 34);
   });
 }
+
+function createFrameBudgetYielder(budgetMs = 12) {
+  let sliceStart = performance.now();
+  return async (force = false) => {
+    if (!force && performance.now() - sliceStart < budgetMs) return;
+    if (globalThis.scheduler && typeof globalThis.scheduler.yield === 'function') {
+      await globalThis.scheduler.yield();
+    } else {
+      await nextFrame();
+    }
+    sliceStart = performance.now();
+  };
+}
 /**
  * Run one named boot stage with progress reporting around it.
  * @param {string} key stage key (bootScreen.js STAGES)
@@ -307,6 +320,7 @@ initTopMaskRig(engineCtx);
 // entry (behind the pre-battle loading screen) and the __SHOTS staging path
 // call. Boot never touches them.
 const worldCache = new Map();
+const worldBuilds = new Map();
 let world = null;
 let pendingMapId = 'verdant';    // battlefield the garage is pointing at
 let worldDormant = false;        // garage: world hidden + per-frame update off
@@ -324,6 +338,77 @@ const hfProxy = {
   get minY() { return world ? world.heightField.minY : 0; },
   get maxY() { return world ? world.heightField.maxY : 0; },
 };
+
+function beginWorldBuild(mapId, onProgress = null, background = false) {
+  const id = mapId || pendingMapId;
+  const cached = worldCache.get(id);
+  if (cached) return { promise: Promise.resolve(cached), listeners: null, f: 1, label: 'Ready' };
+  let rec = worldBuilds.get(id);
+  if (!rec) {
+    rec = {
+      id, f: 0, label: 'Surveying terrain', foreground: !background,
+      listeners: new Set(), startedAt: performance.now(), promise: null,
+      stageTimings: {}, stageLabel: null, stageMark: performance.now(),
+    };
+    const finishBuildStage = (now = performance.now()) => {
+      if (!rec.stageLabel) return;
+      const key = ({
+        'Surveying terrain': 'heightField',
+        'Building terrain meshes': 'terrain',
+        'Planting vegetation': 'vegetation',
+        'Placing structures': 'props',
+        'Sealing the battlefield': 'assemble',
+      })[rec.stageLabel] || rec.stageLabel;
+      rec.stageTimings[key] = (rec.stageTimings[key] || 0) + Math.round(now - rec.stageMark);
+      rec.stageMark = now;
+    };
+    const yieldForeground = createFrameBudgetYielder(12);
+    const yieldBackground = createFrameBudgetYielder(6);
+    rec.promise = createMapAsync(engineCtx, { mapId: id, seed: 1337 },
+      async (label, f) => {
+        if (label !== rec.stageLabel) {
+          const now = performance.now();
+          finishBuildStage(now);
+          rec.stageLabel = label;
+          rec.stageMark = now;
+        }
+        rec.label = label;
+        rec.f = f;
+        for (const fn of rec.listeners) {
+          try { fn(f, label); } catch (_) { /* advisory */ }
+        }
+        await (rec.foreground ? yieldForeground() : yieldBackground());
+      }, { fineSlices: false })
+      .then((next) => {
+        finishBuildStage();
+        next.group.visible = false;
+        worldCache.set(id, next);
+        if (typeof window !== 'undefined' && window.__WORLD_PREFETCH?.id === id) {
+          Object.assign(window.__WORLD_PREFETCH, {
+            done: true, totalMs: Math.round(performance.now() - rec.startedAt), f: 1,
+          });
+        }
+        return next;
+      })
+      .catch((error) => {
+        if (typeof window !== 'undefined' && window.__WORLD_PREFETCH?.id === id) {
+          Object.assign(window.__WORLD_PREFETCH, { done: false, failed: String(error) });
+        }
+        throw error;
+      })
+      .finally(() => {
+        if (worldBuilds.get(id) === rec) worldBuilds.delete(id);
+      });
+    worldBuilds.set(id, rec);
+  } else if (!background) {
+    rec.foreground = true;
+  }
+  if (onProgress && rec.listeners) {
+    rec.listeners.add(onProgress);
+    try { onProgress(rec.f, rec.label); } catch (_) { /* advisory */ }
+  }
+  return rec;
+}
 /** World raycast that is safe before any battlefield exists. */
 function worldRaycast(o, d, m) { return world ? world.raycast(o, d, m) : null; }
 
@@ -699,6 +784,7 @@ function schedulePedestalPrefetch() {
     // zone while the staged boot awaits — try again once boot completed.
     if (!bootComplete) { schedulePedestalPrefetch(); return; }
     if (game.phase !== 'garage') return;
+    if (getDeviceTier() === 'mobile') return;
     const ids = ALL_TANK_IDS;
     const i = ids.indexOf(selectedSpecId);
     if (i < 0) return;
@@ -1034,25 +1120,47 @@ function switchMap(mapId) {
 async function ensureWorld(mapId, onProgress = null) {
   const id = mapId || pendingMapId;
   let next = worldCache.get(id);
+  const wt = { id, cached: !!next };
+  const wtStart = performance.now();
+  let wtMark = wtStart;
+  const wtStage = (key) => {
+    const now = performance.now();
+    wt[key] = Math.round(now - wtMark);
+    wtMark = now;
+  };
   if (!next) {
-    next = await createMapAsync(engineCtx, { mapId: id, seed: 1337 },
-      async (label, f) => {
-        if (onProgress) onProgress(f, label);
-        await nextFrame();
-      });
-    worldCache.set(id, next);
+    const rec = beginWorldBuild(id, onProgress, false);
+    try {
+      next = await rec.promise;
+      wt.buildDetail = { ...rec.stageTimings };
+      if (next._buildDetail?.vegetation) {
+        wt.buildDetail.vegetationDetail = { ...next._buildDetail.vegetation };
+      }
+    } finally {
+      if (onProgress && rec.listeners) rec.listeners.delete(onProgress);
+    }
   }
+  wtStage('build');
+  next.group.visible = true;
   // perf-r3: assembleWorld and activateWorld (minimap top-down capture,
   // collider build, sky re-key) used to fuse into one ~1.6 s task — give the
   // loading bar a painted frame between them.
   await nextFrame();
+  wtStage('present');
   // perf-r5c (retina probe): activateWorld's minimap capture was the FIRST
   // render touching the fresh world's programs — 55 links resolved in that
   // one slice (630 ms). Submit the compiles now, let the parallel linker
   // breathe, and bake the cloud decks one-per-frame; the capture then binds
   // ready programs and baked clouds.
-  try { renderer.compile(next.group, camera, scene); } catch (_) { /* warm only */ }
-  for (const _ of linkerBreathingSlices(40)) await nextFrame();
+  try {
+    if (typeof renderer.compileAsync === 'function') {
+      await renderer.compileAsync(next.group, camera, scene);
+    } else {
+      renderer.compile(next.group, camera, scene);
+    }
+  } catch (_) { /* warm only */ }
+  wtStage('compile');
+  await nextFrame();
   // shadow-depth variants never build through compile() (r2d note) and the
   // render that submits them also BINDS them — one full render resolved ~59
   // links in a single slice (3 s under heavy host load). Render the world in
@@ -1060,9 +1168,11 @@ async function ensureWorld(mapId, onProgress = null) {
   // and resolves roughly a third, with linker breathing between.
   {
     const kids = next.group.children.slice();
-    for (let sub = 0; sub < kids.length; sub++) {
+    const cohorts = Math.min(3, Math.max(1, kids.length));
+    for (let sub = 0; sub < cohorts; sub++) {
+      const lastVisible = Math.ceil(((sub + 1) / cohorts) * kids.length) - 1;
       const hidden = [];
-      for (let j = sub + 1; j < kids.length; j++) {
+      for (let j = lastVisible + 1; j < kids.length; j++) {
         if (kids[j].visible) { kids[j].visible = false; hidden.push(kids[j]); }
       }
       try {
@@ -1070,12 +1180,17 @@ async function ensureWorld(mapId, onProgress = null) {
         warmRender();
       } catch (_) { /* warm only */ }
       for (const o of hidden) o.visible = true;
-      for (const _ of linkerBreathingSlices(40)) await nextFrame();
+      for (const _ of linkerBreathingSlices(24)) await nextFrame();
       await nextFrame();
     }
   }
+  wtStage('shadowWarm');
   if (sky.ensureCloudTexturesChunked) await sky.ensureCloudTexturesChunked(() => nextFrame());
+  wtStage('clouds');
   if (world !== next || worldDormant) activateWorld(next);
+  wtStage('activate');
+  wt.totalMs = Math.round(performance.now() - wtStart);
+  if (typeof window !== 'undefined') window.__WORLD_LOAD = wt;
   return world;
 }
 
@@ -1882,6 +1997,7 @@ bus.on('shell:fired', (p) => {
  */
 async function startBattleLoading(specId, mapId = null) {
   const shownAt = performance.now();
+  const loadYield = createFrameBudgetYielder(12);
   const resolved = resolveMapId(mapId || pendingMapId);
   const cfg = getMapConfig(resolved);
   // perf-smooth r1: per-stage wall-clock telemetry for the player battle-entry
@@ -1907,6 +2023,7 @@ async function startBattleLoading(specId, mapId = null) {
   // 1. battlefield (0 → 55%). Already-cached maps skip straight through.
   battleLoad.progress(0.02, 'Loading battlefield');
   await ensureWorld(resolved, (f, label) => battleLoad.progress(0.02 + f * 0.53, label));
+  blt.world = (typeof window !== 'undefined' && window.__WORLD_LOAD) || null;
   bltStage('world');
 
   // 2. roster: pick the participants, then bake any visual still missing one
@@ -1928,12 +2045,14 @@ async function startBattleLoading(specId, mapId = null) {
   // behind ~13 sequential visual bakes — on a cold cache the whole roster's
   // fetch+parse wave overlaps the 'Painting vehicles' stage and the swap
   // pipeline drains behind this loading screen instead of into the flyby.
-  import('./vehicles/modelLoader.js').then((m) => {
-    for (const ent of game.tanks) {
-      const src = MODEL_SOURCE[ent.specId];
-      if (src && src.source === 'glb' && src.glb) m.prefetchGlb(src.glb);
-    }
-  }).catch(() => { /* prefetch is a hint — createTank's own load path remains */ });
+  if (glbModelsEnabled()) {
+    import('./vehicles/modelLoader.js').then((m) => {
+      for (const ent of game.tanks) {
+        const src = MODEL_SOURCE[ent.specId];
+        if (src && src.source === 'glb' && src.glb) m.prefetchGlb(src.glb);
+      }
+    }).catch(() => { /* prefetch is a hint — createTank's own load path remains */ });
+  }
   battleLoad.progress(0.58, 'Painting vehicles');
   await nextFrame();
   const missing = game.tanks.filter((e) => !e.visual).length;
@@ -1945,12 +2064,12 @@ async function startBattleLoading(specId, mapId = null) {
     if (next) {
       try {
         await prebakeSharedTextures(getSpec(next.ent.specId),
-          engineCtx.anisotropy ?? 4, next.quality, () => nextFrame());
+          engineCtx.anisotropy ?? 4, next.quality, () => loadYield());
       } catch (_) { /* warm only — ensureStagedVisuals bakes as before */ }
     }
     if (ensureStagedVisuals(game, 1)) break;
     battleLoad.progress(0.58 + ((i + 1) / Math.max(1, missing)) * 0.30, 'Painting vehicles');
-    await nextFrame();
+    await loadYield();
   }
   bltStage('bake');
 
@@ -3812,7 +3931,13 @@ if (world) {
   world.update(0, camera.position);
   updateDustAndSync();
 }
-await bootStage('post', () => {
+await bootStage('post', async () => {
+  if (typeof renderer.compileAsync === 'function') {
+    const t0 = performance.now();
+    try { await renderer.compileAsync(scene, camera, scene); } catch (_) { /* first render is fallback */ }
+    BOOT_TIMINGS.postCompileAsync = Math.round(performance.now() - t0);
+    await nextFrame();
+  }
   lighting.update(true); // boot: render every cascade before first present
   post.render(SIM_DT);
 });

@@ -402,6 +402,70 @@ function trackBandGeo(points, width, th, linkM) {
   return g;
 }
 
+// BufferGeometry.computeVertexNormals() is deliberately generic: it moves
+// every vertex through temporary Vector3s and BufferAttribute accessors, then
+// makes a second pass to normalize the result. Runtime track belts are plain
+// float position/normal buffers, so the same calculation can be performed in
+// one allocation-free scalar pass. This is mathematically identical for the
+// non-indexed procedural/extracted belts and preserves averaged normals for
+// indexed sourced belts, but removes one of the largest live CPU samples in a
+// full battle (28 animated bands at the near-camera gear cadence).
+function recomputeTrackNormals(geometry, triangleStarts = null) {
+  const position = geometry && geometry.getAttribute('position');
+  let normal = geometry && geometry.getAttribute('normal');
+  if (!position || position.itemSize !== 3 || position.isInterleavedBufferAttribute ||
+      (normal && (normal.itemSize !== 3 || normal.isInterleavedBufferAttribute))) {
+    geometry.computeVertexNormals();
+    return;
+  }
+  if (!normal || normal.count !== position.count) {
+    normal = new THREE.BufferAttribute(new Float32Array(position.count * 3), 3);
+    geometry.setAttribute('normal', normal);
+  }
+  const p = position.array;
+  const n = normal.array;
+  const index = geometry.getIndex();
+  if (index) {
+    n.fill(0);
+    const ix = index.array;
+    for (let k = 0; k + 2 < ix.length; k += 3) {
+      const ai = ix[k] * 3, bi = ix[k + 1] * 3, ci = ix[k + 2] * 3;
+      const cbx = p[ci] - p[bi], cby = p[ci + 1] - p[bi + 1], cbz = p[ci + 2] - p[bi + 2];
+      const abx = p[ai] - p[bi], aby = p[ai + 1] - p[bi + 1], abz = p[ai + 2] - p[bi + 2];
+      const nx = cby * abz - cbz * aby;
+      const ny = cbz * abx - cbx * abz;
+      const nz = cbx * aby - cby * abx;
+      n[ai] += nx; n[ai + 1] += ny; n[ai + 2] += nz;
+      n[bi] += nx; n[bi + 1] += ny; n[bi + 2] += nz;
+      n[ci] += nx; n[ci + 1] += ny; n[ci + 2] += nz;
+    }
+    for (let i = 0; i < n.length; i += 3) {
+      const inv = 1 / (Math.hypot(n[i], n[i + 1], n[i + 2]) || 1);
+      n[i] *= inv; n[i + 1] *= inv; n[i + 2] *= inv;
+    }
+  } else {
+    const triCount = triangleStarts ? triangleStarts.length : Math.floor(p.length / 9);
+    for (let tri = 0; tri < triCount; tri++) {
+      const i = triangleStarts ? triangleStarts[tri] : tri * 9;
+      const cbx = p[i + 6] - p[i + 3];
+      const cby = p[i + 7] - p[i + 4];
+      const cbz = p[i + 8] - p[i + 5];
+      const abx = p[i] - p[i + 3];
+      const aby = p[i + 1] - p[i + 4];
+      const abz = p[i + 2] - p[i + 5];
+      let nx = cby * abz - cbz * aby;
+      let ny = cbz * abx - cbx * abz;
+      let nz = cbx * aby - cby * abx;
+      const inv = 1 / (Math.hypot(nx, ny, nz) || 1);
+      nx *= inv; ny *= inv; nz *= inv;
+      n[i] = n[i + 3] = n[i + 6] = nx;
+      n[i + 1] = n[i + 4] = n[i + 7] = ny;
+      n[i + 2] = n[i + 5] = n[i + 8] = nz;
+    }
+  }
+  normal.needsUpdate = true;
+}
+
 function trackLoopPoints({ idler, sprocket, botY, topY, sag = 0.03, supports = null, contact = null }) {
   const pts = [];
   // CLEAR: the band rides OUTSIDE the sprocket teeth / idler rim — without
@@ -1126,6 +1190,29 @@ function buildRunningGear(P, cfg) {
     loopArea2 += a[0] * b[1] - b[0] * a[1];
   }
   if (loopArea2 > 0) pts.reverse();
+  // The loaded run used to be one long quad from the front contact tangent
+  // to the rear one. Per-bogie offsets therefore had no vertices to move
+  // between those ends: link shoes articulated, but the dark belt behind
+  // them remained ruler-straight. Split the ground segment at every road-
+  // wheel station so the continuous belt forms the same tensioned,
+  // piecewise-linear terrain profile as the bogies and individual shoes.
+  // Include the 0.5 m tension-fade shoulders too. Without those vertices the
+  // belt linearly interpolated all the way to the contact endpoint while the
+  // shoes' offset correctly reached zero after 0.5 m, opening a visible seam
+  // between the continuous band and its individual links near either wrap.
+  for (let i = 0; i < pts.length; i++) {
+    const a = pts[i], b = pts[(i + 1) % pts.length];
+    if (Math.abs(a[1] - botY) > 1e-6 || Math.abs(b[1] - botY) > 1e-6) continue;
+    const lo = Math.min(a[0], b[0]), hi = Math.max(a[0], b[0]);
+    const wheelMinZ = Math.min(...wheelZs), wheelMaxZ = Math.max(...wheelZs);
+    const stations = [...new Set([...wheelZs, wheelMinZ - 0.5, wheelMaxZ + 0.5])]
+      .filter((z) => z > lo + 1e-5 && z < hi - 1e-5)
+      .sort((z0, z1) => (b[0] > a[0] ? z0 - z1 : z1 - z0));
+    if (stations.length) {
+      pts.splice(i + 1, 0, ...stations.map((z) => [z, botY]));
+      i += stations.length;
+    }
+  }
   const tg = trackBandGeo(pts, trackW, trackTh, mats.trackLinkM);
   P.disposables.push(tg);
   // r1 per-wheel articulation: each side owns its OWN geometry so the bottom
@@ -1138,9 +1225,11 @@ function buildRunningGear(P, cfg) {
   const bandBasePos = tg.getAttribute('position').array.slice();
   P.disposables.push(tgL, tgR);
   const tl = new THREE.Mesh(tgL, mats.trackL);
+  tl.name = 'gearTrackBandL';
   tl.userData.runningGear = true;
   tl.position.x = -xcLeft;
   const tr = new THREE.Mesh(tgR, mats.trackR);
+  tr.name = 'gearTrackBandR';
   tr.userData.runningGear = true;
   tr.position.x = xcRight;
   tl.castShadow = tl.receiveShadow = tr.castShadow = tr.receiveShadow = true;
@@ -1197,6 +1286,8 @@ function buildRunningGear(P, cfg) {
   P.disposables.push(padMat,innerMat);
   const padIM = new THREE.InstancedMesh(shoe.pad,padMat,nLinks*2);
   const innerIM = new THREE.InstancedMesh(shoe.inner,innerMat,nLinks*2);
+  padIM.name = 'gearTrackPads';
+  innerIM.name = 'gearTrackInnerLinks';
   const linkMeshes=[padIM,innerIM];
   // PERF: both layers hug the casting track band; the band alone casts the
   // continuous shadow. The extra layer costs one instanced draw per tank,
@@ -1220,23 +1311,46 @@ function buildRunningGear(P, cfg) {
   const coverZ0 = rearEnd.z + rearEnd.r * 0.5;
   const coverZ1 = frontEnd.z - frontEnd.r * 0.5;
   const placeLinks = (l, r) => {
-    for (let i = 0; i < nLinks * 2; i++) {
-      const side = i < nLinks ? -1 : 1;
-      let s = (i % nLinks) * lp + (side < 0 ? l : r);
-      s = ((s % loopLen) + loopLen) % loopLen;
-      let sg = segsT[nP - 1];
-      for (let k = 0; k < nP; k++) {
-        if (s < segsT[k].c0 + segsT[k].l) { sg = segsT[k]; break; }
-      }
-      const u = s - sg.c0;
-      const z = sg.z + sg.tz * u, y = sg.y + sg.ty * u;
-      if (y > coverY && z > coverZ0 && z < coverZ1) {
-        _m.makeScale(0, 0, 0);                     // covered return run: hide pad
-        for(const mesh of linkMeshes) mesh.setMatrixAt(i,_m);
-        continue;
-      }
-      _q.setFromAxisAngle(_X, Math.atan2(-sg.ty, sg.tz));
-      _v.set(side * xcForSide(side), y + sg.tz * rOut, z - sg.ty * rOut);
+    // Link distances are monotonic around each side's loop. Walk the segment
+    // cursor with them instead of restarting a linear nP search for every
+    // shoe. The cursor resets once when distance wraps.
+    for (const side of [-1, 1]) {
+      const baseI = side < 0 ? 0 : nLinks;
+      const scroll = side < 0 ? l : r;
+      const s0 = ((scroll % loopLen) + loopLen) % loopLen;
+      let segIx = 0;
+      while (segIx < nP - 1 && s0 >= segsT[segIx].c0 + segsT[segIx].l) segIx++;
+      let prevS = s0;
+      for (let linkI = 0; linkI < nLinks; linkI++) {
+        const i = baseI + linkI;
+        let s = s0 + linkI * lp;
+        if (s >= loopLen) s -= loopLen;
+        if (linkI && s < prevS) segIx = 0;
+        while (segIx < nP - 1 && s >= segsT[segIx].c0 + segsT[segIx].l) segIx++;
+        prevS = s;
+        const sg = segsT[segIx];
+        const u = s - sg.c0;
+        const z = sg.z + sg.tz * u, y = sg.y + sg.ty * u;
+        if (y > coverY && z > coverZ0 && z < coverZ1) {
+          _m.makeScale(0, 0, 0);
+          for (const mesh of linkMeshes) mesh.setMatrixAt(i, _m);
+          continue;
+        }
+        const groundRunOff = deformedBandOffset(z, y, side);
+        let tz = sg.tz, ty = sg.ty;
+        if (Math.abs(groundRunOff) > 1e-5) {
+          const eps = 0.045;
+          const za = z - sg.tz * eps, ya = y - sg.ty * eps;
+          const zb = z + sg.tz * eps, yb = y + sg.ty * eps;
+          const dz = zb - za;
+          const dy = (yb + deformedBandOffset(zb, yb, side)) -
+            (ya + deformedBandOffset(za, ya, side));
+          const invLen = 1 / Math.max(Math.hypot(dz, dy), 1e-6);
+          tz = dz * invLen;
+          ty = dy * invLen;
+        }
+        _q.setFromAxisAngle(_X, Math.atan2(-ty, tz));
+        _v.set(side * xcForSide(side), y + groundRunOff + tz * rOut, z - ty * rOut);
       // gameplay_feel r5 (terrain-contact hard gate): on the GROUND RUN the
       // outward rOut offset plus the flipped pad geometry (pad face 0.03 +
       // grouser bar to 0.07) hung the grouser tips ~7 cm below the sim's
@@ -1257,15 +1371,11 @@ function buildRunningGear(P, cfg) {
         for(const mesh of linkMeshes) mesh.setMatrixAt(i,_m);
         continue;
       }
-      // ground-run pads follow the per-wheel band deformation (bandOffsetAt
-      // is 0 above the axle line by construction of the weight below)
-      if (y < wheelY) {
-        const w = Math.min((wheelY - y) / Math.max(wheelY - botY, 1e-3), 1);
-        _v.y += bandOffsetAt(z, side) * w * w;
-      }
       // 7.2 cm pad plus the raised grouser needs a slightly higher centre
       // than the old paper-thin shoe to keep its tread face on the terrain.
-      const padGroundCenter = cfg.padGroundCenter ?? 0.078;
+      // Follow downward terrain travel instead of pinning hollows back to the
+      // rigid hull plane.
+      const padGroundCenter = (cfg.padGroundCenter ?? 0.078) + Math.min(groundRunOff, 0);
       if (_v.y < padGroundCenter) _v.y = padGroundCenter;
       // cfg.padCornerFloor opt-in (uk 90-push, centurion r6): on the approach/
       // departure RAMPS the tilted pads' lower corners dip below the ground
@@ -1297,6 +1407,7 @@ function buildRunningGear(P, cfg) {
       _s.set(1, 1, 1);
       _m.compose(_v, _q, _s);
       for(const mesh of linkMeshes) mesh.setMatrixAt(i,_m);
+      }
     }
     for(const mesh of linkMeshes) mesh.instanceMatrix.needsUpdate=true;
   };
@@ -1567,6 +1678,58 @@ function buildRunningGear(P, cfg) {
   suspWheels[-1].sort((a, b) => a.z - b.z);
   suspWheels[1].sort((a, b) => a.z - b.z);
 
+  // Every band vertex has a fixed rest-space z and therefore a fixed pair of
+  // suspension-wheel influences. Resolve that topology once instead of doing
+  // a linear wheel search for every vertex of both bands on every animation
+  // update. The dirty triangle list likewise omits the rigid return run and
+  // wrap faces from normal reconstruction without changing any moved face.
+  function buildBandInfluence(ws) {
+    const vertices = [], wheelA = [], wheelB = [], weightA = [], weightB = [];
+    const dirtyVertex = new Uint8Array(bandBasePos.length / 3);
+    const span = Math.max(wheelY - botY, 1e-3);
+    for (let vi = 0, j = 0; j < bandBasePos.length; vi++, j += 3) {
+      const by = bandBasePos[j + 1];
+      if (by >= wheelY || !ws.length) continue;
+      const vertical = Math.min((wheelY - by) / span, 1) ** 2;
+      const z = bandBasePos[j + 2];
+      let a = -1, b = -1, wa = 0, wb = 0;
+      if (z <= ws[0].z) {
+        const d = ws[0].z - z;
+        if (d <= 0.5) { a = 0; wa = 1 - d / 0.5; }
+      } else if (z >= ws[ws.length - 1].z) {
+        const d = z - ws[ws.length - 1].z;
+        if (d <= 0.5) { a = ws.length - 1; wa = 1 - d / 0.5; }
+      } else {
+        for (let k = 1; k < ws.length; k++) {
+          if (z > ws[k].z) continue;
+          const t = (z - ws[k - 1].z) / Math.max(ws[k].z - ws[k - 1].z, 1e-4);
+          a = k - 1; b = k; wa = 1 - t; wb = t;
+          break;
+        }
+      }
+      wa *= vertical; wb *= vertical;
+      if (a < 0 || (Math.abs(wa) + Math.abs(wb) < 1e-8)) continue;
+      vertices.push(vi); wheelA.push(a); wheelB.push(b); weightA.push(wa); weightB.push(wb);
+      dirtyVertex[vi] = 1;
+    }
+    const triangles = [];
+    for (let vi = 0; vi + 2 < dirtyVertex.length; vi += 3) {
+      if (dirtyVertex[vi] || dirtyVertex[vi + 1] || dirtyVertex[vi + 2]) {
+        triangles.push(vi * 3); // scalar position/normal-array offset
+      }
+    }
+    return {
+      vertices: Uint32Array.from(vertices),
+      wheelA: Int16Array.from(wheelA), wheelB: Int16Array.from(wheelB),
+      weightA: Float32Array.from(weightA), weightB: Float32Array.from(weightB),
+      triangles: Uint32Array.from(triangles),
+    };
+  }
+  const bandInfluence = {
+    [-1]: buildBandInfluence(suspWheels[-1]),
+    [1]: buildBandInfluence(suspWheels[1]),
+  };
+
   /** Interpolated wheel visual offset at hull-local z for one side. */
   function bandOffsetAt(z, side) {
     const ws = suspWheels[side];
@@ -1589,6 +1752,13 @@ function buildRunningGear(P, cfg) {
     return 0;
   }
 
+  /** Lower-run displacement with a smooth fade to zero at the axle line. */
+  function deformedBandOffset(z, y, side) {
+    if (y >= wheelY) return 0;
+    const w = Math.min((wheelY - y) / Math.max(wheelY - botY, 1e-3), 1);
+    return bandOffsetAt(z, side) * w * w;
+  }
+
   // deform one band's bottom run toward the wheel offset field (weight fades
   // to zero by the axle line so the top run / arcs never move)
   const bandDeformed = { [-1]: false, [1]: false };
@@ -1602,14 +1772,21 @@ function buildRunningGear(P, cfg) {
     const geo = side < 0 ? tgL : tgR;
     const attr = geo.getAttribute('position');
     const arr = attr.array;
-    const span = Math.max(wheelY - botY, 1e-3);
-    for (let i = 0; i < arr.length; i += 3) {
-      const by = bandBasePos[i + 1];
-      if (by >= wheelY) { arr[i + 1] = by; continue; }
-      const w = Math.min((wheelY - by) / span, 1);
-      arr[i + 1] = by + Math.max(bandOffsetAt(bandBasePos[i + 2], side) * w * w, -0.02);
+    const inf = bandInfluence[side];
+    for (let k = 0; k < inf.vertices.length; k++) {
+      const vi = inf.vertices[k];
+      const a = inf.wheelA[k], b = inf.wheelB[k];
+      const off = (ws[a].voff || 0) * inf.weightA[k] +
+        (b >= 0 ? (ws[b].voff || 0) * inf.weightB[k] : 0);
+      arr[vi * 3 + 1] = bandBasePos[vi * 3 + 1] + off;
     }
     attr.needsUpdate = true;
+    // Terrain flex changes the lower run's face direction. Keeping the rest-
+    // pose normals made the bent belt shade like a flat plank even though its
+    // silhouette moved. These bands are tiny (tens of vertices), so updating
+    // their normals on the existing gear cadence is inexpensive and makes
+    // each tensioned span read as actual articulated steel.
+    recomputeTrackNormals(geo, inf.triangles);
   }
 
   const gearUnit = {
@@ -1648,11 +1825,11 @@ function buildRunningGear(P, cfg) {
                Math.sin(scroll * 6.3 + e.i * 3.17) * 0.009 +
                Math.sin(scroll * 1.35 + e.i * 2.61) * 0.010) * amp
             : 0;
-          // gameplay_feel r1: clamp DOWNWARD chatter travel — the sim support
-          // solve cannot pre-lift for per-wheel noise (probe: -0.115 m below
-          // the heightfield at speed); upward compression keeps full read.
+          // Clamp only the COSMETIC downward chatter. Terrain conformance is
+          // real suspension travel and must retain its full droop; clamping
+          // the combined value to -2 cm was the rigid-track/taped-down feel.
           const groundOff = e.off || 0;
-          const voff = Math.max(bob + groundOff, -0.02);
+          const voff = groundOff + Math.max(bob, -0.02);
           // The wheel can chatter against the suspension, but the track belt
           // remains keyed to the sampled terrain offset. Feeding positive
           // cosmetic bob into the belt lifted whole link runs 8-11 cm off
@@ -1871,8 +2048,8 @@ function registerGearUnit(P, unit) {
   P.gear = {
     __units: units,
     update(l, r) { for (const u of units) u.update(l, r); },
-    conform(state, sampler, pitchEff, rollEff) {
-      for (const u of units) u.conform(state, sampler, pitchEff, rollEff);
+    conform(state, sampler, pitchEff, rollEff, dt) {
+      for (const u of units) u.conform(state, sampler, pitchEff, rollEff, dt);
     },
     setBroken(module, broken) { for (const u of units) u.setBroken(module, broken); },
     // multi-unit rigs (t95 four-track): one hitbox hull PER UNIT, per side —
@@ -3977,6 +4154,12 @@ export function createTank(specId, engineCtx, opts = {}) {
     clear(...names) {
       for (const name of names.flat()) buckets[name] = [];
     },
+    clearDecals(...parents) {
+      const remove = new Set(parents.flat());
+      for (let i = decals.length - 1; i >= 0; i--) {
+        if (remove.has(decals[i].parent)) decals.splice(i, 1);
+      }
+    },
     // Section-correction utility for authored family variants. Bucket
     // geometry is still unmerged here, so scaling these native pieces
     // preserves their topology, materials and articulation ownership. This
@@ -4387,6 +4570,275 @@ export function createTank(specId, engineCtx, opts = {}) {
     return found;
   }
 
+  // Sourced GLB track belts used to remain rigid even after their individual
+  // wheel nodes gained suspension travel. modelLoader tags genuine live
+  // track-run meshes before its static-kit merge; clone those geometries per
+  // tank and bend only their lower run along a smoothed terrain profile.
+  // This is CPU-side on the existing 20/60 Hz gear cadence, so it works with
+  // every current material/shadow path and adds no draw calls.
+  let glbTracks = null;
+  const GLB_TRACK_SAMPLES = 15;
+  const GLB_TRACK_DROOP_M = 0.20;
+  const GLB_TRACK_BUMP_M = 0.28;
+  const _trackV = new THREE.Vector3();
+  function scanGlbTracks() {
+    const records = [];
+    const bones = [];
+    let vertexBudget = 120000;
+    let floorY = Infinity;
+    try {
+      hullG.updateMatrixWorld(true);
+      const invHull = new THREE.Matrix4().copy(hullG.matrixWorld).invert();
+      const rel = new THREE.Matrix4();
+      hullG.traverse((o) => {
+        if (vertexBudget <= 0 || !o.isMesh || o.isSkinnedMesh || !o.geometry) return;
+        if (o.userData.__cotTrackDeform !== true || !o.visible) return;
+        const src = o.geometry;
+        const srcPos = src.getAttribute && src.getAttribute('position');
+        if (!srcPos || srcPos.itemSize < 3 || srcPos.count < 6 || srcPos.count > vertexBudget) return;
+
+        // GLTF cache geometries are shared between tanks. The runtime belt is
+        // necessarily per-instance; kitMerged geometry was already unique and
+        // can be retired as soon as its deformable clone replaces it.
+        const geo = src.clone();
+        if (o.userData.__kitMerged || o.userData.__cotTrackExtracted) src.dispose();
+        o.geometry = geo;
+        o.userData.__cotTrackRuntimeClone = true;
+        const attr = geo.getAttribute('position');
+        attr.setUsage(THREE.DynamicDrawUsage);
+        const base = attr.array.slice();
+
+        // A fused hull may expose only its track triangles through material
+        // groups (modelLoader stamps the selected group indices). Build a
+        // vertex mask so the belt flexes without warping the belly/armor that
+        // happens to share the same BufferGeometry.
+        let active = null;
+        const materialIndices = o.userData.__cotTrackMaterialIndices;
+        if (Array.isArray(materialIndices) && materialIndices.length) {
+          active = new Uint8Array(attr.count);
+          const wanted = new Set(materialIndices);
+          const index = geo.getIndex();
+          for (const group of geo.groups) {
+            if (!wanted.has(group.materialIndex)) continue;
+            const end = Math.min(group.start + group.count,
+              index ? index.count : attr.count);
+            for (let k = group.start; k < end; k++) {
+              active[index ? index.getX(k) : k] = 1;
+            }
+          }
+        }
+
+        o.updateWorldMatrix(true, false);
+        rel.multiplyMatrices(invHull, o.matrixWorld);
+        const invRel = rel.clone().invert();
+        const ie = invRel.elements;
+        // Local-space vector that maps to exactly +1 m along hull-local Y.
+        const upX = ie[4], upY = ie[5], upZ = ie[6];
+        const hx = new Float32Array(attr.count);
+        const hy = new Float32Array(attr.count);
+        const hz = new Float32Array(attr.count);
+        let minY = Infinity, maxY = -Infinity;
+        for (let i = 0, j = 0; i < attr.count; i++, j += 3) {
+          _trackV.set(base[j], base[j + 1], base[j + 2]).applyMatrix4(rel);
+          hx[i] = _trackV.x; hy[i] = _trackV.y; hz[i] = _trackV.z;
+          if (active && !active[i]) continue;
+          if (_trackV.y < minY) minY = _trackV.y;
+          if (_trackV.y > maxY) maxY = _trackV.y;
+        }
+        if (!Number.isFinite(minY) || maxY - minY < 0.015) return;
+        if (minY < floorY) floorY = minY;
+        // Normal reconstruction touches every triangle, not just the flexing
+        // lower run. Large sourced meshes therefore update lighting at a
+        // lower cadence than positions; 10-30 Hz normal motion is visually
+        // continuous while avoiding a full-mesh CPU pass every render frame.
+        const normalEvery = attr.count > 60000 ? 6 : attr.count > 20000 ? 4 : 2;
+        records.push({
+          o, attr, base, hx, hy, hz, active, minY, maxY, upX, upY, upZ,
+          normalEvery,
+        });
+        vertexBudget -= attr.count;
+      });
+
+      // Bone-rigged link strips (Quaternius) need articulation at their link
+      // bones, not destructive edits to skinned input vertices. Use the
+      // skinned track surface only to locate the real contact floor; the
+      // deduplicated Track* bones carry the runtime offsets below.
+      const seenBones = new Set();
+      hullG.traverse((o) => {
+        if (!o.isSkinnedMesh || !o.geometry || !o.skeleton || !o.visible ||
+            o.userData.__cotTrackDeform !== true) return;
+        const pos = o.geometry.getAttribute && o.geometry.getAttribute('position');
+        if (!pos) return;
+        o.skeleton.update();
+        o.updateWorldMatrix(true, false);
+        rel.multiplyMatrices(invHull, o.matrixWorld);
+        const step = Math.max(1, Math.floor(pos.count / 20000));
+        for (let i = 0; i < pos.count; i += step) {
+          _trackV.fromBufferAttribute(pos, i);
+          o.applyBoneTransform(i, _trackV).applyMatrix4(rel);
+          if (_trackV.y < floorY) floorY = _trackV.y;
+        }
+        for (const bone of o.skeleton.bones) {
+          if (seenBones.has(bone) || !/(track|tread|thread)/i.test(bone.name || '') ||
+              /(?:_end|end)$/i.test(bone.name || '') || !bone.parent) continue;
+          seenBones.add(bone);
+          bone.getWorldPosition(_trackV);
+          _trackV.applyMatrix4(invHull);
+          const h = _trackV.clone();
+          const parentRel = new THREE.Matrix4().multiplyMatrices(invHull, bone.parent.matrixWorld);
+          const invParentRel = parentRel.invert();
+          const up0 = new THREE.Vector3(0, 0, 0).applyMatrix4(invParentRel);
+          const up = new THREE.Vector3(0, 1, 0).applyMatrix4(invParentRel).sub(up0);
+          bones.push({ bone, base: bone.position.clone(), h, up, weight: 1 });
+        }
+      });
+    } catch (_) { return null; }
+    if ((!records.length && !bones.length) || !Number.isFinite(floorY)) return null;
+
+    let sumL = 0, nL = 0, sumR = 0, nR = 0;
+    let zMin = Infinity, zMax = -Infinity;
+    for (const rec of records) {
+      const depth = Math.min(0.48, Math.max(0.18, (rec.maxY - rec.minY) * 0.30));
+      rec.weight = new Float32Array(rec.attr.count);
+      for (let i = 0; i < rec.attr.count; i++) {
+        if (rec.active && !rec.active[i]) continue;
+        let t = (rec.minY + depth - rec.hy[i]) / depth;
+        t = t < 0 ? 0 : (t > 1 ? 1 : t);
+        rec.weight[i] = t * t * (3 - 2 * t); // smoothstep: no crease at the axle line
+        if (rec.hy[i] <= floorY + 0.12) {
+          if (rec.hx[i] < 0) { sumL += rec.hx[i]; nL++; }
+          else { sumR += rec.hx[i]; nR++; }
+          if (rec.hz[i] < zMin) zMin = rec.hz[i];
+          if (rec.hz[i] > zMax) zMax = rec.hz[i];
+        }
+      }
+      if (rec.o.geometry.boundingBox) rec.o.geometry.boundingBox.expandByScalar(GLB_TRACK_DROOP_M);
+      if (rec.o.geometry.boundingSphere) rec.o.geometry.boundingSphere.radius += GLB_TRACK_DROOP_M;
+    }
+    if (bones.length) {
+      let minBoneY = Infinity, maxBoneY = -Infinity;
+      for (const rec of bones) {
+        if (rec.h.y < minBoneY) minBoneY = rec.h.y;
+        if (rec.h.y > maxBoneY) maxBoneY = rec.h.y;
+      }
+      const flatLinkStrip = maxBoneY - minBoneY < 0.12;
+      const depth = Math.max(0.2, Math.min(0.5, maxBoneY - minBoneY));
+      for (const rec of bones) {
+        if (!flatLinkStrip) {
+          let t = (minBoneY + depth - rec.h.y) / depth;
+          t = t < 0 ? 0 : (t > 1 ? 1 : t);
+          rec.weight = t * t * (3 - 2 * t);
+        }
+        if (rec.weight <= 0.001) continue;
+        if (rec.h.x < 0) { sumL += rec.h.x; nL++; }
+        else { sumR += rec.h.x; nR++; }
+        if (rec.h.z < zMin) zMin = rec.h.z;
+        if (rec.h.z > zMax) zMax = rec.h.z;
+      }
+    }
+    const cg = contactGeom;
+    if (!Number.isFinite(zMin) || zMax - zMin < 0.5) {
+      const sl = cg ? cg.halfLenM : spec.dims.hullLengthM * 0.4;
+      const zc = cg ? cg.zCenterM : 0;
+      zMin = zc - sl; zMax = zc + sl;
+    }
+    const hw = cg ? cg.halfWidM * 0.82 : spec.dims.widthM * 0.4;
+    const xL = nL ? sumL / nL : -hw;
+    const xR = nR ? sumR / nR : hw;
+    return {
+      records, bones, units: records.length + (bones.length ? 1 : 0),
+      floorY, zMin, zMax, xL, xR,
+      left: new Float32Array(GLB_TRACK_SAMPLES),
+      right: new Float32Array(GLB_TRACK_SAMPLES),
+      smooth: new Float32Array(GLB_TRACK_SAMPLES),
+      ready: false,
+      normalTick: 0,
+    };
+  }
+
+  function updateGlbTracks(track, state, pEff, rEff, dt) {
+    if (!track || !groundSampler) return;
+    const cb = Math.cos(state.yaw), sb = Math.sin(state.yaw);
+    const ca = Math.cos(-pEff), sa = Math.sin(-pEff);
+    const cr = Math.cos(rEff), sr = Math.sin(rEff);
+    const spanZ = Math.max(track.zMax - track.zMin, 1e-4);
+    const wasReady = track.ready;
+    const alpha = wasReady ? 1 - Math.exp(-Math.min(dt, 0.12) * 24) : 1;
+    let minOffset = Infinity, maxOffset = -Infinity;
+    let maxProfileDelta = 0;
+
+    for (const [x, profile] of [[track.xL, track.left], [track.xR, track.right]]) {
+      for (let i = 0; i < GLB_TRACK_SAMPLES; i++) {
+        const z = track.zMin + spanZ * (i / (GLB_TRACK_SAMPLES - 1));
+        const x1 = x * cr - track.floorY * sr;
+        const y1 = x * sr + track.floorY * cr;
+        const z2 = y1 * sa + z * ca;
+        const wx = state.pos.x + x1 * cb + z2 * sb;
+        const wy = state.pos.y + y1 * ca - z * sa;
+        const wz = state.pos.z - x1 * sb + z2 * cb;
+        const dev = groundSampler(wx, wz) - wy;
+        const target = Math.max(-GLB_TRACK_DROOP_M, Math.min(GLB_TRACK_BUMP_M, dev));
+        const prev = profile[i];
+        profile[i] = prev + (target - prev) * alpha;
+        maxProfileDelta = Math.max(maxProfileDelta, Math.abs(profile[i] - prev));
+        if (profile[i] < minOffset) minOffset = profile[i];
+        if (profile[i] > maxOffset) maxOffset = profile[i];
+      }
+      // Track tension: retain the terrain shape but remove single-sample
+      // kinks that would make a steel belt look rubbery.
+      track.smooth[0] = profile[0];
+      track.smooth[GLB_TRACK_SAMPLES - 1] = profile[GLB_TRACK_SAMPLES - 1];
+      for (let i = 1; i < GLB_TRACK_SAMPLES - 1; i++) {
+        track.smooth[i] = profile[i - 1] * 0.18 + profile[i] * 0.64 + profile[i + 1] * 0.18;
+      }
+      profile.set(track.smooth);
+    }
+    track.ready = true;
+    hullG.userData.__glbTrackOffsetRangeM =
+      Number.isFinite(minOffset) && Number.isFinite(maxOffset) ? maxOffset - minOffset : 0;
+    hullG.userData.__glbTrackMaxOffsetM =
+      Number.isFinite(minOffset) && Number.isFinite(maxOffset)
+        ? Math.max(Math.abs(minOffset), Math.abs(maxOffset)) : 0;
+
+    // A settled profile is already resident in the dynamic position/normal
+    // buffers. Most straight or parked frames land here, avoiding a full
+    // sourced-track vertex rewrite and GPU buffer upload with zero visual
+    // difference. Half a millimetre is well below a rendered track pixel at
+    // normal gameplay distance.
+    if (wasReady && maxProfileDelta < 0.0005) return;
+    track.normalTick++;
+
+    for (const rec of track.records) {
+      const arr = rec.attr.array;
+      for (let i = 0, j = 0; i < rec.attr.count; i++, j += 3) {
+        const sideProfile = rec.hx[i] < 0 ? track.left : track.right;
+        let u = (rec.hz[i] - track.zMin) / spanZ * (GLB_TRACK_SAMPLES - 1);
+        u = u < 0 ? 0 : (u > GLB_TRACK_SAMPLES - 1 ? GLB_TRACK_SAMPLES - 1 : u);
+        const i0 = Math.min(GLB_TRACK_SAMPLES - 2, Math.floor(u));
+        const f = u - i0;
+        const off = (sideProfile[i0] * (1 - f) + sideProfile[i0 + 1] * f) * rec.weight[i];
+        arr[j] = rec.base[j] + rec.upX * off;
+        arr[j + 1] = rec.base[j + 1] + rec.upY * off;
+        arr[j + 2] = rec.base[j + 2] + rec.upZ * off;
+      }
+      rec.attr.needsUpdate = true;
+      if (!wasReady || track.normalTick % rec.normalEvery === 0) {
+        recomputeTrackNormals(rec.o.geometry);
+      }
+    }
+    for (const rec of track.bones) {
+      const sideProfile = rec.h.x < 0 ? track.left : track.right;
+      let u = (rec.h.z - track.zMin) / spanZ * (GLB_TRACK_SAMPLES - 1);
+      u = u < 0 ? 0 : (u > GLB_TRACK_SAMPLES - 1 ? GLB_TRACK_SAMPLES - 1 : u);
+      const i0 = Math.min(GLB_TRACK_SAMPLES - 2, Math.floor(u));
+      const f = u - i0;
+      const off = (sideProfile[i0] * (1 - f) + sideProfile[i0 + 1] * f) * rec.weight;
+      rec.bone.position.copy(rec.base).addScaledVector(rec.up, off);
+      rec.bone.updateMatrix();
+      rec.bone.matrixWorldNeedsUpdate = true;
+    }
+  }
+
   // ---- animation-layer state (visual only, self-timed at SIM_STEP) ---------
   let groundSampler = null;          // (x, z) => terrain height, set by integration
   let gearAccumDt = 0;               // elapsed time across distance-cadence skips
@@ -4689,6 +5141,18 @@ export function createTank(specId, engineCtx, opts = {}) {
           glbSpinners = scanGlbSpinners();
           hullG.userData.__glbSpinnerCount = glbSpinners.length; // probe/debug
         }
+        // Scan after wheel pivots: track geometry is cloned/deformed per tank,
+        // while the spinner detector must read the untouched wheel bounds.
+        if (glbTracks === null) {
+          glbTracks = scanGlbTracks();
+          hullG.userData.__glbTrackDeformCount = glbTracks ? glbTracks.units : 0;
+          // state.js uses this live capability bit to decide whether imported
+          // gear still needs the old rigid support clamp. Require BOTH layers:
+          // a flexing belt with rigid wheels (or vice versa) is not safe to
+          // treat as a fully conforming suspension.
+          hullG.userData.__glbConformingGear =
+            glbSpinners.length > 0 && !!(glbTracks && glbTracks.units > 0);
+        }
         if (groundSampler && gearNow && glbSpinners.length) {
           const pEff = state.visualPitch + suspP - flinchP;
           const rEff = state.visualRoll + suspR + sway + flinchR;
@@ -4717,6 +5181,11 @@ export function createTank(specId, engineCtx, opts = {}) {
             const target = Math.max(-0.20, Math.min(0.28, dev));
             g.off += (target - g.off) * alpha;
           }
+        }
+        if (groundSampler && gearNow && glbTracks) {
+          updateGlbTracks(glbTracks, state,
+            state.visualPitch + suspP - flinchP,
+            state.visualRoll + suspR + sway + flinchR, gearStepDt);
         }
         for (let i = 0; i < glbSpinners.length; i++) {
           const g = glbSpinners[i];
@@ -5023,6 +5492,8 @@ export function createTank(specId, engineCtx, opts = {}) {
         // per instance (modelLoader mergeStaticKit) — unlike the shared
         // cache geometry it must die with the visual or eviction leaks it.
         if (o.isMesh && o.userData.__kitMerged && o.geometry) o.geometry.dispose();
+        else if (o.isMesh && o.userData.__cotTrackRuntimeClone && o.geometry) o.geometry.dispose();
+        else if (o.isMesh && o.userData.__cotSharedAttributeView && o.geometry) o.geometry.dispose();
       });
       mats.dispose();
       if (root.parent) root.parent.remove(root);

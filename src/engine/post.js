@@ -1748,9 +1748,9 @@ export function createPost(renderer, scene, camera) {
   //    preset resolution per axis (effective ratio ~1.125 on the 1.5 cap).
   //  - ANTI-FLAP BACKOFF instead of a dead band: an up-step punished by a
   //    down-step within 8 s doubles the wait before the next up try
-  //    (2.5 → 5 → 10 → 20 s cap; a flap-free minute resets it). Recovery
-  //    from a genuine load drop stays 1 step per 2.5 s — floor to 1.0 in
-  //    ~7.5 s.
+  //    (1.5 → 3 → 6 → 12 → 20 s cap; a flap-free minute resets it). Recovery
+  //    from a genuine load drop stays 1 step per 1.5 s — floor to 1.0 in
+  //    ~4.5 s.
   //  - hidden-document frames never govern: main.js's rAF-starvation
   //    fallback ticks at ~10 Hz by design — that cadence says nothing about
   //    GPU cost and used to read as a permanent budget blowout.
@@ -1761,7 +1761,7 @@ export function createPost(renderer, scene, camera) {
   //    path.
   //  - STEPPED + RATE-LIMITED, not a per-frame lerp: every ratio change
   //    reallocates the whole composer chain (scene HDR target, GTAO, bloom,
-  //    SMAA); steps of ~0.09 at most once per 2.5 s.
+  //    SMAA); steps of ~0.09 at most once per 1.5 s.
   //  - HUD/DOM stays native-crisp: only the composer's internal buffers
   //    scale; the final pass upscales (linear-filtered buffers) to the
   //    untouched canvas.
@@ -1776,8 +1776,12 @@ export function createPost(renderer, scene, camera) {
   const DYN_MIN_DEFAULT = 0.75;
   const dynMin = () => preset.dynMin ?? DYN_MIN_DEFAULT;
   const DYN_STEP = 0.09;
-  const DYN_INTERVAL_S = 2.5;
-  const DYN_WARMUP_S = 6; // ignore boot/shader-compile turbulence
+  // Weak devices used to endure ~20 s before the full relief ladder engaged:
+  // 6 s warmup + three 2.5 s resolution decisions + two trim strikes. Shader
+  // compilation is now front-loaded behind the loading screen, so live
+  // evidence can safely begin sooner. Recovery remains backoff-protected.
+  const DYN_INTERVAL_S = 1.5;
+  const DYN_WARMUP_S = 3; // ignore boot/shader-compile turbulence
   const DYN_TARGET_MS = 16.9; // 60 fps budget (+~1% vsync slack)
   const DYN_BUDGET_MAX_MS = 34; // starved cadences never fake a lax budget
   const DYN_DOWN_LEVEL = 1.12; // EMA > budget x this (plus misses) => down
@@ -1827,7 +1831,7 @@ export function createPost(renderer, scene, camera) {
   //   trim 1  shadow cascades re-render at half rate (lighting.js lever)
   //   trim 2  GTAO off (the most expensive single pass)
   //   trim 3  shadow cascades at third rate
-  // Down-steps need TRIM_STRIKES consecutive overloaded windows (~5 s) so a
+  // Down-steps need TRIM_STRIKES consecutive overloaded windows (~3 s) so a
   // killcam beat can't trim; up-steps need clean windows and back off
   // exponentially when they flap (the R3F `flipflops` guard).
   const TRIM_MAX = 3;
@@ -1929,7 +1933,7 @@ export function createPost(renderer, scene, camera) {
       ? Math.max(dynMin(), 0.8) : dynMin();
     if (dynClock - dynLastDecision < DYN_INTERVAL_S) return;
     if (dynWinFrames < DYN_MIN_WINDOW_FRAMES) return; // thin window: wait
-    // Decision point (every >= 2.5 s of visible frames).
+    // Decision point (every >= 1.5 s of visible frames).
     // Display cadence estimate: p10 of the recent deltas is the shortest
     // period vsync consistently delivers; the budget is the 60 fps target or
     // the cadence, whichever is slower (capped — see DYN_BUDGET_MAX_MS).
@@ -1970,7 +1974,7 @@ export function createPost(renderer, scene, camera) {
     renderer.domElement.dataset.fpsBaseline = fpsBaseline.toFixed(1);
     const clean = dynEma < dynBudgetMs * DYN_UP_LEVEL && missRatio < DYN_UP_MISS_MAX;
     const leverLeft = dynLeverAvailable && dynScale > dynFloor;
-    if (overloaded && !leverLeft && perfTrim < TRIM_MAX && dynClock > 20) {
+    if (overloaded && !leverLeft && perfTrim < TRIM_MAX && dynClock > 8) {
       // scale floor reached but trims remain: walk the trim ladder
       trimStrikes++;
       if (trimStrikes >= TRIM_STRIKES) {
@@ -1982,7 +1986,7 @@ export function createPost(renderer, scene, camera) {
         trimLastDownAt = dynClock;
         return;
       }
-    } else if (overloaded && !leverLeft && perfTrim >= TRIM_MAX && dynClock > 20) {
+    } else if (overloaded && !leverLeft && perfTrim >= TRIM_MAX && dynClock > 8) {
       // fully trimmed and still overloaded: escalate to the persisted tier
       tierStrikes++;
       if (tierStrikes >= TIER_STRIKES_MAX) {

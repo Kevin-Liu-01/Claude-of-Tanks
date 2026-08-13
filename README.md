@@ -5,9 +5,10 @@
 <h1 align="center">CLAUDE OF TANKS</h1>
 
 <p align="center">
-  A World of Tanks-style armored combat game in <strong>pure Three.js</strong> — plate-level armor simulation,
-  100+ vehicles, 8 destructible battlefields, killcam x-ray, a built-in cinematic studio, and full mobile support.
-  Built end-to-end by a long-running multi-agent Claude pipeline.
+  A World of Tanks-style, Vite-powered, engine-free armored combat simulator in <strong>pure Three.js</strong> —
+  resolving plate-level armor, ballistics, modules, spotting, and physics across 108 vehicles and eight destructible
+  battlefields. Playable entirely in the browser on desktop and mobile devices. Built end-to-end by a long-running
+  multi-agent Claude/Codex pipeline.
 </p>
 
 <p align="center">
@@ -21,11 +22,11 @@
 
 ## What is this
 
-A from-scratch browser tank game with no game engine — just [Three.js](https://threejs.org), Vite, and ~70k lines of
-JavaScript. The combat model is transcribed from World of Tanks mechanics research and verified by node-run
-self-tests; the tanks are procedurally constructed from real dimensions and armor layouts (plus judged community
-models); the maps, terrain, vegetation, buildings, and textures are all generated in code. Every screenshot below
-is the actual game.
+A from-scratch armored combat simulator powered by Vite and [Three.js](https://threejs.org) — no game engine,
+native runtime, install, or account — and ~70k lines of JavaScript. Its plate-level combat model is transcribed from
+World of Tanks mechanics research and verified by node-run self-tests; all 108 playable vehicles are original,
+first-party procedural builds authored from dimensions and reference study; and its eight battlefields generate terrain,
+vegetation, buildings, props, and textures in code. Every screenshot below is the actual game.
 
 ## Playing
 
@@ -94,10 +95,11 @@ Everything resets for the rematch.
 </tr></table>
 
 ### Vehicles
-**102 playables in the deployed build** — 22 WWII · 48 modern · 32 community — organized by era and source filters
-in the garage. Tanks are a judged mix of procedural constructions (spec-driven hulls, turrets, and running gear built
-to published dimensions, refined by a dual-gate fidelity program: geometric accuracy *and* an independent visual
-critic, both ≥90) and community CC models that won side-by-side render-offs. 16 camouflage schemes with real
+**108 first-party playables in the deployed build**, organized by era and family in the garage. Every tank is an
+original procedural construction: spec-driven hulls, turrets, equipment, and native running gear built from published
+dimensions and reference study, then refined by a dual-gate fidelity program (geometric accuracy *and* an independent
+visual critic, both ≥90). Reference models are quarantined to comparison tooling and never become gameplay geometry.
+16 camouflage schemes with real
 concealment values — including AUTO, which repaints to the biome you deploy into — plus an equipment system and
 consumables that change how each tank plays.
 
@@ -192,7 +194,7 @@ capture. Every marketing shot in this README was made with it — the scene file
 
 The same deployment runs on phones and tablets: touch HUD with virtual joystick, swipe-to-aim, pinch-to-scope,
 and hybrid release/hold-to-auto-fire Dynamic Aim on both fire buttons,
-a mobile device tier (procedural-only models, half-resolution texture generation, tuned shadow cascades — **~80%
+a mobile device tier (half-resolution texture generation, tuned shadow cascades — **~80%
 less GPU memory**), safe-area-aware layout, and a self-healing GPU pipeline: at boot the game renders test probes,
 validates the environment-lighting bake on-device, and degrades gracefully around device-specific driver faults
 instead of showing a black screen — then reclaims quality when a re-test proves the frame healthy.
@@ -207,7 +209,7 @@ src/engine/    renderer, cascaded shadow maps, post chain, procedural sky + IBL,
 src/world/     terrain, vegetation, buildings/props, destructibles, baked tank wrecks,
                horizon, eight map configs
 src/vehicles/  specs (stats + armor zones), procedural tank factory, per-family profiles,
-               GLB loader, materials/camouflage painters
+               quarantined comparison importer, materials/camouflage painters
 src/sim/       ballistics, armor resolution, damage, movement, spotting  (pure logic — node-run selftests)
 src/fx/        muzzle flash, tracers, impacts, explosions, destruction, particles
 src/ui/        HUD, garage, settings, damage panel, shot info, touch controls
@@ -229,11 +231,10 @@ screenshot contract, and green self-tests. Docs: [`docs/ARCHITECTURE.md`](docs/A
 
 ## Assets & licensing
 
-All code and procedural content is original. Sourced community models are CC-BY / CC0 winners of side-by-side
-judging, credited in [`docs/ATTRIBUTION.md`](docs/ATTRIBUTION.md). A small set of recovered local-only models
-(licenses NC/ND or unclear) never ships: the public build strips them automatically and their gameplay rows fall
-back to procedural visuals. **No assets extracted from commercial games are used** — candidate uploads were
-routinely declined on provenance.
+All gameplay code and all 108 playable vehicle models are original first-party work. External models may be used only
+as quarantined, read-only visual references during QA; they are never loaded as gameplay geometry and never ship as
+playable assets. **No assets extracted from commercial games are used.** Provenance is enforced by the native-playable,
+private-build, and public-build audits.
 
 ## Finding your way around
 
@@ -247,6 +248,6 @@ Operational checklists for the program's recurring flows live as skills in `.cla
 ---
 
 <p align="center">
-  Built with <a href="https://claude.com/claude-code">Claude Code</a> — research agents, subsystem builders,
-  adversarial critics, and verification gates, orchestrated over many rounds.
+  Built through a long-running Claude/Codex pipeline — research agents, subsystem builders, adversarial critics,
+  and verification gates, orchestrated over many rounds.
 </p>

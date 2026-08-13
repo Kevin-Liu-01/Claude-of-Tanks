@@ -290,11 +290,33 @@ function heuristicAutoCap() {
   if (/swiftshader|llvmpipe|software|basic render/.test(gpu)) return 'low';
   // integrated / mobile-class parts under a desktop UA. Intel Arc and Iris
   // Xe MAX are dedicated-class and deliberately NOT matched.
-  if (/intel(\(r\))?\s*(u?hd|iris(?!.*xe max)|hd)\s*graphics/.test(gpu)
+  // ANGLE strings usually repeat the vendor and insert trademark/model
+  // tokens (for example "Intel(R) Iris(TM) Plus Graphics" or "Iris Xe
+  // Graphics"). The old adjacent-token regex missed both and started those
+  // integrated laptops at High. Arc and Iris Xe MAX remain dedicated-class.
+  const intelIntegrated = /intel/.test(gpu)
+    && !/\b(?:arc|iris.*xe\s*max)\b/.test(gpu)
+    && /\b(?:u?hd(?:\s+graphics)?|iris|graphics\s+[456]\d{2})\b/.test(gpu);
+  const amdIntegrated = /(?:amd|radeon)/.test(gpu)
+    && !/\bradeon\s+(?:rx|pro)\b/.test(gpu)
+    && /\b(?:radeon(?:\(tm\))?\s+graphics|vega)\b/.test(gpu);
+  if (intelIntegrated || amdIntegrated
     || /\b(mali|adreno|powervr|videocore)\b/.test(gpu)) return 'medium';
   let mem = null;
-  try { mem = navigator.deviceMemory; } catch (_) { /* unavailable */ }
-  if (typeof mem === 'number' && mem <= 4) return 'medium';
+  let cores = null;
+  try {
+    mem = navigator.deviceMemory;
+    cores = navigator.hardwareConcurrency;
+  } catch (_) { /* unavailable */ }
+  // Masked GPU strings are common. A small-memory/four-core desktop is much
+  // more likely to be an older integrated machine than a modern discrete-GPU
+  // box; begin at the safe floor and let the live governor restore headroom.
+  // The choice is auto-only, so an explicit user preset still wins.
+  if ((typeof cores === 'number' && cores <= 2)
+    || (typeof mem === 'number' && mem <= 4
+      && typeof cores === 'number' && cores <= 4)) return 'low';
+  if ((typeof mem === 'number' && mem <= 4)
+    || (typeof cores === 'number' && cores <= 4)) return 'medium';
   return null;
 }
 

@@ -2249,6 +2249,121 @@ function upgradeMaterials(root) {
 // keeps the build proxies visible+casting — same silhouettes, one merge less
 // per swap, and no undisposed per-swap proxy geometry on eviction.
 
+// Split selected material groups out of a fused, non-skinned hull mesh while
+// sharing the untouched source attributes with the rigid remainder. This
+// keeps giant print meshes (IS-7: 256k hull vertices, only 6.6k track
+// corners) out of the per-frame deformation loop without duplicating the
+// armor buffers. The compact extracted belt owns its copied attributes.
+function extractTerrainTrackGroups(o, materialIndices) {
+  const src = o.geometry;
+  if (!src || o.isSkinnedMesh || !src.groups.length ||
+      (src.morphAttributes && Object.keys(src.morphAttributes).length)) return null;
+  const wanted = new Set(materialIndices);
+  const index = src.getIndex();
+  const picked = [];
+  const pickedGroups = [];
+  for (const group of src.groups) {
+    if (!wanted.has(group.materialIndex)) continue;
+    const end = Math.min(group.start + group.count, index ? index.count : src.getAttribute('position').count);
+    const start = picked.length;
+    for (let k = group.start; k < end; k++) picked.push(index ? index.getX(k) : k);
+    if (picked.length > start) pickedGroups.push({
+      start, count: picked.length - start, materialIndex: group.materialIndex,
+    });
+  }
+  if (picked.length < 6) return null;
+
+  const trackGeo = new THREE.BufferGeometry();
+  for (const [name, attr] of Object.entries(src.attributes)) {
+    const sourceArray = attr.isInterleavedBufferAttribute ? attr.data.array : attr.array;
+    const out = new sourceArray.constructor(picked.length * attr.itemSize);
+    for (let i = 0; i < picked.length; i++) {
+      const vi = picked[i];
+      const base = attr.isInterleavedBufferAttribute
+        ? vi * attr.data.stride + attr.offset
+        : vi * attr.itemSize;
+      for (let c = 0; c < attr.itemSize; c++) out[i * attr.itemSize + c] = sourceArray[base + c];
+    }
+    const copy = new THREE.BufferAttribute(out, attr.itemSize, attr.normalized);
+    copy.name = attr.name;
+    trackGeo.setAttribute(name, copy);
+  }
+  for (const group of pickedGroups) trackGeo.addGroup(group.start, group.count, group.materialIndex);
+  trackGeo.computeBoundingBox();
+  trackGeo.computeBoundingSphere();
+
+  // Lightweight view of the original attributes/index with only non-track
+  // groups rendered. BufferGeometry.dispose() later releases only this view;
+  // the loader cache continues to own the shared BufferAttributes.
+  const rigidGeo = new THREE.BufferGeometry();
+  for (const [name, attr] of Object.entries(src.attributes)) rigidGeo.setAttribute(name, attr);
+  if (index) rigidGeo.setIndex(index);
+  for (const group of src.groups) {
+    if (!wanted.has(group.materialIndex)) {
+      rigidGeo.addGroup(group.start, group.count, group.materialIndex);
+    }
+  }
+  rigidGeo.boundingBox = src.boundingBox && src.boundingBox.clone();
+  rigidGeo.boundingSphere = src.boundingSphere && src.boundingSphere.clone();
+  rigidGeo.drawRange = { ...src.drawRange };
+  o.geometry = rigidGeo;
+  o.userData.__cotSharedAttributeView = true;
+
+  const track = new THREE.Mesh(trackGeo, o.material);
+  track.name = `${o.name || 'fusedHull'}_terrainTrack`;
+  track.castShadow = o.castShadow;
+  track.receiveShadow = o.receiveShadow;
+  track.userData.__cotTrackDeform = true;
+  track.userData.__cotTrackExtracted = true;
+  o.add(track); // same geometry frame; inherits the source mesh transform once
+  return track;
+}
+
+// Mark imported live track runs before the static-kit merge erases source
+// node names. tankFactory uses this bit to give sourced belts the same
+// terrain-following lower run as procedural tracks. Spare-track armor and
+// turret stowage are deliberately excluded: only the running belt may flex.
+function markTerrainTrackMeshes(root, spec) {
+  const sharedTrack = getCommunityGearMaterials(spec).track;
+  const TRACK_RUN_RE = /track|tread|thread/i;
+  // Token boundaries matter: the old /rack/ exclusion also matched the
+  // middle of "track", silently rejecting every actual running belt.
+  const STATIC_TRACK_RE = /(?:^|[\s_./-])(spare|stow|rack|armor|applique)(?=$|[\s_./-])/i;
+  const pathOf = (o) => {
+    let path = '';
+    for (let n = o; n && n !== root; n = n.parent) path += `/${n.name || ''}`;
+    return path;
+  };
+  root.traverse((o) => {
+    if (!o.isMesh || !o.geometry) return;
+    const mats = Array.isArray(o.material) ? o.material : [o.material];
+    const nodePath = pathOf(o);
+    if (STATIC_TRACK_RE.test(nodePath)) return;
+    if (TRACK_RUN_RE.test(nodePath)) {
+      o.userData.__cotTrackDeform = true;
+      return;
+    }
+    // Fused print meshes (IS-7) carry track triangles as one material group
+    // inside the painted hull mesh. Tag only those group indices; a generic
+    // AddOnTrack material by itself is not enough because some imports use it
+    // for wheels too.
+    const trackMats = [];
+    for (let i = 0; i < mats.length; i++) {
+      const m = mats[i];
+      if (m === sharedTrack || (m && /^(?!AddOnTrack$).*?(track|tread|thread)/i.test(m.name || ''))) {
+        trackMats.push(i);
+      }
+    }
+    if (trackMats.length && trackMats.length < mats.length) {
+      const extracted = extractTerrainTrackGroups(o, trackMats);
+      if (!extracted) {
+        o.userData.__cotTrackDeform = true;
+        o.userData.__cotTrackMaterialIndices = trackMats;
+      }
+    }
+  });
+}
+
 // ---------------------------------------------------------------------------
 // PERF (performance_budget r3): main-pass kit merge for multi-mesh GLBs.
 // See the applySwap call site for the budget rationale. Groups static,
@@ -2273,9 +2388,14 @@ function mergeStaticKit(container, label, excludeRoots = null) {
     let p = o.parent;
     while (p && p !== container) { if (p.visible === false) return; p = p.parent; }
     const layout = Object.keys(g.attributes).sort().join(',');
-    const key = `${o.material.uuid}|${layout}|${g.index ? 'i' : 'n'}`;
+    // Never merge a flexing belt with a same-material rigid wheel/fender.
+    const trackClass = o.userData.__cotTrackDeform === true ? 'track' : 'rigid';
+    const key = `${o.material.uuid}|${layout}|${g.index ? 'i' : 'n'}|${trackClass}`;
     let b = buckets.get(key);
-    if (!b) { b = { mat: o.material, meshes: [] }; buckets.set(key, b); }
+    if (!b) {
+      b = { mat: o.material, meshes: [], track: trackClass === 'track' };
+      buckets.set(key, b);
+    }
     b.meshes.push(o);
   };
   // perf-smooth r1: this now runs on the DETACHED clone, where the turret /
@@ -2314,6 +2434,7 @@ function mergeStaticKit(container, label, excludeRoots = null) {
     // per-instance merged geometry (clones share cache geometry, merges
     // cannot) — tankFactory dispose() frees anything tagged __kitMerged.
     mesh.userData.__kitMerged = true;
+    if (b.track) mesh.userData.__cotTrackDeform = true;
     mesh.castShadow = false;   // shadow proxies carry the cascade silhouette
     mesh.receiveShadow = true;
     container.add(mesh);
@@ -2569,6 +2690,7 @@ function prepareSwapStart(gltf, { spec, cfg }) {
   // r10: per-spec community cohesion surgery (q_heavy loops, recon wheels
   // + barrel, newc_pziii gun) — see applyCommunityFixes
   applyCommunityFixes(scene, spec, gun);
+  markTerrainTrackMeshes(scene, spec);
   // tank_models r1: T-90A '112' turret number (modern-roster.md §13.5) —
   // coords are TurretPivot-local (raw frame minus the pivot translation).
   if (spec.id === 't90a' && turret) {

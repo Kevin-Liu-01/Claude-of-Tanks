@@ -9,20 +9,20 @@
        viewport-fit=cover exposes env(safe-area-inset-*) on notched phones —
        the touch HUD keeps its controls off the notch/home bar with them. -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>Claude of Tanks — Free Browser Tank Game | 102 Tanks, 8 Battlefields</title>
+  <title>Claude of Tanks — Free Browser Tank Game | 108 Tanks, 8 Battlefields</title>
   <!-- SEO/AEO (seo r1): honest, current numbers everywhere — the old cards
        still claimed "48 tanks, 4 battlefields". Canonical + absolute image
        URLs (crawlers do not resolve relative og:image reliably), and a
        VideoGame JSON-LD block so search/answer engines get typed facts
        instead of scraping the splash. Brand set lives in public/brand/,
        see docs/ATTRIBUTION.md. -->
-  <meta name="description" content="Claude of Tanks is a free World of Tanks-style armored warfare game that runs entirely in your browser. 102 vehicles, 8 battlefields, 7v7 AI battles, killcam X-rays and a scene studio — pure Three.js, no install, no account." />
+  <meta name="description" content="Claude of Tanks is a free World of Tanks-style armored warfare game that runs entirely in your browser. 108 original first-party vehicles, 8 battlefields, 7v7 AI battles, killcam X-rays and a scene studio — pure Three.js, no install, no account." />
   <link rel="canonical" href="https://claude-of-tanks.vercel.app/" />
   <meta name="robots" content="index, follow, max-image-preview:large" />
   <meta name="theme-color" content="#05080b" />
   <meta property="og:site_name" content="Claude of Tanks" />
   <meta property="og:title" content="Claude of Tanks — Free Browser Tank Game" />
-  <meta property="og:description" content="Free-roam armored warfare in the browser — 102 vehicles, 8 battlefields, 7v7 AI battles, killcam X-rays. Pure Three.js, no install." />
+  <meta property="og:description" content="Free-roam armored warfare in the browser — 108 original first-party vehicles, 8 battlefields, 7v7 AI battles, killcam X-rays. Pure Three.js, no install." />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://claude-of-tanks.vercel.app/" />
   <meta property="og:image" content="https://claude-of-tanks.vercel.app/brand/og-image.png" />
@@ -31,7 +31,7 @@
   <meta property="og:image:alt" content="Claude of Tanks — in-engine battle still with the crest wordmark" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Claude of Tanks — Free Browser Tank Game" />
-  <meta name="twitter:description" content="102 vehicles, 8 battlefields, 7v7 AI battles — armored warfare rendered live in your browser. No install, no account." />
+  <meta name="twitter:description" content="108 original first-party vehicles, 8 battlefields, 7v7 AI battles — armored warfare rendered live in your browser. No install, no account." />
   <meta name="twitter:image" content="https://claude-of-tanks.vercel.app/brand/og-image.png" />
   <script type="application/ld+json">
   {
@@ -41,7 +41,7 @@
     "name": "Claude of Tanks",
     "url": "https://claude-of-tanks.vercel.app/",
     "image": "https://claude-of-tanks.vercel.app/brand/og-image.png",
-    "description": "Free-roam armored warfare rendered live in the browser: 102 vehicles across tiers I-X, 8 hand-tuned battlefields, 7v7 battles against per-class AI, a plate-level armor model with killcam X-rays, and an in-game scene studio.",
+    "description": "Free-roam armored warfare rendered live in the browser: 108 original first-party vehicles across tiers I-X, 8 hand-tuned battlefields, 7v7 battles against per-class AI, a plate-level armor model with killcam X-rays, and an in-game scene studio.",
     "genre": ["Vehicular combat", "Simulation", "Action"],
     "playMode": "SinglePlayer",
     "gamePlatform": "Web Browser",
@@ -267,6 +267,15 @@
       transition: opacity .4s ease;
     }
     .cot-boot-gate.on { opacity: 1; animation: cot-gate 1.5s ease-in-out infinite; }
+    .cot-boot-retry {
+      display: none; margin: 18px auto 0; padding: 11px 18px;
+      border: 1px solid rgba(240,160,48,.72); border-radius: 2px;
+      background: rgba(8,13,18,.78); color: #ffe4b0; cursor: pointer;
+      font: 700 11px/1 'ABC Monument Grotesk', 'Arial Narrow', Arial, sans-serif;
+      letter-spacing: .20em; text-transform: uppercase;
+    }
+    .cot-boot-retry.on { display: block; }
+    .cot-boot-retry:focus-visible { outline: 2px solid #f0a030; outline-offset: 3px; }
     @keyframes cot-gate { 0%,100% { opacity: .45; } 50% { opacity: 1; } }
     .cot-boot-foot {
       position: absolute; left: 0; right: 0; bottom: 20px; z-index: 2;
@@ -277,6 +286,107 @@
     }
     @media (max-width: 760px) { .cot-boot-mark { width: 92px; height: 92px; } .cot-boot-load { margin-top: 32px; } }
   </style>
+  <script>
+    // BOOT RECOVERY r1: a deploy can replace hashed chunks while an older
+    // HTML document is still cached, and weak/mobile browsers can abort a
+    // large module fetch under memory pressure. Previously either case left
+    // the branded loading screen alive forever until the user guessed that a
+    // reload would fix it. Recover once automatically, then expose an honest
+    // retry button instead of entering a reload loop.
+    (() => {
+      const KEY = 'cot.bootRecovery.v1';
+      const MAX_AUTO_RELOADS = 1;
+      const WATCHDOG_MS = 45000;
+      let settled = false;
+
+      function state() {
+        try {
+          const value = JSON.parse(sessionStorage.getItem(KEY) || 'null');
+          if (value && Date.now() - value.at < 120000) return value;
+        } catch (_) { /* storage may be blocked */ }
+        return { count: 0, at: 0, reason: '' };
+      }
+
+      function remember(value) {
+        try { sessionStorage.setItem(KEY, JSON.stringify(value)); } catch (_) { /* ok */ }
+      }
+
+      function reload(reason) {
+        if (settled || window.__GAME_READY) return;
+        settled = true;
+        const prev = state();
+        remember({ count: prev.count + 1, at: Date.now(), reason });
+        const url = new URL(location.href);
+        url.searchParams.set('_bootretry', Date.now().toString(36));
+        location.replace(url.href);
+      }
+
+      function showRetry(reason) {
+        if (settled || window.__GAME_READY) return;
+        const stage = document.getElementById('cot-boot-stage');
+        const retry = document.getElementById('cot-boot-retry');
+        if (stage) stage.textContent = reason === 'timeout'
+          ? 'Loading is taking longer than expected'
+          : 'A game file did not load';
+        if (retry) {
+          retry.classList.add('on');
+          retry.onclick = () => reload(`manual:${reason}`);
+        }
+      }
+
+      function recover(reason) {
+        if (settled || window.__GAME_READY) return;
+        if (state().count < MAX_AUTO_RELOADS) {
+          // Let the failed request unwind before replacing the document.
+          setTimeout(() => reload(reason), 150);
+        } else {
+          showRetry(reason);
+        }
+      }
+
+      addEventListener('vite:preloadError', (event) => {
+        event.preventDefault();
+        recover('preload');
+      });
+      addEventListener('error', (event) => {
+        if (window.__GAME_READY) return;
+        const node = event.target;
+        const moduleScript = node && node.tagName === 'SCRIPT' && node.type === 'module';
+        const message = String(event.message || '');
+        if (moduleScript || /module script|dynamically imported module|module preload/i.test(message)) {
+          recover('module');
+        }
+      }, true);
+      addEventListener('unhandledrejection', (event) => {
+        if (window.__GAME_READY) return;
+        const message = String(event.reason && (event.reason.message || event.reason) || '');
+        if (/module script|dynamically imported module|module preload|failed to fetch/i.test(message)) {
+          recover('module-promise');
+        }
+      });
+
+      const health = setInterval(() => {
+        if (!window.__GAME_READY) return;
+        settled = true;
+        clearInterval(health);
+        try { sessionStorage.removeItem(KEY); } catch (_) { /* ok */ }
+        try {
+          const url = new URL(location.href);
+          if (url.searchParams.has('_bootretry')) {
+            url.searchParams.delete('_bootretry');
+            history.replaceState(null, '', url.href);
+          }
+        } catch (_) { /* cosmetic */ }
+      }, 500);
+      setTimeout(() => {
+        if (window.__GAME_READY) return;
+        if (state().count < MAX_AUTO_RELOADS) recover('timeout');
+        else showRetry('timeout');
+      }, WATCHDOG_MS);
+
+      window.__COT_BOOT_RECOVERY = { recover, showRetry, state };
+    })();
+  </script>
 </head>
 <body>
   <div id="app"></div>
@@ -421,7 +531,7 @@
         <span class="l1">CLAUDE</span>
         <span class="l2"><i></i><span>OF TANKS</span><i></i></span>
       </div>
-      <div class="cot-boot-tag">102 Vehicles &middot; 8 Battlefields &middot; Tiers I&ndash;X</div>
+      <div class="cot-boot-tag">108 Original Vehicles &middot; 8 Battlefields &middot; Tiers I&ndash;X</div>
 
       <div class="cot-boot-load">
         <div class="cot-boot-meta">
@@ -434,6 +544,7 @@
 
       <div class="cot-boot-tip" id="cot-boot-tip"></div>
       <div class="cot-boot-gate" id="cot-boot-gate">Press any key to continue</div>
+      <button class="cot-boot-retry" id="cot-boot-retry" type="button">Retry loading</button>
     </div>
     <div class="cot-boot-foot">Claude of Tanks &middot; Three.js technology demo</div>
   </div>

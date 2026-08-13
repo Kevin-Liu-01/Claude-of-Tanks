@@ -64,7 +64,9 @@ export async function createMapAsync(engineCtx, { mapId = 'verdant', seed = 1337
   const props = await createPropsAsync(heightField, engineCtx, 2002, config,
     sub('Placing structures', 0.82, 0.96), fineSlices);
   await step('Sealing the battlefield', 0.96);
-  return assembleWorld(engineCtx, config, heightField, terrain, vegetation, props);
+  const world = assembleWorld(engineCtx, config, heightField, terrain, vegetation, props);
+  world._buildDetail = { vegetation: vegetation._buildDetail || null };
+  return world;
 }
 
 /**
