@@ -35,3 +35,23 @@ No reference mesh, source vertex payload, or source-backed runtime wrapper is us
 ## Oracle-gate note
 
 The legacy curve/component gate remains registration-sensitive for this comparison asset and now reports an honest diagnostic 27.5 (hull 88.4 / whole 56.0 / turret 43.7 / stations 27.5 / dimensions 64 / floaters 100). Its recovered mask still encodes the old lower turret and source component split, so chasing that row would directly undo the owner's explicit height correction. It is retained as red diagnostic evidence rather than treated as authority over the first-party build's 90.53 all-view floor, strict physical receipts, and fresh paired/yaw pixels.
+
+## 2026-08-13 terminal-identity supersession
+
+The accepted 0.80 turret section and all re-seated roof equipment remain
+unchanged. This pass only restores explicit running-gear identity at the ends
+of the native course: concentric front-idler and rear-final-drive faces now
+occupy the established terminal carrier centers, outside the six road-wheel
+cadence and inside the linked-shoe envelope.
+
+Freeze `b77a57f6` reproduces twice at 54 meshes / 83,829 vertices. Fresh
+evidence in `/private/tmp/modern-drift-final-r3/type90` contains 15 paired,
+15 yaw0 and 15 yaw90 frames: 45 PNGs / 45 distinct hashes, no identical yaw
+pair. Exact band, shoes and strict sweep remain 0/0; parent audit is 0/0/0;
+winding is visually clean and the muzzle passes. Elevated profile, front and
+close views show the front idler, six road wheels and rear final drive as
+distinct assemblies in one continuous native course. The complete gun,
+turret, bustle and roof suite perform a genuine quarter-turn over the fixed
+hull and running gear with no floating or stranded fitting.
+
+PASS / KEEP `b77a57f6`; retire `d8f8a3a8`.

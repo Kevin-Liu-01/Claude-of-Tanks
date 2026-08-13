@@ -2238,7 +2238,7 @@ function buildT80UNative2026(P) {
 // band 0.159 + evac 0.246 both under the ~0.28 side body cut).
 // ---------------------------------------------------------------------------
 function buildType90(P) {
-  const { box, cylY, cylZ, frustum, torus, buildGun, buildRunningGear,
+  const { box, cylX, cylY, cylZ, frustum, torus, buildGun, buildRunningGear,
     fenders, headlight, liftEye, periscope } = KIT;
   const slab = orientedSlab;                                                   // §C missing-side fix: winding-corrected slabs only (see orientedSlab)
   const { rng } = P;
@@ -2426,6 +2426,16 @@ function buildType90(P) {
     rollers: [1.70, 0.60, -0.50, -1.60].map((z) => ({ z, y: 0.95, r: 0.08 })),
     trackW: 0.582, topY: 0.92, botY: 0.055, contactZF: 2.18, contactZR: -2.26, paintedEnds: true, coveredTop: true, arms: true,
   });
+  // Restore end-wheel section identity at normal profile scale. Both faces
+  // stay inside the linked-course envelope and remain running-gear-owned.
+  for (const side of [-1, 1]) {
+    P.add('hullRunningGearDetail', cylX(0.150, 0.026, 18), side * 1.565, 0.73, 3.24);
+    P.add('hullRunningGearDark', torus(0.112, 0.012, 16), side * 1.581, 0.73, 3.24, 0, 0, Math.PI / 2);
+    P.add('hullRunningGearDark', cylX(0.050, 0.032, 12), side * 1.585, 0.73, 3.24);
+    P.add('hullRunningGearDetail', cylX(0.132, 0.026, 18), side * 1.565, 0.84, -2.98);
+    P.add('hullRunningGearDark', torus(0.098, 0.012, 16), side * 1.581, 0.84, -2.98, 0, 0, Math.PI / 2);
+    P.add('hullRunningGearDark', cylX(0.058, 0.032, 12), side * 1.585, 0.84, -2.98);
+  }
   // (r5b: contactZR -2.40 -> -2.32 — the VISIBLE rear liftoff lagged the
   // pin ~0.12 [ref -2.42, mine read -2.52; the front pin took exactly]:
   // the short -2.40..sprocket tangent run absorbs part of the pin.)
