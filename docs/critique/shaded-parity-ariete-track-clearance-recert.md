@@ -35,4 +35,24 @@ Yaw proves the gun/mantlet, complete turret shell, roof stations, GALIX banks,
 antennas and supported rear basket rotate together. Hull deck stowage, the
 cleared seven-wheel course and the rear service field remain fixed. No fused
 duplicate, stranded fitting, empty-air decoration, open sheet or sky hole is
-visible. PASS / KEEP `a7b1fd05`.
+visible.
+
+## 2026-08-13 terminal-identity supersession
+
+The strict course remained mechanically correct, but the high terminal faces
+could disappear into the dark linked-shoe wraps at ordinary side scale. The
+repository-authored profile now adds concentric painted/dark front-idler and
+rear-final-drive faces at the established carrier centers. The seven road
+wheels, their cadence, the linked course and all hull armor remain unchanged.
+
+Freeze `c0aa8658` reproduces twice at 51 meshes / 104,955 vertices. Fresh
+evidence in `/private/tmp/modern-drift-final-r3/ariete` contains 15 paired,
+15 yaw0 and 15 yaw90 frames: 45 PNGs / 45 distinct hashes, no identical yaw
+pair. Exact band, shoe and full sweep clearance remains 0/0, parent audit is
+0/0/0, winding is visually clean and the muzzle passes. Elevated profile and
+close views now show the required front idler, seven road wheels and rear
+final drive as separate assemblies. All remain fixed while the complete gun,
+turret, roof suite and basket execute a genuine quarter-turn with no stranded
+or floating equipment.
+
+PASS / KEEP `c0aa8658`; retire `a7b1fd05`.

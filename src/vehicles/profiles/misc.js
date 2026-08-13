@@ -527,6 +527,15 @@ function buildAriete(P) {
       P.add('hullRunningGearDark', torus(0.205, 0.014, 18), side * 1.711, 0.43, wz,
         0, 0, Math.PI / 2);
     }
+    // Match the seven road-wheel faces with visibly concentric terminal
+    // assemblies. The idler and final drive remain distinct from the road
+    // row, while the native loop remains the only authored track course.
+    P.add('hullRunningGearDetail', cylX(0.185, 0.030, 18), side * 1.690, 0.70, 3.18);
+    P.add('hullRunningGearDark', torus(0.142, 0.013, 18), side * 1.707, 0.70, 3.18, 0, 0, Math.PI / 2);
+    P.add('hullRunningGearDark', cylX(0.055, 0.037, 12), side * 1.711, 0.70, 3.18);
+    P.add('hullRunningGearDetail', cylX(0.165, 0.030, 18), side * 1.690, 0.86, -3.12);
+    P.add('hullRunningGearDark', torus(0.126, 0.013, 18), side * 1.707, 0.86, -3.12, 0, 0, Math.PI / 2);
+    P.add('hullRunningGearDark', cylX(0.065, 0.037, 12), side * 1.711, 0.86, -3.12);
   }
   // (push-2: contactZF 2.36 -> 2.22 — the ref approach ramp lifts off at
   // ~2.33 and climbs SHALLOW [0.22@2.68, 0.28@2.92 authored] where the 2.36
