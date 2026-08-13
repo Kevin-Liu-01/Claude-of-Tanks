@@ -116,7 +116,7 @@ re-freeze NEW hash, all in ONE commit.
 | fv510 | 61023726 | RE-FROZEN 2026-08-12 (§5.129 first-party `fv510PhotoBuild`: compact six-wheel Warrior hull, authored RARDEN turret and supported slat/service package; machine fidelity 90.84 / minimum view 90.12; exact native track 0/0 and fresh 42-frame yaw/ownership floor 9.0 / mean 9.11; source-baked 7884762a/927beeb2 playables retired) |
 | m26_pershing | 2f006738 | RE-RECORDED 2026-08-08: hash moved by LANDED 5f39989 (armorM4 gunBarrel shadow-proxy 3.96->3.44; m26/m45 inherit m4a3e8 proxies — patton.js bytes unchanged); double-confirmed by builder bisect + m45-grad critic; prior 65c564c0 bore+winding re-cert lineage (floors 9.1-9.4) carries |
 | t90m | a21894b8 | RE-FROZEN 2026-08-12 (§5.127 first-party native V-bow hull, welded Proryv shell, supported bustle/rack and exact six-wheel course; machine fidelity 90.96 / minimum view 90.02; 42-frame yaw/ownership PASS; incompatible legacy contour row retained honestly rather than chased) |
-| t90 | da6f7fba | RE-FROZEN 2026-08-11 (native procedural, reference-guided: all runtime geometry remains our authored primitives; independent §B8 floor 9.1 / mean 9.19 x14 with genuine yaw ownership, exact native six-wheel track 0/0 bands+shoes, muzzle/assets PASS and no visible winding wound; registered-mask false zero disclosed rather than chased into copied geometry; prior 72104d14 retired) |
+| t90 | 24851190 | RE-FROZEN 2026-08-13 (first-party clipped Burlak-derived fighting compartment with base-T-90 K-5/Shtora/smoke/NSVT package fully reseated; hull, skirts and native six-wheel course untouched; fresh 45-frame packet, genuine yaw ownership, exact track 0/0 bands+shoes, muzzle/rig/winding/tests/build PASS; legacy rounded-oracle aggregate 90.00 with rear-mask residual disclosed; da0ea477 and earlier freezes retired) |
 | t90a | ae37a914 | RE-FROZEN 2026-08-13 (post-rollback family-scale/equipment reconciliation: retained the approved first-party hull, cast turret and K-5 package; restored two unequal turret-owned radio whip stations on broad shoes/collars/struts instead of scaling the tank; 45 unique paired/yaw frames, genuine quarter-turn, independent §B8 floor 9.6 / mean 9.76, parent/winding clean; prior 810a6f18 retired) |
 | t90a_vladimir | 3ff8e1e8 | RE-FROZEN 2026-08-13 (post-rollback family-scale/equipment reconciliation: retained Vladimir's first-party hull, turret, ESSA/K-5 and source-narrow transom; restored two unequal turret-owned radio stations on broad shoes/collars/struts; 45 unique paired/yaw frames, genuine quarter-turn, independent §B8 floor 9.6 / mean 9.77; fixed open fender/service frame explicitly adjudicated as legitimate hull structure; prior c13fec50 retired) |
 | t90sm | 7efc69c9 | GRADUATED 2026-08-10; RE-FROZEN §5.105 (owner-priority complete redesign: source-measured low diamond shell retained, solid bustle steps replaced by backed slat cells, deep scalloped inboard skirts and layered rear service field added; gate 90.0 x2; standard/track/winding clean; independent §B8 floor 9.0 / mean 9.08 x14, all 28 yaw frames PASS; prior 56324371 retired) |
@@ -5183,3 +5183,41 @@ exact geometry.
 
 **KEEP / RE-FROZEN `7e123f00`. Later T-72 family refinement must preserve this
 complete hull/course and keep every turret-semantic pack inside `turretG`.**
+
+## 5.150 BASE T-90 CLIPPED-TURRET REBUILD (2026-08-13, LIVE)
+
+The plain `t90` now uses the repository-authored low clipped fighting-
+compartment plan developed for the first-party Burlak family as its primary
+turret foundation. It does not inherit Burlak's autoloader bustle or prototype
+roof suite. Instead, the base T-90's own heavy Kontakt-5 horseshoe and inner
+stagger, buried Shtora heads, unequal smoke banks, cupolas, sights, NSVT,
+radio whips and compact rear equipment are re-scaled and re-seated around the
+new connected shell. No external mesh, converted payload or copied geometry
+is used by the runtime builder.
+
+The complete hull, glacis, deck, skirts, mudguards, six-road-wheel row and
+native linked course are byte-for-byte untouched by this turret-only change.
+The final packet at `/private/tmp/critic-t90-burlak-final-r5/t90` contains 15
+paired, 15 yaw0 and 15 yaw90 frames including the elevated-left profile: **45
+PNGs / 45 distinct hashes**. Fresh owner-directed semantic inspection records
+`[9.1,9.2,9.0,9.0,9.0,9.0,9.0,9.2,9.2,9.2,9.1,9.2,9.1,9.2]`, floor **9.0**
+and mean **9.11**. Every yaw pair shows a genuine quarter-turn: the gun,
+connected clipped shell, all K-5, Shtora, smoke, roof stations, whips and rear
+equipment rotate together while the complete lower vehicle remains fixed.
+
+Deterministic geometry freeze **`24851190`** reproduces twice at 68 meshes /
+119,724 vertices. The legacy rounded-turret oracle reports **90.00 aggregate**
+with overall silhouette **91.33**, hull **92.03**, turret **81.51**, gun
+**92.50** and tracks **95.26**. Its **89.47** direct-rear raw-mask floor is
+disclosed: it is dominated by the protected inherited hull/transom and by the
+intentional clipped-shell departure from the superseded rounded oracle, and
+is not chased by deleting lower armor or restoring the rejected half-sphere.
+
+Rig checks pass 10/10. The only parent-audit nominee is legitimate fixed-deck
+spare-track stowage, visibly seated after the turret departs. Winding is clean
+(0 reversed / 0 mixed, no mode-2 candidate), muzzle bore passes, and exact
+native band/shoe contacts are front/rear **0/0**. Unit tests and the public
+production build pass.
+
+**KEEP / RE-FROZEN `24851190`; retire `da0ea477` and all earlier base-T-90
+turret freezes. Future work must preserve the complete lower vehicle.**

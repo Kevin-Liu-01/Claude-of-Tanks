@@ -4109,7 +4109,7 @@ function buildT90(P) {
   // only as an in-house hull recipe.  The replacement upper assembly is built
   // entirely from our primitives; external models are visual references only
   // and are never imported, sampled, converted or shipped by this builder.
-  replaceT90ACastTurret(P, { vladimir: false });
+  replaceT90ACastTurret(P, { vladimir: false, burlakBase: true });
   finishT90BaseAuthored(P);
   // The fully seated replacement package is 1.8% wider than the registered
   // cast-turret envelope. Correct it as one assembly so every K-5 carrier,
@@ -4123,13 +4123,13 @@ function buildT90(P) {
 function finishT90BaseAuthored(P) {
   const { box, cylY, cylZ } = KIT;
 
-  // The pear casting already owns the frontal K-5 fan, Shtora, smoke banks,
-  // cupolas, sights, MG and base rear bins.  Do not decorate it a second time
-  // at the superseded dome coordinates.  This finish adds only the hardware
-  // that belongs outside that primary package, positioned from the current
-  // casting's shoulder/tail stations.
+  // The clipped fighting compartment already owns the frontal K-5 fan,
+  // Shtora, smoke banks, cupolas, sights, MG and base rear bins. Do not
+  // decorate it a second time at superseded dome coordinates. This finish
+  // adds only the hardware outside that primary package, positioned from the
+  // current shell's shoulder/tail stations.
 
-  // Four large flank cassettes continue the frontal fan around the pear
+  // Four large flank cassettes continue the frontal fan around the clipped
   // shoulder.  Their inboard shoes are deliberately broad and deeply buried;
   // the visible faces follow the casting's aft falloff instead of forming a
   // small level belt across the middle of the turret.
@@ -4163,7 +4163,7 @@ function finishT90BaseAuthored(P) {
 
   // Two unequal radio stations, both short enough to preserve the source's
   // low skyline and both entering broad collars on the rear crown.
-  for (const [x, z, h, seed] of [[-0.92, -1.12, 2.28, 51], [0.98, -0.80, 2.04, 52]]) {
+  for (const [x, z, h, seed] of [[-0.92, -1.12, 2.32, 51], [0.98, -0.80, 2.08, 52]]) {
     const ant = FITTINGS.antennaWhip({ mats: P.mats, h, r: 0.013, rake: x < 0 ? -0.018 : 0.018, seed });
     ant.position.set(x, 0.47, z);
     P.turretG.add(ant);
@@ -4174,6 +4174,7 @@ function finishT90BaseAuthored(P) {
   // Compact commander's night sight beside the existing cupola/MG.  The
   // former finish added a 0.78 m platform and a tall second cupola here;
   // this tapered body shares one low foundation with the real station.
+  P.add('turret', box(0.48, 0.10, 0.40), -0.74, 0.65, -0.27, -0.05, -0.10, 0);
   P.add('turret', box(0.42, 0.075, 0.34), -0.74, 0.735, -0.27, -0.05, -0.10, 0);
   P.add('turret', orientedSlab(
     [-0.13, -0.13, -0.14], [0.13, -0.13, -0.14], [0.13, -0.13, 0.14], [-0.13, -0.13, 0.14],
@@ -4330,8 +4331,8 @@ function addT90AFamilyFinish(P, { vladimir = false, base = false } = {}) {
   }
 }
 
-function replaceT90ACastTurret(P, { vladimir = false } = {}) {
-  const { box, cylY, cylZ } = KIT;
+function replaceT90ACastTurret(P, { vladimir = false, burlakBase = false } = {}) {
+  const { box, cylY, cylZ, polyTurret } = KIT;
 
   // Atomic turret replacement: keep the variant's measured hull, discard the
   // superseded tall welded candidate and rebuild one closed cast assembly.
@@ -4343,20 +4344,46 @@ function replaceT90ACastTurret(P, { vladimir = false } = {}) {
   );
   // Seat the cast ring on the deck instead of burying its lower 10 cm into
   // the hull mask.  This restores the measured 1.39 m lower turret datum.
-  P.turretG.position.set(0, vladimir ? 1.41 : 1.51, vladimir ? -0.75 : 0.0);
+  P.turretG.position.set(0, vladimir ? 1.41 : (burlakBase ? 1.52 : 1.51), vladimir ? -0.75 : 0.0);
 
   const rings = [
     [1.46, -0.04], [1.61, 0.10], [1.58, 0.27], [1.43, 0.43],
     [1.18, 0.57], [0.84, 0.68], [0.44, 0.745], [0.05, 0.775],
   ];
-  // Base T-90 casting: the shell is authored from independent longitudinal
-  // sections, not revolved from a sphere.  A broad lower pear shoulder,
-  // clipped mantlet valley, flatter crown and rapidly narrowing cast tail
-  // produce the characteristic foundry form.  Left/right section widths are
-  // intentionally unequal so the station package does not sit on a generic
-  // symmetric dome.  All coordinates are authored in this repository; no
-  // external geometry is imported, sampled, converted or shipped.
-  P.add('turret', castSectionLoft([
+  if (burlakBase) {
+    // The plain T-90 now shares the first-party Burlak fighting-compartment
+    // foundation: one low clipped polygonal core with broad buried cheek
+    // continuations.  It deliberately does not inherit Burlak's long
+    // autoloader bustle or prototype roof kit; the T-90 equipment below is
+    // reseated on this shell as its own rotating package.
+    const outline = [
+      [-0.40, 1.30], [0.40, 1.30], [0.94, 1.08], [1.54, 0.48],
+      [1.76, -0.22], [1.54, -0.86], [1.06, -1.28],
+      [-1.06, -1.28], [-1.54, -0.86], [-1.76, -0.22], [-1.54, 0.48],
+      [-0.94, 1.08],
+    ];
+    P.add('turret', polyTurret(outline, 0.62, 1.0, 0.84));
+    P.add('turret', polyTurret(outline, 0.13, 0.95, 0.92), 0, -0.11, 0);
+    P.add('turretDark', polyTurret(outline, 0.024, 0.955, 0.95), 0, -0.126, 0);
+    for (const s of [-1, 1]) {
+      P.add('turret', orientedSlab(
+        [s * 0.24, -0.02, 1.38], [s * 1.70, -0.01, 0.50], [s * 1.58, -0.01, -0.34], [s * 0.28, -0.02, 0.46],
+        [s * 0.25, 0.43, 1.02], [s * 1.48, 0.43, 0.40], [s * 1.42, 0.40, -0.34], [s * 0.30, 0.51, 0.40],
+      ));
+      P.add('turret', orientedSlab(
+        [s * 0.16, 0.02, 1.42], [s * 0.50, 0.03, 1.42], [s * 0.66, 0.02, 1.10], [s * 0.24, 0.01, 1.12],
+        [s * 0.17, 0.38, 1.20], [s * 0.48, 0.38, 1.20], [s * 0.58, 0.38, 1.02], [s * 0.26, 0.40, 1.02],
+      ));
+    }
+  } else {
+    // Base T-90 casting: the shell is authored from independent longitudinal
+    // sections, not revolved from a sphere.  A broad lower pear shoulder,
+    // clipped mantlet valley, flatter crown and rapidly narrowing cast tail
+    // produce the characteristic foundry form.  Left/right section widths are
+    // intentionally unequal so the station package does not sit on a generic
+    // symmetric dome.  All coordinates are authored in this repository; no
+    // external geometry is imported, sampled, converted or shipped.
+    P.add('turret', castSectionLoft([
     [1.38, [[-0.04, -0.54, 0.58], [0.10, -0.82, 0.86], [0.29, -0.70, 0.74], [0.48, -0.42, 0.46], [0.58, -0.22, 0.26]]],
     [1.10, [[-0.05, -0.98, 1.04], [0.12, -1.34, 1.40], [0.34, -1.22, 1.31], [0.54, -0.86, 0.94], [0.64, -0.46, 0.54]]],
     [0.70, [[-0.06, -1.25, 1.31], [0.13, -1.55, 1.60], [0.37, -1.42, 1.51], [0.58, -1.00, 1.10], [0.69, -0.61, 0.70]]],
@@ -4365,19 +4392,21 @@ function replaceT90ACastTurret(P, { vladimir = false } = {}) {
     [-0.79, [[-0.05, -1.31, 1.38], [0.12, -1.47, 1.53], [0.35, -1.29, 1.39], [0.57, -0.88, 0.98], [0.66, -0.56, 0.64]]],
     [-1.16, [[-0.03, -1.12, 1.23], [0.11, -1.29, 1.37], [0.30, -1.11, 1.23], [0.49, -0.72, 0.84], [0.57, -0.43, 0.52]]],
     [-1.46, [[-0.01, -0.78, 0.91], [0.09, -1.00, 1.10], [0.24, -0.86, 0.98], [0.40, -0.53, 0.66], [0.46, -0.31, 0.40]]],
-  ], { faceted: true }));
-  const castSeatPlan = [
-    [-0.48, 1.30], [0.48, 1.30], [1.12, 0.98], [1.42, 0.48],
-    [1.48, -0.30], [1.25, -1.03], [0.84, -1.46], [-0.76, -1.46],
-    [-1.22, -1.04], [-1.46, -0.32], [-1.41, 0.48], [-1.10, 0.98],
-  ];
-  P.add('turret', KIT.polyTurret(castSeatPlan, 0.13, 1.0, 0.96), 0, -0.09, 0);
-  P.add('turretDark', KIT.polyTurret(castSeatPlan, 0.020, 0.965, 0.955), 0, -0.108, 0);
+    ], { faceted: true }));
+    const castSeatPlan = [
+      [-0.48, 1.30], [0.48, 1.30], [1.12, 0.98], [1.42, 0.48],
+      [1.48, -0.30], [1.25, -1.03], [0.84, -1.46], [-0.76, -1.46],
+      [-1.22, -1.04], [-1.46, -0.32], [-1.41, 0.48], [-1.10, 0.98],
+    ];
+    P.add('turret', polyTurret(castSeatPlan, 0.13, 1.0, 0.96), 0, -0.09, 0);
+    P.add('turretDark', polyTurret(castSeatPlan, 0.020, 0.965, 0.955), 0, -0.108, 0);
+  }
 
   // Six low Kontakt-5 crown plates follow the flattened pear cap.  The old
   // three-sheet row was wider than the new crown and read as one loose roof
   // blanket.  Split, angled plates preserve the modular seams and leave the
   // hatch/sight foundations clear.
+  const burlakCrownDrop = burlakBase ? 0.090 : 0;
   for (const [x, y, z, w, d, yaw, roll] of [
     [-0.28, 0.742, 0.19, 0.46, 0.52, -0.07, -0.06],
     [0.27, 0.746, 0.17, 0.44, 0.50, 0.08, 0.05],
@@ -4386,8 +4415,9 @@ function replaceT90ACastTurret(P, { vladimir = false } = {}) {
     [-0.43, 0.704, -0.42, 0.46, 0.40, -0.05, -0.04],
     [0.45, 0.704, -0.44, 0.44, 0.39, 0.06, 0.04],
   ]) {
-    P.add('turret', box(w, 0.052, d), x, y, z, -0.05, yaw, roll);
-    P.add('turretDark', box(w * 0.78, 0.010, d * 0.72), x, y + 0.031, z, -0.05, yaw, roll);
+    const seatedY = y - burlakCrownDrop;
+    P.add('turret', box(w, 0.052, d), x, seatedY, z, -0.05, yaw, roll);
+    P.add('turretDark', box(w * 0.78, 0.010, d * 0.72), x, seatedY + 0.031, z, -0.05, yaw, roll);
   }
 
   // K-5 clamshell: seven planted cassettes per side follow the new casting's
@@ -4411,9 +4441,27 @@ function replaceT90ACastTurret(P, { vladimir = false } = {}) {
     }
     P.add('turret', box(0.18, 0.24, 0.52), s * 1.16, 0.27, 0.19, 0, 0, -s * 0.18);
   }
+  if (burlakBase) {
+    // The clipped shell exposes a broader, flatter cheek than the earlier
+    // cast loft.  A second unequal inner stagger carries the heavy K-5 fan
+    // down into that face, so the modules read as planted armor instead of a
+    // single crown comb inherited from the discarded dome.
+    for (const s of [-1, 1]) {
+      for (const [x, y, z, yaw, roll, w, h, d] of [
+        [0.34, 0.31, 1.13, 0.24, -0.39, 0.29, 0.18, 0.31],
+        [0.61, 0.34, 0.92, 0.38, -0.35, 0.33, 0.19, 0.34],
+        [0.91, 0.34, 0.67, 0.54, -0.30, 0.36, 0.19, 0.35],
+        [1.18, 0.31, 0.39, 0.66, -0.24, 0.34, 0.18, 0.32],
+      ]) {
+        P.add('turret', KIT.xform(box(w * 0.80, h * 0.52, d * 0.70), 0, -h * 0.24, -0.085), s * x, y, z, roll, -s * yaw, 0);
+        P.add('turret', KIT.xform(box(w, h, d), 0, 0, -0.050), s * x, y, z, roll, -s * yaw, 0);
+        P.add('turretDark', KIT.xform(box(w * 0.68, 0.010, d * 0.62), 0, h * 0.52, 0.030), s * x, y, z, roll, -s * yaw, 0);
+      }
+    }
+  }
   P.add('turretDark', box(0.54, 0.30, 0.055), 0, 0.39, 1.29, -0.40, 0, 0);
   // The compact first pass left the OTShU heads looking like indicator lamps
-  // on the larger pear face. Restore their visual authority and bury the
+  // on the larger cheek face. Restore their visual authority and bury the
   // housings into the mantlet shoulders; the apertures remain inside armor.
   ruShtora(P, { rings, sz: 0.72, eyeKit: true, eyeRound: true, eyeScale: 1.12, eyeX: 0.55, eyeZ: 1.22 }, 0.48);
   if (!vladimir) {
@@ -4503,15 +4551,15 @@ function replaceT90ACastTurret(P, { vladimir = false } = {}) {
   // Continuous 2A46M assembly: buried trunnion, canvas boot, segmented tube,
   // thermal jacket and a true dark bore.
   // Base 2A46M trunnion is 1.72 m above ground on the measured hull.
-  P.gunG.position.set(0, vladimir ? 0.10 : 0.21, 0.96);
+  // Hold the accepted world-space gun axis while the clipped shell receives
+  // its own ring seat.
+  P.gunG.position.set(0, vladimir ? 0.10 : (burlakBase ? 0.20 : 0.21), 0.96);
   ruSaddle(P, { rollR: 0.21, rollW: 0.62, tubeR: 0.112, rootL: 0.68 });
   P.addGunExtra(KIT.xform(cylZ(0.48, 0.30, 18, 0.44), 0, 0, 0, 0, 0, 0, [0.58, 0.42, 1]), 0, 0.02, 0.14);
   P.addGunExtraDark(cylZ(0.17, 0.28, 16, 0.13), 0, 0.01, 0.43);
   for (const z of [0.31, 0.40, 0.49, 0.58]) P.addGunExtraDark(cylZ(0.174, 0.024, 16), 0, 0.01, z);
-  // Base T-90 datum: the isolated comparison profile carries the visible
-  // tube to the reference's normalized 89-pixel side overhang. The former
-  // 5.37 m run printed 99 pixels; the corrected exposed run is 5.08 m while
-  // retaining the full root and evacuator. Vladimir keeps its own datum.
+  // Base T-90 datum: keep the accepted exposed tube run while replacing the
+  // shell around its buried root. Vladimir retains its own independent run.
   const muzzle = vladimir ? 4.49 : 5.08;
   tubeGun(P, vladimir ? [
     [0.42, 1.35, 0.112], [1.35, 2.18, 0.116], [2.18, 2.88, 0.103],
