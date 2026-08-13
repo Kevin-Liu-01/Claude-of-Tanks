@@ -1314,9 +1314,9 @@ function buildT30(P) {
                                                                              //  band inner faces)
   P.add('hull', box(3.68, 0.78, 6.30), 0, 1.90, -0.45);                      // sponson band ±1.84
   P.add('hull', box(3.30, 0.06, 5.00), 0, 2.31, -0.90);                      // roof plate 2.34
-  P.add('hull', slab(                                                        // long 54° glacis to the roof (bow lip
-    [-1.55, 1.06, 3.72], [1.55, 1.06, 3.72], [1.70, 1.02, 3.30], [-1.70, 1.02, 3.30], // 1.06: above the idler-wrap
-    [-1.55, 1.10, 3.70], [1.55, 1.10, 3.70], [1.66, 2.32, 1.55], [-1.66, 2.32, 1.55])); // crest per §B4)
+  P.add('hull', slab(                                                        // long 54° glacis to the roof; the broad
+    [-1.55, 1.38, 3.72], [1.55, 1.38, 3.72], [1.70, 1.38, 3.30], [-1.70, 1.38, 3.30], // shoulder clears the real idler shoes
+    [-1.55, 1.42, 3.70], [1.55, 1.42, 3.70], [1.66, 2.32, 1.55], [-1.66, 2.32, 1.55])); // while the center bow stays low below
   P.add('hull', slab(                                                        // lower bow plate (center, between
     [-1.05, 0.42, 3.10], [1.05, 0.42, 3.10], [1.08, 0.44, 3.55], [-1.08, 0.44, 3.55], // the tracks)
     [-1.05, 0.46, 3.12], [1.05, 0.46, 3.12], [1.08, 1.06, 3.72], [-1.08, 1.06, 3.72]));
