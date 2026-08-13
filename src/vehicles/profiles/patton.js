@@ -282,8 +282,8 @@ function curveHull(P, H) {
     // and the sprocket.
     if (G.tension.support) rollers.push(G.tension);
     for (const side of [-1, 1]) {
-      P.add('hullDetail', cylX(G.tension.r, 0.17, 12), side * xc, G.tension.y, G.tension.z);
-      P.add('hullDark', cylX(G.tension.r * 0.5, 0.19, 8), side * xc, G.tension.y, G.tension.z);
+      P.add('hullRunningGearDetail', cylX(G.tension.r, 0.17, 12), side * xc, G.tension.y, G.tension.z);
+      P.add('hullRunningGearDark', cylX(G.tension.r * 0.5, 0.19, 8), side * xc, G.tension.y, G.tension.z);
     }
   }
   const wheelW = Math.min(0.24, H.trackW * 0.4);
@@ -308,16 +308,16 @@ function curveHull(P, H) {
   for (const z of wheelZs) {
     for (const side of [-1, 1]) {
       const fx = side * (xc + wheelW / 2 + 0.012);
-      P.add('hullDark', torus(G.wheelR * 0.3, 0.015, 16), fx, wy, z, 0, 0, Math.PI / 2);
+      P.add('hullRunningGearDark', torus(G.wheelR * 0.3, 0.015, 16), fx, wy, z, 0, 0, Math.PI / 2);
       for (let k = 0; k < 6; k++) {
         const a = (k / 6) * Math.PI * 2 + 0.26;
-        P.add('hullDark', cylX(0.026, 0.05, 6), fx, wy + Math.sin(a) * G.wheelR * 0.52, z + Math.cos(a) * G.wheelR * 0.52);
+        P.add('hullRunningGearDark', cylX(0.026, 0.05, 6), fx, wy + Math.sin(a) * G.wheelR * 0.52, z + Math.cos(a) * G.wheelR * 0.52);
       }
     }
   }
   // roller brackets + mud flaps at the fender tips (measured hang bands)
   for (const rl of rollers) for (const side of [-1, 1]) {
-    P.add(gearFitB, box(0.05, Math.max(0.05, spons - rl.y - 0.02), 0.13), side * xc, (spons + rl.y) / 2, rl.z);
+    P.add('hullRunningGearDark', box(0.05, Math.max(0.05, spons - rl.y - 0.02), 0.13), side * xc, (spons + rl.y) / 2, rl.z);
   }
   for (const [fz, fy0, fy1] of [H.flapF, H.flapR].filter(Boolean)) {
     for (const side of [-1, 1]) {
@@ -2185,6 +2185,10 @@ function buildPershing(P, cfg) {
       const geo = new THREE.BoxGeometry(w, h, d);
       const mesh = new THREE.Mesh(geo, mat);
       mesh.name = 'gearShadowProxy';
+      // Suspension-bay shade/backer geometry belongs to the native running
+      // gear.  It is deliberately sampled inside the moving course and must
+      // not be misclassified as a hull plate pierced by that same course.
+      mesh.userData.runningGear = true;
       mesh.position.set(x, y, z);
       if (rx) mesh.rotation.set(rx, 0, 0);
       mesh.castShadow = false;
@@ -2211,6 +2215,7 @@ function buildPershing(P, cfg) {
       const geo = new THREE.BoxGeometry(w, h, d);
       const mesh = new THREE.Mesh(geo, plateMat);
       mesh.name = 'gearRunCover';
+      mesh.userData.runningGear = true;
       mesh.position.set(x, y, z);
       if (rx) mesh.rotation.set(rx, 0, 0);
       mesh.castShadow = false;
@@ -2261,6 +2266,7 @@ function buildPershing(P, cfg) {
       const geo = torus(r, 0.008, 24);
       const mesh = new THREE.Mesh(geo, glintMat);
       mesh.name = name;
+      mesh.userData.runningGear = true;
       mesh.position.set(x, y, z);
       mesh.rotation.set(0, 0, Math.PI / 2);
       mesh.castShadow = false;
@@ -3427,7 +3433,7 @@ const M26_HULL = {
   // front view: belly 0.4344 spans |x| <= ~0.98, track inner edge ~1.03 /
   // outer ~1.71 (trackW 0.67 / inset 0.05), deck plates 1.50-1.54 out to
   // +-1.60, fender line 1.313-1.372 at +-1.66..1.755
-  W: 3.51, bandHW: 1.60, trackW: 0.60, trackInset: 0.095, sponsonY: 1.05, bellyY: 0.435,
+  W: 3.51, bandHW: 1.60, trackW: 0.60, trackInset: 0.095, sponsonY: 1.22, bellyY: 0.435,
   bellyHW: 1.00, noseW: 1.30,
   darkGearFit: true, // r3 tone transfer (m45 r1 / m46 r7 / m47 A3 recipe):
                      // roller brackets + flap straps off the pale bucket
@@ -3444,7 +3450,7 @@ const M26_HULL = {
   gear: {
     wheelR: 0.33, span: [0.80, -2.86], rollerN: 5, rollerY: 0.98,
     contactZF: 0.83, contactZR: -2.92,
-    idler: { z: 1.60, y: 0.67, r: 0.15 }, sprocket: { z: -3.87, y: 0.79, r: 0.07 },
+    idler: { z: 1.60, y: 0.67, r: 0.15 }, sprocket: { z: -3.87, y: 0.71, r: 0.15 },
     tension: { z: -3.30, y: 0.25, r: 0.15, support: true },
   },
 };
@@ -3480,7 +3486,7 @@ const M45_HULL = {
   // ~1.50 over |x| 1.28..1.61 (the flat 1.60 band read +0.02..+0.06 on ~17
   // front columns, the row's err carpet). Fender plate widens inboard to
   // the new band edge automatically ((bhw+fhw)/2 seat).
-  W: 3.51, bandHW: 1.28, trackW: 0.58, trackInset: 0.095, sponsonY: 1.05, bellyY: 0.46, noseW: 1.04,
+  W: 3.51, bandHW: 1.28, trackW: 0.58, trackInset: 0.095, sponsonY: 1.22, bellyY: 0.46, noseW: 1.04,
   bellyHW: 1.04, glacisWingY0: 1.30, glacisWingDrop: 0.04,
   darkGearFit: true, // r1 tone transfer (m46 r7 A4 / m47 A3 recipe): muffler-leg
                      // class fittings off the pale bucket — bucket swap only
@@ -3519,7 +3525,7 @@ const M45_HULL = {
     // the ref return line rises 0.074..0.24 (§B6 contact pins; the ref's
     // own flat still reads to -1.78 within one column).
     wheelR: 0.33, span: [1.95, -1.65], rollerN: 5, rollerY: 0.98, contactZF: 1.97, contactZR: -1.705,
-    idler: { z: 2.56, y: 0.68, r: 0.21 }, sprocket: { z: -2.66, y: 0.74, r: 0.10 },
+    idler: { z: 2.56, y: 0.68, r: 0.21 }, sprocket: { z: -2.66, y: 0.69, r: 0.15 },
     tension: { z: -2.05, y: 0.30, r: 0.15, support: true },
   },
 };
@@ -3552,7 +3558,7 @@ const M45_FIT = {
 // ends). Feature stations below are from the r5 retrace probe (dense 96-col
 // ref dump, gate-parity station slices; tools/tmp-m46-retrace.mjs).
 const M46_HULL = {
-  W: 3.51, bandHW: 1.42, trackW: 0.60, trackInset: 0.10, sponsonY: 1.12, bellyY: 0.48, noseW: 1.30,
+  W: 3.51, bandHW: 1.42, trackW: 0.60, trackInset: 0.10, sponsonY: 1.26, bellyY: 0.48, noseW: 1.30,
   bellyHW: 1.025, glacisWingY0: 1.30, glacisWingDrop: 0.04, sponsonAftY: 1.35, sponsonAftZ: -2.39,
   darkGearFit: true, // r7 A4 (m47 A3 recipe): muffler legs + roller brackets +
                      // flap straps off the pale bucket — they stood as primer
@@ -3585,7 +3591,7 @@ const M46_HULL = {
     // ends raised, tangent ramps), size residual documented in the packet).
     // Wrap radii include bandOuterR 0.09 + ~0.05 link-corner reach.
     wheelR: 0.33, span: [1.035, -2.685], rollerN: 3, rollerY: 1.00, contactZF: 1.08, contactZR: -2.72,
-    idler: { z: 1.64, y: 0.765, r: 0.19 }, sprocket: { z: -3.88, y: 0.815, r: 0.07 },
+    idler: { z: 1.64, y: 0.765, r: 0.19 }, sprocket: { z: -3.88, y: 0.735, r: 0.15 },
   },
 };
 const M46_FIT = {
@@ -4220,7 +4226,9 @@ export const PATTON_PROFILES = {
         // plate front; the strips' 2.845 reach was authored off a flipped
         // gate read and owned the two worst plan columns, 0.19 x2.)
       ],
-      flapWings: [[2.47, 0.77, 1.31], [-2.80, 0.77, 1.30]],
+      // Keep the outer panels attached to the fender line without letting
+      // either panel cut through the animated terminal wrap.
+      flapWings: [[2.47, 1.08, 1.31], [-2.80, 1.00, 1.30]],
       // r2f: guard RESTORED to the r1 seat — the r2b 2.655 re-seat chased a
       // one-grid ref read (1.511@2.655) that inverted on the next grid
       // (ref 1.195@2.64 vs the moved guard's 1.511: -0.19 x3 columns); the
