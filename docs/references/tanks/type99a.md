@@ -1,9 +1,9 @@
 # Type 99A / ZTZ-99A (`type99a`) — BASE-21 photo-class packet
 
-> **CURRENT AUTHORITY (2026-08-12):** the `50bbc9bc` first-party
-> measured-envelope freeze at the end of this packet supersedes the historical
+> **CURRENT AUTHORITY (2026-08-12):** the `6d52abda` first-party
+> strict-clearance freeze at the end of this packet supersedes the historical
 > no-oracle/build-ready state, the §5.51/§5.52 print-loft builder and the
-> `cf97a01b` freeze. The quarantined Armored Warfare GLB is measurement and
+> `50bbc9bc` / `cf97a01b` freezes. The quarantined Armored Warfare GLB is measurement and
 > visual-comparison evidence only; the playable remains original procedural
 > geometry.
 
@@ -568,11 +568,13 @@ welded box + tower + sleeved 125 ✓), top/yaw90 clean.
 
 The owner rejected the prior hull, turret and running-gear geometry and
 required the whole vehicle to be re-based on the supplied model while keeping
-all playable geometry our own. The active `buildType99AFullNativeRebuild2026`
-therefore consumes no external geometry. It constructs a new tapered hull and
-two-plane prow, one six-station native linked course, one connected low welded
-turret, buried cheek courses, an integrated gun root, a supported open bustle
-and the complete seated roof/service cadence from repository primitives.
+all playable geometry our own. The active `buildType99A` therefore consumes no
+external geometry. It constructs a new tapered hull and two-plane prow, one
+six-station native linked course, one connected low welded turret, buried cheek
+courses, an integrated gun root, a supported open bustle and the complete
+seated roof/service cadence from repository primitives. The historical
+`buildType99AFullNativeRebuild2026` remains inactive and is not the registered
+runtime builder.
 
 The reference SHA-256 remains
 `35024b8262ae065153da0f704f1c42a66b4a8e239a46a525af76ee12c405043f`.
@@ -596,3 +598,32 @@ abutting nominee is the fixed driver-periscope strip. Both remain visibly
 hull-supported as the complete turret package rotates away. No comparison
 mesh or derived payload ships; the public build strips the candidate source
 directory. `cf97a01b` and all earlier Type 99 freezes are retired.
+
+## 2026-08-12 strict-clearance and rear-seat re-certification
+
+The current authored builder keeps the measured hull, angular turret, gun,
+stations and native six-wheel course, but raises the sponson underside bands
+and their shadow strips clear of the complete linked-shoe sweep. The left
+exhaust and soot strip are moved outside the running lane. The rear recovery
+cable tray is deepened to back the full U-loop and both returns, closing the
+remaining plan pockets without creating a broad rear wall.
+
+Current receipts for freeze `6d52abda` (58 meshes / 79,776 vertices):
+
+- geometry gate 90.7, dimensions 97, floaters 100;
+- independent procedural fidelity 93.0 with every required whole view >=90;
+- exact band 0/0, individual shoes 0/0 and strict full-course sweep 0/0;
+- standard check PASS with zero contiguity holes and `mg1+7d` decoration;
+- 45 unique paired/yaw frames including `profile-elevated-left`;
+- independent fixed vector
+  `[9.3,9.4,9.3,9.3,9.4,9.3,9.3,9.4,9.5,9.5,9.4,9.5,9.4,9.5]`,
+  floor 9.3, mean 9.39;
+- full tests, asset currentness, muzzle-bore, native provenance, family order,
+  and private/public builds PASS.
+
+The complete gun, turret shell, cheek protection, roof stations, bustle and
+slat rack rotate together. The repaired sponsons, exhaust, deck, rear tray,
+U-cable, transom and running gear remain hull-owned. Fixed-deck candidates in
+the heuristic parent/winding audits remain visibly connected to the hull after
+turret departure and are not stranded turret mass. No source-derived geometry
+or payload ships. `50bbc9bc` is retired.

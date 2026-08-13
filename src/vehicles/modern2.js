@@ -1069,12 +1069,12 @@ function buildType99A(P) {
                                                                                //   62-deg nose plate; 0.06 inboard
                                                                                //   of the 1.16 band face — §B2
                                                                                //   channels stay open)
-  P.add('hull', box(3.40, 0.21, 3.06), 0, 1.395, 0.50);                        // front sponson band ±1.70,
-                                                                               //   y 1.29..1.50 (over the 1.27
+  P.add('hull', box(3.40, 0.16, 3.06), 0, 1.42, 0.50);                         // front sponson band ±1.70,
+                                                                               //   y 1.34..1.50 (clear of the 1.276
                                                                                //   track top), z -1.03..2.03
   P.add('hull', frustum(1.70, -1.02, -1.06, 1.70, -1.28, -1.42, 1.50, 1.78));  // powerpack ramp (one raked course)
-  P.add('hull', box(3.40, 0.49, 2.26), 0, 1.535, -2.53);                       // raised rear deck band ±1.70,
-                                                                               //   y 1.29..1.78, z -3.66..-1.40
+  P.add('hull', box(3.40, 0.44, 2.26), 0, 1.56, -2.53);                        // raised rear deck band ±1.70,
+                                                                               //   y 1.34..1.78, z -3.66..-1.40
   P.add('hull', cylY(0.86, 0.86, 0.07, P.q ? 28 : 18), 0, 1.475, 0.28);        // turret ring seat (base 1.44 sits
                                                                                //   in the 1.50 deck recess)
   // Oracle main-fender islands terminate at z=-3.59/+3.46.  Preserve that
@@ -1145,11 +1145,10 @@ function buildType99A(P) {
     P.add('hullDetail', box(0.10, 0.16, 0.12), s * 0.65, 1.10, -3.54);         // tow hooks
   }
   P.add('hullDetail', box(0.30, 0.18, 0.04), 0, 1.55, -3.54);                  // convoy light plate
-  P.add('hullDark', box(0.06, 0.30, 0.48), -1.815, 1.32, -2.10);               // LEFT hull exhaust port (t72
+  P.add('hullDark', box(0.05, 0.30, 0.48), -1.840, 1.32, -2.10);               // LEFT hull exhaust port (t72
                                                                                //   lineage read) — outward plate
-                                                                               //   ON the skirt top band, face
-                                                                               //   -1.845 inside the ±1.85 anchor
-  P.decal('hull', 'soot', null, 0.8, [-1.76, 1.30, -2.45], -Math.PI / 2);
+                                                                               //   outside the live left shoe lane
+  P.decal('hull', 'soot', null, 0.8, [-1.862, 1.30, -2.45], -Math.PI / 2);
   // The supplied Type 99A oracle does not carry the conspicuous exposed
   // orange unditching log inherited from the older generic T-72 rear kit.
   // Leave this as backed service structure; the recovery loop below supplies
@@ -1163,7 +1162,7 @@ function buildType99A(P) {
   // behind the structural -3.47 m transom.  Give that loop a shallow backed
   // tray and explicit end anchors: the thin cable may establish the measured
   // -4.242 m extremum, but it cannot be a free silhouette whisker.
-  P.add('hull', box(1.76, 0.040, 0.46), 0, 1.45, -3.91);
+  P.add('hull', box(1.76, 0.040, 0.68), 0, 1.45, -3.91);                       // backs the complete cable trough to z -4.25
   {
     const rearCable = FITTINGS.towCable({ mats: P.mats, r: 0.024, seed: 12,
       pts: [
@@ -1210,7 +1209,7 @@ function buildType99A(P) {
     P.add('hull', box(0.30, 0.08, 0.95), s * 1.62, 1.80, -2.55);               // rear deck bins (LOW — the print
                                                                                //   deck line reads clean 1.72-1.82)
     P.add('hullDark', box(0.31, 0.014, 0.97), s * 1.62, 1.845, -2.55);
-    P.add('hullShadow', box(0.50, 0.026, 6.9), s * 1.44, 1.29, -0.08);         // sponson shadow strips
+    P.add('hullShadow', box(0.50, 0.026, 6.9), s * 1.44, 1.325, -0.08);        // shadow receiver remains above the native return run
   }
   liftEye(P, 'hullDetail', -1.30, 1.52, 1.70);
   liftEye(P, 'hullDetail', 1.30, 1.52, 1.70);

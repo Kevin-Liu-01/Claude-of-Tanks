@@ -112,7 +112,7 @@ re-freeze NEW hash, all in ONE commit.
 | t90a_vladimir | c13fec50 | GRADUATED 2026-08-10 (§5.94 source-specific compact ESSA/cast-turret/transom rebuild; gate 90.0 x2; standard/track/winding adjudicated; independent §B8 floor 9.0 / mean 9.01 x14, yaw/load paths 9.3) |
 | t90sm | 7efc69c9 | GRADUATED 2026-08-10; RE-FROZEN §5.105 (owner-priority complete redesign: source-measured low diamond shell retained, solid bustle steps replaced by backed slat cells, deep scalloped inboard skirts and layered rear service field added; gate 90.0 x2; standard/track/winding clean; independent §B8 floor 9.0 / mean 9.08 x14, all 28 yaw frames PASS; prior 56324371 retired) |
 | k1a1 | 28c7f5f0 | RE-FROZEN 2026-08-10 (§5.108 authored compact K1A1 shell/hull, native six-wheel course and cupola-seated K6; independent §B8 floor 9.0 / mean 9.21) |
-| type99a | 50bbc9bc | RE-FROZEN 2026-08-12 (§5.125 first-party measured-envelope rebuild: broad two-plane hull, connected low welded turret, supported open bustle and exact native six-wheel course; machine fidelity 92.08 / min view 90.76; fresh 42-frame yaw/ownership floor 9.0 / mean 9.11) |
+| type99a | 6d52abda | RE-FROZEN 2026-08-12 (§5.133 strict-clearance re-cert: first-party measured-envelope hull/turret retained, native six-wheel return and shoes exact 0/0 through the full sweep, rear U-cable fully backed, gate 90.7 / fidelity 93.0; fresh 45-frame yaw/ownership floor 9.3 / mean 9.39; prior 50bbc9bc retired) |
 | type10 | 7ac6d434 | RE-FROZEN 2026-08-12 (§5.128 fully first-party folded five-wheel hull and continuous clipped welded turret; machine fidelity 91.41 / minimum view 90.02; exact native band+shoes 0/0, zero plan holes and fresh 42-frame yaw/ownership PASS; incompatible legacy source-component row retained honestly) |
 | t14 | a94a2480 | RE-FROZEN 2026-08-12 (§5.131 fully first-party `buildT14`: low seven-wheel Armata hull, connected unmanned shroud, supported RWS/sensor package and exact native course; fidelity 90.53 / minimum view 91.52; 42 unique paired/yaw frames floor 9.0 / mean 9.04; source-baked `a88afa6c` playable retired) |
 | t80u | 77f9ae78 | RE-FROZEN 2026-08-12 (§5.132 fully first-party `buildT80UNative2026`: low turbine hull, connected cast/K-5 turret, supported combat/rear-service package and exact native six-wheel course; fidelity 91.51 / minimum view 90.20; 42 unique paired/yaw frames floor 9.0 / mean 9.04; source-baked `c0dc2502` playable retired) |
@@ -4472,3 +4472,51 @@ All eight T-80U presentation assets and manifest binding are regenerated.
 Targeted assets/bore, tests, native provenance, family ordering, and private
 and stripped-public builds pass. **RE-FROZEN / KEEP `77f9ae78`; retire
 source-baked `c0dc2502` as a playable.**
+
+## 5.133 TYPE 99A STRICT TRACK-CORRIDOR / REAR-SEAT RE-CERTIFICATION (2026-08-12, RE-FROZEN)
+
+The active Type 99A remains the repository-authored `buildType99A` in
+`src/vehicles/modern2.js`. The supplied Armored Warfare GLB is a private
+measurement and render oracle only. No source mesh, converted vertex/index
+payload, material, texture, rig, animation or runtime GLB node is present in
+the playable or public build. Every visible triangle is produced by the
+repository's own KIT primitives, authored lofts, fittings and native linked
+track system.
+
+This strict-clearance pass preserves the measured-envelope hull and complete
+angular turret package while lifting the front and rear sponson undersides
+clear of the full native shoe sweep. The left exhaust and soot treatment are
+now outside the running lane. The rear U-cable support tray is deepened so the
+complete curve and both returns remain backed, eliminating the last three
+plan-view pockets without adding a rear wall or changing the source envelope.
+
+Freeze **`6d52abda`** reproduces at 58 rendered meshes / 79,776 vertices.
+The geometry gate is **90.7** with dimensions 97 and floaters 100. Independent
+procedural fidelity is **93.0**, and every required whole view is at least
+90. Exact strict track containment is band **0/0**, individual shoes **0/0**,
+and the complete sweep **0/0**. Six native road wheels remain separately
+readable inside one continuous linked course with coherent terminal wraps.
+
+The final packet contains 15 paired + 15 yaw0 + 15 yaw90 frames, including
+the repeatable elevated-left profile, for 45 PNGs / 45 distinct hashes. Fresh
+independent inspection records the mandatory fixed vector
+`[9.3,9.4,9.3,9.3,9.4,9.3,9.3,9.4,9.5,9.5,9.4,9.5,9.4,9.5]`, floor
+**9.3**, mean **9.39**. The supplemental elevated profile also passes turret
+length, gun seating, attachment and track-clearance inspection.
+
+Yaw proves that the gun/mantlet, angular shell and cheeks, roof stations,
+hatches, sights, smoke/equipment, antennas and complete supported bustle/slat
+rack rotate together. Glacis, raised sponsons and shadow strips, fenders,
+engine deck, exhaust, transom, cable tray/U-loop, rear service field and native
+running gear remain fixed. The parent and winding heuristics' fixed-deck
+nominees are low hull covers, fender/guard structures and backed rear-service
+surfaces; they remain continuously hull-supported and reproduce no turret
+silhouette or station. No fused duplicate, stranded fitting, empty-air
+decoration, open sheet, backface wound or yaw-dependent silhouette pop is
+visible.
+
+All eight Type 99A presentation assets and manifest binding are regenerated.
+Targeted standard, geometry, fidelity, strict track, bore, asset, full test,
+native provenance, family-order and private/public build checks pass.
+**RE-FROZEN / KEEP `6d52abda`; retire `50bbc9bc` and all earlier Type 99A
+freezes.**
