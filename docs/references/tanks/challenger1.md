@@ -2,11 +2,11 @@
 
 Exact variant: FV4030/4 Challenger 1 Mk.3, Royal Ordnance L11A5 120 mm rifled gun.
 
-## CURRENT FREEZE — 2026-08-11 NATIVE-PROCEDURAL GRADUATION
+## CURRENT FREEZE — 2026-08-13 FIRST-PARTY ROUTE RESTORATION
 
-Current playable freeze is **`cacb1337`**. The complete source-relative and
-gate-cap receipt is recorded under `docs/PROGRAM-STATE.md` §5.112. All older
-procedural freezes and the historical 90.2 mask-shaped build are retired.
+Current playable freeze is **`26a0a939`**. The complete source-relative and
+mechanical receipt is recorded under `docs/PROGRAM-STATE.md` §5.175. All older
+procedural freezes and the historical mask-shaped build are retired.
 
 ## Corroborated real dimensions
 - Overall length gun-forward 11.55–11.56 m; hull ≈ 8.3 m; width 3.51–3.52 m over skirts;
@@ -729,3 +729,28 @@ mean 9.13. Source fidelity, genuine yaw, seating/load paths, hull/turret split,
 six-wheel native course, winding and sky-hole checks all PASS. The exact
 containment audit is band 0/0 and shoes 0/0 after the hidden sponson/belly
 clearance repair. Final disposition: **GRADUATED / KEEP `cacb1337`**.
+
+## 2026-08-13 FIRST-PARTY ROUTE RESTORATION / TRACK ORDER CLOSEOUT
+
+The live legacy `challenger1Build` route had regressed to deep wall-like
+skirts, hidden Hydrogas wheels and a taller faceted turret stack. Fresh
+elevated-profile comparison restored the stronger original procedural
+`challenger1Native2026` builder. It is entirely repository-authored; the local
+comparison package supplies no runtime mesh, vertices, payload, texture,
+material, rig or animation.
+
+The active hull records front idler, six Hydrogas road-wheel pairs, five
+supported return rollers and rear final drive. Wheel tire/dish/hub/bolt faces
+are native running-gear presentation, not a duplicate course. The sponson
+underside clears the entire live return, the rear drive has an identifying
+bolt cadence, and flexible front/rear aprons are carried by broad hangers and
+paired straps outside the animated shoe lane. Exact band/shoe/sweep clearance
+is 0/0/0.
+
+The active freeze is `26a0a939` (53 meshes / 119,775 vertices). Parent audit
+is 0/0/0, winding is clean, articulation is 10/10 and the muzzle bore passes.
+The fresh paired/elevated/yaw packet at
+`/private/tmp/challenger1-native-paired-r3/challenger1` contains 45 distinct
+PNGs. Complete turret casting, gun/mantlet, commander/TOGS/MAG suite, smoke,
+antennas, stowage and basket rotate together over a fixed hull and sole native
+course. Fresh standard-view floor is 9.0 and mean is 9.13.

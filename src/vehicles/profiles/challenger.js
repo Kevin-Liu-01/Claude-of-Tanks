@@ -1153,7 +1153,7 @@ function challenger1Native2026(P) {
     // The broad sponson starts above the live shoe envelope. The previous
     // 1.01 m lower plane occupied the rear sprocket wrap; the inner belly
     // already carries the structure below this source-correct track well.
-    [-1.61, 1.20, 2.23], [1.61, 1.20, 2.23], [1.61, 1.20, -3.31], [-1.61, 1.20, -3.31],
+    [-1.61, 1.34, 2.23], [1.61, 1.34, 2.23], [1.61, 1.34, -3.31], [-1.61, 1.34, -3.31],
     [-1.42, 1.53, 2.23], [1.42, 1.53, 2.23], [1.42, 1.53, -3.31], [-1.42, 1.53, -3.31]));
   P.add('hull', box(2.90, 0.055, 3.98), 0, 1.535, -1.02);
   // One shallow glacis and a contained lower nose; no stair-step terraces.
@@ -1181,7 +1181,7 @@ function challenger1Native2026(P) {
   // Inter-track lower stern.  The service/transom courses above retain the
   // source-wide rear, while this hidden tub clears the sprocket wrap instead
   // of occupying the same 36 mm physical volume as the native shoes.
-  P.add('hull', frustum(0.93, -3.96, -2.86, 0.93, -3.90, -2.82, 0.58, 1.24));
+  P.add('hull', frustum(0.93, -2.86, -3.96, 0.93, -2.82, -3.90, 0.58, 1.24));
   // Rear sponson deck: retain the same 1.43 m crest and plan footprint, but
   // remove the hidden deep wall that occupied the native sprocket wrap.
   P.add('hull', box(3.00, 0.12, 0.52), 0, 1.37, -3.24);
@@ -1238,6 +1238,14 @@ function challenger1Native2026(P) {
     }
     P.add('hullRubber', box(0.034, 0.31, 0.42), s * 1.72, 0.76, 3.56);
     P.add('hullRubber', box(0.034, 0.31, 0.42), s * 1.72, 0.76, -3.65);
+    // Broad upper hangers make both flexible terminal aprons visibly part of
+    // the fixed fender structure. They remain above the complete shoe sweep.
+    P.add('hullDetail', box(0.38, 0.06, 0.48), s * 1.52, 1.37, 3.40);
+    P.add('hullDetail', box(0.38, 0.06, 0.40), s * 1.52, 1.38, -3.48);
+    for (const dz of [-0.11, 0.11]) {
+      P.add('hullDetail', box(0.035, 0.50, 0.035), s * 1.705, 1.15, 3.56 + dz);
+      P.add('hullDetail', box(0.035, 0.50, 0.035), s * 1.705, 1.15, -3.65 + dz);
+    }
   }
 
   // Driver, bow lights, guards, tow hardware and a physically routed cable.
@@ -1285,19 +1293,24 @@ function challenger1Native2026(P) {
     trackW: 0.54, trackTh: 0.068, topY: 0.98, botY: 0.035,
     deadSag: 0.024, paintedEnds: true, coveredTop: false, arms: true,
   });
+  P.hullG.userData.runningGearOrder = {
+    front: 'idler', frontWheelPairs: 1, roadWheelPairs: 6,
+    supportRollerPairs: 5, suspension: 'hydrogas-arm',
+    rear: 'final-drive-sprocket',
+  };
   // Source-readable Hydrogas faces. These are shallow outer dishes on the
   // existing six native wheels, not a second wheel course: dark tyres remain
   // visible around recessed olive dishes, with separate hubs and bolt rings.
   for (const s of [-1, 1]) {
     for (const z of [2.20, 1.32, 0.44, -0.44, -1.32, -2.20]) {
-      P.add('hullRubber', cylX(0.385, 0.026, 24), s * 1.411, 0.460, z);
-      P.add('hullDark', cylX(0.310, 0.032, 20), s * 1.430, 0.460, z);
-      P.add('hull', cylX(0.235, 0.034, 20), s * 1.447, 0.460, z);
-      P.add('hullDark', torus(0.265, 0.016, 18), s * 1.450, 0.460, z, 0, Math.PI / 2, 0);
-      P.add('hullDetail', cylX(0.080, 0.038, 16), s * 1.454, 0.460, z);
+      P.add('hullRunningGearDark', cylX(0.385, 0.026, 24), s * 1.411, 0.460, z);
+      P.add('hullRunningGearDark', cylX(0.310, 0.032, 20), s * 1.430, 0.460, z);
+      P.add('hullRunningGearHull', cylX(0.235, 0.034, 20), s * 1.447, 0.460, z);
+      P.add('hullRunningGearDark', torus(0.265, 0.016, 18), s * 1.450, 0.460, z, 0, Math.PI / 2, 0);
+      P.add('hullRunningGearDetail', cylX(0.080, 0.038, 16), s * 1.454, 0.460, z);
       for (let k = 0; k < 8; k++) {
         const a = k * Math.PI / 4;
-        P.add('hullDetail', cylX(0.013, 0.041, 8), s * 1.456, 0.460 + Math.sin(a) * 0.155, z + Math.cos(a) * 0.155);
+        P.add('hullRunningGearDetail', cylX(0.013, 0.041, 8), s * 1.456, 0.460 + Math.sin(a) * 0.155, z + Math.cos(a) * 0.155);
       }
     }
     // Distinct terminal caps make the end transitions read mechanically,
@@ -1309,6 +1322,13 @@ function challenger1Native2026(P) {
       // buckets so containment classifies them as lane-local running gear.
       P.add(trackDark, cylX(r, 0.026, 20), s * 1.412, y, z);
       P.add(trackDetail, cylX(r * 0.48, 0.035, 16), s * 1.438, y, z);
+    }
+    // Bolt cadence identifies the rear terminal as the driven sprocket; the
+    // smaller smooth forward terminal remains the free idler.
+    for (let k = 0; k < 8; k++) {
+      const a = k * Math.PI / 4;
+      P.add(trackDetail, cylX(0.014, 0.038, 8), s * 1.442,
+        0.84 + Math.sin(a) * 0.135, -2.82 + Math.cos(a) * 0.135);
     }
   }
 
@@ -1484,12 +1504,11 @@ function challenger1Native2026(P) {
 // Profiles-class family map (merged by profiledProcedurals.js — the same
 // interface every ./profiles family module exports).
 export const CHALLENGER_PROFILES = {
-  // OWNERSHIP RESTORATION (2026-08-12): runtime Challenger 1 is the stronger
-  // repository-authored construction retained from our own design history.
-  // It is assembled exclusively from the procedural primitives and fittings
-  // in this module plus the fleet-native linked course. No external mesh,
-  // sampled vertex stream or converted model payload enters the playable.
-  challenger1: { build: challenger1Build },
+  // Restored first-party Native2026 route. It is assembled exclusively from
+  // repository-authored procedural primitives and fittings plus the native
+  // linked course; no external mesh or converted vertex payload enters the
+  // playable.
+  challenger1: { build: challenger1Native2026 },
 };
 
 // ===========================================================================
