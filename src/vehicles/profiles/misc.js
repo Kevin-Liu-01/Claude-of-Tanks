@@ -992,7 +992,7 @@ function buildArieteNative2026(P) {
 }
 
 function buildLeclerc(P) {
-  const { box, cylY, cylZ, frustum, torus, buildGun, buildRunningGear,
+  const { box, cylX, cylY, cylZ, frustum, torus, buildGun, buildRunningGear,
     fenders, headlight, liftEye, periscope, towCable, stowage, jerryCan, ammoCan,
     spareTrackStrip, shovelTool } = KIT;
   const slab = orientedSlab;                                                   // §C missing-side fix: winding-corrected slabs only (see orientedSlab)
@@ -1074,7 +1074,9 @@ function buildLeclerc(P) {
     P.add('hull', box(0.08, 0.27, 0.30), s2 * 0.90, 1.365, 3.10);             // inboard bow knee (inside the shoe lane)
     P.add('hull', box(0.07, 0.30, 0.28), s2 * 1.7425, 1.345, 3.25);           // outboard fender knee (outside the shoe lane)
     P.add('hullRubber', box(0.64, 0.15, 0.035), s2 * 1.37, 1.405, 3.58);      // shallow flexible lip, ahead of terminal shoes
+    P.add('hullRubber', box(0.64, 0.24, 0.04), s2 * 1.37, 1.285, 3.6175);     // supported leading apron: overlaps the lip above, hangs wholly ahead of the idler/shoe sweep
     P.add('hullDark', box(0.52, 0.025, 0.018), s2 * 1.36, 1.515, 3.555);      // cap hinge/seam
+    P.add('hullDark', box(0.045, 0.19, 0.045), s2 * 1.37, 1.30, 3.622);       // apron reinforcement, seated through the upper overlap
   }
   // driver LEFT: flush hatch + 3 episcopes (90-ladder r1 CAP-SEAT: ref deck
   // line reads 1.534-1.544 over z 0.2..1.25 — the 1.573/1.576 hatch crowns
@@ -1290,6 +1292,17 @@ function buildLeclerc(P) {
     padCornerFloor: 0.02, padHugZ0: 2.40,
     paintedEnds: true, coveredTop: true, arms: true,
   });
+  // Resolve a real non-driven idler and rear final drive at normal profile
+  // scale without duplicating any part of the animated track course.
+  for (const side of [-1, 1]) {
+    const x = side * 1.605;
+    P.add('hullRunningGearDetail', cylX(0.205, 0.026, 20), x, 0.78, 3.18);
+    P.add('hullRunningGearDark', torus(0.158, 0.015, 18), side * 1.620, 0.78, 3.18, 0, 0, Math.PI / 2);
+    P.add('hullRunningGearDark', cylX(0.058, 0.034, 12), side * 1.624, 0.78, 3.18);
+    P.add('hullRunningGearDetail', cylX(0.198, 0.026, 20), x, 0.82, -2.85);
+    P.add('hullRunningGearDark', torus(0.150, 0.015, 18), side * 1.620, 0.82, -2.85, 0, 0, Math.PI / 2);
+    P.add('hullRunningGearDark', cylX(0.070, 0.034, 12), side * 1.624, 0.82, -2.85);
+  }
   // 90-ladder r1 track re-meter: the 0.64-band's pads reached x 1.623 and
   // COIN-FLIPPED into the front ±1.64 col windows ([1.619..]; official run
   // read bot 0.083 right / 0.501 left from the same symmetric content —

@@ -35,6 +35,26 @@ of the hull while preserving the complete terminal links beneath them.
 - all eight Leclerc presentation assets regenerated and checked;
 - full tests and private/public production builds pass.
 
-Final disposition: **KEEP `5fa68984`**. The Leclerc again has recognizable,
-supported front mudguards without any static geometry intersecting or
-replacing its native linked track.
+## 2026-08-13 terminal-identity supersession
+
+The live builder had retained the higher collision-free steel cap and shallow
+lip, but the terminal still read too open in the owner's low front view. A
+second first-party pass adds a short flexible leading apron that is backed by
+the cap/knee structure and remains ahead of the linked-shoe sweep. Concentric
+idler and final-drive face courses now sit inside the existing carrier-ring
+span, so neither terminal can collapse visually into an anonymous knot of
+shoes.
+
+Freeze `126a4e90` reproduces twice at 48 meshes / 103,431 vertices. Fresh
+evidence in `/private/tmp/modern-drift-final-r3/leclerc` contains 15 paired,
+15 yaw0 and 15 yaw90 frames: 45 PNGs / 45 distinct hashes with no identical
+yaw pair. Exact band, shoes and strict sweep remain 0/0; parent audit remains
+0/0/0; winding and muzzle checks pass. Elevated profile and close views show
+the front idler, six road wheels and rear final drive as distinct assemblies
+inside one continuous native course. The apron, cap and terminal faces remain
+hull-fixed while the complete turret package executes a genuine quarter-turn.
+
+Final disposition: **KEEP `126a4e90`; retire `5fa68984`**. The Leclerc again
+has recognizable, supported front mudguards and explicit terminal running
+gear without any static geometry intersecting or replacing its native linked
+track.
