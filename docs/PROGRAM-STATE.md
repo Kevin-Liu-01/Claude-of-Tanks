@@ -6500,3 +6500,67 @@ wound appears.
 
 **PASS / KEEP `26ca49a8`, `d00cb6f6`, `455daa6`; supersede `448b1161`,
 `f90b060`, `f4bc0d40`. Ordered blockers: none.**
+
+## 5.181 T-72 FAMILY FIRST-PARTY ROUTING / COURSE STANDARDIZATION (2026-08-13)
+
+The playable T-72 family is now explicitly routed to repository-authored
+procedural construction. Quarantined comparison GLBs remain read-only visual
+oracles; no mesh, converted vertex/index payload, material, texture, rig or
+animation from them enters runtime or the public build. The retired
+normalized-oracle builders remain in source only as migration history and are
+not registered as playable models.
+
+Family order is fixed as `t72b_1987` -> `t72bu` -> `pt91m` -> `t72b3m`.
+The 1987 and B3M variants now use the common compact native hull/cast-turret
+foundation, with distinct Kontakt-1 versus Kontakt-5/protection and combat-
+station packages. T-72BU uses its complete native obr. 1992 hull and turret
+instead of the measured-hull hybrid. PT-91M keeps its already passing authored
+ERAWA/SAVAN package unchanged.
+
+The native order is explicit on all four vehicles: **front free idler -> six
+dished road wheels -> return rollers -> rear final-drive sprocket**. One
+continuous linked-shoe course follows those stations. Hidden sponson floors
+are raised above the full moving course, deep skirts are moved outboard rather
+than allowed through the lane, B3M's rear flap is physically shortened and
+raised, and BU receives a supported continuous skirt rail plus recessed
+transom bridge. Exact continuous-band / individual-shoe / full moving-sweep
+clearance is **0/0/0** for every member.
+
+Deterministic freezes reproduce as T-72B obr. 1987 **`9aa22fb4`** (40 meshes /
+118,415 vertices), T-72BU **`c3fb25ec`** (39 / 110,099), PT-91M
+**`6ae53930`** (55 / 93,702; unchanged), and T-72B3M **`f46418a4`** (40 /
+163,031). Parent audit is 0 stranded / 0 abutting / 0 dangling for all four.
+Winding is 0 reversed / 0 mixed; PT-91M's 28-pixel FrontSide difference is
+0.05% and visually null. Runtime articulation passes all 37 checks. Explicit
+muzzle-bore contrast passes at 95.9 / 91.2 / 101.0 / 97.5.
+
+`/private/tmp/t72-family-final-r3` contains 15 paired, 15 yaw0 and 15 yaw90
+frames per variant including the standardized elevated-left profile: **45
+PNGs / 45 distinct hashes for each vehicle**. Fresh standard-order vectors
+are:
+
+- T-72B obr. 1987 `[9.2,9.2,9.1,9.1,9.0,9.1,9.1,9.2,9.1,9.2,9.1,9.2,9.2,9.1]`
+  (floor 9.0, mean 9.14);
+- T-72BU `[9.1,9.2,9.2,9.2,9.0,9.1,9.2,9.2,9.3,9.3,9.2,9.3,9.1,9.3]`
+  (floor 9.0, mean 9.19);
+- PT-91M `[9.2,9.2,9.1,9.1,9.0,9.1,9.1,9.2,9.2,9.3,9.1,9.2,9.1,9.2]`
+  (floor 9.0, mean 9.15);
+- T-72B3M `[9.2,9.3,9.2,9.2,9.2,9.2,9.2,9.3,9.4,9.3,9.3,9.4,9.3,9.4]`
+  (floor 9.2, mean 9.28).
+
+Every yaw pair shows the full shell, gun/mantlet, variant protection, smoke,
+cupolas/MG, sights, periscopes, antennas and supported rear package rotating
+together. Glacis armor, deck, fixed wading/service gear, skirts, six-wheel
+course, transom and rear hull kit remain fixed. BU's small Mode-2 candidate is
+the visibly deck-seated hull-owned wading/service station, not stranded turret
+equipment.
+
+PT-91M continues to pass the older contour/component gate at 90.4. The three
+native T-72 comparison prints fuse or normalize hull, track and equipment
+masks incompatibly with the required first-party articulated split, so that
+legacy contour gate is reported honestly rather than gamed by copying their
+geometry. The current acceptance evidence is the immutable authored hashes,
+fresh 14-view/yaw packet and strict mechanical/runtime gates.
+
+**PASS / KEEP `9aa22fb4`, `c3fb25ec`, `6ae53930`, `f46418a4`. Ordered
+blockers: none.**

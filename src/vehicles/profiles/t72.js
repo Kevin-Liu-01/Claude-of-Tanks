@@ -330,6 +330,7 @@ function buildT72B87(P) {
 function buildT72B87Native(P, variant = 'b87') {
   const { box, cylX, cylY, cylZ, torus, buildRunningGear } = KIT;
   const b3 = variant === 'b3';
+  const sponsonClearY = b3 ? 1.18 : 1.12;
 
   // ---- compact low hull -------------------------------------------------
   loftHull(P, {
@@ -337,7 +338,12 @@ function buildT72B87Native(P, variant = 'b87') {
     belly: [[-2.78, 0.86], [-2.58, 0.48], [-2.15, 0.28], [2.15, 0.28], [2.58, 0.43], [2.86, 0.70]],
     wUp: [[-2.78, 1.35], [-2.55, 1.62], [2.58, 1.62], [2.86, 1.38]],
     wLo: [[-2.78, 0.96], [2.45, 0.96], [2.86, 0.82]],
-    sponsonY: [[-2.78, 1.15], [-1.62, 1.15], [-1.50, 0.82], [2.22, 0.82], [2.32, 1.14], [2.86, 1.14]],
+    // The return run and the full linked-shoe crown must remain visible air,
+    // not merely clear at the terminal wraps.  The older 0.82 m bay roof
+    // intersected the live course along most of the vehicle.  Keep the low
+    // outside silhouette, but lift the hidden sponson underside above the
+    // family-specific shoe envelope.
+    sponsonY: [[-2.78, 1.15], [-1.62, 1.15], [-1.50, sponsonClearY], [2.22, sponsonClearY], [2.32, 1.14], [2.86, 1.14]],
   });
 
   // Thin fender shelves and a shallow, broken skirt line leave the six
@@ -351,9 +357,13 @@ function buildT72B87Native(P, variant = 'b87') {
       const sh = b3 ? 0.265 + (i % 3) * 0.018 : 0.44;
       const sy = b3 ? 1.065 + (i % 2) * 0.009 : 0.93;
       const sd = b3 ? 0.58 + (i % 2) * 0.045 : 0.66;
-      P.add('hull', box(0.075, sh, sd), s * 1.69, sy, z, 0, 0, b3 ? s * (i % 2 ? 0.025 : -0.018) : 0);
-      P.add('hullDark', box(0.018, b3 ? sh * 0.72 : 0.34, 0.025), s * 1.733, sy, z + sd / 2);
-      P.add('hullDetail', box(0.025, 0.025, sd * 0.72), s * 1.735, sy + sh / 2 + 0.012, z);
+      // Skirt plates hang outboard of the linked course.  Keeping their
+      // source-like depth is useful; placing their inner face through the
+      // tire/shoe lane is not.  The 1.74 m seat leaves visible air to the
+      // 1.673 m shoe envelope while preserving the side silhouette.
+      P.add('hull', box(0.075, sh, sd), s * 1.74, sy, z, 0, 0, b3 ? s * (i % 2 ? 0.025 : -0.018) : 0);
+      P.add('hullDark', box(0.018, b3 ? sh * 0.72 : 0.34, 0.025), s * 1.783, sy, z + sd / 2);
+      P.add('hullDetail', box(0.025, 0.025, sd * 0.72), s * 1.785, sy + sh / 2 + 0.012, z);
     }
   }
 
@@ -435,6 +445,9 @@ function buildT72B87Native(P, variant = 'b87') {
     P.add('hullDetail', box(1.56, 0.012, 0.016), 0.18, 1.397, -1.385 - i * 0.15);
   }
   // Backed, unequal transom bays with proud louvres/recovery fittings.
+  // A recessed inboard tray closes the two former plan pockets while
+  // remaining inside the track lanes and behind the visible service face.
+  P.add('hull', box(2.58, 0.26, 0.18), 0, 1.02, -2.86);
   P.add('hull', box(2.62, 0.31, 0.10), 0, 1.105, -2.755);
   P.add('hullDark', box(1.15, 0.30, 0.035), -0.61, 1.08, -2.815);
   P.add('hullDark', box(0.92, 0.25, 0.035), 0.64, 1.055, -2.815);
@@ -461,7 +474,7 @@ function buildT72B87Native(P, variant = 'b87') {
     P.add('hullDetail', box(0.16, 0.09, 0.035), s * 1.20, 1.08, -2.805);
     P.add('hullDark', box(0.16, 0.11, 0.035), s * 0.94, 0.90, -2.84);
     P.add('hullDark', torus(0.075, 0.018, 12), s * 0.72, 0.79, -2.84, Math.PI / 2, 0, 0);
-    P.add('hullRubber', box(0.34, 0.34, 0.035), s * 1.47, 0.91, -2.79);
+    P.add('hullRubber', box(0.34, 0.24, 0.035), s * 1.47, 1.04, -2.79);
     P.add('hullDark', box(0.05, 0.13, 0.15), s * 1.27, 1.02, -2.83);
     P.add('hullDark', box(0.22, 0.14, 0.035), s * 1.10, 1.17, -2.84);
     P.add('hullDetail', cylZ(0.045, 0.025, 10), s * 1.20, 1.12, -2.86);
@@ -4602,7 +4615,7 @@ function buildT72BUNative(P, { turretOnly = false } = {}) {
     belly: [[-2.90, 0.86], [-2.68, 0.49], [-2.20, 0.28], [2.18, 0.28], [2.64, 0.44], [2.92, 0.68]],
     wUp: [[-2.90, 1.36], [-2.66, 1.63], [2.64, 1.63], [2.92, 1.38]],
     wLo: [[-2.90, 0.98], [2.50, 0.98], [2.92, 0.84]],
-    sponsonY: [[-2.90, 1.16], [-1.64, 1.16], [-1.52, 0.82], [2.28, 0.82], [2.40, 1.15], [2.92, 1.15]],
+    sponsonY: [[-2.90, 1.16], [-1.64, 1.16], [-1.52, 1.18], [2.28, 1.18], [2.40, 1.15], [2.92, 1.15]],
   });
 
   // One fleet-native six-wheel linked course per side. The shallow segmented
@@ -4624,6 +4637,10 @@ function buildT72BUNative(P, { turretOnly = false } = {}) {
       P.add('hullDark', box(0.020, 0.28, 0.025), s * 1.795, 1.01, z + 0.31);
       P.add('hullDetail', box(0.022, 0.022, 0.52), s * 1.796, 1.20, z);
     }
+    // A continuous shallow top rail ties the eight removable skirt panels
+    // back into the fender.  It closes the narrow plan slots between panels
+    // without descending into the shoe corridor.
+    P.add('hull', box(0.08, 0.06, 5.20), s * 1.75, 1.225, 0.0);
     P.add('hullRubber', box(0.12, 0.26, 0.045), s * 1.77, 1.00, -2.78);
     P.add('hullRubber', box(0.30, 0.22, 0.045), s * 1.51, 1.12, 2.78);
   }
@@ -4660,6 +4677,10 @@ function buildT72BUNative(P, { turretOnly = false } = {}) {
   P.add('hull', cylY(0.10, 0.105, 0.075, 12), -0.58, 1.95, -1.92);
   P.add('hullDark', box(0.22, 0.025, 0.20), -0.31, 1.44, -2.16);
   // Backed unequal transom, four strapped drums, low log and recovery paths.
+  // Recessed bridge under the service kit closes the former outboard rear
+  // plan pocket while staying wholly between the two terminal courses.
+  P.add('hull', box(2.56, 0.22, 0.28), 0, 1.12, -3.00);
+  P.add('hullDark', box(0.18, 0.14, 0.24), -1.30, 1.30, -3.03);
   P.add('hull', box(2.66, 0.28, 0.10), 0, 1.23, -2.875);
   P.add('hullDark', box(1.18, 0.20, 0.035), -0.63, 1.25, -2.93);
   P.add('hullDark', box(0.94, 0.18, 0.035), 0.66, 1.235, -2.93);
@@ -4864,12 +4885,9 @@ function buildT72BUHybridNative2026(P) {
 }
 
 export const T72_PROFILES = {
-  // Restore the proven repository-authored family bases.  The alternate
-  // native rebuilds remain available above as a library of authored station
-  // and surface ideas, but their compact primary datums score materially
-  // worse and must not replace these stronger hull/gun/course foundations.
-  // External GLBs remain QA oracles only; no source vertex enters runtime.
-  t72b_1987: { build: buildT72B87 },
-  t72b3m: { build: buildT72B3M },
-  t72bu: { build: buildT72BUHybridNative2026 },
+  // Route the fleet to the hand-authored native family. External GLBs remain
+  // read-only QA oracles; no source vertex or source mesh enters runtime.
+  t72b_1987: { build: buildT72B87Native },
+  t72b3m: { build: buildT72B3Native },
+  t72bu: { build: buildT72BUNative },
 };
