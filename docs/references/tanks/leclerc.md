@@ -821,3 +821,20 @@ Exact band/shoe/sweep is 0/0/0; parent is 0/0/0; winding, runtime and bore
 pass. The fresh 45-frame packet at
 `/private/tmp/leclerc-mudguard-final-r4/leclerc` has 45 distinct hashes and a
 9.3 visual floor / 9.46 mean. `158157f4` is retired.
+
+## SOLE-NATIVE TERMINAL SUPERSESSION (2026-08-13)
+
+The subsequent fleet strict audit proved the added terminal face courses were
+independent hull meshes intersecting the shoe plane: front/rear band 172/207
+and shoes 79/0. They are removed rather than semantically exempted. The actual
+native dished idler is widened toward the inside of the shoe plane and both
+native end bodies receive restrained olive contrast; no duplicate terminal
+geometry survives.
+
+Freeze `0fab6ef8` reproduces twice at 48 meshes / 97,419 vertices. Exact
+band/shoe/strict-sweep is genuinely 0/0/0; parent is 0/0/0; winding, runtime
+and bore pass. `/private/tmp/leclerc-native-terminal-final-r2/leclerc`
+contains 45 distinct authored/yaw frames including the elevated profile. The
+visible and declared sequence is front free idler, six road-wheel pairs, five
+return-roller pairs with hydropneumatic arms, rear toothed final drive and one
+continuous linked-shoe course. `cf383a52` is retired.

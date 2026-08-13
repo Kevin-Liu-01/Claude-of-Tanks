@@ -6673,3 +6673,37 @@ to fabricate a new contour-gate score; the immutable geometry, 45-frame packet
 and mechanical/runtime receipts are the acceptance evidence.
 
 **PASS / KEEP `86499168`; retire `14688339`. Ordered blockers: none.**
+
+## 5.185 LECLERC SOLE-NATIVE TERMINAL CORRECTION (2026-08-13)
+
+The authoritative fleet-wide strict audit reopened Leclerc after the visual
+mudguard pass. Its contrasting terminal faces were separate hull meshes
+authored after the native gear assembly; although concentric in screenshots,
+they occupied the linked-shoe plane and produced exact front/rear receipts of
+172/207 continuous-band and 79/0 individual-shoe intersections. Naming or
+visually aligning a duplicate disc does not make it part of the track system.
+
+All independent idler/sprocket face geometry is removed. The sole remaining
+terminal assemblies are the painted dished free idler and toothed rear final
+drive emitted by `buildRunningGear`. A default-preserving optional idler-width
+parameter brings Leclerc's actual dish toward the inside of its broad shoe
+plane, and a terminal-only paint option increases contrast without adding any
+geometry. Every other vehicle keeps the byte-identical default path. The
+raised shallow mudguard, supported knees/hinge and complete six-road-wheel
+course remain unchanged.
+
+Deterministic geometry reproduces twice as **`0fab6ef8`** (48 meshes / 97,419
+vertices). `/private/tmp/leclerc-native-terminal-final-r2/leclerc` contains
+15 authored views, 15 yaw0 and 15 yaw90 frames including elevated-left
+profile: **45 PNGs / 45 distinct hashes**. Exact continuous-band,
+individual-shoe and strict moving-sweep clearance is **0/0/0**. Parent is
+0 stranded / 0 abutting / 0 dangling; winding is 0 reversed / 0 mixed with
+seven antialias pixels and zero yaw candidates; runtime articulation passes
+10/10 and muzzle-bore contrast is 67.3.
+
+The required native order is explicit: **front free idler -> six road wheels
+-> five return rollers / hydropneumatic arms -> rear toothed final drive ->
+one continuous linked-shoe course**. The playable remains wholly first-party
+procedural geometry; no comparison mesh or converted payload enters runtime.
+
+**PASS / KEEP `0fab6ef8`; retire `cf383a52`. Ordered blockers: none.**

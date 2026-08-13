@@ -1037,6 +1037,9 @@ function buildRunningGear(P, cfg) {
                                          // paint (modern MBTs paint the whole
                                          // wheel train; the bare-steel drums
                                          // read as blue die-cast toys)
+    idlerWidthScale = 0.74,              // opt-in wider native idler face for
+                                         // broad modern shoe planes; changes
+                                         // the real terminal, never an overlay
     frontDrive = false,                  // explicit real-world exception to
                                          // the fleet default: front idler,
                                          // rear final-drive sprocket
@@ -1214,12 +1217,23 @@ function buildRunningGear(P, cfg) {
   // Radial tooth reach is untouched; the rings pull inboard only.
   const sg = sprocketGeo(sprocket.r, trackW * 0.80, seg, 12, sprocket.r + bandOuterR,
     mats.trackLinkM, cfg.endRingSpan ?? trackW);
-  const ig = idlerGeo(idler.r, trackW * 0.74, seg);
+  const ig = idlerGeo(idler.r, trackW * idlerWidthScale, seg);
   P.disposables.push(sg.body, sg.dark, ig.body, ig.dark);
   // End-wheel BODIES always take scheme paint (crews paint sprocket/idler
   // with the vehicle; the bare near-black drums were the r5 "hollow wrap" /
   // "track circles a void" read) — teeth, recess rings and bolts stay dark.
-  const steelMat = mats.wheels || (paintedEnds ? mats.detail : mats.trackLink);
+  let steelMat = mats.wheels || (paintedEnds ? mats.detail : mats.trackLink);
+  // Optional terminal-only paint contrast.  Wide linked shoes can shadow an
+  // otherwise correct idler/sprocket face until it reads as an empty black
+  // wrap.  This colors the native terminal bodies themselves; it never adds a
+  // second disc or other geometry in the shoe plane.
+  if (cfg.endWheelHex) {
+    steelMat = steelMat.clone();
+    steelMat.color = new THREE.Color(cfg.endWheelHex);
+    steelMat.onBeforeCompile = vehicleAmbientFloorHook;
+    steelMat.customProgramCacheKey = () => 'veh-ambient-floor-v2';
+    P.disposables.push(steelMat);
+  }
   const darkMat = mats.spareTrack || mats.dark;
   for (const side of [-1, 1]) {
     const sideXc = xcForSide(side);

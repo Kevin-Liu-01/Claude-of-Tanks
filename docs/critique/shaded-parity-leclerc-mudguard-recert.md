@@ -125,3 +125,33 @@ clean (7 antialias pixels / 0.01%), articulation passes and bore contrast is
 the visible native order is front free idler, six road wheels, five return
 rollers/hydropneumatic arms and rear final drive. **KEEP `cf383a52`; retire
 `9c47c650`.**
+
+## 2026-08-13 sole-native-terminal correction
+
+The fleet-wide strict audit invalidated one implementation detail in
+`cf383a52`: its readable terminal faces were independent hull meshes placed
+at the outer shoe plane after `buildRunningGear`. They looked concentric in
+the profile packet, but exact triangle/volume inspection correctly counted
+172/207 continuous-band and 79/0 individual-shoe intersections at the front
+and rear. A visual overlay is not acceptable merely because it resembles an
+idler or final-drive face.
+
+The complete duplicate face loop is deleted. Leclerc now uses only the
+painted dished idler and toothed final-drive assemblies emitted by the native
+running-gear builder. A narrowly opt-in idler width brings the actual dish
+near the inside of the broad shoe plane, and terminal-only olive paint makes
+that real assembly readable; neither option creates a second disc. The
+guard-cap, bow/fender knees, raised shallow lip and six-road-wheel course are
+unchanged.
+
+Freeze **`0fab6ef8`** reproduces twice at 48 meshes / 97,419 vertices.
+`/private/tmp/leclerc-native-terminal-final-r2/leclerc` contains 15 authored
+views plus yaw0/yaw90: 45 PNGs / 45 distinct hashes. Exact band, shoe and
+strict moving-sweep clearance is now genuinely **0/0/0**. Parent is 0/0/0;
+winding is 0 reversed / 0 mixed with seven antialias pixels and zero yaw
+candidates; runtime rig is 10/10 and bore contrast remains 67.3. The elevated
+profile proves the required order: front free idler, six road wheels, five
+return rollers/hydropneumatic arms, rear toothed final drive, one linked-shoe
+course.
+
+**KEEP `0fab6ef8`; retire `cf383a52`.**

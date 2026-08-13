@@ -1366,6 +1366,12 @@ function buildLeclerc(P) {
     endRingSpan: 0.56,
     linkPitchM: 0.11, shoeRadialScale: 0.61, padGroundCenter: 0.069,
     padCornerFloor: 0.02, padHugZ0: 2.40,
+    // Bring the actual dished idler face close to the broad shoe plane.  The
+    // terminal remains concentric with—and radially clear inside—the wrap;
+    // this replaces the retired static outboard face rather than duplicating
+    // it.
+    idlerWidthScale: 0.90,
+    endWheelHex: 0x596253,
     paintedEnds: true, coveredTop: true, arms: true,
   };
   buildRunningGear(P, leclercGear);
@@ -1374,24 +1380,12 @@ function buildLeclerc(P) {
     supportRollerPairs: leclercGear.rollers.length, suspension: 'hydropneumatic-arm',
     rear: 'final-drive-sprocket',
   };
-  // Resolve a real non-driven idler and rear final drive at normal profile
-  // scale without duplicating any part of the animated track course.
-  for (const side of [-1, 1]) {
-    const x = side * 1.605;
-    const { idler, sprocket } = leclercGear;
-    P.add('hullRunningGearDetail', cylX(0.188, 0.026, 24), x, idler.y, idler.z);
-    P.add('hullRunningGearDark', torus(0.151, 0.014, 20), side * 1.620, idler.y, idler.z, 0, 0, Math.PI / 2);
-    P.add('hullRunningGearDetail', cylX(0.070, 0.034, 14), side * 1.624, idler.y, idler.z);
-    P.add('hullRunningGearDark', torus(0.092, 0.010, 16), side * 1.626, idler.y, idler.z, 0, 0, Math.PI / 2);
-    P.add('hullRunningGearDetail', cylX(0.205, 0.026, 24), x, sprocket.y, sprocket.z);
-    P.add('hullRunningGearDark', torus(0.164, 0.015, 20), side * 1.620, sprocket.y, sprocket.z, 0, 0, Math.PI / 2);
-    P.add('hullRunningGearDark', cylX(0.068, 0.034, 12), side * 1.624, sprocket.y, sprocket.z);
-    for (let k = 0; k < 8; k++) {
-      const a = k * Math.PI / 4;
-      P.add('hullRunningGearDark', cylX(0.015, 0.036, 8), side * 1.625,
-        sprocket.y + Math.sin(a) * 0.116, sprocket.z + Math.cos(a) * 0.116);
-    }
-  }
+  // The native builder above already authors painted, dished idler and
+  // toothed final-drive assemblies inside the sole linked-shoe course.  Do
+  // not add a second outboard wheel-face layer here: the former decorative
+  // discs occupied the shoe plane and turned a correct mechanical terminal
+  // into an apparent track intersection in both the exact audit and close
+  // profile pixels.
   // 90-ladder r1 track re-meter: the 0.64-band's pads reached x 1.623 and
   // COIN-FLIPPED into the front ±1.64 col windows ([1.619..]; official run
   // read bot 0.083 right / 0.501 left from the same symmetric content —
