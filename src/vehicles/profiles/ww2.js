@@ -1087,7 +1087,11 @@ function buildNewcTiger(P) {
   P.add('hull', box(2.10, 0.72, 5.90), 0, 0.50, -0.02);                      // belly
   P.add('hull', box(3.04, 0.75, 5.20), 0, 1.32, -0.32);                      // superstructure ±1.52
   P.add('hull', box(3.00, 0.045, 5.15), 0, 1.70, -0.32);                     // roof plate
-  P.add('hull', box(3.40, 0.42, 0.55), 0, 0.92, 2.84);                       // bow block (full track width)
+  // The armored bow has a low center transmission case plus shoulders over
+  // the tracks; the previous single full-width block cut through both front
+  // drive courses.
+  P.add('hull', box(2.10, 0.42, 0.55), 0, 0.92, 2.84);                       // low center bow between courses
+  P.add('hull', box(3.40, 0.13, 0.55), 0, 1.065, 2.84);                      // full-width upper shoulder
   P.add('hull', slab(                                                        // small glacis
     [-1.51, 1.10, 3.06], [1.51, 1.10, 3.06], [1.52, 1.12, 2.78], [-1.52, 1.12, 2.78],
     [-1.51, 1.14, 3.04], [1.51, 1.14, 3.04], [1.52, 1.44, 2.36], [-1.52, 1.44, 2.36]));
@@ -1100,9 +1104,9 @@ function buildNewcTiger(P) {
     for (let i = 0; i < 4; i++) P.add('hullDark', box(0.82, 0.018, 0.09), s * 0.80, 1.790, -1.30 - i * 0.26);
   }
   P.add('hull', slab(                                                        // tail slope
-    [-1.45, 0.85, -2.42], [1.45, 0.85, -2.42], [1.36, 0.85, -2.98], [-1.36, 0.85, -2.98],
+    [-1.04, 0.85, -2.42], [1.04, 0.85, -2.42], [1.02, 0.85, -2.98], [-1.02, 0.85, -2.98],
     [-1.45, 1.70, -2.42], [1.45, 1.70, -2.42], [1.36, 1.06, -2.96], [-1.36, 1.06, -2.96]));
-  P.add('hull', box(2.60, 0.45, 0.10), 0, 0.66, -2.98);                      // tail plate
+  P.add('hull', box(2.08, 0.45, 0.10), 0, 0.66, -2.98);                      // low tail plate between courses
   for (const s of [-1, 1]) {
     P.add('hullDark', cylY(0.105, 0.105, 0.55, 10), s * 0.48, 1.42, -2.90);  // exhaust stacks
     P.add('hullDetail', box(0.32, 0.62, 0.06), s * 0.48, 1.38, -2.80);       // shroud plates
