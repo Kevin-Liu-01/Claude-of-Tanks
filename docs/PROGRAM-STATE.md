@@ -117,7 +117,7 @@ re-freeze NEW hash, all in ONE commit.
 | k1a1 | 28c7f5f0 | RE-FROZEN 2026-08-10 (§5.108 authored compact K1A1 shell/hull, native six-wheel course and cupola-seated K6; independent §B8 floor 9.0 / mean 9.21) |
 | type99a | 6d52abda | RE-FROZEN 2026-08-12 (§5.133 strict-clearance re-cert: first-party measured-envelope hull/turret retained, native six-wheel return and shoes exact 0/0 through the full sweep, rear U-cable fully backed, gate 90.7 / fidelity 93.0; fresh 45-frame yaw/ownership floor 9.3 / mean 9.39; prior 50bbc9bc retired) |
 | type90 | d8f8a3a8 | RE-FROZEN 2026-08-12 (§5.134 owner-height + strict-track re-cert: first-party welded turret at corrected 0.80 section, all roof kit re-seated, fidelity 92.22 / minimum whole view 90.53; exact native band+shoes+sweep 0/0, fresh 45-frame yaw/ownership floor 9.0 / mean 9.08; legacy low-mask row retained honestly at 27.5; prior 5d7bc85c retired) |
-| type10 | 7ac6d434 | RE-FROZEN 2026-08-12 (§5.128 fully first-party folded five-wheel hull and continuous clipped welded turret; machine fidelity 91.41 / minimum view 90.02; exact native band+shoes 0/0, zero plan holes and fresh 42-frame yaw/ownership PASS; incompatible legacy source-component row retained honestly) |
+| type10 | 434c7928 | RE-FROZEN 2026-08-12 (§5.147 first-party strict full-course clearance and parent closeout; machine fidelity 91.42 / minimum view 90.17; exact native band/shoes/full sweep 0/0/0, parent 0/0/0 and fresh 45-frame elevated-profile/yaw PASS; incompatible legacy source-component row retained honestly) |
 | t14 | a94a2480 | RE-FROZEN 2026-08-12 (§5.131 fully first-party `buildT14`: low seven-wheel Armata hull, connected unmanned shroud, supported RWS/sensor package and exact native course; fidelity 90.53 / minimum view 91.52; 42 unique paired/yaw frames floor 9.0 / mean 9.04; source-baked `a88afa6c` playable retired) |
 | t80u | 77f9ae78 | RE-FROZEN 2026-08-12 (§5.132 fully first-party `buildT80UNative2026`: low turbine hull, connected cast/K-5 turret, supported combat/rear-service package and exact native six-wheel course; fidelity 91.51 / minimum view 90.20; 42 unique paired/yaw frames floor 9.0 / mean 9.04; source-baked `c0dc2502` playable retired) |
 | type74 | 8319dbb8 | RE-FROZEN 2026-08-11 (§5.110 authored low cast turret, five-wheel native course and supported combat/service suite; independent §B8 floor 9.1 / mean 9.29) |
@@ -5058,3 +5058,52 @@ collision, winding or sky-hole defect is visible. Full evidence is recorded
 in `docs/critique/shaded-parity-leo2a6-track-clearance-recert.md`.
 
 **PASS / KEEP `8b139b48`; retire `e99f8490`. Ordered blockers: none.**
+
+## 5.147 TYPE 10 STRICT FULL-COURSE + PARENTING RE-CERTIFICATION (2026-08-12, RE-FROZEN)
+
+The active playable remains the fully first-party `buildType10Native2026`.
+The private comparison GLB is a read-only measurement/render oracle; no source
+mesh, converted vertex/index payload, material, texture, rig or animation
+enters gameplay or the public build.
+
+The terminal snapshots were already clean, but the strict moving sweep exposed
+surface coincidence between the native return band and the long sponson,
+upper-glacis underside and fender shelf. The sponson and glacis keep their
+accepted upper silhouette while their lower faces now rise into a real air
+gap. The fender shelf is raised 12 cm above its old centerline so its underside
+also clears every transition voxel. The fixed tow cable moves to the outer
+fender edge, and the cloth/spare-link packages move into supported aft-rack
+seats outside the complete turret yaw envelope.
+
+Exact band front/rear, shoe front/rear and strict full-sweep band/shoe receipts
+are all **0/0**. Parent audit is **0 stranded / 0 abutting / 0 dangling**.
+Winding remains 0 reversed / 0 mixed; the seven-pixel (0.01%) rear-left deficit
+is antialiasing with no visible wound. The muzzle-bore probe passes, the live
+procedural rig passes 10/10 and the native-playable audit reports 108 battle
+playables / 0 GLB-sourced.
+
+Freeze **`434c7928`** reproduces twice at 62 rendered meshes / 56,802 vertices.
+Quantitative fidelity is **91.42 aggregate**, required-view floor **90.17**,
+with whole **92.21**, hull **92.53**, gun **90.09** and deliberately native
+track profile **86.47**. The source-bake-calibrated geometry row remains an
+honest incompatible zero (hull 50.2 / whole 34.5 / stations 42.7 / dimensions
+49.3 / floaters 0); it is disclosed rather than gamed into a pass.
+
+The final packet at `/private/tmp/type10-clearance-final-r11/type10` contains
+15 paired, 15 yaw0 and 15 yaw90 frames including the standardized elevated-left
+profile: **45 PNGs / 45 distinct hashes**. Fresh inspection records
+`[9.2,9.3,9.1,9.2,9.2,9.2,9.1,9.3,9.4,9.4,9.3,9.4,9.3,9.4]`, floor **9.1**
+and mean **9.27**. Every yaw pair shows the complete gun, clipped welded shell,
+cheek/side modules, roof stations, MG, smoke, antennas and supported bustle/rack
+rotating together over the fixed cleared hull, five-wheel course and aft
+service kit. No fused, stranded, floating, collision, winding or sky-hole
+defect is visible. Full evidence is recorded in
+`docs/critique/native-type10-first-party-recert.md`.
+
+Targeted asset/currentness and muzzle-bore checks pass. The complete test
+suite, private build, public build/quarantine stripping, native-playable audit,
+family-order test and running-gear-order law all pass. The standard aggregator
+reports only the disclosed incompatible legacy geometry row; strict clearance,
+contiguity and decoration subgates are green.
+
+**PASS / KEEP `434c7928`; retire `7ac6d434`. Ordered blockers: none.**

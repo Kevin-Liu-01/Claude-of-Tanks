@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-13T04:41:47.862Z",
+  "generatedAt": "2026-08-13T04:46:43.198Z",
   "summary": {
     "discovered": 1,
     "references": 1,
@@ -8,419 +8,419 @@
     "failed": 0,
     "passThreshold": 90,
     "perViewFloor": 90,
-    "median": 95.43,
-    "worst": "leo2a6",
-    "best": "leo2a6"
+    "median": 91.42,
+    "worst": "type10",
+    "best": "type10"
   },
   "rows": [
     {
-      "id": "leo2a6",
-      "name": "Leopard 2A6",
-      "sourcePath": "/models/tanks/leo2a6_buh.glb",
-      "fallback": "leo2a6",
-      "score": 95.43,
+      "id": "type10",
+      "name": "Type 10",
+      "sourcePath": "/models/tanks/community/type-10_main_battle_tank_repaired.glb",
+      "fallback": "type10",
+      "score": 91.42,
       "scores": {
-        "overall": 96.35,
-        "hull": 96.72,
-        "turret": 92.99,
-        "gun": 94.75,
-        "tracks": 94.49
+        "overall": 92.21,
+        "hull": 92.53,
+        "turret": null,
+        "gun": 90.09,
+        "tracks": 86.47
       },
       "wholeViewMasksAvailable": true,
       "componentMasksAvailable": true,
-      "turretComponentMasksAvailable": true,
+      "turretComponentMasksAvailable": false,
       "gunComponentMasksAvailable": true,
-      "minView": 95.32,
+      "minView": 90.17,
       "gatePassed": true,
       "angles": {
         "front": {
-          "score": 95.78,
-          "iou": 94.15
+          "score": 91.2,
+          "iou": 88.28
         },
         "frontLeft": {
-          "score": 95.32,
-          "iou": 93.82
+          "score": 92.67,
+          "iou": 89.91
         },
         "left": {
-          "score": 96.23,
-          "iou": 95.25
+          "score": 90.17,
+          "iou": 86.4
         },
         "rearLeft": {
-          "score": 95.38,
-          "iou": 94.21
+          "score": 93.23,
+          "iou": 90.74
         },
         "rear": {
-          "score": 96.08,
-          "iou": 94.92
+          "score": 92,
+          "iou": 88.99
         },
         "rearRight": {
-          "score": 96.53,
-          "iou": 95.68
+          "score": 93.18,
+          "iou": 90.47
         },
         "right": {
-          "score": 96.48,
-          "iou": 95.51
+          "score": 90.42,
+          "iou": 86.55
         },
         "frontRight": {
-          "score": 96.79,
-          "iou": 95.66
+          "score": 92.92,
+          "iou": 90.15
         },
         "top": {
-          "score": 98.57,
-          "iou": 98.05
+          "score": 94.07,
+          "iou": 92.71
         }
       },
       "rawWholeAngles": {
         "front": {
-          "score": 95.78,
-          "iou": 94.15
+          "score": 91.2,
+          "iou": 88.28
         },
         "frontLeft": {
-          "score": 95.32,
-          "iou": 93.82
+          "score": 92.67,
+          "iou": 89.91
         },
         "left": {
-          "score": 96.23,
-          "iou": 95.25
+          "score": 90.17,
+          "iou": 86.4
         },
         "rearLeft": {
-          "score": 95.38,
-          "iou": 94.21
+          "score": 93.23,
+          "iou": 90.74
         },
         "rear": {
-          "score": 96.08,
-          "iou": 94.92
+          "score": 92,
+          "iou": 88.99
         },
         "rearRight": {
-          "score": 96.53,
-          "iou": 95.68
+          "score": 93.18,
+          "iou": 90.47
         },
         "right": {
-          "score": 96.48,
-          "iou": 95.51
+          "score": 90.42,
+          "iou": 86.55
         },
         "frontRight": {
-          "score": 96.79,
-          "iou": 95.66
+          "score": 92.92,
+          "iou": 90.15
         },
         "top": {
-          "score": 98.57,
-          "iou": 98.05
+          "score": 94.07,
+          "iou": 92.71
         }
       },
       "angleDiagnostics": {
         "front": {
-          "score": 95.77781656145402,
-          "iou": 0.9415211441347674,
-          "areaSimilarity": 0.9934692262022561,
-          "bboxSimilarity": 0.9983108108108109,
-          "centroidSimilarity": 0.9972379941756703,
-          "referenceArea": 75300,
-          "proceduralArea": 75795,
+          "score": 91.19543164521794,
+          "iou": 0.882761553728381,
+          "areaSimilarity": 0.964229875343334,
+          "bboxSimilarity": 0.9950005793071487,
+          "centroidSimilarity": 0.9977337922019526,
+          "referenceArea": 47330,
+          "proceduralArea": 45637,
           "referenceBounds": {
-            "width": 356,
-            "height": 295,
-            "cx": 190.73196547144755,
-            "cy": 189.00204515272245
+            "width": 273,
+            "height": 313,
+            "cx": 189.9227973800972,
+            "cy": 157.66560321149376
           },
           "proceduralBounds": {
-            "width": 356,
-            "height": 296,
-            "cx": 191.18354772742265,
-            "cy": 188.55065637575038
+            "width": 274,
+            "height": 315,
+            "cx": 189.45392992527994,
+            "cy": 157.70607182768367
           }
         },
         "frontLeft": {
-          "score": 95.32152026382835,
-          "iou": 0.9381696323217067,
-          "areaSimilarity": 0.9800376102994358,
-          "bboxSimilarity": 0.9967320261437909,
-          "centroidSimilarity": 0.9963523170758865,
-          "referenceArea": 20325,
-          "proceduralArea": 20739,
+          "score": 92.66890914168428,
+          "iou": 0.8991312299954275,
+          "areaSimilarity": 0.9928029939545149,
+          "bboxSimilarity": 0.9842868284626325,
+          "centroidSimilarity": 0.9989619696120622,
+          "referenceArea": 20842,
+          "proceduralArea": 20692,
           "referenceBounds": {
-            "width": 304,
-            "height": 105,
-            "cx": 154.57372693726938,
-            "cy": 185.3880442804428
+            "width": 306,
+            "height": 138,
+            "cx": 153.309807120238,
+            "cy": 169.1468669033682
           },
           "proceduralBounds": {
-            "width": 306,
-            "height": 105,
-            "cx": 155.0066059115676,
-            "cy": 184.99218863011717
+            "width": 307,
+            "height": 142,
+            "cx": 153.14367871641215,
+            "cy": 169.19935240672723
           }
         },
         "left": {
-          "score": 96.23405287527683,
-          "iou": 0.9524705164701098,
-          "areaSimilarity": 0.9768902156570076,
-          "bboxSimilarity": 0.9920363720606973,
-          "centroidSimilarity": 0.9974799533814132,
-          "referenceArea": 18980,
-          "proceduralArea": 19429,
+          "score": 90.17125740428507,
+          "iou": 0.864041969013532,
+          "areaSimilarity": 0.9820143884892086,
+          "bboxSimilarity": 0.9971910112359551,
+          "centroidSimilarity": 0.9972387267280307,
+          "referenceArea": 18837,
+          "proceduralArea": 19182,
           "referenceBounds": {
             "width": 354,
-            "height": 97,
-            "cx": 146.9868282402529,
-            "cy": 185.57197049525817
+            "height": 129,
+            "cx": 147.23713967192228,
+            "cy": 170.15336837075967
           },
           "proceduralBounds": {
             "width": 356,
-            "height": 96,
-            "cx": 146.79968088939214,
-            "cy": 185.9949045241649
+            "height": 129,
+            "cx": 147.58289020957147,
+            "cy": 170.54201855906578
           }
         },
         "rearLeft": {
-          "score": 95.38449022467654,
-          "iou": 0.9421284943599804,
-          "areaSimilarity": 0.96765742162797,
-          "bboxSimilarity": 0.9926336654880531,
-          "centroidSimilarity": 0.9988595280355702,
-          "referenceArea": 21422,
-          "proceduralArea": 22138,
+          "score": 93.22691930203041,
+          "iou": 0.9074145217057241,
+          "areaSimilarity": 0.9823876491726188,
+          "bboxSimilarity": 0.998371335504886,
+          "centroidSimilarity": 0.9976749379983161,
+          "referenceArea": 22144,
+          "proceduralArea": 22541,
           "referenceBounds": {
-            "width": 304,
-            "height": 121,
-            "cx": 157.11413500140043,
-            "cy": 175.51405097563253
+            "width": 306,
+            "height": 136,
+            "cx": 157.0861632947977,
+            "cy": 159.42747471098266
           },
           "proceduralBounds": {
-            "width": 306,
-            "height": 122,
-            "cx": 156.99430842894571,
-            "cy": 175.37103622730146
+            "width": 307,
+            "height": 136,
+            "cx": 157.24515327625215,
+            "cy": 159.0721352202653
           }
         },
         "rear": {
-          "score": 96.07652220757986,
-          "iou": 0.9492466819705005,
-          "areaSimilarity": 0.9760994008131821,
-          "bboxSimilarity": 1,
-          "centroidSimilarity": 0.997552691489417,
-          "referenceArea": 72981,
-          "proceduralArea": 74768,
+          "score": 91.99913709010382,
+          "iou": 0.8898987854251013,
+          "areaSimilarity": 0.9835766035651305,
+          "bboxSimilarity": 0.9965870307167235,
+          "centroidSimilarity": 0.9973405499405081,
+          "referenceArea": 47067,
+          "proceduralArea": 46294,
           "referenceBounds": {
-            "width": 356,
-            "height": 284,
-            "cx": 192.9781998054288,
-            "cy": 164.2397336293008
+            "width": 274,
+            "height": 293,
+            "cx": 192.914717317866,
+            "cy": 136.57424522489217
           },
           "proceduralBounds": {
-            "width": 356,
-            "height": 284,
-            "cx": 192.49264391183394,
-            "cy": 164.51317408517014
+            "width": 274,
+            "height": 291,
+            "cx": 193.39259947293385,
+            "cy": 136.81124983799197
           }
         },
         "rearRight": {
-          "score": 96.52865559993849,
-          "iou": 0.9567939887288667,
-          "areaSimilarity": 0.9759721783117293,
-          "bboxSimilarity": 0.9926336654880531,
-          "centroidSimilarity": 0.9974314118722732,
-          "referenceArea": 21609,
-          "proceduralArea": 22141,
+          "score": 93.17689323605705,
+          "iou": 0.904685181259275,
+          "areaSimilarity": 0.9965333333333334,
+          "bboxSimilarity": 0.9917046688382193,
+          "centroidSimilarity": 0.9967767719051244,
+          "referenceArea": 22500,
+          "proceduralArea": 22422,
           "referenceBounds": {
-            "width": 304,
-            "height": 121,
-            "cx": 225.80443333796103,
-            "cy": 176.0623351381369
+            "width": 306,
+            "height": 148,
+            "cx": 227.09057777777778,
+            "cy": 160.14911111111113
           },
           "proceduralBounds": {
-            "width": 306,
-            "height": 122,
-            "cx": 226.0453005735965,
-            "cy": 176.40666636556614
+            "width": 307,
+            "height": 150,
+            "cx": 226.6128356078851,
+            "cy": 159.88105432164838
           }
         },
         "right": {
-          "score": 96.48051246341304,
-          "iou": 0.9550624555702244,
-          "areaSimilarity": 0.9812184830709066,
-          "bboxSimilarity": 0.9920889704196285,
-          "centroidSimilarity": 0.9973947246474887,
-          "referenceArea": 19069,
-          "proceduralArea": 19434,
+          "score": 90.42390207262154,
+          "iou": 0.8655036855036855,
+          "areaSimilarity": 0.9916583600020985,
+          "bboxSimilarity": 0.9971910112359551,
+          "centroidSimilarity": 0.9983717149945077,
+          "referenceArea": 18902,
+          "proceduralArea": 19061,
           "referenceBounds": {
             "width": 354,
-            "height": 98,
-            "cx": 235.9206041218732,
-            "cy": 185.76967853584352
+            "height": 134,
+            "cx": 235.72822981695057,
+            "cy": 170.34895778224526
           },
           "proceduralBounds": {
             "width": 356,
-            "height": 97,
-            "cx": 236.31861685705465,
-            "cy": 186.03524750437379
+            "height": 134,
+            "cx": 235.42998793347672,
+            "cy": 170.27139184722733
           }
         },
         "frontRight": {
-          "score": 96.78923174618077,
-          "iou": 0.9565711579445891,
-          "areaSimilarity": 0.9912758471104256,
-          "bboxSimilarity": 0.9967320261437909,
-          "centroidSimilarity": 0.9985585443930499,
-          "referenceArea": 20566,
-          "proceduralArea": 20747,
+          "score": 92.91672624607723,
+          "iou": 0.9014536616682717,
+          "areaSimilarity": 0.9914033234079339,
+          "bboxSimilarity": 0.9949466779706394,
+          "centroidSimilarity": 0.9988906596945625,
+          "referenceArea": 20822,
+          "proceduralArea": 20643,
           "referenceBounds": {
-            "width": 304,
-            "height": 106,
-            "cx": 228.04128172712242,
-            "cy": 185.89521540406497
+            "width": 306,
+            "height": 145,
+            "cx": 228.6536355777543,
+            "cy": 169.1009028911728
           },
           "proceduralBounds": {
-            "width": 306,
-            "height": 106,
-            "cx": 227.84874921675424,
-            "cy": 186.0247264664771
+            "width": 307,
+            "height": 146,
+            "cx": 228.833212226905,
+            "cy": 169.1559366371167
           }
         },
         "top": {
-          "score": 98.57384202237924,
-          "iou": 0.9805216917523667,
-          "areaSimilarity": 0.9981447761706806,
-          "bboxSimilarity": 0.9971751412429378,
-          "centroidSimilarity": 0.9986801089447994,
-          "referenceArea": 29107,
-          "proceduralArea": 29053,
+          "score": 94.07211429121148,
+          "iou": 0.9271080229877593,
+          "areaSimilarity": 0.9486194556617091,
+          "bboxSimilarity": 0.9957627118644068,
+          "centroidSimilarity": 0.9975267456997257,
+          "referenceArea": 28894,
+          "proceduralArea": 30459,
           "referenceBounds": {
-            "width": 124,
-            "height": 352,
-            "cx": 191.4863434912564,
-            "cy": 238.51166386092692
+            "width": 120,
+            "height": 351,
+            "cx": 191.49200526060773,
+            "cy": 235.18072956323113
           },
           "proceduralBounds": {
-            "width": 124,
+            "width": 120,
             "height": 354,
-            "cx": 191.54304202664096,
-            "cy": 238.271985681341
+            "cx": 191.47460520699957,
+            "cy": 235.63912144193836
           }
         }
       },
       "wholeContours": {
         "left": [
           {
-            "topDelta": -1.21,
-            "bottomDelta": 0.46,
+            "topDelta": -0.68,
+            "bottomDelta": 1.18,
             "columns": 28
           },
           {
-            "topDelta": -0.03,
-            "bottomDelta": 2.4,
+            "topDelta": 1.47,
+            "bottomDelta": -10.7,
             "columns": 30
           },
           {
-            "topDelta": -4,
-            "bottomDelta": 3.47,
-            "columns": 30
-          },
-          {
-            "topDelta": -3.72,
-            "bottomDelta": 6.66,
-            "columns": 29
-          },
-          {
-            "topDelta": -3.4,
-            "bottomDelta": 1.47,
-            "columns": 30
-          },
-          {
-            "topDelta": -3.2,
-            "bottomDelta": 1.13,
-            "columns": 30
-          },
-          {
-            "topDelta": -3.17,
-            "bottomDelta": 1.9,
-            "columns": 29
-          },
-          {
-            "topDelta": -2.07,
-            "bottomDelta": 2.1,
-            "columns": 30
-          },
-          {
-            "topDelta": -1.13,
-            "bottomDelta": -0.97,
-            "columns": 30
-          },
-          {
-            "topDelta": -0.14,
-            "bottomDelta": 0,
-            "columns": 29
-          },
-          {
-            "topDelta": 0.1,
-            "bottomDelta": 0,
+            "topDelta": 0.3,
+            "bottomDelta": -1.87,
             "columns": 30
           },
           {
             "topDelta": -0.1,
-            "bottomDelta": 0.34,
+            "bottomDelta": 1.72,
+            "columns": 29
+          },
+          {
+            "topDelta": -0.3,
+            "bottomDelta": 4.6,
+            "columns": 30
+          },
+          {
+            "topDelta": -0.13,
+            "bottomDelta": 1.17,
+            "columns": 30
+          },
+          {
+            "topDelta": -1.48,
+            "bottomDelta": 6.45,
+            "columns": 29
+          },
+          {
+            "topDelta": 0.07,
+            "bottomDelta": -0.57,
+            "columns": 30
+          },
+          {
+            "topDelta": -2.07,
+            "bottomDelta": -0.73,
+            "columns": 30
+          },
+          {
+            "topDelta": 1.24,
+            "bottomDelta": 2.55,
+            "columns": 29
+          },
+          {
+            "topDelta": 2,
+            "bottomDelta": 1.73,
+            "columns": 30
+          },
+          {
+            "topDelta": 1.52,
+            "bottomDelta": 1.48,
             "columns": 29
           }
         ],
         "right": [
           {
-            "topDelta": -0.04,
-            "bottomDelta": 0.36,
+            "topDelta": 1.5,
+            "bottomDelta": 1.54,
             "columns": 28
           },
           {
-            "topDelta": 0.07,
-            "bottomDelta": 0,
+            "topDelta": 2,
+            "bottomDelta": 1.63,
+            "columns": 30
+          },
+          {
+            "topDelta": 1.27,
+            "bottomDelta": 2.57,
+            "columns": 30
+          },
+          {
+            "topDelta": -2.17,
+            "bottomDelta": -0.79,
+            "columns": 29
+          },
+          {
+            "topDelta": 0.6,
+            "bottomDelta": -0.63,
+            "columns": 30
+          },
+          {
+            "topDelta": -1.6,
+            "bottomDelta": 6.4,
+            "columns": 30
+          },
+          {
+            "topDelta": -0.31,
+            "bottomDelta": 2.62,
+            "columns": 29
+          },
+          {
+            "topDelta": -0.9,
+            "bottomDelta": 1.83,
+            "columns": 30
+          },
+          {
+            "topDelta": 0.03,
+            "bottomDelta": -0.77,
             "columns": 30
           },
           {
             "topDelta": -0.17,
-            "bottomDelta": 0,
-            "columns": 30
-          },
-          {
-            "topDelta": 0.86,
-            "bottomDelta": 1.1,
+            "bottomDelta": -1.59,
             "columns": 29
           },
           {
-            "topDelta": -2.3,
-            "bottomDelta": 0.6,
+            "topDelta": 1.2,
+            "bottomDelta": -10.7,
             "columns": 30
           },
           {
-            "topDelta": -2.9,
-            "bottomDelta": 0.93,
-            "columns": 30
-          },
-          {
-            "topDelta": -2.9,
-            "bottomDelta": -0.28,
-            "columns": 29
-          },
-          {
-            "topDelta": -3.8,
-            "bottomDelta": 0.7,
-            "columns": 30
-          },
-          {
-            "topDelta": -3.4,
-            "bottomDelta": 5.2,
-            "columns": 30
-          },
-          {
-            "topDelta": -4.1,
-            "bottomDelta": 3.41,
-            "columns": 29
-          },
-          {
-            "topDelta": -0.43,
-            "bottomDelta": 2.27,
-            "columns": 30
-          },
-          {
-            "topDelta": -1.24,
-            "bottomDelta": 0.48,
+            "topDelta": -0.79,
+            "bottomDelta": 0.03,
             "columns": 29
           }
         ]
@@ -429,348 +429,348 @@
         "left": {
           "vertical": [
             {
-              "start": 142,
-              "end": 149,
-              "referenceOnly": 122,
-              "proceduralOnly": 84,
-              "overlap": 1217
+              "start": 125,
+              "end": 134,
+              "referenceOnly": 123,
+              "proceduralOnly": 184,
+              "overlap": 1331
             },
             {
-              "start": 150,
-              "end": 157,
-              "referenceOnly": 20,
-              "proceduralOnly": 124,
-              "overlap": 1506
+              "start": 135,
+              "end": 145,
+              "referenceOnly": 252,
+              "proceduralOnly": 170,
+              "overlap": 1772
             },
             {
-              "start": 158,
-              "end": 165,
-              "referenceOnly": 12,
-              "proceduralOnly": 19,
-              "overlap": 1757
+              "start": 146,
+              "end": 156,
+              "referenceOnly": 13,
+              "proceduralOnly": 58,
+              "overlap": 2515
             },
             {
-              "start": 166,
-              "end": 173,
-              "referenceOnly": 6,
-              "proceduralOnly": 28,
-              "overlap": 1876
+              "start": 157,
+              "end": 167,
+              "referenceOnly": 28,
+              "proceduralOnly": 41,
+              "overlap": 2708
             },
             {
-              "start": 174,
-              "end": 181,
-              "referenceOnly": 0,
-              "proceduralOnly": 17,
-              "overlap": 1921
+              "start": 168,
+              "end": 178,
+              "referenceOnly": 3,
+              "proceduralOnly": 81,
+              "overlap": 2729
             },
             {
-              "start": 182,
+              "start": 179,
               "end": 189,
-              "referenceOnly": 2,
-              "proceduralOnly": 15,
-              "overlap": 1919
+              "referenceOnly": 46,
+              "proceduralOnly": 50,
+              "overlap": 2291
             },
             {
               "start": 190,
-              "end": 197,
-              "referenceOnly": 10,
-              "proceduralOnly": 56,
-              "overlap": 1792
+              "end": 199,
+              "referenceOnly": 331,
+              "proceduralOnly": 232,
+              "overlap": 2663
             },
             {
-              "start": 198,
-              "end": 205,
-              "referenceOnly": 20,
-              "proceduralOnly": 40,
-              "overlap": 1853
+              "start": 200,
+              "end": 210,
+              "referenceOnly": 48,
+              "proceduralOnly": 416,
+              "overlap": 1499
             },
             {
-              "start": 206,
-              "end": 213,
-              "referenceOnly": 5,
-              "proceduralOnly": 48,
-              "overlap": 2486
-            },
-            {
-              "start": 214,
+              "start": 211,
               "end": 221,
-              "referenceOnly": 7,
-              "proceduralOnly": 18,
-              "overlap": 1446
+              "referenceOnly": 196,
+              "proceduralOnly": 291,
+              "overlap": 102
             },
             {
               "start": 222,
-              "end": 229,
-              "referenceOnly": 7,
-              "proceduralOnly": 204,
-              "overlap": 816
+              "end": 232,
+              "referenceOnly": 159,
+              "proceduralOnly": 15,
+              "overlap": 1
             },
             {
-              "start": 230,
-              "end": 238,
-              "referenceOnly": 32,
-              "proceduralOnly": 39,
-              "overlap": 148
+              "start": 233,
+              "end": 243,
+              "referenceOnly": 6,
+              "proceduralOnly": 7,
+              "overlap": 12
+            },
+            {
+              "start": 244,
+              "end": 254,
+              "referenceOnly": 9,
+              "proceduralOnly": 14,
+              "overlap": 0
             }
           ],
           "longitudinal": [
             {
-              "start": 14,
-              "end": 42,
-              "referenceOnly": 23,
-              "proceduralOnly": 79,
-              "overlap": 1080
+              "start": 15,
+              "end": 43,
+              "referenceOnly": 97,
+              "proceduralOnly": 167,
+              "overlap": 1067
             },
             {
-              "start": 43,
-              "end": 72,
-              "referenceOnly": 18,
-              "proceduralOnly": 58,
-              "overlap": 2225
-            },
-            {
-              "start": 73,
-              "end": 102,
-              "referenceOnly": 23,
-              "proceduralOnly": 113,
-              "overlap": 2515
-            },
-            {
-              "start": 103,
-              "end": 131,
-              "referenceOnly": 39,
-              "proceduralOnly": 78,
-              "overlap": 2584
-            },
-            {
-              "start": 132,
-              "end": 161,
-              "referenceOnly": 36,
-              "proceduralOnly": 87,
-              "overlap": 2528
-            },
-            {
-              "start": 162,
-              "end": 191,
-              "referenceOnly": 24,
-              "proceduralOnly": 64,
-              "overlap": 2480
-            },
-            {
-              "start": 192,
-              "end": 220,
-              "referenceOnly": 22,
-              "proceduralOnly": 64,
-              "overlap": 2315
-            },
-            {
-              "start": 221,
-              "end": 250,
-              "referenceOnly": 31,
+              "start": 44,
+              "end": 73,
+              "referenceOnly": 152,
               "proceduralOnly": 77,
-              "overlap": 1779
+              "overlap": 2102
             },
             {
-              "start": 251,
-              "end": 280,
-              "referenceOnly": 20,
-              "proceduralOnly": 43,
-              "overlap": 535
+              "start": 74,
+              "end": 103,
+              "referenceOnly": 136,
+              "proceduralOnly": 188,
+              "overlap": 2356
             },
             {
-              "start": 281,
-              "end": 309,
-              "referenceOnly": 0,
-              "proceduralOnly": 4,
-              "overlap": 232
+              "start": 104,
+              "end": 132,
+              "referenceOnly": 92,
+              "proceduralOnly": 129,
+              "overlap": 2360
             },
             {
-              "start": 310,
-              "end": 339,
-              "referenceOnly": 4,
-              "proceduralOnly": 1,
-              "overlap": 242
+              "start": 133,
+              "end": 162,
+              "referenceOnly": 103,
+              "proceduralOnly": 230,
+              "overlap": 2483
             },
             {
-              "start": 340,
-              "end": 369,
-              "referenceOnly": 3,
-              "proceduralOnly": 24,
-              "overlap": 222
+              "start": 163,
+              "end": 192,
+              "referenceOnly": 201,
+              "proceduralOnly": 119,
+              "overlap": 2461
+            },
+            {
+              "start": 193,
+              "end": 221,
+              "referenceOnly": 55,
+              "proceduralOnly": 222,
+              "overlap": 2121
+            },
+            {
+              "start": 222,
+              "end": 251,
+              "referenceOnly": 114,
+              "proceduralOnly": 123,
+              "overlap": 1620
+            },
+            {
+              "start": 252,
+              "end": 281,
+              "referenceOnly": 124,
+              "proceduralOnly": 129,
+              "overlap": 617
+            },
+            {
+              "start": 282,
+              "end": 310,
+              "referenceOnly": 36,
+              "proceduralOnly": 74,
+              "overlap": 170
+            },
+            {
+              "start": 311,
+              "end": 340,
+              "referenceOnly": 60,
+              "proceduralOnly": 52,
+              "overlap": 131
+            },
+            {
+              "start": 341,
+              "end": 370,
+              "referenceOnly": 44,
+              "proceduralOnly": 49,
+              "overlap": 135
             }
           ]
         },
         "right": {
           "vertical": [
             {
-              "start": 142,
-              "end": 149,
-              "referenceOnly": 122,
-              "proceduralOnly": 77,
-              "overlap": 1221
+              "start": 125,
+              "end": 135,
+              "referenceOnly": 126,
+              "proceduralOnly": 239,
+              "overlap": 1461
             },
             {
-              "start": 150,
+              "start": 136,
+              "end": 146,
+              "referenceOnly": 251,
+              "proceduralOnly": 125,
+              "overlap": 1858
+            },
+            {
+              "start": 147,
               "end": 157,
-              "referenceOnly": 20,
-              "proceduralOnly": 129,
-              "overlap": 1501
+              "referenceOnly": 14,
+              "proceduralOnly": 56,
+              "overlap": 2536
             },
             {
               "start": 158,
-              "end": 165,
-              "referenceOnly": 8,
-              "proceduralOnly": 20,
-              "overlap": 1760
+              "end": 169,
+              "referenceOnly": 25,
+              "proceduralOnly": 54,
+              "overlap": 2969
             },
             {
-              "start": 166,
-              "end": 173,
-              "referenceOnly": 6,
-              "proceduralOnly": 25,
-              "overlap": 1877
+              "start": 170,
+              "end": 180,
+              "referenceOnly": 11,
+              "proceduralOnly": 77,
+              "overlap": 2701
             },
             {
-              "start": 174,
-              "end": 181,
-              "referenceOnly": 0,
-              "proceduralOnly": 16,
-              "overlap": 1922
+              "start": 181,
+              "end": 191,
+              "referenceOnly": 148,
+              "proceduralOnly": 77,
+              "overlap": 2197
             },
             {
-              "start": 182,
-              "end": 190,
-              "referenceOnly": 3,
-              "proceduralOnly": 23,
-              "overlap": 2157
+              "start": 192,
+              "end": 202,
+              "referenceOnly": 244,
+              "proceduralOnly": 303,
+              "overlap": 2815
             },
             {
-              "start": 191,
-              "end": 198,
-              "referenceOnly": 13,
-              "proceduralOnly": 53,
-              "overlap": 1761
-            },
-            {
-              "start": 199,
-              "end": 206,
-              "referenceOnly": 21,
-              "proceduralOnly": 30,
-              "overlap": 2000
-            },
-            {
-              "start": 207,
+              "start": 203,
               "end": 214,
-              "referenceOnly": 7,
-              "proceduralOnly": 48,
-              "overlap": 2335
+              "referenceOnly": 95,
+              "proceduralOnly": 427,
+              "overlap": 1050
             },
             {
               "start": 215,
-              "end": 222,
-              "referenceOnly": 6,
-              "proceduralOnly": 37,
-              "overlap": 1384
+              "end": 225,
+              "referenceOnly": 343,
+              "proceduralOnly": 49,
+              "overlap": 15
             },
             {
-              "start": 223,
-              "end": 230,
-              "referenceOnly": 37,
-              "proceduralOnly": 117,
-              "overlap": 769
+              "start": 226,
+              "end": 236,
+              "referenceOnly": 18,
+              "proceduralOnly": 17,
+              "overlap": 0
             },
             {
-              "start": 231,
-              "end": 239,
-              "referenceOnly": 17,
-              "proceduralOnly": 50,
-              "overlap": 122
+              "start": 237,
+              "end": 247,
+              "referenceOnly": 3,
+              "proceduralOnly": 8,
+              "overlap": 11
+            },
+            {
+              "start": 248,
+              "end": 259,
+              "referenceOnly": 11,
+              "proceduralOnly": 16,
+              "overlap": 0
             }
           ],
           "longitudinal": [
             {
-              "start": 14,
-              "end": 42,
-              "referenceOnly": 3,
-              "proceduralOnly": 22,
-              "overlap": 214
-            },
-            {
-              "start": 43,
-              "end": 72,
-              "referenceOnly": 4,
-              "proceduralOnly": 2,
-              "overlap": 241
-            },
-            {
-              "start": 73,
-              "end": 102,
-              "referenceOnly": 0,
-              "proceduralOnly": 5,
-              "overlap": 240
-            },
-            {
-              "start": 103,
-              "end": 131,
-              "referenceOnly": 18,
-              "proceduralOnly": 39,
-              "overlap": 493
-            },
-            {
-              "start": 132,
-              "end": 161,
-              "referenceOnly": 36,
-              "proceduralOnly": 76,
-              "overlap": 1744
-            },
-            {
-              "start": 162,
-              "end": 191,
-              "referenceOnly": 35,
+              "start": 13,
+              "end": 41,
+              "referenceOnly": 42,
               "proceduralOnly": 49,
-              "overlap": 2404
+              "overlap": 130
             },
             {
-              "start": 192,
-              "end": 220,
-              "referenceOnly": 35,
-              "proceduralOnly": 29,
-              "overlap": 2425
+              "start": 42,
+              "end": 71,
+              "referenceOnly": 60,
+              "proceduralOnly": 49,
+              "overlap": 133
             },
             {
-              "start": 221,
-              "end": 250,
-              "referenceOnly": 30,
-              "proceduralOnly": 76,
-              "overlap": 2526
+              "start": 72,
+              "end": 101,
+              "referenceOnly": 38,
+              "proceduralOnly": 77,
+              "overlap": 173
             },
             {
-              "start": 251,
-              "end": 280,
-              "referenceOnly": 36,
-              "proceduralOnly": 80,
-              "overlap": 2696
+              "start": 102,
+              "end": 130,
+              "referenceOnly": 121,
+              "proceduralOnly": 129,
+              "overlap": 572
             },
             {
-              "start": 281,
-              "end": 309,
-              "referenceOnly": 23,
-              "proceduralOnly": 105,
-              "overlap": 2442
+              "start": 131,
+              "end": 160,
+              "referenceOnly": 120,
+              "proceduralOnly": 108,
+              "overlap": 1605
             },
             {
-              "start": 310,
-              "end": 339,
-              "referenceOnly": 19,
-              "proceduralOnly": 62,
-              "overlap": 2246
+              "start": 161,
+              "end": 190,
+              "referenceOnly": 57,
+              "proceduralOnly": 231,
+              "overlap": 2185
             },
             {
-              "start": 340,
-              "end": 369,
-              "referenceOnly": 21,
-              "proceduralOnly": 80,
-              "overlap": 1138
+              "start": 191,
+              "end": 219,
+              "referenceOnly": 201,
+              "proceduralOnly": 113,
+              "overlap": 2346
+            },
+            {
+              "start": 220,
+              "end": 249,
+              "referenceOnly": 110,
+              "proceduralOnly": 111,
+              "overlap": 2531
+            },
+            {
+              "start": 250,
+              "end": 279,
+              "referenceOnly": 146,
+              "proceduralOnly": 111,
+              "overlap": 2455
+            },
+            {
+              "start": 280,
+              "end": 308,
+              "referenceOnly": 130,
+              "proceduralOnly": 207,
+              "overlap": 2261
+            },
+            {
+              "start": 309,
+              "end": 338,
+              "referenceOnly": 153,
+              "proceduralOnly": 84,
+              "overlap": 2099
+            },
+            {
+              "start": 339,
+              "end": 368,
+              "referenceOnly": 111,
+              "proceduralOnly": 179,
+              "overlap": 1123
             }
           ]
         }
@@ -779,44 +779,44 @@
         "left": [
           [
             {
-              "referenceOnly": 2,
+              "referenceOnly": 7,
               "proceduralOnly": 0,
               "overlap": 0
             },
             {
-              "referenceOnly": 16,
-              "proceduralOnly": 10,
-              "overlap": 240
-            },
-            {
-              "referenceOnly": 21,
-              "proceduralOnly": 28,
-              "overlap": 302
-            },
-            {
-              "referenceOnly": 21,
+              "referenceOnly": 73,
               "proceduralOnly": 26,
-              "overlap": 293
+              "overlap": 169
             },
             {
-              "referenceOnly": 20,
-              "proceduralOnly": 26,
-              "overlap": 304
+              "referenceOnly": 48,
+              "proceduralOnly": 70,
+              "overlap": 341
             },
             {
-              "referenceOnly": 22,
-              "proceduralOnly": 23,
-              "overlap": 307
+              "referenceOnly": 41,
+              "proceduralOnly": 50,
+              "overlap": 360
             },
             {
-              "referenceOnly": 21,
-              "proceduralOnly": 18,
-              "overlap": 301
+              "referenceOnly": 27,
+              "proceduralOnly": 55,
+              "overlap": 377
             },
             {
-              "referenceOnly": 7,
-              "proceduralOnly": 15,
-              "overlap": 205
+              "referenceOnly": 8,
+              "proceduralOnly": 45,
+              "overlap": 374
+            },
+            {
+              "referenceOnly": 9,
+              "proceduralOnly": 65,
+              "overlap": 333
+            },
+            {
+              "referenceOnly": 15,
+              "proceduralOnly": 36,
+              "overlap": 210
             },
             {
               "referenceOnly": 0,
@@ -841,49 +841,111 @@
           ],
           [
             {
-              "referenceOnly": 16,
-              "proceduralOnly": 4,
-              "overlap": 94
+              "referenceOnly": 27,
+              "proceduralOnly": 47,
+              "overlap": 132
             },
             {
-              "referenceOnly": 0,
+              "referenceOnly": 14,
+              "proceduralOnly": 0,
+              "overlap": 466
+            },
+            {
+              "referenceOnly": 27,
+              "proceduralOnly": 0,
+              "overlap": 453
+            },
+            {
+              "referenceOnly": 17,
+              "proceduralOnly": 0,
+              "overlap": 447
+            },
+            {
+              "referenceOnly": 9,
+              "proceduralOnly": 0,
+              "overlap": 471
+            },
+            {
+              "referenceOnly": 24,
+              "proceduralOnly": 0,
+              "overlap": 456
+            },
+            {
+              "referenceOnly": 24,
+              "proceduralOnly": 0,
+              "overlap": 440
+            },
+            {
+              "referenceOnly": 12,
               "proceduralOnly": 1,
-              "overlap": 359
+              "overlap": 467
             },
             {
-              "referenceOnly": 0,
-              "proceduralOnly": 14,
-              "overlap": 346
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 14,
-              "overlap": 334
-            },
-            {
-              "referenceOnly": 0,
+              "referenceOnly": 6,
               "proceduralOnly": 17,
-              "overlap": 343
+              "overlap": 122
             },
             {
               "referenceOnly": 0,
-              "proceduralOnly": 5,
-              "overlap": 355
+              "proceduralOnly": 0,
+              "overlap": 0
             },
             {
               "referenceOnly": 0,
-              "proceduralOnly": 11,
-              "overlap": 337
+              "proceduralOnly": 0,
+              "overlap": 0
             },
             {
-              "referenceOnly": 4,
-              "proceduralOnly": 13,
-              "overlap": 336
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 0
+            }
+          ],
+          [
+            {
+              "referenceOnly": 19,
+              "proceduralOnly": 27,
+              "overlap": 380
             },
             {
-              "referenceOnly": 4,
-              "proceduralOnly": 2,
-              "overlap": 24
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 480
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 480
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 464
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 480
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 480
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 464
+            },
+            {
+              "referenceOnly": 3,
+              "proceduralOnly": 0,
+              "overlap": 477
+            },
+            {
+              "referenceOnly": 9,
+              "proceduralOnly": 43,
+              "overlap": 251
             },
             {
               "referenceOnly": 0,
@@ -904,296 +966,48 @@
           [
             {
               "referenceOnly": 5,
-              "proceduralOnly": 17,
-              "overlap": 241
+              "proceduralOnly": 27,
+              "overlap": 450
+            },
+            {
+              "referenceOnly": 17,
+              "proceduralOnly": 0,
+              "overlap": 493
+            },
+            {
+              "referenceOnly": 5,
+              "proceduralOnly": 0,
+              "overlap": 505
             },
             {
               "referenceOnly": 0,
               "proceduralOnly": 0,
-              "overlap": 360
+              "overlap": 493
             },
             {
               "referenceOnly": 0,
               "proceduralOnly": 0,
-              "overlap": 360
+              "overlap": 510
             },
             {
               "referenceOnly": 0,
               "proceduralOnly": 0,
-              "overlap": 348
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 360
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 360
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 348
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 360
-            },
-            {
-              "referenceOnly": 1,
-              "proceduralOnly": 22,
-              "overlap": 96
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 0
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 0
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 0
-            }
-          ],
-          [
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 15,
-              "overlap": 276
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 360
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 360
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 348
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 360
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 360
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 348
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 360
+              "overlap": 510
             },
             {
               "referenceOnly": 2,
-              "proceduralOnly": 6,
-              "overlap": 111
+              "proceduralOnly": 11,
+              "overlap": 473
             },
             {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 0
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 0
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 0
-            }
-          ],
-          [
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 25,
-              "overlap": 318
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 360
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 360
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 4,
-              "overlap": 344
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 360
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 360
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 1,
-              "overlap": 347
-            },
-            {
-              "referenceOnly": 15,
-              "proceduralOnly": 37,
-              "overlap": 156
-            },
-            {
-              "referenceOnly": 1,
-              "proceduralOnly": 8,
-              "overlap": 9
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 0
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 0
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 0
-            }
-          ],
-          [
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 18,
-              "overlap": 151
-            },
-            {
-              "referenceOnly": 0,
+              "referenceOnly": 9,
               "proceduralOnly": 14,
-              "overlap": 316
+              "overlap": 267
             },
             {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 360
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 348
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 360
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 360
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 348
-            },
-            {
-              "referenceOnly": 1,
-              "proceduralOnly": 4,
-              "overlap": 310
-            },
-            {
-              "referenceOnly": 11,
-              "proceduralOnly": 4,
-              "overlap": 268
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 4,
-              "overlap": 232
-            },
-            {
-              "referenceOnly": 4,
-              "proceduralOnly": 1,
-              "overlap": 242
-            },
-            {
-              "referenceOnly": 3,
-              "proceduralOnly": 24,
-              "overlap": 222
-            }
-          ],
-          [
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 0
-            },
-            {
-              "referenceOnly": 2,
-              "proceduralOnly": 29,
-              "overlap": 230
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 360
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 348
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 4,
-              "overlap": 356
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 7,
-              "overlap": 350
-            },
-            {
-              "referenceOnly": 1,
-              "proceduralOnly": 22,
-              "overlap": 277
-            },
-            {
-              "referenceOnly": 4,
-              "proceduralOnly": 8,
-              "overlap": 52
-            },
-            {
-              "referenceOnly": 1,
-              "proceduralOnly": 1,
-              "overlap": 27
+              "referenceOnly": 8,
+              "proceduralOnly": 50,
+              "overlap": 71
             },
             {
               "referenceOnly": 0,
@@ -1213,39 +1027,225 @@
           ],
           [
             {
+              "referenceOnly": 39,
+              "proceduralOnly": 66,
+              "overlap": 105
+            },
+            {
+              "referenceOnly": 9,
+              "proceduralOnly": 0,
+              "overlap": 471
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 480
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 464
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 480
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 480
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 59,
+              "overlap": 405
+            },
+            {
+              "referenceOnly": 75,
+              "proceduralOnly": 72,
+              "overlap": 199
+            },
+            {
+              "referenceOnly": 101,
+              "proceduralOnly": 19,
+              "overlap": 173
+            },
+            {
+              "referenceOnly": 36,
+              "proceduralOnly": 74,
+              "overlap": 170
+            },
+            {
+              "referenceOnly": 60,
+              "proceduralOnly": 52,
+              "overlap": 131
+            },
+            {
+              "referenceOnly": 44,
+              "proceduralOnly": 49,
+              "overlap": 135
+            }
+          ],
+          [
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 22,
+              "proceduralOnly": 51,
+              "overlap": 23
+            },
+            {
+              "referenceOnly": 33,
+              "proceduralOnly": 82,
+              "overlap": 84
+            },
+            {
+              "referenceOnly": 34,
+              "proceduralOnly": 79,
+              "overlap": 132
+            },
+            {
+              "referenceOnly": 23,
+              "proceduralOnly": 175,
+              "overlap": 165
+            },
+            {
+              "referenceOnly": 99,
+              "proceduralOnly": 74,
+              "overlap": 161
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 87,
+              "overlap": 6
+            },
+            {
               "referenceOnly": 0,
               "proceduralOnly": 0,
               "overlap": 0
             },
             {
               "referenceOnly": 0,
-              "proceduralOnly": 4,
+              "proceduralOnly": 0,
               "overlap": 0
             },
             {
-              "referenceOnly": 2,
-              "proceduralOnly": 71,
-              "overlap": 67
-            },
-            {
-              "referenceOnly": 18,
-              "proceduralOnly": 34,
-              "overlap": 221
-            },
-            {
-              "referenceOnly": 16,
-              "proceduralOnly": 40,
-              "overlap": 85
-            },
-            {
-              "referenceOnly": 2,
-              "proceduralOnly": 29,
-              "overlap": 28
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 0
             },
             {
               "referenceOnly": 0,
-              "proceduralOnly": 12,
-              "overlap": 9
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 0
+            }
+          ],
+          [
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 17,
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 13,
+              "proceduralOnly": 16,
+              "overlap": 8
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 44,
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 70,
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 20,
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 0
+            }
+          ],
+          [
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 10,
+              "proceduralOnly": 20,
+              "overlap": 5
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 0
             },
             {
               "referenceOnly": 0,
@@ -1297,106 +1297,106 @@
               "overlap": 0
             },
             {
-              "referenceOnly": 8,
-              "proceduralOnly": 13,
-              "overlap": 196
-            },
-            {
-              "referenceOnly": 22,
-              "proceduralOnly": 18,
-              "overlap": 312
-            },
-            {
-              "referenceOnly": 21,
-              "proceduralOnly": 19,
-              "overlap": 300
-            },
-            {
-              "referenceOnly": 20,
-              "proceduralOnly": 30,
-              "overlap": 300
-            },
-            {
-              "referenceOnly": 22,
-              "proceduralOnly": 25,
-              "overlap": 305
-            },
-            {
-              "referenceOnly": 21,
-              "proceduralOnly": 27,
-              "overlap": 292
-            },
-            {
               "referenceOnly": 15,
-              "proceduralOnly": 9,
-              "overlap": 247
+              "proceduralOnly": 29,
+              "overlap": 204
             },
             {
-              "referenceOnly": 2,
-              "proceduralOnly": 0,
-              "overlap": 1
-            }
-          ],
-          [
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 0
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 0
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 0
-            },
-            {
-              "referenceOnly": 2,
-              "proceduralOnly": 3,
-              "overlap": 18
-            },
-            {
-              "referenceOnly": 3,
-              "proceduralOnly": 14,
-              "overlap": 331
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 10,
-              "overlap": 350
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 4,
-              "overlap": 344
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 17,
-              "overlap": 343
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 15,
+              "referenceOnly": 9,
+              "proceduralOnly": 66,
               "overlap": 345
             },
             {
+              "referenceOnly": 7,
+              "proceduralOnly": 44,
+              "overlap": 364
+            },
+            {
+              "referenceOnly": 24,
+              "proceduralOnly": 53,
+              "overlap": 378
+            },
+            {
+              "referenceOnly": 44,
+              "proceduralOnly": 58,
+              "overlap": 365
+            },
+            {
+              "referenceOnly": 47,
+              "proceduralOnly": 71,
+              "overlap": 327
+            },
+            {
+              "referenceOnly": 71,
+              "proceduralOnly": 30,
+              "overlap": 180
+            },
+            {
+              "referenceOnly": 7,
+              "proceduralOnly": 0,
+              "overlap": 0
+            }
+          ],
+          [
+            {
               "referenceOnly": 0,
-              "proceduralOnly": 15,
-              "overlap": 333
+              "proceduralOnly": 0,
+              "overlap": 0
             },
             {
               "referenceOnly": 0,
-              "proceduralOnly": 3,
-              "overlap": 357
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 8,
+              "proceduralOnly": 17,
+              "overlap": 120
+            },
+            {
+              "referenceOnly": 13,
+              "proceduralOnly": 1,
+              "overlap": 496
+            },
+            {
+              "referenceOnly": 24,
+              "proceduralOnly": 0,
+              "overlap": 486
+            },
+            {
+              "referenceOnly": 21,
+              "proceduralOnly": 0,
+              "overlap": 472
+            },
+            {
+              "referenceOnly": 9,
+              "proceduralOnly": 0,
+              "overlap": 501
+            },
+            {
+              "referenceOnly": 21,
+              "proceduralOnly": 0,
+              "overlap": 489
+            },
+            {
+              "referenceOnly": 27,
+              "proceduralOnly": 0,
+              "overlap": 466
             },
             {
               "referenceOnly": 14,
-              "proceduralOnly": 4,
-              "overlap": 108
+              "proceduralOnly": 0,
+              "overlap": 496
+            },
+            {
+              "referenceOnly": 30,
+              "proceduralOnly": 51,
+              "overlap": 166
             }
           ],
           [
@@ -1416,111 +1416,49 @@
               "overlap": 0
             },
             {
-              "referenceOnly": 1,
-              "proceduralOnly": 19,
-              "overlap": 85
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 360
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 360
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 348
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 360
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 360
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 348
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 360
-            },
-            {
-              "referenceOnly": 5,
-              "proceduralOnly": 16,
-              "overlap": 254
-            }
-          ],
-          [
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 0
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 0
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 0
+              "referenceOnly": 6,
+              "proceduralOnly": 56,
+              "overlap": 245
             },
             {
               "referenceOnly": 3,
-              "proceduralOnly": 9,
-              "overlap": 103
+              "proceduralOnly": 0,
+              "overlap": 507
             },
             {
               "referenceOnly": 0,
               "proceduralOnly": 0,
-              "overlap": 390
+              "overlap": 510
             },
             {
               "referenceOnly": 0,
               "proceduralOnly": 0,
-              "overlap": 390
+              "overlap": 493
             },
             {
               "referenceOnly": 0,
               "proceduralOnly": 0,
-              "overlap": 377
+              "overlap": 510
             },
             {
               "referenceOnly": 0,
               "proceduralOnly": 0,
-              "overlap": 390
+              "overlap": 510
             },
             {
               "referenceOnly": 0,
               "proceduralOnly": 0,
-              "overlap": 390
+              "overlap": 493
             },
             {
               "referenceOnly": 0,
               "proceduralOnly": 0,
-              "overlap": 377
+              "overlap": 510
             },
             {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 390
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 20,
-              "overlap": 314
+              "referenceOnly": 19,
+              "proceduralOnly": 31,
+              "overlap": 435
             }
           ],
           [
@@ -1535,116 +1473,116 @@
               "overlap": 0
             },
             {
-              "referenceOnly": 0,
+              "referenceOnly": 12,
               "proceduralOnly": 0,
               "overlap": 0
             },
             {
-              "referenceOnly": 1,
-              "proceduralOnly": 4,
-              "overlap": 4
+              "referenceOnly": 53,
+              "proceduralOnly": 38,
+              "overlap": 39
             },
             {
-              "referenceOnly": 18,
-              "proceduralOnly": 33,
-              "overlap": 122
+              "referenceOnly": 51,
+              "proceduralOnly": 17,
+              "overlap": 213
+            },
+            {
+              "referenceOnly": 4,
+              "proceduralOnly": 11,
+              "overlap": 485
             },
             {
               "referenceOnly": 0,
-              "proceduralOnly": 1,
+              "proceduralOnly": 0,
+              "overlap": 493
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 510
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 510
+            },
+            {
+              "referenceOnly": 5,
+              "proceduralOnly": 0,
+              "overlap": 488
+            },
+            {
+              "referenceOnly": 18,
+              "proceduralOnly": 0,
+              "overlap": 492
+            },
+            {
+              "referenceOnly": 13,
+              "proceduralOnly": 55,
+              "overlap": 424
+            }
+          ],
+          [
+            {
+              "referenceOnly": 42,
+              "proceduralOnly": 49,
+              "overlap": 130
+            },
+            {
+              "referenceOnly": 60,
+              "proceduralOnly": 49,
+              "overlap": 133
+            },
+            {
+              "referenceOnly": 26,
+              "proceduralOnly": 77,
+              "overlap": 173
+            },
+            {
+              "referenceOnly": 54,
+              "proceduralOnly": 18,
+              "overlap": 168
+            },
+            {
+              "referenceOnly": 38,
+              "proceduralOnly": 61,
+              "overlap": 185
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 135,
               "overlap": 359
             },
             {
               "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 348
+              "proceduralOnly": 17,
+              "overlap": 476
             },
             {
               "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 360
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 3,
-              "overlap": 355
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 348
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 360
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 22,
-              "overlap": 333
-            }
-          ],
-          [
-            {
-              "referenceOnly": 3,
-              "proceduralOnly": 22,
-              "overlap": 214
-            },
-            {
-              "referenceOnly": 4,
-              "proceduralOnly": 2,
-              "overlap": 241
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 5,
-              "overlap": 240
-            },
-            {
-              "referenceOnly": 11,
-              "proceduralOnly": 3,
-              "overlap": 271
-            },
-            {
-              "referenceOnly": 4,
-              "proceduralOnly": 3,
-              "overlap": 320
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 360
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 348
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 360
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 360
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 348
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 15,
-              "overlap": 317
+              "proceduralOnly": 4,
+              "overlap": 506
             },
             {
               "referenceOnly": 0,
               "proceduralOnly": 18,
-              "overlap": 128
+              "overlap": 492
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 34,
+              "overlap": 459
+            },
+            {
+              "referenceOnly": 8,
+              "proceduralOnly": 46,
+              "overlap": 418
+            },
+            {
+              "referenceOnly": 42,
+              "proceduralOnly": 42,
+              "overlap": 98
             }
           ],
           [
@@ -1665,43 +1603,105 @@
             },
             {
               "referenceOnly": 0,
-              "proceduralOnly": 1,
-              "overlap": 12
-            },
-            {
-              "referenceOnly": 3,
-              "proceduralOnly": 13,
-              "overlap": 25
-            },
-            {
-              "referenceOnly": 2,
-              "proceduralOnly": 20,
-              "overlap": 265
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 6,
-              "overlap": 329
-            },
-            {
-              "referenceOnly": 2,
-              "proceduralOnly": 2,
-              "overlap": 346
+              "proceduralOnly": 0,
+              "overlap": 0
             },
             {
               "referenceOnly": 0,
               "proceduralOnly": 0,
-              "overlap": 360
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 20,
+              "proceduralOnly": 19,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 171,
+              "proceduralOnly": 52,
+              "overlap": 48
+            },
+            {
+              "referenceOnly": 76,
+              "proceduralOnly": 54,
+              "overlap": 126
+            },
+            {
+              "referenceOnly": 81,
+              "proceduralOnly": 35,
+              "overlap": 89
+            },
+            {
+              "referenceOnly": 26,
+              "proceduralOnly": 61,
+              "overlap": 17
+            },
+            {
+              "referenceOnly": 38,
+              "proceduralOnly": 8,
+              "overlap": 3
             },
             {
               "referenceOnly": 0,
-              "proceduralOnly": 9,
-              "overlap": 339
+              "proceduralOnly": 0,
+              "overlap": 0
+            }
+          ],
+          [
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 2,
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 1,
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 14,
+              "proceduralOnly": 20,
+              "overlap": 6
             },
             {
               "referenceOnly": 4,
-              "proceduralOnly": 32,
-              "overlap": 213
+              "proceduralOnly": 0,
+              "overlap": 0
             },
             {
               "referenceOnly": 0,
@@ -1710,6 +1710,26 @@
             }
           ],
           [
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
             {
               "referenceOnly": 0,
               "proceduralOnly": 0,
@@ -1737,33 +1757,13 @@
             },
             {
               "referenceOnly": 11,
-              "proceduralOnly": 0,
-              "overlap": 8
-            },
-            {
-              "referenceOnly": 14,
-              "proceduralOnly": 0,
-              "overlap": 31
-            },
-            {
-              "referenceOnly": 8,
-              "proceduralOnly": 27,
-              "overlap": 67
-            },
-            {
-              "referenceOnly": 14,
-              "proceduralOnly": 37,
-              "overlap": 221
-            },
-            {
-              "referenceOnly": 2,
-              "proceduralOnly": 54,
-              "overlap": 57
+              "proceduralOnly": 21,
+              "overlap": 5
             },
             {
               "referenceOnly": 0,
-              "proceduralOnly": 3,
-              "overlap": 2
+              "proceduralOnly": 0,
+              "overlap": 0
             },
             {
               "referenceOnly": 0,
@@ -1775,488 +1775,488 @@
         "front": [
           [
             {
-              "referenceOnly": 2,
-              "proceduralOnly": 50,
-              "overlap": 148
+              "referenceOnly": 63,
+              "proceduralOnly": 122,
+              "overlap": 222
             },
             {
               "referenceOnly": 0,
-              "proceduralOnly": 162,
-              "overlap": 948
+              "proceduralOnly": 24,
+              "overlap": 873
             },
             {
-              "referenceOnly": 2,
-              "proceduralOnly": 178,
-              "overlap": 788
+              "referenceOnly": 177,
+              "proceduralOnly": 15,
+              "overlap": 355
             },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 0
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 0
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 0
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 0
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 0
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 0
-            },
-            {
-              "referenceOnly": 2,
-              "proceduralOnly": 173,
-              "overlap": 756
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 162,
-              "overlap": 948
-            },
-            {
-              "referenceOnly": 2,
-              "proceduralOnly": 55,
-              "overlap": 180
-            }
-          ],
-          [
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 38,
-              "overlap": 190
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 1140
-            },
-            {
-              "referenceOnly": 23,
-              "proceduralOnly": 36,
-              "overlap": 1042
-            },
-            {
-              "referenceOnly": 42,
-              "proceduralOnly": 68,
-              "overlap": 715
-            },
-            {
-              "referenceOnly": 150,
-              "proceduralOnly": 0,
-              "overlap": 810
-            },
-            {
-              "referenceOnly": 150,
-              "proceduralOnly": 0,
-              "overlap": 810
-            },
-            {
-              "referenceOnly": 145,
-              "proceduralOnly": 0,
-              "overlap": 783
-            },
-            {
-              "referenceOnly": 150,
-              "proceduralOnly": 0,
-              "overlap": 810
-            },
-            {
-              "referenceOnly": 48,
-              "proceduralOnly": 68,
-              "overlap": 742
-            },
-            {
-              "referenceOnly": 23,
-              "proceduralOnly": 36,
-              "overlap": 1004
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 1140
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 38,
-              "overlap": 228
-            }
-          ],
-          [
-            {
-              "referenceOnly": 108,
-              "proceduralOnly": 85,
-              "overlap": 743
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 1110
-            },
-            {
-              "referenceOnly": 37,
-              "proceduralOnly": 0,
-              "overlap": 1073
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 1073
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 1110
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 1110
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 1073
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 1110
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 1110
-            },
-            {
-              "referenceOnly": 37,
-              "proceduralOnly": 0,
-              "overlap": 1036
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 1110
-            },
-            {
-              "referenceOnly": 108,
-              "proceduralOnly": 85,
-              "overlap": 780
-            }
-          ],
-          [
             {
               "referenceOnly": 85,
-              "proceduralOnly": 43,
-              "overlap": 843
-            },
-            {
-              "referenceOnly": 0,
               "proceduralOnly": 0,
-              "overlap": 1140
-            },
-            {
-              "referenceOnly": 4,
-              "proceduralOnly": 0,
-              "overlap": 1136
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 1102
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 1140
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 1140
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 1102
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 1140
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 1140
-            },
-            {
-              "referenceOnly": 4,
-              "proceduralOnly": 0,
-              "overlap": 1098
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 1140
-            },
-            {
-              "referenceOnly": 84,
-              "proceduralOnly": 43,
-              "overlap": 882
-            }
-          ],
-          [
-            {
-              "referenceOnly": 26,
-              "proceduralOnly": 88,
-              "overlap": 462
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 1110
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 1110
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 1073
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 1110
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 1110
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 1073
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 1110
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 1110
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 1073
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 1110
-            },
-            {
-              "referenceOnly": 20,
-              "proceduralOnly": 117,
-              "overlap": 504
-            }
-          ],
-          [
-            {
-              "referenceOnly": 42,
-              "proceduralOnly": 82,
-              "overlap": 127
-            },
-            {
-              "referenceOnly": 31,
-              "proceduralOnly": 0,
-              "overlap": 1101
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 1140
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 1102
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 1140
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 1140
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 1102
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 1140
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 1140
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 1102
-            },
-            {
-              "referenceOnly": 37,
-              "proceduralOnly": 0,
-              "overlap": 1090
+              "overlap": 115
             },
             {
               "referenceOnly": 46,
-              "proceduralOnly": 145,
-              "overlap": 152
-            }
-          ],
-          [
-            {
-              "referenceOnly": 0,
               "proceduralOnly": 0,
-              "overlap": 0
+              "overlap": 115
             },
             {
-              "referenceOnly": 150,
-              "proceduralOnly": 63,
-              "overlap": 245
-            },
-            {
-              "referenceOnly": 13,
-              "proceduralOnly": 16,
-              "overlap": 1026
-            },
-            {
-              "referenceOnly": 0,
+              "referenceOnly": 46,
               "proceduralOnly": 0,
-              "overlap": 1073
+              "overlap": 115
             },
             {
-              "referenceOnly": 0,
+              "referenceOnly": 46,
               "proceduralOnly": 0,
-              "overlap": 1110
+              "overlap": 115
             },
             {
-              "referenceOnly": 0,
+              "referenceOnly": 46,
               "proceduralOnly": 0,
-              "overlap": 1110
+              "overlap": 115
             },
             {
-              "referenceOnly": 0,
+              "referenceOnly": 76,
               "proceduralOnly": 0,
-              "overlap": 1073
+              "overlap": 115
             },
             {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 1110
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 1110
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 69,
-              "overlap": 969
-            },
-            {
-              "referenceOnly": 114,
-              "proceduralOnly": 44,
-              "overlap": 183
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 0
-            }
-          ],
-          [
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 0
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 0
-            },
-            {
-              "referenceOnly": 2,
-              "proceduralOnly": 46,
-              "overlap": 48
-            },
-            {
-              "referenceOnly": 19,
+              "referenceOnly": 122,
               "proceduralOnly": 81,
-              "overlap": 322
-            },
-            {
-              "referenceOnly": 94,
-              "proceduralOnly": 97,
-              "overlap": 539
-            },
-            {
-              "referenceOnly": 187,
-              "proceduralOnly": 10,
-              "overlap": 681
-            },
-            {
-              "referenceOnly": 8,
-              "proceduralOnly": 36,
-              "overlap": 147
+              "overlap": 357
             },
             {
               "referenceOnly": 0,
-              "proceduralOnly": 103,
-              "overlap": 182
+              "proceduralOnly": 23,
+              "overlap": 874
             },
             {
-              "referenceOnly": 10,
-              "proceduralOnly": 189,
-              "overlap": 232
+              "referenceOnly": 108,
+              "proceduralOnly": 11,
+              "overlap": 255
+            }
+          ],
+          [
+            {
+              "referenceOnly": 164,
+              "proceduralOnly": 290,
+              "overlap": 375
             },
             {
-              "referenceOnly": 23,
-              "proceduralOnly": 17,
-              "overlap": 58
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 897
+            },
+            {
+              "referenceOnly": 306,
+              "proceduralOnly": 0,
+              "overlap": 569
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 897
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 897
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 897
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 897
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 897
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 897
+            },
+            {
+              "referenceOnly": 307,
+              "proceduralOnly": 0,
+              "overlap": 568
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 897
+            },
+            {
+              "referenceOnly": 134,
+              "proceduralOnly": 105,
+              "overlap": 482
+            }
+          ],
+          [
+            {
+              "referenceOnly": 16,
+              "proceduralOnly": 200,
+              "overlap": 501
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 920
+            },
+            {
+              "referenceOnly": 72,
+              "proceduralOnly": 0,
+              "overlap": 848
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 920
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 920
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 920
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 920
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 920
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 920
+            },
+            {
+              "referenceOnly": 72,
+              "proceduralOnly": 0,
+              "overlap": 848
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 920
+            },
+            {
+              "referenceOnly": 44,
+              "proceduralOnly": 69,
+              "overlap": 550
+            }
+          ],
+          [
+            {
+              "referenceOnly": 32,
+              "proceduralOnly": 87,
+              "overlap": 390
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 897
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 897
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 897
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 897
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 897
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 897
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 897
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 897
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 897
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 897
+            },
+            {
+              "referenceOnly": 113,
+              "proceduralOnly": 141,
+              "overlap": 384
+            }
+          ],
+          [
+            {
+              "referenceOnly": 93,
+              "proceduralOnly": 24,
+              "overlap": 111
+            },
+            {
+              "referenceOnly": 32,
+              "proceduralOnly": 2,
+              "overlap": 863
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 897
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 897
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 897
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 897
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 897
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 897
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 897
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 897
+            },
+            {
+              "referenceOnly": 30,
+              "proceduralOnly": 8,
+              "overlap": 859
+            },
+            {
+              "referenceOnly": 201,
+              "proceduralOnly": 5,
+              "overlap": 77
+            }
+          ],
+          [
+            {
+              "referenceOnly": 1,
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 116,
+              "proceduralOnly": 61,
+              "overlap": 131
+            },
+            {
+              "referenceOnly": 407,
+              "proceduralOnly": 0,
+              "overlap": 159
+            },
+            {
+              "referenceOnly": 21,
+              "proceduralOnly": 37,
+              "overlap": 177
+            },
+            {
+              "referenceOnly": 72,
+              "proceduralOnly": 140,
+              "overlap": 298
+            },
+            {
+              "referenceOnly": 308,
+              "proceduralOnly": 41,
+              "overlap": 321
+            },
+            {
+              "referenceOnly": 174,
+              "proceduralOnly": 26,
+              "overlap": 204
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 93,
+              "overlap": 179
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 79,
+              "overlap": 140
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 44,
+              "overlap": 139
+            },
+            {
+              "referenceOnly": 88,
+              "proceduralOnly": 195,
+              "overlap": 34
+            },
+            {
+              "referenceOnly": 9,
+              "proceduralOnly": 0,
+              "overlap": 0
+            }
+          ],
+          [
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 17,
+              "proceduralOnly": 39,
+              "overlap": 61
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 18,
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 40,
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 0
+            }
+          ],
+          [
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 39,
+              "proceduralOnly": 86,
+              "overlap": 13
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 0
             },
             {
               "referenceOnly": 0,
@@ -2273,493 +2273,493 @@
         "rear": [
           [
             {
-              "referenceOnly": 5,
-              "proceduralOnly": 36,
-              "overlap": 150
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 47,
-              "overlap": 1003
-            },
-            {
-              "referenceOnly": 5,
-              "proceduralOnly": 81,
-              "overlap": 831
+              "referenceOnly": 45,
+              "proceduralOnly": 6,
+              "overlap": 247
             },
             {
               "referenceOnly": 0,
               "proceduralOnly": 0,
-              "overlap": 0
+              "overlap": 828
             },
             {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 0
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 0
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 0
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 0
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 0
-            },
-            {
-              "referenceOnly": 5,
-              "proceduralOnly": 80,
-              "overlap": 796
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 46,
-              "overlap": 1004
-            },
-            {
-              "referenceOnly": 5,
-              "proceduralOnly": 37,
-              "overlap": 184
-            }
-          ],
-          [
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 51,
-              "overlap": 180
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 1080
-            },
-            {
-              "referenceOnly": 21,
-              "proceduralOnly": 50,
-              "overlap": 989
-            },
-            {
-              "referenceOnly": 15,
-              "proceduralOnly": 197,
-              "overlap": 789
-            },
-            {
-              "referenceOnly": 60,
-              "proceduralOnly": 0,
-              "overlap": 1020
-            },
-            {
-              "referenceOnly": 60,
-              "proceduralOnly": 0,
-              "overlap": 1020
-            },
-            {
-              "referenceOnly": 58,
-              "proceduralOnly": 0,
-              "overlap": 986
-            },
-            {
-              "referenceOnly": 60,
-              "proceduralOnly": 0,
-              "overlap": 1020
-            },
-            {
-              "referenceOnly": 17,
-              "proceduralOnly": 196,
-              "overlap": 824
-            },
-            {
-              "referenceOnly": 22,
-              "proceduralOnly": 51,
-              "overlap": 952
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 1080
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 50,
-              "overlap": 216
-            }
-          ],
-          [
-            {
-              "referenceOnly": 36,
-              "proceduralOnly": 185,
+              "referenceOnly": 73,
+              "proceduralOnly": 70,
               "overlap": 352
             },
             {
-              "referenceOnly": 0,
+              "referenceOnly": 69,
               "proceduralOnly": 0,
-              "overlap": 1050
+              "overlap": 92
+            },
+            {
+              "referenceOnly": 69,
+              "proceduralOnly": 0,
+              "overlap": 92
+            },
+            {
+              "referenceOnly": 69,
+              "proceduralOnly": 0,
+              "overlap": 92
+            },
+            {
+              "referenceOnly": 69,
+              "proceduralOnly": 0,
+              "overlap": 92
+            },
+            {
+              "referenceOnly": 69,
+              "proceduralOnly": 0,
+              "overlap": 92
+            },
+            {
+              "referenceOnly": 69,
+              "proceduralOnly": 0,
+              "overlap": 92
+            },
+            {
+              "referenceOnly": 133,
+              "proceduralOnly": 7,
+              "overlap": 350
             },
             {
               "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 1050
+              "proceduralOnly": 1,
+              "overlap": 827
             },
             {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 1015
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 1050
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 1050
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 1015
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 1050
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 1050
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 1015
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 1050
-            },
-            {
-              "referenceOnly": 36,
-              "proceduralOnly": 185,
-              "overlap": 387
+              "referenceOnly": 11,
+              "proceduralOnly": 113,
+              "overlap": 213
             }
           ],
           [
             {
-              "referenceOnly": 102,
-              "proceduralOnly": 40,
-              "overlap": 814
+              "referenceOnly": 76,
+              "proceduralOnly": 78,
+              "overlap": 561
             },
             {
               "referenceOnly": 0,
               "proceduralOnly": 0,
-              "overlap": 1080
+              "overlap": 851
+            },
+            {
+              "referenceOnly": 206,
+              "proceduralOnly": 0,
+              "overlap": 633
             },
             {
               "referenceOnly": 0,
               "proceduralOnly": 0,
-              "overlap": 1080
+              "overlap": 851
             },
             {
               "referenceOnly": 0,
               "proceduralOnly": 0,
-              "overlap": 1044
+              "overlap": 851
             },
             {
               "referenceOnly": 0,
               "proceduralOnly": 0,
-              "overlap": 1080
+              "overlap": 851
             },
             {
               "referenceOnly": 0,
               "proceduralOnly": 0,
-              "overlap": 1080
+              "overlap": 851
             },
             {
               "referenceOnly": 0,
               "proceduralOnly": 0,
-              "overlap": 1044
+              "overlap": 851
             },
             {
               "referenceOnly": 0,
               "proceduralOnly": 0,
-              "overlap": 1080
+              "overlap": 851
+            },
+            {
+              "referenceOnly": 240,
+              "proceduralOnly": 0,
+              "overlap": 599
             },
             {
               "referenceOnly": 0,
               "proceduralOnly": 0,
-              "overlap": 1080
+              "overlap": 851
             },
             {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 1044
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 1080
-            },
-            {
-              "referenceOnly": 90,
-              "proceduralOnly": 40,
-              "overlap": 862
+              "referenceOnly": 60,
+              "proceduralOnly": 214,
+              "overlap": 499
             }
           ],
           [
             {
-              "referenceOnly": 47,
-              "proceduralOnly": 6,
+              "referenceOnly": 57,
+              "proceduralOnly": 47,
+              "overlap": 507
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
               "overlap": 828
             },
             {
               "referenceOnly": 0,
               "proceduralOnly": 0,
-              "overlap": 1080
+              "overlap": 828
             },
             {
               "referenceOnly": 0,
               "proceduralOnly": 0,
-              "overlap": 1080
+              "overlap": 828
             },
             {
               "referenceOnly": 0,
               "proceduralOnly": 0,
-              "overlap": 1044
+              "overlap": 828
             },
             {
               "referenceOnly": 0,
               "proceduralOnly": 0,
-              "overlap": 1080
+              "overlap": 828
             },
             {
               "referenceOnly": 0,
               "proceduralOnly": 0,
-              "overlap": 1080
+              "overlap": 828
             },
             {
               "referenceOnly": 0,
               "proceduralOnly": 0,
-              "overlap": 1044
+              "overlap": 828
             },
             {
               "referenceOnly": 0,
               "proceduralOnly": 0,
-              "overlap": 1080
+              "overlap": 828
             },
             {
               "referenceOnly": 0,
               "proceduralOnly": 0,
-              "overlap": 1080
+              "overlap": 828
             },
             {
               "referenceOnly": 0,
               "proceduralOnly": 0,
-              "overlap": 1044
+              "overlap": 828
             },
             {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 1080
-            },
-            {
-              "referenceOnly": 51,
-              "proceduralOnly": 1,
-              "overlap": 860
+              "referenceOnly": 33,
+              "proceduralOnly": 173,
+              "overlap": 456
             }
           ],
           [
             {
-              "referenceOnly": 0,
-              "proceduralOnly": 76,
-              "overlap": 107
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 163,
-              "overlap": 645
+              "referenceOnly": 2,
+              "proceduralOnly": 112,
+              "overlap": 498
             },
             {
               "referenceOnly": 0,
               "proceduralOnly": 0,
-              "overlap": 1050
+              "overlap": 851
             },
             {
               "referenceOnly": 0,
               "proceduralOnly": 0,
-              "overlap": 1015
+              "overlap": 851
             },
             {
               "referenceOnly": 0,
               "proceduralOnly": 0,
-              "overlap": 1050
+              "overlap": 851
             },
             {
               "referenceOnly": 0,
               "proceduralOnly": 0,
-              "overlap": 1050
+              "overlap": 851
             },
             {
               "referenceOnly": 0,
               "proceduralOnly": 0,
-              "overlap": 1015
+              "overlap": 851
             },
             {
               "referenceOnly": 0,
               "proceduralOnly": 0,
-              "overlap": 1050
+              "overlap": 851
             },
             {
               "referenceOnly": 0,
               "proceduralOnly": 0,
-              "overlap": 1050
+              "overlap": 851
             },
             {
               "referenceOnly": 0,
               "proceduralOnly": 0,
-              "overlap": 1015
-            },
-            {
-              "referenceOnly": 3,
-              "proceduralOnly": 157,
-              "overlap": 816
-            },
-            {
-              "referenceOnly": 3,
-              "proceduralOnly": 47,
-              "overlap": 112
-            }
-          ],
-          [
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 0
-            },
-            {
-              "referenceOnly": 4,
-              "proceduralOnly": 95,
-              "overlap": 217
-            },
-            {
-              "referenceOnly": 37,
-              "proceduralOnly": 17,
-              "overlap": 983
+              "overlap": 851
             },
             {
               "referenceOnly": 0,
               "proceduralOnly": 0,
-              "overlap": 1044
+              "overlap": 851
             },
             {
               "referenceOnly": 0,
               "proceduralOnly": 0,
-              "overlap": 1080
+              "overlap": 851
             },
             {
               "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 1080
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 1044
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 1080
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 1080
-            },
-            {
-              "referenceOnly": 56,
-              "proceduralOnly": 0,
-              "overlap": 987
-            },
-            {
-              "referenceOnly": 8,
-              "proceduralOnly": 127,
-              "overlap": 486
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 0
-            }
-          ],
-          [
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 0
-            },
-            {
-              "referenceOnly": 0,
-              "proceduralOnly": 0,
-              "overlap": 0
-            },
-            {
-              "referenceOnly": 24,
-              "proceduralOnly": 28,
-              "overlap": 22
-            },
-            {
-              "referenceOnly": 22,
               "proceduralOnly": 142,
-              "overlap": 311
+              "overlap": 426
+            }
+          ],
+          [
+            {
+              "referenceOnly": 172,
+              "proceduralOnly": 9,
+              "overlap": 72
             },
             {
               "referenceOnly": 0,
-              "proceduralOnly": 295,
-              "overlap": 258
+              "proceduralOnly": 14,
+              "overlap": 837
             },
             {
               "referenceOnly": 0,
-              "proceduralOnly": 209,
-              "overlap": 263
+              "proceduralOnly": 0,
+              "overlap": 851
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 851
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 851
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 851
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 851
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 851
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 851
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 851
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 17,
+              "overlap": 834
+            },
+            {
+              "referenceOnly": 85,
+              "proceduralOnly": 41,
+              "overlap": 111
+            }
+          ],
+          [
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 61,
+              "proceduralOnly": 293,
+              "overlap": 111
             },
             {
               "referenceOnly": 47,
-              "proceduralOnly": 5,
-              "overlap": 757
+              "proceduralOnly": 197,
+              "overlap": 284
             },
             {
-              "referenceOnly": 63,
-              "proceduralOnly": 15,
-              "overlap": 708
-            },
-            {
-              "referenceOnly": 64,
+              "referenceOnly": 145,
               "proceduralOnly": 0,
-              "overlap": 494
+              "overlap": 499
             },
             {
-              "referenceOnly": 4,
-              "proceduralOnly": 62,
-              "overlap": 76
+              "referenceOnly": 10,
+              "proceduralOnly": 181,
+              "overlap": 440
+            },
+            {
+              "referenceOnly": 53,
+              "proceduralOnly": 150,
+              "overlap": 432
+            },
+            {
+              "referenceOnly": 104,
+              "proceduralOnly": 18,
+              "overlap": 593
+            },
+            {
+              "referenceOnly": 8,
+              "proceduralOnly": 85,
+              "overlap": 553
+            },
+            {
+              "referenceOnly": 50,
+              "proceduralOnly": 0,
+              "overlap": 445
+            },
+            {
+              "referenceOnly": 348,
+              "proceduralOnly": 0,
+              "overlap": 415
+            },
+            {
+              "referenceOnly": 16,
+              "proceduralOnly": 203,
+              "overlap": 209
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 6,
+              "overlap": 0
+            }
+          ],
+          [
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 21,
+              "proceduralOnly": 0,
+              "overlap": 0
             },
             {
               "referenceOnly": 0,
               "proceduralOnly": 0,
               "overlap": 0
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 125,
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 329,
+              "proceduralOnly": 0,
+              "overlap": 54
+            },
+            {
+              "referenceOnly": 124,
+              "proceduralOnly": 40,
+              "overlap": 54
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 21,
+              "proceduralOnly": 37,
+              "overlap": 53
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 0
+            }
+          ],
+          [
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 0,
+              "proceduralOnly": 0,
+              "overlap": 0
+            },
+            {
+              "referenceOnly": 37,
+              "proceduralOnly": 79,
+              "overlap": 11
             },
             {
               "referenceOnly": 0,
@@ -2771,3188 +2771,327 @@
       },
       "componentAngles": {
         "hull": {
-          "front": 96.04,
-          "right": 96.5,
-          "left": 96.44,
-          "rear": 96,
-          "top": 98.62
+          "front": 91.09,
+          "right": 92.62,
+          "left": 93.05,
+          "rear": 91.91,
+          "top": 94
         },
-        "turret": {
-          "front": 90.59,
-          "right": 95.12,
-          "left": 94.42,
-          "rear": 93.47,
-          "top": 91.33
-        },
+        "turret": null,
         "exposedUpper": {
-          "front": 86.97,
-          "right": 92.27,
-          "left": 92.45,
-          "rear": 91.76,
-          "top": 93.49
+          "front": 66.42,
+          "right": 76.28,
+          "left": 78.37,
+          "rear": 81.17,
+          "top": 73.53
         }
       },
       "diagnostics": {
         "hull": {
           "front": {
-            "score": 96.03627330251658,
-            "iou": 0.9456989247311828,
-            "areaSimilarity": 0.9896797097123827,
-            "bboxSimilarity": 1,
-            "centroidSimilarity": 0.9984305851296107,
-            "referenceArea": 63661,
-            "proceduralArea": 63004,
+            "score": 91.0873834264978,
+            "iou": 0.8817086799950329,
+            "areaSimilarity": 0.9765476221532361,
+            "bboxSimilarity": 0.9728942836053474,
+            "centroidSimilarity": 0.9981237316986965,
+            "referenceArea": 37434,
+            "proceduralArea": 38333,
             "referenceBounds": {
-              "width": 356,
-              "height": 222,
-              "cx": 191.4806239298786,
-              "cy": 169.89472361414366
+              "width": 273,
+              "height": 169,
+              "cx": 191.44798845968904,
+              "cy": 137.3282310199284
             },
             "proceduralBounds": {
-              "width": 356,
-              "height": 222,
-              "cx": 191.7264935559647,
-              "cy": 169.67578249000064
+              "width": 274,
+              "height": 178,
+              "cx": 191.69008426160227,
+              "cy": 137.50744789085124
             }
           },
           "right": {
-            "score": 96.50174880887664,
-            "iou": 0.9578034682080925,
-            "areaSimilarity": 0.9714784633294529,
-            "bboxSimilarity": 0.9904081133919843,
-            "centroidSimilarity": 0.9958495900897081,
-            "referenceArea": 13352,
-            "proceduralArea": 13744,
+            "score": 92.62007561778165,
+            "iou": 0.8980223801815751,
+            "areaSimilarity": 0.9981477365340446,
+            "bboxSimilarity": 0.9796706705013252,
+            "centroidSimilarity": 0.9979172504094963,
+            "referenceArea": 13497,
+            "proceduralArea": 13472,
             "referenceBounds": {
-              "width": 247,
-              "height": 66,
-              "cx": 247.20850808867584,
-              "cy": 173.73412222887956
+              "width": 254,
+              "height": 67,
+              "cx": 242.3078461880418,
+              "cy": 158.672742090835
             },
             "proceduralBounds": {
-              "width": 248,
-              "height": 65,
-              "cx": 247.41727299185098,
-              "cy": 173.24636204889407
+              "width": 257,
+              "height": 69,
+              "cx": 242.18475356294536,
+              "cy": 158.42844418052258
             }
           },
           "left": {
-            "score": 96.44415647839071,
-            "iou": 0.9574882713821725,
-            "areaSimilarity": 0.9688566243194192,
-            "bboxSimilarity": 0.9904081133919843,
-            "centroidSimilarity": 0.9966093965855023,
-            "referenceArea": 13346,
-            "proceduralArea": 13775,
+            "score": 93.0461417186967,
+            "iou": 0.9054330209287577,
+            "areaSimilarity": 0.9923371647509579,
+            "bboxSimilarity": 0.9796706705013252,
+            "centroidSimilarity": 0.9968132154812082,
+            "referenceArea": 13468,
+            "proceduralArea": 13572,
             "referenceBounds": {
-              "width": 247,
-              "height": 66,
-              "cx": 135.68155252510115,
-              "cy": 173.72471152405214
+              "width": 254,
+              "height": 67,
+              "cx": 140.37154737154736,
+              "cy": 158.6014256014256
             },
             "proceduralBounds": {
-              "width": 248,
-              "height": 65,
-              "cx": 135.58577132486388,
-              "cy": 173.30199637023594
+              "width": 257,
+              "height": 69,
+              "cx": 140.78728264073092,
+              "cy": 158.65001473622164
             }
           },
           "rear": {
-            "score": 95.99677481712337,
-            "iou": 0.9492837785520712,
-            "areaSimilarity": 0.9735248004561003,
-            "bboxSimilarity": 0.9948186528497409,
-            "centroidSimilarity": 0.9991703566278914,
-            "referenceArea": 54642,
-            "proceduralArea": 56128,
+            "score": 91.91352253758949,
+            "iou": 0.8983041313946621,
+            "areaSimilarity": 0.9470951364449316,
+            "bboxSimilarity": 0.9841772151898734,
+            "centroidSimilarity": 0.9968068282780883,
+            "referenceArea": 34666,
+            "proceduralArea": 32832,
             "referenceBounds": {
-              "width": 356,
-              "height": 191,
-              "cx": 191.50710076497933,
-              "cy": 134.6197613557337
+              "width": 274,
+              "height": 158,
+              "cx": 192.34604511625224,
+              "cy": 110.99151906767437
             },
             "proceduralBounds": {
-              "width": 356,
-              "height": 193,
-              "cx": 191.396094640821,
-              "cy": 134.74531428164195
+              "width": 274,
+              "height": 153,
+              "cx": 192.083089668616,
+              "cy": 110.56039839181287
             }
           },
           "top": {
-            "score": 98.62040688824044,
-            "iou": 0.9810630059838085,
-            "areaSimilarity": 0.9980829309855155,
-            "bboxSimilarity": 0.9979757085020243,
-            "centroidSimilarity": 0.9989990839141744,
-            "referenceArea": 28168,
-            "proceduralArea": 28114,
+            "score": 94.00231625311943,
+            "iou": 0.9289343495119669,
+            "areaSimilarity": 0.9378085227845125,
+            "bboxSimilarity": 0.9921875,
+            "centroidSimilarity": 0.9975817891028128,
+            "referenceArea": 27927,
+            "proceduralArea": 29779,
             "referenceBounds": {
-              "width": 124,
-              "height": 246,
-              "cx": 191.4875035501278,
-              "cy": 244.06145271229764
+              "width": 120,
+              "height": 252,
+              "cx": 191.49160310810328,
+              "cy": 240.84183764815413
             },
             "proceduralBounds": {
-              "width": 124,
-              "height": 247,
-              "cx": 191.5462403073202,
-              "cy": 243.93672191790566
+              "width": 120,
+              "height": 256,
+              "cx": 191.47402531985628,
+              "cy": 240.50481883206285
             }
           }
         },
-        "turret": {
-          "front": {
-            "score": 90.59034466361881,
-            "iou": 0.878773695296045,
-            "areaSimilarity": 0.9453060094156743,
-            "bboxSimilarity": 0.991492503407542,
-            "centroidSimilarity": 0.9963341635170282,
-            "referenceArea": 27308,
-            "proceduralArea": 28888,
-            "referenceBounds": {
-              "width": 281,
-              "height": 154,
-              "cx": 187.57433719056687,
-              "cy": 262.6190127435184
-            },
-            "proceduralBounds": {
-              "width": 284,
-              "height": 155,
-              "cx": 187.0929451675436,
-              "cy": 262.2825394627527
-            }
-          },
-          "right": {
-            "score": 95.12396736752896,
-            "iou": 0.9352451433857539,
-            "areaSimilarity": 0.9788743496768091,
-            "bboxSimilarity": 0.9984472049689441,
-            "centroidSimilarity": 0.9978440071369223,
-            "referenceArea": 6209,
-            "proceduralArea": 6343,
-            "referenceBounds": {
-              "width": 321,
-              "height": 42,
-              "cx": 212.5152198421646,
-              "cy": 212.8687389273635
-            },
-            "proceduralBounds": {
-              "width": 322,
-              "height": 42,
-              "cx": 212.55967207945767,
-              "cy": 213.21488254769037
-            }
-          },
-          "left": {
-            "score": 94.41584512068515,
-            "iou": 0.9277201671567868,
-            "areaSimilarity": 0.9660615627466457,
-            "bboxSimilarity": 1,
-            "centroidSimilarity": 0.996901995702078,
-            "referenceArea": 6120,
-            "proceduralArea": 6335,
-            "referenceBounds": {
-              "width": 322,
-              "height": 41,
-              "cx": 170.67271241830065,
-              "cy": 212.64624183006535
-            },
-            "proceduralBounds": {
-              "width": 322,
-              "height": 41,
-              "cx": 170.81120757695342,
-              "cy": 213.12959747434886
-            }
-          },
-          "rear": {
-            "score": 93.4667172161086,
-            "iou": 0.9146548930654569,
-            "areaSimilarity": 0.9759635481983112,
-            "bboxSimilarity": 0.9816748315982854,
-            "centroidSimilarity": 0.9969346325138226,
-            "referenceArea": 23347,
-            "proceduralArea": 23922,
-            "referenceBounds": {
-              "width": 281,
-              "height": 115,
-              "cx": 196.2873602604189,
-              "cy": 242.842549363944
-            },
-            "proceduralBounds": {
-              "width": 284,
-              "height": 112,
-              "cx": 196.45535490343616,
-              "cy": 243.2765237020316
-            }
-          },
-          "top": {
-            "score": 91.33045021802016,
-            "iou": 0.8806391508102309,
-            "areaSimilarity": 0.9842726081258192,
-            "bboxSimilarity": 0.9933403267849196,
-            "centroidSimilarity": 0.9976434543135043,
-            "referenceArea": 16522,
-            "proceduralArea": 16786,
-            "referenceBounds": {
-              "width": 97,
-              "height": 320,
-              "cx": 190.85939958842755,
-              "cy": 230.22890691199612
-            },
-            "proceduralBounds": {
-              "width": 98,
-              "height": 321,
-              "cx": 190.46693673299177,
-              "cy": 230.26355296080067
-            }
-          }
-        },
+        "turret": null,
         "gun": {
-          "score": 94.74600247009606,
-          "iou": 0.9358108108108109,
-          "areaSimilarity": 0.9826989619377162,
-          "bboxSimilarity": 0.9536163522012578,
-          "centroidSimilarity": 0.9925195524521983,
-          "referenceArea": 852,
-          "proceduralArea": 867,
+          "score": 90.09202386658708,
+          "iou": 0.8601108033240997,
+          "areaSimilarity": 0.9985119047619048,
+          "bboxSimilarity": 0.9948979591836735,
+          "centroidSimilarity": 0.991521894126958,
+          "referenceArea": 672,
+          "proceduralArea": 671,
           "referenceBounds": {
-            "width": 105,
-            "height": 11,
-            "cx": 68.19953051643192,
-            "cy": 208.41784037558685
+            "width": 98,
+            "height": 10,
+            "cx": 66.2202380952381,
+            "cy": 194.76934523809524
           },
           "proceduralBounds": {
-            "width": 106,
-            "height": 12,
-            "cx": 67.80507497116494,
-            "cy": 208.43598615916954
+            "width": 97,
+            "height": 10,
+            "cx": 65.86587183308495,
+            "cy": 194.548435171386
           }
         },
         "gunBounds": {
           "reference": {
-            "minX": 15,
-            "minY": 204,
-            "maxX": 119,
-            "maxY": 214,
-            "area": 852,
-            "cx": 68.19953051643192,
-            "cy": 208.41784037558685,
-            "width": 105,
-            "height": 11
+            "minX": 14,
+            "minY": 190,
+            "maxX": 111,
+            "maxY": 199,
+            "area": 672,
+            "cx": 66.2202380952381,
+            "cy": 194.76934523809524,
+            "width": 98,
+            "height": 10
           },
           "procedural": {
             "minX": 14,
-            "minY": 204,
-            "maxX": 119,
-            "maxY": 215,
-            "area": 867,
-            "cx": 66.80507497116494,
-            "cy": 208.43598615916954,
-            "width": 106,
-            "height": 12
+            "minY": 190,
+            "maxX": 110,
+            "maxY": 199,
+            "area": 671,
+            "cx": 65.86587183308495,
+            "cy": 194.548435171386,
+            "width": 97,
+            "height": 10
           }
         },
         "tracks": {
-          "score": 94.48536918206368,
-          "iou": 0.9275117370892019,
-          "areaSimilarity": 0.9841484631741736,
-          "bboxSimilarity": 0.9807692307692307,
-          "centroidSimilarity": 0.9979256661029294,
-          "referenceArea": 5091,
-          "proceduralArea": 5173,
+          "score": 86.47349754184759,
+          "iou": 0.8310951390202383,
+          "areaSimilarity": 0.9075862068965517,
+          "bboxSimilarity": 0.9687696170747018,
+          "centroidSimilarity": 0.9990697072471215,
+          "referenceArea": 4606,
+          "proceduralArea": 5075,
           "referenceBounds": {
-            "width": 235,
+            "width": 230,
             "height": 26,
-            "cx": 239.3908858770379,
-            "cy": 155.4407778432528
+            "cx": 236.85974815458098,
+            "cy": 139.00412505427704
           },
           "proceduralBounds": {
-            "width": 235,
-            "height": 25,
-            "cx": 239.1971776531993,
-            "cy": 155.5911463367485
+            "width": 236,
+            "height": 27,
+            "cx": 236.96729064039408,
+            "cy": 139.00926108374384
           }
         },
         "trackContours": [
           {
-            "topDelta": 0.35,
-            "bottomDelta": 0.94,
-            "columns": 17
+            "topDelta": 0.44,
+            "bottomDelta": 1,
+            "columns": 18
           },
           {
-            "topDelta": -0.5,
-            "bottomDelta": 1.45,
+            "topDelta": -3.35,
+            "bottomDelta": -2.9,
             "columns": 20
           },
           {
-            "topDelta": -2.95,
-            "bottomDelta": 1.3,
+            "topDelta": -4.7,
+            "bottomDelta": 0.2,
             "columns": 20
           },
           {
-            "topDelta": -2.05,
-            "bottomDelta": 1.3,
-            "columns": 20
-          },
-          {
-            "topDelta": -1.21,
-            "bottomDelta": 0,
+            "topDelta": -7.89,
+            "bottomDelta": -4.89,
             "columns": 19
           },
           {
-            "topDelta": -0.75,
-            "bottomDelta": 0,
+            "topDelta": -7.1,
+            "bottomDelta": -3,
             "columns": 20
           },
           {
-            "topDelta": -3.95,
-            "bottomDelta": 0.65,
+            "topDelta": -2.85,
+            "bottomDelta": -1.3,
             "columns": 20
           },
           {
-            "topDelta": -4.3,
-            "bottomDelta": 0.7,
-            "columns": 20
-          },
-          {
-            "topDelta": -0.84,
-            "bottomDelta": 0,
+            "topDelta": -9.47,
+            "bottomDelta": -6.42,
             "columns": 19
           },
           {
-            "topDelta": -3.5,
-            "bottomDelta": 1.35,
+            "topDelta": -1.25,
+            "bottomDelta": 1,
             "columns": 20
           },
           {
-            "topDelta": -0.6,
-            "bottomDelta": 0,
+            "topDelta": -9.8,
+            "bottomDelta": -6.2,
             "columns": 20
           },
           {
-            "topDelta": 0.87,
-            "bottomDelta": 0,
+            "topDelta": -1.53,
+            "bottomDelta": 1,
+            "columns": 19
+          },
+          {
+            "topDelta": -2.9,
+            "bottomDelta": -1.8,
+            "columns": 20
+          },
+          {
+            "topDelta": -0.87,
+            "bottomDelta": 1.13,
             "columns": 15
           }
         ],
-        "turretContours": {
-          "right": [
-            {
-              "topDelta": 0,
-              "bottomDelta": 0.42,
-              "columns": 24
-            },
-            {
-              "topDelta": 0.04,
-              "bottomDelta": 0,
-              "columns": 27
-            },
-            {
-              "topDelta": -0.11,
-              "bottomDelta": 0,
-              "columns": 27
-            },
-            {
-              "topDelta": 0,
-              "bottomDelta": -0.04,
-              "columns": 27
-            },
-            {
-              "topDelta": 0,
-              "bottomDelta": -0.04,
-              "columns": 27
-            },
-            {
-              "topDelta": 0.3,
-              "bottomDelta": 1.11,
-              "columns": 27
-            },
-            {
-              "topDelta": 0,
-              "bottomDelta": -0.15,
-              "columns": 27
-            },
-            {
-              "topDelta": 0.19,
-              "bottomDelta": -0.11,
-              "columns": 27
-            },
-            {
-              "topDelta": 0.52,
-              "bottomDelta": 0.96,
-              "columns": 27
-            },
-            {
-              "topDelta": -0.63,
-              "bottomDelta": 1.74,
-              "columns": 27
-            },
-            {
-              "topDelta": 0.33,
-              "bottomDelta": 3.3,
-              "columns": 27
-            },
-            {
-              "topDelta": 0.58,
-              "bottomDelta": 1.04,
-              "columns": 26
-            }
-          ],
-          "left": [
-            {
-              "topDelta": 0.08,
-              "bottomDelta": 0.84,
-              "columns": 25
-            },
-            {
-              "topDelta": 0.26,
-              "bottomDelta": 3.37,
-              "columns": 27
-            },
-            {
-              "topDelta": -0.52,
-              "bottomDelta": 1.74,
-              "columns": 27
-            },
-            {
-              "topDelta": 0.59,
-              "bottomDelta": 1.44,
-              "columns": 27
-            },
-            {
-              "topDelta": 0.22,
-              "bottomDelta": 1.3,
-              "columns": 27
-            },
-            {
-              "topDelta": -0.19,
-              "bottomDelta": 1.44,
-              "columns": 27
-            },
-            {
-              "topDelta": 0.07,
-              "bottomDelta": 0.96,
-              "columns": 27
-            },
-            {
-              "topDelta": 0,
-              "bottomDelta": 0,
-              "columns": 27
-            },
-            {
-              "topDelta": 0,
-              "bottomDelta": -0.07,
-              "columns": 27
-            },
-            {
-              "topDelta": -0.11,
-              "bottomDelta": 0,
-              "columns": 27
-            },
-            {
-              "topDelta": 0.07,
-              "bottomDelta": 0,
-              "columns": 27
-            },
-            {
-              "topDelta": -0.08,
-              "bottomDelta": 0.4,
-              "columns": 25
-            }
-          ]
-        },
-        "turretBands": {
-          "front": [
-            [
-              45,
-              null,
-              [
-                223,
-                253
-              ]
-            ],
-            [
-              51,
-              [
-                240,
-                253
-              ],
-              [
-                222,
-                254
-              ]
-            ],
-            [
-              57,
-              [
-                235,
-                270
-              ],
-              [
-                219,
-                285
-              ]
-            ],
-            [
-              63,
-              [
-                227,
-                274
-              ],
-              [
-                220,
-                288
-              ]
-            ],
-            [
-              69,
-              [
-                218,
-                302
-              ],
-              [
-                225,
-                297
-              ]
-            ],
-            [
-              75,
-              [
-                213,
-                298
-              ],
-              [
-                225,
-                299
-              ]
-            ],
-            [
-              81,
-              [
-                213,
-                300
-              ],
-              [
-                224,
-                306
-              ]
-            ],
-            [
-              87,
-              [
-                213,
-                304
-              ],
-              [
-                224,
-                311
-              ]
-            ],
-            [
-              93,
-              [
-                213,
-                309
-              ],
-              [
-                209,
-                311
-              ]
-            ],
-            [
-              99,
-              [
-                212,
-                310
-              ],
-              [
-                209,
-                315
-              ]
-            ],
-            [
-              105,
-              [
-                215,
-                311
-              ],
-              [
-                209,
-                322
-              ]
-            ],
-            [
-              111,
-              [
-                215,
-                314
-              ],
-              [
-                209,
-                324
-              ]
-            ],
-            [
-              117,
-              [
-                214,
-                321
-              ],
-              [
-                209,
-                321
-              ]
-            ],
-            [
-              123,
-              [
-                214,
-                314
-              ],
-              [
-                209,
-                319
-              ]
-            ],
-            [
-              129,
-              [
-                214,
-                313
-              ],
-              [
-                209,
-                322
-              ]
-            ],
-            [
-              135,
-              [
-                213,
-                313
-              ],
-              [
-                209,
-                322
-              ]
-            ],
-            [
-              141,
-              [
-                213,
-                313
-              ],
-              [
-                209,
-                322
-              ]
-            ],
-            [
-              147,
-              [
-                210,
-                328
-              ],
-              [
-                209,
-                323
-              ]
-            ],
-            [
-              153,
-              [
-                209,
-                336
-              ],
-              [
-                209,
-                341
-              ]
-            ],
-            [
-              159,
-              [
-                209,
-                343
-              ],
-              [
-                209,
-                341
-              ]
-            ],
-            [
-              165,
-              [
-                209,
-                343
-              ],
-              [
-                209,
-                341
-              ]
-            ],
-            [
-              171,
-              [
-                208,
-                343
-              ],
-              [
-                190,
-                341
-              ]
-            ],
-            [
-              177,
-              [
-                210,
-                338
-              ],
-              [
-                190,
-                323
-              ]
-            ],
-            [
-              183,
-              [
-                193,
-                310
-              ],
-              [
-                189,
-                321
-              ]
-            ],
-            [
-              190,
-              [
-                190,
-                315
-              ],
-              [
-                187,
-                313
-              ]
-            ],
-            [
-              196,
-              [
-                191,
-                310
-              ],
-              [
-                189,
-                313
-              ]
-            ],
-            [
-              202,
-              [
-                195,
-                310
-              ],
-              [
-                192,
-                313
-              ]
-            ],
-            [
-              208,
-              [
-                210,
-                310
-              ],
-              [
-                192,
-                313
-              ]
-            ],
-            [
-              214,
-              [
-                210,
-                310
-              ],
-              [
-                209,
-                314
-              ]
-            ],
-            [
-              220,
-              [
-                208,
-                310
-              ],
-              [
-                209,
-                315
-              ]
-            ],
-            [
-              226,
-              [
-                209,
-                310
-              ],
-              [
-                209,
-                316
-              ]
-            ],
-            [
-              232,
-              [
-                209,
-                310
-              ],
-              [
-                209,
-                316
-              ]
-            ],
-            [
-              238,
-              [
-                209,
-                310
-              ],
-              [
-                209,
-                317
-              ]
-            ],
-            [
-              244,
-              [
-                210,
-                310
-              ],
-              [
-                209,
-                318
-              ]
-            ],
-            [
-              250,
-              [
-                210,
-                310
-              ],
-              [
-                209,
-                319
-              ]
-            ],
-            [
-              256,
-              [
-                210,
-                310
-              ],
-              [
-                209,
-                319
-              ]
-            ],
-            [
-              262,
-              [
-                211,
-                310
-              ],
-              [
-                209,
-                320
-              ]
-            ],
-            [
-              268,
-              [
-                211,
-                309
-              ],
-              [
-                209,
-                321
-              ]
-            ],
-            [
-              274,
-              [
-                212,
-                317
-              ],
-              [
-                209,
-                324
-              ]
-            ],
-            [
-              280,
-              [
-                212,
-                318
-              ],
-              [
-                209,
-                311
-              ]
-            ],
-            [
-              286,
-              [
-                212,
-                309
-              ],
-              [
-                209,
-                311
-              ]
-            ],
-            [
-              292,
-              [
-                213,
-                308
-              ],
-              [
-                224,
-                311
-              ]
-            ],
-            [
-              298,
-              [
-                213,
-                305
-              ],
-              [
-                224,
-                307
-              ]
-            ],
-            [
-              304,
-              [
-                217,
-                287
-              ],
-              [
-                225,
-                300
-              ]
-            ],
-            [
-              310,
-              [
-                225,
-                298
-              ],
-              [
-                225,
-                300
-              ]
-            ],
-            [
-              316,
-              [
-                234,
-                273
-              ],
-              [
-                216,
-                283
-              ]
-            ],
-            [
-              322,
-              [
-                257,
-                273
-              ],
-              [
-                215,
-                267
-              ]
-            ],
-            [
-              328,
-              null,
-              [
-                217,
-                233
-              ]
-            ]
-          ],
-          "right": [
-            [
-              13,
-              null,
-              [
-                205,
-                212
-              ]
-            ],
-            [
-              20,
-              [
-                205,
-                211
-              ],
-              [
-                205,
-                212
-              ]
-            ],
-            [
-              27,
-              [
-                204,
-                212
-              ],
-              [
-                205,
-                212
-              ]
-            ],
-            [
-              34,
-              [
-                205,
-                212
-              ],
-              [
-                205,
-                212
-              ]
-            ],
-            [
-              40,
-              [
-                205,
-                212
-              ],
-              [
-                205,
-                212
-              ]
-            ],
-            [
-              47,
-              [
-                205,
-                212
-              ],
-              [
-                205,
-                212
-              ]
-            ],
-            [
-              54,
-              [
-                205,
-                212
-              ],
-              [
-                205,
-                212
-              ]
-            ],
-            [
-              61,
-              [
-                204,
-                212
-              ],
-              [
-                205,
-                212
-              ]
-            ],
-            [
-              68,
-              [
-                205,
-                212
-              ],
-              [
-                205,
-                212
-              ]
-            ],
-            [
-              75,
-              [
-                205,
-                212
-              ],
-              [
-                205,
-                212
-              ]
-            ],
-            [
-              82,
-              [
-                205,
-                212
-              ],
-              [
-                205,
-                212
-              ]
-            ],
-            [
-              88,
-              [
-                205,
-                212
-              ],
-              [
-                205,
-                212
-              ]
-            ],
-            [
-              95,
-              [
-                205,
-                212
-              ],
-              [
-                205,
-                212
-              ]
-            ],
-            [
-              102,
-              [
-                205,
-                212
-              ],
-              [
-                205,
-                212
-              ]
-            ],
-            [
-              109,
-              [
-                205,
-                212
-              ],
-              [
-                204,
-                212
-              ]
-            ],
-            [
-              116,
-              [
-                204,
-                213
-              ],
-              [
-                205,
-                212
-              ]
-            ],
-            [
-              123,
-              [
-                204,
-                215
-              ],
-              [
-                204,
-                215
-              ]
-            ],
-            [
-              129,
-              [
-                204,
-                215
-              ],
-              [
-                204,
-                215
-              ]
-            ],
-            [
-              136,
-              [
-                204,
-                213
-              ],
-              [
-                204,
-                213
-              ]
-            ],
-            [
-              143,
-              [
-                204,
-                213
-              ],
-              [
-                204,
-                213
-              ]
-            ],
-            [
-              150,
-              [
-                204,
-                214
-              ],
-              [
-                204,
-                216
-              ]
-            ],
-            [
-              157,
-              [
-                202,
-                217
-              ],
-              [
-                202,
-                217
-              ]
-            ],
-            [
-              164,
-              [
-                199,
-                220
-              ],
-              [
-                200,
-                220
-              ]
-            ],
-            [
-              171,
-              [
-                199,
-                220
-              ],
-              [
-                198,
-                222
-              ]
-            ],
-            [
-              177,
-              [
-                198,
-                221
-              ],
-              [
-                198,
-                225
-              ]
-            ],
-            [
-              184,
-              [
-                198,
-                228
-              ],
-              [
-                198,
-                227
-              ]
-            ],
-            [
-              191,
-              [
-                198,
-                228
-              ],
-              [
-                198,
-                227
-              ]
-            ],
-            [
-              198,
-              [
-                198,
-                228
-              ],
-              [
-                198,
-                228
-              ]
-            ],
-            [
-              205,
-              [
-                198,
-                229
-              ],
-              [
-                198,
-                228
-              ]
-            ],
-            [
-              212,
-              [
-                198,
-                224
-              ],
-              [
-                198,
-                224
-              ]
-            ],
-            [
-              219,
-              [
-                198,
-                225
-              ],
-              [
-                198,
-                225
-              ]
-            ],
-            [
-              225,
-              [
-                198,
-                224
-              ],
-              [
-                199,
-                225
-              ]
-            ],
-            [
-              232,
-              [
-                198,
-                231
-              ],
-              [
-                199,
-                228
-              ]
-            ],
-            [
-              239,
-              [
-                198,
-                230
-              ],
-              [
-                199,
-                231
-              ]
-            ],
-            [
-              246,
-              [
-                199,
-                230
-              ],
-              [
-                199,
-                232
-              ]
-            ],
-            [
-              253,
-              [
-                200,
-                234
-              ],
-              [
-                199,
-                232
-              ]
-            ],
-            [
-              260,
-              [
-                201,
-                239
-              ],
-              [
-                199,
-                239
-              ]
-            ],
-            [
-              266,
-              [
-                202,
-                238
-              ],
-              [
-                202,
-                237
-              ]
-            ],
-            [
-              273,
-              [
-                202,
-                229
-              ],
-              [
-                202,
-                232
-              ]
-            ],
-            [
-              280,
-              [
-                202,
-                226
-              ],
-              [
-                202,
-                233
-              ]
-            ],
-            [
-              287,
-              [
-                202,
-                225
-              ],
-              [
-                203,
-                231
-              ]
-            ],
-            [
-              294,
-              [
-                203,
-                226
-              ],
-              [
-                203,
-                229
-              ]
-            ],
-            [
-              301,
-              [
-                203,
-                225
-              ],
-              [
-                203,
-                229
-              ]
-            ],
-            [
-              308,
-              [
-                203,
-                228
-              ],
-              [
-                203,
-                229
-              ]
-            ],
-            [
-              314,
-              [
-                203,
-                225
-              ],
-              [
-                204,
-                225
-              ]
-            ],
-            [
-              321,
-              [
-                203,
-                223
-              ],
-              [
-                204,
-                223
-              ]
-            ],
-            [
-              328,
-              [
-                203,
-                222
-              ],
-              [
-                204,
-                223
-              ]
-            ],
-            [
-              335,
-              [
-                218,
-                220
-              ],
-              null
-            ]
-          ],
-          "left": [
-            [
-              47,
-              [
-                219,
-                219
-              ],
-              null
-            ],
-            [
-              54,
-              [
-                203,
-                221
-              ],
-              [
-                204,
-                223
-              ]
-            ],
-            [
-              61,
-              [
-                203,
-                222
-              ],
-              [
-                204,
-                223
-              ]
-            ],
-            [
-              68,
-              [
-                203,
-                224
-              ],
-              [
-                204,
-                225
-              ]
-            ],
-            [
-              74,
-              [
-                203,
-                226
-              ],
-              [
-                203,
-                229
-              ]
-            ],
-            [
-              81,
-              [
-                203,
-                225
-              ],
-              [
-                203,
-                229
-              ]
-            ],
-            [
-              88,
-              [
-                203,
-                226
-              ],
-              [
-                203,
-                229
-              ]
-            ],
-            [
-              95,
-              [
-                202,
-                225
-              ],
-              [
-                203,
-                231
-              ]
-            ],
-            [
-              102,
-              [
-                202,
-                226
-              ],
-              [
-                202,
-                231
-              ]
-            ],
-            [
-              109,
-              [
-                202,
-                227
-              ],
-              [
-                202,
-                231
-              ]
-            ],
-            [
-              116,
-              [
-                202,
-                237
-              ],
-              [
-                202,
-                233
-              ]
-            ],
-            [
-              123,
-              [
-                201,
-                238
-              ],
-              [
-                199,
-                238
-              ]
-            ],
-            [
-              129,
-              [
-                199,
-                232
-              ],
-              [
-                199,
-                232
-              ]
-            ],
-            [
-              136,
-              [
-                199,
-                229
-              ],
-              [
-                199,
-                231
-              ]
-            ],
-            [
-              143,
-              [
-                198,
-                228
-              ],
-              [
-                199,
-                231
-              ]
-            ],
-            [
-              150,
-              [
-                198,
-                229
-              ],
-              [
-                199,
-                230
-              ]
-            ],
-            [
-              157,
-              [
-                198,
-                224
-              ],
-              [
-                199,
-                227
-              ]
-            ],
-            [
-              164,
-              [
-                198,
-                227
-              ],
-              [
-                198,
-                227
-              ]
-            ],
-            [
-              171,
-              [
-                198,
-                223
-              ],
-              [
-                198,
-                224
-              ]
-            ],
-            [
-              178,
-              [
-                198,
-                226
-              ],
-              [
-                198,
-                228
-              ]
-            ],
-            [
-              184,
-              [
-                198,
-                226
-              ],
-              [
-                198,
-                228
-              ]
-            ],
-            [
-              191,
-              [
-                198,
-                226
-              ],
-              [
-                198,
-                227
-              ]
-            ],
-            [
-              198,
-              [
-                198,
-                226
-              ],
-              [
-                198,
-                227
-              ]
-            ],
-            [
-              205,
-              [
-                199,
-                224
-              ],
-              [
-                198,
-                225
-              ]
-            ],
-            [
-              212,
-              [
-                199,
-                221
-              ],
-              [
-                198,
-                222
-              ]
-            ],
-            [
-              219,
-              [
-                199,
-                220
-              ],
-              [
-                200,
-                220
-              ]
-            ],
-            [
-              226,
-              [
-                202,
-                217
-              ],
-              [
-                202,
-                217
-              ]
-            ],
-            [
-              233,
-              [
-                204,
-                215
-              ],
-              [
-                204,
-                216
-              ]
-            ],
-            [
-              239,
-              [
-                204,
-                213
-              ],
-              [
-                204,
-                213
-              ]
-            ],
-            [
-              246,
-              [
-                204,
-                212
-              ],
-              [
-                204,
-                213
-              ]
-            ],
-            [
-              253,
-              [
-                204,
-                215
-              ],
-              [
-                204,
-                215
-              ]
-            ],
-            [
-              260,
-              [
-                204,
-                215
-              ],
-              [
-                204,
-                215
-              ]
-            ],
-            [
-              267,
-              [
-                204,
-                213
-              ],
-              [
-                205,
-                212
-              ]
-            ],
-            [
-              274,
-              [
-                205,
-                212
-              ],
-              [
-                204,
-                212
-              ]
-            ],
-            [
-              281,
-              [
-                205,
-                212
-              ],
-              [
-                205,
-                212
-              ]
-            ],
-            [
-              288,
-              [
-                205,
-                212
-              ],
-              [
-                205,
-                212
-              ]
-            ],
-            [
-              294,
-              [
-                205,
-                212
-              ],
-              [
-                205,
-                212
-              ]
-            ],
-            [
-              301,
-              [
-                205,
-                212
-              ],
-              [
-                205,
-                212
-              ]
-            ],
-            [
-              308,
-              [
-                205,
-                212
-              ],
-              [
-                205,
-                212
-              ]
-            ],
-            [
-              315,
-              [
-                205,
-                212
-              ],
-              [
-                205,
-                212
-              ]
-            ],
-            [
-              322,
-              [
-                204,
-                212
-              ],
-              [
-                205,
-                212
-              ]
-            ],
-            [
-              329,
-              [
-                205,
-                212
-              ],
-              [
-                205,
-                212
-              ]
-            ],
-            [
-              336,
-              [
-                205,
-                212
-              ],
-              [
-                205,
-                212
-              ]
-            ],
-            [
-              343,
-              [
-                205,
-                212
-              ],
-              [
-                204,
-                212
-              ]
-            ],
-            [
-              349,
-              [
-                205,
-                212
-              ],
-              [
-                205,
-                212
-              ]
-            ],
-            [
-              356,
-              [
-                204,
-                212
-              ],
-              [
-                205,
-                212
-              ]
-            ],
-            [
-              363,
-              [
-                205,
-                211
-              ],
-              [
-                205,
-                212
-              ]
-            ],
-            [
-              370,
-              null,
-              [
-                205,
-                212
-              ]
-            ]
-          ],
-          "rear": [
-            [
-              55,
-              null,
-              [
-                214,
-                230
-              ]
-            ],
-            [
-              61,
-              [
-                217,
-                247
-              ],
-              [
-                212,
-                248
-              ]
-            ],
-            [
-              67,
-              [
-                207,
-                258
-              ],
-              [
-                205,
-                258
-              ]
-            ],
-            [
-              73,
-              [
-                206,
-                262
-              ],
-              [
-                204,
-                268
-              ]
-            ],
-            [
-              79,
-              [
-                206,
-                271
-              ],
-              [
-                204,
-                268
-              ]
-            ],
-            [
-              85,
-              [
-                197,
-                275
-              ],
-              [
-                198,
-                269
-              ]
-            ],
-            [
-              91,
-              [
-                197,
-                276
-              ],
-              [
-                198,
-                273
-              ]
-            ],
-            [
-              97,
-              [
-                197,
-                275
-              ],
-              [
-                198,
-                276
-              ]
-            ],
-            [
-              103,
-              [
-                197,
-                276
-              ],
-              [
-                198,
-                283
-              ]
-            ],
-            [
-              109,
-              [
-                197,
-                283
-              ],
-              [
-                198,
-                290
-              ]
-            ],
-            [
-              115,
-              [
-                197,
-                284
-              ],
-              [
-                198,
-                289
-              ]
-            ],
-            [
-              121,
-              [
-                197,
-                284
-              ],
-              [
-                198,
-                289
-              ]
-            ],
-            [
-              127,
-              [
-                197,
-                284
-              ],
-              [
-                198,
-                290
-              ]
-            ],
-            [
-              133,
-              [
-                197,
-                282
-              ],
-              [
-                198,
-                291
-              ]
-            ],
-            [
-              139,
-              [
-                197,
-                283
-              ],
-              [
-                198,
-                292
-              ]
-            ],
-            [
-              145,
-              [
-                197,
-                283
-              ],
-              [
-                198,
-                293
-              ]
-            ],
-            [
-              151,
-              [
-                197,
-                283
-              ],
-              [
-                198,
-                293
-              ]
-            ],
-            [
-              157,
-              [
-                197,
-                287
-              ],
-              [
-                198,
-                292
-              ]
-            ],
-            [
-              163,
-              [
-                197,
-                282
-              ],
-              [
-                198,
-                292
-              ]
-            ],
-            [
-              169,
-              [
-                197,
-                281
-              ],
-              [
-                198,
-                292
-              ]
-            ],
-            [
-              175,
-              [
-                197,
-                280
-              ],
-              [
-                198,
-                292
-              ]
-            ],
-            [
-              181,
-              [
-                197,
-                285
-              ],
-              [
-                198,
-                285
-              ]
-            ],
-            [
-              187,
-              [
-                197,
-                289
-              ],
-              [
-                198,
-                288
-              ]
-            ],
-            [
-              193,
-              [
-                197,
-                290
-              ],
-              [
-                198,
-                290
-              ]
-            ],
-            [
-              200,
-              [
-                197,
-                296
-              ],
-              [
-                198,
-                293
-              ]
-            ],
-            [
-              206,
-              [
-                197,
-                301
-              ],
-              [
-                198,
-                294
-              ]
-            ],
-            [
-              212,
-              [
-                197,
-                311
-              ],
-              [
-                198,
-                309
-              ]
-            ],
-            [
-              218,
-              [
-                197,
-                311
-              ],
-              [
-                198,
-                309
-              ]
-            ],
-            [
-              224,
-              [
-                197,
-                311
-              ],
-              [
-                198,
-                309
-              ]
-            ],
-            [
-              230,
-              [
-                197,
-                301
-              ],
-              [
-                198,
-                309
-              ]
-            ],
-            [
-              236,
-              [
-                198,
-                296
-              ],
-              [
-                198,
-                293
-              ]
-            ],
-            [
-              242,
-              [
-                197,
-                296
-              ],
-              [
-                198,
-                293
-              ]
-            ],
-            [
-              248,
-              [
-                197,
-                296
-              ],
-              [
-                198,
-                293
-              ]
-            ],
-            [
-              254,
-              [
-                197,
-                296
-              ],
-              [
-                198,
-                292
-              ]
-            ],
-            [
-              260,
-              [
-                197,
-                293
-              ],
-              [
-                198,
-                291
-              ]
-            ],
-            [
-              266,
-              [
-                197,
-                293
-              ],
-              [
-                198,
-                291
-              ]
-            ],
-            [
-              272,
-              [
-                197,
-                292
-              ],
-              [
-                198,
-                289
-              ]
-            ],
-            [
-              278,
-              [
-                197,
-                293
-              ],
-              [
-                198,
-                289
-              ]
-            ],
-            [
-              284,
-              [
-                197,
-                285
-              ],
-              [
-                198,
-                290
-              ]
-            ],
-            [
-              290,
-              [
-                197,
-                277
-              ],
-              [
-                198,
-                282
-              ]
-            ],
-            [
-              296,
-              [
-                199,
-                275
-              ],
-              [
-                198,
-                273
-              ]
-            ],
-            [
-              302,
-              [
-                204,
-                275
-              ],
-              [
-                201,
-                270
-              ]
-            ],
-            [
-              308,
-              [
-                204,
-                275
-              ],
-              [
-                204,
-                270
-              ]
-            ],
-            [
-              314,
-              [
-                206,
-                270
-              ],
-              [
-                204,
-                270
-              ]
-            ],
-            [
-              320,
-              [
-                210,
-                260
-              ],
-              [
-                205,
-                268
-              ]
-            ],
-            [
-              326,
-              [
-                214,
-                252
-              ],
-              [
-                218,
-                265
-              ]
-            ],
-            [
-              332,
-              [
-                234,
-                246
-              ],
-              [
-                218,
-                249
-              ]
-            ],
-            [
-              338,
-              null,
-              [
-                218,
-                248
-              ]
-            ]
-          ],
-          "top": [
-            [
-              141,
-              null,
-              [
-                188,
-                227
-              ]
-            ],
-            [
-              143,
-              [
-                204,
-                224
-              ],
-              [
-                188,
-                227
-              ]
-            ],
-            [
-              145,
-              [
-                184,
-                226
-              ],
-              [
-                174,
-                244
-              ]
-            ],
-            [
-              147,
-              [
-                178,
-                229
-              ],
-              [
-                174,
-                297
-              ]
-            ],
-            [
-              149,
-              [
-                172,
-                232
-              ],
-              [
-                172,
-                304
-              ]
-            ],
-            [
-              151,
-              [
-                167,
-                301
-              ],
-              [
-                170,
-                304
-              ]
-            ],
-            [
-              153,
-              [
-                166,
-                301
-              ],
-              [
-                169,
-                306
-              ]
-            ],
-            [
-              155,
-              [
-                165,
-                303
-              ],
-              [
-                167,
-                336
-              ]
-            ],
-            [
-              158,
-              [
-                163,
-                307
-              ],
-              [
-                165,
-                336
-              ]
-            ],
-            [
-              160,
-              [
-                161,
-                309
-              ],
-              [
-                163,
-                317
-              ]
-            ],
-            [
-              162,
-              [
-                160,
-                312
-              ],
-              [
-                162,
-                336
-              ]
-            ],
-            [
-              164,
-              [
-                159,
-                333
-              ],
-              [
-                160,
-                317
-              ]
-            ],
-            [
-              166,
-              [
-                157,
-                333
-              ],
-              [
-                159,
-                317
-              ]
-            ],
-            [
-              168,
-              [
-                156,
-                333
-              ],
-              [
-                157,
-                317
-              ]
-            ],
-            [
-              170,
-              [
-                155,
-                333
-              ],
-              [
-                156,
-                317
-              ]
-            ],
-            [
-              172,
-              [
-                153,
-                333
-              ],
-              [
-                155,
-                317
-              ]
-            ],
-            [
-              174,
-              [
-                152,
-                333
-              ],
-              [
-                153,
-                317
-              ]
-            ],
-            [
-              176,
-              [
-                151,
-                333
-              ],
-              [
-                152,
-                317
-              ]
-            ],
-            [
-              178,
-              [
-                149,
-                333
-              ],
-              [
-                150,
-                322
-              ]
-            ],
-            [
-              180,
-              [
-                148,
-                334
-              ],
-              [
-                149,
-                336
-              ]
-            ],
-            [
-              182,
-              [
-                146,
-                334
-              ],
-              [
-                148,
-                338
-              ]
-            ],
-            [
-              184,
-              [
-                145,
-                334
-              ],
-              [
-                139,
-                338
-              ]
-            ],
-            [
-              186,
-              [
-                144,
-                334
-              ],
-              [
-                122,
-                338
-              ]
-            ],
-            [
-              188,
-              [
-                17,
-                334
-              ],
-              [
-                18,
-                338
-              ]
-            ],
-            [
-              191,
-              [
-                16,
-                334
-              ],
-              [
-                18,
-                338
-              ]
-            ],
-            [
-              193,
-              [
-                16,
-                334
-              ],
-              [
-                18,
-                338
-              ]
-            ],
-            [
-              195,
-              [
-                16,
-                333
-              ],
-              [
-                122,
-                338
-              ]
-            ],
-            [
-              197,
-              [
-                144,
-                334
-              ],
-              [
-                138,
-                338
-              ]
-            ],
-            [
-              199,
-              [
-                144,
-                333
-              ],
-              [
-                148,
-                338
-              ]
-            ],
-            [
-              201,
-              [
-                145,
-                334
-              ],
-              [
-                149,
-                336
-              ]
-            ],
-            [
-              203,
-              [
-                147,
-                334
-              ],
-              [
-                150,
-                322
-              ]
-            ],
-            [
-              205,
-              [
-                148,
-                334
-              ],
-              [
-                152,
-                317
-              ]
-            ],
-            [
-              207,
-              [
-                150,
-                333
-              ],
-              [
-                153,
-                317
-              ]
-            ],
-            [
-              209,
-              [
-                151,
-                334
-              ],
-              [
-                155,
-                317
-              ]
-            ],
-            [
-              211,
-              [
-                153,
-                333
-              ],
-              [
-                156,
-                317
-              ]
-            ],
-            [
-              213,
-              [
-                155,
-                333
-              ],
-              [
-                157,
-                317
-              ]
-            ],
-            [
-              215,
-              [
-                156,
-                333
-              ],
-              [
-                159,
-                317
-              ]
-            ],
-            [
-              217,
-              [
-                158,
-                333
-              ],
-              [
-                160,
-                317
-              ]
-            ],
-            [
-              219,
-              [
-                160,
-                333
-              ],
-              [
-                162,
-                336
-              ]
-            ],
-            [
-              221,
-              [
-                161,
-                333
-              ],
-              [
-                163,
-                317
-              ]
-            ],
-            [
-              224,
-              [
-                164,
-                312
-              ],
-              [
-                165,
-                336
-              ]
-            ],
-            [
-              226,
-              [
-                165,
-                309
-              ],
-              [
-                167,
-                317
-              ]
-            ],
-            [
-              228,
-              [
-                167,
-                306
-              ],
-              [
-                169,
-                304
-              ]
-            ],
-            [
-              230,
-              [
-                168,
-                233
-              ],
-              [
-                170,
-                309
-              ]
-            ],
-            [
-              232,
-              [
-                169,
-                230
-              ],
-              [
-                172,
-                309
-              ]
-            ],
-            [
-              234,
-              [
-                175,
-                228
-              ],
-              [
-                178,
-                295
-              ]
-            ],
-            [
-              236,
-              [
-                187,
-                225
-              ],
-              [
-                181,
-                295
-              ]
-            ],
-            [
-              238,
-              [
-                205,
-                223
-              ],
-              [
-                182,
-                226
-              ]
-            ]
-          ]
-        }
+        "turretContours": null,
+        "turretBands": null
       },
       "boxes": {
         "normalization": {
           "anchor": "width",
-          "target": 3.75,
-          "referenceRaw": 3.85,
-          "proceduralRaw": 3.75
+          "target": 3.24,
+          "referenceRaw": 2.79,
+          "proceduralRaw": 3.24
         },
         "reference": [
-          3.75,
-          2.85,
-          10.78
+          3.24,
+          3.47,
+          9.49
         ],
         "procedural": [
-          3.75,
-          2.85,
-          10.85
+          3.24,
+          3.44,
+          9.56
         ],
         "referenceMin": [
-          -1.88,
+          -1.62,
           0,
-          -3.76
+          -3.39
         ],
         "referenceMax": [
-          1.88,
-          2.85,
-          7.03
+          1.62,
+          3.47,
+          6.09
         ],
         "proceduralMin": [
-          -1.88,
+          -1.62,
           0,
-          -3.79
+          -3.46
         ],
         "proceduralMax": [
-          1.88,
-          2.85,
-          7.06
+          1.62,
+          3.44,
+          6.09
         ],
         "referenceTurret": [
-          2.96,
-          1.18,
-          9.79
+          2.89,
+          1.96,
+          9
         ],
         "proceduralTurret": [
-          2.99,
-          1.17,
-          9.8
+          2.88,
+          2.02,
+          8.94
         ],
         "referenceTurretMin": [
-          -1.53,
-          1.67,
-          -2.76
+          -1.44,
+          1.51,
+          -2.9
         ],
         "referenceTurretMax": [
-          1.43,
-          2.85,
-          7.03
+          1.45,
+          3.47,
+          6.09
         ],
         "proceduralTurretMin": [
-          -1.53,
-          1.68,
-          -2.74
+          -1.44,
+          1.42,
+          -2.85
         ],
         "proceduralTurretMax": [
-          1.46,
-          2.85,
-          7.06
+          1.44,
+          3.44,
+          6.09
         ]
       },
       "errors": [

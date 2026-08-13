@@ -2112,9 +2112,9 @@ function buildType10Native2026(P) {
   const { rng } = P;
   // ---- hull core: tub + sponsons + one-plane glacis pair + stern ----------
   P.add('hull', box(1.71, 0.57, 5.55), 0, 0.735, -0.025);                       // compact central belly, z -2.80..+2.75; the raised end wedges own the bow/stern transitions
-  P.add('hull', box(2.84, 0.34, 4.975), 0, 1.27, -0.8475);                      // sponson body x +-1.42, underside 1.10 above the rear track ramp, top fixed at deck 1.44
+  P.add('hull', box(2.84, 0.30, 4.975), 0, 1.29, -0.8475);                      // sponson body x +-1.42, underside 1.14 clears the complete return band, top fixed at deck 1.44
   P.add('hull', slab(                                                           // UPPER GLACIS: narrow center nose opens the terminal lanes, then sweeps into the full shoulders
-    [-0.855, 0.96, 3.38], [0.855, 0.96, 3.38], [1.52, 0.96, 1.60], [-1.52, 0.96, 1.60],
+    [-0.855, 1.24, 3.38], [0.855, 1.24, 3.38], [1.52, 1.24, 1.60], [-1.52, 1.24, 1.60],
     [-1.52, 1.44, 1.80], [1.52, 1.44, 1.80], [1.52, 1.44, 1.60], [-1.52, 1.44, 1.60]));
   P.add('hull', frustum(1.52, 3.415, 3.30, 1.52, 3.38, 3.30, 0.98, 1.06));      // shallow nose-beak cap above the rising lower glacis
   P.add('hull', slab(                                                         // lower glacis: narrow folded toe opens into the armored shoulder course
@@ -2144,7 +2144,7 @@ function buildType10Native2026(P) {
   // The main shelf ends before both rising terminal arcs; the separately
   // authored raked guards below carry the bow/stern silhouette.  This keeps
   // the shelf at its real deck-relative height without crossing the track.
-  fenders(P, 1.36, 1.545, 1.10, -2.35, 2.50, 0.035);
+  fenders(P, 1.36, 1.545, 1.22, -2.35, 2.50, 0.035);                          // underside 1.2025: visible air above the complete return course and its transition voxels
   // §D WIDTH ANCHOR: low guard strips at +-1.62 over the REF'S OWN widest
   // z-band (its running gear bulge, plan z_my -2.39..+2.20, front-view band
   // 0.44..0.56) — top-visible outboard of the skirts so widthM reads 3.24,
@@ -2244,11 +2244,11 @@ function buildType10Native2026(P) {
     const lcR = FITTINGS.lightCluster({ mats: P.mats, pods: 2, spacing: 0.14, rake: -0.30, seed: 4 });
     lcR.position.set(1.28, 1.03, 3.30);
     P.hullG.add(lcR);
-    const cable = FITTINGS.towCable({ mats: P.mats, r: 0.019, seed: 7,         // r2: routed tighter to the deck line (§4.999993 note)
-      pts: [[1.34, 1.458, 1.15], [1.375, 1.458, -0.05], [1.34, 1.458, -1.25]] });
+    const cable = FITTINGS.towCable({ mats: P.mats, r: 0.019, seed: 7,         // fixed fender-edge route remains outside the complete turret yaw envelope
+      pts: [[1.54, 1.438, 1.15], [1.55, 1.438, -0.05], [1.54, 1.438, -1.25]] });
     P.hullG.add(cable);
     const links = FITTINGS.spareTrackLinks({ mats: P.mats, links: 3, width: 0.50, seed: 9 });
-    links.position.set(-1.02, 1.505, -2.86);                                    // flat on the stern deck, inside the rack bay
+    links.position.set(-1.02, 1.505, -3.22);                                    // flat on the aft stern rack, outside the rotating bustle envelope
     P.hullG.add(links);
   }
   for (const s of [-1, 1]) {
@@ -2277,8 +2277,8 @@ function buildType10Native2026(P) {
   for (const s of [-1, 1]) P.add('hullDetail', box(0.04, 0.04, 0.60), s * 1.39, 1.655, -2.84);
   for (let k = 0; k < 6; k++) P.add('hullDetail', box(0.026, 0.16, 0.026), -1.39 + k * 0.556, 1.575, -3.135);
   stowage(P, 'hullCloth', rng, [
-    [-0.72, 1.545, -2.85, 0.85, 0.20, 0.55],
-    [0.30, 1.55, -2.83, 0.88, 0.21, 0.52],
+    [-0.72, 1.545, -3.19, 0.85, 0.20, 0.36],
+    [0.30, 1.55, -3.19, 0.88, 0.21, 0.36],
   ]);
   ammoCan(P, 'hullDark', 1.18, 1.53, -2.80, 0.15);
   // JGSDF white registration plate on the beak + rear plate

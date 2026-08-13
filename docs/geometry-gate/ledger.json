@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-08-13T04:41:44.982Z",
+ "generatedAt": "2026-08-13T04:45:54.952Z",
  "gate": "every component >= 90; min is the headline",
  "passed": 35,
  "total": 97,
@@ -229,9 +229,9 @@
    "geoMin": 0,
    "gatePassed": false,
    "components": {
-    "hullCurves": 50.3,
-    "stations": 45.2,
-    "wholeCurves": 45.4,
+    "hullCurves": 50.2,
+    "stations": 42.7,
+    "wholeCurves": 34.5,
     "dims": 49.3,
     "floaters": 0
    }
