@@ -3947,6 +3947,10 @@ const BUCKET_DEF = {
   // belong to the native suspension. Preserve the oily spare-track material
   // while giving strict clearance lint truthful ownership metadata.
   hullRunningGearTrack: ['hullG', 'spareTrack'],
+  // Shadow-material wheel-gap tabs and bay backers are suspension geometry,
+  // not hull armor. Keep their render tone while exposing true ownership to
+  // the strict swept-course audit.
+  hullRunningGearShadow: ['hullG', 'shadow'],
   // Painted wheel faces, rims and hub caps are suspension-owned just like
   // the dark wheel-bay recesses above.  Keep a material-correct detail
   // bucket so strict swept-track lint does not misclassify concentric wheel
@@ -4373,7 +4377,7 @@ export function createTank(specId, engineCtx, opts = {}) {
       mesh.userData.trackGuard = true;
     }
     if (bucket === 'hullRunningGearDark' || bucket === 'hullRunningGearDetail'
-        || bucket === 'hullRunningGearTrack'
+        || bucket === 'hullRunningGearTrack' || bucket === 'hullRunningGearShadow'
         || bucket === 'hullTrackTrimL' || bucket === 'hullTrackTrimR') {
       mesh.userData.runningGear = true;
     }
