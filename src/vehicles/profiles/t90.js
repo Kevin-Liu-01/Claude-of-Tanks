@@ -4117,40 +4117,58 @@ function buildT90(P) {
   // and are never imported, sampled, converted or shipped by this builder.
   replaceT90ACastTurret(P, { vladimir: false });
   finishT90BaseReferenceGuided(P);
+  fitT90BaseTurretEnvelope(P);
   P.topY = 0.80;
+}
+
+function fitT90BaseTurretEnvelope(P) {
+  // Independent top/profile measurements of the authored comparison packet
+  // show the replacement package occupying about 14% too much hull width and
+  // 12% too much fore/aft plan.  Fit the complete rotating package once so
+  // every K-5 cassette, sight, hatch, smoke bank, rack and antenna keeps its
+  // seat on the new casting.  Counter-scale/re-seat the gun group so the
+  // already-correct 2A46M run, bore and trunnion world datum stay unchanged.
+  const sx = 0.86, sy = 0.90, sz = 0.88;
+  const gunPosition = P.gunG.position.clone();
+  P.turretG.scale.set(sx, sy, sz);
+  P.gunG.scale.set(1 / sx, 1 / sy, 1 / sz);
+  P.gunG.position.set(gunPosition.x / sx, gunPosition.y / sy, gunPosition.z / sz);
 }
 
 function finishT90BaseReferenceGuided(P) {
   const { box, cylY, cylZ } = KIT;
 
-  // Dense but conformal flank K-5: each small cassette overlaps a cast-side
-  // backing shoe, so the source's irregular horseshoe continues around the
-  // shoulders without becoming a freestanding fence.
+  // Dense but conformal flank K-5.  These centers follow the replacement
+  // casting's actual pear shoulder.  The former x=1.25..1.46 placements were
+  // buried inside the broader new shell, leaving only hub-like ends visible
+  // in profile instead of a continuous armored flank.
   for (const s of [-1, 1]) {
     for (const [x, y, z, yaw, w, d] of [
-      [1.46, 0.38, 0.12, 0.16, 0.33, 0.35],
-      [1.46, 0.38, -0.23, 0.05, 0.29, 0.31],
-      [1.39, 0.39, -0.55, -0.11, 0.33, 0.34],
-      [1.25, 0.41, -0.85, -0.21, 0.27, 0.29],
+      [1.64, 0.37, 0.12, 0.16, 0.31, 0.34],
+      [1.63, 0.37, -0.22, 0.05, 0.29, 0.30],
+      [1.58, 0.38, -0.54, -0.11, 0.32, 0.33],
+      [1.48, 0.40, -0.84, -0.21, 0.28, 0.29],
     ]) {
-      P.add('turret', box(w, 0.18, d), s * x, y, z, -0.10, -s * yaw, 0);
-      P.add('turretDark', box(w * 0.82, 0.012, d * 0.78), s * x, y + 0.096, z, -0.10, -s * yaw, 0);
-      P.add('turretDark', box(w * 0.18, 0.13, d * 0.52), s * (x - 0.09), y - 0.065, z - 0.04, -0.10, -s * yaw, 0);
+      const armorW = w * 1.15, armorD = d * 1.08;
+      P.add('turretDark', box(armorW * 0.72, 0.15, armorD * 0.72), s * (x - 0.07), y - 0.060, z - 0.03, -0.10, -s * yaw, 0);
+      P.add('turret', box(armorW, 0.24, armorD), s * x, y - 0.018, z, -0.10, -s * yaw, 0);
+      P.add('turretDark', box(armorW * 0.82, 0.012, armorD * 0.78), s * x, y + 0.108, z, -0.10, -s * yaw, 0);
+      P.add('turretDark', box(armorW * 0.18, 0.17, armorD * 0.52), s * (x - 0.09), y - 0.080, z - 0.04, -0.10, -s * yaw, 0);
     }
   }
 
-  // A second, offset K-5 depth layer closes the bare crown/cheek valleys.
-  // These smaller shoes sit behind the frontal fan and disappear into the
-  // cast skin rather than extending its silhouette.
+  // Three shallow crown-return shoes close the roof/cheek valleys behind the
+  // broad frontal fan.  They are roof armor, not a second vertical comb.
   for (const s of [-1, 1]) {
     for (const [x, y, z, yaw, w, h, d] of [
-      [0.38, 0.61, 1.02, 0.26, 0.30, 0.15, 0.34],
-      [0.67, 0.57, 0.84, 0.45, 0.35, 0.18, 0.32],
-      [0.95, 0.52, 0.60, 0.63, 0.32, 0.16, 0.30],
-      [1.19, 0.46, 0.33, 0.42, 0.27, 0.17, 0.28],
+      [0.58, 0.58, 0.88, 0.27, 0.42, 0.13, 0.42],
+      [1.00, 0.52, 0.58, 0.48, 0.43, 0.14, 0.38],
+      [1.34, 0.44, 0.27, 0.55, 0.35, 0.13, 0.34],
     ]) {
-      P.add('turret', KIT.xform(box(w, h, d), 0, 0, -0.07), s * x, y, z, -0.20, -s * yaw, 0);
-      P.add('turretDark', KIT.xform(box(w * 0.76, 0.010, d * 0.72), 0, h * 0.52, 0.035), s * x, y, z, -0.20, -s * yaw, 0);
+      const armorW = w, armorH = h, armorD = d;
+      P.add('turretDark', KIT.xform(box(armorW * 0.78, armorH * 0.62, armorD * 0.70), 0, -armorH * 0.20, -0.12), s * x, y, z, -0.09, -s * yaw, 0);
+      P.add('turret', KIT.xform(box(armorW, armorH, armorD), 0, 0.006, -0.025), s * x, y, z, -0.09, -s * yaw, 0);
+      P.add('turretDark', KIT.xform(box(armorW * 0.76, 0.010, armorD * 0.72), 0, armorH * 0.52, 0.035), s * x, y, z, -0.09, -s * yaw, 0);
     }
   }
 
@@ -4166,35 +4184,24 @@ function finishT90BaseReferenceGuided(P) {
   P.add('turretDetail', cylY(0.052, 0.052, 1.10, 10), 0.32, 0.99, -1.10);
   P.add('turretDark', cylY(0.060, 0.060, 0.10, 10), 0.32, 0.48, -1.10);
   P.add('turretDark', box(0.032, 0.24, 0.26), 0.32, 0.62, -1.13);
-  for (const [x, z, yaw] of [[-0.62, -0.18, -0.25], [-0.40, -0.12, 0], [-0.18, -0.17, 0.22], [0.24, -0.05, -0.18], [0.45, -0.10, 0.20]]) {
-    P.add('turretDark', box(0.12, 0.060, 0.070), x, 0.73, z, 0, yaw, 0);
-    P.add('turretGlass', box(0.082, 0.034, 0.010), x, 0.74, z + 0.041, 0, yaw, 0);
+  for (const [x, z, yaw] of [
+    [-0.68, -0.20, -0.30], [-0.44, -0.11, -0.04], [-0.18, -0.15, 0.22],
+    [0.18, -0.05, -0.24], [0.43, -0.08, 0.08], [0.62, -0.24, 0.32],
+  ]) {
+    P.add('turretDark', box(0.145, 0.070, 0.085), x, 0.73, z, 0, yaw, 0);
+    P.add('turretGlass', box(0.080, 0.030, 0.010), x, 0.75, z + 0.050, 0, yaw, 0);
   }
-  // Dominant asymmetric night-sight/searchlight body beside the commander
-  // cradle.  Its full-width foot intersects both the cupola foundation and
-  // the crown, while the lens remains readable below the MG shield.
-  P.add('turret', box(0.78, 0.10, 0.54), -0.58, 0.70, -0.30);
-  P.add('turret', box(0.46, 0.15, 0.40), -0.83, 0.75, -0.24);
-  P.add('turret', orientedSlab(
-    [-0.17, -0.16, -0.16], [0.17, -0.16, -0.16], [0.17, -0.16, 0.16], [-0.17, -0.16, 0.16],
-    [-0.12, 0.16, -0.13], [0.12, 0.16, -0.13], [0.12, 0.16, 0.13], [-0.12, 0.16, 0.13],
-  ), -0.83, 0.95, -0.21, -0.06, 0, 0);
-  P.add('turretDark', box(0.24, 0.20, 0.018), -0.83, 0.95, -0.039, -0.06, 0, 0);
-  P.add('turretGlass', box(0.17, 0.13, 0.010), -0.83, 0.95, -0.029, -0.06, 0, 0);
-  P.add('turretDark', box(0.27, 0.026, 0.26), -0.83, 1.122, -0.21, -0.06, 0, 0);
-  for (const [x, z, yaw] of [[-0.69, -0.47, -0.20], [-0.52, -0.49, 0], [-0.35, -0.46, 0.18]]) {
-    P.add('turretDark', box(0.12, 0.075, 0.07), x, 0.77, z, 0, yaw, 0);
-    P.add('turretGlass', box(0.08, 0.045, 0.010), x, 0.785, z + 0.04, 0, yaw, 0);
+  // The replacement turret already owns the commander cupola, night sight,
+  // NSVT cradle and shield.  The old finish pass built a second sight/cupola
+  // tower over that station and hid the new cast roof under stacked boxes.
+  // Keep only a low bridge and a short periscope arc that bind the existing
+  // station to the pear-shaped crown without duplicating it.
+  P.add('turret', box(0.48, 0.075, 0.34), -0.58, 0.70, -0.32, -0.04, 0, 0);
+  P.add('turretDark', box(0.40, 0.016, 0.27), -0.58, 0.744, -0.32, -0.04, 0, 0);
+  for (const [x, z, yaw] of [[-0.74, -0.49, -0.20], [-0.55, -0.53, 0], [-0.36, -0.47, 0.18]]) {
+    P.add('turretDark', box(0.125, 0.066, 0.075), x, 0.765, z, 0, yaw, 0);
+    P.add('turretGlass', box(0.070, 0.029, 0.010), x, 0.782, z + 0.043, 0, yaw, 0);
   }
-  // Cupola mechanism: unequal yokes, hinge blocks and a low armored ring
-  // connect the sight head and weapon cradle into one compact station.
-  P.add('turretDark', cylY(0.31, 0.34, 0.055, 18), -0.56, 0.74, -0.34);
-  P.add('turret', box(0.15, 0.13, 0.22), -0.69, 0.82, -0.31, 0, -0.12, 0);
-  P.add('turret', box(0.11, 0.10, 0.18), -0.40, 0.80, -0.36, 0, 0.16, 0);
-  P.add('turretDark', box(0.045, 0.045, 0.34), -0.72, 0.85, -0.22, -0.20, -0.05, 0);
-  P.add('turretDark', box(0.045, 0.045, 0.28), -0.43, 0.83, -0.24, -0.17, 0.07, 0);
-  P.add('turretDetail', box(0.17, 0.12, 0.18), -0.32, 0.82, -0.63);
-  P.add('turretDark', box(0.13, 0.025, 0.14), -0.32, 0.89, -0.63);
   // Low roof cadence fills the quiet casting behind the horseshoe without
   // competing with the command station or antenna hierarchy.
   for (const [x, y, z, w, d, yaw] of [
@@ -4407,8 +4414,11 @@ function replaceT90ACastTurret(P, { vladimir = false } = {}) {
     [-1.17, [[-0.02, -1.21, 1.31], [0.08, -1.38, 1.44], [0.26, -1.27, 1.36], [0.45, -0.91, 1.02], [0.59, -0.40, 0.52]]],
     [-1.47, [[0.00, -0.90, 1.02], [0.07, -1.14, 1.23], [0.22, -1.04, 1.14], [0.37, -0.72, 0.84], [0.49, -0.30, 0.42]]],
   ]));
-  P.add('turret', cylY(1.26, 1.44, 0.12, 28), 0, -0.055, 0);
-  P.add('turretDark', cylY(1.30, 1.30, 0.022, 28), 0, -0.105, 0);
+  // Keep the ring as a low mechanical seat rather than a second circular
+  // turret body.  The previous 1.44 m cap remained visible below the new
+  // faceted cheeks and recreated a literal half-sphere silhouette.
+  P.add('turret', cylY(1.12, 1.28, 0.11, 16), 0, -0.055, -0.04);
+  P.add('turretDark', cylY(1.19, 1.19, 0.022, 16), 0, -0.105, -0.04);
 
   // Three low Kontakt-5 crown plates follow the casting and are split by
   // flush seams.  Nothing floats above the shell.
@@ -4417,35 +4427,85 @@ function replaceT90ACastTurret(P, { vladimir = false } = {}) {
   P.add('turret', box(0.70, 0.055, 0.72), 0.70, 0.675, 0.02, 0, 0, 0.09);
   for (const x of [-0.38, 0.38]) P.add('turretDark', box(0.026, 0.045, 0.66), x, 0.718, -0.05);
 
-  // K-5 clamshell: five varied planted cassettes per side follow the source
-  // horseshoe.  Their rear halves bury into the dome and overlap neighboring
-  // roots, producing one dense irregular blanket instead of two toy-scale
-  // slabs with broad bare-cast valleys.
+  // The cast core is only the load-bearing shell.  T-90's recognizable
+  // frontal silhouette comes from two broad K-5 carrier cheeks wrapped over
+  // it.  These authored wedges bury their inner/rear thirds in the pear loft,
+  // then fall diagonally toward the mantlet and flank.  This removes the
+  // exposed half-sphere read while keeping one continuous turret volume.
+  for (const s of [-1, 1]) {
+    P.add('turret', orientedSlab(
+      [s * 0.15, 0.01, 1.42], [s * 1.62, 0.03, 0.34], [s * 1.54, 0.02, -0.10], [s * 0.22, 0.02, 0.65],
+      [s * 0.16, 0.46, 1.17], [s * 1.42, 0.42, 0.27], [s * 1.37, 0.37, -0.10], [s * 0.24, 0.52, 0.61],
+    ));
+    P.add('turretDark', box(0.030, 0.30, 0.43), s * 1.47, 0.24, 0.10, 0, -s * 0.10, 0);
+    P.add('turretDark', box(0.34, 0.035, 0.035), s * 0.42, 0.18, 1.22, -0.34, -s * 0.26, 0);
+  }
+
+  // K-5 clamshell: five broad planted wedges per side follow the source
+  // horseshoe.  Earlier seven-plus-four courses had enough parts but read as
+  // a picket fence after the new shell was normalized.  These larger unequal
+  // faces overlap their buried roots and make the armor, not a smooth dome,
+  // own the frontal silhouette.
   for (const s of [-1, 1]) {
     for (const [x, y, z, yaw, roll, w, h, d] of [
-      [0.30, 0.48, 1.28, 0.18, -0.43, 0.30, 0.21, 0.39],
-      [0.55, 0.51, 1.09, 0.42, -0.47, 0.43, 0.28, 0.45],
-      [0.84, 0.49, 0.88, 0.55, -0.39, 0.45, 0.24, 0.35],
-      [1.11, 0.47, 0.61, 0.79, -0.41, 0.42, 0.29, 0.40],
-      [1.36, 0.40, 0.33, 0.45, -0.27, 0.30, 0.21, 0.30],
-      [1.47, 0.37, 0.03, 0.31, -0.20, 0.25, 0.21, 0.32],
+      [0.48, 0.43, 1.31, 0.17, -0.39, 0.37, 0.25, 0.41],
+      [0.79, 0.43, 1.15, 0.34, -0.44, 0.42, 0.29, 0.43],
+      [1.11, 0.41, 0.93, 0.52, -0.40, 0.44, 0.28, 0.42],
+      [1.39, 0.37, 0.63, 0.66, -0.34, 0.42, 0.27, 0.40],
+      [1.59, 0.32, 0.27, 0.41, -0.23, 0.34, 0.24, 0.35],
     ]) {
+      // The completed turret is normalized as one seated yaw package after
+      // authoring.  Compensate the replaceable cassettes locally so their
+      // world-space faces retain the broad T-90 K-5 cadence instead of
+      // shrinking into a necklace of dark tiles around the new casting.
+      const armorW = w * 1.06;
+      const armorH = h * 1.28;
+      const armorD = d * 1.08;
+      const armorY = y - h * 0.13;
       // A shorter buried shoe follows the actual cast face below every
       // cassette.  The armor therefore inherits the new pear-shaped cheek
       // instead of preserving the superseded spherical carrier in silhouette.
-      P.add('turret', KIT.xform(box(w * 0.80, h * 0.60, d * 0.58), 0, -h * 0.18, -0.15), s * x, y, z, roll, -s * yaw, 0);
-      P.add('turret', KIT.xform(box(w, h, d), 0, 0, -0.08), s * x, y, z, roll, -s * yaw, 0);
-      P.add('turretDark', KIT.xform(box(w * 0.82, 0.012, d * 0.78), 0, h * 0.52, 0.055), s * x, y, z, roll, -s * yaw, 0);
-      P.add('turretDark', KIT.xform(box(0.024, h * 0.78, d * 0.62), s * w * 0.47, 0, -0.02), s * x, y, z, roll, -s * yaw, 0);
+      P.add('turretDark', KIT.xform(box(armorW * 0.80, armorH * 0.62, armorD * 0.58), 0, -armorH * 0.18, -0.15), s * x, armorY, z, roll, -s * yaw, 0);
+      // Kontakt-5 is painted armor, not track steel.  Keep it in the turret
+      // palette and let the planted backer, cap and side seam establish the
+      // replaceable-cassette read.  The former track material produced a
+      // conspicuous brown collar that was absent from the reference.
+      P.add('turret', KIT.xform(box(armorW, armorH, armorD), 0, 0.008, -0.015), s * x, armorY, z, roll, -s * yaw, 0);
+      P.add('turretDark', KIT.xform(box(armorW * 0.82, 0.012, armorD * 0.78), 0, armorH * 0.52, 0.055), s * x, armorY, z, roll, -s * yaw, 0);
+      P.add('turretDark', KIT.xform(box(0.024, armorH * 0.78, armorD * 0.62), s * armorW * 0.47, 0, -0.02), s * x, armorY, z, roll, -s * yaw, 0);
+      P.add('turretDark', KIT.xform(box(armorW * 0.72, armorH * 0.08, 0.014), 0, -armorH * 0.24, armorD * 0.51), s * x, armorY, z, roll, -s * yaw, 0);
+      for (const bx of [-0.28, 0.28]) {
+        P.add('turretDark', KIT.xform(cylZ(0.014, 0.018, 8), bx * armorW, -armorH * 0.23, armorD * 0.51), s * x, armorY, z, roll, -s * yaw, 0);
+      }
     }
     P.add('turret', box(0.20, 0.24, 0.56), s * 1.14, 0.24, 0.18, 0, 0, -s * 0.18);
   }
+  // Lower cheek course: the upper clamshell alone left a smooth foundry band
+  // from the Shtora housings to the turret ring.  Three irregular, shallow
+  // cassettes descend along each authored carrier wedge and make the armor
+  // blanket follow the new shell all the way into the flank.  Their inner
+  // backing blocks remain buried, so this is armor on the casting rather
+  // than a second floating skin.
+  for (const s of [-1, 1]) {
+    for (const [x, y, z, yaw, w, h, d] of [
+      [0.55, 0.20, 1.18, 0.26, 0.46, 0.30, 0.38],
+      [1.00, 0.17, 0.86, 0.49, 0.52, 0.31, 0.40],
+      [1.40, 0.14, 0.47, 0.48, 0.46, 0.28, 0.36],
+    ]) {
+      const armorW = w, armorH = h * 1.08, armorD = d;
+      P.add('turretDark', KIT.xform(box(armorW * 0.72, armorH * 0.62, armorD * 0.64), 0, -armorH * 0.17, -0.11), s * x, y, z, -0.15, -s * yaw, 0);
+      P.add('turret', KIT.xform(box(armorW, armorH, armorD), 0, 0, -0.015), s * x, y, z, -0.15, -s * yaw, 0);
+      P.add('turretDark', KIT.xform(box(armorW * 0.80, 0.012, armorD * 0.76), 0, armorH * 0.52, 0.048), s * x, y, z, -0.15, -s * yaw, 0);
+      P.add('turretDark', KIT.xform(box(0.022, armorH * 0.78, armorD * 0.60), s * armorW * 0.47, 0, -0.02), s * x, y, z, -0.15, -s * yaw, 0);
+      P.add('turretDark', KIT.xform(box(armorW * 0.70, armorH * 0.08, 0.014), 0, -armorH * 0.23, armorD * 0.51), s * x, y, z, -0.15, -s * yaw, 0);
+    }
+  }
   P.add('turretDark', box(0.54, 0.30, 0.055), 0, 0.39, 1.29, -0.40, 0, 0);
-  ruShtora(P, { rings, sz: 0.72, eyeKit: true, eyeRound: true, eyeScale: 0.74, eyeX: 0.55, eyeZ: 1.27 }, 0.46);
+  ruShtora(P, { rings, sz: 0.72, eyeKit: true, eyeRound: true, eyeScale: 1.05, eyeX: 0.62, eyeZ: 1.46 }, 0.41);
   if (!vladimir) {
     if (P._shtoraRed) {
-      P._shtoraRed.color.setHex(0x35120c);
-      if (P._shtoraRed.emissive) P._shtoraRed.emissive.setHex(0x43120d);
+      P._shtoraRed.color.setHex(0x17110e);
+      if (P._shtoraRed.emissive) P._shtoraRed.emissive.setHex(0x000000);
     }
     // Tapered dazzler shoulders and buried inner cheek roots turn the two
     // emitters into one mantlet-side protection system instead of red discs
@@ -4454,24 +4514,28 @@ function replaceT90ACastTurret(P, { vladimir = false } = {}) {
       P.add('turret', orientedSlab(
         [-0.17, -0.15, -0.11], [0.17, -0.15, -0.11], [0.17, -0.15, 0.11], [-0.17, -0.15, 0.11],
         [-0.13, 0.15, -0.09], [0.13, 0.15, -0.09], [0.13, 0.15, 0.09], [-0.13, 0.15, 0.09],
-      ), s * 0.54, 0.40, 1.16, -0.30, -s * 0.16, 0);
-      P.add('turret', KIT.xform(box(0.27, 0.18, 0.34), 0, 0, -0.09), s * 0.26, 0.29, 1.24, -0.37, -s * 0.24, 0);
-      P.add('turretDark', box(0.035, 0.20, 0.18), s * 0.70, 0.39, 1.18, -0.22, -s * 0.32, 0);
+      ), s * 0.62, 0.40, 1.36, -0.30, -s * 0.16, 0);
+      P.add('turret', KIT.xform(box(0.29, 0.19, 0.38), 0, 0, -0.09), s * 0.29, 0.29, 1.35, -0.37, -s * 0.24, 0);
+      P.add('turretDark', box(0.038, 0.22, 0.20), s * 0.78, 0.39, 1.34, -0.22, -s * 0.32, 0);
     }
   }
 
-  // Shoulder-mounted 902B banks, seated on solid armor shoes.
+  // Shoulder-mounted 902B banks.  Move the shoes out to the replacement
+  // casting's real side surface and rake the fans with the K-5 flank instead
+  // of leaving the launchers half-swallowed by the wider pear shoulder.
   for (const s of [-1, 1]) {
-    const smokeCount = vladimir ? 6 : (s < 0 ? 8 : 6);
-    P.add('turret', box(0.20, 0.20, vladimir ? 0.54 : 0.62), s * 1.31, 0.27, -0.05, 0, 0, -s * 0.23);
+    const smokeCount = 6;
+    P.add('turret', box(0.24, 0.23, vladimir ? 0.54 : 0.62), s * 1.50, 0.37, 0.24, 0, -s * 0.12, -s * 0.23);
     const smoke = FITTINGS.smokeBank({
-      mats: P.mats, count: smokeCount, r: vladimir ? 0.040 : 0.045,
-      len: vladimir ? 0.27 : 0.30, pitch: -0.43,
-      splay: vladimir ? 0.28 : 0.38, arc: vladimir ? 0.52 : 0.66,
-      spacing: vladimir ? 0.095 : 0.105,
+      mats: P.mats, count: smokeCount, r: vladimir ? 0.040 : 0.060,
+      len: vladimir ? 0.27 : 0.35, pitch: -0.45,
+      // Smoke-bank geometry already expresses tube yaw locally.  Mirror the
+      // splay here instead of rotating the assembled bank a second time;
+      // the old double yaw hid one fan behind the shell in frontal views.
+      splay: s * (vladimir ? 0.92 : 0.86), arc: vladimir ? 0.52 : 0.66,
+      spacing: vladimir ? 0.095 : 0.112, slot: 'dark',
     });
-    smoke.position.set(s * 1.33, 0.38, 0.01);
-    smoke.rotation.y = s * 1.08;
+    smoke.position.set(s * 1.48, 0.50, 0.29);
     P.turretG.add(smoke);
   }
 
@@ -4481,11 +4545,18 @@ function replaceT90ACastTurret(P, { vladimir = false } = {}) {
   P.add('turretDark', cylY(0.23, 0.23, 0.024, 16), -0.53, 0.74, -0.31);
   P.add('turret', cylY(0.21, 0.235, 0.12, 16), 0.36, 0.68, -0.23);
   P.add('turretDark', cylY(0.18, 0.18, 0.024, 14), 0.36, 0.752, -0.23);
-  P.add('turret', box(0.29, 0.18, 0.32), 0.43, 0.66, 0.41);
-  P.add('turretGlass', box(0.22, 0.11, 0.018), 0.43, 0.67, 0.578);
-  P.add('turretDark', box(0.31, 0.030, 0.065), 0.43, 0.76, 0.55);
-  P.add('turret', box(0.11, 0.14, 0.13), -0.34, 0.69, -0.01);
-  P.add('turretGlass', box(0.085, 0.052, 0.016), -0.34, 0.71, 0.061);
+  // Gunner's sight is a compact armored mechanism, not a blue square on the
+  // crown.  Its wider buried foot follows the resized roof and the tapered
+  // hood, lid and side ears keep the aperture visibly supported.
+  P.add('turret', orientedSlab(
+    [-0.20, -0.10, -0.19], [0.20, -0.10, -0.19], [0.20, -0.10, 0.19], [-0.20, -0.10, 0.19],
+    [-0.16, 0.12, -0.15], [0.16, 0.12, -0.15], [0.16, 0.12, 0.15], [-0.16, 0.12, 0.15],
+  ), 0.46, 0.68, 0.39, -0.05, 0, 0);
+  P.add('turretGlass', box(0.27, 0.12, 0.018), 0.46, 0.68, 0.591, -0.05, 0, 0);
+  P.add('turretDark', box(0.35, 0.030, 0.075), 0.46, 0.81, 0.55, -0.05, 0, 0);
+  for (const s of [-1, 1]) P.add('turretDark', box(0.028, 0.17, 0.24), 0.46 + s * 0.19, 0.69, 0.40, -0.05, 0, 0);
+  P.add('turret', box(0.16, 0.17, 0.17), -0.31, 0.70, -0.01);
+  P.add('turretGlass', box(0.11, 0.060, 0.016), -0.31, 0.72, 0.083);
 
   // Base rear bins hug the casting; the variant helper adds the open rack.
   P.add('turret', box(1.34, 0.24, 0.36), 0, 0.36, -1.42);
