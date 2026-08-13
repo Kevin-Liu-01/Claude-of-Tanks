@@ -5045,3 +5045,52 @@ The controlling rule is now explicit: front-idler and native-loop repairs may
 change the terminal wheel and the real band/shoes only. They must never be
 implemented by deleting, lifting, shortening or hiding the tank's authored
 hull, skirts, mudguards or road-wheel course.
+
+## 5.147 ARIETE FIRST-PARTY TURRET / ASSET RE-FREEZE (2026-08-13, LIVE)
+
+The live repository-authored `buildAriete` route is refined in place; the
+rejected `buildArieteNative2026` experiment remains inactive. No source mesh,
+converted vertex payload or private model enters the playable. The complete
+hull, panelled side skirts, mudguards, seven-road-wheel row and post-§5.146
+native idler/course are byte-unchanged by this closure.
+
+The former constant-height fighting compartment is replaced by one connected
+12-station multi-loft casting. Its clipped cheeks retain the measured central
+roof datum while the side belts and bustle fall away at unequal heights. A
+rounded nested mantlet/root surround replaces the old box-on-box canvas mass;
+the gun run and MRS collar are shortened together to the measured envelope.
+Broad low commander/loader rings, seated MG, inboard GALIX banks, unequal
+collared radio whips and the supported rear basket remain turret-owned. The
+basket now carries unequal strapped packs behind an open backed rail cadence
+instead of one full-width solid cargo wall.
+
+Freeze **`6c24e284`** reproduces at 49 meshes / 103,875 vertices. Quantitative
+first-party fidelity is **92.7** with hull **93.8**, turret **89.7** (display
+class **90**), tracks **91.7** and every mandatory whole view at least
+**91.45**. The final packet at
+`/private/tmp/ariete-clean-final-r4/ariete` contains 15 paired, 15 yaw0 and 15
+yaw90 frames including the elevated-left profile: **45 PNGs / 45 distinct
+hashes**. Fresh semantic inspection records
+`[9.1,9.1,9.0,9.0,9.0,9.0,9.0,9.1,9.2,9.1,9.0,9.1,9.1,9.1]`, floor **9.0**
+and mean **9.07**.
+
+All yaw pairs show a genuine quarter-turn. Gun/mantlet, connected casting,
+cheek modules, roof stations, GALIX banks, MG, whips, bustle and complete
+basket move together; the hull/deck/course remain fixed and expose a coherent
+ring seat. Winding is 0 reversed / 0 mixed with no mode-2 candidate or visible
+wound. The parent audit's sole `hullCloth` candidate is the visibly seated
+fixed left engine-deck roll at x −1.30 / z −2.15; it remains with the hull as
+the turret turns and is not rear-turret equipment. `fitting_spareTrackLinks`
+is likewise legitimate fixed deck stowage.
+
+The track audit remains honest: the §5.146 front terminal is exact band/shoe
+**0/0** and the protected lower vehicle is unchanged. A pre-existing shallow
+rear `rig_hull` contact (12 band voxels / 5 shoe voxels, max depth 25 mm) and
+lane-local full-sweep track-dressing/backer contacts remain recorded; this
+turret closure does not conceal them by moving or deleting hull/skirts. Rig,
+muzzle bore, assets, native provenance, family order, unit tests and the
+production build pass. All eight Ariete presentation assets and their manifest
+binding are regenerated for this exact geometry.
+
+**KEEP / RE-FROZEN `6c24e284`. Any later terminal repair must obey §5.146:
+wheel/wrap only, never hull or side-armor subtraction.**

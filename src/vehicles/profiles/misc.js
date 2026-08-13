@@ -558,22 +558,26 @@ function buildAriete(P) {
   // at 1.48 printed every mid/rear bottom col 0.10-0.17 deep. Body poly now
   // ends z_w -1.27 and a raked-belly bustle (1.50 -> 1.645) carries the rear.
   const ARIETE_TURRET_PLAN = [
-    [-0.42, 1.35], [0.42, 1.35], [1.02, 0.85], [1.28, 0.30],
-    [1.28, -0.80], [1.05, -0.98], [-1.05, -0.98], [-1.28, -0.80],
-    [-1.28, 0.30], [-1.02, 0.85],
+    [-0.36, 1.46], [0.36, 1.46], [0.92, 1.12], [1.25, 0.58],
+    [1.33, -0.28], [1.30, -1.22], [1.15, -1.98], [-1.15, -1.98],
+    [-1.30, -1.22], [-1.33, -0.28], [-1.25, 0.58], [-0.92, 1.12],
   ];
   const ARIETE_PLINTH_PLAN = ARIETE_TURRET_PLAN.map(([x, z]) => [x, Math.max(z, -0.95)]);
-  P.add('turret', KIT.polyTurret(ARIETE_TURRET_PLAN, 0.72, 1.0, 0.90));        // main body: walls cant in (front-view 2.10-2.32 tops at +-1.23-1.31); z_w front face ~1.15, body ends z_w -1.27
+  // Keep the central roof datum, but let the welded casting fall away at
+  // both side belts and the bustle.  The earlier constant-height extrusion
+  // turned the Ariete into a rectangular casemate; these connected loft
+  // rings form one broad, clipped fighting compartment without touching the
+  // established hull, skirts or native course.
+  P.add('turret', KIT.polyMultiLoft(ARIETE_TURRET_PLAN, [
+    { height: 0.035, inset: 1.00 },
+    { height: [0.47, 0.47, 0.56, 0.64, 0.67, 0.65, 0.59, 0.59, 0.65, 0.67, 0.64, 0.56], inset: 0.985 },
+    { height: [0.54, 0.54, 0.63, 0.69, 0.70, 0.68, 0.62, 0.62, 0.68, 0.70, 0.69, 0.63],
+      inset: [0.84, 0.84, 0.87, 0.90, 0.91, 0.92, 0.93, 0.93, 0.92, 0.91, 0.90, 0.87] },
+  ]));
   P.add('turretDark', KIT.polyTurret(ARIETE_PLINTH_PLAN, 0.08, 1.02, 1.0), 0, -0.035, 0); // dark RING PLINTH at the base, dropped to the deck line 1.445 (ref front-zone bottoms 1.405 — SS-B2 contact-shadow device)
-  for (const s of [-1, 1]) {
-    P.add('turret', box(0.235, 0.42, 0.58), s * 1.1675, 0.41, -1.95);           // rear wings x 1.03-1.28, band 1.68-2.10 (push round: ref plan rear -2.571 @ +-1.24 and front-view 2.10-2.135 tops at +-1.28-1.31; inner face overlaps the bustle slabs)
-  }
+  for (const s of [-1, 1]) P.add('turret', box(0.18, 0.26, 0.52), s * 1.15, 0.28, -1.90); // terminal shoulders overlap the integrated loft
   P.add('turret', box(2.24, 0.10, 0.51), 0, 0.79, -0.185);                      // mid roof plate 2.32 x +-1.23 (push round: ref front-view roofline holds 2.31-2.35 out to +-1.23 — the 2.12 plate left the wall cant reading 2.16 there)
-  P.add('turret', slab(                                                        // bustle fore slab: RAKED BELLY 1.50 -> 1.645 (z_w -1.20..-1.60)
-    [-1.145, 0.02, -0.91], [1.145, 0.02, -0.91], [1.145, 0.165, -1.31], [-1.145, 0.165, -1.31],
-    [-1.145, 0.765, -0.91], [1.145, 0.765, -0.91], [1.145, 0.765, -1.31], [-1.145, 0.765, -1.31]));
-  P.add('turret', box(2.29, 0.60, 0.45), 0, 0.465, -1.485);                    // bustle aft body, belly 1.645 flat (z_w -1.55..-2.00; r4: the rear face robustly clear of the -2.10 col — the ref 2.11 line there is the duffel/rail band)
-  P.add('turret', box(2.24, 0.06, 0.84), 0, 0.79, -1.325);                    // (90-ladder r2: rear z_w -1.975 -> -2.035 — the fresh -2.046 col wants the ref's 2.329 roof line where our end fell to the 2.228 lerp)                     // bustle roof 2.30 (ends z_w -1.975 — the ref 2.304 line; the 2.32/2.12-wide plate rode +0.03 and left the +-1.06-1.23 front lane low)
+  P.add('turret', box(2.12, 0.05, 1.18), 0, 0.66, -1.31);                     // shallow roof course tied directly to the integrated aft loft
   P.add('turret', box(1.70, 0.055, 0.65), 0, 0.7225, -0.735);                  // hatch NOTCH plate 2.23 (z_w -0.56..-1.04)
   // RAISED front roof (push-round re-read of the ref front rows): the ref's
   // tall shoulders are OUTBOARD HUMPS at |x| 0.95-1.13 (front 2.438-2.489,
@@ -606,13 +610,15 @@ function buildAriete(P) {
   // hatches on the notch plate — RAISED RING RIMS (turret-fix: the r4
   // 3.8 cm crowns vanished at 1x and the roof read as a blank casemate
   // plain; crowns 2.30-2.33 sit inside the ref's 2.2-2.35 notch-zone fall)
-  P.add('turret', cylY(0.23, 0.235, 0.075, 16), 0.52, 0.68, -0.94);          // commander ring (r2: ring front edge cleared out of the -0.91 col — the ref notch line reads 2.209 there)
-  P.add('turretDark', torus(0.225, 0.016, 16), 0.52, 0.7125, -0.94);
-  P.add('turret', cylY(0.20, 0.20, 0.028, 16), 0.52, 0.7255, -0.94);          // (r3-1024: crown 2.20 — the ref hatch line at the ring's -0.97..-1.0 side cols reads 2.219 rendered; the 2.33 crown paid 0.08 there and 0.035 on its 0.29-0.75 front cols)            // domed lid (crown 2.33)
-  P.add('turretDark', box(0.36, 0.013, 0.03), 0.52, 0.7435, -0.94);
-  P.add('turret', cylY(0.19, 0.20, 0.062, 16), -0.55, 0.776, -0.90);           // loader ring
-  P.add('turretDark', torus(0.195, 0.014, 16), -0.55, 0.808, -0.90);
-  P.add('turretDark', cylY(0.195, 0.195, 0.014, 16), -0.55, 0.812, -0.90);     // open-lid shadow disc (crown 2.30)
+  P.add('turret', cylY(0.265, 0.275, 0.075, 18), 0.52, 0.68, -0.94);          // broad low commander ring
+  P.add('turretDark', torus(0.255, 0.016, 18), 0.52, 0.7125, -0.94);
+  P.add('turret', cylY(0.235, 0.24, 0.032, 18), 0.52, 0.7275, -0.94);
+  P.add('turretDark', box(0.39, 0.013, 0.03), 0.52, 0.7465, -0.94);
+  P.add('turretDetail', box(0.055, 0.055, 0.16), 0.30, 0.753, -0.94);          // commander hinge
+  P.add('turret', cylY(0.225, 0.235, 0.062, 18), -0.55, 0.776, -0.90);        // loader ring
+  P.add('turretDark', torus(0.225, 0.014, 18), -0.55, 0.808, -0.90);
+  P.add('turretDark', cylY(0.220, 0.220, 0.014, 18), -0.55, 0.812, -0.90);    // backed loader lid shadow
+  P.add('turretDetail', box(0.050, 0.050, 0.14), -0.75, 0.824, -0.90);        // loader hinge
   periscope(P, 'turretDetail', 0.52, 0.70, -0.66);                             // (r3-1024: sunk — its 2.305 crown printed the z_w -0.97 side col over the ref's 2.217 line)
   periscope(P, 'turretDetail', -0.30, 0.79, 0.30, 0.3);                        // (r3-1024 = the banked second-periscope order: the 0.905 seat printed 2.449 rendered into the ref's 2.341 want at x -0.34..-0.40)
   P.add('turret', box(0.26, 0.26, 0.16), -0.86, 0.817, 0.59);
@@ -622,7 +628,7 @@ function buildAriete(P) {
   // 0.55: the r4 0.63 seat printed the receiver 2.52 vs the ref 2.31 at
   // z_w -1.4 — the gate's own worst column)
   const mag = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone', seed: 5 });
-  mag.position.set(-0.54, 0.38, -1.10);                                        // foot 0.42 (push round: the 0.55 seat printed 2.50 at z_w -1.27 + the station-4 spike where the ref bustle line is 2.304; receiver ~2.31 = flush with the line, SS-C pintle allowance)
+  mag.position.set(-0.55, 0.69, -0.90);                                       // foot planted directly on the loader station
   P.turretG.add(mag);
   // side shelves (tops 1.91 = ref front-view 1.91-1.92 at +-1.35-1.55, plan
   // z_w 0.03..-0.81 — the r4 seat CONFIRMED by the shelf-move experiment:
@@ -633,9 +639,9 @@ function buildAriete(P) {
     P.add('turret', box(0.24, 0.36, 0.69), s * 1.41, 0.25, -0.20);             // shelf z_w -0.83..-0.14 (push round: the 0.84-deep shelf ran its plan rear to -0.97 over the ref's -0.833..-0.144 window)
     P.add('turretDark', box(0.25, 0.06, 0.61), s * 1.415, 0.40, -0.20);
     P.add('turretDark', box(0.26, 0.03, 0.63), s * 1.39, 0.055, -0.20);        // contact shadow under the shelf lip (SS-B2 attachment read)
-    galixBank(P, s * 1.315, s < 0 ? 0.235 : 0.155, -0.16, s, 4, 1);           // 90-ladder r2 (banked push-2 order landed): xc 1.36 -> 1.315 — the k3 tube tips (rendered 1.606) poked the ±1.63 plan cols (the worst plan_turret pair); crowns DROPPED per the fresh front wants (L col -1.316: 2.024, R col 1.318: 1.899 — the 2.10 crowns owned both)                              // banks INSIDE the ref's own +-1.37-1.52 plan window (tube tips ~-0.10w; the -0.10 seat tipped -0.04 over the ref -0.114 front line)
+    galixBank(P, s * 1.285, s < 0 ? 0.235 : 0.155, -0.16, s, 4, 1);           // source-width banks buried into the shelf shoulders
     liftEye(P, 'turretDetail', s * 0.95, 0.74, 0.55, s * 0.4);               // (push-2: the 0.78 seat read 2.35 rendered in the +-0.92-1.00 front cols where the fresh ref line is 2.296-2.317)
-    P.add('turretDetail', box(0.13, 0.055, 0.08), s * 1.565, 0.10, -0.435);     // tie-down horn UNDER the shelf lip (outer 1.63+dil stays out of the +-1.75 col; the ref +-1.60 plan dots. Top 1.61w hides below the ref's 1.62 front-row line — the 1.92 lid seat printed 3 front_whole cols at +0.3)
+    P.add('turretDetail', box(0.13, 0.055, 0.08), s * 1.50, 0.10, -0.435);     // tie-down horn under the shelf lip
     // weld/panel seams on the canted wall (turret-fix: the blank 3 m wall
     // read as one casemate slab — dark joints break it; 7 mm proud). Push-2
     // WINDING-CLASS FIX: the -s*0.234 tilt was REVERSED — tops swung
@@ -667,24 +673,32 @@ function buildAriete(P) {
       P.add('turretDetail', box(0.035, 0.035, 0.65), sx, 0.61, -2.10);
     }
     for (const px of [-1.10, -0.69, -0.26, 0.26, 0.69, 1.10]) P.add('turretDetail', box(0.028, 0.35, 0.028), px, 0.435, zr); // posts off the +-0.165 plan cols (the ref center rear is the cargo line)
-    for (const sx of [-0.69, 0.69]) P.add('turretDark', box(0.82, 0.30, 0.014), sx, 0.435, zr + 0.02); // mesh back, center-open
+    for (const sx of [-0.69, 0.69]) {
+      for (const y of [0.34, 0.435, 0.53]) P.add('turretDetail', box(0.72, 0.018, 0.012), sx, y, zr + 0.010);
+      P.add('turretDetail', box(0.035, 0.23, 0.012), sx + (sx < 0 ? 0.27 : -0.22), 0.435, zr + 0.008);
+    }
     P.add('turretDark', box(0.016, 0.36, 0.56), -1.095, 0.40, -2.1475);         // mesh side sheets (side-mask floor 1.70-2.06w; push-2: rear faces -2.4275 local = rendered -2.752, clear of the -2.775 boundary)
     P.add('turretDark', box(0.016, 0.36, 0.56), 1.095, 0.40, -2.1475);
     P.add('turretDark', box(2.16, 0.014, 0.58), 0, 0.185, -2.12);              // basket floor 1.665w (top-down fill; the deck below closes the sightline)
-    P.add('turretCloth', box(1.95, 0.34, 0.50), 0, 0.38, -2.14);               // strapped cargo (top 2.03)
-    P.add('turretCloth', box(1.60, 0.20, 0.40), -0.05, 0.55, -2.12);           // duffel pile on the cargo (top 2.13 = the ref 2.12 aft band)
-    P.add('turretCloth', box(0.90, 0.09, 0.40), -0.20, 0.585, -2.06);          // tarp roll (top 2.11)
-    P.add('turretDark', box(0.02, 0.34, 0.42), -0.55, 0.38, -2.08);
-    P.add('turretDark', box(0.02, 0.34, 0.42), 0.48, 0.38, -2.08);
+    // Unequal strapped packs leave the basket frame readable instead of
+    // turning its entire rear opening into one procedural wall.
+    P.add('turretCloth', box(0.82, 0.27, 0.42), -0.55, 0.34, -2.14);
+    P.add('turretCloth', box(0.68, 0.23, 0.38), 0.52, 0.32, -2.13);
+    P.add('turretCloth', box(0.50, 0.14, 0.31), -0.43, 0.50, -2.11);
+    P.add('turretCloth', box(0.42, 0.12, 0.28), 0.58, 0.46, -2.08);
+    P.add('turretCloth', box(0.72, 0.09, 0.28), -0.16, 0.565, -2.05);          // low tarp roll
+    P.add('turretDark', box(0.02, 0.27, 0.38), -0.55, 0.34, -2.08);
+    P.add('turretDark', box(0.02, 0.23, 0.34), 0.52, 0.32, -2.08);
   }
   // (push round: the bustle jerry can DELETED — its 2.35 crown owned the
   // three worst turret-side cols at z_w -2.1..-2.35 and the station-2/3
   // spikes over the ref's 2.124 basket line. mg1+3d census unaffected.)
-  // two short whip antennas on the wing tops (identity; raked FLAT aft —
-  // tips ~2.05w at z_w ~-2.48 under the ref's 2.094 aft band)
+  // Two unequal, collared turret radios.  They remain deliberately moderate
+  // in height so the Ariete keeps its low fighting-compartment silhouette.
   for (const s of [-1, 1]) {
-    const whipA = FITTINGS.antennaWhip({ mats: P.mats, h: 0.30, r: 0.011, rake: -s * 0.06, seed: 3, rotation: [-1.35, 0, 0] });
-    whipA.position.set(s * 1.155, 0.50, -1.90);
+    P.add('turretDetail', cylY(0.045, 0.065, 0.08, 12), s * 1.155, 0.60, -1.90);
+    const whipA = FITTINGS.antennaWhip({ mats: P.mats, h: s < 0 ? 0.26 : 0.21, r: 0.011, rake: -s * 0.035, seed: 3 });
+    whipA.position.set(s * 1.155, 0.64, -1.90);
     P.turretG.add(whipA);
   }
   P.decal('turret', 'number', P.spec.visual.number || '118', 0.26, [1.24, 0.30, -0.75], Math.PI / 2, 0, 0.05);
@@ -701,10 +715,16 @@ function buildAriete(P) {
   // all inside the priced mantlet band (y 1.51-1.83, x +-0.41 < the 0.42
   // wedge roots, z within each cover's own footprint): identifiable dust
   // covers, not bare rectangles. Envelope-neutral: no mask row changes.
-  P.addGunExtraDark(box(0.80, 0.25, 0.46), 0, -0.011, 1.33);                   // canvas cover SNOUT x +-0.40 to z_w 2.16 (push round: the ref plan front line holds 2.16-2.19 across +-0.2-0.42 — the gap between the 0.36 mantlet block and the 0.42 wedge roots read 0.85 short; band 1.55-1.80 inside the priced mantlet band, no side/front silhouette change)
+  P.addGunExtra(KIT.xform(KIT.sph(0.25, 18), 0, 0, 0, 0, 0, 0,
+    [1.58, 0.50, 0.92]), 0, -0.011, 1.33);                                    // rounded armored mantlet surround
+  P.addGunExtraDark(KIT.xform(KIT.sph(0.25, 18), 0, 0, 0, 0, 0, 0,
+    [1.18, 0.42, 0.76]), 0, -0.008, 1.365);                                   // seated canvas core
   for (const sx of [-0.27, 0, 0.27]) P.addGunExtraDark(box(0.014, 0.256, 0.464), sx, -0.011, 1.33); // snout cinch straps (3 mm proud on the cover faces)
   P.addGunExtraDark(cylX(0.028, 0.72, 10), 0, 0.096, 1.44);                    // rolled canvas hem across the snout top edge (kills the razor box corner; crown 1.81 <= the 1.83 band)
-  P.addGunExtraDark(box(0.70, 0.32, 0.30), 0, -0.01, 0.55);                    // dark canvas mantlet cover wrapping the root (turret-fix: the 0.36 block alone read as a pinhole in the big front wall — the ref front is dominated by its dark mantlet mass; band y 1.51-1.83 / z_w 1.01-1.31 inside the priced mantlet band, plan front 1.31 under the ref 1.333 line)
+  P.addGunExtra(KIT.xform(KIT.sph(0.23, 18), 0, 0, 0, 0, 0, 0,
+    [1.52, 0.70, 0.65]), 0, -0.01, 0.55);                                     // rounded armored root surround
+  P.addGunExtraDark(KIT.xform(KIT.sph(0.23, 18), 0, 0, 0, 0, 0, 0,
+    [1.08, 0.54, 0.52]), 0, -0.006, 0.575);                                   // inner canvas boot
   for (const sx of [-0.18, 0.18]) P.addGunExtraDark(box(0.014, 0.30, 0.31), sx, -0.015, 0.55); // root-cover straps
   P.addGunExtraDark(cylZ(0.026, 0.10, 8), 0.27, 0.06, 0.42);                   // coax port
   P.addGunExtraDark(box(0.075, 0.05, 0.07), 0.27, 0.105, 0.42);                // coax hood (a sight/port carries its hood tell)
@@ -740,16 +760,16 @@ function buildAriete(P) {
   // authored = rendered/1.01266; 24-seg per the STATION-PAINT law (the
   // ref's own smooth tube SKIPS its slabs — its i13 top is the 1.628
   // glacis; a 12-seg would paint 1.84). MRS union 0.27 < the 12% cut.
-  P.addGunExtra(cylZ(0.111, 2.913, 24), 0, 0.0174, 3.2755);
-  buildGun(P, { len: 5.10, r: 0.075, sleeve: true, evac: 0.685, evacR: 1.40, collar: true, baseR: 0.16 });  // r5: the 5.18 tube's AA/flare read overallLengthM 9.78 (+1.19%, -1.5 dims) — the MASK is the measure of record; 5.10 reads ~9.70 and drops the 5.8 proc-only col
-  muzzleBore(P, 0.075, 5.08);                                                  // §B3.1 muzzle bore (shadow-named — see the helper)
+  P.addGunExtra(cylZ(0.111, 2.913, 24), 0, 0.0174, 3.1055);
+  buildGun(P, { len: 4.93, r: 0.075, sleeve: true, evac: 0.685, evacR: 1.40, collar: true, baseR: 0.16 });
+  muzzleBore(P, 0.075, 4.91);                                                  // §B3.1 muzzle bore (shadow-named — see the helper)
   // MRS/muzzle collar (push round): the ref's muzzle zone reads a THICK
   // 1.555-1.884 band at z 5.4-5.7 vs the bare 0.075 tube. Seated 4 cm LEFT
   // (real MRS units mount off-axis): x -0.175..0.095 covers the plan
   // x=-0.165 column the ref's off-center fused tube owns — the certified
   // 1.84-err plan-center col drops to ~0.09. Band 0.27 (+AA 0.29) stays
   // under the 12% body cut so heightM/hullLengthM never see it.
-  P.addGunExtra(cylZ(0.135, 0.30, 12), -0.04, 0.05, 4.95);                     // MRS collar (r9: gunMount frame = gun-local +0.60 — verified via the mantlet block's 1.745 front; world 5.40-5.70 = the ref's own muzzle-zone swell [1.58..1.90], flush with the 5.70 muzzle so overallLengthM holds. r3-1024: +0.03 y — the ref swell band reads [1.626..1.895] rendered vs the old [1.591..1.864])
+  P.addGunExtra(cylZ(0.135, 0.30, 12), -0.04, 0.05, 4.78);                     // off-axis MRS collar remains flush with the shortened muzzle
   P.topY = 1.10;
 }
 
