@@ -29,6 +29,10 @@ no PSO/AMV appliqué package.
   flush driver hatch right with 3 episcopes, V splash rail.
 - Running gear + skirts: 7 rubber-tired wheels, rear sprocket; full-length
   side skirts, front two panels heavier armor with a slanted leading cut.
+- Terminal identity law: a visibly separate, non-driven front idler precedes
+  the seven road wheels; the rear terminal is the final-drive sprocket. The
+  exterior faces may be detailed, but neither may be replaced by a static
+  imitation of the linked-shoe course.
 - Signature equipment: GALIX 80 mm launchers (4-tube bank each turret side),
   left-hull rear exhaust outlet, rear turret basket, two whip antennas.
 

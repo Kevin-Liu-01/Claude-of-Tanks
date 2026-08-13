@@ -104,3 +104,24 @@ hashes and fresh scores
 `[9.4,9.5,9.4,9.3,9.3,9.3,9.4,9.5,9.5,9.6,9.5,9.6,9.5,9.6]`, floor 9.3,
 mean 9.46. The guards remain fixed to the hull through a genuine quarter-turn
 while the complete turret rotates. **KEEP `9c47c650`; retire `158157f4`.**
+
+## 2026-08-13 shallow-guard and idler-readability supersession
+
+Fresh elevated and close-front pixels showed that the restored guard was
+present but its camouflaged face and rubber lip hung too deeply, visually
+masking the native idler even though the exact collision audit was green.
+The final first-party pass keeps the same raked cap, inboard bow knee,
+outboard fender knee and forward hinge overlap, but raises and shortens the
+face/lip and shortens both stiffeners. The front idler also receives a
+contrasting olive hub and inner recessed ring so it cannot be mistaken for a
+road wheel or a hollow shoe bundle.
+
+Freeze **`cf383a52`** reproduces twice at 48 meshes / 106,107 vertices.
+`/private/tmp/ariete-leclerc-track-final-r1/leclerc` contains 15 authored
+standard views plus complete yaw0/yaw90 sets: 45 PNGs / 45 distinct hashes.
+Exact band/shoe/sweep remains 0/0/0, parent is 0/0/0, winding is visually
+clean (7 antialias pixels / 0.01%), articulation passes and bore contrast is
+67.3. The guards remain hull-fixed and fully supported while the turret yaws;
+the visible native order is front free idler, six road wheels, five return
+rollers/hydropneumatic arms and rear final drive. **KEEP `cf383a52`; retire
+`9c47c650`.**

@@ -913,6 +913,25 @@ function buildArieteNative2026(P) {
     contactZF: 2.22, contactZR: -2.05,
     deadSag: 0.022, paintedEnds: true, coveredTop: true, arms: true,
   });
+  // The native loop owns the entire moving course, but its terminal faces
+  // sit inboard of the outer shoe plane.  Give the free front idler and rear
+  // final drive their own concentric, outboard-readable assemblies so the
+  // two ends cannot collapse into dark holes in the fleet profile view.
+  for (const side of [-1, 1]) {
+    const faceX = side * 1.690;
+    P.add('hullRunningGearDetail', cylX(0.215, 0.030, 24), faceX, 0.67, 3.18);
+    P.add('hullRunningGearDark', torus(0.168, 0.014, 20), side * 1.708, 0.67, 3.18, 0, 0, Math.PI / 2);
+    P.add('hullRunningGearDetail', cylX(0.066, 0.038, 14), side * 1.712, 0.67, 3.18);
+
+    P.add('hullRunningGearDetail', cylX(0.225, 0.030, 24), faceX, 0.78, -3.12);
+    P.add('hullRunningGearDark', torus(0.178, 0.014, 20), side * 1.708, 0.78, -3.12, 0, 0, Math.PI / 2);
+    P.add('hullRunningGearDetail', cylX(0.072, 0.038, 14), side * 1.712, 0.78, -3.12);
+    for (let k = 0; k < 8; k++) {
+      const a = k * Math.PI / 4;
+      P.add('hullRunningGearDark', cylX(0.013, 0.040, 8), side * 1.714,
+        0.78 + Math.sin(a) * 0.125, -3.12 + Math.cos(a) * 0.125);
+    }
+  }
   P.hullG.userData.runningGearOrder = {
     front: 'idler', frontWheelPairs: 1, roadWheelPairs: wheelZs.length,
     supportRollerPairs: 4, suspension: 'torsion-arm',
@@ -1109,15 +1128,15 @@ function buildLeclerc(P) {
     P.add('hullRubber', slab(                                                  // tapered hinge overlap projects beyond the terminal shoe envelope
       [s2 * 0.98, 1.205, 3.595], [s2 * 1.72, 1.205, 3.595], [s2 * 1.72, 1.285, 3.595], [s2 * 0.98, 1.285, 3.595],
       [s2 * 1.00, 1.205, 3.630], [s2 * 1.70, 1.205, 3.630], [s2 * 1.70, 1.285, 3.630], [s2 * 1.00, 1.285, 3.630]));
-    P.add('hull', slab(                                                        // camouflaged guard face, tapered with an asymmetric raked lower edge
-      [s2 * 1.10, 1.00, 3.630], [s2 * 1.62, 0.92, 3.630], [s2 * 1.70, 1.245, 3.630], [s2 * 1.00, 1.245, 3.630],
-      [s2 * 1.14, 1.04, 3.675], [s2 * 1.58, 0.96, 3.675], [s2 * 1.64, 1.235, 3.675], [s2 * 1.06, 1.235, 3.675]));
+    P.add('hull', slab(                                                        // shallow camouflaged guard face; it must frame, not mask, the idler
+      [s2 * 1.10, 1.10, 3.630], [s2 * 1.62, 1.04, 3.630], [s2 * 1.70, 1.245, 3.630], [s2 * 1.00, 1.245, 3.630],
+      [s2 * 1.14, 1.14, 3.675], [s2 * 1.58, 1.08, 3.675], [s2 * 1.64, 1.235, 3.675], [s2 * 1.06, 1.235, 3.675]));
     P.add('hullRubber', slab(                                                  // narrow flexible lip follows the guard's lower rake
-      [s2 * 1.10, 0.93, 3.630], [s2 * 1.62, 0.85, 3.630], [s2 * 1.62, 0.94, 3.630], [s2 * 1.10, 1.02, 3.630],
-      [s2 * 1.14, 0.97, 3.675], [s2 * 1.58, 0.89, 3.675], [s2 * 1.58, 0.98, 3.675], [s2 * 1.14, 1.06, 3.675]));
+      [s2 * 1.10, 1.01, 3.630], [s2 * 1.62, 0.96, 3.630], [s2 * 1.62, 1.05, 3.630], [s2 * 1.10, 1.10, 3.630],
+      [s2 * 1.14, 1.05, 3.675], [s2 * 1.58, 1.00, 3.675], [s2 * 1.58, 1.09, 3.675], [s2 * 1.14, 1.14, 3.675]));
     P.add('hullDark', box(0.54, 0.024, 0.024), s2 * 1.35, 1.294, 3.610);      // hinge seam follows the cap's forward arris
     for (const bx of [1.08, 1.62]) {
-      P.add('hullDark', box(0.035, 0.20, 0.035), s2 * bx, 1.115, 3.650);     // two real apron stiffeners, seated through the overlap
+      P.add('hullDark', box(0.035, 0.12, 0.035), s2 * bx, 1.135, 3.650);     // two real apron stiffeners, seated through the overlap
     }
   }
   // driver LEFT: flush hatch + 3 episcopes (90-ladder r1 CAP-SEAT: ref deck
@@ -1362,7 +1381,8 @@ function buildLeclerc(P) {
     const { idler, sprocket } = leclercGear;
     P.add('hullRunningGearDetail', cylX(0.188, 0.026, 24), x, idler.y, idler.z);
     P.add('hullRunningGearDark', torus(0.151, 0.014, 20), side * 1.620, idler.y, idler.z, 0, 0, Math.PI / 2);
-    P.add('hullRunningGearDark', cylX(0.058, 0.034, 12), side * 1.624, idler.y, idler.z);
+    P.add('hullRunningGearDetail', cylX(0.070, 0.034, 14), side * 1.624, idler.y, idler.z);
+    P.add('hullRunningGearDark', torus(0.092, 0.010, 16), side * 1.626, idler.y, idler.z, 0, 0, Math.PI / 2);
     P.add('hullRunningGearDetail', cylX(0.205, 0.026, 24), x, sprocket.y, sprocket.z);
     P.add('hullRunningGearDark', torus(0.164, 0.015, 20), side * 1.620, sprocket.y, sprocket.z, 0, 0, Math.PI / 2);
     P.add('hullRunningGearDark', cylX(0.068, 0.034, 12), side * 1.624, sprocket.y, sprocket.z);

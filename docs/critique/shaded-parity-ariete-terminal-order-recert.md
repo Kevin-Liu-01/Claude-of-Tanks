@@ -20,3 +20,22 @@ road wheels, the final drive is separate at the rear, and neither terminal,
 bow shoulder, sponson nor skirt enters the sole linked-shoe course. The low
 cast-form turret and its complete combat/basket suite remain seated through a
 genuine yaw quarter-turn.
+
+## 2026-08-13 outboard terminal-face supersession
+
+The previous clearance repair was mechanically correct but the exterior
+terminal faces remained behind the outer shoe plane. In the mandatory
+elevated profile that made both ends read as black knots instead of an idler
+and drive assembly. The active first-party builder now adds concentric olive
+dishes, dark recessed rings and hubs at both ends, plus a bolted rear drive
+cadence. These are wheel faces only; the existing native loop remains the
+sole moving track course.
+
+Freeze **`96d3d9e8`** reproduces twice at 51 meshes / 83,799 vertices.
+`/private/tmp/ariete-leclerc-track-final-r1/ariete` contains 15 authored
+standard views, 15 yaw0 views and 15 yaw90 views: 45 PNGs / 45 distinct
+hashes. Exact band/shoe/sweep clearance remains 0/0/0, parent audit is
+0/0/0, winding is clean, articulation passes and bore contrast is 124.5.
+The elevated profile now reads, without ambiguity, **front free idler ->
+seven road wheels -> four return rollers / torsion arms -> rear bolted final
+drive**. **KEEP `96d3d9e8`; retire `151906a0`.**

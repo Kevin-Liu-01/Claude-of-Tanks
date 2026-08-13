@@ -6564,3 +6564,41 @@ fresh 14-view/yaw packet and strict mechanical/runtime gates.
 
 **PASS / KEEP `9aa22fb4`, `c3fb25ec`, `6ae53930`, `f46418a4`. Ordered
 blockers: none.**
+
+## 5.182 ARIETE / LECLERC TERMINAL AND MUDGUARD VISUAL REPAIR (2026-08-13)
+
+Fresh authored elevated profiles exposed a presentation failure that the
+zero-collision receipts alone could not catch. Ariete's native terminal faces
+sat behind the shoe plane and read as hollow black knots. Leclerc's restored
+front guard was collision-free but hung too deeply, visually masking its free
+idler. Both active playables remain entirely repository-authored procedural
+models; no comparison geometry, converted payload, source material or rig is
+used at runtime.
+
+Ariete now carries concentric outboard olive dishes, recessed rings and hubs
+on the free idler and rear final drive, with an eight-bolt drive cadence. The
+native course is unchanged and remains the only moving track geometry.
+Leclerc retains its raked guard cap, bow knee, fender knee and forward hinge
+overlap, but its camouflaged face, rubber lip and stiffeners are raised and
+shortened. A contrasting idler hub/inner ring makes the terminal identity
+read through the supported guard instead of as a shoe bundle.
+
+The required order is explicit and visible: Ariete **front free idler ->
+seven road wheels -> four return rollers / torsion arms -> rear final drive**;
+Leclerc **front free idler -> six road wheels -> five return rollers /
+hydropneumatic arms -> rear final drive**. Exact continuous-band, individual-
+shoe and full moving-sweep clearance is **0/0/0** on both. Parent audit is
+0/0/0, winding is clean (Leclerc only 7 antialias pixels / 0.01%), live rig
+articulation passes all 19 checks and muzzle-bore contrast is 124.5 / 67.3.
+
+Deterministic geometry reproduces twice as Ariete **`96d3d9e8`** (51 meshes /
+83,799 vertices) and Leclerc **`cf383a52`** (48 / 106,107). Each directory in
+`/private/tmp/ariete-leclerc-track-final-r1` contains 15 authored standard
+views, 15 yaw0 and 15 yaw90 frames including the elevated profile: **45 PNGs /
+45 distinct hashes per vehicle**. Yaw evidence shows both complete turret
+packages rotating while the new terminal faces, guards, skirts, hull service
+fields and sole linked courses remain fixed and physically seated.
+
+All sixteen presentation assets are regenerated from these exact builders.
+**PASS / KEEP `96d3d9e8`, `cf383a52`; retire `151906a0` and `9c47c650`.
+Ordered blockers: none.**

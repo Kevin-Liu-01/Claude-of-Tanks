@@ -28,6 +28,11 @@ L/52, HL-70 gunner sight in roof, HL-15 panoramic, GALIX, no AZUR urban kit.
   driver hatch LEFT with 3 episcopes, splash ridge across the plate.
 - Running gear + skirts: 6 wheels; front third of the skirts are thick
   armored blocks, rear two-thirds rubber sheet with vertical seams.
+- Terminal and mudguard law: a free front idler precedes all six road wheels;
+  the rear terminal is the final drive. The paired front guards are shallow,
+  raked hull pieces supported by an inboard bow knee and outboard fender knee.
+  They frame the idler but never enter or visually replace its linked-shoe
+  wrap.
 - Signature equipment: GALIX 80 mm dischargers splayed on both rear turret
   corners; side stowage baskets along the turret flanks; rear hull stowage
   rack/panniers; crosswind mast + two whip antennas on the bustle.
