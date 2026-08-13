@@ -6343,3 +6343,51 @@ strict mechanical gates, immutable authored hash and yaw evidence are the
 acceptance evidence.
 
 **PASS / KEEP `7b92f462`; supersede `5576ccf0`. Ordered blockers: none.**
+
+## 5.178 BASE T-90 CAST-CONTOUR ARMOR / EQUIPMENT REFIT (2026-08-13, RE-FROZEN)
+
+The active `t90` remains wholly repository-authored procedural geometry. The
+historical comparison binary remains quarantined and unavailable to runtime;
+no mesh, vertex payload, texture, material, rig or animation from it enters
+the playable. The asymmetric pear/cast section loft remains the sole primary
+turret body.
+
+The Kontakt-5 blanket is re-authored around that final loft instead of around
+the retired dome. Six unequal planted leaves per side descend continuously
+from the mantlet valley over the maximum cheek bulge into the clipped flank.
+The middle leaves overlap broadly enough to retain armor-face authority; the
+last two turn down and in rather than extending a constant-height polygonal
+belt. Three lower cheek returns, three shallow crown returns and three
+diminishing aft leaves use the same cast-section datum and deeper buried
+support shoes.
+
+Both 902B banks now nest immediately behind the outer cheek leaves on tapered
+inboard carriers and visible lower braces. The commander/night-sight bridge is
+lower and wider on the crown, with its head, aperture, periscopes and unequal
+supports re-seated around that foundation. Unequal rear bins move to the real
+pear-tail edge and receive tapered side returns. Shtora, cupolas, NSVT, gunner
+sight, antenna collars and stored OPVT remain visibly turret-owned.
+
+Freeze **`14688339`** reproduces at 67 meshes / 119,256 vertices. Exact band,
+instanced-shoe and strict moving-sweep clearance is **0/0/0**. Parent audit is
+**0 stranded / 0 abutting / 0 dangling**. Winding is 0 reversed / 0 mixed
+with one visually null deficit pixel and zero yaw candidates. Runtime
+articulation passes 10/10 and the explicit muzzle bore passes at 100.7
+contrast. All eight gameplay presentation assets and their manifest row are
+regenerated from the freeze.
+
+`/private/tmp/t90-refit-final-r3/t90` contains 15 procedural appraisal,
+15 yaw0 and 15 yaw90 frames including the standardized elevated-left profile:
+**45 PNGs / 45 distinct hashes**. Fresh standard order is
+`[9.3,9.3,9.2,9.1,9.1,9.1,9.2,9.3,9.4,9.4,9.3,9.4,9.3,9.4]`, floor **9.1**
+and mean **9.27**. Every yaw pair shows the full shell, armor, gun, Shtora,
+smoke, roof stations, antennas and rear cells rotating together while the
+hull and native six-wheel course remain fixed. No copied geometry, floating
+decoration, duplicate turret, track collision, open sheet or yaw wound
+appears.
+
+The unavailable historical comparison is not replaced with a fabricated
+reference-mask score. The immutable first-party hash, fresh visual packet,
+strict mechanical gates and live gameplay assets are the acceptance evidence.
+
+**PASS / KEEP `14688339`; supersede `d8341464`. Ordered blockers: none.**
