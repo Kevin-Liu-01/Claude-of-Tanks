@@ -155,6 +155,7 @@ const CR1_HULL = {
 
 function challenger1Build(P) {
   const g = CR1_HULL;
+  const { sph } = KIT;
   ukHull(P, g);
   // Hydrogas wheel-face restoration.  `ukHull` already owns the physical
   // tires, hubs and linked course; these shallow concentric faces sit inside
@@ -163,10 +164,20 @@ function challenger1Build(P) {
   // wheels and never an additional running-gear course.
   for (const side of [-1, 1]) {
     for (const wz of g.wheelZs) {
-      P.add('hullDetail', cylY(0.29, 0.29, 0.032, 16),
-        side * 1.505, g.wheelY, wz, 0, 0, Math.PI / 2);
-      P.add('hullDark', cylY(0.105, 0.105, 0.038, 14),
-        side * 1.510, g.wheelY, wz, 0, 0, Math.PI / 2);
+      for (const [geo, mat, x, name] of [
+        [cylY(0.29, 0.29, 0.032, 16), P.mats.detail, side * 1.505, 'challenger1WheelFaceDressing'],
+        [cylY(0.105, 0.105, 0.038, 14), P.mats.dark, side * 1.510, 'challenger1WheelHubDressing'],
+      ]) {
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.name = name;
+        mesh.userData.runningGear = true;
+        mesh.position.set(x, g.wheelY, wz);
+        mesh.rotation.z = Math.PI / 2;
+        mesh.castShadow = false;
+        mesh.receiveShadow = true;
+        P.hullG.add(mesh);
+        P.disposables.push(geo);
+      }
     }
   }
   // BOW GUARD COURSE — NO-STAIRCASES r1 (§B1 law 5f4cfae, owner screenshot).
@@ -195,8 +206,10 @@ function challenger1Build(P) {
     // surface, not steps); it is side-mask INVISIBLE (the wrap paints below
     // it on every column) and the tip segment keeps the ref's own
     // 0.974@4.112 wing-belly column. Segments <=0.35 (§C station caps).
-    W(0.95, 1.65, 3.30, 2.95, () => 1.00);
-    W(0.95, 1.65, 3.50, 3.30, (z) => 1.00 + (z - 3.30) * 1.225);
+    // Raise the same closed guard surface into one continuous arch over the
+    // enlarged native idler/shoe envelope; no bow or hull panel is removed.
+    W(0.95, 1.65, 3.30, 2.95, (z) => 1.12 + (z - 2.95) * (0.08 / 0.35));
+    W(0.95, 1.65, 3.50, 3.30, (z) => 1.20 + (z - 3.30) * (0.045 / 0.20));
     W(0.95, 1.65, 3.85, 3.50, () => 1.245);
     W(0.95, 1.65, 4.06, 3.85, (z) => 1.245 - (z - 3.85) * 1.19);
     W(0.95, 1.65, 4.165, 4.06, () => 0.995);
@@ -458,7 +471,8 @@ function challenger1Build(P) {
   // z 1.66..2.06 — its trunnion/collar line sweeps low ahead of the deep
   // mass; also closes the slot under the raised chin). r4: bottom to the
   // live 1.461 cols (the 1.42 floor hung -0.065 on three columns).
-  P.add('turret', box(1.2, 0.24, 0.40), 0, -0.045, 2.06);
+  P.add('turret', xform(cylZ(0.22, 0.40, 18, 0.19), 0, 0, 0, 0, 0, 0, [2.70, 0.55, 1]),
+    0, -0.045, 2.06);
   // Crown plateau — the commander's LEFT half only (x -0.70..0, the ref's
   // own 2.498 side line; the step wall at x 0 falls to the loader roof).
   P.add('turret', box(0.70, 0.30, 1.01), -0.35, 0.728, 0.315);
@@ -660,23 +674,38 @@ function challenger1Build(P) {
   // side/front/plan column moves by construction (plan front stays the 0.925
   // glass plane). The recess under the soffit is backed by the body's new
   // 0.78 front face (§B2 — no sky).
-  P.add('turret', box(0.26, 0.48, 0.36), -0.40, 1.085, 0.60);
+  // The commander's sight is a tapered armored hood rooted in the broad
+  // left roof station, not a freestanding rectangular chimney.  Preserve
+  // the certified height/window datum while pulling the crown in on all
+  // four sides so the load path reads from the roof upward.
   P.add('turret', slab(
-    [-0.53, 1.19, 0.86], [-0.27, 1.19, 0.86], [-0.27, 1.19, 0.78], [-0.53, 1.19, 0.78],
-    [-0.53, 1.253, 0.86], [-0.27, 1.253, 0.86], [-0.27, 1.325, 0.78], [-0.53, 1.325, 0.78]));
+    [-0.52, 0.79, 0.42], [-0.28, 0.79, 0.42], [-0.28, 0.79, 0.76], [-0.52, 0.79, 0.76],
+    [-0.49, 1.16, 0.46], [-0.31, 1.16, 0.46], [-0.31, 1.16, 0.72], [-0.49, 1.16, 0.72]));
+  P.add('turret', slab(
+    [-0.52, 1.08, 0.83], [-0.28, 1.08, 0.83], [-0.28, 1.08, 0.76], [-0.52, 1.08, 0.76],
+    [-0.50, 1.14, 0.83], [-0.30, 1.14, 0.83], [-0.31, 1.16, 0.76], [-0.49, 1.16, 0.76]));
   // glass tucked under the visor lip (rear face embeds 10 mm into the visor
   // front — the old 0.91 seat floated 50 mm ahead once the body face moved;
   // plan-free: the nose plane owns every plan column this band touches)
-  P.add('turretGlass', box(0.21, 0.05, 0.03), -0.40, 1.145, 0.865);
-  P.add('turret', box(0.33, 0.49, 0.50), -0.725, 0.92, 1.25);
+  P.add('turretGlass', box(0.19, 0.045, 0.03), -0.40, 1.045, 0.835);
+  P.add('turret', slab(
+    [-0.73, 0.64, 1.00], [-0.48, 0.64, 1.00], [-0.48, 0.64, 1.43], [-0.73, 0.64, 1.43],
+    [-0.70, 0.94, 1.04], [-0.51, 0.94, 1.04], [-0.51, 0.94, 1.39], [-0.70, 0.94, 1.39]));
   // r8 (tone round O4a): sight cap + NBC pack -> 'turretDetail' (same
   // sand-blotch class as the TOGS rebucket above; masks identical).
-  P.add('turretDetail', box(0.33, 0.14, 0.10), -0.725, 1.165, 1.325);
+  P.add('turretDetail', box(0.25, 0.08, 0.10), -0.605, 0.94, 1.25);
   // NBC pack on the left rear roof (ref: 2.566 at the -0.30 col, 2.533 at
   // -0.43 — 0.885 splits the pair)
   P.add('turretDetail', box(0.40, 0.10, 0.36), -0.45, 0.885, -0.10);
-  P.add('turret', box(0.12, 0.31, 0.40), -1.0, 0.735, 1.25);
-  P.add('turret', box(0.24, 0.31, 0.34), -0.13, 1.02, 0.15);
+  P.add('turret', slab(
+    [-0.83, 0.56, 1.08], [-0.67, 0.56, 1.08], [-0.67, 0.56, 1.36], [-0.83, 0.56, 1.36],
+    [-0.80, 0.70, 1.11], [-0.70, 0.70, 1.11], [-0.70, 0.70, 1.33], [-0.80, 0.70, 1.33]));
+  // Keep the small center station below the sight heads, but taper its
+  // crown so the strict front view no longer resolves another square
+  // chimney in the commander/TOGS skyline.
+  P.add('turret', slab(
+    [-0.26, 0.865, -0.02], [-0.01, 0.865, -0.02], [-0.01, 0.865, 0.32], [-0.26, 0.865, 0.32],
+    [-0.235, 1.175, 0.02], [-0.045, 1.175, 0.02], [-0.045, 1.175, 0.28], [-0.235, 1.175, 0.28]));
   // (r3: TOGS body TAPERS — ref front cols read 2.27 at x 0.82 but 2.36
   // at 1.02; a flat 2.355 body overpainted the inner col +0.09)
   // r8 (tone round O4a): TOGS body+head rebucketed 'turret' -> 'turretDetail'
@@ -688,12 +717,19 @@ function challenger1Build(P) {
   P.add('turretDetail', box(0.15, 0.25, 0.42), 0.935, 0.61, 1.30);
   // (head mast runs INTO the body top — the +0.03 head raise floated it
   // 0.065 clear and minted a yaw-90 mask island, the round's one floater)
-  P.add('turretDetail', box(0.10, 0.68, 0.10), 0.93, 1.025, 1.08);
-  P.add('turretGlass', box(0.22, 0.12, 0.03), 0.86, 0.60, 1.515);
+  P.add('turretDetail', slab(
+    [0.55, 0.62, 1.00], [0.69, 0.62, 1.00], [0.69, 0.62, 1.16], [0.55, 0.62, 1.16],
+    [0.58, 0.96, 1.03], [0.66, 0.96, 1.03], [0.66, 0.96, 1.13], [0.58, 0.96, 1.13]));
+  P.add('turretGlass', box(0.18, 0.09, 0.03), 0.55, 0.56, 1.495);
   // Deep trunnion/breech mass the oracle carries in its turret node
   // (push-2: bottom to the ref's LIVE 0.942 band across world z 0.09..1.64
   // — the old 1.00 floor sat +0.065 high on TWELVE side columns).
-  P.add('turretDark', box(1.55, 0.57, 1.58), 0, -0.40, 1.09);
+  // The two legacy rectangular backing boxes produced a visible horizontal
+  // bar across the entire gun root.  One closed oval mass now carries the
+  // same trunnion volume from the ring into the face while keeping rounded
+  // shoulders exposed around the L11 collar.
+  P.add('turretDark', xform(cylZ(0.43, 1.60, 22, 0.35), 0, 0, 0, 0, 0, 0, [1.82, 1.0, 1]),
+    0, -0.27, 1.09);
   // Ring collar: the ref's underside STEPS behind the trunnion mass —
   // 1.59 at the -0.30 world col, 1.46 ahead of it (the old one-piece
   // 1.44 floor hung 0.16 into the ring gap on the rear col).
@@ -712,7 +748,17 @@ function challenger1Build(P) {
   // world — 10 mm past the outer skirt-tier underside (1.74) and 80 mm into
   // the face-slab volume; the z 0.10..0.125 collar overlap chains the rear
   // (§B2 chain at every face).
-  P.add('turretDark', box(1.55, 0.26, 1.58), 0, 0, 1.09);
+  // A shallow upper collar overlaps the oval carrier and the underside of
+  // both cast cheeks; its ellipse closes the former sky slot without
+  // recreating a rectangular plate.
+  // Body-colour outer mask carries the visible shoulder transition into
+  // both ellipsoidal cheeks.  A smaller closed dark collar remains nested
+  // inside it, preserving the trunnion depth without reading as a separate
+  // polygon stuck to the gun sleeve.
+  P.add('turret', xform(cylZ(0.275, 1.60, 32, 0.225), 0, 0, 0, 0, 0, 0, [3.35, 0.78, 1]),
+    0, 0.025, 1.075);
+  P.add('turretDark', xform(cylZ(0.215, 1.63, 32, 0.175), 0, 0, 0, 0, 0, 0, [2.45, 0.72, 1]),
+    0, 0.035, 1.105);
   liftEye(P, 'turretDetail', -0.95, 0.62, 0.55, 0.4);
   liftEye(P, 'turretDetail', 0.95, 0.62, 0.55, -0.4);
   // 2x5 smoke discharger banks on both cheeks (the print's 2.40-2.42
@@ -720,9 +766,13 @@ function challenger1Build(P) {
   // (banks lowered 0.18: the ref's front-view discharger tops read 2.15-
   // 2.19 at the ±1.3-1.5 columns; ours rode at 2.37)
   for (const s of [-1, 1]) {
-    P.add('turretDetail', box(0.06, 0.15, 0.34), s * 1.10, 0.40, 1.30, 0, s * 0.55, 0);
-    smokeCluster(P, s * 1.26, 0.50, 1.42, 5, s * 0.95, 0.62);
-    smokeCluster(P, s * 1.23, 0.37, 1.46, 5, s * 0.95, 0.62);
+    // Broad buried cheek pad plus two vertically staggered rows.  The bank
+    // rises only 55 mm and moves 45 mm forward: enough to expose the tube
+    // mouths in front/close-front while remaining below the turret crown
+    // and fully inside the certified cheek envelope.
+    P.add('turretDetail', box(0.11, 0.22, 0.39), s * 1.105, 0.455, 1.345, 0, s * 0.55, 0);
+    smokeCluster(P, s * 1.26, 0.555, 1.465, 5, s * 0.95, 0.62);
+    smokeCluster(P, s * 1.23, 0.425, 1.505, 5, s * 0.95, 0.62);
   }
   // Loader hatch ring on the commander plateau + gunner cowl RE-SEATED on
   // the low loader roof (push-2 §B1: the cowl rode the old symmetric-crown
@@ -756,7 +806,7 @@ function challenger1Build(P) {
   // so the close-roof peek never re-tops a side column).
   {
     const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', elev: 0.06, scale: 0.92, seed: 7 });
-    mg.position.set(-0.77, 0.66, 0.16);
+    mg.position.set(-0.73, 0.80, 0.02);
     mg.rotation.y = -0.06;
     P.turretG.add(mg);
   }
@@ -800,8 +850,13 @@ function challenger1Build(P) {
   // at the gun root (front rect 59.6 vs ref glacis 46.8; the fl-togs crop's
   // grey twin-box). The ref root reads uniform dark olive — gunmetal slot.
   // Same gunG frame, same masks.
-  P.addGunExtraDark(box(0.86, 0.55, 0.85), 0, -0.02, 0.55);
-  P.addGunExtraDark(box(0.42, 0.235, 0.55), 0, 0, 1.63);
+  // Rounded L11 seat: the former pair of square blocks made the gun root
+  // look bolted to a flat bar.  These overlapping tapered cylinders keep
+  // the same buried depth and gun axis but present an oval armored collar
+  // whose rear half enters the casting and whose front half receives the
+  // thermal sleeve.
+  P.addGunExtraDark(xform(cylZ(0.43, 0.80, 20, 0.36), 0, 0, 0, 0, 0, 0, [1.18, 0.74, 1]), 0, -0.02, 0.55);
+  P.addGunExtraDark(xform(cylZ(0.24, 0.58, 18, 0.19), 0, 0, 0, 0, 0, 0, [1.10, 0.78, 1]), 0, 0, 1.60);
   // push-2: sleeve sections ride +0.02 (ref tube-top cols 1.981 vs our
   // 1.96 print) — offset only, the elevation pivot/cradle stay put.
   // r4: the FORWARD sleeve is segmented like the real L11 thermal sleeve —
@@ -871,8 +926,8 @@ function challenger1Build(P) {
   // r2: cradle underside re-cut as the ref's own FALLING line (side
   // bottoms 1.429@3.333 -> 1.234@3.723 — the flat 1.30 belly read -0.13
   // rear / +0.065 front of it).
-  P.addGunExtraDark(box(1.01, 0.30, 0.22), 0.135, -0.28, 3.03);
-  P.addGunExtraDark(box(1.01, 0.36, 0.22), 0.135, -0.42, 3.25);
+  P.addGunExtraDark(xform(cylZ(0.18, 0.44, 8, 0.105), 0, 0, 0, 0, 0, Math.PI / 8, [2.20, 0.86, 1]),
+    0, -0.34, 3.14);
   // Published 11.50 overall: tail -4.16 -> muzzle +7.34.
   buildGun(P, { len: 6.99, r: 0.095, sleeve: false, evac: 0, collar: false, baseR: 0.15 });
   muzzleBore(P, { len: 6.99, r: 0.095 });                     // §B3.1 (shadow-named, 3fca39b)
@@ -895,7 +950,7 @@ function challenger1Build(P) {
   // interior, and the banks are plan-interior behind the 2.52/2.63 bin
   // noses). Placement replicates smokeCluster's own transform math.
   for (const s of [-1, 1]) {
-    for (const [bx, by, bz] of [[s * 1.26, 0.50, 1.42], [s * 1.23, 0.37, 1.46]]) {
+    for (const [bx, by, bz] of [[s * 1.26, 0.555, 1.465], [s * 1.23, 0.425, 1.505]]) {
       const yaw = s * 0.95;
       for (let k = 0; k < 5; k++) {
         const f = k - 2;
@@ -1019,13 +1074,17 @@ function challenger1Build(P) {
     };
     for (const s of [-1, 1]) {
       // front corner (idler, sweep <= 4.065)
-      flapBox(0.42, 0.42, 0.028, s * 1.30, 0.79, 3.90);         // panel
-      flapBox(0.06, 0.04, 0.028, s * 1.53, 1.00, 3.90);         // bridge
-      flapBox(0.02, 0.24, 0.028, s * 1.555, 1.10, 3.90);        // stem -> wing belly
+      // Seat the complete flap immediately ahead of the terminal wrap,
+      // rather than threading it through the shoe annulus.  This preserves
+      // the authored panel and its fender load path while making the track
+      // an unobstructed mechanical course.
+      flapBox(0.42, 0.42, 0.028, s * 1.30, 0.79, 4.11);         // panel
+      flapBox(0.06, 0.04, 0.028, s * 1.53, 1.00, 4.11);         // bridge
+      flapBox(0.02, 0.24, 0.028, s * 1.555, 1.10, 4.11);        // stem -> wing belly
       // rear corner (sprocket, sweep <= -3.095)
-      flapBox(0.42, 0.34, 0.028, s * 1.30, 0.80, -2.965);       // panel
-      flapBox(0.06, 0.05, 0.028, s * 1.53, 0.655, -2.965);      // bridge
-      flapBox(0.04, 0.37, 0.028, s * 1.568, 0.815, -2.965);     // stem -> rear panel
+      flapBox(0.42, 0.34, 0.028, s * 1.30, 0.80, -3.18);        // panel
+      flapBox(0.06, 0.05, 0.028, s * 1.53, 0.655, -3.18);       // bridge
+      flapBox(0.04, 0.37, 0.028, s * 1.568, 0.815, -3.18);      // stem -> rear panel
     }
   }
   // r9 O4 (shaded-parity r8 — glacis-plan tone, gate-free): the LEFT glacis
@@ -1080,9 +1139,12 @@ function challenger1Build(P) {
     bandMul: [0.92, 0.98, 0.82], bandEnv: 0.08,
   });
   ukGearAirBackers(P, [
-    [0.56, 0.60, 0.02, 1.24, 0.615, 3.06],
-    [0.56, 0.46, 0.02, 1.24, 0.52, 0.30],
-    [0.56, 0.62, 0.02, 1.24, 0.63, -2.36],
+    // Recess the catch plates behind the inner tire faces.  Their previous
+    // 0.96..1.52 m span entered the widened native shoe lane even though
+    // they are only bay-shadow backing.
+    [0.56, 0.60, 0.02, 0.66, 0.615, 3.06],
+    [0.56, 0.46, 0.02, 0.66, 0.52, 0.30],
+    [0.56, 0.62, 0.02, 0.66, 0.63, -2.36],
   ]);
   // r9 O1b + O2 (both render-only /shadow/ lane, zero gate price; clip-audit
   // envelopes threaded — the audit does NOT skip shadow meshes):
@@ -1105,8 +1167,96 @@ function challenger1Build(P) {
   //   z 2.50..3.15.
   ukGearAirBackers(P, [
     [0.016, 0.35, 4.90, 0.985, 0.425, 0.35],
-    [0.40, 0.02, 0.65, 0.80, 0.30, 2.825],
+    [0.40, 0.02, 0.65, 0.70, 0.30, 2.825],
   ], 0x13170d);
+
+  // Owner recovery pass: retain the measured casting, bins and complete
+  // hull, but restore the Challenger 1's broad cast shoulder read around
+  // the now-rounded L11 seat.  Both shells are fully buried in the existing
+  // face/side-bin volume; their outboard edges stay inside the certified
+  // 1.545 m turret course and therefore add anatomy rather than a second
+  // turret or a larger silhouette.
+  for (const s of [-1, 1]) {
+    // Two overlapping ellipsoidal cheek continuations preserve the clipped
+    // plan but replace the long planar tower read with a cast shoulder rise.
+    // Their lower halves are buried in the existing face and trunnion mass,
+    // so neither is exposed as a hemisphere or a separate turret shell.
+    P.add('turret', xform(sph(0.46, 20), 0, 0, 0, 0, 0, 0, [1.96, 0.74, 1.90]),
+      s * 0.45, 0.34, 0.72);
+    P.add('turretDark', box(0.026, 0.20, 0.36), s * 1.20, 0.38, 0.58, 0, -s * 0.10, 0);
+  }
+  // One low tapered station plinth ties the commander sight, loader ring,
+  // TOGS and MG cradle to the roof.  It overlaps the casting by 6 cm and
+  // remains below every existing functional housing.
+  P.add('turret', slab(
+    [-0.98, 0.65, -0.56], [0.92, 0.65, -0.56], [0.92, 0.65, 0.72], [-0.98, 0.65, 0.72],
+    [-0.82, 0.73, -0.46], [0.78, 0.73, -0.46], [0.72, 0.75, 0.60], [-0.82, 0.75, 0.60]));
+  for (const [x, z, yaw] of [[-0.74, 0.16, -0.22], [-0.52, 0.27, -0.06], [-0.25, 0.28, 0.15], [0.20, 0.22, -0.18], [0.48, 0.12, 0.20]]) {
+    P.add('turretDark', box(0.11, 0.055, 0.07), x, 0.765, z, 0, yaw, 0);
+  }
+
+  // Backed basket termination: shallow rails and unequal vertical returns
+  // articulate the existing bustle boxes without extending their rear face.
+  for (const y of [0.30, 0.49, 0.66]) P.add('turretDetail', box(1.05, 0.025, 0.014), -0.02, y, -1.938);
+  for (const [x, h] of [[-0.50, 0.34], [-0.18, 0.27], [0.16, 0.31], [0.49, 0.37]]) {
+    P.add('turretDetail', box(0.024, h, 0.014), x, 0.47, -1.938);
+  }
+  // Unequal diagonal cradles close the basket's load path into the bustle.
+  // They remain coplanar with the backed rails and terminate inside the
+  // existing vertical returns, so the open rack keeps intentional negative
+  // space without becoming an unsupported grid.
+  P.add('turretDetail', xform(box(0.024, 0.43, 0.018), 0, 0, 0, 0, 0, -0.82),
+    -0.35, 0.48, -1.936);
+  P.add('turretDetail', xform(box(0.024, 0.37, 0.018), 0, 0, 0, 0, 0, 0.72),
+    0.34, 0.46, -1.936);
+  // Low asymmetric basket courses and a strapped cable coil provide the
+  // Challenger's busy rear termination without increasing bustle length.
+  P.add('turretDetail', box(0.34, 0.020, 0.016), -0.35, 0.285, -1.937, 0, 0, -0.04);
+  P.add('turretDetail', box(0.26, 0.020, 0.016), 0.30, 0.315, -1.937, 0, 0, 0.06);
+  P.add('turretDark', torus(0.105, 0.014, 16), -0.53, 0.455, -1.944);
+  P.add('turretDetail', box(0.035, 0.25, 0.020), -0.53, 0.455, -1.946, 0, 0, -0.08);
+
+  // Direct-rear service grammar.  Three unequal, shallow framed bays sit
+  // on the existing transom boxes and tail shelf; the entire stack remains
+  // forward of the certified -3.998 m center notch and is therefore backed
+  // hull detail, not a new rear wall.
+  for (const [x, w, h, n] of [[-0.57, 0.43, 0.25, 4], [-0.08, 0.37, 0.29, 3], [0.48, 0.55, 0.23, 5]]) {
+    P.add('hullDark', box(w, h, 0.024), x, 1.43, -3.978);
+    P.add('hullDetail', box(w + 0.04, 0.026, 0.010), x, 1.43 - h * 0.50, -3.994);
+    P.add('hullDetail', box(w + 0.04, 0.026, 0.010), x, 1.43 + h * 0.50, -3.994);
+    P.add('hullDetail', box(0.026, h + 0.05, 0.010), x - w * 0.50, 1.43, -3.994);
+    P.add('hullDetail', box(0.026, h + 0.05, 0.010), x + w * 0.50, 1.43, -3.994);
+    for (let i = 0; i < n; i++) {
+      P.add('hullDetail', box(w * 0.78, 0.018, 0.010), x,
+        1.43 - h * 0.34 + i * (h * 0.68 / Math.max(1, n - 1)), -3.995);
+    }
+  }
+  // Low unequal recovery fittings break the remaining regular center field.
+  // The pins and bridge overlap the existing tail shelf/backing, remaining
+  // strictly inside its rear plane and outside both track terminal lanes.
+  P.add('hullDetail', box(0.62, 0.042, 0.018), -0.14, 1.205, -3.992, 0, 0, -0.035);
+  for (const [x, r] of [[-0.58, 0.075], [0.34, 0.064], [0.71, 0.052]]) {
+    P.add('hullDetail', torus(r, 0.012, 14), x, 1.18 + (x + 0.58) * 0.025, -3.992,
+      Math.PI / 2, 0, 0);
+  }
+  for (const [x, y, h] of [[-0.69, 1.43, 0.16], [0.12, 1.42, 0.19], [0.66, 1.43, 0.13]]) {
+    P.add('hullDetail', box(0.032, h, 0.014), x, y, -3.997);
+  }
+  // A lower broken louvre line fills the former plain center plate.  Each
+  // strip is shallow, backed by the original transom, and separated from
+  // the track terminals by the full hull center lane.
+  for (const [x, w, y] of [[-0.63, 0.30, 1.04], [-0.25, 0.38, 1.08], [0.22, 0.42, 1.03], [0.67, 0.25, 1.10]]) {
+    P.add('hullDark', box(w, 0.065, 0.018), x, y, -3.988);
+    P.add('hullDetail', box(w * 0.84, 0.014, 0.012), x, y, -3.999);
+  }
+  // The live first-party casting had accumulated a tall/narrow read even
+  // though its plan stations were correct.  A restrained group correction
+  // broadens the existing authored shell seven percent and compresses only
+  // its local vertical section eight percent; the hull and turret pivot are
+  // untouched.  Counter-scale the gun geometry so the L11 tube remains
+  // circular while its trunnion follows the corrected casting seat.
+  P.turretG.scale.set(1.12, 0.84, 1.0);
+  P.gunG.scale.set(1 / 1.12, 1 / 0.84, 1.0);
   P.topY = 1.35;
 }
 // NATIVE PROCEDURAL REBUILD (2026-08-11). The comparison Challenger Mk.3 is

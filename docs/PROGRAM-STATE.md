@@ -4965,3 +4965,55 @@ family-scale/equipment reconciliation for the older T-90 marks; then the
 owner-named Challenger 1/Ariete in-place polish; then the remaining modern
 Leopard/AMX/Type 99/AbramsX verification re-sits. WWII work stays behind the
 modern queue.
+
+## 5.144 SAFE MODERN RUNNING-GEAR REPAIR (2026-08-13, LANDED)
+
+Commit `f16c9659` repairs the owner-named modern running-gear failures without
+deleting or hollowing any hull, skirt, mudguard or side-armor course. Ariete,
+Leclerc and T-90M Proryv retain their live first-party builders and now expose
+larger primary road wheels plus distinct source-semantic idler/final-drive
+ends inside the continuous native linked course. Challenger 3, T-90A Vladimir
+and Leopard 2 Revolution retain their established wheel geometry while their
+front transition begins beyond the complete leading wheel, so no road-wheel
+face projects through the rising belt. The standardized elevated-left
+profiles are recorded under `/private/tmp/gear-final-r6`.
+
+Leclerc and Revolution remain exact strict `0/0`; the other four substantially
+improve their live receipts without any subtractive hull operation. Full test
+and production builds pass. Commit `d9feca33` separately removes the owner-
+rejected Merkava IVm Windbreaker row; it does not alter another Merkava mark.
+
+## 5.145 CHALLENGER 1 IN-PLACE TURRET / COURSE CLOSEOUT (2026-08-13, FROZEN)
+
+The live first-party `challenger1Build` is refined in place. Its complete hull,
+six-station Hydrogas layout, skirts and mudguard architecture remain the
+authoritative foundation. The fighting compartment is lowered and broadened
+as one connected cast mass; overlapping ellipsoidal cheeks now flow into a
+closed oval L11 carrier and a body-colour outer mask, eliminating the former
+rectangular mantlet shelf without creating a hemisphere or replacement shell.
+The commander/TOGS heads are tapered and clustered on one broad low plinth,
+the MG is re-seated, canted smoke banks gain broad cheek pads, and the basket,
+cable/coil, backed louvres and unequal rear recovery field all retain visible
+load paths.
+
+The course repair is additive/reseating-only. The complete front and rear mud
+flaps move immediately outside the terminal wraps; custom concentric wheel
+faces are explicitly owned by the native running gear; shadow catch plates
+move behind the inner tire faces; and the closed bow-guard underside rises as
+one continuous arch over the idler approach. No hull or guard panel is
+deleted. Exact track containment is front/rear band **0/0**, front/rear shoes
+**0/0**, strict band sweep **0/0** and strict shoe sweep **0/0**.
+
+Freeze **`4ecc29b4`** reproduces at 89 meshes / 103,167 vertices. The final
+packet at `/private/tmp/ch1-final-r12/challenger1` contains 15 paired, 15 yaw0
+and 15 yaw90 frames including the elevated-left profile: **45 PNGs / 45
+distinct hashes**. Fresh semantic inspection records
+`[9.0,9.1,9.0,9.0,9.0,9.0,9.0,9.1,9.1,9.1,9.0,9.1,9.0,9.1]`, floor **9.0**
+and mean **9.04**. The machine geometry floor is **90.3**. Parent audit is 0
+stranded / 0 abutting / 0 dangling; winding is 0 reversed / 0 mixed with no
+pixel deficit. Every yaw pair shows a real quarter-turn and the complete gun,
+cast shell, roof suite, smoke and supported basket move together over one
+fixed coherent hull/deck/course. `npm test` and the production build pass.
+
+**PASS / KEEP `4ecc29b4`. Challenger 1 ordered blockers: none. Ariete is the
+next live in-place modern recovery target.**
