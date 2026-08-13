@@ -4957,14 +4957,15 @@ function buildLeo2A7V(P) {
   // further 0.10 m from the shell, leaving a 2.44 m broad silhouette against
   // the published 2.87 m vehicle.  The native track fix never required that
   // collapse: the deep undercut below remains seated above the fixed deck.
-  // Fresh elevated-profile evidence showed the old 1 cm correction was not
-  // remotely enough: the annular dark ring bottomed at ~1.38 m while the
-  // fixed deck runs at ~1.60-1.70 m, burying the rotating shell into the
-  // hull.  Raise the complete package to its authored ring datum.  The helper
-  // ring still overlaps the deck, so this is a seated turret rather than a
-  // floating visual offset; gun, armor, sights, basket and antennas all move
-  // together because the correction is applied at the turret root.
-  P.turretG.position.set(0, 1.66, 0.35);
+  // Fresh elevated-profile and yaw evidence showed the old 1 cm correction
+  // was not remotely enough: the ring cylinder still spent nearly its whole
+  // section below the 1.60-1.70 m fixed deck and the side armor visually
+  // fused into the hull.  Lift the complete rotating package by 12 cm: the
+  // bearing still retains a broad buried overlap with the fixed deck, while
+  // the side armor now clears it with a readable annular seam instead of
+  // looking cast into the hull.  Gun, armor, sights, basket and antennas all
+  // move together because the correction is applied at the turret root.
+  P.turretG.position.set(0, 1.78, 0.35);
   wedgeTurretV3(P, {
     h: 0.64, apexY: 0.22, gunW: 0.36, slotZ: 1.18,
     chamferY: 0.55, roofX: 1.06, crestTail: 0.62, crestTailDrop: 0.005,

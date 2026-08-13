@@ -115,7 +115,7 @@ re-freeze NEW hash, all in ONE commit.
 | leo2a4 | 4011c71c | RE-FROZEN 2026-08-12 (§5.139 first-party forward welded-loft restoration: longer connected turret and basket, re-seated mantlet/EMES/roof suite, supported zero-hole bow shoulders, seven native wheels and exact band+shoe+sweep 0/0; machine fidelity 92.14 / min view 90.18; fresh 45-frame yaw/ownership floor 9.1 / mean 9.19; prior 3a653cf9 retired) |
 | leo2a5 | dd139150 | RE-FROZEN 2026-08-12 (§5.150 inherited first-party Leopard-family/track repair re-certified and loader MG3 migrated to the canonical seated fitting: exact band/shoes/full sweep 0/0/0, parent 0/0/0, geometry 90.2, fidelity 95.09 / minimum view 95.06 and fresh 45-frame elevated-profile/yaw floor 9.3 / mean 9.44; prior e215a738 retired) |
 | leo2a6 | 8b139b48 | RE-FROZEN 2026-08-12 (§5.146 first-party Leopard 2A6 strict full-course clearance closure: supported bow shoulder, seven-wheel native course and clean sprocket/idler transitions; machine fidelity 95.4, fresh 45-frame floor 9.3 / mean 9.46; prior e99f8490 retired) |
-| leo2a7v | ec69fe94 | RE-FROZEN 2026-08-12 (§5.140 first-party Leopard 2A7V turret separation: complete rotating package raised 1 cm over a visible annular ring seam, asymmetric mast/rear-service cadence, full articulated sponson clearance; machine fidelity 90.23 / min view 90.02; 45-frame yaw/ownership floor 9.0 / mean 9.16) |
+| leo2a7v | c5cb292c | RE-FROZEN 2026-08-13 (§5.156 first-party Leopard 2A7V turret-separation closeout: complete rotating package raised 12 cm with the annular bearing still broadly seated, exact track 0/0, parent 0/0/0 and fresh 45-frame paired/elevated/yaw floor 9.0 / mean 9.17; prior ec69fe94 retired) |
 | leo2_revolution | fe2dc714 | RE-FROZEN 2026-08-12 (§5.141 first-party Leopard 2 Revolution left-hull artifact + complete track-clearance repair: erroneous side cuboid retired, inter-track belly/sponson structure made physically honest, exact band/shoe/strict sweep 0/0; machine fidelity 94.2, geometry 90.2, dimensions 99.5, floaters 100; fresh 45-frame yaw/ownership floor 9.1 / mean 9.27) |
 | m46_patton | 108806c8 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | centurion3 | bad74e60 | RE-FROZEN 2026-08-08 (no-air graduate-change: crown-ridge pedestal + discharger webs, front-low 1810px->14, re-cert floor 9.0 x17 changed views, gate 91.1 exact; prior 50273080 bore-resit lineage) |
@@ -5454,3 +5454,39 @@ sheet or yaw-dependent wound is visible.
 
 **PASS / KEEP Leclerc `126a4e90`, Ariete `c0aa8658` and Type 90 `b77a57f6`.
 Ordered blockers: none for this terminal/mudguard batch.**
+
+## 5.156 LEOPARD 2A7V TURRET-SEAT CLOSEOUT (2026-08-13, RE-FROZEN)
+
+The gameplay A7V remains a fully repository-authored procedural build. Its
+ignored comparison GLB was mounted temporarily and read-only for the paired
+evidence harness, then removed; no source mesh, converted payload, material,
+texture, rig, animation or runtime wrapper enters the playable or commit.
+
+The earlier 1 cm root correction did not solve the owner's live visual defect.
+Nearly the entire annular bearing still sat below the fixed 1.60-1.70 m deck
+and the broad side armor appeared fused into the hull. The complete rotating
+root is now raised 12 cm. Its bearing retains broad physical overlap with the
+deck while the exposed joint becomes a readable mechanical seam. Gun, mantlet,
+complete wedge shell, armor, bustle, FLW/PERI stations, smoke, basket and
+antenna package move together; no decoration was offset independently to fake
+the result.
+
+Freeze **`c5cb292c`** reproduces twice at 46 meshes / 110,055 vertices. Exact
+band, shoe and strict moving-sweep containment is **0/0**. Muzzle-bore contrast
+passes at 113.0; parent audit is **0 stranded / 0 abutting / 0 dangling**. The
+final packet at `/private/tmp/leopard-final-r3/leo2a7v` contains 15 paired, 15
+yaw0 and 15 yaw90 frames including the standardized elevated-left profile:
+**45 PNGs / 45 distinct hashes**. Fresh standard-order inspection records
+`[9.2,9.2,9.1,9.0,9.0,9.0,9.1,9.2,9.3,9.3,9.2,9.3,9.2,9.3]`, floor **9.0**
+and mean **9.17**.
+
+Every yaw pair shows a genuine quarter-turn. The winding mode-2 hull nominee
+is the fixed deck/APU/service field exposed by the lifted turret. No exterior
+face disappears, no fused duplicate or stranded fitting appears, and the
+vehicle has no open sheet, sky hole, track collision or yaw-dependent wound.
+The comparison export retains its already documented fused/proportionally
+incompatible component/P95 machine row; it is not misrepresented as a clean
+source-component gate over the current paired, physical and ownership truth.
+
+**PASS / KEEP A7V `c5cb292c`; retire `ec69fe94`. Ordered blockers: none for
+this owner-visible turret-seat defect.**
