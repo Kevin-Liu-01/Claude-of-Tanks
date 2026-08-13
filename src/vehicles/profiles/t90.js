@@ -4162,14 +4162,16 @@ function finishT90BaseReferenceGuided(P) {
   const { box, cylY, cylZ } = KIT;
 
   // Three diminishing flank leaves continue the radial clamshell over the
-  // pear casting's actual aft taper.  Their centers step inboard as they run
-  // rearward, preventing the former straight armor wall from outliving the
-  // cast shoulder underneath it.
+  // pear casting's actual aft taper.  The frontal blanket now reaches the
+  // shoulder in five smaller angular steps, so these are deliberately thin
+  // continuation cassettes rather than a second armor belt.  Their centers
+  // step inboard and down as they run rearward, keeping the decoration on the
+  // new cast section instead of preserving the old dome silhouette.
   for (const s of [-1, 1]) {
     for (const [x, y, z, yaw, cant, w, h, d] of [
-      [1.48, 0.28, -0.08, 0.16, 0.12, 0.52, 0.20, 0.48],
-      [1.37, 0.25, -0.46, -0.08, 0.16, 0.58, 0.20, 0.55],
-      [1.17, 0.22, -0.83, -0.30, 0.20, 0.52, 0.18, 0.48],
+      [1.43, 0.245, -0.07, 0.12, 0.15, 0.43, 0.17, 0.43],
+      [1.31, 0.205, -0.40, -0.10, 0.19, 0.46, 0.16, 0.46],
+      [1.10, 0.165, -0.70, -0.33, 0.23, 0.40, 0.14, 0.40],
     ]) {
       const armorW = w, armorH = h * 1.08, armorD = d, armorY = y + 0.012;
       P.add('turretDark', box(armorW * 0.76, armorH * 0.56, armorD * 0.66), s * (x - 0.05), armorY - armorH * 0.24, z - 0.03, -0.11, -s * yaw, -s * cant);
@@ -4179,14 +4181,14 @@ function finishT90BaseReferenceGuided(P) {
     }
   }
 
-  // Three shallow, irregular crown returns bridge the revised four-bank
+  // Three shallow, irregular crown returns bridge the revised five-bank
   // cheek into the primary roof plates.  Their roots descend with the cheek
   // and keep a visible strip of foundry surface between armor courses.
   for (const s of [-1, 1]) {
     for (const [x, y, z, yaw, w, h, d] of [
-      [0.43, 0.64, 1.08, 0.18, 0.48, 0.11, 0.44],
-      [0.77, 0.60, 0.88, 0.34, 0.53, 0.12, 0.48],
-      [1.10, 0.52, 0.62, 0.51, 0.55, 0.12, 0.50],
+      [0.38, 0.635, 1.10, 0.16, 0.43, 0.09, 0.39],
+      [0.70, 0.575, 0.88, 0.31, 0.46, 0.10, 0.42],
+      [1.00, 0.485, 0.61, 0.47, 0.47, 0.10, 0.43],
     ]) {
       const armorW = w, armorH = h, armorD = d;
       P.add('turretDark', KIT.xform(box(armorW * 0.80, armorH * 0.56, armorD * 0.68), 0, -armorH * 0.20, -0.10), s * x, y, z, -0.09, -s * yaw, 0);
@@ -4483,24 +4485,23 @@ function replaceT90ACastTurret(P, { vladimir = false } = {}) {
     P.add('turretDark', box(0.38, 0.038, 0.038), s * 0.42, 0.20, 1.23, -0.36, -s * 0.27, 0);
   }
 
-  // K-5 clamshell: four broad, overlapping leaf banks per side follow the
-  // authored pear shoulder.  The previous five-bank pass preserved the load
-  // paths but broke the frontal blanket into a necklace of small square
-  // cassettes.  The base 1992 turret instead needs three dominant cheek leaves
-  // and one falling flank leaf, with their rear thirds buried into the cast
-  // carrier.  Width, pitch, crown line and depth all change as the blanket
-  // turns from mantlet valley to flank.
+  // K-5 clamshell: five overlapping radial banks per side follow the authored
+  // pear shoulder.  The former four-bank pass used panels wide enough to read
+  // as a second polygonal shell; this cadence adds one intermediate break but
+  // preserves overlap and unequal dimensions, so it reads as planted armor
+  // rather than a necklace of square tiles.  Width, pitch, crown line, cant
+  // and depth all change continuously from mantlet valley to flank.
   // Every backer is shorter than its cassette and buried into the loft, so
   // the cast cheek remains the load-bearing primary volume.
   for (const s of [-1, 1]) {
     for (const [x, y, z, yaw, pitch, cant, w, h, d] of [
-      // Inner leaf rises into the mantlet valley; the dominant mid leaf
-      // spans the cast bulge; the outer leaf rolls into the lower flank
-      // rather than projecting as a terminal rectangular slab.
-      [0.38, 0.45, 1.28, 0.16, -0.40, 0.10, 0.72, 0.34, 0.66],
-      [0.82, 0.40, 1.00, 0.34, -0.34, 0.14, 0.78, 0.35, 0.68],
-      [1.20, 0.33, 0.65, 0.54, -0.24, 0.18, 0.74, 0.34, 0.66],
-      [1.50, 0.25, 0.28, 0.73, -0.14, 0.22, 0.55, 0.30, 0.56],
+      // Inner leaf rises into the mantlet valley; three unequal cheek leaves
+      // turn over the cast bulge; the terminal leaf falls into the flank.
+      [0.31, 0.455, 1.31, 0.13, -0.42, 0.07, 0.58, 0.31, 0.58],
+      [0.61, 0.435, 1.14, 0.25, -0.39, 0.10, 0.63, 0.33, 0.62],
+      [0.91, 0.390, 0.92, 0.39, -0.33, 0.13, 0.65, 0.34, 0.64],
+      [1.20, 0.325, 0.65, 0.54, -0.25, 0.17, 0.65, 0.33, 0.63],
+      [1.45, 0.245, 0.31, 0.69, -0.16, 0.21, 0.52, 0.28, 0.53],
     ]) {
       // The completed turret is normalized as one seated yaw package after
       // authoring.  Compensate the replaceable cassettes locally so their
@@ -4519,8 +4520,8 @@ function replaceT90ACastTurret(P, { vladimir = false } = {}) {
       // replaceable-cassette read.  The former track material produced a
       // conspicuous brown collar that was absent from the reference.
       P.add('turret', KIT.xform(t90K5Cassette(armorW, armorH, armorD, {
-        nose: x < 0.70 ? 0.75 : (x < 1.25 ? 0.82 : 0.75),
-        crown: x < 0.70 ? 0.92 : (x < 1.25 ? 0.96 : 0.90),
+        nose: x < 0.50 ? 0.76 : (x < 1.10 ? 0.82 : 0.77),
+        crown: x < 0.50 ? 0.92 : (x < 1.10 ? 0.96 : 0.91),
       }), 0, 0.008, -0.015), s * x, armorY, z, pitch, -s * yaw, -s * cant);
       P.add('turretDark', KIT.xform(box(armorW * 0.84, 0.010, armorD * 0.76), 0, armorH * 0.52, 0.045), s * x, armorY, z, pitch, -s * yaw, -s * cant);
       P.add('turretDark', KIT.xform(box(0.018, armorH * 0.72, armorD * 0.58), s * armorW * 0.47, 0, -0.02), s * x, armorY, z, pitch, -s * yaw, -s * cant);
@@ -4528,16 +4529,16 @@ function replaceT90ACastTurret(P, { vladimir = false } = {}) {
     }
     // Unequal side key closes the carrier seam without leaving a square
     // cuboid on the cheek after the main banks turn down into the flank.
-    P.add('turret', t90K5Cassette(0.23, 0.20, 0.44, { nose: 0.78, crown: 0.91 }), s * 1.29, 0.15, 0.04, -0.12, -s * 0.32, 0);
+    P.add('turret', t90K5Cassette(0.20, 0.16, 0.36, { nose: 0.78, crown: 0.91 }), s * 1.30, 0.12, 0.02, -0.14, -s * 0.34, -s * 0.10);
   }
   // Three shallow lower cheek returns close the mantlet/Shtora valley and climb into
   // the underside of the radial blanket.  Their falling centers follow the
   // new cast-section shoulder instead of preserving the old spherical arc.
   for (const s of [-1, 1]) {
     for (const [x, y, z, yaw, cant, w, h, d] of [
-      [0.38, 0.20, 1.24, 0.18, 0.08, 0.52, 0.22, 0.47],
-      [0.86, 0.14, 0.85, 0.43, 0.12, 0.60, 0.23, 0.54],
-      [1.25, 0.10, 0.45, 0.64, 0.16, 0.54, 0.21, 0.50],
+      [0.34, 0.19, 1.25, 0.16, 0.07, 0.44, 0.19, 0.42],
+      [0.78, 0.13, 0.90, 0.39, 0.11, 0.52, 0.20, 0.48],
+      [1.16, 0.08, 0.51, 0.60, 0.15, 0.48, 0.18, 0.45],
     ]) {
       const armorW = w, armorH = h * 1.10, armorD = d, armorY = y + 0.035;
       P.add('turretDark', KIT.xform(box(armorW * 0.72, armorH * 0.62, armorD * 0.64), 0, -armorH * 0.17, -0.11), s * x, armorY, z, -0.15, -s * yaw, -s * cant);

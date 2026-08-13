@@ -5,6 +5,36 @@ The private comparison GLB was used only as a quarantined visual reference;
 no comparison mesh, vertex/index payload, material, texture, rig, animation or
 runtime wrapper enters the playable or this commit.
 
+## Superseding post-loft radial armor/decor closeout — 2026-08-13
+
+- Geometry hash: `d8341464` (67 meshes / 117,864 vertices)
+- Evidence: `/private/tmp/t90-pear-layout-final-r2/t90`
+- Integrity: 15 procedural appraisal + 15 yaw0 + 15 yaw90 PNGs, including
+  elevated-left profile; 45 files / 45 distinct SHA-256 hashes
+- Standard-order live first-party visual appraisal:
+  `[9.3,9.3,9.2,9.1,9.1,9.1,9.2,9.3,9.4,9.4,9.2,9.4,9.3,9.4]`
+  (floor 9.1; mean 9.26)
+- Exact terminal band / shoe / strict sweep: `0/0`, `0/0`, `0/0`
+- Parent audit: 0 stranded / 0 abutting / 0 dangling
+- Winding: 0 reversed / 0 mixed, one visually null deficit pixel and zero
+  yaw-stranded candidate pixels
+- Runtime rig: 10/10; muzzle-bore contrast 100.0
+
+The authored asymmetric pear loft remains the only turret body. Five unequal
+overlapping K-5 leaves now make one continuous radial turn from mantlet valley
+to flank, replacing the preceding four broad panels that read as a second
+polygonal shell. Three smaller lower returns, three shallower crown returns
+and three thin falling side leaves share that final cast-section datum.
+
+Shtora shoulders, smoke carriers, cupolas, NSVT, night/gunner sights,
+periscopes, antenna collars, OPVT and rear packs keep broad visible seats on
+the revised armor/crown. Every yaw pair shows the complete cast shell, armor,
+gun and equipment rotating together over a fixed hull and native six-wheel
+course. No copied source geometry, floating decoration, duplicate turret,
+course collision, open sheet or yaw-dependent wound appears.
+
+**PASS / KEEP `d8341464`; supersede `fcb77d1`. Ordered blockers: none.**
+
 ## Superseding pear-turret clamshell/equipment closeout — 2026-08-13
 
 - Geometry hash: `fcb77d1` (67 meshes / 118,344 vertices)
