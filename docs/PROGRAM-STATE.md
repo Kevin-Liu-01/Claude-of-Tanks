@@ -117,6 +117,7 @@ re-freeze NEW hash, all in ONE commit.
 | leo2a6 | 8b139b48 | RE-FROZEN 2026-08-12 (§5.146 first-party Leopard 2A6 strict full-course clearance closure: supported bow shoulder, seven-wheel native course and clean sprocket/idler transitions; machine fidelity 95.4, fresh 45-frame floor 9.3 / mean 9.46; prior e99f8490 retired) |
 | leo2a7v | c5cb292c | RE-FROZEN 2026-08-13 (§5.156 first-party Leopard 2A7V turret-separation closeout: complete rotating package raised 12 cm with the annular bearing still broadly seated, exact track 0/0, parent 0/0/0 and fresh 45-frame paired/elevated/yaw floor 9.0 / mean 9.17; prior ec69fe94 retired) |
 | leo2_revolution | 2e3c3ce0 | RE-FROZEN 2026-08-13 (§5.157 first-party Leopard 2 Revolution cheek-artifact closeout: redundant 2 cm standalone card retired so the continuous loft/mid-cheek own the face; exact track 0/0, fresh 45-frame floor 9.1 / mean 9.29; prior fe2dc714 retired) |
+| leo1a5 | 9339e895 | RE-FROZEN 2026-08-13 (§5.158 first-party photo-class turret restoration: closed cast pear loft plus buried angular applique replaces the tall regular box, with EMES/cupolas/MG/smoke/antennas/open basket re-seated; exact band/shoes/sweep 0/0, parent 0/0/0, winding clean and fresh 30-frame yaw/ownership PASS; no false geometry row because no usable oracle; prior 1c79188 retired) |
 | m46_patton | 108806c8 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | centurion3 | bad74e60 | RE-FROZEN 2026-08-08 (no-air graduate-change: crown-ridge pedestal + discharger webs, front-low 1810px->14, re-cert floor 9.0 x17 changed views, gate 91.1 exact; prior 50273080 bore-resit lineage) |
 | m1a2_sepv2 | e8589ad6 | RE-FROZEN 2026-08-12 (§5.142 restored clean first-party SEPv2 armor/CROWS presentation, exact track corridor and yaw ownership; prior 7680a400 retired) |
@@ -136,7 +137,7 @@ re-freeze NEW hash, all in ONE commit.
 | fv510 | 61023726 | RE-FROZEN 2026-08-12 (§5.129 first-party `fv510PhotoBuild`: compact six-wheel Warrior hull, authored RARDEN turret and supported slat/service package; machine fidelity 90.84 / minimum view 90.12; exact native track 0/0 and fresh 42-frame yaw/ownership floor 9.0 / mean 9.11; source-baked 7884762a/927beeb2 playables retired) |
 | m26_pershing | 2f006738 | RE-RECORDED 2026-08-08: hash moved by LANDED 5f39989 (armorM4 gunBarrel shadow-proxy 3.96->3.44; m26/m45 inherit m4a3e8 proxies — patton.js bytes unchanged); double-confirmed by builder bisect + m45-grad critic; prior 65c564c0 bore+winding re-cert lineage (floors 9.1-9.4) carries |
 | t90m | dc760de0 | RE-FROZEN 2026-08-12 (§5.148 first-party Proryv strict full-course closeout; machine fidelity 90.96 / minimum view 90.02; exact band/shoes/full sweep 0/0/0, parent 0/0/0 and fresh 45-frame elevated-profile/yaw PASS; incompatible legacy contour row retained honestly rather than chased) |
-| t90 | dcb1946c | RE-FROZEN 2026-08-13 (§5.153 superseding first-party cast-shape armor/equipment refit: six unequal main K-5 stations per side plus lower/crown/flank returns follow the asymmetric pear loft; Shtora, smoke, sights, NSVT, OPVT and roof/rear kit re-seated; 67 meshes / 121,272 vertices, exact track 0/0, parent 0/0/0 and fresh 45-frame yaw/ownership PASS; prior 27d1c5d8 retired) |
+| t90 | 2bdd5dd8 | RE-FROZEN 2026-08-13 (§5.153 superseding first-party cast-shape armor/equipment refit: three broad clamshell leaves, two lower leaves, two shallow crown returns and three falling flank leaves per side replace the tooth collar around the asymmetric pear loft; Shtora, compact smoke banks and lowered NSVT remain seated; 67 meshes / 110,616 vertices, exact track/sweep 0/0, parent 0/0/0 and fresh 30-frame yaw/ownership PASS; prior dcb1946c retired) |
 | t90a | 810a6f18 | GRADUATED 2026-08-10 (§5.94 Leclerc-method cast-turret rebuild; gate 90.4 x2; standard/track/winding clean; independent §B8 floor 9.0 / mean 9.11 x14, yaw/load paths 9.2) |
 | t90a_vladimir | c13fec50 | GRADUATED 2026-08-10 (§5.94 source-specific compact ESSA/cast-turret/transom rebuild; gate 90.0 x2; standard/track/winding adjudicated; independent §B8 floor 9.0 / mean 9.01 x14, yaw/load paths 9.3) |
 | t90sm | 7efc69c9 | GRADUATED 2026-08-10; RE-FROZEN §5.105 (owner-priority complete redesign: source-measured low diamond shell retained, solid bustle steps replaced by backed slat cells, deep scalloped inboard skirts and layered rear service field added; gate 90.0 x2; standard/track/winding clean; independent §B8 floor 9.0 / mean 9.08 x14, all 28 yaw frames PASS; prior 56324371 retired) |
@@ -5377,30 +5378,32 @@ contributes no runtime mesh, converted vertex/index payload, material, texture,
 rig, animation or wrapper.
 
 The accepted asymmetric pear/cast loft remains the primary shell. This pass
-rebuilds the protection and equipment around that new shape: six unequal
-tapered main Kontakt-5 stations per side, four smaller lower-cheek cassettes,
-four crown returns and five flank stations now follow individual cast planes
-with buried roots, caps and side seams. Reduced dark Shtora housings transition
-through tapered mantlet shoulders. Both six-tube 902B banks sit on supported
-tapered shoes and cant upward/outward. The commander night sight, hatch and
-periscope cadence, NSVT cradle, antenna collars, stored OPVT tube and rear
-turret kit are explicitly re-seated on the new crown and tail.
+rebuilds the protection and equipment around that new shape: three broad
+overlapping Kontakt-5 leaves per side replace the repeated tooth collar. Two
+subordinate lower leaves close the mantlet/Shtora valley, two shallow crown
+returns bridge the roof and three falling flank leaves preserve visible cast
+surface between their buried roots. Larger dark Shtora units meet tapered
+mantlet shoulders. Both six-tube 902B banks move aft onto compact shoes with a
+tighter upward/outward fan. The NSVT, shield and support posts are scaled and
+lowered while the sight, hatch/periscope cadence, antenna collars, stored OPVT
+and rear turret kit retain broad seats on the authored crown and tail.
 
-Freeze **`dcb1946c`** reproduces twice at 67 meshes / 121,272 vertices. The
-final packet at `/private/tmp/t90-armor-final-r16/t90` contains 15 paired, 15
-yaw0 and 15 yaw90 images including the standardized elevated-left profile:
-**45 PNGs / 45 distinct hashes**. All frames were inspected. They show a
-genuine quarter-turn with the complete shell, gun, armour, Shtora, smoke,
-cupolas, sights, NSVT, antennas, OPVT and rear turret equipment moving together
-over a fixed coherent hull and six-wheel native course.
+Freeze **`2bdd5dd8`** reproduces twice at 67 meshes / 110,616 vertices. The
+final packet at `/private/tmp/t90-shapefit-final-r3` contains 15 yaw0 and 15
+yaw90 images including the standardized elevated-left profile: **30 PNGs / 30
+distinct hashes**. All frames were inspected. They show a genuine quarter-turn
+with the complete shell, gun, armour, Shtora, smoke, cupolas, sights, NSVT,
+antennas, OPVT and rear turret equipment moving together over a fixed coherent
+hull and six-wheel native course.
 
 Exact band, shoe and strict moving-sweep containment is **0/0**. Parent audit
 is **0 stranded / 0 abutting / 0 dangling**. Winding is 0 reversed / 0 mixed
-with one visually null pixel (0.00%); muzzle-bore contrast is 105.3. No fused
+with one visually null pixel (0.00%); runtime articulation passes 10/10 and
+muzzle-bore contrast is 108.3. No fused
 duplicate, floating fitting, collision, open sheet or yaw-dependent wound is
 visible.
 
-**PASS / KEEP `dcb1946c`; supersede base T-90 `27d1c5d8`. Ordered blockers:
+**PASS / KEEP `2bdd5dd8`; supersede base T-90 `dcb1946c`. Ordered blockers:
 none for this armour/equipment refit.**
 
 ## 5.154 QUALITY-AUDIT CYCLE GUARD (2026-08-13)
@@ -5520,3 +5523,38 @@ open sheet, sky hole, track collision or yaw-dependent wound appears.
 
 **PASS / KEEP Revolution `2e3c3ce0`; retire `fe2dc714`. Ordered blockers:
 none for the cheek-artifact repair.**
+
+## 5.158 LEOPARD 1A5 FIRST-PARTY TURRET RESTORATION (2026-08-13, RE-FROZEN)
+
+The active `leo1a5` remains wholly repository-authored procedural geometry.
+Public Leopard 1A5 photographs are visual references only; no comparison mesh,
+converted payload, material, texture, rig or animation enters gameplay or the
+public build. The fused 1A4 photogrammetry scan remains deliberately
+unregistered under the false-zero law.
+
+The old photo-class builder used a tall regular welded frustum. The restored
+turret now uses four closed native loft rings to form the low Leopard 1 pear
+casting, then buries broad angular forward and aft-side applique into those
+foundry shoulders. The mantlet handoff, EMES-18, commander/loader rings, TRP,
+periscopes, MG3, smoke banks, lift eyes and antenna collars are re-seated on
+the lower crown. The narrowed L7 saddle enters a supported cast throat. The
+rear basket is rebuilt as an open braced frame with real side/end returns,
+floor, rails and supported cargo.
+
+Freeze **`9339e895`** reproduces twice at 47 meshes / 61,659 vertices. Exact
+band front/rear, shoe front/rear and strict moving-sweep receipts are **0/0**.
+Parent audit is **0 stranded / 0 abutting / 0 dangling**; winding is 0 reversed
+/ 0 mixed / 0 deficit pixels; runtime articulation is 10/10 and muzzle-bore
+contrast passes at 171.4. The standard photo-class subgates report zero plan
+holes and `mg1+1d`; there is intentionally no fabricated geometry score for an
+id with no usable oracle.
+
+The final packet at `/private/tmp/leo1a5-final-r3` contains 15 yaw0 and 15
+yaw90 frames including the standardized elevated-left profile: **30 PNGs / 30
+distinct hashes**. All views show the gun, mantlet, complete cast/applique
+shell, EMES, cupolas, MG, smoke, antennas and basket rotating together over the
+fixed seven-wheel native hull. No fused duplicate, stranded or empty-air
+fitting, course collision, open sheet or yaw-dependent wound is visible.
+
+**PASS / KEEP `9339e895`; retire `1c79188`. Ordered blockers: none for this
+photo-class first-party restoration.**

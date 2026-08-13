@@ -8946,9 +8946,9 @@ function buildKF51(P) {
 // datum), muzzle world +6.00 (overall 9.545 ≈ the published 9.54).
 // ---------------------------------------------------------------------------
 function buildLeo1A5Profile(P) {
-  const { box, cylX, cylY, cylZ, torus, frustum, sph, buildGun, buildRunningGear,
+  const { box, cylX, cylY, cylZ, torus, sph, buildGun, buildRunningGear,
     headlight, liftEye, periscope, towCable, smokeCluster, stowage, jerryCan,
-    tarpRoll, ammoCan, shovelTool, xform } = KIT;
+    tarpRoll, ammoCan, shovelTool, polyMultiLoft, xform } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
   const { rng } = P;
   const deck = [[1.55, 1.38], [0.2, 1.38], [-1.2, 1.365], [-2.6, 1.335], [-3.44, 1.30]];
@@ -9073,56 +9073,77 @@ function buildLeo1A5Profile(P) {
     padHex: 0x343a29, chainHex: 0x2b3122, gearFloor: true, tireHex: 0x24261f,
   });
 
-  // ---- TURRET: low angular welded wedge (the brief's A5 grammar) — ONE
-  // tapering core frustum (sloped walls all around) + mirrored raked cheek
-  // slabs + EMES-18 embrasure + baskets. Ring at world y 1.42, z −0.05.
+  // ---- TURRET: the German 1A5 retains the low cast Leopard 1 pear shell
+  // beneath angular Blohm+Voss applique.  The former tall regular frustum was
+  // a Leopard 1A4-family read and made the roof, EMES and basket look stacked
+  // on a box.  Four native loft rings now carry a fuller lower shoulder,
+  // clipped cast cheeks and a low contracted crown.  The separate applique
+  // slabs are buried into that casting and never substitute for its closure.
   P.turretG.position.set(0, 1.42, -0.05);
   P.add('turret', cylY(0.98, 1.02, 0.10, P.q ? 22 : 14), 0, -0.055, 0.0);     // ring plinth (§B2 slit closure)
-  P.add('turret', frustum(1.04, 0.10, -1.36, 0.86, 0.02, -1.30, -0.04, 0.90)); // core (walls lean in)
+  const A5_CAST_PLAN = [
+    [-0.34, 0.88], [0.34, 0.88], [0.72, 0.70], [0.98, 0.36],
+    [1.08, -0.16], [1.03, -0.88], [0.86, -1.28], [0.48, -1.48],
+    [-0.48, -1.48], [-0.86, -1.28], [-1.03, -0.88], [-1.08, -0.16],
+    [-0.98, 0.36], [-0.72, 0.70],
+  ];
+  P.add('turret', polyMultiLoft(A5_CAST_PLAN, [
+    { height: -0.03, inset: 0.96 },
+    { height: 0.16, inset: 1.02 },
+    { height: 0.55, inset: 0.94 },
+    { height: 0.72, inset: 0.82 },
+  ]));
   const mirrL = ([x, y, z]) => [-x, y, z];
   const mslabL = (s2, b0, b1, b2, b3, t0, t1, t2, t3) => (s2 > 0
     ? slab(b0, b1, b2, b3, t0, t1, t2, t3)
     : slab(mirrL(b1), mirrL(b0), mirrL(b3), mirrL(b2), mirrL(t1), mirrL(t0), mirrL(t3), mirrL(t2)));
   for (const s of [-1, 1]) {
-    P.add('turret', mslabL(s,                                 // cheek: ONE raked face to the slot (§B1)
-      [0.50, -0.04, 0.80], [1.04, -0.04, 0.12], [1.04, -0.04, -0.20], [0.50, -0.04, 0.30],
-      [0.42, 0.90, 0.64], [0.86, 0.90, 0.04], [0.86, 0.90, -0.20], [0.42, 0.90, 0.22]));
-    // weld seam down the cheek/side joint
+    // Broad forward applique follows the rounded cheek into the mantlet.
+    P.add('turret', mslabL(s,
+      [0.36, 0.08, 0.82], [1.00, 0.08, 0.35], [1.08, 0.08, -0.18], [0.46, 0.08, 0.28],
+      [0.32, 0.58, 0.69], [0.90, 0.58, 0.27], [0.96, 0.58, -0.16], [0.40, 0.58, 0.21]));
+    // Aft side applique falls with the casting instead of forming one wall.
+    P.add('turret', mslabL(s,
+      [1.00, 0.09, 0.30], [1.12, 0.09, 0.16], [1.05, 0.09, -0.91], [0.96, 0.09, -1.02],
+      [0.89, 0.57, 0.23], [1.00, 0.57, 0.12], [0.93, 0.57, -0.82], [0.82, 0.57, -0.94]));
     P.add('turretDark', mslabL(s,
-      [1.02, 0.02, 0.135], [1.045, 0.02, 0.11], [1.045, 0.02, 0.095], [1.02, 0.02, 0.12],
-      [0.845, 0.88, 0.06], [0.87, 0.88, 0.035], [0.87, 0.88, 0.02], [0.845, 0.88, 0.045]));
+      [0.985, 0.12, 0.31], [1.015, 0.12, 0.285], [0.985, 0.12, 0.265], [0.955, 0.12, 0.29],
+      [0.88, 0.55, 0.24], [0.91, 0.55, 0.215], [0.88, 0.55, 0.195], [0.85, 0.55, 0.22]));
+    for (const [z, y] of [[-0.12, 0.25], [-0.43, 0.31], [-0.73, 0.35]]) {
+      P.add('turretDetail', box(0.025, 0.08, 0.055), s * 1.015, y, z, 0, s * 0.04, 0);
+    }
   }
-  P.add('turret', box(1.02, 0.94, 0.30), 0, 0.43, 0.55);      // front nose block between the cheeks
-  P.add('turret', box(1.02, 0.16, 0.18), 0, 0.80, 0.70);      // brow strip over the gun
-  P.add('turret', box(1.02, 0.14, 0.18), 0, 0.05, 0.70);      // chin plate
-  P.add('turret', box(1.70, 0.03, 1.90), 0, 0.885, -0.32);    // roof plate
+  P.add('turret', box(0.92, 0.62, 0.24), 0, 0.31, 0.72);      // buried mantlet throat
+  P.add('turret', box(0.94, 0.12, 0.18), 0, 0.65, 0.77);      // compact brow strip
+  P.add('turret', box(0.94, 0.10, 0.18), 0, 0.03, 0.77);      // lower chin return
+  P.add('turret', box(1.42, 0.026, 1.28), 0, 0.715, -0.42);   // supported station pad
   // ---- EMES-18: the big flat-faced sight embrasure, RIGHT fore-roof (the
   // A5 acid tell; §B3 sight grammar — hood + recessed lens, twin apertures)
-  P.add('turret', box(0.44, 0.10, 0.44), 0.52, 0.93, 0.26);   // pedestal
-  P.add('turret', box(0.48, 0.22, 0.48), 0.52, 1.03, 0.26);   // housing (flat face fwd)
-  P.add('turretDetail', box(0.52, 0.035, 0.52), 0.52, 1.157, 0.26); // lid (2.575 world)
-  P.add('turretDark', box(0.38, 0.16, 0.03), 0.52, 1.02, 0.487);   // aperture back panel
-  P.add('turretGlass', box(0.115, 0.10, 0.012), 0.42, 1.02, 0.494); // left window (recessed)
-  P.add('turretGlass', box(0.115, 0.10, 0.012), 0.625, 1.02, 0.494); // right window
-  P.add('turretDetail', box(0.05, 0.16, 0.05), 0.30, 0.94, 0.30);   // conduit
+  P.add('turret', box(0.46, 0.09, 0.46), 0.52, 0.745, 0.25);       // broad crown pedestal
+  P.add('turret', box(0.48, 0.18, 0.48), 0.52, 0.835, 0.25);       // low flat-faced housing
+  P.add('turretDetail', box(0.52, 0.030, 0.52), 0.52, 0.940, 0.25); // armored lid
+  P.add('turretDark', box(0.38, 0.13, 0.03), 0.52, 0.835, 0.477);  // aperture back panel
+  P.add('turretGlass', box(0.115, 0.078, 0.012), 0.42, 0.835, 0.494);
+  P.add('turretGlass', box(0.115, 0.078, 0.012), 0.625, 0.835, 0.494);
+  P.add('turretDetail', box(0.05, 0.12, 0.05), 0.30, 0.79, 0.30);  // supported conduit
   // ---- hatches: commander RIGHT rear (ring + lid + vision blocks + TRP
   // sight head), loader LEFT (ring + lid), loader MG3 on its pintle (§B3).
-  P.add('turret', cylY(0.24, 0.24, 0.05, 14), 0.55, 0.925, -0.62);
-  P.add('turret', cylY(0.21, 0.21, 0.028, 14), 0.55, 0.966, -0.62);
-  P.add('turretDark', box(0.38, 0.014, 0.035), 0.55, 0.985, -0.62);
+  P.add('turret', cylY(0.25, 0.25, 0.045, 14), 0.55, 0.745, -0.62);
+  P.add('turret', cylY(0.21, 0.21, 0.026, 14), 0.55, 0.782, -0.62);
+  P.add('turretDark', box(0.38, 0.014, 0.035), 0.55, 0.801, -0.62);
   for (let k = 0; k < 6; k++) {
     const a = (k / 6) * Math.PI * 2;
-    P.add('turretDark', box(0.06, 0.045, 0.02), 0.55 + Math.sin(a) * 0.20, 0.945, -0.62 + Math.cos(a) * 0.20, 0, a, 0);
+    P.add('turretDark', box(0.06, 0.040, 0.02), 0.55 + Math.sin(a) * 0.20, 0.770, -0.62 + Math.cos(a) * 0.20, 0, a, 0);
   }
-  P.add('turretDark', box(0.16, 0.14, 0.18), 0.50, 1.00, -0.34);    // TRP commander sight head
-  P.add('turretGlass', box(0.10, 0.07, 0.014), 0.50, 1.01, -0.248);
-  P.add('turret', cylY(0.22, 0.22, 0.05, 14), -0.60, 0.925, -0.48);
-  P.add('turret', cylY(0.19, 0.19, 0.028, 14), -0.60, 0.966, -0.48);
-  P.add('turretDark', box(0.34, 0.014, 0.035), -0.60, 0.985, -0.48);
-  periscope(P, 'turretDetail', -0.36, 0.90, -0.20);
+  P.add('turretDark', box(0.16, 0.13, 0.18), 0.50, 0.845, -0.34);  // TRP head on ring shoulder
+  P.add('turretGlass', box(0.10, 0.065, 0.014), 0.50, 0.845, -0.248);
+  P.add('turret', cylY(0.23, 0.23, 0.045, 14), -0.60, 0.745, -0.48);
+  P.add('turret', cylY(0.19, 0.19, 0.026, 14), -0.60, 0.782, -0.48);
+  P.add('turretDark', box(0.34, 0.014, 0.035), -0.60, 0.801, -0.48);
+  periscope(P, 'turretDetail', -0.36, 0.735, -0.20);
   {
     const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone', elev: 0.05, scale: 0.85, seed: 3 });
-    mg.position.set(-0.44, 0.90, -0.30);
+    mg.position.set(-0.44, 0.735, -0.30);
     mg.rotation.y = 0.40;
     P.turretG.add(mg);
   }
@@ -9135,39 +9156,37 @@ function buildLeo1A5Profile(P) {
     P.add('turretDetail', box(0.02, 0.02, 0.62), s * 0.985, 0.55, -0.42);
     P.add('turretDetail', box(0.02, 0.05, 0.02), s * 0.975, 0.52, -0.14);
     P.add('turretDetail', box(0.02, 0.05, 0.02), s * 0.975, 0.52, -0.70);
-    liftEye(P, 'turretDetail', s * 0.70, 0.905, 0.28, s * 0.4);
+    liftEye(P, 'turretDetail', s * 0.70, 0.705, 0.28, s * 0.4);
     // whip antenna at the bustle corner (tip 2.62 world = the heightM datum)
-    P.add('turret', box(0.06, 0.14, 0.07), s * 0.78, 0.93, -1.26);
-    P.add('turretDark', box(0.028, 0.34, 0.028), s * 0.78, 1.03, -1.26, 0, 0, s * 0.04);
+    P.add('turret', box(0.08, 0.12, 0.08), s * 0.74, 0.755, -1.22);
+    P.add('turretDark', box(0.028, 0.80, 0.028), s * 0.74, 0.82, -1.22, 0, 0, s * 0.035);
   }
   // ---- stowage baskets wrapping the bustle (the A5 tell), LOADED
-  P.add('turretDetail', box(1.60, 0.04, 0.04), 0, 0.64, -1.90);     // rear top rail
-  P.add('turretDetail', box(1.60, 0.04, 0.04), 0, 0.14, -1.90);     // rear bottom rail
+  P.add('turretDetail', box(1.58, 0.04, 0.04), 0, 0.55, -1.72);     // rear top rail
+  P.add('turretDetail', box(1.58, 0.04, 0.04), 0, 0.20, -1.72);     // rear bottom rail
   for (let k = 0; k < 5; k++) {
-    P.add('turretDetail', box(0.03, 0.50, 0.03), -0.76 + k * 0.38, 0.39, -1.90);
+    P.add('turretDetail', box(0.03, 0.35, 0.03), -0.76 + k * 0.38, 0.375, -1.72);
   }
   for (const s of [-1, 1]) {
-    P.add('turretDetail', box(0.04, 0.04, 0.55), s * 0.79, 0.64, -1.62);
-    P.add('turretDetail', box(0.04, 0.04, 0.55), s * 0.79, 0.14, -1.62);
+    P.add('turretDetail', box(0.04, 0.04, 0.48), s * 0.79, 0.55, -1.49);
+    P.add('turretDetail', box(0.04, 0.04, 0.48), s * 0.79, 0.20, -1.49);
+    P.add('turretDetail', box(0.04, 0.35, 0.04), s * 0.79, 0.375, -1.69);
+    P.add('turretDetail', box(0.04, 0.30, 0.04), s * 0.89, 0.38, -1.28, 0, s * 0.45, 0);
     // side return baskets on bracket stubs
-    P.add('turretDetail', box(0.04, 0.04, 0.60), s * 1.06, 0.60, -1.02);
-    P.add('turretDetail', box(0.04, 0.04, 0.60), s * 1.06, 0.20, -1.02);
-    P.add('turretDark', box(0.012, 0.38, 0.56), s * 1.045, 0.40, -1.02);
-    P.add('turretDetail', box(0.14, 0.03, 0.03), s * 0.945, 0.58, -0.78);
-    P.add('turretDetail', box(0.14, 0.03, 0.03), s * 0.955, 0.58, -1.26);
+    P.add('turretDetail', box(0.04, 0.04, 0.54), s * 1.00, 0.53, -1.00);
+    P.add('turretDetail', box(0.04, 0.04, 0.54), s * 1.00, 0.22, -1.00);
+    P.add('turretDetail', box(0.04, 0.31, 0.04), s * 1.00, 0.375, -1.24);
+    P.add('turretDetail', box(0.13, 0.03, 0.03), s * 0.94, 0.51, -0.77);
+    P.add('turretDetail', box(0.13, 0.03, 0.03), s * 0.94, 0.51, -1.23);
   }
-  P.add('turretDark', box(1.52, 0.015, 0.50), 0, 0.17, -1.63);      // mesh floor
-  // HALF-height mesh back only (a full 1.54×0.44 dark panel rendered as the
-  // owner's black-rectangle class in view-rear — the basket must read as an
-  // open frame with the cargo showing over the mesh line)
-  P.add('turretDark', box(1.50, 0.22, 0.012), 0, 0.27, -1.885);
-  P.add('turretDetail', box(1.54, 0.035, 0.035), 0, 0.40, -1.89);   // mid rail on the mesh top line
+  P.add('turretDark', box(1.50, 0.015, 0.42), 0, 0.20, -1.48);      // open basket floor
+  P.add('turretDetail', box(1.54, 0.035, 0.035), 0, 0.38, -1.715);  // rear mid rail
   stowage(P, 'turretCloth', rng, [
-    [-0.48, 0.48, -1.60, 0.60, 0.34, 0.40], [0.20, 0.46, -1.63, 0.50, 0.30, 0.36],
+    [-0.48, 0.42, -1.48, 0.56, 0.27, 0.34], [0.20, 0.40, -1.50, 0.46, 0.25, 0.31],
   ]);
-  jerryCan(P, 'turretCloth', 0.64, 0.40, -1.60, 0.2);
-  tarpRoll(P, 'turretCloth', -0.12, 0.66, -1.58, 0.92, 0.09, true, P.q ? 12 : 8);
-  ammoCan(P, 'turretDark', -0.80, 0.38, -1.58, 0.15);
+  jerryCan(P, 'turretCloth', 0.64, 0.36, -1.49, 0.2);
+  tarpRoll(P, 'turretCloth', -0.12, 0.56, -1.46, 0.84, 0.08, true, P.q ? 12 : 8);
+  ammoCan(P, 'turretDark', -0.74, 0.34, -1.49, 0.15);
   // decals: crosses + tactical numbers on the side walls (the real 1A5 kit)
   P.decal('turret', 'crossgrey', null, 0.30, [0.955, 0.42, -0.42], Math.PI / 2, 0, 0.19);
   P.decal('turret', 'crossgrey', null, 0.30, [-0.955, 0.42, -0.42], -Math.PI / 2, 0, -0.19);
@@ -9177,14 +9196,14 @@ function buildLeo1A5Profile(P) {
   // rounded horizontal casting spanning the turret front (ellipsoid-scaled
   // sphere + round core + boss; never a prism), coax port right, telescope
   // port left, then the sleeved L7A3 with evacuator + MRS + open bore.
-  P.gunG.position.set(0, 0.51, 0.57);
-  P.addGunExtra(cylX(0.225, 1.02, P.q ? 18 : 12), 0, 0.0, 0.20);              // saddle core
-  P.addGunExtra(xform(sph(0.20, P.q ? 18 : 12), 0, 0, 0, 0, 0, 0, [1.0, 0.90, 1.12]), -0.50, 0.0, 0.20); // left cheek round
-  P.addGunExtra(xform(sph(0.20, P.q ? 18 : 12), 0, 0, 0, 0, 0, 0, [1.0, 0.90, 1.12]), 0.50, 0.0, 0.20);  // right cheek round
-  P.addGunExtra(box(1.06, 0.38, 0.22), 0, 0.0, 0.12);                         // seat into the slot
-  P.addGunExtra(cylZ(0.165, 0.24, P.q ? 18 : 12, 0.21), 0, 0, 0.34);          // center boss taper
-  P.addGunExtraDark(cylZ(0.024, 0.10, 8), 0.34, 0.085, 0.36);                 // coax port
-  P.addGunExtraDark(cylZ(0.020, 0.09, 8), -0.36, 0.10, 0.36);                 // gunner telescope port
+  P.gunG.position.set(0, 0.43, 0.58);
+  P.addGunExtra(cylX(0.19, 0.88, P.q ? 18 : 12), 0, 0.0, 0.20);               // compact saddle core
+  P.addGunExtra(xform(sph(0.17, P.q ? 18 : 12), 0, 0, 0, 0, 0, 0, [1.0, 0.88, 1.10]), -0.42, 0.0, 0.20);
+  P.addGunExtra(xform(sph(0.17, P.q ? 18 : 12), 0, 0, 0, 0, 0, 0, [1.0, 0.88, 1.10]), 0.42, 0.0, 0.20);
+  P.addGunExtra(box(0.92, 0.32, 0.20), 0, 0.0, 0.12);                         // buried seat into throat
+  P.addGunExtra(cylZ(0.145, 0.22, P.q ? 18 : 12, 0.19), 0, 0, 0.34);          // center boss taper
+  P.addGunExtraDark(cylZ(0.022, 0.09, 8), 0.31, 0.070, 0.36);                 // coax port
+  P.addGunExtraDark(cylZ(0.019, 0.08, 8), -0.31, 0.080, 0.36);                // gunner telescope port
   buildGun(P, { len: 5.48, r: 0.058, sleeve: true, evac: 0.58, evacR: 1.75, collar: true, baseR: 0.13 });
   muzzleBore(P, { len: 5.48, r: 0.058 });                     // §B3.1 (shadow-named)
   // olive-glass calm (a5 r5 #1 recipe — the shared lens fires blue chips)
