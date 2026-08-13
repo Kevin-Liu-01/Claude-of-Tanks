@@ -419,7 +419,7 @@ function buildStrv103(P) {
     P.add('hull', box(0.05, 1.17, 3.45), s * 1.79, 1.085, -0.06);              // deep skirt band 0.50..1.67
     P.add('hullDark', box(0.02, 1.10, 3.40), s * 1.808, 1.06, -0.06);
     for (let k = 0; k < 6; k++) P.add('hullDetail', KIT.cylZ(0.02, 0.016, 8), s * 1.812, 1.30, -1.5 + k * 0.60, 0, s * Math.PI / 2, 0);
-    P.add('hullDark', box(0.02, 0.70, 4.4), s * 1.02, 0.55, -0.1);             // bay shadow wall
+    P.add('hullRunningGearDark', box(0.02, 0.70, 4.4), s * 1.02, 0.55, -0.1);  // bay shadow wall
   }
   steelGear(P, {
     style: 'rubber', dishR: 0.84, wheelR: 0.33, wheelW: 0.20, wheelY: 0.36, xc: 1.30,
@@ -429,6 +429,14 @@ function buildStrv103(P) {
   });
   // tail underside wedge from the raised idler to the high stern
   P.add('hull', frustum(1.18, -2.62, -3.50, 1.20, -2.60, -3.52, 1.20, 1.30));
+
+  // The full-depth side skirt, dozer-root hardware and high-tail wedge were
+  // authored through the moving front-drive/rear-idler course.  Keep the
+  // center hydropneumatic belly low, but form a continuous outboard air band
+  // above every shoe.  The wheel-bay shadow wall is suspension-owned above.
+  P.raiseTrackCorridor(['hull', 'hullDetail', 'hullDark'], {
+    laneInnerX: 0.82, floorY: 1.25,
+  });
 
   P.decal('hull', 'number', P.spec.visual.number || '103', 0.30, [1.755, 1.55, -1.4], Math.PI / 2, 0, 0);
   P.decal('hull', 'number', P.spec.visual.number || '103', 0.30, [-1.755, 1.55, -1.4], -Math.PI / 2, 0, 0);
