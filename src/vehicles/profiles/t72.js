@@ -1250,8 +1250,15 @@ function buildT72B3M(P) {
     P.add('hull', box(0.16, 0.05, 0.18), s * 1.68, 1.262, 1.105);
     P.add('hull', box(0.16, 0.05, 0.18), s * 1.68, 1.2905, 1.30);
   }
-  // 2022 FENDER BIN COURSE (obr_2022 print, Object_4 class): long stowage
-  // bins run BOTH fenders around the ring zone — the print's hull-mask
+  // 2022 SIDE BIN COURSE (obr_2022 print, Object_4 class): the original
+  // implementation put the entire run in hullG.  That was wrong for the
+  // three aft/ring-zone cells: at yaw 90 the visible bin belt split, leaving
+  // those cells beside the hull while the casting departed.  The aft cells
+  // and their lid/latch hardware are now expressed in turret-local
+  // coordinates (world y/z at yaw 0 are unchanged).  Only the small forward
+  // fender cells remain hull-owned.
+  //
+  // Long bins run BOTH sides around the ring zone — the print's hull-mask
   // tops 1.686w over z -0.73..+0.07 falling 1.659/1.606/1.579 forward and
   // 1.659 at the -0.783 col. Bins sit on the 1.40 deck at x 1.06..1.42;
   // front rows stay band/pile-owned (max-over-z), plan interior. §B4: bin
@@ -1259,17 +1266,17 @@ function buildT72B3M(P) {
   // per the station end-cap law. Real bin grammar: lid seams + latches
   // (§B3 no-mystery-boxes) ride each top.
   for (const s of [-1, 1]) {
-    P.add('hull', box(0.36, 0.265, 0.1525), s * 1.24, 1.5325, -0.80275);
-    P.add('hull', box(0.36, 0.292, 0.4265), s * 1.24, 1.546, -0.51325);
-    P.add('hull', box(0.36, 0.292, 0.4315), s * 1.24, 1.546, -0.08425);
+    P.add('turret', box(0.36, 0.265, 0.1525), s * 1.24, 0.1125, -0.15275);
+    P.add('turret', box(0.36, 0.292, 0.4265), s * 1.24, 0.126, 0.13675);
+    P.add('turret', box(0.36, 0.292, 0.4315), s * 1.24, 0.126, 0.56575);
     P.add('hull', box(0.36, 0.265, 0.103), s * 1.24, 1.5325, 0.183);
     P.add('hull', box(0.36, 0.212, 0.107), s * 1.24, 1.506, 0.288);
     P.add('hull', box(0.36, 0.185, 0.0855), s * 1.24, 1.4925, 0.38425);
     // lid seams + latch blocks (identifiable-bin grammar)
-    P.add('hullDark', box(0.352, 0.005, 0.014), s * 1.24, 1.6885, -0.60);
-    P.add('hullDark', box(0.352, 0.005, 0.014), s * 1.24, 1.6885, -0.16);
-    P.add('hullDark', box(0.014, 0.04, 0.05), s * 1.065, 1.664, -0.38);
-    P.add('hullDark', box(0.014, 0.04, 0.05), s * 1.065, 1.664, 0.02);
+    P.add('turretDark', box(0.352, 0.005, 0.014), s * 1.24, 0.2685, 0.05);
+    P.add('turretDark', box(0.352, 0.005, 0.014), s * 1.24, 0.2685, 0.49);
+    P.add('turretDark', box(0.014, 0.04, 0.05), s * 1.065, 0.244, 0.27);
+    P.add('turretDark', box(0.014, 0.04, 0.05), s * 1.065, 0.244, 0.67);
     P.add('hullDark', box(0.30, 0.006, 0.012), s * 1.24, 1.662, 0.135);
     P.add('hullDark', box(0.30, 0.006, 0.012), s * 1.24, 1.609, 0.2375);
   }
@@ -1282,14 +1289,20 @@ function buildT72B3M(P) {
   // 1.52/1.56 take the new prints). Inner tall row ends x 1.4975 (22mm
   // clear of the 1.525 col boundary), outer lip 1.5065..1.545.
   for (const s of [-1, 1]) {
-    for (const [bz, bd] of [[-0.735, 0.27], [-0.44, 0.29], [-0.145, 0.28], [0.145, 0.27], [0.35, 0.13]]) {
+    for (const [bz, bd] of [[-0.735, 0.27], [-0.44, 0.29], [-0.145, 0.28]]) {
+      P.add('turretCloth', box(0.0575, 0.29, bd - 0.02), s * 1.46875, -0.013, bz + 0.65);
+      P.add('turretCloth', box(0.0385, 0.225, bd - 0.05), s * 1.52575, -0.039, bz + 0.65);
+    }
+    // The two short cells ahead of the ring are true fender protection.
+    for (const [bz, bd] of [[0.145, 0.27], [0.35, 0.13]]) {
       P.add('hullCloth', box(0.0575, 0.29, bd - 0.02), s * 1.46875, 1.407, bz);
       P.add('hullCloth', box(0.0385, 0.225, bd - 0.05), s * 1.52575, 1.381, bz);
     }
     // dark parting creases between bags
-    for (const cz of [-0.59, -0.295, 0.0, 0.26]) {
-      P.add('hullDark', box(0.055, 0.20, 0.016), s * 1.468, 1.40, cz);
+    for (const cz of [-0.59, -0.295, 0.0]) {
+      P.add('turretDark', box(0.055, 0.20, 0.016), s * 1.468, -0.02, cz + 0.65);
     }
+    P.add('hullDark', box(0.055, 0.20, 0.016), s * 1.468, 1.40, 0.26);
   }
   // r21 item 2b (hull side of the razor kill): deck sliver under the
   // turret-foot chord wall — its 1.4025 top prints the same deck row band
@@ -3612,6 +3625,30 @@ function buildT72B3M(P) {
   // bustle or move any hull/fender geometry into the turret.  The bottom
   // edge intentionally sinks into the ring/deck seat so the whole package
   // reads as one traversing T-72 turret at yaw 0 and yaw 90.
+  //
+  // OWNER CORRECTION (2026-08-13): the thin carriers alone still allowed
+  // the flank cells and rear apron to read as a belt resting on the hull.
+  // These two mirrored, tapered shoulder volumes run continuously from the
+  // cast dome into the outboard cells.  A shallow central bustle root then
+  // closes the load path behind the dome.  All three are deliberately added
+  // to the `turret` bucket: they traverse with the casting, while the fender
+  // bins, deck and skirts remain hull-owned.  The roots overlap the dome and
+  // the cell backs in volume, rather than meeting them at a hairline seam.
+  for (const s of [-1, 1]) {
+    P.add('turret', orientedSlab(
+      [s * 0.66, -0.015, 0.50], [s * 1.48, -0.015, 0.30],
+      [s * 1.42, -0.015, -0.82], [s * 0.68, -0.015, -1.12],
+      [s * 0.62, 0.33, 0.42], [s * 1.30, 0.19, 0.24],
+      [s * 1.22, 0.17, -0.70], [s * 0.64, 0.29, -1.00]));
+    // Visible upper weld/bolt spine: it follows the shoulder falloff and
+    // confirms that the external cells terminate into the turret casting.
+    P.add('turretDetail', box(0.46, 0.028, 0.065), s * 1.04, 0.305, 0.15, -0.17, s * -0.27, 0);
+    P.add('turretDark', box(0.40, 0.022, 0.060), s * 0.95, 0.272, -0.79, 0.12, s * 0.39, 0);
+  }
+  P.add('turret', orientedSlab(
+    [-0.88, -0.02, -0.70], [0.88, -0.02, -0.70], [0.64, -0.02, -1.54], [-0.64, -0.02, -1.54],
+    [-0.78, 0.22, -0.70], [0.78, 0.22, -0.70], [0.50, 0.15, -1.40], [-0.50, 0.15, -1.40]));
+  P.add('turretDark', box(1.18, 0.025, 0.080), 0, 0.165, -1.31);
   for (const s of [-1, 1]) {
     P.add('turret', box(0.18, 0.18, 0.96), s * 1.35, 0.055, -0.18, 0, s * 0.05, 0);
     P.add('turretTrack', box(0.035, 0.045, 0.82), s * 1.445, 0.135, -0.18, 0, s * 0.05, 0);
