@@ -520,16 +520,17 @@ function buildAriete(P) {
     else P.add('hull', box(0.055, 0.04, 0.38), s * 1.75, 1.275, 0.92);         // L MIRROR-DOT STRIP x -1.7225..-1.7775 (r3 1024: the ref's -1.822 front col is a 1.272-1.314 DOT — its L mirror arm — where the R col carries the full band; the symmetric full plate paid 0.332, THE worst front_hull col. The 0.38 z-band keeps the plan ±1.84 dot AND the widthM pixel column; max authored |x| stays 1.7775 = the render-scale k anchor)
     for (let k = 0; k < 6; k++) P.add('hullDark', box(0.036, 0.50, 0.016), s * 1.715, 1.05, 2.62 - k * 1.00); // seam strips ON the shaved panels
   }
-  // running gear: SEVEN wheels on the [-2.15, 2.45] contact patch, HIGH
-  // small idler (far 3.68 = plan 3.71 lane) + sprocket (far -3.48 = plan
-  // -3.46); lanes x 1.04..1.64 like the print's front columns
-  const wheelZs = [2.40, 1.65, 0.90, 0.15, -0.60, -1.35, -2.10];
+  // Running gear: seven separated road wheels with full-size raised idler
+  // and final drive, all contained by one continuous native linked course.
+  const wheelZs = [2.42, 1.647, 0.874, 0.101, -0.672, -1.445, -2.218];
   buildRunningGear(P, {
-    style: 'rubber', wheelR: 0.345, wheelW: 0.21, wheelY: 0.43, xc: 1.3725,
+    style: 'rubber', wheelR: 0.375, wheelW: 0.21, wheelY: 0.43, xc: 1.3725,
     wheelZs,
-    sprocket: { z: -3.12, y: 0.86, r: 0.21 }, idler: { z: 3.30, y: 0.945, r: 0.09 },   // (90-ladder r2: a +0.035 sprocket raise chased the far-stern 0.58-0.70 rake wants and was REVERTED — the tangent ramp rose with the wrap and printed +0.017 on five matched mid-ramp cols: hull 85.0 -> 84.2; the 0.04-class far-stern bottoms stay the cheaper residual) (r3 wrap break: small HIGH idler — band annulus [0.79..1.10] at the 3.57 apex col ≈ the ref's [0.786..1.01]; band far 3.525/pads 3.545 stay clear of the certified 3.686 nose col at 3.581; wrap top 1.175 keeps 15 mm under the 1.19 crest bottom, §B4 exact-clear)
+    // Full terminal drums restore a credible course while staying clear of
+    // the nearest road-wheel tires and inside the existing hull envelope.
+    sprocket: { z: -3.12, y: 0.88, r: 0.28 }, idler: { z: 3.30, y: 0.945, r: 0.25 },
     rollers: [1.95, 0.70, -0.65, -1.80].map((z) => ({ z, y: 0.88, r: 0.08 })),
-    trackW: 0.615, topY: 0.88, botY: 0.055, contactZF: 2.22, contactZR: -2.05, paintedEnds: true, coveredTop: true, arms: true,
+    trackW: 0.615, topY: 0.98, botY: 0.055, contactZF: 2.80, contactZR: -2.60, paintedEnds: true, coveredTop: true, arms: true,
   });
   // Shallow concentric faces on the existing seven wheel stations.  The
   // physical rubber tires and course remain owned by buildRunningGear; these
@@ -537,9 +538,9 @@ function buildAriete(P) {
   // that distinguished the stronger first-party Ariete.
   for (const side of [-1, 1]) {
     for (const wz of wheelZs) {
-      P.add('hullDetail', cylX(0.275, 0.035, 18), side * 1.69, 0.43, wz);
-      P.add('hullDark', cylX(0.095, 0.039, 14), side * 1.695, 0.43, wz);
-      P.add('hullDark', torus(0.205, 0.014, 18), side * 1.711, 0.43, wz,
+      P.add('hullDetail', cylX(0.315, 0.035, 18), side * 1.69, 0.43, wz);
+      P.add('hullDark', cylX(0.110, 0.039, 14), side * 1.695, 0.43, wz);
+      P.add('hullDark', torus(0.240, 0.014, 18), side * 1.711, 0.43, wz,
         0, 0, Math.PI / 2);
     }
   }
@@ -554,8 +555,8 @@ function buildAriete(P) {
   // the track widened INBOARD (xc 1.385, inner face 1.075 — the ref front
   // rows reach near-ground at +-1.07-1.13; outer face stays 1.695; tub +-1.03
   // keeps 4.5 cm to the inner band plane, audit dilates 2)
-  wheelRecessAt(P, wheelZs, 1.3725, 0.43, 0.345, 0.21);
-  tightenHullShadowProxy(P, { xc: 1.3725, trackW: 0.34, y0: 0.15, y1: 0.58, z0: -2.40, z1: 2.60, hullZ0: -3.20, hullZ1: 3.20 });
+  wheelRecessAt(P, wheelZs, 1.3725, 0.43, 0.375, 0.21);
+  tightenHullShadowProxy(P, { xc: 1.3725, trackW: 0.34, y0: 0.15, y1: 0.58, z0: -2.62, z1: 2.82, hullZ0: -3.20, hullZ1: 3.20 });
 
   // ---- turret: canted-wall welded slab + raised front roof + TURMS +
   // pano tower + hatch notch + low rear basket (r4 architecture RESTORED
@@ -1269,16 +1270,9 @@ function buildLeclerc(P) {
   P.add('hullDetail', box(0.09, 0.012, 0.032), 0.60, 1.333, -3.372);
   P.decal('hull', 'number', '6-33', 0.28, [1.80, 0.95, 2.5], Math.PI / 2);
   P.decal('hull', 'number', '6-33', 0.28, [-1.80, 0.95, 2.5], -Math.PI / 2);
-  // 6 wheels, FRONT idler / REAR sprocket, 5 rollers. R2 workorder: HIGH
-  // short idler matching the ref (wrap top 1.41 = the z 3.15..3.26 bump,
-  // far edge 3.52 covers the ref's 3.43..3.54 body columns), sprocket
-  // pulled to -2.90 so its wrap (far -3.23) stays inside the -3.32 column
-  // edge — front body 3.54 + rear -3.32 = hullLengthM 6.86 (in grace).
-  // Track narrowed to the ref planes: inner 1.00 / outer 1.60.
-  // ref contact patch is [-2.10, 2.30] (bottoms 0.03..0.06 there) — the r1
-  // wheelbase sat 0.35 too far AFT; end-wheel far edges INCLUDE the link
-  // pads (+0.08 beyond the band: the 6.99 hullLengthM incident was the
-  // sprocket pads landing at -3.34 in the -3.385 column)
+  // Six road wheels, front idler, rear final drive and five return rollers.
+  // The measured custom loop owns both raised terminal transitions and the
+  // now-visible upper return run; no static silhouette filler is involved.
   const wheelZs = [2.12, 1.312, 0.504, -0.304, -1.112, -1.92];
   // Running-gear ownership law: removed the former per-side static
   // `hullTrackTrim` ramp/wrap fills.  Those solids copied the desired track
@@ -1286,14 +1280,14 @@ function buildLeclerc(P) {
   // linked shoes.  The native loop below now authors the complete visible
   // course, including both end transitions.
   buildRunningGear(P, {
-    style: 'rubber', wheelR: 0.36, wheelW: 0.22, wheelY: 0.45, xc: 1.295,
+    style: 'rubber', wheelR: 0.39, wheelW: 0.22, wheelY: 0.46, xc: 1.295,
     // The source's forward lanes are mildly asymmetric.  Move the complete
     // native assemblies—not static hull tabs—so wheels, wraps, bands and
     // individual shoes remain concentric and share one authored ownership.
     xcLeft: 1.315, xcRight: 1.280,
     wheelZs,
-    sprocket: { z: -3.00, y: 0.84, r: 0.14 },
-    idler: { z: 3.27, y: 1.10, r: 0.14 },
+    sprocket: { z: -3.00, y: 0.84, r: 0.24 },
+    idler: { z: 3.27, y: 1.10, r: 0.25 },
     // Source-profiled native loop.  These are track centreline knots, not
     // hull fills: the animated band and linked shoes follow the measured
     // Leclerc ramp/knee/crest silhouette themselves.  The former solid
@@ -1318,6 +1312,7 @@ function buildLeclerc(P) {
     linkPitchM: 0.11, shoeRadialScale: 0.61, padGroundCenter: 0.069,
     padCornerFloor: 0.02, padHugZ0: 2.40,
     paintedEnds: true, coveredTop: false, arms: true,
+    tireHex: '#252820', wheelHex: '#666b5d',
   });
   // 90-ladder r1 track re-meter: the 0.64-band's pads reached x 1.623 and
   // COIN-FLIPPED into the front ±1.64 col windows ([1.619..]; official run
@@ -1326,7 +1321,7 @@ function buildLeclerc(P) {
   // ~11 mm AND pulls the inner face out of the ±0.951 windows (ref wants
   // bot 0.279 there, its track inner plane is ~0.97; the old 0.96 inner
   // face printed ground at ±0.951, err 0.167).
-  wheelRecessAt(P, wheelZs, 1.295, 0.45, 0.36, 0.22, 'hullRunningGearDark');  // explicit suspension ownership; strict track lint must not infer by position
+  wheelRecessAt(P, wheelZs, 1.295, 0.46, 0.39, 0.22, 'hullRunningGearDark');  // explicit suspension ownership; strict track lint must not infer by position
 
   // ---- turret: tall narrow autoloader block. R2 FULL RE-LAY (post-warp
   // workorder): roof plateau 2.352 world flat back to z -1.42 THEN falls to

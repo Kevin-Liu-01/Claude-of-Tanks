@@ -6183,7 +6183,9 @@ function buildLeo2Revolution(P) {
     // lifts off inside the wheel-1 arc zone exactly like the ref's own line
     // crosses its arch; idler CENTER untouched (dims-guard). Rear patch stays
     // the kit default (contactZR undefined = -2.1775).
-    contactZF: 2.22,
+    // Keep the complete leading road wheel inside the linked course.  The
+    // old lift-off cut diagonally across its forward tire quadrant.
+    contactZF: 2.78,
     // r9 B1 (critic driver 2 — band p5 6.8 vs ref 51.1, the merkava-class
     // near-black read): pads/chain to the pt91m r27 olive-brown recipe +
     // the gearFloor rehook (Material.clone drops the family ambient floor).
