@@ -4906,3 +4906,37 @@ public build pass. Full evidence and vectors are recorded in
 
 **PASS / KEEP all five; retire `d8a948cc`, `1adc0bde`, `7680a400` and every
 earlier conflicting owner-scope freeze. Ordered blockers: none.**
+
+## 5.143 FLEET RUNNING-GEAR ORDER LAW + STRICT-CLEARANCE QUEUE (2026-08-12)
+
+The owner's mechanical order is now a runtime invariant for every native
+`buildRunningGear` model: **front idler → road-wheel stations → support
+rollers/suspension → rear final-drive sprocket → one linked track course**.
+Each build publishes `nativeRunningGearLayouts` on `rig_hull`, including end
+types/coordinates, road-wheel span/count, support-roller count and exception
+status. Construction throws when terminal semantics are reversed or a road
+wheel center lies outside the two end wheels.
+
+Real front-drive exceptions are explicit in `FRONT_DRIVE_EXCEPTION_IDS`, not
+implicit parameter swaps: the authored Sherman/German/Strv layouts, Bradley,
+BMP-2, Puma, Type 89, Warrior and Merkava family. The new
+`tools/running-gear-layout.selftest.mjs` checks the default, named exceptions,
+out-of-span rejection, duplicate-free registry and integrated Leopard 2A5,
+T-90, Type 10, BMP-2, Warrior and Merkava 3D receipts. It runs in `npm test`.
+This metadata/assertion change is geometry-invariant and does not move any
+frozen vertex.
+
+The same round ran the exact strict containment audit against all **110**
+procedural registrations. It proves the current Leopard 2A5 screenshot class
+is already closed at band front/rear **0/0**, shoe front/rear **0/0** and full
+sweep **0/0**; Leclerc and the newly re-certified Type 99A, Type 90, AMX-40,
+Challenger 3, Leopard prototype/A4/A7V/Revolution and all five Abrams marks are
+also exact-clean. It also honestly reopens the older roster: **85/110** have a
+nonzero strict band/sweep candidate, **74/110** have a shoe candidate and
+eleven are shoe-only blind spots. These include both real hull/guard intrusion
+and old wheel/suspension dress merged into generic hull buckets. Nothing in
+this section waives those results: modern families must be repaired or
+explicitly reclassified from pixels/load paths before legacy/WWII closure.
+
+**Layout lint: PASS. Fleet strict-clearance program: ACTIVE; no false global
+completion claim.**

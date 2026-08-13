@@ -920,6 +920,57 @@ function trackShoeGeometries(trackW, pitch, pinCapOuter = null,
   return { pad, inner };
 }
 
+// The fleet default is deliberately mechanical, not cosmetic: the leading
+// end is a non-driven idler and the rear end is the final-drive sprocket.
+// These are the real front-drive exceptions represented by authored models;
+// every new exception must be named here so a swapped/mislabelled end wheel
+// cannot silently enter the roster.
+export const FRONT_DRIVE_EXCEPTION_IDS = Object.freeze([
+  // Historical front-drive layouts.
+  'm4a3e8', 'sherman_jumbo',
+  'tiger1', 'tiger2', 'panther_g', 'newc_tiger', 'newc_pziii',
+  'pziii_konserwa', 'jagdtiger', 'sturmtiger',
+  'strv103',
+  // Modern IFV/APC front powerpacks.
+  'm2a2_bradley', 'bmp2', 'spz_puma', 'type89', 'fv510',
+  // Merkava family front-drive chassis.
+  'merkava1b', 'merkava2b', 'merkava2d', 'merkava3c', 'merkava3d', 'merkava4',
+]);
+const FRONT_DRIVE_EXCEPTION_SET = new Set(FRONT_DRIVE_EXCEPTION_IDS);
+
+export function runningGearLayoutReceipt(tankId, cfg) {
+  const { sprocket, idler, wheelZs = [], rollers = [] } = cfg;
+  if (!sprocket || !idler || !wheelZs.length) {
+    throw new Error(`${tankId}: running gear requires sprocket, idler and road-wheel stations`);
+  }
+  const frontIsSprocket = sprocket.z > idler.z;
+  const expectedFrontDrive = cfg.frontDrive === true || FRONT_DRIVE_EXCEPTION_SET.has(tankId);
+  if (frontIsSprocket !== expectedFrontDrive) {
+    const expected = expectedFrontDrive ? 'front sprocket / rear idler exception'
+      : 'front idler / rear final-drive sprocket';
+    throw new Error(`${tankId}: running-gear order violates ${expected}`);
+  }
+  const zFront = Math.max(sprocket.z, idler.z);
+  const zRear = Math.min(sprocket.z, idler.z);
+  const roadZFront = Math.max(...wheelZs);
+  const roadZRear = Math.min(...wheelZs);
+  if (!(roadZRear > zRear && roadZFront < zFront)) {
+    throw new Error(`${tankId}: road-wheel centers must remain between both terminal wheels`);
+  }
+  return Object.freeze({
+    tankId,
+    frontEnd: frontIsSprocket ? 'sprocket' : 'idler',
+    rearEnd: frontIsSprocket ? 'idler' : 'sprocket',
+    frontDriveException: expectedFrontDrive,
+    roadWheelStations: wheelZs.length,
+    supportRollers: rollers.length,
+    zFront,
+    zRear,
+    roadZFront,
+    roadZRear,
+  });
+}
+
 function buildRunningGear(P, cfg) {
   const { mats, hullG, q } = P;
   const seg = q ? 26 : 12;
@@ -934,6 +985,9 @@ function buildRunningGear(P, cfg) {
                                          // paint (modern MBTs paint the whole
                                          // wheel train; the bare-steel drums
                                          // read as blue die-cast toys)
+    frontDrive = false,                  // explicit real-world exception to
+                                         // the fleet default: front idler,
+                                         // rear final-drive sprocket
   } = cfg;
 
   // Some source-authored hulls carry a small left/right track-lane offset.
@@ -951,6 +1005,9 @@ function buildRunningGear(P, cfg) {
   // own radius, cadence, terminal geometry and protection; this records only
   // the native mechanical station count for lineage/provenance checks.
   hullG.userData.nativeRoadWheelStations = wheelZs.length;
+  (hullG.userData.nativeRunningGearLayouts ||= []).push(
+    runningGearLayoutReceipt(P.specId, { sprocket, idler, wheelZs, rollers, frontDrive }),
+  );
 
   // torsion arms: static axle stub + trailing arm per wheel station (merged
   // into the hull detail bucket — zero extra draw calls)
@@ -4136,7 +4193,7 @@ export function createTank(specId, engineCtx, opts = {}) {
   const P = {
     // PERF r3: 'ai' is a TEXTURE tier only — geometry detail stays hero
     // (killcam closeups frame AI vehicles at arm's length)
-    spec, mats, rng, q: quality !== 'low', hullG, turretG, gunG, recoilG,
+    specId, spec, mats, rng, q: quality !== 'low', hullG, turretG, gunG, recoilG,
     disposables, gear: null, muzzleZ: armor.gunBarrel.lengthM, topY: 0.8,
     // Optional profile-owned final visual composition. This runs after the
     // authored buckets, decals, and ERA instances exist, but before shadow
