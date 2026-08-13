@@ -289,20 +289,12 @@ const REG = {
     pubDims: { hullLengthM: 6.33, overallLengthM: 8.51, widthM: 3.51, heightM: 3.35 },
   },
   // ---- misc/Euro-Asia moderns family (append-only, 2026-08-03) -------------
-  // Lab registrations mirrored verbatim: leclerc userdrops2.js, t80u
+  // Lab registrations mirrored verbatim: t80u
   // userdrops3.js, type90 userdrops5.js source(), ariete + type74 from the
   // fidelity harness LOCAL_REFERENCE_OVERRIDES (quarantine oracles),
   // recon_tank specs.js MODEL_SOURCE. pubDims from the spec dims rows
   // (modern2.js t80u/leclerc, modern3.js ariete, userdrops5 type90 make(),
   // misc.js TYPE74_SPEC, specs.js recon_tank).
-  leclerc: {
-    path: 'public/models/tanks/char_leclerc_andertan.glb',
-    // raw GLB name is 'Cylinder.086' — GLTFLoader sanitizes the dot out;
-    // the extract matches raw names, so the regex accepts both forms.
-    turretNode: '^turret$', gunNode: '^Cylinder\\.?086$', autoPivot: true,
-    yawOffset: -Math.PI / 2,
-    pubDims: { hullLengthM: 6.88, overallLengthM: 9.87, widthM: 3.60, heightM: 2.53 },
-  },
   t80u: {
     path: 'public/models/tanks/t80u_javanilga.glb',
     turretNode: '^Object09_24$', gunNode: '^Object1101_22$', autoPivot: true,

@@ -58,3 +58,30 @@ Final disposition: **KEEP `126a4e90`; retire `5fa68984`**. The Leclerc again
 has recognizable, supported front mudguards and explicit terminal running
 gear without any static geometry intersecting or replacing its native linked
 track.
+
+## 2026-08-13 native-idler and first-party supersession
+
+Fresh elevated-profile pixels showed that the apron itself was no longer the
+problem: the moving terminal links still projected too far beneath it and the
+first round face did not read decisively as a free idler. The final native
+course tightens only that forward wrap. A narrow hull-owned nose/guard bridge
+holds the raised source silhouette between the lanes, while the raked steel
+cap, tapered overlap, flexible apron and two knees stay ahead/above the moving
+shoes. The terminal face is explicitly non-driven; six road wheels and five
+return rollers lead to a separate bolted rear final-drive face.
+
+Freeze `158157f4` reproduces twice at 48 meshes / 104,451 vertices. The last
+read-only comparison run records a 90.5 machine floor, with hull 90.5, whole
+90.7, turret 91.5, stations 94.2, dimensions 95.2 and floaters 100. Exact
+band/shoes/sweep remain 0/0/0; parent is 0/0/0; winding, runtime, muzzle and
+running-gear-order checks pass. `/private/tmp/leclerc-track-final-r6/leclerc`
+contains 15 paired + 15 yaw0 + 15 yaw90 PNGs, all 45 hashes distinct. Fresh
+fixed-order visual scores are
+`[9.1,9.1,9.0,9.0,9.0,9.0,9.0,9.1,9.1,9.2,9.1,9.2,9.1,9.1]`, floor 9.0
+and mean 9.08.
+
+The historical comparison GLB is removed from `public/`, and its retired
+runtime/source-credit wiring is removed from player-facing code. It supplied
+no playable mesh data; the active Leclerc remains repository-authored
+procedural geometry. Final disposition: **KEEP `158157f4`; retire
+`126a4e90`**.

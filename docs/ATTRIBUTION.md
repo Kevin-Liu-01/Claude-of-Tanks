@@ -530,7 +530,7 @@ spin).
 | Vehicle (spec id) | Author | Source | License | Shipped file | Role |
 |---|---|---|---|---|---|
 | T-90M (`t90m`) | minehffd | https://sketchfab.com/3d-models/t-90m-2e31a3cf16b04f0180b9387df5198c9a (user-supplied download) | CC-BY 4.0 (stamped in asset.copyright + scene extras) | `public/models/tanks/t90m_minehffd.glb` | REPLACES the procedural T-90M Proryv model (specs.js gameplay stats unchanged). Turret yaw node + `Main barrel` pitch node; mantlet is a turret sibling (stays put on elevation — known minor). 122,516 tris, WEBP textures. |
-| Char Leclerc (`leclerc`) | andertan | https://sketchfab.com/3d-models/char-leclerc-84a0918d2f534c2eb003ab3cb3029c03 (user-supplied download) | CC-BY 4.0 | `public/models/tanks/char_leclerc_andertan.glb` | REPLACES the procedural Leclerc S2 model (modern2.js gameplay stats unchanged). Authored `turret` node + child gun mesh; authored Fire/traverse animations retained (unused). |
+| Char Leclerc (`leclerc`, historical comparison only) | andertan | https://sketchfab.com/3d-models/char-leclerc-84a0918d2f534c2eb003ab3cb3029c03 (user-supplied download) | CC-BY 4.0 | **RETIRED / NOT SHIPPED** | Used read-only for prior measurement and visual comparison. The binary, runtime source override and player-facing community credit were removed; the playable Leclerc is wholly repository-authored procedural geometry. |
 | Leopard 2A4 (`leo2a4`) | m_bergman | https://www.thingiverse.com/thing:4718232 (user-supplied download) | CC-BY-NC-SA — QUARANTINE (below) | `public/models/tanks/community/quarantine/leo2a4_bergman.glb` | REPLACES the procedural Leopard 2A4 model (modern2.js gameplay stats unchanged). Ring-center turret pivot authored offline. |
 | BMP-2 (`bmp2`) | m_bergman | same pack | CC-BY-NC-SA — QUARANTINE (below) | `public/models/tanks/community/quarantine/bmp2_bergman.glb` | REPLACES the procedural BMP-2 model (modern3.js gameplay stats unchanged). |
 | BMP-1 (`bmp1`) | m_bergman | same pack | CC-BY-NC-SA — QUARANTINE (below) | `public/models/tanks/community/quarantine/bmp1_bergman.glb` | NEW playable: USSR tier-VI IFV (class-template spec, userdrops2.js). |
@@ -650,7 +650,7 @@ bergman-derived siblings above.
   `t30_*`, plus wave 3: `is7_*`, `object279_*`, `is6b_*`, `is1_*`, plus user
   drops 2026-07-28: `leo2a6_*` (CC-BY buh), `type74_*` and `ariete_*`
   (QUARANTINE — see the section below), plus user drops wave 2 (recovered):
-  `t90m_*` (CC-BY minehffd), `leclerc_*` (CC-BY andertan), and `leo2a4_*`,
+  `t90m_*` (CC-BY minehffd), and `leo2a4_*`,
   `bmp2_*`, `bmp1_*`, `m1128_*`, `m1296_*` (m_bergman — QUARANTINE), plus user
   drops wave 4: `merkava4_*` (CC-BY arlassar), `t80u_*` (CC-BY javanilga),
   `kf51_*` (CC-BY GRIP420/David Falke), plus the 42 local-only wave 5–7 icon

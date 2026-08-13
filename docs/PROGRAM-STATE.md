@@ -126,7 +126,7 @@ re-freeze NEW hash, all in ONE commit.
 | m1a2_tusk | 978d507c | RE-FROZEN 2026-08-12 (§5.142 restored clean first-party urban-kit presentation, supported local ARAT brackets, closed rear service return and exact track corridor) |
 | m2a2_bradley | 90a5568c | GRADUATED 2026-08-08 (28th; dual gate: geometry 90.9 x2 every component >=90 landed 81bdad1 + visual floor 9.0 / mean 9.16 x14 views at freeze-verified bytes; oracle e699c868; dress-tier defect bank in the verdict: bow T-hooks, taillight fittings, TOW rear ports, lug stacks, ringed hubs) |
 | m45_patton | 53caa687 | GRADUATED 2026-08-08 (29th; gate 90.7 x5 total + sitting-2 visual floor 9.0 mean 9.13 x14; sitting-1 orders executed: loft.smooth byte-reproduced, ring cupola adjudicated ring-class at station with the measured Ø0.57/x-0.65 deviation compliant; ring-prominence silhouette-tax residual certified) |
-| leclerc | 126a4e90 | RE-FROZEN 2026-08-13 (§5.155 first-party leading apron restored on the supported cap/knee structure, explicit idler/final-drive faces inside the native carrier span, exact band+shoes+sweep 0/0, parent 0/0/0 and fresh 45-frame yaw/ownership PASS; prior 5fa68984 retired) |
+| leclerc | 158157f4 | RE-FROZEN 2026-08-13 (§5.164 wholly first-party Leclerc running-gear/mudguard closeout: restored raked cap, overlap, apron, knees and inset nose bridge; compact native front-idler wrap, six road wheels, five return rollers and rear final drive; machine floor 90.5, exact band+shoes+sweep 0/0, parent 0/0/0, winding/runtime/bore clean and fresh 45-frame yaw/ownership PASS; external comparison binary and player-facing source credit removed; prior 126a4e90 retired) |
 | amx30 | 89a4cdf0 | GRADUATED 2026-08-12 (§5.124 first-party low five-wheel AMX hull, compact cast turret, supported commander/optic/MG station and native exact 0/0 course; machine fidelity 91.81 / min view 90.01; fresh 42-frame yaw/ownership floor 9.0 / mean 9.16) |
 | amx30b2 | 34076800 | GRADUATED 2026-08-12 (§5.124 first-party B2 cast/rear-station and service package on the exact native five-wheel course; machine fidelity 91.51 / min view 90.14; fresh 42-frame yaw/ownership floor 9.0 / mean 9.12) |
 | amx40 | 3d312bde | RE-FROZEN 2026-08-12 (§5.135 fully first-party forward-section + owner-height re-cert: connected cheek/crown loft retained forward, complete turret section exactly 20% taller with smoke/MG re-seated; fidelity 92.94 / minimum whole view 91.90, strict native band+shoes+sweep 0/0, fresh 45-frame yaw/ownership floor 9.0 / mean 9.07; all source-baked playables retired) |
@@ -5756,3 +5756,46 @@ mass, track collision, open sheet or yaw-dependent wound appears.
 
 **PASS / KEEP `54f4138`; supersede `e9ad3e89`. Ordered blockers: none for this
 radial armor/equipment refit.**
+
+## 5.164 LECLERC FIRST-PARTY MUDGUARD / NATIVE IDLER CLOSEOUT (2026-08-13, RE-FROZEN)
+
+The active `leclerc` remains wholly repository-authored procedural geometry.
+The old andertan comparison binary is removed from `public/`, its retired
+runtime-source note and player-facing community credit are removed, and the
+attribution ledger now records it only as historical read-only comparison
+material. No source mesh, vertex/index payload, material, texture, UV,
+hierarchy, rig or animation enters the playable tank or this landing.
+
+The prior collision-safe repair had lifted the original flap so far that the
+front course read as a bare terminal ladder. This pass restores a visibly
+raked steel mudguard cap, tapered rubber overlap and flexible leading apron.
+An inboard bow knee and outboard fender knee give it two real hull-owned load
+paths; the narrow inset nose/guard bridge stays between the track lanes. The
+front course is re-authored as one compact native wrap around an explicit
+non-driven idler. Six dished road-wheel stations, five supported return
+rollers, hydropneumatic arms and the rear bolted final-drive sprocket follow in
+the declared family order. No static guard or hull filler occupies the moving
+band or linked-shoe corridor.
+
+Freeze **`158157f4`** reproduces twice at 48 meshes / 104,451 vertices. The
+last read-only reference measurement before binary retirement records machine
+floor **90.5**: hull 90.5, whole 90.7, turret 91.5, stations 94.2, dimensions
+95.2 and floaters 100. Exact terminal bands, instanced shoes and strict moving
+sweep are **0/0**. Parent audit is **0 stranded / 0 abutting / 0 dangling**.
+Winding reports 0 reversed / 0 mixed with a visually null seven-pixel (0.01%)
+deficit and zero yaw-stranded candidates. Runtime articulation passes 10/10;
+the explicit muzzle bore passes at 67.3 contrast. The running-gear-order and
+machine standard checks pass.
+
+The immutable packet at `/private/tmp/leclerc-track-final-r6/leclerc` contains
+15 paired, 15 yaw0 and 15 yaw90 frames including the standardized elevated
+left profile: **45 PNGs / 45 distinct hashes**. Fresh fixed-order visual
+appraisal is `[9.1,9.1,9.0,9.0,9.0,9.0,9.0,9.1,9.1,9.2,9.1,9.2,9.1,9.1]`,
+floor **9.0** and mean **9.08**. Both front guards remain fixed and supported
+while the complete gun/turret/sight/GALIX/basket package makes a genuine
+quarter-turn. The native course stays continuous with a distinct front idler
+and rear drive; no duplicate gear, collision, empty-air fitting, open sheet or
+yaw-dependent wound appears.
+
+**PASS / KEEP `158157f4`; supersede `126a4e90`. Ordered blockers: none for
+this first-party Leclerc running-gear and mudguard closeout.**

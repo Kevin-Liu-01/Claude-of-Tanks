@@ -1046,6 +1046,7 @@ function buildLeclerc(P) {
   P.add('hull', frustum(1.66, 2.66, 1.60, 1.66, 1.64, 1.60, 1.363, 1.55));
   P.add('hull', frustum(1.00, 2.74, 2.62, 1.66, 2.66, 2.62, 1.348, 1.363));
   P.add('hull', frustum(0.94, 3.46, 2.76, 0.94, 2.82, 2.76, 1.21, 1.34));
+  P.add('hull', box(1.84, 0.38, 0.22), 0, 1.035, 3.46);                       // inset nose/guard bridge owns the raised tip silhouette, inside both track lanes
   // lower bow: narrow (x ±0.94 INSIDE the track inner faces)
   P.add('hull', frustum(0.94, 2.95, 2.42, 0.94, 3.02, 2.58, 0.27, 1.19));
   // stern boat-tail wedge, same containment narrowing
@@ -1071,21 +1072,30 @@ function buildLeclerc(P) {
       [s2 * 1.70, 1.415, 1.30], [s2 * 1.785, 1.415, 1.30], [s2 * 1.785, 1.205, 3.32], [s2 * 1.70, 1.205, 3.32],
       [s2 * 1.70, 1.445, 1.30], [s2 * 1.785, 1.445, 1.30], [s2 * 1.785, 1.235, 3.32], [s2 * 1.70, 1.235, 3.32]));
 
-    // Proper Leclerc front mudguard: a shallow raked steel cap above the
-    // idler crest plus a flexible front lip AHEAD of the shoe orbit.  The
-    // deleted legacy flap sat at z=3.28/y=0.775, directly through the live
-    // terminal links.  This cap stays above them; its rubber lip begins
-    // beyond their forward sweep.  Both supports are hull-owned: the inner
-    // knee enters the narrow bow and the outer knee enters the fender rail.
+    // Proper Leclerc front mudguard: a visibly raked steel cap that follows
+    // the idler crest, then turns down into a flexible apron AHEAD of the
+    // shoe orbit.  The previous repair kept the cap collision-free by
+    // parking its whole lower face at y=1.48.  In live profile pixels that
+    // made it disappear into the upper shoulder and left the terminal links
+    // reading as a bare vertical ladder.  The rear edge still enters the
+    // fender at the old height, but the leading edge now falls with the
+    // native wrap.  Both knees remain outside the moving lane: the inner one
+    // is inboard of the track and the outer one is beyond the shoe width.
     P.add('hull', slab(
-      [s2 * 0.90, 1.480, 2.95], [s2 * 1.785, 1.480, 2.95], [s2 * 1.720, 1.480, 3.58], [s2 * 0.98, 1.480, 3.58],
-      [s2 * 0.90, 1.525, 2.95], [s2 * 1.785, 1.525, 2.95], [s2 * 1.720, 1.525, 3.58], [s2 * 0.98, 1.525, 3.58]));
-    P.add('hull', box(0.08, 0.27, 0.30), s2 * 0.90, 1.365, 3.10);             // inboard bow knee (inside the shoe lane)
-    P.add('hull', box(0.07, 0.30, 0.28), s2 * 1.7425, 1.345, 3.25);           // outboard fender knee (outside the shoe lane)
-    P.add('hullRubber', box(0.64, 0.15, 0.035), s2 * 1.37, 1.405, 3.58);      // shallow flexible lip, ahead of terminal shoes
-    P.add('hullRubber', box(0.64, 0.24, 0.04), s2 * 1.37, 1.285, 3.6175);     // supported leading apron: overlaps the lip above, hangs wholly ahead of the idler/shoe sweep
-    P.add('hullDark', box(0.52, 0.025, 0.018), s2 * 1.36, 1.515, 3.555);      // cap hinge/seam
-    P.add('hullDark', box(0.045, 0.19, 0.045), s2 * 1.37, 1.30, 3.622);       // apron reinforcement, seated through the upper overlap
+      [s2 * 0.90, 1.300, 2.88], [s2 * 1.785, 1.300, 2.88], [s2 * 1.720, 1.205, 3.47], [s2 * 0.98, 1.205, 3.47],
+      [s2 * 0.90, 1.360, 2.88], [s2 * 1.785, 1.360, 2.88], [s2 * 1.720, 1.230, 3.47], [s2 * 0.98, 1.230, 3.47]));
+    P.add('hull', box(0.08, 0.12, 0.30), s2 * 0.90, 1.300, 3.08);             // inboard bow knee (inside the shoe lane)
+    P.add('hull', box(0.07, 0.12, 0.30), s2 * 1.7425, 1.310, 3.18);           // outboard fender knee (outside the shoe lane)
+    P.add('hullRubber', slab(                                                  // shallow tapered overlap follows the cap's clipped front corners
+      [s2 * 0.98, 1.170, 3.465], [s2 * 1.72, 1.170, 3.465], [s2 * 1.72, 1.225, 3.465], [s2 * 0.98, 1.225, 3.465],
+      [s2 * 1.00, 1.170, 3.490], [s2 * 1.70, 1.170, 3.490], [s2 * 1.70, 1.225, 3.490], [s2 * 1.00, 1.225, 3.490]));
+    P.add('hullRubber', slab(                                                  // flexible leading apron narrows toward its free lower edge
+      [s2 * 1.00, 1.135, 3.490], [s2 * 1.70, 1.135, 3.490], [s2 * 1.70, 1.180, 3.490], [s2 * 1.00, 1.180, 3.490],
+      [s2 * 1.05, 1.140, 3.520], [s2 * 1.65, 1.140, 3.520], [s2 * 1.65, 1.180, 3.520], [s2 * 1.05, 1.180, 3.520]));
+    P.add('hullDark', box(0.54, 0.022, 0.020), s2 * 1.35, 1.225, 3.470);      // hinge seam follows the cap's lowered leading edge
+    for (const bx of [1.08, 1.62]) {
+      P.add('hullDark', box(0.035, 0.052, 0.035), s2 * bx, 1.166, 3.500);    // two real apron stiffeners, seated through the overlap
+    }
   }
   // driver LEFT: flush hatch + 3 episcopes (90-ladder r1 CAP-SEAT: ref deck
   // line reads 1.534-1.544 over z 0.2..1.25 — the 1.573/1.576 hatch crowns
@@ -1107,15 +1117,17 @@ function buildLeclerc(P) {
     // ±1.828 starts z 1.229 — the old 1.11 edge printed -0.116 x2 cols);
     // k3/k4 tops TAPER 1.395/1.32 with the falling glacis (ref side tops
     // read 1.399@2.63 -> 1.306@3.07 where the flat 1.425 row sat +0.02..
-    // +0.12; bottoms hold 0.865 for the front ±1.76 band).
+    // +0.12).  The lower edge rises across the forward three panels into
+    // the mudguard instead of forming the old flat wall through the idler.
     for (let k = 0; k < 5; k++) {
       const bt = k === 3 ? 1.395 : (k === 4 ? 1.32 : 1.425);
+      const bb = [0.925, 0.94, 1.06, 1.20, 1.24][k];
       const zc = k === 0 ? 1.3825 : 1.32 + 0.43 * k;
       const zd = k === 0 ? 0.295 : 0.42;
-      P.add('hull', box(0.09, bt - 0.925, zd), s * 1.755, (bt + 0.925) / 2, zc);
+      P.add('hull', box(0.09, bt - bb, zd), s * 1.755, (bt + bb) / 2, zc);
     }
     P.add('hull', box(0.012, 0.15, 2.0), s * 1.706, 0.855, 2.24);              // mounting lip bridges the raised blocks to the fender shoulder
-    P.add('hull', box(0.09, 0.315, 0.09), s * 1.725, 1.0825, 3.265);           // compact sixth block remains clear of the idler/shoe run
+    P.add('hull', box(0.09, 0.150, 0.09), s * 1.725, 1.165, 3.265);            // compact sixth block remains clear of the idler/shoe run
     for (let k = 0; k < 3; k++) P.add('hullDark', box(0.07, 0.50, 0.016), s * 1.76, 1.15, 2.85 - k * 0.72);
     for (let k = 0; k < 10; k++) {
       // LAST course is the ref's short cut-high panel over the sprocket
@@ -1281,7 +1293,7 @@ function buildLeclerc(P) {
   // silhouette while occupying the same space as the animated band and
   // linked shoes.  The native loop below now authors the complete visible
   // course, including both end transitions.
-  buildRunningGear(P, {
+  const leclercGear = {
     style: 'rubber', wheelR: 0.36, wheelW: 0.22, wheelY: 0.45, xc: 1.295,
     // The source's forward lanes are mildly asymmetric.  Move the complete
     // native assemblies—not static hull tabs—so wheels, wraps, bands and
@@ -1291,8 +1303,21 @@ function buildLeclerc(P) {
     // Real painted terminal assemblies replace the tiny r=.14 drums.  The
     // native tangent solver now owns both transitions; the retired hand-laid
     // loop was the source of the vertical front shoe pile and kinked rear run.
-    sprocket: { z: -2.85, y: 0.82, r: 0.27 },
-    idler: { z: 3.18, y: 0.78, r: 0.27 },
+    sprocket: { z: -2.72, y: 0.80, r: 0.23, trackR: 0.27 },
+    idler: { z: 3.08, y: 0.75, r: 0.21, trackR: 0.27 },
+    // Source-profiled native centerline. Unlike retired static hull wedges,
+    // these knots drive the real continuous band and every linked shoe. The
+    // The source uses a compact forward wrap around its smaller free idler;
+    // the explicit points retain that clipped profile while the visible end
+    // faces identify the non-driven front and final-drive rear stations.
+    loopPoints: [
+      [-3.04, 0.90], [-2.93, 0.90], [-2.82, 0.89], [-2.68, 0.82],
+      [-1.95, 0.90], [1.95, 0.90], [2.84, 0.90], [3.00, 1.00],
+      [3.12, 1.055], [3.19, 0.95], [3.24, 0.75], [3.22, 0.60],
+      [3.14, 0.50], [3.03, 0.42], [2.88, 0.35], [2.65, 0.22],
+      [2.34, 0.055], [-2.12, 0.055], [-2.48, 0.25], [-2.72, 0.43],
+      [-2.87, 0.55], [-2.98, 0.70], [-3.04, 0.90],
+    ],
     rollers: [1.95, 1.05, 0.15, -0.80, -1.70].map((z) => ({ z, y: 0.88, r: 0.08 })),
     trackW: 0.630, trackTh: 0.07, topY: 0.90, botY: 0.055,
     contactZF: 2.34, contactZR: -2.12,
@@ -1300,17 +1325,29 @@ function buildLeclerc(P) {
     linkPitchM: 0.11, shoeRadialScale: 0.61, padGroundCenter: 0.069,
     padCornerFloor: 0.02, padHugZ0: 2.40,
     paintedEnds: true, coveredTop: true, arms: true,
-  });
+  };
+  buildRunningGear(P, leclercGear);
+  P.hullG.userData.runningGearOrder = {
+    front: 'idler', frontWheelPairs: 1, roadWheelPairs: wheelZs.length,
+    supportRollerPairs: leclercGear.rollers.length, suspension: 'hydropneumatic-arm',
+    rear: 'final-drive-sprocket',
+  };
   // Resolve a real non-driven idler and rear final drive at normal profile
   // scale without duplicating any part of the animated track course.
   for (const side of [-1, 1]) {
     const x = side * 1.605;
-    P.add('hullRunningGearDetail', cylX(0.205, 0.026, 20), x, 0.78, 3.18);
-    P.add('hullRunningGearDark', torus(0.158, 0.015, 18), side * 1.620, 0.78, 3.18, 0, 0, Math.PI / 2);
-    P.add('hullRunningGearDark', cylX(0.058, 0.034, 12), side * 1.624, 0.78, 3.18);
-    P.add('hullRunningGearDetail', cylX(0.198, 0.026, 20), x, 0.82, -2.85);
-    P.add('hullRunningGearDark', torus(0.150, 0.015, 18), side * 1.620, 0.82, -2.85, 0, 0, Math.PI / 2);
-    P.add('hullRunningGearDark', cylX(0.070, 0.034, 12), side * 1.624, 0.82, -2.85);
+    const { idler, sprocket } = leclercGear;
+    P.add('hullRunningGearDetail', cylX(0.188, 0.026, 24), x, idler.y, idler.z);
+    P.add('hullRunningGearDark', torus(0.151, 0.014, 20), side * 1.620, idler.y, idler.z, 0, 0, Math.PI / 2);
+    P.add('hullRunningGearDark', cylX(0.058, 0.034, 12), side * 1.624, idler.y, idler.z);
+    P.add('hullRunningGearDetail', cylX(0.205, 0.026, 24), x, sprocket.y, sprocket.z);
+    P.add('hullRunningGearDark', torus(0.164, 0.015, 20), side * 1.620, sprocket.y, sprocket.z, 0, 0, Math.PI / 2);
+    P.add('hullRunningGearDark', cylX(0.068, 0.034, 12), side * 1.624, sprocket.y, sprocket.z);
+    for (let k = 0; k < 8; k++) {
+      const a = k * Math.PI / 4;
+      P.add('hullRunningGearDark', cylX(0.015, 0.036, 8), side * 1.625,
+        sprocket.y + Math.sin(a) * 0.116, sprocket.z + Math.cos(a) * 0.116);
+    }
   }
   // 90-ladder r1 track re-meter: the 0.64-band's pads reached x 1.623 and
   // COIN-FLIPPED into the front ±1.64 col windows ([1.619..]; official run
