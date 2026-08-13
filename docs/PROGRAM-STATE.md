@@ -149,6 +149,7 @@ re-freeze NEW hash, all in ONE commit.
 | t14 | a94a2480 | RE-FROZEN 2026-08-12 (§5.131 fully first-party `buildT14`: low seven-wheel Armata hull, connected unmanned shroud, supported RWS/sensor package and exact native course; fidelity 90.53 / minimum view 91.52; 42 unique paired/yaw frames floor 9.0 / mean 9.04; source-baked `a88afa6c` playable retired) |
 | t80u | 77f9ae78 | RE-FROZEN 2026-08-12 (§5.132 fully first-party `buildT80UNative2026`: low turbine hull, connected cast/K-5 turret, supported combat/rear-service package and exact native six-wheel course; fidelity 91.51 / minimum view 90.20; 42 unique paired/yaw frames floor 9.0 / mean 9.04; source-baked `c0dc2502` playable retired) |
 | type74 | 8319dbb8 | RE-FROZEN 2026-08-11 (§5.110 authored low cast turret, five-wheel native course and supported combat/service suite; independent §B8 floor 9.1 / mean 9.29) |
+| strv103 | f4deeb6b | RE-FROZEN 2026-08-13 (§5.160 wholly first-party fixed-mount restoration: low louvred wedge, fixed L74, four large hydropneumatic road wheels, correct front-drive/rear-idler exception, supported return rollers and backed deck/rear-service suite; exact band+shoes+sweep 0/0, parent 0/0/0, winding clean, runtime 10/10 and fresh paired floor 9.0 / mean 9.03; retired external print removed from public/runtime/candidate/UI provenance) |
 | ariete | c0aa8658 | RE-FROZEN 2026-08-13 (§5.155 preferred first-party seven-road-wheel Ariete retained; explicit front-idler/rear-final-drive faces restore terminal identity without changing the exact native course, parent 0/0/0 and fresh 45-frame yaw/ownership PASS; prior a7b1fd05 retired) |
 | t72b_1987 | 3f2483d4 | GRADUATED 2026-08-11 (§5.114 authored low B87 hull/turret, buried K1 and native six-wheel course; independent §B8 floor 9.0 / mean 9.14) |
 | t72bu | 4b66bf6c | GRADUATED 2026-08-11 (§5.115 authored compact BU protection/station/rear package on one native six-wheel course; independent §B8 floor 9.0 / mean 9.19) |
@@ -5595,3 +5596,42 @@ sheet or yaw-dependent wound is visible.
 
 **PASS / KEEP `df0a5768`. Ordered blockers: none for this first-party
 restoration.**
+
+## 5.160 STRV 103 FIRST-PARTY FIXED-MOUNT RESTORATION (2026-08-13, RE-FROZEN)
+
+The active `strv103` is wholly repository-authored procedural geometry. The
+historic Wesiora print was mounted read-only only for the frozen comparison
+packet; it contributes no mesh, vertex/index payload, material, texture, rig,
+animation, hierarchy or converted source geometry. Its runtime/candidate row,
+public GLB, license record and UI attribution are removed by this landing.
+
+The restored hull preserves the published low turretless wedge and fixed L74,
+then rebuilds the identity hardware around it: four large hydropneumatic road
+wheels, the historically correct front drive sprocket/rear idler exception,
+two supported return rollers, deep wheel dishes, folded dozer, louvred glacis,
+flotation-screen rim, compact cupola/periscope/MG suite, unequal supported side
+packs, engine-deck fans/access grammar, anchored cable and a backed asymmetric
+rear radiator/recovery/service field. The rear louvres sit inside physical
+wells; the side packs use broad hull contacts and straps rather than floating
+cards.
+
+Freeze **`f4deeb6b`** reproduces twice at 33 meshes / 66,961 vertices. Exact
+band front/rear, shoe front/rear and strict moving-sweep receipts are **0/0**.
+Parent audit is **0 stranded / 0 abutting / 0 dangling**. Winding mode 1 is
+clean and mode 2 correctly skips the fixed mount. Runtime articulation passes
+10/10 and muzzle-bore contrast passes at 53.7. The historical fused-oracle
+machine gate stays honestly capped at 37.1; it is not misrepresented as a 90+
+component score.
+
+The final packet at `/private/tmp/strv103-final-r7/strv103` contains 15 paired,
+15 yaw0 and 15 yaw90 frames including elevated profile. Fresh standard-order
+source-semantic appraisal records
+`[9.0,9.1,9.0,9.0,9.0,9.0,9.0,9.1,9.0,9.1,9.0,9.1,9.0,9.0]`, floor **9.0**
+and mean **9.03**. This fixed-mount tank correctly remains visually invariant
+through the yaw packet; no fake rotating turret claim is made. The virtual
+fire-control/aim hierarchy is separately proven by the 10/10 runtime probe.
+No course collision, stranded fitting, empty-air decoration, open sheet or
+background-visible wound appears.
+
+**PASS / KEEP `f4deeb6b`. Ordered blockers: none for this first-party
+fixed-mount restoration.**

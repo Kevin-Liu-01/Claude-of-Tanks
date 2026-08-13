@@ -366,18 +366,16 @@ CC-BY candidates recorded in the scouting report wishlist instead.
 Verdict: **sourced wins for M1A2 Abrams (pending integration); procedural
 stays the winner for T-90M and Leopard 2A7.**
 
-## Community vehicles (public/models/tanks/community/) — 17 playable sourced tanks
+## Community reference vehicles (public/models/tanks/community/) — 16 retained comparison assets
 
-Community-crawl winners (2026-07-27), integrated as PLAYABLE vehicles: garage
-carousel and stats card (each carries the author credit line — CC-BY
-attribution requirement), AI-drivable, random enemy rosters may include
-them. Every license was verified ON the asset page at download time; the
-quoted license line for each asset is preserved in
+Community-crawl winners (2026-07-27), retained as isolated comparison inputs;
+the active playables are repository-authored procedural geometry. Every
+license was verified ON the asset page at download time; the quoted license
+line for each retained asset is preserved in
 `docs/licenses/community/<slug>.LICENSE-RECORD.txt`.
 
 | In-game vehicle (spec id) | Asset | Author | Source | License | File |
 |---|---|---|---|---|---|
-| Stridsvagn 103 (`strv103`) | Stridsvagn 103 | Lukasz Wesiora (canisferus) | https://opengameart.org/content/stridsvagn-103 | CC-BY 3.0 (bundled License.txt: "CC-By 3.0 license... Copyrights Lukasz Wesiora.") | `public/models/tanks/community/strv103_wesiora.glb` (materials rebuilt as Principled BSDF from the 2012 pre-nodes .blend; textures 4096→2048 JPEG; integrated as fixed-gun casemate TD) |
 | IS-3 (`is3`) | IS-3 (Object 703, moving parts) | Nick Tallon (PanzerFactory) | https://www.thingiverse.com/thing:4137773 (via archive.org mirror thingiverse-4137773) | CC-BY 4.0 | `public/models/tanks/community/is3_panzerfactory.glb` (print STLs reassembled: turret peg seated in hull ring, gun in mantlet socket; hull/turret/gun articulation nodes) |
 | T-34-85 (Wei He) (`t34_85_cad`) | T-34-85 detailed CAD | Wei He (Xdhsqj) | https://www.thingiverse.com/thing:4326802 (via archive.org mirror thingiverse-4326802) | CC-BY 4.0 | `public/models/tanks/community/t34_85_weihe.glb` (SolidWorks 1:1 export decimated 3.49M→~220k tris; turret+gun separated at the ring plane, yaw pivot at ring center) |
 | Tiger I (Newc42) (`newc_tiger`) | Panzer VI Tiger I, Low Poly German WWII Tanks | Newc42 | https://newc-42.itch.io/german-low-poly-wwii-tanks | CC0-1.0 (itch.io "Asset license: Creative Commons Zero v1.0 Universal") | `public/models/tanks/community/tiger_newc42.glb` |
@@ -395,8 +393,9 @@ painting). Icons under `public/icons/<spec id>_*.png` are DERIVATIVE RENDERS
 of the models above (the CC-BY rows' attribution covers them).
 
 Losing crawl candidates (all other `public/models/community-candidates/`
-downloads) were deleted after judging; the two duplicate Stridsvagn 103
-downloads were consolidated into the wesiora re-export above.
+downloads) were deleted after judging. The historic Stridsvagn 103 comparison
+print and its duplicate were both removed on 2026-08-13 after the wholly
+first-party fixed-mount restoration superseded them.
 
 ### Community wave 2 (print-model crawl, integrated 2026-07-28) — 8 more playables
 
@@ -645,7 +644,7 @@ bergman-derived siblings above.
   `npm run tank:assets` (tools/icons-page.html studio scene). The eight
   `m1a2_*` assets are
   DERIVATIVE RENDERS of the CC-BY-4.0 "Abrams M1A2 SEPv3" by dannzjs, and the
-  community-vehicle icons (`strv103_*`, `is3_*`, `t34_85_cad_*`,
+  community-reference icons (`is3_*`, `t34_85_cad_*`,
   `newc_tiger_*`, `newc_pziii_*`, `pziii_konserwa_*`, `leichttraktor_*`,
   `recon_tank_*`, `q_heavy_*`, plus wave 2: `kv2_*`, `tiger2_*`,
   `sherman_jumbo_*`, `jagdtiger_*`, `jpz_e100_*`, `sturmtiger_*`, `t95_*`,

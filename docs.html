@@ -257,7 +257,7 @@
 <section id="tanks">
   <div class="kick"><span class="n">03</span></div>
   <h2>How tanks are made</h2>
-  <p>Every vehicle in the game exists twice: as a <b>procedural build</b> — geometry constructed from measured real-world dimensions, painted by canvas programs — and, for much of the modern fleet, as a <b>community-sourced GLB</b> that streams in over the procedural stand-in. The procedural build is always the model of record: it spawns instantly, it works on every device tier, and it is what the license-stripped public build falls back to.</p>
+  <p>Every playable vehicle in the game is a <b>first-party procedural build</b>: geometry constructed in this repository from measured real-world dimensions and painted by deterministic canvas programs. External models, where retained at all, are isolated read-only comparison inputs; they never stream over, replace, or contribute geometry to a playable.</p>
 
   <h3 id="tanks-proc">Procedural builds</h3>
   <p>Each tank family lives in a profile module (Abrams, Leopard, Merkava, Soviet heavies, WWII marks…). A profile declares real dimensions — hull length, track gauge, turret ring, gun caliber — and composes the vehicle from a shared construction kit: multi-segment hull plates with authored glacis angles, turret prisms inscribed in certified envelope curves, mantlets, skirts, fenders, and a dense fitting layer (tow hooks, periscopes, stowage, ERA bricks, antennas) that gives silhouettes their read at distance.</p>

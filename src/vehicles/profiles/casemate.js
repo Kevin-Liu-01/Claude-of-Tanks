@@ -27,7 +27,7 @@
 //    ISU pair and T95/Strv103 oracles are proportionally off published dims;
 //    dims stays sovereign here and the curve ceilings are documented.
 import { BufferAttribute, BufferGeometry, Float32BufferAttribute, Mesh } from 'three';
-import { KIT, muzzleBore, orientedSlab } from './kit.js';
+import { KIT, FITTINGS, muzzleBore, orientedSlab } from './kit.js';
 import { vehicleAmbientFloorHook } from '../materials.js';
 
 // NOTE: KIT arrives through the tankFactory module cycle — it must only be
@@ -290,6 +290,7 @@ function steelGear(P, g) {
     trackW: g.trackW, topY: g.topY, botY: g.botY ?? 0.08, arms: g.arms ?? true,
     coveredTop: g.coveredTop ?? false, deadSag: g.deadSag, layers: g.layers,
     trackTh: g.trackTh, bayShadowTop: g.bayShadowTop, dishR: g.dishR,
+    frontDrive: g.frontDrive ?? false,
   });
   if (g.shadows !== false) for (const z of zs) for (const s of [-1, 1]) {
     P.add('hullDark', cylX(g.wheelR * 0.72, wheelW * 1.06, 12), s * g.xc, g.wheelY, z);
@@ -307,7 +308,7 @@ function steelGear(P, g) {
 // high tail (bottom edge ~1.2 behind z -2.9).
 // ---------------------------------------------------------------------------
 function buildStrv103(P) {
-  const { cylY, cylZ, frustum, liftEye, periscope } = KIT;
+  const { cylX, cylY, cylZ, frustum, liftEye, periscope } = KIT;
 
   // ---- primary silhouette loft (side top/bot + widths from the work order)
   // lower hull band: belly line ~0.33 between the tracks, sides at deck width
@@ -362,15 +363,24 @@ function buildStrv103(P) {
   P.muzzleZ = 5.07;
 
   // ---- deck furniture
-  // commander cluster rides LEFT-of-center like the print (broad sight block
-  // x -0.92..-0.22 + crown drum straddling x 0): crown held at 2.18.
-  // ORACLE DEFECT CAP: the print's cluster reads 2.33-2.38 over ~1 m of roof;
-  // published heightM (2.14, p95-sovereign) pins the build at 2.18 max.
-  P.add('hull', box(0.70, 0.21, 1.15), 0.57, 2.045, -0.42);                    // broad sight/stowage block
-  P.add('hullDark', box(0.60, 0.02, 1.05), 0.57, 2.14, -0.42);
-  P.add('hull', cylY(0.15, 0.17, 0.14, 14), 0.06, 2.03, -0.35);                // crown cupola drum
-  P.add('hull', cylY(0.135, 0.135, 0.045, 14), 0.06, 2.155, -0.35);
-  P.add('hullDark', KIT.torus(0.145, 0.013, 14), 0.06, 2.15, -0.35);
+  // Commander station: a compact rotating cupola and seated Ksp 58 rather
+  // than the former metre-long rectangular roof cabinet. Published 2.14 m
+  // is the cupola datum; the operational MG may rise to the separately
+  // published 2.43 m overall station height.
+  P.add('hull', cylY(0.24, 0.28, 0.08, 18), 0.48, 1.99, -0.40);
+  P.add('hull', cylY(0.205, 0.225, 0.16, 18), 0.48, 2.075, -0.40);
+  P.add('hull', cylY(0.19, 0.19, 0.035, 18), 0.48, 2.172, -0.40);
+  P.add('hullDark', KIT.torus(0.215, 0.013, 18), 0.48, 2.155, -0.40);
+  for (const a of [-0.72, -0.36, 0, 0.36, 0.72]) {
+    P.add('hullDetail', box(0.075, 0.045, 0.055),
+      0.48 + Math.sin(a) * 0.205, 2.115, -0.40 + Math.cos(a) * 0.19, 0, a, 0);
+  }
+  const aaMG = FITTINGS.pintleMG({
+    mats: P.mats, cls: 'mag', scale: 0.95, tone: 'two-tone', elev: 0.045,
+    ring: { r: 0.19, stubs: 3 }, ammo: true, shield: false, seed: 103,
+  });
+  aaMG.position.set(0.48, 2.17, -0.40);
+  P.hullG.add(aaMG);
   P.add('hull', KIT.sph(0.15, 14, Math.PI / 2), -0.55, 1.95, 0.05);            // observation dome (left)
   P.add('hullDark', KIT.torus(0.135, 0.012, 12), -0.55, 2.00, 0.05);
   periscope(P, 'hullDetail', 0.25, 1.88, 0.55);
@@ -384,8 +394,46 @@ function buildStrv103(P) {
   P.add('hull', box(3.40, 0.06, 0.07), 0, 1.93, 0.88);
   // engine-deck intake ribs behind the glacis break
   for (let i = 0; i < 5; i++) P.add('hullDark', box(2.70, 0.016, 0.09), 0, 1.945, 0.45 - i * 0.24);
+  // Low, backed fan/access grammar on the flat aft deck. These parts stay
+  // below the flotation rim and fill the real service stations without
+  // manufacturing another cabinet silhouette.
+  for (const [x, z, r] of [[-0.66, -1.18, 0.27], [0.72, -1.34, 0.24]]) {
+    P.add('hullDark', cylY(r, r, 0.025, 18), x, 1.958, z);
+    P.add('hullDetail', KIT.torus(r, 0.014, 18), x, 1.975, z);
+    for (let k = 0; k < 4; k++) {
+      const a = k * Math.PI / 4;
+      P.add('hullDetail', box(r * 1.55, 0.018, 0.022), x, 1.985, z, 0, a, 0);
+    }
+  }
+  for (const [x, z, w, d] of [[-0.62, -0.48, 0.44, 0.34], [0.92, -0.72, 0.36, 0.30]]) {
+    P.add('hull', box(w, 0.035, d), x, 1.97, z);
+    P.add('hullDark', box(w * 0.78, 0.018, 0.025), x, 1.992, z + d * 0.26);
+    P.add('hullDetail', box(0.045, 0.028, 0.06), x + w * 0.30, 1.996, z - d * 0.20);
+  }
+  // Anchored cable/pipe run: short physical segments seated directly on the
+  // deck, with both end clamps visible.
+  for (let k = 0; k < 7; k++) {
+    P.add('hullDark', box(0.30, 0.018, 0.025), -0.98 + k * 0.30, 1.985, -1.84 + Math.sin(k * 0.7) * 0.035, 0, -0.05 * Math.cos(k * 0.7), 0);
+  }
+  P.add('hullDetail', box(0.07, 0.035, 0.07), -1.03, 1.99, -1.84);
+  P.add('hullDetail', box(0.07, 0.035, 0.07), 0.87, 1.99, -1.87);
   P.add('hullDetail', cylY(0.09, 0.09, 0.03, 10), -1.15, 1.955, -1.35);        // fuel fillers
   P.add('hullDetail', cylY(0.09, 0.09, 0.03, 10), 1.15, 1.955, -1.35);
+  // Side stowage: four unequal, tightly backed canvas/tool packs per flank.
+  // They stay above the return corridor and break the former blank skirt
+  // wall without becoming a donor-style continuous armor slab.
+  const sidePacks = [
+    { z: 1.17, d: 0.48, h: 0.25 },
+    { z: 0.48, d: 0.56, h: 0.30 },
+    { z: -0.32, d: 0.54, h: 0.28 },
+    { z: -1.12, d: 0.58, h: 0.31 },
+  ];
+  for (const s of [-1, 1]) for (let i = 0; i < sidePacks.length; i++) {
+    const p = sidePacks[i];
+    P.add(i % 2 ? 'hullDark' : 'hull', box(0.13, p.h, p.d), s * 1.75, 1.42 + (i % 2) * 0.015, p.z, 0, 0, s * (i % 2 ? 0.035 : -0.025));
+    P.add('hullDetail', box(0.018, p.h + 0.035, 0.045), s * 1.815, 1.42 + (i % 2) * 0.015, p.z - p.d * 0.16);
+    P.add('hullDetail', box(0.018, 0.035, p.d * 0.82), s * 1.815, 1.42 + p.h * 0.34, p.z);
+  }
   // rear deck stowage boxes (oracle: proud line 2.04-2.10 behind z -2.1)
   for (const s of [-1, 1]) {
     P.add('hull', box(0.52, 0.18, 0.85), s * 1.28, 1.98, -2.42);
@@ -412,21 +460,55 @@ function buildStrv103(P) {
     P.add('hullDetail', box(0.55, 0.10, 0.30), s * 0.85, 1.48, -3.44);
     P.add('hullDark', cylZ(0.055, 0.26, 8), s * 0.55, 1.40, -3.55);
   }
+  // Backed twin radiator/service wells and an asymmetric exhaust/recovery
+  // cluster. Every slat lands on the rear plate; there is no free rear wall.
+  for (const [x, w, rows] of [[-0.70, 1.02, 5], [0.62, 0.88, 4]]) {
+    P.add('hullDark', box(w, 0.34, 0.045), x, 1.57, -3.535);
+    for (let k = 0; k < rows; k++) {
+      P.add('hullDetail', box(w * 0.88, 0.025, 0.065), x, 1.44 + k * (0.26 / Math.max(1, rows - 1)), -3.57);
+    }
+  }
+  P.add('hullDark', cylZ(0.105, 0.12, 12), 1.27, 1.48, -3.60);
+  P.add('hullDetail', box(0.34, 0.14, 0.08), 1.23, 1.68, -3.57);
+  P.add('hullDetail', box(0.42, 0.09, 0.075), -1.22, 1.31, -3.57);
 
-  // ---- running gear: 4 road wheels, front drive, RAISED rear idler.
+  // ---- running gear: four large, near-touching road wheels, front drive,
+  // raised rear idler and two return rollers. The former r=.33 road wheels
+  // read as small hubs between two dominant terminals; the S-tank's four
+  // hydropneumatic wheels visually fill the loaded course.
   // Track contact z +1.6..-1.75; skirt band over the top run.
   for (const s of [-1, 1]) {
-    P.add('hull', box(0.05, 1.17, 3.45), s * 1.79, 1.085, -0.06);              // deep skirt band 0.50..1.67
-    P.add('hullDark', box(0.02, 1.10, 3.40), s * 1.808, 1.06, -0.06);
-    for (let k = 0; k < 6; k++) P.add('hullDetail', KIT.cylZ(0.02, 0.016, 8), s * 1.812, 1.30, -1.5 + k * 0.60, 0, s * Math.PI / 2, 0);
+    P.add('hull', box(0.05, 1.17, 3.45), s * 1.68, 1.085, -0.06);              // deep skirt band 0.50..1.67
+    P.add('hullDark', box(0.02, 1.10, 3.40), s * 1.703, 1.06, -0.06);
+    for (let k = 0; k < 6; k++) P.add('hullDetail', KIT.cylZ(0.02, 0.016, 8), s * 1.708, 1.30, -1.5 + k * 0.60, 0, s * Math.PI / 2, 0);
     P.add('hullRunningGearDark', box(0.02, 0.70, 4.4), s * 1.02, 0.55, -0.1);  // bay shadow wall
   }
   steelGear(P, {
-    style: 'rubber', dishR: 0.84, wheelR: 0.33, wheelW: 0.20, wheelY: 0.36, xc: 1.30,
-    wheelZs: [1.45, 0.62, -0.21, -1.04], trackW: 0.66,
-    sprocket: { z: 2.05, y: 0.42, r: 0.31 }, idler: { z: -2.16, y: 0.66, r: 0.33 },
-    topY: 0.95, botY: 0.06, arms: true, coveredTop: true, deadSag: 0.035, shadows: false,
+    style: 'rubber', dishR: 0.82, wheelR: 0.45, wheelW: 0.23, wheelY: 0.49, xc: 1.30,
+    wheelZs: [1.34, 0.48, -0.38, -1.24], trackW: 0.66,
+    sprocket: { z: 2.05, y: 0.65, r: 0.34 }, idler: { z: -2.16, y: 0.65, r: 0.36 },
+    rollers: [
+      { z: 0.96, y: 0.89, r: 0.09 },
+      { z: -0.70, y: 0.89, r: 0.09 },
+    ],
+    topY: 1.02, botY: 0.04, arms: true, coveredTop: 0.82, deadSag: 0.025, shadows: false,
+    frontDrive: true,
   });
+  // The native gear owns these face rings/hubs: front toothed drive, rear
+  // open idler. They remain concentric with the real spinners and make the
+  // historical exception unmistakable in either side profile.
+  for (const s of [-1, 1]) {
+    const xo = s * 1.575;
+    P.add('hullRunningGearDetail', KIT.torus(0.215, 0.018, 18), xo, 0.65, 2.05, 0, 0, Math.PI / 2);
+    P.add('hullRunningGearDetail', cylX(0.105, 0.025, 14), xo, 0.65, 2.05);
+    P.add('hullRunningGearDetail', KIT.torus(0.215, 0.016, 18), xo, 0.65, -2.16, 0, 0, Math.PI / 2);
+    P.add('hullRunningGearDetail', cylX(0.085, 0.025, 12), xo, 0.65, -2.16);
+    for (let k = 0; k < 8; k++) {
+      const a = k * Math.PI / 4;
+      P.add('hullRunningGearDark', cylX(0.018, 0.03, 8), xo + s * 0.005,
+        0.65 + Math.sin(a) * 0.16, 2.05 + Math.cos(a) * 0.16);
+    }
+  }
   // tail underside wedge from the raised idler to the high stern
   P.add('hull', frustum(1.18, -2.62, -3.50, 1.20, -2.60, -3.52, 1.20, 1.30));
 
