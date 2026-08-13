@@ -37,11 +37,13 @@ import { KIT, FITTINGS, evenStations } from './kit.js';
 
 // Dark recess field behind every road wheel (soviet-heavy sovGear rule): the
 // painted rim/hub/bolts stand proud of a shadowed disc so wheels read out of
-// the bay shadow under any camo. Merged into hullDark — zero extra draws.
+// the bay shadow under any camo. This is native running-gear backing, not
+// hull armor; keep that ownership explicit so clearance audits do not treat
+// the wheel recess itself as a plate penetrating the track.
 function wheelShadows(P, xc, wheelZs, r, w, lift = 0) {
   const { cylX } = KIT;
   for (const z of wheelZs) for (const s of [-1, 1]) {
-    P.add('hullDark', cylX(r * 0.72, w * 1.06, 12), s * xc, r + 0.10 + lift, z);
+    P.add('hullRunningGearDark', cylX(r * 0.72, w * 1.06, 12), s * xc, r + 0.10 + lift, z);
   }
 }
 
@@ -1680,7 +1682,7 @@ function buildTigerI(P) {
   // but ending at ±2.50, outside both zone windows.
   P.clear('hullShadow');
   for (const s of [-1, 1]) {
-    P.add('hullShadow', new THREE.BoxGeometry(0.02, 1.27, 5.00), s * 1.22, 0.665, 0);
+    P.add('hullRunningGearDark', new THREE.BoxGeometry(0.02, 1.27, 5.00), s * 1.22, 0.665, 0);
   }
 
   // hull: belly between the tracks + ONE full-width superstructure box with
