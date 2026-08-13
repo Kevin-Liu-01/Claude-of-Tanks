@@ -4959,12 +4959,12 @@ function buildLeo2A7V(P) {
   // further 0.10 m from the shell, leaving a 2.44 m broad silhouette against
   // the published 2.87 m vehicle.  The native track fix never required that
   // collapse: the deep undercut below remains seated above the fixed deck.
-  // The completed native shell still read fused into the hull at elevated
-  // profile.  Lift the complete rotating package by a restrained 1 cm and
-  // expose a dark annular ring seam below it; this creates a readable
-  // separation line without over-lifting the side silhouette.  Every sight,
-  // weapon, bustle and armor course keeps its authored parent/load path.
-  P.turretG.position.set(0, 1.47, 0.35);
+  // Elevated-profile evidence showed that the old 1 cm correction was not
+  // enough: the shell still disappeared into the fixed deck. Raise the
+  // complete authored rotating package to a readable combat-height datum.
+  // The longer bearing below reaches back down into the deck, so gun, armor,
+  // sights and bustle gain separation without becoming a floating assembly.
+  P.turretG.position.set(0, 1.98, 0.35);
   wedgeTurretV3(P, {
     h: 0.64, apexY: 0.22, gunW: 0.36, slotZ: 1.18,
     chamferY: 0.55, roofX: 1.06, crestTail: 0.62, crestTailDrop: 0.005,
@@ -5076,8 +5076,8 @@ function buildLeo2A7V(P) {
   // sight-lines (§B2) and yaws with the mass.
   // A thin dark annulus exposes the lifted plinth/deck joint without adding
   // a new rear-facing neck below the certified turret envelope.
-  P.add('turretDark', KIT.torus(1.10, 0.012, P.q ? 26 : 16), 0, -0.122, -0.55);
-  P.add('turret', cylY(1.10, 1.14, 0.14, P.q ? 26 : 16), 0, -0.055, -0.55);
+  P.add('turretDark', KIT.torus(1.10, 0.012, P.q ? 26 : 16), 0, -0.282, -0.55);
+  P.add('turret', cylY(1.10, 1.14, 0.36, P.q ? 26 : 16), 0, -0.105, -0.55);
   // Authored roof-station restoration: the old first-party build had a much
   // clearer crew-station cadence than the later sparse roof.  Reintroduce
   // that information as low, supported hardware on the corrected shell,
@@ -5162,11 +5162,15 @@ function buildLeo2A7V(P) {
   // -3.86 tail = overall 10.95 (published 10.97, 0.18%). The v1 len 5.45
   // predates the honest ±3.86 hull and read overall 10.84 (-1.8 dims).
   P.gunG.position.set(0, 0.18, 1.20);
-  // Compact native trunnion seat.  The later 0.90 m-deep rectangular block
-  // stood proud of both cheeks and became the dominant side-view tower;
-  // the A7V root is a buried layered saddle inside the wedge.
-  P.addGunExtra(KIT.box(0.50, 0.54, 0.90), 0, -0.04, 1.12);
-  leoMantletGun(P, { rollR: 0.27, rollW: 0.64, plateW: 0.58, plateH: 0.48, len: 5.53, r: 0.073, evac: 0.58, evacR: 1.75 });
+  // Layered native trunnion saddle. The former deep rectangular block read
+  // as a loose box in front of the cheeks. This cradle is broad where it
+  // enters the armor, then narrows in both axes around the tube.
+  P.addGunExtra(orientedSlab(
+    [-0.34, -0.27, 0.66], [0.34, -0.27, 0.66], [0.25, -0.18, 1.56], [-0.25, -0.18, 1.56],
+    [-0.30,  0.27, 0.66], [0.30,  0.27, 0.66], [0.21,  0.18, 1.56], [-0.21,  0.18, 1.56]));
+  P.addGunExtraDark(box(0.46, 0.055, 0.62), 0, -0.245, 1.03);                 // flexible boot lower seam
+  P.addGunExtraDark(KIT.cylZ(0.205, 0.05, P.q ? 20 : 14), 0, 0, 1.47);       // forward boot clamp
+  leoMantletGun(P, { rollR: 0.29, rollW: 0.70, plateW: 0.64, plateH: 0.50, len: 5.53, r: 0.073, evac: 0.58, evacR: 1.75 });
   P.topY = 1.24;
 }
 
