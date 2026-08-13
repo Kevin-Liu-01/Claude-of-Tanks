@@ -817,6 +817,7 @@ function buildIS6B(P) {
   // high-forward idler + far-back sprocket per the ref wrap lines (bottom
   // 0.02 flat -3.90..0.62; rear rise to 0.30@-4.75; bow rise to 0.45@1.54)
   sovGear(P, { xc: 1.24, trackW: 0.56, wheels: 6, wheelR: 0.33, wheelY: 0.36, span: 4.45, zc: -1.639, topY: 0.94, botY: 0.02, sprocketY: 0.65, sprocketR: 0.26, sprocketDz: 0.80, idlerY: 0.66, idlerR: 0.22, idlerDz: 0.76 });
+  P.raiseTrackCorridor(['hull', 'hullDetail', 'hullDark'], { laneInnerX: 0.90, floorY: 1.12 });
 
   // onion dome on a narrow ring collar (WARPED ref: collar band 1.38-wide
   // at world 1.62..1.79, bulge 2.07-wide at 2.03, crown plateau 2.50 over
