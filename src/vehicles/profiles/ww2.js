@@ -1212,13 +1212,17 @@ function buildLeichttraktor(P) {
     }
   }
 
-  // hull: engine bow + raised cab + rear fighting deck
-  P.add('hull', box(2.00, 1.00, 3.60), 0, 1.00, 0.02);                       // main body ±1.0
+  // hull: engine bow + raised cab + rear fighting deck.  The original
+  // one-piece ±1.0 body occupied the linked-track lanes from floor to roof.
+  // Keep the low belly between the courses and restore the full width only
+  // above the upper return, as on the real suspended side boxes.
+  P.add('hull', box(1.40, 1.00, 3.60), 0, 1.00, 0.02);                       // center belly ±0.70
+  P.add('hull', box(2.00, 0.40, 3.60), 0, 1.30, 0.02);                       // upper side body y 1.10..1.50
   P.add('hull', slab(                                                        // glacis
     [-1.00, 1.30, 2.06], [1.00, 1.30, 2.06], [1.00, 1.32, 1.98], [-1.00, 1.32, 1.98],
     [-1.00, 1.34, 2.04], [1.00, 1.34, 2.04], [1.00, 1.52, 1.42], [-1.00, 1.52, 1.42]));
   P.add('hull', slab(                                                        // nose beak
-    [-0.82, 0.84, 2.24], [0.82, 0.84, 2.24], [0.90, 0.86, 2.04], [-0.90, 0.86, 2.04],
+    [-0.70, 0.84, 2.24], [0.70, 0.84, 2.24], [0.70, 0.86, 2.04], [-0.70, 0.86, 2.04],
     [-0.82, 0.88, 2.24], [0.82, 0.88, 2.24], [0.90, 1.30, 2.08], [-0.90, 1.30, 2.08]));
   P.add('hull', box(2.00, 0.10, 1.40), 0, 1.50, 1.35);                       // fore deck 1.55
   P.add('hull', box(1.30, 0.28, 0.55), 0, 1.63, 0.35);                       // raised driver cab
@@ -1227,7 +1231,7 @@ function buildLeichttraktor(P) {
   P.add('hullDark', box(0.03, 0.05, 0.30), -0.66, 1.70, 0.42);
   P.add('hull', box(2.00, 0.20, 1.85), 0, 1.59, -0.88);                      // rear fighting deck 1.69
   P.add('hull', slab(                                                        // tail slope
-    [-0.95, 0.80, -1.78], [0.95, 0.80, -1.78], [0.85, 0.82, -2.18], [-0.85, 0.82, -2.18],
+    [-0.62, 0.80, -1.78], [0.62, 0.80, -1.78], [0.60, 0.82, -2.18], [-0.60, 0.82, -2.18],
     [-0.95, 1.66, -1.78], [0.95, 1.66, -1.78], [0.85, 1.14, -2.16], [-0.85, 1.14, -2.16]));
   // engine hatches + intake + exhaust muffler along the right fender
   P.add('hullDetail', box(0.55, 0.035, 0.55), -0.42, 1.522, 1.35);
