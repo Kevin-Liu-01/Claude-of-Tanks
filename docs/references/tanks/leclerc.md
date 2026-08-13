@@ -801,3 +801,18 @@ self-test pass. The fresh 45-frame packet is fully hash-distinct and scores a
 9.0 visual floor / 9.08 mean. The historical comparison GLB is no longer
 shipped or player-attributed; it remains documented only as prior read-only
 measurement provenance.
+
+## LIVE MUDGUARD VISIBILITY SUPERSESSION (2026-08-13)
+
+The collision-clean assembly above was still visually incomplete: its cap sat
+behind the forward shoes and its apron was only 4.5 cm tall, so front/close
+pixels continued to show a bare terminal loop. Freeze `9c47c650` replaces only
+that presentation with forward raked camouflaged guard faces, narrow rubber
+lower lips, hinge overlaps and two stiffeners per side. All faces remain ahead
+of the native terminal orbit and tied into the existing cap/knee/fender load
+path.
+
+Exact band/shoe/sweep is 0/0/0; parent is 0/0/0; winding, runtime and bore
+pass. The fresh 45-frame packet at
+`/private/tmp/leclerc-mudguard-final-r4/leclerc` has 45 distinct hashes and a
+9.3 visual floor / 9.46 mean. `158157f4` is retired.

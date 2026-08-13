@@ -1093,19 +1093,22 @@ function buildLeclerc(P) {
     // native wrap.  Both knees remain outside the moving lane: the inner one
     // is inboard of the track and the outer one is beyond the shoe width.
     P.add('hull', slab(
-      [s2 * 0.90, 1.300, 2.88], [s2 * 1.785, 1.300, 2.88], [s2 * 1.720, 1.205, 3.47], [s2 * 0.98, 1.205, 3.47],
-      [s2 * 0.90, 1.360, 2.88], [s2 * 1.785, 1.360, 2.88], [s2 * 1.720, 1.230, 3.47], [s2 * 0.98, 1.230, 3.47]));
+      [s2 * 0.90, 1.300, 2.88], [s2 * 1.785, 1.300, 2.88], [s2 * 1.720, 1.245, 3.60], [s2 * 0.98, 1.245, 3.60],
+      [s2 * 0.90, 1.360, 2.88], [s2 * 1.785, 1.360, 2.88], [s2 * 1.720, 1.310, 3.60], [s2 * 0.98, 1.310, 3.60]));
     P.add('hull', box(0.08, 0.12, 0.30), s2 * 0.90, 1.300, 3.08);             // inboard bow knee (inside the shoe lane)
     P.add('hull', box(0.07, 0.12, 0.30), s2 * 1.7425, 1.310, 3.18);           // outboard fender knee (outside the shoe lane)
-    P.add('hullRubber', slab(                                                  // shallow tapered overlap follows the cap's clipped front corners
-      [s2 * 0.98, 1.170, 3.465], [s2 * 1.72, 1.170, 3.465], [s2 * 1.72, 1.225, 3.465], [s2 * 0.98, 1.225, 3.465],
-      [s2 * 1.00, 1.170, 3.490], [s2 * 1.70, 1.170, 3.490], [s2 * 1.70, 1.225, 3.490], [s2 * 1.00, 1.225, 3.490]));
-    P.add('hullRubber', slab(                                                  // flexible leading apron narrows toward its free lower edge
-      [s2 * 1.00, 1.135, 3.490], [s2 * 1.70, 1.135, 3.490], [s2 * 1.70, 1.180, 3.490], [s2 * 1.00, 1.180, 3.490],
-      [s2 * 1.05, 1.140, 3.520], [s2 * 1.65, 1.140, 3.520], [s2 * 1.65, 1.180, 3.520], [s2 * 1.05, 1.180, 3.520]));
-    P.add('hullDark', box(0.54, 0.022, 0.020), s2 * 1.35, 1.225, 3.470);      // hinge seam follows the cap's lowered leading edge
+    P.add('hullRubber', slab(                                                  // tapered hinge overlap projects beyond the terminal shoe envelope
+      [s2 * 0.98, 1.205, 3.595], [s2 * 1.72, 1.205, 3.595], [s2 * 1.72, 1.285, 3.595], [s2 * 0.98, 1.285, 3.595],
+      [s2 * 1.00, 1.205, 3.630], [s2 * 1.70, 1.205, 3.630], [s2 * 1.70, 1.285, 3.630], [s2 * 1.00, 1.285, 3.630]));
+    P.add('hull', slab(                                                        // camouflaged guard face, tapered with an asymmetric raked lower edge
+      [s2 * 1.10, 1.00, 3.630], [s2 * 1.62, 0.92, 3.630], [s2 * 1.70, 1.245, 3.630], [s2 * 1.00, 1.245, 3.630],
+      [s2 * 1.14, 1.04, 3.675], [s2 * 1.58, 0.96, 3.675], [s2 * 1.64, 1.235, 3.675], [s2 * 1.06, 1.235, 3.675]));
+    P.add('hullRubber', slab(                                                  // narrow flexible lip follows the guard's lower rake
+      [s2 * 1.10, 0.93, 3.630], [s2 * 1.62, 0.85, 3.630], [s2 * 1.62, 0.94, 3.630], [s2 * 1.10, 1.02, 3.630],
+      [s2 * 1.14, 0.97, 3.675], [s2 * 1.58, 0.89, 3.675], [s2 * 1.58, 0.98, 3.675], [s2 * 1.14, 1.06, 3.675]));
+    P.add('hullDark', box(0.54, 0.024, 0.024), s2 * 1.35, 1.294, 3.610);      // hinge seam follows the cap's forward arris
     for (const bx of [1.08, 1.62]) {
-      P.add('hullDark', box(0.035, 0.052, 0.035), s2 * bx, 1.166, 3.500);    // two real apron stiffeners, seated through the overlap
+      P.add('hullDark', box(0.035, 0.20, 0.035), s2 * bx, 1.115, 3.650);     // two real apron stiffeners, seated through the overlap
     }
   }
   // driver LEFT: flush hatch + 3 episcopes (90-ladder r1 CAP-SEAT: ref deck

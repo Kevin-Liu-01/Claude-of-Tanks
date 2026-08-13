@@ -85,3 +85,22 @@ runtime/source-credit wiring is removed from player-facing code. It supplied
 no playable mesh data; the active Leclerc remains repository-authored
 procedural geometry. Final disposition: **KEEP `158157f4`; retire
 `126a4e90`**.
+
+## 2026-08-13 live-visibility supersession
+
+The exact-clearance result was correct but insufficient: fresh procedural-only
+front and close-front renders showed the `158157f4` cap almost completely
+occluded by the native shoes, while the 4.5 cm apron did not read as a guard.
+The final first-party assembly moves its raked face forward of the shoe orbit,
+tapers the visible camouflaged plate, gives it an angled lower edge and retains
+only a narrow rubber lip. Hinge overlap and two stiffeners per side preserve a
+clear physical load path into the existing knees and fender rails.
+
+Freeze `9c47c650` is 48 meshes / 104,523 vertices. Exact band/shoes/sweep are
+0/0/0; parent is 0/0/0; winding is clean (7 antialias pixels / 0.01%); rig is
+10/10 and bore contrast is 67.3. The immutable packet at
+`/private/tmp/leclerc-mudguard-final-r4/leclerc` contains 45 PNGs / 45 distinct
+hashes and fresh scores
+`[9.4,9.5,9.4,9.3,9.3,9.3,9.4,9.5,9.5,9.6,9.5,9.6,9.5,9.6]`, floor 9.3,
+mean 9.46. The guards remain fixed to the hull through a genuine quarter-turn
+while the complete turret rotates. **KEEP `9c47c650`; retire `158157f4`.**

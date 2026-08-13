@@ -126,7 +126,7 @@ re-freeze NEW hash, all in ONE commit.
 | m1a2_tusk | 978d507c | RE-FROZEN 2026-08-12 (§5.142 restored clean first-party urban-kit presentation, supported local ARAT brackets, closed rear service return and exact track corridor) |
 | m2a2_bradley | 90a5568c | GRADUATED 2026-08-08 (28th; dual gate: geometry 90.9 x2 every component >=90 landed 81bdad1 + visual floor 9.0 / mean 9.16 x14 views at freeze-verified bytes; oracle e699c868; dress-tier defect bank in the verdict: bow T-hooks, taillight fittings, TOW rear ports, lug stacks, ringed hubs) |
 | m45_patton | 53caa687 | GRADUATED 2026-08-08 (29th; gate 90.7 x5 total + sitting-2 visual floor 9.0 mean 9.13 x14; sitting-1 orders executed: loft.smooth byte-reproduced, ring cupola adjudicated ring-class at station with the measured Ø0.57/x-0.65 deviation compliant; ring-prominence silhouette-tax residual certified) |
-| leclerc | 158157f4 | RE-FROZEN 2026-08-13 (§5.164 wholly first-party Leclerc running-gear/mudguard closeout: restored raked cap, overlap, apron, knees and inset nose bridge; compact native front-idler wrap, six road wheels, five return rollers and rear final drive; machine floor 90.5, exact band+shoes+sweep 0/0, parent 0/0/0, winding/runtime/bore clean and fresh 45-frame yaw/ownership PASS; external comparison binary and player-facing source credit removed; prior 126a4e90 retired) |
+| leclerc | 9c47c650 | RE-FROZEN 2026-08-13 (§5.170 live mudguard visibility closeout: hidden 4.5 cm lip replaced by visibly raked camouflaged cap/guard faces, narrow rubber lower lips and real stiffeners entirely ahead of the terminal shoe orbit; explicit front idler, six road wheels, five return rollers and rear drive retained; exact band+shoes+sweep 0/0/0, parent 0/0/0, winding/runtime/bore clean and fresh 45-frame floor 9.3 / mean 9.46; prior 158157f4 retired) |
 | amx30 | 89a4cdf0 | GRADUATED 2026-08-12 (§5.124 first-party low five-wheel AMX hull, compact cast turret, supported commander/optic/MG station and native exact 0/0 course; machine fidelity 91.81 / min view 90.01; fresh 42-frame yaw/ownership floor 9.0 / mean 9.16) |
 | amx30b2 | 34076800 | GRADUATED 2026-08-12 (§5.124 first-party B2 cast/rear-station and service package on the exact native five-wheel course; machine fidelity 91.51 / min view 90.14; fresh 42-frame yaw/ownership floor 9.0 / mean 9.12) |
 | amx40 | 3d312bde | RE-FROZEN 2026-08-12 (§5.135 fully first-party forward-section + owner-height re-cert: connected cheek/crown loft retained forward, complete turret section exactly 20% taller with smoke/MG re-seated; fidelity 92.94 / minimum whole view 91.90, strict native band+shoes+sweep 0/0, fresh 45-frame yaw/ownership floor 9.0 / mean 9.07; all source-baked playables retired) |
@@ -5998,3 +5998,40 @@ sheet or yaw-dependent wound appears.
 
 **PASS / KEEP `6d66a6a9`; supersede `04707a9c`. Ordered blockers: none for
 this first-party T-84 family closeout.**
+
+## 5.170 LECLERC LIVE MUDGUARD VISIBILITY CLOSEOUT (2026-08-13, RE-FROZEN)
+
+Fresh procedural-only front, close-front, quarter and elevated-profile pixels
+confirmed the owner's report despite the prior clean collision receipt. The
+nominal forward guards were almost entirely hidden behind the terminal shoes,
+and their supposed flexible apron was only about 4.5 cm tall. The native loop
+therefore still read as bare track even though static geometry no longer
+intersected it.
+
+Both hull-owned assemblies are rebuilt without changing the native course.
+The raked steel caps now extend forward of the shoe envelope while remaining
+seated in the long fender rails and the inboard/outboard knees. Their visible
+front faces taper in width, use the hull camouflage, and carry asymmetric
+lower rake. Only a narrow dark rubber lip follows that lower edge. Two real
+stiffeners cross each face and the hinge overlap remains physically continuous
+with the cap. Nothing is hidden inside or substituted for the animated track.
+
+Freeze **`9c47c650`** reproduces at 48 meshes / 104,523 vertices. Exact
+terminal bands, instanced shoes and strict moving sweep are **0/0/0**. Parent
+audit is **0 stranded / 0 abutting / 0 dangling**. Winding is 0 reversed / 0
+mixed with a visually null 7-pixel (0.01%) antialias deficit and zero
+yaw-stranded candidates. Runtime articulation passes 10/10 and the explicit
+muzzle bore passes at 67.3 contrast.
+
+The immutable procedural-only packet at
+`/private/tmp/leclerc-mudguard-final-r4/leclerc` contains 15 appraisal frames,
+15 yaw0 and 15 yaw90 frames including the standardized elevated-left profile:
+**45 PNGs / 45 distinct hashes**. Fresh standard-order first-party appraisal
+is `[9.4,9.5,9.4,9.3,9.3,9.3,9.4,9.5,9.5,9.6,9.5,9.6,9.5,9.6]`, floor
+**9.3** and mean **9.46**. Both guards remain visibly hull-fixed during a
+genuine turret quarter-turn. The front idler, six road wheels, five supported
+return rollers, rear final drive and every link remain readable with no
+collision, duplicate course, stranded fitting, open sheet or yaw wound.
+
+**PASS / KEEP `9c47c650`; supersede `158157f4`. Ordered blockers: none for
+the live Leclerc mudguard restoration.**
