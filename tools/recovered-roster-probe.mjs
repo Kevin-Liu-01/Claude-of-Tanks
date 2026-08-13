@@ -15,9 +15,6 @@ const DEFAULT_IDS = [
   'is3_bergman', 'isu152', 'isu122s', 'centurion3', 'centurion5', 'comet',
   'challenger_cruiser', 'charioteer', 'leopard2_proto', 'm1a1_aim',
   'm46_patton', 'm47_patton', 'm26_pershing', 'm45_patton', 'm60a3',
-  // Regression target from the handoff: its procedural gun used to float
-  // through the sourced model after the swap.
-  'merkava4',
 ];
 const IDS = process.argv.length > 2 ? process.argv.slice(2) : DEFAULT_IDS;
 
@@ -156,10 +153,6 @@ try {
         result.maxHorizontal / result.expectedLength <= 1.35)) &&
       result.height >= 0.45 && result.height <= 7,
     `size=${dims}, expectedLen=${result.expectedLength?.toFixed(2) || 'n/a'}`);
-    if (id === 'merkava4') {
-      check('merkava4: procedural render nodes removed', result.hiddenRenderNodes > 0,
-        `hidden=${result.hiddenRenderNodes}`);
-    }
     check(`${id}: no load errors`, browserErrors.length === errorStart,
       browserErrors.slice(errorStart).join(' | '));
   }

@@ -134,19 +134,6 @@
    }
   },
   {
-   "id": "merkava4",
-   "geoMin": 0,
-   "gatePassed": false,
-   "components": {
-    "hullCurves": 0,
-    "wholeCurves": 0,
-    "turretCurves": 0,
-    "stations": 0,
-    "dims": 91.8,
-    "floaters": 100
-   }
-  },
-  {
    "id": "challenger1",
    "geoMin": 0,
    "gatePassed": false,

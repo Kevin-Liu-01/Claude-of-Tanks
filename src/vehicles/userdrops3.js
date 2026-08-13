@@ -4,18 +4,6 @@
 //
 // REPLACEMENTS (model source swap only — gameplay stats stay in their spec
 // modules):
-//   merkava4 — "Merkava Mk4" by arlassar (CC-BY 4.0). Single fused artist
-//              mesh, turret split authored OFFLINE (connected-component
-//              classification): 'Turret' node (shell, gun+mantlet, bustle
-//              basket + chain curtain, MGs, mortar) with authored ring-origin
-//              t=[-1.49, 1.95, 0]; gun fused into the turret — pitch stays
-//              virtual (kv2 rule). Stray antenna verts y-compressed offline
-//              so the loader's 1.30x height clamp cannot shrink the tank.
-//              Artist modeled wide (4.88 m vs the real 3.72 m) — the r7
-//              footprint clamp (width*1.08) is the binding scale, by design.
-//              Nose = raw +X -> yawOffset -90°. Israel finally gets a real
-//              model (the procedural merkava4 was the last Windbreaker
-//              stand-in).
 //   t80u     — "Tank T-80U" by javanilga (CC-BY 4.0). Separate turret
 //              (Object09_24) + gun (Object1101_22, turret SIBLING -> explicit
 //              gunNode) nodes. The 10 roof accessories (searchlight, NSVT
@@ -214,17 +202,9 @@ for (const [id, spec] of Object.entries(USERDROP3_SPECS)) {
   if (!ALL_TANK_IDS.includes(id)) ALL_TANK_IDS.push(id);
 }
 
-// Sourced-model credit lines on the two replaced specs (m1a1 rule: variantOf
+// Sourced-model credit lines on replaced specs (m1a1 rule: variantOf
 // self-marker keeps them off the COMMUNITY tab; gameplay stats in
 // modern1.js/modern2.js are untouched — only the model source changes).
-if (TANK_SPECS.merkava4 && !TANK_SPECS.merkava4.community) {
-  TANK_SPECS.merkava4.variantOf = 'merkava4';
-  TANK_SPECS.merkava4.community = {
-    author: 'arlassar',
-    source: 'https://sketchfab.com/3d-models/merkava-mk4-5720c5369ea24c71af475aff769ffa8b',
-    license: 'CC-BY 4.0',
-  };
-}
 if (TANK_SPECS.t80u && !TANK_SPECS.t80u.community) {
   TANK_SPECS.t80u.variantOf = 't80u';
   TANK_SPECS.t80u.community = {
@@ -237,24 +217,6 @@ if (TANK_SPECS.t80u && !TANK_SPECS.t80u.community) {
 // MODEL_SOURCE overrides — unconditional assignment REPLACES the
 // 'procedural' rows the spec modules registered at import time. Node names
 // verified against each GLB's JSON chunk (scratchpad glbtree.mjs).
-// §5.31b ERA-GROUP FLIP (owner, 2026-08-08): merkava4 renders the merkava.js
-// Mk.4M profile (buildMerkavaMark — §B1 slope-mass family recipe, authored to
-// the published 7.60/9.04/3.72/2.66 envelope) in EVERY build; the arlassar
-// print (foreshortened 6.9 m span — certified-defective oracle, see the
-// profile header) retires to candidateGlb (kv2/t30 pattern) so it stays
-// browsable for the Sources catalog and the A/B audit.
-MODEL_SOURCE.merkava4 = {
-  source: 'procedural',
-  // authored 'Turret' node (ring origin y=1.95); gun fused into the turret —
-  // no gun node, pitch stays virtual. No gun node also means the scale runs
-  // on the full box: overallLengthM (9.04) matches the raw span exactly and
-  // the r7 width clamp is the binding constraint (artist modeled wide).
-  candidateGlb: {
-    path: '/models/tanks/merkava4_arlassar.glb',
-    turretNode: '^Turret$', autoPivot: true,
-    yawOffset: -Math.PI / 2,
-  },
-};
 // FLIP-RETIRED: MODEL_SOURCE.t80u = {
 // FLIP-RETIRED:   source: 'glb',
 // FLIP-RETIRED:   // turret shell Object09_24 (accessories reparented in offline); gun

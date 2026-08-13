@@ -36,6 +36,12 @@ were deleted. Any freeze row whose builder changed in this reset is historical
 until fresh native paired+yaw evidence replaces it. See
 `docs/critique/native-provenance-runtime-audit.md`.
 
+**2026-08-13 owner removal:** `merkava4` / Merkava IVm Windbreaker is no
+longer a playable or garage roster entry. Its dedicated imported GLB, icons,
+source attribution, reference packet and gate row were removed. The internal
+first-party spec/builder remains dormant only because the earlier Mk.1B–Mk.3D
+builders clone it as a family donor; it must not be re-registered as a tank.
+
 ## 2. ABSOLUTE RULES (verbatim-critical)
 - THE ONE ABSOLUTE RULE: no assets extracted from commercial games, ever.
 - Private local project — never publish, never create accounts.

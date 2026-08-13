@@ -777,7 +777,11 @@ number on turret side.
 
 ## Part VI — Israel
 
-## 21. Merkava IVm Windbreaker (Israel, MBT) — procedural
+## 21. Merkava IVm Windbreaker (Israel, MBT) — removed 2026-08-13
+
+The playable Windbreaker was removed by owner order. Its dormant first-party
+spec/builder remains only as a construction donor for the earlier Merkava
+family and must not be registered in the garage roster.
 
 ### 21.1 Dimensions
 | Measure | Value |

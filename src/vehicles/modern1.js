@@ -1,5 +1,5 @@
 // src/vehicles/modern1.js — HD procedural builder #1: modern MBT roster wave.
-// Vehicles: t72b3 (T-72B3), merkava4 (Merkava IVm Windbreaker), leo2a6
+// Vehicles: t72b3 (T-72B3), dormant merkava4 family donor, leo2a6
 // (Leopard 2A6). Specs per docs/research/modern-roster.md §14 / §21 / §8;
 // visual bar per Appendix B (trapezoidal track runs, silhouette identity,
 // raised ERA, articulated turret+gun, weathering). challenger2/challenger_3
@@ -342,12 +342,12 @@ const MODERN1_SPECS = {
 
 // Register specs + model-source rows + garage roster ids (idempotent —
 // vite HMR can re-evaluate this module).
-// t72b3 REMOVED from the roster BY OWNER 2026-08-06 — DELIST-KEEP-SPEC
-// (the leo2a7 pattern, specs.js:7 precedent): its TANK_SPECS row MUST stay
-// registered as the make() DONOR for pt91m / t64bv1 / t72b_1987
-// (userdrops5 throws at import without it); it just never enters
-// ALL_TANK_IDS — no garage card, no ledger row.
-const MODERN1_DELISTED = new Set(['t72b3']);
+// DELIST-KEEP-SPEC donors (the leo2a7 pattern, specs.js:7 precedent): their
+// TANK_SPECS rows stay registered because later first-party variants clone
+// them, but they never enter ALL_TANK_IDS and therefore have no garage card.
+// - t72b3: owner removal 2026-08-06; donor for pt91m/t64bv1/t72b_1987.
+// - merkava4: owner removal 2026-08-13; donor for the Mk.1B–Mk.3D family.
+const MODERN1_DELISTED = new Set(['t72b3', 'merkava4']);
 for (const [id, spec] of Object.entries(MODERN1_SPECS)) {
   TANK_SPECS[id] = TANK_SPECS[id] || spec;
   MODEL_SOURCE[id] = MODEL_SOURCE[id] || { source: 'procedural' };

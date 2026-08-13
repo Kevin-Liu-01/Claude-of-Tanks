@@ -91,7 +91,7 @@ const COLDWAR_IDS = new Set([
 ]);
 // §5.31 (owner, 2026-08-07): these GLB-sourced customs leave the Sources
 // group and file under their real eras — WW2 (sherman_jumbo..is6b), Cold War
-// (type59/strv103/t95/m48), Modern (merkava4/m1a2_tusk). Sources keeps the
+// (type59/strv103/t95/m48), Modern (m1a2_tusk). Sources keeps the
 // remaining actual-tank prints only. Both Panzer III customs move (the order
 // names "panzerkampfwagen iii" once; the two ids are the same vehicle).
 const ERA_PLACED_SOURCES = new Set([
@@ -99,7 +99,7 @@ const ERA_PLACED_SOURCES = new Set([
   'sturmtiger', 'tiger2', 'jagdtiger', 'jpz_e100', 't34_85_cad',
   't44', 'is3', 'is6b',
   'type59', 'strv103', 't95', 'm48',
-  'merkava4', 'm1a2_tusk',
+  'm1a2_tusk',
 ]);
 const isSourcedModel = (s) =>
   (MODEL_SOURCE[s.id] && MODEL_SOURCE[s.id].source) === 'glb';

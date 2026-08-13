@@ -36,7 +36,7 @@ const rng = mulberry32(SEED);
 // Era-matched target/gun pool: WW2 guns vs WW2 tanks, modern vs modern.
 const POOL = {
   ww2: ['m4a3e8', 'tiger1', 't34_85', 'is2', 'panther_g', 'kv2', 'is3'],
-  modern: ['m1a2', 't90m', 'leo2a7', 'k2', 'leclerc', 'merkava4', 't90a', 'm60a1', 'challenger2'],
+  modern: ['m1a2', 't90m', 'leo2a7', 'k2', 'leclerc', 'type99a', 't90a', 'm60a1', 'challenger2'],
 };
 
 const POSE = { pos: new Vector3(0, 0, 0), yaw: 0, pitch: 0, roll: 0, turretYaw: 0, gunPitch: 0 };

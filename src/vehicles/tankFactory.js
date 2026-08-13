@@ -3733,7 +3733,7 @@ const BUILDERS = {
   m4a3e8: buildM4A3E8, tiger1: buildTiger, t34_85: buildT34, is2: buildIS2,
   panther_g: buildPanther, m1a2: buildM1A2, t90m: buildT90M, leo2a7: buildLeo2A7,
 };
-// EXTENSION HOOK (HD modern roster): t72b3 / merkava4 / leo2a6
+// EXTENSION HOOK (HD modern roster): t72b3 donor / merkava4 donor / leo2a6
 Object.assign(BUILDERS, MODERN1_BUILDERS);
 // EXTENSION HOOK (§5.75 challenger family module): challenger2 / challenger_3
 Object.assign(BUILDERS, CHALLENGER_BUILDERS);

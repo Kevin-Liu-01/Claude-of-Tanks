@@ -16,12 +16,12 @@
     ]
   },
   "summary": {
-    "vehicles": 92,
-    "selectedPassed": 92,
+    "vehicles": 91,
+    "selectedPassed": 91,
     "selectedFailed": 0,
     "retainedCandidates": 2,
     "candidatesRejected": 2,
-    "selectedMedian": 9.32
+    "selectedMedian": 9.35
   },
   "rows": [
     {
@@ -2024,54 +2024,6 @@
       "name": "Challenger 2",
       "peerMedian": 9.5,
       "peerDelta": 0
-    },
-    {
-      "id": "merkava4",
-      "role": "selected",
-      "kind": "glb",
-      "path": "/models/tanks/merkava4_arlassar.glb",
-      "score": 8.6,
-      "pass": true,
-      "turretless": false,
-      "issues": [
-        "gun is fused to turret; elevation remains virtual"
-      ],
-      "hardCaps": [
-        "fused gun caps score at 9.0"
-      ],
-      "inspection": {
-        "nodeCount": 3,
-        "meshCount": 2,
-        "names": [
-          "Hull",
-          "Turret",
-          "Merkava4"
-        ],
-        "turret": "Turret",
-        "gun": null,
-        "turretMatchCount": 1,
-        "gunMatchCount": 0,
-        "gunInsideTurret": false,
-        "size": [
-          4.8834,
-          3.4357,
-          9.0398
-        ]
-      },
-      "components": {
-        "source": 1,
-        "turret": 3,
-        "gun": 1.25,
-        "hierarchy": 0.75,
-        "pivot": 1,
-        "proportions": 0.6,
-        "hygiene": 1
-      },
-      "era": "modern",
-      "class": "mbt",
-      "name": "Merkava IVm Windbreaker",
-      "peerMedian": 9.5,
-      "peerDelta": -0.9
     },
     {
       "id": "leo2a6",

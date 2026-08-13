@@ -1,6 +1,6 @@
 # Tank model quality audit
 
-Pass bar: **8.5/10**. Selected: **92/92 pass**. Retained rejected candidates: **2/2**.
+Pass bar: **8.5/10**. Selected: **91/91 pass**. Retained rejected candidates: **2/2**.
 
 | Vehicle | Role | Visual | Score | Peer Δ | Turret | Gun | Decision |
 |---|---:|---|---:|---:|---|---|---|
@@ -12,7 +12,6 @@ Pass bar: **8.5/10**. Selected: **92/92 pass**. Retained rejected candidates: **
 | M45 Patton (m45_patton) | selected | glb | 8.53 | -0.43 | Turret | fused/missing | PASS |
 | M1A1 AIM Abrams (m1a1_aim) | selected | glb | 8.55 | -0.95 | Turret | fused/missing | PASS |
 | T-90A Vladimir (t90a_vladimir) | selected | glb | 8.57 | -0.93 | desirefxme_001 | fused/missing | PASS |
-| Merkava IVm Windbreaker (merkava4) | selected | glb | 8.60 | -0.90 | Turret | fused/missing | PASS |
 | T-72BU (t72bu) | selected | glb | 8.65 | -0.85 | Turret | fused/missing | PASS |
 | M26 Pershing (m26_pershing) | selected | glb | 8.69 | -0.27 | Turret | fused/missing | PASS |
 | T95 Doomturtle (t95) | selected | glb | 8.75 | -0.18 | fixed mount | hull gun | PASS |

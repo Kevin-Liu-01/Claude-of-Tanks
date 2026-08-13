@@ -9,7 +9,7 @@ export const TANK_TIER = Object.freeze({
   kv2: 6, tiger2: 8, sherman_jumbo: 6, jagdtiger: 9, jpz_e100: 10,
   sturmtiger: 8, t95: 9, t30: 9, is7: 10, object279: 10, is6b: 8, is1: 5,
   m1a1: 9, t90a: 9, m1a2_tusk: 10,
-  t72b3: 8, challenger2: 9, challenger_3: 10, merkava4: 9, leo2a6: 9,
+  t72b3: 8, challenger2: 9, challenger_3: 10, leo2a6: 9,
   leo2a4: 8, t80u: 8, leclerc: 9, type99a: 9, leo1a5: 7, t14: 10,
   chieftain_mk10: 7, k2: 9, type10: 9, m2a2_bradley: 8, bmp2: 7, ariete: 8,
   k1a1: 8, type89: 7, spz_puma: 8, amx40: 9,

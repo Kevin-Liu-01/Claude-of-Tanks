@@ -10,8 +10,8 @@
 // in-page window.__SWITCH_TIMINGS instrumentation. When that log exists it is
 // printed too, as a cross-check.
 //
-// Sequence: 10 switches — cold GLB (m1a1 variant kit, merkava4, kv2, leo2a6),
-// cold procedurals (tiger1, t90m), and warm revisits (m1a1, merkava4, tiger1,
+// Sequence: 10 switches — representative cold and warm modern/WW2 swaps,
+// including m1a1, leclerc, kv2 and leo2a6, plus warm revisits (m1a1, leclerc, tiger1,
 // m1a2) that exercise the pedestal LRU. Reports per-switch ms + median/p95.
 //
 // Usage: node tools/switch-latency-probe.mjs [--root <dir>] [--dwell 500]
@@ -28,8 +28,8 @@ const root = opt('root', process.cwd());
 const dwellMs = parseInt(opt('dwell', '500'), 10);
 
 const SEQUENCE = [
-  'm1a1', 'merkava4', 'tiger1',          // cold: GLB, GLB, procedural
-  'm1a1', 'merkava4',                    // warm revisits (LRU hits)
+  'm1a1', 'leclerc', 'tiger1',           // cold representatives
+  'm1a1', 'leclerc',                     // warm revisits (LRU hits)
   't90m', 'kv2', 'tiger1',               // cold proc, cold community GLB, warm proc
   'm1a2', 'leo2a6',                      // warm boot hero, cold GLB
 ];
