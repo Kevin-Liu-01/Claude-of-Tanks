@@ -457,7 +457,7 @@ function buildJagdtiger(P) {
   const { cylY, cylZ, liftEye, towCable, shovelTool, periscope } = KIT;
 
   // LOWER hull tub (belt top 1.35) + nose/tail wedges
-  loft(P, [
+  loftCorridor(P, [
     { z: 3.80, b: 0.84, t: 1.08, w: 0.85 },                    // bow tip (published hullLengthM F; print reaches 3.95)
     { z: 3.56, b: 0.68, t: 1.20, w: 1.30 },                    // prow
     { z: 3.20, b: 0.48, t: 1.35, w: 1.45 },                    // nose full width
@@ -465,7 +465,10 @@ function buildJagdtiger(P) {
     { z: -3.50, b: 0.39, t: 1.35, w: 1.45 },                   // tub run
     { z: -3.83, b: 1.29, t: 1.74, w: 1.42 },                   // tail chamfer (12%-band R lands here)
     { z: -3.98, b: 1.42, t: 1.68, w: 1.40 },                   // tail plate foot (band-thin)
-  ]);
+  ], {
+    x: 1.02,
+    front: { z0: -4.00, floor: 1.10 },
+  });
   // glacis plate up to the casemate face root (full-ish width)
   P.add('hull', KIT.slab(
     [-1.30, 1.04, 3.82], [1.30, 1.04, 3.82], [1.45, 1.35, 2.60], [-1.45, 1.35, 2.60],
@@ -592,7 +595,7 @@ function buildJPzE100(P) {
 
   // LOWER hull: tub + nose/tail wedges (side-bot silhouette forward/aft of
   // the tracks; belly clearance 0.45 between them)
-  loft(P, [
+  loftCorridor(P, [
     { z: 4.10, b: 0.85, t: 1.10, w: 0.72 },                    // nose tip (ref plan line)
     { z: 3.80, b: 0.82, t: 1.35, w: 1.05 },                    // prow
     { z: 3.50, b: 0.44, t: 1.55, w: 1.58 },                    // lower nose slope (belly 0.45
@@ -601,7 +604,10 @@ function buildJPzE100(P) {
     { z: -3.55, b: 0.45, t: 1.86, w: 1.60 },                   // hull tub run
     { z: -4.02, b: 0.98, t: 1.86, w: 1.58 },                   // tail chamfer
     { z: -4.30, b: 1.32, t: 1.85, w: 1.52 },                   // tail foot (12%-band R)
-  ]);
+  ], {
+    x: 1.10,
+    front: { z0: -4.31, floor: 1.00 },
+  });
   // narrow prow beam: carries the published hullLengthM span (12%-band F)
   // with minimal plan/side cost; reads as the E100 bow towing spur
   P.add('hull', box(0.68, 0.48, 0.60), 0, 0.98, 4.10);
@@ -708,14 +714,17 @@ function buildSturmtiger(P) {
   const { cylY, cylZ, liftEye, towCable, shovelTool, periscope } = KIT;
 
   // LOWER hull (belt 1.30) + nose/tail; raised rear idler tail line
-  loft(P, [
+  loftCorridor(P, [
     { z: 3.17, b: 0.55, t: 1.24, w: 1.28 },                    // bow tip
     { z: 2.90, b: 0.34, t: 1.30, w: 1.50 },                    // nose root
     { z: 2.30, b: 0.44, t: 1.30, w: 1.55 },                    // glacis foot
     { z: -2.55, b: 0.44, t: 1.30, w: 1.52 },                   // tub run (idler rise starts)
     { z: -2.95, b: 0.74, t: 1.55, w: 1.50 },                   // tail chamfer
     { z: -3.16, b: 1.14, t: 1.80, w: 1.48 },                   // tail plate (to deck level)
-  ]);
+  ], {
+    x: 0.98,
+    front: { z0: -3.17, floor: 1.18 },
+  });
   // UPPER casemate: 47 deg face crest 2.33, saddle, wall edge rising to the
   // 2.59 roof plate; rear wall down to the 1.81 engine deck
   loft(P, [
@@ -783,11 +792,11 @@ function buildSturmtiger(P) {
     P.add('hullDetail', cylY(0.12, 0.13, 0.52, 12), s * 0.55, 1.50, -2.92);    // muffler drums
     P.add('hullDark', cylY(0.075, 0.085, 0.12, 10), s * 0.55, 1.82, -2.94);    // sooted tips
   }
-  // fenders + deep side skirts + kit
+  // fenders + shallow side skirts above the native linked-shoe return
   KIT.fenders(P, 1.56, 1.785, 1.32, -2.60, 2.60, 0.04);
   for (const s of [-1, 1]) {
-    P.add('hull', box(0.05, 0.46, 5.1), s * 1.60, 1.08, -0.05);                // side skirt band 0.85..1.31
-    P.add('hullDark', box(0.02, 0.40, 5.05), s * 1.628, 1.06, -0.05);
+    P.add('hull', box(0.05, 0.17, 5.1), s * 1.60, 1.225, -0.05);               // side skirt band 1.14..1.31
+    P.add('hullDark', box(0.02, 0.12, 5.05), s * 1.628, 1.20, -0.05);
   }
   shovelTool(P, -1.25, 1.355, 0.9);
   P.add('hullWood', box(0.03, 0.03, 1.0), 1.36, 1.355, 0.6);
