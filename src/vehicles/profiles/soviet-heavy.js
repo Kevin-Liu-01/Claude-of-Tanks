@@ -200,7 +200,7 @@ function buildIS7(P) {
   // r5 dims-first: published hull 7.38 (tail zc-3.59, pike tip zc+3.79) and
   // overall 11.17 (S-70 muzzle 5.79) — the print is 9-11% SHORT; packet cap
   // covers the overhang cover cost. Roof plateau rides 2.60 via the dome.
-  P.add('hull', box(2.00, 0.70, 6.86), 0, 0.62, zc - 0.13);                    // belly
+  P.add('hull', box(1.80, 0.70, 6.86), 0, 0.62, zc - 0.13);                    // inter-track belly
   P.add('hull', frustum(1.64, zc + 2.30, zc - 3.59, 1.47, zc + 2.32, zc - 3.56, 0.95, 1.43)); // sponson band
   P.add('hull', box(2.94, 0.05, 5.85), 0, 1.415, zc - 0.62);                   // roof plate
   pikeNose(P, { zBreak: zc + 2.30, zTip: zc + 3.79, yBelt: 0.94, yRoof: 1.43, yBelly: 0.36, wRoof: 1.42, wBelt: 1.56, cheekW: 1.10, cheeks: false, welds: false });
@@ -240,6 +240,7 @@ function buildIS7(P) {
   towCable(P, [[-1.45, 1.32, zc - 1.2], [-1.52, 1.36, zc + 0.8], [-1.45, 1.32, zc + 2.2]]);
   liftEye(P, 'hullDetail', -0.9, 1.46, zc - 3.1); liftEye(P, 'hullDetail', 0.9, 1.46, zc - 3.1);
   sovGear(P, { xc: 1.30, trackW: 0.60, wheels: 7, wheelR: 0.33, wheelY: 0.36, span: 4.90, zc: zc - 0.12, topY: 0.90, idlerY: 0.56, idlerR: 0.25 });
+  P.raiseTrackCorridor(['hull', 'hullDetail', 'hullDark'], { laneInnerX: 0.92, floorY: 1.00 });
 
   // turret: one long cast egg, crown plateau ~2.2, over a wide base collar
   // that flares to ~2.95 over the deck edges (the oracle's turret mask keeps
