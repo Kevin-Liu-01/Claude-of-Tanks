@@ -88,7 +88,7 @@ re-freeze NEW hash, all in ONE commit.
 | m47_patton | 2fc99c50 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | leo2a4 | 4011c71c | RE-FROZEN 2026-08-12 (§5.139 first-party forward welded-loft restoration: longer connected turret and basket, re-seated mantlet/EMES/roof suite, supported zero-hole bow shoulders, seven native wheels and exact band+shoe+sweep 0/0; machine fidelity 92.14 / min view 90.18; fresh 45-frame yaw/ownership floor 9.1 / mean 9.19; prior 3a653cf9 retired) |
 | leo2a5 | e215a738 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
-| leo2a6 | e99f8490 | RE-FROZEN 2026-08-12 (§5.126 first-party Leopard 2A6: source-semantic wedge turret, canonical seated MG3, seven-wheel hull and exact native course; machine fidelity 95.43 / min view 95.32; fresh 42-frame yaw/ownership floor 9.3 / mean 9.46) |
+| leo2a6 | 8b139b48 | RE-FROZEN 2026-08-12 (§5.146 first-party Leopard 2A6 strict full-course clearance closure: supported bow shoulder, seven-wheel native course and clean sprocket/idler transitions; machine fidelity 95.4, fresh 45-frame floor 9.3 / mean 9.46; prior e99f8490 retired) |
 | leo2a7v | ec69fe94 | RE-FROZEN 2026-08-12 (§5.140 first-party Leopard 2A7V turret separation: complete rotating package raised 1 cm over a visible annular ring seam, asymmetric mast/rear-service cadence, full articulated sponson clearance; machine fidelity 90.23 / min view 90.02; 45-frame yaw/ownership floor 9.0 / mean 9.16) |
 | leo2_revolution | fe2dc714 | RE-FROZEN 2026-08-12 (§5.141 first-party Leopard 2 Revolution left-hull artifact + complete track-clearance repair: erroneous side cuboid retired, inter-track belly/sponson structure made physically honest, exact band/shoe/strict sweep 0/0; machine fidelity 94.2, geometry 90.2, dimensions 99.5, floaters 100; fresh 45-frame yaw/ownership floor 9.1 / mean 9.27) |
 | m46_patton | 108806c8 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
@@ -5019,3 +5019,42 @@ recorded in `docs/critique/shaded-parity-ariete-track-clearance-recert.md`.
 
 **PASS / KEEP `a7b1fd05`; retire `acea2100` and all earlier Ariete freezes.
 Ordered blockers: none.**
+
+## 5.146 LEOPARD 2A6 STRICT FULL-COURSE CLEARANCE RE-CERTIFICATION (2026-08-12, RE-FROZEN)
+
+The first-party `buildLeo2A6` remains the active playable. Reference GLBs are
+read-only measurement and visual-review oracles; no source mesh, converted
+vertex/index payload, material, texture, rig or animation enters gameplay or
+the public build.
+
+The two terminal snapshots were already clean, but the strict moving sweep
+found one inner hull curtain touching the wheel-7/sprocket transition and two
+band-coincident split faces at the lifted rear sponson and narrowed front
+glacis. The curtain now stops above and before the sprocket departure, the
+rear underside lift continues through the complete departure arc, and the
+front lane cut begins before the old idler-contact knee. The existing
+supported shoulder cap extends rearward inside the lane boundary to close the
+two resulting one-cell plan seams. It remains rooted in the glacis and never
+enters the idler course.
+
+Exact band front/rear, shoe front/rear and strict full-sweep band/shoe receipts
+are all **0/0**. Contiguity is **0 holes**; geometry gate remains **91.0**
+(hull 91.3 / whole 91.0 / turret 92.6 / stations 91.9 / dimensions 91.0 /
+floaters 100); quantitative fidelity remains **95.4** with every scored view
+above 90. Parent audit is 0 stranded / 0 abutting / 0 dangling, winding is 0
+reversed / 0 mixed, the complete rig passes 10/10 and the standard check
+passes every machine gate.
+
+Freeze **`8b139b48`** reproduces twice at 46 rendered meshes / 145,919
+vertices. The final packet at `/private/tmp/leo2a6-clearance-final-r4/leo2a6`
+contains 15 paired, 15 yaw0 and 15 yaw90 frames including the standardized
+elevated-left profile: **45 PNGs / 45 distinct hashes**. Fresh inspection
+retains the vector `[9.4,9.5,9.4,9.4,9.3,9.4,9.4,9.5,9.6,9.5,9.4,9.5,9.5,9.6]`,
+floor **9.3** and mean **9.46**. The complete arrowhead turret, gun/mantlet,
+MG3, EMES/PERI, hatches, smoke and supported bustle rotate together through a
+true quarter-turn while the prow, cleared sponsons, seven-wheel course, engine
+deck and rear service field remain fixed. No fused, stranded, floating,
+collision, winding or sky-hole defect is visible. Full evidence is recorded
+in `docs/critique/shaded-parity-leo2a6-track-clearance-recert.md`.
+
+**PASS / KEEP `8b139b48`; retire `e99f8490`. Ordered blockers: none.**

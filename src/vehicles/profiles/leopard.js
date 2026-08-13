@@ -1257,13 +1257,19 @@ function buildLeo2A6(P) {
     // Native-course restoration: the visible idler wrap owns the terminal
     // silhouette.  Keep the structural nose inside the clear corridor
     // instead of reproducing that silhouette with intersecting armor.
-    glacisLaneCut: { x: 0.90, z0: 3.13 },
+    // Begin the lane cut 5 cm before the old 3.13 knee.  The former
+    // full-width boundary face coincided with the idler band at z 3.14;
+    // this keeps the same visible glacis line while clearing the course.
+    glacisLaneCut: { x: 0.90, z0: 3.08 },
     // §B4 shoe round (2026-08-06): capZ0/capY — the full slab abutting the
     // window read 10 exact-voxels inside the sprocket-crown SHOE pads at its
     // z -3.34 bottom corner (bandVox 0, the m1a1ha blind-spot class). The
     // 8 cm cap strip lifts its outboard floor to 1.35 (flag band tops 1.326
     // + margin); centre keeps 1.30, side/front rows are skirt/deck-interior.
-    sponsonLaneLift: { z0: -3.62, z1: -2.88, x0: 0.90, y: 1.54, capZ0: -3.66, capY: 1.52 },
+    // Carry the lifted underside forward through the complete sprocket
+    // departure.  Ending it at -2.88 left the full-width floor coincident
+    // with the band at the split face even though the shoes were clear.
+    sponsonLaneLift: { z0: -3.62, z1: -2.80, x0: 0.90, y: 1.54, capZ0: -3.66, capY: 1.52 },
     beltY: 0.62, bellyY: 0.50,
     // headlight pods: fresh grid reads the ref col 3.267 top at 1.495 =
     // pod top (1.44+0.055r); the old 1.51 center read one row high
@@ -1403,7 +1409,7 @@ function buildLeo2A6(P) {
   // lane, preserving the native course without lifting the source shoulder.
   for (const s of [-1, 1]) {
     P.add('hull', box(0.08, 0.14, 0.40), s * 0.83, 1.25, 3.46);               // buried glacis root
-    P.add('hull', box(0.14, 0.06, 0.40), s * 0.89, 1.34, 3.46);               // supported shoulder cap, |x| <= 0.96
+    P.add('hull', box(0.14, 0.06, 0.58), s * 0.89, 1.34, 3.37);               // supported shoulder cap, |x| <= 0.96; closes the lane-cut seam
   }
   // RIGHT-side lower skirt lip band: the print's right outer face carries a
   // 0.98..1.24 band at x 1.86-1.90 where the left reads only the 1.19 rail
@@ -1842,13 +1848,14 @@ function buildLeo2A6(P) {
   // z ends short of the certified OPEN sprocket bay. SIDE view at those
   // rows is already filled by the far track's inner-chain web (row-scanned
   // on the r6 pair: no bg y >= 0.24 between wheels). Rays arriving below
-  // 0.26 dive under the far track entirely (open under-belly daylight,
+  // 0.32 dive under the far track entirely (open under-belly daylight,
   // the accepted r6 residual class, not an enclosed wedge).
-  // z0 -2.62 (not -2.00): the r6 hero-rearright 25 px residual is the
-  // wheel-7/sprocket-corner corridor — the curtain's rear reach clips it;
-  // the sprocket bay proper (z < -2.75) stays open per the front-mask law.
+  // z0 -2.55 and y0 0.32: retain the wheel-7 sightline closure but stop
+  // above/before the sprocket transition.  The former -2.62 / 0.26 edges
+  // entered the moving shoe sweep by 2 cm even though the terminal
+  // snapshots were clean.  The sprocket bay remains fully open.
   for (const s2 of [-1, 1]) {
-    P.add('hull', box(0.015, 0.26, 4.94), s2 * 1.0125, 0.39, -0.15);
+    P.add('hull', box(0.015, 0.20, 4.87), s2 * 1.0125, 0.42, -0.115);
   }
 
   // turret: pivot (0,1.77,0.35); measured wedge tables from the fresh
