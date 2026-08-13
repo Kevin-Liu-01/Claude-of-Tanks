@@ -413,28 +413,9 @@ function buildAriete(P) {
     P.add('hull', box(0.13, 0.41, 0.14), s * 1.615, 1.395, 3.35);              // crest block inner (top 1.60, x 1.55-1.68, z 3.28-3.42; bottom 1.19 clears the idler wrap)
     P.add('hull', box(0.057, 0.355, 0.14), s * 1.7085, 1.3675, 3.35);          // crest OUTER CROWN step (top 1.545 — push-2: the ref front crest FALLS outboard: 1.567@1.726 / 1.557@1.767 vs the flat 1.60 block's +0.05; r3-1024: outer face 1.737 — the 1.745 face rendered 1.7671, a 4.6 mm coin-flip sliver in the ±1.784 col whose ref top is the 1.317 skirt skin)
     P.add('hullRubber', box(0.50, 0.05, 0.12), s * 1.32, 1.235, 3.40);         // rubber lip under the crest (r3-1024: raised+pulled to z 3.34-3.46 / y 1.21-1.26 — the raised wrap circle climbs to 1.175 under it, and any content in the z 3.464-3.577 apex window above ~1.0 prints the 3.568 col over the ref's [0.786..1.01] annulus band)
-    // NON-CIRCULAR WRAP FILL (r3, the packet's banked wrap-authoring break):
-    // the ref's front gear silhouette is a shallow 0.39-slope ramp to z 3.17,
-    // a HARD KNEE climbing ~1.8 to the wrap bottom 0.79@3.34, and a thin
-    // [0.78..1.00] annulus apex ending 3.575 — no tangent+circle the kit can
-    // build passes through all three (measured: ramp cols read +0.05..0.09,
-    // the knee cols -0.07..-0.21, the apex col err 0.23). The visible shape
-    // is AUTHORED here as per-side track-tone slabs riding INSIDE the track
-    // x-band (1.08..1.68); the kit band+pads tuck inside/above it. Buckets
-    // hullTrackTrimL/R (russia t72b3m §B4 lane-local class): one-sided AABBs
-    // so track-clip-audit's lane-local skip classifies them as the running
-    // gear they are; /track/i carries the §B4 tag. Plan: the fill's 3.575
-    // front face takes over the plan front lane the flap carried.
-    const FX0 = 1.08, FX1 = 1.68;
-    const fillBucket = s < 0 ? 'hullTrackTrimL' : 'hullTrackTrimR';
-    const fseg = (zA, yA, zB, yB, yC, yD) => P.add(fillBucket, slab(
-      [s * FX0, yA, zA], [s * FX1, yA, zA], [s * FX1, yB, zB], [s * FX0, yB, zB],
-      [s * FX0, yC, zA], [s * FX1, yC, zA], [s * FX1, yD, zB], [s * FX0, yD, zB]));
-    fseg(2.37, 0.055, 3.17, 0.367, 0.35, 0.65);                                // approach ramp (ref slope 0.39, liftoff 2.33)
-    fseg(3.17, 0.367, 3.223, 0.588, 0.65, 1.15);                               // knee riser
-    fseg(3.223, 0.588, 3.343, 0.788, 1.15, 1.15);                              // knee to the wrap-bottom line
-    fseg(3.343, 0.788, 3.44, 0.888, 1.15, 0.998);                              // wrap shoulder (top closes toward the apex)
-    fseg(3.44, 0.888, 3.575, 0.992, 0.998, 0.994);                             // apex wedge: front face 3.575 = the plan front lane; top 0.99 = the ref annulus top in the 3.568 side col
+    // The former static track-tone wedges have been removed.  They occupied
+    // the same lane as the animated band/shoes and were not hull or skirt
+    // armor.  The one native loop below now owns the complete front wrap.
   }
   // stern: rake wedge + plate + thin tail lip + CENTER tail block anchor
   P.add('hull', slab(                                                          // center rake (x +-0.82 — push-2: the +-0.92 slab printed the ref's 0.85-0.97 rear-notch cols at -3.71): bottoms 0.38@-2.60 -> 0.74@-3.66
@@ -527,9 +508,12 @@ function buildAriete(P) {
   buildRunningGear(P, {
     style: 'rubber', wheelR: 0.345, wheelW: 0.21, wheelY: 0.43, xc: 1.3725,
     wheelZs,
-    sprocket: { z: -3.12, y: 0.86, r: 0.21 }, idler: { z: 3.30, y: 0.945, r: 0.09 },   // (90-ladder r2: a +0.035 sprocket raise chased the far-stern 0.58-0.70 rake wants and was REVERTED — the tangent ramp rose with the wrap and printed +0.017 on five matched mid-ramp cols: hull 85.0 -> 84.2; the 0.04-class far-stern bottoms stay the cheaper residual) (r3 wrap break: small HIGH idler — band annulus [0.79..1.10] at the 3.57 apex col ≈ the ref's [0.786..1.01]; band far 3.525/pads 3.545 stay clear of the certified 3.686 nose col at 3.581; wrap top 1.175 keeps 15 mm under the 1.19 crest bottom, §B4 exact-clear)
+    sprocket: { z: -3.12, y: 0.86, r: 0.21 },
+    // Full front idler at an elevated but guard-clear station.  Road wheels,
+    // side skirts, mudguards and hull geometry remain unchanged.
+    idler: { z: 3.30, y: 0.70, r: 0.25 },
     rollers: [1.95, 0.70, -0.65, -1.80].map((z) => ({ z, y: 0.88, r: 0.08 })),
-    trackW: 0.615, topY: 0.88, botY: 0.055, contactZF: 2.22, contactZR: -2.05, paintedEnds: true, coveredTop: true, arms: true,
+    trackW: 0.615, topY: 0.88, botY: 0.055, contactZF: 2.75, contactZR: -2.05, paintedEnds: true, coveredTop: true, arms: true,
   });
   // Shallow concentric faces on the existing seven wheel stations.  The
   // physical rubber tires and course remain owned by buildRunningGear; these
@@ -1293,27 +1277,21 @@ function buildLeclerc(P) {
     xcLeft: 1.315, xcRight: 1.280,
     wheelZs,
     sprocket: { z: -3.00, y: 0.84, r: 0.14 },
-    idler: { z: 3.27, y: 1.10, r: 0.14 },
-    // Source-profiled native loop.  These are track centreline knots, not
-    // hull fills: the animated band and linked shoes follow the measured
-    // Leclerc ramp/knee/crest silhouette themselves.  The former solid
-    // `hullTrackTrim` wedges duplicated this envelope inside the moving
-    // course and produced the visible plates in front of the tracks.
-    loopPoints: [
-      [-3.18, 0.91], [-3.07, 0.91], [-2.96, 0.91], [-2.85, 0.86],
-      [-2.19, 0.86], [2.46, 0.91], [2.574, 0.91], [2.91, 0.91],
-      [3.02, 0.91], [3.13, 1.26], [3.24, 1.36], [3.30, 1.36],
-      [3.42, 1.16], [3.42, 0.915], [3.30, 0.895], [3.20, 0.728],
-      [3.10, 0.546], [3.00, 0.448], [2.91, 0.385], [2.574, 0.193],
-      [2.46, 0.141], [2.30, 0.095], [-2.19, 0.126], [-2.85, 0.515],
-      [-2.96, 0.687], [-3.07, 0.691], [-3.18, 0.915],
-    ],
+    // Full-size front idler at the same raised station as the final drive.
+    // Only this terminal wheel changes; the six established road wheels and
+    // every hull/skirt/mudguard dimension remain untouched.
+    idler: { z: 3.27, y: 0.84, r: 0.22 },
     // Five real return rollers sit directly beneath the upper course.  The
     // previous 0.88/0.08 placement put their crowns above the 0.91 m loop
     // centreline while `coveredTop` deleted every shoe, producing an empty
     // black slot.  Seat larger rollers just under the restored linked run.
     rollers: [1.95, 1.05, 0.15, -0.80, -1.70].map((z) => ({ z, y: 0.80, r: 0.10 })),
-    trackW: 0.630, trackTh: 0.07, topY: 0.90, botY: 0.055,
+    // Use the native wheel-supported trapezoid.  The old hand-authored loop
+    // climbed far above the front idler and detached the course from the road
+    // wheels in front/rear views.  These contact points keep the lower run on
+    // the wheel bottoms and the return run on the existing support rollers.
+    trackW: 0.630, trackTh: 0.07, topY: 0.935, botY: 0.055,
+    contactZF: 2.30, contactZR: -2.10,
     endRingSpan: 0.56,
     linkPitchM: 0.11, shoeRadialScale: 0.61, padGroundCenter: 0.069,
     padCornerFloor: 0.02, padHugZ0: 2.40,

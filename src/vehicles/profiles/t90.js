@@ -1051,7 +1051,9 @@ function buildT90AVladimirLegacy(P) {
     sprocket: { z: -3.30, y: 0.70, r: 0.29 }, idler: { z: 1.62, y: 0.95, r: 0.18 },
     // The recovered front run leaves the ground at z≈1.15; the former
     // 1.29 pin held the shoe floor flat through four source-rising slices.
-    contactZF: 1.00, contactZR: -2.91,
+    // Track-only correction: retain the recovered terminal wheel but keep
+    // the loaded run beneath the complete front road-wheel envelope.
+    contactZF: 1.60, contactZR: -2.91,
     rollers: [-2.3, -0.83, 0.6].map((z) => ({ z, y: 0.86, r: 0.086 })),
     // rTAIL r13b: xc 1.46 / trackW 0.60 — the ref grounds its track band
     // out to x 1.76-1.79 (front ±1.728/1.77 cols read bot 0.011) while the
@@ -2443,7 +2445,11 @@ function buildT90MProryv(P) {
     // idler wrap + belt dive hanging BELOW that line 0.4 m forward of the
     // ref's own gear end (~2.6; its contact stops 2.52). Wrap front now
     // 2.915; the strips own the bow-col bottoms ref-exact.
-    sprocket: { z: -2.10, y: 0.78, r: 0.28 }, idler: { z: 2.65, y: 0.78, r: 0.22 },
+    sprocket: { z: -2.10, y: 0.78, r: 0.28 },
+    // Restore a distinct front idler ahead of the leading road wheel.  The
+    // earlier 2.65 m station nearly coincided with that road wheel and read
+    // as one missing/merged disc.  No road wheel or skirt is altered.
+    idler: { z: 3.28, y: 0.92, r: 0.27 },
     rollers: [-1.10, 0.30, 1.70].map((z) => ({ z, y: 0.80, r: 0.086 })),
     // r27: trackW 0.58 -> 0.50: the link shoes (band + ~0.023) reached
     // +-1.748 and painted the +-1.76/1.77 front cols to the ground (err
@@ -2455,7 +2461,7 @@ function buildT90MProryv(P) {
     // raised the belt ends and cost side_hull 2.3 — the warped ref's own
     // belt IS ground-flat at -1.9..-2.4/+2.9 (the r26 note reads the REF,
     // not the proc): flat botY MATCHES it. Certified partial class.)
-    trackW: 0.50, topY: 0.83, botY: 0.05, paintedEnds: true, coveredTop: true, arms: false,
+    trackW: 0.50, topY: 0.95, botY: 0.05, paintedEnds: true, coveredTop: true, arms: false,
     // r30 LAW FIND: `contact: {zF,zR}` (introduced r27) is a SILENT NO-OP —
     // tankFactory reads cfg.contactZF/contactZR ONLY (line ~869; defaults
     // wheel-span ±wheelR*0.5 = 2.71/-1.68 here). Every r27 contact "result"
@@ -2466,7 +2472,7 @@ function buildT90MProryv(P) {
     // r4: contactZF 2.45 -> 2.56 — the front ramp read 0.035-0.066 LOW at
     // z 2.72-2.85 then 0.058 HIGH at the wrap (my knee sat too far forward;
     // ref ramp line 0.16@2.72 / 0.29@2.85 / 0.38@2.97).
-    contactZF: 2.50, contactZR: -1.50,
+    contactZF: 2.96, contactZR: -1.50,
     // PERFECTION r1 (centurion r6 class, banked in tankFactory): the pad
     // corners sagged to -0.015 — procBox.min.y biased EVERY station topPct
     // +0.67% and the front rows read procBottom -0.012 vs the ref's 0.04
@@ -2531,8 +2537,8 @@ function buildT90MProryv(P) {
         P.add(det, cylX(0.092, 0.048, 12), s * 1.5425, 0.46, wz);
         P.add(trm, cylX(0.052, 0.066, 10), s * 1.5455, 0.46, wz);
       }
-      P.add(trm, torus(0.115, 0.010, 14), s * 1.6225, 0.78, 2.65, 0, 0, Math.PI / 2);
-      P.add(det, cylX(0.062, 0.05, 10), s * 1.6235, 0.78, 2.65);
+      P.add(trm, torus(0.200, 0.012, 18), s * 1.6225, 0.92, 3.28, 0, 0, Math.PI / 2);
+      P.add(det, cylX(0.100, 0.05, 12), s * 1.6235, 0.92, 3.28);
       P.add(trm, torus(0.15, 0.012, 16), s * 1.6375, 0.78, -2.10, 0, 0, Math.PI / 2);
       P.add(det, cylX(0.085, 0.05, 10), s * 1.6385, 0.78, -2.10);
     }

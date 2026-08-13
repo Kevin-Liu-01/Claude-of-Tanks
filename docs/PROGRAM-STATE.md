@@ -4966,22 +4966,18 @@ owner-named Challenger 1/Ariete in-place polish; then the remaining modern
 Leopard/AMX/Type 99/AbramsX verification re-sits. WWII work stays behind the
 modern queue.
 
-## 5.144 SAFE MODERN RUNNING-GEAR REPAIR (2026-08-13, LANDED)
+## 5.144 REVERTED MODERN RUNNING-GEAR EXPERIMENT (2026-08-13, RETIRED)
 
-Commit `f16c9659` repairs the owner-named modern running-gear failures without
-deleting or hollowing any hull, skirt, mudguard or side-armor course. Ariete,
-Leclerc and T-90M Proryv retain their live first-party builders and now expose
-larger primary road wheels plus distinct source-semantic idler/final-drive
-ends inside the continuous native linked course. Challenger 3, T-90A Vladimir
-and Leopard 2 Revolution retain their established wheel geometry while their
-front transition begins beyond the complete leading wheel, so no road-wheel
-face projects through the rising belt. The standardized elevated-left
-profiles are recorded under `/private/tmp/gear-final-r6`.
+Commit `f16c9659` is **not authoritative**. Although it attempted to repair
+six modern running-gear envelopes, it mixed safe terminal-wrap changes with
+road-wheel/cadence/presentation changes whose live result visually damaged
+the established hull/skirt relationship. Commit `4b3b8f2f` reverts that
+experiment exactly. No road-wheel, wheel-face, shadow-proxy or side-envelope
+delta from `f16c9659` may be reintroduced by copying that commit.
 
-Leclerc and Revolution remain exact strict `0/0`; the other four substantially
-improve their live receipts without any subtractive hull operation. Full test
-and production builds pass. Commit `d9feca33` separately removes the owner-
-rejected Merkava IVm Windbreaker row; it does not alter another Merkava mark.
+Commit `d9feca33` separately removes the owner-rejected Merkava IVm
+Windbreaker row; that independent deletion remains live and does not alter
+another Merkava mark.
 
 ## 5.145 CHALLENGER 1 IN-PLACE TURRET / COURSE CLOSEOUT (2026-08-13, FROZEN)
 
@@ -5017,3 +5013,35 @@ fixed coherent hull/deck/course. `npm test` and the production build pass.
 
 **PASS / KEEP `4ecc29b4`. Challenger 1 ordered blockers: none. Ariete is the
 next live in-place modern recovery target.**
+
+## 5.146 SURGICAL MODERN IDLER / NATIVE-WRAP CORRECTION (2026-08-13, LIVE)
+
+The post-`4b3b8f2f` repair is intentionally limited to running gear. It does
+not scale, translate, clear or replace any hull, side skirt, mudguard, turret,
+road-wheel row or road-wheel face.
+
+- Ariete retains its original seven road wheels and complete panelled skirt.
+  Its fake static `hullTrackTrim` wrap wedges are removed, a real full-size
+  front idler is seated ahead of the row, and the native linked course owns
+  the complete front transition. Exact front band/shoe contact improves from
+  `455/1388` to `0/0`; no hull course was deleted.
+- Leclerc retains its original six road wheels and complete skirt/mudguard
+  geometry. Its over-authored zig-zag loop is replaced by the native
+  wheel-supported trapezoid, with a full front idler, a lower run resting on
+  the wheel bottoms and an upper run resting on the existing return rollers.
+  Exact band/shoe/strict containment is `0/0`.
+- T-90M Proryv retains its established road-wheel row and skirts. Its former
+  idler station nearly coincided with the leading road wheel; the idler and
+  its concentric face are moved forward as one wheel and the native front
+  wrap follows it. Existing unrelated strict hull/dressing receipts are not
+  "fixed" by deleting side armor.
+- Challenger 3, T-90A Vladimir and Leopard 2 Revolution retain every wheel
+  and armor part. Only the native front lift-off/wrap is extended around the
+  leading tire. Challenger 3 uses a shallower linked-shoe radial profile so
+  that extended wrap also clears its internal render-only gear-air backers.
+  Challenger 3, Leclerc and Revolution certify at exact strict `0/0`.
+
+The controlling rule is now explicit: front-idler and native-loop repairs may
+change the terminal wheel and the real band/shoes only. They must never be
+implemented by deleting, lifting, shortening or hiding the tank's authored
+hull, skirts, mudguards or road-wheel course.

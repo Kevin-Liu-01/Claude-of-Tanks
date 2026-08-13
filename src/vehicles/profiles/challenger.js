@@ -3616,7 +3616,10 @@ function buildChallenger3(P) {
     // now clears the complete shoe envelope instead of hiding penetration.
     sprocket: { z: -2.60, y: 0.98, r: 0.28 }, idler: { z: 3.35, y: 0.81, r: 0.28 },
     rollers: [1.95, 0.55, -0.85, -1.75].map((z) => ({ z, y: 1.10, r: 0.08 })),
-    trackW: 0.555, topY: 1.26, contactZF: 2.75, contactZR: -2.10,
+    // Track-only correction: keep the loaded run beneath the complete
+    // leading road wheel before it rises to the existing front idler.
+    trackW: 0.555, topY: 1.26, contactZF: 3.02, contactZR: -2.10,
+    shoeRadialScale: 0.55,
     // §B8.1 NATIVE-TONE wheel countability (acceptance-flagged "wheels
     // render DARK vs the print's pale Hydrogas rims") — merkava r12
     // tireHex mechanism, per-tank param, default byte-identical elsewhere.
