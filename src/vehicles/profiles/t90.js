@@ -6555,6 +6555,92 @@ function enhanceT90MProryvSurface2026(P) {
   }
 }
 
+function finishT90MProryvOwner2026(P) {
+  const { box, cylY, cylZ, torus } = KIT;
+
+  // T-90SM-grade segmented side curtain, added outside the existing Proryv
+  // fender/upper-skirt course. The thin leaves overlap the original top band
+  // and stay outboard of the native linked-shoe envelope; wheels, idler,
+  // sprocket, suspension and both animated tracks are left untouched.
+  const skirtZ0 = -2.50, skirtZ1 = 2.50, skirtPanels = 7;
+  const skirtDz = (skirtZ1 - skirtZ0) / skirtPanels;
+  for (const s of [-1, 1]) {
+    const xi = s * 1.770, xo = s * 1.825;
+    for (let i = 0; i < skirtPanels; i++) {
+      const a = skirtZ0 + i * skirtDz;
+      const m = a + skirtDz * 0.5;
+      const b = a + skirtDz;
+      const edgeY = i === 0 || i === skirtPanels - 1 ? 0.66 : 0.70;
+      const lobeY = 0.47 + (i % 2) * 0.035;
+      P.add('hull', orientedSlab(
+        [xi, edgeY, a], [xo, edgeY, a], [xo, lobeY, m], [xi, lobeY, m],
+        [xi, 1.245, a], [xo, 1.245, a], [xo, 1.245, m], [xi, 1.245, m],
+      ));
+      P.add('hull', orientedSlab(
+        [xi, lobeY, m], [xo, lobeY, m], [xo, edgeY, b], [xi, edgeY, b],
+        [xi, 1.245, m], [xo, 1.245, m], [xo, 1.245, b], [xi, 1.245, b],
+      ));
+      P.add('hullDark', box(0.026, 0.50, 0.024), xo, 0.97, b - 0.012);
+      P.add('hullDetail', box(0.032, 0.035, skirtDz * 0.68), xo, 1.265, m);
+    }
+  }
+
+  // The native upper Relikt field remains authoritative. These lower
+  // inboard plates and nested seams complete the upper/lower-glacis read
+  // without extending into the idler lanes or replacing the bow shell.
+  for (const s of [-1, 1]) {
+    for (const [x, y, z, yaw, w, d] of [
+      [0.32, 0.99, 2.78, 0.16, 0.52, 0.32],
+      [0.72, 0.93, 2.91, 0.28, 0.44, 0.28],
+    ]) {
+      P.add('hull', box(w, 0.060, d), s * x, y, z, -0.47, -s * yaw, 0);
+      P.add('hullDark', box(w * 0.72, 0.010, 0.026), s * x, y + 0.037, z - d * 0.33, -0.47, -s * yaw, 0);
+    }
+    P.add('hullDetail', box(0.038, 0.20, 0.42), s * 0.96, 0.78, 3.02, -0.40, 0, 0);
+    P.add('hullDark', torus(0.096, 0.022, 16), s * 0.70, 0.61, 3.09, Math.PI / 2, 0, 0);
+  }
+  P.add('hullDark', box(0.62, 0.045, 0.065), 0, 0.78, 3.055, -0.48, 0, 0);
+
+  // Denser but still backed Proryv transom cadence. Three unequal louvre
+  // courts, a low exhaust bridge and recovery braces sit entirely against
+  // the existing rear face; the original drums, log and tow cable remain.
+  for (const [x, w, n] of [[-0.78, 0.70, 5], [0.05, 0.56, 4], [0.70, 0.38, 3]]) {
+    P.add('hullDark', box(w, 0.26, 0.018), x, 0.94, -3.085);
+    for (let i = 0; i < n; i++) {
+      P.add('hullDetail', box(w * 0.82, 0.018, 0.014), x, 0.84 + i * (0.20 / Math.max(1, n - 1)), -3.104);
+    }
+  }
+  P.add('hullDetail', box(1.46, 0.038, 0.038), 0, 0.76, -3.11);
+  for (const s of [-1, 1]) {
+    P.add('hullDetail', box(0.045, 0.25, 0.040), s * 1.18, 0.86, -3.10, 0, 0, -s * 0.16);
+    P.add('hullDark', box(0.22, 0.13, 0.040), s * 1.28, 1.13, -3.10);
+  }
+
+  // Roof weapon #2. The native Kord/RWS above the right cupola remains MG
+  // #1. This smaller PKM is planted on the opposite hatch through a broad
+  // ring, pintle shoe and receiver cradle; its bore points turret-forward.
+  P.add('turret', cylY(0.24, 0.27, 0.095, 16), -0.68, 0.92, -0.22);
+  P.add('turretDark', torus(0.235, 0.022, 18), -0.68, 0.98, -0.22);
+  P.add('turretDark', box(0.36, 0.070, 0.11), -0.68, 1.02, -0.34);
+  {
+    const mg2 = FITTINGS.pintleMG({ mats: P.mats, cls: 'nsvt', tone: 'dark', elev: -0.05, ammo: true, shield: true, scale: 0.95 });
+    mg2.position.set(-0.68, 0.94, -0.23);
+    mg2.rotation.y = -0.34;
+    P.turretG.add(mg2);
+  }
+
+  // Large forward searchlight. A deep armored shoe enters the right cheek,
+  // two yokes carry the cylindrical lamp, and a dark rim surrounds a glass
+  // aperture. The assembly is turret-owned, faces +z and keeps a continuous
+  // load path through yaw instead of hanging beside the armor.
+  P.add('turret', box(0.46, 0.22, 0.46), 0.98, 0.49, 0.70, -0.16, -0.22, 0);
+  P.add('turretDark', box(0.055, 0.34, 0.34), 0.78, 0.58, 0.76, -0.12, 0, -0.18);
+  P.add('turretDark', box(0.055, 0.34, 0.34), 1.18, 0.58, 0.70, -0.12, 0, 0.18);
+  P.add('turretDark', cylZ(0.245, 0.32, 20), 0.98, 0.61, 0.88, -0.06, 0, 0);
+  P.add('turretGlass', cylZ(0.205, 0.025, 20), 0.98, 0.61, 1.055, -0.06, 0, 0);
+  P.add('turretDetail', torus(0.238, 0.025, 20), 0.98, 0.61, 1.070);
+}
+
 // T-90M Proryv native reconstruction.  The complete low V-bow hull and native
 // six-wheel linked course are rebuilt above, while the repository-authored
 // welded Tagil fighting compartment is resectioned and given a continuous
@@ -6565,6 +6651,7 @@ function buildT90MProryvNative2026(P) {
   replaceT90MProryvHull(P);
   replaceT90MProryvTurret(P);
   enhanceT90MProryvSurface2026(P);
+  finishT90MProryvOwner2026(P);
   // The replacement turret is authored at construction scale so every
   // station is easy to reason about.  Proryv's installed silhouette is much
   // flatter: compress the complete rotating package vertically about the

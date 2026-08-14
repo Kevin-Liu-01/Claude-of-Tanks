@@ -5723,3 +5723,34 @@ The eight gameplay assets are regenerated and freeze deterministic geometry
 **KEEP `0cd0fc4f`. Future plain T-90 work must preserve the exact-scale
 Burlak foundation, complete massive bustle, larger twin eyes, lowered fixed
 hull datum and unchanged native running gear.**
+
+## 5.167 T-90M PRORYV HULL AND ROOF-SYSTEM COMPLETION (2026-08-13, LIVE)
+
+The live `t90m` retains its approved welded Proryv fighting compartment,
+Relikt armor, native six-wheel suspension and single linked-shoe course. A
+new first-party completion layer brings the fixed hull to the established
+T-90SM standard without deleting or moving any existing hull face: seven
+deep overlapping side-curtain panels per side, articulated upper/lower
+glacis seams, recovery fittings and three unequal backed rear louvre courts
+complete the side, bow and transom grammar. The curtain remains outboard of
+the native course, while wheels, idler, sprocket, suspension and track paths
+are unchanged.
+
+The turret now carries two separately readable machine-gun stations. The
+existing Kord/RWS remains on the right station; a second shielded NSVT-style
+weapon is planted on the opposite hatch through a broad ring, pintle shoe
+and receiver cradle. A deliberately oversized forward searchlight is buried
+into the right cheek with an armored shoe, paired yokes, deep cylindrical
+body, rim and clear aperture. All new equipment uses visible load paths and
+faces turret-forward.
+
+Front, rear, elevated and true 90-degree yaw inspections confirm that both
+weapons, the large searchlight, Relikt, sights and bustle rotate with the
+turret, while the complete deep skirt course, glacis, transom and running
+gear remain fixed. The rear louvres are backed, no decoration spans empty
+air, and the native track remains singular and continuous. The eight
+gameplay assets freeze deterministic geometry **`0fcd4abb`**.
+
+**KEEP `0fcd4abb`. Future Proryv work must preserve the two roof weapons,
+supported large searchlight, complete T-90SM-grade hull envelope, deep
+side-curtain course, backed rear field and untouched native running gear.**
