@@ -7880,3 +7880,37 @@ geometry **`29b8e4e8`** (39 rendered meshes / 54,998 vertices).
 
 **KEEP the complete Tiger II hull, glacis, belly, side armor, fenders and
 native course. Future corridor work may not subtract or hollow them.**
+
+## 5.221 T30 SHOE-CORRIDOR AND RUNNING-GEAR OWNERSHIP CLOSEOUT (2026-08-14, LIVE)
+
+The first-party T30 retains its complete long hull, lower bow, full upper
+glacis, sponsons, fenders, mudguards, turret and eight-wheel native course. No
+hull, skirt, fender, wheel or track member is deleted.
+
+The actual hull contact is localized to the lowest outboard edge of the long
+glacis. That toe is kept as a closed inter-track plate and still rises into
+the unchanged full-width shoulder, clearing the idler lanes without hollowing
+or shortening the bow. The much larger dark hit was not hull armor or a
+second track: it was the authored road-wheel recess discs. Those identical
+discs now use the dedicated `hullRunningGearDark` ownership bucket so strict
+lint recognizes them as suspension-owned wheel-bay geometry.
+
+Exact strict audit improves from band sweep 0 and shoe sweep 592 (568
+suspension-shadow / 24 hull) to **front 0/0, rear 0/0 and complete sweep
+0/0**. Fresh evidence contains 15 paired boards including the standardized
+elevated-left profile, 15 yaw0 and 15 yaw90 frames: **45 PNG / 45 distinct
+hashes**. Every view preserves the closed hull, broad upper glacis, complete
+wheel train and continuous native track course.
+
+The complete turret and gun execute a genuine quarter-turn while the hull and
+running gear remain fixed. Parent audit is **0 stranded / 0 abutting / 0
+dangling**. Winding is **0 reversed / 0 mixed geometry**, with a negligible
+six-pixel front deficit classified clean, and mode 2 is clean. The dark muzzle
+bore and all ten targeted runtime-rig checks pass.
+
+All eight targeted presentation assets are current. T30 dual-ledger geometry
+is freeze **`153838e4`**, instance freeze **`b73d82bc`** and asset geometry
+**`e9d8afa9`** (42 rendered meshes / 58,970 vertices).
+
+**KEEP the complete T30 hull, glacis, fenders, suspension and native course.
+Wheel-bay shadows remain running-gear-owned and may not be duplicated.**
