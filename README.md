@@ -6,7 +6,7 @@
 
 <p align="center">
   A World of Tanks-style, Vite-powered, engine-free armored combat simulator in <strong>pure Three.js</strong> —
-  resolving plate-level armor, ballistics, modules, spotting, and physics across 108 vehicles and eight destructible
+  resolving plate-level armor, ballistics, modules, spotting, and physics across 100+ vehicles and eight destructible
   battlefields. Playable entirely in the browser on desktop and mobile devices. Built end-to-end by a long-running
   multi-agent Claude/Codex pipeline.
 </p>
@@ -24,7 +24,7 @@
 
 A from-scratch armored combat simulator powered by Vite and [Three.js](https://threejs.org) — no game engine,
 native runtime, install, or account — and ~70k lines of JavaScript. Its plate-level combat model is transcribed from
-World of Tanks mechanics research and verified by node-run self-tests; all 108 playable vehicles are original,
+World of Tanks mechanics research and verified by node-run self-tests; all 100+ playable vehicles are original,
 first-party procedural builds authored from dimensions and reference study; and its eight battlefields generate terrain,
 vegetation, buildings, props, and textures in code. Every screenshot below is the actual game.
 
@@ -55,6 +55,21 @@ The thumb-side fire cluster works identically on every vehicle, and a vertical e
 reachable. A device quality tier keeps GPU memory ~80% lower than
 desktop, and a boot-time GPU self-test heals device-specific rendering faults automatically (add `?diag=1` to the
 URL to watch it work).
+
+## Solo, LAN, private, and ranked
+
+The Play menu exposes four direct entry modes: a local authoritative battle
+against bots, low-latency LAN over the same Wi-Fi, private six-character room
+codes with team switching and spectators, and dedicated ranked matchmaking
+with server-owned Elo, profiles, and a leaderboard. Empty teams can be filled
+with bots that vary their seeded opening routes, use shared terrain navigation,
+and recover when local traffic blocks them.
+
+Every mode runs the same renderer-free 60 Hz authority for movement, armor,
+ballistics, modules, spotting, collision, consumables, bots, destructibles,
+and match outcome. WebRTC keeps reliable control separate from replaceable
+20 Hz snapshots; ranked uses an authenticated reconnectable WebSocket. See
+[`docs/MULTIPLAYER-ARCHITECTURE.md`](docs/MULTIPLAYER-ARCHITECTURE.md).
 
 ## The game
 
@@ -95,7 +110,7 @@ Everything resets for the rematch.
 </tr></table>
 
 ### Vehicles
-**108 first-party playables in the deployed build**, organized by era and family in the garage. Every tank is an
+**100+ first-party playables in the deployed build**, organized by era and family in the garage. Every tank is an
 original procedural construction: spec-driven hulls, turrets, equipment, and native running gear built from published
 dimensions and reference study, then refined by a dual-gate fidelity program (geometric accuracy *and* an independent
 visual critic, both ≥90). Reference models are quarantined to comparison tooling and never become gameplay geometry.
@@ -214,12 +229,17 @@ src/sim/       ballistics, armor resolution, damage, movement, spotting  (pure l
 src/fx/        muzzle flash, tracers, impacts, explosions, destruction, particles
 src/ui/        HUD, garage, settings, damage panel, shot info, touch controls
 src/game/      state, AI, input, killcam, scene studio
+src/net/       protocol, lobbies, prediction, snapshots, WebRTC/WebSocket adapters
+server/        signaling, dedicated authority, matchmaking, Elo persistence
 ```
 
 | Command | Purpose |
 |---|---|
 | `npx vite` | Run locally |
 | `npm test` | 500+ sim/equipment/track assertions under plain node |
+| `npm run test:net:browser` | Real two-browser WebRTC + adverse-network soak |
+| `npm run server:signal` | Run the private/LAN signaling service |
+| `npm run server:match` | Run dedicated ranked authority and matchmaking |
 | `node tools/screenshot.mjs` | The screenshot contract: 20 deterministic views, zero console errors |
 | `node tools/perfprobe.mjs` | Perf budgets: worst-frame draws < 900, triangles ≤ 6M, textures < 512 MB |
 | `node tools/procedural-fidelity.mjs` | Tank fidelity gate: 9 ortho proof views + shaded boards vs references |
@@ -227,11 +247,12 @@ src/game/      state, AI, input, killcam, scene studio
 
 Development happens through verification-gated agent rounds: every change lands with probe evidence, a green
 screenshot contract, and green self-tests. Docs: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) ·
-[`docs/STUDIO.md`](docs/STUDIO.md) · [`docs/GEOMETRY-GATE.md`](docs/GEOMETRY-GATE.md).
+[`docs/STUDIO.md`](docs/STUDIO.md) · [`docs/MULTIPLAYER-ARCHITECTURE.md`](docs/MULTIPLAYER-ARCHITECTURE.md) ·
+[`docs/GEOMETRY-GATE.md`](docs/GEOMETRY-GATE.md).
 
 ## Assets & licensing
 
-All gameplay code and all 108 playable vehicle models are original first-party work. External models may be used only
+All gameplay code and all 100+ playable vehicle models are original first-party work. External models may be used only
 as quarantined, read-only visual references during QA; they are never loaded as gameplay geometry and never ship as
 playable assets. **No assets extracted from commercial games are used.** Provenance is enforced by the native-playable,
 private-build, and public-build audits.

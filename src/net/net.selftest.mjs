@@ -669,6 +669,27 @@ function createTestSimulation() {
   return simulation;
 }
 
+// A pre-handshake packet must be rejected without making a later valid HELLO
+// look stale. Real transports are ordered; this defense keeps a simulated or
+// hostile first packet from permanently poisoning the connection.
+{
+  const simulation = createTestSimulation();
+  const hostRuntime = new AuthoritativeMatchRuntime({ simulation });
+  const transport = createLoopbackTransportPair();
+  hostRuntime.attachPeer({ peerId: 'p1', transport: transport.host });
+  transport.client.send(createEnvelope(MESSAGE_TYPES.INPUT, {}, { seq: 1, tick: 0 }));
+  await Promise.resolve();
+  assert.equal(hostRuntime.peers.get('p1').lastRecvSeq, null);
+  assert.equal(hostRuntime.stats.invalidMessages, 1);
+  transport.client.send(createEnvelope(MESSAGE_TYPES.HELLO, {
+    playerId: 'p1', metadata: { team: 'alpha' },
+  }, { seq: 0, tick: 0 }));
+  await Promise.resolve();
+  assert.equal(hostRuntime.peers.get('p1').welcomed, true,
+    'valid HELLO recovers after rejected pre-handshake traffic');
+  hostRuntime.close();
+}
+
 {
   const simulation = createTestSimulation();
   const hostRuntime = new AuthoritativeMatchRuntime({ simulation, maxCatchUpTicks: 8 });
@@ -752,6 +773,8 @@ function createTestSimulation() {
 {
   const simulation = createTestSimulation();
   const session = createLocalMatchSession({ playerId: 'solo', simulation });
+  assert.equal(session.role, 'host');
+  assert.equal(session.simulation, simulation);
   await Promise.resolve();
   session.ready();
   const frame = await session.advance(50, input({ throttle: 0.5 }));

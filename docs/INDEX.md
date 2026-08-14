@@ -31,6 +31,7 @@ Skills (in .claude/skills/ — operational checklists distilled from the law):
 | GEOMETRY-GATE.md | Gate components + scoring math, caps case law, orientation truth, anti-gaming rules, §10 graduation amendments (three maps, helper-expanded, trim clamp) |
 | PROGRAM-STATE-base21.md | The base-21 modernization roster: exact no-oracle id pool (table A — never gate), oracle-holding originals (table B), slice status + next slices |
 | DESIGN.md | Architecture: runtime build pipeline, measurement stack, program loop, oracle lifecycle (file:line anchors) |
+| MULTIPLAYER-ARCHITECTURE.md | Shared solo/LAN/private/ranked authority, transports, prediction, ranking, deployment, and verification |
 | LESSONS.md | The incident narrative behind the laws — prose onboarding |
 | ATTRIBUTION.md | Every sourced asset: author/source/license/files; evaluation + judging records; NC quarantine; oracle drops |
 | handoff/tank-generation-program.md | The 2026-08-02 full program manual (mission, toolchain §5, doctrine §7, per-tank loop §8, §10 graduation worked example) — PROGRAM-STATE supersedes its fleet state |

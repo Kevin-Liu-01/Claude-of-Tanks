@@ -3,6 +3,7 @@ import { createCombatState } from '../sim/damage.js';
 import { createTankState } from '../sim/movement.js';
 import { getSpec } from '../vehicles/specs.js';
 import { createTank } from '../vehicles/tankFactory.js';
+import { prebakeSharedTextures } from '../vehicles/materials.js';
 import { pushHullFromObstacle } from '../world/collision.js';
 import { LocalTankPredictor } from './localTankPrediction.js';
 import { SNAPSHOT_FLAGS } from './snapshot.js';
@@ -147,8 +148,22 @@ export function createBrowserBattleBridge({
 
   async function prepareRoster(players, onProgress = null) {
     const active = (players || []).filter((player) => player.team !== 'spectator');
+    const warmed = new Set();
     for (let index = 0; index < active.length; index++) {
       const player = active[index];
+      const quality = !spectator && player.id === id ? 'high' : 'ai';
+      const warmKey = `${player.specId}:${quality}`;
+      if (!warmed.has(warmKey)) {
+        warmed.add(warmKey);
+        try {
+          await prebakeSharedTextures(
+            getSpec(player.specId),
+            engineCtx.anisotropy ?? 4,
+            quality,
+            nextFrame,
+          );
+        } catch (_) { /* createTank retains its synchronous compatibility path */ }
+      }
       ensureEntity({
         id: player.id,
         name: player.name,

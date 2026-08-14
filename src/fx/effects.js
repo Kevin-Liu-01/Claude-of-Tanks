@@ -2549,6 +2549,23 @@ export function createFx(engineCtx, heightField, { seed = 5000 } = {}) {
     },
 
     /**
+     * Instantiate the exact pooled families reachable in the first seconds
+     * of a battle. The caller renders once and resetAll() removes every warm
+     * instance, so no synthetic event enters gameplay or survives loading.
+     */
+    warmOpeningEffects(pos, dir, normal, caliberMm = 120) {
+      fx.muzzleFlash(pos, dir, caliberMm);
+      spawnSabotPetals(pos, dir);
+      fx.impact('pen', pos, normal, caliberMm);
+      fx.impact('terrain', pos, normal, caliberMm);
+      dirtPlume(pos, 76, false);
+      for (const kind of ['fence', 'wall', 'sandbag', 'truck', 'drumblast']) {
+        fx.propBreak(kind, pos, dir, 1.5);
+      }
+      fx.propCrush(pos, dir, 7);
+    },
+
+    /**
      * Per-render-frame advance: particle clock, timers, lights, smoke columns,
      * and tracer ribbons rebuilt from live shell entities.
      * @param {number} dt render delta seconds

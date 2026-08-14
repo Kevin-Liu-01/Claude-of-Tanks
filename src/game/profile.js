@@ -1,7 +1,7 @@
 // Durable local battle history. This deliberately records outcomes instead of
 // inventing a wallet: Claude of Tanks has no research tree or purchasable
 // vehicles, so credits and XP would communicate progression that does not
-// exist. Ranked rating will be server-owned when the ranked service ships.
+// exist. Ranked rating is owned by the dedicated service, never local saves.
 
 const PROFILE_KEY = 'cot.profile.v2';
 const PROFILE_VERSION = 2;

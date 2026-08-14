@@ -29,7 +29,9 @@ export function createLocalMatchSession({
 
   return {
     kind: 'loopback',
+    role: 'host',
     playerId,
+    simulation,
     host,
     client,
     ready() { return client.readyForMatch(); },

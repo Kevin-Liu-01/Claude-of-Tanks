@@ -121,7 +121,7 @@ export function createPlayMenu({
     <div class="eyebrow">Choose operation</div><h2>Play Claude of Tanks</h2>
     <p class="lead">One vehicle roster. Four direct ways to deploy.</p>
     <div class="modes">
-      <button class="mode" data-mode="solo" type="button"><i>Immediate</i><b>Solo battle</b><span>Launch the current vehicle against a full bot roster.</span></button>
+      <button class="mode" data-mode="solo" type="button"><i>Immediate</i><b>Solo vs bots</b><span>Run the same authoritative combat locally against a full bot roster.</span></button>
       <button class="mode" data-mode="private" type="button"><i>Room code</i><b>Private lobby</b><span>Create or join a direct WebRTC match with team switching.</span></button>
       <button class="mode" data-mode="lan" type="button"><i>Local network</i><b>LAN lobby</b><span>Use the same lobby over Wi-Fi with minimal route latency.</span></button>
       <button class="mode" data-mode="ranked" type="button"><i>Dedicated</i><b>Ranked</b><span>Server-authoritative queue and rating. Service endpoint required.</span></button>

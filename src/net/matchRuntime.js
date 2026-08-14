@@ -169,6 +169,13 @@ export class AuthoritativeMatchRuntime {
   #receive(peer, raw) {
     try {
       const message = validateEnvelope(raw);
+      // A malformed or unexpectedly reordered pre-handshake packet must not
+      // advance the reliable sequence watermark past HELLO. This lets the
+      // legitimate handshake recover instead of poisoning the session.
+      if (!peer.welcomed && message.type !== MESSAGE_TYPES.HELLO &&
+          message.type !== MESSAGE_TYPES.LEAVE) {
+        throw new ProtocolError('hello_required', 'hello must precede match traffic');
+      }
       if (peer.lastRecvSeq != null && !isSequenceNewer(message.seq, peer.lastRecvSeq)) {
         return;
       }

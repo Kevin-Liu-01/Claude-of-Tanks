@@ -1,11 +1,8 @@
 // src/ui/tankThumbs.js — stable garage tank portraits.
 //
 // The old implementation rebuilt every portrait in an offscreen WebGL
-// renderer after the garage opened. GLB-backed tanks were captured before
-// their asynchronous model swap completed, so some cards were replaced with
-// the procedural three-box stand-in. It also created a WebGL context per
-// vehicle, adding avoidable garage stalls and making the result GPU/driver
-// dependent.
+// renderer after the garage opened. It created a WebGL context per vehicle,
+// adding avoidable garage stalls and making the result GPU/driver dependent.
 //
 // The icon generator already renders the final, fully loaded vehicle models
 // into transparent PNGs in public/icons/. Use those deterministic assets in
@@ -115,8 +112,8 @@ export function ensureTankThumbs(_specs, _opts = {}) {
 // TOP-DOWN MASK RIG (damage panel r9) — real per-tank plan-view layers.
 //
 // The damage panel needs orthographic top-down masks of the vehicle THE
-// PLAYER ACTUALLY FIELDS (sourced GLB locally, procedural fallback on public
-// builds), split into a HULL layer and a TURRET+GUN layer so the panel can
+// PLAYER ACTUALLY FIELDS (the first-party procedural build), split into a
+// HULL layer and a TURRET+GUN layer so the panel can
 // rotate them independently (hull with true heading, turret with hull+turret
 // bearing). Baked icons can't do that — they are one fused nose-up image —
 // so this rig builds the vehicle offscreen via the real tankFactory and
@@ -136,9 +133,8 @@ export function ensureTankThumbs(_specs, _opts = {}) {
 //    center. Turret pass: hull hidden, turret+gun at neutral yaw/pitch,
 //    frustum centered on the TURRET PIVOT so rotating the canvas about its
 //    center IS rotating the turret about its ring.
-//  - Sourced-GLB swaps can land asynchronously: the rig re-renders when the
-//    subtree's mesh signature changes (polled briefly), then disposes the
-//    build. Masks are cached per specId (small LRU).
+//  - Procedural geometry is final at construction time. The rig renders once,
+//    disposes the temporary build, and caches masks per specId (small LRU).
 // ---------------------------------------------------------------------------
 
 let maskEngineCtx = null; // main.js hands over its engineCtx once at boot
@@ -294,25 +290,32 @@ function renderMaskEntry(visual, spec) {
 /**
  * Per-tank top-down layer masks for the damage panel. Returns the cached
  * entry, or null while building/unavailable ('failed' stays null forever —
- * the caller keeps its vector fallback). `onReady` fires when the entry
- * first becomes available AND again if a late sourced-GLB swap re-renders it.
+ * the caller keeps its vector fallback). `onReady` fires when the entry first
+ * becomes available.
  * @param {TankSpec} spec full tank spec (dims + armor needed)
  * @param {?Function} onReady
+ * @param {?object} sourceVisual optional already-built first-party visual
  * @returns {?object}
  */
-export function getTopDownMasks(spec, onReady) {
+export function getTopDownMasks(spec, onReady, sourceVisual = null) {
   if (!spec || typeof document === 'undefined') return null;
   const id = spec.id;
   const got = maskCache.get(id);
   if (got && got !== 'pending' && got !== 'failed') return got;
   if (got === 'failed' || got === 'pending' || !maskEngineCtx) return null;
   maskCache.set(id, 'pending');
+  // Clone the already-built battle/garage hierarchy while it is known alive.
+  // Object3D cloning shares immutable geometry/material resources but avoids
+  // constructing and texture-baking a duplicate tank during a transition.
+  const clonedRoot = sourceVisual?.root?.clone?.(true) || null;
   // defer off the caller's frame (setTank runs on the boot path)
   setTimeout(() => {
     let visual = null;
     let entry = null;
     try {
-      visual = createTank(id, maskEngineCtx, { camoSeed: 4000, quality: 'high' });
+      visual = clonedRoot
+        ? { root: clonedRoot, dispose() {} }
+        : createTank(id, maskEngineCtx, { camoSeed: 4000, quality: 'high' });
       entry = renderMaskEntry(visual, spec);
     } catch (e) {
       console.warn(`[tankThumbs] top-down mask build failed for ${id}:`, e.message);

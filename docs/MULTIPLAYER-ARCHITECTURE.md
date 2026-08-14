@@ -1,214 +1,154 @@
 # Multiplayer architecture
 
-Status: playable foundation implemented. Private/LAN room codes, team switching,
-ready/start policy, WebRTC channel handoff, a shared five-second load barrier,
-browser-hosted authority, a dedicated WebSocket authority service, viewer-
-filtered snapshots, and browser presentation are implemented and tested.
-All eight battlefields now share captured authored collision, destructible,
-foliage concealment, and loadout rules between rendered hosts and dedicated
-Node authority. Empty private-room slots are filled by seeded authority-owned
-bots using shared AI and an all-map traversability planner. Ranked now has
-server-owned anonymous identities, widening Elo queues, balanced teams,
-dedicated match tickets, persistent result settlement, a leaderboard, and
-automatic reconnect UI. Campaign migration, consumables, spectators, external
-account binding, and network impairment/soak gates remain before rated release.
+Status: implemented and playable. Solo bots, LAN, private room codes, and
+ranked matches now enter the same renderer-free authoritative simulation.
+Rendering, audio, input devices, and UI remain client concerns; movement,
+armor, ballistics, damage, modules, spotting, collision, bots, consumables,
+destruction, timers, scores, and match outcome belong to authority.
 
 ## Product contract
 
-Claude of Tanks has one match implementation with four ways to enter it:
-
 | Mode | Authority | Transport | Ranking |
 |---|---|---|---|
-| Campaign / bots | local browser host | loopback | campaign leaderboard only |
-| LAN | one trusted browser host | WebRTC data channels | unranked |
-| Private code | one trusted browser host initially | WebRTC + TURN fallback | unranked |
-| Public / ranked | dedicated server | WebSocket | rated PvP |
+| Solo vs bots | local browser host | in-process loopback protocol | local battle record |
+| LAN | one trusted browser host | direct WebRTC | unranked |
+| Private code | one trusted browser host | WebRTC, with configured TURN fallback | unranked |
+| Ranked | dedicated Node service | authenticated WebSocket | server-owned Elo |
 
-Local play must use the same host/client protocol as network play. Rendering,
-audio, input devices, and UI are client concerns; armor, ballistics, damage,
-spotting, collision, match outcome, and bot decisions are authority concerns.
+The mode changes who hosts and how packets travel. It does not select a second
+combat implementation. Player/entity identity is independent from vehicle
+identity, so two commanders may field the same tank without aliasing state.
 
-## Current-shape review
+## Runtime boundaries
 
-| Area | Current shape | Risk | Better interface | Proof |
-|---|---|---|---|---|
-| Match loop | Multiplayer uses `AuthoritativeMatchRuntime`; legacy solo still steps in `main.js` | Solo parity can drift until migration finishes | Move campaign onto `createLocalMatchSession` | Exact tick/catch-up tests pass |
-| Identity | Network entity ID is independent from vehicle spec ID | Legacy solo still keys its fixed roster differently | Preserve match identity through presentation | Browser pair used two M1A1s |
-| Simulation | `authoritativeMatch.js` is Node-runnable and renderer-free | Bots, consumables, ram damage, and HE splash still need parity | Pure shared world/combat plans | Dedicated real-WebSocket and eight-map collision tests pass |
-| Visibility | Authority omits hidden opponents before serialization | Player camo-season choice still needs a wire field | Shared terrain, hard cover, foliage, optics, radio, and equipment rules | Hidden-coordinate and shared spotting tests pass |
-| Session modes | Private/LAN WebRTC and ranked WebSocket share one runtime | Campaign entry still uses legacy direct state | Route campaign through loopback | Two-browser ranked and private pair tests pass |
-| Progression | Local match history replaces fake wallet/XP; dedicated service owns Elo | Anonymous bearer identity still needs external account binding for competitive production | Bind ladder identity to deployment auth | Elo idempotency, persistence, and leaderboard tests pass |
-| AI routes | Authority runs the existing controller over seeded traversable openings | Live traffic can still create temporary jams | Add live occupancy costs and recovery telemetry | Seed variation plus 90-second stuck-time gates pass on all eight maps |
+- `src/sim/authoritativeMatch.js` is the renderer-free battle authority.
+- `src/net/matchRuntime.js` owns fixed ticks, input ordering, readiness,
+  viewer-specific snapshots, catch-up limits, and connection state.
+- `src/net/browserBattleBridge.js` turns authority snapshots and events into
+  first-party Three.js visuals without resolving gameplay locally.
+- `src/net/localSession.js` routes solo bot play through a real loopback
+  host/client pair.
+- `src/net/privateRoomSession.js` and `privateMatchHandoff.js` own WebRTC lobby
+  composition, seeded bot fill, and channel handoff.
+- `server/dedicatedMatchServer.js` and `dedicatedMatchRegistry.js` own ranked
+  WebSocket authority and reconnectable match lifetimes.
 
-Deletion test: removing `src/net/` would force tick scheduling, input ordering,
-room policy, visibility filtering, backpressure, interpolation, and clock sync
-into every session-mode caller. The module therefore concentrates real policy
-rather than adding a pass-through layer.
+All eight maps use the same authored collision, terrain, foliage concealment,
+destructible indices, and loadout rules in browser-hosted and dedicated play.
+Dedicated Node matches inflate collision from the generated
+`server/world-collision-manifests.json`; browser hosts use the live `World`
+collision facade.
 
-## Implemented interfaces
+## Protocol and authority
 
-### Protocol
+Protocol v2 uses validated envelopes with a finite message vocabulary,
+sequence/acknowledgement fields, and simulation ticks. Clients submit controls
+only: throttle, steering, brake, aim yaw/pitch, shell choice, fire, and explicit
+consumable action bits. They cannot submit a trusted position, hit, damage,
+spotting result, reload completion, or match clock.
 
-`src/net/protocol.js` owns the version, envelope, sequence arithmetic, room
-codes, and untrusted player-input validation. Aim is transmitted as yaw/pitch;
-clients never submit a trusted world hit point or damage result.
+Authority runs at 60 Hz and publishes viewer-specific state at 20 Hz. Hidden
+enemy coordinates are removed before serialization. Shells and combat events
+have their own reveal rules. Inputs that are stale, implausibly far ahead,
+malformed, or sent before the handshake are rejected without poisoning the
+connection sequence.
 
-Every message contains:
+## Delivery model
 
-```js
-{
-  v,       // protocol version
-  type,    // finite message vocabulary
-  seq,     // sender ordering
-  ack,     // latest received envelope
-  tick,    // sender simulation tick
-  payload,
-}
+LAN/private WebRTC uses two data channels:
+
+- `cot-match-v1`: ordered and reliable for handshake, lobby, input, combat
+  events, ping, errors, and leave control.
+- `cot-state-v1`: unordered with zero retransmits for replaceable snapshots.
+
+Ranked WebSocket remains ordered, but coalesces pending snapshot state so stale
+frames cannot consume the reliable control budget. All transports enforce
+payload and buffered-byte limits and fail visibly on sustained backpressure.
+
+Snapshots use a compact binary codec, explicit snapshot acknowledgements,
+per-peer deltas, and periodic keyframes. A missing delta baseline waits for a
+recovering keyframe rather than inventing state.
+
+## Client smoothness
+
+Remote tanks use Hermite position interpolation, shortest-path angle blending,
+an adaptive 100–220 ms jitter buffer, and at most 250 ms of bounded
+extrapolation. The local tank predicts the exact shared 60 Hz movement code,
+terrain contact, map bounds, and nearby static collision, then replays
+unacknowledged inputs after each authority snapshot. Normal corrections ease
+over 90 ms; death or errors above 7 m snap immediately.
+
+Press `F3` to view live RTT, jitter, estimated snapshot loss, interpolation
+delay, extrapolation, transport queues, and reconciliation error. Deterministic
+browser impairment is available for QA:
+
+```text
+?netSim=1&netLatency=120&netJitter=40&netLoss=10&netdiag=1
 ```
 
-### Lobby
+The latency value is one-way. Reliable control remains ordered; only
+replaceable state is eligible for snapshot loss unless `netInputLoss` is set.
 
-`src/net/lobby.js` is the only owner of room capacity, teams, readiness,
-vehicle/loadout selection, team size, host permissions, map selection, room
-locking, and the start gate. Empty 1v1/3v3/5v5/7v7 slots are filled from a
-seeded same-era garage roster after the canonical lobby starts. Signaling
-transports submit commands; they do not reimplement policy. Player identity is
-independent from vehicle identity.
+These are the useful ideas adopted from CarverJS: separate control/state
+delivery, local prediction and reconciliation, an adaptive jitter buffer,
+and observable impairment testing. CarverJS itself is not a dependency; the
+game keeps its own deterministic tank simulation and authority contracts.
 
-### World authority
+## Lobbies, spectators, bots, and ranking
 
-Browser-hosted rooms hand authority the exact active `World` collision facade.
-Dedicated servers inflate match-local state from
-`server/world-collision-manifests.json`, generated from those same eight live
-maps by `tools/capture-world-collision-manifests.mjs`. The manifest is server-
-only and never enters a browser chunk. Hull pushout, shell/LOS raycasts,
-foliage concealment, and replicated destructible indices therefore match the
-rendered battlefield.
+`src/net/lobby.js` is the only owner of room capacity, team switching,
+spectators, readiness, vehicle/loadout selection, team size, map choice,
+locking, host permissions, and start policy. Empty 1v1/3v3/5v5/7v7 slots are
+filled deterministically by authority-owned bots. Bots use seeded diverse
+openings, traversability planning on every map, local obstacle recovery, and
+the same spotting limits as human players.
 
-### Transport
+Ranked uses service-scoped anonymous bearer identities, widening Elo search
+bands, server team balancing, one-time match tickets, persistent idempotent
+settlement, rank names, profiles, and a leaderboard. Fake credits and XP are
+absent because every vehicle is available and there is no tech tree. The
+garage stores only an honest local battle record; competitive rating remains
+server-owned.
 
-Adapters implement this small interface:
+Spectators receive both teams through an explicitly marked observer peer and
+cannot submit vehicle controls. Ranked authority never migrates to a player.
+Version 1 private/LAN rooms close cleanly if their browser host leaves; host
+migration is intentionally not claimed.
 
-```js
-{
-  send(message) -> boolean,   // false means bounded backpressure rejected it
-  onMessage(listener) -> unsubscribe,
-  onClose(listener) -> unsubscribe,
-  close(reason),
-  readyState,
-}
+## Deployment and trust
+
+- Production signaling and match services require TLS and explicit origin
+  allowlists.
+- Public WebRTC must force TURN relay so strangers do not learn one another's
+  IP addresses. LAN may use direct host candidates.
+- TURN credentials and persistent Elo storage paths are deployment secrets.
+- A public competitive deployment should bind the existing service identity
+  seam to real account/auth infrastructure. Client-owned solo results must
+  never be accepted as ranked outcomes.
+
+The signaling server only relays room membership, SDP, and ICE. Gameplay never
+travels through it.
+
+## Verification
+
+```bash
+npm test
+npm run test:net:browser
+npm run build
+npm run build:private
 ```
 
-Loopback, WebRTC data-channel, and WebSocket adapters are implemented with the
-same ordering, close, payload, and backpressure behavior.
+The browser soak starts a real signaling server, Vite, and two Chromium pages.
+It proves room codes, host-only policy, team/spectator switching, same-vehicle
+identity separation, dual-channel WebRTC handoff, authoritative movement,
+adaptive delivery under configurable latency/jitter/loss, and clean peer
+departure. Node tests separately cover hidden-coordinate filtering, combat
+authority, consumables, ram/HE damage, bots, real WebSockets, reconnect,
+matchmaking, Elo persistence, abuse bounds, and all-map collision.
 
-### Ranked service
+Useful service commands:
 
-`server/rankedMatchmaker.js` owns bounded 1v1/3v3/5v5/7v7 queues. Search bands
-widen with wait time, server ratings balance teams, and queue tokens are
-exchanged for dedicated match tickets without exposing identity secrets.
-`server/ratingStore.js` owns anonymous bearer identities, team Elo, rank names,
-idempotent settlement, and optional atomic persistence through
-`COT_RATING_FILE`. `src/net/rankedServiceClient.js` keeps those credentials
-service-scoped in browser storage. Ranked WebSockets automatically reconnect
-with the original ticket while the reconnect banner stays fail-visible.
-
-### Authority
-
-`AuthoritativeMatchRuntime` owns fixed-step accumulation, latest-input
-selection, stale/future input rejection, per-viewer snapshot cadence, and
-catch-up limits. The simulation adapter is intentionally only:
-
-```js
-{
-  step({ dt, tick, timeMs, inputs }),
-  snapshot({ tick, serverTimeMs, viewerId, ackInputSeq }),
-  onPeerJoin?({ peerId, metadata }),
-  onPeerReady?({ peerId, metadata }),
-  onMatchReady?({ tick, timeMs }),
-  onPeerLeave?({ peerId, reason }),
-}
+```bash
+npm run server:signal  # default ws://127.0.0.1:7777/signal
+npm run server:match   # default http://127.0.0.1:8790 + ws://.../match
 ```
-
-The interface does not expose transport, rendering, lobby, or UI state.
-
-### Client
-
-`MatchClientRuntime` uploads validated input, estimates server clock offset,
-buffers snapshots, and exposes interpolated render state. Position uses
-Hermite interpolation with velocity; angles take the shortest wrapped path;
-packet gaps extrapolate for at most 250 ms.
-
-## Authority and visibility invariants
-
-- Only authority advances armor, ballistics, damage, spotting, physics, bots,
-  destruction, timers, scores, and match result.
-- Clients submit controls, never results.
-- Hidden enemy entities are omitted before serialization. Proximity-only
-  interest management is insufficient because spotting is gameplay.
-- Events and shells are filtered independently from tank visibility so tracer,
-  muzzle-flash, and impact reveal rules remain intentional.
-- Ranked games never migrate authority to a player.
-- LAN/private host migration, if added, is allowed only for unranked rooms and
-  requires an acknowledged keyframe plus lobby epoch change.
-- Public WebRTC must force TURN relay or use the dedicated server so player IP
-  addresses are not disclosed to strangers.
-
-## Performance invariants
-
-- Simulation: 60 Hz fixed tick.
-- Snapshots: 20 Hz, viewer-specific.
-- Render: variable, normally 60 Hz, from an interpolation buffer.
-- At most four catch-up ticks after a client stall; excess wall time is
-  discarded and measured.
-- Input messages are latest-state, sequenced, and bounded. Fire/action edges
-  will use explicit action bits so a dropped intermediate frame cannot erase
-  a shot.
-- Network modules stay out of the initial bundle until a network mode is
-  selected. Loopback authority is small enough for campaign boot.
-- Snapshot payloads are quantized before encoding. The binary codec and delta
-  keyframes are the next wire optimization; gameplay code never depends on a
-  codec.
-- Transport queues are bounded. Congestion disconnects fail-visible rather
-  than accumulating seconds of stale controls.
-
-## Required migration sequence
-
-1. [done for network] Separate runtime entity IDs from vehicle spec IDs.
-2. [partial] Extract a headless battle simulation adapter from `state.js`; visuals are
-   created and synchronized by a client-side presentation module. Movement,
-   armor, ballistics, damage, equipment, spotting, bots, environment collision,
-   and destruction are authoritative; consumables/ram/HE parity remain.
-3. Run campaign/bot battles through `createLocalMatchSession` and prove visual
-   and gameplay parity.
-4. [done] Add WebRTC data-channel and signaling adapters for LAN/private codes.
-5. [done] Add a dedicated Node authority using the same simulation adapter,
-   exact eight-map collision manifests, and a WebSocket transport for public/ranked rooms.
-6. [partial] Replace the garage flow with Solo, Private, LAN, Ranked, Campaign,
-   and Training; Ranked is live, while dedicated Campaign/Training surfaces
-   still need the same simplified flow.
-7. Remove wallet/XP surfaces and migrate old saves non-destructively to match
-   history, campaign medals, settings, and cosmetic/loadout choices.
-8. [partial] Replace doctrine-only opening routes with a shared seeded
-   traversability graph and route diversity constraints; add live occupancy
-   costs and recovery telemetry.
-9. Run constrained CPU/network/browser gates and soak matches before enabling
-   rated play.
-
-## Release proof
-
-The feature is not complete until all of the following are demonstrated:
-
-- Two players can choose the same tank and spawn as distinct entities.
-- Campaign, LAN, private, and ranked use the same armor/damage/match rules.
-- Team switches and ready/start permissions work under reconnect and leave.
-- A client cannot create damage, teleport, fire through reload, inspect an
-  unspotted enemy, or advance the match clock.
-- 150 ms RTT, 3% loss, and 20 ms jitter remain steerable without visible
-  correction spikes; 300 ms/10% loss degrades clearly without divergence.
-- A 30-minute LAN game survives mobile sleep/wake or exits cleanly.
-- Public rooms do not expose peer IP addresses.
-- Bot openings vary by seed, never require hidden exact target positions, and
-  meet bounded stuck-time/recovery gates on all eight maps.
-- Low-tier hardware maintains the existing visual-quality target with no new
-  garage-transition or first-shot stalls.

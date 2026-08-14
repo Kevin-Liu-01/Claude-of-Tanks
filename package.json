@@ -30,7 +30,8 @@
     "tank:surface-studio": "vite --host 127.0.0.1 --open /tools/tank-surface-studio.html",
     "shots": "node tools/screenshot.mjs",
     "perf:dev": "node tools/dev-perf-probe.mjs",
-    "perf:cold": "node tools/cold-load-probe.mjs"
+    "perf:cold": "node tools/cold-load-probe.mjs",
+    "test:net:browser": "node tools/multiplayer-browser-soak.mjs"
   },
   "keywords": [],
   "author": "",

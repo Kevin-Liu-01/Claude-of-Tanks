@@ -32,6 +32,7 @@ const seconds = Math.max(4, Number(option('seconds', '12')) || 12);
 const garageWaitMs = Math.max(0, (Number(option('garage-wait', '0')) || 0) * 1000);
 const openTimeoutMs = Math.max(10000, (Number(option('open-timeout', '180')) || 180) * 1000);
 const output = resolve(option('out', `.qa-dev/dev-perf-${profileName}.json`));
+const cpuProfileEnabled = !['0', 'false', 'off'].includes(String(option('cpu-profile', 'true')).toLowerCase());
 const profiles = {
   normal: { cpuRate: 1, cores: null, memoryGB: null, softwareGPU: false },
   constrained: { cpuRate: 2, cores: null, memoryGB: null, softwareGPU: false },
@@ -49,6 +50,7 @@ const memoryOverride = Number(option('memory', ''));
 if (coresOverride > 0) selected.cores = coresOverride;
 if (memoryOverride > 0) selected.memoryGB = memoryOverride;
 selected.throttleStage = option('throttle-stage', profileName === 'normal' ? 'boot' : 'live');
+selected.cpuProfile = cpuProfileEnabled;
 if (!['boot', 'countdown', 'live'].includes(selected.throttleStage)) {
   throw new Error('--throttle-stage must be boot, countdown, or live');
 }
@@ -170,13 +172,15 @@ try {
     rate: selected.throttleStage === 'boot' ? selected.cpuRate : 1,
   });
   if (selected.cores) await cdpTry('Emulation.setHardwareConcurrencyOverride', { hardwareConcurrency: selected.cores });
-  await cdp.send('Profiler.enable');
-  await cdp.send('Profiler.setSamplingInterval', { interval: 500 });
+  if (cpuProfileEnabled) {
+    await cdp.send('Profiler.enable');
+    await cdp.send('Profiler.setSamplingInterval', { interval: 500 });
+  }
   // A 0.5 ms sampler materially amplifies the real desktop path's cold model
   // and shader compilation. Keep the lossless in-page recorder on for that window,
   // then start CPU sampling at battle-open so the diagnostic does not create
   // the multi-minute CDP stall it is trying to measure.
-  if (entryMode === 'debug') {
+  if (cpuProfileEnabled && entryMode === 'debug') {
     await cdp.send('Profiler.start');
     profilerRunning = true;
   }
@@ -212,7 +216,7 @@ try {
   await page.evaluate((entry) => {
     setTimeout(async () => {
       window.__DEV_TRACE.mark('battle:start-request', { tank: 'm1a2', entry });
-      if (entry === 'real') await window.__DEBUG.beginBattleEntry('m1a2', 'verdant');
+      if (entry === 'real') await window.__DEBUG.beginSoloBattle({ specId: 'm1a2', mapId: 'verdant' });
       else window.__DEBUG.startBattle('m1a2');
       window.__DEV_TRACE.mark('battle:start-returned', { entry });
     }, 0);
@@ -228,7 +232,7 @@ try {
     'window.__DEBUG.game.phase === "battle" && window.__DEBUG.game.preBattleS <= 0',
     { timeout: openTimeoutMs, polling: 50 });
   disarmWatchdog();
-  if (!profilerRunning) {
+  if (cpuProfileEnabled && !profilerRunning) {
     await cdp.send('Profiler.start');
     profilerRunning = true;
   }
@@ -261,8 +265,11 @@ try {
     await cdpTry('Emulation.setCPUThrottlingRate', { rate: selected.cpuRate });
   }
   await new Promise((resolveWait) => setTimeout(resolveWait, Math.round(seconds * 1000 + 350)));
-  const { profile } = await cdp.send('Profiler.stop');
-  profilerRunning = false;
+  let profile = { nodes: [] };
+  if (profilerRunning) {
+    ({ profile } = await cdp.send('Profiler.stop'));
+    profilerRunning = false;
+  }
   if (selected.cpuRate !== 1 && selected.throttleStage !== 'boot') {
     await cdpTry('Emulation.setCPUThrottlingRate', { rate: 1 });
   }
@@ -274,6 +281,7 @@ try {
   naturalTrace.stats = naturalStats;
   const loading = await page.evaluate(() => ({
     battle: window.__BATTLE_LOAD || null,
+    network: window.__NETWORK_LOAD || null,
     combatWarm: window.__COMBAT_WARM || null,
     glb: window.__GLB_STATS || null,
     worldPrefetch: window.__WORLD_PREFETCH || null,

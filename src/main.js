@@ -362,7 +362,11 @@ function beginWorldBuild(mapId, onProgress = null, background = false) {
           try { fn(f, label); } catch (_) { /* advisory */ }
         }
         await (rec.foreground ? yieldForeground() : yieldBackground());
-      }, { fineSlices: false })
+      // Drain the same deterministic generators at their finest checkpoints.
+      // The frame-budget yielder above still coalesces cheap work on fast
+      // machines, while slow CPUs no longer turn a coarse row/family batch
+      // into a multi-hundred-millisecond loading-screen stall.
+      }, { fineSlices: true })
       .then((next) => {
         finishBuildStage();
         next.group.visible = false;
@@ -531,11 +535,11 @@ let pedestalVisual = null;
 // First visit opens on the M1A1 Abrams; later visits resume the last playable
 // tank the user selected. Invalid/stale ids safely fall back to the M1A1.
 let selectedSpecId = loadLastSpecId();
-let pedestalPollToken = 0; // content_breadth r1: cancels stale GLB polls
+let pedestalPollToken = 0; // cancels superseded asynchronous hero builds
 // switch-desync r1: convergence bookkeeping. A switch is "pending" from the
 // moment its call bumps pedestalPollToken until any reveal path records it
 // (pedestalShownToken catches up). The watchdog below only intervenes when
-// nothing is pending — a live GLB poll is never fought.
+// no build or compile is pending.
 let pedestalShownToken = 0;
 let pedestalPendingSince = 0;
 const PEDESTAL_PENDING_GRACE_MS = 8000; // > the poll's 6 s reveal deadline
@@ -624,8 +628,8 @@ function parkVisual(vis) {
   if (!vis || vis === pedestalVisual) return; // re-selected while retiring
   // switch-desync r1: NEVER strip the last visible cover off the stage while
   // the incoming hero is still hidden (chained rapid switches: B's superseded
-  // poll used to park A — the only visible hero — while C was still awaiting
-  // its GLB, leaving a bare pedestal for the whole parse). The deferred park
+  // build used to park A — the only visible hero — while C was still compiling,
+  // leaving a bare pedestal for the whole build). The deferred park
   // is completed by the stale-cover sweep in recordSwitch the moment the
   // current hero actually shows.
   if (onStage(vis) && !onStage(pedestalVisual)) {
@@ -665,7 +669,7 @@ function touchCache(specId, vis) {
   //   - `vis` (the entry this call inserts) is never evictable;
   //   - a visual standing VISIBLY on the stage (the outgoing hero covering
   //     while the incoming one loads) is never evictable — evicting it left
-  //     a bare pedestal for the whole incoming GLB parse. The cache may sit
+  //     a bare pedestal for the whole incoming compile. The cache may sit
   //     one entry over budget for that window; the next touch settles it.
   const evict = (v) => {
     pedTrace('evict', { id: v.specId, state: pedVisState(v) });
@@ -833,7 +837,7 @@ function setPedestalTank(specId, force = false) {
   // instant no-op when the cache is warm), then build against the warm
   // cache. The outgoing hero keeps covering the stage through the async gap
   // (pedestalSwitchPending holds the watchdog off for 8 s) and the token
-  // discipline below treats a supersede exactly like the GLB poll does.
+  // discipline below discards superseded asynchronous work.
   const buildToken = pedestalPollToken;
   return prebakeSharedTextures(getSpec(specId), engineCtx.anisotropy ?? 4, 'ai', () => nextFrame())
     .catch(() => { /* buildPedestalVisual can still acquire synchronously */ })
@@ -870,12 +874,12 @@ function setPedestalTank(specId, force = false) {
     });
 }
 // switch-desync r1: CONVERGENCE WATCHDOG — the last line of defense. Whatever
-// interleaving the async seams produce (superseded polls, late GLB swaps,
+// interleaving the async seams produce (superseded builds, late compiles,
 // evictions, dead timers), the invariant is: in the garage, the SELECTED id
 // ends up visible on the pedestal. The watchdog re-runs the pipeline whenever
 // the stage disagrees with the selection AND no switch is legitimately in
-// flight (pedestalSwitchPending covers the whole 6 s GLB reveal window, so a
-// live poll is never fought). Cheap: two field reads per tick when healthy.
+// flight (pedestalSwitchPending covers the full build window). Cheap: two
+// field reads per tick when healthy.
 setInterval(() => {
   if (!bootComplete || game.phase !== 'garage') return;
   const want = selectedSpecId;
@@ -1082,7 +1086,7 @@ function ensureBattleStaged() {
   battleStaged = true;
   setupBattle(game, selectedSpecId, world, { deferVisuals: true });
   buildShellCards(game.player.spec);
-  damagePanel.setTank(game.player.spec);
+  damagePanel.setTank(game.player.spec, game.player.visual);
   damagePanel.setEquipment(game.player.equip); // EQUIPMENT SYSTEM: loadout readout
   for (const ent of game.allTanks) {
     if (ent.visual && ent.visual.setGroundSampler) ent.visual.setGroundSampler(groundSampler);
@@ -1135,10 +1139,12 @@ const garageMaps = [
   }),
   { id: 'random', name: 'Random', sub: 'Any battlefield', thumb: '' },
 ];
-let pendingSoloStart = null;
+let pendingSoloSelection = null;
 let playMenuPromise = null;
 async function openPlayMenu(request) {
-  pendingSoloStart = request && request.startSolo;
+  pendingSoloSelection = request
+    ? { specId: request.specId, mapId: request.mapId }
+    : null;
   if (!playMenuPromise) {
     playMenuPromise = import('./ui/playMenu.js').then(({ createPlayMenu }) => createPlayMenu({
       maps: garageMaps,
@@ -1149,9 +1155,14 @@ async function openPlayMenu(request) {
       }),
       isVehicleAllowed: (specId) => ALL_TANK_IDS.includes(specId),
       onSolo: () => {
-        const start = pendingSoloStart;
-        pendingSoloStart = null;
-        if (start) start();
+        const selection = pendingSoloSelection || {
+          specId: garage.getSelected(),
+          mapId: garage.getSelectedMap(),
+        };
+        pendingSoloSelection = null;
+        beginSoloBattle(selection).catch((error) => {
+          console.error('[solo] entry failed', error);
+        });
       },
       onNetworkStart: beginNetworkBattle,
       onRankedStart: beginRankedBattle,
@@ -1983,8 +1994,8 @@ async function startBattleLoading(specId, mapId = null) {
   // 4. battle_countdown r1: no more counting down ON the loading screen —
   // the world opens as soon as it is ready, and the visible WoT-style
   // 5 s countdown runs IN the battle (openBattle resolves the sim hold armed
-  // at roster spawn). The hold also absorbs the first-seconds jank (straggler
-  // GLB swaps, first-use compiles) behind a frame where nothing can move yet.
+  // at roster spawn). The hold also absorbs first-use compiles behind a frame
+  // where nothing can move yet.
   bltStage('holdCountdown');
   blt.totalMs = Math.round(performance.now() - shownAt);
   if (typeof window !== 'undefined') window.__BATTLE_LOAD = blt;
@@ -2131,6 +2142,15 @@ async function presentNetworkBattle({
   modeLabel,
   connectMatch,
 } = {}) {
+  const loadStartedAt = performance.now();
+  const loadTrace = { mode: modeLabel, map: mapId, stages: {} };
+  let loadMarkAt = loadStartedAt;
+  const markLoadStage = (name) => {
+    const now = performance.now();
+    loadTrace.stages[name] = Math.round(now - loadMarkAt);
+    loadMarkAt = now;
+  };
+  if (typeof window !== 'undefined') window.__NETWORK_LOAD = loadTrace;
   const spectator = own.team === 'spectator';
   const displayTeam = spectator ? 'alpha' : own.team;
   networkSpectator = spectator;
@@ -2151,12 +2171,15 @@ async function presentNetworkBattle({
     import('./net/browserBattleBridge.js'),
     import('./ui/networkStatus.js'),
   ]);
+  markLoadStage('modules');
   networkStatus = createNetworkStatus();
   battleLoad.progress(0.08, 'Loading battlefield');
   await ensureWorld(mapId, (fraction, label) => {
     battleLoad.progress(0.08 + fraction * 0.48, label);
   });
+  markLoadStage('world');
   networkMatch = await connectMatch();
+  markLoadStage('connect');
   const cfg = getMapConfig(mapId);
   battleLoad.show({
     mapName: cfg.name || mapId,
@@ -2179,6 +2202,7 @@ async function presentNetworkBattle({
   await networkBridge.prepareRoster(matchPlayers, (fraction, specId) => {
     battleLoad.progress(0.56 + fraction * 0.27, `Painting ${getSpec(specId)?.name || specId}`);
   });
+  markLoadStage('roster');
   battleLoad.progress(0.84, 'Synchronizing authority');
   const initial = await waitForNetworkSnapshot(
     (snapshot) => spectator
@@ -2187,10 +2211,17 @@ async function presentNetworkBattle({
     12000,
     'Timed out waiting for the first authoritative snapshot.',
   );
+  markLoadStage('initialSnapshot');
   networkBridge.apply(initial, 1 / 60);
   for (const entity of networkBridge.entities.values()) {
     if (entity.visual?.setGroundSampler) entity.visual.setGroundSampler(groundSampler);
   }
+  // A user can deploy immediately after garage readiness, before the idle
+  // warmer has finished. Prime only the opening-frame effect families here;
+  // the exhaustive wreck/rare-effect pass keeps streaming during garage idle.
+  battleLoad.progress(0.86, 'Priming combat effects');
+  await warmNetworkOpeningEffects();
+  markLoadStage('combatWarm');
   hud.warmShotCards([...networkBridge.entities.values()].map((entity) => entity.specId));
   battleLoad.progress(0.88, 'Compiling combat shaders');
   await nextFrame();
@@ -2198,6 +2229,7 @@ async function presentNetworkBattle({
     if (typeof renderer.compileAsync === 'function') await renderer.compileAsync(scene, camera);
     else renderer.compile(scene, camera);
   } catch (_) { /* warm only */ }
+  markLoadStage('compile');
   networkMatch.ready();
   battleLoad.progress(0.96, 'Waiting for every commander');
   await waitForNetworkSnapshot(
@@ -2205,6 +2237,7 @@ async function presentNetworkBattle({
     20000,
     'Another player did not finish loading in time.',
   );
+  markLoadStage('readyBarrier');
 
   shotMode = false;
   fx.setFrozen(false);
@@ -2223,7 +2256,7 @@ async function presentNetworkBattle({
   fx.resetAll();
   if (!spectator) {
     buildShellCards(game.player.spec);
-    damagePanel.setTank(game.player.spec);
+    damagePanel.setTank(game.player.spec, game.player.visual);
     damagePanel.setEquipment(game.player.equip || {});
   }
   garage.hide();
@@ -2250,8 +2283,82 @@ async function presentNetworkBattle({
   showroom.stop();
   battleLoad.progress(1, 'Ready');
   await battleLoad.hide();
+  markLoadStage('reveal');
+  loadTrace.totalMs = Math.round(performance.now() - loadStartedAt);
   audio.resume();
   audio.ambientOn(true);
+}
+
+function randomMatchSeed() {
+  try {
+    const word = new Uint32Array(1);
+    globalThis.crypto.getRandomValues(word);
+    return word[0];
+  } catch (_) {
+    return Date.now() >>> 0;
+  }
+}
+
+/** Run bot play through the same authority, protocol, and presentation as multiplayer. */
+async function beginSoloBattle({ specId, mapId } = {}) {
+  if (battleEntryPending || networkMatch) return;
+  battleEntryPending = true;
+  const viewerId = 'local-player';
+  try {
+    const selected = ALL_TANK_IDS.includes(specId) ? specId : garage.getSelected();
+    const resolvedMap = resolveMapId(mapId || garage.getSelectedMap());
+    const own = {
+      id: viewerId,
+      name: 'Commander',
+      specId: selected,
+      team: 'alpha',
+      equipment: loadSelectedEquipment(selected, getSpec(selected)),
+      ready: true,
+      connected: true,
+      isHost: true,
+      bot: false,
+    };
+    const lobbyState = {
+      roomCode: 'LOCAL1',
+      mode: 'campaign',
+      phase: 'starting',
+      hostId: viewerId,
+      mapId: resolvedMap,
+      teamSize: 7,
+      matchSeed: randomMatchSeed(),
+      players: [own],
+    };
+    const [{ buildPrivateMatchPlayers }, { createAuthoritativeMatch },
+      { createLocalMatchSession }] = await Promise.all([
+      import('./net/privateMatchHandoff.js'),
+      import('./sim/authoritativeMatch.js'),
+      import('./net/localSession.js'),
+    ]);
+    const matchPlayers = buildPrivateMatchPlayers(lobbyState);
+    await presentNetworkBattle({
+      viewerId,
+      own,
+      mapId: resolvedMap,
+      matchPlayers,
+      modeLabel: 'Solo Operation · Authoritative Bots',
+      connectMatch: () => {
+        const simulation = createAuthoritativeMatch({
+          players: matchPlayers,
+          mapId: resolvedMap,
+          seed: lobbyState.matchSeed,
+          worldCollision: world,
+        });
+        return createLocalMatchSession({ playerId: viewerId, simulation });
+      },
+    });
+  } catch (error) {
+    closeNetworkMatch('solo_entry_failed');
+    await battleLoad.hide();
+    enterGarage();
+    throw error;
+  } finally {
+    battleEntryPending = false;
+  }
 }
 
 /** Load the rendered battlefield, then join browser-hosted private/LAN authority. */
@@ -2410,7 +2517,7 @@ function startBattle(specId, mapId = null, opts = {}) {
   // otherwise carry into the rematch.
   fx.resetAll();
   buildShellCards(game.player.spec);
-  damagePanel.setTank(game.player.spec);
+  damagePanel.setTank(game.player.spec, game.player.visual);
   damagePanel.setEquipment(game.player.equip); // EQUIPMENT SYSTEM: loadout readout
   garage.hide();
   endOverlay.style.display = 'none';
@@ -3428,7 +3535,7 @@ function ensureShotWorld(mapId) {
   setupBattle(game, 'm1a2', world);
   battleStaged = true;
   buildShellCards(game.player.spec);
-  damagePanel.setTank(game.player.spec);
+  damagePanel.setTank(game.player.spec, game.player.visual);
   damagePanel.setEquipment(game.player.equip); // EQUIPMENT SYSTEM: loadout readout
   for (const ent of game.allTanks) {
     if (ent.visual && ent.visual.setGroundSampler) ent.visual.setGroundSampler(groundSampler);
@@ -4030,7 +4137,7 @@ window.__SHOTS = {
 // cards from the SELECTED SPEC here. ensureBattleStaged re-primes from the
 // real player entity when a battle actually stages.
 buildShellCards(getSpec(selectedSpecId));
-damagePanel.setTank(getSpec(selectedSpecId));
+damagePanel.setTank(getSpec(selectedSpecId), pedestalVisual);
 garage.show(selectedSpecId);
 garageCameraPose(); // fallback pose until the orbit measures the hero
 showroom.start();
@@ -4073,6 +4180,38 @@ await bootStage('post', async () => {
 //   ~70 of them inside the opening frames.
 let combatPipelineWarmed = false;
 let _warmGen = null; // in-flight chunked warm — the sync wrapper drains the remainder
+let networkOpeningEffectsWarmed = false;
+
+/**
+ * Warm the effects an immediate deploy can hit in its opening seconds without
+ * charging the whole exhaustive garage-idle pipeline to the transition.
+ */
+async function warmNetworkOpeningEffects() {
+  if (networkOpeningEffectsWarmed) return;
+  networkOpeningEffectsWarmed = true;
+  const wp = new THREE.Vector3(-460, 0, -460);
+  const wn = new THREE.Vector3(0, 1, 0);
+  const wd = new THREE.Vector3(0, 0, 1);
+  try {
+    if (fx.warmTextures) fx.warmTextures();
+    fx.warmOpeningEffects(wp, wd, wn, 120);
+    await nextFrame();
+    try { fx.update(0.016, game.shells, camera); } catch (_) { /* warm only */ }
+    post.prepareSoftParticles();
+    const mask = camera.layers.mask;
+    camera.layers.enable(fx.group.userData.softParticles?.layer ?? 30);
+    try {
+      renderer.compile(fx.group, camera, scene);
+      warmRender();
+    } finally {
+      camera.layers.mask = mask;
+    }
+  } catch (error) {
+    console.warn('[warm] opening effects failed (continuing):', error);
+  } finally {
+    fx.resetAll();
+  }
+}
 // perf-r5 (owner: "first garage entry laggy"): the warm used to run as ONE
 // idle callback (~1-3 s: volley + every wreck dance + all compiles) the
 // moment the staged pump finished — exactly when the player starts touching
@@ -4137,8 +4276,8 @@ function* warmCombatPipelineSteps() {
   // compiles synchronously on its first kill (the visible pause right before
   // a destruction played). Install the DISARMED hook on every battle tank
   // now; the scene compile below then builds all the '|burn-r6' variants
-  // behind the loading screen. (GLB tanks committing later get the same
-  // treatment inside the swap pipeline's compile phase.)
+  // behind the loading screen. Late-created first-party visuals receive the
+  // same hook at construction.
   for (const e of game.tanks) {
     if (e.visual && e.visual.prewarmBurn) e.visual.prewarmBurn();
   }
@@ -4299,8 +4438,7 @@ function* warmCombatPipelineSteps() {
  * state (the clones' programs enter the cache and outlive the clones) and
  * once live — using the object-form compile, which traverses regardless of
  * visibility (unspotted enemies included). Called from warmCombatPipeline
- * and again after the GLB swap drain (swapped hierarchies carry their own
- * materials and addon nodes).
+ * after the complete first-party roster is staged.
  */
 // MOBILE-QA r1 (tools/tmp-fightprof evidence, docs/MOBILE-QA.md ledger):
 // renderer.compile builds FORWARD programs only — shadow-DEPTH variants link
@@ -4401,9 +4539,9 @@ function* linkerBreathingSlices(maxSlices) {
   } catch (_) { /* best-effort — the render below still resolves links */ }
 }
 
-// perf-r5: the countdown re-warm ran this SYNCHRONOUSLY while late GLB swaps
-// and wreck bakes piled in — a 10 s frame during the countdown on a slow
-// network. Chunked wrapper for live windows; the sync wrapper stays for the
+// perf-r5: the countdown re-warm ran this SYNCHRONOUSLY while late roster and
+// wreck bakes piled in — a 10 s frame during the countdown on a slow device.
+// Chunked wrapper for live windows; the sync wrapper stays for the
 // loading screen and capture paths.
 async function compileHiddenVariantsChunked() {
   const g = compileHiddenVariantsSteps();
@@ -4420,7 +4558,7 @@ function* compileHiddenVariantsSteps() {
   // was wrong), so non-active LOD levels and node-hidden addons never
   // compiled here and linked mid-battle on their first distance flip (the
   // last per-fight >100 ms task; owner-binding evidence in MOBILE-QA.md
-  // r4/r5: LOD>Mesh owners on GLB tanks + kit decor). Force-visible window
+  // r4/r5: hidden LOD meshes + kit decor). Force-visible window
   // around each compile, then restore.
   const _cv = [];
   const compileAll = (root) => {
@@ -4970,8 +5108,8 @@ function debugSlayEnemies() {
     ent.combat.fire.burning = false;
     if (!ent._destroyedAnnounced) {
       ent._destroyedAnnounced = true;
-      // battle-ai r7 defers bot visuals behind the swap queue — a bot whose
-      // GLB hasn't landed yet has visual=null; the combat kill still counts.
+      // battle-ai r7 can defer bot visuals behind the roster build queue; a
+      // bot with visual=null still counts as a combat kill.
       if (ent.visual && ent.visual.setDestroyed) ent.visual.setDestroyed();
       bus.emit('tank:destroyed', {
         id: ent.id,
@@ -5014,11 +5152,13 @@ window.__DEBUG = {
   fastForward: debugFastForward,
   slayEnemies: debugSlayEnemies,
   startBattle,
-  // perf-smooth r1: the PLAYER battle-entry path (loading screen -> chunked
-  // world build -> roster bake -> GLB swap drain -> countdown), so probes can
+  // perf-smooth r1: the legacy player battle-entry path (loading screen ->
+  // chunked world build -> roster bake -> countdown), so probes can
   // measure the real pre-battle timeline instead of only the synchronous
   // startBattle shortcut. Resolves when the battle opens.
   beginBattleEntry,
+  // User-facing solo entry: loopback protocol + shared headless authority.
+  beginSoloBattle,
   enterGarage,
   // SPOTTING WIRING: live SpottingSystem for headless concealment checks
   get spotting() { return game.spotting; },

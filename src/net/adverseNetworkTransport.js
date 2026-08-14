@@ -2,6 +2,11 @@ function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
+// Browsers quantize timers to whole milliseconds (and may clamp them further
+// in background tabs). A sub-millisecond due-time delta is therefore not an
+// ordering guarantee even when the logical queue is reliable.
+const RELIABLE_TIMER_GAP_MS = 1;
+
 function numberParam(query, name, fallback = 0) {
   if (!query.has(name)) return fallback;
   const value = Number(query.get(name));
@@ -80,10 +85,10 @@ export function createAdverseNetworkTransport(transport, {
     const now = clock();
     let due = now + delayFor();
     if (direction === 'send') {
-      due = Math.max(due, reliableSendDueMs + 0.01);
+      due = Math.max(due, reliableSendDueMs + RELIABLE_TIMER_GAP_MS);
       reliableSendDueMs = due;
     } else {
-      due = Math.max(due, reliableReceiveDueMs + 0.01);
+      due = Math.max(due, reliableReceiveDueMs + RELIABLE_TIMER_GAP_MS);
       reliableReceiveDueMs = due;
     }
     return Math.max(0, due - now);

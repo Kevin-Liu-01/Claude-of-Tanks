@@ -260,6 +260,7 @@ export function createDamagePanel() {
 
   // --- r9 mask layers ---------------------------------------------------------
   let masks = null;       // tankThumbs.getTopDownMasks entry
+  let maskSourceVisual = null;
   let tints = null;       // per-entry tinted copies {hullBody,hullRim,turretRim,turretBody:{state:canvas}}
   let scaleS = 8;         // panel px per meter (fit at mask arrival)
   let anchors = null;     // [{name, x, z, turretLocal}] hull/turret meters, relaxed
@@ -290,10 +291,10 @@ export function createDamagePanel() {
   function requestMasks() {
     if (!spec) return;
     const entry = getTopDownMasks(spec, () => {
-      // ready (or re-rendered after a late GLB swap) — re-adopt if still us
+      // The first-party mask is ready — re-adopt if this is still the tank.
       const e2 = getTopDownMasks(spec, null);
       if (e2 && spec) { adoptMasks(e2); lastDrawSig = null; draw(); }
-    });
+    }, maskSourceVisual);
     if (entry) adoptMasks(entry);
   }
 
@@ -644,9 +645,11 @@ export function createDamagePanel() {
      * top-down mask build for the ACTUAL vehicle (tankThumbs rig); the
      * vector stand-in covers the first frames.
      * @param {TankSpec} s
+     * @param {?object} sourceVisual already-built visual to clone for the mask
      */
-    setTank(s) {
+    setTank(s, sourceVisual = null) {
       spec = s;
+      maskSourceVisual = sourceVisual;
       combat = healthyCombat();
       lastHpText = '';
       lastFireOn = null;

@@ -27,6 +27,30 @@ function createScheduler() {
   };
 }
 
+function createQuantizedReverseTieScheduler() {
+  let now = 0;
+  let nextId = 1;
+  const jobs = new Map();
+  return {
+    clock: () => now,
+    schedule(callback, delayMs) {
+      const id = nextId++;
+      jobs.set(id, { callback, at: Math.floor(now + delayMs) });
+      return id;
+    },
+    cancel(id) { jobs.delete(id); },
+    run() {
+      while (jobs.size) {
+        const [id, job] = [...jobs.entries()].sort((a, b) =>
+          a[1].at - b[1].at || b[0] - a[0])[0];
+        jobs.delete(id);
+        now = job.at;
+        job.callback();
+      }
+    },
+  };
+}
+
 function fakeTransport() {
   const listeners = new Set();
   const sent = [];
@@ -70,6 +94,26 @@ assert.equal(base.sent.length, 0, 'simulator delays outbound traffic');
 scheduler.run();
 assert.deepEqual(base.sent.filter((entry) => entry.type === 'input').map((entry) => entry.seq), [1, 2],
   'reliable control remains ordered under opposing jitter');
+
+const quantizedScheduler = createQuantizedReverseTieScheduler();
+const quantizedBase = fakeTransport();
+const quantized = createAdverseNetworkTransport(quantizedBase, {
+  latencyMs: 100,
+  jitterMs: 50,
+  rng: (() => {
+    const values = [1, 0];
+    let index = 0;
+    return () => values[index++ % values.length];
+  })(),
+  clock: quantizedScheduler.clock,
+  schedule: quantizedScheduler.schedule,
+  cancel: quantizedScheduler.cancel,
+});
+quantized.send({ type: 'hello', seq: 0 });
+quantized.send({ type: 'ready', seq: 1 });
+quantizedScheduler.run();
+assert.deepEqual(quantizedBase.sent.map((entry) => entry.type), ['hello', 'ready'],
+  'reliable ordering survives whole-millisecond browser timer quantization');
 
 const received = [];
 simulated.onMessage((message) => received.push(message.tick));

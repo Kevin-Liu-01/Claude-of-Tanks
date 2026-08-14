@@ -24,7 +24,6 @@ import { uiIconSVG } from './uiIcons.js';
 import { compareCountryThenTierThenName } from './garageOrder.js';
 import { isGarageVisibleTankId } from '../game/matchmaking.js';
 import { tankTier, tierNumeral } from '../vehicles/tier.js';
-import { MODEL_SOURCE } from '../vehicles/specs.js';
 import { getPlayerRecord } from '../game/profile.js';
 import {
   viewRangeOf, baseCamoOf, equipViewMult, equipCamoBonus,
@@ -1792,8 +1791,8 @@ export function createGarage(opts) {
     card.className = 'cot-card';
     card.dataset.specId = s.id; // switch-desync r1: stable hook for tools/tests
     card.style.setProperty('--nation-flag', `url("${flagIconUrl(s.nation)}")`);
-    // Stable pre-rendered 3/4 portrait. These are generated only after the
-    // final model has loaded, so async GLB stand-ins can never replace a card.
+    // Stable pre-rendered 3/4 portrait generated from the final first-party
+    // procedural build; no live renderer or model swap is needed here.
     card.innerHTML =
       `<span class="era">${s.era === 'ww2' ? 'WWII' : 'MODERN'}</span>` +
       `<span class="flag">${flagIconHTML(s.nation, 20)}<i>${NATION_LABEL[s.nation] || s.nation}</i></span>` +
@@ -1893,10 +1892,6 @@ export function createGarage(opts) {
         : `<div class="eqslot empty" data-slot="${i}" title="Mount equipment">` +
           `<span class="plus">+</span><span class="sl">Empty</span></div>`;
     }
-    // Historical source/reference credits can remain on a spec after its
-    // external model has been retired. Only describe a vehicle as a community
-    // model when that model is actually the live geometry source.
-    const usesExternalModel = spec.community && MODEL_SOURCE[spec.id]?.source === 'glb';
     statsEl.innerHTML =
       `<h3></h3><div class="sub">${flagIconHTML(spec.nation, 20)}<span>${spec.nation} &middot; ${spec.class} &middot; ${spec.era === 'ww2' ? 'WWII' : 'MODERN'}</span></div>` +
       statBar('Hit points', `${spec.hp}`, statFrac(grp, 'hp', spec.hp)) +
@@ -1921,20 +1916,12 @@ export function createGarage(opts) {
       `<div class="armorline"><span>Turret front</span><b>${turMm != null ? `${Math.round(turMm)} mm` : '&mdash;'}</b></div>` +
       `<div class="armorline"><span>Gun</span><b>${spec.gun.caliberMm} mm</b></div>` +
       `<div class="armorline"><span>Depression</span><b>&minus;${spec.gunDepressionDeg}&deg; / +${spec.gunElevationDeg}&deg;</b></div>` +
-      (usesExternalModel
-        ? `<div class="sep"></div><div class="armorline"><span>Community model</span><b class="cr"></b></div>`
-        : '') +
       // §5.31b PRINT VIEWER: view-only notice replaces the loadout slots —
       // equipment cannot be mounted on (or saved for) a print pseudo-spec.
       `<div class="sep"></div>` +
       `<div class="eqhead"><span>Equipment</span><i>${eqIds.length}/${EQUIP_SLOTS}</i></div>` +
       `<div class="eqrow">${slotBoxes}</div>`;
     statsEl.querySelector('h3').textContent = spec.name;
-    if (usesExternalModel) {
-      const cr = statsEl.querySelector('.cr');
-      cr.textContent = `${spec.community.author} · ${spec.community.license}`;
-      cr.title = spec.community.source;
-    }
   }
 
   function applySelection(specId) {
