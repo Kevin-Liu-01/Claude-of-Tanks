@@ -38,7 +38,7 @@ shoe.inner.computeBoundingBox();
 const padBox=shoe.pad.boundingBox;
 const innerBox=shoe.inner.boundingBox;
 assert.ok(padBox.max.y-padBox.min.y>=0.10,'outer shoe needs real pad/grouser thickness');
-assert.ok(innerBox.min.y<padBox.min.y-0.24,'inner chain and guide horn must form a distinct second layer');
+assert.ok(innerBox.min.y<padBox.min.y-0.24,'recessed connector and guide geometry must retain real shoe depth');
 assert.ok(innerBox.max.x>=0.30&&innerBox.min.x<=-0.30,'transverse pin caps must reach both outer faces');
 shoe.pad.dispose();
 shoe.inner.dispose();
@@ -107,6 +107,8 @@ shoe.inner.dispose();
   // visual tell that the tracks were a texture strip rather than a chain.
   const pads = P.hullG.getObjectByName('gearTrackPads');
   assert.ok(pads?.isInstancedMesh, 'procedural gear exposes linked track pads');
+  assert.equal(P.hullG.getObjectByName('gearTrackInnerLinks'), undefined,
+    'connector, pin and guide detail is integrated into the one smart shoe layer');
   const matrix = new THREE.Matrix4();
   const p = new THREE.Vector3(), q = new THREE.Quaternion(), s = new THREE.Vector3();
   const e = new THREE.Euler();
@@ -227,4 +229,4 @@ shoe.inner.dispose();
     && armorB.trackShapes[0].x1 === 1.2, 'hand-override hook wins over the derived hulls');
 }
 
-console.log('track-geometry: loop winding, loaded-base profile, two-layer track shoes, and track-hitbox derivation verified');
+console.log('track-geometry: loop winding, loaded-base profile, integrated detailed shoes, and track-hitbox derivation verified');

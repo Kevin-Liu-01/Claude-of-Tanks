@@ -868,13 +868,11 @@ function sprocketGeo(r, w, seg, teeth = 12, toothOuter = null, linkM = 0.165, ri
 // ---------------------------------------------------------------------------
 function trackShoeGeometries(trackW, pitch, pinCapOuter = null,
   radialScale = 1, widthScale = 1) {
-  // Two physically distinct layers, as seen on real live tracks:
-  //   1. the broad outer road-contact shoe with twin grousers;
-  //   2. a recessed inner chain/connector layer carrying the pins and guide
-  //      horn between the road wheels.
-  // Keeping these as separate meshes/materials makes the vertical step read
-  // in side view; merging everything into one dark 5 cm slab was why the old
-  // ground run looked like a flat rubber ribbon.
+  // Two authored geometry components form one physical shoe:
+  //   1. the broad outer road-contact pad with twin grousers;
+  //   2. the recessed web/connectors/pins and guide horn between the wheels.
+  // buildRunningGear merges these components before instancing. They retain
+  // their real vertical relief without exposing a second overlapping course.
   const pad = mergeAll([
     box(trackW * 0.97, 0.072, pitch * 0.72),
     xform(box(trackW * 0.90, 0.042, pitch * 0.13), 0, 0.052, pitch * 0.22),
@@ -918,10 +916,9 @@ function trackShoeGeometries(trackW, pitch, pinCapOuter = null,
   return { pad, inner };
 }
 
-// One-course alternative for profiles where the two exposed connector rails
-// and transverse pin caps read as a second parallel track. The recessed web
-// keeps the tread closed through end wraps and the center horn still guides
-// the wheel pair, but no separate rail/cap row is rendered.
+// Reduced one-course detail for profiles where exposed connector rails and
+// transverse pin caps read as a second parallel track. The recessed web keeps
+// the tread closed through end wraps and the center horn guides the wheel pair.
 function integratedTrackShoeDetail(trackW, pitch, radialScale = 1, widthScale = 1) {
   const detail = mergeAll([
     xform(box(trackW * 0.82, 0.050, pitch * 0.62), 0, -0.055, 0),
@@ -1269,15 +1266,21 @@ function buildRunningGear(P, cfg) {
   const shoe = trackShoeGeometries(trackW, lp, cfg.pinCapOuter ?? null,
     cfg.shoeRadialScale ?? 1, cfg.shoeWidthScale ?? 1);
   P.disposables.push(shoe.pad,shoe.inner);
-  // A profile can retain the connector web and guide horns without rendering
-  // exposed parallel rails/pin caps as a second differently coloured course.
-  // The merged geometry still follows the same terrain-conforming instance
-  // transforms as the outer tread, so it remains one smart track system.
-  const integratedDetail = cfg.integratedLinks
-    ? integratedTrackShoeDetail(trackW, lp, cfg.shoeRadialScale ?? 1, cfg.shoeWidthScale ?? 1)
-    : null;
-  const integratedShoe = integratedDetail ? mergeAll([shoe.pad, integratedDetail]) : null;
-  if (integratedDetail) P.disposables.push(integratedDetail, integratedShoe);
+  // Fleet law: every canonical running gear owns ONE terrain-conforming shoe
+  // instance layer. The normal path merges the complete recessed connector,
+  // pin and guide-horn geometry into the pad. `integratedLinks:true` selects a
+  // reduced web/horn component for profiles (currently Revolution) where the
+  // exposed rails themselves read as a second course. `innerLinks:false`
+  // keeps the intentionally pad-only profiles pad-only. None of these paths
+  // inspect, remove or reshape hull/armor/skirt geometry.
+  const integratedDetail = cfg.innerLinks === false
+    ? null
+    : (cfg.integratedLinks
+      ? integratedTrackShoeDetail(trackW, lp, cfg.shoeRadialScale ?? 1, cfg.shoeWidthScale ?? 1)
+      : shoe.inner);
+  const integratedShoe = integratedDetail ? mergeAll([shoe.pad, integratedDetail]) : shoe.pad;
+  if (integratedDetail && integratedDetail !== shoe.inner) P.disposables.push(integratedDetail);
+  if (integratedShoe !== shoe.pad) P.disposables.push(integratedShoe);
   // Fixed neutral iron tones prevent the garage key light from turning the
   // now-thicker faces into a tan/white necklace.  The inner chain is only a
   // notch lighter, enough to separate the two levels without looking new.
@@ -1288,41 +1291,19 @@ function buildRunningGear(P, cfg) {
   padMat.color=new THREE.Color(cfg.padHex ?? 0x171614);
   padMat.roughness=0.97;
   padMat.metalness=0.08;
-  // cfg.chainHex opt-in (merkava r12 order 2): the inner chain/guide-horn
-  // layer's fixed iron read 29.5L through the 3D arch windows where its ref
-  // keeps a >=52.9 gear-shade floor — per-tank chain tone, default
-  // byte-identical.
-  const innerMat=(mats.spareTrack || mats.dark).clone();
-  innerMat.color=new THREE.Color(cfg.chainHex ?? 0x27251f);
-  innerMat.roughness=0.96;
-  innerMat.metalness=0.09;
   // cfg.gearFloor opt-in (merkava r12 order 2): Material.clone() drops
-  // onBeforeCompile, so these pad/chain clones silently lost the family
-  // ambient floor and rendered ambient-black in skirt shade (13.8L vs the
-  // hooked band's 56L in the same pocket). Re-attach on request; default
-  // path byte-identical.
+  // onBeforeCompile, so the shoe clone silently lost the family ambient floor
+  // and rendered ambient-black in skirt shade. Re-attach on request.
   if (cfg.gearFloor) {
-    for (const gm of [padMat, innerMat]) {
-      gm.onBeforeCompile = vehicleAmbientFloorHook;
-      gm.customProgramCacheKey = () => 'veh-ambient-floor-v2';
-    }
+    padMat.onBeforeCompile = vehicleAmbientFloorHook;
+    padMat.customProgramCacheKey = () => 'veh-ambient-floor-v2';
   }
-  P.disposables.push(padMat,innerMat);
-  const padIM = new THREE.InstancedMesh(integratedShoe || shoe.pad,padMat,nLinks*2);
+  P.disposables.push(padMat);
+  const padIM = new THREE.InstancedMesh(integratedShoe,padMat,nLinks*2);
   padIM.name = 'gearTrackPads';
   const linkMeshes=[padIM];
-  // Some wide modern shoes expose the recessed connector layer as a second
-  // complete track when viewed obliquely from below. Profiles may suppress
-  // that redundant rendered layer while retaining the authoritative band,
-  // tread pads, end wheels and suspension. Default stays byte-identical.
-  if (cfg.innerLinks !== false && !cfg.integratedLinks) {
-    const innerIM = new THREE.InstancedMesh(shoe.inner,innerMat,nLinks*2);
-    innerIM.name = 'gearTrackInnerLinks';
-    linkMeshes.push(innerIM);
-  }
-  // PERF: both layers hug the casting track band; the band alone casts the
-  // continuous shadow. The extra layer costs one instanced draw per tank,
-  // not one draw per shoe.
+  // The casting band alone casts the continuous shadow; the one detailed
+  // instanced shoe follows its deformation and scroll state.
   for(const mesh of linkMeshes) {
     mesh.userData.runningGear = true;
     mesh.castShadow=false;

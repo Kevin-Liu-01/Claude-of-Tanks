@@ -7,6 +7,19 @@ import { createTank } from '/src/vehicles/tankFactory.js';
 
 const id = new URLSearchParams(location.search).get('id');
 
+// Duplicate-course repair is never bodywork repair. These names describe
+// load-bearing or protective vehicle geometry even when a bucket contains
+// the word "track" (for example hullTrackGuardL/R). Keep them out of the
+// duplicate candidate set so this read-only report can never be used as a
+// rationale for deleting armor, hull plates, skirts, mudguards or fenders.
+const PROTECTED_BODYWORK = /armor|armour|plate|skirt|mudguard|fender|sponson|guard/i;
+
+function isProtectedBodywork(object, name, trackBucket) {
+  return object.userData?.trackGuard === true
+    || PROTECTED_BODYWORK.test(name || '')
+    || PROTECTED_BODYWORK.test(trackBucket || '');
+}
+
 function worldBox(object) {
   if (object.isInstancedMesh && !object.boundingBox) object.computeBoundingBox();
   const box = new THREE.Box3().setFromObject(object, true);
@@ -96,6 +109,11 @@ try {
       name: object.name || '',
       runningGear: object.userData?.runningGear === true,
       trackBucket: object.userData?.trackBucket || null,
+      protectedBodywork: isProtectedBodywork(
+        object,
+        object.name || '',
+        object.userData?.trackBucket || null,
+      ),
       laneAbsX: laneAbsX(object),
       bounds,
     });
@@ -124,6 +142,7 @@ try {
 
   const staticCandidates = rows
     .filter((row) => !row.runningGear
+      && !row.protectedBodywork
       && (row.trackBucket || /track|tread|shoe/i.test(row.name))
       && row.bounds.size[2] >= 2.4)
     .map((row) => {
@@ -145,14 +164,27 @@ try {
 
   window.__TRACK_DUPLICATE_AUDIT = {
     id,
+    policy: {
+      mode: 'report-only',
+      removableClass: 'proven redundant running-gear course only',
+      protectedClasses: [
+        'armor', 'hull plate', 'side skirt', 'top skirt', 'mudguard',
+        'fender', 'sponson', 'track guard',
+      ],
+    },
     canonical: {
       bands: bands.length,
       treadPadLayers: pads.length,
       connectorLayers: inner.length,
     },
+    protectedBodywork: rows
+      .filter((row) => row.protectedBodywork)
+      .map((row) => row.name || row.trackBucket || '(unnamed)'),
     duplicatePairs,
     staticCandidates,
-    pass: duplicatePairs.length === 0 && staticCandidates.length === 0,
+    pass: inner.length === 0
+      && duplicatePairs.length === 0
+      && staticCandidates.length === 0,
   };
 } catch (error) {
   window.__TRACK_DUPLICATE_AUDIT = { id, error: String(error?.stack || error), pass: false };

@@ -97,9 +97,15 @@ never excuses missing it.
    rectangles are an order, everywhere, especially around guns.
 4. TRACK CONTAINMENT: tracks never clip through any static hull solid — at
    the bow, stern, straight runs, or swept end transitions. Tracks are the
-   two-layer shoe system (pads + inner chain/guide horns) riding real
-   wheels; no clipping, no floating bands, and no static silhouette fill
-   may duplicate or occupy the animated course.
+   one integrated smart-shoe layer (pad/grousers + recessed web,
+   connectors, pins and guide horns in the same animated instance) riding
+   real wheels; no clipping, no floating bands, separate connector mesh,
+   or static silhouette fill may duplicate or occupy the animated course.
+   `npm run tank:track:duplicates` is mandatory fleet protection. It is
+   report-only and may classify only a proven redundant running-gear course;
+   armor, hull plates, side/top skirts, mudguards, fenders, sponsons and
+   track guards are protected bodywork and may never be removed or reshaped
+   to satisfy a track audit.
    Mandatory check: `node tools/track-clip-audit.mjs --exact --strict
    --ids=<id>` — strict checks BOTH columns per zone plus the entire course
    sweep, reports `bandVox + shoeVox`, and requires every total to be zero.
@@ -607,9 +613,9 @@ mark carries them. Variant kits are REAL SYSTEMS: TUSK = ARAT ERA tiles
 base build (owner: sepv2/sepv3/tusk are "based off of our existing m1a1
 abrams with the extra armoring and ERA and urban survival kit").
 - STATIC-VS-MOVING-CHAIN (§B4, leopard shoe round): the wrap "inner
-  void" is fiction — the shoe inner-chain (connector rails radial
-  ~0.13-0.40 off wheel centers, guide horns, caps) SWEEPS it as tracks
-  scroll; static furniture inside a wrap clears the component
+  void" is fiction — the shoe's integrated connector/pin/guide geometry
+  (radial ~0.13-0.40 off wheel centers) SWEEPS it as tracks scroll; static
+  furniture inside a wrap clears the component
   deep-windows, not the band. Drum-face rim rings sized to the drum are
   the standing carrier class. PROJECTION-PRESERVING SPLIT: an inboard
   x-sliver (side mask x-invariant) + a thin outer-z plate (plan/front

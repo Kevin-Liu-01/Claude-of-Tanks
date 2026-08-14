@@ -8184,3 +8184,29 @@ gone while the detailed outer treads and complete armor envelope remain.
 **KEEP the complete Revolution hull, armor, skirts and smart suspension
 system. Future duplicate-course work may remove only a proven redundant
 running-gear layer; it may never subtract vehicle armor or body geometry.**
+
+## 5.229 FLEET SINGLE-SMART-SHOE STANDARDIZATION (2026-08-14, LIVE)
+
+All 105 first-party playables now use one terrain-conforming animated shoe
+instance layer per canonical running-gear build. The outer pad, grousers,
+recessed web, connector rails, pins and guide horn are merged into that one
+shoe before instancing; suspension deformation, scrolling, end wraps, road
+wheels, raised idler and final drive remain unchanged. Leopard 2 Revolution
+uses its narrower reduced web/horn component and a dark worn-steel shoe finish
+so the owner-selected `gearTrackPads` no longer read as body-camouflage olive.
+
+The read-only duplicate audit is now stricter: a separate connector/guide
+mesh is itself a fleet failure. It reports **105/105 integrated smart-shoe
+layers**, **0 overlapping smart courses** and **0 static full-length track
+proxies**. The audit explicitly classifies armor, hull plates, side/top
+skirts, mudguards, fenders, sponsons and track guards as protected bodywork;
+those classes are excluded from duplicate candidates and are never edited by
+the tool.
+
+Visual sampling across Revolution, 2A7V, Leclerc, Ariete, T-90M, T-72B3M and
+M1A2 confirms one coherent tread course with the complete accepted bodywork
+envelope intact. Unit tests, production build and the full 105-tank duplicate
+audit pass.
+
+**KEEP every complete armor/bodywork envelope. Future smart-track changes are
+track-only and must preserve the one integrated animated shoe contract.**

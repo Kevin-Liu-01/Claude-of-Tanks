@@ -6239,10 +6239,11 @@ function buildLeo2Revolution(P) {
     // this closes the rear wrap in plan without reintroducing a second rail.
     shoeWidthScale: 1.07,
     shoeOutboardOffset: 0.016,
-    // r9 B1 (critic driver 2 — band p5 6.8 vs ref 51.1, the merkava-class
-    // near-black read): pads/chain to the pt91m r27 olive-brown recipe +
-    // the gearFloor rehook (Material.clone drops the family ambient floor).
-    padHex: 0x343a29, chainHex: 0x2b3122, gearFloor: true,
+    // The owner-selected `gearTrackPads` are the authoritative animated
+    // shoes, not a duplicate course. Keep them and move their finish out of
+    // the body-camouflage olive family into worn dark track steel. Its
+    // recessed web/guide relief supplies the depth within the same shoe.
+    padHex: 0x24231f, gearFloor: true,
   });
 
   // ---- turret: ring pivot (0, 1.60, -0.35); local z = w + 0.35, y = w - 1.60

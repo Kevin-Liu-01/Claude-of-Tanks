@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 // Detect a second full-length rendered track course without changing vehicle
 // geometry. The canonical smart system is one terrain-conforming band per
-// side plus its animated tread-pad layer. Connector/guide detail is reported
-// separately; overlapping smart layers or a static track-like course fail.
+// side plus one animated tread-shoe layer containing its connector/guide
+// detail. A separate connector mesh, overlapping smart layer or static
+// track-like course fails. This tool is report-only and never edits geometry.
 
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
@@ -49,14 +50,15 @@ try {
 }
 
 console.log(`[track-duplicate] audited ${ids.length} first-party tanks`);
-console.log(`[track-duplicate] ${layered.length} retain one animated connector/guide-detail layer; `
-  + `${ids.length - layered.length} render tread pads directly on the smart band`);
+console.log(`[track-duplicate] ${ids.length - layered.length}/${ids.length} use one integrated `
+  + 'animated tread/connector shoe layer');
 if (failures.length) {
   console.error(`[track-duplicate] FAIL (${failures.length})`);
   for (const result of failures) {
     console.error(`  - ${result.id}: ${result.error || JSON.stringify({
       duplicatePairs: result.duplicatePairs,
       staticCandidates: result.staticCandidates,
+      separateConnectorLayers: result.canonical?.connectorLayers ?? 0,
     })}`);
   }
   process.exit(2);
