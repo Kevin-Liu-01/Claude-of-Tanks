@@ -1,4 +1,6 @@
 import { resolveMapId } from '../world/maps/index.js';
+import { ALL_TANK_IDS, getSpec } from '../vehicles/specs.js';
+import { isGarageVisibleTankId } from '../game/matchmaking.js';
 import { createAuthoritativeMatch } from '../sim/authoritativeMatch.js';
 import { createLoopbackTransportPair } from './loopbackTransport.js';
 import { AuthoritativeMatchRuntime, MatchClientRuntime } from './matchRuntime.js';
@@ -28,6 +30,52 @@ export function resolvePrivateMatchMap(lobbyState) {
   return resolveMapId(lobby.mapId, seededUnit(lobby.matchSeed));
 }
 
+/** Deterministically fill empty lobby slots with authority-owned bots. */
+export function buildPrivateMatchPlayers(lobbyState) {
+  const lobby = validateStartingLobby(lobbyState);
+  const humans = lobby.players
+    .filter((player) => player.team !== 'spectator')
+    .map((player) => ({ ...player, bot: false }));
+  const teamSize = Math.max(1, Math.min(7, Number(lobby.teamSize) || 1));
+  const counts = {
+    alpha: humans.filter((player) => player.team === 'alpha').length,
+    bravo: humans.filter((player) => player.team === 'bravo').length,
+  };
+  if (counts.alpha > teamSize || counts.bravo > teamSize) {
+    throw new Error('human roster exceeds the selected team size');
+  }
+  const referenceEra = getSpec(humans[0]?.specId)?.era;
+  let pool = ALL_TANK_IDS.filter((id) => isGarageVisibleTankId(id) &&
+    (!referenceEra || getSpec(id)?.era === referenceEra));
+  if (!pool.length) pool = ALL_TANK_IDS.filter(isGarageVisibleTankId);
+  const random = seededUnit(lobby.matchSeed ^ 0x5b07f11);
+  pool = pool.slice();
+  for (let index = pool.length - 1; index > 0; index--) {
+    const target = Math.floor(random() * (index + 1));
+    [pool[index], pool[target]] = [pool[target], pool[index]];
+  }
+  const players = humans.slice();
+  let poolIndex = 0;
+  for (const team of ['alpha', 'bravo']) {
+    for (let index = counts[team]; index < teamSize; index++) {
+      const specId = pool[poolIndex++ % pool.length];
+      players.push({
+        id: `bot-${team}-${index}-${(lobby.matchSeed >>> 0).toString(36)}`,
+        name: `Bot ${team === 'alpha' ? 'A' : 'B'}${index + 1}`,
+        specId,
+        team,
+        equipment: null,
+        bot: true,
+        difficulty: 'normal',
+        ready: true,
+        connected: true,
+        isHost: false,
+      });
+    }
+  }
+  return players;
+}
+
 /**
  * Switch a browser-hosted room from lobby messages to authoritative match
  * messages without replacing its established WebRTC channels.
@@ -45,14 +93,7 @@ export function beginPrivateHostMatch({
   }
   const hostId = String(session.roomInfo.peerId);
   const mapId = resolvePrivateMatchMap(lobby);
-  const players = lobby.players
-    .filter((player) => player.team !== 'spectator')
-    .map((player) => ({
-      id: player.id,
-      specId: player.specId,
-      team: player.team,
-      equipment: player.equipment,
-    }));
+  const players = buildPrivateMatchPlayers(lobby);
   const simulation = simulationFactory({
     players,
     mapId,

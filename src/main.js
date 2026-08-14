@@ -2063,12 +2063,14 @@ async function beginNetworkBattle({ role, session, lobbyState } = {}) {
     const [{
       beginPrivateHostMatch,
       beginPrivateClientMatch,
+      buildPrivateMatchPlayers,
       resolvePrivateMatchMap,
     }, { createBrowserBattleBridge }] = await Promise.all([
       import('./net/privateMatchHandoff.js'),
       import('./net/browserBattleBridge.js'),
     ]);
     const mapId = resolvePrivateMatchMap(lobbyState);
+    const matchPlayers = buildPrivateMatchPlayers(lobbyState);
     battleLoad.progress(0.08, 'Loading battlefield');
     await ensureWorld(mapId, (fraction, label) => {
       battleLoad.progress(0.08 + fraction * 0.48, label);
@@ -2088,8 +2090,9 @@ async function beginNetworkBattle({ role, session, lobbyState } = {}) {
       thumb: MAP_THUMBS[mapId] || '',
       biome: mapId,
       mode: lobbyState.mode === 'lan' ? 'LAN Battle · Direct Wi-Fi' : 'Private Battle · Room Code',
-      allies: lobbyRosterRows(lobbyState, own.team, viewerId),
-      enemies: lobbyRosterRows(lobbyState, own.team === 'alpha' ? 'bravo' : 'alpha', viewerId),
+      allies: lobbyRosterRows({ players: matchPlayers }, own.team, viewerId),
+      enemies: lobbyRosterRows({ players: matchPlayers },
+        own.team === 'alpha' ? 'bravo' : 'alpha', viewerId),
     });
     networkBridge = createBrowserBattleBridge({
       engineCtx,
@@ -2098,7 +2101,7 @@ async function beginNetworkBattle({ role, session, lobbyState } = {}) {
       viewerId,
       worldCollision: world,
     });
-    await networkBridge.prepareRoster(lobbyState.players, (fraction, specId) => {
+    await networkBridge.prepareRoster(matchPlayers, (fraction, specId) => {
       battleLoad.progress(0.56 + fraction * 0.27, `Painting ${getSpec(specId)?.name || specId}`);
     });
     battleLoad.progress(0.84, 'Synchronizing authority');

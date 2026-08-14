@@ -157,6 +157,12 @@ assert.equal(lobby.locked, true);
 const lobbyWire = serializeLobby(lobby);
 assert.equal(Array.isArray(lobbyWire.players), true);
 assert.equal(Object.hasOwn(lobbyWire, 'players') && lobbyWire.players.length, 2);
+const botLobby = createLobby({
+  roomCode: 'BOT234', hostId: 'solo', hostName: 'Solo', hostSpecId: 'm1a2', teamSize: 3,
+});
+applyLobbyCommand(botLobby, 'solo', { type: 'set_ready', ready: true });
+applyLobbyCommand(botLobby, 'solo', { type: 'start', matchSeed: 77 });
+assert.equal(serializeLobby(botLobby).teamSize, 3, 'one human may start a bot-filled match');
 
 const migrateLobby = createLobby({ roomCode: 'XYZ789', hostId: 'z-host', hostName: 'Host' });
 addLobbyPlayer(migrateLobby, { id: 'a-next', name: 'Next' });

@@ -123,6 +123,7 @@ export function createPlayMenu({
         <button class="action alt" data-action="copy" type="button">Copy code</button></div>
       <div class="players"></div><div class="controls">
         <select data-control="team"><option value="alpha">Team Alpha</option><option value="bravo">Team Bravo</option><option value="spectator" disabled>Spectator (coming soon)</option></select>
+        <select data-control="size"><option value="1">1 vs 1</option><option value="3">3 vs 3</option><option value="5">5 vs 5</option><option value="7">7 vs 7</option></select>
         <select data-control="map"></select>
         <button class="action alt" data-action="ready" type="button">Ready</button>
         <button class="action" data-action="start" type="button">Start match</button>
@@ -137,6 +138,7 @@ export function createPlayMenu({
   const signalInput = root.querySelector('[data-field="signal"]');
   const codeInput = root.querySelector('[data-field="code"]');
   const teamSelect = root.querySelector('[data-control="team"]');
+  const sizeSelect = root.querySelector('[data-control="size"]');
   const mapSelect = root.querySelector('[data-control="map"]');
   const playersEl = root.querySelector('.players');
   const codeEl = root.querySelector('.code');
@@ -198,15 +200,18 @@ export function createPlayMenu({
     lobbyEl.classList.add('show');
     codeEl.textContent = next.roomCode;
     mapSelect.value = next.mapId;
+    sizeSelect.value = String(next.teamSize || 1);
     const me = next.players.find((player) => player.id === ownId());
     if (me) {
       teamSelect.value = me.team;
       readyBtn.textContent = me.ready ? 'Not ready' : 'Ready';
     }
     mapSelect.disabled = role !== 'host';
+    sizeSelect.disabled = role !== 'host';
     startBtn.style.display = role === 'host' ? '' : 'none';
+    const activePlayers = next.players.filter((player) => player.team !== 'spectator');
     startBtn.disabled = role !== 'host' || next.phase !== 'waiting' ||
-      next.players.filter((player) => player.team !== 'spectator').length < 2 ||
+      activePlayers.length < 1 ||
       next.players.some((player) => player.team !== 'spectator' && (!player.ready || !player.specId));
     playersEl.textContent = '';
     for (const player of next.players) {
@@ -229,9 +234,10 @@ export function createPlayMenu({
       row.append(host, playerName, vehicle, team, ready);
       playersEl.appendChild(row);
     }
-    note.textContent = mode === 'lan'
+    const fillNote = ` Bots fill empty slots to ${next.teamSize || 1} per team.`;
+    note.textContent = (mode === 'lan'
       ? 'LAN uses direct WebRTC paths. Every device must reach the signaling address over the same Wi-Fi.'
-      : 'Gameplay travels directly between peers; signaling only exchanges connection metadata.';
+      : 'Gameplay travels directly between peers; signaling only exchanges connection metadata.') + fillNote;
     if (next.phase === 'starting' && role === 'client' && !handedOff) {
       handedOff = true;
       hide(false);
@@ -328,6 +334,9 @@ export function createPlayMenu({
     catch (_) { setStatus('Copy the code shown above.'); }
   });
   teamSelect.addEventListener('change', () => command({ type: 'set_team', team: teamSelect.value }));
+  sizeSelect.addEventListener('change', () => command({
+    type: 'set_team_size', teamSize: Number(sizeSelect.value),
+  }));
   mapSelect.addEventListener('change', () => command({ type: 'set_map', mapId: mapSelect.value }));
   readyBtn.addEventListener('click', () => {
     const me = state && state.players.find((player) => player.id === ownId());

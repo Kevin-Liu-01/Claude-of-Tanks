@@ -31,6 +31,8 @@ import { createSpottingSystem } from './spotting.js';
 import { captureWorldSnapshot } from '../net/snapshot.js';
 import { pushHullFromObstacle } from '../world/collision.js';
 import { applyEquipmentToCombat, defaultLoadoutFor } from '../game/equipment.js';
+import { botFriendlyFireRisk, createAI, roleOf } from '../game/ai.js';
+import { createBotNavigationGrid, planBotRoute } from './botRoutePlanner.js';
 
 const BATTLE_LIMIT_S = 15 * 60;
 const FIRE_TICK_S = 0.5;
@@ -286,6 +288,7 @@ export function createAuthoritativeMatch({
     const input = makeInput();
     input.aimPoint.copy(state.aimPoint);
     const combat = createCombatState(spec);
+    const bot = !!record.bot;
     const equipment = applyEquipmentToCombat(
       combat,
       Array.isArray(record.equipment) ? record.equipment : defaultLoadoutFor(spec),
@@ -300,6 +303,8 @@ export function createAuthoritativeMatch({
       combat,
       equip: equipment,
       input,
+      bot,
+      isPlayer: !bot,
       connected: true,
       kills: 0,
       damage: 0,
@@ -330,6 +335,47 @@ export function createAuthoritativeMatch({
     rng: mulberry32(seed + 31000),
     teams: [TEAM_ALPHA, TEAM_BRAVO],
   });
+  const botNavigation = entities.some((entity) => entity.bot)
+    ? createBotNavigationGrid({
+      heightField,
+      queryObstacles: worldCollision?.queryObstacles || null,
+      getObstacles: () => staticObstacles,
+    })
+    : null;
+
+  for (let index = 0; index < entities.length; index++) {
+    const entity = entities[index];
+    if (!entity.bot) continue;
+    const opponents = entities.filter((entry) => entry.team !== entity.team);
+    const allies = entities.filter((entry) => entry !== entity && entry.team === entity.team);
+    const botRng = mulberry32(seed + 41000 + index * 997);
+    entity.aiCtl = createAI(entity, {
+      difficulty: players.find((record) => String(record.id) === entity.id)?.difficulty || 'normal',
+      rng: botRng,
+      deps: {
+        heightField,
+        raycast: spottingRaycast,
+        getEnemies: () => opponents,
+        getAllies: () => allies,
+        getObstacles: () => staticObstacles,
+        queryObstacles: worldCollision?.queryObstacles || null,
+        spotting: {
+          isSpotted: (targetId, receiver) =>
+            spotting.isSpotted(targetId, entity.team, receiver || entity),
+        },
+      },
+    });
+    const goal = opponents[Math.floor(botRng() * Math.max(1, opponents.length))]?.state.pos;
+    if (goal) {
+      entity.aiCtl.setWaypoints(planBotRoute({
+        start: entity.state.pos,
+        goal,
+        navigation: botNavigation,
+        rng: botRng,
+        role: roleOf(entity.spec),
+      }));
+    }
+  }
 
   function emit(type, payload) {
     if (pendingEvents.length >= MAX_EVENTS) pendingEvents.shift();
@@ -466,6 +512,17 @@ export function createAuthoritativeMatch({
     combat.shellSlot = entity.input.shellSlot;
     const shellSpec = entity.spec.gun.shells[combat.shellSlot];
     if (!shellSpec) return;
+    if (entity.bot) {
+      const friendlyRisk = botFriendlyFireRisk(
+        entity, entity.input.aimPoint, shellSpec, entities,
+      );
+      if (friendlyRisk) {
+        if (entity.aiCtl?.notifyFriendlyBlocked) {
+          entity.aiCtl.notifyFriendlyBlocked(friendlyRisk);
+        }
+        return;
+      }
+    }
     const gun = gunWorldPose(entity);
     _gunDir.copy(gun.direction);
     const sigma = computeDispersionRadM(entity.spec, entity.state, 100) / 200;
@@ -475,6 +532,15 @@ export function createAuthoritativeMatch({
     startReload(combat, entity.spec);
     fireRecoil(entity.state, entity.spec, shellSpec);
     spotting.notifyFired(entity.id, timeS, shellSpec.caliberMm);
+    if (!entity.bot) {
+      const respondingBots = entities
+        .filter((entry) => entry.bot && entry.team !== entity.team && entry.aiCtl)
+        .sort((a, b) => a.state.pos.distanceToSquared(entity.state.pos) -
+          b.state.pos.distanceToSquared(entity.state.pos));
+      for (let index = 0; index < respondingBots.length; index++) {
+        respondingBots[index].aiCtl.notifyPlayerFired(entity, index);
+      }
+    }
     emit('shell_fired', {
       shellId: shell.id,
       shooterId: entity.id,
@@ -520,6 +586,17 @@ export function createAuthoritativeMatch({
       const hit = resolveShellHit(shell, tankHit.target, tankHit.hits, rng);
       const shooter = entityById.get(shell.shooterId);
       if (shooter && hit.damage > 0) shooter.damage += hit.damage;
+      if (shooter?.aiCtl) shooter.aiCtl.notifyShellResult({
+        ...hit,
+        targetId: tankHit.target.id,
+      });
+      if (shooter && hit.damage > 0) {
+        for (const ally of entities) {
+          if (ally.team === tankHit.target.team && ally.aiCtl) {
+            ally.aiCtl.notifyUnderFire(shooter);
+          }
+        }
+      }
       emit('shell_hit', {
         ...hit,
         shooterId: shell.shooterId,
@@ -565,7 +642,7 @@ export function createAuthoritativeMatch({
   const simulation = {
     entities,
     entityById,
-    requiredPeerIds: entities.map((entity) => entity.id),
+    requiredPeerIds: entities.filter((entity) => !entity.bot).map((entity) => entity.id),
     heightField,
     get timeS() { return timeS; },
     get result() { return result; },
@@ -612,7 +689,10 @@ export function createAuthoritativeMatch({
       }
       if (phase !== 'playing') return;
       timeS += dt;
-      for (const entity of entities) applyNetworkInput(entity, inputs.get(entity.id));
+      for (const entity of entities) {
+        if (entity.bot) entity.aiCtl?.update(dt, timeS);
+        else applyNetworkInput(entity, inputs.get(entity.id));
+      }
       for (const entity of entities) {
         if (entity.combat.destroyed) continue;
         updateTank(entity, heightField, dt,

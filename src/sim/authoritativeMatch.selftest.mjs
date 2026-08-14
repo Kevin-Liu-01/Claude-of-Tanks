@@ -111,6 +111,21 @@ assert.ok(crushMatch.snapshot({ tick: 360, serverTimeMs: 6000,
   .some((event) => event.type === 'world_prop_destroyed' && event.kind === 'fence'),
 'destruction replication event identifies the authored obstacle');
 
+const botMatch = createAuthoritativeMatch({
+  mapId: 'verdant', countdownS: 0, seed: 123,
+  players: [
+    { id: 'human-a', specId: 'm1a2', team: 'alpha', spawn: { x: 0, z: -120, yaw: 0 } },
+    { id: 'bot-b', specId: 't90m', team: 'bravo', bot: true,
+      spawn: { x: 0, z: 120, yaw: Math.PI } },
+  ],
+});
+assert.deepEqual(botMatch.requiredPeerIds, ['human-a'], 'bots never block the ready barrier');
+botMatch.onMatchReady();
+const botStart = botMatch.entityById.get('bot-b').state.pos.clone();
+for (let i = 0; i < 1200; i++) botMatch.step({ dt: 1 / 60, inputs: new Map() });
+assert.ok(botMatch.entityById.get('bot-b').state.pos.distanceTo(botStart) > 5,
+  'seeded traversability bot advances under authority');
+
 const hiddenMatch = createAuthoritativeMatch({
   countdownS: 0,
   players: [

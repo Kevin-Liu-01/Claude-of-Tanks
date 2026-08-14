@@ -127,6 +127,7 @@ export function createLobby({
   allowTeamSwitch = true,
   hostSpecId = null,
   hostEquipment = [],
+  teamSize = 1,
 } = {}) {
   const code = normalizeRoomCode(roomCode);
   if (code.length !== 6) throw new LobbyError('invalid_room_code', 'room code must be 6 characters');
@@ -136,6 +137,9 @@ export function createLobby({
   if (!Number.isInteger(maxSpectators) || maxSpectators < 0 || maxSpectators > MAX_SPECTATORS) {
     throw new LobbyError('invalid_capacity',
       `maxSpectators must be between 0 and ${MAX_SPECTATORS}`);
+  }
+  if (!Number.isInteger(teamSize) || teamSize < 1 || teamSize > 7) {
+    throw new LobbyError('invalid_team_size', 'team size must be between 1 and 7');
   }
   const id = cleanId(hostId, 'hostId');
   const lobby = {
@@ -148,6 +152,7 @@ export function createLobby({
     allowTeamSwitch: !!allowTeamSwitch,
     locked: false,
     mapId: String(mapId || 'random'),
+    teamSize,
     revision: 0,
     updatedAtTick: 0,
     matchSeed: null,
@@ -187,8 +192,14 @@ export function addLobbyPlayer(lobby, {
     if (activePlayers(lobby).length >= lobby.maxPlayers) {
       throw new LobbyError('lobby_full', 'player slots are full');
     }
-    const teamCap = Math.ceil(lobby.maxPlayers / 2);
+    const teamCap = lobby.teamSize;
+    if (activePlayers(lobby).length >= lobby.teamSize * 2) {
+      throw new LobbyError('lobby_full', 'all human team slots are full');
+    }
     if (countTeam(lobby, targetTeam) >= teamCap) targetTeam = autoTeam(lobby);
+    if (countTeam(lobby, targetTeam) >= teamCap) {
+      throw new LobbyError('team_full', 'both teams are full');
+    }
   }
   lobby.players.set(playerId, createPlayer({
     id: playerId,
@@ -262,13 +273,27 @@ export function applyLobbyCommand(lobby, playerId, command, {
           throw new LobbyError('spectators_full', 'spectator slots are full');
         }
       } else {
-        const teamCap = Math.ceil(lobby.maxPlayers / 2);
+        const teamCap = lobby.teamSize;
         if (countTeam(lobby, team, id) >= teamCap) {
           throw new LobbyError('team_full', 'that team is full');
         }
       }
       player.team = team;
       player.ready = false;
+      break;
+    }
+    case 'set_team_size': {
+      assertHost(lobby, id);
+      const teamSize = Number(command.teamSize);
+      if (!Number.isInteger(teamSize) || teamSize < 1 || teamSize > 7) {
+        throw new LobbyError('invalid_team_size', 'team size must be between 1 and 7');
+      }
+      if (countTeam(lobby, LOBBY_TEAMS.ALPHA) > teamSize ||
+          countTeam(lobby, LOBBY_TEAMS.BRAVO) > teamSize) {
+        throw new LobbyError('team_size_too_small', 'move players before reducing team size');
+      }
+      lobby.teamSize = teamSize;
+      for (const entry of lobby.players.values()) entry.ready = false;
       break;
     }
     case 'set_map':
@@ -283,11 +308,7 @@ export function applyLobbyCommand(lobby, playerId, command, {
     case 'start': {
       assertHost(lobby, id);
       const players = activePlayers(lobby);
-      if (players.length < 2) throw new LobbyError('not_enough_players', 'at least two players are required');
-      if (!players.some((entry) => entry.team === LOBBY_TEAMS.ALPHA) ||
-          !players.some((entry) => entry.team === LOBBY_TEAMS.BRAVO)) {
-        throw new LobbyError('teams_required', 'both teams need a player');
-      }
+      if (players.length < 1) throw new LobbyError('not_enough_players', 'at least one player is required');
       if (players.some((entry) => !entry.ready || !entry.specId)) {
         throw new LobbyError('players_not_ready', 'every active player must be ready');
       }
@@ -317,6 +338,7 @@ export function serializeLobby(lobby) {
     allowTeamSwitch: lobby.allowTeamSwitch,
     locked: lobby.locked,
     mapId: lobby.mapId,
+    teamSize: lobby.teamSize,
     revision: lobby.revision,
     matchSeed: lobby.matchSeed,
     players: [...lobby.players.values()].map((player) => ({ ...player })),

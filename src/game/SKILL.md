@@ -12,8 +12,9 @@ and persisted player choices.
 
 ## Mental model & key files
 <!-- agent-docs:fill:model -->
-`state.js` composes entities and the fixed battle step; `ai.js` owns bot
-decisions; `input.js` normalizes devices; `profile.js` persists real local match history;
+`state.js` composes legacy solo entities and the fixed battle step; `ai.js` owns
+bot decisions and is injected into the headless multiplayer authority;
+`input.js` normalizes devices; `profile.js` persists real local match history;
 `killcam.js` and `studio.js` own separate presentation timelines.
 
 ## Patterns to follow / invariants

@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import { createLoopbackTransportPair } from './loopbackTransport.js';
-import { beginPrivateClientMatch, beginPrivateHostMatch } from './privateMatchHandoff.js';
+import {
+  beginPrivateClientMatch,
+  beginPrivateHostMatch,
+  buildPrivateMatchPlayers,
+} from './privateMatchHandoff.js';
 import { createAuthoritativeMatch } from '../sim/authoritativeMatch.js';
 
 const remote = createLoopbackTransportPair();
@@ -15,6 +19,18 @@ const lobbyState = {
     { id: 'peer-1', specId: 'm1a2', team: 'bravo' },
   ],
 };
+const filled = buildPrivateMatchPlayers({
+  ...lobbyState,
+  teamSize: 3,
+  players: [lobbyState.players[0]],
+});
+assert.equal(filled.length, 6, 'bot fill reaches the selected team size');
+assert.equal(filled.filter((player) => player.bot).length, 5);
+assert.deepEqual(
+  buildPrivateMatchPlayers({ ...lobbyState, teamSize: 3, players: [lobbyState.players[0]] }),
+  filled,
+  'bot roster is deterministic from the match seed',
+);
 const hostSession = {
   roomInfo: { peerId: 'host-1', mode: 'lan' },
   takeMatchChannels: () => [{ peerId: 'peer-1', transport: remote.host }],

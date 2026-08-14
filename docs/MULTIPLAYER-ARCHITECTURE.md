@@ -6,8 +6,10 @@ browser-hosted authority, a dedicated WebSocket authority service, viewer-
 filtered snapshots, and browser presentation are implemented and tested.
 All eight battlefields now share captured authored collision, destructible,
 foliage concealment, and loadout rules between rendered hosts and dedicated
-Node authority. Public matchmaking/rating, bots, consumables, reconnect UI,
-and network impairment/soak gates remain before rated release.
+Node authority. Empty private-room slots are filled by seeded authority-owned
+bots using shared AI and an all-map traversability planner. Public matchmaking/
+rating, campaign migration, consumables, reconnect UI, and network impairment/
+soak gates remain before rated release.
 
 ## Product contract
 
@@ -34,7 +36,7 @@ spotting, collision, match outcome, and bot decisions are authority concerns.
 | Visibility | Authority omits hidden opponents before serialization | Player camo-season choice still needs a wire field | Shared terrain, hard cover, foliage, optics, radio, and equipment rules | Hidden-coordinate and shared spotting tests pass |
 | Session modes | Loopback, WebRTC, and WebSocket share one runtime | Campaign entry still uses legacy direct state | Route campaign through loopback | Transport/runtime tests pass |
 | Progression | Credits and XP persist without a tech tree | UI rewards a currency with no meaningful sink | Rank, match history, campaign medals | UI/economy removal tests (pending) |
-| AI routes | Strong local controller over doctrine waypoints | Repeated openings and hill pockets | Seeded global traversability planner + local controller | Route diversity/stuck-time gates (pending) |
+| AI routes | Authority runs the existing controller over seeded traversable openings | Live traffic can still create temporary jams | Add live occupancy costs and recovery telemetry | Seed variation plus 90-second stuck-time gates pass on all eight maps |
 
 Deletion test: removing `src/net/` would force tick scheduling, input ordering,
 room policy, visibility filtering, backpressure, interpolation, and clock sync
@@ -65,9 +67,11 @@ Every message contains:
 ### Lobby
 
 `src/net/lobby.js` is the only owner of room capacity, teams, readiness,
-vehicle/loadout selection, host permissions, map selection, room locking, and
-the start gate. Signaling transports submit commands; they do not reimplement
-policy. Player identity is independent from vehicle identity.
+vehicle/loadout selection, team size, host permissions, map selection, room
+locking, and the start gate. Empty 1v1/3v3/5v5/7v7 slots are filled from a
+seeded same-era garage roster after the canonical lobby starts. Signaling
+transports submit commands; they do not reimplement policy. Player identity is
+independent from vehicle identity.
 
 ### World authority
 
@@ -160,8 +164,8 @@ packet gaps extrapolate for at most 250 ms.
 1. [done for network] Separate runtime entity IDs from vehicle spec IDs.
 2. [partial] Extract a headless battle simulation adapter from `state.js`; visuals are
    created and synchronized by a client-side presentation module. Movement,
-   armor, ballistics, damage, equipment, spotting, environment collision, and
-   destruction are authoritative; bots/consumables/ram/HE parity remain.
+   armor, ballistics, damage, equipment, spotting, bots, environment collision,
+   and destruction are authoritative; consumables/ram/HE parity remain.
 3. Run campaign/bot battles through `createLocalMatchSession` and prove visual
    and gameplay parity.
 4. [done] Add WebRTC data-channel and signaling adapters for LAN/private codes.
@@ -171,8 +175,9 @@ packet gaps extrapolate for at most 250 ms.
    move tank/loadout choice inside the selected mode.
 7. Remove wallet/XP surfaces and migrate old saves non-destructively to match
    history, campaign medals, settings, and cosmetic/loadout choices.
-8. Replace doctrine-only opening routes with a seeded traversability graph,
-   route diversity constraints, live occupancy costs, and recovery telemetry.
+8. [partial] Replace doctrine-only opening routes with a shared seeded
+   traversability graph and route diversity constraints; add live occupancy
+   costs and recovery telemetry.
 9. Run constrained CPU/network/browser gates and soak matches before enabling
    rated play.
 

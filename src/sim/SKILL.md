@@ -14,7 +14,9 @@ Own authoritative armored-combat math at a fixed 60 Hz step.
 `movement.js` owns tank state and terrain contact; `armor.js` owns hit geometry;
 `ballistics.js` owns shells; `damage.js` owns penetration/modules/crew/fire;
 `spotting.js` owns visibility and team intel; `authoritativeMatch.js` composes
-those rules with match-local world collision for every network authority.
+those rules with match-local world collision for every network authority;
+`botRoutePlanner.js` builds one seeded traversability grid per match and feeds
+renderer-free openings into the game AI controller.
 
 ## Patterns to follow / invariants
 <!-- agent-docs:fill:patterns -->
@@ -32,4 +34,5 @@ then edit. Run movement, combat, and spotting tests after shared-state changes.
 Render attitude has locked sign/order conventions. Do not introduce wall-clock
 time, frame-rate-dependent integration, or Three.js renderer dependencies.
 Run `node src/sim/authoritativeMatch.selftest.mjs` after changing match
-composition, snapshot visibility, or multiplayer identity seams.
+composition, snapshot visibility, or multiplayer identity seams. Bot route
+changes must also pass `node server/authoritativeBots.selftest.mjs` on all maps.
