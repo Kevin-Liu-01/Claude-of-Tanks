@@ -4582,13 +4582,17 @@ function buildT72BU(P) {
     deck: [[-3.10, 1.485], [-3.05, 1.50], [-2.95, 1.49], [-2.84, 1.38], [-2.73, 1.34], [-2.63, 1.30], [-2.52, 1.267], [-1.98, 1.267], [-1.15, 1.40], [-0.62, 1.435], [0.42, 1.46], [1.12, 1.47], [1.47, 1.32], [2.40, 1.14], [2.80, 1.047]],
     belly: [[-3.10, 1.05], [-3.00, 0.74], [-2.52, 0.44], [-1.48, 0.30], [2.60, 0.30], [2.80, 0.38]],
     wUp: [[-3.10, 1.30], [-2.85, 1.60], [2.80, 1.60]],
-    // The lower tub tucks inside the sprocket lane through the rear wrap;
-    // this is hidden mechanical structure, so the visible upper hull and
-    // rear service silhouette remain unchanged.
-    wLo: [[-3.10, 1.02], [-2.15, 1.02], [-2.05, 1.14], [2.80, 1.11]],
-    // Preserve the authored BU hull through the central six-wheel span and
-    // raise only the two mechanical terminal bays above the live shoes.
-    sponsonY: [[-3.10, 1.22], [-2.20, 1.22], [-2.10, 0.86], [2.40, 0.86], [2.50, 1.20], [2.80, 1.20]],
+    // The complete lower tub remains present, but its hidden side walls sit
+    // inboard of the native shoe corridor.  The previous 1.14-m shoulder
+    // met the 1.145-m inner band edge inside voxel tolerance across the
+    // centre return run; moving that concealed wall inboard does not alter
+    // the visible upper hull, skirts or rear-service silhouette.
+    wLo: [[-3.10, 1.02], [-2.15, 1.02], [-2.05, 1.08], [2.80, 1.08]],
+    // Preserve the complete authored BU hull and outer skirts, but keep the
+    // concealed sponson floor above the native return run.  The former
+    // 0.86-m central floor occupied the smooth-band sweep across all six
+    // stations even though every individual shoe remained visibly clear.
+    sponsonY: [[-3.10, 1.22], [2.80, 1.22]],
   });
   widthAnchor(P, 1.885, 0.95, 0.4);
   // inner tail flap tabs (plate -3.10 -> tab tips -3.44, solid to the plate)
@@ -4607,6 +4611,16 @@ function buildT72BU(P) {
   // (1.267) and nose (1.21) tolerate nothing above them
   for (const s of [-1, 1]) for (let i = 3; i < 9; i++) {
     P.add('hull', box(0.16, 0.05, 0.48), s * 1.70, 1.235, -2.70 + i * 0.545);
+  }
+  // Close the real fender-support pockets ahead of, behind and between the
+  // segmented raised shelves.  A continuous 35-mm structural shelf follows
+  // the existing full skirt course; the segmented boxes above remain the
+  // visible articulation.  This is hull-owned fender structure, not a track
+  // cover or replacement skirt.  Its lower face stays above the highest
+  // terminal shoe and its inner edge meets the intact upper hull, eliminating
+  // the background-visible plan pockets without hiding running gear.
+  for (const s of [-1, 1]) {
+    P.add('hull', box(0.20, 0.035, 6.25), s * 1.70, 1.3025, -0.025);
   }
   // Real hull-owned turret-ring collar.  The older broad rectangular
   // "print filler" duplicated a large part of the turret footprint on the

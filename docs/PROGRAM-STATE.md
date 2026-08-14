@@ -5930,3 +5930,45 @@ instance freeze **`54bdb9fd`**, asset geometry **`adbaa3cc`**.
 **KEEP these hashes. Future T-72B obr.1987 work must preserve the complete hull
 and side-armour envelope, the singular native course, the elevated idler/final
 drive profile and the documented hull/turret ownership split.**
+
+## 5.173 T-72BU COMPLETE-HULL COURSE / FENDER CLOSURE (2026-08-13, LIVE)
+
+This pass closes the two machine residuals explicitly carried by §5.149 while
+preserving the accepted first-party BU design and its **90.18** fidelity
+aggregate. No visible hull plate, skirt, mudguard, wheel, suspension member,
+track shoe, turret armour or equipment is removed. The strict 673-voxel sweep
+was not a reason to shave armour: it resolved to the complete lower tub's
+concealed side wall touching the inner native-band tolerance and to the hidden
+sponson floor occupying the central upper return lane.
+
+The full lower tub remains a closed solid, with its concealed side wall moved
+inboard by 60 mm so it is physically between the track corridors. Its hidden
+sponson floor is lifted to the existing 1.22-m shoulder datum above the return
+run. The complete outer hull, deep skirt/mudguard envelope, six road-wheel
+stations, raised idler/final drive and linked-shoe path stay in their certified
+world positions.
+
+The top-down contiguity scan also identified narrow background pockets between
+the already-supported segmented fender shelves. A continuous 35-mm hull-owned
+fender shelf now follows the full existing skirt course under those visible
+segments. Its inner edge meets the intact upper hull, its outer edge seats on
+the side-armour line, and its lower face remains above the highest terminal
+shoe. It closes real plan-view daylight without becoming a second track cover
+or hiding any road wheel.
+
+Fresh evidence contains 15 authored-baseline/current boards plus 15 yaw0 and
+15 yaw90 frames (**45 PNG / 45 distinct hashes**). The prior source-semantic
+silhouette, pointed protection blanket, gun, compact roof station, rear packs,
+complete hull and six-wheel course remain intact. Every turret attachment
+quarter-turns with the casting while the new fender shelf, hull, skirts and
+running gear remain fixed. Winding is zero reversed / zero mixed, with no
+stranded yaw candidate. Exact band and individual-shoe sweeps are **0/0** and
+the contiguity scan is **0 holes**. All eight presentation assets are current.
+
+Dual-ledger geometry is freeze **`85414b08`**, instance freeze **`81ae9ae6`**
+and asset geometry **`30a70c91`**.
+
+**KEEP these hashes and retire the §5.149 673-voxel inherited-course residual.
+Future BU work must preserve the complete lower tub and outer armour; clearance
+belongs in the concealed mechanical walls or track endpoints, never by deleting
+the hull or side skirts.**
