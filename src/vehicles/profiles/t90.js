@@ -1163,11 +1163,15 @@ function buildT90AVladimirLegacy(P) {
   // shallow cast crown grows from its inset top ring.  This keeps the source
   // outline without the former pair of broad flat roof slabs.
   P.add('turret', polyTurret(turretPlan, 0.26, 1, 0.58), 0, 0.10, 0);
-  const crownRings = [[0.82, 0.32], [0.70, 0.35], [0.52, 0.375], [0.30, 0.395], [0.02, 0.40]];
+  // Owner-height correction: Vladimir's cast fighting compartment must meet
+  // the tall autoloader bustle through its own crown, not through equipment
+  // stacked above a low half-dome.  Raise and facet the actual crown while
+  // retaining the accepted low cheek perimeter and frontal K-5 stations.
+  const crownRings = [[0.82, 0.44], [0.70, 0.48], [0.52, 0.51], [0.30, 0.54], [0.02, 0.55]];
   meshDomeCurved(P, crownRings, 0.75, 0, -0.02, { capR: 1.60 });
   // Source-local pads penetrate the crown below the two real stations.
-  P.add('turret', cylY(0.44, 0.54, 0.026, 18), -0.36, 0.395, -0.42);
-  P.add('turret', cylY(0.34, 0.42, 0.024, 18), 0.54, 0.385, -0.18);
+  P.add('turret', cylY(0.44, 0.54, 0.026, 18), -0.36, 0.535, -0.42);
+  P.add('turret', cylY(0.34, 0.42, 0.024, 18), 0.54, 0.525, -0.18);
   // Narrow source-right shoulder connector; it is buried through the crown
   // and carries the measured x=1.00 frontal step without recreating a slab.
   P.add('turret', box(0.025, 0.26, 0.10), 1.0075, 0.285, -0.2175);
@@ -1181,60 +1185,60 @@ function buildT90AVladimirLegacy(P) {
   // outer service body replace the old staircase of tall touching boxes.
   // This follows the graduated T-90A housing grammar while retaining this
   // print's own x/z stations and its sharp low-afterbody transition.
-  P.add('turretDark', box(0.28, 0.025, 0.90), -0.72, 0.405, 0.18);
-  P.add('turret', box(0.25, 0.26, 0.90), -0.72, 0.535, 0.18);
-  P.add('turretGlass', box(0.20, 0.11, 0.018), -0.72, 0.57, 0.639);
-  P.add('turretDark', box(0.22, 0.025, 0.055), -0.72, 0.668, 0.635);
+  P.add('turretDark', box(0.28, 0.025, 0.90), -0.72, 0.535, 0.18);
+  P.add('turret', box(0.25, 0.26, 0.90), -0.72, 0.665, 0.18);
+  P.add('turretGlass', box(0.20, 0.11, 0.018), -0.72, 0.70, 0.639);
+  P.add('turretDark', box(0.22, 0.025, 0.055), -0.72, 0.798, 0.635);
   for (const z of [-0.12, 0.17, 0.46]) {
-    P.add('turretDark', box(0.008, 0.24, 0.018), -0.849, 0.55, z);
+    P.add('turretDark', box(0.008, 0.24, 0.018), -0.849, 0.68, z);
   }
   for (const z of [-0.03, 0.24, 0.49]) {
-    P.add('turretDark', box(0.20, 0.006, 0.032), -0.72, 0.666, z);
+    P.add('turretDark', box(0.20, 0.006, 0.032), -0.72, 0.796, z);
   }
-  P.add('turretDark', box(0.008, 0.16, 0.25), -0.849, 0.52, 0.31);
-  P.add('turretDark', box(0.012, 0.035, 0.045), -0.850, 0.47, 0.22);
-  P.add('turretDark', box(0.012, 0.035, 0.045), -0.850, 0.47, 0.40);
+  P.add('turretDark', box(0.008, 0.16, 0.25), -0.849, 0.65, 0.31);
+  P.add('turretDark', box(0.012, 0.035, 0.045), -0.850, 0.60, 0.22);
+  P.add('turretDark', box(0.012, 0.035, 0.045), -0.850, 0.60, 0.40);
   // Outer ESSA service body: tall enough for the recovered 2.21 m band but
   // only half a metre long, with a separate lid and forward aperture.
-  P.add('turret', box(0.42, 0.30, 0.50), -0.98, 0.56, -0.22);
-  P.add('turretDark', box(0.38, 0.016, 0.44), -0.98, 0.718, -0.22);
-  P.add('turretGlass', box(0.30, 0.115, 0.016), -0.98, 0.56, 0.039);
+  P.add('turret', box(0.42, 0.30, 0.50), -0.98, 0.69, -0.22);
+  P.add('turretDark', box(0.38, 0.016, 0.44), -0.98, 0.848, -0.22);
+  P.add('turretGlass', box(0.30, 0.115, 0.016), -0.98, 0.69, 0.039);
   // Flush diagonal reveals break the two rectangular faces into the
   // recovered faceted head/body hierarchy without changing their measured
   // plan footprint or exposing another air seam.
-  P.add('turretDark', box(0.010, 0.20, 0.32), -1.194, 0.55, -0.22, 0.18, 0, 0);
-  P.add('turretDark', box(0.010, 0.17, 0.46), -0.851, 0.53, 0.17, -0.15, 0, 0);
+  P.add('turretDark', box(0.010, 0.20, 0.32), -1.194, 0.68, -0.22, 0.18, 0, 0);
+  P.add('turretDark', box(0.010, 0.17, 0.46), -0.851, 0.66, 0.17, -0.15, 0, 0);
   // Low after-plinth follows the source's abrupt 2.21 -> 1.99 m step.
-  P.add('turret', box(0.34, 0.18, 0.10), -0.90, 0.40, -0.59);
-  P.add('turretDark', box(0.30, 0.014, 0.07), -0.90, 0.497, -0.59);
+  P.add('turret', box(0.34, 0.18, 0.10), -0.90, 0.53, -0.59);
+  P.add('turretDark', box(0.30, 0.014, 0.07), -0.90, 0.627, -0.59);
   // Two compact forward heads complete the hierarchy without rebuilding a
   // continuous roof wall; both feet penetrate the long carrier.
-  P.add('turret', box(0.22, 0.26, 0.30), -0.76, 0.52, 0.76);
-  P.add('turretDark', box(0.19, 0.014, 0.26), -0.76, 0.657, 0.76);
-  P.add('turret', box(0.18, 0.22, 0.24), -0.75, 0.51, 1.02);
-  P.add('turretDark', box(0.15, 0.014, 0.20), -0.75, 0.627, 1.02);
-  P.add('turretGlass', box(0.14, 0.09, 0.016), -0.75, 0.52, 1.148);
+  P.add('turret', box(0.22, 0.26, 0.30), -0.76, 0.65, 0.76);
+  P.add('turretDark', box(0.19, 0.014, 0.26), -0.76, 0.787, 0.76);
+  P.add('turret', box(0.18, 0.22, 0.24), -0.75, 0.64, 1.02);
+  P.add('turretDark', box(0.15, 0.014, 0.20), -0.75, 0.757, 1.02);
+  P.add('turretGlass', box(0.14, 0.09, 0.016), -0.75, 0.65, 1.148);
   // rTAIL r13: center-right sight-cluster deck — ref FRONT carries a
   // 2.14-2.18 band across x -0.29..-0.66 (cols -0.271/-0.654 read
   // 2.169/2.179) that the r12 hump-deletion left empty
   // (r13d: inner edge -0.31 — at -0.29 it AA'd the -0.314 front col)
-  P.add('turret', box(0.35, 0.30, 0.60), -0.485, 0.49, 0.10);
-  P.add('turret', cylY(0.24, 0.26, 0.12, 14), -0.35, 0.38, -0.42);
-  P.add('turretDark', cylY(0.20, 0.20, 0.005, 12), -0.35, 0.4425, -0.42);
+  P.add('turret', box(0.35, 0.30, 0.60), -0.485, 0.62, 0.10);
+  P.add('turret', cylY(0.24, 0.26, 0.12, 14), -0.35, 0.52, -0.42);
+  P.add('turretDark', cylY(0.20, 0.20, 0.005, 12), -0.35, 0.5825, -0.42);
   // Low gunner station on the opposite crown: ring, lid, and three flush
   // periscopes.  The ring foot cuts into the curved crown rather than
   // hovering above it.
-  P.add('turret', cylY(0.27, 0.29, 0.075, 18), 0.50, 0.375, -0.05);
-  P.add('turretDark', cylY(0.225, 0.225, 0.018, 16), 0.50, 0.422, -0.05);
+  P.add('turret', cylY(0.27, 0.29, 0.075, 18), 0.50, 0.515, -0.05);
+  P.add('turretDark', cylY(0.225, 0.225, 0.018, 16), 0.50, 0.562, -0.05);
   for (const [dx, dz] of [[-0.13, 0.10], [0, 0.14], [0.13, 0.10]]) {
-    P.add('turretGlass', box(0.075, 0.040, 0.035), 0.50 + dx, 0.435, -0.05 + dz);
+    P.add('turretGlass', box(0.075, 0.040, 0.035), 0.50 + dx, 0.575, -0.05 + dz);
   }
-  P.add('turretDark', box(0.055, 0.012, 0.12), 0.50, 0.430, -0.18);
+  P.add('turretDark', box(0.055, 0.012, 0.12), 0.50, 0.570, -0.18);
   // Crown-level cassette/periscope breaks are sunk into the cast roof. They
   // add the source's staggered asymmetric grammar without raising its P95
   // line or becoming loose decoration.
   for (const [x, z, ry] of [[-0.18, 0.44, -0.16], [0.16, 0.38, 0.10], [0.42, 0.28, -0.08], [0.70, 0.16, 0.18]]) {
-    P.add('turretDark', box(0.19, 0.006, 0.032), x, 0.401, z, 0, ry, 0);
+    P.add('turretDark', box(0.19, 0.006, 0.032), x, 0.541, z, 0, ry, 0);
   }
   // rTAIL r13 mast rework (ref decode): riser+step live in the ONE front
   // col at x -0.229 (window -0.25..-0.208; the r12 -0.245 seat crossed the
@@ -1252,7 +1256,7 @@ function buildT90AVladimirLegacy(P) {
   P.add('turretDetail', box(0.026, 0.19, 0.002), -0.229, 0.845, -1.235);
   P.add('turretDark', box(0.03, 0.04, 0.04), -0.229, 0.93, -1.235);
   // left tall bin wall (x-trimmed off the -1.334 front col: ref 1.797)
-  P.add('turret', box(0.19, 0.35, 0.50), -1.215, 0.515, -0.05);
+  P.add('turret', box(0.19, 0.35, 0.50), -1.215, 0.625, -0.05);
   // rTAIL r13: rear-right roof fitting — ref front +0.39 col reads 2.264 /
   // side -1.885 reads 2.257: one compact desirefx mass at (0.385, -1.855)
   P.add('turret', box(0.067, 0.242, 0.108), 0.3835, 0.486, -1.105);
@@ -1264,8 +1268,8 @@ function buildT90AVladimirLegacy(P) {
   // r13c: right-roof housing — ref front +1.05..+1.18 cols read 1.92-1.95
   // (desirefx mass x 1.02..1.20, y 1.80..1.945, z -1.02..-0.92); side-safe
   // under the 2.2 block line.
-  P.add('turret', box(0.16, 0.145, 0.10), 1.10, 0.3725, -0.2175);
-  P.add('turret', box(0.04, 0.09, 0.10), 1.20, 0.285, -0.2175);
+  P.add('turret', box(0.16, 0.145, 0.10), 1.10, 0.5025, -0.2175);
+  P.add('turret', box(0.04, 0.09, 0.10), 1.20, 0.415, -0.2175);
   // rTAIL r13 ORACLE-PARITY: the print's turret-parented fender-strip
   // fragments at |x| 1.545..1.79 (plan_turret ONLY-REF cols, cover 9.68 —
   // the r2-quarantined LOD-copy quirk). Matched as tapered thin rails at
@@ -1288,11 +1292,11 @@ function buildT90AVladimirLegacy(P) {
       mats: P.mats, cls: 'nsvt', tone: 'two-tone', elev: -0.10,
       ammo: true, scale: 0.55, shield: false,
     });
-    mg.position.set(-0.30, 0.39, -0.32);
+    mg.position.set(-0.30, 0.53, -0.32);
     P.turretG.add(mg);
     // Compact source shield: its buried lower half enters the crown and the
     // receiver passes through its centre, keeping the mount continuous.
-    P.add('turretDetail', box(0.19, 0.13, 0.025), -0.30, 0.445, -0.20, -0.08, 0, 0);
+    P.add('turretDetail', box(0.19, 0.13, 0.025), -0.30, 0.585, -0.20, -0.08, 0, 0);
   }
   // rear bin stack + basket (ref rows 1.86-1.97 over -1.49..-2.29)
   const rearBin = (x, w, zRear, h) => {
@@ -5063,6 +5067,26 @@ function buildT90A(P) {
 
 function buildT90AVladimir(P) {
   buildT90AVladimirLegacy(P);
+  // Owner correction: the accepted long welded bustle used to rise above
+  // the legacy cast crown through one abrupt vertical step.  That made the
+  // bustle read as a separate box even though every part was turret-owned.
+  // Grow a closed faceted upper shoulder out of the existing crown and into
+  // the bustle root.  Its lower perimeter is buried through the cast shell,
+  // while the rear two stations overlap the bustle's forward frame; this is
+  // one load-bearing turret transition, not a roof plate or floating cover.
+  // The rise is deliberately aft-biased so the established mantlet, Shtora
+  // and K-5 frontal envelope remains unchanged.
+  P.add('turret', weldedStationLoft([
+    [-0.45, 0.19, 0.52, -1.18, 1.18, -0.91, 0.91, -1.05, 1.05],
+    [-0.70, 0.15, 0.57, -1.24, 1.24, -1.00, 1.00, -1.13, 1.13],
+    [-0.94, 0.10, 0.62, -1.23, 1.23, -1.04, 1.04, -1.14, 1.14],
+    [-1.24, 0.07, 0.61, -1.15, 1.15, -0.98, 0.98, -1.07, 1.07],
+  ]));
+  // Low unequal roof facets break the long new crown line and give the
+  // raised body a readable mechanical transition into Vladimir's existing
+  // sight, cupola and rear-bin cadence.  Both facets are sunk into the loft.
+  P.add('turretDark', KIT.box(0.62, 0.020, 0.34), -0.38, 0.625, -0.83, 0, -0.05, 0);
+  P.add('turretDark', KIT.box(0.44, 0.018, 0.29), 0.43, 0.617, -0.90, 0, 0.07, 0);
   // Vladimir's original rear bins stopped immediately behind the cast
   // crown and read as luggage rather than a turret bustle.  Add one closed,
   // shallow welded body whose forward station is buried through the rear
