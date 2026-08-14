@@ -7,7 +7,7 @@
 // battle picker one source of truth.
 
 export const GARAGE_HIDDEN_TANK_IDS = new Set([
-  'newc_tiger', 'newc_pziii', 'bmp1', 'm1128', 'm1296', 'm1a2',
+  'newc_tiger', 'newc_pziii', 'bmp1', 'm1128', 'm1296', 'm1a2_legacy',
   // Generic community placeholders are useful source/QA references, not
   // authored vehicles a player should meet in matchmaking.
   'recon_tank', 'q_heavy',

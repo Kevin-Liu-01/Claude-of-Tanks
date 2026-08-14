@@ -10,6 +10,10 @@ const player = ent('player');
 
 assert.ok(GARAGE_HIDDEN_TANK_IDS.has('recon_tank'));
 assert.ok(GARAGE_HIDDEN_TANK_IDS.has('q_heavy'));
+assert.equal(isGarageVisibleTankId('m1a2'), true,
+  'canonical Tejas M1A2 remains visible in the player garage');
+assert.equal(isGarageVisibleTankId('m1a2_legacy'), false,
+  'retired M1A2 remains available to tools but not the player garage');
 assert.equal(isGarageVisibleTankId('peerA'), true);
 
 const ranked = rankMatchCandidates([
