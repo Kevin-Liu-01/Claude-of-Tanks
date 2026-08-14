@@ -8399,3 +8399,22 @@ freeze page and its ledger row is updated without altering Abrams assets.
 **KEEP the complete B87 hull/skirt envelope, period Kontakt-1 identity,
 supported roof/rear equipment and singular six-wheel smart course. Future
 family refinements must preserve this period distinction and ownership split.**
+
+## 5.236 VLADIMIR / T-72B3M GARAGE PLATFORM CENTERING (2026-08-14, LIVE)
+
+The first-party T-90A Vladimir and T-72B3M obr. 2022 builders retain recovered
+family coordinate frames whose complete hull-plan centers sit respectively
+0.83 m and 0.81 m aft of the local rig origin. The garage previously planted
+that historical origin on the disc center, so both vehicles visibly stood off
+the platform datum even though their gameplay, armor and turret pivots were
+internally coherent.
+
+Each spec now declares its measured presentation-only longitudinal correction.
+The pedestal pose rotates that local +Z correction through the standard garage
+yaw before placing the root, so the physical hull/ring center lands on the
+platform center from every showroom orbit. Cached heroes and map re-seating use
+the same pose function. No builder vertices, armor volumes, tracks, turrets,
+physics transforms or generated tank assets change.
+
+**KEEP these offsets presentation-only. Future model centering must never move
+certified gameplay geometry merely to compensate for a showroom datum.**

@@ -604,7 +604,19 @@ function recordSwitch(specId, t0, path) {
   pedTrace('reveal', { id: specId, ms, path, pv: pedVisState(pedestalVisual) });
 }
 function pedestalPose(vis) {
-  vis.root.position.set(GARAGE_POS.x, GARAGE_POS.y + 0.35, GARAGE_POS.z);
+  // A small number of recovered-coordinate first-party builders retain an
+  // intentionally off-origin local hull datum.  Their battle/armor geometry
+  // must not be translated just to fix showroom framing, so the spec may
+  // provide a presentation-only longitudinal correction.  Rotate that local
+  // +Z correction through the current garage yaw: the physical hull center,
+  // not the rig's historical origin, lands on the platform datum.
+  const localZ = Number(vis.spec?.visual?.garageHullOffsetZ) || 0;
+  const yaw = vis.root.rotation.y;
+  vis.root.position.set(
+    GARAGE_POS.x + Math.sin(yaw) * localZ,
+    GARAGE_POS.y + 0.35,
+    GARAGE_POS.z + Math.cos(yaw) * localZ,
+  );
 }
 function parkVisual(vis) {
   if (!vis || vis === pedestalVisual) return; // re-selected while retiring
@@ -873,7 +885,7 @@ function placeGarage() {
   spotB.position.set(GARAGE_POS.x - 10, GARAGE_POS.y + 8, GARAGE_POS.z - 6);
   spotTarget.position.set(GARAGE_POS.x, GARAGE_POS.y + 1.2, GARAGE_POS.z);
   if (pedestalVisual) {
-    pedestalVisual.root.position.set(GARAGE_POS.x, GARAGE_POS.y + 0.35, GARAGE_POS.z);
+    pedestalPose(pedestalVisual);
   }
   if (game.phase === 'garage') garageCameraPose();
 }

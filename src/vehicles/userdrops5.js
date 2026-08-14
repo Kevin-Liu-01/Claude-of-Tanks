@@ -145,7 +145,12 @@ const SPECS = [
   make('t72b3', 't72b_1987', 'T-72B obr. 1987', 'USSR/Russia',
     { hp: 1950, weightTons: 44.5, topSpeedKmh: 60, reverseSpeedKmh: 12, gun: { reloadS: 7.2 } }),
   make('t72b3', 't72b3m', 'T-72B3M obr. 2022', 'Russia',
-    { hp: 2250, enginePowerHp: 1130, topSpeedKmh: 70, reverseSpeedKmh: 20, gun: { reloadS: 6.5 } }),
+    { hp: 2250, enginePowerHp: 1130, topSpeedKmh: 70, reverseSpeedKmh: 20, gun: { reloadS: 6.5 },
+      // Recovered family coordinates place the complete hull plan 0.81 m
+      // aft of the local rig origin.  Presentation-only compensation keeps
+      // the hull/ring centered on the garage disc without moving gameplay,
+      // armor, track, turret or icon geometry.
+      visual: { garageHullOffsetZ: 0.81 } }),
   make('t90a', 't72bu', 'T-72BU', 'USSR/Russia',
     { hp: 2050, weightTons: 46.5, topSpeedKmh: 65, gun: { reloadS: 7.0 } }),
   make('t90m', 't90sm', 'T-90SM', 'Russia',
@@ -168,7 +173,11 @@ const SPECS = [
     { hp: 2200, weightTons: 50.2, topSpeedKmh: 70, gun: { reloadS: 5.5 },
       dims: { hullLengthM: 7.45, overallLengthM: 9.76, widthM: 3.43, heightM: 2.55 } }),
   make('t90a', 't90a_vladimir', 'T-90A Vladimir', 'Russia',
-    { hp: 2150, topSpeedKmh: 65, gun: { reloadS: 6.8 } }),
+    { hp: 2150, topSpeedKmh: 65, gun: { reloadS: 6.8 },
+      // Vladimir's retained first-party hull is likewise authored 0.83 m
+      // aft of its local origin.  This offset is consumed only by the garage
+      // pedestal pose and does not mutate the certified vehicle geometry.
+      visual: { garageHullOffsetZ: 0.83 } }),
 ];
 
 // SEPv3 ammo identity (coordinator wiki reference 2026-08-07): the AMP round
