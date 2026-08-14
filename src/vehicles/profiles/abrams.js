@@ -40,6 +40,33 @@ function lineAt(pts, z) {
   return (Math.abs(z - pts[0][0]) < Math.abs(z - pts[pts.length - 1][0]) ? pts[0] : pts[pts.length - 1])[1];
 }
 
+// Loader-gun run authored from a rear seat point instead of three unrelated
+// world-axis cylinders.  This keeps the jacket, barrel collar and flash hider
+// coaxial when a variant gives the right-side weapon its own traverse/elevation
+// pose.  Positive outDeg aims away from the turret centre on the +x side;
+// positive upDeg raises the muzzle.
+function angledLoaderGunRun(P, {
+  x, y, z, barrelLength, outDeg, upDeg,
+  barrelRadius = 0.019, hiderRadius = 0.028, hiderLength = 0.15,
+}) {
+  const rx = -THREE.MathUtils.degToRad(upDeg);
+  const ry = THREE.MathUtils.degToRad(outDeg);
+  const aim = new THREE.Vector3(0, 0, 1)
+    .applyEuler(new THREE.Euler(rx, ry, 0, 'XYZ')).normalize();
+  const base = new THREE.Vector3(x, y, z);
+  const addSegment = (bucket, radius, length, start) => {
+    const center = base.clone().addScaledVector(aim, start + length / 2);
+    P.add(bucket, cylZ(radius, length, 10), center.x, center.y, center.z, rx, ry, 0);
+  };
+
+  const jacketLength = 0.34;
+  const barrelStart = 0.30; // 4 cm overlap keeps the barrel buried in jacket.
+  addSegment('turretDark', 0.026, jacketLength, 0);
+  addSegment('turretDark', barrelRadius, barrelLength, barrelStart);
+  addSegment('turretDetail', 0.030, 0.035, barrelStart + barrelLength - 0.035);
+  addSegment('turretDark', hiderRadius, hiderLength, barrelStart + barrelLength);
+}
+
 // Loft full-width slabs between cross-section stations: top edge follows
 // `top` [[z,y]...], bottom edge follows bottomAt(z). Stations are the merged
 // z-set of the top polyline plus `extraZ` (e.g. the belly-rake breakpoints),
@@ -1668,19 +1695,29 @@ function tejasRoofKit(P, t, station = 'crows') {
       plat2 + pintleH / 2 - 0.025, -0.23);                                      // connected pintle
     P.add('turretDetail', box(0.17, 0.20, 0.23), loaderX + 0.27, receiverY - 0.018, -0.23); // ammo can
     P.add('turretDark', box(0.032, 0.11, 0.18), loaderX + 0.19, receiverY + 0.012, -0.10); // feed
-    P.add('turretDark', cylZ(0.026, 0.34, 10), loaderX, receiverY, 0.20);          // jacket
-    // Keep the loader M240 compact beside the CROWS.  The former 1.38 m
-    // exposed tube read like a second cannon and projected well past the
-    // right cheek.  This 0.88 m run stays buried in the jacket at z=0.37.
-    P.add('turretDark', cylZ(0.019, 0.88, 10), loaderX, receiverY, 0.81);          // compact forward barrel
-    P.add('turretDetail', torus(0.029, 0.008, 10), loaderX, receiverY, 1.20,
-      Math.PI / 2, 0, 0);                                                        // barrel collar
-    P.add('turretDark', cylZ(0.028, 0.15, 10), loaderX, receiverY, 1.325);        // flash hider
     if (station === 'crows2tall') {
-      P.add('turret', box(0.48, 0.24, 0.038), loaderX, receiverY - 0.035, 0.01); // SEPv2 shield
-      P.add('turret', box(0.038, 0.25, 0.30), loaderX + 0.23, receiverY - 0.035, -0.13);
+      // SEPv2: taller three-sided loader shield and a moderately raised,
+      // outboard-rested M240.  The inner wing closes the former open side.
+      P.add('turret', box(0.50, 0.25, 0.040), loaderX, receiverY - 0.035, 0.01);
+      for (const sx of [-1, 1]) {
+        P.add('turret', box(0.040, 0.27, 0.32), loaderX + sx * 0.235,
+          receiverY - 0.025, -0.14, 0, -sx * 0.08, 0);
+      }
+      P.add('turretDetail', box(0.54, 0.055, 0.07), loaderX,
+        receiverY + 0.105, 0.005);
+      angledLoaderGunRun(P, { x: loaderX, y: receiverY, z: 0.03,
+        barrelLength: 0.70, outDeg: 7, upDeg: 5 });
     } else {
-      P.add('turret', box(0.42, 0.18, 0.035), loaderX, receiverY - 0.050, 0.015); // SEPv3 low shield
+      // SEPv3: lower compact shield and a subtler rest angle than SEPv2.
+      P.add('turret', box(0.42, 0.18, 0.035), loaderX, receiverY - 0.050, 0.015);
+      for (const sx of [-1, 1]) {
+        P.add('turret', box(0.035, 0.20, 0.24), loaderX + sx * 0.195,
+          receiverY - 0.045, -0.095, 0, -sx * 0.055, 0);
+      }
+      P.add('turretDetail', box(0.44, 0.040, 0.055), loaderX,
+        receiverY + 0.050, 0.010);
+      angledLoaderGunRun(P, { x: loaderX, y: receiverY, z: 0.03,
+        barrelLength: 0.64, outDeg: 4, upDeg: 3, hiderLength: 0.14 });
     }
   } else if (!reactiveLeftWeapons && station === 'crows2tall') {
     // §H.4 SEPv2 tell (loader station): the skate rail carries a SECOND M2
@@ -3478,14 +3515,14 @@ function buildTejasFamily(P, p) {
     P.add('turretDark', box(0.045, 0.30, 0.045), lagsX, 0.775, 0.20);   // connected pintle post
     P.add('turretDark', box(0.21, 0.115, 0.50), lagsX, 0.96, 0.24);    // raised M240 receiver
     P.add('turretDetail', box(0.18, 0.018, 0.42), lagsX, 1.027, 0.24); // receiver cover
-    P.add('turretDark', cylZ(0.026, 0.34, 10), lagsX + 0.015, 0.96, 0.61); // jacket
-    // Match the compact right-loader weapon used by the SEP variants while
-    // retaining the distinct TUSK LAGS receiver and shield.  The tube begins
-    // inside the jacket at z=0.67, so shortening it cannot create a gap.
-    P.add('turretDark', cylZ(0.020, 0.88, 10), lagsX + 0.015, 0.96, 1.11); // compact forward barrel
-    P.add('turretDetail', torus(0.029, 0.008, 10), lagsX + 0.015, 0.96, 1.49,
-      Math.PI / 2, 0, 0);                                             // barrel collar
-    P.add('turretDark', cylZ(0.029, 0.16, 10), lagsX + 0.015, 0.96, 1.63); // flash hider
+    // TUSK: the LAGS station gets the strongest outboard/up rest angle and
+    // a short receiver-level armored notch above the main shield wings.
+    P.add('turret', box(0.055, 0.20, 0.28), lagsX - 0.15, 0.92, 0.39, 0, 0.08, 0);
+    P.add('turret', box(0.055, 0.20, 0.28), lagsX + 0.15, 0.92, 0.39, 0, -0.08, 0);
+    P.add('turretDetail', box(0.35, 0.055, 0.11), lagsX, 1.035, 0.42);
+    angledLoaderGunRun(P, { x: lagsX + 0.015, y: 0.96, z: 0.44,
+      barrelLength: 0.68, outDeg: 9, upDeg: 6,
+      barrelRadius: 0.020, hiderRadius: 0.029, hiderLength: 0.16 });
     P.add('turretDetail', box(0.14, 0.17, 0.20), lagsX - 0.14, 0.93, 0.08); // ammo pouch
     // §5.74 TUSK identity emphasis: laminated outer wings, coping frame and
     // cheek-side ARAT-2 shingles make the loader shield the dominant roof
