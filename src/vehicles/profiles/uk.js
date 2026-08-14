@@ -2662,7 +2662,7 @@ function cromwellHull(P, o) {
   // plane and its tip plates ride ABOVE the end-wheel wrap line.
   for (const s of [-1, 1]) {
     const gx = s * (width / 2 - trackW / 2);
-    const gy = Math.max(bandY + 0.02, wrapTop + 0.015);
+    const gy = Math.max(bandY + 0.02, wrapTop + 0.015, o.guardY ?? -Infinity);
     P.add('hullDetail', box(trackW, 0.035, halfL + rearL + 0.1), gx, gy, (halfL - rearL) / 2);
     P.add('hullDetail', box(trackW * 1.06, 0.03, 0.26), gx, gy - 0.02, halfL - 0.14, -0.3, 0, 0);
     P.add('hullDetail', box(trackW * 1.06, 0.03, 0.26), gx, gy - 0.02, -(rearL - 0.14), 0.28, 0, 0);
@@ -3787,8 +3787,9 @@ export const UK_PROFILES = {
   },
   charioteer: {
     build: charioteerBuild, width: 3.05, hullLength: 6.55, roofY: 1.62, bandY: 0.94, trackW: 0.40,
-    bowZ: 2.2, bowY: 1.40, noseTipY: 1.10, tailTrim: 0.02, wheels: 5, wheelR: 0.44, wheelSpan: 4.3,
+    bowZ: 2.2, bowY: 1.40, noseTipY: 1.16, tailTrim: 0.02, wheels: 5, wheelR: 0.44, wheelSpan: 4.3,
     gunLength: 5.38, noBins: true, bandHalfW: 1.30, apronY: 1.50,
+    corridorY: 1.14, lowerBandY: 1.14, lowerSeamY: 1.16, guardY: 1.15,
   },
   // FV510 Warrior — photo-class full build (owner order 2026-08-06 "made
   // actual"): published dims 6.34 x 3.03 x 2.80 authored as world coords in

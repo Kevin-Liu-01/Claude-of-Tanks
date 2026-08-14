@@ -96,11 +96,11 @@
       "vertices": 41063
     },
     "charioteer": {
-      "freezeHash": "dc955ca8",
-      "instanceFreezeHash": "d1e1b78e",
-      "assetGeometryHash": "35a22cdf",
+      "freezeHash": "368c7000",
+      "instanceFreezeHash": "66caa0b3",
+      "assetGeometryHash": "bd0ea04b",
       "meshes": 36,
-      "vertices": 42875
+      "vertices": 42299
     },
     "chieftain5": {
       "freezeHash": "a17f4ce4",

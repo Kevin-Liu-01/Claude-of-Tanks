@@ -7780,3 +7780,34 @@ and asset geometry **`f79233ec`** (36 rendered meshes / 41,063 vertices).
 
 **KEEP the complete A30 hull, pannier armor, guards, fenders and native
 course. Future corridor work may not subtract or hollow its armor.**
+
+## 5.218 CHARIOTEER CLOSED TRACK-CORRIDOR CLOSEOUT (2026-08-14, LIVE)
+
+The first-party Charioteer retains its complete Cromwell-family hull, broad
+pannier armor, bow, track guards, fender aprons, turret and five-wheel native
+course. No hull, skirt, fender, wheel or track member is deleted.
+
+The low pannier underside is raised above the shoe envelope and joined to the
+unchanged centre body by a **solid inter-track bridge**. Full-height outer side
+armor continues from that closed soffit to the roof. The bow toe, lower side
+seam and complete guard course are lifted just above their native end and shoe
+wraps rather than clipped, opened or replaced.
+
+Exact strict band and individual-shoe audits improve from 348 band / 0 shoe
+sweep voxels to **front 0/0, rear 0/0 and complete sweep 0/0**. Fresh evidence
+contains 15 paired boards including the standardized elevated-left profile,
+15 yaw0 and 15 yaw90 frames: **45 PNG / 45 distinct hashes**. Every view
+preserves the closed hull, full side armor, guards and native track profile.
+
+The complete turret and gun execute a genuine quarter-turn while the hull and
+running gear remain fixed. Parent audit is **0 stranded / 0 abutting / 0
+dangling**. Winding is **0 reversed / 0 mixed geometry with zero-pixel
+deficit**, and mode 2 is clean. The dark muzzle bore and all ten targeted
+runtime-rig checks pass.
+
+All eight targeted presentation assets are current. Charioteer dual-ledger
+geometry is freeze **`368c7000`**, instance freeze **`66caa0b3`** and asset
+geometry **`bd0ea04b`** (36 rendered meshes / 42,299 vertices).
+
+**KEEP the complete Charioteer hull, pannier armor, guards, fenders and native
+course. Future corridor work may not subtract or hollow its armor.**
