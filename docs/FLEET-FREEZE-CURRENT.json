@@ -110,11 +110,11 @@
       "vertices": 94487
     },
     "chieftain_mk10": {
-      "freezeHash": "1f3cfe4d",
-      "instanceFreezeHash": "90203f45",
-      "assetGeometryHash": "2d68e4ec",
+      "freezeHash": "55a23544",
+      "instanceFreezeHash": "e382b2fb",
+      "assetGeometryHash": "7dc96e76",
       "meshes": 44,
-      "vertices": 73895
+      "vertices": 74543
     },
     "comet": {
       "freezeHash": "130246a0",

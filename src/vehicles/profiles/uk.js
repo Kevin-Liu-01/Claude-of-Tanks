@@ -50,6 +50,46 @@ function loftBand(P, bucket, halfW, inset, top, bottomAt, zA, zB, extraZ = []) {
   }
 }
 
+// Opt-in closed-sponson variant of loftBand. The full inter-track body and
+// exact original roof/outer side surface remain; only the concealed lower
+// over-track volume is omitted above the moving native course.
+function loftBandCorridor(P, bucket, halfW, inset, top, bottomAt, zA, zB, corridor, extraZ = []) {
+  const lo = Math.min(corridor.z0, corridor.z1), hi = Math.max(corridor.z0, corridor.z1);
+  const zs = [...new Set([zA, zB, lo, hi, ...top.map((p) => p[0]), ...extraZ]
+    .filter((z) => z >= Math.min(zA, zB) - 1e-6 && z <= Math.max(zA, zB) + 1e-6)
+    .map((z) => Number(z.toFixed(4))))].sort((a, b) => b - a);
+  const topW = halfW - inset;
+  for (let i = 0; i < zs.length - 1; i++) {
+    const zf = zs[i], zr = zs[i + 1];
+    const tf = lineAt(top, zf), tr = lineAt(top, zr);
+    const bf = bottomAt(zf), br = bottomAt(zr);
+    if (tf - bf < 0.015 && tr - br < 0.015) continue;
+    const mid = (zf + zr) * 0.5;
+    if (mid < lo - 1e-6 || mid > hi + 1e-6) {
+      P.add(bucket, slab(
+        [-halfW, bf, zf], [halfW, bf, zf], [halfW, br, zr], [-halfW, br, zr],
+        [-topW, tf, zf], [topW, tf, zf], [topW, tr, zr], [-topW, tr, zr]));
+      continue;
+    }
+    const X = corridor.x, F = corridor.floor;
+    P.add(bucket, slab(
+      [-X, bf, zf], [X, bf, zf], [X, br, zr], [-X, br, zr],
+      [-X, tf, zf], [X, tf, zf], [X, tr, zr], [-X, tr, zr]));
+    const widthAtFloor = (b, t) => {
+      const k = Math.min(1, Math.max(0, (F - b) / Math.max(1e-6, t - b)));
+      return halfW + (topW - halfW) * k;
+    };
+    const wf = widthAtFloor(bf, tf), wr = widthAtFloor(br, tr);
+    for (const side of [-1, 1]) {
+      P.add(bucket, side > 0
+        ? slab([X, F, zf], [wf, F, zf], [wr, F, zr], [X, F, zr],
+          [X, tf, zf], [topW, tf, zf], [topW, tr, zr], [X, tr, zr])
+        : slab([-wf, F, zf], [-X, F, zf], [-X, F, zr], [-wr, F, zr],
+          [-topW, tf, zf], [-X, tf, zf], [-X, tr, zr], [-topW, tr, zr]));
+    }
+  }
+}
+
 // Generic UK hull: curve-lofted bow wedge + full band + stern wedge (+ rear
 // shelf), fenders, optional skirts, running gear. All values world meters.
 function ukHull(P, g) {
@@ -78,7 +118,12 @@ function ukHull(P, g) {
     loftBand(P, 'hull', bw, g.deckInset ?? 0.08, g.deck, () => g.beltTop, bowZ, g.deckSplit.z);
     loftBand(P, 'hull', bw, g.deckSplit.inset, g.deck, () => g.beltTop, g.deckSplit.z, sternZ);
   } else {
-    loftBand(P, 'hull', bw, g.deckInset ?? 0.08, g.deck, () => g.beltTop, bowZ, sternZ);
+    if (g.deckCorridor) {
+      loftBandCorridor(P, 'hull', bw, g.deckInset ?? 0.08, g.deck, () => g.beltTop,
+        bowZ, sternZ, g.deckCorridor);
+    } else {
+      loftBand(P, 'hull', bw, g.deckInset ?? 0.08, g.deck, () => g.beltTop, bowZ, sternZ);
+    }
   }
   loftBand(P, 'hull', g.rakeHalfW ?? bw * 0.94, 0.04, g.deck, (z) => lineAt(g.tailRake, z),
     sternZ, g.tailRake[g.tailRake.length - 1][0], g.tailRake.map((p) => p[0]));
@@ -1143,6 +1188,9 @@ const MK10_HULL = {
   fenderY: 1.575, fenderZ0: -3.70, fenderZ1: 1.9, fenderHalfW: 1.75, fenderHalfWL: 1.75,
   fenderSegLen: 0.45,
   rakeHalfW: 1.02, // §B4: rake lofts stay inboard of the 1.115 track inner face
+  // Closed sponsons preserve the complete exterior deck/side armor while
+  // clearing the concealed solid underside above the native return.
+  deckCorridor: { x: 1.06, floor: 1.40, z0: -2.35, z1: 2.58 },
   // 610 mm track at the published over-track stance (outer faces ±1.725).
   trackXc: 1.42, trackW: 0.61, flapDrop: 0.055,
   padHex: 0x343a29, chainHex: 0x2b3122, gearFloor: true,

@@ -12061,7 +12061,7 @@
           }
         ]
       },
-      "geometryHash": "2d68e4ec",
+      "geometryHash": "7dc96e76",
       "metadataHash": "0fca0e0f",
       "muzzleBore": {
         "tagged": 2,
@@ -12076,24 +12076,24 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 15282,
-          "sha256": "75489736da22a80c05be2551764b9163a290c4acd7a5b27477c5ae707ca2bdb1"
+          "bytes": 15384,
+          "sha256": "18b17861c8534b62f467ecc2edfaa46bdd47cbd2affa6d6ddce6c61f58f78a72"
         },
         "top": {
           "file": "chieftain_mk10_top.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 8522,
-          "sha256": "b67e6df98a1867d216c2a7537d7c3cf29cdd6d2d42cb693a867a6669c49fdb7b"
+          "bytes": 8728,
+          "sha256": "0fbb9988f4310eb628eefa7dafb45db8eadd01fdc6c1def97f9e1aeae87e8a53"
         },
         "side": {
           "file": "chieftain_mk10_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 8882,
-          "sha256": "1aeb87fde34850c9b199f7b9207482112f55a52176e53e2e67525c668c305a1b"
+          "bytes": 8854,
+          "sha256": "68aa3d1f3b86a6a8c56c4e05ede44dd5cbea4771a95103bbeb343bd45b9694b2"
         },
         "topSilhouette": {
           "file": "chieftain_mk10_top_silhouette.png",
@@ -12116,24 +12116,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 63825,
-          "sha256": "8904376a4221007accf6dd50538670eae6aa0fa0554e95c5197f479088e6e204"
+          "bytes": 63260,
+          "sha256": "d1bc43f093b72568af13f748243a66a065c19b3829d66af4729ed8f779c8bfd5"
         },
         "armorSide": {
           "file": "chieftain_mk10_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 66907,
-          "sha256": "6001313371c4301243233166730e8b692cebf4e603c1ce1d694d450e8204423c"
+          "bytes": 66573,
+          "sha256": "b590c5121aa55e88890f9c5a9125f1ccc4ca8a53737c865efa7ef1c1cca3e18f"
         },
         "modulesSide": {
           "file": "chieftain_mk10_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 60348,
-          "sha256": "3c706c39f116b1fe4c3b91adcbb9cbff84d0dee546ee6b15915914f6c88d3bc1"
+          "bytes": 59521,
+          "sha256": "856fb7f0cd31964180225dd5cb864a61f5b7ac24ef7811d4d44c7fb4042bed3e"
         }
       }
     },

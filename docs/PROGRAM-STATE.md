@@ -88,6 +88,7 @@ re-freeze NEW hash, all in ONE commit.
 | merkava3c | c41e5c3c | RE-FROZEN 2026-08-14 (§5.194 non-subtractive closed-sponson/native-course repair; exact band+shoe+sweep 0/0, fresh 45-frame profile/yaw packet; prior aa74be6a retired) |
 | kf51 | 79ce4523 | RE-FROZEN 2026-08-14 (§5.197 non-subtractive closed-sponson/native-course repair: complete exterior hull, side armor and seven-wheel course retained; concealed deck/glacis undersides cleared and wheel-face dressing truthfully classified; exact band+shoe+sweep 0/0, fresh 45-frame profile/yaw packet; prior 7d632754 retired) |
 | strv103 | 4d0ff518 | RE-FROZEN 2026-08-14 (§5.198 fixed-casemate closed-sponson/native-course repair: complete hull, deep skirts, dozer blade and four-wheel course retained; concealed full-width lower body cleared, blade supports reseated and bay shadow truthfully classified; exact band+shoe+sweep 0/0, fresh profile/fixed-yaw packet; prior 77bf8bfd retired) |
+| chieftain_mk10 | 55a23544 | RE-FROZEN 2026-08-14 (§5.199 non-subtractive closed-sponson/native-course repair: complete hull, fenders, skirts and six-wheel course retained; concealed full-width deck underside cleared with an opt-in Mk.10-only band split; exact band+shoe+sweep 0/0, fresh 45-frame profile/yaw packet; prior 1f3cfe4d retired) |
 | isu122s | 8f420d18 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | isu152 | 8e2f75c0 | |
 | merkava3d | 3dc50bb4 | RE-FROZEN 2026-08-14 (§5.194 non-subtractive closed-sponson/native-course repair; exact band+shoe+sweep 0/0, fresh 45-frame profile/yaw packet; prior 667ece84 retired) |
@@ -7068,3 +7069,44 @@ and all ten targeted runtime-rig checks pass. Dual-ledger geometry is freeze
 Future repairs must preserve the fixed-casemate exterior and may only reshape
 concealed sponson undersides, reseat track-adjacent fittings or correct
 truthful running-gear ownership.**
+
+## 5.199 CHIEFTAIN MK.10 CLOSED-SPONSON / NATIVE-COURSE CLOSEOUT (2026-08-14, LIVE)
+
+This repair preserves the complete first-party Chieftain Mk.10: closed bow
+and stern, full deck and side hull, fenders, six-panel Stillbrew-era skirts,
+six road wheels, raised front idler, high rear drive sprocket and one
+linked-shoe course. No visible hull, skirt, fender, wheel or track component
+is deleted or hidden, and the accepted turret/gun/equipment package remains
+unchanged.
+
+The sole defect was the full-width concealed lower face of the deck band,
+which crossed the supported return while the visible exterior already sat
+above it. A new opt-in UK closed-sponson band is enabled only by Mk.10: the
+complete inter-track body remains load-bearing, while the exact original deck
+roof and exterior side-wall line remain at their measured coordinates above
+the course. Chieftain Mk.5 and every other UK builder remain byte-untouched by
+the opt-in path.
+
+Exact strict band and individual-shoe audits now report **front 0/0, rear 0/0
+and complete sweep 0/0**. Fresh evidence contains 15 paired boards including
+the standardized elevated-left profile, 15 yaw0 and 15 yaw90 frames: **45 PNG
+/ 45 distinct hashes**. Paired pixels are silhouette-identical to the
+accepted authored baseline copy. Side and elevated views retain the full
+skirt/side hull, all six readable road wheels, a loaded lower run and
+continuous raised terminal transitions; front and rear views remain closed.
+
+The complete Stillbrew turret, gun, commander/TOGS station, optics, smoke and
+turret stowage execute a genuine quarter-turn while the hull, deck, fenders,
+skirts and running gear remain fixed. Parenting is **0 stranded / 0 abutting
+/ 0 dangling**. Winding is **0 reversed / 0 mixed / 0-pixel deficit**, with
+zero yaw-stranded candidates. No empty-air fitting, duplicate course, open
+sheet, sky hole or silhouette regression appears.
+
+All eight targeted presentation assets are current, the muzzle bore passes
+and all ten targeted runtime-rig checks pass. Dual-ledger geometry is freeze
+**`55a23544`**, instance freeze **`e382b2fb`** and asset geometry
+**`7dc96e76`** (44 rendered meshes / 74,543 vertices).
+
+**KEEP the complete Chieftain Mk.10 hull, fenders, skirts and native course.
+Future clearance work must preserve the accepted exterior and use only
+concealed sponson shaping, physical fitting clearance or truthful ownership.**
