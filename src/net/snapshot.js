@@ -3,6 +3,12 @@ const VELOCITY_SCALE = 100;      // centimeters / second
 const ANGLE_SCALE = 32767 / Math.PI;
 const MAX_ENTITIES = 32;
 const MAX_SHELLS = 256;
+const ENTITY_DELTA_FIELDS = Object.freeze([
+  'id', 'specId', 'team',
+  'x', 'y', 'z', 'vx', 'vz',
+  'yaw', 'pitch', 'roll', 'turretYaw', 'gunPitch',
+  'hp', 'maxHp', 'reloadMs', 'shellSlot', 'flags',
+]);
 
 export const SNAPSHOT_FLAGS = Object.freeze({
   DESTROYED: 1 << 0,
@@ -137,6 +143,97 @@ export function captureWorldSnapshot({
     events: (events || []).filter((event) => canObserveEvent(viewer, event)),
     meta: meta && typeof meta === 'object' ? { ...meta } : null,
   };
+}
+
+function sameEntitySnapshot(a, b) {
+  if (!a || !b) return false;
+  for (const field of ENTITY_DELTA_FIELDS) {
+    if (a[field] !== b[field]) return false;
+  }
+  return true;
+}
+
+/**
+ * Encode a viewer-specific full snapshot against an acknowledged full
+ * baseline. Shells and events stay self-contained because they are transient;
+ * stable tank state is reduced to changed rows plus explicit removals.
+ */
+export function createSnapshotDelta(current, baseline = null) {
+  if (!current || !Number.isSafeInteger(current.tick) || !Array.isArray(current.entities)) {
+    throw new TypeError('current full snapshot is required');
+  }
+  if (!baseline) {
+    return { ...current, baseTick: -1, removedEntityIds: [] };
+  }
+  if (!Number.isSafeInteger(baseline.tick) || !Array.isArray(baseline.entities) ||
+      baseline.tick >= current.tick) {
+    throw new TypeError('baseline must be an older full snapshot');
+  }
+  const baselineById = new Map(baseline.entities.map((entity) => [entity.id, entity]));
+  const currentIds = new Set();
+  const changed = [];
+  for (const entity of current.entities) {
+    currentIds.add(entity.id);
+    if (!sameEntitySnapshot(entity, baselineById.get(entity.id))) changed.push(entity);
+  }
+  const removedEntityIds = [];
+  for (const entity of baseline.entities) {
+    if (!currentIds.has(entity.id)) removedEntityIds.push(entity.id);
+  }
+  return {
+    ...current,
+    baseTick: baseline.tick,
+    entities: changed,
+    removedEntityIds,
+  };
+}
+
+/** Reconstruct ACK-based deltas into full snapshots for the jitter buffer. */
+export class SnapshotAssembler {
+  constructor({ capacity = 96 } = {}) {
+    if (!Number.isInteger(capacity) || capacity < 2) {
+      throw new TypeError('snapshot assembler capacity must be at least two');
+    }
+    this.capacity = capacity;
+    this.history = new Map();
+  }
+
+  accept(packet) {
+    if (!packet || !Number.isSafeInteger(packet.tick) || !Array.isArray(packet.entities)) {
+      throw new TypeError('invalid snapshot packet');
+    }
+    const baseTick = packet.baseTick == null ? -1 : packet.baseTick;
+    let entities;
+    if (baseTick === -1) {
+      entities = packet.entities.slice();
+    } else {
+      if (!Number.isSafeInteger(baseTick) || baseTick < 0 || baseTick >= packet.tick) {
+        throw new TypeError('invalid snapshot baseline tick');
+      }
+      const baseline = this.history.get(baseTick);
+      if (!baseline) return null;
+      const byId = new Map(baseline.entities.map((entity) => [entity.id, entity]));
+      for (const id of packet.removedEntityIds || []) byId.delete(String(id));
+      for (const entity of packet.entities) byId.set(entity.id, entity);
+      entities = [...byId.values()];
+    }
+    const full = {
+      tick: packet.tick,
+      serverTimeMs: packet.serverTimeMs,
+      ackInputSeq: packet.ackInputSeq,
+      entities,
+      shells: Array.isArray(packet.shells) ? packet.shells : [],
+      events: Array.isArray(packet.events) ? packet.events : [],
+      meta: packet.meta && typeof packet.meta === 'object' ? packet.meta : null,
+    };
+    this.history.set(full.tick, full);
+    while (this.history.size > this.capacity) {
+      this.history.delete(this.history.keys().next().value);
+    }
+    return full;
+  }
+
+  clear() { this.history.clear(); }
 }
 
 export function decodeEntitySnapshot(entity) {

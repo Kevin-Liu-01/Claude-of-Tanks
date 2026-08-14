@@ -26,6 +26,7 @@ export function connectDedicatedMatch({
     throw new TypeError('dedicated match URL must use ws or wss');
   }
   const socket = new WebSocketImpl(endpoint);
+  socket.binaryType = 'arraybuffer';
   const transport = createWebSocketTransport(socket, {
     maxMessageBytes: 64 * 1024,
     maxBufferedBytes: 512 * 1024,

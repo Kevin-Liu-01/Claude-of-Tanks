@@ -1,4 +1,5 @@
 import { TransportClosedError } from './loopbackTransport.js';
+import { snapshotWireCodec } from './snapshotWireCodec.js';
 
 const DEFAULT_MAX_BUFFERED_BYTES = 512 * 1024;
 const DEFAULT_MAX_MESSAGE_BYTES = 256 * 1024;
@@ -45,6 +46,7 @@ function normalizedReadyState(channel) {
 export function createChannelTransport(channel, {
   kind = 'channel',
   codec = jsonWireCodec,
+  stateCodec = codec,
   maxBufferedBytes = DEFAULT_MAX_BUFFERED_BYTES,
   maxMessageBytes = DEFAULT_MAX_MESSAGE_BYTES,
   coalesceState = false,
@@ -55,6 +57,10 @@ export function createChannelTransport(channel, {
   }
   if (!codec || typeof codec.encode !== 'function' || typeof codec.decode !== 'function') {
     throw new TypeError('codec must implement encode() and decode()');
+  }
+  if (!stateCodec || typeof stateCodec.encode !== 'function' ||
+      typeof stateCodec.decode !== 'function') {
+    throw new TypeError('stateCodec must implement encode() and decode()');
   }
   const messages = new Set();
   const closes = new Set();
@@ -77,7 +83,8 @@ export function createChannelTransport(channel, {
 
   const removeMessage = addListener(channel, 'message', (event) => {
     try {
-      const decoded = codec.decode(event.data);
+      const wireCodec = typeof event.data === 'string' ? codec : stateCodec;
+      const decoded = wireCodec.decode(event.data);
       stats.received++;
       for (const listener of [...messages]) listener(decoded);
     } catch (error) {
@@ -99,9 +106,11 @@ export function createChannelTransport(channel, {
     for (const listener of [...errors]) listener(error);
   });
 
-  function encode(message) {
-    const encoded = codec.encode(message);
-    const bytes = typeof codec.size === 'function' ? codec.size(encoded) : utf8Size(String(encoded));
+  function encode(message, wireCodec = codec) {
+    const encoded = wireCodec.encode(message);
+    const bytes = typeof wireCodec.size === 'function'
+      ? wireCodec.size(encoded)
+      : utf8Size(String(encoded));
     return { encoded, bytes };
   }
 
@@ -149,7 +158,7 @@ export function createChannelTransport(channel, {
     sendState(message) {
       if (!coalesceState) return transport.send(message);
       if (normalizedReadyState(channel) !== 'open') throw new TransportClosedError();
-      const encodedState = encode(message);
+      const encodedState = encode(message, stateCodec);
       if (encodedState.bytes > maxMessageBytes) {
         stats.rejected++;
         return false;
@@ -230,6 +239,8 @@ export function createWebRTCSplitTransport(controlChannel, stateChannel, options
     ...options,
     kind: 'webrtc-state',
     coalesceState: true,
+    codec: options.stateCodec || snapshotWireCodec,
+    stateCodec: options.stateCodec || snapshotWireCodec,
     maxBufferedBytes: options.maxStateBufferedBytes ?? DEFAULT_MAX_STATE_BUFFERED_BYTES,
     maxStateBufferedBytes: options.maxStateBufferedBytes ?? DEFAULT_MAX_STATE_BUFFERED_BYTES,
   });
@@ -314,6 +325,7 @@ export function createWebSocketTransport(socket, options = {}) {
     ...options,
     kind: 'websocket',
     coalesceState: options.coalesceState ?? true,
+    stateCodec: options.stateCodec || snapshotWireCodec,
     maxStateBufferedBytes: Math.min(options.maxStateBufferedBytes ?? 128 * 1024,
       maxBufferedBytes),
   });

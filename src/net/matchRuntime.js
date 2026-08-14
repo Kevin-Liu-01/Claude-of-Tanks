@@ -10,7 +10,7 @@ import {
   normalizePlayerInput,
   validateEnvelope,
 } from './protocol.js';
-import { SnapshotBuffer } from './snapshot.js';
+import { SnapshotAssembler, SnapshotBuffer, createSnapshotDelta } from './snapshot.js';
 
 function validateRate(tickHz, snapshotHz) {
   if (!Number.isInteger(tickHz) || tickHz < 10 || tickHz > 120) {
@@ -54,10 +54,19 @@ export class AuthoritativeMatchRuntime {
     snapshotHz = SNAPSHOT_HZ,
     maxCatchUpTicks = 4,
     maxInputLeadTicks = 120,
+    keyframeIntervalTicks = tickHz * 2,
+    snapshotHistoryCapacity = Math.max(64,
+      Math.ceil(keyframeIntervalTicks * snapshotHz / tickHz) * 2),
   } = {}) {
     validateRate(tickHz, snapshotHz);
     if (!Number.isInteger(maxCatchUpTicks) || maxCatchUpTicks < 1 || maxCatchUpTicks > 12) {
       throw new TypeError('maxCatchUpTicks must be between 1 and 12');
+    }
+    if (!Number.isInteger(keyframeIntervalTicks) || keyframeIntervalTicks < tickHz / snapshotHz) {
+      throw new TypeError('keyframeIntervalTicks must cover at least one snapshot interval');
+    }
+    if (!Number.isInteger(snapshotHistoryCapacity) || snapshotHistoryCapacity < 2) {
+      throw new TypeError('snapshotHistoryCapacity must be at least two');
     }
     this.simulation = validateSimulation(simulation);
     this.tickHz = tickHz;
@@ -66,6 +75,8 @@ export class AuthoritativeMatchRuntime {
     this.snapshotEveryTicks = tickHz / snapshotHz;
     this.maxCatchUpTicks = maxCatchUpTicks;
     this.maxInputLeadTicks = maxInputLeadTicks;
+    this.keyframeIntervalTicks = keyframeIntervalTicks;
+    this.snapshotHistoryCapacity = snapshotHistoryCapacity;
     this.tick = 0;
     this.timeMs = 0;
     this.accumulatorMs = 0;
@@ -79,6 +90,9 @@ export class AuthoritativeMatchRuntime {
       invalidMessages: 0,
       staleInputs: 0,
       futureInputs: 0,
+      snapshotKeyframes: 0,
+      snapshotDeltas: 0,
+      snapshotEntityRows: 0,
     };
   }
 
@@ -103,6 +117,9 @@ export class AuthoritativeMatchRuntime {
       ready: false,
       fireQueued: false,
       actionBitsQueued: 0,
+      lastSnapshotAckTick: null,
+      lastKeyframeTick: -Infinity,
+      snapshotHistory: new Map(),
       unsubscribeMessage: null,
       unsubscribeClose: null,
     };
@@ -194,6 +211,7 @@ export class AuthoritativeMatchRuntime {
           if (!peer.welcomed) {
             throw new ProtocolError('hello_required', 'hello must precede match ping');
           }
+          this.#recordSnapshotAck(peer, message.payload && message.payload.snapshotAckTick);
           this.#send(peer, MESSAGE_TYPES.PONG, {
             clientTimeMs: Number(message.payload && message.payload.clientTimeMs) || 0,
             serverTimeMs: this.timeMs,
@@ -223,9 +241,24 @@ export class AuthoritativeMatchRuntime {
       throw new ProtocolError('input_too_far_ahead', 'client input tick is too far ahead');
     }
     peer.lastInputSeq = input.inputSeq;
+    this.#recordSnapshotAck(peer, input.snapshotAckTick);
     peer.input = input;
     if (input.fire) peer.fireQueued = true;
     peer.actionBitsQueued |= input.actionBits;
+  }
+
+  #recordSnapshotAck(peer, rawTick) {
+    const tick = Number(rawTick ?? 0);
+    if (!Number.isSafeInteger(tick) || tick < 0 || tick > this.tick) {
+      throw new ProtocolError('invalid_snapshot_ack', 'snapshot acknowledgement is invalid');
+    }
+    if (tick === 0) {
+      peer.lastSnapshotAckTick = null;
+      return;
+    }
+    if (peer.lastSnapshotAckTick == null || tick > peer.lastSnapshotAckTick) {
+      peer.lastSnapshotAckTick = tick;
+    }
   }
 
   /**
@@ -309,7 +342,22 @@ export class AuthoritativeMatchRuntime {
         viewerId: peer.id,
         ackInputSeq: peer.lastInputSeq == null ? 0 : peer.lastInputSeq,
       });
-      this.#send(peer, MESSAGE_TYPES.SNAPSHOT, snapshot);
+      const acknowledged = peer.lastSnapshotAckTick == null
+        ? null
+        : peer.snapshotHistory.get(peer.lastSnapshotAckTick) || null;
+      const needsKeyframe = !acknowledged ||
+        this.tick - peer.lastKeyframeTick >= this.keyframeIntervalTicks;
+      const packet = createSnapshotDelta(snapshot, needsKeyframe ? null : acknowledged);
+      peer.snapshotHistory.set(snapshot.tick, snapshot);
+      while (peer.snapshotHistory.size > this.snapshotHistoryCapacity) {
+        peer.snapshotHistory.delete(peer.snapshotHistory.keys().next().value);
+      }
+      if (needsKeyframe) {
+        peer.lastKeyframeTick = this.tick;
+        this.stats.snapshotKeyframes++;
+      } else this.stats.snapshotDeltas++;
+      this.stats.snapshotEntityRows += packet.entities.length;
+      this.#send(peer, MESSAGE_TYPES.SNAPSHOT, packet);
       this.stats.snapshots++;
     }
     if (typeof this.simulation.afterSnapshotBroadcast === 'function') {
@@ -348,12 +396,15 @@ export class MatchClientRuntime {
       maxExtrapolationMs,
       immediateEntityId: this.playerId,
     });
+    this.assembler = new SnapshotAssembler();
     this.pingIntervalMs = pingIntervalMs;
     this.clock = clock;
     this.sendSeq = 0;
     this.inputSeq = 0;
     this.lastRecvSeq = null;
     this.clientTick = 0;
+    this.lastSnapshotTick = 0;
+    this.missingSnapshotBaselines = 0;
     this.serverOffsetMs = 0;
     this.lastPingAtMs = -Infinity;
     this.connected = false;
@@ -402,8 +453,17 @@ export class MatchClientRuntime {
       // the ordering authority; reliable control messages retain sequence
       // ordering independently so either lane can arrive first safely.
       if (message.type === MESSAGE_TYPES.SNAPSHOT) {
+        if (!message.payload || message.payload.tick !== message.tick) {
+          throw new ProtocolError('snapshot_tick_mismatch', 'snapshot envelope tick does not match payload');
+        }
         this.clientTick = Math.max(this.clientTick, message.tick);
-        this.buffer.push(message.payload);
+        const snapshot = this.assembler.accept(message.payload);
+        if (!snapshot) {
+          this.lastSnapshotTick = 0;
+          this.missingSnapshotBaselines++;
+          return;
+        }
+        if (this.buffer.push(snapshot)) this.lastSnapshotTick = snapshot.tick;
         return;
       }
       if (this.lastRecvSeq != null && !isSequenceNewer(message.seq, this.lastRecvSeq)) return;
@@ -445,6 +505,7 @@ export class MatchClientRuntime {
       ...input,
       inputSeq: this.inputSeq,
       clientTick,
+      snapshotAckTick: this.lastSnapshotTick,
     });
     this.inputSeq = nextSequence(this.inputSeq);
     this.clientTick = Math.max(this.clientTick, clientTick);
@@ -463,7 +524,10 @@ export class MatchClientRuntime {
     this._lastUpdateNowMs = nowMs;
     if (this.connected && nowMs - this.lastPingAtMs >= this.pingIntervalMs) {
       this.lastPingAtMs = nowMs;
-      this.#send(MESSAGE_TYPES.PING, { clientTimeMs: nowMs });
+      this.#send(MESSAGE_TYPES.PING, {
+        clientTimeMs: nowMs,
+        snapshotAckTick: this.lastSnapshotTick,
+      });
     }
     return this.buffer.sample(nowMs + this.serverOffsetMs);
   }

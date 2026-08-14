@@ -82,6 +82,7 @@ export function createWebRTCPeer({
     }
     const existing = channels.get(channel.label);
     if (existing && existing !== channel) existing.close();
+    if (channel.label === MATCH_STATE_CHANNEL_LABEL) channel.binaryType = 'arraybuffer';
     channels.set(channel.label, channel);
     if (channel.readyState === 'open') settleIfReady();
     else channel.addEventListener('open', settleIfReady, { once: true });

@@ -6,7 +6,7 @@
  * authoritative host validates all client-authored fields here.
  */
 
-export const PROTOCOL_VERSION = 1;
+export const PROTOCOL_VERSION = 2;
 export const MATCH_TICK_HZ = 60;
 export const SNAPSHOT_HZ = 20;
 export const MAX_PLAYERS = 14;
@@ -154,6 +154,7 @@ export function normalizePlayerInput(value) {
   }
   const inputSeq = assertSequence(value.inputSeq, 'inputSeq');
   const clientTick = assertSequence(value.clientTick, 'clientTick');
+  const snapshotAckTick = assertSequence(value.snapshotAckTick ?? 0, 'snapshotAckTick');
   const throttle = clamp(assertFiniteNumber(value.throttle, 'throttle'), -1, 1);
   const steer = clamp(assertFiniteNumber(value.steer, 'steer'), -1, 1);
   const aimYaw = assertFiniteNumber(value.aimYaw, 'aimYaw');
@@ -169,6 +170,7 @@ export function normalizePlayerInput(value) {
   return {
     inputSeq,
     clientTick,
+    snapshotAckTick,
     throttle,
     steer,
     brake: !!value.brake,

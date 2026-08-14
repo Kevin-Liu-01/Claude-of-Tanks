@@ -27,12 +27,15 @@ import {
   createWebSocketTransport,
 } from './channelTransport.js';
 import {
+  SnapshotAssembler,
   SnapshotBuffer,
   captureEntitySnapshot,
   captureWorldSnapshot,
+  createSnapshotDelta,
   decodeEntitySnapshot,
 } from './snapshot.js';
 import { AuthoritativeMatchRuntime, MatchClientRuntime } from './matchRuntime.js';
+import { snapshotWireCodec } from './snapshotWireCodec.js';
 import { createLocalMatchSession } from './localSession.js';
 import {
   MATCH_CHANNEL_LABEL,
@@ -84,6 +87,15 @@ function entity(id, specId, team, x, { visible = false, yaw = 0, speed = 0 } = {
   };
 }
 
+function snapshotEnvelope(tick, x = tick) {
+  return createEnvelope(MESSAGE_TYPES.SNAPSHOT, captureWorldSnapshot({
+    tick,
+    serverTimeMs: tick * 50,
+    entities: [entity('driver', 'm1a2', 'alpha', x)],
+    viewerId: 'driver',
+  }), { seq: tick, tick });
+}
+
 function expectCode(fn, ErrorType, code) {
   assert.throws(fn, (error) => error instanceof ErrorType && error.code === code);
 }
@@ -124,29 +136,29 @@ class FakeChannel extends FakeEventTarget {
     maxRetransmits: 0,
   });
   const transport = createWebRTCSplitTransport(control, state, {
-    maxStateBufferedBytes: 64,
-    maxMessageBytes: 1024,
+    maxStateBufferedBytes: 1024,
+    maxMessageBytes: 4096,
   });
   assert.equal(transport.send({ type: 'input', payload: 1 }), true);
   assert.equal(JSON.parse(control.sent[0]).type, 'input');
   assert.equal(state.sent.length, 0, 'control never leaks onto the state lane');
-  assert.equal(transport.sendState({ type: 'snapshot', tick: 1 }), true);
-  assert.equal(JSON.parse(state.sent[0]).tick, 1);
+  assert.equal(transport.sendState(snapshotEnvelope(1)), true);
+  assert.equal(snapshotWireCodec.decode(state.sent[0]).tick, 1);
 
-  state.bufferedAmount = 64;
-  transport.sendState({ type: 'snapshot', tick: 2 });
-  transport.sendState({ type: 'snapshot', tick: 3 });
+  state.bufferedAmount = 1024;
+  transport.sendState(snapshotEnvelope(2));
+  transport.sendState(snapshotEnvelope(3));
   assert.equal(state.sent.length, 1, 'blocked state is coalesced instead of queued');
   assert.ok(transport.stats.state.stateCoalesced >= 1);
   state.bufferedAmount = 0;
   state.emit('bufferedamountlow');
-  assert.equal(JSON.parse(state.sent.at(-1)).tick, 3,
+  assert.equal(snapshotWireCodec.decode(state.sent.at(-1)).tick, 3,
     'buffer drain sends only the newest authoritative state');
 
   const received = [];
   transport.onMessage((message) => received.push(message.type));
   control.emit('message', { data: JSON.stringify({ type: 'event' }) });
-  state.emit('message', { data: JSON.stringify({ type: 'snapshot' }) });
+  state.emit('message', { data: snapshotWireCodec.encode(snapshotEnvelope(4)) });
   assert.deepEqual(received, ['event', 'snapshot']);
   transport.close('done');
   assert.equal(control.readyState, 'closed');
@@ -158,17 +170,17 @@ class FakeChannel extends FakeEventTarget {
 {
   const socket = new FakeChannel('websocket');
   const transport = createWebSocketTransport(socket, {
-    maxBufferedBytes: 128,
-    maxStateBufferedBytes: 64,
-    maxMessageBytes: 1024,
+    maxBufferedBytes: 2048,
+    maxStateBufferedBytes: 1024,
+    maxMessageBytes: 4096,
   });
-  socket.bufferedAmount = 64;
-  transport.sendState({ type: 'snapshot', tick: 1 });
-  transport.sendState({ type: 'snapshot', tick: 2 });
+  socket.bufferedAmount = 1024;
+  transport.sendState(snapshotEnvelope(1));
+  transport.sendState(snapshotEnvelope(2));
   assert.equal(socket.sent.length, 0);
   socket.bufferedAmount = 0;
-  transport.sendState({ type: 'snapshot', tick: 3 });
-  assert.equal(JSON.parse(socket.sent[0]).tick, 3,
+  transport.sendState(snapshotEnvelope(3));
+  assert.equal(snapshotWireCodec.decode(socket.sent[0]).tick, 3,
     'the next writable WebSocket snapshot replaces every stale pending state');
   transport.close('done');
 }
@@ -196,6 +208,7 @@ const normalizedInput = normalizePlayerInput({
 assert.equal(normalizedInput.throttle, 1);
 assert.equal(normalizedInput.steer, -1);
 assert.equal(normalizedInput.aimPitch, Math.PI / 2);
+assert.equal(normalizedInput.snapshotAckTick, 0);
 assert.equal(Object.hasOwn(normalizedInput, 'ignored'), false);
 assert.equal(isSequenceNewer(0, 0x7fffffff), true, 'sequence wrap is newer');
 assert.equal(isSequenceNewer(3, 3), false);
@@ -465,6 +478,61 @@ const visible = captureWorldSnapshot({
 assert.deepEqual(visible.entities.map((entry) => entry.id), ['p1', 'p2']);
 assert.equal(decodeEntitySnapshot(captureEntitySnapshot(hidden)).x, 20);
 
+// ACK-based entity deltas preserve full client truth, including visibility
+// removals, without retransmitting unchanged tanks.
+{
+  const base = captureWorldSnapshot({
+    tick: 3,
+    serverTimeMs: 50,
+    entities: [
+      entity('moving', 'm1a2', 'alpha', 0),
+      entity('stable', 't90m', 'alpha', 10),
+      entity('hidden-next', 'leo2a7', 'bravo', 30),
+    ],
+    viewerId: 'moving',
+  });
+  const current = captureWorldSnapshot({
+    tick: 6,
+    serverTimeMs: 100,
+    entities: [
+      entity('moving', 'm1a2', 'alpha', 1),
+      entity('stable', 't90m', 'alpha', 10),
+    ],
+    viewerId: 'moving',
+  });
+  const keyframe = createSnapshotDelta(base);
+  const delta = createSnapshotDelta(current, base);
+  assert.equal(keyframe.baseTick, -1);
+  assert.deepEqual(delta.entities.map((entry) => entry.id), ['moving']);
+  assert.deepEqual(delta.removedEntityIds, ['hidden-next']);
+  assert.ok(JSON.stringify(delta).length < JSON.stringify(createSnapshotDelta(current)).length,
+    'unchanged tank rows reduce the wire payload');
+  const assembler = new SnapshotAssembler();
+  assert.deepEqual(assembler.accept(keyframe).entities.map((entry) => entry.id),
+    ['moving', 'stable', 'hidden-next']);
+  assert.deepEqual(assembler.accept(delta).entities.map((entry) => entry.id),
+    ['moving', 'stable']);
+  assert.equal(new SnapshotAssembler().accept(delta), null,
+    'a delta without its acknowledged baseline is rejected safely');
+}
+
+{
+  const full = createSnapshotDelta(captureWorldSnapshot({
+    tick: 30,
+    serverTimeMs: 500,
+    entities: Array.from({ length: 14 }, (_, index) =>
+      entity(`tank-${index}`, index % 2 ? 't90m' : 'm1a2',
+        index % 2 ? 'bravo' : 'alpha', index * 7)),
+    viewerId: 'tank-0',
+  }));
+  const envelopeValue = createEnvelope(MESSAGE_TYPES.SNAPSHOT, full, { seq: 9, ack: 7, tick: 30 });
+  const binary = snapshotWireCodec.encode(envelopeValue);
+  const decoded = snapshotWireCodec.decode(binary);
+  assert.deepEqual(decoded, envelopeValue, 'compact snapshot codec round-trips the full envelope');
+  assert.ok(binary.byteLength < new TextEncoder().encode(JSON.stringify(envelopeValue)).byteLength * 0.7,
+    'binary array rows remove at least 30% of full-snapshot JSON bytes');
+}
+
 const before = entity('moving', 't90m', 'alpha', 0, {
   yaw: Math.PI - 0.02,
   speed: 20,
@@ -609,6 +677,7 @@ function createTestSimulation() {
   const p1Frame = p1.update(50);
   const p2Frame = p2.update(50);
   assert.equal(hostRuntime.stats.snapshots, 2, 'one viewer-specific snapshot per peer');
+  assert.equal(hostRuntime.stats.snapshotKeyframes, 2, 'the first state for each peer is a keyframe');
   assert.equal(stateLaneSends, 1, 'authority routes snapshots through a replaceable state lane');
   assert.deepEqual(p1Frame.entities.map((entry) => entry.id), ['p1']);
   assert.deepEqual(p2Frame.entities.map((entry) => entry.id), ['p2']);
@@ -626,6 +695,8 @@ function createTestSimulation() {
   p1.submitInput(input({ actionBits: PLAYER_ACTION_BITS.FIRST_AID }), hostRuntime.tick);
   await Promise.resolve();
   hostRuntime.advance(50);
+  assert.ok(hostRuntime.stats.snapshotDeltas >= 2,
+    'acknowledged peers receive entity deltas after their first keyframe');
   assert.deepEqual(simulation.actionFrames, [
     PLAYER_ACTION_BITS.REPAIR,
     PLAYER_ACTION_BITS.FIRST_AID,
