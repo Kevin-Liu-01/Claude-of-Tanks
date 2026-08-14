@@ -85,14 +85,16 @@ function sovGear(P, g) {
     rollers: g.rollers || [], trackW: g.trackW, topY: g.topY,
     botY: (g.botY ?? 0.10) + lift,        // track run above the wheel bottoms:
     arms: true,                           // the oracles show wheel scallops
+    ...(g.corridorOwned ? { armBucket: 'hullRunningGearDetail' } : {}),
   });
   // shaded-parity r1 (family WT 3 — "flat discs in shadow"): the bespoke
   // steel wheels merged every face feature into one painted material. A dark
   // recess field sits BEHIND the painted rim ring / spoke ribs / hub drum /
   // bolt ring (all of which stand proud of it), so hubs and rims read out of
-  // the wheel-bay shadow under any camo. Merged into hullDark — zero draws.
+  // the wheel-bay shadow under any camo. These are native running-gear
+  // members, so the dedicated buckets keep the hull-corridor census truthful.
   for (const z of wheelZs) for (const s of [-1, 1]) {
-    P.add('hullDark', cylX(g.wheelR * 0.72, wheelW * 1.06, 12), s * g.xc, g.wheelY + lift, z);
+    P.add(g.corridorOwned ? 'hullRunningGearDark' : 'hullDark', cylX(g.wheelR * 0.72, wheelW * 1.06, 12), s * g.xc, g.wheelY + lift, z);
   }
 }
 
@@ -338,15 +340,20 @@ function is3Hull(P) {
   for (const s of [-1, 1]) {
     P.add('hull', box(0.2075, 0.62, 5.45), s * 0.77625, 0.585, -0.425);        // tub strips 0.6725..0.88 (ref 0.275 band;
   }                                                                            // aft to -3.15: the ref tail-belly 0.31 line)
-  P.add('hull', frustum(1.48, 2.06, -3.05, 1.40, 2.04, -3.02, 0.84, 1.505));   // sloped sponson band
+  // Closed raised soffit: retain the solid centre belly and the accepted
+  // upper sponson exterior, but join them above the native return run. The
+  // former full-width lower frustum occupied the same volume as the shoes.
+  P.add('hull', box(1.30, 0.30, 5.11), 0, 1.155, -0.495);                      // solid centre bridge 1.005..1.305
+  P.add('hull', frustum(1.43, 2.06, -3.05, 1.40, 2.04, -3.02, 1.28, 1.505));  // complete upper sponson wall
   // ---- stern (wedge tail + plate + deck slope) ----
   P.add('hull', KIT.slab(                                                      // lower stern rake A (bottom 0.44: the
-    [-1.42, 0.44, -2.93], [1.42, 0.44, -2.93], [1.40, 0.50, -3.24], [-1.40, 0.50, -3.24], // ref's low 0.25 side line here is its
-    [-1.42, 1.02, -2.93], [1.42, 1.02, -2.93], [1.40, 1.05, -3.24], [-1.40, 1.05, -3.24])); // TRACK wrap — the hull keeps 0.44+)
+    [-0.72, 0.44, -2.93], [0.72, 0.44, -2.93], [0.70, 0.50, -3.24], [-0.70, 0.50, -3.24],
+    [-0.72, 1.28, -2.93], [0.72, 1.28, -2.93], [0.70, 1.28, -3.24], [-0.70, 1.28, -3.24])); // sealed inter-track stern core
   P.add('hull', KIT.slab(                                                      // tail wedge B -> point (-3.385, 0.92)
-    [-1.40, 0.48, -3.24], [1.40, 0.48, -3.24], [1.38, 0.895, -3.385], [-1.38, 0.895, -3.385],
-    [-1.40, 1.05, -3.24], [1.40, 1.05, -3.24], [1.38, 0.945, -3.385], [-1.38, 0.945, -3.385]));
-  P.add('hull', box(2.80, 0.40, 0.09), 0, 1.25, -3.165);                       // tail plate (face -3.21, top 1.45 —
+    [-0.70, 0.48, -3.24], [0.70, 0.48, -3.24], [0.68, 0.895, -3.385], [-0.68, 0.895, -3.385],
+    [-0.70, 1.28, -3.24], [0.70, 1.28, -3.24], [0.68, 1.28, -3.385], [-0.68, 1.28, -3.385]));
+  P.add('hull', box(1.40, 0.22, 0.09), 0, 1.16, -3.165);                       // solid lower tail bridge
+  P.add('hull', box(2.80, 0.22, 0.09), 0, 1.34, -3.165);                       // complete upper tail plate (top 1.45 —
                                                                                // 2 cm shy of the ref's -3.232 so the
                                                                                // bin-edge pixel never bleeds aft)
   P.add('hull', KIT.slab(                                                      // rear deck slope: steep 1.448 -> 1.585
@@ -432,12 +439,22 @@ function is3Hull(P) {
     sideSlab(P, 'hull', s,
       [0.38, 0.646, 3.14], [0.74, 0.650, 3.012], [0.74, 0.977, 2.46], [0.38, 1.06, 2.56],
       [0.38, 0.926, 3.34], [0.74, 0.930, 3.212], [0.74, 1.257, 2.66], [0.38, 1.285, 2.76]);
-    // upper plate seg B (x 0.74..1.42): belt -> sponson corner
+    // upper plate seg B (x 0.74..1.42): belt -> sponson corner. Keep the
+    // pike's measured upper silhouette, but close its underside through a
+    // 5 cm inboard transition before the full outer shoulder rises above the
+    // idler sweep. This replaces the old diagonal floor that crossed both
+    // front track lanes; it does not remove the pike or its side armor.
     sideSlab(P, 'hull', s,
-      [0.74, 0.650, 3.012], [1.42, 0.670, 1.880], [1.40, 1.220, 1.840], [0.74, 1.245, 2.029],
-      [0.74, 0.930, 3.212], [1.42, 0.950, 2.060], [1.40, 1.500, 2.020], [0.74, 1.525, 2.209]);
+      [0.74, 0.650, 3.012], [0.79, 1.280, 2.929], [0.79, 1.280, 2.015], [0.74, 1.245, 2.029],
+      [0.74, 0.930, 3.212], [0.79, 1.320, 3.127], [0.79, 1.500, 2.057], [0.74, 1.525, 2.209]);
+    sideSlab(P, 'hull', s,
+      [0.79, 1.280, 2.929], [1.42, 1.280, 1.880], [1.40, 1.280, 1.840], [0.79, 1.280, 2.015],
+      [0.79, 1.320, 3.127], [1.42, 1.320, 2.060], [1.40, 1.500, 2.020], [0.79, 1.500, 2.057]);
   }
-  P.add('hull', frustum(0.64, 3.04, 2.32, 1.40, 2.30, 2.06, 0.455, 0.94));     // lower bow core (keel 0.455)
+  // The lower bow is the sealed centre keel between the two front courses.
+  // Its former 2.8 m-wide top occupied both idler sweeps; the separately
+  // authored pike shoulders above carry the full exterior width.
+  P.add('hull', frustum(0.64, 3.04, 2.32, 0.72, 2.30, 2.06, 0.455, 0.94));     // closed inter-track bow core
   P.add('hull', KIT.slab(                                                      // lower beak: keel edge -> belt point
     [-0.02, 0.455, 3.06], [0.02, 0.455, 3.06], [0.62, 0.50, 2.96], [-0.62, 0.50, 2.96],   // (ref keel rise: 0.42@3.02,
     [-0.02, 0.923, 3.385], [0.02, 0.923, 3.385], [0.70, 0.930, 3.16], [-0.70, 0.930, 3.16])); // 0.53@3.10, 0.66@3.16)
@@ -483,7 +500,7 @@ function is3Hull(P) {
   // idler/sprocket close behind the end wheels so the wrap RISE starts at
   // the ref's +-2.35 line instead of sagging flat (bottom targets: 0.03@2.2
   // -> 0.15@2.45 -> 0.42@3.02 front; 0.14@-2.6 -> 0.25@-2.93 rear)
-  sovGear(P, { xc: 1.185, trackW: 0.58, wheels: 6, wheelR: 0.33, wheelY: 0.36, span: 4.64, zc: -0.05, topY: 0.94, botY: 0.04, sprocketY: 0.68, sprocketR: 0.26, sprocketDz: 0.38, idlerY: 0.72, idlerR: 0.24, idlerDz: 0.44 });
+  sovGear(P, { xc: 1.185, trackW: 0.58, wheels: 6, wheelR: 0.33, wheelY: 0.36, span: 4.64, zc: -0.05, topY: 0.94, botY: 0.04, sprocketY: 0.68, sprocketR: 0.26, sprocketDz: 0.38, idlerY: 0.72, idlerR: 0.24, idlerDz: 0.44, corridorOwned: true });
 }
 
 // Squat proud IS-3 casting + D-25T, shared by is3 and (r2) is3_bergman.

@@ -7502,3 +7502,40 @@ freeze **`5865b990`**, instance freeze **`a47c4c45`** and asset geometry
 
 **KEEP these complete first-party family exteriors and closed soffits. Future
 course work may not subtract their hulls, fenders or mudguards.**
+
+## 5.210 IS-3 FAMILY CLOSED TRACK-CORRIDOR CLOSEOUT (2026-08-14, LIVE)
+
+This closeout preserves the complete first-party `is3` and `is3_bergman`
+exteriors: their pike noses, closed lower hulls, upper sponson walls, rear
+plates, fenders, mudguards, six-wheel running gear and single native linked-
+shoe courses. The original full-width concealed lower frustum and lower pike
+core crossed the front idler sweeps. They are replaced by a **closed raised
+soffit**: a solid inter-track centre belly and bow remain, narrow sealed pike
+transitions join that core to the intact upper shoulders, and complete outer
+armor walls continue above the return run. No hull, skirt, fender, mudguard,
+wheel or track component is deleted.
+
+The family suspension arms and wheel-face recesses are unchanged visually and
+now carry truthful running-gear ownership. Exact strict band and individual-
+shoe audits report **front 0/0, rear 0/0 and complete sweep 0/0** for both
+variants. Each fresh evidence packet contains 15 paired boards including the
+standardized elevated-left profile, 15 yaw0 and 15 yaw90 frames: **45 PNG /
+45 distinct hashes per tank**. Front, rear and profile pixels show complete
+closed armor, readable wheels and continuous raised terminal transitions.
+
+Both complete turrets, guns and roof fittings execute genuine quarter-turns
+while the hull, deck and running gear remain fixed. Parent-audit `hullWood`
+candidates are the correctly fixed pioneer tools, visibly seated on the hull
+deck. Winding mode 1 reports **0 reversed / 0 mixed geometry and zero-pixel
+deficit**. Mode-2 candidates are the correctly fixed aft fuel-drum/deck field,
+not stranded turret equipment. Both muzzle bores and all nineteen targeted
+runtime-rig checks pass.
+
+All sixteen targeted presentation assets are current. IS-3 dual-ledger
+geometry is freeze **`e45adf90`**, instance freeze **`8c2b684c`** and asset
+geometry **`82c23801`** (36 rendered meshes / 67,758 vertices). IS-3 Late is
+freeze **`2541ca76`**, instance freeze **`fd6772b5`** and asset geometry
+**`994e9f12`** (36 meshes / 67,758 vertices).
+
+**KEEP both complete IS-3 family exteriors and their closed raised soffits.
+Future course work may not subtract or open their pike, hull or side armor.**

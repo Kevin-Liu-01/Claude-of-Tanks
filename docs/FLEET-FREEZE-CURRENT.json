@@ -145,18 +145,18 @@
       "vertices": 54870
     },
     "is3": {
-      "freezeHash": "c5e07baf",
-      "instanceFreezeHash": "689617ec",
-      "assetGeometryHash": "67aaac8d",
-      "meshes": 34,
-      "vertices": 67038
+      "freezeHash": "e45adf90",
+      "instanceFreezeHash": "8c2b684c",
+      "assetGeometryHash": "82c23801",
+      "meshes": 36,
+      "vertices": 67758
     },
     "is3_bergman": {
-      "freezeHash": "bc812dea",
-      "instanceFreezeHash": "2d661bd1",
-      "assetGeometryHash": "c7b65660",
-      "meshes": 34,
-      "vertices": 67038
+      "freezeHash": "2541ca76",
+      "instanceFreezeHash": "fd6772b5",
+      "assetGeometryHash": "994e9f12",
+      "meshes": 36,
+      "vertices": 67758
     },
     "is6b": {
       "freezeHash": "ee21ecd4",
