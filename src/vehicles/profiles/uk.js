@@ -2871,16 +2871,27 @@ function fv510PhotoBuild(P) {
   // ---- stern: lower plate rakes up to the 0.80 door sill ----
   loftBand(P, 'hull', 0.90, 0.02, [[-2.30, 1.335], [-2.90, 1.335]], fvSternY,
     -2.30, -2.90, [-2.7]);
-  // ---- open side-screen supports.  The reference vehicle carries a deep
-  // horizontal slat course with visible air and wheel cadence beneath it;
-  // the old six solid panels filled those openings and produced a false
-  // slab-skirt silhouette.  Keep narrow station ties here; the five WRAP
-  // courses below provide the actual supported screen.
+  // ---- segmented side armour behind the open WRAP screen.  Restore the
+  // six camouflaged plates and the characteristic pointed inter-station
+  // drops that were removed when the outer slat course was opened up.  The
+  // plates sit just inboard of the WRAP rails, so the cage remains readable
+  // while the Warrior no longer presents an empty wheel-bay flank.  Their
+  // 0.62 m lowest point remains above the native linked-shoe corridor.
   for (const s of [-1, 1]) {
     for (let k = 0; k < 6; k++) {
       const z = 2.30 - 0.41 - k * 0.82;
+      P.add('hull', box(0.048, 0.48, 0.80), s * 1.392, 1.10, z);
+      P.add('hullDark', box(0.018, 0.42, 0.016), s * 1.419, 1.09, z - 0.40);
       const supportX = k === 5 ? 1.30 : 1.487;
       P.add('hullDetail', box(0.040, 0.78, 0.045), s * supportX, 1.25, z - 0.40);
+    }
+    // Zig-zag armour points between the six road-wheel stations.  Their
+    // upper shoulders overlap the plate backs and their tips hang between,
+    // rather than in front of, the road-wheel faces.
+    for (const zw of [1.80, 0.90, 0.0, -0.90, -1.80]) {
+      P.add('hull', sslab(s,
+        [1.365, 0.62, zw + 0.13], [1.417, 0.62, zw + 0.13], [1.417, 0.62, zw - 0.13], [1.365, 0.62, zw - 0.13],
+        [1.365, 0.88, zw + 0.24], [1.417, 0.88, zw + 0.24], [1.417, 0.88, zw - 0.24], [1.365, 0.88, zw - 0.24]));
     }
     P.add('hullDark', box(0.014, 0.035, 0.46), s * 1.499, 1.325, 2.06);
     P.add('hullDark', box(0.014, 0.035, 0.46), s * 1.499, 1.325, -2.38);
