@@ -7426,3 +7426,42 @@ historical first-party vehicle designs and therefore cannot satisfy the owner-
 only law. The live roster contracts from 107 to **105 first-party procedural
 tanks**, with zero GLB-sourced playables. Isolated comparison-candidate metadata
 does not alter runtime ownership and remains covered by the native audit.
+
+## 5.208 GERMAN CASEMATE CLOSED TRACK-CORRIDOR CLOSEOUT (2026-08-14, LIVE)
+
+This closeout repairs `jagdtiger`, `jpz_e100` and `sturmtiger` without replacing
+or hollowing their first-party hulls. Each accepted casemate, glacis, roof,
+fender course, side silhouette and native running-gear layout remains in place.
+The hidden lower tubs now use closed raised soffits over the two linked-shoe
+corridors; solid central belly plates and the complete exterior side walls are
+retained. Sturmtiger keeps a full-length side-skirt course, with its lower hem
+ending above the return shoes rather than passing through them. Its suspension
+arms retain their geometry and now carry truthful running-gear ownership.
+
+Exact strict band and individual-shoe audits report **front 0/0, rear 0/0 and
+complete sweep 0/0** for all three vehicles. Fresh evidence contains 15 paired
+boards (including the standardized elevated-left profile), 15 yaw0 and 15
+yaw90 frames per tank. Every directory contains 15 distinct images. Repeated
+corresponding yaw pixels are expected for fixed-mount casemates and are covered
+by the explicit runtime fixed-mount contract rather than misrepresented as a
+rotating turret.
+
+Runtime rig verification passes all **28 checks**: each model is procedural,
+its cannon remains fused to the fixed casemate hierarchy, aim articulation is
+live, and no load error occurs. Parent audits report **0 stranded / 0 abutting
+/ 0 dangling**. Winding mode 1 reports **0 reversed / 0 mixed geometry**;
+Jagdtiger and Sturmtiger have zero render deficit, while JPz E 100's 27-pixel
+(0.01%) front result is antialias-level and clean. Mode-2 candidates are the
+correctly fixed casemate/hull masses, not stranded turret equipment. All three
+muzzle bores pass with dark-center contrast.
+
+All 24 targeted presentation assets are current. Jagdtiger dual-ledger
+geometry is freeze **`b55db0f8`**, instance freeze **`58e1634a`** and asset
+geometry **`fa8c3683`** (33 rendered meshes / 52,887 vertices). JPz E 100 is
+freeze **`0ff4e810`**, instance freeze **`716ecf18`** and asset geometry
+**`7d51f201`** (34 meshes / 50,223 vertices). Sturmtiger is freeze
+**`3a7af13c`**, instance freeze **`5eaabc5c`** and asset geometry
+**`f52e3091`** (33 meshes / 55,658 vertices).
+
+**KEEP all three complete exteriors and closed soffits. Future track work may
+not delete, open or replace their hull, fender or side-skirt geometry.**

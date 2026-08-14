@@ -21807,7 +21807,7 @@
           }
         ]
       },
-      "geometryHash": "8128b05a",
+      "geometryHash": "fa8c3683",
       "metadataHash": "1d8c1437",
       "muzzleBore": {
         "tagged": 2,
@@ -21822,24 +21822,24 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 13622,
-          "sha256": "7cc94aadba237085b7371ccc90220a3ec6fcf367530eeb76e2df5f49b4a8824a"
+          "bytes": 13782,
+          "sha256": "51743f7fdb60be9347d96d83bd274f2eef94c7b898442dccbd313570c8123ba1"
         },
         "top": {
           "file": "jagdtiger_top.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 6968,
-          "sha256": "3db9884ca83661684873f2a129196788f605de8c4f03815e0d68e4bfd6b35de9"
+          "bytes": 6944,
+          "sha256": "7f3ce346ddaf012194d7130370028c5d09645c225883c197bcc8e2eb9275b9fc"
         },
         "side": {
           "file": "jagdtiger_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 7232,
-          "sha256": "d13098992fb8a47afc3b2f052f3e05b408211b80da2d8bed90f43c99e6826f06"
+          "bytes": 7268,
+          "sha256": "50f8e93234ef5f63b4c746bc4a7aaf46726e636894de5021f3013d57d7813aa7"
         },
         "topSilhouette": {
           "file": "jagdtiger_top_silhouette.png",
@@ -21862,24 +21862,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 59234,
-          "sha256": "6e121d215011ee3969bba0278a6b6c15404227f619af06a67de4272b3f2a02ef"
+          "bytes": 59109,
+          "sha256": "98e504a4f9027bfef45f44704ed51e3d280582fedf028c535e5ecb293576d4b9"
         },
         "armorSide": {
           "file": "jagdtiger_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 59907,
-          "sha256": "368975e1d91027d150e3ed226c71a814cd0038f53478014364d292cb0af201d0"
+          "bytes": 59790,
+          "sha256": "07b605f595ab9988b4270cf98e1cd52bc1f5480f0d1119a5abb6897534c4f091"
         },
         "modulesSide": {
           "file": "jagdtiger_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 56855,
-          "sha256": "cec6f1207b4fbd98dca56bb5b21c35ee2300d423273fb71683395ce08d2bb0c1"
+          "bytes": 57558,
+          "sha256": "0052f73caac44354cbea296a9a0517ec7d95471204898e81ad999dfc58a0f469"
         }
       }
     },
@@ -22599,7 +22599,7 @@
           }
         ]
       },
-      "geometryHash": "ea95ad4e",
+      "geometryHash": "7d51f201",
       "metadataHash": "686a88ce",
       "muzzleBore": {
         "tagged": 2,
@@ -22614,24 +22614,24 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 21306,
-          "sha256": "9f405eec3cd3832c37888e3337ad08773a4750ee8659fb3dec7ba26bbcd651a6"
+          "bytes": 21398,
+          "sha256": "b845b54dd03d470111d0acd12caf244841041167ec6b94caad9fa4c99a7e833c"
         },
         "top": {
           "file": "jpz_e100_top.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 15264,
-          "sha256": "3807e6d24c60dc39e22dd37621f5ba30726db5a12d3f2eb0b1a0552a3bcc2bb4"
+          "bytes": 15278,
+          "sha256": "9933680338174eb6fc92302c9407b07c5d68577fa2ccdbf2887d8ae75b5250e7"
         },
         "side": {
           "file": "jpz_e100_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 11794,
-          "sha256": "923efa37cb3d9bd440f1be7913ce23d34ba2d5087e6c96d34fa52490e289e6c3"
+          "bytes": 11292,
+          "sha256": "377e68412edcb632c7fc3750090bc719307eb3f72bbd7e9530639c539bdb6eb2"
         },
         "topSilhouette": {
           "file": "jpz_e100_top_silhouette.png",
@@ -22654,24 +22654,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 74903,
-          "sha256": "a9515c0e813400de4d3d6435c31934573df4ebd17383f5bf5aadff100e64d19d"
+          "bytes": 73683,
+          "sha256": "452e149f759b16639c9735297489d5f891e7195dfaae910de3ba1001bcb254b0"
         },
         "armorSide": {
           "file": "jpz_e100_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 74961,
-          "sha256": "058615abe0a24400b7b483462f5d2e4e837a26f3b4ef13375a2b8024b5a19cf7"
+          "bytes": 73642,
+          "sha256": "32737d950d855a13e863ce50aac99b11446986565e607c4bbe2fb3317fe84e3f"
         },
         "modulesSide": {
           "file": "jpz_e100_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 71709,
-          "sha256": "ac092f5e43896dae744eacfe500702d55df4a11752114163dc2756f820d476cb"
+          "bytes": 70992,
+          "sha256": "da0e1c4f87307c053fc40b12bde6c63221c6171a3cc340bab5a2eb72fb8c7e95"
         }
       }
     },
@@ -62902,7 +62902,7 @@
           }
         ]
       },
-      "geometryHash": "b104fe51",
+      "geometryHash": "f52e3091",
       "metadataHash": "dc0d2af6",
       "muzzleBore": {
         "tagged": 1,
@@ -62917,24 +62917,24 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 19722,
-          "sha256": "ffcb7116edb7056ca8d0132c3ea33cedf2e1bdc2c8dad1004f4c04e8a75f26d4"
+          "bytes": 20230,
+          "sha256": "3f4c611e6364ec9696949ab24f1aa410037a9e0dbed30a9e8793f05e374d4d12"
         },
         "top": {
           "file": "sturmtiger_top.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 10474,
-          "sha256": "8d27b2bd7a45f19a550aa3ccb54380332521b576a0d26f37f1bc0bcb0a9180c5"
+          "bytes": 10430,
+          "sha256": "bc8f53656028efd6d057a4ea2d1f361e8545682a674c83e086f2b10d875534c5"
         },
         "side": {
           "file": "sturmtiger_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 11098,
-          "sha256": "ff4c41e91a7ec9d30510b3a070f0b5ce4d367ef482d4ac20d7eaac132a859ca5"
+          "bytes": 11538,
+          "sha256": "d50eff521c44660f595aab8acd73eda14b485679f00235eac8ff7333a78e2df5"
         },
         "topSilhouette": {
           "file": "sturmtiger_top_silhouette.png",
@@ -62957,24 +62957,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 68566,
-          "sha256": "484e564796f2b2301be308772faf6f81f61b5cee0d78d9c0f5066bafed873940"
+          "bytes": 68840,
+          "sha256": "e2a96c307740efd9d395ed5ec8f05d1a103db46066d592ffd72167cae20a4ca5"
         },
         "armorSide": {
           "file": "sturmtiger_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 68799,
-          "sha256": "1df9ee34e21dab1ed8d7f815599733b95b52ebb2801f38243ef25a06a940bae1"
+          "bytes": 68471,
+          "sha256": "1baefb9fdec32cdc6942bc85d04f511b3f04738a4e1a50f3809a6479106513fd"
         },
         "modulesSide": {
           "file": "sturmtiger_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 65447,
-          "sha256": "8298aad35fcc57e1f932f821e34fd59ae22db76e4436a9e51bf30660111fcbae"
+          "bytes": 65984,
+          "sha256": "36ff7ce721addbdb75cefc071b21b5feebe1ce1d34a7bdbae25a1030bee384ae"
         }
       }
     },

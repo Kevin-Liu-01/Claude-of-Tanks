@@ -187,18 +187,18 @@
       "vertices": 395534
     },
     "jagdtiger": {
-      "freezeHash": "5197e348",
-      "instanceFreezeHash": "49bc3e27",
-      "assetGeometryHash": "8128b05a",
+      "freezeHash": "b55db0f8",
+      "instanceFreezeHash": "58e1634a",
+      "assetGeometryHash": "fa8c3683",
       "meshes": 33,
-      "vertices": 52239
+      "vertices": 52887
     },
     "jpz_e100": {
-      "freezeHash": "0ca6e7b7",
-      "instanceFreezeHash": "81f18543",
-      "assetGeometryHash": "ea95ad4e",
+      "freezeHash": "0ff4e810",
+      "instanceFreezeHash": "716ecf18",
+      "assetGeometryHash": "7d51f201",
       "meshes": 34,
-      "vertices": 49575
+      "vertices": 50223
     },
     "k1a1": {
       "freezeHash": "e93bc384",
@@ -516,11 +516,11 @@
       "vertices": 51373
     },
     "sturmtiger": {
-      "freezeHash": "c1cd6d62",
-      "instanceFreezeHash": "fb3acc84",
-      "assetGeometryHash": "b104fe51",
-      "meshes": 32,
-      "vertices": 55010
+      "freezeHash": "3a7af13c",
+      "instanceFreezeHash": "5eaabc5c",
+      "assetGeometryHash": "f52e3091",
+      "meshes": 33,
+      "vertices": 55658
     },
     "t14": {
       "freezeHash": "ce180d39",
