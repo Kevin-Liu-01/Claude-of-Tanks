@@ -128,7 +128,7 @@ re-freeze NEW hash, all in ONE commit.
 | k1a1 | 28c7f5f0 | RE-FROZEN 2026-08-10 (§5.108 authored compact K1A1 shell/hull, native six-wheel course and cupola-seated K6; independent §B8 floor 9.0 / mean 9.21) |
 | type99a | 6d52abda | RE-FROZEN 2026-08-12 (§5.133 strict-clearance re-cert: first-party measured-envelope hull/turret retained, native six-wheel return and shoes exact 0/0 through the full sweep, rear U-cable fully backed, gate 90.7 / fidelity 93.0; fresh 45-frame yaw/ownership floor 9.3 / mean 9.39; prior 50bbc9bc retired) |
 | type90 | d8f8a3a8 | RE-FROZEN 2026-08-12 (§5.134 owner-height + strict-track re-cert: first-party welded turret at corrected 0.80 section, all roof kit re-seated, fidelity 92.22 / minimum whole view 90.53; exact native band+shoes+sweep 0/0, fresh 45-frame yaw/ownership floor 9.0 / mean 9.08; legacy low-mask row retained honestly at 27.5; prior 5d7bc85c retired) |
-| type10 | d7faced8 | RE-FROZEN 2026-08-13 (§5.155 live lowered-turret reconciliation: complete first-party clipped welded turret remains buried 0.10 m deeper into the roof shoulder and every gun/roof/bustle child stays turret-owned through fresh 45-frame yaw proof; fixed-deck tow cable, driver glass, rear cloth/spare links and service fields explicitly adjudicated as hull-owned; hull, full skirts and native five-wheel course unchanged; targeted assets current; prior 7ac6d434 retired) |
+| type10 | ca815d52 | RE-FROZEN 2026-08-14 (§5.187 non-subtractive native-course closeout: exact accepted hull, glacis, full skirts, guards and lowered first-party turret remain unchanged; five-wheel gear shifts 0.065 m outward inside the skirts, narrows the native lane around the wheel faces, adds one supported forward return roller and lowers the hidden top run; strict band/shoe front 0/0, rear 0/0, full sweep 0/0; fresh 45-frame yaw proof re-adjudicates the fixed deck cable/glass/cloth/service field; targeted assets current; prior d7faced8 retired) |
 | t14 | a94a2480 | RE-FROZEN 2026-08-12 (§5.131 fully first-party `buildT14`: low seven-wheel Armata hull, connected unmanned shroud, supported RWS/sensor package and exact native course; fidelity 90.53 / minimum view 91.52; 42 unique paired/yaw frames floor 9.0 / mean 9.04; source-baked `a88afa6c` playable retired) |
 | t80u | 77f9ae78 | RE-FROZEN 2026-08-12 (§5.132 fully first-party `buildT80UNative2026`: low turbine hull, connected cast/K-5 turret, supported combat/rear-service package and exact native six-wheel course; fidelity 91.51 / minimum view 90.20; 42 unique paired/yaw frames floor 9.0 / mean 9.04; source-baked `c0dc2502` playable retired) |
 | type74 | 8319dbb8 | RE-FROZEN 2026-08-11 (§5.110 authored low cast turret, five-wheel native course and supported combat/service suite; independent §B8 floor 9.1 / mean 9.29) |
@@ -6519,3 +6519,47 @@ and asset geometry **`8a171500`** (62 rendered meshes / 116,916 vertices).
 **KEEP the complete K2 hull, full sawtooth skirt/mudguard envelope and native
 six-wheel course. Future running-gear work must preserve the exterior body and
 distinguish truthful mechanical ownership from real physical contact.**
+
+## 5.187 TYPE 10 NATIVE-COURSE REWRAP, ZERO BODY LOSS (2026-08-14, LIVE)
+
+This pass leaves the accepted first-party Type 10 body byte-for-byte at its
+previous geometry: closed belly and sponsons, upper/lower glacis, both bow
+shoulders, fenders, full modular skirts, mudguards, rear plate, engine deck and
+the owner-corrected lowered turret are not deleted, shortened, lifted or
+reshaped. The correction is confined to the native five-wheel mechanism.
+
+The previous individual-shoe envelope was already clear, but the hidden
+continuous return band rose gradually from the last support roller into the
+elevated idler and passed through the upper-glacis shoulder. The course now
+uses a real fourth forward return roller, holds the supported top run lower
+until immediately before the idler, and shifts the complete gear line 0.065 m
+outward. Its lane is narrowed around the 0.25 m wheel faces while retaining
+the established outer skirt-contained silhouette. Every road wheel remains
+inside the belt; the front idler and rear final drive keep their elevated
+stations and the loaded ground run is unchanged.
+
+Fresh 15-view authored-model boards, the standardized elevated-left profile,
+15 yaw0 and 15 yaw90 frames were inspected (45 PNG / 45 distinct hashes).
+The five large road wheels remain separately readable, the top run visibly
+rests on its return supports, and the elevated ends form one continuous
+`\\______/` course inside the complete skirts. Front pixels show both belts
+inside the intact bow/guard envelope. The already lowered turret remains
+properly seated and its gun, shell, optics, roof stations and bustle execute a
+genuine quarter-turn.
+
+Exact strict band and individual-shoe sweeps are **front 0/0, rear 0/0 and
+complete sweep 0/0**. Winding remains **0 reversed / 0 mixed** with a six-pixel
+(0.01%) non-material rear-left diagnostic edge. The parent and mode-2 tools'
+nominees are the same fixed right-fender tow cable, driver glass, rear-deck
+cloth/spare links and backed service buckets adjudicated in §5.155: fresh yaw
+pixels show each remaining fixed and surface-supported as the complete turret
+departs. No turret-semantic item is stranded, no track is duplicated and no
+hull/skirt face is missing.
+
+All eight presentation assets are current and the muzzle bore passes.
+Dual-ledger geometry is freeze **`ca815d52`**, instance freeze **`fa67252d`**
+and asset geometry **`a6c89710`** (62 rendered meshes / 56,898 vertices).
+
+**KEEP the exact Type 10 hull, full skirt/guard envelope and lowered turret.
+Future track corrections must remain native-course rewraps and may not remove
+body surfaces to manufacture clearance.**

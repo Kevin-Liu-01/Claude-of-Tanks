@@ -2200,7 +2200,7 @@ function buildType10Native2026(P) {
     // r9 photo-class gear: BIG tightly-packed wheels (the real T10's five
     // nearly-touching R~0.34 wheels; the r8 1.05-pitch R0.32 line read
     // sparse+buried — §B8.1 gate-1)
-    style: 'rubber', wheelR: 0.35, wheelW: 0.25, wheelY: 0.42, xc: 1.215,
+    style: 'rubber', wheelR: 0.35, wheelW: 0.25, wheelY: 0.42, xc: 1.28,
     wheelZs: [2.0325, 1.0870, 0.1414, -0.8041, -1.7497],
     // The authored source silhouette carries a compact five-wheel course:
     // both terminal wraps sit well inside the bow/stern armor instead of
@@ -2211,11 +2211,11 @@ function buildType10Native2026(P) {
     // no donor wheel or track geometry is rendered or retained.
     sprocket: { z: -2.555, y: 0.777, r: 0.325, trackR: 0.239 },
     idler: { z: 2.845, y: 0.843, r: 0.35, trackR: 0.315 },
-    rollers: [1.45, 0.15, -1.20].map((z) => ({ z, y: 0.99, r: 0.075 })),
+    rollers: [2.70, 1.45, 0.15, -1.20].map((z) => ({ z, y: 0.775, r: 0.075 })),
     // §B6 contact pins: the free tangent solver ran the approach ramp out to
     // z 3.9 — PAST the hull nose (five ONLY-PROC side cols + a 7.8 m ground
     // footprint). Pins sit at the end-wheel edges.
-    trackW: 0.47, trackTh: 0.05, topY: 1.10, botY: 0.025,
+    trackW: 0.32, trackTh: 0.05, topY: 0.85, botY: 0.025,
     contactZF: 2.24, contactZR: -1.95,
     padCornerFloor: 0.012, shoeRadialScale: 0.20,
     paintedEnds: true, coveredTop: true, arms: false,
