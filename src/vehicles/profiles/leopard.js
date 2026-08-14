@@ -6411,7 +6411,9 @@ function buildLeo2Revolution(P) {
   // r5: fore-front walls z0 1.10 -> 1.185L (the ref 0.765w column reads its
   // 2.056 fill line — the 1.88 wall floor lit it) + tops 0.55 -> 0.52
   // (ref w 1.65..1.99 tops read 2.140-2.167 vs the walls' 2.15-authored+AA)
-  P.add('turret', box(0.07, 0.24, 0.605), -1.465, 0.40, 1.4875);               // left wall inner fore-front (floor 1.88w)
+  // The restored connected loft closes this face.  The former narrow
+  // fore-front wall is deliberately omitted: its long cuboid end projected
+  // from the left cheek as a pasted-on rectangular ledge in owner views.
   // r5 SLIVER SPLIT: the ref under-turret floor RISES 2.001/2.028/2.084
   // across w -1.01..-1.24 before returning to 1.973 — the flat 1.96 wall
   // slivers ran straight through it; full-width step boxes own those three
