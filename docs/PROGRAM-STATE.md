@@ -8210,3 +8210,40 @@ audit pass.
 
 **KEEP every complete armor/bodywork envelope. Future smart-track changes are
 track-only and must preserve the one integrated animated shoe contract.**
+
+## 5.230 T-90A WELDED-BASE AND SHTORA CLEARANCE REVISION (2026-08-14, LIVE)
+
+The first-party T-90A no longer uses its rotational half-dome foundation. A
+single shared helper now authors the exact T-90SM welded foundation: the same
+variable-base faceted shell, rear casting shelf and structural crown. T-90SM
+is byte-stable after the refactor—freeze **`f0294f9c`**, instance freeze
+**`1856845a`**, asset geometry **`fe26cb10`**, 48 rendered meshes and 93,281
+vertices—while T-90A keeps its own hull, gun, K-5, Shtora and roof identity.
+
+The former generic full-width K-5 leaves crossed the two OTShU/Shtora optical
+lanes. They are replaced by split inner/outboard K-5 modules whose buried
+roots enter the welded cheek on opposite sides of each emitter. Both larger
+eye stations now sit forward in deliberate armor openings on broad tapered
+pedestals; their circular red lenses, housing fins and brackets are fully
+visible from front, quarter, top and yaw90 views. Existing flank cassettes,
+roof stations, bustle equipment and radio whips remain turret-owned and
+supported. Two shallow joined hull shoulders also close the pre-existing bow
+and rear-service plan pockets without moving skirts or entering the track
+lane.
+
+Fresh authored-only evidence contains 15 presentation boards, including the
+standardized elevated-left profile, plus 15 yaw0 and 15 yaw90 frames: **45
+PNG / 45 distinct hashes**. It proves a genuine quarter-turn of the complete
+welded shell, gun, K-5/Shtora package, roof equipment, bustle bins and both
+radio stations while the hull and running gear remain fixed. Runtime rig
+checks pass **10/10**; strict track clearance is **front 0/0, rear 0/0 and
+sweep 0/0**; contiguity is **0**; the supported MG and dark muzzle bore pass;
+the winding census is **0 reversed / 0 mixed** with no render deficit.
+
+All eight targeted presentation assets are current. T-90A dual-ledger
+geometry is freeze **`b9547790`**, instance freeze **`0593ea9b`** and asset
+geometry **`2e8becf6`** (61 rendered meshes / 121,953 vertices).
+
+**KEEP the shared welded foundation, unobstructed eye lanes and complete
+T-90A hull/bodywork envelope. Future ERA changes must preserve both optical
+cones and visible cheek load paths.**

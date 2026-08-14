@@ -346,6 +346,30 @@ function addT90SternFaceKit(P, { z, y, width = 1.55, scaleY = 1 }) {
   }
 }
 
+// Shared first-party welded turret foundation. T-90SM remains the geometry
+// authority for this shell; callers may change only its hull-relative seat.
+// Keeping the outline, variable lower break, rear casting shelf and crown in
+// one helper prevents the T-90A from drifting back to a rotational dome while
+// leaving each variant free to author its own armor and combat equipment.
+function addT90SMTurretFoundation(P, { position = [0, 1.40, 0.09] } = {}) {
+  const { box } = KIT;
+  P.turretG.position.set(...position);
+  const tw = 1.55, f = 1.40, b = -0.80, h = 0.515;
+  P.add('turret', polyTurretVariableBase([
+    [-tw * 0.15, 1.26], [tw * 0.15, 1.26], [0.98, 1.26], [1.19, 1.44],
+    [1.2985, 1.377], [1.4054, 1.27], [tw * 0.97, 1.12], [tw, 0.55],
+    [1.44, -0.395], [1.09, b], [-1.09, b], [-1.44, -0.395],
+    [-tw, 0.55], [-tw * 0.97, 1.12], [-1.4054, 1.27], [-1.2985, 1.377],
+    [-1.19, 1.44], [-0.98, 1.26],
+  ], h, 1.02, 0.78, (z) => z <= 0.50 ? 0 : z >= 0.55 ? 0.08 : (z - 0.50) * 1.6, [0.50, 0.55]));
+  // These are structural parts of the SM foundation, not variant dress-up:
+  // the shelf closes the shell-to-bustle load path and the crown carries the
+  // hatch/sight seats used by both family members.
+  P.add('turret', box(1.90, 0.425, 0.70), 0, 0.3125, -0.95);
+  P.add('turret', box(1.24, 0.07, 1.05), 0, 0.55, -0.025);
+  return { tw, f, b, h };
+}
+
 function buildT90ALegacy(P) {
   const { box, cylX, cylY, cylZ, buildRunningGear, stowage, polyTurret } = KIT;
   // VERTEX ROUND r2 (batch-12 oracle normalized to published dims): re-anchor
@@ -601,14 +625,14 @@ function buildT90ALegacy(P) {
   // ---- turret: measured T-90A cast shell ----
   // Primary mass follows the source silhouette; every K-5/optic/weapon
   // fitting below is seated into that mass rather than a shared family box.
-  P.turretG.position.set(0, 1.335, 0.459);
-  // Independent width/height stations (§K.2): keep the measured 2.72 m
-  // plan shoulder, but collapse the broad mid-radius rise that made the
-  // casting read as an inflated hemisphere.  The last two crown stations
-  // stay at their certified height so every roof collar remains buried in
-  // real armor rather than being lowered into an attachment gap.
+  // OWNER T-90A BASE RECONCILIATION (2026-08-14): use the exact first-party
+  // T-90SM welded foundation at the established A hull seat. The former
+  // rotational casting still read as a clipped half-sphere beneath the
+  // equipment. Only the foundation changes here; the rings below remain a
+  // placement guide for the A-specific K-5 and Shtora courses, which are
+  // reseated into this wider faceted shell.
+  addT90SMTurretFoundation(P, { position: [0, 1.335, 0.459] });
   const rings = [[1.02, -0.022], [1.36, 0.097], [1.29, 0.28], [1.10, 0.35], [0.82, 0.405], [0.48, 0.445], [0.18, 0.47], [0.02, 0.475]];
-  meshDomeCurved(P, rings, 1.21, 0, -0.18, { capR: 2.5 });
   // TKN/cross-wind spike pair FIRST in the bucket (heightM p95 anchors +
   // the r12 merge-order law). T4A: x narrowed to the +0.31 column family
   // (the old 0.36 reach lit the +0.367 window at 2.286 where the ref
@@ -642,29 +666,27 @@ function buildT90ALegacy(P) {
   // |x| 1.30-1.49 and repaint the guarded ±1.14-1.46 plan cliff — the
   // broad-plate read comes from the TWO-LEAF clamshell (k5Lower) + the
   // axis-aligned under-roots below instead.)
-  const p5 = { rings, sz: 1.21, k5T: 0.62, k5Out: 0.24, k5Len: 0.95, k5H: 0.18, k5Y: 0.28, k5Yaw: 0.47, k5Rise: 0, k5Seg: 5, k5CapIn: 0.04, k5Lower: { dy: 0.13, h: 0.16, dPitch: 0.35, tuck: 0.05 }, k5Bucket: 'turret', eyeKit: true, eyeRound: true, eyeScale: 0.80, eyeX: 0.49, eyeZ: 1.70 };
+  const p5 = { rings, sz: 1.21, k5T: 0.62, k5Out: 0.24, k5Len: 0.95, k5H: 0.18, k5Y: 0.28, k5Yaw: 0.47, k5Rise: 0, k5Seg: 5, k5CapIn: 0.04, k5Lower: { dy: 0.13, h: 0.16, dPitch: 0.35, tuck: 0.05 }, k5Bucket: 'turret', k5LeafOff: true, eyeKit: true, eyeRound: true, eyeScale: 1.32, eyeX: 0.70, eyeZ: 2.02 };
   eraRuCheeks(P, p5, 'k5');
   for (const s2 of [-1, 1]) {
-    // apex pads: front edge RISES outboard 2.40w@0.60 -> 2.52w@0.93 (the
-    // ref's true apex staircase), x edges 10mm clear of the ±1.008 window
-    P.add('turret', box(0.32, 0.26, 0.16), s2 * 0.765, 0.30, 1.90, -0.38, -s2 * 0.42, 0);
-    P.add('turret', box(0.12, 0.24, 0.12), s2 * 0.995, 0.30, 1.755, -0.38, -s2 * 0.42, 0); // outer step (ref 2.319w @ ±1.01-1.03, ends before the 1.14 cliff)
-    // TIP §5.29 (owner refinement 2026-08-07, record-pending minimal move):
-    // the pad-V previously DIED at x ±0.60 leaving a 1.2m center gap — a
-    // third INNER pad continues the same 0.42-yaw line to the mantlet edge
-    // (x 0.30..0.58, z 1.75 source step), closing the V AT THE GUN: the two
-    // panel lines now MEET at the 2A46M root ("the gun emerges above/
-    // behind the tip"). Plan cost ~2 center cols vs the ref's 2.40w
-    // staircase — §B7/§5.29 owner-order cap, documented in the packet.
-    P.add('turret', box(0.30, 0.24, 0.14), s2 * 0.445, 0.295, 1.75, -0.38, -s2 * 0.42, 0);
-    // T4A UNSUPPORTED-TIP FIX (verdict order 2): axis-aligned support
-    // roots run from each pad's rear back INTO the dome skin / the deep
-    // leaf body — yawed deepening was rejected because rotated corners
-    // swing into the guarded ±1.008/±1.088 plan windows; these stay
-    // 10mm+ clear and are interior to the pads' own plan fronts.
-    P.add('turret', box(0.28, 0.24, 0.62), s2 * 0.70, 0.24, 1.45);
-    P.add('turret', box(0.10, 0.20, 0.50), s2 * 0.99, 0.26, 1.44);
-    P.add('turret', box(0.20, 0.22, 0.30), s2 * 0.52, 0.34, 1.44);
+    // The Shtora lane is now a deliberate opening in the K-5 staircase.
+    // Inner and outer modules terminate on opposite sides of the emitter
+    // rather than crossing its lens.  All three roots still bury into the
+    // SM wedge, so opening the optical lane does not create floating ERA.
+    P.add('turret', box(0.38, 0.26, 0.18), s2 * 1.04, 0.30, 1.71, -0.38, -s2 * 0.42, 0);
+    P.add('turret', box(0.16, 0.23, 0.14), s2 * 1.30, 0.30, 1.54, -0.36, -s2 * 0.48, 0);
+    P.add('turret', box(0.22, 0.23, 0.18), s2 * 0.32, 0.295, 1.68, -0.38, -s2 * 0.34, 0);
+    P.add('turret', box(0.32, 0.24, 0.56), s2 * 1.02, 0.24, 1.43);
+    P.add('turret', box(0.13, 0.20, 0.44), s2 * 1.29, 0.25, 1.38);
+    P.add('turret', box(0.20, 0.21, 0.34), s2 * 0.32, 0.31, 1.43);
+    // Broad tapered eye pedestal: rear half intersects the shared welded
+    // cheek, forward half enters the emitter housing.  It makes the enlarged
+    // dazzler a supported armor station instead of simply pushing a lamp in
+    // front of the ERA.
+    P.add('turret', orientedSlab(
+      [s2 * 0.54, 0.08, 1.34], [s2 * 0.86, 0.08, 1.34], [s2 * 0.86, 0.18, 1.96], [s2 * 0.54, 0.18, 1.96],
+      [s2 * 0.54, 0.37, 1.34], [s2 * 0.86, 0.37, 1.34], [s2 * 0.86, 0.50, 1.96], [s2 * 0.54, 0.50, 1.96],
+    ));
   }
   ruShtora(P, p5, 0.38);  // T3A-b3: eyes raised (ref side bottoms 1.397+ at the eye cols)
   addT90RadialArmorBelt(P, rings, 1.21, { y: 0.18, cz: -0.18, scale: 0.92 });
@@ -3366,7 +3388,7 @@ function buildT90SMLegacy(P) {
   // band lives on flank roof boxes at |x| 0.65..1.05 (ref front cols +-0.1..
   // 0.61 read 1.99); tower bodies low (1.94) with THIN 2.24-2.25 spikes at
   // world -1.39/-1.94 (ref side 1-col spikes); heightM p95 -> 2.24 (pub 2.23)
-  P.turretG.position.set(0, 1.40, 0.09);
+  const { tw, f, b, h } = addT90SMTurretFoundation(P);
   // r9: ref welded front is a WIDE WEDGE — plan front 1.80@|x|1.02,
   // 1.72@1.13, 1.37@1.48, 1.15@1.69 (the old 0.62/0.14 taper cut the
   // cheeks 0.6-0.9 short); cheek stow panels are small 0.33-deep blobs at
@@ -3382,25 +3404,6 @@ function buildT90SMLegacy(P) {
   // rear outline pulled to -0.80 local with a rear casting shelf (bottom
   // 1.50) carrying the bustle, raked §B1 nose slabs to the measured plan
   // staircase, and a raised center crown plate (1.985) with hatch rings.
-  const tw = 1.55, f = 1.40, b = -0.80, h = 0.515;
-  // T3R-b6: outline re-derived — FRONT corners pulled to z<=1.50 (the
-  // flared base ring ran to local 1.73 at y=0, undercutting the raked chin
-  // with a 1.40 bottom over four side cols); REAR is the welded staircase
-  // (ref rear reads FLAT -0.405L across x 1.43..1.55, then steps via the
-  // bustle boxes — the old -0.45..-0.80 taper painted -0.50 at the
-  // ±1.46-1.49 plan cols, the row's worst family).
-  P.add('turret', polyTurretVariableBase([
-    [-tw * 0.15, 1.26], [tw * 0.15, 1.26], [0.98, 1.26], [1.19, 1.44],
-    [1.2985, 1.377], [1.4054, 1.27], [tw * 0.97, 1.12], [tw, 0.55],
-    [1.44, -0.395], [1.09, b], [-1.09, b], [-1.44, -0.395],
-    [-tw, 0.55], [-tw * 0.97, 1.12], [-1.4054, 1.27], [-1.2985, 1.377],
-    [-1.19, 1.44], [-0.98, 1.26],
-  ], h, 1.02, 0.78, (z) => z <= 0.50 ? 0 : z >= 0.55 ? 0.08 : (z - 0.50) * 1.6, [0.50, 0.55]));
-  // rear casting shelf: closes the poly-to-bustle deck (§B2) and carries the
-  // ref's raised 1.50 underside line over z world -0.71..-1.21
-  P.add('turret', box(1.90, 0.425, 0.70), 0, 0.3125, -0.95);
-  // center crown plate (the ref's 1.985 rear-center roof) + hatch rings
-  P.add('turret', box(1.24, 0.07, 1.05), 0, 0.55, -0.025);
   // T4S: the T3R hatch "rings" were ARG-SWAPPED cylY cones (rT,rB,h —
   // 19cm-tall spikes; whatsat vertex-arc decode). The cone accidentally
   // carried the ref's OWN ~2.083 slice-6 cupola mass (flattening it alone
@@ -5040,6 +5043,13 @@ function buildT90A(P) {
     // their rear edge stays inside the existing rack, closing the measured
     // lower stern section without changing plan length.
     P.add('hullDark', KIT.box(0.20, 0.18, 0.22), s * 0.55, 1.06, -3.19);
+    // Close the two long-lived top-down service pockets without touching
+    // the running lane: a low bow shoulder joins the glacis to its fender,
+    // and a shallow aft shoulder joins the rear service shelf to the mudguard
+    // bracket. Both sit above the native course and overlap existing hull
+    // armor on every side.
+    P.add('hull', KIT.box(0.14, 0.08, 0.20), s * 1.02, 1.14, 3.07);
+    P.add('hull', KIT.box(0.26, 0.10, 0.32), s * 1.48, 1.24, -2.90);
   }
   // Narrow central tow-pintle foundation.  It enters both the stern wall and
   // the visible center notch, closing only the measured support column.
