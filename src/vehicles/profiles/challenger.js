@@ -2474,32 +2474,32 @@ function buildChallenger2(P) {
       // dark bowl.  The former stack of full cylinders could only project
       // outward and read as pale concentric coins.
       const faceX = side * 1.495;
-      P.add('hullDark', new THREE.RingGeometry(0.315, 0.403, P.q ? 28 : 18),
+      P.add('hullRunningGearDark', new THREE.RingGeometry(0.315, 0.403, P.q ? 28 : 18),
         faceX, 0.40, z, 0, side * Math.PI / 2, 0);
-      P.add('hullDark', new THREE.RingGeometry(0.215, 0.305, P.q ? 28 : 18),
+      P.add('hullRunningGearDark', new THREE.RingGeometry(0.215, 0.305, P.q ? 28 : 18),
         faceX - side * 0.045, 0.40, z, 0, side * Math.PI / 2, 0);
       const outerRim = new THREE.TorusGeometry(0.373, 0.026, P.q ? 8 : 6, P.q ? 28 : 18);
       outerRim.rotateY(Math.PI / 2);
-      P.add('hullDark', outerRim, faceX + side * 0.006, 0.40, z);
+      P.add('hullRunningGearDark', outerRim, faceX + side * 0.006, 0.40, z);
       const bowlRim = new THREE.TorusGeometry(0.238, 0.014, P.q ? 8 : 6, P.q ? 24 : 16);
       bowlRim.rotateY(Math.PI / 2);
-      P.add('hullDark', bowlRim, faceX - side * 0.010, 0.40, z);
+      P.add('hullRunningGearDark', bowlRim, faceX - side * 0.010, 0.40, z);
       const wheelDish = new THREE.CylinderGeometry(
         side < 0 ? 0.300 : 0.118, side < 0 ? 0.118 : 0.300,
         0.100, P.q ? 28 : 18, 1, true);
       wheelDish.rotateZ(Math.PI / 2);
-      P.add('hullDark', wheelDish, faceX - side * 0.050, 0.40, z);
-      P.add('hullDark', cylX(0.210, 0.014, P.q ? 24 : 16),
+      P.add('hullRunningGearDark', wheelDish, faceX - side * 0.050, 0.40, z);
+      P.add('hullRunningGearDark', cylX(0.210, 0.014, P.q ? 24 : 16),
         faceX - side * 0.070, 0.40, z);
-      P.add('hullDetail', cylX(0.080, 0.028, P.q ? 20 : 14),
+      P.add('hullRunningGearDetail', cylX(0.080, 0.028, P.q ? 20 : 14),
         faceX - side * 0.035, 0.40, z);
-      P.add('hullDetail', cylX(0.042, 0.032, P.q ? 18 : 12),
+      P.add('hullRunningGearDetail', cylX(0.042, 0.032, P.q ? 18 : 12),
         faceX - side * 0.020, 0.40, z);
       if (P.q) for (let k = 0; k < 8; k++) {
         const a = k * Math.PI / 4;
-        P.add('hullDark', cylX(0.012, 0.036, 8),
+        P.add('hullRunningGearDark', cylX(0.012, 0.036, 8),
           faceX + side * 0.011, 0.40 + Math.sin(a) * 0.145, z + Math.cos(a) * 0.145);
-        P.add('hullDark', cylX(0.014, 0.018, 8),
+        P.add('hullRunningGearDark', cylX(0.014, 0.018, 8),
           faceX - side * 0.034, 0.40 + Math.sin(a) * 0.255, z + Math.cos(a) * 0.255);
       }
       // The print's Hydrogas wheels are perforated castings, not smooth
@@ -2508,27 +2508,27 @@ function buildChallenger2(P) {
       // an actual bowl and hub stack rather than a painted dot pattern.
       if (P.q) for (let k = 0; k < 10; k++) {
         const a = (k + 0.5) * Math.PI / 5;
-        P.add('hullDark', cylX(0.030, 0.020, 10),
+        P.add('hullRunningGearDark', cylX(0.030, 0.020, 10),
           faceX + side * 0.002, 0.40 + Math.sin(a) * 0.255, z + Math.cos(a) * 0.255);
       }
       if (P.q) for (let k = 0; k < 6; k++) {
         const a = k * Math.PI / 3;
-        P.add('hullDetail', cylX(0.012, 0.026, 8),
+        P.add('hullRunningGearDetail', cylX(0.012, 0.026, 8),
           faceX + side * 0.004, 0.40 + Math.sin(a) * 0.105, z + Math.cos(a) * 0.105);
       }
       const hubRim = new THREE.TorusGeometry(0.125, 0.018, P.q ? 8 : 6, P.q ? 22 : 14);
       hubRim.rotateY(Math.PI / 2);
-      P.add('hullDark', hubRim, faceX + side * 0.004, 0.40, z);
-      P.add('hullDark', cylX(0.058, 0.024, P.q ? 16 : 10),
+      P.add('hullRunningGearDark', hubRim, faceX + side * 0.004, 0.40, z);
+      P.add('hullRunningGearDark', cylX(0.058, 0.024, P.q ? 16 : 10),
         faceX + side * 0.005, 0.40, z);
-      P.add('hullDark', cylX(0.030, 0.030, P.q ? 14 : 10),
+      P.add('hullRunningGearDark', cylX(0.030, 0.030, P.q ? 14 : 10),
         faceX + side * 0.008, 0.40, z);
       // Hydrogas swing arm and torsion pivot remain visible through the
       // deep dish and inter-wheel gaps; these are seated behind the face,
       // never painted over it as a decorative spoke.
-      P.add('hullDark', box(0.055, 0.095, 0.42), side * 1.37, 0.60, z + 0.10,
+      P.add('hullRunningGearDark', box(0.055, 0.095, 0.42), side * 1.37, 0.60, z + 0.10,
         -0.52, 0, 0);
-      P.add('hullDetail', cylX(0.052, 0.030, P.q ? 16 : 10),
+      P.add('hullRunningGearDetail', cylX(0.052, 0.030, P.q ? 16 : 10),
         faceX - side * 0.018, 0.66, z + 0.22);
     }
     // Inter-wheel Hydrogas stations occupy the real daylight gaps below the
@@ -2541,11 +2541,11 @@ function buildChallenger2(P) {
       const stationX = side * 1.61;
       P.add('hull', box(0.040, 0.30, 0.080), stationX, 0.59, z,
         -0.22 - gi * 0.055, 0, 0);
-      P.add('hullDetail', cylX(0.062, 0.024, P.q ? 16 : 10),
+      P.add('hullRunningGearDetail', cylX(0.062, 0.024, P.q ? 16 : 10),
         stationX + side * 0.004, 0.46 + (gi % 2) * 0.035, z - 0.045);
-      P.add('hullDark', cylX(0.042, 0.028, P.q ? 14 : 10),
+      P.add('hullRunningGearDark', cylX(0.042, 0.028, P.q ? 14 : 10),
         stationX + side * 0.006, 0.70 + (gi % 3) * 0.025, z + 0.055);
-      P.add(gi % 2 ? 'hullDetail' : 'hullDark', box(0.040, 0.24, 0.090),
+      P.add(gi % 2 ? 'hullRunningGearDetail' : 'hullRunningGearDark', box(0.040, 0.24, 0.090),
         stationX + side * 0.008, 0.56, z + 0.11, -0.62 + gi * 0.08, 0, 0);
     }
     // Articulated end faces reuse the already-certified idler/final-drive
@@ -2556,32 +2556,32 @@ function buildChallenger2(P) {
       [3.35, 0.70, 0.245, 0.150, 6],
       [-2.85, 0.95, 0.215, 0.125, 10],
     ]) {
-      P.add('hullDark', new THREE.RingGeometry(inner, outer, P.q ? 28 : 18),
+      P.add('hullRunningGearDark', new THREE.RingGeometry(inner, outer, P.q ? 28 : 18),
         endFaceX, y, z, 0, side * Math.PI / 2, 0);
       const endRim = new THREE.TorusGeometry((inner + outer) * 0.5,
         (outer - inner) * 0.16, P.q ? 8 : 6, P.q ? 24 : 16);
       endRim.rotateY(Math.PI / 2);
-      P.add('hullDetail', endRim, endFaceX + side * 0.003, y, z);
-      P.add('hullDetail', new THREE.RingGeometry(inner * 0.58, inner * 0.92, P.q ? 24 : 16),
+      P.add('hullRunningGearDetail', endRim, endFaceX + side * 0.003, y, z);
+      P.add('hullRunningGearDetail', new THREE.RingGeometry(inner * 0.58, inner * 0.92, P.q ? 24 : 16),
         endFaceX + side * 0.002, y, z, 0, side * Math.PI / 2, 0);
-      P.add('hullDark', new THREE.CircleGeometry(inner * 0.48, P.q ? 20 : 14),
+      P.add('hullRunningGearDark', new THREE.CircleGeometry(inner * 0.48, P.q ? 20 : 14),
         endFaceX + side * 0.003, y, z, 0, side * Math.PI / 2, 0);
       if (P.q) for (let k = 0; k < spokes; k++) {
         const a = k * Math.PI * 2 / spokes;
-        P.add('hullDetail', box(0.008, 0.026, (outer - inner) * 0.88),
+        P.add('hullRunningGearDetail', box(0.008, 0.026, (outer - inner) * 0.88),
           endFaceX + side * 0.004,
           y + Math.sin(a) * (inner + outer) * 0.25,
           z + Math.cos(a) * (inner + outer) * 0.25, a, 0, 0);
-        P.add('hullDark', cylX(0.017, 0.018, 8),
+        P.add('hullRunningGearDark', cylX(0.017, 0.018, 8),
           endFaceX + side * 0.002,
           y + Math.sin(a) * (inner + outer) * 0.29,
           z + Math.cos(a) * (inner + outer) * 0.29);
-        if (spokes === 10) P.add('hullDark', box(0.010, 0.035, 0.065),
+        if (spokes === 10) P.add('hullRunningGearDark', box(0.010, 0.035, 0.065),
           endFaceX + side * 0.004,
           y + Math.sin(a) * outer * 0.84,
           z + Math.cos(a) * outer * 0.84, a, 0, 0);
       }
-      P.add('hullDetail', cylX(inner * 0.34, 0.030, P.q ? 16 : 10),
+      P.add('hullRunningGearDetail', cylX(inner * 0.34, 0.030, P.q ? 16 : 10),
         endFaceX + side * 0.003, y, z);
     }
   }
@@ -2740,7 +2740,7 @@ function buildChallenger2(P) {
       [sx(shoulderOuter), side < 0 ? 1.48 : 1.47, 0.55], [sx(1.18), 1.49, 0.55]));
     const skirtH = 1.54;
     P.add('hullRubber', box(side < 0 ? 0.08 : 0.14, skirtH, 0.08),
-      sx(side < 0 ? 1.59 : 1.61), skirtH / 2, 0);
+      sx(side < 0 ? 1.62 : 1.65), skirtH / 2, 0);
   }
   // Continuous ring landing beneath the articulated assembly. This is the
   // actual load surface (centered on armorChallenger2.turretPivot.z), not a

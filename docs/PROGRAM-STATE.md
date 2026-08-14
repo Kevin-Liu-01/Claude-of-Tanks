@@ -117,7 +117,7 @@ re-freeze NEW hash, all in ONE commit.
 | abramsx | 91364f7e | GRADUATED 2026-08-09; RE-FROZEN 2026-08-14 (§5.183 exact native-course closeout: wheel faces/hubs/spokes/torsion links and the inboard guide strip declare running-gear ownership, the complete glacis cable is reseated inside the elevated idler course, strict band+shoe+sweep 0/0, parent and winding clean; complete outer hull/skirt retained; prior 976a1370 retired) |
 | challenger_3 | 564057a4 | RE-FROZEN 2026-08-12 (§5.136 first-party forward-profile + strict-track re-cert: connected brow/cheeks remain extended to the mantlet, all turret fittings seated through yaw, exact native band+shoes+sweep 0/0; fidelity 93.02 / minimum whole view 92.17, fresh 45-frame floor 9.0 / mean 9.07; prior 3e5a7797 retired) |
 | challenger1 | fa346ca4 | RE-FROZEN 2026-08-13 (§5.152 first-party in-place closure: complete hull/skirts/mudguards/native six-wheel course preserved; detached lower gun-cradle duplicate removed; connected shell/gun/basket/roof suite re-centered on the true hull ring with yaw-zero silhouette preserved; fresh 45-frame packet floor 9.0 / mean 9.04, parent 0/0/0, winding clean, exact track 0/0 and muzzle/rig/tests/build PASS; 4ecc29b4 and earlier freezes retired) |
-| challenger2 | 3b4bd5f0 | GRADUATED 2026-08-09; RE-FROZEN 2026-08-10 (§5.89 owner fused-block repair: material-fused casemate course removed from fixed hull and repartitioned into the articulated source tree; one low ring landing + one rotating turret; gate 90.1 x2 every component >=90; standard/parent/winding clean; fresh §B8 floor 9.0 / mean 9.06 x14, yaw/load paths 9.3; oracle f44e3b46 reproducible from pristine .bak; prior 63ee160 retired) |
+| challenger2 | 4fbb2768 | GRADUATED 2026-08-09; RE-FROZEN 2026-08-14 (§5.190 native Hydrogas/course closeout: all accepted hull, segmented skirts, guards, six wheels, terminal stations and turret geometry retained; wheel-face/hub/arm/end-face dressing is explicitly running-gear-owned, and two narrow rubber seam strips move 0.03/0.04 m outward; strict band/shoe front 0/0, rear 0/0, full sweep 0/0; parent clean, 45 distinct paired/yaw frames, assets/tests/build PASS; prior 3b4bd5f0 retired) |
 | fv510 | f912ef92 | RE-FROZEN 2026-08-14 (§5.189 non-subtractive carrier clearance: all six deep WRAP modules, chevrons, open rails, complete sponson, skirts, wheels and native course remain; only the buried lower transverse module carriers move upward inside the same closed armor panels; strict band/shoe front 0/0, rear 0/0, full sweep 0/0; fresh 45-frame yaw proof and regenerated targeted assets PASS; prior 313ab8ca retired) |
 | m26_pershing | 2f006738 | RE-RECORDED 2026-08-08: hash moved by LANDED 5f39989 (armorM4 gunBarrel shadow-proxy 3.96->3.44; m26/m45 inherit m4a3e8 proxies — patton.js bytes unchanged); double-confirmed by builder bisect + m45-grad critic; prior 65c564c0 bore+winding re-cert lineage (floors 9.1-9.4) carries |
 | t90m | a21894b8 | RE-FROZEN 2026-08-12 (§5.127 first-party native V-bow hull, welded Proryv shell, supported bustle/rack and exact six-wheel course; machine fidelity 90.96 / minimum view 90.02; 42-frame yaw/ownership PASS; incompatible legacy contour row retained honestly rather than chased) |
@@ -6643,3 +6643,42 @@ vertices).
 **KEEP the complete Warrior hull and full WRAP side package. Future clearance
 work may move buried load paths within their supported panels, but may not
 remove exterior armor, rails, skirts or mudguards.**
+
+## 5.190 CHALLENGER 2 HYDROGAS OWNERSHIP + SKIRT-SEAM CLEARANCE (2026-08-14, LIVE)
+
+The accepted Challenger 2 exterior is preserved: the complete closed hull,
+segmented full skirts, guards, front/rear service fields, six Hydrogas road
+wheels, raised terminal stations, linked course and articulated turret are not
+deleted or reshaped. Exact localization showed that 2,171 of 2,177 individual
+shoe-contact voxels belonged to the wheels' own dark rings, dishes, hub bolts,
+swing arms and end-wheel faces. Those parts were emitted through generic hull
+buckets even though they are native suspension dressing.
+
+The wheel-face, hub, arm, inter-wheel and terminal-face pieces now use the
+explicit running-gear dark/detail ownership buckets with identical geometry,
+coordinates and materials. The remaining six voxels came from the inner edges
+of two narrow vertical rubber seam strips at the ring shoulders. The left strip
+moves 0.03 m outward and the right 0.04 m outward, retaining their full height,
+width and visible skirt connection. No plate, mudguard or skirt section is
+removed.
+
+Exact strict band and individual-shoe audits now report **front 0/0, rear 0/0
+and complete sweep 0/0**. Fresh evidence contains 15 authored-model boards
+including the standardized elevated-left profile, 15 yaw0 and 15 yaw90 frames:
+**45 PNG / 45 distinct hashes**. Six dished wheels remain separately readable,
+all wheel faces stay inside the linked belt, both end ramps remain supported
+and the body/skirt silhouette is unchanged. The complete gun, turret armor,
+roof stations, optics, MG, smoke and bustle execute a genuine quarter-turn.
+
+The parent audit is **0 stranded / 0 abutting / 0 dangling**. Winding is
+**0 reversed / 0 mixed**, with only an 80-pixel (0.14%) non-material
+front-left diagnostic edge; no sheet disappears, no sky-through wound opens
+and mode 2 is clean. All eight targeted presentation assets and the muzzle
+bore are current.
+
+Dual-ledger geometry is freeze **`4fbb2768`**, instance freeze **`ac0a9624`**
+and asset geometry **`47364cd8`** (46 rendered meshes / 250,579 vertices).
+
+**KEEP the complete Challenger 2 body, skirts and Hydrogas mechanism. Future
+course work must use ownership correction or localized reseating and may not
+delete exterior armor to force a clean audit.**

@@ -10447,7 +10447,7 @@
           }
         ]
       },
-      "geometryHash": "4585b873",
+      "geometryHash": "47364cd8",
       "metadataHash": "b64189df",
       "muzzleBore": {
         "tagged": 2,
@@ -10462,16 +10462,16 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 16774,
-          "sha256": "719e4cda4881542a74fe4f81c88788718949f31ad0dbe92e9597f02a3f966f5f"
+          "bytes": 16524,
+          "sha256": "a5e320f04e8c33e7d18dad3016b88c3552925b18c5fdb3f9742e48cafc3d6c19"
         },
         "top": {
           "file": "challenger2_top.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 7076,
-          "sha256": "a541c8e35dc70af0f7c16e7906757ddb611aed4a1f3355bca6772aceb342cf00"
+          "bytes": 7074,
+          "sha256": "e348069a486496ad80811d4eac96cfc424cfb80c5a91749fef58bbbc810d8520"
         },
         "side": {
           "file": "challenger2_side.webp",
