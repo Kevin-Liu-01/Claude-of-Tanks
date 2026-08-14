@@ -1141,7 +1141,7 @@ function shellSponsons(P, t, s = 1, xOut = null, yBot = null, yTop = null) {
 }
 
 // ---------------------------------------------------------------------------
-// Tejas-oracle family (m1a2_tejas / m1a1 / m1a1ha / m1a2_tusk — all FULL
+// Tejas-oracle family (m1a2 / m1a1 / m1a1ha / m1a2_tusk — all FULL
 // scale now; the v5 0.727 tusk clamp-matching is retired, the tusk oracle is
 // a certified chimera). Curves: v6 re-extraction + probe decode.
 // ---------------------------------------------------------------------------
@@ -1289,7 +1289,7 @@ const TEJAS_TURRET = {
   // the print's own cheek plane rakes 34.8° from vertical (turret-only side
   // profile, gun excluded: chin y 1.80 z 2.348 world falling to 2.10 at the
   // 2.13 roof knee, slope dz/dy -0.695, fit residual 6 mm — probe
-  // shots/abrams-b1/probe-m1a2_tejas.json). The old 0.02 "flat roofline"
+  // shots/abrams-b1/probe-m1a2_tejas.json, from before the id swap). The old 0.02 "flat roofline"
   // read fit a side column (z 2.386) that the print carries on its GUN
   // COVER mass, not the cheek plate — flattening the cheek to own it was
   // the vertical-slab failing read the owner flagged. 0.32 over the 0.46
@@ -1974,7 +1974,7 @@ function tejasRoofKit(P, t, station = 'crows') {
 // reproduces that readable construction language with panel-face relief,
 // retention straps and buried fasteners. M1A1HA and clean M1A2 receive only
 // passive-armor seams (their protection is not mislabeled as external ERA),
-// while TUSK/SEPv2/SEPv3 keep their existing variant-specific reactive arrays.
+// while Tejas/TUSK/SEPv2/SEPv3 keep their variant-specific reactive arrays.
 function abramsArmorHardware(P, variant, t) {
   const reactive = ['m1a2_tusk', 'm1a2_sepv2', 'm1a2_sepv3'].includes(variant);
   // The base M1A1 is the bare family anchor. Do not leave the former dark
@@ -2026,64 +2026,110 @@ function abramsArmorHardware(P, variant, t) {
     }
   }
 
-  // M1A1HA owner armor pass.  The base M1A1 deliberately stays comparatively
-  // bare; its former cassette language has migrated forward to the M1A2 and
-  // informed the reactive TUSK/SEP packages below.  The HA retains the heavy
-  // early-Abrams reference fit.  These are
+  // M1A1HA + current Tejas M1A2 owner armor pass. The base M1A1 deliberately
+  // stays comparatively bare. Its former cassette language belongs on the
+  // current M1A2 Tejas path, not the independent legacy buildM1a2 recipe.
+  // The HA retains the heavy early-Abrams reference fit. These are
   // real, shallow add-on cassettes: their backs bite into the skirt or the
   // exact turret surface, their bodies expose readable shoulders, and the
   // smaller faces sit directly on those bodies.  Natural gaps do the panel
   // separation; no black grid strips are used.
-  if (!reactive && variant === 'm1a1ha') {
+  if (!reactive && ['m1a1ha', 'm1a2'].includes(variant)) {
     const heavy = variant === 'm1a1ha';
+    const modern = variant === 'm1a2';
     // Owner escalation: these packages must read as fitted armor volumes at
     // the hero-camera scale, not thin applique decals.  The backs remain
     // buried into their carriers; only the outward shoulder grows.
-    const skirtDepth = heavy ? 0.180 : 0.160;
-    const flankDepth = heavy ? 0.175 : 0.155;
-    const cheekDepth = heavy ? 0.195 : 0.175;
+    const skirtDepth = heavy ? 0.180 : 0.190;
+    const flankDepth = heavy ? 0.175 : 0.205;
+    const cheekDepth = heavy ? 0.195 : 0.215;
     for (const side of [-1, 1]) {
-      // Two full, staggered side-skirt courses.  Their carriers overlap the
-      // stock skirt, while the exposed shoulders and recessed caps make the
-      // armor read as mass rather than a painted checkerboard.
-      for (let k = 0; k < 8; k++) {
-        const z = 2.22 - k * 0.58;
-        const upperOuter = skirtArmorBox(P, 'hull', side, 1.812,
-          skirtDepth, heavy ? 0.36 : 0.34, 0.51, 1.22, z);
-        skirtArmorBox(P, 'hullDetail', side, upperOuter - 0.003,
-          0.011, heavy ? 0.29 : 0.27, 0.43, 1.22, z, 0);
-        P.add('hullDetail', cylX(0.014, 0.012, 8),
-          side * (upperOuter + 0.002), 1.20, z - 0.17);
-        P.add('hullDetail', cylX(0.014, 0.012, 8),
-          side * (upperOuter + 0.002), 1.20, z + 0.17);
-        const lowerOuter = skirtArmorBox(P, 'hull', side, 1.812,
-          skirtDepth - 0.012, heavy ? 0.32 : 0.29, 0.51, 0.89, z + 0.015);
-        skirtArmorBox(P, 'hullDetail', side, lowerOuter - 0.003,
-          0.010, heavy ? 0.25 : 0.22, 0.43, 0.89, z + 0.015, 0);
-        // Raised center pad + lower sacrificial lip.  Both are armor-tone,
-        // so the depth comes from real shoulders and light rather than an
-        // ink-black checkerboard.
-        skirtArmorBox(P, 'hullDetail', side, upperOuter + 0.004,
-          0.010, heavy ? 0.17 : 0.15, 0.31, 1.22, z, 0);
-        skirtArmorBox(P, 'hullDetail', side, upperOuter + 0.004,
-          0.009, 0.055, 0.43, 1.22, z, 0);
-        skirtArmorBox(P, 'hull', side, lowerOuter - 0.002,
-          0.016, 0.055, 0.46, 0.755, z + 0.015, 0);
-      }
-      for (let k = 0; k < 4; k++) {
-        const z = 2.60 + k * 0.29;
-        const h = 0.34 - k * 0.035;
-        // Keep every load-bearing back face on the existing x=1.812 skirt
-        // carrier.  The former inward stagger reached into the raised idler
-        // shoe wrap even after its last two modules were clamped.  Height and
-        // longitudinal spacing still provide the visible taper; only the
-        // armor is reseated, preserving the complete hull, skirt, idler, road
-        // wheels, suspension and linked track unchanged.
-        const bowCarrier = 1.812;
-        const bowOuter = skirtArmorBox(P, 'hull', side, bowCarrier,
-          skirtDepth, h, 0.25, 1.05, z);
-        skirtArmorBox(P, 'hullDetail', side, bowOuter - 0.003,
-          0.010, h - 0.065, 0.21, 1.03, z, 0);
+      if (modern) {
+        // The current M1A2 receives the improved XM32 wedge course that was
+        // accidentally authored under legacy buildM1a2. Every cassette is
+        // buried into the Tejas skirt, leans outward at the crown and carries
+        // two smaller surface-normal relief layers. There are no black grid
+        // bars; real shoulders and the natural gaps separate each module.
+        const skirtCarrier = TEJAS_HULL.skirt.x;
+        P.add('hullDetail', box(0.018, 0.045, 4.40),
+          side * (skirtCarrier + 0.046), 1.425, 0.25);
+        for (let k = 0; k < 9; k++) {
+          const z = 2.24 - k * 0.50;
+          const z0 = z - 0.225, z1 = z + 0.225;
+          const pulse = k % 2 === 0 ? 0.006 : 0;
+          const upper = skirtArmorWedge(P, 'hull', side, skirtCarrier,
+            0.156 + pulse, 0.190 + pulse, 1.035, 1.405, z0, z1);
+          surfaceNormalPatch(P, 'hullDetail', side,
+            upper.p00, upper.p10, upper.p11, upper.p01,
+            0.010, 0.002, [1, 0, 0]);
+          surfaceNormalPatch(P, 'hullDetail', side,
+            skirtArmorFacePoint(upper, 1.15, z1 - 0.055),
+            skirtArmorFacePoint(upper, 1.15, z0 + 0.055),
+            skirtArmorFacePoint(upper, 1.31, z0 + 0.055),
+            skirtArmorFacePoint(upper, 1.31, z1 - 0.055),
+            0.007, 0.015, [1, 0, 0]);
+
+          const lower = skirtArmorWedge(P, 'hull', side, skirtCarrier,
+            0.145 + pulse, 0.178 + pulse, 0.725, 1.020, z0, z1);
+          surfaceNormalPatch(P, 'hullDetail', side,
+            lower.p00, lower.p10, lower.p11, lower.p01,
+            0.009, 0.002, [1, 0, 0]);
+          surfaceNormalPatch(P, 'hullDetail', side,
+            skirtArmorFacePoint(lower, 0.815, z1 - 0.055),
+            skirtArmorFacePoint(lower, 0.815, z0 + 0.055),
+            skirtArmorFacePoint(lower, 0.945, z0 + 0.055),
+            skirtArmorFacePoint(lower, 0.945, z1 - 0.055),
+            0.006, 0.014, [1, 0, 0]);
+
+          const fastenerX = skirtCarrier - 0.006 + 0.194 + pulse;
+          for (const [fy, fz] of [[1.20, z - 0.16], [1.20, z + 0.16], [0.87, z]]) {
+            P.add('hullDetail', cylX(0.014, 0.012, 8), side * fastenerX, fy, fz);
+          }
+          skirtArmorBox(P, 'hull', side, skirtCarrier + 0.010,
+            0.155 + pulse, 0.060, 0.42, 0.675, z, 0.010);
+        }
+        for (let k = 0; k < 4; k++) {
+          const z = 2.68 + k * 0.29;
+          const h = 0.34 - k * 0.035;
+          const carrier = Math.max(skirtCarrier - k * 0.020, skirtCarrier - 0.055);
+          const nose = skirtArmorWedge(P, 'hull', side, carrier,
+            0.150, 0.184, 1.04 - h / 2, 1.04 + h / 2,
+            z - 0.12, z + 0.12);
+          surfaceNormalPatch(P, 'hullDetail', side,
+            nose.p00, nose.p10, nose.p11, nose.p01,
+            0.009, 0.002, [1, 0, 0]);
+        }
+      } else {
+        // HA keeps its earlier two-course block grammar.
+        for (let k = 0; k < 8; k++) {
+          const z = 2.22 - k * 0.58;
+          const upperOuter = skirtArmorBox(P, 'hull', side, 1.812,
+            skirtDepth, 0.36, 0.51, 1.22, z);
+          skirtArmorBox(P, 'hullDetail', side, upperOuter - 0.003,
+            0.011, 0.29, 0.43, 1.22, z, 0);
+          P.add('hullDetail', cylX(0.014, 0.012, 8),
+            side * (upperOuter + 0.002), 1.20, z - 0.17);
+          P.add('hullDetail', cylX(0.014, 0.012, 8),
+            side * (upperOuter + 0.002), 1.20, z + 0.17);
+          const lowerOuter = skirtArmorBox(P, 'hull', side, 1.812,
+            skirtDepth - 0.012, 0.32, 0.51, 0.89, z + 0.015);
+          skirtArmorBox(P, 'hullDetail', side, lowerOuter - 0.003,
+            0.010, 0.25, 0.43, 0.89, z + 0.015, 0);
+          skirtArmorBox(P, 'hullDetail', side, upperOuter + 0.004,
+            0.010, 0.17, 0.31, 1.22, z, 0);
+          skirtArmorBox(P, 'hullDetail', side, upperOuter + 0.004,
+            0.009, 0.055, 0.43, 1.22, z, 0);
+          skirtArmorBox(P, 'hull', side, lowerOuter - 0.002,
+            0.016, 0.055, 0.46, 0.755, z + 0.015, 0);
+        }
+        for (let k = 0; k < 4; k++) {
+          const z = 2.60 + k * 0.29;
+          const h = 0.34 - k * 0.035;
+          const bowOuter = skirtArmorBox(P, 'hull', side, 1.812,
+            skirtDepth, h, 0.25, 1.05, z);
+          skirtArmorBox(P, 'hullDetail', side, bowOuter - 0.003,
+            0.010, h - 0.065, 0.21, 1.03, z, 0);
+        }
       }
 
       // Four large bustle-flank cassettes ride the 16.9-degree armor plane.
@@ -2141,7 +2187,7 @@ function abramsArmorHardware(P, variant, t) {
     // so the modules follow the bow crown instead of hovering over it.  HA
     // receives the heavier body; both variants use inset armor-tone caps and
     // natural gaps rather than black outline strips.
-    const glacisDepth = heavy ? 0.105 : 0.090;
+    const glacisDepth = modern ? 0.110 : 0.105;
     for (const side of [-1, 1]) {
       for (let col = 0; col < 2; col++) {
         for (let row = 0; row < 3; row++) {
@@ -2181,7 +2227,7 @@ function abramsArmorHardware(P, variant, t) {
     P.add('turretDetail', box(0.27, 0.035, 0.17), 0.84, 1.151, -0.18);
     P.add('turretGlass', box(0.23, 0.11, 0.016), 0.84, 1.04, -0.065);
     // Round objective pair, louver bank and service fasteners give the roof
-    // stack readable installed-system anatomy.  The new lines use the warm
+    // stack readable installed-system anatomy. The new lines use the warm
     // detail bucket, never a fully black outline material.
     for (const x of [0.76, 0.92]) {
       P.add('turretDetail', cylZ(0.052, 0.018, 14), x, 1.04, -0.054);
@@ -2760,7 +2806,8 @@ function tejasRearKit(P, opts) {
 // rear wrap (69,64,54) H40 — proc was (14,14,11) L5 pure-black cog slab.
 // Wheel DISH albedo already matched (ref (58,65,48) vs proc (57,63,50)).
 function tejasToneKit(P) {
-  const reactiveArmor = ['m1a2_tusk', 'm1a2_sepv2', 'm1a2_sepv3'].includes(P.spec.id);
+  const reactiveArmor = ['m1a2', 'm1a2_tusk', 'm1a2_sepv2', 'm1a2_sepv3']
+    .includes(P.spec.id);
   const rehook = (m) => {
     m.onBeforeCompile = vehicleAmbientFloorHook;
     m.customProgramCacheKey = () => 'veh-ambient-floor-v2';
@@ -2966,7 +3013,7 @@ function buildTejasFamily(P, p) {
   // the certified rack envelope (rails/posts/floor byte-identical).
   const vid = P.spec.id || '';
   const dufMul = (vid === 'm1a1' || vid === 'm1a1ha') ? [1, 0, 0]
-    : (vid === 'm1a2_tejas' || vid === 'm1a2_tusk') ? [0.7, 0, 1]
+    : (vid === 'm1a2' || vid === 'm1a2_tusk') ? [0.7, 0, 1]
     : vid === 'm1a2_sepv2' ? [0.7, 0, 1]      // center freed for the rigid ammo crate (§H.4)
     : vid === 'm1a2_sepv3' ? [0.7, 1, 0]      // right freed for the stowed-loadout slot
     : null;
@@ -2974,7 +3021,7 @@ function buildTejasFamily(P, p) {
   if (p.abramsKit === 'tusk') g = { ...g, noTip: true, noFlaps: true };
   // §B1-6/§B4 (m1a1ha graduate round 2026-08-05, EXTENDED FAMILY-WIDE in the
   // rear round 2026-08-06 — owner: "fix m1 butts"; the m1a1ha packet already
-  // reported m1a1/m1a2_tejas/m1a2_tusk carrying the SAME flap-in-sweep
+  // reported m1a1/m1a2/m1a2_tusk carrying the SAME flap-in-sweep
   // defect classes):
   // - SHOE-ENVELOPE truth (leo-r13 law; the --exact clip audit tests the
   //   BAND only): envelope r = end-wheel r + bandOuterR(0.045+th/2) + link
@@ -4089,14 +4136,14 @@ function buildTejasFamily(P, p) {
           P.add('hullDark', box(0.052, 0.034, 0.045), 1.786, cy, cz);
         }
       }
-    } else if (vid === 'm1a2_tejas' || vid === 'm1a2_tusk') {
+    } else if (vid === 'm1a2' || vid === 'm1a2_tusk') {
       // TEJAS/TUSK: CROWS identity + stowed loader's M240 (muzzle resting
       // at the right duffel edge) + an antenna base pot by the rear post.
       seat(FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', seed: 13,
         elev: 0.06, rotation: [0, 1.45, 0] }), -0.21, rkY, -3.14);
       seat(FITTINGS.antennaWhip({ mats: P.mats, h: 0.20, r: 0.010, slot: 'dark',
         seed: 9 }), -1.00, rkY, -3.40);
-      if (vid === 'm1a2_tejas') {
+      if (vid === 'm1a2') {
         // §B3.2 (2026-08-06) — RIGHT skirt-ledge spare-link strip: the
         // SAME certified ledge envelope as the m1a1/HA cable class (tops
         // <= 1.458 in the 1.37-1.48 skirt-zone front class, outer faces
@@ -4164,7 +4211,7 @@ function buildTejasFamily(P, p) {
       // 2.297 world — inside the 2.30 fill class).
       P.add('turretCloth', cylX(0.055, 0.34, 10), -0.60, 0.672, -3.12);
       P.add('turretTrack', cylX(0.058, 0.022, 10), -0.68, 0.672, -3.12);
-    } else if (vid === 'm1a2_tejas' || vid === 'm1a2_tusk') {
+    } else if (vid === 'm1a2' || vid === 'm1a2_tusk') {
       // helmet bag on the right duffel crown (duf3 crown 0.582 local).
       P.add('turretCloth', box(0.20, 0.075, 0.18), 0.749, 0.622, -3.14);
       P.add('turretTrack', box(0.21, 0.018, 0.05), 0.749, 0.646, -3.14);
@@ -8690,10 +8737,10 @@ function buildAbramsX(P) {
 // Profile table
 // ---------------------------------------------------------------------------
 export const ABRAMS_PROFILES = {
-  m1a2: { build: buildM1a2 },
+  m1a2_legacy: { build: buildM1a2 },
+  m1a2: { build: buildTejasFamily, station: 'crows' },
   m1a1: { build: buildTejasFamily, station: 'cws' },
   m1a1ha: { build: buildTejasFamily, station: 'cws' },
-  m1a2_tejas: { build: buildTejasFamily, station: 'crows' },
   // TUSK: published-true full-scale body + real-scale ARAT/slat/TIP kit.
   // The tusk oracle is the tejas GLB height-clamped small PLUS a real-scale
   // runtime kit (certified chimera — see the packet); dims/floaters are the

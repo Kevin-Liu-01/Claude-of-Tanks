@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
-import './tankFactory.js';
+import { createTank } from './tankFactory.js';
 import { ALL_TANK_IDS, getSpec, RETIRED_EXTERNAL_PLACEHOLDER_IDS } from './specs.js';
 import {
-  TANK_ASSET_VIEWS, metadataFingerprint, requiredTankAssetFiles, tankAssetMetadata,
+  TANK_ASSET_VIEWS, geometryFingerprint, metadataFingerprint, requiredTankAssetFiles, tankAssetMetadata,
 } from './tankAssets.js';
 
 assert.equal(Object.keys(TANK_ASSET_VIEWS).length, 8, 'release contract includes eight views/diagrams');
@@ -29,5 +29,18 @@ for (const id of ALL_TANK_IDS) {
 for (const id of RETIRED_EXTERNAL_PLACEHOLDER_IDS) {
   assert.equal(ALL_TANK_IDS.includes(id), false, `${id}: retired external placeholder is not selectable`);
 }
+
+assert.equal(getSpec('m1a2').name, 'M1A2 Abrams', 'Tejas is the canonical M1A2 identity');
+assert.equal(getSpec('m1a2_legacy').name, 'M1A2 (Legacy)', 'former M1A2 retains the legacy identity');
+assert.equal(ALL_TANK_IDS.includes('m1a2_tejas'), false, 'retired Tejas alias is not selectable');
+const canonicalM1A2 = createTank('m1a2', null, { proceduralOnly: true, geometryReceipt: true });
+const legacyM1A2 = createTank('m1a2_legacy', null, { proceduralOnly: true, geometryReceipt: true });
+assert.notEqual(
+  geometryFingerprint(canonicalM1A2.root),
+  geometryFingerprint(legacyM1A2.root),
+  'canonical and legacy M1A2 ids resolve to distinct procedural profiles',
+);
+canonicalM1A2.dispose();
+legacyM1A2.dispose();
 
 console.log(`tankAssets.selftest: ${ALL_TANK_IDS.length} tanks have tier, flag, gun, hit-area and module metadata`);

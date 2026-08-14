@@ -697,7 +697,7 @@ export const TANK_SPECS = {
     },
   },
 
-  m1a2: {
+  m1a2_legacy: {
     // Renamed from 'M1A2 Abrams SEPv3' (owner 2026-08-07: "theres two
     // m1a2 sepv3s. lets use M1a2 sepv3 and delete m1a2 abrams sepv3") —
     // the SEPv3 garage identity now belongs solely to m1a2_sepv3; this
@@ -706,7 +706,7 @@ export const TANK_SPECS = {
     // TANK_IDS mechanism.
     // §5.74: RETIRED-LEGACY (owner 2026-08-08) — carousel-delisted in
     // garage.js; name carries the LEGACY mark everywhere it still appears.
-    id: 'm1a2', name: 'M1A2 (Legacy)', nation: 'USA', era: 'modern', class: 'mbt',
+    id: 'm1a2_legacy', name: 'M1A2 (Legacy)', nation: 'USA', era: 'modern', class: 'mbt',
     hp: 2600,
     // Real SEPv3 reverses at ~40 km/h, but that reads arcade-y next to the
     // 5-8 km/h WW2 roster and sits far outside the WoT-feel envelope
@@ -792,6 +792,16 @@ export const TANK_SPECS = {
     },
   },
 };
+
+// OWNER IDENTITY SWAP (2026-08-14): Tejas is the canonical M1A2.  Keep the
+// retired procedural build available under the explicit m1a2_legacy id so
+// saved comparisons and visual regression work can still address it without
+// letting it shadow the player-facing M1A2.
+TANK_SPECS.m1a2 = structuredClone(TANK_SPECS.m1a2_legacy);
+TANK_SPECS.m1a2.id = 'm1a2';
+TANK_SPECS.m1a2.name = 'M1A2 Abrams';
+TANK_SPECS.m1a2.dims.heightM = 3.30;
+TANK_SPECS.m1a2.visual.number = '23';
 
 // T-90M glacis ERA is split into two tiles so strips read locally.
 {
@@ -1762,6 +1772,7 @@ export const MODEL_SOURCE = {
   // override maps. The public-build gate below is now vacuous (kept as
   // documentation of the quarantine polarity).
   m1a2: { source: 'procedural' },
+  m1a2_legacy: { source: 'procedural' },
   t90m: { source: 'procedural' },
   leo2a7: { source: 'procedural' },
 };

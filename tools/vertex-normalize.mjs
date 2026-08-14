@@ -165,7 +165,7 @@ export const PLANS = {
   // -> 2.456; extract p95 3.888 -> 2.463). sepv2 DEFERRED: defective oracle
   // (131-vert turret interpenetration 0.81m + hull-node masts at y 3.62)
   // needs triage before any warp.
-  m1a2: { // file m1a2_sepv3_dannzjs.glb
+  m1a2_legacy: { // file m1a2_sepv3_dannzjs.glb
     y: [[0, 0], [2.38, 2.38], [2.99, 2.455], [5.23, 2.475]],
     z: [[-3.713, -3.9565], [3.73, 3.9665], [5.85, 5.8135]],
     yTopMax: 2.48,

@@ -172,7 +172,7 @@ const REG = {
     assumeFlip: false,
     pubDims: { hullLengthM: 7.92, overallLengthM: 9.77, widthM: 3.66, heightM: 2.44 },
   },
-  m1a2_tejas: {
+  m1a2: {
     path: 'public/models/tanks/m1a2_tejas.glb',
     turretNode: '^Turret$', gunNode: '^Gun$', autoPivot: true, yawOffset: -Math.PI / 2,
     pubDims: { hullLengthM: 7.93, overallLengthM: 9.77, widthM: 3.66, heightM: 2.44 },
@@ -185,7 +185,7 @@ const REG = {
   // ORACLE SWITCH (owner, 2026-08-03): the dannzjs "SEPv3" print turned out to
   // be a mislabeled LEOPARD 2A5. m1a2 now measures against the recovered SEPv2
   // drop (batch-21 warped) — same instrument as the m1a2_sepv2 row below.
-  m1a2: {
+  m1a2_legacy: {
     path: 'public/models/tanks/community/recovered/m1a2_sepv2.glb',
     turretNode: '^Turret$', gunNode: '^misc_b$', autoPivot: true, yawOffset: Math.PI,
     pubDims: { hullLengthM: 7.93, overallLengthM: 9.77, widthM: 3.66, heightM: 2.44 },

@@ -1,7 +1,6 @@
-// Recovered-drop wave 5: the two explicitly pending Abrams candidates.
-// Both are kept playable: Tejas V.'s detailed M1A2 is a roster variant while
-// Mortavex's AbramsX is the concept demonstrator. The shipped dannzjs SEPv3
-// remains the default flagship until the visual A/B gate says otherwise.
+// Recovered-drop wave 5: the former M1A2 is retained as m1a2_legacy while
+// Tejas is now the canonical m1a2. Mortavex's AbramsX remains the concept
+// demonstrator.
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
@@ -9,22 +8,6 @@ const clone = (value) => JSON.parse(JSON.stringify(value));
 // the same authored procedural path so local testing cannot silently swap in
 // a third-party mesh.
 const ALLOW_LOCAL_RECOVERED_MODELS = false;
-
-const tejas = clone(TANK_SPECS.m1a2);
-tejas.id = 'm1a2_tejas';
-tejas.name = 'M1A2 Abrams';  // owner 2026-08-06: '(Tejas)' dropped from the display name
-// §5.73-1 / §5.74: height is the mandatory-kit P95 envelope.  The new
-// broad ghillie-covered CROWS band now measures 3.30 m on the authoritative
-// 1024 mask; the earlier 3.24 row described the uncovered station.
-tejas.dims = { ...tejas.dims, heightM: 3.30 };
-tejas.variantOf = 'm1a2';
-tejas.publicVisualFallback = 'm1a2';
-tejas.community = {
-  author: 'Tejas V.',
-  source: 'https://sketchfab.com/3d-models/m1a2-abrams-c85846177bfc4018b6a8f3b40754655c',
-  license: 'CC BY-NC-ND 4.0 — LOCAL-ONLY QUARANTINE',
-};
-tejas.visual.number = '23';
 
 const abramsx = clone(TANK_SPECS.m1a2);
 abramsx.id = 'abramsx';
@@ -73,17 +56,14 @@ abramsx.visual = {
 // Keep the gameplay rows in every build. Public artifacts use the legal
 // procedural M1A2 family fallback + its packaged icons; only private/local
 // builds attach the recovered model credits and restricted GLB sources.
-if (!ALLOW_LOCAL_RECOVERED_MODELS) {
-  delete tejas.community;
-  delete abramsx.community;
-}
-for (const spec of [tejas, abramsx]) {
+if (!ALLOW_LOCAL_RECOVERED_MODELS) delete abramsx.community;
+for (const spec of [TANK_SPECS.m1a2_legacy, abramsx]) {
   TANK_SPECS[spec.id] = TANK_SPECS[spec.id] || spec;
   if (!ALL_TANK_IDS.includes(spec.id)) ALL_TANK_IDS.push(spec.id);
 }
 
 if (ALLOW_LOCAL_RECOVERED_MODELS) {
-  // m1a2_tejas: DUAL-GATE GRADUATE (2026-08-02) — procedural ships
+  // m1a2 (formerly m1a2_tejas): DUAL-GATE GRADUATE (2026-08-02) — procedural ships
   // everywhere (geo 90.5 gatePassed, critic 9.0 all nine views, r5).
   // Freeze hash b432d89d. The GLB stays as the trio's measurement oracle.
 
@@ -117,6 +97,6 @@ if (ALLOW_LOCAL_RECOVERED_MODELS) {
   // FLIP-RETIRED: };
 }
 
-export const USERDROP4_TANK_IDS = ['m1a2_tejas', 'abramsx'];
+export const USERDROP4_TANK_IDS = ['m1a2_legacy', 'abramsx'];
 // Dual-gate graduates leave the sourced-intent roster (CUSTOM chip).
-export const USERDROP4_SOURCED_IDS = USERDROP4_TANK_IDS.filter((id) => id !== 'm1a2_tejas');
+export const USERDROP4_SOURCED_IDS = USERDROP4_TANK_IDS.filter((id) => id !== 'm1a2_legacy');

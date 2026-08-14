@@ -6,7 +6,7 @@ import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
 
 const DEFAULT_IDS = [
-  'm1a2_tejas', 'abramsx',
+  'm1a2_legacy', 'abramsx',
   'challenger1', 'chieftain5', 'fv510', 'leo2_revolution', 'leo2a5',
   'leo2a7v', 'm1a1ha', 'm1a2_sepv2', 'm60a1', 'pt91m',
   'merkava1b', 'merkava2b', 'merkava2d', 'merkava3b', 'merkava3c',
@@ -63,7 +63,7 @@ try {
   check('garage booted', roster.phase === 'garage', `phase=${roster.phase}`);
   const sourceById = await page.evaluate(async () => {
     const { MODEL_SOURCE } = await import('/src/vehicles/specs.js');
-    return Object.fromEntries(Object.entries(MODEL_SOURCE).map(([id, row]) => [id, row.source]));
+    return Object.fromEntries(Object.entries(MODEL_SOURCE).map(([id, row]) => [id, row?.source]));
   });
 
   for (const id of IDS) {

@@ -3780,7 +3780,7 @@ function buildLeo2A7(P) {
 
 const BUILDERS = {
   m4a3e8: buildM4A3E8, tiger1: buildTiger, t34_85: buildT34, is2: buildIS2,
-  panther_g: buildPanther, m1a2: buildM1A2, t90m: buildT90M, leo2a7: buildLeo2A7,
+  panther_g: buildPanther, m1a2_legacy: buildM1A2, t90m: buildT90M, leo2a7: buildLeo2A7,
 };
 // EXTENSION HOOK (HD modern roster): t72b3 donor / merkava4 donor / leo2a6
 Object.assign(BUILDERS, MODERN1_BUILDERS);

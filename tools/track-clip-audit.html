@@ -79,7 +79,7 @@ if (mode === 'list') {
   window.__CLIP_RESULT = { ids };
   window.__CLIP_READY = true;
 } else {
-  const id = params.get('id') || 'm1a2_tejas';
+  const id = params.get('id') || 'm1a2';
   const engineCtx = { setupShadowMaterial: (m) => m, anisotropy: 1, renderer: null };
   const tank = createTank(id, engineCtx, { camoSeed: 4242, quality: 'high', proceduralOnly: true });
   tank.root.updateMatrixWorld(true);
