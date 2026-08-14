@@ -2871,27 +2871,35 @@ function fv510PhotoBuild(P) {
   // ---- stern: lower plate rakes up to the 0.80 door sill ----
   loftBand(P, 'hull', 0.90, 0.02, [[-2.30, 1.335], [-2.90, 1.335]], fvSternY,
     -2.30, -2.90, [-2.7]);
-  // ---- segmented side armour behind the open WRAP screen.  Restore the
+  // ---- segmented side armour behind the WRAP screen.  Restore the
   // six camouflaged plates and the characteristic pointed inter-station
-  // drops that were removed when the outer slat course was opened up.  The
-  // plates sit just inboard of the WRAP rails, so the cage remains readable
-  // while the Warrior no longer presents an empty wheel-bay flank.  Their
-  // 0.62 m lowest point remains above the native linked-shoe corridor.
+  // drops that were removed when the outer slat course was opened up. The
+  // first recovery placed the plates too far inboard, where the hull/cage
+  // hid them from the normal garage angle. Put their visible faces back at
+  // the authored skirt plane and carry the WRAP rails immediately outside;
+  // the armor reads as six real blocks while the ribbed cage remains visible.
+  // The 0.62 m lowest point remains above the native linked-shoe corridor.
   for (const s of [-1, 1]) {
     for (let k = 0; k < 6; k++) {
       const z = 2.30 - 0.41 - k * 0.82;
-      P.add('hull', box(0.048, 0.48, 0.80), s * 1.392, 1.10, z);
-      P.add('hullDark', box(0.018, 0.42, 0.016), s * 1.419, 1.09, z - 0.40);
-      const supportX = k === 5 ? 1.30 : 1.487;
-      P.add('hullDetail', box(0.040, 0.78, 0.045), s * supportX, 1.25, z - 0.40);
+      P.add('hull', box(0.048, 0.48, 0.80), s * 1.485, 1.10, z);
+      // Flush dark border lines make each camouflaged slab read as an
+      // individual armor block rather than one painted wall behind the cage.
+      for (const by of [0.875, 1.325]) {
+        P.add('hullDark', box(0.008, 0.024, 0.72), s * 1.511, by, z);
+      }
+      for (const bz of [z - 0.39, z + 0.39]) {
+        P.add('hullDark', box(0.008, 0.42, 0.018), s * 1.511, 1.10, bz);
+      }
+      P.add('hullDetail', box(0.040, 0.78, 0.045), s * 1.493, 1.25, z - 0.40);
     }
     // Zig-zag armour points between the six road-wheel stations.  Their
     // upper shoulders overlap the plate backs and their tips hang between,
     // rather than in front of, the road-wheel faces.
     for (const zw of [1.80, 0.90, 0.0, -0.90, -1.80]) {
       P.add('hull', sslab(s,
-        [1.365, 0.62, zw + 0.13], [1.417, 0.62, zw + 0.13], [1.417, 0.62, zw - 0.13], [1.365, 0.62, zw - 0.13],
-        [1.365, 0.88, zw + 0.24], [1.417, 0.88, zw + 0.24], [1.417, 0.88, zw - 0.24], [1.365, 0.88, zw - 0.24]));
+        [1.463, 0.62, zw + 0.13], [1.507, 0.62, zw + 0.13], [1.507, 0.62, zw - 0.13], [1.463, 0.62, zw - 0.13],
+        [1.463, 0.88, zw + 0.24], [1.507, 0.88, zw + 0.24], [1.507, 0.88, zw - 0.24], [1.463, 0.88, zw - 0.24]));
     }
     P.add('hullDark', box(0.014, 0.035, 0.46), s * 1.499, 1.325, 2.06);
     P.add('hullDark', box(0.014, 0.035, 0.46), s * 1.499, 1.325, -2.38);
@@ -2919,11 +2927,11 @@ function fv510PhotoBuild(P) {
       const n = Math.ceil((z1 - z0) / 0.46);
       const d = (z1 - z0) / n;
       for (let k = 0; k < n; k++) {
-        P.add('hullDetail', box(0.045, 0.055, d - 0.012), s * 1.4325, ry, z0 + d * (k + 0.5));
+        P.add('hullDetail', box(0.045, 0.055, d - 0.012), s * 1.4925, ry, z0 + d * (k + 0.5));
       }
     }
     for (const zs of [-1.95, -0.65, 0.65, 1.85]) {
-      P.add('hullDetail', box(0.04, 0.84, 0.05), s * 1.433, 1.25, zs);
+      P.add('hullDetail', box(0.04, 0.84, 0.05), s * 1.493, 1.25, zs);
     }
   }
   // ---- bow furniture (photo-parity r2 gap #5/#8: the owner's exercise
