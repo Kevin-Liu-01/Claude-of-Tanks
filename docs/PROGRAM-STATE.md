@@ -86,7 +86,7 @@ re-freeze NEW hash, all in ONE commit.
 | m1a2_tejas | 0c690428 | RE-FROZEN 2026-08-14 (§5.184 family-source reconciliation; clean authored Tejas geometry and current asset bytes verified unchanged, strict native-course clearance retained; prior ed044ac8 retired) |
 | merkava3b | REMOVED BY OWNER 2026-08-06 (roster prune; was 8bb8d984, packet historical) |
 | merkava3c | c41e5c3c | RE-FROZEN 2026-08-14 (§5.194 non-subtractive closed-sponson/native-course repair; exact band+shoe+sweep 0/0, fresh 45-frame profile/yaw packet; prior aa74be6a retired) |
-| kf51 | 9ac547ac | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
+| kf51 | 79ce4523 | RE-FROZEN 2026-08-14 (§5.197 non-subtractive closed-sponson/native-course repair: complete exterior hull, side armor and seven-wheel course retained; concealed deck/glacis undersides cleared and wheel-face dressing truthfully classified; exact band+shoe+sweep 0/0, fresh 45-frame profile/yaw packet; prior 7d632754 retired) |
 | isu122s | 8f420d18 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | isu152 | 8e2f75c0 | |
 | merkava3d | 3dc50bb4 | RE-FROZEN 2026-08-14 (§5.194 non-subtractive closed-sponson/native-course repair; exact band+shoe+sweep 0/0, fresh 45-frame profile/yaw packet; prior 667ece84 retired) |
@@ -6978,3 +6978,47 @@ and asset geometry **`6d09ab73`** (54 rendered meshes / 93,702 vertices).
 **KEEP the complete PT-91M hull, skirts and native course. Future work must
 preserve the accepted exterior and use only physical fitting clearance or
 truthful running-gear ownership.**
+
+## 5.197 KF51 CLOSED-SPONSON / NATIVE-COURSE CLOSEOUT (2026-08-14, LIVE)
+
+This repair preserves the complete accepted first-party KF51 exterior: its
+center hull, full deck roof, original outer side walls and side armor, front
+glacis outline, rear service field, seven road wheels, raised idler/final
+drive and single linked-shoe course. No visible hull, skirt, guard, wheel or
+track component is deleted or hidden.
+
+The former deck and front-glacis solids extended their concealed lower faces
+through the moving return and idler crest. They are now closed sponson
+constructions: a complete inter-track body retains the load-bearing hull,
+while the full-width original roof, outer side skins and visible glacis armor
+remain at the same coordinates. Only the invisible over-track underside is
+open above the moving course. The unchanged sprocket/idler rim, hub and face
+pieces are also truthfully classified as running gear rather than hull armor.
+
+Exact strict band and individual-shoe audits now report **front 0/0, rear 0/0
+and complete sweep 0/0**. Fresh evidence contains 15 paired boards including
+the standardized elevated-left profile, 15 yaw0 and 15 yaw90 frames: **45 PNG
+/ 45 distinct hashes**. Paired pixels are silhouette-identical to the
+accepted authored baseline copy. Side, front, rear and elevated views show a
+closed complete hull, full side armor, seven separately readable road wheels,
+a loaded lower run and continuous raised terminal transitions. The complete
+turret, gun, roof station, optics and bustle execute a genuine quarter-turn
+while the hull, deck, skirts and running gear remain fixed.
+
+The parent heuristic's nominees are thin fixed rear-deck grilles and service
+strips inside the broad turret bounding box. Yaw90 exposes them still seated
+on the closed hull deck; none has turret semantics or follows the rotating
+package. There are no dangling candidates. Winding is **0 reversed / 0
+mixed**, with only a three-pixel antialias edge (0.00%) and zero yaw-stranded
+candidates. No empty-air fitting, duplicate course, open sheet, sky hole or
+silhouette regression appears.
+
+All eight targeted presentation assets are current, the muzzle bore passes
+and all ten targeted runtime-rig checks pass. Dual-ledger geometry is freeze
+**`79ce4523`**, instance freeze **`ea8e0d16`** and asset geometry
+**`3813131d`** (299 rendered meshes / 101,258 vertices).
+
+**KEEP the complete KF51 exterior hull, side armor and native course. Future
+clearance work must remain non-subtractive and may only reshape concealed
+sponson undersides, reseat track-adjacent fittings or correct truthful
+running-gear ownership.**

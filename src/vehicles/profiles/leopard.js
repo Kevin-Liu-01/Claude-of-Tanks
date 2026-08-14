@@ -7152,45 +7152,40 @@ function buildKF51(P) {
   for (let i = 0; i < deck.length - 1; i++) {
     const [zF, yF, wF] = deck[i], [zR, yR] = deck[i + 1];
     const wR = deck[i + 1][2] ?? wF;
-    const w0 = Math.min(wF, wR);
     // r5: the LAST segment's bottom rises to 1.355 — the ref −3.866 side
     // column bands 1.766..1.496, the old full 1.32 face overhung it 0.18.
     // Band 1.80..1.355 = 0.445 stays above the 12% body filter (0.426) so
     // the column KEEPS carrying hullLengthM 7.66 (dims-protected).
     const yB = i === deck.length - 2 ? 1.355 : 1.32;
-    // r4 CONTAINMENT: over the sprocket-wrap crest (tops 1.479, crossing
-    // the 1.32 floor plane z -3.524..-2.836) the deck band splits — centre
-    // keeps the 1.32 floor, the over-track part lifts its floor to 1.50,
-    // and the z -3.30 segment end-caps stop slicing the crest. Same outer
-    // shape; the vacated rear-view slot is the real sponson-over-sprocket
-    // configuration and sits behind the wrap/pads.
-    const LW0 = -3.55, LW1 = -2.81, LX0 = 0.945, LY = 1.50;
-    if (Math.min(zF, zR) >= LW1 || Math.max(zF, zR) <= LW0) {
-      P.add('hull', slab(                                                      // untouched segments: exact certified recipe
-        [-w0, yB, zF], [w0, yB, zF], [w0, yB, zR], [-w0, yB, zR],
-        [-wF, yF, zF], [wF, yF, zF], [wR, yR, zR], [-wR, yR, zR]));
-      continue;
-    }
-    // window segments are the flat-width mid-deck runs (wF === wR === w0)
+    // Native-course clearance without deleting the visible hull: retain a
+    // complete inter-track body, the original full deck roof, and the full
+    // original outer side wall.  Only the invisible over-track underside is
+    // open, forming a real closed sponson instead of a solid block through
+    // the moving return.  The rear sprocket window additionally raises the
+    // side-wall bottom behind the sprocket, as before.
+    const LW0 = -3.55, LW1 = -2.81, LX0 = 0.945;
+    const CAP = 0.012, SIDE = 0.025, CLEAR_Y = 1.58;
     const yAt = (z) => yF + (yR - yF) * ((z - zF) / (zR - zF));
-    const cuts = [zF, Math.min(zF, LW1), Math.max(zR, LW0), zR]
+    const wAt = (z) => wF + (wR - wF) * ((z - zF) / (zR - zF));
+    const cuts = [zF, zR, LW1, LW0]
+      .filter((z) => z <= zF + 1e-6 && z >= zR - 1e-6)
       .sort((a2, b2) => b2 - a2).filter((z, k, arr) => k === 0 || z < arr[k - 1] - 1e-6);
     for (let k = 0; k < cuts.length - 1; k++) {
       const za = cuts[k], zb = cuts[k + 1];
       const ya = yAt(za), yb = yAt(zb);
-      if (!(za <= LW1 + 1e-6 && zb >= LW0 - 1e-6)) {
-        P.add('hull', slab(
-          [-w0, yB, za], [w0, yB, za], [w0, yB, zb], [-w0, yB, zb],
-          [-w0, ya, za], [w0, ya, za], [w0, yb, zb], [-w0, yb, zb]));
-      } else {
-        P.add('hull', slab(
-          [-LX0, yB, za], [LX0, yB, za], [LX0, yB, zb], [-LX0, yB, zb],
-          [-LX0, ya, za], [LX0, ya, za], [LX0, yb, zb], [-LX0, yb, zb]));
-        for (const sd of [-1, 1]) {
-          P.add('hull', slab(
-            [sd * LX0, LY, za], [sd * w0, LY, za], [sd * w0, LY, zb], [sd * LX0, LY, zb],
-            [sd * LX0, ya, za], [sd * w0, ya, za], [sd * w0, yb, zb], [sd * LX0, yb, zb]));
-        }
+      const wa = wAt(za), wb = wAt(zb);
+      P.add('hull', slab(
+        [-LX0, yB, za], [LX0, yB, za], [LX0, yB, zb], [-LX0, yB, zb],
+        [-LX0, ya, za], [LX0, ya, za], [LX0, yb, zb], [-LX0, yb, zb]));
+      const rearWindow = (za + zb) * 0.5 <= LW1 && (za + zb) * 0.5 >= LW0;
+      const sideBottom = rearWindow ? CLEAR_Y : yB;
+      for (const sd of [-1, 1]) {
+        P.add('hull', slab(                                                    // original roof skin, closed and full-width
+          [sd * LX0, ya - CAP, za], [sd * wa, ya - CAP, za], [sd * wb, yb - CAP, zb], [sd * LX0, yb - CAP, zb],
+          [sd * LX0, ya, za], [sd * wa, ya, za], [sd * wb, yb, zb], [sd * LX0, yb, zb]));
+        P.add('hull', slab(                                                    // original exterior side skin, not deleted
+          [sd * (wa - SIDE), sideBottom, za], [sd * wa, sideBottom, za], [sd * wb, sideBottom, zb], [sd * (wb - SIDE), sideBottom, zb],
+          [sd * (wa - SIDE), ya, za], [sd * wa, ya, za], [sd * wb, yb, zb], [sd * (wb - SIDE), yb, zb]));
       }
     }
   }
@@ -7216,9 +7211,15 @@ function buildKF51(P) {
   // centre-only (±0.94, the inter-track body) beyond it. Front tops stay
   // deck-carried, side is centre-carried, plan front is pad-carried
   // (3.76-3.79). The glacisTan tone shell below splits identically.
-  P.add('hull', slab(
-    [-1.56, 1.24, 2.55], [1.56, 1.24, 2.55], [1.5449, 1.1695, 3.13], [-1.5449, 1.1695, 3.13],
-    [-1.685, 1.43, 2.55], [1.685, 1.43, 2.55], [1.6699, 1.3417, 3.13], [-1.6699, 1.3417, 3.13]));
+  P.add('hull', slab(                                                        // complete inter-track glacis body
+    [-0.94, 1.24, 2.55], [0.94, 1.24, 2.55], [0.94, 1.1695, 3.13], [-0.94, 1.1695, 3.13],
+    [-0.94, 1.43, 2.55], [0.94, 1.43, 2.55], [0.94, 1.3417, 3.13], [-0.94, 1.3417, 3.13]));
+  for (const s of [-1, 1]) {
+    const ordG = (r) => (s < 0 ? [r[1], r[0], r[3], r[2]] : r);
+    P.add('hull', slab(                                                      // exact visible glacis surface, closed 25 mm armor skin
+      ...ordG([[s * 0.94, 1.405, 2.55], [s * 1.56, 1.405, 2.55], [s * 1.5449, 1.3167, 3.13], [s * 0.94, 1.3167, 3.13]]),
+      ...ordG([[s * 0.94, 1.43, 2.55], [s * 1.685, 1.43, 2.55], [s * 1.6699, 1.3417, 3.13], [s * 0.94, 1.3417, 3.13]])));
+  }
   P.add('hull', slab(
     [-0.94, 1.1695, 3.13], [0.94, 1.1695, 3.13], [0.94, 1.10, 3.70], [-0.94, 1.10, 3.70],
     [-0.94, 1.3417, 3.13], [0.94, 1.3417, 3.13], [0.94, 1.255, 3.70], [-0.94, 1.255, 3.70]));
@@ -7255,7 +7256,11 @@ function buildKF51(P) {
   P.add('hull', slab(
     [-0.94, 1.04, 3.79], [0.94, 1.04, 3.79], [0.94, 0.462, 3.42], [-0.94, 0.462, 3.42],
     [-0.94, 1.10, 3.79], [0.94, 1.10, 3.79], [0.94, 1.28, 3.42], [-0.94, 1.28, 3.42]));
-  P.add('hull', box(3.10, 0.858, 0.56), 0, 0.891, 2.85);                       // lower glacis fill (belly 0.462), full width to z 3.13
+  // Keep the complete lower-glacis volume between the courses.  The original
+  // full-width visible shoulder/top remains carried by the closed glacis skin
+  // above; the former solid 3.10 m-wide hidden fill put its lower corners
+  // through the moving front return.
+  P.add('hull', box(1.88, 0.858, 0.56), 0, 0.891, 2.85);                       // complete inter-track lower glacis
   P.add('hull', box(1.88, 0.858, 0.30), 0, 0.891, 3.28);                       // fill centre run z 3.13..3.43 (lane vacated for the wrap)
   // rear plate at −3.60 + louvres/taillights; tail stowage lip to −3.78
   // (the ref tail band ends −3.79 — the old −3.83 slats were proc-only).
@@ -7704,13 +7709,13 @@ function buildKF51(P) {
     // outside the rails' inner faces; the vacated annulus is swept by the
     // scrolling dark rails/web, so the "pale disc" stays covered by chain
     // metal in motion (the r3 read this dressed).
-    P.add('hullDark', torus(0.245, 0.021, 20), s * 1.492, 1.03, -3.18, 0, 0, Math.PI / 2);
-    P.add('hullDetail', torus(0.20, 0.016, 18), s * 1.497, 1.03, -3.18, 0, 0, Math.PI / 2);
-    P.add('hullDetail', torus(0.115, 0.013, 14), s * 1.500, 1.03, -3.18, 0, 0, Math.PI / 2);
-    P.add('hullDark', KIT.cylX(0.095, 0.034, 12), s * 1.503, 1.03, -3.18);
-    P.add('hullDark', torus(0.220, 0.020, 20), s * 1.472, 0.90, 3.28, 0, 0, Math.PI / 2);
-    P.add('hullDetail', torus(0.185, 0.016, 18), s * 1.479, 0.90, 3.28, 0, 0, Math.PI / 2);
-    P.add('hullDark', KIT.cylX(0.080, 0.032, 12), s * 1.483, 0.90, 3.28);
+    P.add('hullRunningGearDark', torus(0.245, 0.021, 20), s * 1.492, 1.03, -3.18, 0, 0, Math.PI / 2);
+    P.add('hullRunningGearDetail', torus(0.20, 0.016, 18), s * 1.497, 1.03, -3.18, 0, 0, Math.PI / 2);
+    P.add('hullRunningGearDetail', torus(0.115, 0.013, 14), s * 1.500, 1.03, -3.18, 0, 0, Math.PI / 2);
+    P.add('hullRunningGearDark', KIT.cylX(0.095, 0.034, 12), s * 1.503, 1.03, -3.18);
+    P.add('hullRunningGearDark', torus(0.220, 0.020, 20), s * 1.472, 0.90, 3.28, 0, 0, Math.PI / 2);
+    P.add('hullRunningGearDetail', torus(0.185, 0.016, 18), s * 1.479, 0.90, 3.28, 0, 0, Math.PI / 2);
+    P.add('hullRunningGearDark', KIT.cylX(0.080, 0.032, 12), s * 1.483, 0.90, 3.28);
     // skirt panel seams ON the visible mid-course face at the segment
     // joints (the old x 1.62 seam strips were buried 12 mm inside the deep
     // face) + a dark rubber hem lip along the new 0.71 hem line. Both stay
