@@ -42023,7 +42023,7 @@
           }
         ]
       },
-      "geometryHash": "7b1a2c07",
+      "geometryHash": "762939b6",
       "metadataHash": "07e686b3",
       "muzzleBore": {
         "tagged": 2,
@@ -42038,8 +42038,8 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 16718,
-          "sha256": "6b5f7a1fe3f75054ab59707ce9a8f139d69edb1299627bafdd7902a7083bb0fb"
+          "bytes": 16716,
+          "sha256": "d40dab61d70f5270e51610d4e3b6ff0e1db9843c7c8b60c868af3b827d203ed5"
         },
         "top": {
           "file": "m26_pershing_top.webp",
@@ -42054,8 +42054,8 @@
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 10042,
-          "sha256": "90775dba02f347d2d9524a6459ebeb11e55f387e9baf07a1887ac969b0c8e067"
+          "bytes": 10048,
+          "sha256": "0609f78cb8e196595fb38da99b04259c33ede1979932863b82c9d6c389ded4ef"
         },
         "topSilhouette": {
           "file": "m26_pershing_top_silhouette.png",
@@ -42070,32 +42070,32 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 5157,
-          "sha256": "e415d56dd1cbfe91ed1d2c1d44730aac103c74d21dc38125c4eb5331c73a1c85"
+          "bytes": 5139,
+          "sha256": "e59cc080ba0dafae6001cf5671d58d0229de4ce3af5caf7ec67316ffa3a5ce09"
         },
         "hitZonesSide": {
           "file": "m26_pershing_hit_zones_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 70156,
-          "sha256": "f44f4954247bc9911608385188e35b56eac77d4d3d12568801dc4db7529d80f4"
+          "bytes": 70150,
+          "sha256": "f054632737c98f781575ef8d53064ac48c22111c27cf546ca3f2d968fb8dcf00"
         },
         "armorSide": {
           "file": "m26_pershing_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 68971,
-          "sha256": "1ddcba2909155f66a930f078d7552ca06402a8d9f7cf450645363b7ea9e351ea"
+          "bytes": 68901,
+          "sha256": "3941ff915c874c2cc0ffac6ee047c75f506f497eddf62972465a2743ff654d77"
         },
         "modulesSide": {
           "file": "m26_pershing_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 68697,
-          "sha256": "4512734a79ae49ec26cb656d755182e8eea0c6c2bfc68a5afed6230b1d45058c"
+          "bytes": 68630,
+          "sha256": "30fbb680ae7ac87e3cb473f316bddbeee0feba561abf5f29c66f371771e89351"
         }
       }
     },
