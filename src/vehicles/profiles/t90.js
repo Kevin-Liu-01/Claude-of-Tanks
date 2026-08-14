@@ -631,7 +631,13 @@ function buildT90ALegacy(P) {
   // equipment. Only the foundation changes here; the rings below remain a
   // placement guide for the A-specific K-5 and Shtora courses, which are
   // reseated into this wider faceted shell.
-  addT90SMTurretFoundation(P, { position: [0, 1.335, 0.459] });
+  // Seat the complete rotating assembly over the authored hull ring.  The
+  // prior +0.459 m forward offset put the pivot on the glacis shoulder, so
+  // the turret appeared to slide ahead of its bearing and opened an
+  // exaggerated gap behind the shell.  This is a turret-group correction:
+  // gun, ERA, optics and bustle retain their local construction and move as
+  // one package in both yaw states.
+  addT90SMTurretFoundation(P, { position: [0, 1.335, 0.12] });
   const rings = [[1.02, -0.022], [1.36, 0.097], [1.29, 0.28], [1.10, 0.35], [0.82, 0.405], [0.48, 0.445], [0.18, 0.47], [0.02, 0.475]];
   // TKN/cross-wind spike pair FIRST in the bucket (heightM p95 anchors +
   // the r12 merge-order law). T4A: x narrowed to the +0.31 column family
@@ -666,7 +672,7 @@ function buildT90ALegacy(P) {
   // |x| 1.30-1.49 and repaint the guarded ±1.14-1.46 plan cliff — the
   // broad-plate read comes from the TWO-LEAF clamshell (k5Lower) + the
   // axis-aligned under-roots below instead.)
-  const p5 = { rings, sz: 1.21, k5T: 0.62, k5Out: 0.24, k5Len: 0.95, k5H: 0.18, k5Y: 0.28, k5Yaw: 0.47, k5Rise: 0, k5Seg: 5, k5CapIn: 0.04, k5Lower: { dy: 0.13, h: 0.16, dPitch: 0.35, tuck: 0.05 }, k5Bucket: 'turret', k5LeafOff: true, eyeKit: true, eyeRound: true, eyeScale: 1.32, eyeX: 0.70, eyeZ: 2.02 };
+  const p5 = { rings, sz: 1.21, k5T: 0.62, k5Out: 0.24, k5Len: 0.95, k5H: 0.18, k5Y: 0.28, k5Yaw: 0.47, k5Rise: 0, k5Seg: 5, k5CapIn: 0.04, k5Lower: { dy: 0.13, h: 0.16, dPitch: 0.35, tuck: 0.05 }, k5Bucket: 'turret', k5LeafOff: true, eyeKit: true, eyeRound: true, eyeScale: 1.32, eyeX: 0.70, eyeZ: 1.80 };
   eraRuCheeks(P, p5, 'k5');
   for (const s2 of [-1, 1]) {
     // The Shtora lane is now a deliberate opening in the K-5 staircase.
@@ -684,8 +690,8 @@ function buildT90ALegacy(P) {
     // dazzler a supported armor station instead of simply pushing a lamp in
     // front of the ERA.
     P.add('turret', orientedSlab(
-      [s2 * 0.54, 0.08, 1.34], [s2 * 0.86, 0.08, 1.34], [s2 * 0.86, 0.18, 1.96], [s2 * 0.54, 0.18, 1.96],
-      [s2 * 0.54, 0.37, 1.34], [s2 * 0.86, 0.37, 1.34], [s2 * 0.86, 0.50, 1.96], [s2 * 0.54, 0.50, 1.96],
+      [s2 * 0.54, 0.08, 1.30], [s2 * 0.86, 0.08, 1.30], [s2 * 0.86, 0.18, 1.76], [s2 * 0.54, 0.18, 1.76],
+      [s2 * 0.54, 0.37, 1.30], [s2 * 0.86, 0.37, 1.30], [s2 * 0.86, 0.50, 1.76], [s2 * 0.54, 0.50, 1.76],
     ));
   }
   ruShtora(P, p5, 0.38);  // T3A-b3: eyes raised (ref side bottoms 1.397+ at the eye cols)

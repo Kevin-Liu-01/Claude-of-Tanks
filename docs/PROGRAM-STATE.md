@@ -8268,3 +8268,29 @@ that non-authoritative source.
 
 **KEEP the complete accepted SEPv2 geometry. Future asset refreshes must be
 targeted to this tank and may not modify another manifest row.**
+
+## 5.232 T-90A RING-CENTER AND SHTORA-SEAT CORRECTION (2026-08-14, LIVE)
+
+The complete T-90A rotating assembly is moved rearward from the obsolete
+glacis-biased offset onto the authored hull-ring datum. The gun, welded shell,
+K-5, Shtora package, roof equipment, bustle bins and radio stations remain one
+turret-owned group; no hull, skirt, armor or running-gear geometry changes.
+
+Both Shtora stations are also pulled 220 mm into their cheek lanes. Their broad
+tapered pedestals are shortened with them, so the larger circular eyes remain
+fully supported and unobstructed without reading as lamps on long projecting
+stalks. Fresh front, side, elevated-quarter, close-roof and yaw90 evidence
+confirms the centered bearing, continuous cheek load paths and coherent
+quarter-turn.
+
+Machine gates pass at **90.4 minimum**, strict track clearance is **0/0 +
+0/0**, contiguity is **0**, the single integrated smart course passes, the
+muzzle bore passes, runtime rig checks pass **10/10**, and winding/ownership is
+clean with **0** stranded yaw candidates. All eight presentation assets are
+regenerated. Current dual-ledger geometry is freeze **`cb360ad9`**, instance
+freeze **`9d73c134`** and asset geometry **`0bdddd95`** (61 rendered meshes /
+121,953 vertices).
+
+**KEEP the centered ring seat and shortened supported Shtora pedestals. Future
+eye or ERA changes must preserve the clear optical lanes and one rotating
+assembly.**
