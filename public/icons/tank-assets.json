@@ -44625,7 +44625,7 @@
           }
         ]
       },
-      "geometryHash": "5e3a499e",
+      "geometryHash": "a52a1bbb",
       "metadataHash": "4fffd588",
       "muzzleBore": {
         "tagged": 2,
@@ -44640,8 +44640,8 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 19366,
-          "sha256": "d5a429da8a95790402154b6720557be7db2d0a6a7f11793c6f6a91ef4ffba305"
+          "bytes": 19378,
+          "sha256": "3ce0d966f504a38a96edffd66c2eebd57a6301feb0b7a89bb3cca7deb8d19d2f"
         },
         "top": {
           "file": "m46_patton_top.webp",
@@ -44656,8 +44656,8 @@
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 9550,
-          "sha256": "a490210ddcd6451d0cf19efb842f5b8746a5bbaf71ade02a107e0beb0ec09856"
+          "bytes": 9516,
+          "sha256": "1c3d615ae547c5de13cdc180f6d97f02f0508ff11afd7e5dd45db488c6153bd2"
         },
         "topSilhouette": {
           "file": "m46_patton_top_silhouette.png",
@@ -44672,32 +44672,32 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4372,
-          "sha256": "5f4c513424969056abb1562e31303f56a2a6b00e5a6c6e20605ccad897180858"
+          "bytes": 4355,
+          "sha256": "e8934c99913417ceadfe750e0191dde941df227e6c43d54597d6c902a3155eda"
         },
         "hitZonesSide": {
           "file": "m46_patton_hit_zones_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 67317,
-          "sha256": "d30c8925d4f0adcb416267639ba00f3afea165c26c806f55426cae3b93101e3f"
+          "bytes": 67271,
+          "sha256": "0ed7928109a4fb58af0618696f59b5adb65ef2e2e3d37517439915a2647c6410"
         },
         "armorSide": {
           "file": "m46_patton_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 66903,
-          "sha256": "d9b5a40dc105279783d47fb24215302f5cbcbafde6799969df865a9d5081a00b"
+          "bytes": 66490,
+          "sha256": "776d47fdd523e8dda7347f0b358665b6ce76e5df2ec3a2c5edd68d4ea87a8e8d"
         },
         "modulesSide": {
           "file": "m46_patton_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 64611,
-          "sha256": "c5acec6607a74681ca6778ede62d42113a7b97f54f1e1623baf2213386198610"
+          "bytes": 64536,
+          "sha256": "e8c6781e634d7a9dbf2a00b0f52721743336565f69cf01a7dd917165188cb9c7"
         }
       }
     },
