@@ -84270,13 +84270,13 @@
           }
         ]
       },
-      "geometryHash": "2e4a8a22",
+      "geometryHash": "22293637",
       "metadataHash": "c1424c9a",
       "muzzleBore": {
         "tagged": 2,
-        "rims": 2,
-        "discs": 3,
-        "authored": 2,
+        "rims": 1,
+        "discs": 2,
+        "authored": 1,
         "fallback": 1
       },
       "assets": {
@@ -84285,64 +84285,64 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 19482,
-          "sha256": "fdcf4aad90ed2cd80281178d7e8e71b3cf9f21b8da10f185a9e20c102708550e"
+          "bytes": 17392,
+          "sha256": "40739948066eccbb80ca5655ead95dac544a3b0bb19c37ca7220a37029fb8d71"
         },
         "top": {
           "file": "t90a_burlak_top.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 7516,
-          "sha256": "8b8840d226087115c1547d1d4239b013e0253fb5c10d188018b1af12043984b3"
+          "bytes": 7816,
+          "sha256": "51f94224d2a5f5e08be5ae54743806bb5b3a63d5cea0a705368458a9c1dc173c"
         },
         "side": {
           "file": "t90a_burlak_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 9510,
-          "sha256": "5b34c53311edcedef712da618bbfd194291e1b4baf60b25881000d32cf524845"
+          "bytes": 8066,
+          "sha256": "91b113dcb2871a856c78f3aa3a966e9a2724d47968a257c542ec9851bc02ffcc"
         },
         "topSilhouette": {
           "file": "t90a_burlak_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1673,
-          "sha256": "0042c4f92d2731f78c7979d21a031ab0b040a0514d63fcaf3a112339d4b4e731"
+          "bytes": 1634,
+          "sha256": "e6e2bd75c61e4db2464f8f1e85b7ec894c5b343edfc5f3ae5526191111af308b"
         },
         "sideSilhouette": {
           "file": "t90a_burlak_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4324,
-          "sha256": "55d586449ad04bcd8775a6e9e304b5e89c5f151f80629465686a017ac699e12d"
+          "bytes": 4519,
+          "sha256": "51a21bac99f5892d956f69dcaf22bbefd186799ef182e16f8b5e915018ec0092"
         },
         "hitZonesSide": {
           "file": "t90a_burlak_hit_zones_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 63794,
-          "sha256": "bfb79abd281446bf3bef061a0d7d9a1aae46dc03003c6ee49fd6210be96badbd"
+          "bytes": 60678,
+          "sha256": "049ddd59fb3d82dbdfff3345245651161f344a14f4b7958be44d4d2e4a2ddbf3"
         },
         "armorSide": {
           "file": "t90a_burlak_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 63823,
-          "sha256": "bcc48faac8aa554af7ed7b4b644fd41329ae02704add954af67df9488c828140"
+          "bytes": 60462,
+          "sha256": "588d9edd4edeb91848bfaa9e12f3425cf0150e045cb44e40f17d36586de090cd"
         },
         "modulesSide": {
           "file": "t90a_burlak_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 60556,
-          "sha256": "8270df786d7c7f95228ba54c5008d68df1d617cc1592a0a1a5be02dc4f1dbb40"
+          "bytes": 57940,
+          "sha256": "952cb8bb494ae8ea0d7635664e0ff666d8e10732625248bf3b9a9dda0f9c2a9a"
         }
       }
     },
