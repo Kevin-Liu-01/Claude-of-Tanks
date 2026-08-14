@@ -1142,6 +1142,14 @@ const garageMaps = [
 let pendingSoloSelection = null;
 let playMenuPromise = null;
 async function openPlayMenu(request) {
+  if ((request?.mode || 'solo') === 'solo') {
+    pendingSoloSelection = null;
+    await beginSoloBattle({
+      specId: request?.specId || garage.getSelected(),
+      mapId: request?.mapId || garage.getSelectedMap(),
+    });
+    return;
+  }
   pendingSoloSelection = request
     ? { specId: request.specId, mapId: request.mapId }
     : null;
@@ -1169,7 +1177,7 @@ async function openPlayMenu(request) {
     }));
   }
   const menu = await playMenuPromise;
-  menu.show();
+  menu.show(request?.mode);
 }
 
 const garage = await bootStage('ui', () => createGarage({
@@ -1665,6 +1673,7 @@ const settings = createSettings({
   // overlay keeps the old non-paused Esc behavior).
   isGamePaused: () => game.phase === 'battle' && !game.result && !killcam.isActive(),
 });
+garage.attachSettingsControl(settings.gear);
 const touchControls = createTouchControls({
   input, bus,
   isBattleActive: () => game.phase === 'battle',

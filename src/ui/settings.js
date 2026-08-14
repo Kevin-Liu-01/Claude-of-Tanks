@@ -269,14 +269,9 @@ const SETTINGS_CSS = `
   .cot-set-conflict{margin:8px 14px 0;}
   .cot-set-ftr{padding:10px 14px 12px;}
 }
-/* Gear placement: flush against the right edge, below the garage top bar
-   (y 20..~47) and above the stats card (y 110+). The gear (z 62) floats OVER
-   the garage layer (z 60), so it must never drift onto the centered BATTLE
-   button: the old top:24/right:342 landed EXACTLY on the button center at
-   ~700-770px-wide viewports (embedded panes / tablets) — clicking BATTLE
-   silently opened the settings panel instead and battle never started. Edge-
-   anchored at right:26 it stays clear of the button (half-width 126px) at
-   every viewport wider than ~390px. */
+/* Standalone fallback placement. The garage mounts this settings-owned button
+   into its top navigation rail; these coordinates only apply before that
+   mount or in a surface that creates settings without the garage. */
 .cot-gear{position:fixed;top:60px;right:26px;z-index:62;width:42px;height:42px;display:none;
   align-items:center;justify-content:center;cursor:pointer;
   background:rgba(11,15,20,.8);border:1px solid rgba(146,164,180,.3);
@@ -431,7 +426,9 @@ export function createSettings(opts) {
     }
   }
 
-  const gear = el('div', 'cot-gear');
+  const gear = el('button', 'cot-gear');
+  gear.type = 'button';
+  gear.setAttribute('aria-label', 'Settings');
   gear.innerHTML = GEAR_SVG;
   gear.title = 'Settings';
   document.body.appendChild(gear);
@@ -1284,6 +1281,7 @@ export function createSettings(opts) {
 
   const api = {
     root,
+    gear,
     open: openPanel,
     close: closePanel,
     toggle() { if (open) closePanel(); else openPanel(); },

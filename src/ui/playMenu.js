@@ -418,8 +418,9 @@ export function createPlayMenu({
     }
   }
 
-  root.querySelectorAll('.mode').forEach((button) => button.addEventListener('click', () => {
-    const nextMode = button.dataset.mode;
+  function selectMode(nextMode) {
+    const button = root.querySelector(`.mode[data-mode="${nextMode}"]`);
+    if (!button) return;
     if (nextMode === 'solo') { hide(); if (onSolo) onSolo(); return; }
     closeCurrentSession('mode_changed');
     mode = nextMode;
@@ -435,6 +436,9 @@ export function createPlayMenu({
     room.classList.add('show');
     signalInput.value = defaultSignalUrl(mode === 'lan');
     setStatus(mode === 'lan' ? 'Enter the Wi-Fi-reachable signaling address.' : 'Create a code or join an existing room.');
+  }
+  root.querySelectorAll('.mode').forEach((button) => button.addEventListener('click', () => {
+    selectMode(button.dataset.mode);
   }));
   createBtn.addEventListener('click', async () => {
     setStatus('Creating room…');
@@ -490,7 +494,10 @@ export function createPlayMenu({
   root.querySelector('.close').addEventListener('click', () => hide());
   root.addEventListener('click', (event) => { if (event.target === root) hide(); });
 
-  function show() { root.classList.add('show'); }
+  function show(initialMode = null) {
+    root.classList.add('show');
+    if (initialMode) selectMode(initialMode);
+  }
   function hide(closeSession = true) {
     root.classList.remove('show');
     if (closeSession && !handedOff) closeCurrentSession('menu_closed');
