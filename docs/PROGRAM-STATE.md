@@ -87,6 +87,7 @@ re-freeze NEW hash, all in ONE commit.
 | merkava3b | REMOVED BY OWNER 2026-08-06 (roster prune; was 8bb8d984, packet historical) |
 | merkava3c | c41e5c3c | RE-FROZEN 2026-08-14 (§5.194 non-subtractive closed-sponson/native-course repair; exact band+shoe+sweep 0/0, fresh 45-frame profile/yaw packet; prior aa74be6a retired) |
 | kf51 | 79ce4523 | RE-FROZEN 2026-08-14 (§5.197 non-subtractive closed-sponson/native-course repair: complete exterior hull, side armor and seven-wheel course retained; concealed deck/glacis undersides cleared and wheel-face dressing truthfully classified; exact band+shoe+sweep 0/0, fresh 45-frame profile/yaw packet; prior 7d632754 retired) |
+| strv103 | 4d0ff518 | RE-FROZEN 2026-08-14 (§5.198 fixed-casemate closed-sponson/native-course repair: complete hull, deep skirts, dozer blade and four-wheel course retained; concealed full-width lower body cleared, blade supports reseated and bay shadow truthfully classified; exact band+shoe+sweep 0/0, fresh profile/fixed-yaw packet; prior 77bf8bfd retired) |
 | isu122s | 8f420d18 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | isu152 | 8e2f75c0 | |
 | merkava3d | 3dc50bb4 | RE-FROZEN 2026-08-14 (§5.194 non-subtractive closed-sponson/native-course repair; exact band+shoe+sweep 0/0, fresh 45-frame profile/yaw packet; prior 667ece84 retired) |
@@ -7022,3 +7023,48 @@ and all ten targeted runtime-rig checks pass. Dual-ledger geometry is freeze
 clearance work must remain non-subtractive and may only reshape concealed
 sponson undersides, reseat track-adjacent fittings or correct truthful
 running-gear ownership.**
+
+## 5.198 STRV 103 FIXED-CASEMATE / NATIVE-COURSE CLOSEOUT (2026-08-14, LIVE)
+
+This pass preserves the complete first-party Strv 103 exterior: its low
+fixed-casemate hull, full dozer bow, deep side skirts, deck furniture, four
+road-wheel stations, front drive, raised rear idler and single linked-shoe
+course. No visible hull, skirt, blade, wheel or track component is deleted or
+hidden.
+
+The primary loft previously remained a full-width solid through both course
+lanes. It now uses the casemate family's established closed-sponson corridor:
+a complete inter-track body remains load-bearing while the measured upper
+wings, deck surface and exterior side silhouette stay at their original
+coordinates above the shoes. The two complete blade support arms move 0.14 m
+inboard onto the bow structure, clear of the idler shoes. The unchanged dark
+wheel-bay wall is truthfully classified as running-gear well shading rather
+than hull armor.
+
+Exact strict band and individual-shoe audits now report **front 0/0, rear 0/0
+and complete sweep 0/0**. Fresh evidence contains 15 paired boards including
+the standardized elevated-left profile plus 15 yaw0 and 15 yaw90 frames. The
+45 PNGs produce 35 distinct hashes; every duplicate is confined to the
+expected fixed-mount yaw states. Paired pixels are silhouette-identical to the
+accepted authored baseline copy and show a closed low hull, complete deep
+skirts, four readable road wheels, a loaded lower run and continuous raised
+terminal transitions.
+
+Strv 103 is hull-aimed: its gun and fighting compartment are intentionally
+fused to `rig_hull`, with an empty turret casting. The parent audit therefore
+reports **0 stranded / 0 abutting / 0 dangling**. The winding surface audit is
+**0 reversed / 0 mixed / 0-pixel deficit**. Its mode-2 heuristic marks the
+static casemate hull because yaw cannot move a nonexistent turret; identical
+yaw evidence confirms this is the correct fixed-mount contract rather than
+stranded equipment. No open sheet, sky hole, floating fitting, duplicate
+course or silhouette regression appears.
+
+All eight targeted presentation assets are current, the muzzle bore passes
+and all ten targeted runtime-rig checks pass. Dual-ledger geometry is freeze
+**`4d0ff518`**, instance freeze **`18fd2507`** and asset geometry
+**`78d38173`** (29 rendered meshes / 51,373 vertices).
+
+**KEEP the complete Strv 103 hull, deep skirts, dozer bow and native course.
+Future repairs must preserve the fixed-casemate exterior and may only reshape
+concealed sponson undersides, reseat track-adjacent fittings or correct
+truthful running-gear ownership.**

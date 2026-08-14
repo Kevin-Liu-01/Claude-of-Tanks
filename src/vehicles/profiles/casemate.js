@@ -311,7 +311,7 @@ function buildStrv103(P) {
 
   // ---- primary silhouette loft (side top/bot + widths from the work order)
   // lower hull band: belly line ~0.33 between the tracks, sides at deck width
-  loft(P, [
+  const primaryHull = [
     { z: 3.52, b: 1.02, t: 1.16, w: 0.60 },                    // blade-top shelf tip
     { z: 2.61, b: 0.72, t: 1.30, w: 1.50 },                    // nose root
     { z: 1.60, b: 0.33, t: 1.58, w: 1.64 },                    // glacis mid (under gun)
@@ -320,7 +320,11 @@ function buildStrv103(P) {
     { z: -2.10, b: 0.33, t: 1.94, w: 1.64 },                   // deck run
     { z: -2.75, b: 0.80, t: 1.86, w: 1.56 },                   // rear deck fall
     { z: -3.58, b: 1.19, t: 1.62, w: 1.50 },                   // tail (12%-band R)
-  ]);
+  ];
+  loftCorridor(P, primaryHull, {
+    x: 0.92,
+    front: { z0: -2.66, z1: 2.53, floor: 1.28 },
+  });
   // dozer blade under the nose. GATE NOTE (packet cap): the oracle's dozer
   // nose line runs to +3.86, but ANY sub-gun geometry past +3.52 lifts the
   // 12%-band span over published hullLengthM (side columns integrate all x),
@@ -330,7 +334,7 @@ function buildStrv103(P) {
     [-1.20, 0.46, 2.62], [1.20, 0.46, 2.62], [1.20, 0.84, 3.50], [-1.20, 0.84, 3.50],
     [-1.20, 0.72, 2.66], [1.20, 0.72, 2.66], [1.20, 1.02, 3.50], [-1.20, 1.02, 3.50]));
   for (const s of [-1, 1]) {
-    P.add('hullDetail', box(0.06, 0.07, 0.85), s * 1.02, 0.62, 2.35, -0.35, 0, 0); // blade arms
+    P.add('hullDetail', box(0.06, 0.07, 0.85), s * 0.88, 0.62, 2.35, -0.35, 0, 0); // blade arms, seated inside the native idler lanes
   }
   P.add('hullDark', box(1.76, 0.05, 0.06), 0, 0.50, 2.66);                     // cutting edge shadow
   // glacis louvre banks (radiators live ON the glacis): dark wells + ribs
@@ -419,7 +423,7 @@ function buildStrv103(P) {
     P.add('hull', box(0.05, 1.17, 3.45), s * 1.79, 1.085, -0.06);              // deep skirt band 0.50..1.67
     P.add('hullDark', box(0.02, 1.10, 3.40), s * 1.808, 1.06, -0.06);
     for (let k = 0; k < 6; k++) P.add('hullDetail', KIT.cylZ(0.02, 0.016, 8), s * 1.812, 1.30, -1.5 + k * 0.60, 0, s * Math.PI / 2, 0);
-    P.add('hullDark', box(0.02, 0.70, 4.4), s * 1.02, 0.55, -0.1);             // bay shadow wall
+    P.add('hullRunningGearDark', box(0.02, 0.70, 4.4), s * 1.02, 0.55, -0.1);  // bay shadow wall belongs to the running-gear well
   }
   steelGear(P, {
     style: 'rubber', dishR: 0.84, wheelR: 0.33, wheelW: 0.20, wheelY: 0.36, xc: 1.30,
