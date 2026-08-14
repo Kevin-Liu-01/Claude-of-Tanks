@@ -3473,6 +3473,8 @@ const M26_HULL = {
   // +-1.60, fender line 1.313-1.372 at +-1.66..1.755
   W: 3.51, bandHW: 1.60, trackW: 0.60, trackInset: 0.095, sponsonY: 1.05, bellyY: 0.435,
   bellyHW: 1.00, noseW: 1.30,
+  deckCorridor: { x: 1.00, floor: 1.29, z0: -2.95, z1: 1.35 },
+  runningGearFit: true, runningGearFace: true,
   darkGearFit: true, // r3 tone transfer (m45 r1 / m46 r7 / m47 A3 recipe):
                      // roller brackets + flap straps off the pale bucket
   deck: [[1.60, 1.135], [1.564, 1.54], [1.464, 1.535], [1.44, 1.45], [1.35, 1.35],

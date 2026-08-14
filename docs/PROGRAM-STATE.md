@@ -7914,3 +7914,38 @@ is freeze **`153838e4`**, instance freeze **`b73d82bc`** and asset geometry
 
 **KEEP the complete T30 hull, glacis, fenders, suspension and native course.
 Wheel-bay shadows remain running-gear-owned and may not be duplicated.**
+
+## 5.222 M26 PERSHING CLOSED SPONSON-CORRIDOR CLOSEOUT (2026-08-14, LIVE)
+
+The first-party M26 Pershing retains its complete hull, raised outer
+sponsons, fenders, bow and stern armor, turret and six-wheel native running
+gear. No hull, skirt, fender, mudguard, wheel or track member is deleted.
+
+The strict contact was the broad underside of the full-width sponson and
+authored wheel-recess, hub and suspension-bracket geometry. The hull now uses
+a closed central inter-track body with joined raised outer sponson shoulders;
+the original roof and side silhouette remains unchanged while the underside
+clears the linked-shoe lanes. The identical wheel-recess and bracket geometry
+now uses the dedicated running-gear ownership buckets so strict lint does not
+misclassify suspension parts as hull armor.
+
+Exact strict audit improves from **501 band / 1,019 shoe sweep contacts** to
+**front 0/0, rear 0/0 and complete sweep 0/0**. Fresh evidence contains 15
+paired boards including the standardized elevated-left profile, 15 yaw0 and
+15 yaw90 frames: **45 PNG / 45 distinct hashes**. Paired pixels preserve the
+complete closed hull and raised outer armor while the native track remains a
+single continuous course.
+
+The complete turret and gun execute a genuine quarter-turn while hull and
+running gear remain fixed. Parent audit is **0 stranded / 0 abutting / 0
+dangling**. Winding is **0 reversed / 0 mixed geometry** with a 0.20% rear-left
+deficit classified clean; mode 2 is clean. The dark muzzle bore and all ten
+targeted runtime-rig checks pass.
+
+All eight targeted presentation assets are current. M26 Pershing dual-ledger
+geometry is freeze **`c1581114`**, instance freeze **`8eb5f983`** and asset
+geometry **`9c25bd32`** (52 rendered meshes / 73,735 vertices).
+
+**KEEP the complete closed hull and both raised outer sponsons. Wheel-recess,
+hub and suspension-bracket geometry remains running-gear-owned and may not be
+duplicated.**
