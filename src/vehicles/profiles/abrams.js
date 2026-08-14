@@ -1796,7 +1796,14 @@ function tejasRoofKit(P, t, station = 'crows') {
   // right 2.296 over 1.34..1.47 — the bare 2.15 wall lip read -0.144 at
   // 1.466). Thin ledges seated on the tumblehome slope, under every side
   // and plan silhouette line.
-  P.add('turret', box(0.185, 0.05, 2.0), -1.3825, 0.70, -1.85);
+  // The left shelf's old square forward end projected across the cheek in
+  // elevated front-left views.  Preserve the supported aft stowage run, but
+  // return its last half-metre into the shell instead of terminating in a
+  // broad rectangular card above the smoke bank.
+  P.add('turret', box(0.185, 0.05, 1.50), -1.3825, 0.70, -2.10);
+  sideSlab(P, 'turret', -1,
+    [1.29, 0.675, -0.85], [1.31, 0.675, -0.85], [1.475, 0.675, -1.35], [1.29, 0.675, -1.35],
+    [1.285, 0.725, -0.85], [1.30, 0.725, -0.85], [1.462, 0.725, -1.35], [1.285, 0.725, -1.35]);
   P.add('turret', box(0.20, 0.05, 2.0), 1.39, 0.70, -1.85);
   // RIGHT wall lips: the oracle's right flank is NARROWER (wall face ~1.56)
   // with a short stowage lip at 1.578/1.612 spanning z -0.87..0.85/0.63.
