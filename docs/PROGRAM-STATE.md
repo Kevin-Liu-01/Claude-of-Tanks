@@ -7277,3 +7277,42 @@ freeze **`28331d00`**, instance freeze **`d2c5635a`** and asset geometry
 
 **KEEP the complete M48 hull, fenders and mudguards. Future clearance work
 must rewrap the course or reseat fittings without subtracting exterior armor.**
+
+## 5.204 CHIEFTAIN MK.5 CLOSED TRACK-CORRIDOR CLOSEOUT (2026-08-14, LIVE)
+
+This closeout preserves the complete first-party Chieftain Mk.5 exterior:
+the full central hull, both asymmetric fender courses, both complete side
+guard walls, bow wings, stern package, six road-wheel stations, raised front
+idler, high rear sprocket and one native linked-shoe course. No exterior hull,
+side armor, fender, mudguard, wheel or track component is deleted or hidden.
+
+The initial strict receipt mixed authored wheel-bay shadow furniture with a
+real full-width sponson/course overlap. The named ground filler, wheel-gap
+tabs and bay backdrop now use the native running-gear shadow bucket. The
+concealed over-track volume is rebuilt as a **closed raised soffit**: the
+central inter-track hull remains solid, the original deck/outer roof remains,
+and connected floor plates bridge above the moving return run into the intact
+outer guard walls. It does not create an open corridor or a hollow side.
+
+Exact strict band and individual-shoe audits now report **front 0/0, rear 0/0
+and complete sweep 0/0**, improved from 1,046 band voxels / 952 shoe voxels.
+Fresh evidence contains 15 paired boards including the standardized
+elevated-left profile, 15 yaw0 and 15 yaw90 frames: **45 PNG / 45 distinct
+hashes**. The current side/front/rear pixels are silhouette-identical to the
+accepted exterior and retain all six wheels, the complete guards and the
+raised-end track form.
+
+The complete turret, gun, roof stations and bustle equipment execute a
+genuine quarter-turn. The parent heuristic reports 0 stranded / 0 dangling;
+its one abutting fixed item is the supported right fender stowage bin, which
+correctly remains hull-owned when the turret departs. Winding is **0 reversed
+/ 0 mixed / 0-pixel deficit**. The small mode-2 fixed-hull candidate is deck
+and fender structure, not stranded turret equipment. The muzzle bore and all
+ten targeted runtime-rig checks pass.
+
+All eight targeted presentation assets are current. Dual-ledger geometry is
+freeze **`a17f4ce4`**, instance freeze **`73f5ff21`** and asset geometry
+**`56ae25cf`** (43 rendered meshes / 95,351 vertices).
+
+**KEEP the complete Chieftain exterior and closed soffit. Future course work
+must preserve both side guards and may not reopen or subtract the hull.**

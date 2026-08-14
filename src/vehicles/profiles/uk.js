@@ -314,6 +314,11 @@ const CHIEFTAIN_HULL = {
   // ~30 front columns). The keel/V-profile/channel pieces in the build fn
   // carry the measured cross-section; rakes start at the same 0.56 line.
   beltTop: 1.02, belly: 0.56,
+  // Closed over-track soffit: retain the full central hull and the complete
+  // outer guard walls, but carry the concealed sponson floor above the
+  // native return run instead of through it. This is a connected solid,
+  // not an open/deleted side-hull corridor.
+  deckCorridor: { x: 1.04, floor: 1.42, z0: -2.30, z1: 2.55 },
   noseRake: [[2.55, 0.56], [2.90, 0.575], [3.20, 0.62], [3.38, 0.69], [3.47, 0.75]],
   tailRake: [[-2.30, 0.56], [-2.72, 0.575], [-3.08, 0.60], [-3.42, 0.64], [-3.60, 0.68]],
   tailShelf: { z0: -3.60, z1: -3.62, yBot: 1.06 },
@@ -412,10 +417,10 @@ function chieftain5Build(P) {
   // Right inner-track ground filler: the certified left-shifted print
   // grounds |x| 0.89..1.05 on the RIGHT side only (left track owns
   // 1.05..1.49 on both) — a dark sponson-shadow wall fills the band.
-  segBoxZ(P, 'hullDark', 0.225, 0.456, 4.8, 1.0025, 0.228, 0);
-  segBoxZ(P, 'hullDark', 0.045, 0.05, 4.4, 1.4625, 0.025, -0.1);
-  segBoxZ(P, 'hullDark', 0.045, 0.05, 4.4, -1.4625, 0.025, -0.1);
-  segBoxZ(P, 'hullDark', 0.04, 0.05, 4.4, -1.0965, 0.025, -0.1);
+  segBoxZ(P, 'hullRunningGearDark', 0.225, 0.456, 4.8, 1.0025, 0.228, 0);
+  segBoxZ(P, 'hullRunningGearDark', 0.045, 0.05, 4.4, 1.4625, 0.025, -0.1);
+  segBoxZ(P, 'hullRunningGearDark', 0.045, 0.05, 4.4, -1.4625, 0.025, -0.1);
+  segBoxZ(P, 'hullRunningGearDark', 0.04, 0.05, 4.4, -1.0965, 0.025, -0.1);
   // Cast belly cross-section (ref front-view floor): center keel line at
   // 0.46 (x -0.14..-0.09 — the print's 0.08 left shift), a shallow V rising
   // 0.49 -> 0.555 outboard, and the two deep sponson-floor channels at 0.37
@@ -567,13 +572,13 @@ function chieftain5Build(P) {
   // before (0.005), the 0.10..0.63 band was interval-interior, and the
   // 'dark teeth over the gear' 3/4 read dies with the pillar mass.
   for (const zTab of [1.86, 0.98, 0.10, -0.78, -1.66]) {
-    P.add('hullShadow', box(0.203, 0.10, 0.045), -1.6115, 0.055, zTab);
+    P.add('hullRunningGearDark', box(0.203, 0.10, 0.045), -1.6115, 0.055, zTab);
   }
   // Wheel-bay backdrop: with the hem raised the wheel gaps see the olive
   // belt face — a near-black panel inboard of the wheel faces keeps the
   // bays reading as shadow (ref gear-zone p5 ~26). Interval-interior on
   // every row (top deck-owned, bottom track-owned, plan wing-owned).
-  P.add('hullShadow', box(0.02, 0.66, 5.0), -1.105, 0.43, 0.075);
+  P.add('hullRunningGearDark', box(0.02, 0.66, 5.0), -1.105, 0.43, 0.075);
   // r5 O2b: front corner flaps tucked behind the bow-wing undersides,
   // FORWARD of the idler wrap (wrap ends z ~3.02; flaps at 3.08..3.16 —
   // containment-clear) with bottoms 0.31 ≥ the ref's own side-column
