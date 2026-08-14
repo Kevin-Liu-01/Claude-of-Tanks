@@ -113,7 +113,7 @@ re-freeze NEW hash, all in ONE commit.
 | challenger_3 | 564057a4 | RE-FROZEN 2026-08-12 (§5.136 first-party forward-profile + strict-track re-cert: connected brow/cheeks remain extended to the mantlet, all turret fittings seated through yaw, exact native band+shoes+sweep 0/0; fidelity 93.02 / minimum whole view 92.17, fresh 45-frame floor 9.0 / mean 9.07; prior 3e5a7797 retired) |
 | challenger1 | fa346ca4 | RE-FROZEN 2026-08-13 (§5.152 first-party in-place closure: complete hull/skirts/mudguards/native six-wheel course preserved; detached lower gun-cradle duplicate removed; connected shell/gun/basket/roof suite re-centered on the true hull ring with yaw-zero silhouette preserved; fresh 45-frame packet floor 9.0 / mean 9.04, parent 0/0/0, winding clean, exact track 0/0 and muzzle/rig/tests/build PASS; 4ecc29b4 and earlier freezes retired) |
 | challenger2 | 3b4bd5f0 | GRADUATED 2026-08-09; RE-FROZEN 2026-08-10 (§5.89 owner fused-block repair: material-fused casemate course removed from fixed hull and repartitioned into the articulated source tree; one low ring landing + one rotating turret; gate 90.1 x2 every component >=90; standard/parent/winding clean; fresh §B8 floor 9.0 / mean 9.06 x14, yaw/load paths 9.3; oracle f44e3b46 reproducible from pristine .bak; prior 63ee160 retired) |
-| fv510 | 61023726 | RE-FROZEN 2026-08-12 (§5.129 first-party `fv510PhotoBuild`: compact six-wheel Warrior hull, authored RARDEN turret and supported slat/service package; machine fidelity 90.84 / minimum view 90.12; exact native track 0/0 and fresh 42-frame yaw/ownership floor 9.0 / mean 9.11; source-baked 7884762a/927beeb2 playables retired) |
+| fv510 | 313ab8ca | RE-FROZEN 2026-08-13 (§5.156 owner fidelity pass: first-party Warrior upper glacis now carries one continuous long rake; compact guarded IR searchlight and enlarged dual-channel RAVEN sight are broadly seated and turret-owned; existing hull lights, smoke, RARDEN, baskets, complete hull/WRAP screens and native six-wheel course preserved; 45 unique paired/yaw frames, assets/muzzle/tests/build PASS; prior 61023726 retired) |
 | m26_pershing | 2f006738 | RE-RECORDED 2026-08-08: hash moved by LANDED 5f39989 (armorM4 gunBarrel shadow-proxy 3.96->3.44; m26/m45 inherit m4a3e8 proxies — patton.js bytes unchanged); double-confirmed by builder bisect + m45-grad critic; prior 65c564c0 bore+winding re-cert lineage (floors 9.1-9.4) carries |
 | t90m | a21894b8 | RE-FROZEN 2026-08-12 (§5.127 first-party native V-bow hull, welded Proryv shell, supported bustle/rack and exact six-wheel course; machine fidelity 90.96 / minimum view 90.02; 42-frame yaw/ownership PASS; incompatible legacy contour row retained honestly rather than chased) |
 | t90 | 34b9980 | RE-FROZEN 2026-08-13 (owner-directed hybrid now calls the exact live first-party Burlak 18-station core, shoulder foundation AND full five-station autoloader bustle, then carries its own enlarged seated Shtora eyes and K-5/smoke/NSVT/radio package; Burlak remains byte-stable at ec0dd544; hull, skirts and native six-wheel course untouched; fresh 45-frame packet, genuine yaw ownership, exact track 0/0 bands+shoes, muzzle/rig/winding/tests/build PASS; legacy unbustled T-90 mask is explicitly non-authoritative for the new silhouette; 8e196a78 and earlier freezes retired) |
@@ -5416,3 +5416,53 @@ files and muzzle bore on the live freeze.
 **KEEP / RE-FROZEN `d7faced8`; retire stale ledger freeze `7ac6d434`. Future
 Type 10 work must preserve the complete lower vehicle and keep the full turret
 package on the corrected y=1.40 articulation.**
+
+## 5.156 FV510 UPPER-GLACIS / SIGHTING-SUITE FIDELITY PASS (2026-08-13, LIVE)
+
+The live first-party `fv510PhotoBuild` now closes the owner's requested front
+and equipment pass without replacing any vehicle mass. The previous deck
+polyline concentrated almost the complete upper-glacis rise into its last
+20 cm, producing a flat shelf above a visually abrupt nose. Its published bow
+and deck anchors are retained, but the intermediate break is moved rearward
+and down so the same armor surface forms one continuous long Warrior rake.
+The lower bow, hull tub, open WRAP screens, skirts, mudguards, wheel stations
+and linked course are untouched.
+
+The existing RAVEN commander station is enlarged in place into a protected
+dual-channel day/thermal and laser head on a broad tapered pot. A compact
+forward IR searchlight is added beside the RARDEN root with a buried cheek
+shoe, rear housing and three visible guard returns. The first render's extra
+upper marker lamps were rejected because they read sky-backed and were
+removed completely; the established paired guarded bow light clusters remain
+the only hull lamps. No decorative item is accepted merely because it shares
+a material or follows yaw.
+
+Fresh final evidence at `/private/tmp/critic-fv510-final-r4/fv510` contains 15
+paired, 15 yaw0 and 15 yaw90 frames including the elevated-left profile: **45
+PNGs / 45 distinct hashes**. The complete gun, turret shell, new searchlight,
+dual-channel sight, smoke banks, hatches, periscopes, MG, whips and open rear
+basket execute a genuine quarter-turn together. The full hull, driver station,
+lights, WRAP screens and one continuous native course remain fixed. The
+parent audit reports 0 stranded / 1 abutting / 0 dangling; the single nominee
+is the real hull-owned driver glass immediately ahead of the turret, visibly
+seated after the turret departs.
+
+Winding census is 0 reversed / 0 mixed across 652 pieces. Its FrontSide mask
+flag localizes to the intentionally open thin WRAP screen ribs at the rear
+flanks, not a disappearing hull sheet; every final shaded view retains the
+screen's rails, uprights and body behind it. The mode-2 candidate is the same
+fixed driver glass and is below the hard threshold. Muzzle-bore proof passes.
+The exact terminal tool continues to report the pre-existing 1 cm conservative
+inner-tub tangency at both ends; it is inboard of the visible lane, unchanged
+in signed depth by this upper-hull/turret pass, and produces no shoe, wheel or
+screen penetration in the final pixels. No lower-vehicle part is deleted or
+raised to force a numerical zero.
+
+Deterministic geometry freeze **`313ab8ca`** reproduces at 70 meshes / 60,873
+vertices. All eight FV510 garage, silhouette, armor, hit-zone and module assets
+are regenerated for this freeze; the targeted asset checker passes geometry,
+metadata, files and muzzle bore.
+
+**KEEP / RE-FROZEN `313ab8ca`; retire `61023726`. Future FV510 work must
+preserve the full lower vehicle, continuous long glacis rake and complete
+turret-owned sight/searchlight load paths.**

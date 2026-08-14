@@ -2812,7 +2812,12 @@ function sslab(s, b0, b1, b2, b3, t0, t1, t2, t3) {
 // bucket set; retaining the original section here keeps every glacis/roof
 // transition colinear while matching the lower owner-source silhouette.
 const FV_DECK = [
-  [3.17, 1.32], [3.02, 1.50], [2.82, 2.00], [2.30, 2.01], [1.98, 1.95], [1.55, 2.05],
+  // Owner closeout 2026-08-13: carry the roof break into one long Warrior
+  // upper-glacis rake.  The former 2.82/2.00 knee left almost the complete
+  // rise in the last 20 cm and read as a vertical nose below a flat shelf.
+  // These four points retain the published bow/deck anchors while spreading
+  // the same rise continuously rearward; no lower hull or running gear moves.
+  [3.17, 1.32], [3.02, 1.50], [2.62, 1.76], [2.30, 2.01], [1.98, 1.95], [1.55, 2.05],
   [0.85, 1.93], [0.70, 2.05], [-2.95, 2.05], [-3.155, 2.03],
 ];
 const fvGlacisY = (z) => 1.93 - (z - 1.55) * 0.549383;
@@ -3131,10 +3136,25 @@ function fv510PhotoBuild(P) {
   P.add('turretDark', box(0.38, 0.10, 0.024), -0.26, 0.72, -1.304);
   P.add('turretGlass', box(0.30, 0.05, 0.012), -0.26, 0.685, -1.298);
   P.add('turretDark', box(0.02, 0.10, 0.02), -0.44, 0.72, -1.34, 0, 0, 0.3);
-  P.add('turret', cylY(0.10, 0.115, 0.14, 12), 0.30, 0.53, -0.345);
-  P.add('turret', box(0.20, 0.13, 0.18), 0.30, 0.665, -0.345);
-  P.add('turretDark', box(0.16, 0.06, 0.02), 0.30, 0.685, -0.250);
-  P.add('turretGlass', box(0.12, 0.035, 0.012), 0.30, 0.660, -0.247);
+  // RAVEN commander acquisition head: keep the original station, but give
+  // it the readable protected day/thermal + laser channels visible on the
+  // service vehicle instead of a single tiny slit.  The broad tapered pot
+  // overlaps the cupola roof; every optic face remains turret-owned.
+  P.add('turret', cylY(0.13, 0.155, 0.16, 12), 0.30, 0.54, -0.345);
+  P.add('turret', box(0.28, 0.15, 0.20), 0.30, 0.675, -0.345);
+  P.add('turretDark', box(0.24, 0.075, 0.022), 0.30, 0.690, -0.238);
+  P.add('turretGlass', box(0.075, 0.040, 0.012), 0.245, 0.682, -0.225);
+  P.add('turretGlass', box(0.075, 0.040, 0.012), 0.355, 0.682, -0.225);
+  P.add('turretDetail', box(0.32, 0.025, 0.22), 0.30, 0.758, -0.345);
+  // Protected IR searchlight beside the RARDEN root.  A broad cheek shoe,
+  // two guard returns and the rear housing keep the lens mechanically
+  // seated; the cylinder points forward along the gun axis.
+  P.add('turretDetail', box(0.26, 0.035, 0.18), -0.52, 0.42, 0.34, -0.24, 0, 0);
+  P.add('turretDark', cylZ(0.075, 0.13, 16, 0.083), -0.52, 0.45, 0.455, -0.12, 0, 0);
+  P.add('turretGlass', cylZ(0.052, 0.012, 16), -0.52, 0.46, 0.528, -0.12, 0, 0);
+  P.add('turretDetail', box(0.20, 0.020, 0.16), -0.52, 0.545, 0.455, -0.12, 0, 0);
+  P.add('turretDetail', box(0.020, 0.18, 0.16), -0.63, 0.455, 0.455, -0.12, 0, 0);
+  P.add('turretDetail', box(0.020, 0.18, 0.16), -0.41, 0.455, 0.455, -0.12, 0, 0);
   // hatches: gunner left, commander right (+ periscope ring + grab rails)
   P.add('turret', cylY(0.20, 0.22, 0.035, 16), -0.30, 0.478, -0.22);
   P.add('turret', cylY(0.185, 0.185, 0.026, 16), -0.30, 0.508, -0.22);
