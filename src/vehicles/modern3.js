@@ -3917,6 +3917,33 @@ function buildBMP2(P) {
   });
   ports(-1, [-0.504, -1.144, -1.784, -2.414]);
   ports(1, [-0.824, -1.464, -2.104]);
+  // ---- BMP-2M owner modernization package (2026-08-14) --------------------
+  // Keep the certified boat hull, fenders and complete smart-track course.
+  // The new protection is an ADDITIVE, visibly supported upper-side/glacis
+  // package: every cassette bottoms above the 1.06 m return run and seats on
+  // a continuous rail or the upper-glacis plane.  The troop firing ports are
+  // deliberately covered, as on a field-modernized protection fit.
+  for (const s of [-1, 1]) {
+    P.add('hullDetail', box(0.055, 0.10, 4.16), s * 1.325, 1.285, -0.43);        // cassette carrier, buried in sponson
+    const sideZ = [1.36, 0.78, 0.20, -0.38, -0.96, -1.54, -2.12];
+    sideZ.forEach((zc, k) => {
+      const depth = k === 0 || k === sideZ.length - 1 ? 0.48 : 0.52;
+      P.add('hull', box(0.145, 0.30, depth), s * 1.385, 1.31, zc,
+        0, s * (k < 2 ? 0.035 : k > 4 ? -0.025 : 0), 0);
+      P.add('hullDark', box(0.018, 0.035, depth - 0.06), s * 1.466, 1.31, zc);
+    });
+    P.add('hullDetail', box(0.08, 0.12, 0.36), s * 1.33, 1.30, 1.72,
+      0, -s * 0.18, 0);                                                         // forward return into shoulder
+  }
+  for (const [zc, yc, xs] of [[2.18, 1.505, [-0.76, -0.255, 0.255, 0.76]],
+    [2.52, 1.415, [-0.72, -0.24, 0.24, 0.72]]]) {
+    xs.forEach((xc, k) => {
+      const w = k === 0 || k === xs.length - 1 ? 0.42 : 0.40;
+      P.add('hull', box(w, 0.115, 0.31), xc, yc, zc, -0.255, 0, 0);
+      P.add('hullDark', box(w - 0.05, 0.018, 0.025), xc, yc + 0.055, zc + 0.155,
+        -0.255, 0, 0);                                                          // cassette edge / visible seating seam
+    });
+  }
   // ---- stern doors: twin outward-opening leaves IN the tail band (y
   // 1.135..1.555 over -3.26..-3.35, plan tail -3.336, bulge tips y 1.13..1.51
   // — the r1 doors ran a full-width diagonal to -3.40 and poisoned the
@@ -3944,12 +3971,16 @@ function buildBMP2(P) {
       pts: [[-0.95, 1.50, 2.096], [-0.15, 1.38, 2.646], [0.85, 1.46, 2.306]],
     });
     P.hullG.add(cable);
-    const lampL = FITTINGS.lightCluster({ mats: P.mats, pods: 2, spacing: 0.14, r: 0.04, rake: -0.22, seed: 2 });
+    const lampL = FITTINGS.lightCluster({ mats: P.mats, pods: 2, spacing: 0.14, r: 0.05, rake: -0.22, seed: 2 });
     lampL.position.set(-1.05, 1.415, 2.516);
     P.hullG.add(lampL);
-    const lampR = FITTINGS.lightCluster({ mats: P.mats, pods: 1, r: 0.042, rake: -0.22, seed: 5 });
+    const lampR = FITTINGS.lightCluster({ mats: P.mats, pods: 2, spacing: 0.14, r: 0.05, rake: -0.22, seed: 5 });
     lampR.position.set(1.05, 1.415, 2.516);
     P.hullG.add(lampR);
+    for (const s of [-1, 1]) {
+      P.add('hullDetail', box(0.30, 0.16, 0.15), s * 1.05, 1.405, 2.45, -0.22, 0, 0);
+      P.add('hullDark', box(0.34, 0.035, 0.05), s * 1.05, 1.48, 2.44, -0.22, 0, 0);
+    }
     // NOTE r1: no whip antenna — the print carries none and a 0.6 m whip cost
     // 0.35-err columns in side_hull (curve masks see thin geometry even when
     // the dims 12%-band filter does not). Antenna BASE POT only, flattened
@@ -4184,6 +4215,48 @@ function buildBMP2(P) {
                                                                                 //   0.80-0.83 plan front line on
                                                                                 //   the ±0.49-0.65 cols by 0.2)
     P.turretG.add(bank);
+  }
+  // Low, faceted turret protection follows the existing cone instead of
+  // replacing it.  The three frontal leaves per cheek are progressively
+  // yawed and buried; side leaves overlap the casting and the rear bins have
+  // broad inner roots.  All are turret-owned and therefore rotate at yaw.
+  for (const s of [-1, 1]) {
+    for (let k = 0; k < 3; k++) {
+      P.add('turret', box(0.205, 0.145, 0.27),
+        s * (0.27 + k * 0.225), 0.255 - k * 0.012, 0.79 - k * 0.085,
+        0, -s * (0.16 + k * 0.12), 0);
+      P.add('turretDark', box(0.16, 0.022, 0.22),
+        s * (0.27 + k * 0.225), 0.329 - k * 0.012, 0.79 - k * 0.085,
+        0, -s * (0.16 + k * 0.12), 0);
+    }
+    for (const zc of [0.32, 0.01, -0.30]) {
+      P.add('turret', box(0.13, 0.17, 0.25), s * 0.91, 0.22, zc, 0, 0, s * 0.04);
+    }
+    P.add('turret', box(0.34, 0.20, 0.34), s * 0.73, 0.16, -0.72,
+      0, -s * 0.12, 0);                                                         // unequal rear equipment cell
+    P.add('turretDetail', box(0.10, 0.12, 0.38), s * 0.55, 0.14, -0.72,
+      0, -s * 0.12, 0);                                                         // broad cell-to-casting return
+
+    // Four-quadrant laser-warning/EO heads: armored body, dark glass face,
+    // and a short pedestal sunk into the shoulder.
+    P.add('turret', box(0.16, 0.13, 0.14), s * 0.73, 0.43, 0.43,
+      -0.10, -s * 0.30, 0);
+    P.add('turretGlass', box(0.105, 0.06, 0.025), s * 0.73, 0.445, 0.505,
+      -0.10, -s * 0.30, 0);
+  }
+  // Independent commander's thermal head, seated on a broad ring at the
+  // right-rear roof.  It complements rather than obscures the 9M113 cradle.
+  P.add('turret', cylY(0.14, 0.16, 0.08, 14), 0.57, 0.45, -0.39);
+  P.add('turret', box(0.19, 0.18, 0.20), 0.57, 0.58, -0.35, 0, -0.08, 0);
+  P.add('turretGlass', box(0.13, 0.09, 0.025), 0.57, 0.60, -0.238, 0, -0.08, 0);
+  // Twin radio stations complete the modernized roof cadence.  Each whip
+  // terminates in a collar and a wide buried shoe, never directly in air.
+  for (const [x, h, seed] of [[-0.79, 0.72, 14], [0.82, 0.60, 15]]) {
+    P.add('turret', box(0.14, 0.10, 0.18), x, 0.36, -0.51);
+    P.add('turretDark', cylY(0.055, 0.07, 0.10, 12), x, 0.45, -0.51);
+    const whip = FITTINGS.antennaWhip({ mats: P.mats, h, r: 0.010, rake: x < 0 ? -0.03 : 0.03, seed });
+    whip.position.set(x, 0.50, -0.51);
+    P.turretG.add(whip);
   }
   // roof PKT on the gunner ring (§B3 decoration law: tastefully-integrated
   // pintle MG even though the print carries none). r2: the MG now CARRIES

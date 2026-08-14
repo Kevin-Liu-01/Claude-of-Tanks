@@ -45,6 +45,14 @@ if (!afvIds.includes('fv510')) {
   throw new Error('derived AFV coverage must include FV510 Warrior');
 }
 
+{
+  const bmp = TANK_SPECS.bmp2;
+  const rapidBelts = bmp.gun.shells.filter((shell) => shell.reloadS <= 0.5);
+  if (bmp.class !== 'ifv' || bmp.gun.caliberMm !== 30 || rapidBelts.length !== 2) {
+    throw new Error('BMP-2 must remain a 30 mm IFV autocannon with rapid APDS and HE-I belts');
+  }
+}
+
 for (const id of afvIds) {
   const spec = getSpec(id);
   const originals = originalFirepower.get(id);
