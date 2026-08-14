@@ -6772,3 +6772,51 @@ without creating an orphan garage-icon row.
 **KEEP the complete K1A1 hull, skirts, guards and native six-wheel course.
 Future repairs must preserve visible body geometry and use only truthful
 ownership correction or localized hidden-clearance shaping.**
+
+## 5.193 M60A1/A3 CLOSED-HULL RETURN-CORRIDOR RESTORATION (2026-08-14, LIVE)
+
+The M60A1 and M60A3 share one Patton-family hull implementation, so this is a
+single non-subtractive family correction. Both retain their complete accepted
+first-party hulls: closed center belly, cast lower bow, long upper glacis,
+full-width deck and fenders, rear plate, mudflaps, six large road wheels,
+front idler, rear final drive, return rollers and one linked-shoe course. No
+visible armor, fender, guard, wheel or track part is deleted or hidden.
+
+The former full-width sponson band began at y=1.13 across both track lanes,
+inside the supported return shoes, while the outer glacis wing extended down
+to the pointed toe through the front idler arc. The complete between-course
+center wedge and lower hull remain unchanged. Only the outboard sponson
+underside now begins at y=1.40, and the full-width outer glacis wing begins
+behind the idler at z=2.72 after the narrow closed center bow has cleared the
+terminal ramp. The rear full-width band receives the same supported underside
+clearance. This restores real wheel-well space without creating a hollow body
+or changing the visible deck, armor crown, fender width or end plates.
+
+The 32-voxel secondary report was the actual set of six return-roller mounting
+brackets. Their geometry, dimensions, transforms and material are unchanged;
+only those brackets use `hullRunningGearDetail`. Mudflap hanger straps and all
+other hull/service fittings remain ordinary audited body candidates.
+
+Exact strict band and individual-shoe audits now report **front 0/0, rear 0/0
+and complete sweep 0/0** for both tanks. Separate fresh packets contain 15
+authored-model boards including the standardized elevated-left profile, 15
+yaw0 and 15 yaw90 frames per tank: **90 PNG / 90 distinct hashes**. Side,
+front and rear pixels show complete closed hull volumes; six road wheels remain
+separately readable, the loaded run rests beneath them and both terminal ramps
+remain continuous. Each gun/turret/optic/cupola/bustle package executes a
+genuine quarter-turn while the body and running gear remain fixed.
+
+Parenting is **0 stranded / 0 abutting / 0 dangling** for M60A1 and M60A3.
+Winding is **0 reversed / 0 mixed / 0-pixel deficit**, and mode 2 reports zero
+yaw-stranded candidate pixels on both. There is no duplicated course, missing
+hull sheet, sky-through opening, floater or silhouette regression.
+
+All sixteen targeted presentation assets are current and both muzzle bores
+pass. M60A1 dual-ledger geometry is freeze **`fda73f97`**, instance freeze
+**`a4a8ed4a`** and asset geometry **`dc0b3d5d`** (39 rendered meshes / 80,203
+vertices). M60A3 is freeze **`f5918aa0`**, instance freeze **`3e4b0688`** and
+asset geometry **`994b5d9a`** (40 rendered meshes / 82,999 vertices).
+
+**KEEP both complete M60 hulls and their Patton running gear. Future work may
+refine fidelity above this mechanical foundation, but may not remove body or
+fender surfaces to force track clearance.**

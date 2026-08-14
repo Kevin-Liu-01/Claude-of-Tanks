@@ -150,7 +150,9 @@ function curveHull(P, H) {
     // 1.82 deck; my nudged deck painted 1.828 -> topPct 8-10 on two
     // slices). Default byte-identical (the nudge stands for every sibling).
     if (Math.abs(y1 - y0) < 0.004) y1 = H.flatDeck ? y0 : y0 + 0.006;
-    const sb = (z) => (H.sponsonAftY != null && z <= H.sponsonAftZ ? H.sponsonAftY : spons - 0.03);
+    const sb = (z) => (H.sponsonAftY != null && z <= H.sponsonAftZ
+      ? H.sponsonAftY
+      : (H.sponsonBandY ?? spons - 0.03));
     P.add('hull', slab(
       [-bhw, sb(z0), z0], [bhw, sb(z0), z0], [bhw, sb(z1), z1], [-bhw, sb(z1), z1],
       [-bhw, y0, z0], [bhw, y0, z0], [bhw, y1, z1], [-bhw, y1, z1]));
@@ -183,9 +185,13 @@ function curveHull(P, H) {
     if (kneeY > H.glacisWingY0 + 0.05) {
       const wy = H.glacisWingY0;
       const wb = Math.max(toeBot, wy - (H.glacisWingDrop ?? 0.35));
+      const wz = Math.max(kneeZ, Math.min(toeZ, H.glacisWingZ0 ?? toeZ));
+      const wt = (toeZ - wz) / Math.max(0.001, toeZ - kneeZ);
+      const ww = nw + (bhw - nw) * wt;
+      const wyt = toeY + (kneeY - toeY) * wt;
       P.add('hull', slab(
-        [-nw, wb, toeZ], [nw, wb, toeZ], [bhw, wy, kneeZ], [-bhw, wy, kneeZ],
-        [-nw, toeY, toeZ], [nw, toeY, toeZ], [bhw, kneeY, kneeZ], [-bhw, kneeY, kneeZ]));
+        [-ww, wb, wz], [ww, wb, wz], [bhw, wy, kneeZ], [-bhw, wy, kneeZ],
+        [-ww, wyt, wz], [ww, wyt, wz], [bhw, kneeY, kneeZ], [-bhw, kneeY, kneeZ]));
     }
   } else {
     P.add('hull', slab(
@@ -247,9 +253,11 @@ function curveHull(P, H) {
   // r4 (m47 TONE round, order A3) opt-in H.darkGearFit: the pale 'hullDetail'
   // gear-zone fittings (muffler legs, roller brackets, flap hanger straps)
   // read as bare primer sticks against the dark track band / sky in every
-  // quarter view — route them to the dark-fitting bucket. Default
-  // byte-identical ('hullDetail'), so graduates m60a1/m60a3 are untouched.
+  // quarter view — route them to the dark-fitting bucket. Keep real flaps in
+  // their armor bucket; only the opt-in return-roller brackets use the native
+  // running-gear detail bucket for exact corridor auditing.
   const gearFitB = H.darkGearFit ? 'hullDark' : 'hullDetail';
+  const rollerFitB = H.runningGearFit ? 'hullRunningGearDetail' : gearFitB;
   // fender mufflers (M46/M47): proud cylinders, end caps, elbows, tailpipes.
   // Opt-in x/straps (m47 r2): the r1 m47 band (-2.26..-2.52) made the body
   // length degenerate (0.26 fixed trim) while the hardcoded strap offsets
@@ -317,7 +325,7 @@ function curveHull(P, H) {
   }
   // roller brackets + mud flaps at the fender tips (measured hang bands)
   for (const rl of rollers) for (const side of [-1, 1]) {
-    P.add(gearFitB, box(0.05, Math.max(0.05, spons - rl.y - 0.02), 0.13), side * xc, (spons + rl.y) / 2, rl.z);
+    P.add(rollerFitB, box(0.05, Math.max(0.05, spons - rl.y - 0.02), 0.13), side * xc, (spons + rl.y) / 2, rl.z);
   }
   for (const [fz, fy0, fy1] of [H.flapF, H.flapR].filter(Boolean)) {
     for (const side of [-1, 1]) {
@@ -3714,7 +3722,10 @@ const M48_FIT = {
 };
 
 const M60_HULL = {
-  W: 3.631, bandHW: 1.70, trackW: 0.69, trackInset: 0.037, sponsonY: 1.16, bellyY: 0.47, noseW: 1.66,
+  W: 3.631, bandHW: 1.70, trackW: 0.69, trackInset: 0.037,
+  sponsonY: 1.16, sponsonBandY: 1.40, bellyY: 0.47, noseW: 1.66,
+  glacisWingY0: 1.42, glacisWingDrop: 0.02, glacisWingZ0: 2.72,
+  runningGearFit: true,
   deck: [[3.44, 1.31], [1.86, 1.675], [1.76, 1.738], [-0.50, 1.742], [-2.40, 1.79], [-3.28, 1.788]],
   toeBot: 1.10, bellyFrontZ: 2.30, bellyRearZ: -2.55, tailBotY: 1.00,
   gear: {

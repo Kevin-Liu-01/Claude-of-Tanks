@@ -397,11 +397,11 @@
       "vertices": 73954
     },
     "m60a1": {
-      "freezeHash": "412eadf8",
-      "instanceFreezeHash": "69cd0fcb",
-      "assetGeometryHash": "7b2ecf58",
-      "meshes": 38,
-      "vertices": 80167
+      "freezeHash": "fda73f97",
+      "instanceFreezeHash": "a4a8ed4a",
+      "assetGeometryHash": "dc0b3d5d",
+      "meshes": 39,
+      "vertices": 80203
     },
     "m60a2": {
       "freezeHash": "400a1d2f",
@@ -411,11 +411,11 @@
       "vertices": 65035
     },
     "m60a3": {
-      "freezeHash": "31ea8e28",
-      "instanceFreezeHash": "b2239391",
-      "assetGeometryHash": "46e91a73",
-      "meshes": 39,
-      "vertices": 82963
+      "freezeHash": "f5918aa0",
+      "instanceFreezeHash": "3e4b0688",
+      "assetGeometryHash": "994b5d9a",
+      "meshes": 40,
+      "vertices": 82999
     },
     "merkava1b": {
       "freezeHash": "58f3fb38",
