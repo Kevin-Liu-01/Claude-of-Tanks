@@ -7539,3 +7539,36 @@ freeze **`2541ca76`**, instance freeze **`fd6772b5`** and asset geometry
 
 **KEEP both complete IS-3 family exteriors and their closed raised soffits.
 Future course work may not subtract or open their pike, hull or side armor.**
+
+## 5.211 IS-7 CLOSED TRACK-CORRIDOR CLOSEOUT (2026-08-14, LIVE)
+
+The IS-7 remains its complete first-party vehicle: the clean pike casting,
+broad upper hull, full roof and rear armor, fenders, front and rear mudguards,
+seven road-wheel stations, elevated end wheels and single linked-shoe course
+are all retained. Native wheel-bay recesses and suspension arms now carry
+truthful running-gear ownership. The real concealed contacts are repaired with
+a **closed raised soffit**: a solid inter-track belly and lower pike core stay
+in place, connected centre bridges meet the roof, and the complete outer
+sponson and rear walls continue above the return run. Nothing is hollowed or
+deleted.
+
+The exact strict audit improves from 270 band / 239 individual-shoe voxels to
+**front 0/0, rear 0/0 and complete sweep 0/0**. Fresh evidence contains 15
+paired boards including the standardized elevated-left profile, 15 yaw0 and
+15 yaw90 frames: **45 PNG / 45 distinct hashes**. All views retain the closed
+pike/rear faces, accepted exterior silhouette and continuous raised-terminal
+course.
+
+The complete turret, gun, cupolas and rear weapon platform execute a genuine
+quarter-turn while all hull and running-gear structure remains fixed. Parent
+audit is **0 stranded / 0 abutting / 0 dangling**. Winding reports **0
+reversed / 0 mixed geometry**, a clean two-pixel (0.00%) antialias deficit and
+no mode-2 candidate. The dark muzzle bore and all ten targeted runtime-rig
+checks pass.
+
+All eight targeted presentation assets are current. IS-7 dual-ledger geometry
+is freeze **`1445a9e0`**, instance freeze **`83896ab2`** and asset geometry
+**`711ee0e3`** (33 rendered meshes / 67,446 vertices).
+
+**KEEP the complete IS-7 exterior and closed raised soffit. Future course work
+may not subtract its pike, hull, fenders or mudguards.**

@@ -170,10 +170,10 @@ function towHook(P, x, y, z) {
 // detached "thin rod lying diagonally on the pike". Both are opt-out now:
 // is7 passes cheeks/welds false (its oracle pike is a clean casting); the
 // long is3 pike keeps them (no pierce there — verified on the r3 board).
-function pikeNose(P, { zBreak, zTip, yBelt, yRoof, yBelly, wRoof, wBelt, cheekW, cheeks = true, welds = true }) {
+function pikeNose(P, { zBreak, zTip, yBelt, yRoof, yBelly, wRoof, wBelt, lowerCoreW = wBelt, cheekW, cheeks = true, welds = true }) {
   const { box, frustum } = KIT;
   P.add('hull', frustum(wBelt, zTip, zBreak - 0.02, wRoof, zBreak + (zTip - zBreak) * 0.30, zBreak - 0.04, yBelt, yRoof));
-  P.add('hull', frustum(wBelt * 0.84, zBreak + (zTip - zBreak) * 0.72, zBreak, wBelt, zTip, zBreak - 0.02, yBelly, yBelt));
+  P.add('hull', frustum(lowerCoreW * 0.84, zBreak + (zTip - zBreak) * 0.72, zBreak, lowerCoreW, zTip, zBreak - 0.02, yBelly, yBelt));
   if (cheeks) for (const s of [-1, 1]) {
     P.add('hull', box(cheekW, (yRoof - yBelly) * 0.34, (zTip - zBreak) * 0.34),
       s * wBelt * 0.52, (yBelt + yRoof) / 2 - 0.12, zBreak + (zTip - zBreak) * 0.45, 0, s * -0.60, 0);
@@ -201,12 +201,14 @@ function buildIS7(P) {
   // r5 dims-first: published hull 7.38 (tail zc-3.59, pike tip zc+3.79) and
   // overall 11.17 (S-70 muzzle 5.79) — the print is 9-11% SHORT; packet cap
   // covers the overhang cover cost. Roof plateau rides 2.60 via the dome.
-  P.add('hull', box(2.00, 0.70, 6.86), 0, 0.62, zc - 0.13);                    // belly
-  P.add('hull', frustum(1.64, zc + 2.30, zc - 3.59, 1.47, zc + 2.32, zc - 3.56, 0.95, 1.43)); // sponson band
+  P.add('hull', box(1.70, 0.70, 6.86), 0, 0.62, zc - 0.13);                    // solid inter-track belly
+  P.add('hull', box(1.70, 0.22, 5.82), 0, 1.05, zc - 0.62);                    // closed centre-to-roof bridge
+  P.add('hull', frustum(1.64, zc + 2.30, zc - 3.59, 1.47, zc + 2.32, zc - 3.56, 1.08, 1.43)); // complete raised sponson wall
   P.add('hull', box(2.94, 0.05, 5.85), 0, 1.415, zc - 0.62);                   // roof plate
-  pikeNose(P, { zBreak: zc + 2.30, zTip: zc + 3.79, yBelt: 0.94, yRoof: 1.43, yBelly: 0.36, wRoof: 1.42, wBelt: 1.56, cheekW: 1.10, cheeks: false, welds: false });
-  P.add('hull', frustum(1.45, zc - 3.52, zc - 3.59, 1.45, zc - 3.28, zc - 3.59, 0.40, 0.95)); // rear lower slope
-  P.add('hull', box(2.90, 0.50, 0.12), 0, 1.14, zc - 3.56);                    // rear plate
+  pikeNose(P, { zBreak: zc + 2.30, zTip: zc + 3.79, yBelt: 1.08, yRoof: 1.43, yBelly: 0.36, wRoof: 1.42, wBelt: 1.56, lowerCoreW: 0.85, cheekW: 1.10, cheeks: false, welds: false });
+  P.add('hull', frustum(0.85, zc - 3.52, zc - 3.59, 0.88, zc - 3.28, zc - 3.59, 0.40, 1.08)); // sealed inter-track rear core
+  P.add('hull', box(1.76, 0.20, 0.12), 0, 0.98, zc - 3.56);                    // lower rear centre bridge
+  P.add('hull', box(2.90, 0.32, 0.12), 0, 1.24, zc - 3.56);                    // complete upper rear plate
   // v10 widthM closeout: published width 3.40 INCLUDES the fenders (v7 rule)
   // and widthM is pixel-resolved — the fenders themselves now sit at ±1.70
   // (was 1.66 + a sub-pixel anchor stud at 3.379, which the 0.35m-band pixel
@@ -240,7 +242,7 @@ function buildIS7(P) {
   headlight(P, -0.62, 1.24, zc + 3.54, -0.4); headlight(P, 0.62, 1.24, zc + 3.54, -0.4);
   towCable(P, [[-1.45, 1.32, zc - 1.2], [-1.52, 1.36, zc + 0.8], [-1.45, 1.32, zc + 2.2]]);
   liftEye(P, 'hullDetail', -0.9, 1.46, zc - 3.1); liftEye(P, 'hullDetail', 0.9, 1.46, zc - 3.1);
-  sovGear(P, { xc: 1.30, trackW: 0.60, wheels: 7, wheelR: 0.33, wheelY: 0.36, span: 4.90, zc: zc - 0.12, topY: 0.90, idlerY: 0.56, idlerR: 0.25 });
+  sovGear(P, { xc: 1.30, trackW: 0.60, wheels: 7, wheelR: 0.33, wheelY: 0.36, span: 4.90, zc: zc - 0.12, topY: 0.90, idlerY: 0.56, idlerR: 0.25, corridorOwned: true });
 
   // turret: one long cast egg, crown plateau ~2.2, over a wide base collar
   // that flares to ~2.95 over the deck edges (the oracle's turret mask keeps
