@@ -111,7 +111,7 @@ re-freeze NEW hash, all in ONE commit.
 | k2 | 827d5ffc | GRADUATED 2026-08-08 (31st; Leclerc-method closed station loft; gate 90.1 x2 every component >=90; visual R26 floor 9.0 / mean 9.09 x14; exact Object_8/15/18/21 plan inventory, rounded asymmetric cage, countable six-station ISU gear; oracle 8d92cd1b reproducible from pristine .bak) |
 | abramsx | 976a1370 | GRADUATED 2026-08-09; RE-FROZEN 2026-08-12 (§5.130 first-party winding closure: outward lower-bow facets, XM360 tunnel jambs and open D-hood sight cheeks; fidelity 94.29 / minimum view 93.99, gate 90.4, winding 0 reversed / 0 mixed, parent clean; fresh 42-frame floor 9.3 / mean 9.49; prior 26b46ba0 retired) |
 | challenger_3 | 564057a4 | RE-FROZEN 2026-08-12 (§5.136 first-party forward-profile + strict-track re-cert: connected brow/cheeks remain extended to the mantlet, all turret fittings seated through yaw, exact native band+shoes+sweep 0/0; fidelity 93.02 / minimum whole view 92.17, fresh 45-frame floor 9.0 / mean 9.07; prior 3e5a7797 retired) |
-| challenger1 | cacb1337 | GRADUATED 2026-08-11 (§5.112 native-procedural, reference-guided rebuild: compact six-wheel hull, one low connected cast turret, buried mantlet/cheek anatomy, seated commander/TOGS station and supported bustle/basket; no external mesh data ships; commercial-reference component masks honestly cap the machine row at 0 while dims 99.6 / floaters 100 and fresh independent §B8 pass floor 9.0 / mean 9.13 x14 with genuine yaw0/90 ownership, exact native tracks 0/0 and winding PASS; old gate-shaped 5bf5f2ec visual failure retired) |
+| challenger1 | fa346ca4 | RE-FROZEN 2026-08-13 (§5.152 first-party in-place closure: complete hull/skirts/mudguards/native six-wheel course preserved; detached lower gun-cradle duplicate removed; connected shell/gun/basket/roof suite re-centered on the true hull ring with yaw-zero silhouette preserved; fresh 45-frame packet floor 9.0 / mean 9.04, parent 0/0/0, winding clean, exact track 0/0 and muzzle/rig/tests/build PASS; 4ecc29b4 and earlier freezes retired) |
 | challenger2 | 3b4bd5f0 | GRADUATED 2026-08-09; RE-FROZEN 2026-08-10 (§5.89 owner fused-block repair: material-fused casemate course removed from fixed hull and repartitioned into the articulated source tree; one low ring landing + one rotating turret; gate 90.1 x2 every component >=90; standard/parent/winding clean; fresh §B8 floor 9.0 / mean 9.06 x14, yaw/load paths 9.3; oracle f44e3b46 reproducible from pristine .bak; prior 63ee160 retired) |
 | fv510 | 61023726 | RE-FROZEN 2026-08-12 (§5.129 first-party `fv510PhotoBuild`: compact six-wheel Warrior hull, authored RARDEN turret and supported slat/service package; machine fidelity 90.84 / minimum view 90.12; exact native track 0/0 and fresh 42-frame yaw/ownership floor 9.0 / mean 9.11; source-baked 7884762a/927beeb2 playables retired) |
 | m26_pershing | 2f006738 | RE-RECORDED 2026-08-08: hash moved by LANDED 5f39989 (armorM4 gunBarrel shadow-proxy 3.96->3.44; m26/m45 inherit m4a3e8 proxies — patton.js bytes unchanged); double-confirmed by builder bisect + m45-grad critic; prior 65c564c0 bore+winding re-cert lineage (floors 9.1-9.4) carries |
@@ -5270,3 +5270,39 @@ reversed or mixed faces, and the Revolution card remains absent at yaw 0 and
 **KEEP / RE-FROZEN all three. Future track-clearance work must not raise or
 delete these skirt courses; their lateral separation already provides the
 required physical corridor.**
+
+## 5.152 CHALLENGER 1 TRUE-RING / GUN-CRADLE CLOSURE (2026-08-13, LIVE)
+
+The existing first-party Challenger 1 hull, skirts, mudguards, six-wheel
+Hydrogas course and already accepted in-place turret/rear fidelity work remain
+unchanged. The isolated lower gun-cradle cylinder is removed: it did not meet
+the connected thermal sleeve, appeared as a detached polygon at turret yaw,
+and entered the upper-glacis space at idle. The remaining oval carrier,
+thermal sleeve and casting cheeks retain a continuous supported L11 load path.
+
+The turret articulation is re-seated from the stale local z=-0.20 pivot to the
+recovered hull-ring center z=0.362. Every turret-owned child is counter-
+translated after assembly, so the accepted yaw-zero silhouette remains
+unchanged while the complete shell, gun, basket and roof suite rotate around
+the physical ring rather than orbiting behind it. No hull geometry is moved,
+scaled, subtracted or replaced.
+
+The final packet at `/private/tmp/critic-ch1-final-r10/challenger1` contains
+15 paired, 15 yaw0 and 15 yaw90 frames including the elevated-left profile:
+**45 PNGs / 45 distinct hashes**. Fresh semantic inspection records
+`[9.0,9.1,9.0,9.0,9.0,9.0,9.0,9.1,9.1,9.1,9.0,9.1,9.0,9.1]`, floor
+**9.0** and mean **9.04**. Top/elevated/close yaw pairs prove a genuine
+quarter-turn around the deck ring with no residual lower-cradle island,
+stranded station, fused duplicate mass or empty-air fitting.
+
+Deterministic freeze **`fa346ca4`** reproduces twice at 89 meshes / 103,071
+vertices. Rig checks pass 10/10; parent audit reports 0 stranded / 0 abutting /
+0 dangling. Winding is 0 reversed / 0 mixed with no pixel deficit. Its sole
+151-pixel mode-2 nominee is the legitimate fixed rear-deck service strip at
+world z -3.063..-2.892 and y 1.823..1.830, only 3-10 mm above the audit's deck
+cut; it has no turret semantics and remains continuously seated as the turret
+departs. Exact native track bands and shoes remain front/rear **0/0** and the
+muzzle-bore probe passes.
+
+**KEEP / RE-FROZEN `fa346ca4`; retire `4ecc29b4` and all earlier Challenger 1
+freezes. Future repairs must preserve the complete lower vehicle.**

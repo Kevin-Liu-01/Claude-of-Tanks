@@ -923,11 +923,13 @@ function challenger1Build(P) {
   P.addGunExtra(slab(
     [0, 0.21, 2.25], [0.15, 0.21, 2.25], [0.15, 0.21, 2.01], [0, 0.21, 2.01],
     [0, 0.25, 2.25], [0.105, 0.235, 2.25], [0.105, 0.235, 2.01], [0, 0.25, 2.01]), 0, 0, 0);
-  // r2: cradle underside re-cut as the ref's own FALLING line (side
-  // bottoms 1.429@3.333 -> 1.234@3.723 — the flat 1.30 belly read -0.13
-  // rear / +0.065 front of it).
-  P.addGunExtraDark(xform(cylZ(0.18, 0.44, 8, 0.105), 0, 0, 0, 0, 0, Math.PI / 8, [2.20, 0.86, 1]),
-    0, -0.34, 3.14);
+  // The old lower-cradle cylinder at local y=-0.34 was not physically joined
+  // to the thermal sleeve above it: its highest point still left a visible air
+  // gap. At neutral gun pitch it consequently occupied the upper-glacis space,
+  // and at 90-degree turret yaw it exposed itself as a detached polygon below
+  // the barrel. The connected collar and sleeve courses above already carry
+  // the full L11 load path, so remove that isolated duplicate instead of
+  // cutting or lowering any hull geometry to hide it.
   // Published 11.50 overall: tail -4.16 -> muzzle +7.34.
   buildGun(P, { len: 6.99, r: 0.095, sleeve: false, evac: 0, collar: false, baseR: 0.15 });
   muzzleBore(P, { len: 6.99, r: 0.095 });                     // §B3.1 (shadow-named, 3fca39b)
@@ -1257,6 +1259,19 @@ function challenger1Build(P) {
   // circular while its trunnion follows the corrected casting seat.
   P.turretG.scale.set(1.12, 0.84, 1.0);
   P.gunG.scale.set(1 / 1.12, 1 / 0.84, 1.0);
+  // The casting was authored in world-like station coordinates and its idle
+  // silhouette is correct, but the live yaw pivot was left 0.562 m behind the
+  // recovered Challenger ring center (z=0.362). Re-seat the articulation at
+  // the real ring and counter-translate every turret-owned child after bucket
+  // assembly. Yaw zero therefore remains visually identical, while the shell,
+  // gun, basket and all roof equipment now rotate about the center of the hull
+  // ring instead of orbiting around an aft point.
+  P.postAssemble = ({ turretG }) => {
+    const ringZ = 0.362;
+    const dz = ringZ - turretG.position.z;
+    for (const child of turretG.children) child.position.z -= dz / turretG.scale.z;
+    turretG.position.z = ringZ;
+  };
   P.topY = 1.35;
 }
 // NATIVE PROCEDURAL REBUILD (2026-08-11). The comparison Challenger Mk.3 is
