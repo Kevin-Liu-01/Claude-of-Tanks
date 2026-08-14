@@ -1727,10 +1727,28 @@ function tejasRoofKit(P, t, station = 'crows') {
     [0.20, -3.06, -2.12, 0.21, 0.57, -2.10],
     [0.10, -2.08, -1.03, 0.12, 0.56, -1.01],
     [0.03, -0.99, 0.04, 0.06, 0.56, 0.06],
-    [0.03, 0.08, 1.09, 0.06, 0.56, 1.11],
   ]) {
     flankSlab(P, 'turret', t, -1, 1.695, y0, y0, 0.62, z0, z1, 'wall');
     flankSlab(P, 'turretTrack', t, -1, 1.696, y0, sy0, sy1, sz - 0.01, sz + 0.01, 0.06);
+  }
+  // The forward-most bay used to carry the same proud outer face all the
+  // way to the smoke-bank station.  Its square end then pierced through the
+  // swept cheek in elevated left-quarter views.  Keep the established rear
+  // edge and full wall contact, but taper the front edge back onto the real
+  // Abrams tumblehome plane so the applique merges into the cheek instead
+  // of ending as a pasted-on cuboid.
+  {
+    const y0 = 0.03, y1 = 0.62, z0 = 0.08, z1 = 1.09;
+    const S = wallSlope(t);
+    const shell = (y) => t.tw - S * (y - t.yBot);
+    const inner = (y) => shell(y) - 0.02;
+    const rearFace = (y) => 1.695 - S * (y - y0);
+    const frontFace = (y) => shell(y) + 0.012;
+    sideSlab(P, 'turret', -1,
+      [inner(y0), y0, z1], [frontFace(y0), y0, z1],
+      [rearFace(y0), y0, z0], [inner(y0), y0, z0],
+      [inner(y1), y1, z1], [frontFace(y1), y1, z1],
+      [rearFace(y1), y1, z0], [inner(y1), y1, z0]);
   }
   // Rear flank stowage nub: ref plan at x -1.686 runs to z -2.815 world with
   // its side bottom ABOVE the shell line (1.78+) — a bustle-height tail bit.
