@@ -1544,12 +1544,11 @@ function buildPT91M(P) {
   // only (front +0.18 col); ±0.02..0.14 cols read the 1.50 plate line
   P.add('hull', box(0.04, 0.27, 0.08), 0.183, 1.525, -2.90);
   ruDeck(P, { deckY: 1.455, hatchZ: 1.72, gz: -1.03, grilles: 4, gw: 1.5, periY: 1.42 });
-  // §B4 containment round (graduate-change, split-only): the tow-eye tori
-  // (default eyeX = w*0.36 = ±1.242) seat in-lane against the idler wrap
-  // front (12 vox/side = the audit's whole front-24 flag, merged-AABB
-  // false-flag class). eyeSplit moves them to hullTrackDetailL/R at
-  // byte-identical transforms — renders byte-identical, masks untouched.
-  ruGlacisKit(P, { w: 3.45, y: 1.20, z: 2.60, eyeZ: 2.88, eyeSplit: true, hookY: 0.94, hookZ: 3.01, hlY: 1.26 });
+  // Tow eyes remain complete and low on the lower bow plate, but sit inboard
+  // of the native idler lane.  The former default ±1.242 seat physically
+  // entered the front shoes by 34 mm; ±0.98 keeps both rings visibly planted
+  // on armor while restoring a real clearance band around the course.
+  ruGlacisKit(P, { w: 3.45, y: 1.20, z: 2.60, eyeX: 0.98, eyeZ: 2.88, eyeSplit: true, hookY: 0.94, hookZ: 3.01, hlY: 1.26 });
   // splash ridge: ref side carries a 1.368 brow across z 2.53..2.69
   // (r25: +12 mm — the 1.358 top printed 1.341 vs the ref's 1.368 line)
   P.add('hull', box(2.3, 0.045, 0.16), 0, 1.348, 2.61);
@@ -1665,14 +1664,23 @@ function buildPT91M(P) {
   // and seated at the exact ref bottoms per column.
   for (const [sz2, sy, sl] of [
     [-1.843, 0.054], [-1.950, 0.107], [-2.058, 0.161], [-2.165, 0.241], [-2.272, 0.295],
-    [-2.379, 0.375], [-2.485, 0.443], [-2.594, 0.510], [-2.701, 0.617],
+    // The -2.485 ramp segment sits beneath the rising sprocket shoe; lower
+    // its complete pad 30 mm so it remains visible as course shading without
+    // duplicating or penetrating the actual linked shoe above it.
+    [-2.379, 0.375], [-2.485, 0.413], [-2.594, 0.510], [-2.701, 0.617],
     // last strip shortened: its -2.955 edge crossed the station-i0 slice
     // plane at -2.953 and printed the 0.86 strip as the slice's ±1.61 width
     [-2.809, 0.778], [-2.916, 0.858, 0.062],
     [2.448, 0.078], [2.555, 0.132], [2.663, 0.240], [2.770, 0.348],
     [2.877, 0.455], [2.985, 0.400], [3.092, 0.440],
   ]) {
-    for (const s of [-1, 1]) P.add('hullDark', box(0.50, 0.05, sl ?? 0.078), s * 1.36, sy + 0.025, sz2);
+    // These strips are the visible left/right native-course ramp fade, not
+    // hull armor.  Preserve every transform and pixel, but keep each side in
+    // its truthful running-gear bucket so shoe contact is not misreported as
+    // a body penetration.
+    for (const s of [-1, 1]) {
+      P.add(s < 0 ? 'hullTrackTrimL' : 'hullTrackTrimR', box(0.50, 0.05, sl ?? 0.078), s * 1.36, sy + 0.025, sz2);
+    }
   }
   // r9: skirts raised to the ref's shallow 0.79..1.23 band and pulled off
   // the rear fade zone (ref side bottoms -2.6..-2.93 are the belly rake)

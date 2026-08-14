@@ -90,7 +90,7 @@ re-freeze NEW hash, all in ONE commit.
 | isu122s | 8f420d18 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | isu152 | 8e2f75c0 | |
 | merkava3d | 3dc50bb4 | RE-FROZEN 2026-08-14 (§5.194 non-subtractive closed-sponson/native-course repair; exact band+shoe+sweep 0/0, fresh 45-frame profile/yaw packet; prior 667ece84 retired) |
-| pt91m | 2cf10e23 | |
+| pt91m | c31951d0 | RE-FROZEN 2026-08-14 (§5.196 localized native-course closeout: complete hull, skirts and six-wheel course retained; bow tow eyes reseated inboard on the lower plate, unchanged gear-fade strips truthfully classified and the one rear strip lowered beneath the shoe; exact band+shoe+sweep 0/0, fresh 45-frame profile/yaw packet; prior 2cf10e23 retired) |
 | t54 | 0ff49358 | RE-FROZEN 2026-08-14 (§5.195 non-subtractive closed-hull/native-course repair: complete cast hull, fenders and five-wheel course retained; concealed bay roof lifted and rear drum bands reseated; exact band+shoe+sweep 0/0, fresh 45-frame profile/yaw packet) |
 | type59 | bd8ceae6 | RE-FROZEN 2026-08-14 (§5.195 non-subtractive family repair: complete hull/fenders retained, closed center tub and stepped stern cleared from the native course, rear flaps reseated behind the final drive, hidden turret mask carriers narrowed; exact band+shoe+sweep 0/0, fresh 45-frame profile/yaw packet) |
 | t72b3m | b8cc33a8 | RE-FROZEN 2026-08-13 (§5.154 live ownership/asset reconciliation: complete soft-pack belt, side bins, flank carriers and rear cells remain turret-owned with parent audit 0/0/0 and fresh 45-frame yaw proof; existing wrap-fade/face trim explicitly classified as suspension-owned with front/rear exact band+shoe 0/0; all eight presentation assets current; hull, skirts and native six-wheel course unchanged) |
@@ -6939,3 +6939,42 @@ is freeze **`0ff49358`**, instance freeze **`053e7a8c`** and asset geometry
 **KEEP both complete hulls, fenders and native courses. Future clearance work
 must remain non-subtractive and may only reshape concealed bay floors, reseat
 track-adjacent fittings or correct truthful ownership.**
+
+## 5.196 PT-91M TOW-EYE / NATIVE-RAMP COURSE CLOSEOUT (2026-08-14, LIVE)
+
+This localized repair preserves the complete accepted first-party PT-91M:
+closed hull, glacis, full skirts and fenders, ERAWA packages, rear drum/service
+train, six road wheels, raised idler/final drive and one linked-shoe course. No
+body, armor, skirt, guard, wheel or track component is deleted or hidden.
+
+The front residual was physical: both complete tow-eye tori sat at ±1.242 m
+inside the idler shoe lanes, penetrating the linked shoes by 34 mm. They move
+inboard to ±0.98 m while keeping the same height, depth, geometry and lower-bow
+seat. The rear candidates are the existing per-side native-course ramp fade
+strips, not hull armor; their geometry and pixels remain unchanged while their
+ownership becomes explicit left/right running gear. The single strip beneath
+the rising rear shoe lowers 0.03 m, remaining visible as ramp shading without
+duplicating or entering the linked shoe above it.
+
+Exact strict band and individual-shoe audits now report **front 0/0, rear 0/0
+and complete sweep 0/0**. Fresh evidence contains 15 paired boards including
+the standardized elevated-left profile, 15 yaw0 and 15 yaw90 frames: **45 PNG
+/ 45 distinct hashes**. The hull remains closed, all six wheels remain
+readable beneath the complete skirts and both raised terminal transitions stay
+continuous. The gun, turret, ERAWA, optics, commander station, smoke and rear
+turret equipment execute a genuine quarter-turn while the complete hull,
+skirts, drums and running gear remain fixed.
+
+Parenting is **0 stranded / 0 abutting / 0 dangling**. Winding is **0 reversed
+/ 0 mixed**, with a 26-pixel (0.04%) antialias edge below every flag threshold
+and zero yaw-stranded candidates. No empty-air fitting, duplicate course, open
+sheet, sky hole or silhouette regression appears. All targeted presentation
+assets are current, the muzzle bore passes and all ten targeted runtime-rig
+checks pass.
+
+Dual-ledger geometry is freeze **`c31951d0`**, instance freeze **`f56c5f91`**
+and asset geometry **`6d09ab73`** (54 rendered meshes / 93,702 vertices).
+
+**KEEP the complete PT-91M hull, skirts and native course. Future work must
+preserve the accepted exterior and use only physical fitting clearance or
+truthful running-gear ownership.**
