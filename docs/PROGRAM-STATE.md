@@ -7240,3 +7240,40 @@ freeze **`001b5966`**, instance freeze **`3b05126a`** and asset geometry
 **KEEP the complete M60A2 hull, mudboards and native course. Future clearance
 work must preserve the accepted exterior and treat its wheel/roller hardware
 as running gear rather than armor.**
+
+## 5.203 M48A5 PATTON FRONT-WRAP / RUNNING-GEAR CLOSEOUT (2026-08-14, LIVE)
+
+This closeout preserves the complete first-party M48A5 hull, cast bow,
+full-length fenders, lamp guards, front and rear mudguards, six road-wheel
+stations and its single linked-shoe course. No hull, side armor, fender,
+mudguard, wheel or track component is deleted or hidden.
+
+The original strict receipt was dominated by native wheel-face hardware and
+the low tension-idler / return-roller support system. Those unchanged rings,
+bolts, wheels and brackets now use the Patton builder's opt-in running-gear
+buckets. The only real contact was a five-voxel / 33 mm outer-shoe touch at
+the intact glacis wing. It is repaired by lowering only the front idler orbit
+40 mm; the idler remains visibly raised **430 mm** above the six road-wheel
+centres, retaining the required raised-front / loaded-bottom track profile.
+
+Exact strict band and individual-shoe audits now report **front 0/0, rear 0/0
+and complete sweep 0/0**, improved from 302 band voxels / 505 shoe voxels.
+Fresh evidence contains 15 paired boards including the standardized
+elevated-left profile, 15 yaw0 and 15 yaw90 frames: **45 PNG / 45 distinct
+hashes**. Side, front, rear and elevated pixels retain the complete hull,
+guards, six readable wheels and continuous end transitions.
+
+The turret, gun, cupola and roof station execute a genuine quarter-turn while
+the hull, deck, fenders and complete running gear remain fixed. The parent
+heuristic's merged `hullDark` nominee and winding mode-2 `rig_hull/hull#17`
+nominee are the same legitimate fixed hull/gear package exposed by yaw; no
+turret-semantic fitting remains behind. Mode-1 winding is **0 reversed / 0
+mixed**, with only a three-pixel (0.00%) antialias deficit. The muzzle bore and
+all ten targeted runtime-rig checks pass.
+
+All eight targeted presentation assets are current. Dual-ledger geometry is
+freeze **`28331d00`**, instance freeze **`d2c5635a`** and asset geometry
+**`134a47dc`** (45 rendered meshes / 76,993 vertices).
+
+**KEEP the complete M48 hull, fenders and mudguards. Future clearance work
+must rewrap the course or reseat fittings without subtracting exterior armor.**

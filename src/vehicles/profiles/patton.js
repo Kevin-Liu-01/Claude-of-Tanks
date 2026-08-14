@@ -291,8 +291,10 @@ function curveHull(P, H) {
     // and the sprocket.
     if (G.tension.support) rollers.push(G.tension);
     for (const side of [-1, 1]) {
-      P.add('hullDetail', cylX(G.tension.r, 0.17, 12), side * xc, G.tension.y, G.tension.z);
-      P.add('hullDark', cylX(G.tension.r * 0.5, 0.19, 8), side * xc, G.tension.y, G.tension.z);
+      P.add(H.runningGearFit ? 'hullRunningGearDetail' : 'hullDetail',
+        cylX(G.tension.r, 0.17, 12), side * xc, G.tension.y, G.tension.z);
+      P.add(wheelFaceB, cylX(G.tension.r * 0.5, 0.19, 8),
+        side * xc, G.tension.y, G.tension.z);
     }
   }
   const wheelW = Math.min(0.24, H.trackW * 0.4);
@@ -3695,6 +3697,7 @@ const M48_HULL = {
   bellyY: 0.626, bellyHW: 1.00, noseW: 1.01, flatDeck: true,
   glacisWingY0: 1.38, glacisWingDrop: 0.08,
   darkGearFit: true,
+  runningGearFace: true, runningGearFit: true,
   deck: [[3.336, 1.100], [2.343, 1.580], [2.318, 1.861], [1.740, 1.861],
     [1.726, 1.780], [1.445, 1.780], [1.432, 1.823], [0.05, 1.823],
     [-0.09, 1.883], [-0.34, 1.883], [-0.52, 1.800], [-1.10, 1.775],
@@ -3703,7 +3706,10 @@ const M48_HULL = {
   gear: {
     wheelR: 0.33, wheelY: 0.37, span: [2.063, -1.737], rollerN: 5, rollerY: 1.02,
     contactZF: 2.46, contactZR: -2.49, botY: 0.045,
-    idler: { z: 2.941, y: 0.84, r: 0.26 }, sprocket: { z: -3.068, y: 0.94, r: 0.28 },
+    // Rewrap the front transition 40 mm below its former orbit so the
+    // outer linked shoe clears the intact glacis wing; the idler remains
+    // visibly raised 430 mm above the six road-wheel centres.
+    idler: { z: 2.941, y: 0.80, r: 0.26 }, sprocket: { z: -3.068, y: 0.94, r: 0.28 },
     tension: { z: -2.487, y: 0.37, r: 0.28 },
     // rings pulled to ±1.777 (endRingSpan 0.60·trackW-class): the default
     // trackW span authored the toothed cluster to ±1.8294 — past the
