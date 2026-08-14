@@ -129,6 +129,7 @@ function leoGear(P, g) {
     // keeps the kit default so every sibling stays byte-identical.
     linkPitchM: g.linkPitchM,
     shoeRadialScale: g.shoeRadialScale,
+    innerLinks: g.innerLinks,
     paintedEnds: true, coveredTop: true,
     // r9 leo2_revolution B1 opt-ins (merkava r12 gear-tone params via the
     // uk.js chieftain5 precedent): per-tank pad/chain tones + the ambient
@@ -931,6 +932,7 @@ function leoHullV3(P, H) {
     // for every other caller: leoGear/buildRunningGear defaults stay
     // byte-identical, sibling hashes hold).
     gearFloor: H.gearFloor, tireHex: H.tireHex, padHex: H.padHex, chainHex: H.chainHex,
+    shoeRadialScale: H.shoeRadialScale, innerLinks: H.innerLinks,
   });
 }
 
@@ -4901,6 +4903,14 @@ function buildLeo2A7V(P) {
     // geometry (the print-frame 0.56/0.64 centers gave a near-flat run).
     wheelR: 0.395, wheelY: 0.42, span: [2.60, -2.40],
     idler: { z: 3.40, y: 1.06, r: 0.25 }, sprocket: { z: -3.26, y: 1.05, r: 0.29 },
+    // The fleet shoe primitive contains a broad tread, a continuous belt,
+    // and a recessed connector/guide layer. At the A7V's wide 0.66 m course
+    // the default radial stack separated into three parallel "tracks" from
+    // low front/rear inspection angles. Keep the authoritative moving belt,
+    // tread pads, terminal wheels and suspension; compress the pad profile
+    // and omit only the redundant recessed connector visualization.
+    shoeRadialScale: 0.50,
+    innerLinks: false,
     topY: 0.95, fans: { z: -2.60, x: 0.80, r: 0.38 },
     dishR: 0.78, fanWell: true, splashArms: false,
   });

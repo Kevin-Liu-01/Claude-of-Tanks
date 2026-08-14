@@ -1281,10 +1281,17 @@ function buildRunningGear(P, cfg) {
   }
   P.disposables.push(padMat,innerMat);
   const padIM = new THREE.InstancedMesh(shoe.pad,padMat,nLinks*2);
-  const innerIM = new THREE.InstancedMesh(shoe.inner,innerMat,nLinks*2);
   padIM.name = 'gearTrackPads';
-  innerIM.name = 'gearTrackInnerLinks';
-  const linkMeshes=[padIM,innerIM];
+  const linkMeshes=[padIM];
+  // Some wide modern shoes expose the recessed connector layer as a second
+  // complete track when viewed obliquely from below. Profiles may suppress
+  // that redundant rendered layer while retaining the authoritative band,
+  // tread pads, end wheels and suspension. Default stays byte-identical.
+  if (cfg.innerLinks !== false) {
+    const innerIM = new THREE.InstancedMesh(shoe.inner,innerMat,nLinks*2);
+    innerIM.name = 'gearTrackInnerLinks';
+    linkMeshes.push(innerIM);
+  }
   // PERF: both layers hug the casting track band; the band alone casts the
   // continuous shadow. The extra layer costs one instanced draw per tank,
   // not one draw per shoe.
