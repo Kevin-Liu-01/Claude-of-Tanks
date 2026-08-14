@@ -1,0 +1,27 @@
+---
+name: server-skill
+description: Implement and operate Claude of Tanks signaling and dedicated authoritative multiplayer servers.
+---
+
+# claude-of-tanks / server
+
+## Purpose
+
+Provide bounded network coordination and, later, dedicated ranked authority.
+The signaling server relays WebRTC descriptions/ICE only and never gameplay.
+
+## Mental model and invariants
+
+- `roomStore.js` owns private-room rendezvous membership.
+- `signalingServer.js` owns HTTP upgrade, origin/rate/payload gates, and relay.
+- A v1 browser-hosted room closes if its host leaves; never silently migrate a
+  ranked authority to a player.
+- Production signaling must run behind TLS with an explicit origin allowlist.
+- TURN credentials come from deployment configuration and are never committed.
+- Keep payloads, queues, rooms, rates, and lifetimes bounded.
+
+## Verification
+
+Run `node server/signaling.selftest.mjs`. Any gameplay authority added here must
+also run the shared `src/net` tests, deterministic match tests, abuse cases, and
+real WebSocket soak/load tests.
