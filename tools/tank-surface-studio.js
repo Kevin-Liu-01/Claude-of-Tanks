@@ -3,10 +3,12 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createTank } from '/src/vehicles/tankFactory.js';
 import { ALL_TANK_IDS, getSpec } from '/src/vehicles/specs.js';
 
-// The full game roster also contains explicitly attributed community tanks.
-// This authoring tool intentionally excludes those entries: its contract is
-// that every selectable surface comes from our own procedural builders.
-const FIRST_PARTY_TANK_IDS = ALL_TANK_IDS.filter((id) => !getSpec(id)?.community);
+// Every shipped playable now has a native first-party procedural builder.
+// Several specs retain historical visual-reference credits, but that metadata
+// does not describe the live geometry and must not hide those tanks here.
+// The createTank call below also hard-locks proceduralOnly, so no external
+// source can enter the authoring surface even if one is added in the future.
+const FIRST_PARTY_TANK_IDS = [...ALL_TANK_IDS];
 
 const $ = (selector) => document.querySelector(selector);
 const viewport = $('#viewport');

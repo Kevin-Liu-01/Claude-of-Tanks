@@ -24,6 +24,7 @@ import { uiIconSVG } from './uiIcons.js';
 import { compareNationThenName } from './garageOrder.js';
 import { isGarageVisibleTankId } from '../game/matchmaking.js';
 import { tierNumeral } from '../vehicles/tier.js';
+import { MODEL_SOURCE } from '../vehicles/specs.js';
 import {
   viewRangeOf, baseCamoOf, equipViewMult, equipCamoBonus,
 } from '../sim/spotting.js';
@@ -1883,6 +1884,10 @@ export function createGarage(opts) {
         : `<div class="eqslot empty" data-slot="${i}" title="Mount equipment">` +
           `<span class="plus">+</span><span class="sl">Empty</span></div>`;
     }
+    // Historical source/reference credits can remain on a spec after its
+    // external model has been retired. Only describe a vehicle as a community
+    // model when that model is actually the live geometry source.
+    const usesExternalModel = spec.community && MODEL_SOURCE[spec.id]?.source === 'glb';
     statsEl.innerHTML =
       `<h3></h3><div class="sub">${flagIconHTML(spec.nation, 20)}<span>${spec.nation} &middot; ${spec.class} &middot; ${spec.era === 'ww2' ? 'WWII' : 'MODERN'}</span></div>` +
       statBar('Hit points', `${spec.hp}`, statFrac(grp, 'hp', spec.hp)) +
@@ -1907,7 +1912,7 @@ export function createGarage(opts) {
       `<div class="armorline"><span>Turret front</span><b>${turMm != null ? `${Math.round(turMm)} mm` : '&mdash;'}</b></div>` +
       `<div class="armorline"><span>Gun</span><b>${spec.gun.caliberMm} mm</b></div>` +
       `<div class="armorline"><span>Depression</span><b>&minus;${spec.gunDepressionDeg}&deg; / +${spec.gunElevationDeg}&deg;</b></div>` +
-      (spec.community
+      (usesExternalModel
         ? `<div class="sep"></div><div class="armorline"><span>Community model</span><b class="cr"></b></div>`
         : '') +
       // §5.31b PRINT VIEWER: view-only notice replaces the loadout slots —
@@ -1916,7 +1921,7 @@ export function createGarage(opts) {
       `<div class="eqhead"><span>Equipment</span><i>${eqIds.length}/${EQUIP_SLOTS}</i></div>` +
       `<div class="eqrow">${slotBoxes}</div>`;
     statsEl.querySelector('h3').textContent = spec.name;
-    if (spec.community) {
+    if (usesExternalModel) {
       const cr = statsEl.querySelector('.cr');
       cr.textContent = `${spec.community.author} · ${spec.community.license}`;
       cr.title = spec.community.source;

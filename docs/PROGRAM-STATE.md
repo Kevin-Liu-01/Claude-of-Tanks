@@ -5794,3 +5794,23 @@ authoritative frozen geometry hashes are `695f90af` (`m1a1`), `e5afb30a`
 **KEEP these six hashes. Future Abrams work must preserve complete hull/side
 armour, the singular seven-wheel native course, separated forward roof
 weapons and the documented hull/turret ownership split.**
+
+## 5.169 FIRST-PARTY SURFACE-LAB ROSTER / GARAGE LABEL TRUTH (2026-08-13, LIVE)
+
+The app-integrated Surface Lab now exposes the complete 107-vehicle shipped
+roster. Its previous `spec.community` filter confused retained historical
+visual-reference credits with the live geometry source and consequently hid
+native procedural vehicles such as `t90m`. Every selection remains hard-locked
+to `createTank(..., proceduralOnly: true)`, so adding the complete roster does
+not permit an external GLB or comparison asset to enter the authoring scene.
+
+The Garage applies the same ownership distinction. A Community model credit is
+shown only when `MODEL_SOURCE[id].source === 'glb'`; retired reference metadata
+no longer labels a first-party procedural vehicle as a community model. Current
+public-build verification reports zero GLB-sourced playables, while the live
+Surface Lab selects and renders T-90M Proryv as a first-party procedural model.
+Garage DOM inspection confirms both the peer Surface Lab navigation entry and
+the absence of a false Community model label.
+
+**KEEP. Authoring eligibility and player-facing ownership labels must follow
+the live geometry source, never stale historical reference metadata.**
