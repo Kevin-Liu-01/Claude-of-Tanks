@@ -5245,7 +5245,7 @@
           }
         ]
       },
-      "geometryHash": "f9109f6e",
+      "geometryHash": "9e64b65a",
       "metadataHash": "ba926846",
       "muzzleBore": {
         "tagged": 1,
@@ -5260,8 +5260,8 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 16238,
-          "sha256": "5f57528b561831fa1fa81cd50fb5cbdc2b78587bfe5085b33a51ebb66dabb18e"
+          "bytes": 16266,
+          "sha256": "5d809ba692c94a12314456297acf8958230bc1f3951c731ca505cd99da555478"
         },
         "top": {
           "file": "bmp2_top.webp",
@@ -5276,8 +5276,8 @@
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 13028,
-          "sha256": "113b927c12ae956b7dcf02e79e8a49f985798b5a09c50bd2d5739a977d9f67f1"
+          "bytes": 13036,
+          "sha256": "10b520be1f7c3055501da8dcddc9411889119ec33ff157d2affc002ab82d0d27"
         },
         "topSilhouette": {
           "file": "bmp2_top_silhouette.png",
@@ -5292,32 +5292,32 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4841,
-          "sha256": "670272bcd4a63e4750b63bf093c5a872f0f908a738f6a74200fba7f120c2e5d7"
+          "bytes": 4840,
+          "sha256": "1392ade83b41067e3b3d3c5f026b10808074e7321ad043561af9c0a4c1286efe"
         },
         "hitZonesSide": {
           "file": "bmp2_hit_zones_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 76611,
-          "sha256": "c193b4cc16b5188ea63fc45c41ec54ff035efa7feefd9946d73aebf36e5e2c07"
+          "bytes": 76567,
+          "sha256": "b1d59e51812a452952bf234273deebfe6cf26c89b196b3c517682b4dcfd73b6d"
         },
         "armorSide": {
           "file": "bmp2_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 72771,
-          "sha256": "a4fa99ec1c6ac4d47bc31d925671c126a22d4bf921d4094fc0bc10015a32c012"
+          "bytes": 72716,
+          "sha256": "eb20b58dafcf0d6c8f6e4709eaad5b11663a23923e6f255a9b2194511219d89b"
         },
         "modulesSide": {
           "file": "bmp2_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 69563,
-          "sha256": "26a0cf7866e9ade150328c6235a4c64660fe1f2a839a0d55b154a131ea207e9d"
+          "bytes": 69565,
+          "sha256": "74342491bb8b7cdeb45e7c8499a8be9fea6470a181fd4cec478863d6172175ec"
         }
       }
     },
