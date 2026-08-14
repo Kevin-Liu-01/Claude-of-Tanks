@@ -2560,10 +2560,11 @@ function cromwellHull(P, o) {
   // Split at the wrap line: the full-length slice rides above it, the lower
   // slice stops short of the sprocket wrap (silhouette owned by the tracks).
   const ySplit = Math.min(roofY - 0.05, Math.max(bandY, wrapTop));
+  const lowerBandY = o.lowerBandY ?? bandY;
   P.add('hull', box(bandW, roofY - ySplit, rearL + bowZ), 0, (roofY + ySplit) / 2, (bowZ - rearL) / 2);
   const zRearLow = -(rearL - (o.sprocketInset ?? 0.38)) + o.wheelR * 0.72 + 0.155;
-  if (ySplit > bandY + 0.01) {
-    P.add('hull', box(bandW, ySplit - bandY, bowZ - zRearLow), 0, (ySplit + bandY) / 2, (bowZ + zRearLow) / 2);
+  if (ySplit > lowerBandY + 0.01) {
+    P.add('hull', box(bandW, ySplit - lowerBandY, bowZ - zRearLow), 0, (ySplit + lowerBandY) / 2, (bowZ + zRearLow) / 2);
   }
   // Low bow deck from the driver's plate to the nose, then the short glacis
   // (lower edge held above the idler wrap line).
@@ -2600,7 +2601,7 @@ function cromwellHull(P, o) {
   for (const s of [-1, 1]) {
     const px = s * (bandW / 2 + 0.006);
     P.add('hullDark', box(0.012, 0.016, rearL + bowZ - 0.3), px, roofY - 0.055, (bowZ - rearL) / 2);
-    P.add('hullDark', box(0.012, 0.016, rearL + bowZ - 0.3), px, bandY + 0.1, (bowZ - rearL) / 2);
+    P.add('hullDark', box(0.012, 0.016, rearL + bowZ - 0.3), px, o.lowerSeamY ?? (bandY + 0.1), (bowZ - rearL) / 2);
     if (P.q) for (let i = 0; i < 11; i++) {
       P.add('hullDark', cylX(0.016, 0.024, 6), px, roofY - 0.13, -halfL * 0.9 + i * (o.hullLength * 0.78 / 10));
     }
@@ -3765,6 +3766,7 @@ export const UK_PROFILES = {
     build: cometBuild, width: 3.05, hullLength: 6.55, roofY: 1.70, bandY: 0.96, trackW: 0.36,
     bowZ: 2.05, bowY: 1.50, noseTipY: 1.16, tailTrim: 0.02, wheels: 5, wheelR: 0.44, wheelSpan: 3.8,
     gunLength: 3.49, noBins: true, bandHalfW: 1.26, apronY: 1.54, sprocketInset: 0.50,
+    lowerBandY: 0.99, lowerSeamY: 1.13,
     trackXc: 1.30, // ref ground band |x| ~1.10..1.50 (v2 front row; the v1 narrow read was dy-shifted)
     // Comet cue: FOUR return rollers between the big Christie wheels.
     // Keep profile data inert at module evaluation time.  Calling the kit's

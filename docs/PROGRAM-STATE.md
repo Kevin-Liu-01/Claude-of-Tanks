@@ -7715,3 +7715,35 @@ and asset geometry **`cd4c72a1`** (39 rendered meshes / 50,930 vertices).
 **KEEP the complete Tiger I exterior, fender flare, supported mudguards and
 native terminal track shape. Future corridor work may not subtract or hollow
 its hull.**
+
+## 5.216 COMET SIDE-CORRIDOR CLOSEOUT (2026-08-14, LIVE)
+
+The first-party Comet retains its complete Cromwell-family hull, pannier
+armor, glacis, track guards, fender aprons, turret and five-wheel native
+course. No hull, skirt, fender, wheel or track member is deleted.
+
+The physical contact was limited to the lowest 3 cm of the rear end of the
+outer pannier slice. That supported slice is raised locally above the shoe
+envelope while the full upper pannier and closed centre hull remain intact.
+The lower side seam remains present and seated on the raised armor rather
+than crossing the rear shoe surface.
+
+Exact strict band and individual-shoe audits improve from 12 band / 4 shoe
+sweep voxels to **front 0/0, rear 0/0 and complete sweep 0/0**. Fresh evidence
+contains 15 paired boards including the standardized elevated-left profile,
+15 yaw0 and 15 yaw90 frames: **45 PNG / 45 distinct hashes**. Every view
+preserves the accepted complete side hull and native course.
+
+The complete turret and gun execute a genuine quarter-turn while the hull and
+running gear remain fixed. The parent audit's single merged `hullGlass`
+abutting box is the visibly fixed bow-light/guard group ahead of the turret,
+not stranded turret equipment; pixels and mode 2 show no candidate. Winding
+is **0 reversed / 0 mixed geometry with zero-pixel deficit**. The dark muzzle
+bore and all ten targeted runtime-rig checks pass.
+
+All eight targeted presentation assets are current. Comet dual-ledger
+geometry is freeze **`9ebfa1e0`**, instance freeze **`b9e04df3`** and asset
+geometry **`4c3d9a71`** (37 rendered meshes / 43,085 vertices).
+
+**KEEP the complete Comet hull, panniers, guards, fenders and native course.
+Future corridor work may not subtract or hollow its armor.**

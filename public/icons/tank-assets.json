@@ -13735,7 +13735,7 @@
           }
         ]
       },
-      "geometryHash": "56e147ed",
+      "geometryHash": "4c3d9a71",
       "metadataHash": "0cc6c81d",
       "muzzleBore": {
         "tagged": 2,
@@ -13750,8 +13750,8 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 23880,
-          "sha256": "44d275f5aa3cc8401f394167ac026fd80e21443e2bdb2f0b9e21b9190a67723b"
+          "bytes": 24048,
+          "sha256": "9fee87adff0e62f02755b49d629dc6b191f2b8807fe8539d358674d0bb5b4e52"
         },
         "top": {
           "file": "comet_top.webp",
@@ -13766,8 +13766,8 @@
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 13310,
-          "sha256": "6117d9f1287c605a4c672d2bae7e81a23f7676b2e82f648f28664427cd6789a8"
+          "bytes": 13356,
+          "sha256": "bcc728aedccd3282b5514a148993d137e37cd14df23ef71f26ffaa14a5db7ff9"
         },
         "topSilhouette": {
           "file": "comet_top_silhouette.png",
@@ -13782,32 +13782,32 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4186,
-          "sha256": "2333d282431eb96d1f9e77db3bb0fb59a212ccab2575231283593424cc624867"
+          "bytes": 4189,
+          "sha256": "54841fa7fd774d36eaad262b73c29932c052e31db0854f1da3aa5cf1ffcb0ee9"
         },
         "hitZonesSide": {
           "file": "comet_hit_zones_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 69031,
-          "sha256": "a4f794e64657d0c1287d3e02828ca6489b640b0f58b403adc3d6fa7f39441599"
+          "bytes": 68934,
+          "sha256": "2592bba3df0c2273bacf33bbd2331ff85bb77914bdd013429bd957f731641927"
         },
         "armorSide": {
           "file": "comet_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 70323,
-          "sha256": "2e72f3a6cdffda6cc49866c71acfed92b9716a328f626c497a5acadc8c64ece9"
+          "bytes": 70085,
+          "sha256": "7e67d96a2ccea7853d753b211734bbd1f042f6fab80bb0302d7aaa90c3f31756"
         },
         "modulesSide": {
           "file": "comet_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 68066,
-          "sha256": "e035e2aff016db9b7663e4dbbd115eadcf97290aacd2f9c0ae5eac851a9695dc"
+          "bytes": 67997,
+          "sha256": "fd5b301e0b0f61154395fe63f648f52a0888a154a3193a06b0f3d4a1af839efa"
         }
       }
     },
