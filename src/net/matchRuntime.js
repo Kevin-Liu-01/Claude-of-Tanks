@@ -463,7 +463,7 @@ export class MatchClientRuntime {
           this.missingSnapshotBaselines++;
           return;
         }
-        if (this.buffer.push(snapshot)) this.lastSnapshotTick = snapshot.tick;
+        if (this.buffer.push(snapshot, this.clock())) this.lastSnapshotTick = snapshot.tick;
         return;
       }
       if (this.lastRecvSeq != null && !isSequenceNewer(message.seq, this.lastRecvSeq)) return;

@@ -596,6 +596,39 @@ for (let localTimeMs = 100; localTimeMs <= 600; localTimeMs += 16) {
 assert.ok(priorJitterX <= 5.01,
   'remote extrapolation stops at the 250 ms loss bound instead of drifting indefinitely');
 
+const adaptive = new SnapshotBuffer({
+  interpolationDelayMs: 80,
+  maxInterpolationDelayMs: 180,
+});
+for (const [tickValue, serverTimeMs, receivedAtMs] of [
+  [0, 0, 100], [3, 50, 150], [6, 100, 260], [9, 150, 270], [12, 200, 320],
+]) {
+  adaptive.push(captureWorldSnapshot({
+    tick: tickValue,
+    serverTimeMs,
+    entities: [entity('adaptive', 't90m', 'bravo', tickValue)],
+    viewerId: 'adaptive',
+  }), receivedAtMs);
+}
+const burstDelay = adaptive.getStats().interpolationDelayMs;
+assert.ok(burstDelay > 80 && burstDelay <= 180,
+  `arrival variance raises bounded interpolation delay: ${burstDelay}`);
+let stableReceiveAtMs = 320;
+for (let index = 5; index < 125; index++) {
+  stableReceiveAtMs += 50;
+  adaptive.push(captureWorldSnapshot({
+    tick: index * 3,
+    serverTimeMs: index * 50,
+    entities: [entity('adaptive', 't90m', 'bravo', index)],
+    viewerId: 'adaptive',
+  }), stableReceiveAtMs);
+}
+const stableStats = adaptive.getStats();
+assert.ok(stableStats.interpolationDelayMs < burstDelay,
+  'adaptive delay releases gradually after sustained stable delivery');
+assert.ok(stableStats.arrivalJitterMs < 1,
+  `stable delivery converges measured jitter: ${stableStats.arrivalJitterMs}`);
+
 // Host/client modules share the same transport and enforce visibility.
 function createTestSimulation() {
   const entities = new Map();

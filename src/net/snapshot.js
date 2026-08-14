@@ -317,37 +317,101 @@ export class SnapshotBuffer {
     maxExtrapolationMs = 250,
     capacity = 32,
     immediateEntityId = null,
+    adaptiveDelay = interpolationDelayMs > 0,
+    maxInterpolationDelayMs = Math.max(interpolationDelayMs, 220),
   } = {}) {
-    if (interpolationDelayMs < 0 || maxExtrapolationMs < 0 || capacity < 2) {
+    if (interpolationDelayMs < 0 || maxExtrapolationMs < 0 || capacity < 2 ||
+        maxInterpolationDelayMs < interpolationDelayMs) {
       throw new TypeError('invalid snapshot buffer configuration');
     }
+    this.baseInterpolationDelayMs = interpolationDelayMs;
     this.interpolationDelayMs = interpolationDelayMs;
+    this.targetInterpolationDelayMs = interpolationDelayMs;
+    this.maxInterpolationDelayMs = maxInterpolationDelayMs;
+    this.adaptiveDelay = !!adaptiveDelay && interpolationDelayMs > 0;
     this.maxExtrapolationMs = maxExtrapolationMs;
     this.capacity = capacity;
     this.immediateEntityId = immediateEntityId == null ? null : String(immediateEntityId);
     this.snapshots = [];
     this.latestTick = -1;
+    this.arrivalJitterMs = 0;
+    this.lastArrivalMs = null;
+    this.lastServerTimeMs = null;
+    this.acceptedSnapshots = 0;
+    this.rejectedSnapshots = 0;
+    this.sampleCount = 0;
+    this.extrapolatedSamples = 0;
   }
 
-  push(snapshot) {
+  push(snapshot, receivedAtMs = null) {
     if (!snapshot || !Number.isSafeInteger(snapshot.tick) ||
         !Number.isFinite(snapshot.serverTimeMs) || !Array.isArray(snapshot.entities)) {
       throw new TypeError('invalid snapshot');
     }
-    if (snapshot.tick <= this.latestTick) return false;
+    if (snapshot.tick <= this.latestTick) {
+      this.rejectedSnapshots++;
+      return false;
+    }
     this.latestTick = snapshot.tick;
     this.snapshots.push(snapshot);
     if (this.snapshots.length > this.capacity) this.snapshots.shift();
+    this.acceptedSnapshots++;
+    this.#observeArrival(snapshot.serverTimeMs, receivedAtMs);
     return true;
+  }
+
+  #observeArrival(serverTimeMs, receivedAtMs) {
+    if (!this.adaptiveDelay || !Number.isFinite(receivedAtMs)) return;
+    if (this.lastArrivalMs != null && receivedAtMs >= this.lastArrivalMs &&
+        serverTimeMs > this.lastServerTimeMs) {
+      const arrivalSpacing = receivedAtMs - this.lastArrivalMs;
+      const authoritySpacing = serverTimeMs - this.lastServerTimeMs;
+      const variation = Math.abs(arrivalSpacing - authoritySpacing);
+      // Faster attack than release: absorb a burst before it drains the
+      // interpolation queue, then recover latency gradually after the link
+      // has actually stayed quiet.
+      const jitterAlpha = variation > this.arrivalJitterMs ? 0.25 : 0.05;
+      this.arrivalJitterMs += (variation - this.arrivalJitterMs) * jitterAlpha;
+      this.targetInterpolationDelayMs = Math.min(
+        this.maxInterpolationDelayMs,
+        this.baseInterpolationDelayMs + this.arrivalJitterMs * 2,
+      );
+      const delayAlpha = this.targetInterpolationDelayMs > this.interpolationDelayMs
+        ? 0.5
+        : 0.03;
+      this.interpolationDelayMs +=
+        (this.targetInterpolationDelayMs - this.interpolationDelayMs) * delayAlpha;
+    }
+    this.lastArrivalMs = receivedAtMs;
+    this.lastServerTimeMs = serverTimeMs;
   }
 
   clear() {
     this.snapshots.length = 0;
     this.latestTick = -1;
+    this.interpolationDelayMs = this.baseInterpolationDelayMs;
+    this.targetInterpolationDelayMs = this.baseInterpolationDelayMs;
+    this.arrivalJitterMs = 0;
+    this.lastArrivalMs = null;
+    this.lastServerTimeMs = null;
+  }
+
+  getStats() {
+    return {
+      interpolationDelayMs: this.interpolationDelayMs,
+      targetInterpolationDelayMs: this.targetInterpolationDelayMs,
+      arrivalJitterMs: this.arrivalJitterMs,
+      acceptedSnapshots: this.acceptedSnapshots,
+      rejectedSnapshots: this.rejectedSnapshots,
+      sampleCount: this.sampleCount,
+      extrapolatedSamples: this.extrapolatedSamples,
+      bufferedSnapshots: this.snapshots.length,
+    };
   }
 
   sample(localServerTimeMs) {
     if (!this.snapshots.length) return null;
+    this.sampleCount++;
     const renderTime = localServerTimeMs - this.interpolationDelayMs;
     let older = null;
     let newer = null;
@@ -365,6 +429,7 @@ export class SnapshotBuffer {
     if (older === newer || newer.serverTimeMs === older.serverTimeMs) {
       const extraMs = Math.max(0, Math.min(this.maxExtrapolationMs,
         renderTime - newer.serverTimeMs));
+      if (extraMs > 0) this.extrapolatedSamples++;
       for (const raw of newer.entities) entities.push(extrapolateEntity(raw, extraMs / 1000));
     } else {
       const durationMs = newer.serverTimeMs - older.serverTimeMs;
