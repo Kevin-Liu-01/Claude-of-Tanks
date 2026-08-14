@@ -59665,7 +59665,7 @@
           }
         ]
       },
-      "geometryHash": "30d06b63",
+      "geometryHash": "c5e90594",
       "metadataHash": "882d9e2f",
       "muzzleBore": {
         "tagged": 1,
@@ -59680,8 +59680,8 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 16632,
-          "sha256": "9a8cc34f54613e523dfa1cd3bfca1cbfac884b25af7813fdfcb895d51b095870"
+          "bytes": 16622,
+          "sha256": "b50437eeef1f557a721c380d178294e1caa1c5d4fc97e56943d290d1a5e38b3a"
         },
         "top": {
           "file": "pziii_konserwa_top.webp",
@@ -59696,8 +59696,8 @@
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 9562,
-          "sha256": "009dfa6b01587b157d46fc2dbe1bcec7169e713d23c6034946936df41f36318f"
+          "bytes": 9506,
+          "sha256": "68e9095b0decbce224d5fc74a15c9ddb0eaa5054663e477b68cdb31b3fb9e3c9"
         },
         "topSilhouette": {
           "file": "pziii_konserwa_top_silhouette.png",
@@ -59712,32 +59712,32 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4449,
-          "sha256": "38e376d00170a09921d2873af59ba472de432cced8cf4c6c8dba2a7523617419"
+          "bytes": 4438,
+          "sha256": "95056197b8fcc1a5c77e64e45ccee608d8ec829317e6b3592838722b528dbb71"
         },
         "hitZonesSide": {
           "file": "pziii_konserwa_hit_zones_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 68238,
-          "sha256": "25796c855974a6f451f4d36bb4b9d3c7c2a3ef6463060d5fdfa25ccf3a2efc0f"
+          "bytes": 68184,
+          "sha256": "2d765a6775abc0d65430498b60bc8f86b338ee5f6502884105c6eb47bb8512c8"
         },
         "armorSide": {
           "file": "pziii_konserwa_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 67356,
-          "sha256": "be3630cd63f70f040948b8dbb93bc616704998815ffeef93287a337fad95f804"
+          "bytes": 67444,
+          "sha256": "f430c72388de3a94a997cfa9105d92871f530547d96d9d63b4442f8bd28756e4"
         },
         "modulesSide": {
           "file": "pziii_konserwa_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 64574,
-          "sha256": "8a778763db3316cd0589f009dabf42a3c38a17d72abf69239dc7625311105946"
+          "bytes": 64245,
+          "sha256": "e73a472cc8bbc1a8a89470033c6f6f7879575b37be763166bb070d414e1b7449"
         }
       }
     },
