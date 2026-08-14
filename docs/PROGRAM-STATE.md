@@ -5675,3 +5675,23 @@ regenerated and freeze deterministic geometry **`8c2a07b6`**.
 **KEEP `8c2a07b6`. Future obr.1987 work must preserve the native family hull,
 complete side armour, raised idler course and period-correct Kontakt-1/rear
 stowage distinction.**
+
+## 5.165 LEOPARD 2A7V UPPER SIDE-ARMOUR RESTORATION (2026-08-13, LIVE)
+
+The owner's 2A7V screenshot shows the deep modular lower skirts still present
+but a bright exposed return-run/support comb between their y=1.28 upper edge
+and the fender. The complete existing hull, lower skirts, mudguards, native
+running gear and tracks are preserved. Nine first-party upper cassettes per
+side now fill only that missing shoulder band, meeting the lower skirt and
+tucking beneath the original fender through a continuous cap/hinge rail.
+
+The restored course remains inside the certified ±2.00 m width and outside
+the linked-track lane. Segment seams, top straps and five supported hinge
+blocks make the upper armour read as part of the vehicle rather than one new
+slab. Left and elevated-left studio views confirm a continuous side-protection
+silhouette with no exposed central return comb, deleted hull face, displaced
+lower skirt, track overlap or empty-air cassette. All eight assets are
+regenerated for deterministic geometry **`921f0b8d`**.
+
+**KEEP `921f0b8d`. Future 2A7V running-gear work must preserve both the deep
+lower modules and this closed upper shoulder course.**

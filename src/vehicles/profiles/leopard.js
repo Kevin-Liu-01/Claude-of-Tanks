@@ -4894,6 +4894,35 @@ function buildLeo2A7V(P) {
     topY: 0.95, fans: { z: -2.60, x: 0.80, r: 0.38 },
     dishR: 0.78, fanWell: true, splashArms: false,
   });
+  // Restore the A7V's continuous upper side-armour shoulder. The deep
+  // modular skirt panels below were still present, but their top stopped at
+  // y=1.28 and exposed a bright return-run/support comb between the skirt
+  // and fender. These nine first-party cassettes fill only that missing
+  // band: they sit outboard of the linked course, meet the existing skirt
+  // along their lower edge, and tuck directly beneath the fender shelf.
+  // Nothing in the hull, suspension or lower skirt is deleted or shifted.
+  for (const s of [-1, 1]) {
+    const upperSideArmor = [
+      [-2.78, 0.56, 0.27], [-2.18, 0.58, 0.29], [-1.56, 0.60, 0.30],
+      [-0.92, 0.60, 0.30], [-0.28, 0.60, 0.30], [0.36, 0.60, 0.30],
+      [1.00, 0.60, 0.30], [1.64, 0.60, 0.30], [2.28, 0.56, 0.27],
+    ];
+    for (let i = 0; i < upperSideArmor.length; i++) {
+      const [z, d, h] = upperSideArmor[i];
+      const y = 1.285 + h / 2;
+      P.add('hull', box(0.12, h, d), s * 1.94, y, z,
+        0, 0, s * (i === 0 ? -0.025 : i === upperSideArmor.length - 1 ? 0.025 : 0));
+      P.add('hullDark', box(0.014, h * 0.82, 0.022), s * 1.993, y, z + d / 2);
+      P.add('hullDetail', box(0.018, 0.022, d * 0.76), s * 1.991, 1.285 + h - 0.012, z);
+    }
+    // Continuous supported cap/hinge line tying the cassette course into
+    // the existing fender. The outer face remains at the certified ±2.00m
+    // width and is clear of the native track lane at every station.
+    P.add('hullDark', box(0.045, 0.035, 5.54), s * 1.9775, 1.585, -0.24);
+    for (const z of [-2.72, -1.50, -0.28, 0.94, 2.16]) {
+      P.add('hullDetail', box(0.05, 0.055, 0.12), s * 1.975, 1.555, z);
+    }
+  }
   // Inter-track bow/transom belly closures.  The A7V tub drops locally at
   // both terminal faces while the long center corridor stays high; making
   // the whole belly deeper overfilled the side silhouette.  These short,
