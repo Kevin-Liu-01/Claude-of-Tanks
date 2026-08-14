@@ -8683,13 +8683,13 @@
           }
         ]
       },
-      "geometryHash": "71dbd3c0",
+      "geometryHash": "e4e087f6",
       "metadataHash": "2e55e089",
       "muzzleBore": {
-        "tagged": 1,
+        "tagged": 2,
         "rims": 1,
-        "discs": 1,
-        "authored": 0,
+        "discs": 2,
+        "authored": 1,
         "fallback": 1
       },
       "assets": {
@@ -8698,64 +8698,64 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 23314,
-          "sha256": "53881ea2e9a0fff07178e4eb03416b192640a3f59dbf11169771f6eeef976e67"
+          "bytes": 22522,
+          "sha256": "be07b3b1cebd2f2bbb0b4a281acc128eb821904446955e0d4daca1d9e3e3efc8"
         },
         "top": {
           "file": "challenger_cruiser_top.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 10788,
-          "sha256": "aef8042fd0047497b87f1859ec5d99cfbb463dd75c522003aa8a66dd8c51e44b"
+          "bytes": 10372,
+          "sha256": "0ca99a49fd41fdb95d621c78ba10d573cff5e1fc84c2ac58fdc3290e5a5c9e62"
         },
         "side": {
           "file": "challenger_cruiser_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 9504,
-          "sha256": "fb4e7610da6134e6dec7dc5bc20dedb5deab3e3802731cd496b1578b86dc1f37"
+          "bytes": 11830,
+          "sha256": "820bb2fe5aa3541b9679f10d257df829fce3d248c0a9aa3dd59ce6b777735d10"
         },
         "topSilhouette": {
           "file": "challenger_cruiser_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1218,
-          "sha256": "7b4262114c49f33320adf46b9bdef8623d5b2f1cf11126f57441f9800be37e73"
+          "bytes": 1149,
+          "sha256": "32294470082a1a02b085deb0265e3c549f7141a0e2d90b7ebd7e00a6f1f9d3f9"
         },
         "sideSilhouette": {
           "file": "challenger_cruiser_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 3776,
-          "sha256": "9eaa5ab156e1b4ead7a118e8983852fce20802a23335b65f17cb6c72709bba97"
+          "bytes": 3620,
+          "sha256": "fc82e96e87e333cb1ca3d3a5c5567c04179b210f9b3439580cf57afbcdeeb538"
         },
         "hitZonesSide": {
           "file": "challenger_cruiser_hit_zones_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 62092,
-          "sha256": "baa7b17150090c05dfc569e5183b15c09ce1dbcc0449b1521807f217705246bf"
+          "bytes": 65071,
+          "sha256": "4338c4ca89ceff0ff62a901e2328fd3d3c31401e0b358142421464fbed050bfe"
         },
         "armorSide": {
           "file": "challenger_cruiser_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 65777,
-          "sha256": "b0664000a7bbda3c9b65ebcf74289d9931fbdec9af04972a4b0543e1a22ab174"
+          "bytes": 64945,
+          "sha256": "fce5a65f90848e11f89102097191d40beed4fbd8e671aa67093f722989c2f783"
         },
         "modulesSide": {
           "file": "challenger_cruiser_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 60513,
-          "sha256": "b0b0f163e19e5ae6077ecaf71fff53004a84b57d5edc064356a22f1deac95fe2"
+          "bytes": 61952,
+          "sha256": "f934a85462fc74dde321ed6052aec15850f4a3a4243a8f94553cc2cf04cc6273"
         }
       }
     },
