@@ -62909,7 +62909,7 @@
           }
         ]
       },
-      "geometryHash": "c3acb77c",
+      "geometryHash": "18747aae",
       "metadataHash": "380a9e0d",
       "muzzleBore": {
         "tagged": 1,
@@ -62924,8 +62924,8 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 19352,
-          "sha256": "58ce5974a9ac4f815e507e5fb93a8b96f6ecb92e29154da102a88c16ed3ca9cc"
+          "bytes": 19364,
+          "sha256": "cfb8206d723adeb74e056264655afcb6b17c3586c4b657f57b0106efbe74310f"
         },
         "top": {
           "file": "spz_puma_top.webp",
@@ -62940,8 +62940,8 @@
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 12924,
-          "sha256": "6ebb4b0a24591d6fe6f9d3ba6a5f5beff4d21f4a7e165c017678c111fcf0ab1b"
+          "bytes": 12918,
+          "sha256": "199f2324f389924de8ddb85acf05828e73fa2f161a133fc9379510541a103f63"
         },
         "topSilhouette": {
           "file": "spz_puma_top_silhouette.png",
@@ -62956,32 +62956,32 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4909,
-          "sha256": "63de53c0dc0ad55a6f5f2d421ac524d0b7b485679f3c7aa8a6373dc14797910e"
+          "bytes": 4901,
+          "sha256": "47e9b35d7e211de9c735d2fc07be64191464bc04f90b88404e5e4dd64670ab6b"
         },
         "hitZonesSide": {
           "file": "spz_puma_hit_zones_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 84659,
-          "sha256": "7f38233ac0488295552a1e18365dd9041eb8181e44e318f3b3795cf99d346535"
+          "bytes": 84559,
+          "sha256": "1fb0134a75822f0c0433f3a614b6cd5b302845ae611c2157d297d4e88669e7e9"
         },
         "armorSide": {
           "file": "spz_puma_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 84154,
-          "sha256": "f536d3d75e91237a148f83ba4005a402488d63fb24c25b2e0a8d58d612b3ba68"
+          "bytes": 83975,
+          "sha256": "a60c87532de8dcc4601a52ff9b8b7c14a29b74792f51b505be7b05b3220b86a4"
         },
         "modulesSide": {
           "file": "spz_puma_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 81876,
-          "sha256": "269416f7c6dea32fcba1bdc4e61defb96ca7e479d31f80cd7b93dd4c50718c97"
+          "bytes": 81973,
+          "sha256": "2027b589df4520148f6e43beac4dc6ab24d39fa831333d4fbce89e1480f4f4e6"
         }
       }
     },
