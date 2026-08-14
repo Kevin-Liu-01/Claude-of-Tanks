@@ -20,7 +20,7 @@
  */
 
 import { FONT_STACK, FONT_COND } from './fonts.js';
-import { randomFeaturedImage } from './featuredShots.js';
+import { FEATURED_IMAGES, randomFeaturedImage } from './featuredShots.js';
 
 const FADE_IN_MS = 240;
 const FADE_OUT_MS = 340;
@@ -123,6 +123,24 @@ export function createTransition() {
   let visible = false;
   let shownAt = 0;
   let hideToken = 0; // cancels a pending hide when show() re-enters first
+  const decodedHeroes = new Map();
+  const decodeHero = (url) => {
+    if (decodedHeroes.has(url)) return decodedHeroes.get(url);
+    const pending = new Promise((resolve) => {
+      const img = new Image();
+      img.onload = async () => {
+        try { if (img.decode) await img.decode(); } catch (_) { /* loaded is enough */ }
+        resolve(url);
+      };
+      img.onerror = () => resolve(null);
+      img.src = url;
+    });
+    decodedHeroes.set(url, pending);
+    return pending;
+  };
+  // Decode one small still during the already-covered boot window so the
+  // first state transition always has an immediately paintable backdrop.
+  decodeHero(FEATURED_IMAGES[0]);
 
   const api = {
     get visible() { return visible; },
@@ -135,12 +153,22 @@ export function createTransition() {
     show(o = {}) {
       if (skipTransitions()) return;
       hideToken++;
+      const token = hideToken;
       kickEl.textContent = o.kicker || 'Claude of Tanks';
       titleEl.textContent = o.title || '';
       subEl.textContent = o.sub || '';
       meterEl.classList.toggle('off', o.progress === false);
       api.progress(0, 'Loading');
-      bgEl.style.backgroundImage = `url("${o.hero || randomFeaturedImage()}")`;
+      const hero = o.hero || randomFeaturedImage();
+      const warmHero = decodedHeroes.has(hero) ? hero : FEATURED_IMAGES[0];
+      decodeHero(warmHero).then((url) => {
+        if (url && visible && hideToken === token) bgEl.style.backgroundImage = `url("${url}")`;
+      });
+      // Decode the requested random frame off the fade-critical path, then
+      // swap only after decode has completed (CSS no longer blocks on it).
+      if (warmHero !== hero) decodeHero(hero).then((url) => {
+        if (url && visible && hideToken === token) bgEl.style.backgroundImage = `url("${url}")`;
+      });
       visible = true;
       shownAt = performance.now();
       root.classList.remove('out');

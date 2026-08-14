@@ -10,11 +10,8 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
-import { getSpec, MODEL_SOURCE, TANK_SPECS, attachTrackShapes } from './specs.js';
+import { getSpec, TANK_SPECS, attachTrackShapes } from './specs.js';
 import { createTankMaterials, makeBurnUniforms, applyBurnHook, vehicleAmbientFloorHook } from './materials.js';
-// MOBILE r1: sourced-GLB swaps are tier-gated (modelLoader also self-gates;
-// checking here skips even the dynamic import + pipeline bookkeeping).
-import { glbModelsEnabled } from '../engine/quality.js';
 // DECORATION SYSTEM (2026-07): cosmetic stowage/fittings layer — attaches
 // under dedicated rig_decor_hull / rig_decor_turret groups at the end of
 // createTank (see the seam near the GLB-swap block). Skipped for
@@ -47,15 +44,13 @@ import { MODERN1_BUILDERS } from './modern1.js';
 import { CHALLENGER_BUILDERS } from './profiles/challenger.js';
 import { PROFILED_BUILDERS } from './profiledProcedurals.js';
 // EXTENSION HOOK (modern expansion integration): importing variants.js
-// registers the CC-BY derivative vehicles (m1a1 / t90a / m1a2_tusk) into the
-// shared spec tables (TANK_SPECS / MODEL_SOURCE / ALL_TANK_IDS) — the same
+// registers the derivative vehicles (m1a1 / t90a / m1a2_tusk) into the
+// shared spec tables — the same
 // side-effect registration pattern the modern packs use. tankFactory is the
 // one module every tank consumer (game, garage thumbs, icon generator,
 // perf probes) already imports, so registration is guaranteed everywhere.
 import './variants.js';
-// USER DROPS (2026-07-28): sourced-model swaps for leo2a6/ariete + the new
-// Type 74 — MUST import after the modern spec modules above so its
-// MODEL_SOURCE overrides land on top of their 'procedural' rows.
+// USER DROPS (2026-07-28): additional spec registrations and authored builds.
 import './userdrops.js';
 // USER DROPS wave 2 (recovered batch) — same after-the-moderns import rule.
 import './userdrops2.js';
@@ -87,11 +82,6 @@ const SIM_STEP = 1 / 60;
 // them all on the same one.
 const GEAR_FULL_RATE_M = 160;
 let _gearStaggerSeq = 0;
-
-// modelLoader.js module ref, captured after the first dynamic import so later
-// createTank calls can apply an already-parsed GLB synchronously (icons,
-// garage re-entry) instead of one-frame-late.
-let _modelLoaderMod = null;
 
 // ---- module-scope scratch (no per-frame allocation) ------------------------
 const _m = new THREE.Matrix4();
@@ -1948,12 +1938,7 @@ function buildRunningGear(P, cfg) {
       // r1: a thrown track REMOVES the band from that side (bare road wheels
       // + the continuous ground ribbon carry the read) — the old 0.16 m slump
       // left the wheel run visibly still wearing a track (detrack.png).
-      // tank_models r1: never RE-SHOW the band on a GLB-swapped tank — the
-      // repair path (battle restage resets all modules) was resurrecting the
-      // hidden procedural track loops as giant floating bands around the
-      // sourced m1a2 (modelLoader.applySwap stamps hullG.userData.__glbSwapped
-      // when it sweeps the procedural meshes).
-      const showBand = !broken && !hullG.userData.__glbSwapped;
+      const showBand = !broken;
       if (side < 0) { brokenL = broken ? 1 : 0; tl.visible = showBand; tl.position.y = tlY0; tl.rotation.x = 0; }
       else { brokenR = broken ? 1 : 0; tr.visible = showBand; tr.position.y = trY0; tr.rotation.x = 0; }
       // INVISIBLE-LOD ENVELOPE law: the thrown kit exists only once a
@@ -4478,366 +4463,9 @@ export function createTank(specId, engineCtx, opts = {}) {
   // live fire frame" (r2 minor); back+hold now spans 4-6 rendered frames.
   const REC_BACK = 0.09, REC_HOLD = 0.08, REC_RETURN = 0.62;
   const REC_AMP = 0.55 * Math.min(1.25, Math.max(0.55, ((spec.gun && spec.gun.caliberMm) || 100) / 120));
-  // Burnt-swap bookkeeping. CAPTURED LAZILY at setDestroyed time, NOT here:
-  // GLB-sourced tanks (m1a2, community winners) swap their meshes in AFTER
-  // construction, so a construction-time traverse missed every GLB mesh and
-  // their wrecks stayed pristine painted camo (r4 destroy-probe finding).
+  // Capture original materials lazily when destruction starts so decoration
+  // added after the base build participates in the continuous burn treatment.
   const originalMats = [];
-
-  // ---- GLB running-gear spin (MOVEMENT r1, runtime-only) -------------------
-  // modelLoader.applySwap replaces the procedural gear with rigid GLB meshes,
-  // which drove with FROZEN wheels (every swapped tank, incl. the default
-  // player m1a2). Where the asset exposes individual wheel-like MESH nodes,
-  // spin them at ground-speed-correct rates (scroll / r about the wheel's own
-  // axle THROUGH ITS OWN CENTER — most exports keep node pivots at the hull
-  // origin, so the spin is composed into node.matrix as T(c)·R·T(−c) about
-  // the geometry bbox center: pure runtime transform, no reparenting, no
-  // vertex writes). Detection is conservative — name-matched AND round AND
-  // wheel-sized AND lateral-axled; any test failing leaves that node exactly
-  // as static as before, so a merged-gear asset keeps its current look.
-  // Scanned lazily once per swap.
-  let glbSpinners = null; // null = not scanned; [] = nothing safely spinnable
-  const GLB_SPIN_RE = /wheel|sprocket|idler|roller|road/i;
-  const _spinM = new THREE.Matrix4();
-  const _spinM2 = new THREE.Matrix4();
-  const _spinLiftM = new THREE.Matrix4();
-  const _spinV = new THREE.Vector3();
-  function scanGlbSpinners() {
-    const found = [];
-    try {
-      hullG.updateMatrixWorld(true);
-      const inv = new THREE.Matrix4().copy(hullG.matrixWorld).invert();
-      const relM = new THREE.Matrix4();
-      const axGeom = new THREE.Vector3();
-      const axHull = new THREE.Vector3();
-      const upParent = new THREE.Vector3();
-      const upOrigin = new THREE.Vector3();
-      const ctr = new THREE.Vector3();
-      const size = new THREE.Vector3();
-      hullG.traverse((o) => {
-        if (found.length >= 48) return;
-        if (!o.isMesh || o.isInstancedMesh || o.isSkinnedMesh || !o.geometry) return;
-        if (!o.visible || (o.material && o.material.colorWrite === false)) return;
-        const name = `${o.name || ''} ${(o.parent && o.parent.name) || ''}`;
-        if (!GLB_SPIN_RE.test(name)) return;
-        if (/track|tread/i.test(o.name || '')) return; // track loops, not wheels
-        if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
-        const bbox = o.geometry.boundingBox;
-        bbox.getSize(size);
-        bbox.getCenter(ctr);
-        const ext = [size.x, size.y, size.z];
-        // axle = smallest extent axis; the two radial extents must agree
-        let ai = 0;
-        if (ext[1] < ext[ai]) ai = 1;
-        if (ext[2] < ext[ai]) ai = 2;
-        const ri = [0, 1, 2].filter((k) => k !== ai);
-        const rA = ext[ri[0]] / 2, rB = ext[ri[1]] / 2;
-        const r = (rA + rB) / 2;
-        if (r < 0.12 || r > 0.75) return;                      // not wheel-sized
-        if (Math.abs(rA - rB) > 0.3 * Math.max(rA, rB)) return; // not round
-        if (ext[ai] > 1.5 * r) return;                          // too wide: drum/hull
-        // axle must be lateral in hull space (±X)
-        axGeom.set(ai === 0 ? 1 : 0, ai === 1 ? 1 : 0, ai === 2 ? 1 : 0);
-        relM.multiplyMatrices(inv, o.matrixWorld);
-        axHull.copy(axGeom).transformDirection(relM);
-        if (Math.abs(axHull.x) < 0.85) return;
-        const cGeom = ctr.clone(); // spin pivot: wheel center in GEOMETRY space
-        ctr.applyMatrix4(relM);    // wheel center in hull space -> which track
-        const scaleM = Math.cbrt(Math.abs(relM.determinant()));
-        const rM = r * (Number.isFinite(scaleM) ? scaleM : 1);
-        // Hull-local +Y expressed in this node's parent frame; suspension
-        // translation is composed there after the pivot spin.
-        const parentRel = new THREE.Matrix4().multiplyMatrices(inv, o.parent.matrixWorld);
-        const invParentRel = parentRel.clone().invert();
-        upOrigin.set(0, 0, 0).applyMatrix4(invParentRel);
-        upParent.set(0, 1, 0).applyMatrix4(invParentRel).sub(upOrigin);
-        o.updateMatrix();
-        o.matrixAutoUpdate = false; // this layer owns the node's local matrix
-        found.push({
-          node: o,
-          m0: o.matrix.clone(),
-          axis: axGeom.clone(),
-          c: cGeom,
-          r: rM,
-          h: ctr.clone(),
-          up: upParent.clone(),
-          off: 0,
-          side: ctr.x < 0 ? -1 : 1,
-          sign: Math.sign(axHull.x) || 1,
-        });
-      });
-    } catch (e) { /* stay static on any surprise */ }
-    return found;
-  }
-
-  // Sourced GLB track belts used to remain rigid even after their individual
-  // wheel nodes gained suspension travel. modelLoader tags genuine live
-  // track-run meshes before its static-kit merge; clone those geometries per
-  // tank and bend only their lower run along a smoothed terrain profile.
-  // This is CPU-side on the existing 20/60 Hz gear cadence, so it works with
-  // every current material/shadow path and adds no draw calls.
-  let glbTracks = null;
-  const GLB_TRACK_SAMPLES = 15;
-  const GLB_TRACK_DROOP_M = 0.20;
-  const GLB_TRACK_BUMP_M = 0.28;
-  const _trackV = new THREE.Vector3();
-  function scanGlbTracks() {
-    const records = [];
-    const bones = [];
-    let vertexBudget = 120000;
-    let floorY = Infinity;
-    try {
-      hullG.updateMatrixWorld(true);
-      const invHull = new THREE.Matrix4().copy(hullG.matrixWorld).invert();
-      const rel = new THREE.Matrix4();
-      hullG.traverse((o) => {
-        if (vertexBudget <= 0 || !o.isMesh || o.isSkinnedMesh || !o.geometry) return;
-        if (o.userData.__cotTrackDeform !== true || !o.visible) return;
-        const src = o.geometry;
-        const srcPos = src.getAttribute && src.getAttribute('position');
-        if (!srcPos || srcPos.itemSize < 3 || srcPos.count < 6 || srcPos.count > vertexBudget) return;
-
-        // GLTF cache geometries are shared between tanks. The runtime belt is
-        // necessarily per-instance; kitMerged geometry was already unique and
-        // can be retired as soon as its deformable clone replaces it.
-        const geo = src.clone();
-        if (o.userData.__kitMerged || o.userData.__cotTrackExtracted) src.dispose();
-        o.geometry = geo;
-        o.userData.__cotTrackRuntimeClone = true;
-        const attr = geo.getAttribute('position');
-        attr.setUsage(THREE.DynamicDrawUsage);
-        const base = attr.array.slice();
-
-        // A fused hull may expose only its track triangles through material
-        // groups (modelLoader stamps the selected group indices). Build a
-        // vertex mask so the belt flexes without warping the belly/armor that
-        // happens to share the same BufferGeometry.
-        let active = null;
-        const materialIndices = o.userData.__cotTrackMaterialIndices;
-        if (Array.isArray(materialIndices) && materialIndices.length) {
-          active = new Uint8Array(attr.count);
-          const wanted = new Set(materialIndices);
-          const index = geo.getIndex();
-          for (const group of geo.groups) {
-            if (!wanted.has(group.materialIndex)) continue;
-            const end = Math.min(group.start + group.count,
-              index ? index.count : attr.count);
-            for (let k = group.start; k < end; k++) {
-              active[index ? index.getX(k) : k] = 1;
-            }
-          }
-        }
-
-        o.updateWorldMatrix(true, false);
-        rel.multiplyMatrices(invHull, o.matrixWorld);
-        const invRel = rel.clone().invert();
-        const ie = invRel.elements;
-        // Local-space vector that maps to exactly +1 m along hull-local Y.
-        const upX = ie[4], upY = ie[5], upZ = ie[6];
-        const hx = new Float32Array(attr.count);
-        const hy = new Float32Array(attr.count);
-        const hz = new Float32Array(attr.count);
-        let minY = Infinity, maxY = -Infinity;
-        for (let i = 0, j = 0; i < attr.count; i++, j += 3) {
-          _trackV.set(base[j], base[j + 1], base[j + 2]).applyMatrix4(rel);
-          hx[i] = _trackV.x; hy[i] = _trackV.y; hz[i] = _trackV.z;
-          if (active && !active[i]) continue;
-          if (_trackV.y < minY) minY = _trackV.y;
-          if (_trackV.y > maxY) maxY = _trackV.y;
-        }
-        if (!Number.isFinite(minY) || maxY - minY < 0.015) return;
-        if (minY < floorY) floorY = minY;
-        // Normal reconstruction touches every triangle, not just the flexing
-        // lower run. Large sourced meshes therefore update lighting at a
-        // lower cadence than positions; 10-30 Hz normal motion is visually
-        // continuous while avoiding a full-mesh CPU pass every render frame.
-        const normalEvery = attr.count > 60000 ? 6 : attr.count > 20000 ? 4 : 2;
-        records.push({
-          o, attr, base, hx, hy, hz, active, minY, maxY, upX, upY, upZ,
-          normalEvery,
-        });
-        vertexBudget -= attr.count;
-      });
-
-      // Bone-rigged link strips (Quaternius) need articulation at their link
-      // bones, not destructive edits to skinned input vertices. Use the
-      // skinned track surface only to locate the real contact floor; the
-      // deduplicated Track* bones carry the runtime offsets below.
-      const seenBones = new Set();
-      hullG.traverse((o) => {
-        if (!o.isSkinnedMesh || !o.geometry || !o.skeleton || !o.visible ||
-            o.userData.__cotTrackDeform !== true) return;
-        const pos = o.geometry.getAttribute && o.geometry.getAttribute('position');
-        if (!pos) return;
-        o.skeleton.update();
-        o.updateWorldMatrix(true, false);
-        rel.multiplyMatrices(invHull, o.matrixWorld);
-        const step = Math.max(1, Math.floor(pos.count / 20000));
-        for (let i = 0; i < pos.count; i += step) {
-          _trackV.fromBufferAttribute(pos, i);
-          o.applyBoneTransform(i, _trackV).applyMatrix4(rel);
-          if (_trackV.y < floorY) floorY = _trackV.y;
-        }
-        for (const bone of o.skeleton.bones) {
-          if (seenBones.has(bone) || !/(track|tread|thread)/i.test(bone.name || '') ||
-              /(?:_end|end)$/i.test(bone.name || '') || !bone.parent) continue;
-          seenBones.add(bone);
-          bone.getWorldPosition(_trackV);
-          _trackV.applyMatrix4(invHull);
-          const h = _trackV.clone();
-          const parentRel = new THREE.Matrix4().multiplyMatrices(invHull, bone.parent.matrixWorld);
-          const invParentRel = parentRel.invert();
-          const up0 = new THREE.Vector3(0, 0, 0).applyMatrix4(invParentRel);
-          const up = new THREE.Vector3(0, 1, 0).applyMatrix4(invParentRel).sub(up0);
-          bones.push({ bone, base: bone.position.clone(), h, up, weight: 1 });
-        }
-      });
-    } catch (_) { return null; }
-    if ((!records.length && !bones.length) || !Number.isFinite(floorY)) return null;
-
-    let sumL = 0, nL = 0, sumR = 0, nR = 0;
-    let zMin = Infinity, zMax = -Infinity;
-    for (const rec of records) {
-      const depth = Math.min(0.48, Math.max(0.18, (rec.maxY - rec.minY) * 0.30));
-      rec.weight = new Float32Array(rec.attr.count);
-      for (let i = 0; i < rec.attr.count; i++) {
-        if (rec.active && !rec.active[i]) continue;
-        let t = (rec.minY + depth - rec.hy[i]) / depth;
-        t = t < 0 ? 0 : (t > 1 ? 1 : t);
-        rec.weight[i] = t * t * (3 - 2 * t); // smoothstep: no crease at the axle line
-        if (rec.hy[i] <= floorY + 0.12) {
-          if (rec.hx[i] < 0) { sumL += rec.hx[i]; nL++; }
-          else { sumR += rec.hx[i]; nR++; }
-          if (rec.hz[i] < zMin) zMin = rec.hz[i];
-          if (rec.hz[i] > zMax) zMax = rec.hz[i];
-        }
-      }
-      if (rec.o.geometry.boundingBox) rec.o.geometry.boundingBox.expandByScalar(GLB_TRACK_DROOP_M);
-      if (rec.o.geometry.boundingSphere) rec.o.geometry.boundingSphere.radius += GLB_TRACK_DROOP_M;
-    }
-    if (bones.length) {
-      let minBoneY = Infinity, maxBoneY = -Infinity;
-      for (const rec of bones) {
-        if (rec.h.y < minBoneY) minBoneY = rec.h.y;
-        if (rec.h.y > maxBoneY) maxBoneY = rec.h.y;
-      }
-      const flatLinkStrip = maxBoneY - minBoneY < 0.12;
-      const depth = Math.max(0.2, Math.min(0.5, maxBoneY - minBoneY));
-      for (const rec of bones) {
-        if (!flatLinkStrip) {
-          let t = (minBoneY + depth - rec.h.y) / depth;
-          t = t < 0 ? 0 : (t > 1 ? 1 : t);
-          rec.weight = t * t * (3 - 2 * t);
-        }
-        if (rec.weight <= 0.001) continue;
-        if (rec.h.x < 0) { sumL += rec.h.x; nL++; }
-        else { sumR += rec.h.x; nR++; }
-        if (rec.h.z < zMin) zMin = rec.h.z;
-        if (rec.h.z > zMax) zMax = rec.h.z;
-      }
-    }
-    const cg = contactGeom;
-    if (!Number.isFinite(zMin) || zMax - zMin < 0.5) {
-      const sl = cg ? cg.halfLenM : spec.dims.hullLengthM * 0.4;
-      const zc = cg ? cg.zCenterM : 0;
-      zMin = zc - sl; zMax = zc + sl;
-    }
-    const hw = cg ? cg.halfWidM * 0.82 : spec.dims.widthM * 0.4;
-    const xL = nL ? sumL / nL : -hw;
-    const xR = nR ? sumR / nR : hw;
-    return {
-      records, bones, units: records.length + (bones.length ? 1 : 0),
-      floorY, zMin, zMax, xL, xR,
-      left: new Float32Array(GLB_TRACK_SAMPLES),
-      right: new Float32Array(GLB_TRACK_SAMPLES),
-      smooth: new Float32Array(GLB_TRACK_SAMPLES),
-      ready: false,
-      normalTick: 0,
-    };
-  }
-
-  function updateGlbTracks(track, state, pEff, rEff, dt) {
-    if (!track || !groundSampler) return;
-    const cb = Math.cos(state.yaw), sb = Math.sin(state.yaw);
-    const ca = Math.cos(-pEff), sa = Math.sin(-pEff);
-    const cr = Math.cos(rEff), sr = Math.sin(rEff);
-    const spanZ = Math.max(track.zMax - track.zMin, 1e-4);
-    const wasReady = track.ready;
-    const alpha = wasReady ? 1 - Math.exp(-Math.min(dt, 0.12) * 24) : 1;
-    let minOffset = Infinity, maxOffset = -Infinity;
-    let maxProfileDelta = 0;
-
-    for (const [x, profile] of [[track.xL, track.left], [track.xR, track.right]]) {
-      for (let i = 0; i < GLB_TRACK_SAMPLES; i++) {
-        const z = track.zMin + spanZ * (i / (GLB_TRACK_SAMPLES - 1));
-        const x1 = x * cr - track.floorY * sr;
-        const y1 = x * sr + track.floorY * cr;
-        const z2 = y1 * sa + z * ca;
-        const wx = state.pos.x + x1 * cb + z2 * sb;
-        const wy = state.pos.y + y1 * ca - z * sa;
-        const wz = state.pos.z - x1 * sb + z2 * cb;
-        const dev = groundSampler(wx, wz) - wy;
-        const target = Math.max(-GLB_TRACK_DROOP_M, Math.min(GLB_TRACK_BUMP_M, dev));
-        const prev = profile[i];
-        profile[i] = prev + (target - prev) * alpha;
-        maxProfileDelta = Math.max(maxProfileDelta, Math.abs(profile[i] - prev));
-        if (profile[i] < minOffset) minOffset = profile[i];
-        if (profile[i] > maxOffset) maxOffset = profile[i];
-      }
-      // Track tension: retain the terrain shape but remove single-sample
-      // kinks that would make a steel belt look rubbery.
-      track.smooth[0] = profile[0];
-      track.smooth[GLB_TRACK_SAMPLES - 1] = profile[GLB_TRACK_SAMPLES - 1];
-      for (let i = 1; i < GLB_TRACK_SAMPLES - 1; i++) {
-        track.smooth[i] = profile[i - 1] * 0.18 + profile[i] * 0.64 + profile[i + 1] * 0.18;
-      }
-      profile.set(track.smooth);
-    }
-    track.ready = true;
-    hullG.userData.__glbTrackOffsetRangeM =
-      Number.isFinite(minOffset) && Number.isFinite(maxOffset) ? maxOffset - minOffset : 0;
-    hullG.userData.__glbTrackMaxOffsetM =
-      Number.isFinite(minOffset) && Number.isFinite(maxOffset)
-        ? Math.max(Math.abs(minOffset), Math.abs(maxOffset)) : 0;
-
-    // A settled profile is already resident in the dynamic position/normal
-    // buffers. Most straight or parked frames land here, avoiding a full
-    // sourced-track vertex rewrite and GPU buffer upload with zero visual
-    // difference. Half a millimetre is well below a rendered track pixel at
-    // normal gameplay distance.
-    if (wasReady && maxProfileDelta < 0.0005) return;
-    track.normalTick++;
-
-    for (const rec of track.records) {
-      const arr = rec.attr.array;
-      for (let i = 0, j = 0; i < rec.attr.count; i++, j += 3) {
-        const sideProfile = rec.hx[i] < 0 ? track.left : track.right;
-        let u = (rec.hz[i] - track.zMin) / spanZ * (GLB_TRACK_SAMPLES - 1);
-        u = u < 0 ? 0 : (u > GLB_TRACK_SAMPLES - 1 ? GLB_TRACK_SAMPLES - 1 : u);
-        const i0 = Math.min(GLB_TRACK_SAMPLES - 2, Math.floor(u));
-        const f = u - i0;
-        const off = (sideProfile[i0] * (1 - f) + sideProfile[i0 + 1] * f) * rec.weight[i];
-        arr[j] = rec.base[j] + rec.upX * off;
-        arr[j + 1] = rec.base[j + 1] + rec.upY * off;
-        arr[j + 2] = rec.base[j + 2] + rec.upZ * off;
-      }
-      rec.attr.needsUpdate = true;
-      if (!wasReady || track.normalTick % rec.normalEvery === 0) {
-        recomputeTrackNormals(rec.o.geometry);
-      }
-    }
-    for (const rec of track.bones) {
-      const sideProfile = rec.h.x < 0 ? track.left : track.right;
-      let u = (rec.h.z - track.zMin) / spanZ * (GLB_TRACK_SAMPLES - 1);
-      u = u < 0 ? 0 : (u > GLB_TRACK_SAMPLES - 1 ? GLB_TRACK_SAMPLES - 1 : u);
-      const i0 = Math.min(GLB_TRACK_SAMPLES - 2, Math.floor(u));
-      const f = u - i0;
-      const off = (sideProfile[i0] * (1 - f) + sideProfile[i0 + 1] * f) * rec.weight;
-      rec.bone.position.copy(rec.base).addScaledVector(rec.up, off);
-      rec.bone.updateMatrix();
-      rec.bone.matrixWorldNeedsUpdate = true;
-    }
-  }
 
   // ---- animation-layer state (visual only, self-timed at SIM_STEP) ---------
   let groundSampler = null;          // (x, z) => terrain height, set by integration
@@ -5134,76 +4762,6 @@ export function createTank(specId, engineCtx, opts = {}) {
       if (P.gear && gearNow) {
         P.gear.update(state.trackScroll.l, state.trackScroll.r);
       }
-      // GLB gear spin (see scanGlbSpinners): ground-speed-correct wheel
-      // rotation for swapped visuals; wrecks freeze with everything else.
-      if (!destroyed && hullG.userData.__glbSwapped) {
-        if (glbSpinners === null) {
-          glbSpinners = scanGlbSpinners();
-          hullG.userData.__glbSpinnerCount = glbSpinners.length; // probe/debug
-        }
-        // Scan after wheel pivots: track geometry is cloned/deformed per tank,
-        // while the spinner detector must read the untouched wheel bounds.
-        if (glbTracks === null) {
-          glbTracks = scanGlbTracks();
-          hullG.userData.__glbTrackDeformCount = glbTracks ? glbTracks.units : 0;
-          // state.js uses this live capability bit to decide whether imported
-          // gear still needs the old rigid support clamp. Require BOTH layers:
-          // a flexing belt with rigid wheels (or vice versa) is not safe to
-          // treat as a fully conforming suspension.
-          hullG.userData.__glbConformingGear =
-            glbSpinners.length > 0 && !!(glbTracks && glbTracks.units > 0);
-        }
-        if (groundSampler && gearNow && glbSpinners.length) {
-          const pEff = state.visualPitch + suspP - flinchP;
-          const rEff = state.visualRoll + suspR + sway + flinchR;
-          const cb = Math.cos(state.yaw), sb = Math.sin(state.yaw);
-          const ca = Math.cos(-pEff), sa = Math.sin(-pEff);
-          const cr = Math.cos(rEff), sr = Math.sin(rEff);
-          const alpha = 1 - Math.exp(-Math.min(gearStepDt, 0.12) * 28);
-          for (let i = 0; i < glbSpinners.length; i++) {
-            const g = glbSpinners[i];
-            const yb = g.h.y - g.r;
-            const x1 = g.h.x * cr - yb * sr;
-            const y1 = g.h.x * sr + yb * cr;
-            const z2 = y1 * sa + g.h.z * ca;
-            const wx = state.pos.x + x1 * cb + z2 * sb;
-            const wy = state.pos.y + y1 * ca - g.h.z * sa;
-            const wz = state.pos.z - x1 * sb + z2 * cb;
-            let gh = groundSampler(wx, wz);
-            // A wheel is a disc: sample fore/aft rim support, subtracting the
-            // arc rise at half radius, just like procedural bogies.
-            const rr = g.r * 0.55;
-            let h2 = groundSampler(wx + sb * ca * rr, wz + cb * ca * rr) - g.r * 0.17;
-            if (h2 > gh) gh = h2;
-            h2 = groundSampler(wx - sb * ca * rr, wz - cb * ca * rr) - g.r * 0.17;
-            if (h2 > gh) gh = h2;
-            const dev = gh - wy;
-            const target = Math.max(-0.20, Math.min(0.28, dev));
-            g.off += (target - g.off) * alpha;
-          }
-        }
-        if (groundSampler && gearNow && glbTracks) {
-          updateGlbTracks(glbTracks, state,
-            state.visualPitch + suspP - flinchP,
-            state.visualRoll + suspR + sway + flinchR, gearStepDt);
-        }
-        for (let i = 0; i < glbSpinners.length; i++) {
-          const g = glbSpinners[i];
-          const scroll = g.side < 0 ? state.trackScroll.l : state.trackScroll.r;
-          // local matrix = m0 · T(c) · R(axle, ang) · T(−c) — spin about the
-          // wheel's own center regardless of where the export put the pivot
-          _spinM.makeRotationAxis(g.axis, (scroll / g.r) * g.sign);
-          _spinV.copy(g.c).applyMatrix4(_spinM);
-          _spinM.setPosition(g.c.x - _spinV.x, g.c.y - _spinV.y, g.c.z - _spinV.z);
-          _spinM2.multiplyMatrices(g.m0, _spinM);
-          if (Math.abs(g.off) > 1e-5) {
-            _spinLiftM.makeTranslation(g.up.x * g.off, g.up.y * g.off, g.up.z * g.off);
-            _spinM2.premultiply(_spinLiftM);
-          }
-          g.node.matrix.copy(_spinM2);
-          g.node.matrixWorldNeedsUpdate = true;
-        }
-      }
       if (gearNow) gearAccumDt = 0;
       if (recoilT < REC_BACK + REC_HOLD + REC_RETURN) {
         recoilT += adv; // r5: recuperator rides the fx clock (see lastFxS)
@@ -5234,11 +4792,7 @@ export function createTank(specId, engineCtx, opts = {}) {
     /** @param {THREE.Vector3} out @returns {THREE.Vector3} world-space muzzle tip */
     gunMuzzleWorld(out) { return muzzle.getWorldPosition(out); },
     /** @param {THREE.Vector3} out @returns {THREE.Vector3} world-space barrel
-     *  AXIS (+Z of the recoil group). The muzzle ANCHOR may sit off-axis on
-     *  GLB swaps (modelLoader re-derives it from real tube-tip vertices, with
-     *  a nonzero recoilG-local x/y), so muzzle-minus-pivot is NOT the bore
-     *  line — a constant ~45 mrad skew on the m1a2 sent every settled shot
-     *  ~15 m wide at 330 m (controls_gunnery r3 critical). */
+     *  axis (+Z of the authored recoil group). */
     gunDirWorld(out) { return muzzle.getWorldDirection(out); },
     /** @param {THREE.Vector3} out @returns {THREE.Vector3} world-space gun trunnion */
     gunPivotWorld(out) { return gunG.getWorldPosition(out); },
@@ -5511,71 +5065,15 @@ export function createTank(specId, engineCtx, opts = {}) {
   // for metrology stub ctxs (geometry gate / shaded-parity boards keep
   // measuring bare silhouettes); in-game builds dress by default. Runs AFTER
   // the movement contact scan above so the solve metadata never sees decor.
-  // GLB-sourced tanks dress after the swap lands (below): applySwap hides
-  // every pre-swap render node — decor included — and anchors must probe the
-  // REAL rendered geometry anyway.
+  // Every shipped tank is authored here, so decoration can attach directly
+  // to the final procedural geometry in the same build.
   const dressTank = () => attachTankDecorations({
     root, hullG, turretG, spec, engineCtx, disposables,
     opts: { proceduralOnly, decor: opts.decor },
     isDestroyed: () => destroyed,
   });
 
-  // ---- sourced-GLB swap (per-tank source of truth in specs.MODEL_SOURCE) ----
-  // Dynamic import keeps GLTFLoader out of the bundle-critical path; on any
-  // failure (missing file, no articulable turret node) the procedural model
-  // simply remains — it is the fallback of record.
-  // §5.31b PRINT-VIEWER SEAM (modelCfgOverride): a caller that owns its
-  // createTank invocation (fidelity boards, A/B tooling, previews) may force
-  // a specific model-source row — e.g. a retired candidateGlb print — without
-  // mutating the shared registry. The garage's Sources print cards do NOT
-  // pass this: their pedestal build runs through owner-WIP main.js, so they
-  // ride the 'print:<id>' registry rows from vehicles/printCatalog.js.
-  const modelCfg = opts.modelCfgOverride || MODEL_SOURCE[specId];
-  // Local fidelity tooling needs to instantiate the authored procedural
-  // fallback beside its sourced model without mutating the shared source
-  // registry. This flag is deliberately opt-in and leaves every gameplay
-  // caller on the normal sourced-model path.
-  if (!proceduralOnly && glbModelsEnabled()
-      && modelCfg && modelCfg.source === 'glb' && modelCfg.glb) {
-    // burnU rides along so the swap pipeline can pre-install the DISARMED
-    // burn-mask hook (uBurnT -1) on the staged materials and compile the
-    // '|burn-r6' program variants off the render path — first-kill program
-    // compiles were the visible pause before any destruction played.
-    // MOBILE-QA r13: modelLoader owns the atomic commit -> finalize -> warm
-    // ordering. Decoration adds LOD meshes and prewarmBurn changes their
-    // program cache key, so both must finish before the committed subtree's
-    // force-visible compile and before any reveal frame.
-    const finalizeSwap = () => {
-      dressTank();
-      try { visual.prewarmBurn(); } catch (_) { /* warm only */ }
-    };
-    const ctx = {
-      spec, cfg: modelCfg.glb, hullG, turretG, recoilG, muzzle, burnU, finalizeSwap,
-    };
-    if (_modelLoaderMod && _modelLoaderMod.hasCachedGlb(modelCfg.glb.path)) {
-      // GLB already parsed (garage re-entry, icon generation): swap in the
-      // same frame so the first render never shows the procedural model.
-      let swapped = false;
-      try { swapped = _modelLoaderMod.applyGlbModelSync(ctx); }
-      catch (e) { console.warn(`[tankFactory] ${specId}: glb swap failed, procedural retained —`, e.message); }
-      if (!swapped) dressTank(); // retained procedural still needs its decor
-    } else {
-      import('./modelLoader.js')
-        .then((m) => { _modelLoaderMod = m; return m.applyGlbModel(ctx); })
-        .then((ok) => {
-          // Success was finalized + warmed atomically by modelLoader. A
-          // rejected swap retained the procedural stand-in, which still
-          // needs its normal decoration seam.
-          if (!ok) dressTank();
-        })
-        .catch((e) => {
-          console.warn(`[tankFactory] ${specId}: glb swap failed, procedural retained —`, e.message);
-          dressTank();
-        });
-    }
-  } else {
-    dressTank(); // procedural-of-record tanks dress at build
-  }
+  dressTank();
 
   return visual;
 }

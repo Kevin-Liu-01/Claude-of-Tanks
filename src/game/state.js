@@ -837,8 +837,7 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
     // owns pos.y BEFORE the first rendered frame — the raw spawn pose (flat
     // attitude, pad-center height) rendered one frame with a track end
     // clipped ~0.3 m into the pad-edge slope. Rigid-gear detection first: a
-    // reused garage/pool visual may already be GLB-swapped at restage.
-    refreshRigidGear(ent);
+    refreshContactGeometry(ent);
     for (let k = 0; k < 30; k++) updateTank(ent, world.heightField, SIM_DT);
     // PERF r3: deferred boot visuals sync when ensureTankVisual builds them
     if (ent.visual) {
@@ -853,39 +852,20 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
 // ---------------------------------------------------------------------------
 
 /**
- * Track whether the active visual has genuinely terrain-conforming running
- * gear. A comparison GLB starts in conservative rigid mode; tankFactory only
- * publishes __glbConformingGear after both live wheel suspension and a
- * deformable track run are found. This preserves the no-clip hard clamp for
- * incomplete imports while capable gear uses the compliant support solve.
- * Poll direct root children because a swap/capability bit may land after
- * staging. The measured footprint itself is scanned once per visual.
+ * Publish the authored visual's measured contact footprint once per visual.
+ * All playable tanks use terrain-conforming first-party running gear.
  * @param {object} ent pool entity
  * @returns {void}
  */
-function refreshRigidGear(ent) {
-  if (!ent.visual || !ent.visual.root) return;
-  const kids = ent.visual.root.children;
-  for (let i = 0; i < kids.length; i++) {
-    const ud = kids[i].userData;
-    if (ud && ud.__glbSwapped) {
-      ent.rigidGear = ud.__glbConformingGear !== true;
-      // gameplay_feel r7 (terrain-contact hard gate, FLOAT side): measure the
-      // swapped visual's true ground-contact footprint and publish it for the
-      // movement.js support solve — see measureContactGeom.
-      if (ent._glbContactStampedVisual !== ent.visual) {
-        ent.contactGeom = measureContactGeom(ent);
-        ent._glbContactStampedVisual = ent.visual;
-      }
-      return;
-    }
-  }
+function refreshContactGeometry(ent) {
+  if (!ent.visual) return;
+  ent.rigidGear = false;
   // MOVEMENT r1 (fidelity-rebuild fallout): PROCEDURAL visuals carry as-built
   // contact metadata too (tankFactory measures the rest pose at construction —
   // the rebuilt profiles moved wheel/track lines off the old y = 0 /
   // ±0.45 L assumption, floating some parked tanks past the 3 cm gate and
   // resting crest drives on up to ~1 m of phantom contact per end). Stamp it
-  // once per visual; a later GLB swap overwrites with the swap scan above.
+  // once per visual.
   if (!ent.contactGeom && ent.visual.contactGeom) {
     const cg = ent.visual.contactGeom;
     const d = ent.spec && ent.spec.dims;
@@ -1572,7 +1552,7 @@ export function simStep(game, bus, world, rig, collider) {
   // b. movement
   for (const ent of game.tanks) {
     if (!ent.state || ent.combat.destroyed) continue;
-    refreshRigidGear(ent); // GLB swap detection for the support-solve yield
+    refreshContactGeometry(ent);
     collider.setSelf(ent);
     updateTank(ent, world.heightField, dt, collider.collide);
     // r2 blocked-drive impact (gameplay_feel critique MAJOR): movement now

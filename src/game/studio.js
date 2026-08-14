@@ -229,14 +229,6 @@ export function createStudio(ctx) {
   }
 
   // --- actors -----------------------------------------------------------------
-  function glbSwapped(visual) {
-    let swapped = false;
-    visual.root.traverse((o) => {
-      if (o.userData && o.userData.__glbSwapped) swapped = true;
-    });
-    return swapped;
-  }
-
   function clampGunDeg(spec, deg) {
     return Math.max(-(spec.gunDepressionDeg ?? 10),
       Math.min(spec.gunElevationDeg ?? 20, deg || 0));
@@ -271,7 +263,7 @@ export function createStudio(ctx) {
       st.pos.y + 2 + Math.sin(el) * 400,
       st.pos.z + Math.cos(az) * Math.cos(el) * 400,
     );
-    a.rigidGear = glbSwapped(a.visual);
+    a.rigidGear = false;
     for (let i = 0; i < steps; i++) updateTank(a, hfProxy, SIM_DT);
     // pin the authored pose exactly (updateTank slews at spec rates; slope
     // slide may creep pos) — staging is authoritative, sim only shapes
@@ -1111,31 +1103,13 @@ export function createStudio(ctx) {
     };
   }
 
-  /** Wait (bounded) for every started GLB swap to settle — determinism. */
-  function waitModelsSettled(timeoutMs = 15000) {
-    return new Promise((resolve) => {
-      const t0 = performance.now();
-      const poll = () => {
-        const s = window.__GLB_STATS;
-        const settled = !s || s.settled >= s.started;
-        if (settled || performance.now() - t0 > timeoutMs) {
-          resolve(!!settled);
-          return;
-        }
-        setTimeout(poll, 120);
-      };
-      // one extra frame so createTank's async swap kicks have queued
-      setTimeout(poll, 160);
-    });
-  }
-
   /**
    * Deterministic scene build (THE scripted-shoot entry point):
    * enter/switch map → reset fx → build+pose actors → apply camera → fire
    * effects at their tMs on a fixed-step timeline → advance to fxTime →
    * freeze. See docs/STUDIO.md.
    * @param {object} json scene JSON
-   * @param {{waitModels?:boolean}} [opts]
+   * @param {object} [opts]
    * @returns {Promise<object>} the round-trip state()
    */
   async function load(json = {}, opts = {}) {
@@ -1151,33 +1125,6 @@ export function createStudio(ctx) {
       clearActors();
       resetFx(sceneMeta.seed);
       for (const cfg of json.actors || []) addActor(cfg);
-      if (opts.waitModels !== false) {
-        await waitModelsSettled();
-        // GLB swaps may change silhouettes/wheel rigs — re-conform the pose
-        for (const a of actors) settleActor(a);
-        // wreck states must re-apply onto the swapped meshes (burn sweep
-        // captures materials lazily at setDestroyed time). setActorState
-        // clears the ADDITIVE emitter layers (smoking/burning column), so
-        // save + re-arm them around the re-apply — a "wrecked + burning"
-        // actor must keep its fire column across the GLB settle.
-        for (const a of actors) {
-          if (a.stateName !== 'intact' && a.stateName !== 'engine-smoking' &&
-              a.stateName !== 'burning') {
-            const name = a.stateName;
-            const wasSmoking = a.smoking;
-            const wasBurning = a.burning;
-            a.stateName = 'intact';
-            a.visual.resetDestroyed();
-            setActorState(a, name, a.stateAgeS);
-            if (wasSmoking) a.smoking = true;
-            if (wasBurning) igniteColumn(a);
-          }
-          if (a.recoilAgeS != null && a.visual.recoilKick) {
-            a.visual.recoilKick(a.recoilAgeS);
-            a.visual.syncFromState(a.state, 0);
-          }
-        }
-      }
       if (json.camera) applyCamera(json.camera);
       // timeline: fire effects at tMs, advance to fxTime, freeze
       const fxMs = Math.max(0, json.fxTime || 0);
@@ -1269,7 +1216,7 @@ export function createStudio(ctx) {
       setGarageSpots(false);
       setGarageSunTrim(false); // authored map sun, not the neutral pedestal key
       ensureFxBus();
-      warmCombatPipeline(); // finish pool bakes now — no mid-session hitches
+      await warmCombatPipeline(); // yield between warm stages behind the veil
       active = true;        // tick branch takes the frame from here on
       panel.show();
       await ensureWorld(mapId, (f, label) => p(0.04 + f * 0.9, label));

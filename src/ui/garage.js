@@ -11,21 +11,6 @@ import { ensureTankThumbs, drainTankThumbs, getTankThumb, requeueTankThumbs } fr
 // palette from materials.js) instead of hand-approximated CSS gradients.
 import { resolveCamoVisual, CLAUDE_CODE_MARK, CLAUDE_SPARK_MARK }
   from '../vehicles/materials.js';
-// CATALOG v2 (owner re-order 2026-08-06): the SOURCES catalog group is keyed
-// off the RUNTIME MODEL_SOURCE map — the single source of truth for "this id
-// plays a not-mine GLB". Membership is computed at load, never hardcoded, so
-// the group shrinks by itself as tanks graduate to procedural builds. The old
-// provenance-intent union (USERDROP*_SOURCED_IDS) is retired with this order:
-// a tank whose GLB registration is absent in THIS build renders our custom
-// model, so it belongs with the custom fleet (a public build that strips the
-// registrations simply shows a larger custom fleet and no Sources chip).
-import { MODEL_SOURCE } from '../vehicles/specs.js';
-// §5.31b PRINT VIEWER: the Sources chip lists ALL actual-tank prints — the
-// playable-print rows (MODEL_SOURCE 'glb') keep their normal cards, and every
-// RETIRED print (candidateGlb rows, the flip-era pattern) gets a VIEW-ONLY
-// 'print:<id>' card. Catalog + pseudo-spec registration live in
-// vehicles/printCatalog.js (lazy — only the garage materializes them).
-import { getPrintCatalog, printBaseId } from '../vehicles/printCatalog.js';
 // EQUIPMENT SYSTEM: full catalog + slot logic (game/equipment.js), the
 // white-silhouette icon set (equipIcons.js), and the spotting-side math the
 // stat card folds into its view/camo rows so the garage can never disagree
@@ -52,14 +37,11 @@ const NATION_LABEL = {
 
 // ---------------------------------------------------------------------------
 // CATALOG GROUPS v2: the selection is catalogued into
-// FOUR groups, shown in this order — the custom (procedural) fleet is the
-// source of truth, split cold-war / modern / WWII, and every vehicle that
-// still PLAYS a not-mine 3D model lives in its own trailing SOURCES group:
+// THREE groups, shown in this order — the custom procedural fleet is the
+// source of truth, split cold-war / modern / WWII:
 //   (1) 'modern'   custom builds of modern vehicles;
 //   (2) 'coldwar'  custom builds of cold-war-era vehicles;
-//   (3) 'ww2'      custom builds of WWII vehicles (spec.era === 'ww2');
-//   (4) 'sources'  ids whose registered render is a community GLB — computed
-//                  AT LOAD from MODEL_SOURCE (runtime truth, see import note).
+//   (3) 'ww2'      custom builds of WWII vehicles (spec.era === 'ww2').
 // Partition, not overlay: every vehicle is in exactly one group.
 // ---------------------------------------------------------------------------
 // Specs only carry era 'ww2' | 'modern', so the cold-war split lives HERE as
@@ -69,10 +51,7 @@ const NATION_LABEL = {
 // (M46/M47/M48), M60s, the T-55/62/64/72-era Soviet marks, Leopard 1, AMX-30,
 // Type 74, plus Vickers MBT and Strv 103 by the same rule. The T-80/90/14
 // lines, post-1991 T-72 modernizations (T-72B3/B3M/BU, PT-91M), Challengers,
-// Merkavas and all IFVs stay 'modern' per the same owner brief. Ids that are
-// currently GLB-sourced (strv103, m48, amx30/amx30b2, t54, type59) are listed
-// too: the map only applies outside the Sources group, so each of them lands
-// in Cold War automatically the day it graduates to a custom build.
+// Merkavas and all IFVs stay 'modern' per the same owner brief.
 const COLDWAR_IDS = new Set([
   // USA — Patton line + M60s
   'm46_patton', 'm47_patton', 'm48', 'm60a1', 'm60a2', 'm60a3',
@@ -90,34 +69,13 @@ const COLDWAR_IDS = new Set([
   // War (§5.31) — the coldwar check in groupOf runs before the era branch.
   't95',
 ]);
-// §5.31 (owner, 2026-08-07): these GLB-sourced customs leave the Sources
-// group and file under their real eras — WW2 (sherman_jumbo..is6b), Cold War
-// (type59/strv103/t95/m48), Modern (m1a2_tusk). Sources keeps the
-// remaining actual-tank prints only. Both Panzer III customs move (the order
-// names "panzerkampfwagen iii" once; the two ids are the same vehicle).
-const ERA_PLACED_SOURCES = new Set([
-  'sherman_jumbo', 'leichttraktor', 'newc_pziii', 'pziii_konserwa',
-  'sturmtiger', 'tiger2', 'jagdtiger', 'jpz_e100', 't34_85_cad',
-  't44', 'is3', 'is6b',
-  'type59', 'strv103', 't95', 'm48',
-  'm1a2_tusk',
-]);
-const isSourcedModel = (s) =>
-  (MODEL_SOURCE[s.id] && MODEL_SOURCE[s.id].source) === 'glb';
 const groupOf = (s) =>
-  isSourcedModel(s) && !ERA_PLACED_SOURCES.has(s.id) ? 'sources'
-    : COLDWAR_IDS.has(s.id) ? 'coldwar'
-      : s.era === 'ww2' ? 'ww2' : 'modern';
-// The four catalog chips, in the owner's order. A chip with zero members
-// auto-hides. §5.31b: Sources is no longer empty on public builds — besides
-// the playable-print rows it lists a VIEW-ONLY card per retired print
-// (candidateGlb rows via vehicles/printCatalog.js), so deploys show ALL
-// shipped actual-tank models there (the owner's §5.31b closing order).
+  COLDWAR_IDS.has(s.id) ? 'coldwar'
+    : s.era === 'ww2' ? 'ww2' : 'modern';
 const CATALOG_GROUPS = [
   { id: 'modern', label: 'Modern' },
   { id: 'coldwar', label: 'Cold War' },
   { id: 'ww2', label: 'WWII' },
-  { id: 'sources', label: 'Sources' },
 ];
 const GROUP_RANK = new Map(CATALOG_GROUPS.map((g, i) => [g.id, i]));
 // Within a group the carousel reads nation-block first (WoT convention:
@@ -298,13 +256,6 @@ const GARAGE_CSS = `
 .cot-card .era{float:right;font-size:8.5px;font-weight:700;letter-spacing:.12em;
   color:#8a97a3;padding:2px 0;}
 .cot-card.sel .era{color:#d8a04c;}
-/* §5.31b PRINT VIEWER: view-only community-print ribbon + disabled BATTLE */
-.cot-card .prtag{float:left;font-size:8.5px;font-weight:700;letter-spacing:.12em;
-  color:#7fb4d8;padding:2px 0;}
-.cot-card.sel .prtag{color:#9fd8ec;}
-.cot-battle:disabled{filter:grayscale(.85) brightness(.72);cursor:not-allowed;}
-.cot-battle:disabled:hover{filter:grayscale(.85) brightness(.72);}
-.cot-battle:disabled:active{transform:translateX(-50%);}
 .cot-card .ti{display:block;margin:-2px auto -1px;width:136px;height:84px;
   object-fit:contain;filter:drop-shadow(0 5px 7px rgba(0,0,0,.72));transform:scale(1.04);}
 .cot-card .nm{font-size:11px;font-weight:650;color:#f3f7fa;letter-spacing:-.01em;
@@ -1322,22 +1273,12 @@ function frontArmorMm(plates, keys) {
 export function createGarage(opts) {
   const { bus, onSelect, onBattle } = opts;
   const allSpecs = opts.specs || [];
-  // §5.31b PRINT VIEWER: view-only Sources cards for every retired print.
-  // Deliberately NOT merged into allSpecs — stat peer ranges read allSpecs
-  // and must stay print-free.
-  const printEntries = getPrintCatalog();
-  const isPrintId = (id) => !!printBaseId(id);
-  // CATALOG v2: the carousel REORDERS the roster it receives — four catalog
-  // groups in the owner's order (Modern / Cold War / WWII / Sources), nation
+  // CATALOG v2: the carousel REORDERS the roster it receives — three catalog
+  // groups in the owner's order (Modern / Cold War / WWII), nation
   // blocks + tier progression inside each (catalogCompare above). Cards,
   // arrow stepping and chip first-picks all read this one sorted array, so
   // the visual strip, keyboard walk and group hand-offs always agree.
-  // Print cards ride the same array: groupOf files them under 'sources'
-  // automatically (their MODEL_SOURCE rows are 'glb' and never era-placed).
-  const specs = [
-    ...allSpecs.filter((s) => isGarageVisibleTankId(s.id)),
-    ...printEntries.map((e) => e.spec),
-  ].sort(catalogCompare);
+  const specs = allSpecs.filter((s) => isGarageVisibleTankId(s.id)).sort(catalogCompare);
   ensureFonts();
   ensureStyle('cot-garage-style', GARAGE_CSS);
 
@@ -1461,8 +1402,6 @@ export function createGarage(opts) {
   // specById covers the FULL roster so direct tooling can still inspect a
   // delisted vehicle without exposing it in the player-facing carousel.
   for (const s of allSpecs) specById.set(s.id, s);
-  // §5.31b PRINT VIEWER: selection plumbing resolves print cards too
-  for (const e of printEntries) specById.set(e.id, e.spec);
 
   const emit = (ev, payload) => { if (bus && bus.emit) bus.emit(ev, payload); };
 
@@ -1713,8 +1652,8 @@ export function createGarage(opts) {
   // scope now (COLDWAR_IDS / groupOf / CATALOG_GROUPS / catalogCompare above
   // the CSS) — the sorted `specs` array, the filter chips, arrow stepping and
   // group cross-links all key off that one classifier. The old three-bucket
-  // provenance-intent scheme (custom/ww2/modern + USERDROP unions) is retired
-  // per the owner's 2026-08-06 re-order; see the MODEL_SOURCE import note.
+  // provenance-intent scheme is retired; the authored fleet is now the only
+  // player-facing model source.
 
   // PER-CLASS stat ranges for the normalized bars. r6-2 (round critique:
   // "6.0 s reload renders ~90% full / bars carry no comparative scale"): the
@@ -1725,7 +1664,7 @@ export function createGarage(opts) {
   // a Bradley against IFVs), higher-is-better on every row (reload
   // inverted: faster = fuller). garage_ui: stat peers stay ERA-based even
   // though the catalog chips group by the four-way catalog (Cold War /
-  // Modern / WWII / Sources) — a procedurally built Tiger I must range
+  // Modern / WWII) — a procedurally built Tiger I must range
   // against WWII heavies, not against a custom Leo 2A7, and a cold-war M60
   // ranges against the whole modern-era MBT pool it fights alongside.
   const statGroupOf = (s) => `${s.era === 'ww2' ? 'ww2' : 'modern'}/${s.class || 'medium'}`;
@@ -1773,14 +1712,13 @@ export function createGarage(opts) {
     return 0.14 + Math.max(0, Math.min(1, f)) * 0.86;
   }
 
-  // --- CATALOG FILTER CHIPS (MODERN / COLD WAR / WWII / SOURCES) ------------
+  // --- CATALOG FILTER CHIPS (MODERN / COLD WAR / WWII) ----------------------
   // The carousel shows ONE group at a time so a 100-vehicle roster stays
-  // navigable. Exactly four chips in the owner's order (CATALOG_GROUPS at
-  // module scope): the custom modern fleet, the custom cold-war fleet, the
-  // custom WWII fleet, then every vehicle still playing a community GLB.
+  // navigable. Exactly three chips in the owner's order (CATALOG_GROUPS at
+  // module scope): the custom modern, cold-war, and WWII fleets.
   // Partition, not overlay — the old LOCAL overlay chip (a tank in its era
   // group AND in local) double-listed 69 vehicles. A chip with zero members
-  // auto-hides (a public build may strip the sourced fleet entirely).
+  // auto-hides.
   const inGroup = (s, gid) => groupOf(s) === gid;
   let eraFilter = specs.length ? groupOf(specs[0]) : 'modern';
   const chipsEl = root.querySelector('.cot-era-chips');
@@ -1828,10 +1766,9 @@ export function createGarage(opts) {
       // CATALOG v2: the groups partition the roster, so a card only ever
       // shows under its own chip and the per-card era tag is redundant —
       // worse, a spec-era "MODERN" badge under the Cold War chip would
-      // actively misread. The one mixed-era tab left is SOURCES (WWII and
-      // modern GLBs share it); the tag stays there as the disambiguator.
+      // actively misread.
       const tag = card.querySelector('.era');
-      if (tag) tag.style.display = gid === 'sources' ? '' : 'none';
+      if (tag) tag.style.display = 'none';
     }
   }
   // --- END era filter chips -------------------------------------------------
@@ -1846,14 +1783,9 @@ export function createGarage(opts) {
     // final model has loaded, so async GLB stand-ins can never replace a card.
     card.innerHTML =
       `<span class="era">${s.era === 'ww2' ? 'WWII' : 'MODERN'}</span>` +
-      // §5.31b PRINT VIEWER: view-only print cards wear a corner ribbon
-      (s.printViewer ? `<span class="prtag">PRINT</span>` : '') +
       `<span class="flag">${flagIconHTML(s.nation, 20)}<i>${NATION_LABEL[s.nation] || s.nation}</i></span>` +
-      // §5.31b PRINT VIEWER: no packaged /icons/ set exists for 'print:<id>'
-      // pseudo-specs — print cards ride their base id's portrait (today that
-      // packaged icon IS the print render; genIcons print-id rows can follow)
-      `<img class="ti" data-cot-thumb="${printBaseId(s.id) || s.id}" src="${getTankThumb(printBaseId(s.id) || s.id)}" alt="">` +
-      `<div class="nm"><b class="tiern">${tierNumeral(s.id) || (s.printViewer && tierNumeral(printBaseId(s.id))) || ''}</b><span class="nmt"></span></div>` +
+      `<img class="ti" data-cot-thumb="${s.id}" src="${getTankThumb(s.id)}" alt="">` +
+      `<div class="nm"><b class="tiern">${tierNumeral(s.id) || ''}</b><span class="nmt"></span></div>` +
       `<div class="cls">${s.class}</div>`;
     card.querySelector('.nmt').textContent = s.name;
     card.addEventListener('click', () => {
@@ -1924,7 +1856,7 @@ export function createGarage(opts) {
     // green with the stock number in the tooltip.
     // §5.31b PRINT VIEWER: print cards show STOCK stats — no loadout is
     // read (or ever written) for a view-only 'print:<id>' pseudo-spec.
-    const eqIds = spec.printViewer ? [] : loadEquipment(spec.id, spec);
+    const eqIds = loadEquipment(spec.id, spec);
     const eqM = computeEquipMults(eqIds);
     const eqNames = eqIds.map((id) => EQUIPMENT_BY_ID.get(id).name).join(', ');
     const reloadS = spec.gun.reloadS * eqM.reload;
@@ -1977,12 +1909,9 @@ export function createGarage(opts) {
         : '') +
       // §5.31b PRINT VIEWER: view-only notice replaces the loadout slots —
       // equipment cannot be mounted on (or saved for) a print pseudo-spec.
-      (spec.printViewer
-        ? `<div class="sep"></div><div class="armorline"><span>Sources print</span><b>view only</b></div>`
-        // EQUIPMENT SYSTEM: the 3 loadout slots (picker opens on click)
-        : `<div class="sep"></div>` +
-          `<div class="eqhead"><span>Equipment</span><i>${eqIds.length}/${EQUIP_SLOTS}</i></div>` +
-          `<div class="eqrow">${slotBoxes}</div>`);
+      `<div class="sep"></div>` +
+      `<div class="eqhead"><span>Equipment</span><i>${eqIds.length}/${EQUIP_SLOTS}</i></div>` +
+      `<div class="eqrow">${slotBoxes}</div>`;
     statsEl.querySelector('h3').textContent = spec.name;
     if (spec.community) {
       const cr = statsEl.querySelector('.cr');
@@ -2006,19 +1935,13 @@ export function createGarage(opts) {
       card.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
     }
     renderStats(spec);
-    // §5.31b PRINT VIEWER: print cards are VIEW-ONLY — BATTLE is disabled
-    // (the battle() guard is the hard stop; this is the visible state), the
-    // camo picker hides (a paint save for 'print:<id>' would be junk state),
-    // and the equipment picker never renders (renderStats above). The camo
-    // prewarm is skipped for the same reason.
-    const printSel = isPrintId(specId);
-    battleBtn.disabled = printSel;
-    battleBtn.textContent = printSel ? 'VIEW ONLY' : 'BATTLE';
-    camosEl.style.display = printSel ? 'none' : '';
+    battleBtn.disabled = false;
+    battleBtn.textContent = 'BATTLE';
+    camosEl.style.display = '';
     refreshCamoSel(); // CAMO PICKER SECTION: highlight this tank's pattern
     // camo r4: warm this tank's pattern bakes in the background so picker
     // clicks restore instantly instead of running the painter chain.
-    if (camoOpts && camoOpts.prewarm && !printSel) camoOpts.prewarm(specId);
+    if (camoOpts && camoOpts.prewarm) camoOpts.prewarm(specId);
     refreshEquipSel(); // EQUIPMENT PICKER: highlight this tank's loadout
     return true;
   }
@@ -2035,11 +1958,6 @@ export function createGarage(opts) {
 
   function battle() {
     if (!selectedId) return;
-    // §5.31b PRINT VIEWER: view-only print cards can NEVER enter battle —
-    // this guard covers every trigger (button click, Enter/NumpadEnter key,
-    // any future caller of battle()). Placed BEFORE the emits so no
-    // ui:battleStart event fires for a print either.
-    if (isPrintId(selectedId)) return;
     // Battle entry must be unstoppable: the pre-battle emits fan out to five+
     // subscribers (audio click, pointer-lock grab, killcam/shot-log resets…)
     // and any one of them throwing in an exotic environment would silently

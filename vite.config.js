@@ -116,8 +116,6 @@ export default {
     entries: ['index.html', 'home.html', 'docs.html'],
     include: [
       'three',
-      'three/examples/jsm/loaders/GLTFLoader.js',
-      'three/examples/jsm/utils/SkeletonUtils.js',
       'three/examples/jsm/utils/BufferGeometryUtils.js',
       'three/examples/jsm/geometries/RoundedBoxGeometry.js',
     ],

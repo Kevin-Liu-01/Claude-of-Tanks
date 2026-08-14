@@ -19,7 +19,6 @@ import { iconUrl } from './icons.js';
 // top_silhouette.png the damage panel used to stretch.
 import * as THREE from 'three';
 import { createTank } from '../vehicles/tankFactory.js';
-import { MODEL_SOURCE } from '../vehicles/specs.js';
 
 const FALLBACK_VIEWS = ['angle', 'side', 'side_silhouette'];
 let errorGuardInstalled = false;
@@ -226,19 +225,6 @@ function renderMaskPass(scene, camX, camZ, halfM) {
   };
 }
 
-/** Subtree signature — detects an async sourced-GLB swap landing. */
-function meshSignature(root) {
-  let n = 0, verts = 0;
-  root.traverse((o) => {
-    if (o.isMesh || o.isInstancedMesh) {
-      n++;
-      const p = o.geometry && o.geometry.attributes && o.geometry.attributes.position;
-      if (p) verts += p.count;
-    }
-  });
-  return `${n}/${verts}`;
-}
-
 /** Render both layers for a built visual. @returns {object|null} entry */
 function renderMaskEntry(visual, spec) {
   const root = visual.root;
@@ -343,33 +329,9 @@ export function getTopDownMasks(spec, onReady) {
       maskCache.delete(oldest);
     }
     if (onReady) onReady();
-    // async sourced-GLB swap: re-render when the subtree changes, then let go
-    const src = MODEL_SOURCE[id];
-    if (src && src.source === 'glb') {
-      let sig = meshSignature(visual.root);
-      let polls = 0;
-      const poll = () => {
-        polls++;
-        let done = polls >= 6;
-        try {
-          const now = meshSignature(visual.root);
-          if (now !== sig) {
-            sig = now;
-            const again = renderMaskEntry(visual, spec);
-            if (again) {
-              maskCache.set(id, again);
-              if (onReady) onReady();
-              done = true; // swap landed and was captured — finished
-            }
-          }
-        } catch (_) { done = true; }
-        if (!done) { setTimeout(poll, polls < 3 ? 500 : 1200); return; }
-        try { visual.dispose(); } catch (_) { /* released */ }
-      };
-      setTimeout(poll, 500);
-    } else {
-      try { visual.dispose(); } catch (_) { /* released */ }
-    }
+    // First-party procedural geometry is final at construction time; there
+    // is no asynchronous sourced-model swap to poll or capture again.
+    try { visual.dispose(); } catch (_) { /* released */ }
   }, 0);
   return null;
 }

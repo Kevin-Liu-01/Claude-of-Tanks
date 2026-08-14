@@ -5,7 +5,7 @@
 //    dist/ (they must never ship in a public build):
 //      dist/models/community-candidates/**
 //      dist/models/tanks/community/{quarantine,recovered}/**
-//      local-only Tejas/AbramsX GLBs and their derivative icon sets
+//      historical raw-source trees
 // 2. FAILS (exit 1) if any MODEL_SOURCE path in src/vehicles/*.js that is
 //    still REGISTERED as a playable references a deleted path. Recovered
 //    gameplay rows remain registered in public builds, but their model-source
@@ -29,32 +29,9 @@ const STRIP_DIRS = [
   path.join(DIST, 'models', 'tanks', 'community', 'quarantine'),
   path.join(DIST, 'models', 'tanks', 'community', 'recovered'),
   // USER DROPS wave 8 (scout-gen2): raw candidate STL trees + source zips —
-  // the bergman/ThudOne folders are CC BY-NC-SA and must never ship; the
-  // CC-BY candidates ship only as their BAKED community/*.glb outputs.
+  // reference-source folders must never ship; gameplay uses authored
+  // procedural geometry and does not consume their baked model outputs.
   path.join(DIST, 'models', 'tanks', 'candidates-gen2'),
-];
-const STRIP_FILES = [
-  path.join(DIST, 'models', 'tanks', 'm1a2_tejas.glb'),
-  path.join(DIST, 'models', 'tanks', 'community', 'abramsx-mortavex.glb'),
-];
-const RECOVERED_ICON_IDS = [
-  'm1a2_tejas', 'abramsx',
-  'challenger1', 'chieftain5', 'fv510', 'leo2_revolution', 'leo2a5', 'leo2a7v',
-  'm1a1ha', 'm1a2_sepv2', 'm60a1', 'pt91m', 'merkava1b', 'merkava2b',
-  'merkava2d', 'merkava3b', 'merkava3c', 'merkava3d', 'merkava4b', 't62mv1',
-  't64bv1', 't72b_1987', 't72b3m', 't72bu', 't90sm', 'type90', 't90a_vladimir',
-  'is3_bergman', 'isu152', 'isu122s', 'centurion3', 'centurion5', 'comet',
-  'challenger_cruiser', 'charioteer', 'leopard2_proto', 'm1a1_aim', 'm46_patton',
-  'm47_patton', 'm26_pershing', 'm45_patton', 'm60a3',
-  // USER DROPS wave 8 (scout-gen2) NC quarantine: bergman T-54/T-80 family +
-  // the LastTriarius T-84 remix (effective CC BY-NC-SA via its NC-SA parents).
-  // Their icons are derivative renders of NC meshes. The wave's CC-BY(-SA)
-  // ids (t44, type59, amx30, amx30b2, m48, m60a2, vickers_mk1) SHIP.
-  't54', 't80', 't80b', 't80bv', 't84',
-];
-const ICON_SUFFIXES = [
-  'angle', 'side', 'side_silhouette', 'top', 'top_silhouette',
-  'hit_zones_side', 'armor_side', 'modules_side',
 ];
 const NC_PATH_RE = /(quarantine\/|community-candidates\/|candidates-gen2\/|community\/recovered\/|m1a2_tejas\.glb|abramsx-mortavex\.glb)/;
 
@@ -73,22 +50,6 @@ async function main() {
       console.log(`[strip-nc] (already absent) ${path.relative(ROOT, dir)}`);
     }
   }
-  for (const file of STRIP_FILES) {
-    if (existsSync(file)) {
-      await rm(file, { force: true });
-      console.log(`[strip-nc] removed ${path.relative(ROOT, file)}`);
-    }
-  }
-  for (const id of RECOVERED_ICON_IDS) {
-    for (const suffix of ICON_SUFFIXES) {
-      // perf-r3c: shaded views ship as .webp now (silhouettes stay .png) —
-      // strip BOTH extensions so no derivative render of an NC mesh can ride
-      // a format change into a public build.
-      await rm(path.join(DIST, 'icons', `${id}_${suffix}.png`), { force: true });
-      await rm(path.join(DIST, 'icons', `${id}_${suffix}.webp`), { force: true });
-    }
-  }
-
   // 2. cross-check: registered playables must not point at deleted paths.
   // The spec registry is imported in a SUBPROCESS (tools/
   // strip-nc-registry-probe.mjs): profile modules carry dev-server-tolerant
@@ -112,32 +73,21 @@ async function main() {
     if (probe.err) console.error(`[strip-nc] probe error: ${probe.err.message}`);
     process.exit(1);
   }
-  const { allIds: ALL_TANK_IDS, sources, candidates = {} } = JSON.parse(markerLine.slice(MARKER.length));
-  console.log(`[strip-nc] registry probe: ${ALL_TANK_IDS.length} playables, ${Object.keys(sources).length} GLB-sourced, ${Object.keys(candidates).length} candidateGlb prints`);
+  const { allIds: ALL_TANK_IDS, sources } = JSON.parse(markerLine.slice(MARKER.length));
+  console.log(`[strip-nc] registry probe: ${ALL_TANK_IDS.length} playables, ${Object.keys(sources).length} GLB-sourced`);
 
   const offenders = [];
   for (const id of ALL_TANK_IDS) {
     const p = sources[id];
     if (p && NC_PATH_RE.test(p)) offenders.push({ id, path: p, kind: 'playable' });
   }
-  // §5.31b PRINT VIEWER: candidateGlb rows feed the public Sources print
-  // catalog (src/vehicles/printCatalog.js filters by these same prefixes).
-  // A candidate on a stripped path must be a conscious decision, never a
-  // silent one — quarantined prints belong in the local-only override maps
-  // or FLIP-RETIRED comments, not in candidateGlb. Scanned over the probe's
-  // full candidates map (MODEL_SOURCE-keyed, not allIds-keyed).
-  for (const [id, c] of Object.entries(candidates)) {
-    if (NC_PATH_RE.test(c)) offenders.push({ id, path: c, kind: 'candidateGlb' });
-  }
-
   if (offenders.length) {
     console.error('[strip-nc] FAIL: registered rows still reference stripped NC/quarantine paths:');
     for (const o of offenders) console.error(`[strip-nc]   ${o.id} (${o.kind}) -> ${o.path}`);
     console.error('[strip-nc] Make a conscious ship/no-ship decision: either delist the id or relicense/replace the model.');
-    console.error('[strip-nc] (candidateGlb rows: retire the print to the local-only override maps / a FLIP-RETIRED comment instead.)');
     process.exit(1);
   }
-  console.log('[strip-nc] OK: no registered playable or candidateGlb print references a stripped path.');
+  console.log('[strip-nc] OK: no registered playable references a stripped path.');
 
   // 3. attribution sections that must be dropped for a public build
   const attribution = path.join(ROOT, 'docs', 'ATTRIBUTION.md');

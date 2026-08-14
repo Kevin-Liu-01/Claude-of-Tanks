@@ -61,8 +61,8 @@ const LS_KEY = 'cot.gfxPreset';
 // browsers OOM-kill a tab well below that. The mobile tier is a real preset
 // on the same ladder (data, not scattered if-statements): every engine module
 // that already reads the preset (post.js, lighting.js) picks it up, and the
-// texture levers below (textureScale/textureCap/glbModels) are consumed by
-// the texture creation sites (materials.js, world bakers, modelLoader).
+// texture levers below (textureScale/textureCap) are consumed by the texture
+// creation sites (materials.js and world bakers).
 //
 // Detection inputs (cheap, boot-safe): UA/touch class, gl MAX_TEXTURE_SIZE
 // (a 4096 cap identifies constrained GPUs even under desktop UAs), and
@@ -118,11 +118,6 @@ export function resolveDeviceTier(renderer) {
 
 /** @returns {'mobile'|'desktop'} resolved tier ('desktop' until resolved) */
 export function getDeviceTier() { return _deviceTier || 'desktop'; }
-
-/** True when sourced-GLB model swaps are enabled on this tier (modelLoader
- * gates its whole fetch/parse/upload pipeline on this — procedural tanks are
- * the models of record on mobile). */
-export function glbModelsEnabled() { return getPreset().glbModels !== false; }
 
 /**
  * CENTRAL texture-resolution lever. Texture/canvas creation sites pass their
@@ -225,9 +220,6 @@ export const PRESETS = {
   // desktop-class device; resolvePresetName pins it whenever the device tier
   // is mobile. Sized against a ~192 MB GPU texture budget on a 3-4 GB-RAM
   // phone whose browser kills the tab near 1-1.5 GB total:
-  // - glbModels false — the sourced-GLB swap pipeline (fetch/parse/upload of
-  //   5-14 community models, 100s of MB decoded) never runs; the procedural
-  //   fleet is the model of record. Single biggest win.
   // - textureScale 0.5 / textureCap 2048 — every procedural canvas bake
   //   (tank albedo/normal/rough sets, world layers) allocates at half its
   //   authored dimension through the central texSize() lever, and nothing may
@@ -249,7 +241,6 @@ export const PRESETS = {
     shadowMaxFar: 300,
     textureScale: 0.5,
     textureCap: 2048,
-    glbModels: false,
     dynMin: 0.6,
   },
 };

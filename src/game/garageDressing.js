@@ -12,10 +12,10 @@
 //  - 100% procedural (canvas textures + primitives + tankFactory procedural
 //    builds) — no downloads, no GLB jobs, shares the stage's texture language
 //    via the helpers exported from ui/garageStage.js.
-//  - BUILDS LAZILY: created empty, then pump() builds one chunk per idle
-//    slice (static clutter → bay A tank → bay B tank) so neither the boot
-//    budget nor a tank-switch ever pays for it; ensureBuilt() force-finishes
-//    synchronously for deterministic marketing captures (__SHOTS garage).
+//  - BUILDS IN CHUNKS: main.js pumps static clutter → bay A tank → bay B tank
+//    behind the boot veil, with a painted frame between chunks. The complete
+//    workshop is present when the garage becomes interactive, so no later
+//    repair-bay build can interrupt a tank switch.
 //  - PEDESTAL READABILITY IS SACRED: everything sits outside the painted
 //    KEEP-CLEAR ring, in the r≥14 m wall/corner band, dim (low-albedo mats,
 //    one whisper-level fill light, emissive-faked lamp pools) — the hero on
@@ -32,9 +32,9 @@ import {
 } from '../ui/garageStage.js';
 import { createTank } from '../vehicles/tankFactory.js';
 
-// Repair-bay residents: procedural-of-record mid-tier heavies (specs.js
-// MODEL_SOURCE 'procedural'), so proceduralOnly builds are the SHIPPED look —
-// no GLB parse enqueued, textures shared per-spec with the pedestal LRU.
+// Repair-bay residents use the same first-party builders as playable tanks;
+// the lighter proceduralOnly option skips cosmetic decoration for background
+// dressing while retaining the authored silhouette and materials.
 const BAY_A_SPEC = 'tiger1';
 const BAY_B_SPEC = 'panther_g';
 const BAY_TANK_OPTS = { quality: 'ai', proceduralOnly: true };

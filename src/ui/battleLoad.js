@@ -127,7 +127,7 @@ const BATTLE_TIPS = [
  * Create the pre-battle loading screen.
  * @returns {{show:(info:object)=>void, rosters:(allies:Array,enemies:Array)=>void,
  *   progress:(f:number,label?:string)=>void,
- *   countdown:(n:number)=>void, hide:()=>void, readonly visible:boolean,
+ *   countdown:(n:number)=>void, hide:()=>Promise<void>, readonly visible:boolean,
  *   root:HTMLElement}}
  */
 export function createBattleLoadScreen() {
@@ -245,13 +245,16 @@ export function createBattleLoadScreen() {
 
     /** Fade out, then drop out of layout. */
     hide() {
-      if (!visible) return;
+      if (!visible) return Promise.resolve();
       visible = false;
       // hold display through the opacity transition (.on carries display:flex,
       // so removing it alone would cut the fade to a hard pop)
       root.style.display = 'flex';
       root.classList.remove('on');
-      setTimeout(() => { if (!visible) root.style.display = ''; }, 320);
+      return new Promise((resolve) => setTimeout(() => {
+        if (!visible) root.style.display = '';
+        resolve();
+      }, 320));
     },
   };
   return api;

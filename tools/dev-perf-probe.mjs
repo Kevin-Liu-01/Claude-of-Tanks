@@ -110,8 +110,7 @@ const server = await createServer({
   optimizeDeps: {
     entries: ['index.html'],
     include: [
-      'three', 'three/examples/jsm/loaders/GLTFLoader.js',
-      'three/examples/jsm/utils/SkeletonUtils.js',
+      'three',
       'three/examples/jsm/utils/BufferGeometryUtils.js',
       'three/examples/jsm/geometries/RoundedBoxGeometry.js',
     ],
@@ -173,8 +172,8 @@ try {
   if (selected.cores) await cdpTry('Emulation.setHardwareConcurrencyOverride', { hardwareConcurrency: selected.cores });
   await cdp.send('Profiler.enable');
   await cdp.send('Profiler.setSamplingInterval', { interval: 500 });
-  // A 0.5 ms sampler materially amplifies the real desktop path's cold GLB +
-  // shader loading. Keep the lossless in-page recorder on for that window,
+  // A 0.5 ms sampler materially amplifies the real desktop path's cold model
+  // and shader compilation. Keep the lossless in-page recorder on for that window,
   // then start CPU sampling at battle-open so the diagnostic does not create
   // the multi-minute CDP stall it is trying to measure.
   if (entryMode === 'debug') {
@@ -194,10 +193,14 @@ try {
   bootTrace = await page.evaluate(() => window.__DEV_TRACE.snapshot({ gpu: false }));
   if (garageWaitMs) {
     await new Promise((resolveWait) => setTimeout(resolveWait, garageWaitMs));
-    garageDwell = await page.evaluate(() => ({
-      stats: window.__DEV_TRACE.stats(),
-      worldPrefetch: window.__WORLD_PREFETCH || null,
-    }));
+    garageDwell = await page.evaluate(() => {
+      const trace = window.__DEV_TRACE.snapshot({ gpu: false });
+      return {
+        stats: trace.stats,
+        anomalies: trace.events.filter((row) => row.kind === 'anomaly'),
+        worldPrefetch: window.__WORLD_PREFETCH || null,
+      };
+    });
   }
   await page.evaluate((metadata) => {
     window.__DEV_TRACE.clear();

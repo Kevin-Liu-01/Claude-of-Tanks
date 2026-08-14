@@ -104,8 +104,7 @@ async function phaseAB() {
   await page.waitForFunction(() => {
     const D = window.__DEBUG;
     const v = D && D.pedestalVisual;
-    const s = window.__GLB_STATS;
-    return !!(v && v.root.visible !== false && (!s || s.settled >= s.started));
+    return !!(v && v.root.visible !== false);
   }, { timeout: 60000, polling: 100 });
   await sleep(2500); // post-ready idle (prefetch/thumb queue) — part of the SUT
 
@@ -205,7 +204,7 @@ async function phaseAB() {
       if (id) lastId = `${kind}:${id}`;
       await sleep(50 + Math.floor(rng() * 100));
     }
-    // convergence: the pipeline gets up to 10 s (cold GLB parses allowed)
+    // convergence: authored procedural builds can still span several frames
     const t0 = Date.now();
     let state = await converged();
     while (!state.ok && Date.now() - t0 < 10000) {

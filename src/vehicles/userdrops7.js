@@ -216,8 +216,8 @@ const glb = (file) => ({
 // shippable class (CC BY / CC BY-SA) — registered in every build
 // t44 §5.45 BUILD LANDED (russia lane 2026-08-08): the id renders OUR
 // procedural build everywhere (profiles/russia.js buildT44); the Foxygamer
-// CC BY-SA print retires to candidateGlb (kv2/t30 pattern — Sources print
-// card via printCatalog is automatic). Measurement registration moved to
+// CC BY-SA print is retained only as offline comparison provenance.
+// Measurement registration moved to
 // the three override maps (§10-pattern mirror, helper-expanded config).
 MODEL_SOURCE.t44 = {
   source: 'procedural',
@@ -225,8 +225,8 @@ MODEL_SOURCE.t44 = {
 };
 // m48 §5.45 BUILD LANDED (patton lane 2026-08-08): the id renders OUR
 // procedural build everywhere (profiles/patton.js buildM48); the ATModeler
-// print retires to candidateGlb (kv2/t30 pattern — Sources print card +
-// the repeatable A/B audit). Measurement registration moved to the three
+// print remains offline comparison provenance for repeatable A/B audits.
+// Measurement registration moved to the three
 // override maps (§10-pattern mirror, helper-expanded config).
 MODEL_SOURCE.m48 = {
   source: 'procedural',
