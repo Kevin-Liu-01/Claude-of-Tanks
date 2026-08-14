@@ -1148,3 +1148,20 @@ packet scores floor 9.4 / mean 9.58, proves a real quarter-turn and coherent
 turret/hull ownership, and finds no fused mass, stranded equipment, floating
 attachment or winding wound. Full receipt:
 `docs/critique/shaded-parity-leo2a6-owner-source-graduation.md`.
+
+## 2026-08-14 FIRST-PARTY TERMINAL-COURSE REWRAP
+
+Current authored-model maintenance preserves the complete accepted hull,
+skirts, mudguards, seven-wheel suspension and turret. The idler is now
+`(z=3.44, y=0.98, r=0.22)` and the rear final drive is
+`(z=-3.14, y=1.01, r=0.26)`. This modest endpoint-only rewrap clears the
+unchanged glacis and rear-sponson seams while retaining the elevated
+`\\______/` course shape. A concealed 15-mm projection-closure curtain keeps
+its full dimensions and moves from `|x|=1.0125` to `|x|=0.955`, clear of the
+native inner shoe face.
+
+Fresh 15-view paired/profile and 15+15 yaw evidence shows no visible hull,
+skirt, mudguard, wheel or silhouette loss. Exact band and individual-shoe
+audits are 0/0 across the complete sweep; contiguity is zero, turret parenting
+is clean and winding has no reversed/mixed piece. Freeze `8ac0b4b1`, instance
+`e15a1b19`, asset geometry `70bfb68e` (46 meshes / 145,883 vertices).

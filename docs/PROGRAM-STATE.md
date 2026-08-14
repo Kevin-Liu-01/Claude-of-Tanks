@@ -99,7 +99,7 @@ re-freeze NEW hash, all in ONE commit.
 | m47_patton | 2fc99c50 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | leo2a4 | d8374cc8 | RE-FROZEN 2026-08-13 (§5.151 restored full-depth first-party modular side skirts outboard of the unchanged native course; exact band+shoe+sweep 0/0; fresh 45-frame yaw/ownership packet) |
 | leo2a5 | e215a738 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
-| leo2a6 | e99f8490 | RE-FROZEN 2026-08-12 (§5.126 first-party Leopard 2A6: source-semantic wedge turret, canonical seated MG3, seven-wheel hull and exact native course; machine fidelity 95.43 / min view 95.32; fresh 42-frame yaw/ownership floor 9.3 / mean 9.46) |
+| leo2a6 | 8ac0b4b1 | RE-FROZEN 2026-08-14 (§5.178 non-subtractive terminal-course rewrap: complete hull/skirts/mudguards preserved; exact band+shoe sweep 0/0; fresh 45-frame profile/yaw packet; instance e15a1b19 / asset 70bfb68e) |
 | leo2a7v | b6b630f4 | RE-FROZEN 2026-08-13 (§5.151 restored full-depth first-party modular side skirts outboard of the unchanged native course; exact band+shoe+sweep 0/0; fresh 45-frame yaw/ownership packet) |
 | leo2_revolution | cffcd052 | RE-FROZEN 2026-08-13 (§5.151 removed the independently color-isolated long thin left-cheek card while retaining the connected cheek loft/armor course; exact band+shoe+sweep 0/0; fresh 45-frame yaw/ownership packet) |
 | m46_patton | 108806c8 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
@@ -6095,3 +6095,54 @@ All eight presentation assets are current. Dual-ledger geometry is freeze
 must preserve the complete glacis, side curtains, rear field and turret package;
 clearance belongs only in concealed mechanics or explicit running-gear
 ownership.**
+
+## 5.177 FIRST-PARTY SURFACE LAB INTEGRATION (2026-08-14, LIVE)
+
+The first-party surface-markup utility is now an application page at
+`/surface-studio`, labelled **Surface Lab** in the shared Home / Garage /
+Studio navigation. It uses the same typography, dark olive control surfaces,
+amber focus language and responsive header as the rest of the application.
+The tool always creates the selected vehicle with `proceduralOnly: true` and
+exports stable JSON annotations containing tank id, rig ownership, mesh and
+triangle identities, local/world bounds, camera pose and the requested
+add/remove operation. External/community geometry remains disabled.
+
+This is the authoritative owner-to-builder markup path used for the queued
+Abrams and Leopard Revolution surface removals. A marked triangle is evidence
+for locating an authored primitive; it is not permission to punch an open
+sheet into a closed hull or turret. Builders must remove or reshape the owning
+primitive and then re-run winding, yaw ownership and contiguity gates.
+
+## 5.178 LEOPARD 2A6 NON-SUBTRACTIVE TERMINAL-COURSE REWRAP (2026-08-14, LIVE)
+
+The live first-party Leopard 2A6 retains its complete hull, upper/lower glacis,
+front and rear side-skirt courses, diving mudguards, seven road wheels,
+suspension and all linked shoes. No visible armour or running-gear component is
+deleted, shortened or hidden. The strict residual came from two precise
+near-contacts: the idler/sprocket band grazed the intact glacis and rear
+sponson seams, while a concealed 15-mm projection-closure curtain sat 20 mm
+inside the shoe sweep.
+
+The curtain remains full-size and moves 57.5 mm inboard, clear of both native
+courses. The track itself is rewrapped through the existing terminal wheels:
+the front idler moves 60 mm forward, the rear final-drive centre moves 30 mm
+rearward and 10 mm down. Both remain strongly elevated above the road-wheel
+line and preserve the intended `\\______/` side profile. The central and upper
+track runs, wheel sizes, skirt envelope, body shell and turret are unchanged.
+
+Fresh evidence contains 15 authored-baseline/current boards plus 15 yaw0 and
+15 yaw90 frames (**45 PNG / 45 distinct hashes**), including the standardized
+elevated-left profile. Side, front/rear quarter and elevated views retain all
+seven wheels, the complete armour envelope and coherent terminal wraps. Parent
+audit is **0 stranded / 0 abutting / 0 dangling**. Winding is zero reversed /
+zero mixed with no yaw candidate. The strict exact audit is **0/0 band and 0/0
+individual-shoe intersections** over front, rear and full sweep; contiguity is
+**0 holes** and the machine-checkable standard remains **91.0 PASS**.
+
+All eight presentation assets are regenerated. Dual-ledger geometry is freeze
+**`8ac0b4b1`**, instance freeze **`e15a1b19`** and asset geometry
+**`70bfb68e`** (46 rendered meshes / 145,883 vertices).
+
+**KEEP this complete bodywork and course. Future Leopard track repairs must
+rewrap the native course or reseat concealed support geometry; never delete
+hull plates, skirts or mudguards to satisfy clearance.**

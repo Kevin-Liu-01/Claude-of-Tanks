@@ -1321,7 +1321,12 @@ function buildLeo2A6(P) {
     // pads at 1.49 over ref 1.31; a plain 0.88 drop swung the underside
     // 0.2 low. Sprocket forward to -3.11: its wrap far-edge pads were the
     // 1.16 bottom of the -3.688 side column (ref bottoms 1.373 there).
-    idler: { z: 3.38, y: 0.98, r: 0.22 }, sprocket: { z: -3.11, y: 1.02, r: 0.26 },
+    // Strict-course rewrap (2026-08-14): move only the terminal wheel
+    // centres outward in Z (idler +60 mm; sprocket -30 mm) and lower the
+    // sprocket 10 mm. This clears the rising/descending bands from the intact
+    // glacis and rear-sponson seams; no hull, skirt, mudguard, suspension or
+    // wheel geometry is removed.
+    idler: { z: 3.44, y: 0.98, r: 0.22 }, sprocket: { z: -3.14, y: 1.01, r: 0.26 },
     topY: 0.95, fans: { z: -2.55, x: 0.78, r: 0.38 },
     // tub undercut: ref belly rises from 0.44 over the sprocket bay
     tubZrear: -3.0, tubRearY: 0.80, tubWedgeEnd: -3.58,
@@ -1834,10 +1839,11 @@ function buildLeo2A6(P) {
   // 91.0 -> 90.44, worst cols +-0.95 procBot 0.29 vs refBot 0.50, because
   // the ref's own curve bottom at |x| 0.78..0.95 is the 0.50 belly line.
   // At |x| >= 0.99 both curves bottom at TRACK-GROUND level, so the
-  // curtain lives just inside the pad inner face instead (x 1.005..1.02,
+  // curtain lives immediately outboard of the closed tub face instead (x
+  // 0.9475..0.9625,
   // clear of wheels — inner faces 1.09 — and of the top/bottom track runs
   // at y 0.26..0.52, z -2.00..2.32): invisible to every ortho curve.
-  // y to 0.52 so rays grazing the curtain top at x 1.0125 land on the tub
+  // y to 0.52 so rays grazing the curtain top at x 0.955 land on the tub
   // face above its 0.47 bottom edge (0.52 - 0.033/m drop = 0.487 > 0.47);
   // z ends short of the certified OPEN sprocket bay. SIDE view at those
   // rows is already filled by the far track's inner-chain web (row-scanned
@@ -1847,8 +1853,12 @@ function buildLeo2A6(P) {
   // z0 -2.62 (not -2.00): the r6 hero-rearright 25 px residual is the
   // wheel-7/sprocket-corner corridor — the curtain's rear reach clips it;
   // the sprocket bay proper (z < -2.75) stays open per the front-mask law.
+  // Strict-course closure (2026-08-14): retaining this full 15 mm curtain
+  // at x 1.005..1.020 put its outer face 20 mm inside the native shoe sweep.
+  // Translate the intact closure 57.5 mm inboard; do not delete or lift any
+  // hull, skirt, mudguard, wheel or track geometry.
   for (const s2 of [-1, 1]) {
-    P.add('hull', box(0.015, 0.26, 4.94), s2 * 1.0125, 0.39, -0.15);
+    P.add('hull', box(0.015, 0.26, 4.94), s2 * 0.955, 0.39, -0.15);
   }
 
   // turret: pivot (0,1.77,0.35); measured wedge tables from the fresh
