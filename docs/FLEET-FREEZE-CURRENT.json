@@ -537,18 +537,18 @@
       "vertices": 58970
     },
     "t34_85": {
-      "freezeHash": "56507acd",
-      "instanceFreezeHash": "fefbcc81",
-      "assetGeometryHash": "497322d1",
-      "meshes": 39,
-      "vertices": 55974
+      "freezeHash": "5b8cb28c",
+      "instanceFreezeHash": "5c6858cd",
+      "assetGeometryHash": "64246a81",
+      "meshes": 41,
+      "vertices": 56298
     },
     "t34_85_cad": {
-      "freezeHash": "f4f060a4",
-      "instanceFreezeHash": "3fd9a879",
-      "assetGeometryHash": "0d837dfc",
-      "meshes": 35,
-      "vertices": 40314
+      "freezeHash": "b10dbb54",
+      "instanceFreezeHash": "eac9f85c",
+      "assetGeometryHash": "2cf15a6c",
+      "meshes": 37,
+      "vertices": 41178
     },
     "t44": {
       "freezeHash": "2589a694",

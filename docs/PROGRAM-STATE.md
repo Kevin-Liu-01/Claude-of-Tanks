@@ -8067,3 +8067,45 @@ freeze **`3aae60d0`**, instance freeze **`651097a6`** and asset geometry
 **KEEP both complete Sherman hulls, raised outer shoulders, fenders,
 mudguards/sand shields and native courses. Running-gear ownership may not be
 used to exempt real armor.**
+
+## 5.226 T-34-85 FAMILY CLOSED HULL AND RAISED FENDER CLOSEOUT (2026-08-14, LIVE)
+
+The first-party T-34-85 and T-34-85 CAD retain their complete hulls, sloped
+glacis and tail armor, full side shoulders, fenders, mudguards, turret and
+five-wheel native running gear. No hull, fender, mudguard, wheel, suspension
+or track member is deleted.
+
+Both variants now use closed central inter-track bodies with joined raised
+outer armor. The base T-34 keeps its complete original upper side and nose
+silhouette while its concealed underside clears the linked course. The CAD
+variant's glacis, side and tail volumes are closed centrally and continue
+outboard as full raised wings rather than leaving a hollow lane. Complete
+front/rear fenders, mudflaps, bins, fuel drums, tarp, tools and cable were
+raised and reseated together. Wheel shadows and suspension arms retain their
+geometry under explicit running-gear ownership.
+
+Exact strict band and individual-shoe audits are **front 0/0, rear 0/0 and
+complete sweep 0/0** for both tanks. Fresh evidence contains 15 paired boards
+including the standardized elevated-left profile, 15 yaw0 and 15 yaw90
+frames per tank: **90 PNG / 90 distinct hashes**. Every view preserves the
+closed body, complete fender line, five readable wheels and one continuous
+native course with raised terminal transitions.
+
+Both complete turret/gun packages execute a genuine quarter-turn while hull
+and running gear remain fixed. Parent audit is **0 stranded / 0 abutting / 0
+dangling** for both. The CAD mode-2 `rig_hull/hull#18` nominee is legitimate
+fixed rear-deck stowage: the short trunk remains visibly seated on the closed
+deck after turret departure and has no turret silhouette or station
+semantics. Winding is **0 reversed / 0 mixed geometry**; the CAD's three-pixel
+rear-left deficit is 0.00% and classified clean. Both dark muzzle bores and
+all 19 targeted runtime-rig checks pass.
+
+All sixteen targeted presentation assets are current. T-34-85 dual-ledger
+geometry is freeze **`5b8cb28c`**, instance freeze **`5c6858cd`** and asset
+geometry **`64246a81`** (41 rendered meshes / 56,298 vertices). T-34-85 CAD is
+freeze **`b10dbb54`**, instance freeze **`eac9f85c`** and asset geometry
+**`2cf15a6c`** (37 rendered meshes / 41,178 vertices).
+
+**KEEP both complete closed hulls, raised outer armor, full fenders,
+mudguards and five-wheel native courses. Running-gear ownership must never be
+used to remove or exempt real armor.**
