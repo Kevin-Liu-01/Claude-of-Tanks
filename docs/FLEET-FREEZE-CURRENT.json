@@ -89,9 +89,9 @@
       "vertices": 72759
     },
     "challenger_cruiser": {
-      "freezeHash": "37f4b8e4",
-      "instanceFreezeHash": "db44e30c",
-      "assetGeometryHash": "e4e087f6",
+      "freezeHash": "5ec6c300",
+      "instanceFreezeHash": "e0b7787e",
+      "assetGeometryHash": "f79233ec",
       "meshes": 36,
       "vertices": 41063
     },

@@ -2559,8 +2559,13 @@ function cromwellHull(P, o) {
   // Pannier band: vertical sides ending at the vertical driver's plate.
   // Split at the wrap line: the full-length slice rides above it, the lower
   // slice stops short of the sprocket wrap (silhouette owned by the tracks).
-  const ySplit = Math.min(roofY - 0.05, Math.max(bandY, wrapTop));
+  const ySplit = Math.min(roofY - 0.05, Math.max(bandY, wrapTop, o.corridorY ?? -Infinity));
   const lowerBandY = o.lowerBandY ?? bandY;
+  const bodyTop = bandY + 0.10;
+  if (o.corridorY && ySplit > bodyTop + 0.01) {
+    P.add('hull', box(innerW, ySplit - bodyTop, halfL * 0.99 + rearL * 0.98),
+      0, (ySplit + bodyTop) / 2, (halfL * 0.99 - rearL * 0.98) / 2);
+  }
   P.add('hull', box(bandW, roofY - ySplit, rearL + bowZ), 0, (roofY + ySplit) / 2, (bowZ - rearL) / 2);
   const zRearLow = -(rearL - (o.sprocketInset ?? 0.38)) + o.wheelR * 0.72 + 0.155;
   if (ySplit > lowerBandY + 0.01) {
@@ -2568,7 +2573,7 @@ function cromwellHull(P, o) {
   }
   // Low bow deck from the driver's plate to the nose, then the short glacis
   // (lower edge held above the idler wrap line).
-  const bowLo = Math.min(bowY - 0.02, Math.max(bandY - 0.05, wrapTop));
+  const bowLo = Math.min(bowY - 0.02, Math.max(bandY - 0.05, wrapTop, o.corridorY ?? -Infinity));
   P.add('hull', slab(
     [-bandW / 2, bowLo, bowZ], [bandW / 2, bowLo, bowZ],
     [bandW / 2, bowLo + 0.12, halfL * 0.99], [-bandW / 2, bowLo + 0.12, halfL * 0.99],
@@ -3777,8 +3782,8 @@ export const UK_PROFILES = {
   },
   challenger_cruiser: {
     build: a30Build, width: 2.91, hullLength: 8.03, roofY: 1.50, bandY: 0.88, trackW: 0.44,
-    bowZ: 2.85, bowY: 1.40, noseTipY: 0.96, tailTrim: 0.03, wheels: 6, wheelR: 0.41, wheelSpan: 5.9,
-    gunLength: 3.67, mgBall: false,
+    bowZ: 2.85, bowY: 1.40, noseTipY: 1.16, tailTrim: 0.03, wheels: 6, wheelR: 0.41, wheelSpan: 5.9,
+    gunLength: 3.67, mgBall: false, corridorY: 1.13, lowerBandY: 1.13, lowerSeamY: 1.15,
   },
   charioteer: {
     build: charioteerBuild, width: 3.05, hullLength: 6.55, roofY: 1.62, bandY: 0.94, trackW: 0.40,

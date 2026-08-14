@@ -7747,3 +7747,36 @@ geometry **`4c3d9a71`** (37 rendered meshes / 43,085 vertices).
 
 **KEEP the complete Comet hull, panniers, guards, fenders and native course.
 Future corridor work may not subtract or hollow its armor.**
+
+## 5.217 A30 CHALLENGER CLOSED TRACK-CORRIDOR CLOSEOUT (2026-08-14, LIVE)
+
+The first-party A30 Challenger cruiser retains its complete long
+Cromwell-family hull, pannier armor, bow, track guards, fender aprons, turret
+and six-wheel native course. No hull, skirt, fender, wheel or track member is
+deleted.
+
+The broad low pannier slice is raised above the shoe envelope and joined to
+the unchanged centre body by a **solid inter-track bridge**. The full-width
+outer side armor continues from that raised soffit to the roof. Its low bow
+tip is lifted above the idler wrap rather than clipped or opened, while the
+closed toe core and full glacis remain present. The lower side seam remains
+supported on the raised armor.
+
+Exact strict band and individual-shoe audits improve from 215 band / 7 shoe
+sweep voxels to **front 0/0, rear 0/0 and complete sweep 0/0**. Fresh evidence
+contains 15 paired boards including the standardized elevated-left profile,
+15 yaw0 and 15 yaw90 frames: **45 PNG / 45 distinct hashes**. Every view
+preserves the long closed hull, full upper sides and native track profile.
+
+The complete turret and gun execute a genuine quarter-turn while the hull and
+running gear remain fixed. Parent audit is **0 stranded / 0 abutting / 0
+dangling**. Winding is **0 reversed / 0 mixed geometry with zero-pixel
+deficit**, and mode 2 is clean. The dark muzzle bore and all ten targeted
+runtime-rig checks pass.
+
+All eight targeted presentation assets are current. A30 Challenger
+dual-ledger geometry is freeze **`5ec6c300`**, instance freeze **`e0b7787e`**
+and asset geometry **`f79233ec`** (36 rendered meshes / 41,063 vertices).
+
+**KEEP the complete A30 hull, pannier armor, guards, fenders and native
+course. Future corridor work may not subtract or hollow its armor.**
