@@ -253,10 +253,12 @@ export class AuthoritativeMatchRuntime {
           : [...this.peers.values()]
             .filter((peer) => !peer.metadata?.spectator)
             .map((peer) => peer.id);
-        this.matchStarted = requiredIds.length > 0 && requiredIds.every((id) => {
-          const peer = this.peers.get(id);
-          return !!peer && peer.welcomed && peer.ready;
-        });
+        this.matchStarted = requiredIds.length > 0
+          ? requiredIds.every((id) => {
+            const peer = this.peers.get(id);
+            return !!peer && peer.welcomed && peer.ready;
+          })
+          : [...this.peers.values()].some((peer) => peer.welcomed && peer.ready);
         if (this.matchStarted && typeof this.simulation.onMatchReady === 'function') {
           this.simulation.onMatchReady({ tick: this.tick, timeMs: this.timeMs });
         }

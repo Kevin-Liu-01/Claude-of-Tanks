@@ -4079,6 +4079,7 @@ export function createKillCam(deps) {
   // integration seam sanctioned for this round; no game module is imported).
   const spectate = (() => {
     let on = false;
+    let observerAllTeams = false;
     let curId = null;
     let pollId = 0;
     let advanceTimer = 0;
@@ -4092,7 +4093,7 @@ export function createKillCam(deps) {
     const livingAllies = () => {
       const g = gameRef();
       if (!g || !Array.isArray(g.tanks)) return [];
-      return g.tanks.filter((t) => t && !t.isPlayer && t.team !== 'enemy'
+      return g.tanks.filter((t) => t && (observerAllTeams || (!t.isPlayer && t.team !== 'enemy'))
         && t.combat && !t.combat.destroyed && t.state && t.visual);
     };
     const entById = (id) => {
@@ -4103,9 +4104,11 @@ export function createKillCam(deps) {
       if (!busRef || !ent) return;
       busRef.emit(`spectate:${kind}`, {
         id: ent.id,
+        name: ent.displayName || null,
         vehicle: ent.spec ? ent.spec.name : String(ent.id),
         specId: ent.specId || null,
         count,
+        allTeams: observerAllTeams,
       });
     }
     function retarget(ent, list, first) {
@@ -4190,6 +4193,7 @@ export function createKillCam(deps) {
     function stop(emitEnd) {
       if (!on) return;
       on = false;
+      observerAllTeams = false;
       curId = null;
       window.removeEventListener('keydown', onKey, true);
       window.removeEventListener('mousemove', onMove, true);
@@ -4203,11 +4207,20 @@ export function createKillCam(deps) {
       /** Enter spectate iff dead player + live battle + living allies. */
       maybeStart() {
         if (on) return false;
+        observerAllTeams = false;
         const g = gameRef();
         const p = getPlayer();
         if (!g || g.result || g.phase !== 'battle') return false;
         if (!p || !p.combat || !p.combat.destroyed) return false;
         return start();
+      },
+      /** Enter lobby observer mode without requiring an owned/dead tank. */
+      startObserver() {
+        if (on) return false;
+        observerAllTeams = true;
+        if (start()) return true;
+        observerAllTeams = false;
+        return false;
       },
       stop,
       cycle,

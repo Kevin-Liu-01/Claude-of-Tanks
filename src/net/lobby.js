@@ -308,7 +308,6 @@ export function applyLobbyCommand(lobby, playerId, command, {
     case 'start': {
       assertHost(lobby, id);
       const players = activePlayers(lobby);
-      if (players.length < 1) throw new LobbyError('not_enough_players', 'at least one player is required');
       if (players.some((entry) => !entry.ready || !entry.specId)) {
         throw new LobbyError('players_not_ready', 'every active player must be ready');
       }

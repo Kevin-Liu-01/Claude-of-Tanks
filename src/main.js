@@ -1958,6 +1958,7 @@ let networkStatus = null;
 let latestNetworkSnapshot = null;
 let networkPumpPending = false;
 let networkActionBitsPending = 0;
+let networkSpectator = false;
 
 function networkInputFrame() {
   const player = game.player;
@@ -2022,6 +2023,7 @@ function closeNetworkMatch(reason = 'network_match_closed') {
   latestNetworkSnapshot = null;
   networkPumpPending = false;
   networkActionBitsPending = 0;
+  networkSpectator = false;
 }
 
 async function beginBattleEntry(specId, mapId = null) {
@@ -2070,6 +2072,9 @@ async function presentNetworkBattle({
   modeLabel,
   connectMatch,
 } = {}) {
+  const spectator = own.team === 'spectator';
+  const displayTeam = spectator ? 'alpha' : own.team;
+  networkSpectator = spectator;
   bus.emit('ui:battleStart', { playerId: viewerId, specId: own.specId, mapId });
   battleLoad.show({
     mapName: 'Network operation',
@@ -2077,9 +2082,9 @@ async function presentNetworkBattle({
     thumb: '',
     biome: mapId,
     mode: modeLabel,
-    allies: lobbyRosterRows({ players: matchPlayers }, own.team, viewerId),
+    allies: lobbyRosterRows({ players: matchPlayers }, displayTeam, viewerId),
     enemies: lobbyRosterRows({ players: matchPlayers },
-      own.team === 'alpha' ? 'bravo' : 'alpha', viewerId),
+      displayTeam === 'alpha' ? 'bravo' : 'alpha', viewerId),
   });
   battleLoad.progress(0.02, 'Securing match channel');
   await nextFrame();
@@ -2100,15 +2105,16 @@ async function presentNetworkBattle({
     thumb: MAP_THUMBS[mapId] || '',
     biome: mapId,
     mode: modeLabel,
-    allies: lobbyRosterRows({ players: matchPlayers }, own.team, viewerId),
+    allies: lobbyRosterRows({ players: matchPlayers }, displayTeam, viewerId),
     enemies: lobbyRosterRows({ players: matchPlayers },
-      own.team === 'alpha' ? 'bravo' : 'alpha', viewerId),
+      displayTeam === 'alpha' ? 'bravo' : 'alpha', viewerId),
   });
   networkBridge = createBrowserBattleBridge({
     engineCtx,
     game,
     bus,
     viewerId,
+    spectator,
     worldCollision: world,
   });
   await networkBridge.prepareRoster(matchPlayers, (fraction, specId) => {
@@ -2116,7 +2122,9 @@ async function presentNetworkBattle({
   });
   battleLoad.progress(0.84, 'Synchronizing authority');
   const initial = await waitForNetworkSnapshot(
-    (snapshot) => snapshot.entities.some((entity) => entity.id === viewerId),
+    (snapshot) => spectator
+      ? snapshot.entities.length > 0
+      : snapshot.entities.some((entity) => entity.id === viewerId),
     12000,
     'Timed out waiting for the first authoritative snapshot.',
   );
@@ -2143,8 +2151,10 @@ async function presentNetworkBattle({
   fx.setFrozen(false);
   if (settings.isOpen()) settings.close({ noRelock: true });
   killcam.cancel();
-  selectedSpecId = own.specId;
-  rememberSpecId(own.specId);
+  if (!spectator) {
+    selectedSpecId = own.specId;
+    rememberSpecId(own.specId);
+  }
   debugAimTargetId = null;
   setWorldDormant(false);
   if (world.resetDestructibles) world.resetDestructibles();
@@ -2152,9 +2162,11 @@ async function presentNetworkBattle({
   setCamoBiome(mapId);
   hud.shotInfo.setPlayer(viewerId);
   fx.resetAll();
-  buildShellCards(game.player.spec);
-  damagePanel.setTank(game.player.spec);
-  damagePanel.setEquipment(game.player.equip || {});
+  if (!spectator) {
+    buildShellCards(game.player.spec);
+    damagePanel.setTank(game.player.spec);
+    damagePanel.setEquipment(game.player.equip || {});
+  }
   garage.hide();
   endOverlay.style.display = 'none';
   endShown = false;
@@ -2168,7 +2180,14 @@ async function presentNetworkBattle({
   resetConsumableCooldowns(consumableReadyAt);
   bus.emit('ui:consumableReset', {});
   rig.release();
-  rig.snapArcade(2, game.player.state.yaw, -10 * DEG);
+  if (spectator) {
+    if (!killcam.spectate.startObserver()) {
+      throw new Error('No live vehicle is available to spectate.');
+    }
+    networkBridge.setPerspective(killcam.spectate.targetId);
+  } else {
+    rig.snapArcade(2, game.player.state.yaw, -10 * DEG);
+  }
   showroom.stop();
   battleLoad.progress(1, 'Ready');
   await battleLoad.hide();
@@ -2183,10 +2202,7 @@ async function beginNetworkBattle({ role, session, lobbyState } = {}) {
   const viewerId = String(session?.roomInfo?.peerId || '');
   const own = lobbyState?.players?.find((player) => player.id === viewerId);
   try {
-    if (!viewerId || !own || own.team === 'spectator') {
-      if (own?.team === 'spectator') session?.close('spectator_unsupported');
-      throw new Error('Spectator presentation is not available yet.');
-    }
+    if (!viewerId || !own) throw new Error('The lobby identity is unavailable.');
     const {
       beginPrivateHostMatch,
       beginPrivateClientMatch,
@@ -2504,12 +2520,16 @@ const frameInfo = {
 const spotFrame = {
   // player-team intel with the PLAYER as receiver: an allied spot from a
   // damaged-radio tank shares over the correct range (simulation_correctness r1)
-  isSpotted: (id) => (game.spotting ? game.spotting.isSpotted(id, 'player', game.player) : true),
+  receiver: null,
+  isSpotted: (id) => (game.spotting
+    ? game.spotting.isSpotted(id, 'player', spotFrame.receiver || game.player)
+    : true),
   player: null,
 };
-function refreshSpotFrame() {
-  if (game.spotting && game.player && game.player.state) {
-    spotFrame.player = game.spotting.getConcealment(game.player, game.timeS);
+function refreshSpotFrame(focus = game.player) {
+  spotFrame.receiver = focus || null;
+  if (game.spotting && focus && focus.state) {
+    spotFrame.player = game.spotting.getConcealment(focus, game.timeS);
   } else {
     spotFrame.player = null;
   }
@@ -3170,14 +3190,15 @@ function tick(nowMs) {
   }
   camera.getWorldDirection(_fwd);
   let occlFocus = null;
+  const cameraFocus = game.player || (networkSpectator ? rig.spectateTargetEnt : null);
   // lighting_post r2: never run the chase-camera occlusion fade during an
   // external capture pose (setExternalPose keeps mode ARCADE) — the fade
   // dithered bushes into screen-door noise in staged combat_firing frames.
   if (inBattle && !kcActive && rig.mode === 'ARCADE' && !rig.externalActive &&
-      game.player && game.player.state &&
-      game.player.visual && game.player.visual.root.visible) {
-    occlFocus = _occlFocus.copy(game.player.state.pos);
-    occlFocus.y += game.player.spec.dims.heightM * 0.75;
+      cameraFocus && cameraFocus.state &&
+      cameraFocus.visual && cameraFocus.visual.root.visible) {
+    occlFocus = _occlFocus.copy(cameraFocus.state.pos);
+    occlFocus.y += cameraFocus.spec.dims.heightM * 0.75;
   }
   if (world && !worldDormant) world.update(dtR, camera.position, _fwd, occlFocus);
 
@@ -3200,17 +3221,22 @@ function tick(nowMs) {
   // 7. HUD (hidden + frozen while the kill-cam letterbox owns the screen).
   // NOTE: live isActive() check — the replay may have STARTED in step 2 of
   // this very tick, and hud.update would re-show the HUD over the letterbox.
-  if (inBattle && game.player && !kcActive && !killcam.isActive()) {
+  const observerFocus = networkSpectator && killcam.spectate.active
+    ? networkBridge?.entities.get(killcam.spectate.targetId) || null
+    : null;
+  const hudFocus = game.player || observerFocus;
+  if (observerFocus) networkBridge?.setPerspective(observerFocus.id);
+  if (inBattle && hudFocus && !kcActive && !killcam.isActive()) {
     frameInfo.timeS = game.timeS;
     frameInfo.mode = rig.mode === 'SNIPER' ? 'sniper' : 'battle';
-    frameInfo.player = game.player;
+    frameInfo.player = hudFocus;
     frameInfo.tanks = game.tanks; // COMMUNITY TANKS: roster varies per battle
     frameInfo.rosterTanks = networkBridge ? networkBridge.roster : game.tanks;
     frameInfo.shells = game.shells;
-    refreshSpotFrame(); // SPOTTING WIRING
-    computeAimInfo();
+    refreshSpotFrame(hudFocus); // SPOTTING WIRING
+    if (game.player) computeAimInfo();
     hud.update(frameInfo);
-    damagePanel.update(game.player.combat);
+    damagePanel.update(hudFocus.combat);
   }
 
   // 8. audio

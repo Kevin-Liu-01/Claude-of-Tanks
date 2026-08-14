@@ -164,6 +164,13 @@ const botLobby = createLobby({
 applyLobbyCommand(botLobby, 'solo', { type: 'set_ready', ready: true });
 applyLobbyCommand(botLobby, 'solo', { type: 'start', matchSeed: 77 });
 assert.equal(serializeLobby(botLobby).teamSize, 3, 'one human may start a bot-filled match');
+const observerLobby = createLobby({
+  roomCode: 'OBS234', hostId: 'observer', hostName: 'Observer', hostSpecId: 'm1a2', teamSize: 1,
+});
+applyLobbyCommand(observerLobby, 'observer', { type: 'set_team', team: 'spectator' });
+applyLobbyCommand(observerLobby, 'observer', { type: 'start', matchSeed: 88 });
+assert.equal(observerLobby.phase, LOBBY_PHASES.STARTING,
+  'a spectator host may launch a bot-filled observed match');
 
 const migrateLobby = createLobby({ roomCode: 'XYZ789', hostId: 'z-host', hostName: 'Host' });
 addLobbyPlayer(migrateLobby, { id: 'a-next', name: 'Next' });

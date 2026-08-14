@@ -70,4 +70,33 @@ assert.ok(hosted.simulation.entityById.get('peer-1').state.speed > 0,
 
 joined.close('test_done');
 hosted.close('test_done');
-console.log('privateMatchHandoff.selftest: listener-safe WebRTC handoff passed');
+
+const observedLobby = {
+  roomCode: 'OBS234', mode: 'private', phase: 'starting', mapId: 'verdant',
+  matchSeed: 99, teamSize: 1,
+  players: [{ id: 'observer-1', name: 'Observer', specId: 'm1a2', team: 'spectator' }],
+};
+const observedRoster = buildPrivateMatchPlayers(observedLobby);
+assert.equal(observedRoster.length, 2);
+assert.ok(observedRoster.every((player) => player.bot),
+  'spectator-only rooms still receive the selected bot team fill');
+const observed = beginPrivateHostMatch({
+  session: {
+    roomInfo: { peerId: 'observer-1', mode: 'private' },
+    takeMatchChannels: () => [],
+  },
+  lobbyState: observedLobby,
+  simulationFactory: (options) => createAuthoritativeMatch({ ...options, countdownS: 0 }),
+});
+await Promise.resolve();
+observed.ready();
+await Promise.resolve();
+const observerFrame = await observed.advance(50);
+assert.equal(observed.host.matchStarted, true,
+  'a ready observer releases bot-only authority without a player entity');
+assert.deepEqual(observerFrame.entities.map((entity) => entity.id).sort(),
+  observedRoster.map((player) => player.id).sort(),
+  'observer snapshots include both teams without spotting redaction');
+observed.close('test_done');
+
+console.log('privateMatchHandoff.selftest: listener-safe player and spectator handoff passed');

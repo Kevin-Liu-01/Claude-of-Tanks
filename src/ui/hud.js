@@ -809,10 +809,11 @@ export function initHud(bus) {
   function specPopulate(p, first) {
     const ent = (lastTanksRef || []).find((t) => t && t.id === p.id) || null;
     // same nickname the team panels show for this entity (nickById-backed)
-    specNick.textContent = ent ? nickFor(ent) : (p.vehicle || String(p.id));
+    specNick.textContent = ent ? nickFor(ent) : (p.name || p.vehicle || String(p.id));
     const numeral = p.specId ? tierNumeral(p.specId) : '';
     const tier = numeral ? `${numeral} · ` : '';
-    specVeh.textContent = `${tier}${p.vehicle || ''}${p.count > 1 ? ` · ${p.count} allies alive` : ''}`;
+    const countLabel = p.allTeams ? 'vehicles alive' : 'allies alive';
+    specVeh.textContent = `${tier}${p.vehicle || ''}${p.count > 1 ? ` · ${p.count} ${countLabel}` : ''}`;
     specBar.classList.add('show');
     document.body.classList.add('cot-spectating'); // own-tank furniture off
     if (first) {
@@ -1195,6 +1196,7 @@ export function initHud(bus) {
   // ---------- team panels + score plate ----------
   const nickById = new Map(); // entity id -> stable bot nickname (per battle)
   function nickFor(t) {
+    if (t.displayName) return t.displayName;
     if (t.isPlayer) return PLAYER_NICK;
     let nick = nickById.get(t.id);
     if (!nick) {

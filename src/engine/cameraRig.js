@@ -622,6 +622,14 @@ export function createCameraRig(camera, deps) {
      */
     update(dt, camInput) {
       if (external) return;
+
+      // A lobby spectator has no player entity. The observer chase still has
+      // a concrete target and must be solved before the player-only guard.
+      if (spec) {
+        solveSpectate(dt);
+        return;
+      }
+
       const player = getPlayer();
       if (!player) return;
 
@@ -636,11 +644,6 @@ export function createCameraRig(camera, deps) {
 
       // SPECTATE: ally chase-cam owns the frame (mouse/wheel/keys ignored —
       // orbit input arrives via rig.spectateLook from the spectate controller).
-      if (spec) {
-        solveSpectate(dt);
-        return;
-      }
-
       // Death-cam: slow orbit of the wreck (input ignored until released).
       if (death) {
         camera.userData.scoped = false;

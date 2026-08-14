@@ -136,7 +136,7 @@ export function createPlayMenu({
       <div class="roomhead"><div><div class="roommeta">ROOM CODE</div><div class="code"></div></div>
         <button class="action alt" data-action="copy" type="button">Copy code</button></div>
       <div class="players"></div><div class="controls">
-        <select data-control="team"><option value="alpha">Team Alpha</option><option value="bravo">Team Bravo</option><option value="spectator" disabled>Spectator (coming soon)</option></select>
+        <select data-control="team"><option value="alpha">Team Alpha</option><option value="bravo">Team Bravo</option><option value="spectator">Spectator</option></select>
         <select data-control="size"><option value="1">1 vs 1</option><option value="3">3 vs 3</option><option value="5">5 vs 5</option><option value="7">7 vs 7</option></select>
         <select data-control="map"></select>
         <button class="action alt" data-action="ready" type="button">Ready</button>
@@ -319,14 +319,14 @@ export function createPlayMenu({
     const me = next.players.find((player) => player.id === ownId());
     if (me) {
       teamSelect.value = me.team;
-      readyBtn.textContent = me.ready ? 'Not ready' : 'Ready';
+      readyBtn.textContent = me.team === 'spectator' ? 'Watching' : me.ready ? 'Not ready' : 'Ready';
+      readyBtn.disabled = me.team === 'spectator';
     }
     mapSelect.disabled = role !== 'host';
     sizeSelect.disabled = role !== 'host';
     startBtn.style.display = role === 'host' ? '' : 'none';
     const activePlayers = next.players.filter((player) => player.team !== 'spectator');
     startBtn.disabled = role !== 'host' || next.phase !== 'waiting' ||
-      activePlayers.length < 1 ||
       next.players.some((player) => player.team !== 'spectator' && (!player.ready || !player.specId));
     playersEl.textContent = '';
     for (const player of next.players) {

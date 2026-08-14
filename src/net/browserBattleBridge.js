@@ -34,6 +34,7 @@ export function createBrowserBattleBridge({
   game,
   bus,
   viewerId,
+  spectator = false,
   worldCollision = null,
 } = {}) {
   if (!engineCtx || !engineCtx.scene || !game) throw new TypeError('engineCtx and game are required');
@@ -43,6 +44,7 @@ export function createBrowserBattleBridge({
   const roster = [];
   const shellById = new Map();
   let viewerTeam = null;
+  let perspectiveTeam = null;
   let lastTick = -1;
   let mounted = false;
   let legacyState = null;
@@ -50,7 +52,10 @@ export function createBrowserBattleBridge({
 
   function ensureEntity(snapshot) {
     let entity = entities.get(snapshot.id);
-    if (entity) return entity;
+    if (entity) {
+      if (snapshot.name) entity.displayName = snapshot.name;
+      return entity;
+    }
     const spec = getSpec(snapshot.specId);
     const pos = new Vector3(snapshot.x, snapshot.y, snapshot.z);
     const state = createTankState(spec, pos, snapshot.yaw);
@@ -65,9 +70,10 @@ export function createBrowserBattleBridge({
       id: snapshot.id,
       specId: spec.id,
       spec,
+      displayName: snapshot.name || null,
       networkTeam: snapshot.team,
       team: 'enemy',
-      isPlayer: snapshot.id === id,
+      isPlayer: !spectator && snapshot.id === id,
       state,
       combat,
       input: {
@@ -95,6 +101,7 @@ export function createBrowserBattleBridge({
       const player = active[index];
       ensureEntity({
         id: player.id,
+        name: player.name,
         specId: player.specId,
         team: player.team,
         x: 0, y: 0, z: 0, yaw: 0,
@@ -106,9 +113,10 @@ export function createBrowserBattleBridge({
 
   function updateEntity(entity, snapshot, dt) {
     entity.networkTeam = snapshot.team;
-    if (entity.id === id) viewerTeam = snapshot.team;
-    entity.team = snapshot.team === viewerTeam ? 'player' : 'enemy';
-    entity.isPlayer = entity.id === id;
+    if (!spectator && entity.id === id) viewerTeam = snapshot.team;
+    const referenceTeam = spectator ? perspectiveTeam : viewerTeam;
+    entity.team = snapshot.team === referenceTeam ? 'player' : 'enemy';
+    entity.isPlayer = !spectator && entity.id === id;
     entity.networkVisible = true;
     const state = entity.state;
     const dx = snapshot.x - entity._lastX;
@@ -285,7 +293,7 @@ export function createBrowserBattleBridge({
           pos: [event.x, event.y, event.z],
         });
       } else if (event.type === 'match_ended') {
-        const result = event.result === 'draw' ? 'draw'
+        const result = spectator ? 'draw' : event.result === 'draw' ? 'draw'
           : event.result === viewerTeam ? 'victory' : 'defeat';
         game.result = result;
         bus.emit('battle:ended', { result, timeS: game.timeS, map: game.mapId, roster: [] });
@@ -308,7 +316,7 @@ export function createBrowserBattleBridge({
     }
     game.tanks = [...entities.values()];
     game.tankById = entities;
-    game.player = entities.get(id) || null;
+    game.player = spectator ? null : entities.get(id) || null;
     game.shells = [];
     game.spotting = {
       isSpotted: (targetId) => !!entities.get(targetId)?.networkVisible,
@@ -323,17 +331,18 @@ export function createBrowserBattleBridge({
     if (!snapshot) return false;
     for (const entity of entities.values()) entity.networkVisible = false;
     // Establish the viewer's team before classifying any other entity.
-    const own = snapshot.entities.find((entry) => entry.id === id);
+    const own = spectator ? null : snapshot.entities.find((entry) => entry.id === id);
     if (own) viewerTeam = own.team;
     for (const entry of snapshot.entities) updateEntity(ensureEntity(entry), entry, dt);
     for (const entity of entities.values()) {
-      entity.team = entity.networkTeam === viewerTeam ? 'player' : 'enemy';
+      const referenceTeam = spectator ? perspectiveTeam : viewerTeam;
+      entity.team = entity.networkTeam === referenceTeam ? 'player' : 'enemy';
       if (!entity.networkVisible) entity.visual.setVisible(false);
     }
     if (!mounted) mount();
     game.tanks = [...entities.values()].filter((entity) => entity.networkVisible || entity.combat.destroyed);
     game.tankById = entities;
-    game.player = entities.get(id) || null;
+    game.player = spectator ? null : entities.get(id) || null;
     game.timeS = snapshot.meta?.battleTimeMs != null
       ? snapshot.meta.battleTimeMs / 1000
       : snapshot.serverTimeMs / 1000;
@@ -344,6 +353,17 @@ export function createBrowserBattleBridge({
     if (snapshot.tick > lastTick) {
       lastTick = snapshot.tick;
       emitEvents(snapshot.events);
+    }
+    return true;
+  }
+
+  function setPerspective(entityId) {
+    if (!spectator) return false;
+    const target = entities.get(String(entityId || ''));
+    if (!target) return false;
+    perspectiveTeam = target.networkTeam;
+    for (const entity of entities.values()) {
+      entity.team = entity.networkTeam === perspectiveTeam ? 'player' : 'enemy';
     }
     return true;
   }
@@ -371,5 +391,14 @@ export function createBrowserBattleBridge({
     destructionCause.clear();
   }
 
-  return { entities, roster, prepareRoster, mount, apply, unmount, dispose };
+  return {
+    entities,
+    roster,
+    prepareRoster,
+    mount,
+    apply,
+    setPerspective,
+    unmount,
+    dispose,
+  };
 }

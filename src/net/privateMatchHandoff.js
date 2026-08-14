@@ -44,7 +44,7 @@ export function buildPrivateMatchPlayers(lobbyState) {
   if (counts.alpha > teamSize || counts.bravo > teamSize) {
     throw new Error('human roster exceeds the selected team size');
   }
-  const referenceEra = getSpec(humans[0]?.specId)?.era;
+  const referenceEra = humans[0]?.specId ? getSpec(humans[0].specId)?.era : null;
   let pool = ALL_TANK_IDS.filter((id) => isGarageVisibleTankId(id) &&
     (!referenceEra || getSpec(id)?.era === referenceEra));
   if (!pool.length) pool = ALL_TANK_IDS.filter(isGarageVisibleTankId);
@@ -108,9 +108,12 @@ export function beginPrivateHostMatch({
     playerId: hostId,
     clock: () => wallTimeMs,
   });
-  host.attachPeer({ peerId: hostId, transport: localLink.host,
-    metadata: { mode: lobby.mode || 'private' } });
   const playerById = new Map(lobby.players.map((player) => [player.id, player]));
+  host.attachPeer({ peerId: hostId, transport: localLink.host,
+    metadata: {
+      mode: lobby.mode || 'private',
+      spectator: playerById.get(hostId)?.team === 'spectator',
+    } });
   for (const channel of session.takeMatchChannels()) {
     const player = playerById.get(channel.peerId);
     host.attachPeer({ peerId: channel.peerId, transport: channel.transport,
