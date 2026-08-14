@@ -7572,3 +7572,38 @@ is freeze **`1445a9e0`**, instance freeze **`83896ab2`** and asset geometry
 
 **KEEP the complete IS-7 exterior and closed raised soffit. Future course work
 may not subtract its pike, hull, fenders or mudguards.**
+
+## 5.212 OBJECT 279 FOUR-TRACK CORRIDOR CLOSEOUT (2026-08-14, LIVE)
+
+Object 279 retains its complete first-party elliptical hull, rounded stern,
+sloped bow, roof, turret, and distinctive four-track presentation. The outer
+native linked courses, inner wrap stubs, beam structure and seven outer wheel
+stations remain in place. No shell, track, wheel or support is deleted.
+
+The shared native suspension recesses now carry truthful running-gear
+ownership. The real contact was the low full-width elliptical shell passing
+through the outer courses at both ends. Its replacement is a **closed
+four-track soffit**: a solid narrow keel stays between the track beams, while
+the complete broad shell and rounded stern continue above the shoe lanes and
+join the unchanged upper hull. The prow keeps its closed center core beneath
+the full outer bow.
+
+Exact strict band and individual-shoe audits improve from 358 band / 599 shoe
+voxels to **front 0/0, rear 0/0 and complete sweep 0/0**. Fresh evidence
+contains 15 paired boards including the standardized elevated-left profile,
+15 yaw0 and 15 yaw90 frames: **45 PNG / 45 distinct hashes**. Front, rear,
+profile and hero views preserve the accepted elliptical silhouette and
+four-track identity.
+
+The entire dome, mantlet, gun and roof suite execute a genuine quarter-turn;
+the hull and all four-track structure stay fixed. Parent audit is **0 stranded
+/ 0 abutting / 0 dangling**. Winding is **0 reversed / 0 mixed geometry with
+zero-pixel deficit**, and mode 2 is clean. The dark muzzle bore and all ten
+targeted runtime-rig checks pass.
+
+All eight targeted presentation assets are current. Object 279 dual-ledger
+geometry is freeze **`26c7107c`**, instance freeze **`0ff2d460`** and asset
+geometry **`65db5fa2`** (33 rendered meshes / 59,366 vertices).
+
+**KEEP the complete Object 279 elliptical hull and four-track construction.
+Future course work may not hollow the shell or delete any track structure.**

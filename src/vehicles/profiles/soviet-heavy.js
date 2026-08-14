@@ -609,15 +609,17 @@ function buildObject279(P) {
   const zc = -1.665;
   // r5 dims-first: published 6.99 hull / 10.24 overall / 2.60 roof — shell
   // stretched to zc-2.90..zc+3.41, dome crown raised to 2.60.
-  P.add('hull', frustum(1.56, zc + 3.24, zc - 2.88, 1.70, zc + 3.34, zc - 2.92, 0.26, 0.55));
-  P.add('hull', frustum(1.70, zc + 3.34, zc - 2.92, 1.63, zc + 3.28, zc - 2.88, 0.55, 1.12));
+  // Closed four-track soffit: the narrow keel stays solid between the track
+  // beams, while the complete elliptical shell begins above the shoe lanes.
+  P.add('hull', frustum(0.90, zc + 3.24, zc - 2.88, 0.90, zc + 3.34, zc - 2.92, 0.26, 0.90));
+  P.add('hull', frustum(1.70, zc + 3.34, zc - 2.92, 1.63, zc + 3.28, zc - 2.88, 0.90, 1.12));
   P.add('hull', frustum(1.63, zc + 3.28, zc - 2.88, 1.45, zc + 2.50, zc - 2.75, 1.12, 1.555));
   P.add('hull', box(2.86, 0.04, 5.72), 0, 1.545, zc - 0.10);                   // roof cap
   // rounded stern (plan taper: ~2.2 wide at the rear tip)
-  P.add('hull', xform(cylY(1.62, 1.62, 1.10, P.q ? 24 : 14), 0, 0, 0, 0, 0, 0, [1, 1, 0.42]), 0, 0.85, zc - 2.90);
+  P.add('hull', xform(cylY(1.62, 1.62, 0.50, P.q ? 24 : 14), 0, 0, 0, 0, 0, 0, [1, 1, 0.42]), 0, 1.15, zc - 2.90);
   // bow: roof falls 1.57 -> 1.01 at the tip over the last ~0.9 m
   P.add('hull', frustum(1.52, zc + 3.47, zc + 2.54, 1.35, zc + 2.90, zc + 2.54, 1.01, 1.545));
-  P.add('hull', frustum(1.38, zc + 2.83, zc + 2.54, 1.56, zc + 3.47, zc + 2.54, 0.42, 1.01)); // prow underside
+  P.add('hull', frustum(0.90, zc + 2.83, zc + 2.54, 0.90, zc + 3.47, zc + 2.54, 0.42, 1.01)); // sealed inter-track prow core
   headlight(P, -0.55, 1.30, zc + 3.31, -0.35); headlight(P, 0.55, 1.30, zc + 3.31, -0.35);
   P.add('hullDetail', KIT.torus(0.075, 0.011, 12), -0.55, 1.30, zc + 3.37);    // brush guard hoops
   P.add('hullDetail', KIT.torus(0.075, 0.011, 12), 0.55, 1.30, zc + 3.37);
@@ -647,7 +649,7 @@ function buildObject279(P) {
   // second track pair with a daylight gap off the outer beams, and from the
   // side they hide exactly behind the outer idler/sprocket wraps. The r1
   // beam-shadow slabs keep the oracle's solid belly band.
-  sovGear(P, { xc: 1.40, trackW: 0.58, wheels: 7, wheelR: 0.27, wheelY: 0.30, span: 4.60, zc, topY: 0.72 });
+  sovGear(P, { xc: 1.40, trackW: 0.58, wheels: 7, wheelR: 0.27, wheelY: 0.30, span: 4.60, zc, topY: 0.72, corridorOwned: true });
   for (const s of [-1, 1]) {
     P.add('hullDark', box(0.52, 0.34, 5.4), s * 0.55, 0.24, zc);               // beam shadow band
     for (const e of [-1, 1]) {
