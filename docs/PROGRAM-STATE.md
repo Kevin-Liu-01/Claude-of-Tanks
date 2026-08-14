@@ -70,7 +70,7 @@ Freeze = deterministic geometry hash via `node tools/tmp-hashgeo.mjs
 --ids=...` (camoSeed 4242 pinned build; FNV-1a over position buffers +
 world matrices + indices, mesh-order independent). This table preserves the
 per-vehicle certification lineage; shared-family edits mean it is not a live
-byte ledger. The authoritative current 107-vehicle dual-fingerprint snapshot
+byte ledger. The authoritative current 108-vehicle dual-fingerprint snapshot
 is `docs/FLEET-FREEZE-CURRENT.json`, reproduced by
 `npm run tank:freeze:check`. Graduate-change protocol: fix ->
 gate hold x2 -> independent re-cert critic >=9.0 on changed views ->
@@ -85,14 +85,14 @@ re-freeze NEW hash, all in ONE commit.
 | m1a1ha | 396a5138 | RE-FROZEN 2026-08-14 (§5.184 expanded flush ERA / dual roof-gun asset reconciliation while retaining HA-only supported foliage; exact band+shoe+sweep 0/0; prior 9fb09dfc retired) |
 | m1a2_tejas | 0c690428 | RE-FROZEN 2026-08-14 (§5.184 family-source reconciliation; clean authored Tejas geometry and current asset bytes verified unchanged, strict native-course clearance retained; prior ed044ac8 retired) |
 | merkava3b | REMOVED BY OWNER 2026-08-06 (roster prune; was 8bb8d984, packet historical) |
-| merkava3c | aa74be6a | RE-FROZEN 2026-08-07 (§B2 under-roof closure wave §5.11: solid casting walls, gate rows EXACT, re-cert floor 9.0 on every changed view; sheets shots/critic-merkava-closure/) |
+| merkava3c | c41e5c3c | RE-FROZEN 2026-08-14 (§5.194 non-subtractive closed-sponson/native-course repair; exact band+shoe+sweep 0/0, fresh 45-frame profile/yaw packet; prior aa74be6a retired) |
 | kf51 | 9ac547ac | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | isu122s | 8f420d18 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | isu152 | 8e2f75c0 | |
-| merkava3d | 667ece84 | RE-FROZEN 2026-08-07 (§B2 under-roof closure wave §5.11: solid casting walls, gate rows EXACT, re-cert floor 9.0 on every changed view; sheets shots/critic-merkava-closure/) |
+| merkava3d | 3dc50bb4 | RE-FROZEN 2026-08-14 (§5.194 non-subtractive closed-sponson/native-course repair; exact band+shoe+sweep 0/0, fresh 45-frame profile/yaw packet; prior 667ece84 retired) |
 | pt91m | 2cf10e23 | |
 | t72b3m | b8cc33a8 | RE-FROZEN 2026-08-13 (§5.154 live ownership/asset reconciliation: complete soft-pack belt, side bins, flank carriers and rear cells remain turret-owned with parent audit 0/0/0 and fresh 45-frame yaw proof; existing wrap-fade/face trim explicitly classified as suspension-owned with front/rear exact band+shoe 0/0; all eight presentation assets current; hull, skirts and native six-wheel course unchanged) |
-| merkava1b | 78051af0 | RE-FROZEN 2026-08-07 (§B2 under-roof closure wave §5.11: solid casting walls, gate rows EXACT, re-cert floor 9.0 on every changed view; sheets shots/critic-merkava-closure/) |
+| merkava1b | 102e495d | RE-FROZEN 2026-08-14 (§5.194 non-subtractive closed-sponson/native-course repair; exact band+shoe+sweep 0/0, fresh 45-frame profile/yaw packet; prior 78051af0 retired) |
 | m1a2 | 186cb8bb | RE-FROZEN 2026-08-14 (§5.184 expanded flush ERA / dual roof-gun asset reconciliation; exact band+shoe+sweep 0/0 and fresh 45-frame yaw packet; prior 636a4860 retired) |
 | chieftain5 | d4f2a9a6 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | t84 | 04707a9c | |
@@ -6820,3 +6820,65 @@ asset geometry **`994b5d9a`** (40 rendered meshes / 82,999 vertices).
 **KEEP both complete M60 hulls and their Patton running gear. Future work may
 refine fidelity above this mechanical foundation, but may not remove body or
 fender surfaces to force track clearance.**
+
+## 5.194 MERKAVA 1B/2B/2D/3C/3D CLOSED-SPONSON NATIVE-COURSE RESTORATION (2026-08-14, LIVE)
+
+This family pass preserves every accepted first-party exterior: complete
+upper and lower hulls, glacis, full sponson shoulders, side curtains or
+skirts, mudguards, tail racks, rear service armor, six road-wheel stations,
+raised terminal wheels, support rollers and one native linked-shoe course.
+Merkava 4 remains owner-removed and is not restored. No visible body, skirt,
+guard, wheel or track component is deleted or hidden.
+
+The common defect was the old full-width lower loft: its concealed outboard
+floor occupied both return lanes even though the visible sponson and deck sat
+above them. The loft now remains one closed body with its original center
+belly, exterior walls, upper armor and deck silhouette; only the concealed
+left/right underside begins above the native return shoes. The tail-notch
+slabs use the same supported floor. Variant-specific rear fittings remain in
+place but are reseated immediately behind their idler wraps: the Mk.1B tail
+fill, Mk.2 rack/front panels, Mk.3C tiered corner curtain and Mk.3D idler flap.
+The Mk.1B exhaust louvre remains on the outer hull face and is trimmed to the
+real bay above the return run rather than entering the shoe volume.
+
+Wheel-bay backers, suspension arms, wheel dishes, hubs and native end-wheel
+face anatomy keep their exact geometry and materials but now use explicit
+running-gear ownership buckets where required. This makes the strict audit
+distinguish suspension furniture from armor without exempting real flaps,
+guards or hull plates.
+
+Exact strict band and individual-shoe audits report **front 0/0, rear 0/0 and
+complete sweep 0/0** on all five vehicles. Fresh evidence contains 15 paired
+boards including the standardized elevated-left profile, 15 yaw0 frames and
+15 yaw90 frames per tank: **225 PNG / 225 distinct hashes**. All five hulls
+remain visibly closed from front, rear, side and top; every six-wheel cadence
+is readable, the loaded run rests beneath it and both terminal ramps remain
+continuous. Each complete gun/turret/optic/roof/bustle package performs a
+genuine quarter-turn while the hull, skirts, service fields and running gear
+remain fixed.
+
+Parent auditing is clean on Mk.2B, Mk.3C and Mk.3D. Mk.1B's only nominee is a
+small forward-deck glass fitting, visibly seated on the fixed glacis; Mk.2D's
+merged dark nominee is the supported fixed deck/rear-service field. Neither
+has turret semantics or follows yaw. Winding is **0 reversed / 0 mixed /
+0-pixel render deficit** across all five; Mk.2D's 28 mode-2 pixels remain the
+same fixed supported hull field and are below the audit floor. There is no
+stranded turret equipment, open sheet, sky hole, duplicated course or
+silhouette regression.
+
+All forty targeted presentation assets are current. Dual-ledger geometry is:
+
+- Merkava 1B: freeze **`102e495d`**, instance **`ea2eac46`**, asset
+  **`dbb2c5bb`** (44 meshes / 133,629 vertices).
+- Merkava 2B: freeze **`582edc54`**, instance **`da7da1ad`**, asset
+  **`27d6763b`** (38 meshes / 78,729 vertices).
+- Merkava 2D: freeze **`f01c9f44`**, instance **`7631de7a`**, asset
+  **`4acdf5c2`** (38 meshes / 78,225 vertices).
+- Merkava 3C: freeze **`c41e5c3c`**, instance **`b2a290f0`**, asset
+  **`2a3b8fb2`** (42 meshes / 147,951 vertices).
+- Merkava 3D: freeze **`3dc50bb4`**, instance **`8f861539`**, asset
+  **`4661c405`** (41 meshes / 165,119 vertices).
+
+**KEEP the complete Merkava hulls, side protection and native courses. Future
+course repairs must remain non-subtractive and may only reshape concealed
+undersides, reseat track-adjacent fittings or correct truthful ownership.**
