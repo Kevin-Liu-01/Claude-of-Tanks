@@ -1596,12 +1596,31 @@ function tejasRoofKit(P, t, station = 'crows') {
   // Ammo stack keeps the same single side column at x 0.52..0.68.
   P.add('turret', box(0.41, 0.126, 0.04), 0.895, 0.820, -0.66);
   P.add('turret', box(0.16, 0.06, 0.04), 0.60, 0.853, -0.70);
-  // TUSK and both SEP kits add their complete forward-firing weapon station
-  // on the left turret roof below.  Retaining this transverse right-side
-  // gun made the upgraded tanks look as if a second barrel had been stretched
-  // sideways across the roof.  The hatch/shield remain; the weapon mass now
-  // lives exclusively on the requested left side.
-  if (!reactiveLeftWeapons && station === 'crows2tall') {
+  // The commander's CROWS remains on the vehicle-left roof.  SEP tanks also
+  // carry a distinct loader weapon at this vehicle-right hatch.  It is aimed
+  // down +z like the main CROWS rather than laid transversely across the roof,
+  // so the two weapons read as separate stations from every hero angle.
+  if (reactiveLeftWeapons && P.spec.id !== 'm1a2_tusk') {
+    const loaderX = 1.06;
+    const receiverY = plat2 + (station === 'crows2tall' ? 0.140 : 0.115);
+    const pintleH = receiverY - plat2 + 0.085;
+    P.add('turretDark', box(0.34, 0.090, 0.34), loaderX, receiverY, -0.20);       // receiver
+    P.add('turretDetail', box(0.30, 0.014, 0.28), loaderX, receiverY + 0.052, -0.20); // top cover
+    P.add('turretDark', box(0.13, 0.055, 0.055), loaderX, receiverY - 0.012, -0.395); // grips
+    P.add('turretDark', box(0.055, pintleH, 0.055), loaderX,
+      plat2 + pintleH / 2 - 0.025, -0.23);                                      // connected pintle
+    P.add('turretDetail', box(0.12, 0.15, 0.18), loaderX + 0.22, receiverY - 0.025, -0.25); // ammo can
+    P.add('turretDark', box(0.025, 0.08, 0.13), loaderX + 0.15, receiverY + 0.005, -0.17); // feed
+    P.add('turretDark', cylZ(0.020, 0.18, 10), loaderX, receiverY, 0.055);         // jacket
+    P.add('turretDark', cylZ(0.0155, 0.62, 10), loaderX, receiverY, 0.455);       // forward barrel
+    P.add('turretDark', cylZ(0.021, 0.075, 10), loaderX, receiverY, 0.8025);      // flash hider
+    if (station === 'crows2tall') {
+      P.add('turret', box(0.48, 0.24, 0.038), loaderX, receiverY - 0.035, 0.01); // SEPv2 shield
+      P.add('turret', box(0.038, 0.25, 0.30), loaderX + 0.23, receiverY - 0.035, -0.13);
+    } else {
+      P.add('turret', box(0.42, 0.18, 0.035), loaderX, receiverY - 0.050, 0.015); // SEPv3 low shield
+    }
+  } else if (!reactiveLeftWeapons && station === 'crows2tall') {
     // §H.4 SEPv2 tell (loader station): the skate rail carries a SECOND M2
     // — twin fifties. Fatter receiver + top cover lick + spade grips +
     // heavy barrel with muzzle device + bigger can + feed chute, all on
@@ -1943,6 +1962,86 @@ function abramsArmorHardware(P, variant, t) {
       P.add(reactive ? 'turretDetail' : 'turretDark', cylX(0.013, 0.010, 8),
         side * (reactive ? flushFlankX(t, 0.21, 0.018) : 1.66), 0.21, z + 0.022);
     }
+  }
+
+  // M1A1 / M1A1HA owner armor pass.  The old non-reactive branch authored
+  // only 5 mm face markings, which vanished at garage distance.  These are
+  // real, shallow add-on cassettes: their backs bite into the skirt or the
+  // exact turret surface, their bodies expose readable shoulders, and the
+  // smaller faces sit directly on those bodies.  Natural gaps do the panel
+  // separation; no black grid strips are used.
+  if (!reactive && (variant === 'm1a1' || variant === 'm1a1ha')) {
+    const heavy = variant === 'm1a1ha';
+    const skirtDepth = heavy ? 0.105 : 0.082;
+    const flankDepth = heavy ? 0.080 : 0.060;
+    const cheekDepth = heavy ? 0.075 : 0.058;
+    for (const side of [-1, 1]) {
+      // Full side-skirt armor course.  HA gains a second staggered lower
+      // course; both marks carry the visibly stepped bow termination.
+      for (let k = 0; k < 9; k++) {
+        const z = 2.18 - k * 0.50;
+        const upperOuter = skirtArmorBox(P, 'hull', side, 1.812,
+          skirtDepth, 0.29, 0.42, 1.20, z);
+        skirtArmorBox(P, 'hullDetail', side, upperOuter - 0.003,
+          0.009, 0.22, 0.34, 1.20, z, 0);
+        P.add('hullDetail', cylX(0.014, 0.012, 8),
+          side * (upperOuter + 0.002), 1.20, z - 0.12);
+        if (heavy) {
+          const lowerOuter = skirtArmorBox(P, 'hull', side, 1.812,
+            skirtDepth - 0.010, 0.24, 0.42, 0.90, z + 0.015);
+          skirtArmorBox(P, 'hullDetail', side, lowerOuter - 0.003,
+            0.009, 0.17, 0.34, 0.90, z + 0.015, 0);
+        }
+      }
+      for (let k = 0; k < 3; k++) {
+        const z = 2.62 + k * 0.32;
+        const h = 0.30 - k * 0.035;
+        const bowOuter = skirtArmorBox(P, 'hull', side, 1.812 - k * 0.04,
+          skirtDepth, h, 0.27, 1.03, z);
+        skirtArmorBox(P, 'hullDetail', side, bowOuter - 0.003,
+          0.010, h - 0.065, 0.21, 1.03, z, 0);
+      }
+
+      // Four bustle-flank cassettes ride the 16.9-degree armor plane.
+      for (let k = 0; k < 4; k++) {
+        const z0 = -2.42 + k * 0.49;
+        armorFlankPatch(P, 'turret', t, side,
+          0.10, 0.58, z0, z0 + 0.41, flankDepth, ERA_CONTACT_OFFSET);
+        armorFlankPatch(P, 'turretDetail', t, side,
+          0.17, 0.51, z0 + 0.03, z0 + 0.38, 0.005, eraFaceBase(flankDepth));
+        armorFlankPatch(P, 'turretDetail', t, side,
+          0.30, 0.39, z0 + 0.07, z0 + 0.34, 0.003,
+          eraFaceBase(flankDepth, 0.009));
+      }
+
+      // A broad four-panel cheek arc follows the swept front surface.  HA
+      // receives the deeper package, but the rhythm is common across both
+      // early Abrams variants so they read as one upgraded family.
+      for (let col = 0; col < 2; col++) {
+        for (let row = 0; row < 2; row++) {
+          const u0 = 0.055 + col * 0.45, u1 = u0 + 0.39;
+          const v0 = 0.08 + row * 0.44, v1 = v0 + 0.37;
+          cheekEraPatch(P, 'turret', t, side, u0, u1, v0, v1,
+            cheekDepth, ERA_CONTACT_OFFSET);
+          cheekEraPatch(P, 'turretDetail', t, side,
+            u0 + 0.03, u1 - 0.03, v0 + 0.04, v1 - 0.04,
+            0.005, eraFaceBase(cheekDepth));
+        }
+      }
+    }
+
+    // Flush roof technology and stowage—not grass.  The processing box,
+    // dual apertures, cable race, and rear utility case are seated on the
+    // turret roof and remain well below the existing CWS silhouette.
+    P.add('turret', box(0.46, 0.14, 0.36), 0.34, 0.78, -0.48);
+    P.add('turretDetail', box(0.39, 0.035, 0.29), 0.34, 0.865, -0.48);
+    P.add('turretDark', box(0.12, 0.075, 0.09), 0.23, 0.85, -0.27);
+    P.add('turretGlass', box(0.095, 0.050, 0.012), 0.23, 0.85, -0.218);
+    P.add('turretDark', box(0.12, 0.075, 0.09), 0.44, 0.85, -0.27);
+    P.add('turretGlass', box(0.095, 0.050, 0.012), 0.44, 0.85, -0.218);
+    P.add('turretDark', box(0.035, 0.022, 0.58), 0.60, 0.72, -0.47);
+    P.add('turret', box(0.38, 0.12, 0.28), 0.83, 0.74, -0.53);
+    P.add('turretDetail', box(0.31, 0.025, 0.21), 0.83, 0.812, -0.53);
   }
 }
 
@@ -3159,7 +3258,10 @@ function buildTejasFamily(P, p) {
     // TUSK tell — shield wings, vision window, coping, gun through the
     // notch). Turret bucket: yaws with the turret (§B5). Tops <= 0.86
     // local = 2.43 world (under the 2.44 plateau).
-    const lagsX = -1.05;
+    // Keep the loader station on vehicle-right (+x), opposite the common
+    // vehicle-left CROWS.  The earlier -x placement stacked both weapons
+    // into one silhouette and made the TUSK appear to have only one gun.
+    const lagsX = 1.05;
     P.add('turret', box(0.74, 0.42, 0.05), lagsX, 0.62, 0.32);
     P.add('turret', box(0.05, 0.42, 0.55), lagsX - 0.36, 0.62, 0.05);
     P.add('turret', box(0.4, 0.40, 0.05), lagsX + 0.38, 0.60, 0.24, 0, -0.5, 0);
@@ -3167,11 +3269,12 @@ function buildTejasFamily(P, p) {
     P.add('turretDetail', box(0.3, 0.14, 0.02), lagsX, 0.68, 0.35);
     P.add('turretGlass', box(0.26, 0.1, 0.02), lagsX, 0.68, 0.36);
     P.add('turretGlass', box(0.02, 0.09, 0.30), lagsX - 0.345, 0.70, 0.05); // wing slit
-    P.add('turretDark', box(0.035, 0.14, 0.035), lagsX, 0.47, 0.20);   // pintle post
-    P.add('turretDark', box(0.11, 0.055, 0.34), lagsX, 0.585, 0.22);  // M240 receiver
-    P.add('turretDark', cylZ(0.013, 0.52, 8), lagsX + 0.015, 0.60, 0.62); // barrel
-    P.add('turretDark', cylZ(0.016, 0.05, 8), lagsX + 0.015, 0.60, 0.90); // flash hider
-    P.add('turretDetail', box(0.07, 0.09, 0.13), lagsX - 0.08, 0.575, 0.12); // ammo pouch
+    P.add('turretDark', box(0.045, 0.30, 0.045), lagsX, 0.775, 0.20);   // connected pintle post
+    P.add('turretDark', box(0.15, 0.085, 0.38), lagsX, 0.935, 0.22);   // raised M240 receiver
+    P.add('turretDetail', box(0.13, 0.014, 0.32), lagsX, 0.985, 0.22); // receiver cover
+    P.add('turretDark', cylZ(0.017, 0.72, 10), lagsX + 0.015, 0.94, 0.75); // long forward barrel
+    P.add('turretDark', cylZ(0.022, 0.085, 10), lagsX + 0.015, 0.94, 1.1525); // flash hider
+    P.add('turretDetail', box(0.10, 0.13, 0.16), lagsX - 0.11, 0.91, 0.10); // ammo pouch
     // §5.74 TUSK identity emphasis: laminated outer wings, coping frame and
     // cheek-side ARAT-2 shingles make the loader shield the dominant roof
     // tell.  All added shield solids stay below the 0.883 furniture knee.
@@ -3215,11 +3318,9 @@ function buildTejasFamily(P, p) {
     P.add('turretGlass', box(0.105, 0.052, 0.012), 0.40, 0.91, -0.178);
     P.add('turretDetail', box(0.25, 0.13, 0.18), 0.70, 0.78, -0.40);
     P.add('turretDark', box(0.035, 0.025, 0.48), 0.53, 0.735, -0.42);
-    // The LAGS above already carries the loader's M240 on the left roof.
-    // A second full receiver/barrel stack used to be authored here on top
-    // of it, producing the stretched duplicate the owner flagged.  The
-    // shared left-side CROWS plus this single LAGS weapon is the complete
-    // TUSK loadout; retain only the compact warning sensors below.
+    // The right-side LAGS above carries the loader's M240.  Together with
+    // the shared left-side CROWS it gives TUSK two deliberate, separated,
+    // forward-firing machine guns; retain only the warning sensors here.
     for (const [x, z, h] of [[-1.08, -0.86, 0.34], [1.06, -0.95, 0.28]]) {
       P.add('turretDetail', cylY(0.065, 0.075, 0.09, 10), x, 0.79, z);
       P.add('turretDark', box(0.035, h, 0.035), x, 0.98, z);
@@ -5721,6 +5822,94 @@ function buildM1a2(P, V) {
   // rings cover the caps; the cooled m1a2 dark bucket keeps them steel.
   P.add('gunDark', cylZ(0.118, 0.016, 14), 0, 0, 1.594);                // sleeve mouth
   P.add('gunDark', cylZ(0.0895, 0.012, 12), 0, 0.048, 5.112);           // collar cap
+
+  // Clean M1A2 owner armor/decor pass.  This builder is independent from
+  // the Tejas-family M1A1 path, so it needs its own physically seated kit.
+  // The cassettes stay inside the published skirt plane, follow the actual
+  // asymmetric cheek rake, and use shallow camouflaged shoulders with inset
+  // faces instead of black outline bars.
+  if (!sep && !sep3) {
+    for (const side of [-1, 1]) {
+      // Dense two-course side-skirt protection.  The body is buried into
+      // the existing 1.828 m skirt and its face remains the widest surface.
+      for (let k = 0; k < 10; k++) {
+        const z = 2.20 - k * 0.49;
+        P.add('hull', box(0.070, 0.29, 0.405), side * 1.792, 1.20, z);
+        P.add('hullDetail', box(0.008, 0.22, 0.33), side * 1.831, 1.20, z);
+        P.add('hull', box(0.064, 0.235, 0.405), side * 1.795, 0.90, z + 0.015);
+        P.add('hullDetail', box(0.008, 0.17, 0.33), side * 1.831, 0.90, z + 0.015);
+      }
+      // Stepped forward termination around the idler/fender transition.
+      for (let k = 0; k < 3; k++) {
+        const z = 2.72 + k * 0.31;
+        const h = 0.28 - k * 0.035;
+        P.add('hull', box(0.068, h, 0.26), side * (1.790 - k * 0.035), 1.03, z);
+        P.add('hullDetail', box(0.008, h - 0.06, 0.20),
+          side * (1.828 - k * 0.035), 1.03, z);
+      }
+
+      // Bustle-side modules are seated against each mark's real vertical
+      // wall (the base M1A2 shell uses different left/right wall planes).
+      const wallOuter = side < 0 ? 1.425 : 1.315;
+      const wallCenter = wallOuter - 0.035;
+      for (let k = 0; k < 4; k++) {
+        const z = -1.78 + k * 0.53;
+        P.add('turret', box(0.070, 0.38, 0.45), side * wallCenter,
+          1.80 - M1A2_RING[1], z - M1A2_RING[2]);
+        P.add('turretDetail', box(0.007, 0.30, 0.37), side * (wallOuter + 0.004),
+          1.80 - M1A2_RING[1], z - M1A2_RING[2]);
+        P.add('turretDetail', box(0.010, 0.055, 0.31), side * (wallOuter + 0.010),
+          1.80 - M1A2_RING[1], z - M1A2_RING[2]);
+      }
+
+      // Six cheek panels per side are generated from the same asymmetric
+      // inner/outer/rake coordinates as the shell.  surfaceNormalPatch
+      // seats each body along that plane and mirrors winding correctly.
+      const cheek = side < 0
+        ? { innerZ: 2.405, outerX: 1.425, outerZ: 1.802, rake: 0.24 }
+        : { innerZ: 2.360, outerX: 1.315, outerZ: 1.505, rake: 0.26 };
+      const cheekPoint = (u, v) => {
+        const x = 0.315 + (cheek.outerX - 0.315) * u;
+        const zBottom = cheek.innerZ + (cheek.outerZ - cheek.innerZ) * u;
+        return [x, 1.60 + 0.34 * v - M1A2_RING[1],
+          zBottom - cheek.rake * v - M1A2_RING[2]];
+      };
+      for (let col = 0; col < 3; col++) {
+        for (let row = 0; row < 2; row++) {
+          const u0 = 0.035 + col * 0.315, u1 = u0 + 0.275;
+          const v0 = 0.06 + row * 0.46, v1 = v0 + 0.38;
+          const p00 = cheekPoint(u0, v0), p10 = cheekPoint(u1, v0);
+          const p11 = cheekPoint(u1, v1), p01 = cheekPoint(u0, v1);
+          surfaceNormalPatch(P, 'turret', side, p00, p10, p11, p01,
+            0.068, ERA_CONTACT_OFFSET, [1, 0, 1]);
+          surfaceNormalPatch(P, 'turretDetail', side,
+            cheekPoint(u0 + 0.025, v0 + 0.035), cheekPoint(u1 - 0.025, v0 + 0.035),
+            cheekPoint(u1 - 0.025, v1 - 0.035), cheekPoint(u0 + 0.025, v1 - 0.035),
+            0.005, eraFaceBase(0.068), [1, 0, 1]);
+        }
+      }
+    }
+
+    // A compact, flush roof electronics group adds depth without creating
+    // loose props: armored processor, dual optical ports, service box and
+    // a protected cable race all intersect the roof/core beneath them.
+    P.add('turret', box(0.42, 0.16, 0.34), 0.72,
+      2.205 - M1A2_RING[1], -0.55 - M1A2_RING[2]);
+    P.add('turretDetail', box(0.35, 0.035, 0.27), 0.72,
+      2.3025 - M1A2_RING[1], -0.55 - M1A2_RING[2]);
+    for (const x of [0.63, 0.81]) {
+      P.add('turretDark', box(0.115, 0.075, 0.085), x,
+        2.27 - M1A2_RING[1], -0.355 - M1A2_RING[2]);
+      P.add('turretGlass', box(0.090, 0.050, 0.010), x,
+        2.27 - M1A2_RING[1], -0.307 - M1A2_RING[2]);
+    }
+    P.add('turret', box(0.31, 0.12, 0.25), 1.00,
+      2.18 - M1A2_RING[1], -0.70 - M1A2_RING[2]);
+    P.add('turretDetail', box(0.25, 0.026, 0.19), 1.00,
+      2.253 - M1A2_RING[1], -0.70 - M1A2_RING[2]);
+    P.add('turretDark', box(0.035, 0.025, 0.66), 0.93,
+      2.13 - M1A2_RING[1], -0.48 - M1A2_RING[2]);
+  }
   P.muzzleZ = 5.19;
   P.topY = 2.46;
   m1a2ToneKit(P);
