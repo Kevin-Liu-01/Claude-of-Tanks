@@ -496,7 +496,11 @@ function buildAriete(P) {
   P.add('hull', box(0.14, 0.125, 0.18), 0, 1.5755, -2.85);                     // CENTER EXHAUST STACK top 1.638 (r3 1024: the ref center dome — front ±0.04 cols want 1.659 rendered AND side -2.76..-2.88 wants 1.66 — is one x ±0.07 mass on the tail deck; §B3: stack body with a dark grate cap)
   P.add('hullDark', box(0.10, 0.02, 0.12), 0, 1.6255, -2.85);                  // stack grate inlay (top 1.6355, inside the body crown)
   P.decal('hull', 'number', 'EI 118', 0.26, [-0.92, 1.279, 3.06], 0, -0.21);  // ON the glacis plane (push round r2: the 3.66 nose seat became a floating band in the tube-only 3.643 col after the nose pull)
-  P.decal('hull', 'soot', null, 0.55, [-1.45, 1.10, -2.95], -Math.PI / 2);
+  // Exhaust soot stays on the actual left exhaust housing.  The previous
+  // oversized card extended aft/down across the elevated final-drive shoes;
+  // this supported patch preserves the stain without placing a rendered
+  // surface in the native course.
+  P.decal('hull', 'soot', null, 0.25, [-1.43, 1.30, -2.86], -Math.PI / 2);
   // skirts: full-length panels at +-1.78 + the widthM edge strip at exactly
   // +-1.80 (WIDTH GUARD; ref stations read ~3.54-3.60 the whole run).
   // Band 0.60..1.42 under the deck edge; courses segmented ~0.47 (SS C).
@@ -529,7 +533,9 @@ function buildAriete(P) {
     // side skirts, mudguards and hull geometry remain unchanged.
     idler: { z: 3.30, y: 0.70, r: 0.25 },
     rollers: [1.95, 0.70, -0.65, -1.80].map((z) => ({ z, y: 0.88, r: 0.08 })),
-    trackW: 0.615, topY: 0.88, botY: 0.055, contactZF: 2.75, contactZR: -2.05, paintedEnds: true, coveredTop: true, arms: true,
+    trackW: 0.615, topY: 0.88, botY: 0.055, contactZF: 2.75, contactZR: -2.05,
+    paintedEnds: true, coveredTop: true, arms: true,
+    armBucket: 'hullRunningGearDetail',
   });
   // Shallow concentric faces on the existing seven wheel stations.  The
   // physical rubber tires and course remain owned by buildRunningGear; these
@@ -537,9 +543,9 @@ function buildAriete(P) {
   // that distinguished the stronger first-party Ariete.
   for (const side of [-1, 1]) {
     for (const wz of wheelZs) {
-      P.add('hullDetail', cylX(0.275, 0.035, 18), side * 1.69, 0.43, wz);
-      P.add('hullDark', cylX(0.095, 0.039, 14), side * 1.695, 0.43, wz);
-      P.add('hullDark', torus(0.205, 0.014, 18), side * 1.711, 0.43, wz,
+      P.add('hullRunningGearDetail', cylX(0.275, 0.035, 18), side * 1.69, 0.43, wz);
+      P.add('hullRunningGearDark', cylX(0.095, 0.039, 14), side * 1.695, 0.43, wz);
+      P.add('hullRunningGearDark', torus(0.205, 0.014, 18), side * 1.711, 0.43, wz,
         0, 0, Math.PI / 2);
     }
   }
@@ -554,8 +560,13 @@ function buildAriete(P) {
   // the track widened INBOARD (xc 1.385, inner face 1.075 — the ref front
   // rows reach near-ground at +-1.07-1.13; outer face stays 1.695; tub +-1.03
   // keeps 4.5 cm to the inner band plane, audit dilates 2)
-  wheelRecessAt(P, wheelZs, 1.3725, 0.43, 0.345, 0.21);
-  tightenHullShadowProxy(P, { xc: 1.3725, trackW: 0.34, y0: 0.15, y1: 0.58, z0: -2.40, z1: 2.60, hullZ0: -3.20, hullZ1: 3.20 });
+  wheelRecessAt(P, wheelZs, 1.3725, 0.43, 0.345, 0.21, 'hullRunningGearDark');
+  // The colour-invisible procedural shadow carrier ends at the real lower
+  // tub's z=-2.90 station.  Extending it to -3.20 put a shadow-only box
+  // through the elevated final-drive shoes even though the rendered Ariete
+  // body and its supported rear service courses were already clear.
+  tightenHullShadowProxy(P, { xc: 1.3725, trackW: 0.34, y0: 0.15, y1: 0.58,
+    z0: -2.40, z1: 2.60, hullZ0: -2.90, hullZ1: 3.20 });
 
   // ---- turret: canted-wall welded slab + raised front roof + TURMS +
   // pano tower + hatch notch + low rear basket (r4 architecture RESTORED

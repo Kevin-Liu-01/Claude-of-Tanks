@@ -132,7 +132,7 @@ re-freeze NEW hash, all in ONE commit.
 | t14 | a94a2480 | RE-FROZEN 2026-08-12 (§5.131 fully first-party `buildT14`: low seven-wheel Armata hull, connected unmanned shroud, supported RWS/sensor package and exact native course; fidelity 90.53 / minimum view 91.52; 42 unique paired/yaw frames floor 9.0 / mean 9.04; source-baked `a88afa6c` playable retired) |
 | t80u | 77f9ae78 | RE-FROZEN 2026-08-12 (§5.132 fully first-party `buildT80UNative2026`: low turbine hull, connected cast/K-5 turret, supported combat/rear-service package and exact native six-wheel course; fidelity 91.51 / minimum view 90.20; 42 unique paired/yaw frames floor 9.0 / mean 9.04; source-baked `c0dc2502` playable retired) |
 | type74 | 8319dbb8 | RE-FROZEN 2026-08-11 (§5.110 authored low cast turret, five-wheel native course and supported combat/service suite; independent §B8 floor 9.1 / mean 9.29) |
-| ariete | acea2100 | RE-FROZEN 2026-08-11 (§5.111 native-procedural Ariete with seven-wheel course and supported low turret/rear service field; independent §B8 floor 9.0 / mean 9.25) |
+| ariete | 64308158 | RE-FROZEN 2026-08-14 (§5.185 non-subtractive native-course closeout: seven road wheels, full idler/final drive, hull/skirts/mudguards retained; exact band+shoe+sweep 0/0, fresh 45-frame profile/yaw proof; prior acea2100 retired) |
 | t72b_1987 | 3f2483d4 | GRADUATED 2026-08-11 (§5.114 authored low B87 hull/turret, buried K1 and native six-wheel course; independent §B8 floor 9.0 / mean 9.14) |
 | t72bu | 4b66bf6c | GRADUATED 2026-08-11 (§5.115 authored compact BU protection/station/rear package on one native six-wheel course; independent §B8 floor 9.0 / mean 9.19) |
 | t90ms | 5076891c | GRADUATED 2026-08-11 (§5.118 authored clipped-diamond shell, Relikt, supported bustle/station and native six-wheel course; independent §B8 floor 9.0 / mean 9.18) |
@@ -6425,3 +6425,49 @@ SEPv2 **`527f794f` / `1c97fb9d` / `33d654f6`** (57 / 203,662), and SEPv3
 **KEEP every complete Abrams outer hull, native seven-wheel course, approved
 foliage scope and supported turret package. Generated assets and freeze records
 must land atomically with future shared-family geometry changes.**
+
+## 5.185 C1 ARIETE NON-SUBTRACTIVE NATIVE-COURSE CLOSEOUT (2026-08-14, LIVE)
+
+This pass preserves the complete accepted first-party Ariete: closed lower
+hull, upper/lower glacis, both fenders, every segmented side-skirt and
+mudguard, seven road-wheel stations, full-size elevated front idler, raised
+rear final drive, return rollers, one linked-shoe course, gun, low turret and
+all supported roof/rear equipment. No exterior armour or running-gear
+geometry is deleted, hidden, scaled or moved.
+
+The strict report was almost entirely a classification defect. Ariete's
+painted concentric wheel faces, dark hubs/rings, wheel-bay recesses and exposed
+torsion arms were still merged into generic hull-detail buckets even though
+they are the visible native suspension. Their geometry, transforms and
+materials are unchanged; they now declare explicit running-gear ownership.
+The colour-invisible procedural shadow carrier also extended 0.30 m behind the
+real lower tub and through the final-drive arc. Its hull segment now ends at
+the actual z=-2.90 tub station. Finally, an oversized transparent exhaust-soot
+card crossed the rear shoes; the complete stain is reduced and reseated on the
+physical left exhaust housing instead of spanning the track corridor.
+
+Fresh 15-view authored-model boards, the standardized elevated-left profile,
+15 yaw0 and 15 yaw90 frames were inspected. All seven road wheels remain
+separately readable below the complete skirts; the front idler and rear final
+drive support one continuous `\\______/` course. The turret, gun, optics,
+roof station and basket quarter-turn together. The fixed hull tarp roll and
+spare-link rack flagged by the parent heuristic remain visibly seated on the
+aft deck while the turret departs; they are legitimate hull stowage, not
+stranded turret mass.
+
+Exact strict band and individual-shoe sweeps are **front 0/0, rear 0/0 and
+complete sweep 0/0**. Winding is **0 reversed / 0 mixed**, with only a
+31-pixel (0.04%) rear-left diagnostic edge and zero yaw-stranded candidates.
+No hollow hull, missing skirt, duplicate course, floater, sky-through opening
+or silhouette regression is visible. The retired visual-oracle gate row is
+historical and cannot be honestly rewritten after the first-party source-asset
+cleanup; current authored evidence and mechanical gates govern this
+course-only re-certification.
+
+All eight presentation assets are current and the muzzle bore passes.
+Dual-ledger geometry is freeze **`64308158`**, instance freeze **`57570dd5`**
+and asset geometry **`c45c50e0`** (51 rendered meshes / 104,019 vertices).
+
+**KEEP the complete Ariete hull, skirt/mudguard envelope and all seven native
+wheel stations. Future clearance work must remain a course rewrap, supported
+fitting reseat or truthful running-gear classification.**

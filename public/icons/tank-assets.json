@@ -4437,7 +4437,7 @@
           }
         ]
       },
-      "geometryHash": "2a50bf9e",
+      "geometryHash": "c45c50e0",
       "metadataHash": "28e60fad",
       "muzzleBore": {
         "tagged": 2,
@@ -4468,8 +4468,8 @@
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 9286,
-          "sha256": "4c34b263a68135164a6b9f3eb77bbeb1d13faeaae29b4fca498acec0c2aaff0c"
+          "bytes": 9274,
+          "sha256": "52dffcb850b9c5b553babafcf1e9571038822e15842c995d29fbee5e0b1784a7"
         },
         "topSilhouette": {
           "file": "ariete_top_silhouette.png",
@@ -4492,24 +4492,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 66975,
-          "sha256": "975bc137606842ef51ee837e71d1303efa4421fda01e0ecaa342a0045188f4f7"
+          "bytes": 66971,
+          "sha256": "f68ce012fbbe773546130b2b0d173bb6d5667de29b471d0f48fbaa260431684c"
         },
         "armorSide": {
           "file": "ariete_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 68163,
-          "sha256": "ff6e3778023e025719d11a166c9083d6767723367e1298b6c602c503a54118ca"
+          "bytes": 68165,
+          "sha256": "19815b18a2b7494eb53205a6c50739e6945b418da8479ae30e8e6319722d07c4"
         },
         "modulesSide": {
           "file": "ariete_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 66638,
-          "sha256": "3878a56fe5d4df40a07fa1ac63d484bc6e622ed41e61b8634ddf5907bb2e50ef"
+          "bytes": 66653,
+          "sha256": "9301b4e42d6291ff9a058630534ca51a0600e45fef8b6a5d42d481dbcc474a6c"
         }
       }
     },
