@@ -897,15 +897,16 @@ function buildKV2(P) {
   //  - published 6.95 hull length vs ref body 6.80 (−2.2%) lives in the
   //    four TOW-HOOK BRACKETS (x ±0.52, band ≥0.42 with the 12% rule) that
   //    reach 3.26 / −3.615 exactly where the ref shows its hook slivers.
-  P.add('hull', box(1.86, 0.62, 5.66), 0, 0.73, -0.37);                        // belly 0.42..1.04 (z −3.20..2.46)
-  P.add('hull', frustum(1.615, 2.07, -3.42, 1.60, 2.07, -3.40, 1.02, 1.60));   // sponson side band
+  P.add('hull', box(1.72, 0.62, 5.66), 0, 0.73, -0.37);                        // closed inter-track belly 0.42..1.04
+  P.add('hull', box(1.72, 0.30, 5.66), 0, 1.19, -0.37);                        // solid centre bridge to raised side armor
+  P.add('hull', frustum(1.615, 2.07, -3.42, 1.60, 2.07, -3.40, 1.34, 1.60));   // complete sponson wall, clear above shoes
   P.add('hull', box(1.94, 0.04, 4.99), 0, 1.6575, -0.405);                     // centre deck 1.6775 (ref line 1.67; z −2.90..2.09)
   for (const s of [-1, 1]) {
     P.add('hull', box(0.36, 0.045, 4.94), s * 0.76, 1.6525, -0.38);            // sponson decks 1.675 (x 0.58..0.94)
     // hull handrails along the sponson sides (family critical #5)
-    P.add('hullDetail', box(0.018, 0.018, 2.30), s * 1.632, 1.26, -0.815);
+    P.add('hullDetail', box(0.018, 0.018, 2.30), s * 1.632, 1.36, -0.815);
     for (const dz of [-1.65, -0.65, 0.35]) {
-      P.add('hullDetail', box(0.014, 0.09, 0.014), s * 1.632, 1.21, -0.815 + dz + 0.65);
+      P.add('hullDetail', box(0.014, 0.09, 0.014), s * 1.632, 1.40, -0.815 + dz + 0.65);
     }
     // fender gusset struts under the fender plane (LEFT shows three per side)
     for (const gz of [-2.615, -0.515, 1.685]) {
@@ -935,8 +936,8 @@ function buildKV2(P) {
   for (const s of [-1, 1]) {
     const xi = s * 0.86, xo = s * 1.44;
     P.add('hull', slab(
-      [Math.min(xi, xo), 1.02, -3.395], [Math.max(xi, xo), 1.02, -3.395],
-      [Math.max(xi, xo), 1.02, -3.495], [Math.min(xi, xo), 1.02, -3.495],
+      [Math.min(xi, xo), 1.34, -3.395], [Math.max(xi, xo), 1.34, -3.395],
+      [Math.max(xi, xo), 1.34, -3.495], [Math.min(xi, xo), 1.34, -3.495],
       [Math.min(xi, xo), 1.535, -3.395], [Math.max(xi, xo), 1.535, -3.395],
       [Math.max(xi, xo), 1.40, -3.495], [Math.min(xi, xo), 1.40, -3.495]));
   }
@@ -946,9 +947,9 @@ function buildKV2(P) {
   P.add('hull', box(1.88, 0.05, 0.40), 0, 1.505, 2.255, 0.522, 0, 0);          // driver plate slope
   P.add('hull', box(3.23, 0.05, 0.56), 0, 1.375, 2.70);                        // nose deck 1.40 (z 2.42..2.98)
   P.add('hull', box(2.60, 0.17, 0.10), 0, 1.23, 3.01);                         // nose lip 1.315 (ref 1.31@3.02)
-  P.add('hull', slab(                                                          // nose shelf: top 1.13, face 3.07,
-    [-1.30, 0.55, 3.07], [1.30, 0.55, 3.07], [1.30, 0.42, 2.42], [-1.30, 0.42, 2.42], // underside rises 0.42->0.55
-    [-1.30, 1.13, 3.07], [1.30, 1.13, 3.07], [1.30, 1.13, 2.42], [-1.30, 1.13, 2.42]));
+  P.add('hull', slab(                                                          // sealed inter-track lower nose core
+    [-0.86, 0.55, 3.07], [0.86, 0.55, 3.07], [0.86, 0.42, 2.42], [-0.86, 0.42, 2.42],
+    [-0.86, 1.34, 3.07], [0.86, 1.34, 3.07], [0.86, 1.34, 2.42], [-0.86, 1.34, 2.42]));
   // plate-fill r1 (owner directive 2026-08-01, GEOMETRY-GATE.md "Plate fill
   // rule"): the 3.23-wide nose-deck plate FLOATED — open side mouths at
   // x 1.30..1.615 (z 2.07..2.98, the sponson wall stops at 2.07) and the
@@ -958,13 +959,13 @@ function buildKV2(P) {
   // held: max |x| 1.61 (width guard 1.66, front-column window 1.62..1.70
   // untouched), top 1.35 under every column's existing owner (deck 1.40,
   // driver slope 1.40+), extreme-z hook columns untouched.
-  P.add('hull', box(3.22, 0.22, 0.91), 0, 1.24, 2.525);
+  P.add('hull', box(3.22, 0.02, 0.91), 0, 1.34, 2.525);                         // full-width upper bow soffit above course
   // r4 tell 5 ("nose shelf reads as a bolted-on bumper bar" + missing dashed
   // nose weld): plate seams + stud row integrate the face into the bow —
   // paint-class relief (<=8 mm proud, far inside the 3.26 hook anchors) —
   // and the ref's dashed weld line crosses the nose deck.
   for (const sxv of [-0.55, 0.55]) P.add('hullDark', box(0.012, 0.56, 0.008), sxv, 0.84, 3.072);
-  P.add('hullDark', box(2.28, 0.016, 0.008), 0, 0.925, 3.072);                 // horizontal plate seam
+  P.add('hullDark', box(1.68, 0.016, 0.008), 0, 0.925, 3.072);                 // centre-core horizontal plate seam
   for (let k = 0; k < 11; k++) P.add('hullDark', box(0.026, 0.026, 0.010), -1.10 + k * 0.22, 1.055, 3.072);
   for (let k = 0; k < 12; k++) P.add('hullDark', box(0.055, 0.008, 0.022), -1.265 + k * 0.23, 1.402, 2.47);
   // tow-hook brackets: the published-length anchors (12% body rule: band
@@ -1162,24 +1163,25 @@ function buildKV2(P) {
       // r4 tell 1: cleat bumps move hullDark -> hullTrack so they ride the
       // retoned rusty family with the rest of the guard hardware (same x
       // band, same 1.22 tops — the station anchors are untouched).
-      P.add('hullTrack', box(0.008, 0.12, 0.06), sx * 1.6555, 1.16, -2.85 + k * 0.32);
+      P.add('hullRunningGearTrack', box(0.008, 0.12, 0.06), sx * 1.6555, 1.16, -2.85 + k * 0.32);
     }
-    P.add('hullTrack', box(0.008, 0.05, 4.86), sx * 1.6555, 1.195, -0.45);     // guard rail (top 1.22 = cleat tops)
+    P.add('hullRunningGearTrack', box(0.008, 0.05, 4.86), sx * 1.6555, 1.195, -0.45); // guard rail
     for (const hz of [-2.53, -1.09, 0.35, 1.79]) {
       // hanger straps HUG the sponson wall (x 1.609..1.615): anything that
       // paints in the x=1.66 trace column above 1.22 breaks the ref's 1.23
       // front-column contract (cost 5 pts of front_hull when first tried
       // at 1.6545)
-      P.add('hullTrack', box(0.006, 0.37, 0.03), sx * 1.612, 1.40, hz);
+      P.add('hullRunningGearTrack', box(0.006, 0.37, 0.03), sx * 1.612, 1.40, hz);
     }
     for (let k = 0; k < 6; k++) {
-      P.add('hullTrack', box(0.008, 0.25, 0.06), sx * 1.6555, 0.18, -2.70 + k * 0.95);
+      P.add('hullRunningGearTrack', box(0.008, 0.25, 0.06), sx * 1.6555, 0.18, -2.70 + k * 0.95);
     }
   }
   sovGear(P, {
     xc: 1.2925, trackW: 0.645, wheels: 6, wheelR: 0.30, wheelY: 0.33, span: 4.72, zc: -0.075, topY: 1.00, botY: 0.13,
     sprocketY: 0.73, sprocketR: 0.335, sprocketDz: 0.585, idlerY: 0.76, idlerR: 0.255, idlerDz: 0.505,
     rollers: [-1.625, -0.075, 1.475].map((z) => ({ z, y: 1.04, r: 0.085 })),
+    corridorOwned: true,
     style: 'holes',                       // r3 #2: spider face w/ 6 SPINNING dark pockets
   });
   // shaded-parity r4 tell 2 — sprocket/idler face relief, RE-SEATED. r4
@@ -1200,35 +1202,35 @@ function buildKV2(P) {
     const wzs = Array.from({ length: 6 }, (_, i) => -0.075 + 2.36 - i * 0.944);
     for (const sx of [-1, 1]) {
       for (const wz of wzs) {
-        P.add('hullTrack', KIT.torus(0.268, 0.012, 12), sx * 1.4335, 0.33, wz, 0, 0, Math.PI / 2); // faceted rim ring
+        P.add('hullRunningGearTrack', KIT.torus(0.268, 0.012, 12), sx * 1.4335, 0.33, wz, 0, 0, Math.PI / 2); // faceted rim ring
         // dark mid-annulus just behind the six spinning pocket voids: the
         // pocket band reads as one recessed slotted annulus with AO floors
         // (the pocket inserts themselves are retinted near-black below).
-        P.add('hullDark', KIT.torus(0.162, 0.014, 14), sx * 1.4160, 0.33, wz, 0, 0, Math.PI / 2);
+        P.add('hullRunningGearDark', KIT.torus(0.162, 0.014, 14), sx * 1.4160, 0.33, wz, 0, 0, Math.PI / 2);
       }
       // idler face (ref: open spoked wheel you can see through): big dark
       // void annulus PROUD of the kit hub drum (face 1.5712) + six warm
       // steel spokes + rim/hub rings; the kit hub cap (1.5835) pokes
       // through the hub ring like the ref's small center hub.
-      P.add('hullShadow', cylX(0.235, 0.006, 18), sx * 1.578, 0.76, 2.79);
-      P.add('hullTrack', KIT.torus(0.236, 0.011, 14), sx * 1.5825, 0.76, 2.79, 0, 0, Math.PI / 2);
+      P.add('hullRunningGearDark', cylX(0.235, 0.006, 18), sx * 1.578, 0.76, 2.79);
+      P.add('hullRunningGearTrack', KIT.torus(0.236, 0.011, 14), sx * 1.5825, 0.76, 2.79, 0, 0, Math.PI / 2);
       for (let k = 0; k < 6; k++) {
         const a = (k / 6) * Math.PI * 2 + 0.26;
-        P.add('hullTrack', KIT.xform(box(0.012, 0.052, 0.15), 0, Math.sin(a) * 0.15, Math.cos(a) * 0.15, a, 0, 0),
+        P.add('hullRunningGearTrack', KIT.xform(box(0.012, 0.052, 0.15), 0, Math.sin(a) * 0.15, Math.cos(a) * 0.15, a, 0, 0),
           sx * 1.5835, 0.76, 2.79);
       }
-      P.add('hullTrack', KIT.torus(0.060, 0.010, 10), sx * 1.5875, 0.76, 2.79, 0, 0, Math.PI / 2);
+      P.add('hullRunningGearTrack', KIT.torus(0.060, 0.010, 10), sx * 1.5875, 0.76, 2.79, 0, 0, Math.PI / 2);
       // sprocket face: dark recessed core + hub bolt ring + hub ring ON the
       // carrier-ring plane (1.6492) — with the drum/carrier steel darkened
       // below and the teeth riding the warm spareTrack family, the drive
       // end reads dark drum / recessed core / integrated teeth like the ref.
-      P.add('hullDark', cylX(0.150, 0.006, 16), sx * 1.6515, 0.73, -3.02);
-      P.add('hullTrack', KIT.torus(0.152, 0.007, 14), sx * 1.6510, 0.73, -3.02, 0, 0, Math.PI / 2);
+      P.add('hullRunningGearDark', cylX(0.150, 0.006, 16), sx * 1.6515, 0.73, -3.02);
+      P.add('hullRunningGearTrack', KIT.torus(0.152, 0.007, 14), sx * 1.6510, 0.73, -3.02, 0, 0, Math.PI / 2);
       for (let k = 0; k < 6; k++) {
         const a = (k / 6) * Math.PI * 2 + 0.3;
-        P.add('hullTrack', cylX(0.015, 0.010, 6), sx * 1.6525, 0.73 + Math.sin(a) * 0.100, -3.02 + Math.cos(a) * 0.100);
+        P.add('hullRunningGearTrack', cylX(0.015, 0.010, 6), sx * 1.6525, 0.73 + Math.sin(a) * 0.100, -3.02 + Math.cos(a) * 0.100);
       }
-      P.add('hullTrack', KIT.torus(0.055, 0.008, 10), sx * 1.6505, 0.73, -3.02, 0, 0, Math.PI / 2);
+      P.add('hullRunningGearTrack', KIT.torus(0.055, 0.008, 10), sx * 1.6505, 0.73, -3.02, 0, 0, Math.PI / 2);
     }
   }
   // shaded-parity r4 tell 1 — retone the WHOLE running-gear hardware family.

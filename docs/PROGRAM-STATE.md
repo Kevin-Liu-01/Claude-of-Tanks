@@ -7645,3 +7645,40 @@ geometry **`28e2f770`** (35 rendered meshes / 51,174 vertices).
 
 **KEEP the complete IS-6B exterior, fenders, skirt lips and supported
 mudguards. Future course work may not subtract or open its hull.**
+
+## 5.214 KV-2 CLOSED TRACK-CORRIDOR CLOSEOUT (2026-08-14, LIVE)
+
+The KV-2 retains its complete first-party hull and tower turret, upper
+sponsons, nose deck, fender planes, handrails, mudguards, six-wheel
+suspension and single native linked-shoe course. No exterior hull, skirt,
+fender, wheel or track member is deleted. Its accepted side profile and
+raised idler/sprocket terminal shape remain intact.
+
+Native guard, wheel-face and suspension details now carry truthful
+running-gear ownership. The physical contacts were the concealed broad lower
+sponson, lower bow shelf and low outer stern corners. They are replaced by a
+**closed inter-track hull core** joined through a solid centre bridge to the
+unchanged raised outer armor. The full-width upper bow soffit, complete
+sponson wall and stern corners continue above the visible shoe envelope.
+Handrails and their supports remain attached to the raised side armor.
+
+Exact strict band and individual-shoe audits improve from 933 band / 1,171
+shoe sweep voxels to **front 0/0, rear 0/0 and complete sweep 0/0**. Fresh
+evidence contains 15 paired boards including the standardized elevated-left
+profile, 15 yaw0 and 15 yaw90 frames: **45 PNG / 45 distinct hashes**. Every
+view preserves the closed front/rear body, full side armor, fenders and
+continuous raised-terminal course.
+
+The complete turret and gun execute a genuine quarter-turn while the hull and
+running gear remain fixed. Parent audit is **0 stranded / 0 abutting / 0
+dangling**. Winding is **0 reversed / 0 mixed geometry with zero-pixel
+deficit**, and mode 2 is clean. The dark muzzle bore and all ten targeted
+runtime-rig checks pass.
+
+All eight targeted presentation assets are current. KV-2 dual-ledger geometry
+is freeze **`8917bafa`**, instance freeze **`8461265a`** and asset geometry
+**`9a078a92`** (36 rendered meshes / 103,522 vertices).
+
+**KEEP the complete KV-2 exterior, fender planes, handrails, mudguards and
+native raised-terminal track shape. Future corridor work may not subtract or
+hollow its hull.**
