@@ -7,6 +7,9 @@ import { ensureFonts, FONT_STACK, FONT_COND } from './fonts.js';
 const STYLE_ID = 'cot-play-menu-style';
 const PLAYER_ID_KEY = 'cot.player.id.v1';
 const PLAYER_NAME_KEY = 'cot.player.name.v1';
+const PUBLIC_STUN_SERVERS = Object.freeze([{
+  urls: ['stun:stun.cloudflare.com:3478'],
+}]);
 
 const CSS = `
 .cot-play{position:fixed;inset:0;z-index:92;display:none;align-items:center;justify-content:center;
@@ -98,9 +101,10 @@ function defaultRankedUrl() {
   return `${location.protocol}//${location.hostname}:8790`;
 }
 
-async function iceServers() {
+async function iceServers(mode) {
+  if (mode === 'lan') return [];
   const endpoint = import.meta.env.VITE_ICE_CONFIG_URL;
-  if (!endpoint) return [];
+  if (!endpoint) return PUBLIC_STUN_SERVERS;
   const response = await fetch(endpoint, { credentials: 'include', cache: 'no-store' });
   if (!response.ok) throw new Error('ICE configuration is unavailable');
   const body = await response.json();
@@ -375,13 +379,13 @@ export function createPlayMenu({
     if (!signalUrl) {
       throw new Error(mode === 'lan'
         ? 'Open the game from the LAN host or enter a reachable signaling server address.'
-        : 'Private lobbies are not configured on this deployment yet.');
+        : 'Private lobby signaling is unavailable on this deployment.');
     }
     const signaling = new RoomSignalingClient({ url: signalUrl });
     const player = { id: playerId(), name };
     setConnecting(true);
     try {
-      const ice = await iceServers();
+      const ice = await iceServers(mode);
       if (kind === 'create') {
         const roomInfo = await signaling.createRoom({ player, mode, maxPlayers: 14 });
         session = new PrivateRoomHostSession({
@@ -449,7 +453,7 @@ export function createPlayMenu({
     if (!signalInput.value) {
       setStatus(mode === 'lan'
         ? 'Open this page from the LAN host or enter a secure Wi-Fi-reachable signaling address.'
-        : 'Private lobbies need a deployed signaling service; this production deployment has none configured.', true);
+        : 'Private lobby signaling is unavailable on this deployment.', true);
     } else {
       setStatus(mode === 'lan'
         ? 'Enter the Wi-Fi-reachable signaling address.'

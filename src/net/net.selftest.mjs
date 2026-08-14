@@ -405,8 +405,9 @@ assert.equal(resolveSignalUrl({
   hostname: 'cot.example.test',
   protocol: 'https:',
 }), 'wss://signal.example.test/signal');
-assert.equal(resolveSignalUrl({ hostname: 'cot.example.test', protocol: 'https:' }), '',
-  'production never guesses an undeployed port-7777 signaling service');
+assert.equal(resolveSignalUrl({ hostname: 'cot.example.test', protocol: 'https:' }),
+  'wss://cot.example.test/api/signal',
+  'production uses the same-origin WebSocket Function');
 assert.equal(resolveSignalUrl({ hostname: '192.168.1.44', protocol: 'http:', lan: true }),
   'ws://192.168.1.44:7777/signal');
 {

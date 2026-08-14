@@ -54,8 +54,12 @@ export function createSignalingServer({
   host = '127.0.0.1',
   port = 7777,
   allowedOrigins = null,
+  webSocketPaths = ['/signal'],
+  healthPaths = ['/healthz'],
   store = new SignalingRoomStore(),
 } = {}) {
+  const allowedWebSocketPaths = new Set(webSocketPaths);
+  const allowedHealthPaths = new Set(healthPaths);
   const webSocketServer = new WebSocketServer({
     noServer: true,
     maxPayload: MAX_PAYLOAD_BYTES,
@@ -63,7 +67,9 @@ export function createSignalingServer({
   });
   const rate = new WeakMap();
   const server = http.createServer((request, response) => {
-    if (request.url === '/healthz') {
+    let pathname = '';
+    try { pathname = new URL(request.url, 'http://localhost').pathname; } catch (_) { /* 404 below */ }
+    if (allowedHealthPaths.has(pathname)) {
       response.writeHead(200, { 'content-type': 'application/json' });
       response.end(JSON.stringify({ ok: true, rooms: store.rooms.size }));
       return;
@@ -81,7 +87,7 @@ export function createSignalingServer({
   server.on('upgrade', (request, socket, head) => {
     let pathname = '';
     try { pathname = new URL(request.url, 'http://localhost').pathname; } catch (_) { /* reject below */ }
-    if (pathname !== '/signal' || !originAllowed(request.headers.origin, allowedOrigins)) {
+    if (!allowedWebSocketPaths.has(pathname) || !originAllowed(request.headers.origin, allowedOrigins)) {
       socket.write('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n');
       socket.destroy();
       return;

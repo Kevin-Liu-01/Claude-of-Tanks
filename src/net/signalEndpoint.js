@@ -10,8 +10,8 @@ function isLocalNetworkHost(hostname) {
 
 /**
  * Resolve only endpoints the current deployment can plausibly reach.
- * Production private rooms require an explicit TLS signaling deployment;
- * local and RFC1918 hosts may use the bundled port-7777 development server.
+ * Production private rooms use the same-origin TLS WebSocket Function; local
+ * and RFC1918 hosts use the bundled port-7777 development server.
  */
 export function resolveSignalUrl({
   configured = '',
@@ -21,10 +21,11 @@ export function resolveSignalUrl({
 } = {}) {
   const explicit = String(configured || '').trim();
   if (!lan && explicit) return explicit;
-  if (!isLocalNetworkHost(hostname)) return '';
   const scheme = protocol === 'https:' ? 'wss:' : 'ws:';
   const host = String(hostname).includes(':') && !String(hostname).startsWith('[')
     ? `[${hostname}]`
     : hostname;
+  if (!lan && !isLocalNetworkHost(hostname)) return `${scheme}//${host}/api/signal`;
+  if (!isLocalNetworkHost(hostname)) return '';
   return `${scheme}//${host}:7777/signal`;
 }

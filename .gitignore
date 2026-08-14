@@ -15,3 +15,5 @@ public/models/**/*.glb.bak
 public/models/tanks/candidates-gen2/
 tools/__pycache__/
 __pycache__/
+.vercel/
+.env.local

@@ -2,9 +2,9 @@ import assert from 'node:assert/strict';
 import { WebSocket } from 'ws';
 import { createSignalingServer } from './signalingServer.js';
 
-function connect(url) {
+function connect(url, origin = null) {
   return new Promise((resolve, reject) => {
-    const socket = new WebSocket(url);
+    const socket = new WebSocket(url, origin ? { origin } : undefined);
     socket.once('open', () => resolve(socket));
     socket.once('error', reject);
   });
@@ -43,11 +43,19 @@ function send(socket, message) {
   socket.send(JSON.stringify(message));
 }
 
-const signaling = createSignalingServer({ host: '127.0.0.1', port: 0 });
+const productionOrigin = 'https://cot.kevinliu.studio';
+const signaling = createSignalingServer({
+  host: '127.0.0.1',
+  port: 0,
+  allowedOrigins: [productionOrigin],
+  webSocketPaths: ['/api/signal'],
+  healthPaths: ['/api/signal'],
+});
 const address = await signaling.listen();
-const url = `ws://127.0.0.1:${address.port}/signal`;
-const host = await connect(url);
-const guest = await connect(url);
+const url = `ws://127.0.0.1:${address.port}/api/signal`;
+await assert.rejects(connect(url, 'https://attacker.example'), /Unexpected server response: 403/);
+const host = await connect(url, productionOrigin);
+const guest = await connect(url, productionOrigin);
 const hostInbox = inbox(host);
 const guestInbox = inbox(guest);
 
@@ -88,7 +96,7 @@ const relayed = await hostInbox.next((message) => message.type === 'room_signal'
 assert.equal(relayed.payload.fromPeerId, joined.payload.peerId);
 assert.equal(relayed.payload.signal.kind, 'ice');
 
-const health = await fetch(`http://127.0.0.1:${address.port}/healthz`).then((response) => response.json());
+const health = await fetch(`http://127.0.0.1:${address.port}/api/signal`).then((response) => response.json());
 assert.deepEqual(health, { ok: true, rooms: 1 });
 
 host.close();
