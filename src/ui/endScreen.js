@@ -13,7 +13,7 @@
  * as the fade lifts.
  *
  * ADOPTED integration DOM (zero main.js edits):
- *  - `.cot-end` — main.js's end overlay. Its verdict/earnings lines are
+ *  - `.cot-end` — main.js's end overlay. Its verdict/summary lines are
  *    superseded by this screen; the overlay itself is display:none'd on show.
  *  - the overlay's RETURN TO GARAGE button (main.js endBtn) — reparented
  *    into the actions row, restyled via class, its existing click handler
@@ -23,22 +23,18 @@
  *    is clicked — the full loading-screen entry path, nothing re-implemented.
  *
  * DATA: every number is a resolved-event sum handed over by shotInfo
- * (buildSummary), and the credits/XP figures come straight from the
- * economy seam main.js itself prints — economy.getLastBattleEarnings()
- * (recorded on battle:ended). Nothing here is recomputed or invented; the
- * game has no base-capture mechanic, so no capture stat is fabricated.
+ * (buildSummary). Nothing here is recomputed or invented; the game has no
+ * base-capture mechanic, so no capture stat is fabricated.
  */
 
 import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.js';
 import { maskIcon } from './icons.js';
-import { getLastBattleEarnings } from '../game/economy.js';
 import { tierNumeral } from './battleLoad.js';
 
 const COL = {
   amber: '#f0a030',
   amberHi: '#ffd27a',
   gold: '#ffd166',
-  xp: '#9fd0ff',
   green: '#7fdc8a',
   red: '#f27a6e',
   steel: '#cfd9e2',
@@ -91,19 +87,6 @@ const ES_CSS = `
   font-weight:700;font-size:11px;letter-spacing:.18em;color:#aab7c2;
   text-transform:uppercase;font-variant-numeric:tabular-nums;}
 .cot-es .es-meta b{color:#c8d4de;font-weight:800;}
-/* --- economy -------------------------------------------------------------- */
-.cot-es .es-econ{display:flex;gap:12px;margin-top:2vh;width:1040px;max-width:94vw;}
-.cot-es .es-eco{flex:1;display:flex;align-items:baseline;justify-content:center;gap:12px;
-  min-height:66px;background:linear-gradient(180deg,rgba(18,23,28,.97),rgba(8,12,16,.97));
-  border:1px solid rgba(177,195,210,.34);border-top:3px solid rgba(240,160,48,.72);
-  box-shadow:0 10px 34px rgba(0,0,0,.52);padding:13px 20px 14px;}
-.cot-es .es-eco .k{font-family:${FONT_COND};font-weight:800;font-size:11px;
-  letter-spacing:.22em;color:#aebbc6;text-transform:uppercase;}
-.cot-es .es-eco .v{font-family:${FONT_COND};font-weight:800;font-size:34px;
-  letter-spacing:-.01em;font-variant-numeric:tabular-nums;line-height:1;}
-.cot-es .es-eco.cr .v{color:${COL.gold};}
-.cot-es .es-eco.xp .v{color:${COL.xp};}
-.cot-es .es-eco .s{font-size:10px;color:#9aa8b4;letter-spacing:.06em;}
 /* --- tallies -------------------------------------------------------------- */
 .cot-es .es-tals{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;
   margin-top:10px;width:1040px;max-width:94vw;}
@@ -213,9 +196,6 @@ body.cot-es-armed .cot-end{display:none !important;}
   background:rgba(240,160,48,.08);}
 .cot-es .cot-es-btn.ghost:hover{background:rgba(240,160,48,.16);}
 @media (max-height:820px){
-  .cot-es .es-econ{margin-top:1.4vh;}
-  .cot-es .es-eco{padding:9px 14px 10px;}
-  .cot-es .es-eco .v{font-size:25px;}
   .cot-es .es-tal .v{font-size:19px;}
   .cot-es .es-cols{margin-top:9px;}
   .cot-es .es-actions{margin-top:1.4vh;}
@@ -228,9 +208,6 @@ body.cot-es-armed .cot-end{display:none !important;}
 @media (max-height:480px){
   .cot-es{justify-content:flex-start;overflow-y:auto;padding:10px 0 82px;}
   .cot-es .es-ban{font-size:clamp(24px,9vh,38px);}
-  .cot-es .es-econ{margin-top:8px;}
-  .cot-es .es-eco{padding:6px 12px 7px;}
-  .cot-es .es-eco .v{font-size:19px;}
   .cot-es .es-tal .v{font-size:14px;}
   .cot-es .es-tals{grid-template-columns:repeat(6,1fr);gap:5px;}
   .cot-es .es-tal{display:block;min-height:0;text-align:center;padding:6px 4px;}
@@ -252,8 +229,6 @@ body.cot-es-armed .cot-end{display:none !important;}
 @media (max-width:520px) and (orientation:portrait){
   .cot-es{justify-content:flex-start;overflow-y:auto;padding:12px 0 82px;}
   .cot-es .es-ban{font-size:clamp(30px,10vw,44px);}
-  .cot-es .es-econ{flex-direction:column;}
-  .cot-es .es-eco{min-height:60px;flex:0 0 auto;}
   .cot-es .es-cols{flex-direction:column;max-height:none;flex:0 0 auto;}
   .cot-es .es-tals{grid-template-columns:repeat(2,1fr);}
   .cot-es .es-panel{max-height:30vh;}
@@ -428,22 +403,6 @@ export function createEndScreen(bus, host) {
       meta.innerHTML = bits.join(' &nbsp;·&nbsp; ');
       if (sum.map) host.dataset.map = sum.map;
       if (sum.timeS > 0) host.dataset.durationS = String(Math.floor(sum.timeS));
-
-      // --- economy: the seam main.js prints (battle wallet award) ----------
-      const earn = getLastBattleEarnings();
-      if (earn) {
-        const econ = el('div', 'es-econ', host);
-        const eco = (cls, k, val, s) => {
-          const e = el('div', `es-eco ${cls} es-in`, econ);
-          e.style.setProperty('--i', nextI());
-          e.innerHTML = `<span class="k">${k}</span><span class="v"></span><span class="s">${s}</span>`;
-          countUp(e.querySelector('.v'), val, { durMs: 1300, delayMs: 420, prefix: '+' });
-        };
-        eco('cr', 'Credits', earn.credits, 'credited');
-        eco('xp', 'Experience', earn.xp, 'earned');
-        host.dataset.credits = String(earn.credits);
-        host.dataset.xp = String(earn.xp);
-      }
 
       // --- tallies (count-up) ----------------------------------------------
       const tals = el('div', 'es-tals', host);

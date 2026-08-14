@@ -25,6 +25,7 @@ import { compareCountryThenTierThenName } from './garageOrder.js';
 import { isGarageVisibleTankId } from '../game/matchmaking.js';
 import { tankTier, tierNumeral } from '../vehicles/tier.js';
 import { MODEL_SOURCE } from '../vehicles/specs.js';
+import { getPlayerRecord } from '../game/profile.js';
 import {
   viewRangeOf, baseCamoOf, equipViewMult, equipCamoBonus,
 } from '../sim/spotting.js';
@@ -265,14 +266,18 @@ const GARAGE_CSS = `
   text-transform:uppercase;margin-top:3px;}
 .cot-garage .hint{position:absolute;bottom:4px;left:50%;transform:translateX(-50%);
   font-size:9.5px;letter-spacing:.14em;color:rgba(138,151,163,.7);text-transform:uppercase;}
-/* r5: top-right currency/XP strip (WoT garage constant — the screen read as
-   a demo shell without an economy bar; values are session-stubbed) */
+/* Real local record. Ranked rating remains server-owned; the garage never
+   invents wallet balances or a competitive rating. */
 .cot-topbar{position:absolute;top:20px;right:26px;display:flex;gap:8px;}
-.cot-topbar .res{display:flex;align-items:center;gap:7px;padding:7px 12px 6px;
+.cot-topbar .record{display:grid;grid-template-columns:auto auto;align-items:baseline;gap:4px 12px;
+  padding:8px 13px 7px;
   background:rgba(11,15,20,.82);border:1px solid rgba(146,164,180,.28);
-  font-size:12.5px;font-weight:600;color:#e6edf3;letter-spacing:.03em;
+  font-size:12px;font-weight:700;color:#e6edf3;letter-spacing:.04em;
   font-variant-numeric:tabular-nums;line-height:1;}
-.cot-topbar .res svg{display:block;flex:0 0 auto;}
+.cot-topbar .record .label{grid-column:1/-1;color:#8fa0ae;font-size:8px;
+  letter-spacing:.2em;text-transform:uppercase;}
+.cot-topbar .record .matches{color:#f0b04a;}
+.cot-topbar .record .winrate{color:#cbd6df;}
 /* MAP-CONFIG WIRING: battlefield picker (4 maps + random) */
 /* camo_spotting r1: maps + camo picker stack in ONE flex column so they can
    never overlap at short viewports (the old absolute anchors collided at
@@ -1300,13 +1305,10 @@ export function createGarage(opts) {
     `<button class="nv" data-nav="home" type="button">` +
     `${uiIconSVG('home', 15, 'currentColor', 'nvi')}Home</button>` +
     `</div>` +
-    `<div class="cot-topbar">` +
-    `<div class="res">${uiIconSVG('credits', 13, '#c8d2dc')}` +
-    `<span>2 458 300</span></div>` +
-    `<div class="res">${uiIconSVG('gold', 13, '#f0c04a')}` +
-    `<span>6 750</span></div>` +
-    `<div class="res">${uiIconSVG('bonds', 13, '#9fd8ec')}` +
-    `<span>48 250</span></div>` +
+    `<div class="cot-topbar"><div class="record">` +
+    `<span class="label">Local record</span>` +
+    `<span class="matches">0 BATTLES</span><span class="winrate">— WIN RATE</span>` +
+    `</div>` +
     `</div>` +
     `<button class="cot-battle" type="button">BATTLE</button>` +
     `<div class="stats"></div>` +
@@ -1322,6 +1324,17 @@ export function createGarage(opts) {
     `<div class="cot-camos"></div></div>` +
     `<div class="hint">&#8592; &#8594; select &nbsp;&middot;&nbsp; enter to battle</div>`;
   document.body.appendChild(root);
+
+  function refreshLocalRecord() {
+    const record = getPlayerRecord();
+    const matches = root.querySelector('.cot-topbar .matches');
+    const winrate = root.querySelector('.cot-topbar .winrate');
+    if (matches) matches.textContent = `${record.matches.toLocaleString('en-US')} ` +
+      `BATTLE${record.matches === 1 ? '' : 'S'}`;
+    if (winrate) winrate.textContent = record.matches > 0
+      ? `${Math.round((record.wins / record.matches) * 100)}% WIN RATE`
+      : '— WIN RATE';
+  }
 
   // --- MARKETING FEATURED PANEL: rotating in-engine action stills ------------
   // Assets + captions come from the marketing-shots pipeline
@@ -2110,6 +2123,7 @@ export function createGarage(opts) {
      * @param {string} [selectedId='m1a1'] - initially highlighted tank id.
      */
     show(selected = 'm1a1') {
+      refreshLocalRecord();
       root.style.display = 'block';
       // garage_ui entrance: re-arm the chrome fade/rise on every open (boot
       // and battle-exit both used to hard-cut the whole screen in one frame)

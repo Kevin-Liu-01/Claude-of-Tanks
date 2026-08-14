@@ -65,7 +65,7 @@ import { createDamagePanel } from './ui/damagePanel.js';
 // the ACTUAL built vehicle — the rig needs the shared engine context once.
 import { initTopMaskRig } from './ui/tankThumbs.js';
 import { createGarage } from './ui/garage.js';
-import { getLastBattleEarnings, installBattleEconomy } from './game/economy.js';
+import { getLastBattleRecord, installBattleRecords } from './game/profile.js';
 import { createGarageStage } from './ui/garageStage.js';
 // garage-scene r1: workshop set dressing (side repair bays, benches, racks) —
 // built lazily from post-ready idle slices, never on the boot-critical path.
@@ -399,7 +399,7 @@ const devTrace = import.meta.env.DEV
   ? (await import('./dev/perfTrace.js')).createDevTrace({ renderer })
   : null;
 const bus = createBus(devTrace ? (ev, payload) => devTrace.event(ev, payload) : null);
-installBattleEconomy(bus);
+installBattleRecords(bus);
 const game = createGameState();
 devTrace?.configure({ game });
 spawnTanks(game, engineCtx);
@@ -1511,9 +1511,10 @@ endOverlay.style.cssText =
 endOverlay.className = 'cot-end';
 const endTitle = document.createElement('div');
 endTitle.style.cssText = 'font-size:52px;font-weight:800;letter-spacing:0.3em;text-shadow:0 2px 18px rgba(0,0,0,0.8);';
-// META-GAME: battle payout line (earned XP/credits persist via game/economy.js)
-const endEarn = document.createElement('div');
-endEarn.style.cssText =
+// Results show real battle performance. There is intentionally no fake wallet:
+// every vehicle is available and the game has no research tree.
+const endRecord = document.createElement('div');
+endRecord.style.cssText =
   'font-size:15px;font-weight:700;letter-spacing:0.14em;color:#cfd9e2;' +
   'text-shadow:0 1px 8px rgba(0,0,0,0.8);';
 const endBtn = document.createElement('button');
@@ -1522,7 +1523,7 @@ endBtn.style.cssText =
   'font-size:16px;font-weight:700;letter-spacing:0.2em;padding:14px 44px;cursor:pointer;' +
   'color:#fff7ea;border:1px solid #ffc169;background:linear-gradient(180deg,#ffa02e,#d95f00);' +
   "font-family:'ABC Monument Grotesk','Segoe UI',Roboto,Helvetica,Arial,sans-serif;";
-endOverlay.append(endTitle, endEarn, endBtn);
+endOverlay.append(endTitle, endRecord, endBtn);
 document.body.appendChild(endOverlay);
 endBtn.addEventListener('click', () => { bus.emit('ui:click', {}); leaveBattleToGarage(); });
 
@@ -1536,12 +1537,10 @@ endBtn.addEventListener('click', () => { bus.emit('ui:click', {}); leaveBattleTo
 function showEndOverlay(result) {
   endTitle.textContent = result === 'victory' ? 'VICTORY' : result === 'draw' ? 'DRAW' : 'DEFEAT';
   endTitle.style.color = result === 'victory' ? '#7ee87e' : result === 'draw' ? '#cfd9e2' : '#f05a5a';
-  const earn = getLastBattleEarnings();
-  endEarn.innerHTML = earn
-    ? `<span style="color:#ffd27a">+${earn.xp.toLocaleString('en-US')} XP</span>` +
-      `<span style="margin:0 14px;color:#e9eef3">+${earn.credits.toLocaleString('en-US')} CREDITS</span>` +
-      `<span style="color:#8a97a3">${earn.kills} kill${earn.kills === 1 ? '' : 's'} &middot; ` +
-      `${earn.damage.toLocaleString('en-US')} damage</span>`
+  const record = getLastBattleRecord();
+  endRecord.innerHTML = record
+    ? `<span style="color:#ffd27a">${record.kills} kill${record.kills === 1 ? '' : 's'}</span>` +
+      `<span style="margin-left:14px;color:#cfd9e2">${record.damage.toLocaleString('en-US')} damage</span>`
     : '';
   // killcam_shotinfo r2: the shot-info battle report renders its own
   // full-screen VICTORY/DEFEAT banner + backdrop (z 71) and reserves the
