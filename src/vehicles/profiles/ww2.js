@@ -38,10 +38,10 @@ import { KIT, FITTINGS, evenStations } from './kit.js';
 // Dark recess field behind every road wheel (soviet-heavy sovGear rule): the
 // painted rim/hub/bolts stand proud of a shadowed disc so wheels read out of
 // the bay shadow under any camo. Merged into hullDark — zero extra draws.
-function wheelShadows(P, xc, wheelZs, r, w, lift = 0) {
+function wheelShadows(P, xc, wheelZs, r, w, lift = 0, bucket = 'hullDark') {
   const { cylX } = KIT;
   for (const z of wheelZs) for (const s of [-1, 1]) {
-    P.add('hullDark', cylX(r * 0.72, w * 1.06, 12), s * xc, r + 0.10 + lift, z);
+    P.add(bucket, cylX(r * 0.72, w * 1.06, 12), s * xc, r + 0.10 + lift, z);
   }
 }
 
@@ -205,11 +205,21 @@ function pziiiHull(P, o) {
     rollers: [-1.02, 0.02, 1.06].map((z) => ({ z: z + zc + o.gearBias, y: 0.84, r: 0.085 })),
     trackW: o.trackW ?? 0.42, topY: 0.93, botY: 0.055, arms: true,
   });
-  wheelShadows(P, xc, wheelZs.slice(1, -1), 0.26, 0.17, -0.07);
+  wheelShadows(P, xc, wheelZs.slice(1, -1), 0.26, 0.17, -0.07, 'hullRunningGearDark');
 
   // hull boxes
   P.add('hull', box(1.94, 0.66, o.len * 0.90), 0, 0.72, zc);                 // belly (ref front clearance 0.38)
-  P.add('hull', box(o.superW * 2, roof - 1.02, o.superLen), 0, (roof + 1.02) / 2, zc + o.superBias); // superstructure
+  // Closed raised soffit over the return runs. The former full-width box
+  // began at y=1.02 and its hidden floor passed through the live shoes. Keep
+  // the central hull solid and the complete exterior wall/roof envelope: a
+  // sealed inward floor flares into the original full-width superstructure,
+  // whose outer wall starts above the course instead of deleting the hull.
+  P.add('hull', slab(
+    [-0.80, 1.02, zc + o.superBias + o.superLen / 2], [0.80, 1.02, zc + o.superBias + o.superLen / 2],
+    [0.80, 1.02, zc + o.superBias - o.superLen / 2], [-0.80, 1.02, zc + o.superBias - o.superLen / 2],
+    [-o.superW, 1.28, zc + o.superBias + o.superLen / 2], [o.superW, 1.28, zc + o.superBias + o.superLen / 2],
+    [o.superW, 1.28, zc + o.superBias - o.superLen / 2], [-o.superW, 1.28, zc + o.superBias - o.superLen / 2]));
+  P.add('hull', box(o.superW * 2, roof - 1.28, o.superLen), 0, (roof + 1.28) / 2, zc + o.superBias); // complete outer superstructure
   if (o.topW) P.add('hull', box(o.topW * 2, 0.10, o.superLen * 0.94), 0, roof - 0.05, zc + o.superBias); // narrow top cap
   P.add('hull', slab(                                                        // flat transmission deck, floating bow lip
     [-0.90, 1.00, front - 0.19], [0.90, 1.00, front - 0.19], [0.90, 0.42, front - 0.95], [-0.90, 0.42, front - 0.95],
@@ -1680,7 +1690,7 @@ function buildTigerI(P) {
   // but ending at ±2.50, outside both zone windows.
   P.clear('hullShadow');
   for (const s of [-1, 1]) {
-    P.add('hullShadow', new THREE.BoxGeometry(0.02, 1.27, 5.00), s * 1.22, 0.665, 0);
+    P.add('hullRunningGearDark', new THREE.BoxGeometry(0.02, 1.27, 5.00), s * 1.22, 0.665, 0);
   }
 
   // hull: belly between the tracks + ONE full-width superstructure box with

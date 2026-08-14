@@ -7465,3 +7465,40 @@ freeze **`0ff4e810`**, instance freeze **`716ecf18`** and asset geometry
 
 **KEEP all three complete exteriors and closed soffits. Future track work may
 not delete, open or replace their hull, fender or side-skirt geometry.**
+
+## 5.209 TIGER I / PANZER III CLOSED TRACK-CORRIDOR CLOSEOUT (2026-08-14, LIVE)
+
+This family slice preserves the accepted first-party `tiger1`, `newc_pziii`
+and `pziii_konserwa` exteriors, turrets, fenders, mudguards and native running
+gear. Tiger I's two dark wheel-bay walls are visually unchanged and now carry
+truthful suspension ownership. The Panzer III pair retain their full outer
+superstructure walls and solid central bellies; a sealed inward soffit rises
+from the central floor into the original side walls above each return run.
+No hull face, skirt, fender, wheel or shoe course is deleted.
+
+Exact strict band and individual-shoe audits now report **front 0/0, rear 0/0
+and complete sweep 0/0** for all three tanks. Each fresh packet contains 15
+paired boards including the standardized elevated-left profile, 15 yaw0 and
+15 yaw90 frames: **45 PNG / 45 distinct hashes per tank**. The profiles retain
+the accepted complete side silhouettes, readable wheel cadence and raised
+terminal track form.
+
+The Panzer III parent audits report **0 stranded / 0 abutting / 0 dangling**.
+Tiger I's two parent candidates are the correctly fixed hull-owned wood and
+cloth deck-stowage packages: yaw90 exposes their broad deck seats while the
+complete turret, gun and roof package moves away. They are not stranded turret
+equipment. Winding reports **0 reversed / 0 mixed geometry**; mode-1 deficits
+are 187 pixels (0.18%) for Tiger I, zero for Panzer III Ausf. J and 13 pixels
+(0.01%) for Panzer III Ausf. E, all clean antialias-level results. All three
+dark muzzle bores and all 28 targeted runtime-rig checks pass.
+
+All 24 targeted presentation assets are current. Tiger I dual-ledger geometry
+is freeze **`449558c5`**, instance freeze **`c1a92627`** and asset geometry
+**`50dafa48`** (48 rendered meshes / 73,132 vertices). Panzer III Ausf. J is
+freeze **`5865b990`**, instance freeze **`a47c4c45`** and asset geometry
+**`ded1ae1a`** (39 meshes / 41,022 vertices). Panzer III Ausf. E is freeze
+**`6051dcec`**, instance freeze **`7398c17c`** and asset geometry
+**`28c7ab9a`** (39 meshes / 40,236 vertices).
+
+**KEEP these complete first-party family exteriors and closed soffits. Future
+course work may not subtract their hulls, fenders or mudguards.**

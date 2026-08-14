@@ -453,11 +453,11 @@
       "vertices": 165119
     },
     "newc_pziii": {
-      "freezeHash": "0e81642a",
-      "instanceFreezeHash": "fcee6513",
-      "assetGeometryHash": "f495cfcc",
-      "meshes": 38,
-      "vertices": 41562
+      "freezeHash": "5865b990",
+      "instanceFreezeHash": "a47c4c45",
+      "assetGeometryHash": "ded1ae1a",
+      "meshes": 39,
+      "vertices": 41022
     },
     "newc_tiger": {
       "freezeHash": "fe28d2c0",
@@ -488,11 +488,11 @@
       "vertices": 93702
     },
     "pziii_konserwa": {
-      "freezeHash": "cf4762f4",
-      "instanceFreezeHash": "c1e2e5d2",
-      "assetGeometryHash": "c5e90594",
-      "meshes": 38,
-      "vertices": 40776
+      "freezeHash": "6051dcec",
+      "instanceFreezeHash": "7398c17c",
+      "assetGeometryHash": "28c7ab9a",
+      "meshes": 39,
+      "vertices": 40236
     },
     "sherman_jumbo": {
       "freezeHash": "896e836c",
