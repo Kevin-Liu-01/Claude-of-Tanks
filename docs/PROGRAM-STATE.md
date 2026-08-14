@@ -6191,3 +6191,46 @@ T-80B **`6c2b05d0` / `df4e202d` / `8c5de16b`** (51 / 79,243), T-80BV
 **KEEP the complete outer hulls and side skirts. Future T-80-family clearance
 work belongs only in the concealed mechanical corridor or a native-course
 rewrap; never delete visible bodywork to satisfy a track gate.**
+
+## 5.180 T-80U CLOSED-SPONSON / FENDER-STOWAGE COURSE CLOSEOUT (2026-08-14, LIVE)
+
+The first-party T-80U now passes the same non-subtractive native-course law as
+the rest of its family. The complete glacis, lower hull, upper deck, fenders,
+segmented side skirts, mudguards, six road-wheel stations, elevated idler and
+final drive, linked shoes, turbine-service rear and approved K-5 turret remain
+present. No exterior plate or running-gear component is deleted or hidden.
+
+The strict residual had two exact causes. First, the wide rear deck band was a
+solid filled sponson all the way down to 1.06 m. Its authored top and outboard
+silhouette are retained as a shallow closed cap while an inboard body carries
+the deck load into the central hull, leaving the native return corridor open.
+Second, the left fuel/stowage run and two right fender bins were centred below
+their own fender plane. Their dimensions and plan stations are unchanged; they
+are now seated on the fenders above the return rather than occupying the shoe
+envelope. The dark concentric wheel-bay cylinders are geometry-identical and
+declared as running gear instead of hull armour.
+
+Fresh 15-view authored-baseline/current boards, the standardized elevated-left
+profile and 15 yaw0 plus 15 yaw90 frames were inspected. Side and elevated
+pixels retain the full skirt envelope, six readable native wheels and the
+intended elevated-terminal `\\______/` track profile. The complete turret,
+gun, K-5 courses, optics, smoke and roof equipment quarter-turn together;
+fenders, raised stowage, skirts, deck, turbine rear and running gear remain
+hull-fixed. No empty-air fitting, fused turret mass, stranded decoration,
+sky-through hull opening or silhouette regression is visible.
+
+The exact strict band and individual-shoe sweep is **0/0**. Turret parenting is
+**0 stranded / 0 abutting / 0 dangling**. Winding is **0 reversed / 0 mixed**,
+with a 0.03% top-view DoubleSide diagnostic difference and zero yaw-stranded
+candidates. The retired visual-oracle GLB is intentionally unavailable after
+the first-party asset cleanup, so its legacy comparator row is not rewritten
+from a failed load; live authored evidence and mechanical gates are the
+authoritative closeout for this corridor-only change.
+
+All eight presentation assets are regenerated. Dual-ledger geometry is freeze
+**`2c605ba8`**, instance freeze **`3a3dc724`** and asset geometry
+**`555dab0f`** (48 rendered meshes / 75,899 vertices).
+
+**KEEP the complete T-80U outer hull, fenders and skirts. Any future clearance
+change must remain inside the concealed cross-section or rewrap the native
+course; never remove bodywork to satisfy a track audit.**

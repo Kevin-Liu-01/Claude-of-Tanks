@@ -1942,7 +1942,13 @@ function buildT80UNative2026(P) {
   // the rear face is VERTICAL at -2.55 (the r3d sprocket wrap near-quadrant
   // curves to -2.66 @ y1.14); only the y>1.26 course reaches aft to -2.95.
   // The x<=1.14 rear extension still draws the full side outline to -3.28.
-  P.add('hull', frustum(1.70, 1.18, -2.55, 1.55, 1.125, -2.55, 1.06, 1.26));
+  // Keep the complete authored deck/fender silhouette, but do not fill the
+  // native return corridor with an invisible solid sponson. The inboard
+  // body carries the deck down inside the tracks; a shallow closed cap keeps
+  // the original ±1.70 m top/side outline above it. This is a cross-section
+  // repair, not a skirt/fender deletion.
+  P.add('hull', frustum(1.14, 1.18, -2.55, 1.14, 1.125, -2.55, 1.06, 1.26));
+  P.add('hull', frustum(1.70, 1.18, -2.55, 1.55, 1.125, -2.55, 1.235, 1.26));
   P.add('hull', frustum(1.55, 1.125, -2.90, 1.48, 1.10, -2.95, 1.26, 1.353));
   P.add('hull', slab(                                                          // deck rear extension INSIDE the tracks — top SLOPES 1.353 -> 1.19 (ref tail deck line: 1.284 @ -3.0, 1.202 @ -3.21, 1.175 @ -3.32)
     [-1.14, 1.06, -2.55], [1.14, 1.06, -2.55], [1.14, 1.06, -3.28], [-1.14, 1.06, -3.28],
@@ -2050,11 +2056,11 @@ function buildT80UNative2026(P) {
   P.add('hullDetail', box(1.62, 0.04, 0.06), 0, 1.39, -1.54);
   P.add('hullDetail', box(1.62, 0.04, 0.06), 0, 1.39, -2.46);
   P.add('hull', box(1.00, 0.045, 0.62), 0.45, 1.352, -1.20);
-  P.add('hull', box(0.34, 0.15, 1.65), -1.44, 1.14, -1.725);                   // left fender fuel/stow run (r3d: rear -2.55 — its -2.80 face sat inside the sprocket wrap's upper shell)
-  P.add('hullDark', box(0.35, 0.03, 0.03), -1.44, 1.22, -1.35);
-  P.add('hullDark', box(0.35, 0.03, 0.03), -1.44, 1.22, -2.45);
-  bin(P, 1.42, 1.18, -1.35, 0.26, 0.15, 0.88);                                 // restrained right fender bin row
-  bin(P, 1.42, 1.18, -2.27, 0.26, 0.15, 0.46);                                 // rear bin stays clear of the sprocket wrap
+  P.add('hull', box(0.34, 0.15, 1.65), -1.44, 1.29, -1.725);                   // left fender fuel/stow run, seated on the fender above the native return
+  P.add('hullDark', box(0.35, 0.03, 0.03), -1.44, 1.37, -1.35);                // lid straps follow the raised fuel/stow run
+  P.add('hullDark', box(0.35, 0.03, 0.03), -1.44, 1.37, -2.45);
+  bin(P, 1.42, 1.29, -1.35, 0.26, 0.15, 0.88);                                 // restrained right fender bin row, seated above the return
+  bin(P, 1.42, 1.29, -2.27, 0.26, 0.15, 0.46);                                 // rear bin stays clear of the sprocket wrap
   // r3 §B4: pods pulled inboard of the band inner plane (the -1.42 pod sat
   // in the idler wrap) and re-seated proud of the narrowed nose face
   headlight(P, -1.02, 1.00, 3.26, -0.35, 0.05);
@@ -2091,7 +2097,9 @@ function buildT80UNative2026(P) {
     rollers: [1.80, 0.90, 0, -0.90, -1.80].map((z) => ({ z, y: 0.90, r: 0.08 })),
     trackW: 0.48, topY: 0.87, botY: 0.055, paintedEnds: true, coveredTop: true, arms: true,
   });
-  wheelRecessAt(P, wheelZs, 1.42, 0.42, 0.335, 0.21);
+  // Preserve the wheel-bay recess geometry exactly while declaring its true
+  // running-gear ownership; these cylinders are not hull armor.
+  wheelRecessAt(P, wheelZs, 1.42, 0.42, 0.335, 0.21, 'hullRunningGearDark');
 
   // ---- turret: wide full-shouldered dome under the K-5 CLAMSHELL ----
   // Raise the complete rotating package onto the source roof datum.  A
