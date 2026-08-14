@@ -7844,3 +7844,39 @@ geometry **`a4999947`** (33 rendered meshes / 33,948 vertices).
 
 **KEEP the complete Leichttraktor hull, riveted track frames, bow/tail armor
 and native course. Future corridor work may not subtract or hollow them.**
+
+## 5.220 TIGER II CLOSED END-CORRIDOR CLOSEOUT (2026-08-14, LIVE)
+
+The first-party Tiger II retains its complete upper hull, roof, glacis,
+central lower nose, belly, tail, side armor, fenders, mudguards, turret and
+nine-wheel native course. No hull, skirt, fender, wheel or track member is
+deleted.
+
+The lower nose is rebuilt as the correct closed inter-track core, while the
+full-width upper glacis rises from that toe into the unchanged broad shoulder.
+The low belly is kept as a closed centre solid between the track courses; the
+unchanged upper hull and side armor preserve the entire external silhouette.
+The correction therefore opens only the native end-wheel lanes and does not
+hollow the hull or remove its visible armor.
+
+Exact strict audit improves from front 72 / rear 32 band voxels, front 72 /
+rear 0 shoe voxels and sweep 330/72 to **front 0/0, rear 0/0 and complete
+sweep 0/0**. Fresh evidence contains 15 paired boards including the
+standardized elevated-left profile, 15 yaw0 and 15 yaw90 frames: **45 PNG /
+45 distinct hashes**. Every view preserves the complete Tiger II profile and
+continuous native track course.
+
+The complete turret and gun execute a genuine quarter-turn while the hull and
+running gear remain fixed. Parent audit is **0 stranded / 0 abutting / 0
+dangling**. Winding mode 1 is **0 reversed / 0 mixed geometry with zero-pixel
+deficit**. The mode-2 pixel candidate is visually adjudicated as legitimate
+fixed hull-owned radiator/louvre deck and continuous side armor: top and rear
+quarter yaw frames show broad hull seats, while no turret-semantic fitting is
+left behind. The dark muzzle bore and all ten runtime-rig checks pass.
+
+All eight targeted presentation assets are current. Tiger II dual-ledger
+geometry is freeze **`305600d1`**, instance freeze **`b2ceff01`** and asset
+geometry **`29b8e4e8`** (39 rendered meshes / 54,998 vertices).
+
+**KEEP the complete Tiger II hull, glacis, belly, side armor, fenders and
+native course. Future corridor work may not subtract or hollow them.**
