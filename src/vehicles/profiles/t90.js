@@ -4121,12 +4121,31 @@ function buildT90(P) {
   // production T-90 ring.  Keep its exact construction and reduce the whole
   // rotating package uniformly to the T-90's 3.44 m installed armor court;
   // no individual cheek or K-5 leaf is displaced relative to the base.
-  const installedTurretX = 0.935;
-  const installedTurretY = 0.94;
+  const installedTurretX = 1.0;
+  const installedTurretY = 1.0;
   P.turretG.scale.set(installedTurretX, installedTurretY, 1);
   P.gunG.scale.x = 1 / installedTurretX;
   P.gunG.scale.y = 1 / installedTurretY;
   P.gunG.position.y = (1.69 - P.turretG.position.y) / installedTurretY;
+
+  // Family-height reconciliation: lower the complete authored fixed hull
+  // package by five centimetres while preserving the native running-gear
+  // datum byte-for-byte. `buildRunningGear` owns its wheel/roller/track
+  // meshes directly and marks them with `userData.runningGear`; the bucket
+  // offset therefore changes no wheel radius, idler height or track path.
+  // Directly mounted lights and spare-link groups follow the hull unless
+  // they are an explicitly marked running-gear child. The exact shared
+  // Burlak turret then follows the lowered ring as one connected assembly.
+  const hullDatumDrop = 0.05;
+  P.offsetBuckets([
+    'hull', 'hullDark', 'hullDetail', 'hullGlass', 'hullRubber',
+    'hullWood', 'hullTrack', 'hullShadow', 'hullTrackTrimL',
+    'hullTrackTrimR', 'hullTrackDetailL', 'hullTrackDetailR',
+  ], 0, -hullDatumDrop, 0);
+  for (const child of P.hullG.children) {
+    if (!child.userData?.runningGear) child.position.y -= hullDatumDrop;
+  }
+  P.turretG.position.y -= hullDatumDrop;
   P.topY = 0.80;
 }
 
@@ -4461,7 +4480,15 @@ function replaceT90ACastTurret(P, { vladimir = false, burlakBase = false } = {})
   // The compact first pass left the OTShU heads looking like indicator lamps
   // on the larger cheek face. Restore their visual authority and bury the
   // housings into the mantlet shoulders; the apertures remain inside armor.
-  ruShtora(P, { rings, sz: 0.72, eyeKit: true, eyeRound: true, eyeScale: 1.28, eyeX: 0.57, eyeZ: 1.24 }, 0.48);
+  ruShtora(P, {
+    rings, sz: 0.72, eyeKit: true, eyeRound: true,
+    // The plain T-90 uses the owner's larger twin dazzler signature on the
+    // exact Burlak shoulder; sibling T-90A/Vladimir variants keep their
+    // already-approved proportions.
+    eyeScale: burlakBase ? 1.55 : 1.28,
+    eyeX: burlakBase ? 0.60 : 0.57,
+    eyeZ: 1.24,
+  }, 0.48);
   if (!vladimir) {
     if (P._shtoraRed) {
       P._shtoraRed.color.setHex(0x35120c);

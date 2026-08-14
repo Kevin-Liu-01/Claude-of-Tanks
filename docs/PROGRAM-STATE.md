@@ -5695,3 +5695,31 @@ regenerated for deterministic geometry **`921f0b8d`**.
 
 **KEEP `921f0b8d`. Future 2A7V running-gear work must preserve both the deep
 lower modules and this closed upper shoulder course.**
+
+## 5.166 PLAIN T-90 EXACT BURLAK-FOUNDATION RECONCILIATION (2026-08-13, LIVE)
+
+The plain `t90` now installs the live first-party Burlak foundation at its
+authored scale: the same closed 18-station fighting compartment, buried
+shoulder structure and complete massive autoloader bustle used by the Burlak
+variant. The previous post-installation 0.935/0.94 compression is removed.
+The plain vehicle keeps its own T-90 equipment layer, expands the paired
+OTShU/Shtora eyes without changing sibling variants, and retains every rear
+pack, rail, lid and bustle support as turret-owned geometry.
+
+The complete fixed hull and turret-ring datum move down 0.05 m to match the
+established T-90 family height. This uses the native bucket-offset API after
+construction: hull shell, glacis, skirts, mudguards and seated fittings move
+together, while the six road wheels, raised idler, final drive and animated
+linked-track path remain byte-for-byte on their approved ground datum. No
+hull face or side armour is deleted and no track is duplicated or rewrapped.
+
+First-party Studio checks cover front, left, elevated-left and a genuine
+90-degree yaw. The entire gun, exact Burlak body/bustle, K-5 fan, enlarged
+eyes, roof suite, antennas and rear equipment rotate as one connected
+package; the lowered hull, deck, side armour and native course remain fixed.
+The eight gameplay assets are regenerated and freeze deterministic geometry
+**`0cd0fc4f`**.
+
+**KEEP `0cd0fc4f`. Future plain T-90 work must preserve the exact-scale
+Burlak foundation, complete massive bustle, larger twin eyes, lowered fixed
+hull datum and unchanged native running gear.**
