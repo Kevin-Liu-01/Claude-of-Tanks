@@ -129,7 +129,10 @@ function leoGear(P, g) {
     // keeps the kit default so every sibling stays byte-identical.
     linkPitchM: g.linkPitchM,
     shoeRadialScale: g.shoeRadialScale,
+    shoeWidthScale: g.shoeWidthScale,
+    shoeOutboardOffset: g.shoeOutboardOffset,
     innerLinks: g.innerLinks,
+    integratedLinks: g.integratedLinks,
     paintedEnds: true, coveredTop: true,
     // r9 leo2_revolution B1 opt-ins (merkava r12 gear-tone params via the
     // uk.js chieftain5 precedent): per-tank pad/chain tones + the ambient
@@ -4903,14 +4906,6 @@ function buildLeo2A7V(P) {
     // geometry (the print-frame 0.56/0.64 centers gave a near-flat run).
     wheelR: 0.395, wheelY: 0.42, span: [2.60, -2.40],
     idler: { z: 3.40, y: 1.06, r: 0.25 }, sprocket: { z: -3.26, y: 1.05, r: 0.29 },
-    // The fleet shoe primitive contains a broad tread, a continuous belt,
-    // and a recessed connector/guide layer. At the A7V's wide 0.66 m course
-    // the default radial stack separated into three parallel "tracks" from
-    // low front/rear inspection angles. Keep the authoritative moving belt,
-    // tread pads, terminal wheels and suspension; compress the pad profile
-    // and omit only the redundant recessed connector visualization.
-    shoeRadialScale: 0.50,
-    innerLinks: false,
     topY: 0.95, fans: { z: -2.60, x: 0.80, r: 0.38 },
     dishR: 0.78, fanWell: true, splashArms: false,
   });
@@ -6234,6 +6229,16 @@ function buildLeo2Revolution(P) {
     // Track-only correction: the native band now encloses the complete
     // leading road tire instead of lifting through its forward quadrant.
     contactZF: 2.78,
+    // Owner-marked underside views exposed the recessed connector/guide-horn
+    // instancing as a second complete green track beneath the real tread-pad
+    // course. Keep the useful recessed web and center guide horn, but omit
+    // the exposed parallel connector rails/pin-cap row and merge the retained
+    // detail into the animated outer tread geometry/material.
+    integratedLinks: true,
+    // Restore the real pin-overhang footprint with the single tread itself;
+    // this closes the rear wrap in plan without reintroducing a second rail.
+    shoeWidthScale: 1.07,
+    shoeOutboardOffset: 0.016,
     // r9 B1 (critic driver 2 — band p5 6.8 vs ref 51.1, the merkava-class
     // near-black read): pads/chain to the pt91m r27 olive-brown recipe +
     // the gearFloor rehook (Material.clone drops the family ambient floor).

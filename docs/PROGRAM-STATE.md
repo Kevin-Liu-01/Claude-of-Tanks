@@ -8149,3 +8149,38 @@ geometry **`2cfddd39`** (37 rendered meshes / 48,974 vertices).
 **KEEP the complete closed Panther hull, raised joined glacis wings,
 full-height outboard Schürzen, fenders and interleaved native course. The
 wheel-bay backer is running-gear-owned and must not be duplicated as armor.**
+
+## 5.228 LEOPARD 2 REVOLUTION SINGLE SMART-COURSE CLOSEOUT (2026-08-14, LIVE)
+
+The owner-marked underside view identified the Revolution's recessed
+connector/guide-horn instancing as a second complete green course beneath the
+real tread-pad run. The correction is profile-local: `integratedLinks:true`
+keeps the recessed web and center guide horn in the animated outer tread while
+omitting the exposed parallel connector rails and transverse pin-cap row. The
+terrain-conforming smart band, detailed
+tread, seven road wheels, raised idler/final drive, suspension and end
+transitions remain unchanged. No hull, glacis, armor plate, side or top skirt,
+sponson, fender, mudguard or guard geometry is removed or reshaped.
+
+The immediately preceding 2A7V-specific suppression was based on the wrong
+tank identification and is fully reverted. 2A7V returns to its accepted
+geometry and presentation assets; the shared factory capability remains only
+as an explicit per-profile opt-in for Revolution.
+
+A new read-only `tank:track:duplicates` audit examines all 105 first-party
+playables. It rejects overlapping smart bands/pad courses and any non-running-
+gear full-length proxy occupying the loaded lower-run envelope, while
+distinguishing spare-track/stowage buckets and separated multi-lane systems.
+The complete fleet reports **PASS: 0 overlapping smart courses / 0 static
+full-length track proxies**. The same audit now runs inside every targeted
+`tank-release-check`.
+
+Revolution dual-ledger geometry is freeze **`f8a15318`**, instance freeze
+**`0184e0f1`** and asset geometry **`f4a9214c`** (73 rendered meshes / 102,453
+vertices). All eight targeted presentation assets are regenerated. The
+owner's elevated underside camera confirms that the duplicate green course is
+gone while the detailed outer treads and complete armor envelope remain.
+
+**KEEP the complete Revolution hull, armor, skirts and smart suspension
+system. Future duplicate-course work may remove only a proven redundant
+running-gear layer; it may never subtract vehicle armor or body geometry.**

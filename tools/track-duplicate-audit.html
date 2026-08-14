@@ -1,0 +1,162 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Track duplicate audit</title>
+<script type="module">
+import * as THREE from '/node_modules/three/build/three.module.js';
+import { createTank } from '/src/vehicles/tankFactory.js';
+
+const id = new URLSearchParams(location.search).get('id');
+
+function worldBox(object) {
+  if (object.isInstancedMesh && !object.boundingBox) object.computeBoundingBox();
+  const box = new THREE.Box3().setFromObject(object, true);
+  if (box.isEmpty()) return null;
+  const size = box.getSize(new THREE.Vector3());
+  return {
+    box,
+    min: box.min.toArray(),
+    max: box.max.toArray(),
+    size: size.toArray(),
+    volume: Math.max(size.x * size.y * size.z, 1e-9),
+  };
+}
+
+function overlapRatio(a, b) {
+  const intersection = a.box.clone().intersect(b.box);
+  if (intersection.isEmpty()) return 0;
+  const size = intersection.getSize(new THREE.Vector3());
+  const volume = size.x * size.y * size.z;
+  return volume / Math.min(a.volume, b.volume);
+}
+
+function laneAbsX(object) {
+  if (!object.isInstancedMesh || object.count === 0) return null;
+  const instance = new THREE.Matrix4();
+  const world = new THREE.Matrix4();
+  const point = new THREE.Vector3();
+  const values = [];
+  for (let i = 0; i < object.count; i++) {
+    object.getMatrixAt(i, instance);
+    world.multiplyMatrices(object.matrixWorld, instance);
+    point.setFromMatrixPosition(world);
+    values.push(Math.abs(point.x));
+  }
+  values.sort((a, b) => a - b);
+  return values[Math.floor(values.length / 2)];
+}
+
+function longitudinalCoverage(row, bands, bins = 24) {
+  if (!row.object.geometry || row.object.isInstancedMesh || !bands.length) return 0;
+  const position = row.object.geometry.getAttribute('position');
+  if (!position) return 0;
+  const z0 = Math.min(...bands.map((band) => band.bounds.min[2]));
+  const z1 = Math.max(...bands.map((band) => band.bounds.max[2]));
+  const groundCeiling = Math.min(...bands.map((band) => band.bounds.min[1])) + 0.32;
+  const dz = Math.max(z1 - z0, 1e-6);
+  const covered = new Set();
+  const index = row.object.geometry.index;
+  const triangleCount = index ? index.count / 3 : position.count / 3;
+  const point = new THREE.Vector3();
+  for (let triangle = 0; triangle < triangleCount; triangle++) {
+    const triangleBox = new THREE.Box3();
+    for (let corner = 0; corner < 3; corner++) {
+      const vertex = index ? index.getX(triangle * 3 + corner) : triangle * 3 + corner;
+      point.fromBufferAttribute(position, vertex).applyMatrix4(row.object.matrixWorld);
+      triangleBox.expandByPoint(point);
+    }
+    // A merged spare-track/detail bucket can span the whole vehicle while
+    // living on the glacis, roof and rear service field. It is not a second
+    // running course. Require repeated geometry down in the loaded lower-run
+    // envelope before classifying a static full-length proxy.
+    if (triangleBox.min.y > groundCeiling) continue;
+    if (!bands.some((band) => band.bounds.box.intersectsBox(triangleBox))) continue;
+    const first = Math.max(0, Math.floor(((triangleBox.min.z - z0) / dz) * bins));
+    const last = Math.min(bins - 1, Math.floor(((triangleBox.max.z - z0) / dz) * bins));
+    for (let bin = first; bin <= last; bin++) covered.add(bin);
+  }
+  return covered.size / bins;
+}
+
+try {
+  if (!id) throw new Error('missing id');
+  const tank = createTank(id, {
+    setupShadowMaterial: (material) => material,
+    anisotropy: 1,
+    renderer: null,
+  }, { camoSeed: 4242, quality: 'high', proceduralOnly: true });
+  tank.root.updateMatrixWorld(true);
+
+  const rows = [];
+  tank.root.traverse((object) => {
+    if (!(object.isMesh || object.isInstancedMesh) || !object.geometry) return;
+    const bounds = worldBox(object);
+    if (!bounds) return;
+    rows.push({
+      object,
+      name: object.name || '',
+      runningGear: object.userData?.runningGear === true,
+      trackBucket: object.userData?.trackBucket || null,
+      laneAbsX: laneAbsX(object),
+      bounds,
+    });
+  });
+
+  const bands = rows.filter((row) => /^gearTrackBand[LR]$/.test(row.name));
+  const pads = rows.filter((row) => row.name === 'gearTrackPads');
+  const inner = rows.filter((row) => row.name === 'gearTrackInnerLinks');
+  const duplicatePairs = [];
+  for (const layer of [bands, pads]) {
+    for (let i = 0; i < layer.length; i++) {
+      for (let j = i + 1; j < layer.length; j++) {
+        const overlap = overlapRatio(layer[i].bounds, layer[j].bounds);
+        const sameLane = layer[i].laneAbsX == null || layer[j].laneAbsX == null
+          || Math.abs(layer[i].laneAbsX - layer[j].laneAbsX) < 0.08;
+        if (overlap >= 0.65 && sameLane) {
+          duplicatePairs.push({
+            a: layer[i].name,
+            b: layer[j].name,
+            overlap: Number(overlap.toFixed(3)),
+          });
+        }
+      }
+    }
+  }
+
+  const staticCandidates = rows
+    .filter((row) => !row.runningGear
+      && (row.trackBucket || /track|tread|shoe/i.test(row.name))
+      && row.bounds.size[2] >= 2.4)
+    .map((row) => {
+      const overlap = bands.reduce(
+        (best, band) => Math.max(best, overlapRatio(row.bounds, band.bounds)), 0,
+      );
+      const coverage = longitudinalCoverage(row, bands);
+      return { row, overlap, coverage };
+    })
+    .filter(({ overlap, coverage }) => overlap >= 0.35 && coverage >= 0.55)
+    .map(({ row, overlap, coverage }) => ({
+      name: row.name || '(unnamed)',
+      trackBucket: row.trackBucket,
+      overlap: Number(overlap.toFixed(3)),
+      longitudinalCoverage: Number(coverage.toFixed(3)),
+      min: row.bounds.min.map((value) => Number(value.toFixed(3))),
+      max: row.bounds.max.map((value) => Number(value.toFixed(3))),
+    }));
+
+  window.__TRACK_DUPLICATE_AUDIT = {
+    id,
+    canonical: {
+      bands: bands.length,
+      treadPadLayers: pads.length,
+      connectorLayers: inner.length,
+    },
+    duplicatePairs,
+    staticCandidates,
+    pass: duplicatePairs.length === 0 && staticCandidates.length === 0,
+  };
+} catch (error) {
+  window.__TRACK_DUPLICATE_AUDIT = { id, error: String(error?.stack || error), pass: false };
+}
+window.__TRACK_DUPLICATE_READY = true;
+document.body.textContent = JSON.stringify(window.__TRACK_DUPLICATE_AUDIT, null, 2);
+</script>

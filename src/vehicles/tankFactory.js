@@ -867,7 +867,7 @@ function sprocketGeo(r, w, seg, teeth = 12, toothOuter = null, linkM = 0.165, ri
 // and the two scrolling track bands.
 // ---------------------------------------------------------------------------
 function trackShoeGeometries(trackW, pitch, pinCapOuter = null,
-  radialScale = 1) {
+  radialScale = 1, widthScale = 1) {
   // Two physically distinct layers, as seen on real live tracks:
   //   1. the broad outer road-contact shoe with twin grousers;
   //   2. a recessed inner chain/connector layer carrying the pins and guide
@@ -911,7 +911,26 @@ function trackShoeGeometries(trackW, pitch, pinCapOuter = null,
     pad.scale(1, radialScale, 1);
     inner.scale(1, radialScale, 1);
   }
+  if (widthScale !== 1) {
+    pad.scale(widthScale, 1, 1);
+    inner.scale(widthScale, 1, 1);
+  }
   return { pad, inner };
+}
+
+// One-course alternative for profiles where the two exposed connector rails
+// and transverse pin caps read as a second parallel track. The recessed web
+// keeps the tread closed through end wraps and the center horn still guides
+// the wheel pair, but no separate rail/cap row is rendered.
+function integratedTrackShoeDetail(trackW, pitch, radialScale = 1, widthScale = 1) {
+  const detail = mergeAll([
+    xform(box(trackW * 0.82, 0.050, pitch * 0.62), 0, -0.055, 0),
+    xform(box(0.070, 0.205, pitch * 0.34), 0, -0.185, 0),
+    xform(box(0.040, 0.090, pitch * 0.20), 0, -0.325, 0),
+  ]);
+  if (radialScale !== 1) detail.scale(1, radialScale, 1);
+  if (widthScale !== 1) detail.scale(widthScale, 1, 1);
+  return detail;
 }
 
 function buildRunningGear(P, cfg) {
@@ -1248,8 +1267,17 @@ function buildRunningGear(P, cfg) {
   const nLinks = Math.max(24, Math.round(loopLen / (cfg.linkPitchM ?? 0.165)));
   const lp = loopLen / nLinks;
   const shoe = trackShoeGeometries(trackW, lp, cfg.pinCapOuter ?? null,
-    cfg.shoeRadialScale ?? 1);
+    cfg.shoeRadialScale ?? 1, cfg.shoeWidthScale ?? 1);
   P.disposables.push(shoe.pad,shoe.inner);
+  // A profile can retain the connector web and guide horns without rendering
+  // exposed parallel rails/pin caps as a second differently coloured course.
+  // The merged geometry still follows the same terrain-conforming instance
+  // transforms as the outer tread, so it remains one smart track system.
+  const integratedDetail = cfg.integratedLinks
+    ? integratedTrackShoeDetail(trackW, lp, cfg.shoeRadialScale ?? 1, cfg.shoeWidthScale ?? 1)
+    : null;
+  const integratedShoe = integratedDetail ? mergeAll([shoe.pad, integratedDetail]) : null;
+  if (integratedDetail) P.disposables.push(integratedDetail, integratedShoe);
   // Fixed neutral iron tones prevent the garage key light from turning the
   // now-thicker faces into a tan/white necklace.  The inner chain is only a
   // notch lighter, enough to separate the two levels without looking new.
@@ -1280,14 +1308,14 @@ function buildRunningGear(P, cfg) {
     }
   }
   P.disposables.push(padMat,innerMat);
-  const padIM = new THREE.InstancedMesh(shoe.pad,padMat,nLinks*2);
+  const padIM = new THREE.InstancedMesh(integratedShoe || shoe.pad,padMat,nLinks*2);
   padIM.name = 'gearTrackPads';
   const linkMeshes=[padIM];
   // Some wide modern shoes expose the recessed connector layer as a second
   // complete track when viewed obliquely from below. Profiles may suppress
   // that redundant rendered layer while retaining the authoritative band,
   // tread pads, end wheels and suspension. Default stays byte-identical.
-  if (cfg.innerLinks !== false) {
+  if (cfg.innerLinks !== false && !cfg.integratedLinks) {
     const innerIM = new THREE.InstancedMesh(shoe.inner,innerMat,nLinks*2);
     innerIM.name = 'gearTrackInnerLinks';
     linkMeshes.push(innerIM);
@@ -1311,6 +1339,7 @@ function buildRunningGear(P, cfg) {
   // topY) or an explicit cover height.
   const coverY = cfg.coveredTop === true ? topY - 0.06
     : (typeof cfg.coveredTop === 'number' ? cfg.coveredTop : Infinity);
+  const shoeOutboardOffset = cfg.shoeOutboardOffset ?? 0;
   const coverZ0 = rearEnd.z + rearEnd.r * 0.5;
   const coverZ1 = frontEnd.z - frontEnd.r * 0.5;
   const placeLinks = (l, r) => {
@@ -1353,7 +1382,8 @@ function buildRunningGear(P, cfg) {
           ty = dy * invLen;
         }
         _q.setFromAxisAngle(_X, Math.atan2(-ty, tz));
-        _v.set(side * xcForSide(side), y + groundRunOff + tz * rOut, z - ty * rOut);
+        _v.set(side * (xcForSide(side) + shoeOutboardOffset),
+          y + groundRunOff + tz * rOut, z - ty * rOut);
       // gameplay_feel r5 (terrain-contact hard gate): on the GROUND RUN the
       // outward rOut offset plus the flipped pad geometry (pad face 0.03 +
       // grouser bar to 0.07) hung the grouser tips ~7 cm below the sim's

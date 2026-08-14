@@ -20,6 +20,7 @@ function run(command, args) {
 
 try {
   run(process.execPath, ['tools/tank-assets-check.mjs', `--ids=${ids}`]);
+  run(process.execPath, ['tools/track-duplicate-audit.mjs', `--ids=${ids}`]);
   run(process.execPath, ['tools/muzzle-bore-probe.mjs', `--ids=${ids}`]);
   run(process.execPath, ['tools/tank-standard-check.mjs', `--ids=${ids}`, ...(gate ? ['--gate'] : [])]);
   run('npm', ['test']);
