@@ -96298,7 +96298,7 @@
           }
         ]
       },
-      "geometryHash": "8295bb51",
+      "geometryHash": "2146656d",
       "metadataHash": "f396bcd5",
       "muzzleBore": {
         "tagged": 2,
@@ -96314,7 +96314,7 @@
           "height": 512,
           "mime": "image/webp",
           "bytes": 17776,
-          "sha256": "ef8713143774364b0a9599e0a36e04544694c2859d4af6ae5d59e26781cba7b7"
+          "sha256": "772ec5526c05817ef262e4d5594b371cfbd81ed7e066438a4de9d25c0260a6b3"
         },
         "top": {
           "file": "vickers_mk1_top.webp",
@@ -96329,8 +96329,8 @@
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 8018,
-          "sha256": "da7e70136603f1b7546980cb10826c5c6063971032c44dc1617d5f1cffaee489"
+          "bytes": 8022,
+          "sha256": "8111c29a1640c1f5df736ee5732bbe64c13586d552b0e69441e104efa4f78a20"
         },
         "topSilhouette": {
           "file": "vickers_mk1_top_silhouette.png",
@@ -96345,32 +96345,32 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4739,
-          "sha256": "09b31ba6959d7922635ec66b39543a87845c14d9dbae49c4d73ddd023eff18d3"
+          "bytes": 4733,
+          "sha256": "6586844a0948d87b7b6c7117a4eb3cb964c35e6ac4ddcdd3111555913040be0a"
         },
         "hitZonesSide": {
           "file": "vickers_mk1_hit_zones_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 63318,
-          "sha256": "95843a40e552315b73fdc349b1acb2523dbcc4b67d50c109c1958e928eb4cdfc"
+          "bytes": 63337,
+          "sha256": "0bf7972e529396b7ed884ff422a3980d77b6a8a7627f62fcaa0e0e379465b5bb"
         },
         "armorSide": {
           "file": "vickers_mk1_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 64068,
-          "sha256": "dff9ef8df60c4aff6152f4e11cb8f75bdb5762d027ab39a89d62c5de7bb9420b"
+          "bytes": 64131,
+          "sha256": "99e500a51370b195b2046b7970487ff14ad675facac27c13e6e7036cefcf1b5e"
         },
         "modulesSide": {
           "file": "vickers_mk1_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 58883,
-          "sha256": "a6bae4052c92273f3f8d37626c8fb0758058974e5583f928f2c1ad3adf2be266"
+          "bytes": 58911,
+          "sha256": "5900610ee31589c520604b38c51feeae1b4468978c9d00b105f09a89d6e10642"
         }
       }
     }
