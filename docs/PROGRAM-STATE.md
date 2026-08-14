@@ -5644,3 +5644,34 @@ stat rewrite or geometry change. Nation/name ordering continues to place it
 beside the other T-72 variants inside the Modern Russian block.
 
 **KEEP. `t72b_1987` has one roster identity and belongs to Modern.**
+
+## 5.164 T-72B OBR. 1987 NATIVE FAMILY REDESIGN (2026-08-13, LIVE)
+
+The playable `t72b_1987` now routes to the repository-authored native T-72
+family builder instead of the retained historical print-tuned receipt. This
+restores the same compact low hull, broad pear-shaped casting, six-wheel
+stance, articulated gun and explicit hull/turret ownership used by the
+current B3M family while keeping the 1987 vehicle period-correct: dense
+Kontakt-1 rather than modern Kontakt-5, Luna/night-sight grammar, twin 902B
+smoke banks and an open shallow rear stowage frame rather than an autoloader
+bustle.
+
+The hull receives a deliberately raised forward idler and supported
+trapezoidal linked course without deleting or moving any side armour. All six
+native road wheels remain distinct and gain restrained dish/hub/fastener
+faces. Two unequal backed radiator fields, broken louvres, exhaust/service
+hardware, lamps, recovery eyes, drums and log complete the transom. Three
+unequal jerrycan/tool cells, braces and a rolled service item deepen the
+turret rear while preserving open negative space and broad returns into the
+cast shoulder.
+
+First-party studio inspection covers front, left, rear, hero and a true
+90-degree turret turn. The complete Kontakt-1 blanket, gun, roof suite, smoke
+banks, rear cells and rail turn together; hull deck, skirts, six-wheel course
+and transom remain fixed. No second track, deleted hull side, stranded pack,
+open sheet or empty-air fitting appears. The eight gameplay assets are
+regenerated and freeze deterministic geometry **`8c2a07b6`**.
+
+**KEEP `8c2a07b6`. Future obr.1987 work must preserve the native family hull,
+complete side armour, raised idler course and period-correct Kontakt-1/rear
+stowage distinction.**

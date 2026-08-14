@@ -422,11 +422,14 @@ function buildT72B87Native(P, variant = 'b87') {
   buildRunningGear(P, {
     style: 'rubber', wheelR: b3 ? 0.455 : 0.425, wheelW: 0.23, wheelY: b3 ? 0.48 : 0.45, xc: 1.37,
     dishR: b3 ? 0.77 : 0.72, wheelZs,
-    sprocket: { z: -2.36, y: b3 ? 0.63 : 0.59, r: b3 ? 0.33 : 0.31 },
-    idler: { z: 2.48, y: b3 ? 0.59 : 0.55, r: b3 ? 0.31 : 0.29 },
+    sprocket: { z: -2.36, y: b3 ? 0.63 : 0.62, r: b3 ? 0.33 : 0.31 },
+    // The obr.1987 keeps the family trapezoid: the front idler is visibly
+    // above the road-wheel line, producing a supported / return instead of
+    // a low wheel hidden inside a flat rectangular course.
+    idler: { z: 2.48, y: b3 ? 0.59 : 0.64, r: b3 ? 0.31 : 0.29 },
     contactZF: 2.22, contactZR: -2.05,
     rollers: [-1.35, -0.15, 1.10].map((z) => ({ z, y: 0.88, r: 0.082 })),
-    trackW: 0.56, topY: b3 ? 0.98 : 0.92, botY: 0.025, paintedEnds: true,
+    trackW: 0.56, topY: b3 ? 0.98 : 0.94, botY: 0.025, paintedEnds: true,
     coveredTop: true, arms: true,
   });
   if (b3) {
@@ -447,6 +450,26 @@ function buildT72B87Native(P, variant = 'b87') {
       for (const s of [-1, 1]) {
         P.add('hullDetail', torus(r * 0.72, 0.014, 16), s * 1.505, y, z, 0, Math.PI / 2, 0);
         P.add('hullDark', cylX(r * 0.25, 0.034, 12), s * 1.512, y, z);
+      }
+    }
+  } else {
+    // The older six-wheel course receives the same readable mechanical
+    // hierarchy as the current family without changing its track geometry:
+    // dark tire, olive dish, hub, and eight small fasteners on each native
+    // road wheel. These are face details, not a second wheel/track set.
+    for (const s of [-1, 1]) for (const z of wheelZs) {
+      P.add('hull', cylX(0.192, 0.024, 18), s * 1.502, 0.45, z);
+      P.add('hullDark', torus(0.137, 0.009, 18), s * 1.516, 0.45, z, 0, Math.PI / 2, 0);
+      P.add('hullDetail', cylX(0.070, 0.030, 14), s * 1.522, 0.45, z);
+      for (let k = 0; k < 8; k++) {
+        const a = (k / 8) * Math.PI * 2;
+        P.add('hullDark', cylX(0.013, 0.026, 8), s * 1.528, 0.45 + Math.sin(a) * 0.097, z + Math.cos(a) * 0.097);
+      }
+    }
+    for (const [z, y, r] of [[-2.36, 0.62, 0.31], [2.48, 0.64, 0.29]]) {
+      for (const s of [-1, 1]) {
+        P.add('hullDetail', torus(r * 0.69, 0.013, 16), s * 1.505, y, z, 0, Math.PI / 2, 0);
+        P.add('hullDark', cylX(r * 0.24, 0.034, 12), s * 1.512, y, z);
       }
     }
   }
@@ -595,6 +618,28 @@ function buildT72B87Native(P, variant = 'b87') {
     P.add('hullDetail', box(0.20, 0.13, 0.038), 1.01, 1.10, -2.944);
     P.add('hullDark', box(0.10, 0.20, 0.038), 0.18, 1.16, -2.943);
     P.add('hullDetail', box(0.18, 0.055, 0.038), 0.18, 1.26, -2.944);
+  } else {
+    // Period-correct, asymmetric obr.1987 rear service field. Two backed
+    // radiator bays, broken louvre runs, exhaust/service pipes, lamps and
+    // recovery fittings remove the old blank transom while the existing
+    // external drums/log remain the dominant T-72 rear silhouette.
+    P.add('hullDark', box(1.02, 0.29, 0.030), -0.63, 1.095, -2.915);
+    P.add('hullDark', box(0.79, 0.24, 0.030), 0.58, 1.065, -2.916);
+    for (let i = 0; i < 7; i++) {
+      P.add('hullDetail', box(0.87 - (i % 3) * 0.045, 0.017, 0.024), -0.63, 0.985 + i * 0.037, -2.937);
+      if (i < 6) P.add('hullDetail', box(0.66 - (i % 2) * 0.040, 0.017, 0.024), 0.58, 0.987 + i * 0.038, -2.938);
+    }
+    for (const x of [-1.06, -0.78, -0.46, -0.14, 0.20, 0.49, 0.82, 0.98]) {
+      P.add('hullDark', box(0.030, x < 0 ? 0.29 : 0.25, 0.026), x, 1.08, -2.944);
+    }
+    P.add('hullDark', cylX(0.052, 0.50, 10), 0.68, 1.22, -2.948);
+    P.add('hullDark', cylZ(0.070, 0.15, 12), 0.96, 1.22, -2.946, Math.PI / 2, 0, 0);
+    P.add('hullDetail', box(0.21, 0.14, 0.038), 0.94, 1.07, -2.945);
+    P.add('hullDark', box(0.22, 0.16, 0.038), -1.08, 1.06, -2.944);
+    P.add('hullDetail', box(0.12, 0.065, 0.040), -1.08, 1.07, -2.966);
+    for (const [x, y] of [[-0.72, 0.79], [0.68, 0.79]]) {
+      P.add('hullDark', torus(0.078, 0.018, 12), x, y, -2.952, Math.PI / 2, 0, 0);
+    }
   }
 
   // ---- low cast T-72B turret -------------------------------------------
@@ -807,6 +852,28 @@ function buildT72B87Native(P, variant = 'b87') {
     P.add('turret', box(0.30, 0.24, 0.38), s * 0.88, 0.22, -0.92);
     P.add('turret', box(0.24, 0.20, 0.30), s * 1.08, 0.20, -0.72, 0, s * 0.20, 0);
     P.add('turretDark', box(0.18, 0.025, 0.24), s * 1.08, 0.315, -0.72, 0, s * 0.20, 0);
+  }
+  if (!b3) {
+    // Shallow 1987 stowage bustle: three unequal jerrycan/tool cells sit
+    // inside the open rail and return forward into the cast shoulder. The
+    // frame stays visibly open and period-correct rather than becoming a
+    // modern autoloader box, while rear/quarter views gain real depth.
+    for (const [x, w, h, z, yaw] of [
+      [-0.56, 0.42, 0.22, -1.17, -0.07],
+      [-0.08, 0.38, 0.25, -1.22, 0.02],
+      [0.43, 0.48, 0.19, -1.14, 0.08],
+    ]) {
+      P.add('turret', box(w, h, 0.27), x, 0.25 + h / 2, z, 0, yaw, 0);
+      P.add('turretDark', box(w - 0.045, 0.020, 0.22), x, 0.26 + h, z, 0, yaw, 0);
+      P.add('turretDark', box(0.038, h * 0.76, 0.23), x - w * 0.39, 0.25 + h * 0.50, z, 0, yaw, 0);
+      P.add('turretDetail', box(0.030, h * 0.64, 0.020), x + w * 0.35, 0.25 + h * 0.48, z - 0.145, 0, yaw, 0);
+    }
+    for (const [x, y, w] of [[-0.72, 0.29, 0.24], [-0.30, 0.34, 0.28], [0.17, 0.30, 0.21], [0.62, 0.35, 0.25]]) {
+      P.add('turretDark', box(w, 0.040, 0.032), x, y, -1.38);
+      P.add('turretDark', box(0.035, 0.16, 0.035), x + w * 0.36, y - 0.055, -1.34, 0.14, 0, 0);
+    }
+    P.add('turretDark', cylZ(0.075, 0.30, 12), 0.82, 0.34, -1.22, Math.PI / 2, 0, 0);
+    P.add('turretDark', box(0.055, 0.20, 0.22), 0.82, 0.31, -1.12, 0.12, 0, 0);
   }
   if (b3) {
     // Modern rectangular flank packs and their low carrier rails wrap the
@@ -5012,7 +5079,11 @@ export const T72_PROFILES = {
   // and surface ideas, but their compact primary datums score materially
   // worse and must not replace these stronger hull/gun/course foundations.
   // External GLBs remain QA oracles only; no source vertex enters runtime.
-  t72b_1987: { build: buildT72B87 },
+  // The live obr.1987 uses the repository-authored native T-72 family base.
+  // Keep buildT72B87 above as the historical print-tuned receipt only; its
+  // undersized turret and unrelated hull proportions no longer belong in
+  // the current first-party family lineup.
+  t72b_1987: { build: (P) => buildT72B87Native(P, 'b87') },
   t72b3m: { build: buildT72B3M },
   t72bu: { build: buildT72BUHybridNative2026 },
 };
