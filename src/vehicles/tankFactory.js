@@ -949,8 +949,9 @@ function buildRunningGear(P, cfg) {
       for (const side of [-1, 1]) {
         const sideXc = xcForSide(side);
         const xa = side * (sideXc - wheelW * 0.7);
-        P.add('hullDetail', cylX(wheelR * 0.16, wheelW * 0.9, 10), xa, wheelY, z);
-        P.add('hullDetail', box(0.07, 0.09, wheelR * 0.95),
+        const armBucket = cfg.armBucket ?? 'hullDetail';
+        P.add(armBucket, cylX(wheelR * 0.16, wheelW * 0.9, 10), xa, wheelY, z);
+        P.add(armBucket, box(0.07, 0.09, wheelR * 0.95),
           side * (sideXc - wheelW * 1.1), wheelY + wheelR * 0.28, z + wheelR * 0.38, 0.6, 0, 0);
       }
     });

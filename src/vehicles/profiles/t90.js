@@ -369,11 +369,18 @@ function buildT90ALegacy(P) {
     deck: [[-3.17, 1.245], [-2.83, 1.27], [-2.60, 1.30], [-2.28, 1.325], [-1.90, 1.345], [0.83, 1.375], [2.02, 1.30], [2.42, 1.24], [2.71, 1.19], [3.11, 1.15], [3.17, 1.10]],
     belly: [[-3.17, 1.16], [-3.00, 1.06], [-2.83, 0.86], [-2.62, 0.44], [-2.42, 0.34], [2.48, 0.34], [2.97, 0.62], [3.17, 0.87]],
     wUp: [[-3.17, 1.02], [-2.83, 1.30], [-2.70, 1.60], [2.95, 1.60], [3.10, 1.32], [3.17, 0.60]],
-    wLo: [[-3.17, 0.92], [2.34, 1.08], [2.42, 0.84], [3.10, 0.82], [3.17, 0.72]],
-    // Wrap-clear sponson roof: the prior constant 0.86 plane cut through
-    // both end-wheel arcs.  These short raised windows follow the real
-    // fender pockets and remain below the deck silhouette.
-    sponsonY: [[-3.17, 0.86], [-2.82, 0.86], [-2.78, 1.34], [-2.10, 1.34], [-2.06, 0.86], [2.38, 0.86], [2.42, 1.12], [3.17, 1.12]],
+    // The pressure tub remains inside the inner pad edge; only the sloped
+    // upper shoulders widen to the full hull.  The former 1.08-m lower wall
+    // grazed the forward return between z=2.0..2.34 even after the sponson
+    // floor was lifted.
+    wLo: [[-3.17, 0.88], [2.34, 0.94], [2.42, 0.82], [3.10, 0.80], [3.17, 0.70]],
+    // Keep the complete outer hull and skirt silhouette, but lift the
+    // concealed sponson underside above the native return run.  The old
+    // 0.86-m centre plane was a calibration-era track proxy: it crossed the
+    // smooth band through the full wheelbase and made the closed hull read
+    // hollow from the side.  These stations are below the existing deck and
+    // do not move any visible armor face.
+    sponsonY: [[-3.17, 1.22], [-2.82, 1.22], [-2.78, 1.40], [-2.10, 1.40], [-2.06, 1.22], [3.17, 1.22]],
   });
   // The normalized lower hull has two shallow torsion-rail gutters: the
   // center belly stays at 0.34 m while the narrow |x| 0.85..0.97 lanes dip
@@ -426,10 +433,15 @@ function buildT90ALegacy(P) {
       P.add('hull', box(0.16, 0.05, 0.18), s * 1.70, 1.17, -2.91);
       P.add('hull', box(0.056, 0.05, 0.32), s * 1.752, 1.17, -2.66);
     } else if (i === 1) {
-      P.add('hull', box(0.056, 0.05, 0.255), s * 1.752, 1.17, -2.3275);
-      P.add('hull', box(0.16, 0.05, 0.245), s * 1.70, 1.17, -2.0775);
+      // The rear climb passes under this segment. Keep the original plan
+      // footprint, but seat the shelf on the deck/fender datum instead of
+      // through the rising native course.
+      P.add('hull', box(0.056, 0.05, 0.255), s * 1.752, 1.27, -2.3275);
+      P.add('hull', box(0.16, 0.05, 0.245), s * 1.70, 1.27, -2.0775);
     } else {
-      P.add('hull', box(0.16, 0.05, 0.50), s * 1.70, 1.17, -2.75 + i * 0.545);
+      // The matching forward transition is i=9. Raise only that supported
+      // shelf; the long mid-run course and every side-armor panel stay put.
+      P.add('hull', box(0.16, 0.05, 0.50), s * 1.70, i === 9 ? 1.27 : 1.17, -2.75 + i * 0.545);
     }
   }
   ruDeck(P, { deckY: 1.365, hatchY: 1.215, hatchZ: 2.16, gz: -1.74, grilles: 5, gw: 1.5, periY: 1.20, gY: 1.33, ribY: 1.34 });
@@ -448,7 +460,7 @@ function buildT90ALegacy(P) {
   // Its top follows the oracle's 1.48-1.49 m break at |x| 0.66..0.75.
   P.add('hull', box(1.50, 0.15, 0.08), 0, 1.415, -1.53);
   P.add('hull', box(1.25, 0.20, 0.07), 0.035, 1.45, -1.445);
-  ruGlacisKit(P, { w: 3.5, y: 1.10, z: 2.83, eyeZ: 3.03, eyeSplit: true, hookX: 0.40, hookY: 0.68, hookZ: 3.04, hlY: 1.10, lights: false });
+  ruGlacisKit(P, { w: 3.5, y: 1.10, z: 2.83, eyeX: 0.90, eyeZ: 3.03, eyeSplit: true, hookX: 0.40, hookY: 0.68, hookZ: 3.04, hlY: 1.10, lights: false });
   // T4A SHADOW-TONE (verdict order 6: "rehook the near-black headlight/
   // bracket clusters at bow/stern corners"): headlight pods + stern
   // tail-light pods on rehooked shadow-olive clones at the certified
@@ -562,20 +574,11 @@ function buildT90ALegacy(P) {
     trackW: 0.61, topY: 0.86, botY: 0.05, contactZR: -1.50,
     paintedEnds: true, coveredTop: true, arms: true,
   });
-  // r12 GEAR-FADE STRIPS (t72b3m r11 pattern, gate grid): ref rear ramp
-  // 0.24@-2.067 -> 0.52@-2.827
-  for (const [sz2, sy] of [
-    [-1.957, 0.19], [-2.067, 0.245], [-2.177, 0.30], [-2.277, 0.326],
-    [-2.387, 0.354], [-2.497, 0.454], [-2.607, 0.49], [-2.717, 0.518], [-2.827, 0.519], [-2.937, 0.55],
-  ]) {
-    for (const s of [-1, 1]) P.add(s < 0 ? 'hullTrackTrimL' : 'hullTrackTrimR', box(0.50, 0.05, 0.096), s * 1.375, sy + 0.025, sz2);
-  }
-  // The source keeps one grounded outer shoe at each mid-run edge.  These
-  // short blocks overlap the live band in all three axes; they are track
-  // contact, not detached skids, and recover the exact outer front floor.
-  for (const s of [-1, 1]) {
-    P.add(s < 0 ? 'hullTrackTrimL' : 'hullTrackTrimR', box(0.06, 0.08, 0.24), s * 1.71, 0.04, 0);
-  }
+  // The native linked course now carries the complete rear climb and loaded
+  // run.  The former gear-fade strips and grounded mid-run blocks were a
+  // second static track proxy occupying the same volume; retaining them
+  // created two overlapping courses.  No hull, skirt or suspension armor is
+  // removed here—the single animated native course is authoritative.
   // TIP-round §5.29 order 2 (owner 2026-08-07: "get rid of the excess
   // rectangle on the right side of its tracks near the bottom of the
   // tank"): the -1.722 "ground skid" DELETED — a 2.2m x 0.35 x 2cm bare
@@ -914,7 +917,10 @@ function buildT90AVladimirLegacy(P) {
     belly: [[-4.755, 1.50], [-4.61, 1.19], [-4.46, 1.20], [-4.40, 1.12], [-4.30, 0.80], [-4.24, 0.71], [-4.13, 0.71], [-4.02, 0.76], [-3.92, 0.83], [-3.78, 0.57], [-2.87, 0.42], [1.22, 0.42], [1.68, 0.60]],
     wUp: [[-4.755, 0.90], [-4.32, 0.95], [-4.05, 1.42], [-3.95, 1.60], [-3.72, 1.17], [-3.00, 1.17], [-2.80, 1.60], [-2.70, 1.58], [-0.94, 1.58], [-0.82, 1.60], [1.22, 1.60], [1.35, 1.17], [1.68, 1.05]],
     wLo: [[-4.755, 0.85], [-4.32, 0.90], [-4.26, 1.00], [1.68, 1.00]],
-    sponsonY: 0.90,
+    // Preserve the complete recovered hull while moving only its concealed
+    // underside above the native return run.  The former 0.90-m full-length
+    // plane crossed the band through the wheelbase.
+    sponsonY: 1.22,
   });
   // Narrow longitudinal keel visible only in the two center frontal
   // columns. It grows downward from the authored 0.42 m pan and stays
@@ -1064,14 +1070,9 @@ function buildT90AVladimirLegacy(P) {
     // ±1.13 hub cols; 1.46±0.28 keeps the ±1.77 ground read.)
     trackW: 0.56, trackTh: 0.03, topY: 0.90, botY: 0.05, paintedEnds: true, coveredTop: true, arms: false,
   });
-  // Source-grounded inner/outer shoe edges.  Each pad overlaps the live
-  // 1.18..1.74 track band and extends it by one real shoe lip only; unlike a
-  // silhouette skid, these are short, lane-local, and fully bedded.
-  for (const s of [-1, 1]) {
-    const trim = s < 0 ? 'hullTrackTrimL' : 'hullTrackTrimR';
-    P.add(trim, box(0.03, 0.04, 0.24), s * 1.165, 0.05, 0);
-    P.add(trim, box(0.03, 0.04, 0.24), s * 1.755, 0.05, 0);
-  }
+  // The native linked course supplies both shoe edges.  The former four
+  // static edge blocks duplicated that course at the loaded run and are no
+  // longer needed; all real wheels, suspension and armor remain intact.
   // rTAIL r13: inner wheel hubs — the ref front view reads its deep-dished
   // wheel hubs through the tub/track gap (AddOnWheel spans x 0.907..1.30,
   // front cols ±1.03..1.13 floor 0.371). cylX per wheel, y 0.50, inboard to
@@ -3089,7 +3090,10 @@ function buildT90SMLegacy(P) {
     // found the wrap shoes 23mm INSIDE the 1.18 roof at z -2.44..-2.40
     // (full width, the m1a1ha blind-spot class: band 0 while shoes hit).
     // Interior everywhere (deck 1.40-1.45 above; §B4 recipe).
-    sponsonY: [[-2.92, 0.81], [-2.84, 1.31], [-2.06, 1.31], [-1.78, 0.81], [2.52, 0.81], [2.64, 1.15], [3.02, 1.15]],
+    // Close the hidden track bay above the native return run without moving
+    // the recovered deck, skirt or exterior hull faces.  The prior 0.81-m
+    // centre floor was the full-wheelbase collision source.
+    sponsonY: [[-2.92, 1.22], [-2.84, 1.35], [-2.06, 1.35], [-1.78, 1.22], [3.02, 1.22]],
   });
   // r10 BOW STAIRCASE (fresh workorder): ref plan front steps 3.186-3.24 at
   // |x| 0.8..0.95 and 3.43 at |x| 1.14..1.37 ONLY — the old 0.855..1.295
@@ -3273,6 +3277,10 @@ function buildT90SMLegacy(P) {
     // ground ran to -2.19 where the ref lifts).
     contactZF: 2.20, contactZR: -1.45,
     trackW: 0.44, trackTh: 0.03, topY: 0.83, botY: 0.05, paintedEnds: true, coveredTop: true, arms: true,
+    // Suspension arms are genuine running gear, not hull armor.  Keep their
+    // geometry and material byte-visible while excluding them from the
+    // strict hull-vs-shoe corridor class.
+    armBucket: 'hullRunningGearDetail',
   });
   // The recovered loop holds one loaded shoe flat at the rear contact knee
   // before climbing to the sprocket.  Bed the paired shoes through the
@@ -5161,8 +5169,11 @@ function buildT90MS(P) {
     wUp: [[-3.43, 1.02], [-3.09, 1.30], [-2.96, 1.60], [2.95, 1.60], [3.16, 1.32], [3.43, 0.60]],
     // wLo end tapers pulled inboard (§B4 fix r2: the tub faces kissed the
     // lane inner edge 1.09 inside both wrap zones — audit receipts)
-    wLo: [[-3.43, 0.90], [-2.95, 1.02], [-2.30, 1.055], [2.35, 1.055], [2.85, 1.02], [3.43, 0.70]],
-    sponsonY: [[-3.43, 0.86], [-2.90, 0.86], [-2.82, 1.32], [-2.05, 1.32], [-1.80, 0.86], [2.42, 0.86], [2.52, 1.18], [3.43, 1.18]],
+    wLo: [[-3.43, 0.64], [-2.95, 0.88], [-2.30, 0.94], [2.35, 0.94], [2.85, 0.88], [3.43, 0.64]],
+    // The plain T-90 family already proved this closed corridor: retain the
+    // full MS exterior but keep the concealed floor above its native return
+    // and terminal crowns.
+    sponsonY: [[-3.43, 1.22], [-2.90, 1.22], [-2.82, 1.40], [-2.05, 1.40], [-1.80, 1.22], [2.42, 1.22], [3.43, 1.22]],
   });
   // CENTER GLACIS SLAB — the print's true falling plate (1.46 @ 1.75 ->
   // the 0.84 bow edge; the hull-era rows lie ON it), full closed slab at
@@ -6914,9 +6925,12 @@ function buildT90BurlakHybridNative2026(P) {
   P.forEachBucketPart(['hull', 'hullDark'], (geo, bounds) => {
     const rightPlate = bounds.min.x > 1.50;
     const leftPlate = bounds.max.x < -1.50;
-    const terminal = bounds.max.z > 2.70 || bounds.min.z < -2.20;
-    if (rightPlate && terminal) geo.translate(1.68 - bounds.min.x, 0, 0);
-    else if (leftPlate && terminal) geo.translate(-1.68 - bounds.max.x, 0, 0);
+    // The section correction narrows the internal hull, but the complete
+    // skirt/fender course must stay outside the native shoe envelope for its
+    // whole length. Preserve every plate and its y/z station while restoring
+    // one continuous 1.68-m inner clearance.
+    if (rightPlate) geo.translate(1.68 - bounds.min.x, 0, 0);
+    else if (leftPlate) geo.translate(-1.68 - bounds.max.x, 0, 0);
   });
   replaceT90BurlakCoreNative2026(P);
   finishT90BurlakNative2026(P);

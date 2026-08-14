@@ -6287,3 +6287,55 @@ vertices) and T-64BV-1 **`61191131` / `c13a5259` / `56dbc145`** (45 meshes /
 **KEEP both complete outer hulls, fenders and skirt courses. Future work must
 adjust only concealed cross-sections, supported fitting seats or the native
 course itself; never remove hull/side-armour geometry for clearance.**
+
+## 5.182 T-90 FAMILY SINGLE-NATIVE-COURSE / CLOSED-HULL CLOSEOUT (2026-08-14, LIVE)
+
+This pass closes the remaining strict mechanical corridors on the first-party
+T-90A, T-90A Vladimir, T-90A Burlak, T-90SM and T-90MS without changing any
+approved turret. Every complete outer hull, upper/lower glacis, fender,
+mudguard, side-skirt course, road wheel, idler, final drive, native linked
+shoe, turret armour course and turret fitting remains present.
+
+The T-90A and inherited Burlak basis carried a concealed 0.86-m sponson floor
+through the native return plus a lower wall reaching the inner pad edge. The
+floor now follows the existing 1.22/1.40-m shoulder datums and the closed
+pressure tub pinches inboard below it. Two legacy gear-fade rows and four
+grounded edge blocks were a second static track proxy occupying the native
+linked course; only those redundant track proxies are retired. The actual
+six-wheel suspension, elevated terminals and all hull/side armour remain. The
+existing tow eyes move inboard on the same lower-bow plate. Burlak's section
+correction now restores its complete skirt/fender course outside the shoes for
+the full wheelbase instead of only at the terminals.
+
+Vladimir's complete recovered body is unchanged externally; only its hidden
+full-length 0.90-m underside rises to 1.22 m. Its four redundant static loaded-
+run edge blocks are retired in favour of the one native linked course. T-90SM
+likewise raises only the concealed 0.81-m bay roof to the existing 1.22/1.35-m
+shoulder line. Its torsion arms retain identical geometry and material but now
+declare their actual running-gear ownership. T-90MS adopts the already proven
+plain-T-90 closed pressure-tub and 1.22/1.40-m sponson section; its exterior,
+Relikt skirts, rear service field and accepted welded turret do not move.
+
+Fresh 15-view authored-baseline/current boards, standardized elevated-left
+profiles and 15 yaw0 plus 15 yaw90 frames were inspected for all five tanks.
+All accepted gun/turret/armour/roof/rear packages execute a genuine quarter-
+turn while the complete hull, fenders, skirts and running gear remain fixed.
+Vladimir's and T-90MS's winding nominees are supported hull service structures;
+T-90A deck cable/links and T-90SM/MS deck stowage are also legitimate fixed
+hull equipment, not stranded turret fittings. No missing side armour, hollow
+hull, empty-air fitting, duplicate course, winding wound or sky-through opening
+is visible.
+
+Exact strict band and individual-shoe sweeps are **0/0 on all five tanks**.
+Winding is **0 reversed / 0 mixed**; T-90SM's 15-pixel (0.03%) left-view
+DoubleSide diagnostic has no yaw-stranded candidate. All forty presentation
+assets are regenerated. Dual-ledger geometry is: T-90A **`b14f3c6c` /
+`04c60bfc` / `2c7ba70d`** (62 meshes / 129,495 vertices), Vladimir
+**`a6150440` / `cee9f435` / `56e66f9c`** (43 / 70,716), Burlak
+**`e2f21210` / `2c87a455` / `198dc0f8`** (61 / 102,049), T-90SM
+**`24b96f48` / `dff7cf0e` / `4183e4e0`** (49 / 93,281), and T-90MS
+**`c2d56268` / `eb5fb490` / `19e42c32`** (53 / 108,208).
+
+**KEEP every approved T-90-family turret and the complete outer hull/skirts.
+Future clearance work belongs only to concealed mechanics, explicit running-
+gear ownership or a rewrap of the one native linked course.**
