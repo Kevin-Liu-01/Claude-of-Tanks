@@ -11239,13 +11239,13 @@
           }
         ]
       },
-      "geometryHash": "ab6c5c1a",
+      "geometryHash": "35a22cdf",
       "metadataHash": "c16aa990",
       "muzzleBore": {
-        "tagged": 1,
+        "tagged": 2,
         "rims": 1,
-        "discs": 1,
-        "authored": 0,
+        "discs": 2,
+        "authored": 1,
         "fallback": 1
       },
       "assets": {
@@ -11254,64 +11254,64 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 17710,
-          "sha256": "63d37249458915a22495eb8c1325028cd9e980a204c24294718188cbb47bb028"
+          "bytes": 16268,
+          "sha256": "27cb6e990267fdf03801d6ba0bc38cd3955b1d9b23819a8d872d7e9185f22571"
         },
         "top": {
           "file": "charioteer_top.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 6710,
-          "sha256": "177ed0de20c32272de6d201ee7fa2c46024d08c28ed792df11b58ae73257275f"
+          "bytes": 6452,
+          "sha256": "505030909634cb094cd063cb94ca711a72e5ae4159129ec7d986d90f38e9f060"
         },
         "side": {
           "file": "charioteer_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 7576,
-          "sha256": "df79af8b03ef9565a42702ec0797338959809f2c8666c6e02cfd7d0746564aa9"
+          "bytes": 10588,
+          "sha256": "c0fa34937cae45da79d91859497e79a3793ff46308181b697e2942132b7c7d76"
         },
         "topSilhouette": {
           "file": "charioteer_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1301,
-          "sha256": "f0d03d9f0f59b5d07527173f314610ed76018443166af070e29fd4802f79a9c5"
+          "bytes": 1259,
+          "sha256": "a508d1b257acd1f4042e407143867274c54758b0c93293b3d75b10633dd64fda"
         },
         "sideSilhouette": {
           "file": "charioteer_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4427,
-          "sha256": "63967c05dfaff456eee3eebeb0218300749d94c9a52baa5ddd12122920605482"
+          "bytes": 4039,
+          "sha256": "f525062c2bcab7d5ce5e56188fc14d202c3042978f85b91d0a863454c7bc5c2d"
         },
         "hitZonesSide": {
           "file": "charioteer_hit_zones_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 66903,
-          "sha256": "419eeec119cec73f05c4778ce2fdd168b1c451d9a1dde819053a4a6916e858ac"
+          "bytes": 69402,
+          "sha256": "bb149bb54bd1aba1fae835b0225174fdb277e40e9411a0be866cc76c6e157707"
         },
         "armorSide": {
           "file": "charioteer_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 69454,
-          "sha256": "37ec30284818b4be2c514e0d4ce8e563a3509af1f07c92e6b50496236ddf68cf"
+          "bytes": 71866,
+          "sha256": "9ad268eb32dd3be77a6b0e211ee680590bd5574e232ae607f6dedbf4324c9135"
         },
         "modulesSide": {
           "file": "charioteer_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 64450,
-          "sha256": "b4adc7ca5a1a1a57d259805afc709db41354438e0452ebb9d469d2cbfee7d3c4"
+          "bytes": 68233,
+          "sha256": "a4ae845e85260da866a1b8399f7cfc0e05f056583aaf531779c277117f0de91f"
         }
       }
     },
