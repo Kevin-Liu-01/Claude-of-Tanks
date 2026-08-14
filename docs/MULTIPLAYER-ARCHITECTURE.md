@@ -7,9 +7,11 @@ filtered snapshots, and browser presentation are implemented and tested.
 All eight battlefields now share captured authored collision, destructible,
 foliage concealment, and loadout rules between rendered hosts and dedicated
 Node authority. Empty private-room slots are filled by seeded authority-owned
-bots using shared AI and an all-map traversability planner. Public matchmaking/
-rating, campaign migration, consumables, reconnect UI, and network impairment/
-soak gates remain before rated release.
+bots using shared AI and an all-map traversability planner. Ranked now has
+server-owned anonymous identities, widening Elo queues, balanced teams,
+dedicated match tickets, persistent result settlement, a leaderboard, and
+automatic reconnect UI. Campaign migration, consumables, spectators, external
+account binding, and network impairment/soak gates remain before rated release.
 
 ## Product contract
 
@@ -34,8 +36,8 @@ spotting, collision, match outcome, and bot decisions are authority concerns.
 | Identity | Network entity ID is independent from vehicle spec ID | Legacy solo still keys its fixed roster differently | Preserve match identity through presentation | Browser pair used two M1A1s |
 | Simulation | `authoritativeMatch.js` is Node-runnable and renderer-free | Bots, consumables, ram damage, and HE splash still need parity | Pure shared world/combat plans | Dedicated real-WebSocket and eight-map collision tests pass |
 | Visibility | Authority omits hidden opponents before serialization | Player camo-season choice still needs a wire field | Shared terrain, hard cover, foliage, optics, radio, and equipment rules | Hidden-coordinate and shared spotting tests pass |
-| Session modes | Loopback, WebRTC, and WebSocket share one runtime | Campaign entry still uses legacy direct state | Route campaign through loopback | Transport/runtime tests pass |
-| Progression | Credits and XP persist without a tech tree | UI rewards a currency with no meaningful sink | Rank, match history, campaign medals | UI/economy removal tests (pending) |
+| Session modes | Private/LAN WebRTC and ranked WebSocket share one runtime | Campaign entry still uses legacy direct state | Route campaign through loopback | Two-browser ranked and private pair tests pass |
+| Progression | Local match history replaces fake wallet/XP; dedicated service owns Elo | Anonymous bearer identity still needs external account binding for competitive production | Bind ladder identity to deployment auth | Elo idempotency, persistence, and leaderboard tests pass |
 | AI routes | Authority runs the existing controller over seeded traversable openings | Live traffic can still create temporary jams | Add live occupancy costs and recovery telemetry | Seed variation plus 90-second stuck-time gates pass on all eight maps |
 
 Deletion test: removing `src/net/` would force tick scheduling, input ordering,
@@ -99,6 +101,17 @@ Adapters implement this small interface:
 
 Loopback, WebRTC data-channel, and WebSocket adapters are implemented with the
 same ordering, close, payload, and backpressure behavior.
+
+### Ranked service
+
+`server/rankedMatchmaker.js` owns bounded 1v1/3v3/5v5/7v7 queues. Search bands
+widen with wait time, server ratings balance teams, and queue tokens are
+exchanged for dedicated match tickets without exposing identity secrets.
+`server/ratingStore.js` owns anonymous bearer identities, team Elo, rank names,
+idempotent settlement, and optional atomic persistence through
+`COT_RATING_FILE`. `src/net/rankedServiceClient.js` keeps those credentials
+service-scoped in browser storage. Ranked WebSockets automatically reconnect
+with the original ticket while the reconnect banner stays fail-visible.
 
 ### Authority
 
@@ -171,8 +184,9 @@ packet gaps extrapolate for at most 250 ms.
 4. [done] Add WebRTC data-channel and signaling adapters for LAN/private codes.
 5. [done] Add a dedicated Node authority using the same simulation adapter,
    exact eight-map collision manifests, and a WebSocket transport for public/ranked rooms.
-6. [partial] Replace the garage flow with Play, Private, LAN, Campaign, and Training;
-   move tank/loadout choice inside the selected mode.
+6. [partial] Replace the garage flow with Solo, Private, LAN, Ranked, Campaign,
+   and Training; Ranked is live, while dedicated Campaign/Training surfaces
+   still need the same simplified flow.
 7. Remove wallet/XP surfaces and migrate old saves non-destructively to match
    history, campaign medals, settings, and cosmetic/loadout choices.
 8. [partial] Replace doctrine-only opening routes with a shared seeded

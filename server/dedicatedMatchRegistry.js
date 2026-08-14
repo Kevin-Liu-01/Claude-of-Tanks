@@ -1,4 +1,8 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
+// The full authored fleet registers through tankFactory's module graph. No
+// visual is instantiated here, but loading this side-effect boundary ensures
+// Node authority resolves the exact same specs/armor as the browser garage.
+import '../src/vehicles/tankFactory.js';
 import { AuthoritativeMatchRuntime } from '../src/net/matchRuntime.js';
 import { createAuthoritativeMatch } from '../src/sim/authoritativeMatch.js';
 import { createDedicatedWorldCollision } from './dedicatedWorldCollision.js';
@@ -44,7 +48,9 @@ export class DedicatedMatchRegistry {
     this.closed = false;
   }
 
-  createMatch({ matchId = randomMatchId(), players, mapId = 'verdant', seed = 6000 } = {}) {
+  createMatch({
+    matchId = randomMatchId(), players, mapId = 'verdant', seed = 6000, metadata = null,
+  } = {}) {
     if (this.closed) throw new Error('match registry is closed');
     const id = String(matchId);
     if (!MATCH_ID_RE.test(id) || this.matches.has(id)) throw new Error('invalid or duplicate match id');
@@ -73,6 +79,7 @@ export class DedicatedMatchRegistry {
       id,
       mapId,
       seed,
+      metadata: metadata && typeof metadata === 'object' ? { ...metadata } : null,
       players: playerRecords,
       simulation,
       runtime,

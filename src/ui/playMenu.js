@@ -43,8 +43,15 @@ const CSS = `
   letter-spacing:.12em}.cot-play .player .ready{color:#78d78a;text-align:right}.cot-play .player .wait{color:#7f909e;text-align:right}
 .cot-play .controls{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}.cot-play .controls select{min-width:140px}
 .cot-play .note{margin-top:10px;color:#758794;font-size:10px;line-height:1.5}
+.cot-play .ranked{display:none;margin-top:18px;padding-top:18px;border-top:1px solid rgba(160,180,195,.2)}
+.cot-play .ranked.show{display:block}.cot-play .ranked-form{display:grid;grid-template-columns:1fr 1.5fr 120px auto auto;
+  gap:8px;align-items:end}.cot-play .ladder{margin-top:14px;display:grid;gap:4px}.cot-play .ladder-row{display:grid;
+  grid-template-columns:34px 1fr 100px 90px;gap:10px;padding:8px 10px;background:rgba(13,18,24,.88);
+  color:#aebdc8;font-size:10px}.cot-play .ladder-row b{color:#edf3f7}.cot-play .rank-profile{margin-top:10px;
+  color:#eeb46b;font:800 10px ${FONT_COND};letter-spacing:.1em;text-transform:uppercase}
 @media(max-width:780px){.cot-play{padding:8px}.cot-play .panel{padding:20px 14px}.cot-play .modes{grid-template-columns:1fr 1fr}
   .cot-play .mode{min-height:120px}.cot-play .form{grid-template-columns:1fr 1fr}.cot-play .form label:first-child{grid-column:1/-1}
+  .cot-play .ranked-form{grid-template-columns:1fr 1fr}.cot-play .ranked-form label:nth-child(-n+2){grid-column:1/-1}
   .cot-play .player{grid-template-columns:26px 1fr 1fr}.cot-play .player .vehicle,.cot-play .player .team{display:none}}
 `;
 
@@ -82,6 +89,12 @@ function defaultSignalUrl(lan = false) {
   return `${protocol}//${location.hostname}:7777/signal`;
 }
 
+function defaultRankedUrl() {
+  const configured = import.meta.env.VITE_MATCH_SERVICE_URL;
+  if (configured) return configured;
+  return `${location.protocol}//${location.hostname}:8790`;
+}
+
 async function iceServers() {
   const endpoint = import.meta.env.VITE_ICE_CONFIG_URL;
   if (!endpoint) return [];
@@ -97,6 +110,7 @@ export function createPlayMenu({
   getSelection,
   onSolo,
   onNetworkStart,
+  onRankedStart,
   isVehicleAllowed = () => true,
 } = {}) {
   ensureFonts();
@@ -128,10 +142,18 @@ export function createPlayMenu({
         <button class="action alt" data-action="ready" type="button">Ready</button>
         <button class="action" data-action="start" type="button">Start match</button>
       </div><div class="note"></div>
-    </div></section></div>`;
+    </div></section>
+    <section class="ranked"><div class="ranked-form">
+      <label>Commander name<input data-ranked="name" maxlength="24" autocomplete="nickname"></label>
+      <label>Match service<input data-ranked="service" spellcheck="false"></label>
+      <label>Format<select data-ranked="size"><option value="1">1 vs 1</option><option value="3">3 vs 3</option><option value="5">5 vs 5</option><option value="7">7 vs 7</option></select></label>
+      <button class="action" data-ranked="queue" type="button">Find match</button>
+      <button class="action alt" data-ranked="cancel" type="button" disabled>Cancel</button>
+    </div><div class="rank-profile"></div><div class="ladder"></div></section></div>`;
   document.body.appendChild(root);
 
   const room = root.querySelector('.room');
+  const ranked = root.querySelector('.ranked');
   const lobbyEl = root.querySelector('.lobby');
   const status = root.querySelector('.status');
   const nameInput = root.querySelector('[data-field="name"]');
@@ -147,6 +169,13 @@ export function createPlayMenu({
   const createBtn = root.querySelector('[data-action="create"]');
   const joinBtn = root.querySelector('[data-action="join"]');
   const note = root.querySelector('.note');
+  const rankedName = root.querySelector('[data-ranked="name"]');
+  const rankedService = root.querySelector('[data-ranked="service"]');
+  const rankedSize = root.querySelector('[data-ranked="size"]');
+  const rankedQueueBtn = root.querySelector('[data-ranked="queue"]');
+  const rankedCancelBtn = root.querySelector('[data-ranked="cancel"]');
+  const rankedProfile = root.querySelector('.rank-profile');
+  const ladder = root.querySelector('.ladder');
   for (const map of maps) {
     const option = document.createElement('option');
     option.value = map.id;
@@ -154,6 +183,8 @@ export function createPlayMenu({
     mapSelect.appendChild(option);
   }
   nameInput.value = stored(PLAYER_NAME_KEY, 'Commander');
+  rankedName.value = nameInput.value;
+  rankedService.value = defaultRankedUrl();
 
   let mode = null;
   let session = null;
@@ -162,6 +193,9 @@ export function createPlayMenu({
   let unsubscribeState = null;
   let handedOff = false;
   let connecting = false;
+  let rankedClient = null;
+  let rankedTicket = null;
+  let rankedAbort = null;
 
   function setStatus(message, error = false) {
     status.textContent = message || '';
@@ -193,6 +227,87 @@ export function createPlayMenu({
     state = null;
     role = null;
     lobbyEl.classList.remove('show');
+    if (rankedAbort) rankedAbort.abort();
+    rankedAbort = null;
+    if (rankedTicket && rankedTicket.status === 'queued') {
+      Promise.resolve(rankedTicket.cancel()).catch(() => {});
+    }
+    rankedTicket = null;
+    rankedQueueBtn.disabled = false;
+    rankedCancelBtn.disabled = true;
+  }
+
+  function renderLeaderboard(players = []) {
+    ladder.textContent = '';
+    for (const player of players.slice(0, 8)) {
+      const row = document.createElement('div');
+      row.className = 'ladder-row';
+      const place = document.createElement('b');
+      place.textContent = `#${player.place}`;
+      const name = document.createElement('b');
+      name.textContent = player.name;
+      const rank = document.createElement('span');
+      rank.textContent = player.rank;
+      const rating = document.createElement('span');
+      rating.textContent = `${player.rating} ELO`;
+      row.append(place, name, rank, rating);
+      ladder.appendChild(row);
+    }
+  }
+
+  async function refreshRanked() {
+    const { createRankedServiceClient } = await import('../net/rankedServiceClient.js');
+    rankedClient = createRankedServiceClient({ url: rankedService.value.trim() });
+    const identity = rankedClient.identity();
+    if (identity) {
+      try {
+        const profile = await rankedClient.profile(identity.playerId);
+        rankedProfile.textContent = `${profile.rank} · ${profile.rating} ELO · ${profile.matches} matches`;
+      } catch (error) {
+        if (error.status !== 404) throw error;
+        rankedClient.clearIdentity();
+        rankedProfile.textContent = 'New commanders begin at 1000 ELO';
+      }
+    } else rankedProfile.textContent = 'New commanders begin at 1000 ELO';
+    const board = await rankedClient.leaderboard(8);
+    renderLeaderboard(board.players);
+  }
+
+  async function queueRanked() {
+    if (rankedTicket) return;
+    const selection = getSelection();
+    const name = rankedName.value.trim().replace(/\s+/g, ' ').slice(0, 24);
+    if (!name) throw new Error('Enter a commander name');
+    remember(PLAYER_NAME_KEY, name);
+    nameInput.value = name;
+    await refreshRanked();
+    rankedQueueBtn.disabled = true;
+    rankedCancelBtn.disabled = false;
+    rankedAbort = new AbortController();
+    rankedTicket = await rankedClient.join({
+      name,
+      specId: selection.specId,
+      equipment: selection.equipment,
+      teamSize: Number(rankedSize.value),
+    });
+    setStatus(`Searching ${rankedSize.value}v${rankedSize.value} near ${rankedTicket.rating} ELO…`);
+    const state = rankedTicket.status === 'matched' ? rankedTicket : await rankedTicket.wait({
+      signal: rankedAbort.signal,
+      onUpdate: (next) => setStatus(`Searching near ${next.rating} ELO…`),
+    });
+    if (rankedAbort.signal.aborted) return;
+    handedOff = true;
+    hide(false);
+    try {
+      await Promise.resolve(onRankedStart && onRankedStart({
+        serviceUrl: rankedClient.webSocketUrl,
+        state,
+      }));
+    } catch (error) {
+      handedOff = false;
+      show();
+      throw error;
+    }
   }
 
   function renderLobby(next) {
@@ -306,14 +421,17 @@ export function createPlayMenu({
   root.querySelectorAll('.mode').forEach((button) => button.addEventListener('click', () => {
     const nextMode = button.dataset.mode;
     if (nextMode === 'solo') { hide(); if (onSolo) onSolo(); return; }
-    if (nextMode === 'ranked') {
-      mode = nextMode;
-      room.classList.remove('show');
-      setStatus('Ranked matchmaking requires the dedicated service deployment.', true);
-      return;
-    }
+    closeCurrentSession('mode_changed');
     mode = nextMode;
     for (const item of root.querySelectorAll('.mode')) item.classList.toggle('on', item === button);
+    if (nextMode === 'ranked') {
+      room.classList.remove('show');
+      ranked.classList.add('show');
+      setStatus('Server-authoritative matchmaking. Your rating is owned by the match service.');
+      refreshRanked().catch((error) => setStatus(error.message, true));
+      return;
+    }
+    ranked.classList.remove('show');
     room.classList.add('show');
     signalInput.value = defaultSignalUrl(mode === 'lan');
     setStatus(mode === 'lan' ? 'Enter the Wi-Fi-reachable signaling address.' : 'Create a code or join an existing room.');
@@ -327,6 +445,24 @@ export function createPlayMenu({
     setStatus('Joining room…');
     try { await connectRoom('join'); setStatus('Connected. Choose a team and ready up.'); }
     catch (error) { setStatus(error.message, true); }
+  });
+  rankedQueueBtn.addEventListener('click', async () => {
+    setStatus('Joining ranked queue…');
+    try { await queueRanked(); }
+    catch (error) {
+      if (error.name !== 'AbortError') setStatus(error.message, true);
+      rankedTicket = null;
+      rankedQueueBtn.disabled = false;
+      rankedCancelBtn.disabled = true;
+    }
+  });
+  rankedCancelBtn.addEventListener('click', async () => {
+    if (rankedAbort) rankedAbort.abort();
+    try { if (rankedTicket) await rankedTicket.cancel(); } catch (_) { /* queue may have matched */ }
+    rankedTicket = null;
+    rankedQueueBtn.disabled = false;
+    rankedCancelBtn.disabled = true;
+    setStatus('Ranked search cancelled.');
   });
   root.querySelector('[data-action="copy"]').addEventListener('click', async () => {
     if (!state) return;

@@ -55,3 +55,92 @@ export function connectDedicatedMatch({
   });
   return { socket, transport, client, ready };
 }
+
+/** Dedicated match session with the same surface used by private-room clients. */
+export async function beginDedicatedClientMatch({
+  url,
+  ticket,
+  WebSocketImpl,
+  onStatus = null,
+  reconnectDelaysMs = [250, 500, 1000, 2000, 4000, 5000],
+} = {}) {
+  if (!ticket || !ticket.matchId || !ticket.playerId || !ticket.token || !ticket.mapId) {
+    throw new TypeError('complete dedicated match ticket is required');
+  }
+  let connection = null;
+  let closed = false;
+  let reconnecting = false;
+  let readySent = false;
+  const report = (state, detail = {}) => {
+    if (typeof onStatus === 'function') onStatus({ state, ...detail });
+  };
+  const session = {
+    kind: 'ranked',
+    role: 'client',
+    playerId: ticket.playerId,
+    mapId: ticket.mapId,
+    roster: Array.isArray(ticket.roster) ? ticket.roster : [],
+    get client() { return connection?.client || null; },
+    get socket() { return connection?.socket || null; },
+    get reconnecting() { return reconnecting; },
+    ready() {
+      readySent = true;
+      return connection?.client.readyForMatch() || false;
+    },
+    update(nowMs) { return connection?.client.update(nowMs) || null; },
+    submitInput(input, clientTick) {
+      return connection?.client.submitInput(input, clientTick) || false;
+    },
+    close(reason = 'dedicated_match_closed') {
+      closed = true;
+      reconnecting = false;
+      connection?.client.close(reason);
+      report('closed', { reason });
+    },
+  };
+
+  const connect = async (attempt = 0) => {
+    report(attempt ? 'reconnecting' : 'connecting', { attempt });
+    const next = connectDedicatedMatch({
+      url,
+      matchId: ticket.matchId,
+      playerId: ticket.playerId,
+      token: ticket.token,
+      WebSocketImpl,
+    });
+    await next.ready;
+    if (closed) {
+      next.client.close('session_closed');
+      return false;
+    }
+    connection = next;
+    if (readySent) next.client.readyForMatch();
+    addListener(next.socket, 'close', () => {
+      if (closed || connection !== next || reconnecting) return;
+      reconnecting = true;
+      void reconnect();
+    }, { once: true });
+    reconnecting = false;
+    report(attempt ? 'reconnected' : 'connected', { attempt });
+    return true;
+  };
+
+  const reconnect = async () => {
+    for (let attempt = 1; attempt <= reconnectDelaysMs.length && !closed; attempt++) {
+      const delayMs = Math.max(0, Number(reconnectDelaysMs[attempt - 1]) || 0);
+      report('reconnecting', { attempt, delayMs });
+      if (delayMs) await new Promise((resolve) => setTimeout(resolve, delayMs));
+      if (closed) return;
+      try {
+        if (await connect(attempt)) return;
+      } catch (error) {
+        report('reconnecting', { attempt, error: error.message });
+      }
+    }
+    reconnecting = false;
+    if (!closed) report('failed', { reason: 'reconnect_exhausted' });
+  };
+
+  await connect(0);
+  return session;
+}

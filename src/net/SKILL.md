@@ -19,6 +19,8 @@ play without importing Three.js rendering or DOM state.
 - `loopbackTransport.js`, `channelTransport.js`, and `webrtcPeer.js` implement
   the same bounded transport contract.
 - `localSession.js` proves solo play traverses the real host/client path.
+- `rankedServiceClient.js` owns service-scoped ladder identity and queue polling;
+  `dedicatedClient.js` owns authenticated WebSocket handoff and reconnect.
 - `privateRoomSession.js` owns lobby WebRTC composition;
   `privateMatchHandoff.js` deterministically fills open team slots with bots
   and releases those same channels to match authority.

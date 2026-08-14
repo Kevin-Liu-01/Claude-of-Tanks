@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { WebSocket } from 'ws';
-import { connectDedicatedMatch } from '../src/net/dedicatedClient.js';
+import { beginDedicatedClientMatch, connectDedicatedMatch } from '../src/net/dedicatedClient.js';
 import { DedicatedMatchRegistry } from './dedicatedMatchRegistry.js';
 import { createDedicatedMatchServer } from './dedicatedMatchServer.js';
 
@@ -51,9 +51,36 @@ assert.ok(p1.client.buffer.snapshots.length > 0 && p2.client.buffer.snapshots.le
   'dedicated clients receive viewer snapshots');
 assert.ok(authoritative.state.speed > 0, 'server, not client, advances movement');
 
-const health = await fetch(`http://127.0.0.1:${address.port}/healthz`).then((response) => response.json());
-assert.deepEqual(health, { ok: true, service: 'cot-match', matches: 1, connectedPlayers: 2 });
+const reconnectStates = [];
+const resilient = await beginDedicatedClientMatch({
+  ...p1Ticket,
+  ticket: { ...p1Ticket, mapId: 'verdant', roster: [] },
+  url,
+  WebSocketImpl: WebSocket,
+  reconnectDelaysMs: [1, 2, 4],
+  onStatus: ({ state }) => reconnectStates.push(state),
+});
+resilient.ready();
+const replacedClient = resilient.client;
+resilient.socket.terminate();
+for (let attempt = 0; attempt < 100 && resilient.client === replacedClient; attempt++) {
+  await new Promise((resolve) => setTimeout(resolve, 5));
+}
+assert.notEqual(resilient.client, replacedClient, 'dedicated session reconnects with the same ticket');
+assert.ok(resilient.client.connected);
+assert.ok(reconnectStates.includes('reconnecting') && reconnectStates.includes('reconnected'));
 
+const health = await fetch(`http://127.0.0.1:${address.port}/healthz`).then((response) => response.json());
+assert.deepEqual(health, {
+  ok: true,
+  service: 'cot-match',
+  matches: 1,
+  connectedPlayers: 2,
+  queuedPlayers: 0,
+  ratedMatches: 0,
+});
+
+resilient.close('test_done');
 p1.client.close('test_done');
 p2.client.close('test_done');
 await service.close('test_done');

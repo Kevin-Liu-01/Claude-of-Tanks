@@ -11,7 +11,9 @@ Present game and session state with fast, legible desktop/mobile interactions.
 
 ## Mental model & key files
 <!-- agent-docs:fill:model -->
-`garage.js` owns roster/loadout presentation; `hud.js` owns live battle chrome;
+`garage.js` owns roster/loadout presentation; `playMenu.js` owns direct Solo,
+Private, LAN, and Ranked deployment; `networkStatus.js` owns reconnect feedback;
+`hud.js` owns live battle chrome;
 `settings.js` and `touchControls.js` own input-facing UI; `transition.js`,
 `battleLoad.js`, and `endScreen.js` own flow beats.
 

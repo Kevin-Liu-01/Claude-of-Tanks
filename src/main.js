@@ -1110,6 +1110,7 @@ async function openPlayMenu(request) {
         if (start) start();
       },
       onNetworkStart: beginNetworkBattle,
+      onRankedStart: beginRankedBattle,
     }));
   }
   const menu = await playMenuPromise;
@@ -1947,6 +1948,7 @@ async function startBattleLoading(specId, mapId = null) {
 let battleEntryPending = false;
 let networkMatch = null;
 let networkBridge = null;
+let networkStatus = null;
 let latestNetworkSnapshot = null;
 let networkPumpPending = false;
 
@@ -1994,8 +1996,10 @@ function pumpNetworkMatch(dt, nowMs) {
 function closeNetworkMatch(reason = 'network_match_closed') {
   if (networkMatch) networkMatch.close(reason);
   if (networkBridge) networkBridge.dispose();
+  if (networkStatus) networkStatus.dispose();
   networkMatch = null;
   networkBridge = null;
+  networkStatus = null;
   latestNetworkSnapshot = null;
   networkPumpPending = false;
 }
@@ -2037,7 +2041,122 @@ async function waitForNetworkSnapshot(predicate, timeoutMs, label) {
   return latestNetworkSnapshot;
 }
 
-/** Load the rendered battlefield, then join the shared authoritative match. */
+/** Shared renderer/presentation path for private, LAN, and dedicated matches. */
+async function presentNetworkBattle({
+  viewerId,
+  own,
+  mapId,
+  matchPlayers,
+  modeLabel,
+  connectMatch,
+} = {}) {
+  bus.emit('ui:battleStart', { playerId: viewerId, specId: own.specId, mapId });
+  battleLoad.show({
+    mapName: 'Network operation',
+    mapSub: 'Establishing shared authority',
+    thumb: '',
+    biome: mapId,
+    mode: modeLabel,
+    allies: lobbyRosterRows({ players: matchPlayers }, own.team, viewerId),
+    enemies: lobbyRosterRows({ players: matchPlayers },
+      own.team === 'alpha' ? 'bravo' : 'alpha', viewerId),
+  });
+  battleLoad.progress(0.02, 'Securing match channel');
+  await nextFrame();
+  const [{ createBrowserBattleBridge }, { createNetworkStatus }] = await Promise.all([
+    import('./net/browserBattleBridge.js'),
+    import('./ui/networkStatus.js'),
+  ]);
+  networkStatus = createNetworkStatus();
+  battleLoad.progress(0.08, 'Loading battlefield');
+  await ensureWorld(mapId, (fraction, label) => {
+    battleLoad.progress(0.08 + fraction * 0.48, label);
+  });
+  networkMatch = await connectMatch();
+  const cfg = getMapConfig(mapId);
+  battleLoad.show({
+    mapName: cfg.name || mapId,
+    mapSub: cfg.sub || '',
+    thumb: MAP_THUMBS[mapId] || '',
+    biome: mapId,
+    mode: modeLabel,
+    allies: lobbyRosterRows({ players: matchPlayers }, own.team, viewerId),
+    enemies: lobbyRosterRows({ players: matchPlayers },
+      own.team === 'alpha' ? 'bravo' : 'alpha', viewerId),
+  });
+  networkBridge = createBrowserBattleBridge({
+    engineCtx,
+    game,
+    bus,
+    viewerId,
+    worldCollision: world,
+  });
+  await networkBridge.prepareRoster(matchPlayers, (fraction, specId) => {
+    battleLoad.progress(0.56 + fraction * 0.27, `Painting ${getSpec(specId)?.name || specId}`);
+  });
+  battleLoad.progress(0.84, 'Synchronizing authority');
+  const initial = await waitForNetworkSnapshot(
+    (snapshot) => snapshot.entities.some((entity) => entity.id === viewerId),
+    12000,
+    'Timed out waiting for the first authoritative snapshot.',
+  );
+  networkBridge.apply(initial, 1 / 60);
+  for (const entity of networkBridge.entities.values()) {
+    if (entity.visual?.setGroundSampler) entity.visual.setGroundSampler(groundSampler);
+  }
+  hud.warmShotCards([...networkBridge.entities.values()].map((entity) => entity.specId));
+  battleLoad.progress(0.88, 'Compiling combat shaders');
+  await nextFrame();
+  try {
+    if (typeof renderer.compileAsync === 'function') await renderer.compileAsync(scene, camera);
+    else renderer.compile(scene, camera);
+  } catch (_) { /* warm only */ }
+  networkMatch.ready();
+  battleLoad.progress(0.96, 'Waiting for every commander');
+  await waitForNetworkSnapshot(
+    (snapshot) => snapshot.meta?.phase === 'countdown' || snapshot.meta?.phase === 'playing',
+    20000,
+    'Another player did not finish loading in time.',
+  );
+
+  shotMode = false;
+  fx.setFrozen(false);
+  if (settings.isOpen()) settings.close({ noRelock: true });
+  killcam.cancel();
+  selectedSpecId = own.specId;
+  rememberSpecId(own.specId);
+  debugAimTargetId = null;
+  setWorldDormant(false);
+  if (world.resetDestructibles) world.resetDestructibles();
+  game.mapId = mapId;
+  setCamoBiome(mapId);
+  hud.shotInfo.setPlayer(viewerId);
+  fx.resetAll();
+  buildShellCards(game.player.spec);
+  damagePanel.setTank(game.player.spec);
+  damagePanel.setEquipment(game.player.equip || {});
+  garage.hide();
+  endOverlay.style.display = 'none';
+  endShown = false;
+  deathCamShown = false;
+  kcPending = null;
+  hud.setMode('battle');
+  game.phase = 'battle';
+  setGarageSpots(false);
+  setGarageSunTrim(false);
+  bus.emit('phase:change', { phase: 'battle' });
+  resetConsumableCooldowns(consumableReadyAt);
+  bus.emit('ui:consumableReset', {});
+  rig.release();
+  rig.snapArcade(2, game.player.state.yaw, -10 * DEG);
+  showroom.stop();
+  battleLoad.progress(1, 'Ready');
+  await battleLoad.hide();
+  audio.resume();
+  audio.ambientOn(true);
+}
+
+/** Load the rendered battlefield, then join browser-hosted private/LAN authority. */
 async function beginNetworkBattle({ role, session, lobbyState } = {}) {
   if (battleEntryPending || networkMatch) return;
   battleEntryPending = true;
@@ -2048,124 +2167,59 @@ async function beginNetworkBattle({ role, session, lobbyState } = {}) {
       if (own?.team === 'spectator') session?.close('spectator_unsupported');
       throw new Error('Spectator presentation is not available yet.');
     }
-    bus.emit('ui:battleStart', { specId: own.specId, mapId: lobbyState.mapId });
-    battleLoad.show({
-      mapName: 'Network operation',
-      mapSub: 'Establishing shared authority',
-      thumb: '',
-      biome: lobbyState.mapId,
-      mode: lobbyState.mode === 'lan' ? 'LAN Battle · Direct Wi-Fi' : 'Private Battle · Room Code',
-      allies: lobbyRosterRows(lobbyState, own.team, viewerId),
-      enemies: lobbyRosterRows(lobbyState, own.team === 'alpha' ? 'bravo' : 'alpha', viewerId),
-    });
-    battleLoad.progress(0.02, 'Securing match channel');
-    await nextFrame();
-    const [{
+    const {
       beginPrivateHostMatch,
       beginPrivateClientMatch,
       buildPrivateMatchPlayers,
       resolvePrivateMatchMap,
-    }, { createBrowserBattleBridge }] = await Promise.all([
-      import('./net/privateMatchHandoff.js'),
-      import('./net/browserBattleBridge.js'),
-    ]);
+    } = await import('./net/privateMatchHandoff.js');
     const mapId = resolvePrivateMatchMap(lobbyState);
     const matchPlayers = buildPrivateMatchPlayers(lobbyState);
-    battleLoad.progress(0.08, 'Loading battlefield');
-    await ensureWorld(mapId, (fraction, label) => {
-      battleLoad.progress(0.08 + fraction * 0.48, label);
-    });
-    // The browser host feeds authority the exact battlefield collision facade
-    // that presentation just built. Tanks, shells, and spotting therefore use
-    // the same authored OBB/circle/convex cover as the visible map instead of
-    // a second approximate layout. Joined peers finish their own identical map
-    // before taking the established WebRTC channel into match mode.
-    networkMatch = role === 'host'
-      ? beginPrivateHostMatch({ session, lobbyState, worldCollision: world })
-      : await beginPrivateClientMatch({ session, playerId: viewerId, lobbyState });
-    const cfg = getMapConfig(mapId);
-    battleLoad.show({
-      mapName: cfg.name || mapId,
-      mapSub: cfg.sub || '',
-      thumb: MAP_THUMBS[mapId] || '',
-      biome: mapId,
-      mode: lobbyState.mode === 'lan' ? 'LAN Battle · Direct Wi-Fi' : 'Private Battle · Room Code',
-      allies: lobbyRosterRows({ players: matchPlayers }, own.team, viewerId),
-      enemies: lobbyRosterRows({ players: matchPlayers },
-        own.team === 'alpha' ? 'bravo' : 'alpha', viewerId),
-    });
-    networkBridge = createBrowserBattleBridge({
-      engineCtx,
-      game,
-      bus,
+    await presentNetworkBattle({
       viewerId,
-      worldCollision: world,
+      own,
+      mapId,
+      matchPlayers,
+      modeLabel: lobbyState.mode === 'lan'
+        ? 'LAN Battle · Direct Wi-Fi' : 'Private Battle · Room Code',
+      connectMatch: () => role === 'host'
+        ? beginPrivateHostMatch({ session, lobbyState, worldCollision: world })
+        : beginPrivateClientMatch({ session, playerId: viewerId, lobbyState }),
     });
-    await networkBridge.prepareRoster(matchPlayers, (fraction, specId) => {
-      battleLoad.progress(0.56 + fraction * 0.27, `Painting ${getSpec(specId)?.name || specId}`);
-    });
-    battleLoad.progress(0.84, 'Synchronizing authority');
-    const initial = await waitForNetworkSnapshot(
-      (snapshot) => snapshot.entities.some((entity) => entity.id === viewerId),
-      12000,
-      'Timed out waiting for the first authoritative snapshot.',
-    );
-    networkBridge.apply(initial, 1 / 60);
-    for (const entity of networkBridge.entities.values()) {
-      if (entity.visual?.setGroundSampler) entity.visual.setGroundSampler(groundSampler);
-    }
-    hud.warmShotCards([...networkBridge.entities.values()].map((entity) => entity.specId));
-    battleLoad.progress(0.88, 'Compiling combat shaders');
-    await nextFrame();
-    try {
-      if (typeof renderer.compileAsync === 'function') await renderer.compileAsync(scene, camera);
-      else renderer.compile(scene, camera);
-    } catch (_) { /* warm only */ }
-    networkMatch.ready();
-    battleLoad.progress(0.96, 'Waiting for every commander');
-    await waitForNetworkSnapshot(
-      (snapshot) => snapshot.meta?.phase === 'countdown' || snapshot.meta?.phase === 'playing',
-      20000,
-      'Another player did not finish loading in time.',
-    );
-
-    shotMode = false;
-    fx.setFrozen(false);
-    if (settings.isOpen()) settings.close({ noRelock: true });
-    killcam.cancel();
-    selectedSpecId = own.specId;
-    rememberSpecId(own.specId);
-    debugAimTargetId = null;
-    setWorldDormant(false);
-    if (world.resetDestructibles) world.resetDestructibles();
-    game.mapId = mapId;
-    setCamoBiome(mapId);
-    hud.shotInfo.setPlayer(viewerId);
-    fx.resetAll();
-    buildShellCards(game.player.spec);
-    damagePanel.setTank(game.player.spec);
-    damagePanel.setEquipment(game.player.equip || {});
-    garage.hide();
-    endOverlay.style.display = 'none';
-    endShown = false;
-    deathCamShown = false;
-    kcPending = null;
-    hud.setMode('battle');
-    game.phase = 'battle';
-    setGarageSpots(false);
-    setGarageSunTrim(false);
-    bus.emit('phase:change', { phase: 'battle' });
-    resetConsumableCooldowns(consumableReadyAt);
-    bus.emit('ui:consumableReset', {});
-    rig.release();
-    rig.snapArcade(2, game.player.state.yaw, -10 * DEG);
-    showroom.stop();
-    battleLoad.progress(1, 'Ready');
-    await battleLoad.hide();
-    audio.resume();
-    audio.ambientOn(true);
   } catch (error) {
     console.error('[network] entry failed', error);
+    closeNetworkMatch('entry_failed');
+    await battleLoad.hide();
+    enterGarage();
+  } finally {
+    battleEntryPending = false;
+  }
+}
+
+/** Join a server-authoritative rated match issued by the ranked queue. */
+async function beginRankedBattle({ serviceUrl, state } = {}) {
+  if (battleEntryPending || networkMatch) return;
+  battleEntryPending = true;
+  const ticket = state?.match;
+  const viewerId = String(ticket?.playerId || '');
+  const own = ticket?.roster?.find((player) => player.id === viewerId);
+  try {
+    if (!ticket || !viewerId || !own) throw new Error('Ranked match ticket is incomplete.');
+    const { beginDedicatedClientMatch } = await import('./net/dedicatedClient.js');
+    await presentNetworkBattle({
+      viewerId,
+      own,
+      mapId: ticket.mapId,
+      matchPlayers: ticket.roster,
+      modeLabel: `Ranked · ${own.rating || 1000} rating`,
+      connectMatch: () => beginDedicatedClientMatch({
+        url: serviceUrl,
+        ticket,
+        onStatus: (status) => networkStatus?.set(status),
+      }),
+    });
+  } catch (error) {
+    console.error('[ranked] entry failed', error);
     closeNetworkMatch('entry_failed');
     await battleLoad.hide();
     enterGarage();
