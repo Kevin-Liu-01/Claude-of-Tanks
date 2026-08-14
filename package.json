@@ -40,6 +40,7 @@
   "type": "module",
   "dependencies": {
     "flag-icons": "^7.5.0",
+    "ioredis": "^6.0.0",
     "three": "^0.185.1",
     "ws": "^8.21.3"
   },

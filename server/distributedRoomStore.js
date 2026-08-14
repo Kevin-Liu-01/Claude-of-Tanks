@@ -1,0 +1,301 @@
+import { randomUUID } from 'node:crypto';
+import Redis from 'ioredis';
+import { createRoomCode } from '../src/net/protocol.js';
+
+const DEFAULT_ROOM_TTL_MS = 6 * 60 * 60 * 1000;
+
+const JOIN_ROOM_SCRIPT = `
+local raw = redis.call('GET', KEYS[1])
+if not raw then return cjson.encode({ error = 'room_not_found' }) end
+local room = cjson.decode(raw)
+if #room.peers >= tonumber(room.maxPlayers) then
+  return cjson.encode({ error = 'room_full' })
+end
+local member = cjson.decode(ARGV[1])
+for _, peer in ipairs(room.peers) do
+  if peer.peerId == member.peerId then
+    return cjson.encode({ error = 'peer_id_collision' })
+  end
+end
+table.insert(room.peers, member)
+room.touchedAt = tonumber(ARGV[2])
+redis.call('SET', KEYS[1], cjson.encode(room), 'PX', ARGV[3])
+return cjson.encode({ room = room })
+`;
+
+const LEAVE_ROOM_SCRIPT = `
+local raw = redis.call('GET', KEYS[1])
+if not raw then return cjson.encode({ missing = true }) end
+local room = cjson.decode(raw)
+local leaving = ARGV[1]
+local kept = {}
+local found = false
+for _, peer in ipairs(room.peers) do
+  if peer.peerId == leaving then found = true else table.insert(kept, peer) end
+end
+if not found then return cjson.encode({ missing = true }) end
+room.peers = kept
+if room.hostId == leaving then
+  redis.call('DEL', KEYS[1])
+  return cjson.encode({ closed = true, peers = kept })
+end
+room.touchedAt = tonumber(ARGV[2])
+redis.call('SET', KEYS[1], cjson.encode(room), 'PX', ARGV[3])
+return cjson.encode({ closed = false, peers = kept })
+`;
+
+function codedError(code, message) {
+  return Object.assign(new Error(message), { code });
+}
+
+function cleanPlayer(player) {
+  const id = String(player && player.id || '').trim();
+  const name = String(player && player.name || '').trim().replace(/\s+/g, ' ').slice(0, 24);
+  if (!/^[a-zA-Z0-9_-]{1,48}$/.test(id) || !name) {
+    throw codedError('invalid_player', 'invalid player');
+  }
+  return { id, name };
+}
+
+function randomUnit() {
+  const word = new Uint32Array(1);
+  globalThis.crypto.getRandomValues(word);
+  return word[0] / 0x100000000;
+}
+
+function randomPeerId() {
+  return randomUUID().replace(/-/g, '').slice(0, 16);
+}
+
+function parseResult(raw) {
+  const value = typeof raw === 'string' ? JSON.parse(raw) : raw;
+  if (!value || typeof value !== 'object') throw codedError('store_invalid', 'invalid room store response');
+  return value;
+}
+
+/**
+ * Redis-backed room coordination for horizontally scaled WebSocket functions.
+ * Connections remain instance-local; a single Redis pub/sub channel routes
+ * notifications and RTC signals to the instance currently holding each peer.
+ */
+export class DistributedSignalingRoomStore {
+  constructor({
+    redisUrl,
+    namespace = 'cot:signaling:v1',
+    roomTtlMs = DEFAULT_ROOM_TTL_MS,
+    now = () => Date.now(),
+    roomCodeFactory = () => createRoomCode(randomUnit),
+    peerIdFactory = randomPeerId,
+    RedisImpl = Redis,
+  } = {}) {
+    if (!redisUrl) throw new TypeError('distributed signaling requires redisUrl');
+    this.namespace = namespace;
+    this.channel = `${namespace}:delivery`;
+    this.roomTtlMs = roomTtlMs;
+    this.now = now;
+    this.roomCodeFactory = roomCodeFactory;
+    this.peerIdFactory = peerIdFactory;
+    this.membership = new Map();
+    this.connections = new Map();
+    this.deliveryHandler = null;
+    this.command = new RedisImpl(redisUrl, {
+      lazyConnect: true,
+      maxRetriesPerRequest: 2,
+      connectTimeout: 5_000,
+      enableReadyCheck: true,
+    });
+    this.subscriber = this.command.duplicate();
+    this._startPromise = null;
+  }
+
+  roomKey(roomCode) {
+    return `${this.namespace}:room:${roomCode}`;
+  }
+
+  setDeliveryHandler(handler) {
+    this.deliveryHandler = handler;
+    this.start().catch((error) => console.error('[signal] Redis subscription failed', error));
+  }
+
+  start() {
+    if (this._startPromise) return this._startPromise;
+    this._startPromise = (async () => {
+      await Promise.all([this.command.connect(), this.subscriber.connect()]);
+      this.subscriber.on('message', (channel, raw) => {
+        if (channel !== this.channel) return;
+        try {
+          const delivery = JSON.parse(raw);
+          const connection = this.connections.get(String(delivery.peerId || ''));
+          if (connection && this.deliveryHandler) this.deliveryHandler(connection, delivery.message);
+        } catch (error) {
+          console.error('[signal] Invalid Redis delivery', error);
+        }
+      });
+      await this.subscriber.subscribe(this.channel);
+    })();
+    return this._startPromise;
+  }
+
+  async #ready() {
+    try {
+      await this.start();
+    } catch (cause) {
+      throw Object.assign(new Error('signaling room store is unavailable'), {
+        code: 'signaling_store_unavailable', cause,
+      });
+    }
+  }
+
+  #remember(connection, roomCode, peerId) {
+    this.membership.set(connection, { roomCode, peerId });
+    this.connections.set(peerId, connection);
+  }
+
+  async create(connection, { player, maxPlayers = 14, mode = 'private' } = {}) {
+    await this.#ready();
+    if (this.membership.has(connection)) throw codedError('already_joined', 'connection already joined');
+    if (!Number.isInteger(maxPlayers) || maxPlayers < 2 || maxPlayers > 14) {
+      throw codedError('invalid_capacity', 'invalid room capacity');
+    }
+    const memberPlayer = cleanPlayer(player);
+    for (let attempt = 0; attempt < 16; attempt++) {
+      const roomCode = this.roomCodeFactory();
+      const peerId = String(this.peerIdFactory());
+      if (!/^[a-zA-Z0-9_-]{8,48}$/.test(peerId)) continue;
+      const now = this.now();
+      const room = {
+        roomCode,
+        mode: String(mode || 'private').slice(0, 24),
+        maxPlayers,
+        hostId: peerId,
+        createdAt: now,
+        touchedAt: now,
+        peers: [{ peerId, player: memberPlayer }],
+      };
+      const created = await this.command.set(
+        this.roomKey(roomCode), JSON.stringify(room), 'PX', this.roomTtlMs, 'NX',
+      );
+      if (created !== 'OK') continue;
+      this.#remember(connection, roomCode, peerId);
+      return { roomCode, peerId, hostId: peerId, mode: room.mode, maxPlayers, peers: [] };
+    }
+    throw codedError('room_code_exhausted', 'room code space is busy');
+  }
+
+  async join(connection, { roomCode, player } = {}) {
+    await this.#ready();
+    if (this.membership.has(connection)) throw codedError('already_joined', 'connection already joined');
+    const code = String(roomCode || '');
+    const peerId = String(this.peerIdFactory());
+    if (!/^[a-zA-Z0-9_-]{8,48}$/.test(peerId)) throw codedError('peer_id_exhausted', 'invalid peer id');
+    const member = { peerId, player: cleanPlayer(player) };
+    const result = parseResult(await this.command.eval(
+      JOIN_ROOM_SCRIPT, 1, this.roomKey(code), JSON.stringify(member), this.now(), this.roomTtlMs,
+    ));
+    if (result.error === 'room_not_found') throw codedError(result.error, 'room not found');
+    if (result.error === 'room_full') throw codedError(result.error, 'room is full');
+    if (result.error) throw codedError(result.error, 'could not join room');
+    const room = result.room;
+    const existing = room.peers.filter((peer) => peer.peerId !== peerId);
+    this.#remember(connection, code, peerId);
+    return {
+      result: {
+        roomCode: code,
+        peerId,
+        hostId: room.hostId,
+        mode: room.mode,
+        maxPlayers: room.maxPlayers,
+        peers: existing.map((peer) => ({
+          peerId: peer.peerId,
+          player: { ...peer.player },
+          isHost: peer.peerId === room.hostId,
+        })),
+      },
+      notify: existing.map((peer) => ({
+        peerId: peer.peerId,
+        message: { type: 'peer_joined', payload: {
+          roomCode: code,
+          peerId,
+          player: { ...member.player },
+        } },
+      })),
+    };
+  }
+
+  async relay(connection, { roomCode, toPeerId, signal } = {}) {
+    await this.#ready();
+    const membership = this.membership.get(connection);
+    if (!membership || membership.roomCode !== roomCode) {
+      throw codedError('not_in_room', 'not a room member');
+    }
+    const raw = await this.command.get(this.roomKey(roomCode));
+    if (!raw) throw codedError('room_not_found', 'room not found');
+    const room = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    if (!room.peers.some((peer) => peer.peerId === membership.peerId)) {
+      throw codedError('not_in_room', 'not a room member');
+    }
+    const target = String(toPeerId || '');
+    if (!room.peers.some((peer) => peer.peerId === target)) {
+      throw codedError('peer_not_found', 'target peer not found');
+    }
+    await this.command.pexpire(this.roomKey(roomCode), this.roomTtlMs);
+    return {
+      peerId: target,
+      message: {
+        type: 'room_signal',
+        payload: { roomCode, fromPeerId: membership.peerId, signal },
+      },
+    };
+  }
+
+  async deliver({ peerId, connection, message }) {
+    if (connection && this.deliveryHandler) return this.deliveryHandler(connection, message);
+    const target = this.connections.get(String(peerId || ''));
+    if (target && this.deliveryHandler) return this.deliveryHandler(target, message);
+    await this.#ready();
+    await this.command.publish(this.channel, JSON.stringify({ peerId, message }));
+    return true;
+  }
+
+  async leave(connection, reason = 'peer_left') {
+    const membership = this.membership.get(connection);
+    if (!membership) return [];
+    this.membership.delete(connection);
+    this.connections.delete(membership.peerId);
+    await this.#ready();
+    const result = parseResult(await this.command.eval(
+      LEAVE_ROOM_SCRIPT, 1, this.roomKey(membership.roomCode),
+      membership.peerId, this.now(), this.roomTtlMs,
+    ));
+    if (result.missing) return [];
+    if (result.closed) {
+      return result.peers.map((peer) => ({
+        peerId: peer.peerId,
+        message: { type: 'room_closed', payload: {
+          roomCode: membership.roomCode,
+          reason: 'host_left',
+        } },
+      }));
+    }
+    return result.peers.map((peer) => ({
+      peerId: peer.peerId,
+      message: { type: 'peer_left', payload: {
+        roomCode: membership.roomCode,
+        peerId: membership.peerId,
+        reason,
+      } },
+    }));
+  }
+
+  sweepExpired() {
+    return [];
+  }
+
+  async close() {
+    this.membership.clear();
+    this.connections.clear();
+    try { await this.subscriber.unsubscribe(this.channel); } catch (_) { /* already offline */ }
+    this.subscriber.disconnect();
+    this.command.disconnect();
+  }
+}

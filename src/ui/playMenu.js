@@ -8,7 +8,11 @@ const STYLE_ID = 'cot-play-menu-style';
 const PLAYER_ID_KEY = 'cot.player.id.v1';
 const PLAYER_NAME_KEY = 'cot.player.name.v1';
 const PUBLIC_STUN_SERVERS = Object.freeze([{
-  urls: ['stun:stun.cloudflare.com:3478'],
+  urls: [
+    'stun:stun.cloudflare.com:3478',
+    'stun:stun.cloudflare.com:53',
+    'stun:stun.l.google.com:19302',
+  ],
 }]);
 
 const CSS = `
@@ -102,14 +106,14 @@ function defaultRankedUrl() {
 }
 
 async function iceServers(mode) {
-  if (mode === 'lan') return [];
+  if (mode === 'lan') return { iceServers: [], relayOnly: false };
   const endpoint = import.meta.env.VITE_ICE_CONFIG_URL;
-  if (!endpoint) return PUBLIC_STUN_SERVERS;
+  if (!endpoint) return { iceServers: PUBLIC_STUN_SERVERS, relayOnly: false };
   const response = await fetch(endpoint, { credentials: 'include', cache: 'no-store' });
   if (!response.ok) throw new Error('ICE configuration is unavailable');
   const body = await response.json();
   if (!body || !Array.isArray(body.iceServers)) throw new Error('ICE configuration is invalid');
-  return body.iceServers;
+  return { iceServers: body.iceServers, relayOnly: body.relayOnly === true };
 }
 
 export function createPlayMenu({
@@ -395,7 +399,8 @@ export function createPlayMenu({
           hostSpecId: selection.specId,
           hostEquipment: selection.equipment,
           mapId: selection.mapId,
-          iceServers: ice,
+          iceServers: ice.iceServers,
+          relayOnly: ice.relayOnly,
           isVehicleAllowed,
           onStart: (lobbyState) => {
             if (handedOff) return;
@@ -414,7 +419,8 @@ export function createPlayMenu({
         session = new PrivateRoomClientSession({
           signaling,
           roomInfo,
-          iceServers: ice,
+          iceServers: ice.iceServers,
+          relayOnly: ice.relayOnly,
           onError: (error) => setStatus(error.message, true),
         });
         role = 'client';

@@ -1,4 +1,5 @@
 import { createSignalingServer } from '../server/signalingServer.js';
+import { DistributedSignalingRoomStore } from '../server/distributedRoomStore.js';
 
 const OFFICIAL_ORIGINS = [
   'https://cot.kevinliu.studio',
@@ -12,13 +13,17 @@ const configuredOrigins = String(process.env.COT_ALLOWED_ORIGINS || '')
   .map((value) => value.trim())
   .filter(Boolean);
 
-// Vercel's WebSocket Function runtime accepts a standard Node HTTP server.
-// The module is instantiated once per Fluid-compute instance, so every
-// connection routed to that instance shares the same bounded room store.
+const redisUrl = process.env.COT_SIGNAL_REDIS_REDIS_URL ||
+  process.env.COT_SIGNAL_REDIS_KV_URL || '';
+const store = redisUrl ? new DistributedSignalingRoomStore({ redisUrl }) : undefined;
+
+// WebSocket connections remain pinned to one Fluid-compute instance, while
+// Redis owns room membership and pub/sub carries signaling across instances.
 const signaling = createSignalingServer({
   allowedOrigins: [...new Set([...OFFICIAL_ORIGINS, ...configuredOrigins])],
   webSocketPaths: ['/api/signal'],
   healthPaths: ['/api/signal'],
+  ...(store ? { store } : {}),
 });
 
 export default signaling.server;

@@ -1139,20 +1139,22 @@ const garageMaps = [
   }),
   { id: 'random', name: 'Random', sub: 'Any battlefield', thumb: '' },
 ];
-let pendingSoloSelection = null;
+let pendingSoloStart = null;
 let playMenuPromise = null;
 async function openPlayMenu(request) {
   if ((request?.mode || 'solo') === 'solo') {
-    pendingSoloSelection = null;
+    pendingSoloStart = null;
+    if (typeof request?.startSolo === 'function') {
+      request.startSolo();
+      return;
+    }
     await beginSoloBattle({
       specId: request?.specId || garage.getSelected(),
       mapId: request?.mapId || garage.getSelectedMap(),
     });
     return;
   }
-  pendingSoloSelection = request
-    ? { specId: request.specId, mapId: request.mapId }
-    : null;
+  pendingSoloStart = typeof request?.startSolo === 'function' ? request.startSolo : null;
   if (!playMenuPromise) {
     playMenuPromise = import('./ui/playMenu.js').then(({ createPlayMenu }) => createPlayMenu({
       maps: garageMaps,
@@ -1163,12 +1165,16 @@ async function openPlayMenu(request) {
       }),
       isVehicleAllowed: (specId) => ALL_TANK_IDS.includes(specId),
       onSolo: () => {
-        const selection = pendingSoloSelection || {
+        const start = pendingSoloStart;
+        pendingSoloStart = null;
+        if (start) {
+          start();
+          return;
+        }
+        beginSoloBattle({
           specId: garage.getSelected(),
           mapId: garage.getSelectedMap(),
-        };
-        pendingSoloSelection = null;
-        beginSoloBattle(selection).catch((error) => {
+        }).catch((error) => {
           console.error('[solo] entry failed', error);
         });
       },
@@ -2298,76 +2304,15 @@ async function presentNetworkBattle({
   audio.ambientOn(true);
 }
 
-function randomMatchSeed() {
-  try {
-    const word = new Uint32Array(1);
-    globalThis.crypto.getRandomValues(word);
-    return word[0];
-  } catch (_) {
-    return Date.now() >>> 0;
-  }
-}
-
-/** Run bot play through the same authority, protocol, and presentation as multiplayer. */
+/**
+ * Keep bot play on the original in-page simulation path. Multiplayer's
+ * authority, snapshot bridge, prediction, WebRTC, and signaling modules are
+ * intentionally absent here: loading them for a local battle duplicated work
+ * without adding any useful authority boundary.
+ */
 async function beginSoloBattle({ specId, mapId } = {}) {
-  if (battleEntryPending || networkMatch) return;
-  battleEntryPending = true;
-  const viewerId = 'local-player';
-  try {
-    const selected = ALL_TANK_IDS.includes(specId) ? specId : garage.getSelected();
-    const resolvedMap = resolveMapId(mapId || garage.getSelectedMap());
-    const own = {
-      id: viewerId,
-      name: 'Commander',
-      specId: selected,
-      team: 'alpha',
-      equipment: loadSelectedEquipment(selected, getSpec(selected)),
-      ready: true,
-      connected: true,
-      isHost: true,
-      bot: false,
-    };
-    const lobbyState = {
-      roomCode: 'LOCAL1',
-      mode: 'campaign',
-      phase: 'starting',
-      hostId: viewerId,
-      mapId: resolvedMap,
-      teamSize: 7,
-      matchSeed: randomMatchSeed(),
-      players: [own],
-    };
-    const [{ buildPrivateMatchPlayers }, { createAuthoritativeMatch },
-      { createLocalMatchSession }] = await Promise.all([
-      import('./net/privateMatchHandoff.js'),
-      import('./sim/authoritativeMatch.js'),
-      import('./net/localSession.js'),
-    ]);
-    const matchPlayers = buildPrivateMatchPlayers(lobbyState);
-    await presentNetworkBattle({
-      viewerId,
-      own,
-      mapId: resolvedMap,
-      matchPlayers,
-      modeLabel: 'Solo Operation · Authoritative Bots',
-      connectMatch: () => {
-        const simulation = createAuthoritativeMatch({
-          players: matchPlayers,
-          mapId: resolvedMap,
-          seed: lobbyState.matchSeed,
-          worldCollision: world,
-        });
-        return createLocalMatchSession({ playerId: viewerId, simulation });
-      },
-    });
-  } catch (error) {
-    closeNetworkMatch('solo_entry_failed');
-    await battleLoad.hide();
-    enterGarage();
-    throw error;
-  } finally {
-    battleEntryPending = false;
-  }
+  const selected = ALL_TANK_IDS.includes(specId) ? specId : garage.getSelected();
+  return beginBattleEntry(selected, mapId || garage.getSelectedMap());
 }
 
 /** Load the rendered battlefield, then join browser-hosted private/LAN authority. */
@@ -5166,7 +5111,7 @@ window.__DEBUG = {
   // measure the real pre-battle timeline instead of only the synchronous
   // startBattle shortcut. Resolves when the battle opens.
   beginBattleEntry,
-  // User-facing solo entry: loopback protocol + shared headless authority.
+  // User-facing bot entry: original local simulation, with no network stack.
   beginSoloBattle,
   enterGarage,
   // SPOTTING WIRING: live SpottingSystem for headless concealment checks

@@ -1,23 +1,25 @@
 # Multiplayer architecture
 
-Status: implemented and playable. Solo bots, LAN, private room codes, and
-ranked matches now enter the same renderer-free authoritative simulation.
-Rendering, audio, input devices, and UI remain client concerns; movement,
-armor, ballistics, damage, modules, spotting, collision, bots, consumables,
-destruction, timers, scores, and match outcome belong to authority.
+Status: implemented and playable. LAN, private room codes, and ranked matches
+enter the renderer-free authoritative simulation. Solo bots deliberately keep
+the original presentation-integrated local simulation: this avoids snapshot,
+prediction, serialization, and duplicate presentation work in the latency-free
+mode while preserving the game's established high-refresh performance.
 
 ## Product contract
 
 | Mode | Authority | Transport | Ranking |
 |---|---|---|---|
-| Solo vs bots | local browser host | in-process loopback protocol | local battle record |
+| Solo vs bots | local browser | direct in-page simulation | local battle record |
 | LAN | one trusted browser host | direct WebRTC | unranked |
 | Private code | one trusted browser host | WebRTC, with configured TURN fallback | unranked |
 | Ranked | dedicated Node service | authenticated WebSocket | server-owned Elo |
 
-The mode changes who hosts and how packets travel. It does not select a second
-combat implementation. Player/entity identity is independent from vehicle
-identity, so two commanders may field the same tank without aliasing state.
+Network modes change who hosts and how packets travel while sharing one combat
+authority. Player/entity identity is independent from vehicle identity, so two
+commanders may field the same tank without aliasing state. Solo remains a
+separate optimized composition of the same core movement, armor, ballistics,
+damage, spotting, and AI modules.
 
 ## Runtime boundaries
 
@@ -26,15 +28,15 @@ identity, so two commanders may field the same tank without aliasing state.
   viewer-specific snapshots, catch-up limits, and connection state.
 - `src/net/browserBattleBridge.js` turns authority snapshots and events into
   first-party Three.js visuals without resolving gameplay locally.
-- `src/net/localSession.js` routes solo bot play through a real loopback
-  host/client pair.
+- `src/net/localSession.js` provides loopback authority for protocol tests and
+  tooling; normal solo play does not load it.
 - `src/net/privateRoomSession.js` and `privateMatchHandoff.js` own WebRTC lobby
   composition, seeded bot fill, and channel handoff.
 - `server/dedicatedMatchServer.js` and `dedicatedMatchRegistry.js` own ranked
   WebSocket authority and reconnectable match lifetimes.
 
 All eight maps use the same authored collision, terrain, foliage concealment,
-destructible indices, and loadout rules in browser-hosted and dedicated play.
+destructible indices, and loadout rules in solo, browser-hosted, and dedicated play.
 Dedicated Node matches inflate collision from the generated
 `server/world-collision-manifests.json`; browser hosts use the live `World`
 collision facade.
@@ -119,15 +121,19 @@ migration is intentionally not claimed.
 
 - Production signaling and match services require TLS and explicit origin
   allowlists.
-- Public WebRTC must force TURN relay so strangers do not learn one another's
-  IP addresses. LAN may use direct host candidates.
+- A public matchmaking mode must force TURN relay so strangers do not learn
+  one another's IP addresses. Private code rooms currently negotiate direct
+  ICE paths; LAN always remains direct.
 - TURN credentials and persistent Elo storage paths are deployment secrets.
 - A public competitive deployment should bind the existing service identity
   seam to real account/auth infrastructure. Client-owned solo results must
   never be accepted as ranked outcomes.
 
 The signaling server only relays room membership, SDP, and ICE. Gameplay never
-travels through it.
+travels through it. Production room membership lives in Redis and signaling
+notifications use Redis pub/sub, so peers routed to different WebSocket
+function instances still share one room. A deployment may add short-lived TURN
+credentials through `VITE_ICE_CONFIG_URL`; LAN remains direct.
 
 ## Verification
 

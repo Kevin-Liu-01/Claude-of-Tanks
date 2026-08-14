@@ -70,18 +70,24 @@ export function createSignalingServer({
     let pathname = '';
     try { pathname = new URL(request.url, 'http://localhost').pathname; } catch (_) { /* 404 below */ }
     if (allowedHealthPaths.has(pathname)) {
+      const health = { ok: true, rooms: store.rooms instanceof Map ? store.rooms.size : null };
+      if (typeof store.deliver === 'function') health.distributed = true;
       response.writeHead(200, { 'content-type': 'application/json' });
-      response.end(JSON.stringify({ ok: true, rooms: store.rooms.size }));
+      response.end(JSON.stringify(health));
       return;
     }
     response.writeHead(404);
     response.end();
   });
 
-  function sendNotifications(notifications) {
+  async function sendNotifications(notifications) {
     for (const notification of notifications || []) {
-      safeSend(notification.connection, notification.message);
+      if (typeof store.deliver === 'function') await store.deliver(notification);
+      else safeSend(notification.connection, notification.message);
     }
+  }
+  if (typeof store.setDeliveryHandler === 'function') {
+    store.setDeliveryHandler((connection, message) => safeSend(connection, message));
   }
 
   server.on('upgrade', (request, socket, head) => {
@@ -99,6 +105,7 @@ export function createSignalingServer({
 
   webSocketServer.on('connection', (connection) => {
     rate.set(connection, { start: Date.now(), count: 0 });
+    let messageChain = Promise.resolve();
     connection.on('message', (data, isBinary) => {
       const limit = rate.get(connection);
       const now = Date.now();
@@ -111,53 +118,66 @@ export function createSignalingServer({
         connection.close(1008, 'rate_limit');
         return;
       }
-      if (isBinary) {
-        safeSend(connection, errorMessage(Object.assign(new Error('binary signaling is unsupported'), {
-          code: 'invalid_payload',
-        })));
-        return;
-      }
-      let message;
-      try {
-        message = JSON.parse(data.toString());
-        if (!message || typeof message.type !== 'string') throw new Error('invalid message');
-        const requestId = message.requestId == null ? null : String(message.requestId);
-        switch (message.type) {
-          case 'room_create': {
-            const result = store.create(connection, message.payload);
-            safeSend(connection, { type: 'room_created', requestId, payload: result });
-            break;
-          }
-          case 'room_join': {
-            const joined = store.join(connection, message.payload);
-            safeSend(connection, { type: 'room_joined', requestId, payload: joined.result });
-            sendNotifications(joined.notify);
-            break;
-          }
-          case 'room_signal': {
-            const payload = message.payload || {};
-            const notification = store.relay(connection, {
-              roomCode: payload.roomCode,
-              toPeerId: payload.toPeerId,
-              signal: validateSignal(payload.signal),
-            });
-            safeSend(notification.connection, notification.message);
-            break;
-          }
-          case 'room_leave':
-            sendNotifications(store.leave(connection, 'client_leave'));
-            break;
-          default:
-            throw Object.assign(new Error('unknown signaling message'), { code: 'unknown_message' });
+      messageChain = messageChain.then(async () => {
+        if (isBinary) {
+          safeSend(connection, errorMessage(Object.assign(new Error('binary signaling is unsupported'), {
+            code: 'invalid_payload',
+          })));
+          return;
         }
-      } catch (error) {
-        safeSend(connection, errorMessage(error, message && message.requestId));
-      }
+        let message;
+        try {
+          message = JSON.parse(data.toString());
+          if (!message || typeof message.type !== 'string') throw new Error('invalid message');
+          const requestId = message.requestId == null ? null : String(message.requestId);
+          switch (message.type) {
+            case 'room_create': {
+              const result = await store.create(connection, message.payload);
+              safeSend(connection, { type: 'room_created', requestId, payload: result });
+              break;
+            }
+            case 'room_join': {
+              const joined = await store.join(connection, message.payload);
+              safeSend(connection, { type: 'room_joined', requestId, payload: joined.result });
+              await sendNotifications(joined.notify);
+              break;
+            }
+            case 'room_signal': {
+              const payload = message.payload || {};
+              const notification = await store.relay(connection, {
+                roomCode: payload.roomCode,
+                toPeerId: payload.toPeerId,
+                signal: validateSignal(payload.signal),
+              });
+              await sendNotifications([notification]);
+              break;
+            }
+            case 'room_leave':
+              await sendNotifications(await store.leave(connection, 'client_leave'));
+              break;
+            default:
+              throw Object.assign(new Error('unknown signaling message'), { code: 'unknown_message' });
+          }
+        } catch (error) {
+          safeSend(connection, errorMessage(error, message && message.requestId));
+        }
+      }).catch((error) => {
+        safeSend(connection, errorMessage(Object.assign(new Error('signaling operation failed'), {
+          code: 'signaling_store_unavailable', cause: error,
+        })));
+      });
     });
-    connection.on('close', () => sendNotifications(store.leave(connection, 'connection_closed')));
+    connection.on('close', () => {
+      messageChain.then(async () => {
+        await sendNotifications(await store.leave(connection, 'connection_closed'));
+      }).catch((error) => console.error('[signal] Failed to close room membership', error));
+    });
   });
 
-  const sweepTimer = setInterval(() => sendNotifications(store.sweepExpired()), 60_000);
+  const sweepTimer = setInterval(() => {
+    Promise.resolve(store.sweepExpired()).then(sendNotifications)
+      .catch((error) => console.error('[signal] Room sweep failed', error));
+  }, 60_000);
   if (typeof sweepTimer.unref === 'function') sweepTimer.unref();
 
   return {
@@ -166,6 +186,7 @@ export function createSignalingServer({
     store,
     async listen() {
       if (server.listening) return server.address();
+      if (typeof store.start === 'function') await store.start();
       await new Promise((resolve, reject) => {
         const onError = (error) => { server.off('listening', onListen); reject(error); };
         const onListen = () => { server.off('error', onError); resolve(); };
@@ -180,6 +201,7 @@ export function createSignalingServer({
       for (const connection of webSocketServer.clients) connection.close(1001, 'server_shutdown');
       await new Promise((resolve) => webSocketServer.close(() => resolve()));
       if (server.listening) await new Promise((resolve) => server.close(() => resolve()));
+      if (typeof store.close === 'function') await store.close();
     },
   };
 }

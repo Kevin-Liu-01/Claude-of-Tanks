@@ -1,6 +1,7 @@
 import { normalizeRoomCode } from './protocol.js';
 
 const MAX_SIGNAL_BYTES = 128 * 1024;
+const MAX_QUEUED_EVENTS = 64;
 
 function websocketConstructor(injected) {
   const Ctor = injected || globalThis.WebSocket;
@@ -47,6 +48,7 @@ export class RoomSignalingClient {
     this.requestSeq = 0;
     this.pending = new Map();
     this.listeners = new Set();
+    this.eventQueue = [];
     this.state = 'idle';
     this.roomCode = null;
     this.peerId = null;
@@ -156,6 +158,11 @@ export class RoomSignalingClient {
       } else pending.resolve(message.payload);
       return;
     }
+    if (this.listeners.size === 0) {
+      if (this.eventQueue.length >= MAX_QUEUED_EVENTS) this.eventQueue.shift();
+      this.eventQueue.push(message);
+      return;
+    }
     for (const listener of [...this.listeners]) listener(message);
   }
 
@@ -209,7 +216,10 @@ export class RoomSignalingClient {
   }
 
   onEvent(listener) {
+    if (typeof listener !== 'function') throw new TypeError('signaling event listener is required');
     this.listeners.add(listener);
+    const queued = this.eventQueue.splice(0);
+    for (const message of queued) listener(message);
     return () => this.listeners.delete(listener);
   }
 
@@ -224,6 +234,7 @@ export class RoomSignalingClient {
         this.socket.close(1000, String(reason).slice(0, 120));
       }
     }
+    this.eventQueue.length = 0;
     this.#closed(reason);
   }
 }

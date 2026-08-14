@@ -427,6 +427,18 @@ assert.equal(resolveSignalUrl({ hostname: '192.168.1.44', protocol: 'http:', lan
   });
   const room = await roomPromise;
   assert.equal(room.roomCode, 'ABC234');
+  socket.receive({
+    type: 'room_signal',
+    payload: {
+      roomCode: 'ABC234',
+      fromPeerId: 'p2',
+      signal: { kind: 'description', description: { type: 'offer', sdp: 'early-offer' } },
+    },
+  });
+  const earlyEvents = [];
+  signaling.onEvent((event) => earlyEvents.push(event));
+  assert.equal(earlyEvents[0].payload.signal.description.sdp, 'early-offer',
+    'RTC offers received between room_joined and session construction are replayed');
   signaling.sendSignal('p2', { kind: 'ice', candidate: { candidate: 'x' } });
   assert.equal(JSON.parse(socket.sent.at(-1)).type, 'room_signal');
   signaling.close();
