@@ -1733,9 +1733,41 @@ function tejasRoofKit(P, t, station = 'crows') {
     P.add('turretDetail', box(0.085, 0.115, 0.16), 0.842, plat2 - 0.095, -0.335); // fat ammo can
     P.add('turretDark', box(0.02, 0.05, 0.10), 0.885, plat2 - 0.075, -0.30);      // feed chute
   } else if (!reactiveLeftWeapons) {
-    P.add('turretDark', box(0.36, 0.063, 0.068), 0.986, plat2 - 0.055, -0.255);
-    P.add('turretDark', cylX(0.0126, 0.36, 8), 1.238, plat2 - 0.158, -0.255);
-    P.add('turretDetail', box(0.063, 0.09, 0.126), 0.842, plat2 - 0.10, -0.32);
+    // M1A1 family right-loader M240.  The old gun lay transversely along +x
+    // and its tube sat below the receiver; rebuild it as a planted forward
+    // weapon while preserving the independent left CWS station above.
+    const ha = P.spec.id === 'm1a1ha';
+    const loaderX = 0.98;
+    const receiverY = plat2 + (ha ? 0.045 : 0.025);
+    P.add('turretDark', box(0.22, 0.105, 0.38), loaderX, receiverY, -0.14);
+    P.add('turretDetail', box(0.19, 0.016, 0.32), loaderX, receiverY + 0.060, -0.14);
+    P.add('turretDark', box(0.052, 0.15, 0.052), loaderX,
+      receiverY - 0.11, -0.20);                                              // seated pintle
+    P.add('turretDetail', box(0.14, 0.16, 0.18), loaderX + 0.19,
+      receiverY - 0.025, -0.18);                                             // ammo can
+    P.add('turretDark', box(0.030, 0.090, 0.14), loaderX + 0.125,
+      receiverY + 0.010, -0.08);                                             // feed chute
+    if (ha) {
+      // HA: deeper three-sided armor and a more assertive outboard/up rest.
+      P.add('turret', box(0.46, 0.23, 0.040), loaderX, receiverY - 0.025, 0.045);
+      for (const sx of [-1, 1]) {
+        P.add('turret', box(0.040, 0.25, 0.28), loaderX + sx * 0.215,
+          receiverY - 0.020, -0.10, 0, -sx * 0.075, 0);
+      }
+      P.add('turretDetail', box(0.49, 0.050, 0.065), loaderX,
+        receiverY + 0.110, 0.040);
+      angledLoaderGunRun(P, { x: loaderX, y: receiverY, z: 0.03,
+        barrelLength: 0.66, outDeg: 8, upDeg: 5, hiderLength: 0.14 });
+    } else {
+      // Base M1A1: lighter low shield and a restrained field-rest angle.
+      P.add('turret', box(0.38, 0.17, 0.035), loaderX, receiverY - 0.035, 0.040);
+      P.add('turret', box(0.035, 0.18, 0.23), loaderX + 0.175,
+        receiverY - 0.035, -0.085, 0, -0.055, 0);
+      P.add('turretDetail', box(0.40, 0.038, 0.055), loaderX,
+        receiverY + 0.058, 0.038);
+      angledLoaderGunRun(P, { x: loaderX, y: receiverY, z: 0.03,
+        barrelLength: 0.60, outDeg: 5, upDeg: 3, hiderLength: 0.13 });
+    }
   }
   // ---- gunner's primary sight doghouse right-forward: knee top only to
   // world 1.19, then a 2.22 rear shelf to 1.58 (the ref band edge law) ----
