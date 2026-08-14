@@ -3353,7 +3353,7 @@ function buildLeo2A7(P) {
   // and its long rear overhang are gone — the upper hull is a shallow band
   // whose rear face sits flush over the tracks, the heavy skirts climb to
   // the fender line, and the deck carries the fan/grille furniture.
-  P.add('hull', box(2.48, 0.58, 7.5), 0, 0.79, 0);                              // lower hull
+  P.add('hull', box(2.16, 0.58, 7.5), 0, 0.79, 0);                              // lower hull between native courses
   // r4 BOW IDENTITY REBUILD (critic major — the front read as a fictional
   // REAR: "long bare downward-sloping engine deck with a huge stern
   // overhang"). Root cause: the beak sat at y 1.0, stretching the glacis
@@ -3368,11 +3368,17 @@ function buildLeo2A7(P) {
   // glacis spans the FULL deck width at the crease (a narrower plate left the
   // band corners overhanging as bare ledges) and tapers to the beak
   P.add('hull', frustum(1.72, 3.83, 2.03, 1.83, 2.13, 2.03, 1.45, 1.72));       // short 81-deg glacis
-  P.add('hull', frustum(1.66, 3.42, 3.55, 1.72, 3.83, 3.55, 0.5, 1.45));        // big raked lower front
-  P.add('hull', box(3.44, 0.44, 1.62), 0, 1.24, 2.80);                          // nose interior fill
+  // Keep the complete lower bow, but form real terminal-wheel pockets below
+  // the shoulder flare.  The former single full-width frustum occupied both
+  // native track lanes from y=.50-.84; visually the end shoes passed through
+  // solid glacis.  A narrow load-bearing chin now stays between the courses
+  // until y=1.08, then the original full-width shoulder returns above them.
+  P.add('hull', frustum(1.08, 3.42, 3.55, 1.08, 3.67, 3.55, 0.5, 1.08));         // lower chin between tracks
+  P.add('hull', frustum(1.08, 3.67, 3.55, 1.72, 3.83, 3.55, 1.08, 1.45));       // preserved full shoulder flare
+  P.add('hull', box(3.44, 0.38, 1.62), 0, 1.27, 2.80);                          // nose interior fill above pockets
   // front mud flaps hang off the heavy-skirt leading edge (grounds the nose)
   for (const s of [-1, 1]) {
-    P.add('hullRubber', box(0.34, 0.42, 0.035), s * 1.68, 0.78, 3.82);
+    P.add('hullRubber', box(0.34, 0.42, 0.035), s * 1.68, 0.78, 4.08);
   }
   // vertical rear plate flush with the hull end — no overhang box.
   // tank_models r2 (critic major: "rear hull reads as a bare sloped slab —
@@ -3382,7 +3388,7 @@ function buildLeo2A7(P) {
   // and carries the Leopard's signature pair of big circular cooling-fan
   // grilles in relief — dark disc, proud rim ring, radial slat bars.
   P.add('hull', box(3.1, 0.64, 0.12), 0, 1.40, -3.70);
-  P.add('hull', box(2.34, 0.62, 0.10), 0, 0.80, -3.72);
+  P.add('hull', box(2.12, 0.62, 0.10), 0, 0.80, -3.72);
   for (const s of [-1, 1]) {
     const fseg = P.q ? 26 : 14;
     P.add('hullDark', xform(cylZ(0.335, 0.03, fseg), 0, 0, 0), s * 0.86, 1.26, -3.775);   // fan disc
@@ -3432,7 +3438,7 @@ function buildLeo2A7(P) {
     P.add('hullDetail', cylX(0.034, 0.26, 8), s * 1.12, 1.0, -3.87);
     P.add('hullDetail', box(0.24, 0.06, 0.06), s * 1.12, 0.86, -3.84);
     P.add('hullDark', box(0.16, 0.09, 0.05), s * 1.38, 1.32, -3.775);           // taillight clusters
-    P.add('hullRubber', box(0.56, 0.34, 0.03), s * 1.5, 0.52, -3.86, 0.12, 0, 0); // rear mud flaps
+    P.add('hullRubber', box(0.56, 0.34, 0.03), s * 1.5, 0.52, -4.08, 0.12, 0, 0); // rear mud flaps beyond terminal wrap
   }
   // full-width transverse radiator louver inset across the rearmost deck
   P.add('hullDark', box(2.9, 0.022, 0.56), 0, 1.717, -3.32);
@@ -3508,18 +3514,18 @@ function buildLeo2A7(P) {
   // axle line like the real 2A7 armor modules — and the wheels read as
   // half-hidden running gear under one continuous flat-skirt line.
   for (const s of [-1, 1]) {
-    P.add('hull', box(0.10, 0.80, 3.25), s * 1.85, 0.90, 2.18);                 // heavy front skirt (0.50-1.30)
-    P.add('hull', box(0.10, 0.14, 3.2), s * 1.85, 0.50, 2.18, 0, 0, -s * 0.28); // chamfered lower lip
+    P.add('hull', box(0.10, 0.80, 3.25), s * 1.945, 0.90, 2.18);                // heavy front skirt (0.50-1.30), outside pins
+    P.add('hull', box(0.10, 0.14, 3.2), s * 1.945, 0.50, 2.18, 0, 0, -s * 0.28); // chamfered lower lip
     if (P.q) for (let k = 0; k < 4; k++) {                                      // panel split seams
-      P.add('hullDark', box(0.104, 0.74, 0.016), s * 1.85, 0.90, 3.6 - k * 0.8);
+      P.add('hullDark', box(0.104, 0.74, 0.016), s * 1.945, 0.90, 3.6 - k * 0.8);
     }
     // r8: rear rubber skirt pushed OUTBOARD of the track run (the old x1.80
     // panel hid behind the 1.87 track edge, leaving the rear wheels bare) and
     // deepened so the flat-skirt line runs the full hull like the real 2A7
-    P.add('hull', box(0.035, 0.72, 3.42), s * 1.865, 0.86, -1.28);              // rear rubber skirt (0.50-1.22)
-    P.add('hullRubber', box(0.028, 0.12, 3.4), s * 1.865, 0.49, -1.28);         // dangling rubber lip
+    P.add('hull', box(0.035, 0.72, 3.42), s * 1.91, 0.86, -1.28);               // rear rubber skirt (0.50-1.22), outside pins
+    P.add('hullRubber', box(0.028, 0.12, 3.4), s * 1.91, 0.49, -1.28);          // dangling rubber lip
     for (let k = 0; k < 4; k++) {
-      P.add('hullDark', box(0.042, 0.66, 0.02), s * 1.865, 0.86, -0.3 - k * 0.7);
+      P.add('hullDark', box(0.042, 0.66, 0.02), s * 1.91, 0.86, -0.3 - k * 0.7);
     }
   }
   // tank_models r2 (critic: "huge empty rear deck with a floating wire-thin

@@ -6682,3 +6682,44 @@ and asset geometry **`47364cd8`** (46 rendered meshes / 250,579 vertices).
 **KEEP the complete Challenger 2 body, skirts and Hydrogas mechanism. Future
 course work must use ownership correction or localized reseating and may not
 delete exterior armor to force a clean audit.**
+
+## 5.191 LEOPARD 2A7 CLOSED-TUB + TERMINAL-WRAP CLEARANCE (2026-08-14, LIVE)
+
+This pass preserves the complete accepted Leopard 2A7 exterior: full-width
+upper deck and glacis, restored heavy front side-armor panels, continuous aft
+skirts and lips, every panel seam, both mudguards, seven road-wheel stations,
+raised end wheels and one native linked-shoe course remain present. The live
+strict audit localized the failure to the old full-width lower-hull box, whose
+side walls occupied both track lanes, plus front/rear mudflaps mounted inside
+the terminal wraps. This was a closed-body routing defect, not permission to
+remove side armor.
+
+The lower hull is now a complete 2.16 m-wide tub between the native courses.
+At the bow a narrow load-bearing chin remains closed through the terminal
+wheel height, then flares back to the unchanged full-width upper shoulder and
+glacis above the tracks. The rear lower plate follows the same between-course
+width. Both front and rear mudflaps remain full size and surface-seated, but
+move longitudinally beyond their respective wraps. The heavy front armor and
+aft skirt runs remain unchanged in height and length and move only far enough
+outboard to clear the outer link pins; no skirt, panel, sponson, guard, hull
+face, wheel or shoe is deleted or hidden.
+
+Exact strict band and individual-shoe audits now report **front 0/0, rear 0/0
+and complete sweep 0/0**. The parent audit is **0 stranded / 0 abutting / 0
+dangling**. Winding is **0 reversed / 0 mixed / 0-pixel deficit** with clean
+mode 2. Fresh evidence contains 15 authored-model boards including the
+standard elevated-left profile, 15 yaw0 frames and 15 yaw90 frames: **45 PNG /
+45 distinct hashes**. All seven road wheels remain readable behind the full
+side armor, the loaded run rests beneath them and both terminal transitions
+remain continuous. The complete gun/turret/roof/bustle package performs a
+genuine quarter-turn while the restored skirts, hull and course remain fixed.
+
+The base `leo2a7` remains a hidden first-party donor/studio spec rather than a
+battle-roster row, so it intentionally owns no orphan presentation assets; the
+107-row asset ledger passes without extras. Dual-ledger geometry is freeze
+**`6b8fa412`**, instance freeze **`026fd934`** and asset geometry
+**`52f5f8fb`** (40 rendered meshes / 85,082 vertices).
+
+**KEEP the complete Leopard 2A7 upper hull and restored side-armor system.
+Future course work may reshape the hidden lower tub or reseat mudguards, but
+must not delete, shorten or lift exterior armor to manufacture clearance.**

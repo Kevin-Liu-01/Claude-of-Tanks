@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "rosterCount": 107,
+  "rosterCount": 108,
   "provenance": "first-party-procedural-only",
   "camoSeed": 4242,
   "assetCamoSeed": 4100,
@@ -276,6 +276,13 @@
       "assetGeometryHash": "70bfb68e",
       "meshes": 46,
       "vertices": 145883
+    },
+    "leo2a7": {
+      "freezeHash": "6b8fa412",
+      "instanceFreezeHash": "026fd934",
+      "assetGeometryHash": "52f5f8fb",
+      "meshes": 40,
+      "vertices": 85082
     },
     "leo2a7v": {
       "freezeHash": "07a2b9fc",
