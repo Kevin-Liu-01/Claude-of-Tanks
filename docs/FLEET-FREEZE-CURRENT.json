@@ -19,17 +19,17 @@
       "vertices": 162878
     },
     "amx30": {
-      "freezeHash": "32774c7c",
-      "instanceFreezeHash": "66b25b19",
-      "assetGeometryHash": "4f4d4477",
-      "meshes": 49,
+      "freezeHash": "5f66f958",
+      "instanceFreezeHash": "ff4063b5",
+      "assetGeometryHash": "e0314647",
+      "meshes": 50,
       "vertices": 51849
     },
     "amx30b2": {
-      "freezeHash": "a34e7d3f",
-      "instanceFreezeHash": "607ccc77",
-      "assetGeometryHash": "07a5ceb3",
-      "meshes": 49,
+      "freezeHash": "430737d0",
+      "instanceFreezeHash": "1e7c92d5",
+      "assetGeometryHash": "d719235d",
+      "meshes": 50,
       "vertices": 55605
     },
     "amx40": {

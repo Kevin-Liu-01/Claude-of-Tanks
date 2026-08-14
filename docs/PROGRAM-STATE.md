@@ -7153,3 +7153,48 @@ and all ten targeted runtime-rig checks pass. Dual-ledger geometry is freeze
 native course. Future clearance work must remain non-subtractive and may only
 reshape concealed sponson undersides, reseat track-adjacent fittings or
 correct truthful running-gear ownership.**
+
+## 5.201 AMX-30 / AMX-30B2 NATIVE-COURSE CLOSEOUT (2026-08-14, LIVE)
+
+This family repair preserves both complete first-party AMX-30 exteriors: low
+joined hulls, one-piece raked glacis plates, sponson shoulders, fender rails,
+front and rear mudflaps, five large road wheels, raised idler/sprocket
+transitions and one linked-shoe course per side. No hull, side armor, fender,
+mudguard, wheel or track geometry is deleted.
+
+The apparent broad collision was not armor. The 158/72 shoe-voxel sets were
+the authored circular wheel-well darkness immediately behind the road wheels;
+those unchanged discs are now truthfully tagged as running-gear furniture.
+Both unit-number decals were physically reduced and reseated on the raised
+sponson shoulder instead of spanning the moving return lane. On B2, the
+full-length support under each unequal rear service bin remains present, but
+its lower face is lifted 6 cm onto the sponson rather than entering the top
+shoes.
+
+Exact strict band and individual-shoe audits now report **front 0/0, rear 0/0
+and complete sweep 0/0 for both variants**, improved from AMX-30 95/158 and
+AMX-30B2 117/72. Fresh evidence contains 30 paired boards including both
+standardized elevated-left profiles, 30 yaw0 and 30 yaw90 frames: **90 PNG /
+90 distinct hashes**. Side, front, rear and elevated pixels retain closed
+complete hulls, five separately readable road wheels, loaded lower runs and
+continuous raised terminal transitions.
+
+Each complete cast turret, gun, TOP-7 station, coax, optics, smoke and bustle
+executes a genuine quarter-turn while the hull, deck and running gear remain
+fixed. The parent heuristic's single abutting nominee on each tank is the
+visibly seated hull-owned tow cable along the right sponson; it correctly
+stays fixed under yaw and is not turret equipment. There are **0 stranded / 0
+dangling** findings. Winding is **0 reversed / 0 mixed / 0-pixel deficit**
+with no yaw-stranded candidate. No duplicate course, empty-air fitting, open
+sheet, sky hole or silhouette regression appears.
+
+All sixteen targeted presentation assets are current, both muzzle bores pass
+and all nineteen targeted runtime-rig checks pass. AMX-30 dual-ledger geometry
+is freeze **`5f66f958`**, instance freeze **`ff4063b5`** and asset geometry
+**`e0314647`** (50 rendered meshes / 51,849 vertices). AMX-30B2 is freeze
+**`430737d0`**, instance freeze **`1e7c92d5`** and asset geometry
+**`d719235d`** (50 rendered meshes / 55,605 vertices).
+
+**KEEP both complete AMX-30 hulls, fender/mudguard packages and native
+courses. Future clearance work must preserve the accepted exterior and use
+only physical reseating or truthful running-gear ownership.**
