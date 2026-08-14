@@ -57825,7 +57825,7 @@
           }
         ]
       },
-      "geometryHash": "d909cd4b",
+      "geometryHash": "c84e9bf9",
       "metadataHash": "0b2a8224",
       "muzzleBore": {
         "tagged": 1,
@@ -57841,7 +57841,7 @@
           "height": 512,
           "mime": "image/webp",
           "bytes": 25942,
-          "sha256": "56dffb19c50ec1eff59eed26824f3efb01351dd06cc13947c49a7d6941677af8"
+          "sha256": "689a9ef79bec97f155eb510c58a484406aa47a748ac317eeaccd9c07ed549538"
         },
         "top": {
           "file": "panther_g_top.webp",
@@ -57856,8 +57856,8 @@
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 12246,
-          "sha256": "3277384d05a4c9b74bb60f36dcf38699bd05fd99055b066b1423f7e362ceae4d"
+          "bytes": 12238,
+          "sha256": "ee2ba07bd1fa87b0b39acf270f2d36103ec724bd1d8106bf5570bd9dfef01bb5"
         },
         "topSilhouette": {
           "file": "panther_g_top_silhouette.png",
@@ -57880,24 +57880,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 73353,
-          "sha256": "5c4f49ca62e6ce0332179ed8045613bd391e93fb0fa232d31352282f0e3a558e"
+          "bytes": 73394,
+          "sha256": "7b7aeb75bf7bb81ac4d7b24c85ceb482457ea40bf5300bd857caf9399d394b3d"
         },
         "armorSide": {
           "file": "panther_g_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 74951,
-          "sha256": "b2d2347fdcbf0536dc80711052ba6e661032c5d58effd0999f49561d76024f88"
+          "bytes": 74894,
+          "sha256": "c68e0b262a9f174ff39ef64efa45459e90b8dcc467b679539b3b115afa510615"
         },
         "modulesSide": {
           "file": "panther_g_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 70125,
-          "sha256": "0d7fe509a1af3fe5433bc43d54756e89ee9612a66bbee0408aad204d23a1c801"
+          "bytes": 70119,
+          "sha256": "b7c52b1076424ff774e5455691c3a1d727c4e478b4d1c7b56a40a3f119e61ea9"
         }
       }
     },
