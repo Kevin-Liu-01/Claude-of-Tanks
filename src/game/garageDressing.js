@@ -36,7 +36,7 @@ import { createTank } from '../vehicles/tankFactory.js';
 // the lighter proceduralOnly option skips cosmetic decoration for background
 // dressing while retaining the authored silhouette and materials.
 const BAY_A_SPEC = 't90a_burlak';
-const BAY_B_SPEC = 'm1a2';
+const BAY_B_SPEC = 'm1a2_tejas';
 const BAY_TANK_OPTS = { quality: 'ai', proceduralOnly: true };
 
 /**
