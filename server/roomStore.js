@@ -74,7 +74,14 @@ export class SignalingRoomStore {
     room.peers.set(peerId, { peerId, connection, player: cleanPlayer(player) });
     this.rooms.set(roomCode, room);
     this.membership.set(connection, { roomCode, peerId });
-    return { roomCode, peerId, hostId: peerId, mode: room.mode, peers: [] };
+    return {
+      roomCode,
+      peerId,
+      hostId: peerId,
+      mode: room.mode,
+      maxPlayers: room.maxPlayers,
+      peers: [],
+    };
   }
 
   join(connection, { roomCode, player } = {}) {
@@ -97,7 +104,14 @@ export class SignalingRoomStore {
     room.touchedAt = this.now();
     this.membership.set(connection, { roomCode: room.roomCode, peerId });
     return {
-      result: { roomCode: room.roomCode, peerId, hostId: room.hostId, mode: room.mode, peers },
+      result: {
+        roomCode: room.roomCode,
+        peerId,
+        hostId: room.hostId,
+        mode: room.mode,
+        maxPlayers: room.maxPlayers,
+        peers,
+      },
       notify: [...room.peers.values()]
         .filter((peer) => peer.peerId !== peerId)
         .map((peer) => ({

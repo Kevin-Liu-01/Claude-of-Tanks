@@ -1270,7 +1270,7 @@ function frontArmorMm(plates, keys) {
 
 /**
  * Create the garage/tank-select screen. Appends its root to document.body (hidden).
- * @param {{specs:TankSpec[],bus:{emit:Function},onSelect:Function,onBattle:Function}} opts
+ * @param {{specs:TankSpec[],bus:{emit:Function},onSelect:Function,onBattle:Function,onPlayRequest?:Function}} opts
  * @returns {{show:Function,hide:Function,isOpen:boolean,setSelected:Function,root:HTMLElement}} Garage
  */
 export function createGarage(opts) {
@@ -1973,20 +1973,35 @@ export function createGarage(opts) {
     api.setSelected(next.id);
   }
 
-  function battle() {
-    if (!selectedId) return;
+  function launchBattle(specId, mapId, { emitClick = true } = {}) {
     // Battle entry must be unstoppable: the pre-battle emits fan out to five+
     // subscribers (audio click, pointer-lock grab, killcam/shot-log resets…)
     // and any one of them throwing in an exotic environment would silently
     // block onBattle — a BATTLE button that does nothing is the worst failure
     // mode. Contain their failures; the phase flip always runs.
     try {
-      emit('ui:click', {});
-      emit('ui:battleStart', { specId: selectedId, mapId: selectedMapId });
+      if (emitClick) emit('ui:click', {});
+      emit('ui:battleStart', { specId, mapId });
     } catch (err) {
       console.error('[garage] battle-start listener failed:', err);
     }
-    if (onBattle) onBattle(selectedId, selectedMapId); // MAP-CONFIG WIRING
+    if (onBattle) onBattle(specId, mapId); // MAP-CONFIG WIRING
+  }
+
+  function battle() {
+    if (!selectedId) return;
+    const specId = selectedId;
+    const mapId = selectedMapId;
+    if (opts.onPlayRequest) {
+      try { emit('ui:click', {}); } catch (_) { /* presentation-only */ }
+      opts.onPlayRequest({
+        specId,
+        mapId,
+        startSolo: () => launchBattle(specId, mapId, { emitClick: false }),
+      });
+      return;
+    }
+    launchBattle(specId, mapId);
   }
 
   battleBtn.addEventListener('click', battle);
@@ -2172,6 +2187,11 @@ export function createGarage(opts) {
     // --- MAP-CONFIG WIRING ---
     /** Currently selected battlefield id ('random' allowed). @returns {string} */
     getSelectedMap() { return selectedMapId; },
+
+    /** Enter the currently selected solo battle without reopening the play menu. */
+    startSolo() {
+      if (selectedId) launchBattle(selectedId, selectedMapId);
+    },
 
     /**
      * Highlight a battlefield in the map picker.

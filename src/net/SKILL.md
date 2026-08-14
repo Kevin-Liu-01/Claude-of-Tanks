@@ -16,8 +16,12 @@ play without importing Three.js rendering or DOM state.
 - `lobby.js` owns teams, readiness, permissions, and start policy.
 - `matchRuntime.js` owns fixed ticks, input ordering, snapshots, and client time.
 - `snapshot.js` owns quantization, visibility filtering, and interpolation.
-- `loopbackTransport.js` and future adapters implement the same small transport.
+- `loopbackTransport.js`, `channelTransport.js`, and `webrtcPeer.js` implement
+  the same bounded transport contract.
 - `localSession.js` proves solo play traverses the real host/client path.
+- `privateRoomSession.js` owns lobby WebRTC composition;
+  `privateMatchHandoff.js` releases those same channels to match authority.
+- `browserBattleBridge.js` is presentation-only and must stay lazy from main.
 
 ## Patterns and invariants
 
@@ -30,5 +34,6 @@ play without importing Three.js rendering or DOM state.
 
 ## Verification
 
-Run `node src/net/net.selftest.mjs`, then `npm test` and `npm run build`. Network
-adapters additionally require loss/jitter/backpressure and browser-pair tests.
+Run `node src/net/net.selftest.mjs`,
+`node src/net/privateMatchHandoff.selftest.mjs`, then `npm test` and
+`npm run build`. Network adapters additionally require browser-pair proof.

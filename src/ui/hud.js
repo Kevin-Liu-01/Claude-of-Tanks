@@ -1212,7 +1212,10 @@ export function initHud(bus) {
 
   let rosterSig = '';
   function updateTeams(frame) {
-    const tanks = frame.tanks || [];
+    // Network presentation may omit hidden enemies from `frame.tanks` to
+    // prevent reticle/minimap leakage. The team ears still know the locked
+    // match roster and death state through this policy-safe companion list.
+    const tanks = frame.rosterTanks || frame.tanks || [];
     // content_breadth r2: battle restarts don't always round-trip through
     // setMode('hidden') — when the participant set (or the player entity)
     // changes, drop and rebuild the whole roster DOM instead of appending

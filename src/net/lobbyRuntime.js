@@ -27,6 +27,7 @@ export class LobbyHostRuntime {
     this.isVehicleAllowed = isVehicleAllowed;
     this.onStart = onStart;
     this.peers = new Map();
+    this.listeners = new Set();
     this.closed = false;
   }
 
@@ -99,7 +100,14 @@ export class LobbyHostRuntime {
   broadcast() {
     const state = serializeLobby(this.lobby);
     for (const peer of this.peers.values()) this.#send(peer, MESSAGE_TYPES.LOBBY_STATE, state);
+    for (const listener of [...this.listeners]) listener(state);
     return state;
+  }
+
+  onState(listener) {
+    this.listeners.add(listener);
+    queueMicrotask(() => listener(serializeLobby(this.lobby)));
+    return () => this.listeners.delete(listener);
   }
 
   detachPeer(peerId, reason = 'left') {

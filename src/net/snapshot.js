@@ -106,6 +106,7 @@ export function captureWorldSnapshot({
   canObserve = () => true,
   canObserveShell = () => true,
   canObserveEvent = () => true,
+  meta = null,
 } = {}) {
   if (!Number.isSafeInteger(tick) || tick < 0) throw new TypeError('tick must be unsigned');
   if (!Number.isFinite(serverTimeMs) || serverTimeMs < 0) {
@@ -134,6 +135,7 @@ export function captureWorldSnapshot({
     entities: visibleEntities,
     shells: visibleShells,
     events: (events || []).filter((event) => canObserveEvent(viewer, event)),
+    meta: meta && typeof meta === 'object' ? { ...meta } : null,
   };
 }
 
@@ -279,6 +281,7 @@ export class SnapshotBuffer {
       entities,
       shells: newer.shells || [],
       events: newer.events || [],
+      meta: newer.meta || null,
     };
   }
 }

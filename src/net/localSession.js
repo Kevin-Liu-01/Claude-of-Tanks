@@ -32,6 +32,7 @@ export function createLocalMatchSession({
     playerId,
     host,
     client,
+    ready() { return client.readyForMatch(); },
     async advance(elapsedMs, input = null) {
       if (input) client.submitInput(input, host.tick);
       // Respect the same asynchronous delivery ordering as network adapters.

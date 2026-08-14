@@ -30,3 +30,5 @@ then edit. Run movement, combat, and spotting tests after shared-state changes.
 <!-- agent-docs:fill:gotchas -->
 Render attitude has locked sign/order conventions. Do not introduce wall-clock
 time, frame-rate-dependent integration, or Three.js renderer dependencies.
+Run `node src/sim/authoritativeMatch.selftest.mjs` after changing match
+composition, snapshot visibility, or multiplayer identity seams.

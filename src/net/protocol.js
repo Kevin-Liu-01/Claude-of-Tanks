@@ -15,6 +15,7 @@ export const MAX_SPECTATORS = 8;
 export const MESSAGE_TYPES = Object.freeze({
   HELLO: 'hello',
   WELCOME: 'welcome',
+  READY: 'ready',
   LOBBY_COMMAND: 'lobby_command',
   LOBBY_STATE: 'lobby_state',
   INPUT: 'input',

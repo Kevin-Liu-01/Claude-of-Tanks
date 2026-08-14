@@ -1083,6 +1083,37 @@ const hud = await bootStage('hud', () => {
   return h;
 });
 
+const garageMaps = [
+  ...MAP_IDS.map((id) => {
+    const c = getMapConfig(id);
+    return { id, name: c.name, sub: c.sub || '', thumb: MAP_THUMBS[id] || '' };
+  }),
+  { id: 'random', name: 'Random', sub: 'Any battlefield', thumb: '' },
+];
+let pendingSoloStart = null;
+let playMenuPromise = null;
+async function openPlayMenu(request) {
+  pendingSoloStart = request && request.startSolo;
+  if (!playMenuPromise) {
+    playMenuPromise = import('./ui/playMenu.js').then(({ createPlayMenu }) => createPlayMenu({
+      maps: garageMaps,
+      getSelection: () => ({
+        specId: garage.getSelected(),
+        mapId: garage.getSelectedMap(),
+      }),
+      isVehicleAllowed: (specId) => ALL_TANK_IDS.includes(specId),
+      onSolo: () => {
+        const start = pendingSoloStart;
+        pendingSoloStart = null;
+        if (start) start();
+      },
+      onNetworkStart: beginNetworkBattle,
+    }));
+  }
+  const menu = await playMenuPromise;
+  menu.show();
+}
+
 const garage = await bootStage('ui', () => createGarage({
   specs: ALL_TANK_IDS.map(getSpec), // COMMUNITY TANKS: grown carousel
   bus,
@@ -1092,14 +1123,11 @@ const garage = await bootStage('ui', () => createGarage({
     setPedestalTank(specId);
   },
   onBattle: (specId, mapId) => beginBattleEntry(specId, mapId), // loading screen owns entry
+  onPlayRequest: (request) => openPlayMenu(request).catch((error) => {
+    console.error('[play-menu] failed to open', error);
+  }),
   // MAP-CONFIG WIRING: battlefield picker cards (4 maps + Random)
-  maps: [
-    ...MAP_IDS.map((id) => {
-      const c = getMapConfig(id);
-      return { id, name: c.name, sub: c.sub || '', thumb: MAP_THUMBS[id] || '' };
-    }),
-    { id: 'random', name: 'Random', sub: 'Any battlefield', thumb: '' },
-  ],
+  maps: garageMaps,
   // CAMO WIRING: per-tank paint picker — persists the choice and repaints the
   // shared albedo in place, so the pedestal tank updates immediately.
   camo: {
@@ -1915,6 +1943,60 @@ async function startBattleLoading(specId, mapId = null) {
 // synchronous) and skip the in-battle countdown (startBattle arms it only on
 // the player path — see opts.preBattleHold).
 let battleEntryPending = false;
+let networkMatch = null;
+let networkBridge = null;
+let latestNetworkSnapshot = null;
+let networkPumpPending = false;
+
+function networkInputFrame() {
+  const player = game.player;
+  if (!player || !player.state || !player.input || player.combat?.destroyed) return null;
+  const aim = player.input.aimPoint;
+  const dx = aim ? aim.x - player.state.pos.x : Math.sin(player.state.yaw);
+  const dy = aim ? aim.y - player.state.pos.y : 0;
+  const dz = aim ? aim.z - player.state.pos.z : Math.cos(player.state.yaw);
+  return {
+    throttle: player.input.throttle || 0,
+    steer: player.input.steer || 0,
+    brake: !!player.input.brake,
+    fire: !!player.input.fire,
+    aimYaw: Math.atan2(dx, dz),
+    aimPitch: Math.atan2(dy, Math.max(1e-6, Math.hypot(dx, dz))),
+    shellSlot: player.input.shellSlot | 0,
+    actionBits: 0,
+  };
+}
+
+function acceptNetworkSnapshot(snapshot, dt) {
+  if (!snapshot) return;
+  latestNetworkSnapshot = snapshot;
+  if (networkBridge) networkBridge.apply(snapshot, dt);
+}
+
+function pumpNetworkMatch(dt, nowMs) {
+  if (!networkMatch || networkMatch.client?.closed) return;
+  const playerInput = game.phase === 'battle' ? networkInputFrame() : null;
+  if (networkMatch.role === 'host') {
+    if (networkPumpPending) return;
+    networkPumpPending = true;
+    networkMatch.advance(dt * 1000, playerInput)
+      .then((snapshot) => acceptNetworkSnapshot(snapshot, dt))
+      .catch((error) => console.error('[network] host pump failed', error))
+      .finally(() => { networkPumpPending = false; });
+  } else {
+    if (playerInput && networkMatch.client.connected) networkMatch.submitInput(playerInput);
+    acceptNetworkSnapshot(networkMatch.update(nowMs), dt);
+  }
+}
+
+function closeNetworkMatch(reason = 'network_match_closed') {
+  if (networkMatch) networkMatch.close(reason);
+  if (networkBridge) networkBridge.dispose();
+  networkMatch = null;
+  networkBridge = null;
+  latestNetworkSnapshot = null;
+  networkPumpPending = false;
+}
 
 async function beginBattleEntry(specId, mapId = null) {
   if (battleEntryPending) return;
@@ -1923,6 +2005,152 @@ async function beginBattleEntry(specId, mapId = null) {
     await startBattleLoading(specId, mapId);
   } catch (error) {
     console.error('[battle] entry failed', error);
+    await battleLoad.hide();
+    enterGarage();
+  } finally {
+    battleEntryPending = false;
+  }
+}
+
+function lobbyRosterRows(lobbyState, team, viewerId) {
+  return lobbyState.players
+    .filter((player) => player.team === team)
+    .map((player) => ({
+      id: player.specId,
+      name: getSpec(player.specId)?.name || player.name || player.specId,
+      tier: tierNumeral(player.specId),
+      isPlayer: player.id === viewerId,
+    }));
+}
+
+async function waitForNetworkSnapshot(predicate, timeoutMs, label) {
+  const deadline = performance.now() + timeoutMs;
+  while (!latestNetworkSnapshot || !predicate(latestNetworkSnapshot)) {
+    if (!networkMatch || networkMatch.client?.closed) {
+      throw new Error('The match connection closed while loading.');
+    }
+    if (performance.now() >= deadline) throw new Error(label);
+    await nextFrame();
+  }
+  return latestNetworkSnapshot;
+}
+
+/** Load the rendered battlefield, then join the shared authoritative match. */
+async function beginNetworkBattle({ role, session, lobbyState } = {}) {
+  if (battleEntryPending || networkMatch) return;
+  battleEntryPending = true;
+  const viewerId = String(session?.roomInfo?.peerId || '');
+  const own = lobbyState?.players?.find((player) => player.id === viewerId);
+  try {
+    if (!viewerId || !own || own.team === 'spectator') {
+      if (own?.team === 'spectator') session?.close('spectator_unsupported');
+      throw new Error('Spectator presentation is not available yet.');
+    }
+    bus.emit('ui:battleStart', { specId: own.specId, mapId: lobbyState.mapId });
+    battleLoad.show({
+      mapName: 'Network operation',
+      mapSub: 'Establishing shared authority',
+      thumb: '',
+      biome: lobbyState.mapId,
+      mode: lobbyState.mode === 'lan' ? 'LAN Battle · Direct Wi-Fi' : 'Private Battle · Room Code',
+      allies: lobbyRosterRows(lobbyState, own.team, viewerId),
+      enemies: lobbyRosterRows(lobbyState, own.team === 'alpha' ? 'bravo' : 'alpha', viewerId),
+    });
+    battleLoad.progress(0.02, 'Securing match channel');
+    await nextFrame();
+    const [{
+      beginPrivateHostMatch,
+      beginPrivateClientMatch,
+      resolvePrivateMatchMap,
+    }, { createBrowserBattleBridge }] = await Promise.all([
+      import('./net/privateMatchHandoff.js'),
+      import('./net/browserBattleBridge.js'),
+    ]);
+    const mapId = resolvePrivateMatchMap(lobbyState);
+    networkMatch = role === 'host'
+      ? beginPrivateHostMatch({ session, lobbyState })
+      : await beginPrivateClientMatch({ session, playerId: viewerId, lobbyState });
+    battleLoad.progress(0.08, 'Loading battlefield');
+    await ensureWorld(mapId, (fraction, label) => {
+      battleLoad.progress(0.08 + fraction * 0.48, label);
+    });
+    const cfg = getMapConfig(mapId);
+    battleLoad.show({
+      mapName: cfg.name || mapId,
+      mapSub: cfg.sub || '',
+      thumb: MAP_THUMBS[mapId] || '',
+      biome: mapId,
+      mode: lobbyState.mode === 'lan' ? 'LAN Battle · Direct Wi-Fi' : 'Private Battle · Room Code',
+      allies: lobbyRosterRows(lobbyState, own.team, viewerId),
+      enemies: lobbyRosterRows(lobbyState, own.team === 'alpha' ? 'bravo' : 'alpha', viewerId),
+    });
+    networkBridge = createBrowserBattleBridge({ engineCtx, game, bus, viewerId });
+    await networkBridge.prepareRoster(lobbyState.players, (fraction, specId) => {
+      battleLoad.progress(0.56 + fraction * 0.27, `Painting ${getSpec(specId)?.name || specId}`);
+    });
+    battleLoad.progress(0.84, 'Synchronizing authority');
+    const initial = await waitForNetworkSnapshot(
+      (snapshot) => snapshot.entities.some((entity) => entity.id === viewerId),
+      12000,
+      'Timed out waiting for the first authoritative snapshot.',
+    );
+    networkBridge.apply(initial, 1 / 60);
+    for (const entity of networkBridge.entities.values()) {
+      if (entity.visual?.setGroundSampler) entity.visual.setGroundSampler(groundSampler);
+    }
+    hud.warmShotCards([...networkBridge.entities.values()].map((entity) => entity.specId));
+    battleLoad.progress(0.88, 'Compiling combat shaders');
+    await nextFrame();
+    try {
+      if (typeof renderer.compileAsync === 'function') await renderer.compileAsync(scene, camera);
+      else renderer.compile(scene, camera);
+    } catch (_) { /* warm only */ }
+    networkMatch.ready();
+    battleLoad.progress(0.96, 'Waiting for every commander');
+    await waitForNetworkSnapshot(
+      (snapshot) => snapshot.meta?.phase === 'countdown' || snapshot.meta?.phase === 'playing',
+      20000,
+      'Another player did not finish loading in time.',
+    );
+
+    shotMode = false;
+    fx.setFrozen(false);
+    if (settings.isOpen()) settings.close({ noRelock: true });
+    killcam.cancel();
+    selectedSpecId = own.specId;
+    rememberSpecId(own.specId);
+    debugAimTargetId = null;
+    setWorldDormant(false);
+    if (world.resetDestructibles) world.resetDestructibles();
+    game.mapId = mapId;
+    setCamoBiome(mapId);
+    hud.shotInfo.setPlayer(viewerId);
+    fx.resetAll();
+    buildShellCards(game.player.spec);
+    damagePanel.setTank(game.player.spec);
+    damagePanel.setEquipment(game.player.equip || {});
+    garage.hide();
+    endOverlay.style.display = 'none';
+    endShown = false;
+    deathCamShown = false;
+    kcPending = null;
+    hud.setMode('battle');
+    game.phase = 'battle';
+    setGarageSpots(false);
+    setGarageSunTrim(false);
+    bus.emit('phase:change', { phase: 'battle' });
+    resetConsumableCooldowns(consumableReadyAt);
+    bus.emit('ui:consumableReset', {});
+    rig.release();
+    rig.snapArcade(2, game.player.state.yaw, -10 * DEG);
+    showroom.stop();
+    battleLoad.progress(1, 'Ready');
+    await battleLoad.hide();
+    audio.resume();
+    audio.ambientOn(true);
+  } catch (error) {
+    console.error('[network] entry failed', error);
+    closeNetworkMatch('entry_failed');
     await battleLoad.hide();
     enterGarage();
   } finally {
@@ -2072,6 +2300,7 @@ function openBattle() {
 const PRE_BATTLE_HOLD_S = 5;
 
 function enterGarage() {
+  closeNetworkMatch('returned_to_garage');
   // battle_countdown r1: leaving mid-countdown (Esc -> garage) clears the hold.
   game.preBattleS = 0;
   // SHOT-MODE RESET: see startBattle — the garage is a live-mode entry too.
@@ -2692,6 +2921,10 @@ function tick(nowMs) {
     (rmbMode === 'freelook' && cursorAimNow && rmbHeld);
   wheelStep = 0;
 
+  // Network authority keeps pumping while the loading screen owns the page,
+  // then consumes the same polled controls once the shared countdown opens.
+  pumpNetworkMatch(dtR, nowMs);
+
   // 2. fixed-step simulation (held while the settings panel is open)
   if (inBattle && !paused && !kcActive) {
     // battle_countdown r1: pre-battle hold — the sim does not step AT ALL
@@ -2702,7 +2935,12 @@ function tick(nowMs) {
     // catch-up burst of queued sim steps. The rest of the frame (rig,
     // visuals, fx, render) runs normally — that is the whole point: the
     // first-seconds jank lands while nothing can move or shoot.
-    if (game.preBattleS > 0) {
+    if (networkMatch) {
+      // The server/host owns both the countdown and every simulation step.
+      // `game.preBattleS` is presentation copied from snapshot metadata.
+      hud.preBattleCountdown(game.preBattleS);
+      simAcc = 0;
+    } else if (game.preBattleS > 0) {
       if (game.preBattleS !== Infinity) { // Infinity = still under the loading screen
         const heldS = game.preBattleS;
         game.preBattleS = Math.max(0, game.preBattleS - dtR);
@@ -2877,6 +3115,7 @@ function tick(nowMs) {
     frameInfo.mode = rig.mode === 'SNIPER' ? 'sniper' : 'battle';
     frameInfo.player = game.player;
     frameInfo.tanks = game.tanks; // COMMUNITY TANKS: roster varies per battle
+    frameInfo.rosterTanks = networkBridge ? networkBridge.roster : game.tanks;
     frameInfo.shells = game.shells;
     refreshSpotFrame(); // SPOTTING WIRING
     computeAimInfo();

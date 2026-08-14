@@ -7,13 +7,15 @@ description: Implement and operate Claude of Tanks signaling and dedicated autho
 
 ## Purpose
 
-Provide bounded network coordination and, later, dedicated ranked authority.
+Provide bounded network coordination and dedicated ranked authority.
 The signaling server relays WebRTC descriptions/ICE only and never gameplay.
 
 ## Mental model and invariants
 
 - `roomStore.js` owns private-room rendezvous membership.
 - `signalingServer.js` owns HTTP upgrade, origin/rate/payload gates, and relay.
+- `dedicatedMatchRegistry.js` owns authenticated match lifecycle and reconnects.
+- `dedicatedMatchServer.js` owns the authoritative WebSocket service boundary.
 - A v1 browser-hosted room closes if its host leaves; never silently migrate a
   ranked authority to a player.
 - Production signaling must run behind TLS with an explicit origin allowlist.

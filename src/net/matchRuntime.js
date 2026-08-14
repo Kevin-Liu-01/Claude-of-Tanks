@@ -71,6 +71,7 @@ export class AuthoritativeMatchRuntime {
     this.accumulatorMs = 0;
     this.peers = new Map();
     this.closed = false;
+    this.matchStarted = false;
     this.stats = {
       steps: 0,
       snapshots: 0,
@@ -98,6 +99,9 @@ export class AuthoritativeMatchRuntime {
       lastInputSeq: null,
       lastRecvSeq: null,
       sendSeq: 0,
+      welcomed: false,
+      ready: false,
+      fireQueued: false,
       unsubscribeMessage: null,
       unsubscribeClose: null,
     };
@@ -109,14 +113,6 @@ export class AuthoritativeMatchRuntime {
     if (typeof this.simulation.onPeerJoin === 'function') {
       this.simulation.onPeerJoin({ peerId: id, metadata });
     }
-    this.#send(peer, MESSAGE_TYPES.WELCOME, {
-      protocolVersion: PROTOCOL_VERSION,
-      peerId: id,
-      tickHz: this.tickHz,
-      snapshotHz: this.snapshotHz,
-      serverTick: this.tick,
-      serverTimeMs: this.timeMs,
-    });
     return () => this.detachPeer(id, 'detached');
   }
 
@@ -158,13 +154,42 @@ export class AuthoritativeMatchRuntime {
       peer.lastRecvSeq = message.seq;
       switch (message.type) {
         case MESSAGE_TYPES.HELLO:
-          // WELCOME is sent on attach; HELLO only confirms client metadata.
-          peer.metadata = message.payload || peer.metadata;
+          if (peer.welcomed) break;
+          if (!message.payload || String(message.payload.playerId || '') !== peer.id) {
+            throw new ProtocolError('identity_mismatch', 'hello player id does not match transport identity');
+          }
+          peer.metadata = { ...(peer.metadata || {}), ...(message.payload.metadata || {}) };
+          peer.welcomed = true;
+          this.#send(peer, MESSAGE_TYPES.WELCOME, {
+            protocolVersion: PROTOCOL_VERSION,
+            peerId: peer.id,
+            tickHz: this.tickHz,
+            snapshotHz: this.snapshotHz,
+            serverTick: this.tick,
+            serverTimeMs: this.timeMs,
+          });
           break;
         case MESSAGE_TYPES.INPUT:
+          if (!peer.welcomed) {
+            throw new ProtocolError('hello_required', 'hello must precede match input');
+          }
           this.#receiveInput(peer, message.payload);
           break;
+        case MESSAGE_TYPES.READY:
+          if (!peer.welcomed) {
+            throw new ProtocolError('hello_required', 'hello must precede match readiness');
+          }
+          if (!peer.ready) {
+            peer.ready = true;
+            if (typeof this.simulation.onPeerReady === 'function') {
+              this.simulation.onPeerReady({ peerId: peer.id, metadata: peer.metadata });
+            }
+          }
+          break;
         case MESSAGE_TYPES.PING:
+          if (!peer.welcomed) {
+            throw new ProtocolError('hello_required', 'hello must precede match ping');
+          }
           this.#send(peer, MESSAGE_TYPES.PONG, {
             clientTimeMs: Number(message.payload && message.payload.clientTimeMs) || 0,
             serverTimeMs: this.timeMs,
@@ -195,6 +220,7 @@ export class AuthoritativeMatchRuntime {
     }
     peer.lastInputSeq = input.inputSeq;
     peer.input = input;
+    if (input.fire) peer.fireQueued = true;
   }
 
   /**
@@ -219,14 +245,36 @@ export class AuthoritativeMatchRuntime {
     while (this.accumulatorMs + 1e-9 >= this.tickMs && steps < this.maxCatchUpTicks) {
       this.tick++;
       this.timeMs = this.tick * this.tickMs;
-      const inputs = new Map();
-      for (const peer of this.peers.values()) inputs.set(peer.id, peer.input);
-      this.simulation.step({
-        dt: 1 / this.tickHz,
-        tick: this.tick,
-        timeMs: this.timeMs,
-        inputs,
-      });
+      if (!this.matchStarted) {
+        const requiredIds = Array.isArray(this.simulation.requiredPeerIds)
+          ? this.simulation.requiredPeerIds
+          : [...this.peers.values()]
+            .filter((peer) => !peer.metadata?.spectator)
+            .map((peer) => peer.id);
+        this.matchStarted = requiredIds.length > 0 && requiredIds.every((id) => {
+          const peer = this.peers.get(id);
+          return !!peer && peer.welcomed && peer.ready;
+        });
+        if (this.matchStarted && typeof this.simulation.onMatchReady === 'function') {
+          this.simulation.onMatchReady({ tick: this.tick, timeMs: this.timeMs });
+        }
+      }
+      if (this.matchStarted) {
+        const inputs = new Map();
+        for (const peer of this.peers.values()) {
+          const input = peer.input && peer.fireQueued && !peer.input.fire
+            ? { ...peer.input, fire: true }
+            : peer.input;
+          inputs.set(peer.id, input);
+          peer.fireQueued = false;
+        }
+        this.simulation.step({
+          dt: 1 / this.tickHz,
+          tick: this.tick,
+          timeMs: this.timeMs,
+          inputs,
+        });
+      }
       this.accumulatorMs -= this.tickMs;
       this.stats.steps++;
       steps++;
@@ -237,6 +285,7 @@ export class AuthoritativeMatchRuntime {
 
   #broadcastSnapshots() {
     for (const peer of this.peers.values()) {
+      if (!peer.welcomed) continue;
       const snapshot = this.simulation.snapshot({
         tick: this.tick,
         serverTimeMs: this.timeMs,
@@ -245,6 +294,9 @@ export class AuthoritativeMatchRuntime {
       });
       this.#send(peer, MESSAGE_TYPES.SNAPSHOT, snapshot);
       this.stats.snapshots++;
+    }
+    if (typeof this.simulation.afterSnapshotBroadcast === 'function') {
+      this.simulation.afterSnapshotBroadcast();
     }
   }
 
@@ -287,19 +339,28 @@ export class MatchClientRuntime {
     this.closed = false;
     this.errors = [];
     this.eventListeners = new Set();
+    this.connectionListeners = new Set();
+    this.handshakeSent = false;
+    this.readySent = false;
     this.unsubscribeMessage = transport.onMessage((message) => this.#receive(message));
     this.unsubscribeClose = typeof transport.onClose === 'function'
-      ? transport.onClose(() => { this.connected = false; this.closed = true; })
+      ? transport.onClose(() => {
+        this.connected = false;
+        this.closed = true;
+        for (const listener of [...this.connectionListeners]) listener(false);
+      })
       : null;
   }
 
   /** Begin the protocol handshake after both transport sides are listening. */
   connect(metadata = null) {
-    if (this.closed) return false;
-    return this.#send(MESSAGE_TYPES.HELLO, {
+    if (this.closed || this.handshakeSent) return false;
+    const sent = this.#send(MESSAGE_TYPES.HELLO, {
       playerId: this.playerId,
       metadata,
     });
+    if (sent) this.handshakeSent = true;
+    return sent;
   }
 
   #send(type, payload) {
@@ -324,6 +385,7 @@ export class MatchClientRuntime {
           this.connected = true;
           this.clientTick = message.payload.serverTick;
           this.serverOffsetMs = message.payload.serverTimeMs - this.clock();
+          for (const listener of [...this.connectionListeners]) listener(true);
           break;
         case MESSAGE_TYPES.SNAPSHOT:
           this.buffer.push(message.payload);
@@ -363,6 +425,13 @@ export class MatchClientRuntime {
     return this.#send(MESSAGE_TYPES.INPUT, normalized);
   }
 
+  readyForMatch() {
+    if (this.closed || this.readySent) return false;
+    const sent = this.#send(MESSAGE_TYPES.READY, { loaded: true });
+    if (sent) this.readySent = true;
+    return sent;
+  }
+
   update(nowMs) {
     if (!Number.isFinite(nowMs)) throw new TypeError('nowMs must be finite');
     this._lastUpdateNowMs = nowMs;
@@ -378,11 +447,18 @@ export class MatchClientRuntime {
     return () => this.eventListeners.delete(listener);
   }
 
+  onConnection(listener) {
+    this.connectionListeners.add(listener);
+    if (this.connected) queueMicrotask(() => listener(true));
+    return () => this.connectionListeners.delete(listener);
+  }
+
   close(reason = 'client_closed') {
     if (this.closed) return;
     this.#send(MESSAGE_TYPES.LEAVE, { reason });
     this.closed = true;
     this.connected = false;
+    for (const listener of [...this.connectionListeners]) listener(false);
     if (this.unsubscribeMessage) this.unsubscribeMessage();
     if (this.unsubscribeClose) this.unsubscribeClose();
     if (typeof this.transport.close === 'function') this.transport.close(reason);

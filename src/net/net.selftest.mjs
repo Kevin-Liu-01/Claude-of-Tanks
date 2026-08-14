@@ -358,8 +358,9 @@ assert.ok(Math.abs(Math.abs(halfway.yaw) - Math.PI) < 0.03,
 // Host/client modules share the same transport and enforce visibility.
 function createTestSimulation() {
   const entities = new Map();
-  return {
+  const simulation = {
     entities,
+    fireTicks: 0,
     onPeerJoin({ peerId, metadata }) {
       const team = metadata && metadata.team ? metadata.team :
         (peerId === 'p1' ? 'alpha' : 'bravo');
@@ -369,7 +370,10 @@ function createTestSimulation() {
     step({ dt, inputs }) {
       for (const [peerId, nextInput] of inputs) {
         const current = entities.get(peerId);
-        if (current && nextInput) current.state.pos.x += nextInput.throttle * 10 * dt;
+        if (current && nextInput) {
+          current.state.pos.x += nextInput.throttle * 10 * dt;
+          if (nextInput.fire) simulation.fireTicks++;
+        }
       }
     },
     snapshot({ tick, serverTimeMs, viewerId, ackInputSeq }) {
@@ -384,6 +388,7 @@ function createTestSimulation() {
       });
     },
   };
+  return simulation;
 }
 
 {
@@ -408,6 +413,8 @@ function createTestSimulation() {
   p1.connect();
   p2.connect();
   await Promise.resolve();
+  p1.readyForMatch();
+  p2.readyForMatch();
   p1.submitInput(input({ throttle: 1 }), 0);
   await Promise.resolve();
   assert.equal(hostRuntime.advance(50), 3, '50 ms advances exactly three 60 Hz ticks');
@@ -419,6 +426,11 @@ function createTestSimulation() {
   assert.deepEqual(p2Frame.entities.map((entry) => entry.id), ['p2']);
   assert.ok(p1Frame.entities[0].x > 0, 'authoritative host applies client input');
   assert.equal(p1Frame.ackInputSeq, 0, 'snapshot acknowledges consumed input sequence');
+  p1.submitInput(input({ fire: true }), hostRuntime.tick);
+  p1.submitInput(input({ fire: false }), hostRuntime.tick);
+  await Promise.resolve();
+  hostRuntime.advance(1000 / 60);
+  assert.equal(simulation.fireTicks, 1, 'a short fire edge survives latest-input replacement');
   hostRuntime.close();
 }
 
@@ -427,6 +439,7 @@ function createTestSimulation() {
   const simulation = createTestSimulation();
   const session = createLocalMatchSession({ playerId: 'solo', simulation });
   await Promise.resolve();
+  session.ready();
   const frame = await session.advance(50, input({ throttle: 0.5 }));
   assert.equal(session.host.stats.steps, 3);
   assert.equal(frame.entities[0].id, 'solo');
