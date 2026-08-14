@@ -2905,7 +2905,7 @@ function fv510PhotoBuild(P) {
       // They close the otherwise empty 0.29 m stand-off and remain well
       // above/inboard of the moving native course.
       P.add('hullDetail', box(0.30, 0.075, 0.14), s * 1.292, 1.76, z + 0.22);
-      P.add('hullDetail', box(0.30, 0.075, 0.14), s * 1.292, 1.10, z - 0.22);
+      P.add('hullDetail', box(0.30, 0.075, 0.14), s * 1.292, 1.42, z - 0.22);
     }
     // Armoured lower drops bridge the module seams and produce the toothed
     // lower edge without intruding into a wheel face or linked shoe.

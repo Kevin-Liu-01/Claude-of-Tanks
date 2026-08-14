@@ -118,7 +118,7 @@ re-freeze NEW hash, all in ONE commit.
 | challenger_3 | 564057a4 | RE-FROZEN 2026-08-12 (§5.136 first-party forward-profile + strict-track re-cert: connected brow/cheeks remain extended to the mantlet, all turret fittings seated through yaw, exact native band+shoes+sweep 0/0; fidelity 93.02 / minimum whole view 92.17, fresh 45-frame floor 9.0 / mean 9.07; prior 3e5a7797 retired) |
 | challenger1 | fa346ca4 | RE-FROZEN 2026-08-13 (§5.152 first-party in-place closure: complete hull/skirts/mudguards/native six-wheel course preserved; detached lower gun-cradle duplicate removed; connected shell/gun/basket/roof suite re-centered on the true hull ring with yaw-zero silhouette preserved; fresh 45-frame packet floor 9.0 / mean 9.04, parent 0/0/0, winding clean, exact track 0/0 and muzzle/rig/tests/build PASS; 4ecc29b4 and earlier freezes retired) |
 | challenger2 | 3b4bd5f0 | GRADUATED 2026-08-09; RE-FROZEN 2026-08-10 (§5.89 owner fused-block repair: material-fused casemate course removed from fixed hull and repartitioned into the articulated source tree; one low ring landing + one rotating turret; gate 90.1 x2 every component >=90; standard/parent/winding clean; fresh §B8 floor 9.0 / mean 9.06 x14, yaw/load paths 9.3; oracle f44e3b46 reproducible from pristine .bak; prior 63ee160 retired) |
-| fv510 | 313ab8ca | RE-FROZEN 2026-08-13 (§5.156 owner fidelity pass: first-party Warrior upper glacis now carries one continuous long rake; compact guarded IR searchlight and enlarged dual-channel RAVEN sight are broadly seated and turret-owned; existing hull lights, smoke, RARDEN, baskets, complete hull/WRAP screens and native six-wheel course preserved; 45 unique paired/yaw frames, assets/muzzle/tests/build PASS; prior 61023726 retired) |
+| fv510 | f912ef92 | RE-FROZEN 2026-08-14 (§5.189 non-subtractive carrier clearance: all six deep WRAP modules, chevrons, open rails, complete sponson, skirts, wheels and native course remain; only the buried lower transverse module carriers move upward inside the same closed armor panels; strict band/shoe front 0/0, rear 0/0, full sweep 0/0; fresh 45-frame yaw proof and regenerated targeted assets PASS; prior 313ab8ca retired) |
 | m26_pershing | 2f006738 | RE-RECORDED 2026-08-08: hash moved by LANDED 5f39989 (armorM4 gunBarrel shadow-proxy 3.96->3.44; m26/m45 inherit m4a3e8 proxies — patton.js bytes unchanged); double-confirmed by builder bisect + m45-grad critic; prior 65c564c0 bore+winding re-cert lineage (floors 9.1-9.4) carries |
 | t90m | a21894b8 | RE-FROZEN 2026-08-12 (§5.127 first-party native V-bow hull, welded Proryv shell, supported bustle/rack and exact six-wheel course; machine fidelity 90.96 / minimum view 90.02; 42-frame yaw/ownership PASS; incompatible legacy contour row retained honestly rather than chased) |
 | t90 | 34b9980 | RE-FROZEN 2026-08-13 (owner-directed hybrid now calls the exact live first-party Burlak 18-station core, shoulder foundation AND full five-station autoloader bustle, then carries its own enlarged seated Shtora eyes and K-5/smoke/NSVT/radio package; Burlak remains byte-stable at ec0dd544; hull, skirts and native six-wheel course untouched; fresh 45-frame packet, genuine yaw ownership, exact track 0/0 bands+shoes, muzzle/rig/winding/tests/build PASS; legacy unbustled T-90 mask is explicitly non-authoritative for the new silhouette; 8e196a78 and earlier freezes retired) |
@@ -6601,3 +6601,45 @@ vertices).
 **KEEP the complete Bradley body, skirts and course. Future audit repairs must
 distinguish native running-gear ownership from actual body penetration; no
 hull or skirt surface may be removed to manufacture clearance.**
+
+## 5.189 FV510 BURIED ARMOR-CARRIER CLEARANCE (2026-08-14, LIVE)
+
+This pass preserves the complete accepted Warrior exterior: long raked upper
+glacis, full sponson, six deep closed WRAP armor modules per side, diagonal
+chevrons, toothed lower edges, open rib screens, fender shoulders, mudguards,
+six-wheel suspension, terminal stations and linked course all remain. The
+strict audit localized its remaining contact to the inboard half of the six
+lower transverse shoes that carry those side modules back to the sponson.
+The global upper-body height correction had left those buried load paths
+crossing the supported return lane.
+
+Each lower carrier is lifted 0.32 m in builder space while remaining inside
+and in contact with the same closed armor module; the upper carrier and panel
+faces are unchanged. No hull, side armor, skirt, rail, wheel or track piece is
+deleted, shortened or hidden. The exact strict band and individual-shoe tools
+now report **front 0/0, rear 0/0 and complete sweep 0/0**.
+
+Fresh evidence contains 15 authored-model boards including the standardized
+elevated-left profile, 15 yaw0 frames and 15 yaw90 frames: **45 PNG / 45
+distinct hashes**. Normal and elevated profiles show every armor panel and
+chevron intact, six wheels readable, the loaded run resting beneath them and
+both end transitions continuous. The gun, complete turret, RAVEN sight,
+searchlight, smoke banks, basket, MG and antennas execute a genuine
+quarter-turn while the Warrior body, WRAP package and course remain fixed.
+The parent tool reports 0 stranded / 1 abutting / 0 dangling; the nominee is
+the surface-seated hull-owned driver glass already adjudicated in §5.156.
+
+Winding remains 0 reversed / 0 mixed. Its 621-pixel diagnostic deficit is the
+same intentionally open thin WRAP screen rib field retained in §5.156, not a
+disappearing body sheet; every shaded yaw frame preserves the backed armor
+modules behind the open rails. There is no sky-through hull wound or stranded
+turret-semantic fitting.
+
+All eight targeted presentation assets and the muzzle-bore receipt are
+current. Dual-ledger geometry is freeze **`f912ef92`**, instance freeze
+**`574db777`** and asset geometry **`9a70ec6a`** (70 rendered meshes / 71,529
+vertices).
+
+**KEEP the complete Warrior hull and full WRAP side package. Future clearance
+work may move buried load paths within their supported panels, but may not
+remove exterior armor, rails, skirts or mudguards.**

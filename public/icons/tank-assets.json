@@ -14596,7 +14596,7 @@
           }
         ]
       },
-      "geometryHash": "f15951c4",
+      "geometryHash": "9a70ec6a",
       "metadataHash": "5a38fa78",
       "muzzleBore": {
         "tagged": 2,
@@ -14619,8 +14619,8 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 13464,
-          "sha256": "2d9d3476ab9d87fa1f36c506fa5b10be2a5811121820c99471d5a686c6697e73"
+          "bytes": 13442,
+          "sha256": "bc0ff2250eac90a972413ebcdc8032cfb34704fa5a0cba65698ec1fbef9a1b1f"
         },
         "side": {
           "file": "fv510_side.webp",
