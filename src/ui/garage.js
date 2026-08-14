@@ -1834,16 +1834,20 @@ export function createGarage(opts) {
     const card = document.createElement('div');
     card.className = 'cot-card';
     card.dataset.specId = s.id; // switch-desync r1: stable hook for tools/tests
+    const displayName = s.label?.displayName || s.name;
+    const shortName = s.label?.shortName || displayName;
+    card.title = displayName;
+    card.setAttribute('aria-label', `${tierNumeral(s.id) || ''} ${displayName}`.trim());
     card.style.setProperty('--nation-flag', `url("${flagIconUrl(s.nation)}")`);
     // Stable pre-rendered 3/4 portrait generated from the final first-party
     // procedural build; no live renderer or model swap is needed here.
     card.innerHTML =
       `<span class="era">${s.era === 'ww2' ? 'WWII' : 'MODERN'}</span>` +
       `<span class="flag">${flagIconHTML(s.nation, 20)}<i>${NATION_LABEL[s.nation] || s.nation}</i></span>` +
-      `<img class="ti" data-cot-thumb="${s.id}" src="${getTankThumb(s.id)}" alt="">` +
+      `<img class="ti" data-cot-thumb="${s.id}" src="${getTankThumb(s.id)}" alt="${displayName}">` +
       `<div class="nm"><b class="tiern">${tierNumeral(s.id) || ''}</b><span class="nmt"></span></div>` +
       `<div class="cls">${s.class}</div>`;
-    card.querySelector('.nmt').textContent = s.name;
+    card.querySelector('.nmt').textContent = shortName;
     card.addEventListener('click', () => {
       emit('ui:click', {});
       api.setSelected(s.id);
@@ -1965,7 +1969,7 @@ export function createGarage(opts) {
       `<div class="sep"></div>` +
       `<div class="eqhead"><span>Equipment</span><i>${eqIds.length}/${EQUIP_SLOTS}</i></div>` +
       `<div class="eqrow">${slotBoxes}</div>`;
-    statsEl.querySelector('h3').textContent = spec.name;
+    statsEl.querySelector('h3').textContent = spec.label?.displayName || spec.name;
   }
 
   function applySelection(specId) {

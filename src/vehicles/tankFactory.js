@@ -12,6 +12,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { getSpec, TANK_SPECS, attachTrackShapes, finalizeFirstPartyRoster } from './specs.js';
 import { createTankMaterials, makeBurnUniforms, applyBurnHook, vehicleAmbientFloorHook } from './materials.js';
+import { normalizeTankAppearance } from './appearanceAudit.js';
 // DECORATION SYSTEM (2026-07): cosmetic stowage/fittings layer — attaches
 // under dedicated rig_decor_hull / rig_decor_turret groups at the end of
 // createTank (see the seam near the GLB-swap block). Skipped for
@@ -1038,9 +1039,11 @@ function buildRunningGear(P, cfg) {
     dark?.scale(1, 1, wheelZScale);
   }
   const made = [];
-  const mkInst = (geo, mat, list) => {
+  const mkInst = (geo, mat, list, appearanceRole, name) => {
     const im = new THREE.InstancedMesh(geo, mat, list.length);
     im.userData.runningGear = true;
+    if (appearanceRole) im.userData.appearanceRole = appearanceRole;
+    if (name) im.name = name;
     // PERF: wheels/rollers sit inside the hull + track-band ground shadow —
     // their own cast contribution is invisible, but costs a draw per cascade
     // per tank. The track band (tl/tr below) still casts the silhouette.
@@ -1064,7 +1067,7 @@ function buildRunningGear(P, cfg) {
     tireMat.customProgramCacheKey = () => 'veh-ambient-floor-v2';
     P.disposables.push(tireMat);
   }
-  if (tire) mkInst(tire, tireMat, entries);
+  if (tire) mkInst(tire, tireMat, entries, 'wheelTire', 'gearRoadWheelTires');
   let dishMat = style === 'rubber' || style === 'holes' || style === 'dished' ? mats.wheels : mats.detail;
   // Per-profile painted wheel tone.  Modern demonstrators often carry
   // deeply shadowed, scheme-painted dishes; using the fleet wheel material
@@ -1079,15 +1082,16 @@ function buildRunningGear(P, cfg) {
   }
   const proudList = entries.filter((e) => !e.rec);
   const recList = entries.filter((e) => e.rec);
-  if (proudList.length) mkInst(disc, dishMat, proudList);
+  if (proudList.length) mkInst(disc, dishMat, proudList, 'wheelDish', 'gearRoadWheelDiscs');
   // recessed interleave rows share the disc geometry but take the shadowed
   // wheel material (own InstancedMesh — one extra draw call on 2 tanks)
-  if (recList.length) mkInst(disc, mats.wheelsRecessed || dishMat, recList);
+  if (recList.length) mkInst(disc, mats.wheelsRecessed || dishMat, recList,
+    'wheelDish', 'gearRoadWheelDiscsRecessed');
   // dark inserts (stamped lightening holes on the Christie 'holes' style)
-  if (dark) mkInst(dark, mats.rubber, entries);
+  if (dark) mkInst(dark, mats.rubber, entries, 'wheelInset', 'gearRoadWheelInsets');
   if (rollerEntries.length) {
     const rg = mergeAll([cylX(rollerR, trackW * 0.55, Math.max(8, seg - 6)), cylX(rollerR * 0.4, trackW * 0.62, 8)]);
-    mkInst(rg, mats.detail, rollerEntries);
+    mkInst(rg, mats.detail, rollerEntries, 'wheelDish', 'gearReturnRollers');
   }
 
   // sprocket + idler as two-material spinner assemblies (they spin about X).
@@ -1129,6 +1133,8 @@ function buildRunningGear(P, cfg) {
       for (const [geo, mat] of [[gp.body, steelMat], [gp.dark, darkMat]]) {
         const m = new THREE.Mesh(geo, mat);
         m.userData.runningGear = true;
+        m.userData.appearanceRole = geo === gp.body ? 'wheelDish' : 'trackHardware';
+        m.name = geo === gp.body ? 'gearEndWheelBody' : 'gearEndWheelHardware';
         m.position.set(side * sideXc, end.y, end.z);
         // PERF: sprocket/idler are wrapped by the casting track band — no cast
         m.castShadow = false;
@@ -1239,10 +1245,12 @@ function buildRunningGear(P, cfg) {
   const tl = new THREE.Mesh(tgL, mats.trackL);
   tl.name = 'gearTrackBandL';
   tl.userData.runningGear = true;
+  tl.userData.appearanceRole = 'trackBand';
   tl.position.x = -xcLeft;
   const tr = new THREE.Mesh(tgR, mats.trackR);
   tr.name = 'gearTrackBandR';
   tr.userData.runningGear = true;
+  tr.userData.appearanceRole = 'trackBand';
   tr.position.x = xcRight;
   tl.castShadow = tl.receiveShadow = tr.castShadow = tr.receiveShadow = true;
   hullG.add(tl, tr);
@@ -1288,19 +1296,22 @@ function buildRunningGear(P, cfg) {
   // arch windows keep a >=45L gear floor in the ref where the fixed iron
   // read sub-30. Default byte-identical.
   const padMat=(mats.trackLink || mats.dark).clone();
-  padMat.color=new THREE.Color(cfg.padHex ?? 0x171614);
+  // One neutral working-steel tone across the fleet. Per-profile olive/tan
+  // overrides made a second apparent course under direct light.
+  padMat.color=new THREE.Color(0x30312f);
   padMat.roughness=0.97;
   padMat.metalness=0.08;
   // cfg.gearFloor opt-in (merkava r12 order 2): Material.clone() drops
   // onBeforeCompile, so the shoe clone silently lost the family ambient floor
   // and rendered ambient-black in skirt shade. Re-attach on request.
-  if (cfg.gearFloor) {
-    padMat.onBeforeCompile = vehicleAmbientFloorHook;
-    padMat.customProgramCacheKey = () => 'veh-ambient-floor-v2';
-  }
+  padMat.onBeforeCompile = vehicleAmbientFloorHook;
+  padMat.customProgramCacheKey = () => 'veh-ambient-floor-v2';
+  padMat.userData = { ...(padMat.userData || {}), appearanceRole: 'trackPad' };
+  padMat.name = 'cot:track-pad';
   P.disposables.push(padMat);
   const padIM = new THREE.InstancedMesh(integratedShoe,padMat,nLinks*2);
   padIM.name = 'gearTrackPads';
+  padIM.userData.appearanceRole = 'trackPad';
   const linkMeshes=[padIM];
   // The casting band alone casts the continuous shadow; the one detailed
   // instanced shoe follows its deformation and scroll state.
@@ -4315,10 +4326,13 @@ export function createTank(specId, engineCtx, opts = {}) {
     mesh.name = bucket;
     if (bucket === 'hullTrackGuardL' || bucket === 'hullTrackGuardR') {
       mesh.userData.trackGuard = true;
+      mesh.userData.appearanceRole = 'armorPaint';
     }
     if (bucket === 'hullRunningGearDark' || bucket === 'hullRunningGearDetail'
         || bucket === 'hullRunningGearTrack') {
       mesh.userData.runningGear = true;
+      mesh.userData.appearanceRole = bucket === 'hullRunningGearDetail'
+        ? 'wheelDish' : bucket === 'hullRunningGearTrack' ? 'trackSteel' : 'gunmetal';
     }
     // Track-containment law (BUILD-STANDARD SS-B4): tag track-family bucket
     // meshes so the audit can measure hand-rolled track geometry (userData
@@ -5225,6 +5239,12 @@ export function createTank(specId, engineCtx, opts = {}) {
   });
 
   dressTank();
+
+  // Family builders historically retinted shared/clone track materials after
+  // construction. Reassert only explicit working-gear roles after every
+  // authored addition; camouflage armor, skirts, guards and wheel dishes are
+  // deliberately outside this normalization.
+  normalizeTankAppearance(root);
 
   return visual;
 }

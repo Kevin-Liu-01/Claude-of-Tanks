@@ -3,6 +3,8 @@
 // Sources: docs/research/tank-roster.md (+ locked overrides in docs/ARCHITECTURE.md §3.3.1).
 // Units per ARCHITECTURE §1.2 — suffixed fields keep human units; consumers convert.
 
+import { tankLabelRecord } from './tankLabels.js';
+
 /** Locked roster ids in locked garage-carousel order (ARCHITECTURE §2.1). */
 // leo2a7 REMOVED from the roster BY OWNER 2026-08-06 ('remove the leopard
 // 2a7 and fully focus on the 2a7v') — its TANK_SPECS row STAYS as the
@@ -1737,6 +1739,9 @@ export function finalizeFirstPartyRoster() {
     if (!spec) continue;
     delete spec.community;
     if (FIRST_PARTY_DISPLAY_NAMES[id]) spec.name = FIRST_PARTY_DISPLAY_NAMES[id];
+    const label = tankLabelRecord(spec);
+    spec.name = label.displayName;
+    spec.label = label;
     spec.authorship = Object.freeze({
       geometry: 'first-party-procedural',
       runtimeExternalGeometry: false,

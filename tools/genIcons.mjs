@@ -9,7 +9,7 @@
 //   node tools/genIcons.mjs --out /tmp/icons --ids=m1a2 --allow-partial
 
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
@@ -40,15 +40,19 @@ function readManifest() {
   return JSON.parse(readFileSync(manifestPath, 'utf8'));
 }
 
-const startingManifest = readManifest();
+let startingManifest = readManifest();
 if (onlyTanks.length && !startingManifest && !allowPartial) {
   console.error('[tank-assets] Selective generation needs an existing complete manifest;');
   console.error('[tank-assets] run the full fleet once or pass --allow-partial for scratch output.');
   process.exit(1);
 }
 if (startingManifest && startingManifest.schemaVersion !== TANK_ASSET_SCHEMA_VERSION) {
-  console.error(`[tank-assets] Manifest schema ${startingManifest.schemaVersion} is incompatible with generator schema ${TANK_ASSET_SCHEMA_VERSION}; regenerate the full fleet.`);
-  process.exit(1);
+  if (onlyTanks.length) {
+    console.error(`[tank-assets] Manifest schema ${startingManifest.schemaVersion} is incompatible with generator schema ${TANK_ASSET_SCHEMA_VERSION}; regenerate the full fleet.`);
+    process.exit(1);
+  }
+  console.log(`[tank-assets] schema ${startingManifest.schemaVersion} -> ${TANK_ASSET_SCHEMA_VERSION}; regenerating the complete fleet`);
+  startingManifest = null;
 }
 
 function assetRecord(file, view) {
@@ -64,13 +68,17 @@ function assetRecord(file, view) {
   };
 }
 
+const viteCacheDir = resolve('/tmp', `cot-icons-vite-${process.pid}`);
 const server = await createServer({
-  root: process.cwd(),
+  root: process.cwd(), configFile: false, cacheDir: viteCacheDir,
   logLevel: 'error',
-  server: { port: 5980, strictPort: false, hmr: false, watch: null },
+  optimizeDeps: { noDiscovery: true },
+  server: { host: '127.0.0.1', port: 7400 + (process.pid % 200), strictPort: true, hmr: false, watch: null },
 });
 await server.listen();
-const url = `http://localhost:${server.config.server.port}/tools/icons-page.html`;
+const address = server.httpServer.address();
+const port = typeof address === 'object' && address ? address.port : server.config.server.port;
+const url = `http://127.0.0.1:${port}/tools/icons-page.html`;
 console.log(`[tank-assets] studio ${url}`);
 
 const browser = await puppeteer.launch({
@@ -147,6 +155,7 @@ try {
   }
   await browser.close();
   await server.close();
+  rmSync(viteCacheDir, { recursive: true, force: true });
 }
 
 process.exit(failed ? 1 : 0);

@@ -7,6 +7,7 @@
 // No top-level side effects — canvases are created inside createTankMaterials.
 
 import * as THREE from 'three';
+import { tagVehicleMaterial } from './appearanceAudit.js';
 // MOBILE r1: central texture-resolution lever (quality.js). Every canvas bake
 // below allocates through texSize(): desktop tiers get the authored size
 // unchanged; the mobile tier halves it and clamps to the device texture cap.
@@ -5479,7 +5480,7 @@ export function createTankMaterials(spec, engineCtx, camoSeed, quality = 'high')
   // camo_spotting r3: lifted off near-black so lighting models tire rings
   // instead of silhouetting them (Tiger bullseye critique).
   const rubber = track(setup(new THREE.MeshStandardMaterial({
-    color: 0x2e2d2a, roughness: 0.96, metalness: 0.0,
+    color: 0x292a28, roughness: 0.96, metalness: 0.0,
   })));
   // Accessories must never read as raw #000 blockout: scheme-tinted fittings
   // and gunmetal hardware, both with roughness variation.
@@ -5550,7 +5551,7 @@ export function createTankMaterials(spec, engineCtx, camoSeed, quality = 'high')
   // under direct sun while the band texture stayed near-black — one run read
   // as two materials. Pads pulled down into the band's own tonal family.
   const trackLink = track(setup(new THREE.MeshStandardMaterial({
-    color: 0x3a3730, roughness: 0.95, metalness: 0.08, roughnessMap: roughTex,
+    color: 0x353634, roughness: 0.95, metalness: 0.08, roughnessMap: roughTex,
     envMapIntensity: 0.08,
   })));
   // Spare track links carried as stowage/armor: dark oily track steel — the
@@ -5560,7 +5561,7 @@ export function createTankMaterials(spec, engineCtx, camoSeed, quality = 'high')
     // r3: roughness floor raised / metalness cut — with the multiplying
     // roughnessMap the 0.85 base dipped to sparkling flecks on idler/sprocket
     // recess faces (the T-90M "navy sparkle" read under the closeup key).
-    color: 0x3c3a33, roughness: 0.94, metalness: 0.08, roughnessMap: roughTex,
+    color: 0x353634, roughness: 0.94, metalness: 0.08, roughnessMap: roughTex,
     envMapIntensity: 0.06,
   })));
   // Optics / headlight lenses: smooth glass with a dark blue-grey tint.
@@ -5690,6 +5691,27 @@ vec4 burntTri( sampler2D m, vec3 p, vec3 n, float sc ) {
     }
     return decalCache.get(key);
   };
+
+  // One semantic material vocabulary for builders, live audits and asset
+  // generation. Names are diagnostic only; roles are the stable contract.
+  // In particular, wheel paint and camouflage guards stay distinct from
+  // working track steel/rubber so palette cleanup cannot erase side armor.
+  tagVehicleMaterial(hull, 'armorPaint', 'armor-paint');
+  tagVehicleMaterial(wheels, 'wheelPaint', 'wheel-paint');
+  tagVehicleMaterial(wheelsRecessed, 'wheelPaint', 'wheel-paint-recessed');
+  tagVehicleMaterial(rubber, 'tireRubber', 'tire-rubber');
+  tagVehicleMaterial(detail, 'fittingPaint', 'fitting-paint');
+  tagVehicleMaterial(dark, 'gunmetal', 'gunmetal');
+  tagVehicleMaterial(shadow, 'gearShadow', 'gear-shadow');
+  tagVehicleMaterial(trackLink, 'trackSteel', 'track-steel');
+  tagVehicleMaterial(spareTrack, 'trackSteel', 'spare-track-steel');
+  tagVehicleMaterial(glass, 'opticGlass', 'optic-glass');
+  tagVehicleMaterial(barrel, 'armorPaint', 'barrel-paint');
+  tagVehicleMaterial(canvasCloth, 'canvas', 'canvas');
+  tagVehicleMaterial(wood, 'wood', 'wood');
+  tagVehicleMaterial(burnt, 'burnt', 'burnt');
+  tagVehicleMaterial(trackL, 'trackBand', 'track-band-left');
+  tagVehicleMaterial(trackR, 'trackBand', 'track-band-right');
 
   return {
     hull, wheels, wheelsRecessed, rubber, detail, dark, shadow, trackLink, spareTrack, glass, barrel,

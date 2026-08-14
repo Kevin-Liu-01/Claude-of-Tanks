@@ -4,8 +4,9 @@
 
 import { flagIconCode } from '../ui/flagCodes.js';
 import { tankTier, tierNumeral } from './tier.js';
+import { tankLabelRecord } from './tankLabels.js';
 
-export const TANK_ASSET_SCHEMA_VERSION = 1;
+export const TANK_ASSET_SCHEMA_VERSION = 2;
 
 export const TANK_ASSET_VIEWS = Object.freeze({
   angle: Object.freeze({ suffix: 'angle', ext: 'webp', width: 512, height: 512, role: 'garage hero' }),
@@ -61,9 +62,11 @@ function boxMetadata(box, key) {
  * the generated manifest stale even when the visible mesh did not change. */
 export function tankAssetMetadata(spec) {
   const armor = spec.armor || {};
+  const label = tankLabelRecord(spec);
   return {
     id: spec.id,
-    name: spec.name,
+    name: label.displayName,
+    label,
     nation: spec.nation,
     countryCode: flagIconCode(spec.nation),
     era: spec.era,

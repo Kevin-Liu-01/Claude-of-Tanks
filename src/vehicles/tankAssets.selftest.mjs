@@ -7,6 +7,8 @@ import {
 
 assert.equal(Object.keys(TANK_ASSET_VIEWS).length, 8, 'release contract includes eight views/diagrams');
 
+const displayNames = new Set();
+
 for (const id of ALL_TANK_IDS) {
   const spec = getSpec(id);
   assert.equal(spec.community, undefined, `${id}: obsolete community/source credit leaked into selectable spec`);
@@ -19,6 +21,12 @@ for (const id of ALL_TANK_IDS) {
   assert(Number.isInteger(metadata.tier) && metadata.tier >= 1 && metadata.tier <= 10, `${id}: tier`);
   assert(metadata.tierNumeral, `${id}: Roman tier`);
   assert(metadata.countryCode, `${id}: flag country code`);
+  assert.equal(metadata.name, metadata.label.displayName, `${id}: canonical display label`);
+  assert(metadata.label.shortName && metadata.label.shortName.length <= 28, `${id}: compact card label`);
+  assert.equal(metadata.label.id, id, `${id}: stable id label key`);
+  assert(!/\bMk\./.test(metadata.name), `${id}: consistent Mk typography`);
+  assert(!displayNames.has(metadata.name), `${id}: unique display label (${metadata.name})`);
+  displayNames.add(metadata.name);
   assert(metadata.gun.caliberMm > 0, `${id}: gun caliber`);
   assert(metadata.gun.shells.length > 0, `${id}: penetration data`);
   assert(metadata.armor.plates.length > 0, `${id}: armor hit areas`);
@@ -31,7 +39,9 @@ for (const id of RETIRED_EXTERNAL_PLACEHOLDER_IDS) {
 }
 
 assert.equal(getSpec('m1a2').name, 'M1A2 Abrams', 'Tejas is the canonical M1A2 identity');
-assert.equal(getSpec('m1a2_legacy').name, 'M1A2 (Legacy)', 'former M1A2 retains the legacy identity');
+assert.equal(getSpec('m1a2_legacy').name, 'M1A2 Abrams (Legacy)', 'former M1A2 retains the legacy identity');
+assert.equal(getSpec('m1a1ha').name, 'M1A1 Abrams HA', 'Abrams family naming is consistent');
+assert.equal(getSpec('m1a2_sepv3').name, 'M1A2 Abrams SEPv3', 'SEPv3 carries the family name');
 assert.equal(ALL_TANK_IDS.includes('m1a2_tejas'), false, 'retired Tejas alias is not selectable');
 const canonicalM1A2 = createTank('m1a2', null, { proceduralOnly: true, geometryReceipt: true });
 const legacyM1A2 = createTank('m1a2_legacy', null, { proceduralOnly: true, geometryReceipt: true });

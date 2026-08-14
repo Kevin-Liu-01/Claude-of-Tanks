@@ -3,7 +3,7 @@
 // muzzle-bore marker for every selected vehicle.
 
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
@@ -74,9 +74,11 @@ if (manifest && JSON.stringify(manifest.requiredViews) !== JSON.stringify(Object
   failures.push('manifest required-view contract is stale');
 }
 
+const viteCacheDir = resolve('/tmp', `cot-assets-check-vite-${process.pid}`);
 const server = await createServer({
-  root: process.cwd(), logLevel: 'error',
-  server: { port: 5981, strictPort: false, hmr: false, watch: null },
+  root: process.cwd(), configFile: false, cacheDir: viteCacheDir, logLevel: 'error',
+  optimizeDeps: { noDiscovery: true },
+  server: { host: '127.0.0.1', port: 7600 + (process.pid % 200), strictPort: true, hmr: false, watch: null },
 });
 await server.listen();
 const browser = await puppeteer.launch({
@@ -93,7 +95,9 @@ page.on('console', (message) => {
 });
 
 try {
-  const url = `http://localhost:${server.config.server.port}/tools/icons-page.html`;
+  const address = server.httpServer.address();
+  const port = typeof address === 'object' && address ? address.port : server.config.server.port;
+  const url = `http://127.0.0.1:${port}/tools/icons-page.html`;
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
   await page.waitForFunction('window.__ICONS_READY === true', { timeout: 60000 });
   await page.evaluate((ids) => window.__WARM(ids), onlyTanks);
@@ -137,6 +141,11 @@ try {
     if (!live.gun || !(live.gun.caliberMm > 0) || !live.gun.shells.length) failures.push(`${id}: incomplete gun/penetration metadata`);
     if (!live.armor || !live.armor.plates.length) failures.push(`${id}: no armor hit areas`);
     if (!live.armor || !live.armor.modules.length) failures.push(`${id}: no module volumes`);
+    const appearanceIssues = live.appearance?.issues || [];
+    if (appearanceIssues.length) {
+      failures.push(`${id}: appearance palette issues (${appearanceIssues.slice(0, 4)
+        .map((issue) => `${issue.code}:${issue.object}:${issue.color?.hex || 'n/a'}`).join(', ')})`);
+    }
     const bore = live.muzzleBore || {};
     if (!skipBore && (bore.tagged !== 1 || bore.rims !== 1 || bore.discs !== 1)) {
       failures.push(`${id}: cannon bore must have one visible tagged rim/disc pair (${JSON.stringify(bore)})`);
@@ -171,6 +180,7 @@ try {
 } finally {
   await browser.close();
   await server.close();
+  rmSync(viteCacheDir, { recursive: true, force: true });
 }
 
 for (const error of pageErrors) failures.push(`page: ${error}`);
