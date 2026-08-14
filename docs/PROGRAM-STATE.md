@@ -5578,3 +5578,31 @@ Leopard 2 Revolution assets are regenerated for deterministic geometry freeze
 
 **KEEP `bd9bd452`. The buried fore-core is internal support only; future
 turret work must not restore an outboard flat shelf in this station.**
+
+## 5.161 ABRAMS SECOND STUDIO CHEEK-OVERLAY DELETION (2026-08-13, LIVE)
+
+The owner's second `m1a2_tejas` studio packet selects the three exposed planes
+of the remaining inboard half of the legacy vehicle-left cheek overlay:
+local x=-1.101..-0.699, y=0.00..0.53 and z=0.90..1.906. The raked face,
+vertical side and roof selections all resolve to one closed procedural wedge,
+immediately inboard of the outboard overlay removed in §5.157.
+
+The complete owning wedge is removed at the builder level rather than erasing
+individual merged-mesh triangles. Its small seam-toe carrier is removed with
+it because that carrier had no independent armour or equipment purpose once
+both overlay halves were gone. The original swept Abrams turret cheek beneath
+the overlays remains a closed solid and now owns the full uninterrupted
+vehicle-left silhouette.
+
+First-party studio inspection covers elevated-left and top-biased owner views
+at turret yaw 0 and 90 degrees. The repaired cheek stays closed, the gun and
+complete turret equipment rotate coherently, and no sky hole, open sheet,
+stranded face, hull change or track regression appears. All eight assets are
+regenerated for the six first-party variants sharing this builder (`m1a1`,
+`m1a1ha`, `m1a2_tejas`, `m1a2_tusk`, `m1a2_sepv2`, `m1a2_sepv3`). Targeted
+asset, muzzle-bore and linked-track gates pass. The new `m1a2_tejas`
+deterministic geometry freeze is **`8b4fdf8a`**.
+
+**KEEP `8b4fdf8a`. The selected legacy overlay is fully absent; future Abrams
+cheek work must reshape the surviving primary loft rather than reintroducing
+separate stair or shelf wedges.**

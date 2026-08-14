@@ -1839,66 +1839,13 @@ function tejasRoofKit(P, t, station = 'crows') {
   P.add('turretDark', box(0.23, 0.05, 0.14), -1.555, 0.615, 0.13);
   P.add('turret', box(0.13, 0.20, 0.16), 1.595, 0.71, 0.13);
   P.add('turret', box(0.06, 0.60, 0.16), 1.645, 0.33, 0.13);
-  // LEFT cheek RAKED BULGE (§B1.1 owner directive 2026-08-06: "left cheek of
-  // all abrams have weird rectangles instead of the correct slopes"). The
-  // r3 stair prisms + vertical chord plate quantized the oracle's swept
-  // left-cheek plan line (2.05/1.99/1.90 world at x -1.0..-1.6, shelf
-  // 2.15/2.233 inboard) as five VERTICAL rectangles — the exact failing
-  // read the owner named. Replaced by raked wedges lying on the chord:
-  // - 4.8 cm vertical TOE at the chord line (m1a2 §B1 chin-band precedent:
-  //   the plan carrier needs a solid face at the line — a knife edge AA'd
-  //   the -0.809..-1.5 plan columns one pixel short of the frozen reads);
-  //   chin edge ON the certified chord (-0.699, 2.245w) -> (-1.601, 1.894w)
-  //   so every plan bin's max lands at its inner edge exactly where the old
-  //   plate/stair put it;
-  // - chin y at the old content bottoms (shelf zone 1.60w inboard, stair
-  //   zone 1.45w out to x -1.00 under it), so every side-column BOTTOM in
-  //   z 0.55..2.245 and every front-column bottom is byte-identical (the
-  //   wedge SOLID still spans back to the old rear planes);
-  // - the face rises at the family cheek rake (dz/dy 0.695 = 34.8°, the
-  //   §B1 print value) and buries into the swept cheek plane above — the
-  //   read is one raked plane with a welded appliqué toe, tops owned by
-  //   the certified 2.16-2.19 roofline columns as before. The two zone
-  //   faces ride parallel raked planes 0.10 apart (weld seam at -1.077).
-  {
-    // chord + 0.011: the retired r3 plate was 22 mm thick CENTERED on the
-    // chord — the certified plan line is its FRONT face (chord + half
-    // thickness); faces on the bare chord AA'd cols -1.246/-1.466 one
-    // pixel short (A/B curve diff, this round).
-    const chord = (x) => 2.245 - 0.390 * (-0.699 - x) - 0.35 + 0.011;  // turret-local z
-    const RK = 0.695;                                          // §B1 family rake
-    // Chin-line law (A/B col36 decode): content BELOW the plate's 1.57w
-    // bottom must stay clear of the z 2.104w column boundary — the ref's
-    // own chamfer line (side bots 1.536/1.563 at z 2.15/2.26) keeps the
-    // deep 1.45w chin OUTBOARD, where the chord has fallen below 2.099w.
-    // So: inboard wedge chins at 1.57w (the certified plate bottom) out to
-    // x -1.101 (chord 2.099), the deep 1.45w chin wedge runs outboard of
-    // it, and a 12 cm toe lip at the OLD stair-bin1 front (2.05w, inside
-    // its certified column) carries the 1.45w front-view bottoms across
-    // the seam span -1.0..-1.101.
-    // Owner studio deletion 2026-08-13: the outboard stair-zone wedge
-    // (-1.601..-1.101) was selected on its raked face, side face and roof
-    // face.  Remove that complete authored overlay (toe + upper wedge)
-    // instead of deleting individual triangles and leaving an open sheet.
-    // The primary Abrams cheek loft underneath remains closed and restores
-    // the continuous swept cheek silhouette.  Retain only the inboard
-    // shelf/plate transition that is buried into the mantlet shoulder.
-    for (const [xL, xR, yc, yt, zRear] of [
-      [-1.101, -0.699, 0.00, 0.53, 0.90],
-    ]) {
-      const y0 = yc + 0.048, rise = yt - y0;
-      P.add('turret', slab(
-        [xL, yc, chord(xL)], [xR, yc, chord(xR)], [xR, yc, zRear], [xL, yc, zRear],
-        [xL, y0, chord(xL)], [xR, y0, chord(xR)], [xR, y0, zRear], [xL, y0, zRear]));
-      P.add('turret', slab(
-        [xL, y0, chord(xL)], [xR, y0, chord(xR)], [xR, y0, zRear], [xL, y0, zRear],
-        [xL, yt, chord(xL) - rise * RK], [xR, yt, chord(xR) - rise * RK],
-        [xR, yt, zRear], [xL, yt, zRear]));
-    }
-    P.add('turret', slab(                    // seam toe lip (old bin-1 front)
-      [-1.101, -0.12, 1.70], [-1.000, -0.12, 1.70], [-1.000, -0.12, 0.20], [-1.101, -0.12, 0.20],
-      [-1.101, 0.00, 1.70], [-1.000, 0.00, 1.70], [-1.000, 0.00, 0.20], [-1.101, 0.00, 0.20]));
-  }
+  // Owner studio deletion 2026-08-13: both halves of the legacy LEFT
+  // cheek raked-bulge overlay were selected independently.  The outboard
+  // stair-zone wedge was removed first; the remaining inboard transition
+  // (x -1.101..-0.699) was then selected on its raked, side and roof faces.
+  // Remove the complete closed overlay and its now-orphaned seam toe at the
+  // builder level.  The primary swept Abrams cheek loft underneath is a
+  // closed solid and supplies the intended uninterrupted cheek silhouette.
   // RIGHT cheek fill x 1.35..1.45 (ref plan 1.684 at x 1.385 sits proud of
   // the pulled-back right sweep).
   P.add('turret', box(0.09, 0.55, 0.16), 1.485, 0.20, 1.24);
