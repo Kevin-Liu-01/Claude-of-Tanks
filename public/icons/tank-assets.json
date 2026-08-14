@@ -21807,7 +21807,7 @@
           }
         ]
       },
-      "geometryHash": "ee549a37",
+      "geometryHash": "8128b05a",
       "metadataHash": "1d8c1437",
       "muzzleBore": {
         "tagged": 2,
@@ -21822,8 +21822,8 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 13636,
-          "sha256": "3caaee181936eaaff835d507160a41b913f1d5992039a28c6a064c8b8297723f"
+          "bytes": 13622,
+          "sha256": "7cc94aadba237085b7371ccc90220a3ec6fcf367530eeb76e2df5f49b4a8824a"
         },
         "top": {
           "file": "jagdtiger_top.webp",
@@ -21838,8 +21838,8 @@
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 7240,
-          "sha256": "bbfe310f96307d0d96968b92814bc4c7dc3608d50e00125fbb8cac81664a5d83"
+          "bytes": 7232,
+          "sha256": "d13098992fb8a47afc3b2f052f3e05b408211b80da2d8bed90f43c99e6826f06"
         },
         "topSilhouette": {
           "file": "jagdtiger_top_silhouette.png",
@@ -21862,24 +21862,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 59337,
-          "sha256": "3d764d72b7c9ae6ca27ef8cb4034d954437455373fd55a2c32fa81822b784385"
+          "bytes": 59234,
+          "sha256": "6e121d215011ee3969bba0278a6b6c15404227f619af06a67de4272b3f2a02ef"
         },
         "armorSide": {
           "file": "jagdtiger_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 60045,
-          "sha256": "e3b19d4009db659e30b1f1dc620cf5af7981de97afc0ca8f76fe32f3a6e82274"
+          "bytes": 59907,
+          "sha256": "368975e1d91027d150e3ed226c71a814cd0038f53478014364d292cb0af201d0"
         },
         "modulesSide": {
           "file": "jagdtiger_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 56824,
-          "sha256": "ab29f9a35d23878eb910d4f0414831b4d5062018f5c2da3cca3b1a3fa8f47b88"
+          "bytes": 56855,
+          "sha256": "cec6f1207b4fbd98dca56bb5b21c35ee2300d423273fb71683395ce08d2bb0c1"
         }
       }
     },
