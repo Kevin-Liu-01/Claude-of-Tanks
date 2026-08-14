@@ -6471,3 +6471,51 @@ and asset geometry **`c45c50e0`** (51 rendered meshes / 104,019 vertices).
 **KEEP the complete Ariete hull, skirt/mudguard envelope and all seven native
 wheel stations. Future clearance work must remain a course rewrap, supported
 fitting reseat or truthful running-gear classification.**
+
+## 5.186 K2 NON-SUBTRACTIVE NATIVE-COURSE CLOSEOUT (2026-08-14, LIVE)
+
+This pass preserves the complete graduated first-party K2 Black Panther:
+closed lower hull, upper/lower bow, full-width sponson roof, every sawtooth
+side-skirt and mudguard, six road-wheel stations, elevated front idler, raised
+rear final drive, return rollers, one linked-shoe course, long turret, gun and
+all supported roof/bustle equipment. No exterior armour, skirt, guard, wheel
+or track component is deleted, hidden, scaled or moved.
+
+The original strict report was dominated by a mechanical-ownership error.
+K2's nested idler/final-drive faces, concentric hubs, ISU knuckles and arms,
+and the dark wheel-bay backers were merged into ordinary hull buckets even
+though they are native running gear. Their geometry, transforms and materials
+are unchanged; only their explicit running-gear ownership is corrected. Real
+rubber flaps, fringes and guards remain ordinary audited hull candidates.
+
+After that split, the sole physical defect was the rear sponson modeled as a
+deep full-width solid through the raised return-shoe corridor. The complete
+center body remains at its original depth and the original full-width roof and
+outer upper edge remain closed and unchanged; only the outboard underside is
+lifted above the course. This is a supported sponson cap, not a hollow-hull or
+side-armour deletion.
+
+Fresh 15-view authored-model boards, the standardized elevated-left profile,
+15 yaw0 and 15 yaw90 frames were inspected (45 PNG / 45 distinct hashes).
+The full side-skirt envelope and rear silhouette remain complete. Six road
+wheels remain separately readable beneath the skirts, while the elevated
+idler and final drive support one continuous `\\______/` course. The turret,
+gun, optics, roof equipment and bustle quarter-turn as one package while the
+hull and running gear remain fixed.
+
+Exact strict band and individual-shoe sweeps are **front 0/0, rear 0/0 and
+complete sweep 0/0**. Turret parenting is **0 stranded / 0 abutting / 0
+dangling**. Winding is **0 reversed / 0 mixed**, with a clean 0-pixel
+yaw-stranded result; the 126-pixel (0.18%) front-right diagnostic deficit is
+below the flag threshold and produces no visible wound. No duplicate course,
+floater, missing hull face, sky-through opening or silhouette regression is
+visible. The previously accepted first-party visual basis remains floor 9.0 /
+mean 9.09.
+
+All eight presentation assets are current and the muzzle bore passes.
+Dual-ledger geometry is freeze **`260a8111`**, instance freeze **`3211203d`**
+and asset geometry **`8a171500`** (62 rendered meshes / 116,916 vertices).
+
+**KEEP the complete K2 hull, full sawtooth skirt/mudguard envelope and native
+six-wheel course. Future running-gear work must preserve the exterior body and
+distinguish truthful mechanical ownership from real physical contact.**

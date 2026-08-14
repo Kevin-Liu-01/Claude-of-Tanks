@@ -809,10 +809,10 @@ function buildK2(P) {
     torus } = KIT;
   const slab = orientedSlab;                                                   // §C.1 winding guard on every mirrored slab
   const { rng } = P;
-  // K2's end discs, flaps and skirt fringes all live in one track lane.
-  // Keeping left/right as separate meshes preserves that honest AABB for the
-  // containment audit; the old merged hullRubber bucket spanned the centre
-  // and falsely classified both lanes as one hull solid cutting the bands.
+  // K2's actual rubber flaps and skirt fringes stay ordinary hull-owned
+  // candidates for the strict containment audit.  Native end discs,
+  // suspension and wheel-bay backers use the explicit running-gear buckets
+  // below; do not hide the real guards behind a blanket runningGear tag.
   const hullRubberLane = (side, geo, x, y, z) => {
     const m = new THREE.Mesh(geo, P.mats.rubber);
     m.name = `k2_track_rubber_${side < 0 ? 'L' : 'R'}`;
@@ -843,17 +843,17 @@ function buildK2(P) {
   // nested visual discs restore the full idler/sprocket mass visible through
   // the band without moving that certified outer track envelope.
   for (const s of [-1, 1]) {
-    hullRubberLane(s, cylX(0.34, 0.19, P.q ? 22 : 14), s * 1.375, 0.72, 3.08);
-    P.add('hullDetail', cylX(0.23, 0.205, P.q ? 18 : 12), s * 1.375, 0.72, 3.08);
-    hullRubberLane(s, cylX(0.34, 0.19, P.q ? 22 : 14), s * 1.375, 1.10, -3.08);
-    P.add('hullDetail', cylX(0.23, 0.205, P.q ? 18 : 12), s * 1.375, 1.10, -3.08);
+    P.add('hullRunningGearDark', cylX(0.34, 0.19, P.q ? 22 : 14), s * 1.375, 0.72, 3.08);
+    P.add('hullRunningGearDetail', cylX(0.23, 0.205, P.q ? 18 : 12), s * 1.375, 0.72, 3.08);
+    P.add('hullRunningGearDark', cylX(0.34, 0.19, P.q ? 22 : 14), s * 1.375, 1.10, -3.08);
+    P.add('hullRunningGearDetail', cylX(0.23, 0.205, P.q ? 18 : 12), s * 1.375, 1.10, -3.08);
     // Visible ISU knuckles and canted arms sit in the open skirt cuts.  They
     // are nested inside the certified shoe lane, adding the source model's
     // suspension depth without widening the running-gear silhouette.
     for (const z of [2.48, 1.49, 0.50, -0.49, -1.48, -2.47]) {
-      P.add('hullDetail', cylX(0.105, 0.245, P.q ? 16 : 10), s * 1.39, 0.55, z);
-      P.add('hullDark', cylX(0.045, 0.258, P.q ? 14 : 8), s * 1.39, 0.55, z);
-      P.add('hullDetail', box(0.070, 0.075, 0.42), s * 1.46, 0.83, z + 0.16, s * 0.62, 0, 0);
+      P.add('hullRunningGearDetail', cylX(0.105, 0.245, P.q ? 16 : 10), s * 1.39, 0.55, z);
+      P.add('hullRunningGearDark', cylX(0.045, 0.258, P.q ? 14 : 8), s * 1.39, 0.55, z);
+      P.add('hullRunningGearDetail', box(0.070, 0.075, 0.42), s * 1.46, 0.83, z + 0.16, s * 0.62, 0, 0);
     }
   }
   // Near-black bay walls behind the wheel line (type10 §B8.1 device).  The
@@ -861,8 +861,8 @@ function buildK2(P) {
   // wall continued at ground level behind both end wheels and manufactured
   // the same two "hanging track" strips even after the real band was fixed.
   for (const s of [-1, 1]) {
-    P.add('hullShadow', box(0.02, 1.23, 2.70), s * 1.10, 0.69, 0.15);
-    const bayWall = (z0, b0, z1, b1) => P.add('hullShadow', slab(
+    P.add('hullRunningGearDark', box(0.02, 1.23, 2.70), s * 1.10, 0.69, 0.15);
+    const bayWall = (z0, b0, z1, b1) => P.add('hullRunningGearDark', slab(
       [s * 0.94, b0, z0], [s * 0.96, b0, z0], [s * 0.96, b1, z1], [s * 0.94, b1, z1],
       [s * 0.94, 1.305, z0], [s * 0.96, 1.305, z0], [s * 0.96, 1.305, z1], [s * 0.94, 1.305, z1]));
     bayWall(-1.20, 0.075, -2.70, 0.40);
@@ -909,7 +909,13 @@ function buildK2(P) {
       [-1.05, ba, za], [1.05, ba, za], [1.05, bb, zb], [-1.05, bb, zb],
       [-1.05, ta, za], [1.05, ta, za], [1.05, tb, zb], [-1.05, tb, zb]));
   }
-  P.add('hull', box(3.32, 0.50, 2.50), 0, 1.41, -2.25);                        // rear upper band, z -3.50..-1.00
+  // Rear sponson: retain the complete center hull and the original full-width
+  // roof plane, but keep the outboard underside above the raised return run.
+  // The former 0.50 m full-width solid occupied the native sprocket/shoe
+  // corridor; this closed cap construction preserves every exterior upper
+  // edge and the full side-skirt envelope without hollowing the hull.
+  P.add('hull', box(2.10, 0.50, 2.50), 0, 1.41, -2.25);                        // connected center body, z -3.50..-1.00
+  P.add('hull', box(3.32, 0.10, 2.50), 0, 1.61, -2.25);                        // full-width sponson roof above the native return
   P.add('hull', box(3.32, 0.40, 2.30), 0, 1.36, 0.15);                         // lower mid deck, z -1.00..1.30
   P.add('hull', slab(                                                          // raked stern face: lower edge rises into the rear plate
     [-1.66, 1.04, -3.50], [1.66, 1.04, -3.50], [1.66, 1.35, -3.74], [-1.66, 1.35, -3.74],
