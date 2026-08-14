@@ -104,7 +104,7 @@ re-freeze NEW hash, all in ONE commit.
 | m1a2_tusk | 978d507c | RE-FROZEN 2026-08-12 (§5.142 restored clean first-party urban-kit presentation, supported local ARAT brackets, closed rear service return and exact track corridor) |
 | m2a2_bradley | 90a5568c | GRADUATED 2026-08-08 (28th; dual gate: geometry 90.9 x2 every component >=90 landed 81bdad1 + visual floor 9.0 / mean 9.16 x14 views at freeze-verified bytes; oracle e699c868; dress-tier defect bank in the verdict: bow T-hooks, taillight fittings, TOW rear ports, lug stacks, ringed hubs) |
 | m45_patton | 53caa687 | GRADUATED 2026-08-08 (29th; gate 90.7 x5 total + sitting-2 visual floor 9.0 mean 9.13 x14; sitting-1 orders executed: loft.smooth byte-reproduced, ring cupola adjudicated ring-class at station with the measured Ø0.57/x-0.65 deviation compliant; ring-prominence silhouette-tax residual certified) |
-| leclerc | 5fa68984 | RE-FROZEN 2026-08-12 (§5.137 restored first-party front mudguards: paired raked steel caps, inboard/outboard hull knees and shallow rubber lips sit above/ahead of the live idler shoes; exact native band+shoes+sweep 0/0, fidelity 94.0 with every scored view/component >=90, fresh 45-frame receipt; prior 683be340 retired) |
+| leclerc | 467186cc | RE-FROZEN 2026-08-13 (§5.153 current first-party course re-cert: six road wheels, full-size elevated front idler, raised rear drive, five return rollers directly supporting the visible upper linked-shoe run, wheel-supported lower course and exact band+shoe+sweep 0/0; hull/skirts/mudguards preserved; all eight garage assets regenerated and live-current) |
 | amx30 | 89a4cdf0 | GRADUATED 2026-08-12 (§5.124 first-party low five-wheel AMX hull, compact cast turret, supported commander/optic/MG station and native exact 0/0 course; machine fidelity 91.81 / min view 90.01; fresh 42-frame yaw/ownership floor 9.0 / mean 9.16) |
 | amx30b2 | 34076800 | GRADUATED 2026-08-12 (§5.124 first-party B2 cast/rear-station and service package on the exact native five-wheel course; machine fidelity 91.51 / min view 90.14; fresh 42-frame yaw/ownership floor 9.0 / mean 9.12) |
 | amx40 | 3d312bde | RE-FROZEN 2026-08-12 (§5.135 fully first-party forward-section + owner-height re-cert: connected cheek/crown loft retained forward, complete turret section exactly 20% taller with smoke/MG re-seated; fidelity 92.94 / minimum whole view 91.90, strict native band+shoes+sweep 0/0, fresh 45-frame yaw/ownership floor 9.0 / mean 9.07; all source-baked playables retired) |
@@ -5306,3 +5306,31 @@ muzzle-bore probe passes.
 
 **KEEP / RE-FROZEN `fa346ca4`; retire `4ecc29b4` and all earlier Challenger 1
 freezes. Future repairs must preserve the complete lower vehicle.**
+
+## 5.153 LECLERC NATIVE-COURSE / GARAGE-ASSET RECONCILIATION (2026-08-13, LIVE)
+
+The owner-reported detached `\\======//` Leclerc course is closed in the
+current first-party builder. Read-only inspection of the live geometry shows
+six road wheels, a full-size elevated front idler, raised rear drive, five
+return rollers seated immediately beneath the visible upper linked-shoe run,
+and a wheel-supported lower course. `coveredTop` is false, so the upper shoes
+are present rather than hidden. The earlier hand-authored track-tone fillers
+are absent; one native articulated course owns both terminal transitions.
+
+No new geometry change is justified by the live pixels. The complete hull,
+side armor, skirts and restored raked mudguards remain untouched. Exact band,
+shoe and strict suspension-sweep contacts are front/rear **0/0**. Winding is
+0 reversed / 0 mixed with no mode-2 nominee. The final procedural packet at
+`/tmp/critic-leclerc-track-r2-baseline/leclerc` contains 15 paired, 15 yaw0
+and 15 yaw90 frames including the elevated-left profile; all 45 files are
+distinct and show the fixed hull/course under a genuine turret quarter-turn.
+
+The remaining live mismatch was presentation metadata: the eight garage,
+silhouette, armor, hit-zone and module assets still described an older track
+freeze. All eight are regenerated from the current procedural model. The
+asset checker now passes geometry, metadata, files and muzzle bore. Canonical
+procedural freeze **`467186cc`** reproduces at 47 meshes / 86,775 vertices;
+the asset-manifest fingerprint is **`f9914c87`**.
+
+**KEEP / RE-FROZEN `467186cc`. Future course changes must preserve the hull,
+skirts and mudguards and must not reintroduce static duplicate track fills.**
