@@ -8294,3 +8294,31 @@ freeze **`9d73c134`** and asset geometry **`0bdddd95`** (61 rendered meshes /
 **KEEP the centered ring seat and shortened supported Shtora pedestals. Future
 eye or ERA changes must preserve the clear optical lanes and one rotating
 assembly.**
+
+## 5.233 T-90A VLADIMIR RAISED-IDLER AND LARGE-BUSTLE REVISION (2026-08-14, LIVE)
+
+Vladimir retains its complete recovered hull, side skirts, fenders and armor.
+Only the authored running gear changes: six full-size road wheels use a tighter
+non-overlapping cadence, a distinct 0.28 m front idler occupies its own raised
+terminal bay, and the single integrated smart course follows a clean trapezoid
+around the unchanged rear final drive. The final track route clears the
+existing front mudguard without moving or deleting that bodywork.
+
+The turret now carries one much larger closed welded bustle. Its forward
+station buries through the cast rear shoulder and tapers through four supported
+lid courses to a framed service terminal. Unequal side bins, diagonal returns
+and a backed rear grid articulate the body while remaining part of
+`rig_turret`; yaw0/yaw90 evidence shows the complete bustle relocating with the
+gun, casting and roof equipment. The fixed hull-owned open fender/service frame
+remains supported and is not stranded turret mass.
+
+Machine gates pass at **90.4 minimum** with strict track clearance **0/0 +
+0/0**, contiguity **0**, one integrated smart course, a valid muzzle bore and
+runtime rig checks **10/10**. Winding is **0 reversed / 0 mixed**. All eight
+presentation assets are regenerated. Current dual-ledger geometry is freeze
+**`7141cfc8`**, instance freeze **`82fc6f8`** and asset geometry
+**`d5d1c997`** (42 rendered meshes / 73,860 vertices).
+
+**KEEP the complete bodywork, separated raised idler and connected tapered
+bustle. Future track work must fit beneath the mudguard rather than subtracting
+armor or skirts.**

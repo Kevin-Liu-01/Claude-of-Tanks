@@ -1075,20 +1075,18 @@ function buildT90AVladimirLegacy(P) {
   ruFlaps(P, { x: 1.50, w: 0.60, front: [1.02, 0.11], frontZ: 2.06 });
   buildRunningGear(P, {
     style: 'rubber', wheelR: 0.375, wheelW: 0.21, wheelY: 0.50, xc: 1.46, dishR: 0.84,
-    wheelZs: evenStations(6, 4.09, -0.825),
-    // rTAIL r13: idler RAISED to 0.95 + contact patch pinned (§B6 trapezoid):
-    // the ref front ramp is a 1.21-slope line from ground-end 1.29 to the
-    // wrap (workorder bots 0.242@1.448 / 0.564@1.77 / 0.752@1.878 /
-    // 0.914@1.985) — tangent from (1.29,0.05) to circle (1.62,0.95,r0.32)
-    // reproduces all four within 0.04. Rear: ground ends -2.91, slope 0.5
-    // to the sprocket (y 0.70 tangent fits exactly).
-    sprocket: { z: -3.30, y: 0.70, r: 0.29 }, idler: { z: 1.62, y: 0.95, r: 0.18 },
-    // The recovered front run leaves the ground at z≈1.15; the former
-    // 1.29 pin held the shoe floor flat through four source-rising slices.
-    // Track-only correction: retain the recovered terminal wheel but keep
-    // the loaded run beneath the complete front road-wheel envelope.
-    contactZF: 1.60, contactZR: -2.91,
-    rollers: [-2.3, -0.83, 0.6].map((z) => ({ z, y: 0.86, r: 0.086 })),
+    // Keep six full-size road wheels while opening a real terminal bay for
+    // the raised idler.  The former 4.09 m cadence pushed station six into
+    // the idler circle, so the two wheels read as one overlapping hub.
+    wheelZs: evenStations(6, 3.75, -0.845),
+    // The 280 mm idler is visibly larger and higher than the road-wheel
+    // centers, but its forward shoe arc stops behind the untouched rubber
+    // mudguard.  The original rear final-drive seat remains authoritative.
+    sprocket: { z: -3.30, y: 0.70, r: 0.29 }, idler: { z: 1.65, y: 0.82, r: 0.28 },
+    // Pin both ground departures so the linked course forms one continuous
+    // trapezoid rather than extending the loaded run through either wheel.
+    contactZF: 1.31, contactZR: -2.91,
+    rollers: [-2.35, -1.02, 0.32, 1.28].map((z) => ({ z, y: 0.86, r: 0.086 })),
     // rTAIL r13b: xc 1.46 / trackW 0.60 — the ref grounds its track band
     // out to x 1.76-1.79 (front ±1.728/1.77 cols read bot 0.011) while the
     // inner edge must stay at 1.16 (r12's ±1.13 floor law): 1.46±0.30.
@@ -1108,7 +1106,7 @@ function buildT90AVladimirLegacy(P) {
   // sponson, inside wheel z-band).
   // (r13e clip audit: hubs end x 1.15 — at 1.37 they voxel-clipped the
   // band wrapping the end wheels; the ±1.03..1.13 front cols stay covered)
-  for (const s of [-1, 1]) for (const wz of evenStations(6, 4.09, -0.825)) {
+  for (const s of [-1, 1]) for (const wz of evenStations(6, 3.75, -0.845)) {
     P.add('hullDark', cylX(0.13, 0.14, 10), s * 1.08, 0.50, wz);
   }
   // (r12 GEAR-FADE STRIPS deleted rTAIL r13b: the raised idler + pinned
@@ -5065,6 +5063,46 @@ function buildT90A(P) {
 
 function buildT90AVladimir(P) {
   buildT90AVladimirLegacy(P);
+  // Vladimir's original rear bins stopped immediately behind the cast
+  // crown and read as luggage rather than a turret bustle.  Add one closed,
+  // shallow welded body whose forward station is buried through the rear
+  // casting and whose tapered terminal remains well inside the hull tail.
+  // Lids, bins and the rear service grid articulate this load-bearing shell;
+  // they are not stand-alone walls and remain children of rig_turret.
+  P.add('turret', weldedStationLoft([
+    [-0.62, 0.02, 0.56, -1.25, 1.25, -1.05, 1.05, -1.17, 1.17],
+    [-1.10, 0.04, 0.60, -1.24, 1.24, -1.02, 1.02, -1.14, 1.14],
+    [-1.70, 0.05, 0.58, -1.05, 1.05, -0.88, 0.88, -0.96, 0.96],
+    [-2.30, 0.06, 0.52, -0.84, 0.84, -0.70, 0.70, -0.77, 0.77],
+    [-2.72, 0.02, 0.46, -0.66, 0.66, -0.54, 0.54, -0.61, 0.61],
+  ]));
+  for (const [z, w, d, y] of [
+    [-0.91, 1.84, 0.30, 0.62],
+    [-1.35, 1.70, 0.34, 0.64],
+    [-1.82, 1.46, 0.36, 0.62],
+    [-2.29, 1.18, 0.34, 0.56],
+  ]) {
+    P.add('turretDark', KIT.box(w, 0.018, d), 0, y, z);
+    P.add('turretDetail', KIT.box(w * 0.76, 0.014, 0.040), 0, y + 0.016, z + d * 0.38);
+  }
+  for (const s of [-1, 1]) {
+    for (const [x, z, d, yaw] of [
+      [1.11, -1.15, 0.38, 0.12],
+      [0.98, -1.62, 0.38, 0.18],
+      [0.82, -2.08, 0.34, 0.24],
+    ]) {
+      P.add('turret', KIT.box(0.20, 0.30, d), s * x, 0.34, z, 0, -s * yaw, 0);
+      P.add('turretDark', KIT.box(0.016, 0.23, d * 0.78), s * (x + 0.11), 0.34, z, 0, -s * yaw, 0);
+    }
+    P.add('turretDetail', KIT.box(0.035, 0.38, 0.035), s * 0.50, 0.30, -2.69);
+    P.add('turretDetail', KIT.box(0.035, 0.035, 0.64), s * 0.50, 0.28, -2.40);
+  }
+  for (const x of [-0.46, -0.23, 0, 0.23, 0.46]) {
+    P.add('turretDark', KIT.box(0.028, 0.27, 0.020), x, 0.28, -2.735);
+  }
+  for (const y of [0.18, 0.29, 0.40]) {
+    P.add('turretDetail', KIT.box(0.98, 0.022, 0.022), 0, y, -2.744);
+  }
   // Vladimir's recovered transom narrows to its own drum/rack stations.
   // The generic family stern face widened station 0 by 17.5% and covered
   // that identity, so the measured legacy transom remains authoritative.

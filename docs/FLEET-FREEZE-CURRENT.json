@@ -656,11 +656,11 @@
       "vertices": 102049
     },
     "t90a_vladimir": {
-      "freezeHash": "ec924390",
-      "instanceFreezeHash": "d7cf0831",
-      "assetGeometryHash": "b762a9a4",
+      "freezeHash": "7141cfc8",
+      "instanceFreezeHash": "82fc6f8",
+      "assetGeometryHash": "d5d1c997",
       "meshes": 42,
-      "vertices": 70716
+      "vertices": 73860
     },
     "t90m": {
       "freezeHash": "a8891ba3",
