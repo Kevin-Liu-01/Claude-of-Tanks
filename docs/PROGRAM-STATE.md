@@ -7607,3 +7607,41 @@ geometry **`65db5fa2`** (33 rendered meshes / 59,366 vertices).
 
 **KEEP the complete Object 279 elliptical hull and four-track construction.
 Future course work may not hollow the shell or delete any track structure.**
+
+## 5.213 IS-6B CLOSED TRACK-CORRIDOR CLOSEOUT (2026-08-14, LIVE)
+
+The IS-6B retains its complete first-party hull, onion turret, glacis, rear
+deck, full fender planes, outer skirt lips, mudguards, six-wheel suspension
+and single linked-shoe course. The accepted side silhouette and all exterior
+armor remain present. Native suspension recesses and arms now carry truthful
+running-gear ownership.
+
+Physical contacts were isolated to the concealed full-width sponson floor,
+wide lower glacis and low stern rake/mudflap seats. They are repaired with a
+**closed raised soffit**: the original solid centre belly and stepped tub stay
+intact, a connected centre bridge joins them to the roof, and the complete
+outer sponson and rear deck continue above the return run. The lower glacis
+and stern remain closed inter-track cores beneath their full upper armor.
+Both rear mudflaps remain visible and supported, reseated above the terminal
+shoes rather than deleted.
+
+Exact strict band and individual-shoe audits improve from 341 band / 625 shoe
+voxels to **front 0/0, rear 0/0 and complete sweep 0/0**. The final evidence
+packet contains 15 paired boards including the standardized elevated-left
+profile, 15 yaw0 and 15 yaw90 frames: **45 PNG / 45 distinct hashes**. It
+preserves the complete front/rear faces, skirt/fender silhouette and raised
+terminal course.
+
+The turret, mantlet, gun and roof equipment execute a genuine quarter-turn;
+the entire hull package remains fixed. Parent audit is **0 stranded / 0
+abutting / 0 dangling**. Two latent closed slabs were also rewound correctly:
+the mirrored deck-edge chamfer and lower glacis. Final winding is **0 reversed
+/ 0 mixed geometry with zero-pixel deficit**, and mode 2 is clean. The dark
+muzzle bore and all ten targeted runtime-rig checks pass.
+
+All eight targeted presentation assets are current. IS-6B dual-ledger
+geometry is freeze **`feb36830`**, instance freeze **`87d6edda`** and asset
+geometry **`28e2f770`** (35 rendered meshes / 51,174 vertices).
+
+**KEEP the complete IS-6B exterior, fenders, skirt lips and supported
+mudguards. Future course work may not subtract or open its hull.**
