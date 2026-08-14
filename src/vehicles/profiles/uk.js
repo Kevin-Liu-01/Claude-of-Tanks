@@ -3400,14 +3400,21 @@ const VICKERS_REAR3 = [   // ±0.55 tier (side silhouette line)
 
 function vickersMk1Build(P) {
   const { rng } = P;
+  // Keep the measured deck and full exterior sponson sides, but open the
+  // concealed underside over the native return run.  The center body stays
+  // closed inside x +/-0.90 and the original outer skin resumes above 1.14 m;
+  // no fender, mudguard, skirt, bow or stern surface is removed.
+  const trackCorridor = { x: 0.90, floor: 1.14, z0: -2.0, z1: 2.74 };
   // Station-slice prism law (russia r7c): every loft below is SEGMENTED at
   // ≤0.5 m pitch via extraZ knots so each 0.57 m station window contains
   // real end caps — a single full-length prism reads zero width edge-on.
   const seg5 = (a, b) => { const out = []; for (let z = a; z > b; z -= 0.45) out.push(Number(z.toFixed(2))); return out; };
   // ---- sponson band: full width over the tracks, floor above the wrap ----
   // widths: ref stations read ±1.5845 midships, ±1.5525 aft of −2.0.
-  loftBand(P, 'hull', 1.5845, 0.05, VICKERS_DECK, () => 1.05, 2.30, -0.77, seg5(2.3, -0.77));
-  loftBand(P, 'hull', 1.5845, 0.05, [[-0.77, 1.547], [-2.0, 1.547]], () => 1.05, -0.77, -2.0, seg5(-0.77, -2.0));
+  loftBandCorridor(P, 'hull', 1.5845, 0.05, VICKERS_DECK, () => 1.05,
+    2.30, -0.77, trackCorridor, seg5(2.3, -0.77));
+  loftBandCorridor(P, 'hull', 1.5845, 0.05, [[-0.77, 1.547], [-2.0, 1.547]], () => 1.05,
+    -0.77, -2.0, trackCorridor, seg5(-0.77, -2.0));
   // tail band floor steps to 1.36 over the raised sprocket wrap (top 1.335
   // — TRACK CONTAINMENT: the wrap arc stays clear of the sponson floor);
   // last 0.3 m tapers to ±1.50 (ref's ±1.55 plane ends −3.39; the fender
@@ -3423,8 +3430,8 @@ function vickersMk1Build(P) {
   // glacis band: full width to 3.00 (ref plan holds ±1.585 to ext 1.95).
   // Floor lifts to 1.23 past 2.72 where the raised idler wrap crowns at
   // 1.19 (containment) — the glacis IS a plate over the idler there.
-  loftBand(P, 'hull', 1.5845, 0.04, VICKERS_DECK,
-    (z) => (z > 2.72 ? 1.23 : 1.05), 3.00, 2.30, seg5(3.0, 2.3));
+  loftBandCorridor(P, 'hull', 1.5845, 0.04, VICKERS_DECK,
+    (z) => (z > 2.72 ? 1.23 : 1.05), 3.00, 2.30, trackCorridor, seg5(3.0, 2.3));
   // center nose beak (plan: |x|<0.55 ends 3.19) + shackle wing pads (plan:
   // |x| 0.56..0.80 lead the beak to 3.30 — the print's swept bow).
   P.add('hull', slab(

@@ -7110,3 +7110,46 @@ and all ten targeted runtime-rig checks pass. Dual-ledger geometry is freeze
 **KEEP the complete Chieftain Mk.10 hull, fenders, skirts and native course.
 Future clearance work must preserve the accepted exterior and use only
 concealed sponson shaping, physical fitting clearance or truthful ownership.**
+
+## 5.200 VICKERS MK.1 CLOSED-SPONSON / NATIVE-COURSE CLOSEOUT (2026-08-14, LIVE)
+
+This repair preserves the complete first-party Vickers Mk.1 exterior: the
+measured low hull and deck, full sponson side faces, bow and stern plates,
+fender tips, mudguards, six road-wheel stations, raised front idler, high rear
+drive sprocket and one linked-shoe course. No visible hull, side armor,
+fender, mudguard, wheel or track component is deleted or hidden.
+
+The sole defect was the concealed 1.05–1.12 m underside of the full-width
+sponson loft crossing the supported return run. The Vickers builder now uses
+the established UK closed-sponson construction only across that central
+course span: a complete inter-track body remains closed inside x +/-0.90,
+while the exact original roof and outer side surfaces resume above 1.14 m.
+The original glacis, tail band and both terminal assemblies remain intact.
+
+Exact strict band and individual-shoe audits now report **front 0/0, rear 0/0
+and complete sweep 0/0**, improved from 180 band voxels / 202 shoe voxels.
+Fresh evidence contains 15 paired boards including the standardized
+elevated-left profile, 15 yaw0 and 15 yaw90 frames: **45 PNG / 45 distinct
+hashes**. Side, front and elevated pixels retain a closed complete hull, all
+six separately readable road wheels, the loaded lower run and continuous
+raised terminal transitions.
+
+The complete turret, gun, optics, cupolas and stowage execute a genuine
+quarter-turn while the hull, deck, fenders and running gear remain fixed.
+The parent heuristic's single `hullCloth` nominee is the visibly seated
+left-fender camouflage roll; the winding heuristic's large fixed nominee is
+the legitimate closed hull/deck package. Yaw90 confirms neither has turret
+semantics or becomes stranded. There are **0 abutting / 0 dangling** parent
+findings and **0 reversed / 0 mixed / 0-pixel winding deficit**. No duplicate
+course, empty-air fitting, open sheet, sky hole or silhouette regression
+appears.
+
+All eight targeted presentation assets are current, the muzzle bore passes
+and all ten targeted runtime-rig checks pass. Dual-ledger geometry is freeze
+**`430bd6b9`**, instance freeze **`9afc8d83`** and asset geometry
+**`9ea36f65`** (42 rendered meshes / 56,795 vertices).
+
+**KEEP the complete Vickers Mk.1 hull, side armor, fenders, mudguards and
+native course. Future clearance work must remain non-subtractive and may only
+reshape concealed sponson undersides, reseat track-adjacent fittings or
+correct truthful running-gear ownership.**

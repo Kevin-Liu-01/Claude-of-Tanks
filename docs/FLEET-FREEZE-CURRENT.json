@@ -761,11 +761,11 @@
       "vertices": 80064
     },
     "vickers_mk1": {
-      "freezeHash": "87604b8c",
-      "instanceFreezeHash": "5e95387f",
-      "assetGeometryHash": "2146656d",
+      "freezeHash": "430bd6b9",
+      "instanceFreezeHash": "9afc8d83",
+      "assetGeometryHash": "9ea36f65",
       "meshes": 42,
-      "vertices": 55031
+      "vertices": 56795
     }
   }
 }
