@@ -6255,16 +6255,21 @@ function replaceT90MProryvHull(P) {
   // One native linked course around six large, separately readable road
   // wheels.  The end transitions are close-wrapped and the top run remains
   // physically below the raised sponson roofs.
-  const wheelZs = evenStations(6, 3.68, 0.515);
+  // Six tightly packed T-72-family road wheels occupy the loaded center
+  // run.  The former 3.68 m / +0.515 m cadence put wheel six only 95 mm
+  // behind the idler, visually merging the two into one terminal wheel.
+  // A shorter centered cadence opens distinct bays for both raised end
+  // wheels without changing the hull or skirt envelope.
+  const wheelZs = evenStations(6, 3.30, 0.15);
   const wheelY = 0.51;
   buildRunningGear(P, {
     style: 'rubber', wheelR: 0.425, wheelW: 0.22, wheelY, xc: 1.435,
     dishR: 0.86, wheelZs,
-    sprocket: { z: -1.95, y: 0.78, r: 0.28 },
-    idler: { z: 2.45, y: 0.75, r: 0.22 },
-    rollers: [-1.10, 0.30, 1.70].map((z) => ({ z, y: 0.83, r: 0.086 })),
-    trackW: 0.50, topY: 0.84, botY: 0.05, paintedEnds: false,
-    coveredTop: true, arms: false, contactZF: 2.30, contactZR: -1.35,
+    sprocket: { z: -2.20, y: 0.80, r: 0.29 },
+    idler: { z: 2.50, y: 0.62, r: 0.24 },
+    rollers: [-1.28, -0.30, 0.70, 1.60].map((z) => ({ z, y: 0.88, r: 0.086 })),
+    trackW: 0.50, topY: 0.86, botY: 0.05, paintedEnds: false,
+    coveredTop: true, arms: false, contactZF: 2.18, contactZR: -1.88,
     padCornerFloor: 0.012, padHugZ0: 2.0,
   });
   for (const s of [-1, 1]) {
@@ -6713,12 +6718,12 @@ function finishT90MProryvOwner2026(P) {
   // two yokes carry the cylindrical lamp, and a dark rim surrounds a glass
   // aperture. The assembly is turret-owned, faces +z and keeps a continuous
   // load path through yaw instead of hanging beside the armor.
-  P.add('turret', box(0.46, 0.22, 0.46), 0.98, 0.49, 0.70, -0.16, -0.22, 0);
-  P.add('turretDark', box(0.055, 0.34, 0.34), 0.78, 0.58, 0.76, -0.12, 0, -0.18);
-  P.add('turretDark', box(0.055, 0.34, 0.34), 1.18, 0.58, 0.70, -0.12, 0, 0.18);
-  P.add('turretDark', cylZ(0.245, 0.32, 20), 0.98, 0.61, 0.88, -0.06, 0, 0);
-  P.add('turretGlass', cylZ(0.205, 0.025, 20), 0.98, 0.61, 1.055, -0.06, 0, 0);
-  P.add('turretDetail', torus(0.238, 0.025, 20), 0.98, 0.61, 1.070);
+  P.add('turret', box(0.46, 0.22, 0.46), 0.98, 0.71, 0.70, -0.16, -0.22, 0);
+  P.add('turretDark', box(0.055, 0.34, 0.34), 0.78, 0.80, 0.76, -0.12, 0, -0.18);
+  P.add('turretDark', box(0.055, 0.34, 0.34), 1.18, 0.80, 0.70, -0.12, 0, 0.18);
+  P.add('turretDark', cylZ(0.245, 0.32, 20), 0.98, 0.83, 0.88, -0.06, 0, 0);
+  P.add('turretGlass', cylZ(0.205, 0.025, 20), 0.98, 0.83, 1.055, -0.06, 0, 0);
+  P.add('turretDetail', torus(0.238, 0.025, 20), 0.98, 0.83, 1.070);
 }
 
 // T-90M Proryv native reconstruction.  The complete low V-bow hull and native

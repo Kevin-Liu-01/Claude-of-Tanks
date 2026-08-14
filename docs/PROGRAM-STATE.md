@@ -8322,3 +8322,35 @@ presentation assets are regenerated. Current dual-ledger geometry is freeze
 **KEEP the complete bodywork, separated raised idler and connected tapered
 bustle. Future track work must fit beneath the mudguard rather than subtracting
 armor or skirts.**
+
+## 5.234 T-90M PRORYV TRACK-PROFILE AND SEARCHLIGHT REVISION (2026-08-14, LIVE)
+
+Proryv retains its complete accepted hull, glacis, side skirts, mudguards,
+armor and rear-service structure. Only the actual running gear changes: the
+six full-size road wheels now occupy a shorter centered loaded run, leaving a
+clear terminal bay ahead of wheel six and behind wheel one. A distinct raised
+front idler and raised rear final drive carry one continuous trapezoidal smart
+course; the upper return remains supported by four rollers and no second
+static track proxy is present. No bodywork was deleted, raised or cut to make
+the track fit.
+
+The blue searchlight is raised as one supported turret-owned assembly. Its
+broad armored shoe, unequal yokes, cylindrical lamp, dark rim and blue lens all
+move upward together, preserving the visible load path and optical aperture.
+Yaw0/yaw90 evidence confirms that the complete lamp relocates with the turret
+while the redesigned course, wheels, skirts and hull service equipment remain
+fixed.
+
+Strict exact track clearance is **front 0 / rear 0**, shoe clearance is **0 / 0**
+and the full sweep is **0 / 0**. The duplicate-course audit reports one
+integrated smart-shoe layer; the muzzle bore and runtime rig pass **10/10**.
+Face winding is **0 reversed / 0 mixed**. Its sole yaw-census candidate is the
+fixed rear canvas/fuel-drum package, which is visibly seated on the transom and
+correctly remains hull-owned. All eight presentation assets are regenerated.
+Current dual-ledger geometry is freeze **`c69eb7e0`**, instance freeze
+**`dd8523cc`** and asset geometry **`936bd268`** (54 rendered meshes / 125,402
+vertices).
+
+**KEEP the complete Proryv bodywork, separated terminal wheel bays and raised
+supported searchlight. Future running-gear work may alter only the wheels and
+smart course, never hull armor or skirts.**
