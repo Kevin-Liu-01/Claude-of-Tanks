@@ -130,6 +130,21 @@ function skirtArmorBox(P, bucket, side, carrierX, thickness, height, depth, y, z
   return inner + thickness;
 }
 
+// Upper-glacis armor uses the hull's own deck polyline as its carrier.  The
+// four back corners are sampled from that surface, then surfaceNormalPatch
+// grows the cassette along the real normal.  This keeps the new bow arrays
+// flush on both the shallow Tejas-family glacis and the steeper M1A2 bow;
+// horizontal boxes would bridge air at their forward edges.
+function glacisArmorPatch(P, bucket, side, deck, x0, x1, zRear, zFront,
+  thickness = 0.080, baseOffset = ERA_CONTACT_OFFSET) {
+  const p00 = [x0, lineAt(deck, zFront), zFront];
+  const p10 = [x1, lineAt(deck, zFront), zFront];
+  const p11 = [x1, lineAt(deck, zRear), zRear];
+  const p01 = [x0, lineAt(deck, zRear), zRear];
+  surfaceNormalPatch(P, bucket, side, p00, p10, p11, p01,
+    thickness, baseOffset, [0, 1, 0]);
+}
+
 // PANEL-PITCH (owner order 2026-08-08: "the left and right side panels on
 // the abrams turrets ... theyre not flush with the turret, which is at an
 // angle, theyre pointing straight up which is wrong"): the turret flank
@@ -1974,9 +1989,9 @@ function abramsArmorHardware(P, variant, t) {
   // separation; no black grid strips are used.
   if (!reactive && (variant === 'm1a1' || variant === 'm1a1ha')) {
     const heavy = variant === 'm1a1ha';
-    const skirtDepth = heavy ? 0.128 : 0.108;
-    const flankDepth = heavy ? 0.108 : 0.090;
-    const cheekDepth = heavy ? 0.118 : 0.098;
+    const skirtDepth = heavy ? 0.150 : 0.130;
+    const flankDepth = heavy ? 0.140 : 0.115;
+    const cheekDepth = heavy ? 0.155 : 0.130;
     for (const side of [-1, 1]) {
       // Two full, staggered side-skirt courses.  Their carriers overlap the
       // stock skirt, while the exposed shoulders and recessed caps make the
@@ -2033,6 +2048,26 @@ function abramsArmorHardware(P, variant, t) {
           cheekSideEraPatch(P, 'turretDetail', t, side,
             u0 + 0.025, u1 - 0.025, v0 + 0.035, v1 - 0.035,
             0.006, eraFaceBase(flankDepth));
+        }
+      }
+    }
+
+    // Twelve upper-glacis cassettes give the early Abrams packages a real
+    // frontal armor read.  Every back face is sampled from TEJAS_HULL.deck,
+    // so the modules follow the bow crown instead of hovering over it.  HA
+    // receives the heavier body; both variants use inset armor-tone caps and
+    // natural gaps rather than black outline strips.
+    const glacisDepth = heavy ? 0.105 : 0.090;
+    for (const side of [-1, 1]) {
+      for (let col = 0; col < 3; col++) {
+        for (let row = 0; row < 2; row++) {
+          const x0 = 0.14 + col * 0.45, x1 = x0 + 0.38;
+          const zRear = 2.46 + row * 0.47, zFront = zRear + 0.39;
+          glacisArmorPatch(P, 'hull', side, TEJAS_HULL.deck,
+            x0, x1, zRear, zFront, glacisDepth, ERA_CONTACT_OFFSET);
+          glacisArmorPatch(P, 'hullDetail', side, TEJAS_HULL.deck,
+            x0 + 0.035, x1 - 0.035, zRear + 0.035, zFront - 0.035,
+            0.007, eraFaceBase(glacisDepth));
         }
       }
     }
@@ -5808,15 +5843,22 @@ function buildM1a2(P, V) {
   // asymmetric cheek rake, and use shallow camouflaged shoulders with inset
   // faces instead of black outline bars.
   if (!sep && !sep3) {
+    const skirtDepth = 0.135;
+    const wallDepth = 0.140;
+    const cheekDepth = 0.135;
     for (const side of [-1, 1]) {
       // Dense two-course side-skirt protection.  The body is buried into
       // the existing 1.828 m skirt and its face remains the widest surface.
       for (let k = 0; k < 10; k++) {
         const z = 2.20 - k * 0.49;
-        P.add('hull', box(0.110, 0.34, 0.425), side * 1.773, 1.22, z);
-        P.add('hullDetail', box(0.012, 0.27, 0.345), side * 1.834, 1.22, z);
-        P.add('hull', box(0.100, 0.285, 0.425), side * 1.778, 0.88, z + 0.015);
-        P.add('hullDetail', box(0.011, 0.215, 0.345), side * 1.834, 0.88, z + 0.015);
+        const upperOuter = skirtArmorBox(P, 'hull', side, 1.702,
+          skirtDepth, 0.34, 0.425, 1.22, z);
+        skirtArmorBox(P, 'hullDetail', side, upperOuter - 0.003,
+          0.012, 0.27, 0.345, 1.22, z, 0);
+        const lowerOuter = skirtArmorBox(P, 'hull', side, 1.702,
+          skirtDepth - 0.012, 0.285, 0.425, 0.88, z + 0.015);
+        skirtArmorBox(P, 'hullDetail', side, lowerOuter - 0.003,
+          0.011, 0.215, 0.345, 0.88, z + 0.015, 0);
         P.add('hullDetail', cylX(0.015, 0.014, 8), side * 1.841,
           1.22, z - 0.13);
       }
@@ -5832,7 +5874,6 @@ function buildM1a2(P, V) {
       // Bustle-side modules are seated against each mark's real vertical
       // wall (the base M1A2 shell uses different left/right wall planes).
       const wallOuter = side < 0 ? 1.425 : 1.315;
-      const wallDepth = 0.110;
       const wallCenter = wallOuter - wallDepth / 2;
       for (let k = 0; k < 5; k++) {
         const z = -1.90 + k * 0.45;
@@ -5863,11 +5904,28 @@ function buildM1a2(P, V) {
           const p00 = cheekPoint(u0, v0), p10 = cheekPoint(u1, v0);
           const p11 = cheekPoint(u1, v1), p01 = cheekPoint(u0, v1);
           surfaceNormalPatch(P, 'turret', side, p00, p10, p11, p01,
-            0.098, ERA_CONTACT_OFFSET, [1, 0, 1]);
+            cheekDepth, ERA_CONTACT_OFFSET, [1, 0, 1]);
           surfaceNormalPatch(P, 'turretDetail', side,
             cheekPoint(u0 + 0.025, v0 + 0.035), cheekPoint(u1 - 0.025, v0 + 0.035),
             cheekPoint(u1 - 0.025, v1 - 0.035), cheekPoint(u0 + 0.025, v1 - 0.035),
-            0.007, eraFaceBase(0.098), [1, 0, 1]);
+            0.008, eraFaceBase(cheekDepth), [1, 0, 1]);
+        }
+      }
+    }
+
+    // The clean M1A2 also carries a flush two-row upper-glacis array.  Its
+    // carrier is M1A2_DECK, so the blocks inherit the classic sloped M1 bow
+    // instead of being authored as level roof tiles.
+    for (const side of [-1, 1]) {
+      for (let col = 0; col < 3; col++) {
+        for (let row = 0; row < 2; row++) {
+          const x0 = 0.14 + col * 0.45, x1 = x0 + 0.38;
+          const zRear = 2.42 + row * 0.48, zFront = zRear + 0.40;
+          glacisArmorPatch(P, 'hull', side, M1A2_DECK,
+            x0, x1, zRear, zFront, 0.105, ERA_CONTACT_OFFSET);
+          glacisArmorPatch(P, 'hullDetail', side, M1A2_DECK,
+            x0 + 0.035, x1 - 0.035, zRear + 0.035, zFront - 0.035,
+            0.008, eraFaceBase(0.105));
         }
       }
     }
