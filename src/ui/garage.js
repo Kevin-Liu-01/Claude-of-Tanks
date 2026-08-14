@@ -164,11 +164,15 @@ const GARAGE_CSS = `
   background:linear-gradient(180deg,rgba(11,15,20,.88),rgba(7,10,13,.92));
   border:1px solid rgba(146,164,180,.28);box-shadow:0 8px 30px rgba(0,0,0,.55);
   padding:16px 18px 14px;pointer-events:auto;}
-.cot-garage .stats h3{font-size:15px;font-weight:700;letter-spacing:.02em;color:#eef4f9;}
+.cot-garage .stats h3{font-size:15px;font-weight:700;letter-spacing:.02em;color:#eef4f9;
+  max-width:176px;min-height:18px;}
 .cot-garage .stats .sub{font-size:10px;font-weight:700;letter-spacing:.18em;color:#8a97a3;
-  text-transform:uppercase;margin:4px 0 12px;display:flex;align-items:center;gap:7px;}
+  text-transform:uppercase;margin:4px 0 12px;display:flex;align-items:center;gap:7px;
+  max-width:178px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .cot-garage .stats .sub .cot-flag{display:block;object-fit:cover;
   box-shadow:0 1px 3px rgba(0,0,0,.5);}
+.cot-garage .stats .stats-ti{position:absolute;right:9px;top:5px;width:112px;height:72px;
+  object-fit:contain;pointer-events:none;filter:drop-shadow(0 5px 7px rgba(0,0,0,.72));}
 .cot-garage .srow{margin-bottom:9px;}
 .cot-garage .srow .lr{display:flex;justify-content:space-between;font-size:11px;
   letter-spacing:.08em;color:#9fb0bf;text-transform:uppercase;margin-bottom:3px;}
@@ -214,23 +218,32 @@ const GARAGE_CSS = `
 .cot-car-arrow{width:34px;border:1px solid rgba(146,164,180,.3);cursor:pointer;
   display:flex;align-items:center;justify-content:center;
   background:rgba(11,15,20,.8);color:#9fb0bf;
-  transition:color .15s,border-color .15s,background .15s;outline:none;}
+  transition:color .15s,border-color .15s,background .15s,opacity .15s;outline:none;}
+.cot-car-arrow.is-unavailable{visibility:hidden;opacity:0;pointer-events:none;}
 .cot-car-arrow svg{display:block;}
 .cot-car-arrow:hover{color:#f0b04a;border-color:rgba(240,176,74,.6);
   background:rgba(20,17,11,.88);}
 .cot-car-arrow:active{color:#ffd27a;}
-/* r7-2 (round critique: "'Type 99A (ZTZ-9' truncates with no ellipsis at
-   the strip edge"): the overflow container hard-clipped the last partially
-   visible card mid-glyph. A right-edge fade mask dissolves the partial card
-   into the strip edge instead — the standard carousel "more content"
-   affordance — while each card's own label keeps its CSS ellipsis. */
+/* The strip advertises overflow only where more cards actually exist. Edge
+   classes are synchronized from scrollLeft/scrollWidth in JS, so a fleet that
+   fits gets no arrows or shadows, the first page has no false left shadow,
+   and the final page has no false right shadow. */
 .cot-cards{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;
   /* Horizontal scrolling computes overflow-y:auto too; reserve real headroom
      so the selected card's upward lift keeps its entire top border visible. */
   padding-top:8px;margin-top:-8px;
-  cursor:grab;touch-action:pan-x;
+  cursor:grab;touch-action:pan-x;}
+.cot-cards.has-more-left:not(.has-more-right){
+  -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 64px,#000 100%);
+  mask-image:linear-gradient(90deg,transparent 0,#000 64px,#000 100%);}
+.cot-cards.has-more-right:not(.has-more-left){
   -webkit-mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 64px),transparent 100%);
   mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 64px),transparent 100%);}
+.cot-cards.has-more-left.has-more-right{
+  -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 64px,
+    #000 calc(100% - 64px),transparent 100%);
+  mask-image:linear-gradient(90deg,transparent 0,#000 64px,
+    #000 calc(100% - 64px),transparent 100%);}
 .cot-cards::-webkit-scrollbar{display:none;}
 /* DRAG-SCROLL CAROUSEL: grabbing cursor while the strip is being panned */
 .cot-cards.dragging{cursor:grabbing;}
@@ -1356,10 +1369,10 @@ export function createGarage(opts) {
     `<div class="stats"></div>` +
     `<div class="cot-country-chips" role="group" aria-label="Filter vehicles by country"></div>` +
     `<div class="cot-carousel">` +
-    `<button class="cot-car-arrow prev" type="button" aria-label="Previous vehicle">` +
+    `<button class="cot-car-arrow prev is-unavailable" type="button" disabled aria-hidden="true" aria-label="Previous vehicle">` +
     `${uiIconSVG('chevronLeft', 15)}</button>` +
     `<div class="cot-cards"></div>` +
-    `<button class="cot-car-arrow next" type="button" aria-label="Next vehicle">` +
+    `<button class="cot-car-arrow next is-unavailable" type="button" disabled aria-hidden="true" aria-label="Next vehicle">` +
     `${uiIconSVG('chevronRight', 15)}</button>` +
     `</div>` +
     `<div class="cot-leftcol"><div class="cot-maps"></div>` +
@@ -1448,6 +1461,8 @@ export function createGarage(opts) {
 
   const statsEl = root.querySelector('.stats');
   const cardsEl = root.querySelector('.cot-cards');
+  const prevVehicleBtn = root.querySelector('.cot-car-arrow.prev');
+  const nextVehicleBtn = root.querySelector('.cot-car-arrow.next');
   const battleControl = root.querySelector('.cot-battle-control');
   const battleBtn = root.querySelector('.cot-battle');
   const battleModeBtn = root.querySelector('.cot-battle-mode');
@@ -1464,6 +1479,25 @@ export function createGarage(opts) {
   for (const s of allSpecs) specById.set(s.id, s);
 
   const emit = (ev, payload) => { if (bus && bus.emit) bus.emit(ev, payload); };
+
+  // Show an edge affordance only while cards actually remain beyond it.
+  // Keep unavailable buttons in layout (visibility:hidden) so the strip does
+  // not jump sideways as the user reaches either end.
+  const syncCarouselAffordances = () => {
+    const maxScroll = Math.max(0, cardsEl.scrollWidth - cardsEl.clientWidth);
+    const hasLeft = maxScroll > 1 && cardsEl.scrollLeft > 2;
+    const hasRight = maxScroll > 1 && cardsEl.scrollLeft < maxScroll - 2;
+    cardsEl.classList.toggle('has-more-left', hasLeft);
+    cardsEl.classList.toggle('has-more-right', hasRight);
+    for (const [button, available] of [[prevVehicleBtn, hasLeft], [nextVehicleBtn, hasRight]]) {
+      button.disabled = !available;
+      button.classList.toggle('is-unavailable', !available);
+      button.setAttribute('aria-hidden', String(!available));
+    }
+  };
+  const queueCarouselAffordances = () => requestAnimationFrame(syncCarouselAffordances);
+  cardsEl.addEventListener('scroll', syncCarouselAffordances, { passive: true });
+  window.addEventListener('resize', queueCarouselAffordances);
 
   // --- MAP-CONFIG WIRING: battlefield picker (maps come from createGarage
   // opts.maps = [{id,name,blurb,thumb}]; 'random' rolls at battle start) ---
@@ -1818,6 +1852,8 @@ export function createGarage(opts) {
       }
       if (showCard) vis++;
     }
+    cardsEl.scrollLeft = 0;
+    queueCarouselAffordances();
   }
   // --- END country filter chips --------------------------------------------
 
@@ -1929,6 +1965,7 @@ export function createGarage(opts) {
           `<span class="plus">+</span><span class="sl">Empty</span></div>`;
     }
     statsEl.innerHTML =
+      `<img class="stats-ti" data-cot-thumb="${spec.id}" src="${getTankThumb(spec.id)}" alt="">` +
       `<h3></h3><div class="sub">${flagIconHTML(spec.nation, 20)}<span>${spec.nation} &middot; ${spec.class} &middot; ${spec.era === 'ww2' ? 'WWII' : 'MODERN'}</span></div>` +
       statBar('Hit points', `${spec.hp}`, statFrac(grp, 'hp', spec.hp)) +
       statBar('Top speed', `${spec.topSpeedKmh} km/h`, statFrac(grp, 'speed', spec.topSpeedKmh)) +
@@ -1974,6 +2011,7 @@ export function createGarage(opts) {
     if (card && card.scrollIntoView) {
       card.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
     }
+    queueCarouselAffordances();
     renderStats(spec);
     battleBtn.disabled = false;
     battleBtn.querySelector('.battle-word').textContent = 'BATTLE';
@@ -2072,8 +2110,8 @@ export function createGarage(opts) {
   root.addEventListener('pointerdown', (event) => {
     if (!battleControl.contains(event.target)) closeBattleMenu();
   });
-  root.querySelector('.prev').addEventListener('click', () => step(-1));
-  root.querySelector('.next').addEventListener('click', () => step(1));
+  prevVehicleBtn.addEventListener('click', () => step(-1));
+  nextVehicleBtn.addEventListener('click', () => step(1));
 
   // --- DRAG-SCROLL CAROUSEL (garage_ui) -------------------------------------
   // The strip pans 1:1 with a held pointer and coasts with momentum on
