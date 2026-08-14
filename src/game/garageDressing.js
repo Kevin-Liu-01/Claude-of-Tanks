@@ -35,8 +35,8 @@ import { createTank } from '../vehicles/tankFactory.js';
 // Repair-bay residents use the same first-party builders as playable tanks;
 // the lighter proceduralOnly option skips cosmetic decoration for background
 // dressing while retaining the authored silhouette and materials.
-const BAY_A_SPEC = 'tiger1';
-const BAY_B_SPEC = 'panther_g';
+const BAY_A_SPEC = 't90a_burlak';
+const BAY_B_SPEC = 'm1a2';
 const BAY_TANK_OPTS = { quality: 'ai', proceduralOnly: true };
 
 /**
@@ -712,7 +712,7 @@ export function createGarageDressing(engineCtx, pos) {
   });
 
   // ==========================================================================
-  // CHUNK 2 — BAY A (NE corner): Tiger I on jack stands, turret craned off a
+  // CHUNK 2 — BAY A (NE corner): T-90A Burlak on jack stands, turret craned off a
   // gantry. The tank is a real roster build (procedural-of-record), dimmed so
   // the pedestal hero keeps the light.
   // ==========================================================================
@@ -800,7 +800,7 @@ export function createGarageDressing(engineCtx, pos) {
   });
 
   // ==========================================================================
-  // CHUNK 3 — BAY B (SE corner): Panther G with its side skirts pulled off and
+  // CHUNK 3 — BAY B (SE corner): M1A2 with its side skirts pulled off and
   // leaning on the hull, toolboxes + creeper + oil pan around, weld glow.
   // ==========================================================================
   chunks.push(function buildBayB() {
