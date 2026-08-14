@@ -406,6 +406,16 @@ function buildAriete(P) {
   P.add('hull', slab(                                                          // bow belly rise (x +-0.90)
     [-0.90, 0.40, 2.58], [0.90, 0.40, 2.58], [0.90, 0.40, 2.84], [-0.90, 0.40, 2.84],
     [-0.90, 0.75, 2.58], [0.90, 0.75, 2.58], [0.90, 0.75, 3.36], [-0.90, 0.75, 3.36]));
+  // Forward tub closures behind the idlers.  The main tub ends at z=3.00
+  // while the upper/lower glacis continues forward, so an oblique side view
+  // previously saw the background through the 3.00..3.42 bow pocket.  These
+  // plates overlap the tub and nose, with their outer faces at |x|=1.03 —
+  // one centimetre inboard of the native 1.04 m track lane.
+  for (const s of [-1, 1]) {
+    P.add('hull', slab(
+      [s * 0.94, 0.40, 2.84], [s * 1.03, 0.40, 2.84], [s * 1.03, 0.64, 3.42], [s * 0.94, 0.64, 3.42],
+      [s * 0.94, 1.26, 2.84], [s * 1.03, 1.26, 2.84], [s * 1.03, 1.18, 3.42], [s * 0.94, 1.18, 3.42]));
+  }
   // front mudguard crests (side 1.595 @ 3.44-3.56; front-view 1.56-1.62 tops
   // at +-1.6-1.76) + thin tip lip + the SS-A front bracket hidden in their
   // plan shadow, behind the idler wrap's dilated 3.70 far edge
@@ -413,9 +423,15 @@ function buildAriete(P) {
     P.add('hull', box(0.13, 0.41, 0.14), s * 1.615, 1.395, 3.35);              // crest block inner (top 1.60, x 1.55-1.68, z 3.28-3.42; bottom 1.19 clears the idler wrap)
     P.add('hull', box(0.057, 0.355, 0.14), s * 1.7085, 1.3675, 3.35);          // crest OUTER CROWN step (top 1.545 — push-2: the ref front crest FALLS outboard: 1.567@1.726 / 1.557@1.767 vs the flat 1.60 block's +0.05; r3-1024: outer face 1.737 — the 1.745 face rendered 1.7671, a 4.6 mm coin-flip sliver in the ±1.784 col whose ref top is the 1.317 skirt skin)
     P.add('hullRubber', box(0.50, 0.05, 0.12), s * 1.32, 1.235, 3.40);         // rubber lip under the crest (r3-1024: raised+pulled to z 3.34-3.46 / y 1.21-1.26 — the raised wrap circle climbs to 1.175 under it, and any content in the z 3.464-3.577 apex window above ~1.0 prints the 3.568 col over the ref's [0.786..1.01] annulus band)
-    // The former static track-tone wedges have been removed.  They occupied
-    // the same lane as the animated band/shoes and were not hull or skirt
-    // armor.  The one native loop below now owns the complete front wrap.
+    // Closed glacis shoulder: the center glacis and the outboard crest used
+    // to meet only in projection, leaving a background-visible pocket above
+    // the idler at oblique angles.  This shallow armor wedge overlaps the
+    // sponson at z=2.28 and the crest at z=3.42.  Its 1.18 m floor remains
+    // above the native terminal wrap; no track-tone proxy or running-gear
+    // geometry is reintroduced.
+    P.add('hull', slab(
+      [s * 0.92, 1.24, 2.28], [s * 1.60, 1.24, 2.28], [s * 1.70, 1.18, 3.42], [s * 0.92, 1.18, 3.42],
+      [s * 0.92, 1.43, 2.28], [s * 1.60, 1.43, 2.28], [s * 1.70, 1.30, 3.42], [s * 0.92, 1.30, 3.42]));
   }
   // stern: rake wedge + plate + thin tail lip + CENTER tail block anchor
   P.add('hull', slab(                                                          // center rake (x +-0.82 — push-2: the +-0.92 slab printed the ref's 0.85-0.97 rear-notch cols at -3.71): bottoms 0.38@-2.60 -> 0.74@-3.66
