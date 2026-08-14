@@ -1220,8 +1220,14 @@ function buildLeichttraktor(P) {
     }
   }
 
-  // hull: engine bow + raised cab + rear fighting deck
-  P.add('hull', box(2.00, 1.00, 3.60), 0, 1.00, 0.02);                       // main body ±1.0
+  // hull: engine bow + raised cab + rear fighting deck. Keep the complete
+  // original ±1.0 silhouette, but give the low centre belly and the outer
+  // panniers separate closed solids so the native end wraps run below the
+  // side armor instead of through one broad low box.
+  P.add('hull', box(1.40, 1.00, 3.60), 0, 1.00, 0.02);                       // closed centre belly ±0.70
+  for (const s of [-1, 1]) {
+    P.add('hull', box(0.30, 0.35, 3.60), s * 0.85, 1.325, 0.02);             // full outer silhouette, raised soffit
+  }
   P.add('hull', slab(                                                        // glacis
     [-1.00, 1.30, 2.06], [1.00, 1.30, 2.06], [1.00, 1.32, 1.98], [-1.00, 1.32, 1.98],
     [-1.00, 1.34, 2.04], [1.00, 1.34, 2.04], [1.00, 1.52, 1.42], [-1.00, 1.52, 1.42]));
@@ -1234,9 +1240,14 @@ function buildLeichttraktor(P) {
   P.add('hullDark', box(0.03, 0.05, 0.30), 0.66, 1.70, 0.42);                // cab side slits
   P.add('hullDark', box(0.03, 0.05, 0.30), -0.66, 1.70, 0.42);
   P.add('hull', box(2.00, 0.20, 1.85), 0, 1.59, -0.88);                      // rear fighting deck 1.69
-  P.add('hull', slab(                                                        // tail slope
-    [-0.95, 0.80, -1.78], [0.95, 0.80, -1.78], [0.85, 0.82, -2.18], [-0.85, 0.82, -2.18],
-    [-0.95, 1.66, -1.78], [0.95, 1.66, -1.78], [0.85, 1.14, -2.16], [-0.85, 1.14, -2.16]));
+  P.add('hull', slab(                                                        // closed low tail core
+    [-0.70, 0.80, -1.78], [0.70, 0.80, -1.78], [0.70, 0.82, -2.18], [-0.70, 0.82, -2.18],
+    [-0.70, 1.66, -1.78], [0.70, 1.66, -1.78], [0.70, 1.14, -2.16], [-0.70, 1.14, -2.16]));
+  for (const [x0, x1] of [[-0.95, -0.70], [0.70, 0.95]]) {
+    P.add('hull', slab(                                                      // outer tail armor above sprocket wrap
+      [x0, 1.10, -1.78], [x1, 1.10, -1.78], [x1, 1.10, -2.18], [x0, 1.10, -2.18],
+      [x0, 1.66, -1.78], [x1, 1.66, -1.78], [x1, 1.14, -2.16], [x0, 1.14, -2.16]));
+  }
   // engine hatches + intake + exhaust muffler along the right fender
   P.add('hullDetail', box(0.55, 0.035, 0.55), -0.42, 1.522, 1.35);
   P.add('hullDetail', box(0.55, 0.035, 0.55), 0.42, 1.522, 1.35);

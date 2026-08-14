@@ -7811,3 +7811,36 @@ geometry **`bd0ea04b`** (36 rendered meshes / 42,299 vertices).
 
 **KEEP the complete Charioteer hull, pannier armor, guards, fenders and native
 course. Future corridor work may not subtract or hollow its armor.**
+
+## 5.219 LEICHTTRAKTOR CLOSED END-CORRIDOR CLOSEOUT (2026-08-14, LIVE)
+
+The first-party Leichttraktor retains its complete riveted hull, tall track
+frames, bow and tail armor, rear fighting deck, turret and six-wheel native
+course. No hull, track frame, guard, wheel or track member is deleted.
+
+The original broad low body is expressed as a closed centre belly plus joined
+outer pannier solids whose soffits clear the native course while preserving
+the full ±1.0 hull silhouette. The tail uses the same construction: its low
+centre core remains closed and its complete outer armor continues above the
+sprocket wrap. This removes penetration without hollowing the hull or cutting
+the track-frame outline.
+
+Exact strict audit improves from front 18 / rear 35 band voxels, front 32 /
+rear 66 shoe voxels and sweep 63/130 to **front 0/0, rear 0/0 and complete
+sweep 0/0**. Fresh evidence contains 15 paired boards including the
+standardized elevated-left profile, 15 yaw0 and 15 yaw90 frames: **45 PNG /
+45 distinct hashes**. Every view preserves the tall riveted side frames,
+closed bow/tail and continuous native track profile.
+
+The complete turret and gun execute a genuine quarter-turn while the hull and
+running gear remain fixed. Parent audit is **0 stranded / 0 abutting / 0
+dangling**. Winding is **0 reversed / 0 mixed geometry with zero-pixel
+deficit**, and mode 2 is clean. The dark muzzle bore and all ten targeted
+runtime-rig checks pass.
+
+All eight targeted presentation assets are current. Leichttraktor dual-ledger
+geometry is freeze **`6492b590`**, instance freeze **`13eb520b`** and asset
+geometry **`a4999947`** (33 rendered meshes / 33,948 vertices).
+
+**KEEP the complete Leichttraktor hull, riveted track frames, bow/tail armor
+and native course. Future corridor work may not subtract or hollow them.**

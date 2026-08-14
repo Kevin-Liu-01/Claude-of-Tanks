@@ -27593,7 +27593,7 @@
           }
         ]
       },
-      "geometryHash": "9c7ea28f",
+      "geometryHash": "a4999947",
       "metadataHash": "1ebe1869",
       "muzzleBore": {
         "tagged": 1,
@@ -27608,24 +27608,24 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 19596,
-          "sha256": "865d737fbdbf5adbd5774045eecd256a207654a029c9c9d67bbd7be9c7dffc47"
+          "bytes": 19694,
+          "sha256": "184a47261bc84e6c9df01dc610b74f069b201c63217082c0f7f25c91578718b2"
         },
         "top": {
           "file": "leichttraktor_top.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 9618,
-          "sha256": "30bbe2a08b8709c28687a34aeaebd81fec1f9ca9489d757e3913dde4d4bcd23b"
+          "bytes": 9716,
+          "sha256": "948436c264f2130dbc7963f4ab89fb021c0b974643f451b22a501e2fa8341064"
         },
         "side": {
           "file": "leichttraktor_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 9856,
-          "sha256": "977ebe39e2429efc2fb26efde4593cdaddb823d0a2c46a96b29c3d828d2e748c"
+          "bytes": 9852,
+          "sha256": "4c04b6f972ddea76d742ba589d7b06511e23a20c13ddbf73f5f486c3ccf8f3e6"
         },
         "topSilhouette": {
           "file": "leichttraktor_top_silhouette.png",
@@ -27640,32 +27640,32 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4184,
-          "sha256": "187b5e9887afb2a0e7f13b31d64174ff6c2f54925c1391393f7ef8365ec1ed88"
+          "bytes": 4194,
+          "sha256": "066f22844202f52b9dae0e84a06826414a7dcc3841753d9a302f8cdf2f99c5e1"
         },
         "hitZonesSide": {
           "file": "leichttraktor_hit_zones_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 71563,
-          "sha256": "fa9be4c8f9861ba8fcdb704f24d7a4d006114729d51aa5daacf720964ffef427"
+          "bytes": 71635,
+          "sha256": "7a81bd13783e5ddd934d6bc84dd493ce863cc1bd72ddb20e1fe509f8c5bbd308"
         },
         "armorSide": {
           "file": "leichttraktor_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 71144,
-          "sha256": "956be436855409bed90a1b5c01c1f28ab62f45f120c1b7d2a41d41f253efd5a0"
+          "bytes": 71083,
+          "sha256": "d0d42b1d9a81998599ef428f61af96803a0746d31daea6b934e06ee92311ce9b"
         },
         "modulesSide": {
           "file": "leichttraktor_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 66920,
-          "sha256": "09ff1626daa4ae9998eb9a3b99fe419b58a1bfd9ef3aaf78cbae62a148301239"
+          "bytes": 67170,
+          "sha256": "2af4ecbca347b511558e72995a2f690c139771fb323bf091b86245bce7a25c6a"
         }
       }
     },
