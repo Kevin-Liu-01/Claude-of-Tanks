@@ -8247,3 +8247,24 @@ geometry **`2e8becf6`** (61 rendered meshes / 121,953 vertices).
 **KEEP the shared welded foundation, unobstructed eye lanes and complete
 T-90A hull/bodywork envelope. Future ERA changes must preserve both optical
 cones and visible cheek load paths.**
+
+## 5.231 M1A2 SEPv2 PRESENTATION / DUAL-LEDGER RECONCILIATION (2026-08-14, LIVE)
+
+The accepted first-party SEPv2 runtime geometry already carried the current
+Abrams flush-armor and roof-system revisions, but its eight generated garage
+assets and dual geometry ledger still described the preceding build. This is
+a presentation-only reconciliation: no hull, turret, armor, equipment,
+running-gear or ownership geometry changes in this step.
+
+All eight targeted SEPv2 assets and their manifest metadata are regenerated
+from the live first-party procedural build. Current dual-ledger geometry is
+freeze **`c4c00554`**, instance freeze **`b94c3e9e`** and asset geometry
+**`b94a412f`** (56 rendered meshes / 200,422 vertices). Targeted asset,
+native-course, rig, muzzle and winding checks remain the release authority
+for the unchanged accepted build. The legacy external-oracle fidelity row
+still reports its historical 14.3 mismatch and is explicitly not treated as
+proof against this owner-authored runtime; no geometry was changed to chase
+that non-authoritative source.
+
+**KEEP the complete accepted SEPv2 geometry. Future asset refreshes must be
+targeted to this tank and may not modify another manifest row.**
