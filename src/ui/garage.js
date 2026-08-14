@@ -80,6 +80,21 @@ const GARAGE_CSS = `
    instead of bare text */
 .cot-garage .title .mark{display:block;width:36px;height:36px;flex:0 0 auto;
   filter:drop-shadow(0 2px 4px rgba(0,0,0,.55));}
+.cot-local-record{position:absolute;top:63px;left:34px;min-height:36px;display:grid;
+  grid-template-columns:35px auto;align-items:stretch;pointer-events:auto;white-space:nowrap;
+  color:#dce6ee;background:linear-gradient(90deg,rgba(16,22,28,.94),rgba(8,12,16,.76));
+  border:1px solid rgba(146,164,180,.25);border-left:2px solid rgba(240,160,48,.82);
+  box-shadow:0 7px 22px rgba(0,0,0,.35);font-variant-numeric:tabular-nums;}
+.cot-local-record .record-mark{display:grid;place-items:center;color:#f0b04a;
+  background:rgba(240,160,48,.08);border-right:1px solid rgba(146,164,180,.18);}
+.cot-local-record .record-mark svg{width:18px;height:18px;display:block;}
+.cot-local-record .record-copy{display:grid;align-content:center;gap:3px;padding:5px 9px 4px;}
+.cot-local-record .label{color:#8293a1;font:800 6.5px ${FONT_COND};letter-spacing:.19em;
+  line-height:1;text-transform:uppercase;}
+.cot-local-record .record-values{display:flex;align-items:center;gap:8px;font-size:8.5px;
+  font-weight:800;letter-spacing:.045em;line-height:1;}
+.cot-local-record .matches{color:#f0b04a;}
+.cot-local-record .winrate{color:#cbd6df;}
 /* r6-2 (round critique: vehicle name + flag + class line appeared TWICE —
    top-left header and right stats panel): the top-left corner now carries
    only the game logo + a quiet screen-mode tag; the vehicle identity lives
@@ -100,13 +115,6 @@ const GARAGE_CSS = `
 /* Garage + Studio use the original authored navigation art; Home keeps the
    shared vector mark. object-fit preserves both source assets at 15px. */
 .cot-nav .nv .nvi{width:13px;height:13px;display:block;object-fit:contain;}
-.cot-nav .record{height:34px;display:flex;align-items:center;gap:8px;padding:0 8px;
-  white-space:nowrap;background:rgba(11,15,20,.82);border:1px solid rgba(146,164,180,.28);
-  font-size:9px;font-weight:800;color:#e6edf3;letter-spacing:.05em;
-  font-variant-numeric:tabular-nums;line-height:1;}
-.cot-nav .record .label{color:#8fa0ae;font-size:7px;letter-spacing:.17em;text-transform:uppercase;}
-.cot-nav .record .matches{color:#f0b04a;}
-.cot-nav .record .winrate{color:#cbd6df;}
 .cot-nav .cot-settings-slot{width:34px;height:34px;flex:0 0 auto;}
 .cot-nav .cot-gear{position:static;width:34px;height:34px;min-height:34px;z-index:auto;
   right:auto;top:auto;}
@@ -123,7 +131,11 @@ const GARAGE_CSS = `
 .cot-battle,.cot-battle-mode{height:100%;cursor:pointer;border:0;outline:0;color:#fff8ee;
   background:transparent;font-family:${FONT_STACK};font-weight:800;text-shadow:none;}
 .cot-battle{flex:0 0 75%;min-width:0;padding:0 0 1px 10px;font-size:19px;letter-spacing:.24em;
-  text-indent:.24em;}
+  display:flex;align-items:center;justify-content:center;gap:9px;}
+.cot-battle .battle-active-icon{width:21px;height:21px;display:grid;place-items:center;
+  color:#fff3dc;filter:drop-shadow(0 1px 0 rgba(92,45,0,.35));}
+.cot-battle .battle-active-icon svg{display:block;width:20px;height:20px;}
+.cot-battle .battle-word{text-indent:.24em;}
 .cot-battle-mode{position:relative;flex:0 0 25%;min-width:0;padding:1px 9px 0 2px;border-left:1px solid rgba(108,55,2,.62);
   font-size:8px;letter-spacing:.09em;text-align:center;}
 .cot-battle-mode::after{content:'';position:absolute;right:9px;top:50%;margin-top:-2px;
@@ -131,17 +143,23 @@ const GARAGE_CSS = `
   opacity:.82;transition:transform .12s;}
 .cot-battle-mode[aria-expanded='true']::after{transform:rotate(180deg);}
 .cot-battle:active,.cot-battle-mode:active{transform:translateY(1px);}
-.cot-battle-menu{position:absolute;top:calc(100% + 7px);right:0;width:176px;display:none;
+.cot-battle-menu{position:absolute;top:calc(100% + 7px);right:0;width:206px;display:none;
   padding:5px;background:rgba(8,11,15,.98);border:1px solid rgba(177,194,208,.32);
   box-shadow:0 12px 34px rgba(0,0,0,.68);}
 .cot-battle-menu.open{display:grid;gap:3px;}
-.cot-battle-choice{min-height:44px;display:grid;grid-template-columns:1fr auto;align-items:center;
-  gap:8px;padding:0 10px;border:1px solid transparent;background:rgba(25,32,39,.9);
+.cot-battle-choice{min-height:48px;display:grid;grid-template-columns:28px 1fr auto;align-items:center;
+  gap:8px;padding:0 10px 0 8px;border:1px solid transparent;background:rgba(25,32,39,.9);
   color:#dce6ed;cursor:pointer;text-align:left;font-family:${FONT_STACK};font-size:11px;font-weight:800;}
+.cot-battle-choice .choice-icon{width:28px;height:28px;display:grid;place-items:center;color:#899aa8;
+  border:1px solid rgba(146,164,180,.16);background:rgba(7,11,15,.46);}
+.cot-battle-choice .choice-icon svg{display:block;width:17px;height:17px;}
+.cot-battle-choice .choice-name{letter-spacing:.045em;}
 .cot-battle-choice small{font:800 7px ${FONT_COND};letter-spacing:.13em;color:#82929f;
   text-transform:uppercase;}
 .cot-battle-choice:hover,.cot-battle-choice[aria-checked='true']{border-color:rgba(240,176,74,.62);
   background:rgba(230,139,26,.13);color:#ffd28e;}
+.cot-battle-choice:hover .choice-icon,.cot-battle-choice[aria-checked='true'] .choice-icon{
+  color:#ffc66c;border-color:rgba(240,176,74,.42);background:rgba(230,139,26,.12);}
 .cot-garage .stats{position:absolute;right:26px;top:110px;width:300px;
   background:linear-gradient(180deg,rgba(11,15,20,.88),rgba(7,10,13,.92));
   border:1px solid rgba(146,164,180,.28);box-shadow:0 8px 30px rgba(0,0,0,.55);
@@ -465,7 +483,7 @@ const GARAGE_CSS = `
 .cot-garage.enter .band-top,.cot-garage.enter .band-bot,
 .cot-garage.enter .band-l,.cot-garage.enter .band-r{
   animation:cot-g-fade .30s ease-out backwards;}
-.cot-garage.enter .title,.cot-garage.enter .cot-nav,
+.cot-garage.enter .title,.cot-garage.enter .cot-local-record,.cot-garage.enter .cot-nav,
 .cot-garage.enter .cot-leftcol,
 .cot-garage.enter .hint{animation:cot-g-fade .34s ease-out .05s backwards;}
 .cot-garage.enter .stats{animation:cot-g-rise .36s ease-out .08s backwards;}
@@ -525,11 +543,14 @@ const GARAGE_CSS = `
   .cot-garage .band-r{display:none;}
   .cot-garage .title{top:12px;left:14px;font-size:13px;letter-spacing:.22em;gap:7px;}
   .cot-garage .title .mark{width:22px;height:22px;}
+  .cot-local-record{top:42px;left:14px;min-height:29px;grid-template-columns:28px auto;}
+  .cot-local-record .record-mark svg{width:15px;height:15px;}
+  .cot-local-record .record-copy{gap:2px;padding:4px 7px 3px;}
+  .cot-local-record .label{font-size:5.5px;}
+  .cot-local-record .record-values{gap:6px;font-size:7px;}
   .cot-nav{top:62px;right:14px;gap:3px;height:28px;}
   .cot-nav .nv{font-size:7px;padding:0 6px;letter-spacing:.12em;}
   .cot-nav .nv .nvi{width:11px;height:11px;}
-  .cot-nav .record{height:28px;padding:0 7px;gap:5px;font-size:7.5px;}
-  .cot-nav .record .label{font-size:6px;}
   .cot-nav .cot-settings-slot,.cot-nav .cot-gear{width:28px;height:28px;min-height:28px;}
   .cot-nav .cot-gear svg{width:17px;height:17px;}
   .cot-battle-control{top:12px;width:214px;height:40px;}
@@ -569,10 +590,19 @@ const GARAGE_CSS = `
    wordmark text, narrows the plate and shrinks the wallet chips. */
 @media (max-width:520px) and (orientation:portrait){
   .cot-garage .title span{display:none;}
+  .cot-nav{top:76px;}
   .cot-battle-control{width:176px;height:44px;}
-  .cot-battle{font-size:13px;padding-left:7px;}.cot-battle-mode{font-size:7px;padding-right:7px;}
+  .cot-battle{font-size:13px;padding-left:4px;gap:5px;}
+  .cot-battle .battle-active-icon{width:17px;height:17px;}
+  .cot-battle .battle-active-icon svg{width:16px;height:16px;}
+  .cot-battle-mode{font-size:7px;padding-right:7px;}
   .cot-battle-mode::after{right:5px;}.cot-battle-menu{width:160px;}
-  .cot-nav .record{display:none;}
+  .cot-battle-choice{grid-template-columns:24px 1fr auto;gap:6px;padding-left:6px;}
+  .cot-battle-choice .choice-icon{width:24px;height:24px;}
+  .cot-local-record{width:88px;grid-template-columns:25px 1fr;}
+  .cot-local-record .record-copy{padding-left:5px;padding-right:4px;}
+  .cot-local-record .label,.cot-local-record .winrate{display:none;}
+  .cot-local-record .record-values{font-size:6.5px;letter-spacing:.025em;}
 }
 @media (max-width:1300px) and (min-width:901px){.cot-nav{top:66px;}}
 `;
@@ -1284,6 +1314,11 @@ export function createGarage(opts) {
     // the entry screen; master copy public/brand/logo-mark.svg
     `<img class="mark" src="/brand/logo-mark.svg" alt="" draggable="false">` +
     `<span>CLAUDE <b>OF TANKS</b></span></div>` +
+    `<div class="cot-local-record" aria-label="Local record">` +
+    `<span class="record-mark">${uiIconSVG('battleRecord', 18)}</span>` +
+    `<span class="record-copy"><span class="label">Local record</span>` +
+    `<span class="record-values"><span class="matches">0 BATTLES</span>` +
+    `<span class="winrate">— WIN RATE</span></span></span></div>` +
     `<nav class="cot-nav" aria-label="Garage navigation">` +
     `<button class="nv on" data-nav="garage" type="button">` +
     `<img class="nvi" src="/brand/nav/garage.svg" alt="" draggable="false">Garage</button>` +
@@ -1293,24 +1328,27 @@ export function createGarage(opts) {
     `${uiIconSVG('scope', 15, 'currentColor', 'nvi')}Surface Lab</button>` +
     `<button class="nv" data-nav="home" type="button">` +
     `${uiIconSVG('home', 15, 'currentColor', 'nvi')}Home</button>` +
-    `<div class="record" aria-label="Local record">` +
-    `<span class="label">Local</span>` +
-    `<span class="matches">0 BATTLES</span><span class="winrate">— WIN RATE</span>` +
-    `</div><div class="cot-settings-slot"></div></nav>` +
+    `<div class="cot-settings-slot"></div></nav>` +
     `<div class="cot-battle-control">` +
-    `<button class="cot-battle" type="button" aria-label="Start Bots battle">BATTLE</button>` +
+    `<button class="cot-battle" type="button" aria-label="Start Bots battle">` +
+    `<span class="battle-active-icon">${uiIconSVG('battleBots', 20)}</span>` +
+    `<span class="battle-word">BATTLE</span></button>` +
     `<button class="cot-battle-mode" type="button" aria-haspopup="menu" aria-expanded="false" ` +
     `aria-controls="cot-battle-menu" aria-label="Battle type: Bots. Change battle type">` +
     `<span>BOTS</span></button>` +
     `<div class="cot-battle-menu" id="cot-battle-menu" role="menu" aria-label="Battle type">` +
     `<button class="cot-battle-choice" type="button" role="menuitemradio" data-mode="solo" aria-checked="true">` +
-    `<span>Bots</span><small>Solo</small></button>` +
+    `<span class="choice-icon">${uiIconSVG('battleBots', 17)}</span>` +
+    `<span class="choice-name">Bots</span><small>Solo</small></button>` +
     `<button class="cot-battle-choice" type="button" role="menuitemradio" data-mode="private" aria-checked="false">` +
-    `<span>Private</span><small>Code</small></button>` +
+    `<span class="choice-icon">${uiIconSVG('battlePrivate', 17)}</span>` +
+    `<span class="choice-name">Private</span><small>Code</small></button>` +
     `<button class="cot-battle-choice" type="button" role="menuitemradio" data-mode="lan" aria-checked="false">` +
-    `<span>LAN</span><small>Wi-Fi</small></button>` +
+    `<span class="choice-icon">${uiIconSVG('battleLan', 17)}</span>` +
+    `<span class="choice-name">LAN</span><small>Wi-Fi</small></button>` +
     `<button class="cot-battle-choice" type="button" role="menuitemradio" data-mode="ranked" aria-checked="false">` +
-    `<span>Ranked</span><small>ELO</small></button>` +
+    `<span class="choice-icon">${uiIconSVG('battleRanked', 17)}</span>` +
+    `<span class="choice-name">Ranked</span><small>ELO</small></button>` +
     `</div></div>` +
     `<div class="stats"></div>` +
     `<div class="cot-country-chips" role="group" aria-label="Filter vehicles by country"></div>` +
@@ -1328,8 +1366,8 @@ export function createGarage(opts) {
 
   function refreshLocalRecord() {
     const record = getPlayerRecord();
-    const matches = root.querySelector('.cot-nav .matches');
-    const winrate = root.querySelector('.cot-nav .winrate');
+    const matches = root.querySelector('.cot-local-record .matches');
+    const winrate = root.querySelector('.cot-local-record .winrate');
     if (matches) matches.textContent = `${record.matches.toLocaleString('en-US')} ` +
       `BATTLE${record.matches === 1 ? '' : 'S'}`;
     if (winrate) winrate.textContent = record.matches > 0
@@ -1935,7 +1973,7 @@ export function createGarage(opts) {
     }
     renderStats(spec);
     battleBtn.disabled = false;
-    battleBtn.textContent = 'BATTLE';
+    battleBtn.querySelector('.battle-word').textContent = 'BATTLE';
     camosEl.style.display = '';
     refreshCamoSel(); // CAMO PICKER SECTION: highlight this tank's pattern
     // camo r4: warm this tank's pattern bakes in the background so picker
@@ -1989,10 +2027,10 @@ export function createGarage(opts) {
   }
 
   const battleModeMeta = {
-    solo: { short: 'BOTS', label: 'Bots' },
-    private: { short: 'CODE', label: 'Private' },
-    lan: { short: 'LAN', label: 'LAN' },
-    ranked: { short: 'RANK', label: 'Ranked' },
+    solo: { short: 'BOTS', label: 'Bots', icon: 'battleBots' },
+    private: { short: 'CODE', label: 'Private', icon: 'battlePrivate' },
+    lan: { short: 'LAN', label: 'LAN', icon: 'battleLan' },
+    ranked: { short: 'RANK', label: 'Ranked', icon: 'battleRanked' },
   };
   function closeBattleMenu({ restoreFocus = false } = {}) {
     battleMenu.classList.remove('open');
@@ -2009,6 +2047,7 @@ export function createGarage(opts) {
     if (!meta) return;
     battleMode = nextMode;
     battleModeBtn.querySelector('span').textContent = meta.short;
+    battleBtn.querySelector('.battle-active-icon').innerHTML = uiIconSVG(meta.icon, 20);
     battleModeBtn.setAttribute('aria-label', `Battle type: ${meta.label}. Change battle type`);
     battleBtn.setAttribute('aria-label', `Start ${meta.label} battle`);
     for (const choice of battleChoices) {

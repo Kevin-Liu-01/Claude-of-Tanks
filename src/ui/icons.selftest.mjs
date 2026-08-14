@@ -17,3 +17,7 @@ for (const id of uiIconIds()) {
     throw new Error(`invalid UI icon: ${id}`);
   }
 }
+
+for (const id of ['battleBots', 'battlePrivate', 'battleLan', 'battleRanked', 'battleRecord']) {
+  if (!uiIconIds().includes(id)) throw new Error(`missing garage battle icon: ${id}`);
+}
