@@ -43,9 +43,9 @@ const NATION_LABEL = {
 const NATION_RANK = new Map([
   ['USA', 0], ['Germany', 1],
   ['USSR', 2], ['USSR/Russia', 2], ['Russia', 2],
-  ['UK', 3], ['France', 4], ['China', 5], ['Israel', 6], ['Italy', 7],
-  ['Japan', 8], ['Poland', 9], ['South Korea', 10], ['Sweden', 11],
-  ['Ukraine', 12], ['Community', 13],
+  ['UK', 3], ['France', 4], ['China', 5], ['Italy', 6], ['Japan', 7],
+  ['Poland', 8], ['South Korea', 9], ['Sweden', 10], ['Community', 11],
+  ['Israel', 12], ['Ukraine', 13],
 ]);
 function catalogCompare(a, b) {
   return compareCountryThenTierThenName(a, b, NATION_RANK, tankTier);
@@ -191,7 +191,7 @@ const GARAGE_CSS = `
 .cot-garage .armorline b{color:#e6edf3;font-weight:600;font-variant-numeric:tabular-nums;
   text-transform:none;}
 /* One combined historical fleet, filtered by national flag. */
-.cot-country-chips{position:absolute;left:calc(50% - 34px);bottom:172px;transform:translateX(-50%);
+.cot-country-chips{position:absolute;left:calc(50% - 34px);bottom:190px;transform:translateX(-50%);
   display:flex;gap:5px;width:max-content;max-width:calc(100vw - 620px);
   overflow-x:auto;scrollbar-width:none;pointer-events:auto;}
 .cot-country-chips::-webkit-scrollbar{display:none;}
@@ -225,6 +225,9 @@ const GARAGE_CSS = `
    into the strip edge instead — the standard carousel "more content"
    affordance — while each card's own label keeps its CSS ellipsis. */
 .cot-cards{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;
+  /* Horizontal scrolling computes overflow-y:auto too; reserve real headroom
+     so the selected card's upward lift keeps its entire top border visible. */
+  padding-top:8px;margin-top:-8px;
   cursor:grab;touch-action:pan-x;
   -webkit-mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 64px),transparent 100%);
   mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 64px),transparent 100%);}
