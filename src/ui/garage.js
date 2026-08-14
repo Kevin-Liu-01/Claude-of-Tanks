@@ -7,6 +7,7 @@ import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.js';
 import { FEATURED_SHOTS } from './featuredShots.js';
 import { flagIconHTML, flagIconUrl } from './flags.js';
 import { flagIconCode } from './flagCodes.js';
+import { iconUrl } from './icons.js';
 import { ensureTankThumbs, drainTankThumbs, getTankThumb, requeueTankThumbs } from './tankThumbs.js';
 // CAMO PICKER SECTION: swatches preview the REAL resolved pattern (scheme +
 // palette from materials.js) instead of hand-approximated CSS gradients.
@@ -172,7 +173,8 @@ const GARAGE_CSS = `
 .cot-garage .stats .sub .cot-flag{display:block;object-fit:cover;
   box-shadow:0 1px 3px rgba(0,0,0,.5);}
 .cot-garage .stats .stats-ti{position:absolute;right:9px;top:5px;width:112px;height:72px;
-  object-fit:contain;pointer-events:none;filter:drop-shadow(0 5px 7px rgba(0,0,0,.72));}
+  object-fit:contain;pointer-events:none;opacity:.78;
+  filter:drop-shadow(0 3px 5px rgba(0,0,0,.72));}
 .cot-garage .srow{margin-bottom:9px;}
 .cot-garage .srow .lr{display:flex;justify-content:space-between;font-size:11px;
   letter-spacing:.08em;color:#9fb0bf;text-transform:uppercase;margin-bottom:3px;}
@@ -1965,7 +1967,7 @@ export function createGarage(opts) {
           `<span class="plus">+</span><span class="sl">Empty</span></div>`;
     }
     statsEl.innerHTML =
-      `<img class="stats-ti" data-cot-thumb="${spec.id}" src="${getTankThumb(spec.id)}" alt="">` +
+      `<img class="stats-ti" src="${iconUrl(spec.id, 'side_silhouette')}" alt="">` +
       `<h3></h3><div class="sub">${flagIconHTML(spec.nation, 20)}<span>${spec.nation} &middot; ${spec.class} &middot; ${spec.era === 'ww2' ? 'WWII' : 'MODERN'}</span></div>` +
       statBar('Hit points', `${spec.hp}`, statFrac(grp, 'hp', spec.hp)) +
       statBar('Top speed', `${spec.topSpeedKmh} km/h`, statFrac(grp, 'speed', spec.topSpeedKmh)) +
