@@ -55389,7 +55389,7 @@
           }
         ]
       },
-      "geometryHash": "fddf0275",
+      "geometryHash": "f495cfcc",
       "metadataHash": "0a1a9e63",
       "muzzleBore": {
         "tagged": 1,
@@ -55404,8 +55404,8 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 17254,
-          "sha256": "487d484c93c02802682138498046e5539bd93e20ea17593e27baea68d6c86476"
+          "bytes": 17404,
+          "sha256": "3cf63bd5c938958cca72f5f35043579f3b16b3b16e441848d6712c78be84d2fd"
         },
         "top": {
           "file": "newc_pziii_top.webp",
@@ -55420,8 +55420,8 @@
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 10510,
-          "sha256": "e766ccfa3f0fa706be7ab838ae12e2e23744d7675426c33720438ddf6df00e65"
+          "bytes": 10482,
+          "sha256": "c3fd6d3c0e31644cd4d0051ef288874fce22812131d4debe60e3dcdf5f22f990"
         },
         "topSilhouette": {
           "file": "newc_pziii_top_silhouette.png",
@@ -55436,32 +55436,32 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4638,
-          "sha256": "5bde24a51f41af7fc316045a4b2c8b97d0fdc507e5670c227f214dd69ac6d1f8"
+          "bytes": 4621,
+          "sha256": "df73e37d4e176b383705182dab77cfa0f5a398ad67fdcdab6f93a209c03c3086"
         },
         "hitZonesSide": {
           "file": "newc_pziii_hit_zones_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 74122,
-          "sha256": "1415e47b66629a7d336d287bafbca104639b3009ff62be66b2b821d9fdd027f5"
+          "bytes": 74104,
+          "sha256": "04d11437536a85db9f5aed21b84855aea022aaf3f1c76debc409ea630fe11772"
         },
         "armorSide": {
           "file": "newc_pziii_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 72024,
-          "sha256": "14c3a737208d596223fbbcdb9a4870932e5faefb3bc88a67048859238caf7cae"
+          "bytes": 71776,
+          "sha256": "5dc96dfd64322a41ea658150ffb926e56aa5442b0a541b5fd93ad62b11beb8aa"
         },
         "modulesSide": {
           "file": "newc_pziii_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 68266,
-          "sha256": "9f7ab9c8aa0e982d86e4e4fd7362342b9bd51ca17fb02c228b7e3331608ed40c"
+          "bytes": 68378,
+          "sha256": "a2269b0595d8586132c2f2a060d7f54da38f0cb54bff994804522acbcb405af6"
         }
       }
     },
