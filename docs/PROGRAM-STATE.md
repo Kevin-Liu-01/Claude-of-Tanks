@@ -7357,3 +7357,49 @@ vertices).
 
 **KEEP both complete Centurion exteriors and closed soffits. Future course
 work must preserve every skirt, fender and mudguard.**
+
+## 5.206 M46 / M47 PATTON CLOSED TRACK-CORRIDOR CLOSEOUT (2026-08-14, LIVE)
+
+This pair closeout preserves both complete first-party Patton exteriors:
+their cast bows and joined hulls, full fender and skirt courses, mufflers,
+mudguards, six road-wheel stations, raised terminal wheels and single native
+linked-shoe courses. No visible hull, side armour, fender, skirt, mudguard,
+wheel or track component is deleted or hidden.
+
+The initial receipts mixed native wheel-bay presentation with real concealed
+contacts. The named shadow backers, return-run covers and rim glints now carry
+truthful running-gear ownership; wheel-face rings, bolts and roller brackets
+use the existing Patton running-gear buckets. Broad sponson contacts are
+repaired with mark-specific **closed raised soffits**: the central hull stays
+solid, the original deck and exterior side walls remain, and connected floor
+plates bridge above each return run. The only remaining physical contacts
+were the lower ends of the muffler legs; those legs are shortened upward and
+reseated on the closed shoulder while the complete muffler/strap assemblies
+remain visible and supported.
+
+Exact strict band and individual-shoe audits now report **front 0/0, rear 0/0
+and complete sweep 0/0** for both tanks. M46 improves from 1,195 band / 1,641
+shoe voxels and M47 from 978 band / 1,560 shoe voxels. Each fresh packet
+contains 15 paired boards including the standardized elevated-left profile,
+15 yaw0 and 15 yaw90 frames: **45 PNG / 45 distinct hashes per tank**.
+Baseline/current boards retain identical exterior silhouettes, all fenders,
+six readable wheels and continuous raised terminal transitions.
+
+Both complete turrets, guns, roof stations and bustle equipment execute
+genuine quarter-turns while hulls, mufflers, fenders and running gear remain
+fixed. Parent audits are **0 stranded / 0 abutting / 0 dangling** for both.
+Winding has **0 reversed / 0 mixed geometry**; mode-1 deficits are one pixel
+for M46 and 48 pixels (0.05%) for M47, both clean antialias-level results.
+M46's mode-2 candidates are the correctly fixed deck muffler and strap field
+at the aft sponson, visibly supported and intentionally hull-owned—not
+stranded turret equipment. M47 has no mode-2 candidate. Both muzzle bores and
+all ten targeted runtime-rig checks pass.
+
+All sixteen targeted presentation assets are current. M46 dual-ledger
+geometry is freeze **`8f42c12f`**, instance freeze **`8b2c4931`** and asset
+geometry **`79b6ea0d`** (102 rendered meshes / 85,113 vertices). M47 dual-
+ledger geometry is freeze **`afb76590`**, instance freeze **`881a0652`** and
+asset geometry **`75f356c1`** (111 rendered meshes / 97,566 vertices).
+
+**KEEP both complete Patton exteriors, closed soffits and supported muffler
+packages. Future course work may not subtract their hulls or side armour.**

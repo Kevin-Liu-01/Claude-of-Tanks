@@ -137,9 +137,18 @@ function curveHull(P, H) {
   // H.sponsonAftY/Z opt-in (m47 r2 containment): the aft band bottom lifts
   // above the track top run climbing to a high rear sprocket.
   const bandEnd = H.tailTaper ? H.tailTaper.z0 : -Infinity;
-  for (let i = 1; i < deck.length - 1; i++) {
-    let [z0, y0] = deck[i];
-    let [z1, y1] = deck[i + 1];
+  // Optional closed over-track soffit. Insert its stations into the deck
+  // polyline so the accepted roof/outer-wall outline stays continuous;
+  // only the concealed shoulder floor rises above the moving return run.
+  const bandDeck = H.deckCorridor
+    ? [...deck, [H.deckCorridor.z0, deckAt(H.deckCorridor.z0)],
+      [H.deckCorridor.z1, deckAt(H.deckCorridor.z1)]]
+      .sort((a, b) => b[0] - a[0])
+      .filter((p, i, a) => i === 0 || Math.abs(p[0] - a[i - 1][0]) > 1e-6)
+    : deck;
+  for (let i = 1; i < bandDeck.length - 1; i++) {
+    let [z0, y0] = bandDeck[i];
+    let [z1, y1] = bandDeck[i + 1];
     if (z0 <= bandEnd) continue;
     if (z1 < bandEnd) { y1 = y0 + (y1 - y0) * ((bandEnd - z0) / (z1 - z0)); z1 = bandEnd; }
     // H.flatDeck opt-in (m48 r3, station slice-paint parity): keep exactly
@@ -153,9 +162,30 @@ function curveHull(P, H) {
     const sb = (z) => (H.sponsonAftY != null && z <= H.sponsonAftZ
       ? H.sponsonAftY
       : (H.sponsonBandY ?? spons - 0.03));
+    const C = H.deckCorridor;
+    const mid = (z0 + z1) * 0.5;
+    const inCorridor = C && mid >= Math.min(C.z0, C.z1) - 1e-6
+      && mid <= Math.max(C.z0, C.z1) + 1e-6;
+    if (!inCorridor) {
+      P.add('hull', slab(
+        [-bhw, sb(z0), z0], [bhw, sb(z0), z0], [bhw, sb(z1), z1], [-bhw, sb(z1), z1],
+        [-bhw, y0, z0], [bhw, y0, z0], [bhw, y1, z1], [-bhw, y1, z1]));
+      continue;
+    }
+    const X = C.x, F = C.floor;
+    // Complete central body.
     P.add('hull', slab(
-      [-bhw, sb(z0), z0], [bhw, sb(z0), z0], [bhw, sb(z1), z1], [-bhw, sb(z1), z1],
-      [-bhw, y0, z0], [bhw, y0, z0], [bhw, y1, z1], [-bhw, y1, z1]));
+      [-X, sb(z0), z0], [X, sb(z0), z0], [X, sb(z1), z1], [-X, sb(z1), z1],
+      [-X, y0, z0], [X, y0, z0], [X, y1, z1], [-X, y1, z1]));
+    // Closed left/right sponson shoulders, retaining the original deck and
+    // exterior side faces while moving only the hidden underside upward.
+    for (const side of [-1, 1]) {
+      P.add('hull', side > 0
+        ? slab([X, F, z0], [bhw, F, z0], [bhw, F, z1], [X, F, z1],
+          [X, y0, z0], [bhw, y0, z0], [bhw, y1, z1], [X, y1, z1])
+        : slab([-bhw, F, z0], [-X, F, z0], [-X, F, z1], [-bhw, F, z1],
+          [-bhw, y0, z0], [-X, y0, z0], [-X, y1, z1], [-bhw, y1, z1]));
+    }
   }
   // thin fender plates carry the true width (the reference decks step DOWN to
   // a narrow fender lip at the extreme edge — a full-width deck slab painted
@@ -2196,6 +2226,7 @@ function buildPershing(P, cfg) {
       const geo = new THREE.BoxGeometry(w, h, d);
       const mesh = new THREE.Mesh(geo, mat);
       mesh.name = 'gearShadowProxy';
+      mesh.userData.runningGear = true;
       mesh.position.set(x, y, z);
       if (rx) mesh.rotation.set(rx, 0, 0);
       mesh.castShadow = false;
@@ -2222,6 +2253,7 @@ function buildPershing(P, cfg) {
       const geo = new THREE.BoxGeometry(w, h, d);
       const mesh = new THREE.Mesh(geo, plateMat);
       mesh.name = 'gearRunCover';
+      mesh.userData.runningGear = true;
       mesh.position.set(x, y, z);
       if (rx) mesh.rotation.set(rx, 0, 0);
       mesh.castShadow = false;
@@ -2272,6 +2304,7 @@ function buildPershing(P, cfg) {
       const geo = torus(r, 0.008, 24);
       const mesh = new THREE.Mesh(geo, glintMat);
       mesh.name = name;
+      mesh.userData.runningGear = true;
       mesh.position.set(x, y, z);
       mesh.rotation.set(0, 0, Math.PI / 2);
       mesh.castShadow = false;
@@ -3565,6 +3598,8 @@ const M45_FIT = {
 const M46_HULL = {
   W: 3.51, bandHW: 1.42, trackW: 0.60, trackInset: 0.10, sponsonY: 1.12, bellyY: 0.48, noseW: 1.30,
   bellyHW: 1.025, glacisWingY0: 1.30, glacisWingDrop: 0.04, sponsonAftY: 1.35, sponsonAftZ: -2.39,
+  deckCorridor: { x: 1.02, floor: 1.28, z0: -2.70, z1: 1.40 },
+  runningGearFit: true, runningGearFace: true,
   darkGearFit: true, // r7 A4 (m47 A3 recipe): muffler legs + roller brackets +
                      // flap straps off the pale bucket — they stood as primer
                      // sticks against the black band (shaded-parity r5)
@@ -3585,7 +3620,7 @@ const M46_HULL = {
   // muffler band re-fit: ref side reads 1.78 over -2.34..-2.63 only (the
   // r2 strap ring at -3.20 poked 1.789 into the ref's 1.74 plateau band;
   // the -0.10 ring straddled the band-end column boundary)
-  mufflers: { z0: -2.36, z1: -2.72, top: 1.784, straps: [0.14, -0.06] },
+  mufflers: { z0: -2.36, z1: -2.72, top: 1.784, straps: [0.14, -0.06], legY0: 1.28 },
   gear: {
     // ref contact flat 1.20..-2.85 (bots 0 over those cols); front ramp
     // slope 0.80/departure ~1.22 to an idler wrap ending by 1.99; rear ramp
@@ -3633,6 +3668,8 @@ const M47_HULL = {
   // 1.774 @ -3.25..-3.47, stepped tail descent).
   W: 3.51, bandHW: 1.40, trackW: 0.60, trackInset: 0.10, sponsonY: 1.12, bellyY: 0.468, bellyHW: 1.025, noseW: 1.30,
   glacisWingY0: 1.40, sponsonAftY: 1.44, sponsonAftZ: -2.90,
+  deckCorridor: { x: 1.02, floor: 1.34, z0: -2.90, z1: 1.40 },
+  runningGearFit: true, runningGearFace: true,
   darkGearFit: true, // r4 A3: muffler legs + roller brackets off the pale bucket
   deck: [[1.92, 1.30], [1.32, 1.402], [1.16, 1.628], [0.63, 1.607], [0.10, 1.638],
     [-0.05, 1.602], [-0.22, 1.602], [-0.38, 1.652], [-1.28, 1.652], [-1.36, 1.702],
@@ -3641,7 +3678,7 @@ const M47_HULL = {
     [-4.05, 1.53], [-4.115, 1.48]],
   fenderY: [1.545, 1.10, -4.06], fenderHW: 1.677,
   toeBot: 0.75, bellyFrontZ: 1.40, bellyRearZ: -2.42, tailBotY: 1.0,
-  mufflers: { z0: -2.26, z1: -2.62, top: 1.784, straps: [0.10, -0.14], legY0: 1.22 },
+  mufflers: { z0: -2.26, z1: -2.62, top: 1.784, straps: [0.10, -0.14], legY0: 1.34 },
   gear: {
     // ref lower runs are straight lines: front y=0.855(z-1.15) to ~+1.93,
     // rear y=0.5(|z|-2.65) to ~-3.95 — idler/sprocket circles fitted to them.

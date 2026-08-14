@@ -369,18 +369,18 @@
       "vertices": 69175
     },
     "m46_patton": {
-      "freezeHash": "2f0d6cb8",
-      "instanceFreezeHash": "7c705aff",
-      "assetGeometryHash": "a52a1bbb",
-      "meshes": 100,
-      "vertices": 83673
+      "freezeHash": "8f42c12f",
+      "instanceFreezeHash": "8b2c4931",
+      "assetGeometryHash": "79b6ea0d",
+      "meshes": 102,
+      "vertices": 85113
     },
     "m47_patton": {
-      "freezeHash": "1f807fe2",
-      "instanceFreezeHash": "214a6a81",
-      "assetGeometryHash": "069e7889",
-      "meshes": 109,
-      "vertices": 96702
+      "freezeHash": "afb76590",
+      "instanceFreezeHash": "881a0652",
+      "assetGeometryHash": "75f356c1",
+      "meshes": 111,
+      "vertices": 97566
     },
     "m48": {
       "freezeHash": "28331d00",
