@@ -373,6 +373,49 @@ assert.ok(Math.abs(halfway.x - 0.5) < 0.03, `Hermite x midpoint: ${halfway.x}`);
 assert.ok(Math.abs(Math.abs(halfway.yaw) - Math.PI) < 0.03,
   `yaw interpolates across wrap: ${halfway.yaw}`);
 
+const responsive = new SnapshotBuffer({
+  interpolationDelayMs: 100,
+  maxExtrapolationMs: 250,
+  immediateEntityId: 'driver',
+});
+for (const [tickValue, serverTimeMs, x] of [[0, 0, 0], [3, 50, 0.5]]) {
+  responsive.push(captureWorldSnapshot({
+    tick: tickValue,
+    serverTimeMs,
+    entities: [entity('driver', 'm1a2', 'alpha', x, { yaw: Math.PI / 2, speed: 10 })],
+    viewerId: 'driver',
+  }));
+}
+const responsiveFrame = responsive.sample(100);
+assert.ok(Math.abs(responsiveFrame.entities[0].x - 1) < 0.03,
+  'owned tank bypasses the remote 100 ms jitter delay using bounded authority extrapolation');
+
+const jitter = new SnapshotBuffer({ interpolationDelayMs: 100, maxExtrapolationMs: 250 });
+for (const [tickValue, serverTimeMs] of [[0, 0], [3, 50], [6, 100], [12, 200], [15, 250]]) {
+  jitter.push(captureWorldSnapshot({
+    tick: tickValue,
+    serverTimeMs,
+    entities: [entity('remote', 't90m', 'bravo', serverTimeMs / 100,
+      { yaw: Math.PI / 2, speed: 10 })],
+    viewerId: 'remote',
+  }));
+}
+assert.equal(jitter.push(captureWorldSnapshot({
+  tick: 9,
+  serverTimeMs: 150,
+  entities: [entity('remote', 't90m', 'bravo', 1.5, { yaw: Math.PI / 2, speed: 10 })],
+  viewerId: 'remote',
+})), false, 'late out-of-order snapshots cannot rewind presentation');
+let priorJitterX = -Infinity;
+for (let localTimeMs = 100; localTimeMs <= 600; localTimeMs += 16) {
+  const x = jitter.sample(localTimeMs).entities[0].x;
+  assert.ok(Number.isFinite(x) && x + 1e-6 >= priorJitterX,
+    `loss/jitter soak remains finite and monotonic at ${localTimeMs} ms`);
+  priorJitterX = x;
+}
+assert.ok(priorJitterX <= 5.01,
+  'remote extrapolation stops at the 250 ms loss bound instead of drifting indefinitely');
+
 // Host/client modules share the same transport and enforce visibility.
 function createTestSimulation() {
   const entities = new Map();

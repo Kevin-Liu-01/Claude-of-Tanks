@@ -215,13 +215,19 @@ function extrapolateEntity(raw, extraS) {
  * Hermite motion for tracked vehicles, and bounds extrapolation during loss.
  */
 export class SnapshotBuffer {
-  constructor({ interpolationDelayMs = 100, maxExtrapolationMs = 250, capacity = 32 } = {}) {
+  constructor({
+    interpolationDelayMs = 100,
+    maxExtrapolationMs = 250,
+    capacity = 32,
+    immediateEntityId = null,
+  } = {}) {
     if (interpolationDelayMs < 0 || maxExtrapolationMs < 0 || capacity < 2) {
       throw new TypeError('invalid snapshot buffer configuration');
     }
     this.interpolationDelayMs = interpolationDelayMs;
     this.maxExtrapolationMs = maxExtrapolationMs;
     this.capacity = capacity;
+    this.immediateEntityId = immediateEntityId == null ? null : String(immediateEntityId);
     this.snapshots = [];
     this.latestTick = -1;
   }
@@ -272,6 +278,26 @@ export class SnapshotBuffer {
         entities.push(previous
           ? interpolateEntity(previous, current, t, durationMs / 1000)
           : decodeEntitySnapshot(current));
+      }
+    }
+
+    // The locally controlled tank must not inherit the remote-entity jitter
+    // delay. Render it from the newest authority sample with the same bounded
+    // extrapolator; opponents and teammates remain safely buffered. This is
+    // still server truth—there is no client-side collision or damage sim—and
+    // corrections remain small because snapshots arrive at 20 Hz.
+    if (this.immediateEntityId) {
+      const latest = this.snapshots[this.snapshots.length - 1];
+      const raw = latest.entities.find((entity) => entity.id === this.immediateEntityId);
+      if (raw) {
+        const extraMs = Math.max(0, Math.min(
+          this.maxExtrapolationMs,
+          localServerTimeMs - latest.serverTimeMs,
+        ));
+        const immediate = extrapolateEntity(raw, extraMs / 1000);
+        const index = entities.findIndex((entity) => entity.id === this.immediateEntityId);
+        if (index >= 0) entities[index] = immediate;
+        else entities.push(immediate);
       }
     }
     return {

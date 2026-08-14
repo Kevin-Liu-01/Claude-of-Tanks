@@ -340,7 +340,11 @@ export class MatchClientRuntime {
     }
     this.transport = transport;
     this.playerId = String(playerId || '');
-    this.buffer = new SnapshotBuffer({ interpolationDelayMs, maxExtrapolationMs });
+    this.buffer = new SnapshotBuffer({
+      interpolationDelayMs,
+      maxExtrapolationMs,
+      immediateEntityId: this.playerId,
+    });
     this.pingIntervalMs = pingIntervalMs;
     this.clock = clock;
     this.sendSeq = 0;

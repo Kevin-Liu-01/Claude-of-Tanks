@@ -62,6 +62,8 @@ const resilient = await beginDedicatedClientMatch({
 });
 resilient.ready();
 const replacedClient = resilient.client;
+const preservedEntity = registry.matches.get('ranked_test_1').simulation.entityById.get('p1');
+preservedEntity.combat.hp = 1234;
 resilient.socket.terminate();
 for (let attempt = 0; attempt < 100 && resilient.client === replacedClient; attempt++) {
   await new Promise((resolve) => setTimeout(resolve, 5));
@@ -69,6 +71,18 @@ for (let attempt = 0; attempt < 100 && resilient.client === replacedClient; atte
 assert.notEqual(resilient.client, replacedClient, 'dedicated session reconnects with the same ticket');
 assert.ok(resilient.client.connected);
 assert.ok(reconnectStates.includes('reconnecting') && reconnectStates.includes('reconnected'));
+assert.equal(registry.matches.get('ranked_test_1').simulation.entityById.get('p1'), preservedEntity,
+  'reconnect preserves the authoritative entity instead of respawning it');
+assert.equal(preservedEntity.combat.hp, 1234, 'reconnect preserves combat state');
+resilient.submitInput({
+  throttle: 0, steer: 0, brake: true, fire: false,
+  aimYaw: 0, aimPitch: 0, shellSlot: 0, actionBits: 0,
+}, registry.matches.get('ranked_test_1').runtime.tick);
+await new Promise((resolve) => setTimeout(resolve, 5));
+for (let i = 0; i < 180; i++) service.advance(1000 / 60);
+assert.equal(preservedEntity.connected, true);
+assert.ok(Math.abs(preservedEntity.state.speed) < 0.1,
+  'the replacement channel resumes control of the preserved tank');
 
 const health = await fetch(`http://127.0.0.1:${address.port}/healthz`).then((response) => response.json());
 assert.deepEqual(health, {
