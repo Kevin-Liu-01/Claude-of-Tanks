@@ -761,7 +761,18 @@ window.__SURFACE_STUDIO = {
   loadTank,
   setMode,
   frameView,
+  setCamera(position, target = controls.target.toArray()) {
+    camera.position.fromArray(position);
+    controls.target.fromArray(target);
+    controls.update();
+    updateExport();
+  },
   exportJSON: () => exportRecord(),
   selectScreen: (x, y, additive = false) => selectHit(rayHit(x, y), additive),
-  getState: () => ({ tankId: tankSelect.value, mode, annotations: exportRecord().annotations }),
+  getState: () => ({
+    tankId: tankSelect.value,
+    mode,
+    camera: { position: camera.position.toArray(), target: controls.target.toArray() },
+    annotations: exportRecord().annotations,
+  }),
 };
