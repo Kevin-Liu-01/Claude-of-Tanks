@@ -62041,7 +62041,7 @@
           }
         ]
       },
-      "geometryHash": "91160cda",
+      "geometryHash": "e13ed4c0",
       "metadataHash": "25b41944",
       "muzzleBore": {
         "tagged": 1,
@@ -62056,8 +62056,8 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 17888,
-          "sha256": "04a2cd6d538df0ca8814614e53cf8718d46ac5cb1467157fc1abd8a4e6a382b4"
+          "bytes": 17892,
+          "sha256": "7577a539957e6a6b4efee587277babf1f5739102d8cddfd35f981e9d1de8887c"
         },
         "top": {
           "file": "sherman_jumbo_top.webp",
@@ -62072,8 +62072,8 @@
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 11776,
-          "sha256": "5d954901108aeadda2d8932fedd693f4c1a977655f779ce08db3bfa61992c095"
+          "bytes": 11710,
+          "sha256": "11576b0497dff58aeaae374d9aa8c6cff3c1c01344dac3527a2f1a0b10224242"
         },
         "topSilhouette": {
           "file": "sherman_jumbo_top_silhouette.png",
@@ -62088,32 +62088,32 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4762,
-          "sha256": "9d17b5719afc9b035a8d5b1e96e2ab19e2d94fa573b72cc8e8a22fa593a13cb9"
+          "bytes": 4758,
+          "sha256": "f5d27e63cd03ed73eb0cbcdef54868d8402b662674dc0ec3265e28f1d6b5424b"
         },
         "hitZonesSide": {
           "file": "sherman_jumbo_hit_zones_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 90707,
-          "sha256": "953cc544ff1a17458d09dfcea349a827b2ab586d18f567e97d658af54b5aa6ce"
+          "bytes": 90689,
+          "sha256": "1e953ccbbf4c28c0ed5445e06082cfc2bf7b7328e2084ae9028d44562b9d47ad"
         },
         "armorSide": {
           "file": "sherman_jumbo_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 89063,
-          "sha256": "96a0f6c369f51c9d68d4656ad6e96a1149288f97407e45eec83877f15e17c7d7"
+          "bytes": 89104,
+          "sha256": "6845a66ff878c8ddb91d12c8e8fa3df6cc3124cffcced481b0299f2c36e13573"
         },
         "modulesSide": {
           "file": "sherman_jumbo_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 84941,
-          "sha256": "575b4612e35976bfcf7146dd6bf519e96c3afe17803cfde53aa7b39ed5dbd45f"
+          "bytes": 85266,
+          "sha256": "67c70981d426750298d0980da06d120d0d17c649a07182b7c04b56212f7f22da"
         }
       }
     },
