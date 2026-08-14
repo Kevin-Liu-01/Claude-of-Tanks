@@ -1,6 +1,9 @@
-import { createWebRTCDataChannelTransport } from './channelTransport.js';
+import { createWebRTCSplitTransport } from './channelTransport.js';
 
-export const MATCH_CHANNEL_LABEL = 'cot-match-v1';
+export const MATCH_CONTROL_CHANNEL_LABEL = 'cot-match-v1';
+export const MATCH_STATE_CHANNEL_LABEL = 'cot-state-v1';
+// Kept as an import-compatible alias for existing tooling and tests.
+export const MATCH_CHANNEL_LABEL = MATCH_CONTROL_CHANNEL_LABEL;
 
 function rtcConstructor(injected) {
   const Ctor = injected || globalThis.RTCPeerConnection;
@@ -47,6 +50,7 @@ export function createWebRTCPeer({
     bundlePolicy: 'max-bundle',
   });
   const pendingCandidates = [];
+  const channels = new Map();
   let remoteDescriptionSet = false;
   let closed = false;
   let transport = null;
@@ -57,20 +61,30 @@ export function createWebRTCPeer({
     rejectTransport = reject;
   });
 
+  function settleIfReady() {
+    if (transport || closed) return;
+    const control = channels.get(MATCH_CONTROL_CHANNEL_LABEL);
+    const state = channels.get(MATCH_STATE_CHANNEL_LABEL);
+    if (!control || !state || control.readyState !== 'open' || state.readyState !== 'open') return;
+    transport = createWebRTCSplitTransport(control, state, transportOptions);
+    settleTransport(transport);
+  }
+
   function attachChannel(channel) {
-    if (transport || closed) {
+    if (closed) {
       if (channel && typeof channel.close === 'function') channel.close();
       return;
     }
-    if (channel.label !== MATCH_CHANNEL_LABEL) {
+    if (channel.label !== MATCH_CONTROL_CHANNEL_LABEL && channel.label !== MATCH_STATE_CHANNEL_LABEL) {
       channel.close();
       rejectTransport(new Error(`unexpected data channel: ${channel.label}`));
       return;
     }
-    transport = createWebRTCDataChannelTransport(channel, transportOptions);
-    const ready = () => settleTransport(transport);
-    if (channel.readyState === 'open') ready();
-    else channel.addEventListener('open', ready, { once: true });
+    const existing = channels.get(channel.label);
+    if (existing && existing !== channel) existing.close();
+    channels.set(channel.label, channel);
+    if (channel.readyState === 'open') settleIfReady();
+    else channel.addEventListener('open', settleIfReady, { once: true });
   }
 
   peerConnection.onicecandidate = (event) => {
@@ -93,10 +107,15 @@ export function createWebRTCPeer({
 
   async function start() {
     if (role !== 'host') return;
-    const channel = peerConnection.createDataChannel(MATCH_CHANNEL_LABEL, {
+    const controlChannel = peerConnection.createDataChannel(MATCH_CONTROL_CHANNEL_LABEL, {
       ordered: true,
     });
-    attachChannel(channel);
+    const stateChannel = peerConnection.createDataChannel(MATCH_STATE_CHANNEL_LABEL, {
+      ordered: false,
+      maxRetransmits: 0,
+    });
+    attachChannel(controlChannel);
+    attachChannel(stateChannel);
     const offer = await peerConnection.createOffer();
     await peerConnection.setLocalDescription(offer);
     onSignal({ kind: 'description', description: peerConnection.localDescription });
@@ -142,7 +161,11 @@ export function createWebRTCPeer({
       closed = true;
       pendingCandidates.length = 0;
       if (transport) transport.close(reason);
-      else rejectTransport(new Error(reason));
+      else {
+        for (const channel of channels.values()) channel.close();
+        rejectTransport(new Error(reason));
+      }
+      channels.clear();
       peerConnection.onicecandidate = null;
       peerConnection.ondatachannel = null;
       peerConnection.onconnectionstatechange = null;

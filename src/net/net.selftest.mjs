@@ -21,7 +21,11 @@ import {
   serializeLobby,
 } from './lobby.js';
 import { createLoopbackTransportPair } from './loopbackTransport.js';
-import { createWebRTCDataChannelTransport } from './channelTransport.js';
+import {
+  createWebRTCDataChannelTransport,
+  createWebRTCSplitTransport,
+  createWebSocketTransport,
+} from './channelTransport.js';
 import {
   SnapshotBuffer,
   captureEntitySnapshot,
@@ -30,7 +34,12 @@ import {
 } from './snapshot.js';
 import { AuthoritativeMatchRuntime, MatchClientRuntime } from './matchRuntime.js';
 import { createLocalMatchSession } from './localSession.js';
-import { MATCH_CHANNEL_LABEL, createWebRTCPeer } from './webrtcPeer.js';
+import {
+  MATCH_CHANNEL_LABEL,
+  MATCH_CONTROL_CHANNEL_LABEL,
+  MATCH_STATE_CHANNEL_LABEL,
+  createWebRTCPeer,
+} from './webrtcPeer.js';
 import { RoomSignalingClient } from './signalingClient.js';
 import { LobbyClientRuntime, LobbyHostRuntime } from './lobbyRuntime.js';
 
@@ -92,18 +101,76 @@ class FakeEventTarget {
 }
 
 class FakeChannel extends FakeEventTarget {
-  constructor(label = MATCH_CHANNEL_LABEL) {
+  constructor(label = MATCH_CHANNEL_LABEL, options = {}) {
     super();
     this.label = label;
     this.readyState = 'open';
-    this.ordered = true;
-    this.maxRetransmits = null;
+    this.ordered = options.ordered ?? true;
+    this.maxRetransmits = options.maxRetransmits ?? null;
     this.maxPacketLifeTime = null;
     this.bufferedAmount = 0;
+    this.bufferedAmountLowThreshold = 0;
     this.sent = [];
   }
   send(value) { this.sent.push(value); }
   close() { this.readyState = 'closed'; this.emit('close'); }
+}
+
+// Split WebRTC delivery keeps control reliable and makes stale state replaceable.
+{
+  const control = new FakeChannel(MATCH_CONTROL_CHANNEL_LABEL, { ordered: true });
+  const state = new FakeChannel(MATCH_STATE_CHANNEL_LABEL, {
+    ordered: false,
+    maxRetransmits: 0,
+  });
+  const transport = createWebRTCSplitTransport(control, state, {
+    maxStateBufferedBytes: 64,
+    maxMessageBytes: 1024,
+  });
+  assert.equal(transport.send({ type: 'input', payload: 1 }), true);
+  assert.equal(JSON.parse(control.sent[0]).type, 'input');
+  assert.equal(state.sent.length, 0, 'control never leaks onto the state lane');
+  assert.equal(transport.sendState({ type: 'snapshot', tick: 1 }), true);
+  assert.equal(JSON.parse(state.sent[0]).tick, 1);
+
+  state.bufferedAmount = 64;
+  transport.sendState({ type: 'snapshot', tick: 2 });
+  transport.sendState({ type: 'snapshot', tick: 3 });
+  assert.equal(state.sent.length, 1, 'blocked state is coalesced instead of queued');
+  assert.ok(transport.stats.state.stateCoalesced >= 1);
+  state.bufferedAmount = 0;
+  state.emit('bufferedamountlow');
+  assert.equal(JSON.parse(state.sent.at(-1)).tick, 3,
+    'buffer drain sends only the newest authoritative state');
+
+  const received = [];
+  transport.onMessage((message) => received.push(message.type));
+  control.emit('message', { data: JSON.stringify({ type: 'event' }) });
+  state.emit('message', { data: JSON.stringify({ type: 'snapshot' }) });
+  assert.deepEqual(received, ['event', 'snapshot']);
+  transport.close('done');
+  assert.equal(control.readyState, 'closed');
+  assert.equal(state.readyState, 'closed');
+}
+
+// Ordered WebSockets cannot split lanes, but must stop stale snapshots from
+// consuming all reliable control headroom.
+{
+  const socket = new FakeChannel('websocket');
+  const transport = createWebSocketTransport(socket, {
+    maxBufferedBytes: 128,
+    maxStateBufferedBytes: 64,
+    maxMessageBytes: 1024,
+  });
+  socket.bufferedAmount = 64;
+  transport.sendState({ type: 'snapshot', tick: 1 });
+  transport.sendState({ type: 'snapshot', tick: 2 });
+  assert.equal(socket.sent.length, 0);
+  socket.bufferedAmount = 0;
+  transport.sendState({ type: 'snapshot', tick: 3 });
+  assert.equal(JSON.parse(socket.sent[0]).tick, 3,
+    'the next writable WebSocket snapshot replaces every stale pending state');
+  transport.close('done');
 }
 
 // Protocol and room identity.
@@ -216,6 +283,34 @@ assert.equal(migrateLobby.players.get('a-next').isHost, true);
   assert.equal(transport.readyState, 'closed');
 }
 
+// An unordered state lane may deliver an older envelope sequence after a
+// newer reliable message. Snapshot ticks, not cross-lane sequence order, own
+// state freshness.
+{
+  const channel = new FakeChannel();
+  const transport = createWebRTCDataChannelTransport(channel);
+  const client = new MatchClientRuntime({ transport, playerId: 'driver', clock: () => 100 });
+  channel.emit('message', { data: JSON.stringify(createEnvelope(MESSAGE_TYPES.WELCOME, {
+    protocolVersion: 1,
+    peerId: 'driver',
+    tickHz: 60,
+    snapshotHz: 20,
+    serverTick: 10,
+    serverTimeMs: 100,
+  }, { seq: 10, tick: 10 })) });
+  channel.emit('message', { data: JSON.stringify(createEnvelope(MESSAGE_TYPES.SNAPSHOT,
+    captureWorldSnapshot({
+      tick: 9,
+      serverTimeMs: 90,
+      entities: [entity('driver', 'm1a2', 'alpha', 4)],
+      viewerId: 'driver',
+    }), { seq: 9, tick: 9 })) });
+  assert.equal(client.buffer.snapshots.length, 1,
+    'state lane remains valid when reliable control arrives first');
+  assert.equal(client.lastRecvSeq, 10, 'state lane never rewinds reliable ordering');
+  client.close('done');
+}
+
 // WebRTC negotiation keeps ICE/TURN policy and signaling outside game logic.
 class FakePeerConnection {
   constructor(config) {
@@ -225,7 +320,13 @@ class FakePeerConnection {
     this.remoteDescription = null;
     this.candidates = [];
   }
-  createDataChannel(label) { this.channel = new FakeChannel(label); this.channel.readyState = 'connecting'; return this.channel; }
+  createDataChannel(label, options = {}) {
+    if (!this.channels) this.channels = [];
+    const channel = new FakeChannel(label, options);
+    channel.readyState = 'connecting';
+    this.channels.push(channel);
+    return channel;
+  }
   async createOffer() { return { type: 'offer', sdp: 'offer-sdp' }; }
   async createAnswer() { return { type: 'answer', sdp: 'answer-sdp' }; }
   async setLocalDescription(value) { this.localDescription = value; }
@@ -250,6 +351,17 @@ class FakePeerConnection {
   });
   await host.start();
   assert.equal(hostSignals[0].description.type, 'offer');
+  assert.deepEqual(host.peerConnection.channels.map((channel) => channel.label),
+    [MATCH_CONTROL_CHANNEL_LABEL, MATCH_STATE_CHANNEL_LABEL]);
+  assert.equal(host.peerConnection.channels[1].ordered, false);
+  assert.equal(host.peerConnection.channels[1].maxRetransmits, 0);
+  for (const channel of host.peerConnection.channels) {
+    channel.readyState = 'open';
+    channel.emit('open');
+  }
+  const negotiatedTransport = await host.transportReady;
+  assert.equal(negotiatedTransport.readyState, 'open',
+    'match transport becomes ready only after both lanes open');
   await client.handleSignal({ kind: 'ice', candidate: { candidate: 'early' } });
   await client.handleSignal(hostSignals[0]);
   assert.equal(clientSignals[0].description.type, 'answer');
@@ -459,6 +571,18 @@ function createTestSimulation() {
   const hostRuntime = new AuthoritativeMatchRuntime({ simulation, maxCatchUpTicks: 8 });
   const p1Transport = createLoopbackTransportPair();
   const p2Transport = createLoopbackTransportPair();
+  let stateLaneSends = 0;
+  const p1HostTransport = {
+    get readyState() { return p1Transport.host.readyState; },
+    send(message) { return p1Transport.host.send(message); },
+    sendState(message) {
+      stateLaneSends++;
+      return p1Transport.host.send(message);
+    },
+    onMessage(listener) { return p1Transport.host.onMessage(listener); },
+    onClose(listener) { return p1Transport.host.onClose(listener); },
+    close(reason) { return p1Transport.host.close(reason); },
+  };
   const p1 = new MatchClientRuntime({
     transport: p1Transport.client,
     playerId: 'p1',
@@ -471,7 +595,7 @@ function createTestSimulation() {
     interpolationDelayMs: 0,
     clock: () => 0,
   });
-  hostRuntime.attachPeer({ peerId: 'p1', transport: p1Transport.host, metadata: { team: 'alpha' } });
+  hostRuntime.attachPeer({ peerId: 'p1', transport: p1HostTransport, metadata: { team: 'alpha' } });
   hostRuntime.attachPeer({ peerId: 'p2', transport: p2Transport.host, metadata: { team: 'bravo' } });
   p1.connect();
   p2.connect();
@@ -485,6 +609,7 @@ function createTestSimulation() {
   const p1Frame = p1.update(50);
   const p2Frame = p2.update(50);
   assert.equal(hostRuntime.stats.snapshots, 2, 'one viewer-specific snapshot per peer');
+  assert.equal(stateLaneSends, 1, 'authority routes snapshots through a replaceable state lane');
   assert.deepEqual(p1Frame.entities.map((entry) => entry.id), ['p1']);
   assert.deepEqual(p2Frame.entities.map((entry) => entry.id), ['p2']);
   assert.ok(p1Frame.entities[0].x > 0, 'authoritative host applies client input');

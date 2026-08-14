@@ -32,6 +32,9 @@ play without importing Three.js rendering or DOM state.
 - Authority accepts controls only; it computes every gameplay result.
 - Spotting filters data before serialization.
 - Queues, extrapolation, catch-up, sequences, and payload sizes are bounded.
+- WebRTC control/input/events stay reliable and ordered; replaceable snapshots
+  use the unordered zero-retransmit state lane. WebSocket snapshots coalesce
+  under backpressure so stale state cannot consume control headroom.
 - Modules remain Node-runnable with no DOM/WebGL dependency.
 - Tests exercise the public host/client interface, not private internals.
 

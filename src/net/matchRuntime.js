@@ -138,7 +138,10 @@ export class AuthoritativeMatchRuntime {
       tick: this.tick,
     });
     peer.sendSeq = nextSequence(peer.sendSeq);
-    const accepted = peer.transport.send(envelope);
+    const accepted = type === MESSAGE_TYPES.SNAPSHOT &&
+      typeof peer.transport.sendState === 'function'
+      ? peer.transport.sendState(envelope)
+      : peer.transport.send(envelope);
     if (!accepted && typeof peer.transport.close === 'function') {
       peer.transport.close('backpressure_limit');
       this.detachPeer(peer.id, 'backpressure_limit');
@@ -395,6 +398,14 @@ export class MatchClientRuntime {
   #receive(raw) {
     try {
       const message = validateEnvelope(raw);
+      // Snapshot delivery may use an unordered/no-retransmit lane. Its tick is
+      // the ordering authority; reliable control messages retain sequence
+      // ordering independently so either lane can arrive first safely.
+      if (message.type === MESSAGE_TYPES.SNAPSHOT) {
+        this.clientTick = Math.max(this.clientTick, message.tick);
+        this.buffer.push(message.payload);
+        return;
+      }
       if (this.lastRecvSeq != null && !isSequenceNewer(message.seq, this.lastRecvSeq)) return;
       this.lastRecvSeq = message.seq;
       this.clientTick = Math.max(this.clientTick, message.tick);
@@ -404,9 +415,6 @@ export class MatchClientRuntime {
           this.clientTick = message.payload.serverTick;
           this.serverOffsetMs = message.payload.serverTimeMs - this.clock();
           for (const listener of [...this.connectionListeners]) listener(true);
-          break;
-        case MESSAGE_TYPES.SNAPSHOT:
-          this.buffer.push(message.payload);
           break;
         case MESSAGE_TYPES.PONG: {
           const now = this.clock();
