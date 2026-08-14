@@ -8025,3 +8025,45 @@ geometry **`de3a7c0d`** (33 rendered meshes / 55,014 vertices). IS-2 is freeze
 
 **KEEP both closed hull cores, full raised shoulders, fenders and sawtooth
 mudguards. The fixed deck-stowage nominee is hull-owned and must stay seated.**
+
+## 5.225 SHERMAN FAMILY CLOSED SPONSON AND NATIVE-GEAR CLOSEOUT (2026-08-14, LIVE)
+
+The first-party M4A3E8 and Sherman Jumbo retain their complete hulls, full
+outer sponson armor, glacis, fenders, mudguards, sand shields, turrets and
+six-wheel native running gear. No hull, skirt, fender, mudguard, wheel or
+track member is deleted.
+
+Both hulls now use closed inter-track cores with joined outer shoulder
+bridges whose complete undersides sit above the native linked-shoe envelope.
+The M4A3E8's HVSS wheel-bay wall, recess discs and bogie hardware retain their
+geometry under explicit running-gear ownership. Its full fender and both
+mudguards are raised and reseated together above the course. The Jumbo's
+former low outer belly strips remain present as closed raised shoulder
+bridges under its unchanged full-height side armor and sand shields. The
+mirrored Jumbo nose flange and rotor taper also have corrected outward
+winding with no silhouette or dimensional change.
+
+Exact strict band and individual-shoe audits are **front 0/0, rear 0/0 and
+complete sweep 0/0** for both tanks. Fresh evidence contains 15 paired boards
+including the standardized elevated-left profile, 15 yaw0 and 15 yaw90
+frames per tank: **90 PNG / 90 distinct hashes**. Every view preserves the
+closed body, full outer armor, guards and one continuous native course.
+
+Both complete turret/gun packages execute a genuine quarter-turn while hull
+and running gear remain fixed. Jumbo parent audit is **0 stranded / 0
+abutting / 0 dangling**. The M4A3E8 parent nominee is legitimate fixed
+`hullWood` deck-tool/stowage geometry: top and close-roof yaw evidence shows
+both long tools seated on the engine deck while the turret departs, with no
+turret semantics or empty-air span. Winding census is **0 reversed / 0 mixed
+geometry** for both; mode 2 is clean. Both dark muzzle bores and all 19
+targeted live-rig checks pass.
+
+All targeted presentation assets are current. M4A3E8 dual-ledger geometry is
+freeze **`c437f778`**, instance freeze **`bf6a59ac`** and asset geometry
+**`80bbd338`** (49 rendered meshes / 77,626 vertices). Sherman Jumbo is
+freeze **`3aae60d0`**, instance freeze **`651097a6`** and asset geometry
+**`eca3320a`** (42 rendered meshes / 61,358 vertices).
+
+**KEEP both complete Sherman hulls, raised outer shoulders, fenders,
+mudguards/sand shields and native courses. Running-gear ownership may not be
+used to exempt real armor.**
