@@ -1,4 +1,5 @@
 import { createWebSocketTransport } from './channelTransport.js';
+import { maybeCreateAdverseNetworkTransport } from './adverseNetworkTransport.js';
 import { MatchClientRuntime } from './matchRuntime.js';
 
 function addListener(target, type, listener, options) {
@@ -27,10 +28,10 @@ export function connectDedicatedMatch({
   }
   const socket = new WebSocketImpl(endpoint);
   socket.binaryType = 'arraybuffer';
-  const transport = createWebSocketTransport(socket, {
+  const transport = maybeCreateAdverseNetworkTransport(createWebSocketTransport(socket, {
     maxMessageBytes: 64 * 1024,
     maxBufferedBytes: 512 * 1024,
-  });
+  }));
   const client = new MatchClientRuntime({ transport, playerId, ...clientOptions });
 
   const ready = new Promise((resolve, reject) => {

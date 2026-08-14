@@ -406,7 +406,14 @@ export class MatchClientRuntime {
     this.clientTick = 0;
     this.lastSnapshotTick = 0;
     this.missingSnapshotBaselines = 0;
+    this.snapshotPacketsReceived = 0;
+    this.estimatedMissingSnapshots = 0;
+    this.lastSnapshotPacketTick = null;
+    this.snapshotEveryTicks = 3;
     this.serverOffsetMs = 0;
+    this.rttMs = null;
+    this.rttJitterMs = 0;
+    this.lastRttSampleMs = null;
     this.lastPingAtMs = -Infinity;
     this.connected = false;
     this.closed = false;
@@ -458,6 +465,16 @@ export class MatchClientRuntime {
           throw new ProtocolError('snapshot_tick_mismatch', 'snapshot envelope tick does not match payload');
         }
         this.clientTick = Math.max(this.clientTick, message.tick);
+        if (this.lastSnapshotPacketTick == null || message.tick > this.lastSnapshotPacketTick) {
+          if (this.lastSnapshotPacketTick != null) {
+            const steps = Math.max(1, Math.round(
+              (message.tick - this.lastSnapshotPacketTick) / this.snapshotEveryTicks,
+            ));
+            this.estimatedMissingSnapshots += Math.max(0, steps - 1);
+          }
+          this.lastSnapshotPacketTick = message.tick;
+          this.snapshotPacketsReceived++;
+        }
         const snapshot = this.assembler.accept(message.payload);
         if (!snapshot) {
           this.lastSnapshotTick = 0;
@@ -474,6 +491,11 @@ export class MatchClientRuntime {
         case MESSAGE_TYPES.WELCOME:
           this.connected = true;
           this.clientTick = message.payload.serverTick;
+          if (Number.isFinite(message.payload.tickHz) && Number.isFinite(message.payload.snapshotHz) &&
+              message.payload.tickHz > 0 && message.payload.snapshotHz > 0) {
+            this.snapshotEveryTicks = Math.max(1,
+              Math.round(message.payload.tickHz / message.payload.snapshotHz));
+          }
           this.serverOffsetMs = message.payload.serverTimeMs - this.clock();
           for (const listener of [...this.connectionListeners]) listener(true);
           break;
@@ -482,6 +504,13 @@ export class MatchClientRuntime {
           const sent = Number(message.payload && message.payload.clientTimeMs);
           const server = Number(message.payload && message.payload.serverTimeMs);
           if (Number.isFinite(now) && Number.isFinite(sent) && Number.isFinite(server) && now >= sent) {
+            const rtt = now - sent;
+            if (this.lastRttSampleMs != null) {
+              const variation = Math.abs(rtt - this.lastRttSampleMs);
+              this.rttJitterMs += (variation - this.rttJitterMs) * 0.2;
+            }
+            this.lastRttSampleMs = rtt;
+            this.rttMs = this.rttMs == null ? rtt : this.rttMs + (rtt - this.rttMs) * 0.2;
             const sample = server - (sent + now) * 0.5;
             this.serverOffsetMs += (sample - this.serverOffsetMs) * 0.15;
           }
@@ -545,6 +574,25 @@ export class MatchClientRuntime {
     this.connectionListeners.add(listener);
     if (this.connected) queueMicrotask(() => listener(true));
     return () => this.connectionListeners.delete(listener);
+  }
+
+  getStats() {
+    const snapshotTotal = this.snapshotPacketsReceived + this.estimatedMissingSnapshots;
+    return {
+      connected: this.connected,
+      rttMs: this.rttMs,
+      rttJitterMs: this.rttJitterMs,
+      serverOffsetMs: this.serverOffsetMs,
+      snapshotPacketsReceived: this.snapshotPacketsReceived,
+      estimatedMissingSnapshots: this.estimatedMissingSnapshots,
+      estimatedSnapshotLoss: snapshotTotal > 0
+        ? this.estimatedMissingSnapshots / snapshotTotal
+        : 0,
+      missingSnapshotBaselines: this.missingSnapshotBaselines,
+      buffer: this.buffer.getStats(),
+      transport: this.transport.stats || null,
+      transportBufferedBytes: Number(this.transport.bufferedAmount) || 0,
+    };
   }
 
   close(reason = 'client_closed') {

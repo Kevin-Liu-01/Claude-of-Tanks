@@ -722,6 +722,11 @@ function createTestSimulation() {
   assert.equal(p1Frame.ackInputSeq, 0, 'snapshot acknowledges consumed input sequence');
   assert.equal(p2Frame.ackInputSeq, null,
     'snapshot distinguishes no acknowledged input from sequence zero');
+  const clientStats = p1.getStats();
+  assert.equal(clientStats.snapshotPacketsReceived, 1,
+    'network diagnostics count accepted snapshot packets');
+  assert.equal(clientStats.buffer.acceptedSnapshots, 1,
+    'network diagnostics expose jitter-buffer health');
   p1.submitInput(input({ fire: true }), hostRuntime.tick);
   p1.submitInput(input({ fire: false }), hostRuntime.tick);
   p1.submitInput(input({ actionBits: PLAYER_ACTION_BITS.REPAIR }), hostRuntime.tick);

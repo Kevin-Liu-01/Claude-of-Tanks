@@ -9,7 +9,12 @@ function ensureStyle() {
     box-shadow:0 12px 36px rgba(0,0,0,.52);color:#f2bd73;font:800 11px system-ui,sans-serif;
     letter-spacing:.12em;text-align:center;text-transform:uppercase;opacity:0;pointer-events:none;
     transition:opacity .18s ease,transform .18s ease}.cot-network-status.show{opacity:1;transform:translate(-50%,0)}
-    .cot-network-status.failed{color:#ff887b;border-color:rgba(255,103,91,.7)}`;
+    .cot-network-status.failed{color:#ff887b;border-color:rgba(255,103,91,.7)}
+    .cot-network-diagnostics{position:fixed;left:8px;top:64px;z-index:89;display:none;
+    padding:7px 9px;border-left:1px solid rgba(90,196,255,.55);background:rgba(5,10,16,.72);
+    color:#cbeaff;font:10px/1.5 ui-monospace,Menlo,monospace;white-space:pre;
+    font-variant-numeric:tabular-nums;pointer-events:none;text-shadow:0 1px 2px #000}
+    .cot-network-diagnostics.show{display:block}`;
   document.head.appendChild(style);
 }
 
@@ -21,7 +26,32 @@ export function createNetworkStatus() {
   root.setAttribute('role', 'status');
   root.setAttribute('aria-live', 'polite');
   document.body.appendChild(root);
+  const diagnostics = document.createElement('div');
+  diagnostics.className = 'cot-network-diagnostics';
+  diagnostics.setAttribute('aria-label', 'Network diagnostics');
+  document.body.appendChild(diagnostics);
   let hideTimer = null;
+  let lastDiagnosticsAt = -Infinity;
+  let diagnosticsVisible = (() => {
+    try {
+      const query = new URLSearchParams(location.search);
+      return query.get('netdiag') === '1' || localStorage.getItem('cot.netdiag.v1') === '1';
+    } catch (_) { return false; }
+  })();
+  diagnostics.classList.toggle('show', diagnosticsVisible);
+
+  function toggleDiagnostics() {
+    diagnosticsVisible = !diagnosticsVisible;
+    diagnostics.classList.toggle('show', diagnosticsVisible);
+    try { localStorage.setItem('cot.netdiag.v1', diagnosticsVisible ? '1' : '0'); } catch (_) { /* fine */ }
+  }
+
+  const onKeyDown = (event) => {
+    if (event.code !== 'F3' || event.repeat) return;
+    event.preventDefault();
+    toggleDiagnostics();
+  };
+  window.addEventListener('keydown', onKeyDown);
 
   function show(message, failed = false, hideAfterMs = 0) {
     if (hideTimer) clearTimeout(hideTimer);
@@ -38,11 +68,40 @@ export function createNetworkStatus() {
     else if (state === 'closed' || state === 'connected') root.classList.remove('show');
   }
 
+  function update(stats) {
+    if (!diagnosticsVisible || !stats) return;
+    const now = performance.now();
+    if (now - lastDiagnosticsAt < 250) return;
+    lastDiagnosticsAt = now;
+    const buffer = stats.buffer || {};
+    const prediction = stats.prediction || {};
+    const rtt = stats.rttMs == null ? '—' : `${stats.rttMs.toFixed(0)} ms`;
+    const jitter = Number(stats.rttJitterMs || 0).toFixed(1);
+    const loss = ((stats.estimatedSnapshotLoss || 0) * 100).toFixed(1);
+    const transport = stats.transport || {};
+    const stateTransport = transport.state || transport;
+    diagnostics.textContent =
+      `NET  ${rtt}  ±${jitter} ms  gap ${loss}%\n` +
+      `BUF  ${Number(buffer.interpolationDelayMs || 0).toFixed(0)} ms  ` +
+      `jitter ${Number(buffer.arrivalJitterMs || 0).toFixed(1)}  ` +
+      `extra ${buffer.extrapolatedSamples || 0}\n` +
+      `WIRE ${stats.transportBufferedBytes || 0} B  ` +
+      `coal ${stateTransport.stateCoalesced || 0}  base-miss ${stats.missingSnapshotBaselines || 0}\n` +
+      `PRED ${prediction.pendingInputs || 0} pending  ` +
+      `err ${Number(prediction.lastPositionErrorM || 0).toFixed(2)} m  ` +
+      `corr ${Number(prediction.correctionM || 0).toFixed(2)} m`;
+  }
+
   return {
     root,
+    diagnostics,
     set,
+    update,
+    toggleDiagnostics,
     dispose() {
       if (hideTimer) clearTimeout(hideTimer);
+      window.removeEventListener('keydown', onKeyDown);
+      diagnostics.remove();
       root.remove();
     },
   };

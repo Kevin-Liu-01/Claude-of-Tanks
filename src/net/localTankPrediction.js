@@ -137,6 +137,7 @@ export class LocalTankPredictor {
       replayedInputs: 0,
       droppedHistory: 0,
       maxPositionErrorM: 0,
+      lastPositionErrorM: 0,
     };
   }
 
@@ -186,6 +187,7 @@ export class LocalTankPredictor {
       old.z - predicted.pos.z,
     );
     this.stats.reconciliations++;
+    this.stats.lastPositionErrorM = positionError;
     this.stats.maxPositionErrorM = Math.max(this.stats.maxPositionErrorM, positionError);
     if (positionError > this.hardSnapDistanceM || snapshot.destroyed) {
       for (const key of Object.keys(this.correction)) this.correction[key] = 0;
@@ -212,6 +214,10 @@ export class LocalTankPredictor {
   }
 
   getStats() {
-    return { ...this.stats, pendingInputs: this.history.length };
+    return {
+      ...this.stats,
+      pendingInputs: this.history.length,
+      correctionM: Math.hypot(this.correction.x, this.correction.y, this.correction.z),
+    };
   }
 }

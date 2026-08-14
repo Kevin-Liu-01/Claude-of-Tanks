@@ -437,6 +437,10 @@ export function createBrowserBattleBridge({
     return own?.predictor?.recordInput(input, dt, inputSeq) || false;
   }
 
+  function getPredictionStats() {
+    return entities.get(id)?.predictor?.getStats() || null;
+  }
+
   function unmount() {
     if (!mounted || !legacyState) return;
     game.tanks = legacyState.tanks;
@@ -467,6 +471,7 @@ export function createBrowserBattleBridge({
     mount,
     apply,
     recordInput,
+    getPredictionStats,
     setPerspective,
     unmount,
     dispose,

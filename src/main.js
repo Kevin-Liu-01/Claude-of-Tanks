@@ -1989,6 +1989,12 @@ function acceptNetworkSnapshot(snapshot, dt) {
   if (networkBridge) networkBridge.apply(snapshot, dt);
 }
 
+function networkDiagnostics() {
+  const stats = networkMatch?.client?.getStats?.() || null;
+  if (!stats) return null;
+  return { ...stats, prediction: networkBridge?.getPredictionStats?.() || null };
+}
+
 function pumpNetworkMatch(dt, nowMs) {
   if (!networkMatch || networkMatch.client?.closed) return;
   if (networkMatch.role === 'host') {
@@ -2020,6 +2026,7 @@ function pumpNetworkMatch(dt, nowMs) {
     }
     acceptNetworkSnapshot(networkMatch.update(nowMs), dt);
   }
+  networkStatus?.update(networkDiagnostics());
 }
 
 function closeNetworkMatch(reason = 'network_match_closed') {
@@ -4961,6 +4968,7 @@ window.__DEBUG = {
   // damage panel r9: pose/state hooks for probes + deterministic captures
   get damagePanel() { return damagePanel; },
   devTrace,                              // DEV flight recorder; null in production
+  get network() { return networkDiagnostics(); },
 };
 await bootStage('ready', null);
 // perf-r2: the boot pipeline is compiled and error-checked; battle-time

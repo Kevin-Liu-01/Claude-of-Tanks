@@ -4,6 +4,7 @@ import { isGarageVisibleTankId } from '../game/matchmaking.js';
 import { createAuthoritativeMatch } from '../sim/authoritativeMatch.js';
 import { createLoopbackTransportPair } from './loopbackTransport.js';
 import { AuthoritativeMatchRuntime, MatchClientRuntime } from './matchRuntime.js';
+import { maybeCreateAdverseNetworkTransport } from './adverseNetworkTransport.js';
 
 function seededUnit(seed) {
   let value = seed >>> 0;
@@ -152,7 +153,7 @@ export async function beginPrivateClientMatch({ session, playerId, lobbyState } 
   }
   const id = String(playerId || (session.roomInfo && session.roomInfo.peerId) || '');
   if (!id) throw new TypeError('playerId is required');
-  const transport = await session.takeMatchTransport();
+  const transport = maybeCreateAdverseNetworkTransport(await session.takeMatchTransport());
   const client = new MatchClientRuntime({ transport, playerId: id });
   client.connect({ mode: session.roomInfo && session.roomInfo.mode || 'private' });
   return {
