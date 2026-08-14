@@ -9,11 +9,16 @@
 <title>tmp-hashgeo</title>
 <script type="module">
 import { createTank } from '/src/vehicles/tankFactory.js';
+import { geometryFingerprint } from '/src/vehicles/tankAssets.js';
 
 const params = new URLSearchParams(location.search);
 const id = params.get('id') || 'm60a1';
-const engineCtx = { setupShadowMaterial: (m) => m, anisotropy: 1, renderer: null };
-const tank = createTank(id, engineCtx, { camoSeed: 4242, quality: 'high', proceduralOnly: true });
+const camoSeed = Number(params.get('seed') || 4242);
+const assetMode = params.get('asset') === '1';
+const engineCtx = assetMode ? null : { setupShadowMaterial: (m) => m, anisotropy: 1, renderer: null };
+const tank = createTank(id, engineCtx, assetMode
+  ? { camoSeed, quality: 'high' }
+  : { camoSeed, quality: 'high', proceduralOnly: true });
 tank.root.updateMatrixWorld(true);
 
 // FNV-1a over float32 bit patterns, mesh-order independent (sorted digests)
@@ -38,7 +43,20 @@ for (const d of digests) {
   total = fnv(total, d & 0xff); total = fnv(total, (d >> 8) & 0xff);
   total = fnv(total, (d >> 16) & 0xff); total = fnv(total, (d >> 24) & 0xff);
 }
-window.__GEOHASH = { id, hash: total.toString(16), meshCount, vertCount };
+window.__GEOHASH = {
+  id,
+  camoSeed,
+  assetMode,
+  // Historical certification hash: position buffers, world transforms and
+  // topology. Kept stable so existing graduate receipts remain comparable.
+  hash: total.toString(16),
+  // Release/currentness hash: also covers InstancedMesh transforms. Keeping
+  // both closes the old gap where a wheel/track instance could move without
+  // changing the historical freeze hash.
+  assetHash: geometryFingerprint(tank.root),
+  meshCount,
+  vertCount,
+};
 window.__HASH_READY = true;
 document.body.textContent = JSON.stringify(window.__GEOHASH);
 </script>

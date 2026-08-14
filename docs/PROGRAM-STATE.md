@@ -28,9 +28,10 @@ fleet-wide, every graduate hash-frozen, no tank registers a reference GLB
 at load.
 
 **2026-08-11 native provenance reset:** the runtime rule is now stronger than
-the historical graduate registry: all 108 registered battle playables must be
-our authored procedural geometry. `npm run tank:native:check` currently
-reports 108/108 native and zero GLB-sourced. Source-derived geometry modules
+the historical graduate registry: every registered battle playable must be
+our authored procedural geometry. After the owner-directed Merkava IVm removal,
+`npm run tank:native:check` currently reports 107/107 native and zero
+GLB-sourced. Source-derived geometry modules
 and bake scripts for the Leopard/Type 10/T-80U/T-14/AMX-40/FV510 reopen set
 were deleted. Any freeze row whose builder changed in this reset is historical
 until fresh native paired+yaw evidence replaces it. See
@@ -67,7 +68,11 @@ builders clone it as a family donor; it must not be re-registered as a tank.
 ## 3. HISTORICAL GRADUATE REGISTRY (reopened native builds require re-freeze)
 Freeze = deterministic geometry hash via `node tools/tmp-hashgeo.mjs
 --ids=...` (camoSeed 4242 pinned build; FNV-1a over position buffers +
-world matrices, mesh-order independent). Graduate-change protocol: fix ->
+world matrices + indices, mesh-order independent). This table preserves the
+per-vehicle certification lineage; shared-family edits mean it is not a live
+byte ledger. The authoritative current 107-vehicle dual-fingerprint snapshot
+is `docs/FLEET-FREEZE-CURRENT.json`, reproduced by
+`npm run tank:freeze:check`. Graduate-change protocol: fix ->
 gate hold x2 -> independent re-cert critic >=9.0 on changed views ->
 re-freeze NEW hash, all in ONE commit.
 
@@ -5814,3 +5819,38 @@ the absence of a false Community model label.
 
 **KEEP. Authoring eligibility and player-facing ownership labels must follow
 the live geometry source, never stale historical reference metadata.**
+
+## 5.170 LIVE FIRST-PARTY FLEET DUAL-FREEZE LEDGER (2026-08-13, LIVE)
+
+The historical graduate table records independent certification lineage, but
+it cannot serve as a current byte ledger after later shared-family edits. A
+second ambiguity had also accumulated in late receipts: some called the
+instance-aware asset-currentness fingerprint a "freeze", while the original
+graduate tool hashes topology and world transforms but not `InstancedMesh`
+transforms. That distinction matters for wheels, linked shoes, ERA arrays and
+repeated turret fittings.
+
+`docs/FLEET-FREEZE-CURRENT.json` is now the authoritative live snapshot for all
+107 shipped vehicles. Each row records three deterministic values:
+
+- `freezeHash`: the historical certification algorithm at camo seed 4242,
+  covering position buffers, world matrices and indices;
+- `instanceFreezeHash`: the instance-aware geometry fingerprint at the same
+  certification seed, covering every repeated wheel/shoe/fitting transform;
+- `assetGeometryHash`: the same instance-aware fingerprint at the asset seed
+  4100, required to match `public/icons/tank-assets.json` exactly.
+
+`npm run tank:freeze` regenerates the snapshot and
+`npm run tank:freeze:check` rebuilds every first-party procedural tank in a
+fresh browser, verifies all three values and fails if the 107-row roster or
+asset manifest drifts. The current snapshot reproduces twice. The independent
+release battery also passes: 107/107 native with zero GLB playables, four
+family lineages ordered, 856/856 presentation files current, complete muzzle
+bores, all application tests and the stripped public production build.
+This ledger proves provenance and byte/currentness only; it does not waive the
+separate source-fidelity, strict track-clearance, contiguity or decoration
+gates reported by `tank:release:check`.
+
+**KEEP the dual ledger as the live byte authority. Never use a historical
+single hash to claim that an instanced wheel, track, armor block or fitting is
+unchanged.**

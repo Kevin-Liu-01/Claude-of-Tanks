@@ -20,6 +20,8 @@
     "tank:release:check": "node tools/tank-release-check.mjs",
     "tank:native:check": "node tools/native-playables-audit.mjs",
     "tank:family:check": "node src/vehicles/fleetOrder.selftest.mjs",
+    "tank:freeze": "node tools/fleet-freeze-snapshot.mjs",
+    "tank:freeze:check": "node tools/fleet-freeze-snapshot.mjs --check",
     "tank:bore:probe": "node tools/muzzle-bore-probe.mjs",
     "tank:surface-studio": "vite --host 127.0.0.1 --open /tools/tank-surface-studio.html",
     "shots": "node tools/screenshot.mjs",
