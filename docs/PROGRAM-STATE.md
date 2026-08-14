@@ -7198,3 +7198,45 @@ is freeze **`5f66f958`**, instance freeze **`ff4063b5`** and asset geometry
 **KEEP both complete AMX-30 hulls, fender/mudguard packages and native
 courses. Future clearance work must preserve the accepted exterior and use
 only physical reseating or truthful running-gear ownership.**
+
+## 5.202 M60A2 STARSHIP RUNNING-GEAR OWNERSHIP CLOSEOUT (2026-08-14, LIVE)
+
+This closeout preserves the complete first-party M60A2: its joined Patton
+hull, cambered engine deck, full sponson and fender system, front and rear
+mudboards, six road-wheel stations, raised front idler, high rear sprocket
+and one linked-shoe course. No hull, side armor, fender, mudguard, wheel or
+track component is moved, deleted or hidden.
+
+The entire strict receipt was native running-gear furniture already sitting
+in its intended mechanical envelope: 94 shoe voxels came from the unchanged
+hub rings and wheel bolt heads, while the 90 band / 100 shoe voxels came from
+the unchanged return-roller support brackets. M60A2 now opts those exact
+pieces into the existing Patton running-gear buckets; every armor and fitting
+coordinate remains byte-identical.
+
+Exact strict band and individual-shoe audits now report **front 0/0, rear 0/0
+and complete sweep 0/0**, improved from 90 band voxels / 194 shoe voxels.
+Fresh evidence contains 15 paired boards including the standardized
+elevated-left profile, 15 yaw0 and 15 yaw90 frames: **45 PNG / 45 distinct
+hashes**. Side, front, rear and elevated pixels retain the closed complete
+hull, six readable road wheels, loaded lower run and continuous raised
+terminal transitions.
+
+The complete Starship turret, launcher, roof station, optics and bustle kit
+execute a genuine quarter-turn while the hull, deck, fenders and running gear
+remain fixed. The parent heuristic's single abutting nominee is the supported
+hull-owned tow cable along the left sponson; yaw90 confirms it remains seated
+and has no turret semantics. There are **0 stranded / 0 dangling** findings.
+Winding is **0 reversed / 0 mixed / 0-pixel deficit**. Its mode-2 hull nominee
+is the legitimate fixed hull/deck package exposed when the tall turret turns,
+not stranded equipment. No duplicate course, empty-air fitting, open sheet,
+sky hole or silhouette regression appears.
+
+All eight targeted presentation assets are current, the 152 mm muzzle bore
+passes and all ten targeted runtime-rig checks pass. Dual-ledger geometry is
+freeze **`001b5966`**, instance freeze **`3b05126a`** and asset geometry
+**`1283ae46`** (47 rendered meshes / 65,035 vertices).
+
+**KEEP the complete M60A2 hull, mudboards and native course. Future clearance
+work must preserve the accepted exterior and treat its wheel/roller hardware
+as running gear rather than armor.**

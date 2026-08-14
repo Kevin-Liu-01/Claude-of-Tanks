@@ -258,6 +258,7 @@ function curveHull(P, H) {
   // running-gear detail bucket for exact corridor auditing.
   const gearFitB = H.darkGearFit ? 'hullDark' : 'hullDetail';
   const rollerFitB = H.runningGearFit ? 'hullRunningGearDetail' : gearFitB;
+  const wheelFaceB = H.runningGearFace ? 'hullRunningGearDark' : 'hullDark';
   // fender mufflers (M46/M47): proud cylinders, end caps, elbows, tailpipes.
   // Opt-in x/straps (m47 r2): the r1 m47 band (-2.26..-2.52) made the body
   // length degenerate (0.26 fixed trim) while the hardcoded strap offsets
@@ -316,10 +317,10 @@ function curveHull(P, H) {
   for (const z of wheelZs) {
     for (const side of [-1, 1]) {
       const fx = side * (xc + wheelW / 2 + 0.012);
-      P.add('hullDark', torus(G.wheelR * 0.3, 0.015, 16), fx, wy, z, 0, 0, Math.PI / 2);
+      P.add(wheelFaceB, torus(G.wheelR * 0.3, 0.015, 16), fx, wy, z, 0, 0, Math.PI / 2);
       for (let k = 0; k < 6; k++) {
         const a = (k / 6) * Math.PI * 2 + 0.26;
-        P.add('hullDark', cylX(0.026, 0.05, 6), fx, wy + Math.sin(a) * G.wheelR * 0.52, z + Math.cos(a) * G.wheelR * 0.52);
+        P.add(wheelFaceB, cylX(0.026, 0.05, 6), fx, wy + Math.sin(a) * G.wheelR * 0.52, z + Math.cos(a) * G.wheelR * 0.52);
       }
     }
   }
@@ -3839,6 +3840,7 @@ const M60A2_HULL = {
   // (1.996) but not +-1.78 (1.853): outer 1.760 threads both boundaries
   fenderY: [2.005, -0.60, -3.50], fenderHW: 1.755,
   toeBot: 1.06, bellyFrontZ: 2.35, bellyRearZ: -2.62, tailBotY: 0.95,
+  runningGearFace: true, runningGearFit: true,
   gear: {
     // ref ramps: front (2.27,0)->(3.31,0.93) slope 0.89; rear wrap arc
     // measured (-3.50,0.70)/(-3.59,0.78)/(-3.67,0.91) — circles fitted;
