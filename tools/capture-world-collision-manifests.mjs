@@ -1,0 +1,77 @@
+#!/usr/bin/env node
+
+/**
+ * Capture the exact rendered-map collision records for dedicated servers.
+ *
+ * Usage:
+ *   npx vite --host 127.0.0.1 --port 5197
+ *   agent-browser --session cot-manifest open http://127.0.0.1:5197/
+ *   node tools/capture-world-collision-manifests.mjs cot-manifest
+ */
+
+import { execFileSync } from 'node:child_process';
+import { writeFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { MAP_IDS } from '../src/world/maps/index.js';
+
+const session = process.argv[2] || 'cot-manifest';
+const outputUrl = new URL('../server/world-collision-manifests.json', import.meta.url);
+
+function evaluate(script) {
+  const raw = execFileSync('agent-browser', [
+    '--session', session,
+    '--json',
+    'eval',
+    script,
+  ], { encoding: 'utf8', maxBuffer: 128 * 1024 * 1024 });
+  const envelope = JSON.parse(raw);
+  if (!envelope.success) throw new Error(envelope.error || 'browser evaluation failed');
+  return envelope.data.result;
+}
+
+const ready = evaluate('typeof window.__DEBUG === "object"');
+if (!ready) throw new Error('game debug facade is not ready in the capture browser');
+
+const maps = {};
+for (const mapId of MAP_IDS) {
+  const script = `(() => {
+    const world = window.__DEBUG.switchMap(${JSON.stringify(mapId)});
+    const n = (value) => Math.round(value * 10000) / 10000;
+    const pack = (record) => {
+      const out = { b: [
+        n(record.min[0]), n(record.min[1]), n(record.min[2]),
+        n(record.max[0]), n(record.max[1]), n(record.max[2]),
+      ] };
+      const shape = record.shape2;
+      if (shape?.kind === 'obb') out.s = ['o', n(shape.cx), n(shape.cz), n(shape.hw), n(shape.hl), n(shape.yaw)];
+      else if (shape?.kind === 'circle') out.s = ['c', n(shape.cx), n(shape.cz), n(shape.r)];
+      else if (shape?.kind === 'convex') out.s = ['v', ...shape.points.map(n)];
+      if (record.crushable) out.q = 1;
+      if (record.crushMin != null) out.m = n(record.crushMin);
+      if (record.crushKeep != null) out.e = n(record.crushKeep);
+      if (record.kind != null) out.k = record.kind;
+      if (record.treeIdx != null) out.t = record.treeIdx;
+      if (record.propIdx != null) out.p = record.propIdx;
+      return out;
+    };
+    return {
+      obstacles: world.getObstacles().map(pack),
+      colliders: world.getColliders().map(pack),
+      concealers: world.getConcealment().map((entry) => [n(entry.x), n(entry.z), n(entry.r), n(entry.add)]),
+    };
+  })()`;
+  maps[mapId] = evaluate(script);
+  const data = maps[mapId];
+  console.log(`${mapId}: ${data.obstacles.length} obstacles, ` +
+    `${data.colliders.length} colliders, ${data.concealers.length} concealers`);
+}
+
+const manifest = {
+  version: 1,
+  terrainSeed: 1337,
+  propsSeed: 2002,
+  vegetationSeed: 2001,
+  maps,
+};
+writeFileSync(outputUrl, JSON.stringify(manifest));
+console.log(`wrote ${fileURLToPath(outputUrl)}`);

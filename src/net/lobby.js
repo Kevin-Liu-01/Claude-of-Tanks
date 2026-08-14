@@ -45,6 +45,18 @@ function cleanSpecId(value) {
   return id;
 }
 
+function cleanEquipment(value) {
+  if (!Array.isArray(value)) return [];
+  const clean = [];
+  for (const entry of value) {
+    const id = String(entry || '').trim();
+    if (!/^[a-z0-9_-]{1,32}$/.test(id) || clean.includes(id)) continue;
+    clean.push(id);
+    if (clean.length === 3) break;
+  }
+  return clean;
+}
+
 function countTeam(lobby, team, excluding = null) {
   let count = 0;
   for (const player of lobby.players.values()) {
@@ -87,12 +99,15 @@ function markChanged(lobby) {
   return lobby;
 }
 
-function createPlayer({ id, name, team, specId = null, isHost = false, rating = null }) {
+function createPlayer({
+  id, name, team, specId = null, equipment = [], isHost = false, rating = null,
+}) {
   return {
     id: cleanId(id),
     name: cleanName(name),
     team,
     specId: specId ? cleanSpecId(specId) : null,
+    equipment: cleanEquipment(equipment),
     ready: false,
     connected: true,
     isHost,
@@ -111,6 +126,7 @@ export function createLobby({
   mapId = 'random',
   allowTeamSwitch = true,
   hostSpecId = null,
+  hostEquipment = [],
 } = {}) {
   const code = normalizeRoomCode(roomCode);
   if (code.length !== 6) throw new LobbyError('invalid_room_code', 'room code must be 6 characters');
@@ -142,6 +158,7 @@ export function createLobby({
     name: hostName,
     team: LOBBY_TEAMS.ALPHA,
     specId: hostSpecId,
+    equipment: hostEquipment,
     isHost: true,
   }));
   return lobby;
@@ -153,6 +170,7 @@ export function addLobbyPlayer(lobby, {
   name,
   team = null,
   specId = null,
+  equipment = [],
   rating = null,
 } = {}) {
   assertWaiting(lobby);
@@ -177,6 +195,7 @@ export function addLobbyPlayer(lobby, {
     name,
     team: targetTeam,
     specId,
+    equipment,
     rating,
   }));
   return markChanged(lobby);
@@ -222,6 +241,10 @@ export function applyLobbyCommand(lobby, playerId, command, {
       player.ready = false;
       break;
     }
+    case 'select_equipment':
+      player.equipment = cleanEquipment(command.equipment);
+      player.ready = false;
+      break;
     case 'set_ready':
       if (player.team !== LOBBY_TEAMS.SPECTATOR && !player.specId) {
         throw new LobbyError('vehicle_required', 'select a vehicle before readying');

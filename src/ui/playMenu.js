@@ -258,6 +258,7 @@ export function createPlayMenu({
           roomInfo,
           hostName: name,
           hostSpecId: selection.specId,
+          hostEquipment: selection.equipment,
           mapId: selection.mapId,
           iceServers: ice,
           isVehicleAllowed,
@@ -285,6 +286,7 @@ export function createPlayMenu({
         const runtime = await session.ready;
         unsubscribeState = runtime.onState(renderLobby);
         await session.submit({ type: 'select_vehicle', specId: selection.specId });
+        await session.submit({ type: 'select_equipment', equipment: selection.equipment });
       }
     } catch (error) {
       closeCurrentSession('connection_failed');

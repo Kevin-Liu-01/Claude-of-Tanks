@@ -146,6 +146,10 @@ assert.equal(lobby.players.get('kevin').specId, lobby.players.get('guest').specI
 expectCode(() => applyLobbyCommand(lobby, 'guest', { type: 'set_map', mapId: 'winter' }),
   LobbyError, 'host_only');
 applyLobbyCommand(lobby, 'kevin', { type: 'set_ready', ready: true });
+applyLobbyCommand(lobby, 'guest', {
+  type: 'select_equipment', equipment: ['rammer', 'vstab', 'optics', 'toolbox'],
+});
+assert.deepEqual(lobby.players.get('guest').equipment, ['rammer', 'vstab', 'optics']);
 applyLobbyCommand(lobby, 'guest', { type: 'set_ready', ready: true });
 applyLobbyCommand(lobby, 'kevin', { type: 'start', matchSeed: 42 });
 assert.equal(lobby.phase, LOBBY_PHASES.STARTING);

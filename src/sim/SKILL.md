@@ -13,7 +13,8 @@ Own authoritative armored-combat math at a fixed 60 Hz step.
 <!-- agent-docs:fill:model -->
 `movement.js` owns tank state and terrain contact; `armor.js` owns hit geometry;
 `ballistics.js` owns shells; `damage.js` owns penetration/modules/crew/fire;
-`spotting.js` owns visibility and team intel.
+`spotting.js` owns visibility and team intel; `authoritativeMatch.js` composes
+those rules with match-local world collision for every network authority.
 
 ## Patterns to follow / invariants
 <!-- agent-docs:fill:patterns -->

@@ -4,7 +4,9 @@ Status: playable foundation implemented. Private/LAN room codes, team switching,
 ready/start policy, WebRTC channel handoff, a shared five-second load barrier,
 browser-hosted authority, a dedicated WebSocket authority service, viewer-
 filtered snapshots, and browser presentation are implemented and tested.
-Public matchmaking/rating, bots, environment collision parity, reconnect UI,
+All eight battlefields now share captured authored collision, destructible,
+foliage concealment, and loadout rules between rendered hosts and dedicated
+Node authority. Public matchmaking/rating, bots, consumables, reconnect UI,
 and network impairment/soak gates remain before rated release.
 
 ## Product contract
@@ -28,8 +30,8 @@ spotting, collision, match outcome, and bot decisions are authority concerns.
 |---|---|---|---|---|
 | Match loop | Multiplayer uses `AuthoritativeMatchRuntime`; legacy solo still steps in `main.js` | Solo parity can drift until migration finishes | Move campaign onto `createLocalMatchSession` | Exact tick/catch-up tests pass |
 | Identity | Network entity ID is independent from vehicle spec ID | Legacy solo still keys its fixed roster differently | Preserve match identity through presentation | Browser pair used two M1A1s |
-| Simulation | `authoritativeMatch.js` is Node-runnable and renderer-free | Static props, destructibles, bots, equipment, and consumables need parity | Pure shared world/combat plans | Dedicated real-WebSocket test passes |
-| Visibility | Authority omits hidden opponents before serialization | Foliage concealment parity is incomplete | Pure terrain + foliage visibility inputs | Hidden-coordinate exclusion test passes |
+| Simulation | `authoritativeMatch.js` is Node-runnable and renderer-free | Bots, consumables, ram damage, and HE splash still need parity | Pure shared world/combat plans | Dedicated real-WebSocket and eight-map collision tests pass |
+| Visibility | Authority omits hidden opponents before serialization | Player camo-season choice still needs a wire field | Shared terrain, hard cover, foliage, optics, radio, and equipment rules | Hidden-coordinate and shared spotting tests pass |
 | Session modes | Loopback, WebRTC, and WebSocket share one runtime | Campaign entry still uses legacy direct state | Route campaign through loopback | Transport/runtime tests pass |
 | Progression | Credits and XP persist without a tech tree | UI rewards a currency with no meaningful sink | Rank, match history, campaign medals | UI/economy removal tests (pending) |
 | AI routes | Strong local controller over doctrine waypoints | Repeated openings and hill pockets | Seeded global traversability planner + local controller | Route diversity/stuck-time gates (pending) |
@@ -63,9 +65,19 @@ Every message contains:
 ### Lobby
 
 `src/net/lobby.js` is the only owner of room capacity, teams, readiness,
-vehicle selection, host permissions, map selection, room locking, and the
-start gate. Signaling transports submit commands; they do not reimplement
+vehicle/loadout selection, host permissions, map selection, room locking, and
+the start gate. Signaling transports submit commands; they do not reimplement
 policy. Player identity is independent from vehicle identity.
+
+### World authority
+
+Browser-hosted rooms hand authority the exact active `World` collision facade.
+Dedicated servers inflate match-local state from
+`server/world-collision-manifests.json`, generated from those same eight live
+maps by `tools/capture-world-collision-manifests.mjs`. The manifest is server-
+only and never enters a browser chunk. Hull pushout, shell/LOS raycasts,
+foliage concealment, and replicated destructible indices therefore match the
+rendered battlefield.
 
 ### Transport
 
@@ -147,12 +159,14 @@ packet gaps extrapolate for at most 250 ms.
 
 1. [done for network] Separate runtime entity IDs from vehicle spec IDs.
 2. [partial] Extract a headless battle simulation adapter from `state.js`; visuals are
-   created and synchronized by a client-side presentation module.
+   created and synchronized by a client-side presentation module. Movement,
+   armor, ballistics, damage, equipment, spotting, environment collision, and
+   destruction are authoritative; bots/consumables/ram/HE parity remain.
 3. Run campaign/bot battles through `createLocalMatchSession` and prove visual
    and gameplay parity.
 4. [done] Add WebRTC data-channel and signaling adapters for LAN/private codes.
-5. [foundation done] Add a dedicated Node authority using the same simulation adapter and a
-   WebSocket transport for public/ranked rooms.
+5. [done] Add a dedicated Node authority using the same simulation adapter,
+   exact eight-map collision manifests, and a WebSocket transport for public/ranked rooms.
 6. [partial] Replace the garage flow with Play, Private, LAN, Campaign, and Training;
    move tank/loadout choice inside the selected mode.
 7. Remove wallet/XP surfaces and migrate old saves non-destructively to match

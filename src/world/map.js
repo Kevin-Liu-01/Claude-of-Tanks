@@ -130,7 +130,7 @@ function assembleWorld(engineCtx, config, heightField, terrain, vegetation, prop
 
   function raycast(origin, dir, maxDist) {
     // props first — they bound the terrain march
-    let best = Infinity, bestKind = null;
+    let best = Infinity, bestKind = null, bestRecord = null;
     const ex = origin.x + dir.x * maxDist;
     const ez = origin.z + dir.z * maxDist;
     queryColliders(
@@ -142,7 +142,12 @@ function assembleWorld(engineCtx, config, heightField, terrain, vegetation, prop
       // (O(1) rematch restore) rather than spliced out.
       if (c.dead) continue;
       const t = rayCollisionRecord(origin, dir, c, Math.min(maxDist, best), _aabbNrm);
-      if (t >= 0 && t < best) { best = t; bestKind = 'prop'; _bestNrm.copy(_aabbNrm); }
+      if (t >= 0 && t < best) {
+        best = t;
+        bestKind = 'prop';
+        bestRecord = c;
+        _bestNrm.copy(_aabbNrm);
+      }
     }
     // terrain march with adaptive step + bisection refinement
     let terrainT = -1;
@@ -181,7 +186,7 @@ function assembleWorld(engineCtx, config, heightField, terrain, vegetation, prop
     const normal = kind === 'terrain'
       ? heightField.getNormalAt(point.x, point.z).clone()
       : _bestNrm.clone();
-    return { point, normal, dist: hitT, kind };
+    return { point, normal, dist: hitT, kind, record: kind === 'prop' ? bestRecord : null };
   }
 
   return {
@@ -191,6 +196,8 @@ function assembleWorld(engineCtx, config, heightField, terrain, vegetation, prop
     raycast,
     /** @returns {Array<{min:number[],max:number[]}>} static obstacle AABBs */
     getObstacles: () => obstacles,
+    /** Shell/LOS cover records; exposed for deterministic server manifests. */
+    getColliders: () => props.colliders,
     /** Allocation-free local obstacle broad phase; caller owns `out`. */
     queryObstacles,
     /**

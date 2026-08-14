@@ -368,6 +368,18 @@ export function createSpottingSystem(deps) {
   const getCamoBonus = typeof deps.getCamoBonus === 'function' ? deps.getCamoBonus : () => 0;
   const getEquipment = typeof deps.getEquipment === 'function' ? deps.getEquipment : () => null;
   const rng = typeof deps.rng === 'function' ? deps.rng : Math.random;
+  const teams = Array.isArray(deps.teams) && deps.teams.length >= 2
+    ? [...new Set(deps.teams.map(String))]
+    : TEAMS;
+
+  function makeTeamState() {
+    return Object.fromEntries(teams.map((team) => [team, {
+      spotted: false,
+      lastPassS: -1e9,
+      spottedAtS: -1e9,
+      spotter: null,
+    }]));
+  }
 
   /** per-tank record: fire bloom + per-observing-team spotted state */
   const recs = new Map(); // id -> rec
@@ -383,10 +395,7 @@ export function createSpottingSystem(deps) {
       r = {
         firedAtS: -1e9,
         nextCheckS: rng() * CHECK_NEAR_S, // stagger initial checks
-        byTeam: {
-          player: { spotted: false, lastPassS: -1e9, spottedAtS: -1e9, spotter: null },
-          enemy: { spotted: false, lastPassS: -1e9, spottedAtS: -1e9, spotter: null },
-        },
+        byTeam: makeTeamState(),
       };
       recs.set(ent.id, r);
     }
@@ -422,7 +431,7 @@ export function createSpottingSystem(deps) {
   // _conc below) — checkTarget/canSpot ran every 0.5-2 s per tank and were the
   // last steady allocation sites in the spotting path.
   const _camoArgs = { base: 0, paint: 0, equip: 0, bloom: 0, bush: 0, fireLoss: 0 };
-  const _seenVia = { player: null, enemy: null };
+  const _seenVia = Object.fromEntries(teams.map((team) => [team, null]));
 
   /** Full spot test: does `spotter` see `target` right now? */
   function canSpot(spotter, target, timeS) {
@@ -477,8 +486,7 @@ export function createSpottingSystem(deps) {
     // only through a damaged-radio spotter travels half as far (§9 radio
     // debuff), so we keep checking spotters until a full-share one passes.
     const seenVia = _seenVia;
-    seenVia.player = null;
-    seenVia.enemy = null;
+    for (const team of teams) seenVia[team] = null;
     for (let i = 0; i < tanks.length; i++) {
       const sp = tanks[i];
       if (sp === target || !alive(sp) || sp.team === target.team) continue;
@@ -494,7 +502,7 @@ export function createSpottingSystem(deps) {
         }
       }
     }
-    for (const team of TEAMS) {
+    for (const team of teams) {
       if (team === target.team) continue;
       const st = rec.byTeam[team];
       if (seenVia[team]) {
@@ -587,10 +595,7 @@ export function createSpottingSystem(deps) {
       if (!r) {
         r = {
           firedAtS: -1e9, nextCheckS: 0,
-          byTeam: {
-            player: { spotted: false, lastPassS: -1e9, spottedAtS: -1e9, spotter: null },
-            enemy: { spotted: false, lastPassS: -1e9, spottedAtS: -1e9, spotter: null },
-          },
+          byTeam: makeTeamState(),
         };
         recs.set(id, r);
       }
@@ -690,9 +695,9 @@ export function createSpottingSystem(deps) {
       // after the rising edge and holds only for the lamp's SIXTH_SENSE_SHOW_S
       // window (WoT: after the bulb dies you do NOT know you are still seen).
       // Raw state stays on isSpotted() for enemies/minimap/AI.
-      const opp = ent.team === 'player' ? 'enemy' : 'player';
+      const opp = teams.find((team) => team !== ent.team);
       const st = rec.byTeam[opp];
-      const knownAge = st.spotted ? timeS - st.spottedAtS : -1;
+      const knownAge = st?.spotted ? timeS - st.spottedAtS : -1;
       _conc.spotted = knownAge >= SIXTH_SENSE_DELAY_S &&
         knownAge <= SIXTH_SENSE_DELAY_S + SIXTH_SENSE_SHOW_S;
       return _conc;

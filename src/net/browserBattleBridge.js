@@ -34,6 +34,7 @@ export function createBrowserBattleBridge({
   game,
   bus,
   viewerId,
+  worldCollision = null,
 } = {}) {
   if (!engineCtx || !engineCtx.scene || !game) throw new TypeError('engineCtx and game are required');
   const id = String(viewerId || '');
@@ -227,6 +228,29 @@ export function createBrowserBattleBridge({
           killerId: event.killerId,
           cause: event.cause,
           pos: entity ? [entity.state.pos.x, entity.state.pos.y, entity.state.pos.z] : null,
+        });
+      } else if (event.type === 'world_prop_destroyed') {
+        const obstacle = worldCollision && typeof worldCollision.getObstacles === 'function'
+          ? worldCollision.getObstacles()[event.obstacleIndex]
+          : null;
+        if (obstacle && !obstacle.crushed && typeof worldCollision.crushObstacle === 'function') {
+          worldCollision.crushObstacle(
+            obstacle,
+            event.directionX,
+            event.directionZ,
+            event.speedMps,
+          );
+        }
+        bus.emit('prop:crushed', {
+          kind: event.kind,
+          speedMps: event.speedMps,
+          cause: event.cause,
+          pos: obstacle ? [
+            (obstacle.min[0] + obstacle.max[0]) * 0.5,
+            obstacle.min[1],
+            (obstacle.min[2] + obstacle.max[2]) * 0.5,
+          ] : null,
+          dir: [event.directionX, 0, event.directionZ],
         });
       } else if (event.type === 'match_ended') {
         const result = event.result === 'draw' ? 'draw'

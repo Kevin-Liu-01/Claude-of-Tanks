@@ -16,6 +16,8 @@ The signaling server relays WebRTC descriptions/ICE only and never gameplay.
 - `signalingServer.js` owns HTTP upgrade, origin/rate/payload gates, and relay.
 - `dedicatedMatchRegistry.js` owns authenticated match lifecycle and reconnects.
 - `dedicatedMatchServer.js` owns the authoritative WebSocket service boundary.
+- `dedicatedWorldCollision.js` inflates match-local state from the generated
+  eight-map collision manifest; do not hand-edit that manifest.
 - A v1 browser-hosted room closes if its host leaves; never silently migrate a
   ranked authority to a player.
 - Production signaling must run behind TLS with an explicit origin allowlist.
@@ -24,6 +26,8 @@ The signaling server relays WebRTC descriptions/ICE only and never gameplay.
 
 ## Verification
 
-Run `node server/signaling.selftest.mjs`. Any gameplay authority added here must
-also run the shared `src/net` tests, deterministic match tests, abuse cases, and
-real WebSocket soak/load tests.
+Run `node server/signaling.selftest.mjs` and
+`node server/dedicatedWorldCollision.selftest.mjs`. Regenerate world manifests
+with `tools/capture-world-collision-manifests.mjs` after authored map collision
+changes. Any gameplay authority added here must also run the shared `src/net`
+tests, deterministic match tests, abuse cases, and real WebSocket soak/load tests.

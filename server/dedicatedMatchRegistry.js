@@ -1,6 +1,7 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { AuthoritativeMatchRuntime } from '../src/net/matchRuntime.js';
 import { createAuthoritativeMatch } from '../src/sim/authoritativeMatch.js';
+import { createDedicatedWorldCollision } from './dedicatedWorldCollision.js';
 
 const MATCH_ID_RE = /^[a-zA-Z0-9_-]{6,64}$/;
 const PLAYER_ID_RE = /^[a-zA-Z0-9_-]{1,48}$/;
@@ -22,10 +23,17 @@ function randomMatchId() {
   return randomBytes(12).toString('base64url');
 }
 
+function createDedicatedSimulation(options) {
+  return createAuthoritativeMatch({
+    ...options,
+    worldCollision: createDedicatedWorldCollision(options.mapId),
+  });
+}
+
 /** In-memory lifecycle for dedicated authoritative matches. */
 export class DedicatedMatchRegistry {
   constructor({
-    simulationFactory = createAuthoritativeMatch,
+    simulationFactory = createDedicatedSimulation,
     runtimeFactory = (simulation) => new AuthoritativeMatchRuntime({ simulation }),
     tokenFactory = randomToken,
   } = {}) {

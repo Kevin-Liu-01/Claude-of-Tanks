@@ -27,14 +27,20 @@ import {
   tickFire,
   tickModuleRepairs,
 } from './damage.js';
-import { baseCamoOf, spotRangeM, viewRangeOf } from './spotting.js';
+import { createSpottingSystem } from './spotting.js';
 import { captureWorldSnapshot } from '../net/snapshot.js';
+import { pushHullFromObstacle } from '../world/collision.js';
+import { applyEquipmentToCombat, defaultLoadoutFor } from '../game/equipment.js';
 
 const BATTLE_LIMIT_S = 15 * 60;
 const FIRE_TICK_S = 0.5;
 const MAP_HALF_M = 508;
 const AIM_DISTANCE_M = 1000;
 const MAX_EVENTS = 128;
+const CRUSH_MIN_MPS = 6 / 3.6;
+const CRUSH_PRESS_S = 0.45;
+const CRUSH_PRESS_GAP_S = 0.2;
+const CRUSH_SPEED_KEEP = 0.94;
 const TEAM_ALPHA = 'alpha';
 const TEAM_BRAVO = 'bravo';
 const TEAM_SPECTATOR = 'spectator';
@@ -44,6 +50,7 @@ const _push = new Vector3();
 const _aim = new Vector3();
 const _muzzle = new Vector3();
 const _gunDir = new Vector3();
+const _segmentDir = new Vector3();
 const _hullMatrix = new Matrix4();
 const _turretMatrix = new Matrix4();
 const _localMatrix = new Matrix4();
@@ -199,8 +206,21 @@ function firstTankTrace(shell, entities) {
   return best;
 }
 
-function lineOfSight(heightField, from, to) {
-  return segmentTerrainHit(heightField, from, to) == null;
+function segmentWorldHit(worldCollision, heightField, from, to) {
+  if (worldCollision && typeof worldCollision.raycast === 'function') {
+    _segmentDir.subVectors(to, from);
+    const distance = _segmentDir.length();
+    if (distance <= 1e-9) return null;
+    _segmentDir.multiplyScalar(1 / distance);
+    const hit = worldCollision.raycast(from, _segmentDir, distance);
+    return hit ? {
+      t: Math.max(0, Math.min(1, hit.dist / distance)),
+      kind: hit.kind,
+      record: hit.record || null,
+    } : null;
+  }
+  const t = segmentTerrainHit(heightField, from, to);
+  return t == null ? null : { t, kind: 'terrain' };
 }
 
 /**
@@ -215,17 +235,22 @@ export function createAuthoritativeMatch({
   seed = 6000,
   battleLimitS = BATTLE_LIMIT_S,
   countdownS = 5,
+  worldCollision = null,
 } = {}) {
   if (!Array.isArray(players) || players.length < 1 || players.length > 14) {
     throw new TypeError('players must contain 1-14 records');
   }
   const ids = new Set();
-  const { heightField, layout } = sharedTerrain(mapId);
+  if (worldCollision && worldCollision.mapId && worldCollision.mapId !== mapId) {
+    throw new Error(`world collision map mismatch: expected ${mapId}, got ${worldCollision.mapId}`);
+  }
+  const shared = sharedTerrain(mapId);
+  const heightField = worldCollision?.heightField || shared.heightField;
+  const layout = shared.layout;
   const rng = mulberry32(seed);
   const entities = [];
   const entityById = new Map();
   const teamIndex = { [TEAM_ALPHA]: 0, [TEAM_BRAVO]: 0 };
-  const visibility = new Map();
   const pendingEvents = [];
   let shells = [];
   let nextShellId = 1;
@@ -234,6 +259,18 @@ export function createAuthoritativeMatch({
   let result = null;
   let phase = 'loading';
   let countdownRemainingS = Math.max(0, finite(countdownS, 5));
+  const staticObstacles = worldCollision && typeof worldCollision.getObstacles === 'function'
+    ? worldCollision.getObstacles() : [];
+  const nearbyObstacles = [];
+  const obstacleIndex = new Map(staticObstacles.map((obstacle, index) => [obstacle, index]));
+  const obstacleByPropIdx = new Map();
+  for (const obstacle of staticObstacles) {
+    if (obstacle.propIdx != null && !obstacleByPropIdx.has(obstacle.propIdx)) {
+      obstacleByPropIdx.set(obstacle.propIdx, obstacle);
+    }
+  }
+  const pendingCrush = [];
+  const pendingCrushSet = new Set();
 
   for (const record of players) {
     const id = String(record && record.id || '').trim();
@@ -248,13 +285,20 @@ export function createAuthoritativeMatch({
     const state = createTankState(spec, _spawn, pad.yaw);
     const input = makeInput();
     input.aimPoint.copy(state.aimPoint);
+    const combat = createCombatState(spec);
+    const equipment = applyEquipmentToCombat(
+      combat,
+      Array.isArray(record.equipment) ? record.equipment : defaultLoadoutFor(spec),
+      spec,
+    );
     const entity = {
       id,
       specId: spec.id,
       spec,
       team,
       state,
-      combat: createCombatState(spec),
+      combat,
+      equip: equipment,
       input,
       connected: true,
       kills: 0,
@@ -264,6 +308,28 @@ export function createAuthoritativeMatch({
     entityById.set(id, entity);
     for (let n = 0; n < 30; n++) updateTank(entity, heightField, SIM_DT);
   }
+
+  const spottingRaycast = worldCollision && typeof worldCollision.raycast === 'function'
+    ? (origin, direction, maxDistance) => worldCollision.raycast(origin, direction, maxDistance)
+    : (origin, direction, maxDistance) => {
+      _aim.set(
+        origin.x + direction.x * maxDistance,
+        origin.y + direction.y * maxDistance,
+        origin.z + direction.z * maxDistance,
+      );
+      const hitT = segmentTerrainHit(heightField, origin, _aim);
+      return hitT == null ? null : { dist: hitT * maxDistance, kind: 'terrain' };
+    };
+  const spotting = createSpottingSystem({
+    getTanks: () => entities,
+    raycast: spottingRaycast,
+    concealers: worldCollision && typeof worldCollision.getConcealment === 'function'
+      ? worldCollision.getConcealment() : [],
+    getEquipment: (entity) => entity.equip,
+    getCamoBonus: () => 0,
+    rng: mulberry32(seed + 31000),
+    teams: [TEAM_ALPHA, TEAM_BRAVO],
+  });
 
   function emit(type, payload) {
     if (pendingEvents.length >= MAX_EVENTS) pendingEvents.shift();
@@ -298,6 +364,53 @@ export function createAuthoritativeMatch({
     const safeZ = Math.max(-MAP_HALF_M, Math.min(MAP_HALF_M, pos.z));
     outPush.x += safeX - pos.x;
     outPush.z += safeZ - pos.z;
+
+    const halfL = entity.spec.dims.hullLengthM * 0.5;
+    const halfW = entity.spec.dims.widthM * 0.5;
+    const yaw = entity.state.yaw;
+    const fx = Math.sin(yaw);
+    const fz = Math.cos(yaw);
+    const rx = fz;
+    const rz = -fx;
+    const broadRadius = Math.hypot(halfL, halfW) + 0.01;
+    const candidates = worldCollision && typeof worldCollision.queryObstacles === 'function'
+      ? worldCollision.queryObstacles(
+        pos.x - broadRadius, pos.z - broadRadius,
+        pos.x + broadRadius, pos.z + broadRadius,
+        nearbyObstacles,
+      )
+      : staticObstacles;
+    for (const obstacle of candidates) {
+      if (obstacle.crushed || pos.y > obstacle.max[1] + 0.5) continue;
+      const closestX = Math.max(obstacle.min[0], Math.min(pos.x, obstacle.max[0]));
+      const closestZ = Math.max(obstacle.min[2], Math.min(pos.z, obstacle.max[2]));
+      const dx = pos.x - closestX;
+      const dz = pos.z - closestZ;
+      if (dx * dx + dz * dz >= broadRadius * broadRadius) continue;
+      const beforeX = outPush.x;
+      const beforeZ = outPush.z;
+      if (!pushHullFromObstacle(
+        pos, fx, fz, rx, rz, halfL, halfW, obstacle, outPush,
+      )) continue;
+      if (obstacle.crushable) {
+        let crushNow = Math.abs(entity.state.speed) > (obstacle.crushMin ?? CRUSH_MIN_MPS);
+        if (!crushNow && Math.abs(entity.input.throttle || 0) > 0.35) {
+          if (timeS - (obstacle._pressT || -1e9) > CRUSH_PRESS_GAP_S) obstacle._pressS = 0;
+          obstacle._pressT = timeS;
+          obstacle._pressS = (obstacle._pressS || 0) + SIM_DT;
+          crushNow = obstacle._pressS >= CRUSH_PRESS_S;
+        }
+        if (crushNow) {
+          outPush.x = beforeX;
+          outPush.z = beforeZ;
+          if (!pendingCrushSet.has(obstacle)) {
+            pendingCrushSet.add(obstacle);
+            pendingCrush.push({ obstacle, entity, cause: 'ram' });
+          }
+        }
+      }
+    }
+
     for (const other of entities) {
       if (other === entity || !other.state) continue;
       const dx = pos.x - other.state.pos.x;
@@ -311,6 +424,39 @@ export function createAuthoritativeMatch({
       outPush.z += dz / distance * push;
     }
     return outPush.x !== 0 || outPush.z !== 0;
+  }
+
+  function destroyObstacle(obstacle, entity, cause = 'ram') {
+    if (!obstacle || obstacle.crushed) return false;
+    const directionSign = entity?.state ? Math.sign(entity.state.speed || 1) : 1;
+    const directionX = entity?.state ? Math.sin(entity.state.yaw) * directionSign : 0;
+    const directionZ = entity?.state ? Math.cos(entity.state.yaw) * directionSign : 1;
+    const speedMps = entity?.state ? Math.abs(entity.state.speed) : 0;
+    const destroyed = worldCollision && typeof worldCollision.crushObstacle === 'function'
+      ? worldCollision.crushObstacle(obstacle, directionX, directionZ, speedMps)
+      : true;
+    if (destroyed === false) return false;
+    obstacle.crushed = true;
+    if (entity?.state) entity.state.speed *= obstacle.crushKeep ?? CRUSH_SPEED_KEEP;
+    emit('world_prop_destroyed', {
+      obstacleIndex: obstacleIndex.get(obstacle),
+      propIdx: obstacle.propIdx,
+      treeIdx: obstacle.treeIdx,
+      kind: obstacle.kind || (obstacle.treeIdx != null ? 'tree' : 'prop'),
+      cause,
+      directionX,
+      directionZ,
+      speedMps,
+    });
+    return true;
+  }
+
+  function resolvePendingCrushes() {
+    for (const entry of pendingCrush) {
+      destroyObstacle(entry.obstacle, entry.entity, entry.cause);
+    }
+    pendingCrush.length = 0;
+    pendingCrushSet.clear();
   }
 
   function tryFire(entity) {
@@ -328,6 +474,7 @@ export function createAuthoritativeMatch({
     shells.push(shell);
     startReload(combat, entity.spec);
     fireRecoil(entity.state, entity.spec, shellSpec);
+    spotting.notifyFired(entity.id, timeS, shellSpec.caliberMm);
     emit('shell_fired', {
       shellId: shell.id,
       shooterId: entity.id,
@@ -348,16 +495,20 @@ export function createAuthoritativeMatch({
     for (const shell of shells) {
       if (shell.dead) continue;
       stepShell(shell, dt);
-      const terrainT = segmentTerrainHit(heightField, shell.prevPos, shell.pos);
+      const worldHit = segmentWorldHit(worldCollision, heightField, shell.prevPos, shell.pos);
       const tankHit = firstTankTrace(shell, entities);
       const segmentLength = shell.prevPos.distanceTo(shell.pos);
-      if (terrainT != null && (!tankHit || terrainT * segmentLength < tankHit.distance)) {
-        shell.pos.lerpVectors(shell.prevPos, shell.pos, terrainT);
+      if (worldHit && (!tankHit || worldHit.t * segmentLength < tankHit.distance)) {
+        shell.pos.lerpVectors(shell.prevPos, shell.pos, worldHit.t);
         shell.dead = true;
+        if (worldHit.record?.propIdx != null) {
+          const propObstacle = obstacleByPropIdx.get(worldHit.record.propIdx);
+          if (propObstacle?.crushable) destroyObstacle(propObstacle, null, 'shell');
+        }
         emit('shell_impact', {
           shellId: shell.id,
           shooterId: shell.shooterId,
-          kind: 'terrain',
+          kind: worldHit.kind,
           x: shell.pos.x,
           y: shell.pos.y,
           z: shell.pos.z,
@@ -392,27 +543,8 @@ export function createAuthoritativeMatch({
   }
 
   function updateVisibility() {
-    for (const viewer of entities) {
-      let seen = visibility.get(viewer.id);
-      if (!seen) { seen = new Map(); visibility.set(viewer.id, seen); }
-      for (const target of entities) {
-        if (target.team === viewer.team || target.combat.destroyed) {
-          seen.set(target.id, timeS + 9999);
-          continue;
-        }
-        const dx = target.state.pos.x - viewer.state.pos.x;
-        const dz = target.state.pos.z - viewer.state.pos.z;
-        const distance = Math.hypot(dx, dz);
-        const moving = Math.abs(target.state.speed) > 0.8;
-        const range = spotRangeM(viewRangeOf(viewer.spec), baseCamoOf(target.spec, moving));
-        _muzzle.set(viewer.state.pos.x,
-          viewer.state.pos.y + viewer.spec.dims.heightM * 0.9, viewer.state.pos.z);
-        _aim.set(target.state.pos.x,
-          target.state.pos.y + target.spec.dims.heightM * 0.65, target.state.pos.z);
-        if (distance <= 50 || (distance <= range && lineOfSight(heightField, _muzzle, _aim))) {
-          seen.set(target.id, timeS + 5);
-        }
-      }
+    for (const event of spotting.update(SIM_DT, timeS)) {
+      emit('tank_spotted', event);
     }
   }
 
@@ -486,6 +618,7 @@ export function createAuthoritativeMatch({
         updateTank(entity, heightField, dt,
           (pos, radius, out) => collideFor(entity, pos, radius, out));
       }
+      resolvePendingCrushes();
       for (const entity of entities) {
         if (entity.combat.destroyed) continue;
         if (entity.combat.reload.t > 0) {
@@ -513,15 +646,15 @@ export function createAuthoritativeMatch({
 
     snapshot({ tick, serverTimeMs, viewerId, ackInputSeq }) {
       const viewer = entityById.get(viewerId);
-      const seen = visibility.get(viewerId);
       const canObserve = (_id, entity) => !viewer || entity.team === viewer.team ||
-        entity.combat.destroyed || (seen && (seen.get(entity.id) || -Infinity) >= timeS);
+        entity.combat.destroyed || spotting.isSpotted(entity.id, viewer.team, viewer);
       const canObserveShell = (_id, shell) => {
         const shooter = entityById.get(shell.shooterId);
         return !shooter || canObserve(viewerId, shooter);
       };
       const canObserveEvent = (_id, event) => {
         if (!viewer) return true;
+        if (event.type === 'world_prop_destroyed') return true;
         for (const id of [event.id, event.shooterId, event.targetId, event.killerId]) {
           if (!id) continue;
           const entity = entityById.get(id);

@@ -75,6 +75,7 @@ import { createPerfHud } from './ui/perfHud.js';
 import { createAudio } from './audio/audio.js';
 import { createInput } from './game/input.js';
 import { isGarageVisibleTankId } from './game/matchmaking.js';
+import { loadEquipment as loadSelectedEquipment } from './game/equipment.js';
 import {
   CONSUMABLE_RULES, cooldownRemaining, resetConsumableCooldowns,
   startConsumableCooldown,
@@ -1100,6 +1101,7 @@ async function openPlayMenu(request) {
       getSelection: () => ({
         specId: garage.getSelected(),
         mapId: garage.getSelectedMap(),
+        equipment: loadSelectedEquipment(garage.getSelected(), getSpec(garage.getSelected())),
       }),
       isVehicleAllowed: (specId) => ALL_TANK_IDS.includes(specId),
       onSolo: () => {
@@ -2067,13 +2069,18 @@ async function beginNetworkBattle({ role, session, lobbyState } = {}) {
       import('./net/browserBattleBridge.js'),
     ]);
     const mapId = resolvePrivateMatchMap(lobbyState);
-    networkMatch = role === 'host'
-      ? beginPrivateHostMatch({ session, lobbyState })
-      : await beginPrivateClientMatch({ session, playerId: viewerId, lobbyState });
     battleLoad.progress(0.08, 'Loading battlefield');
     await ensureWorld(mapId, (fraction, label) => {
       battleLoad.progress(0.08 + fraction * 0.48, label);
     });
+    // The browser host feeds authority the exact battlefield collision facade
+    // that presentation just built. Tanks, shells, and spotting therefore use
+    // the same authored OBB/circle/convex cover as the visible map instead of
+    // a second approximate layout. Joined peers finish their own identical map
+    // before taking the established WebRTC channel into match mode.
+    networkMatch = role === 'host'
+      ? beginPrivateHostMatch({ session, lobbyState, worldCollision: world })
+      : await beginPrivateClientMatch({ session, playerId: viewerId, lobbyState });
     const cfg = getMapConfig(mapId);
     battleLoad.show({
       mapName: cfg.name || mapId,
@@ -2084,7 +2091,13 @@ async function beginNetworkBattle({ role, session, lobbyState } = {}) {
       allies: lobbyRosterRows(lobbyState, own.team, viewerId),
       enemies: lobbyRosterRows(lobbyState, own.team === 'alpha' ? 'bravo' : 'alpha', viewerId),
     });
-    networkBridge = createBrowserBattleBridge({ engineCtx, game, bus, viewerId });
+    networkBridge = createBrowserBattleBridge({
+      engineCtx,
+      game,
+      bus,
+      viewerId,
+      worldCollision: world,
+    });
     await networkBridge.prepareRoster(lobbyState.players, (fraction, specId) => {
       battleLoad.progress(0.56 + fraction * 0.27, `Painting ${getSpec(specId)?.name || specId}`);
     });

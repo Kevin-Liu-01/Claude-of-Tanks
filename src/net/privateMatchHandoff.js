@@ -36,6 +36,7 @@ export function beginPrivateHostMatch({
   session,
   lobbyState,
   simulationFactory = createAuthoritativeMatch,
+  worldCollision = null,
 } = {}) {
   const lobby = validateStartingLobby(lobbyState);
   if (!session || typeof session.takeMatchChannels !== 'function' ||
@@ -46,8 +47,18 @@ export function beginPrivateHostMatch({
   const mapId = resolvePrivateMatchMap(lobby);
   const players = lobby.players
     .filter((player) => player.team !== 'spectator')
-    .map((player) => ({ id: player.id, specId: player.specId, team: player.team }));
-  const simulation = simulationFactory({ players, mapId, seed: lobby.matchSeed });
+    .map((player) => ({
+      id: player.id,
+      specId: player.specId,
+      team: player.team,
+      equipment: player.equipment,
+    }));
+  const simulation = simulationFactory({
+    players,
+    mapId,
+    seed: lobby.matchSeed,
+    worldCollision,
+  });
   const host = new AuthoritativeMatchRuntime({ simulation });
   const localLink = createLoopbackTransportPair();
   let wallTimeMs = 0;
