@@ -460,11 +460,11 @@
       "vertices": 41022
     },
     "newc_tiger": {
-      "freezeHash": "fe28d2c0",
-      "instanceFreezeHash": "362d0b25",
-      "assetGeometryHash": "2fda66ca",
+      "freezeHash": "5c99244a",
+      "instanceFreezeHash": "c7bec406",
+      "assetGeometryHash": "cd4c72a1",
       "meshes": 39,
-      "vertices": 50606
+      "vertices": 50930
     },
     "object279": {
       "freezeHash": "26c7107c",

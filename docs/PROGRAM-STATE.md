@@ -7682,3 +7682,36 @@ is freeze **`8917bafa`**, instance freeze **`8461265a`** and asset geometry
 **KEEP the complete KV-2 exterior, fender planes, handrails, mudguards and
 native raised-terminal track shape. Future corridor work may not subtract or
 hollow its hull.**
+
+## 5.215 TIGER I (NEWC42) CLOSED END-CORRIDOR CLOSEOUT (2026-08-14, LIVE)
+
+The first-party procedural Tiger I (Newc42 roster entry) retains its complete
+slab hull, superstructure, glacis, full fender flare, front and rear
+mudguards, drum turret, eight-wheel suspension and single native linked-shoe
+course. No hull, fender, mudguard, wheel or track member is deleted.
+
+The only physical contacts were the concealed full-width lower bow block and
+low tail shelf entering the front and rear terminal wraps. Both ends now use
+**closed inter-track cores** beneath the unchanged full-width upper bow and
+tail armor. The upper slope, driver plate, exterior fenders and both visible
+mudguards retain their established silhouette and support.
+
+Exact strict band and individual-shoe audits improve from 98 band / 98 shoe
+sweep voxels to **front 0/0, rear 0/0 and complete sweep 0/0**. Fresh evidence
+contains 15 paired boards including the standardized elevated-left profile,
+15 yaw0 and 15 yaw90 frames: **45 PNG / 45 distinct hashes**. All views retain
+the complete hull and raised end-wheel track profile.
+
+The complete turret, gun and roof suite execute a genuine quarter-turn while
+the hull and running gear remain fixed. Parent audit is **0 stranded / 0
+abutting / 0 dangling**. Winding is **0 reversed / 0 mixed geometry with
+zero-pixel deficit**, and mode 2 is clean. The dark muzzle bore and all ten
+targeted runtime-rig checks pass.
+
+All eight targeted presentation assets are current. Tiger I (Newc42)
+dual-ledger geometry is freeze **`5c99244a`**, instance freeze **`c7bec406`**
+and asset geometry **`cd4c72a1`** (39 rendered meshes / 50,930 vertices).
+
+**KEEP the complete Tiger I exterior, fender flare, supported mudguards and
+native terminal track shape. Future corridor work may not subtract or hollow
+its hull.**
