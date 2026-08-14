@@ -6234,3 +6234,56 @@ All eight presentation assets are regenerated. Dual-ledger geometry is freeze
 **KEEP the complete T-80U outer hull, fenders and skirts. Any future clearance
 change must remain inside the concealed cross-section or rewrap the native
 course; never remove bodywork to satisfy a track audit.**
+
+## 5.181 T-62MV-1 / T-64BV-1 CLOSED-HULL COURSE RECONCILIATION (2026-08-14, LIVE)
+
+This Russian-family pass preserves both complete first-party vehicles: hull
+shells, upper/lower glacis, fenders, segmented skirts, mudguards, native road
+wheels and shoes, accepted cast turrets, ERA, gun runs and service equipment.
+No side armour or exterior hull plate is deleted. All changes either reshape a
+concealed track-bay cross-section, rewrap the existing terminal course, or
+reseat an existing fitting with its dimensions intact.
+
+On T-62MV-1, the loft's 0.864-m filled sponson floor occupied the full return
+run and clipped the rear terminal by 28 mm. The measured deck, belly and width
+curves are unchanged; only the concealed closed track-bay roof now follows a
+1.14-m datum above the complete native course. The five road wheels, elevated
+idler/final drive, full fender and skirt rows, bow fittings and drum/log rear
+remain in their accepted positions.
+
+On T-64BV-1, the same concealed floor began at 0.80 m while the upper return
+ran through it. Its closed centre hull now pinches the outer loft above the
+course at 1.16 m without changing the deck, belly or width curves. The native
+idler is rewrapped forward from z 1.55 to 2.00 while retaining its elevated
+0.70-m centre and existing radius; all six road wheels, the rear final drive
+and central runs are unchanged. Existing bow prongs, glacis bars, fender bins
+and rear rack supports are reseated on the deck/fender plane above the course,
+with their dimensions and plan stations retained. Two thin longitudinal
+fender rails are corrected from the retired oracle's physically wrong turret
+parenting to fixed hull ownership and sit immediately outboard of the shoes.
+
+Fresh 15-view authored-baseline/current boards, standardized elevated-left
+profiles and 15 yaw0 plus 15 yaw90 frames were inspected for both tanks. Their
+hulls remain closed in front, rear, side and elevated views; the T-62 retains
+five readable road wheels and the T-64 six, each inside one continuous
+elevated-terminal `\\______/` course. Turret, gun, ERA and turret equipment
+quarter-turn together. Deck links/cables, the T-64 unditching log, fenders,
+corrected rails, rear hull kit and running gear remain fixed. The parent tool's
+T-62 deck-link/cable and T-64 log candidates are therefore legitimate
+hull-owned stowage visible after turret departure, not stranded fittings.
+
+Exact strict band and individual-shoe sweeps are **0/0 on both vehicles**.
+Winding is **0 reversed / 0 mixed**; T-62 has an 8-pixel (0.00%) diagnostic
+front difference and no yaw candidate, while T-64 has zero DoubleSide deficit.
+The 48-pixel T-64 `rig_hull/hullDark` candidate is supported fixed rear/deck
+service structure and remains visually continuous with the hull in both yaw
+states.
+
+All sixteen presentation assets are regenerated. Dual-ledger geometry is:
+T-62MV-1 **`d3ce3904` / `75630bb4` / `a10d6bb8`** (44 meshes / 58,087
+vertices) and T-64BV-1 **`61191131` / `c13a5259` / `56dbc145`** (45 meshes /
+82,135 vertices).
+
+**KEEP both complete outer hulls, fenders and skirt courses. Future work must
+adjust only concealed cross-sections, supported fitting seats or the native
+course itself; never remove hull/side-armour geometry for clearance.**

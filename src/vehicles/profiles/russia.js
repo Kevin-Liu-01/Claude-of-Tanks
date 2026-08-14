@@ -372,7 +372,7 @@ export function ruGlacisKit(P, o) {
   const { box, torus, headlight } = KIT;
   const yG = o.y, zG = o.z;                       // glacis mid reference
   for (const s of [-1, 1]) {
-    P.add('hullDetail', box(o.w * 0.30, 0.045, 0.05), s * o.w * 0.16, yG + 0.04, zG, -0.35, s * 0.25, 0);
+    P.add('hullDetail', box(o.w * 0.30, 0.045, 0.05), s * o.w * 0.16, o.barY ?? (yG + 0.04), zG, -0.35, s * 0.25, 0);
     // hookBucket/hookX (t84 r32, opt-in): the t84 critic ordered the bow
     // hooks into the dark-rubber flap class (raw-gray pegs read), and the
     // default w*0.30 seat turned out to be the r31 audit's "unnamed
@@ -543,9 +543,11 @@ export function buildT62MV1(P) {
     belly: [[-2.72, 0.64], [-2.55, 0.53], [-2.30, 0.46], [2.10, 0.46], [2.75, 0.44], [2.95, 0.47], [3.06, 0.55], [3.13, 0.66]],
     wUp: [[-2.72, 1.54], [1.80, 1.54], [2.40, 1.46], [2.80, 1.30], [3.10, 1.06], [3.13, 1.03]],
     wLo: [[-2.72, 0.92], [3.13, 0.95]],
-    // sponson floor lifted over the sprocket wrap crown (§B4: wrap top
-    // 0.962 vs the old flat 0.864 floor)
-    sponsonY: [[-2.72, 1.03], [-2.40, 1.03], [-2.10, 0.864], [2.10, 0.864], [2.20, 0.90], [2.66, 0.90], [2.76, 0.864], [3.13, 0.864]],
+    // Closed track-bay roof above the complete native return and both raised
+    // terminal wraps. The previous 0.864 m mid-span floor occupied the shoe
+    // run; lifting only this concealed underside preserves the measured deck,
+    // outer hull, fenders and skirts.
+    sponsonY: 1.14,
   });
   // BOW V-NOSE corner prisms (plan front edge 3.15@|x|0.46 -> 3.315@1.14;
   // side body band 0.35 at the 3.268 column = hullLengthM front anchor)
@@ -1378,7 +1380,10 @@ export function buildT64BV1(P) {
     belly: [[-4.29, 0.47], [-3.92, 0.40], [1.23, 0.40], [1.62, 0.47]],
     wUp: [[-4.29, 1.30], [-4.12, 1.42], [1.53, 1.42], [1.62, 1.40]],
     wLo: [[-4.29, 0.96], [1.62, 0.94]],
-    sponsonY: 0.80,
+    // Keep the closed centre hull while pinching the outer loft above the
+    // native return/terminal envelope. This changes only the concealed
+    // track-bay roof; measured deck, belly and width curves remain intact.
+    sponsonY: 1.16,
   });
   // sponson-top strips carry the ref's 1.197 side plateau (z -3.50..0.24,
   // tapering 1.16 to z 0.83) — segmented per the prism law
@@ -1393,8 +1398,8 @@ export function buildT64BV1(P) {
   // exact 0.78..0.91 nose band (sub-body: neither registration nor
   // hullLengthM may move; the ref's own nose cols are 0.13 thin)
   for (const s of [-1, 1]) {
-    P.add('hull', box(0.48, 0.13, 0.34), s * 1.09, 0.845, 1.755);
-    P.add('hull', box(0.40, 0.10, 0.20), s * 1.06, 0.90, 1.60, -0.45, 0, 0); // root wedge onto the glacis
+    P.add('hull', box(0.48, 0.13, 0.34), s * 1.09, 1.06, 1.755);
+    P.add('hull', box(0.40, 0.10, 0.20), s * 1.06, 1.03, 1.60, -0.45, 0, 0); // root wedge seated above the idler course
   }
   ruDeck(P, { deckY: 1.045, hatchZ: 0.35, gz: -2.50, grilles: 5, gw: 1.4 });
   // rTAIL r13: hooks/eyes pulled BACK (hookZ 1.78 -> 1.60, eyeZ 1.77 ->
@@ -1404,11 +1409,11 @@ export function buildT64BV1(P) {
   // (r13e clip audit: eyes/hooks pulled INBOARD off the track lane — at the
   // default w-fraction seats they voxel-clipped the idler wrap: eyeX 1.152
   // and hook edge 1.01 vs band inner 0.99)
-  ruGlacisKit(P, { w: 3.2, y: 0.93, z: 1.53, eyeX: 0.80, eyeZ: 1.62, hookX: 0.85, hookY: 0.46, hookZ: 1.60 });
+  ruGlacisKit(P, { w: 3.2, y: 0.93, z: 1.53, barY: 1.10, eyeX: 0.80, eyeZ: 1.62, hookX: 0.85, hookY: 0.46, hookZ: 1.60 });
   // glacis edge mid-steps: ref plan bow is a rounded V (1.76-1.83 over
   // |x| 0.66..0.79 between the 1.55 center and the 1.93 prongs)
   for (const s of [-1, 1]) {
-    P.add('hull', box(0.30, 0.11, 0.30), s * 0.72, 0.87, 1.68);
+    P.add('hull', box(0.30, 0.11, 0.30), s * 0.72, 1.03, 1.68);
   }
   // §B3 (prism sweep 2026-08-06): the two bare glacis chevron strips become
   // the ref's K-1 cassette rows — 3 cassettes per strip at the SAME seat,
@@ -1428,23 +1433,23 @@ export function buildT64BV1(P) {
     // fender as a segmented bin row (r7c stations law — end caps per slice)
     // r8: dropped to the ref's 1.03 fender top (front cols x 1.6: 1.029)
     for (let i = 0; i < 8; i++) {
-      P.add('hull', box(0.20, 0.08, 0.50), s * 1.55, 0.985, -3.26 + i * 0.556);
-      P.add('hullDark', box(0.17, 0.06, 0.02), s * 1.552, 0.98, -3.26 + i * 0.556 + 0.26);
+      P.add('hull', box(0.20, 0.08, 0.50), s * 1.55, 1.06, -3.26 + i * 0.556);
+      P.add('hullDark', box(0.17, 0.06, 0.02), s * 1.552, 1.06, -3.26 + i * 0.556 + 0.26);
       // rTAIL r13: fender INNER LIP — the ref fender-line STEPS: 1.19 tops
       // inboard (front cols 1.448/1.486 read 1.193), 1.03 outboard (x 1.6).
       // Per-bin lip boxes at x 1.45..1.50 carry the inner step (side view
       // blends into the 1.197 sponson plateau; under the skirt in plan).
       P.add('hull', box(0.05, 0.175, 0.50), s * 1.475, 1.11, -3.26 + i * 0.556);
     }
-    P.add('hull', box(0.20, 0.05, 0.60), s * 1.55, 1.03, 1.27, -0.06, 0, 0);
+    P.add('hull', box(0.20, 0.05, 0.60), s * 1.55, 1.08, 1.27, -0.06, 0, 0);
     // (r13c: front lip pulled to z 0.28..0.83 — at z 1.25 it topped the
     // side 0.97..1.49 cols at 1.20 where the ref plateau has fallen to
     // 1.065-1.09; the ref's 1.19 front-col content lives at z<=0.83)
     P.add('hull', box(0.05, 0.16, 0.55), s * 1.475, 1.11, 0.555);
-    P.add('hull', box(0.20, 0.05, 0.30), s * 1.55, 0.96, 1.67, -0.10, 0, 0);
+    P.add('hull', box(0.20, 0.05, 0.30), s * 1.55, 1.08, 1.67, -0.10, 0, 0);
     // (r13e §B2: filler closes the ±1.55/0.92 top-down hole between the
     // fender-bin row end (0.88) and the front fender box (0.97))
-    P.add('hull', box(0.20, 0.06, 0.18), s * 1.55, 0.985, 0.92);
+    P.add('hull', box(0.20, 0.06, 0.18), s * 1.55, 1.06, 0.92);
   }
   P.add('hullDark', box(0.16, 0.10, 0.93), -1.21, 1.15, -2.61);         // left exhaust duct on the sponson strip
   stowage(P, 'hull', P.rng, [[0.80, 1.05, -0.86, 0.28, 0.08, 1.42], [-0.80, 1.05, -1.73, 0.28, 0.08, 1.20]]);
@@ -1485,7 +1490,7 @@ export function buildT64BV1(P) {
     // rack plate still carries the plan's -4.61 rear (side-sub-body).
     P.add('hull', cylZ(0.155, 0.35, 10), s * 0.45, 0.85, -4.42);
     P.add('hullDark', cylZ(0.159, 0.03, 10), s * 0.45, 0.85, -4.27);
-    P.add('hull', box(0.24, 0.05, 0.76), s * 1.50, 1.045, -4.15);
+    P.add('hull', box(0.24, 0.05, 0.76), s * 1.50, 1.16, -4.15);
     // (r13e clip audit: rubber pads raised out of the sprocket-wrap voxel
     // band — y 0.80 sat them at 0.71..0.89 across the lane top 0.81)
     P.add('hullRubber', box(0.26, 0.18, 0.05), s * 1.50, 0.92, -4.44);
@@ -1495,8 +1500,8 @@ export function buildT64BV1(P) {
   P.add('hull', box(2.62, 0.10, 0.32), 0, 0.90, -4.46);
   P.add('hullDark', box(1.5, 0.10, 0.16), 0, 0.46, -4.45);
   for (const s of [-1, 1]) {
-    P.add('hullDark', box(0.05, 0.22, 0.08), s * 1.38, 0.95, -4.30);
-    P.add('hullDark', box(0.05, 0.22, 0.08), s * 1.38, 0.95, -3.60);
+    P.add('hullDark', box(0.05, 0.22, 0.08), s * 1.38, 1.27, -4.30);
+    P.add('hullDark', box(0.05, 0.22, 0.08), s * 1.38, 1.27, -3.60);
   }
   // low cross-bar at -4.55: at -4.59 it UNIONED with the rack-plate sliver
   // in the -4.665 trace window (band 0.235 > 12%) and pinned hullLengthM
@@ -1510,7 +1515,7 @@ export function buildT64BV1(P) {
     // band; 1.845 clears the 1.852 boundary). r11 history: at 1.59/0.23 the
     // wrap lit the 2.01 column (hullLengthM 6.66); at z 1.50 the ref's 1.9
     // front gear line went uncovered.
-    sprocket: { z: -3.95, y: 0.68, r: 0.26 }, idler: { z: 1.55, y: 0.70, r: 0.195 },
+    sprocket: { z: -3.95, y: 0.68, r: 0.26 }, idler: { z: 2.00, y: 0.70, r: 0.195 },
     rollers: [-3.04, -1.79, -0.54, 0.72].map((z) => ({ z, y: 0.72, r: 0.066 })),
     // xc 1.265 / trackW 0.55: ref front keeps the 0.356 belly line at
     // x +-0.94 (inner edge 0.99) AND ground content at 1.55 (outer 1.54 +
@@ -1722,9 +1727,10 @@ export function buildT64BV1(P) {
   P.add('turret', box(0.26, 0.23, 0.39), -0.10, 0.84, -0.33);
   P.add('turret', box(0.24, 0.23, 0.39), 0.15, 0.70, -0.33);
   P.add('turretDark', box(0.22, 0.15, 0.05), 0.10, 0.72, -0.11);
-  // ORACLE-PARITY: the print parents thin fender-line rails into the
-  // turret (plan x -1.49 z +1.1..-4.0; x +1.20 z -0.75..-3.70) — matched
-  // as thin turret rails at the same seats. rTAIL r13 RE-SEAT from vertex
+  // Thin fender-line rails belong to the hull, regardless of the retired
+  // oracle's incorrect turret parenting. Keep their world-space runs but
+  // seat them just outboard of the native course so they remain fixed and
+  // supported when the turret yaws. rTAIL r13 RE-SEAT from vertex
   // census: the ref rail band is x -1.479..-1.52, y 1.002..1.20, z
   // -4.077..+1.139 — the r8 "side band 1.34..1.39" was a PRE-WARP number
   // (the batch-12 stature squash moved it): at y 1.336..1.386 the rails
@@ -1732,8 +1738,8 @@ export function buildT64BV1(P) {
   // line. Also x -1.455 grazed the -1.442 plan boundary (2 mm) and bled
   // the whole rail band into the -1.39 col (the 2.52 plan monster; the
   // ref's -1.6 sliver there is the little bracket, which now owns it).
-  P.add('turretDetail', box(0.041, 0.198, 5.216), -1.4995, 0.055, -0.203);
-  P.add('turretDetail', box(0.03, 0.198, 2.94), 1.20, 0.055, -0.96);
+  P.add('hullDetail', box(0.041, 0.198, 5.216), -1.59, 1.101, -1.469);
+  P.add('hullDetail', box(0.03, 0.198, 2.94), 1.58, 1.101, -2.226);
   // MG lowered to the ref's 1.845-1.847 rear-roof line (receiver top was
   // 1.936 — rTAIL r13)
   // §B3.2/§I (2026-08-06): hand nsvt() -> census FITTINGS.pintleMG. The
