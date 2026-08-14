@@ -1048,7 +1048,12 @@ function buildT72B3M(P) {
     // the tub is side/plan-interior throughout.
     // 2022: ends follow the new plate face/nose; the §B4 wrap-window narrow
     // knots stay PINNED to the (unchanged) gear z — never shift with the ends.
-    wLo: [[-4.436, 1.10], [-3.90, 1.0954], [-3.82, 1.02], [-3.09, 1.02], [-3.00, 1.0897], [1.05, 1.0641], [1.15, 1.02], [1.70, 1.02], [1.79, 0.80], [1.9055, 0.585]],
+    // Keep the complete lower tub, but place its concealed side walls
+    // between the two native track corridors. The previous 1.064-1.10 m
+    // central wall occupied the 1.04 m inner shoe lane even though it was
+    // invisible behind the full B3M skirts. This is an internal clearance
+    // correction only: deck, glacis, outer hull and side armour are unchanged.
+    wLo: [[-4.436, 0.98], [-3.90, 0.98], [-3.82, 0.98], [-3.09, 0.98], [-3.00, 0.98], [1.05, 0.98], [1.15, 0.98], [1.70, 0.98], [1.79, 0.80], [1.9055, 0.585]],
     // §B4 (graduate-change round): the flat 0.86 track-bay roof buried the
     // sprocket wrap crown (1.09) and idler wrap crown (1.07) inside the
     // sponson slab — the exact-voxel audit's rig_hull hits at y 0.86..1.08
@@ -1065,7 +1070,11 @@ function buildT72B3M(P) {
     // the local track-bay roof windows while leaving the mid-hull datum
     // byte-stable; this ports the later clearance repair onto our stronger
     // authored B3M hull without replacing its primary geometry.
-    sponsonY: [[-3.95, 0.86], [-3.83, 1.22], [-3.10, 1.22], [-2.98, 0.86], [1.02, 0.86], [1.10, 1.21], [1.70, 1.21], [1.9055, 1.21]],
+    // The complete hidden sponson floor now follows the existing 1.22 m
+    // shoulder datum above the full return run. The old 0.86 m centre floor
+    // coincided with the native band and instanced shoe crowns across all six
+    // stations; lifting that concealed floor preserves every visible hull face.
+    sponsonY: [[-4.436, 1.22], [1.9055, 1.22]],
   });
   widthAnchor(P, 1.795, 0.95, -0.5);
   // TURRET-OWNED raised soft-stowage band (ref 1.75-1.77 over
@@ -1388,11 +1397,26 @@ function buildT72B3M(P) {
     // own crossing class. Top 1.335 stays UNDER the local deck line at
     // z+0.42 (the loft falls to 1.343 there — a 1.395 top would print);
     // bottom 0.87 rides the sponson top.
-    P.add('hull', box(0.16, 0.465, 0.09), s * 1.68, 1.1025, 0.42 + jz);
+    // Keep the full channel baffle, but seat it in the real outboard fender
+    // pocket rather than through the native return band. Its 1.65-1.79 m
+    // span remains inside the existing 1.80 m outer skirt envelope.
+    P.add('hull', box(0.14, 0.465, 0.09), s * 1.72, 1.1025, 0.42 + jz);
     // 2022: the z-1.30 tab rises to the new print's 1.311 fender-line col
     // (was the retired print's 1.287); the 1.105 tab keeps its seat.
     P.add('hull', box(0.16, 0.05, 0.18), s * 1.68, 1.262, 1.105);
     P.add('hull', box(0.16, 0.05, 0.18), s * 1.68, 1.2905, 1.30);
+  }
+  // Continuous structural fender shelf beneath the existing articulated
+  // tabs and full outer skirt. This closes only the narrow plan-view pockets
+  // between those authored pieces: the inner edge meets the intact upper
+  // hull, the outer edge meets the skirt carrier, and the lower face remains
+  // above the complete native shoe envelope. It is not a replacement skirt
+  // and does not hide or alter any running-gear station.
+  for (const s of [-1, 1]) {
+    P.add('hull', box(0.20, 0.035, 6.36), s * 1.68, 1.3125, -1.21);
+    // Short inboard bow return closes the shelf into the tapered glacis
+    // shoulder; it remains above the idler wrap and inside the mudguard plan.
+    P.add('hull', box(0.20, 0.035, 0.18), s * 1.58, 1.2925, 1.91);
   }
   // 2022 SIDE BIN COURSE (obr_2022 print, Object_4 class): the original
   // implementation put the entire run in hullG.  That was wrong for the
@@ -2033,7 +2057,7 @@ function buildT72B3M(P) {
     // (wheel bottom 0.075 vs old 0.160 edge), amputating the six-disc read
     // to the 15px band the critic measured. 0.004..0.10 still swallows the
     // band glow below the discs; the certified 0-row is band-owned.
-    P.add('hullTrack', box(0.012, 0.096, 4.36), s * 1.625, 0.052, -1.10);
+    P.add('hullRunningGearDetail', box(0.012, 0.096, 4.36), s * 1.625, 0.052, -1.10);
     // r18 item 4c2: per-gap horn covers — the chain guide horns (y 0.16-
     // 0.26 on the bottom run) still serrated the run BETWEEN wheels above
     // the occluder's 0.16 edge. Five plates per side rise to 0.27 in the
@@ -2068,6 +2092,8 @@ function buildT72B3M(P) {
     P.disposables.push(gapFlat);
     const gapMesh = (w, h, d, x, y, z) => {
       const mesh = new THREE.Mesh(KIT.xform(box(w, h, d), x, y, z), gapFlat);
+      mesh.name = 't72b3mWheelBayShadow';
+      mesh.userData.runningGear = true;
       P.hullG.add(mesh);
       P.disposables.push(mesh.geometry);
     };
@@ -2118,8 +2144,8 @@ function buildT72B3M(P) {
     for (const [wi, wz2] of [-2.90, -2.238, -1.456, -0.674, 0.108, 0.89].entries()) {
       const crownJ = [0, 0.008, -0.006, 0.004, -0.008, 0.006][wi];
       for (const ds of [-1, 1]) {
-        P.add('hullShadow', box(0.0035, 0.024, 0.156), s * 1.6165, 0.539 + crownJ * 0.5, wz2 + ds * 0.2575, ds * 0.524, 0, 0);
-        P.add('hullShadow', box(0.0035, 0.024, 0.1936), s * 1.6165, 0.5965 + crownJ, wz2 + ds * 0.095, ds * 0.192, 0, 0);
+        P.add('hullRunningGearDark', box(0.0035, 0.024, 0.156), s * 1.6165, 0.539 + crownJ * 0.5, wz2 + ds * 0.2575, ds * 0.524, 0, 0);
+        P.add('hullRunningGearDark', box(0.0035, 0.024, 0.1936), s * 1.6165, 0.5965 + crownJ, wz2 + ds * 0.095, ds * 0.192, 0, 0);
       }
     }
     // r23 item 7a (critic r11 "view-right g-22..26 22px fringe"): the ref's
@@ -2129,7 +2155,7 @@ function buildT72B3M(P) {
     // rhythm — the tonal companion of the crescents' R-0.34 fake.
     for (const wz2 of [-2.90, -2.238, -1.456, -0.674, 0.108, 0.89]) {
       for (const fs of [-1, 1]) {
-        P.add('hullShadow', box(0.0015, 0.19, 0.11), s * 1.4468, 0.385, wz2 + fs * 0.255);
+        P.add('hullRunningGearDark', box(0.0015, 0.19, 0.11), s * 1.4468, 0.385, wz2 + fs * 0.255);
       }
     }
     // r11b outer-face skids: the front +-1.64 columns read the ref's track
@@ -2142,7 +2168,7 @@ function buildT72B3M(P) {
     // bottoms (gate -2.6, reverted). The ±1.64 front col only checks
     // top/bottom, so a 4cm shoe keeps its 0.012 ground read while hiding
     // under the wheel rim (wheel bottom 0.075) against the dark track.
-    P.add('hullDark', box(0.033, 0.043, 0.10), s * 1.6375, 0.0335, -3.00);
+    P.add('hullRunningGearDark', box(0.033, 0.043, 0.10), s * 1.6375, 0.0335, -3.00);
     // visual r1 item 4: ramp-strip JOINT FILLS — close the see-through gaps
     // between the certified per-column fade strips so each ramp reads as one
     // fabricated skid fairing, not floating slats. Fill bottoms sit AT/ABOVE
@@ -2173,7 +2199,10 @@ function buildT72B3M(P) {
     // The restored own-authored B3M now uses the honest lower idler datum.
     // End this upper slot closure before the live front wrap instead of
     // letting the old reference-print dressing graze the moving shoes.
-    P.add('hull', box(0.012, 0.155, 4.34), s * 1.615, 0.9525, -1.03);
+    // Seat the intact upper skirt closure outboard of the native shoe lane.
+    // It remains behind the existing outer bag course, so the authored side
+    // silhouette and full skirt coverage are unchanged.
+    P.add('hull', box(0.012, 0.155, 4.34), s * 1.66, 0.9525, -1.03);
     // r14: behind-wheels wall re-bucketed to the near-black bay shadow —
     // 0x33382e-class dark rendered MID-olive and the between-wheel gaps
     // read as painted wall, not shadow (ref gaps are near-black). Plus a
@@ -2190,9 +2219,9 @@ function buildT72B3M(P) {
     // adjacent wheel circles gap, y 0.35-0.47). Upper + lower walls keep
     // the dusty-track read above and below; the open band lets the camera
     // through to background between wheel rims exactly like the ref.
-    P.add('hullTrack', box(0.012, 0.23, 4.36), s * 1.205, 0.215, -1.10);
-    P.add('hullTrack', box(0.012, 0.32, 4.36), s * 1.205, 0.64, -1.10);
-    P.add('hullTrack', box(0.012, 0.30, 0.20), s * 1.205, 0.65, 1.18);
+    P.add('hullRunningGearDetail', box(0.012, 0.23, 4.36), s * 1.205, 0.215, -1.10);
+    P.add('hullRunningGearDetail', box(0.012, 0.32, 4.36), s * 1.205, 0.64, -1.10);
+    P.add('hullRunningGearDetail', box(0.012, 0.30, 0.20), s * 1.205, 0.65, 1.18);
     // r18 item 4b2: the kit's track guide horns (instanced, y to 0.448 at
     // the chain center x ±1.33) block every true see-through ray, so the
     // slot band cannot show real background between wheels. A deep-shade
@@ -2204,7 +2233,7 @@ function buildT72B3M(P) {
     // wheel feet), or the lower notches read dusty wall and the discs
     // merge. True bg stays impossible (horn/circle math documented in the
     // reference log); this is the ref's dark-daylight class at every row.
-    P.add('hullShadow', box(0.012, 0.38, 4.36), s * 1.245, 0.315, -1.10, 0, 0, s * -0.60);
+    P.add('hullRunningGearDark', box(0.012, 0.38, 4.36), s * 1.245, 0.315, -1.10, 0, 0, s * -0.60);
     // front mudflap over the idler (item 6) — hangs inside the certified
     // column fills (top 0.97 vs the col's ref 0.98 content line — the
     // first cut at 1.02 paid the z+1.69 side col; bottom 0.61 > the
@@ -2252,18 +2281,18 @@ function buildT72B3M(P) {
         // the 3px gap slots and read as pale "trees" at the wheel meets —
         // the ref rim is a subtle tonal arc against the dark slot, and the
         // camo family lands exactly that against the new shadow backers.)
-        P.add('hull', torus(0.354, 0.007, 22), s * 1.4385, 0.45, wz, 0, 0, Math.PI / 2);
-        P.add('hull', torus(0.19, 0.005, 16), s * 1.4425, 0.45, wz, 0, 0, Math.PI / 2);
-        P.add('hull', cylX(0.085, 0.048, 12), s * 1.442, 0.45, wz);
-        P.add('hullDark', cylX(0.048, 0.066, 10), s * 1.4445, 0.45, wz);
+        P.add('hullRunningGearDetail', torus(0.354, 0.007, 22), s * 1.4385, 0.45, wz, 0, 0, Math.PI / 2);
+        P.add('hullRunningGearDetail', torus(0.19, 0.005, 16), s * 1.4425, 0.45, wz, 0, 0, Math.PI / 2);
+        P.add('hullRunningGearDetail', cylX(0.085, 0.048, 12), s * 1.442, 0.45, wz);
+        P.add('hullRunningGearDark', cylX(0.048, 0.066, 10), s * 1.4445, 0.45, wz);
       }
       // These annuli are running-gear face trim, not hull armor.  Keep them
       // in the explicit suspension bucket so clearance judges hull solids
       // against the shoes rather than their own wheel-mounted face package.
       P.add('hullRunningGearDark', torus(0.115, 0.012, 14), s * 1.4425, 0.80, 1.48, 0, 0, Math.PI / 2);
-      P.add('hull', cylX(0.062, 0.05, 10), s * 1.4435, 0.80, 1.48);
-      P.add('hullDark', torus(0.165, 0.013, 16), s * 1.4425, 0.74, -3.46, 0, 0, Math.PI / 2);
-      P.add('hull', cylX(0.085, 0.05, 10), s * 1.4435, 0.74, -3.46);
+      P.add('hullRunningGearDetail', cylX(0.062, 0.05, 10), s * 1.4435, 0.80, 1.48);
+      P.add('hullRunningGearDark', torus(0.165, 0.013, 16), s * 1.4425, 0.74, -3.46, 0, 0, Math.PI / 2);
+      P.add('hullRunningGearDetail', cylX(0.085, 0.05, 10), s * 1.4435, 0.74, -3.46);
     }
   }
   // Relikt soft-bag skirt courses + hard front plates (stations 3.58 uniform)
@@ -2333,7 +2362,7 @@ function buildT72B3M(P) {
     // itself fills the hem slot the backer fakes. Roadwheel stations only.
     for (const wz of [0.89, 0.108, -0.674, -1.456, -2.238, -2.90]) {
       const backerD = wz === 0.89 ? 0.50 : 0.55;
-      P.add('hullShadow', box(0.016, 0.26, backerD), s * 1.60, 0.89, wz);
+      P.add('hullShadow', box(0.016, 0.26, backerD), s * 1.66, 0.89, wz);
     }
     // r16 item 2a: INNER SKIRT HEM — the ref's road wheels ride part-hidden
     // behind a fabric skirt whose hem cuts BELOW the wheel centers (ref
@@ -2357,7 +2386,7 @@ function buildT72B3M(P) {
     // 0.51 -> 0.50 (one AA row). The r10 "15 rows LOW" decodes as the TONE
     // hem (bright tabs ending at 0.745) vs the ref's 0.50 wall foot — the
     // fix is the dark-gap disc band below 0.50, not a hem move.
-    P.add('hull', box(0.014, 0.40, 4.36), s * 1.606, 0.70, -1.10);
+    P.add('hull', box(0.014, 0.40, 4.36), s * 1.66, 0.70, -1.10);
     // r11 glacis lash-rail stubs: ref side tops staircase 1.341@0.719 /
     // 1.341@0.826 / 1.315@0.933 (deck) / 1.341@1.041 — three 1.347-top
     // stubs seated in the col interiors, the 0.933 window left to the deck

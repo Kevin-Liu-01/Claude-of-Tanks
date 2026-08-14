@@ -5972,3 +5972,50 @@ and asset geometry **`30a70c91`**.
 Future BU work must preserve the complete lower tub and outer armour; clearance
 belongs in the concealed mechanical walls or track endpoints, never by deleting
 the hull or side skirts.**
+
+## 5.174 T-72B3M COMPLETE-HULL / TURRET-OWNERSHIP CLOSEOUT (2026-08-14, LIVE)
+
+This closeout preserves the graduated first-party B3M of §5.117 and the
+turret-ownership reconciliation of §5.154. No visible hull plate, glacis,
+side skirt, mudguard, road wheel, idler, final drive, shoe, turret armour or
+equipment is removed. Fresh paired evidence retains the accepted independent
+§B8 vector `[9.2,9.3,9.2,9.2,9.2,9.2,9.2,9.3,9.4,9.3,9.3,9.4,9.3,9.4]`
+(floor **9.2**, mean **9.28**) against the authored baseline copy.
+
+The strict full-course residual separated into two classes. First, the complete
+lower tub's concealed central walls occupied the 1.04-m inner shoe lane and its
+hidden 0.86-m sponson floor coincided with the native return crowns. The closed
+tub remains present but is now physically between the two corridors, while the
+complete hidden floor follows the existing 1.22-m shoulder datum above the
+return run. The upper hull, front/rear proportions and complete outer armour do
+not move. Second, wheel-face annuli, bay-shadow crescents, fade chords and the
+behind-wheel course were already mounted on the suspension but inherited hull
+material buckets. Their vertices and transforms are retained and explicitly
+tagged as running gear so the strict audit does not judge a wheel against its
+own face package.
+
+The existing inner skirt closures and road-wheel backers are reseated outboard
+inside the unchanged 1.80-m skirt envelope. A 35-mm structural fender shelf
+under the existing articulated tabs ties the intact upper hull to the full
+outer skirt; a short inboard bow return closes that shelf into the tapered
+glacis shoulder above the idler. These supported hull-owned surfaces eliminate
+the real plan-view daylight pockets without covering the wheels or becoming a
+second track course.
+
+Fresh evidence contains 15 paired boards plus 15 yaw0 and 15 yaw90 frames
+(**45 PNG / 45 distinct hashes**). The complete cast shell, gun, protection,
+Sosna/roof suite, smoke, antennae, flank packs, raised side/back belt and all
+rear cells quarter-turn as one turret package. Hull, engine deck, transom,
+skirts, fender shelf and running gear remain fixed. Parent audit is **0
+stranded / 0 abutting / 0 dangling**. Winding is zero reversed / zero mixed,
+with no yaw ownership candidate. Exact band and individual-shoe sweeps are
+**0/0**; plan contiguity is **0 holes**.
+
+All eight presentation assets are current. Dual-ledger geometry is freeze
+**`046f522c`**, instance freeze **`62c0bd33`** and asset geometry
+**`240dc3af`** (124 rendered meshes / 226,508 vertices).
+
+**KEEP these hashes. Future B3M work must retain the complete hull/skirt
+envelope and keep every turret-semantic side/back/rear package under the turret
+parent; course clearance belongs in concealed mechanical geometry or explicit
+suspension ownership, never subtractive armour edits.**
