@@ -821,7 +821,11 @@ export function buildT54(P) {
     belly: [[-3.226, 0.96], [-3.09, 0.90], [-3.07, 0.70], [-2.98, 0.53], [-2.63, 0.315], [-2.20, 0.10], [-2.05, 0.01], [1.64, 0.01], [1.85, 0.06], [2.23, 0.22], [2.58, 0.41], [2.74, 0.61], [2.87, 0.83], [2.90, 1.13], [3.226, 1.18]],
     wUp: [[-3.226, 1.05], [-2.95, 1.35], [2.50, 1.35], [3.00, 1.05], [3.226, 0.90]],
     wLo: [[-3.226, 0.95], [2.20, 1.00], [3.226, 0.92]],
-    sponsonY: 0.86,
+    // Keep the measured outer deck/sponson silhouette, but lift only the
+    // concealed track-bay roof above the supported return shoes.  The lower
+    // band remains a closed centre tub at wLo while the upper band retains
+    // the published wUp/deck faces; no exterior hull or fender is removed.
+    sponsonY: 1.16,
   });
   // fender shelves x 1.28..1.635 (print full-width line), prism-law segments
   for (const s of [-1, 1]) for (let i = 0; i < 13; i++) {
@@ -847,8 +851,10 @@ export function buildT54(P) {
   P.add('hullDetail', cylX(0.15, 2.00, 12), 0, 1.11, -2.83);
   P.add('hullDetail', cylX(0.15, 2.00, 12), 0, 1.13, -2.58);
   for (const s of [-1, 1]) {
-    P.add('hullDark', cylX(0.154, 0.04, 12), s * 1.00, 1.11, -2.83);
-    P.add('hullDark', cylX(0.154, 0.04, 12), s * 1.00, 1.13, -2.58);
+    // End bands seat on the drum body, not over the return lane.  The
+    // former ±1.00 seat left the 4 cm ring grazing the inner shoe edge.
+    P.add('hullDark', cylX(0.154, 0.04, 12), s * 0.96, 1.11, -2.83);
+    P.add('hullDark', cylX(0.154, 0.04, 12), s * 0.96, 1.13, -2.58);
     P.add('hullDark', box(0.04, 0.30, 0.02), s * 0.62, 1.10, -2.71);
   }
   {
@@ -1171,14 +1177,27 @@ export function buildType59(P) {
     deck: [[-4.09, 1.28], [-3.92, 1.318], [-3.79, 1.382], [-3.55, 1.382], [-3.50, 1.415], [-2.86, 1.468], [-2.76, 1.364], [-1.10, 1.364], [-1.00, 1.34], [-0.50, 1.34], [-0.42, 1.372], [0.63, 1.352], [1.56, 1.00]],
     belly: [[-4.09, 0.70], [-3.93, 0.56], [-3.55, 0.43], [0.60, 0.42], [1.35, 0.49], [1.50, 0.62], [1.56, 0.96]],
     wUp: [[-4.09, 1.49], [-3.80, 1.52], [1.20, 1.52], [1.56, 1.42]],
-    wLo: [[-4.09, 0.95], [1.56, 0.98]],
-    sponsonY: 0.87,
+    // Closed centre tub stays between the two native courses.  The former
+    // 0.95..0.98 half-width entered the inner shoe faces; 0.88 preserves a
+    // substantial closed belly while restoring truthful wheel-well space.
+    wLo: [[-4.09, 0.88], [1.56, 0.88]],
+    // The former 0.87 m split put the full-width upper loft inside the
+    // native return run.  Raise only this concealed bay roof: the closed
+    // centre belly and every measured deck/side face remain unchanged.
+    sponsonY: 1.16,
   });
   // stern: full-width upper box (the -4.26 hullLengthM rear anchor, band
   // 0.72..1.30) + THIN center gearbox tail to -4.398 (stays under the 12%
   // body filter like the print's; the tail tip is ALSO the overallLengthM
   // rear datum — muzzle pins from it)
-  P.add('hull', box(2.90, 0.56, 0.17), 0, 1.005, -4.175);
+  // Closed stepped stern: retain the complete center plate and original
+  // 2.90 m crown/outer silhouette, but raise the concealed outboard floor
+  // above the final-drive return shoes.  Three overlapping closed solids
+  // replace the one full-width low box; nothing visible is deleted.
+  P.add('hull', box(1.76, 0.56, 0.17), 0, 1.005, -4.175);
+  for (const s of [-1, 1]) {
+    P.add('hull', box(0.66, 0.16, 0.17), s * 1.12, 1.205, -4.175);
+  }
   P.add('hullDetail', box(0.90, 0.20, 0.13), 0, 1.05, -4.315);
   P.add('hullDark', box(0.30, 0.10, 0.036), 0, 0.98, -4.378);
   for (const s of [-1, 1]) P.add('hullDark', box(0.10, 0.11, 0.12), s * 0.70, 0.60, -4.06, 0.3, 0, 0);
@@ -1208,8 +1227,11 @@ export function buildType59(P) {
     P.add('hullDark', box(0.04, 0.07, 0.22), s * 1.02, 1.10, 1.58, -0.35, 0, 0);
     P.add('hullDark', box(0.04, 0.07, 0.20), s * 1.50, 1.11, 1.60, -0.30, 0, 0);
     // rear flaps + stay bridging flap top to the shelf underside (§B2)
-    P.add('hullRubber', box(0.35, 0.44, 0.05), s * 1.455, 0.86, -3.79);
-    P.add('hullDark', box(0.04, 0.08, 0.16), s * 1.42, 1.09, -3.74);
+    // Rear mudflap belongs behind the final drive, not through its wrap.
+    // Preserve the complete flap and stay, moving both aft onto the stern
+    // hanger where they remain fully visible and physically supported.
+    P.add('hullRubber', box(0.35, 0.44, 0.05), s * 1.455, 0.86, -4.27);
+    P.add('hullDark', box(0.04, 0.08, 0.16), s * 1.42, 1.09, -4.20);
   }
   // fender stowage (§H4 variety: RIGHT flat fuel tanks + bin, LEFT bins;
   // ref bin tops 1.449-1.47 live INBOARD of x 1.48 — r2 re-seat) + the thin
@@ -1276,10 +1298,14 @@ export function buildType59(P) {
   // silhouette, §C mid-seam splits; r3: plan-tapered like the ref (±1.44
   // aft of -0.63, ±1.26 to -0.28, ±1.13 forward — the ±1.37 plan column
   // read the r2 full-width slab poking +0.10 where the ref tapers)
-  P.add('turretDark', box(2.88, 0.68, 0.45), 0, -0.355, -0.535);
-  P.add('turretDark', box(2.88, 0.68, 0.395), 0, -0.355, -0.1175);
-  P.add('turretDark', box(2.52, 0.68, 0.35), 0, -0.355, 0.255);
-  P.add('turretDark', box(2.26, 0.68, 0.34), 0, -0.355, 0.60);
+  // These are hidden reference-mask carriers, not exterior turret armor.
+  // Keep their full depth/height and overlap into the casting, but pull
+  // their plan width inside the closed centre hull so they cannot sweep
+  // through either track as the turret yaws.
+  P.add('turretDark', box(1.68, 0.68, 0.45), 0, -0.355, -0.535);
+  P.add('turretDark', box(1.68, 0.68, 0.395), 0, -0.355, -0.1175);
+  P.add('turretDark', box(1.64, 0.68, 0.35), 0, -0.355, 0.255);
+  P.add('turretDark', box(1.58, 0.68, 0.34), 0, -0.355, 0.60);
   // curved rear stowage rack around the bustle (ref -1.90..-2.44, y
   // 1.40..1.80) — chamfered plan corners follow the dome tail
   chamferBox(P, 'turret', 1.90, 0.40, 0.52, 0, 0.30, -1.45, 0.28);

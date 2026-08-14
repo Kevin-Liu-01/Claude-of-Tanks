@@ -572,9 +572,9 @@
       "vertices": 48883
     },
     "t54": {
-      "freezeHash": "5476a328",
-      "instanceFreezeHash": "911a05b7",
-      "assetGeometryHash": "04068e80",
+      "freezeHash": "0ff49358",
+      "instanceFreezeHash": "053e7a8c",
+      "assetGeometryHash": "dea8f4a7",
       "meshes": 41,
       "vertices": 46087
     },
@@ -726,11 +726,11 @@
       "vertices": 56898
     },
     "type59": {
-      "freezeHash": "7ad7f4f1",
-      "instanceFreezeHash": "59e4e31a",
-      "assetGeometryHash": "48041dd5",
+      "freezeHash": "bd8ceae6",
+      "instanceFreezeHash": "dbef757f",
+      "assetGeometryHash": "aaf9cc94",
       "meshes": 40,
-      "vertices": 51619
+      "vertices": 52159
     },
     "type74": {
       "freezeHash": "7c66166a",

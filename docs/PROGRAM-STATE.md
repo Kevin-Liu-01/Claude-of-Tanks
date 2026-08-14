@@ -91,6 +91,8 @@ re-freeze NEW hash, all in ONE commit.
 | isu152 | 8e2f75c0 | |
 | merkava3d | 3dc50bb4 | RE-FROZEN 2026-08-14 (§5.194 non-subtractive closed-sponson/native-course repair; exact band+shoe+sweep 0/0, fresh 45-frame profile/yaw packet; prior 667ece84 retired) |
 | pt91m | 2cf10e23 | |
+| t54 | 0ff49358 | RE-FROZEN 2026-08-14 (§5.195 non-subtractive closed-hull/native-course repair: complete cast hull, fenders and five-wheel course retained; concealed bay roof lifted and rear drum bands reseated; exact band+shoe+sweep 0/0, fresh 45-frame profile/yaw packet) |
+| type59 | bd8ceae6 | RE-FROZEN 2026-08-14 (§5.195 non-subtractive family repair: complete hull/fenders retained, closed center tub and stepped stern cleared from the native course, rear flaps reseated behind the final drive, hidden turret mask carriers narrowed; exact band+shoe+sweep 0/0, fresh 45-frame profile/yaw packet) |
 | t72b3m | b8cc33a8 | RE-FROZEN 2026-08-13 (§5.154 live ownership/asset reconciliation: complete soft-pack belt, side bins, flank carriers and rear cells remain turret-owned with parent audit 0/0/0 and fresh 45-frame yaw proof; existing wrap-fade/face trim explicitly classified as suspension-owned with front/rear exact band+shoe 0/0; all eight presentation assets current; hull, skirts and native six-wheel course unchanged) |
 | merkava1b | 102e495d | RE-FROZEN 2026-08-14 (§5.194 non-subtractive closed-sponson/native-course repair; exact band+shoe+sweep 0/0, fresh 45-frame profile/yaw packet; prior 78051af0 retired) |
 | m1a2 | 186cb8bb | RE-FROZEN 2026-08-14 (§5.184 expanded flush ERA / dual roof-gun asset reconciliation; exact band+shoe+sweep 0/0 and fresh 45-frame yaw packet; prior 636a4860 retired) |
@@ -6882,3 +6884,58 @@ All forty targeted presentation assets are current. Dual-ledger geometry is:
 **KEEP the complete Merkava hulls, side protection and native courses. Future
 course repairs must remain non-subtractive and may only reshape concealed
 undersides, reseat track-adjacent fittings or correct truthful ownership.**
+
+## 5.195 T-54 / TYPE 59 CLOSED-HULL NATIVE-COURSE RESTORATION (2026-08-14, LIVE)
+
+This family pass preserves both accepted first-party vehicles in full: their
+cast upper and lower hulls, complete fenders and service equipment, turrets,
+five road-wheel stations, raised terminal wheels, support rollers and single
+linked-shoe courses. No visible body, fender, guard, wheel or track component
+is deleted or hidden.
+
+On T-54, the former full-width loft split placed the concealed sponson floor
+inside the supported return shoes even though its exterior deck edge was
+already above them. The closed center belly, outer hull sides, deck silhouette
+and fenders remain unchanged; only the concealed track-bay roof now starts
+above the course. The two transverse rear drums remain complete, while their
+four-centimeter dark end bands move 0.04 m inboard onto the drum bodies rather
+than grazing the inner shoe edge.
+
+Type 59 had the same full-width hidden-floor defect plus three localized
+contacts. Its closed center tub narrows only inside the wheel wells while the
+measured outer armor and deck remain unchanged. The complete stern is now
+three overlapping closed solids: a full-height center plate plus raised
+outboard caps that preserve the original 2.90 m crown and side silhouette
+above the final-drive shoes. Both complete mudflaps and their stays move aft
+onto the stern hangers behind the final drives. Four internal dark reference
+mask carriers keep their depth, height and casting overlap but narrow inside
+the center hull so they cannot sweep through either course as the turret yaws.
+
+Exact strict band and individual-shoe audits now report **front 0/0, rear 0/0
+and complete sweep 0/0** for both tanks. Fresh evidence contains 15 paired
+boards including the standardized elevated-left profile, 15 yaw0 frames and
+15 yaw90 frames per tank: **90 PNG / 90 distinct hashes**. Front, rear, side
+and elevated-profile pixels show closed hulls, five separately readable road
+wheels, loaded runs resting beneath them and continuous raised terminal
+transitions. Each complete turret, gun and roof package performs a genuine
+quarter-turn while the hull, fenders, rear fittings and running gear remain
+fixed.
+
+T-54 parenting is **0 stranded / 0 abutting / 0 dangling**. Type 59's only
+heuristic nominee is the fixed driver-glass strip on the forward hull roof;
+it remains visibly surface-seated as the turret departs and has no turret
+semantics. Winding is **0 reversed / 0 mixed** on both. Type 59 has a zero
+render deficit; T-54's nine-pixel (0.01%) antialias edge is below every flag
+threshold, with zero yaw-stranded candidates on both vehicles. No open sheet,
+sky hole, floating fitting, duplicate course or silhouette regression appears.
+
+All sixteen targeted presentation assets are current, both muzzle bores pass
+and all nineteen targeted runtime-rig checks pass. T-54 dual-ledger geometry
+is freeze **`0ff49358`**, instance freeze **`053e7a8c`** and asset geometry
+**`dea8f4a7`** (41 rendered meshes / 46,087 vertices). Type 59 is freeze
+**`bd8ceae6`**, instance freeze **`dbef757f`** and asset geometry
+**`aaf9cc94`** (40 rendered meshes / 52,159 vertices).
+
+**KEEP both complete hulls, fenders and native courses. Future clearance work
+must remain non-subtractive and may only reshape concealed bay floors, reseat
+track-adjacent fittings or correct truthful ownership.**
