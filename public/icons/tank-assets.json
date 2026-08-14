@@ -90150,7 +90150,7 @@
           }
         ]
       },
-      "geometryHash": "da13c13a",
+      "geometryHash": "374b8231",
       "metadataHash": "50332fca",
       "muzzleBore": {
         "tagged": 1,
@@ -90165,24 +90165,24 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 19800,
-          "sha256": "897e7aec0274286dc595f7f36fe2f8d5d2e5498fe4930a0e79a5ae486627a591"
+          "bytes": 19952,
+          "sha256": "ab3aaa54870c544c79466ebbcd4ae7763aa2ca458abc68a90a08b88c033f0585"
         },
         "top": {
           "file": "tiger2_top.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 10972,
-          "sha256": "cf29796cc94f7e991d1befb309f52d54223f2fc5fdd14c5e0ad2d52687ce8b0a"
+          "bytes": 10984,
+          "sha256": "0aeac1612170df777b216267d2f4f66dd26ce29d4c72de2f38765164cf7c3f52"
         },
         "side": {
           "file": "tiger2_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 9672,
-          "sha256": "f520045f714969c20585d2223a98f993aecc8f587a32f72a32d2293573abaf3b"
+          "bytes": 9660,
+          "sha256": "5d0e641a30f0d8957e06ce42c4fff44d732b02e3a112c947dc73b97de11dbfbe"
         },
         "topSilhouette": {
           "file": "tiger2_top_silhouette.png",
@@ -90198,31 +90198,31 @@
           "height": 128,
           "mime": "image/png",
           "bytes": 3855,
-          "sha256": "e8922acde6ff55fc1900a64169c05470c16d96549d4eddcb53ffce931922ecc2"
+          "sha256": "2d0ae28b40e2d3d0462419fc8a438764da7325b982a1ac147349083088ec6a82"
         },
         "hitZonesSide": {
           "file": "tiger2_hit_zones_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 63717,
-          "sha256": "a36ce95291779c4460e57a71cd9cc7ace607787d2fe97fe689db11bc370e3bfb"
+          "bytes": 63029,
+          "sha256": "6eb15d34e2041c5971bb42d6bb0ee1a734eda5f282dd6f4a1575046fdb3672b0"
         },
         "armorSide": {
           "file": "tiger2_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 65757,
-          "sha256": "807361c287dc257f0e1cadace54a3ee23299f2aac22f8ff443be52a674f6202c"
+          "bytes": 66041,
+          "sha256": "38abe2230898dd720f491cdd500fecec83ac417a9673444f0cd6937ecd772b90"
         },
         "modulesSide": {
           "file": "tiger2_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 62001,
-          "sha256": "fca728c6b1f7000a0b7d21cc1a8b74b8a7417b183e5fb288731d42b60e55ffd5"
+          "bytes": 62088,
+          "sha256": "6943e6163a5d7e2139f073782524b6bbd0f2cba92ead604a71cfff6d6450544d"
         }
       }
     },
