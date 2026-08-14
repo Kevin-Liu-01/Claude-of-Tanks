@@ -130,6 +130,38 @@ function skirtArmorBox(P, bucket, side, carrierX, thickness, height, depth, y, z
   return inner + thickness;
 }
 
+// XM19/XM32-style skirt cassettes are wedges, not flat signboards.  Their
+// backs stay buried in the vertical skirt carrier while the exposed face
+// leans out from bottom to top.  Returning the face quad lets callers layer
+// caps and texture on the same plane instead of drawing black grid lines.
+function skirtArmorWedge(P, bucket, side, carrierX, bottomProjection,
+  topProjection, y0, y1, z0, z1, embed = 0.006) {
+  const inner = carrierX - embed;
+  const outerBottom = inner + bottomProjection;
+  const outerTop = inner + topProjection;
+  sideSlab(P, bucket, side,
+    [inner, y0, z1], [outerBottom, y0, z1],
+    [outerBottom, y0, z0], [inner, y0, z0],
+    [inner, y1, z1], [outerTop, y1, z1],
+    [outerTop, y1, z0], [inner, y1, z0]);
+  return {
+    p00: [outerBottom, y0, z1],
+    p10: [outerBottom, y0, z0],
+    p11: [outerTop, y1, z0],
+    p01: [outerTop, y1, z1],
+  };
+}
+
+function skirtArmorFacePoint(face, y, z) {
+  const span = face.p01[1] - face.p00[1];
+  const v = span > 0 ? (y - face.p00[1]) / span : 0;
+  return [
+    face.p00[0] + (face.p01[0] - face.p00[0]) * v,
+    y,
+    z,
+  ];
+}
+
 // Upper-glacis armor uses the hull's own deck polyline as its carrier.  The
 // four back corners are sampled from that surface, then surfaceNormalPatch
 // grows the cassette along the real normal.  This keeps the new bow arrays
@@ -1860,31 +1892,29 @@ function tejasRoofKit(P, t, station = 'crows') {
   flankSlab(P, 'turret', t, 1, 1.612, 0.03, 0.03, 0.58, -0.87, 0.63, 0.034);
   flankSlab(P, 'turretTrack', t, 1, 1.6125, 0.03, 0.07, 0.53, 0.29, 0.31, 0.05);
   flankSlab(P, 'turretTrack', t, 1, 1.6125, 0.03, 0.07, 0.53, -0.56, -0.54, 0.05);
-  // Width-plane stowage horns (plan z 0.40..0.62 world). The ref's LEFT horn
-  // is TWO thin plates with a notch between: 2.234 top at x -1.73..-1.76 and
-  // 2.19 at the committed -1.828 width plane, with the -1.79 bin dropping to
-  // the fender line (post-warp front rows -1.745/-1.786/-1.827). A low tie
-  // arm seats the outer plate against the wall band (no floater).
-  // (inner plate widened to x -1.710: the ref's horn band already tops
-  // 2.222 at the -1.71 front column — the -1.728 edge read 2.16 there)
-  P.add('turret', box(0.052, 0.60, 0.215), -1.736, 0.364, 0.1575);
-  P.add('turret', box(0.021, 0.58, 0.215), -1.8175, 0.322, 0.1575);
-  P.add('turretDark', box(0.26, 0.05, 0.05), -1.70, 0.055, 0.13);
-  P.add('turret', box(0.052, 0.60, 0.16), 1.641, 0.33, 0.13);
-  // (r5: horn cap mid-shade — from the front quarters the black band over
-  // the right horn top read as a floating dark chip on the cheek edge)
-  P.add('turretTrack', box(0.054, 0.05, 0.14), 1.641, 0.56, 0.125);
-  // Flank stowage risers: ref front tops 2.37-2.39 at |x| 1.55..1.66 (both
-  // sides) — above the 2.19 wall-band line, hidden in SIDE view under the
-  // station base's 2.46 span (z world 0.40..0.56). Ref-true STANDING posts
-  // (kept vertical, the horn class). PANEL-PITCH: the left one sat on the
-  // old vertical band top — a dark mount bracket re-seats it on the pitched
-  // bay (buries into the bay solid + the riser bottom; the horn tie-arm
-  // precedent), so no floater is born.
-  P.add('turret', box(0.06, 0.20, 0.16), -1.63, 0.72, 0.13);
-  P.add('turretDark', box(0.23, 0.05, 0.14), -1.555, 0.615, 0.13);
-  P.add('turret', box(0.13, 0.20, 0.16), 1.595, 0.71, 0.13);
-  P.add('turret', box(0.06, 0.60, 0.16), 1.645, 0.33, 0.13);
+  // Owner surface-markup pass 2026-08-14: the legacy width-plane horns and
+  // risers above were four vertical cuboids.  Their selected faces lived at
+  // x={-1.828,-1.762,+1.675,+1.660}, visibly bridging air while the Abrams
+  // flank leans inward.  Replace them with shallow armor cassettes sampled
+  // directly from the certified tumblehome.  The left lower pair retains a
+  // narrow longitudinal split; every body, cap and upper riser now shares
+  // the shell normal and bites 6 mm into the carrier.
+  for (const side of [-1, 1]) {
+    const lowerRuns = side < 0
+      ? [[0.050, 0.145], [0.170, 0.265]]
+      : [[0.050, 0.210]];
+    for (const [z0, z1] of lowerRuns) {
+      armorFlankPatch(P, 'turret', t, side,
+        0.04, 0.60, z0, z1, 0.070, ERA_CONTACT_OFFSET);
+      armorFlankPatch(P, 'turretDetail', t, side,
+        0.09, 0.55, z0 + 0.010, z1 - 0.010,
+        0.008, eraFaceBase(0.070));
+    }
+    armorFlankPatch(P, 'turret', t, side,
+      0.62, 0.79, 0.075, 0.185, 0.070, ERA_CONTACT_OFFSET);
+    armorFlankPatch(P, 'turretDetail', t, side,
+      0.645, 0.765, 0.087, 0.173, 0.008, eraFaceBase(0.070));
+  }
   // Owner studio deletion 2026-08-13: both halves of the legacy LEFT
   // cheek raked-bulge overlay were selected independently.  The outboard
   // stair-zone wedge was removed first; the remaining inboard transition
@@ -1892,9 +1922,10 @@ function tejasRoofKit(P, t, station = 'crows') {
   // Remove the complete closed overlay and its now-orphaned seam toe at the
   // builder level.  The primary swept Abrams cheek loft underneath is a
   // closed solid and supplies the intended uninterrupted cheek silhouette.
-  // RIGHT cheek fill x 1.35..1.45 (ref plan 1.684 at x 1.385 sits proud of
-  // the pulled-back right sweep).
-  P.add('turret', box(0.09, 0.55, 0.16), 1.485, 0.20, 1.24);
+  // Owner surface-markup deletion 2026-08-14: the right cheek-fill cuboid
+  // (selected inner face x=1.44, y=-0.0534..0.4534, z=1.1816..1.2984)
+  // stood proud of the primary swept cheek.  The closed cheek loft beneath
+  // it already carries this transition, so remove the overlay completely.
   // Plan-only center bump left of the covers (ref plan 2.754 world at
   // x -0.26..-0.37; held in the covers' 1.76..2.00 y band so neither the
   // side nor the front silhouette moves).
@@ -5999,40 +6030,65 @@ function buildM1a2(P, V) {
   if (!sep && !sep3) {
     // Base M1A2 visual escalation: deeper bodies remain embedded in the
     // stock armor, but expose enough shoulder to read as a heavy package.
-    const skirtDepth = 0.185;
+    const skirtCarrier = 1.696;
     const wallDepth = 0.205;
     const cheekDepth = 0.215;
     for (const side of [-1, 1]) {
-      // Dense two-course side-skirt protection.  The body is buried into
-      // the existing 1.828 m skirt and its face remains the widest surface.
-      for (let k = 0; k < 8; k++) {
-        const z = 2.20 - k * 0.59;
-        const upperOuter = skirtArmorBox(P, 'hull', side, 1.702,
-          skirtDepth, 0.36, 0.52, 1.22, z);
-        skirtArmorBox(P, 'hullDetail', side, upperOuter - 0.003,
-          0.012, 0.29, 0.44, 1.22, z, 0);
-        const lowerOuter = skirtArmorBox(P, 'hull', side, 1.702,
-          skirtDepth - 0.012, 0.305, 0.52, 0.88, z + 0.015);
-        skirtArmorBox(P, 'hullDetail', side, lowerOuter - 0.003,
-          0.011, 0.235, 0.44, 0.88, z + 0.015, 0);
-        for (const dz of [-0.17, 0.17]) {
-          P.add('hullDetail', cylX(0.015, 0.014, 8), side * 1.841,
-            1.22, z + dz);
+      // Nine paired XM32-style cassettes replace the flat checkerboard.
+      // Every wedge is buried into the stock skirt, leans outward toward
+      // its crown, and carries two smaller armor-tone relief layers.  The
+      // real shoulders and natural inter-module gaps supply depth—there are
+      // no black row/column bars to turn the skirt into a graphic H-grid.
+      P.add('hullDetail', box(0.018, 0.045, 4.40),
+        side * 1.858, 1.425, 0.25);
+      for (let k = 0; k < 9; k++) {
+        const z = 2.24 - k * 0.50;
+        const z0 = z - 0.225, z1 = z + 0.225;
+        const pulse = k % 2 === 0 ? 0.006 : 0;
+        const upper = skirtArmorWedge(P, 'hull', side, skirtCarrier,
+          0.156 + pulse, 0.190 + pulse, 1.035, 1.405, z0, z1);
+        surfaceNormalPatch(P, 'hullDetail', side,
+          upper.p00, upper.p10, upper.p11, upper.p01,
+          0.010, 0.002, [1, 0, 0]);
+        surfaceNormalPatch(P, 'hullDetail', side,
+          skirtArmorFacePoint(upper, 1.15, z1 - 0.055),
+          skirtArmorFacePoint(upper, 1.15, z0 + 0.055),
+          skirtArmorFacePoint(upper, 1.31, z0 + 0.055),
+          skirtArmorFacePoint(upper, 1.31, z1 - 0.055),
+          0.007, 0.015, [1, 0, 0]);
+
+        const lower = skirtArmorWedge(P, 'hull', side, skirtCarrier,
+          0.145 + pulse, 0.178 + pulse, 0.725, 1.020, z0, z1);
+        surfaceNormalPatch(P, 'hullDetail', side,
+          lower.p00, lower.p10, lower.p11, lower.p01,
+          0.009, 0.002, [1, 0, 0]);
+        surfaceNormalPatch(P, 'hullDetail', side,
+          skirtArmorFacePoint(lower, 0.815, z1 - 0.055),
+          skirtArmorFacePoint(lower, 0.815, z0 + 0.055),
+          skirtArmorFacePoint(lower, 0.945, z0 + 0.055),
+          skirtArmorFacePoint(lower, 0.945, z1 - 0.055),
+          0.006, 0.014, [1, 0, 0]);
+
+        const fastenerX = skirtCarrier - 0.006 + 0.194 + pulse;
+        for (const [fy, fz] of [[1.20, z - 0.16], [1.20, z + 0.16], [0.87, z]]) {
+          P.add('hullDetail', cylX(0.014, 0.012, 8), side * fastenerX, fy, fz);
         }
-        skirtArmorBox(P, 'hullDetail', side, upperOuter + 0.004,
-          0.011, 0.18, 0.34, 1.22, z, 0);
-        skirtArmorBox(P, 'hullDetail', side, upperOuter + 0.004,
-          0.010, 0.060, 0.44, 1.22, z, 0);
-        skirtArmorBox(P, 'hull', side, lowerOuter - 0.002,
-          0.018, 0.06, 0.47, 0.735, z + 0.015, 0);
+        // A shallow sacrificial toe overlaps the stock hem, eliminating the
+        // old dark slit below the lower course without hiding the running gear.
+        skirtArmorBox(P, 'hull', side, skirtCarrier + 0.010,
+          0.155 + pulse, 0.060, 0.42, 0.675, z, 0.010);
       }
       // Stepped forward termination around the idler/fender transition.
       for (let k = 0; k < 4; k++) {
         const z = 2.68 + k * 0.29;
         const h = 0.34 - k * 0.035;
-        P.add('hull', box(0.105, h, 0.25), side * (1.775 - k * 0.035), 1.04, z);
-        P.add('hullDetail', box(0.011, h - 0.065, 0.20),
-          side * (1.833 - k * 0.035), 1.04, z);
+        const carrier = Math.max(skirtCarrier - k * 0.020, skirtCarrier - 0.055);
+        const nose = skirtArmorWedge(P, 'hull', side, carrier,
+          0.150, 0.184, 1.04 - h / 2, 1.04 + h / 2,
+          z - 0.12, z + 0.12);
+        surfaceNormalPatch(P, 'hullDetail', side,
+          nose.p00, nose.p10, nose.p11, nose.p01,
+          0.009, 0.002, [1, 0, 0]);
       }
 
       // Four broad bustle cassettes transplant the best M1A1/HA armor
