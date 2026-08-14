@@ -2871,35 +2871,50 @@ function fv510PhotoBuild(P) {
   // ---- stern: lower plate rakes up to the 0.80 door sill ----
   loftBand(P, 'hull', 0.90, 0.02, [[-2.30, 1.335], [-2.90, 1.335]], fvSternY,
     -2.30, -2.90, [-2.7]);
-  // ---- segmented side armour behind the WRAP screen.  Restore the
-  // six camouflaged plates and the characteristic pointed inter-station
-  // drops that were removed when the outer slat course was opened up. The
-  // first recovery placed the plates too far inboard, where the hull/cage
-  // hid them from the normal garage angle. Put their visible faces back at
-  // the authored skirt plane and carry the WRAP rails immediately outside;
-  // the armor reads as six real blocks while the ribbed cage remains visible.
-  // The 0.62 m lowest point remains above the native linked-shoe corridor.
+  // ---- segmented WRAP side armour.  Six deep, chamfered applique modules
+  // fill the Warrior flank behind the open rib screen.  The earlier recovery
+  // used shallow rectangular cards; from the normal garage angle the rails
+  // swallowed them and the vehicle still read as if its side skirts were
+  // missing.  These are real closed armour volumes with inset backs, bevelled
+  // edges and raised chevron stiffeners.  They remain hull-owned, stop above
+  // the native linked-shoe corridor and never replace the complete sponson.
   for (const s of [-1, 1]) {
     for (let k = 0; k < 6; k++) {
       const z = 2.30 - 0.41 - k * 0.82;
-      P.add('hull', box(0.048, 0.48, 0.80), s * 1.485, 1.10, z);
-      // Flush dark border lines make each camouflaged slab read as an
-      // individual armor block rather than one painted wall behind the cage.
-      for (const by of [0.875, 1.325]) {
-        P.add('hullDark', box(0.008, 0.024, 0.72), s * 1.511, by, z);
+      P.add('hull', sslab(s,
+        [1.438, 0.75, z + 0.39], [1.438, 1.91, z + 0.39],
+        [1.438, 1.91, z - 0.39], [1.438, 0.75, z - 0.39],
+        [1.497, 0.80, z + 0.35], [1.497, 1.84, z + 0.35],
+        [1.497, 1.84, z - 0.35], [1.497, 0.80, z - 0.35]));
+      // A dark recessed perimeter separates the six modules at normal scale.
+      for (const by of [0.815, 1.825]) {
+        P.add('hullDark', box(0.012, 0.026, 0.66), s * 1.504, by, z);
       }
-      for (const bz of [z - 0.39, z + 0.39]) {
-        P.add('hullDark', box(0.008, 0.42, 0.018), s * 1.511, 1.10, bz);
+      for (const bz of [z - 0.365, z + 0.365]) {
+        P.add('hullDark', box(0.012, 0.96, 0.024), s * 1.504, 1.32, bz);
       }
-      P.add('hullDetail', box(0.040, 0.78, 0.045), s * 1.493, 1.25, z - 0.40);
+      // Paired diagonal armour ribs form the deep saw-tooth/chevron cadence
+      // visible on the protected Warrior side package.  Each rib is planted
+      // on the closed panel face; nothing is carried by the outer rail cage.
+      P.add('hullDetail', box(0.030, 0.100, 0.68), s * 1.516, 1.47, z + 0.22,
+        -0.46, 0, 0);
+      P.add('hullDetail', box(0.030, 0.100, 0.68), s * 1.516, 1.47, z - 0.22,
+        0.46, 0, 0);
+      P.add('hullDetail', box(0.032, 0.14, 0.10), s * 1.517, 1.32, z);
+      // Two broad transverse shoes carry each module back to the sponson.
+      // They close the otherwise empty 0.29 m stand-off and remain well
+      // above/inboard of the moving native course.
+      P.add('hullDetail', box(0.30, 0.075, 0.14), s * 1.292, 1.76, z + 0.22);
+      P.add('hullDetail', box(0.30, 0.075, 0.14), s * 1.292, 1.10, z - 0.22);
     }
-    // Zig-zag armour points between the six road-wheel stations.  Their
-    // upper shoulders overlap the plate backs and their tips hang between,
-    // rather than in front of, the road-wheel faces.
+    // Armoured lower drops bridge the module seams and produce the toothed
+    // lower edge without intruding into a wheel face or linked shoe.
     for (const zw of [1.80, 0.90, 0.0, -0.90, -1.80]) {
       P.add('hull', sslab(s,
-        [1.463, 0.62, zw + 0.13], [1.507, 0.62, zw + 0.13], [1.507, 0.62, zw - 0.13], [1.463, 0.62, zw - 0.13],
-        [1.463, 0.88, zw + 0.24], [1.507, 0.88, zw + 0.24], [1.507, 0.88, zw - 0.24], [1.463, 0.88, zw - 0.24]));
+        [1.445, 0.66, zw + 0.11], [1.497, 0.66, zw + 0.11],
+        [1.497, 0.66, zw - 0.11], [1.445, 0.66, zw - 0.11],
+        [1.445, 0.88, zw + 0.24], [1.497, 0.88, zw + 0.24],
+        [1.497, 0.88, zw - 0.24], [1.445, 0.88, zw - 0.24]));
     }
     P.add('hullDark', box(0.014, 0.035, 0.46), s * 1.499, 1.325, 2.06);
     P.add('hullDark', box(0.014, 0.035, 0.46), s * 1.499, 1.325, -2.38);
@@ -2921,8 +2936,8 @@ function fv510PhotoBuild(P) {
   // station slice catches end caps; rows never crest the deck line ----
   for (const s of [-1, 1]) {
     for (const [ry, z0, z1] of [
-      [0.88, -2.45, 2.26], [1.06, -2.45, 2.26], [1.24, -2.45, 2.26],
-      [1.44, -2.55, 2.26], [1.62, -2.55, 1.95],
+      [0.84, -2.45, 2.26], [1.00, -2.45, 2.26],
+      [1.16, -2.45, 2.26], [1.32, -2.55, 2.26],
     ]) {
       const n = Math.ceil((z1 - z0) / 0.46);
       const d = (z1 - z0) / n;
@@ -2930,8 +2945,10 @@ function fv510PhotoBuild(P) {
         P.add('hullDetail', box(0.045, 0.055, d - 0.012), s * 1.4925, ry, z0 + d * (k + 0.5));
       }
     }
-    for (const zs of [-1.95, -0.65, 0.65, 1.85]) {
-      P.add('hullDetail', box(0.04, 0.84, 0.05), s * 1.493, 1.25, zs);
+    // Dense station ties make the exterior WRAP screen a supported cage
+    // over the closed armour modules, rather than a few disconnected rails.
+    for (const zs of [-2.42, -1.64, -0.82, 0, 0.82, 1.64, 2.25]) {
+      P.add('hullDetail', box(0.04, 0.64, 0.05), s * 1.493, 1.16, zs);
     }
   }
   // ---- bow furniture (photo-parity r2 gap #5/#8: the owner's exercise

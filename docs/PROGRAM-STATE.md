@@ -5523,3 +5523,32 @@ assets are regenerated for deterministic geometry freeze **`a11c97ed`**.
 
 **KEEP `a11c97ed`. Future T-72B obr. 1987 work must preserve the period K1
 blanket, complete hull/skirt envelope and native six-wheel course.**
+
+## 5.159 FV510 DEEP WRAP SIDE-ARMOUR RESTORATION (2026-08-13, LIVE)
+
+The owner's side-protection follow-up is implemented on the existing
+first-party `fv510PhotoBuild` without deleting or reshaping the proven hull,
+bow, stern, running gear or linked track. The prior recovery used six shallow
+rectangular cards behind the WRAP rails; at normal garage distance the rails
+visually swallowed those cards and the Warrior still appeared to have lost
+its side-skirt armour.
+
+Each side now carries six closed, deep applique volumes with chamfered upper,
+lower and end faces. Dark recessed perimeters keep the stations separately
+readable, paired diagonal ribs form the requested large chevron/zig-zag
+armour language, and broad upper/lower shoes return every module into the
+original sponson. Armoured seam drops create the characteristic toothed lower
+edge while ending above the road-wheel and linked-shoe corridor. The exterior
+WRAP cage is retained as a supported screen but lowered to four horizontal
+courses with seven vertical tie stations so it no longer hides the armour.
+
+First-party studio inspection covers pure left profile, elevated left, front
+and hero views. The six modules remain closed and hull-owned; no rail, rib or
+shoe is supported through empty air, no front-width growth enters the track
+lanes, and all six road-wheel stations plus the single native linked course
+remain visible and continuous. Live registry, muzzle-bore, track-geometry and
+targeted asset checks pass. All eight FV510 assets are regenerated for
+deterministic geometry freeze **`f15951c4`**.
+
+**KEEP `f15951c4`. Future FV510 work must preserve these closed deep modules,
+the original complete hull and the unobstructed native track corridor.**
