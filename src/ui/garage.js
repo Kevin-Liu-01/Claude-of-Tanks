@@ -132,7 +132,7 @@ const GARAGE_CSS = `
    only the game logo + a quiet screen-mode tag; the vehicle identity lives
    solely on the stats card. */
 /* r9.1 (owner): the quiet "GARAGE" mode tag becomes a real screen nav —
-   Garage (current) / Studio (scene studio, F8 path) / Home (landing page) */
+   Garage (current) / Studio / Surface Lab / Home. */
 .cot-nav{position:absolute;top:68px;left:34px;display:flex;gap:5px;pointer-events:auto;}
 .cot-nav .nv{font-family:${FONT_STACK};font-size:8.5px;font-weight:800;
   letter-spacing:.18em;text-transform:uppercase;color:#8a97a3;cursor:pointer;
@@ -1298,6 +1298,8 @@ export function createGarage(opts) {
     `<img class="nvi" src="/brand/nav/garage.svg" alt="" draggable="false">Garage</button>` +
     `<button class="nv" data-nav="studio" type="button">` +
     `<img class="nvi" src="/brand/nav/studio.png" alt="" draggable="false">Studio</button>` +
+    `<button class="nv" data-nav="surface" type="button">` +
+    `${uiIconSVG('scope', 15, 'currentColor', 'nvi')}Surface Lab</button>` +
     `<button class="nv" data-nav="home" type="button">` +
     `${uiIconSVG('home', 15, 'currentColor', 'nvi')}Home</button>` +
     `</div>` +
@@ -2082,6 +2084,10 @@ export function createGarage(opts) {
   root.querySelector('[data-nav="studio"]').addEventListener('click', () => {
     emit('ui:click', {});
     window.dispatchEvent(new KeyboardEvent('keydown', { code: 'F8' }));
+  });
+  root.querySelector('[data-nav="surface"]').addEventListener('click', () => {
+    emit('ui:click', {});
+    window.location.href = '/surface-studio';
   });
   root.querySelector('[data-nav="home"]').addEventListener('click', () => {
     emit('ui:click', {});

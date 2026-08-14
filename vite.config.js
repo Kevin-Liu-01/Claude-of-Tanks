@@ -52,7 +52,7 @@ function reachableSrcModules(root) {
 }
 
 /**
- * Pretty routes (owner: "/studio" and "/home"). Pure URL rewrites — the
+ * Pretty routes (owner: "/studio", "/surface-studio" and "/home"). Pure URL rewrites — the
  * browser's address bar keeps the pretty path while the server serves the
  * real file. /studio boots the game (index.html; src/game/studio.js sees the
  * pathname and auto-enters), /home serves the showcase page (home.html — a
@@ -66,6 +66,7 @@ function rewriteRoutes(req, res, next) {
   const path = qi === -1 ? url : url.slice(0, qi);
   const query = qi === -1 ? '' : url.slice(qi);
   if (path === '/studio' || path === '/studio/') req.url = '/index.html' + query;
+  else if (path === '/surface-studio' || path === '/surface-studio/') req.url = '/tools/tank-surface-studio.html' + query;
   else if (path === '/home' || path === '/home/') req.url = '/home.html' + query;
   else if (path === '/docs' || path === '/docs/') req.url = '/docs.html' + query;
   next();
@@ -109,11 +110,12 @@ export default {
         main: resolve(process.cwd(), 'index.html'),
         home: resolve(process.cwd(), 'home.html'),
         docs: resolve(process.cwd(), 'docs.html'),
+        surfaceStudio: resolve(process.cwd(), 'tools/tank-surface-studio.html'),
       },
     },
   },
   optimizeDeps: {
-    entries: ['index.html', 'home.html', 'docs.html'],
+    entries: ['index.html', 'home.html', 'docs.html', 'tools/tank-surface-studio.html'],
     include: [
       'three',
       'three/examples/jsm/utils/BufferGeometryUtils.js',

@@ -30,12 +30,12 @@ const OP_CSS = {
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, preserveDrawingBuffer: true });
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
-renderer.setClearColor(0x10171c, 1);
+renderer.setClearColor(0x0b1014, 1);
 viewport.prepend(renderer.domElement);
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x10171c);
-scene.fog = new THREE.Fog(0x10171c, 28, 62);
+scene.background = new THREE.Color(0x0b1014);
+scene.fog = new THREE.Fog(0x0b1014, 28, 62);
 const camera = new THREE.PerspectiveCamera(36, 1, 0.05, 300);
 camera.position.set(-8, 5.2, 8);
 const controls = new OrbitControls(camera, renderer.domElement);
@@ -46,8 +46,8 @@ controls.maxDistance = 70;
 controls.target.set(0, 1.2, 0);
 controls.update();
 
-scene.add(new THREE.AmbientLight(0xf4f8fa, 1.05));
-scene.add(new THREE.HemisphereLight(0xd9e4ea, 0x273027, 1.55));
+scene.add(new THREE.AmbientLight(0xe8edf0, 1.02));
+scene.add(new THREE.HemisphereLight(0xd3dde4, 0x25291f, 1.50));
 const keyLight = new THREE.DirectionalLight(0xfff2dc, 2.5);
 keyLight.position.set(-12, 18, 14);
 scene.add(keyLight);
@@ -57,18 +57,32 @@ scene.add(fillLight);
 
 const ground = new THREE.Mesh(
   new THREE.CircleGeometry(18, 96),
-  new THREE.MeshStandardMaterial({ color: 0x192229, roughness: 0.93, metalness: 0.02 }),
+  new THREE.MeshStandardMaterial({ color: 0x141b20, roughness: 0.95, metalness: 0.04 }),
 );
 ground.rotation.x = -Math.PI / 2;
 ground.position.y = -0.015;
 ground.userData.surfaceStudioIgnore = true;
 scene.add(ground);
-const grid = new THREE.GridHelper(30, 30, 0x3a4c57, 0x25343d);
+const grid = new THREE.GridHelper(30, 30, 0x4c4a3c, 0x242b30);
 grid.position.y = 0.002;
 grid.material.transparent = true;
 grid.material.opacity = 0.42;
 grid.userData.surfaceStudioIgnore = true;
 scene.add(grid);
+
+// The same amber inspection-ring language used by the garage turntable keeps
+// this authoring page visibly inside the Claude of Tanks application rather
+// than feeling like a disconnected Three.js utility.
+for (const [inner, outer, opacity] of [[7.45, 7.49, 0.45], [8.15, 8.17, 0.18]]) {
+  const ring = new THREE.Mesh(
+    new THREE.RingGeometry(inner, outer, 128),
+    new THREE.MeshBasicMaterial({ color: 0xee9b2d, transparent: true, opacity, side: THREE.DoubleSide }),
+  );
+  ring.rotation.x = -Math.PI / 2;
+  ring.position.y = 0.006;
+  ring.userData.surfaceStudioIgnore = true;
+  scene.add(ring);
+}
 
 const engineCtx = { setupShadowMaterial: (material) => material, anisotropy: 1, renderer };
 const raycaster = new THREE.Raycaster();

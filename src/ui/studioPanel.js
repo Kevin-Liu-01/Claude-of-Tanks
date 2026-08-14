@@ -180,9 +180,11 @@ export function createStudioPanel(S) {
   badgeMark.draggable = false;
   const badgeTitle = el('div', 't', 'SCENE STUDIO');
   const badgeMap = el('div', 'm', '');
+  const surfaceBtn = el('button', null, 'SURFACE LAB');
+  surfaceBtn.addEventListener('click', () => { window.location.href = '/surface-studio'; });
   const exitBtn = el('button', null, 'EXIT (F8)');
   exitBtn.addEventListener('click', () => S.exit());
-  badge.append(badgeMark, badgeTitle, badgeMap, exitBtn);
+  badge.append(badgeMark, badgeTitle, badgeMap, surfaceBtn, exitBtn);
   root.appendChild(badge);
 
   const busy = el('div', 'busy');
