@@ -5633,3 +5633,14 @@ The deterministic Revolution geometry freeze is **`97d36207`**.
 
 **KEEP `97d36207`. Future Revolution work must preserve the closed wing and
 the forward, dark, physically seated MAG orientation.**
+
+## 5.163 T-72B OBR. 1987 MODERN CATALOG MOVE (2026-08-13, LIVE)
+
+The existing `t72b_1987` playable is moved from the garage's UI-only Cold War
+override into the Modern catalog requested by the owner. Its underlying spec
+already inherits `era: modern` from the T-72 family; therefore this is a
+single authoritative classification change, not a duplicate vehicle, alias,
+stat rewrite or geometry change. Nation/name ordering continues to place it
+beside the other T-72 variants inside the Modern Russian block.
+
+**KEEP. `t72b_1987` has one roster identity and belongs to Modern.**

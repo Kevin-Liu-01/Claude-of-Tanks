@@ -48,7 +48,7 @@ const NATION_LABEL = {
 // a UI-layer classification map (id -> Cold War) instead of dozens of spec
 // edits. Membership rule: the VARIANT entered service before ~1991, with the
 // owner's example families pinned — Centurions, Chieftains, Pattons
-// (M46/M47/M48), M60s, the T-55/62/64/72-era Soviet marks, Leopard 1, AMX-30,
+// (M46/M47/M48), M60s, the T-55/62/64 Soviet marks, Leopard 1, AMX-30,
 // Type 74, plus Vickers MBT and Strv 103 by the same rule. The T-80/90/14
 // lines, post-1991 T-72 modernizations (T-72B3/B3M/BU, PT-91M), Challengers,
 // Merkavas and all IFVs stay 'modern' per the same owner brief.
@@ -57,8 +57,9 @@ const COLDWAR_IDS = new Set([
   'm46_patton', 'm47_patton', 'm48', 'm60a1', 'm60a2', 'm60a3',
   // Germany — Leopard 1
   'leo1a5',
-  // USSR — cold-war marks (T-54 through the 1987 T-72B)
-  't54', 'type59', 't62mv1', 't64bv1', 't72b_1987',
+  // USSR — cold-war marks.  The owner explicitly catalogs T-72B obr. 1987
+  // with the Modern T-72 family, so it is not part of this UI override.
+  't54', 'type59', 't62mv1', 't64bv1',
   // UK — Centurion / Chieftain / Vickers
   'centurion3', 'centurion5', 'chieftain5', 'chieftain_mk10', 'vickers_mk1',
   // France — AMX-30 line
