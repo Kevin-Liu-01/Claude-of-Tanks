@@ -569,6 +569,8 @@ for (const [tickValue, serverTimeMs, x] of [[0, 0, 0], [3, 50, 0.5]]) {
 const responsiveFrame = responsive.sample(100);
 assert.ok(Math.abs(responsiveFrame.entities[0].x - 1) < 0.03,
   'owned tank bypasses the remote 100 ms jitter delay using bounded authority extrapolation');
+assert.ok(Math.abs(responsiveFrame.immediateAuthority.entity.x - 0.5) < 0.03,
+  'owned prediction receives the raw authority pose instead of its display extrapolation');
 
 const jitter = new SnapshotBuffer({ interpolationDelayMs: 100, maxExtrapolationMs: 250 });
 for (const [tickValue, serverTimeMs] of [[0, 0], [3, 50], [6, 100], [12, 200], [15, 250]]) {
@@ -704,6 +706,8 @@ function createTestSimulation() {
   p1.readyForMatch();
   p2.readyForMatch();
   p1.submitInput(input({ throttle: 1 }), 0);
+  assert.equal(p1.lastSubmittedInputSeq, 0,
+    'client exposes the accepted input sequence for local prediction history');
   await Promise.resolve();
   assert.equal(hostRuntime.advance(50), 3, '50 ms advances exactly three 60 Hz ticks');
   await Promise.resolve();
@@ -716,6 +720,8 @@ function createTestSimulation() {
   assert.deepEqual(p2Frame.entities.map((entry) => entry.id), ['p2']);
   assert.ok(p1Frame.entities[0].x > 0, 'authoritative host applies client input');
   assert.equal(p1Frame.ackInputSeq, 0, 'snapshot acknowledges consumed input sequence');
+  assert.equal(p2Frame.ackInputSeq, null,
+    'snapshot distinguishes no acknowledged input from sequence zero');
   p1.submitInput(input({ fire: true }), hostRuntime.tick);
   p1.submitInput(input({ fire: false }), hostRuntime.tick);
   p1.submitInput(input({ actionBits: PLAYER_ACTION_BITS.REPAIR }), hostRuntime.tick);

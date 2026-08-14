@@ -448,6 +448,7 @@ export class SnapshotBuffer {
     // extrapolator; opponents and teammates remain safely buffered. This is
     // still server truth—there is no client-side collision or damage sim—and
     // corrections remain small because snapshots arrive at 20 Hz.
+    let immediateAuthority = null;
     if (this.immediateEntityId) {
       const latest = this.snapshots[this.snapshots.length - 1];
       const raw = latest.entities.find((entity) => entity.id === this.immediateEntityId);
@@ -460,6 +461,12 @@ export class SnapshotBuffer {
         const index = entities.findIndex((entity) => entity.id === this.immediateEntityId);
         if (index >= 0) entities[index] = immediate;
         else entities.push(immediate);
+        immediateAuthority = {
+          tick: latest.tick,
+          serverTimeMs: latest.serverTimeMs,
+          ackInputSeq: latest.ackInputSeq,
+          entity: decodeEntitySnapshot(raw),
+        };
       }
     }
     return {
@@ -470,6 +477,7 @@ export class SnapshotBuffer {
       shells: newer.shells || [],
       events: newer.events || [],
       meta: newer.meta || null,
+      immediateAuthority,
     };
   }
 }

@@ -1997,7 +1997,11 @@ function pumpNetworkMatch(dt, nowMs) {
     networkPumpPending = true;
     const submittedActionBits = playerInput?.actionBits || 0;
     if (submittedActionBits) networkActionBitsPending &= ~submittedActionBits;
-    networkMatch.advance(dt * 1000, playerInput)
+    const advance = networkMatch.advance(dt * 1000, playerInput);
+    if (playerInput && networkMatch.client?.lastSubmittedInputSeq != null) {
+      networkBridge?.recordInput(playerInput, dt, networkMatch.client.lastSubmittedInputSeq);
+    }
+    advance
       .then((snapshot) => acceptNetworkSnapshot(snapshot, dt))
       .catch((error) => {
         networkActionBitsPending |= submittedActionBits;
@@ -2008,6 +2012,11 @@ function pumpNetworkMatch(dt, nowMs) {
     const playerInput = game.phase === 'battle' ? networkInputFrame() : null;
     if (playerInput && networkMatch.client.connected && networkMatch.submitInput(playerInput)) {
       networkActionBitsPending = 0;
+      networkBridge?.recordInput(
+        playerInput,
+        dt,
+        networkMatch.client.lastSubmittedInputSeq,
+      );
     }
     acceptNetworkSnapshot(networkMatch.update(nowMs), dt);
   }

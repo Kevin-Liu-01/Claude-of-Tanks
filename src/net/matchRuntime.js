@@ -340,7 +340,7 @@ export class AuthoritativeMatchRuntime {
         tick: this.tick,
         serverTimeMs: this.timeMs,
         viewerId: peer.id,
-        ackInputSeq: peer.lastInputSeq == null ? 0 : peer.lastInputSeq,
+        ackInputSeq: peer.lastInputSeq == null ? null : peer.lastInputSeq,
       });
       const acknowledged = peer.lastSnapshotAckTick == null
         ? null
@@ -401,6 +401,7 @@ export class MatchClientRuntime {
     this.clock = clock;
     this.sendSeq = 0;
     this.inputSeq = 0;
+    this.lastSubmittedInputSeq = null;
     this.lastRecvSeq = null;
     this.clientTick = 0;
     this.lastSnapshotTick = 0;
@@ -501,15 +502,18 @@ export class MatchClientRuntime {
   }
 
   submitInput(input, clientTick = this.clientTick) {
+    const submittedInputSeq = this.inputSeq;
     const normalized = normalizePlayerInput({
       ...input,
-      inputSeq: this.inputSeq,
+      inputSeq: submittedInputSeq,
       clientTick,
       snapshotAckTick: this.lastSnapshotTick,
     });
     this.inputSeq = nextSequence(this.inputSeq);
     this.clientTick = Math.max(this.clientTick, clientTick);
-    return this.#send(MESSAGE_TYPES.INPUT, normalized);
+    const sent = this.#send(MESSAGE_TYPES.INPUT, normalized);
+    if (sent) this.lastSubmittedInputSeq = submittedInputSeq;
+    return sent;
   }
 
   readyForMatch() {

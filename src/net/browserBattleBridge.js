@@ -3,10 +3,13 @@ import { createCombatState } from '../sim/damage.js';
 import { createTankState } from '../sim/movement.js';
 import { getSpec } from '../vehicles/specs.js';
 import { createTank } from '../vehicles/tankFactory.js';
+import { pushHullFromObstacle } from '../world/collision.js';
+import { LocalTankPredictor } from './localTankPrediction.js';
 import { SNAPSHOT_FLAGS } from './snapshot.js';
 
 const POS_SCALE = 100;
 const VEL_SCALE = 100;
+const MAP_HALF_M = 508;
 
 function hashString(value) {
   let hash = 2166136261;
@@ -46,9 +49,47 @@ export function createBrowserBattleBridge({
   let viewerTeam = null;
   let perspectiveTeam = null;
   let lastTick = -1;
+  let snapshotPhase = null;
   let mounted = false;
   let legacyState = null;
   const destructionCause = new Map();
+  const nearbyPredictionObstacles = [];
+
+  function collidePrediction(entity, pos, _radius, outPush) {
+    outPush.set(0, 0, 0);
+    const safeX = Math.max(-MAP_HALF_M, Math.min(MAP_HALF_M, pos.x));
+    const safeZ = Math.max(-MAP_HALF_M, Math.min(MAP_HALF_M, pos.z));
+    outPush.x = safeX - pos.x;
+    outPush.z = safeZ - pos.z;
+    if (!worldCollision) return outPush.x !== 0 || outPush.z !== 0;
+    const halfL = entity.spec.dims.hullLengthM * 0.5;
+    const halfW = entity.spec.dims.widthM * 0.5;
+    const yaw = entity.state.yaw;
+    const fx = Math.sin(yaw), fz = Math.cos(yaw);
+    const rx = fz, rz = -fx;
+    const broadRadius = Math.hypot(halfL, halfW) + 0.01;
+    const candidates = typeof worldCollision.queryObstacles === 'function'
+      ? worldCollision.queryObstacles(
+        pos.x - broadRadius, pos.z - broadRadius,
+        pos.x + broadRadius, pos.z + broadRadius,
+        nearbyPredictionObstacles,
+      )
+      : (typeof worldCollision.getObstacles === 'function' ? worldCollision.getObstacles() : []);
+    for (const obstacle of candidates) {
+      if (obstacle.crushed || pos.y > obstacle.max[1] + 0.5) continue;
+      // Fast overruns are resolved by authority. Let prediction continue
+      // through crushable dressing instead of visibly stopping at a fence
+      // that the next snapshot is about to destroy.
+      if (obstacle.crushable &&
+          Math.abs(entity.state.speed) > (obstacle.crushMin ?? 2.8)) continue;
+      const closestX = Math.max(obstacle.min[0], Math.min(pos.x, obstacle.max[0]));
+      const closestZ = Math.max(obstacle.min[2], Math.min(pos.z, obstacle.max[2]));
+      const dx = pos.x - closestX, dz = pos.z - closestZ;
+      if (dx * dx + dz * dz >= broadRadius * broadRadius) continue;
+      pushHullFromObstacle(pos, fx, fz, rx, rz, halfL, halfW, obstacle, outPush);
+    }
+    return outPush.x !== 0 || outPush.z !== 0;
+  }
 
   function ensureEntity(snapshot) {
     let entity = entities.get(snapshot.id);
@@ -85,11 +126,20 @@ export function createBrowserBattleBridge({
         aimPoint: state.aimPoint.clone(),
       },
       visual,
+      contactGeom: visual.contactGeom || null,
+      rigidGear: false,
       networkVisible: false,
       _networkDestroyed: false,
       _lastX: snapshot.x,
       _lastZ: snapshot.z,
     };
+    if (!spectator && snapshot.id === id && worldCollision?.heightField) {
+      entity.predictor = new LocalTankPredictor({
+        entity,
+        heightField: worldCollision.heightField,
+        collide: collidePrediction,
+      });
+    }
     entities.set(entity.id, entity);
     roster.push(entity);
     return entity;
@@ -111,7 +161,7 @@ export function createBrowserBattleBridge({
     }
   }
 
-  function updateEntity(entity, snapshot, dt) {
+  function updateEntity(entity, snapshot, dt, immediateAuthority = null) {
     entity.networkTeam = snapshot.team;
     if (!spectator && entity.id === id) viewerTeam = snapshot.team;
     const referenceTeam = spectator ? perspectiveTeam : viewerTeam;
@@ -119,22 +169,6 @@ export function createBrowserBattleBridge({
     entity.isPlayer = !spectator && entity.id === id;
     entity.networkVisible = true;
     const state = entity.state;
-    const dx = snapshot.x - entity._lastX;
-    const dz = snapshot.z - entity._lastZ;
-    const forwardDistance = dx * Math.sin(snapshot.yaw) + dz * Math.cos(snapshot.yaw);
-    state.trackScroll.l += forwardDistance;
-    state.trackScroll.r += forwardDistance;
-    entity._lastX = snapshot.x;
-    entity._lastZ = snapshot.z;
-    state.pos.set(snapshot.x, snapshot.y, snapshot.z);
-    state.yaw = snapshot.yaw;
-    state.visualPitch = snapshot.pitch;
-    state.visualRoll = snapshot.roll;
-    state.turretYaw = snapshot.turretYaw;
-    state.gunPitch = snapshot.gunPitch;
-    const speed = Math.hypot(snapshot.vx, snapshot.vz);
-    const direction = snapshot.vx * Math.sin(snapshot.yaw) + snapshot.vz * Math.cos(snapshot.yaw);
-    state.speed = direction < 0 ? -speed : speed;
     const combat = entity.combat;
     combat.hp = snapshot.hp;
     combat.maxHp = snapshot.maxHp;
@@ -151,6 +185,29 @@ export function createBrowserBattleBridge({
       if (entity.visual.resetDestroyed) entity.visual.resetDestroyed();
       entity._networkDestroyed = false;
     }
+    if (entity.predictor && immediateAuthority) {
+      entity.predictor.reconcile({
+        ...immediateAuthority,
+        entity: { ...immediateAuthority.entity, destroyed },
+      }, dt);
+    } else {
+      const dx = snapshot.x - entity._lastX;
+      const dz = snapshot.z - entity._lastZ;
+      const forwardDistance = dx * Math.sin(snapshot.yaw) + dz * Math.cos(snapshot.yaw);
+      state.trackScroll.l += forwardDistance;
+      state.trackScroll.r += forwardDistance;
+      state.pos.set(snapshot.x, snapshot.y, snapshot.z);
+      state.yaw = snapshot.yaw;
+      state.visualPitch = snapshot.pitch;
+      state.visualRoll = snapshot.roll;
+      state.turretYaw = snapshot.turretYaw;
+      state.gunPitch = snapshot.gunPitch;
+      const speed = Math.hypot(snapshot.vx, snapshot.vz);
+      const direction = snapshot.vx * Math.sin(snapshot.yaw) + snapshot.vz * Math.cos(snapshot.yaw);
+      state.speed = direction < 0 ? -speed : speed;
+    }
+    entity._lastX = state.pos.x;
+    entity._lastZ = state.pos.z;
     entity.visual.setVisible(true);
     entity.visual.syncFromState(state, dt);
   }
@@ -329,11 +386,17 @@ export function createBrowserBattleBridge({
 
   function apply(snapshot, dt = 1 / 60) {
     if (!snapshot) return false;
+    snapshotPhase = snapshot.meta?.phase || snapshotPhase;
     for (const entity of entities.values()) entity.networkVisible = false;
     // Establish the viewer's team before classifying any other entity.
     const own = spectator ? null : snapshot.entities.find((entry) => entry.id === id);
     if (own) viewerTeam = own.team;
-    for (const entry of snapshot.entities) updateEntity(ensureEntity(entry), entry, dt);
+    for (const entry of snapshot.entities) updateEntity(
+      ensureEntity(entry),
+      entry,
+      dt,
+      entry.id === id ? snapshot.immediateAuthority : null,
+    );
     for (const entity of entities.values()) {
       const referenceTeam = spectator ? perspectiveTeam : viewerTeam;
       entity.team = entity.networkTeam === referenceTeam ? 'player' : 'enemy';
@@ -368,6 +431,12 @@ export function createBrowserBattleBridge({
     return true;
   }
 
+  function recordInput(input, dt, inputSeq) {
+    if (spectator || snapshotPhase !== 'playing') return false;
+    const own = entities.get(id);
+    return own?.predictor?.recordInput(input, dt, inputSeq) || false;
+  }
+
   function unmount() {
     if (!mounted || !legacyState) return;
     game.tanks = legacyState.tanks;
@@ -397,6 +466,7 @@ export function createBrowserBattleBridge({
     prepareRoster,
     mount,
     apply,
+    recordInput,
     setPerspective,
     unmount,
     dispose,
