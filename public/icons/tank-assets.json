@@ -63701,7 +63701,7 @@
           }
         ]
       },
-      "geometryHash": "986ebc56",
+      "geometryHash": "28bc81c1",
       "metadataHash": "4cabb6f4",
       "muzzleBore": {
         "tagged": 2,
@@ -63716,8 +63716,8 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 18082,
-          "sha256": "7269c94643725adb4a74faae69031f1abb4db5c7c0740cda59717f51f3df500f"
+          "bytes": 18086,
+          "sha256": "53b1e94b7e742673302fbc68859c4f2865feab4a4f3340682d60961015554095"
         },
         "top": {
           "file": "strv103_top.webp",
@@ -63732,8 +63732,8 @@
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 8102,
-          "sha256": "098c0cf8e7282fc4b047b733987392a93c8cd37d5caa27a7951e758959e8771d"
+          "bytes": 8112,
+          "sha256": "bbb9f28aac87caff35d5457f311bae9841dd63d56bea44cb03687aea4b70c14b"
         },
         "topSilhouette": {
           "file": "strv103_top_silhouette.png",
@@ -63756,24 +63756,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 61860,
-          "sha256": "54a9e827149db7fff53ec42d8750054f543993d0577053ff5642a6a91c9b12f7"
+          "bytes": 61775,
+          "sha256": "2cf41d609da55d27f7979020fbccf2280cd9d24f4f500f782720a7587cacb546"
         },
         "armorSide": {
           "file": "strv103_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 63157,
-          "sha256": "e26e368d91a2699a4fb823420d605bd1721900bc1e7e4d7f730d03a03eac7199"
+          "bytes": 63100,
+          "sha256": "52a939f84f84e572edc8d05ed5dd581882fdc39b7bfbb05dffac3e3df37c932e"
         },
         "modulesSide": {
           "file": "strv103_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 58106,
-          "sha256": "8f023ab9ca49653173892dffffe90d4f3ccc2f600efdd6acb23123599272c7d1"
+          "bytes": 58024,
+          "sha256": "1f983c7092af6a76979f48391ee51eccda8b21dde896b22b2bc2377484e1aafc"
         }
       }
     },
