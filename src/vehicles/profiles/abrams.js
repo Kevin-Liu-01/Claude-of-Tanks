@@ -736,6 +736,7 @@ function abramsHull(P, g) {
     contactZF: g.contactZF, contactZR: g.contactZR,
     endRingSpan: g.endRingSpan, pinCapOuter: g.pinCapOuter,
     padCornerFloor: g.padCornerFloor, padHugZ0: g.padHugZ0,
+    armBucket: g.armBucket,
   });
 
   // Glacis furniture — kept FLUSH: the v6 curves show a clean glacis line
@@ -789,8 +790,9 @@ function abramsHull(P, g) {
   // (isu122s noCable precedent).
   if (!g.noCable) {
     const cableApexZ = Math.min(g.nose - 0.35, boardZ + 0.3);
-    towCable(P, [[-1.15 * s, boardY - 0.14, cableApexZ], [0, boardY - 0.07, cableApexZ - 0.6],
-      [1.15 * s, boardY - 0.14, cableApexZ]]);
+    const cableX = g.towCableX ?? 1.15 * s;
+    towCable(P, [[-cableX, boardY - 0.14, cableApexZ], [0, boardY - 0.07, cableApexZ - 0.6],
+      [cableX, boardY - 0.14, cableApexZ]]);
   }
   // g.noNumber (visual r3, tejas item 6): the ref carries NO hull number —
   // the invented "A-11" skirt markings read as builder graffiti. Opt-in so
@@ -6667,6 +6669,10 @@ const AX_HULL = {
   // with every fitting buried). buildAbramsX authors its kit ON the wall.
   noRearFace: true,
   engineZ: -2.95, glacisTopZ: 2.4, periZ: 2.95, noFrontFlaps: true,
+  // Seat the continuous tow cable on the protected center glacis.  The
+  // family-default endpoints cross AbramsX's elevated idler/shoe wrap; the
+  // cable remains complete and visible here without entering either lane.
+  towCableX: 0.78,
   // AXFIX-O1 (§5.27 order 1, §B8.1 gate-1 FAIL 2026-08-07): print-true wheel
   // train. The old r 0.38 discs at 0.68 pitch OVERLAPPED 8 cm — the whole
   // run fused into one tonally-dead band (view-left p50->p90 spread 3.6L vs
@@ -6692,6 +6698,7 @@ const AX_HULL = {
   trackXc: 1.375, trackW: 0.57, endRingSpan: 0.42, pinCapOuter: 0.275,
   padCornerFloor: 0, padHugZ0: 2.0, wheelR: 0.2992, wheelY: 0.4184,
   dishR: 0.74, tireHex: 0x232220, wheelHex: 0x343830, arms: true,
+  armBucket: 'hullRunningGearDetail',
   contactZF: 2.32, contactZR: -2.37,
   deadSag: 0.03, beltCoreTop: 0.47,
   // Component AABBs from the registered oracle: seven 0.5984 m road
@@ -6789,7 +6796,7 @@ function buildAbramsX(P) {
   // over the certified ground-contact run; wheel and outer-track datums stay
   // untouched, and the strip is fully connected to the existing band.
   for (const side of [-1, 1]) {
-    P.add('hullTrack', box(0.055, 0.055, 4.69), side * 1.0625, 0.0275, -0.025);
+    P.add('hullRunningGearTrack', box(0.055, 0.055, 4.69), side * 1.0625, 0.0275, -0.025);
   }
   // AXDED-R1 RUNNING-GEAR FACE DRESSING (§B8.1 wheel countability, owner
   // verdict 1: "wheels invisible at garage angles"): the stock discs
@@ -6854,16 +6861,16 @@ function buildAbramsX(P) {
         // stack; the same measured 0.516 m diameter is retained here.
         faceGeos.push(KIT.xform(torus(0.240, 0.018, 10), side * 1.633,
           g.wheelY, wz, 0, 0, Math.PI / 2));
-        P.add('hullDark', torus(0.212, 0.014, 10), side * 1.585,
+        P.add('hullRunningGearDark', torus(0.212, 0.014, 10), side * 1.585,
           g.wheelY, wz, 0, 0, Math.PI / 2);
         faceGeos.push(KIT.xform(cylX(0.180, 0.018, 10), side * 1.575, g.wheelY, wz));
-        P.add('hullDark', torus(0.118, 0.012, 10), side * 1.590,
+        P.add('hullRunningGearDark', torus(0.118, 0.012, 10), side * 1.590,
           g.wheelY, wz, 0, 0, Math.PI / 2);
         faceGeos.push(KIT.xform(cylX(0.070, 0.026, 10), side * 1.615, g.wheelY, wz));
-        P.add('hullDark', cylX(0.022, 0.010, 8), side * 1.635, g.wheelY, wz);
+        P.add('hullRunningGearDark', cylX(0.022, 0.010, 8), side * 1.635, g.wheelY, wz);
         for (let b = 0; b < 10; b++) {
           const ba = (b / 10) * Math.PI * 2;
-          P.add('hullDark', cylX(0.010, 0.014, 6), side * 1.592,
+          P.add('hullRunningGearDark', cylX(0.010, 0.014, 6), side * 1.592,
             g.wheelY + Math.sin(ba) * 0.129, wz + Math.cos(ba) * 0.129);
         }
       });
@@ -6873,13 +6880,13 @@ function buildAbramsX(P) {
       // letting the skirt and black band swallow both mechanisms.
       faceGeos.push(KIT.xform(cylX(0.252, 0.014, 12), side * 1.604,
         g.idlerY, g.idlerZ));
-      P.add('hullDark', torus(0.212, 0.017, 12), side * 1.619,
+      P.add('hullRunningGearDark', torus(0.212, 0.017, 12), side * 1.619,
         g.idlerY, g.idlerZ, 0, 0, Math.PI / 2);
       faceGeos.push(KIT.xform(cylX(0.150, 0.016, 12), side * 1.631,
         g.idlerY, g.idlerZ));
       faceGeos.push(KIT.xform(cylX(0.270, 0.014, 12), side * 1.604,
         g.sprocketY, g.sprocketZ));
-      P.add('hullDark', torus(0.226, 0.017, 12), side * 1.619,
+      P.add('hullRunningGearDark', torus(0.226, 0.017, 12), side * 1.619,
         g.sprocketY, g.sprocketZ, 0, 0, Math.PI / 2);
       faceGeos.push(KIT.xform(cylX(0.154, 0.016, 12), side * 1.631,
         g.sprocketY, g.sprocketZ));
@@ -6903,9 +6910,9 @@ function buildAbramsX(P) {
       ]) {
         for (let si = 0; si < count; si++) {
           const a = (si / count) * Math.PI * 2;
-          P.add('hullDark', cylX(0.028, 0.014, 8), side * 1.650,
+          P.add('hullRunningGearDark', cylX(0.028, 0.014, 8), side * 1.650,
             cy + Math.sin(a) * rr, cz + Math.cos(a) * rr);
-          P.add('hullDetail', box(0.024, 0.036, 0.088), side * 1.653,
+          P.add('hullRunningGearDetail', box(0.024, 0.036, 0.088), side * 1.653,
             cy + Math.sin(a) * (rr + 0.095),
             cz + Math.cos(a) * (rr + 0.095), -a, 0, 0);
         }
@@ -6913,12 +6920,13 @@ function buildAbramsX(P) {
       // Alternating exposed torsion links break the ruler-straight wheel
       // row and make the suspension/load path legible between dishes.
       g.wheelZs.forEach((wz, wi) => {
-        P.add('hullDark', box(0.026, 0.060, 0.40), side * 1.590,
+        P.add('hullRunningGearDark', box(0.026, 0.060, 0.40), side * 1.590,
           0.610, wz + (wi % 2 ? 0.12 : -0.12), wi % 2 ? 0.62 : -0.62, 0, 0);
       });
       const faceGeo = KIT.mergeAll(faceGeos);
       const faceMesh = new THREE.Mesh(faceGeo, faceMat);
       faceMesh.name = 'abramsxWheelFaceDressing';
+      faceMesh.userData.runningGear = true;
       faceMesh.castShadow = false;
       faceMesh.receiveShadow = true;
       P.hullG.add(faceMesh);
@@ -6931,10 +6939,10 @@ function buildAbramsX(P) {
     // chain-annulus floor (the 0.235/0.255 drum-face rings measured shoe
     // 111/26 in the wrap windows — the wrap chain sweeps radial 0.13-0.40
     // off these centers; §B4 audit-driven retreat, AXDED-R2)
-    P.add('hullDetail', cylX(0.075, 0.030, 12), side * 1.620, g.idlerY, g.idlerZ);
-    P.add('hullDark', torus(0.112, 0.012, 16), side * 1.624, g.idlerY, g.idlerZ, 0, 0, Math.PI / 2);
-    P.add('hullDetail', cylX(0.080, 0.030, 12), side * 1.640, g.sprocketY, g.sprocketZ);
-    P.add('hullDark', torus(0.115, 0.012, 16), side * 1.644, g.sprocketY, g.sprocketZ, 0, 0, Math.PI / 2);
+    P.add('hullRunningGearDetail', cylX(0.075, 0.030, 12), side * 1.620, g.idlerY, g.idlerZ);
+    P.add('hullRunningGearDark', torus(0.112, 0.012, 16), side * 1.624, g.idlerY, g.idlerZ, 0, 0, Math.PI / 2);
+    P.add('hullRunningGearDetail', cylX(0.080, 0.030, 12), side * 1.640, g.sprocketY, g.sprocketZ);
+    P.add('hullRunningGearDark', torus(0.115, 0.012, 16), side * 1.644, g.sprocketY, g.sprocketZ, 0, 0, Math.PI / 2);
   }
   // Splitter lip under the blade bow.  Seat it on the measured knife-edge
   // rake (the old y=.98 bar hung 15 cm below the source and turned the

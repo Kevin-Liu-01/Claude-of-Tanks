@@ -909,7 +909,7 @@
           }
         ]
       },
-      "geometryHash": "83800c77",
+      "geometryHash": "89d90a05",
       "metadataHash": "b7c70ce6",
       "muzzleBore": {
         "tagged": 1,
@@ -924,16 +924,16 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 21728,
-          "sha256": "7f60b79e597d910d87fcb39eb4effcc0338bab2b94b6fea02655b76bac87d76e"
+          "bytes": 21740,
+          "sha256": "3c0c5004dcd934e0f4d23b77424f4d8ab4d7ac75b51098c7a28a3b9455363de7"
         },
         "top": {
           "file": "abramsx_top.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 8868,
-          "sha256": "184951feef81ce9c18a409c5f764ecdb2c8c1f8a071522d141c6144ac4be741a"
+          "bytes": 8852,
+          "sha256": "a1ea79466e7211a760fe2ef35c7cf1df044c21aeb9788b99ee9a4bfeac52a567"
         },
         "side": {
           "file": "abramsx_side.webp",

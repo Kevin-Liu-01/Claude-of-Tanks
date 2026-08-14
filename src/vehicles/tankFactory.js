@@ -3834,6 +3834,11 @@ const BUCKET_DEF = {
   // bucket so strict swept-track lint does not misclassify concentric wheel
   // furniture as armor penetrating its own shoe course.
   hullRunningGearDetail: ['hullG', 'detail'],
+  // Track-owned rails/grousers that are part of the native running-gear
+  // assembly but need the oily spare-track material.  Keeping this separate
+  // from `hullTrack` prevents strict containment lint from mistaking the
+  // track's own inboard guide strip for hull armor inside the shoe sweep.
+  hullRunningGearTrack: ['hullG', 'spareTrack'],
   // Source-authored skirt/strake/guard solids that enclose a native track
   // lane. They remain camouflaged hull geometry, but the track tag prevents
   // §B4 from reporting the enclosure intersecting the belt it is built over.
@@ -4211,7 +4216,8 @@ export function createTank(specId, engineCtx, opts = {}) {
     if (bucket === 'hullTrackGuardL' || bucket === 'hullTrackGuardR') {
       mesh.userData.trackGuard = true;
     }
-    if (bucket === 'hullRunningGearDark' || bucket === 'hullRunningGearDetail') {
+    if (bucket === 'hullRunningGearDark' || bucket === 'hullRunningGearDetail'
+        || bucket === 'hullRunningGearTrack') {
       mesh.userData.runningGear = true;
     }
     // Track-containment law (BUILD-STANDARD SS-B4): tag track-family bucket

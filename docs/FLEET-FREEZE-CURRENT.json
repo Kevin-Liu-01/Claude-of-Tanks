@@ -12,10 +12,10 @@
   },
   "tanks": {
     "abramsx": {
-      "freezeHash": "4ebc4bee",
-      "instanceFreezeHash": "cbc3ef08",
-      "assetGeometryHash": "83800c77",
-      "meshes": 77,
+      "freezeHash": "91364f7e",
+      "instanceFreezeHash": "e63530b2",
+      "assetGeometryHash": "89d90a05",
+      "meshes": 79,
       "vertices": 162878
     },
     "amx30": {

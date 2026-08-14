@@ -114,7 +114,7 @@ re-freeze NEW hash, all in ONE commit.
 | amx30b2 | 34076800 | GRADUATED 2026-08-12 (§5.124 first-party B2 cast/rear-station and service package on the exact native five-wheel course; machine fidelity 91.51 / min view 90.14; fresh 42-frame yaw/ownership floor 9.0 / mean 9.12) |
 | amx40 | 3d312bde | RE-FROZEN 2026-08-12 (§5.135 fully first-party forward-section + owner-height re-cert: connected cheek/crown loft retained forward, complete turret section exactly 20% taller with smoke/MG re-seated; fidelity 92.94 / minimum whole view 91.90, strict native band+shoes+sweep 0/0, fresh 45-frame yaw/ownership floor 9.0 / mean 9.07; all source-baked playables retired) |
 | k2 | 827d5ffc | GRADUATED 2026-08-08 (31st; Leclerc-method closed station loft; gate 90.1 x2 every component >=90; visual R26 floor 9.0 / mean 9.09 x14; exact Object_8/15/18/21 plan inventory, rounded asymmetric cage, countable six-station ISU gear; oracle 8d92cd1b reproducible from pristine .bak) |
-| abramsx | 976a1370 | GRADUATED 2026-08-09; RE-FROZEN 2026-08-12 (§5.130 first-party winding closure: outward lower-bow facets, XM360 tunnel jambs and open D-hood sight cheeks; fidelity 94.29 / minimum view 93.99, gate 90.4, winding 0 reversed / 0 mixed, parent clean; fresh 42-frame floor 9.3 / mean 9.49; prior 26b46ba0 retired) |
+| abramsx | 91364f7e | GRADUATED 2026-08-09; RE-FROZEN 2026-08-14 (§5.183 exact native-course closeout: wheel faces/hubs/spokes/torsion links and the inboard guide strip declare running-gear ownership, the complete glacis cable is reseated inside the elevated idler course, strict band+shoe+sweep 0/0, parent and winding clean; complete outer hull/skirt retained; prior 976a1370 retired) |
 | challenger_3 | 564057a4 | RE-FROZEN 2026-08-12 (§5.136 first-party forward-profile + strict-track re-cert: connected brow/cheeks remain extended to the mantlet, all turret fittings seated through yaw, exact native band+shoes+sweep 0/0; fidelity 93.02 / minimum whole view 92.17, fresh 45-frame floor 9.0 / mean 9.07; prior 3e5a7797 retired) |
 | challenger1 | fa346ca4 | RE-FROZEN 2026-08-13 (§5.152 first-party in-place closure: complete hull/skirts/mudguards/native six-wheel course preserved; detached lower gun-cradle duplicate removed; connected shell/gun/basket/roof suite re-centered on the true hull ring with yaw-zero silhouette preserved; fresh 45-frame packet floor 9.0 / mean 9.04, parent 0/0/0, winding clean, exact track 0/0 and muzzle/rig/tests/build PASS; 4ecc29b4 and earlier freezes retired) |
 | challenger2 | 3b4bd5f0 | GRADUATED 2026-08-09; RE-FROZEN 2026-08-10 (§5.89 owner fused-block repair: material-fused casemate course removed from fixed hull and repartitioned into the articulated source tree; one low ring landing + one rotating turret; gate 90.1 x2 every component >=90; standard/parent/winding clean; fresh §B8 floor 9.0 / mean 9.06 x14, yaw/load paths 9.3; oracle f44e3b46 reproducible from pristine .bak; prior 63ee160 retired) |
@@ -6339,3 +6339,47 @@ assets are regenerated. Dual-ledger geometry is: T-90A **`b14f3c6c` /
 **KEEP every approved T-90-family turret and the complete outer hull/skirts.
 Future clearance work belongs only to concealed mechanics, explicit running-
 gear ownership or a rewrap of the one native linked course.**
+
+## 5.183 ABRAMSX EXACT NATIVE-COURSE / OWNERSHIP CLOSEOUT (2026-08-14, LIVE)
+
+This pass preserves the complete first-party AbramsX: knife bow, closed lower
+hull, full side-armour/skirt envelope, seven road wheels, elevated idler and
+final drive, one linked-shoe course, XM360 gun, accepted faceted turret, D-hood
+sights, RWS and all roof/rear equipment. No hull, side-armour, skirt, wheel or
+track component is deleted or hidden.
+
+The former strict report mixed two different classes. The painted wheel-face
+rings, hubs, bolts, end-wheel spokes and exposed torsion links were authored
+inside generic hull buckets even though they are visible suspension parts.
+They retain identical geometry, transforms and materials but now use explicit
+running-gear ownership. The loaded inboard grouser strip likewise remains part
+of the native track assembly in its original position and material. A dedicated
+track-material running-gear bucket records that fact without granting any
+exemption to real hull, fender, mudguard or skirt surfaces.
+
+After that classification repair, the only physical contact was the continuous
+glacis tow cable crossing the elevated front shoe arc at its two endpoints. The
+complete cable remains present and supported; its endpoints are reseated inward
+on the protected centre glacis while the bow, lights, shackles and course stay
+unchanged. The final exact strict receipt is **front 0/0, rear 0/0 and complete
+animated sweep 0/0** for band and individual shoes.
+
+Fresh 15-view authored-model boards, the standardized elevated-left profile,
+15 yaw0 and 15 yaw90 frames were inspected. Seven distinct road-wheel stations,
+both raised terminals and the continuous `\\______/` course remain readable.
+The complete turret/gun/RWS/sight/equipment package quarter-turns coherently
+while the hull, reseated cable and running gear remain fixed. Turret parenting
+is **0 stranded / 0 abutting / 0 dangling**. Winding is **0 reversed / 0
+mixed**, with only the accepted 10-pixel (0.01%) top-view diagnostic hairline
+and zero yaw-stranded candidates. No duplicate course, floater, hull wound,
+sky-through opening or silhouette regression is visible.
+
+All eight presentation assets are regenerated. Dual-ledger geometry is freeze
+**`91364f7e`**, instance freeze **`e63530b2`** and asset geometry
+**`89d90a05`** (79 rendered meshes / 162,878 vertices). The established
+first-party geometry gate remains **90.4** and the accepted source-semantic
+visual basis remains above the mandatory 9.0 floor.
+
+**KEEP the complete AbramsX outer hull, side armour and native running gear.
+Future clearance fixes must distinguish mechanical ownership from real hull
+contact and must never delete exterior bodywork to silence the audit.**
