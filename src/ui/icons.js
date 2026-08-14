@@ -15,28 +15,8 @@
 // PNG: they are tiny flat alpha masks, and Chrome's canvas WebP encoder is
 // lossy-only (lossy alpha rings on mask edges).
 
-import { TANK_SPECS } from '../vehicles/specs.js';
-
-const PUBLIC_BUILD = !!(import.meta.env && import.meta.env.VITE_PUBLIC_BUILD);
-
-/** Public builds strip derivative renders of restricted recovered models.
- * Point those rows at the same legal family icon used by their procedural
- * visual fallback; private/local builds keep their exact generated icons. */
-function distributableIconId(id) {
-  if (!PUBLIC_BUILD) return id;
-  const seen = new Set();
-  let current = id;
-  while (current && !seen.has(current)) {
-    seen.add(current);
-    const fallback = TANK_SPECS[current] && TANK_SPECS[current].publicVisualFallback;
-    if (!fallback || fallback === current) break;
-    current = fallback;
-  }
-  return current || id;
-}
-
 /** URL of a generated icon. @param {string} id tank id @param {string} view e.g. 'angle' */
-export const iconUrl = (id, view) => `/icons/${distributableIconId(id)}_${view}.${
+export const iconUrl = (id, view) => `/icons/${id}_${view}.${
   /(?:silhouette|hit_zones_side|armor_side|modules_side)$/.test(view) ? 'png' : 'webp'}`;
 
 const tintCache = new Map();

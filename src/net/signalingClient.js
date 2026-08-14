@@ -28,11 +28,20 @@ function cleanPlayer(player) {
 
 /** Rendezvous only: gameplay never traverses this signaling socket. */
 export class RoomSignalingClient {
-  constructor({ url, WebSocketImpl = null, requestTimeoutMs = 8000 } = {}) {
+  constructor({
+    url,
+    WebSocketImpl = null,
+    connectTimeoutMs = 5000,
+    requestTimeoutMs = 8000,
+  } = {}) {
     if (!url) throw new TypeError('signaling URL is required');
     if (!/^wss?:\/\//i.test(url)) throw new TypeError('signaling URL must use ws or wss');
+    if (!Number.isFinite(connectTimeoutMs) || connectTimeoutMs <= 0) {
+      throw new TypeError('signaling connection timeout must be positive');
+    }
     this.url = url;
     this.WebSocketImpl = websocketConstructor(WebSocketImpl);
+    this.connectTimeoutMs = connectTimeoutMs;
     this.requestTimeoutMs = requestTimeoutMs;
     this.socket = null;
     this.requestSeq = 0;
@@ -41,24 +50,69 @@ export class RoomSignalingClient {
     this.state = 'idle';
     this.roomCode = null;
     this.peerId = null;
+    this._connectPromise = null;
   }
 
   connect() {
     if (this.state === 'open') return Promise.resolve();
     if (this._connectPromise) return this._connectPromise;
     this.state = 'connecting';
-    this.socket = new this.WebSocketImpl(this.url);
+    const socket = new this.WebSocketImpl(this.url);
+    this.socket = socket;
     this._connectPromise = new Promise((resolve, reject) => {
-      const removeOpen = addListener(this.socket, 'open', () => {
+      let settled = false;
+      let timer = null;
+      let removeOpen = () => {};
+      let removeError = () => {};
+      const cleanupConnect = () => {
+        if (timer) clearTimeout(timer);
         removeOpen();
+        removeError();
+      };
+      const fail = (error, closeSocket = true) => {
+        if (settled) return;
+        settled = true;
+        cleanupConnect();
+        if (this.socket === socket) {
+          this.state = 'closed';
+          this._connectPromise = null;
+        }
+        if (closeSocket && socket.readyState < 2) {
+          try { socket.close(1000, 'connection_failed'); } catch (_) { /* already failed */ }
+        }
+        reject(error);
+      };
+      removeOpen = addListener(socket, 'open', () => {
+        if (settled || this.socket !== socket) return;
+        settled = true;
+        cleanupConnect();
         this.state = 'open';
+        this._connectPromise = null;
         resolve();
       });
-      addListener(this.socket, 'message', (event) => this.#receive(event.data));
-      addListener(this.socket, 'error', () => {
-        if (this.state === 'connecting') reject(new Error('signaling connection failed'));
+      addListener(socket, 'message', (event) => {
+        if (this.socket === socket) this.#receive(event.data);
       });
-      addListener(this.socket, 'close', () => this.#closed('signaling_closed'));
+      removeError = addListener(socket, 'error', () => {
+        const error = new Error('Cannot reach the signaling server. Check its address and availability.');
+        error.code = 'signaling_connection_failed';
+        fail(error);
+      });
+      addListener(socket, 'close', () => {
+        if (!settled) {
+          const error = new Error('The signaling server closed before the connection was ready.');
+          error.code = 'signaling_connection_closed';
+          fail(error, false);
+          return;
+        }
+        if (this.socket === socket) this.#closed('signaling_closed');
+      });
+      timer = setTimeout(() => {
+        const seconds = Math.max(1, Math.ceil(this.connectTimeoutMs / 1000));
+        const error = new Error(`The signaling server did not respond within ${seconds} seconds.`);
+        error.code = 'signaling_connect_timeout';
+        fail(error);
+      }, this.connectTimeoutMs);
     });
     return this._connectPromise;
   }
@@ -108,6 +162,7 @@ export class RoomSignalingClient {
   #closed(reason) {
     if (this.state === 'closed') return;
     this.state = 'closed';
+    this._connectPromise = null;
     for (const pending of this.pending.values()) {
       clearTimeout(pending.timer);
       pending.reject(new Error(reason));

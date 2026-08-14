@@ -15,6 +15,7 @@ for (const id of ALL_TANK_IDS) {
   assert.notEqual(String(spec.nation || '').toLowerCase(), 'community', `${id}: Community nation is not selectable`);
   assert.equal(spec.authorship?.geometry, 'first-party-procedural', `${id}: first-party geometry authorship`);
   assert.equal(spec.authorship?.runtimeExternalGeometry, false, `${id}: runtime external geometry disabled`);
+  assert.equal(spec.publicVisualFallback, undefined, `${id}: own first-party public visuals`);
   const metadata = tankAssetMetadata(spec);
   const files = Object.values(requiredTankAssetFiles(id));
   assert.equal(new Set(files).size, 8, `${id}: asset filenames are unique`);

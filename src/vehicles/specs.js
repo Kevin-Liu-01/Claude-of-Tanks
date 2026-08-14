@@ -1738,6 +1738,7 @@ export function finalizeFirstPartyRoster() {
     const spec = TANK_SPECS[id];
     if (!spec) continue;
     delete spec.community;
+    delete spec.publicVisualFallback;
     if (FIRST_PARTY_DISPLAY_NAMES[id]) spec.name = FIRST_PARTY_DISPLAY_NAMES[id];
     const label = tankLabelRecord(spec);
     spec.name = label.displayName;

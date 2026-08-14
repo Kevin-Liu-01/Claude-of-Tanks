@@ -44,6 +44,7 @@ import {
   createWebRTCPeer,
 } from './webrtcPeer.js';
 import { RoomSignalingClient } from './signalingClient.js';
+import { resolveSignalUrl } from './signalEndpoint.js';
 import { LobbyClientRuntime, LobbyHostRuntime } from './lobbyRuntime.js';
 
 function input(overrides = {}) {
@@ -398,6 +399,16 @@ class FakeWebSocket extends FakeEventTarget {
   receive(value) { this.emit('message', { data: JSON.stringify(value) }); }
   close() { this.readyState = 3; this.emit('close'); }
 }
+
+assert.equal(resolveSignalUrl({
+  configured: 'wss://signal.example.test/signal',
+  hostname: 'cot.example.test',
+  protocol: 'https:',
+}), 'wss://signal.example.test/signal');
+assert.equal(resolveSignalUrl({ hostname: 'cot.example.test', protocol: 'https:' }), '',
+  'production never guesses an undeployed port-7777 signaling service');
+assert.equal(resolveSignalUrl({ hostname: '192.168.1.44', protocol: 'http:', lan: true }),
+  'ws://192.168.1.44:7777/signal');
 {
   const signaling = new RoomSignalingClient({
     url: 'ws://localhost:7777', WebSocketImpl: FakeWebSocket, requestTimeoutMs: 100,
@@ -417,6 +428,21 @@ class FakeWebSocket extends FakeEventTarget {
   assert.equal(room.roomCode, 'ABC234');
   signaling.sendSignal('p2', { kind: 'ice', candidate: { candidate: 'x' } });
   assert.equal(JSON.parse(socket.sent.at(-1)).type, 'room_signal');
+  signaling.close();
+}
+
+// A failed WebSocket handshake is bounded and the same client can retry.
+{
+  const signaling = new RoomSignalingClient({
+    url: 'ws://localhost:7777', WebSocketImpl: FakeWebSocket,
+    connectTimeoutMs: 15, requestTimeoutMs: 100,
+  });
+  await assert.rejects(signaling.connect(), (error) => error.code === 'signaling_connect_timeout');
+  assert.equal(signaling.state, 'closed');
+  const retry = signaling.connect();
+  FakeWebSocket.instances.at(-1).open();
+  await retry;
+  assert.equal(signaling.state, 'open', 'a timed-out client may reconnect');
   signaling.close();
 }
 

@@ -39,7 +39,6 @@
   "license": "ISC",
   "type": "module",
   "dependencies": {
-    "@vercel/analytics": "^2.0.1",
     "flag-icons": "^7.5.0",
     "three": "^0.185.1",
     "ws": "^8.21.3"

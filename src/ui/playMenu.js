@@ -1,5 +1,6 @@
 import { PrivateRoomClientSession, PrivateRoomHostSession } from '../net/privateRoomSession.js';
 import { RoomSignalingClient } from '../net/signalingClient.js';
+import { resolveSignalUrl } from '../net/signalEndpoint.js';
 import { serializeLobby } from '../net/lobby.js';
 import { ensureFonts, FONT_STACK, FONT_COND } from './fonts.js';
 
@@ -83,10 +84,12 @@ function playerId() {
 }
 
 function defaultSignalUrl(lan = false) {
-  const configured = import.meta.env.VITE_SIGNAL_URL;
-  if (configured && !lan) return configured;
-  const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  return `${protocol}//${location.hostname}:7777/signal`;
+  return resolveSignalUrl({
+    configured: import.meta.env.VITE_SIGNAL_URL,
+    lan,
+    protocol: location.protocol,
+    hostname: location.hostname,
+  });
 }
 
 function defaultRankedUrl() {
@@ -215,8 +218,9 @@ export function createPlayMenu({
 
   function setConnecting(next) {
     connecting = next;
-    createBtn.disabled = next;
-    joinBtn.disabled = next;
+    const unavailable = !signalInput.value.trim();
+    createBtn.disabled = next || unavailable;
+    joinBtn.disabled = next || unavailable;
   }
 
   function closeCurrentSession(reason = 'menu_closed') {
@@ -367,7 +371,13 @@ export function createPlayMenu({
     const name = nameInput.value.trim().replace(/\s+/g, ' ').slice(0, 24);
     if (!name) throw new Error('Enter a player name');
     remember(PLAYER_NAME_KEY, name);
-    const signaling = new RoomSignalingClient({ url: signalInput.value.trim() });
+    const signalUrl = signalInput.value.trim();
+    if (!signalUrl) {
+      throw new Error(mode === 'lan'
+        ? 'Open the game from the LAN host or enter a reachable signaling server address.'
+        : 'Private lobbies are not configured on this deployment yet.');
+    }
+    const signaling = new RoomSignalingClient({ url: signalUrl });
     const player = { id: playerId(), name };
     setConnecting(true);
     try {
@@ -435,7 +445,16 @@ export function createPlayMenu({
     ranked.classList.remove('show');
     room.classList.add('show');
     signalInput.value = defaultSignalUrl(mode === 'lan');
-    setStatus(mode === 'lan' ? 'Enter the Wi-Fi-reachable signaling address.' : 'Create a code or join an existing room.');
+    setConnecting(false);
+    if (!signalInput.value) {
+      setStatus(mode === 'lan'
+        ? 'Open this page from the LAN host or enter a secure Wi-Fi-reachable signaling address.'
+        : 'Private lobbies need a deployed signaling service; this production deployment has none configured.', true);
+    } else {
+      setStatus(mode === 'lan'
+        ? 'Enter the Wi-Fi-reachable signaling address.'
+        : 'Create a code or join an existing room.');
+    }
   }
   root.querySelectorAll('.mode').forEach((button) => button.addEventListener('click', () => {
     selectMode(button.dataset.mode);
@@ -491,6 +510,7 @@ export function createPlayMenu({
   codeInput.addEventListener('input', () => {
     codeInput.value = codeInput.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
   });
+  signalInput.addEventListener('input', () => setConnecting(connecting));
   root.querySelector('.close').addEventListener('click', () => hide());
   root.addEventListener('click', (event) => { if (event.target === root) hide(); });
 

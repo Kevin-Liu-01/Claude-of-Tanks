@@ -352,7 +352,7 @@ function drawScuff(ctx, rng) {
 function bakeAtlas(rng, anisotropy) {
   const cv = document.createElement('canvas');
   cv.width = cv.height = ATLAS;
-  const ctx = cv.getContext('2d');
+  const ctx = cv.getContext('2d', { willReadFrequently: true });
   ctx.clearRect(0, 0, ATLAS, ATLAS);
   const fbm = makeFbm(rng);
   const bake = (idx, draw, erode, freq) => {

@@ -1018,7 +1018,7 @@ function makeChunkGeometry(count, rng) {
   // silhouette that read as a box at range. Scrap armor is a torn CHUNK with
   // a thin bent PLATE welded off one side — the concave composite silhouette
   // plus the per-instance shear in DEBRIS_VERT kills the popcorn read.
-  const chunk = new THREE.IcosahedronGeometry(0.52, 0).toNonIndexed();
+  const chunk = new THREE.IcosahedronGeometry(0.52, 0);
   {
     const pos = chunk.getAttribute('position');
     const disp = new Map();
@@ -1031,7 +1031,7 @@ function makeChunkGeometry(count, rng) {
     }
   }
   // thin torn plate: a squashed, corner-displaced octahedron sticking out
-  const plate = new THREE.IcosahedronGeometry(0.55, 0).toNonIndexed();
+  const plate = new THREE.IcosahedronGeometry(0.55, 0);
   {
     const pos = plate.getAttribute('position');
     const disp = new Map();
