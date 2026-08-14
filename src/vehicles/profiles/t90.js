@@ -6124,7 +6124,8 @@ function replaceT90MProryvHull(P) {
   P.clear(
     'hull', 'hullDetail', 'hullDark', 'hullRubber', 'hullWood', 'hullCloth',
     'hullGlass', 'hullShadow', 'hullTrack', 'hullTrackDetailL',
-    'hullTrackDetailR', 'hullTrackTrimL', 'hullTrackTrimR', 'spareTrack',
+    'hullTrackDetailR', 'hullTrackTrimL', 'hullTrackTrimR',
+    'hullRunningGearDetail', 'hullRunningGearDark', 'spareTrack',
   );
 
   // Low T-72-family tub with an actual V-bow and a rear deck falloff.  The
@@ -6142,13 +6143,11 @@ function replaceT90MProryvHull(P) {
     ],
     wUp: [[-3.05, 1.42], [-2.74, 1.62], [2.92, 1.62], [3.25, 1.28]],
     wLo: [[-3.05, 0.94], [3.25, 0.94]],
-    // Raised terminal roofs bridge over the linked-course wraps.  Their
-    // knees sit beyond the rotating arcs, preserving a true empty corridor.
-    sponsonY: [
-      [-3.05, 0.82], [-2.50, 0.82], [-2.45, 1.21], [-1.45, 1.21],
-      [-1.40, 0.82], [2.00, 0.82], [2.05, 1.20], [2.90, 1.20],
-      [2.95, 0.82], [3.25, 0.82],
-    ],
+    // Preserve the complete low outer hull, glacis and rear wall while its
+    // concealed sponson floor clears the full native return run. The former
+    // 0.82-m centre/terminal floor coincided with the 0.84-m shoe crowns;
+    // 1.21 m is the existing shoulder datum and changes no visible outline.
+    sponsonY: [[-3.05, 1.21], [3.25, 1.21]],
   });
 
   // Layered glacis and supported shoulder bridges.  The center plate is
@@ -6196,8 +6195,12 @@ function replaceT90MProryvHull(P) {
     padCornerFloor: 0.012, padHugZ0: 2.0,
   });
   for (const s of [-1, 1]) {
-    const det = s < 0 ? 'hullTrackDetailL' : 'hullTrackDetailR';
-    const trm = s < 0 ? 'hullTrackTrimL' : 'hullTrackTrimR';
+    // These annuli, hubs and bolts are the road wheels' own face package,
+    // not hull armour or a second track course. Keep every transform and
+    // material while recording their actual suspension ownership so the
+    // strict audit does not test each wheel against its own decoration.
+    const det = 'hullRunningGearDetail';
+    const trm = 'hullRunningGearDark';
     for (const wz of wheelZs) {
       P.add(det, torus(0.365, 0.010, 24), s * 1.544, wheelY, wz, 0, 0, Math.PI / 2);
       P.add(det, torus(0.205, 0.007, 18), s * 1.545, wheelY, wz, 0, 0, Math.PI / 2);

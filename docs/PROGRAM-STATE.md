@@ -6055,3 +6055,43 @@ All eight presentation assets are current. Dual-ledger geometry is freeze
 **KEEP these hashes and the §5.166 turret design. Future plain T-90 clearance
 work must remain inside concealed mechanical geometry; never delete the hull,
 side skirts, mudguards or accepted turret package.**
+
+## 5.176 T-90M PRORYV COMPLETE-HULL COURSE CLOSEOUT (2026-08-14, LIVE)
+
+This closeout preserves the owner-requested and accepted §5.167 Proryv design:
+both roof machine guns, the oversized forward searchlight with its armoured
+shoe/yokes, the low welded fighting compartment, T-90SM-grade upper/lower
+glacis, complete scalloped side curtains and the layered engine-deck/transom
+service package remain unchanged. No visible hull, skirt, mudguard, running
+gear, turret armour, weapon or fitting is removed or relocated.
+
+The strict residual separated into the concealed hull floor and the native
+road-wheel face package. The full lower tub remains closed, while its hidden
+sponson floor moves from the 0.82-m return-crown plane to the existing 1.21-m
+shoulder datum. Outer hull dimensions and the complete armour silhouette do not
+move. Road-wheel annuli, dishes, hubs and bolts retain byte-equivalent geometry,
+materials and transforms; their buckets now record their actual suspension
+ownership instead of labelling each wheel's own face package as hull/track
+interference.
+
+Fresh evidence contains 15 authored-baseline/current boards plus 15 yaw0 and
+15 yaw90 frames (**45 PNG / 45 distinct hashes**). The complete gun, welded
+turret, protection, two machine guns, large searchlight, optics, smoke, roof
+stations and rear turret package execute a genuine quarter-turn. Hull, glacis,
+deck, deep curtains, six-wheel running gear and rear service package remain
+fixed. Parent audit is **0 stranded / 0 abutting / 0 dangling**. The winding
+audit reports zero reversed / zero mixed faces; its fixed-hull nominee is the
+supported `hullCloth` side-curtain package, which remains visibly attached to
+the sponson and correctly does not follow the turret. Exact band and
+individual-shoe sweeps are **0/0**, and the contiguity scan is **0 holes**. The
+legacy source-registration machine oracle remains stale for this approved
+authored target and is not used as a visual graduation verdict.
+
+All eight presentation assets are current. Dual-ledger geometry is freeze
+**`b8a09f20`**, instance freeze **`0a707fd9`** and asset geometry
+**`e84d5ca1`** (55 rendered meshes / 125,114 vertices).
+
+**KEEP these hashes and all §5.167 owner features. Future Proryv track work
+must preserve the complete glacis, side curtains, rear field and turret package;
+clearance belongs only in concealed mechanics or explicit running-gear
+ownership.**

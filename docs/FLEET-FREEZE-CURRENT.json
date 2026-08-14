@@ -670,11 +670,11 @@
       "vertices": 70716
     },
     "t90m": {
-      "freezeHash": "a2f42a98",
-      "instanceFreezeHash": "6f53e43b",
-      "assetGeometryHash": "0fcd4abb",
-      "meshes": 57,
-      "vertices": 125510
+      "freezeHash": "b8a09f20",
+      "instanceFreezeHash": "0a707fd9",
+      "assetGeometryHash": "e84d5ca1",
+      "meshes": 55,
+      "vertices": 125114
     },
     "t90ms": {
       "freezeHash": "4184ee04",
