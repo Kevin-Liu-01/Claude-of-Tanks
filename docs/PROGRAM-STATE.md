@@ -5552,3 +5552,29 @@ deterministic geometry freeze **`f15951c4`**.
 
 **KEEP `f15951c4`. Future FV510 work must preserve these closed deep modules,
 the original complete hull and the unobstructed native track corridor.**
+
+## 5.160 LEOPARD 2 REVOLUTION LEFT-CHEEK CORE BURIAL (2026-08-13, LIVE)
+
+The repeatedly reported rectangular shelf on the vehicle-left turret cheek is
+resolved at its actual procedural owner. Studio inspection traced the visible
+patch to the left fore-core closure: one broad slab spanning local
+x=-1.30..-0.44 and z=0.55..1.70 beneath the outer Revolution armour. It was
+not a smoke launcher, mantlet component or hull guard; its flat upper ring
+projected through the newer primary cheek from the owner's elevated-left view.
+
+The monolithic closure is replaced by two closed fore/aft taper sections. The
+lower rings retain enough internal volume to back the outer shell, while their
+upper rings pull sharply inboard to x=-0.72/-0.70. This removes the secondary
+square armour card without deleting triangles, opening the turret, changing
+the accepted primary cheek/mantlet outline or touching the hull and tracks.
+
+First-party elevated-left, hero and close-roof comparisons confirm that the
+main cheek now supplies the uninterrupted exterior silhouette. A 90-degree
+turret inspection retains a closed shell and coherent deck/ring exposure; no
+sky hole, duplicate plate, stranded fitting or new collision appears. Live
+registry, muzzle bore, linked-track and targeted asset checks pass. All eight
+Leopard 2 Revolution assets are regenerated for deterministic geometry freeze
+**`bd9bd452`**.
+
+**KEEP `bd9bd452`. The buried fore-core is internal support only; future
+turret work must not restore an outboard flat shelf in this station.**

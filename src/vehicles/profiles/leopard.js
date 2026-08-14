@@ -6279,9 +6279,19 @@ function buildLeo2Revolution(P) {
   // Δ-6.9/-7.4 pair (the raked plane only covers x >= -0.42); it now falls
   // 7.1deg like the right side. Side cols 1.2+ are raked-slab-owned, cols
   // <=1.09 are pod-owned — the change is row-invisible.
-  P.add('turret', slab(                                                        // fore core, LEFT (stops at the 1.35w notch)
-    [-1.30, 0.47, 1.70], [-0.44, 0.47, 1.70], [-0.44, 0.47, 0.55], [-1.28, 0.47, 0.55],
-    [-1.30, 0.51, 1.70], [-0.44, 0.51, 1.70], [-0.44, 0.6525, 0.55], [-1.28, 0.6525, 0.55]));
+  // The old left fore-core repeated this station as one broad planar top
+  // (local x -1.30..-0.44, z 0.55..1.70).  It closed the pressure volume but
+  // projected through the newer shell as the stubborn rectangular shelf in
+  // the owner's elevated view.  Keep the required internal closure, but
+  // taper its upper ring sharply inboard and stagger its fore/aft heights so
+  // it stays buried under the primary cheek instead of becoming a second
+  // armor card.
+  P.add('turret', slab(                                                        // buried left fore-core closure, forward half
+    [-1.10, 0.43, 1.70], [-0.44, 0.43, 1.70], [-0.44, 0.43, 1.10], [-1.08, 0.43, 1.10],
+    [-0.72, 0.51, 1.70], [-0.44, 0.51, 1.70], [-0.44, 0.575, 1.10], [-0.74, 0.55, 1.10]));
+  P.add('turret', slab(                                                        // buried left fore-core closure, rear half
+    [-1.08, 0.43, 1.10], [-0.44, 0.43, 1.10], [-0.44, 0.43, 0.55], [-1.04, 0.43, 0.55],
+    [-0.74, 0.55, 1.10], [-0.44, 0.575, 1.10], [-0.44, 0.63, 0.55], [-0.70, 0.60, 0.55]));
   // r7: slab tops 0.715/0.735 -> 0.66/0.665 — the ref roof between the RWS
   // pods reads 2.231 in front view (x -0.07..-0.16 columns) where the old
   // sloped tops printed 2.335; the 2.26 deck base now owns the centre line.
