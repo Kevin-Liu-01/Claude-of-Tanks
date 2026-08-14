@@ -22,7 +22,12 @@ import { applyDispersion, createShell, stepShell } from './ballistics.js';
 import { tankPoseFromState, traceTank } from './armor.js';
 import {
   createCombatState,
+  isHeClass,
+  ramDamage,
+  repairAllModules,
+  resolveHeBurst,
   resolveShellHit,
+  selectShell,
   startReload,
   tickFire,
   tickModuleRepairs,
@@ -33,6 +38,8 @@ import { pushHullFromObstacle } from '../world/collision.js';
 import { applyEquipmentToCombat, defaultLoadoutFor } from '../game/equipment.js';
 import { botFriendlyFireRisk, createAI, roleOf } from '../game/ai.js';
 import { createBotNavigationGrid, planBotRoute } from './botRoutePlanner.js';
+import { CONSUMABLE_RULES, cooldownRemaining } from '../game/consumables.js';
+import { PLAYER_ACTION_BITS } from '../net/protocol.js';
 
 const BATTLE_LIMIT_S = 15 * 60;
 const FIRE_TICK_S = 0.5;
@@ -43,6 +50,7 @@ const CRUSH_MIN_MPS = 6 / 3.6;
 const CRUSH_PRESS_S = 0.45;
 const CRUSH_PRESS_GAP_S = 0.2;
 const CRUSH_SPEED_KEEP = 0.94;
+const RAM_PAIR_COOLDOWN_S = 0.5;
 const TEAM_ALPHA = 'alpha';
 const TEAM_BRAVO = 'bravo';
 const TEAM_SPECTATOR = 'spectator';
@@ -107,6 +115,7 @@ function makeInput() {
     brake: false,
     fire: false,
     shellSlot: 0,
+    actionBits: 0,
     aimPoint: new Vector3(),
   };
 }
@@ -273,6 +282,8 @@ export function createAuthoritativeMatch({
   }
   const pendingCrush = [];
   const pendingCrushSet = new Set();
+  const pendingRams = [];
+  const ramPairTime = new Map();
 
   for (const record of players) {
     const id = String(record && record.id || '').trim();
@@ -308,6 +319,7 @@ export function createAuthoritativeMatch({
       connected: true,
       kills: 0,
       damage: 0,
+      consumableReadyAt: [0, 0, 0],
     };
     entities.push(entity);
     entityById.set(id, entity);
@@ -388,13 +400,17 @@ export function createAuthoritativeMatch({
       entity.input.steer = 0;
       entity.input.brake = true;
       entity.input.fire = false;
+      entity.input.actionBits = 0;
       return;
     }
     entity.input.throttle = input.throttle;
     entity.input.steer = input.steer;
     entity.input.brake = input.brake;
     entity.input.fire = input.fire;
-    entity.input.shellSlot = Math.min(entity.spec.gun.shells.length - 1, input.shellSlot);
+    entity.input.actionBits = input.actionBits | 0;
+    const shellSlot = Math.min(entity.spec.gun.shells.length - 1, input.shellSlot);
+    if (shellSlot !== entity.combat.shellSlot) selectShell(entity.combat, shellSlot, entity.spec);
+    entity.input.shellSlot = shellSlot;
     const cosPitch = Math.cos(input.aimPitch);
     _aim.set(
       entity.state.pos.x + Math.sin(input.aimYaw) * cosPitch * AIM_DISTANCE_M,
@@ -457,17 +473,48 @@ export function createAuthoritativeMatch({
       }
     }
 
+    // Match the local simulation's hull-capsule contact instead of using a
+    // circular force field. This keeps close formation driving natural and
+    // gives ram damage a stable contact normal.
+    const mySeg = Math.max(halfL - halfW, 0);
     for (const other of entities) {
       if (other === entity || !other.state) continue;
+      const otherHalfW = other.spec.dims.widthM * 0.5;
+      const otherSeg = Math.max(other.spec.dims.hullLengthM * 0.5 - otherHalfW, 0);
+      const minDistance = halfW + otherHalfW;
       const dx = pos.x - other.state.pos.x;
       const dz = pos.z - other.state.pos.z;
-      const minDistance = (entity.spec.dims.widthM + other.spec.dims.widthM) * 0.42;
-      const distanceSq = dx * dx + dz * dz;
+      const outer = mySeg + otherSeg + minDistance;
+      if (dx * dx + dz * dz > outer * outer) continue;
+      const ofx = Math.sin(other.state.yaw);
+      const ofz = Math.cos(other.state.yaw);
+      const parallel = fx * ofx + fz * ofz;
+      const alongSelf = dx * fx + dz * fz;
+      const alongOther = dx * ofx + dz * ofz;
+      const denom = 1 - parallel * parallel;
+      let selfT = denom > 1e-6
+        ? (parallel * alongOther - alongSelf) / denom
+        : -alongSelf;
+      selfT = Math.max(-mySeg, Math.min(mySeg, selfT));
+      let otherT = alongOther + parallel * selfT;
+      otherT = Math.max(-otherSeg, Math.min(otherSeg, otherT));
+      selfT = Math.max(-mySeg, Math.min(mySeg, parallel * otherT - alongSelf));
+      const wx = dx + fx * selfT - ofx * otherT;
+      const wz = dz + fz * selfT - ofz * otherT;
+      const distanceSq = wx * wx + wz * wz;
       if (distanceSq >= minDistance * minDistance) continue;
       const distance = Math.sqrt(Math.max(distanceSq, 1e-8));
+      const nx = distance > 1e-4 ? wx / distance : rx;
+      const nz = distance > 1e-4 ? wz / distance : rz;
       const push = minDistance - distance;
-      outPush.x += dx / distance * push;
-      outPush.z += dz / distance * push;
+      outPush.x += nx * push;
+      outPush.z += nz * push;
+      if (distance > 1e-4) {
+        const relativeX = fx * entity.state.speed - ofx * other.state.speed;
+        const relativeZ = fz * entity.state.speed - ofz * other.state.speed;
+        const closing = -(relativeX * nx + relativeZ * nz);
+        if (closing > 0) pendingRams.push({ a: entity, b: other, closing });
+      }
     }
     return outPush.x !== 0 || outPush.z !== 0;
   }
@@ -505,11 +552,101 @@ export function createAuthoritativeMatch({
     pendingCrushSet.clear();
   }
 
+  function resolvePendingRams() {
+    if (!pendingRams.length) return;
+    const best = new Map();
+    for (const contact of pendingRams) {
+      const key = contact.a.id < contact.b.id
+        ? `${contact.a.id}|${contact.b.id}` : `${contact.b.id}|${contact.a.id}`;
+      const current = best.get(key);
+      if (!current || contact.closing > current.closing) best.set(key, contact);
+    }
+    pendingRams.length = 0;
+    for (const [key, contact] of best) {
+      const last = ramPairTime.get(key);
+      if (last != null && timeS - last < RAM_PAIR_COOLDOWN_S) continue;
+      const a = contact.a;
+      const b = contact.b;
+      if (!a.combat || !b.combat || a.combat.destroyed) continue;
+      const damage = ramDamage(a.spec.weightTons, b.spec.weightTons, contact.closing);
+      if (damage.total <= 0) continue;
+      ramPairTime.set(key, timeS);
+      const bWasDestroyed = b.combat.destroyed;
+      const damageA = damage.toA;
+      const damageB = bWasDestroyed ? 0 : damage.toB;
+      a.combat.hp = Math.max(0, a.combat.hp - damageA);
+      if (!bWasDestroyed) b.combat.hp = Math.max(0, b.combat.hp - damageB);
+      a.combat.destroyed = a.combat.hp <= 0;
+      if (!bWasDestroyed) b.combat.destroyed = b.combat.hp <= 0;
+      emit('tank_ram', {
+        aId: a.id,
+        bId: b.id,
+        damageA,
+        damageB,
+        closingMps: contact.closing,
+        x: (a.state.pos.x + b.state.pos.x) * 0.5,
+        y: (a.state.pos.y + b.state.pos.y) * 0.5,
+        z: (a.state.pos.z + b.state.pos.z) * 0.5,
+      });
+      if (!bWasDestroyed && b.combat.destroyed) {
+        a.kills += 1;
+        emit('tank_destroyed', { id: b.id, killerId: a.id, cause: 'ram' });
+      }
+      if (a.combat.destroyed) {
+        if (!bWasDestroyed) b.kills += 1;
+        emit('tank_destroyed', { id: a.id, killerId: bWasDestroyed ? null : b.id, cause: 'ram' });
+      }
+    }
+  }
+
+  function useConsumables(entity) {
+    const bits = entity.input.actionBits | 0;
+    entity.input.actionBits = 0;
+    if (!bits || entity.combat.destroyed) return;
+    for (let slot = 0; slot < CONSUMABLE_RULES.length; slot++) {
+      const bit = 1 << slot;
+      if (!(bits & bit)) continue;
+      const remainingS = cooldownRemaining(timeS, entity.consumableReadyAt[slot]);
+      if (remainingS > 0) {
+        emit('consumable_denied', { id: entity.id, slot, reason: 'COOLDOWN', remainingS });
+        continue;
+      }
+      let used = false;
+      if (bit === PLAYER_ACTION_BITS.REPAIR) {
+        const modules = repairAllModules(entity.combat);
+        used = modules.length > 0;
+        for (const module of modules) emit('module_state', {
+          id: entity.id, module, state: 'ok',
+        });
+      } else if (bit === PLAYER_ACTION_BITS.FIRST_AID) {
+        for (const crew of Object.keys(entity.combat.crew)) {
+          if (entity.combat.crew[crew] === false) {
+            entity.combat.crew[crew] = true;
+            used = true;
+          }
+        }
+      } else if (bit === PLAYER_ACTION_BITS.EXTINGUISHER && entity.combat.fire.burning) {
+        entity.combat.fire.burning = false;
+        entity.combat.fire.ticksLeft = 0;
+        entity.combat.fire.tickTimer = 0;
+        used = true;
+        emit('tank_fire', { id: entity.id, burning: false });
+      }
+      if (!used) {
+        emit('consumable_denied', { id: entity.id, slot, reason: 'NOTHING' });
+        continue;
+      }
+      const cooldownS = CONSUMABLE_RULES[slot].cooldownS;
+      const readyAt = timeS + cooldownS;
+      entity.consumableReadyAt[slot] = readyAt;
+      emit('consumable_used', { id: entity.id, slot, cooldownS, readyAt });
+    }
+  }
+
   function tryFire(entity) {
     const combat = entity.combat;
     if (!entity.input.fire || combat.destroyed || combat.reload.t > 0) return;
     if (combat.modules.gun && combat.modules.gun.state === 'red') return;
-    combat.shellSlot = entity.input.shellSlot;
     const shellSpec = entity.spec.gun.shells[combat.shellSlot];
     if (!shellSpec) return;
     if (entity.bot) {
@@ -557,6 +694,48 @@ export function createAuthoritativeMatch({
     });
   }
 
+  function recordShellHit(shell, hit, wasDestroyed = false) {
+    const target = hit.targetId ? entityById.get(hit.targetId) : null;
+    const shooter = entityById.get(shell.shooterId);
+    if (shooter && hit.damage > 0) shooter.damage += hit.damage;
+    if (shooter?.aiCtl) shooter.aiCtl.notifyShellResult({
+      ...hit,
+      targetId: target?.id || null,
+    });
+    if (shooter && target && hit.damage > 0) {
+      for (const ally of entities) {
+        if (ally.team === target.team && ally.aiCtl) ally.aiCtl.notifyUnderFire(shooter);
+      }
+    }
+    emit('shell_hit', {
+      ...hit,
+      shooterId: shell.shooterId,
+      attackerId: shell.shooterId,
+      targetName: target?.spec.name,
+      targetSpecId: target?.specId,
+      targetMaxHp: target?.combat.maxHp || 0,
+      damage: Math.max(0, Math.round(hit.damage || 0)),
+      targetHp: Math.max(0, Math.round(target?.combat.hp || 0)),
+    });
+    if (target && Array.isArray(hit.modulesHit)) {
+      for (const module of hit.modulesHit) emit('module_state', {
+        id: target.id,
+        module: module.module,
+        state: module.newState,
+        source: 'hit',
+      });
+    }
+    if (target && hit.fireStarted) emit('tank_fire', { id: target.id, burning: true });
+    if (target && !wasDestroyed && target.combat.destroyed) {
+      if (shooter) shooter.kills += 1;
+      emit('tank_destroyed', {
+        id: target.id,
+        killerId: shell.shooterId,
+        cause: hit.ammoRacked ? 'ammo_rack' : 'shot',
+      });
+    }
+  }
+
   function stepShells(dt) {
     for (const shell of shells) {
       if (shell.dead) continue;
@@ -566,7 +745,15 @@ export function createAuthoritativeMatch({
       const segmentLength = shell.prevPos.distanceTo(shell.pos);
       if (worldHit && (!tankHit || worldHit.t * segmentLength < tankHit.distance)) {
         shell.pos.lerpVectors(shell.prevPos, shell.pos, worldHit.t);
-        shell.dead = true;
+        if (isHeClass(shell.spec.type)) {
+          const wasDestroyed = new Map(entities.map((entity) => [entity.id, entity.combat.destroyed]));
+          const hits = resolveHeBurst(shell, shell.pos, entities, null, null, rng);
+          for (const hit of hits) recordShellHit(
+            shell, hit, hit.targetId ? wasDestroyed.get(hit.targetId) : false,
+          );
+        } else {
+          shell.dead = true;
+        }
         if (worldHit.record?.propIdx != null) {
           const propObstacle = obstacleByPropIdx.get(worldHit.record.propIdx);
           if (propObstacle?.crushable) destroyObstacle(propObstacle, null, 'shell');
@@ -582,38 +769,19 @@ export function createAuthoritativeMatch({
         continue;
       }
       if (!tankHit) continue;
-      const wasDestroyed = tankHit.target.combat.destroyed;
-      const hit = resolveShellHit(shell, tankHit.target, tankHit.hits, rng);
-      const shooter = entityById.get(shell.shooterId);
-      if (shooter && hit.damage > 0) shooter.damage += hit.damage;
-      if (shooter?.aiCtl) shooter.aiCtl.notifyShellResult({
-        ...hit,
-        targetId: tankHit.target.id,
-      });
-      if (shooter && hit.damage > 0) {
-        for (const ally of entities) {
-          if (ally.team === tankHit.target.team && ally.aiCtl) {
-            ally.aiCtl.notifyUnderFire(shooter);
-          }
-        }
-      }
-      emit('shell_hit', {
-        ...hit,
-        shooterId: shell.shooterId,
-        attackerId: shell.shooterId,
-        targetName: tankHit.target.spec.name,
-        targetSpecId: tankHit.target.specId,
-        targetMaxHp: tankHit.target.combat.maxHp,
-        damage: Math.max(0, Math.round(hit.damage || 0)),
-        targetHp: Math.max(0, Math.round(tankHit.target.combat.hp)),
-      });
-      if (!wasDestroyed && tankHit.target.combat.destroyed) {
-        if (shooter) shooter.kills += 1;
-        emit('tank_destroyed', {
-          id: tankHit.target.id,
-          killerId: shell.shooterId,
-          cause: hit.ammoRacked ? 'ammo_rack' : 'shot',
-        });
+      if (isHeClass(shell.spec.type)) {
+        const burstPoint = tankHit.hits[0].point;
+        const wasDestroyed = new Map(entities.map((entity) => [entity.id, entity.combat.destroyed]));
+        const hits = resolveHeBurst(
+          shell, burstPoint, entities, tankHit.target, tankHit.hits, rng,
+        );
+        for (const hit of hits) recordShellHit(
+          shell, hit, hit.targetId ? wasDestroyed.get(hit.targetId) : false,
+        );
+      } else {
+        const wasDestroyed = tankHit.target.combat.destroyed;
+        const hit = resolveShellHit(shell, tankHit.target, tankHit.hits, rng);
+        recordShellHit(shell, hit, wasDestroyed);
       }
     }
     shells = shells.filter((shell) => !shell.dead);
@@ -692,6 +860,7 @@ export function createAuthoritativeMatch({
       for (const entity of entities) {
         if (entity.bot) entity.aiCtl?.update(dt, timeS);
         else applyNetworkInput(entity, inputs.get(entity.id));
+        useConsumables(entity);
       }
       for (const entity of entities) {
         if (entity.combat.destroyed) continue;
@@ -699,6 +868,7 @@ export function createAuthoritativeMatch({
           (pos, radius, out) => collideFor(entity, pos, radius, out));
       }
       resolvePendingCrushes();
+      resolvePendingRams();
       for (const entity of entities) {
         if (entity.combat.destroyed) continue;
         if (entity.combat.reload.t > 0) {
@@ -711,7 +881,9 @@ export function createAuthoritativeMatch({
       if (fireTickAcc >= FIRE_TICK_S) {
         fireTickAcc -= FIRE_TICK_S;
         for (const entity of entities) {
+          if (entity.combat.destroyed) continue;
           const fire = tickFire(entity, rng);
+          if (fire.extinguished) emit('tank_fire', { id: entity.id, burning: false });
           if (fire.destroyed) emit('tank_destroyed', {
             id: entity.id,
             killerId: entity.id,
@@ -719,7 +891,11 @@ export function createAuthoritativeMatch({
           });
         }
       }
-      for (const entity of entities) tickModuleRepairs(entity.combat, dt);
+      for (const entity of entities) {
+        for (const module of tickModuleRepairs(entity.combat, dt)) {
+          emit('module_state', { id: entity.id, module, state: 'yellow', repaired: true });
+        }
+      }
       updateVisibility();
       determineResult();
     },
@@ -735,7 +911,10 @@ export function createAuthoritativeMatch({
       const canObserveEvent = (_id, event) => {
         if (!viewer) return true;
         if (event.type === 'world_prop_destroyed') return true;
-        for (const id of [event.id, event.shooterId, event.targetId, event.killerId]) {
+        for (const id of [
+          event.id, event.shooterId, event.targetId, event.killerId,
+          event.aId, event.bId,
+        ]) {
           if (!id) continue;
           const entity = entityById.get(id);
           if (entity && canObserve(viewerId, entity)) return true;

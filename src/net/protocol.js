@@ -12,6 +12,16 @@ export const SNAPSHOT_HZ = 20;
 export const MAX_PLAYERS = 14;
 export const MAX_SPECTATORS = 8;
 
+// Edge-triggered player actions travel in the same validated input stream as
+// driving and gunnery. The authority latches these bits until a simulation
+// step consumes them, so a quick key/touch press cannot disappear when a
+// newer movement frame replaces the previous one.
+export const PLAYER_ACTION_BITS = Object.freeze({
+  REPAIR: 1 << 0,
+  FIRST_AID: 1 << 1,
+  EXTINGUISHER: 1 << 2,
+});
+
 export const MESSAGE_TYPES = Object.freeze({
   HELLO: 'hello',
   WELCOME: 'welcome',

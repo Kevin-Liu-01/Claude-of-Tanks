@@ -80,6 +80,7 @@ import {
   CONSUMABLE_RULES, cooldownRemaining, resetConsumableCooldowns,
   startConsumableCooldown,
 } from './game/consumables.js';
+import { PLAYER_ACTION_BITS } from './net/protocol.js';
 import { mobileAutoAimCenter, pickMobileAutoAimTarget } from './game/mobileAutoAim.js';
 import { createSettings } from './ui/settings.js';
 import { createTouchControls } from './ui/touchControls.js';
@@ -1770,6 +1771,11 @@ bus.on('ui:consumable', ({ slot }) => {
   const p = game.player;
   if (game.phase !== 'battle' || settings.isOpen() || !p || !p.combat || p.combat.destroyed) return;
   if (!CONSUMABLE_RULES[slot]) return;
+  if (networkMatch) {
+    networkActionBitsPending |= 1 << slot;
+    bus.emit('ui:click', {});
+    return;
+  }
   const remainingS = cooldownRemaining(game.timeS, consumableReadyAt[slot]);
   if (remainingS > 0) {
     bus.emit('ui:consumableDenied', { slot, reason: 'COOLDOWN', remainingS });
@@ -1951,6 +1957,7 @@ let networkBridge = null;
 let networkStatus = null;
 let latestNetworkSnapshot = null;
 let networkPumpPending = false;
+let networkActionBitsPending = 0;
 
 function networkInputFrame() {
   const player = game.player;
@@ -1967,7 +1974,11 @@ function networkInputFrame() {
     aimYaw: Math.atan2(dx, dz),
     aimPitch: Math.atan2(dy, Math.max(1e-6, Math.hypot(dx, dz))),
     shellSlot: player.input.shellSlot | 0,
-    actionBits: 0,
+    actionBits: networkActionBitsPending & (
+      PLAYER_ACTION_BITS.REPAIR |
+      PLAYER_ACTION_BITS.FIRST_AID |
+      PLAYER_ACTION_BITS.EXTINGUISHER
+    ),
   };
 }
 
@@ -1979,16 +1990,24 @@ function acceptNetworkSnapshot(snapshot, dt) {
 
 function pumpNetworkMatch(dt, nowMs) {
   if (!networkMatch || networkMatch.client?.closed) return;
-  const playerInput = game.phase === 'battle' ? networkInputFrame() : null;
   if (networkMatch.role === 'host') {
     if (networkPumpPending) return;
+    const playerInput = game.phase === 'battle' ? networkInputFrame() : null;
     networkPumpPending = true;
+    const submittedActionBits = playerInput?.actionBits || 0;
+    if (submittedActionBits) networkActionBitsPending &= ~submittedActionBits;
     networkMatch.advance(dt * 1000, playerInput)
       .then((snapshot) => acceptNetworkSnapshot(snapshot, dt))
-      .catch((error) => console.error('[network] host pump failed', error))
+      .catch((error) => {
+        networkActionBitsPending |= submittedActionBits;
+        console.error('[network] host pump failed', error);
+      })
       .finally(() => { networkPumpPending = false; });
   } else {
-    if (playerInput && networkMatch.client.connected) networkMatch.submitInput(playerInput);
+    const playerInput = game.phase === 'battle' ? networkInputFrame() : null;
+    if (playerInput && networkMatch.client.connected && networkMatch.submitInput(playerInput)) {
+      networkActionBitsPending = 0;
+    }
     acceptNetworkSnapshot(networkMatch.update(nowMs), dt);
   }
 }
@@ -2002,6 +2021,7 @@ function closeNetworkMatch(reason = 'network_match_closed') {
   networkStatus = null;
   latestNetworkSnapshot = null;
   networkPumpPending = false;
+  networkActionBitsPending = 0;
 }
 
 async function beginBattleEntry(specId, mapId = null) {

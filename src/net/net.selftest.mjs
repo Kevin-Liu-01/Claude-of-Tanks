@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {
   MESSAGE_TYPES,
+  PLAYER_ACTION_BITS,
   ProtocolError,
   createEnvelope,
   createRoomCode,
@@ -371,6 +372,7 @@ function createTestSimulation() {
   const simulation = {
     entities,
     fireTicks: 0,
+    actionFrames: [],
     onPeerJoin({ peerId, metadata }) {
       const team = metadata && metadata.team ? metadata.team :
         (peerId === 'p1' ? 'alpha' : 'bravo');
@@ -383,6 +385,7 @@ function createTestSimulation() {
         if (current && nextInput) {
           current.state.pos.x += nextInput.throttle * 10 * dt;
           if (nextInput.fire) simulation.fireTicks++;
+          if (nextInput.actionBits) simulation.actionFrames.push(nextInput.actionBits);
         }
       }
     },
@@ -438,9 +441,20 @@ function createTestSimulation() {
   assert.equal(p1Frame.ackInputSeq, 0, 'snapshot acknowledges consumed input sequence');
   p1.submitInput(input({ fire: true }), hostRuntime.tick);
   p1.submitInput(input({ fire: false }), hostRuntime.tick);
+  p1.submitInput(input({ actionBits: PLAYER_ACTION_BITS.REPAIR }), hostRuntime.tick);
+  p1.submitInput(input({ actionBits: 0 }), hostRuntime.tick);
   await Promise.resolve();
   hostRuntime.advance(1000 / 60);
   assert.equal(simulation.fireTicks, 1, 'a short fire edge survives latest-input replacement');
+  assert.deepEqual(simulation.actionFrames, [PLAYER_ACTION_BITS.REPAIR],
+    'a short action-bit edge survives latest-input replacement exactly once');
+  p1.submitInput(input({ actionBits: PLAYER_ACTION_BITS.FIRST_AID }), hostRuntime.tick);
+  await Promise.resolve();
+  hostRuntime.advance(50);
+  assert.deepEqual(simulation.actionFrames, [
+    PLAYER_ACTION_BITS.REPAIR,
+    PLAYER_ACTION_BITS.FIRST_AID,
+  ], 'an action bit is consumed once even when one input spans several authority steps');
   hostRuntime.close();
 }
 

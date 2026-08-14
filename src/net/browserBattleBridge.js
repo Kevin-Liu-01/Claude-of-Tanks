@@ -252,6 +252,38 @@ export function createBrowserBattleBridge({
           ] : null,
           dir: [event.directionX, 0, event.directionZ],
         });
+      } else if (event.type === 'consumable_used' && event.id === id) {
+        bus.emit('ui:consumableUsed', {
+          slot: event.slot,
+          cooldownS: event.cooldownS,
+          readyAt: event.readyAt,
+        });
+      } else if (event.type === 'consumable_denied' && event.id === id) {
+        bus.emit('ui:consumableDenied', {
+          slot: event.slot,
+          reason: event.reason,
+          remainingS: event.remainingS,
+        });
+      } else if (event.type === 'module_state') {
+        bus.emit('module:state', {
+          id: event.id,
+          module: event.module,
+          state: event.state,
+          source: event.source,
+        });
+      } else if (event.type === 'tank_fire') {
+        bus.emit('tank:fire', { id: event.id, burning: event.burning });
+      } else if (event.type === 'tank_ram') {
+        bus.emit('tank:ram', {
+          aId: event.aId,
+          bId: event.bId,
+          dmgA: event.damageA,
+          dmgB: event.damageB,
+          closingMps: event.closingMps,
+          aIsPlayer: event.aId === id,
+          bIsPlayer: event.bId === id,
+          pos: [event.x, event.y, event.z],
+        });
       } else if (event.type === 'match_ended') {
         const result = event.result === 'draw' ? 'draw'
           : event.result === viewerTeam ? 'victory' : 'defeat';

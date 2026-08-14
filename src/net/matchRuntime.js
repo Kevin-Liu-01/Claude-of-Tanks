@@ -102,6 +102,7 @@ export class AuthoritativeMatchRuntime {
       welcomed: false,
       ready: false,
       fireQueued: false,
+      actionBitsQueued: 0,
       unsubscribeMessage: null,
       unsubscribeClose: null,
     };
@@ -221,6 +222,7 @@ export class AuthoritativeMatchRuntime {
     peer.lastInputSeq = input.inputSeq;
     peer.input = input;
     if (input.fire) peer.fireQueued = true;
+    peer.actionBitsQueued |= input.actionBits;
   }
 
   /**
@@ -262,11 +264,21 @@ export class AuthoritativeMatchRuntime {
       if (this.matchStarted) {
         const inputs = new Map();
         for (const peer of this.peers.values()) {
-          const input = peer.input && peer.fireQueued && !peer.input.fire
-            ? { ...peer.input, fire: true }
+          const needsEdgeMerge = peer.input && (
+            (peer.fireQueued && !peer.input.fire) ||
+            (peer.actionBitsQueued & ~peer.input.actionBits) !== 0
+          );
+          const input = needsEdgeMerge
+            ? {
+              ...peer.input,
+              fire: peer.fireQueued || peer.input.fire,
+              actionBits: peer.actionBitsQueued | peer.input.actionBits,
+            }
             : peer.input;
           inputs.set(peer.id, input);
           peer.fireQueued = false;
+          peer.actionBitsQueued = 0;
+          if (peer.input?.actionBits) peer.input = { ...peer.input, actionBits: 0 };
         }
         this.simulation.step({
           dt: 1 / this.tickHz,

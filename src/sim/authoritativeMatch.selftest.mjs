@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { createAuthoritativeMatch } from './authoritativeMatch.js';
+import { PLAYER_ACTION_BITS } from '../net/protocol.js';
 
 const match = createAuthoritativeMatch({
   mapId: 'verdant',
@@ -156,6 +157,83 @@ for (let i = 0; i < 180 && match.entityById.get('bravo-1').combat.hp === hp0; i+
 assert.ok(match.entityById.get('bravo-1').combat.hp < hp0,
   'shared armor and damage model resolves an authoritative hit');
 
+const consumableMatch = createAuthoritativeMatch({
+  countdownS: 0,
+  players: [
+    { id: 'kit-a', specId: 'm1a2', team: 'alpha', spawn: { x: 0, z: -50, yaw: 0 } },
+    { id: 'kit-b', specId: 'm1a2', team: 'bravo', spawn: { x: 0, z: 50, yaw: Math.PI } },
+  ],
+});
+consumableMatch.onMatchReady();
+const kitEntity = consumableMatch.entityById.get('kit-a');
+kitEntity.combat.modules.engine.hp = kitEntity.combat.modules.engine.maxHp * 0.5;
+kitEntity.combat.modules.engine.state = 'yellow';
+const kitInput = new Map([['kit-a', {
+  throttle: 0, steer: 0, brake: true, fire: false,
+  aimYaw: 0, aimPitch: 0, shellSlot: 0, actionBits: PLAYER_ACTION_BITS.REPAIR,
+}]]);
+consumableMatch.step({ dt: 1 / 60, inputs: kitInput });
+assert.equal(kitEntity.combat.modules.engine.state, 'ok',
+  'repair kit state changes are owned by authority');
+consumableMatch.step({ dt: 1 / 60, inputs: kitInput });
+const kitEvents = consumableMatch.snapshot({
+  tick: 2, serverTimeMs: 1000 / 30, viewerId: 'kit-a', ackInputSeq: 2,
+}).events;
+assert.ok(kitEvents.some((event) => event.type === 'consumable_used' && event.slot === 0));
+assert.ok(kitEvents.some((event) => event.type === 'consumable_denied' &&
+  event.reason === 'COOLDOWN'), 'authority enforces reusable-kit cooldowns');
+
+const ramMatch = createAuthoritativeMatch({
+  countdownS: 0,
+  players: [
+    { id: 'ram-a', specId: 'm1a2', team: 'alpha', spawn: { x: 0, z: -10, yaw: 0 } },
+    { id: 'ram-b', specId: 'm1a2', team: 'bravo', spawn: { x: 0, z: 10, yaw: Math.PI } },
+  ],
+});
+ramMatch.onMatchReady();
+const ramHp = ramMatch.entityById.get('ram-a').combat.hp;
+const ramInputs = new Map([
+  ['ram-a', { throttle: 1, steer: 0, brake: false, fire: false,
+    aimYaw: 0, aimPitch: 0, shellSlot: 0, actionBits: 0 }],
+  ['ram-b', { throttle: 1, steer: 0, brake: false, fire: false,
+    aimYaw: Math.PI, aimPitch: 0, shellSlot: 0, actionBits: 0 }],
+]);
+for (let i = 0; i < 240; i++) ramMatch.step({ dt: 1 / 60, inputs: ramInputs });
+assert.ok(ramMatch.entityById.get('ram-a').combat.hp < ramHp,
+  'hull contact applies mass-weighted authoritative ram damage');
+assert.ok(ramMatch.snapshot({ tick: 240, serverTimeMs: 4000,
+  viewerId: 'ram-a', ackInputSeq: 1 }).events.some((event) => event.type === 'tank_ram'),
+'ram feedback is replicated');
+
+const heMatch = createAuthoritativeMatch({
+  countdownS: 0,
+  seed: 19,
+  players: [
+    { id: 'he-a', specId: 'm1a2', team: 'alpha', spawn: { x: 0, z: -25, yaw: 0 } },
+    { id: 'he-direct', specId: 'leichttraktor', team: 'bravo', spawn: { x: 0, z: 0, yaw: Math.PI } },
+    { id: 'he-splash', specId: 'leichttraktor', team: 'bravo', spawn: { x: 3.2, z: 0, yaw: Math.PI } },
+  ],
+});
+heMatch.onMatchReady();
+const splashTarget = heMatch.entityById.get('he-splash');
+const splashHp = splashTarget.combat.hp;
+heMatch.entityById.get('he-a').combat.shellSlot = 2;
+heMatch.entityById.get('he-a').input.shellSlot = 2;
+const heInputs = new Map([['he-a', {
+  throttle: 0, steer: 0, brake: true, fire: true,
+  aimYaw: 0, aimPitch: 0, shellSlot: 2, actionBits: 0,
+}]]);
+for (let i = 0; i < 120 && splashTarget.combat.hp === splashHp; i++) {
+  heMatch.step({ dt: 1 / 60, inputs: heInputs });
+  heInputs.get('he-a').fire = false;
+}
+assert.ok(splashTarget.combat.hp < splashHp,
+  'HE direct impacts apply authoritative area splash to nearby armor');
+assert.ok(heMatch.snapshot({ tick: 120, serverTimeMs: 2000,
+  viewerId: 'he-a', ackInputSeq: 1 }).events.some((event) =>
+  event.type === 'shell_hit' && event.kind === 'he_splash' && event.targetId === 'he-splash'),
+'HE splash outcomes are replicated per target');
+
 const eventSnapA = match.snapshot({ tick, serverTimeMs: tick * 1000 / 60,
   viewerId: 'alpha-1', ackInputSeq: 4 });
 const eventSnapB = match.snapshot({ tick, serverTimeMs: tick * 1000 / 60,
@@ -166,4 +244,4 @@ match.afterSnapshotBroadcast();
 assert.equal(match.snapshot({ tick: tick + 1, serverTimeMs: (tick + 1) * 1000 / 60,
   viewerId: 'alpha-1', ackInputSeq: 4 }).events.length, 0);
 
-console.log('authoritativeMatch.selftest: identity, movement, world collision, privacy, armor, and events passed');
+console.log('authoritativeMatch.selftest: identity, movement, world, combat authority, and events passed');
