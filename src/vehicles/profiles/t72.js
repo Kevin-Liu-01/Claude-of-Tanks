@@ -224,8 +224,19 @@ function buildT72B87(P) {
   for (let i = 0; i < 6; i++) {
     P.add('turretDark', cylZ(0.042, 0.30, 8), -0.90 - i * 0.065, 0.28 + (i % 2) * 0.02, 1.10 - i * 0.075, -0.45, -0.28, 0);
   }
+  // Complete the characteristic two-bank 902B cadence. The right carrier
+  // is shorter and more steeply canted than the left; each tube intersects
+  // the broad cheek shoe so the bank remains visibly turret-owned in yaw.
+  P.add('turret', box(0.40, 0.06, 0.31), 1.09, 0.235, 0.80, 0, 0.58, 0);
+  for (let i = 0; i < 6; i++) {
+    P.add('turretDark', cylZ(0.041, 0.285, 8), 0.89 + i * 0.063, 0.275 + ((i + 1) % 2) * 0.02, 1.08 - i * 0.071, -0.44, 0.30, 0);
+  }
   P.add('turret', box(0.30, 0.28, 0.26), 0.72, 0.30, 1.00, 0, 0.25, 0);
-  P.add('turretGlass', box(0.20, 0.18, 0.02), 0.76, 0.32, 1.13, 0, 0.25, 0);
+  // Luna/TPN night channel: a round armoured head and inset lens replace
+  // the former flat blue rectangle while retaining the original broad seat.
+  P.add('turret', cylZ(0.142, 0.18, 14), 0.76, 0.33, 1.105, 0, 0.25, 0);
+  P.add('turretGlass', cylZ(0.112, 0.020, 14), 0.76, 0.33, 1.203, 0, 0.25, 0);
+  for (const sx of [0.65, 0.87]) P.add('turretDark', box(0.055, 0.09, 0.10), sx, 0.22, 0.98, 0, 0.25, 0);
   P.add('turret', box(0.26, 0.18, 0.30), -0.55, 0.40, 0.55);
   // Compact the tall night-sight head around its existing broad lower seat.
   // The previous rectangular cap added a procedural-only block in the pure
@@ -240,6 +251,10 @@ function buildT72B87(P) {
     P.add('turretDark', box(0.115, 0.052, 0.067), x, 0.735, z, 0, ry, 0);
     P.add('turretGlass', box(0.078, 0.030, 0.012), x, 0.754, z + 0.039, 0, ry, 0);
   }
+  // Low commander-ring mechanics and a rear shield shoe make the NSVT
+  // cradle read as one compact station rather than a weapon on a bare lid.
+  P.add('turretDark', box(0.42, 0.08, 0.20), -0.62, 0.46, -0.30, 0, 0.04, 0);
+  for (const sx of [-0.76, -0.49]) P.add('turretDark', box(0.07, 0.18, 0.08), sx, 0.52, -0.28, 0, 0.04, 0);
   // NSVT at the roof seat; the ref's 2.30 spike at world -0.79 is a 1-col
   // ANTENNA BASE (r6 lesson: moving the whole NSVT there read 0.35 x 4 cols)
   // r8: NSVT receiver pulled out of the -0.573 col (ref top there is 1.847
@@ -304,6 +319,22 @@ function buildT72B87(P) {
   P.add('turret', box(0.78, 0.28, 0.66), 0, 0.25, -1.04);  // T3B87: rear -1.435w (ref center rear -1.408)
   P.add('turretDark', box(0.74, 0.22, 0.028), 0, 0.25, -1.39);
   for (const sx of [-0.13, 0.13]) P.add('turretDark', box(0.022, 0.20, 0.026), sx, 0.25, -1.425); // jerrycan seams (§B3)
+  // Bring the obr. 1987 rear quarter up to current family density without
+  // inventing a modern bustle. Three unequal low service bins overlap the
+  // cast shoulder; the open rail has uprights and forward returns so every
+  // element follows the turret rather than hanging behind it.
+  P.add('turret', box(0.42, 0.25, 0.34), -0.55, 0.20, -0.93, 0, -0.08, 0);
+  P.add('turret', box(0.34, 0.21, 0.30), 0.50, 0.18, -0.98, 0, 0.10, 0);
+  P.add('turretDark', box(0.39, 0.025, 0.31), -0.55, 0.33, -0.93, 0, -0.08, 0);
+  P.add('turretDark', box(0.31, 0.025, 0.27), 0.50, 0.29, -0.98, 0, 0.10, 0);
+  P.add('turretDark', box(1.20, 0.028, 0.028), 0, 0.12, -1.18);
+  P.add('turretDetail', box(1.84, 0.035, 0.035), 0, 0.26, -1.42);
+  for (const s of [-1, 1]) {
+    P.add('turretDetail', box(0.035, 0.035, 0.70), s * 0.92, 0.25, -1.08, 0, s * 0.06, 0);
+    P.add('turretDetail', box(0.035, 0.27, 0.035), s * 0.92, 0.18, -0.80);
+    P.add('turretDetail', box(0.035, 0.22, 0.035), s * 0.92, 0.15, -1.36);
+  }
+  for (const bx of [-0.60, 0, 0.60]) P.add('turretDetail', box(0.025, 0.16, 0.025), bx, 0.19, -1.37);
   // grab rail re-seated to the measured band (the ref's OWN -1.43/-1.54
   // plan blobs are its rail: z world -0.55..-0.21 at x ~1.50); leaning
   // posts bridge rail -> collar skin (§B2). Replaces the 1.1 m domeRailRu

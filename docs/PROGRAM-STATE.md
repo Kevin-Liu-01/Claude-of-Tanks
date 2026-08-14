@@ -5495,3 +5495,31 @@ Targeted asset and muzzle-bore gates pass for all six variants. The new
 
 **KEEP. Future Abrams cheek edits should use studio surface bounds to remove
 the owning procedural primitive, never raw triangles from the merged mesh.**
+
+## 5.158 T-72B OBR. 1987 CURRENT-FAMILY COHESION PASS (2026-08-13, LIVE)
+
+`t72b_1987` was already a visible, playable member of the main roster and the
+ordered T-72 family. No duplicate vehicle or alias was added. The existing
+first-party `buildT72B87` keeps its proven low cast turret, complete hull,
+skirts, six native road-wheel stations and one continuous linked track course.
+
+The active turret receives a localized family-quality pass while preserving
+its period-correct Kontakt-1 identity. A second unequal 902B launcher bank now
+lands on a broad cheek carrier; the Luna/TPN head is a round armoured housing
+with an inset lens and two hinge shoes; and a low rear shield shoe ties the
+commander ring and NSVT cradle together. Three unequal low rear service cells,
+an open transverse rail and explicit side/vertical returns add the mechanical
+density present on the current B3M/BU family without inventing a modern
+autoloader bustle or replacing the 1987 casting.
+
+First-party studio inspection covers hero, elevated-left, rear, top and a true
+90-degree turret yaw. Gun, complete cast shell, all Kontakt-1, both smoke
+banks, optic/cupola/NSVT equipment, antennas and the new supported rear field
+rotate together; the hull, skirts, road wheels, track, deck and rear hull kit
+remain fixed. No open sheet, floating rail, stranded turret fitting, duplicate
+course or running-gear regression is visible. Fleet ordering, garage ordering,
+track geometry, live registry and muzzle-bore checks pass. All eight roster
+assets are regenerated for deterministic geometry freeze **`a11c97ed`**.
+
+**KEEP `a11c97ed`. Future T-72B obr. 1987 work must preserve the period K1
+blanket, complete hull/skirt envelope and native six-wheel course.**
