@@ -5606,3 +5606,30 @@ deterministic geometry freeze is **`8b4fdf8a`**.
 **KEEP `8b4fdf8a`. The selected legacy overlay is fully absent; future Abrams
 cheek work must reshape the surviving primary loft rather than reintroducing
 separate stair or shelf wedges.**
+
+## 5.162 LEOPARD 2 REVOLUTION STUDIO MARKUP + FORWARD MAG (2026-08-13, LIVE)
+
+The owner's follow-up Revolution studio packet resolves three unwanted right
+fore-turret surface parts and the complete sideways roof-gun shorthand. The
+removed surface owners are the isolated right-aft wing camo overlay
+(x=0.845..1.395, z=3.19..3.65), its thin aft hinge bar, and the long dark
+wing-cover seam at z=3.10. All three were cosmetic overlays; the closed
+structural wing and primary turret shell underneath remain unchanged.
+
+The three weapon annotations identify the pale transverse receiver, cross-rod
+barrel and narrow pintle post at x=0.777..1.380 and z=2.714..2.788. Their
+unselected pale cap is removed with the assembly so it cannot become a
+floater. A shared first-party MAG fitting replaces the shorthand: dark
+gunmetal receiver and barrel, real muzzle, ammunition box and a flanged
+pintle planted directly into the closed right wing. The barrel points along
+turret-forward +z and the complete fitting remains turret-owned through yaw.
+
+First-party studio inspection covers the supplied top/elevated angles at yaw
+0 and a true 90-degree turret turn. The deleted overlays do not expose a hole;
+the MAG retains its foot, receiver and forward bore, and no hull or running-
+gear geometry changes. All eight Revolution assets are regenerated. Targeted
+asset, muzzle-bore, native-track, full test and production-build gates pass.
+The deterministic Revolution geometry freeze is **`97d36207`**.
+
+**KEEP `97d36207`. Future Revolution work must preserve the closed wing and
+the forward, dark, physically seated MAG orientation.**

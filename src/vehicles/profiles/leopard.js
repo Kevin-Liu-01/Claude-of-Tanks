@@ -6974,7 +6974,9 @@ function buildLeo2Revolution(P) {
     {
       const wing = [];
       wing.push(prepCamo(KIT.xform(box(0.62, 0.004, 0.52), 0.52, 0.3195, 3.05), 1.78, 0.5, 1.07));
-      wing.push(prepCamo(KIT.xform(box(0.55, 0.004, 0.46), 1.12, 0.3195, 3.42), 1.78, 0.5, 0.95));
+      // Owner studio deletion: the isolated right-aft wing tint patch was
+      // selected as a complete top surface.  It was cosmetic overlay only;
+      // the closed structural wing beneath remains intact.
       wing.push(prepCamo(KIT.xform(box(0.40, 0.004, 0.34), 0.38, 0.3195, 3.62), 1.78, 0.5, 1.03));
       wing.push(prepCamo(KIT.xform(box(0.55, 0.004, 0.60), -0.30, 0.6640, -0.70), 1.78, 0.5, 1.06));
       wing.push(prepCamo(KIT.xform(box(0.50, 0.004, 0.55), 0.45, 0.6640, -1.30), 1.78, 0.5, 0.96));
@@ -7012,7 +7014,7 @@ function buildLeo2Revolution(P) {
       P.hullG.add(dm);
       P.disposables.push(dm.geometry);
       P.add('turretDark', box(0.012, 0.004, 1.20), 0.50, 0.317, 3.24);         // wing cover panel seams
-      P.add('turretDark', box(1.36, 0.004, 0.012), 0.85, 0.317, 3.10);
+      // Owner studio deletion: remove the selected long wing-cover seam.
       // P-1 (defuse-recert critic order): the dark wing cover's EXPOSED
       // zones (between the camo tint quads) read as flat CAD-grey at
       // close-front — pale hinge bars + a leading-edge bolt row give the
@@ -7021,39 +7023,35 @@ function buildLeo2Revolution(P) {
       // local surface with rz matching, bolts sit at per-x surface height.
       // Everything +-2 mm proud, interior to every gate row.
       P.add('turretDetail', box(0.40, 0.003, 0.018), 1.15, 0.2633, 2.72, 0, 0, -0.0527); // hinge bar (right-fore exposed zone)
-      P.add('turretDetail', box(0.30, 0.003, 0.018), 1.20, 0.2606, 3.74, 0, 0, -0.0527); // hinge bar (right-aft exposed zone)
+      // Owner studio deletion: remove the selected right-aft hinge bar.
       P.add('turretDetail', box(0.014, 0.003, 0.014), 0.30, 0.3066, 2.68);     // leading-edge bolt row (each at its local tilted-surface height)
       P.add('turretDetail', box(0.014, 0.003, 0.014), 0.62, 0.2897, 2.68);
       P.add('turretDetail', box(0.014, 0.003, 0.014), 0.94, 0.2728, 2.68);
       P.add('turretDetail', box(0.014, 0.003, 0.014), 1.26, 0.2560, 2.68);
     }
-    // -- A3 stowed-MAG legibility — r12 A3b: THE §C PINTLE ALLOWANCE IS
-    // SPENT (r9-critic order, r7 option A): the pale receiver cap grows
-    // into a receiver BLOCK (§C MG physics: mass, not a stick) lifted to
-    // top 2.048w and the barrel co-rod rides up to 2.0465w — proud of the
-    // wing band on the ~2 side columns (w 2.337/2.447) where the ref wing
-    // reads 1.991-2.001: priced ~0.05 x 2 cols inside the <=0.4 pt
-    // allowance (verify turret_side >=91 in the gate). A pale pintle post
-    // ties the rod to the wing cover so nothing floats. Front cols stay
-    // covered (shoulder/shelf 2.34 to x 1.2965, rail/cluster beyond).
+    // -- Owner-marked roof MAG correction.  The previous receiver, cross-
+    // rod and post formed a sideways pale shorthand, not a readable weapon.
+    // Replace the complete assembly with the shared first-party MAG fitting:
+    // a dark gunmetal receiver, forward barrel, real muzzle and planted
+    // flanged pintle.  Its foot overlaps the closed wing cover and the whole
+    // fitting remains turret-owned through yaw.
     const mgPale = rehook(P.mats.shadow.clone());
     mgPale.color.setHex(0x60624c);
     mgPale.envMapIntensity = 0.18;
     P.disposables.push(mgPale);
-    meshUp(KIT.xform(box(0.070, 0.063, 0.24), 0.897, 0.4165, 2.751, 0, 1.55, 0), mgPale, P.turretG, false); // receiver block top 2.048w (bottom stays 1.985 on the receiver)
-    meshUp(KIT.xform(box(0.34, 0.007, 0.011), 1.21, 0.438, 2.757, 0, 0, 0.03), mgPale, P.turretG, false);   // co-rod lifted, top 2.0465w
-    meshUp(KIT.xform(box(0.016, 0.175, 0.016), 1.10, 0.348, 2.757), mgPale, P.turretG, false);              // pintle post (r14: extended down to the TILTED wing cover at x 1.10 — top 2.0355w unchanged)
-    // -- r14 P-2 MAG TOP COVER (r13 close-roof order): the receiver's top
-    // face compresses under the ambient floor like every top face (C2b
-    // law) — a RAW-clone pale plate (sun-only, no floor hook) at the
-    // receiver's exact top makes the stowed gun parse from the close-roof
-    // camera. Same footprint, top 2.048w unchanged (zero mask movement).
-    const mgTopPale = P.mats.shadow.clone();
-    mgTopPale.color.setHex(0x8a8d74);
-    mgTopPale.roughness = 0.9;
-    mgTopPale.envMapIntensity = 0.25;
-    P.disposables.push(mgTopPale);
-    meshUp(KIT.xform(box(0.070, 0.004, 0.24), 0.897, 0.446, 2.751, 0, 1.55, 0), mgTopPale, P.turretG, false); // top cover plate (top = the receiver's 2.048w)
+    const forwardMag = FITTINGS.pintleMG({
+      mats: P.mats,
+      cls: 'mag',
+      tone: 'dark',
+      scale: 0.72,
+      seed: 14,
+      elev: 0.02,
+      ammo: true,
+      shield: false,
+      rotation: [0, 0, 0],
+    });
+    forwardMag.position.set(0.98, 0.305, 2.70);
+    P.turretG.add(forwardMag);
     // -- r14 P-1 PALE HUB DOTS (the r9-flagged material-only wheel-row
     // treatment): seven pale hub discs per side on the road-wheel faces,
     // 1mm proud (x 1.384..1.388 — inside the wheel circle, inside the
