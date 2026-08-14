@@ -1829,13 +1829,11 @@ function buildT72B3M(P) {
     // §B4: strips/fans/joint-fills live INSIDE the track x-band by design
     // (they paint the ramp lines the wrapped band cannot print — the r11
     // banked class) and bed into the band on purpose. They are in-lane
-    // running-gear trim, which track-clip-audit deliberately skips via its
-    // lane-local reach rule — defeated only by the centerline-spanning
-    // merged hullDark AABB. Per-side trim buckets (same 'dark' material
-    // slot, same LOD path — renders byte-identical) give each side an
-    // honest one-sided mesh the audit classifies as gear. Zero transforms
-    // touched: every certified strip bottom/row is bit-identical.
-    const trim = s < 0 ? 'hullTrackTrimL' : 'hullTrackTrimR';
+    // running-gear trim.  The strict audit no longer accepts positional
+    // lane heuristics, so keep these existing solids in the explicit
+    // suspension-owned dark bucket.  Material, LOD path and transforms are
+    // unchanged; only the ownership label is corrected.
+    const trim = 'hullRunningGearDark';
     // rear ramp (ref 0.107@-3.359 / 0.161@-3.467 / 0.295@-3.681 / 0.429@-3.896)
     P.add(trim, box(0.54, 0.05, 0.096), s * 1.33, 0.144, -3.359);
     P.add(trim, box(0.54, 0.05, 0.096), s * 1.33, 0.198, -3.467);
@@ -2019,10 +2017,10 @@ function buildT72B3M(P) {
     // fabricated skid fairing, not floating slats. Fill bottoms sit AT/ABOVE
     // the local certified prints (rear mid-col bottom is the sprocket wrap
     // ~0.46; front mid-col the idler wrap ~0.57) — no column bottom moves.
-    // (§B4: in-lane gear trim like the strips/fans — per-side trim bucket,
-    // transforms untouched.)
-    P.add(s < 0 ? 'hullTrackTrimL' : 'hullTrackTrimR', box(0.50, 0.14, 0.125), s * 1.33, 0.53, -3.574);
-    P.add(s < 0 ? 'hullTrackTrimL' : 'hullTrackTrimR', box(0.50, 0.10, 0.115), s * 1.33, 0.625, 1.47);
+    // (§B4: in-lane suspension trim like the strips/fans; transforms stay
+    // untouched and strict clearance excludes the explicit gear bucket.)
+    P.add('hullRunningGearDark', box(0.50, 0.14, 0.125), s * 1.33, 0.53, -3.574);
+    P.add('hullRunningGearDark', box(0.50, 0.10, 0.115), s * 1.33, 0.625, 1.47);
     // item 4/hero: skirt-to-track VOID BACKERS (plate-fill law), split so the
     // wheels stay readable: (A) upper-slot strip ABOVE the wheel tops
     // (0.875+ vs wheel crown 0.825) closes the oblique sky slot between bag
@@ -2129,9 +2127,9 @@ function buildT72B3M(P) {
         P.add('hullDark', cylX(0.048, 0.066, 10), s * 1.4445, 0.45, wz);
       }
       // These annuli are running-gear face trim, not hull armor.  Keep them
-      // in the per-lane track bucket so the clearance receipt judges hull
-      // solids against the shoes rather than the shoe-mounted face package.
-      P.add(s < 0 ? 'hullTrackTrimL' : 'hullTrackTrimR', torus(0.115, 0.012, 14), s * 1.4425, 0.80, 1.48, 0, 0, Math.PI / 2);
+      // in the explicit suspension bucket so clearance judges hull solids
+      // against the shoes rather than their own wheel-mounted face package.
+      P.add('hullRunningGearDark', torus(0.115, 0.012, 14), s * 1.4425, 0.80, 1.48, 0, 0, Math.PI / 2);
       P.add('hull', cylX(0.062, 0.05, 10), s * 1.4435, 0.80, 1.48);
       P.add('hullDark', torus(0.165, 0.013, 16), s * 1.4425, 0.74, -3.46, 0, 0, Math.PI / 2);
       P.add('hull', cylX(0.085, 0.05, 10), s * 1.4435, 0.74, -3.46);

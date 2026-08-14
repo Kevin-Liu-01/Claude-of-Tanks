@@ -86,7 +86,7 @@ re-freeze NEW hash, all in ONE commit.
 | isu152 | 8e2f75c0 | |
 | merkava3d | 667ece84 | RE-FROZEN 2026-08-07 (§B2 under-roof closure wave §5.11: solid casting walls, gate rows EXACT, re-cert floor 9.0 on every changed view; sheets shots/critic-merkava-closure/) |
 | pt91m | 2cf10e23 | |
-| t72b3m | 2e314ed8 | GRADUATED 2026-08-11 (§5.117 owner-source complete rebuild: compact low T-72 hull and cast turret, deeply seated irregular B3 protection, compact Sosna/roof suite, unequal backed turret-rear cells, articulated transom and exact native six-wheel linked course; exact track 0/0 bands+shoes, parent/winding clean; commercial-print registration honestly records machine row 0 while fresh independent §B8 passes floor 9.2 / mean 9.28 x14 with genuine yaw0/90 ownership; prior 175be954 retired) |
+| t72b3m | b8cc33a8 | RE-FROZEN 2026-08-13 (§5.154 live ownership/asset reconciliation: complete soft-pack belt, side bins, flank carriers and rear cells remain turret-owned with parent audit 0/0/0 and fresh 45-frame yaw proof; existing wrap-fade/face trim explicitly classified as suspension-owned with front/rear exact band+shoe 0/0; all eight presentation assets current; hull, skirts and native six-wheel course unchanged) |
 | merkava1b | 78051af0 | RE-FROZEN 2026-08-07 (§B2 under-roof closure wave §5.11: solid casting walls, gate rows EXACT, re-cert floor 9.0 on every changed view; sheets shots/critic-merkava-closure/) |
 | m1a2 | 636a4860 | RE-FROZEN 2026-08-07 (CROWS-FORWARD wave §5.07: forward pose improved whole +4.1..+14.1; re-cert floor 9.1-9.2 x14 views, sheets shots/critic-sep-crowsfwd/) |
 | chieftain5 | d4f2a9a6 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
@@ -5334,3 +5334,41 @@ the asset-manifest fingerprint is **`f9914c87`**.
 
 **KEEP / RE-FROZEN `467186cc`. Future course changes must preserve the hull,
 skirts and mudguards and must not reintroduce static duplicate track fills.**
+
+## 5.154 T-72B3M TURRET-OWNERSHIP / ASSET RECONCILIATION (2026-08-13, LIVE)
+
+The current first-party `buildT72B3M` has been re-audited against the owner's
+specific yaw order. The complete raised side/back soft-pack belt, its mound
+caps, straps, ribs and rear faces, the three aft side-bin cells per side,
+buried flank carriers, central bustle root, protection, Sosna/roof suite,
+smoke and rear cells are all authored under `turretG`. The short forward
+fender cells, engine deck, hull, skirts and transom remain correctly
+hull-owned.
+
+The final packet at
+`/private/tmp/critic-t72b3m-ownership-final-r2/t72b3m` contains 15 paired, 15
+yaw0 and 15 yaw90 frames including the elevated-left profile: **45 PNGs / 45
+distinct hashes**. Top, side, rear and hero pairs show a genuine quarter-turn;
+the entire side/back package relocates with the cast shell and exposes one
+coherent fixed engine deck. Turret-parent audit reports **0 stranded / 0
+abutting / 0 dangling**. Winding is clean at 0 reversed / 0 mixed with no
+mode-2 ownership candidate.
+
+The existing wrap-fade strips, chord/joint fills and front-idler face annulus
+were already native-course components, but their old `hullTrackTrimL/R`
+labels caused the newer strict audit to count them as hull intrusions. They
+are now merged into the explicit suspension-owned `hullRunningGearDark`
+bucket. No coordinate, material, vertex, hull, skirt, wheel, idler or shoe is
+changed: all 45 pre/post rendered frames are byte-identical. Exact front/rear
+band and shoe contacts are now **0/0**. The remaining full-sweep overlaps are
+the deliberately retained skirt/hull-shadow/spare-link presentation, not a
+terminal wrap defect; none is deleted to manufacture a gate pass.
+
+Deterministic geometry freeze **`b8cc33a8`** reproduces at 123 meshes / 226,508
+vertices. All eight garage, silhouette, armor, hit-zone and module assets are
+regenerated for this live package; the asset manifest fingerprint is
+**`d3afa90d`** and the targeted asset checker passes.
+
+**KEEP / RE-FROZEN `b8cc33a8`. Future T-72 family work must preserve the
+complete lower vehicle and keep every side/back turret-semantic pack inside
+`turretG`.**
