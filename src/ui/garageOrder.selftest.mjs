@@ -1,9 +1,14 @@
 import assert from 'node:assert/strict';
-import { compareNationThenName } from './garageOrder.js';
+import { compareCountryThenTierThenName } from './garageOrder.js';
 
 const rank = new Map([
   ['USA', 0], ['USSR', 1], ['USSR/Russia', 1], ['Russia', 1], ['UK', 2],
 ]);
+const tiers = new Map([
+  ['challenger', 8], ['t72bu', 8], ['m1a2', 10], ['t90', 9],
+  ['t72b3m', 9], ['m1a1', 9],
+]);
+const tierOf = (id) => tiers.get(id) ?? 6;
 const cards = [
   { id: 'challenger', nation: 'UK', name: 'Challenger' },
   { id: 't72bu', nation: 'USSR/Russia', name: 'T-72BU' },
@@ -14,9 +19,9 @@ const cards = [
 ];
 
 assert.deepEqual(
-  cards.sort((a, b) => compareNationThenName(a, b, rank)).map((card) => card.id),
-  ['m1a1', 'm1a2', 't72b3m', 't72bu', 't90', 'challenger'],
-  'garage cards sort by nation block and display name, not tier or registration order',
+  cards.sort((a, b) => compareCountryThenTierThenName(a, b, rank, tierOf)).map((card) => card.id),
+  ['m1a1', 'm1a2', 't72bu', 't72b3m', 't90', 'challenger'],
+  'garage cards sort by country first, tier second and display name third',
 );
 
 const duplicateNames = [
@@ -24,9 +29,9 @@ const duplicateNames = [
   { id: 'variant_a', nation: 'Russia', name: 'T-72' },
 ];
 assert.deepEqual(
-  duplicateNames.sort((a, b) => compareNationThenName(a, b, rank)).map((card) => card.id),
+  duplicateNames.sort((a, b) => compareCountryThenTierThenName(a, b, rank, tierOf)).map((card) => card.id),
   ['variant_a', 'variant_b'],
   'duplicate display names use a deterministic id tie-break',
 );
 
-console.log('garageOrder.selftest: nation blocks and display-name ordering verified');
+console.log('garageOrder.selftest: country / tier / display-name ordering verified');

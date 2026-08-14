@@ -21,9 +21,9 @@ import {
 } from '../game/equipment.js';
 import { equipIconSVG } from './equipIcons.js';
 import { uiIconSVG } from './uiIcons.js';
-import { compareNationThenName } from './garageOrder.js';
+import { compareCountryThenTierThenName } from './garageOrder.js';
 import { isGarageVisibleTankId } from '../game/matchmaking.js';
-import { tierNumeral } from '../vehicles/tier.js';
+import { tankTier, tierNumeral } from '../vehicles/tier.js';
 import { MODEL_SOURCE } from '../vehicles/specs.js';
 import {
   viewRangeOf, baseCamoOf, equipViewMult, equipCamoBonus,
@@ -80,15 +80,11 @@ const CATALOG_GROUPS = [
   { id: 'ww2', label: 'WWII' },
 ];
 const GROUP_RANK = new Map(CATALOG_GROUPS.map((g, i) => [g.id, i]));
-// Within a group the carousel reads nation-block first (WoT convention:
-// USA, Germany, the Soviet/Russian line as one run, UK, France, then the
-// rest, Community fictional last), then display name. Unknown nations park at
-// the end of their block. Name sorting keeps related variants adjacent without
-// hard-coded family exceptions.
+// Within each catalog group the owner-facing order is COUNTRY, then tier,
+// then display name. USSR / USSR-Russia / Russia are one country block; the
+// deterministic id tie-break is used only for duplicate public names.
 const NATION_RANK = new Map([
   ['USA', 0], ['Germany', 1],
-  // These three legacy spec labels render as one Soviet/Russian garage
-  // category. Give them one rank so their cards interleave by display name.
   ['USSR', 2], ['USSR/Russia', 2], ['Russia', 2],
   ['UK', 3], ['France', 4], ['China', 5], ['Israel', 6], ['Italy', 7],
   ['Japan', 8], ['Poland', 9], ['South Korea', 10], ['Sweden', 11],
@@ -97,7 +93,7 @@ const NATION_RANK = new Map([
 function catalogCompare(a, b) {
   const g = (GROUP_RANK.get(groupOf(a)) ?? 9) - (GROUP_RANK.get(groupOf(b)) ?? 9);
   if (g) return g;
-  return compareNationThenName(a, b, NATION_RANK);
+  return compareCountryThenTierThenName(a, b, NATION_RANK, tankTier);
 }
 
 const SHELL_TYPE_COLOR = {
@@ -1276,8 +1272,8 @@ export function createGarage(opts) {
   const { bus, onSelect, onBattle } = opts;
   const allSpecs = opts.specs || [];
   // CATALOG v2: the carousel REORDERS the roster it receives — three catalog
-  // groups in the owner's order (Modern / Cold War / WWII), nation
-  // blocks + tier progression inside each (catalogCompare above). Cards,
+  // groups in the owner's order (Modern / Cold War / WWII), country first,
+  // tier second and display name third inside each (catalogCompare above). Cards,
   // arrow stepping and chip first-picks all read this one sorted array, so
   // the visual strip, keyboard walk and group hand-offs always agree.
   const specs = allSpecs.filter((s) => isGarageVisibleTankId(s.id)).sort(catalogCompare);

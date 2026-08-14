@@ -7,13 +7,16 @@ const NAME_COLLATOR = new Intl.Collator('en', {
 });
 
 /**
- * Order cards inside one catalog group by nation block, then display name.
+ * Order cards inside one catalog group by country, gameplay tier, then name.
  * The id tie-break keeps the result deterministic if two variants share a
- * public name.
+ * public name. Rank/tier lookups are injected so this helper stays
+ * browser-independent.
  */
-export function compareNationThenName(a, b, nationRank) {
+export function compareCountryThenTierThenName(a, b, nationRank, tierOf) {
   const nationDelta = (nationRank.get(a.nation) ?? 99) - (nationRank.get(b.nation) ?? 99);
   if (nationDelta) return nationDelta;
+  const tierDelta = tierOf(a.id) - tierOf(b.id);
+  if (tierDelta) return tierDelta;
   const nameDelta = NAME_COLLATOR.compare(String(a.name || ''), String(b.name || ''));
   if (nameDelta) return nameDelta;
   return NAME_COLLATOR.compare(String(a.id || ''), String(b.id || ''));
