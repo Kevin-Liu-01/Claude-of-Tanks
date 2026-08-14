@@ -1669,10 +1669,13 @@ function tejasRoofKit(P, t, station = 'crows') {
     P.add('turretDetail', box(0.17, 0.20, 0.23), loaderX + 0.27, receiverY - 0.018, -0.23); // ammo can
     P.add('turretDark', box(0.032, 0.11, 0.18), loaderX + 0.19, receiverY + 0.012, -0.10); // feed
     P.add('turretDark', cylZ(0.026, 0.34, 10), loaderX, receiverY, 0.20);          // jacket
-    P.add('turretDark', cylZ(0.019, 1.38, 10), loaderX, receiverY, 1.06);         // extended forward barrel
-    P.add('turretDetail', torus(0.029, 0.008, 10), loaderX, receiverY, 1.68,
+    // Keep the loader M240 compact beside the CROWS.  The former 1.38 m
+    // exposed tube read like a second cannon and projected well past the
+    // right cheek.  This 0.88 m run stays buried in the jacket at z=0.37.
+    P.add('turretDark', cylZ(0.019, 0.88, 10), loaderX, receiverY, 0.81);          // compact forward barrel
+    P.add('turretDetail', torus(0.029, 0.008, 10), loaderX, receiverY, 1.20,
       Math.PI / 2, 0, 0);                                                        // barrel collar
-    P.add('turretDark', cylZ(0.028, 0.15, 10), loaderX, receiverY, 1.84);         // flash hider
+    P.add('turretDark', cylZ(0.028, 0.15, 10), loaderX, receiverY, 1.325);        // flash hider
     if (station === 'crows2tall') {
       P.add('turret', box(0.48, 0.24, 0.038), loaderX, receiverY - 0.035, 0.01); // SEPv2 shield
       P.add('turret', box(0.038, 0.25, 0.30), loaderX + 0.23, receiverY - 0.035, -0.13);
@@ -3476,10 +3479,13 @@ function buildTejasFamily(P, p) {
     P.add('turretDark', box(0.21, 0.115, 0.50), lagsX, 0.96, 0.24);    // raised M240 receiver
     P.add('turretDetail', box(0.18, 0.018, 0.42), lagsX, 1.027, 0.24); // receiver cover
     P.add('turretDark', cylZ(0.026, 0.34, 10), lagsX + 0.015, 0.96, 0.61); // jacket
-    P.add('turretDark', cylZ(0.020, 1.38, 10), lagsX + 0.015, 0.96, 1.36); // extended forward barrel
-    P.add('turretDetail', torus(0.029, 0.008, 10), lagsX + 0.015, 0.96, 1.96,
+    // Match the compact right-loader weapon used by the SEP variants while
+    // retaining the distinct TUSK LAGS receiver and shield.  The tube begins
+    // inside the jacket at z=0.67, so shortening it cannot create a gap.
+    P.add('turretDark', cylZ(0.020, 0.88, 10), lagsX + 0.015, 0.96, 1.11); // compact forward barrel
+    P.add('turretDetail', torus(0.029, 0.008, 10), lagsX + 0.015, 0.96, 1.49,
       Math.PI / 2, 0, 0);                                             // barrel collar
-    P.add('turretDark', cylZ(0.029, 0.16, 10), lagsX + 0.015, 0.96, 2.13); // flash hider
+    P.add('turretDark', cylZ(0.029, 0.16, 10), lagsX + 0.015, 0.96, 1.63); // flash hider
     P.add('turretDetail', box(0.14, 0.17, 0.20), lagsX - 0.14, 0.93, 0.08); // ammo pouch
     // §5.74 TUSK identity emphasis: laminated outer wings, coping frame and
     // cheek-side ARAT-2 shingles make the loader shield the dominant roof
