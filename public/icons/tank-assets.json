@@ -67940,7 +67940,7 @@
           }
         ]
       },
-      "geometryHash": "3f1bb960",
+      "geometryHash": "0d837dfc",
       "metadataHash": "c4bca88a",
       "muzzleBore": {
         "tagged": 1,
@@ -67955,8 +67955,8 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 18656,
-          "sha256": "ce85e1b6625d9f37f694f50a987f99f67300266479e605fcf6c09144aabf6432"
+          "bytes": 18672,
+          "sha256": "11a7a8037aadb8c7005c26fc8a3ccbbf4cdb79d4e902f4e146f507187f5a931c"
         },
         "top": {
           "file": "t34_85_cad_top.webp",
@@ -67971,8 +67971,8 @@
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 9472,
-          "sha256": "512c0badc58dffbf01545d4f3c3a905a916742175666511da4347b45f4170b25"
+          "bytes": 9468,
+          "sha256": "4f2139831ac87d692496a52cbfccae022c01231b70445bada9d506d7ff705d59"
         },
         "topSilhouette": {
           "file": "t34_85_cad_top_silhouette.png",
@@ -67987,32 +67987,32 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4244,
-          "sha256": "09bfa0ca5809f6e54675d4aa9c6b6801514dea3a7c04884d05180b01657b296d"
+          "bytes": 4236,
+          "sha256": "8bbc89e3ca218ce697a1bfe34ee129e9d2ea68553f4080f92c1279c33fba926e"
         },
         "hitZonesSide": {
           "file": "t34_85_cad_hit_zones_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 64550,
-          "sha256": "524aea25030b808b4354258a8acba2fbf0fa77ff88a4e30bc82fcc198444a4e0"
+          "bytes": 64563,
+          "sha256": "58fee2cb09ffd8ea7b82112eaa9a97f5c0abc869a2bd6f269d99c0cfefb3990b"
         },
         "armorSide": {
           "file": "t34_85_cad_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 66166,
-          "sha256": "55de7aa986ee1b4ca2753eb7e082fa4beaf56c606a7f5a57945c85f22c3e7204"
+          "bytes": 66181,
+          "sha256": "22826b49bbd602a7be2a49d4cbdb0a210b73502ff50c77626a85ea0d4a8859a3"
         },
         "modulesSide": {
           "file": "t34_85_cad_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 64023,
-          "sha256": "d1a8e9bcc39b94a9dbf684f1dff5f6cfa113f02eb62b95075baf3ce670458778"
+          "bytes": 64095,
+          "sha256": "f41a7d9d0ebff251d0768d90e84ceecfef59a741dba27bb62f0b2a0d46411570"
         }
       }
     },
