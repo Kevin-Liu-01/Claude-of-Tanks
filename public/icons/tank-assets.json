@@ -23481,7 +23481,7 @@
           }
         ]
       },
-      "geometryHash": "9e902a89",
+      "geometryHash": "30ce071b",
       "metadataHash": "427e3ef9",
       "muzzleBore": {
         "tagged": 1,
@@ -23496,8 +23496,8 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 21302,
-          "sha256": "ec9353e4644fb50fc2c9035880ef4370333d34bb35fef10c550f015e88b09a76"
+          "bytes": 21288,
+          "sha256": "787c21d9855a859963f19dfa395e144bb7ce18ffbda49cb45f64499c93c110e6"
         },
         "top": {
           "file": "k1a1_top.webp",
@@ -23512,8 +23512,8 @@
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 10888,
-          "sha256": "9a2e8d911dc74479453fec680d62b1f847c7714a50dc19df611669334e22ccdf"
+          "bytes": 11134,
+          "sha256": "6904ed82b1c0d715d8dee772d5a988ab4c04feba28d557a9f09083745c2e6943"
         },
         "topSilhouette": {
           "file": "k1a1_top_silhouette.png",
@@ -23528,32 +23528,32 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4526,
-          "sha256": "d1141ce5d9bee1bad53e5faf597acbde4e3bc1d053ccc2e8747464bd202bb2ef"
+          "bytes": 4513,
+          "sha256": "e319fbf2f2d1c27c214b2d47bee00cc7c1eaab1f906c9fe915486dcc9323228a"
         },
         "hitZonesSide": {
           "file": "k1a1_hit_zones_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 66933,
-          "sha256": "88399a06024f1383c36ecdd338d907fcad7b2cc4b7bb987ec27141b7ebc9f5c0"
+          "bytes": 67664,
+          "sha256": "35e4f057532444bafc80835b8f56ae2121c8e9a156024b6d12133510ba94306b"
         },
         "armorSide": {
           "file": "k1a1_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 68447,
-          "sha256": "c842da34dc503f033b76d18aab56953107a78893ad25c0e86b9eacf7f53f7edf"
+          "bytes": 68980,
+          "sha256": "561cb548f5041c492b6926df17e506104b58e86603cf94167692692ef450586e"
         },
         "modulesSide": {
           "file": "k1a1_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 64779,
-          "sha256": "6fd432b05124aa1e08c791c9c9057a76b59d75be0c011fb913e394e259060b8c"
+          "bytes": 65205,
+          "sha256": "26ec6de6bb542fd197fe73a7b371783210c1301eac3dc0d6b9be2b191cf59550"
         }
       }
     },

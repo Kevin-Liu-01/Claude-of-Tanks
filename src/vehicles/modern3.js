@@ -1805,18 +1805,20 @@ function buildK1A1(P) {
     rollers: [1.25, 0.10, -1.05].map((z) => ({ z, y: 0.95, r: 0.075 })),
     trackW: 0.57, topY: 0.95, paintedEnds: true, coveredTop: 1.0,
   });
-  // near-black bay walls behind the wheel line (type10 §B8.1 device,
-  // critic r1 gear-read order)
+  // Near-black bay walls behind the wheel line are running-gear backdrop,
+  // not hull armor.  Keep them explicitly in the native-course family so
+  // the strict clearance gate does not mistake this visual wheel-well liner
+  // for a structural side plate pierced by the shoes.
   for (const s of [-1, 1]) {
-    P.add('hullShadow', box(0.02, 0.90, 5.60), s * 1.06, 0.52, 0.05);
+    P.add('hullRunningGearDark', box(0.02, 0.90, 5.60), s * 1.06, 0.52, 0.05);
   }
 
   // hull: belly tub, sponson band with the print's TWO deck levels (raised
   // 1.61 engine deck aft of −2.00, 1.475 forward deck), §B1 ONE 6.4°
   // glacis plane to the 1.24 bow lip, pointed prow over the 40° chin.
-  P.add('hull', box(2.04, 0.60, 6.90), 0, 0.70, -0.05);                        // belly ±1.02, y 0.40..1.00, z -3.50..+3.40
+  P.add('hull', box(1.96, 0.60, 6.90), 0, 0.70, -0.05);                        // closed belly ±0.98: stays inside both native track lanes through the terminal wraps
   P.add('hull', slab(                                                          // outward-canted sponson shoulders replace the former vertical body box
-    [-1.42, 1.10, 1.75], [1.42, 1.10, 1.75], [1.42, 1.10, -3.70], [-1.42, 1.10, -3.70],
+    [-1.42, 1.14, 1.75], [1.42, 1.14, 1.75], [1.42, 1.14, -3.70], [-1.42, 1.14, -3.70],
     [-1.685, 1.475, 1.75], [1.685, 1.475, 1.75], [1.685, 1.475, -3.70], [-1.685, 1.475, -3.70]));
   P.add('hull', slab(                                                          // raised engine deck retains the same sovereign top plane
     [-1.60, 1.475, -2.00], [1.60, 1.475, -2.00], [1.60, 1.475, -3.70], [-1.60, 1.475, -3.70],
@@ -1828,9 +1830,9 @@ function buildK1A1(P) {
     [-1.02, 1.02, 3.68], [1.02, 1.02, 3.68], [1.02, 1.02, 3.62], [-1.02, 1.02, 3.62],
     [-1.02, 1.24, 3.72], [1.02, 1.24, 3.72], [1.02, 1.22, 3.64], [-1.02, 1.22, 3.64]));
   P.add('hull', slab(                                                          // 40° chin plane up to the lip (the K1 pointed prow)
-    [-1.02, 0.40, 3.00], [1.02, 0.40, 3.00], [1.02, 0.40, 2.80], [-1.02, 0.40, 2.80],
-    [-1.02, 1.02, 3.68], [1.02, 1.02, 3.68], [1.02, 1.00, 3.58], [-1.02, 1.00, 3.58]));
-  P.add('hull', box(2.00, 0.12, 0.24), 0, 0.36, 3.10);                         // toe beam under the chin root
+    [-0.98, 0.40, 3.00], [0.98, 0.40, 3.00], [0.98, 0.40, 2.80], [-0.98, 0.40, 2.80],
+    [-0.98, 1.02, 3.68], [0.98, 1.02, 3.68], [0.98, 1.00, 3.58], [-0.98, 1.00, 3.58]));
+  P.add('hull', box(1.92, 0.12, 0.24), 0, 0.36, 3.10);                         // closed toe beam remains inboard of the rising idler wraps
   for (const s of [-1, 1]) P.add('hullDetail', box(0.13, 0.11, 0.15), s * 0.60, 0.62, 3.42); // bow tow hooks
   // rear: center-lane lower plate + full-width upper, louvred exhaust
   // grilles, taillights, convoy plate, flaps.

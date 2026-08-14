@@ -18,7 +18,14 @@ const root = process.cwd();
 const manifestPath = resolve(root, 'public/icons/tank-assets.json');
 const outputPath = resolve(root, 'docs/FLEET-FREEZE-CURRENT.json');
 const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
-const ids = Object.keys(manifest.tanks || {}).sort();
+// Battle presentation assets intentionally omit hidden first-party donor /
+// studio specs, but the geometry freeze must still cover those authored
+// models.  Leopard 2A7 is retained as the procedural donor for Revolution
+// and 2A7V and is directly inspectable in the Surface Studio even though the
+// owner removed its garage card.  Keep it in the dual geometry ledger without
+// manufacturing an orphan icon-manifest row.
+const FREEZE_ONLY_IDS = ['leo2a7'];
+const ids = [...new Set([...Object.keys(manifest.tanks || {}), ...FREEZE_ONLY_IDS])].sort();
 
 const server = await createServer({
   root,
@@ -54,7 +61,7 @@ try {
     const result = await capture(id, 4242);
     const assetResult = await capture(id, 4100, true);
     const manifestHash = manifest.tanks[id]?.geometryHash;
-    if (assetResult.assetHash !== manifestHash) {
+    if (manifestHash && assetResult.assetHash !== manifestHash) {
       throw new Error(`${id}: asset fingerprint ${assetResult.assetHash} != manifest ${manifestHash}`);
     }
     tanks[id] = {

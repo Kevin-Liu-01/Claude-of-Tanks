@@ -6723,3 +6723,52 @@ battle-roster row, so it intentionally owns no orphan presentation assets; the
 **KEEP the complete Leopard 2A7 upper hull and restored side-armor system.
 Future course work may reshape the hidden lower tub or reseat mudguards, but
 must not delete, shorten or lift exterior armor to manufacture clearance.**
+
+## 5.192 K1A1 CLOSED-BELLY + NATIVE-COURSE CLEARANCE (2026-08-14, LIVE)
+
+This pass preserves the complete accepted first-party K1A1 exterior: upper
+and lower glacis, pointed prow, full sponson shoulders, front guard flares,
+segmented skirts, mudguards, rear service armor, six road wheels, elevated
+front idler and rear final drive, support rollers and one linked-shoe course.
+No exterior body, skirt, guard, wheel or track component is deleted or hidden.
+
+The strict report contained two distinct causes. The pair of near-black
+wheel-bay walls are visual suspension backdrops rather than armor, so their
+unchanged geometry now uses the explicit `hullRunningGearDark` ownership
+bucket. The actual physical contact came from the old 2.04 m-wide hidden belly
+and lower pointed toe occupying the inner edges of both terminal lanes, plus a
+four-centimeter-deep sponson underside touching the return run. The belly is
+still one continuous closed 6.90 m body but narrows only 0.04 m per side; its
+rear contact clears completely. The lower chin and closed toe beam receive the
+same inboard clearance, while the complete visible bow shoulder/glacis remains
+unchanged. The sponson lower root lifts 0.04 m above the supported return shoes
+and still returns continuously into its original full-width deck edge.
+
+Exact strict band and individual-shoe audits now report **front 0/0, rear 0/0
+and complete sweep 0/0**. Fresh evidence contains 15 authored-model boards
+including the standardized elevated-left profile, 15 yaw0 frames and 15 yaw90
+frames: **45 PNG / 45 distinct hashes**. The hull remains visibly closed from
+front, rear and side; all six wheels remain separately readable, the loaded
+run rests beneath them and both raised end transitions remain continuous. The
+gun, turret, sights, cupolas, smoke banks, MG, basket and roof equipment execute
+a genuine quarter-turn while the complete hull and running gear remain fixed.
+
+The parent tool's sole nominee is the driver's three-periscope glass strip on
+the forward glacis. It remains surface-seated, below the ring and hull-owned as
+the turret departs; it is not stranded turret furniture. Winding is **0
+reversed / 0 mixed**. Its 131-pixel (0.18%) front-right diagnostic edge and
+112-pixel mode-2 hull-dark candidate are below flag thresholds and show no
+missing sheet, sky hole, silhouette wound or turret-semantic stranded mass in
+the fresh yaw evidence.
+
+All eight K1A1 presentation assets are current and the muzzle bore passes.
+Dual-ledger geometry is freeze **`e93bc384`**, instance freeze **`3f17a94a`**
+and asset geometry **`30ce071b`** (63 rendered meshes / 73,854 vertices).
+The freeze generator now explicitly retains the hidden first-party Leopard
+2A7 donor/studio model alongside the 107 asset-backed battle playables, so the
+108-model authored geometry ledger is reproducible by `tank:freeze:check`
+without creating an orphan garage-icon row.
+
+**KEEP the complete K1A1 hull, skirts, guards and native six-wheel course.
+Future repairs must preserve visible body geometry and use only truthful
+ownership correction or localized hidden-clearance shaping.**
