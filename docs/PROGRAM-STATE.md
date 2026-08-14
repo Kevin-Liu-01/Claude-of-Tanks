@@ -8418,3 +8418,49 @@ physics transforms or generated tank assets change.
 
 **KEEP these offsets presentation-only. Future model centering must never move
 certified gameplay geometry merely to compensate for a showroom datum.**
+
+## 5.237 GARAGE COUNTRY / TIER / NAME ORDER (2026-08-14, LIVE)
+
+The garage's existing Modern / Cold War / WWII catalog partition is retained,
+but cards inside each catalog now follow the owner rule exactly: country first,
+numeric tier second, display name third, then id only as a deterministic
+duplicate-name tie-break. USSR, USSR/Russia and Russia share one country block.
+
+**KEEP the catalog partition outermost and the country block immediately
+inside it. Tier-first ordering across countries is not the owner rule.**
+
+## 5.238 BMP-2M OWNER MODERNIZATION (2026-08-14, LIVE)
+
+The live first-party BMP-2 remains a class `ifv` with its 30 mm 2A42 APDS and
+HE-I belts on the dedicated sub-second autocannon recoil/reload path. Its
+visual package is modernized additively: two staggered upper-glacis cassette
+rows, seven supported side cassettes per side, low buried turret protection,
+rear equipment cells, twin protected headlight clusters, four-quadrant
+laser-warning/EO heads, an independent thermal viewer and two collar-seated
+radio whips. All side protection stays above the smart-track return; no hull,
+fender, skirt, wheel or track geometry is removed.
+
+**KEEP the BMP's complete boat hull and singular six-wheel course. Future
+modernization may add supported equipment, never hollow the hull or substitute
+a duplicate track layer.**
+
+## 5.239 T-90A VLADIMIR INTEGRATED TURRET HEIGHT (2026-08-14, LIVE)
+
+Vladimir's accepted long welded bustle is retained, but its fighting
+compartment no longer ends as a visibly lower half-dome beneath that bustle.
+The actual faceted cast crown rises aft while preserving the existing low
+cheek, mantlet, Shtora and Kontakt-5 envelope. A closed upper shoulder overlaps
+both the crown and the forward bustle frame, replacing the former abrupt
+vertical step with one load-bearing transition.
+
+The ESSA housings, cupola, gunner station, periscopes and NSVT are reseated on
+the raised roof line rather than buried by it. Every changed component remains
+turret-owned; the parenting audit reports **0 stranded / 0 abutting / 0
+dangling**, the live rig passes **10/10**, the muzzle bore passes and duplicate
+track audit confirms the unchanged singular smart course. Winding is **0
+reversed / 0 mixed**; its fixed hull service-frame yaw candidate predates this
+turret-only change and remains legitimate hull-owned structure.
+
+**KEEP the new crown-to-bustle height flow. Future height work must reshape and
+reseat the complete roof assembly, never stack a disconnected cover above the
+old dome.**
