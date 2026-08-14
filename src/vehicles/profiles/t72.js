@@ -392,12 +392,25 @@ function buildT72B87Native(P, variant = 'b87') {
   const { box, cylX, cylY, cylZ, torus, buildRunningGear } = KIT;
   const b3 = variant === 'b3';
 
-  // ---- compact low hull -------------------------------------------------
+  // ---- compact low T-72 family hull -------------------------------------
+  // B3 and the obr.1987 deliberately share the same family datum, but the
+  // B87 owns its complete hull loft.  Its lower bow, longer engine shoulder,
+  // full fender return and larger six-wheel stance are not a scaled copy of
+  // the B3M.  This keeps the two vehicles visibly related without turning
+  // the older vehicle into a decoration swap.
   loftHull(P, {
-    deck: [[-2.78, 1.20], [-2.62, 1.34], [-1.55, 1.36], [0.55, 1.38], [1.30, 1.34], [2.05, 1.20], [2.68, 0.98], [2.86, 0.88]],
-    belly: [[-2.78, 0.86], [-2.58, 0.48], [-2.15, 0.28], [2.15, 0.28], [2.58, 0.43], [2.86, 0.70]],
-    wUp: [[-2.78, 1.35], [-2.55, 1.62], [2.58, 1.62], [2.86, 1.38]],
-    wLo: [[-2.78, 0.96], [2.45, 0.96], [2.86, 0.82]],
+    deck: b3
+      ? [[-2.78, 1.20], [-2.62, 1.34], [-1.55, 1.36], [0.55, 1.38], [1.30, 1.34], [2.05, 1.20], [2.68, 0.98], [2.86, 0.88]]
+      : [[-2.91, 1.18], [-2.73, 1.32], [-1.72, 1.35], [0.42, 1.39], [1.26, 1.35], [2.04, 1.20], [2.70, 0.98], [2.94, 0.82]],
+    belly: b3
+      ? [[-2.78, 0.86], [-2.58, 0.48], [-2.15, 0.28], [2.15, 0.28], [2.58, 0.43], [2.86, 0.70]]
+      : [[-2.91, 0.82], [-2.70, 0.48], [-2.28, 0.27], [2.18, 0.27], [2.66, 0.42], [2.94, 0.66]],
+    wUp: b3
+      ? [[-2.78, 1.35], [-2.55, 1.62], [2.58, 1.62], [2.86, 1.38]]
+      : [[-2.91, 1.34], [-2.68, 1.63], [1.82, 1.63], [2.14, 1.28], [2.35, 0.99], [2.94, 0.92]],
+    wLo: b3
+      ? [[-2.78, 0.96], [2.45, 0.96], [2.86, 0.82]]
+      : [[-2.91, 0.97], [2.48, 0.97], [2.94, 0.80]],
     // The 1987 return run needs the same real track bay already present at
     // both terminal stations.  Keep the complete outer hull and hanging
     // skirts, but lift their concealed underside above the linked shoes;
@@ -405,7 +418,7 @@ function buildT72B87Native(P, variant = 'b87') {
     // B3 retains its separately authored bay pending its own family audit.
     sponsonY: b3
       ? [[-2.78, 1.15], [-1.62, 1.15], [-1.50, 0.82], [2.22, 0.82], [2.32, 1.14], [2.86, 1.14]]
-      : [[-2.78, 1.15], [2.86, 1.15]],
+      : [[-2.91, 1.14], [2.94, 1.14]],
   });
 
   // Thin fender shelves and a shallow, broken skirt line leave the six
@@ -416,31 +429,39 @@ function buildT72B87Native(P, variant = 'b87') {
     }
     for (let i = 0; i < 6; i++) {
       const z = -1.93 + i * 0.78;
-      const sh = b3 ? 0.265 + (i % 3) * 0.018 : 0.44;
-      const sy = b3 ? 1.065 + (i % 2) * 0.009 : 0.93;
-      const sd = b3 ? 0.58 + (i % 2) * 0.045 : 0.66;
+      const sh = b3 ? 0.265 + (i % 3) * 0.018 : 0.35 + (i % 3) * 0.018;
+      const sy = b3 ? 1.065 + (i % 2) * 0.009 : 1.075 + (i % 2) * 0.012;
+      const sd = b3 ? 0.58 + (i % 2) * 0.045 : 0.66 + (i % 2) * 0.035;
       // Keep the full side-armour course, but seat it outside the shoe
       // envelope.  The old x=1.69 center left only 2.5 mm between the
       // 75-mm panel back and the band; the whole supported stack moves out
       // 45 mm without changing its height, depth, coverage or ownership.
-      P.add('hull', box(0.075, sh, sd), s * 1.735, sy, z, 0, 0, b3 ? s * (i % 2 ? 0.025 : -0.018) : 0);
-      P.add('hullDark', box(0.018, b3 ? sh * 0.72 : 0.34, 0.025), s * 1.778, sy, z + sd / 2);
+      P.add('hull', box(0.075, sh, sd), s * 1.735, sy, z, 0, 0,
+        b3 ? s * (i % 2 ? 0.025 : -0.018) : s * (i % 3 - 1) * 0.012);
+      P.add('hullDark', box(0.018, b3 ? sh * 0.72 : sh * 0.76, 0.025), s * 1.778, sy, z + sd / 2);
       P.add('hullDetail', box(0.025, 0.025, sd * 0.72), s * 1.780, sy + sh / 2 + 0.012, z);
+      if (!b3 && i >= 3) {
+        // Period Kontakt-1 side cassettes sit on the complete skirt rather
+        // than replacing it.  Each tile has a visible lower seat and hinge.
+        P.add('hullTrack', box(0.105, 0.19, sd * 0.43), s * 1.802, sy + 0.035,
+          z + (i % 2 ? 0.055 : -0.035), 0, 0, s * (i % 2 ? 0.035 : -0.025));
+        P.add('hullDark', box(0.020, 0.030, sd * 0.34), s * 1.862, sy - 0.082, z);
+      }
     }
   }
 
-  const wheelZs = evenStations(6, b3 ? 4.02 : 3.92, 0.02);
+  const wheelZs = evenStations(6, b3 ? 4.02 : 4.10, b3 ? 0.02 : 0.04);
   buildRunningGear(P, {
-    style: 'rubber', wheelR: b3 ? 0.455 : 0.425, wheelW: 0.23, wheelY: b3 ? 0.48 : 0.45, xc: 1.37,
-    dishR: b3 ? 0.77 : 0.72, wheelZs,
-    sprocket: { z: -2.36, y: b3 ? 0.63 : 0.62, r: b3 ? 0.33 : 0.31 },
+    style: 'rubber', wheelR: b3 ? 0.455 : 0.455, wheelW: 0.23, wheelY: b3 ? 0.48 : 0.47, xc: 1.37,
+    dishR: b3 ? 0.77 : 0.79, wheelZs,
+    sprocket: { z: -2.36, y: b3 ? 0.63 : 0.68, r: b3 ? 0.33 : 0.32 },
     // The obr.1987 keeps the family trapezoid: the front idler is visibly
     // above the road-wheel line, producing a supported / return instead of
     // a low wheel hidden inside a flat rectangular course.
-    idler: { z: 2.48, y: b3 ? 0.59 : 0.64, r: b3 ? 0.31 : 0.29 },
-    contactZF: 2.22, contactZR: -2.05,
-    rollers: [-1.35, -0.15, 1.10].map((z) => ({ z, y: 0.88, r: 0.082 })),
-    trackW: 0.56, topY: b3 ? 0.98 : 0.94, botY: 0.025, paintedEnds: true,
+    idler: { z: b3 ? 2.48 : 2.46, y: b3 ? 0.59 : 0.69, r: b3 ? 0.31 : 0.30 },
+    contactZF: b3 ? 2.22 : 2.20, contactZR: b3 ? -2.05 : -2.08,
+    rollers: [-1.35, -0.15, 1.10].map((z) => ({ z, y: b3 ? 0.88 : 0.91, r: 0.082 })),
+    trackW: 0.56, topY: b3 ? 0.98 : 1.00, botY: 0.025, paintedEnds: true,
     coveredTop: true, arms: true,
   });
   if (b3) {
@@ -476,16 +497,16 @@ function buildT72B87Native(P, variant = 'b87') {
       gearParts[slot].push(KIT.xform(geo, x, y, z, rx, ry, rz));
     };
     for (const s of [-1, 1]) for (const z of wheelZs) {
-      gearAdd('hull', cylX(0.192, 0.024, 18), s * 1.502, 0.45, z);
-      gearAdd('dark', torus(0.137, 0.009, 18), s * 1.516, 0.45, z, 0, Math.PI / 2, 0);
-      gearAdd('detail', cylX(0.070, 0.030, 14), s * 1.522, 0.45, z);
+      gearAdd('hull', cylX(0.216, 0.024, 18), s * 1.502, 0.47, z);
+      gearAdd('dark', torus(0.154, 0.010, 18), s * 1.516, 0.47, z, 0, Math.PI / 2, 0);
+      gearAdd('detail', cylX(0.078, 0.030, 14), s * 1.522, 0.47, z);
       for (let k = 0; k < 8; k++) {
         const a = (k / 8) * Math.PI * 2;
         gearAdd('dark', cylX(0.013, 0.026, 8), s * 1.528,
-          0.45 + Math.sin(a) * 0.097, z + Math.cos(a) * 0.097);
+          0.47 + Math.sin(a) * 0.109, z + Math.cos(a) * 0.109);
       }
     }
-    for (const [z, y, r] of [[-2.36, 0.62, 0.31], [2.48, 0.64, 0.29]]) {
+    for (const [z, y, r] of [[-2.36, 0.68, 0.32], [2.46, 0.69, 0.30]]) {
       for (const s of [-1, 1]) {
         gearAdd('detail', torus(r * 0.69, 0.013, 16), s * 1.505, y, z, 0, Math.PI / 2, 0);
         gearAdd('dark', cylX(r * 0.24, 0.034, 12), s * 1.512, y, z);
@@ -509,8 +530,8 @@ function buildT72B87Native(P, variant = 'b87') {
 
   // Layered swept prow, compact lamps and inboard shackles.  Every plate
   // remains above/between the exact idler corridors.
-  P.add('hull', box(2.88, 0.10, 0.56), 0, 1.24, 2.30, -0.30, 0, 0);
-  P.add('hull', box(2.56, 0.10, 0.52), 0, 1.18, 2.57, -0.34, 0, 0);
+  P.add('hull', box(2.88, 0.10, 0.56), 0, b3 ? 1.24 : 1.34, 2.30, -0.30, 0, 0);
+  P.add('hull', box(2.56, 0.10, 0.52), 0, b3 ? 1.18 : 1.29, 2.57, -0.34, 0, 0);
   for (const s of [-1, 1]) {
     P.add('hull', box(0.28, 0.15, 0.32), s * 1.42, 1.245, 2.64, -0.25, 0, 0);
     KIT.headlight(P, s * 1.15, 1.21, 2.35, -0.30, 0.045);
@@ -532,14 +553,14 @@ function buildT72B87Native(P, variant = 'b87') {
   } else {
     // Three dense, flush Kontakt-1 glacis courses. Tiles are individually
     // legible but share a buried carrier so they cannot float off the plate.
-    P.add('hullTrack', box(2.70, 0.06, 0.82), 0, 1.22, 1.92, -0.27, 0, 0);
+    P.add('hullTrack', box(2.24, 0.06, 0.82), 0, 1.26, 1.92, -0.27, 0, 0);
     for (let row = 0; row < 3; row++) {
       const z = 1.67 + row * 0.27;
-      const y = 1.27 - row * 0.055;
-      for (let col = -4; col <= 4; col++) {
-        if (row === 0 && Math.abs(col) === 4) continue;
-        P.add('hullTrack', box(0.275, 0.105, 0.23), col * 0.295, y, z, -0.30, 0, 0);
-        P.add('hullDark', box(0.245, 0.012, 0.018), col * 0.295, y + 0.057, z + 0.105, -0.30, 0, 0);
+      const y = 1.31 - row * 0.055;
+      for (let col = -3; col <= 3; col++) {
+        const x = col * 0.315 + (row === 1 ? 0.035 : row === 2 ? -0.025 : 0);
+        P.add('hullTrack', box(0.30, 0.105, 0.23), x, y, z, -0.30, 0, 0);
+        P.add('hullDark', box(0.268, 0.012, 0.018), x, y + 0.057, z + 0.105, -0.30, 0, 0);
       }
     }
   }
@@ -578,7 +599,9 @@ function buildT72B87Native(P, variant = 'b87') {
     P.add('hullDetail', box(0.16, 0.09, 0.035), s * 1.20, 1.08, -2.805);
     P.add('hullDark', box(0.16, 0.11, 0.035), s * 0.94, 0.90, -2.84);
     P.add('hullDark', torus(0.075, 0.018, 12), s * 0.72, 0.79, -2.84, Math.PI / 2, 0, 0);
-    P.add('hullRubber', box(0.34, 0.34, 0.035), s * 1.47, 0.91, -2.79);
+    // Rear flap remains full-size but hangs from the transom above/outboard
+    // of the sprocket wrap.  This is a reseat, never a skirt deletion.
+    P.add('hullRubber', box(0.34, 0.34, 0.035), s * 1.47, b3 ? 0.91 : 1.16, -2.79);
     P.add('hullDark', box(0.05, 0.13, 0.15), s * 1.27, 1.02, -2.83);
     P.add('hullDark', box(0.22, 0.14, 0.035), s * 1.10, 1.17, -2.84);
     P.add('hullDetail', cylZ(0.045, 0.025, 10), s * 1.20, 1.12, -2.86);
@@ -676,53 +699,73 @@ function buildT72B87Native(P, variant = 'b87') {
   }
 
   // ---- low cast T-72B turret -------------------------------------------
-  P.turretG.position.set(0, 1.35, 0.02);
-  const rings = [[1.46, -0.04], [1.57, 0.08], [1.51, 0.25], [1.31, 0.39], [0.96, 0.50], [0.52, 0.56], [0.02, 0.59]];
-  // Low clipped shoulder course turns the circular lathe into the source's
-  // pear-shaped cast plan while staying buried under the curved crown.
+  P.turretG.position.set(0, 1.35, b3 ? 0.02 : -0.03);
+  const rings = b3
+    ? [[1.46, -0.04], [1.57, 0.08], [1.51, 0.25], [1.31, 0.39], [0.96, 0.50], [0.52, 0.56], [0.02, 0.59]]
+    : [[1.54, -0.04], [1.67, 0.07], [1.61, 0.21], [1.43, 0.35], [1.12, 0.46], [0.68, 0.52], [0.24, 0.55], [0.02, 0.56]];
+  // The obr.1987 uses its own wider pear casting.  The front shoulders are
+  // carried down around the gun tunnel and the aft course tapers inward;
+  // this is a connected cast mass, not a sphere hidden by ERA blocks.
   P.add('turret', orientedSlab(
-    [-1.43, -0.04, 0.78], [1.43, -0.04, 0.78], [1.16, -0.04, -1.10], [-1.16, -0.04, -1.10],
-    [-1.31, 0.27, 0.66], [1.31, 0.27, 0.66], [1.05, 0.27, -1.00], [-1.05, 0.27, -1.00]));
-  meshDomeCurved(P, rings, 0.79, 0, -0.02, { capR: 1.8 });
-  P.add('turretDark', cylY(1.53, 1.53, 0.05, 28), 0, -0.025, -0.02);
-
+    [-1.50, -0.05, 0.87], [1.50, -0.05, 0.87], [1.15, -0.05, -1.18], [-1.15, -0.05, -1.18],
+    [-1.39, 0.28, 0.73], [1.39, 0.28, 0.73], [1.03, 0.28, -1.07], [-1.03, 0.28, -1.07]));
   if (!b3) {
-  // Kontakt-1 follows the cast skin: two low V courses at the nose, then
-  // smaller radial cassettes wrapping both flanks.  All blocks overlap a
-  // continuous armor carrier and use seams instead of isolated proxy slabs.
-  const k1J = [0.0, 0.014, -0.011, 0.019, -0.016, 0.008];
-  for (const row of [0, 1, 2, 3]) {
-    for (const s of [-1, 1]) for (let i = 0; i < 6; i++) {
-      const j = k1J[(i + row) % k1J.length];
-      const x = s * (0.14 + i * 0.215 + j);
-      const z = 1.07 - i * 0.082 - row * 0.052 + k1J[(i * 2 + row) % k1J.length];
-      const y = 0.038 + row * 0.125 + i * 0.010 + (i % 2 ? 0.008 : -0.006);
-      const bw = 0.194 + ((i + row) % 3) * 0.008;
-      const bh = 0.114 + ((i + row) % 2) * 0.012;
-      const yaw = s * (0.49 + (i % 3) * 0.025);
-      P.add('turretTrack', box(bw, bh, 0.168 + (i % 2) * 0.012), x, y, z, 0, yaw, -0.07);
-      P.add('turretDark', box(bw - 0.028, 0.012, 0.016), x, y + bh / 2 + 0.006, z + 0.070, 0, yaw, -0.07);
+    for (const s of [-1, 1]) {
+      // Buried cast cheek continuations close the lower gun-root valleys
+      // and produce the characteristic broad, clipped B-family face.
+      P.add('turret', orientedSlab(
+        [s * 0.10, -0.03, 1.14], [s * 0.78, -0.03, 1.03], [s * 1.48, -0.03, 0.54], [s * 0.92, -0.03, 0.42],
+        [s * 0.12, 0.25, 1.03], [s * 0.70, 0.26, 0.93], [s * 1.34, 0.25, 0.48], [s * 0.86, 0.25, 0.37]));
     }
   }
-  // Upper course fills the bare shoulder without raising the crown.
-  for (const s of [-1, 1]) for (let i = 0; i < 5; i++) {
-    const x = s * (0.28 + i * 0.215);
-    const z = 0.84 - i * 0.105;
-    P.add('turretTrack', box(0.19, 0.115, 0.15), x, 0.43 + i * 0.012, z, 0, s * 0.50, -0.06);
-  }
-  // Inner stagger closes the open top horseshoe while staying below the
-  // hatch/cupola stations and inside the established outer armor envelope.
-  for (const s of [-1, 1]) for (let i = 0; i < 5; i++) {
-    const x = s * (0.18 + i * 0.19 + (i % 2 ? 0.012 : -0.008));
-    const z = 0.69 - i * 0.085 + (i % 3 - 1) * 0.010;
-    P.add('turretTrack', box(0.17 + (i % 2) * 0.01, 0.10, 0.135), x, 0.49 + (i % 2) * 0.01, z, 0, s * (0.42 + i * 0.018), -0.08);
-  }
-  for (const row of [0, 1, 2]) for (const s of [-1, 1]) for (let i = 0; i < 8; i++) {
-    const a = 0.58 + i * 0.145 + ((i + row) % 2 ? 0.025 : -0.015);
-    const x = s * (1.095 + i * 0.052 + k1J[(i + row) % k1J.length]);
-    const z = 0.43 - i * 0.185 + k1J[(i * 3 + row) % k1J.length] * 1.4;
-    const w = 0.20 + ((i + row) % 3) * 0.012;
-    P.add('turretTrack', box(w, 0.137 + (i % 2) * 0.012, 0.205 + ((i + row) % 2) * 0.018), x, 0.078 + row * 0.145 - i * 0.007, z, 0, s * a, 0);
+  meshDomeCurved(P, rings, b3 ? 0.79 : 0.75, 0, b3 ? -0.02 : -0.09, { capR: b3 ? 1.8 : 2.15 });
+  P.add('turretDark', cylY(b3 ? 1.53 : 1.62, b3 ? 1.53 : 1.62, 0.05, 28), 0, -0.025, b3 ? -0.02 : -0.09);
+
+  if (!b3) {
+  // Kontakt-1 is planted directly into the new casting.  Four staggered
+  // frontal courses descend over the cheek, a tighter inner horseshoe fills
+  // the crown transition, and three mixed flank courses turn around the
+  // shoulder.  Unequal pitch/size prevents the old decorative necklace.
+  const k1J = [0.0, 0.018, -0.013, 0.027, -0.020, 0.010, -0.008];
+  for (const s of [-1, 1]) {
+    // Broad shallow carriers provide an explicit armor-to-casting load path.
+    P.add('turretDark', orientedSlab(
+      [s * 0.08, 0.00, 1.12], [s * 0.83, 0.00, 1.02], [s * 1.47, 0.00, 0.46], [s * 0.77, 0.00, 0.42],
+      [s * 0.10, 0.10, 1.08], [s * 0.79, 0.10, 0.98], [s * 1.40, 0.10, 0.44], [s * 0.74, 0.10, 0.39]));
+    for (let row = 0; row < 4; row++) for (let i = 0; i < 6; i++) {
+      const q = (row * 2 + i + (s < 0 ? 1 : 0)) % k1J.length;
+      const x = s * (0.16 + i * 0.225 + row * 0.018 + k1J[q]);
+      const z = 1.08 - i * 0.102 - row * 0.115 + k1J[(q + 2) % k1J.length];
+      const y = 0.065 + row * 0.116 + i * 0.010 + k1J[(q + 3) % k1J.length] * 0.45;
+      const w = 0.205 + ((i + row) % 3) * 0.012;
+      const h = 0.112 + ((i + row) % 2) * 0.016;
+      const d = 0.205 + ((i * 2 + row) % 3) * 0.018;
+      const yaw = s * (0.35 + i * 0.075 + row * 0.020);
+      P.add('turretTrack', box(w, h, d), x, y, z, -0.10 - row * 0.012, yaw,
+        s * ((i % 3 - 1) * 0.018));
+      P.add('turretDark', box(w * 0.78, 0.012, 0.022), x, y + h / 2 + 0.007,
+        z + d * 0.44, -0.10, yaw, 0);
+    }
+    // Inner roof-to-cheek bridge: smaller tiles leave the hatches and sights
+    // open while eliminating the large smooth cast valley of the old model.
+    for (let row = 0; row < 2; row++) for (let i = 0; i < 5; i++) {
+      const x = s * (0.20 + i * 0.20 + row * 0.012);
+      const z = 0.78 - i * 0.102 - row * 0.105 + (i % 2 ? 0.014 : -0.009);
+      P.add('turretTrack', box(0.175 + (i % 2) * 0.012, 0.095, 0.165 + row * 0.015),
+        x, 0.43 + row * 0.085 - i * 0.006, z, -0.14,
+        s * (0.24 + i * 0.095 + row * 0.025), -0.06);
+    }
+    // Three flank courses descend around the shoulder toward the rear bins.
+    for (let row = 0; row < 3; row++) for (let i = 0; i < 7; i++) {
+      const q = (row + i * 2) % k1J.length;
+      const x = s * (1.18 + i * 0.045 + k1J[q]);
+      const z = 0.33 - i * 0.205 - row * 0.030 + k1J[(q + 1) % k1J.length];
+      const w = 0.205 + ((i + row) % 3) * 0.014;
+      const h = 0.125 + ((i + row) % 2) * 0.018;
+      P.add('turretTrack', box(w, h, 0.23 + (i % 2) * 0.02), x,
+        0.08 + row * 0.14 - i * 0.006, z, -0.04,
+        s * (0.60 + i * 0.13 + row * 0.022), 0);
+    }
   }
   } else {
     // B3 turret protection: two large Kontakt-5 arrow leaves meet around
@@ -783,18 +826,29 @@ function buildT72B87Native(P, variant = 'b87') {
   }
 
   // Compact roof station hierarchy on broad seats.
-  P.add('turret', cylY(b3 ? 0.31 : 0.33, b3 ? 0.33 : 0.35, b3 ? 0.075 : 0.10, 18), -0.56, b3 ? 0.55 : 0.56, -0.02);
-  chamferBox(P, 'turret', b3 ? 0.72 : 0.86, b3 ? 0.07 : 0.10, b3 ? 0.52 : 0.62, b3 ? -0.48 : -0.52, b3 ? 0.515 : 0.525, -0.10, 0.09);
-  P.add('turret', cylY(b3 ? 0.27 : 0.28, b3 ? 0.29 : 0.30, b3 ? 0.075 : 0.10, 16), -0.56, b3 ? 0.625 : 0.65, -0.02);
-  P.add('turretDark', cylY(0.25, 0.25, 0.025, 16), -0.56, b3 ? 0.675 : 0.715, -0.02);
+  P.add('turret', cylY(b3 ? 0.31 : 0.34, b3 ? 0.33 : 0.36, b3 ? 0.075 : 0.075, 18), -0.56, b3 ? 0.55 : 0.53, -0.02);
+  chamferBox(P, 'turret', b3 ? 0.72 : 0.80, b3 ? 0.07 : 0.065, b3 ? 0.52 : 0.55, b3 ? -0.48 : -0.51, b3 ? 0.515 : 0.505, -0.10, 0.09);
+  P.add('turret', cylY(b3 ? 0.27 : 0.30, b3 ? 0.29 : 0.32, b3 ? 0.075 : 0.075, 16), -0.56, b3 ? 0.625 : 0.585, -0.02);
+  P.add('turretDark', cylY(0.25, 0.25, 0.025, 16), -0.56, b3 ? 0.675 : 0.635, -0.02);
   P.add('turret', cylY(b3 ? 0.27 : 0.28, b3 ? 0.29 : 0.30, b3 ? 0.075 : 0.09, 16), 0.48, b3 ? 0.525 : 0.54, -0.10);
   P.add('turretDark', cylY(0.24, 0.24, 0.024, 16), 0.48, b3 ? 0.575 : 0.60, -0.10);
   if (!b3) {
-    P.add('turret', box(0.34, 0.25, 0.32), -0.42, 0.53, 0.53);
-    P.add('turretGlass', box(0.23, 0.12, 0.025), -0.42, 0.56, 0.70);
+    // TPN-3-49 night sight on a tapered cheek shoe.  The old cuboid rose
+    // above the cupola; this lower housing stays readable but follows the
+    // cast roof and keeps its blue glass clear of the K-1 courses.
+    chamferBox(P, 'turret', 0.34, 0.20, 0.32, -0.42, 0.50, 0.53, 0.055);
+    P.add('turretDark', box(0.27, 0.08, 0.025), -0.42, 0.525, 0.695);
+    P.add('turretGlass', box(0.20, 0.095, 0.014), -0.42, 0.53, 0.710);
   }
-  P.add('turret', cylZ(0.19, 0.18, 16), 0.54, 0.50, 0.57, -0.24, 0, 0);
-  P.add('turretGlass', cylZ(0.16, 0.02, 16), 0.54, 0.51, 0.665, -0.24, 0, 0);
+  P.add('turret', cylZ(b3 ? 0.19 : 0.225, b3 ? 0.18 : 0.21, 16), 0.54, b3 ? 0.50 : 0.47, 0.57, -0.24, 0, 0);
+  P.add('turretGlass', cylZ(b3 ? 0.16 : 0.19, 0.02, 16), 0.54, b3 ? 0.51 : 0.48, b3 ? 0.665 : 0.682, -0.24, 0, 0);
+  if (!b3) {
+    // Broad welded cradle and two lower stays make the large Luna lamp an
+    // attached source identifier rather than a blue disc on the casting.
+    P.add('turretDark', box(0.31, 0.065, 0.17), 0.54, 0.36, 0.48, -0.18, 0, 0);
+    for (const s of [-1, 1]) P.add('turretDark', box(0.035, 0.20, 0.035),
+      0.54 + s * 0.13, 0.39, 0.48, 0, 0, s * 0.18);
+  }
   for (const [x, z, ry] of [[-0.86, 0.02, -0.28], [-0.78, 0.20, -0.12], [-0.55, 0.28, 0], [-0.32, 0.20, 0.12], [-0.24, 0.02, 0.28]]) {
     P.add('turretGlass', box(0.12, 0.055, 0.07), x, 0.61, z, 0, ry, 0);
   }
@@ -836,15 +890,18 @@ function buildT72B87Native(P, variant = 'b87') {
   } else {
     // Armored commander/NSVT station: a broad cupola seat, frontal shield
     // and short return wings. The opening and weapon line remain clear.
-    P.add('turret', cylY(0.34, 0.36, 0.065, 18), -0.56, 0.715, -0.14);
-    chamferBox(P, 'turret', 0.51, 0.18, 0.05, -0.56, 0.775, 0.00, 0.06);
-    P.add('turret', box(0.045, 0.17, 0.27), -0.80, 0.765, -0.14, 0, -0.12, 0);
-    P.add('turret', box(0.045, 0.14, 0.24), -0.32, 0.75, -0.16, 0, 0.12, 0);
-    P.add('turretDark', box(0.11, 0.075, 0.022), -0.67, 0.79, 0.036);
-    P.add('turret', box(0.20, 0.16, 0.22), 0.73, 0.48, 0.12);
-    P.add('turretGlass', box(0.15, 0.08, 0.025), 0.73, 0.50, 0.245);
+    P.add('turret', cylY(0.34, 0.36, 0.055, 18), -0.56, 0.655, -0.14);
+    chamferBox(P, 'turret', 0.54, 0.145, 0.055, -0.56, 0.705, 0.00, 0.06);
+    P.add('turret', box(0.045, 0.145, 0.27), -0.80, 0.690, -0.14, 0, -0.12, 0);
+    P.add('turret', box(0.045, 0.125, 0.24), -0.32, 0.680, -0.16, 0, 0.12, 0);
+    P.add('turretDark', box(0.11, 0.065, 0.022), -0.67, 0.72, 0.036);
+    P.add('turret', box(0.20, 0.16, 0.22), 0.76, 0.47, 0.10);
+    P.add('turretGlass', box(0.15, 0.08, 0.025), 0.76, 0.49, 0.225);
     for (const [x, z] of [[0.30, 0.04], [0.46, 0.17], [0.63, 0.13], [0.74, -0.02]]) {
       P.add('turretGlass', box(0.11, 0.05, 0.065), x, 0.615, z);
+    }
+    for (const [x, z, ry] of [[-0.83, -0.03, -0.20], [-0.76, 0.15, -0.10], [-0.59, 0.24, 0], [-0.39, 0.17, 0.12], [-0.30, -0.01, 0.22]]) {
+      P.add('turretGlass', box(0.095, 0.046, 0.058), x, 0.655, z, 0, ry, 0);
     }
   }
 
@@ -857,8 +914,8 @@ function buildT72B87Native(P, variant = 'b87') {
   }
   {
     const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'nsvt', tone: 'dark', elev: -0.04, ammo: true });
-    mg.scale.setScalar(0.88);
-    mg.position.set(-0.55, 0.67, -0.17);
+    mg.scale.setScalar(b3 ? 0.88 : 0.94);
+    mg.position.set(-0.55, b3 ? 0.67 : 0.61, -0.17);
     P.turretG.add(mg);
   }
   P.add('turretDark', cylY(0.040, 0.045, 0.11, 10), -0.87, 0.59, -0.48);
@@ -907,6 +964,27 @@ function buildT72B87Native(P, variant = 'b87') {
     }
     P.add('turretDark', cylZ(0.075, 0.30, 12), 0.82, 0.34, -1.22, Math.PI / 2, 0, 0);
     P.add('turretDark', box(0.055, 0.20, 0.22), 0.82, 0.31, -1.12, 0.12, 0, 0);
+    // Family-grade terminal rack: unequal shallow rear faces, diagonal
+    // cradle legs and two service forms make the bustle read as connected
+    // turret equipment from rear and quarter views.  The frame remains open
+    // and period-correct; it is not a modern autoloader box.
+    for (const [x, w, h, y, rails] of [
+      [-0.58, 0.52, 0.21, 0.35, 5],
+      [-0.08, 0.38, 0.24, 0.37, 6],
+      [0.46, 0.46, 0.18, 0.32, 4],
+    ]) {
+      P.add('turretDark', box(w, h, 0.030), x, y, -1.48);
+      P.add('turretDark', box(0.043, h * 0.90, 0.25), x - w * 0.42, y, -1.35, 0.16, 0, 0);
+      P.add('turretDark', box(0.043, h * 0.82, 0.25), x + w * 0.40, y - 0.01, -1.35, -0.14, 0, 0);
+      for (let i = 0; i < rails; i++) {
+        const rw = w * (0.78 - (i % 3) * 0.065);
+        P.add('turretDetail', box(rw, 0.016, 0.022), x + (i % 2 ? 0.015 : -0.012),
+          y - h * 0.34 + i * (h * 0.68 / Math.max(rails - 1, 1)), -1.498);
+      }
+    }
+    P.add('turretDark', torus(0.13, 0.015, 18), -0.92, 0.34, -1.49, Math.PI / 2, 0, 0);
+    P.add('turret', box(0.24, 0.13, 0.18), 0.82, 0.28, -1.36, 0, 0.12, 0);
+    P.add('turretDark', box(0.17, 0.018, 0.13), 0.82, 0.355, -1.36, 0, 0.12, 0);
   }
   if (b3) {
     // Modern rectangular flank packs and their low carrier rails wrap the
@@ -969,8 +1047,9 @@ function buildT72B87Native(P, variant = 'b87') {
   // 2A46M: retain the proven run, cast collar, articulation and bore.
   P.gunG.position.set(0, 0.05, 1.23);
   ruSaddle(P, { rollR: 0.19, rollW: 0.56, tubeR: 0.105, rootL: 0.58 });
-  P.addGunExtra(KIT.xform(cylZ(0.5, 0.36, 16, 0.45), 0, 0, 0, 0, 0, 0, [0.48, 0.28, 1]), 0, -0.05, 0.16);
-  P.addGunExtra(box(0.40, 0.24, 0.48), 0, -0.02, -0.20);
+  P.addGunExtra(KIT.xform(cylZ(0.5, 0.36, 16, 0.45), 0, 0, 0, 0, 0, 0,
+    b3 ? [0.48, 0.28, 1] : [0.62, 0.36, 1]), 0, b3 ? -0.05 : -0.035, b3 ? 0.16 : 0.13);
+  P.addGunExtra(box(b3 ? 0.40 : 0.48, b3 ? 0.24 : 0.27, 0.48), 0, -0.02, -0.20);
   tubeGun(P, [[0.50, 2.02, 0.112], [2.02, 2.82, 0.122], [2.82, 4.80, 0.116]], {
     rings: [[2.02, 0.122], [2.82, 0.121], [3.52, 0.119], [4.24, 0.117]], muzzle: 4.80,
   });

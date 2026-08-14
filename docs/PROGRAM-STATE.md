@@ -137,7 +137,7 @@ re-freeze NEW hash, all in ONE commit.
 | t80u | 77f9ae78 | RE-FROZEN 2026-08-12 (§5.132 fully first-party `buildT80UNative2026`: low turbine hull, connected cast/K-5 turret, supported combat/rear-service package and exact native six-wheel course; fidelity 91.51 / minimum view 90.20; 42 unique paired/yaw frames floor 9.0 / mean 9.04; source-baked `c0dc2502` playable retired) |
 | type74 | 8319dbb8 | RE-FROZEN 2026-08-11 (§5.110 authored low cast turret, five-wheel native course and supported combat/service suite; independent §B8 floor 9.1 / mean 9.29) |
 | ariete | 64308158 | RE-FROZEN 2026-08-14 (§5.185 non-subtractive native-course closeout: seven road wheels, full idler/final drive, hull/skirts/mudguards retained; exact band+shoe+sweep 0/0, fresh 45-frame profile/yaw proof; prior acea2100 retired) |
-| t72b_1987 | 3f2483d4 | GRADUATED 2026-08-11 (§5.114 authored low B87 hull/turret, buried K1 and native six-wheel course; independent §B8 floor 9.0 / mean 9.14) |
+| t72b_1987 | acc6dd00 | RE-FROZEN 2026-08-14 (§5.235 complete current-family redesign: dedicated low B87 hull loft, broad pear casting, dense planted Kontakt-1, compact supported Luna/NSVT suite, unequal rear service rack and one exact 0/0 six-wheel smart course; fresh 45-frame yaw/ownership proof, rig/muzzle/winding/tests/build PASS; prior 586ae4a3 and earlier freezes retired) |
 | t72bu | 4b66bf6c | GRADUATED 2026-08-11 (§5.115 authored compact BU protection/station/rear package on one native six-wheel course; independent §B8 floor 9.0 / mean 9.19) |
 | t90ms | 5076891c | GRADUATED 2026-08-11 (§5.118 authored clipped-diamond shell, Relikt, supported bustle/station and native six-wheel course; independent §B8 floor 9.0 / mean 9.18) |
 | t90a_burlak | 8d2f5d44 | RE-FROZEN 2026-08-11 (first-party clipped casting, planted protection wings, continuous shallow autoloader bustle and exact 0/0 native six-wheel course; 42-frame yaw/ownership PASS, floor 9.0 / mean 9.06; legacy registration-incompatible geometry row remains honestly unresolved) |
@@ -8354,3 +8354,48 @@ vertices).
 **KEEP the complete Proryv bodywork, separated terminal wheel bays and raised
 supported searchlight. Future running-gear work may alter only the wheels and
 smart course, never hull armor or skirts.**
+
+## 5.235 T-72B OBR. 1987 COMPLETE CURRENT-FAMILY REDESIGN (2026-08-14, LIVE)
+
+The first-party `t72b_1987` is rebuilt as a distinct period member of the
+current T-72 family rather than a decorated copy of B3M or BU. Its complete
+hull is one closed low loft with the T-72 family's compact wheelbase, tapered
+bow shoulders, engine-deck falloff and backed transom. The full segmented side
+skirt remains in place and carries separately supported Kontakt-1 cassettes;
+no hull plate, mudguard, skirt or armor course was deleted to clear the track.
+
+The rotating assembly now uses a broad, low pear-shaped cast shell with buried
+mantlet shoulders. Four staggered frontal Kontakt-1 courses, a tighter inner
+horseshoe and three descending flank courses follow the casting with mixed
+pitch, depth and yaw instead of the former decorative necklace. A lower
+commander/NSVT station, planted TPN sight, large Luna searchlight on a welded
+two-stay cradle, low periscopes and an unequal supported rear service rack give
+the obr. 1987 its own period-correct roof and bustle grammar while remaining
+visibly related to the current B3M and BU family.
+
+The running gear has six large separated road wheels, a distinct raised front
+idler, raised rear final drive and one integrated animated smart-shoe course.
+Exact clearance is **front 0 / rear 0**, individual-shoe clearance is **0 / 0**
+and the full strict sweep is **0 / 0**. The duplicate audit reports one course;
+runtime rig checks pass **10/10**, muzzle-bore and winding checks pass, and the
+turret-parent audit reports **0 stranded / 0 abutting / 0 dangling**.
+
+Fresh first-party evidence contains 15 paired presentation boards plus 15
+yaw0 and 15 yaw90 frames: **45 PNG / 45 distinct hashes**. Top, hero, close and
+rear comparisons prove a genuine quarter-turn of the gun, cast shell, complete
+Kontakt-1 blanket, smoke banks, Luna/TPN equipment, commander/NSVT station,
+antennas and rear rack. The hull deck, side armor, glacis Kontakt-1, transom,
+wheels and smart course stay fixed. No floating attachment, hollow hull, open
+sheet, duplicate course or yaw-dependent wound is visible.
+
+All eight targeted presentation assets are regenerated. Current dual-ledger
+geometry is freeze **`acc6dd00`**, instance freeze **`8719f205`** and asset
+geometry **`6e2b8941`** (41 rendered meshes / 152,135 vertices). The full unit
+test suite and production build pass. The fleet snapshot tool still stops on
+the pre-existing unrelated stale `m1a2_sepv3` manifest row; this tank's three
+fingerprints were therefore captured directly from the same deterministic
+freeze page and its ledger row is updated without altering Abrams assets.
+
+**KEEP the complete B87 hull/skirt envelope, period Kontakt-1 identity,
+supported roof/rear equipment and singular six-wheel smart course. Future
+family refinements must preserve this period distinction and ownership split.**
