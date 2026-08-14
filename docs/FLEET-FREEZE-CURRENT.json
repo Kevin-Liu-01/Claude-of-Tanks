@@ -642,11 +642,11 @@
       "vertices": 86202
     },
     "t90": {
-      "freezeHash": "29511172",
-      "instanceFreezeHash": "355d766b",
-      "assetGeometryHash": "0cd0fc4f",
+      "freezeHash": "6de77bd8",
+      "instanceFreezeHash": "f843384a",
+      "assetGeometryHash": "78bd0fe5",
       "meshes": 70,
-      "vertices": 131034
+      "vertices": 130962
     },
     "t90a": {
       "freezeHash": "ae37a914",

@@ -80946,7 +80946,7 @@
           }
         ]
       },
-      "geometryHash": "0cd0fc4f",
+      "geometryHash": "78bd0fe5",
       "metadataHash": "b30f7d62",
       "muzzleBore": {
         "tagged": 2,
@@ -80961,24 +80961,24 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 18716,
-          "sha256": "cf52c2de6c898ded2fdb1daefe137a09f8e9ce5cd8c538410c750c1dba95bc9b"
+          "bytes": 18816,
+          "sha256": "15f1d51635179d5493c30a37d0cb01bb251616f93dbe513acbc16b9ff9cad5f4"
         },
         "top": {
           "file": "t90_top.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 7786,
-          "sha256": "668dc2feae27e23ee315874b4dcf7be0694d4ca11c5b1897deff119a4c1d5f38"
+          "bytes": 7754,
+          "sha256": "4d3fabfa573e4128b267bbca7bee7b3ff3fff9c7785051a6cd8010b55f406fb7"
         },
         "side": {
           "file": "t90_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 8930,
-          "sha256": "9c65bc1e8f669abcb82f9226f0708deb01254095041749c07fdbd49ea34255a5"
+          "bytes": 8952,
+          "sha256": "ad4dc494a3a8a1ed2ede4eb8707d0f52579ae98a900b7ff2d4c02a6f5d45783a"
         },
         "topSilhouette": {
           "file": "t90_top_silhouette.png",
@@ -81001,24 +81001,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 64778,
-          "sha256": "072842790bc9e5f792944d9091526bbe95eca17ede1d7b9a1aaed2fb1eb36b3f"
+          "bytes": 64906,
+          "sha256": "31f4ce466a467da5da688d48b05b9de89a19bd2f060bd604f71fe62e45811c56"
         },
         "armorSide": {
           "file": "t90_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 65267,
-          "sha256": "9f29095fc735401d7de3e1109b15be68c1b6a7dc52dea43aaa8142ce0c7b1afd"
+          "bytes": 65218,
+          "sha256": "44bf3995c4c120141ef70d62f0792f66391ceae1c2bc0ceba692a7f3b0dee723"
         },
         "modulesSide": {
           "file": "t90_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 61774,
-          "sha256": "e3412e8bf8fc41f1b728cf750e4ee8e7b08a7e2f9bf6fed85c986d4201752297"
+          "bytes": 61853,
+          "sha256": "92a8e2c0060c92c4b1e06b84cc8dd4e46ba7a27bac4a9d715cf50e8bea4da432"
         }
       }
     },

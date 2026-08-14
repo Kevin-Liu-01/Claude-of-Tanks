@@ -3788,7 +3788,11 @@ function buildT90(P) {
     // underside above it while the narrowed pressure tub remains inboard of
     // the inner pad edge; this preserves the outer silhouette with a real
     // mechanical corridor instead of intersecting hidden track geometry.
-    sponsonY: [[-3.43, 1.10], [-2.90, 1.22], [-2.82, 1.40], [-2.05, 1.40], [-1.80, 1.02], [2.42, 0.86], [2.52, 1.18], [3.43, 1.18]],
+    // Preserve the complete outer hull and lowered family datum while
+    // keeping the concealed floor above the full native return run. The
+    // rear terminal retains its 1.40-m crown bridge; the former 0.86-1.02 m
+    // centre floor was the only surface touching the smooth band.
+    sponsonY: [[-3.43, 1.22], [-2.90, 1.22], [-2.82, 1.40], [-2.05, 1.40], [-1.80, 1.22], [2.42, 1.22], [3.43, 1.22]],
   });
   // CENTER GLACIS SLAB — the print's true falling plate (1.46 @ 1.75 ->
   // the 0.84 bow edge; the hull-era rows lie ON it), full closed slab at

@@ -6019,3 +6019,39 @@ All eight presentation assets are current. Dual-ledger geometry is freeze
 envelope and keep every turret-semantic side/back/rear package under the turret
 parent; course clearance belongs in concealed mechanical geometry or explicit
 suspension ownership, never subtractive armour edits.**
+
+## 5.175 PLAIN T-90 COMPLETE-HULL COURSE CLOSEOUT (2026-08-14, LIVE)
+
+This closeout preserves the accepted first-party plain T-90 reconciliation of
+§5.166: the exact Burlak-derived fighting compartment, massive autoloader
+bustle, enlarged twin frontal eyes, dedicated T-90 armour/equipment grammar and
+the 50-mm lower hull datum all remain unchanged. No visible hull plate, glacis,
+side skirt, mudguard, road wheel, idler, final drive, linked shoe, turret armour
+or turret fitting is deleted, rescaled or relocated.
+
+The strict sweep found only the complete lower hull's concealed sponson floor
+inside the upper return lane. That hidden floor now follows the existing
+1.22-m shoulder datum while retaining the 1.40-m terminal crown bridge. The
+closed outer hull, six large road-wheel stations, elevated idler/final drive,
+full skirt course and linked-track outline therefore keep their accepted world
+positions and silhouette.
+
+Fresh evidence contains 15 authored-baseline/current boards plus 15 yaw0 and
+15 yaw90 frames (**45 PNG / 45 distinct hashes**). The gun, exact connected
+turret foundation, complete bustle, armour, enlarged eyes, roof station,
+antennae and rear turret package execute a genuine quarter-turn as one assembly.
+Hull, deck, skirts and running gear remain fixed. The sole fixed-deck nominee,
+`fitting_spareTrackLinks`, remains legitimate hull-owned stowage seated directly
+on the forward deck; it is not a stranded turret fitting. Winding is zero
+reversed / zero mixed with no yaw candidate. Exact band and individual-shoe
+sweeps are **0/0**, and the contiguity scan is **0 holes**. The legacy machine
+oracle remains incompatible with this owner-approved authored target and is not
+used as a visual graduation verdict.
+
+All eight presentation assets are current. Dual-ledger geometry is freeze
+**`6de77bd8`**, instance freeze **`f843384a`** and asset geometry
+**`78bd0fe5`** (70 rendered meshes / 130,962 vertices).
+
+**KEEP these hashes and the §5.166 turret design. Future plain T-90 clearance
+work must remain inside concealed mechanical geometry; never delete the hull,
+side skirts, mudguards or accepted turret package.**
