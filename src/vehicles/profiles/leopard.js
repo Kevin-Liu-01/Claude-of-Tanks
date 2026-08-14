@@ -4445,17 +4445,17 @@ function buildLeo2A4(P) {
     // though the static course happened to clear; the upper root now
     // overlaps the fender edge at 1.735 while the full plate remains clear.
     const taperedForePanel = (za, zb) => slab(
-      [s * 1.735, 0.80, za], [s * 1.775, 0.80, za], [s * 1.775, 0.80, zb], [s * 1.735, 0.80, zb],
+      [s * 1.735, 0.52, za], [s * 1.775, 0.52, za], [s * 1.775, 0.52, zb], [s * 1.735, 0.52, zb],
       [s * 1.735, 1.26, za], [s * 1.775, 1.26, za], [s * 1.775, 1.26, zb], [s * 1.735, 1.26, zb]);
     for (const [za, zb] of [[1.60, 2.28], [2.30, 2.96]]) {
       P.add('hull', taperedForePanel(za, zb));
     }
     P.add('hull', taperedForePanel(2.98, 3.18));                               // third block, terminal-safe rect part
-    P.add('hull', slab(                                                        // chamfered leader: bottom rises 0.46 -> 0.86 at the idler
-      [s * 1.735, 0.80, 3.18], [s * 1.775, 0.80, 3.18], [s * 1.775, 1.10, 3.26], [s * 1.735, 1.10, 3.26],
+    P.add('hull', slab(                                                        // chamfered leader: bottom rises 0.52 -> 0.86 at the idler
+      [s * 1.735, 0.52, 3.18], [s * 1.775, 0.52, 3.18], [s * 1.775, 0.86, 3.26], [s * 1.735, 0.86, 3.26],
       [s * 1.735, 1.26, 3.18], [s * 1.775, 1.26, 3.18], [s * 1.775, 1.26, 3.26], [s * 1.735, 1.26, 3.26]));
     for (const zj of [2.29, 2.97]) {
-      P.add('hullDark', box(0.030, 0.44, 0.016), s * 1.755, 1.03, zj);         // fore block joints
+      P.add('hullDark', box(0.030, 0.72, 0.016), s * 1.755, 0.89, zj);         // full-depth fore block joints
     }
     const z0 = -3.10, z1 = 1.55, n = 6, L = (z1 - z0) / n;
     for (let k = 0; k < n; k++) {
@@ -4464,12 +4464,12 @@ function buildLeo2A4(P) {
         [s * 1.740, 0.94, zc - (L - 0.014) / 2], [s * 1.780, 0.94, zc - (L - 0.014) / 2], [s * 1.780, 0.94, zc + (L - 0.014) / 2], [s * 1.740, 0.94, zc + (L - 0.014) / 2],
         [s * 1.735, 1.26, zc - (L - 0.014) / 2], [s * 1.775, 1.26, zc - (L - 0.014) / 2], [s * 1.775, 1.26, zc + (L - 0.014) / 2], [s * 1.735, 1.26, zc + (L - 0.014) / 2]));
       P.add('hull', slab(
-        [s * 1.745, 0.80, zc - (L - 0.014) / 2], [s * 1.780, 0.80, zc - (L - 0.014) / 2], [s * 1.780, 0.80, zc + (L - 0.014) / 2], [s * 1.745, 0.80, zc + (L - 0.014) / 2],
+        [s * 1.745, 0.54, zc - (L - 0.014) / 2], [s * 1.780, 0.54, zc - (L - 0.014) / 2], [s * 1.780, 0.54, zc + (L - 0.014) / 2], [s * 1.745, 0.54, zc + (L - 0.014) / 2],
         [s * 1.740, 0.96, zc - (L - 0.014) / 2], [s * 1.775, 0.96, zc - (L - 0.014) / 2], [s * 1.775, 0.96, zc + (L - 0.014) / 2], [s * 1.740, 0.96, zc + (L - 0.014) / 2]));
     }
     for (let k = 1; k < n; k++) {
       P.add('hullDark', box(0.026, 0.34, 0.015), s * 1.755, 1.09, z0 + L * k);
-      P.add('hullDark', box(0.024, 0.14, 0.015), s * 1.76, 0.88, z0 + L * k);
+      P.add('hullDark', box(0.024, 0.40, 0.015), s * 1.76, 0.75, z0 + L * k);
     }
     P.add('hullDark', box(0.026, 0.022, z1 - z0 - 0.02), s * 1.76, 0.955, (z0 + z1) / 2); // horizontal band joint
     // A narrow fender rail and localized hangers carry the outboard skirt
@@ -4539,7 +4539,7 @@ function buildLeo2A4(P) {
   // (top 2 cm behind the band bottom — no slit); the wheels read below it.
   for (const s of [-1, 1]) {
     for (let k = 0; k < 6; k++) {
-      P.add('hullRubber', box(0.020, 0.05, 0.80), s * 1.785, 0.795, -3.45 + 0.858 * k + 0.42);
+      P.add('hullRubber', box(0.020, 0.05, 0.80), s * 1.785, 0.515, -3.45 + 0.858 * k + 0.42);
     }
   }
   // §B8 wheel-read (order 1b): seven pale hub discs per side on the road-
@@ -4885,8 +4885,8 @@ function buildLeo2A7V(P) {
     // A7V deep modular skirt courses at ±2.00 EXACT (the width guard),
     // hanging to 0.55 — the deep side-protection read with the lower
     // wheel halves still visible (photo class).
-    frontSkirt: { x: 2.00, z0: 0.90, z1: 3.18, y0: 0.84, y1: 1.30, th: 0.12 },
-    rearSkirt: { x: 2.00, z0: -3.10, z1: 0.90, y0: 0.84, y1: 1.28, th: 0.12 },
+    frontSkirt: { x: 2.00, z0: 0.90, z1: 3.18, y0: 0.55, y1: 1.30, th: 0.12 },
+    rearSkirt: { x: 2.00, z0: -3.10, z1: 0.90, y0: 0.55, y1: 1.28, th: 0.12 },
     // §B6: raised idler AND sprocket at the real Leopard 2 end-wheel
     // geometry (the print-frame 0.56/0.64 centers gave a near-flat run).
     wheelR: 0.395, wheelY: 0.42, span: [2.60, -2.40],
@@ -6402,16 +6402,10 @@ function buildLeo2Revolution(P) {
   // AA-leaks into the 0.777 column).
   P.add('turret', box(0.49, 0.135, 0.208), -0.685, 0.5125, 1.080);             // notch back wall REAR (floor 2.045)
   P.add('turret', box(0.49, 0.28, 0.501), -0.685, 0.44, 1.4345);               // notch back wall FRONT (nose 1.33w, floor 1.90w)
-  // r7: left mid slab bottom 0.28 -> 0.47 (world 2.07) — its 1.88 floor ran
-  // w 0.25..2.09 and undercut the ref's rising channel floor on the 0.227..
-  // 0.447 columns; the walls (1.88, w 0.835+) and cheek (1.79, w 1.44+) own
-  // every lower read in its span.
-  P.add('turret', slab(
-    [-0.93, 0.47, 2.44], [-1.62, 0.47, 2.40], [-1.64, 0.47, 0.60], [-0.93, 0.47, 0.60],
-    [-0.93, 0.54, 2.42], [-1.58, 0.52, 2.38], [-1.62, 0.52, 0.60], [-0.93, 0.54, 0.60]));
-  // The former standalone face cap remained visible as the square card in
-  // the owner's elevated screenshot. The primary loft and broad cheek slab
-  // already overlap here, so no independent patch is needed or permitted.
+  // No standalone left mid-slab or face cap: both legacy pieces projected
+  // beyond the connected cheek as the thin square card visible in elevated
+  // owner views. The primary loft, buried cheek and continuous outer armor
+  // course below already overlap and close this station.
   // side walls: left to -2.14w, right STOPS at 2.04w (ref ±1.63 plan col)
   P.add('turret', box(0.07, 0.10, 0.91), -1.465, 0.50, 0.645);                 // left wall inner fore-rear (floor 2.05w)
   // r5: fore-front walls z0 1.10 -> 1.185L (the ref 0.765w column reads its

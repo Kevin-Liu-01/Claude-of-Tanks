@@ -92,11 +92,11 @@ re-freeze NEW hash, all in ONE commit.
 | chieftain5 | d4f2a9a6 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | t84 | 04707a9c | |
 | m47_patton | 2fc99c50 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
-| leo2a4 | 4011c71c | RE-FROZEN 2026-08-12 (§5.139 first-party forward welded-loft restoration: longer connected turret and basket, re-seated mantlet/EMES/roof suite, supported zero-hole bow shoulders, seven native wheels and exact band+shoe+sweep 0/0; machine fidelity 92.14 / min view 90.18; fresh 45-frame yaw/ownership floor 9.1 / mean 9.19; prior 3a653cf9 retired) |
+| leo2a4 | d8374cc8 | RE-FROZEN 2026-08-13 (§5.151 restored full-depth first-party modular side skirts outboard of the unchanged native course; exact band+shoe+sweep 0/0; fresh 45-frame yaw/ownership packet) |
 | leo2a5 | e215a738 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | leo2a6 | e99f8490 | RE-FROZEN 2026-08-12 (§5.126 first-party Leopard 2A6: source-semantic wedge turret, canonical seated MG3, seven-wheel hull and exact native course; machine fidelity 95.43 / min view 95.32; fresh 42-frame yaw/ownership floor 9.3 / mean 9.46) |
-| leo2a7v | ec69fe94 | RE-FROZEN 2026-08-12 (§5.140 first-party Leopard 2A7V turret separation: complete rotating package raised 1 cm over a visible annular ring seam, asymmetric mast/rear-service cadence, full articulated sponson clearance; machine fidelity 90.23 / min view 90.02; 45-frame yaw/ownership floor 9.0 / mean 9.16) |
-| leo2_revolution | fe2dc714 | RE-FROZEN 2026-08-12 (§5.141 first-party Leopard 2 Revolution left-hull artifact + complete track-clearance repair: erroneous side cuboid retired, inter-track belly/sponson structure made physically honest, exact band/shoe/strict sweep 0/0; machine fidelity 94.2, geometry 90.2, dimensions 99.5, floaters 100; fresh 45-frame yaw/ownership floor 9.1 / mean 9.27) |
+| leo2a7v | b6b630f4 | RE-FROZEN 2026-08-13 (§5.151 restored full-depth first-party modular side skirts outboard of the unchanged native course; exact band+shoe+sweep 0/0; fresh 45-frame yaw/ownership packet) |
+| leo2_revolution | cffcd052 | RE-FROZEN 2026-08-13 (§5.151 removed the independently color-isolated long thin left-cheek card while retaining the connected cheek loft/armor course; exact band+shoe+sweep 0/0; fresh 45-frame yaw/ownership packet) |
 | m46_patton | 108806c8 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | centurion3 | bad74e60 | RE-FROZEN 2026-08-08 (no-air graduate-change: crown-ridge pedestal + discharger webs, front-low 1810px->14, re-cert floor 9.0 x17 changed views, gate 91.1 exact; prior 50273080 bore-resit lineage) |
 | m1a2_sepv2 | e8589ad6 | RE-FROZEN 2026-08-12 (§5.142 restored clean first-party SEPv2 armor/CROWS presentation, exact track corridor and yaw ownership; prior 7680a400 retired) |
@@ -5230,3 +5230,43 @@ production build pass.
 **KEEP / RE-FROZEN `34b9980`; retire `8e196a78`, `da79f77b`, `24851190`, `da0ea477` and all earlier
 base-T-90 turret freezes. Future work must preserve the exact shared Burlak
 foundation and the complete lower vehicle.**
+
+## 5.151 LEOPARD SIDE-SKIRT / REVOLUTION CHEEK-CARD REPAIR (2026-08-13, LIVE)
+
+The playable first-party `leo2a4` and `leo2a7v` again carry their full-depth
+modular side curtains. A prior clearance pass had lifted the lower edges to
+road-wheel-crown height despite the builders still documenting deep skirts.
+This repair restores the intended lower edges at 0.52-0.55 m, keeps every
+panel entirely outboard of the linked-shoe lane, and preserves the complete
+hulls, fenders, mudguards, wheels, suspension and native tracks. Nothing in
+either lower vehicle is deleted, shifted upward or replaced.
+
+The Revolution owner screenshot was reproduced with a diagnostic material
+isolation. The visible thin square was the remaining standalone left mid-slab:
+a 7 cm-thick, 1.84 m-long horizontal card projecting from the cheek. That
+specific redundant primitive is removed. The connected primary loft, buried
+cheek and continuous outer armor course already overlap beneath it, so the
+repair leaves a closed supported cheek with no hole, replacement card or
+stand-off decoration.
+
+The final procedural packet at
+`/tmp/critic-leopard-skirts-cheek-final-r4/{leo2a4,leo2a7v,leo2_revolution}`
+contains 15 paired, 15 yaw0 and 15 yaw90 frames per vehicle including the
+standard elevated-left profile. All corresponding yaw pairs show a genuine
+quarter-turn: complete turrets and their equipment rotate while both restored
+skirt courses and every lower-vehicle component remain fixed. The 2A7V
+winding mode-2 candidate is the now-more-visible fixed hull/skirt assembly,
+not stranded turret mass. The Revolution parent nominee is the merged
+hull-detail bucket spanning supported deck/fender/transom courses, not the
+removed turret card.
+
+Deterministic freezes are `d8374cc8` (2A4, 66 meshes / 90,811 vertices),
+`b6b630f4` (2A7V, 46 / 110,043) and `cffcd052` (Revolution, 76 / 103,533).
+Rig and parent checks pass. Exact native band, shoe and strict suspension-sweep
+contacts are front/rear **0/0** for all three. Winding mode 1 is clean with no
+reversed or mixed faces, and the Revolution card remains absent at yaw 0 and
+90 degrees.
+
+**KEEP / RE-FROZEN all three. Future track-clearance work must not raise or
+delete these skirt courses; their lateral separation already provides the
+required physical corridor.**
