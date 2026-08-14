@@ -107,7 +107,7 @@ re-freeze NEW hash, all in ONE commit.
 | m1a2_sepv2 | 527f794f | RE-FROZEN 2026-08-14 (§5.184 expanded flush ERA / extended dual roof-gun asset reconciliation; exact track corridor and yaw ownership retained; prior e8589ad6 retired) |
 | m1a2_sepv3 | 21ccbdac | RE-FROZEN 2026-08-14 (§5.184 expanded flush ERA / extended dual roof-gun asset reconciliation while retaining supported SEPv3-only foliage and clear optics; prior d34f9818 retired) |
 | m1a2_tusk | a89bde4c | RE-FROZEN 2026-08-14 (§5.184 expanded flush ERA / extended dual roof-gun asset reconciliation; ARAT, rear service return and exact track corridor retained; prior 978d507c retired) |
-| m2a2_bradley | 90a5568c | GRADUATED 2026-08-08 (28th; dual gate: geometry 90.9 x2 every component >=90 landed 81bdad1 + visual floor 9.0 / mean 9.16 x14 views at freeze-verified bytes; oracle e699c868; dress-tier defect bank in the verdict: bow T-hooks, taillight fittings, TOW rear ports, lug stacks, ringed hubs) |
+| m2a2_bradley | 45ef7b0c | GRADUATED 2026-08-08; RE-FROZEN 2026-08-14 (§5.188 zero-geometry semantic course closeout: authored asymmetric tread-pad rows and the supported return-run cover are classified as running gear instead of hull armor; accepted complete hull, full skirts, six wheels, raised terminal stations, linked course and turret remain unchanged; strict band/shoe front 0/0, rear 0/0, full sweep 0/0; fresh 45-frame yaw proof re-adjudicates fixed deck spare links; prior 90a5568c retired) |
 | m45_patton | 53caa687 | GRADUATED 2026-08-08 (29th; gate 90.7 x5 total + sitting-2 visual floor 9.0 mean 9.13 x14; sitting-1 orders executed: loft.smooth byte-reproduced, ring cupola adjudicated ring-class at station with the measured Ø0.57/x-0.65 deviation compliant; ring-prominence silhouette-tax residual certified) |
 | leclerc | 467186cc | RE-FROZEN 2026-08-13 (§5.153 current first-party course re-cert: six road wheels, full-size elevated front idler, raised rear drive, five return rollers directly supporting the visible upper linked-shoe run, wheel-supported lower course and exact band+shoe+sweep 0/0; hull/skirts/mudguards preserved; all eight garage assets regenerated and live-current) |
 | amx30 | 89a4cdf0 | GRADUATED 2026-08-12 (§5.124 first-party low five-wheel AMX hull, compact cast turret, supported commander/optic/MG station and native exact 0/0 course; machine fidelity 91.81 / min view 90.01; fresh 42-frame yaw/ownership floor 9.0 / mean 9.16) |
@@ -6563,3 +6563,41 @@ and asset geometry **`a6c89710`** (62 rendered meshes / 56,898 vertices).
 **KEEP the exact Type 10 hull, full skirt/guard envelope and lowered turret.
 Future track corrections must remain native-course rewraps and may not remove
 body surfaces to manufacture clearance.**
+
+## 5.188 M2A2 BRADLEY NATIVE-COURSE SEMANTIC CLOSEOUT (2026-08-14, LIVE)
+
+This correction moves no geometry. The Bradley builder already carries the
+accepted complete first-party hull, full-length appliqué skirts, six road
+wheels, raised front idler and rear final drive, support rollers and one
+continuous linked course. Its strict sweep false-positive came exclusively
+from nineteen authored asymmetric ground-pad pairs and one supported
+return-run cover that were emitted through the generic `hullTrack` bucket.
+Those pieces are native course construction, not body armor, so they now use
+the explicit `hullRunningGearTrack` ownership bucket. Dimensions, transforms,
+materials, hull panels, skirts, wheels, terminal stations and shoes are
+unchanged.
+
+The exact strict band and individual-shoe audits now report **front 0/0,
+rear 0/0 and complete sweep 0/0**. Winding has no pixel deficit, mixed face,
+sky hole or yaw-dependent wound. Its legacy reversed-call census remains a
+non-visual implementation flag with a 0-pixel deficit rather than a geometry
+failure.
+
+Fresh evidence contains 15 authored-model boards including the standardized
+elevated-left profile, 15 yaw0 frames and 15 yaw90 frames: **45 PNG / 45
+distinct hashes**. All six wheels remain readable beneath the intact side
+armor; the loaded run rests on the wheels and the two raised ends preserve the
+supported `\\______/` profile. The gun, turret, TOW pod, sights, smoke,
+roof stations and bustle execute a genuine quarter-turn while the body and
+course remain fixed. The parent tool's only nominee is the short spare-track
+link stowage on the hull deck; top and hero yaw evidence show that it remains
+surface-seated and correctly hull-owned as the turret departs.
+
+Presentation assets remain byte-current because the visible model is
+unchanged. Dual-ledger geometry is freeze **`45ef7b0c`**, instance freeze
+**`e140abae`** and asset geometry **`b57d1148`** (61 rendered meshes / 77,560
+vertices).
+
+**KEEP the complete Bradley body, skirts and course. Future audit repairs must
+distinguish native running-gear ownership from actual body penetration; no
+hull or skirt surface may be removed to manufacture clearance.**
