@@ -5854,3 +5854,38 @@ gates reported by `tank:release:check`.
 **KEEP the dual ledger as the live byte authority. Never use a historical
 single hash to claim that an instanced wheel, track, armor block or fitting is
 unchanged.**
+
+## 5.171 ABRAMS DEEP-ARMOUR COURSE CLEARANCE / FAMILY ASSET SYNC (2026-08-13, LIVE)
+
+The later base-Abrams armour deepening on main extended the M1A1/M1A1HA bow
+cassette sequence inward over the raised native idler wrap. The repair is
+strictly non-subtractive: every bow cassette now keeps its load-bearing back
+face on the existing x=1.812 skirt carrier, while its height and longitudinal
+spacing preserve the stepped visual taper. No hull face, side skirt, wheel,
+suspension member or linked shoe was removed, shortened or hidden.
+
+The complete hull still left only a 16-19 mm interference at the top of the
+instanced idler shoes. The idler centre therefore moves down by 30 mm, from
+y=0.88 to y=0.85. It remains clearly elevated above the y=0.53 road-wheel
+line and retains the intended `____/` front transition. The matching visual
+wrap pads follow the configured idler centre. Live front/hero inspection
+shows the deep armour seated on the intact hull and the full side-skirt course
+present. The exact strict audit reports **0/0 band and 0/0 individual-shoe
+intersections** for `m1a1`, `m1a1ha` and `m1a2`.
+
+Because the upstream shared Abrams completion changed the family builder, all
+seven current Abrams asset sets are regenerated together: `m1a1`, `m1a1ha`,
+`m1a2`, `m1a2_sepv2`, `m1a2_sepv3`, `m1a2_tejas` and `m1a2_tusk`. Their live
+dual-ledger rows are:
+
+- `m1a1`: freeze `f2d9cb79`, instance `5651b6b9`, asset `4c1a7288`;
+- `m1a1ha`: freeze `2a3b5984`, instance `69de015c`, asset `7736ae35`;
+- `m1a2`: freeze `43adc230`, instance `485b02e3`, asset `147315ff`;
+- `m1a2_sepv2`: freeze `20f2e180`, instance `f34acea8`, asset `cd0617df`;
+- `m1a2_sepv3`: freeze `5e4e6774`, instance `f08392b7`, asset `5b755d05`;
+- `m1a2_tejas`: freeze `0c690428`, instance `a59e4470`, asset `b93ff8a6`;
+- `m1a2_tusk`: freeze `b1246e64`, instance `0cb090dc`, asset `4ed7cebb`.
+
+**KEEP the complete hull and deep armour package. Future course repairs must
+move the interfering fitting or track endpoint; they must not delete hull or
+side-skirt geometry.**

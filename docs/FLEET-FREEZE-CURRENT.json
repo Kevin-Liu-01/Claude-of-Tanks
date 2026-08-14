@@ -292,53 +292,53 @@
       "vertices": 90127
     },
     "m1a1": {
-      "freezeHash": "43a73fe8",
-      "instanceFreezeHash": "2d133574",
-      "assetGeometryHash": "695f90af",
+      "freezeHash": "f2d9cb79",
+      "instanceFreezeHash": "5651b6b9",
+      "assetGeometryHash": "4c1a7288",
       "meshes": 53,
-      "vertices": 187690
+      "vertices": 191710
     },
     "m1a1ha": {
-      "freezeHash": "7b528314",
-      "instanceFreezeHash": "2406edf2",
-      "assetGeometryHash": "e5afb30a",
+      "freezeHash": "2a3b5984",
+      "instanceFreezeHash": "69de015c",
+      "assetGeometryHash": "7736ae35",
       "meshes": 54,
-      "vertices": 187894
+      "vertices": 191914
     },
     "m1a2": {
-      "freezeHash": "90955304",
-      "instanceFreezeHash": "e5a40eeb",
-      "assetGeometryHash": "ac6a54df",
+      "freezeHash": "43adc230",
+      "instanceFreezeHash": "485b02e3",
+      "assetGeometryHash": "147315ff",
       "meshes": 47,
-      "vertices": 140798
+      "vertices": 146018
     },
     "m1a2_sepv2": {
-      "freezeHash": "8dae9cf7",
-      "instanceFreezeHash": "56bff855",
-      "assetGeometryHash": "7a01b7f6",
+      "freezeHash": "20f2e180",
+      "instanceFreezeHash": "f34acea8",
+      "assetGeometryHash": "cd0617df",
       "meshes": 57,
-      "vertices": 203374
+      "vertices": 203662
     },
     "m1a2_sepv3": {
-      "freezeHash": "257e9250",
-      "instanceFreezeHash": "804f0f35",
-      "assetGeometryHash": "5eb37f07",
+      "freezeHash": "5e4e6774",
+      "instanceFreezeHash": "f08392b7",
+      "assetGeometryHash": "5b755d05",
       "meshes": 54,
-      "vertices": 207490
+      "vertices": 207778
     },
     "m1a2_tejas": {
-      "freezeHash": "46b0a4a0",
-      "instanceFreezeHash": "085fbd3c",
-      "assetGeometryHash": "8b4fdf8a",
+      "freezeHash": "0c690428",
+      "instanceFreezeHash": "a59e4470",
+      "assetGeometryHash": "b93ff8a6",
       "meshes": 55,
       "vertices": 165142
     },
     "m1a2_tusk": {
-      "freezeHash": "7e182a38",
-      "instanceFreezeHash": "954ab953",
-      "assetGeometryHash": "8874d86c",
+      "freezeHash": "b1246e64",
+      "instanceFreezeHash": "0cb090dc",
+      "assetGeometryHash": "4ed7cebb",
       "meshes": 65,
-      "vertices": 220378
+      "vertices": 220498
     },
     "m26_pershing": {
       "freezeHash": "ff507ab0",

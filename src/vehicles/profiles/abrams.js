@@ -1212,7 +1212,11 @@ const TEJAS_HULL = {
   // low; the wrap arc then happens to trace the ref line to -3.69).
   // (band wrap radius = r + 0.045 CLEAR only, and the rendered bottom sits
   // th/2 under the centerline — 0.93 still ran the whole rear line 0.11 low)
-  idlerZ: 3.02, idlerY: 0.88, idlerR: 0.34, sprocketZ: -3.28, sprocketY: 1.10, sprocketR: 0.32,
+  // Keep the idler visibly raised above the road-wheel line while leaving a
+  // real clearance band below the intact bow.  At 0.88 the instanced shoe
+  // crown entered the hull by 16-19 mm; 0.85 retains the required __/ end
+  // transition and clears it without removing or thinning hull geometry.
+  idlerZ: 3.02, idlerY: 0.85, idlerR: 0.34, sprocketZ: -3.28, sprocketY: 1.10, sprocketR: 0.32,
   // §B4 TRACK CONTAINMENT (family variety round, 2026-08-03): the audit read
   // front 1139 / rear 683 — the full-width bow blade swallowed the idler
   // wrap (rig_hull 241) and the stern wedge + shelf ring the sprocket wrap
@@ -2026,7 +2030,14 @@ function abramsArmorHardware(P, variant, t) {
       for (let k = 0; k < 4; k++) {
         const z = 2.60 + k * 0.29;
         const h = 0.34 - k * 0.035;
-        const bowOuter = skirtArmorBox(P, 'hull', side, 1.812 - k * 0.04,
+        // Keep every load-bearing back face on the existing x=1.812 skirt
+        // carrier.  The former inward stagger reached into the raised idler
+        // shoe wrap even after its last two modules were clamped.  Height and
+        // longitudinal spacing still provide the visible taper; only the
+        // armor is reseated, preserving the complete hull, skirt, idler, road
+        // wheels, suspension and linked track unchanged.
+        const bowCarrier = 1.812;
+        const bowOuter = skirtArmorBox(P, 'hull', side, bowCarrier,
           skirtDepth, h, 0.25, 1.05, z);
         skirtArmorBox(P, 'hullDetail', side, bowOuter - 0.003,
           0.010, h - 0.065, 0.21, 1.03, z, 0);
@@ -2531,7 +2542,7 @@ function tejasSuspensionDress(P, g) {
     // FRONT — the ref's front read is TWO COLUMNS of chunky brown pads
     // with a dark center split and small connector nubs. Split pad pairs
     // continue around the idler's front arc on the r4 pads' own circle
-    // (radius 0.448 about the idler axis (z 3.02, y 0.88); rx = -(th+pi/2)
+    // (radius 0.448 about the configured idler axis; rx = -(th+pi/2)
     // — derived from the two certified r4 arc pads, which the th -0.837 /
     // -0.595 rows reproduce split). Outer faces stay at the 0.483 tooth-
     // tip line (inside the spike silhouette), x span 1.13..1.68 inside the
@@ -2540,14 +2551,14 @@ function tejasSuspensionDress(P, g) {
     for (const [th, nub] of [
       [-0.837, 0], [-0.595, 1], [-0.35, 0], [-0.11, 1], [0.13, 0], [0.37, 1],
     ]) {
-      const pz = 3.02 + 0.448 * Math.cos(th), py = 0.88 + 0.448 * Math.sin(th);
+      const pz = g.idlerZ + 0.448 * Math.cos(th), py = g.idlerY + 0.448 * Math.sin(th);
       const prx = -(th + Math.PI / 2);
       for (const f of [-1, 1]) {
         wrapPads.push(xform(box(0.245, 0.07, 0.155), side * (1.405 + f * 0.1525), py, pz, prx, 0, 0));
       }
       if (nub) {
         wrapPads.push(xform(box(0.075, 0.05, 0.075),
-          side * 1.405, 0.88 + 0.436 * Math.sin(th), 3.02 + 0.436 * Math.cos(th), prx, 0, 0));
+          side * 1.405, g.idlerY + 0.436 * Math.sin(th), g.idlerZ + 0.436 * Math.cos(th), prx, 0, 0));
       }
     }
     for (const [pz, py, prx] of [
