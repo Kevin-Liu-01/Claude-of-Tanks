@@ -4367,10 +4367,12 @@ function replaceT90ACastTurret(P, { vladimir = false, burlakBase = false } = {})
   if (burlakBase) {
     // Direct reuse of the live Burlak foundation.  The old branch copied an
     // obsolete twelve-point outline and drifted from the model the owner
-    // actually approved.  Keep the Burlak-only autoloader and roof kit out of
-    // the plain T-90, but share its exact core and load-bearing shoulders.
+    // actually approved.  Share its exact core, load-bearing shoulders and
+    // full autoloader bustle.  Only Burlak's prototype roof suite remains
+    // variant-owned; the plain T-90 seats its own equipment on this body.
     replaceT90BurlakCoreNative2026(P);
     addT90BurlakShoulderFoundationNative2026(P, { includeProtection: false });
+    addT90BurlakBustleNative2026(P);
   } else {
     // Base T-90 casting: the shell is authored from independent longitudinal
     // sections, not revolved from a sphere.  A broad lower pear shoulder,
@@ -6617,11 +6619,8 @@ function addT90BurlakShoulderFoundationNative2026(P, { includeProtection = true 
   P.add('turretDark', box(0.80, 0.29, 0.028), 0, 0.17, 1.605, -0.08, 0, 0);
 }
 
-function finishT90BurlakNative2026(P) {
-  const { box, cylY, cylZ, torus } = KIT;
-
-  addT90BurlakShoulderFoundationNative2026(P);
-
+function addT90BurlakBustleNative2026(P) {
+  const { box } = KIT;
   // One shallow tapered bustle begins inside the existing cast rear bins.
   // It is a closed authored loft with a real floor and roof; lids and rails
   // merely articulate that load-bearing body and never substitute for it.
@@ -6651,6 +6650,13 @@ function finishT90BurlakNative2026(P) {
     P.add('turretDark', box(w, 0.20, 0.022), x, 0.43, -3.315);
     for (let i = 0; i < n; i++) P.add('turretDetail', box(0.020, 0.14, 0.016), x - w * 0.34 + i * (w * 0.68 / Math.max(1, n - 1)), 0.43, -3.332);
   }
+}
+
+function finishT90BurlakNative2026(P) {
+  const { box, cylY, cylZ, torus } = KIT;
+
+  addT90BurlakShoulderFoundationNative2026(P);
+  addT90BurlakBustleNative2026(P);
 
   // Prototype roof hierarchy: a broad slew seat, compact panoramic head,
   // two hatch rings and a clearly founded NSVT.  These forms supply the tall
