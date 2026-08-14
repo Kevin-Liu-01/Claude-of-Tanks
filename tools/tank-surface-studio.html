@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Tank Surface Markup Studio</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b1014;
+      --panel: rgba(15, 22, 28, .96);
+      --panel-2: #151f27;
+      --line: #2b3b46;
+      --text: #edf3f5;
+      --muted: #91a3ad;
+      --accent: #f0a33b;
+      --remove: #ff5a5f;
+      --reshape: #ffb347;
+      --add: #43d6b5;
+      --inspect: #65a9ff;
+    }
+    * { box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+    body { background: var(--bg); color: var(--text); font: 13px/1.42 Inter, ui-sans-serif, system-ui, sans-serif; }
+    button, select, input, textarea { font: inherit; }
+    button, select, input, textarea {
+      color: var(--text); background: #101820; border: 1px solid var(--line);
+      border-radius: 6px;
+    }
+    button { cursor: pointer; padding: 7px 10px; }
+    button:hover { border-color: #587080; background: #18242d; }
+    button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible {
+      outline: 2px solid var(--accent); outline-offset: 1px;
+    }
+    #app { width: 100%; height: 100%; display: grid; grid-template-columns: 350px minmax(0, 1fr); }
+    #sidebar {
+      z-index: 3; display: flex; flex-direction: column; min-height: 0;
+      background: var(--panel); border-right: 1px solid var(--line); box-shadow: 12px 0 36px #0008;
+    }
+    header { padding: 16px 16px 12px; border-bottom: 1px solid var(--line); }
+    h1 { margin: 0 0 7px; font-size: 16px; letter-spacing: .04em; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 6px; color: #b9f4dd;
+      background: #12342d; border: 1px solid #2d7562; border-radius: 999px;
+      padding: 3px 8px; font: 700 10px/1.2 ui-monospace, SFMono-Regular, monospace;
+    }
+    .badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--add); }
+    .scroll { min-height: 0; overflow: auto; padding: 12px 14px 22px; }
+    .scroll > section { padding: 12px 0; border-bottom: 1px solid #223039; }
+    .scroll > section:last-child { border-bottom: 0; }
+    .label { display: block; margin: 0 0 6px; color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+    .row { display: flex; gap: 7px; align-items: center; }
+    .row + .row { margin-top: 7px; }
+    .grow { flex: 1; min-width: 0; }
+    select, input[type="text"], input[type="number"], textarea { width: 100%; padding: 8px; }
+    input[type="range"] { width: 100%; accent-color: var(--accent); }
+    .range-row { display: grid; grid-template-columns: 82px 1fr 45px; gap: 7px; align-items: center; margin-top: 7px; }
+    .range-value { color: #c8d5da; font: 11px ui-monospace, SFMono-Regular, monospace; text-align: right; }
+    .mode-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+    .mode { position: relative; padding-left: 25px; text-align: left; }
+    .mode::before { content: ""; position: absolute; left: 10px; top: 50%; width: 7px; height: 7px; border-radius: 50%; transform: translateY(-50%); background: var(--inspect); }
+    .mode[data-mode="remove"]::before { background: var(--remove); }
+    .mode[data-mode="reshape"]::before { background: var(--reshape); }
+    .mode[data-mode="add"]::before { background: var(--add); }
+    .mode.active { border-color: var(--accent); background: #25313a; box-shadow: inset 0 0 0 1px #f0a33b55; }
+    .preset-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+    .preset-grid button { padding: 6px 3px; font-size: 11px; }
+    .subgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    .hint { margin: 7px 0 0; color: var(--muted); font-size: 11px; }
+    #selectionList { display: grid; gap: 6px; max-height: 180px; overflow: auto; }
+    .annotation {
+      display: grid; grid-template-columns: 9px 1fr auto; gap: 8px; align-items: start;
+      width: 100%; padding: 8px; text-align: left; background: #101820;
+    }
+    .annotation.active { border-color: #d7e5ea; background: #1b2831; }
+    .annotation-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 4px; }
+    .annotation strong { display: block; font-size: 11px; }
+    .annotation small { color: var(--muted); display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 230px; }
+    .annotation .remove-one { border: 0; padding: 0 2px; background: transparent; color: #98aab3; font-size: 16px; }
+    textarea { min-height: 72px; resize: vertical; }
+    #jsonOutput { min-height: 160px; font: 10px/1.35 ui-monospace, SFMono-Regular, Menlo, monospace; color: #b8c9d0; }
+    .action-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+    .primary { border-color: #9c6a25; background: #352710; color: #ffdca8; }
+    #viewport { position: relative; min-width: 0; overflow: hidden; background: radial-gradient(circle at 50% 40%, #26333b 0, #111820 60%, #080c0f 100%); }
+    #viewport canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+    #topbar {
+      position: absolute; z-index: 2; left: 16px; right: 16px; top: 14px;
+      display: flex; justify-content: space-between; gap: 12px; pointer-events: none;
+    }
+    .hud-card { padding: 8px 10px; border: 1px solid #40515c; border-radius: 7px; background: #0b1116d9; box-shadow: 0 7px 24px #0007; pointer-events: auto; }
+    #tankTitle { font-weight: 800; }
+    #meshStatus { max-width: 520px; color: #c4d2d7; font: 11px/1.35 ui-monospace, SFMono-Regular, monospace; text-align: right; }
+    #emptyState {
+      position: absolute; inset: auto 18px 18px; color: #a9bbc3; font-size: 11px;
+      text-align: center; pointer-events: none;
+    }
+    #toast { position: absolute; z-index: 5; left: 50%; bottom: 42px; transform: translate(-50%, 12px); opacity: 0; pointer-events: none; padding: 9px 13px; border-radius: 6px; background: #0a1116ef; border: 1px solid #45606f; transition: .18s ease; }
+    #toast.show { opacity: 1; transform: translate(-50%, 0); }
+    .hidden { display: none !important; }
+    @media (max-width: 850px) {
+      #app { grid-template-columns: 300px minmax(0, 1fr); }
+      #sidebar { font-size: 12px; }
+      #meshStatus { display: none; }
+    }
+  </style>
+</head>
+<body>
+<main id="app">
+  <aside id="sidebar">
+    <header>
+      <h1>Tank Surface Markup Studio</h1>
+      <span class="badge">FIRST-PARTY PROCEDURAL ONLY</span>
+    </header>
+    <div class="scroll">
+      <section>
+        <label class="label" for="tankSelect">Tank</label>
+        <select id="tankSelect"></select>
+        <p class="hint">The viewer always calls <code>createTank(..., proceduralOnly: true)</code>. No source GLB can load here.</p>
+      </section>
+
+      <section>
+        <span class="label">View</span>
+        <div class="preset-grid">
+          <button data-view="front">Front</button><button data-view="left">Left</button>
+          <button data-view="right">Right</button><button data-view="rear">Rear</button>
+          <button data-view="top">Top</button><button data-view="hero">Hero</button>
+          <button data-view="elevated-left">Elev. L</button><button data-view="elevated-right">Elev. R</button>
+        </div>
+        <div class="range-row"><span>Hull yaw</span><input id="hullYaw" type="range" min="-180" max="180" value="0"><output id="hullYawOut" class="range-value">0°</output></div>
+        <div class="range-row"><span>Turret yaw</span><input id="turretYaw" type="range" min="-180" max="180" value="0"><output id="turretYawOut" class="range-value">0°</output></div>
+        <div class="range-row"><span>Gun pitch</span><input id="gunPitch" type="range" min="-15" max="30" step="0.5" value="0"><output id="gunPitchOut" class="range-value">0°</output></div>
+      </section>
+
+      <section>
+        <span class="label">Markup operation</span>
+        <div class="mode-grid">
+          <button class="mode" data-mode="inspect">Inspect</button>
+          <button class="mode active" data-mode="remove">Remove</button>
+          <button class="mode" data-mode="reshape">Reshape</button>
+          <button class="mode" data-mode="add">Add here</button>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <label class="grow"><span class="label" style="margin-bottom:4px">Selection scope</span>
+            <select id="scope"><option value="patch">Coplanar patch</option><option value="face">Single triangle</option></select>
+          </label>
+          <label style="width:82px"><span class="label" style="margin-bottom:4px">Patch angle</span><input id="patchAngle" type="number" value="14" min="1" max="45" step="1"></label>
+        </div>
+        <p class="hint">Click selects; drag orbits; wheel zooms. Shift-click adds another surface. Keys 1–4 switch operations.</p>
+      </section>
+
+      <section id="requestSection">
+        <label class="label" for="note">Instruction / note</label>
+        <textarea id="note" placeholder="Example: delete this rectangular shelf and blend the cheek into the mantlet."></textarea>
+        <div id="reshapeFields" class="hidden">
+          <span class="label" style="margin-top:8px">Suggested offset (metres)</span>
+          <div class="subgrid"><input id="offsetX" type="number" step="0.01" value="0" aria-label="X offset"><input id="offsetY" type="number" step="0.01" value="0" aria-label="Y offset"><input id="offsetZ" type="number" step="0.01" value="0" aria-label="Z offset"></div>
+        </div>
+        <div id="addFields" class="hidden">
+          <div class="row" style="margin-top:8px">
+            <label class="grow"><span class="label" style="margin-bottom:4px">Primitive</span><select id="primitive"><option>custom</option><option>box</option><option>wedge</option><option>cylinder</option><option>rail</option><option>armor block</option></select></label>
+          </div>
+          <span class="label" style="margin-top:8px">Size W × H × D (metres)</span>
+          <div class="subgrid"><input id="sizeW" type="number" step="0.01" value="0.20"><input id="sizeH" type="number" step="0.01" value="0.20"><input id="sizeD" type="number" step="0.01" value="0.20"></div>
+        </div>
+      </section>
+
+      <section>
+        <div class="row" style="justify-content:space-between"><span class="label" style="margin:0">Selections</span><span id="selectionCount" class="range-value">0</span></div>
+        <div id="selectionList"><p class="hint">No marked surfaces yet.</p></div>
+        <div class="row" style="margin-top:8px"><button id="undo" class="grow">Undo</button><button id="clear" class="grow">Clear all</button><button id="focus" class="grow">Focus</button></div>
+      </section>
+
+      <section>
+        <label class="label" for="jsonOutput">Actionable JSON</label>
+        <textarea id="jsonOutput" readonly spellcheck="false"></textarea>
+        <div class="action-grid" style="margin-top:8px"><button id="copyJson" class="primary">Copy JSON</button><button id="downloadJson">Download</button><button id="savePng">Save PNG</button></div>
+      </section>
+    </div>
+  </aside>
+
+  <section id="viewport" aria-label="Interactive first-party tank surface viewer">
+    <div id="topbar">
+      <div class="hud-card"><div id="tankTitle">Loading…</div><div id="ownershipStatus" class="hint" style="margin:2px 0 0">proceduralOnly</div></div>
+      <div id="meshStatus" class="hud-card">Hover a surface to inspect ownership.</div>
+    </div>
+    <div id="emptyState">Drag to orbit · scroll to zoom · click a face to mark it</div>
+    <div id="toast" role="status"></div>
+  </section>
+</main>
+<script type="module" src="/tools/tank-surface-studio.js"></script>
+</body>
+</html>

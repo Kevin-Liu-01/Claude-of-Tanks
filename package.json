@@ -21,6 +21,7 @@
     "tank:native:check": "node tools/native-playables-audit.mjs",
     "tank:family:check": "node src/vehicles/fleetOrder.selftest.mjs",
     "tank:bore:probe": "node tools/muzzle-bore-probe.mjs",
+    "tank:surface-studio": "vite --host 127.0.0.1 --open /tools/tank-surface-studio.html",
     "shots": "node tools/screenshot.mjs",
     "perf:dev": "node tools/dev-perf-probe.mjs",
     "perf:cold": "node tools/cold-load-probe.mjs"
