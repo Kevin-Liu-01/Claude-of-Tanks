@@ -5784,10 +5784,12 @@ variants pass exact band and shoe sweeps at **0/0**.
 
 The code change initially left the eight derived gameplay presentations per
 tank stale. All affected icon, side, top, silhouette, armour, hit-zone and
-module assets are regenerated from the live first-party builders. The frozen
-geometry hashes are `56080f6b` (`m1a1`), `f0bc6861` (`m1a1ha`), `6d92ca20`
-(`m1a2`), `93c1c4d1` (`m1a2_sepv2`), `1d5ce857` (`m1a2_sepv3`) and
-`f621984d` (`m1a2_tusk`).
+module assets are regenerated from the final live first-party builders. A
+fresh-process release check caught and corrected an intermediate browser
+receipt that had been generated before the final track-clearance edit. The
+authoritative frozen geometry hashes are `695f90af` (`m1a1`), `e5afb30a`
+(`m1a1ha`), `ac6a54df` (`m1a2`), `7a01b7f6` (`m1a2_sepv2`), `5eb37f07`
+(`m1a2_sepv3`) and `8874d86c` (`m1a2_tusk`).
 
 **KEEP these six hashes. Future Abrams work must preserve complete hull/side
 armour, the singular seven-wheel native course, separated forward roof
