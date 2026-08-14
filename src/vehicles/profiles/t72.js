@@ -398,7 +398,14 @@ function buildT72B87Native(P, variant = 'b87') {
     belly: [[-2.78, 0.86], [-2.58, 0.48], [-2.15, 0.28], [2.15, 0.28], [2.58, 0.43], [2.86, 0.70]],
     wUp: [[-2.78, 1.35], [-2.55, 1.62], [2.58, 1.62], [2.86, 1.38]],
     wLo: [[-2.78, 0.96], [2.45, 0.96], [2.86, 0.82]],
-    sponsonY: [[-2.78, 1.15], [-1.62, 1.15], [-1.50, 0.82], [2.22, 0.82], [2.32, 1.14], [2.86, 1.14]],
+    // The 1987 return run needs the same real track bay already present at
+    // both terminal stations.  Keep the complete outer hull and hanging
+    // skirts, but lift their concealed underside above the linked shoes;
+    // the former 0.82 m solid sponson occupied the entire 0.94 m upper run.
+    // B3 retains its separately authored bay pending its own family audit.
+    sponsonY: b3
+      ? [[-2.78, 1.15], [-1.62, 1.15], [-1.50, 0.82], [2.22, 0.82], [2.32, 1.14], [2.86, 1.14]]
+      : [[-2.78, 1.15], [2.86, 1.15]],
   });
 
   // Thin fender shelves and a shallow, broken skirt line leave the six
@@ -412,9 +419,13 @@ function buildT72B87Native(P, variant = 'b87') {
       const sh = b3 ? 0.265 + (i % 3) * 0.018 : 0.44;
       const sy = b3 ? 1.065 + (i % 2) * 0.009 : 0.93;
       const sd = b3 ? 0.58 + (i % 2) * 0.045 : 0.66;
-      P.add('hull', box(0.075, sh, sd), s * 1.69, sy, z, 0, 0, b3 ? s * (i % 2 ? 0.025 : -0.018) : 0);
-      P.add('hullDark', box(0.018, b3 ? sh * 0.72 : 0.34, 0.025), s * 1.733, sy, z + sd / 2);
-      P.add('hullDetail', box(0.025, 0.025, sd * 0.72), s * 1.735, sy + sh / 2 + 0.012, z);
+      // Keep the full side-armour course, but seat it outside the shoe
+      // envelope.  The old x=1.69 center left only 2.5 mm between the
+      // 75-mm panel back and the band; the whole supported stack moves out
+      // 45 mm without changing its height, depth, coverage or ownership.
+      P.add('hull', box(0.075, sh, sd), s * 1.735, sy, z, 0, 0, b3 ? s * (i % 2 ? 0.025 : -0.018) : 0);
+      P.add('hullDark', box(0.018, b3 ? sh * 0.72 : 0.34, 0.025), s * 1.778, sy, z + sd / 2);
+      P.add('hullDetail', box(0.025, 0.025, sd * 0.72), s * 1.780, sy + sh / 2 + 0.012, z);
     }
   }
 
@@ -457,20 +468,42 @@ function buildT72B87Native(P, variant = 'b87') {
     // hierarchy as the current family without changing its track geometry:
     // dark tire, olive dish, hub, and eight small fasteners on each native
     // road wheel. These are face details, not a second wheel/track set.
+    // Keep them in explicit running-gear meshes instead of the generic hull
+    // buckets: merging suspension faces into `hull` made the strict course
+    // audit report the intended wheel/track contact as 2,578 hull voxels.
+    const gearParts = { hull: [], dark: [], detail: [] };
+    const gearAdd = (slot, geo, x, y, z, rx = 0, ry = 0, rz = 0) => {
+      gearParts[slot].push(KIT.xform(geo, x, y, z, rx, ry, rz));
+    };
     for (const s of [-1, 1]) for (const z of wheelZs) {
-      P.add('hull', cylX(0.192, 0.024, 18), s * 1.502, 0.45, z);
-      P.add('hullDark', torus(0.137, 0.009, 18), s * 1.516, 0.45, z, 0, Math.PI / 2, 0);
-      P.add('hullDetail', cylX(0.070, 0.030, 14), s * 1.522, 0.45, z);
+      gearAdd('hull', cylX(0.192, 0.024, 18), s * 1.502, 0.45, z);
+      gearAdd('dark', torus(0.137, 0.009, 18), s * 1.516, 0.45, z, 0, Math.PI / 2, 0);
+      gearAdd('detail', cylX(0.070, 0.030, 14), s * 1.522, 0.45, z);
       for (let k = 0; k < 8; k++) {
         const a = (k / 8) * Math.PI * 2;
-        P.add('hullDark', cylX(0.013, 0.026, 8), s * 1.528, 0.45 + Math.sin(a) * 0.097, z + Math.cos(a) * 0.097);
+        gearAdd('dark', cylX(0.013, 0.026, 8), s * 1.528,
+          0.45 + Math.sin(a) * 0.097, z + Math.cos(a) * 0.097);
       }
     }
     for (const [z, y, r] of [[-2.36, 0.62, 0.31], [2.48, 0.64, 0.29]]) {
       for (const s of [-1, 1]) {
-        P.add('hullDetail', torus(r * 0.69, 0.013, 16), s * 1.505, y, z, 0, Math.PI / 2, 0);
-        P.add('hullDark', cylX(r * 0.24, 0.034, 12), s * 1.512, y, z);
+        gearAdd('detail', torus(r * 0.69, 0.013, 16), s * 1.505, y, z, 0, Math.PI / 2, 0);
+        gearAdd('dark', cylX(r * 0.24, 0.034, 12), s * 1.512, y, z);
       }
+    }
+    for (const [slot, parts] of Object.entries(gearParts)) {
+      if (!parts.length) continue;
+      const geometry = KIT.mergeAll(parts);
+      if (slot === 'hull') geometry.setAttribute('color', new THREE.BufferAttribute(
+        new Float32Array(geometry.attributes.position.count * 3).fill(1), 3));
+      const material = slot === 'hull' ? P.mats.hull
+        : slot === 'detail' ? P.mats.detail : P.mats.dark;
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.name = `gear_t72b87_wheelFace_${slot}`;
+      mesh.userData.runningGear = true;
+      mesh.castShadow = mesh.receiveShadow = true;
+      P.hullG.add(mesh);
+      P.disposables.push(geometry);
     }
   }
 

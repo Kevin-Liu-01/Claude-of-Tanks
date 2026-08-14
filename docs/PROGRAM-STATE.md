@@ -5889,3 +5889,44 @@ dual-ledger rows are:
 **KEEP the complete hull and deep armour package. Future course repairs must
 move the interfering fitting or track endpoint; they must not delete hull or
 side-skirt geometry.**
+
+## 5.172 T-72B OBR.1987 NON-SUBTRACTIVE COURSE CLEARANCE (2026-08-13, LIVE)
+
+The completed first-party obr.1987 family redesign remains intact: no hull
+face, side-skirt panel, mudguard, wheel, suspension station, turret armour or
+rear equipment was removed. The strict course failure had two concrete causes
+inside the existing build. Decorative wheel faces had been merged into generic
+`hull` buckets, so intended wheel/shoe proximity was reported as hull
+penetration; and the concealed central sponson underside plus the inner face of
+the complete hanging skirt course occupied the upper linked-shoe lane.
+
+Wheel-face, idler and sprocket dressing now compile into explicit
+first-party running-gear meshes under `rig_hull`, retaining the identical
+visible tire/dish/hub/fastener geometry. The hidden obr.1987 sponson underside
+moves above the return run while the complete outer hull remains unchanged.
+Finally, the entire supported skirt stack moves outboard by 45 mm without any
+change to its height, depth, longitudinal coverage or hull ownership. This is a
+clearance move of intact armour, not the earlier destructive practice of
+deleting or shortening hull and skirt geometry. The related B3 builder keeps
+its separately authored bay for its own audit.
+
+Fresh first-party evidence contains 15 paired authored-baseline/current boards
+and 15+15 yaw frames (45 files / 45 distinct hashes). Every mandatory view
+retains the low T-72 family hull, complete side armour, six separately readable
+road wheels, elevated front idler, elevated rear final drive and the intended
+`____/` course profile. A genuine 90-degree turn moves the gun, complete cast
+turret, Kontakt-1 blanket, roof suite, antennas and bustle/service package
+together while the deck, sponsons, skirts and running gear remain fixed. The
+winding audit reports zero reversed/mixed pieces and no stranded yaw candidate.
+The exact band and individual-shoe audit is **0/0**, with zero contiguity holes.
+
+The retired external reference GLB is not restored merely to regenerate the
+obsolete geometry-gate row; doing so would violate the first-party-only rule.
+The live model remains the previously accepted authored family design, with
+only the clearance/bucketing corrections above. All eight gameplay assets are
+regenerated and current. Dual-ledger geometry is freeze **`586ae4a3`**,
+instance freeze **`54bdb9fd`**, asset geometry **`adbaa3cc`**.
+
+**KEEP these hashes. Future T-72B obr.1987 work must preserve the complete hull
+and side-armour envelope, the singular native course, the elevated idler/final
+drive profile and the documented hull/turret ownership split.**
