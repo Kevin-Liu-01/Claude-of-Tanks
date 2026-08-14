@@ -34,14 +34,13 @@ function buildT80Line(P, v) {
     belly: [[-3.26, 1.35], [-3.16, 1.12], [-3.06, 0.90], [-2.96, 0.725], [-2.86, 0.73], [-2.60, 0.44], [2.60, 0.44], [2.88, 0.55], [3.05, 0.72]],
     wUp: [[-3.26, 1.28], [3.05, 1.28]],
     wLo: [[-3.26, 1.05], [3.05, 1.02]],
-    // First-party terminal corridor: the turbine hull keeps its low 0.82 m
-    // centre sponson datum, but the underside rises above the native
-    // sprocket/idler wraps before reaching either end.  The earlier scalar
-    // floor ran the full 2.56 m hull width straight through the visible shoe
-    // course; decorative strips below then disguised the penetration.  A
-    // real T-80 has open wheel wells beneath the overhanging stern and
-    // fender shoulders, so encode that structure in the loft itself.
-    sponsonY: [[-3.26, 1.42], [-2.32, 1.42], [-2.18, 0.82], [2.36, 0.82], [2.46, 1.20], [3.05, 1.20]],
+    // First-party track corridor: the sponson underside stays above the
+    // native return/suspension envelope along the wheelbase, then rises
+    // farther over the sprocket/idler wraps.  The earlier 0.82 m centre
+    // floor ran the full 2.56 m upper-hull width through the return lane;
+    // decorative skirts hid the filled wheel well in side pixels.  A real
+    // T-80 keeps an open wheel well beneath the supported fender shoulders.
+    sponsonY: [[-3.26, 1.42], [-2.32, 1.42], [-2.18, 1.24], [2.36, 1.24], [2.46, 1.24], [3.05, 1.24]],
   });
   // rear side-hump band (turbine deck): raked top 1.86 -> 1.70, recessed
   // center channel. r26: everything below the 1.24 lip pulls forward of
@@ -81,7 +80,13 @@ function buildT80Line(P, v) {
     // Stop the long fender before the idler climb.  The old z=2.65 end
     // crossed the first two raised shoes; the separate bow shoulders below
     // take over visually from z=2.40.
-    P.add('hull', box(0.455, 0.14, 4.35), s * 1.4875, 1.19, 0.225);
+    // Closed fender cross-section: retain the certified top/outboard
+    // silhouette while opening the concealed wheel well for the native
+    // return run.  The old solid 455x140 mm bar filled the suspension
+    // corridor even though only its cap and edge lip are externally read.
+    P.add('hull', box(0.475, 0.030, 4.35), s * 1.4775, 1.245, 0.225);
+    P.add('hull', box(0.060, 0.030, 4.35), s * 1.2200, 1.2150, 0.225);
+    P.add('hull', box(0.045, 0.125, 4.35), s * 1.6925, 1.1875, 0.225);
   }
   // engine-deck center furniture: louvre field + intake hump on the 1.503
   // plateau, dark grilles (decor; tops stay under the loft plateau line)
@@ -570,10 +575,11 @@ function buildT84(P) {
     deck: [[-4.30, 1.3456], [-4.24, 1.3620], [-2.60, 1.3620], [-2.16, 1.3560], [-0.10, 1.3560], [0.35, 1.3560], [0.55, 1.3200], [0.75, 1.3100], [0.90, 1.2658], [1.45, 1.2130], [1.91, 1.1836], [1.99, 1.0755]],
     belly: [[-4.30, 0.68], [-4.24, 0.655], [-4.22, 0.47], [-4.16, 0.42], [-4.05, 0.37], [-3.30, 0.35], [1.30, 0.35], [1.60, 0.38], [1.90, 0.46], [1.99, 0.50]],
     wUp: [[-4.30, 1.28], [1.99, 1.28]],
-    // wLo tapers to 0.94 at both wrap zones: the track's inner pin ends
-    // print at x 0.9635 (tmp-t84-aabbprobe) and clipped the 0.98 tub
-    // walls where the climbs pass (clip audit 268/302 -> 0)
-    wLo: [[-4.30, 0.94], [-3.55, 0.94], [-3.35, 0.98], [1.30, 0.98], [1.50, 0.94], [1.99, 0.94]],
+    // Continuous 0.94 lower-tub wall: the native return/suspension sweep
+    // occupies the former 0.98 m centre wall as well as both climb zones.
+    // The narrower between-track belly is hidden behind the course and
+    // leaves the complete upper hull, fenders and deep skirts unchanged.
+    wLo: [[-4.30, 0.94], [1.99, 0.94]],
     sponsonY: 1.1492,
   });
   // center deck overlay ±1.00 — the certified k2-mapped deck line (1.4141

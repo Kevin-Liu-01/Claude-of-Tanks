@@ -6146,3 +6146,48 @@ All eight presentation assets are regenerated. Dual-ledger geometry is freeze
 **KEEP this complete bodywork and course. Future Leopard track repairs must
 rewrap the native course or reseat concealed support geometry; never delete
 hull plates, skirts or mudguards to satisfy clearance.**
+
+## 5.179 T-80 FAMILY COMPLETE-FENDER / NATIVE-COURSE CLOSEOUT (2026-08-14, LIVE)
+
+This non-subtractive pass closes the strict native-course residuals on the
+first-party T-80, T-80B, T-80BV and T-84. It preserves every visible hull
+plate, glacis, mudguard, side-skirt panel, road wheel, idler, final drive,
+linked shoe, turret armour course and turret fitting. The accepted family
+silhouettes and the distinct bare/applique/Kontakt protection identities do
+not move.
+
+The T-80/T-80B/T-80BV residual was a filled wheel well, not a reason to cut
+the side armour. Their full-width upper-hull floor sat on the return-run
+envelope and a solid 455-by-140-mm fender bar occupied the same suspension
+space. The complete sponson underside now follows the existing 1.24-m
+shoulder datum above the return, and the fender is rebuilt as one closed,
+supported cross-section: the original top and outboard silhouette remain,
+with a shallow inboard fold and full outer lip tied into the unchanged hull
+and skirt line. No exterior opening or daylight pocket is introduced.
+
+The T-84 had an independent lower-tub contact. Its concealed centre walls
+remained at 0.98 m while the native inner shoe/pin lane required the already
+established 0.94-m terminal clearance. The full closed lower tub now carries
+that 0.94-m between-track width continuously. Upper hull, fenders, deep
+skirts, bow, stern and all externally visible proportions remain unchanged.
+
+Fresh 15-view authored-model boards and standardized elevated profiles were
+inspected for all four vehicles; additional yaw0/yaw90 packets were inspected
+for the T-80 and T-84. The complete turret/gun/protection/equipment package
+quarter-turns coherently while hull, fenders, skirts and running gear remain
+fixed. Front, rear, side and elevated pixels retain closed hull volumes,
+supported fender load paths, six readable road-wheel stations where exposed,
+and the intended elevated-terminal `\\______/` course. No floater, stranded
+attachment, fused turret mass, winding wound or sky-through hull opening is
+visible.
+
+Exact strict band and individual-shoe sweeps are **0/0** for all four marks.
+All changed presentation assets are regenerated. Dual-ledger geometry is:
+T-80 **`e09accd0` / `09f85f26` / `4b1bddf9`** (47 meshes / 76,267 vertices),
+T-80B **`6c2b05d0` / `df4e202d` / `8c5de16b`** (51 / 79,243), T-80BV
+**`b4b39c14` / `92140144` / `c9a9960f`** (51 / 89,227), and T-84
+**`f86c66df` / `df834830` / `be884f3f`** (45 / 86,058).
+
+**KEEP the complete outer hulls and side skirts. Future T-80-family clearance
+work belongs only in the concealed mechanical corridor or a native-course
+rewrap; never delete visible bodywork to satisfy a track gate.**
