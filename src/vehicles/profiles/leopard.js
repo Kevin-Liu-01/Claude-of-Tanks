@@ -6418,12 +6418,9 @@ function buildLeo2Revolution(P) {
   // columns, the slivers keep their certified reads either side
   P.add('turret', box(0.07, 0.19, 0.7835), -1.465, 0.455, -0.20175);           // left inner sliver FORE (floor 1.96, w -0.16..-0.94)
   P.add('turret', box(0.07, 0.19, 0.8885), -1.465, 0.455, -1.38575);           // left inner sliver REAR (w -1.29..-2.18)
-  // One continuous outer armor course replaces the two cuboids whose end
-  // faces formed the second square-cheek failure. Its inboard root overlaps
-  // the inner wall while the outboard crown and nose recede into the cheek.
-  P.add('turret', slab(
-    [-1.64, 0.33, 0.19], [-1.50, 0.33, 0.19], [-1.50, 0.28, 1.790], [-1.60, 0.28, 1.700],
-    [-1.56, 0.52, 0.19], [-1.50, 0.52, 0.19], [-1.50, 0.52, 1.735], [-1.54, 0.52, 1.670]));
+  // The primary loft already closes this outer shoulder.  Do not add a
+  // separate course here: even the tapered replacement remained proud of
+  // the left cheek as a thin shelf in elevated front-quarter views.
   P.add('turret', box(0.15, 0.19, 0.7835), -1.575, 0.455, -0.20175);           // left wall outer rear FORE
   P.add('turret', box(0.15, 0.19, 0.1385), -1.575, 0.455, -1.01075);           // left wall outer rear TAIL (keeps the -1.43w plan rear)
   P.add('turret', box(3.04, 0.17, 0.083), 0, 0.475, -0.663);                   // floor step 1.99 (w -1.01)
