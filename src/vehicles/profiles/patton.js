@@ -3528,6 +3528,8 @@ const M45_HULL = {
   // the new band edge automatically ((bhw+fhw)/2 seat).
   W: 3.51, bandHW: 1.28, trackW: 0.58, trackInset: 0.095, sponsonY: 1.05, bellyY: 0.46, noseW: 1.04,
   bellyHW: 1.04, glacisWingY0: 1.30, glacisWingDrop: 0.04,
+  deckCorridor: { x: 1.04, floor: 1.30, z0: -1.55, z1: 2.43 },
+  runningGearFit: true, runningGearFace: true,
   darkGearFit: true, // r1 tone transfer (m46 r7 A4 / m47 A3 recipe): muffler-leg
                      // class fittings off the pale bucket — bucket swap only
 
@@ -3558,7 +3560,7 @@ const M45_HULL = {
   // columns at 2.994 vs the ref's own 2.939 flap line; at the raised
   // 1.005 band the plane clears the wrap arc's z-2.925 cross-section
   // (y <= 0.80 there), so the r1 §B4 wrap-face constraint no longer binds.
-  flapF: [2.925, 1.005, 1.045], flapR: [-2.81, 0.95, 1.27],
+  flapF: [2.925, 1.27, 1.32], flapR: [-2.81, 1.27, 1.32],
   gear: {
     // r2b (90-ladder): contactZR -1.79 -> -1.705 — the loop eases ~0.1 m
     // past the patch end, so the proc band sat at 0 through z -2.29 where
@@ -4198,7 +4200,7 @@ export const PATTON_PROFILES = {
         [-0.815, -0.725], [0.90, 1.00], [1.87, 1.97], [2.37, 2.486]],
       // r2 (90-ladder): deck-edge shoulder roll (m47 r2 mechanism, m45
       // skirt-deepened to the 1.276 fender lip — see M45_HULL bandHW note).
-      deckShoulder: { x0: 1.28, x1: 1.61, drop: 0.048, zMin: -2.49, zMax: 2.35, skirt: 0.27 },
+      deckShoulder: { x0: 1.28, x1: 1.61, drop: 0.048, zMin: -2.49, zMax: 2.35, skirt: 0.18 },
       tailStack: [
         // r2 (90-ladder) WIDE-TAIL WING: the r1 "narrow tail" plan read came
         // from the workorder's FLIPPED plan frame (the tool's pre-r3
@@ -4278,7 +4280,7 @@ export const PATTON_PROFILES = {
         // plate front; the strips' 2.845 reach was authored off a flipped
         // gate read and owned the two worst plan columns, 0.19 x2.)
       ],
-      flapWings: [[2.47, 0.77, 1.31], [-2.80, 0.77, 1.30]],
+      flapWings: [[2.47, 1.27, 1.32], [-2.80, 1.27, 1.32]],
       // r2f: guard RESTORED to the r1 seat — the r2b 2.655 re-seat chased a
       // one-grid ref read (1.511@2.655) that inverted on the next grid
       // (ref 1.195@2.64 vs the moved guard's 1.511: -0.19 x3 columns); the

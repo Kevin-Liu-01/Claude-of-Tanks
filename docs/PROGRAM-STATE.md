@@ -7949,3 +7949,37 @@ geometry **`9c25bd32`** (52 rendered meshes / 73,735 vertices).
 **KEEP the complete closed hull and both raised outer sponsons. Wheel-recess,
 hub and suspension-bracket geometry remains running-gear-owned and may not be
 duplicated.**
+
+## 5.223 M45 PATTON CLOSED CORRIDOR AND MUDGUARD RESEAT (2026-08-14, LIVE)
+
+The first-party M45 Patton retains its complete hull, deck shoulders, fender
+platforms, front and rear mudguards, turret and six-wheel native running gear.
+No hull, skirt, fender, mudguard, wheel or track member is deleted.
+
+The full-width sponson contact is resolved with a closed central inter-track
+body and joined raised outer shoulders, preserving the accepted roof and side
+outline. The shoulder skirt remains a closed armor course but its concealed
+underside now meets the raised corridor floor. Wheel recesses, hubs and
+suspension brackets keep their geometry and use the dedicated running-gear
+ownership buckets. Both the inner mudguard panels and their outer wings were
+raised together and reseated at the fender lip; none was removed or exempted.
+
+Exact strict audit improves from **front 34 band / 8 shoe, rear 20 band / 8
+shoe and sweep 442 band / 706 shoe contacts** to **front 0/0, rear 0/0 and
+complete sweep 0/0**. Fresh evidence contains 15 paired boards including the
+standardized elevated-left profile, 15 yaw0 and 15 yaw90 frames: **45 PNG / 45
+distinct hashes**. Paired pixels retain the complete hull, deck shoulders and
+both mudguard pairs while the native track remains one continuous course.
+
+The complete turret and gun execute a genuine quarter-turn while hull and
+running gear remain fixed. Parent audit is **0 stranded / 0 abutting / 0
+dangling**. Winding is **0 reversed / 0 mixed geometry**, with a 0.17%
+rear-left deficit classified clean; mode 2 is clean. The dark muzzle bore and
+all ten targeted runtime-rig checks pass.
+
+All eight targeted presentation assets are current. M45 Patton dual-ledger
+geometry is freeze **`61f041c0`**, instance freeze **`1167ab47`** and asset
+geometry **`9769ea43`** (47 rendered meshes / 69,967 vertices).
+
+**KEEP the complete M45 hull, closed shoulder armor and both reseated
+mudguard pairs. Running-gear ownership must not be used to exempt real armor.**
