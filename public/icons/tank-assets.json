@@ -64486,7 +64486,7 @@
           }
         ]
       },
-      "geometryHash": "b6734ec9",
+      "geometryHash": "b104fe51",
       "metadataHash": "dc0d2af6",
       "muzzleBore": {
         "tagged": 1,
@@ -64501,8 +64501,8 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 19746,
-          "sha256": "25f0ed6f34841c7c46babdda9322ee0725ff480325803a231dcc478286303aa2"
+          "bytes": 19722,
+          "sha256": "ffcb7116edb7056ca8d0132c3ea33cedf2e1bdc2c8dad1004f4c04e8a75f26d4"
         },
         "top": {
           "file": "sturmtiger_top.webp",
@@ -64517,8 +64517,8 @@
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 11104,
-          "sha256": "057b171fc6402b6ee8bee683666bbe4aa4ad80afb7ce34f4e135d1071ab17897"
+          "bytes": 11098,
+          "sha256": "ff4c41e91a7ec9d30510b3a070f0b5ce4d367ef482d4ac20d7eaac132a859ca5"
         },
         "topSilhouette": {
           "file": "sturmtiger_top_silhouette.png",
@@ -64533,8 +64533,8 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 3610,
-          "sha256": "b81898fec08f0afeba87ae8cd98cdd2429ee2fd80212a2c54ab906df1c720a36"
+          "bytes": 3609,
+          "sha256": "67eb041aa5bfc889b577f50c46f0633fc7c6ab8b91a712fd505c4b08d6b714d6"
         },
         "hitZonesSide": {
           "file": "sturmtiger_hit_zones_side.png",
@@ -64542,23 +64542,23 @@
           "height": 256,
           "mime": "image/png",
           "bytes": 68566,
-          "sha256": "0f68cb29d1ae70074d3bde5e4e683cffc4e169819ee0724444174617c8eb00a9"
+          "sha256": "484e564796f2b2301be308772faf6f81f61b5cee0d78d9c0f5066bafed873940"
         },
         "armorSide": {
           "file": "sturmtiger_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 68568,
-          "sha256": "d847d7c8a0c8fdff6203a4abbfcc5ddadfd9c5587704a15dbe1221ae61dff714"
+          "bytes": 68799,
+          "sha256": "1df9ee34e21dab1ed8d7f815599733b95b52ebb2801f38243ef25a06a940bae1"
         },
         "modulesSide": {
           "file": "sturmtiger_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 65435,
-          "sha256": "1ef76c617733cb380516f61b4771ab5ae112416f109cd067edc147c401c91d30"
+          "bytes": 65447,
+          "sha256": "8298aad35fcc57e1f932f821e34fd59ae22db76e4436a9e51bf30660111fcbae"
         }
       }
     },
