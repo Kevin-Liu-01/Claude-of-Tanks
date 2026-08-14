@@ -4001,6 +4001,43 @@ function robustFloorY(ys) {
   }
   return ys[0];
 }
+
+/**
+ * Exact +Z-most intersection of a local-space Z ray with a BufferGeometry.
+ * Muzzle seating needs one centerline hit, but THREE.Raycaster pays generic
+ * Object3D, bounds, material-group, Vector3 and per-triangle machinery. Some
+ * authored gun buckets contain enough detail for that generic path to cost a
+ * visible cold-garage frame. This tight typed-array walk performs the same XY
+ * barycentric triangle test without allocations or subtree traversal.
+ */
+function axisGeometryCapZ(geometry, x, y, minZ, maxZ) {
+  const position = geometry && geometry.getAttribute && geometry.getAttribute('position');
+  if (!position || position.itemSize < 3 || position.isInterleavedBufferAttribute) return null;
+  const vertices = position.array;
+  const stride = position.itemSize;
+  const index = geometry.index && geometry.index.array;
+  const triangleCount = Math.floor((index ? index.length : position.count) / 3);
+  let best = -Infinity;
+  const eps = 1e-8;
+  for (let t = 0; t < triangleCount; t++) {
+    const ia = (index ? index[t * 3] : t * 3) * stride;
+    const ib = (index ? index[t * 3 + 1] : t * 3 + 1) * stride;
+    const ic = (index ? index[t * 3 + 2] : t * 3 + 2) * stride;
+    const ax = vertices[ia], ay = vertices[ia + 1];
+    const bx = vertices[ib], by = vertices[ib + 1];
+    const cx = vertices[ic], cy = vertices[ic + 1];
+    const den = (by - cy) * (ax - cx) + (cx - bx) * (ay - cy);
+    if (Math.abs(den) < eps) continue;
+    const wa = ((by - cy) * (x - cx) + (cx - bx) * (y - cy)) / den;
+    const wb = ((cy - ay) * (x - cx) + (ax - cx) * (y - cy)) / den;
+    const wc = 1 - wa - wb;
+    if (wa < -eps || wb < -eps || wc < -eps) continue;
+    const z = wa * vertices[ia + 2] + wb * vertices[ib + 2] + wc * vertices[ic + 2];
+    if (z >= minZ && z <= maxZ && z > best) best = z;
+  }
+  return Number.isFinite(best) ? best : null;
+}
+
 function measureRestContact(root) {
   try {
     root.updateMatrixWorld(true);
@@ -4454,22 +4491,25 @@ export function createTank(specId, engineCtx, opts = {}) {
     // retain the authored face as the fallback before the cap ray refines it.
     fallbackBore.position.set(boreX, boreY, authoredLocal.z + 0.032);
   }
-  const rayOrigin = recoilG.localToWorld(new THREE.Vector3(boreX, boreY, P.muzzleZ + 1));
-  const rayDirection = new THREE.Vector3(0, 0, -1).transformDirection(recoilG.matrixWorld);
-  const ray = new THREE.Raycaster(rayOrigin, rayDirection, 0, 3);
-  const capHit = ray.intersectObject(root, true).find((hit) => {
-    if (/muzzleBoreShadow/i.test(hit.object.name || '')) return false;
-    if ((hit.object.name || '').startsWith('procShadow_')) return false;
-    const hitMaterials = Array.isArray(hit.object.material) ? hit.object.material : [hit.object.material];
-    if (hitMaterials.some((material) => material && material.colorWrite === false)) return false;
-    for (let node = hit.object; node && node !== root; node = node.parent) {
-      if (!node.visible) return false;
-    }
-    return true;
-  });
-  if (capHit) {
-    const capLocal = recoilG.worldToLocal(capHit.point.clone());
-    const capOffset = Math.max(-0.2, Math.min(0.5, capLocal.z - P.muzzleZ));
+  // The muzzle face is authored in recoilG: barrel/brake geometry uses the
+  // `gun` buckets, while mantlet/cradle parts live in gunG and hull/turret
+  // geometry cannot own the bore. Raycasting the entire tank made every cold
+  // garage preview test tens of thousands of unrelated hull/track triangles
+  // (one constrained Leopard switch spent >200 ms here). Restricting the
+  // exact same centerline ray to its semantic owner preserves the measured
+  // cap point while removing that first-use stall. Both merged gun material
+  // buckets count: autocannon tips such as BMP-2 deliberately put their
+  // centerline cap in `gunDark`, exactly as the former generic ray did.
+  let capZ = null;
+  for (const name of ['gun', 'gunDark']) {
+    const surface = recoilG.getObjectByName(name);
+    if (!surface || !surface.isMesh) continue;
+    const z = axisGeometryCapZ(surface.geometry, boreX, boreY,
+      P.muzzleZ - 2, P.muzzleZ + 1);
+    if (z != null && (capZ == null || z > capZ)) capZ = z;
+  }
+  if (capZ != null) {
+    const capOffset = Math.max(-0.2, Math.min(0.5, capZ - P.muzzleZ));
     fallbackBore.position.z = capOffset + 0.032;
     fallbackBore.userData.capOffsetM = capOffset;
   }

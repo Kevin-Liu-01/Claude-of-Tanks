@@ -274,6 +274,7 @@ try {
   naturalTrace.stats = naturalStats;
   const loading = await page.evaluate(() => ({
     battle: window.__BATTLE_LOAD || null,
+    combatWarm: window.__COMBAT_WARM || null,
     glb: window.__GLB_STATS || null,
     worldPrefetch: window.__WORLD_PREFETCH || null,
     rosterPrefetch: window.__ROSTER_PREFETCH || null,

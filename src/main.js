@@ -676,6 +676,7 @@ function touchCache(specId, vis) {
     for (const [id, v] of pedestalCache) {
       if (pedestalCache.size <= PEDESTAL_CACHE_MAX) return;
       if (v === pedestalVisual) continue; // never evict the live hero
+      if (v.__pedestalCompiling) continue; // async program warm owns this root
       if (v === vis) continue;            // never evict the entry just inserted
       if (onStage(v)) continue;           // never strip a hero off the stage
       if (pass === 1 && v.__everShown) continue;
@@ -692,7 +693,7 @@ function touchCache(specId, vis) {
  * the visible hero crispens without a rebuild — same mechanism the garage
  * always used when selecting a spec the AI roster had baked at 'ai').
  */
-function buildPedestalVisual(specId) {
+function buildPedestalVisual(specId, parked = false) {
   // The showroom hero never enters the simulation. Avoid deriving movement
   // contact metadata from its full rendered subtree; battle/player/AI builds
   // still run that solve normally.
@@ -707,9 +708,24 @@ function buildPedestalVisual(specId) {
   vis.root.rotation.y =
     (162 + ((pedSpec && pedSpec.visual && pedSpec.visual.garageYawDeg) || 0)) * DEG;
   pedestalPose(vis);
+  // A cold hero can compile its exact garage material variants below the bay
+  // before reveal. It remains attached/visible so compileAsync traverses it,
+  // but the normal render frustum cannot see it while the outgoing tank keeps
+  // covering the stage.
+  if (parked) vis.root.position.y = GARAGE_POS.y + PEDESTAL_PARK_Y;
   scene.add(vis.root);
   touchCache(specId, vis);
   return vis;
+}
+async function warmPedestalPrograms(vis) {
+  if (!vis || !vis.root) return;
+  try {
+    if (typeof renderer.compileAsync === 'function') {
+      await renderer.compileAsync(vis.root, camera, scene);
+    } else {
+      renderer.compile(vis.root, camera, scene);
+    }
+  } catch (_) { /* first visible render remains the compatibility fallback */ }
 }
 let heroUpgradeTimer = 0;
 let heroUpgradeIdle = 0;
@@ -794,13 +810,21 @@ function setPedestalTank(specId, force = false) {
     cached = undefined;
   }
   if (cached) {
-    pedestalVisual = cached;
-    touchCache(specId, cached);
-    pedestalPose(cached);
-    if (cached.setVisible) cached.setVisible(true);
-    retirePrev();
-    scheduleHeroUpgrade(specId);
-    recordSwitch(specId, t0, 'cached');
+    const cachedToken = pedestalPollToken;
+    const revealCached = () => {
+      if (cachedToken !== pedestalPollToken) return;
+      pedestalVisual = cached;
+      touchCache(specId, cached);
+      pedestalPose(cached);
+      if (cached.setVisible) cached.setVisible(true);
+      retirePrev();
+      scheduleHeroUpgrade(specId);
+      recordSwitch(specId, t0, 'cached');
+    };
+    if (cached.__pedestalCompileP) {
+      return cached.__pedestalCompileP.then(revealCached);
+    }
+    revealCached();
     return Promise.resolve();
   }
   // perf-r5 (owner: "switching between tanks laggy"): a COLD cache build
@@ -813,14 +837,33 @@ function setPedestalTank(specId, force = false) {
   const buildToken = pedestalPollToken;
   return prebakeSharedTextures(getSpec(specId), engineCtx.anisotropy ?? 4, 'ai', () => nextFrame())
     .catch(() => { /* buildPedestalVisual can still acquire synchronously */ })
-    .then(() => {
+    .then(async () => {
       if (buildToken !== pedestalPollToken) {
         pedTrace('prebake-stale', { id: specId, tok: buildToken });
         retirePrev();
         return;
       }
-      pedestalVisual = buildPedestalVisual(specId);
-      if (pedestalVisual.setVisible) pedestalVisual.setVisible(true);
+      const incoming = buildPedestalVisual(specId, true);
+      incoming.__pedestalCompiling = true;
+      // Boot's following `post` stage compiles the complete scene before the
+      // first present, so only interactive cold switches need this dedicated
+      // off-stage warm.
+      const compileWork = bootComplete ? warmPedestalPrograms(incoming) : Promise.resolve();
+      incoming.__pedestalCompileP = compileWork.finally(() => {
+        incoming.__pedestalCompiling = false;
+        incoming.__pedestalCompileP = null;
+        // Settle any temporary over-budget allowance made while this root was
+        // protected from eviction.
+        if (pedestalCache.get(specId) === incoming) touchCache(specId, incoming);
+      });
+      await incoming.__pedestalCompileP;
+      if (buildToken !== pedestalPollToken) {
+        pedTrace('compile-stale', { id: specId, tok: buildToken });
+        return;
+      }
+      pedestalVisual = incoming;
+      pedestalPose(incoming);
+      if (incoming.setVisible) incoming.setVisible(true);
       retirePrev();
       scheduleHeroUpgrade(specId);
       recordSwitch(specId, t0, 'procedural');
@@ -4047,16 +4090,30 @@ function warmCombatPipeline() {
 async function warmCombatPipelineChunked() {
   if (combatPipelineWarmed && !_warmGen) return;
   const g = _warmGen || (_warmGen = warmCombatPipelineSteps());
+  // Generator yields mark safe preemption points, not mandatory 16 ms
+  // sleeps. Drain cheap/cache-hit steps within one small main-thread budget
+  // and yield only when that budget is spent. The old one-rAF-per-marker
+  // policy added well over a second of pure frame latency across effect,
+  // wreck, and hidden-variant markers on constrained machines.
+  const yieldForFrameBudget = createFrameBudgetYielder(8);
   for (;;) {
     if (_warmGen !== g) return; // the sync wrapper took over and finished
     const r = g.next();
     if (r.done) { if (_warmGen === g) _warmGen = null; return; }
-    await nextFrame();
+    await yieldForFrameBudget();
   }
 }
 function* warmCombatPipelineSteps() {
   if (combatPipelineWarmed) return;
   combatPipelineWarmed = true;
+  const warmTrace = { stages: {} };
+  const warmStartedAt = performance.now();
+  let warmMarkedAt = warmStartedAt;
+  const markWarmStage = (name) => {
+    const now = performance.now();
+    warmTrace.stages[name] = Math.round(now - warmMarkedAt);
+    warmMarkedAt = now;
+  };
   // LOADING PERF (boot r9): the particle sprite sheets bake lazily now (see
   // particles.js warmTextures) — they MUST be real before the fx texture
   // uploads below and before any battle/shot frame samples them. Idempotent.
@@ -4067,6 +4124,7 @@ function* warmCombatPipelineSteps() {
   // post-ready idle chunker below in the common garage-dwell case).
   while (!ensureStagedVisuals(game, 1)) yield;
   yield;
+  markWarmStage('visuals');
   const warm = game.tanks.find((e) => !e.isPlayer && e.visual);
   if (warm) {
     warm.visual.setDestroyed({});
@@ -4084,6 +4142,7 @@ function* warmCombatPipelineSteps() {
   for (const e of game.tanks) {
     if (e.visual && e.visual.prewarmBurn) e.visual.prewarmBurn();
   }
+  markWarmStage('wrecks');
   // EVENT-SPIKE WARM part 1 (perf-r2b, measured by tmp-eventspike-probe):
   // the shared WRECK canvases (heightToNormal / roughness patch bakes via
   // getImageData in materials.js) bake per FAMILY on the first setDestroyed —
@@ -4187,6 +4246,7 @@ function* warmCombatPipelineSteps() {
     }
     fx.resetAll();
   }
+  markWarmStage('effects');
   warmWreckTextures(renderer);
   fx.group.traverse((o) => {
     const mats = Array.isArray(o.material) ? o.material : (o.material ? [o.material] : []);
@@ -4198,6 +4258,7 @@ function* warmCombatPipelineSteps() {
     }
   });
   yield;
+  markWarmStage('textures');
   const spotsWereOn = game.phase !== 'battle';
   if (spotsWereOn) setGarageSpots(false);
   // MOBILE-QA r10 (idle profiler): this scene-wide compile ran as ONE
@@ -4215,11 +4276,16 @@ function* warmCombatPipelineSteps() {
   }
   if (spotsWereOn) setGarageSpots(true);
   yield;
+  markWarmStage('sceneCompile');
   // MOBILE-QA r1: depth-variant warm for the boot/debug entry paths too —
   // the loading-screen path re-runs it per battle (worlds swap casters).
   warmShadowPrograms();
   yield;
+  markWarmStage('shadows');
   yield* compileHiddenVariantsSteps();
+  markWarmStage('hiddenVariants');
+  warmTrace.totalMs = Math.round(performance.now() - warmStartedAt);
+  if (typeof window !== 'undefined') window.__COMBAT_WARM = warmTrace;
 }
 
 /**
@@ -4341,9 +4407,10 @@ function* linkerBreathingSlices(maxSlices) {
 // loading screen and capture paths.
 async function compileHiddenVariantsChunked() {
   const g = compileHiddenVariantsSteps();
+  const yieldForFrameBudget = createFrameBudgetYielder(8);
   let r = g.next();
   while (!r.done) {
-    await nextFrame();
+    await yieldForFrameBudget();
     r = g.next();
   }
 }

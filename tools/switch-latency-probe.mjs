@@ -11,10 +11,11 @@
 // printed too, as a cross-check.
 //
 // Sequence: 10 switches — representative cold and warm modern/WW2 swaps,
-// including m1a1, leclerc, kv2 and leo2a6, plus warm revisits (m1a1, leclerc, tiger1,
-// m1a2) that exercise the pedestal LRU. Reports per-switch ms + median/p95.
+// including m1a1, leclerc, kv2 and leo2a6, plus warm revisits that exercise
+// the pedestal LRU. Reports per-switch ms + median/p95.
 //
 // Usage: node tools/switch-latency-probe.mjs [--root <dir>] [--dwell 500]
+//        [--cpu 4] [--cores 4] [--memory 4] [--tier desktop|mobile]
 
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
@@ -26,6 +27,10 @@ function opt(name, fallback) {
 }
 const root = opt('root', process.cwd());
 const dwellMs = parseInt(opt('dwell', '500'), 10);
+const cpuRate = Math.max(1, Number(opt('cpu', '1')) || 1);
+const cores = Math.max(0, Number(opt('cores', '0')) || 0);
+const memoryGB = Math.max(0, Number(opt('memory', '0')) || 0);
+const deviceTier = opt('tier', 'desktop');
 
 const SEQUENCE = [
   'm1a1', 'leclerc', 'tiger1',           // cold representatives
@@ -51,26 +56,43 @@ const browser = await puppeteer.launch({
 });
 const page = await browser.newPage();
 await page.setViewport({ width: 1280, height: 800, deviceScaleFactor: 1 });
+if (cores || memoryGB) {
+  await page.evaluateOnNewDocument((reportedCores, reportedMemory) => {
+    if (reportedCores) Object.defineProperty(Navigator.prototype, 'hardwareConcurrency', {
+      configurable: true, get: () => reportedCores,
+    });
+    if (reportedMemory) Object.defineProperty(Navigator.prototype, 'deviceMemory', {
+      configurable: true, get: () => reportedMemory,
+    });
+  }, cores, memoryGB);
+}
+if (cpuRate > 1) {
+  const cdp = await page.createCDPSession();
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: cpuRate });
+}
 const pageErrors = [];
 page.on('pageerror', (e) => pageErrors.push(String(e)));
 page.on('console', (m) => {
   if (m.type() === 'error' && !m.text().includes('favicon')) pageErrors.push(m.text());
 });
 
-await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 120000 });
+await page.goto(`${url}?nosplash=1&tier=${deviceTier}&gfxreset=1`, {
+  waitUntil: 'domcontentloaded', timeout: 120000,
+});
 await page.waitForFunction('window.__GAME_READY === true', { timeout: 120000 });
 
-// Boot hero settle: the initial m1a2 GLB swap must be on stage before the
-// clock starts, or switch #1 inherits boot work.
+// Boot hero settle: follow the catalog's actual default instead of pinning a
+// stale historical model id. This fleet is first-party/procedural now, so GLB
+// queue counters are intentionally not part of the readiness contract.
 await page.waitForFunction(() => {
   const D = window.__DEBUG;
   const v = D && D.pedestalVisual;
-  const s = window.__GLB_STATS;
-  return !!(v && v.specId === 'm1a2' && v.root.visible !== false && (!s || s.settled >= s.started));
+  return !!(v && v.specId === D.selectedSpecId && v.root.visible !== false);
 }, { timeout: 60000, polling: 100 });
 // Post-ready dwell: idle bakes + (when present) neighbor prefetch — part of
 // the system under test; identical dwell for baseline and candidate runs.
 await sleep(3500);
+await page.evaluate(() => window.__DEV_TRACE?.clear());
 
 const rows = [];
 for (const id of SEQUENCE) {
@@ -108,6 +130,10 @@ const ok = rows.filter((r) => r.ms >= 0).map((r) => r.ms).sort((a, b) => a - b);
 const pct = (p) => ok.length ? ok[Math.min(ok.length - 1, Math.floor((p / 100) * ok.length))] : -1;
 const median = ok.length ? ok[Math.floor(ok.length / 2)] : -1;
 console.log(`[switch-probe] n=${ok.length}/${rows.length} median=${median}ms p95=${pct(95)}ms max=${ok[ok.length - 1]}ms`);
+const traceStats = await page.evaluate(() => window.__DEV_TRACE?.stats() || null);
+if (traceStats) {
+  console.log(`[switch-probe] frames p95=${traceStats.gapP95}ms p99=${traceStats.gapP99}ms max=${traceStats.maxGapMs}ms longTasks=${traceStats.longTasks} freezes=${traceStats.freezes}`);
+}
 if (pageErrors.length) {
   console.error(`[switch-probe] PAGE ERRORS (${pageErrors.length}):`);
   for (const e of pageErrors.slice(0, 5)) console.error('  - ' + e);
