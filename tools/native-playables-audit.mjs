@@ -63,12 +63,31 @@ for (const file of files) {
 // their ids/specs to the shared tables during module initialization.
 await import(pathToFileURL(path.join(vehicleRoot, 'tankFactory.js')).href);
 const specsUrl = pathToFileURL(path.join(vehicleRoot, 'specs.js')).href;
-const { ALL_TANK_IDS, MODEL_SOURCE } = await import(specsUrl);
+const { ALL_TANK_IDS, MODEL_SOURCE, TANK_SPECS, RETIRED_EXTERNAL_PLACEHOLDER_IDS } = await import(specsUrl);
 // No MODEL_SOURCE row is the original procedural default. An explicit row
 // is legal only when it also says procedural (usually to carry candidateGlb).
 const nonNative = ALL_TANK_IDS.filter((id) => MODEL_SOURCE[id] && MODEL_SOURCE[id].source !== 'procedural');
 for (const id of nonNative) {
   failures.push(`${id}: battle playable resolves to ${MODEL_SOURCE[id]?.source ?? 'unknown'} geometry`);
+}
+
+for (const id of ALL_TANK_IDS) {
+  const spec = TANK_SPECS[id];
+  if (!spec) {
+    failures.push(`${id}: selectable id has no spec`);
+    continue;
+  }
+  if (spec.community) failures.push(`${id}: selectable spec carries obsolete community/source authorship`);
+  if (String(spec.nation || '').toLowerCase() === 'community') {
+    failures.push(`${id}: selectable spec uses the Community nation bucket`);
+  }
+  if (spec.authorship?.geometry !== 'first-party-procedural'
+      || spec.authorship?.runtimeExternalGeometry !== false) {
+    failures.push(`${id}: selectable spec lacks the sealed first-party procedural authorship contract`);
+  }
+}
+for (const id of RETIRED_EXTERNAL_PLACEHOLDER_IDS) {
+  if (ALL_TANK_IDS.includes(id)) failures.push(`${id}: retired external placeholder is selectable`);
 }
 
 if (failures.length) {
@@ -78,4 +97,4 @@ if (failures.length) {
 }
 
 const candidateCount = ALL_TANK_IDS.filter((id) => MODEL_SOURCE[id]?.candidateGlb).length;
-console.log(`Native-playable provenance audit PASS: ${ALL_TANK_IDS.length} battle playables, 0 GLB-sourced, ${candidateCount} isolated comparison candidates.`);
+console.log(`Native-playable provenance audit PASS: ${ALL_TANK_IDS.length} first-party procedural battle playables, 0 GLB-sourced, ${candidateCount} isolated comparison candidates.`);

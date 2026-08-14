@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "rosterCount": 108,
+  "rosterCount": 106,
   "provenance": "first-party-procedural-only",
   "camoSeed": 4242,
   "assetCamoSeed": 4100,
@@ -493,20 +493,6 @@
       "assetGeometryHash": "c5e90594",
       "meshes": 38,
       "vertices": 40776
-    },
-    "q_heavy": {
-      "freezeHash": "01e6ab14",
-      "instanceFreezeHash": "c6f1472e",
-      "assetGeometryHash": "d7d9d915",
-      "meshes": 30,
-      "vertices": 54162
-    },
-    "recon_tank": {
-      "freezeHash": "bb50ab40",
-      "instanceFreezeHash": "e9b03813",
-      "assetGeometryHash": "04d0d435",
-      "meshes": 32,
-      "vertices": 36122
     },
     "sherman_jumbo": {
       "freezeHash": "896e836c",

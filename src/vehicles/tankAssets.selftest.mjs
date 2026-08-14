@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import './tankFactory.js';
-import { ALL_TANK_IDS, getSpec } from './specs.js';
+import { ALL_TANK_IDS, getSpec, RETIRED_EXTERNAL_PLACEHOLDER_IDS } from './specs.js';
 import {
   TANK_ASSET_VIEWS, metadataFingerprint, requiredTankAssetFiles, tankAssetMetadata,
 } from './tankAssets.js';
@@ -9,6 +9,10 @@ assert.equal(Object.keys(TANK_ASSET_VIEWS).length, 8, 'release contract includes
 
 for (const id of ALL_TANK_IDS) {
   const spec = getSpec(id);
+  assert.equal(spec.community, undefined, `${id}: obsolete community/source credit leaked into selectable spec`);
+  assert.notEqual(String(spec.nation || '').toLowerCase(), 'community', `${id}: Community nation is not selectable`);
+  assert.equal(spec.authorship?.geometry, 'first-party-procedural', `${id}: first-party geometry authorship`);
+  assert.equal(spec.authorship?.runtimeExternalGeometry, false, `${id}: runtime external geometry disabled`);
   const metadata = tankAssetMetadata(spec);
   const files = Object.values(requiredTankAssetFiles(id));
   assert.equal(new Set(files).size, 8, `${id}: asset filenames are unique`);
@@ -20,6 +24,10 @@ for (const id of ALL_TANK_IDS) {
   assert(metadata.armor.plates.length > 0, `${id}: armor hit areas`);
   assert(metadata.armor.modules.length > 0, `${id}: module volumes`);
   assert.equal(metadataFingerprint(metadata), metadataFingerprint(tankAssetMetadata(spec)), `${id}: stable metadata hash`);
+}
+
+for (const id of RETIRED_EXTERNAL_PLACEHOLDER_IDS) {
+  assert.equal(ALL_TANK_IDS.includes(id), false, `${id}: retired external placeholder is not selectable`);
 }
 
 console.log(`tankAssets.selftest: ${ALL_TANK_IDS.length} tanks have tier, flag, gun, hit-area and module metadata`);

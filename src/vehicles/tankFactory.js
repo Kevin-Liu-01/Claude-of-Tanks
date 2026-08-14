@@ -10,7 +10,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
-import { getSpec, TANK_SPECS, attachTrackShapes } from './specs.js';
+import { getSpec, TANK_SPECS, attachTrackShapes, finalizeFirstPartyRoster } from './specs.js';
 import { createTankMaterials, makeBurnUniforms, applyBurnHook, vehicleAmbientFloorHook } from './materials.js';
 // DECORATION SYSTEM (2026-07): cosmetic stowage/fittings layer — attaches
 // under dedicated rig_decor_hull / rig_decor_turret groups at the end of
@@ -66,6 +66,10 @@ import './userdrops6.js';
 // independently of the historical module-registration order.
 import { applyNativeFamilyOrder } from './fleetOrder.js';
 
+// Every extension pack has now registered.  Seal the selectable registry as
+// owner-authored procedural-only before any garage, battle, studio or asset
+// consumer can observe it.
+finalizeFirstPartyRoster();
 applyNativeFamilyOrder();
 
 function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);

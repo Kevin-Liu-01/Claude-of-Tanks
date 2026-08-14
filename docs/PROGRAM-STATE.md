@@ -7403,3 +7403,26 @@ asset geometry **`75f356c1`** (111 rendered meshes / 97,566 vertices).
 
 **KEEP both complete Patton exteriors, closed soffits and supported muffler
 packages. Future course work may not subtract their hulls or side armour.**
+
+## 5.207 OWNER-ONLY SELECTABLE ROSTER CONTRACT (2026-08-14, LIVE)
+
+The selectable registry is now explicitly sealed as **first-party procedural
+geometry only**. Every garage, battle, studio and generated-asset tank receives
+the same runtime authorship record; `tank:native:check` and the default vehicle
+asset self-test both fail if a selectable row resolves through external
+geometry, carries obsolete `community` source-credit metadata, uses the
+Community nation bucket, or lacks the first-party contract.
+
+This cleanup changes no accepted hull, turret, side armour, skirt, wheel or
+track geometry. It corrects stale UI/registry metadata left behind after the
+runtime GLB swaps were retired. Historical reference files remain isolated
+comparison oracles only. Source-branded duplicate display names are normalized
+to vehicle variants (for example `Tiger I Early`, `T-34-85 obr. 1944` and
+`IS-3 Late`) while retaining their repository-authored procedural builders.
+
+The two generic third-party placeholders—`recon_tank` and `q_heavy`—are no
+longer selectable and no longer receive generated roster assets. They are not
+historical first-party vehicle designs and therefore cannot satisfy the owner-
+only law. The live roster contracts from 107 to **105 first-party procedural
+tanks**, with zero GLB-sourced playables. Isolated comparison-candidate metadata
+does not alter runtime ownership and remains covered by the native audit.

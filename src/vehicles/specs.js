@@ -805,12 +805,15 @@ export const TANK_SPECS = {
 }
 
 // ===========================================================================
-// COMMUNITY TANKS — sourced, permissively-licensed playable vehicles.
-// Each spec carries `community: { author, source, license }` (surfaced in the
-// garage credit card + docs/ATTRIBUTION.md — CC-BY credit requirement).
-// Armor models are parametric class-template layouts (communityArmor), not
-// plate-by-plate research replicas: plausible thicknesses within the roster's
-// balance envelope.
+// FIRST-PARTY PROCEDURAL EXPANSION TANKS.
+//
+// These gameplay rows began life beside isolated third-party measurement
+// references, but the selectable models are now repository-authored
+// procedural builds.  Reference credits belong in ATTRIBUTION/reference
+// tooling, never on a playable spec: a `community` field used to make the UI
+// imply that the reference mesh itself was shipping.  The owner-only roster
+// finalizer below enforces that distinction after every extension pack loads.
+// Armor models are parametric balance layouts, not copied mesh payloads.
 // ===========================================================================
 
 /**
@@ -883,10 +886,10 @@ function communityArmor(o) {
   };
 }
 
-/** Community roster ids (garage carousel order, appended after the core 8). */
-export const COMMUNITY_TANK_IDS = [
+/** First-party expansion ids (garage carousel order, appended after core). */
+export const FIRST_PARTY_EXPANSION_TANK_IDS = [
   'strv103', 'is3', 't34_85_cad', 'newc_tiger', 'newc_pziii',
-  'pziii_konserwa', 'leichttraktor', 'recon_tank', 'q_heavy',
+  'pziii_konserwa', 'leichttraktor',
   // wave 2 (print-model crawl, 2026-07-28)
   'kv2', 'tiger2', 'sherman_jumbo', 'jagdtiger',
   'jpz_e100', 'sturmtiger', 't95', 't30',
@@ -894,7 +897,7 @@ export const COMMUNITY_TANK_IDS = [
   'is7', 'object279', 'is6b', 'is1',
 ];
 
-const COMMUNITY_SPECS = {
+const FIRST_PARTY_EXPANSION_SPECS = {
   strv103: {
     id: 'strv103', name: 'Stridsvagn 103', nation: 'Sweden', era: 'modern', class: 'td',
     community: {
@@ -1688,10 +1691,48 @@ const COMMUNITY_SPECS = {
   },
 };
 
-Object.assign(TANK_SPECS, COMMUNITY_SPECS);
+Object.assign(TANK_SPECS, FIRST_PARTY_EXPANSION_SPECS);
 
-/** Core + community ids — the full selectable garage roster. */
-export const ALL_TANK_IDS = [...TANK_IDS, ...COMMUNITY_TANK_IDS];
+/** Core + first-party expansion ids — the full selectable garage roster. */
+export const ALL_TANK_IDS = [...TANK_IDS, ...FIRST_PARTY_EXPANSION_TANK_IDS];
+
+// Generic externally-authored placeholders are useful archaeological/reference
+// records, but they are not historical vehicles authored by this project and
+// therefore cannot be selectable.  Keep their dormant spec/source notes out of
+// ALL_TANK_IDS while retaining the audit trail in this file.
+export const RETIRED_EXTERNAL_PLACEHOLDER_IDS = new Set(['recon_tank', 'q_heavy']);
+
+const FIRST_PARTY_DISPLAY_NAMES = {
+  t34_85_cad: 'T-34-85 obr. 1944',
+  newc_tiger: 'Tiger I Early',
+  newc_pziii: 'Panzer III Ausf. J',
+  pziii_konserwa: 'Panzer III Ausf. E',
+  is3_bergman: 'IS-3 Late',
+};
+
+/**
+ * Seal the public roster after all extension packs register their rows.
+ *
+ * Geometry provenance is enforced separately by tank:native:check.  This
+ * removes obsolete UI credit metadata that described retired comparison
+ * references rather than the live procedural model, normalizes source-branded
+ * display names, and makes generic third-party placeholders unselectable.
+ */
+export function finalizeFirstPartyRoster() {
+  for (let i = ALL_TANK_IDS.length - 1; i >= 0; i -= 1) {
+    if (RETIRED_EXTERNAL_PLACEHOLDER_IDS.has(ALL_TANK_IDS[i])) ALL_TANK_IDS.splice(i, 1);
+  }
+  for (const id of ALL_TANK_IDS) {
+    const spec = TANK_SPECS[id];
+    if (!spec) continue;
+    delete spec.community;
+    if (FIRST_PARTY_DISPLAY_NAMES[id]) spec.name = FIRST_PARTY_DISPLAY_NAMES[id];
+    spec.authorship = Object.freeze({
+      geometry: 'first-party-procedural',
+      runtimeExternalGeometry: false,
+    });
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Visual source of truth per tank: 'procedural' | 'glb'.
