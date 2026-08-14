@@ -2798,39 +2798,59 @@ function buildT34(P) {
 
 function buildIS2(P) {
   const { rng } = P;
-  P.add('hull', box(1.8, 0.65, 5.72), 0, 0.775, 0.05);                          // lower hull
+  P.add('hull', box(1.56, 0.65, 5.72), 0, 0.775, 0.05);                         // closed inter-track lower hull
   // r7 hull rework: the sponson band starts at the FENDER LINE (1.22), not at
   // the track top — the full-height 1.10-1.80 slab wall read as a German
   // sponson barn. A dark AO ceiling closes the gap over the track run.
-  P.add('hull', frustum(1.545, 1.85, -2.85, 1.42, 1.85, -2.85, 1.22, 1.80));    // sponson slab
+  // Closed inter-track body plus raised outer shoulders.  The roof and side
+  // silhouette stay full-width; only the concealed track-lane soffits rise.
+  P.add('hull', frustum(0.78, 1.85, -2.85, 0.78, 1.85, -2.85, 1.10, 1.80));
   for (const s of [-1, 1]) {
-    P.add('hullShadow', new THREE.BoxGeometry(0.62, 0.026, 4.7), s * 1.23, 1.205, -0.5);
+    const xi = s * 0.78, xb = s * 1.545, xt = s * 1.42;
+    P.add('hull', s > 0 ? slab(
+      [xi, 1.31, 1.85], [xb, 1.31, 1.85], [xb, 1.31, -2.85], [xi, 1.31, -2.85],
+      [xi, 1.80, 1.85], [xt, 1.80, 1.85], [xt, 1.80, -2.85], [xi, 1.80, -2.85]) : slab(
+      [xb, 1.31, 1.85], [xi, 1.31, 1.85], [xi, 1.31, -2.85], [xb, 1.31, -2.85],
+      [xt, 1.80, 1.85], [xi, 1.80, 1.85], [xi, 1.80, -2.85], [xt, 1.80, -2.85]));
+  }
+  for (const s of [-1, 1]) {
+    P.add('hullRunningGearDark', new THREE.BoxGeometry(0.62, 0.026, 4.7), s * 1.23, 1.305, -0.5);
   }
   // 60° upper glacis with a PLAN TAPER to the prow — the model-1944
   // "straightened nose" narrows toward the bow instead of running the full
   // hull width (r7: full-width glacis + slab sides read as a barn).
   P.add('hull', slab(
-    [-1.06, 0.95, 3.30], [1.06, 0.95, 3.30], [1.45, 0.95, 1.90], [-1.45, 0.95, 1.90],
-    [-0.98, 1.80, 1.83], [0.98, 1.80, 1.83], [1.42, 1.80, 1.86], [-1.42, 1.80, 1.86]));
+    [-0.76, 0.95, 3.30], [0.76, 0.95, 3.30], [0.78, 0.95, 1.90], [-0.78, 0.95, 1.90],
+    [-0.76, 1.80, 1.83], [0.76, 1.80, 1.83], [0.78, 1.80, 1.86], [-0.78, 1.80, 1.86]));
+  // Raised, closed glacis shoulders preserve the broad straightened-nose
+  // silhouette while keeping their concealed lower faces above the shoes.
+  for (const s of [-1, 1]) {
+    const xi = s * 0.76, xo = s * 1.45, xt = s * 1.42;
+    P.add('hull', s > 0 ? slab(
+      [xi, 1.31, 3.30], [xi, 1.31, 3.30], [xo, 1.31, 1.90], [s * 0.78, 1.31, 1.90],
+      [xi, 1.80, 1.83], [xi, 1.80, 1.83], [xt, 1.80, 1.86], [s * 0.78, 1.80, 1.86]) : slab(
+      [xi, 1.31, 3.30], [xi, 1.31, 3.30], [s * 0.78, 1.31, 1.90], [xo, 1.31, 1.90],
+      [xi, 1.80, 1.83], [xi, 1.80, 1.83], [s * 0.78, 1.80, 1.86], [xt, 1.80, 1.86]));
+  }
   P.add('hull', slab(                                                            // 30° lower glacis, tapered
-    [-0.96, 0.45, 3.01], [0.96, 0.45, 3.01], [1.30, 0.45, 2.35], [-1.30, 0.45, 2.35],
-    [-1.06, 0.95, 3.30], [1.06, 0.95, 3.30], [1.45, 0.95, 1.95], [-1.45, 0.95, 1.95]));
+    [-0.72, 0.45, 3.01], [0.72, 0.45, 3.01], [0.78, 0.45, 2.35], [-0.78, 0.45, 2.35],
+    [-0.76, 0.95, 3.30], [0.76, 0.95, 3.30], [0.78, 0.95, 1.95], [-0.78, 0.95, 1.95]));
   // sloped rear — top-ring zF/zR were swapped (zF -3.38 < zR -3.0 inverted
   // the slab ring => inside-out since authorship; §5.03 sweep item 1)
-  P.add('hull', frustum(1.4, -2.86, -2.86, 1.4, -3.0, -3.38, 1.2, 1.8));
+  P.add('hull', frustum(1.4, -2.86, -2.86, 1.4, -3.0, -3.38, 1.31, 1.8));
   P.add('hull', box(0.3, 0.12, 0.3), 0, 1.85, 1.6);                             // driver periscope hump
   // r4 diving-board fix (worst at the IS-2 bow): main fender run pulled back
   // from the tapered prow, sawtooth tips angle DOWN right off the run's end,
   // and support brackets tie the shelf to the hull side.
-  fenders(P, 0.9, 1.545, 1.24, -2.95, 2.75, 0.03);
+  fenders(P, 0.9, 1.545, 1.32, -2.95, 2.75, 0.03);
   for (const s of [-1, 1]) {
     P.add('hullDetail', box(0.35, 0.25, 1.0), s * 1.25, 1.95, -1.6);            // flat fuel tanks
     P.add('hullDetail', cylY(0.16, 0.16, 0.8, 12), s * 1.3, 1.42, -2.9, 0, 0, s * 0.25); // drums
     // sawtooth fender tips (front + rear) — Soviet ID detail
-    P.add('hull', box(0.62, 0.03, 0.42), s * 1.20, 1.19, 2.94, -0.26, 0, 0);
-    P.add('hull', box(0.62, 0.03, 0.38), s * 1.20, 1.20, -3.10, 0.26, 0, 0);
+    P.add('hull', box(0.62, 0.03, 0.42), s * 1.20, 1.32, 2.94, -0.26, 0, 0);
+    P.add('hull', box(0.62, 0.03, 0.38), s * 1.20, 1.32, -3.10, 0.26, 0, 0);
     for (const zb of [-2.5, -1.0, 0.6, 2.1]) {
-      P.add('hullDetail', box(0.34, 0.04, 0.05), s * 1.10, 1.212, zb);          // support brackets
+      P.add('hullDetail', box(0.34, 0.04, 0.05), s * 1.10, 1.31, zb);           // support brackets
     }
   }
   towCable(P, [[-1.5, 1.75, -2.0], [-1.58, 1.8, 0.2], [-1.5, 1.75, 2.2]]);
@@ -2880,7 +2900,7 @@ function buildIS2(P) {
     trackW: 0.65, topY: 1.08, arms: true,
   });
   headlight(P, -0.6, 1.9, 1.75, -0.5);
-  stowage(P, 'hullDetail', rng, [[1.25, 1.2, 1.4, 0.3, 0.24, 0.9]]);
+  stowage(P, 'hullDetail', rng, [[1.25, 1.35, 1.4, 0.3, 0.24, 0.9]]);
   P.decal('turret', 'number', '432', 0.38, [1.02, 0.28, -0.3], Math.PI / 2, 0, 0.20);
   P.decal('turret', 'number', '432', 0.38, [-1.02, 0.28, -0.3], -Math.PI / 2, 0, -0.20);
   P.topY = 0.72;

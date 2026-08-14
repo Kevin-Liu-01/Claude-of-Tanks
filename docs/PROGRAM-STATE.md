@@ -7983,3 +7983,45 @@ geometry **`9769ea43`** (47 rendered meshes / 69,967 vertices).
 
 **KEEP the complete M45 hull, closed shoulder armor and both reseated
 mudguard pairs. Running-gear ownership must not be used to exempt real armor.**
+
+## 5.224 IS-1 / IS-2 CLOSED HULL AND RAISED SHOULDER CLOSEOUT (2026-08-14, LIVE)
+
+The first-party IS-1 and IS-2 retain their complete lower hulls, straightened
+glacis, full raised shoulder armor, fenders, sawtooth mudguards, turret and
+six-wheel native running gear. No hull, fender, mudguard, wheel or track
+member is deleted.
+
+The shared lower body is now a closed inter-track core. Broad glacis and
+sponson shoulders remain closed, joined armor volumes with their original
+upper/outer silhouettes; only their concealed track-lane soffits rise above
+the linked shoes. The straightened nose retains its pointed Soviet profile
+through a narrower closed toe and raised outer glacis wings. Front/rear
+fenders, sawtooth mudguards and their supports were raised and reseated as
+complete assemblies. The return-run ceiling remains present but is correctly
+owned as running-gear shadow geometry, and the right-side stowage remains
+physically seated above the course.
+
+For each tank, exact strict audit improves from **front 36 band / 47 shoe and
+sweep 610 band / 1,493 shoe contacts** to **front 0/0, rear 0/0 and complete
+sweep 0/0**. Each fresh evidence packet contains 15 paired boards including
+the standardized elevated-left profile, 15 yaw0 and 15 yaw90 frames: **45 PNG
+/ 45 distinct hashes per tank**. Paired pixels preserve the complete hull,
+glacis shoulders and guards while the native track remains one continuous
+course.
+
+Both complete turret/gun packages execute a genuine quarter-turn while hull
+and running gear remain fixed. Parent audit is **0 stranded / 0 abutting / 0
+dangling** for both. Winding is **0 reversed / 0 mixed geometry** with a 0.02%
+rear deficit classified clean. Mode-2's fixed `rig_hull/hullDetail#17`
+nominee is legitimate hull-owned deck stowage: it stays visibly seated on the
+upper shoulder after turret departure and has no turret silhouette or station
+semantics. Both dark muzzle bores and all targeted runtime-rig checks pass.
+
+All sixteen targeted presentation assets are current. IS-1 dual-ledger
+geometry is freeze **`e490314c`**, instance freeze **`f26923da`** and asset
+geometry **`de3a7c0d`** (33 rendered meshes / 55,014 vertices). IS-2 is freeze
+**`9f030f34`**, instance freeze **`b4f92501`** and asset geometry
+**`14694d29`** (33 rendered meshes / 55,014 vertices).
+
+**KEEP both closed hull cores, full raised shoulders, fenders and sawtooth
+mudguards. The fixed deck-stowage nominee is hull-owned and must stay seated.**
