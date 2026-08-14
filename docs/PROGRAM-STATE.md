@@ -123,7 +123,7 @@ re-freeze NEW hash, all in ONE commit.
 | k1a1 | 28c7f5f0 | RE-FROZEN 2026-08-10 (§5.108 authored compact K1A1 shell/hull, native six-wheel course and cupola-seated K6; independent §B8 floor 9.0 / mean 9.21) |
 | type99a | 6d52abda | RE-FROZEN 2026-08-12 (§5.133 strict-clearance re-cert: first-party measured-envelope hull/turret retained, native six-wheel return and shoes exact 0/0 through the full sweep, rear U-cable fully backed, gate 90.7 / fidelity 93.0; fresh 45-frame yaw/ownership floor 9.3 / mean 9.39; prior 50bbc9bc retired) |
 | type90 | d8f8a3a8 | RE-FROZEN 2026-08-12 (§5.134 owner-height + strict-track re-cert: first-party welded turret at corrected 0.80 section, all roof kit re-seated, fidelity 92.22 / minimum whole view 90.53; exact native band+shoes+sweep 0/0, fresh 45-frame yaw/ownership floor 9.0 / mean 9.08; legacy low-mask row retained honestly at 27.5; prior 5d7bc85c retired) |
-| type10 | 7ac6d434 | RE-FROZEN 2026-08-12 (§5.128 fully first-party folded five-wheel hull and continuous clipped welded turret; machine fidelity 91.41 / minimum view 90.02; exact native band+shoes 0/0, zero plan holes and fresh 42-frame yaw/ownership PASS; incompatible legacy source-component row retained honestly) |
+| type10 | d7faced8 | RE-FROZEN 2026-08-13 (§5.155 live lowered-turret reconciliation: complete first-party clipped welded turret remains buried 0.10 m deeper into the roof shoulder and every gun/roof/bustle child stays turret-owned through fresh 45-frame yaw proof; fixed-deck tow cable, driver glass, rear cloth/spare links and service fields explicitly adjudicated as hull-owned; hull, full skirts and native five-wheel course unchanged; targeted assets current; prior 7ac6d434 retired) |
 | t14 | a94a2480 | RE-FROZEN 2026-08-12 (§5.131 fully first-party `buildT14`: low seven-wheel Armata hull, connected unmanned shroud, supported RWS/sensor package and exact native course; fidelity 90.53 / minimum view 91.52; 42 unique paired/yaw frames floor 9.0 / mean 9.04; source-baked `a88afa6c` playable retired) |
 | t80u | 77f9ae78 | RE-FROZEN 2026-08-12 (§5.132 fully first-party `buildT80UNative2026`: low turbine hull, connected cast/K-5 turret, supported combat/rear-service package and exact native six-wheel course; fidelity 91.51 / minimum view 90.20; 42 unique paired/yaw frames floor 9.0 / mean 9.04; source-baked `c0dc2502` playable retired) |
 | type74 | 8319dbb8 | RE-FROZEN 2026-08-11 (§5.110 authored low cast turret, five-wheel native course and supported combat/service suite; independent §B8 floor 9.1 / mean 9.29) |
@@ -5372,3 +5372,47 @@ regenerated for this live package; the asset manifest fingerprint is
 **KEEP / RE-FROZEN `b8cc33a8`. Future T-72 family work must preserve the
 complete lower vehicle and keep every side/back turret-semantic pack inside
 `turretG`.**
+
+## 5.155 TYPE 10 LOWERED-TURRET LIVE RECONCILIATION (2026-08-13, LIVE)
+
+The current first-party `buildType10Native2026` retains the owner-ordered
+0.10 m turret lowering from `1c41e599`: its articulation pivot is y=1.40
+rather than the former y=1.50 datum, burying the complete clipped welded
+package into the upper shoulder instead of leaving a visible bearing neck.
+The gun pivot and every turret-local child were retained together, so the
+lowering did not strand, separately scale or clip the mantlet, barrel, cheeks,
+bustle, hatches, optics, antenna or roof equipment. The complete hull, deep
+side armor, skirts, fenders and native five-wheel running gear remain
+unchanged.
+
+Fresh evidence at `/private/tmp/critic-type10-live-r1/type10` contains 15
+paired, 15 yaw0 and 15 yaw90 frames including the elevated-left profile: **45
+PNGs / 45 distinct hashes**. The side/profile evidence shows the turret seated
+continuously on the ring without the owner-reported tall gap. Top, side and
+hero yaw pairs prove a genuine quarter-turn: the gun, full turret casting,
+bustle and complete station package rotate together while the engine deck,
+skirted hull and one continuous linked-shoe course remain fixed.
+
+The parent audit's six geometric nominees are not turret equipment: they are
+the right-fender tow cable, driver glass, rear-deck cloth and spare links, plus
+merged backed hull-detail buckets. Their world boxes sit on fixed deck/fender
+surfaces and remain visibly supported after the turret departs. Winding is 0
+reversed / 0 mixed; the six-pixel rear-quarter deficit is 0.01% and has no
+visible wound. Its mode-2 pixels resolve to the same fixed rear-deck cloth and
+service field, not stranded turret mass.
+
+The terminal contact census records only millimetric authored end-support
+tangencies: the front shoe/shadow maximum is 2 mm and the rear entries are
+12-18 mm outside the shoe volume by the audit's signed-depth convention. No
+visible shoe penetration, detached `\\======//` course, duplicated track or
+missing hull/side-skirt surface appears. These intact lower-vehicle parts are
+therefore preserved rather than deleted or raised to manufacture a numerical
+zero.
+
+Deterministic geometry freeze **`d7faced8`** reproduces at 62 meshes / 56,802
+vertices. The targeted eight-file asset checker passes geometry, metadata,
+files and muzzle bore on the live freeze.
+
+**KEEP / RE-FROZEN `d7faced8`; retire stale ledger freeze `7ac6d434`. Future
+Type 10 work must preserve the complete lower vehicle and keep the full turret
+package on the corrected y=1.40 articulation.**
