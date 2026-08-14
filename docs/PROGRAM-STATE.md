@@ -5466,3 +5466,32 @@ metadata, files and muzzle bore.
 **KEEP / RE-FROZEN `313ab8ca`; retire `61023726`. Future FV510 work must
 preserve the full lower vehicle, continuous long glacis rake and complete
 turret-owned sight/searchlight load paths.**
+
+## 5.157 ABRAMS STUDIO-SELECTED LEFT-CHEEK OVERLAY REMOVAL (2026-08-13, LIVE)
+
+The owner used the first-party Tank Surface Markup Studio on `m1a2_tejas` to
+mark three adjacent patches on the left-front turret cheek. The exported
+patches resolve to faces 2286-2301 of the merged `turret` bucket and share the
+same authored bounds: x=-1.601..-1.101, local y=-0.12..0.51 and
+z=0.20..1.74922. They are the raked face, outboard face and roof face of the
+same procedural stair-zone overlay, not three independent armor parts.
+
+The complete closed overlay (its thin toe and upper wedge) is therefore
+removed at the builder level. Individual triangles are not deleted: doing so
+would leave an open non-manifold wound. The primary Abrams turret loft under
+the overlay remains intact and now supplies one continuous swept left cheek.
+The inboard mantlet-shoulder transition at x=-1.101..-0.699 is retained, as are
+the gun, smoke bank, roof stations, bustle, hull and native running gear.
+
+Fresh first-party studio inspection at the owner's exported hero/elevated-left
+camera family confirms the selected card is absent. Direct side and top yaw90
+inspection show a closed cheek with no sky hole, stranded fitting or duplicate
+turret mass; the complete remaining package still rotates together. Because
+the corrected cheek is shared by the authored Tejas-family builder, all 48
+garage/silhouette/armor/hit-zone/module assets for `m1a1`, `m1a1ha`,
+`m1a2_tejas`, `m1a2_tusk`, `m1a2_sepv2` and `m1a2_sepv3` are regenerated.
+Targeted asset and muzzle-bore gates pass for all six variants. The new
+`m1a2_tejas` deterministic geometry freeze is **`5882a89c`**.
+
+**KEEP. Future Abrams cheek edits should use studio surface bounds to remove
+the owning procedural primitive, never raw triangles from the merged mesh.**

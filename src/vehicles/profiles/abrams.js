@@ -1876,9 +1876,15 @@ function tejasRoofKit(P, t, station = 'crows') {
     // it, and a 12 cm toe lip at the OLD stair-bin1 front (2.05w, inside
     // its certified column) carries the 1.45w front-view bottoms across
     // the seam span -1.0..-1.101.
+    // Owner studio deletion 2026-08-13: the outboard stair-zone wedge
+    // (-1.601..-1.101) was selected on its raked face, side face and roof
+    // face.  Remove that complete authored overlay (toe + upper wedge)
+    // instead of deleting individual triangles and leaving an open sheet.
+    // The primary Abrams cheek loft underneath remains closed and restores
+    // the continuous swept cheek silhouette.  Retain only the inboard
+    // shelf/plate transition that is buried into the mantlet shoulder.
     for (const [xL, xR, yc, yt, zRear] of [
-      [-1.101, -0.699, 0.00, 0.53, 0.90],    // shelf/plate zone (chin 1.57w)
-      [-1.601, -1.101, -0.12, 0.51, 0.20],   // stair zone (chin 1.45w)
+      [-1.101, -0.699, 0.00, 0.53, 0.90],
     ]) {
       const y0 = yc + 0.048, rise = yt - y0;
       P.add('turret', slab(
