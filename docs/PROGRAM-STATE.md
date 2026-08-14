@@ -5754,3 +5754,41 @@ gameplay assets freeze deterministic geometry **`0fcd4abb`**.
 **KEEP `0fcd4abb`. Future Proryv work must preserve the two roof weapons,
 supported large searchlight, complete T-90SM-grade hull envelope, deep
 side-curtain course, backed rear field and untouched native running gear.**
+
+## 5.168 ABRAMS FAMILY ARMOUR / ASSET RECONCILIATION (2026-08-13, LIVE)
+
+The latest first-party Abrams completion pass changes shared procedural
+geometry across six playables: `m1a1`, `m1a1ha`, `m1a2`, `m1a2_sepv2`,
+`m1a2_sepv3` and `m1a2_tusk`. The M1A1 pair gains physically seated side,
+flank and cheek armour plus low roof electronics; the M1A2 branch gains its
+own complete shallow skirt/cheek/bustle armour courses. Upgraded vehicles
+retain two deliberately separated, forward-facing roof machine-gun stations
+instead of a transverse or overlapping duplicate. TUSK's loader station is
+seated on the vehicle-right hatch opposite the common left CROWS.
+
+Current first-party hero, close-roof and true 90-degree yaw inspection shows
+complete Abrams hulls and side protection, seven separately readable road
+wheels inside one linked-shoe course, and no deleted sponson or duplicate
+track. Gun, turret armour, electronics and both roof weapons rotate together;
+glacis, skirts, wheels, tracks and engine deck remain hull-owned. Every added
+cassette, receiver, pintle and electronics case meets an armour plane or broad
+local foundation.
+
+The exact strict course audit also removes the recovered M1A2 builder's
+obsolete static filler belt and parked bow/tail shoe blocks; the native
+scrolling belt and instanced links are now the only course. Wheel-well closure
+plates move inboard without opening the hull, the idler-corridor floor rises
+5 cm earlier, and the SEPv2/SEPv3 third bow cassettes retain their old outer
+faces while their inner walls pull clear of the raised idler. All six Abrams
+variants pass exact band and shoe sweeps at **0/0**.
+
+The code change initially left the eight derived gameplay presentations per
+tank stale. All affected icon, side, top, silhouette, armour, hit-zone and
+module assets are regenerated from the live first-party builders. The frozen
+geometry hashes are `56080f6b` (`m1a1`), `f0bc6861` (`m1a1ha`), `6d92ca20`
+(`m1a2`), `93c1c4d1` (`m1a2_sepv2`), `1d5ce857` (`m1a2_sepv3`) and
+`f621984d` (`m1a2_tusk`).
+
+**KEEP these six hashes. Future Abrams work must preserve complete hull/side
+armour, the singular seven-wheel native course, separated forward roof
+weapons and the documented hull/turret ownership split.**

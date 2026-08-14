@@ -3455,9 +3455,14 @@ function buildTejasFamily(P, p) {
       for (let k = 0; k < 3; k++) {
         const z = 2.32 + k * 0.34;
         const h = 0.34 - k * 0.045;
-        const bowCarrier = g.skirt.x - k * 0.05;
+        const rawCarrier = g.skirt.x - k * 0.05;
+        const bowCarrier = Math.max(rawCarrier, g.skirt.x - 0.066);
+        // Keep the old outer face while pulling the inner wall clear of the
+        // raised idler shoe.  The third cassette previously narrowed inward
+        // through the live track lane.
+        const bowDepth = 0.12 - (bowCarrier - rawCarrier);
         const bowOuter = skirtArmorBox(P, 'hull', side, bowCarrier,
-          0.12, h, 0.30, 1.03, z);
+          bowDepth, h, 0.30, 1.03, z);
         skirtArmorBox(P, 'hull', side, bowOuter - 0.003,
           0.014, h - 0.07, 0.24, 1.03, z, 0);
       }
@@ -3634,9 +3639,11 @@ function buildTejasFamily(P, p) {
       for (let k = 0; k < 3; k++) {
         const z = 2.74 + k * 0.31;
         const h = 0.32 - k * 0.045;
-        const bowCarrier = g.skirt.x - k * 0.055;
+        const rawCarrier = g.skirt.x - k * 0.055;
+        const bowCarrier = Math.max(rawCarrier, g.skirt.x - 0.066);
+        const bowDepth = 0.12 - (bowCarrier - rawCarrier);
         const bowOuter = skirtArmorBox(P, 'hull', s, bowCarrier,
-          0.12, h, 0.27, 1.02, z);
+          bowDepth, h, 0.27, 1.02, z);
         skirtArmorBox(P, 'hull', s, bowOuter - 0.003,
           0.014, h - 0.07, 0.21, 1.02, z, 0);
       }
@@ -4098,8 +4105,12 @@ function buildM1a2(P, V) {
     // band inner face — plan extents lose 2 cm on two bow columns, the §B4
     // audit gains a zero-shared-cell pod/lane corridor)
     band('hull', s * 0.56, s * 0.94, M1A2_DECK, M1A2_BOWB, 2.55, 3.945);
-    band('hull', s * 0.97, s * 1.51, M1A2_DECK, M1A2_FLATB, 2.20, 2.55);
-    band('hull', s * 0.97, s * 1.51, M1A2_DECK, [[-4, 1.12], [4, 1.12]], 2.55, 3.845);
+    // Start the raised idler corridor 5 cm earlier than the old seam.  The
+    // two bands used to meet exactly on the live shoe shoulder, leaving a
+    // one-voxel hull/shoe penetration even though both adjacent spans were
+    // clear.  Moving only this transition preserves the complete wing.
+    band('hull', s * 0.97, s * 1.51, M1A2_DECK, M1A2_FLATB, 2.20, 2.50);
+    band('hull', s * 0.97, s * 1.51, M1A2_DECK, [[-4, 1.12], [4, 1.12]], 2.50, 3.845);
   }
   // Main + rear deck band (full ±1.51; the skirts carry the width plane).
   // §B4 SPROCKET-BAY CARVE: the sponson floor over the rear wrap lifts to
@@ -4328,7 +4339,7 @@ function buildM1a2(P, V) {
     // the first cut's mid-shadow wall caught the key light through the
     // wheel gaps and read L~50 flat — the discs need the ref's dark-bay
     // contrast (ref gap shadow under the hem, near-black class).
-    sb('hullDark', s, 1.05, 1.09, 0.30, 0.74, -2.62, 2.35);
+    sb('hullDark', s, 0.86, 0.91, 0.30, 0.74, -2.62, 2.35);
     // Tail-bay wall: same 0.90..0.92 plane as the r4-certified sponson
     // closure wall above it (5.7 cm inboard of the wrap band — the
     // audit-proven clearance). z stops at the -2.62 carve line (the
@@ -4336,7 +4347,7 @@ function buildM1a2(P, V) {
     // bottom rides 0.50 — above the 0.44 belly front bins and the rising
     // wrap-arc side line (the first cut's 0.30 floor hung 0.17-low flat
     // bottoms on four side columns and 0.11-low front columns at ±0.91).
-    sb('hullDark', s, 0.90, 0.92, 0.50, 0.95, -2.62, -2.27);
+    sb('hullDark', s, 0.84, 0.90, 0.50, 0.95, -2.62, -2.27);
   }
   // Visual r4 order 4 — SUN-FLANK SCALLOP CROWNS (tone-only, the ordered
   // "brighter slot"): the right-side link-pad crown bars ride a dedicated
@@ -4435,59 +4446,14 @@ function buildM1a2(P, V) {
     idler: { z: 2.92, y: 0.7675, r: 0.2125 },
     paintedEnds: true, coveredTop: true, deadSag: 0.03, gearFloor: true,
   });
-  {
-    // Flat-run FILLER BAND (critic-pair finding, this round): on the raised
-    // floating run the 0.085 gap between grouser tips (0.150) and band face
-    // (0.235) read as a saw-tooth crenellation from the side — the print's
-    // floating run is SOLID. One shallow loft rides the pad-tip line over
-    // the whole flat run (face 1.419, 2 mm proud of the band, same front
-    // bin), dipping through the print's single ground touch (the r1 SAG
-    // polyline — ALSO the proc-bbox y-min anchor 0.005). The moving link
-    // pads emerge at the ramps/wraps where the print shows its own shoes;
-    // pin caps still bead past the filler face like the r1 connector dots.
-    // z -2.60..2.30 keeps it out of both §B4 audit zones.
-    const RUNB = [[-2.60, 0.145], [1.492, 0.145], [1.54, 0.005],
-      [1.625, 0.018], [1.70, 0.05], [1.80, 0.082], [1.92, 0.14],
-      [1.965, 0.145], [2.30, 0.145]];
-    for (const s of [-1, 1]) {
-      band('hullTrack', s > 0 ? 0.977 : -1.419, s > 0 ? 1.419 : -0.977,
-        [[-4, 0.24], [4, 0.24]], RUNB, -2.60, 2.30);
-      // Cert bow shoe stack (the r1 idler-shoe block class): z >= 3.30 =
-      // 2+ cells clear of the 3.2225 wrap end, entirely aft of the front
-      // audit zone; carries the cert 0.53/0.465 side bins to 3.595.
-      sb('hullTrack', s, 0.955, 1.41, 0.53, 0.88, 3.30, 3.465);
-      sb('hullTrack', s, 0.955, 1.41, 0.465, 0.88, 3.48, 3.595);
-      {
-        // §B3 BOX-CLEANUP (sepv2 round, 2026-08-05; PORTED to m1a2 in its
-        // graduate-change round the same day — family-shared, both
-        // variants): the two cert blocks read as bare dark cuboids
-        // floating ahead of the track at 1x — they ARE the print's stowed
-        // idler shoes, so they take the track-shoe grammar: proud pad
-        // plates + pale guide-horn dots on the OUTER face only (x to
-        // 1.417/1.4185, inside the 1.419 filler-band face; y/z strictly
-        // inside each certified block, and the front/plan pixel columns
-        // out to the 1.4416 pin caps are already band-lit — every side
-        // bin and plan/front row is byte-equal; proven gate-neutral on
-        // sepv2, re-proven on m1a2 this round).
-        for (const [zA, zB, y0] of [[3.30, 3.465, 0.53], [3.48, 3.595, 0.465]]) {
-          const n = 3;
-          const step = (zB - zA - 0.02) / n;
-          for (let k = 0; k < n; k++) {
-            const zc = zA + 0.01 + step * (k + 0.5);
-            sb('hullTrack', s, 1.41, 1.417, y0 + 0.03, 0.85, zc - step * 0.36, zc + step * 0.36);
-            sb('hullDetail', s, 1.41, 1.4185, 0.665, 0.695, zc - 0.012, zc + 0.012);
-          }
-        }
-      }
-      // Cert tail shoe under the shelf (keyed 1 cm into the tail solid —
-      // floater contract; bottom rides the ref's 0.65-0.685 tail line).
-      sb('hullTrack', s, 0.955, 1.41, 0.655, 0.90, -3.555, -3.42);
-      // Head-on corridor baffles between the runs (bare-drum daylight fix,
-      // r2 precedent) — seated above the ground-run band, outside both
-      // audit zones.
-      sb('hullDark', s, 0.955, 1.41, 0.36, 0.84, 2.34, 2.36);
-      sb('hullDark', s, 0.955, 1.41, 0.36, 0.84, -2.67, -2.65);
-    }
+  // The native running-gear builder already supplies the complete scrolling
+  // belt and instanced shoes.  The former static filler band, parked bow
+  // blocks and tail shoe duplicated that course and intersected the live
+  // links.  Keep only narrow inboard bay closures; they preserve dark wheel
+  // wells without occupying either animated lane.
+  for (const s of [-1, 1]) {
+    sb('hullDark', s, 0.84, 0.90, 0.36, 0.84, 2.34, 2.36);
+    sb('hullDark', s, 0.84, 0.90, 0.36, 0.84, -2.67, -2.65);
   }
 
   // ---- sponson stowage walls (front-view 1.96-2.12 at |x| 1.29..1.63) ----
