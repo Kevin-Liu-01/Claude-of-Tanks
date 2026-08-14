@@ -53655,7 +53655,7 @@
           }
         ]
       },
-      "geometryHash": "2cf944e7",
+      "geometryHash": "2fb97812",
       "metadataHash": "91556c12",
       "muzzleBore": {
         "tagged": 2,
@@ -53670,8 +53670,8 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 18054,
-          "sha256": "522f1a76356ff792a92899a525a62b8651833e842d92694f9b64eede231ff566"
+          "bytes": 18010,
+          "sha256": "eb3ee7fd912ca1395416b6a318de5a22c9fbd7a7f769adfdf99bdf211de77735"
         },
         "top": {
           "file": "merkava3c_top.webp",
@@ -53686,8 +53686,8 @@
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 10484,
-          "sha256": "a0724beab69fee1ff27a9182a5d3932473afff9ba01a38c60be3c44d91525bbd"
+          "bytes": 10490,
+          "sha256": "4c021610e47b65a95556f3dcdb2c3a34ee1000a133ab4a5525c82d13c23782c7"
         },
         "topSilhouette": {
           "file": "merkava3c_top_silhouette.png",
@@ -53702,32 +53702,32 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4740,
-          "sha256": "5852770796dcf7c19cead1d4b208360f6da83ecb7d1fafced0e533fae67254a5"
+          "bytes": 4747,
+          "sha256": "e1abf39d6e6f5fe01f2a62b49116c7d75fe4a796e0ca9c0c3bd81943065c7f05"
         },
         "hitZonesSide": {
           "file": "merkava3c_hit_zones_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 75796,
-          "sha256": "47e935503a369765b8be3d40bf3f581aebf43a61f7be3b9ac3aa6e62399d6e03"
+          "bytes": 75610,
+          "sha256": "677781b2d549aa83814877b83fa69bf95463983b3de36cd7ccd60ce65d9cdedb"
         },
         "armorSide": {
           "file": "merkava3c_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 73828,
-          "sha256": "6620677b65aade70427f144ae58b6a183775edeacc88671631203e109dbd6975"
+          "bytes": 73837,
+          "sha256": "3dfde33390ad4e1d5f63af7e7174b7558ee00be4deff192e6a777460dc9f3693"
         },
         "modulesSide": {
           "file": "merkava3c_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 76447,
-          "sha256": "d33ecf7737abee1368d69e08832cdce21a9721af6d20863d73324dd16ef65e4b"
+          "bytes": 76275,
+          "sha256": "4bb561514e4d8a54fca860832d4664fff80c191ead84e0d26ef9832d22716266"
         }
       }
     },
