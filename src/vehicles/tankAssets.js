@@ -5,8 +5,9 @@
 import { flagIconCode } from '../ui/flagCodes.js';
 import { tankTier, tierNumeral } from './tier.js';
 import { tankLabelRecord } from './tankLabels.js';
+import { vehicleMarkingRecord } from './vehicleMarkings.js';
 
-export const TANK_ASSET_SCHEMA_VERSION = 2;
+export const TANK_ASSET_SCHEMA_VERSION = 3;
 
 export const TANK_ASSET_VIEWS = Object.freeze({
   angle: Object.freeze({ suffix: 'angle', ext: 'webp', width: 512, height: 512, role: 'garage hero' }),
@@ -17,6 +18,7 @@ export const TANK_ASSET_VIEWS = Object.freeze({
   hitZonesSide: Object.freeze({ suffix: 'hit_zones_side', ext: 'png', width: 512, height: 256, role: 'hit-area diagram' }),
   armorSide: Object.freeze({ suffix: 'armor_side', ext: 'png', width: 512, height: 256, role: 'penetration/armor diagram' }),
   modulesSide: Object.freeze({ suffix: 'modules_side', ext: 'png', width: 512, height: 256, role: 'module diagram' }),
+  markings: Object.freeze({ suffix: 'markings', ext: 'png', width: 256, height: 128, role: 'national insignia and tactical designation' }),
 });
 
 export function tankAssetFile(id, view) {
@@ -37,8 +39,9 @@ function point3(value) {
   return Array.isArray(value) ? value.slice(0, 3).map((v) => rounded(Number(v))) : null;
 }
 
-function plateMetadata(plate, turretLocal) {
+function plateMetadata(plate, turretLocal, index) {
   return {
+    hitboxId: `${turretLocal ? 'T' : 'H'}${String(index + 1).padStart(2, '0')}`,
     name: String(plate.name || 'plate'),
     physicalMm: rounded(Number(plate.physicalMm || 0), 2),
     keMm: rounded(Number(plate.keMm ?? plate.physicalMm ?? 0), 2),
@@ -49,8 +52,9 @@ function plateMetadata(plate, turretLocal) {
   };
 }
 
-function boxMetadata(box, key) {
+function boxMetadata(box, key, index, prefix) {
   return {
+    volumeId: `${prefix}${String(index + 1).padStart(2, '0')}`,
     name: String(box[key] || key),
     min: point3(box.min),
     max: point3(box.max),
@@ -67,6 +71,7 @@ export function tankAssetMetadata(spec) {
     id: spec.id,
     name: label.displayName,
     label,
+    markings: vehicleMarkingRecord(spec),
     nation: spec.nation,
     countryCode: flagIconCode(spec.nation),
     era: spec.era,
@@ -90,13 +95,14 @@ export function tankAssetMetadata(spec) {
       })),
     },
     armor: {
+      schemaVersion: 2,
       turretPivot: point3(armor.turretPivot) || [0, 0, 0],
       plates: [
-        ...(armor.hullPlates || []).map((plate) => plateMetadata(plate, false)),
-        ...(armor.turretPlates || []).map((plate) => plateMetadata(plate, true)),
+        ...(armor.hullPlates || []).map((plate, index) => plateMetadata(plate, false, index)),
+        ...(armor.turretPlates || []).map((plate, index) => plateMetadata(plate, true, index)),
       ],
-      modules: (armor.modules || []).map((box) => boxMetadata(box, 'module')),
-      crew: (armor.crew || []).map((box) => boxMetadata(box, 'crew')),
+      modules: (armor.modules || []).map((box, index) => boxMetadata(box, 'module', index, 'M')),
+      crew: (armor.crew || []).map((box, index) => boxMetadata(box, 'crew', index, 'C')),
     },
   };
 }

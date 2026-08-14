@@ -153,12 +153,12 @@ body.cot-touch-layout .cot-bounce{top:31%;font-size:12px;}
    so its top-right corner is free: the count moves there. */
 body.cot-touch-layout .cot-shell .cnt{top:2px;right:3px;bottom:auto;}
 /* MOBILE-QA r1: touch-target floor for chrome the phone shares with desktop.
-   The garage nav row (25px), era chips (20px), carousel arrows (34px strip)
+   The garage nav row (25px), country chips (20px), carousel arrows (34px strip)
    and the battle back button (38px) all sat under the
    ~40px finger floor; several were genuinely hard to hit on an SE. Padding
    bumps only — same type, same layout language. */
 body.cot-touch-layout .nv{padding:9px 14px;}
-body.cot-touch-layout .cot-era-chip{padding:9px 12px;}
+body.cot-touch-layout .cot-country-chip{padding:9px 12px;}
 body.cot-touch-layout .cot-car-arrow{width:44px;}
 body.cot-touch-layout .cot-touch .back{padding:12px 16px;min-height:44px;}
 `;

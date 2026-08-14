@@ -4,6 +4,7 @@
 // Units per ARCHITECTURE §1.2 — suffixed fields keep human units; consumers convert.
 
 import { tankLabelRecord } from './tankLabels.js';
+import { vehicleMarkingRecord } from './vehicleMarkings.js';
 
 /** Locked roster ids in locked garage-carousel order (ARCHITECTURE §2.1). */
 // leo2a7 REMOVED from the roster BY OWNER 2026-08-06 ('remove the leopard
@@ -1743,6 +1744,7 @@ export function finalizeFirstPartyRoster() {
     const label = tankLabelRecord(spec);
     spec.name = label.displayName;
     spec.label = label;
+    spec.markings = vehicleMarkingRecord(spec);
     spec.authorship = Object.freeze({
       geometry: 'first-party-procedural',
       runtimeExternalGeometry: false,

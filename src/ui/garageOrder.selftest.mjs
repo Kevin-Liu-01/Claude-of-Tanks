@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { compareCountryThenTierThenName } from './garageOrder.js';
+import { compareCountryThenTierThenName, countryFilterGroups } from './garageOrder.js';
 
 const rank = new Map([
   ['USA', 0], ['USSR', 1], ['USSR/Russia', 1], ['Russia', 1], ['UK', 2],
@@ -22,6 +22,19 @@ assert.deepEqual(
   cards.sort((a, b) => compareCountryThenTierThenName(a, b, rank, tierOf)).map((card) => card.id),
   ['m1a1', 'm1a2', 't72bu', 't72b3m', 't90', 'challenger'],
   'garage cards sort by country first, tier second and display name third',
+);
+
+const combinedEras = [
+  { id: 'm1a2', nation: 'USA', era: 'modern' },
+  { id: 'm4a3', nation: 'USA', era: 'ww2' },
+  { id: 't90', nation: 'Russia', era: 'modern' },
+  { id: 't34', nation: 'USSR', era: 'ww2' },
+];
+const countryCode = (spec) => spec.nation === 'USA' ? 'us' : 'ru';
+assert.deepEqual(
+  countryFilterGroups(combinedEras, countryCode).map(({ id, count }) => [id, count]),
+  [['us', 2], ['ru', 2]],
+  'country filters combine modern, Cold War and WWII vehicles under one flag',
 );
 
 const duplicateNames = [

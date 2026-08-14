@@ -1,7 +1,7 @@
 // tools/gen2-verify-probe.mjs — USER DROPS wave 8 (scout-gen2) integration
 // verification. For each of the 12 wave-8 vehicles (src/vehicles/userdrops7.js):
 //
-//   garage  — activates the vehicle's provenance/era chip, asserts its card is
+//   garage  — activates the vehicle's national flag chip, asserts its card is
 //             visible under that chip, real-clicks the card, waits for pedestal
 //             convergence (probe contract from garage-switch-probe.mjs), asserts
 //             the HERO IS THE SOURCED GLB (local build: __glbSwapped nodes) and
@@ -31,14 +31,12 @@ const BATTLE_ID = opt('battle-id', 't84');
 const OUT = resolve('shots/gen2-integration');
 mkdirSync(OUT, { recursive: true });
 
-// id -> expected garage chip. CATALOG v2 (owner re-order 2026-08-06): four
-// groups — Cold War / Modern / WWII / Sources. The wave's GLB-registered ids
-// live under SOURCES until they graduate; the custom builds split by era.
+// id -> expected country chip. Historical eras are intentionally combined.
 const WAVE8 = {
-  t44: 'sources', t54: 'sources', type59: 'sources',
-  amx30: 'sources', amx30b2: 'sources', m48: 'sources',
-  t80: 'modern', t80b: 'modern', t80bv: 'modern', t84: 'modern',
-  m60a2: 'coldwar', vickers_mk1: 'coldwar',
+  t44: 'ru', t54: 'ru', type59: 'cn',
+  amx30: 'fr', amx30b2: 'fr', m48: 'us',
+  t80: 'ru', t80b: 'ru', t80bv: 'ru', t84: 'ua',
+  m60a2: 'us', vickers_mk1: 'gb',
 };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let failures = 0;
@@ -103,8 +101,8 @@ const clickSel = async (selector) => {
 };
 
 for (const [id, chip] of Object.entries(WAVE8)) {
-  if (!(await clickSel(`.cot-era-chip[data-era="${chip}"]`))) {
-    fail(`${id}: era chip '${chip}' not found`);
+  if (!(await clickSel(`.cot-country-chip[data-country="${chip}"]`))) {
+    fail(`${id}: country chip '${chip}' not found`);
     continue;
   }
   await sleep(250);
@@ -171,7 +169,7 @@ for (const [id, chip] of Object.entries(WAVE8)) {
 // Phase 2 — battle E2E in a wave-8 vehicle: drive + fire
 // ---------------------------------------------------------------------------
 console.log(`[gen2-verify] phase 3: battle E2E in ${BATTLE_ID}`);
-await clickSel(`.cot-era-chip[data-era="${WAVE8[BATTLE_ID] || 'modern'}"]`);
+await clickSel(`.cot-country-chip[data-country="${WAVE8[BATTLE_ID] || 'ru'}"]`);
 await sleep(250);
 await clickSel(`.cot-card[data-spec-id="${BATTLE_ID}"]`);
 await page.waitForFunction((tid) =>

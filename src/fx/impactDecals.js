@@ -43,11 +43,12 @@
  */
 import * as THREE from 'three';
 import { mulberry32, makeFbm } from './particles.js';
+import { SURFACE_MARKING_STYLE } from '../vehicles/vehicleMarkings.js';
 
 /** Per-vehicle decal budget (oldest evicted beyond this). */
 export const IMPACT_DECAL_CAP = 24;
 /** Millimetre-scale separation avoids z-fighting without a visible air gap. */
-export const IMPACT_DECAL_LIFT_M = 0.006;
+export const IMPACT_DECAL_LIFT_M = SURFACE_MARKING_STYLE.surfaceLiftM;
 
 // --- atlas layout ------------------------------------------------------------
 const ATLAS = 1024;
@@ -473,7 +474,9 @@ function cellUV(idx) {
  */
 export function createImpactDecals({ anisotropy = 4, seed = 0x51f7a3 } = {}) {
   const rng = mulberry32(seed >>> 0);
-  const atlas = bakeAtlas(mulberry32((seed ^ 0x9d2c5681) >>> 0), anisotropy);
+  // Field-painted identifiers and ballistic scars share the same deterministic
+  // surface-marking seed vocabulary and millimetre-scale lift contract.
+  const atlas = bakeAtlas(mulberry32((seed ^ SURFACE_MARKING_STYLE.wearSeedSalt) >>> 0), anisotropy);
   const material = new THREE.MeshBasicMaterial({
     map: atlas,
     transparent: true,
@@ -504,6 +507,7 @@ export function createImpactDecals({ anisotropy = 4, seed = 0x51f7a3 } = {}) {
     geo.setIndex(idx);
     const mesh = new THREE.Mesh(geo, material);
     mesh.name = 'fx_impactDecals';
+    mesh.userData.surfaceMarkingLayer = 'impact';
     mesh.renderOrder = 3;
     mesh.castShadow = mesh.receiveShadow = false;
     mesh.frustumCulled = false; // rides its parent node; quads are hull-sized

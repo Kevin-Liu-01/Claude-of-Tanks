@@ -7,7 +7,7 @@
 // selection never received a __SWITCH_TIMINGS row.
 //
 // Phase A (desync): per round, clicks 20 random REAL carousel cards (plus
-//   occasional era-chip hops across all three groups) at 50-150 ms intervals
+//   occasional country-chip hops across national groups) at 50-150 ms intervals
 //   through actual mouse input, then asserts convergence:
 //     __DEBUG.pedestalVisual.specId === __DEBUG.selectedSpecId
 //       === the DOM '.cot-card.sel' dataset.specId,
@@ -151,7 +151,7 @@ async function phaseAB() {
     const box = await page.evaluate((k, r1, r2) => {
       let el = null;
       if (k === 'chip') {
-        const chips = [...document.querySelectorAll('.cot-era-chip')];
+        const chips = [...document.querySelectorAll('.cot-country-chip')];
         el = chips[(r1 * chips.length) | 0];
       } else {
         const cards = [...document.querySelectorAll('.cot-card')]
@@ -164,7 +164,7 @@ async function phaseAB() {
       return {
         x: b.left + b.width * (0.35 + r2 * 0.3),
         y: b.top + b.height * (0.35 + r2 * 0.3),
-        id: el.dataset.specId || el.dataset.era || '?',
+        id: el.dataset.specId || el.dataset.country || '?',
       };
     }, kind, rng(), rng());
     if (!box) return null;

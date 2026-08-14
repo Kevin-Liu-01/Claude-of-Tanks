@@ -21,3 +21,17 @@ export function compareCountryThenTierThenName(a, b, nationRank, tierOf) {
   if (nameDelta) return nameDelta;
   return NAME_COLLATOR.compare(String(a.id || ''), String(b.id || ''));
 }
+
+/** Unique country groups in the same order as an already-sorted fleet. Era is
+ * deliberately ignored: WWII, Cold War and modern vehicles share a flag. */
+export function countryFilterGroups(specs, countryCodeOf) {
+  const groups = [];
+  const seen = new Set();
+  for (const spec of specs) {
+    const id = countryCodeOf(spec);
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    groups.push({ id, representative: spec, count: specs.filter((item) => countryCodeOf(item) === id).length });
+  }
+  return groups;
+}

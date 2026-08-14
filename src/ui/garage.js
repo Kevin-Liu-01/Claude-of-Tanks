@@ -6,6 +6,7 @@
 import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.js';
 import { FEATURED_SHOTS } from './featuredShots.js';
 import { flagIconHTML, flagIconUrl } from './flags.js';
+import { flagIconCode } from './flagCodes.js';
 import { ensureTankThumbs, drainTankThumbs, getTankThumb, requeueTankThumbs } from './tankThumbs.js';
 // CAMO PICKER SECTION: swatches preview the REAL resolved pattern (scheme +
 // palette from materials.js) instead of hand-approximated CSS gradients.
@@ -21,7 +22,7 @@ import {
 } from '../game/equipment.js';
 import { equipIconSVG } from './equipIcons.js';
 import { uiIconSVG } from './uiIcons.js';
-import { compareCountryThenTierThenName } from './garageOrder.js';
+import { compareCountryThenTierThenName, countryFilterGroups } from './garageOrder.js';
 import { isGarageVisibleTankId } from '../game/matchmaking.js';
 import { tankTier, tierNumeral } from '../vehicles/tier.js';
 import { getPlayerRecord } from '../game/profile.js';
@@ -36,53 +37,9 @@ const NATION_LABEL = {
   Poland: 'POL', Ukraine: 'UKR',
 };
 
-// ---------------------------------------------------------------------------
-// CATALOG GROUPS v2: the selection is catalogued into
-// THREE groups, shown in this order — the custom procedural fleet is the
-// source of truth, split cold-war / modern / WWII:
-//   (1) 'modern'   custom builds of modern vehicles;
-//   (2) 'coldwar'  custom builds of cold-war-era vehicles;
-//   (3) 'ww2'      custom builds of WWII vehicles (spec.era === 'ww2').
-// Partition, not overlay: every vehicle is in exactly one group.
-// ---------------------------------------------------------------------------
-// Specs only carry era 'ww2' | 'modern', so the cold-war split lives HERE as
-// a UI-layer classification map (id -> Cold War) instead of dozens of spec
-// edits. Membership rule: the VARIANT entered service before ~1991, with the
-// owner's example families pinned — Centurions, Chieftains, Pattons
-// (M46/M47/M48), M60s, the T-55/62/64 Soviet marks, Leopard 1, AMX-30,
-// Type 74, plus Vickers MBT and Strv 103 by the same rule. The T-80/90/14
-// lines, post-1991 T-72 modernizations (T-72B3/B3M/BU, PT-91M), Challengers,
-// Merkavas and all IFVs stay 'modern' per the same owner brief.
-const COLDWAR_IDS = new Set([
-  // USA — Patton line + M60s
-  'm46_patton', 'm47_patton', 'm48', 'm60a1', 'm60a2', 'm60a3',
-  // Germany — Leopard 1
-  'leo1a5',
-  // USSR — cold-war marks.  The owner explicitly catalogs T-72B obr. 1987
-  // with the Modern T-72 family, so it is not part of this UI override.
-  't54', 'type59', 't62mv1', 't64bv1',
-  // UK — Centurion / Chieftain / Vickers
-  'centurion3', 'centurion5', 'chieftain5', 'chieftain_mk10', 'vickers_mk1',
-  // France — AMX-30 line
-  'amx30', 'amx30b2',
-  // Sweden / Japan
-  'strv103', 'type74',
-  // USA — T95 "doomturtle": spec era is ww2, but the owner places it Cold
-  // War (§5.31) — the coldwar check in groupOf runs before the era branch.
-  't95',
-]);
-const groupOf = (s) =>
-  COLDWAR_IDS.has(s.id) ? 'coldwar'
-    : s.era === 'ww2' ? 'ww2' : 'modern';
-const CATALOG_GROUPS = [
-  { id: 'modern', label: 'Modern' },
-  { id: 'coldwar', label: 'Cold War' },
-  { id: 'ww2', label: 'WWII' },
-];
-const GROUP_RANK = new Map(CATALOG_GROUPS.map((g, i) => [g.id, i]));
-// Within each catalog group the owner-facing order is COUNTRY, then tier,
-// then display name. USSR / USSR-Russia / Russia are one country block; the
-// deterministic id tie-break is used only for duplicate public names.
+// One unified historical/modern catalog. Country flags are the only primary
+// filter; within each country the owner-facing order is tier, then name.
+// USSR / USSR-Russia / Russia intentionally share the RU flag block.
 const NATION_RANK = new Map([
   ['USA', 0], ['Germany', 1],
   ['USSR', 2], ['USSR/Russia', 2], ['Russia', 2],
@@ -91,10 +48,9 @@ const NATION_RANK = new Map([
   ['Ukraine', 12], ['Community', 13],
 ]);
 function catalogCompare(a, b) {
-  const g = (GROUP_RANK.get(groupOf(a)) ?? 9) - (GROUP_RANK.get(groupOf(b)) ?? 9);
-  if (g) return g;
   return compareCountryThenTierThenName(a, b, NATION_RANK, tankTier);
 }
+const countryCodeOf = (spec) => flagIconCode(spec.nation);
 
 const SHELL_TYPE_COLOR = {
   AP: '#ffd27a', APCR: '#e8f4ff', HEAT: '#ff8a5c', HE: '#ffb02e', APFSDS: '#ffc46b',
@@ -216,22 +172,25 @@ const GARAGE_CSS = `
   text-transform:uppercase;display:flex;justify-content:space-between;padding:2px 0;}
 .cot-garage .armorline b{color:#e6edf3;font-weight:600;font-variant-numeric:tabular-nums;
   text-transform:none;}
-/* MODERN EXPANSION: era filter chips — 35+ vehicles need grouping to stay
-   navigable; the carousel shows one era group at a time (WWII/MODERN/COMMUNITY) */
-.cot-era-chips{position:absolute;left:50%;bottom:172px;transform:translateX(-50%);
-  display:flex;gap:6px;pointer-events:auto;}
-.cot-era-chip{cursor:pointer;border:1px solid rgba(146,164,180,.3);
+/* One combined historical fleet, filtered by national flag. */
+.cot-country-chips{position:absolute;left:calc(50% - 34px);bottom:172px;transform:translateX(-50%);
+  display:flex;gap:5px;width:max-content;max-width:calc(100vw - 620px);
+  overflow-x:auto;scrollbar-width:none;pointer-events:auto;}
+.cot-country-chips::-webkit-scrollbar{display:none;}
+.cot-country-chip{cursor:pointer;border:1px solid rgba(146,164,180,.3);
   border-bottom:2px solid rgba(146,164,180,.4);background:rgba(11,15,20,.82);
   color:#9fb0bf;font-family:${FONT_STACK};font-size:10px;font-weight:800;
-  letter-spacing:.20em;text-transform:uppercase;padding:7px 18px 6px;
+  letter-spacing:.14em;text-transform:uppercase;padding:6px 11px 5px;
+  display:inline-flex;align-items:center;gap:6px;white-space:nowrap;
   transition:color .15s,border-color .15s,background .15s,transform .15s;outline:none;}
-.cot-era-chip:hover{color:#c6d2dc;border-color:rgba(210,225,240,.5);
+.cot-country-chip .cot-flag{width:22px;height:auto;display:block;box-shadow:0 0 0 1px rgba(255,255,255,.12);}
+.cot-country-chip:hover{color:#c6d2dc;border-color:rgba(210,225,240,.5);
   transform:translateY(-1px);}
-.cot-era-chip.sel{color:#ffd27a;border-color:rgba(240,176,74,.65);
+.cot-country-chip.sel{color:#ffd27a;border-color:rgba(240,176,74,.65);
   border-bottom-color:#f0a030;
   background:linear-gradient(180deg,rgba(32,24,12,.9),rgba(14,10,6,.92));}
-.cot-era-chip .ct{margin-left:7px;font-weight:600;color:#6d7a86;letter-spacing:.05em;}
-.cot-era-chip.sel .ct{color:#d8a04c;}
+.cot-country-chip .ct{font-weight:600;color:#6d7a86;letter-spacing:.04em;}
+.cot-country-chip.sel .ct{color:#d8a04c;}
 .cot-carousel{position:absolute;left:50%;bottom:22px;transform:translateX(-50%);
   display:flex;align-items:stretch;gap:8px;pointer-events:auto;max-width:96vw;}
 .cot-car-arrow{width:34px;border:1px solid rgba(146,164,180,.3);cursor:pointer;
@@ -280,9 +239,9 @@ const GARAGE_CSS = `
   box-shadow:0 1px 3px rgba(0,0,0,.55);}
 .cot-card .flag i{font-style:normal;}
 .cot-card.sel .flag{color:#d8c39a;}
-.cot-card .era{float:right;font-size:8.5px;font-weight:700;letter-spacing:.12em;
+.cot-card .designation{float:right;font-size:7.5px;font-weight:700;letter-spacing:.10em;
   color:#8a97a3;padding:2px 0;}
-.cot-card.sel .era{color:#d8a04c;}
+.cot-card.sel .designation{color:#d8a04c;}
 .cot-card .ti{display:block;margin:-2px auto -1px;width:136px;height:84px;
   object-fit:contain;filter:drop-shadow(0 5px 7px rgba(0,0,0,.72));transform:scale(1.04);}
 .cot-card .nm{font-size:11px;font-weight:650;color:#f3f7fa;letter-spacing:-.01em;
@@ -299,7 +258,7 @@ const GARAGE_CSS = `
    never overlap at short viewports (the old absolute anchors collided at
    1600x900 — the RANDOM card's conic-gradient thumb showed through the camo
    grid's 5px gaps as a phantom "white national cross"). */
-/* r9.1 (owner): the column runs down to just above the era chips
+/* r9.1 (owner): the column runs down to just above the country chips
    (chips bottom:172px + ~26px tall) instead of reserving 36% — the freed
    space all goes to the BATTLEFIELD list (maps is the flexible section). */
 .cot-leftcol{position:absolute;left:34px;top:108px;bottom:210px;
@@ -494,7 +453,7 @@ const GARAGE_CSS = `
    the interactive chrome — one quiet amber ring, outline-based so nothing
    shifts layout. Mouse clicks stay ring-free via :focus-visible. */
 .cot-battle:focus-visible,.cot-battle-mode:focus-visible,.cot-battle-choice:focus-visible,
-.cot-era-chip:focus-visible,.cot-car-arrow:focus-visible{
+.cot-country-chip:focus-visible,.cot-car-arrow:focus-visible{
   outline:2px solid rgba(240,176,74,.8);outline-offset:2px;}
 .cot-eqpick .chip:focus-visible,.cot-eqpick .ph .x:focus-visible{
   outline:1px solid rgba(240,176,74,.8);outline-offset:1px;}
@@ -511,7 +470,7 @@ const GARAGE_CSS = `
 .cot-garage.enter .hint{animation:cot-g-fade .34s ease-out .05s backwards;}
 .cot-garage.enter .stats{animation:cot-g-rise .36s ease-out .08s backwards;}
 .cot-garage.enter .cot-battle-control{animation:cot-g-drop-c .36s ease-out .05s backwards;}
-.cot-garage.enter .cot-era-chips{animation:cot-g-rise-c .32s ease-out .10s backwards;}
+.cot-garage.enter .cot-country-chips{animation:cot-g-rise-c .32s ease-out .10s backwards;}
 .cot-garage.enter .cot-carousel{animation:cot-g-rise-c .36s ease-out .14s backwards;}
 /* MARKETING FEATURED PANEL: rotating in-engine action stills (see
    tools/marketing-shots). Bottom-anchored under the camo grid in the left
@@ -587,9 +546,9 @@ const GARAGE_CSS = `
   .cot-camo-card{padding:3px 2px 2px;}.cot-camo-card .sw{height:22px;margin-bottom:2px;}
   .cot-camo-card .cl{font-size:6.5px;letter-spacing:.06em;}
   .cot-camos .cnote{display:none;}
-  .cot-era-chips{bottom:86px;gap:3px;}
-  .cot-era-chip{padding:4px 8px 3px;font-size:7px;letter-spacing:.12em;}
-  .cot-era-chip .ct{margin-left:3px;}
+  .cot-country-chips{left:50%;bottom:86px;gap:3px;max-width:86vw;}
+  .cot-country-chip{padding:3px 6px 2px;font-size:7px;letter-spacing:.10em;gap:3px;}
+  .cot-country-chip .cot-flag{width:15px;}
   .cot-carousel{bottom:8px;gap:4px;height:72px;max-width:98vw;}
   .cot-car-arrow{width:24px;font-size:16px;}
   .cot-cards{gap:4px;-webkit-mask-image:linear-gradient(90deg,#000 0,#000 calc(100% - 30px),transparent 100%);
@@ -598,7 +557,7 @@ const GARAGE_CSS = `
   .cot-card::before{opacity:.20;}.cot-card.sel::before{opacity:.28;}
   .cot-card.sel{transform:translateY(-3px);}
   .cot-card .flag{margin-bottom:1px;font-size:6px;gap:2px;}
-  .cot-card .flag .cot-flag{width:15px;height:auto;}.cot-card .era{font-size:6px;padding:1px 0;}
+  .cot-card .flag .cot-flag{width:15px;height:auto;}.cot-card .designation{font-size:5.5px;padding:1px 0;}
   .cot-card .ti{width:80px;height:40px;margin:-3px auto -1px;transform:none;}
   .cot-card .nm{font-size:7.5px;margin:0 -3px;}.cot-card .nm .tiern{margin-right:2px;}
   .cot-card .cls{font-size:6px;margin-top:0;letter-spacing:.12em;}
@@ -1302,12 +1261,16 @@ function frontArmorMm(plates, keys) {
 export function createGarage(opts) {
   const { bus, onSelect, onBattle } = opts;
   const allSpecs = opts.specs || [];
-  // CATALOG v2: the carousel REORDERS the roster it receives — three catalog
-  // groups in the owner's order (Modern / Cold War / WWII), country first,
-  // tier second and display name third inside each (catalogCompare above). Cards,
-  // arrow stepping and chip first-picks all read this one sorted array, so
-  // the visual strip, keyboard walk and group hand-offs always agree.
+  // One combined fleet: country first, then tier, then display name. Cards,
+  // arrow stepping and flag-chip hand-offs all use this single sorted array.
   const specs = allSpecs.filter((s) => isGarageVisibleTankId(s.id)).sort(catalogCompare);
+  const countryGroups = countryFilterGroups(specs, countryCodeOf).map(({ id, representative, count }) => ({
+    id,
+    count,
+    nation: representative.nation,
+    label: representative.markings?.filterLabel || NATION_LABEL[representative.nation] || id.toUpperCase(),
+    name: representative.markings?.countryLabel || representative.nation,
+  }));
   ensureFonts();
   ensureStyle('cot-garage-style', GARAGE_CSS);
 
@@ -1350,7 +1313,7 @@ export function createGarage(opts) {
     `<span>Ranked</span><small>ELO</small></button>` +
     `</div></div>` +
     `<div class="stats"></div>` +
-    `<div class="cot-era-chips"></div>` +
+    `<div class="cot-country-chips" role="group" aria-label="Filter vehicles by country"></div>` +
     `<div class="cot-carousel">` +
     `<button class="cot-car-arrow prev" type="button" aria-label="Previous vehicle">` +
     `${uiIconSVG('chevronLeft', 15)}</button>` +
@@ -1704,12 +1667,8 @@ export function createGarage(opts) {
   }
   // --- END CAMO PICKER SECTION ---------------------------------------------
 
-  // CATALOG GROUPS v2: classifier + four-group roster order live at module
-  // scope now (COLDWAR_IDS / groupOf / CATALOG_GROUPS / catalogCompare above
-  // the CSS) — the sorted `specs` array, the filter chips, arrow stepping and
-  // group cross-links all key off that one classifier. The old three-bucket
-  // provenance-intent scheme is retired; the authored fleet is now the only
-  // player-facing model source.
+  // ERA is still used for stat-peer normalization, but it is not a catalog
+  // partition. Modern, Cold War and WWII vehicles share each country fleet.
 
   // PER-CLASS stat ranges for the normalized bars. r6-2 (round critique:
   // "6.0 s reload renders ~90% full / bars carry no comparative scale"): the
@@ -1768,46 +1727,44 @@ export function createGarage(opts) {
     return 0.14 + Math.max(0, Math.min(1, f)) * 0.86;
   }
 
-  // --- CATALOG FILTER CHIPS (MODERN / COLD WAR / WWII) ----------------------
-  // The carousel shows ONE group at a time so a 100-vehicle roster stays
-  // navigable. Exactly three chips in the owner's order (CATALOG_GROUPS at
-  // module scope): the custom modern, cold-war, and WWII fleets.
-  // Partition, not overlay — the old LOCAL overlay chip (a tank in its era
-  // group AND in local) double-listed 69 vehicles. A chip with zero members
-  // auto-hides.
-  const inGroup = (s, gid) => groupOf(s) === gid;
-  let eraFilter = specs.length ? groupOf(specs[0]) : 'modern';
-  const chipsEl = root.querySelector('.cot-era-chips');
+  // --- COUNTRY FILTER CHIPS -------------------------------------------------
+  // The row is an explicit national flag selector. USSR and Russia share RU;
+  // every historical era stays together inside its country fleet.
+  const inCountry = (spec, countryId) => countryCodeOf(spec) === countryId;
+  let countryFilter = countryGroups[0]?.id || 'us';
+  const chipsEl = root.querySelector('.cot-country-chips');
   const chipById = new Map();
-  for (const g of CATALOG_GROUPS) {
-    const count = specs.filter((s) => inGroup(s, g.id)).length;
-    if (!count) continue;
+  for (const group of countryGroups) {
+    const count = group.count;
     const chip = document.createElement('button');
     chip.type = 'button';
-    chip.className = 'cot-era-chip';
-    chip.dataset.era = g.id; // switch-desync r1: stable hook for tools/tests
-    chip.innerHTML = `${g.label}<span class="ct">${count}</span>`;
+    chip.className = 'cot-country-chip';
+    chip.dataset.country = group.id;
+    chip.title = `${group.name} · ${count} vehicles`;
+    chip.setAttribute('aria-label', `Show ${group.name} vehicles`);
+    chip.innerHTML = `${flagIconHTML(group.nation, 22)}` +
+      `<span class="code">${group.label}</span><span class="ct">${count}</span>`;
     chip.addEventListener('click', () => {
       emit('ui:click', {});
-      applyEraFilter(g.id);
-      // moving to a new group: select its first vehicle so the pedestal,
+      applyCountryFilter(group.id);
+      // Moving to a new country selects its first vehicle so the pedestal,
       // stats card and highlighted card stay in sync with the visible strip
-      const first = specs.find((s) => inGroup(s, g.id));
-      if (first && !inGroup(specById.get(selectedId) || first, g.id)) {
+      const first = specs.find((spec) => inCountry(spec, group.id));
+      if (first && !inCountry(specById.get(selectedId) || first, group.id)) {
         api.setSelected(first.id);
       }
     });
     chipsEl.appendChild(chip);
-    chipById.set(g.id, chip);
+    chipById.set(group.id, chip);
   }
-  function applyEraFilter(gid) {
-    eraFilter = gid;
-    for (const [id, chip] of chipById) chip.classList.toggle('sel', id === gid);
+  function applyCountryFilter(countryId) {
+    countryFilter = countryId;
+    for (const [id, chip] of chipById) chip.classList.toggle('sel', id === countryId);
     let vis = 0; // garage_ui: stagger budget for the reveal animation
-    for (const s of specs) {
-      const card = cardById.get(s.id);
+    for (const spec of specs) {
+      const card = cardById.get(spec.id);
       if (!card) continue;
-      const showCard = inGroup(s, gid);
+      const showCard = inCountry(spec, countryId);
       const wasShown = card.style.display !== 'none';
       card.style.display = showCard ? '' : 'none';
       // garage_ui: a freshly revealed strip fades in with a light stagger
@@ -1819,15 +1776,9 @@ export function createGarage(opts) {
           { duration: 200, delay: Math.min(vis, 12) * 16, easing: 'ease-out', fill: 'backwards' });
       }
       if (showCard) vis++;
-      // CATALOG v2: the groups partition the roster, so a card only ever
-      // shows under its own chip and the per-card era tag is redundant —
-      // worse, a spec-era "MODERN" badge under the Cold War chip would
-      // actively misread.
-      const tag = card.querySelector('.era');
-      if (tag) tag.style.display = 'none';
     }
   }
-  // --- END era filter chips -------------------------------------------------
+  // --- END country filter chips --------------------------------------------
 
   // --- build carousel cards ---
   for (const s of specs) {
@@ -1842,7 +1793,7 @@ export function createGarage(opts) {
     // Stable pre-rendered 3/4 portrait generated from the final first-party
     // procedural build; no live renderer or model swap is needed here.
     card.innerHTML =
-      `<span class="era">${s.era === 'ww2' ? 'WWII' : 'MODERN'}</span>` +
+      `<span class="designation">${s.markings?.designation || ''}</span>` +
       `<span class="flag">${flagIconHTML(s.nation, 20)}<i>${NATION_LABEL[s.nation] || s.nation}</i></span>` +
       `<img class="ti" data-cot-thumb="${s.id}" src="${getTankThumb(s.id)}" alt="${displayName}">` +
       `<div class="nm"><b class="tiern">${tierNumeral(s.id) || ''}</b><span class="nmt"></span></div>` +
@@ -1855,11 +1806,7 @@ export function createGarage(opts) {
     cardsEl.appendChild(card);
     cardById.set(s.id, card);
   }
-  // CATALOG v2: apply the initial partition now that the cards exist —
-  // applySelection only re-filters on a GROUP CHANGE, so a first selection
-  // that already sits in the default group would otherwise open onto the
-  // whole 100-card roster mixed together.
-  applyEraFilter(eraFilter);
+  applyCountryFilter(countryFilter);
   // Packaged PNGs avoid per-card WebGL contexts and remain deterministic
   // across the garage carousel and screenshot harness.
   ensureTankThumbs(allSpecs, { canWork: () => api.isOpen });
@@ -1976,10 +1923,10 @@ export function createGarage(opts) {
     const spec = specById.get(specId);
     if (!spec) return false;
     selectedId = specId;
-    // era filter chips: direct selection from another group (for example the
-    // screenshot harness) switches the visible strip to its group
-    if (cardById.has(specId) && groupOf(spec) !== eraFilter) {
-      applyEraFilter(groupOf(spec));
+    // Direct selection from another country (for example a screenshot
+    // harness) switches the visible strip to that national fleet.
+    if (cardById.has(specId) && countryCodeOf(spec) !== countryFilter) {
+      applyCountryFilter(countryCodeOf(spec));
     }
     for (const [id, card] of cardById) card.classList.toggle('sel', id === specId);
     const card = cardById.get(specId);
@@ -1999,8 +1946,8 @@ export function createGarage(opts) {
   }
 
   function step(dir) {
-    // arrows walk the ACTIVE era group only (era filter chips)
-    const pool = specs.filter((s) => groupOf(s) === eraFilter);
+    // Arrows walk the active national fleet only.
+    const pool = specs.filter((spec) => inCountry(spec, countryFilter));
     if (!pool.length) return;
     const idx = pool.findIndex((s) => s.id === selectedId);
     const next = pool[(idx + dir + pool.length) % pool.length];
@@ -2303,7 +2250,7 @@ export function createGarage(opts) {
 
   if (mapCardById.size) api.setSelectedMap(selectedMapId);
 
-  applyEraFilter(eraFilter); // era chips: initial group visibility
+  applyCountryFilter(countryFilter);
   if (selectedId) applySelection(selectedId);
   return api;
 }

@@ -13,6 +13,7 @@ import {
   requiredTankAssetFiles, tankAssetFile, tankAssetMetadata,
 } from '/src/vehicles/tankAssets.js';
 import { auditTankAppearance } from '/src/vehicles/appearanceAudit.js';
+import { drawNationalInsignia, drawVehicleDesignation } from '/src/vehicles/vehicleMarkings.js';
 
 const BASE = 512;
 const SS = 2;
@@ -155,13 +156,14 @@ function technicalBase(sideCanvas, metadata, title, note) {
   c.fillRect(0, 0, out.width, out.height);
   c.font = '700 13px system-ui, sans-serif';
   c.fillStyle = '#f4f7f9';
-  c.fillText(`${metadata.tierNumeral}  ${metadata.label?.shortName || metadata.name}`.trim(), 14, 20);
+  drawNationalInsignia(c, metadata.markings.insignia, 22, 18, 20);
+  c.fillText(`${metadata.tierNumeral}  ${metadata.label?.shortName || metadata.name}`.trim(), 37, 20);
   c.font = '800 9px system-ui, sans-serif';
   c.fillStyle = '#dca652';
   c.fillText(title.toUpperCase(), 14, 36);
   c.textAlign = 'right';
   c.fillStyle = '#9dafbd';
-  c.fillText(note.toUpperCase(), out.width - 14, 20);
+  c.fillText(`${metadata.markings.designation} · ${note}`.toUpperCase(), out.width - 14, 20);
   c.textAlign = 'left';
   return out;
 }
@@ -226,6 +228,48 @@ function penetrationReference(metadata) {
   return `${shell.type || shell.name} ${Math.round(shell.pen100Mm)}→${Math.round(far)} mm · 100m→${farRange}`;
 }
 
+function clamp(value, min, max) { return Math.max(min, Math.min(max, value)); }
+
+function distributeCalloutYs(items, minY = 50, maxY = 224) {
+  if (!items.length) return;
+  items.sort((a, b) => a.center[1] - b.center[1]);
+  const gap = items.length > 1 ? Math.min(14, (maxY - minY) / (items.length - 1)) : 0;
+  for (let i = 0; i < items.length; i++) {
+    const min = i ? items[i - 1].labelY + gap : minY;
+    items[i].labelY = clamp(items[i].center[1], min, maxY);
+  }
+  if (items.at(-1).labelY > maxY) items.at(-1).labelY = maxY;
+  for (let i = items.length - 2; i >= 0; i--) {
+    items[i].labelY = Math.min(items[i].labelY, items[i + 1].labelY - gap);
+  }
+}
+
+function drawCalloutLabels(c, items) {
+  c.save();
+  c.font = '800 6.5px ui-monospace, monospace';
+  c.lineWidth = 0.75;
+  for (const side of ['left', 'right']) {
+    const list = items.filter((item) => item.center[0] < 256 ? side === 'left' : side === 'right');
+    distributeCalloutYs(list);
+    for (const item of list) {
+      const left = side === 'left';
+      const textX = left ? 7 : 505;
+      const edgeX = left ? 5 + c.measureText(item.label).width : 507 - c.measureText(item.label).width;
+      const elbowX = left ? 96 : 416;
+      c.strokeStyle = item.color || 'rgba(235,242,247,.74)';
+      c.beginPath(); c.moveTo(item.center[0], item.center[1]);
+      c.lineTo(elbowX, item.labelY); c.lineTo(edgeX, item.labelY); c.stroke();
+      const width = c.measureText(item.label).width + 5;
+      c.fillStyle = 'rgba(4,9,13,.84)';
+      c.fillRect(left ? 4 : 508 - width, item.labelY - 5, width, 9);
+      c.fillStyle = '#f6f8fa';
+      c.textAlign = left ? 'left' : 'right';
+      c.fillText(item.label, textX, item.labelY + 2.5);
+    }
+  }
+  c.restore();
+}
+
 function drawPlateDiagram(sideCanvas, metadata, projection, mode) {
   const armorMode = mode === 'armor';
   const out = technicalBase(
@@ -243,21 +287,27 @@ function drawPlateDiagram(sideCanvas, metadata, projection, mode) {
     if (points.length < 3) continue;
     const key = projectedPlateKey(points);
     const previous = projected.get(key);
-    if (!previous || plate.keMm > previous.plate.keMm) projected.set(key, { plate, points });
+    if (!previous) projected.set(key, { plate, points, plates: [plate] });
+    else {
+      previous.plates.push(plate);
+      if (plate.keMm > previous.plate.keMm) previous.plate = plate;
+    }
   }
-  for (const { plate, points } of projected.values()) {
+  const labels = [];
+  for (const { plate, points, plates } of projected.values()) {
     polygonPath(c, points);
     c.fillStyle = armorMode ? armorColor(plate.keMm) : zoneColor(plate);
     c.fill();
     c.strokeStyle = 'rgba(235,242,247,.72)';
     c.stroke();
-    if (polygonArea(points) > 165) {
-      const center = plateCenter(points);
-      c.textAlign = 'center';
-      c.fillStyle = '#f7fafb';
-      c.fillText(armorMode ? `${Math.round(plate.keMm)}` : compactPlateName(plate.name), center[0], center[1] + 3);
-    }
+    const ids = plates.map((entry) => entry.hitboxId).join('/');
+    labels.push({
+      center: plateCenter(points),
+      label: armorMode ? `${ids} ${Math.round(plate.keMm)}MM` : `${ids} ${compactPlateName(plate.name)}`,
+      color: armorMode ? armorColor(plate.keMm) : zoneColor(plate),
+    });
   }
+  drawCalloutLabels(c, labels);
   c.textAlign = 'left';
   c.font = '700 8px system-ui, sans-serif';
   if (armorMode) {
@@ -294,8 +344,8 @@ function moduleLabel(name) {
   return fixed[name] || name.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/_/g, ' ').toUpperCase();
 }
 
-function drawBox(c, box, projection, turretPivot, color, prefix = '') {
-  if (!box.min || !box.max) return;
+function drawBox(c, box, projection, turretPivot, color) {
+  if (!box.min || !box.max) return null;
   const a = projection.point(box.min, box.turretLocal, turretPivot);
   const b = projection.point(box.max, box.turretLocal, turretPivot);
   const x = Math.min(a[0], b[0]), y = Math.min(a[1], b[1]);
@@ -305,21 +355,28 @@ function drawBox(c, box, projection, turretPivot, color, prefix = '') {
   c.strokeStyle = color;
   c.lineWidth = 1.2;
   c.strokeRect(x, y, w, h);
-  if (w > 28 && h > 10) {
+  if (w > 18 && h > 9) {
     c.fillStyle = '#fff';
     c.textAlign = 'center';
-    c.fillText(`${prefix}${moduleLabel(box.name).slice(0, 10)}`, x + w / 2, y + h / 2 + 3);
+    c.fillText(box.volumeId, x + w / 2, y + h / 2 + 3);
   }
+  return { center: [x + w / 2, y + h / 2], label: `${box.volumeId} ${moduleLabel(box.name)}`, color };
 }
 
 function drawModuleDiagram(sideCanvas, metadata, projection) {
   const out = technicalBase(sideCanvas, metadata, 'Module and crew map', 'actual damage volumes');
   const c = out.getContext('2d');
   c.font = '800 6.5px ui-monospace, monospace';
+  const labels = [];
   for (const box of metadata.armor.modules) {
-    drawBox(c, box, projection, metadata.armor.turretPivot, MODULE_COLOR[box.name] || '#8aa1b2');
+    const label = drawBox(c, box, projection, metadata.armor.turretPivot, MODULE_COLOR[box.name] || '#8aa1b2');
+    if (label) labels.push(label);
   }
-  for (const box of metadata.armor.crew) drawBox(c, box, projection, metadata.armor.turretPivot, CREW_COLOR);
+  for (const box of metadata.armor.crew) {
+    const label = drawBox(c, box, projection, metadata.armor.turretPivot, CREW_COLOR);
+    if (label) labels.push(label);
+  }
+  drawCalloutLabels(c, labels);
   c.textAlign = 'left';
   c.font = '700 8px system-ui, sans-serif';
   const legend = [['AMMO', MODULE_COLOR.ammoRack], ['ENGINE', MODULE_COLOR.engine], ['FUEL', MODULE_COLOR.fuelTank], ['GUN', MODULE_COLOR.gun], ['CREW', CREW_COLOR]];
@@ -329,6 +386,23 @@ function drawModuleDiagram(sideCanvas, metadata, projection) {
     c.fillStyle = '#c8d2da'; c.fillText(label, x + 16, 244);
     x += 82;
   }
+  return out;
+}
+
+function drawMarkingsDiagram(metadata) {
+  const out = document.createElement('canvas');
+  out.width = 256; out.height = 128;
+  const c = out.getContext('2d');
+  const g = c.createLinearGradient(0, 0, 256, 128);
+  g.addColorStop(0, '#111b23'); g.addColorStop(1, '#070c11');
+  c.fillStyle = g; c.fillRect(0, 0, 256, 128);
+  c.strokeStyle = 'rgba(182,198,210,.28)'; c.strokeRect(0.5, 0.5, 255, 127);
+  drawVehicleDesignation(c, metadata.markings, { x: 8, y: 24, width: 240, height: 88 });
+  c.fillStyle = '#dca652'; c.font = '800 9px system-ui, sans-serif';
+  c.fillText(metadata.markings.countryLabel.toUpperCase(), 12, 16);
+  c.textAlign = 'right'; c.fillStyle = '#9dafbd';
+  c.fillText(metadata.markings.designation, 244, 16);
+  c.textAlign = 'left';
   return out;
 }
 
@@ -365,6 +439,21 @@ function visibleBorePart(root, pattern) {
   return found;
 }
 
+function vehicleMarkingCensus(root) {
+  const result = { total: 0, insignia: 0, designation: 0, codes: [] };
+  const codes = new Set();
+  root.traverse((object) => {
+    if (!object.userData?.vehicleMarking || !visibleInTree(object, root)) return;
+    result.total++;
+    const kind = object.userData.markingKind;
+    if (kind === 'insignia') result.insignia++;
+    if (kind === 'designation') result.designation++;
+    if (object.userData.markingCode) codes.add(object.userData.markingCode);
+  });
+  result.codes = [...codes].sort();
+  return result;
+}
+
 function inspectOne(id, renderFiles) {
   const visual = createTank(id, null, { camoSeed: 4100, quality: 'high' });
   const root = visual.root;
@@ -382,6 +471,7 @@ function inspectOne(id, renderFiles) {
       metadataHash: metadataFingerprint(metadata),
       appearance: auditTankAppearance(root),
       muzzleBore: muzzleBoreCensus(root),
+      vehicleMarkings: vehicleMarkingCensus(root),
       requiredFiles: requiredTankAssetFiles(id),
     };
     if (!renderFiles) return { files: {}, meta };
@@ -401,6 +491,7 @@ function inspectOne(id, renderFiles) {
     files[tankAssetFile(id, 'hitZonesSide')] = drawPlateDiagram(sideCanvas, metadata, projection, 'zones').toDataURL('image/png');
     files[tankAssetFile(id, 'armorSide')] = drawPlateDiagram(sideCanvas, metadata, projection, 'armor').toDataURL('image/png');
     files[tankAssetFile(id, 'modulesSide')] = drawModuleDiagram(sideCanvas, metadata, projection).toDataURL('image/png');
+    files[tankAssetFile(id, 'markings')] = drawMarkingsDiagram(metadata).toDataURL('image/png');
 
     const fov = 28;
     const sphere = box.getBoundingSphere(new THREE.Sphere());

@@ -5,7 +5,7 @@ import {
   TANK_ASSET_VIEWS, geometryFingerprint, metadataFingerprint, requiredTankAssetFiles, tankAssetMetadata,
 } from './tankAssets.js';
 
-assert.equal(Object.keys(TANK_ASSET_VIEWS).length, 8, 'release contract includes eight views/diagrams');
+assert.equal(Object.keys(TANK_ASSET_VIEWS).length, 9, 'release contract includes nine views/diagrams');
 
 const displayNames = new Set();
 
@@ -18,10 +18,12 @@ for (const id of ALL_TANK_IDS) {
   assert.equal(spec.publicVisualFallback, undefined, `${id}: own first-party public visuals`);
   const metadata = tankAssetMetadata(spec);
   const files = Object.values(requiredTankAssetFiles(id));
-  assert.equal(new Set(files).size, 8, `${id}: asset filenames are unique`);
+  assert.equal(new Set(files).size, 9, `${id}: asset filenames are unique`);
   assert(Number.isInteger(metadata.tier) && metadata.tier >= 1 && metadata.tier <= 10, `${id}: tier`);
   assert(metadata.tierNumeral, `${id}: Roman tier`);
   assert(metadata.countryCode, `${id}: flag country code`);
+  assert.equal(metadata.markings.countryCode, metadata.countryCode, `${id}: flag and painted insignia country agree`);
+  assert(metadata.markings.designation && metadata.markings.insignia, `${id}: tactical designation and insignia`);
   assert.equal(metadata.name, metadata.label.displayName, `${id}: canonical display label`);
   assert(metadata.label.shortName && metadata.label.shortName.length <= 28, `${id}: compact card label`);
   assert.equal(metadata.label.id, id, `${id}: stable id label key`);
@@ -32,6 +34,8 @@ for (const id of ALL_TANK_IDS) {
   assert(metadata.gun.shells.length > 0, `${id}: penetration data`);
   assert(metadata.armor.plates.length > 0, `${id}: armor hit areas`);
   assert(metadata.armor.modules.length > 0, `${id}: module volumes`);
+  assert.equal(new Set(metadata.armor.plates.map((plate) => plate.hitboxId)).size, metadata.armor.plates.length, `${id}: unique hitbox ids`);
+  assert.equal(new Set(metadata.armor.modules.map((box) => box.volumeId)).size, metadata.armor.modules.length, `${id}: unique module ids`);
   assert.equal(metadataFingerprint(metadata), metadataFingerprint(tankAssetMetadata(spec)), `${id}: stable metadata hash`);
 }
 

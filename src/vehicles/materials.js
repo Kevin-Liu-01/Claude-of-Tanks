@@ -8,6 +8,7 @@
 
 import * as THREE from 'three';
 import { tagVehicleMaterial } from './appearanceAudit.js';
+import { drawNationalInsignia, drawTacticalNumber, vehicleMarkingRecord } from './vehicleMarkings.js';
 // MOBILE r1: central texture-resolution lever (quality.js). Every canvas bake
 // below allocates through texSize(): desktop tiers get the authored size
 // unchanged; the mobile tier halves it and clamps to the device texture cap.
@@ -2888,11 +2889,22 @@ function paintTrack(rng) {
 }
 
 // Transparent marking decal canvases.
-function paintDecal(kind, text) {
+function paintDecal(kind, text, marking) {
   const c = makeCanvas(256, 256);
   const ctx = c.getContext('2d');
   ctx.clearRect(0, 0, 256, 256);
-  if (kind === 'star') {
+  if (kind === 'insignia') {
+    drawNationalInsignia(ctx, marking.insignia, 128, 128, 210);
+  } else if (kind === 'designation') {
+    const draw = () => {
+      ctx.clearRect(0, 0, 256, 256);
+      drawTacticalNumber(ctx, marking, { x: 2, y: 34, width: 252, height: 188 });
+    };
+    draw();
+    if (document.fonts && !document.fonts.check("bold 16px 'ABC Monument Grotesk'")) {
+      document.fonts.ready.then(draw).catch(() => {});
+    }
+  } else if (kind === 'star') {
     ctx.fillStyle = 'rgba(238,238,230,0.92)';
     ctx.beginPath();
     for (let i = 0; i < 10; i++) {
@@ -5672,11 +5684,12 @@ vec4 burntTri( sampler2D m, vec3 p, vec3 n, float sc ) {
   const trackR = track(setup(new THREE.MeshStandardMaterial({
     map: trackTexR, bumpMap: trackTexR, bumpScale: 0.5, ...trackMatOpts })));
 
+  const marking = vehicleMarkingRecord(spec);
   const decalCache = new Map();
   const decal = (kind, text) => {
-    const key = `${kind}:${text || ''}`;
+    const key = `${marking.markingCode}:${kind}:${text || ''}`;
     if (!decalCache.has(key)) {
-      const t = track(canvasTex(paintDecal(kind, text), { aniso }));
+      const t = track(canvasTex(paintDecal(kind, text, marking), { aniso }));
       // number decals re-bake on fonts.ready (paintDecal registered first, so
       // its redraw runs before this) — push the fresh canvas to the GPU.
       if (document.fonts && !document.fonts.check("bold 16px 'ABC Monument Grotesk'")) {

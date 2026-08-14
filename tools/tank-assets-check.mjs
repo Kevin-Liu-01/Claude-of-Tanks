@@ -138,9 +138,26 @@ try {
     if (saved && saved.metadataHash !== live.metadataHash) failures.push(`${id}: stale tier/armor/module metadata ${saved.metadataHash} != ${live.metadataHash}`);
     if (!Number.isInteger(live.tier) || live.tier < 1 || live.tier > 10 || !live.tierNumeral) failures.push(`${id}: invalid tier metadata`);
     if (!live.countryCode) failures.push(`${id}: missing country code`);
+    if (!live.markings || live.markings.countryCode !== live.countryCode
+        || !live.markings.insignia || !live.markings.tacticalNumber || !live.markings.designation) {
+      failures.push(`${id}: incomplete or mismatched national marking metadata`);
+    }
+    const markingCensus = live.vehicleMarkings || {};
+    if (!(markingCensus.insignia > 0) || !(markingCensus.designation > 0)
+        || !markingCensus.codes?.includes(live.markings?.markingCode)) {
+      failures.push(`${id}: visible insignia/designation does not match marking code (${JSON.stringify(markingCensus)})`);
+    }
     if (!live.gun || !(live.gun.caliberMm > 0) || !live.gun.shells.length) failures.push(`${id}: incomplete gun/penetration metadata`);
     if (!live.armor || !live.armor.plates.length) failures.push(`${id}: no armor hit areas`);
     if (!live.armor || !live.armor.modules.length) failures.push(`${id}: no module volumes`);
+    const stableIds = [
+      ...live.armor.plates.map((plate) => plate.hitboxId),
+      ...live.armor.modules.map((box) => box.volumeId),
+      ...live.armor.crew.map((box) => box.volumeId),
+    ];
+    if (stableIds.some((stableId) => !stableId) || new Set(stableIds).size !== stableIds.length) {
+      failures.push(`${id}: missing or duplicate stable hitbox/module labels`);
+    }
     const appearanceIssues = live.appearance?.issues || [];
     if (appearanceIssues.length) {
       failures.push(`${id}: appearance palette issues (${appearanceIssues.slice(0, 4)

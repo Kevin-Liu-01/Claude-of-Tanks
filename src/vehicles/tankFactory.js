@@ -13,6 +13,7 @@ import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeom
 import { getSpec, TANK_SPECS, attachTrackShapes, finalizeFirstPartyRoster } from './specs.js';
 import { createTankMaterials, makeBurnUniforms, applyBurnHook, vehicleAmbientFloorHook } from './materials.js';
 import { normalizeTankAppearance } from './appearanceAudit.js';
+import { vehicleMarkingRecord } from './vehicleMarkings.js';
 // DECORATION SYSTEM (2026-07): cosmetic stowage/fittings layer — attaches
 // under dedicated rig_decor_hull / rig_decor_turret groups at the end of
 // createTank (see the seam near the GLB-swap block). Skipped for
@@ -4207,6 +4208,7 @@ export function createTank(specId, engineCtx, opts = {}) {
   } = opts;
   const spec = getSpec(specId);
   const armor = spec.armor;
+  const marking = spec.markings || vehicleMarkingRecord(spec);
   const mats = geometryReceipt
     ? createGeometryReceiptMaterials()
     : createTankMaterials(spec, engineCtx, camoSeed, quality);
@@ -4292,7 +4294,10 @@ export function createTank(specId, engineCtx, opts = {}) {
       (buckets.gunMountDark || (buckets.gunMountDark = [])).push(xform(geo, x, y, z));
     },
     decal(parent, kind, text, size, pos, rotY = 0, rotX = 0, rotZ = 0) {
-      decals.push({ parent, kind, text, size, pos, rotY, rotX, rotZ });
+      const symbol = kind === 'star' || kind === 'cross' || kind === 'crossgrey' || kind === 'emblem';
+      const resolvedKind = symbol ? 'insignia' : kind === 'number' ? 'designation' : kind;
+      const resolvedText = resolvedKind === 'designation' ? marking.tacticalNumber : text;
+      decals.push({ parent, kind: resolvedKind, text: resolvedText, size, pos, rotY, rotX, rotZ });
     },
     // ERA cluster: brick placements in HULL frame (or turret frame if turretLocal)
     eraCluster(plateName, fill, turretLocal = false) {
@@ -4308,6 +4313,24 @@ export function createTank(specId, engineCtx, opts = {}) {
   };
 
   (resolveBuilder(specId, spec) || buildCommunityPlaceholder)(P);
+
+  // Every playable receives a canonical national insignia + tactical number.
+  // Family builders keep their carefully seated decal planes; vehicles that
+  // never authored one receive conservative paired hull-side fallbacks.
+  if (!decals.some((decal) => decal.kind === 'insignia')) {
+    const halfWidth = Math.max(0.7, Number(spec.dims?.widthM || 3) / 2);
+    const y = Math.max(0.62, Math.min(1.34, Number(armor.turretPivot?.[1] || 1.7) * 0.68));
+    const z = Math.min(0.18, Number(spec.dims?.hullLengthM || 6) * 0.025);
+    P.decal('hull', 'insignia', null, 0.28, [halfWidth + 0.006, y, z], Math.PI / 2);
+    P.decal('hull', 'insignia', null, 0.28, [-halfWidth - 0.006, y, z], -Math.PI / 2);
+  }
+  if (!decals.some((decal) => decal.kind === 'designation')) {
+    const halfWidth = Math.max(0.7, Number(spec.dims?.widthM || 3) / 2);
+    const y = Math.max(0.62, Math.min(1.34, Number(armor.turretPivot?.[1] || 1.7) * 0.68));
+    const z = -Math.min(0.72, Number(spec.dims?.hullLengthM || 6) * 0.08);
+    P.decal('hull', 'number', marking.tacticalNumber, 0.3, [halfWidth + 0.006, y, z], Math.PI / 2);
+    P.decal('hull', 'number', marking.tacticalNumber, 0.3, [-halfWidth - 0.006, y, z], -Math.PI / 2);
+  }
 
   // ---- merge buckets into meshes ----
   const gunYOff = armor.turretPivot[1] + armor.gunPivot[1];
@@ -4350,6 +4373,10 @@ export function createTank(specId, engineCtx, opts = {}) {
   const decalMeshes = [];
   for (const d of decals) {
     const mesh = new THREE.Mesh(decalGeo, mats.decal(d.kind, d.text));
+    mesh.name = `vehicleMarking_${d.kind}`;
+    mesh.userData.vehicleMarking = true;
+    mesh.userData.markingCode = marking.markingCode;
+    mesh.userData.markingKind = d.kind;
     mesh.scale.setScalar(d.size);
     mesh.position.set(d.pos[0], d.pos[1], d.pos[2]);
     mesh.rotation.set(d.rotX, d.rotY, d.rotZ, 'ZYX');

@@ -1,0 +1,184 @@
+import { flagIconCode } from '../ui/flagCodes.js';
+
+export const VEHICLE_MARKING_SCHEMA_VERSION = 1;
+
+export const SURFACE_MARKING_STYLE = Object.freeze({
+  surfaceLiftM: 0.006,
+  markingPigment: '#d8d5c9',
+  markingOutline: '#171815',
+  bareMetal: '#d6dce4',
+  impactHole: '#030202',
+  impactHeat: '#fa923e',
+  wearSeedSalt: 0x4d41524b,
+});
+
+const COUNTRY_MARKINGS = Object.freeze({
+  us: Object.freeze({ countryLabel: 'United States', filterLabel: 'US', insignia: 'us-star', designation: 'US' }),
+  de: Object.freeze({ countryLabel: 'Germany', filterLabel: 'DE', insignia: 'de-cross', designation: 'BW' }),
+  ru: Object.freeze({ countryLabel: 'Russia', filterLabel: 'RU', insignia: 'ru-star', designation: 'RU' }),
+  gb: Object.freeze({ countryLabel: 'United Kingdom', filterLabel: 'UK', insignia: 'gb-roundel', designation: 'UK' }),
+  fr: Object.freeze({ countryLabel: 'France', filterLabel: 'FR', insignia: 'fr-roundel', designation: 'FR' }),
+  cn: Object.freeze({ countryLabel: 'China', filterLabel: 'CN', insignia: 'cn-star', designation: 'CN' }),
+  il: Object.freeze({ countryLabel: 'Israel', filterLabel: 'IL', insignia: 'il-star', designation: 'IDF' }),
+  it: Object.freeze({ countryLabel: 'Italy', filterLabel: 'IT', insignia: 'it-shield', designation: 'EI' }),
+  jp: Object.freeze({ countryLabel: 'Japan', filterLabel: 'JP', insignia: 'jp-roundel', designation: 'JGSDF' }),
+  pl: Object.freeze({ countryLabel: 'Poland', filterLabel: 'PL', insignia: 'pl-checker', designation: 'PL' }),
+  kr: Object.freeze({ countryLabel: 'South Korea', filterLabel: 'KR', insignia: 'kr-taeguk', designation: 'ROK' }),
+  se: Object.freeze({ countryLabel: 'Sweden', filterLabel: 'SE', insignia: 'se-crowns', designation: 'SE' }),
+  ua: Object.freeze({ countryLabel: 'Ukraine', filterLabel: 'UA', insignia: 'ua-trident', designation: 'UA' }),
+  xx: Object.freeze({ countryLabel: 'Workshop', filterLabel: 'XX', insignia: 'workshop-shield', designation: 'COT' }),
+});
+
+function stableNumber(id) {
+  let hash = 0x811c9dc5;
+  for (const ch of String(id || 'tank')) {
+    hash ^= ch.charCodeAt(0);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  return String(100 + (hash % 900));
+}
+
+function cleanTacticalNumber(value, id) {
+  const text = String(value || '').toUpperCase().replace(/[^A-Z0-9 -]/g, '').replace(/\s+/g, ' ').trim();
+  return text || stableNumber(id);
+}
+
+export function vehicleMarkingRecord(spec) {
+  const countryCode = flagIconCode(spec?.nation);
+  const country = COUNTRY_MARKINGS[countryCode] || COUNTRY_MARKINGS.xx;
+  const tacticalNumber = cleanTacticalNumber(spec?.visual?.number, spec?.id);
+  const designationPrefix = spec?.nation === 'USSR' ? 'SU' : country.designation;
+  return Object.freeze({
+    schemaVersion: VEHICLE_MARKING_SCHEMA_VERSION,
+    countryCode,
+    countryLabel: country.countryLabel,
+    filterLabel: country.filterLabel,
+    insignia: country.insignia,
+    tacticalNumber,
+    designation: `${designationPrefix}-${tacticalNumber}`,
+    markingCode: `${countryCode.toUpperCase()}:${country.insignia}:${tacticalNumber}`,
+  });
+}
+
+function starPath(ctx, cx, cy, outer, inner = outer * 0.42, points = 5) {
+  ctx.beginPath();
+  for (let i = 0; i < points * 2; i++) {
+    const angle = -Math.PI / 2 + i * Math.PI / points;
+    const radius = i % 2 ? inner : outer;
+    const x = cx + Math.cos(angle) * radius;
+    const y = cy + Math.sin(angle) * radius;
+    if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y);
+  }
+  ctx.closePath();
+}
+
+function crossPath(ctx, cx, cy, size, arm = 0.31) {
+  const h = size / 2, a = size * arm / 2;
+  ctx.beginPath();
+  ctx.moveTo(cx - a, cy - h); ctx.lineTo(cx + a, cy - h);
+  ctx.lineTo(cx + a, cy - a); ctx.lineTo(cx + h, cy - a);
+  ctx.lineTo(cx + h, cy + a); ctx.lineTo(cx + a, cy + a);
+  ctx.lineTo(cx + a, cy + h); ctx.lineTo(cx - a, cy + h);
+  ctx.lineTo(cx - a, cy + a); ctx.lineTo(cx - h, cy + a);
+  ctx.lineTo(cx - h, cy - a); ctx.lineTo(cx - a, cy - a);
+  ctx.closePath();
+}
+
+function ring(ctx, cx, cy, radius, color) {
+  ctx.fillStyle = color;
+  ctx.beginPath(); ctx.arc(cx, cy, radius, 0, Math.PI * 2); ctx.fill();
+}
+
+/** Draw a deterministic, country-specific vehicle insignia into any 2D canvas. */
+export function drawNationalInsignia(ctx, insignia, cx, cy, size) {
+  const r = size / 2;
+  ctx.save();
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+  if (insignia === 'us-star') {
+    ctx.strokeStyle = '#e2dfd2'; ctx.lineWidth = size * 0.07;
+    ctx.beginPath(); ctx.arc(cx, cy, r * 0.9, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = '#e2dfd2'; starPath(ctx, cx, cy, r * 0.72); ctx.fill();
+  } else if (insignia === 'de-cross') {
+    ctx.strokeStyle = '#d6d2c5'; ctx.lineWidth = size * 0.13;
+    ctx.fillStyle = '#1d1f1d'; crossPath(ctx, cx, cy, size * 0.9, 0.36); ctx.stroke(); ctx.fill();
+  } else if (insignia === 'ru-star' || insignia === 'cn-star') {
+    ctx.strokeStyle = insignia === 'cn-star' ? '#f1d45f' : '#eee9db';
+    ctx.lineWidth = size * 0.07; ctx.fillStyle = '#b6322e';
+    starPath(ctx, cx, cy, r * 0.86); ctx.stroke(); ctx.fill();
+  } else if (insignia === 'gb-roundel' || insignia === 'fr-roundel') {
+    const colors = insignia === 'gb-roundel' ? ['#2d4d83', '#e9e5d8', '#b93838'] : ['#b93838', '#e9e5d8', '#31548b'];
+    ring(ctx, cx, cy, r * 0.9, colors[0]); ring(ctx, cx, cy, r * 0.61, colors[1]); ring(ctx, cx, cy, r * 0.31, colors[2]);
+  } else if (insignia === 'il-star') {
+    ctx.strokeStyle = '#5677a8'; ctx.lineWidth = size * 0.075;
+    for (const flip of [0, Math.PI]) {
+      ctx.beginPath();
+      for (let i = 0; i < 3; i++) {
+        const a = flip - Math.PI / 2 + i * Math.PI * 2 / 3;
+        const x = cx + Math.cos(a) * r * 0.85, y = cy + Math.sin(a) * r * 0.85;
+        if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y);
+      }
+      ctx.closePath(); ctx.stroke();
+    }
+  } else if (insignia === 'it-shield') {
+    ctx.beginPath(); ctx.moveTo(cx - r * 0.72, cy - r * 0.8); ctx.lineTo(cx + r * 0.72, cy - r * 0.8);
+    ctx.lineTo(cx + r * 0.58, cy + r * 0.48); ctx.lineTo(cx, cy + r * 0.9); ctx.lineTo(cx - r * 0.58, cy + r * 0.48); ctx.closePath();
+    ctx.save(); ctx.clip();
+    ctx.fillStyle = '#318351'; ctx.fillRect(cx - r, cy - r, r * 0.67, size);
+    ctx.fillStyle = '#ece8db'; ctx.fillRect(cx - r * 0.33, cy - r, r * 0.67, size);
+    ctx.fillStyle = '#b93636'; ctx.fillRect(cx + r * 0.34, cy - r, r * 0.67, size);
+    ctx.restore(); ctx.strokeStyle = '#d7d3c6'; ctx.lineWidth = size * 0.05; ctx.stroke();
+  } else if (insignia === 'jp-roundel') {
+    ring(ctx, cx, cy, r * 0.82, '#b63838');
+  } else if (insignia === 'pl-checker') {
+    const s = r * 0.82;
+    ctx.fillStyle = '#e7e2d5'; ctx.fillRect(cx - s, cy - s, s, s); ctx.fillRect(cx, cy, s, s);
+    ctx.fillStyle = '#bb3b40'; ctx.fillRect(cx, cy - s, s, s); ctx.fillRect(cx - s, cy, s, s);
+    ctx.strokeStyle = '#e7e2d5'; ctx.lineWidth = size * 0.05; ctx.strokeRect(cx - s, cy - s, s * 2, s * 2);
+  } else if (insignia === 'kr-taeguk') {
+    ring(ctx, cx, cy, r * 0.78, '#ece8dc');
+    ctx.fillStyle = '#b63b3f'; ctx.beginPath(); ctx.arc(cx, cy, r * 0.62, Math.PI, 0); ctx.fill();
+    ctx.fillStyle = '#345888'; ctx.beginPath(); ctx.arc(cx, cy, r * 0.62, 0, Math.PI); ctx.fill();
+    ring(ctx, cx - r * 0.31, cy, r * 0.31, '#345888'); ring(ctx, cx + r * 0.31, cy, r * 0.31, '#b63b3f');
+  } else if (insignia === 'se-crowns') {
+    ctx.fillStyle = '#dfbd55';
+    for (const [dx, dy] of [[-0.34, -0.28], [0.34, -0.28], [0, 0.35]]) {
+      const x = cx + dx * r, y = cy + dy * r, w = r * 0.54;
+      ctx.beginPath(); ctx.moveTo(x - w / 2, y + w * 0.22); ctx.lineTo(x - w * 0.42, y - w * 0.25);
+      ctx.lineTo(x, y + w * 0.02); ctx.lineTo(x + w * 0.42, y - w * 0.25); ctx.lineTo(x + w / 2, y + w * 0.22); ctx.closePath(); ctx.fill();
+    }
+  } else if (insignia === 'ua-trident') {
+    ctx.strokeStyle = '#e0bd4c'; ctx.lineWidth = size * 0.09;
+    ctx.beginPath(); ctx.moveTo(cx - r * 0.55, cy - r * 0.62); ctx.lineTo(cx - r * 0.32, cy + r * 0.4);
+    ctx.lineTo(cx, cy + r * 0.78); ctx.lineTo(cx + r * 0.32, cy + r * 0.4); ctx.lineTo(cx + r * 0.55, cy - r * 0.62);
+    ctx.moveTo(cx, cy - r * 0.72); ctx.lineTo(cx, cy + r * 0.78); ctx.stroke();
+  } else {
+    ctx.fillStyle = '#d6a74f';
+    ctx.beginPath(); ctx.moveTo(cx - r * 0.72, cy - r * 0.78); ctx.lineTo(cx + r * 0.72, cy - r * 0.78);
+    ctx.lineTo(cx + r * 0.52, cy + r * 0.48); ctx.lineTo(cx, cy + r * 0.88); ctx.lineTo(cx - r * 0.52, cy + r * 0.48); ctx.closePath(); ctx.fill();
+  }
+  ctx.restore();
+}
+
+export function drawTacticalNumber(ctx, record, bounds = {}) {
+  const x = bounds.x ?? 0, y = bounds.y ?? 0, width = bounds.width ?? ctx.canvas.width, height = bounds.height ?? ctx.canvas.height;
+  ctx.save();
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  const text = record.tacticalNumber;
+  const fontSize = Math.min(height * 0.68, width / Math.max(1, text.length) * 1.75);
+  ctx.font = `800 ${Math.max(16, fontSize)}px 'ABC Monument Grotesk', sans-serif`;
+  ctx.lineWidth = Math.max(2, fontSize * 0.08);
+  ctx.strokeStyle = SURFACE_MARKING_STYLE.markingOutline;
+  ctx.fillStyle = SURFACE_MARKING_STYLE.markingPigment;
+  ctx.strokeText(text, x + width / 2, y + height / 2);
+  ctx.fillText(text, x + width / 2, y + height / 2);
+  ctx.restore();
+}
+
+/** Combined tactical marking used by generated identity cards. */
+export function drawVehicleDesignation(ctx, record, bounds = {}) {
+  const x = bounds.x ?? 0, y = bounds.y ?? 0, width = bounds.width ?? ctx.canvas.width, height = bounds.height ?? ctx.canvas.height;
+  const emblemSize = Math.min(height * 0.68, width * 0.34);
+  drawNationalInsignia(ctx, record.insignia, x + width * 0.25, y + height / 2, emblemSize);
+  drawTacticalNumber(ctx, record, { x: x + width * 0.42, y, width: width * 0.52, height });
+}
