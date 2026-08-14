@@ -8109,3 +8109,43 @@ freeze **`b10dbb54`**, instance freeze **`eac9f85c`** and asset geometry
 **KEEP both complete closed hulls, raised outer armor, full fenders,
 mudguards and five-wheel native courses. Running-gear ownership must never be
 used to remove or exempt real armor.**
+
+## 5.227 PANTHER G CLOSED CORRIDOR AND SCHÜRZEN CLOSEOUT (2026-08-14, LIVE)
+
+The first-party Panther G retains its complete lower hull, sloped
+superstructure, glacis, fenders, full-height Schürzen course, turret and
+eight-station interleaved native running gear. No hull, skirt, fender, wheel,
+suspension or track member is deleted.
+
+The lower hull and both front plates now use closed central inter-track
+volumes with joined raised outer shoulders/wings. The complete sloped upper
+silhouette is unchanged. Every Schürzen plate keeps its original height and
+vertical placement; the intact course is reseated just outboard of the linked
+shoe envelope, including the characterful bent plate, rather than being
+raised into or removed from the hull. The interleaved-wheel AO backer remains
+present under explicit running-gear ownership.
+
+Exact strict band and individual-shoe audits improve from **front 122 band /
+68 shoe, rear 100 band / 12 shoe and sweep 1,684 band / 350 shoe contacts** to
+**front 0/0, rear 0/0 and complete sweep 0/0**. Fresh evidence contains 15
+paired boards including the standardized elevated-left profile, 15 yaw0 and
+15 yaw90 frames: **45 PNG / 45 distinct hashes**. Every view preserves the
+closed body, eight readable overlapping wheel stations, full side armor and
+one continuous native course.
+
+The complete turret/gun package executes a genuine quarter-turn while hull,
+stowage and running gear remain fixed. Parent audit is **0 stranded / 0
+abutting / 0 dangling**. The mode-2 `rig_hull/hullDetail#17` nominee is the
+pair of legitimate fixed rear-deck stowage boxes: both remain visibly seated
+on the closed engine deck after turret departure and have no turret silhouette
+or station semantics. Winding is **0 reversed / 0 mixed geometry**, with a
+0.02% rear deficit classified clean. The dark muzzle bore and all ten
+targeted runtime-rig checks pass.
+
+All eight targeted presentation assets are current. Panther G dual-ledger
+geometry is freeze **`43e00c5a`**, instance freeze **`6f7944b6`** and asset
+geometry **`2cfddd39`** (37 rendered meshes / 48,974 vertices).
+
+**KEEP the complete closed Panther hull, raised joined glacis wings,
+full-height outboard Schürzen, fenders and interleaved native course. The
+wheel-bay backer is running-gear-owned and must not be duplicated as armor.**

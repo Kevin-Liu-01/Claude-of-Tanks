@@ -996,9 +996,10 @@ function buildRunningGear(P, cfg) {
     // wall up to its new sponson floor so the taller gear band never opens a
     // see-through slit above the lower hull box.
     const shadowH = cfg.bayShadowTop ?? (topY + 0.1);
+    const bayShadowBucket = cfg.bayShadowBucket ?? 'hullShadow';
     for (const side of [-1, 1]) {
       const sideXc = xcForSide(side);
-      P.add('hullShadow', new THREE.BoxGeometry(0.02, shadowH, z1 - z0),
+      P.add(bayShadowBucket, new THREE.BoxGeometry(0.02, shadowH, z1 - z0),
         side * (sideXc - wheelW * 2.0), shadowH / 2 + 0.03, (z0 + z1) / 2);
     }
   }
@@ -2908,10 +2909,23 @@ function buildIS2(P) {
 
 function buildPanther(P) {
   const { rng } = P;
-  P.add('hull', box(2.1, 0.63, 6.4), 0, 0.835, -0.05);                          // lower hull
+  P.add('hull', box(2.0, 0.63, 6.4), 0, 0.835, -0.05);                          // closed inter-track lower hull
+  for (const s of [-1, 1]) {
+    P.add('hull', box(0.10, 0.10, 6.4), s * 1.05, 1.20, -0.05);                 // raised joined outer lower-hull shoulders
+  }
   P.add('hull', frustum(1.71, 2.35, -3.1, 1.32, 1.80, -3.35, 1.15, 1.85));      // sloped superstructure
-  P.add('hull', frustum(1.55, 3.30, 2.3, 1.32, 1.80, 2.3, 0.8, 1.85));          // huge 55° glacis
-  P.add('hull', frustum(1.55, 2.90, 2.75, 1.55, 3.30, 2.75, 0.52, 0.8));        // lower glacis
+  P.add('hull', frustum(0.98, 3.30, 2.3, 0.98, 1.80, 2.3, 0.8, 1.85));          // closed centre 55° glacis
+  P.add('hull', frustum(0.98, 2.90, 2.75, 0.98, 3.30, 2.75, 0.52, 0.8));        // closed centre lower glacis
+  for (const s of [-1, 1]) {
+    const [bx0, bx1] = s < 0 ? [-1.55, -0.98] : [0.98, 1.55];
+    const [tx0, tx1] = s < 0 ? [-1.32, -0.98] : [0.98, 1.32];
+    P.add('hull', slab(                                                         // raised full outer glacis wing
+      [bx0, 1.16, 3.30], [bx1, 1.16, 3.30], [bx1, 1.16, 2.30], [bx0, 1.16, 2.30],
+      [tx0, 1.85, 1.80], [tx1, 1.85, 1.80], [tx1, 1.85, 2.30], [tx0, 1.85, 2.30]));
+    P.add('hull', slab(                                                         // raised outer lower-glacis seat
+      [bx0, 1.16, 2.90], [bx1, 1.16, 2.90], [bx1, 1.16, 2.75], [bx0, 1.16, 2.75],
+      [bx0, 1.22, 3.30], [bx1, 1.22, 3.30], [bx1, 1.22, 2.75], [bx0, 1.22, 2.75]));
+  }
   P.add('hullDetail', sph(0.09, 10), 0.6, 1.62, 2.62);                          // ball MG in glacis
   fenders(P, 1.05, 1.71, 1.18, -3.35, 3.3, 0.03);
   // TWO rear exhaust stacks in sheet-metal shrouds (the flanking stowage
@@ -2921,14 +2935,14 @@ function buildPanther(P) {
     P.add('hull', box(0.3, 0.5, 0.14), s * 0.55, 1.8, -3.47);                 // shroud
     P.add('hullDark', cylY(0.07, 0.078, 0.55, 10), s * 0.55, 2.32, -3.42);    // dark pipe tip
   }
-  // Schürzen skirts — one missing, one bent, for character. r7: bottom edge
-  // raised to 0.78 so the big interleaved road wheels read full-size below
-  // the plates instead of peeking out of a curtain.
+  // Schürzen skirts — one missing, one bent, for character. Keep every plate
+  // at its full historical drop, but place the course just outside the native
+  // shoe envelope so it remains visible armor rather than intersecting tread.
   for (const s of [-1, 1]) {
     for (let k = 0; k < 6; k++) {
       if (s > 0 && k === 4) continue;                                            // missing plate
       const bent = s < 0 && k === 2 ? 0.07 : 0;
-      P.add('hull', box(0.02, 0.40, 0.98), s * 1.73, 0.98, 2.45 - k * 1.02, bent, s * bent, 0);
+      P.add('hull', box(0.02, 0.40, 0.98), s * 1.82, 0.98, 2.45 - k * 1.02, bent, s * bent, 0);
     }
   }
   towCable(P, [[-1.6, 1.75, -2.4], [-1.7, 1.8, 0], [-1.6, 1.75, 2.2]]);
@@ -2969,6 +2983,7 @@ function buildPanther(P) {
     layers: [[0.15], [-0.01]], recessDepth: 0.5,
     sprocket: { z: 2.95, y: 0.5, r: 0.36 }, idler: { z: -2.95, y: 0.47, r: 0.33 },
     trackW: 0.66, topY: 0.99, deadSag: 0.095,
+    bayShadowBucket: 'hullRunningGearDark',
   });
   // r8: stowage pulled inboard — at x ±1.5 the boxes hung over the sloped
   // superstructure side and floated above the deck
