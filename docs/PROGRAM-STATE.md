@@ -7316,3 +7316,44 @@ freeze **`a17f4ce4`**, instance freeze **`73f5ff21`** and asset geometry
 
 **KEEP the complete Chieftain exterior and closed soffit. Future course work
 must preserve both side guards and may not reopen or subtract the hull.**
+
+## 5.205 CENTURION MK.3 / MK.5 CLOSED TRACK-CORRIDOR CLOSEOUT (2026-08-14, LIVE)
+
+This pair closeout preserves both complete first-party Centurion exteriors:
+the central hulls, cast bows, full skirts and outer armour strips, fender
+horns, mudguards, six road-wheel stations, raised front idlers, high rear
+sprockets and single native linked-shoe courses. No visible hull, side armour,
+skirt, guard, wheel or track component is deleted, hidden or shifted.
+
+The original strict receipts were dominated by named `gearAirShadowBacker`
+plates, which are render-only members of the native wheel-bay assembly and
+now carry truthful running-gear ownership. A small real contact remained at
+the concealed over-track shoulder. It is repaired with a **closed raised
+soffit** shared by both marks: the complete central inter-track hull remains
+solid, the accepted exterior deck and side walls are unchanged, and connected
+floor plates bridge above the return run into the intact outer armour. This
+is not an open or deleted hull corridor.
+
+Exact strict band and individual-shoe audits now report **front 0/0, rear 0/0
+and complete sweep 0/0** for both marks, improved from 85 band / 74 shoe
+voxels per tank. Each fresh packet contains 15 paired boards including the
+standardized elevated-left profile, 15 yaw0 and 15 yaw90 frames: **45 PNG /
+45 distinct hashes per tank**. Baseline/current boards retain identical
+exterior silhouettes, complete side armour, six readable wheels and the
+raised-end track form.
+
+Both complete turrets, guns, cupolas, sights and stowage execute genuine
+quarter-turns while their hulls, decks, skirts and native courses remain
+fixed. Parent audits are **0 stranded / 0 abutting / 0 dangling** for both.
+Winding is **0 reversed / 0 mixed / 0-pixel deficit**, with no mode-2 stranded
+candidate. Both muzzle bores and all ten targeted runtime-rig checks pass.
+
+All sixteen targeted presentation assets are current. Centurion Mk.3 dual-
+ledger geometry is freeze **`a6195aa4`**, instance freeze **`10f53dbc`** and
+asset geometry **`6fe78d3d`** (47 rendered meshes / 69,695 vertices).
+Centurion Mk.5 dual-ledger geometry is freeze **`92383e80`**, instance freeze
+**`1c914936`** and asset geometry **`ab1ccc09`** (50 rendered meshes / 77,855
+vertices).
+
+**KEEP both complete Centurion exteriors and closed soffits. Future course
+work must preserve every skirt, fender and mudguard.**

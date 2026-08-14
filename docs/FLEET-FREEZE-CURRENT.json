@@ -54,18 +54,18 @@
       "vertices": 61408
     },
     "centurion3": {
-      "freezeHash": "ebf75428",
-      "instanceFreezeHash": "82a3a3a2",
-      "assetGeometryHash": "5bd7da2b",
+      "freezeHash": "a6195aa4",
+      "instanceFreezeHash": "10f53dbc",
+      "assetGeometryHash": "6fe78d3d",
       "meshes": 47,
-      "vertices": 69191
+      "vertices": 69695
     },
     "centurion5": {
-      "freezeHash": "6862153c",
-      "instanceFreezeHash": "535067ab",
-      "assetGeometryHash": "a511993c",
+      "freezeHash": "92383e80",
+      "instanceFreezeHash": "1c914936",
+      "assetGeometryHash": "ab1ccc09",
       "meshes": 50,
-      "vertices": 77351
+      "vertices": 77855
     },
     "challenger1": {
       "freezeHash": "fa346ca4",

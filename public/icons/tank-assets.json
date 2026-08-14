@@ -6067,7 +6067,7 @@
           }
         ]
       },
-      "geometryHash": "5bd7da2b",
+      "geometryHash": "6fe78d3d",
       "metadataHash": "0c69a9a0",
       "muzzleBore": {
         "tagged": 2,
@@ -6082,24 +6082,24 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 16478,
-          "sha256": "f4489a60357e042097d8d07a3d2b62e300dc83c2a2eca678f53e3d1198566b16"
+          "bytes": 16436,
+          "sha256": "8c2741aa3b27bebd2b6250a9bca374c6b46ed289ee4ad2ccd4f7e2b7f7d409f0"
         },
         "top": {
           "file": "centurion3_top.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 7764,
-          "sha256": "b29ac412a60ec15324a75382fa4bbbc2aabe6258028f9d1aa34eea3ce282c324"
+          "bytes": 8106,
+          "sha256": "61cfeac09ade5d6dfff21a7e8910ed73d8625572ee7c27261261f7e79daa077b"
         },
         "side": {
           "file": "centurion3_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 7230,
-          "sha256": "1c3bd0def97f121a98380c82114858a8438e9adc0cb35f21c60253cd3565bff1"
+          "bytes": 7240,
+          "sha256": "97924353c363a8a6ecdcbe62b67b6712fc2f4eaa492868312fd725ca12dad104"
         },
         "topSilhouette": {
           "file": "centurion3_top_silhouette.png",
@@ -6122,24 +6122,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 59761,
-          "sha256": "01c8ae092c070c06cb28b93cc96ae3fe53258a95620d9e0b5ed6dbc82a3d5db0"
+          "bytes": 59816,
+          "sha256": "2974bd6f74a953fac7282dd9dde7b3ec38c3ed28d60fe301fc9c17a732a47305"
         },
         "armorSide": {
           "file": "centurion3_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 61158,
-          "sha256": "96036b2edd76d1890815cbc9fefbdfed3942ccb74e12c0a60bcb4622ba82b30a"
+          "bytes": 61120,
+          "sha256": "85cf839b1e2679dca7ff5978d51e0c12f57f43b4da2218202c170db2598a01b3"
         },
         "modulesSide": {
           "file": "centurion3_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 54605,
-          "sha256": "a8ae131d593c35e518906fc3e0df7a2f4ecc393096e131f3d0789331d1d9f824"
+          "bytes": 54369,
+          "sha256": "7dc0204414dc1dff32a6794f8bf154d4f16b68bda3353906599219a686e7ea3e"
         }
       }
     },
@@ -6889,7 +6889,7 @@
           }
         ]
       },
-      "geometryHash": "a511993c",
+      "geometryHash": "ab1ccc09",
       "metadataHash": "2b131e83",
       "muzzleBore": {
         "tagged": 2,
@@ -6904,16 +6904,16 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 17346,
-          "sha256": "c37ea429ee5306ae90768848618ea3b62de88f1cc85b9cac20de8418c8353b96"
+          "bytes": 17330,
+          "sha256": "b2a804c8ccc5cfc155c3a6267af59b29c2ad4e6a3dbed5f0f6d096f87d7c0d9d"
         },
         "top": {
           "file": "centurion5_top.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 8178,
-          "sha256": "203ea914056acc463e9dd33dc0718e7e44d864c23e24afe8e97e6546bb4276e6"
+          "bytes": 8188,
+          "sha256": "622c3179b240fa42a021ae286bf6cef90f1bce5b691a2c56e04f733663730549"
         },
         "side": {
           "file": "centurion5_side.webp",
@@ -6921,7 +6921,7 @@
           "height": 256,
           "mime": "image/webp",
           "bytes": 8016,
-          "sha256": "8b15e220d8d4d78cb8c5a8e1aa348ff3cd44618759fec85ae9e8d6441dad38e2"
+          "sha256": "a2f12f963725a8153c00b3ddf299ad22f3d1306de5c4d465519295b865446b60"
         },
         "topSilhouette": {
           "file": "centurion5_top_silhouette.png",
@@ -6944,24 +6944,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 62842,
-          "sha256": "ccfe29b86475d65c680cfa36ca360fccd6045b1aa4cfa157950e95675244acc3"
+          "bytes": 63105,
+          "sha256": "d1be7797cdc650a53e03dd8c6047f756d41f917e739eed93da956489d0dc8bd8"
         },
         "armorSide": {
           "file": "centurion5_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 64807,
-          "sha256": "1bd519d579158007596d22798b89f6ed4c8365c34ef367a6d38aa5e870a6bf51"
+          "bytes": 64697,
+          "sha256": "b9b1551c3bb74acdb0f33d1542c704820319839120e45717d30ae05fa3879e91"
         },
         "modulesSide": {
           "file": "centurion5_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 59435,
-          "sha256": "f4731edc17b0316d3bdaadd537d2e5d6b33063395ef55f80fecb9e378f410ac4"
+          "bytes": 59508,
+          "sha256": "da387cda8d40561c10ebf71e3367997b7c1f872599e703b90515da497aa5ea5c"
         }
       }
     },

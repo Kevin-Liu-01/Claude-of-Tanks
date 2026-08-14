@@ -115,8 +115,12 @@ function ukHull(P, g) {
   // silhouettes are unchanged (any-x paints side; the belt/fenders own plan).
   // Default undefined -> single band, byte-identical.
   if (g.deckSplit) {
-    loftBand(P, 'hull', bw, g.deckInset ?? 0.08, g.deck, () => g.beltTop, bowZ, g.deckSplit.z);
-    loftBand(P, 'hull', bw, g.deckSplit.inset, g.deck, () => g.beltTop, g.deckSplit.z, sternZ);
+    const splitLoft = g.deckCorridor ? loftBandCorridor : loftBand;
+    const corridorArgs = g.deckCorridor ? [g.deckCorridor] : [];
+    splitLoft(P, 'hull', bw, g.deckInset ?? 0.08, g.deck, () => g.beltTop,
+      bowZ, g.deckSplit.z, ...corridorArgs);
+    splitLoft(P, 'hull', bw, g.deckSplit.inset, g.deck, () => g.beltTop,
+      g.deckSplit.z, sternZ, ...corridorArgs);
   } else {
     if (g.deckCorridor) {
       loftBandCorridor(P, 'hull', bw, g.deckInset ?? 0.08, g.deck, () => g.beltTop,
@@ -1146,6 +1150,10 @@ function ukGearAirBackers(P, plates, hex = 0x20261c) {
       const geo = new THREE.BoxGeometry(w, h, d);
       const mesh = new THREE.Mesh(geo, m);
       mesh.name = 'gearAirShadowBacker';
+      // This is an occlusion member of the native running-gear assembly,
+      // not hull armour. Keep it auditable without pretending a track-bay
+      // shadow plate is exterior structure.
+      mesh.userData.runningGear = true;
       mesh.position.set(side * x, y, z);
       mesh.castShadow = false;
       mesh.receiveShadow = true;
@@ -1512,6 +1520,11 @@ const CENTURION_HULL = {
   // rear top face pulls to +-1.005).
   deckSplit: { z: 0.35, inset: 0.545 },
   beltTop: 1.0, belly: 0.53,
+  // Preserve the complete central hull and both exterior skirt/guard walls,
+  // while lifting only the concealed over-track shoulder clear of the
+  // native return run. The closed top slabs keep this a solid sponson; no
+  // visible side armour is deleted or opened.
+  deckCorridor: { x: 0.92, floor: 1.08, z0: -2.45, z1: 2.65 },
   noseRake: [[2.55, 0.53], [3.05, 0.56], [3.30, 0.72], [3.458, 1.08]],
   tailRake: [[-2.30, 0.53], [-3.10, 0.63], [-3.40, 0.78]],
   // Front-view outer columns (ref, r2 re-read): the MAIN skirt plane tops
