@@ -138,8 +138,8 @@ try {
     if (!live.armor || !live.armor.plates.length) failures.push(`${id}: no armor hit areas`);
     if (!live.armor || !live.armor.modules.length) failures.push(`${id}: no module volumes`);
     const bore = live.muzzleBore || {};
-    if (!skipBore && !(bore.tagged > 0)) {
-      failures.push(`${id}: no verified cannon muzzle bore (${JSON.stringify(bore)})`);
+    if (!skipBore && (bore.tagged !== 1 || bore.rims !== 1 || bore.discs !== 1)) {
+      failures.push(`${id}: cannon bore must have one visible tagged rim/disc pair (${JSON.stringify(bore)})`);
     }
 
     if (liveOnly) continue;

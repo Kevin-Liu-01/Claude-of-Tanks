@@ -4364,38 +4364,77 @@ export function createTank(specId, engineCtx, opts = {}) {
   // older solid-cap builds receive a mask-neutral dark throat attached to
   // the recoil/FX anchor, and sourced GLB swaps re-seat the same fallback
   // from their real tube-tip vertices.
-  const authoredBore = root.getObjectByName('muzzleBoreShadowDisc');
-  if (authoredBore) authoredBore.userData.cannonBore = true;
+  // Normalize profile-authored bore furniture before installing the fleet
+  // mouth. A few composite family builders inherit the same muzzle helper
+  // twice, while many older helpers bury their disc partly behind a retained
+  // solid cap. Rendering those pieces directly causes z-fighting, clipped
+  // crescents, or a black plate apparently floating in front of the tube.
+  // Their nearest pair still supplies an exact per-profile seating anchor,
+  // but the one universal annulus/disc assembly owns the visible mouth.
+  root.updateMatrixWorld(true);
+  const muzzleWorld = recoilG.localToWorld(new THREE.Vector3(0, 0, P.muzzleZ));
+  const authoredRims = [];
+  const authoredDiscs = [];
+  root.traverse((object) => {
+    if (object.name === 'muzzleBoreShadowRim') authoredRims.push(object);
+    else if (object.name === 'muzzleBoreShadowDisc') authoredDiscs.push(object);
+  });
+  const nearestMuzzlePart = (parts) => parts
+    .map((part) => ({
+      part,
+      distance: part.getWorldPosition(new THREE.Vector3()).distanceToSquared(muzzleWorld),
+    }))
+    .sort((a, b) => a.distance - b.distance)[0]?.part || null;
+  const authoredRim = nearestMuzzlePart(authoredRims);
+  const authoredBore = nearestMuzzlePart(authoredDiscs);
+  for (const part of [...authoredRims, ...authoredDiscs]) {
+    part.visible = false;
+    part.userData.cannonBorePrimaryPart = false;
+    part.userData.cannonBoreSuppressed = true;
+  }
   const fallbackBore = new THREE.Group();
   fallbackBore.name = 'muzzleBoreShadowFallback';
   fallbackBore.userData.cannonBore = true;
   fallbackBore.userData.caliberMm = spec.gun.caliberMm;
   fallbackBore.visible = true;
-  // The measured seating pass below replaces this nominal 16 mm lip. Keep a
+  // The measured seating pass below replaces this nominal 32 mm lip. Keep a
   // safe default for profiles whose center ray has no renderable cap.
-  fallbackBore.position.z = 0.016;
+  fallbackBore.position.z = 0.032;
   const muzzleOuterR = Math.max(0.014, (armor.gunBarrel.radiusM || 0.04) * 0.92);
-  const muzzleRimR = Math.max(0.0025, muzzleOuterR * 0.15);
+  const caliberRadius = Math.max(0.004, (spec.gun.caliberMm || 20) / 2000);
+  const muzzleInnerR = Math.max(muzzleOuterR * 0.46,
+    Math.min(muzzleOuterR * 0.72, caliberRadius));
+  const muzzleRimR = Math.max(0.0025, muzzleOuterR * 0.12);
   const boreSegments = spec.gun.caliberMm <= 40 ? 12 : 18;
   const boreRimGeo = new THREE.TorusGeometry(
     muzzleOuterR - muzzleRimR, muzzleRimR, 5, boreSegments);
-  const boreDiscGeo = new THREE.CircleGeometry(muzzleOuterR * 0.62, boreSegments);
+  const boreAnnulusGeo = new THREE.RingGeometry(
+    muzzleInnerR * 1.04, muzzleOuterR * 0.985, boreSegments);
+  // Slightly overlap the annulus: a hairline gap between separate meshes can
+  // expose legacy solid-cap triangles on small-caliber, low-segment barrels.
+  const boreDiscGeo = new THREE.CircleGeometry(muzzleInnerR * 1.02, boreSegments);
   const boreRim = new THREE.Mesh(boreRimGeo, mats.dark);
   boreRim.name = 'muzzleBoreShadowFallbackRim';
   boreRim.userData.cannonBoreFallbackPart = true;
-  // Existing profile-authored rings keep their deliberately modelled lip;
-  // the universal fallback disc still guarantees a dark open throat behind
-  // it. Sourced swaps reveal this rim when they replace the authored mesh.
-  boreRim.visible = !authoredBore;
+  boreRim.userData.cannonBorePrimaryPart = true;
+  boreRim.visible = true;
+  const boreAnnulus = new THREE.Mesh(boreAnnulusGeo, mats.dark);
+  boreAnnulus.name = 'muzzleBoreShadowFallbackAnnulus';
+  boreAnnulus.userData.cannonBoreFallbackPart = true;
+  boreAnnulus.userData.cannonBorePrimaryPart = true;
+  boreAnnulus.position.z = -0.002;
+  boreAnnulus.visible = true;
   const boreDisc = new THREE.Mesh(boreDiscGeo, mats.shadow);
   boreDisc.name = 'muzzleBoreShadowFallbackDisc';
   boreDisc.userData.cannonBoreFallbackPart = true;
-  // The disc sits 10 mm behind the ring center: after seating, the throat is
-  // 6 mm and the lip is 16 mm beyond the actual cap. This preserves the read
+  boreDisc.userData.cannonBorePrimaryPart = true;
+  // The disc sits 14 mm behind the ring center: after seating, the throat is
+  // 18 mm and the lip is 32 mm beyond the actual cap. This preserves the read
   // as a recess without disabling depth testing (which would leak through
   // tanks when the cannon points away from the camera).
-  boreDisc.position.z = -0.010;
-  for (const part of [boreRim, boreDisc]) {
+  boreDisc.position.z = -0.014;
+  boreDisc.visible = true;
+  for (const part of [boreRim, boreAnnulus, boreDisc]) {
     part.castShadow = false;
     part.receiveShadow = true;
     fallbackBore.add(part);
@@ -4406,13 +4445,14 @@ export function createTank(specId, engineCtx, opts = {}) {
   // a fleet-wide offset (which would float in front of already-correct tubes).
   root.updateMatrixWorld(true);
   let boreX = 0, boreY = 0;
-  if (authoredBore) {
-    const authoredLocal = muzzle.worldToLocal(authoredBore.getWorldPosition(new THREE.Vector3()));
+  const authoredSeat = authoredBore || authoredRim;
+  if (authoredSeat) {
+    const authoredLocal = muzzle.worldToLocal(authoredSeat.getWorldPosition(new THREE.Vector3()));
     boreX = authoredLocal.x;
     boreY = authoredLocal.y;
     // If the nominal rig anchor is far from a hand-authored tube (M60A2),
     // retain the authored face as the fallback before the cap ray refines it.
-    fallbackBore.position.set(boreX, boreY, authoredLocal.z + 0.018);
+    fallbackBore.position.set(boreX, boreY, authoredLocal.z + 0.032);
   }
   const rayOrigin = recoilG.localToWorld(new THREE.Vector3(boreX, boreY, P.muzzleZ + 1));
   const rayDirection = new THREE.Vector3(0, 0, -1).transformDirection(recoilG.matrixWorld);
@@ -4430,11 +4470,12 @@ export function createTank(specId, engineCtx, opts = {}) {
   if (capHit) {
     const capLocal = recoilG.worldToLocal(capHit.point.clone());
     const capOffset = Math.max(-0.2, Math.min(0.5, capLocal.z - P.muzzleZ));
-    fallbackBore.position.z = capOffset + 0.016;
+    fallbackBore.position.z = capOffset + 0.032;
     fallbackBore.userData.capOffsetM = capOffset;
   }
   muzzle.add(fallbackBore);
-  disposables.push(boreRimGeo, boreDiscGeo);
+  fallbackBore.visible = true;
+  disposables.push(boreRimGeo, boreAnnulusGeo, boreDiscGeo);
   const turretTop = new THREE.Object3D();
   turretTop.position.set(0, P.topY, 0);
   turretG.add(turretTop);

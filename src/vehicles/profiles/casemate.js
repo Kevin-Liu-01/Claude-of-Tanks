@@ -744,17 +744,20 @@ function buildSturmtiger(P) {
   P.add('hull', xform2(cylZ(0.48, 0.26, 18), 0, 0, 0.04, -0.75), 0.10, 2.02, 2.42);
   P.add('hullDark', KIT.sph(0.38, 18), 0.10, 2.00, 2.52);                      // cast ball
   hullGun(P, 2.00, [
-    { z0: 2.85, z1: 2.76, r: 0.225, x: 0.10 },                                 // muzzle rim collar
-    { z0: 2.78, z1: 2.42, r: 0.205, x: 0.10, r2: 0.235 },                      // stub tube
+    // Carry the RW61 mouth beyond the 47-degree casemate face.  The former
+    // z=2.85 termination left the lower half of the bore behind the glacis
+    // crest, so front views showed armor cutting straight through the hole.
+    { z0: 3.01, z1: 2.90, r: 0.225, x: 0.10 },                                 // muzzle rim collar
+    { z0: 2.92, z1: 2.42, r: 0.205, x: 0.10, r2: 0.235 },                      // stub tube
   ]);
-  P.add('hullDark', cylZ(0.135, 0.05, 14), 0.10, 2.00, 2.84);                  // bore face
+  P.add('hullDark', cylZ(0.135, 0.05, 14), 0.10, 2.00, 3.00);                  // bore face
   for (let k = 0; k < 9; k++) {
     const a = (k / 9) * Math.PI * 2;
-    P.add('hullDark', cylZ(0.021, 0.06, 6), 0.10 + Math.cos(a) * 0.170, 2.00 + Math.sin(a) * 0.170, 2.83);
+    P.add('hullDark', cylZ(0.021, 0.06, 6), 0.10 + Math.cos(a) * 0.170, 2.00 + Math.sin(a) * 0.170, 2.99);
   }
   P.turretG.position.set(0.10, 2.00, 2.42);
   P.gunG.position.set(0, 0, 0);
-  P.muzzleZ = 0.43;
+  P.muzzleZ = 0.59;
 
   // casemate front: MG ball right, driver visor left low
   mgBall(P, 0.80, 1.68, 2.78, -0.82, 0.115);

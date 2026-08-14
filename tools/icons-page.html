@@ -335,6 +335,23 @@ function muzzleBoreCensus(root) {
   return result;
 }
 
+function visibleInTree(object, root) {
+  if (!object) return false;
+  for (let current = object; current; current = current.parent) {
+    if (!current.visible) return false;
+    if (current === root) return true;
+  }
+  return false;
+}
+
+function visibleBorePart(root, pattern) {
+  let found = null;
+  root.traverse((object) => {
+    if (!found && pattern.test(object.name || '') && visibleInTree(object, root)) found = object;
+  });
+  return found;
+}
+
 function inspectOne(id, renderFiles) {
   const visual = createTank(id, null, { camoSeed: 4100, quality: 'high' });
   const root = visual.root;
@@ -398,9 +415,22 @@ function boreShotOne(id) {
     if (!muzzle) throw new Error('rig_muzzle missing');
     const spec = getSpec(id);
     const fallback = muzzle.getObjectByName('muzzleBoreShadowFallback');
-    const face = (fallback || muzzle).getWorldPosition(new THREE.Vector3());
+    const primaryRim = visibleBorePart(root, /muzzleBoreShadow(?:Fallback)?Rim$/i);
+    const primaryDisc = visibleBorePart(root, /muzzleBoreShadow(?:Fallback)?Disc$/i);
+    const facePart = primaryRim || primaryDisc || (visibleInTree(fallback, root) ? fallback : muzzle);
+    const face = facePart.getWorldPosition(new THREE.Vector3());
     const direction = muzzle.getWorldDirection(new THREE.Vector3()).normalize();
-    const radius = Math.max(0.014, (spec.armor.gunBarrel.radiusM || 0.04) * 0.92);
+    let radius = Math.max(0.014, (spec.armor.gunBarrel.radiusM || 0.04) * 0.92);
+    if (primaryRim?.geometry) {
+      primaryRim.geometry.computeBoundingSphere();
+      const scale = primaryRim.getWorldScale(new THREE.Vector3());
+      const measured = primaryRim.geometry.boundingSphere?.radius
+        // The mouth lives in the local XY plane. Several family builders
+        // stretch only the cannon's longitudinal Z axis; folding that into
+        // the radial scale overestimates the aperture and samples empty air.
+        * Math.max(Math.abs(scale.x), Math.abs(scale.y));
+      if (Number.isFinite(measured) && measured > 0.004) radius = measured;
+    }
     const distance = Math.max(0.18, radius * 8);
     const fov = 22;
     const cam = new THREE.PerspectiveCamera(fov, 1, 0.002, distance * 8);
@@ -428,6 +458,41 @@ function boreShotOne(id) {
         bore,
       };
     });
+    const right = new THREE.Vector3().setFromMatrixColumn(cam.matrixWorld, 0).normalize();
+    const up = new THREE.Vector3().setFromMatrixColumn(cam.matrixWorld, 1).normalize();
+    const sampleBoreRing = (normalizedRadius, count, pattern) => {
+      const samples = [];
+      for (let i = 0; i < count; i++) {
+        const angle = i * Math.PI * 2 / count;
+        const origin = cam.position.clone()
+          .addScaledVector(right, Math.cos(angle) * radius * normalizedRadius)
+          .addScaledVector(up, Math.sin(angle) * radius * normalizedRadius);
+        const sampleRay = new THREE.Raycaster(origin, direction.clone().negate(), 0, distance * 4);
+        const hit = sampleRay.intersectObject(root, true).find((candidate) => {
+          if (!visibleInTree(candidate.object, root)) return false;
+          const materials = Array.isArray(candidate.object.material)
+            ? candidate.object.material : [candidate.object.material];
+          return !materials.length || materials.some((material) => !material || material.colorWrite !== false);
+        });
+        samples.push({
+          pass: !!hit && pattern.test(hit.object.name || ''),
+          name: hit?.object.name || null,
+          distance: hit ? Number(hit.distance.toFixed(4)) : null,
+        });
+      }
+      return samples;
+    };
+    const innerSamples = sampleBoreRing(0.30, 8, /muzzleBoreShadow(?:Fallback)?Disc$/i);
+    const rimSamples = sampleBoreRing(0.83, 16,
+      /muzzleBoreShadow(?:Fallback)?(?:Rim|Annulus)$/i);
+    const rimWorld = primaryRim?.getWorldPosition(new THREE.Vector3()) || null;
+    const discWorld = primaryDisc?.getWorldPosition(new THREE.Vector3()) || null;
+    let concentricOffsetM = null;
+    if (rimWorld && discWorld) {
+      const delta = discWorld.clone().sub(rimWorld);
+      delta.addScaledVector(direction, -delta.dot(direction));
+      concentricOffsetM = delta.length();
+    }
     const oldColor = renderer.getClearColor(new THREE.Color()).clone();
     const oldAlpha = renderer.getClearAlpha();
     renderer.setClearColor(0xaebac2, 1);
@@ -460,6 +525,11 @@ function boreShotOne(id) {
         fallbackWorld: fallback?.getWorldPosition(new THREE.Vector3()).toArray() ?? null,
         authoredWorld: root.getObjectByName('muzzleBoreShadowDisc')?.getWorldPosition(new THREE.Vector3()).toArray() ?? null,
         capOffsetM: fallback?.userData.capOffsetM ?? null,
+        primaryRimWorld: rimWorld?.toArray() ?? null,
+        primaryDiscWorld: discWorld?.toArray() ?? null,
+        concentricOffsetM,
+        innerSamples,
+        rimSamples,
         centerHits,
       },
     };
@@ -504,6 +574,7 @@ window.__AUDIT = (ids) => {
   return result;
 };
 
+window.__FLEET_IDS = [...ALL_TANK_IDS];
 window.__BORE_SHOTS = (ids) => {
   const result = {};
   for (const id of idsOrFleet(ids)) {
