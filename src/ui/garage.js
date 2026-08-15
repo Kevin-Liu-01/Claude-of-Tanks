@@ -116,6 +116,7 @@ const GARAGE_CSS = `
 /* Garage + Studio use the original authored navigation art; Home keeps the
    shared vector mark. object-fit preserves both source assets at 15px. */
 .cot-nav .nv .nvi{width:13px;height:13px;display:block;object-fit:contain;}
+.cot-nav .nv .nav-label{display:inline;}
 .cot-nav .cot-settings-slot{width:34px;height:34px;flex:0 0 auto;}
 .cot-nav .cot-gear{position:static;width:34px;height:34px;min-height:34px;z-index:auto;
   right:auto;top:auto;}
@@ -553,6 +554,15 @@ const GARAGE_CSS = `
   .cot-garage.enter,.cot-garage.enter *{animation:none !important;}
 }
 
+/* Mid-size desktop/tablet: preserve the top-right navigation row by reducing
+   each destination to its authored icon. aria-label/title retain the full
+   destination names for assistive technology and pointer discovery. */
+@media (max-width:1300px){
+  .cot-nav .nv{width:34px;padding:0;justify-content:center;gap:0;}
+  .cot-nav .nv .nav-label{display:none;}
+  .cot-nav .nv .nvi{width:15px;height:15px;}
+}
+
 /* Compact touch garage: keep the tank, BATTLE action and vehicle roster
    dominant on a phone-sized landscape screen. The full stat sheet remains
    available on desktop, while mobile keeps the interactive loadout column. */
@@ -567,7 +577,7 @@ const GARAGE_CSS = `
   .cot-local-record .label{font-size:5.5px;}
   .cot-local-record .record-values{gap:6px;font-size:7px;}
   .cot-nav{top:62px;right:14px;gap:3px;height:28px;}
-  .cot-nav .nv{font-size:7px;padding:0 6px;letter-spacing:.12em;}
+  .cot-nav .nv{width:28px;font-size:7px;padding:0;letter-spacing:.12em;}
   .cot-nav .nv .nvi{width:11px;height:11px;}
   .cot-nav .cot-settings-slot,.cot-nav .cot-gear{width:28px;height:28px;min-height:28px;}
   .cot-nav .cot-gear svg{width:17px;height:17px;}
@@ -622,7 +632,6 @@ const GARAGE_CSS = `
   .cot-local-record .label,.cot-local-record .winrate{display:none;}
   .cot-local-record .record-values{font-size:6.5px;letter-spacing:.025em;}
 }
-@media (max-width:1300px) and (min-width:901px){.cot-nav{top:66px;}}
 `;
 
 function ensureStyle(id, css) {
@@ -1338,14 +1347,18 @@ export function createGarage(opts) {
     `<span class="record-values"><span class="matches">0 BATTLES</span>` +
     `<span class="winrate">— WIN RATE</span></span></span></div>` +
     `<nav class="cot-nav" aria-label="Garage navigation">` +
-    `<button class="nv on" data-nav="garage" type="button">` +
-    `<img class="nvi" src="/brand/nav/garage.svg" alt="" draggable="false">Garage</button>` +
-    `<button class="nv" data-nav="studio" type="button">` +
-    `<img class="nvi" src="/brand/nav/studio.png" alt="" draggable="false">Studio</button>` +
-    `<button class="nv" data-nav="surface" type="button">` +
-    `${uiIconSVG('scope', 15, 'currentColor', 'nvi')}Surface Lab</button>` +
-    `<button class="nv" data-nav="home" type="button">` +
-    `${uiIconSVG('home', 15, 'currentColor', 'nvi')}Home</button>` +
+    `<button class="nv on" data-nav="garage" type="button" aria-label="Garage" title="Garage">` +
+    `<img class="nvi" src="/brand/nav/garage.svg" alt="" draggable="false">` +
+    `<span class="nav-label">Garage</span></button>` +
+    `<button class="nv" data-nav="studio" type="button" aria-label="Studio" title="Studio">` +
+    `<img class="nvi" src="/brand/nav/studio.png" alt="" draggable="false">` +
+    `<span class="nav-label">Studio</span></button>` +
+    `<button class="nv" data-nav="surface" type="button" aria-label="Surface Lab" title="Surface Lab">` +
+    `${uiIconSVG('scope', 15, 'currentColor', 'nvi')}` +
+    `<span class="nav-label">Surface Lab</span></button>` +
+    `<button class="nv" data-nav="home" type="button" aria-label="Home" title="Home">` +
+    `${uiIconSVG('home', 15, 'currentColor', 'nvi')}` +
+    `<span class="nav-label">Home</span></button>` +
     `<div class="cot-settings-slot"></div></nav>` +
     `<div class="cot-battle-control">` +
     `<button class="cot-battle" type="button" aria-label="Start Bots battle">` +
