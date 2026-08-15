@@ -69952,7 +69952,7 @@
           }
         ]
       },
-      "geometryHash": "5e267a66",
+      "geometryHash": "7cf0107c",
       "metadataHash": "ace4b9fa",
       "appearance": {
         "version": 1,
@@ -69965,7 +69965,7 @@
           "trackBand": 2,
           "trackPad": 1,
           "armorPaint": 4,
-          "gunmetal": 8,
+          "gunmetal": 10,
           "fittingPaint": 5,
           "opticGlass": 2,
           "trackSteel": 2,
@@ -69995,24 +69995,24 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 30402,
-          "sha256": "73359f36410268fd703494e9c5b8457825630da56e13d8d78ba0e43410335958"
+          "bytes": 30680,
+          "sha256": "3f233ebce6497f663a41efd5794a86285c8f68ee0e8793729a71aadeb38352be"
         },
         "top": {
           "file": "t90a_vladimir_top.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 7640,
-          "sha256": "db24fe51658686e1520a98c651c3c358859dff65a649cf33269fb0a03c8ba12d"
+          "bytes": 7672,
+          "sha256": "baf4f5bbbcffeec6b2cb7c6a2991f3300e1c18bb630c93d9344e9ef8ef818213"
         },
         "side": {
           "file": "t90a_vladimir_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 8104,
-          "sha256": "9edc47ed82f5fc5c7eb38b06d275303452a988256357962f0d3b7c2ba31f827f"
+          "bytes": 8096,
+          "sha256": "4f6be74280060201f66fb80097286a292a5e08dc5b33a865905cdec3c90d1fda"
         },
         "topSilhouette": {
           "file": "t90a_vladimir_top_silhouette.png",
@@ -70027,32 +70027,32 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4396,
-          "sha256": "91d1a28cb04f6ff7bd3feabdaf070c509a50766ec00f692546385e72f6a9f6d2"
+          "bytes": 4421,
+          "sha256": "69b12be1ee43233665b7e1930703d0df465ddb40362ba854d4bc8a7fdef7f7c2"
         },
         "hitZonesSide": {
           "file": "t90a_vladimir_hit_zones_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 79049,
-          "sha256": "70d30362ef8d25652461e58df60e5597ac5c7d0d3f0933082ca9fb68b1bea02c"
+          "bytes": 79060,
+          "sha256": "f720e447d8730052c3acaac482293c050841e1f4ec115d4100640685d2358c26"
         },
         "armorSide": {
           "file": "t90a_vladimir_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 77530,
-          "sha256": "5b01a1d29957f8229eed09e5bd2cc9cee7eea414c229f899b365a09cf322252d"
+          "bytes": 77081,
+          "sha256": "d9a39e4149aadfbd0477d38f33c55978b9d4f59383873e51e14a47fb2942c2bc"
         },
         "modulesSide": {
           "file": "t90a_vladimir_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 70033,
-          "sha256": "2f78e2b26f679963bb6e5cacd78264989872e105a7f4df0a0a347a7486ef71e3"
+          "bytes": 70310,
+          "sha256": "566791b1f24ce1296f56fa05fdb31999195ca3e5d71eebe8d7832e3bed70ef1c"
         },
         "markings": {
           "file": "t90a_vladimir_markings.png",

@@ -1178,13 +1178,21 @@ function buildT90AVladimirLegacy(P) {
   // r13b wedge re-fit: ref K-5 side band is 1.529..1.663 (thin, HIGH) over
   // z_w 0.4..1.0 — k5Y +0.05, slimmer/shorter leaf, pitch relaxed -0.40 ->
   // -0.26 (the tilt was throwing the inner ends to 1.81)
-  const p5 = { rings, sz: 0.73, rCz: 0.23, eyeScale: 0.88, k5Len: 0.85, k5T: 0.50, k5Y: 0.05, k5H: 0.10, k5Pitch: -0.18, k5TileY: 0.07 };
+  const p5 = {
+    rings, sz: 0.73, rCz: 0.23,
+    eyeKit: true, eyeRound: true, eyeScale: 1.50, eyeX: 0.60, eyeZ: 1.24,
+    k5Len: 0.85, k5T: 0.50, k5Y: 0.05, k5H: 0.10, k5Pitch: -0.18, k5TileY: 0.07,
+  };
   eraRuCheeks(P, p5, 'k5');
-  // The recovered Vladimir print carried a generic Shtora pair directly in
-  // the crown seam. Those two boxes are the owner-marked obstructions: they
-  // read as lamps propping up the roof and prevent the fighting compartment
-  // from resolving as one connected casting. Vladimir now uses the joined
-  // crown authored in buildT90AVladimir; no hidden housing remains here.
+  // Vladimir's OTShU-1-7 pair belongs beside the gun, not in the former roof
+  // seam. Broad angled shoes grow out of the planted K-5 shoulders and enter
+  // the rear half of each enlarged housing; the round lenses stay fully open
+  // and the complete station remains turret-owned through yaw.
+  for (const s of [-1, 1]) {
+    P.add('turret', KIT.xform(box(0.34, 0.28, 0.44), 0, 0, -0.04),
+      s * 0.60, 0.20, 1.04, -0.22, -s * 0.12, 0);
+  }
+  ruShtora(P, p5, 0.28);
   // Vladimir ESSA hierarchy.  A long, narrow optical run and one distinct
   // outer service body replace the old staircase of tall touching boxes.
   // This follows the graduated T-90A housing grammar while retaining this
@@ -1341,7 +1349,9 @@ function buildT90AVladimirLegacy(P) {
   // (r12 mast() stem deleted rTAIL r13 — its 0.04-wide stem crossed the
   // -0.25 front column boundary; replaced by the fin/cap assembly above)
   // ---- 2A46M (fused in the ref; mine stays a Gun node) ----
-  P.gunG.position.set(0, 0.09, 1.05);
+  // Raise the complete articulated gun seat, including its saddle and root,
+  // rather than lifting only the visible tube away from the mantlet.
+  P.gunG.position.set(0, 0.16, 1.05);
   ruSaddle(P, { rollR: 0.10, rollW: 0.60, tubeR: 0.060, rootL: 0.66 });
   // r13c: root block y-slimmed into the ref's fused-root band — rig_gun is
   // turret-mask content, and the 0.26-tall block owned six side_turret

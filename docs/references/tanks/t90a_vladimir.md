@@ -758,3 +758,24 @@ legitimate hull-owned geometry and confirms coherent ownership/load paths for
 the entire cast turret, gun, collar, ERA, optics, RWS, hatches, smoke kit and
 antennas. Verdict:
 `docs/critique/shaded-parity-t90a-vladimir-defusion-recert.md`.
+
+## §5.248 RESTORED SHTORA / RAISED GUN SEAT (2026-08-15)
+
+The live Vladimir had no Shtora pair: the old roof-seam boxes had been removed
+during the joined-crown repair, but no correctly seated frontal replacement
+was added. The owner-requested restoration adds two 1.50-scale round
+OTShU-1-7 emitters at the mantlet shoulders. Each backed housing overlaps a
+broad angled armor shoe planted into the K-5 cheek, so the larger eyes are
+prominent without returning to the discarded roof-gap geometry. The entire
+gun group, including saddle and root, rises 0.07 m as one articulated unit.
+
+Fresh evidence contains 15 paired, 15 yaw-0 and 15 yaw-90 PNGs, all 45 hashes
+distinct. Independent §B8 scores
+`[9.8,9.8,9.7,9.7,9.7,9.7,9.7,9.8,9.8,9.8,9.8,9.9,9.8,9.9]`, floor
+**9.7**, mean **9.78**. The complete gun, saddle, eyes, shoes, shell, roof kit,
+antennas and rear package rotate together; the hull and native six-wheel
+course remain fixed. Parent audit is 0/0/0, exact track bands and shoes are
+0/0, duplicate-course and muzzle-bore audits pass, and winding pixels are
+clean. Freeze **`bee9eb44`** reproduces at 46 meshes / 77,342 vertices;
+instance freeze is `79b109c2` and asset geometry is `7cf0107c`. Verdict:
+`docs/critique/shaded-parity-t90a-vladimir-eyes-recert.md`.
