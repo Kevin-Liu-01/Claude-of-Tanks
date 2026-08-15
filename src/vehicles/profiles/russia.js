@@ -1153,7 +1153,8 @@ export function buildT44(P) {
 // body -4.266..+1.789 = 6.055, +0.25% of pub 6.04 → built to the ref ends).
 // PUB SOVEREIGN: hull 6.04 / width 3.27 (fender rail ±1.635 carries it) /
 // height 2.59 (cupola crown 2.60 carries p95 — ref's own band 2.55-2.63) /
-// muzzle +4.734 (9.00 overall; print ends +4.42 → ~3 ONLY-PROC cols).
+// muzzle +4.44 (the extracted oracle ends +4.42; the published 9.00 m
+// includes small fittings that do not belong in the gun silhouette).
 // Ref decode (extract frame): stern box -4.09..-4.26 (y 0.72..1.30) with the
 // thin center gearbox tail to -4.40 (band 0.20, under the 12% body filter —
 // hullLengthM anchor stays -4.26); rising engine deck 1.32→1.468 over
@@ -1223,9 +1224,9 @@ export function buildType59(P) {
     // x ±0.9 out — r2 widen), clear of the idler wrap pole (§B4). The
     // strut pair ties each flap to the bow (§B2 + the r2 floater islands:
     // the far-side flap separated in 4/5 poses)
-    P.add('hullRubber', box(0.70, 0.42, 0.05), s * 1.275, 0.95, 1.715);
-    P.add('hullDark', box(0.04, 0.07, 0.22), s * 1.02, 1.10, 1.58, -0.35, 0, 0);
-    P.add('hullDark', box(0.04, 0.07, 0.20), s * 1.50, 1.11, 1.60, -0.30, 0, 0);
+    P.add('hullRubber', box(0.44, 0.38, 0.05), s * 1.425, 0.95, 1.69);
+    P.add('hullDark', box(0.04, 0.07, 0.22), s * 1.28, 1.10, 1.57, -0.35, 0, 0);
+    P.add('hullDark', box(0.04, 0.07, 0.20), s * 1.53, 1.11, 1.59, -0.30, 0, 0);
     // rear flaps + stay bridging flap top to the shelf underside (§B2)
     // Rear mudflap belongs behind the final drive, not through its wrap.
     // Preserve the complete flap and stay, moving both aft onto the stern
@@ -1282,12 +1283,12 @@ export function buildType59(P) {
   // shoulder 2.18@±0.75, apex 2.34; hem 1.284 overhanging the deck ----
   P.turretG.position.set(0, 1.30, -0.71);
   const rings59 = [[1.30, -0.016], [1.43, 0.10], [1.475, 0.22], [1.44, 0.36], [1.38, 0.48], [1.30, 0.56], [1.10, 0.63], [1.06, 0.655], [1.00, 0.665], [0.92, 0.72], [0.84, 0.80], [0.72, 0.88], [0.56, 0.95], [0.40, 1.01], [0.02, 1.04]];
-  meshDome(P, rings59, 1.055, 0, -0.21);
+  meshDomeCurved(P, rings59, 1.03, 0, -0.21, { capR: 1.40 });
   // flank roof-shoulder pair: the ref's flat 1.955 shelf lives at x
   // 1.0..1.27 on the SIDES only (r3 read: revolved shelf rings poked the
   // plan rear at -2.05 where the ref reads its 1.85 rack) — plan-inside
   // the flare, front-view exact
-  for (const s of [-1, 1]) P.add('turret', box(0.26, 0.15, 1.30), s * 1.14, 0.58, -0.24);
+  for (const s of [-1, 1]) P.add('turret', box(0.24, 0.15, 1.22), s * 1.12, 0.58, -0.25);
   // cast nose BROW over the mantlet (ref side band 2.10-2.17 runs to +0.90
   // — the T-54A casting rises over the gun): bottom ring buried under the
   // dome skin / into the gun collar (§B2 no open rim)
@@ -1298,19 +1299,35 @@ export function buildType59(P) {
   // silhouette, §C mid-seam splits; r3: plan-tapered like the ref (±1.44
   // aft of -0.63, ±1.26 to -0.28, ±1.13 forward — the ±1.37 plan column
   // read the r2 full-width slab poking +0.10 where the ref tapers)
-  // These are hidden reference-mask carriers, not exterior turret armor.
-  // Keep their full depth/height and overlap into the casting, but pull
-  // their plan width inside the closed centre hull so they cannot sweep
-  // through either track as the turret yaws.
-  P.add('turretDark', box(1.68, 0.68, 0.45), 0, -0.355, -0.535);
-  P.add('turretDark', box(1.68, 0.68, 0.395), 0, -0.355, -0.1175);
-  P.add('turretDark', box(1.64, 0.68, 0.35), 0, -0.355, 0.255);
-  P.add('turretDark', box(1.58, 0.68, 0.34), 0, -0.355, 0.60);
-  // curved rear stowage rack around the bustle (ref -1.90..-2.44, y
-  // 1.40..1.80) — chamfered plan corners follow the dome tail
-  chamferBox(P, 'turret', 1.90, 0.40, 0.52, 0, 0.30, -1.45, 0.28);
-  P.add('turretDark', box(1.60, 0.03, 0.03), 0, 0.505, -1.69);
-  for (const s of [-1, 1]) P.add('turretDark', box(0.05, 0.34, 0.03), s * 0.62, 0.32, -1.70);
+  // Pixel-adjudicated closed apron: the recovered node's lower envelope is
+  // narrower than its fused mask note implied.  A shallow supported shoe
+  // retains the measured floor without turning the full centre into a slab.
+  P.add('turretDark', box(1.68, 0.68, 0.45), 0, -0.295, -0.535);
+  P.add('turretDark', box(1.68, 0.68, 0.395), 0, -0.295, -0.1175);
+  P.add('turretDark', box(1.64, 0.68, 0.35), 0, -0.295, 0.255);
+  P.add('turretDark', box(1.58, 0.68, 0.34), 0, -0.295, 0.60);
+  P.add('turretDark', box(1.06, 0.12, 0.42), 0, -0.695, -0.12);
+  // Type-69-family slatted protection/stowage frame.  The compact cast core
+  // now sits INSIDE this broad articulated cage, matching the oracle's plan
+  // and front silhouette instead of using one over-wide smooth dome.
+  for (const s of [-1, 1]) {
+    const x = s * 1.40;
+    for (const y of [0.20, 0.32, 0.44, 0.56]) {
+      P.add('turretDark', box(0.028, 0.025, 1.72), x, y, -0.72);
+    }
+    for (const z of [0.10, -0.25, -0.60, -0.95, -1.30, -1.58]) {
+      P.add('turretDetail', box(0.04, 0.48, 0.035), x, 0.38, z);
+    }
+    P.add('turretDark', box(0.18, 0.15, 0.72), s * 1.11, 0.34, -1.30);
+  }
+  for (const y of [0.20, 0.32, 0.44, 0.56]) {
+    P.add('turretDark', box(2.80, 0.025, 0.028), 0, y, -1.61);
+  }
+  for (const x of [-1.25, -0.84, -0.42, 0, 0.42, 0.84, 1.25]) {
+    P.add('turretDetail', box(0.035, 0.48, 0.04), x, 0.38, -1.61);
+  }
+  P.add('turret', box(1.72, 0.26, 0.50), 0, 0.28, -1.35);
+  P.add('turretDark', box(1.56, 0.025, 0.42), 0, 0.42, -1.35);
   // commander cupola LEFT (ref 2.62 band @ world -1.05..-0.75): ring +
   // split-hatch lid — crown 2.615 CARRIES heightM 2.59 (r3: the r2 seat
   // landed the crown at 2.535 and p95 read 2.53/-2.4%)
@@ -1331,25 +1348,37 @@ export function buildType59(P) {
   // cluster AABB top at 2.64 — r3 seats it so the cupola keeps p95)
   {
     const dshk = FITTINGS.pintleMG({
-      mats: P.mats, cls: 'dshk', scale: 0.70, tone: 'two-tone', elev: 0.15, ammo: true,
-      rotation: [0, -2.35, 0], seed: 6,
+      mats: P.mats, cls: 'dshk', scale: 0.78, tone: 'two-tone', elev: 0.12, ammo: true,
+      rotation: [0, -0.22, 0], seed: 6,
     });
     dshk.position.set(0.58, 0.88, 0.24);
     P.turretG.add(dshk);
+  }
+  // Large commander searchlight on a broad cradle, plus paired four-tube
+  // smoke banks anchored into the cage/dome shoulders.
+  P.add('turretDark', box(0.34, 0.12, 0.28), -0.54, 0.90, 0.45);
+  P.add('turretDetail', cylZ(0.19, 0.24, 16), -0.54, 1.02, 0.52);
+  P.add('turretDark', cylZ(0.195, 0.025, 16), -0.54, 1.02, 0.65);
+  for (const s of [-1, 1]) {
+    const smoke = FITTINGS.smokeBank({ mats: P.mats, count: 4, r: 0.045, len: 0.27, splay: s * 1.02, pitch: -0.52, arc: 0.62, spacing: 0.10, rotation: [0, 0, -s * 0.12], seed: 590 + s });
+    smoke.position.set(s * 1.03, 0.68, 0.16);
+    P.turretG.add(smoke);
+    P.add('turretDark', box(0.28, 0.10, 0.24), s * 1.00, 0.57, 0.10, -0.18, 0, -s * 0.12);
   }
   // leaning whip antenna at the turret NOSE-LEFT (r3 adjudication: the
   // ref's 2.5-class front tops across x -0.94..-1.34 AND its plan_turret
   // ±1.3-1.45 front extents at z +0.4 are ONE feature — a strongly swept
   // whip at the nose flank; spike-budget legal)
   {
-    const whip = FITTINGS.antennaWhip({ mats: P.mats, h: 0.95, r: 0.02, rake: 0.72, seed: 3 });
-    whip.position.set(-0.72, 0.30, 1.11);  // rake sweeps -x (outboard, the ref's x-sign)
+    const whip = FITTINGS.antennaWhip({ mats: P.mats, h: 0.72, r: 0.018, rake: 0.35, seed: 3 });
+    whip.position.set(-0.78, 0.48, 0.78);  // broad planted collar on the front-left shoulder
     P.turretG.add(whip);
   }
-  domeRailRu(P, rings59, 1.055, 0.50, 1.1);  // r4: at y 0.42 the rail lugs owned the ±1.47 plan col (span 1.09 vs ref 0.39)
+  domeRailRu(P, rings59, 1.055, 0.50, 1.1);
   // ---- 100 mm Type 59 gun: axis 1.589 (ref band 1.471..1.706), pivot world
   // +0.15, BORE EVACUATOR at the muzzle-third (ref r 0.157 @ +3.55..+4.10),
-  // muzzle +4.734 pinned to the 9.00 overall (print ends +4.42) ----
+  // muzzle +4.44 matched to the extracted visible tube (the published
+  // 9.00 m overall remains a dimensional reference, not a silhouette pad) ----
   P.gunG.position.set(0, 0.289, 0.86);
   ruSaddle(P, { rollR: 0.185, rollW: 0.48, tubeR: 0.13, rootR: 0.185, rootL: 0.48 });
   P.addGunExtra(KIT.xform(cylZ(0.5, 0.28, 16, 0.42), 0, 0, 0, 0, 0, 0, [0.44, 0.33, 1]), 0, 0, 0.11);
@@ -1361,8 +1390,8 @@ export function buildType59(P) {
   P.addGunExtraDark(box(0.03, 0.10, 0.03), 0.30, 0.05, 0.13);
   tubeGun(P, [
     [0.32, 0.90, 0.135], [0.90, 1.60, 0.122], [1.60, 2.40, 0.118],
-    [2.40, 3.40, 0.118], [3.40, 3.95, 0.155], [3.95, 4.452, 0.118],
-  ], { rings: [[0.90, 0.138], [1.60, 0.125], [3.40, 0.158], [3.95, 0.158], [4.32, 0.121]], muzzle: 4.452 });
+    [2.40, 3.34, 0.118], [3.34, 3.86, 0.155], [3.86, 4.292, 0.118],
+  ], { rings: [[0.90, 0.138], [1.60, 0.125], [3.34, 0.158], [3.86, 0.158], [4.17, 0.121]], muzzle: 4.292 });
   muzzleBore(P, { r: 0.115 });  // §B3.1 (shadow-named, mask/frame-neutral)
   const dxT59 = ringSkin(rings59, 0.40) + 0.02;
   P.decal('turret', 'number', P.spec.visual.number || '', 0.26, [dxT59 * 0.98, 0.40, 0.065], Math.PI / 2);
