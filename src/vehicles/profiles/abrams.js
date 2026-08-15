@@ -3097,6 +3097,31 @@ function buildTejasFamily(P, p) {
   // - The corner guards + rear-kit softDark ride below/in tejasRearKit.
   g = { ...g, noRearFlap: true, frontFlapZ: 3.620 };
   abramsHull(P, g);
+  // FAMILY FRONT-SHOULDER CLOSURE (owner screenshots 2026-08-15): the
+  // idler-clearance carve correctly narrows the bow core to +/-1.08 between
+  // z 2.60 and 3.49, but the former fender treatment roofed only the very
+  // front tips.  High front-quarter views therefore exposed two large black
+  // pockets beside the glacis.  These paired hull-owned armor roofs bridge
+  // from the center bow into the skirt/fender course.  Their 1.445 m
+  // underside is above the complete animated idler/shoe envelope, and the
+  // 1.740 m inner face of each outboard return is beyond the 1.728 m pin
+  // envelope.  No running-gear, skirt, or bow armor geometry is removed.
+  for (const side of [-1, 1]) {
+    // Solid roof overlaps the uncarved sponson at z 2.60 and the existing
+    // tip wings at z 3.50, so neither end can open as a plan-view seam.
+    P.add('hull', box(0.690, 0.050, 0.920), side * 1.405, 1.470, 3.040);
+    // The outer return meets the skirt top and makes the closure readable
+    // from side/front-quarter cameras rather than only from directly above.
+    P.add('hull', box(0.050, 0.085, 0.900), side * 1.765, 1.4525, 3.040);
+    // Welded perimeter and shallow transverse breaks preserve the Abrams
+    // segmented-fender grammar without reintroducing dark open cavities.
+    P.add('hullDetail', box(0.032, 0.018, 0.900), side * 1.080, 1.504, 3.040);
+    P.add('hullDetail', box(0.032, 0.018, 0.900), side * 1.730, 1.504, 3.040);
+    for (const z of [2.73, 3.04, 3.35]) {
+      P.add('hullDetail', box(0.630, 0.014, 0.018), side * 1.405, 1.503, z);
+      P.add('hullDetail', cylY(0.014, 0.014, 0.016, 8), side * 1.690, 1.505, z);
+    }
+  }
   // Front fender wings: the oracle's plan reaches 3.71..3.82 at |x| 1.75-1.83
   // (forward of the skirt front) — thin segmented plates flush at the
   // committed 1.828 width plane (WIDTH GUARD), tops under the skirt line.

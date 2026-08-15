@@ -81,8 +81,8 @@ re-freeze NEW hash, all in ONE commit.
 | m60a1 | 912de524 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | m60a3 | 097c35a2 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | kv2 | 382b2310 | freeze-verify only |
-| m1a1 | 4a89c130 | RE-FROZEN 2026-08-14 (§5.184 expanded flush ERA / dual roof-gun asset reconciliation; exact band+shoe+sweep 0/0, fresh 45-frame yaw packet; prior 4e28ff40 retired) |
-| m1a1ha | 396a5138 | RE-FROZEN 2026-08-14 (§5.184 expanded flush ERA / dual roof-gun asset reconciliation while retaining HA-only supported foliage; exact band+shoe+sweep 0/0; prior 9fb09dfc retired) |
+| m1a1 | d42882cc | RE-FROZEN 2026-08-15 (§5.240 paired front-shoulder closures; exact band+shoe+sweep 0/0, fresh 45-frame yaw packet; prior 4a89c130 retired) |
+| m1a1ha | 837bfe50 | RE-FROZEN 2026-08-15 (§5.240 paired front-shoulder closures while retaining HA-only supported foliage; exact band+shoe+sweep 0/0; prior 396a5138 retired) |
 | m1a2_tejas | 0c690428 | RE-FROZEN 2026-08-14 (§5.184 family-source reconciliation; clean authored Tejas geometry and current asset bytes verified unchanged, strict native-course clearance retained; prior ed044ac8 retired) |
 | merkava3b | REMOVED BY OWNER 2026-08-06 (roster prune; was 8bb8d984, packet historical) |
 | merkava3c | c41e5c3c | RE-FROZEN 2026-08-14 (§5.194 non-subtractive closed-sponson/native-course repair; exact band+shoe+sweep 0/0, fresh 45-frame profile/yaw packet; prior aa74be6a retired) |
@@ -97,7 +97,7 @@ re-freeze NEW hash, all in ONE commit.
 | type59 | bd8ceae6 | RE-FROZEN 2026-08-14 (§5.195 non-subtractive family repair: complete hull/fenders retained, closed center tub and stepped stern cleared from the native course, rear flaps reseated behind the final drive, hidden turret mask carriers narrowed; exact band+shoe+sweep 0/0, fresh 45-frame profile/yaw packet) |
 | t72b3m | b8cc33a8 | RE-FROZEN 2026-08-13 (§5.154 live ownership/asset reconciliation: complete soft-pack belt, side bins, flank carriers and rear cells remain turret-owned with parent audit 0/0/0 and fresh 45-frame yaw proof; existing wrap-fade/face trim explicitly classified as suspension-owned with front/rear exact band+shoe 0/0; all eight presentation assets current; hull, skirts and native six-wheel course unchanged) |
 | merkava1b | 102e495d | RE-FROZEN 2026-08-14 (§5.194 non-subtractive closed-sponson/native-course repair; exact band+shoe+sweep 0/0, fresh 45-frame profile/yaw packet; prior 78051af0 retired) |
-| m1a2 | 186cb8bb | RE-FROZEN 2026-08-14 (§5.184 expanded flush ERA / dual roof-gun asset reconciliation; exact band+shoe+sweep 0/0 and fresh 45-frame yaw packet; prior 636a4860 retired) |
+| m1a2 | f9edc818 | RE-FROZEN 2026-08-15 (§5.240 paired front-shoulder closures; exact band+shoe+sweep 0/0 and fresh 45-frame yaw packet; prior 186cb8bb retired) |
 | chieftain5 | d4f2a9a6 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | t84 | 04707a9c | |
 | m47_patton | 2fc99c50 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
@@ -108,9 +108,9 @@ re-freeze NEW hash, all in ONE commit.
 | leo2_revolution | cffcd052 | RE-FROZEN 2026-08-13 (§5.151 removed the independently color-isolated long thin left-cheek card while retaining the connected cheek loft/armor course; exact band+shoe+sweep 0/0; fresh 45-frame yaw/ownership packet) |
 | m46_patton | 108806c8 | bore+winding re-cert RATIFIED (floors 9.1-9.4) |
 | centurion3 | bad74e60 | RE-FROZEN 2026-08-08 (no-air graduate-change: crown-ridge pedestal + discharger webs, front-low 1810px->14, re-cert floor 9.0 x17 changed views, gate 91.1 exact; prior 50273080 bore-resit lineage) |
-| m1a2_sepv2 | 527f794f | RE-FROZEN 2026-08-14 (§5.184 expanded flush ERA / extended dual roof-gun asset reconciliation; exact track corridor and yaw ownership retained; prior e8589ad6 retired) |
-| m1a2_sepv3 | 21ccbdac | RE-FROZEN 2026-08-14 (§5.184 expanded flush ERA / extended dual roof-gun asset reconciliation while retaining supported SEPv3-only foliage and clear optics; prior d34f9818 retired) |
-| m1a2_tusk | a89bde4c | RE-FROZEN 2026-08-14 (§5.184 expanded flush ERA / extended dual roof-gun asset reconciliation; ARAT, rear service return and exact track corridor retained; prior 978d507c retired) |
+| m1a2_sepv2 | d28d4020 | RE-FROZEN 2026-08-15 (§5.240 paired front-shoulder closures; exact track corridor and yaw ownership retained; prior 527f794f retired) |
+| m1a2_sepv3 | 690d16fa | RE-FROZEN 2026-08-15 (§5.240 paired front-shoulder closures while retaining supported SEPv3-only foliage and clear optics; prior 21ccbdac retired) |
+| m1a2_tusk | cd2d4626 | RE-FROZEN 2026-08-15 (§5.240 paired front-shoulder closures; ARAT, rear service return and exact track corridor retained; prior a89bde4c retired) |
 | m2a2_bradley | 45ef7b0c | GRADUATED 2026-08-08; RE-FROZEN 2026-08-14 (§5.188 zero-geometry semantic course closeout: authored asymmetric tread-pad rows and the supported return-run cover are classified as running gear instead of hull armor; accepted complete hull, full skirts, six wheels, raised terminal stations, linked course and turret remain unchanged; strict band/shoe front 0/0, rear 0/0, full sweep 0/0; fresh 45-frame yaw proof re-adjudicates fixed deck spare links; prior 90a5568c retired) |
 | m45_patton | 53caa687 | GRADUATED 2026-08-08 (29th; gate 90.7 x5 total + sitting-2 visual floor 9.0 mean 9.13 x14; sitting-1 orders executed: loft.smooth byte-reproduced, ring cupola adjudicated ring-class at station with the measured Ø0.57/x-0.65 deviation compliant; ring-prominence silhouette-tax residual certified) |
 | leclerc | 467186cc | RE-FROZEN 2026-08-13 (§5.153 current first-party course re-cert: six road wheels, full-size elevated front idler, raised rear drive, five return rollers directly supporting the visible upper linked-shoe run, wheel-supported lower course and exact band+shoe+sweep 0/0; hull/skirts/mudguards preserved; all eight garage assets regenerated and live-current) |
@@ -8464,3 +8464,33 @@ turret-only change and remains legitimate hull-owned structure.
 **KEEP the new crown-to-bustle height flow. Future height work must reshape and
 reseat the complete roof assembly, never stack a disconnected cover above the
 old dome.**
+
+## 5.240 ABRAMS FAMILY FRONT-SHOULDER CLOSURE (2026-08-15, LIVE)
+
+The current first-party M1A1, M1A1HA, M1A2, TUSK, SEPv2 and SEPv3 shared hull
+had two open plan-view pockets between the narrowed idler-clearance bow core
+and the outer fender/skirt course. Paired hull-owned armor roofs now overlap
+the uncarved sponson at their aft edge and the existing bow-tip wings at their
+forward edge. Thin outer returns meet the skirt top, while welded perimeter
+and transverse breaks retain the Abrams segmented-fender language. No hull,
+skirt, wheel, suspension or track component is removed.
+
+The underside remains above the complete animated idler/shoe envelope and the
+outer return remains beyond the pin envelope. Exact band clearance, individual
+shoe clearance and strict sweep are **front 0 / rear 0** for all six variants;
+duplicate-track audit reports one integrated animated course per tank.
+Winding mode 1 is clean for all six. A fresh packet contains 15 paired, 15 yaw0
+and 15 yaw90 frames per variant (**270 PNGs total**); the closures remain fixed
+with the hull while each complete turret package executes a genuine quarter
+turn. The supplied elevated front-quarter camera was also reproduced on both
+sides and shows continuous armor in place of the former black cavities.
+
+All six icon, silhouette, armor, hit-zone and module asset sets are regenerated.
+Current geometry freezes are **`d42882cc`** (M1A1), **`837bfe50`** (M1A1HA),
+**`f9edc818`** (M1A2), **`cd2d4626`** (TUSK), **`d28d4020`** (SEPv2) and
+**`690d16fa`** (SEPv3). Asset metadata is current; the full unit test suite and
+production build pass.
+
+**KEEP this repair additive and family-wide. Future idler-clearance work must
+preserve the closed hull roof, complete side armor and singular animated smart
+track course.**
