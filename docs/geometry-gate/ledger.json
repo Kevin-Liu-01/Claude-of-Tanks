@@ -1,7 +1,7 @@
 {
- "generatedAt": "2026-08-15T06:21:26.240Z",
+ "generatedAt": "2026-08-15T07:43:03.791Z",
  "gate": "every component >= 90; min is the headline",
- "passed": 35,
+ "passed": 36,
  "total": 96,
  "rows": [
   {
@@ -666,19 +666,6 @@
    }
   },
   {
-   "id": "t64bv1",
-   "geoMin": 73.4,
-   "gatePassed": false,
-   "components": {
-    "hullCurves": 78.2,
-    "wholeCurves": 74.1,
-    "turretCurves": 73.4,
-    "stations": 84.4,
-    "dims": 100,
-    "floaters": 100
-   }
-  },
-  {
    "id": "m1a2",
    "geoMin": 76,
    "gatePassed": false,
@@ -887,6 +874,16 @@
     "turretCurves": 90.6,
     "stations": 90.7,
     "dims": 95.9,
+    "floaters": 100
+   }
+  },
+  {
+   "id": "t64bv1",
+   "geoMin": 90.2,
+   "gatePassed": true,
+   "components": {
+    "wholeCurves": 90.2,
+    "dims": 96.3,
     "floaters": 100
    }
   },

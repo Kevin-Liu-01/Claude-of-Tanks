@@ -150,7 +150,16 @@ const SPECS = [
       } }),
   make('t72b3', 't64bv1', 'T-64BV1', 'USSR/Russia',
     { hp: 1850, weightTons: 42.4, topSpeedKmh: 60, reverseSpeedKmh: 12, gun: { reloadS: 7.4 },
-      dims: { hullLengthM: 6.54, overallLengthM: 9.23, widthM: 3.42, heightM: 2.17 } }),
+      dims: {
+        hullLengthM: 6.54, overallLengthM: 9.23, widthM: 3.42, heightM: 2.17,
+        // Owner-supplied 42manako T-64BV1 source silhouette after the
+        // fleet-standard width normalization. Published dimensions remain
+        // gameplay/UI truth; these fields keep the fidelity gate honest to
+        // the actual visual reference without importing its geometry.
+        silhouetteHullLengthM: 5.98,
+        silhouetteOverallLengthM: 8.61,
+        silhouetteHeightM: 2.28,
+      } }),
   make('t72b3', 't72b_1987', 'T-72B obr. 1987', 'USSR/Russia',
     { hp: 1950, weightTons: 44.5, topSpeedKmh: 60, reverseSpeedKmh: 12, gun: { reloadS: 7.2 } }),
   make('t72b3', 't72b3m', 'T-72B3M obr. 2022', 'Russia',
