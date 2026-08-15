@@ -16,7 +16,6 @@ const params = new URLSearchParams(location.search);
 const id = params.get('id') || 't90a';
 const procOnly = params.get('proconly') === '1';
 const CRITIC_REFERENCE_OVERRIDES = {
-  t62mv1: { source:'glb', glb:{ path:'/models/tanks/community/recovered/t62_bergman.glb', paintUntextured:true, turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:false } },
   t64bv1: { source:'glb', glb:{ path:'/models/tanks/community/recovered/t64bv1.glb', paintUntextured:true, turretNode:'^Turret$', autoPivot:true, yawOffset:-1.5707963267948966 } },
   t72b_1987: { source:'glb', glb:{ path:'/models/tanks/community/recovered/t72b_1987.glb', paintUntextured:true, turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, yawOffset:-1.5707963267948966 } },
   t72bu: { source:'glb', glb:{ path:'/models/tanks/community/recovered/t72bu.glb', paintUntextured:true, turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, yawOffset:-1.5707963267948966 } },

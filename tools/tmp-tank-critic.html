@@ -14,10 +14,13 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { createTank } from '/src/vehicles/tankFactory.js';
 import { MODEL_SOURCE, TANK_SPECS } from '/src/vehicles/specs.js';
+import { loadReferenceGlb } from '/tools/reference-glb-loader.js';
 
 const SIZE = 640;
 const params = new URLSearchParams(location.search);
 const id = params.get('id') || 'isu122s';
+const spec = TANK_SPECS[id];
+if (!spec) throw new Error(`Unknown tank id: ${id}`);
 const proceduralOnlyEvidence = params.get('proceduralOnly') === '1';
 // Graduate fallback (2026-08-02): graduates have no MODEL_SOURCE — resolve
 // through the SAME override map the fidelity harness uses. Kept in sync by
@@ -69,7 +72,6 @@ const CRITIC_REFERENCE_OVERRIDES = {
   merkava2b: { source:'glb', glb:{ path:'/models/tanks/community/recovered/merkava2b.glb', paintUntextured:true, turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, turretFollowers:'vehicle#(?:antenna_|bone_|ex_armor_(?!body|[lr]_)|ex_decor_(?:0[1-9]|13)|ex_decor_[lr]_02|hatch_(?:0[4-9]|1[0-3]))', gunFollowers:'vehicle#gun_barrel_' } },
   merkava2d: { source:'glb', glb:{ path:'/models/tanks/community/recovered/merkava2d.glb', paintUntextured:true, turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, turretFollowers:'vehicle#(?:antenna_|bone_|ex_armor_(?!body|[lr]_)|ex_decor_(?:0[1-9]|13)|ex_decor_[lr]_02|hatch_(?:0[4-9]|1[0-3]))', gunFollowers:'vehicle#gun_barrel_' } },
   merkava4b: { source:'glb', glb:{ path:'/models/tanks/community/recovered/merkava4b.glb', paintUntextured:true, turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, turretFollowers:'vehicle#(?:antenna_|bone_|ex_armor_(?!body|[lr]_)|ex_decor_(?:0[1-9]|13)|ex_decor_[lr]_02|hatch_(?:0[4-9]|1[0-3]))', gunFollowers:'vehicle#gun_barrel_' } },
-  t62mv1: { source:'glb', glb:{ path:'/models/tanks/community/recovered/t62_bergman.glb', paintUntextured:true, turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:false } },
   t64bv1: { source:'glb', glb:{ path:'/models/tanks/community/recovered/t64bv1.glb', paintUntextured:true, turretNode:'^Turret$', autoPivot:true, yawOffset:-1.5707963267948966 } },
   t72b_1987: { source:'glb', glb:{ path:'/models/tanks/community/recovered/t72b_1987.glb', paintUntextured:true, turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, yawOffset:-1.5707963267948966 } },
   t72bu: { source:'glb', glb:{ path:'/models/tanks/community/recovered/t72bu.glb', paintUntextured:true, turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, yawOffset:-1.5707963267948966 } },
@@ -241,7 +243,9 @@ if (proceduralOnlyEvidence) {
   reference = { root: gltf.scene };
   reference.root.userData.__glbSwapped = true;
 } else {
-  reference = createTank(id, engineCtx, { camoSeed: 4242, quality: 'high' });
+  reference = source?.source === 'glb'
+    ? await loadReferenceGlb(source, id, spec)
+    : createTank(id, engineCtx, { camoSeed: 4242, quality: 'high' });
 }
 const procedural = createTank(id, engineCtx, { camoSeed: 4242, quality: 'high', proceduralOnly: true });
 scene.add(reference.root, procedural.root);

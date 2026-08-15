@@ -1,8 +1,8 @@
 {
- "generatedAt": "2026-08-13T03:35:52.473Z",
+ "generatedAt": "2026-08-15T06:21:26.240Z",
  "gate": "every component >= 90; min is the headline",
- "passed": 34,
- "total": 97,
+ "passed": 35,
+ "total": 96,
  "rows": [
   {
    "id": "recon_tank",
@@ -614,19 +614,6 @@
    }
   },
   {
-   "id": "t62mv1",
-   "geoMin": 63.7,
-   "gatePassed": false,
-   "components": {
-    "hullCurves": 63.7,
-    "wholeCurves": 64.8,
-    "turretCurves": 66.9,
-    "stations": 90.9,
-    "dims": 100,
-    "floaters": 100
-   }
-  },
-  {
    "id": "jpz_e100",
    "geoMin": 66.5,
    "gatePassed": false,
@@ -1151,6 +1138,16 @@
     "turretCurves": 91.6,
     "stations": 93.6,
     "dims": 100,
+    "floaters": 100
+   }
+  },
+  {
+   "id": "t62mv1",
+   "geoMin": 91.1,
+   "gatePassed": true,
+   "components": {
+    "wholeCurves": 91.1,
+    "dims": 98.6,
     "floaters": 100
    }
   },

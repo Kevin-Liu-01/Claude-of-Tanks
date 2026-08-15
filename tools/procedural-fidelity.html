@@ -30,6 +30,7 @@
 import * as THREE from 'three';
 import { createTank } from '/src/vehicles/tankFactory.js';
 import { ALL_TANK_IDS, MODEL_SOURCE, TANK_SPECS } from '/src/vehicles/specs.js';
+import { loadReferenceGlb } from '/tools/reference-glb-loader.js';
 
 window.__FIDELITY_ERROR = null;
 const failFidelity = (message) => {
@@ -132,7 +133,6 @@ const LOCAL_REFERENCE_OVERRIDES = {
   merkava2b: { source:'glb', glb:{ path:'/models/tanks/community/recovered/merkava2b.glb', paintUntextured:true, turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, turretFollowers:'vehicle#(?:antenna_|bone_|ex_armor_(?!body|[lr]_)|ex_decor_(?:0[1-9]|13)|ex_decor_[lr]_02|hatch_(?:0[4-9]|1[0-3]))', gunFollowers:'vehicle#gun_barrel_' } },
   merkava2d: { source:'glb', glb:{ path:'/models/tanks/community/recovered/merkava2d.glb', paintUntextured:true, turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, turretFollowers:'vehicle#(?:antenna_|bone_|ex_armor_(?!body|[lr]_)|ex_decor_(?:0[1-9]|13)|ex_decor_[lr]_02|hatch_(?:0[4-9]|1[0-3]))', gunFollowers:'vehicle#gun_barrel_' } },
   merkava4b: { source:'glb', glb:{ path:'/models/tanks/community/recovered/merkava4b.glb', paintUntextured:true, turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:true, turretFollowers:'vehicle#(?:antenna_|bone_|ex_armor_(?!body|[lr]_)|ex_decor_(?:0[1-9]|13)|ex_decor_[lr]_02|hatch_(?:0[4-9]|1[0-3]))', gunFollowers:'vehicle#gun_barrel_' } },
-  t62mv1: { source:'glb', glb:{ path:'/models/tanks/community/recovered/t62_bergman.glb', paintUntextured:true, turretNode:'^Turret$', gunNode:'^Gun$', autoPivot:false } },
   t64bv1: { source:'glb', glb:{ path:'/models/tanks/community/recovered/t64bv1.glb', paintUntextured:true, turretNode:'^Turret$', autoPivot:true, yawOffset:-1.5707963267948966 } },
   // The recovered B87 file exposes a nominal Gun node, but it contains only
   // a partial fused subassembly rather than the complete barrel silhouette.
@@ -551,10 +551,9 @@ const maskMaterial = new THREE.MeshBasicMaterial({ color:0xffffff, side:THREE.Do
 scene.overrideMaterial = maskMaterial;
 const engineCtx = { setupShadowMaterial:(m) => m, anisotropy:1, renderer };
 
-const originalSource = MODEL_SOURCE[id];
-if (source) MODEL_SOURCE[id] = source;
-const reference = createTank(id, engineCtx, { camoSeed:4242, quality:'high' });
-MODEL_SOURCE[id] = originalSource;
+const reference = source?.source === 'glb'
+  ? await loadReferenceGlb(source, id, spec)
+  : createTank(id, engineCtx, { camoSeed:4242, quality:'high' });
 const procedural = createTank(id, engineCtx, { camoSeed:4242, quality:'high', proceduralOnly:true });
 // Read-only diagnostics for authoring probes. The fidelity page owns these
 // objects; exposing their roots avoids modifying runtime code merely to
@@ -1708,7 +1707,8 @@ if (params.get('geo')) {
     }
     return minX === null ? 0 : (maxX - minX + 1) * px;
   };
-  dimCheck('overallLengthM', pixelSpanZ('whole'), pub.overallLengthM);
+  dimCheck('overallLengthM', pixelSpanZ('whole'),
+    pub.silhouetteOverallLengthM ?? pub.overallLengthM);
   // plan columns run across the WIDTH axis; substantial band = the hull body
   // pixel-resolution width: trace columns quantize to ~11cm when a long
   // gun pins the plan frame; lit-pixel extent resolves to ~2-3cm. The

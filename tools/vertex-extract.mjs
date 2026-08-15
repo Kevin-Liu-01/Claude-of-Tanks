@@ -65,15 +65,6 @@ const REG = {
     turretNode: '^turret$', autoPivot: true, yawOffset: -Math.PI / 2,
     pubDims: { hullLengthM: 7.6, overallLengthM: 7.6, widthM: 3.9, heightM: 3.6 },
   },
-  t62mv1: {
-    path: 'public/models/tanks/community/recovered/t62_bergman.glb',
-    turretNode: '^Turret$', gunNode: '^Gun$', autoPivot: false,
-    // autoPivot:false -> turretG keeps the procedural pivot; the harness flip
-    // check needs rig_turret's z. buildT62MV1 seats the turret near z -0.2;
-    // the bergman gun box center sits far +z -> no flip (packet-verified).
-    assumeFlip: false,
-    pubDims: { hullLengthM: 6.63, overallLengthM: 9.34, widthM: 3.30, heightM: 2.40 },
-  },
   t64bv1: {
     path: 'public/models/tanks/community/recovered/t64bv1.glb',
     turretNode: '^Turret$', autoPivot: true, yawOffset: -Math.PI / 2,

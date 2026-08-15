@@ -58,12 +58,6 @@ export const PLANS = {
     z: [[-3.012, -3.275], [3.012, 3.275]],
     yTopMax: 2.99,
   },
-  t62mv1: { // bergman bake: crown/cupola stature + bow-log body span
-    file: 't62_bergman',
-    y: [[0, 0], [1.50, 1.44], [2.50, 2.40], [2.85, 2.43]],
-    z: [[-3.58, -3.315], [3.58, 3.315], [5.84, 6.025]],
-    yTopMax: 2.50,
-  },
   t64bv1: { // SHORT print: stretch hull +9%, tube to published overall
     y: [[0, 0], [2.283, 2.17]],
     z: [[-4.30, -4.57], [1.70, 1.97], [4.31, 4.655]],

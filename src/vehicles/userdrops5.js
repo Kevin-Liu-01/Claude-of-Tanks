@@ -136,9 +136,18 @@ const SPECS = [
     { hp: 2350, weightTons: 65, topSpeedKmh: 60, gun: { reloadS: 6.4 },
       dims: { hullLengthM: 7.60, overallLengthM: 9.04, widthM: 3.72, heightM: 2.66 } }),
   // merkava4b REMOVED BY OWNER 2026-08-06 ('remove merkava mk 4b').
-  make('leo1a5', 't62mv1', 'T-62MV-1', 'USSR/Russia',
+  make('leo1a5', 't62mv1', 'T-62 obr. 1975', 'USSR/Russia',
     { hp: 1650, weightTons: 38, topSpeedKmh: 50, reverseSpeedKmh: 8, gun: { reloadS: 8.2 },
-      dims: { hullLengthM: 6.63, overallLengthM: 9.34, widthM: 3.30, heightM: 2.40 } }),
+      dims: {
+        hullLengthM: 6.63, overallLengthM: 9.34, widthM: 3.30, heightM: 2.40,
+        // The supplied Obr. 1975 art source includes its full fender/drum
+        // envelope and DShK-height convention.  Preserve published vehicle
+        // dimensions for gameplay/UI while the geometry gate compares the
+        // actual registered source silhouette measured from that file.
+        silhouetteHullLengthM: 7.06,
+        silhouetteOverallLengthM: 9.96,
+        silhouetteHeightM: 2.74,
+      } }),
   make('t72b3', 't64bv1', 'T-64BV1', 'USSR/Russia',
     { hp: 1850, weightTons: 42.4, topSpeedKmh: 60, reverseSpeedKmh: 12, gun: { reloadS: 7.4 },
       dims: { hullLengthM: 6.54, overallLengthM: 9.23, widthM: 3.42, heightM: 2.17 } }),
@@ -321,23 +330,10 @@ if (ALLOW_LOCAL_RECOVERED_MODELS) {
   // FLIP-RETIRED: turretNode: '^Turret$', gunNode: '^Gun$', autoPivot: true,
   // FLIP-RETIRED: yawOffset: -Math.PI / 2,
   // FLIP-RETIRED: });
-  // t62mv1: oracle ADOPTED from the gen2 bergman bake (batch-9 verdict —
-  // true-to-published stature vs the print pack's +6.1% roof; clean two-shell
-  // CAD, real Turret split). Gen2 node contract needs no yaw correction, and
-  // the bake carries a correct authored Turret pivot — autoPivot would read
-  // the long fused tube as the turret footprint and re-seat the upper vehicle
-  // (same defect class as the m1a1_aim ruling in userdrops6.js).
-  // The old t62mv1.glb print stays on disk for provenance only.
-  // batch-10 (tools/repair_oracles.py 't62_bergman'): the authored-long fused
-  // 2A20 is plane-split out of TurretMesh into GunMesh under a new Gun node
-  // and muzzle-trimmed to published overall length; gunNode resolves it so
-  // the loader keys normalization on hullLengthM over the gun-excluded box
-  // (gun=null previously keyed overallLengthM on the +14% tube: the tank
-  // shipped ~12% undersized and 1.5 m displaced — the gate's hull-8 row).
-    // FLIP-RETIRED: source('t62mv1', {
-  // FLIP-RETIRED: path: `${ROOT}t62_bergman.glb`, turretNode: '^Turret$', gunNode: '^Gun$',
-  // FLIP-RETIRED: autoPivot: false,
-  // FLIP-RETIRED: });
+  // t62mv1 is intentionally source-free at runtime.  Its retired Bergman/MV
+  // oracle is not registered: the first-party obr. 1975 build was rebuilt
+  // and certified against the owner's external GLB, which remains an offline
+  // measurement/visual reference only.
   // t72b3m: DUAL-GATE GRADUATE (2026-08-04) — the program's 15th. Geometry
   // min 91.8 gatePassed x2 + graduation critic 9.0 on ALL FOURTEEN views
   // (floor 8.0 -> 8.5 -> 9.0 across thirteen builder rounds; three views
