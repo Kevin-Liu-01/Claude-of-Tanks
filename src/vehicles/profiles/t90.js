@@ -4425,7 +4425,7 @@ function replaceT90ACastTurret(P, { vladimir = false, burlakBase = false } = {})
     // full autoloader bustle.  Only Burlak's prototype roof suite remains
     // variant-owned; the plain T-90 seats its own equipment on this body.
     replaceT90BurlakCoreNative2026(P);
-    addT90BurlakShoulderFoundationNative2026(P, { includeProtection: false, carrierDrop: 0.06 });
+    addT90BurlakShoulderFoundationNative2026(P, { includeProtection: false, carrierDrop: 0.265 });
     addT90BurlakBustleNative2026(P);
   } else {
     // Base T-90 casting: the shell is authored from independent longitudinal
@@ -4454,10 +4454,13 @@ function replaceT90ACastTurret(P, { vladimir = false, burlakBase = false } = {})
     P.add('turretDark', polyTurret(castSeatPlan, 0.020, 0.965, 0.955), 0, -0.108, 0);
   }
 
-  // The production T-90 mounts its frontal protection slightly lower than
-  // the Burlak prototype. Keep the exact shared shell and bustle, but settle
-  // the complete K-5/Shtora package into the cheek by six centimetres.
-  const frontArmorDrop = burlakBase ? 0.06 : 0;
+  // The production T-90 mounts its frontal protection on the gun-axis band,
+  // lower than the Burlak prototype's shoulder course. Keep the exact shared
+  // shell and bustle, but center the carrier, K-5 cassettes and OTShU eyes at
+  // the accepted local gun datum (roughly y=0.17) instead of leaving them on
+  // the crown. Their unequal original heights require distinct seat drops.
+  const frontArmorDrop = burlakBase ? 0.245 : 0;
+  const shtoraDrop = burlakBase ? 0.31 : 0;
 
   // Six low Kontakt-5 crown plates follow the flattened pear cap.  The old
   // three-sheet row was wider than the new crown and read as one loose roof
@@ -4530,7 +4533,7 @@ function replaceT90ACastTurret(P, { vladimir = false, burlakBase = false } = {})
     eyeScale: burlakBase ? 1.55 : 1.28,
     eyeX: burlakBase ? 0.60 : 0.57,
     eyeZ: 1.24,
-  }, 0.48 - frontArmorDrop);
+  }, 0.48 - shtoraDrop);
   if (!vladimir) {
     if (P._shtoraRed) {
       P._shtoraRed.color.setHex(0x35120c);
@@ -4543,10 +4546,10 @@ function replaceT90ACastTurret(P, { vladimir = false, burlakBase = false } = {})
       P.add('turret', orientedSlab(
         [-0.17, -0.15, -0.11], [0.17, -0.15, -0.11], [0.17, -0.15, 0.11], [-0.17, -0.15, 0.11],
         [-0.13, 0.15, -0.09], [0.13, 0.15, -0.09], [0.13, 0.15, 0.09], [-0.13, 0.15, 0.09],
-      ), s * 0.55, 0.47 - frontArmorDrop, 1.13, -0.30, -s * 0.15, 0);
-      P.add('turret', KIT.xform(box(0.34, 0.23, 0.42), 0, 0, -0.09), s * 0.30, 0.34 - frontArmorDrop, 1.20, -0.38, -s * 0.23, 0);
-      P.add('turret', KIT.xform(box(0.21, 0.20, 0.34), 0, -0.015, -0.06), s * 0.76, 0.38 - frontArmorDrop, 1.05, -0.28, -s * 0.34, 0);
-      P.add('turretDark', box(0.034, 0.22, 0.19), s * 0.75, 0.45 - frontArmorDrop, 1.16, -0.20, -s * 0.30, 0);
+      ), s * 0.55, 0.47 - shtoraDrop, 1.13, -0.30, -s * 0.15, 0);
+      P.add('turret', KIT.xform(box(0.34, 0.23, 0.42), 0, 0, -0.09), s * 0.30, 0.34 - shtoraDrop, 1.20, -0.38, -s * 0.23, 0);
+      P.add('turret', KIT.xform(box(0.21, 0.20, 0.34), 0, -0.015, -0.06), s * 0.76, 0.38 - shtoraDrop, 1.05, -0.28, -s * 0.34, 0);
+      P.add('turretDark', box(0.034, 0.22, 0.19), s * 0.75, 0.45 - shtoraDrop, 1.16, -0.20, -s * 0.30, 0);
     }
   }
 
