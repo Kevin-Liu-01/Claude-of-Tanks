@@ -3,6 +3,7 @@ import Redis from 'ioredis';
 import { createRoomCode } from '../src/net/protocol.js';
 
 const DEFAULT_ROOM_TTL_MS = 6 * 60 * 60 * 1000;
+const REDIS_READY_TIMEOUT_MS = 25_000;
 
 const JOIN_ROOM_SCRIPT = `
 local raw = redis.call('GET', KEYS[1])
@@ -73,6 +74,48 @@ function parseResult(raw) {
   return value;
 }
 
+function waitForRedisReady(client, timeoutMs = REDIS_READY_TIMEOUT_MS) {
+  if (client.status === 'ready') return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const cleanup = () => {
+      clearTimeout(timer);
+      client.off('ready', onReady);
+      client.off('end', onEnd);
+    };
+    const finish = (error = null) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      if (error) reject(error);
+      else resolve();
+    };
+    const onReady = () => finish();
+    const onEnd = () => finish(Object.assign(new Error('Redis connection ended before ready'), {
+      code: 'redis_connection_ended',
+    }));
+    const timer = setTimeout(() => finish(Object.assign(
+      new Error(`Redis did not become ready within ${timeoutMs} ms`),
+      { code: 'redis_ready_timeout' },
+    )), timeoutMs);
+    client.once('ready', onReady);
+    client.once('end', onEnd);
+    if (client.status === 'ready') {
+      finish();
+      return;
+    }
+    if (client.status === 'wait' || client.status === 'end') {
+      Promise.resolve(client.connect()).catch((error) => {
+        // ioredis can reject the first connect() promise while its configured
+        // retry strategy is already reconnecting. Keep waiting in that case;
+        // an actually-ended client fails immediately and is retryable by the
+        // next start() call.
+        if (client.status === 'end') finish(error);
+      });
+    }
+  });
+}
+
 /**
  * Redis-backed room coordination for horizontally scaled WebSocket functions.
  * Connections remain instance-local; a single Redis pub/sub channel routes
@@ -100,12 +143,36 @@ export class DistributedSignalingRoomStore {
     this.deliveryHandler = null;
     this.command = new RedisImpl(redisUrl, {
       lazyConnect: true,
-      maxRetriesPerRequest: 2,
-      connectTimeout: 5_000,
+      maxRetriesPerRequest: 4,
+      connectTimeout: 15_000,
       enableReadyCheck: true,
+      keepAlive: 10_000,
+      retryStrategy: (attempt) => Math.min(2_000, 100 * (2 ** Math.min(attempt - 1, 5))),
     });
     this.subscriber = this.command.duplicate();
     this._startPromise = null;
+    this._subscribed = false;
+    this._closed = false;
+    this._lastErrorLogAt = 0;
+    const noteError = (role, error) => {
+      const now = Date.now();
+      if (now - this._lastErrorLogAt < 5_000) return;
+      this._lastErrorLogAt = now;
+      console.warn(`[signal] Redis ${role} connection error:`, error);
+    };
+    this.command.on('error', (error) => noteError('command', error));
+    this.subscriber.on('error', (error) => noteError('subscriber', error));
+    this.subscriber.on('end', () => { this._subscribed = false; });
+    this.subscriber.on('message', (channel, raw) => {
+      if (channel !== this.channel) return;
+      try {
+        const delivery = JSON.parse(raw);
+        const connection = this.connections.get(String(delivery.peerId || ''));
+        if (connection && this.deliveryHandler) this.deliveryHandler(connection, delivery.message);
+      } catch (error) {
+        console.error('[signal] Invalid Redis delivery', error);
+      }
+    });
   }
 
   roomKey(roomCode) {
@@ -117,33 +184,51 @@ export class DistributedSignalingRoomStore {
     this.start().catch((error) => console.error('[signal] Redis subscription failed', error));
   }
 
-  start() {
+  start(timeoutMs = REDIS_READY_TIMEOUT_MS) {
+    if (this._closed) return Promise.reject(codedError('store_closed', 'signaling room store is closed'));
+    if (this.command.status === 'ready' && this.subscriber.status === 'ready' && this._subscribed) {
+      return Promise.resolve();
+    }
     if (this._startPromise) return this._startPromise;
-    this._startPromise = (async () => {
-      await Promise.all([this.command.connect(), this.subscriber.connect()]);
-      this.subscriber.on('message', (channel, raw) => {
-        if (channel !== this.channel) return;
-        try {
-          const delivery = JSON.parse(raw);
-          const connection = this.connections.get(String(delivery.peerId || ''));
-          if (connection && this.deliveryHandler) this.deliveryHandler(connection, delivery.message);
-        } catch (error) {
-          console.error('[signal] Invalid Redis delivery', error);
-        }
-      });
-      await this.subscriber.subscribe(this.channel);
+    const attempt = (async () => {
+      await Promise.all([
+        waitForRedisReady(this.command, timeoutMs),
+        waitForRedisReady(this.subscriber, timeoutMs),
+      ]);
+      if (!this._subscribed) {
+        await this.subscriber.subscribe(this.channel);
+        this._subscribed = true;
+      }
     })();
+    const tracked = attempt.finally(() => {
+      // A transient cold-start failure must never poison a warm function
+      // instance. Clearing this latch lets the very next room request retry.
+      if (this._startPromise === tracked) this._startPromise = null;
+    });
+    this._startPromise = tracked;
     return this._startPromise;
   }
 
   async #ready() {
-    try {
-      await this.start();
-    } catch (cause) {
-      throw Object.assign(new Error('signaling room store is unavailable'), {
-        code: 'signaling_store_unavailable', cause,
-      });
+    const deadline = Date.now() + REDIS_READY_TIMEOUT_MS;
+    let cause = null;
+    let attempt = 0;
+    while (Date.now() < deadline) {
+      try {
+        await this.start(Math.max(500, deadline - Date.now()));
+        return;
+      } catch (error) {
+        cause = error;
+        attempt++;
+        const remaining = deadline - Date.now();
+        if (remaining <= 0) break;
+        await new Promise((resolve) => setTimeout(resolve,
+          Math.min(remaining, 100 * (2 ** Math.min(attempt - 1, 4)))));
+      }
     }
+    throw Object.assign(new Error('signaling room store is unavailable'), {
+      code: 'signaling_store_unavailable', cause,
+    });
   }
 
   #remember(connection, roomCode, peerId) {
@@ -292,6 +377,7 @@ export class DistributedSignalingRoomStore {
   }
 
   async close() {
+    this._closed = true;
     this.membership.clear();
     this.connections.clear();
     try { await this.subscriber.unsubscribe(this.channel); } catch (_) { /* already offline */ }

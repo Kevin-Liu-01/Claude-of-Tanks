@@ -33,7 +33,7 @@ export class RoomSignalingClient {
     url,
     WebSocketImpl = null,
     connectTimeoutMs = 5000,
-    requestTimeoutMs = 8000,
+    requestTimeoutMs = 30000,
   } = {}) {
     if (!url) throw new TypeError('signaling URL is required');
     if (!/^wss?:\/\//i.test(url)) throw new TypeError('signaling URL must use ws or wss');
