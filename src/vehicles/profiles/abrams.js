@@ -3651,29 +3651,27 @@ function buildTejasFamily(P, p) {
       P.add('turretDetail', cylY(0.065, 0.075, 0.09, 10), x, 0.79, z);
       P.add('turretDark', box(0.035, h, 0.035), x, 0.98, z);
     }
-    // MASSIVE TUSK ERA TRANSFORMATION. Eight broad, deep XM32 cheek patches
-    // borrow the M1A1HA's layered cassette grammar while conforming to the
-    // shell's exact swept/raked surface. Real shoulders and cross ribs carry
-    // the depth; there are no black grid bars.
+    // TUSK UNIFIED CHEEK CASSETTES (owner correction 2026-08-15).  The old
+    // 2x2 XM32 layout made each cheek read as four separate tiles.  Use one
+    // continuous, deep cassette per side, conformed to the exact swept/raked
+    // shell surface.  A continuous inset skin preserves the laminated armor read
+    // without reintroducing vertical or horizontal split seams.
     for (const side of [-1, 1]) {
+      const u0 = 0.035, u1 = 0.895;
+      const v0 = 0.055, v1 = 0.875;
+      cheekEraPatch(P, 'turret', t, side, u0, u1, v0, v1,
+        0.155, ERA_CONTACT_OFFSET);
+      // The carrier quad is bilinear rather than perfectly planar.  Four
+      // zero-gap coplanar face leaves follow that curvature without the
+      // visible recessed cross that defined the retired four-cassette set.
+      // Their shared edges meet exactly and read as one continuous skin.
+      const uEdge = [u0 + 0.035, 0.465, u1 - 0.035];
+      const vEdge = [v0 + 0.045, 0.465, v1 - 0.045];
       for (let col = 0; col < 2; col++) {
         for (let row = 0; row < 2; row++) {
-          const u0 = 0.035 + col * 0.455, u1 = u0 + 0.405;
-          const v0 = 0.055 + row * 0.44, v1 = v0 + 0.38;
-          cheekEraPatch(P, 'turret', t, side, u0, u1, v0, v1,
-            0.155, ERA_CONTACT_OFFSET);
           cheekEraPatch(P, 'turretDetail', t, side,
-            u0 + 0.030, u1 - 0.030, v0 + 0.040, v1 - 0.040,
+            uEdge[col], uEdge[col + 1], vEdge[row], vEdge[row + 1],
             0.007, eraFaceBase(0.155));
-          cheekEraPatch(P, 'turretDetail', t, side,
-            u0 + 0.10, u1 - 0.10, v0 + 0.11, v1 - 0.11,
-            0.004, eraFaceBase(0.155, 0.012));
-          cheekEraPatch(P, 'turretDetail', t, side,
-            u0 + 0.18, u1 - 0.18, v0 + 0.06, v1 - 0.06,
-            0.004, eraFaceBase(0.155, 0.014));
-          cheekEraPatch(P, 'turretDetail', t, side,
-            u0 + 0.06, u1 - 0.06, v0 + 0.17, v1 - 0.17,
-            0.004, eraFaceBase(0.155, 0.014));
         }
       }
     }

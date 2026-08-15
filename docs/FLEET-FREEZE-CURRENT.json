@@ -264,11 +264,11 @@
       "vertices": 171980
     },
     "m1a2_tusk": {
-      "freezeHash": "fae459f0",
-      "instanceFreezeHash": "821a955f",
-      "assetGeometryHash": "23b83cac",
+      "freezeHash": "305dda8c",
+      "instanceFreezeHash": "02856ab9",
+      "assetGeometryHash": "91a169a6",
       "meshes": 66,
-      "vertices": 185852
+      "vertices": 184772
     },
     "m26_pershing": {
       "freezeHash": "dd6a3f52",

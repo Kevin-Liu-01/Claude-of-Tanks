@@ -110,7 +110,7 @@ re-freeze NEW hash, all in ONE commit.
 | centurion3 | bad74e60 | RE-FROZEN 2026-08-08 (no-air graduate-change: crown-ridge pedestal + discharger webs, front-low 1810px->14, re-cert floor 9.0 x17 changed views, gate 91.1 exact; prior 50273080 bore-resit lineage) |
 | m1a2_sepv2 | 065d7e9b | RE-FROZEN 2026-08-15 (§5.240 raked front shoulders and closed rear-left/right sprocket wells; exact track corridor and yaw ownership retained; prior d28d4020 retired) |
 | m1a2_sepv3 | ca666266 | RE-FROZEN 2026-08-15 (§5.240 family shoulder/rear-corner correction while retaining supported SEPv3-only foliage and clear optics; prior 690d16fa retired) |
-| m1a2_tusk | fae459f0 | RE-FROZEN 2026-08-15 (§5.240 raked front shoulders plus paired rear-well closures; ARAT and exact track corridor retained; prior cd2d4626 retired) |
+| m1a2_tusk | 305dda8c | RE-FROZEN 2026-08-15 (§5.242 four separated forward cheek tiles replaced by one continuous swept/raked cassette per side; ARAT, raked hull shoulders, closed rear wells and exact track corridor retained; prior fae459f0 retired) |
 | m2a2_bradley | 45ef7b0c | GRADUATED 2026-08-08; RE-FROZEN 2026-08-14 (§5.188 zero-geometry semantic course closeout: authored asymmetric tread-pad rows and the supported return-run cover are classified as running gear instead of hull armor; accepted complete hull, full skirts, six wheels, raised terminal stations, linked course and turret remain unchanged; strict band/shoe front 0/0, rear 0/0, full sweep 0/0; fresh 45-frame yaw proof re-adjudicates fixed deck spare links; prior 90a5568c retired) |
 | m45_patton | 53caa687 | GRADUATED 2026-08-08 (29th; gate 90.7 x5 total + sitting-2 visual floor 9.0 mean 9.13 x14; sitting-1 orders executed: loft.smooth byte-reproduced, ring cupola adjudicated ring-class at station with the measured Ø0.57/x-0.65 deviation compliant; ring-prominence silhouette-tax residual certified) |
 | leclerc | 467186cc | RE-FROZEN 2026-08-13 (§5.153 current first-party course re-cert: six road wheels, full-size elevated front idler, raised rear drive, five return rollers directly supporting the visible upper linked-shoe run, wheel-supported lower course and exact band+shoe+sweep 0/0; hull/skirts/mudguards preserved; all eight garage assets regenerated and live-current) |
@@ -8530,3 +8530,31 @@ freeze **`d15f8148`**, instance freeze **`6fb5ae46`** and asset geometry
 **KEEP the three-part datum coupled. Future gun-height work must carry the
 Shtora housings, their supports, the shoulder carrier and both frontal K-5
 courses with it rather than adjusting an exposed face independently.**
+
+## 5.242 M1A2 TUSK UNIFIED CHEEK CASSETTES (2026-08-15, LIVE)
+
+The first-party `m1a2_tusk` alone replaces the four visibly separated XM32
+tiles on each forward turret cheek with one continuous deep cassette per
+side. Each body follows the existing bilinear swept/raked Abrams cheek plane,
+remains buried into its carrier and uses a zero-gap curved face skin without
+the former recessed horizontal and vertical cross seams. The forward-side
+armor, bustle cassettes, smoke banks, roof weapons, hull ARAT, skirts and
+running gear remain unchanged.
+
+Close left/right Surface Lab views show one uninterrupted armored field on
+each cheek. A fresh yaw90 inspection carries both complete cheek cassettes
+with the turret and exposes no detached face, empty-air support or winding
+wound. Winding mode 1 is clean with zero reversed or mixed pieces. The known
+hull-owned mode-2 candidate remains byte-semantically unchanged from the
+parent and is not turret equipment.
+
+Exact band, individual-shoe and strict-sweep track audits remain **front 0 /
+rear 0**; duplicate-course audit still reports one integrated animated track
+layer. Current geometry is freeze **`305dda8c`**, instance freeze
+**`02856ab9`** and asset geometry **`91a169a6`** (66 rendered meshes / 184,772
+vertices). TUSK presentation, armor, hit-zone and module assets are
+regenerated and current; the full unit-test suite and production build pass.
+
+**KEEP the cheek bodies visually singular. Their internally tessellated face
+skin may follow the curved carrier, but no visible cross seam or four-tile
+spacing may be reintroduced.**
