@@ -4425,7 +4425,7 @@ function replaceT90ACastTurret(P, { vladimir = false, burlakBase = false } = {})
     // full autoloader bustle.  Only Burlak's prototype roof suite remains
     // variant-owned; the plain T-90 seats its own equipment on this body.
     replaceT90BurlakCoreNative2026(P);
-    addT90BurlakShoulderFoundationNative2026(P, { includeProtection: false });
+    addT90BurlakShoulderFoundationNative2026(P, { includeProtection: false, carrierDrop: 0.06 });
     addT90BurlakBustleNative2026(P);
   } else {
     // Base T-90 casting: the shell is authored from independent longitudinal
@@ -4453,6 +4453,11 @@ function replaceT90ACastTurret(P, { vladimir = false, burlakBase = false } = {})
     P.add('turret', polyTurret(castSeatPlan, 0.13, 1.0, 0.96), 0, -0.09, 0);
     P.add('turretDark', polyTurret(castSeatPlan, 0.020, 0.965, 0.955), 0, -0.108, 0);
   }
+
+  // The production T-90 mounts its frontal protection slightly lower than
+  // the Burlak prototype. Keep the exact shared shell and bustle, but settle
+  // the complete K-5/Shtora package into the cheek by six centimetres.
+  const frontArmorDrop = burlakBase ? 0.06 : 0;
 
   // Six low Kontakt-5 crown plates follow the flattened pear cap.  The old
   // three-sheet row was wider than the new crown and read as one loose roof
@@ -4486,12 +4491,13 @@ function replaceT90ACastTurret(P, { vladimir = false, burlakBase = false } = {})
       [1.39, 0.34, 0.35, 0.51, -0.32, 0.40, 0.23, 0.37],
       [1.53, 0.30, 0.09, 0.28, -0.25, 0.34, 0.20, 0.33],
     ]) {
-      P.add('turret', KIT.xform(box(w * 0.82, h * 0.58, d * 0.76), 0, -h * 0.20, -0.09), s * (x - 0.035), y, z, roll, -s * yaw, 0);
-      P.add('turret', KIT.xform(box(w, h, d), 0, 0, -0.055), s * x, y, z, roll, -s * yaw, 0);
-      P.add('turretDark', KIT.xform(box(w * 0.76, 0.012, d * 0.70), 0, h * 0.52, 0.040), s * x, y, z, roll, -s * yaw, 0);
-      P.add('turretDark', KIT.xform(box(0.018, h * 0.76, d * 0.64), w * 0.44, 0, 0.035), s * x, y, z, roll, -s * yaw, 0);
+      const seatedY = y - frontArmorDrop;
+      P.add('turret', KIT.xform(box(w * 0.82, h * 0.58, d * 0.76), 0, -h * 0.20, -0.09), s * (x - 0.035), seatedY, z, roll, -s * yaw, 0);
+      P.add('turret', KIT.xform(box(w, h, d), 0, 0, -0.055), s * x, seatedY, z, roll, -s * yaw, 0);
+      P.add('turretDark', KIT.xform(box(w * 0.76, 0.012, d * 0.70), 0, h * 0.52, 0.040), s * x, seatedY, z, roll, -s * yaw, 0);
+      P.add('turretDark', KIT.xform(box(0.018, h * 0.76, d * 0.64), w * 0.44, 0, 0.035), s * x, seatedY, z, roll, -s * yaw, 0);
     }
-    P.add('turret', box(0.18, 0.24, 0.52), s * 1.16, 0.27, 0.19, 0, 0, -s * 0.18);
+    P.add('turret', box(0.18, 0.24, 0.52), s * 1.16, 0.27 - frontArmorDrop, 0.19, 0, 0, -s * 0.18);
   }
   if (burlakBase) {
     // The clipped shell exposes a broader, flatter cheek than the earlier
@@ -4505,9 +4511,10 @@ function replaceT90ACastTurret(P, { vladimir = false, burlakBase = false } = {})
         [0.91, 0.34, 0.67, 0.54, -0.30, 0.36, 0.19, 0.35],
         [1.18, 0.31, 0.39, 0.66, -0.24, 0.34, 0.18, 0.32],
       ]) {
-        P.add('turret', KIT.xform(box(w * 0.80, h * 0.52, d * 0.70), 0, -h * 0.24, -0.085), s * x, y, z, roll, -s * yaw, 0);
-        P.add('turret', KIT.xform(box(w, h, d), 0, 0, -0.050), s * x, y, z, roll, -s * yaw, 0);
-        P.add('turretDark', KIT.xform(box(w * 0.68, 0.010, d * 0.62), 0, h * 0.52, 0.030), s * x, y, z, roll, -s * yaw, 0);
+        const seatedY = y - frontArmorDrop;
+        P.add('turret', KIT.xform(box(w * 0.80, h * 0.52, d * 0.70), 0, -h * 0.24, -0.085), s * x, seatedY, z, roll, -s * yaw, 0);
+        P.add('turret', KIT.xform(box(w, h, d), 0, 0, -0.050), s * x, seatedY, z, roll, -s * yaw, 0);
+        P.add('turretDark', KIT.xform(box(w * 0.68, 0.010, d * 0.62), 0, h * 0.52, 0.030), s * x, seatedY, z, roll, -s * yaw, 0);
       }
     }
   }
@@ -4523,7 +4530,7 @@ function replaceT90ACastTurret(P, { vladimir = false, burlakBase = false } = {})
     eyeScale: burlakBase ? 1.55 : 1.28,
     eyeX: burlakBase ? 0.60 : 0.57,
     eyeZ: 1.24,
-  }, 0.48);
+  }, 0.48 - frontArmorDrop);
   if (!vladimir) {
     if (P._shtoraRed) {
       P._shtoraRed.color.setHex(0x35120c);
@@ -4536,10 +4543,10 @@ function replaceT90ACastTurret(P, { vladimir = false, burlakBase = false } = {})
       P.add('turret', orientedSlab(
         [-0.17, -0.15, -0.11], [0.17, -0.15, -0.11], [0.17, -0.15, 0.11], [-0.17, -0.15, 0.11],
         [-0.13, 0.15, -0.09], [0.13, 0.15, -0.09], [0.13, 0.15, 0.09], [-0.13, 0.15, 0.09],
-      ), s * 0.55, 0.47, 1.13, -0.30, -s * 0.15, 0);
-      P.add('turret', KIT.xform(box(0.34, 0.23, 0.42), 0, 0, -0.09), s * 0.30, 0.34, 1.20, -0.38, -s * 0.23, 0);
-      P.add('turret', KIT.xform(box(0.21, 0.20, 0.34), 0, -0.015, -0.06), s * 0.76, 0.38, 1.05, -0.28, -s * 0.34, 0);
-      P.add('turretDark', box(0.034, 0.22, 0.19), s * 0.75, 0.45, 1.16, -0.20, -s * 0.30, 0);
+      ), s * 0.55, 0.47 - frontArmorDrop, 1.13, -0.30, -s * 0.15, 0);
+      P.add('turret', KIT.xform(box(0.34, 0.23, 0.42), 0, 0, -0.09), s * 0.30, 0.34 - frontArmorDrop, 1.20, -0.38, -s * 0.23, 0);
+      P.add('turret', KIT.xform(box(0.21, 0.20, 0.34), 0, -0.015, -0.06), s * 0.76, 0.38 - frontArmorDrop, 1.05, -0.28, -s * 0.34, 0);
+      P.add('turretDark', box(0.034, 0.22, 0.19), s * 0.75, 0.45 - frontArmorDrop, 1.16, -0.20, -s * 0.30, 0);
     }
   }
 
@@ -6807,7 +6814,7 @@ function buildT90MProryvNative2026(P) {
 // autoloader bustle.  Reuse the authored family chassis, then replace only
 // the complete turret/gun package with the distinct repository-authored
 // Burlak assembly.
-function addT90BurlakShoulderFoundationNative2026(P, { includeProtection = true } = {}) {
+function addT90BurlakShoulderFoundationNative2026(P, { includeProtection = true, carrierDrop = 0 } = {}) {
   const { box, polyTurret } = KIT;
   // Burlak keeps the mature cast T-90A fighting compartment.  Its defining
   // armor is a clipped, open-edged outer shoulder system rather than a
@@ -6821,7 +6828,7 @@ function addT90BurlakShoulderFoundationNative2026(P, { includeProtection = true 
       [s * 0.28, 1.30], [s * 0.82, 1.30], [s * 1.84, 0.98],
       [s * 1.80, 0.84], [s * 1.46, 0.62], [s * 1.44, 0.05],
       [s * 0.42, 0.48],
-    ], 0.07, 1.00, 1.00), 0, 0.40, 0);
+    ], 0.07, 1.00, 1.00), 0, 0.40 - carrierDrop, 0);
     // Unequal planted protection cassettes preserve negative breaks between
     // the wing and the dome instead of recreating the rejected slab wall.
     if (includeProtection) {
