@@ -2,6 +2,8 @@ import { flagIconCode } from '../ui/flagCodes.js';
 
 export const VEHICLE_MARKING_SCHEMA_VERSION = 1;
 
+export const VEHICLE_MARKING_ANCHOR_SCHEMA_VERSION = 1;
+
 export const SURFACE_MARKING_STYLE = Object.freeze({
   surfaceLiftM: 0.006,
   markingPigment: '#d8d5c9',
@@ -28,6 +30,110 @@ const COUNTRY_MARKINGS = Object.freeze({
   ua: Object.freeze({ countryLabel: 'Ukraine', filterLabel: 'UA', insignia: 'ua-trident', designation: 'UA' }),
   xx: Object.freeze({ countryLabel: 'Workshop', filterLabel: 'XX', insignia: 'workshop-shield', designation: 'COT' }),
 });
+
+// Canonical marking seats are deliberately keyed per playable vehicle.  The
+// values are surface-search hints, not final XYZ coordinates: tankFactory
+// ray-seats each hint against that vehicle's authored armor after the builder
+// has finished.  This keeps an insignia physically on a real plate while
+// still allowing related family members to choose different turret/hull
+// stations.  `longitudinal` runs rear (0) -> bow (1); `vertical` runs bottom
+// (0) -> roof (1) inside the selected articulation owner.
+const anchor = (owner, side, longitudinal, vertical, sizeM, designationDirection = -1) => Object.freeze({
+  schemaVersion: VEHICLE_MARKING_ANCHOR_SCHEMA_VERSION,
+  owner,
+  side,
+  longitudinal,
+  vertical,
+  sizeM,
+  designationDirection,
+});
+
+export const VEHICLE_MARKING_ANCHORS = Object.freeze({
+  tiger1: anchor('turret', 'right', 0.46, 0.48, 0.30, 1),
+  panther_g: anchor('turret', 'left', 0.42, 0.50, 0.29, -1),
+  m1a2: anchor('turret', 'left', 0.43, 0.43, 0.27, 1),
+  t64bv1: anchor('turret', 'right', 0.46, 0.48, 0.24, -1),
+  t72b3m: anchor('turret', 'left', 0.40, 0.50, 0.23, 1),
+  t72bu: anchor('turret', 'right', 0.43, 0.47, 0.24, -1),
+  pt91m: anchor('turret', 'left', 0.38, 0.47, 0.22, 1),
+  t80: anchor('turret', 'right', 0.46, 0.45, 0.23, -1),
+  t80b: anchor('turret', 'left', 0.44, 0.46, 0.23, 1),
+  t80bv: anchor('turret', 'right', 0.41, 0.49, 0.23, -1),
+  t80u: anchor('turret', 'left', 0.39, 0.48, 0.24, 1),
+  t84: anchor('turret', 'right', 0.36, 0.49, 0.24, -1),
+  t90: anchor('turret', 'left', 0.43, 0.46, 0.23, 1),
+  t90a: anchor('turret', 'right', 0.45, 0.45, 0.23, -1),
+  t90a_vladimir: anchor('turret', 'left', 0.40, 0.48, 0.23, 1),
+  t90a_burlak: anchor('turret', 'right', 0.35, 0.47, 0.23, -1),
+  t90sm: anchor('turret', 'left', 0.37, 0.48, 0.24, 1),
+  t90ms: anchor('turret', 'right', 0.34, 0.49, 0.24, -1),
+  t90m: anchor('turret', 'left', 0.36, 0.46, 0.24, 1),
+  strv103: anchor('hull', 'right', 0.46, 0.66, 0.27, -1),
+  kv2: anchor('turret', 'left', 0.43, 0.48, 0.32, 1),
+  jpz_e100: anchor('hull', 'right', 0.40, 0.66, 0.34, -1),
+  sturmtiger: anchor('hull', 'left', 0.45, 0.64, 0.31, 1),
+  t95: anchor('hull', 'right', 0.39, 0.61, 0.29, -1),
+  chieftain5: anchor('turret', 'left', 0.43, 0.48, 0.25, 1),
+  chieftain_mk10: anchor('turret', 'right', 0.39, 0.49, 0.25, -1),
+  challenger1: anchor('turret', 'left', 0.39, 0.45, 0.26, 1),
+  challenger2: anchor('turret', 'right', 0.37, 0.44, 0.26, -1),
+  challenger_3: anchor('turret', 'left', 0.35, 0.46, 0.26, 1),
+  k2: anchor('turret', 'right', 0.39, 0.44, 0.24, -1),
+  k1a1: anchor('turret', 'left', 0.42, 0.46, 0.24, 1),
+  type74: anchor('turret', 'right', 0.45, 0.47, 0.23, -1),
+  type90: anchor('turret', 'left', 0.40, 0.43, 0.23, 1),
+  type10: anchor('turret', 'right', 0.37, 0.44, 0.23, -1),
+  m2a2_bradley: anchor('hull', 'left', 0.43, 0.64, 0.25, 1),
+  bmp2: anchor('hull', 'right', 0.45, 0.65, 0.23, -1),
+  spz_puma: anchor('hull', 'left', 0.40, 0.62, 0.25, 1),
+  type89: anchor('hull', 'right', 0.42, 0.64, 0.23, -1),
+  ariete: anchor('turret', 'left', 0.41, 0.45, 0.25, 1),
+  amx40: anchor('turret', 'right', 0.39, 0.47, 0.24, -1),
+  leo1a5: anchor('turret', 'left', 0.43, 0.47, 0.24, 1),
+  leopard2_proto: anchor('turret', 'right', 0.42, 0.43, 0.25, -1),
+  leo2a4: anchor('turret', 'left', 0.40, 0.44, 0.25, 1),
+  leo2a5: anchor('turret', 'right', 0.38, 0.43, 0.25, -1),
+  leo2a6: anchor('turret', 'left', 0.37, 0.45, 0.25, 1),
+  leo2_revolution: anchor('turret', 'right', 0.34, 0.43, 0.25, -1),
+  leo2a7v: anchor('turret', 'left', 0.35, 0.44, 0.25, 1),
+  leclerc: anchor('turret', 'right', 0.38, 0.44, 0.24, -1),
+  type99a: anchor('turret', 'left', 0.39, 0.45, 0.24, 1),
+  t14: anchor('turret', 'right', 0.36, 0.45, 0.24, -1),
+  m1a1: anchor('turret', 'left', 0.45, 0.44, 0.27, 1),
+  m1a2_tusk: anchor('turret', 'right', 0.42, 0.43, 0.27, -1),
+  kf51: anchor('turret', 'left', 0.36, 0.43, 0.25, 1),
+  m1a2_legacy: anchor('turret', 'right', 0.44, 0.43, 0.27, -1),
+  abramsx: anchor('turret', 'left', 0.38, 0.42, 0.26, 1),
+  fv510: anchor('hull', 'right', 0.44, 0.66, 0.24, -1),
+  m1a1ha: anchor('turret', 'left', 0.42, 0.44, 0.27, 1),
+  m1a2_sepv2: anchor('turret', 'right', 0.40, 0.43, 0.27, -1),
+  m1a2_sepv3: anchor('turret', 'left', 0.39, 0.44, 0.27, 1),
+  m60a1: anchor('turret', 'right', 0.44, 0.48, 0.25, -1),
+  merkava1b: anchor('turret', 'left', 0.40, 0.45, 0.25, 1),
+  merkava2b: anchor('turret', 'right', 0.39, 0.46, 0.25, -1),
+  merkava2d: anchor('turret', 'left', 0.37, 0.45, 0.25, 1),
+  merkava3c: anchor('turret', 'right', 0.36, 0.44, 0.25, -1),
+  merkava3d: anchor('turret', 'left', 0.35, 0.45, 0.25, 1),
+  type59: anchor('turret', 'right', 0.45, 0.48, 0.23, -1),
+  amx30: anchor('turret', 'left', 0.43, 0.47, 0.24, 1),
+  amx30b2: anchor('turret', 'right', 0.41, 0.48, 0.24, -1),
+  m48: anchor('turret', 'left', 0.43, 0.48, 0.25, 1),
+  m60a2: anchor('turret', 'right', 0.41, 0.46, 0.25, -1),
+  isu152: anchor('hull', 'left', 0.42, 0.64, 0.27, 1),
+  isu122s: anchor('hull', 'right', 0.40, 0.65, 0.27, -1),
+  centurion3: anchor('turret', 'left', 0.44, 0.48, 0.25, 1),
+  centurion5: anchor('turret', 'right', 0.42, 0.49, 0.25, -1),
+  m46_patton: anchor('turret', 'left', 0.43, 0.48, 0.25, 1),
+  m47_patton: anchor('turret', 'right', 0.41, 0.49, 0.25, -1),
+  m26_pershing: anchor('turret', 'left', 0.44, 0.48, 0.26, 1),
+  m45_patton: anchor('turret', 'right', 0.42, 0.47, 0.26, -1),
+  m60a3: anchor('turret', 'left', 0.40, 0.49, 0.25, 1),
+});
+
+export function vehicleMarkingAnchor(specOrId) {
+  const id = typeof specOrId === 'string' ? specOrId : specOrId?.id;
+  return VEHICLE_MARKING_ANCHORS[id] || null;
+}
 
 function stableNumber(id) {
   let hash = 0x811c9dc5;

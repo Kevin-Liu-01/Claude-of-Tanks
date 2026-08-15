@@ -13,7 +13,9 @@ import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeom
 import { getSpec, TANK_SPECS, attachTrackShapes, finalizeFirstPartyRoster } from './specs.js';
 import { createTankMaterials, makeBurnUniforms, applyBurnHook, vehicleAmbientFloorHook } from './materials.js';
 import { normalizeTankAppearance } from './appearanceAudit.js';
-import { vehicleMarkingRecord } from './vehicleMarkings.js';
+import {
+  SURFACE_MARKING_STYLE, vehicleMarkingAnchor, vehicleMarkingRecord,
+} from './vehicleMarkings.js';
 // DECORATION SYSTEM (2026-07): cosmetic stowage/fittings layer — attaches
 // under dedicated rig_decor_hull / rig_decor_turret groups at the end of
 // createTank (see the seam near the GLB-swap block). Skipped for
@@ -4170,11 +4172,15 @@ function createGeometryReceiptMaterials() {
   };
   const trackTexL = new THREE.Texture();
   const trackTexR = new THREE.Texture();
+  // A few first-party profiles clone the armor map for separately shaded
+  // wheel furniture. Geometry-receipt mode does not need pixels, but it must
+  // still provide the same material interface as the live material set.
+  const neutralAlbedo = new THREE.Texture();
   trackTexL.offset.set(0, 0);
   trackTexR.offset.set(0, 0);
-  owned.push(trackTexL, trackTexR);
+  owned.push(trackTexL, trackTexR, neutralAlbedo);
   const mats = {
-    hull: make(0x667055),
+    hull: make(0x667055, { map: neutralAlbedo }),
     wheels: make(0x545b48),
     wheelsRecessed: make(0x34382f),
     rubber: make(0x1d201c),
@@ -4197,6 +4203,198 @@ function createGeometryReceiptMaterials() {
   mats.decal = () => mats.detail;
   mats.dispose = () => { for (const resource of owned) resource.dispose(); };
   return mats;
+}
+
+const MARKING_ARMOR_MESH_NAMES = Object.freeze({
+  hull: new Set(['hull', 'hullTrackGuardL', 'hullTrackGuardR']),
+  turret: new Set(['turret']),
+});
+
+function markingArmorMeshes(owner, ownerName) {
+  const names = MARKING_ARMOR_MESH_NAMES[ownerName];
+  const meshes = [];
+  owner.traverse((object) => {
+    if (!object.isMesh || object.isInstancedMesh || !names.has(object.name)) return;
+    if (!object.geometry?.attributes?.position) return;
+    meshes.push(object);
+  });
+  return meshes;
+}
+
+function markingLocalBounds(owner, meshes) {
+  const bounds = new THREE.Box3();
+  const localPoint = new THREE.Vector3();
+  const worldPoint = new THREE.Vector3();
+  const corners = new Array(8).fill(null).map(() => new THREE.Vector3());
+  owner.updateWorldMatrix(true, true);
+  for (const mesh of meshes) {
+    if (!mesh.geometry.boundingBox) mesh.geometry.computeBoundingBox();
+    const box3 = mesh.geometry.boundingBox;
+    if (!box3 || box3.isEmpty()) continue;
+    let index = 0;
+    for (const x of [box3.min.x, box3.max.x]) {
+      for (const y of [box3.min.y, box3.max.y]) {
+        for (const z of [box3.min.z, box3.max.z]) corners[index++].set(x, y, z);
+      }
+    }
+    for (const corner of corners) {
+      worldPoint.copy(corner).applyMatrix4(mesh.matrixWorld);
+      localPoint.copy(worldPoint);
+      owner.worldToLocal(localPoint);
+      bounds.expandByPoint(localPoint);
+    }
+  }
+  return bounds;
+}
+
+function markingHitNormalLocal(hit, owner) {
+  const position = hit.object.geometry.attributes.position;
+  const face = hit.face;
+  if (!position || !face) return null;
+  const a = new THREE.Vector3().fromBufferAttribute(position, face.a).applyMatrix4(hit.object.matrixWorld);
+  const b = new THREE.Vector3().fromBufferAttribute(position, face.b).applyMatrix4(hit.object.matrixWorld);
+  const c = new THREE.Vector3().fromBufferAttribute(position, face.c).applyMatrix4(hit.object.matrixWorld);
+  owner.worldToLocal(a); owner.worldToLocal(b); owner.worldToLocal(c);
+  return b.sub(a).cross(c.sub(a)).normalize();
+}
+
+function raySeatMarking(owner, meshes, originLocal, directionLocal, maxDistance = 1.0) {
+  owner.updateWorldMatrix(true, true);
+  const originWorld = owner.localToWorld(originLocal.clone());
+  const directionWorld = directionLocal.clone().transformDirection(owner.matrixWorld).normalize();
+  const raycaster = new THREE.Raycaster(originWorld, directionWorld, 0, maxDistance);
+  const hit = raycaster.intersectObjects(meshes, false)[0];
+  if (!hit) return null;
+  const pointLocal = owner.worldToLocal(hit.point.clone());
+  const normalLocal = markingHitNormalLocal(hit, owner);
+  if (!normalLocal) return null;
+  // The decal normal must face back toward the ray origin, even when an old
+  // profile supplied inward-wound triangles.
+  if (normalLocal.dot(directionLocal) > 0) normalLocal.multiplyScalar(-1);
+  return { pointLocal, normalLocal, distance: hit.distance, object: hit.object };
+}
+
+function markingQuaternion(normalLocal, preferredTangent = null) {
+  let tangent = preferredTangent?.clone() || new THREE.Vector3(0, 0, 1);
+  tangent.addScaledVector(normalLocal, -tangent.dot(normalLocal));
+  if (tangent.lengthSq() < 1e-6) {
+    tangent.set(0, 1, 0).addScaledVector(normalLocal, -normalLocal.y);
+  }
+  tangent.normalize();
+  const bitangent = new THREE.Vector3().crossVectors(normalLocal, tangent).normalize();
+  const basis = new THREE.Matrix4().makeBasis(tangent, bitangent, normalLocal);
+  return new THREE.Quaternion().setFromRotationMatrix(basis);
+}
+
+function solveProfileMarkingSeat(profile, owner, meshes, longitudinal, vertical = profile.vertical) {
+  const bounds = markingLocalBounds(owner, meshes);
+  if (bounds.isEmpty()) return null;
+  const width = bounds.max.x - bounds.min.x;
+  const rayDirection = new THREE.Vector3(profile.side === 'right' ? -1 : 1, 0, 0);
+  const originX = profile.side === 'right' ? bounds.max.x + 0.24 : bounds.min.x - 0.24;
+  const searches = [
+    [0, 0], [0, 0.07], [0, -0.07], [0.06, 0], [-0.06, 0],
+    [0.06, 0.06], [-0.06, 0.06], [0.06, -0.06], [-0.06, -0.06],
+    [0, 0.14], [0, -0.14],
+  ];
+  for (const [dz, dy] of searches) {
+    const zT = THREE.MathUtils.clamp(longitudinal + dz, 0.08, 0.92);
+    const yT = THREE.MathUtils.clamp(vertical + dy, 0.12, 0.90);
+    const origin = new THREE.Vector3(
+      originX,
+      THREE.MathUtils.lerp(bounds.min.y, bounds.max.y, yT),
+      THREE.MathUtils.lerp(bounds.min.z, bounds.max.z, zT),
+    );
+    const hit = raySeatMarking(owner, meshes, origin, rayDirection, width + 0.7);
+    if (!hit) continue;
+    const tangent = new THREE.Vector3(0, 0, profile.side === 'right' ? -1 : 1);
+    return {
+      ...hit,
+      position: hit.pointLocal.clone().addScaledVector(
+        hit.normalLocal, SURFACE_MARKING_STYLE.surfaceLiftM),
+      quaternion: markingQuaternion(hit.normalLocal, tangent),
+    };
+  }
+  return null;
+}
+
+function reseatAuthoredMarking(decal, owner, meshes) {
+  const euler = new THREE.Euler(decal.rotX, decal.rotY, decal.rotZ, 'ZYX');
+  const normal = new THREE.Vector3(0, 0, 1).applyEuler(euler).normalize();
+  const tangent = new THREE.Vector3(1, 0, 0).applyEuler(euler).normalize();
+  const position = new THREE.Vector3(...decal.pos);
+  const attempts = [
+    [position.clone().addScaledVector(normal, 0.12), normal.clone().multiplyScalar(-1)],
+    [position.clone().addScaledVector(normal, -0.12), normal.clone()],
+  ];
+  let best = null;
+  for (const [origin, direction] of attempts) {
+    const hit = raySeatMarking(owner, meshes, origin, direction, 0.42);
+    if (!hit) continue;
+    const delta = hit.pointLocal.distanceTo(position);
+    if (delta <= 0.30 && (!best || delta < best.delta)) best = { ...hit, delta };
+  }
+  if (!best) return false;
+  decal.pos = best.pointLocal.clone().addScaledVector(
+    best.normalLocal, SURFACE_MARKING_STYLE.surfaceLiftM).toArray();
+  decal.quaternion = markingQuaternion(best.normalLocal, tangent);
+  decal.surfaceSupported = true;
+  decal.supportGapM = SURFACE_MARKING_STYLE.surfaceLiftM;
+  decal.surfaceMesh = best.object.name;
+  return true;
+}
+
+function finalizeVehicleMarkingSeats(spec, marking, decals, hullG, turretG) {
+  const owners = { hull: hullG, turret: turretG };
+  const surfaces = {
+    hull: markingArmorMeshes(hullG, 'hull'),
+    turret: markingArmorMeshes(turretG, 'turret'),
+  };
+  // Existing family-authored stars, crosses and tactical numbers stay in
+  // their chosen historical stations, but are snapped to the actual armor
+  // below them. Unsupported legacy planes are discarded rather than allowed
+  // to hover beside a reshaped turret.
+  for (let index = decals.length - 1; index >= 0; index -= 1) {
+    const decal = decals[index];
+    if (decal.kind !== 'insignia' && decal.kind !== 'designation') continue;
+    const ownerName = decal.parent === 'turret' ? 'turret' : 'hull';
+    if (!reseatAuthoredMarking(decal, owners[ownerName], surfaces[ownerName])) {
+      decals.splice(index, 1);
+    } else {
+      decal.anchorProfile = 'authored-surface-seat';
+    }
+  }
+
+  const profile = vehicleMarkingAnchor(spec.id);
+  if (!profile) return;
+  const owner = owners[profile.owner];
+  const meshes = surfaces[profile.owner];
+  const addProfileDecal = (kind, longitudinal, size) => {
+    const seat = solveProfileMarkingSeat(profile, owner, meshes, longitudinal);
+    if (!seat) return false;
+    decals.push({
+      parent: profile.owner,
+      kind,
+      text: kind === 'designation' ? marking.tacticalNumber : null,
+      size,
+      pos: seat.position.toArray(),
+      rotY: 0, rotX: 0, rotZ: 0,
+      quaternion: seat.quaternion,
+      surfaceSupported: true,
+      supportGapM: SURFACE_MARKING_STYLE.surfaceLiftM,
+      surfaceMesh: seat.object.name,
+      anchorProfile: spec.id,
+    });
+    return true;
+  };
+  if (!decals.some((decal) => decal.kind === 'insignia')) {
+    addProfileDecal('insignia', profile.longitudinal, profile.sizeM);
+  }
+  if (!decals.some((decal) => decal.kind === 'designation')) {
+    const textZ = THREE.MathUtils.clamp(
+      profile.longitudinal + profile.designationDirection * 0.11, 0.10, 0.90);
+    addProfileDecal('designation', textZ, profile.sizeM * 1.06);
+  }
 }
 
 export function createTank(specId, engineCtx, opts = {}) {
@@ -4320,24 +4518,6 @@ export function createTank(specId, engineCtx, opts = {}) {
 
   (resolveBuilder(specId, spec) || buildCommunityPlaceholder)(P);
 
-  // Every playable receives a canonical national insignia + tactical number.
-  // Family builders keep their carefully seated decal planes; vehicles that
-  // never authored one receive conservative paired hull-side fallbacks.
-  if (!decals.some((decal) => decal.kind === 'insignia')) {
-    const halfWidth = Math.max(0.7, Number(spec.dims?.widthM || 3) / 2);
-    const y = Math.max(0.62, Math.min(1.34, Number(armor.turretPivot?.[1] || 1.7) * 0.68));
-    const z = Math.min(0.18, Number(spec.dims?.hullLengthM || 6) * 0.025);
-    P.decal('hull', 'insignia', null, 0.28, [halfWidth + 0.006, y, z], Math.PI / 2);
-    P.decal('hull', 'insignia', null, 0.28, [-halfWidth - 0.006, y, z], -Math.PI / 2);
-  }
-  if (!decals.some((decal) => decal.kind === 'designation')) {
-    const halfWidth = Math.max(0.7, Number(spec.dims?.widthM || 3) / 2);
-    const y = Math.max(0.62, Math.min(1.34, Number(armor.turretPivot?.[1] || 1.7) * 0.68));
-    const z = -Math.min(0.72, Number(spec.dims?.hullLengthM || 6) * 0.08);
-    P.decal('hull', 'number', marking.tacticalNumber, 0.3, [halfWidth + 0.006, y, z], Math.PI / 2);
-    P.decal('hull', 'number', marking.tacticalNumber, 0.3, [-halfWidth - 0.006, y, z], -Math.PI / 2);
-  }
-
   // ---- merge buckets into meshes ----
   const gunYOff = armor.turretPivot[1] + armor.gunPivot[1];
   const DIRT_Y = { hullG: 0, turretG: armor.turretPivot[1], recoilG: gunYOff, gunG: gunYOff };
@@ -4373,24 +4553,6 @@ export function createTank(specId, engineCtx, opts = {}) {
     else lodWrap(parent, mesh);
   }
 
-  // ---- decals ----
-  const decalGeo = new THREE.PlaneGeometry(1, 1);
-  disposables.push(decalGeo);
-  const decalMeshes = [];
-  for (const d of decals) {
-    const mesh = new THREE.Mesh(decalGeo, mats.decal(d.kind, d.text));
-    mesh.name = `vehicleMarking_${d.kind}`;
-    mesh.userData.vehicleMarking = true;
-    mesh.userData.markingCode = marking.markingCode;
-    mesh.userData.markingKind = d.kind;
-    mesh.scale.setScalar(d.size);
-    mesh.position.set(d.pos[0], d.pos[1], d.pos[2]);
-    mesh.rotation.set(d.rotX, d.rotY, d.rotZ, 'ZYX');
-    mesh.castShadow = false;
-    (d.parent === 'turret' ? turretG : hullG).add(mesh);
-    decalMeshes.push(mesh);
-  }
-
   // ---- ERA bricks (t90m) ----
   let eraMesh = null;
   const eraLocal = [];
@@ -4418,6 +4580,36 @@ export function createTank(specId, engineCtx, opts = {}) {
 
   if (typeof P.postAssemble === 'function') {
     P.postAssemble({ root, hullG, turretG, gunG, recoilG });
+  }
+
+  // ---- physically seated vehicle markings ----
+  // Resolve these after all profile-owned regrouping so the support ray sees
+  // the final armor position. A per-ID surface profile supplies any missing
+  // national insignia/designation; historical builder decals are retained
+  // only when they can be re-seated on their selected articulation owner.
+  root.updateMatrixWorld(true);
+  finalizeVehicleMarkingSeats(spec, marking, decals, hullG, turretG);
+  const decalGeo = new THREE.PlaneGeometry(1, 1);
+  disposables.push(decalGeo);
+  const decalMeshes = [];
+  for (const d of decals) {
+    const mesh = new THREE.Mesh(decalGeo, mats.decal(d.kind, d.text));
+    mesh.name = `vehicleMarking_${d.kind}`;
+    mesh.userData.vehicleMarking = true;
+    mesh.userData.markingCode = marking.markingCode;
+    mesh.userData.markingKind = d.kind;
+    mesh.userData.surfaceSupported = d.surfaceSupported === true;
+    mesh.userData.supportGapM = d.supportGapM ?? null;
+    mesh.userData.surfaceMesh = d.surfaceMesh || null;
+    mesh.userData.markingAnchorProfile = d.anchorProfile || null;
+    mesh.userData.surfaceOwner = d.parent === 'turret' ? 'turret' : 'hull';
+    mesh.scale.setScalar(d.size);
+    mesh.position.set(d.pos[0], d.pos[1], d.pos[2]);
+    if (d.quaternion) mesh.quaternion.copy(d.quaternion);
+    else mesh.rotation.set(d.rotX, d.rotY, d.rotZ, 'ZYX');
+    mesh.castShadow = false;
+    (d.parent === 'turret' ? turretG : hullG).add(mesh);
+    decalMeshes.push(mesh);
   }
 
   installProceduralShadowProxies(spec, hullG, turretG, recoilG, disposables);
