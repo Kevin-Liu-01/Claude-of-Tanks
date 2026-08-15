@@ -172,7 +172,7 @@ const GARAGE_CSS = `
   max-width:178px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .cot-garage .stats .sub .cot-flag{display:block;object-fit:cover;
   box-shadow:0 1px 3px rgba(0,0,0,.5);}
-.cot-garage .stats .stats-ti{position:absolute;right:9px;top:5px;width:112px;height:72px;
+.cot-garage .stats .stats-ti{position:absolute;right:18px;top:17px;width:56px;height:36px;
   object-fit:contain;pointer-events:none;opacity:.78;
   filter:drop-shadow(0 3px 5px rgba(0,0,0,.72));}
 .cot-garage .srow{margin-bottom:9px;}
