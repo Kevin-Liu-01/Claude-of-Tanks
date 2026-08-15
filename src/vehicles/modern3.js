@@ -1800,12 +1800,16 @@ function buildK1A1(P) {
   const { rng } = P;
 
   // running gear (§B6 trapezoid; print track band x 1.02..1.60): 6 stations
-  // + 3 covered rollers, rear sprocket / far-forward idler (print wrap to
-  // +3.47). Track outer face 1.595; skirt inner plane 1.70 (§B4 clear).
+  // + 3 covered rollers, a raised rear drive and raised far-forward idler
+  // (print wrap to +3.47). The retired y=.51/.53 end-wheel line put both
+  // terminals on the road-wheel datum and collapsed the course into a low
+  // rectangle. These lifted terminals restore the K1A1's \______/ lower
+  // profile while leaving the loaded run, suspension and skirts untouched.
+  // Track outer face 1.595; skirt inner plane 1.70 (§B4 clear).
   buildRunningGear(P, {
     style: 'rubber', wheelR: 0.36, wheelW: 0.22, wheelY: 0.46, xc: 1.31,
     wheelZs: [2.10, 1.35, 0.60, -0.15, -0.90, -1.65],
-    sprocket: { z: -2.58, y: 0.53, r: 0.33 }, idler: { z: 2.73, y: 0.51, r: 0.31 },
+    sprocket: { z: -2.58, y: 0.64, r: 0.33 }, idler: { z: 2.73, y: 0.68, r: 0.33 },
     rollers: [1.25, 0.10, -1.05].map((z) => ({ z, y: 0.95, r: 0.075 })),
     trackW: 0.57, topY: 0.95, paintedEnds: true, coveredTop: 1.0,
   });

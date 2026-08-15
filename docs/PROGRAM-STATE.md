@@ -129,7 +129,7 @@ re-freeze NEW hash, all in ONE commit.
 | t90a | ae37a914 | RE-FROZEN 2026-08-13 (post-rollback family-scale/equipment reconciliation: retained the approved first-party hull, cast turret and K-5 package; restored two unequal turret-owned radio whip stations on broad shoes/collars/struts instead of scaling the tank; 45 unique paired/yaw frames, genuine quarter-turn, independent §B8 floor 9.6 / mean 9.76, parent/winding clean; prior 810a6f18 retired) |
 | t90a_vladimir | bee9eb44 | RE-FROZEN 2026-08-15 (restored the prominent round OTShU-1-7 pair on broad cheek shoes and raised the complete articulated gun/saddle group 0.07 m; 45 distinct paired/yaw frames, genuine quarter-turn, independent §B8 floor 9.7 / mean 9.78; parent 0/0/0, one native six-wheel course, exact track 0/0, muzzle and winding pixels clean; prior 7a6067c1 and earlier freezes retired) |
 | t90sm | 7efc69c9 | GRADUATED 2026-08-10; RE-FROZEN §5.105 (owner-priority complete redesign: source-measured low diamond shell retained, solid bustle steps replaced by backed slat cells, deep scalloped inboard skirts and layered rear service field added; gate 90.0 x2; standard/track/winding clean; independent §B8 floor 9.0 / mean 9.08 x14, all 28 yaw frames PASS; prior 56324371 retired) |
-| k1a1 | 28c7f5f0 | RE-FROZEN 2026-08-10 (§5.108 authored compact K1A1 shell/hull, native six-wheel course and cupola-seated K6; independent §B8 floor 9.0 / mean 9.21) |
+| k1a1 | 642e144c | RE-FROZEN 2026-08-15 (§5.243 K1A1 terminal-course correction: front idler and rear final drive lifted off the road-wheel centerline to restore the long-base trapezoid; complete hull, skirts, six-wheel suspension and one smart course retained; exact band/shoe/sweep 0/0; prior 64710448 retired) |
 | type99a | 6d52abda | RE-FROZEN 2026-08-12 (§5.133 strict-clearance re-cert: first-party measured-envelope hull/turret retained, native six-wheel return and shoes exact 0/0 through the full sweep, rear U-cable fully backed, gate 90.7 / fidelity 93.0; fresh 45-frame yaw/ownership floor 9.3 / mean 9.39; prior 50bbc9bc retired) |
 | type90 | d8f8a3a8 | RE-FROZEN 2026-08-12 (§5.134 owner-height + strict-track re-cert: first-party welded turret at corrected 0.80 section, all roof kit re-seated, fidelity 92.22 / minimum whole view 90.53; exact native band+shoes+sweep 0/0, fresh 45-frame yaw/ownership floor 9.0 / mean 9.08; legacy low-mask row retained honestly at 27.5; prior 5d7bc85c retired) |
 | type10 | ca815d52 | RE-FROZEN 2026-08-14 (§5.187 non-subtractive native-course closeout: exact accepted hull, glacis, full skirts, guards and lowered first-party turret remain unchanged; five-wheel gear shifts 0.065 m outward inside the skirts, narrows the native lane around the wheel faces, adds one supported forward return roller and lowers the hidden top run; strict band/shoe front 0/0, rear 0/0, full sweep 0/0; fresh 45-frame yaw proof re-adjudicates the fixed deck cable/glass/cloth/service field; targeted assets current; prior d7faced8 retired) |
@@ -8558,3 +8558,31 @@ regenerated and current; the full unit-test suite and production build pass.
 **KEEP the cheek bodies visually singular. Their internally tessellated face
 skin may follow the curved carrier, but no visible cross seam or four-tile
 spacing may be reintroduced.**
+
+## 5.243 K1A1 RAISED-TERMINAL TRACK PROFILE (2026-08-15, LIVE)
+
+The first-party K1A1 keeps its complete accepted hull, pointed bow, full
+sponson shoulders, segmented skirts, mudguards and six suspension-driven road
+wheels. Its former front idler and rear final-drive centers sat almost directly
+on the road-wheel datum, collapsing the visible track into a low rectangle.
+Only those two terminal stations change: the full-size front idler rises by
+0.17 m and the rear drive rises by 0.11 m. The loaded ground run and all six
+road-wheel stations remain fixed, producing a long-base `\______/` course with
+clean approach and departure ramps.
+
+Close left and right Surface Lab profiles show both terminal transitions
+wrapping their end wheels and returning continuously over the covered support
+rollers. No hull, armor, skirt, guard, wheel or suspension component is
+deleted, shifted or hidden. Duplicate-course audit confirms one integrated
+animated tread/connector layer.
+
+Exact band clearance, individual-shoe clearance and the complete strict sweep
+are **front 0 / rear 0**. Winding mode 1 remains clean at zero reversed and
+zero mixed meshes. Current geometry is freeze **`642e144c`**, instance freeze
+**`5c64a0c8`** and asset geometry **`c868def5`** (62 rendered meshes / 73,888
+vertices). K1A1 icons, silhouettes, armor, hit-zone and module assets are
+regenerated and current.
+
+**KEEP the complete K1A1 exterior and single smart course. Future running-gear
+work may tune only the mechanical station path; it must not manufacture track
+clearance by deleting or lifting hull and skirt geometry.**
