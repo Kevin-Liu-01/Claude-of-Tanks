@@ -3265,7 +3265,7 @@ function buildType74Native2026(P) {
   {
     P.add('turret', cylY(0.14, 0.20, 0.16, 12), 0.43, 0.87, -0.34);
     P.add('turretDark', box(0.22, 0.18, 0.20), 0.67, 0.96, -0.38);             // broad ammo/receiver side mass on the pedestal
-    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', tone: 'two-tone', elev: -0.03, seed: 74, scale: 1.35, ammo: true });
+    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', tone: 'two-tone', elev: -0.03, seed: 74, scale: 1.00, ammo: true });
     mg.position.set(0.43, 0.91, -0.34);
     P.turretG.add(mg);
   }
@@ -3303,7 +3303,7 @@ function buildType74Native2026(P) {
   // Antenna collars and whips land on the aft shoulders, not in air.
   for (const s of [-1, 1]) {
     P.add('turretDetail', cylY(0.045, 0.065, 0.08, 10), s * 0.83, 0.70, -1.22);
-    const whipA = FITTINGS.antennaWhip({ mats: P.mats, h: 0.62, r: 0.012, rake: s * 0.035, seed: 90 + s });
+    const whipA = FITTINGS.antennaWhip({ mats: P.mats, h: 0.40, r: 0.012, rake: s * 0.035, seed: 90 + s });
     whipA.position.set(s * 0.83, 0.74, -1.22);
     P.turretG.add(whipA);
   }
@@ -3318,9 +3318,9 @@ function buildType74Native2026(P) {
   P.addGunExtraDark(torus(0.17, 0.020, 16), 0, 0, 0.50);
   P.addGunExtraDark(cylZ(0.185, 0.055, 16), 0, 0, 0.51);                       // layered canvas/cast collar break
   P.addGunExtraDark(cylZ(0.024, 0.09, 8), 0.25, 0.05, 0.25);
-  buildGun(P, { len: 4.66, r: 0.062, sleeve: false, evac: 0.43, evacR: 1.76, collar: false, baseR: 0.15 });
-  P.add('gun', cylZ(0.069, 0.10, 12), 0, 0, 4.60);
-  muzzleBore(P, 0.062, 4.645);
+  buildGun(P, { len: 4.48, r: 0.062, sleeve: false, evac: 0.43, evacR: 1.76, collar: false, baseR: 0.15 });
+  P.add('gun', cylZ(0.069, 0.10, 12), 0, 0, 4.42);
+  muzzleBore(P, 0.062, 4.465);
   P.topY = 1.18;
 }
 
