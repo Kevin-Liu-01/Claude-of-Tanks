@@ -197,7 +197,8 @@
     @keyframes cot-boot-fade { from { opacity: 0; } }
     @media (prefers-reduced-motion: reduce) {
       .cot-boot-mark, .cot-boot-word .l1, .cot-boot-word .l2,
-      .cot-boot-load, .cot-boot-tip, .cot-boot-foot { animation: none; }
+      .cot-boot-load, .cot-boot-tip, .cot-boot-links .cot-boot-link,
+      .cot-boot-foot { animation: none; }
     }
 
     /* --- progress ---------------------------------------------------------- */
@@ -260,13 +261,34 @@
       background: rgba(6,10,14,.68); color: #c6d2dc; cursor: pointer;
       font: 700 10px/1 'ABC Monument Grotesk', 'Arial Narrow', Arial, sans-serif;
       letter-spacing: .18em; text-transform: uppercase; text-decoration: none;
-      transition: border-color .18s ease, color .18s ease, background .18s ease;
+      transition: transform .18s ease, border-color .18s ease, color .18s ease,
+        background .18s ease, box-shadow .18s ease;
     }
-    .cot-boot-links > .cot-boot-link { width: 132px; min-width: 132px; height: 38px; padding: 0 14px; }
-    .cot-boot-link-icon { width: 15px; height: 15px; flex: 0 0 15px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .cot-boot-links > .cot-boot-link {
+      width: 132px; min-width: 132px; height: 38px; padding: 0 14px;
+      animation: cot-boot-rise .48s cubic-bezier(.18,.7,.3,1) backwards;
+    }
+    .cot-boot-links > .cot-boot-link:first-child { animation-delay: .54s; }
+    .cot-boot-links > .cot-boot-link:last-child { animation-delay: .60s; }
+    .cot-boot-link-icon {
+      width: 15px; height: 15px; flex: 0 0 15px; fill: none; stroke: currentColor;
+      stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
+      transition: transform .18s ease;
+    }
     .cot-boot-link-icon.github { fill: currentColor; stroke: none; }
-    .cot-boot-link:hover { border-color: #f0a030; color: #ffe4b0; background: rgba(33,24,12,.78); }
+    .cot-boot-link:hover {
+      transform: translateY(-2px); border-color: #f0a030; color: #ffe4b0;
+      background: rgba(33,24,12,.78); box-shadow: 0 8px 20px rgba(0,0,0,.30);
+    }
+    .cot-boot-link:hover .cot-boot-link-icon { transform: scale(1.1); }
+    .cot-boot-link:active { transform: translateY(0); box-shadow: none; transition-duration: .06s; }
     .cot-boot-link:focus-visible { outline: 2px solid #f0a030; outline-offset: 3px; }
+    @media (prefers-reduced-motion: reduce) {
+      .cot-boot-links > .cot-boot-link { animation: none; }
+      .cot-boot-link, .cot-boot-link-icon { transition: none; }
+      .cot-boot-link:hover, .cot-boot-link:hover .cot-boot-link-icon,
+      .cot-boot-link:active { transform: none; }
+    }
     .cot-credits {
       width: min(700px, calc(100vw - 32px)); padding: 0; border: 1px solid #4a5966;
       color: #e6edf3; background: #080d12; box-shadow: 0 28px 90px rgba(0,0,0,.75);
