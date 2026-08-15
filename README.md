@@ -18,7 +18,18 @@
   <a href="docs/INDEX.md">DOCUMENTATION</a>
 </p>
 
-![AbramsX firing in Sirocco Wadi, staged and captured in the in-game Scene Studio](public/media/modern/01_abramsx.webp)
+<table>
+<tr>
+<td width="33%"><img src="public/media/featured/f7_studio_t90_column_fire.webp" alt="T-90 column on the Verdant Fields road under fire, staged in the in-game Scene Studio"></td>
+<td width="33%"><img src="public/media/featured/f6_studio_strv_steinburg_duel.webp" alt="Strv 103 street duel in Steinburg, staged in the in-game Scene Studio"></td>
+<td width="34%"><img src="public/media/featured/f8_studio_m1_firefight.webp" alt="M1 Abrams close-range firefight with explosions and flying debris, staged in the in-game Scene Studio"></td>
+</tr>
+</table>
+
+<p align="center">
+  <a href="public/media/featured/claude-of-tanks-gameplay.mp4"><img src="public/media/featured/claude-of-tanks-gameplay-poster.webp" alt="Watch the Claude of Tanks owner gameplay film"></a>
+</p>
+<p align="center"><strong>Watch the 99-second gameplay film</strong> — garage, deployment, live combat, penetration feedback, killcam, and the after-action report.</p>
 
 ## The game
 

@@ -15,7 +15,7 @@
   <meta name="twitter:card" content="summary_large_image">
   <link rel="icon" href="/brand/favicon.svg" type="image/svg+xml">
   <link rel="preload" href="/fonts/abc-monument-grotesk/ABCMonumentGrotesk-Bold.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="preload" href="/media/modern/25_type99a.webp" as="image">
+  <link rel="preload" href="/media/featured/f7_studio_t90_column_fire.webp" as="image">
   <link rel="stylesheet" href="/presentation.css">
   <script type="application/ld+json">
   {"@context":"https://schema.org","@type":"VideoGame","name":"Claude of Tanks","url":"https://cot.kevinliu.studio/","genre":["Vehicular combat","Simulation","Action"],"gamePlatform":"Web Browser","playMode":["SinglePlayer","MultiPlayer"],"description":"Pure Three.js armored combat with first-party modern vehicles, eight battlefields, plate-level armor and ballistics, multiplayer rooms, and in-browser authoring tools.","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}
@@ -50,7 +50,7 @@
 
 <main>
   <header class="home-hero" id="top">
-    <div class="home-hero-media"><img id="hero-image" src="/media/modern/25_type99a.webp" alt="Type 99A in a live battlefield Scene Studio frame"><div class="home-hero-scrim"></div></div>
+    <div class="home-hero-media"><img id="hero-image" src="/media/featured/f7_studio_t90_column_fire.webp" alt="T-90 column on the Verdant Fields road under fire, staged in Scene Studio"><div class="home-hero-scrim"></div></div>
     <div class="shell home-hero-copy reveal">
       <p class="micro"><em>Pure Three.js</em> // First-party modern armor</p>
       <h1>Armored combat.<br><span>Browser native.</span></h1>
@@ -58,7 +58,7 @@
       <div class="hero-actions"><a class="btn primary" href="/"><svg class="icon"><use href="#ic-crosshair"/></svg>Enter battle</a><a class="btn" href="#systems"><svg class="icon"><use href="#ic-eye"/></svg>See the systems</a></div>
     </div>
     <div class="home-hero-rail shell" id="hero-rail" aria-label="Featured modern vehicles"></div>
-    <div class="home-hero-readout"><span id="hero-count">01 / 05</span><strong id="hero-name">Type 99A</strong><small id="hero-meta">China // Right contact</small></div>
+    <div class="home-hero-readout"><span id="hero-count">01 / 05</span><strong id="hero-name">T-90 Column</strong><small id="hero-meta">Owner frame // Under fire</small></div>
   </header>
 
   <section class="home-proof-rail" aria-label="Simulation proof">
@@ -66,6 +66,18 @@
     <article><svg class="icon"><use href="#ic-track"/></svg><span><strong>Terrain-shaped</strong><small>Tracks + suspension</small></span></article>
     <article><svg class="icon"><use href="#ic-net"/></svg><span><strong>Persistent rooms</strong><small>Private + LAN</small></span></article>
     <article><svg class="icon"><use href="#ic-camera"/></svg><span><strong>Built-in Studio</strong><small>Every frame is live</small></span></article>
+  </section>
+
+  <section class="home-section home-film" aria-labelledby="home-film-title">
+    <div class="shell">
+      <div class="home-heading reveal"><div><p class="micro section-index"><em>Film</em> Owner gameplay</p><h2 id="home-film-title">One battle.<br>All systems live.</h2></div><p>From garage selection to the after-action report: ninety-nine seconds of the shipped game, recorded and edited by its creator.</p></div>
+      <div class="home-film-frame reveal">
+        <video controls playsinline preload="metadata" poster="/media/featured/claude-of-tanks-gameplay-poster.webp" aria-label="Claude of Tanks owner gameplay film">
+          <source src="/media/featured/claude-of-tanks-gameplay.mp4" type="video/mp4">
+          <a href="/media/featured/claude-of-tanks-gameplay.mp4">Download the Claude of Tanks gameplay film</a>
+        </video>
+      </div>
+    </div>
   </section>
 
   <section class="home-section home-fleet" id="fleet">
@@ -146,8 +158,13 @@ function openLightbox(src,alt,title,meta){document.querySelector('#lightbox-imag
 document.querySelector('#lightbox-close').addEventListener('click',()=>dialog.close());dialog.addEventListener('click',e=>{if(e.target===dialog)dialog.close()});
 document.addEventListener('click',e=>{const button=e.target.closest('[data-lightbox-src]');if(!button)return;const image=button.querySelector('img');openLightbox(button.dataset.lightboxSrc,image?.alt,button.dataset.lightboxTitle,button.dataset.lightboxMeta)});
 
-const heroIds=['type99a','merkava3d','challenger_3','t90m','k2'];let heroFleet=[];let heroIndex=0;let fleet=[];
-function setHero(index){if(!heroFleet.length)return;heroIndex=(index+heroFleet.length)%heroFleet.length;const item=heroFleet[heroIndex];const image=document.querySelector('#hero-image');image.src=item.src;image.alt=`${item.name} on ${mapName[item.map]}, captured in Scene Studio`;document.querySelector('#hero-count').textContent=`${String(heroIndex+1).padStart(2,'0')} / ${String(heroFleet.length).padStart(2,'0')}`;document.querySelector('#hero-name').textContent=item.name;document.querySelector('#hero-meta').textContent=`${item.nation} // ${item.pose.replaceAll('-',' ')}`.toUpperCase();document.querySelectorAll('#hero-rail button').forEach((button,i)=>{button.classList.toggle('active',i===heroIndex);button.setAttribute('aria-pressed',i===heroIndex)})}
+const ownerHeroes=[
+  {id:'owner-t90-column',name:'T-90 Column',src:'/media/featured/f7_studio_t90_column_fire.webp',nation:'Owner frame',map:'verdant',pose:'under-fire',gunDeg:0},
+  {id:'owner-strv-duel',name:'Strv 103 Duel',src:'/media/featured/f6_studio_strv_steinburg_duel.webp',nation:'Owner frame',map:'urban',pose:'street-duel',gunDeg:0},
+  {id:'owner-m1-firefight',name:'M1 Firefight',src:'/media/featured/f8_studio_m1_firefight.webp',nation:'Owner frame',map:'verdant',pose:'close-range-firefight',gunDeg:0}
+];
+const heroIds=['type99a','challenger_3'];let heroFleet=[];let heroIndex=0;let fleet=[];
+function setHero(index){if(!heroFleet.length)return;heroIndex=(index+heroFleet.length)%heroFleet.length;const item=heroFleet[heroIndex];const image=document.querySelector('#hero-image');image.src=item.src;image.alt=item.id.startsWith('owner-')?`${item.name}, ${mapName[item.map]}, staged in Scene Studio`:`${item.name} on ${mapName[item.map]}, captured in Scene Studio`;document.querySelector('#hero-count').textContent=`${String(heroIndex+1).padStart(2,'0')} / ${String(heroFleet.length).padStart(2,'0')}`;document.querySelector('#hero-name').textContent=item.name;document.querySelector('#hero-meta').textContent=`${item.nation} // ${item.pose.replaceAll('-',' ')}`.toUpperCase();document.querySelectorAll('#hero-rail button').forEach((button,i)=>{button.classList.toggle('active',i===heroIndex);button.setAttribute('aria-pressed',i===heroIndex)})}
 function buildHero(){const rail=document.querySelector('#hero-rail');rail.replaceChildren(...heroFleet.map((item,index)=>{const button=document.createElement('button');button.type='button';button.innerHTML=`<span>${String(index+1).padStart(2,'0')}</span><strong>${item.name}</strong><small>${item.gunDeg>0?'+':''}${item.gunDeg}° gun</small>`;button.addEventListener('click',()=>setHero(index));return button}));setHero(0)}
 
 const fleetTrack=document.querySelector('#fleet-track');const fleetFilter=document.querySelector('#fleet-filter');
@@ -156,7 +173,7 @@ function renderFleet(nation='all'){const visible=fleet.filter(item=>nation==='al
 function currentCardIndex(track,selector){const cards=[...track.querySelectorAll(selector)];if(!cards.length)return 0;const x=track.scrollLeft+track.clientWidth*.18;let closest=0;let delta=Infinity;cards.forEach((card,index)=>{const d=Math.abs(card.offsetLeft-x);if(d<delta){closest=index;delta=d}});return closest}
 function scrollCards(track,selector,direction){const cards=[...track.querySelectorAll(selector)];if(!cards.length)return;const current=currentCardIndex(track,selector);cards[Math.max(0,Math.min(cards.length-1,current+direction))].scrollIntoView({behavior:'smooth',block:'nearest',inline:'start'})}
 document.querySelector('#fleet-prev').addEventListener('click',()=>scrollCards(fleetTrack,'.home-tank-card',-1));document.querySelector('#fleet-next').addEventListener('click',()=>scrollCards(fleetTrack,'.home-tank-card',1));fleetTrack.addEventListener('scroll',()=>{const total=fleetTrack.querySelectorAll('.home-tank-card').length;document.querySelector('#fleet-count').textContent=`${String(currentCardIndex(fleetTrack,'.home-tank-card')+1).padStart(2,'0')} / ${String(total).padStart(2,'0')}`},{passive:true});
-fetch('/media/modern/manifest.json').then(response=>{if(!response.ok)throw new Error(`manifest ${response.status}`);return response.json()}).then(data=>{fleet=data;heroFleet=heroIds.map(id=>data.find(item=>item.id===id)).filter(Boolean);buildHero();for(const nation of [...new Set(data.map(item=>item.nation))]){const button=document.createElement('button');button.type='button';button.textContent=nation;button.dataset.nation=nation;fleetFilter.append(button)}fleetFilter.addEventListener('click',event=>{const button=event.target.closest('button');if(!button)return;fleetFilter.querySelectorAll('button').forEach(item=>item.classList.toggle('active',item===button));renderFleet(button.dataset.nation)});renderFleet()}).catch(error=>{fleetTrack.innerHTML=`<p class="shell lede">Modern fleet unavailable: ${error.message}</p>`});
+fetch('/media/modern/manifest.json').then(response=>{if(!response.ok)throw new Error(`manifest ${response.status}`);return response.json()}).then(data=>{fleet=data;heroFleet=[...ownerHeroes,...heroIds.map(id=>data.find(item=>item.id===id)).filter(Boolean)];buildHero();for(const nation of [...new Set(data.map(item=>item.nation))]){const button=document.createElement('button');button.type='button';button.textContent=nation;button.dataset.nation=nation;fleetFilter.append(button)}fleetFilter.addEventListener('click',event=>{const button=event.target.closest('button');if(!button)return;fleetFilter.querySelectorAll('button').forEach(item=>item.classList.toggle('active',item===button));renderFleet(button.dataset.nation)});renderFleet()}).catch(error=>{fleetTrack.innerHTML=`<p class="shell lede">Modern fleet unavailable: ${error.message}</p>`});
 
 const systems=[
   {key:'battle',icon:'ic-crosshair',kicker:'LIVE BATTLE',title:'The battlefield, fully instrumented.',copy:'Sight, roster, ammunition, vehicle state, spotting, and map—present without obscuring the fight.',src:'/media/home/ui_battle.webp',alt:'Modern tank battle interface with sight, roster, ammunition, and minimap'},
