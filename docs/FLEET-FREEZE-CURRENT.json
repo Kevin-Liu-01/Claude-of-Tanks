@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "rosterCount": 106,
+  "rosterCount": 81,
   "provenance": "first-party-procedural-only",
   "camoSeed": 4242,
   "assetCamoSeed": 4100,
@@ -12,746 +12,571 @@
   },
   "tanks": {
     "abramsx": {
-      "freezeHash": "491c7368",
-      "instanceFreezeHash": "39611ee4",
-      "assetGeometryHash": "7743153b",
-      "meshes": 78,
-      "vertices": 162878
+      "freezeHash": "b2d391c8",
+      "instanceFreezeHash": "c71db845",
+      "assetGeometryHash": "350205ae",
+      "meshes": 80,
+      "vertices": 127976
     },
     "amx30": {
-      "freezeHash": "3f3bd744",
-      "instanceFreezeHash": "09b40b80",
-      "assetGeometryHash": "dfc783f6",
-      "meshes": 49,
-      "vertices": 51849
+      "freezeHash": "9fa57354",
+      "instanceFreezeHash": "9cb465ec",
+      "assetGeometryHash": "be9699d0",
+      "meshes": 48,
+      "vertices": 55507
     },
     "amx30b2": {
-      "freezeHash": "2c6d025f",
-      "instanceFreezeHash": "e1f7e67a",
-      "assetGeometryHash": "b87b80ea",
-      "meshes": 49,
-      "vertices": 55605
+      "freezeHash": "42857430",
+      "instanceFreezeHash": "98c773b5",
+      "assetGeometryHash": "6b68a76c",
+      "meshes": 48,
+      "vertices": 58975
     },
     "amx40": {
-      "freezeHash": "76fdc9ee",
-      "instanceFreezeHash": "2f2c3483",
-      "assetGeometryHash": "911af338",
-      "meshes": 61,
-      "vertices": 98642
+      "freezeHash": "f8818d8c",
+      "instanceFreezeHash": "577e8a0e",
+      "assetGeometryHash": "45dd5b03",
+      "meshes": 63,
+      "vertices": 98684
     },
     "ariete": {
-      "freezeHash": "5f6a32a8",
-      "instanceFreezeHash": "165a4129",
-      "assetGeometryHash": "7f1ec52c",
-      "meshes": 50,
-      "vertices": 104019
+      "freezeHash": "2bb3304b",
+      "instanceFreezeHash": "b3a61526",
+      "assetGeometryHash": "dd8cc923",
+      "meshes": 52,
+      "vertices": 104061
     },
     "bmp2": {
-      "freezeHash": "69aeb100",
-      "instanceFreezeHash": "74ce3d92",
-      "assetGeometryHash": "20266902",
-      "meshes": 51,
-      "vertices": 61408
+      "freezeHash": "9e19de90",
+      "instanceFreezeHash": "a95c5bbb",
+      "assetGeometryHash": "822687a2",
+      "meshes": 57,
+      "vertices": 79282
     },
     "centurion3": {
-      "freezeHash": "c90a1e70",
-      "instanceFreezeHash": "27467cbc",
-      "assetGeometryHash": "9aaa7495",
-      "meshes": 46,
-      "vertices": 69695
+      "freezeHash": "6e84332c",
+      "instanceFreezeHash": "77029733",
+      "assetGeometryHash": "998ebd35",
+      "meshes": 48,
+      "vertices": 69737
     },
     "centurion5": {
-      "freezeHash": "304507d4",
-      "instanceFreezeHash": "33d07ad2",
-      "assetGeometryHash": "2a3918f9",
-      "meshes": 49,
-      "vertices": 77855
+      "freezeHash": "f94f9361",
+      "instanceFreezeHash": "5ac1ebaf",
+      "assetGeometryHash": "d3a26130",
+      "meshes": 51,
+      "vertices": 77897
     },
     "challenger1": {
-      "freezeHash": "205fb085",
-      "instanceFreezeHash": "efbbe94b",
-      "assetGeometryHash": "ce6e386c",
-      "meshes": 88,
-      "vertices": 103071
+      "freezeHash": "d56ce1d1",
+      "instanceFreezeHash": "293635a8",
+      "assetGeometryHash": "62818815",
+      "meshes": 90,
+      "vertices": 103113
     },
     "challenger2": {
-      "freezeHash": "cc629738",
-      "instanceFreezeHash": "ec309605",
-      "assetGeometryHash": "b3ae84e9",
-      "meshes": 45,
-      "vertices": 250579
+      "freezeHash": "8fc42d90",
+      "instanceFreezeHash": "d4e442af",
+      "assetGeometryHash": "43edbbdb",
+      "meshes": 47,
+      "vertices": 250621
     },
     "challenger_3": {
-      "freezeHash": "dfd34cfc",
-      "instanceFreezeHash": "254ddaf8",
-      "assetGeometryHash": "d309fccb",
-      "meshes": 61,
-      "vertices": 72759
-    },
-    "challenger_cruiser": {
-      "freezeHash": "de4894d8",
-      "instanceFreezeHash": "231d6ec5",
-      "assetGeometryHash": "9148c5b7",
-      "meshes": 35,
-      "vertices": 41063
-    },
-    "charioteer": {
-      "freezeHash": "008539a4",
-      "instanceFreezeHash": "9cb9a3fe",
-      "assetGeometryHash": "7eb3656a",
-      "meshes": 35,
-      "vertices": 42299
+      "freezeHash": "63b007ec",
+      "instanceFreezeHash": "678c2a3d",
+      "assetGeometryHash": "e89df08a",
+      "meshes": 63,
+      "vertices": 72801
     },
     "chieftain5": {
-      "freezeHash": "c8e4d738",
-      "instanceFreezeHash": "14fb63f2",
-      "assetGeometryHash": "505c0a40",
-      "meshes": 42,
-      "vertices": 95351
+      "freezeHash": "90a6c9a6",
+      "instanceFreezeHash": "9dccce32",
+      "assetGeometryHash": "ce114454",
+      "meshes": 44,
+      "vertices": 95393
     },
     "chieftain_mk10": {
-      "freezeHash": "9e667e38",
-      "instanceFreezeHash": "b763e984",
-      "assetGeometryHash": "00ed6b7d",
-      "meshes": 43,
-      "vertices": 74543
-    },
-    "comet": {
-      "freezeHash": "b1ab76d8",
-      "instanceFreezeHash": "1acb2dca",
-      "assetGeometryHash": "b646ee64",
-      "meshes": 36,
-      "vertices": 43085
+      "freezeHash": "b9aef3d0",
+      "instanceFreezeHash": "e952a844",
+      "assetGeometryHash": "3bae6ab9",
+      "meshes": 45,
+      "vertices": 74585
     },
     "fv510": {
-      "freezeHash": "f22c8020",
-      "instanceFreezeHash": "75cf7245",
-      "assetGeometryHash": "3fff3aa4",
+      "freezeHash": "0e316978",
+      "instanceFreezeHash": "9ebcb58a",
+      "assetGeometryHash": "7de5a5a4",
       "meshes": 69,
-      "vertices": 71529
-    },
-    "is1": {
-      "freezeHash": "62377f98",
-      "instanceFreezeHash": "014672b9",
-      "assetGeometryHash": "b785862e",
-      "meshes": 32,
-      "vertices": 55014
-    },
-    "is2": {
-      "freezeHash": "9d7a0944",
-      "instanceFreezeHash": "2cd6bcfa",
-      "assetGeometryHash": "8593bfba",
-      "meshes": 32,
-      "vertices": 55014
-    },
-    "is3": {
-      "freezeHash": "5aaf782d",
-      "instanceFreezeHash": "00c62e10",
-      "assetGeometryHash": "f785993d",
-      "meshes": 35,
-      "vertices": 67758
-    },
-    "is3_bergman": {
-      "freezeHash": "595b2e64",
-      "instanceFreezeHash": "3fd56d8d",
-      "assetGeometryHash": "0bb4b1fe",
-      "meshes": 35,
-      "vertices": 67758
-    },
-    "is6b": {
-      "freezeHash": "bfb5b45a",
-      "instanceFreezeHash": "3a121aa0",
-      "assetGeometryHash": "99485c92",
-      "meshes": 34,
-      "vertices": 51174
-    },
-    "is7": {
-      "freezeHash": "b11f0288",
-      "instanceFreezeHash": "b2418e5e",
-      "assetGeometryHash": "c65098ab",
-      "meshes": 32,
-      "vertices": 67446
+      "vertices": 71551
     },
     "isu122s": {
-      "freezeHash": "025adb21",
-      "instanceFreezeHash": "32f8bfc8",
-      "assetGeometryHash": "41588502",
-      "meshes": 31,
-      "vertices": 361792
+      "freezeHash": "7b3d71a8",
+      "instanceFreezeHash": "ad70555d",
+      "assetGeometryHash": "d05aec9f",
+      "meshes": 34,
+      "vertices": 361838
     },
     "isu152": {
-      "freezeHash": "bedaa030",
-      "instanceFreezeHash": "3f7a94b0",
-      "assetGeometryHash": "d40d22ed",
-      "meshes": 44,
-      "vertices": 395534
-    },
-    "jagdtiger": {
-      "freezeHash": "cf23f284",
-      "instanceFreezeHash": "e1e6cb70",
-      "assetGeometryHash": "98b6088d",
-      "meshes": 32,
-      "vertices": 52887
+      "freezeHash": "9cc738ee",
+      "instanceFreezeHash": "31698de1",
+      "assetGeometryHash": "e08452f1",
+      "meshes": 46,
+      "vertices": 395576
     },
     "jpz_e100": {
-      "freezeHash": "bb58b690",
-      "instanceFreezeHash": "18942f18",
-      "assetGeometryHash": "9e9f7355",
-      "meshes": 33,
-      "vertices": 50223
+      "freezeHash": "fa275d16",
+      "instanceFreezeHash": "fc6c8eca",
+      "assetGeometryHash": "80773c1f",
+      "meshes": 32,
+      "vertices": 50253
     },
     "k1a1": {
-      "freezeHash": "875c5064",
-      "instanceFreezeHash": "c30d647c",
-      "assetGeometryHash": "76e860fd",
+      "freezeHash": "64710448",
+      "instanceFreezeHash": "ecedd7aa",
+      "assetGeometryHash": "4a6ccb5f",
       "meshes": 62,
-      "vertices": 73854
+      "vertices": 73888
     },
     "k2": {
-      "freezeHash": "b0628069",
-      "instanceFreezeHash": "c9b8d210",
-      "assetGeometryHash": "e0c78701",
-      "meshes": 61,
-      "vertices": 116916
+      "freezeHash": "8d130f68",
+      "instanceFreezeHash": "88fa39d4",
+      "assetGeometryHash": "4f166b61",
+      "meshes": 63,
+      "vertices": 116958
     },
     "kf51": {
-      "freezeHash": "cc4e0128",
-      "instanceFreezeHash": "b8b1deaf",
-      "assetGeometryHash": "ea388d44",
-      "meshes": 298,
-      "vertices": 101258
+      "freezeHash": "66b5919c",
+      "instanceFreezeHash": "7c061ca8",
+      "assetGeometryHash": "c8df2fef",
+      "meshes": 300,
+      "vertices": 101300
     },
     "kv2": {
-      "freezeHash": "b7930804",
-      "instanceFreezeHash": "74d3922e",
-      "assetGeometryHash": "3a943e52",
-      "meshes": 35,
-      "vertices": 103522
+      "freezeHash": "34cf1f54",
+      "instanceFreezeHash": "dcc8cd0a",
+      "assetGeometryHash": "94abbcf2",
+      "meshes": 38,
+      "vertices": 103568
     },
     "leclerc": {
-      "freezeHash": "534a0ae9",
-      "instanceFreezeHash": "9ccaeb19",
-      "assetGeometryHash": "0a56ef48",
-      "meshes": 46,
-      "vertices": 86775
-    },
-    "leichttraktor": {
-      "freezeHash": "43d6518d",
-      "instanceFreezeHash": "a32f4149",
-      "assetGeometryHash": "2ebde545",
-      "meshes": 32,
-      "vertices": 33948
+      "freezeHash": "e4b7fccc",
+      "instanceFreezeHash": "8e87fe0c",
+      "assetGeometryHash": "1bda1486",
+      "meshes": 48,
+      "vertices": 86817
     },
     "leo1a5": {
-      "freezeHash": "8028525c",
-      "instanceFreezeHash": "2b4dbb79",
-      "assetGeometryHash": "84e98061",
-      "meshes": 45,
-      "vertices": 61251
+      "freezeHash": "600f05f0",
+      "instanceFreezeHash": "bc55cc87",
+      "assetGeometryHash": "11da5d83",
+      "meshes": 46,
+      "vertices": 61289
     },
     "leo2_revolution": {
-      "freezeHash": "f8a15318",
-      "instanceFreezeHash": "0184e0f1",
-      "assetGeometryHash": "f4a9214c",
+      "freezeHash": "115835d4",
+      "instanceFreezeHash": "2177595e",
+      "assetGeometryHash": "8b4f55d7",
       "meshes": 73,
-      "vertices": 102453
+      "vertices": 102487
     },
     "leo2a4": {
-      "freezeHash": "fb1c5a20",
-      "instanceFreezeHash": "d617b418",
-      "assetGeometryHash": "7d769493",
-      "meshes": 65,
-      "vertices": 90811
+      "freezeHash": "775ddd08",
+      "instanceFreezeHash": "c129c41b",
+      "assetGeometryHash": "fce0fc44",
+      "meshes": 66,
+      "vertices": 90849
     },
     "leo2a5": {
-      "freezeHash": "3f262a84",
-      "instanceFreezeHash": "a3882e4c",
-      "assetGeometryHash": "b7244c15",
+      "freezeHash": "eb868c58",
+      "instanceFreezeHash": "fb47b82e",
+      "assetGeometryHash": "846f002d",
       "meshes": 140,
-      "vertices": 138463
+      "vertices": 138497
     },
     "leo2a6": {
-      "freezeHash": "ce1171dc",
-      "instanceFreezeHash": "e84d2d11",
-      "assetGeometryHash": "afad97ae",
-      "meshes": 45,
-      "vertices": 145883
+      "freezeHash": "b2ef6380",
+      "instanceFreezeHash": "9c218390",
+      "assetGeometryHash": "c02b0a5a",
+      "meshes": 46,
+      "vertices": 145921
     },
     "leo2a7": {
-      "freezeHash": "0a0f8a93",
-      "instanceFreezeHash": "d9effb3e",
-      "assetGeometryHash": "d2a0b1b5",
-      "meshes": 39,
-      "vertices": 85082
+      "freezeHash": "bcab14dc",
+      "instanceFreezeHash": "97f58eb3",
+      "assetGeometryHash": "b40d050c",
+      "meshes": 40,
+      "vertices": 85120
     },
     "leo2a7v": {
-      "freezeHash": "86121b8d",
-      "instanceFreezeHash": "307cd05b",
-      "assetGeometryHash": "ad4004c7",
-      "meshes": 45,
-      "vertices": 117603
+      "freezeHash": "0d3d5b49",
+      "instanceFreezeHash": "67834931",
+      "assetGeometryHash": "8f73f1a5",
+      "meshes": 46,
+      "vertices": 117641
     },
     "leopard2_proto": {
-      "freezeHash": "9f36da6e",
-      "instanceFreezeHash": "7b192d14",
-      "assetGeometryHash": "b50cddf5",
-      "meshes": 64,
-      "vertices": 90127
+      "freezeHash": "d0ced8d8",
+      "instanceFreezeHash": "fb43582b",
+      "assetGeometryHash": "64a1aee0",
+      "meshes": 65,
+      "vertices": 90165
     },
     "m1a1": {
-      "freezeHash": "94954710",
-      "instanceFreezeHash": "6932d136",
-      "assetGeometryHash": "641802e3",
-      "meshes": 52,
-      "vertices": 156814
+      "freezeHash": "32a074a8",
+      "instanceFreezeHash": "8d9581bc",
+      "assetGeometryHash": "241b50d9",
+      "meshes": 54,
+      "vertices": 126548
     },
     "m1a1ha": {
-      "freezeHash": "333d3c30",
-      "instanceFreezeHash": "0b426163",
-      "assetGeometryHash": "7755f232",
-      "meshes": 53,
-      "vertices": 190414
+      "freezeHash": "90ae07fc",
+      "instanceFreezeHash": "6d07255d",
+      "assetGeometryHash": "0cccc070",
+      "meshes": 55,
+      "vertices": 160184
     },
     "m1a2": {
-      "freezeHash": "c3fa2977",
-      "instanceFreezeHash": "6ce8469c",
-      "assetGeometryHash": "379302b0",
-      "meshes": 46,
-      "vertices": 140510
+      "freezeHash": "4e3cbedc",
+      "instanceFreezeHash": "fb04b8dc",
+      "assetGeometryHash": "d22e107d",
+      "meshes": 56,
+      "vertices": 158864
+    },
+    "m1a2_legacy": {
+      "freezeHash": "4710baad",
+      "instanceFreezeHash": "ae1152b8",
+      "assetGeometryHash": "a9682526",
+      "meshes": 49,
+      "vertices": 140556
     },
     "m1a2_sepv2": {
-      "freezeHash": "c4c00554",
-      "instanceFreezeHash": "b94c3e9e",
-      "assetGeometryHash": "b94a412f",
-      "meshes": 56,
-      "vertices": 200422
+      "freezeHash": "179e5d18",
+      "instanceFreezeHash": "60519924",
+      "assetGeometryHash": "7f827131",
+      "meshes": 58,
+      "vertices": 169268
     },
     "m1a2_sepv3": {
-      "freezeHash": "6a89b207",
-      "instanceFreezeHash": "2325c142",
-      "assetGeometryHash": "4fb17143",
-      "meshes": 53,
-      "vertices": 202666
-    },
-    "m1a2_tejas": {
-      "freezeHash": "13c33a34",
-      "instanceFreezeHash": "448914f1",
-      "assetGeometryHash": "35541793",
-      "meshes": 54,
-      "vertices": 163990
+      "freezeHash": "e78fe6c6",
+      "instanceFreezeHash": "85b1e1e4",
+      "assetGeometryHash": "ab0b22c3",
+      "meshes": 55,
+      "vertices": 171548
     },
     "m1a2_tusk": {
-      "freezeHash": "6174fc58",
-      "instanceFreezeHash": "463e5729",
-      "assetGeometryHash": "db512a42",
-      "meshes": 64,
-      "vertices": 216538
+      "freezeHash": "79f30fac",
+      "instanceFreezeHash": "ffea3704",
+      "assetGeometryHash": "861cf737",
+      "meshes": 66,
+      "vertices": 185420
     },
     "m26_pershing": {
-      "freezeHash": "77035329",
-      "instanceFreezeHash": "26f9aa17",
-      "assetGeometryHash": "f947e92a",
-      "meshes": 51,
-      "vertices": 73735
+      "freezeHash": "dd6a3f52",
+      "instanceFreezeHash": "683f1924",
+      "assetGeometryHash": "06e9874f",
+      "meshes": 52,
+      "vertices": 73773
     },
     "m2a2_bradley": {
-      "freezeHash": "716cc620",
-      "instanceFreezeHash": "9870451d",
-      "assetGeometryHash": "29970053",
-      "meshes": 60,
-      "vertices": 77560
+      "freezeHash": "58c50918",
+      "instanceFreezeHash": "58f07e20",
+      "assetGeometryHash": "33572b4f",
+      "meshes": 62,
+      "vertices": 77590
     },
     "m45_patton": {
-      "freezeHash": "45696b38",
-      "instanceFreezeHash": "7b49a414",
-      "assetGeometryHash": "c09b3598",
-      "meshes": 46,
-      "vertices": 69967
+      "freezeHash": "4c1c7360",
+      "instanceFreezeHash": "ef996046",
+      "assetGeometryHash": "c19a87da",
+      "meshes": 48,
+      "vertices": 70009
     },
     "m46_patton": {
-      "freezeHash": "293bf790",
-      "instanceFreezeHash": "bb4bede7",
-      "assetGeometryHash": "aeedad9b",
-      "meshes": 101,
-      "vertices": 85113
+      "freezeHash": "babe168f",
+      "instanceFreezeHash": "1f629e0e",
+      "assetGeometryHash": "401f6822",
+      "meshes": 103,
+      "vertices": 85155
     },
     "m47_patton": {
-      "freezeHash": "29a7755a",
-      "instanceFreezeHash": "9de5b31c",
-      "assetGeometryHash": "67c8ea0f",
-      "meshes": 110,
-      "vertices": 97566
+      "freezeHash": "4eb72bb2",
+      "instanceFreezeHash": "6122a116",
+      "assetGeometryHash": "c80a1341",
+      "meshes": 112,
+      "vertices": 97608
     },
     "m48": {
-      "freezeHash": "6f85c6b8",
-      "instanceFreezeHash": "8782c107",
-      "assetGeometryHash": "a24738dd",
-      "meshes": 44,
-      "vertices": 76993
-    },
-    "m4a3e8": {
-      "freezeHash": "b9018d24",
-      "instanceFreezeHash": "db154928",
-      "assetGeometryHash": "2ab7447c",
-      "meshes": 48,
-      "vertices": 77626
+      "freezeHash": "71534b1c",
+      "instanceFreezeHash": "9bc401ae",
+      "assetGeometryHash": "1c03d318",
+      "meshes": 46,
+      "vertices": 77035
     },
     "m60a1": {
-      "freezeHash": "57e80ae8",
-      "instanceFreezeHash": "d08ba71c",
-      "assetGeometryHash": "26e6db3b",
-      "meshes": 38,
-      "vertices": 80203
+      "freezeHash": "b716db68",
+      "instanceFreezeHash": "fd3946c0",
+      "assetGeometryHash": "0230f677",
+      "meshes": 40,
+      "vertices": 80245
     },
     "m60a2": {
-      "freezeHash": "003a4367",
-      "instanceFreezeHash": "bdf7ac95",
-      "assetGeometryHash": "e969b365",
-      "meshes": 46,
-      "vertices": 65035
+      "freezeHash": "e9bfe3e0",
+      "instanceFreezeHash": "6743bbc6",
+      "assetGeometryHash": "4dfe79ea",
+      "meshes": 48,
+      "vertices": 65077
     },
     "m60a3": {
-      "freezeHash": "69612338",
-      "instanceFreezeHash": "b28d8b4a",
-      "assetGeometryHash": "8f07b880",
-      "meshes": 39,
-      "vertices": 82999
+      "freezeHash": "780c6310",
+      "instanceFreezeHash": "c4bde3c9",
+      "assetGeometryHash": "0aa54a87",
+      "meshes": 41,
+      "vertices": 83041
     },
     "merkava1b": {
-      "freezeHash": "4badbc88",
-      "instanceFreezeHash": "99db2966",
-      "assetGeometryHash": "5456a67b",
-      "meshes": 43,
-      "vertices": 133629
+      "freezeHash": "55cfe20c",
+      "instanceFreezeHash": "ed3f828e",
+      "assetGeometryHash": "1268ccb3",
+      "meshes": 45,
+      "vertices": 133671
     },
     "merkava2b": {
-      "freezeHash": "e64918f4",
-      "instanceFreezeHash": "397bb300",
-      "assetGeometryHash": "d8fab8a2",
-      "meshes": 37,
-      "vertices": 78729
+      "freezeHash": "3e3c3472",
+      "instanceFreezeHash": "5b86c313",
+      "assetGeometryHash": "49d798ed",
+      "meshes": 39,
+      "vertices": 78771
     },
     "merkava2d": {
-      "freezeHash": "2beb6cf8",
-      "instanceFreezeHash": "5918d587",
-      "assetGeometryHash": "fd75229f",
-      "meshes": 37,
-      "vertices": 78225
+      "freezeHash": "dfb0e80c",
+      "instanceFreezeHash": "5e4efe6d",
+      "assetGeometryHash": "6953a0f1",
+      "meshes": 39,
+      "vertices": 78267
     },
     "merkava3c": {
-      "freezeHash": "4bfbdac0",
-      "instanceFreezeHash": "87c3aca3",
-      "assetGeometryHash": "2442945d",
-      "meshes": 41,
-      "vertices": 147951
+      "freezeHash": "f8075a74",
+      "instanceFreezeHash": "f3721be7",
+      "assetGeometryHash": "cc296b55",
+      "meshes": 43,
+      "vertices": 147993
     },
     "merkava3d": {
-      "freezeHash": "7d5459fc",
-      "instanceFreezeHash": "beda60a3",
-      "assetGeometryHash": "b928ccb7",
-      "meshes": 40,
-      "vertices": 165119
-    },
-    "newc_pziii": {
-      "freezeHash": "4d4fe780",
-      "instanceFreezeHash": "b5cb4e93",
-      "assetGeometryHash": "4ed76c4c",
-      "meshes": 38,
-      "vertices": 41022
-    },
-    "newc_tiger": {
-      "freezeHash": "ae6b02e8",
-      "instanceFreezeHash": "a7c0cdfe",
-      "assetGeometryHash": "4314d225",
-      "meshes": 38,
-      "vertices": 50930
-    },
-    "object279": {
-      "freezeHash": "da0a7330",
-      "instanceFreezeHash": "064713f9",
-      "assetGeometryHash": "d8e933c7",
-      "meshes": 32,
-      "vertices": 59366
+      "freezeHash": "55578fbe",
+      "instanceFreezeHash": "e69f4ae2",
+      "assetGeometryHash": "5cffe15a",
+      "meshes": 43,
+      "vertices": 165165
     },
     "panther_g": {
-      "freezeHash": "59c724f8",
-      "instanceFreezeHash": "f994baee",
-      "assetGeometryHash": "4cece369",
-      "meshes": 36,
-      "vertices": 48974
+      "freezeHash": "0c765c6a",
+      "instanceFreezeHash": "340bee47",
+      "assetGeometryHash": "cd161b04",
+      "meshes": 37,
+      "vertices": 49012
     },
     "pt91m": {
-      "freezeHash": "e811b6b0",
-      "instanceFreezeHash": "7815f8e7",
-      "assetGeometryHash": "887aae21",
-      "meshes": 53,
-      "vertices": 93702
-    },
-    "pziii_konserwa": {
-      "freezeHash": "ffa5cdd4",
-      "instanceFreezeHash": "d3c371a0",
-      "assetGeometryHash": "171bfe9a",
-      "meshes": 38,
-      "vertices": 40236
-    },
-    "sherman_jumbo": {
-      "freezeHash": "bae6f77c",
-      "instanceFreezeHash": "ef483566",
-      "assetGeometryHash": "03b4d992",
-      "meshes": 41,
-      "vertices": 61358
+      "freezeHash": "7e1dcdf2",
+      "instanceFreezeHash": "3e5abf10",
+      "assetGeometryHash": "86c2f986",
+      "meshes": 55,
+      "vertices": 93744
     },
     "spz_puma": {
-      "freezeHash": "3c4abd68",
-      "instanceFreezeHash": "304abf18",
-      "assetGeometryHash": "47968f6e",
-      "meshes": 65,
-      "vertices": 70068
+      "freezeHash": "0fa9b3e4",
+      "instanceFreezeHash": "786517a5",
+      "assetGeometryHash": "a49fad5f",
+      "meshes": 67,
+      "vertices": 70098
     },
     "strv103": {
-      "freezeHash": "ab46b1e8",
-      "instanceFreezeHash": "01ff0345",
-      "assetGeometryHash": "167ecbe1",
-      "meshes": 28,
-      "vertices": 51373
+      "freezeHash": "5b215970",
+      "instanceFreezeHash": "d84f04cc",
+      "assetGeometryHash": "804c1f1c",
+      "meshes": 30,
+      "vertices": 67563
     },
     "sturmtiger": {
-      "freezeHash": "e5a89844",
-      "instanceFreezeHash": "497c9e93",
-      "assetGeometryHash": "ea60aa2e",
-      "meshes": 32,
-      "vertices": 55658
+      "freezeHash": "7206c5ca",
+      "instanceFreezeHash": "c461f8e6",
+      "assetGeometryHash": "16ba6994",
+      "meshes": 33,
+      "vertices": 55696
     },
     "t14": {
-      "freezeHash": "76b32268",
-      "instanceFreezeHash": "92007548",
-      "assetGeometryHash": "0aa735c7",
-      "meshes": 46,
-      "vertices": 62059
-    },
-    "t30": {
-      "freezeHash": "bcf795ac",
-      "instanceFreezeHash": "b2a750fe",
-      "assetGeometryHash": "567768ef",
-      "meshes": 41,
-      "vertices": 58970
-    },
-    "t34_85": {
-      "freezeHash": "11e73534",
-      "instanceFreezeHash": "f5c1e2ce",
-      "assetGeometryHash": "523ae26a",
-      "meshes": 40,
-      "vertices": 56298
-    },
-    "t34_85_cad": {
-      "freezeHash": "2848093c",
-      "instanceFreezeHash": "55837578",
-      "assetGeometryHash": "d153eeec",
-      "meshes": 36,
-      "vertices": 41178
-    },
-    "t44": {
-      "freezeHash": "6c76fa5c",
-      "instanceFreezeHash": "c327b9c4",
-      "assetGeometryHash": "afd05766",
-      "meshes": 35,
-      "vertices": 48883
-    },
-    "t54": {
-      "freezeHash": "e5a29b14",
-      "instanceFreezeHash": "d336c2a6",
-      "assetGeometryHash": "f8c5f235",
-      "meshes": 40,
-      "vertices": 46087
+      "freezeHash": "fbed0438",
+      "instanceFreezeHash": "11ec0a09",
+      "assetGeometryHash": "7419b5c5",
+      "meshes": 48,
+      "vertices": 62101
     },
     "t62mv1": {
-      "freezeHash": "a1f0b0c7",
-      "instanceFreezeHash": "f95eebe6",
-      "assetGeometryHash": "4a70485a",
-      "meshes": 43,
-      "vertices": 58087
+      "freezeHash": "f82aa93c",
+      "instanceFreezeHash": "941b0333",
+      "assetGeometryHash": "b0e27459",
+      "meshes": 45,
+      "vertices": 58201
     },
     "t64bv1": {
-      "freezeHash": "d625e630",
-      "instanceFreezeHash": "ba64bbb1",
-      "assetGeometryHash": "d1d9b869",
-      "meshes": 44,
-      "vertices": 82135
+      "freezeHash": "c35fc67c",
+      "instanceFreezeHash": "01344280",
+      "assetGeometryHash": "27c235ab",
+      "meshes": 53,
+      "vertices": 78781
     },
     "t72b3m": {
-      "freezeHash": "8bae87cc",
-      "instanceFreezeHash": "0abfa083",
-      "assetGeometryHash": "99ce99db",
-      "meshes": 123,
-      "vertices": 226508
-    },
-    "t72b_1987": {
-      "freezeHash": "acc6dd00",
-      "instanceFreezeHash": "8719f205",
-      "assetGeometryHash": "6e2b8941",
-      "meshes": 41,
-      "vertices": 152135
+      "freezeHash": "476fa19c",
+      "instanceFreezeHash": "58f344d2",
+      "assetGeometryHash": "3f56a0ca",
+      "meshes": 125,
+      "vertices": 226550
     },
     "t72bu": {
-      "freezeHash": "588ab668",
-      "instanceFreezeHash": "95bcaf6a",
-      "assetGeometryHash": "3060833d",
-      "meshes": 45,
-      "vertices": 92635
+      "freezeHash": "5cee1c48",
+      "instanceFreezeHash": "3cf3d925",
+      "assetGeometryHash": "13c73e42",
+      "meshes": 47,
+      "vertices": 92677
     },
     "t80": {
-      "freezeHash": "e784ed60",
-      "instanceFreezeHash": "dd32edaa",
-      "assetGeometryHash": "65c244e1",
-      "meshes": 46,
-      "vertices": 76267
+      "freezeHash": "75974ffc",
+      "instanceFreezeHash": "a29b982d",
+      "assetGeometryHash": "db88261b",
+      "meshes": 48,
+      "vertices": 76309
     },
     "t80b": {
-      "freezeHash": "b3534268",
-      "instanceFreezeHash": "60862fdd",
-      "assetGeometryHash": "db5e3f13",
-      "meshes": 50,
-      "vertices": 79243
+      "freezeHash": "ad7140a8",
+      "instanceFreezeHash": "1109a266",
+      "assetGeometryHash": "74410746",
+      "meshes": 52,
+      "vertices": 79285
     },
     "t80bv": {
-      "freezeHash": "8696509c",
-      "instanceFreezeHash": "72cdd5c4",
-      "assetGeometryHash": "b9e0be4b",
-      "meshes": 50,
-      "vertices": 89227
+      "freezeHash": "3243faac",
+      "instanceFreezeHash": "ad4ca0b6",
+      "assetGeometryHash": "9f169ee1",
+      "meshes": 52,
+      "vertices": 89269
     },
     "t80u": {
-      "freezeHash": "6fea5eb4",
-      "instanceFreezeHash": "68e251aa",
-      "assetGeometryHash": "f0c223a1",
-      "meshes": 47,
-      "vertices": 75899
+      "freezeHash": "d22048a9",
+      "instanceFreezeHash": "06dcf90a",
+      "assetGeometryHash": "d86c6dd9",
+      "meshes": 49,
+      "vertices": 75941
     },
     "t84": {
-      "freezeHash": "ac6a56d7",
-      "instanceFreezeHash": "9bfcd42d",
-      "assetGeometryHash": "e9c1431a",
-      "meshes": 44,
-      "vertices": 86058
+      "freezeHash": "b8bd583f",
+      "instanceFreezeHash": "492535d9",
+      "assetGeometryHash": "4e381244",
+      "meshes": 46,
+      "vertices": 86100
     },
     "t90": {
-      "freezeHash": "50d6941c",
-      "instanceFreezeHash": "603be54a",
-      "assetGeometryHash": "e38de7a1",
-      "meshes": 69,
-      "vertices": 130962
+      "freezeHash": "d742a284",
+      "instanceFreezeHash": "67b41dbe",
+      "assetGeometryHash": "7cf0cf0a",
+      "meshes": 71,
+      "vertices": 131004
     },
     "t90a": {
-      "freezeHash": "cb360ad9",
-      "instanceFreezeHash": "9d73c134",
-      "assetGeometryHash": "0bdddd95",
-      "meshes": 61,
-      "vertices": 121953
+      "freezeHash": "78705b71",
+      "instanceFreezeHash": "3fe702f6",
+      "assetGeometryHash": "126a7ee1",
+      "meshes": 63,
+      "vertices": 121995
     },
     "t90a_burlak": {
-      "freezeHash": "b041171c",
-      "instanceFreezeHash": "559cd4a7",
-      "assetGeometryHash": "fd7a690a",
-      "meshes": 60,
-      "vertices": 102049
+      "freezeHash": "8400238e",
+      "instanceFreezeHash": "b7f3476d",
+      "assetGeometryHash": "84134b98",
+      "meshes": 62,
+      "vertices": 103387
     },
     "t90a_vladimir": {
-      "freezeHash": "7141cfc8",
-      "instanceFreezeHash": "82fc6f8",
-      "assetGeometryHash": "d5d1c997",
-      "meshes": 42,
-      "vertices": 73860
+      "freezeHash": "7a6067c1",
+      "instanceFreezeHash": "87b98f54",
+      "assetGeometryHash": "5e267a66",
+      "meshes": 44,
+      "vertices": 73422
     },
     "t90m": {
-      "freezeHash": "c69eb7e0",
-      "instanceFreezeHash": "dd8523cc",
-      "assetGeometryHash": "936bd268",
-      "meshes": 54,
-      "vertices": 125402
+      "freezeHash": "9a6ad7dc",
+      "instanceFreezeHash": "55dbc9bb",
+      "assetGeometryHash": "b698529f",
+      "meshes": 56,
+      "vertices": 125444
     },
     "t90ms": {
-      "freezeHash": "82732500",
-      "instanceFreezeHash": "179374ad",
-      "assetGeometryHash": "cb5bc89f",
-      "meshes": 52,
-      "vertices": 108208
+      "freezeHash": "8926008e",
+      "instanceFreezeHash": "4d150491",
+      "assetGeometryHash": "aa2b7ae8",
+      "meshes": 54,
+      "vertices": 108250
     },
     "t90sm": {
-      "freezeHash": "f0294f9c",
-      "instanceFreezeHash": "1856845a",
-      "assetGeometryHash": "fe26cb10",
-      "meshes": 48,
-      "vertices": 93281
+      "freezeHash": "78235ce4",
+      "instanceFreezeHash": "df40e27b",
+      "assetGeometryHash": "c1b6d3c5",
+      "meshes": 50,
+      "vertices": 93323
     },
     "t95": {
-      "freezeHash": "334d8359",
-      "instanceFreezeHash": "2c8bd631",
-      "assetGeometryHash": "d2c75f34",
-      "meshes": 42,
-      "vertices": 56751
+      "freezeHash": "4bbbcdc1",
+      "instanceFreezeHash": "0a88f4fc",
+      "assetGeometryHash": "ff410d21",
+      "meshes": 43,
+      "vertices": 56789
     },
     "tiger1": {
-      "freezeHash": "fc2d04e0",
-      "instanceFreezeHash": "4e5e7d2b",
-      "assetGeometryHash": "defb3fec",
-      "meshes": 47,
-      "vertices": 73132
-    },
-    "tiger2": {
-      "freezeHash": "82e76720",
-      "instanceFreezeHash": "92530179",
-      "assetGeometryHash": "b28b14dc",
-      "meshes": 38,
-      "vertices": 54998
+      "freezeHash": "96445710",
+      "instanceFreezeHash": "98529286",
+      "assetGeometryHash": "919da6a1",
+      "meshes": 48,
+      "vertices": 73170
     },
     "type10": {
-      "freezeHash": "227aba48",
-      "instanceFreezeHash": "c88b4138",
-      "assetGeometryHash": "68a7604d",
-      "meshes": 61,
-      "vertices": 56898
+      "freezeHash": "615f9f98",
+      "instanceFreezeHash": "e8ca961e",
+      "assetGeometryHash": "4e4fb5d4",
+      "meshes": 62,
+      "vertices": 56936
     },
     "type59": {
-      "freezeHash": "99bcfbf8",
-      "instanceFreezeHash": "cb637313",
-      "assetGeometryHash": "f271adb8",
-      "meshes": 39,
-      "vertices": 52159
+      "freezeHash": "c373f55e",
+      "instanceFreezeHash": "61717210",
+      "assetGeometryHash": "3c0d7ad0",
+      "meshes": 45,
+      "vertices": 63157
     },
     "type74": {
-      "freezeHash": "869930af",
-      "instanceFreezeHash": "61e34ac5",
-      "assetGeometryHash": "0682eb51",
-      "meshes": 48,
-      "vertices": 66751
+      "freezeHash": "1e0444c8",
+      "instanceFreezeHash": "5a2784db",
+      "assetGeometryHash": "97f1d555",
+      "meshes": 52,
+      "vertices": 54525
     },
     "type89": {
-      "freezeHash": "7cc8c4f0",
-      "instanceFreezeHash": "fc1b6530",
-      "assetGeometryHash": "da6f6a83",
-      "meshes": 63,
-      "vertices": 51828
+      "freezeHash": "3acd2758",
+      "instanceFreezeHash": "e84f6dc7",
+      "assetGeometryHash": "c785ccd8",
+      "meshes": 65,
+      "vertices": 51858
     },
     "type90": {
-      "freezeHash": "aaca8148",
-      "instanceFreezeHash": "b08947be",
-      "assetGeometryHash": "d084a33a",
-      "meshes": 52,
-      "vertices": 67797
+      "freezeHash": "b4b1ef78",
+      "instanceFreezeHash": "f83e9e03",
+      "assetGeometryHash": "853e62eb",
+      "meshes": 53,
+      "vertices": 67835
     },
     "type99a": {
-      "freezeHash": "237549f3",
-      "instanceFreezeHash": "4865a602",
-      "assetGeometryHash": "88e758d0",
+      "freezeHash": "f557cc38",
+      "instanceFreezeHash": "9ad20879",
+      "assetGeometryHash": "2fcffe67",
       "meshes": 57,
-      "vertices": 80064
-    },
-    "vickers_mk1": {
-      "freezeHash": "9ee41da4",
-      "instanceFreezeHash": "e2849d0c",
-      "assetGeometryHash": "ab6e057a",
-      "meshes": 41,
-      "vertices": 56795
+      "vertices": 80098
     }
   }
 }
