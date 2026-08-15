@@ -3078,6 +3078,13 @@ function buildTejasFamily(P, p) {
     : vid === 'm1a2_sepv3' ? [0.7, 1, 0]      // right freed for the stowed-loadout slot
     : null;
   const t = dufMul ? { ...TEJAS_TURRET, rackDufMul: dufMul } : TEJAS_TURRET;
+  const familySideSlab = (bucket, side, b0, b1, b2, b3, t0, t1, t2, t3) => {
+    const M = ([x, y, z]) => [side * x, y, z];
+    P.add(bucket, side > 0
+      ? orientedSlab(b0, b1, b2, b3, t0, t1, t2, t3)
+      : orientedSlab(M(b1), M(b0), M(b3), M(b2),
+        M(t1), M(t0), M(t3), M(t2)));
+  };
   if (p.abramsKit === 'tusk') g = { ...g, noTip: true, noFlaps: true };
   // §B1-6/§B4 (m1a1ha graduate round 2026-08-05, EXTENDED FAMILY-WIDE in the
   // rear round 2026-08-06 — owner: "fix m1 butts"; the m1a1ha packet already
@@ -3097,30 +3104,29 @@ function buildTejasFamily(P, p) {
   // - The corner guards + rear-kit softDark ride below/in tejasRearKit.
   g = { ...g, noRearFlap: true, frontFlapZ: 3.620 };
   abramsHull(P, g);
-  // FAMILY FRONT-SHOULDER CLOSURE (owner screenshots 2026-08-15): the
-  // idler-clearance carve correctly narrows the bow core to +/-1.08 between
-  // z 2.60 and 3.49, but the former fender treatment roofed only the very
-  // front tips.  High front-quarter views therefore exposed two large black
-  // pockets beside the glacis.  These paired hull-owned armor roofs bridge
-  // from the center bow into the skirt/fender course.  Their 1.445 m
-  // underside is above the complete animated idler/shoe envelope, and the
-  // 1.740 m inner face of each outboard return is beyond the 1.728 m pin
-  // envelope.  No running-gear, skirt, or bow armor geometry is removed.
+  // FAMILY FRONT-SHOULDER CLOSURE (owner screenshots 2026-08-15): bridge
+  // the narrowed bow core to the fender with a raked armor wedge, not the
+  // former horizontal shelf. The inner carrier stays above the animated
+  // idler crown; only the outboard return drops to the fender line, beyond
+  // the 1.728 m pin envelope.
   for (const side of [-1, 1]) {
-    // Solid roof overlaps the uncarved sponson at z 2.60 and the existing
-    // tip wings at z 3.50, so neither end can open as a plan-view seam.
-    P.add('hull', box(0.690, 0.050, 0.920), side * 1.405, 1.470, 3.040);
-    // The outer return meets the skirt top and makes the closure readable
-    // from side/front-quarter cameras rather than only from directly above.
-    P.add('hull', box(0.050, 0.085, 0.900), side * 1.765, 1.4525, 3.040);
-    // Welded perimeter and shallow transverse breaks preserve the Abrams
-    // segmented-fender grammar without reintroducing dark open cavities.
-    P.add('hullDetail', box(0.032, 0.018, 0.900), side * 1.080, 1.504, 3.040);
-    P.add('hullDetail', box(0.032, 0.018, 0.900), side * 1.730, 1.504, 3.040);
-    for (const z of [2.73, 3.04, 3.35]) {
-      P.add('hullDetail', box(0.630, 0.014, 0.018), side * 1.405, 1.503, z);
-      P.add('hullDetail', cylY(0.014, 0.014, 0.016, 8), side * 1.690, 1.505, z);
-    }
+    familySideSlab('hull', side,
+      [1.065, 1.445, 2.59], [1.742, 1.405, 2.59],
+      [1.742, 1.385, 3.18], [1.065, 1.430, 3.18],
+      [1.065, 1.505, 2.59], [1.742, 1.465, 2.59],
+      [1.742, 1.445, 3.18], [1.065, 1.490, 3.18]);
+    familySideSlab('hull', side,
+      [1.065, 1.430, 3.17], [1.742, 1.385, 3.17],
+      [1.742, 1.275, 3.51], [1.065, 1.335, 3.51],
+      [1.065, 1.490, 3.17], [1.742, 1.445, 3.17],
+      [1.742, 1.335, 3.51], [1.065, 1.395, 3.51]);
+    // A buried outboard skirt return closes the low seam visible from the
+    // garage camera while keeping the low face outside the moving course.
+    familySideSlab('hull', side,
+      [1.735, 1.325, 2.59], [1.792, 1.325, 2.59],
+      [1.792, 1.245, 3.51], [1.735, 1.275, 3.51],
+      [1.735, 1.465, 2.59], [1.792, 1.430, 2.59],
+      [1.792, 1.315, 3.51], [1.735, 1.335, 3.51]);
   }
   // Front fender wings: the oracle's plan reaches 3.71..3.82 at |x| 1.75-1.83
   // (forward of the skirt front) — thin segmented plates flush at the
@@ -3209,6 +3215,24 @@ function buildTejasFamily(P, p) {
     // (r5: pod grille tops mid-shade — the two ink-black bars on the rear
     // deck in view-top; the ref deck is fused with soft dark grilles)
     P.add('hullShadow', box(0.30, 0.02, 0.22), side * 1.56, 1.757, -3.41);
+  }
+  // Rear shoulder roofs and outboard returns close the two open sprocket
+  // wells visible from elevated rear-quarter cameras. The roof stays high
+  // above the complete shoe sweep; the lower wall begins outside the pin
+  // envelope and joins the skirt top, rear tongue, and grille-pod course.
+  for (const side of [-1, 1]) {
+    familySideSlab('hull', side,
+      [1.065, 1.645, -2.49], [1.750, 1.645, -2.49],
+      [1.750, 1.630, -3.60], [1.065, 1.645, -3.60],
+      [1.065, 1.705, -2.49], [1.750, 1.690, -2.49],
+      [1.750, 1.690, -3.60], [1.065, 1.705, -3.60]);
+    familySideSlab('hull', side,
+      [1.736, 1.395, -2.49], [1.790, 1.395, -2.49],
+      [1.790, 1.395, -3.60], [1.736, 1.395, -3.60],
+      [1.736, 1.690, -2.49], [1.790, 1.665, -2.49],
+      [1.790, 1.665, -3.60], [1.736, 1.690, -3.60]);
+    P.add('hullDetail', box(0.020, 0.020, 1.06),
+      side * 1.776, 1.655, -3.035);
   }
   // §B2-read CORNER TONGUES (m1a1ha graduate round 2026-08-05; FAMILY-WIDE
   // since the rear round 2026-08-06): the §B4 stern lane carve (x 1.08)
