@@ -3347,14 +3347,14 @@ function buildAMX30(P, b2) {
     fenders, headlight, liftEye, periscope, jerryCan, ammoCan, stowage } = KIT;
   const slab = orientedSlab;                                                   // §C winding guard on every mirrored slab
   const { rng } = P;
-  // Keep the cast fighting compartment low.  The earlier gate-only stretch
-  // made the whole shell impersonate the height of the TOP-7 station; the
-  // real silhouette gets that height from the independently seated roof kit.
-  const turretYScale = b2 ? 1.13 : 1.112;
-  // Match the cast shoulder width itself, not the width of the source's
-  // misclassified gun/fitting subtree. Both variants share this casting.
-  const turretXScale = 1.11;
-  const turretZScale = b2 ? 1.08 : 1.05;
+  // Family proportion reset: use the authored AMX-40 upper-hull authority as
+  // the datum, then keep the AMX-30's own compact cast turret and equipment.
+  // The former 1.11 x / 1.13 y stretch made both variants read as an enormous
+  // turret on a wafer-thin hull.  These factors restore the low, compact
+  // fighting compartment without touching the five-wheel running gear.
+  const turretYScale = b2 ? 0.74 : 0.72;
+  const turretXScale = b2 ? 0.92 : 0.90;
+  const turretZScale = b2 ? 0.98 : 0.96;
   // Published 6.59/9.48 m dimensions are sovereign.  The B2 reference print
   // is short after width normalization, so shortening our authored hull to
   // that artifact is not an acceptable fidelity fix.
@@ -3368,9 +3368,10 @@ function buildAMX30(P, b2) {
   // ---- hull: low tub + full-width sponson band + one-piece glacis ----
   P.add('hull', box(1.84, 0.70, 4.90), 0, 0.71, 0);                            // continuous lower tub: inside the ±0.97 m inner shoe lanes
   P.add('hull', box(1.84, 0.70, 0.50), 0, 0.71, -2.70);                        // tail tub segment joins the same lower datum
-  P.add('hull', frustum(1.51, 1.94, -3.28, 1.49, 1.90, -3.26, 1.24, 1.38));    // shallow sponson shoulder begins above the 1.19 m shoe crown
-  P.add('hull', box(2.30, 0.05, 2.30), 0, 1.390, 0.45);                       // fore deck shoulder (z -0.70..1.60)
-  P.add('hull', box(2.30, 0.05, 2.55), 0, 1.355, -1.98);                      // gently falling engine deck
+  P.add('hull', frustum(1.51, 1.94, -3.28, 1.49, 1.90, -3.26, 1.24, 1.64));    // AMX-40-family sponson authority, still clear of the 1.19 m shoe crown
+  P.add('hull', box(2.30, 0.06, 2.30), 0, 1.645, 0.45);                       // high fore deck shoulder (z -0.70..1.60)
+  P.add('hull', box(2.30, 0.07, 1.26), 0, 1.615, -1.34);                      // forward engine-deck step
+  P.add('hull', box(2.30, 0.09, 1.30), 0, 1.635, -2.62);                      // raised rear engine plateau
   // GLACIS: the rounded one-piece plate — ONE raked plane (25.0 deg) from
   // the deck front edge to the pointed nose, with narrow side blends that
   // carry the casting round-over (§B1: one surface, no staircase)
@@ -3382,8 +3383,8 @@ function buildAMX30(P, b2) {
     [-0.94, 0.36, 3.00], [0.94, 0.36, 3.00], [0.94, 0.96, 1.60], [-0.94, 0.96, 1.60],
     [-0.94, 0.98, 3.285], [0.94, 0.98, 3.285], [0.94, 1.08, 1.58], [-0.94, 1.08, 1.58]));
   P.add('hull', slab(                                                        // true raked upper glacis: broad deck shoulder -> low narrow prow
-    [-1.10, 0.96, 3.15], [1.10, 0.96, 3.15], [1.51, 1.31, 1.54], [-1.51, 1.31, 1.54],
-    [-1.10, 1.02, 3.14], [1.10, 1.02, 3.14], [1.51, 1.39, 1.54], [-1.51, 1.39, 1.54]));
+    [-1.10, 0.96, 3.15], [1.10, 0.96, 3.15], [1.51, 1.54, 1.54], [-1.51, 1.54, 1.54],
+    [-1.10, 1.02, 3.14], [1.10, 1.02, 3.14], [1.51, 1.66, 1.54], [-1.51, 1.66, 1.54]));
   P.add('hull', frustum(0.94, 3.31, 3.02, 0.94, 3.30, 2.98, 0.98, 1.09));      // shallow nose cap preserves the 6.59 m body datum
   P.add('hull', slab(                                                         // rising under-nose return, clear of both track lanes
     [-0.94, 0.36, 3.00], [0.94, 0.36, 3.00], [0.92, 0.52, 2.50], [-0.92, 0.52, 2.50],
@@ -3391,13 +3392,13 @@ function buildAMX30(P, b2) {
   for (const s of [-1, 1]) {
     P.add('hull', slab(                                                        // casting blend: glacis edge -> sponson line (above the wraps)
       [s * 1.51, 1.20, 1.60], [s * 1.10, 1.20, 2.34], [s * 1.10, 1.20, 2.70], [s * 1.51, 1.20, 2.08],
-      [s * 1.51, 1.38, 1.58], [s * 1.10, 1.20, 2.34], [s * 1.10, 1.20, 2.68], [s * 1.51, 1.20, 2.06]));
+      [s * 1.51, 1.64, 1.58], [s * 1.10, 1.31, 2.34], [s * 1.10, 1.28, 2.68], [s * 1.51, 1.54, 2.06]));
   }
   // driver LEFT: flush hatch plate + episcopes on the glacis top
-  P.add('hull', box(0.52, 0.035, 0.55), -0.55, 1.372, 1.28, -0.12, 0, 0);
-  periscope(P, 'hullDetail', -0.72, 1.392, 1.10);
-  periscope(P, 'hullDetail', -0.55, 1.392, 1.06);
-  periscope(P, 'hullDetail', -0.38, 1.392, 1.10);
+  P.add('hull', box(0.52, 0.035, 0.55), -0.55, 1.632, 1.28, -0.12, 0, 0);
+  periscope(P, 'hullDetail', -0.72, 1.652, 1.10);
+  periscope(P, 'hullDetail', -0.55, 1.652, 1.06);
+  periscope(P, 'hullDetail', -0.38, 1.652, 1.10);
   // splash board across the glacis (the AMX-30 V-strip)
   for (const s of [-1, 1]) P.add('hull', box(0.52, 0.10, 0.05), s * 0.46, 1.10, 2.36 - Math.abs(s) * 0, -0.42, s * 0.38, 0);
   // rear: raked tail plate + fender exhaust silencers (identity cue).
@@ -3414,10 +3415,10 @@ function buildAMX30(P, b2) {
   P.add('hull', box(1.60, 0.50, 0.045), 0, 1.09, -3.2975);                     // 90-ladder r1: tail plate band y 0.84..1.34 face -3.32 — the rear BODY column (with the nose tongue: hullLengthM 6.59; overall 9.49 with the 6.17 muzzle)
   for (let k = 0; k < 3; k++) P.add('hullDetail', box(1.52, 0.03, 0.05), 0, 0.83 + k * 0.11, -3.25);
   for (const s of [-1, 1]) {
-    P.add('hull', cylZ(0.145, 1.05, 12), s * 1.24, 1.42, -2.42);               // exhaust silencer drums on the rear fenders
-    P.add('hullDark', cylZ(0.148, 0.06, 12), s * 1.24, 1.42, -2.94);           // end ring
-    P.add('hullDark', cylZ(0.075, 0.22, 10), s * 1.24, 1.44, -3.06);           // tail pipe
-    P.add('hullDetail', box(0.30, 0.02, 0.72), s * 1.24, 1.335, -2.44);        // mount straps
+    P.add('hull', cylZ(0.145, 1.05, 12), s * 1.24, 1.65, -2.42);               // exhaust silencer drums on the raised rear deck
+    P.add('hullDark', cylZ(0.148, 0.06, 12), s * 1.24, 1.65, -2.94);           // end ring
+    P.add('hullDark', cylZ(0.075, 0.22, 10), s * 1.24, 1.67, -3.06);           // tail pipe
+    P.add('hullDetail', box(0.30, 0.02, 0.72), s * 1.24, 1.565, -2.44);        // mount straps
     P.add('hullRubber', box(0.42, 0.30, 0.03), s * 1.26, 0.52, -3.28);         // mud flaps
     P.add('hullRubber', box(0.42, 0.26, 0.03), s * 1.26, 0.60, 3.27);          // bow flaps
     // The outboard flaps are carried by short fender tips and vertical
@@ -3431,14 +3432,14 @@ function buildAMX30(P, b2) {
     // into a vertical box ahead of the idler.
     P.add('hull', box(0.34, 0.08, 0.08), s * 1.16, 1.24, 3.03);               // transverse shoulder seat clears the terminal shoe crown
     P.add('hullDetail', box(0.10, 0.38, 0.06), s * 1.26, 0.91, 3.18, 0.25, 0, 0); // short hinge stay from flap crown into the nose cap
-    P.add('hullDetail', box(0.08, 0.08, 4.10), s * 1.54, 1.37, -0.20);         // supported fender edge rail, clear of the animated return sweep
+    P.add('hullDetail', box(0.08, 0.08, 4.10), s * 1.54, 1.60, -0.20);         // supported fender edge rail, clear of the animated return sweep
     if (b2) {
-      P.add('hull', box(0.18, 0.18, 0.82), s * 1.58, 1.34, -1.74);             // B2 unequal fender service bin
+      P.add('hull', box(0.18, 0.18, 0.82), s * 1.58, 1.57, -1.74);             // B2 unequal fender service bin
       // Keep the full-length inboard return, but seat its lower face on the
       // raised sponson instead of dropping it through the moving top shoes.
-      P.add('hullDetail', box(0.12, 0.12, 0.72), s * 1.54, 1.34, -1.74);       // broad inboard return, seated above the moving return shoes
-      P.add('hull', box(0.18, 0.20, 0.72), s * 1.58, 1.30, -2.73);             // rear fender service shoulder above the terminal wrap
-      P.add('hullDetail', box(0.12, 0.20, 0.62), s * 1.50, 1.30, -2.73);       // broad structural return into the raised sponson
+      P.add('hullDetail', box(0.12, 0.12, 0.72), s * 1.54, 1.57, -1.74);       // broad inboard return, seated above the moving return shoes
+      P.add('hull', box(0.18, 0.20, 0.72), s * 1.58, 1.53, -2.73);             // rear fender service shoulder above the terminal wrap
+      P.add('hullDetail', box(0.12, 0.20, 0.62), s * 1.50, 1.53, -2.73);       // broad structural return into the raised sponson
       P.add('hullDark', box(0.13, 0.34, 0.025), s * 1.58, 0.98, -3.095);      // backed rear service recess
       for (let k = 0; k < 2; k++) {
         P.add('hullDetail', box(0.14, 0.025, 0.03), s * 1.58, 0.89 + k * 0.16, -3.115);
@@ -3452,9 +3453,9 @@ function buildAMX30(P, b2) {
   for (const s of [-1, 1]) {
     for (let row = 0; row < 3; row++) {
       const z = -1.18 - row * 0.48;
-      P.add('hullDark', box(0.48, 0.018, 0.34), s * 0.63, 1.395, z);
+      P.add('hullDark', box(0.48, 0.018, 0.34), s * 0.63, 1.665, z);
       for (let bar = 0; bar < 4; bar++) {
-        P.add('hullDetail', box(0.46, 0.012, 0.018), s * 0.63, 1.412, z - 0.13 + bar * 0.085);
+        P.add('hullDetail', box(0.46, 0.012, 0.018), s * 0.63, 1.682, z - 0.13 + bar * 0.085);
       }
     }
     P.add('hullDark', box(0.50, 0.24, 0.025), s * 0.69, 1.03, -3.325);         // backed transom service bay
@@ -3477,15 +3478,15 @@ function buildAMX30(P, b2) {
     P.add('hullDetail', box(0.40, 0.02, 0.30), s * 1.21, 1.185, 3.01);
     P.add('hullDark', box(0.11, 0.13, 0.06), s * 0.55, 0.62, 3.24);            // tow shackles low on the nose
   }
-  const cable = FITTINGS.towCable({ mats: P.mats, pts: [[1.42, 1.40, 1.20], [1.47, 1.40, -0.30], [1.44, 1.40, -1.60]], r: 0.017, seed: 6 });
+  const cable = FITTINGS.towCable({ mats: P.mats, pts: [[1.42, 1.65, 1.20], [1.47, 1.65, -0.30], [1.44, 1.65, -1.60]], r: 0.017, seed: 6 });
   P.hullG.add(cable);
-  liftEye(P, 'hullDetail', -1.35, 1.40, 0.20);
-  liftEye(P, 'hullDetail', 1.35, 1.40, 0.20);
+  liftEye(P, 'hullDetail', -1.35, 1.65, 0.20);
+  liftEye(P, 'hullDetail', 1.35, 1.65, 0.20);
   // Unit numbers belong on the raised sponson shoulder, not in the moving
   // return lane.  Preserve both decals and their side read while giving each
   // a real armor seat above the native shoes.
-  P.decal('hull', 'number', b2 ? '68' : '53', 0.22, [1.51, 1.29, 0.4], Math.PI / 2);
-  P.decal('hull', 'number', b2 ? '68' : '53', 0.22, [-1.51, 1.29, 0.4], -Math.PI / 2);
+  P.decal('hull', 'number', b2 ? '68' : '53', 0.22, [1.51, 1.53, 0.4], Math.PI / 2);
+  P.decal('hull', 'number', b2 ? '68' : '53', 0.22, [-1.51, 1.53, 0.4], -Math.PI / 2);
   // ---- running gear: 5 BIG roadwheels + 5 rollers, front idler ----
   // The comparison side profile carries a tighter five-wheel cadence than
   // the old generic AMX course.  Keep the physical hull datum unchanged and
@@ -3518,7 +3519,7 @@ function buildAMX30(P, b2) {
   // on most fits" per the round orders; the B2 reads by its LLLTV box,
   // dischargers and fit deltas instead.)
   // ---- turret: cast, LONG bustle taper ----
-  P.turretG.position.set(0, 1.38, 0.30);
+  P.turretG.position.set(0, 1.53, 0.30);
   const PLAN = [
     [-0.52, 1.04], [0.0, 1.16], [0.52, 1.04], [0.86, 0.74], [1.02, 0.30],
     [1.05, -0.28], [0.93, -0.92], [0.74, -1.58], [0.56, -2.02],
@@ -3560,7 +3561,7 @@ function buildAMX30(P, b2) {
   // Published height is measured through the distinctive TOP-7 station.
   // Keep the new compact/tapered mechanism, but restore that height with an
   // open supported neck instead of resurrecting the former opaque box tower.
-  const stationLift = b2 ? 0.22 : 0.10;
+  const stationLift = b2 ? 0.08 : 0.02;
   P.add('turret', cylY(0.31, 0.33, 0.13, 16), 0.52 * stationSign, 0.84, commanderZ);           // cupola ring
   P.add('turret', cylY(0.25, 0.29, 0.08, 16), 0.52 * stationSign, 0.895, commanderZ);          // rounded hatch shoulder
   P.add('turretDark', torus(0.23, 0.013, 16), 0.52 * stationSign, 0.945, commanderZ);          // hatch seal / cupola rim
@@ -3601,7 +3602,7 @@ function buildAMX30(P, b2) {
     // Foot-origin fitting: seat its column inside the armored optical bridge
     // so the receiver and forward barrel clear the cupola instead of being
     // buried inside the cast roof.
-    mg.position.set(0.84 * stationSign, 1.30 + stationLift * 0.5, stationZ + 0.02);
+    mg.position.set(0.84 * stationSign, (1.20 + stationLift * 0.5) * turretYScale, stationZ + 0.02);
     P.turretG.add(mg);
   }
   // gunner sight hood on the roof right-forward + rangefinder ear bulges
@@ -3642,7 +3643,7 @@ function buildAMX30(P, b2) {
   P.decal('turret', 'number', b2 ? '68' : '53', 0.26, [0.98, 0.30, -0.3], Math.PI / 2, 0, 0.04);
   P.decal('turret', 'number', b2 ? '68' : '53', 0.26, [-0.98, 0.30, -0.3], -Math.PI / 2, 0, -0.04);
   // ---- 105 F1 + 20 mm M693 coax BESIDE it + IR searchlight LEFT ----
-  P.gunG.position.set(0, b2 ? 0.52 : 0.53, 0.75);
+  P.gunG.position.set(0, b2 ? 0.37 : 0.36, 0.75);
   trunnionRoll(P, 0.17, 0.52);
   P.addGunExtra(cylZ(0.155, 0.42, 12, 0.19), 0, 0, 0.30);                      // cast rotor collar at the boot
   P.addGunExtraDark(torus(0.125, 0.020, 12), 0, 0, 0.52, 0, 0, 0);             // canvas boot ring
@@ -3672,22 +3673,19 @@ function buildAMX30(P, b2) {
   const gunRadius = b2 ? 0.136 : 0.134;
   buildGun(P, { len: gunLen, r: gunRadius, sleeve: false, evac: null, collar: false, baseR: 0.155 });
   muzzleBore(P, gunRadius, gunLen - 0.02);                                     // §B3.1 muzzle bore (shadow-named)
-  // The reference's cast fighting compartment has substantially more
-  // vertical authority than the old pancake-like procedural section while
-  // retaining the same excellent plan footprint.  Scale only our authored
-  // turret solids about their local armor-ring datum; the hull, course and
-  // plan stay untouched, and the independently pitchable cannon keeps its
-  // circular bore.
+  // Scale only the authored AMX-30 fighting compartment about its local ring
+  // datum.  The higher AMX-40-family upper hull supplies the correct vehicle
+  // mass; the turret remains a distinct compact AMX-30 casting and the
+  // independently pitchable cannon keeps its circular bore.
   P.scaleBuckets(['turret', 'turretDark', 'turretDetail', 'turretGlass', 'turretCloth'], turretXScale, turretYScale, turretZScale);
   P.scaleBuckets([
     'hull', 'hullDark', 'hullDetail', 'hullRubber', 'hullGlass',
     'turret', 'turretDark', 'turretDetail', 'turretGlass', 'turretCloth',
     'gunMount', 'gunMountDark',
   ], 1, 1, bodyZScale);
-  // Keep the hull at its authored low AMX-30 datum.  Height normalization is
-  // confined to the cast fighting compartment and its independently seated
-  // roof station; stretching the tub hides the wheels and falsifies the
-  // glacis/track relationship.
+  // The five-wheel course and lower tub stay at the AMX-30 datum.  Only the
+  // upper hull was rebuilt to the stronger AMX-40-family proportion, with no
+  // skirts added to either variant.
   P.topY = 1.15;
 }
 function buildAMX30B(P) { buildAMX30(P, false); }
