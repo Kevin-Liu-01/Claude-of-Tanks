@@ -4171,7 +4171,8 @@ function buildT90(P) {
   P.turretG.scale.set(installedTurretX, installedTurretY, 1);
   P.gunG.scale.x = 1 / installedTurretX;
   P.gunG.scale.y = 1 / installedTurretY;
-  P.gunG.position.y = (1.69 - P.turretG.position.y) / installedTurretY;
+  const installedGunAxisY = 1.81;
+  P.gunG.position.y = (installedGunAxisY - P.turretG.position.y) / installedTurretY;
 
   // Family-height reconciliation: lower the complete authored fixed hull
   // package by five centimetres while preserving the native running-gear
@@ -4428,6 +4429,12 @@ function replaceT90ACastTurret(P, { vladimir = false, burlakBase = false } = {})
     [1.46, -0.04], [1.61, 0.10], [1.58, 0.27], [1.43, 0.43],
     [1.18, 0.57], [0.84, 0.68], [0.44, 0.745], [0.05, 0.775],
   ];
+  // The production package shares Burlak's shell, but its gun, Shtora and
+  // frontal K-5 need one common installed datum.  Keep these offsets paired:
+  // moving the gun alone leaves the dazzlers and their armor shoes behind,
+  // while moving only the faces exposes unsupported carrier roots.
+  const frontPackageLift = burlakBase ? 0.12 : 0;
+  const frontPackageForward = burlakBase ? 0.07 : 0;
   if (burlakBase) {
     // Direct reuse of the live Burlak foundation.  The old branch copied an
     // obsolete twelve-point outline and drifted from the model the owner
@@ -4435,7 +4442,12 @@ function replaceT90ACastTurret(P, { vladimir = false, burlakBase = false } = {})
     // full autoloader bustle.  Only Burlak's prototype roof suite remains
     // variant-owned; the plain T-90 seats its own equipment on this body.
     replaceT90BurlakCoreNative2026(P);
-    addT90BurlakShoulderFoundationNative2026(P, { includeProtection: false, carrierDrop: 0.265 });
+    addT90BurlakShoulderFoundationNative2026(P, {
+      includeProtection: false,
+      carrierDrop: 0.265,
+      frontLift: frontPackageLift,
+      frontForward: frontPackageForward,
+    });
     addT90BurlakBustleNative2026(P);
   } else {
     // Base T-90 casting: the shell is authored from independent longitudinal
@@ -4467,10 +4479,11 @@ function replaceT90ACastTurret(P, { vladimir = false, burlakBase = false } = {})
   // The production T-90 mounts its frontal protection on the gun-axis band,
   // lower than the Burlak prototype's shoulder course. Keep the exact shared
   // shell and bustle, but center the carrier, K-5 cassettes and OTShU eyes at
-  // the accepted local gun datum (roughly y=0.17) instead of leaving them on
-  // the crown. Their unequal original heights require distinct seat drops.
-  const frontArmorDrop = burlakBase ? 0.245 : 0;
-  const shtoraDrop = burlakBase ? 0.31 : 0;
+  // the raised production gun band instead of leaving them either on the
+  // crown or down against the hull roof. Their unequal authored heights still
+  // require distinct seat drops before the shared installed lift is applied.
+  const frontArmorDrop = burlakBase ? 0.245 - frontPackageLift : 0;
+  const shtoraDrop = burlakBase ? 0.31 - frontPackageLift : 0;
 
   // Six low Kontakt-5 crown plates follow the flattened pear cap.  The old
   // three-sheet row was wider than the new crown and read as one loose roof
@@ -4505,12 +4518,13 @@ function replaceT90ACastTurret(P, { vladimir = false, burlakBase = false } = {})
       [1.53, 0.30, 0.09, 0.28, -0.25, 0.34, 0.20, 0.33],
     ]) {
       const seatedY = y - frontArmorDrop;
-      P.add('turret', KIT.xform(box(w * 0.82, h * 0.58, d * 0.76), 0, -h * 0.20, -0.09), s * (x - 0.035), seatedY, z, roll, -s * yaw, 0);
-      P.add('turret', KIT.xform(box(w, h, d), 0, 0, -0.055), s * x, seatedY, z, roll, -s * yaw, 0);
-      P.add('turretDark', KIT.xform(box(w * 0.76, 0.012, d * 0.70), 0, h * 0.52, 0.040), s * x, seatedY, z, roll, -s * yaw, 0);
-      P.add('turretDark', KIT.xform(box(0.018, h * 0.76, d * 0.64), w * 0.44, 0, 0.035), s * x, seatedY, z, roll, -s * yaw, 0);
+      const seatedZ = z + frontPackageForward;
+      P.add('turret', KIT.xform(box(w * 0.82, h * 0.58, d * 0.76), 0, -h * 0.20, -0.09), s * (x - 0.035), seatedY, seatedZ, roll, -s * yaw, 0);
+      P.add('turret', KIT.xform(box(w, h, d), 0, 0, -0.055), s * x, seatedY, seatedZ, roll, -s * yaw, 0);
+      P.add('turretDark', KIT.xform(box(w * 0.76, 0.012, d * 0.70), 0, h * 0.52, 0.040), s * x, seatedY, seatedZ, roll, -s * yaw, 0);
+      P.add('turretDark', KIT.xform(box(0.018, h * 0.76, d * 0.64), w * 0.44, 0, 0.035), s * x, seatedY, seatedZ, roll, -s * yaw, 0);
     }
-    P.add('turret', box(0.18, 0.24, 0.52), s * 1.16, 0.27 - frontArmorDrop, 0.19, 0, 0, -s * 0.18);
+    P.add('turret', box(0.18, 0.24, 0.52), s * 1.16, 0.27 - frontArmorDrop, 0.19 + frontPackageForward, 0, 0, -s * 0.18);
   }
   if (burlakBase) {
     // The clipped shell exposes a broader, flatter cheek than the earlier
@@ -4525,13 +4539,14 @@ function replaceT90ACastTurret(P, { vladimir = false, burlakBase = false } = {})
         [1.18, 0.31, 0.39, 0.66, -0.24, 0.34, 0.18, 0.32],
       ]) {
         const seatedY = y - frontArmorDrop;
-        P.add('turret', KIT.xform(box(w * 0.80, h * 0.52, d * 0.70), 0, -h * 0.24, -0.085), s * x, seatedY, z, roll, -s * yaw, 0);
-        P.add('turret', KIT.xform(box(w, h, d), 0, 0, -0.050), s * x, seatedY, z, roll, -s * yaw, 0);
-        P.add('turretDark', KIT.xform(box(w * 0.68, 0.010, d * 0.62), 0, h * 0.52, 0.030), s * x, seatedY, z, roll, -s * yaw, 0);
+        const seatedZ = z + frontPackageForward;
+        P.add('turret', KIT.xform(box(w * 0.80, h * 0.52, d * 0.70), 0, -h * 0.24, -0.085), s * x, seatedY, seatedZ, roll, -s * yaw, 0);
+        P.add('turret', KIT.xform(box(w, h, d), 0, 0, -0.050), s * x, seatedY, seatedZ, roll, -s * yaw, 0);
+        P.add('turretDark', KIT.xform(box(w * 0.68, 0.010, d * 0.62), 0, h * 0.52, 0.030), s * x, seatedY, seatedZ, roll, -s * yaw, 0);
       }
     }
   }
-  P.add('turretDark', box(0.54, 0.30, 0.055), 0, 0.39, 1.29, -0.40, 0, 0);
+  P.add('turretDark', box(0.54, 0.30, 0.055), 0, 0.39 + frontPackageLift, 1.29 + frontPackageForward, -0.40, 0, 0);
   // The compact first pass left the OTShU heads looking like indicator lamps
   // on the larger cheek face. Restore their visual authority and bury the
   // housings into the mantlet shoulders; the apertures remain inside armor.
@@ -4542,7 +4557,7 @@ function replaceT90ACastTurret(P, { vladimir = false, burlakBase = false } = {})
     // already-approved proportions.
     eyeScale: burlakBase ? 1.55 : 1.28,
     eyeX: burlakBase ? 0.60 : 0.57,
-    eyeZ: 1.24,
+    eyeZ: 1.24 + frontPackageForward,
   }, 0.48 - shtoraDrop);
   if (!vladimir) {
     if (P._shtoraRed) {
@@ -4556,10 +4571,10 @@ function replaceT90ACastTurret(P, { vladimir = false, burlakBase = false } = {})
       P.add('turret', orientedSlab(
         [-0.17, -0.15, -0.11], [0.17, -0.15, -0.11], [0.17, -0.15, 0.11], [-0.17, -0.15, 0.11],
         [-0.13, 0.15, -0.09], [0.13, 0.15, -0.09], [0.13, 0.15, 0.09], [-0.13, 0.15, 0.09],
-      ), s * 0.55, 0.47 - shtoraDrop, 1.13, -0.30, -s * 0.15, 0);
-      P.add('turret', KIT.xform(box(0.34, 0.23, 0.42), 0, 0, -0.09), s * 0.30, 0.34 - shtoraDrop, 1.20, -0.38, -s * 0.23, 0);
-      P.add('turret', KIT.xform(box(0.21, 0.20, 0.34), 0, -0.015, -0.06), s * 0.76, 0.38 - shtoraDrop, 1.05, -0.28, -s * 0.34, 0);
-      P.add('turretDark', box(0.034, 0.22, 0.19), s * 0.75, 0.45 - shtoraDrop, 1.16, -0.20, -s * 0.30, 0);
+      ), s * 0.55, 0.47 - shtoraDrop, 1.13 + frontPackageForward, -0.30, -s * 0.15, 0);
+      P.add('turret', KIT.xform(box(0.34, 0.23, 0.42), 0, 0, -0.09), s * 0.30, 0.34 - shtoraDrop, 1.20 + frontPackageForward, -0.38, -s * 0.23, 0);
+      P.add('turret', KIT.xform(box(0.21, 0.20, 0.34), 0, -0.015, -0.06), s * 0.76, 0.38 - shtoraDrop, 1.05 + frontPackageForward, -0.28, -s * 0.34, 0);
+      P.add('turretDark', box(0.034, 0.22, 0.19), s * 0.75, 0.45 - shtoraDrop, 1.16 + frontPackageForward, -0.20, -s * 0.30, 0);
     }
   }
 
@@ -4659,10 +4674,10 @@ function replaceT90ACastTurret(P, { vladimir = false, burlakBase = false } = {})
 
   // Continuous 2A46M assembly: buried trunnion, canvas boot, segmented tube,
   // thermal jacket and a true dark bore.
-  // Base 2A46M trunnion is 1.72 m above ground on the measured hull.
-  // Hold the accepted world-space gun axis while the clipped shell receives
-  // its own ring seat.
-  P.gunG.position.set(0, vladimir ? 0.10 : (burlakBase ? 0.20 : 0.21), 0.96);
+  // The base 2A46M trunnion finishes at 1.76 m after the five-centimetre hull
+  // reconciliation below. Keep its complete saddle/tube group on the same
+  // raised and forward datum as the K-5 and Shtora package.
+  P.gunG.position.set(0, vladimir ? 0.10 : (burlakBase ? 0.20 + frontPackageLift : 0.21), 0.96 + frontPackageForward);
   ruSaddle(P, { rollR: 0.21, rollW: 0.62, tubeR: 0.112, rootL: 0.68 });
   P.addGunExtra(KIT.xform(cylZ(0.48, 0.30, 18, 0.44), 0, 0, 0, 0, 0, 0, [0.58, 0.42, 1]), 0, 0.02, 0.14);
   P.addGunExtraDark(cylZ(0.17, 0.28, 16, 0.13), 0, 0.01, 0.43);
@@ -6827,7 +6842,12 @@ function buildT90MProryvNative2026(P) {
 // autoloader bustle.  Reuse the authored family chassis, then replace only
 // the complete turret/gun package with the distinct repository-authored
 // Burlak assembly.
-function addT90BurlakShoulderFoundationNative2026(P, { includeProtection = true, carrierDrop = 0 } = {}) {
+function addT90BurlakShoulderFoundationNative2026(P, {
+  includeProtection = true,
+  carrierDrop = 0,
+  frontLift = 0,
+  frontForward = 0,
+} = {}) {
   const { box, polyTurret } = KIT;
   // Burlak keeps the mature cast T-90A fighting compartment.  Its defining
   // armor is a clipped, open-edged outer shoulder system rather than a
@@ -6841,7 +6861,7 @@ function addT90BurlakShoulderFoundationNative2026(P, { includeProtection = true,
       [s * 0.28, 1.30], [s * 0.82, 1.30], [s * 1.84, 0.98],
       [s * 1.80, 0.84], [s * 1.46, 0.62], [s * 1.44, 0.05],
       [s * 0.42, 0.48],
-    ], 0.07, 1.00, 1.00), 0, 0.40 - carrierDrop, 0);
+    ], 0.07, 1.00, 1.00), 0, 0.40 - carrierDrop + frontLift, frontForward);
     // Unequal planted protection cassettes preserve negative breaks between
     // the wing and the dome instead of recreating the rejected slab wall.
     if (includeProtection) {
@@ -6871,8 +6891,8 @@ function addT90BurlakShoulderFoundationNative2026(P, { includeProtection = true,
   // to z≈1.62 while the closed cast core stops near z=1.3; this supported
   // center mass joins both shoulder roots to the gun cradle and prevents a
   // bare barrel from appearing to enter the turret through a narrow slit.
-  P.add('turret', box(0.90, 0.36, 0.34), 0, 0.18, 1.43, -0.08, 0, 0);
-  P.add('turretDark', box(0.80, 0.29, 0.028), 0, 0.17, 1.605, -0.08, 0, 0);
+  P.add('turret', box(0.90, 0.36, 0.34), 0, 0.18 + frontLift, 1.43 + frontForward, -0.08, 0, 0);
+  P.add('turretDark', box(0.80, 0.29, 0.028), 0, 0.17 + frontLift, 1.605 + frontForward, -0.08, 0, 0);
 }
 
 function addT90BurlakBustleNative2026(P) {

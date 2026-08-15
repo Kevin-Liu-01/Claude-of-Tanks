@@ -125,7 +125,7 @@ re-freeze NEW hash, all in ONE commit.
 | fv510 | f912ef92 | RE-FROZEN 2026-08-14 (§5.189 non-subtractive carrier clearance: all six deep WRAP modules, chevrons, open rails, complete sponson, skirts, wheels and native course remain; only the buried lower transverse module carriers move upward inside the same closed armor panels; strict band/shoe front 0/0, rear 0/0, full sweep 0/0; fresh 45-frame yaw proof and regenerated targeted assets PASS; prior 313ab8ca retired) |
 | m26_pershing | 2f006738 | RE-RECORDED 2026-08-08: hash moved by LANDED 5f39989 (armorM4 gunBarrel shadow-proxy 3.96->3.44; m26/m45 inherit m4a3e8 proxies — patton.js bytes unchanged); double-confirmed by builder bisect + m45-grad critic; prior 65c564c0 bore+winding re-cert lineage (floors 9.1-9.4) carries |
 | t90m | a21894b8 | RE-FROZEN 2026-08-12 (§5.127 first-party native V-bow hull, welded Proryv shell, supported bustle/rack and exact six-wheel course; machine fidelity 90.96 / minimum view 90.02; 42-frame yaw/ownership PASS; incompatible legacy contour row retained honestly rather than chased) |
-| t90 | 34b9980 | RE-FROZEN 2026-08-13 (owner-directed hybrid now calls the exact live first-party Burlak 18-station core, shoulder foundation AND full five-station autoloader bustle, then carries its own enlarged seated Shtora eyes and K-5/smoke/NSVT/radio package; Burlak remains byte-stable at ec0dd544; hull, skirts and native six-wheel course untouched; fresh 45-frame packet, genuine yaw ownership, exact track 0/0 bands+shoes, muzzle/rig/winding/tests/build PASS; legacy unbustled T-90 mask is explicitly non-authoritative for the new silhouette; 8e196a78 and earlier freezes retired) |
+| t90 | d15f8148 | RE-FROZEN 2026-08-15 (§5.241 unified front-package correction: complete gun/saddle, enlarged Shtora eyes, their buried supports, shoulder carrier and both frontal K-5 courses rise 0.12 m and move 0.07 m toward the bow as one turret-owned assembly; Burlak core/bustle, roof suite, hull, skirts and singular six-wheel smart course remain unchanged; 45-frame paired/yaw packet, live Surface Lab front/hero proof, exact track 0/0 bands+shoes, one-course, muzzle, parent and winding checks PASS; prior 34b9980 and earlier freezes retired) |
 | t90a | ae37a914 | RE-FROZEN 2026-08-13 (post-rollback family-scale/equipment reconciliation: retained the approved first-party hull, cast turret and K-5 package; restored two unequal turret-owned radio whip stations on broad shoes/collars/struts instead of scaling the tank; 45 unique paired/yaw frames, genuine quarter-turn, independent §B8 floor 9.6 / mean 9.76, parent/winding clean; prior 810a6f18 retired) |
 | t90a_vladimir | bee9eb44 | RE-FROZEN 2026-08-15 (restored the prominent round OTShU-1-7 pair on broad cheek shoes and raised the complete articulated gun/saddle group 0.07 m; 45 distinct paired/yaw frames, genuine quarter-turn, independent §B8 floor 9.7 / mean 9.78; parent 0/0/0, one native six-wheel course, exact track 0/0, muzzle and winding pixels clean; prior 7a6067c1 and earlier freezes retired) |
 | t90sm | 7efc69c9 | GRADUATED 2026-08-10; RE-FROZEN §5.105 (owner-priority complete redesign: source-measured low diamond shell retained, solid bustle steps replaced by backed slat cells, deep scalloped inboard skirts and layered rear service field added; gate 90.0 x2; standard/track/winding clean; independent §B8 floor 9.0 / mean 9.08 x14, all 28 yaw frames PASS; prior 56324371 retired) |
@@ -8494,3 +8494,34 @@ production build pass.
 **KEEP this repair additive and family-wide. Future idler-clearance work must
 preserve the closed hull roof, complete side armor and singular animated smart
 track course.**
+
+## 5.241 BASE T-90 UNIFIED FRONTAL COMBAT-PACKAGE RAISE (2026-08-15, LIVE)
+
+The plain first-party `t90` retains the exact shared Burlak core, complete
+five-station bustle, roof equipment, hull, skirts and running gear. Only the
+front combat-package datum changes. The complete 2A46M gun/saddle group,
+enlarged Shtora eyes, their tapered cheek roots, the broad shoulder carrier,
+buried mantlet bridge and both irregular frontal Kontakt-5 courses rise
+**0.12 m** and move **0.07 m toward the bow** together. This restores the
+requested gun-line relationship without leaving an eye housing, armor face or
+hidden carrier at the superseded lower station.
+
+Fresh first-party evidence contains 15 paired boards, 15 yaw0 frames and 15
+yaw90 frames (**45 PNGs / 45 distinct hashes**). Direct-front, elevated hero
+and live Surface Lab views show both eyes centered beside the cannon root and
+the K-5 fan clear of the hull roof. The genuine quarter-turn carries the gun,
+eyes, carrier, mantlet bridge and every changed armor leaf together; no gap,
+stranded fitting, duplicate turret mass, open sheet or winding wound appears.
+The only parent-audit nominee remains the established hull-owned forward-deck
+spare-link stowage.
+
+Exact track clearance remains **front 0 / rear 0**, individual-shoe clearance
+is **0 / 0**, and the duplicate audit reports one integrated animated course.
+The muzzle bore and targeted asset check pass. All eight changed presentation
+images and the asset manifest are regenerated. Current dual-ledger geometry is
+freeze **`d15f8148`**, instance freeze **`6fb5ae46`** and asset geometry
+**`b13d9370`** (71 rendered meshes / 131,004 vertices).
+
+**KEEP the three-part datum coupled. Future gun-height work must carry the
+Shtora housings, their supports, the shoulder carrier and both frontal K-5
+courses with it rather than adjusting an exposed face independently.**
