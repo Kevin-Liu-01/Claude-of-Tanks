@@ -1,0 +1,78 @@
+{
+  "map": "desert",
+  "seed": 8300,
+  "meta": {
+    "id": "abramsx",
+    "name": "AbramsX",
+    "nation": "USA",
+    "role": "Next-generation demonstrator",
+    "number": 1
+  },
+  "actors": [
+    {
+      "id": "abramsx",
+      "name": "hero",
+      "pos": [
+        0,
+        0
+      ],
+      "facingDeg": 205,
+      "turretDeg": -3,
+      "gunDeg": 0.5,
+      "camo": "desert",
+      "camoSeed": 8300
+    }
+  ],
+  "effects": [
+    {
+      "type": "dust",
+      "at": [
+        -1.5,
+        -4
+      ],
+      "tMs": 30,
+      "params": {
+        "count": 9,
+        "intensity": 0.72,
+        "dirDeg": 205
+      }
+    },
+    {
+      "type": "explosion_moment",
+      "at": [
+        -7,
+        8
+      ],
+      "tMs": 70,
+      "params": {
+        "ageS": 0.42
+      }
+    },
+    {
+      "type": "firing_moment",
+      "actor": "hero",
+      "tMs": 240,
+      "params": {
+        "ageS": 0.055
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      5.9,
+      1.25,
+      -9.4
+    ],
+    "lookAt": [
+      -1.4,
+      2.4,
+      1.8
+    ],
+    "groundRel": true,
+    "fov": 48,
+    "rollDeg": 0,
+    "mode": "fly"
+  },
+  "fxTime": 280,
+  "timeScale": 0
+}

@@ -1,0 +1,81 @@
+{
+  "map": "autumn",
+  "seed": 8312,
+  "meta": {
+    "id": "ariete",
+    "name": "C1 Ariete",
+    "nation": "Italy",
+    "role": "Main battle tank",
+    "number": 13
+  },
+  "actors": [
+    {
+      "id": "ariete",
+      "name": "hero",
+      "pos": [
+        -40,
+        30
+      ],
+      "facingDeg": 108,
+      "turretDeg": 3,
+      "gunDeg": 0.5,
+      "camo": "dpm",
+      "camoSeed": 8312
+    }
+  ],
+  "effects": [
+    {
+      "type": "dust",
+      "at": [
+        -41.5,
+        26
+      ],
+      "tMs": 30,
+      "params": {
+        "count": 9,
+        "intensity": 0.72,
+        "dirDeg": 108
+      }
+    },
+    {
+      "type": "barrage",
+      "at": [
+        -49,
+        39
+      ],
+      "tMs": 40,
+      "params": {
+        "count": 4,
+        "radiusM": 7,
+        "size": "mixed",
+        "seedDeg": 82
+      }
+    },
+    {
+      "type": "firing_moment",
+      "actor": "hero",
+      "tMs": 270,
+      "params": {
+        "ageS": 0.06
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      -34.5,
+      1.9000000000000001,
+      24.5
+    ],
+    "lookAt": [
+      -42.5,
+      2.4,
+      32
+    ],
+    "groundRel": true,
+    "fov": 51,
+    "rollDeg": 3,
+    "mode": "fly"
+  },
+  "fxTime": 295,
+  "timeScale": 0
+}

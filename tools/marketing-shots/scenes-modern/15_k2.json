@@ -1,0 +1,79 @@
+{
+  "map": "railyard",
+  "seed": 8314,
+  "meta": {
+    "id": "k2",
+    "name": "K2 Black Panther",
+    "nation": "South Korea",
+    "role": "Main battle tank",
+    "number": 15
+  },
+  "actors": [
+    {
+      "id": "k2",
+      "name": "hero",
+      "pos": [
+        -30,
+        30
+      ],
+      "facingDeg": 195,
+      "turretDeg": -5,
+      "gunDeg": 1,
+      "camo": "washworn",
+      "camoSeed": 8314
+    }
+  ],
+  "effects": [
+    {
+      "type": "dust",
+      "at": [
+        -31.5,
+        26
+      ],
+      "tMs": 30,
+      "params": {
+        "count": 9,
+        "intensity": 0.72,
+        "dirDeg": 195
+      }
+    },
+    {
+      "type": "exhaust",
+      "actor": "hero",
+      "tMs": 110,
+      "params": {
+        "count": 8,
+        "intensity": 0.65,
+        "sooty": true
+      }
+    },
+    {
+      "type": "armor_scar",
+      "actor": "hero",
+      "tMs": 180,
+      "params": {
+        "count": 2,
+        "caliberMm": 90,
+        "seedDeg": 104
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      -20,
+      1.15,
+      20
+    ],
+    "lookAt": [
+      -30,
+      2.45,
+      30
+    ],
+    "groundRel": true,
+    "fov": 49,
+    "rollDeg": 0,
+    "mode": "fly"
+  },
+  "fxTime": 280,
+  "timeScale": 0
+}

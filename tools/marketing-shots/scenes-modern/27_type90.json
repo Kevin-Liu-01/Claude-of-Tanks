@@ -1,0 +1,89 @@
+{
+  "map": "urban",
+  "seed": 8326,
+  "meta": {
+    "id": "type90",
+    "name": "Type 90",
+    "nation": "Japan",
+    "role": "Main battle tank",
+    "number": 27
+  },
+  "actors": [
+    {
+      "id": "type90",
+      "name": "hero",
+      "pos": [
+        36,
+        60
+      ],
+      "facingDeg": 180,
+      "turretDeg": 3,
+      "gunDeg": 1,
+      "camo": "urbanblock",
+      "camoSeed": 8326
+    }
+  ],
+  "effects": [
+    {
+      "type": "dust",
+      "at": [
+        34.5,
+        56
+      ],
+      "tMs": 30,
+      "params": {
+        "count": 9,
+        "intensity": 0.72,
+        "dirDeg": 180
+      }
+    },
+    {
+      "type": "armor_scar",
+      "actor": "hero",
+      "tMs": 55,
+      "params": {
+        "count": 3,
+        "caliberMm": 120,
+        "seedDeg": 66
+      }
+    },
+    {
+      "type": "explosion_moment",
+      "at": [
+        43,
+        66
+      ],
+      "tMs": 95,
+      "params": {
+        "ageS": 0.3
+      }
+    },
+    {
+      "type": "sparks",
+      "actor": "hero",
+      "tMs": 235,
+      "params": {
+        "caliberMm": 125,
+        "hFrac": 0.7
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      44.6,
+      1.05,
+      52
+    ],
+    "lookAt": [
+      34,
+      2.45,
+      61
+    ],
+    "groundRel": true,
+    "fov": 51,
+    "rollDeg": -2.5,
+    "mode": "fly"
+  },
+  "fxTime": 280,
+  "timeScale": 0
+}

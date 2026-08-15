@@ -1,0 +1,79 @@
+{
+  "map": "desert",
+  "seed": 8324,
+  "meta": {
+    "id": "type99a",
+    "name": "Type 99A",
+    "nation": "China",
+    "role": "Main battle tank",
+    "number": 25
+  },
+  "actors": [
+    {
+      "id": "type99a",
+      "name": "hero",
+      "pos": [
+        0,
+        0
+      ],
+      "facingDeg": 205,
+      "turretDeg": -3,
+      "gunDeg": 1,
+      "camo": "desert",
+      "camoSeed": 8324
+    }
+  ],
+  "effects": [
+    {
+      "type": "dust",
+      "at": [
+        -1.5,
+        -4
+      ],
+      "tMs": 30,
+      "params": {
+        "count": 9,
+        "intensity": 0.72,
+        "dirDeg": 205
+      }
+    },
+    {
+      "type": "exhaust",
+      "actor": "hero",
+      "tMs": 110,
+      "params": {
+        "count": 8,
+        "intensity": 0.65,
+        "sooty": true
+      }
+    },
+    {
+      "type": "armor_scar",
+      "actor": "hero",
+      "tMs": 180,
+      "params": {
+        "count": 2,
+        "caliberMm": 90,
+        "seedDeg": 114
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      5.9,
+      1.25,
+      -9.4
+    ],
+    "lookAt": [
+      -1.4,
+      2.4,
+      1.8
+    ],
+    "groundRel": true,
+    "fov": 48,
+    "rollDeg": 0,
+    "mode": "fly"
+  },
+  "fxTime": 280,
+  "timeScale": 0
+}

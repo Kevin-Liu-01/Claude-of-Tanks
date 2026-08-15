@@ -1,0 +1,242 @@
+[
+  {
+    "slug": "01_abramsx",
+    "id": "abramsx",
+    "name": "AbramsX",
+    "nation": "USA",
+    "role": "Next-generation demonstrator",
+    "map": "desert"
+  },
+  {
+    "slug": "02_m1a2_sepv3",
+    "id": "m1a2_sepv3",
+    "name": "M1A2 SEPv3",
+    "nation": "USA",
+    "role": "Main battle tank",
+    "map": "winter"
+  },
+  {
+    "slug": "03_m1a2_sepv2",
+    "id": "m1a2_sepv2",
+    "name": "M1A2 SEPv2",
+    "nation": "USA",
+    "role": "Main battle tank",
+    "map": "urban"
+  },
+  {
+    "slug": "04_m1a2_tusk",
+    "id": "m1a2_tusk",
+    "name": "M1A2 TUSK",
+    "nation": "USA",
+    "role": "Urban assault package",
+    "map": "coastal"
+  },
+  {
+    "slug": "05_m1a1ha",
+    "id": "m1a1ha",
+    "name": "M1A1HA",
+    "nation": "USA",
+    "role": "Heavy armor package",
+    "map": "autumn"
+  },
+  {
+    "slug": "06_leo2a7v",
+    "id": "leo2a7v",
+    "name": "Leopard 2A7V",
+    "nation": "Germany",
+    "role": "Main battle tank",
+    "map": "steppe"
+  },
+  {
+    "slug": "07_leo2_revolution",
+    "id": "leo2_revolution",
+    "name": "Leopard 2 Revolution",
+    "nation": "Germany",
+    "role": "Modular protection demonstrator",
+    "map": "railyard"
+  },
+  {
+    "slug": "08_leo2a6",
+    "id": "leo2a6",
+    "name": "Leopard 2A6",
+    "nation": "Germany",
+    "role": "Main battle tank",
+    "map": "verdant"
+  },
+  {
+    "slug": "09_kf51",
+    "id": "kf51",
+    "name": "KF51 Panther",
+    "nation": "Germany",
+    "role": "Next-generation demonstrator",
+    "map": "desert"
+  },
+  {
+    "slug": "10_challenger_3",
+    "id": "challenger_3",
+    "name": "Challenger 3",
+    "nation": "United Kingdom",
+    "role": "Main battle tank",
+    "map": "winter"
+  },
+  {
+    "slug": "11_challenger2",
+    "id": "challenger2",
+    "name": "Challenger 2",
+    "nation": "United Kingdom",
+    "role": "Main battle tank",
+    "map": "urban"
+  },
+  {
+    "slug": "12_leclerc",
+    "id": "leclerc",
+    "name": "Leclerc",
+    "nation": "France",
+    "role": "Main battle tank",
+    "map": "coastal"
+  },
+  {
+    "slug": "13_ariete",
+    "id": "ariete",
+    "name": "C1 Ariete",
+    "nation": "Italy",
+    "role": "Main battle tank",
+    "map": "autumn"
+  },
+  {
+    "slug": "14_merkava3d",
+    "id": "merkava3d",
+    "name": "Merkava Mk.3D",
+    "nation": "Israel",
+    "role": "Main battle tank",
+    "map": "steppe"
+  },
+  {
+    "slug": "15_k2",
+    "id": "k2",
+    "name": "K2 Black Panther",
+    "nation": "South Korea",
+    "role": "Main battle tank",
+    "map": "railyard"
+  },
+  {
+    "slug": "16_k1a1",
+    "id": "k1a1",
+    "name": "K1A1",
+    "nation": "South Korea",
+    "role": "Main battle tank",
+    "map": "verdant"
+  },
+  {
+    "slug": "17_t14",
+    "id": "t14",
+    "name": "T-14 Armata",
+    "nation": "Russia",
+    "role": "Next-generation main battle tank",
+    "map": "desert"
+  },
+  {
+    "slug": "18_t90m",
+    "id": "t90m",
+    "name": "T-90M Proryv",
+    "nation": "Russia",
+    "role": "Main battle tank",
+    "map": "winter"
+  },
+  {
+    "slug": "19_t90ms",
+    "id": "t90ms",
+    "name": "T-90MS",
+    "nation": "Russia",
+    "role": "Export main battle tank",
+    "map": "urban"
+  },
+  {
+    "slug": "20_t90sm",
+    "id": "t90sm",
+    "name": "T-90SM",
+    "nation": "Russia",
+    "role": "Modernized main battle tank",
+    "map": "coastal"
+  },
+  {
+    "slug": "21_t90a_burlak",
+    "id": "t90a_burlak",
+    "name": "T-90A Burlak",
+    "nation": "Russia",
+    "role": "Prototype turret program",
+    "map": "autumn"
+  },
+  {
+    "slug": "22_t80u",
+    "id": "t80u",
+    "name": "T-80U",
+    "nation": "Russia",
+    "role": "Gas-turbine main battle tank",
+    "map": "steppe"
+  },
+  {
+    "slug": "23_t72b3m",
+    "id": "t72b3m",
+    "name": "T-72B3M",
+    "nation": "Russia",
+    "role": "Modernized main battle tank",
+    "map": "railyard"
+  },
+  {
+    "slug": "24_t84",
+    "id": "t84",
+    "name": "T-84 Oplot",
+    "nation": "Ukraine",
+    "role": "Main battle tank",
+    "map": "verdant"
+  },
+  {
+    "slug": "25_type99a",
+    "id": "type99a",
+    "name": "Type 99A",
+    "nation": "China",
+    "role": "Main battle tank",
+    "map": "desert"
+  },
+  {
+    "slug": "26_type10",
+    "id": "type10",
+    "name": "Type 10",
+    "nation": "Japan",
+    "role": "Main battle tank",
+    "map": "winter"
+  },
+  {
+    "slug": "27_type90",
+    "id": "type90",
+    "name": "Type 90",
+    "nation": "Japan",
+    "role": "Main battle tank",
+    "map": "urban"
+  },
+  {
+    "slug": "28_pt91m",
+    "id": "pt91m",
+    "name": "PT-91M",
+    "nation": "Poland",
+    "role": "Modernized main battle tank",
+    "map": "coastal"
+  },
+  {
+    "slug": "29_spz_puma",
+    "id": "spz_puma",
+    "name": "Puma IFV",
+    "nation": "Germany",
+    "role": "Infantry fighting vehicle",
+    "map": "autumn"
+  },
+  {
+    "slug": "30_fv510",
+    "id": "fv510",
+    "name": "FV510 Warrior",
+    "nation": "United Kingdom",
+    "role": "Infantry fighting vehicle",
+    "map": "steppe"
+  }
+]

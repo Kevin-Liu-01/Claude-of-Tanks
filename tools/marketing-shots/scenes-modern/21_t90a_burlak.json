@@ -1,0 +1,78 @@
+{
+  "map": "autumn",
+  "seed": 8320,
+  "meta": {
+    "id": "t90a_burlak",
+    "name": "T-90A Burlak",
+    "nation": "Russia",
+    "role": "Prototype turret program",
+    "number": 21
+  },
+  "actors": [
+    {
+      "id": "t90a_burlak",
+      "name": "hero",
+      "pos": [
+        -40,
+        30
+      ],
+      "facingDeg": 108,
+      "turretDeg": 3,
+      "gunDeg": 0.5,
+      "camo": "dpm",
+      "camoSeed": 8320
+    }
+  ],
+  "effects": [
+    {
+      "type": "dust",
+      "at": [
+        -41.5,
+        26
+      ],
+      "tMs": 30,
+      "params": {
+        "count": 9,
+        "intensity": 0.72,
+        "dirDeg": 108
+      }
+    },
+    {
+      "type": "explosion_moment",
+      "at": [
+        -47,
+        38
+      ],
+      "tMs": 70,
+      "params": {
+        "ageS": 0.42
+      }
+    },
+    {
+      "type": "firing_moment",
+      "actor": "hero",
+      "tMs": 240,
+      "params": {
+        "ageS": 0.055
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      -34.5,
+      1.1,
+      24.5
+    ],
+    "lookAt": [
+      -42.5,
+      2.4,
+      32
+    ],
+    "groundRel": true,
+    "fov": 54,
+    "rollDeg": 0,
+    "mode": "fly"
+  },
+  "fxTime": 280,
+  "timeScale": 0
+}

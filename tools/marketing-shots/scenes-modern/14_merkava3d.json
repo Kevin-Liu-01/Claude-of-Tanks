@@ -1,0 +1,91 @@
+{
+  "map": "steppe",
+  "seed": 8313,
+  "meta": {
+    "id": "merkava3d",
+    "name": "Merkava Mk.3D",
+    "nation": "Israel",
+    "role": "Main battle tank",
+    "number": 14
+  },
+  "actors": [
+    {
+      "id": "merkava3d",
+      "name": "hero",
+      "pos": [
+        -100,
+        -60
+      ],
+      "facingDeg": 150,
+      "turretDeg": 3,
+      "gunDeg": 1,
+      "camo": "summer",
+      "camoSeed": 8313
+    }
+  ],
+  "effects": [
+    {
+      "type": "dust",
+      "at": [
+        -101.5,
+        -64
+      ],
+      "tMs": 30,
+      "params": {
+        "count": 9,
+        "intensity": 0.72,
+        "dirDeg": 150
+      }
+    },
+    {
+      "type": "explosion_moment",
+      "at": [
+        -94,
+        -52
+      ],
+      "tMs": 75,
+      "params": {
+        "ageS": 0.5
+      }
+    },
+    {
+      "type": "mg_burst",
+      "actor": "hero",
+      "tMs": 150,
+      "params": {
+        "count": 8,
+        "gapM": 5,
+        "spreadDeg": 0.7,
+        "caliberMm": 12.7,
+        "speedMps": 900
+      }
+    },
+    {
+      "type": "sparks",
+      "actor": "hero",
+      "tMs": 250,
+      "params": {
+        "caliberMm": 120,
+        "hFrac": 0.58
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      -101,
+      0.9,
+      -69.5
+    ],
+    "lookAt": [
+      -100,
+      2.45,
+      -59.5
+    ],
+    "groundRel": true,
+    "fov": 54,
+    "rollDeg": -3.5,
+    "mode": "fly"
+  },
+  "fxTime": 280,
+  "timeScale": 0
+}

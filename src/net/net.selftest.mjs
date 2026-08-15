@@ -42,6 +42,7 @@ import {
 import { AuthoritativeMatchRuntime, MatchClientRuntime } from './matchRuntime.js';
 import { snapshotWireCodec } from './snapshotWireCodec.js';
 import { createLocalMatchSession } from './localSession.js';
+import { decodeAimIntent, encodeAimIntent } from './aimIntent.js';
 import {
   MATCH_CHANNEL_LABEL,
   MATCH_CONTROL_CHANNEL_LABEL,
@@ -214,8 +215,21 @@ const normalizedInput = normalizePlayerInput({
 assert.equal(normalizedInput.throttle, 1);
 assert.equal(normalizedInput.steer, -1);
 assert.equal(normalizedInput.aimPitch, Math.PI / 2);
+assert.equal(normalizedInput.aimDistance, 1000,
+  'legacy input frames retain the former ray distance');
 assert.equal(normalizedInput.snapshotAckTick, 0);
 assert.equal(Object.hasOwn(normalizedInput, 'ignored'), false);
+const aimOrigin = { x: 18, y: 2.4, z: -37 };
+const finiteAim = { x: 51, y: 1.1, z: 24 };
+const encodedAim = encodeAimIntent(aimOrigin, finiteAim);
+const decodedAim = decodeAimIntent(encodedAim, aimOrigin, {
+  set(x, y, z) { this.x = x; this.y = y; this.z = z; return this; },
+});
+assert.ok(Math.hypot(
+  decodedAim.x - finiteAim.x,
+  decodedAim.y - finiteAim.y,
+  decodedAim.z - finiteAim.z,
+) < 1e-9, 'network aim preserves the same finite world point used by solo gun lay');
 assert.equal(isSequenceNewer(0, 0x7fffffff), true, 'sequence wrap is newer');
 assert.equal(isSequenceNewer(3, 3), false);
 assert.equal(normalizePlayerName('  Tank   Commander  '), 'Tank Commander');
@@ -356,6 +370,35 @@ assert.equal(migrateLobby.players.get('a-next').isHost, true);
   assert.equal(client.buffer.snapshots.length, 1,
     'state lane remains valid when reliable control arrives first');
   assert.equal(client.lastRecvSeq, 10, 'state lane never rewinds reliable ordering');
+  client.close('done');
+}
+
+// Lobby→match handoff adopts the starting round before the independent state
+// lane can deliver a snapshot. Otherwise the later reliable ROOM_STATE clears
+// an already-acknowledged baseline and every following delta is undecodable.
+{
+  const channel = new FakeChannel();
+  const transport = createWebRTCDataChannelTransport(channel);
+  const client = new MatchClientRuntime({ transport, playerId: 'driver', clock: () => 100 });
+  channel.emit('message', { data: JSON.stringify(createEnvelope(MESSAGE_TYPES.LOBBY_STATE, {
+    phase: 'starting', round: 3, revision: 8, players: [],
+  }, { seq: 7, tick: 0 })) });
+  client.assembler.accept({
+    ...captureWorldSnapshot({
+      tick: 6,
+      serverTimeMs: 300,
+      entities: [entity('driver', 'm1a2', 'alpha', 4)],
+      viewerId: 'driver',
+    }),
+    baseTick: -1,
+    removedEntityIds: [],
+  });
+  assert.equal(client.assembler.history.size, 1);
+  client.beginMatchHandshake({ mode: 'private' });
+  assert.equal(client.roomRound, 3,
+    'match handshake adopts the round already authorized by the lobby');
+  assert.equal(client.assembler.history.size, 0,
+    'round reset happens before authority may send state on the split lane');
   client.close('done');
 }
 

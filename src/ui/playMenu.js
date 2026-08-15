@@ -146,6 +146,25 @@ function remember(key, value) {
   try { localStorage.setItem(key, value); } catch (_) { /* session-only */ }
 }
 
+function rememberClientRoomUrl(roomCode, mode) {
+  if (typeof location === 'undefined' || typeof history === 'undefined') return;
+  try {
+    const invite = createRoomInviteUrl({ roomCode, mode, baseUrl: location.href });
+    history.replaceState(history.state, '', invite);
+  } catch (_) { /* URL persistence is a convenience, never a room dependency */ }
+}
+
+function clearClientRoomUrl() {
+  if (typeof location === 'undefined' || typeof history === 'undefined') return;
+  try {
+    const url = new URL(location.href);
+    if (!url.searchParams.has('room')) return;
+    url.searchParams.delete('room');
+    url.searchParams.delete('mode');
+    history.replaceState(history.state, '', url.href);
+  } catch (_) { /* cosmetic */ }
+}
+
 function lobbyTeamLabel(team) {
   if (team === 'alpha') return 'Team Alpha';
   if (team === 'bravo') return 'Team Bravo';
@@ -438,6 +457,7 @@ export function createPlayMenu({
     activeRoom = null;
     state = null;
     role = null;
+    clearClientRoomUrl();
     room.classList.remove('connected');
     lobbyEl.classList.remove('show');
     root.classList.remove('lobby-active');
@@ -550,6 +570,11 @@ export function createPlayMenu({
 
   function renderLobby(next) {
     state = next;
+    // A joined browser carries its room in the canonical URL. Reloading after
+    // a finished round therefore re-enters the still-live host room instead
+    // of silently forgetting the session. Hosts keep the clean URL because a
+    // browser-hosted authority cannot survive its own document being killed.
+    if (role === 'client' && next.roomCode) rememberClientRoomUrl(next.roomCode, next.mode || mode);
     // A client learns that the host started through this state callback. Cover
     // immediately; rebuilding the now-obsolete lobby first creates a guest-
     // only window in which a constrained renderer can present the garage.

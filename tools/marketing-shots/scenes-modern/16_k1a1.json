@@ -1,0 +1,78 @@
+{
+  "map": "verdant",
+  "seed": 8315,
+  "meta": {
+    "id": "k1a1",
+    "name": "K1A1",
+    "nation": "South Korea",
+    "role": "Main battle tank",
+    "number": 16
+  },
+  "actors": [
+    {
+      "id": "k1a1",
+      "name": "hero",
+      "pos": [
+        -80,
+        30
+      ],
+      "facingDeg": 200,
+      "turretDeg": 3,
+      "gunDeg": 0.5,
+      "camo": "summer",
+      "camoSeed": 8315
+    }
+  ],
+  "effects": [
+    {
+      "type": "dust",
+      "at": [
+        -81.5,
+        26
+      ],
+      "tMs": 30,
+      "params": {
+        "count": 9,
+        "intensity": 0.72,
+        "dirDeg": 200
+      }
+    },
+    {
+      "type": "explosion_moment",
+      "at": [
+        -87,
+        38
+      ],
+      "tMs": 70,
+      "params": {
+        "ageS": 0.42
+      }
+    },
+    {
+      "type": "firing_moment",
+      "actor": "hero",
+      "tMs": 240,
+      "params": {
+        "ageS": 0.055
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      -73,
+      1.1,
+      19
+    ],
+    "lookAt": [
+      -80,
+      2.45,
+      30
+    ],
+    "groundRel": true,
+    "fov": 47,
+    "rollDeg": 0,
+    "mode": "fly"
+  },
+  "fxTime": 280,
+  "timeScale": 0
+}

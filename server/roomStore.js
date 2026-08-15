@@ -69,9 +69,10 @@ export class SignalingRoomStore {
       touchedAt: this.now(),
       peers: new Map(),
     };
-    const peerId = this.#uniquePeerId(room);
+    const memberPlayer = cleanPlayer(player);
+    const peerId = memberPlayer.id;
     room.hostId = peerId;
-    room.peers.set(peerId, { peerId, connection, player: cleanPlayer(player) });
+    room.peers.set(peerId, { peerId, connection, player: memberPlayer });
     this.rooms.set(roomCode, room);
     this.membership.set(connection, { roomCode, peerId });
     return {
@@ -90,12 +91,15 @@ export class SignalingRoomStore {
     }
     const room = this.rooms.get(String(roomCode || ''));
     if (!room) throw Object.assign(new Error('room not found'), { code: 'room_not_found' });
-    if (room.peers.size >= room.maxPlayers) {
+    const memberPlayer = cleanPlayer(player);
+    const peerId = memberPlayer.id;
+    const previous = room.peers.get(peerId);
+    if (!previous && room.peers.size >= room.maxPlayers) {
       throw Object.assign(new Error('room is full'), { code: 'room_full' });
     }
-    const peerId = this.#uniquePeerId(room);
-    const member = { peerId, connection, player: cleanPlayer(player) };
-    const peers = [...room.peers.values()].map((peer) => ({
+    if (previous) this.membership.delete(previous.connection);
+    const member = { peerId, connection, player: memberPlayer };
+    const peers = [...room.peers.values()].filter((peer) => peer.peerId !== peerId).map((peer) => ({
       peerId: peer.peerId,
       player: { ...peer.player },
       isHost: peer.peerId === room.hostId,
@@ -149,6 +153,7 @@ export class SignalingRoomStore {
     this.membership.delete(connection);
     const room = this.rooms.get(membership.roomCode);
     if (!room) return [];
+    if (room.peers.get(membership.peerId)?.connection !== connection) return [];
     room.peers.delete(membership.peerId);
     if (membership.peerId === room.hostId) {
       this.rooms.delete(room.roomCode);

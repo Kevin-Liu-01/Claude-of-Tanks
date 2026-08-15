@@ -1,0 +1,81 @@
+{
+  "map": "railyard",
+  "seed": 8322,
+  "meta": {
+    "id": "t72b3m",
+    "name": "T-72B3M",
+    "nation": "Russia",
+    "role": "Modernized main battle tank",
+    "number": 23
+  },
+  "actors": [
+    {
+      "id": "t72b3m",
+      "name": "hero",
+      "pos": [
+        -30,
+        30
+      ],
+      "facingDeg": 195,
+      "turretDeg": -5,
+      "gunDeg": 0.5,
+      "camo": "washworn",
+      "camoSeed": 8322
+    }
+  ],
+  "effects": [
+    {
+      "type": "dust",
+      "at": [
+        -31.5,
+        26
+      ],
+      "tMs": 30,
+      "params": {
+        "count": 9,
+        "intensity": 0.72,
+        "dirDeg": 195
+      }
+    },
+    {
+      "type": "barrage",
+      "at": [
+        -39,
+        39
+      ],
+      "tMs": 40,
+      "params": {
+        "count": 4,
+        "radiusM": 7,
+        "size": "mixed",
+        "seedDeg": 92
+      }
+    },
+    {
+      "type": "firing_moment",
+      "actor": "hero",
+      "tMs": 270,
+      "params": {
+        "ageS": 0.06
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      -20,
+      1.95,
+      20
+    ],
+    "lookAt": [
+      -30,
+      2.45,
+      30
+    ],
+    "groundRel": true,
+    "fov": 46,
+    "rollDeg": 3,
+    "mode": "fly"
+  },
+  "fxTime": 295,
+  "timeScale": 0
+}

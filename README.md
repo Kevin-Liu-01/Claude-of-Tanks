@@ -1,274 +1,171 @@
 <p align="center">
-  <img src="public/brand/logo-mark.svg" alt="Claude of Tanks crest" width="110">
+  <img src="public/brand/logo-mark.svg" alt="Claude of Tanks crest" width="108">
 </p>
 
 <h1 align="center">CLAUDE OF TANKS</h1>
 
 <p align="center">
-  A World of Tanks-style, Vite-powered, engine-free armored combat simulator in <strong>pure Three.js</strong> —
-  resolving plate-level armor, ballistics, modules, spotting, and physics across 100+ vehicles and eight destructible
-  battlefields. Playable entirely in the browser on desktop and mobile devices. Built end-to-end by a long-running
-  multi-agent Claude/Codex pipeline.
+  A World of Tanks-style armored combat game in <strong>pure Three.js</strong> — plate-level armor simulation,
+  80 original first-party vehicles, eight destructible battlefields, killcam X-ray, a built-in cinematic studio,
+  and full mobile support. Built end-to-end through a long-running multi-agent Claude/Codex pipeline.
 </p>
 
 <p align="center">
-  <a href="https://claudeoftanks.kevinliu.studio"><strong>▶&nbsp;&nbsp;PLAY IT IN YOUR BROWSER</strong></a>
-  &nbsp;·&nbsp; desktop, tablet, and phone
+  <a href="https://cot.kevinliu.studio"><strong>PLAY IN THE BROWSER</strong></a>
+  &nbsp;·&nbsp;
+  <a href="docs/HOW-IT-WORKS.md">HOW IT WORKS</a>
+  &nbsp;·&nbsp;
+  <a href="docs/INDEX.md">DOCUMENTATION</a>
 </p>
 
-![A T-90 column on the Verdant Fields road under fire — staged and captured in the in-game Scene Studio](public/media/featured/f7_studio_t90_column_fire.webp)
-
----
-
-## What is this
-
-A from-scratch armored combat simulator powered by Vite and [Three.js](https://threejs.org) — no game engine,
-native runtime, install, or account — and ~70k lines of JavaScript. Its plate-level combat model is transcribed from
-World of Tanks mechanics research and verified by node-run self-tests; all 100+ playable vehicles are original,
-first-party procedural builds authored from dimensions and reference study; and its eight battlefields generate terrain,
-vegetation, buildings, props, and textures in code. Every screenshot below is the actual game.
-
-## Playing
-
-**[claudeoftanks.kevinliu.studio](https://claudeoftanks.kevinliu.studio)** — no install, no account. Pick a tank,
-pick a map (or Random), press **BATTLE**.
-
-| Action | Default bind |
-|---|---|
-| Drive | `W A S D` (or arrow keys) |
-| Handbrake | `Space` |
-| Aim turret | Mouse |
-| Fire | Left mouse button |
-| Sniper mode | `Shift` tap · hold `RMB` (configurable: hold / toggle / free-look) |
-| Zoom steps | Mouse wheel |
-| Shells | `1` `2` `3` |
-| Consumables (repair / med / extinguisher) | `4` `5` `6` |
-| Minimap zoom / shot log | `M` / `L` |
-| Settings | `Esc` |
-
-Every binding is remappable in **Settings → Controls** and persists locally.
-
-**On phones and tablets:** a full touch layout — virtual joystick, swipe-to-aim, **pinch to scope and zoom**,
-and Dynamic Aim: drag either fire button to refine aim, lift quickly to shoot once, or keep holding for continuous
-fire as the gun reloads (drag onto the compact red × to cancel).
-The thumb-side fire cluster works identically on every vehicle, and a vertical equipment column keeps consumables
-reachable. A device quality tier keeps GPU memory ~80% lower than
-desktop, and a boot-time GPU self-test heals device-specific rendering faults automatically (add `?diag=1` to the
-URL to watch it work).
-
-## Solo, LAN, private, and ranked
-
-The Play menu exposes four direct entry modes: a local authoritative battle
-against bots, low-latency LAN over the same Wi-Fi, private six-character room
-codes with team switching and spectators, and dedicated ranked matchmaking
-with server-owned Elo, profiles, and a leaderboard. Empty teams can be filled
-with bots that vary their seeded opening routes, use shared terrain navigation,
-and recover when local traffic blocks them.
-
-Every mode runs the same renderer-free 60 Hz authority for movement, armor,
-ballistics, modules, spotting, collision, consumables, bots, destructibles,
-and match outcome. WebRTC keeps reliable control separate from replaceable
-20 Hz snapshots; ranked uses an authenticated reconnectable WebSocket. See
-[`docs/MULTIPLAYER-ARCHITECTURE.md`](docs/MULTIPLAYER-ARCHITECTURE.md).
+![AbramsX firing in Sirocco Wadi, staged and captured in the in-game Scene Studio](public/media/modern/01_abramsx.webp)
 
 ## The game
 
-### Combat simulation
-- **Plate-level armor**: real thickness and slope per plate, effective armor via impact angle with slope exponents,
-  shell normalization, ricochet gates (70°/78°/85°), 3× / 2× caliber overmatch, spaced armor and screens,
-  composite RHAe tracked separately vs kinetic and chemical energy, one-shot ERA, HEAT standoff decay.
-- **Five shell classes** (AP / APCR / HEAT / HE / APFSDS) with per-type muzzle velocity, travel time, gravity drop,
-  distance falloff, and HE splash. ±25% pen/damage rolls in WoT's order.
-- **Modules and crew**: ammo rack, engine, fuel, tracks, radio, optics and crew roles with individual HP, save
-  throws, repair timers, and fire chances.
-- **Real spotting**: the concealment formula, firing bloom, bush mechanics, the 15 m rule, and a sixth-sense lamp —
-  the AI acquires targets only through this system.
-- **Honest gunnery**: the reticle draws the actual 2σ dispersion cone at your aim distance — movement, traverse and
-  firing bloom all feed real shell dispersion.
+Claude of Tanks is a Vite-powered, engine-free armored combat simulator that runs entirely in a modern browser—no
+install, account, native runtime, currency, XP grind, or tech tree. Pick any vehicle, choose a battlefield, and enter a
+bot, private-room, LAN, or ranked battle.
 
-### Feedback that teaches you
-- **WoT-style hit direction indicators**: tapered crescent wedges around your reticle, world-anchored as you turn —
-  bold red for penetrations (with pooled damage numbers and CRIT tags), steel-white RICOCHET/BLOCKED reads for
-  bounces, amber for HE splash.
-- **Killcam x-ray**: your death (and your winning shot) replays with a ghosted hull, the shell path drawn through
-  the internals, damaged modules called out, and shell/angle/effective-armor annotations pulled from the real
-  resolved hit event.
-- **Shot info panels**: per-shot cards with result, distance, impact angle, nominal vs effective armor, your pen
-  roll, and an armor diagram with the hit point marked. Every number traces to a sim event.
+The selectable fleet contains **80 original procedural vehicles**. Gameplay never loads third-party tank geometry:
+every playable hull, turret, gun, fitting, suspension, and track run is authored in the repository and assembled by the
+first-party vehicle pipeline. Historical source models are quarantined comparison material and are stripped from public
+builds.
 
-![Incoming-fire direction wedges with pooled damage numbers, ricochet reads, and the damage log](docs/readme/hit-indicators.jpg)
+Every mode shares the same renderer-free **60 Hz authority** for movement, aiming, armor, ballistics, modules, spotting,
+destructibles, bots, consumables, and battle outcome. Three.js presents the result; it does not decide it.
 
-### Destructible battlefields
-Stone and adobe wall runs breach **locally** where the shell lands or the hull drives through; sandbag lines burst;
-crates splinter; fuel drums toss ballistically — and red drums detonate and chain. Wrecked tanks baked from the
-actual roster dress the roadsides, and camps, truck stops, and convoy remains give every map a life of its own.
-Everything resets for the rematch.
+## What makes it different
 
-<table><tr>
-<td width="50%"><img src="docs/readme/destructibles.jpg" alt="A stone wall run breached locally by an AP shell — rubble at the hole, wall standing on both sides"></td>
-<td width="50%"><img src="docs/readme/map-dressing.jpg" alt="A supply truck stop with spilled cargo on Cinder Junction"></td>
-</tr></table>
+- **Plate-level armor:** slope, impact angle, normalization, ricochet, caliber overmatch, spaced armor, composites,
+  ERA, and kinetic/chemical protection are resolved separately.
+- **Physical gunnery:** center-screen world aim, real turret traverse and gun elevation/depression, actual muzzle
+  ballistics, five shell classes, bloom, travel time, gravity, and distance behavior.
+- **Internal damage:** crew, ammunition rack, engine, fuel, tracks, radio, optics, repair, fire, and catastrophic kills.
+- **Real visibility:** view range, concealment, movement/firing bloom, foliage, radio sharing, and the 15 m bush rule.
+- **Terrain-shaped mobility:** fixed-step drivetrain, slopes and ground resistance, suspension-damped hull attitude,
+  per-wheel support, flexible terrain-following tracks, collision, ramming, and crushable cover.
+- **Eight generated battlefields:** Verdant Fields, Sirocco Wadi, Frosthollow, Steinburg, Saltmere Bay, Amberford,
+  Tarkhan Steppe, and Cinder Junction.
+- **Combat feedback:** dual reticle, penetration information, directional hits, shot cards, module damage, spectating,
+  and an X-ray killcam built from the resolved shot.
+- **Desktop and mobile:** remappable mouse/keyboard controls plus joystick, swipe aim, pinch-to-scope, dynamic fire,
+  safe-area layout, and device-adaptive rendering.
 
-### Vehicles
-**100+ first-party playables in the deployed build**, organized by era and family in the garage. Every tank is an
-original procedural construction: spec-driven hulls, turrets, equipment, and native running gear built from published
-dimensions and reference study, then refined by a dual-gate fidelity program (geometric accuracy *and* an independent
-visual critic, both ≥90). Reference models are quarantined to comparison tooling and never become gameplay geometry.
-16 camouflage schemes with real
-concealment values — including AUTO, which repaints to the biome you deploy into — plus an equipment system and
-consumables that change how each tank plays.
+## Battle modes
 
-### Eight battlefields
-**Verdant Fields** (grassland village) · **Sirocco Wadi** (desert mesas) · **Frosthollow** (winter alpine) ·
-**Steinburg** (urban grid) · **Saltmere Bay** (coastal harbor) · **Amberford** (autumn orchards) ·
-**Tarkhan Steppe** (open grass sea) · **Cinder Junction** (rail industrial). Each has its own heightmap, splat
-palette, vegetation, dressing, sky and fog character, and minimap rendered from the actual terrain.
+**Bots** runs the original fast in-page simulation without loading networking code. Bots use shared movement, spotting,
+terrain navigation, randomized seeded openings, traffic avoidance, and stall recovery.
 
-### Atmosphere
-Cascaded shadow maps, PMREM image-based lighting baked from the procedural sky, aerial-perspective fog, layered
-muzzle flashes, per-type tracers, spall and ricochet sparks, staged vehicle fires, ammo-rack turret pops, de-track
-ribbons, dust wakes, persistent smoke columns — and a **neural-voiced crew** (four distinct personas, generated
-100% locally with Piper TTS) calling out hits, bounces, and module damage over a full sound system.
+**Private rooms** use six-character codes and shareable invite links. Players can switch teams, spectate, choose a
+vehicle, ready up, fight, vote to play again, and rematch without destroying the room. **LAN** uses the same room flow
+over direct Wi-Fi WebRTC paths. **Ranked** moves authority to the dedicated service and records server-owned rating.
 
----
+WebRTC separates reliable control and combat events from replaceable 20 Hz state snapshots. Local movement predicts the
+same integrator and reconciles against authority; remote tanks interpolate a bounded snapshot buffer. The complete design
+is in [`docs/MULTIPLAYER-ARCHITECTURE.md`](docs/MULTIPLAYER-ARCHITECTURE.md).
 
-## Gallery
+## Controls
 
-Shots below are in-engine captures, staged with the built-in Scene Studio.
+| Action | Default |
+|---|---|
+| Drive / steer | `W A S D` or arrow keys |
+| Handbrake | `Space` |
+| Aim / fire | Mouse / left mouse |
+| Sniper mode | `Shift`, configurable `RMB`, or mouse wheel |
+| Shell slots | `1` `2` `3` |
+| Repair / first aid / extinguisher | `4` `5` `6` |
+| Minimap zoom / shot log | `M` / `L` |
+| Settings | `Esc` |
+
+All bindings are remappable. Touch devices receive the complete mobile control layout automatically.
+
+## Modern fleet showcase
+
+These frames are deterministic captures from the shipped Scene Studio and live renderer. They use the actual playable
+vehicles, battlefields, lighting, particles, explosions, debris, and post-processing—no generative art or substituted
+reference models.
 
 <table>
 <tr>
-<td width="50%"><img src="public/media/featured/f1_09_winter_lake_duel.webp" alt="Winter lake duel at dawn on Frosthollow"></td>
-<td width="50%"><img src="public/media/featured/f6_studio_strv_steinburg_duel.webp" alt="Strv 103 street duel in Steinburg"></td>
+<td width="50%"><img src="public/media/modern/02_m1a2_sepv3.webp" alt="M1A2 SEP v3 in a winter battle"></td>
+<td width="50%"><img src="public/media/modern/03_m1a2_sepv2.webp" alt="M1A2 SEP v2 firing in Steinburg"></td>
 </tr>
 <tr>
-<td width="50%"><img src="public/media/featured/f2_06_desert_hero_kf51.webp" alt="KF51 Panther hero shot in Sirocco Wadi"></td>
-<td width="50%"><img src="public/media/featured/f3_19_urban_overwatch_church.webp" alt="Urban overwatch by the church in Steinburg"></td>
+<td width="50%"><img src="public/media/modern/09_kf51.webp" alt="KF51 Panther action portrait"></td>
+<td width="50%"><img src="public/media/modern/18_t90m.webp" alt="T-90M action portrait"></td>
 </tr>
 <tr>
-<td width="50%"><img src="public/media/featured/f5_01_desert_duel_leclerc_kill.webp" alt="Leclerc kill shot in the desert"></td>
-<td width="50%"><img src="public/media/featured/f4_20_urban_ruin_brawl.webp" alt="Ruin brawl in Steinburg"></td>
-</tr>
-<tr>
-<td width="50%"><img src="public/media/home/p2_35_winter_ice_breaker.webp" alt="Ice breaker charge on Frosthollow"></td>
-<td width="50%"><img src="public/media/home/p2_49_coastal_harbor_kill.webp" alt="Harbor kill on Saltmere Bay"></td>
-</tr>
-<tr>
-<td width="50%"><img src="public/media/home/p2_53_autumn_gold_inferno.webp" alt="Autumn inferno on Amberford"></td>
-<td width="50%"><img src="public/media/home/p2_55_steppe_horizon_charge.webp" alt="Horizon charge on Tarkhan Steppe"></td>
-</tr>
-<tr>
-<td width="50%"><img src="public/media/home/p2_60_railyard_sodium_dusk.webp" alt="Sodium dusk in Cinder Junction"></td>
-<td width="50%"><img src="public/media/home/p2_44_verdant_hedgerow_breakout.webp" alt="Hedgerow breakout on Verdant Fields"></td>
+<td width="50%"><img src="public/media/modern/12_leclerc.webp" alt="Leclerc action portrait"></td>
+<td width="50%"><img src="public/media/modern/14_merkava3d.webp" alt="Merkava Mk.3D action portrait"></td>
 </tr>
 </table>
 
-More: the in-game **[home gallery](https://claudeoftanks.kevinliu.studio/home)** shows the full 30-shot graded set.
+The landing page presents all 30 new frames with nation filters and full-screen inspection.
 
 ## Scene Studio
 
-The game ships its own cinematic staging tool — press **F8** from the garage or open
-[`/studio`](https://claudeoftanks.kevinliu.studio/studio). Place any roster vehicles on any map, pose hulls and
-turrets, trigger effects (firing moments, kills, fires, dust) on a stepped timeline, drive the camera freely, and
-capture. Every marketing shot in this README was made with it — the scene files are plain JSON
-(see [`docs/STUDIO.md`](docs/STUDIO.md)).
+Open `/studio` or press `F8` in the garage. Studio can place roster vehicles on any map, conform them to terrain, pose
+hulls/turrets/guns inside physical limits, apply camouflage or damage, stage real firing/destruction effects on a
+deterministic timeline, and capture through the production renderer.
 
-<table>
-<tr>
-<td width="50%"><img src="public/media/home/st_scene.webp" alt="Scene Studio: staging a scene with the actor panel open"></td>
-<td width="50%"><img src="public/media/home/st_roster.webp" alt="Scene Studio: the full roster picker"></td>
-</tr>
-<tr>
-<td width="50%"><img src="public/media/home/st_timeline.webp" alt="Scene Studio: effects timeline"></td>
-<td width="50%"><img src="public/media/home/st_burning.webp" alt="Scene Studio: staged burning wreck"></td>
-</tr>
-</table>
+The modern showcase is reproducible:
 
-## Interface
-
-<table>
-<tr>
-<td width="50%"><img src="public/media/home/ui_garage.webp" alt="Garage: showroom, camouflage picker, era filters, tank carousel"></td>
-<td width="50%"><img src="public/media/home/ui_spectate.webp" alt="Spectator interface with live team status and vehicle switching"></td>
-</tr>
-<tr>
-<td width="50%"><img src="public/media/home/ui_battle.webp" alt="Battle HUD: reticle, minimap, damage panel schematic, team panels"></td>
-<td width="50%"><img src="public/media/home/ui_sniper.webp" alt="Sniper mode: full-frame scope with zoom readout"></td>
-</tr>
-<tr>
-<td width="50%"><img src="public/media/home/ui_killcam.webp" alt="Killcam x-ray: shell path through the internals with module callouts"></td>
-<td width="50%"><img src="public/media/home/ui_aar.webp" alt="After-action report with per-shot analytics"></td>
-</tr>
-<tr>
-<td width="50%"><img src="public/media/home/ui_spectate.webp" alt="Spectator orbit after death"></td>
-<td width="50%"><img src="public/media/home/ui_boot.webp" alt="Boot splash with featured-shot backdrop"></td>
-</tr>
-</table>
-
-## Mobile
-
-The same deployment runs on phones and tablets: touch HUD with virtual joystick, swipe-to-aim, pinch-to-scope,
-and hybrid release/hold-to-auto-fire Dynamic Aim on both fire buttons,
-a mobile device tier (half-resolution texture generation, tuned shadow cascades — **~80%
-less GPU memory**), safe-area-aware layout, and a self-healing GPU pipeline: at boot the game renders test probes,
-validates the environment-lighting bake on-device, and degrades gracefully around device-specific driver faults
-instead of showing a black screen — then reclaims quality when a re-test proves the frame healthy.
-
-![Touch HUD on a phone: joystick, fire cluster, pinch-to-scope, right-side equipment column](docs/readme/mobile-touch.jpg)
-
-## Under the hood
-
-```
-src/engine/    renderer, cascaded shadow maps, post chain, procedural sky + IBL, camera rig,
-               quality tiers, on-device GPU diagnostics
-src/world/     terrain, vegetation, buildings/props, destructibles, baked tank wrecks,
-               horizon, eight map configs
-src/vehicles/  specs (stats + armor zones), procedural tank factory, per-family profiles,
-               quarantined comparison importer, materials/camouflage painters
-src/sim/       ballistics, armor resolution, damage, movement, spotting  (pure logic — node-run selftests)
-src/fx/        muzzle flash, tracers, impacts, explosions, destruction, particles
-src/ui/        HUD, garage, settings, damage panel, shot info, touch controls
-src/game/      state, AI, input, killcam, scene studio
-src/net/       protocol, lobbies, prediction, snapshots, WebRTC/WebSocket adapters
-server/        signaling, dedicated authority, matchmaking, Elo persistence
+```bash
+node tools/marketing-shots/gen-modern-showcase.mjs
+node tools/marketing-shots/shoot.mjs \
+  --scenes tools/marketing-shots/scenes-modern \
+  --out shots/marketing-modern/raw --width 1600
+node tools/marketing-shots/encode-modern-showcase.mjs
 ```
 
-| Command | Purpose |
-|---|---|
-| `npx vite` | Run locally |
-| `npm test` | 500+ sim/equipment/track assertions under plain node |
-| `npm run test:net:browser` | Real two-browser WebRTC + adverse-network soak |
-| `npm run server:signal` | Run the private/LAN signaling service |
-| `npm run server:match` | Run dedicated ranked authority and matchmaking |
-| `node tools/screenshot.mjs` | The screenshot contract: 20 deterministic views, zero console errors |
-| `node tools/perfprobe.mjs` | Perf budgets: worst-frame draws < 900, triangles ≤ 6M, textures < 512 MB |
-| `node tools/procedural-fidelity.mjs` | Tank fidelity gate: 9 ortho proof views + shaded boards vs references |
-| `npm run build` | Public production build (also what the deployment runs) |
+## Architecture
 
-Development happens through verification-gated agent rounds: every change lands with probe evidence, a green
-screenshot contract, and green self-tests. Docs: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) ·
-[`docs/STUDIO.md`](docs/STUDIO.md) · [`docs/MULTIPLAYER-ARCHITECTURE.md`](docs/MULTIPLAYER-ARCHITECTURE.md) ·
-[`docs/GEOMETRY-GATE.md`](docs/GEOMETRY-GATE.md).
+```text
+controls ──► deterministic authority ──► state + reliable events ──► presentation
+                 │                                                   │
+                 ├─ movement / terrain / collision                    ├─ first-party vehicles
+                 ├─ aim / ballistics / armor / modules                ├─ tracks / suspension / FX
+                 ├─ spotting / concealment / bots                     ├─ HUD / audio / killcam
+                 └─ destructibles / result                            └─ Three.js / post
+```
 
-## Assets & licensing
+```text
+src/engine/    renderer, camera, lighting, post, quality and GPU recovery
+src/world/     eight generated maps, terrain, vegetation, props and destructibles
+src/vehicles/  specs, first-party procedural geometry, materials and asset proofs
+src/sim/       renderer-free movement, aiming, ballistics, armor, damage and spotting
+src/game/      application state, AI, input, killcam and Scene Studio
+src/net/       protocol v3, rooms, snapshots, prediction, WebRTC and WebSocket adapters
+src/ui/        garage, battle HUD, room flow, reports, settings and mobile controls
+server/        signaling, distributed room store, dedicated authority, rating and ranked queue
+```
 
-All gameplay code and all 100+ playable vehicle models are original first-party work. External models may be used only
-as quarantined, read-only visual references during QA; they are never loaded as gameplay geometry and never ship as
-playable assets. **No assets extracted from commercial games are used.** Provenance is enforced by the native-playable,
-private-build, and public-build audits.
+Start with [`docs/HOW-IT-WORKS.md`](docs/HOW-IT-WORKS.md), then continue to
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md),
+[`docs/MULTIPLAYER-ARCHITECTURE.md`](docs/MULTIPLAYER-ARCHITECTURE.md), and
+[`docs/STUDIO.md`](docs/STUDIO.md). Historical fleet-program ledgers remain under `docs/` as an auditable build record;
+they are not the current product guide.
 
-## Finding your way around
+## Develop and verify
 
-**[`docs/INDEX.md`](docs/INDEX.md)** is the navigation hub — what every document is, what every
-measurement tool does, and where things live. From there: [`docs/DESIGN.md`](docs/DESIGN.md) (how the
-tank generation program is architected), [`docs/LESSONS.md`](docs/LESSONS.md) (the incident stories
-behind its laws), [`docs/PROGRAM-STATE.md`](docs/PROGRAM-STATE.md) (the live fleet registry and
-how a session resumes), and [`docs/BUILD-STANDARD.md`](docs/BUILD-STANDARD.md) (the living rulebook).
-Operational checklists for the program's recurring flows live as skills in `.claude/skills/`.
+```bash
+npm install
+npx vite
+npm test
+npm run test:net:browser
+npm run tank:native:check
+npm run build
+npm run build:private
+```
 
----
+The public build also strips quarantined comparison assets. Vehicle provenance, generated icons, track geometry,
+simulation rules, networking, browser multiplayer, and both build variants have executable checks.
 
-<p align="center">
-  Built through a long-running Claude/Codex pipeline — research agents, subsystem builders, adversarial critics,
-  and verification gates, orchestrated over many rounds.
-</p>
+## Credits and licensing
+
+Created and directed by **Kevin Liu** through a long-running multi-agent Claude/Codex development pipeline spanning
+research, vehicle authoring, simulation, networking, design, performance, QA, documentation, and deployment.
+
+All gameplay code and selectable vehicles are original first-party work. External models may be retained only as
+quarantined visual references for research and verification; they are never loaded as playable geometry. No assets
+extracted from commercial games are used. See [`docs/ATTRIBUTION.md`](docs/ATTRIBUTION.md) for the complete asset record.

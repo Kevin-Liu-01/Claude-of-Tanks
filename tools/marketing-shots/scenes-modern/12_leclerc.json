@@ -1,0 +1,89 @@
+{
+  "map": "coastal",
+  "seed": 8311,
+  "meta": {
+    "id": "leclerc",
+    "name": "Leclerc",
+    "nation": "France",
+    "role": "Main battle tank",
+    "number": 12
+  },
+  "actors": [
+    {
+      "id": "leclerc",
+      "name": "hero",
+      "pos": [
+        168,
+        -54
+      ],
+      "facingDeg": 330,
+      "turretDeg": -5,
+      "gunDeg": 1,
+      "camo": "digital",
+      "camoSeed": 8311
+    }
+  ],
+  "effects": [
+    {
+      "type": "dust",
+      "at": [
+        166.5,
+        -58
+      ],
+      "tMs": 30,
+      "params": {
+        "count": 9,
+        "intensity": 0.72,
+        "dirDeg": 330
+      }
+    },
+    {
+      "type": "armor_scar",
+      "actor": "hero",
+      "tMs": 55,
+      "params": {
+        "count": 3,
+        "caliberMm": 120,
+        "seedDeg": 51
+      }
+    },
+    {
+      "type": "explosion_moment",
+      "at": [
+        175,
+        -48
+      ],
+      "tMs": 95,
+      "params": {
+        "ageS": 0.3
+      }
+    },
+    {
+      "type": "sparks",
+      "actor": "hero",
+      "tMs": 235,
+      "params": {
+        "caliberMm": 125,
+        "hFrac": 0.7
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      166,
+      1.1,
+      -43
+    ],
+    "lookAt": [
+      168.5,
+      2.45,
+      -56
+    ],
+    "groundRel": true,
+    "fov": 52,
+    "rollDeg": -2.5,
+    "mode": "fly"
+  },
+  "fxTime": 280,
+  "timeScale": 0
+}

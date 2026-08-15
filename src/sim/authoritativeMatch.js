@@ -42,11 +42,11 @@ import { botFriendlyFireRisk, createAI, roleOf } from '../game/ai.js';
 import { createBotNavigationGrid, planBotRoute } from './botRoutePlanner.js';
 import { CONSUMABLE_RULES, cooldownRemaining } from '../game/consumables.js';
 import { PLAYER_ACTION_BITS } from '../net/protocol.js';
+import { decodeAimIntent } from '../net/aimIntent.js';
 
 const BATTLE_LIMIT_S = 15 * 60;
 const FIRE_TICK_S = 0.5;
 const MAP_HALF_M = 508;
-const AIM_DISTANCE_M = 1000;
 const MAX_EVENTS = 128;
 const CRUSH_MIN_MPS = 6 / 3.6;
 const CRUSH_PRESS_S = 0.45;
@@ -141,7 +141,9 @@ function spawnFor(index, team, layout, override) {
     };
   }
   const base = layout.spawns.enemies[index % layout.spawns.enemies.length];
-  return { x: base.x, z: base.z, yaw: base.yaw + Math.PI };
+  // World layout already authors every enemy pad toward the opposing spawn.
+  // Adding PI here made browser-hosted/dedicated Bravo tanks deploy backwards.
+  return { x: base.x, z: base.z, yaw: base.yaw };
 }
 
 function botOpeningGoal(entity, teamSlot, entities, opponents) {
@@ -468,12 +470,7 @@ export function createAuthoritativeMatch({
     const shellSlot = Math.min(entity.spec.gun.shells.length - 1, input.shellSlot);
     if (shellSlot !== entity.combat.shellSlot) selectShell(entity.combat, shellSlot, entity.spec);
     entity.input.shellSlot = shellSlot;
-    const cosPitch = Math.cos(input.aimPitch);
-    _aim.set(
-      entity.state.pos.x + Math.sin(input.aimYaw) * cosPitch * AIM_DISTANCE_M,
-      entity.state.pos.y + Math.sin(input.aimPitch) * AIM_DISTANCE_M,
-      entity.state.pos.z + Math.cos(input.aimYaw) * cosPitch * AIM_DISTANCE_M,
-    );
+    decodeAimIntent(input, entity.state.pos, _aim);
     entity.input.aimPoint.copy(_aim);
   }
 

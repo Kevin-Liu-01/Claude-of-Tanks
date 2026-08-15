@@ -157,6 +157,20 @@ export class AuthoritativeMatchRuntime {
     return () => this.detachPeer(id, 'detached');
   }
 
+  /** Reattach a browser that refreshed while a persistent room is waiting. */
+  rejoinPeer({ peerId, transport, player = null, metadata = null } = {}) {
+    const id = String(peerId || '').trim();
+    if (!id) throw new TypeError('peerId is required');
+    if (!this.roomController?.rejoin) {
+      throw new ProtocolError('room_rejoin_unavailable', 'this room cannot accept a returning player');
+    }
+    if (this.peers.has(id)) this.detachPeer(id, 'peer_replaced');
+    this.roomController.rejoin(id, player || {});
+    const detach = this.attachPeer({ peerId: id, transport, metadata });
+    this.#broadcastRoomState();
+    return detach;
+  }
+
   /** Replay packets that arrived during an ordered lobby-to-match handoff. */
   acceptPeerMessage(peerId, raw) {
     const peer = this.peers.get(String(peerId));
@@ -611,6 +625,27 @@ export class MatchClientRuntime {
     return sent;
   }
 
+  /** Swap wrappers around the same open channel during lobby→match handoff. */
+  replaceTransport(transport) {
+    if (this.closed || this.connected) return false;
+    if (!transport || typeof transport.send !== 'function' ||
+        typeof transport.onMessage !== 'function') {
+      throw new TypeError('transport must implement send() and onMessage()');
+    }
+    if (this.unsubscribeMessage) this.unsubscribeMessage();
+    if (this.unsubscribeClose) this.unsubscribeClose();
+    this.transport = transport;
+    this.unsubscribeMessage = transport.onMessage((message) => this.#receive(message));
+    this.unsubscribeClose = typeof transport.onClose === 'function'
+      ? transport.onClose(() => {
+        this.connected = false;
+        this.closed = true;
+        for (const listener of [...this.connectionListeners]) listener(false);
+      })
+      : null;
+    return true;
+  }
+
   #send(type, payload) {
     if (this.closed) return false;
     const envelope = createEnvelope(type, payload, {
@@ -715,6 +750,20 @@ export class MatchClientRuntime {
             for (const listener of [...this.roomListeners]) listener(this.roomState);
           }
           break;
+        case MESSAGE_TYPES.LOBBY_STATE:
+          // Before the first match, browser-hosted rooms use the lightweight
+          // lobby runtime on this same reliable channel. Accept its state so
+          // the client object can survive the lobby→match handoff (and later
+          // be reused by a refreshed player rejoining the persistent room).
+          if (!message.payload || !Array.isArray(message.payload.players) ||
+              !Number.isSafeInteger(Number(message.payload.revision))) {
+            throw new ProtocolError('invalid_lobby_state', 'lobby state is malformed');
+          }
+          if (!this.roomState || Number(message.payload.revision) >= Number(this.roomState.revision)) {
+            this.roomState = message.payload;
+            for (const listener of [...this.roomListeners]) listener(this.roomState);
+          }
+          break;
         case MESSAGE_TYPES.ERROR:
           this.errors.push(message.payload);
           break;
@@ -750,7 +799,30 @@ export class MatchClientRuntime {
 
   submitRoomCommand(command) {
     if (this.closed || !command || typeof command !== 'object') return false;
-    return this.#send(MESSAGE_TYPES.ROOM_COMMAND, command);
+    return this.#send(this.connected ? MESSAGE_TYPES.ROOM_COMMAND : MESSAGE_TYPES.LOBBY_COMMAND, command);
+  }
+
+  /** Send the match HELLO after the lobby host has entered handoff mode. */
+  beginMatchHandshake(metadata = null) {
+    if (this.closed || this.connected) return this.connected;
+    // The unreliable state lane can beat WELCOME/ROOM_STATE across the RTC
+    // handoff. Adopt the canonical starting round from the lobby now, before
+    // any snapshot can be assembled, so the later ROOM_STATE cannot clear a
+    // baseline that authority has already seen acknowledged.
+    const pendingRound = Number(this.roomState?.round);
+    if (this.roomState?.phase === 'starting' &&
+        Number.isSafeInteger(pendingRound) && pendingRound > this.roomRound) {
+      this.resetForRound(pendingRound);
+    }
+    // LobbyHostRuntime and AuthoritativeMatchRuntime each own an independent
+    // outbound sequence. The authority starts at zero, so the client must not
+    // compare its WELCOME against the lobby sender's final watermark.
+    this.lastRecvSeq = null;
+    // Lobby command errors have already been presented in the lobby and do
+    // not describe the health of the new match protocol phase.
+    this.errors.length = 0;
+    this.handshakeSent = false;
+    return this.connect(metadata);
   }
 
   resetForRound(round) {

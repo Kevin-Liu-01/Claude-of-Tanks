@@ -7,6 +7,7 @@ import {
 } from './privateMatchHandoff.js';
 import { createAuthoritativeMatch } from '../sim/authoritativeMatch.js';
 import { PrivateRoomClientSession } from './privateRoomSession.js';
+import { MatchClientRuntime } from './matchRuntime.js';
 import { MATCH_CONTROL_CHANNEL_LABEL, MATCH_STATE_CHANNEL_LABEL } from './webrtcPeer.js';
 import { addLobbyPlayer, applyLobbyCommand, createLobby, serializeLobby } from './lobby.js';
 
@@ -45,9 +46,9 @@ class FakeSignaling {
   emit(message) { for (const listener of [...this.listeners]) listener(message); }
 }
 
-// Match handoff permanently removes signaling ownership of established RTC
-// channels. A later room_closed event (for example a Vercel recycle) cannot
-// terminate gameplay.
+// Match handoff retains rendezvous listening so a refreshed browser can build
+// a replacement WebRTC channel into the persistent room. An explicit
+// room_closed event still retires gameplay honestly.
 {
   const signaling = new FakeSignaling();
   const session = new PrivateRoomClientSession({
@@ -61,10 +62,10 @@ class FakeSignaling {
   session.peer.peerConnection.ondatachannel({ channel: state });
   await session.ready;
   const released = await session.takeMatchTransport();
-  assert.equal(signaling.listeners.size, 0, 'handoff disarms signaling room lifecycle events');
+  assert.equal(signaling.listeners.size, 1, 'handoff retains signaling for room rejoin');
   signaling.emit({ type: 'room_closed', payload: { roomCode: 'LIFE22', reason: 'host_left' } });
-  assert.equal(released.readyState, 'open', 'released gameplay channel survives room closure');
-  assert.equal(session.peer.peerConnection.connectionState, 'connected');
+  assert.equal(released.readyState, 'closed', 'an explicitly closed room retires gameplay');
+  assert.equal(session.peer.peerConnection.connectionState, 'closed');
   released.close('test_done');
 }
 
@@ -229,20 +230,42 @@ observed.close('test_done');
   assert.ok(hostedRound.client.roomState.players.every((player) => !player.ready),
     'completed round resets every rematch vote but retains the room roster');
 
+  // Simulate a guest document reload after the result: the old transport
+  // leaves, the stable browser id rejoins through a fresh channel, and the
+  // authority sends the still-live waiting room without rebuilding it.
+  joinedRound.close('page_reload');
+  await Promise.resolve();
+  assert.equal(hostedRound.client.roomState.players.some((player) => player.id === 'guest-r'), false);
+  const reloadLink = createLoopbackTransportPair();
+  hostedRound.host.rejoinPeer({
+    peerId: 'guest-r',
+    transport: reloadLink.host,
+    player: { name: 'Guest' },
+    metadata: { mode: 'private' },
+  });
+  const rejoinedRound = new MatchClientRuntime({ transport: reloadLink.client, playerId: 'guest-r' });
+  rejoinedRound.connect({ mode: 'private', resumed: true });
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(rejoinedRound.roomState.phase, 'waiting');
+  assert.equal(rejoinedRound.roomState.players.some((player) => player.id === 'guest-r'), true,
+    'reload reattaches the stable player id to the persistent room');
+  rejoinedRound.submitRoomCommand({ type: 'select_vehicle', specId: 't90m' });
+  await Promise.resolve();
+
   hostedRound.roomCommand({ type: 'set_ready', ready: true });
   hostedRound.roomCommand({ type: 'select_vehicle', specId: 't90m' });
   assert.equal(hostedRound.client.errors.at(-1)?.code, 'vehicle_locked',
     'authority rejects a tank swap while the commander is ready');
-  joinedRound.roomCommand({ type: 'set_ready', ready: true });
+  rejoinedRound.submitRoomCommand({ type: 'set_ready', ready: true });
   await Promise.resolve();
   hostedRound.roomCommand({ type: 'start', matchSeed: 712 });
   await Promise.resolve();
   const roundTwo = hostedRound.client.roomState;
   assert.equal(roundTwo.phase, 'starting');
   assert.equal(roundTwo.round, 2);
-  assert.equal(joinedRound.client.readySent, false,
+  assert.equal(rejoinedRound.readySent, false,
     'new room round re-arms the client asset-ready barrier');
-  joinedRound.ready(); // may arrive before the host finishes loading the map
+  rejoinedRound.readyForMatch(); // may arrive before the host finishes loading the map
   hostedRound.prepareRound({ lobbyState: roundTwo });
   hostedRound.ready();
   await Promise.resolve();
@@ -251,7 +274,7 @@ observed.close('test_done');
   assert.equal(hostedRound.host.matchStarted, true);
   assert.equal(hostedRound.client.roomState.phase, 'playing');
   assert.equal(hostedRound.host.peers.size, 2, 'round two reuses both established peers');
-  joinedRound.close('test_done');
+  rejoinedRound.close('test_done');
   hostedRound.close('test_done');
 }
 

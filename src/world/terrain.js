@@ -104,8 +104,18 @@ export function createLayout(cfg) {
   const spawnsSrc = (cfg && cfg.spawns) || DEFAULT_SPAWNS;
   const player = { ...spawnsSrc.player };
   const enemies = spawnsSrc.enemies.map((e) => ({ ...e }));
-  for (const s of [player, ...enemies]) {
-    s.yaw = Math.atan2(village.cx - s.x, village.cz - s.z); // face the village/town
+  // Deployment orientation is tactical, not decorative: both spawn zones
+  // face the opposing zone. The former "face the village" rule pointed some
+  // far-side arcs away from their opponents (and network authority then
+  // inverted that yaw a second time). Allies inherit the player yaw; each
+  // enemy pad faces the player-team centroid directly.
+  let enemyCx = 0, enemyCz = 0;
+  for (const enemy of enemies) { enemyCx += enemy.x; enemyCz += enemy.z; }
+  enemyCx /= enemies.length || 1;
+  enemyCz /= enemies.length || 1;
+  player.yaw = Math.atan2(enemyCx - player.x, enemyCz - player.z);
+  for (const enemy of enemies) {
+    enemy.yaw = Math.atan2(player.x - enemy.x, player.z - enemy.z);
   }
   const roads = t.roads === 'country' || !t.roads
     ? buildCountryRoads()

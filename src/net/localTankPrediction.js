@@ -1,8 +1,8 @@
 import { Vector3 } from 'three';
 import { SIM_DT, createTankState, updateTank } from '../sim/movement.js';
 import { isSequenceNewer } from './protocol.js';
+import { decodeAimIntent } from './aimIntent.js';
 
-const AIM_DISTANCE_M = 1000;
 const DEFAULT_HARD_SNAP_M = 7;
 const DEFAULT_CORRECTION_TAU_S = 0.09;
 const MAX_INPUT_HISTORY = 240;
@@ -45,14 +45,7 @@ function applyInput(entity, input) {
   entity.input.brake = !!input.brake;
   entity.input.fire = !!input.fire;
   entity.input.shellSlot = input.shellSlot | 0;
-  const pitch = Number(input.aimPitch) || 0;
-  const yaw = Number(input.aimYaw) || 0;
-  const cosPitch = Math.cos(pitch);
-  entity.input.aimPoint.set(
-    entity.state.pos.x + Math.sin(yaw) * cosPitch * AIM_DISTANCE_M,
-    entity.state.pos.y + Math.sin(pitch) * AIM_DISTANCE_M,
-    entity.state.pos.z + Math.cos(yaw) * cosPitch * AIM_DISTANCE_M,
-  );
+  decodeAimIntent(input, entity.state.pos, entity.input.aimPoint);
 }
 
 function advance(entity, input, elapsedS, heightField, collide) {

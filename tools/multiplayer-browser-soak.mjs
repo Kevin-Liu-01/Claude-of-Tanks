@@ -176,8 +176,18 @@ try {
     hostPage.evaluate(() => globalThis.__COT_SOAK.session.command({ type: 'set_ready', ready: true })),
     guestPage.evaluate(() => globalThis.__COT_SOAK.session.submit({ type: 'set_ready', ready: true })),
   ]);
-  await hostPage.waitForFunction(() => globalThis.__COT_SOAK.lastLobby.players.every(
-    (player) => player.ready), { timeout: 5000 });
+  try {
+    await hostPage.waitForFunction(() => globalThis.__COT_SOAK.lastLobby.players.every(
+      (player) => player.ready), { timeout: 5000, polling: 100 });
+  } catch (error) {
+    const readiness = await Promise.all([
+      hostPage.evaluate(() => ({ lobby: globalThis.__COT_SOAK?.lastLobby,
+        errors: globalThis.__COT_SOAK?.errors })),
+      guestPage.evaluate(() => ({ lobby: globalThis.__COT_SOAK?.lastLobby,
+        errors: globalThis.__COT_SOAK?.runtime?.errors })),
+    ]);
+    throw new Error(`ready barrier timed out: ${JSON.stringify(readiness)}`, { cause: error });
+  }
   await hostPage.evaluate(() => globalThis.__COT_SOAK.session.command({
     type: 'start', matchSeed: 0xC07CAFE,
   }));
@@ -391,8 +401,29 @@ try {
     hostPage.evaluate(() => globalThis.__COT_SOAK.match.roomCommand({ type: 'set_ready', ready: true })),
     guestPage.evaluate(() => globalThis.__COT_SOAK.match.roomCommand({ type: 'set_ready', ready: true })),
   ]);
-  await hostPage.waitForFunction(() => globalThis.__COT_SOAK.match.client.roomState.players.every(
-    (player) => player.ready), { timeout: 5000 });
+  try {
+    await hostPage.waitForFunction(() => globalThis.__COT_SOAK.match.client.roomState.players.every(
+      (player) => player.ready), { timeout: 5000, polling: 100 });
+  } catch (error) {
+    const [hostReadyState, guestReadyState] = await Promise.all([
+      hostPage.evaluate(() => ({
+        room: globalThis.__COT_SOAK.match.client.roomState,
+        clientErrors: globalThis.__COT_SOAK.match.client.errors,
+        peerErrors: [...globalThis.__COT_SOAK.match.host.peers.values()].map((peer) => ({
+          id: peer.id,
+          welcomed: peer.welcomed,
+          lastRecvSeq: peer.lastRecvSeq,
+        })),
+      })),
+      guestPage.evaluate(() => ({
+        room: globalThis.__COT_SOAK.match.client.roomState,
+        clientErrors: globalThis.__COT_SOAK.match.client.errors,
+        closed: globalThis.__COT_SOAK.match.client.closed,
+      })),
+    ]);
+    console.error('rematch ready timeout', { hostReadyState, guestReadyState });
+    throw error;
+  }
   await hostPage.evaluate(() => globalThis.__COT_SOAK.match.roomCommand({
     type: 'start', matchSeed: 0xC07CAFF,
   }));

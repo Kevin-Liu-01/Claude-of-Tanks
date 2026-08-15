@@ -97,7 +97,13 @@ export class LobbyHostRuntime {
       }
       if (peer.lastRecvSeq != null && !isSequenceNewer(message.seq, peer.lastRecvSeq)) return;
       peer.lastRecvSeq = message.seq;
-      if (message.type === MESSAGE_TYPES.LOBBY_COMMAND) {
+      if (message.type === MESSAGE_TYPES.HELLO) {
+        // MatchClientRuntime is deliberately reused across lobby and match so
+        // a persistent-room rejoin does not replace sequence state. During
+        // the waiting phase HELLO is an idempotent request for current state;
+        // once STARTING, the handoff buffer above forwards it to authority.
+        this.broadcast();
+      } else if (message.type === MESSAGE_TYPES.LOBBY_COMMAND) {
         this.command(peer.id, message.payload);
       } else if (message.type === MESSAGE_TYPES.PING) {
         this.#send(peer, MESSAGE_TYPES.PONG, message.payload);

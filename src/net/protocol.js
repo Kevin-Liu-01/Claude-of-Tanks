@@ -43,6 +43,8 @@ const MESSAGE_TYPE_SET = new Set(Object.values(MESSAGE_TYPES));
 const ROOM_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const ROOM_CODE_LENGTH = 6;
 const MAX_SEQUENCE = 0x7fffffff;
+const MIN_AIM_DISTANCE_M = 0.01;
+const MAX_AIM_DISTANCE_M = 2000;
 
 export class ProtocolError extends Error {
   constructor(code, message) {
@@ -148,7 +150,9 @@ export function validateEnvelope(value) {
 
 /**
  * Validate and normalize one player input frame. Unknown fields are dropped.
- * Aim is expressed as world yaw/pitch rather than a trusted target position.
+ * Aim is expressed as a bounded polar offset from the tank origin. Distance
+ * preserves the finite camera-hit point (and therefore close-range parallax)
+ * without accepting an unbounded client-authored world position.
  */
 export function normalizePlayerInput(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -161,6 +165,11 @@ export function normalizePlayerInput(value) {
   const steer = clamp(assertFiniteNumber(value.steer, 'steer'), -1, 1);
   const aimYaw = assertFiniteNumber(value.aimYaw, 'aimYaw');
   const aimPitch = clamp(assertFiniteNumber(value.aimPitch, 'aimPitch'), -Math.PI / 2, Math.PI / 2);
+  const aimDistance = clamp(
+    value.aimDistance == null ? 1000 : assertFiniteNumber(value.aimDistance, 'aimDistance'),
+    MIN_AIM_DISTANCE_M,
+    MAX_AIM_DISTANCE_M,
+  );
   const shellSlot = Number(value.shellSlot);
   if (!Number.isInteger(shellSlot) || shellSlot < 0 || shellSlot > 2) {
     throw new ProtocolError('invalid_input', 'shellSlot must be 0, 1, or 2');
@@ -179,6 +188,7 @@ export function normalizePlayerInput(value) {
     fire: !!value.fire,
     aimYaw,
     aimPitch,
+    aimDistance,
     shellSlot,
     actionBits,
   };

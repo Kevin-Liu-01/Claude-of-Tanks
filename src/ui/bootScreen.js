@@ -260,6 +260,10 @@ export function createBootScreen() {
       if (elGate) elGate.classList.add('on');
       return new Promise((resolve) => {
         const go = (ev) => {
+          // Credits and GitHub are deliberate splash controls, not entry
+          // gestures. Let them remain interactive without dismissing the
+          // game gate underneath the modal/link click.
+          if (ev?.target instanceof Element && ev.target.closest('[data-cot-boot-control]')) return;
           // ignore pure modifier taps so Cmd-Tab back into the tab does not
           // consume the gate
           if (ev && ev.type === 'keydown' &&

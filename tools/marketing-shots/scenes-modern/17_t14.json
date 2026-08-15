@@ -1,0 +1,89 @@
+{
+  "map": "desert",
+  "seed": 8316,
+  "meta": {
+    "id": "t14",
+    "name": "T-14 Armata",
+    "nation": "Russia",
+    "role": "Next-generation main battle tank",
+    "number": 17
+  },
+  "actors": [
+    {
+      "id": "t14",
+      "name": "hero",
+      "pos": [
+        0,
+        0
+      ],
+      "facingDeg": 205,
+      "turretDeg": -3,
+      "gunDeg": 1,
+      "camo": "desert",
+      "camoSeed": 8316
+    }
+  ],
+  "effects": [
+    {
+      "type": "dust",
+      "at": [
+        -1.5,
+        -4
+      ],
+      "tMs": 30,
+      "params": {
+        "count": 9,
+        "intensity": 0.72,
+        "dirDeg": 205
+      }
+    },
+    {
+      "type": "armor_scar",
+      "actor": "hero",
+      "tMs": 55,
+      "params": {
+        "count": 3,
+        "caliberMm": 120,
+        "seedDeg": 56
+      }
+    },
+    {
+      "type": "explosion_moment",
+      "at": [
+        7,
+        6
+      ],
+      "tMs": 95,
+      "params": {
+        "ageS": 0.3
+      }
+    },
+    {
+      "type": "sparks",
+      "actor": "hero",
+      "tMs": 235,
+      "params": {
+        "caliberMm": 125,
+        "hFrac": 0.7
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      5.9,
+      1.25,
+      -9.4
+    ],
+    "lookAt": [
+      -1.4,
+      2.4,
+      1.8
+    ],
+    "groundRel": true,
+    "fov": 48,
+    "rollDeg": -2.5,
+    "mode": "fly"
+  },
+  "fxTime": 280,
+  "timeScale": 0
+}

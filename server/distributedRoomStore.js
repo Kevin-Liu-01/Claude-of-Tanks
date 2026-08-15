@@ -10,16 +10,17 @@ const JOIN_ROOM_SCRIPT = `
 local raw = redis.call('GET', KEYS[1])
 if not raw then return cjson.encode({ error = 'room_not_found' }) end
 local room = cjson.decode(raw)
-if #room.peers >= tonumber(room.maxPlayers) then
+local member = cjson.decode(ARGV[1])
+local peers = {}
+local replacing = false
+for _, peer in ipairs(room.peers) do
+  if peer.peerId == member.peerId then replacing = true else table.insert(peers, peer) end
+end
+if not replacing and #room.peers >= tonumber(room.maxPlayers) then
   return cjson.encode({ error = 'room_full' })
 end
-local member = cjson.decode(ARGV[1])
-for _, peer in ipairs(room.peers) do
-  if peer.peerId == member.peerId then
-    return cjson.encode({ error = 'peer_id_collision' })
-  end
-end
-table.insert(room.peers, member)
+table.insert(peers, member)
+room.peers = peers
 room.touchedAt = tonumber(ARGV[2])
 redis.call('SET', KEYS[1], cjson.encode(room), 'PX', ARGV[3])
 return cjson.encode({ room = room })
@@ -281,6 +282,8 @@ export class DistributedSignalingRoomStore {
   }
 
   #remember(connection, roomCode, peerId) {
+    const previous = this.connections.get(peerId);
+    if (previous && previous !== connection) this.membership.delete(previous);
     this.membership.set(connection, { roomCode, peerId });
     this.connections.set(peerId, connection);
   }
@@ -294,8 +297,7 @@ export class DistributedSignalingRoomStore {
     const memberPlayer = cleanPlayer(player);
     for (let attempt = 0; attempt < 16; attempt++) {
       const roomCode = this.roomCodeFactory();
-      const peerId = String(this.peerIdFactory());
-      if (!/^[a-zA-Z0-9_-]{8,48}$/.test(peerId)) continue;
+      const peerId = memberPlayer.id;
       const now = this.now();
       const room = {
         roomCode,
@@ -320,9 +322,9 @@ export class DistributedSignalingRoomStore {
     await this.#ready();
     if (this.membership.has(connection)) throw codedError('already_joined', 'connection already joined');
     const code = String(roomCode || '');
-    const peerId = String(this.peerIdFactory());
-    if (!/^[a-zA-Z0-9_-]{8,48}$/.test(peerId)) throw codedError('peer_id_exhausted', 'invalid peer id');
-    const member = { peerId, player: cleanPlayer(player) };
+    const memberPlayer = cleanPlayer(player);
+    const peerId = memberPlayer.id;
+    const member = { peerId, player: memberPlayer };
     const result = parseResult(await this.#runCommand('eval',
       JOIN_ROOM_SCRIPT,
       [this.roomKey(code)],
@@ -396,6 +398,10 @@ export class DistributedSignalingRoomStore {
   async leave(connection, reason = 'peer_left') {
     const membership = this.membership.get(connection);
     if (!membership) return [];
+    if (this.connections.get(membership.peerId) !== connection) {
+      this.membership.delete(connection);
+      return [];
+    }
     this.membership.delete(connection);
     this.connections.delete(membership.peerId);
     await this.#ready();

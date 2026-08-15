@@ -7,6 +7,7 @@ import { AuthoritativeMatchRuntime, MatchClientRuntime } from './matchRuntime.js
 import { maybeCreateAdverseNetworkTransport } from './adverseNetworkTransport.js';
 import {
   applyLobbyCommand,
+  addLobbyPlayer,
   finishLobbyRound,
   markLobbyRoundPlaying,
   removeLobbyPlayer,
@@ -103,6 +104,17 @@ function createPersistentRoomController(session) {
       rtcPeer?.close?.(reason);
       session.peers?.delete?.(String(playerId));
     },
+    rejoin(playerId, player = {}) {
+      if (lobby.phase !== 'waiting') {
+        throw Object.assign(new Error('Return after the current round ends.'), {
+          code: 'room_not_waiting',
+        });
+      }
+      if (!lobby.players.has(String(playerId))) {
+        addLobbyPlayer(lobby, { id: String(playerId), name: player.name || 'Player' });
+      }
+      return serializeLobby(lobby);
+    },
     metadataFor(playerId) {
       const player = lobby.players.get(String(playerId));
       return player ? { spectator: player.team === 'spectator', team: player.team } : {};
@@ -136,6 +148,7 @@ export function beginPrivateHostMatch({
   });
   const roomController = createPersistentRoomController(session);
   const host = new AuthoritativeMatchRuntime({ simulation, roomController });
+  session.bindMatchRuntime?.(host);
   // The browser host's local player does not need an emulated network hop.
   // Keep the same protocol/runtime seam, but deliver its in-process envelopes
   // synchronously and zero-copy so host rendering never waits on microtasks.
@@ -201,14 +214,20 @@ export function beginPrivateHostMatch({
 
 /** Switch a joined peer's established WebRTC channel into match mode. */
 export async function beginPrivateClientMatch({ session, playerId, lobbyState } = {}) {
-  if (!session || typeof session.takeMatchTransport !== 'function') {
+  if (!session || (typeof session.takeMatchClient !== 'function' &&
+      typeof session.takeMatchTransport !== 'function')) {
     throw new TypeError('private client session is required');
   }
   const id = String(playerId || (session.roomInfo && session.roomInfo.peerId) || '');
   if (!id) throw new TypeError('playerId is required');
-  const transport = maybeCreateAdverseNetworkTransport(await session.takeMatchTransport());
-  const client = new MatchClientRuntime({ transport, playerId: id });
-  client.connect({ mode: session.roomInfo && session.roomInfo.mode || 'private' });
+  let client;
+  if (typeof session.takeMatchClient === 'function') {
+    client = await session.takeMatchClient();
+  } else {
+    const transport = maybeCreateAdverseNetworkTransport(await session.takeMatchTransport());
+    client = new MatchClientRuntime({ transport, playerId: id });
+    client.connect({ mode: session.roomInfo && session.roomInfo.mode || 'private' });
+  }
   return {
     kind: session.roomInfo && session.roomInfo.mode || 'private',
     role: 'client',

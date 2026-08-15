@@ -1,0 +1,81 @@
+{
+  "map": "coastal",
+  "seed": 8327,
+  "meta": {
+    "id": "pt91m",
+    "name": "PT-91M",
+    "nation": "Poland",
+    "role": "Modernized main battle tank",
+    "number": 28
+  },
+  "actors": [
+    {
+      "id": "pt91m",
+      "name": "hero",
+      "pos": [
+        168,
+        -54
+      ],
+      "facingDeg": 330,
+      "turretDeg": -5,
+      "gunDeg": 0.5,
+      "camo": "digital",
+      "camoSeed": 8327
+    }
+  ],
+  "effects": [
+    {
+      "type": "dust",
+      "at": [
+        166.5,
+        -58
+      ],
+      "tMs": 30,
+      "params": {
+        "count": 9,
+        "intensity": 0.72,
+        "dirDeg": 330
+      }
+    },
+    {
+      "type": "barrage",
+      "at": [
+        159,
+        -45
+      ],
+      "tMs": 40,
+      "params": {
+        "count": 4,
+        "radiusM": 7,
+        "size": "mixed",
+        "seedDeg": 97
+      }
+    },
+    {
+      "type": "firing_moment",
+      "actor": "hero",
+      "tMs": 270,
+      "params": {
+        "ageS": 0.06
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      166,
+      1.9000000000000001,
+      -43
+    ],
+    "lookAt": [
+      168.5,
+      2.45,
+      -56
+    ],
+    "groundRel": true,
+    "fov": 49,
+    "rollDeg": 3,
+    "mode": "fly"
+  },
+  "fxTime": 295,
+  "timeScale": 0
+}

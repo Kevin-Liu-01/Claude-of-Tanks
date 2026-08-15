@@ -43,10 +43,12 @@ collision facade.
 
 ## Protocol and authority
 
-Protocol v2 uses validated envelopes with a finite message vocabulary,
+Protocol v3 uses validated envelopes with a finite message vocabulary,
 sequence/acknowledgement fields, and simulation ticks. Clients submit controls
-only: throttle, steering, brake, aim yaw/pitch, shell choice, fire, and explicit
-consumable action bits. They cannot submit a trusted position, hit, damage,
+only: throttle, steering, brake, bounded aim yaw/pitch/distance, shell choice,
+fire, and explicit consumable action bits. Distance preserves the finite
+center-screen point and close-range parallax used by solo gunnery; it is not a
+trusted hit position. Clients cannot submit a trusted position, hit, damage,
 spotting result, reload completion, or match clock.
 
 Authority runs at 60 Hz and publishes viewer-specific state at 20 Hz. Hidden
@@ -70,6 +72,13 @@ payload and buffered-byte limits and fail visibly on sustained backpressure.
 Snapshots use a compact binary codec, explicit snapshot acknowledgements,
 per-peer deltas, and periodic keyframes. A missing delta baseline waits for a
 recovering keyframe rather than inventing state.
+
+One-shot combat/destruction events travel independently over reliable control
+instead of living only inside replaceable snapshots. The browser bridge drains
+critical state immediately and budgets expensive cosmetic presentation across
+frames. Persistent facts are reconstructible after packet loss or reconnect:
+the verdict is mirrored in snapshot metadata and destructible state carries a
+revision plus destroyed identifiers in keyframes.
 
 The browser host's own peer still crosses the exact protocol/runtime boundary,
 but its in-process transport delivers synchronously and without cloning. The
@@ -122,6 +131,19 @@ validated `room` query automatically enters the corresponding lobby and joins
 the room after the normal loading gate; manual six-character codes remain a
 fallback.
 
+Rooms persist across rounds. Protocol-v3 `ROOM_COMMAND` and `ROOM_STATE`
+messages carry round, last result, full human roster, selections, and readiness
+on the reliable channel. When authority publishes a result, the room returns
+from `playing` to `waiting`, keeps connected peers and the WebRTC channels,
+increments its next round at start, and clears every ready flag. The next match
+replaces the simulation runtime while preserving transport and room identity.
+
+Closing the result report returns to the garage without leaving the room. A
+compact room reminder remains under Battle and exposes ready/unready state.
+Ready players cannot change vehicle, equipment, or team until they unready;
+the report and lobby both show live play-again readiness. Only an explicit
+Leave command disconnects the peer.
+
 Ranked uses service-scoped anonymous bearer identities, widening Elo search
 bands, server team balancing, one-time match tickets, persistent idempotent
 settlement, rank names, profiles, and a leaderboard. Fake credits and XP are
@@ -131,8 +153,16 @@ server-owned.
 
 Spectators receive both teams through an explicitly marked observer peer and
 cannot submit vehicle controls. Ranked authority never migrates to a player.
-Version 1 private/LAN rooms close cleanly if their browser host leaves; host
+Private/LAN rooms close cleanly if their browser host leaves; host
 migration is intentionally not claimed.
+
+Non-host refresh after a round is supported. Signaling preserves the stable
+browser player id, the joined client keeps the canonical invite URL, and the
+host keeps rendezvous listening after lobby-to-match handoff. When the page
+returns during the room's waiting phase, a new WebRTC channel is attached to
+the existing room controller and current `ROOM_STATE` is replayed. Explicit
+Leave removes the URL. Refreshing the browser host is different: it destroys
+the browser-owned authority, so host migration is intentionally not claimed.
 
 ## Deployment and trust
 

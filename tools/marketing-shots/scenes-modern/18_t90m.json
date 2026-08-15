@@ -1,0 +1,81 @@
+{
+  "map": "winter",
+  "seed": 8317,
+  "meta": {
+    "id": "t90m",
+    "name": "T-90M Proryv",
+    "nation": "Russia",
+    "role": "Main battle tank",
+    "number": 18
+  },
+  "actors": [
+    {
+      "id": "t90m",
+      "name": "hero",
+      "pos": [
+        162,
+        -78
+      ],
+      "facingDeg": 205,
+      "turretDeg": -3,
+      "gunDeg": 0.5,
+      "camo": "winter",
+      "camoSeed": 8317
+    }
+  ],
+  "effects": [
+    {
+      "type": "dust",
+      "at": [
+        160.5,
+        -82
+      ],
+      "tMs": 30,
+      "params": {
+        "count": 9,
+        "intensity": 0.72,
+        "dirDeg": 205
+      }
+    },
+    {
+      "type": "barrage",
+      "at": [
+        153,
+        -69
+      ],
+      "tMs": 40,
+      "params": {
+        "count": 4,
+        "radiusM": 7,
+        "size": "mixed",
+        "seedDeg": 87
+      }
+    },
+    {
+      "type": "firing_moment",
+      "actor": "hero",
+      "tMs": 270,
+      "params": {
+        "ageS": 0.06
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      168.2,
+      1.95,
+      -87.6
+    ],
+    "lookAt": [
+      161,
+      2.35,
+      -77
+    ],
+    "groundRel": true,
+    "fov": 47,
+    "rollDeg": 3,
+    "mode": "fly"
+  },
+  "fxTime": 295,
+  "timeScale": 0
+}

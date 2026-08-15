@@ -1,0 +1,81 @@
+{
+  "map": "urban",
+  "seed": 8302,
+  "meta": {
+    "id": "m1a2_sepv2",
+    "name": "M1A2 SEPv2",
+    "nation": "USA",
+    "role": "Main battle tank",
+    "number": 3
+  },
+  "actors": [
+    {
+      "id": "m1a2_sepv2",
+      "name": "hero",
+      "pos": [
+        36,
+        60
+      ],
+      "facingDeg": 180,
+      "turretDeg": 3,
+      "gunDeg": 0.5,
+      "camo": "urbanblock",
+      "camoSeed": 8302
+    }
+  ],
+  "effects": [
+    {
+      "type": "dust",
+      "at": [
+        34.5,
+        56
+      ],
+      "tMs": 30,
+      "params": {
+        "count": 9,
+        "intensity": 0.72,
+        "dirDeg": 180
+      }
+    },
+    {
+      "type": "barrage",
+      "at": [
+        27,
+        69
+      ],
+      "tMs": 40,
+      "params": {
+        "count": 4,
+        "radiusM": 7,
+        "size": "mixed",
+        "seedDeg": 72
+      }
+    },
+    {
+      "type": "firing_moment",
+      "actor": "hero",
+      "tMs": 270,
+      "params": {
+        "ageS": 0.06
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      44.6,
+      1.85,
+      52
+    ],
+    "lookAt": [
+      34,
+      2.45,
+      61
+    ],
+    "groundRel": true,
+    "fov": 48,
+    "rollDeg": 3,
+    "mode": "fly"
+  },
+  "fxTime": 295,
+  "timeScale": 0
+}

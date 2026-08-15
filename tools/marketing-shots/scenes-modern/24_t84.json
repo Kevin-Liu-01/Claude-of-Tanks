@@ -1,0 +1,91 @@
+{
+  "map": "verdant",
+  "seed": 8323,
+  "meta": {
+    "id": "t84",
+    "name": "T-84 Oplot",
+    "nation": "Ukraine",
+    "role": "Main battle tank",
+    "number": 24
+  },
+  "actors": [
+    {
+      "id": "t84",
+      "name": "hero",
+      "pos": [
+        -80,
+        30
+      ],
+      "facingDeg": 200,
+      "turretDeg": 3,
+      "gunDeg": 1,
+      "camo": "summer",
+      "camoSeed": 8323
+    }
+  ],
+  "effects": [
+    {
+      "type": "dust",
+      "at": [
+        -81.5,
+        26
+      ],
+      "tMs": 30,
+      "params": {
+        "count": 9,
+        "intensity": 0.72,
+        "dirDeg": 200
+      }
+    },
+    {
+      "type": "explosion_moment",
+      "at": [
+        -74,
+        38
+      ],
+      "tMs": 75,
+      "params": {
+        "ageS": 0.5
+      }
+    },
+    {
+      "type": "mg_burst",
+      "actor": "hero",
+      "tMs": 150,
+      "params": {
+        "count": 8,
+        "gapM": 5,
+        "spreadDeg": 0.7,
+        "caliberMm": 12.7,
+        "speedMps": 900
+      }
+    },
+    {
+      "type": "sparks",
+      "actor": "hero",
+      "tMs": 250,
+      "params": {
+        "caliberMm": 120,
+        "hFrac": 0.58
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      -73,
+      0.9500000000000001,
+      19
+    ],
+    "lookAt": [
+      -80,
+      2.45,
+      30
+    ],
+    "groundRel": true,
+    "fov": 49,
+    "rollDeg": -3.5,
+    "mode": "fly"
+  },
+  "fxTime": 280,
+  "timeScale": 0
+}

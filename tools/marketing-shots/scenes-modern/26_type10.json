@@ -1,0 +1,78 @@
+{
+  "map": "winter",
+  "seed": 8325,
+  "meta": {
+    "id": "type10",
+    "name": "Type 10",
+    "nation": "Japan",
+    "role": "Main battle tank",
+    "number": 26
+  },
+  "actors": [
+    {
+      "id": "type10",
+      "name": "hero",
+      "pos": [
+        162,
+        -78
+      ],
+      "facingDeg": 205,
+      "turretDeg": -3,
+      "gunDeg": 0.5,
+      "camo": "winter",
+      "camoSeed": 8325
+    }
+  ],
+  "effects": [
+    {
+      "type": "dust",
+      "at": [
+        160.5,
+        -82
+      ],
+      "tMs": 30,
+      "params": {
+        "count": 9,
+        "intensity": 0.72,
+        "dirDeg": 205
+      }
+    },
+    {
+      "type": "explosion_moment",
+      "at": [
+        155,
+        -70
+      ],
+      "tMs": 70,
+      "params": {
+        "ageS": 0.42
+      }
+    },
+    {
+      "type": "firing_moment",
+      "actor": "hero",
+      "tMs": 240,
+      "params": {
+        "ageS": 0.055
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      168.2,
+      1.15,
+      -87.6
+    ],
+    "lookAt": [
+      161,
+      2.35,
+      -77
+    ],
+    "groundRel": true,
+    "fov": 50,
+    "rollDeg": 0,
+    "mode": "fly"
+  },
+  "fxTime": 280,
+  "timeScale": 0
+}

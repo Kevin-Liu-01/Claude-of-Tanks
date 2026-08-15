@@ -6,14 +6,17 @@ wins.)
 
 ## Start here (new session / new device)
 
-1. **docs/PROGRAM-STATE.md** — THE registry + takeover handbook. §13 is the resume
+1. **docs/HOW-IT-WORKS.md** — current product guide: shipped runtime, first-party
+   vehicles, movement/gunnery, combat, bots, multiplayer, rematches, results,
+   performance, Scene Studio, and the reproducible 30-image modern set.
+2. **docs/PROGRAM-STATE.md** — THE historical tank-program registry + takeover handbook. §13 is the resume
    protocol: clone → npm install → npm test → read PROGRAM-STATE + BUILD-STANDARD +
    GEOMETRY-GATE → respawn §12 rounds → land per §6 → heartbeat.
-2. **docs/BUILD-STANDARD.md** — the LIVING RULEBOOK (§A-§J). Every builder/critic
+3. **docs/BUILD-STANDARD.md** — the LIVING RULEBOOK (§A-§J). Every builder/critic
    re-reads it at round start; every lesson lands here the turn it arrives.
-3. **docs/GEOMETRY-GATE.md** — the measured gate spec + graduation amendments. Wins over
+4. **docs/GEOMETRY-GATE.md** — the measured gate spec + graduation amendments. Wins over
    BUILD-STANDARD on conflict.
-4. The tank you're touching: **docs/references/tanks/<id>.md** — the packet is the
+5. The tank you're touching: **docs/references/tanks/<id>.md** — the packet is the
    tank's single source of truth.
 
 Skills (in .claude/skills/ — operational checklists distilled from the law):
@@ -26,6 +29,7 @@ Skills (in .claude/skills/ — operational checklists distilled from the law):
 
 | Doc | What it is |
 |---|---|
+| HOW-IT-WORKS.md | Current shipped-game tour: runtime, first-party fleet, world, movement/gunnery, combat, bots, networking, persistent rooms/rematches, results, Studio, and verification |
 | PROGRAM-STATE.md | Fleet registry (graduate hashes §3, fleet state §4), orchestrator mechanics §6, directive log §8, incident lessons §9, respawn briefs §12, resume loop §13 |
 | BUILD-STANDARD.md | Owner-ratified build laws §A geometry, §B silhouette identity (B1 slopes, B2 contiguity, B3 decoration/guns/density, B4 tracks, B5 parenting, B6 run shape, B7 ref-wrong), §C craft, §D measurement discipline, §E oracle repairs, §F round protocol, §G done, §H rigs, §I KIT fittings, §J critic laws |
 | GEOMETRY-GATE.md | Gate components + scoring math, caps case law, orientation truth, anti-gaming rules, §10 graduation amendments (three maps, helper-expanded, trim clamp) |

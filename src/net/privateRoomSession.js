@@ -1,6 +1,8 @@
 import { createLobby } from './lobby.js';
-import { LobbyClientRuntime, LobbyHostRuntime } from './lobbyRuntime.js';
+import { LobbyHostRuntime } from './lobbyRuntime.js';
 import { createWebRTCPeer } from './webrtcPeer.js';
+import { MatchClientRuntime } from './matchRuntime.js';
+import { maybeCreateAdverseNetworkTransport } from './adverseNetworkTransport.js';
 
 /**
  * Compose signaling, one WebRTC peer per remote participant, and canonical
@@ -33,6 +35,7 @@ export class PrivateRoomHostSession {
     this.isVehicleAllowed = isVehicleAllowed;
     this.onError = onError;
     this.peers = new Map();
+    this.matchRuntime = null;
     this.lobby = createLobby({
       roomCode: roomInfo.roomCode,
       hostId: roomInfo.peerId,
@@ -72,7 +75,10 @@ export class PrivateRoomHostSession {
   }
 
   async #joinPeer({ peerId, player }) {
-    if (this.peers.has(peerId)) return;
+    if (this.peers.has(peerId)) {
+      this.peers.get(peerId).close('peer_replaced');
+      this.peers.delete(peerId);
+    }
     const session = createWebRTCPeer({
       role: 'host',
       iceServers: this.iceServers,
@@ -83,11 +89,23 @@ export class PrivateRoomHostSession {
     this.peers.set(peerId, session);
     await session.start();
     const transport = await session.transportReady;
-    this.runtime.attachPeer({
-      peerId,
-      transport,
-      player: { name: player && player.name || 'Player' },
-    });
+    const cleanPlayer = { name: player && player.name || 'Player' };
+    if (this.matchRuntime) {
+      try {
+        this.matchRuntime.rejoinPeer({
+          peerId,
+          transport,
+          player: cleanPlayer,
+          metadata: { mode: this.roomInfo.mode || 'private' },
+        });
+      } catch (error) {
+        session.close(error?.code || 'room_rejoin_failed');
+        this.peers.delete(peerId);
+        throw error;
+      }
+    } else {
+      this.runtime.attachPeer({ peerId, transport, player: cleanPlayer });
+    }
   }
 
   command(command) {
@@ -96,12 +114,14 @@ export class PrivateRoomHostSession {
 
   /** Release open remote channels for AuthoritativeMatchRuntime attachment. */
   takeMatchChannels() {
-    // Signaling is rendezvous-only. Once the reliable WebRTC channels move to
-    // match authority, a recycled Vercel signaling socket must not detach or
-    // close those gameplay channels.
-    if (this.unsubscribeSignal) this.unsubscribeSignal();
-    this.unsubscribeSignal = null;
+    // Keep rendezvous listening after handoff. Gameplay never traverses this
+    // socket, but a browser that reloads after a round needs it to establish
+    // a fresh WebRTC channel into the still-live room.
     return this.runtime.releaseTransports();
+  }
+
+  bindMatchRuntime(runtime) {
+    this.matchRuntime = runtime || null;
   }
 
   close(reason = 'host_closed') {
@@ -149,25 +169,36 @@ export class PrivateRoomClientSession {
       }
     });
     this.ready = this.peer.transportReady.then((transport) => {
-      this.runtime = new LobbyClientRuntime({ transport });
-      return this.runtime;
+      const client = new MatchClientRuntime({ transport, playerId: roomInfo.peerId });
+      client.connect({ mode: roomInfo.mode || 'private', phase: 'lobby' });
+      this.runtime = client;
+      return {
+        onState: (listener) => client.onRoomState(listener),
+        submit: (command) => client.submitRoomCommand(command),
+        get errors() { return client.errors; },
+        get closed() { return client.closed; },
+      };
     });
   }
 
   async submit(command) {
-    const runtime = this.runtime || await this.ready;
-    return runtime.submit(command);
+    await this.ready;
+    return this.runtime.submitRoomCommand(command);
   }
 
   async takeMatchTransport() {
-    const runtime = this.runtime || await this.ready;
-    // Ignore room lifecycle messages after the established data channels are
-    // handed to MatchClientRuntime. Do not proactively close signaling here:
-    // the host and guest handoffs are asynchronous, so host leave could race
-    // a guest that has received `starting` but has not detached yet.
-    if (this.unsubscribeSignal) this.unsubscribeSignal();
-    this.unsubscribeSignal = null;
-    return runtime.releaseTransport();
+    await this.ready;
+    return this.runtime.transport;
+  }
+
+  async takeMatchClient() {
+    await this.ready;
+    if (!this.runtime.connected) {
+      const wrapped = maybeCreateAdverseNetworkTransport(this.runtime.transport);
+      if (wrapped !== this.runtime.transport) this.runtime.replaceTransport(wrapped);
+    }
+    this.runtime.beginMatchHandshake({ mode: this.roomInfo.mode || 'private' });
+    return this.runtime;
   }
 
   close(reason = 'client_closed') {

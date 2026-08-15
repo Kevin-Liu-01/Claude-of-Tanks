@@ -81,6 +81,7 @@ import {
   startConsumableCooldown,
 } from './game/consumables.js';
 import { PLAYER_ACTION_BITS } from './net/protocol.js';
+import { encodeAimIntent } from './net/aimIntent.js';
 import { mobileAutoAimCenter, pickMobileAutoAimTarget } from './game/mobileAutoAim.js';
 import { createSettings } from './ui/settings.js';
 import { createTouchControls } from './ui/touchControls.js';
@@ -151,34 +152,6 @@ const _aimPose = { pos: new THREE.Vector3() };
 // top-level consts are still in their temporal dead zone.
 // ---------------------------------------------------------------------------
 const boot = createBootScreen();
-// Boot splash subtitle: the inline index.html line was hardcoded
-// ('48 Vehicles · 4 Battlefields · Tiers I–X') and went stale as the roster
-// and map registry grew. Derive the real numbers from the same sources the
-// game plays from (ALL_TANK_IDS roster + maps registry + tier table),
-// identical formatting; runs at module eval so the splash updates within the
-// first paint beats. __BOOT_TAG mirrors the text for probes (the splash node
-// is torn down on dismiss).
-(() => {
-  try {
-    const el = document.querySelector('#cot-boot .cot-boot-tag');
-    if (!el) return;
-    const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
-    let lo = Infinity;
-    let hi = -Infinity;
-    const garageTankIds = ALL_TANK_IDS.filter(isGarageVisibleTankId);
-    for (const id of garageTankIds) {
-      const t = ROMAN.indexOf(tierNumeral(id));
-      if (t < 0) continue;
-      if (t < lo) lo = t;
-      if (t > hi) hi = t;
-    }
-    const tiers = lo <= hi ? ` · Tiers ${ROMAN[lo]}–${ROMAN[hi]}` : '';
-    const text =
-      `${garageTankIds.length} Vehicles · ${MAP_IDS.length} Battlefields${tiers}`;
-    el.textContent = text;
-    if (typeof window !== 'undefined') window.__BOOT_TAG = text;
-  } catch (_) { /* splashless build — never block boot on chrome text */ }
-})();
 const BOOT_TIMINGS = {};
 let bootComplete = false;
 // LOADING PERF: attribute the WHOLE boot, not just the staged work. `_lastMark`
@@ -2134,16 +2107,18 @@ function networkInputFrame() {
   const player = game.player;
   if (!player || !player.state || !player.input || player.combat?.destroyed) return null;
   const aim = player.input.aimPoint;
-  const dx = aim ? aim.x - player.state.pos.x : Math.sin(player.state.yaw);
-  const dy = aim ? aim.y - player.state.pos.y : 0;
-  const dz = aim ? aim.z - player.state.pos.z : Math.cos(player.state.yaw);
+  _v3.set(
+    player.state.pos.x + Math.sin(player.state.yaw) * 1000,
+    player.state.pos.y,
+    player.state.pos.z + Math.cos(player.state.yaw) * 1000,
+  );
+  const aimIntent = encodeAimIntent(player.state.pos, aim || _v3);
   return {
     throttle: player.input.throttle || 0,
     steer: player.input.steer || 0,
     brake: !!player.input.brake,
     fire: !!player.input.fire,
-    aimYaw: Math.atan2(dx, dz),
-    aimPitch: Math.atan2(dy, Math.max(1e-6, Math.hypot(dx, dz))),
+    ...aimIntent,
     shellSlot: player.input.shellSlot | 0,
     actionBits: networkActionBitsPending & (
       PLAYER_ACTION_BITS.REPAIR |
@@ -2296,11 +2271,12 @@ async function presentNetworkBattle({
   const displayTeam = spectator ? 'alpha' : own.team;
   networkSpectator = spectator;
   if (!transitionShown) {
+    const pendingCfg = getMapConfig(mapId);
     bus.emit('ui:battleStart', { playerId: viewerId, specId: own.specId, mapId });
     battleLoad.show({
-      mapName: 'Network operation',
-      mapSub: 'Establishing shared authority',
-      thumb: '',
+      mapName: pendingCfg.name || 'Battle',
+      mapSub: pendingCfg.sub || 'Preparing battlefield',
+      thumb: MAP_THUMBS[mapId] || '',
       biome: mapId,
       mode: modeLabel,
       allies: lobbyRosterRows({ players: matchPlayers }, displayTeam, viewerId),
@@ -2482,15 +2458,17 @@ async function beginNetworkBattle({ role, session, lobbyState } = {}) {
     const modeLabel = lobbyState.mode === 'lan'
       ? 'LAN Battle · Direct Wi-Fi' : 'Private Battle · Room Code';
     const displayTeam = own.team === 'spectator' ? 'alpha' : own.team;
+    const pendingMapId = lobbyState.mapId === 'random' ? null : lobbyState.mapId;
+    const pendingCfg = pendingMapId ? getMapConfig(pendingMapId) : null;
     bus.emit('ui:battleStart', {
       playerId: viewerId,
       specId: own.specId,
       mapId: lobbyState.mapId,
     });
     battleLoad.show({
-      mapName: 'Network operation',
-      mapSub: 'Establishing shared authority',
-      thumb: '',
+      mapName: pendingCfg?.name || 'Battle',
+      mapSub: pendingCfg?.sub || 'Selecting battlefield',
+      thumb: pendingMapId ? MAP_THUMBS[pendingMapId] || '' : '',
       biome: lobbyState.mapId === 'random' ? 'none' : lobbyState.mapId,
       mode: modeLabel,
       allies: lobbyRosterRows(lobbyState, displayTeam, viewerId),
@@ -2563,11 +2541,13 @@ async function beginNetworkRematch(lobbyState) {
     const displayTeam = own.team === 'spectator' ? 'alpha' : own.team;
     const modeLabel = lobbyState.mode === 'lan'
       ? `LAN Battle · Round ${round}` : `Private Battle · Round ${round}`;
+    const pendingMapId = lobbyState.mapId === 'random' ? null : lobbyState.mapId;
+    const pendingCfg = pendingMapId ? getMapConfig(pendingMapId) : null;
     bus.emit('ui:battleStart', { playerId: viewerId, specId: own.specId, mapId: lobbyState.mapId });
     battleLoad.show({
-      mapName: 'Next operation',
-      mapSub: 'The room remains connected',
-      thumb: '',
+      mapName: pendingCfg?.name || 'Next battle',
+      mapSub: pendingCfg?.sub || 'Selecting battlefield',
+      thumb: pendingMapId ? MAP_THUMBS[pendingMapId] || '' : '',
       biome: lobbyState.mapId === 'random' ? 'none' : lobbyState.mapId,
       mode: modeLabel,
       allies: lobbyRosterRows(lobbyState, displayTeam, viewerId),

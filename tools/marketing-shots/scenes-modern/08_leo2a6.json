@@ -1,0 +1,81 @@
+{
+  "map": "verdant",
+  "seed": 8307,
+  "meta": {
+    "id": "leo2a6",
+    "name": "Leopard 2A6",
+    "nation": "Germany",
+    "role": "Main battle tank",
+    "number": 8
+  },
+  "actors": [
+    {
+      "id": "leo2a6",
+      "name": "hero",
+      "pos": [
+        -80,
+        30
+      ],
+      "facingDeg": 200,
+      "turretDeg": 3,
+      "gunDeg": 0.5,
+      "camo": "summer",
+      "camoSeed": 8307
+    }
+  ],
+  "effects": [
+    {
+      "type": "dust",
+      "at": [
+        -81.5,
+        26
+      ],
+      "tMs": 30,
+      "params": {
+        "count": 9,
+        "intensity": 0.72,
+        "dirDeg": 200
+      }
+    },
+    {
+      "type": "barrage",
+      "at": [
+        -89,
+        39
+      ],
+      "tMs": 40,
+      "params": {
+        "count": 4,
+        "radiusM": 7,
+        "size": "mixed",
+        "seedDeg": 77
+      }
+    },
+    {
+      "type": "firing_moment",
+      "actor": "hero",
+      "tMs": 270,
+      "params": {
+        "ageS": 0.06
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      -73,
+      1.9000000000000001,
+      19
+    ],
+    "lookAt": [
+      -80,
+      2.45,
+      30
+    ],
+    "groundRel": true,
+    "fov": 44,
+    "rollDeg": 3,
+    "mode": "fly"
+  },
+  "fxTime": 295,
+  "timeScale": 0
+}

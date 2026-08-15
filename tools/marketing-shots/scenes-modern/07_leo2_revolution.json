@@ -1,0 +1,89 @@
+{
+  "map": "railyard",
+  "seed": 8306,
+  "meta": {
+    "id": "leo2_revolution",
+    "name": "Leopard 2 Revolution",
+    "nation": "Germany",
+    "role": "Modular protection demonstrator",
+    "number": 7
+  },
+  "actors": [
+    {
+      "id": "leo2_revolution",
+      "name": "hero",
+      "pos": [
+        -30,
+        30
+      ],
+      "facingDeg": 195,
+      "turretDeg": -5,
+      "gunDeg": 1,
+      "camo": "washworn",
+      "camoSeed": 8306
+    }
+  ],
+  "effects": [
+    {
+      "type": "dust",
+      "at": [
+        -31.5,
+        26
+      ],
+      "tMs": 30,
+      "params": {
+        "count": 9,
+        "intensity": 0.72,
+        "dirDeg": 195
+      }
+    },
+    {
+      "type": "armor_scar",
+      "actor": "hero",
+      "tMs": 55,
+      "params": {
+        "count": 3,
+        "caliberMm": 120,
+        "seedDeg": 46
+      }
+    },
+    {
+      "type": "explosion_moment",
+      "at": [
+        -23,
+        36
+      ],
+      "tMs": 95,
+      "params": {
+        "ageS": 0.3
+      }
+    },
+    {
+      "type": "sparks",
+      "actor": "hero",
+      "tMs": 235,
+      "params": {
+        "caliberMm": 125,
+        "hFrac": 0.7
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      -20,
+      1.15,
+      20
+    ],
+    "lookAt": [
+      -30,
+      2.45,
+      30
+    ],
+    "groundRel": true,
+    "fov": 49,
+    "rollDeg": -2.5,
+    "mode": "fly"
+  },
+  "fxTime": 280,
+  "timeScale": 0
+}

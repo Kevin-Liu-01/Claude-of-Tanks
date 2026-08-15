@@ -1,0 +1,91 @@
+{
+  "map": "coastal",
+  "seed": 8303,
+  "meta": {
+    "id": "m1a2_tusk",
+    "name": "M1A2 TUSK",
+    "nation": "USA",
+    "role": "Urban assault package",
+    "number": 4
+  },
+  "actors": [
+    {
+      "id": "m1a2_tusk",
+      "name": "hero",
+      "pos": [
+        168,
+        -54
+      ],
+      "facingDeg": 330,
+      "turretDeg": -5,
+      "gunDeg": 1,
+      "camo": "digital",
+      "camoSeed": 8303
+    }
+  ],
+  "effects": [
+    {
+      "type": "dust",
+      "at": [
+        166.5,
+        -58
+      ],
+      "tMs": 30,
+      "params": {
+        "count": 9,
+        "intensity": 0.72,
+        "dirDeg": 330
+      }
+    },
+    {
+      "type": "explosion_moment",
+      "at": [
+        174,
+        -46
+      ],
+      "tMs": 75,
+      "params": {
+        "ageS": 0.5
+      }
+    },
+    {
+      "type": "mg_burst",
+      "actor": "hero",
+      "tMs": 150,
+      "params": {
+        "count": 8,
+        "gapM": 5,
+        "spreadDeg": 0.7,
+        "caliberMm": 12.7,
+        "speedMps": 900
+      }
+    },
+    {
+      "type": "sparks",
+      "actor": "hero",
+      "tMs": 250,
+      "params": {
+        "caliberMm": 120,
+        "hFrac": 0.58
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      166,
+      0.9500000000000001,
+      -43
+    ],
+    "lookAt": [
+      168.5,
+      2.45,
+      -56
+    ],
+    "groundRel": true,
+    "fov": 54,
+    "rollDeg": -3.5,
+    "mode": "fly"
+  },
+  "fxTime": 280,
+  "timeScale": 0
+}

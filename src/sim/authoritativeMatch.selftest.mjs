@@ -3,6 +3,7 @@ import { Euler, Quaternion, Vector3 } from 'three';
 import '../vehicles/tankFactory.js'; // register the full authored fleet
 import { createAuthoritativeMatch } from './authoritativeMatch.js';
 import { PLAYER_ACTION_BITS } from '../net/protocol.js';
+import { MAP_IDS } from '../world/maps/index.js';
 
 function articulatedGunDirection(entity) {
   const state = entity.state;
@@ -350,4 +351,23 @@ match.afterSnapshotBroadcast();
 assert.equal(match.snapshot({ tick: tick + 1, serverTimeMs: (tick + 1) * 1000 / 60,
   viewerId: 'alpha-1', ackInputSeq: 4 }).events.length, 0);
 
-console.log('authoritativeMatch.selftest: identity, movement, world, combat authority, and events passed');
+for (const mapId of MAP_IDS) {
+  const deployment = createAuthoritativeMatch({
+    mapId,
+    players: [
+      { id: `${mapId}-a`, specId: 'm1a2', team: 'alpha' },
+      { id: `${mapId}-b`, specId: 'm1a2', team: 'bravo' },
+    ],
+  });
+  const alpha = deployment.entities[0].state;
+  const bravo = deployment.entities[1].state;
+  const dx = bravo.pos.x - alpha.pos.x;
+  const dz = bravo.pos.z - alpha.pos.z;
+  const distance = Math.hypot(dx, dz);
+  const alphaDot = Math.sin(alpha.yaw) * dx / distance + Math.cos(alpha.yaw) * dz / distance;
+  const bravoDot = Math.sin(bravo.yaw) * -dx / distance + Math.cos(bravo.yaw) * -dz / distance;
+  assert.ok(alphaDot > 0.96, `${mapId}: Alpha spawn faces the opposing zone`);
+  assert.ok(bravoDot > 0.96, `${mapId}: Bravo spawn faces the opposing zone`);
+}
+
+console.log('authoritativeMatch.selftest: identity, deployment, movement, world, combat authority, and events passed');

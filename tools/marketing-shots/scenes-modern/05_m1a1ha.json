@@ -1,0 +1,79 @@
+{
+  "map": "autumn",
+  "seed": 8304,
+  "meta": {
+    "id": "m1a1ha",
+    "name": "M1A1HA",
+    "nation": "USA",
+    "role": "Heavy armor package",
+    "number": 5
+  },
+  "actors": [
+    {
+      "id": "m1a1ha",
+      "name": "hero",
+      "pos": [
+        -40,
+        30
+      ],
+      "facingDeg": 108,
+      "turretDeg": 3,
+      "gunDeg": 1,
+      "camo": "dpm",
+      "camoSeed": 8304
+    }
+  ],
+  "effects": [
+    {
+      "type": "dust",
+      "at": [
+        -41.5,
+        26
+      ],
+      "tMs": 30,
+      "params": {
+        "count": 9,
+        "intensity": 0.72,
+        "dirDeg": 108
+      }
+    },
+    {
+      "type": "exhaust",
+      "actor": "hero",
+      "tMs": 110,
+      "params": {
+        "count": 8,
+        "intensity": 0.65,
+        "sooty": true
+      }
+    },
+    {
+      "type": "armor_scar",
+      "actor": "hero",
+      "tMs": 180,
+      "params": {
+        "count": 2,
+        "caliberMm": 90,
+        "seedDeg": 94
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      -34.5,
+      1.1,
+      24.5
+    ],
+    "lookAt": [
+      -42.5,
+      2.4,
+      32
+    ],
+    "groundRel": true,
+    "fov": 54,
+    "rollDeg": 0,
+    "mode": "fly"
+  },
+  "fxTime": 280,
+  "timeScale": 0
+}

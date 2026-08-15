@@ -1,0 +1,79 @@
+{
+  "map": "coastal",
+  "seed": 8319,
+  "meta": {
+    "id": "t90sm",
+    "name": "T-90SM",
+    "nation": "Russia",
+    "role": "Modernized main battle tank",
+    "number": 20
+  },
+  "actors": [
+    {
+      "id": "t90sm",
+      "name": "hero",
+      "pos": [
+        168,
+        -54
+      ],
+      "facingDeg": 330,
+      "turretDeg": -5,
+      "gunDeg": 1,
+      "camo": "digital",
+      "camoSeed": 8319
+    }
+  ],
+  "effects": [
+    {
+      "type": "dust",
+      "at": [
+        166.5,
+        -58
+      ],
+      "tMs": 30,
+      "params": {
+        "count": 9,
+        "intensity": 0.72,
+        "dirDeg": 330
+      }
+    },
+    {
+      "type": "exhaust",
+      "actor": "hero",
+      "tMs": 110,
+      "params": {
+        "count": 8,
+        "intensity": 0.65,
+        "sooty": true
+      }
+    },
+    {
+      "type": "armor_scar",
+      "actor": "hero",
+      "tMs": 180,
+      "params": {
+        "count": 2,
+        "caliberMm": 90,
+        "seedDeg": 109
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      166,
+      1.1,
+      -43
+    ],
+    "lookAt": [
+      168.5,
+      2.45,
+      -56
+    ],
+    "groundRel": true,
+    "fov": 52,
+    "rollDeg": 0,
+    "mode": "fly"
+  },
+  "fxTime": 280,
+  "timeScale": 0
+}

@@ -1,0 +1,89 @@
+{
+  "map": "winter",
+  "seed": 8301,
+  "meta": {
+    "id": "m1a2_sepv3",
+    "name": "M1A2 SEPv3",
+    "nation": "USA",
+    "role": "Main battle tank",
+    "number": 2
+  },
+  "actors": [
+    {
+      "id": "m1a2_sepv3",
+      "name": "hero",
+      "pos": [
+        162,
+        -78
+      ],
+      "facingDeg": 205,
+      "turretDeg": -3,
+      "gunDeg": 1,
+      "camo": "winter",
+      "camoSeed": 8301
+    }
+  ],
+  "effects": [
+    {
+      "type": "dust",
+      "at": [
+        160.5,
+        -82
+      ],
+      "tMs": 30,
+      "params": {
+        "count": 9,
+        "intensity": 0.72,
+        "dirDeg": 205
+      }
+    },
+    {
+      "type": "armor_scar",
+      "actor": "hero",
+      "tMs": 55,
+      "params": {
+        "count": 3,
+        "caliberMm": 120,
+        "seedDeg": 41
+      }
+    },
+    {
+      "type": "explosion_moment",
+      "at": [
+        169,
+        -72
+      ],
+      "tMs": 95,
+      "params": {
+        "ageS": 0.3
+      }
+    },
+    {
+      "type": "sparks",
+      "actor": "hero",
+      "tMs": 235,
+      "params": {
+        "caliberMm": 125,
+        "hFrac": 0.7
+      }
+    }
+  ],
+  "camera": {
+    "pos": [
+      168.2,
+      1.15,
+      -87.6
+    ],
+    "lookAt": [
+      161,
+      2.35,
+      -77
+    ],
+    "groundRel": true,
+    "fov": 50,
+    "rollDeg": -2.5,
+    "mode": "fly"
+  },
+  "fxTime": 280,
+  "timeScale": 0
+}

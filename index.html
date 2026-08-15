@@ -9,20 +9,20 @@
        viewport-fit=cover exposes env(safe-area-inset-*) on notched phones —
        the touch HUD keeps its controls off the notch/home bar with them. -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>Claude of Tanks — Free Browser Tank Game | 79 Tanks, 8 Battlefields</title>
+  <title>Claude of Tanks — Free Browser Tank Game | 80 Tanks, 8 Battlefields</title>
   <!-- SEO/AEO (seo r1): honest, current numbers everywhere — the old cards
        still claimed "48 tanks, 4 battlefields". Canonical + absolute image
        URLs (crawlers do not resolve relative og:image reliably), and a
        VideoGame JSON-LD block so search/answer engines get typed facts
        instead of scraping the splash. Brand set lives in public/brand/,
        see docs/ATTRIBUTION.md. -->
-  <meta name="description" content="Claude of Tanks is a free World of Tanks-style armored warfare game that runs entirely in your browser. 108 original first-party vehicles, 8 battlefields, 7v7 AI battles, killcam X-rays and a scene studio — pure Three.js, no install, no account." />
+  <meta name="description" content="Claude of Tanks is a free World of Tanks-style armored warfare game that runs entirely in your browser. 80 original first-party vehicles, 8 battlefields, bot and multiplayer battles, killcam X-rays and a scene studio — pure Three.js, no install, no account." />
   <link rel="canonical" href="https://claude-of-tanks.vercel.app/" />
   <meta name="robots" content="index, follow, max-image-preview:large" />
   <meta name="theme-color" content="#05080b" />
   <meta property="og:site_name" content="Claude of Tanks" />
   <meta property="og:title" content="Claude of Tanks — Free Browser Tank Game" />
-  <meta property="og:description" content="Free-roam armored warfare in the browser — 108 original first-party vehicles, 8 battlefields, 7v7 AI battles, killcam X-rays. Pure Three.js, no install." />
+  <meta property="og:description" content="Free-roam armored warfare in the browser — 80 original first-party vehicles, 8 battlefields, bot and multiplayer battles, killcam X-rays. Pure Three.js, no install." />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://claude-of-tanks.vercel.app/" />
   <meta property="og:image" content="https://claude-of-tanks.vercel.app/brand/og-image.png" />
@@ -31,7 +31,7 @@
   <meta property="og:image:alt" content="Claude of Tanks — in-engine battle still with the crest wordmark" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="Claude of Tanks — Free Browser Tank Game" />
-  <meta name="twitter:description" content="108 original first-party vehicles, 8 battlefields, 7v7 AI battles — armored warfare rendered live in your browser. No install, no account." />
+  <meta name="twitter:description" content="80 original first-party vehicles, 8 battlefields, bot and multiplayer battles — armored warfare rendered live in your browser. No install, no account." />
   <meta name="twitter:image" content="https://claude-of-tanks.vercel.app/brand/og-image.png" />
   <script type="application/ld+json">
   {
@@ -41,9 +41,9 @@
     "name": "Claude of Tanks",
     "url": "https://claude-of-tanks.vercel.app/",
     "image": "https://claude-of-tanks.vercel.app/brand/og-image.png",
-    "description": "Free-roam armored warfare rendered live in the browser: 108 original first-party vehicles across tiers I-X, 8 hand-tuned battlefields, 7v7 battles against per-class AI, a plate-level armor model with killcam X-rays, and an in-game scene studio.",
+    "description": "Free-roam armored warfare rendered live in the browser: 80 original first-party vehicles, 8 hand-tuned battlefields, bot and multiplayer battles, a plate-level armor model with killcam X-rays, and an in-game scene studio.",
     "genre": ["Vehicular combat", "Simulation", "Action"],
-    "playMode": "SinglePlayer",
+    "playMode": ["SinglePlayer", "MultiPlayer"],
     "gamePlatform": "Web Browser",
     "applicationCategory": "Game",
     "operatingSystem": "Any (WebGL2-capable browser)",
@@ -192,17 +192,11 @@
     .cot-boot-word .l2 i { display: block; height: 1px; width: clamp(28px, 8vw, 92px);
       background: linear-gradient(90deg, rgba(240,160,48,0), #f0a030); }
     .cot-boot-word .l2 i + span + i { background: linear-gradient(270deg, rgba(240,160,48,0), #f0a030); }
-    .cot-boot-tag {
-      margin-top: 20px; font-family: 'ABC Monument Grotesk', 'Arial Narrow', Arial, sans-serif;
-      font-weight: 600; font-size: 10.5px; letter-spacing: .26em; text-indent: .26em;
-      color: #6e7d8a; text-transform: uppercase;
-      animation: cot-boot-rise .5s ease-out .26s backwards;
-    }
     @keyframes cot-boot-pop { from { opacity: 0; transform: scale(.85) translateY(8px); } }
     @keyframes cot-boot-rise { from { opacity: 0; transform: translateY(12px); } }
     @keyframes cot-boot-fade { from { opacity: 0; } }
     @media (prefers-reduced-motion: reduce) {
-      .cot-boot-mark, .cot-boot-word .l1, .cot-boot-word .l2, .cot-boot-tag,
+      .cot-boot-mark, .cot-boot-word .l1, .cot-boot-word .l2,
       .cot-boot-load, .cot-boot-tip, .cot-boot-foot { animation: none; }
     }
 
@@ -259,6 +253,31 @@
       font-size: 9.5px; font-weight: 700; letter-spacing: .3em; color: #f0a030;
       text-transform: uppercase;
     }
+    .cot-boot-links { display: flex; justify-content: center; gap: 10px; margin-top: 14px; }
+    .cot-boot-link {
+      min-width: 118px; padding: 10px 15px; border: 1px solid rgba(159,176,191,.34);
+      background: rgba(6,10,14,.68); color: #c6d2dc; cursor: pointer;
+      font: 700 10px/1 'ABC Monument Grotesk', 'Arial Narrow', Arial, sans-serif;
+      letter-spacing: .18em; text-transform: uppercase; text-decoration: none;
+      transition: border-color .18s ease, color .18s ease, background .18s ease;
+    }
+    .cot-boot-link:hover { border-color: #f0a030; color: #ffe4b0; background: rgba(33,24,12,.78); }
+    .cot-boot-link:focus-visible { outline: 2px solid #f0a030; outline-offset: 3px; }
+    .cot-credits {
+      width: min(700px, calc(100vw - 32px)); padding: 0; border: 1px solid #4a5966;
+      color: #e6edf3; background: #080d12; box-shadow: 0 28px 90px rgba(0,0,0,.75);
+      font-family: 'ABC Monument Grotesk', 'Segoe UI', sans-serif;
+    }
+    .cot-credits::backdrop { background: rgba(2,4,7,.84); backdrop-filter: blur(7px); }
+    .cot-credits-grid { display: grid; grid-template-columns: 190px 1fr; min-height: 300px; }
+    .cot-credits-portrait { width: 100%; height: 100%; min-height: 300px; object-fit: cover; object-position: center 18%; background: #111923; }
+    .cot-credits-copy { position: relative; padding: 34px 36px 30px; text-align: left; }
+    .cot-credits-kicker { color: #f0a030; font-size: 9px; font-weight: 800; letter-spacing: .26em; text-transform: uppercase; }
+    .cot-credits h2 { margin: 9px 0 13px; font-size: 28px; line-height: 1; }
+    .cot-credits p { margin: 0 0 13px; color: #aebbc7; font-size: 13px; line-height: 1.62; }
+    .cot-credits-actions { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 22px; }
+    .cot-credits-close { position: absolute; top: 15px; right: 17px; border: 0; background: transparent; color: #aebbc7; cursor: pointer; font-size: 24px; line-height: 1; }
+    @media(max-width:620px){.cot-credits-grid{grid-template-columns:1fr}.cot-credits-portrait{height:150px;min-height:150px;object-position:center 24%}.cot-credits-copy{padding:27px 24px}.cot-credits h2{font-size:24px}}
     .cot-boot-gate {
       margin-top: 26px; height: 22px;
       font-family: 'ABC Monument Grotesk', 'Arial Narrow', Arial, sans-serif;
@@ -531,8 +550,6 @@
         <span class="l1">CLAUDE</span>
         <span class="l2"><i></i><span>OF TANKS</span><i></i></span>
       </div>
-      <div class="cot-boot-tag">108 Original Vehicles &middot; 8 Battlefields &middot; Tiers I&ndash;X</div>
-
       <div class="cot-boot-load">
         <div class="cot-boot-meta">
           <div class="cot-boot-stage" id="cot-boot-stage">Starting engine</div>
@@ -543,11 +560,50 @@
       </div>
 
       <div class="cot-boot-tip" id="cot-boot-tip"></div>
+      <div class="cot-boot-links" data-cot-boot-control>
+        <button class="cot-boot-link" id="cot-credits-open" type="button">Credits</button>
+        <a class="cot-boot-link" href="https://github.com/Kevin-Liu-01/Claude-of-Tanks" target="_blank" rel="noopener noreferrer">GitHub</a>
+      </div>
       <div class="cot-boot-gate" id="cot-boot-gate">Press any key to continue</div>
       <button class="cot-boot-retry" id="cot-boot-retry" type="button">Retry loading</button>
     </div>
     <div class="cot-boot-foot">Claude of Tanks &middot; Three.js technology demo</div>
   </div>
+
+  <dialog class="cot-credits" id="cot-credits" data-cot-boot-control aria-labelledby="cot-credits-title">
+    <div class="cot-credits-grid">
+      <img class="cot-credits-portrait" src="https://github.com/Kevin-Liu-01.png?size=480" alt="Kevin Liu" />
+      <div class="cot-credits-copy">
+        <button class="cot-credits-close" id="cot-credits-close" type="button" aria-label="Close credits">&times;</button>
+        <span class="cot-credits-kicker">Creator / director</span>
+        <h2 id="cot-credits-title">Kevin Liu</h2>
+        <p>I designed and built Claude of Tanks as an experiment in how far one person can take an original browser game with persistent agent collaboration.</p>
+        <p>The vehicles, simulation, combat systems, interface, performance work, testing, documentation, and production pipeline were developed end-to-end through a long-running multi-agent Claude and Codex workflow. Every playable tank is first-party work made for this project.</p>
+        <div class="cot-credits-actions">
+          <a class="cot-boot-link" href="https://github.com/Kevin-Liu-01" target="_blank" rel="noopener noreferrer">Kevin on GitHub</a>
+          <a class="cot-boot-link" href="https://github.com/Kevin-Liu-01/Claude-of-Tanks" target="_blank" rel="noopener noreferrer">Source code</a>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <script>
+    (() => {
+      const dialog = document.getElementById('cot-credits');
+      const open = document.getElementById('cot-credits-open');
+      const close = document.getElementById('cot-credits-close');
+      if (!dialog || !open || !close) return;
+      open.addEventListener('click', (event) => {
+        event.stopPropagation();
+        if (!dialog.open) dialog.showModal();
+      });
+      close.addEventListener('click', (event) => { event.stopPropagation(); dialog.close(); });
+      dialog.addEventListener('click', (event) => {
+        if (event.target === dialog) dialog.close();
+      });
+      dialog.addEventListener('close', () => open.focus());
+    })();
+  </script>
 
   <script type="module" src="/src/main.js"></script>
 </body>
