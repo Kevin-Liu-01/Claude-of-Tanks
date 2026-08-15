@@ -1180,7 +1180,11 @@ function buildT90AVladimirLegacy(P) {
   // -0.26 (the tilt was throwing the inner ends to 1.81)
   const p5 = { rings, sz: 0.73, rCz: 0.23, eyeScale: 0.88, k5Len: 0.85, k5T: 0.50, k5Y: 0.05, k5H: 0.10, k5Pitch: -0.18, k5TileY: 0.07 };
   eraRuCheeks(P, p5, 'k5');
-  ruShtora(P, p5, 0.39);
+  // The recovered Vladimir print carried a generic Shtora pair directly in
+  // the crown seam. Those two boxes are the owner-marked obstructions: they
+  // read as lamps propping up the roof and prevent the fighting compartment
+  // from resolving as one connected casting. Vladimir now uses the joined
+  // crown authored in buildT90AVladimir; no hidden housing remains here.
   // Vladimir ESSA hierarchy.  A long, narrow optical run and one distinct
   // outer service body replace the old staircase of tall touching boxes.
   // This follows the graduated T-90A housing grammar while retaining this
@@ -5076,7 +5080,16 @@ function buildT90AVladimir(P) {
   // one load-bearing turret transition, not a roof plate or floating cover.
   // The rise is deliberately aft-biased so the established mantlet, Shtora
   // and K-5 frontal envelope remains unchanged.
+  // Start the same closed loft at the forward crown instead of leaving its
+  // first section behind the sights. The broad buried bottom follows the
+  // legacy cast dome, while the narrower upper course physically carries
+  // the ESSA/cupola roof equipment. The aft stations are the accepted
+  // bustle transition, so this is one continuous turret-owned shell through
+  // yaw rather than a new plate placed over the old gap.
   P.add('turret', weldedStationLoft([
+    [0.78, 0.12, 0.42, -0.72, 0.72, -0.82, 0.82, -0.45, 0.45],
+    [0.38, 0.10, 0.54, -0.98, 1.00, -1.08, 1.10, -0.68, 0.70],
+    [-0.05, 0.08, 0.62, -1.14, 1.16, -1.22, 1.24, -0.90, 0.93],
     [-0.45, 0.19, 0.52, -1.18, 1.18, -0.91, 0.91, -1.05, 1.05],
     [-0.70, 0.15, 0.57, -1.24, 1.24, -1.00, 1.00, -1.13, 1.13],
     [-0.94, 0.10, 0.62, -1.23, 1.23, -1.04, 1.04, -1.14, 1.14],
