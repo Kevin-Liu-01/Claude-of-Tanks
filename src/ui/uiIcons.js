@@ -40,6 +40,13 @@ const P = {
   star: '<path d="m12 2 3 6 6.7.9-4.8 4.7 1.2 6.7-6.1-3.2-6.1 3.2 1.2-6.7-4.8-4.7L9 8Z" fill="currentColor"/>',
   shield: '<path d="m12 2 8 2.8v6c0 5-3.2 8.1-8 10.2-4.8-2.1-8-5.2-8-10.2v-6Z" fill="currentColor"/>',
   skull: '<path d="M12 2a8 8 0 0 0-4 14.9V21h8v-4.1A8 8 0 0 0 12 2Z" fill="currentColor"/><circle cx="9" cy="10" r="2" fill="rgba(8,12,16,.65)"/><circle cx="15" cy="10" r="2" fill="rgba(8,12,16,.65)"/><path d="M11 14h2v3h-2Z" fill="rgba(8,12,16,.65)"/>',
+  damage: '<path d="m12 2 1.7 5.2 4.8-2.3-2.3 4.8 5.2 1.7-5.2 1.7 2.3 4.8-4.8-2.3L12 22l-1.7-5.2-4.8 2.3 2.3-4.8-5.2-1.7 5.2-1.7-2.3-4.8 4.8 2.3Z" fill="currentColor"/><circle cx="12" cy="12" r="2.6" fill="rgba(8,12,16,.58)"/>',
+  penetration: '<path d="M15.5 3.5h5v17h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M2 12h13m-4-4 4 4-4 4" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/><path d="M18 7v10" stroke="currentColor" stroke-width="1.5" opacity=".5"/>',
+  team: '<circle cx="12" cy="7" r="3.2" fill="currentColor"/><circle cx="5" cy="10" r="2.5" fill="currentColor" opacity=".72"/><circle cx="19" cy="10" r="2.5" fill="currentColor" opacity=".72"/><path d="M5.5 21a6.5 6.5 0 0 1 13 0ZM0 21a5 5 0 0 1 7.4-4.4M24 21a5 5 0 0 0-7.4-4.4" fill="currentColor"/>',
+  check: '<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m7.5 12.2 3 3.1 6.3-7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>',
+  clock: '<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 6.5V12l3.8 2.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
+  rematch: '<path d="M20 7.5V3l-2.2 2.2A8.5 8.5 0 0 0 4.2 9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 16.5V21l2.2-2.2A8.5 8.5 0 0 0 19.8 15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
+  map: '<path d="m3 5 5-2 8 2 5-2v16l-5 2-8-2-5 2Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8 3v16m8-14v16" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="10" r="2" fill="currentColor"/>',
 };
 
 /** Return a crisp inline SVG from the shared UI set. */
