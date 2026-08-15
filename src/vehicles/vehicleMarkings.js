@@ -52,6 +52,9 @@ export const VEHICLE_MARKING_ANCHORS = Object.freeze({
   tiger1: anchor('turret', 'right', 0.46, 0.48, 0.30, 1),
   panther_g: anchor('turret', 'left', 0.42, 0.50, 0.29, -1),
   m1a2: anchor('turret', 'left', 0.43, 0.43, 0.27, 1),
+  // T-62 keeps its own left-rear casting seat; the adjacent T-64 uses the
+  // opposite cheek so the Soviet family does not repeat one decal template.
+  t62mv1: anchor('turret', 'left', 0.48, 0.46, 0.23, 1),
   t64bv1: anchor('turret', 'right', 0.46, 0.48, 0.24, -1),
   t72b3m: anchor('turret', 'left', 0.40, 0.50, 0.23, 1),
   t72bu: anchor('turret', 'right', 0.43, 0.47, 0.24, -1),

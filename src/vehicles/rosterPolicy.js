@@ -36,7 +36,7 @@ export const RETAINED_COLD_WAR_IDS = Object.freeze([
   'chieftain5', 'chieftain_mk10',
   'amx30', 'amx30b2',
   'type59', 'type74', 'strv103',
-  't64bv1', 'leo1a5',
+  't62mv1', 't64bv1', 'leo1a5',
   'm46_patton', 'm47_patton', 'm48',
   'm60a1', 'm60a2', 'm60a3',
   't95',

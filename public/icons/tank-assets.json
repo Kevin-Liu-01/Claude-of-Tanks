@@ -56090,7 +56090,7 @@
           }
         ]
       },
-      "geometryHash": "001e79e7",
+      "geometryHash": "b0e27459",
       "metadataHash": "58041363",
       "appearance": {
         "version": 1,
@@ -56108,7 +56108,7 @@
           "trackPad": 1,
           "armorPaint": 4,
           "opticGlass": 2,
-          "unclassified": 13,
+          "unclassified": 12,
           "gearShadow": 2
         }
       },
@@ -56120,8 +56120,8 @@
         "fallback": 1
       },
       "vehicleMarkings": {
-        "total": 4,
-        "insignia": 2,
+        "total": 3,
+        "insignia": 1,
         "designation": 2,
         "codes": [
           "RU:ru-star:123"
@@ -56133,16 +56133,16 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 33240,
-          "sha256": "586e72f5ea90fba19e8b8249b2585bf1e34287245030500793e99643dce9fa40"
+          "bytes": 33110,
+          "sha256": "656593f719fd8aecab5be795cbc86fff3d7c14e39e3710c09c87d22fe0f2d0ca"
         },
         "top": {
           "file": "t62mv1_top.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 9572,
-          "sha256": "191c57c344d33425f5c1f5d8e44f5ed7ce38e6ac21bd72edffc2a3e0ea146828"
+          "bytes": 9536,
+          "sha256": "f89ddb31e804fab6d55ecc900172ec36eeeda3c8824f1d78d5e9d833995b8149"
         },
         "side": {
           "file": "t62mv1_side.webp",
@@ -56150,7 +56150,7 @@
           "height": 256,
           "mime": "image/webp",
           "bytes": 11106,
-          "sha256": "993ecb0fa0e34b9912b9c9504c98c7061ffc36d6ae863658098c9657ba8a65f6"
+          "sha256": "34cee46e971a56d452c59652c8e7df5278ba6b209b987f8b6a794b5eec2f42aa"
         },
         "topSilhouette": {
           "file": "t62mv1_top_silhouette.png",
@@ -56173,24 +56173,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 84474,
-          "sha256": "13848b40f92f1f41ee3fb2e723210b1482bd50bd58610b4b93f99f60cbac47db"
+          "bytes": 84488,
+          "sha256": "993f8854d909bbde12ceefdeb730306e80f06f3c3af08ac5f73baf0138f5c49c"
         },
         "armorSide": {
           "file": "t62mv1_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 83929,
-          "sha256": "333acac92c39186fb667a15a9ae1c3977c40aa59812ee0981d3b640e699df71b"
+          "bytes": 83541,
+          "sha256": "72256e45bab5992cd14e3518b647b4f554b98f9bba3300b1cb238cd9adbc94f9"
         },
         "modulesSide": {
           "file": "t62mv1_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 82202,
-          "sha256": "f0d6dec163aa337900c9b56136d1a8a902a151348716dbbd53aeb33255f0cd43"
+          "bytes": 81961,
+          "sha256": "949d88ad92ccf88687d81b2bd6fe7d5d4455d4cd0e6df8c25aa712e67ca0a136"
         },
         "markings": {
           "file": "t62mv1_markings.png",
