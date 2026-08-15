@@ -5,6 +5,7 @@
 
 import { tankLabelRecord } from './tankLabels.js';
 import { vehicleMarkingRecord } from './vehicleMarkings.js';
+import { isRetiredHistoricalTank } from './rosterPolicy.js';
 
 /** Locked roster ids in locked garage-carousel order (ARCHITECTURE §2.1). */
 // leo2a7 REMOVED from the roster BY OWNER 2026-08-06 ('remove the leopard
@@ -1732,8 +1733,15 @@ const FIRST_PARTY_DISPLAY_NAMES = {
  * display names, and makes generic third-party placeholders unselectable.
  */
 export function finalizeFirstPartyRoster() {
+  for (let i = TANK_IDS.length - 1; i >= 0; i -= 1) {
+    const spec = TANK_SPECS[TANK_IDS[i]];
+    if (isRetiredHistoricalTank(spec)) TANK_IDS.splice(i, 1);
+  }
   for (let i = ALL_TANK_IDS.length - 1; i >= 0; i -= 1) {
-    if (RETIRED_EXTERNAL_PLACEHOLDER_IDS.has(ALL_TANK_IDS[i])) ALL_TANK_IDS.splice(i, 1);
+    const id = ALL_TANK_IDS[i];
+    if (RETIRED_EXTERNAL_PLACEHOLDER_IDS.has(id) || isRetiredHistoricalTank(TANK_SPECS[id])) {
+      ALL_TANK_IDS.splice(i, 1);
+    }
   }
   for (const id of ALL_TANK_IDS) {
     const spec = TANK_SPECS[id];

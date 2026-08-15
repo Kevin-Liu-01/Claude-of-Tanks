@@ -140,6 +140,21 @@ try {
       requiredViews: Object.keys(TANK_ASSET_VIEWS),
       tanks: sortedTanks,
     };
+    // A full generation is also the authoritative fleet-pruning pass. Remove
+    // only files named by the previous manifest for tanks that are no longer
+    // registered; never glob the icon directory, where unrelated UI art may
+    // live. Selective runs intentionally preserve every other manifest row.
+    if (!onlyTanks.length && previous && previous.tanks) {
+      const active = new Set(Object.keys(sortedTanks));
+      for (const [retiredId, retired] of Object.entries(previous.tanks)) {
+        if (active.has(retiredId)) continue;
+        for (const asset of Object.values(retired.assets || {})) {
+          if (!asset || !asset.file) continue;
+          rmSync(resolve(outDir, asset.file), { force: true });
+        }
+        console.log(`[tank-assets] pruned retired tank ${retiredId}`);
+      }
+    }
     writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
     console.log(`[tank-assets] ${Object.keys(generated.tanks).length} tanks, ${Object.keys(generated.files).length} files -> ${outDir}`);
     console.log(`[tank-assets] manifest ${manifestPath}`);
