@@ -4242,6 +4242,12 @@ export function createTank(specId, engineCtx, opts = {}) {
     // (killcam closeups frame AI vehicles at arm's length)
     spec, mats, rng, q: quality !== 'low', hullG, turretG, gunG, recoilG,
     disposables, gear: null, muzzleZ: armor.gunBarrel.lengthM, topY: 0.8,
+    // Casemate profiles opt into a genuinely fixed combat rig.  Their
+    // printed cannon already belongs to the hull buckets; the flag also
+    // keeps the universal muzzle mouth and top/FX anchors hull-owned instead
+    // of letting those otherwise-invisible articulation helpers orbit when
+    // a yaw audit turns the empty virtual turret.
+    fixedMount: false,
     // Optional profile-owned final visual composition. This runs after the
     // authored buckets, decals, and ERA instances exist, but before shadow
     // proxies and anchors are installed. It is reserved for native builders
@@ -4560,6 +4566,13 @@ export function createTank(specId, engineCtx, opts = {}) {
   const turretTop = new THREE.Object3D();
   turretTop.position.set(0, P.topY, 0);
   turretG.add(turretTop);
+  if (P.fixedMount) {
+    // Preserve the anchors' world seats while moving them out of the virtual
+    // yaw rig.  `attach` is intentional: muzzleZ and P.topY were authored in
+    // the profile's already-positioned rig coordinates.
+    hullG.attach(muzzle);
+    hullG.attach(turretTop);
+  }
 
   // ---- movement-solve contact metadata (data only — no geometry writes) ----
   // Seat the running-gear instance matrices at their rest pose first (scroll
