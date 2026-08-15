@@ -12,8 +12,8 @@
 
 import { Vector3 } from 'three';
 
-/** Gravity exaggeration factor for readable shell arcs (shells doc §2). */
-export const GRAVITY_SCALE = 2.2;
+/** Physical gravity scale for unguided direct-fire shells. */
+export const GRAVITY_SCALE = 1;
 
 /** Shells despawn after this many seconds of flight (shells doc §2). */
 export const SHELL_MAX_LIFETIME_S = 6;
@@ -60,6 +60,71 @@ export function resolveGunAimDirection(out, muzzlePos, boreDir, aimPoint) {
 }
 
 /**
+ * Effective shell gravity. Powered/guided missiles fly the sight line; shell
+ * specs may also opt into a custom scale for future artillery ammunition.
+ *
+ * @param {?object} shellSpec
+ * @returns {number} downward acceleration in m/s²
+ */
+export function shellGravityMps2(shellSpec) {
+  if (shellSpec?.guided) return 0;
+  const scale = Number.isFinite(shellSpec?.gravityScale)
+    ? Math.max(0, shellSpec.gravityScale)
+    : GRAVITY_SCALE;
+  return 9.81 * scale;
+}
+
+/**
+ * Resolve the complete zero-dispersion launch direction for the center plus.
+ * The bore remains authoritative while it is slewing. Once settled, ordinary
+ * shells receive the exact low ballistic solution and guided missiles launch
+ * directly through the requested point. Local and network fire paths share
+ * this function so the HUD contract cannot diverge between modes.
+ *
+ * @param {Vector3} out receives a unit launch direction
+ * @param {Vector3} muzzlePos world-space muzzle origin
+ * @param {Vector3} boreDir articulated bore direction
+ * @param {?Vector3} aimPoint center-reticle world point
+ * @param {?object} shellSpec selected ShellSpec
+ * @returns {boolean} true when the settled center-reticle solution was used
+ */
+export function resolveShellAimDirection(
+  out, muzzlePos, boreDir, aimPoint, shellSpec,
+) {
+  const corrected = resolveGunAimDirection(out, muzzlePos, boreDir, aimPoint);
+  if (!corrected || !aimPoint) return false;
+
+  const gravity = shellGravityMps2(shellSpec);
+  const velocity = shellSpec?.velocityMps || 0;
+  if (!(gravity > 0) || !(velocity > 0)) return true;
+
+  const dx = aimPoint.x - muzzlePos.x;
+  const dy = aimPoint.y - muzzlePos.y;
+  const dz = aimPoint.z - muzzlePos.z;
+  const horizontal = Math.hypot(dx, dz);
+  if (horizontal <= 1e-6) return true;
+
+  const v2 = velocity * velocity;
+  const discriminant = v2 * v2 - gravity *
+    (gravity * horizontal * horizontal + 2 * dy * v2);
+  if (discriminant < 0) return true; // unreachable: retain the direct fallback
+
+  // Rationalized low-angle root avoids catastrophic cancellation for modern
+  // high-velocity rounds whose correction is only a few hundredths of a deg.
+  const tanTheta = (
+    gravity * horizontal * horizontal + 2 * dy * v2
+  ) / (horizontal * (v2 + Math.sqrt(discriminant)));
+  const cosTheta = 1 / Math.sqrt(1 + tanTheta * tanTheta);
+  const sinTheta = tanTheta * cosTheta;
+  out.set(
+    dx / horizontal * cosTheta,
+    sinTheta,
+    dz / horizontal * cosTheta,
+  );
+  return true;
+}
+
+/**
  * Create a live shell entity (ARCHITECTURE.md §2.5).
  *
  * @param {object} shellSpec ShellSpec — {name,type,caliberMm,pen100Mm,pen1000Mm,dmg,velocityMps,moduleDmg,tracer}
@@ -87,11 +152,12 @@ export function createShell(shellSpec, shooterId, isPlayer, muzzlePos, dir, id) 
     dmgRoll: 0,
     bounces: 0,
     carriedThrough: false,
+    gravityMps2: shellGravityMps2(shellSpec),
   };
 }
 
 /**
- * Integrate one shell step: straight flight plus exaggerated gravity, no drag
+ * Integrate one shell step under the shell's declared gravity, with no drag
  * (pen falloff fakes velocity decay — shells doc §2). Stores prevPos so the
  * caller can sweep the prevPos→pos segment against the world without
  * tunneling. Marks the shell dead past SHELL_MAX_LIFETIME_S.
@@ -102,9 +168,11 @@ export function createShell(shellSpec, shooterId, isPlayer, muzzlePos, dir, id) 
  */
 export function stepShell(shell, dt) {
   shell.prevPos.copy(shell.pos);
+  const gravity = Number.isFinite(shell.gravityMps2) ? shell.gravityMps2 : G_SHELL;
   shell.pos.addScaledVector(shell.vel, dt);
-  shell.distM += shell.vel.length() * dt; // true arc length for pen falloff
-  shell.vel.y -= G_SHELL * dt;
+  shell.pos.y -= 0.5 * gravity * dt * dt;
+  shell.distM += shell.pos.distanceTo(shell.prevPos); // true arc length for pen falloff
+  shell.vel.y -= gravity * dt;
   shell.ageS += dt;
   if (shell.ageS > SHELL_MAX_LIFETIME_S) shell.dead = true;
 }

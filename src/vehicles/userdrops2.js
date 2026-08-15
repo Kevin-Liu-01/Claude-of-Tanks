@@ -172,7 +172,8 @@ const USERDROP2_SPECS = {
       bloom: BLOOM_MODERN,
       shells: [
         shell('PG-15V HEAT', 'HEAT', 73, 300, 300, 310, 665),
-        shell('9M14M Malyutka', 'HEAT', 125, 410, 410, 400, 115, { reloadS: 22 }),
+        shell('9M14M Malyutka', 'HEAT', 125, 410, 410, 400, 115,
+          { reloadS: 22, guided: true }),
         shell('OG-15V HE', 'HE', 73, 8, 8, 330, 290),
       ],
     },

@@ -355,7 +355,8 @@ const MODERN3_SPECS = {
       bloom: BLOOM_MODERN,
       shells: [
         shell('M919 APFSDS-T', 'APFSDS', 25, 110, 110, 60, 1345, { pen2000Mm: 110, reloadS: 0.5, count: 225 }),
-        shell('BGM-71 TOW-2A', 'HEAT', 152, 900, 900, 480, 300, { reloadS: 14, count: 7 }),
+        shell('BGM-71 TOW-2A', 'HEAT', 152, 900, 900, 480, 300,
+          { reloadS: 14, count: 7, guided: true }),
         shell('M792 HEI-T', 'HE', 25, 8, 8, 55, 1100, { reloadS: 0.5, count: 300 }),
       ],
     },
@@ -405,7 +406,8 @@ const MODERN3_SPECS = {
       bloom: BLOOM_MODERN,
       shells: [
         shell('3UBR8 APDS', 'APFSDS', 30, 60, 60, 45, 1120, { pen2000Mm: 60, reloadS: 0.4, count: 160 }),
-        shell('9M113M Konkurs-M', 'HEAT', 135, 750, 750, 420, 250, { reloadS: 16, count: 5 }),
+        shell('9M113M Konkurs-M', 'HEAT', 135, 750, 750, 420, 250,
+          { reloadS: 16, count: 5, guided: true }),
         shell('3UOF8 HE-I', 'HE', 30, 6, 6, 45, 960, { reloadS: 0.4, count: 340 }),
       ],
     },
@@ -451,7 +453,8 @@ const MODERN3_SPECS = {
       bloom: BLOOM_MODERN,
       shells: [
         shell('MK30 APFSDS-T', 'APFSDS', 30, 130, 120, 62, 1385, { pen2000Mm: 110, reloadS: 0.4, count: 200 }),
-        shell('Spike LR', 'HEAT', 152, 760, 760, 500, 180, { reloadS: 15, count: 6 }),
+        shell('Spike LR', 'HEAT', 152, 760, 760, 500, 180,
+          { reloadS: 15, count: 6, guided: true }),
         shell('KETF ABM', 'HE', 30, 10, 10, 58, 1100, { reloadS: 0.4, count: 200 }),
       ],
     },
@@ -524,7 +527,8 @@ const MODERN3_SPECS = {
       bloom: BLOOM_MODERN,
       shells: [
         shell('Type 89 APDS-T', 'APFSDS', 35, 95, 90, 70, 1385, { pen2000Mm: 80, reloadS: 0.5, count: 120 }),
-        shell('Type 79 Jyu-MAT', 'HEAT', 153, 700, 700, 450, 200, { reloadS: 18, count: 6 }),
+        shell('Type 79 Jyu-MAT', 'HEAT', 153, 700, 700, 450, 200,
+          { reloadS: 18, count: 6, guided: true }),
         shell('35mm HEI-T', 'HE', 35, 8, 8, 65, 1175, { reloadS: 0.5, count: 280 }),
       ],
     },

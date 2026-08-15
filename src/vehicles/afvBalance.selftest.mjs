@@ -82,6 +82,18 @@ for (const id of afvIds) {
   }
 }
 
+for (const [id, missileName] of [
+  ['m2a2_bradley', 'BGM-71 TOW-2A'],
+  ['bmp2', '9M113M Konkurs-M'],
+  ['spz_puma', 'Spike LR'],
+  ['type89', 'Type 79 Jyu-MAT'],
+]) {
+  const missile = getSpec(id).gun.shells.find((shell) => shell.name === missileName);
+  if (!missile?.guided) {
+    throw new Error(`${id}/${missileName}: guided round must fly the center-reticle line`);
+  }
+}
+
 {
   const mbt = TANK_SPECS.m1a2;
   const before = mbt.gun.shells.map(

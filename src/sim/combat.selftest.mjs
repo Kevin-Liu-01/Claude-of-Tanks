@@ -15,6 +15,8 @@ import {
   aimElevationRad,
   applyDispersion,
   resolveGunAimDirection,
+  resolveShellAimDirection,
+  shellGravityMps2,
 } from './ballistics.js';
 import { tankPoseFromState, traceTank, queryAimArmor } from './armor.js';
 import {
@@ -180,6 +182,37 @@ function mkShell(shellSpec, distM = 100) {
     1e-12,
     'aimElevationRad matches 0.5·asin(gd/v²)'
   );
+
+  // The center plus is an impact contract, not merely a camera ray. The
+  // shared solver must produce the low ballistic solution for ordinary
+  // rounds and a truly centerline launch for powered/guided missiles.
+  const ballisticAim = V(0, 7, 300);
+  const ballisticDir = V();
+  const ballisticMuzzle = V(0, 2, 0);
+  assert(resolveShellAimDirection(
+    ballisticDir, ballisticMuzzle, ballisticAim.clone().sub(ballisticMuzzle).normalize(),
+    ballisticAim, BR365K,
+  ), 'ordinary shell accepts a settled center-reticle solution');
+  const flightS = 300 / (BR365K.velocityMps * Math.hypot(ballisticDir.x, ballisticDir.z));
+  const solvedY = ballisticMuzzle.y + ballisticDir.y * BR365K.velocityMps * flightS -
+    0.5 * shellGravityMps2(BR365K) * flightS * flightS;
+  near(solvedY, ballisticAim.y, 1e-8,
+    'ordinary shell ballistic solution crosses the center-reticle point');
+
+  const guided = mkShellSpec({ name: 'fixture ATGM', velocityMps: 180, guided: true });
+  const guidedDir = V();
+  const directDir = ballisticAim.clone().sub(ballisticMuzzle).normalize();
+  assert(resolveShellAimDirection(
+    guidedDir, ballisticMuzzle, directDir, ballisticAim, guided,
+  ), 'guided shell accepts a settled center-reticle solution');
+  near(shellGravityMps2(guided), 0, 0,
+    'guided shell is not given an artificial gravity arc');
+  near(guidedDir.angleTo(directDir), 0, 1e-12,
+    'guided shell launches exactly through the center plus');
+  const guidedEntity = createShell(guided, 'attacker_1', true, ballisticMuzzle, guidedDir, 99);
+  stepShell(guidedEntity, 1);
+  near(guidedEntity.vel.y, guidedDir.y * guided.velocityMps, 1e-9,
+    'guided shell remains on its center-reticle flight line');
 
   const dirA = V(0, 0, 1);
   const sigma = 0.002;

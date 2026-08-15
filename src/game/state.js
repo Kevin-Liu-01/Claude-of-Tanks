@@ -11,7 +11,7 @@ import {
   createTankState, updateTank, fireRecoil, shotRecoilScale, computeDispersionRadM, SIM_DT,
 } from '../sim/movement.js';
 import {
-  createShell, stepShell, applyDispersion, aimElevationRad, resolveGunAimDirection,
+  createShell, stepShell, applyDispersion, resolveShellAimDirection, shellGravityMps2,
 } from '../sim/ballistics.js';
 import { tankPoseFromState, traceTank } from '../sim/armor.js';
 import {
@@ -45,11 +45,9 @@ const BATTLE_TIME_LIMIT_S = 900; // 15:00 clock (HUD counts it down) — timeout
 const _muzzle = new THREE.Vector3();
 const _pivot = new THREE.Vector3();
 const _dir = new THREE.Vector3();
-const _upOrtho = new THREE.Vector3();
 const _seg = new THREE.Vector3();
 const _toC = new THREE.Vector3();
 const _spawnPos = new THREE.Vector3();
-const UP = new THREE.Vector3(0, 1, 0);
 
 // PERF (steady-churn): shell objects + the shell:fired payload were the last
 // per-shot allocations in the combat hot path (8 tanks firing every 4-8 s for
@@ -77,6 +75,7 @@ function acquireShell(shellSpec, shooterId, isPlayer, muzzlePos, dir, id) {
   sh.dmgRoll = 0;
   sh.bounces = 0;
   sh.carriedThrough = false;
+  sh.gravityMps2 = shellGravityMps2(shellSpec);
   return sh;
 }
 const _firedEv = {
@@ -1338,22 +1337,10 @@ function tryFire(game, ent, bus, rig) {
     _dir.copy(_muzzle).sub(_pivot).normalize();
   }
 
-  // Server-gun correction (WoT rule: the shot goes where the GUN is aimed,
-  // i.e. the server aim point — the rendered barrel is cosmetic and can sit a
-  // fraction of a degree off the sim's ideal solution). When the barrel has
-  // settled onto the aim point (within ~2°), fire exactly at it so the impact
-  // matches the reticle at server-aim distance; while still slewing, the shell
-  // follows the barrel.
-  resolveGunAimDirection(_dir, _muzzle, _dir, ent.input.aimPoint);
-
-  // Ballistic elevation for the aimed range (WoT-style auto-elevation).
-  const dist = ent.input.aimPoint.distanceTo(_muzzle);
-  const elev = aimElevationRad(dist, shellSpec.velocityMps);
-  _upOrtho.copy(UP).addScaledVector(_dir, -UP.dot(_dir));
-  if (_upOrtho.lengthSq() > 1e-8) {
-    _upOrtho.normalize();
-    _dir.multiplyScalar(Math.cos(elev)).addScaledVector(_upOrtho, Math.sin(elev)).normalize();
-  }
+  // One center-reticle contract owns both bore convergence and ballistics.
+  // Guided missiles stay exactly on the sight line; unguided rounds use the
+  // physical low-angle solution. Multiplayer calls the same resolver.
+  resolveShellAimDirection(_dir, _muzzle, _dir, ent.input.aimPoint, shellSpec);
 
   // Dispersion: sigmaRad = r(100 m)/200 (§3.5.1 locked), gun yellow ⇒ σ×2.
   let sigmaRad = computeDispersionRadM(ent.spec, ent.state, 100) / 200;

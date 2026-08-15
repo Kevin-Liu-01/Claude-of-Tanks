@@ -9,6 +9,7 @@
 // Usage: node tools/reticle-shot-parity-probe.mjs [--screenshot /tmp/reticle.png]
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
+import { GRAVITY_SCALE } from '../src/sim/ballistics.js';
 
 const args = process.argv.slice(2);
 const screenshotAt = args.indexOf('--screenshot');
@@ -128,7 +129,7 @@ try {
 
   if (screenshotPath) await page.screenshot({ path: screenshotPath });
 
-  const report = await page.evaluate(async () => {
+  const report = await page.evaluate(async (gravityScale) => {
     const D = window.__DEBUG;
     const p = D.game.player;
     const V = Object.getPrototypeOf(D.camera.position).constructor;
@@ -198,7 +199,7 @@ try {
 
     const fm = new V(...fired.muzzle);
     const fd = new V(...fired.dir);
-    const g = 9.81 * 2.2;
+    const g = 9.81 * gravityScale;
     const at = (t, out = new V()) => out
       .copy(fm)
       .addScaledVector(fd, fired.velocityMps * t)
@@ -219,12 +220,15 @@ try {
       else lo = t1;
     }
     const shotCenter = at((lo + hi) * 0.5);
+    const launchLine = fm.clone().addScaledVector(fd, fm.distanceTo(desired));
     const markerNdc = marker.clone().project(camera);
     const shotNdc = shotCenter.clone().project(camera);
+    const launchNdc = launchLine.clone().project(camera);
     const desiredNdc = desired.clone().project(camera);
     const ndcToPx = (q) => ({ x: (q.x + 1) * 800, y: (1 - q.y) * 450 });
     const mp = ndcToPx(markerNdc);
     const sp = ndcToPx(shotNdc);
+    const lp = ndcToPx(launchNdc);
     const dp = ndcToPx(desiredNdc);
     return {
       aimDistM: fm.distanceTo(desired),
@@ -233,12 +237,58 @@ try {
       shotNearDesiredM: shotCenter.distanceTo(desired),
       markerToShotPx: Math.hypot(mp.x - sp.x, mp.y - sp.y),
       markerToDesiredPx: Math.hypot(mp.x - dp.x, mp.y - dp.y),
+      launchToDesiredPx: Math.hypot(lp.x - dp.x, lp.y - dp.y),
       hudGunOffsetPx: hud.gunOffsetPx,
       atGunLimit: hud.atGunLimit,
       markerPx: mp,
       shotPx: sp,
       desiredPx: dp,
       outside,
+    };
+  }, GRAVITY_SCALE);
+
+  // Reproduce the owner-visible worst case too: the 180 m/s Spike previously
+  // received the generic 2.2g arc and launched about 5.76° / 78 px above the
+  // center plus at 300 m. A guided round must now leave on the exact sightline.
+  await page.evaluate(() => {
+    const D = window.__DEBUG;
+    if (D.settings.isOpen()) D.settings.close();
+    D.startBattle('spz_puma');
+  });
+  await sleep(500);
+  const guidedReport = await page.evaluate(() => {
+    const D = window.__DEBUG;
+    const p = D.game.player;
+    const V = D.camera.position.constructor;
+    const muzzle = new V();
+    const bore = new V();
+    D.fastForward(1);
+    p.visual.gunMuzzleWorld(muzzle);
+    const forward = new V(Math.sin(p.state.yaw), 0, Math.cos(p.state.yaw));
+    const desired = muzzle.clone().addScaledVector(forward, 300);
+    p.input.aimPoint.copy(desired);
+    p.input.shellSlot = 1;
+    p.combat.shellSlot = 1;
+    p.combat.reload.t = 0;
+    D.fastForward(4);
+    p.visual.gunMuzzleWorld(muzzle);
+    p.visual.gunDirWorld(bore).normalize();
+    const direct = desired.clone().sub(muzzle).normalize();
+    let fired = null;
+    const off = D.bus.on('shell:fired', (event) => {
+      if (event.isPlayer) fired = { dir: [...event.dir] };
+    });
+    D.game.combatRng = () => 1;
+    D.game.preBattleS = 0;
+    D.flags.forceFire = true;
+    D.fastForward(1 / 60);
+    D.flags.forceFire = false;
+    off();
+    if (!fired) throw new Error('controlled Spike shot did not fire');
+    return {
+      guided: p.spec.gun.shells[1].guided === true,
+      settledBoreErrorDeg: bore.angleTo(direct) * 180 / Math.PI,
+      launchToPlusDeg: new V(...fired.dir).angleTo(direct) * 180 / Math.PI,
     };
   });
 
@@ -247,11 +297,15 @@ try {
     ['zero-dispersion shell center reaches requested aim', report.shotNearDesiredM < 1.5],
     ['visible gun marker matches actual shot center', report.markerToShotPx <= 3],
     ['visible gun marker converges with desired marker when the shot does', report.markerToDesiredPx <= 3],
+    ['player-visible launch correction stays under two pixels', report.launchToDesiredPx <= 2],
     ['outside the correction window the gun marker separates', report.outside.boreErrorDeg > 2 && report.outside.hudGunOffsetPx > 8],
     ['outside the correction window the gun marker stays on the bore', report.outside.markerToBoreDeg < 0.01],
+    ['slow guided missile launches exactly through the center plus',
+      guidedReport.guided && guidedReport.launchToPlusDeg < 0.00001],
     ['runtime had no page errors', pageErrors.length === 0],
   ];
   console.log(`[reticle-shot-parity] terrain=${target.distM.toFixed(1)}m report=${JSON.stringify(report)}`);
+  console.log(`[reticle-shot-parity] guided=${JSON.stringify(guidedReport)}`);
   for (const [name, pass] of checks) {
     console.log(`  ${pass ? 'PASS' : 'FAIL'} ${name}`);
     if (!pass) failed = true;

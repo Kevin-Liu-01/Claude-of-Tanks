@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import { Vector3 } from 'three';
+import '../vehicles/tankFactory.js'; // register the full authored fleet
 import { createAuthoritativeMatch } from './authoritativeMatch.js';
 import { PLAYER_ACTION_BITS } from '../net/protocol.js';
 
@@ -143,6 +145,42 @@ hiddenMatch.onMatchReady();
 const privateSnap = hiddenMatch.snapshot({ tick: 0, serverTimeMs: 0, viewerId: 'near-a', ackInputSeq: 0 });
 assert.deepEqual(privateSnap.entities.map((entity) => entity.id), ['near-a'],
   'unspotted enemy coordinates never serialize');
+
+const guidedMatch = createAuthoritativeMatch({
+  countdownS: 0,
+  players: [
+    { id: 'guided-a', specId: 'spz_puma', team: 'alpha',
+      spawn: { x: 0, z: -100, yaw: 0 } },
+    { id: 'guided-b', specId: 'm1a2', team: 'bravo',
+      spawn: { x: 0, z: 100, yaw: Math.PI } },
+  ],
+});
+guidedMatch.onMatchReady();
+const guidedInput = new Map([['guided-a', {
+  throttle: 0, steer: 0, brake: true, fire: false,
+  aimYaw: 0, aimPitch: 0, shellSlot: 1,
+}]]);
+for (let i = 0; i < 240; i++) {
+  guidedMatch.step({ dt: 1 / 60, inputs: guidedInput });
+}
+const guidedShooter = guidedMatch.entityById.get('guided-a');
+guidedShooter.combat.reload.t = 0;
+const guidedAccuracy = guidedShooter.spec.gun.baseAccuracy;
+guidedShooter.spec.gun.baseAccuracy = 0;
+guidedInput.get('guided-a').fire = true;
+guidedMatch.step({ dt: 1 / 60, inputs: guidedInput });
+guidedShooter.spec.gun.baseAccuracy = guidedAccuracy;
+const guidedEvent = guidedMatch.snapshot({
+  tick: 241, serverTimeMs: 241000 / 60, viewerId: 'guided-a', ackInputSeq: 1,
+}).events.find((event) => event.type === 'shell_fired' && event.shooterId === 'guided-a');
+assert.ok(guidedEvent, 'authority emits the controlled guided shot');
+const guidedEntity = guidedMatch.entityById.get('guided-a');
+const guidedDirect = guidedEntity.input.aimPoint.clone().sub(new Vector3(
+  guidedEvent.x, guidedEvent.y, guidedEvent.z,
+)).normalize();
+assert.ok(guidedDirect.dot(new Vector3(
+  guidedEvent.dx, guidedEvent.dy, guidedEvent.dz,
+)) > 1 - 1e-10, 'authoritative guided shot launches through the center plus');
 
 const firing = new Map([
   ['alpha-1', {
