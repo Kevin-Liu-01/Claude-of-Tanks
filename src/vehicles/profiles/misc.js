@@ -3348,12 +3348,13 @@ function buildAMX30(P, b2) {
   const { rng } = P;
   // Family proportion reset: use the authored AMX-40 upper-hull authority as
   // the datum, then keep the AMX-30's own compact cast turret and equipment.
-  // The former 1.11 x / 1.13 y stretch made both variants read as an enormous
-  // turret on a wafer-thin hull.  These factors restore the low, compact
-  // fighting compartment without touching the five-wheel running gear.
-  const turretYScale = b2 ? 0.74 : 0.72;
-  const turretXScale = b2 ? 0.92 : 0.90;
-  const turretZScale = b2 ? 0.98 : 0.96;
+  // The former stretch was only wrong when paired with the old wafer-thin
+  // hull.  Against the restored AMX-40-family upper hull, these restrained
+  // factors recover the source-height cast shoulder and TOP-7 station while
+  // keeping the turret visibly compact relative to the hull.
+  const turretYScale = b2 ? 1.12 : 1.10;
+  const turretXScale = b2 ? 1.08 : 1.06;
+  const turretZScale = b2 ? 1.02 : 1.00;
   // Published 6.59/9.48 m dimensions are sovereign.  The B2 reference print
   // is short after width normalization, so shortening our authored hull to
   // that artifact is not an acceptable fidelity fix.
@@ -3503,15 +3504,14 @@ function buildAMX30(P, b2) {
     idler: { z: 2.48 * courseZScale, y: 0.61, r: 0.41 },
     rollers: [1.58, 0.79, 0.0, -0.79, -1.58]
       .map((z) => ({ z: z * courseZScale, y: 0.99, r: 0.075 })),
-    trackW: 0.55, trackTh: 0.10, topY: 1.02, botY: 0.0,
-    shoeRadialScale: b2 ? 0.74 : 1,
+    trackW: 0.55, trackTh: 0.07, topY: 1.02, botY: b2 ? 0.02 : 0.052,
+    shoeRadialScale: 1,
     paintedEnds: true, coveredTop: true, arms: true,
   });
-  // These discs are the dark wheel-well/recess treatment behind the native
-  // road wheels, not hull armor.  Keep the visual depth and classify it as
-  // running-gear furniture so the strict course gate evaluates real hull
-  // surfaces independently from their own bay shading.
-  wheelRecessAt(P, wheelZs, 1.243, roadWheelY, roadWheelR, 0.24, 'hullRunningGearDark');
+  // The native suspension supplies the only road-wheel faces.  A former
+  // static recess-disc course occupied the same wheel stations and read as a
+  // second, non-suspending layer when the arms moved, so it is intentionally
+  // absent from both variants.
   // (B2 skirts DROPPED: the shoe envelope prints xc+-(W/2+0.023) = +-1.573
   // — a skirt outside it breaks the +-1.55 widthM anchor (§D WIDTH-GUARD),
   // inside it gets swept by the shoes. "Side skirts optional — bare wheels
@@ -3564,29 +3564,30 @@ function buildAMX30(P, b2) {
   P.add('turret', cylY(0.31, 0.33, 0.13, 16), 0.52 * stationSign, 0.84, commanderZ);           // cupola ring
   P.add('turret', cylY(0.25, 0.29, 0.08, 16), 0.52 * stationSign, 0.895, commanderZ);          // rounded hatch shoulder
   P.add('turretDark', torus(0.23, 0.013, 16), 0.52 * stationSign, 0.945, commanderZ);          // hatch seal / cupola rim
-  // TOP-7 commander station: compact tapered armored pedestal and optical
-  // head, not the former two-storey open rectangular cage.  Both stages
-  // overlap the cupola ring broadly and remain visibly asymmetric.
-  P.add('turret', frustum(0.32, 0.31, -0.31, 0.26, 0.26, -0.26, 0.76, 1.00), stationX, 0, stationZ);
-  P.add('turret', frustum(b2 ? 0.28 : 0.27, 0.26, -0.25, 0.22, 0.22, -0.21,
-    1.00, (b2 ? 1.27 : 1.23) + stationLift), stationX, 0, stationZ);
-  P.add('turretDark', box(b2 ? 0.26 : 0.24, 0.13, 0.025), stationX,
-    (b2 ? 1.16 : 1.13) + stationLift, stationZ + 0.225);
-  P.add('turretGlass', box(b2 ? 0.19 : 0.18, 0.085, 0.018), stationX,
-    (b2 ? 1.17 : 1.14) + stationLift, stationZ + 0.242);
+  // TOP-7 commander station.  Its signature is a broad, compact rotating
+  // head on the cupola shoulder, not a narrow two-storey box.  The two
+  // tapered courses overlap the cupola and one another, while the rounded
+  // crown carries the optical faces and the forward-rest machine gun.
+  P.add('turret', frustum(0.38, 0.34, -0.34, 0.33, 0.30, -0.30, 0.76, 0.99), stationX, 0, stationZ);
+  P.add('turret', frustum(b2 ? 0.34 : 0.33, 0.30, -0.29, 0.29, 0.26, -0.25,
+    0.98, (b2 ? 1.23 : 1.20) + stationLift), stationX, 0, stationZ);
+  P.add('turret', cylY(b2 ? 0.30 : 0.29, b2 ? 0.32 : 0.31, 0.075, 16),
+    stationX, (b2 ? 1.24 : 1.21) + stationLift, stationZ);
+  P.add('turretDark', box(b2 ? 0.30 : 0.28, 0.12, 0.025), stationX,
+    (b2 ? 1.15 : 1.12) + stationLift, stationZ + 0.275);
+  P.add('turretGlass', box(b2 ? 0.22 : 0.21, 0.075, 0.018), stationX,
+    (b2 ? 1.16 : 1.13) + stationLift, stationZ + 0.292);
   P.add('turretDetail', cylY(0.050, 0.070, 0.09, 10), stationX - 0.14 * stationSign,
     (b2 ? 1.30 : 1.26) + stationLift, stationZ - 0.02);
-  // The TOP-7 has a light open guard/hatch cadence around the compact head.
-  // Thin members terminate in the cupola shoulder and never form another
-  // opaque tower; the rear hoop also gives the MG an explicit load path.
-  for (let k = 0; k < 8; k++) {
-    const a = (k / 8) * Math.PI * 2;
-    P.add('turretDetail', box(0.030, 0.36 + stationLift, 0.030),
-      stationX + Math.cos(a) * 0.325, 1.13 + stationLift * 0.5,
-      stationZ + Math.sin(a) * 0.325);
+  // Four short guard uprights and a closed top ring retain the characteristic
+  // open TOP-7 silhouette without rebuilding the former eight-post cage.
+  for (const a of [0, Math.PI / 2, Math.PI, Math.PI * 1.5]) {
+    P.add('turretDetail', box(0.030, 0.16 + stationLift, 0.030),
+      stationX + Math.cos(a) * 0.31, 1.21 + stationLift * 0.5,
+      stationZ + Math.sin(a) * 0.31);
   }
-  P.add('turretDetail', torus(0.34, 0.014, 20), stationX, 1.30 + stationLift, stationZ);
-  P.add('turretDetail', box(0.61, 0.025, 0.025), stationX, 1.29 + stationLift, stationZ - 0.31);
+  P.add('turretDetail', torus(0.32, 0.014, 20), stationX, 1.29 + stationLift, stationZ);
+  P.add('turretDetail', box(0.56, 0.025, 0.025), stationX, 1.28 + stationLift, stationZ - 0.29);
   for (let k = 0; k < 8; k++) {
     const a = (k / 8) * Math.PI * 2;
     P.add('turretGlass', box(0.055, 0.035, 0.02), 0.52 * stationSign + Math.cos(a) * 0.255, 0.925, commanderZ + Math.sin(a) * 0.255, 0, -a, 0); // episcope ring
@@ -3597,11 +3598,11 @@ function buildAMX30(P, b2) {
   periscope(P, 'turretDetail', 0.30 * stationSign, 0.87, 0.30);
   // remote 7.62 on the cupola side arm — FORWARD rest (CROWS-FORWARD law)
   {
-    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', elev: -0.04, seed: 8, scale: 1.05, ammo: true });
+    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', elev: -0.04, seed: 8, scale: 1.12, ammo: true });
     // Foot-origin fitting: seat its column inside the armored optical bridge
     // so the receiver and forward barrel clear the cupola instead of being
     // buried inside the cast roof.
-    mg.position.set(0.84 * stationSign, (1.20 + stationLift * 0.5) * turretYScale, stationZ + 0.02);
+    mg.position.set(0.84 * stationSign, 1.20 + stationLift * 0.5, stationZ + 0.02);
     P.turretG.add(mg);
   }
   // gunner sight hood on the roof right-forward + rangefinder ear bulges
@@ -3629,14 +3630,14 @@ function buildAMX30(P, b2) {
   stowage(P, 'turretCloth', rng, [[-0.90 * stationSign, 0.62, -0.95, 0.20, 0.16, 0.55]]);
   // antennas: whip base right-rear + left-rear pot
   {
-    const whip = FITTINGS.antennaWhip({ mats: P.mats, h: 0.30, r: 0.014, rake: -0.05, seed: 4, rotation: [-0.55, 0, 0] });
-    whip.position.set(0.74 * stationSign, 0.58 * turretYScale, -1.52);
+    const whip = FITTINGS.antennaWhip({ mats: P.mats, h: 0.82, r: 0.014, rake: -0.05, seed: 4, rotation: [-0.55, 0, 0] });
+    whip.position.set(0.74 * stationSign, 0.58, -1.52);
     P.turretG.add(whip);
   }
   P.add('turretDetail', cylY(0.035, 0.045, 0.10, 8), -0.73 * stationSign, 0.74, -1.55);      // secondary antenna pot
   for (const s of [-1, 1]) {
     const smoke = FITTINGS.smokeBank({ mats: P.mats, count: 2, r: 0.048, len: 0.24, splay: s * 0.85, pitch: -0.40, seed: 5 + s });
-    smoke.position.set(s * 0.98, 0.42 * turretYScale, -0.90);
+    smoke.position.set(s * 0.98, 0.42, -0.90);
     P.turretG.add(smoke);
   }
   P.decal('turret', 'number', b2 ? '68' : '53', 0.26, [0.98, 0.30, -0.3], Math.PI / 2, 0, 0.04);
@@ -3669,7 +3670,7 @@ function buildAMX30(P, b2) {
     P.addGunExtraDark(cylZ(0.055, 0.05, 10), 0.52 * stationSign, 0.24, 0.735);  // lens hood
   }
   const gunLen = 5.15 * bodyZScale;
-  const gunRadius = b2 ? 0.136 : 0.134;
+  const gunRadius = b2 ? 0.112 : 0.110;
   buildGun(P, { len: gunLen, r: gunRadius, sleeve: false, evac: null, collar: false, baseR: 0.155 });
   muzzleBore(P, gunRadius, gunLen - 0.02);                                     // §B3.1 muzzle bore (shadow-named)
   // Scale only the authored AMX-30 fighting compartment about its local ring
