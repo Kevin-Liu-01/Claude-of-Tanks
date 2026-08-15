@@ -2050,99 +2050,15 @@ function buildT72B3M(P) {
     // wheel discs anyway).
     trackW: 0.58, topY: 0.86, botY: 0.0475, paintedEnds: true, coveredTop: true, arms: false,
   });
-  // r11 GEAR-FADE STRIPS (per-column, horizontal bottoms — raster-robust):
-  // the ref's rear/front track ramps rise straight lines the wrapped band
-  // cannot print (r9/r10 wrap predictions failed twice). Each strip owns ONE
-  // gate column's bottom at the ref's printed row (+6-10mm past the line),
-  // seated in the col interior, hidden inside the track x-band so the front
-  // rows never see a new floor. Solid: strips bed into the band/wheel mass.
+  // Native-course ownership repair (owner surface markup, 2026-08-15): the
+  // old reference-scoring recipe duplicated both terminal wraps with ten
+  // horizontal ramp strips and seven broad chord-fan plates per side. Those
+  // static hull solids are the olive second course visible beneath the real
+  // suspension-driven pads. The native linked loop above now exclusively
+  // owns both end transitions and the complete lower run.
   for (const s of [-1, 1]) {
-    // r15 item 4: fade strips/fills/skids re-bucketed hullTrack->hullDark —
-    // their sun-lit tops sampled (86,95,63) L35 vs the ref's dark stepped
-    // ends (56,60,41) L22; spareTrack stays tuned for the glacis raft.
-    // §B4: strips/fans/joint-fills live INSIDE the track x-band by design
-    // (they paint the ramp lines the wrapped band cannot print — the r11
-    // banked class) and bed into the band on purpose. They are in-lane
-    // running-gear trim.  The strict audit no longer accepts positional
-    // lane heuristics, so keep these existing solids in the explicit
-    // suspension-owned dark bucket.  Material, LOD path and transforms are
-    // unchanged; only the ownership label is corrected.
-    const trim = 'hullRunningGearDark';
-    // rear ramp (ref 0.107@-3.359 / 0.161@-3.467 / 0.295@-3.681 / 0.429@-3.896)
-    P.add(trim, box(0.54, 0.05, 0.096), s * 1.33, 0.144, -3.359);
-    P.add(trim, box(0.54, 0.05, 0.096), s * 1.33, 0.198, -3.467);
-    P.add(trim, box(0.54, 0.05, 0.096), s * 1.33, 0.453, -3.768);
-    P.add(trim, box(0.54, 0.05, 0.096), s * 1.33, 0.533, -3.875);
-    P.add(trim, box(0.54, 0.05, 0.096), s * 1.33, 0.64, -3.982);
-    // front idler ramp (ref 0.054@1.148 / 0.107@1.255 / 0.188@1.363 /
-    // 0.349@1.577 / 0.456@1.685)
-    P.add(trim, box(0.54, 0.05, 0.096), s * 1.33, 0.0825, 1.363);
-    P.add(trim, box(0.54, 0.05, 0.096), s * 1.33, 0.136, 1.47);
-    P.add(trim, box(0.54, 0.05, 0.096), s * 1.33, 0.216, 1.576);
-    P.add(trim, box(0.54, 0.05, 0.096), s * 1.33, 0.296, 1.683);
-    P.add(trim, box(0.54, 0.05, 0.14), s * 1.33, 0.376, 1.768);
-    // r17 item 8a -> r18 item 4e: the single straight fairing plates read as
-    // PLANKS (critic r6: "plank staircases; idler AND sprocket must read
-    // round"). Replaced by CHORD FANS — 4-5 short plates per end riding the
-    // strip-BOTTOM polyline + 5 mm, outboard of the strips (x 1.617) so they
-    // occlude the horizontal step edges while every certified column bottom
-    // stays owned by its strip (chord bottoms never undercut the line).
-    // The fan's tangent-continuous chords draw the wrap as one round arc.
-    // (gate bisect r18: the two EXTRAPOLATED end chords beyond the last
-    // strip anchors undercut the ref line 0.05-0.06 at world z 1.76 / -3.9..
-    // -4.1 — deleted; mid chords ride +0.03 above the anchor line since the
-    // ref between-col bottoms run higher than the linear interpolation.)
-    // r19 item 5b (critic r7: "wrap staircases read as bead-trimmed stairs
-    // off-axis"): the thin x-plates only occluded the horizontal step edges
-    // from dead side — QUARTER sightlines saw straight past them onto the
-    // stepped strip ends. The fans widen to the full strip x-band
-    // (1.075..1.605) so the tilted chord faces own the wrap from every
-    // azimuth. Same y/z/tilt anchors — no certified column bottom moves
-    // (front-band col bottoms stay the 0.007-0.012 shoe/track class).
-    P.add(trim, box(0.53, 0.05, 0.13), s * 1.34, 0.146, 1.309, -0.46, 0, 0);
-    P.add(trim, box(0.53, 0.05, 0.14), s * 1.34, 0.213, 1.416, -0.644, 0, 0);
-    P.add(trim, box(0.53, 0.05, 0.27), s * 1.34, 0.334, 1.577, -0.645, 0, 0);
-    P.add(trim, box(0.53, 0.05, 0.16), s * 1.34, 0.47, 1.738, -0.804, 0, 0);
-    P.add(trim, box(0.53, 0.05, 0.13), s * 1.34, 0.206, -3.413, 0.464, 0, 0);
-    P.add(trim, box(0.53, 0.05, 0.26), s * 1.34, 0.32, -3.60, 0.559, 0, 0);
-    P.add(trim, box(0.53, 0.05, 0.26), s * 1.34, 0.47, -3.82, 0.559, 0, 0);
-    // r15 item 4: TRACK-BOTTOM OCCLUDER — the flat emissive floor that buys
-    // the side-run tone also glows the bottom run (the pale strip under the
-    // wheels the r3 critic flagged). A near-black plate outside the track's
-    // lower band swallows the bottom-run read from the side; z-clamped to
-    // the flat-bottom zone so no gear-fade ramp column bottom moves (bottom
-    // 0.052 sits above the certified 0.0475 band-bottom row).
-    // r16 item 2c: occluder re-bucketed hullShadow->'hull' — the near-black
-    // plate drove the strip median to 52 vs the ref's dusty-track 64 (r4:
-    // "median now DARKER than ref"); camo+bakeDirt dust lands the dusty
-    // lit-track family while still swallowing the emissive band glow.
-    // (r16b: bottom edge 0.052 -> 0.048 — the exposed emissive serration
-    // sliver under the plate was the last >85 tip source; 0.048 stays above
-    // the certified 0.0475 band-bottom row so no column bottom moves.)
-    // r17 item 5c: occluder 'hull'->'hullTrack' + bottom 0.048->0.030 — the
-    // dirt bake drove the camo plate to L34 at track height (the p5-p25 of
-    // the critic's ground row, ref 59-72) and the ground teeth sparkled 87
-    // below its old hem; spareTrack renders the ref's dusty 60-64 flat and
-    // the deeper hem swallows the tip row (side bottoms are 0 via the
-    // ground-contact track — no column bottom can move).
-    // r18 item 4c: occluder dropped to ground skin (0.004) — the emissive
-    // link-chain guide horns rendered as a SERRATED TOOTH STRIP along the
-    // whole bottom run below the old 0.030 edge (critic r6: "invented
-    // full-length tooth strip; teeth only at the sprocket"). Same certified
-    // 0-row (band bottom 0.0475 still prints it); the flat plate now owns
-    // the visible bottom edge like the ref's clean dusty run.
-    // r22 item 1 (critic r10 RUNNING-GEAR IDENTITY): occluder height 0.156
-    // -> 0.096 — the full-length plate used to hide the wheel-arc FEET
-    // (wheel bottom 0.075 vs old 0.160 edge), amputating the six-disc read
-    // to the 15px band the critic measured. 0.004..0.10 still swallows the
-    // band glow below the discs; the certified 0-row is band-owned.
-    P.add('hullRunningGearDetail', box(0.012, 0.096, 4.36), s * 1.625, 0.052, -1.10);
-    // r18 item 4c2: per-gap horn covers — the chain guide horns (y 0.16-
-    // 0.26 on the bottom run) still serrated the run BETWEEN wheels above
-    // the occluder's 0.16 edge. Five plates per side rise to 0.27 in the
-    // wheel gaps only (at wheel stations the discs hide the horns), tops
-    // safely under the 0.33 daylight-slot floor.
-    // r22 item 1: the horn covers are DELETED, and the 52.3-luma surface
+    // No static plate is permitted along the native lower run.
+    // r22 item 1: per-gap horn covers are deleted, and the 52.3-luma surface
     // that still filled every gap V was decoded as the kit track's OUTER
     // CONNECTOR RAIL (x ±1.527, y 0.15-0.28, full loop — link innerMat
     // reads ~52 on the lee side). DOWN-LEANED near-black gap backers
@@ -2248,15 +2164,6 @@ function buildT72B3M(P) {
     // top/bottom, so a 4cm shoe keeps its 0.012 ground read while hiding
     // under the wheel rim (wheel bottom 0.075) against the dark track.
     P.add('hullRunningGearDark', box(0.033, 0.043, 0.10), s * 1.6375, 0.0335, -3.00);
-    // visual r1 item 4: ramp-strip JOINT FILLS — close the see-through gaps
-    // between the certified per-column fade strips so each ramp reads as one
-    // fabricated skid fairing, not floating slats. Fill bottoms sit AT/ABOVE
-    // the local certified prints (rear mid-col bottom is the sprocket wrap
-    // ~0.46; front mid-col the idler wrap ~0.57) — no column bottom moves.
-    // (§B4: in-lane suspension trim like the strips/fans; transforms stay
-    // untouched and strict clearance excludes the explicit gear bucket.)
-    P.add('hullRunningGearDark', box(0.50, 0.14, 0.125), s * 1.33, 0.53, -3.574);
-    P.add('hullRunningGearDark', box(0.50, 0.10, 0.115), s * 1.33, 0.625, 1.47);
     // item 4/hero: skirt-to-track VOID BACKERS (plate-fill law), split so the
     // wheels stay readable: (A) upper-slot strip ABOVE the wheel tops
     // (0.875+ vs wheel crown 0.825) closes the oblique sky slot between bag

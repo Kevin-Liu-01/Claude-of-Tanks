@@ -58373,7 +58373,7 @@
           }
         ]
       },
-      "geometryHash": "3f56a0ca",
+      "geometryHash": "f2a3f86c",
       "metadataHash": "ec4bade1",
       "appearance": {
         "version": 1,
@@ -58381,7 +58381,7 @@
         "roles": {
           "unclassified": 90,
           "wheelTire": 1,
-          "wheelDish": 7,
+          "wheelDish": 11,
           "wheelInset": 1,
           "trackHardware": 4,
           "trackBand": 2,
@@ -58418,24 +58418,24 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 28744,
-          "sha256": "22f67e670c741be1a104e926f3be431c541d09990c6054859087ddef282106b1"
+          "bytes": 28598,
+          "sha256": "76d0d9d4f2733496450c129b0e41a96293a544020d4f796a088e8f7c73bf6ef9"
         },
         "top": {
           "file": "t72b3m_top.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 8968,
-          "sha256": "bbfc5a8d57a4ace326394ac165950b1f956f4dadeac54a916863f20e6c4d9290"
+          "bytes": 9022,
+          "sha256": "b6042f2cc2eb95c5d26be325d6124a51391e33172a3e3cd21ff821ec9fd536d1"
         },
         "side": {
           "file": "t72b3m_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 6672,
-          "sha256": "f8f019d0d35b6a1293beedb10b60adf1ccf55e85d5af70586e6b2780c5187dc2"
+          "bytes": 6708,
+          "sha256": "41f1bcb32003cc4452c89107bcc6733c214c0959cd07c3063bf79606d0acd6e4"
         },
         "topSilhouette": {
           "file": "t72b3m_top_silhouette.png",
@@ -58450,32 +58450,32 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 3668,
-          "sha256": "15b7a0745f52e4b01e44659048eb328d49a344ab7e7015a6b00a18be253523a7"
+          "bytes": 3576,
+          "sha256": "361d266ae363ff11e096ec3aca34b7978fe91eea514df83d3e264f5a677be413"
         },
         "hitZonesSide": {
           "file": "t72b3m_hit_zones_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 74497,
-          "sha256": "006a6e42b15a4934934a31be6dc5adcda5dc5fc280b6ccd9ab13ab889f070546"
+          "bytes": 74551,
+          "sha256": "bcd5de141c60d03b1d772c24f43081312199fe3ffc1425ff8505ae98cfaff811"
         },
         "armorSide": {
           "file": "t72b3m_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 73260,
-          "sha256": "cf421f6e443e0be79c316a8accb89cdb9b9e5a6a0c0d4fca24de6ed6871e86c9"
+          "bytes": 73384,
+          "sha256": "c948b6976fcda9f8de3c465d0855dcdf2e0c47b492a1e049a5d7cf935e4c84cf"
         },
         "modulesSide": {
           "file": "t72b3m_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 66916,
-          "sha256": "ea19c6f26a8becea778987e78819fc252490e0a14e0cf60fdbd2733f646aee60"
+          "bytes": 66661,
+          "sha256": "dd341d5af589d5ec754bd25fa170c46690220cb3d37881609559ac3d45da76da"
         },
         "markings": {
           "file": "t72b3m_markings.png",
