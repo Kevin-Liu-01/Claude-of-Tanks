@@ -15,17 +15,15 @@ function isLocalNetworkHost(hostname) {
  */
 export function resolveSignalUrl({
   configured = '',
-  lan = false,
   protocol = 'http:',
   hostname = 'localhost',
 } = {}) {
   const explicit = String(configured || '').trim();
-  if (!lan && explicit) return explicit;
+  if (explicit) return explicit;
   const scheme = protocol === 'https:' ? 'wss:' : 'ws:';
   const host = String(hostname).includes(':') && !String(hostname).startsWith('[')
     ? `[${hostname}]`
     : hostname;
-  if (!lan && !isLocalNetworkHost(hostname)) return `${scheme}//${host}/api/signal`;
-  if (!isLocalNetworkHost(hostname)) return '';
+  if (!isLocalNetworkHost(hostname)) return `${scheme}//${host}/api/signal`;
   return `${scheme}//${host}:7777/signal`;
 }

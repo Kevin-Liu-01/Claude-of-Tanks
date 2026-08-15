@@ -524,7 +524,7 @@ export function createPlayMenu({
     }
     const fillNote = ` Bots fill empty slots to ${next.teamSize || 1} per team.`;
     note.textContent = (mode === 'lan'
-      ? 'LAN uses direct WebRTC paths. Every device must reach the signaling address over the same Wi-Fi.'
+      ? 'LAN gameplay stays on direct Wi-Fi WebRTC paths; signaling only introduces the peers.'
       : 'Gameplay travels directly between peers; signaling only exchanges connection metadata.') + fillNote;
     if (next.phase === 'starting' && role === 'client' && !handedOff) {
       handedOff = true;
@@ -544,7 +544,7 @@ export function createPlayMenu({
     const signalUrl = signalInput.value.trim();
     if (!signalUrl) {
       throw new Error(mode === 'lan'
-        ? 'Open the game from the LAN host or enter a reachable signaling server address.'
+        ? 'Automatic LAN signaling is unavailable. Open connection settings to enter a fallback address.'
         : 'Private lobby signaling is unavailable on this deployment.');
     }
     const signaling = new RoomSignalingClient({ url: signalUrl });
@@ -624,11 +624,11 @@ export function createPlayMenu({
     setConnecting(false);
     if (!signalInput.value) {
       setStatus(mode === 'lan'
-        ? 'Open this page from the LAN host or enter a secure Wi-Fi-reachable signaling address.'
+        ? 'Automatic LAN signaling is unavailable. Open connection settings to enter a fallback address.'
         : 'Private lobby signaling is unavailable on this deployment.', true);
     } else {
       setStatus(mode === 'lan'
-        ? 'Enter the Wi-Fi-reachable signaling address.'
+        ? 'LAN is ready. Create a room and share its invite link; gameplay stays on your Wi-Fi.'
         : 'Create a code or join an existing room.');
     }
   }

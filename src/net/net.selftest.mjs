@@ -442,6 +442,15 @@ assert.equal(resolveSignalUrl({
 assert.equal(resolveSignalUrl({ hostname: 'cot.example.test', protocol: 'https:' }),
   'wss://cot.example.test/api/signal',
   'production uses the same-origin WebSocket Function');
+assert.equal(resolveSignalUrl({ hostname: 'cot.example.test', protocol: 'https:', lan: true }),
+  'wss://cot.example.test/api/signal',
+  'production LAN uses automatic same-origin rendezvous');
+assert.equal(resolveSignalUrl({
+  configured: 'wss://signal.example.test/signal',
+  hostname: 'cot.example.test',
+  protocol: 'https:',
+  lan: true,
+}), 'wss://signal.example.test/signal', 'LAN honors an explicitly configured signaling service');
 assert.equal(resolveSignalUrl({ hostname: '192.168.1.44', protocol: 'http:', lan: true }),
   'ws://192.168.1.44:7777/signal');
 {

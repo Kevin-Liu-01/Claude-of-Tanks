@@ -152,6 +152,12 @@ notifications use Redis pub/sub, so peers routed to different WebSocket
 function instances still share one room. A deployment may add short-lived TURN
 credentials through `VITE_ICE_CONFIG_URL`; LAN remains direct.
 
+LAN setup is automatic. Public deployments use their same-origin secure
+signaling endpoint for rendezvous, while pages served from localhost or an
+RFC1918 address use that host's bundled port-7777 signaling service. LAN does
+not request STUN or TURN routes, so match traffic stays on the direct Wi-Fi
+WebRTC path; the signaling service only exchanges room and connection metadata.
+
 ## Verification
 
 ```bash
