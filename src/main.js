@@ -1170,6 +1170,7 @@ async function openPlayMenu(request) {
         equipment: loadSelectedEquipment(garage.getSelected(), getSpec(garage.getSelected())),
       }),
       isVehicleAllowed: (specId) => ALL_TANK_IDS.includes(specId),
+      getVehicleName: (specId) => getSpec(specId).name,
       onSolo: () => {
         const start = pendingSoloStart;
         pendingSoloStart = null;

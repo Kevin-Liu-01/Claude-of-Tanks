@@ -6,6 +6,7 @@ import { automaticPlayerName, normalizePlayerName } from '../net/playerNames.js'
 import { normalizeRoomCode } from '../net/protocol.js';
 import { createRoomInviteUrl } from '../net/roomInvite.js';
 import { ensureFonts, FONT_STACK, FONT_COND } from './fonts.js';
+import { iconUrl } from './icons.js';
 import { uiIconSVG } from './uiIcons.js';
 
 const STYLE_ID = 'cot-play-menu-style';
@@ -33,6 +34,7 @@ const CSS = `
   grid-template-columns:repeat(4,1fr);gap:10px}.cot-play .mode{position:relative;min-height:156px;text-align:left;padding:18px;
   color:#eef4f8;background:rgba(20,27,34,.86);border:1px solid rgba(161,180,195,.28);cursor:pointer}
 .cot-play .mode:hover,.cot-play .mode.on{border-color:#e69a36;background:rgba(230,154,54,.1)}
+.cot-play.lobby-active .modes{display:none}.cot-play.lobby-active .lead{margin-bottom:8px}.cot-play.lobby-active .room{margin-top:10px}
 .cot-play .mode b{display:block;font-size:17px;margin:8px 0}.cot-play .mode-desc{display:block;color:#9eafbc;
   font-size:11px;line-height:1.55}.cot-play .mode i{display:block;padding-right:44px;font:800 9px ${FONT_COND};
   font-style:normal;letter-spacing:.2em;color:#e69a36;text-transform:uppercase}.cot-play .mode-icon{position:absolute;
@@ -78,12 +80,32 @@ const CSS = `
 .cot-play .lobby.show{display:block}.cot-play .roomhead{display:flex;align-items:center;justify-content:space-between;
   gap:12px;padding:13px 15px;background:rgba(230,154,54,.08);border:1px solid rgba(230,154,54,.3)}
 .cot-play .code{font:900 25px ${FONT_COND};letter-spacing:.18em;color:#ffd08b}.cot-play .roommeta{color:#91a4b2;
-  font-size:10px}.cot-play .players{margin-top:8px;display:grid;gap:5px}.cot-play .player{display:grid;
-  grid-template-columns:36px 1.2fr 1fr 1fr 80px;align-items:center;gap:10px;padding:9px 12px;
-  background:rgba(13,18,24,.88);border-left:3px solid #657789;font-size:11px}.cot-play .player.alpha{border-left-color:#5da8e8}
-.cot-play .player.bravo{border-left-color:#e16b5e}.cot-play .player .host{color:#e69a36;font:800 8px ${FONT_COND};
-  letter-spacing:.12em}.cot-play .player .ready{color:#78d78a;text-align:right}.cot-play .player .wait{color:#7f909e;text-align:right}
-.cot-play .controls{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}.cot-play .controls select{min-width:140px}
+  font-size:10px}.cot-play .players{margin-top:8px;display:grid;gap:6px}.cot-play .player{display:grid;
+  grid-template-columns:42px minmax(120px,1fr) minmax(190px,1.35fr) minmax(90px,.55fr) 82px;align-items:center;
+  gap:12px;min-height:58px;padding:7px 12px;background:rgba(13,18,24,.88);border:1px solid rgba(142,160,174,.12);
+  border-left:3px solid #657789;font-size:11px;transition:border-color .2s ease,background .2s ease,box-shadow .2s ease}
+.cot-play .player.alpha{border-left-color:#5da8e8}.cot-play .player.bravo{border-left-color:#e16b5e}
+.cot-play .player.self.awaiting-ready{border-color:rgba(230,154,54,.35);border-left-color:#e69a36;
+  background:linear-gradient(90deg,rgba(230,154,54,.09),rgba(13,18,24,.88) 32%)}
+.cot-play .player .host{color:#e69a36;font:800 8px ${FONT_COND};letter-spacing:.12em}.cot-play .player .name{
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px}.cot-play .player .vehicle{display:flex;
+  align-items:center;gap:10px;min-width:0;color:#dbe5eb}.cot-play .vehicle-icon{width:58px;height:42px;flex:0 0 58px;
+  object-fit:contain;filter:drop-shadow(0 3px 5px rgba(0,0,0,.6));transform:scale(1.06)}.cot-play .vehicle-icon.missing{display:none}
+.cot-play .vehicle-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.cot-play .player .team{font:800 10px ${FONT_COND};
+  letter-spacing:.08em;text-transform:uppercase;color:#aebfca}.cot-play .player.alpha .team{color:#82c3f4}
+.cot-play .player.bravo .team{color:#f18c82}.cot-play .player .ready{color:#78d78a;text-align:right;font:800 9px ${FONT_COND};
+  letter-spacing:.1em}.cot-play .player .wait{color:#e4aa58;text-align:right;font:800 9px ${FONT_COND};letter-spacing:.1em}
+.cot-play .controls{display:flex;align-items:end;gap:8px;margin-top:12px}.cot-play .control-options,.cot-play .control-actions{
+  display:flex;flex-wrap:wrap;align-items:end;gap:8px}.cot-play .control-actions{margin-left:auto;justify-content:flex-end}
+.cot-play .controls select{min-width:140px}.cot-play .control-actions .action{min-width:128px}
+@keyframes cot-ready-attention{0%,100%{box-shadow:0 0 0 0 rgba(230,154,54,0),0 0 0 rgba(230,154,54,0)}
+  48%{box-shadow:0 0 0 4px rgba(230,154,54,.16),0 0 24px rgba(230,154,54,.48);transform:translateY(-1px)}}
+@keyframes cot-start-attention{0%,100%{box-shadow:0 0 0 0 rgba(255,185,80,0),0 0 0 rgba(255,185,80,0)}
+  48%{box-shadow:0 0 0 5px rgba(255,185,80,.2),0 0 30px rgba(255,155,37,.62);transform:translateY(-1px)}}
+.cot-play button.action.needs-ready{color:#fff0d8;border-color:#e69a36;background:rgba(88,52,17,.78);
+  animation:cot-ready-attention 1.7s ease-in-out infinite}.cot-play button.action.is-ready{color:#a6edb2;
+  border-color:rgba(120,215,138,.62);background:rgba(25,67,38,.6)}.cot-play button.action.can-start{
+  animation:cot-start-attention 1.35s ease-in-out infinite}
 .cot-play .note{margin-top:10px;color:#758794;font-size:10px;line-height:1.5}
 .cot-play .ranked{display:none;margin-top:18px;padding-top:18px;border-top:1px solid rgba(160,180,195,.2)}
 .cot-play .ranked.show{display:block}.cot-play .ranked-form{display:grid;grid-template-columns:1fr 1.5fr 120px auto auto;
@@ -95,7 +117,16 @@ const CSS = `
   .cot-play .mode{min-height:120px}.cot-play .room-actions{grid-template-columns:1fr}.cot-play .identity{display:grid;gap:7px}
   .cot-play .identity-note{padding:0}.cot-play .room-action{min-height:124px}
   .cot-play .ranked-form{grid-template-columns:1fr 1fr}.cot-play .ranked-form label:nth-child(-n+2){grid-column:1/-1}
-  .cot-play .player{grid-template-columns:26px 1fr 1fr}.cot-play .player .vehicle,.cot-play .player .team{display:none}}
+  .cot-play .player{grid-template-columns:32px minmax(0,1fr) 72px;grid-template-rows:auto auto;min-height:80px;
+    padding:7px 9px;column-gap:8px;row-gap:3px}.cot-play .player .host{grid-column:1;grid-row:1}.cot-play .player .name{
+    grid-column:2;grid-row:1}.cot-play .player .ready,.cot-play .player .wait{grid-column:3;grid-row:1}.cot-play .player .vehicle{
+    grid-column:1/3;grid-row:2;display:flex}.cot-play .player .team{grid-column:3;grid-row:2;display:block;text-align:right;font-size:8px}
+  .cot-play .vehicle-icon{width:46px;height:32px;flex-basis:46px}.cot-play .vehicle-name{font-size:10px}.cot-play .controls{
+    align-items:stretch;flex-direction:column}.cot-play .control-options,
+  .cot-play .control-actions{width:100%}.cot-play .control-actions{margin-left:0}.cot-play .control-options select{flex:1 1 130px}
+  .cot-play .control-actions .action{flex:1 1 128px}}
+@media(prefers-reduced-motion:reduce){.cot-play button.action.needs-ready,.cot-play button.action.can-start{animation:none;
+  box-shadow:0 0 0 3px rgba(230,154,54,.16),0 0 18px rgba(230,154,54,.34)}}
 `;
 
 function ensureStyle() {
@@ -112,6 +143,12 @@ function stored(key, fallback) {
 
 function remember(key, value) {
   try { localStorage.setItem(key, value); } catch (_) { /* session-only */ }
+}
+
+function lobbyTeamLabel(team) {
+  if (team === 'alpha') return 'Team Alpha';
+  if (team === 'bravo') return 'Team Bravo';
+  return 'Spectator';
 }
 
 function playerId() {
@@ -245,6 +282,7 @@ export function createPlayMenu({
   onNetworkStart,
   onRankedStart,
   isVehicleAllowed = () => true,
+  getVehicleName = (specId) => specId,
 } = {}) {
   ensureFonts();
   ensureStyle();
@@ -291,11 +329,11 @@ export function createPlayMenu({
       <div class="roomhead"><div><div class="roommeta">ROOM CODE</div><div class="code"></div></div>
         <button class="action alt" data-action="copy" type="button">Copy invite link</button></div>
       <div class="players"></div><div class="controls">
-        <select data-control="team" aria-label="Team"><option value="alpha">Team Alpha</option><option value="bravo">Team Bravo</option><option value="spectator">Spectator</option></select>
-        <select data-control="size" aria-label="Battle format"><option value="1">1 vs 1</option><option value="2">2 vs 2</option><option value="3">3 vs 3</option><option value="5">5 vs 5</option><option value="7">7 vs 7</option></select>
-        <select data-control="map" aria-label="Battlefield"></select>
-        <button class="action alt" data-action="ready" type="button">Ready</button>
-        <button class="action" data-action="start" type="button">Start match</button>
+        <div class="control-options"><select data-control="team" aria-label="Team"><option value="alpha">Team Alpha</option><option value="bravo">Team Bravo</option><option value="spectator">Spectator</option></select>
+          <select data-control="size" aria-label="Battle format"><option value="1">1 vs 1</option><option value="2">2 vs 2</option><option value="3">3 vs 3</option><option value="5">5 vs 5</option><option value="7">7 vs 7</option></select>
+          <select data-control="map" aria-label="Battlefield"></select></div>
+        <div class="control-actions"><button class="action alt" data-action="ready" type="button">I'm ready</button>
+          <button class="action" data-action="start" type="button">Start match</button></div>
       </div><div class="note"></div>
     </div></section>
     <section class="ranked"><div class="ranked-form">
@@ -394,6 +432,7 @@ export function createPlayMenu({
     role = null;
     room.classList.remove('connected');
     lobbyEl.classList.remove('show');
+    root.classList.remove('lobby-active');
     if (rankedAbort) rankedAbort.abort();
     rankedAbort = null;
     if (rankedTicket && rankedTicket.status === 'queued') {
@@ -512,6 +551,7 @@ export function createPlayMenu({
     }
     lobbyEl.classList.add('show');
     room.classList.add('connected');
+    root.classList.add('lobby-active');
     codeEl.textContent = next.roomCode;
     mapSelect.value = next.mapId;
     sizeSelect.value = String(next.teamSize || 1);
@@ -524,32 +564,64 @@ export function createPlayMenu({
         rankedName.value = me.name;
         remember(PLAYER_NAME_KEY, me.name);
       }
-      readyBtn.textContent = me.team === 'spectator' ? 'Watching' : me.ready ? 'Not ready' : 'Ready';
+      readyBtn.textContent = me.team === 'spectator' ? 'Watching' : me.ready ? 'Not ready' : "I'm ready";
       readyBtn.disabled = me.team === 'spectator';
+      readyBtn.classList.toggle('needs-ready', me.team !== 'spectator' && !me.ready && next.phase === 'waiting');
+      readyBtn.classList.toggle('is-ready', me.team !== 'spectator' && me.ready);
+      readyBtn.setAttribute('aria-pressed', String(me.team !== 'spectator' && me.ready));
+      readyBtn.setAttribute('aria-label', me.ready ? 'Mark yourself not ready' : 'Mark yourself ready');
+    } else {
+      readyBtn.classList.remove('needs-ready', 'is-ready');
+      readyBtn.removeAttribute('aria-pressed');
     }
     mapSelect.disabled = role !== 'host';
     sizeSelect.disabled = role !== 'host';
     startBtn.style.display = role === 'host' ? '' : 'none';
-    startBtn.disabled = role !== 'host' || next.phase !== 'waiting' ||
-      next.players.some((player) => player.team !== 'spectator' && (!player.ready || !player.specId));
+    const activePlayers = next.players.filter((player) => player.team !== 'spectator');
+    const everyoneReady = activePlayers.length > 0 &&
+      activePlayers.every((player) => player.ready && player.specId);
+    const canStart = role === 'host' && next.phase === 'waiting' && everyoneReady;
+    startBtn.disabled = !canStart;
+    startBtn.classList.toggle('can-start', canStart);
     playersEl.textContent = '';
     for (const player of next.players) {
       const row = document.createElement('div');
-      row.className = `player ${player.team}`;
+      const isMe = player.id === ownId();
+      row.className = `player ${player.team}${isMe ? ' self' : ''}${
+        isMe && player.team !== 'spectator' && !player.ready ? ' awaiting-ready' : ''}`;
       const host = document.createElement('span');
       host.className = 'host';
       host.textContent = player.isHost ? 'HOST' : '';
       const playerName = document.createElement('b');
+      playerName.className = 'name';
       playerName.textContent = player.name;
-      const vehicle = document.createElement('span');
+      const vehicle = document.createElement('div');
       vehicle.className = 'vehicle';
-      vehicle.textContent = player.specId || 'Selecting vehicle';
+      if (player.specId) {
+        const icon = document.createElement('img');
+        icon.className = 'vehicle-icon';
+        icon.src = iconUrl(player.specId, 'angle');
+        icon.alt = '';
+        icon.loading = 'lazy';
+        icon.decoding = 'async';
+        icon.addEventListener('error', () => icon.classList.add('missing'), { once: true });
+        const vehicleName = document.createElement('span');
+        vehicleName.className = 'vehicle-name';
+        try { vehicleName.textContent = getVehicleName(player.specId) || player.specId; }
+        catch (_) { vehicleName.textContent = player.specId; }
+        vehicle.append(icon, vehicleName);
+      } else {
+        const vehicleName = document.createElement('span');
+        vehicleName.className = 'vehicle-name';
+        vehicleName.textContent = 'Selecting vehicle';
+        vehicle.appendChild(vehicleName);
+      }
       const team = document.createElement('span');
       team.className = 'team';
-      team.textContent = player.team === 'spectator' ? 'Spectator' : `Team ${player.team}`;
+      team.textContent = lobbyTeamLabel(player.team);
       const ready = document.createElement('span');
       ready.className = player.ready || player.team === 'spectator' ? 'ready' : 'wait';
-      ready.textContent = player.team === 'spectator' ? 'WATCHING' : player.ready ? 'READY' : 'WAITING';
+      ready.textContent = player.team === 'spectator' ? 'WATCHING' : player.ready ? 'READY' : 'NOT READY';
       row.append(host, playerName, vehicle, team, ready);
       playersEl.appendChild(row);
     }
