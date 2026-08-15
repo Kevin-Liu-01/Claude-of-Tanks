@@ -6,11 +6,21 @@ import {
   validateEnvelope,
 } from './protocol.js';
 import {
+  LOBBY_PHASES,
   addLobbyPlayer,
   applyLobbyCommand,
   removeLobbyPlayer,
   serializeLobby,
 } from './lobby.js';
+
+const MATCH_HANDOFF_TYPES = new Set([
+  MESSAGE_TYPES.HELLO,
+  MESSAGE_TYPES.READY,
+  MESSAGE_TYPES.INPUT,
+  MESSAGE_TYPES.PING,
+  MESSAGE_TYPES.LEAVE,
+]);
+const MAX_PENDING_HANDOFF_MESSAGES = 64;
 
 function errorPayload(error) {
   return {
@@ -43,6 +53,7 @@ export class LobbyHostRuntime {
       transport,
       sendSeq: 0,
       lastRecvSeq: null,
+      pendingHandoffMessages: [],
       unsubscribeMessage: null,
       unsubscribeClose: null,
     };
@@ -69,6 +80,21 @@ export class LobbyHostRuntime {
   #receive(peer, raw) {
     try {
       const message = validateEnvelope(raw);
+      // A fast client can finish its renderer and send match HELLO before a
+      // slow host has released the established WebRTC channel from the lobby.
+      // Preserve those ordered packets for the authority listener instead of
+      // consuming them as lobby errors. This makes the handoff independent of
+      // which computer finishes world/shader loading first.
+      if (this.lobby.phase === LOBBY_PHASES.STARTING &&
+          MATCH_HANDOFF_TYPES.has(message.type)) {
+        if (peer.pendingHandoffMessages.length >= MAX_PENDING_HANDOFF_MESSAGES) {
+          peer.transport.close('handoff_buffer_limit');
+          this.detachPeer(peer.id, 'handoff_buffer_limit');
+          return;
+        }
+        peer.pendingHandoffMessages.push(raw);
+        return;
+      }
       if (peer.lastRecvSeq != null && !isSequenceNewer(message.seq, peer.lastRecvSeq)) return;
       peer.lastRecvSeq = message.seq;
       if (message.type === MESSAGE_TYPES.LOBBY_COMMAND) {
@@ -128,7 +154,11 @@ export class LobbyHostRuntime {
     for (const peer of this.peers.values()) {
       if (peer.unsubscribeMessage) peer.unsubscribeMessage();
       if (peer.unsubscribeClose) peer.unsubscribeClose();
-      released.push({ peerId: peer.id, transport: peer.transport });
+      released.push({
+        peerId: peer.id,
+        transport: peer.transport,
+        pendingMessages: peer.pendingHandoffMessages.splice(0),
+      });
     }
     this.peers.clear();
     this.closed = true;

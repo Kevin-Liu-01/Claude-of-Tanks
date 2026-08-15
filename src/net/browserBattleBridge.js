@@ -47,6 +47,8 @@ export function createBrowserBattleBridge({
   const entities = new Map();
   const roster = [];
   const shellById = new Map();
+  const visibleRoster = [];
+  const liveShells = [];
   let viewerTeam = null;
   let perspectiveTeam = null;
   let lastTick = -1;
@@ -201,10 +203,7 @@ export function createBrowserBattleBridge({
       entity._networkDestroyed = false;
     }
     if (entity.predictor && immediateAuthority) {
-      entity.predictor.reconcile({
-        ...immediateAuthority,
-        entity: { ...immediateAuthority.entity, destroyed },
-      }, dt);
+      entity.predictor.reconcile(immediateAuthority, dt, destroyed);
     } else {
       const dx = snapshot.x - entity._lastX;
       const dz = snapshot.z - entity._lastZ;
@@ -263,7 +262,9 @@ export function createBrowserBattleBridge({
     for (const [shellId, shell] of shellById) {
       if (!live.has(shellId)) { shell.dead = true; shellById.delete(shellId); }
     }
-    game.shells = [...shellById.values()];
+    liveShells.length = 0;
+    for (const shell of shellById.values()) liveShells.push(shell);
+    game.shells = liveShells;
   }
 
   function emitEvents(events) {
@@ -386,7 +387,9 @@ export function createBrowserBattleBridge({
     for (const entity of game.allTanks || []) {
       if (entity.visual) entity.visual.setVisible(false);
     }
-    game.tanks = [...entities.values()];
+    visibleRoster.length = 0;
+    for (const entity of entities.values()) visibleRoster.push(entity);
+    game.tanks = visibleRoster;
     game.tankById = entities;
     game.player = spectator ? null : entities.get(id) || null;
     game.shells = [];
@@ -418,7 +421,11 @@ export function createBrowserBattleBridge({
       if (!entity.networkVisible) entity.visual.setVisible(false);
     }
     if (!mounted) mount();
-    game.tanks = [...entities.values()].filter((entity) => entity.networkVisible || entity.combat.destroyed);
+    visibleRoster.length = 0;
+    for (const entity of entities.values()) {
+      if (entity.networkVisible || entity.combat.destroyed) visibleRoster.push(entity);
+    }
+    game.tanks = visibleRoster;
     game.tankById = entities;
     game.player = spectator ? null : entities.get(id) || null;
     game.timeS = snapshot.meta?.battleTimeMs != null
@@ -475,6 +482,8 @@ export function createBrowserBattleBridge({
     for (const entity of entities.values()) entity.visual.dispose();
     entities.clear();
     roster.length = 0;
+    visibleRoster.length = 0;
+    liveShells.length = 0;
     shellById.clear();
     destructionCause.clear();
   }

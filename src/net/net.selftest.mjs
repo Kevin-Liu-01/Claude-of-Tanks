@@ -22,6 +22,11 @@ import {
 } from './lobby.js';
 import { createLoopbackTransportPair } from './loopbackTransport.js';
 import {
+  automaticPlayerName,
+  normalizePlayerName,
+  uniquePlayerName,
+} from './playerNames.js';
+import {
   createWebRTCDataChannelTransport,
   createWebRTCSplitTransport,
   createWebSocketTransport,
@@ -213,6 +218,12 @@ assert.equal(normalizedInput.snapshotAckTick, 0);
 assert.equal(Object.hasOwn(normalizedInput, 'ignored'), false);
 assert.equal(isSequenceNewer(0, 0x7fffffff), true, 'sequence wrap is newer');
 assert.equal(isSequenceNewer(3, 3), false);
+assert.equal(normalizePlayerName('  Tank   Commander  '), 'Tank Commander');
+assert.equal(automaticPlayerName('stable-browser-id'), automaticPlayerName('stable-browser-id'),
+  'automatic callsigns are stable for one browser identity');
+assert.notEqual(automaticPlayerName('stable-browser-id'), automaticPlayerName('other-browser-id'),
+  'automatic callsigns differentiate independent browser identities');
+assert.equal(uniquePlayerName('Commander', ['commander', 'Commander 2']), 'Commander 3');
 
 // Lobby policy: player identity is independent from vehicle identity.
 const lobby = createLobby({
@@ -253,6 +264,19 @@ applyLobbyCommand(observerLobby, 'observer', { type: 'start', matchSeed: 88 });
 assert.equal(observerLobby.phase, LOBBY_PHASES.STARTING,
   'a spectator host may launch a bot-filled observed match');
 
+const nameLobby = createLobby({
+  roomCode: 'NAM234', hostId: 'name-host', hostName: 'Commander', teamSize: 3,
+});
+addLobbyPlayer(nameLobby, { id: 'name-a', name: 'commander' });
+addLobbyPlayer(nameLobby, { id: 'name-b', name: 'Commander' });
+assert.deepEqual([...nameLobby.players.values()].map((player) => player.name),
+  ['Commander', 'commander 2', 'Commander 3'],
+  'room authority disambiguates duplicate names case-insensitively');
+applyLobbyCommand(nameLobby, 'name-b', { type: 'set_name', name: 'COMMANDER 2' });
+assert.equal(new Set([...nameLobby.players.values()].map((player) =>
+  player.name.toLocaleLowerCase('en-US'))).size, 3,
+  'renaming cannot recreate a duplicate callsign');
+
 const migrateLobby = createLobby({ roomCode: 'XYZ789', hostId: 'z-host', hostName: 'Host' });
 addLobbyPlayer(migrateLobby, { id: 'a-next', name: 'Next' });
 removeLobbyPlayer(migrateLobby, 'z-host');
@@ -279,6 +303,16 @@ assert.equal(migrateLobby.players.get('a-next').isHost, true);
   assert.equal(client.send({ n: 1 }), true);
   assert.equal(client.send({ n: 2 }), false, 'bounded queue reports backpressure');
   await Promise.resolve();
+}
+{
+  const { client, host } = createLoopbackTransportPair({ direct: true });
+  let received = null;
+  host.onMessage((message) => { received = message; });
+  const message = { type: 'host-local-input' };
+  client.send(message);
+  assert.equal(received, message,
+    'host-local direct transport delivers synchronously without cloning');
+  client.close('done');
 }
 
 // Real channel adapter: reliable ordering, JSON decoding, and byte backpressure.
@@ -486,12 +520,38 @@ assert.equal(resolveSignalUrl({ hostname: '192.168.1.44', protocol: 'http:', lan
   await Promise.resolve();
   assert.equal(started.phase, LOBBY_PHASES.STARTING);
   assert.equal(clientLobby.state.phase, LOBBY_PHASES.STARTING);
-  const hostChannels = hostLobby.releaseTransports();
   const clientChannel = clientLobby.releaseTransport();
+  const earlyMatchClient = new MatchClientRuntime({
+    transport: clientChannel,
+    playerId: 'guest',
+    interpolationDelayMs: 0,
+    clock: () => 0,
+  });
+  earlyMatchClient.connect();
+  earlyMatchClient.readyForMatch();
+  await Promise.resolve();
+  const hostChannels = hostLobby.releaseTransports();
   assert.equal(hostChannels.length, 1);
   assert.equal(hostChannels[0].transport.readyState, 'open');
-  assert.equal(clientChannel.readyState, 'open');
-  clientChannel.close('test_done');
+  assert.equal(hostChannels[0].pendingMessages.length, 2,
+    'a fast client handshake is preserved while the host finishes loading');
+  const handoffAuthority = new AuthoritativeMatchRuntime({ simulation: createTestSimulation() });
+  handoffAuthority.attachPeer({
+    peerId: 'guest',
+    transport: hostChannels[0].transport,
+    metadata: { team: 'bravo' },
+  });
+  for (const message of hostChannels[0].pendingMessages) {
+    handoffAuthority.acceptPeerMessage('guest', message);
+  }
+  await Promise.resolve();
+  assert.equal(earlyMatchClient.connected, true,
+    'replayed HELLO completes after authority takes ownership of the channel');
+  handoffAuthority.advance(50);
+  assert.equal(handoffAuthority.matchStarted, true,
+    'replayed READY releases the authoritative readiness barrier');
+  earlyMatchClient.close('test_done');
+  handoffAuthority.close('test_done');
 }
 
 // Viewer-specific snapshot filtering and vehicle interpolation.
@@ -591,6 +651,12 @@ const halfway = interpolation.sample(25).entities[0];
 assert.ok(Math.abs(halfway.x - 0.5) < 0.03, `Hermite x midpoint: ${halfway.x}`);
 assert.ok(Math.abs(Math.abs(halfway.yaw) - Math.PI) < 0.03,
   `yaw interpolates across wrap: ${halfway.yaw}`);
+const reusedFrame = interpolation.sample(26);
+const reusedEntity = reusedFrame.entities[0];
+assert.equal(interpolation.sample(27), reusedFrame,
+  'render sampling reuses its frame object instead of allocating at 120 Hz');
+assert.equal(interpolation.sample(28).entities[0], reusedEntity,
+  'render sampling reuses entity objects while updating their values');
 
 const responsive = new SnapshotBuffer({
   interpolationDelayMs: 100,

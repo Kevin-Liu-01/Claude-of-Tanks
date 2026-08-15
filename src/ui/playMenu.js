@@ -2,11 +2,14 @@ import { PrivateRoomClientSession, PrivateRoomHostSession } from '../net/private
 import { RoomSignalingClient } from '../net/signalingClient.js';
 import { resolveSignalUrl } from '../net/signalEndpoint.js';
 import { serializeLobby } from '../net/lobby.js';
+import { automaticPlayerName, normalizePlayerName } from '../net/playerNames.js';
+import { normalizeRoomCode } from '../net/protocol.js';
 import { ensureFonts, FONT_STACK, FONT_COND } from './fonts.js';
 
 const STYLE_ID = 'cot-play-menu-style';
 const PLAYER_ID_KEY = 'cot.player.id.v1';
 const PLAYER_NAME_KEY = 'cot.player.name.v1';
+const ROOM_SIZE_KEY = 'cot.room.size.v1';
 const PUBLIC_STUN_SERVERS = Object.freeze([{
   urls: [
     'stun:stun.cloudflare.com:3478',
@@ -31,8 +34,19 @@ const CSS = `
 .cot-play .mode b{display:block;font-size:17px;margin:8px 0}.cot-play .mode span{display:block;color:#9eafbc;
   font-size:11px;line-height:1.55}.cot-play .mode i{font:800 9px ${FONT_COND};font-style:normal;letter-spacing:.2em;
   color:#e69a36;text-transform:uppercase}.cot-play .room{display:none;margin-top:18px;padding-top:18px;
-  border-top:1px solid rgba(160,180,195,.2)}.cot-play .room.show{display:block}.cot-play .form{display:grid;
-  grid-template-columns:1.2fr 1.5fr 1fr auto auto;gap:8px;align-items:end}.cot-play label{display:grid;gap:5px;
+  border-top:1px solid rgba(160,180,195,.2)}.cot-play .room.show{display:block}.cot-play .setup{display:grid;gap:12px}
+.cot-play .room.connected .setup{display:none}.cot-play .identity{display:flex;align-items:end;gap:14px}
+.cot-play .identity label{width:min(300px,100%)}.cot-play .identity-note{padding-bottom:9px;color:#758794;font-size:10px}
+.cot-play .room-actions{display:grid;grid-template-columns:1fr 1fr;gap:12px}.cot-play .room-action{display:grid;gap:14px;
+  min-height:142px;padding:16px;border:1px solid rgba(161,180,195,.24);background:rgba(12,17,22,.76)}
+.cot-play .room-action:hover{border-color:rgba(230,154,54,.48)}.cot-play .room-action-head{display:grid;gap:4px}
+.cot-play .room-action-head i{color:#e69a36;font:800 9px ${FONT_COND};font-style:normal;letter-spacing:.18em;text-transform:uppercase}
+.cot-play .room-action-head b{font-size:17px}.cot-play .room-action-head span{color:#8799a6;font-size:10px;line-height:1.45}
+.cot-play .room-action-fields{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:end}
+.cot-play .code-input{font:900 17px ${FONT_COND}!important;letter-spacing:.16em;text-transform:uppercase}
+.cot-play .advanced{border-top:1px solid rgba(160,180,195,.16);padding-top:8px;color:#80929f}
+.cot-play .advanced summary{cursor:pointer;font:800 9px ${FONT_COND};letter-spacing:.14em;text-transform:uppercase}
+.cot-play .advanced label{margin-top:9px}.cot-play label{display:grid;gap:5px;
   font:800 9px ${FONT_COND};letter-spacing:.16em;text-transform:uppercase;color:#8fa1ae}
 .cot-play input,.cot-play select{height:40px;padding:0 11px;color:#edf3f7;background:#090d12;
   border:1px solid rgba(161,180,195,.3);font:700 12px ${FONT_STACK};outline:none}.cot-play input:focus,
@@ -58,7 +72,8 @@ const CSS = `
   color:#aebdc8;font-size:10px}.cot-play .ladder-row b{color:#edf3f7}.cot-play .rank-profile{margin-top:10px;
   color:#eeb46b;font:800 10px ${FONT_COND};letter-spacing:.1em;text-transform:uppercase}
 @media(max-width:780px){.cot-play{padding:8px}.cot-play .panel{padding:20px 14px}.cot-play .modes{grid-template-columns:1fr 1fr}
-  .cot-play .mode{min-height:120px}.cot-play .form{grid-template-columns:1fr 1fr}.cot-play .form label:first-child{grid-column:1/-1}
+  .cot-play .mode{min-height:120px}.cot-play .room-actions{grid-template-columns:1fr}.cot-play .identity{display:grid;gap:7px}
+  .cot-play .identity-note{padding:0}.cot-play .room-action{min-height:124px}
   .cot-play .ranked-form{grid-template-columns:1fr 1fr}.cot-play .ranked-form label:nth-child(-n+2){grid-column:1/-1}
   .cot-play .player{grid-template-columns:26px 1fr 1fr}.cot-play .player .vehicle,.cot-play .player .team{display:none}}
 `;
@@ -137,18 +152,30 @@ export function createPlayMenu({
       <button class="mode" data-mode="lan" type="button"><i>Local network</i><b>LAN lobby</b><span>Use the same lobby over Wi-Fi with minimal route latency.</span></button>
       <button class="mode" data-mode="ranked" type="button"><i>Dedicated</i><b>Ranked</b><span>Server-authoritative queue and rating. Service endpoint required.</span></button>
     </div>
-    <section class="room"><div class="form">
-      <label>Player name<input data-field="name" maxlength="24" autocomplete="nickname"></label>
-      <label>Signaling server<input data-field="signal" spellcheck="false"></label>
-      <label>Room code<input data-field="code" maxlength="6" autocomplete="off" spellcheck="false"></label>
-      <button class="action" data-action="create" type="button">Create</button>
-      <button class="action alt" data-action="join" type="button">Join</button>
+    <section class="room"><div class="setup">
+      <div class="identity"><label>Callsign<input data-field="name" maxlength="24" autocomplete="nickname"></label>
+        <span class="identity-note">A unique callsign is ready automatically. Edit it only if you want to.</span></div>
+      <div class="room-actions">
+        <div class="room-action"><div class="room-action-head"><i>Host</i><b>Create a room</b>
+          <span>Choose a format now, then share the six-character code.</span></div>
+          <div class="room-action-fields"><label>Battle format<select data-field="create-size">
+            <option value="1">1 vs 1</option><option value="2">2 vs 2</option><option value="3">3 vs 3</option>
+            <option value="5">5 vs 5</option><option value="7">7 vs 7</option></select></label>
+            <button class="action" data-action="create" type="button">Create room</button></div></div>
+        <div class="room-action"><div class="room-action-head"><i>Join</i><b>Enter a room code</b>
+          <span>Paste the host's code; team and battlefield controls appear after connecting.</span></div>
+          <div class="room-action-fields"><label>Room code<input class="code-input" data-field="code" maxlength="6"
+            autocomplete="off" spellcheck="false" placeholder="ABC123"></label>
+            <button class="action alt" data-action="join" type="button">Join room</button></div></div>
+      </div>
+      <details class="advanced"><summary>Connection settings</summary>
+        <label>Signaling server<input data-field="signal" spellcheck="false"></label></details>
     </div><div class="status"></div><div class="lobby">
       <div class="roomhead"><div><div class="roommeta">ROOM CODE</div><div class="code"></div></div>
         <button class="action alt" data-action="copy" type="button">Copy code</button></div>
       <div class="players"></div><div class="controls">
         <select data-control="team"><option value="alpha">Team Alpha</option><option value="bravo">Team Bravo</option><option value="spectator">Spectator</option></select>
-        <select data-control="size"><option value="1">1 vs 1</option><option value="3">3 vs 3</option><option value="5">5 vs 5</option><option value="7">7 vs 7</option></select>
+        <select data-control="size"><option value="1">1 vs 1</option><option value="2">2 vs 2</option><option value="3">3 vs 3</option><option value="5">5 vs 5</option><option value="7">7 vs 7</option></select>
         <select data-control="map"></select>
         <button class="action alt" data-action="ready" type="button">Ready</button>
         <button class="action" data-action="start" type="button">Start match</button>
@@ -157,7 +184,7 @@ export function createPlayMenu({
     <section class="ranked"><div class="ranked-form">
       <label>Commander name<input data-ranked="name" maxlength="24" autocomplete="nickname"></label>
       <label>Match service<input data-ranked="service" spellcheck="false"></label>
-      <label>Format<select data-ranked="size"><option value="1">1 vs 1</option><option value="3">3 vs 3</option><option value="5">5 vs 5</option><option value="7">7 vs 7</option></select></label>
+      <label>Format<select data-ranked="size"><option value="1">1 vs 1</option><option value="2">2 vs 2</option><option value="3">3 vs 3</option><option value="5">5 vs 5</option><option value="7">7 vs 7</option></select></label>
       <button class="action" data-ranked="queue" type="button">Find match</button>
       <button class="action alt" data-ranked="cancel" type="button" disabled>Cancel</button>
     </div><div class="rank-profile"></div><div class="ladder"></div></section></div>`;
@@ -170,6 +197,7 @@ export function createPlayMenu({
   const nameInput = root.querySelector('[data-field="name"]');
   const signalInput = root.querySelector('[data-field="signal"]');
   const codeInput = root.querySelector('[data-field="code"]');
+  const createSizeSelect = root.querySelector('[data-field="create-size"]');
   const teamSelect = root.querySelector('[data-control="team"]');
   const sizeSelect = root.querySelector('[data-control="size"]');
   const mapSelect = root.querySelector('[data-control="map"]');
@@ -193,8 +221,16 @@ export function createPlayMenu({
     option.textContent = map.name;
     mapSelect.appendChild(option);
   }
-  nameInput.value = stored(PLAYER_NAME_KEY, 'Commander');
+  const ownPlayerId = playerId();
+  const storedPlayerName = normalizePlayerName(stored(PLAYER_NAME_KEY, ''));
+  nameInput.value = !storedPlayerName || storedPlayerName.toLocaleLowerCase('en-US') === 'commander'
+    ? automaticPlayerName(ownPlayerId)
+    : storedPlayerName;
+  const storedRoomSize = Number(stored(ROOM_SIZE_KEY, '2'));
+  createSizeSelect.value = ['1', '2', '3', '5', '7'].includes(String(storedRoomSize))
+    ? String(storedRoomSize) : '2';
   rankedName.value = nameInput.value;
+  rankedSize.value = createSizeSelect.value;
   rankedService.value = defaultRankedUrl();
 
   let mode = null;
@@ -228,7 +264,7 @@ export function createPlayMenu({
     connecting = next;
     const unavailable = !signalInput.value.trim();
     createBtn.disabled = next || unavailable;
-    joinBtn.disabled = next || unavailable;
+    joinBtn.disabled = next || unavailable || codeInput.value.length !== 6;
   }
 
   function closeCurrentSession(reason = 'menu_closed') {
@@ -238,6 +274,7 @@ export function createPlayMenu({
     session = null;
     state = null;
     role = null;
+    room.classList.remove('connected');
     lobbyEl.classList.remove('show');
     if (rankedAbort) rankedAbort.abort();
     rankedAbort = null;
@@ -325,19 +362,25 @@ export function createPlayMenu({
   function renderLobby(next) {
     state = next;
     lobbyEl.classList.add('show');
+    room.classList.add('connected');
     codeEl.textContent = next.roomCode;
     mapSelect.value = next.mapId;
     sizeSelect.value = String(next.teamSize || 1);
+    createSizeSelect.value = sizeSelect.value;
     const me = next.players.find((player) => player.id === ownId());
     if (me) {
       teamSelect.value = me.team;
+      if (nameInput.value !== me.name) {
+        nameInput.value = me.name;
+        rankedName.value = me.name;
+        remember(PLAYER_NAME_KEY, me.name);
+      }
       readyBtn.textContent = me.team === 'spectator' ? 'Watching' : me.ready ? 'Not ready' : 'Ready';
       readyBtn.disabled = me.team === 'spectator';
     }
     mapSelect.disabled = role !== 'host';
     sizeSelect.disabled = role !== 'host';
     startBtn.style.display = role === 'host' ? '' : 'none';
-    const activePlayers = next.players.filter((player) => player.team !== 'spectator');
     startBtn.disabled = role !== 'host' || next.phase !== 'waiting' ||
       next.players.some((player) => player.team !== 'spectator' && (!player.ready || !player.specId));
     playersEl.textContent = '';
@@ -376,8 +419,9 @@ export function createPlayMenu({
   async function connectRoom(kind) {
     if (connecting || session) return;
     const selection = getSelection();
-    const name = nameInput.value.trim().replace(/\s+/g, ' ').slice(0, 24);
+    const name = normalizePlayerName(nameInput.value) || automaticPlayerName(ownPlayerId);
     if (!name) throw new Error('Enter a player name');
+    nameInput.value = name;
     remember(PLAYER_NAME_KEY, name);
     const signalUrl = signalInput.value.trim();
     if (!signalUrl) {
@@ -386,11 +430,13 @@ export function createPlayMenu({
         : 'Private lobby signaling is unavailable on this deployment.');
     }
     const signaling = new RoomSignalingClient({ url: signalUrl });
-    const player = { id: playerId(), name };
+    const player = { id: ownPlayerId, name };
     setConnecting(true);
     try {
       const ice = await iceServers(mode);
       if (kind === 'create') {
+        const teamSize = Number(createSizeSelect.value);
+        remember(ROOM_SIZE_KEY, String(teamSize));
         const roomInfo = await signaling.createRoom({ player, mode, maxPlayers: 14 });
         session = new PrivateRoomHostSession({
           signaling,
@@ -399,6 +445,7 @@ export function createPlayMenu({
           hostSpecId: selection.specId,
           hostEquipment: selection.equipment,
           mapId: selection.mapId,
+          teamSize,
           iceServers: ice.iceServers,
           relayOnly: ice.relayOnly,
           isVehicleAllowed,
@@ -503,9 +550,11 @@ export function createPlayMenu({
     catch (_) { setStatus('Copy the code shown above.'); }
   });
   teamSelect.addEventListener('change', () => command({ type: 'set_team', team: teamSelect.value }));
-  sizeSelect.addEventListener('change', () => command({
-    type: 'set_team_size', teamSize: Number(sizeSelect.value),
-  }));
+  sizeSelect.addEventListener('change', () => {
+    createSizeSelect.value = sizeSelect.value;
+    remember(ROOM_SIZE_KEY, sizeSelect.value);
+    command({ type: 'set_team_size', teamSize: Number(sizeSelect.value) });
+  });
   mapSelect.addEventListener('change', () => command({ type: 'set_map', mapId: mapSelect.value }));
   readyBtn.addEventListener('click', () => {
     const me = state && state.players.find((player) => player.id === ownId());
@@ -518,7 +567,24 @@ export function createPlayMenu({
     command({ type: 'start', matchSeed: words[0] });
   });
   codeInput.addEventListener('input', () => {
-    codeInput.value = codeInput.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+    codeInput.value = normalizeRoomCode(codeInput.value).slice(0, 6);
+    setConnecting(connecting);
+  });
+  codeInput.addEventListener('paste', (event) => {
+    const pasted = event.clipboardData?.getData('text');
+    if (pasted == null) return;
+    event.preventDefault();
+    codeInput.value = normalizeRoomCode(pasted).slice(0, 6);
+    setConnecting(connecting);
+  });
+  codeInput.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter' || joinBtn.disabled) return;
+    event.preventDefault();
+    joinBtn.click();
+  });
+  createSizeSelect.addEventListener('change', () => {
+    remember(ROOM_SIZE_KEY, createSizeSelect.value);
+    rankedSize.value = createSizeSelect.value;
   });
   signalInput.addEventListener('input', () => setConnecting(connecting));
   root.querySelector('.close').addEventListener('click', () => hide());

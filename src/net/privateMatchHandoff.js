@@ -102,7 +102,10 @@ export function beginPrivateHostMatch({
     worldCollision,
   });
   const host = new AuthoritativeMatchRuntime({ simulation });
-  const localLink = createLoopbackTransportPair();
+  // The browser host's local player does not need an emulated network hop.
+  // Keep the same protocol/runtime seam, but deliver its in-process envelopes
+  // synchronously and zero-copy so host rendering never waits on microtasks.
+  const localLink = createLoopbackTransportPair({ direct: true });
   let wallTimeMs = 0;
   const client = new MatchClientRuntime({
     transport: localLink.client,
@@ -119,6 +122,9 @@ export function beginPrivateHostMatch({
     const player = playerById.get(channel.peerId);
     host.attachPeer({ peerId: channel.peerId, transport: channel.transport,
       metadata: { mode: lobby.mode || 'private', spectator: player?.team === 'spectator' } });
+    for (const message of channel.pendingMessages || []) {
+      host.acceptPeerMessage(channel.peerId, message);
+    }
   }
   client.connect({ mode: lobby.mode || 'private' });
 
@@ -131,11 +137,9 @@ export function beginPrivateHostMatch({
     host,
     client,
     ready() { return client.readyForMatch(); },
-    async advance(elapsedMs, input = null) {
+    advance(elapsedMs, input = null) {
       if (input) client.submitInput(input, host.tick);
-      await Promise.resolve();
       host.advance(elapsedMs);
-      await Promise.resolve();
       wallTimeMs += elapsedMs;
       return client.update(wallTimeMs);
     },

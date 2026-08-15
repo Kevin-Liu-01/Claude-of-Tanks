@@ -14,6 +14,7 @@ export class PrivateRoomHostSession {
     hostSpecId = null,
     hostEquipment = [],
     mapId = 'random',
+    teamSize = 2,
     iceServers = [],
     relayOnly = false,
     RTCPeerConnectionImpl = null,
@@ -40,6 +41,7 @@ export class PrivateRoomHostSession {
       maxPlayers: roomInfo.maxPlayers || 14,
       mode: roomInfo.mode || 'private',
       mapId,
+      teamSize,
     });
     this.runtime = new LobbyHostRuntime({
       lobby: this.lobby,

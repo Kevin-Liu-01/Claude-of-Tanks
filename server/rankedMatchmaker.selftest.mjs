@@ -72,4 +72,26 @@ assert.equal(finished.profile.matches, 1);
 assert.ok(finished.profile.rating > 1000);
 assert.equal(queue.leaderboard()[0].playerId, alpha.playerId);
 
+const twoByTwoIdentities = Array.from({ length: 4 }, () =>
+  queue.createIdentity({ name: 'Commander' }));
+const twoByTwoTickets = twoByTwoIdentities.map((entry) => queue.join({
+  playerId: entry.playerId,
+  identityToken: entry.token,
+  specId: 'm1a2',
+  teamSize: 2,
+}));
+assert.deepEqual(twoByTwoTickets.map((entry) => entry.status),
+  ['queued', 'queued', 'queued', 'matched'],
+  'ranked 2v2 starts as soon as four compatible players are queued');
+const twoByTwoMatch = queue.poll(
+  twoByTwoTickets[0].ticketId,
+  twoByTwoTickets[0].ticketToken,
+).match;
+assert.equal(twoByTwoMatch.roster.length, 4);
+assert.equal(twoByTwoMatch.roster.filter((player) => player.team === 'alpha').length, 2);
+assert.equal(twoByTwoMatch.roster.filter((player) => player.team === 'bravo').length, 2);
+assert.equal(new Set(twoByTwoMatch.roster.map((player) =>
+  player.name.toLocaleLowerCase('en-US'))).size, 4,
+  'ranked roster names are unique even when every saved profile collides');
+
 console.log('rankedMatchmaker.selftest: auth, queue, balance, tickets, and settlement passed');

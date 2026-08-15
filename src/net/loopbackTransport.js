@@ -1,7 +1,9 @@
 /**
  * Ordered in-process transport used by solo/campaign and deterministic tests.
- * It obeys the same asynchronous delivery and backpressure contract as the
- * network adapters, preventing local play from growing a separate call path.
+ * Its default obeys the same asynchronous delivery and backpressure contract
+ * as the network adapters, preventing local play from growing a separate call
+ * path. Browser-hosted private matches may opt into synchronous direct mode
+ * for their one in-process local peer while retaining the same wire protocol.
  */
 
 export class TransportClosedError extends Error {
@@ -17,7 +19,7 @@ function cloneMessage(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
-function createEndpoint(label, maxQueuedMessages) {
+function createEndpoint(label, maxQueuedMessages, direct) {
   const messageListeners = new Set();
   const closeListeners = new Set();
   const queue = [];
@@ -47,6 +49,11 @@ function createEndpoint(label, maxQueuedMessages) {
 
   function enqueue(message) {
     if (readyState !== 'open') return false;
+    if (direct) {
+      stats.received++;
+      for (const listener of messageListeners) listener(message);
+      return true;
+    }
     if (queue.length >= maxQueuedMessages) {
       stats.rejected++;
       return false;
@@ -78,7 +85,7 @@ function createEndpoint(label, maxQueuedMessages) {
       if (readyState !== 'open' || !peer || peer.readyState !== 'open') {
         throw new TransportClosedError();
       }
-      const accepted = peer._enqueue(cloneMessage(message));
+      const accepted = peer._enqueue(direct ? message : cloneMessage(message));
       if (accepted) stats.sent++;
       else stats.rejected++;
       return accepted;
@@ -107,12 +114,12 @@ function createEndpoint(label, maxQueuedMessages) {
   return endpoint;
 }
 
-export function createLoopbackTransportPair({ maxQueuedMessages = 256 } = {}) {
+export function createLoopbackTransportPair({ maxQueuedMessages = 256, direct = false } = {}) {
   if (!Number.isInteger(maxQueuedMessages) || maxQueuedMessages < 1) {
     throw new TypeError('maxQueuedMessages must be a positive integer');
   }
-  const client = createEndpoint('client', maxQueuedMessages);
-  const host = createEndpoint('host', maxQueuedMessages);
+  const client = createEndpoint('client', maxQueuedMessages, !!direct);
+  const host = createEndpoint('host', maxQueuedMessages, !!direct);
   client._setPeer(host);
   host._setPeer(client);
   return { client, host };

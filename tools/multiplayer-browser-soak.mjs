@@ -81,7 +81,7 @@ try {
     ]);
     const signalingClient = new RoomSignalingClient({ url });
     const roomInfo = await signalingClient.createRoom({
-      player: { id: 'browser-host', name: 'Browser Host' },
+      player: { id: 'browser-host', name: 'Commander' },
       mode: 'lan',
       maxPlayers: 14,
     });
@@ -95,7 +95,7 @@ try {
     state.session = new PrivateRoomHostSession({
       signaling: signalingClient,
       roomInfo,
-      hostName: 'Browser Host',
+      hostName: 'Commander',
       hostSpecId: 'm1a2',
       mapId: 'random',
       onStart: (lobby) => { state.startingLobby = lobby; },
@@ -113,7 +113,7 @@ try {
     const signalingClient = new RoomSignalingClient({ url });
     const roomInfo = await signalingClient.joinRoom({
       roomCode,
-      player: { id: 'browser-guest', name: 'Browser Guest' },
+      player: { id: 'browser-guest', name: 'Commander' },
     });
     const state = globalThis.__COT_SOAK = {
       signaling: signalingClient,
@@ -140,6 +140,9 @@ try {
   const initial = await guestPage.evaluate(() => globalThis.__COT_SOAK.lastLobby);
   assert.equal(initial.players.find((player) => player.id === initial.hostId).specId, 'm1a2');
   assert.equal(initial.players.find((player) => player.id !== initial.hostId).team, 'bravo');
+  assert.equal(new Set(initial.players.map((player) =>
+    player.name.toLocaleLowerCase('en-US'))).size, 2,
+  'canonical browser lobby disambiguates colliding commander names');
 
   await guestPage.evaluate(() => globalThis.__COT_SOAK.session.submit({
     type: 'set_map', mapId: 'winter',
@@ -192,8 +195,13 @@ try {
       session: state.session,
       lobbyState: state.startingLobby,
     });
+    state.advanceDurations = [];
     state.match.ready();
-    return { playerId: state.match.playerId, mapId: state.match.mapId };
+    return {
+      playerId: state.match.playerId,
+      mapId: state.match.mapId,
+      rosterSize: state.match.simulation.entityById.size,
+    };
   });
   const guestMatch = await guestPage.evaluate(async () => {
     const { beginPrivateClientMatch } = await import('/src/net/privateMatchHandoff.js');
@@ -203,12 +211,15 @@ try {
       playerId: state.roomInfo.peerId,
       lobbyState: state.lastLobby,
     });
+    state.sampleDurations = [];
+    state.sampleIdentityStable = true;
     state.match.ready();
     return { playerId: state.match.playerId, mapId: state.match.mapId };
   });
 
   assert.equal(hostMatch.mapId, 'winter');
   assert.equal(guestMatch.mapId, 'winter');
+  assert.equal(hostMatch.rosterSize, 4, '2v2 browser handoff creates a four-tank roster');
   assert.notEqual(hostMatch.playerId, guestMatch.playerId,
     'player identity must remain distinct when both players select M1A2');
   const matchDeadline = Date.now() + 10000;
@@ -272,7 +283,12 @@ try {
   const playDeadline = performance.now() + durationMs;
   while (performance.now() < playDeadline) {
     await Promise.all([
-      hostPage.evaluate(() => globalThis.__COT_SOAK.match.advance(1000 / 60)),
+      hostPage.evaluate(() => {
+        const state = globalThis.__COT_SOAK;
+        const startedAt = performance.now();
+        state.match.advance(1000 / 60);
+        state.advanceDurations.push(performance.now() - startedAt);
+      }),
       guestPage.evaluate(() => {
         const state = globalThis.__COT_SOAK;
         state.match.submitInput({
@@ -285,7 +301,13 @@ try {
           shellSlot: 0,
           actionBits: 0,
         });
-        state.sample = state.match.update(performance.now());
+        const startedAt = performance.now();
+        const nextSample = state.match.update(performance.now());
+        state.sampleDurations.push(performance.now() - startedAt);
+        if (state.sample && nextSample && nextSample !== state.sample) {
+          state.sampleIdentityStable = false;
+        }
+        state.sample = nextSample;
       }),
     ]);
     await new Promise((resolve) => setTimeout(resolve, 16));
@@ -303,6 +325,9 @@ try {
       buffer: stats.buffer,
       transport: stats.transport,
       errors: state.match.client.errors,
+      sampleIdentityStable: state.sampleIdentityStable,
+      averageSampleMs: state.sampleDurations.reduce((sum, value) => sum + value, 0) /
+        Math.max(1, state.sampleDurations.length),
     };
   });
   const authority = await hostPage.evaluate((playerId) => {
@@ -314,6 +339,9 @@ try {
       peerCount: state.match.host.peers.size,
       snapshots: state.match.host.stats.snapshots,
       invalidMessages: state.match.host.stats.invalidMessages,
+      entityCount: state.match.simulation.entityById.size,
+      averageAdvanceMs: state.advanceDurations.reduce((sum, value) => sum + value, 0) /
+        Math.max(1, state.advanceDurations.length),
     };
   }, guestMatch.playerId);
   const displacement = Math.hypot(
@@ -322,6 +350,9 @@ try {
   );
   assert.equal(report.connected, true);
   assert.equal(report.ownEntityVisible, true, 'a player must always receive its own authority row');
+  assert.equal(authority.entityCount, 4, '2v2 authority retains all four tanks during play');
+  assert.equal(report.sampleIdentityStable, true,
+    'client presentation sampling reuses its output frame across the soak');
   assert.ok(report.snapshots >= 20, `expected at least 20 snapshots, received ${report.snapshots}`);
   assert.equal(report.missingBaselines, 0, 'periodic keyframes must recover every dropped delta');
   assert.ok(report.transport?.delayedIncoming > 0 && report.transport?.delayedOutgoing > 0,
@@ -361,6 +392,8 @@ try {
     estimatedLossPercent: Number((report.loss * 100).toFixed(1)),
     interpolationDelayMs: Number(report.buffer.interpolationDelayMs.toFixed(1)),
     extrapolatedSamples: report.buffer.extrapolatedSamples,
+    averageAuthorityAdvanceMs: Number(authority.averageAdvanceMs.toFixed(3)),
+    averageClientSampleMs: Number(report.averageSampleMs.toFixed(3)),
     transport: {
       delayedIncoming: report.transport.delayedIncoming,
       delayedOutgoing: report.transport.delayedOutgoing,

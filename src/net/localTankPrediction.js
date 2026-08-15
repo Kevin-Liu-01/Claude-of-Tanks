@@ -6,6 +6,9 @@ const AIM_DISTANCE_M = 1000;
 const DEFAULT_HARD_SNAP_M = 7;
 const DEFAULT_CORRECTION_TAU_S = 0.09;
 const MAX_INPUT_HISTORY = 240;
+const CORRECTION_KEYS = Object.freeze([
+  'x', 'y', 'z', 'yaw', 'pitch', 'roll', 'turretYaw', 'gunPitch',
+]);
 
 function wrapAngle(value) {
   let angle = value;
@@ -163,7 +166,8 @@ export class LocalTankPredictor {
     return true;
   }
 
-  reconcile({ tick, ackInputSeq = null, entity: snapshot } = {}, elapsedS = 0) {
+  reconcile({ tick, ackInputSeq = null, entity: snapshot } = {}, elapsedS = 0,
+    destroyed = false) {
     if (!snapshot || !Number.isSafeInteger(tick) || tick <= this.lastAuthorityTick) return false;
     this.lastAuthorityTick = tick;
     const shown = this.entity.state;
@@ -173,7 +177,11 @@ export class LocalTankPredictor {
       turretYaw: shown.turretYaw, gunPitch: shown.gunPitch,
     };
     if (Number.isSafeInteger(ackInputSeq) && ackInputSeq >= 0) {
-      this.history = this.history.filter((frame) => isSequenceNewer(frame.inputSeq, ackInputSeq));
+      let writeIndex = 0;
+      for (const frame of this.history) {
+        if (isSequenceNewer(frame.inputSeq, ackInputSeq)) this.history[writeIndex++] = frame;
+      }
+      this.history.length = writeIndex;
     }
     applyAuthority(this.simEntity.state, snapshot);
     for (const frame of this.history) {
@@ -189,8 +197,8 @@ export class LocalTankPredictor {
     this.stats.reconciliations++;
     this.stats.lastPositionErrorM = positionError;
     this.stats.maxPositionErrorM = Math.max(this.stats.maxPositionErrorM, positionError);
-    if (positionError > this.hardSnapDistanceM || snapshot.destroyed) {
-      for (const key of Object.keys(this.correction)) this.correction[key] = 0;
+    if (positionError > this.hardSnapDistanceM || destroyed || snapshot.destroyed) {
+      for (const key of CORRECTION_KEYS) this.correction[key] = 0;
       this.stats.hardSnaps++;
     } else {
       this.correction.x = old.x - predicted.pos.x;
@@ -209,7 +217,7 @@ export class LocalTankPredictor {
   present(elapsedS = 0) {
     const dt = Math.max(0, Math.min(Number(elapsedS) || 0, 0.1));
     const decay = this.correctionTauS > 0 ? Math.exp(-dt / this.correctionTauS) : 0;
-    for (const key of Object.keys(this.correction)) this.correction[key] *= decay;
+    for (const key of CORRECTION_KEYS) this.correction[key] *= decay;
     copyPresentation(this.entity.state, this.simEntity.state, this.correction);
   }
 

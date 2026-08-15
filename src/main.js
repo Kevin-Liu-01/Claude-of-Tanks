@@ -2025,7 +2025,6 @@ let networkMatch = null;
 let networkBridge = null;
 let networkStatus = null;
 let latestNetworkSnapshot = null;
-let networkPumpPending = false;
 let networkActionBitsPending = 0;
 let networkSpectator = false;
 
@@ -2067,22 +2066,19 @@ function networkDiagnostics() {
 function pumpNetworkMatch(dt, nowMs) {
   if (!networkMatch || networkMatch.client?.closed) return;
   if (networkMatch.role === 'host') {
-    if (networkPumpPending) return;
     const playerInput = game.phase === 'battle' ? networkInputFrame() : null;
-    networkPumpPending = true;
     const submittedActionBits = playerInput?.actionBits || 0;
     if (submittedActionBits) networkActionBitsPending &= ~submittedActionBits;
-    const advance = networkMatch.advance(dt * 1000, playerInput);
-    if (playerInput && networkMatch.client?.lastSubmittedInputSeq != null) {
-      networkBridge?.recordInput(playerInput, dt, networkMatch.client.lastSubmittedInputSeq);
+    try {
+      const snapshot = networkMatch.advance(dt * 1000, playerInput);
+      if (playerInput && networkMatch.client?.lastSubmittedInputSeq != null) {
+        networkBridge?.recordInput(playerInput, dt, networkMatch.client.lastSubmittedInputSeq);
+      }
+      acceptNetworkSnapshot(snapshot, dt);
+    } catch (error) {
+      networkActionBitsPending |= submittedActionBits;
+      console.error('[network] host pump failed', error);
     }
-    advance
-      .then((snapshot) => acceptNetworkSnapshot(snapshot, dt))
-      .catch((error) => {
-        networkActionBitsPending |= submittedActionBits;
-        console.error('[network] host pump failed', error);
-      })
-      .finally(() => { networkPumpPending = false; });
   } else {
     const playerInput = game.phase === 'battle' ? networkInputFrame() : null;
     if (playerInput && networkMatch.client.connected && networkMatch.submitInput(playerInput)) {
@@ -2095,7 +2091,7 @@ function pumpNetworkMatch(dt, nowMs) {
     }
     acceptNetworkSnapshot(networkMatch.update(nowMs), dt);
   }
-  networkStatus?.update(networkDiagnostics());
+  if (networkStatus?.diagnosticsVisible) networkStatus.update(networkDiagnostics());
 }
 
 function closeNetworkMatch(reason = 'network_match_closed') {
@@ -2106,7 +2102,6 @@ function closeNetworkMatch(reason = 'network_match_closed') {
   networkBridge = null;
   networkStatus = null;
   latestNetworkSnapshot = null;
-  networkPumpPending = false;
   networkActionBitsPending = 0;
   networkSpectator = false;
 }
@@ -2317,8 +2312,10 @@ async function beginSoloBattle({ specId, mapId } = {}) {
 
 /** Load the rendered battlefield, then join browser-hosted private/LAN authority. */
 async function beginNetworkBattle({ role, session, lobbyState } = {}) {
-  if (battleEntryPending || networkMatch) return;
+  if (battleEntryPending || networkMatch) return false;
   battleEntryPending = true;
+  let entered = false;
+  if (typeof window !== 'undefined') window.__NETWORK_ENTRY_FAILURE = null;
   const viewerId = String(session?.roomInfo?.peerId || '');
   const own = lobbyState?.players?.find((player) => player.id === viewerId);
   try {
@@ -2342,7 +2339,24 @@ async function beginNetworkBattle({ role, session, lobbyState } = {}) {
         ? beginPrivateHostMatch({ session, lobbyState, worldCollision: world })
         : beginPrivateClientMatch({ session, playerId: viewerId, lobbyState }),
     });
+    entered = true;
   } catch (error) {
+    if (typeof window !== 'undefined') {
+      window.__NETWORK_ENTRY_FAILURE = {
+        message: error.message,
+        role,
+        clientConnected: !!networkMatch?.client?.connected,
+        clientReadySent: !!networkMatch?.client?.readySent,
+        matchStarted: !!networkMatch?.host?.matchStarted,
+        peers: networkMatch?.host
+          ? [...networkMatch.host.peers.values()].map((peer) => ({
+            id: peer.id,
+            welcomed: peer.welcomed,
+            ready: peer.ready,
+          }))
+          : [],
+      };
+    }
     console.error('[network] entry failed', error);
     closeNetworkMatch('entry_failed');
     await battleLoad.hide();
@@ -2350,6 +2364,7 @@ async function beginNetworkBattle({ role, session, lobbyState } = {}) {
   } finally {
     battleEntryPending = false;
   }
+  return entered;
 }
 
 /** Join a server-authoritative rated match issued by the ranked queue. */
@@ -5113,6 +5128,9 @@ window.__DEBUG = {
   beginBattleEntry,
   // User-facing bot entry: original local simulation, with no network stack.
   beginSoloBattle,
+  // Full-render QA seam: browser probes create real room sessions, then hand
+  // them to the same private/LAN entry path used by the play menu.
+  beginNetworkBattle,
   enterGarage,
   // SPOTTING WIRING: live SpottingSystem for headless concealment checks
   get spotting() { return game.spotting; },

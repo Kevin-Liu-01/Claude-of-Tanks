@@ -236,27 +236,27 @@ export class SnapshotAssembler {
   clear() { this.history.clear(); }
 }
 
-export function decodeEntitySnapshot(entity) {
-  return {
-    id: entity.id,
-    specId: entity.specId,
-    team: entity.team,
-    x: entity.x / POSITION_SCALE,
-    y: entity.y / POSITION_SCALE,
-    z: entity.z / POSITION_SCALE,
-    vx: entity.vx / VELOCITY_SCALE,
-    vz: entity.vz / VELOCITY_SCALE,
-    yaw: dequantizeAngle(entity.yaw),
-    pitch: dequantizeAngle(entity.pitch),
-    roll: dequantizeAngle(entity.roll),
-    turretYaw: dequantizeAngle(entity.turretYaw),
-    gunPitch: dequantizeAngle(entity.gunPitch),
-    hp: entity.hp,
-    maxHp: entity.maxHp,
-    reloadS: entity.reloadMs / 1000,
-    shellSlot: entity.shellSlot,
-    flags: entity.flags,
-  };
+export function decodeEntitySnapshot(entity, target = null) {
+  const out = target || {};
+  out.id = entity.id;
+  out.specId = entity.specId;
+  out.team = entity.team;
+  out.x = entity.x / POSITION_SCALE;
+  out.y = entity.y / POSITION_SCALE;
+  out.z = entity.z / POSITION_SCALE;
+  out.vx = entity.vx / VELOCITY_SCALE;
+  out.vz = entity.vz / VELOCITY_SCALE;
+  out.yaw = dequantizeAngle(entity.yaw);
+  out.pitch = dequantizeAngle(entity.pitch);
+  out.roll = dequantizeAngle(entity.roll);
+  out.turretYaw = dequantizeAngle(entity.turretYaw);
+  out.gunPitch = dequantizeAngle(entity.gunPitch);
+  out.hp = entity.hp;
+  out.maxHp = entity.maxHp;
+  out.reloadS = entity.reloadMs / 1000;
+  out.shellSlot = entity.shellSlot;
+  out.flags = entity.flags;
+  return out;
 }
 
 function shortestAngleDelta(from, to) {
@@ -280,27 +280,27 @@ function hermite(p0, v0, p1, v1, t, durationS) {
   return h00 * p0 + h10 * durationS * v0 + h01 * p1 + h11 * durationS * v1;
 }
 
-function interpolateEntity(aRaw, bRaw, t, durationS) {
-  const a = decodeEntitySnapshot(aRaw);
-  const b = decodeEntitySnapshot(bRaw);
-  return {
-    ...b,
-    x: hermite(a.x, a.vx, b.x, b.vx, t, durationS),
-    y: a.y + (b.y - a.y) * t,
-    z: hermite(a.z, a.vz, b.z, b.vz, t, durationS),
-    vx: a.vx + (b.vx - a.vx) * t,
-    vz: a.vz + (b.vz - a.vz) * t,
-    yaw: lerpAngle(a.yaw, b.yaw, t),
-    pitch: lerpAngle(a.pitch, b.pitch, t),
-    roll: lerpAngle(a.roll, b.roll, t),
-    turretYaw: lerpAngle(a.turretYaw, b.turretYaw, t),
-    gunPitch: lerpAngle(a.gunPitch, b.gunPitch, t),
-    reloadS: a.reloadS + (b.reloadS - a.reloadS) * t,
-  };
+function interpolateEntity(aRaw, bRaw, t, durationS, target = null,
+  scratchA = null, scratchB = null) {
+  const a = decodeEntitySnapshot(aRaw, scratchA);
+  const b = decodeEntitySnapshot(bRaw, scratchB);
+  const out = decodeEntitySnapshot(bRaw, target);
+  out.x = hermite(a.x, a.vx, b.x, b.vx, t, durationS);
+  out.y = a.y + (b.y - a.y) * t;
+  out.z = hermite(a.z, a.vz, b.z, b.vz, t, durationS);
+  out.vx = a.vx + (b.vx - a.vx) * t;
+  out.vz = a.vz + (b.vz - a.vz) * t;
+  out.yaw = lerpAngle(a.yaw, b.yaw, t);
+  out.pitch = lerpAngle(a.pitch, b.pitch, t);
+  out.roll = lerpAngle(a.roll, b.roll, t);
+  out.turretYaw = lerpAngle(a.turretYaw, b.turretYaw, t);
+  out.gunPitch = lerpAngle(a.gunPitch, b.gunPitch, t);
+  out.reloadS = a.reloadS + (b.reloadS - a.reloadS) * t;
+  return out;
 }
 
-function extrapolateEntity(raw, extraS) {
-  const entity = decodeEntitySnapshot(raw);
+function extrapolateEntity(raw, extraS, target = null) {
+  const entity = decodeEntitySnapshot(raw, target);
   entity.x += entity.vx * extraS;
   entity.z += entity.vz * extraS;
   entity.reloadS = Math.max(0, entity.reloadS - extraS);
@@ -341,6 +341,24 @@ export class SnapshotBuffer {
     this.rejectedSnapshots = 0;
     this.sampleCount = 0;
     this.extrapolatedSamples = 0;
+    // Presentation sampling runs once per render frame. Reuse its output
+    // graph so 120 Hz multiplayer does not allocate a frame plus N entity
+    // objects and a lookup Map every tick.
+    this.sampleFrame = {
+      tick: 0,
+      serverTimeMs: 0,
+      ackInputSeq: 0,
+      entities: [],
+      shells: [],
+      events: [],
+      meta: null,
+      immediateAuthority: null,
+    };
+    this.sampleEntities = new Map();
+    this.olderById = new Map();
+    this.decodeScratchA = {};
+    this.decodeScratchB = {};
+    this.immediateAuthority = { tick: 0, serverTimeMs: 0, ackInputSeq: 0, entity: {} };
   }
 
   push(snapshot, receivedAtMs = null) {
@@ -409,6 +427,15 @@ export class SnapshotBuffer {
     };
   }
 
+  sampleEntity(id) {
+    let entity = this.sampleEntities.get(id);
+    if (!entity) {
+      entity = {};
+      this.sampleEntities.set(id, entity);
+    }
+    return entity;
+  }
+
   sample(localServerTimeMs) {
     if (!this.snapshots.length) return null;
     this.sampleCount++;
@@ -425,21 +452,28 @@ export class SnapshotBuffer {
     if (!older) older = this.snapshots[0];
     if (!newer) newer = this.snapshots[this.snapshots.length - 1];
 
-    const entities = [];
+    const frame = this.sampleFrame;
+    const entities = frame.entities;
+    entities.length = 0;
     if (older === newer || newer.serverTimeMs === older.serverTimeMs) {
       const extraMs = Math.max(0, Math.min(this.maxExtrapolationMs,
         renderTime - newer.serverTimeMs));
       if (extraMs > 0) this.extrapolatedSamples++;
-      for (const raw of newer.entities) entities.push(extrapolateEntity(raw, extraMs / 1000));
+      for (const raw of newer.entities) {
+        entities.push(extrapolateEntity(raw, extraMs / 1000, this.sampleEntity(raw.id)));
+      }
     } else {
       const durationMs = newer.serverTimeMs - older.serverTimeMs;
       const t = Math.max(0, Math.min(1, (renderTime - older.serverTimeMs) / durationMs));
-      const olderById = new Map(older.entities.map((entity) => [entity.id, entity]));
+      const olderById = this.olderById;
+      olderById.clear();
+      for (const entity of older.entities) olderById.set(entity.id, entity);
       for (const current of newer.entities) {
         const previous = olderById.get(current.id);
         entities.push(previous
-          ? interpolateEntity(previous, current, t, durationMs / 1000)
-          : decodeEntitySnapshot(current));
+          ? interpolateEntity(previous, current, t, durationMs / 1000,
+            this.sampleEntity(current.id), this.decodeScratchA, this.decodeScratchB)
+          : decodeEntitySnapshot(current, this.sampleEntity(current.id)));
       }
     }
 
@@ -457,27 +491,24 @@ export class SnapshotBuffer {
           this.maxExtrapolationMs,
           localServerTimeMs - latest.serverTimeMs,
         ));
-        const immediate = extrapolateEntity(raw, extraMs / 1000);
+        const immediate = extrapolateEntity(raw, extraMs / 1000, this.sampleEntity(raw.id));
         const index = entities.findIndex((entity) => entity.id === this.immediateEntityId);
         if (index >= 0) entities[index] = immediate;
         else entities.push(immediate);
-        immediateAuthority = {
-          tick: latest.tick,
-          serverTimeMs: latest.serverTimeMs,
-          ackInputSeq: latest.ackInputSeq,
-          entity: decodeEntitySnapshot(raw),
-        };
+        immediateAuthority = this.immediateAuthority;
+        immediateAuthority.tick = latest.tick;
+        immediateAuthority.serverTimeMs = latest.serverTimeMs;
+        immediateAuthority.ackInputSeq = latest.ackInputSeq;
+        decodeEntitySnapshot(raw, immediateAuthority.entity);
       }
     }
-    return {
-      tick: newer.tick,
-      serverTimeMs: renderTime,
-      ackInputSeq: newer.ackInputSeq,
-      entities,
-      shells: newer.shells || [],
-      events: newer.events || [],
-      meta: newer.meta || null,
-      immediateAuthority,
-    };
+    frame.tick = newer.tick;
+    frame.serverTimeMs = renderTime;
+    frame.ackInputSeq = newer.ackInputSeq;
+    frame.shells = newer.shells || [];
+    frame.events = newer.events || [];
+    frame.meta = newer.meta || null;
+    frame.immediateAuthority = immediateAuthority;
+    return frame;
   }
 }

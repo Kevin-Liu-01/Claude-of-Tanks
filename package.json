@@ -32,7 +32,8 @@
     "shots": "node tools/screenshot.mjs",
     "perf:dev": "node tools/dev-perf-probe.mjs",
     "perf:cold": "node tools/cold-load-probe.mjs",
-    "test:net:browser": "node tools/multiplayer-browser-soak.mjs"
+    "test:net:browser": "node tools/multiplayer-browser-soak.mjs",
+    "test:net:render": "node tools/multiplayer-render-perf.mjs"
   },
   "keywords": [],
   "author": "",

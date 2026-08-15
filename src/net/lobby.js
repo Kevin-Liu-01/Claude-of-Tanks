@@ -1,4 +1,5 @@
 import { MAX_PLAYERS, MAX_SPECTATORS, normalizeRoomCode } from './protocol.js';
+import { normalizePlayerName, uniquePlayerName } from './playerNames.js';
 
 export const LOBBY_PHASES = Object.freeze({
   WAITING: 'waiting',
@@ -32,9 +33,16 @@ function cleanId(value, field = 'playerId') {
 }
 
 function cleanName(value) {
-  const name = String(value || '').trim().replace(/\s+/g, ' ').slice(0, 24);
+  const name = normalizePlayerName(value);
   if (!name) throw new LobbyError('invalid_name', 'player name is required');
   return name;
+}
+
+function availableName(lobby, value, excludingId = null) {
+  const requested = cleanName(value);
+  return uniquePlayerName(requested, [...lobby.players.values()]
+    .filter((player) => player.id !== excludingId)
+    .map((player) => player.name));
 }
 
 function cleanSpecId(value) {
@@ -203,7 +211,7 @@ export function addLobbyPlayer(lobby, {
   }
   lobby.players.set(playerId, createPlayer({
     id: playerId,
-    name,
+    name: availableName(lobby, name),
     team: targetTeam,
     specId,
     equipment,
@@ -241,7 +249,7 @@ export function applyLobbyCommand(lobby, playerId, command, {
 
   switch (command.type) {
     case 'set_name':
-      player.name = cleanName(command.name);
+      player.name = availableName(lobby, command.name, id);
       break;
     case 'select_vehicle': {
       const specId = cleanSpecId(command.specId);

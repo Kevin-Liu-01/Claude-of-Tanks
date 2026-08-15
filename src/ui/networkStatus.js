@@ -98,6 +98,7 @@ export function createNetworkStatus() {
     set,
     update,
     toggleDiagnostics,
+    get diagnosticsVisible() { return diagnosticsVisible; },
     dispose() {
       if (hideTimer) clearTimeout(hideTimer);
       window.removeEventListener('keydown', onKeyDown);

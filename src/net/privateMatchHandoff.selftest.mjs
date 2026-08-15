@@ -31,6 +31,14 @@ assert.deepEqual(
   filled,
   'bot roster is deterministic from the match seed',
 );
+const twoByTwo = buildPrivateMatchPlayers({
+  ...lobbyState,
+  teamSize: 2,
+  players: [lobbyState.players[0]],
+});
+assert.equal(twoByTwo.length, 4, '2v2 creates exactly two authority-owned teams of two');
+assert.deepEqual(twoByTwo.map((player) => player.team).sort(),
+  ['alpha', 'alpha', 'bravo', 'bravo']);
 const hostSession = {
   roomInfo: { peerId: 'host-1', mode: 'lan' },
   takeMatchChannels: () => [{ peerId: 'peer-1', transport: remote.host }],
@@ -44,12 +52,16 @@ const hosted = beginPrivateHostMatch({
   lobbyState,
   simulationFactory: (options) => createAuthoritativeMatch({ ...options, countdownS: 0 }),
 });
+assert.equal(hosted.client.connected, true,
+  'host-local protocol handshake completes synchronously without a render-frame wait');
 const joined = await beginPrivateClientMatch({ session: clientSession });
 await Promise.resolve();
 hosted.ready();
 joined.ready();
 await Promise.resolve();
-hosted.host.advance(1000 / 60);
+const hostFrame = hosted.advance(1000 / 60);
+assert.equal(typeof hostFrame?.then, 'undefined',
+  'host advance has no Promise or microtask barrier in the render loop');
 await Promise.resolve();
 assert.equal(joined.client.connected, true, 'client listener catches post-handoff welcome');
 assert.equal(hosted.client.connected, true, 'host local player uses the same handshake');

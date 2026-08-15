@@ -134,6 +134,14 @@ export class AuthoritativeMatchRuntime {
     return () => this.detachPeer(id, 'detached');
   }
 
+  /** Replay packets that arrived during an ordered lobby-to-match handoff. */
+  acceptPeerMessage(peerId, raw) {
+    const peer = this.peers.get(String(peerId));
+    if (!peer || this.closed) return false;
+    this.#receive(peer, raw);
+    return true;
+  }
+
   detachPeer(peerId, reason = 'left') {
     const id = String(peerId);
     const peer = this.peers.get(id);

@@ -2,9 +2,10 @@ import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { sanitizeLoadout } from '../src/game/equipment.js';
 import { isGarageVisibleTankId } from '../src/game/matchmaking.js';
 import { getSpec } from '../src/vehicles/specs.js';
+import { uniquePlayerName } from '../src/net/playerNames.js';
 import { RatingStore } from './ratingStore.js';
 
-const TEAM_SIZES = new Set([1, 3, 5, 7]);
+const TEAM_SIZES = new Set([1, 2, 3, 5, 7]);
 const MAPS = ['verdant', 'desert', 'winter', 'urban', 'coastal', 'autumn', 'steppe', 'railyard'];
 const QUEUE_TTL_MS = 10 * 60_000;
 const MATCH_TTL_MS = 25 * 60_000;
@@ -93,7 +94,7 @@ export class RankedMatchmaker {
       throw Object.assign(new Error('ranked queue is at capacity'), { code: 'queue_full' });
     }
     const size = Number(teamSize);
-    if (!TEAM_SIZES.has(size)) throw new TypeError('team size must be 1, 3, 5, or 7');
+    if (!TEAM_SIZES.has(size)) throw new TypeError('team size must be 1, 2, 3, 5, or 7');
     const vehicleId = String(specId || '');
     if (!isGarageVisibleTankId(vehicleId)) throw new TypeError('vehicle is unavailable in ranked play');
     const spec = getSpec(vehicleId);
@@ -160,11 +161,14 @@ export class RankedMatchmaker {
     const mapId = MAPS[this.matchSequence % MAPS.length];
     const seed = (0x6d2b79f5 ^ Math.imul(++this.matchSequence, 0x9e3779b1)) >>> 0;
     const roster = [];
+    const rosterNames = [];
     for (const team of ['alpha', 'bravo']) {
       for (const entry of teams[team]) {
+        const name = uniquePlayerName(entry.name, rosterNames);
+        rosterNames.push(name);
         roster.push({
           id: entry.playerId,
-          name: entry.name,
+          name,
           specId: entry.specId,
           equipment: entry.equipment,
           team,

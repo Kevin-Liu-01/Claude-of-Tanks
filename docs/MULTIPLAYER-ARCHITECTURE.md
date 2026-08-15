@@ -71,6 +71,15 @@ Snapshots use a compact binary codec, explicit snapshot acknowledgements,
 per-peer deltas, and periodic keyframes. A missing delta baseline waits for a
 recovering keyframe rather than inventing state.
 
+The browser host's own peer still crosses the exact protocol/runtime boundary,
+but its in-process transport delivers synchronously and without cloning. The
+presentation bridge and snapshot sampler reuse their frame/entity arrays and
+objects, so a 120 Hz render loop does not manufacture a new scene-state object
+graph every frame. Network diagnostics also stay dormant unless F3 is open.
+During lobby-to-match handoff, a slow host buffers an already-loaded client's
+ordered match handshake until authority owns the WebRTC channel; renderer load
+order therefore cannot strand either peer at the readiness barrier.
+
 ## Client smoothness
 
 Remote tanks use Hermite position interpolation, shortest-path angle blending,
@@ -100,10 +109,14 @@ game keeps its own deterministic tank simulation and authority contracts.
 
 `src/net/lobby.js` is the only owner of room capacity, team switching,
 spectators, readiness, vehicle/loadout selection, team size, map choice,
-locking, host permissions, and start policy. Empty 1v1/3v3/5v5/7v7 slots are
+locking, host permissions, and start policy. Empty 1v1/2v2/3v3/5v5/7v7 slots are
 filled deterministically by authority-owned bots. Bots use seeded diverse
 openings, traversability planning on every map, local obstacle recovery, and
 the same spotting limits as human players.
+
+The canonical room authority also owns display-name uniqueness. Automatic
+callsigns are stable per browser identity, while case-insensitive collisions
+are deterministically suffixed in both private lobbies and ranked rosters.
 
 Ranked uses service-scoped anonymous bearer identities, widening Elo search
 bands, server team balancing, one-time match tickets, persistent idempotent
