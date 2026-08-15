@@ -98,6 +98,15 @@ terrain contact, map bounds, and nearby static collision, then replays
 unacknowledged inputs after each authority snapshot. Normal corrections ease
 over 90 ms; death or errors above 7 m snap immediately.
 
+Both presentation paths suppress quantization chatter only when a tank is
+actually at rest. Remote snapshot samples retain a stable hull pose across
+sub-contact-patch position and attitude changes; local reconciliation holds the
+equivalent correction while neither acknowledged nor pending input requests
+motion. Turret yaw and gun pitch always remain independent and live. Any real
+drive input, meaningful authority velocity, larger displacement, destruction,
+or hard snap releases the resting hold immediately, so stabilization cannot
+add steering latency or hide legitimate slope motion.
+
 Press `F3` to view live RTT, jitter, estimated snapshot loss, interpolation
 delay, extrapolation, transport queues, and reconciliation error. Deterministic
 browser impairment is available for QA:

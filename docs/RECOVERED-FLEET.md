@@ -63,10 +63,12 @@ not fabricated or silently claimed as integrated.
   incoming-damage feedback.
 - Improved hit-marker contrast, damage-label bounds, sniper foliage promotion,
   texture anisotropy, and non-hard AI long-range spread.
-- Added articulation-aware procedural shadow proxies and a continuous
-  sub-pixel far-grass taper to keep the enlarged roster under the frozen
-  performance geometry budget without changing close grass or visible tank
-  detail.
+- Replaced generic box/cylinder tank shadow proxies with up to three bounded convex
+  support hulls derived from each vehicle's authored hull, turret, and gun
+  geometry. Articulation and vehicle-specific silhouettes survive while CSM
+  shadow submissions remain capped at three draws; a continuous sub-pixel
+  far-grass taper keeps the enlarged roster under the frozen performance
+  geometry budget without changing close grass or visible tank detail.
 
 ## Verification
 

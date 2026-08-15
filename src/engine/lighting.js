@@ -127,31 +127,15 @@ const SHADOW_AMBIENT_DIM = [0.80, 0.88, 1.0];
 // full strength inside a cast shadow is the classic "wet plastic in shade"
 // tell on ice/wet roads once materials gain speculars.
 const SHADOW_AMBIENT_SPEC_DIM = 0.55;
-// r5 PCSS-STYLE DISTANCE-WIDENING PENUMBRA ("edge stays knife-sharp 8-10 m
-// from the caster — penumbra must widen with distance from the contact
-// point"). three r185's PCF getShadow samples a Vogel disk at a CONSTANT
-// per-light texel radius, so a hull contact shadow and a canopy shadow cast
-// 15 m down had identical razor edges. True PCSS needs blocker depths, but
-// the PCF path binds the map as a compare-only sampler2DShadow — so blocker
-// distance is instead ESTIMATED with three extra center taps whose compare
-// plane is pushed TOWARD the light by fixed world offsets: if the test still
-// reports "shadowed" with the plane 1.6 m / 7 m / 22 m closer to the sun,
-// the occluder is at least that far above the receiver. The Vogel radius
-// then scales between PEN_TIGHT x (contact — crisp core under the hull) and
-// PEN_WIDE x (deep gap — soft canopy/building edges). All CSM cascades share
-// one shadow camera depth range (near 1 / far 2000, CSM.js defaults), so the
-// normalized probe offsets below correspond to the same world gaps on every
-// cascade. Lit-side fragments see all probes pass (gap 0) and keep the tight
-// radius — the penumbra softens into the shadow body, which reads correctly
-// at 1080p and never blurs lit-side detail.
-const PEN_PROBE_DEPTHS = [0.0008, 0.0035, 0.011]; // x1999 m: ~1.6 / 7 / 22 m gaps
-const PEN_PROBE_WEIGHTS = [0.40, 0.34, 0.26];
-const PEN_TIGHT = 0.9; // radius factor at contact (crisp core, stays above the ~1.4-texel stair-step floor)
-// 5.0 (first pass ran 6.5): at 6.5x the 5-tap Vogel disk undersamples and
-// the IGN rotation pattern printed a visible crosshatch across wide penumbra
-// bands; 5.0 keeps the distance-softening clearly readable with the noise
-// under the SMAA/grain floor.
-const PEN_WIDE = 5.0; // radius factor at 22 m+ occluder gap
+// r8 stable PCF: the old pseudo-PCSS multiplier expanded a five-tap kernel
+// as far as 14 texels. Five samples cannot cover that disk, so wide shadows
+// resolved as a visible hatch/cross pattern and crawled because its rotation
+// was keyed to screen pixels. Keep the physically widening CSM cascade radii
+// themselves, anchor the Vogel rotation in shadow-map texels (patched below),
+// and guarantee a small antialiasing footprint even on 1024/512 mobile maps.
+// This removes three blocker probes and their divergent radius too: cleaner
+// edges for fewer texture reads on every device tier.
+const MIN_FILTER_RADIUS_TEXELS = 1.25;
 // The radii above are tuned in TEXELS of these reference map sizes (ultra's
 // ladder). When a quality preset allocates a smaller map for a cascade, the
 // texel is proportionally larger — an uncompensated radius would widen the
@@ -653,29 +637,23 @@ vec3 cotPrev;`);
 
 ${endHead}`);
 
-  // --- r5 distance-widening penumbra (see PEN_* const block) ---------------
-  // Patch the PCF getShadow: three center compare-probes estimate the
-  // receiver-to-occluder gap, and the Vogel disk radius widens with it.
-  const penAnchor = 'float radius = shadowRadius * texelSize.x;';
+  // Anchor the five-tap Vogel pattern to stable shadow texels instead of
+  // screen pixels. CSM texel snapping now keeps the filter phase on the same
+  // world surface as the camera moves, eliminating crawling/hatching without
+  // adding a single sample.
+  const penAnchor =
+    'float phi = interleavedGradientNoise( gl_FragCoord.xy ) * PI2;';
   const sm = THREE.ShaderChunk.shadowmap_pars_fragment;
   if (!sm.includes(penAnchor)) {
     throw new Error('lighting.js: penumbra anchor not found in shadowmap_pars_fragment');
   }
-  THREE.ShaderChunk.shadowmap_pars_fragment = sm.replace(penAnchor, `float radius = shadowRadius * texelSize.x;
-				{
-					// blocker-gap probe: compare plane pushed toward the light —
-					// still shadowed => occluder at least that far above receiver
-					float cotOcc =
-						( 1.0 - texture( shadowMap, vec3( shadowCoord.xy, shadowCoord.z - ${PEN_PROBE_DEPTHS[0].toFixed(4)} ) ) ) * ${PEN_PROBE_WEIGHTS[0].toFixed(2)} +
-						( 1.0 - texture( shadowMap, vec3( shadowCoord.xy, shadowCoord.z - ${PEN_PROBE_DEPTHS[1].toFixed(4)} ) ) ) * ${PEN_PROBE_WEIGHTS[1].toFixed(2)} +
-						( 1.0 - texture( shadowMap, vec3( shadowCoord.xy, shadowCoord.z - ${PEN_PROBE_DEPTHS[2].toFixed(4)} ) ) ) * ${PEN_PROBE_WEIGHTS[2].toFixed(2)};
-					radius *= mix( ${PEN_TIGHT.toFixed(2)}, ${PEN_WIDE.toFixed(2)}, cotOcc );
-				}`);
+  THREE.ShaderChunk.shadowmap_pars_fragment = sm.replace(penAnchor,
+    'float phi = interleavedGradientNoise( floor( shadowCoord.xy * shadowMapSize ) ) * PI2;');
 }
 
 /**
  * @typedef {object} Lighting
- * @property {CSM} csm - the cascaded-shadow-map instance (3×2048 cascades)
+ * @property {CSM} csm - four quality-scaled cascaded shadow maps
  * @property {(mat: THREE.Material, extraHook?: ?Function) => THREE.Material} setupShadowMaterial
  * @property {() => void} update - per-frame `csm.update()`; call AFTER the camera is final
  * @property {() => void} updateFrustums - call on resize / camera fov or aspect change
@@ -730,7 +708,10 @@ export function createLighting(scene, camera, sunDir) {
       const shadow = csm.lights[i].shadow;
       // physical-penumbra-preserving PCF radius (see SHADOW_RADII_REF_SIZES)
       const ref = SHADOW_RADII_REF_SIZES[Math.min(i, SHADOW_RADII_REF_SIZES.length - 1)];
-      shadow.radius = SHADOW_RADII[Math.min(i, SHADOW_RADII.length - 1)] * (size / ref);
+      shadow.radius = Math.max(
+        MIN_FILTER_RADIUS_TEXELS,
+        SHADOW_RADII[Math.min(i, SHADOW_RADII.length - 1)] * (size / ref),
+      );
       if (shadow.mapSize.x !== size) {
         shadow.mapSize.set(size, size);
         if (shadow.map) {

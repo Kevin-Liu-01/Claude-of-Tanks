@@ -9,6 +9,7 @@
 
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { ConvexGeometry } from 'three/examples/jsm/geometries/ConvexGeometry.js';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { getSpec, TANK_SPECS, attachTrackShapes, finalizeFirstPartyRoster } from './specs.js';
 import { createTankMaterials, makeBurnUniforms, applyBurnHook, vehicleAmbientFloorHook } from './materials.js';
@@ -305,40 +306,128 @@ function lodWrap(parent, obj, dist = LOD1_DIST) {
   return obj;
 }
 
-// PERF: procedural tanks used to submit every bevel, fitting and armor plate
-// to each CSM pass. The detailed meshes remain untouched in the color pass,
-// while three articulation-aware low-poly silhouettes carry their shadows.
-// This is the procedural counterpart to modelLoader's sourced-GLB proxies.
+// PERF + FIDELITY: procedural tanks used to submit every bevel, fitting and
+// armor plate to each CSM pass. The first proxy pass fixed that cost with a
+// generic box hull + octagonal cylinder turret, but those shapes could not
+// possibly cast the authored vehicle's silhouette. Build a bounded convex
+// support hull from the real merged armor/barrel buckets instead: still at
+// most three articulation-aware shadow draws, now derived from the actual
+// vehicle, with <= 120 triangles per draw instead of thousands.
 const PROC_SHADOW_MAT = new THREE.MeshBasicMaterial({
   name: 'ProceduralShadowProxy', colorWrite: false, depthWrite: false,
 });
-function installProceduralShadowProxies(spec, hullG, turretG, recoilG, disposables) {
+const SHADOW_SUPPORT_DIRECTIONS = (() => {
+  const directions = [
+    new THREE.Vector3(1, 0, 0), new THREE.Vector3(-1, 0, 0),
+    new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, -1, 0),
+    new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, 0, -1),
+  ];
+  // 48 spherical supports + the six exact axes bound build cost to ~3 ms per
+  // staged vehicle on desktop while preserving every cardinal silhouette.
+  const count = 48;
+  const golden = Math.PI * (3 - Math.sqrt(5));
+  for (let i = 0; i < count; i++) {
+    const y = 1 - 2 * (i + 0.5) / count;
+    const radius = Math.sqrt(Math.max(0, 1 - y * y));
+    const angle = i * golden;
+    directions.push(new THREE.Vector3(
+      Math.cos(angle) * radius,
+      y,
+      Math.sin(angle) * radius,
+    ));
+  }
+  return Object.freeze(directions);
+})();
+
+function authoredShadowHull(owner, sourceMeshes) {
+  const sources = sourceMeshes.filter((mesh) => mesh?.isMesh &&
+    !mesh.isInstancedMesh && mesh.geometry?.getAttribute('position'));
+  if (!sources.length) return null;
+  owner.updateWorldMatrix(true, true);
+  const ownerInverse = new THREE.Matrix4().copy(owner.matrixWorld).invert();
+  const localMatrix = new THREE.Matrix4();
+  const point = new THREE.Vector3();
+  const bestDots = new Float64Array(SHADOW_SUPPORT_DIRECTIONS.length);
+  bestDots.fill(-Infinity);
+  const bestPoints = new Float64Array(SHADOW_SUPPORT_DIRECTIONS.length * 3);
+  let sourceTriangles = 0;
+  for (const mesh of sources) {
+    mesh.updateWorldMatrix(true, false);
+    localMatrix.multiplyMatrices(ownerInverse, mesh.matrixWorld);
+    const position = mesh.geometry.getAttribute('position');
+    sourceTriangles += (mesh.geometry.index?.count || position.count) / 3;
+    const values = position.array;
+    const stride = position.itemSize;
+    const matrix = localMatrix.elements;
+    for (let vertex = 0; vertex < position.count; vertex++) {
+      let px;
+      let py;
+      let pz;
+      if (!position.isInterleavedBufferAttribute && values) {
+        const offset = vertex * stride;
+        const x = values[offset];
+        const y = values[offset + 1];
+        const z = values[offset + 2];
+        px = matrix[0] * x + matrix[4] * y + matrix[8] * z + matrix[12];
+        py = matrix[1] * x + matrix[5] * y + matrix[9] * z + matrix[13];
+        pz = matrix[2] * x + matrix[6] * y + matrix[10] * z + matrix[14];
+      } else {
+        point.fromBufferAttribute(position, vertex).applyMatrix4(localMatrix);
+        px = point.x;
+        py = point.y;
+        pz = point.z;
+      }
+      for (let directionIndex = 0;
+        directionIndex < SHADOW_SUPPORT_DIRECTIONS.length;
+        directionIndex++) {
+        const direction = SHADOW_SUPPORT_DIRECTIONS[directionIndex];
+        const dot = px * direction.x + py * direction.y + pz * direction.z;
+        if (dot <= bestDots[directionIndex]) continue;
+        bestDots[directionIndex] = dot;
+        const offset = directionIndex * 3;
+        bestPoints[offset] = px;
+        bestPoints[offset + 1] = py;
+        bestPoints[offset + 2] = pz;
+      }
+    }
+  }
+
+  const unique = new Map();
+  for (let i = 0; i < SHADOW_SUPPORT_DIRECTIONS.length; i++) {
+    if (!Number.isFinite(bestDots[i])) continue;
+    const offset = i * 3;
+    const x = bestPoints[offset];
+    const y = bestPoints[offset + 1];
+    const z = bestPoints[offset + 2];
+    const key = `${Math.round(x * 10000)},${Math.round(y * 10000)},${Math.round(z * 10000)}`;
+    if (!unique.has(key)) unique.set(key, new THREE.Vector3(x, y, z));
+  }
+  if (unique.size < 4) return null;
+  const geometry = new ConvexGeometry([...unique.values()]);
+  geometry.computeBoundingBox();
+  geometry.computeBoundingSphere();
+  geometry.userData.authoredShadowHull = true;
+  geometry.userData.shadowSourceTriangles = sourceTriangles;
+  geometry.userData.shadowSupportPoints = unique.size;
+  return geometry;
+}
+
+function installProceduralShadowProxies(spec, hullG, turretG, gunG, recoilG, disposables) {
   for (const group of [hullG, turretG, recoilG]) {
     group.traverse((o) => { if (o.isMesh || o.isInstancedMesh) o.castShadow = false; });
   }
 
-  const w = spec.dims.widthM;
-  const hullLen = spec.dims.hullLengthM || spec.dims.overallLengthM * 0.72;
-  const height = spec.dims.heightM;
-  const pivotY = spec.armor.turretPivot[1];
-  const hullH = Math.max(0.55, Math.min(height * 0.45, pivotY * 0.72));
-  const trackW = Math.max(0.18, w * 0.105);
-  const hullGeo = mergeAll([
-    xform(new THREE.BoxGeometry(w * 0.82, hullH, hullLen * 0.84), 0, hullH * 0.58, 0),
-    xform(new THREE.BoxGeometry(trackW, 0.42, hullLen * 0.90), -w * 0.43, 0.28, 0),
-    xform(new THREE.BoxGeometry(trackW, 0.42, hullLen * 0.90),  w * 0.43, 0.28, 0),
+  const find = (owner, names) => names.map((name) => owner.getObjectByName(name)).filter(Boolean);
+  const hullGeo = authoredShadowHull(hullG, find(hullG,
+    ['hull', 'hullTrackGuardL', 'hullTrackGuardR', 'hullRubber']));
+  const turretGeo = authoredShadowHull(turretG, find(turretG, ['turret']));
+  // Mantlet + barrel share gun pitch. Merge their authored support points in
+  // gunG coordinates; recoil travel is deliberately omitted from the shadow
+  // proxy to preserve the three-draw budget during the short firing kick.
+  const gunGeo = authoredShadowHull(gunG, [
+    ...find(gunG, ['gunMount']),
+    ...find(recoilG, ['gun', 'gunDark']),
   ]);
-
-  const turretAvail = Math.max(0.45, height - pivotY);
-  const turretH = Math.max(0.34, turretAvail * 0.56);
-  const turretR = Math.max(0.55, w * 0.31);
-  const turretGeo = new THREE.CylinderGeometry(turretR * 0.82, turretR, turretH, 8, 1);
-  turretGeo.scale(1, 1, 0.82);
-  turretGeo.translate(0, turretH * 0.42, 0);
-
-  const barrel = spec.armor.gunBarrel;
-  const barrelGeo = cylZ(Math.max(0.065, barrel.radiusM * 1.08), barrel.lengthM, 6);
-  barrelGeo.translate(0, 0, barrel.lengthM * 0.5);
 
   const add = (parent, geo, name) => {
     disposables.push(geo);
@@ -347,12 +436,14 @@ function installProceduralShadowProxies(spec, hullG, turretG, recoilG, disposabl
     mesh.castShadow = true;
     mesh.receiveShadow = false;
     mesh.frustumCulled = true;
+    mesh.userData.authoredShadowProxy = true;
+    mesh.userData.shadowVehicleId = spec.id;
     mesh.raycast = () => {};
     parent.add(mesh);
   };
-  add(hullG, hullGeo, 'hull');
-  add(turretG, turretGeo, 'turret');
-  add(recoilG, barrelGeo, 'gun');
+  if (hullGeo) add(hullG, hullGeo, 'hull');
+  if (turretGeo) add(turretG, turretGeo, 'turret');
+  if (gunGeo) add(gunG, gunGeo, 'gun');
 }
 
 // Closed track band swept around a 2D loop in the (z,y) plane.
@@ -4641,7 +4732,7 @@ export function createTank(specId, engineCtx, opts = {}) {
     decalMeshes.push(mesh);
   }
 
-  installProceduralShadowProxies(spec, hullG, turretG, recoilG, disposables);
+  installProceduralShadowProxies(spec, hullG, turretG, gunG, recoilG, disposables);
 
   /** (Re)compose every ERA brick at its as-built placement (undoes stripEra). */
   function seatEraBricks() {

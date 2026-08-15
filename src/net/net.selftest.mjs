@@ -740,6 +740,58 @@ assert.equal(interpolation.sample(27), reusedFrame,
 assert.equal(interpolation.sample(28).entities[0], reusedEntity,
   'render sampling reuses entity objects while updating their values');
 
+// Remote tanks at rest must not visibly seesaw between centimeter/angle
+// quantization bins. This is presentation stabilization only: meaningful
+// authority motion and independent turret/gun articulation still pass.
+{
+  const parked = new SnapshotBuffer({ interpolationDelayMs: 0 });
+  const samples = [];
+  for (let index = 0; index < 24; index++) {
+    const sign = index % 2 ? -1 : 1;
+    const remote = entity('parked', 't90m', 'bravo', sign * 0.01);
+    remote.state.pos.y = 2 + sign * 0.01;
+    remote.state.visualPitch = sign * 0.0015;
+    remote.state.visualRoll = sign * -0.0012;
+    remote.state.turretYaw = index * 0.004;
+    remote.state.gunPitch = index * -0.0015;
+    parked.push(captureWorldSnapshot({
+      tick: index * 3,
+      serverTimeMs: index * 50,
+      entities: [remote],
+      viewerId: 'parked',
+    }));
+    const presented = parked.sample(index * 50).entities[0];
+    if (index >= 4) samples.push({
+      x: presented.x,
+      y: presented.y,
+      pitch: presented.pitch,
+      roll: presented.roll,
+    });
+  }
+  const range = (key) => Math.max(...samples.map((sample) => sample[key])) -
+    Math.min(...samples.map((sample) => sample[key]));
+  assert.ok(range('x') < 0.001 && range('y') < 0.001,
+    `parked remote position noise is held below 1 mm (x=${range('x')}, y=${range('y')})`);
+  assert.ok(range('pitch') < 0.0002 && range('roll') < 0.0002,
+    `parked remote hull-angle noise is stable (pitch=${range('pitch')}, roll=${range('roll')})`);
+  const articulated = parked.sample(23 * 50).entities[0];
+  assert.ok(Math.abs(articulated.turretYaw) > 0.08 && Math.abs(articulated.gunPitch) > 0.03,
+    'remote rest stabilization never freezes turret or gun articulation');
+
+  const moving = entity('parked', 't90m', 'bravo', 0.3, {
+    yaw: Math.PI / 2,
+    speed: 2,
+  });
+  parked.push(captureWorldSnapshot({
+    tick: 72,
+    serverTimeMs: 1200,
+    entities: [moving],
+    viewerId: 'parked',
+  }));
+  assert.ok(parked.sample(1200).entities[0].x > 0.2,
+    'meaningful remote velocity releases the parked hold immediately');
+}
+
 const responsive = new SnapshotBuffer({
   interpolationDelayMs: 100,
   maxExtrapolationMs: 250,

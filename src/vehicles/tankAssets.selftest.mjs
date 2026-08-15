@@ -8,6 +8,7 @@ import {
 assert.equal(Object.keys(TANK_ASSET_VIEWS).length, 9, 'release contract includes nine views/diagrams');
 
 const displayNames = new Set();
+const HULL_ONLY_SHADOW_IDS = new Set(['strv103', 'jpz_e100', 'sturmtiger', 't95']);
 
 for (const id of ALL_TANK_IDS) {
   const spec = getSpec(id);
@@ -50,11 +51,63 @@ assert.equal(getSpec('m1a2_sepv3').name, 'M1A2 Abrams SEPv3', 'SEPv3 carries the
 assert.equal(ALL_TANK_IDS.includes('m1a2_tejas'), false, 'retired Tejas alias is not selectable');
 const canonicalM1A2 = createTank('m1a2', null, { proceduralOnly: true, geometryReceipt: true });
 const legacyM1A2 = createTank('m1a2_legacy', null, { proceduralOnly: true, geometryReceipt: true });
+await Promise.resolve();
 assert.notEqual(
   geometryFingerprint(canonicalM1A2.root),
   geometryFingerprint(legacyM1A2.root),
   'canonical and legacy M1A2 ids resolve to distinct procedural profiles',
 );
+function verifyAuthoredShadowCasters(id, tank) {
+  const casters = [];
+  const submittedCasters = [];
+  tank.root.traverse((object) => {
+    if (object.userData?.authoredShadowProxy) casters.push(object);
+    if ((object.isMesh || object.isInstancedMesh) && object.castShadow) {
+      submittedCasters.push(object);
+    }
+  });
+  const expectedNames = HULL_ONLY_SHADOW_IDS.has(id)
+    ? ['procShadow_hull']
+    : ['procShadow_gun', 'procShadow_hull', 'procShadow_turret'];
+  assert.deepEqual(casters.map((object) => object.name).sort(), expectedNames,
+    `${id}: complete bounded articulation-aware shadow caster set`);
+  assert.deepEqual(submittedCasters.map((object) => object.name).sort(), expectedNames,
+    `${id}: detailed render meshes never leak into CSM submissions`);
+  let proxyTriangles = 0;
+  let sourceTriangles = 0;
+  for (const caster of casters) {
+    const position = caster.geometry.getAttribute('position');
+    const triangles = (caster.geometry.index?.count || position.count) / 3;
+    proxyTriangles += triangles;
+    sourceTriangles += caster.geometry.userData.shadowSourceTriangles;
+    assert.equal(caster.castShadow, true, `${id}/${caster.name}: casts`);
+    assert.equal(caster.material.colorWrite, false, `${id}/${caster.name}: shadow-only material`);
+    assert.equal(caster.geometry.userData.authoredShadowHull, true,
+      `${id}/${caster.name}: derived from authored geometry`);
+    assert(triangles <= 120,
+      `${id}/${caster.name}: bounded shadow triangle budget (${triangles})`);
+  }
+  assert(sourceTriangles > proxyTriangles * 8,
+    `${id}: authored sources remain materially richer than the bounded shadow set`);
+  assert(proxyTriangles <= 320,
+    `${id}: authored shadow budget (${proxyTriangles} triangles)`);
+  if (id === 'm1a2') {
+    assert(proxyTriangles > 92,
+      'authored silhouette carries more shape information than the retired box/cylinder proxy');
+  }
+}
+
+verifyAuthoredShadowCasters('m1a2', canonicalM1A2);
+verifyAuthoredShadowCasters('m1a2_legacy', legacyM1A2);
+for (const id of ALL_TANK_IDS) {
+  if (id === 'm1a2' || id === 'm1a2_legacy') continue;
+  const tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: true });
+  // Profile microtasks used to overwrite factory shadow geometry. Give any
+  // future callback the opportunity to run before certifying the final tree.
+  await Promise.resolve();
+  verifyAuthoredShadowCasters(id, tank);
+  tank.dispose();
+}
 canonicalM1A2.dispose();
 legacyM1A2.dispose();
 

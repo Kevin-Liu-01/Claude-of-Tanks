@@ -37,7 +37,7 @@ const FIELD = {
   getGroundType: () => 'hard',
 };
 
-function authority(tick, ackInputSeq, x = 0, z = 0) {
+function authority(tick, ackInputSeq, x = 0, z = 0, overrides = {}) {
   return {
     tick,
     ackInputSeq,
@@ -46,6 +46,7 @@ function authority(tick, ackInputSeq, x = 0, z = 0) {
       vx: 0, vz: 0,
       yaw: 0, pitch: 0, roll: 0, turretYaw: 0, gunPitch: 0,
       destroyed: false,
+      ...overrides,
     },
   };
 }
@@ -95,4 +96,57 @@ predictor.recordInput(driving, 1 / 60, 0);
 assert.equal(predictor.getStats().pendingInputs, 1,
   'fresh reconnect sequence discards history from the dead transport');
 
-console.log('localTankPrediction.selftest: replay, correction, and reconnect passed');
+// A parked authority tank can quantize between adjacent support-height and
+// hull-angle samples at the 20 Hz snapshot cadence. Presentation must not
+// turn that sub-contact-patch noise into a visible 60 Hz vibration. Turret
+// and gun articulation remain live because stationary players still aim.
+{
+  const parkedState = createTankState(SPEC, new Vector3(), 0);
+  const parkedEntity = {
+    spec: SPEC,
+    state: parkedState,
+    combat: null,
+    contactGeom: null,
+    rigidGear: false,
+  };
+  const parked = new LocalTankPredictor({ entity: parkedEntity, heightField: FIELD });
+  parked.reconcile(authority(0, null));
+  const samples = [];
+  let tick = 0;
+  for (let frame = 0; frame < 180; frame++) {
+    if (frame % 3 === 0) {
+      tick += 3;
+      const sign = (frame / 3) % 2 ? -1 : 1;
+      parked.reconcile(authority(tick, null, 0, 0, {
+        y: sign * 0.01,
+        pitch: sign * 0.0015,
+        roll: sign * -0.0012,
+        turretYaw: tick * 0.00035,
+        gunPitch: tick * -0.00012,
+      }), 1 / 60);
+    } else {
+      parked.present(1 / 60);
+    }
+    if (frame >= 60) samples.push({
+      y: parkedEntity.state.pos.y,
+      pitch: parkedEntity.state.visualPitch,
+      roll: parkedEntity.state.visualRoll,
+    });
+  }
+  const range = (key) => Math.max(...samples.map((sample) => sample[key])) -
+    Math.min(...samples.map((sample) => sample[key]));
+  assert.ok(range('y') < 0.001,
+    `parked local support-height noise is held below 1 mm (range=${range('y')})`);
+  assert.ok(range('pitch') < 0.0002 && range('roll') < 0.0002,
+    `parked local hull-angle noise is visually stable (pitch=${range('pitch')}, roll=${range('roll')})`);
+  assert.ok(Math.abs(parkedEntity.state.turretYaw) > 0.02 &&
+    Math.abs(parkedEntity.state.gunPitch) > 0.005,
+  'stationary hull stabilization never freezes turret or gun aim');
+
+  const beforeMove = parkedEntity.state.pos.z;
+  parked.recordInput(driving, 1 / 30, 1);
+  assert.ok(parkedEntity.state.pos.z > beforeMove + 0.0001,
+    'real local movement input releases the parked hold immediately');
+}
+
+console.log('localTankPrediction.selftest: replay, parked stability, correction, and reconnect passed');

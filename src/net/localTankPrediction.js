@@ -5,10 +5,16 @@ import { decodeAimIntent } from './aimIntent.js';
 
 const DEFAULT_HARD_SNAP_M = 7;
 const DEFAULT_CORRECTION_TAU_S = 0.09;
+const REST_SPEED_MPS = 0.08;
+const REST_HORIZONTAL_DEADZONE_M = 0.03;
+const REST_VERTICAL_DEADZONE_M = 0.025;
+const REST_HULL_ANGLE_DEADZONE_RAD = 0.0035;
 const MAX_INPUT_HISTORY = 240;
 const CORRECTION_KEYS = Object.freeze([
   'x', 'y', 'z', 'yaw', 'pitch', 'roll', 'turretYaw', 'gunPitch',
 ]);
+const HULL_CORRECTION_KEYS = Object.freeze(['x', 'y', 'z', 'yaw', 'pitch', 'roll']);
+const AIM_CORRECTION_KEYS = Object.freeze(['turretYaw', 'gunPitch']);
 
 function wrapAngle(value) {
   let angle = value;
@@ -22,6 +28,23 @@ function signedSpeed(snapshot) {
   const along = (snapshot.vx || 0) * Math.sin(snapshot.yaw || 0) +
     (snapshot.vz || 0) * Math.cos(snapshot.yaw || 0);
   return along < 0 ? -speed : speed;
+}
+
+function hasDriveIntent(input) {
+  return Math.abs(input?.throttle || 0) > 0.01 || Math.abs(input?.steer || 0) > 0.01;
+}
+
+function canHoldRestingHull(old, predicted, snapshot, motionIntent) {
+  if (motionIntent || Math.abs(predicted.speed || 0) > REST_SPEED_MPS ||
+      Math.hypot(snapshot.vx || 0, snapshot.vz || 0) > REST_SPEED_MPS) return false;
+  return Math.hypot(old.x - predicted.pos.x, old.z - predicted.pos.z) <=
+      REST_HORIZONTAL_DEADZONE_M &&
+    Math.abs(old.y - predicted.pos.y) <= REST_VERTICAL_DEADZONE_M &&
+    Math.abs(wrapAngle(old.yaw - predicted.yaw)) <= REST_HULL_ANGLE_DEADZONE_RAD &&
+    Math.abs(wrapAngle(old.pitch - predicted.visualPitch)) <=
+      REST_HULL_ANGLE_DEADZONE_RAD &&
+    Math.abs(wrapAngle(old.roll - predicted.visualRoll)) <=
+      REST_HULL_ANGLE_DEADZONE_RAD;
 }
 
 function applyAuthority(state, snapshot) {
@@ -125,6 +148,8 @@ export class LocalTankPredictor {
     this.initialized = false;
     this.lastRecordedSeq = null;
     this.lastAuthorityTick = -1;
+    this.motionIntent = false;
+    this.holdRestingHull = false;
     this.correction = {
       x: 0, y: 0, z: 0, yaw: 0, pitch: 0, roll: 0, turretYaw: 0, gunPitch: 0,
     };
@@ -135,6 +160,7 @@ export class LocalTankPredictor {
       droppedHistory: 0,
       maxPositionErrorM: 0,
       lastPositionErrorM: 0,
+      restingHullHolds: 0,
     };
   }
 
@@ -150,6 +176,8 @@ export class LocalTankPredictor {
       }
     }
     this.lastRecordedSeq = inputSeq;
+    this.motionIntent = hasDriveIntent(input);
+    if (this.motionIntent) this.holdRestingHull = false;
     this.history.push({ input: { ...input }, elapsedS, inputSeq });
     if (this.history.length > MAX_INPUT_HISTORY) {
       this.history.shift();
@@ -170,6 +198,7 @@ export class LocalTankPredictor {
     // cannot turn the origin-to-spawn distance into a hard snap/correction.
     if (!this.initialized) {
       this.initialized = true;
+      this.holdRestingHull = false;
       applyAuthority(this.simEntity.state, snapshot);
       for (const key of CORRECTION_KEYS) this.correction[key] = 0;
       copyPresentation(this.entity.state, this.simEntity.state, this.correction);
@@ -204,6 +233,7 @@ export class LocalTankPredictor {
     this.stats.maxPositionErrorM = Math.max(this.stats.maxPositionErrorM, positionError);
     if (positionError > this.hardSnapDistanceM || destroyed || snapshot.destroyed) {
       for (const key of CORRECTION_KEYS) this.correction[key] = 0;
+      this.holdRestingHull = false;
       this.stats.hardSnaps++;
     } else {
       this.correction.x = old.x - predicted.pos.x;
@@ -214,6 +244,13 @@ export class LocalTankPredictor {
       this.correction.roll = wrapAngle(old.roll - predicted.visualRoll);
       this.correction.turretYaw = wrapAngle(old.turretYaw - predicted.turretYaw);
       this.correction.gunPitch = wrapAngle(old.gunPitch - predicted.gunPitch);
+      this.holdRestingHull = canHoldRestingHull(
+        old,
+        predicted,
+        snapshot,
+        this.motionIntent || this.history.some((frame) => hasDriveIntent(frame.input)),
+      );
+      if (this.holdRestingHull) this.stats.restingHullHolds++;
     }
     this.present(elapsedS);
     return true;
@@ -222,7 +259,10 @@ export class LocalTankPredictor {
   present(elapsedS = 0) {
     const dt = Math.max(0, Math.min(Number(elapsedS) || 0, 0.1));
     const decay = this.correctionTauS > 0 ? Math.exp(-dt / this.correctionTauS) : 0;
-    for (const key of CORRECTION_KEYS) this.correction[key] *= decay;
+    for (const key of AIM_CORRECTION_KEYS) this.correction[key] *= decay;
+    if (!this.holdRestingHull) {
+      for (const key of HULL_CORRECTION_KEYS) this.correction[key] *= decay;
+    }
     copyPresentation(this.entity.state, this.simEntity.state, this.correction);
   }
 

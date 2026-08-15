@@ -3,6 +3,12 @@ const VELOCITY_SCALE = 100;      // centimeters / second
 const ANGLE_SCALE = 32767 / Math.PI;
 const MAX_ENTITIES = 32;
 const MAX_SHELLS = 256;
+const REST_SPEED_MPS = 0.08;
+const REST_HORIZONTAL_DEADZONE_M = 0.025;
+const REST_VERTICAL_DEADZONE_M = 0.025;
+const REST_YAW_DEADZONE_RAD = 0.00035;
+const REST_TILT_DEADZONE_RAD = 0.0035;
+const REST_POSE = Symbol('networkRestPose');
 const ENTITY_DELTA_FIELDS = Object.freeze([
   'id', 'specId', 'team',
   'x', 'y', 'z', 'vx', 'vz',
@@ -307,6 +313,62 @@ function extrapolateEntity(raw, extraS, target = null) {
   return entity;
 }
 
+function stabilizeRestPose(entity) {
+  let rest = entity[REST_POSE];
+  if (!rest) {
+    rest = {
+      x: entity.x,
+      y: entity.y,
+      z: entity.z,
+      yaw: entity.yaw,
+      pitch: entity.pitch,
+      roll: entity.roll,
+    };
+    Object.defineProperty(entity, REST_POSE, { value: rest });
+    return entity;
+  }
+  const moving = Math.hypot(entity.vx || 0, entity.vz || 0) > REST_SPEED_MPS;
+  if (moving) {
+    rest.x = entity.x;
+    rest.y = entity.y;
+    rest.z = entity.z;
+    rest.yaw = entity.yaw;
+    rest.pitch = entity.pitch;
+    rest.roll = entity.roll;
+    return entity;
+  }
+
+  if (Math.hypot(entity.x - rest.x, entity.z - rest.z) <=
+      REST_HORIZONTAL_DEADZONE_M) {
+    entity.x = rest.x;
+    entity.z = rest.z;
+  } else {
+    rest.x = entity.x;
+    rest.z = entity.z;
+  }
+  if (Math.abs(entity.y - rest.y) <= REST_VERTICAL_DEADZONE_M) {
+    entity.y = rest.y;
+  } else {
+    rest.y = entity.y;
+  }
+  if (Math.abs(shortestAngleDelta(rest.yaw, entity.yaw)) <= REST_YAW_DEADZONE_RAD) {
+    entity.yaw = rest.yaw;
+  } else {
+    rest.yaw = entity.yaw;
+  }
+  if (Math.abs(shortestAngleDelta(rest.pitch, entity.pitch)) <= REST_TILT_DEADZONE_RAD) {
+    entity.pitch = rest.pitch;
+  } else {
+    rest.pitch = entity.pitch;
+  }
+  if (Math.abs(shortestAngleDelta(rest.roll, entity.roll)) <= REST_TILT_DEADZONE_RAD) {
+    entity.roll = rest.roll;
+  } else {
+    rest.roll = entity.roll;
+  }
+  return entity;
+}
+
 /**
  * Client-side jitter buffer. It renders slightly behind authority, uses
  * Hermite motion for tracked vehicles, and bounds extrapolation during loss.
@@ -412,6 +474,8 @@ export class SnapshotBuffer {
     this.arrivalJitterMs = 0;
     this.lastArrivalMs = null;
     this.lastServerTimeMs = null;
+    this.sampleEntities.clear();
+    this.olderById.clear();
   }
 
   getStats() {
@@ -460,7 +524,8 @@ export class SnapshotBuffer {
         renderTime - newer.serverTimeMs));
       if (extraMs > 0) this.extrapolatedSamples++;
       for (const raw of newer.entities) {
-        entities.push(extrapolateEntity(raw, extraMs / 1000, this.sampleEntity(raw.id)));
+        const sampled = extrapolateEntity(raw, extraMs / 1000, this.sampleEntity(raw.id));
+        entities.push(raw.id === this.immediateEntityId ? sampled : stabilizeRestPose(sampled));
       }
     } else {
       const durationMs = newer.serverTimeMs - older.serverTimeMs;
@@ -470,10 +535,11 @@ export class SnapshotBuffer {
       for (const entity of older.entities) olderById.set(entity.id, entity);
       for (const current of newer.entities) {
         const previous = olderById.get(current.id);
-        entities.push(previous
+        const sampled = previous
           ? interpolateEntity(previous, current, t, durationMs / 1000,
             this.sampleEntity(current.id), this.decodeScratchA, this.decodeScratchB)
-          : decodeEntitySnapshot(current, this.sampleEntity(current.id)));
+          : decodeEntitySnapshot(current, this.sampleEntity(current.id));
+        entities.push(current.id === this.immediateEntityId ? sampled : stabilizeRestPose(sampled));
       }
     }
 

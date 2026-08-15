@@ -88,8 +88,10 @@ vehicle, ready up, fight, vote to play again, and rematch without destroying the
 over direct Wi-Fi WebRTC paths. **Ranked** moves authority to the dedicated service and records server-owned rating.
 
 WebRTC separates reliable control and combat events from replaceable 20 Hz state snapshots. Local movement predicts the
-same integrator and reconciles against authority; remote tanks interpolate a bounded snapshot buffer. The complete design
-is in [`docs/MULTIPLAYER-ARCHITECTURE.md`](docs/MULTIPLAYER-ARCHITECTURE.md).
+same integrator and reconciles against authority; remote tanks interpolate a bounded snapshot buffer. Sub-centimeter
+terrain/contact noise is held only while a hull is genuinely parked, without freezing turret or gun articulation, and
+real input or authority motion releases the hold immediately. The complete design is in
+[`docs/MULTIPLAYER-ARCHITECTURE.md`](docs/MULTIPLAYER-ARCHITECTURE.md).
 
 ## Controls
 
@@ -186,6 +188,10 @@ src/net/       protocol v3, rooms, snapshots, prediction, WebRTC and WebSocket a
 src/ui/        garage, battle HUD, room flow, reports, settings and mobile controls
 server/        signaling, distributed room store, dedicated authority, rating and ranked queue
 ```
+
+The renderer uses four quality-scaled cascaded shadow maps with stable texel-anchored filtering. Tanks submit up to three
+articulation-aware convex shadow hulls derived from their authored geometry, so hull, turret, and gun silhouettes remain
+recognizable without sending thousands of decorative triangles through every shadow cascade.
 
 Start with [Product features](docs/FEATURES.md) and
 [How it works](docs/HOW-IT-WORKS.md). Engineering work continues in

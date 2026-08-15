@@ -378,6 +378,16 @@ Lighting = {
 Construct CSM **before** any material is compiled (integration guarantees call order;
 lighting must not lazily defer CSM construction).
 
+The four cascade maps are sized by the active graphics tier. Their five-tap
+PCF rotation is anchored to shadow-map texels rather than screen pixels, so a
+stationary world surface does not hatch or crawl as the camera moves. A minimum
+filter footprint prevents low-resolution tiers from falling below an
+anti-aliased texel. Procedural vehicles disable their thousands of detailed
+shadow submissions and instead provide at most three articulation-aware convex
+support hulls derived from the authored hull, turret, and gun meshes. Terrain,
+buildings, poles, near vegetation, and dedicated wreck proxies remain regular
+casters; distant decorative foliage stays intentionally non-casting.
+
 #### 3.1.3 `sky.js`
 ```js
 export function createSky(scene, renderer) => SkyRig

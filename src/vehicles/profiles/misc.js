@@ -257,32 +257,6 @@ function mudflap(P, x, y, z, w = 0.56, h = 0.36) {
   P.add('hullRubber', box(w, h, 0.035), x, y, z);
 }
 
-// Tighten the factory's generic hull shadow proxy to THIS build's real gear
-// envelope. The proxy is installed AFTER profile builders run and its track
-// boxes span hullLen*0.90 at y 0.07 — on short-contact-patch builds (type90:
-// contact [-2.4, 2.2] under a 7.45 hull) the exposed corners print in the
-// gate masks (§C: shadow proxies ARE mask geometry) as ground-level track
-// where the reference shows climbing ramps. The microtask runs after
-// createTank returns, before any render; geometry only — the proxy mesh,
-// material and articulation stay the factory's.
-function tightenHullShadowProxy(P, { xc, trackW, y0, y1, z0, z1, hullZ0, hullZ1 }) {
-  queueMicrotask(() => {
-    P.hullG.traverse((o) => {
-      if (!o.isMesh || o.name !== 'procShadow_hull') return;
-      const old = o.geometry;
-      const hw = P.spec.dims.widthM / 2;
-      const hullH = Math.max(0.55, Math.min(P.spec.dims.heightM * 0.45, P.spec.armor.turretPivot[1] * 0.72));
-      const parts = [
-        KIT.xform(KIT.box(hw * 1.64, hullH, hullZ1 - hullZ0), 0, hullH * 0.58 + 0.12, (hullZ0 + hullZ1) / 2),
-        KIT.xform(KIT.box(trackW, y1 - y0, z1 - z0), -xc, (y0 + y1) / 2, (z0 + z1) / 2),
-        KIT.xform(KIT.box(trackW, y1 - y0, z1 - z0), xc, (y0 + y1) / 2, (z0 + z1) / 2),
-      ];
-      o.geometry = KIT.mergeAll(parts);
-      old.dispose();
-    });
-  });
-}
-
 // (raisedEndWheels static-primitive workaround DELETED — the kit track fix
 // at 146d25c runs the flat contact span over the road-wheel patch only and
 // ramps the band tangentially to raised end wheels with a source-level
@@ -570,13 +544,6 @@ function buildAriete(P) {
   // rows reach near-ground at +-1.07-1.13; outer face stays 1.695; tub +-1.03
   // keeps 4.5 cm to the inner band plane, audit dilates 2)
   wheelRecessAt(P, wheelZs, 1.3725, 0.43, 0.345, 0.21, 'hullRunningGearDark');
-  // The colour-invisible procedural shadow carrier ends at the real lower
-  // tub's z=-2.90 station.  Extending it to -3.20 put a shadow-only box
-  // through the elevated final-drive shoes even though the rendered Ariete
-  // body and its supported rear service courses were already clear.
-  tightenHullShadowProxy(P, { xc: 1.3725, trackW: 0.34, y0: 0.15, y1: 0.58,
-    z0: -2.40, z1: 2.60, hullZ0: -2.90, hullZ1: 3.20 });
-
   // ---- turret: canted-wall welded slab + raised front roof + TURMS +
   // pano tower + hatch notch + low rear basket (r4 architecture RESTORED
   // after the turret-fix round's re-lay experiments: the r4 roof was
@@ -944,7 +911,6 @@ function buildArieteNative2026(P) {
     contactZF: 2.22, contactZR: -2.05,
     deadSag: 0.022, paintedEnds: true, coveredTop: true, arms: true,
   });
-  tightenHullShadowProxy(P, { xc: XC, trackW: 0.34, y0: 0.15, y1: 0.58, z0: -2.40, z1: 2.60, hullZ0: -3.20, hullZ1: 3.20 });
 
   // ---- low, broad connected Ariete turret ----
   P.turretG.position.set(0, 1.38, -0.18);
@@ -2537,7 +2503,6 @@ function buildType90(P) {
   // lint can distinguish the intended recess behind each road wheel from a
   // hull plate penetrating the shoe course.
   wheelRecessAt(P, wheelZs, 1.286, 0.47, 0.37, 0.21, 'hullRunningGearDark');
-  tightenHullShadowProxy(P, { xc: 1.286, trackW: 0.36, y0: 0.15, y1: 0.60, z0: -2.35, z1: 2.25, hullZ0: -3.10, hullZ1: 3.10 });
 
   // ---- turret: §B7 REAL-PROPORTION BAND (owner ruling §5.28, 2026-08-07) ----
   // The print (recovered/type90.glb) is REF-WRONG on turret height: its
@@ -2999,7 +2964,6 @@ function buildType74(P) {
   // The animated native wheel faces already carry their own deep dishes.
   // Do not add the legacy static recess cylinders here: they occupy the same
   // swept volume as the moving shoes and create a second, hull-owned layer.
-  tightenHullShadowProxy(P, { xc: XC, trackW: 0.34, y0: 0.15, y1: 0.60, z0: -2.10, z1: 2.30, hullZ0: -3.10, hullZ1: 2.90 });
 
   // ---- turret: low long cast dome flowing into a tapered bustle (STB-1
   // lineage), seated FORWARD per the print (pivot z +0.50; crown zone
@@ -3215,7 +3179,6 @@ function buildType74Native2026(P) {
     trackW: 0.55, trackTh: 0.065, topY: 1.02, botY: 0.035,
     deadSag: 0.025, paintedEnds: true, coveredTop: false, arms: true,
   });
-  tightenHullShadowProxy(P, { xc: XC, trackW: 0.34, y0: 0.13, y1: 0.72, z0: -2.75, z1: 2.75, hullZ0: -3.12, hullZ1: 3.14 });
 
   // ---- low compact asymmetric cast turret, one continuous primary loft ----
   P.turretG.position.set(0, 1.35, 0.34);
