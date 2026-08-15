@@ -4409,7 +4409,7 @@ function buildT72B3M(P) {
   // on-element on-view; iterate BY SAMPLE). Per-instance material edits —
   // createTankMaterials is per-tank (merkava refTone precedent), so the
   // russia siblings never see these hexes.
-  P.mats.spareTrack.color.setHex(0x334128);   // fade strips/spare links: sampled H66 S10 -> ref idler-zone H82 S18
+  P.mats.spareTrack.color.setHex(0x303d2b);   // painted ERA/spare-link family: deep factory green, never mint
                                               // (r2: one hue step greener — the warm cast read cream from the front)
   P.mats.dark.color.setHex(0x2c3126);         // fittings gunmetal off the warm brown; r2 darker still so the
                                               // ring gap wedges/creases read as SHADOW against the scheme
@@ -4430,7 +4430,7 @@ function buildT72B3M(P) {
   // r16: lift halved 0.085->0.045 — the r15 lift made the ring lids/tiles
   // the brightest pixels on 4 views (crown-ring p90 85.6 vs ref 67.2); the
   // ring swing now comes from cloth-shadow gaps + a softer lid family.
-  P.mats.detail.color.offsetHSL(0, 0.01, 0.02);   // r16b: lids sampled 94-112 at +0.045; ref ring zone p90 is 67
+  P.mats.detail.color.setHex(0x35472f);       // fittings stay legible without pale olive islands
   P.mats.detail.emissive.setHex(0x0d0f09);    // r18 item 10: the ring lids'/rims' SHADE faces measured medL 44 —
                                               // the exact close-roof sub-45 clusters (same rects in the r6
                                               // baseline); +12L floor lands them in the 50-58 order window while
@@ -4450,7 +4450,7 @@ function buildT72B3M(P) {
                                               // (sampled: vertical faces render ~1.16x raw luma under the frontal
                                               // key — 0x474d37 ran the glacis to 86 vs ref 62; raw-57 lands 62-66)
   P.mats.rubber.emissive.setHex(0x080906);    // shade-floor so ring undersides stay in-family
-  P.mats.canvasCloth.color.setHex(0x3d442d);  // r19 item 9: +5 raw — rack TOP faces sampled 55.9 vs ref 62.2 from
+  P.mats.canvasCloth.color.setHex(0x35402b);  // canvas stays distinct without becoming a tan/light-olive patch
                                               // above (the top-N med order); sides move 78.6->~82 vs ref 80.9
                                               // (+1.5 over, traded for the +6 top order)
                                               // bags/cloth: kill the ochre top-face accent (bar samples H81 = ref
@@ -4524,7 +4524,7 @@ function buildT72B3M(P) {
     P.turretG.traverse((ob) => {
       if (ob.isMesh && ob.material === P.mats.spareTrack) {
         ob.material = ob.material.clone();
-        ob.material.color.setHex(0x415238);
+        ob.material.color.setHex(0x35472f);
       }
     });
     // r20 item 1e: the hullWood bucket (unused on this build until now)
@@ -4538,7 +4538,7 @@ function buildT72B3M(P) {
         // 0x415238 rendered 69.1 on the flatter deck faces (crown's 60-64
         // came from the annulus curvature) — one step down lands the ref's
         // 65.2 deck med
-        ob.material.color.setHex(0x3c4c34);
+        ob.material.color.setHex(0x34452f);
         if (ob.material.emissive) ob.material.emissive.setHex(0x0c0f09);
       }
     });

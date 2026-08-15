@@ -457,6 +457,12 @@ function paintCamo(canvas, visual, rng, feats, seed) {
   // quilt — big soft fields of sun-faded and oil-darkened paint at low
   // contrast, the multi-tone base every real monotone tank carries.
   if ((visual.scheme || 'solid') === 'solid') {
+    // Per-vehicle control for unusually clean factory finishes. Keep the
+    // fleet default byte-for-byte at 1; T-72B3M uses a restrained value so
+    // the warm garage key cannot turn the large procedural patina fields
+    // into disconnected mint/light-olive armor islands.
+    const solidWeatheringIntensity = Math.max(0,
+      Math.min(1, visual.solidWeatheringIntensity ?? 1));
     for (let i = 0; i < 14; i++) {
       const x = rng() * S, y = rng() * S, r = S * (0.09 + rng() * 0.20);
       const warm = rng() < 0.5;
@@ -468,7 +474,7 @@ function paintCamo(canvas, visual, rng, feats, seed) {
         : scale3(mix(base, weather, 0.5), 0.84);             // oil/soot-deepened
       const p = blobPath2D(rng, x, y, r, 8, 0.5);
       ctx.filter = `blur(${(S * 0.004).toFixed(1)}px)`;
-      fillWrapped(ctx, S, p, rgb(tone, 0.15));
+      fillWrapped(ctx, S, p, rgb(tone, 0.15 * solidWeatheringIntensity));
       ctx.filter = 'none';
     }
   }
@@ -2393,12 +2399,15 @@ function paintCamo(canvas, visual, rng, feats, seed) {
     // darker oil/soot pooling, and fine dust-run streaks keep the paint
     // reading as a maintained field vehicle, never parade clay. All alphas
     // stay low so the coat remains clean at distance.
+    const solidWeatheringIntensity = Math.max(0,
+      Math.min(1, visual.solidWeatheringIntensity ?? 1));
     const fade = mix(weather, [172, 162, 124], 0.16);
     for (let i = 0; i < 26; i++) {                 // sun-fade / repaint panels
       const x = rng() * S, y = rng() * S, r = S * (0.05 + rng() * 0.13);
       const tone = i % 3 === 2 ? scale3(base, 0.80) : fade;
       const g = ctx.createRadialGradient(x, y, 0, x, y, r);
-      g.addColorStop(0, rgb(tone, 0.15 + rng() * 0.13));
+      g.addColorStop(0, rgb(tone,
+        (0.15 + rng() * 0.13) * solidWeatheringIntensity));
       g.addColorStop(1, rgb(tone, 0));
       ctx.fillStyle = g;
       ctx.fillRect(x - r, y - r, r * 2, r * 2);
@@ -2409,7 +2418,8 @@ function paintCamo(canvas, visual, rng, feats, seed) {
       const path = new Path2D();
       path.moveTo(x0, y0);
       path.lineTo(x0 + (rng() - 0.5) * 7, y0 + len);
-      strokeWrapped(ctx, S, path, rgb(tone, 0.07 + rng() * 0.09), 1.5 + rng() * 3.5);
+      strokeWrapped(ctx, S, path, rgb(tone,
+        (0.07 + rng() * 0.09) * solidWeatheringIntensity), 1.5 + rng() * 3.5);
     }
     // ===================== END CAMO PATTERN SECTION =================
   }

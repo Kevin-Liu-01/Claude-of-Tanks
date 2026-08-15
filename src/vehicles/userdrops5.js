@@ -168,7 +168,16 @@ const SPECS = [
       // aft of the local rig origin.  Presentation-only compensation keeps
       // the hull/ring centered on the garage disc without moving gameplay,
       // armor, track, turret or icon geometry.
-      visual: { garageHullOffsetZ: 0.81 } }),
+      visual: {
+        garageHullOffsetZ: 0.81,
+        // Keep the authored factory-green field coherent under the warm
+        // garage key. The fleet solid painter otherwise adds broad dusty
+        // lifts that read as accidental light-olive replacement panels on
+        // this densely segmented ERA/roof layout.
+        base: '#2f402c',
+        weather: '#33452f',
+        solidWeatheringIntensity: 0.08,
+      } }),
   make('t90a', 't72bu', 'T-72BU', 'USSR/Russia',
     { hp: 2050, weightTons: 46.5, topSpeedKmh: 65, gun: { reloadS: 7.0 } }),
   make('t90m', 't90sm', 'T-90SM', 'Russia',
