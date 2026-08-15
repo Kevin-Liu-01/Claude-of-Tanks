@@ -255,12 +255,16 @@
     }
     .cot-boot-links { display: flex; justify-content: center; gap: 10px; margin-top: 14px; }
     .cot-boot-link {
+      box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
       min-width: 118px; padding: 10px 15px; border: 1px solid rgba(159,176,191,.34);
       background: rgba(6,10,14,.68); color: #c6d2dc; cursor: pointer;
       font: 700 10px/1 'ABC Monument Grotesk', 'Arial Narrow', Arial, sans-serif;
       letter-spacing: .18em; text-transform: uppercase; text-decoration: none;
       transition: border-color .18s ease, color .18s ease, background .18s ease;
     }
+    .cot-boot-links > .cot-boot-link { width: 132px; min-width: 132px; height: 38px; padding: 0 14px; }
+    .cot-boot-link-icon { width: 15px; height: 15px; flex: 0 0 15px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .cot-boot-link-icon.github { fill: currentColor; stroke: none; }
     .cot-boot-link:hover { border-color: #f0a030; color: #ffe4b0; background: rgba(33,24,12,.78); }
     .cot-boot-link:focus-visible { outline: 2px solid #f0a030; outline-offset: 3px; }
     .cot-credits {
@@ -561,8 +565,20 @@
 
       <div class="cot-boot-tip" id="cot-boot-tip"></div>
       <div class="cot-boot-links" data-cot-boot-control>
-        <button class="cot-boot-link" id="cot-credits-open" type="button">Credits</button>
-        <a class="cot-boot-link" href="https://github.com/Kevin-Liu-01/Claude-of-Tanks" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <button class="cot-boot-link" id="cot-credits-open" type="button">
+          <svg class="cot-boot-link-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <rect x="3" y="5" width="18" height="14" rx="2" />
+            <circle cx="9" cy="11" r="2.2" />
+            <path d="M5.8 16c.7-1.7 1.8-2.6 3.2-2.6s2.5.9 3.2 2.6M14.8 10h3.4M14.8 14h3.4" />
+          </svg>
+          <span>Credits</span>
+        </button>
+        <a class="cot-boot-link" href="https://github.com/Kevin-Liu-01/Claude-of-Tanks" target="_blank" rel="noopener noreferrer">
+          <svg class="cot-boot-link-icon github" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M12 .8A11.4 11.4 0 0 0 8.4 23c.6.1.8-.3.8-.6v-2.2c-3.3.7-4-1.4-4-1.4-.5-1.4-1.3-1.8-1.3-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.7 1.3 3.4 1 .1-.8.4-1.3.8-1.6-2.6-.3-5.4-1.3-5.4-5.7 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.1 1.2A10.8 10.8 0 0 1 12 5.8c1 0 1.9.1 2.8.4C17 4.7 18 5 18 5c.6 1.6.2 2.8.1 3.1.8.8 1.2 1.8 1.2 3.1 0 4.4-2.7 5.4-5.4 5.7.4.4.8 1.1.8 2.1v3.3c0 .3.2.7.8.6A11.4 11.4 0 0 0 12 .8Z" />
+          </svg>
+          <span>GitHub</span>
+        </a>
       </div>
       <div class="cot-boot-gate" id="cot-boot-gate">Press any key to continue</div>
       <button class="cot-boot-retry" id="cot-boot-retry" type="button">Retry loading</button>
