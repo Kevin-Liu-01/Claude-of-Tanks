@@ -7,11 +7,6 @@ import { createTank } from '/src/vehicles/tankFactory.js';
 
 const id = new URLSearchParams(location.search).get('id');
 
-const ABRAMS_IDS = new Set([
-  'm1a1', 'm1a1ha', 'm1a2', 'm1a2_legacy', 'm1a2_tusk',
-  'm1a2_sepv2', 'm1a2_sepv3', 'abramsx',
-]);
-
 // Duplicate-course repair is never bodywork repair. These names describe
 // load-bearing or protective vehicle geometry even when a bucket contains
 // the word "track" (for example hullTrackGuardL/R). Keep them out of the
@@ -61,6 +56,93 @@ function laneAbsX(object) {
   }
   values.sort((a, b) => a - b);
   return values[Math.floor(values.length / 2)];
+}
+
+function roadWheelStations(rows) {
+  const matrix = new THREE.Matrix4();
+  const world = new THREE.Matrix4();
+  const center = new THREE.Vector3();
+  const stations = [];
+  for (const row of rows.filter((item) => item.name === 'gearRoadWheelTires')) {
+    const geometry = row.object.geometry;
+    geometry.computeBoundingBox();
+    const size = geometry.boundingBox.getSize(new THREE.Vector3());
+    const radius = Math.max(size.y, size.z) / 2;
+    for (let i = 0; i < row.object.count; i++) {
+      row.object.getMatrixAt(i, matrix);
+      world.multiplyMatrices(row.object.matrixWorld, matrix);
+      center.setFromMatrixPosition(world);
+      stations.push({ center: center.clone(), radius });
+    }
+  }
+  return stations;
+}
+
+function staticRoadWheelOverlay(row, stations) {
+  const object = row.object;
+  if (object.isInstancedMesh || object.userData?.endWheelFace || row.protectedBodywork) return null;
+  if (/track|wheel.?bay|shadow|recess|backer|occlusion/i.test(row.name)
+      || /^gear(?:EndWheel|ReturnRoller|Suspension)/i.test(row.name)) return null;
+
+  const position = object.geometry.getAttribute('position');
+  if (!position) return null;
+  const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
+  const ab = new THREE.Vector3(), ac = new THREE.Vector3(), normal = new THREE.Vector3();
+  const point = new THREE.Vector3();
+  const hits = new Map();
+  for (let vertex = 0; vertex + 2 < position.count; vertex += 3) {
+    a.fromBufferAttribute(position, vertex).applyMatrix4(object.matrixWorld);
+    b.fromBufferAttribute(position, vertex + 1).applyMatrix4(object.matrixWorld);
+    c.fromBufferAttribute(position, vertex + 2).applyMatrix4(object.matrixWorld);
+    normal.copy(ab.subVectors(b, a)).cross(ac.subVectors(c, a)).normalize();
+    if (Math.abs(normal.x) < 0.78) continue;
+    point.copy(a).add(b).add(c).multiplyScalar(1 / 3);
+    for (let station = 0; station < stations.length; station++) {
+      const wheel = stations[station];
+      if (Math.sign(point.x || 1) !== Math.sign(wheel.center.x || 1)) continue;
+      const faceOffset = Math.abs(point.x) - Math.abs(wheel.center.x);
+      if (faceOffset < 0.035 || faceOffset > 0.42) continue;
+      const radiusRatio = Math.hypot(point.y - wheel.center.y, point.z - wheel.center.z) / wheel.radius;
+      if (radiusRatio > 1.04) continue;
+      const vertexRadiusRatio = Math.max(
+        Math.hypot(a.y - wheel.center.y, a.z - wheel.center.z),
+        Math.hypot(b.y - wheel.center.y, b.z - wheel.center.z),
+        Math.hypot(c.y - wheel.center.y, c.z - wheel.center.z),
+      ) / wheel.radius;
+      const hit = hits.get(station) || { triangles: 0, maxRadiusRatio: 0, quadrants: 0 };
+      hit.triangles++;
+      hit.maxRadiusRatio = Math.max(hit.maxRadiusRatio, vertexRadiusRatio);
+      const qy = point.y >= wheel.center.y ? 1 : 0;
+      const qz = point.z >= wheel.center.z ? 1 : 0;
+      hit.quadrants |= 1 << (qy * 2 + qz);
+      hits.set(station, hit);
+    }
+  }
+
+  const explicitFaceName = /road.?wheel|wheel.?face|wheel.?dress|rim.?glint/i.test(row.name);
+  const matchedStations = [...hits.entries()].filter(([, hit]) => {
+    const quadrantCount = hit.quadrants.toString(2).replaceAll('0', '').length;
+    return hit.triangles >= 2
+      && (explicitFaceName
+        || (hit.triangles >= 80 && hit.maxRadiusRatio >= 0.66 && quadrantCount >= 3));
+  });
+  if (!matchedStations.length) return null;
+  const size = row.bounds.size;
+  const centeredSingleWheelFace = matchedStations.length === 1
+    && size[0] <= 0.20 && size[1] >= 0.18 && size[2] >= 0.18
+    && size[1] <= 0.95 && size[2] <= 0.95;
+  const authoredGearFaceCourse = row.runningGear
+    || explicitFaceName;
+  if (!centeredSingleWheelFace && !authoredGearFaceCourse) return null;
+
+  return {
+    name: row.name || '(unnamed)',
+    matchedStations: matchedStations.length,
+    matchedTriangles: matchedStations.reduce((sum, [, hit]) => sum + hit.triangles, 0),
+    maxRadiusRatio: Number(Math.max(...matchedStations.map(([, hit]) => hit.maxRadiusRatio)).toFixed(3)),
+    min: row.bounds.min.map((value) => Number(value.toFixed(3))),
+    max: row.bounds.max.map((value) => Number(value.toFixed(3))),
+  };
 }
 
 function longitudinalCoverage(row, bands, bins = 24) {
@@ -128,12 +210,11 @@ try {
   const pads = rows.filter((row) => row.name === 'gearTrackPads');
   const inner = rows.filter((row) => row.name === 'gearTrackInnerLinks');
   const roadWheelLayers = rows.filter((row) => /^gearRoadWheel/.test(row.name));
+  const wheelStations = roadWheelStations(roadWheelLayers);
   const staticRoadWheelOverlays = rows
-    .filter((row) => !row.object.isInstancedMesh
-      && !row.object.userData?.endWheelFace
-      && /road.?wheel|wheel.?face|wheel.?dress/i.test(row.name))
-    .map((row) => row.name || '(unnamed)');
-  const abramsRoadWheelPass = !ABRAMS_IDS.has(id)
+    .map((row) => staticRoadWheelOverlay(row, wheelStations))
+    .filter(Boolean);
+  const roadWheelPass = !wheelStations.length
     || (roadWheelLayers.some((row) => row.name === 'gearRoadWheelTires')
       && roadWheelLayers.some((row) => row.name === 'gearRoadWheelDiscs')
       && roadWheelLayers.every((row) => row.object.isInstancedMesh)
@@ -207,7 +288,7 @@ try {
     pass: inner.length === 0
       && duplicatePairs.length === 0
       && staticCandidates.length === 0
-      && abramsRoadWheelPass,
+      && roadWheelPass,
   };
 } catch (error) {
   window.__TRACK_DUPLICATE_AUDIT = { id, error: String(error?.stack || error), pass: false };

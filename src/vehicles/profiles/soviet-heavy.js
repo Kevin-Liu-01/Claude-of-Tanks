@@ -69,7 +69,7 @@ function sovGear(P, g) {
   const lift = g.yLift ?? 0;              // 279 inner pair rides high: its
                                           // oracle keeps the centre-bottom
                                           // clear between the corner tracks
-  buildRunningGear(P, {
+  const gear = buildRunningGear(P, {
     // kv2 shaded-parity r3 (tell2 "stamped discs"): optional style override.
     // 'holes' carries its 6 big dark pocket voids in the same instanced list
     // as the dish, so the pockets SPIN+BOB with the wheel — the only
@@ -93,9 +93,10 @@ function sovGear(P, g) {
   // bolt ring (all of which stand proud of it), so hubs and rims read out of
   // the wheel-bay shadow under any camo. These are native running-gear
   // members, so the dedicated buckets keep the hull-corridor census truthful.
-  for (const z of wheelZs) for (const s of [-1, 1]) {
-    P.add(g.corridorOwned ? 'hullRunningGearDark' : 'hullDark', cylX(g.wheelR * 0.72, wheelW * 1.06, 12), s * g.xc, g.wheelY + lift, z);
-  }
+  gear.addRoadWheelLayer(cylX(g.wheelR * 0.72, wheelW * 1.06, 12), P.mats.dark, {
+    name: 'gearRoadWheelRecesses',
+  });
+  return gear;
 }
 
 // Squashed cast dome ("frying pan"): lathe profile [[r, y]...] stretched
@@ -1177,7 +1178,7 @@ function buildKV2(P) {
       P.add('hullRunningGearTrack', box(0.008, 0.25, 0.06), sx * 1.6555, 0.18, -2.70 + k * 0.95);
     }
   }
-  sovGear(P, {
+  const gear = sovGear(P, {
     xc: 1.2925, trackW: 0.645, wheels: 6, wheelR: 0.30, wheelY: 0.33, span: 4.72, zc: -0.075, topY: 1.00, botY: 0.13,
     sprocketY: 0.73, sprocketR: 0.335, sprocketDz: 0.585, idlerY: 0.76, idlerR: 0.255, idlerDz: 0.505,
     rollers: [-1.625, -0.075, 1.475].map((z) => ({ z, y: 1.04, r: 0.085 })),
@@ -1199,15 +1200,15 @@ function buildKV2(P) {
     // an X-facing wheel ring needs rz π/2, never ry (a flat ring poked the
     // 1.66 width guard by its full major radius and safeScale-shrank the
     // whole build 6% before this was caught).
-    const wzs = Array.from({ length: 6 }, (_, i) => -0.075 + 2.36 - i * 0.944);
+    gear.addRoadWheelLayer(KIT.torus(0.268, 0.012, 12).rotateZ(Math.PI / 2), P.mats.spareTrack, {
+      outset: 0.141,
+      name: 'gearRoadWheelFacetRims',
+    });
+    gear.addRoadWheelLayer(KIT.torus(0.162, 0.014, 14).rotateZ(Math.PI / 2), P.mats.dark, {
+      outset: 0.1235,
+      name: 'gearRoadWheelDarkAnnuli',
+    });
     for (const sx of [-1, 1]) {
-      for (const wz of wzs) {
-        P.add('hullRunningGearTrack', KIT.torus(0.268, 0.012, 12), sx * 1.4335, 0.33, wz, 0, 0, Math.PI / 2); // faceted rim ring
-        // dark mid-annulus just behind the six spinning pocket voids: the
-        // pocket band reads as one recessed slotted annulus with AO floors
-        // (the pocket inserts themselves are retinted near-black below).
-        P.add('hullRunningGearDark', KIT.torus(0.162, 0.014, 14), sx * 1.4160, 0.33, wz, 0, 0, Math.PI / 2);
-      }
       // idler face (ref: open spoked wheel you can see through): big dark
       // void annulus PROUD of the kit hub drum (face 1.5712) + six warm
       // steel spokes + rim/hub rings; the kit hub cap (1.5835) pokes

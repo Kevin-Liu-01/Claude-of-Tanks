@@ -140,6 +140,7 @@ function leoGear(P, g) {
     // defaults stay byte-identical (a6/kf51/a5 hashes hold).
     padHex: g.padHex, chainHex: g.chainHex, tireHex: g.tireHex,
     gearFloor: g.gearFloor,
+    wheelFaceLayers: g.wheelFaceLayers,
     // r15 leo2_revolution §B6 opt-in (m1a2 contact-pin precedent, factory
     // ~line 869): per-tank contact-patch pins — moving zF rearward flattens
     // the approach tangent to the raised idler. Undefined for every other
@@ -936,6 +937,7 @@ function leoHullV3(P, H) {
     // byte-identical, sibling hashes hold).
     gearFloor: H.gearFloor, tireHex: H.tireHex, padHex: H.padHex, chainHex: H.chainHex,
     shoeRadialScale: H.shoeRadialScale, innerLinks: H.innerLinks,
+    wheelFaceLayers: H.wheelFaceLayers,
   });
 }
 
@@ -2574,6 +2576,24 @@ function buildLeo2A6(P) {
 function buildLeo2A5(P) {
   const { box } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
+  const hookWheelFace = (material) => {
+    material.onBeforeCompile = vehicleAmbientFloorHook;
+    material.customProgramCacheKey = () => 'veh-ambient-floor-v2';
+    return material;
+  };
+  const tireRing = hookWheelFace(P.mats.wheels.clone());
+  tireRing.color.setHex(0x393a30);
+  tireRing.envMapIntensity = 0.05;
+  tireRing.roughnessMap = null;
+  tireRing.roughness = 0.97;
+  tireRing.side = THREE.DoubleSide;
+  const rimRing = hookWheelFace(P.mats.wheels.clone());
+  rimRing.color.setHex(0x454435);
+  rimRing.envMapIntensity = 0.06;
+  rimRing.roughnessMap = null;
+  rimRing.roughness = 0.95;
+  rimRing.side = THREE.DoubleSide;
+  P.disposables.push(tireRing, rimRing);
   // r9 1a CROWN-TONE COLLECTOR: every r6/r8 pale lit-kit crown (strap
   // crowns, rail crowns, roll glints, folded tarps) moves off the fleet
   // hullDetail bucket onto the a5 litKit clone in the r9 tone block —
@@ -2651,6 +2671,18 @@ function buildLeo2A5(P) {
     topY: 0.97, fans: { z: -2.70, x: 0.78, r: 0.38 },
     // VISUAL r1: wider dark tire ring on the wheel faces (a6 r3 #1 wheel law)
     dishR: 0.78,
+    wheelFaceLayers: [
+      {
+        geometry: new THREE.RingGeometry(0.292, 0.363, P.q ? 30 : 22).rotateY(Math.PI / 2),
+        material: tireRing, outset: 1.5035 - 1.37,
+        name: 'gearRoadWheelTireRings', appearanceRole: 'wheelTire',
+      },
+      {
+        geometry: new THREE.RingGeometry(0.212, 0.286, P.q ? 28 : 20).rotateY(Math.PI / 2),
+        material: rimRing, outset: 1.5042 - 1.37,
+        name: 'gearRoadWheelRimRings', appearanceRole: 'wheelDish',
+      },
+    ],
     // VISUAL r6 4a: real fan wells (a6 r3 #6 recipe via the fanWell opt-in —
     // curb top fy+0.0285 stays under the old torus row) — the flush rings
     // read as drawn circles in the r5 verdict (top/toptilt/hero-rr).
@@ -4092,46 +4124,18 @@ function buildLeo2A5(P) {
       blob(camoRed, P.hullG, KIT.xform(KIT.box(0.05, 0.12, 0.411), 0.895, 1.52, -3.5905));
       blob(skinCloth, P.hullG, KIT.xform(KIT.box(0.045, 0.10, 0.432), -1.015, 1.55, -3.58));
       blob(skinCloth2, P.hullG, KIT.xform(KIT.box(0.04, 0.09, 0.412), 0.325, 1.50, -3.5905));
-      // ORDER 2c WHEEL-FACE RINGS (flat camera-facing washers per the r8-i
-      // law — no grazing band; non-casting; L<=56 dark ring + a mid rim
-      // ring, both in the R~G olive family so the gear-window hue/sub45/
-      // corner-ladder system holds — r8 law 5 paired knobs).
-      // (r9-b: tire ring 0x34352c -> 0x393a30 — the L51 first cut fed the
-      // deep-shade sub45 floor +222 behind the comb, the exact paired-knob
-      // trap law 5 warns about; L~55.6 rides above the 45 line while the
-      // rim ring lifts a step for the two-tone delta)
-      const tireRing = rehook(P.mats.wheels.clone());
-      tireRing.color.setHex(0x393a30);
-      tireRing.envMapIntensity = 0.05;
-      tireRing.roughnessMap = null;
-      tireRing.roughness = 0.97;
-      const rimRing = rehook(P.mats.wheels.clone());
-      rimRing.color.setHex(0x454435);
-      rimRing.envMapIntensity = 0.06;
-      rimRing.roughnessMap = null;
-      rimRing.roughness = 0.95;
-      P.disposables.push(tireRing, rimRing);
-      const tireGeos = [];
-      const rimGeos = [];
-      for (const s of [-1, 1]) {
-        for (let k = 0; k < 7; k++) {
-          const wz = 2.70 - k * 0.84;
-          tireGeos.push(KIT.xform(new THREE.RingGeometry(0.292, 0.363, P.q ? 30 : 22), s * 1.5035, 0.395, wz, 0, s * Math.PI / 2, 0));
-          rimGeos.push(KIT.xform(new THREE.RingGeometry(0.212, 0.286, P.q ? 28 : 20), s * 1.5042, 0.395, wz, 0, s * Math.PI / 2, 0));
-        }
-      }
       // merged single-material meshes (draw-call economy); the stern frame
-      // KEEPS casting (structural members, not tone dressing)
-      for (const [geos, mat, parent, cast, runningGear] of [
-        [rimT, rimBand, P.turretG, false, false], [litT, litKit, P.turretG, false, false],
-        [litCrownGeos, litKit, P.hullG, false, false],
-
-        [tireGeos, tireRing, P.hullG, false, true], [rimGeos, rimRing, P.hullG, false, true],
+      // KEEPS casting (structural members, not tone dressing). Road-wheel
+      // faces deliberately stay out of this static finish pass: leoGear's
+      // canonical instanced tires/discs/insets are the sole wheel train and
+      // receive every suspension update.
+      for (const [geos, mat, parent, cast] of [
+        [rimT, rimBand, P.turretG, false], [litT, litKit, P.turretG, false],
+        [litCrownGeos, litKit, P.hullG, false],
       ]) {
         if (!geos.length) continue;
         const merged = KIT.mergeAll(geos);
         const mesh = new THREE.Mesh(merged, mat);
-        if (runningGear) mesh.userData.runningGear = true;
         mesh.receiveShadow = true;
         mesh.castShadow = cast;
         parent.add(mesh);
@@ -4557,15 +4561,8 @@ function buildLeo2A4(P) {
       P.add('hullRubber', box(0.020, 0.05, 0.80), s * 1.785, 0.515, -3.45 + 0.858 * k + 0.42);
     }
   }
-  // §B8 wheel-read (order 1b): seven pale hub discs per side on the road-
-  // wheel outer faces (the revolution P-1 material-only recipe) — 2 mm
-  // proud at x ±1.486 (wheel face 1.4843), inside the wheel circle and
-  // inside the skirt plane: zero silhouette in every row; below the 0.40
-  // skirt bottom they read as the real 2A4's pale hub caps, making the
-  // seven wheels COUNTABLE in the left view (§B8.1 gate 1).
-  // §SRCFIX-0808: r 0.10 -> 0.125 — at 0.10 the disc's visible half sat in
-  // the skirt's ambient shadow and the owner's garage view counted ZERO
-  // wheels; the bigger cap drops more pale area under the 0.44 band line.
+  // Keep the seven readable pale hub caps as a layer of the canonical
+  // suspension-driven wheel train rather than a parked hull-owned row.
   {
     const hubPale = P.mats.shadow.clone();
     hubPale.color.setHex(0x767963);
@@ -4574,14 +4571,10 @@ function buildLeo2A4(P) {
     hubPale.onBeforeCompile = vehicleAmbientFloorHook;
     hubPale.customProgramCacheKey = () => 'veh-ambient-floor-v2';
     P.disposables.push(hubPale);
-    for (const s of [-1, 1]) {
-      for (const hz of [2.70, 1.86, 1.02, 0.18, -0.66, -1.50, -2.34]) {
-        const hm = new THREE.Mesh(KIT.xform(KIT.cylX(0.135, 0.004, P.q ? 16 : 12), s * 1.486, 0.425, hz), hubPale);
-        hm.receiveShadow = true;
-        P.hullG.add(hm);
-        P.disposables.push(hm.geometry);
-      }
-    }
+    P.gear.addRoadWheelLayer(KIT.cylX(0.135, 0.004, P.q ? 16 : 12), hubPale, {
+      outset: 1.486 - 1.37,
+      name: 'gearRoadWheelPaleHubCaps',
+    });
   }
   // Supported upper bow bridges span the small inboard shoulder pocket left
   // by the track-safe glacis lane cut. The upright roots overlap the real
@@ -5289,8 +5282,7 @@ function buildLeo2Proto(P) {
   for (const s of [-1, 1]) {
     P.add('hullShadow', box(0.02, 0.78, 6.90), s * 1.01, 0.93, -0.25);
   }
-  // §B8 wheel-read: seven pale hub discs per side (the a4/revolution P-1
-  // recipe — countable wheels under the hub-line skirts).
+  // Retain the early vehicle's pale hub cadence on the moving wheel train.
   {
     const hubPale = P.mats.shadow.clone();
     hubPale.color.setHex(0x767963);
@@ -5299,14 +5291,10 @@ function buildLeo2Proto(P) {
     hubPale.onBeforeCompile = vehicleAmbientFloorHook;
     hubPale.customProgramCacheKey = () => 'veh-ambient-floor-v2';
     P.disposables.push(hubPale);
-    for (const s of [-1, 1]) {
-      for (const hz of [2.70, 1.86, 1.02, 0.18, -0.66, -1.50, -2.34]) {
-        const hm = new THREE.Mesh(KIT.xform(KIT.cylX(0.10, 0.004, P.q ? 16 : 12), s * 1.486, 0.395, hz), hubPale);
-        hm.receiveShadow = true;
-        P.hullG.add(hm);
-        P.disposables.push(hm.geometry);
-      }
-    }
+    P.gear.addRoadWheelLayer(KIT.cylX(0.10, 0.004, P.q ? 16 : 12), hubPale, {
+      outset: 1.486 - 1.37,
+      name: 'gearRoadWheelPaleHubCaps',
+    });
   }
   // front mudguard assembly (the a4's §B4-certified pieces — identical gear
   // geometry, proven z-planes past the 3.905 idler shoe orbit).
@@ -7107,17 +7095,12 @@ function buildLeo2Revolution(P) {
     });
     forwardMag.position.set(0.98, 0.305, 2.70);
     P.turretG.add(forwardMag);
-    // -- r14 P-1 PALE HUB DOTS (the r9-flagged material-only wheel-row
-    // treatment): seven pale hub discs per side on the road-wheel faces,
-    // 1mm proud (x 1.384..1.388 — inside the wheel circle, inside the
-    // skirt plane: zero silhouette in every row). With the raised rear-
-    // course window they read as the ref's seven pale rims. mgPale family
-    // tone; B1 strip gates re-measured (p5 >=40, med 48..58).
-    for (const hs of [-1, 1]) {
-      for (const hz of [2.42, 1.6833, 0.9467, 0.21, -0.5267, -1.2633, -2.0]) {
-        meshUp(KIT.xform(KIT.cylX(0.10, 0.004, 14), hs * 1.386, 0.39, hz), mgPale, P.hullG, false);
-      }
-    }
+    // Preserve the pale hub read, now driven by the wheel matrices instead
+    // of a fixed row that separated during suspension travel.
+    P.gear.addRoadWheelLayer(KIT.cylX(0.10, 0.004, 14), mgPale, {
+      outset: 1.386 - 1.2875,
+      name: 'gearRoadWheelPaleHubCaps',
+    });
   }
   P.topY = 1.9;
 }

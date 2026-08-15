@@ -180,6 +180,19 @@ function wheelRecess(P, wheelZs, xc, r, w) {
 // (positioned variant — recess at wheel height y)
 function wheelRecessAt(P, wheelZs, xc, y, r, w, bucket = 'hullDark') {
   const { cylX } = KIT;
+  const layout = P.gear?.roadWheelLayout;
+  if (layout && P.gear?.addRoadWheelLayer
+      && wheelZs.length === layout.wheelZs.length
+      && wheelZs.every((z, index) => Math.abs(z - layout.wheelZs[index]) < 1e-4)) {
+    const material = bucket === 'hullRunningGearDetail' ? P.mats.detail : P.mats.dark;
+    P.gear.addRoadWheelLayer(cylX(r * 0.72, w * 1.06, 12), material, {
+      outset: xc - layout.xc,
+      yOffset: y - layout.wheelY,
+      name: 'gearRoadWheelRecesses',
+      appearanceRole: 'wheelInset',
+    });
+    return;
+  }
   for (const z of wheelZs) for (const s of [-1, 1]) {
     P.add(bucket, cylX(r * 0.72, w * 1.06, 12), s * xc, y, z);
   }
@@ -537,18 +550,14 @@ function buildAriete(P) {
     paintedEnds: true, coveredTop: true, arms: true,
     armBucket: 'hullRunningGearDetail',
   });
-  // Shallow concentric faces on the existing seven wheel stations.  The
-  // physical rubber tires and course remain owned by buildRunningGear; these
-  // sit within its original width and restore the olive dish/dark hub cadence
-  // that distinguished the stronger first-party Ariete.
-  for (const side of [-1, 1]) {
-    for (const wz of wheelZs) {
-      P.add('hullRunningGearDetail', cylX(0.275, 0.035, 18), side * 1.69, 0.43, wz);
-      P.add('hullRunningGearDark', cylX(0.095, 0.039, 14), side * 1.695, 0.43, wz);
-      P.add('hullRunningGearDark', torus(0.205, 0.014, 18), side * 1.711, 0.43, wz,
-        0, 0, Math.PI / 2);
-    }
-  }
+  // Keep the olive dish/dark hub cadence, but register it with the one
+  // suspension-driven wheel train instead of leaving a fixed hull-owned row.
+  P.gear.addRoadWheelLayer(cylX(0.275, 0.035, 18), P.mats.detail,
+    { outset: 1.69 - 1.3725, name: 'gearRoadWheelOuterDishes' });
+  P.gear.addRoadWheelLayer(cylX(0.095, 0.039, 14), P.mats.dark,
+    { outset: 1.695 - 1.3725, name: 'gearRoadWheelHubCaps' });
+  P.gear.addRoadWheelLayer(torus(0.205, 0.014, 18).rotateZ(Math.PI / 2), P.mats.dark,
+    { outset: 1.711 - 1.3725, name: 'gearRoadWheelRimRings' });
   // (push-2: contactZF 2.36 -> 2.22 — the ref approach ramp lifts off at
   // ~2.33 and climbs SHALLOW [0.22@2.68, 0.28@2.92 authored] where the 2.36
   // patch held the belly grounded to 2.45 then climbed steep: 6 ramp cols

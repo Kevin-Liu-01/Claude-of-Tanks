@@ -6334,7 +6334,7 @@ function replaceT90MProryvHull(P) {
   // wheels without changing the hull or skirt envelope.
   const wheelZs = evenStations(6, 3.30, 0.15);
   const wheelY = 0.51;
-  buildRunningGear(P, {
+  const gear = buildRunningGear(P, {
     style: 'rubber', wheelR: 0.425, wheelW: 0.22, wheelY, xc: 1.435,
     dishR: 0.86, wheelZs,
     sprocket: { z: -2.20, y: 0.80, r: 0.29 },
@@ -6344,24 +6344,22 @@ function replaceT90MProryvHull(P) {
     coveredTop: true, arms: false, contactZF: 2.18, contactZR: -1.88,
     padCornerFloor: 0.012, padHugZ0: 2.0,
   });
-  for (const s of [-1, 1]) {
-    // These annuli, hubs and bolts are the road wheels' own face package,
-    // not hull armour or a second track course. Keep every transform and
-    // material while recording their actual suspension ownership so the
-    // strict audit does not test each wheel against its own decoration.
-    const det = 'hullRunningGearDetail';
-    const trm = 'hullRunningGearDark';
-    for (const wz of wheelZs) {
-      P.add(det, torus(0.365, 0.010, 24), s * 1.544, wheelY, wz, 0, 0, Math.PI / 2);
-      P.add(det, torus(0.205, 0.007, 18), s * 1.545, wheelY, wz, 0, 0, Math.PI / 2);
-      P.add(det, cylX(0.100, 0.052, 14), s * 1.543, wheelY, wz);
-      P.add(trm, cylX(0.055, 0.068, 12), s * 1.546, wheelY, wz);
-      for (let k = 0; k < 8; k++) {
-        const a = k * Math.PI / 4;
-        P.add(trm, cylX(0.012, 0.070, 8), s * 1.548, wheelY + Math.cos(a) * 0.145, wz + Math.sin(a) * 0.145);
-      }
-    }
-  }
+  // These annuli, hubs and bolts are wheel-face anatomy, so every layer is
+  // instanced by the canonical gear unit and follows suspension travel/spin.
+  gear.addRoadWheelLayer(torus(0.365, 0.010, 24).rotateZ(Math.PI / 2), P.mats.detail,
+    { outset: 1.544 - 1.435, name: 'gearRoadWheelOuterRims' });
+  gear.addRoadWheelLayer(torus(0.205, 0.007, 18).rotateZ(Math.PI / 2), P.mats.detail,
+    { outset: 1.545 - 1.435, name: 'gearRoadWheelInnerRims' });
+  gear.addRoadWheelLayer(cylX(0.100, 0.052, 14), P.mats.detail,
+    { outset: 1.543 - 1.435, name: 'gearRoadWheelHubCaps' });
+  gear.addRoadWheelLayer(cylX(0.055, 0.068, 12), P.mats.dark,
+    { outset: 1.546 - 1.435, name: 'gearRoadWheelHubInsets' });
+  const boltRing = KIT.mergeAll(Array.from({ length: 8 }, (_, k) => {
+    const a = k * Math.PI / 4;
+    return KIT.xform(cylX(0.012, 0.070, 8), 0, Math.cos(a) * 0.145, Math.sin(a) * 0.145);
+  }));
+  gear.addRoadWheelLayer(boltRing, P.mats.dark,
+    { outset: 1.548 - 1.435, name: 'gearRoadWheelBoltRings' });
 
   // Shallow six-panel skirts expose the lower wheel arcs and turn down only
   // at the terminal mudguards.  Their upper lips are separate structural

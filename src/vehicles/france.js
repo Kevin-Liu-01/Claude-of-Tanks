@@ -444,18 +444,15 @@ function buildAMX40(P) {
     ],
     paintedEnds: true, coveredTop: true,
   });
-  // Restore the earlier AMX-40 wheel-face authority without changing its
-  // mechanical course.  These shallow olive dishes, dark hubs and rim rings
-  // are concentric with the six existing road wheels and remain inside the
-  // original track/skirt width; they are not a donor or duplicate wheel set.
-  for (const side of [-1, 1]) {
-    for (const wz of amx40WheelZs) {
-      P.add('hullRunningGearDetail', cylX(0.285, 0.032, 18), side * 1.565, 0.49, wz);
-      P.add('hullRunningGearDark', cylX(0.095, 0.036, 14), side * 1.570, 0.49, wz);
-      P.add('hullRunningGearDark', torus(0.215, 0.013, 18), side * 1.584, 0.49, wz,
-        0, 0, Math.PI / 2);
-    }
-  }
+  // Preserve the authored olive dish/hub/rim anatomy as layers of the one
+  // suspension-driven road-wheel train. These used to be parked hull meshes
+  // and separated from the real wheels over terrain.
+  P.gear.addRoadWheelLayer(cylX(0.285, 0.032, 18), P.mats.detail,
+    { outset: 1.565 - 1.27, name: 'gearRoadWheelOuterDishes' });
+  P.gear.addRoadWheelLayer(cylX(0.095, 0.036, 14), P.mats.dark,
+    { outset: 1.570 - 1.27, name: 'gearRoadWheelHubCaps' });
+  P.gear.addRoadWheelLayer(torus(0.215, 0.013, 18).rotateZ(Math.PI / 2), P.mats.dark,
+    { outset: 1.584 - 1.27, name: 'gearRoadWheelRimRings' });
   // ---- hull furniture ----
   P.add('hull', cylY(0.26, 0.26, 0.026, 16), -0.52, 1.652, 1.30);               // driver hatch (front-LEFT) on the fore deck
   P.add('hullDark', torus(0.26, 0.012, 16), -0.52, 1.663, 1.30);

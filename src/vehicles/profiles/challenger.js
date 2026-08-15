@@ -155,31 +155,17 @@ const CR1_HULL = {
 
 function challenger1Build(P) {
   const g = CR1_HULL;
-  const { sph } = KIT;
+  const { sph, cylX } = KIT;
   ukHull(P, g);
   // Hydrogas wheel-face restoration.  `ukHull` already owns the physical
   // tires, hubs and linked course; these shallow concentric faces sit inside
   // the existing wheel width and restore the older Challenger's readable
   // six-station dish/hub cadence.  They are fixed hull detail, never donor
   // wheels and never an additional running-gear course.
-  for (const side of [-1, 1]) {
-    for (const wz of g.wheelZs) {
-      for (const [geo, mat, x, name] of [
-        [cylY(0.29, 0.29, 0.032, 16), P.mats.detail, side * 1.505, 'challenger1WheelFaceDressing'],
-        [cylY(0.105, 0.105, 0.038, 14), P.mats.dark, side * 1.510, 'challenger1WheelHubDressing'],
-      ]) {
-        const mesh = new THREE.Mesh(geo, mat);
-        mesh.name = name;
-        mesh.userData.runningGear = true;
-        mesh.position.set(x, g.wheelY, wz);
-        mesh.rotation.z = Math.PI / 2;
-        mesh.castShadow = false;
-        mesh.receiveShadow = true;
-        P.hullG.add(mesh);
-        P.disposables.push(geo);
-      }
-    }
-  }
+  P.gear.addRoadWheelLayer(cylX(0.29, 0.032, 16), P.mats.detail,
+    { outset: 1.505 - g.trackXc, name: 'gearRoadWheelFaceDressing' });
+  P.gear.addRoadWheelLayer(cylX(0.105, 0.038, 14), P.mats.dark,
+    { outset: 1.510 - g.trackXc, name: 'gearRoadWheelHubDressing' });
   // BOW GUARD COURSE — NO-STAIRCASES r1 (§B1 law 5f4cfae, owner screenshot).
   // The old bow stacked THREE terraces per side (fender plane 1.5575 ending
   // 3.30 -> transition plate 1.43->1.32 -> wing 1.44->1.185): two ~0.10 m
@@ -2468,68 +2454,54 @@ function buildChallenger2(P) {
     paintedEnds: true, coveredTop: 1.05, padCornerFloor: 0.012,
     tireHex: '#545a50', padHex: 0x31332b, chainHex: 0x282b25,
   });
+  // Hydrogas face anatomy belongs to the same moving wheel instances as the
+  // tire/dish train. Closed torus and hub layers preserve the recessed,
+  // perforated read without leaving fixed rings behind over terrain.
+  P.gear.addRoadWheelLayer(new THREE.TorusGeometry(0.373, 0.026,
+    P.q ? 8 : 6, P.q ? 28 : 18).rotateY(Math.PI / 2), P.mats.dark,
+  { outset: 1.501 - 1.33, name: 'gearRoadWheelOuterRims' });
+  P.gear.addRoadWheelLayer(new THREE.TorusGeometry(0.238, 0.014,
+    P.q ? 8 : 6, P.q ? 24 : 16).rotateY(Math.PI / 2), P.mats.dark,
+  { outset: 1.485 - 1.33, name: 'gearRoadWheelBowlRims' });
+  P.gear.addRoadWheelLayer(cylX(0.210, 0.014, P.q ? 24 : 16), P.mats.dark,
+    { outset: 1.425 - 1.33, name: 'gearRoadWheelBowlFaces' });
+  P.gear.addRoadWheelLayer(cylX(0.080, 0.028, P.q ? 20 : 14), P.mats.detail,
+    { outset: 1.460 - 1.33, name: 'gearRoadWheelHubCaps' });
+  P.gear.addRoadWheelLayer(cylX(0.042, 0.032, P.q ? 18 : 12), P.mats.detail,
+    { outset: 1.475 - 1.33, name: 'gearRoadWheelHubCenters' });
+  const hubRim = new THREE.TorusGeometry(0.125, 0.018,
+    P.q ? 8 : 6, P.q ? 22 : 14).rotateY(Math.PI / 2);
+  P.gear.addRoadWheelLayer(hubRim, P.mats.dark,
+    { outset: 1.499 - 1.33, name: 'gearRoadWheelHubRims' });
+  P.gear.addRoadWheelLayer(cylX(0.058, 0.024, P.q ? 16 : 10), P.mats.dark,
+    { outset: 1.500 - 1.33, name: 'gearRoadWheelHubDrums' });
+  P.gear.addRoadWheelLayer(cylX(0.030, 0.030, P.q ? 14 : 10), P.mats.dark,
+    { outset: 1.503 - 1.33, name: 'gearRoadWheelHubPlugs' });
+  if (P.q) {
+    const radialSet = (count, radius, geometry, phase = 0) => KIT.mergeAll(
+      Array.from({ length: count }, (_, k) => {
+        const a = phase + k * Math.PI * 2 / count;
+        return KIT.xform(k === 0 ? geometry : geometry.clone(),
+          0, Math.sin(a) * radius, Math.cos(a) * radius);
+      }));
+    P.gear.addRoadWheelLayer(radialSet(8, 0.145, cylX(0.012, 0.036, 8)), P.mats.dark,
+      { outset: 1.506 - 1.33, name: 'gearRoadWheelInnerBolts' });
+    P.gear.addRoadWheelLayer(radialSet(8, 0.255, cylX(0.014, 0.018, 8)), P.mats.dark,
+      { outset: 1.461 - 1.33, name: 'gearRoadWheelOuterBolts' });
+    P.gear.addRoadWheelLayer(radialSet(10, 0.255, cylX(0.030, 0.020, 10), Math.PI / 10), P.mats.dark,
+      { outset: 1.497 - 1.33, name: 'gearRoadWheelOuterApertures' });
+    P.gear.addRoadWheelLayer(radialSet(6, 0.105, cylX(0.012, 0.026, 8)), P.mats.detail,
+      { outset: 1.499 - 1.33, name: 'gearRoadWheelInnerFasteners' });
+  }
   for (const side of [-1, 1]) {
     for (const z of [2.50, 1.60, 0.70, -0.20, -1.10, -2.00]) {
-      // Reference-visible Hydrogas face: actual open rings reveal a recessed
-      // dark bowl.  The former stack of full cylinders could only project
-      // outward and read as pale concentric coins.
-      const faceX = side * 1.495;
-      P.add('hullRunningGearDark', new THREE.RingGeometry(0.315, 0.403, P.q ? 28 : 18),
-        faceX, 0.40, z, 0, side * Math.PI / 2, 0);
-      P.add('hullRunningGearDark', new THREE.RingGeometry(0.215, 0.305, P.q ? 28 : 18),
-        faceX - side * 0.045, 0.40, z, 0, side * Math.PI / 2, 0);
-      const outerRim = new THREE.TorusGeometry(0.373, 0.026, P.q ? 8 : 6, P.q ? 28 : 18);
-      outerRim.rotateY(Math.PI / 2);
-      P.add('hullRunningGearDark', outerRim, faceX + side * 0.006, 0.40, z);
-      const bowlRim = new THREE.TorusGeometry(0.238, 0.014, P.q ? 8 : 6, P.q ? 24 : 16);
-      bowlRim.rotateY(Math.PI / 2);
-      P.add('hullRunningGearDark', bowlRim, faceX - side * 0.010, 0.40, z);
-      const wheelDish = new THREE.CylinderGeometry(
-        side < 0 ? 0.300 : 0.118, side < 0 ? 0.118 : 0.300,
-        0.100, P.q ? 28 : 18, 1, true);
-      wheelDish.rotateZ(Math.PI / 2);
-      P.add('hullRunningGearDark', wheelDish, faceX - side * 0.050, 0.40, z);
-      P.add('hullRunningGearDark', cylX(0.210, 0.014, P.q ? 24 : 16),
-        faceX - side * 0.070, 0.40, z);
-      P.add('hullRunningGearDetail', cylX(0.080, 0.028, P.q ? 20 : 14),
-        faceX - side * 0.035, 0.40, z);
-      P.add('hullRunningGearDetail', cylX(0.042, 0.032, P.q ? 18 : 12),
-        faceX - side * 0.020, 0.40, z);
-      if (P.q) for (let k = 0; k < 8; k++) {
-        const a = k * Math.PI / 4;
-        P.add('hullRunningGearDark', cylX(0.012, 0.036, 8),
-          faceX + side * 0.011, 0.40 + Math.sin(a) * 0.145, z + Math.cos(a) * 0.145);
-        P.add('hullRunningGearDark', cylX(0.014, 0.018, 8),
-          faceX - side * 0.034, 0.40 + Math.sin(a) * 0.255, z + Math.cos(a) * 0.255);
-      }
-      // The print's Hydrogas wheels are perforated castings, not smooth
-      // concentric discs.  Ten deep outer apertures and a staggered inner
-      // fastener ring sit on different x planes, so quarter light resolves
-      // an actual bowl and hub stack rather than a painted dot pattern.
-      if (P.q) for (let k = 0; k < 10; k++) {
-        const a = (k + 0.5) * Math.PI / 5;
-        P.add('hullRunningGearDark', cylX(0.030, 0.020, 10),
-          faceX + side * 0.002, 0.40 + Math.sin(a) * 0.255, z + Math.cos(a) * 0.255);
-      }
-      if (P.q) for (let k = 0; k < 6; k++) {
-        const a = k * Math.PI / 3;
-        P.add('hullRunningGearDetail', cylX(0.012, 0.026, 8),
-          faceX + side * 0.004, 0.40 + Math.sin(a) * 0.105, z + Math.cos(a) * 0.105);
-      }
-      const hubRim = new THREE.TorusGeometry(0.125, 0.018, P.q ? 8 : 6, P.q ? 22 : 14);
-      hubRim.rotateY(Math.PI / 2);
-      P.add('hullRunningGearDark', hubRim, faceX + side * 0.004, 0.40, z);
-      P.add('hullRunningGearDark', cylX(0.058, 0.024, P.q ? 16 : 10),
-        faceX + side * 0.005, 0.40, z);
-      P.add('hullRunningGearDark', cylX(0.030, 0.030, P.q ? 14 : 10),
-        faceX + side * 0.008, 0.40, z);
       // Hydrogas swing arm and torsion pivot remain visible through the
       // deep dish and inter-wheel gaps; these are seated behind the face,
       // never painted over it as a decorative spoke.
       P.add('hullRunningGearDark', box(0.055, 0.095, 0.42), side * 1.37, 0.60, z + 0.10,
         -0.52, 0, 0);
       P.add('hullRunningGearDetail', cylX(0.052, 0.030, P.q ? 16 : 10),
-        faceX - side * 0.018, 0.66, z + 0.22);
+        side * 1.477, 0.66, z + 0.22);
     }
     // Inter-wheel Hydrogas stations occupy the real daylight gaps below the
     // segmented skirt.  Keeping them between y=.40..76 adds visible ram,

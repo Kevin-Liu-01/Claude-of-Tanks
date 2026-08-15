@@ -1058,6 +1058,19 @@ function buildRunningGear(P, cfg) {
     P.disposables.push(geo);
     return im;
   };
+  const addRoadWheelLayer = (geometry, material, layer = {}) => {
+    if (!geometry || !material) return null;
+    const roadEntries = entries.filter((entry) => entry.road).map((entry) => ({
+      ...entry,
+      x: entry.x + Math.sign(entry.x || 1) * (layer.outset ?? 0),
+      y: entry.y + (layer.yOffset ?? 0),
+      z: entry.z + (layer.zOffset ?? 0),
+    }));
+    const layerMesh = mkInst(geometry, material, roadEntries,
+      layer.appearanceRole || 'wheelDish', layer.name || 'gearRoadWheelDetail');
+    layerMesh.userData.dynamicWheelFace = true;
+    return layerMesh;
+  };
   // cfg.tireHex opt-in (merkava r12 order 5): per-tank tire tone — the stock
   // rubber's steep-view read sat sub-45 where the 3D ref keeps its gear
   // shade >=50. Clone re-attaches the family ambient hook (clone() drops
@@ -1092,6 +1105,19 @@ function buildRunningGear(P, cfg) {
     'wheelDish', 'gearRoadWheelDiscsRecessed');
   // dark inserts (stamped lightening holes on the Christie 'holes' style)
   if (dark) mkInst(dark, mats.rubber, entries, 'wheelInset', 'gearRoadWheelInsets');
+  // Profile-specific dish/rim decoration must participate in the exact same
+  // suspension matrices as the canonical road wheels. Historically several
+  // builders added shallow cylinders/rings to hullG after this call; those
+  // faces stayed parked while the real wheels travelled, producing a visible
+  // second wheel row. Keep optional face anatomy as additional instanced
+  // layers of this one wheel train instead.
+  for (const [layerIndex, layer] of (cfg.wheelFaceLayers || []).entries()) {
+    if (!layer?.geometry || !layer?.material) continue;
+    addRoadWheelLayer(layer.geometry, layer.material, {
+      ...layer,
+      name: layer.name || `gearRoadWheelDetail${layerIndex + 1}`,
+    });
+  }
   if (rollerEntries.length) {
     const rg = mergeAll([cylX(rollerR, trackW * 0.55, Math.max(8, seg - 6)), cylX(rollerR * 0.4, trackW * 0.62, 8)]);
     mkInst(rg, mats.detail, rollerEntries, 'wheelDish', 'gearReturnRollers');
@@ -1818,6 +1844,8 @@ function buildRunningGear(P, cfg) {
   }
 
   const gearUnit = {
+    addRoadWheelLayer,
+    roadWheelLayout: { xc, wheelY, wheelR, wheelZs: [...wheelZs] },
     update(l, r) {
       const dl = Math.abs(l - bobPrevL), dr = Math.abs(r - bobPrevR);
       bobPrevL = l; bobPrevR = r;
@@ -2037,6 +2065,7 @@ function buildRunningGear(P, cfg) {
   // so profile-side warm-up calls and the factory's own remain harmless.
   gearUnit.update(0, 0);
   registerGearUnit(P, gearUnit);
+  return gearUnit;
 }
 
 /**

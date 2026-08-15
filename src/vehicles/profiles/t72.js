@@ -2329,42 +2329,22 @@ function buildT72B3M(P) {
     P.add('hullRubber', box(0.46, 0.50, 0.03), s * 1.31, 0.86, 1.80);
   }
   // visual r1 item 6: T-72 DISHED WHEEL face packages (isu122s recipe —
-  // static overlays, shadow-drum precedent): rim seam ring + dark dish
+  // suspension-driven layers): rim seam ring + dark dish
   // annulus + hub drum/cap per wheel, idler + sprocket hub sets. All inside
   // the wheel circles (bottoms 0.14+ vs wheel 0.075) and the band x-zone.
   {
     const { torus } = KIT;
+    P.gear.addRoadWheelLayer(torus(0.354, 0.007, 22).rotateZ(Math.PI / 2), P.mats.detail,
+      { outset: 1.4385 - 1.33, name: 'gearRoadWheelOuterRims' });
+    P.gear.addRoadWheelLayer(torus(0.19, 0.005, 16).rotateZ(Math.PI / 2), P.mats.detail,
+      { outset: 1.4425 - 1.33, name: 'gearRoadWheelInnerRims' });
+    P.gear.addRoadWheelLayer(cylX(0.085, 0.048, 12), P.mats.detail,
+      { outset: 1.442 - 1.33, name: 'gearRoadWheelHubCaps' });
+    P.gear.addRoadWheelLayer(cylX(0.048, 0.066, 10), P.mats.dark,
+      { outset: 1.4445 - 1.33, name: 'gearRoadWheelHubInsets' });
     for (const s of [-1, 1]) {
-      for (const wz of [-2.90, -2.238, -1.456, -0.674, 0.108, 0.89]) {
-        // r14 item 5: DARK TIRE annulus at the true wheel edge — the pale
-        // 0.295 seam ring used to read as the wheel boundary and shrank
-        // the wheels to toy scale; the dark rubber band restores the full
-        // 0.375 read (outer 0.374 stays inside the wheel silhouette).
-        // r16 item 2b: seam ring + hub drum re-bucketed detail->scheme —
-        // the lifted-detail concentric rings were the "bright wheel-rim
-        // rings" of the IFV verdict (ref wheels read dark with a faint
-        // scheme rim; they also sit half-behind the new skirt hem now).
-        // r17 item 5b (wheel ONE-TONE): the hullDark tire + inner ring vs
-        // pale scheme seam ring oscillated 33<->80 (the critic's bullseye;
-        // zone p10 33.6 vs ref 59.9). The pale seam ring is deleted and
-        // both dark rings re-bucket to rubber — one mid family per face
-        // (rubber is lifted into the 50-58 scheme-shadow window in the
-        // item-7 tone pass below).
-        // r18 item 4d: the dark tire torus + dark inner ring DELETED — the
-        // dark donut on a pale hub was the "bullseye" that shrank the wheel
-        // read to the pale center (ref wheels: near-even 69-72 face with a
-        // THIN pale rim line at the true edge and a faint mid ring; the rim
-        // arc is what draws the circle below the hem). Pale thin rim torus
-        // at the true 0.375 edge + faint mid ring + kept hub/cap.
-        // (rim bucket 'hull': the lifted-detail ring smeared bright AA into
-        // the 3px gap slots and read as pale "trees" at the wheel meets —
-        // the ref rim is a subtle tonal arc against the dark slot, and the
-        // camo family lands exactly that against the new shadow backers.)
-        P.add('hullRunningGearDetail', torus(0.354, 0.007, 22), s * 1.4385, 0.45, wz, 0, 0, Math.PI / 2);
-        P.add('hullRunningGearDetail', torus(0.19, 0.005, 16), s * 1.4425, 0.45, wz, 0, 0, Math.PI / 2);
-        P.add('hullRunningGearDetail', cylX(0.085, 0.048, 12), s * 1.442, 0.45, wz);
-        P.add('hullRunningGearDark', cylX(0.048, 0.066, 10), s * 1.4445, 0.45, wz);
-      }
+      // The road-wheel rings above share the native suspension matrices.
+      // Keep the independently seated idler/sprocket hub sets below.
       // These annuli are running-gear face trim, not hull armor.  Keep them
       // in the explicit suspension bucket so clearance judges hull solids
       // against the shoes rather than their own wheel-mounted face package.

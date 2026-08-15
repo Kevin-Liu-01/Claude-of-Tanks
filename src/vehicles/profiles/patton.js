@@ -2297,8 +2297,6 @@ function buildPershing(P, cfg) {
     glintMat.roughness = 0.55;
     glintMat.metalness = 0.30;
     const G = H.gear;
-    const wheelZsS = evenStations(6, G.span[0] - G.span[1], (G.span[0] + G.span[1]) / 2);
-    const wyS = G.wheelY ?? G.wheelR + 0.03;
     const wheelWS = Math.min(0.24, H.trackW * 0.4);
     const glintRing = (r, x, y, z, name = 'gearRimGlint') => {
       const geo = torus(r, 0.008, 24);
@@ -2322,11 +2320,15 @@ function buildPershing(P, cfg) {
       glintBoost.roughness = 0.45;
       glintBoost.metalness = 0.32;
     }
-    for (const z of wheelZsS) {
-      for (const side of [-1, 1]) {
-        glintRing(G.wheelR * 0.80, side * (xcS + wheelWS / 2 + 0.016), wyS, z);
-        if (GS.rimBoost) glintRing(G.wheelR * 0.52, side * (xcS + wheelWS / 2 + 0.052), wyS, z).material = glintBoost;
-      }
+    P.gear.addRoadWheelLayer(torus(G.wheelR * 0.80, 0.008, 24).rotateZ(Math.PI / 2), glintMat, {
+      outset: wheelWS / 2 + 0.016,
+      name: 'gearRoadWheelRimGlints',
+    });
+    if (GS.rimBoost) {
+      P.gear.addRoadWheelLayer(torus(G.wheelR * 0.52, 0.008, 24).rotateZ(Math.PI / 2), glintBoost, {
+        outset: wheelWS / 2 + 0.052,
+        name: 'gearRoadWheelInnerRimGlints',
+      });
     }
     // sprocket + idler rim glints (cycle-2/3): the ref's highlight tail
     // concentrates at the end drums (ref drum-zone p75/p95 71.5/87.4 vs

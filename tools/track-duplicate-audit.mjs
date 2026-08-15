@@ -14,6 +14,7 @@ await import('../src/vehicles/tankFactory.js');
 const { ALL_TANK_IDS } = await import('../src/vehicles/specs.js');
 
 const idArg = process.argv.find((arg) => arg.startsWith('--ids='));
+const wheelOverlaysOnly = process.argv.includes('--wheel-overlays-only');
 const ids = idArg
   ? idArg.slice('--ids='.length).split(',').map((id) => id.trim()).filter(Boolean)
   : [...ALL_TANK_IDS];
@@ -42,7 +43,9 @@ try {
     await page.waitForFunction('window.__TRACK_DUPLICATE_READY === true', { polling: 50 });
     const result = await page.evaluate('window.__TRACK_DUPLICATE_AUDIT');
     if (result.canonical?.connectorLayers) layered.push(id);
-    if (!result.pass) failures.push(result);
+    if (wheelOverlaysOnly
+      ? (result.error || result.staticRoadWheelOverlays?.length)
+      : !result.pass) failures.push(result);
   }
 } finally {
   await browser.close();
@@ -55,6 +58,10 @@ console.log(`[track-duplicate] ${ids.length - layered.length}/${ids.length} use 
 if (failures.length) {
   console.error(`[track-duplicate] FAIL (${failures.length})`);
   for (const result of failures) {
+    if (wheelOverlaysOnly) {
+      console.error(`  - ${result.id}: ${JSON.stringify(result.staticRoadWheelOverlays)}`);
+      continue;
+    }
     console.error(`  - ${result.id}: ${result.error || JSON.stringify({
       duplicatePairs: result.duplicatePairs,
       staticCandidates: result.staticCandidates,
@@ -64,5 +71,9 @@ if (failures.length) {
     })}`);
   }
   process.exit(2);
+}
+if (wheelOverlaysOnly) {
+  console.log('[track-duplicate] PASS — no static road-wheel overlays outside the suspension-driven train');
+  process.exit(0);
 }
 console.log('[track-duplicate] PASS — no overlapping smart courses or static full-length track proxies');
