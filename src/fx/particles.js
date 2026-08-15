@@ -778,18 +778,29 @@ export function makeFbm(rng, octaves = 4) {
  * "smooth untextured blob" read on every particle that samples it.
  * @param {HTMLCanvasElement} cv @param {() => number} rng
  * @param {number} strength 0..1 how deep the turbulence cuts
+ * @param {number} [alphaPower=1] optional base-alpha shaping fused into the
+ *   same readback so callers never need a second getImageData/putImageData pass
  */
-function applyFbmAlpha(cv, rng, strength) {
+function applyFbmAlpha(cv, rng, strength, alphaPower = 1) {
   const fbm = makeFbm(rng);
   const ctx = cv.getContext('2d');
   const img = ctx.getImageData(0, 0, cv.width, cv.height);
   const d = img.data;
   const w = cv.width, h = cv.height;
+  let alphaLut = null;
+  if (alphaPower !== 1) {
+    alphaLut = new Uint8Array(256);
+    for (let a = 0; a < 256; a++) {
+      alphaLut[a] = Math.round(255 * Math.pow(a / 255, alphaPower));
+    }
+  }
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       const n = fbm(x / w, y / h);
       const m = 1 - strength + strength * Math.min(1, n * 1.7);
-      d[(y * w + x) * 4 + 3] = Math.min(255, d[(y * w + x) * 4 + 3] * m);
+      const i = (y * w + x) * 4 + 3;
+      const shaped = alphaLut ? alphaLut[d[i]] : d[i];
+      d[i] = Math.min(255, shaped * m);
     }
   }
   ctx.putImageData(img, 0, 0);
@@ -972,20 +983,10 @@ function makeFlashTexture(rng) {
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, s, s);
   ctx.globalCompositeOperation = 'source-over';
-  // r5 lighting_post: alpha^1.8 falloff — no visible disc boundary can
-  // survive on an additive card (frozen mid-life composed frames showed a
-  // translucent circle edge over the road)
-  {
-    const id = ctx.getImageData(0, 0, s, s);
-    const d = id.data;
-    for (let i = 3; i < d.length; i += 4) {
-      d[i] = Math.round(255 * Math.pow(d[i] / 255, 1.8));
-    }
-    ctx.putImageData(id, 0, 0);
-  }
-  // ragged silhouette: turbulence bites the halo rim so the frozen frame
-  // never shows a clean radial-gradient disc
-  applyFbmAlpha(cv, rng, 0.32);
+  // r5 lighting_post: alpha^1.8 falloff prevents a translucent disc edge;
+  // FBM bites the halo rim. Fuse both alpha transforms into one pixel pass —
+  // a second readback triggered Chromium's read-frequency fallback warning.
+  applyFbmAlpha(cv, rng, 0.32, 1.8);
   const tex = new THREE.CanvasTexture(cv);
   tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
   return tex;
