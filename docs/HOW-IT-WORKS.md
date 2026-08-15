@@ -220,6 +220,10 @@ npm run build
 npm run build:private
 ```
 
-For deeper contracts, continue with [ARCHITECTURE.md](ARCHITECTURE.md),
+For deeper contracts, continue with [FEATURES.md](FEATURES.md),
+[SYSTEMS.md](SYSTEMS.md), [DEVELOPMENT.md](DEVELOPMENT.md),
 [MULTIPLAYER-ARCHITECTURE.md](MULTIPLAYER-ARCHITECTURE.md),
-[STUDIO.md](STUDIO.md), and [GUNNERY-CAMERA-SPEC.md](GUNNERY-CAMERA-SPEC.md).
+[PERFORMANCE.md](PERFORMANCE.md), [STUDIO.md](STUDIO.md), and
+[GUNNERY-CAMERA-SPEC.md](GUNNERY-CAMERA-SPEC.md). The original
+[ARCHITECTURE.md](ARCHITECTURE.md) is retained as a historical implementation
+contract rather than the current system map.

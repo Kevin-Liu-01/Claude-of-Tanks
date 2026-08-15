@@ -1,4 +1,9 @@
-# DESIGN — the tank generation program's architecture
+# DESIGN — historical tank-generation program architecture
+
+> Historical document. This describes the vehicle-generation program that
+> produced and certified the fleet. For the current game runtime, use
+> [SYSTEMS.md](SYSTEMS.md). For current vehicle acceptance law, use
+> [BUILD-STANDARD.md](BUILD-STANDARD.md) and [GEOMETRY-GATE.md](GEOMETRY-GATE.md).
 
 (2026-08-06, owner order: "make skills for everything and design.md and other .mds and
 organize our codebase better." This document explains HOW the machine is built; the law

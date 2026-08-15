@@ -77,11 +77,12 @@ spotting (spotting.js).
 
 ## Hitboxes — where boxes come from
 
-- **Hand-authored layouts**: the 8 roster tanks (`specs.js`), modern1/2/3
+- **Hand-authored layouts**: the foundational roster and modern1/2/3
   vehicles. Module boxes are hull-local AABBs (`mbox`), turret boxes
   turret-local (`turretLocal: true`).
-- **Parametric class template**: community vehicles (`communityArmor` in
-  specs.js and its userdrops mirror) derive every box from `spec.dims` —
+- **Parametric expansion template**: additional first-party vehicles
+  (`communityArmor` is the retained helper name in specs.js and its userdrops
+  mirror) derive every box from `spec.dims` —
   rear-half engine, mid fuel, center-forward ammo, ring band at the roof.
 - **Donor copies re-fitted to dims** (module_hitbox r1): recovered variants
   (userdrops5/6 `make()`) copy a donor spec and patch `dims`; the armor is
@@ -99,13 +100,14 @@ spotting (spotting.js).
 
 ## Probes / gates
 
-- `node tools/module-hit-probe.mjs` — **the gate** (pure sim, all 92 tanks,
+- `node tools/module-hit-probe.mjs` — **the gate** (pure sim, all 80 currently
   ~2 s). Structural containment, scripted mega-pen shots through every
   internal module box from its own side / long axis / top (the right module
   must ROLL, not merely be traced), track reachability via moduleLink, and
   the armor-envelope vs dims drift audit. Exit 1 on any hard FAIL.
-  - Before the r1 fixes: 10/92 tanks failed (tiger1 ammoRack, leclerc
-    fuelTank, 8× merkava engine). After: **92/92 pass**.
+  - The historical r1 pass corrected ten failures. The current fleet result is
+    **80/80 pass**; published-height drift remains warning-only for appendages
+    that intentionally sit above the armored envelope.
 - `node tools/module-crit-probe.mjs [--shots N --seed S]` — seeded realistic
   volley through the live pipeline; asserts crits-given-pen inside 15–90%.
   Reference @400 shots/seed 4242: pen 51%, crit-given-pen 72%, crit share

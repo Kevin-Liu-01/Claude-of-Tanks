@@ -207,6 +207,11 @@ button{font:inherit;color:inherit}
 .doc-grid .icon{color:var(--amber);margin-bottom:26px}
 .doc-grid h3{margin:0 0 8px;font-size:17px}
 .doc-grid p{margin:0;font-size:13px}
+.doc-visual-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;margin:30px 0;background:var(--line)}
+.doc-visual-grid--two{grid-template-columns:repeat(2,minmax(0,1fr))}
+.doc-visual-grid figure{position:relative;min-width:0;margin:0;background:#030506;overflow:hidden}
+.doc-visual-grid img{display:block;width:100%;aspect-ratio:16/10;object-fit:cover;filter:saturate(.9) contrast(1.04)}
+.doc-visual-grid figcaption{padding:12px 14px;color:var(--dim);font-size:8px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;border-top:1px solid var(--line2)}
 .spec-table{width:100%;border-collapse:collapse;margin:25px 0;font-size:13px}
 .spec-table th,.spec-table td{text-align:left;padding:13px 12px;border-bottom:1px solid var(--line)}
 .spec-table th{font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
@@ -228,7 +233,7 @@ button{font:inherit;color:inherit}
   :root{--pad:18px}.site-nav .inner{height:64px}.brand span{display:none}.nav-play{padding:10px 13px!important}.hero{padding-top:64px;height:auto;min-height:760px}.hero-art{inset:64px 0 0}.hero-copy{padding-top:220px}.hero-note{display:none}.display{font-size:clamp(54px,17vw,82px)}
   .proof article{padding:18px 14px}.proof strong{font-size:21px}.section{padding-block:90px}.section-head{gap:25px;margin-bottom:38px}.section-head h2{font-size:48px}
   .fleet-grid{grid-template-columns:1fr}.tank-card:nth-child(10n+1){grid-column:auto;grid-row:auto}.tank-card{aspect-ratio:16/10}.archive-section{padding-block:86px}.archive-head{align-items:flex-start;flex-direction:column;margin-bottom:28px}.archive-head h2{font-size:46px}.archive-card{flex-basis:88vw}.archive-caption{left:16px;right:16px;bottom:14px}.archive-caption>small{display:none}.proof-wall{display:block;background:transparent}.proof-panel{aspect-ratio:4/3;border-bottom:1px solid var(--line)}.proof-panel--battle .proof-media img,.proof-panel--armor .proof-media img{object-position:center}.proof-panel--running .proof-media img{transform:scale(1.18)}.proof-panel--running:hover .proof-media>img{transform:scale(1.18)}.armor-diagrams{display:none}.proof-label{left:18px;right:18px;bottom:17px}.running-telemetry{bottom:34%}
-  .battle-band{min-height:680px}.battle-scrim{background:linear-gradient(0deg,rgba(5,8,11,.98) 0%,rgba(5,8,11,.74) 58%,rgba(5,8,11,.22) 100%)}.battle-copy{padding-top:260px;padding-bottom:72px}.studio-gallery{min-height:560px;grid-template-rows:1.5fr 1fr}.studio-copy{padding:42px 24px}.surface-copy{padding:72px 24px}.surface-visual{min-height:68vw}.footer .inner{align-items:flex-start;flex-direction:column}.footer .brand span{display:inline}.docs-hero{padding-top:120px}.docs-layout{padding-top:40px}.docs-nav{grid-template-columns:repeat(2,1fr)}.doc-grid{grid-template-columns:1fr}.architecture div{grid-template-columns:1fr}.architecture code{text-align:left}.spec-table{display:block;overflow-x:auto;white-space:nowrap}
+  .battle-band{min-height:680px}.battle-scrim{background:linear-gradient(0deg,rgba(5,8,11,.98) 0%,rgba(5,8,11,.74) 58%,rgba(5,8,11,.22) 100%)}.battle-copy{padding-top:260px;padding-bottom:72px}.studio-gallery{min-height:560px;grid-template-rows:1.5fr 1fr}.studio-copy{padding:42px 24px}.surface-copy{padding:72px 24px}.surface-visual{min-height:68vw}.footer .inner{align-items:flex-start;flex-direction:column}.footer .brand span{display:inline}.docs-hero{padding-top:120px}.docs-layout{padding-top:40px}.docs-nav{grid-template-columns:repeat(2,1fr)}.doc-grid,.doc-visual-grid,.doc-visual-grid--two{grid-template-columns:1fr}.architecture div{grid-template-columns:1fr}.architecture code{text-align:left}.spec-table{display:block;overflow-x:auto;white-space:nowrap}
 }
 @media((pointer:coarse) and (max-width:1024px)){.armor-diagrams{display:none}}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.reveal{opacity:1;transform:none;transition:none}.tank-card img,.btn{transition:none}}

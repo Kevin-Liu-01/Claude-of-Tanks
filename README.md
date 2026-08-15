@@ -31,8 +31,9 @@ every playable hull, turret, gun, fitting, suspension, and track run is authored
 first-party vehicle pipeline. Historical source models are quarantined comparison material and are stripped from public
 builds.
 
-Every mode shares the same renderer-free **60 Hz authority** for movement, aiming, armor, ballistics, modules, spotting,
-destructibles, bots, consumables, and battle outcome. Three.js presents the result; it does not decide it.
+Every mode advances the same **60 Hz movement and combat rules**. Solo composes those rules directly in the browser for
+the fastest latency-free path; LAN, private, and ranked play place the renderer-free authority behind the network
+protocol. Three.js presents the result; it does not decide it.
 
 ## What makes it different
 
@@ -50,6 +51,21 @@ destructibles, bots, consumables, and battle outcome. Three.js presents the resu
   and an X-ray killcam built from the resolved shot.
 - **Desktop and mobile:** remappable mouse/keyboard controls plus joystick, swipe aim, pinch-to-scope, dynamic fire,
   safe-area layout, and device-adaptive rendering.
+
+## Technical achievements
+
+| System | What the project implements |
+|---|---|
+| Browser-native engine | Direct Three.js rendering, generated worlds, custom tank movement, post-processing, particles, audio, and device recovery without a commercial game-engine runtime |
+| Combat authority | Fixed 60 Hz movement, finite-point aiming, physical muzzle ballistics, plate armor, internal modules, spotting, bots, destructibles, and match outcome |
+| Original fleet | 80 selectable first-party procedural vehicles, generated presentation assets, live geometry fingerprints, and zero GLB-sourced playable tanks |
+| Network play | Protocol-v3 intent validation, viewer-filtered state, WebRTC control/state separation, dedicated WebSocket authority, prediction, reconciliation, and reconnectable room state |
+| Persistent rounds | Invite links, teams, spectators, ready locks, after-action rematch voting, garage room presence, and non-host rejoin while the browser host remains authoritative |
+| Performance | A direct solo path, isolated public routes, adaptive rendering, idle warmup, reusable snapshot storage, bounded cosmetic event work, and GPU black-frame recovery |
+| Production tools | A deterministic in-game Scene Studio, a geometry-aware Surface Markup Studio, fleet icon/diagram generation, browser multiplayer rigs, and public/private artifact verification |
+
+The detailed, code-linked feature catalog is in
+[Product features and technical achievements](docs/FEATURES.md).
 
 ## Battle modes
 
@@ -102,6 +118,26 @@ reference models.
 
 The landing page presents all 30 new frames with nation filters and full-screen inspection.
 
+## Systems in view
+
+The public presentation also uses direct captures of the shipped interfaces and tools. These are not design mockups:
+they show the production garage, battle HUD, sniper view, killcam, Scene Studio, and Surface Markup Studio.
+
+<table>
+<tr>
+<td width="50%"><img src="public/media/home/ui_garage.webp" alt="Production garage and vehicle roster"><br><sub><b>Garage:</b> first-party fleet, nation ordering, vehicle cards, equipment, maps, and battle modes.</sub></td>
+<td width="50%"><img src="public/media/home/ui_battle.webp" alt="Battle HUD during armored combat"><br><sub><b>Battle:</b> dual reticle, ammunition, vehicle state, teams, minimap, and resolved combat feedback.</sub></td>
+</tr>
+<tr>
+<td width="50%"><img src="public/media/home/ui_sniper.webp" alt="Sniper view and penetration information"><br><sub><b>Gunnery:</b> finite center aim, actual bore solution, zoom, dispersion, range, and penetration information.</sub></td>
+<td width="50%"><img src="public/media/home/ui_killcam.webp" alt="X-ray killcam showing resolved armor and internal damage"><br><sub><b>Killcam:</b> shell path, struck plate, effective protection, penetration, and internal damage.</sub></td>
+</tr>
+<tr>
+<td width="50%"><img src="public/media/home/st_scene.webp" alt="Scene Studio composing a battlefield image"><br><sub><b>Scene Studio:</b> actual worlds, vehicles, poses, effects, deterministic time, and production capture.</sub></td>
+<td width="50%"><img src="public/media/home/ui_surface_lab.webp" alt="Tank Surface Markup Studio reviewing procedural geometry"><br><sub><b>Surface Lab:</b> exact geometry selection, articulation ownership, annotations, and portable review packets.</sub></td>
+</tr>
+</table>
+
 ## Scene Studio
 
 Open `/studio` or press `F8` in the garage. Studio can place roster vehicles on any map, conform them to terrain, pose
@@ -140,11 +176,14 @@ src/ui/        garage, battle HUD, room flow, reports, settings and mobile contr
 server/        signaling, distributed room store, dedicated authority, rating and ranked queue
 ```
 
-Start with [`docs/HOW-IT-WORKS.md`](docs/HOW-IT-WORKS.md), then continue to
-[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md),
-[`docs/MULTIPLAYER-ARCHITECTURE.md`](docs/MULTIPLAYER-ARCHITECTURE.md), and
-[`docs/STUDIO.md`](docs/STUDIO.md). Historical fleet-program ledgers remain under `docs/` as an auditable build record;
-they are not the current product guide.
+Start with [Product features](docs/FEATURES.md) and
+[How it works](docs/HOW-IT-WORKS.md). Engineering work continues in
+[Internal systems](docs/SYSTEMS.md),
+[Development and verification](docs/DEVELOPMENT.md),
+[Multiplayer architecture](docs/MULTIPLAYER-ARCHITECTURE.md),
+[Performance architecture](docs/PERFORMANCE.md), and
+[Scene Studio](docs/STUDIO.md). Historical fleet-program ledgers and the original implementation contract remain
+under docs/ as an auditable build record; they are not the current product guide.
 
 ## Develop and verify
 

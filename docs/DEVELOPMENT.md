@@ -1,0 +1,279 @@
+# Development and verification guide
+
+This guide explains how to run, test, inspect, and release Claude of Tanks. It
+is the operational companion to SYSTEMS.md.
+
+## Requirements
+
+- A current Node.js runtime
+- npm
+- A browser with WebGL 2 and WebRTC support
+- Chromium available to Puppeteer for browser rigs
+
+Install dependencies:
+
+    npm install
+
+Start the Vite development server:
+
+    npx vite
+
+The default local URL is usually http://localhost:5173.
+
+## Public routes
+
+| Route | Purpose |
+| --- | --- |
+| / | Game boot and garage |
+| /home | Public visual showcase |
+| /docs | Public technical field manual |
+| /studio | Scene Studio entry |
+| /tools/tank-surface-studio.html | Local Tank Surface Markup Studio |
+
+The home and docs routes are separate Vite entries. They must remain able to
+load without preloading the game module graph.
+
+## Development services
+
+Start local signaling:
+
+    npm run server:signal
+
+The default endpoint is ws://127.0.0.1:7777/signal.
+
+Start the dedicated match and ranked HTTP service:
+
+    npm run server:match
+
+The default service uses port 8790. Production requires secure WebSocket and
+HTTP endpoints, explicit origin configuration, persistent rating storage, and
+deployment-specific signaling/TURN configuration.
+
+## Fast validation
+
+Run the complete Node self-test suite:
+
+    npm test
+
+This covers performance instrumentation, renderer recovery helpers, audio,
+protocol validation, browser bridge behavior, reliable presentation events,
+room invites and reconnect, local prediction, adverse delivery, ranked
+clients/services, signaling, world collision, match pacing, movement, combat,
+spotting, bots, game state, equipment, consumables, mobile aim, vehicle
+contracts, world destruction, interface contracts, and track geometry.
+
+Build the public artifact:
+
+    npm run build
+
+The public build runs Vite with public mode and then strips quarantined
+comparison assets.
+
+Build the private artifact:
+
+    npm run build:private
+
+The private build retains local authoring and comparison resources required by
+internal workflows.
+
+## Verification matrix
+
+| Change area | Minimum checks |
+| --- | --- |
+| Documentation only | Link/path audit, npm run build |
+| Movement or tracks | npm test, track geometry self-test, relevant browser probe |
+| Ballistics, armor, damage, spotting | npm test |
+| Vehicle specification or geometry | targeted assets, release check, native check |
+| Network protocol or room lifecycle | npm test, npm run test:net:browser |
+| Network presentation/performance | npm test, test:net:browser, test:net:render |
+| Renderer, quality, transitions | npm test, public build, cold/performance probe |
+| Landing page or public docs | public build, desktop and mobile browser inspection |
+| Scene Studio | Studio self-test and affected capture pipeline |
+| Signaling/ranked service | npm test plus service-specific integration test |
+
+Risk can require more than the minimum. A build passing does not replace a
+behavioral test, and a screenshot does not replace a simulation invariant.
+
+## Multiplayer browser verification
+
+Run:
+
+    npm run test:net:browser
+
+The rig starts signaling, Vite, and two Chromium peers. It exercises room code
+creation/join, host policy, team and spectator switching, same-vehicle identity
+separation, WebRTC handoff, authoritative movement, adverse delivery, and clean
+departure.
+
+Entry-link verification:
+
+    npm run test:net:entry
+
+Network render and destruction-burst performance:
+
+    npm run test:net:render
+
+Use deterministic network impairment during manual QA:
+
+    ?netSim=1&netLatency=120&netJitter=40&netLoss=10&netdiag=1
+
+The latency value is one-way. Replaceable snapshots can be dropped without
+making the ordered control channel unreliable.
+
+## Vehicle verification
+
+Audit runtime provenance:
+
+    npm run tank:native:check
+
+Regenerate presentation assets:
+
+    npm run tank:assets
+
+Verify generated assets and live fingerprints:
+
+    npm run tank:assets:check
+
+Verify fleet ordering:
+
+    npm run tank:family:check
+
+Verify the recorded geometry freeze:
+
+    npm run tank:freeze:check
+
+Run a targeted release check:
+
+    npm run tank:release:check -- --ids=<tank-id>
+
+The target check covers generated assets, muzzle bore, geometry standards,
+tests, and private build. See TANK-ASSET-PIPELINE.md and BUILD-STANDARD.md for
+the complete vehicle-authoring contract.
+
+## Performance verification
+
+Cold-load probe:
+
+    npm run perf:cold
+
+Development flight recorder:
+
+    npm run perf:dev
+
+The flight recorder supports normal, constrained, and software-renderer
+profiles. See DEV-PERF-TRACE.md for output schema and probe procedure.
+
+Press F3 in the game for live render and network diagnostics. Add diag=1 to the
+query string for boot render health.
+
+Do not compare frames per second without recording viewport, device pixel
+ratio, quality tier, render scale, browser, scene, and whether diagnostics were
+open.
+
+## Scene Studio and public images
+
+Open Studio:
+
+    /studio
+
+or press F8 in the garage.
+
+Run the Studio self-test:
+
+    node tools/studio-selftest.mjs
+
+Regenerate the modern landing-page scene definitions:
+
+    node tools/marketing-shots/gen-modern-showcase.mjs
+
+Capture them through the live Studio renderer:
+
+    node tools/marketing-shots/shoot.mjs \
+      --scenes tools/marketing-shots/scenes-modern \
+      --out shots/marketing-modern/raw \
+      --width 1600
+
+Encode the deployable set and manifest:
+
+    node tools/marketing-shots/encode-modern-showcase.mjs
+
+The checked-in scene JSON is the source. Deployable WebP images are output, not
+hand-edited inputs.
+
+## Tank Surface Markup Studio
+
+Start:
+
+    npm run tank:surface-studio
+
+Use repeatable camera views and export JSON plus a matching PNG. The JSON
+records selected geometry and articulation ownership. See
+TANK-SURFACE-STUDIO.md.
+
+## Public and private build boundary
+
+The public artifact must:
+
+- contain all playable first-party vehicles;
+- exclude quarantined non-commercial comparison assets;
+- preserve the game, home, docs, and Studio routes intended for deployment;
+- keep non-game routes from preloading the game graph;
+- contain no development trace instrumentation.
+
+The private artifact may retain authoring/comparison inputs used by local
+verification.
+
+## Documentation changes
+
+Current documentation has three layers:
+
+1. README.md: public technical overview.
+2. docs.html and FEATURES.md: public field manual and feature evidence.
+3. SYSTEMS.md plus subsystem guides: internal architecture and operations.
+
+Update the nearest authoritative document when behavior changes. Do not add
+new behavior only to a historical ledger or critique. If a source-level module
+comment describes ownership or invariants changed by the edit, update it in
+the same change.
+
+Run a path and link audit:
+
+    node - <<'NODE'
+    const fs = require('fs');
+    for (const file of ['README.md', ...fs.readdirSync('docs')
+      .filter(name => name.endsWith('.md')).map(name => 'docs/' + name)]) {
+      const text = fs.readFileSync(file, 'utf8');
+      for (const match of text.matchAll(/\]\(([^)#]+)(?:#[^)]+)?\)/g)) {
+        const target = match[1];
+        if (/^(https?:|mailto:|\/)/.test(target)) continue;
+        const path = require('path').resolve(require('path').dirname(file), target);
+        if (!fs.existsSync(path)) console.error(file + ': missing ' + target);
+      }
+    }
+    NODE
+
+## Release checklist
+
+Before a production release:
+
+1. Confirm the worktree contains only intended changes.
+2. Run npm test.
+3. Run the targeted subsystem checks from the matrix.
+4. Run npm run tank:native:check when fleet or build boundaries changed.
+5. Run npm run test:net:browser when networking or room behavior changed.
+6. Run npm run build and npm run build:private.
+7. Inspect the game, home, and docs routes at desktop and mobile widths.
+8. Verify no browser console errors or missing public assets.
+9. Confirm production service endpoints and environment variables.
+10. Record any new operational limitation in the authoritative subsystem doc.
+
+## Where to continue
+
+- FEATURES.md: visible product capabilities
+- SYSTEMS.md: internal runtime ownership
+- MULTIPLAYER-ARCHITECTURE.md: protocol, rooms, services, and trust
+- PERFORMANCE.md: render/load/per-frame performance design
+- STUDIO.md: Scene Studio API and determinism
+- TANK-ASSET-PIPELINE.md: generated vehicle asset contract
+- INDEX.md: complete documentation map
+

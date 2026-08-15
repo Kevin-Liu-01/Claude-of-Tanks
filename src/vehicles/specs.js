@@ -1,4 +1,4 @@
-// src/vehicles/specs.js — pure gameplay stat + armor data for the 8-tank roster.
+// src/vehicles/specs.js — pure gameplay stat and armor data for the registered fleet.
 // PURE data module: no three import, no side effects. Runs under plain node.
 // Sources: docs/research/tank-roster.md (+ locked overrides in docs/ARCHITECTURE.md §3.3.1).
 // Units per ARCHITECTURE §1.2 — suffixed fields keep human units; consumers convert.
@@ -7,7 +7,7 @@ import { tankLabelRecord } from './tankLabels.js';
 import { vehicleMarkingRecord } from './vehicleMarkings.js';
 import { isRetiredHistoricalTank } from './rosterPolicy.js';
 
-/** Locked roster ids in locked garage-carousel order (ARCHITECTURE §2.1). */
+/** Foundational roster ids in their locked relative garage-carousel order. */
 // leo2a7 REMOVED from the roster BY OWNER 2026-08-06 ('remove the leopard
 // 2a7 and fully focus on the 2a7v') — its TANK_SPECS row STAYS as the
 // leo2_revolution make() donor (userdrops5); it just never enters

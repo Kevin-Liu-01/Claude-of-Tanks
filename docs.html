@@ -45,6 +45,11 @@
       <p class="micro"><em>01</em> Runtime overview</p><h2>One authority. Several presentations.</h2>
       <p>Claude of Tanks is a Vite application using Three.js directly—no Unity export, Unreal stream, React rendering layer, or game-engine runtime. The browser renderer is intentionally downstream from a renderer-free deterministic combat authority.</p>
       <div class="doc-callout"><strong>Current public truth:</strong> 80 selectable original first-party vehicles, eight generated battlefields, a 60 Hz authority, viewer-filtered multiplayer state, and no credits, XP economy, or tech-tree gate.</div>
+      <div class="doc-visual-grid" aria-label="Production game interfaces">
+        <figure><img src="/media/home/ui_garage.webp" alt="Claude of Tanks garage and vehicle roster"><figcaption>Garage and first-party fleet</figcaption></figure>
+        <figure><img src="/media/home/ui_battle.webp" alt="Claude of Tanks battle interface"><figcaption>Battle authority in presentation</figcaption></figure>
+        <figure><img src="/media/home/ui_killcam.webp" alt="X-ray killcam showing armor and internal damage"><figcaption>Resolved shot and X-ray analysis</figcaption></figure>
+      </div>
       <div class="architecture" aria-label="Runtime data flow">
         <div><b>Input</b><span>Drive, brake, requested world aim, shell, fire, consumables</span><code>controls</code></div>
         <div><b>Authority</b><span>Movement, collision, visibility, ballistics, armor, modules, bots, result</span><code>60 Hz</code></div>
@@ -113,12 +118,17 @@
     <section class="doc-section" id="studio">
       <p class="micro"><em>09</em> Scene Studio</p><h2>Production photography is a game mode.</h2>
       <p>Scene Studio runs a complete battlefield with combat paused. It places actual first-party vehicles, conforms them through the movement support solve, applies camo/damage, poses guns within spec, fires the real effects language, freezes a deterministic FX clock, and captures through the full renderer.</p>
+      <div class="doc-visual-grid doc-visual-grid--two" aria-label="First-party authoring tools">
+        <figure><img src="/media/home/st_scene.webp" alt="Scene Studio composing an action image"><figcaption>Scene Studio: deterministic production capture</figcaption></figure>
+        <figure><img src="/media/home/ui_surface_lab.webp" alt="Tank Surface Markup Studio inspecting geometry"><figcaption>Surface Lab: exact geometry review packets</figcaption></figure>
+      </div>
       <pre class="doc-code">node tools/marketing-shots/gen-modern-showcase.mjs
 node tools/marketing-shots/shoot.mjs \
   --scenes tools/marketing-shots/scenes-modern \
   --out shots/marketing-modern/raw --width 1600
 node tools/marketing-shots/encode-modern-showcase.mjs</pre>
       <p>The landing-page set contains 30 newly authored, modern-only scenes. Broad turret search arcs and vehicle-authored gun elevation/depression replace the repeated catalog pose; the generated manifest records each requested turret angle, gun angle, pose, map, nation, and vehicle. Scene JSON is checked in, raw PNG evidence is reproducible, and deployable WebP files are budget encoded. See <a href="https://github.com/Kevin-Liu-01/Claude-of-Tanks/blob/main/docs/STUDIO.md">the complete Studio API</a>.</p>
+      <p>The separate Tank Surface Markup Studio loads only first-party procedural vehicles and exports mesh identity, selected triangles, local and world bounds, articulation ownership, camera pose, and the requested correction as JSON plus a matching image. See <a href="https://github.com/Kevin-Liu-01/Claude-of-Tanks/blob/main/docs/TANK-SURFACE-STUDIO.md">the Surface Lab workflow</a>.</p>
     </section>
 
     <section class="doc-section" id="verification">
@@ -129,12 +139,12 @@ npm run tank:native:check  # first-party runtime provenance
 npm run build              # public build + quarantined asset strip
 npm run build:private      # full private tooling build</pre>
       <p>Node self-tests cover movement, armor, damage, spotting, bots, room lifecycle, reliable events, snapshot recovery, persistent destructibles, prediction, services, ratings, and UI contracts. Browser rigs cover real WebRTC handoff, links/codes, readiness, movement, loss/jitter, reconnect, rematch, and departure.</p>
-      <div class="doc-callout"><strong>Repository map:</strong> begin with <a href="https://github.com/Kevin-Liu-01/Claude-of-Tanks/blob/main/docs/INDEX.md">docs/INDEX.md</a>, then use <a href="https://github.com/Kevin-Liu-01/Claude-of-Tanks/blob/main/docs/HOW-IT-WORKS.md">HOW-IT-WORKS.md</a> for the current product architecture and the specialized contracts for deeper work.</div>
+      <div class="doc-callout"><strong>Repository map:</strong> begin with <a href="https://github.com/Kevin-Liu-01/Claude-of-Tanks/blob/main/docs/FEATURES.md">FEATURES.md</a> for the complete capability record, <a href="https://github.com/Kevin-Liu-01/Claude-of-Tanks/blob/main/docs/SYSTEMS.md">SYSTEMS.md</a> for current runtime ownership, and <a href="https://github.com/Kevin-Liu-01/Claude-of-Tanks/blob/main/docs/DEVELOPMENT.md">DEVELOPMENT.md</a> for verification and release operations.</div>
     </section>
   </article>
 </div>
 
-<footer class="footer"><div class="shell inner"><a class="brand" href="/home"><img src="/brand/logo-mark-metal.svg" alt=""><span>Claude <b>of Tanks</b></span></a><div class="footer-links"><a href="/home">Showcase</a><a href="/">Garage</a><a href="/studio">Studio</a><a href="https://github.com/Kevin-Liu-01/Claude-of-Tanks">GitHub</a></div><span class="micro">Field manual // v3</span></div></footer>
+<footer class="footer"><div class="shell inner"><a class="brand" href="/home"><img src="/brand/logo-mark-metal.svg" alt=""><span>Claude <b>of Tanks</b></span></a><div class="footer-links"><a href="/home">Showcase</a><a href="/">Garage</a><a href="/studio">Studio</a><a href="https://github.com/Kevin-Liu-01/Claude-of-Tanks">GitHub</a></div><span class="micro">Field manual // v4</span></div></footer>
 <script>
 const links=[...document.querySelectorAll('.docs-nav a')];const sections=links.map(a=>document.querySelector(a.hash));const obs=new IntersectionObserver(entries=>entries.forEach(entry=>{if(entry.isIntersecting)links.forEach(a=>a.classList.toggle('active',a.hash===`#${entry.target.id}`))}),{rootMargin:'-25% 0px -65%'});sections.forEach(s=>s&&obs.observe(s));
 </script>

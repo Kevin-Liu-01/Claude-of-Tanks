@@ -1,4 +1,10 @@
-# ARCHITECTURE.md — the locked build contract
+# ARCHITECTURE.md — original implementation contract
+
+> Historical document. This was the locked nine-module plan used during the
+> original parallel implementation. It is retained as build provenance, but it
+> is not the current runtime architecture. Use [SYSTEMS.md](SYSTEMS.md) for
+> current ownership and data flow, [MULTIPLAYER-ARCHITECTURE.md](MULTIPLAYER-ARCHITECTURE.md)
+> for network behavior, and [DEVELOPMENT.md](DEVELOPMENT.md) for verification.
 
 Nine builder agents implement the modules below **in parallel, without talking to each
 other**. This document is the ONLY shared truth. If something here conflicts with a
