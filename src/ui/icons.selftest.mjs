@@ -21,3 +21,7 @@ for (const id of uiIconIds()) {
 for (const id of ['battleBots', 'battlePrivate', 'battleLan', 'battleRanked', 'battleRecord']) {
   if (!uiIconIds().includes(id)) throw new Error(`missing garage battle icon: ${id}`);
 }
+
+for (const id of ['damage', 'penetration', 'team', 'check', 'clock', 'rematch', 'map']) {
+  if (!uiIconIds().includes(id)) throw new Error(`missing debrief icon: ${id}`);
+}
