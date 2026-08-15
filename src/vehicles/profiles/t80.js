@@ -210,9 +210,19 @@ function buildT80Line(P, v) {
   // (r27c: v0/v1 apex 0.75 -> 0.735 — the lathe apex tied the crown box at
   // 2.20 and pinned heightM's p95 with the quantization+pad-dip stack; the
   // crown BOX is the single p95 carrier now. BV list untouched.)
-  const ringsT = v === 2
+  const rawRingsT = v === 2
     ? [[1.44, 0.06], [1.465, 0.42], [1.435, 0.47], [1.28, 0.655], [1.19, 0.69], [0.80, 0.74], [0.02, 0.75]]
     : [[1.44, 0.06], [1.465, 0.40], [1.435, 0.44], [1.30, 0.545], [1.19, 0.585], [1.05, 0.615], [0.86, 0.68], [0.60, 0.72], [0.02, 0.735]];
+  // Family height correction: shorten only the cast turret body by ten
+  // percent above its planted ring.  Scaling the complete turret group
+  // would also squash the gun, antennae and equipment; keeping the ring
+  // datum fixed preserves the hull joint while giving the T-80 family its
+  // lower, broader cast profile.
+  const turretBodyScaleY = 0.90;
+  const turretBodyBaseY = 0.06;
+  const ringsT = rawRingsT.map(([r, y]) => [r, turretBodyBaseY + (y - turretBodyBaseY) * turretBodyScaleY]);
+  const roofDrop = (rawRingsT.at(-1)[1] - turretBodyBaseY) * (1 - turretBodyScaleY);
+  const roofY = (y) => y - roofDrop;
   meshDome(P, ringsT, 0.88, 0, v === 2 ? 0.17 : 0.22);
   // crown plate: the ref roof is FLAT 2.20-2.25 with a falloff beyond — the
   // compressed ref's front profile now falls continuously from ±0.60
@@ -225,10 +235,10 @@ function buildT80Line(P, v) {
   // stacks the -0.008 pad-dip floor on top (2.225, 0.14% over grace).
   // Authored 2.1925 reads ~2.2175 -> 0.79%, inside grace with margin; the
   // compressed ref's own bodyTop is 2.207, under a mask pixel away.)
-  if (v !== 2) P.add('turret', box(1.24, 0.045, 1.25), 0, 0.72, 0.125);
+  if (v !== 2) P.add('turret', box(1.24, 0.045, 1.25), 0, roofY(0.72), 0.125);
   // r27: LEFT crown shelf — the compressed ref's falloff is asymmetric
   // (left cols -1.04..-1.20 hold 2.14-2.18 where the right reads 1.96-2.05)
-  if (v !== 2) P.add('turret', box(0.36, 0.05, 0.90), -1.06, 0.695, 0.10);
+  if (v !== 2) P.add('turret', box(0.36, 0.05, 0.90), -1.06, roofY(0.695), 0.10);
   // hidden turret-node carrier: the ref turret mask bottoms 0.715 (print
   // bakes hull-side kit into the turret node). r27: the two compressed
   // prints DIFFER here — t80's apron zone ends by -0.40 (its old -0.475
@@ -309,37 +319,34 @@ function buildT80Line(P, v) {
       // the lathe's own line; symmetric would read +0.1-0.17 there).
       // r27b: z pulled 1.06 -> 0.95 — its front edge printed 2.13 into the
       // z 1.29 side column where both refs read 1.955-2.015.
-      if (s < 0 && v === 0) P.add('turret', box(0.30, 0.28, 0.44), s * 1.00, 0.54, 0.95, 0, s * 0.42, 0);
-      P.add('turretDetail', box(0.36, 0.05, 0.9), s * 1.08, 0.335, -0.10, 0, s * 0.08, 0);
+      if (s < 0 && v === 0) P.add('turret', box(0.30, 0.25, 0.44), s * 1.00, roofY(0.54), 0.95, 0, s * 0.42, 0);
+      P.add('turretDetail', box(0.36, 0.05, 0.9), s * 1.08, roofY(0.335), -0.10, 0, s * 0.08, 0);
     }
   }
   // commander cupola + Utyos NSVT right (hand receiver keeps the r25c
   // 2.2195 anchor on every variant; the r26 fitting NSVT below owns the
   // ref's 2.34 MG spike for t80/t80b)
-  P.add('turret', cylY(0.24, 0.26, 0.10, 14), 0.52, 0.66, -0.42);
-  P.add('turretDark', KIT.torus(0.25, 0.018, 14), 0.52, 0.72, -0.42);
-  // (r27c: hand receiver 0.7195 -> 0.7075 — its 2.2195 top was a p95
-  // candidate in the heightM quantization stack; the compressed ref's own
-  // 2.30 spike is the sight head's column now.)
-  P.add('turretDark', box(0.09, 0.10, 0.16), 0.55, 0.7075, -0.57);
-  P.add('turretDark', cylZ(0.024, 0.58, 8), 0.55, 0.725, -0.14, -0.03, 0, 0);
-  P.add('turretDark', cylZ(0.036, 0.11, 8), 0.55, 0.735, 0.17, -0.03, 0, 0);
-  P.add('turretDetail', box(0.10, 0.12, 0.18), 0.42, 0.69, -0.60);
-  P.add('turret', cylY(0.21, 0.21, 0.045, 14), -0.48, 0.70, -0.36);
-  P.add('turretDark', cylY(0.215, 0.215, 0.012, 14), -0.48, 0.735, -0.36);
+  // Broad, buried station foundations follow the new crown.  The old hand
+  // receiver and barrel duplicated the later KIT NSVT; one shielded NSVT
+  // now owns the complete weapon and remains visibly rooted in its cupola.
+  P.add('turret', cylY(0.28, 0.30, 0.11, 16), 0.52, roofY(0.655), -0.42);
+  P.add('turretDark', KIT.torus(0.29, 0.020, 16), 0.52, roofY(0.715), -0.42);
+  P.add('turretDetail', box(0.22, 0.08, 0.20), 0.48, roofY(0.685), -0.56, 0, -0.08, 0);
+  P.add('turret', cylY(0.23, 0.23, 0.050, 14), -0.48, roofY(0.69), -0.36);
+  P.add('turretDark', cylY(0.235, 0.235, 0.012, 14), -0.48, roofY(0.725), -0.36);
   // Shared T-80 station language: a low, asymmetric periscope cadence and
   // a real collar-supported radio whip.  These fittings follow the same
   // seats on the related cast turret without making the three marks share
   // their protection package.
   for (const [x, z, ry] of [[0.22, -0.22, 0.42], [0.34, -0.08, 0.20], [0.50, -0.03, -0.04], [0.68, -0.14, -0.30]]) {
-    P.add('turretDark', box(0.115, 0.050, 0.065), x, 0.688, z, 0, ry, 0);
-    P.add('turretGlass', box(0.078, 0.030, 0.012), x, 0.707, z + 0.038, 0, ry, 0);
+    P.add('turretDark', box(0.115, 0.050, 0.065), x, roofY(0.688), z, 0, ry, 0);
+    P.add('turretGlass', box(0.078, 0.030, 0.012), x, roofY(0.707), z + 0.038, 0, ry, 0);
   }
-  P.add('turret', cylY(0.070, 0.076, 0.065, 12), -0.76, 0.67, -0.82);
-  P.add('turretDark', cylY(0.042, 0.046, 0.055, 10), -0.76, 0.73, -0.82);
+  P.add('turret', cylY(0.070, 0.076, 0.065, 12), -0.76, roofY(0.67), -0.82);
+  P.add('turretDark', cylY(0.042, 0.046, 0.055, 10), -0.76, roofY(0.73), -0.82);
   {
     const antenna = FITTINGS.antennaWhip({ mats: P.mats, h: 1.24, r: 0.011, rake: -0.025, seed: 30 + v });
-    antenna.position.set(-0.76, 0.75, -0.82);
+    antenna.position.set(-0.76, roofY(0.75), -0.82);
     P.turretG.add(antenna);
   }
   if (v !== 2) {
@@ -349,17 +356,17 @@ function buildT80Line(P, v) {
     // Its z-span still owns the ref's 2.30 side spike at the -0.48 column.
     // r27c: t80b's print has NO left spike (front -0.30..-0.34 reads
     // 2.195, side -0.35 reads 2.135) — its head drops to the 2.19 line.
-    P.add('turretDetail', box(0.13, 0.15, 0.13), -0.325, v === 0 ? 0.815 : 0.665, -0.50);
+    P.add('turretDetail', box(0.15, 0.15, 0.15), -0.325, roofY(v === 0 ? 0.815 : 0.665), -0.50);
     // rear crown cap: the flattened lathe alone drops to 2.0 behind the
     // ring; r27: the compressed ref holds 2.145 (not 2.19) back to z -0.9,
     // and its left-front reads 2.21 out to x -0.86 — cap dropped and
     // widened left.
-    P.add('turret', box(0.83, 0.08, 0.40), -0.445, 0.655, -0.68);
+    P.add('turret', box(0.83, 0.08, 0.40), -0.445, roofY(0.655), -0.68);
   }
   // gunner sight doghouse left (r27c: cap 0.73 -> 0.70 — its 2.20 top was
   // the second member of the heightM quantization stack with the crown)
-  P.add('turret', box(0.38, 0.22, 0.40), -0.45, 0.63, 0.40);
-  P.add('turret', box(0.40, 0.04, 0.44), -0.45, 0.70, 0.40);
+  P.add('turret', box(0.38, 0.20, 0.40), -0.45, roofY(0.63), 0.40);
+  P.add('turret', box(0.40, 0.04, 0.44), -0.45, roofY(0.70), 0.40);
   // bustle: 2.20-top band, ref underside rake 1.70 -> 1.91 with the rear
   // cliff at -1.58 (the old -1.63 rear face aliased a 0.2 err column).
   // r27: the compressed ref's bustle is RIGHT-BIASED in plan (rear -1.41
@@ -367,24 +374,24 @@ function buildT80Line(P, v) {
   // the symmetric ±0.88 boxes printed -1.40 into the ±0.92..1.08 columns.
   // Main boxes narrow to -0.82..0.88 (BV keeps the guarded symmetric form);
   // the right corner box carries the deep -1.41 read only to x 1.005.
-  P.add('turret', box(v === 2 ? 1.76 : 1.70, 0.50, 0.31), v === 2 ? 0 : 0.03, 0.50, -1.245);
+  P.add('turret', box(v === 2 ? 1.76 : 1.70, 0.45, 0.31), v === 2 ? 0 : 0.03, roofY(0.50), -1.245);
   if (v === 2) {
-    P.add('turret', box(1.76, 0.36, 0.23), 0, 0.57, -1.515);
+    P.add('turret', box(1.76, 0.32, 0.23), 0, roofY(0.57), -1.515);
   } else {
-    P.add('turret', box(0.125, 0.50, 0.31), 0.9425, 0.50, -1.245);
+    P.add('turret', box(0.125, 0.45, 0.31), 0.9425, roofY(0.50), -1.245);
     // r27b: the compressed ref's rear-most bustle column is a THIN
     // 1.95..2.10 lip (the old 1.84..2.20 band read 0.09 both edges at the
     // -1.59 column); tail box pulled to -1.52 so the lip owns the column.
-    P.add('turret', box(1.70, 0.36, 0.16), 0.03, 0.57, -1.44);
-    P.add('turret', box(1.60, 0.16, 0.06), 0.03, 0.575, -1.58);
+    P.add('turret', box(1.70, 0.32, 0.16), 0.03, roofY(0.57), -1.44);
+    P.add('turret', box(1.60, 0.14, 0.06), 0.03, roofY(0.575), -1.58);
   }
-  P.add('turretDark', cylX(0.07, 1.5, 10), 0, 0.40, -1.06);
-  P.add('turretDetail', box(0.05, 0.05, 0.66), 0.80, 0.46, -0.86, 0, 0.5, 0);
-  P.add('turretDetail', box(0.05, 0.05, 0.66), -0.80, 0.46, -0.86, 0, -0.5, 0);
+  P.add('turretDark', cylX(0.07, 1.5, 10), 0, roofY(0.40), -1.06);
+  P.add('turretDetail', box(0.05, 0.05, 0.66), 0.80, roofY(0.46), -0.86, 0, 0.5, 0);
+  P.add('turretDetail', box(0.05, 0.05, 0.66), -0.80, roofY(0.46), -0.86, 0, -0.5, 0);
   if (v >= 1) {
     // T-80B brow: forward shelf + spread applique tiles (t80b ref plan
     // front reads 1.74 out to |x| 0.8, 1.43-1.56 to 1.15) + 902 tubes left
-    P.add('turret', box(0.50, 0.20, 0.30), -0.86, 0.32, 1.24, 0, -0.50, 0);
+    P.add('turret', box(0.50, 0.18, 0.30), -0.86, 0.28, 1.24, 0, -0.50, 0);
     // CHEV (§5.14) -> TIP §5.29 (owner refinement 2026-08-07): the three
     // spread applique tiles per side become TWO flat applique panels
     // MEETING AT THE MANTLET HOOD — tip (±0.64, 1.54) at the hood flank
@@ -393,23 +400,23 @@ function buildT80Line(P, v) {
     // ellipse along the run (t80 critic-conditional mechanism, shared).
     // Tile grammar carried by the 3-seg + row seam grid; §H.4: t80b keeps
     // brow shelf + 902 bank as its marks.
-    eraRuCheeks(P, { tip: { x: 0.64, z: 1.54, ox: 1.24, oz: 0.99, y: 0.28, h: 0.30, d: 0.13, tilt: -0.20, segs: 3, rows: 1, gap: false } }, 'tip');
+    eraRuCheeks(P, { tip: { x: 0.64, z: 1.54, ox: 1.24, oz: 0.99, y: 0.23, h: 0.27, d: 0.13, tilt: -0.20, segs: 3, rows: 1, gap: false } }, 'tip');
     // T-80B 902A launchers sit in compact mirrored groups on broad cheek
     // shoes.  The BV below receives its distinct 7/5 layout instead.
     if (v === 1) for (const s of [-1, 1]) {
-      P.add('turret', box(0.19, 0.13, 0.42), s * 1.16, 0.36, 0.36, 0, 0, -s * 0.18);
+      P.add('turret', box(0.19, 0.13, 0.42), s * 1.16, 0.31, 0.36, 0, 0, -s * 0.18);
       const smoke = FITTINGS.smokeBank({ mats: P.mats, count: 4, r: 0.040, len: 0.25, pitch: -0.42, splay: 0.28, arc: 0.48, spacing: 0.088, seed: 40 + s });
-      smoke.position.set(s * 1.17, 0.44, 0.37);
+      smoke.position.set(s * 1.17, roofY(0.44), 0.37);
       smoke.rotation.y = s * 0.96;
       P.turretG.add(smoke);
     }
     // bustle tail bin — r27: the compressed t80b ref's 2.0..2.18 band now
     // ends ~-1.61 (the r26 -1.68 seat read ONLY-PROC on the turret row and
     // 0.36 err on side_whole at the -1.67..-1.80 columns)
-    P.add('turret', box(0.30, 0.18, 0.09), -0.55, 0.64, -1.575);
+    P.add('turret', box(0.30, 0.18, 0.09), -0.55, roofY(0.64), -1.575);
     // r27b: t80b keeps a 2.05..2.18 stowage row over z -0.80..-1.06 (its
     // -0.97 side column read the bare lathe 2.005 vs the ref's 2.185)
-    P.add('turret', box(0.72, 0.13, 0.28), -0.35, 0.665, -0.92);
+    P.add('turret', box(0.72, 0.13, 0.28), -0.35, roofY(0.665), -0.92);
   }
   if (v === 0) {
     // CHEV (§5.14) -> TIP §5.29 (owner refinement 2026-08-07 + the critic
@@ -424,7 +431,7 @@ function buildT80Line(P, v) {
     // critic's measured pass condition; tilt top-edge retreat 3.7cm
     // priced in). Still the LIGHTEST fit of the three (§H.4): one clean
     // 3-seg panel pair, no flank field, no lower lip.
-    eraRuCheeks(P, { tip: { x: 0.66, z: 1.56, ox: 1.30, oz: 0.94, y: 0.21, h: 0.38, d: 0.13, tilt: -0.20, segs: 3, rows: 0, gap: false } }, 'tip');
+    eraRuCheeks(P, { tip: { x: 0.66, z: 1.56, ox: 1.30, oz: 0.94, y: 0.18, h: 0.34, d: 0.13, tilt: -0.20, segs: 3, rows: 0, gap: false } }, 'tip');
   }
   if (v === 2) {
     // T-80BV Kontakt-1: cheek field (tip panels) + flank wrap + glacis raft
@@ -436,8 +443,8 @@ function buildT80Line(P, v) {
     // banksOff law). 39deg V; full 3-course grid (rows 2) = the BV's
     // heaviest-fit §H.4 identity; mid-run half-buries in the dome bulge
     // (the K-1-on-casting hug, §B2 no-air).
-    eraRuCheeks(P, { rings: ringsT, sz: 1.05, rCz: 0.0, k1Y: 0.06, k1Pitch: 0.25, k1T0: 0.24, k1Step: 0.22, k1H: 0.22, k1Out: 0.02, k1Chevron: { yaw: 0.78, arcFrom: 3, pitch: 0.30, bw: 0.28, bd: 0.15, d0: 0.05, out: 0.07, banksOff: true } }, 'k1');
-    eraRuCheeks(P, { tip: { x: 0.30, z: 1.52, ox: 1.28, oz: 0.72, y: 0.28, h: 0.56, d: 0.15, tilt: -0.18, segs: 4, rows: 2, gap: false } }, 'tip');
+    eraRuCheeks(P, { rings: ringsT, sz: 1.05, rCz: 0.0, k1Y: 0.02, k1Pitch: 0.25, k1T0: 0.24, k1Step: 0.22, k1H: 0.20, k1Out: 0.02, k1Chevron: { yaw: 0.78, arcFrom: 3, pitch: 0.30, bw: 0.28, bd: 0.15, d0: 0.05, out: 0.07, banksOff: true } }, 'k1');
+    eraRuCheeks(P, { tip: { x: 0.30, z: 1.52, ox: 1.28, oz: 0.72, y: 0.23, h: 0.50, d: 0.15, tilt: -0.18, segs: 4, rows: 2, gap: false } }, 'tip');
     // Continue the Kontakt-1 blanket into six individually readable flank
     // cassettes per side.  Their buried inner shoes overlap the existing
     // cast carriers; dark caps expose the module cadence at gameplay scale.
@@ -445,17 +452,17 @@ function buildT80Line(P, v) {
       const x = 1.24 + i * 0.030;
       const z = 0.46 - i * 0.235;
       const yaw = 0.66 + i * 0.105;
-      P.add('turretTrack', box(0.19, 0.11, 0.20), s * (x - 0.035), 0.16 - i * 0.006, z, -0.06, s * yaw, 0);
-      P.add('turretTrack', box(0.22, 0.14, 0.22), s * x, 0.19 - i * 0.006, z, -0.06, s * yaw, 0);
-      P.add('turretDark', box(0.17, 0.012, 0.15), s * x, 0.266 - i * 0.006, z, -0.06, s * yaw, 0);
+      P.add('turretTrack', box(0.19, 0.11, 0.20), s * (x - 0.035), 0.12 - i * 0.006, z, -0.06, s * yaw, 0);
+      P.add('turretTrack', box(0.22, 0.14, 0.22), s * x, 0.15 - i * 0.006, z, -0.06, s * yaw, 0);
+      P.add('turretDark', box(0.17, 0.012, 0.15), s * x, 0.226 - i * 0.006, z, -0.06, s * yaw, 0);
     }
     // The production BV's 902B system is visibly asymmetric: seven tubes
     // on the left cheek and five on the right, each on a planted shoe.
     for (const s of [-1, 1]) {
       const count = s < 0 ? 7 : 5;
-      P.add('turret', box(0.22, 0.16, s < 0 ? 0.58 : 0.46), s * 1.17, 0.39, 0.22, 0, 0, -s * 0.16);
+      P.add('turret', box(0.22, 0.16, s < 0 ? 0.58 : 0.46), s * 1.17, 0.33, 0.22, 0, 0, -s * 0.16);
       const smoke = FITTINGS.smokeBank({ mats: P.mats, count, r: 0.039, len: 0.25, pitch: -0.42, splay: 0.30, arc: 0.64, spacing: 0.080, seed: 50 + count });
-      smoke.position.set(s * 1.18, 0.48, 0.24);
+      smoke.position.set(s * 1.18, roofY(0.48), 0.24);
       smoke.rotation.y = s * 1.00;
       P.turretG.add(smoke);
     }
@@ -480,7 +487,7 @@ function buildT80Line(P, v) {
   // is the certified circle-law trade. t80b's print keeps its tube to
   // 6.33 — its muzzle extends inside the 1% overall grace (ONLY-REF
   // column + turret cover otherwise). ----
-  P.gunG.position.set(0, 0.315, 0.60);
+  P.gunG.position.set(0, 0.285, 0.60);
   ruSaddle(P, { rollR: 0.15, rollW: 0.40, tubeR: 0.128, rootR: 0.28, rootL: 0.62 });
   const gunEnd = v === 2 ? 5.22 : v === 1 ? 5.73 : 5.67;
   tubeGun(P, [
@@ -513,14 +520,14 @@ function buildT80Line(P, v) {
     // barrel runs 2.18-2.26 over the 2.20-2.25 ref crown plateau (§C
     // pintle allowance ≤0.4), ammo can on. scale 0.54 -> 0.68.
     const mg = FITTINGS.pintleMG({
-      mats: P.mats, cls: 'nsvt', scale: 0.82, tone: 'dark', ammo: true,
-      elev: -0.10,
+      mats: P.mats, cls: 'nsvt', scale: 0.88, tone: 'two-tone', ammo: true,
+      shield: true, elev: -0.08,
     });
     // (TIP r2: mount 0.62 -> 0.535 — the 2.31w receiver blew heightM
     // grace on BOTH marks, dims 98.9/100 -> 77.6/77.4 MEASURED: "a cap
     // never excuses dims". Top now ~2.22w = inside the 1% grace; the
     // receiver still pokes ~3cm over the 2.19 crown plate, barrel level.)
-    mg.position.set(0.42, 0.56, -0.55);
+    mg.position.set(0.42, roofY(0.56), -0.55);
     P.turretG.add(mg);
   } else {
     // §B3.2 (owner directive 2026-08-06): the T-80BV carries the same
@@ -538,10 +545,10 @@ function buildT80Line(P, v) {
     // the stations-pinned row (its min row is stations 33.7; §C pintle
     // allowance).
     const mg = FITTINGS.pintleMG({
-      mats: P.mats, cls: 'nsvt', scale: 0.76, tone: 'dark', ammo: true,
-      elev: -0.10,
+      mats: P.mats, cls: 'nsvt', scale: 0.84, tone: 'two-tone', ammo: true,
+      shield: true, elev: -0.08,
     });
-    mg.position.set(0.42, 0.56, -0.55);
+    mg.position.set(0.42, roofY(0.56), -0.55);
     P.turretG.add(mg);
   }
   P.topY = 1.20;
