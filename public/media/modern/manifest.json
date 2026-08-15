@@ -12,7 +12,7 @@
     "src": "/media/modern/01_abramsx.webp",
     "width": 1600,
     "height": 900,
-    "bytes": 117428
+    "bytes": 114630
   },
   {
     "slug": "02_m1a2_sepv3",
@@ -27,7 +27,7 @@
     "src": "/media/modern/02_m1a2_sepv3.webp",
     "width": 1600,
     "height": 900,
-    "bytes": 79110
+    "bytes": 78214
   },
   {
     "slug": "03_m1a2_sepv2",
@@ -42,7 +42,7 @@
     "src": "/media/modern/03_m1a2_sepv2.webp",
     "width": 1600,
     "height": 900,
-    "bytes": 199530
+    "bytes": 199226
   },
   {
     "slug": "04_m1a2_tusk",
@@ -57,7 +57,7 @@
     "src": "/media/modern/04_m1a2_tusk.webp",
     "width": 1600,
     "height": 900,
-    "bytes": 149610
+    "bytes": 144836
   },
   {
     "slug": "05_m1a1ha",
@@ -72,7 +72,7 @@
     "src": "/media/modern/05_m1a1ha.webp",
     "width": 1600,
     "height": 900,
-    "bytes": 179876
+    "bytes": 213946
   },
   {
     "slug": "06_leo2a7v",
@@ -87,7 +87,7 @@
     "src": "/media/modern/06_leo2a7v.webp",
     "width": 1600,
     "height": 900,
-    "bytes": 119974
+    "bytes": 117886
   },
   {
     "slug": "07_leo2_revolution",
@@ -102,7 +102,7 @@
     "src": "/media/modern/07_leo2_revolution.webp",
     "width": 1600,
     "height": 900,
-    "bytes": 132910
+    "bytes": 133018
   },
   {
     "slug": "08_leo2a6",
@@ -117,7 +117,7 @@
     "src": "/media/modern/08_leo2a6.webp",
     "width": 1600,
     "height": 900,
-    "bytes": 206284
+    "bytes": 206316
   },
   {
     "slug": "09_kf51",
@@ -132,7 +132,7 @@
     "src": "/media/modern/09_kf51.webp",
     "width": 1600,
     "height": 900,
-    "bytes": 151950
+    "bytes": 134288
   },
   {
     "slug": "10_challenger_3",
@@ -162,7 +162,7 @@
     "src": "/media/modern/11_challenger2.webp",
     "width": 1600,
     "height": 900,
-    "bytes": 201150
+    "bytes": 201278
   },
   {
     "slug": "12_leclerc",
@@ -177,7 +177,7 @@
     "src": "/media/modern/12_leclerc.webp",
     "width": 1600,
     "height": 900,
-    "bytes": 109094
+    "bytes": 109198
   },
   {
     "slug": "13_ariete",
@@ -192,7 +192,7 @@
     "src": "/media/modern/13_ariete.webp",
     "width": 1600,
     "height": 900,
-    "bytes": 209152
+    "bytes": 210998
   },
   {
     "slug": "14_merkava3d",
@@ -207,7 +207,7 @@
     "src": "/media/modern/14_merkava3d.webp",
     "width": 1600,
     "height": 900,
-    "bytes": 190898
+    "bytes": 189902
   },
   {
     "slug": "15_k2",
@@ -222,7 +222,7 @@
     "src": "/media/modern/15_k2.webp",
     "width": 1600,
     "height": 900,
-    "bytes": 152528
+    "bytes": 152942
   },
   {
     "slug": "16_k1a1",
@@ -237,7 +237,7 @@
     "src": "/media/modern/16_k1a1.webp",
     "width": 1600,
     "height": 900,
-    "bytes": 214586
+    "bytes": 214890
   },
   {
     "slug": "17_t14",
@@ -252,7 +252,7 @@
     "src": "/media/modern/17_t14.webp",
     "width": 1600,
     "height": 900,
-    "bytes": 165896
+    "bytes": 152694
   },
   {
     "slug": "18_t90m",
@@ -267,7 +267,7 @@
     "src": "/media/modern/18_t90m.webp",
     "width": 1600,
     "height": 900,
-    "bytes": 76660
+    "bytes": 76672
   },
   {
     "slug": "19_t90ms",
@@ -282,7 +282,7 @@
     "src": "/media/modern/19_t90ms.webp",
     "width": 1600,
     "height": 900,
-    "bytes": 198060
+    "bytes": 197974
   },
   {
     "slug": "20_t90sm",
@@ -297,7 +297,7 @@
     "src": "/media/modern/20_t90sm.webp",
     "width": 1600,
     "height": 900,
-    "bytes": 114660
+    "bytes": 114550
   },
   {
     "slug": "21_t90a_burlak",
@@ -312,7 +312,7 @@
     "src": "/media/modern/21_t90a_burlak.webp",
     "width": 1600,
     "height": 900,
-    "bytes": 221166
+    "bytes": 219872
   },
   {
     "slug": "22_t80u",
@@ -327,7 +327,7 @@
     "src": "/media/modern/22_t80u.webp",
     "width": 1600,
     "height": 900,
-    "bytes": 182988
+    "bytes": 183212
   },
   {
     "slug": "23_t72b3m",
@@ -342,7 +342,7 @@
     "src": "/media/modern/23_t72b3m.webp",
     "width": 1600,
     "height": 900,
-    "bytes": 130868
+    "bytes": 130810
   },
   {
     "slug": "24_t84",
@@ -357,7 +357,7 @@
     "src": "/media/modern/24_t84.webp",
     "width": 1600,
     "height": 900,
-    "bytes": 214506
+    "bytes": 214664
   },
   {
     "slug": "25_type99a",
@@ -372,7 +372,7 @@
     "src": "/media/modern/25_type99a.webp",
     "width": 1600,
     "height": 900,
-    "bytes": 143752
+    "bytes": 143726
   },
   {
     "slug": "26_type10",
@@ -387,7 +387,7 @@
     "src": "/media/modern/26_type10.webp",
     "width": 1600,
     "height": 900,
-    "bytes": 75134
+    "bytes": 75208
   },
   {
     "slug": "27_type90",
@@ -402,7 +402,7 @@
     "src": "/media/modern/27_type90.webp",
     "width": 1600,
     "height": 900,
-    "bytes": 187844
+    "bytes": 188122
   },
   {
     "slug": "28_pt91m",
@@ -417,7 +417,7 @@
     "src": "/media/modern/28_pt91m.webp",
     "width": 1600,
     "height": 900,
-    "bytes": 107256
+    "bytes": 108222
   },
   {
     "slug": "29_spz_puma",
@@ -432,7 +432,7 @@
     "src": "/media/modern/29_spz_puma.webp",
     "width": 1600,
     "height": 900,
-    "bytes": 222178
+    "bytes": 221402
   },
   {
     "slug": "30_fv510",
@@ -447,6 +447,6 @@
     "src": "/media/modern/30_fv510.webp",
     "width": 1600,
     "height": 900,
-    "bytes": 182216
+    "bytes": 144762
   }
 ]
