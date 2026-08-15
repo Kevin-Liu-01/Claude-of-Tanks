@@ -4,7 +4,7 @@ import { WebSocket } from 'ws';
 import { DistributedSignalingRoomStore } from './distributedRoomStore.js';
 import { createSignalingServer } from './signalingServer.js';
 
-class FlakyRedis extends EventEmitter {
+class FlakySubscriber extends EventEmitter {
   static failuresRemaining = 0;
 
   constructor() {
@@ -12,11 +12,9 @@ class FlakyRedis extends EventEmitter {
     this.status = 'wait';
   }
 
-  duplicate() { return new FlakyRedis(); }
-
   connect() {
     this.status = 'connecting';
-    if (FlakyRedis.failuresRemaining-- > 0) {
+    if (FlakySubscriber.failuresRemaining-- > 0) {
       const error = new Error('simulated cold Redis timeout');
       this.status = 'end';
       queueMicrotask(() => this.emit('end'));
@@ -29,24 +27,49 @@ class FlakyRedis extends EventEmitter {
 
   subscribe() { return Promise.resolve(1); }
   unsubscribe() { return Promise.resolve(0); }
-  set() { return Promise.resolve('OK'); }
   disconnect() { this.status = 'end'; this.emit('end'); }
 }
 
-FlakyRedis.failuresRemaining = 1;
+class FakeRestRedis {
+  ping() { return Promise.resolve('PONG'); }
+  set() { return Promise.resolve('OK'); }
+}
+
+FlakySubscriber.failuresRemaining = 1;
 const retryStore = new DistributedSignalingRoomStore({
   redisUrl: 'rediss://test.invalid',
-  RedisImpl: FlakyRedis,
+  commandClient: new FakeRestRedis(),
+  SubscriberImpl: FlakySubscriber,
 });
+retryStore.setDeliveryHandler(() => {});
+assert.equal(retryStore.subscriber.status, 'wait',
+  'registering delivery must not open Redis during an unrelated HTTP cold start');
 const recoveredRoom = await retryStore.create({}, {
   player: { id: 'cold-host', name: 'Cold Host' },
   maxPlayers: 4,
 });
 assert.equal(recoveredRoom.roomCode.length, 6,
   'the room request that sees a cold Redis failure must retry and recover');
-assert.equal(retryStore.command.status, 'ready',
+assert.equal(retryStore.subscriber.status, 'ready',
   'a failed cold Redis startup must be retryable on the same function instance');
+assert.deepEqual(await retryStore.health(), {
+  ok: true, command: 'ready', subscriber: 'ready',
+});
 await retryStore.close();
+
+const healthStore = {
+  setDeliveryHandler() {},
+  sweepExpired() { return []; },
+  async health() {
+    return { ok: false, command: 'unavailable', subscriber: 'unavailable', code: 'probe_down' };
+  },
+};
+const unhealthy = createSignalingServer({ host: '127.0.0.1', port: 0, store: healthStore });
+const unhealthyAddress = await unhealthy.listen();
+const unhealthyResponse = await fetch(`http://127.0.0.1:${unhealthyAddress.port}/healthz`);
+assert.equal(unhealthyResponse.status, 503, 'health returns unavailable when Redis is unavailable');
+assert.equal((await unhealthyResponse.json()).ok, false);
+await unhealthy.close();
 
 function connect(url, origin = null) {
   return new Promise((resolve, reject) => {

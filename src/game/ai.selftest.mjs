@@ -108,8 +108,8 @@ console.log('[2] moving-friendly prediction');
 console.log('[3] trigger hold and firing-lane response');
 {
   const bot = entity('bot', 'tiger1', 'player', 0, 0);
-  const ally = entity('ally', 'm4a3e8', 'player', 0, 65);
-  const target = entity('target', 'm4a3e8', 'enemy', 0, 150);
+  const ally = entity('ally', 'm4a3e8', 'player', 0, 35);
+  const target = entity('target', 'm4a3e8', 'enemy', 0, 80);
   const ctl = controller(bot, [target], [ally]);
   const firedBlocked = tick(ctl, bot, 3);
   const blocked = ctl.debugInfo();
@@ -121,24 +121,34 @@ console.log('[3] trigger hold and firing-lane response');
   ok(firedClear, 'bot resumes fire after the friendly clears the lane');
 }
 
-console.log('[4] coordinated target scoring');
+console.log('[4] distributed target scoring');
 {
   const bot = entity('bot', 'tiger1', 'player', 0, 0);
-  const a = entity('a', 'm4a3e8', 'enemy', -100, 150);
-  const b = entity('b', 'm4a3e8', 'enemy', 100, 150);
+  const a = entity('a', 'm4a3e8', 'enemy', -40, 80);
+  const b = entity('b', 'm4a3e8', 'enemy', 40, 80);
   const wing = entity('wing', 'm4a3e8', 'player', 20, 0);
   wing.aiCtl = { targetId: 'b' };
   const ctl = controller(bot, [a, b], [wing]);
   tick(ctl, bot, 0.5);
-  ok(ctl.targetId === 'b', 'supports a teammate focus without hard-coded team logic');
+  ok(ctl.targetId === 'a', 'covers an unfocused lane instead of dog-piling one target');
 }
 
-console.log('[5] role-aware survival is team invariant');
+console.log('[5] deployment contact discipline');
+{
+  const bot = entity('bot', 'tiger1', 'player', 0, 0);
+  const distant = entity('distant', 'm4a3e8', 'enemy', 0, 170);
+  const ctl = controller(bot, [distant], []);
+  ok(!tick(ctl, bot, 10), 'does not turn a normal deployment sightline into an opening spawn shot');
+  distant.state.pos.z = 70;
+  ok(tick(ctl, bot, 4), 'responds to a danger-close contact during deployment');
+}
+
+console.log('[6] role-aware survival is team invariant');
 function survival(team, enemyTeam) {
   const bot = entity(`bot-${team}`, 'm4a3e8', team, 0, 0);
   bot.combat.hp = 400;
   const support = entity(`support-${team}`, 'tiger1', team, 0, -80);
-  const target = entity(`target-${enemyTeam}`, 'tiger1', enemyTeam, 0, 100);
+  const target = entity(`target-${enemyTeam}`, 'tiger1', enemyTeam, 0, 80);
   const ctl = controller(bot, [target], [support], 19);
   tick(ctl, bot, 1);
   return ctl.debugInfo();

@@ -2075,7 +2075,11 @@ function networkDiagnostics() {
 }
 
 function pumpNetworkMatch(dt, nowMs) {
-  if (!networkMatch || networkMatch.client?.closed) return;
+  if (!networkMatch) return;
+  if (networkMatch.client?.closed) {
+    if (game.phase === 'battle' && !game.result) networkBridge?.endDisconnected?.();
+    return;
+  }
   if (networkMatch.role === 'host') {
     const playerInput = game.phase === 'battle' ? networkInputFrame() : null;
     const submittedActionBits = playerInput?.actionBits || 0;
@@ -2160,6 +2164,7 @@ function resetNetworkBattleState() {
   // synchronously at handoff so a rematch cannot paint or process one frame
   // of the previous victory/defeat before the first cold import resolves.
   game.result = null;
+  game.resultReason = null;
   game.timeS = 0;
   game.preBattleS = Infinity;
 }

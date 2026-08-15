@@ -144,6 +144,55 @@ function spawnFor(index, team, layout, override) {
   return { x: base.x, z: base.z, yaw: base.yaw + Math.PI };
 }
 
+function botOpeningGoal(entity, teamSlot, entities, opponents) {
+  const allies = entities.filter((entry) => entry.team === entity.team);
+  let ownX = 0;
+  let ownZ = 0;
+  for (const ally of allies) {
+    ownX += ally.state.pos.x;
+    ownZ += ally.state.pos.z;
+  }
+  ownX /= Math.max(1, allies.length);
+  ownZ /= Math.max(1, allies.length);
+  let enemyX = 0;
+  let enemyZ = 0;
+  for (const opponent of opponents) {
+    enemyX += opponent.state.pos.x;
+    enemyZ += opponent.state.pos.z;
+  }
+  enemyX /= Math.max(1, opponents.length);
+  enemyZ /= Math.max(1, opponents.length);
+  let dx = enemyX - ownX;
+  let dz = enemyZ - ownZ;
+  const distance = Math.max(1, Math.hypot(dx, dz));
+  dx /= distance;
+  dz /= distance;
+
+  // Deploy into distinct lanes on our side of the battlefield instead of
+  // plotting every bot straight through a random enemy spawn. Roles shape
+  // the opening, but both teams use the exact same deterministic doctrine.
+  const role = roleOf(entity.spec);
+  // Keep a genuine deployment line between the teams.  The former fixed
+  // fraction sent both sides toward the same point on compact maps, so the
+  // opening regularly became an 80 m ram-fight inside 30 seconds.  Advance
+  // only the distance the map can spare while retaining a ~340 m front;
+  // faster roles may probe beyond it and snipers remain slightly behind.
+  const spareAdvance = Math.max(0, (distance - 340) * 0.5);
+  const roleAdvance = role === 'scout' ? 1.16
+    : role === 'flanker' ? 1.07
+      : role === 'brawler' ? 0.94 : 0.82;
+  const advanceM = Math.min(distance * 0.34, spareAdvance * roleAdvance);
+  const laneOrder = allies.length <= 1 ? [1] : [-1, 1, -0.35, 0.35, -1.5, 1.5, 0];
+  const laneScale = role === 'flanker' || role === 'scout' ? 1.2
+    : role === 'sniper' ? 1 : 0.85;
+  const laneM = Math.min(110, Math.max(55, distance * 0.14));
+  const lane = laneOrder[teamSlot % laneOrder.length] * laneM * laneScale;
+  return {
+    x: Math.max(-440, Math.min(440, ownX + dx * advanceM + dz * lane)),
+    z: Math.max(-440, Math.min(440, ownZ + dz * advanceM - dx * lane)),
+  };
+}
+
 function gunWorldPose(entity) {
   const state = entity.state;
   const armor = entity.spec.armor || {};
@@ -272,6 +321,7 @@ export function createAuthoritativeMatch({
   let timeS = 0;
   let fireTickAcc = 0;
   let result = null;
+  let resultReason = null;
   let phase = 'loading';
   let countdownRemainingS = Math.max(0, finite(countdownS, 5));
   const staticObstacles = worldCollision && typeof worldCollision.getObstacles === 'function'
@@ -381,7 +431,10 @@ export function createAuthoritativeMatch({
         },
       },
     });
-    const goal = opponents[Math.floor(botRng() * Math.max(1, opponents.length))]?.state.pos;
+    const teamSlot = entities.filter((entry) => entry.team === entity.team).indexOf(entity);
+    const goal = opponents.length
+      ? botOpeningGoal(entity, teamSlot, entities, opponents)
+      : null;
     if (goal) {
       entity.aiCtl.setWaypoints(planBotRoute({
         start: entity.state.pos,
@@ -389,7 +442,7 @@ export function createAuthoritativeMatch({
         navigation: botNavigation,
         rng: botRng,
         role: roleOf(entity.spec),
-      }));
+      }), { loop: false });
     }
   }
 
@@ -814,8 +867,9 @@ export function createAuthoritativeMatch({
       else if (entity.team === TEAM_BRAVO) bravo++;
     }
     if (alpha === 0 || bravo === 0 || timeS >= battleLimitS) {
+      resultReason = alpha === 0 || bravo === 0 ? 'elimination' : 'time_limit';
       result = alpha === bravo ? 'draw' : alpha > bravo ? TEAM_ALPHA : TEAM_BRAVO;
-      emit('match_ended', { result });
+      emit('match_ended', { result, reason: resultReason });
     }
   }
 
@@ -826,6 +880,7 @@ export function createAuthoritativeMatch({
     heightField,
     get timeS() { return timeS; },
     get result() { return result; },
+    get resultReason() { return resultReason; },
     get phase() { return phase; },
 
     onMatchReady() {
@@ -949,6 +1004,7 @@ export function createAuthoritativeMatch({
           countdownMs: Math.round(countdownRemainingS * 1000),
           battleTimeMs: Math.round(timeS * 1000),
           result,
+          resultReason,
           destructibleRevision,
           destroyedObstacleIndices: destroyedObstacleIndices.slice(),
         },

@@ -150,6 +150,10 @@ export function installBattleRecords(bus) {
   });
   bus.on('battle:ended', (event = {}) => {
     if (!tally) return;
+    if (event.reason === 'network_disconnect') {
+      tally = null;
+      return;
+    }
     recordBattleResult({
       result: event.result,
       kills: tally.kills,

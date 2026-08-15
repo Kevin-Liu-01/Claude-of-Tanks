@@ -385,12 +385,16 @@ export function createEndScreen(bus, host) {
       el('div', 'es-rule', hero);
       const sub = el('div', 'es-sub es-in', hero);
       sub.style.setProperty('--i', nextI());
-      const outcomeLine = res === 'victory'
+      const outcomeLine = sum.reason === 'network_disconnect'
+        ? 'The match connection was interrupted. No result was recorded.'
+        : res === 'victory'
         ? (sum.playerDead ? 'Your team carried the field after you fell.'
           : 'Enemy force destroyed. The field is yours.')
         : res === 'defeat'
           ? 'Your force was wiped out. The field is lost.'
-          : res === 'draw' ? 'Battle timer expired. No side held the field.' : '';
+          : res === 'draw' && sum.reason === 'time_limit'
+            ? 'Battle timer expired. No side held the field.'
+            : res === 'draw' ? 'Neither side held the field.' : '';
       sub.innerHTML = `${sum.playerVehicle ? `<b>${sum.playerVehicle}</b> — ` : ''}${outcomeLine}`;
       const meta = el('div', 'es-meta es-in', hero);
       meta.style.setProperty('--i', nextI());

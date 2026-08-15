@@ -95,6 +95,11 @@ export class PrivateRoomHostSession {
 
   /** Release open remote channels for AuthoritativeMatchRuntime attachment. */
   takeMatchChannels() {
+    // Signaling is rendezvous-only. Once the reliable WebRTC channels move to
+    // match authority, a recycled Vercel signaling socket must not detach or
+    // close those gameplay channels.
+    if (this.unsubscribeSignal) this.unsubscribeSignal();
+    this.unsubscribeSignal = null;
     return this.runtime.releaseTransports();
   }
 
@@ -155,6 +160,12 @@ export class PrivateRoomClientSession {
 
   async takeMatchTransport() {
     const runtime = this.runtime || await this.ready;
+    // Ignore room lifecycle messages after the established data channels are
+    // handed to MatchClientRuntime. Do not proactively close signaling here:
+    // the host and guest handoffs are asynchronous, so host leave could race
+    // a guest that has received `starting` but has not detached yet.
+    if (this.unsubscribeSignal) this.unsubscribeSignal();
+    this.unsubscribeSignal = null;
     return runtime.releaseTransport();
   }
 

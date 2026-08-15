@@ -2,6 +2,12 @@ import { normalizeRoomCode } from './protocol.js';
 
 const MAX_SIGNAL_BYTES = 128 * 1024;
 const MAX_QUEUED_EVENTS = 64;
+const STORE_RETRY_DELAYS_MS = [250, 750];
+const RETRYABLE_STORE_ERRORS = new Set([
+  'signaling_store_unavailable',
+  'redis_ready_timeout',
+  'redis_connection_ended',
+]);
 
 function websocketConstructor(injected) {
   const Ctor = injected || globalThis.WebSocket;
@@ -138,6 +144,18 @@ export class RoomSignalingClient {
     });
   }
 
+  async #requestWithStoreRetry(type, payload) {
+    for (let attempt = 0; ; attempt++) {
+      try {
+        return await this.#request(type, payload);
+      } catch (error) {
+        if (!RETRYABLE_STORE_ERRORS.has(error?.code) ||
+            attempt >= STORE_RETRY_DELAYS_MS.length || this.state !== 'open') throw error;
+        await new Promise((resolve) => setTimeout(resolve, STORE_RETRY_DELAYS_MS[attempt]));
+      }
+    }
+  }
+
   #receive(raw) {
     let message;
     try {
@@ -179,7 +197,7 @@ export class RoomSignalingClient {
 
   async createRoom({ player, maxPlayers = 14, mode = 'private' } = {}) {
     await this.connect();
-    const result = await this.#request('room_create', {
+    const result = await this.#requestWithStoreRetry('room_create', {
       player: cleanPlayer(player),
       maxPlayers,
       mode,
@@ -195,7 +213,7 @@ export class RoomSignalingClient {
     await this.connect();
     const code = normalizeRoomCode(roomCode);
     if (code.length !== 6) throw new TypeError('room code must be 6 characters');
-    const result = await this.#request('room_join', {
+    const result = await this.#requestWithStoreRetry('room_join', {
       roomCode: code,
       player: cleanPlayer(player),
     });

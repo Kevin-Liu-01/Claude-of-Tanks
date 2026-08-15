@@ -140,6 +140,7 @@ export function createGameState() {
     fireTickAcc: 0,
     combatRng: mulberry32(COMBAT_SEED),
     result: null,               // null | 'victory' | 'defeat'
+    resultReason: null,         // null | 'elimination' | 'time_limit' | 'network_disconnect'
     spotting: null,             // SPOTTING WIRING: SpottingSystem (per battle)
   };
 }
@@ -405,6 +406,7 @@ export function setupBattle(game, playerSpecId, world, opts = {}) {
   game.fireTickAcc = 0;
   game.combatRng = mulberry32(COMBAT_SEED);
   game.result = null;
+  game.resultReason = null;
   game.battleCount++;
 
   // COMMUNITY TANKS: field the participants; park everyone else (hidden,
@@ -1731,14 +1733,21 @@ export function simStep(game, bus, world, rig, collider) {
       if (ent.team === 'enemy') enemiesLeft++;
       else if (!game.player || ent.id !== game.player.id) alliesLeft++;
     }
-    if (enemiesLeft === 0) game.result = 'victory';
-    else if (game.player.combat.destroyed && alliesLeft === 0) game.result = 'defeat';
-    else if (game.timeS >= BATTLE_TIME_LIMIT_S) game.result = 'draw';
+    if (enemiesLeft === 0) {
+      game.result = 'victory';
+      game.resultReason = 'elimination';
+    } else if (game.player.combat.destroyed && alliesLeft === 0) {
+      game.result = 'defeat';
+      game.resultReason = 'elimination';
+    } else if (game.timeS >= BATTLE_TIME_LIMIT_S) {
+      game.result = 'draw';
+      game.resultReason = 'time_limit';
+    }
     // SHOT-INFO ENRICHMENT (additive): announce the decision once so results
     // UIs (src/ui/shotInfo.js session stats) can render without polling.
     if (game.result !== null) {
       bus.emit('battle:ended', {
-        result: game.result, timeS: game.timeS,
+        result: game.result, reason: game.resultReason, timeS: game.timeS,
         map: game.mapId, // SHOT-INFO ENRICHMENT (r3): report header map name
         // SHOT-INFO ENRICHMENT (additive): full team roster for the report
         roster: game.tanks.map((t) => ({

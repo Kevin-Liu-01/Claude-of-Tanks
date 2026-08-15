@@ -14,8 +14,10 @@ const game = {
   timeS: 0,
   preBattleS: 0,
   result: null,
+  resultReason: null,
   mapId: 'winter',
 };
+const busEvents = [];
 
 function fakeVisual() {
   const visual = {
@@ -40,7 +42,7 @@ function fakeVisual() {
 const bridge = createBrowserBattleBridge({
   engineCtx: { scene, anisotropy: 1 },
   game,
-  bus: { emit() {} },
+  bus: { emit(type, payload) { busEvents.push({ type, payload }); } },
   viewerId: 'guest',
   createTankVisual: fakeVisual,
   prepareVisualTextures: async () => {},
@@ -85,6 +87,13 @@ snapshot.entities[1].z++;
 bridge.apply(snapshot);
 assert.deepEqual(visuals.map((visual) => visual.syncs), [1, 1],
   'subsequent snapshots leave visual sync ownership to the render loop');
+
+assert.equal(bridge.endDisconnected(), true, 'an interrupted match resolves once');
+assert.equal(game.result, 'draw');
+assert.equal(game.resultReason, 'network_disconnect');
+assert.equal(busEvents.at(-1)?.type, 'battle:ended');
+assert.equal(busEvents.at(-1)?.payload?.reason, 'network_disconnect');
+assert.equal(bridge.endDisconnected(), false, 'disconnect resolution is idempotent');
 
 bridge.dispose();
 console.log('browserBattleBridge.selftest: hidden authority-pose reveal passed');

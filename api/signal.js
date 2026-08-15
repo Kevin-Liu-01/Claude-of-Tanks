@@ -15,7 +15,20 @@ const configuredOrigins = String(process.env.COT_ALLOWED_ORIGINS || '')
 
 const redisUrl = process.env.COT_SIGNAL_REDIS_REDIS_URL ||
   process.env.COT_SIGNAL_REDIS_KV_URL || '';
-const store = redisUrl ? new DistributedSignalingRoomStore({ redisUrl }) : undefined;
+const restUrl = process.env.COT_SIGNAL_REDIS_KV_REST_API_URL ||
+  process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL || '';
+const restToken = process.env.COT_SIGNAL_REDIS_KV_REST_API_TOKEN ||
+  process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN || '';
+const redisConfigured = redisUrl || restUrl || restToken;
+if (process.env.VERCEL && !redisConfigured) {
+  throw new Error('Production signaling requires the distributed Redis room store');
+}
+if (redisConfigured && (!redisUrl || !restUrl || !restToken)) {
+  throw new Error('Production signaling requires Redis TCP and REST credentials');
+}
+const store = redisUrl
+  ? new DistributedSignalingRoomStore({ redisUrl, restUrl, restToken })
+  : undefined;
 
 // WebSocket connections remain pinned to one Fluid-compute instance, while
 // Redis owns room membership and pub/sub carries signaling across instances.

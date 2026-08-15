@@ -487,6 +487,36 @@ assert.equal(resolveSignalUrl({ hostname: '192.168.1.44', protocol: 'http:', lan
   signaling.close();
 }
 
+// Transient distributed-store failures retry without making the player
+// reopen the lobby dialog or creating a second WebSocket.
+{
+  const signaling = new RoomSignalingClient({
+    url: 'ws://localhost:7777', WebSocketImpl: FakeWebSocket, requestTimeoutMs: 1000,
+  });
+  const connecting = signaling.connect();
+  const socket = FakeWebSocket.instances.at(-1);
+  socket.open();
+  await connecting;
+  const roomPromise = signaling.createRoom({ player: { id: 'retry', name: 'Retry Host' } });
+  await Promise.resolve();
+  const first = JSON.parse(socket.sent.at(-1));
+  socket.receive({
+    type: 'error', requestId: first.requestId,
+    payload: { code: 'signaling_store_unavailable', message: 'temporarily unavailable' },
+  });
+  await new Promise((resolve) => setTimeout(resolve, 275));
+  const second = JSON.parse(socket.sent.at(-1));
+  assert.equal(second.type, 'room_create');
+  assert.notEqual(second.requestId, first.requestId);
+  assert.equal(FakeWebSocket.instances.at(-1), socket, 'store retry reuses the open signaling socket');
+  socket.receive({
+    type: 'room_created', requestId: second.requestId,
+    payload: { roomCode: 'RETRY2', peerId: 'retry-peer', hostId: 'retry-peer' },
+  });
+  assert.equal((await roomPromise).roomCode, 'RETRY2');
+  signaling.close();
+}
+
 // A failed WebSocket handshake is bounded and the same client can retry.
 {
   const signaling = new RoomSignalingClient({

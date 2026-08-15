@@ -107,10 +107,10 @@ export function roleOf(spec) {
  *  - scootAfter: shots from one position before a TD relocates (0 = never).
  */
 const ROLE_TUNE = {
-  brawler: { hold: 0.72, engage: 1.0, cover: 0.75, angle: 0.5, scootAfter: 0 },
-  flanker: { hold: 1.0, engage: 1.0, cover: 1.15, angle: 0.18, scootAfter: 0 },
-  sniper:  { hold: 1.5, engage: 1.15, cover: 1.3, angle: 0, scootAfter: 2 },
-  scout:   { hold: 1.15, engage: 1.0, cover: 0.9, angle: 0, scootAfter: 0 },
+  brawler: { hold: 0.72, engage: 1.0, cover: 0.75, angle: 0.5, scootAfter: 2 },
+  flanker: { hold: 1.0, engage: 1.0, cover: 1.15, angle: 0.18, scootAfter: 1 },
+  sniper:  { hold: 1.5, engage: 1.15, cover: 1.3, angle: 0, scootAfter: 1 },
+  scout:   { hold: 1.15, engage: 1.0, cover: 0.9, angle: 0, scootAfter: 1 },
 };
 // scout kiting: closer than this to any live opponent → break off and orbit
 const SCOUT_KITE_M = 130;
@@ -414,6 +414,18 @@ export function createAI(entity, opts = {}) {
     Math.min(tier.holdRangeM * tune.hold, roleEngageR() - 60);
   const getAllies = typeof deps.getAllies === 'function' ? deps.getAllies : null;
   const selfEyeM = spec.dims.heightM * EYE_FRAC;
+  // A real match opens with a deployment/read phase, not both teams driving
+  // straight into an immediate DPM check.  Roles release progressively:
+  // scouts establish first contact, then flankers, line tanks, and finally
+  // overwatch.  Close contacts still trigger a fight, and return-fire/aggro
+  // paths intentionally bypass this gate, so this is tactics rather than an
+  // invulnerability timer.
+  const deploymentUntilS = role === 'scout' ? 120
+    : role === 'flanker' ? 135
+      : role === 'brawler' ? 150 : 165;
+  const deploymentEngageM = role === 'scout' ? 100
+    : role === 'flanker' ? 95
+      : role === 'brawler' ? 90 : 85;
   // Gun trunnion height above ground contact — the movement sim aims the
   // barrel from here (movement.js gunPivotHeight), so the alignment gate must
   // measure the wanted pitch from the same origin, not from the eye point.
@@ -432,6 +444,7 @@ export function createAI(entity, opts = {}) {
   const waypoints = [];                      // [{x,z}] patrol route
   let wpIndex = 0;
   let autoPatrolBuilt = false;
+  let loopWaypoints = true;
 
   const moveTarget = { x: 0, z: 0 };         // hull-down / approach point
   let hasMoveTarget = false;
@@ -659,18 +672,22 @@ export function createAI(entity, opts = {}) {
     }
   }
 
-  // Shared focus-fire doctrine: prefer an opponent already engaged by one or
-  // two teammates, then taper the bonus so the whole team does not waste its
-  // guns on one nearly-dead hull. Counts refresh once per LOS scan; scoring
-  // every candidate is then allocation-free.
+  // Fire-team allocation: one ally already laying on a target is a signal to
+  // cover the other lane, not to dog-pile the same hull. This removes the
+  // two-volley snowball that ended small-team matches in under two minutes.
+  // A bot still returns fire immediately and can finish its own target.
   function focusWeight(e) {
     if (!e) return 1;
     const focus = focusCounts.get(e.id) || 0;
-    if (focus === 1) return 0.78;
-    if (focus === 2) return 0.66;
-    if (focus === 3) return 0.74;
-    if (focus === 4) return 0.9;
-    if (focus >= 5) return 1.12;
+    // The player remains a high-priority threat, but ordinary visibility may
+    // assign only one default attacker. Extra bots join when the player fires
+    // or damages the team through the return-fire paths above.
+    if (e.isPlayer && focus === 1) return 4.5;
+    if (e.isPlayer && focus >= 2) return 8;
+    if (focus === 1) return 1.35;
+    if (focus === 2) return 1.7;
+    if (focus === 3) return 2.05;
+    if (focus >= 4) return 2.4;
     return 1;
   }
 
@@ -746,9 +763,13 @@ export function createAI(entity, opts = {}) {
         const p = list[i];
         if (!p || !p.isPlayer) continue;
         if (!enemyAlive(p) || !isVisibleToTeam(p)) break;
+        if ((focusCounts.get(p.id) || 0) >= 1) break;
         const pp = p.state.pos;
         const bdx = pp.x - ex, bdz = pp.z - ez;
-        if (bdx * bdx + bdz * bdz > PLAYER_BUDGET_D2) break;
+        const budgetD2 = timeS < deploymentUntilS
+          ? Math.min(PLAYER_BUDGET_D2, deploymentEngageM * deploymentEngageM)
+          : PLAYER_BUDGET_D2;
+        if (bdx * bdx + bdz * bdz > budgetD2) break;
         if (!hasLos(ex, ey, ez, pp.x, eyeY(p), pp.z)) break;
         target = p;
         losClear = true;
@@ -826,6 +847,7 @@ export function createAI(entity, opts = {}) {
         for (let i = 0; i < list.length; i++) {
           const p = list[i];
           if (!p || !p.isPlayer || !enemyAlive(p) || !isVisibleToTeam(p)) continue;
+          if ((focusCounts.get(p.id) || 0) >= 1) continue;
           const pp = p.state.pos;
           const pdx = pp.x - ex, pdz = pp.z - ez;
           const cdx = tp.x - ex, cdz = tp.z - ez;
@@ -860,6 +882,7 @@ export function createAI(entity, opts = {}) {
           if (!e || e === target || !enemyAlive(e) || e.isPlayer) continue;
           if (!e.combat || !e.combat.maxHp ||
               e.combat.hp / e.combat.maxHp >= 0.25) continue;
+          if ((focusCounts.get(e.id) || 0) >= 1) continue;
           if (!isVisibleToTeam(e)) continue;
           const kp = e.state.pos;
           const kdx = kp.x - ex, kdz = kp.z - ez;
@@ -898,6 +921,7 @@ export function createAI(entity, opts = {}) {
       const tp = e.state.pos;
       const dx = tp.x - ex, dz = tp.z - ez;
       const d2 = dx * dx + dz * dz;
+      if (timeS < deploymentUntilS && d2 > deploymentEngageM * deploymentEngageM) continue;
       // Threat weighting: the player ranks as if 0.59x its true distance
       // (0.35x for the playerHunter fraction — controls_gunnery r4).
       // r6 PRIORITY BUMP: inside 300 m the player counts DOUBLE threat
@@ -940,7 +964,7 @@ export function createAI(entity, opts = {}) {
           const d2 = ndx * ndx + ndz * ndz;
           if (d2 < nearD2) { near = e; nearD2 = d2; }
         }
-        const wr = roleEngageR(); // r7: role-scaled commit envelope
+        const wr = timeS < deploymentUntilS ? deploymentEngageM : roleEngageR();
         if (near && nearD2 < wr * wr) {
           target = near;
           acquiredAtS = timeS;
@@ -1562,6 +1586,7 @@ export function createAI(entity, opts = {}) {
     }
     wpIndex = 0;
     autoPatrolBuilt = true;
+    loopWaypoints = true;
   }
 
   function drivePatrol(input) {
@@ -1575,7 +1600,8 @@ export function createAI(entity, opts = {}) {
     // 30-60 s and every second of dawdling here is dead air. After the
     // first minute (contact made or not) drop back to patrol pace.
     if (driveToXZ(input, wp.x, wp.z, nowS < 60 ? 1.0 : 0.85)) {
-      wpIndex = (wpIndex + 1) % waypoints.length;
+      if (wpIndex < waypoints.length - 1) wpIndex++;
+      else if (loopWaypoints) wpIndex = 0;
     }
   }
 
@@ -2386,7 +2412,8 @@ export function createAI(entity, opts = {}) {
         // made it WORSE — more churn). Force a clean 3.5 s halt: the
         // settled-shot timeout (dispGateT) then takes the wide shot.
         if (target && losClear) settleUntilS = timeS + 3.5;
-      } else if (!hasContact && timeS - lastFiredAtS > 25 &&
+      } else if (timeS >= deploymentUntilS && !hasContact &&
+                 timeS - lastFiredAtS > 25 &&
                  timeS >= pressUntilS) {
         // NO contact and a long quiet stretch: re-route the patrol toward
         // the nearest living opponent's AREA (route intel only — spotting
@@ -2418,6 +2445,7 @@ export function createAI(entity, opts = {}) {
           waypoints.push({ x: qx, z: qz });
           wpIndex = 0;
           autoPatrolBuilt = true;
+          loopWaypoints = false;
           if (mode === 'seekCover') mode = 'engage';
         }
       }
@@ -2702,14 +2730,16 @@ export function createAI(entity, opts = {}) {
   /**
    * Replace the patrol route.
    * @param {Array<[number, number]>} points [x,z] pairs in world meters
+   * @param {{loop?: boolean}} options route behavior; patrol routes loop by default
    */
-  function setWaypoints(points) {
+  function setWaypoints(points, { loop = true } = {}) {
     waypoints.length = 0;
     for (let i = 0; i < points.length; i++) {
       waypoints.push({ x: points[i][0], z: points[i][1] });
     }
     wpIndex = 0;
     autoPatrolBuilt = true; // user route supersedes the auto loop
+    loopWaypoints = !!loop;
   }
 
   /**

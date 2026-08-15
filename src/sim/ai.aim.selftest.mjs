@@ -35,7 +35,9 @@ function runScenario(name, hf, obsPos, tgtPos, maxS = 30) {
   // pitch/alignment logic is isolated from driving (matches the r6 repro:
   // stationary observer in engage-hold).
   let firedAt = -1;
-  let t = 0;
+  // This is a gunnery fixture, so begin after the tactical deployment gate;
+  // opening-contact timing is covered by game/ai.selftest instead.
+  let t = 180;
   let dbg = null;
   for (let i = 0; i < maxS / SIM_DT; i++) {
     t += SIM_DT;
@@ -96,7 +98,7 @@ const c = runScenario('flat-control', flat, [0, 0], [0, 150]);
 //      player moves unspotted — the live position must not leak.
 //   F) control: a sim-SPOTTED player is acquired through the normal scan.
 // ---------------------------------------------------------------------------
-function acquisitionScenario(name, { spotted, shots, blockRay, moveAfter }) {
+function acquisitionScenario(name, { spotted, shots, blockRay, moveAfter, startTimeS = 0 }) {
   const bot = mkEntity('bot', 'tiger1', 0, 0, 0, flat);
   bot.team = 'enemy';
   const player = mkEntity('player', 'm4a3e8', 0, 250, 0, flat);
@@ -114,7 +116,7 @@ function acquisitionScenario(name, { spotted, shots, blockRay, moveAfter }) {
       spotting: { isSpotted: () => spotted },
     },
   });
-  let t = 0;
+  let t = startTimeS;
   const step = (dur) => {
     for (let i = 0; i < dur / SIM_DT; i++) {
       t += SIM_DT;
@@ -171,7 +173,7 @@ const req = (cond, label) => {
 // F) control — a sim-spotted player is acquired with zero shots fired.
 {
   const { d } = acquisitionScenario('guard-spotted-scan',
-    { spotted: true, shots: 0, blockRay: false, moveAfter: false });
+    { spotted: true, shots: 0, blockRay: false, moveAfter: false, startTimeS: 180 });
   req(d.targetId === 'player', 'spotted player acquired through the normal scan');
 }
 

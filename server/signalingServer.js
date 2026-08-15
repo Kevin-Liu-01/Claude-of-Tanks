@@ -66,13 +66,25 @@ export function createSignalingServer({
     perMessageDeflate: false,
   });
   const rate = new WeakMap();
-  const server = http.createServer((request, response) => {
+  const server = http.createServer(async (request, response) => {
     let pathname = '';
     try { pathname = new URL(request.url, 'http://localhost').pathname; } catch (_) { /* 404 below */ }
     if (allowedHealthPaths.has(pathname)) {
       const health = { ok: true, rooms: store.rooms instanceof Map ? store.rooms.size : null };
       if (typeof store.deliver === 'function') health.distributed = true;
-      response.writeHead(200, { 'content-type': 'application/json' });
+      if (typeof store.health === 'function') {
+        try {
+          health.redis = await store.health();
+          health.ok = health.redis.ok === true;
+        } catch (error) {
+          health.ok = false;
+          health.redis = {
+            ok: false,
+            code: typeof error?.code === 'string' ? error.code : 'redis_unavailable',
+          };
+        }
+      }
+      response.writeHead(health.ok ? 200 : 503, { 'content-type': 'application/json' });
       response.end(JSON.stringify(health));
       return;
     }

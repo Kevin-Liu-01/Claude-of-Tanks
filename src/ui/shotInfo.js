@@ -1131,6 +1131,7 @@ export function createShotInfo(bus) {
       : Math.max(0, ...stats.timeline.map((e) => e.t), ...receivedLog.map((e) => e.t));
     return {
       result,
+      reason: endInfo?.reason || null,
       playerVehicle: me.name || '',
       playerSpecId: me.specId || null,
       playerDead: !!me.dead,
@@ -1366,7 +1367,7 @@ export function createShotInfo(bus) {
     // report header data (r3): battle duration is the payload's end-of-battle
     // sim clock (setupBattle zeroes it), map id is an additive state.js
     // enrichment (docs/handoff) — the header simply omits what is absent
-    endInfo = p ? { timeS: p.timeS, map: p.map || null } : null;
+    endInfo = p ? { timeS: p.timeS, map: p.map || null, reason: p.reason || null } : null;
     pendingReport = p ? (p.result || '') : '';
     scheduleReportFlush();
   });

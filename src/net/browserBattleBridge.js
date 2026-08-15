@@ -378,8 +378,10 @@ export function createBrowserBattleBridge({
         const result = spectator ? 'draw' : event.result === 'draw' ? 'draw'
           : event.result === viewerTeam ? 'victory' : 'defeat';
         game.result = result;
+        game.resultReason = event.reason || 'elimination';
         bus.emit('battle:ended', {
           result,
+          reason: game.resultReason,
           timeS: game.timeS,
           map: game.mapId,
           roster: resultRoster(),
@@ -504,13 +506,29 @@ export function createBrowserBattleBridge({
       const authorityResult = snapshot.meta.result;
       game.result = spectator ? 'draw' : authorityResult === 'draw' ? 'draw'
         : authorityResult === viewerTeam ? 'victory' : 'defeat';
+      game.resultReason = snapshot.meta.resultReason || 'elimination';
       bus.emit('battle:ended', {
         result: game.result,
+        reason: game.resultReason,
         timeS: game.timeS,
         map: game.mapId,
         roster: resultRoster(),
       });
     }
+    return true;
+  }
+
+  function endDisconnected() {
+    if (game.result) return false;
+    game.result = 'draw';
+    game.resultReason = 'network_disconnect';
+    bus.emit('battle:ended', {
+      result: game.result,
+      reason: game.resultReason,
+      timeS: game.timeS,
+      map: game.mapId,
+      roster: resultRoster(),
+    });
     return true;
   }
 
@@ -567,6 +585,7 @@ export function createBrowserBattleBridge({
     prepareRoster,
     mount,
     apply,
+    endDisconnected,
     recordInput,
     getPredictionStats,
     getPresentationEventStats: () => presentationEvents.getStats(),

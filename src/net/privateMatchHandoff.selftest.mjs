@@ -6,6 +6,66 @@ import {
   buildPrivateMatchPlayers,
 } from './privateMatchHandoff.js';
 import { createAuthoritativeMatch } from '../sim/authoritativeMatch.js';
+import { PrivateRoomClientSession } from './privateRoomSession.js';
+import { MATCH_CONTROL_CHANNEL_LABEL, MATCH_STATE_CHANNEL_LABEL } from './webrtcPeer.js';
+
+class FakeRtcChannel {
+  constructor(label) {
+    this.label = label;
+    this.readyState = 'open';
+    this.ordered = label === MATCH_CONTROL_CHANNEL_LABEL;
+    this.maxRetransmits = this.ordered ? null : 0;
+    this.bufferedAmount = 0;
+    this.listeners = new Map();
+  }
+  addEventListener(type, listener) {
+    if (!this.listeners.has(type)) this.listeners.set(type, new Set());
+    this.listeners.get(type).add(listener);
+  }
+  removeEventListener(type, listener) { this.listeners.get(type)?.delete(listener); }
+  send() {}
+  close() {
+    if (this.readyState === 'closed') return;
+    this.readyState = 'closed';
+    for (const listener of this.listeners.get('close') || []) listener();
+  }
+}
+
+class FakeClientPeerConnection {
+  constructor() { this.connectionState = 'connected'; }
+  close() { this.connectionState = 'closed'; }
+}
+
+class FakeSignaling {
+  constructor() { this.listeners = new Set(); this.closed = false; }
+  onEvent(listener) { this.listeners.add(listener); return () => this.listeners.delete(listener); }
+  sendSignal() {}
+  close() { this.closed = true; }
+  emit(message) { for (const listener of [...this.listeners]) listener(message); }
+}
+
+// Match handoff permanently removes signaling ownership of established RTC
+// channels. A later room_closed event (for example a Vercel recycle) cannot
+// terminate gameplay.
+{
+  const signaling = new FakeSignaling();
+  const session = new PrivateRoomClientSession({
+    signaling,
+    roomInfo: { roomCode: 'LIFE22', peerId: 'guest', hostId: 'host', mode: 'private' },
+    RTCPeerConnectionImpl: FakeClientPeerConnection,
+  });
+  const control = new FakeRtcChannel(MATCH_CONTROL_CHANNEL_LABEL);
+  const state = new FakeRtcChannel(MATCH_STATE_CHANNEL_LABEL);
+  session.peer.peerConnection.ondatachannel({ channel: control });
+  session.peer.peerConnection.ondatachannel({ channel: state });
+  await session.ready;
+  const released = await session.takeMatchTransport();
+  assert.equal(signaling.listeners.size, 0, 'handoff disarms signaling room lifecycle events');
+  signaling.emit({ type: 'room_closed', payload: { roomCode: 'LIFE22', reason: 'host_left' } });
+  assert.equal(released.readyState, 'open', 'released gameplay channel survives room closure');
+  assert.equal(session.peer.peerConnection.connectionState, 'connected');
+  released.close('test_done');
+}
 
 const remote = createLoopbackTransportPair();
 const lobbyState = {

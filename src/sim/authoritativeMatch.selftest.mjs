@@ -146,6 +146,35 @@ const privateSnap = hiddenMatch.snapshot({ tick: 0, serverTimeMs: 0, viewerId: '
 assert.deepEqual(privateSnap.entities.map((entity) => entity.id), ['near-a'],
   'unspotted enemy coordinates never serialize');
 
+const timedMatch = createAuthoritativeMatch({
+  countdownS: 0,
+  battleLimitS: 1,
+  players: [
+    { id: 'time-a', specId: 'm1a2', team: 'alpha', spawn: { x: -400, z: -400, yaw: 0 } },
+    { id: 'time-b', specId: 'm1a2', team: 'bravo', spawn: { x: 400, z: 400, yaw: Math.PI } },
+  ],
+});
+timedMatch.onMatchReady();
+for (let i = 0; i < 60; i++) timedMatch.step({ dt: 1 / 60, inputs: new Map() });
+assert.equal(timedMatch.resultReason, 'time_limit');
+assert.equal(timedMatch.snapshot({ tick: 60, serverTimeMs: 1000,
+  viewerId: 'time-a', ackInputSeq: 0 }).meta.resultReason, 'time_limit');
+
+const eliminatedMatch = createAuthoritativeMatch({
+  countdownS: 0,
+  players: [
+    { id: 'elim-a', specId: 'm1a2', team: 'alpha' },
+    { id: 'elim-b', specId: 'm1a2', team: 'bravo' },
+  ],
+});
+eliminatedMatch.onMatchReady();
+eliminatedMatch.entityById.get('elim-b').combat.destroyed = true;
+eliminatedMatch.step({ dt: 1 / 60, inputs: new Map() });
+assert.equal(eliminatedMatch.resultReason, 'elimination');
+assert.ok(eliminatedMatch.snapshot({ tick: 1, serverTimeMs: 1000 / 60,
+  viewerId: 'elim-a', ackInputSeq: 0 }).events.some((event) =>
+  event.type === 'match_ended' && event.reason === 'elimination'));
+
 const guidedMatch = createAuthoritativeMatch({
   countdownS: 0,
   players: [
