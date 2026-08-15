@@ -1933,7 +1933,7 @@
           }
         ]
       },
-      "geometryHash": "2be661d0",
+      "geometryHash": "bdf91189",
       "metadataHash": "dbeff2fd",
       "appearance": {
         "version": 1,
@@ -1950,7 +1950,7 @@
           "fittingPaint": 6,
           "opticGlass": 2,
           "tireRubber": 1,
-          "unclassified": 15,
+          "unclassified": 16,
           "gearShadow": 2,
           "canvas": 1
         }
@@ -1976,64 +1976,64 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 28622,
-          "sha256": "9b68d5f09a05f889cd10b3ffccf5a3f9e59d8bd3b3d80d79a49e18ff1a080660"
+          "bytes": 29250,
+          "sha256": "74d64633e3c854a78cd5ffc02b4f71b212988cbbf913ce44e0013958ee90550d"
         },
         "top": {
           "file": "amx30_top.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 9454,
-          "sha256": "6fd183030a8e8953ad87ee8e0f9211d3199f607cb842ae979ebc3061a4b87661"
+          "bytes": 9934,
+          "sha256": "1e389acefc90368284fd8d7673480f68ae421a977d694239872f98d9ae32e2a9"
         },
         "side": {
           "file": "amx30_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 10160,
-          "sha256": "cf8b6f63e949932eb07f43461e7ec04bbf3334417982aaab2da56c43e4df7811"
+          "bytes": 10444,
+          "sha256": "0cdd7c135dfa2a31c271e3e65bdad78e151462539eaabf1c662568872ece6401"
         },
         "topSilhouette": {
           "file": "amx30_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1172,
-          "sha256": "ef8aa17d8d476d8c3ed41f398583cfab1ca7c7d76e3f7c56e8fbfef11e43b2c1"
+          "bytes": 1415,
+          "sha256": "f078407cd6ae73995a33bbffd68d70ae35dfd06eb938d879841e9adf50180ac3"
         },
         "sideSilhouette": {
           "file": "amx30_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4755,
-          "sha256": "990e58aa2eed7f51dd9d69fc6b6964ddb3ffd38db3cc06e101833bc0ca639914"
+          "bytes": 4780,
+          "sha256": "7048c8fdcbbf38f25f7bedf6d21d0551afef0d6296f1f6f5ea0893ef4f29188d"
         },
         "hitZonesSide": {
           "file": "amx30_hit_zones_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 82016,
-          "sha256": "39bcf578331637765f8f74ef8377faab3442f45eac9c4c4b14dc453551f07961"
+          "bytes": 85852,
+          "sha256": "3650d10d046c1829087b8dceeec8bcd6ebeceb0691153d722f0bf1ae4b7ca87c"
         },
         "armorSide": {
           "file": "amx30_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 81981,
-          "sha256": "f14b3b0117ab7ebc06f4a39e221f557a61d0fdad92135ab056dba50e09599b8b"
+          "bytes": 84078,
+          "sha256": "257ebe670ebb6e61517135ea2630faa2f9c98e45a66fea3e02aa21b0426bf13e"
         },
         "modulesSide": {
           "file": "amx30_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 81193,
-          "sha256": "edb516df746092773b08cee746b6005011f89e8b2a93d2f1c7d2f8f382ff2290"
+          "bytes": 84540,
+          "sha256": "41d62a7713afacc82d9cc9ab75940a37065cca0c4be8bad8b27bce5e634adfbb"
         },
         "markings": {
           "file": "amx30_markings.png",
@@ -2903,7 +2903,7 @@
           }
         ]
       },
-      "geometryHash": "b83a4ef3",
+      "geometryHash": "96b615fb",
       "metadataHash": "83667373",
       "appearance": {
         "version": 1,
@@ -2946,64 +2946,64 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 28720,
-          "sha256": "92ff6c5937d816c656108c3872edf6770f9e5224ff8aa05ed8d426bcc5aabc1a"
+          "bytes": 29408,
+          "sha256": "fe1aecd7e8a78d1d04b2cea35b69307d86ad3a1e9f14d89b917402cd9723815b"
         },
         "top": {
           "file": "amx30b2_top.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 10070,
-          "sha256": "3b0833283a61e7046c5cc79d19484e63f629076667fda8cc2640de46993bd4ce"
+          "bytes": 10556,
+          "sha256": "a69c7b005e9a2865cb0b9040eab2246bf6ffbfab2097d612f41dffe5ed6a8c2c"
         },
         "side": {
           "file": "amx30b2_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 9286,
-          "sha256": "9c88b1d1d46d614f50ca5794244985852e0b49a387fe57e6b84c12c8e6165125"
+          "bytes": 10496,
+          "sha256": "20e44ccd035096454b9a5b57b973028a17e56f2db44d4628f06a38aca3c288a7"
         },
         "topSilhouette": {
           "file": "amx30b2_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1470,
-          "sha256": "ed9d7c577e60793bbd20c72bc0b3669422262df359f86855a462d139145ec31d"
+          "bytes": 1452,
+          "sha256": "ea79b558e27dec48e9e4a4e16e403dd29c276613c9d1e5dd900cb99a94c14b7c"
         },
         "sideSilhouette": {
           "file": "amx30b2_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4606,
-          "sha256": "34fe249ec1eed659fb5b7f77232550ce26b6306f4b12e817be0b2a2abd078e01"
+          "bytes": 4793,
+          "sha256": "ff69143b9cfa2c183404b80d45e7eaab9b13cd5fc368a20daf76320bb12dbcca"
         },
         "hitZonesSide": {
           "file": "amx30b2_hit_zones_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 84068,
-          "sha256": "57ae2e186e423395a78ed18f471bfbf0f6ae58b1b917b9bdf7188ff867261d4f"
+          "bytes": 86880,
+          "sha256": "4a2dd366d6f918a9057bc53589aea757c24f62eb922789bf12313ea04b82869d"
         },
         "armorSide": {
           "file": "amx30b2_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 84891,
-          "sha256": "3b03c59134a3c8750d5eafa17f8aecf0092635f144036940a5cb4fe39ad736e8"
+          "bytes": 86098,
+          "sha256": "eca46f29637893b72aea3a8040249ab6964b76c88ae690f3d35a8467adb1a2d9"
         },
         "modulesSide": {
           "file": "amx30b2_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 83636,
-          "sha256": "70557bc346c030def7a66983935f42fe85bbc8b02769c18bcb9d5ba9c904278a"
+          "bytes": 86120,
+          "sha256": "4ea87c1b1d270991e1948792078dbdbb2f31b7fd59bca105310dfa63ca8ec320"
         },
         "markings": {
           "file": "amx30b2_markings.png",
