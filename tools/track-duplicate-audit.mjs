@@ -58,6 +58,8 @@ if (failures.length) {
     console.error(`  - ${result.id}: ${result.error || JSON.stringify({
       duplicatePairs: result.duplicatePairs,
       staticCandidates: result.staticCandidates,
+      staticRoadWheelOverlays: result.staticRoadWheelOverlays,
+      roadWheelLayers: result.canonical?.roadWheelLayers,
       separateConnectorLayers: result.canonical?.connectorLayers ?? 0,
     })}`);
   }

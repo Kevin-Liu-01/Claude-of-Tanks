@@ -7,6 +7,11 @@ import { createTank } from '/src/vehicles/tankFactory.js';
 
 const id = new URLSearchParams(location.search).get('id');
 
+const ABRAMS_IDS = new Set([
+  'm1a1', 'm1a1ha', 'm1a2', 'm1a2_legacy', 'm1a2_tusk',
+  'm1a2_sepv2', 'm1a2_sepv3', 'abramsx',
+]);
+
 // Duplicate-course repair is never bodywork repair. These names describe
 // load-bearing or protective vehicle geometry even when a bucket contains
 // the word "track" (for example hullTrackGuardL/R). Keep them out of the
@@ -122,6 +127,17 @@ try {
   const bands = rows.filter((row) => /^gearTrackBand[LR]$/.test(row.name));
   const pads = rows.filter((row) => row.name === 'gearTrackPads');
   const inner = rows.filter((row) => row.name === 'gearTrackInnerLinks');
+  const roadWheelLayers = rows.filter((row) => /^gearRoadWheel/.test(row.name));
+  const staticRoadWheelOverlays = rows
+    .filter((row) => !row.object.isInstancedMesh
+      && !row.object.userData?.endWheelFace
+      && /road.?wheel|wheel.?face|wheel.?dress/i.test(row.name))
+    .map((row) => row.name || '(unnamed)');
+  const abramsRoadWheelPass = !ABRAMS_IDS.has(id)
+    || (roadWheelLayers.some((row) => row.name === 'gearRoadWheelTires')
+      && roadWheelLayers.some((row) => row.name === 'gearRoadWheelDiscs')
+      && roadWheelLayers.every((row) => row.object.isInstancedMesh)
+      && staticRoadWheelOverlays.length === 0);
   const duplicatePairs = [];
   for (const layer of [bands, pads]) {
     for (let i = 0; i < layer.length; i++) {
@@ -176,7 +192,13 @@ try {
       bands: bands.length,
       treadPadLayers: pads.length,
       connectorLayers: inner.length,
+      roadWheelLayers: roadWheelLayers.map((row) => ({
+        name: row.name,
+        instanced: row.object.isInstancedMesh,
+        count: row.object.isInstancedMesh ? row.object.count : 1,
+      })),
     },
+    staticRoadWheelOverlays,
     protectedBodywork: rows
       .filter((row) => row.protectedBodywork)
       .map((row) => row.name || row.trackBucket || '(unnamed)'),
@@ -184,7 +206,8 @@ try {
     staticCandidates,
     pass: inner.length === 0
       && duplicatePairs.length === 0
-      && staticCandidates.length === 0,
+      && staticCandidates.length === 0
+      && abramsRoadWheelPass,
   };
 } catch (error) {
   window.__TRACK_DUPLICATE_AUDIT = { id, error: String(error?.stack || error), pass: false };

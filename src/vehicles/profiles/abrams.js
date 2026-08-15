@@ -2574,32 +2574,19 @@ function abramsGhillie(P, variant, t) {
   addNetMesh(P.hullG, hullNet, `${variant}_ghillie_hull_cut_net`);
 }
 
-function tejasWheelKit(P, g) {
-  const face = g.trackXc + Math.min(0.23, g.trackW * 0.38) / 2;   // 1.515
-  // Keep all wheel-face, hub and bay-shadow geometry in explicit tagged
-  // running-gear meshes.  These pieces live inside the animated track loop
-  // by design; merging them into the generic hull buckets made the strict
-  // track audit treat the suspension itself as an intersecting hull plate.
+function tejasEndWheelAndBayKit(P, g) {
+  // The native running-gear builder already owns the complete road-wheel
+  // tire/dish/hub set and moves it with suspension travel + wheel rotation.
+  // Do not add fixed road-wheel faces here: the former seven-station overlay
+  // stayed at the parked pose while the native wheels moved, producing the
+  // owner's visible doubled wheel train.  This kit is intentionally limited
+  // to the independently seated idler/sprocket faces and the wheel-bay AO
+  // wall; skirts, armor, track shoes and suspension geometry are untouched.
   const gearGeos = { dark: [], detail: [], hull: [], shadow: [] };
   const addGear = (bucket, geo, x, y, z, rx = 0, ry = 0, rz = 0) => {
     gearGeos[bucket].push(xform(geo, x, y, z, rx, ry, rz));
   };
   for (const side of [-1, 1]) {
-    for (const wz of g.wheelZs) {
-      // KIT.torus is pre-baked FLAT (XZ plane, hatch convention) — rz PI/2
-      // stands it up facing +-X (a ry rotation on a flat ring is a no-op;
-      // the r1 pancake rings spanned x 1.91 and safeScale shrank the tank
-      // 4.4% — the gate-collapse incident of this round).
-      addGear('dark', torus(0.385, 0.011, 18), side * (face + 0.002), g.wheelY, wz, 0, 0, Math.PI / 2);
-      addGear('detail', torus(0.300, 0.027, 18), side * (face + 0.014), g.wheelY, wz, 0, 0, Math.PI / 2);
-      addGear('hull', cylX(0.108, 0.030, 12), side * (face + 0.008), g.wheelY, wz);
-      addGear('dark', cylX(0.052, 0.024, 10), side * (face + 0.020), g.wheelY, wz);
-      if (P.q) for (let b = 0; b < 6; b++) {
-        const ba = (b / 6) * Math.PI * 2;
-        addGear('dark', box(0.022, 0.03, 0.03), side * (face + 0.012),
-          g.wheelY + Math.sin(ba) * 0.165, wz + Math.cos(ba) * 0.165);
-      }
-    }
     // Idler + sprocket hub packages (the bare drum faces read as untextured
     // gray placeholder slabs between the band wraps — critic item 5).
     const iFace = g.trackXc + g.trackW * 0.37;
@@ -2618,8 +2605,9 @@ function tejasWheelKit(P, g) {
       : bucket === 'detail' ? P.mats.detail
         : bucket === 'shadow' ? P.mats.shadow : P.mats.hull;
     const mesh = new THREE.Mesh(mergeAll(geos), mat);
-    mesh.name = `gear_wheelDress_${bucket}`;
+    mesh.name = bucket === 'shadow' ? 'gear_wheelBayAO' : `gear_endWheelDress_${bucket}`;
     mesh.userData.runningGear = true;
+    mesh.userData.endWheelFace = bucket !== 'shadow';
     mesh.castShadow = mesh.receiveShadow = true;
     P.hullG.add(mesh);
     P.disposables.push(mesh.geometry);
@@ -3347,7 +3335,7 @@ function buildTejasFamily(P, p) {
   boreDisc(P, 0.058, t.gunLen - 0.0175);
   P.topY = t.roofMain + 1.0;
   // Visual r2 kits (work order items 1/3/5/7 + the tone laws).
-  tejasWheelKit(P, g);
+  tejasEndWheelAndBayKit(P, g);
   tejasSuspensionDress(P, g);                  // visual r4 item 3
   // softDark FAMILY-WIDE (rear round 2026-08-06 — the black-slot void read
   // was the owner's report on every mark, not just m1a1ha).
@@ -7062,14 +7050,12 @@ function buildAbramsX(P) {
   for (const side of [-1, 1]) {
     P.add('hullRunningGearTrack', box(0.055, 0.055, 4.69), side * 1.0625, 0.0275, -0.025);
   }
-  // AXDED-R1 RUNNING-GEAR FACE DRESSING (§B8.1 wheel countability, owner
-  // verdict 1: "wheels invisible at garage angles"): the stock discs
-  // render near-black camo — the ref's wheels read via LIGHT hub faces
-  // and rim rings. Detail-slot (wheelTone-coupled tan — the loud carrier,
-  // wanted here) hub caps + rim rings per road wheel, hub dots on idler/
-  // sprocket. All strictly inside the wheel/track envelope: hub r 0.105
-  // < the 0.13 shoe-chain annulus floor; side/plan/front masks already
-  // painted by the discs and band at every affected pixel.
+  // End-wheel face dressing only. The native running-gear builder already
+  // supplies the complete seven-station road-wheel tire/dish/hub train and
+  // animates it with suspension travel + wheel rotation. The former static
+  // road-wheel overlay duplicated that train and stayed behind when the
+  // suspension moved. Keep only the independently seated idler/sprocket
+  // mechanisms here; no bodywork or smart-track geometry is removed.
   // (rim rings r 0.22 — a 0.295 ring's forward arc caught the rising
   // band ramps at wheels 1/7: track-clip front 95 / rear 10; at radial
   // 0.234 the ring's z-extreme sits y 0.45-0.53 vs the ramp's <=0.28)
@@ -7112,32 +7098,6 @@ function buildAbramsX(P) {
       // wheel trains from becoming one false full-width hull candidate in
       // the exact shoe-containment audit.
       const faceGeos = [];
-      g.wheelZs.forEach((wz, wi) => {
-        // The source receipt is unusually explicit here: all seven painted
-        // road-wheel faces are 0.5155 m across, including the two under the
-        // track transitions, and carry ten small fasteners on a 0.129 m
-        // orbit.  The prior six broad radial pockets were generic styling;
-        // they made the wheels busier but less AbramsX-like.
-        // A proud decagonal rim around a genuinely recessed center.  The
-        // earlier full 0.516 m face cylinder painted over every depth cue
-        // and made the train read as seven flat coins, even though its AABB
-        // was exact.  The source uses this annular lip / shadow well / hub
-        // stack; the same measured 0.516 m diameter is retained here.
-        faceGeos.push(KIT.xform(torus(0.240, 0.018, 10), side * 1.633,
-          g.wheelY, wz, 0, 0, Math.PI / 2));
-        P.add('hullRunningGearDark', torus(0.212, 0.014, 10), side * 1.585,
-          g.wheelY, wz, 0, 0, Math.PI / 2);
-        faceGeos.push(KIT.xform(cylX(0.180, 0.018, 10), side * 1.575, g.wheelY, wz));
-        P.add('hullRunningGearDark', torus(0.118, 0.012, 10), side * 1.590,
-          g.wheelY, wz, 0, 0, Math.PI / 2);
-        faceGeos.push(KIT.xform(cylX(0.070, 0.026, 10), side * 1.615, g.wheelY, wz));
-        P.add('hullRunningGearDark', cylX(0.022, 0.010, 8), side * 1.635, g.wheelY, wz);
-        for (let b = 0; b < 10; b++) {
-          const ba = (b / 10) * Math.PI * 2;
-          P.add('hullRunningGearDark', cylX(0.010, 0.014, 6), side * 1.592,
-            g.wheelY + Math.sin(ba) * 0.129, wz + Math.cos(ba) * 0.129);
-        }
-      });
       // High end mechanisms are independently countable in the source:
       // idler center y=.865/r=.279 and sprocket center y=.869/r=.331.
       // Broad recessed faces expose the rising track arcs instead of
@@ -7189,8 +7149,9 @@ function buildAbramsX(P) {
       });
       const faceGeo = KIT.mergeAll(faceGeos);
       const faceMesh = new THREE.Mesh(faceGeo, faceMat);
-      faceMesh.name = 'abramsxWheelFaceDressing';
+      faceMesh.name = 'abramsxEndWheelFaceDressing';
       faceMesh.userData.runningGear = true;
+      faceMesh.userData.endWheelFace = true;
       faceMesh.castShadow = false;
       faceMesh.receiveShadow = true;
       P.hullG.add(faceMesh);
