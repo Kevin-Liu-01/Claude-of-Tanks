@@ -2033,6 +2033,7 @@ let networkStatus = null;
 let latestNetworkSnapshot = null;
 let networkActionBitsPending = 0;
 let networkSpectator = false;
+const pendingNetworkEvents = [];
 
 function networkInputFrame() {
   const player = game.player;
@@ -2060,7 +2061,10 @@ function networkInputFrame() {
 function acceptNetworkSnapshot(snapshot, dt) {
   if (!snapshot) return;
   latestNetworkSnapshot = snapshot;
-  if (networkBridge) networkBridge.apply(snapshot, dt);
+  if (networkBridge) {
+    networkMatch?.client?.drainEventsThrough?.(snapshot.tick, pendingNetworkEvents);
+    networkBridge.apply(snapshot, dt, pendingNetworkEvents);
+  }
 }
 
 function networkDiagnostics() {
@@ -2109,6 +2113,7 @@ function closeNetworkMatch(reason = 'network_match_closed') {
   networkStatus = null;
   latestNetworkSnapshot = null;
   networkActionBitsPending = 0;
+  pendingNetworkEvents.length = 0;
   networkSpectator = false;
 }
 
@@ -2149,6 +2154,15 @@ async function waitForNetworkSnapshot(predicate, timeoutMs, label) {
   return latestNetworkSnapshot;
 }
 
+function resetNetworkBattleState() {
+  // The bridge overlays a reusable global game object. Clear the old verdict
+  // synchronously at handoff so a rematch cannot paint or process one frame
+  // of the previous victory/defeat before the first cold import resolves.
+  game.result = null;
+  game.timeS = 0;
+  game.preBattleS = Infinity;
+}
+
 /** Shared renderer/presentation path for private, LAN, and dedicated matches. */
 async function presentNetworkBattle({
   viewerId,
@@ -2157,6 +2171,7 @@ async function presentNetworkBattle({
   matchPlayers,
   modeLabel,
   connectMatch,
+  transitionShown = false,
 } = {}) {
   const loadStartedAt = performance.now();
   const loadTrace = { mode: modeLabel, map: mapId, stages: {} };
@@ -2167,20 +2182,33 @@ async function presentNetworkBattle({
     loadMarkAt = now;
   };
   if (typeof window !== 'undefined') window.__NETWORK_LOAD = loadTrace;
+  // A network bridge is mounted over reusable global game state. Retire the
+  // previous verdict before any snapshot/reveal work; otherwise a rematch
+  // enters its first battle frame with the old result and immediately opens
+  // the previous victory/defeat flow again.
+  resetNetworkBattleState();
   const spectator = own.team === 'spectator';
   const displayTeam = spectator ? 'alpha' : own.team;
   networkSpectator = spectator;
-  bus.emit('ui:battleStart', { playerId: viewerId, specId: own.specId, mapId });
-  battleLoad.show({
-    mapName: 'Network operation',
-    mapSub: 'Establishing shared authority',
-    thumb: '',
-    biome: mapId,
-    mode: modeLabel,
-    allies: lobbyRosterRows({ players: matchPlayers }, displayTeam, viewerId),
-    enemies: lobbyRosterRows({ players: matchPlayers },
-      displayTeam === 'alpha' ? 'bravo' : 'alpha', viewerId),
-  });
+  if (!transitionShown) {
+    bus.emit('ui:battleStart', { playerId: viewerId, specId: own.specId, mapId });
+    battleLoad.show({
+      mapName: 'Network operation',
+      mapSub: 'Establishing shared authority',
+      thumb: '',
+      biome: mapId,
+      mode: modeLabel,
+      allies: lobbyRosterRows({ players: matchPlayers }, displayTeam, viewerId),
+      enemies: lobbyRosterRows({ players: matchPlayers },
+        displayTeam === 'alpha' ? 'bravo' : 'alpha', viewerId),
+    });
+  } else {
+    battleLoad.rosters(
+      lobbyRosterRows({ players: matchPlayers }, displayTeam, viewerId),
+      lobbyRosterRows({ players: matchPlayers },
+        displayTeam === 'alpha' ? 'bravo' : 'alpha', viewerId),
+    );
+  }
   battleLoad.progress(0.02, 'Securing match channel');
   await nextFrame();
   const [{ createBrowserBattleBridge }, { createNetworkStatus }] = await Promise.all([
@@ -2232,10 +2260,13 @@ async function presentNetworkBattle({
   for (const entity of networkBridge.entities.values()) {
     if (entity.visual?.setGroundSampler) entity.visual.setGroundSampler(groundSampler);
   }
-  // A user can deploy immediately after garage readiness, before the idle
-  // warmer has finished. Prime only the opening-frame effect families here;
-  // the exhaustive wreck/rare-effect pass keeps streaming during garage idle.
-  battleLoad.progress(0.86, 'Priming combat effects');
+  // Network rosters can contain vehicles the garage-idle solo warmer never
+  // touched. Bake every fielded wreck family while the opaque load screen
+  // owns the frame, otherwise first blood can synchronously build burn
+  // canvases/materials and freeze a constrained client for hundreds of ms.
+  battleLoad.progress(0.85, 'Priming wreck variants');
+  await warmNetworkWrecks(networkBridge.entities.values());
+  battleLoad.progress(0.87, 'Priming combat effects');
   await warmNetworkOpeningEffects();
   markLoadStage('combatWarm');
   hud.warmShotCards([...networkBridge.entities.values()].map((entity) => entity.specId));
@@ -2297,6 +2328,16 @@ async function presentNetworkBattle({
     rig.snapArcade(2, game.player.state.yaw, -10 * DEG);
   }
   showroom.stop();
+  // Validate the actual loaded battlefield before removing the opaque load
+  // screen. The garage boot watchdog cannot catch a map-specific poisoned
+  // environment/shadow program, and discovering it after reveal presents as
+  // a black multiplayer spawn. Any rescue/recompile work stays hidden here.
+  try {
+    const blackCheck = runSceneBlackWatchdog(renderer, scene, camera);
+    loadTrace.blackCheck = blackCheck;
+  } catch (error) {
+    loadTrace.blackCheck = { error: error?.message || String(error) };
+  }
   battleLoad.progress(1, 'Ready');
   await battleLoad.hide();
   markLoadStage('reveal');
@@ -2326,6 +2367,29 @@ async function beginNetworkBattle({ role, session, lobbyState } = {}) {
   const own = lobbyState?.players?.find((player) => player.id === viewerId);
   try {
     if (!viewerId || !own) throw new Error('The lobby identity is unavailable.');
+    resetNetworkBattleState();
+    // Cover the page before the first cold import can yield. The play menu
+    // hands off from the garage synchronously; previously its hide exposed a
+    // garage frame (or several on a slow machine) while this module loaded.
+    const modeLabel = lobbyState.mode === 'lan'
+      ? 'LAN Battle · Direct Wi-Fi' : 'Private Battle · Room Code';
+    const displayTeam = own.team === 'spectator' ? 'alpha' : own.team;
+    bus.emit('ui:battleStart', {
+      playerId: viewerId,
+      specId: own.specId,
+      mapId: lobbyState.mapId,
+    });
+    battleLoad.show({
+      mapName: 'Network operation',
+      mapSub: 'Establishing shared authority',
+      thumb: '',
+      biome: lobbyState.mapId === 'random' ? 'none' : lobbyState.mapId,
+      mode: modeLabel,
+      allies: lobbyRosterRows(lobbyState, displayTeam, viewerId),
+      enemies: lobbyRosterRows(lobbyState,
+        displayTeam === 'alpha' ? 'bravo' : 'alpha', viewerId),
+    });
+    battleLoad.progress(0.01, 'Opening battle channel');
     const {
       beginPrivateHostMatch,
       beginPrivateClientMatch,
@@ -2339,8 +2403,8 @@ async function beginNetworkBattle({ role, session, lobbyState } = {}) {
       own,
       mapId,
       matchPlayers,
-      modeLabel: lobbyState.mode === 'lan'
-        ? 'LAN Battle · Direct Wi-Fi' : 'Private Battle · Room Code',
+      modeLabel,
+      transitionShown: true,
       connectMatch: () => role === 'host'
         ? beginPrivateHostMatch({ session, lobbyState, worldCollision: world })
         : beginPrivateClientMatch({ session, playerId: viewerId, lobbyState }),
@@ -2382,13 +2446,33 @@ async function beginRankedBattle({ serviceUrl, state } = {}) {
   const own = ticket?.roster?.find((player) => player.id === viewerId);
   try {
     if (!ticket || !viewerId || !own) throw new Error('Ranked match ticket is incomplete.');
+    resetNetworkBattleState();
+    const modeLabel = `Ranked · ${own.rating || 1000} rating`;
+    const displayTeam = own.team === 'spectator' ? 'alpha' : own.team;
+    bus.emit('ui:battleStart', {
+      playerId: viewerId,
+      specId: own.specId,
+      mapId: ticket.mapId,
+    });
+    battleLoad.show({
+      mapName: 'Ranked operation',
+      mapSub: 'Connecting to dedicated authority',
+      thumb: '',
+      biome: ticket.mapId,
+      mode: modeLabel,
+      allies: lobbyRosterRows({ players: ticket.roster }, displayTeam, viewerId),
+      enemies: lobbyRosterRows({ players: ticket.roster },
+        displayTeam === 'alpha' ? 'bravo' : 'alpha', viewerId),
+    });
+    battleLoad.progress(0.01, 'Opening dedicated channel');
     const { beginDedicatedClientMatch } = await import('./net/dedicatedClient.js');
     await presentNetworkBattle({
       viewerId,
       own,
       mapId: ticket.mapId,
       matchPlayers: ticket.roster,
-      modeLabel: `Ranked · ${own.rating || 1000} rating`,
+      modeLabel,
+      transitionShown: true,
       connectMatch: () => beginDedicatedClientMatch({
         url: serviceUrl,
         ticket,
@@ -4157,19 +4241,53 @@ let combatPipelineWarmed = false;
 let _warmGen = null; // in-flight chunked warm — the sync wrapper drains the remainder
 let networkOpeningEffectsWarmed = false;
 
+async function warmNetworkWrecks(entities) {
+  const yieldForFrameBudget = createFrameBudgetYielder(8);
+  const warmedSpecs = new Set();
+  for (const entity of entities || []) {
+    const visual = entity?.visual;
+    if (!visual) continue;
+    if (visual.prewarmBurn) {
+      try { visual.prewarmBurn(); } catch (_) { /* warm only */ }
+    }
+    if (entity.specId && !warmedSpecs.has(entity.specId)) {
+      warmedSpecs.add(entity.specId);
+      try {
+        for (const _ of prebakeBurntSteps(entity.specId, engineCtx.anisotropy ?? 4)) {
+          await yieldForFrameBudget();
+        }
+      } catch (_) { /* warm only */ }
+    }
+    if (visual.setDestroyed && visual.resetDestroyed) {
+      try {
+        visual.setDestroyed({ pop: false });
+        visual.resetDestroyed();
+        visual.setDestroyed({ pop: true });
+        visual.resetDestroyed();
+      } catch (_) { /* warm only */ }
+    }
+    await yieldForFrameBudget(true);
+  }
+}
+
 /**
  * Warm the effects an immediate deploy can hit in its opening seconds without
  * charging the whole exhaustive garage-idle pipeline to the transition.
  */
 async function warmNetworkOpeningEffects() {
   if (networkOpeningEffectsWarmed) return;
-  networkOpeningEffectsWarmed = true;
   const wp = new THREE.Vector3(-460, 0, -460);
   const wn = new THREE.Vector3(0, 1, 0);
   const wd = new THREE.Vector3(0, 0, 1);
   try {
     if (fx.warmTextures) fx.warmTextures();
     fx.warmOpeningEffects(wp, wd, wn, 120);
+    await nextFrame();
+    try { fx.update(0.016, game.shells, camera); } catch (_) { /* warm only */ }
+    fx.destruction(wp, null, 'shot');
+    await nextFrame();
+    try { fx.update(0.016, game.shells, camera); } catch (_) { /* warm only */ }
+    fx.destruction(wp, null, 'ammorack');
     await nextFrame();
     try { fx.update(0.016, game.shells, camera); } catch (_) { /* warm only */ }
     post.prepareSoftParticles();
@@ -4181,6 +4299,7 @@ async function warmNetworkOpeningEffects() {
     } finally {
       camera.layers.mask = mask;
     }
+    networkOpeningEffectsWarmed = true;
   } catch (error) {
     console.warn('[warm] opening effects failed (continuing):', error);
   } finally {
@@ -5154,6 +5273,20 @@ window.__DEBUG = {
   get damagePanel() { return damagePanel; },
   devTrace,                              // DEV flight recorder; null in production
   get network() { return networkDiagnostics(); },
+  get networkPresentation() { return networkBridge?.getPresentationEventStats?.() || null; },
+  // Development-only rendered lifecycle probe: feed authoritative-format
+  // presentation events through the real bridge/queue without exposing the
+  // authority runtime or mutating production networking APIs.
+  injectNetworkEvents(events) {
+    if (!import.meta.env.DEV || !networkBridge || !latestNetworkSnapshot) return false;
+    const batch = Array.isArray(events) ? events : [];
+    const matchEnded = batch.find((event) => event?.type === 'match_ended');
+    const snapshot = matchEnded
+      ? { ...latestNetworkSnapshot,
+        meta: { ...latestNetworkSnapshot.meta, result: matchEnded.result } }
+      : latestNetworkSnapshot;
+    return networkBridge.apply(snapshot, 1 / 60, batch);
+  },
 };
 await bootStage('ready', null);
 // perf-r2: the boot pipeline is compiled and error-checked; battle-time

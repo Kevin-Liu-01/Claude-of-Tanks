@@ -261,17 +261,17 @@ const ENV_COMP_INTENSITY = 3.1;
 function measureSceneBand(renderer, scene, camera) {
   const rt = new THREE.WebGLRenderTarget(64, 36, { depthBuffer: true });
   const buf = new Uint8Array(64 * 22 * 4);
+  const prev = renderer.getRenderTarget();
   try {
-    const prev = renderer.getRenderTarget();
     renderer.setRenderTarget(rt);
     renderer.clear();
     renderer.render(scene, camera);
     renderer.readRenderTargetPixels(rt, 0, 0, 64, 22, buf);
-    renderer.setRenderTarget(prev);
     let s = 0;
     for (let i = 0; i < buf.length; i += 4) s += buf[i] + buf[i + 1] + buf[i + 2];
     return s / (buf.length / 4) / 3;
   } finally {
+    renderer.setRenderTarget(prev);
     rt.dispose();
   }
 }
@@ -343,15 +343,18 @@ export function runSceneBlackWatchdog(renderer, scene, camera, { onRescue } = {}
   const measure = () => {
     if (sim) return sim[Math.min(simI++, sim.length - 1)];
     const prev = renderer.getRenderTarget();
-    renderer.setRenderTarget(rt);
-    renderer.clear();
-    renderer.render(scene, camera);
-    // lower 60% of the frame — terrain/vehicle band; sky stays out of it
-    renderer.readRenderTargetPixels(rt, 0, 0, 64, 22, buf);
-    renderer.setRenderTarget(prev);
-    let s = 0;
-    for (let i = 0; i < buf.length; i += 4) s += buf[i] + buf[i + 1] + buf[i + 2];
-    return s / (buf.length / 4) / 3;
+    try {
+      renderer.setRenderTarget(rt);
+      renderer.clear();
+      renderer.render(scene, camera);
+      // lower 60% of the frame — terrain/vehicle band; sky stays out of it
+      renderer.readRenderTargetPixels(rt, 0, 0, 64, 22, buf);
+      let s = 0;
+      for (let i = 0; i < buf.length; i += 4) s += buf[i] + buf[i + 1] + buf[i + 2];
+      return s / (buf.length / 4) / 3;
+    } finally {
+      renderer.setRenderTarget(prev);
+    }
   };
   const recompile = () => scene.traverse((o) => {
     if (!o.material) return;

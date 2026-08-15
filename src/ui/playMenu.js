@@ -464,12 +464,16 @@ export function createPlayMenu({
     });
     if (rankedAbort.signal.aborted) return;
     handedOff = true;
-    hide(false);
     try {
-      await Promise.resolve(onRankedStart && onRankedStart({
+      // Let the battle owner mount its opaque transition synchronously before
+      // this menu disappears. A cold dedicated-client import used to expose
+      // one or more garage frames between these two operations.
+      const handoff = onRankedStart && onRankedStart({
         serviceUrl: rankedClient.webSocketUrl,
         state,
-      }));
+      });
+      hide(false);
+      await Promise.resolve(handoff);
     } catch (error) {
       handedOff = false;
       show();
@@ -528,9 +532,20 @@ export function createPlayMenu({
       : 'Gameplay travels directly between peers; signaling only exchanges connection metadata.') + fillNote;
     if (next.phase === 'starting' && role === 'client' && !handedOff) {
       handedOff = true;
+      let start;
+      try {
+        // Let main mount the opaque battle transition in this same task
+        // before removing the lobby. This prevents the garage underneath
+        // from ever becoming the compositor's top visible surface.
+        start = Promise.resolve(onNetworkStart &&
+          onNetworkStart({ role, session, lobbyState: next }));
+      } catch (error) {
+        handedOff = false;
+        setStatus(error.message, true);
+        return;
+      }
       hide(false);
-      Promise.resolve(onNetworkStart && onNetworkStart({ role, session, lobbyState: next }))
-        .catch((error) => { handedOff = false; show(); setStatus(error.message, true); });
+      start.catch((error) => { handedOff = false; show(); setStatus(error.message, true); });
     }
   }
 
@@ -570,9 +585,17 @@ export function createPlayMenu({
           onStart: (lobbyState) => {
             if (handedOff) return;
             handedOff = true;
+            let start;
+            try {
+              start = Promise.resolve(onNetworkStart &&
+                onNetworkStart({ role: 'host', session, lobbyState }));
+            } catch (error) {
+              handedOff = false;
+              setStatus(error.message, true);
+              return;
+            }
             hide(false);
-            Promise.resolve(onNetworkStart && onNetworkStart({ role: 'host', session, lobbyState }))
-              .catch((error) => { handedOff = false; show(); setStatus(error.message, true); });
+            start.catch((error) => { handedOff = false; show(); setStatus(error.message, true); });
           },
           onError: (error) => setStatus(error.message, true),
         });

@@ -6,6 +6,7 @@ import { createTank } from '../vehicles/tankFactory.js';
 import { prebakeSharedTextures } from '../vehicles/materials.js';
 import { pushHullFromObstacle } from '../world/collision.js';
 import { LocalTankPredictor } from './localTankPrediction.js';
+import { PresentationEventQueue } from './presentationEventQueue.js';
 import { SNAPSHOT_FLAGS } from './snapshot.js';
 
 const POS_SCALE = 100;
@@ -51,12 +52,12 @@ export function createBrowserBattleBridge({
   const liveShells = [];
   let viewerTeam = null;
   let perspectiveTeam = null;
-  let lastTick = -1;
   let snapshotPhase = null;
   let mounted = false;
   let legacyState = null;
   const destructionCause = new Map();
   const nearbyPredictionObstacles = [];
+  let appliedDestructibleRevision = -1;
 
   function collidePrediction(entity, pos, _radius, outPush) {
     outPush.set(0, 0, 0);
@@ -197,10 +198,11 @@ export function createBrowserBattleBridge({
     combat.destroyed = destroyed;
     entity.input.fire = !!(snapshot.flags & SNAPSHOT_FLAGS.FIRING);
     entity.input.shellSlot = snapshot.shellSlot;
-    if (destroyed && !entity._networkDestroyed) visualDestroy(entity);
+    if (destroyed) visualDestroy(entity);
     else if (!destroyed && entity._networkDestroyed) {
       if (entity.visual.resetDestroyed) entity.visual.resetDestroyed();
       entity._networkDestroyed = false;
+      entity._networkDestroyPop = false;
     }
     if (entity.predictor && immediateAuthority) {
       entity.predictor.reconcile(immediateAuthority, dt, destroyed);
@@ -223,13 +225,15 @@ export function createBrowserBattleBridge({
     entity._lastX = state.pos.x;
     entity._lastZ = state.pos.z;
     entity.visual.setVisible(true);
-    entity.visual.syncFromState(state, dt);
   }
 
   function visualDestroy(entity) {
+    const pop = destructionCause.get(entity.id) === 'ammo_rack';
+    if (entity._networkDestroyed && entity._networkDestroyPop === pop) return;
     entity._networkDestroyed = true;
+    entity._networkDestroyPop = pop;
     if (entity.visual.setDestroyed) {
-      entity.visual.setDestroyed({ pop: destructionCause.get(entity.id) === 'ammo_rack' });
+      entity.visual.setDestroyed({ pop });
     }
   }
 
@@ -267,10 +271,9 @@ export function createBrowserBattleBridge({
     game.shells = liveShells;
   }
 
-  function emitEvents(events) {
+  function emitEvent(event) {
     if (!bus || typeof bus.emit !== 'function') return;
-    for (const event of events || []) {
-      if (event.type === 'shell_fired') {
+    if (event.type === 'shell_fired') {
         const shooter = entities.get(event.shooterId);
         bus.emit('shell:fired', {
           shellId: event.shellId,
@@ -285,32 +288,28 @@ export function createBrowserBattleBridge({
           dir: [event.dx, event.dy, event.dz],
           shooterSpecId: shooter?.specId,
         });
-      } else if (event.type === 'shell_hit') {
+    } else if (event.type === 'shell_hit') {
         bus.emit('shell:hit', {
           ...event,
           attackerId: event.attackerId || event.shooterId,
         });
-      } else if (event.type === 'shell_impact') {
+    } else if (event.type === 'shell_impact') {
         bus.emit('shell:expired', {
           shellId: event.shellId,
           shooterId: event.shooterId,
           hitTerrain: event.kind === 'terrain',
           pos: [event.x, event.y, event.z],
         });
-      } else if (event.type === 'tank_destroyed') {
+    } else if (event.type === 'tank_destroyed') {
         const entity = entities.get(event.id);
-        destructionCause.set(event.id, event.cause);
-        if (entity && entity._networkDestroyed && entity.visual.setDestroyed) {
-          entity.visual.setDestroyed({ pop: event.cause === 'ammo_rack' });
-        }
         bus.emit('tank:destroyed', {
           id: event.id,
           specId: entity && entity.specId,
           killerId: event.killerId,
-          cause: event.cause,
+          cause: event.cause === 'ammo_rack' ? 'ammorack' : event.cause,
           pos: entity ? [entity.state.pos.x, entity.state.pos.y, entity.state.pos.z] : null,
         });
-      } else if (event.type === 'world_prop_destroyed') {
+    } else if (event.type === 'world_prop_destroyed') {
         const obstacle = worldCollision && typeof worldCollision.getObstacles === 'function'
           ? worldCollision.getObstacles()[event.obstacleIndex]
           : null;
@@ -333,28 +332,28 @@ export function createBrowserBattleBridge({
           ] : null,
           dir: [event.directionX, 0, event.directionZ],
         });
-      } else if (event.type === 'consumable_used' && event.id === id) {
+    } else if (event.type === 'consumable_used' && event.id === id) {
         bus.emit('ui:consumableUsed', {
           slot: event.slot,
           cooldownS: event.cooldownS,
           readyAt: event.readyAt,
         });
-      } else if (event.type === 'consumable_denied' && event.id === id) {
+    } else if (event.type === 'consumable_denied' && event.id === id) {
         bus.emit('ui:consumableDenied', {
           slot: event.slot,
           reason: event.reason,
           remainingS: event.remainingS,
         });
-      } else if (event.type === 'module_state') {
+    } else if (event.type === 'module_state') {
         bus.emit('module:state', {
           id: event.id,
           module: event.module,
           state: event.state,
           source: event.source,
         });
-      } else if (event.type === 'tank_fire') {
+    } else if (event.type === 'tank_fire') {
         bus.emit('tank:fire', { id: event.id, burning: event.burning });
-      } else if (event.type === 'tank_ram') {
+    } else if (event.type === 'tank_ram') {
         bus.emit('tank:ram', {
           aId: event.aId,
           bId: event.bId,
@@ -365,13 +364,55 @@ export function createBrowserBattleBridge({
           bIsPlayer: event.bId === id,
           pos: [event.x, event.y, event.z],
         });
-      } else if (event.type === 'match_ended') {
+    } else if (event.type === 'match_ended') {
         const result = spectator ? 'draw' : event.result === 'draw' ? 'draw'
           : event.result === viewerTeam ? 'victory' : 'defeat';
         game.result = result;
-        bus.emit('battle:ended', { result, timeS: game.timeS, map: game.mapId, roster: [] });
-      }
+        bus.emit('battle:ended', {
+          result,
+          timeS: game.timeS,
+          map: game.mapId,
+          roster: resultRoster(),
+        });
     }
+  }
+
+  const presentationEvents = new PresentationEventQueue({ emit: emitEvent });
+
+  function resultRoster() {
+    return [...entities.values()].map((entity) => ({
+      id: entity.id,
+      name: entity.displayName || entity.spec?.name || entity.specId,
+      vehicle: entity.displayName || entity.spec?.name || entity.specId,
+      specId: entity.specId,
+      team: entity.team === 'enemy' ? 'enemy' : 'ally',
+      alive: !entity.combat?.destroyed,
+      isPlayer: !!entity.isPlayer,
+    }));
+  }
+
+  function reconcileDestructibles(meta) {
+    const revision = Number(meta?.destructibleRevision);
+    if (!Number.isSafeInteger(revision) || revision < 0 ||
+        revision <= appliedDestructibleRevision) return;
+    const destroyed = meta?.destroyedObstacleIndices;
+    if (!Array.isArray(destroyed) || !worldCollision ||
+        typeof worldCollision.getObstacles !== 'function') {
+      appliedDestructibleRevision = revision;
+      return;
+    }
+    const obstacles = worldCollision.getObstacles();
+    for (const rawIndex of destroyed) {
+      const index = Number(rawIndex);
+      if (!Number.isSafeInteger(index) || index < 0 || index >= obstacles.length) continue;
+      const obstacle = obstacles[index];
+      if (!obstacle || obstacle.crushed) continue;
+      if (typeof worldCollision.crushObstacle === 'function') {
+        worldCollision.crushObstacle(obstacle, 0, 1, 0);
+      }
+      obstacle.crushed = true;
+    }
+    appliedDestructibleRevision = revision;
   }
 
   function mount() {
@@ -402,9 +443,15 @@ export function createBrowserBattleBridge({
     };
   }
 
-  function apply(snapshot, dt = 1 / 60) {
+  function apply(snapshot, dt = 1 / 60, reliableEvents = []) {
     if (!snapshot) return false;
     snapshotPhase = snapshot.meta?.phase || snapshotPhase;
+    // Index destruction causes before state reconciliation so an ammo-rack
+    // turret pop is staged once, with the correct variant, instead of first
+    // creating a generic wreck and rebuilding it when the event arrives.
+    for (const event of reliableEvents) {
+      if (event?.type === 'tank_destroyed') destructionCause.set(event.id, event.cause);
+    }
     for (const entity of entities.values()) entity.networkVisible = false;
     // Establish the viewer's team before classifying any other entity.
     const own = spectator ? null : snapshot.entities.find((entry) => entry.id === id);
@@ -435,9 +482,24 @@ export function createBrowserBattleBridge({
       ? snapshot.meta.countdownMs / 1000
       : 0;
     updateShells(snapshot.shells);
-    if (snapshot.tick > lastTick) {
-      lastTick = snapshot.tick;
-      emitEvents(snapshot.events);
+    presentationEvents.enqueue(reliableEvents);
+    presentationEvents.flush();
+    reconcileDestructibles(snapshot.meta);
+
+    // The verdict is persistent snapshot state. Reliable events preserve the
+    // cinematic chronology, but reconnects/keyframes must still converge if
+    // the original match_ended event predates this client.
+    if (!game.result && snapshot.meta?.result &&
+        !presentationEvents.hasType('match_ended')) {
+      const authorityResult = snapshot.meta.result;
+      game.result = spectator ? 'draw' : authorityResult === 'draw' ? 'draw'
+        : authorityResult === viewerTeam ? 'victory' : 'defeat';
+      bus.emit('battle:ended', {
+        result: game.result,
+        timeS: game.timeS,
+        map: game.mapId,
+        roster: resultRoster(),
+      });
     }
     return true;
   }
@@ -486,6 +548,7 @@ export function createBrowserBattleBridge({
     liveShells.length = 0;
     shellById.clear();
     destructionCause.clear();
+    presentationEvents.clear();
   }
 
   return {
@@ -496,6 +559,7 @@ export function createBrowserBattleBridge({
     apply,
     recordInput,
     getPredictionStats,
+    getPresentationEventStats: () => presentationEvents.getStats(),
     setPerspective,
     unmount,
     dispose,

@@ -53,16 +53,30 @@ function authority(tick, ackInputSeq, x = 0, z = 0) {
 const state = createTankState(SPEC, new Vector3(), 0);
 const entity = { spec: SPEC, state, combat: null, contactGeom: null, rigidGear: false };
 const predictor = new LocalTankPredictor({ entity, heightField: FIELD });
-predictor.reconcile(authority(0, null));
+predictor.reconcile(authority(0, null, 300, -220));
+assert.deepEqual(
+  { x: entity.state.pos.x, z: entity.state.pos.z },
+  { x: 300, z: -220 },
+  'the first authority pose seeds presentation directly from the staging origin',
+);
+assert.deepEqual(
+  { reconciliations: predictor.getStats().reconciliations,
+    hardSnaps: predictor.getStats().hardSnaps,
+    maxPositionErrorM: predictor.getStats().maxPositionErrorM },
+  { reconciliations: 0, hardSnaps: 0, maxPositionErrorM: 0 },
+  'initial spawn placement is not counted as rubberband correction',
+);
+predictor.reconcile(authority(1, null, 300, -220));
 const driving = {
   throttle: 1, steer: 0, brake: false, fire: false,
   aimYaw: 0, aimPitch: 0, shellSlot: 0,
 };
 for (let seq = 0; seq < 4; seq++) predictor.recordInput(driving, 1 / 60, seq);
-assert.ok(entity.state.pos.z > 0, 'local input advances presentation before authority returns');
+assert.ok(entity.state.pos.z > -220,
+  'local input advances presentation before authority returns');
 const shownBeforeReconcile = entity.state.pos.z;
 
-predictor.reconcile(authority(3, 1, 0, 0), 0);
+predictor.reconcile(authority(3, 1, 300, -220), 0);
 assert.equal(predictor.getStats().pendingInputs, 2,
   'authority acknowledgement removes only confirmed input history');
 assert.ok(Math.abs(entity.state.pos.z - shownBeforeReconcile) < 1e-9,

@@ -263,6 +263,8 @@ export function createAuthoritativeMatch({
   const entityById = new Map();
   const teamIndex = { [TEAM_ALPHA]: 0, [TEAM_BRAVO]: 0 };
   const pendingEvents = [];
+  const destroyedObstacleIndices = [];
+  let destructibleRevision = 0;
   let shells = [];
   let nextShellId = 1;
   let timeS = 0;
@@ -530,9 +532,14 @@ export function createAuthoritativeMatch({
       : true;
     if (destroyed === false) return false;
     obstacle.crushed = true;
+    const destroyedIndex = obstacleIndex.get(obstacle);
+    if (Number.isSafeInteger(destroyedIndex)) {
+      destroyedObstacleIndices.push(destroyedIndex);
+      destructibleRevision++;
+    }
     if (entity?.state) entity.state.speed *= obstacle.crushKeep ?? CRUSH_SPEED_KEEP;
     emit('world_prop_destroyed', {
-      obstacleIndex: obstacleIndex.get(obstacle),
+      obstacleIndex: destroyedIndex,
       propIdx: obstacle.propIdx,
       treeIdx: obstacle.treeIdx,
       kind: obstacle.kind || (obstacle.treeIdx != null ? 'tree' : 'prop'),
@@ -937,6 +944,8 @@ export function createAuthoritativeMatch({
           countdownMs: Math.round(countdownRemainingS * 1000),
           battleTimeMs: Math.round(timeS * 1000),
           result,
+          destructibleRevision,
+          destroyedObstacleIndices: destroyedObstacleIndices.slice(),
         },
       });
     },

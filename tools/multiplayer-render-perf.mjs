@@ -12,8 +12,33 @@ function numberOption(name, fallback) {
   return value;
 }
 
+function nonNegativeOption(name, fallback = 0) {
+  const prefix = `--${name}=`;
+  const raw = process.argv.find((entry) => entry.startsWith(prefix));
+  const value = raw ? Number(raw.slice(prefix.length)) : fallback;
+  if (!Number.isFinite(value) || value < 0) throw new TypeError(`${name} must be non-negative`);
+  return value;
+}
+
+function stringOption(name, fallback) {
+  const prefix = `--${name}=`;
+  const raw = process.argv.find((entry) => entry.startsWith(prefix));
+  return raw ? raw.slice(prefix.length) : fallback;
+}
+
 const seconds = numberOption('seconds', 6);
 const cpuRate = numberOption('cpu', 4);
+const adverse = {
+  latency: nonNegativeOption('latency'),
+  jitter: nonNegativeOption('jitter'),
+  loss: nonNegativeOption('loss'),
+  inputLoss: nonNegativeOption('input-loss'),
+};
+const adverseEnabled = Object.values(adverse).some((value) => value > 0);
+const roomMode = stringOption('room-mode', 'lan');
+if (!['lan', 'private'].includes(roomMode)) {
+  throw new TypeError('room-mode must be lan or private');
+}
 const root = new URL('..', import.meta.url).pathname;
 const consoleErrors = [];
 let browser = null;
@@ -32,7 +57,7 @@ function observe(page, label) {
   });
 }
 
-async function openPage(origin, { full = false, label }) {
+async function openPage(origin, { full = false, label, adverseNetwork = false }) {
   const page = await browser.newPage();
   observe(page, label);
   await page.setViewport({ width: 1280, height: 720, deviceScaleFactor: 1 });
@@ -50,9 +75,21 @@ async function openPage(origin, { full = false, label }) {
     const cdp = await page.createCDPSession();
     await cdp.send('Emulation.setCPUThrottlingRate', { rate: cpuRate });
   }
-  const path = full
-    ? '/?nosplash=1&tier=desktop&gfxreset=1'
-    : '/tools/multiplayer-browser-soak.html';
+  const params = new URLSearchParams();
+  if (full) {
+    params.set('nosplash', '1');
+    params.set('tier', 'desktop');
+    params.set('gfxreset', '1');
+  }
+  if (adverseNetwork && adverseEnabled) {
+    params.set('netSim', '1');
+    params.set('netLatency', String(adverse.latency));
+    params.set('netJitter', String(adverse.jitter));
+    params.set('netLoss', String(adverse.loss));
+    params.set('netInputLoss', String(adverse.inputLoss));
+  }
+  const pathname = full ? '/' : '/tools/multiplayer-browser-soak.html';
+  const path = `${pathname}?${params}`;
   await page.goto(`${origin}${path}`, { waitUntil: 'domcontentloaded', timeout: 180_000 });
   if (full) {
     await page.waitForFunction(
@@ -76,7 +113,7 @@ async function closeState(page) {
 }
 
 async function createStartingRoom(hostPage, guestPage, signalUrl) {
-  const room = await hostPage.evaluate(async (url) => {
+  const room = await hostPage.evaluate(async ({ url, roomMode: mode }) => {
     const [{ RoomSignalingClient }, { PrivateRoomHostSession }] = await Promise.all([
       import('/src/net/signalingClient.js'),
       import('/src/net/privateRoomSession.js'),
@@ -84,7 +121,7 @@ async function createStartingRoom(hostPage, guestPage, signalUrl) {
     const signalingClient = new RoomSignalingClient({ url });
     const roomInfo = await signalingClient.createRoom({
       player: { id: 'render-host', name: 'Commander' },
-      mode: 'lan',
+      mode,
       maxPlayers: 14,
     });
     const state = globalThis.__COT_RENDER_PERF = {
@@ -106,7 +143,7 @@ async function createStartingRoom(hostPage, guestPage, signalUrl) {
     });
     state.unsubscribe = state.session.runtime.onState((lobby) => { state.lastLobby = lobby; });
     return roomInfo;
-  }, signalUrl);
+  }, { url: signalUrl, roomMode });
 
   await guestPage.evaluate(async ({ url, roomCode }) => {
     const [{ RoomSignalingClient }, { PrivateRoomClientSession }] = await Promise.all([
@@ -185,10 +222,38 @@ async function collectFullRenderer(page, label) {
   const entryState = await page.evaluate(() => ({
     result: globalThis.__COT_RENDER_PERF?.entryResult ?? true,
     failure: globalThis.__NETWORK_ENTRY_FAILURE || null,
+    transition: globalThis.__COT_RENDER_PERF?.entryTransition || null,
+    transitionFrames: globalThis.__COT_RENDER_PERF?.entryFrames || [],
+    blackCheck: globalThis.__NETWORK_LOAD?.blackCheck || null,
   }));
   assert.notEqual(entryState.result, false,
     `${label} failed during network battle entry: ${JSON.stringify(entryState.failure)}`);
+  if (label !== 'solo') {
+    assert.equal(entryState.transition?.loaderVisible, true,
+      `${label} must synchronously cover the garage before its first await`);
+    assert.ok(entryState.transitionFrames.length > 0,
+      `${label} must observe rendered entry frames`);
+    assert.equal(entryState.transitionFrames.some((frame) =>
+      !frame.loaderVisible && frame.phase !== 'battle'), false,
+    `${label} exposed the garage/blank page during network handoff`);
+    assert.ok(entryState.blackCheck && !entryState.blackCheck.error,
+      `${label} must run the real-scene black watchdog before reveal`);
+    assert.equal(entryState.transition?.result, null,
+      `${label} must clear a prior match result synchronously at handoff`);
+  }
   await page.evaluate((mode) => {
+    const state = globalThis.__COT_RENDER_PERF = globalThis.__COT_RENDER_PERF || {};
+    state.syncCalls = 0;
+    for (const entity of window.__DEBUG.game.tanks) {
+      const visual = entity.visual;
+      if (!visual || visual.__renderPerfSyncWrapped) continue;
+      const original = visual.syncFromState.bind(visual);
+      visual.syncFromState = (...args) => {
+        state.syncCalls++;
+        return original(...args);
+      };
+      visual.__renderPerfSyncWrapped = true;
+    }
     window.__DEV_TRACE.clear();
     window.__DEV_TRACE.mark('render-perf:start', { mode });
     window.dispatchEvent(new KeyboardEvent('keydown', {
@@ -211,6 +276,13 @@ async function collectFullRenderer(page, label) {
       rosterSize: window.__DEBUG.frameInfo.rosterTanks?.length ||
         window.__DEBUG.game.tanks.length,
       network: window.__DEBUG.network,
+      presentation: window.__DEBUG.networkPresentation,
+      syncCalls: globalThis.__COT_RENDER_PERF?.syncCalls || 0,
+      entry: {
+        transition: globalThis.__COT_RENDER_PERF?.entryTransition || null,
+        transitionFrames: globalThis.__COT_RENDER_PERF?.entryFrames?.length || 0,
+        blackCheck: globalThis.__NETWORK_LOAD?.blackCheck || null,
+      },
     };
   }, label);
   assert.ok(report.frames >= seconds * 30,
@@ -218,6 +290,60 @@ async function collectFullRenderer(page, label) {
   assert.equal(report.freezes, 0, `${label} must not freeze under ${cpuRate}x CPU throttling`);
   assert.ok(report.gapP95 < 40,
     `${label} p95 frame gap ${report.gapP95} ms fell below a stable 30 fps floor`);
+  assert.ok(report.syncCalls <= report.frames * report.rosterSize * 1.15 + report.rosterSize * 4,
+    `${label} duplicated tank visual work: ${report.syncCalls} syncs / ${report.frames} frames`);
+  if (label !== 'solo') {
+    const prediction = report.network?.prediction;
+    assert.equal(prediction?.hardSnaps, 0,
+      `${label} hard-snapped during visible network play`);
+    assert.ok((prediction?.maxPositionErrorM ?? Infinity) < 2,
+      `${label} predictor diverged ${prediction?.maxPositionErrorM} m`);
+    assert.ok((prediction?.lastPositionErrorM ?? Infinity) < 1,
+      `${label} retained ${prediction?.lastPositionErrorM} m of rubberband error`);
+    assert.equal(prediction?.droppedHistory, 0,
+      `${label} dropped prediction history under the tested network profile`);
+    await page.evaluate((expectedResult) => {
+      const tanks = window.__DEBUG.game.tanks;
+      const ownTeam = window.__DEBUG.game.player.networkTeam;
+      const resultTeam = expectedResult === 'victory'
+        ? ownTeam
+        : tanks.find((entity) => entity.networkTeam !== ownTeam)?.networkTeam;
+      const events = Array.from({ length: 7 }, (_, index) => ({
+        type: 'tank_destroyed',
+        id: tanks[index % tanks.length].id,
+        killerId: window.__DEBUG.game.player.id,
+        cause: index % 2 ? 'shot' : 'ammo_rack',
+      }));
+      events.push({ type: 'match_ended', result: resultTeam });
+      window.__DEV_TRACE.clear();
+      window.__DEV_TRACE.mark('render-perf:destruction-burst', { expectedResult });
+      if (!window.__DEBUG.injectNetworkEvents(events)) {
+        throw new Error('network event injection seam was unavailable');
+      }
+      if (window.__DEBUG.game.result !== null) {
+        throw new Error('persistent result bypassed queued destruction chronology');
+      }
+    }, label.endsWith('-client') ? 'defeat' : 'victory');
+    await page.waitForFunction(
+      (expected) => window.__DEBUG.game.result === expected,
+      { timeout: 15_000, polling: 16 },
+      label.endsWith('-client') ? 'defeat' : 'victory',
+    );
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    report.destructionBurst = await page.evaluate(() => ({
+      ...window.__DEV_TRACE.stats(),
+      result: window.__DEBUG.game.result,
+      presentation: window.__DEBUG.networkPresentation,
+    }));
+    assert.equal(report.destructionBurst.freezes, 0,
+      `${label} destruction/result burst must not freeze`);
+    assert.ok(report.destructionBurst.maxGapMs < 200,
+      `${label} destruction/result burst stalled ${report.destructionBurst.maxGapMs} ms`);
+    assert.equal(report.destructionBurst.presentation?.pending, 0,
+      `${label} must drain every reliable presentation event`);
+    assert.ok(report.destructionBurst.presentation?.peakPending >= 8,
+      `${label} did not exercise the destruction admission queue`);
+  }
   return report;
 }
 
@@ -244,6 +370,7 @@ async function runNetwork(origin, signalUrl, renderedRole) {
   const guestPage = await openPage(origin, {
     full: renderedRole === 'client',
     label: `${renderedRole}-guest-page`,
+    adverseNetwork: true,
   });
   try {
     await createStartingRoom(hostPage, guestPage, signalUrl);
@@ -278,15 +405,29 @@ async function runNetwork(origin, signalUrl, renderedRole) {
       });
       await hostPage.evaluate(() => {
         const state = globalThis.__COT_RENDER_PERF;
+        state.entryFrames = [];
+        window.__DEBUG.game.result = 'victory';
+        const sample = () => {
+          const loaderVisible = !!document.querySelector('.cot-bl.on');
+          const phase = window.__DEBUG.game.phase;
+          state.entryFrames.push({ loaderVisible, phase });
+          if (phase !== 'battle' && state.entryFrames.length < 1200) requestAnimationFrame(sample);
+        };
+        requestAnimationFrame(sample);
         state.entry = window.__DEBUG.beginNetworkBattle({
           role: 'host',
           session: state.session,
           lobbyState: state.startingLobby,
         }).then((result) => { state.entryResult = result; })
           .catch((error) => { state.errors.push(error.message); state.entryResult = false; });
+        state.entryTransition = {
+          loaderVisible: !!document.querySelector('.cot-bl.on'),
+          phase: window.__DEBUG.game.phase,
+          result: window.__DEBUG.game.result,
+        };
         return true;
       });
-      return await collectFullRenderer(hostPage, 'private-host');
+      return await collectFullRenderer(hostPage, `${roomMode}-host`);
     }
 
     await hostPage.evaluate(async () => {
@@ -301,15 +442,29 @@ async function runNetwork(origin, signalUrl, renderedRole) {
     });
     await guestPage.evaluate(() => {
       const state = globalThis.__COT_RENDER_PERF;
+      state.entryFrames = [];
+      window.__DEBUG.game.result = 'victory';
+      const sample = () => {
+        const loaderVisible = !!document.querySelector('.cot-bl.on');
+        const phase = window.__DEBUG.game.phase;
+        state.entryFrames.push({ loaderVisible, phase });
+        if (phase !== 'battle' && state.entryFrames.length < 1200) requestAnimationFrame(sample);
+      };
+      requestAnimationFrame(sample);
       state.entry = window.__DEBUG.beginNetworkBattle({
         role: 'client',
         session: state.session,
         lobbyState: state.lastLobby,
       }).then((result) => { state.entryResult = result; })
         .catch((error) => { state.errors.push(error.message); state.entryResult = false; });
+      state.entryTransition = {
+        loaderVisible: !!document.querySelector('.cot-bl.on'),
+        phase: window.__DEBUG.game.phase,
+        result: window.__DEBUG.game.result,
+      };
       return true;
     });
-    return await collectFullRenderer(guestPage, 'private-client');
+    return await collectFullRenderer(guestPage, `${roomMode}-client`);
   } finally {
     await Promise.all([closeState(hostPage), closeState(guestPage)]);
   }
@@ -345,10 +500,12 @@ try {
   assert.deepEqual(consoleErrors, [], `browser errors:\n${consoleErrors.join('\n')}`);
   console.log(JSON.stringify({
     ok: true,
-    profile: { seconds, cpuRate, viewport: [1280, 720], quality: 'desktop' },
+    profile: {
+      seconds, cpuRate, viewport: [1280, 720], quality: 'desktop', roomMode, adverse,
+    },
     solo,
-    privateHost: host,
-    privateClient: client,
+    [`${roomMode}Host`]: host,
+    [`${roomMode}Client`]: client,
   }, null, 2));
 } finally {
   if (browser) await browser.close().catch(() => {});

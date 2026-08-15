@@ -883,6 +883,71 @@ function createTestSimulation() {
   hostRuntime.close();
 }
 
+// Replaceable state loss must never erase one-shot combat/lifecycle events.
+// The first state snapshot is discarded while the reliable control lane stays
+// intact; the event drains exactly once when the next state frame catches up.
+{
+  let pendingEvents = [{ type: 'match_ended', result: 'alpha', timeS: 1 }];
+  const simulation = {
+    requiredPeerIds: ['event-client'],
+    onPeerJoin() {},
+    onPeerReady() {},
+    onMatchReady() {},
+    onPeerLeave() {},
+    step() {},
+    snapshot({ tick, serverTimeMs, viewerId, ackInputSeq }) {
+      return captureWorldSnapshot({
+        tick,
+        serverTimeMs,
+        entities: [entity('event-client', 'm1a2', 'alpha', 0)],
+        events: pendingEvents,
+        viewerId,
+        ackInputSeq,
+        meta: { phase: 'playing', result: pendingEvents.length ? 'alpha' : null },
+      });
+    },
+    afterSnapshotBroadcast() { pendingEvents = []; },
+  };
+  const link = createLoopbackTransportPair({ direct: true });
+  let droppedStates = 0;
+  const hostTransport = {
+    get readyState() { return link.host.readyState; },
+    send(message) { return link.host.send(message); },
+    sendState(message) {
+      if (droppedStates++ === 0) return true;
+      return link.host.send(message);
+    },
+    onMessage(listener) { return link.host.onMessage(listener); },
+    onClose(listener) { return link.host.onClose(listener); },
+    close(reason) { return link.host.close(reason); },
+  };
+  const host = new AuthoritativeMatchRuntime({ simulation });
+  const client = new MatchClientRuntime({
+    transport: link.client,
+    playerId: 'event-client',
+    interpolationDelayMs: 0,
+    clock: () => 0,
+  });
+  host.attachPeer({ peerId: 'event-client', transport: hostTransport });
+  client.connect();
+  client.readyForMatch();
+  host.advance(50);
+  assert.equal(client.update(50), null, 'the event-bearing state packet was actually dropped');
+  assert.equal(client.getStats().pendingEventBatches, 1,
+    'the reliable event batch survives independently of state loss');
+  host.advance(50);
+  const recoveredFrame = client.update(100);
+  assert.ok(recoveredFrame && recoveredFrame.events.length === 0,
+    'replaceable snapshots no longer duplicate reliable events');
+  const recoveredEvents = client.drainEventsThrough(recoveredFrame.tick);
+  assert.deepEqual(recoveredEvents.map((event) => event.type), ['match_ended']);
+  assert.deepEqual(client.drainEventsThrough(recoveredFrame.tick), [],
+    'reliable event batches drain exactly once');
+  assert.equal(host.stats.reliableEvents, 1);
+  client.close('test_done');
+  host.close('test_done');
+}
+
 // Solo play is the same host/client path, not a direct simulation shortcut.
 {
   const simulation = createTestSimulation();

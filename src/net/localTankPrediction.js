@@ -129,6 +129,7 @@ export class LocalTankPredictor {
       },
     };
     this.history = [];
+    this.initialized = false;
     this.lastRecordedSeq = null;
     this.lastAuthorityTick = -1;
     this.correction = {
@@ -170,6 +171,17 @@ export class LocalTankPredictor {
     destroyed = false) {
     if (!snapshot || !Number.isSafeInteger(tick) || tick <= this.lastAuthorityTick) return false;
     this.lastAuthorityTick = tick;
+    // Roster visuals are created at a harmless staging origin while the load
+    // screen is up. The first authority pose is initialization, not a network
+    // correction: seed both simulation and presentation directly so latency
+    // cannot turn the origin-to-spawn distance into a hard snap/correction.
+    if (!this.initialized) {
+      this.initialized = true;
+      applyAuthority(this.simEntity.state, snapshot);
+      for (const key of CORRECTION_KEYS) this.correction[key] = 0;
+      copyPresentation(this.entity.state, this.simEntity.state, this.correction);
+      return true;
+    }
     const shown = this.entity.state;
     const old = {
       x: shown.pos.x, y: shown.pos.y, z: shown.pos.z,

@@ -43,6 +43,17 @@ function defaultClock() {
     : 0;
 }
 
+const MAX_PENDING_EVENT_BATCHES = 256;
+const MAX_EVENTS_PER_BATCH = 512;
+
+function validateEventBatch(payload) {
+  if (!payload || !Number.isSafeInteger(payload.tick) || payload.tick < 0 ||
+      !Array.isArray(payload.events) || payload.events.length > MAX_EVENTS_PER_BATCH) {
+    throw new ProtocolError('invalid_event_batch', 'event batch must include a valid tick and events');
+  }
+  return payload;
+}
+
 /**
  * Server/host-owned fixed-step match module. A browser host, dedicated Node
  * process, and solo loopback session all call this exact interface.
@@ -93,6 +104,8 @@ export class AuthoritativeMatchRuntime {
       snapshotKeyframes: 0,
       snapshotDeltas: 0,
       snapshotEntityRows: 0,
+      reliableEventBatches: 0,
+      reliableEvents: 0,
     };
   }
 
@@ -357,6 +370,13 @@ export class AuthoritativeMatchRuntime {
         viewerId: peer.id,
         ackInputSeq: peer.lastInputSeq == null ? null : peer.lastInputSeq,
       });
+      // One-shot combat and lifecycle events must never ride the replaceable
+      // snapshot lane. WebRTC state packets are intentionally unordered,
+      // non-retransmitted, and coalesced under backpressure; keeping events
+      // there made a dropped packet or one slow render frame erase kills,
+      // destructibles, and match results permanently.
+      const reliableEvents = Array.isArray(snapshot.events) ? snapshot.events : [];
+      snapshot.events = [];
       const acknowledged = peer.lastSnapshotAckTick == null
         ? null
         : peer.snapshotHistory.get(peer.lastSnapshotAckTick) || null;
@@ -374,6 +394,14 @@ export class AuthoritativeMatchRuntime {
       this.stats.snapshotEntityRows += packet.entities.length;
       this.#send(peer, MESSAGE_TYPES.SNAPSHOT, packet);
       this.stats.snapshots++;
+      if (reliableEvents.length) {
+        this.#send(peer, MESSAGE_TYPES.EVENT, {
+          tick: snapshot.tick,
+          events: reliableEvents,
+        });
+        this.stats.reliableEventBatches++;
+        this.stats.reliableEvents += reliableEvents.length;
+      }
     }
     if (typeof this.simulation.afterSnapshotBroadcast === 'function') {
       this.simulation.afterSnapshotBroadcast();
@@ -434,6 +462,7 @@ export class MatchClientRuntime {
     this.closed = false;
     this.errors = [];
     this.eventListeners = new Set();
+    this.pendingEventBatches = [];
     this.connectionListeners = new Set();
     this.handshakeSent = false;
     this.readySent = false;
@@ -532,7 +561,16 @@ export class MatchClientRuntime {
           break;
         }
         case MESSAGE_TYPES.EVENT:
-          for (const listener of [...this.eventListeners]) listener(message.payload);
+          {
+            const batch = validateEventBatch(message.payload);
+            if (this.pendingEventBatches.length >= MAX_PENDING_EVENT_BATCHES) {
+              throw new ProtocolError('event_backlog_overflow', 'reliable event backlog exceeded its limit');
+            }
+            this.pendingEventBatches.push(batch);
+            for (const event of batch.events) {
+              for (const listener of [...this.eventListeners]) listener(event);
+            }
+          }
           break;
         case MESSAGE_TYPES.ERROR:
           this.errors.push(message.payload);
@@ -585,6 +623,21 @@ export class MatchClientRuntime {
     return () => this.eventListeners.delete(listener);
   }
 
+  /** Drain reliable event batches only after presentation has reached them. */
+  drainEventsThrough(tick, target = []) {
+    if (!Number.isSafeInteger(tick) || tick < 0) return target;
+    target.length = 0;
+    let consumed = 0;
+    while (consumed < this.pendingEventBatches.length) {
+      const batch = this.pendingEventBatches[consumed];
+      if (batch.tick > tick) break;
+      target.push(...batch.events);
+      consumed++;
+    }
+    if (consumed > 0) this.pendingEventBatches.splice(0, consumed);
+    return target;
+  }
+
   onConnection(listener) {
     this.connectionListeners.add(listener);
     if (this.connected) queueMicrotask(() => listener(true));
@@ -607,6 +660,7 @@ export class MatchClientRuntime {
       buffer: this.buffer.getStats(),
       transport: this.transport.stats || null,
       transportBufferedBytes: Number(this.transport.bufferedAmount) || 0,
+      pendingEventBatches: this.pendingEventBatches.length,
     };
   }
 
@@ -618,6 +672,7 @@ export class MatchClientRuntime {
     for (const listener of [...this.connectionListeners]) listener(false);
     if (this.unsubscribeMessage) this.unsubscribeMessage();
     if (this.unsubscribeClose) this.unsubscribeClose();
+    this.pendingEventBatches.length = 0;
     if (typeof this.transport.close === 'function') this.transport.close(reason);
   }
 }

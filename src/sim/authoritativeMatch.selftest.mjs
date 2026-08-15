@@ -107,10 +107,15 @@ for (let i = 0; i < 360; i++) crushMatch.step({ dt: 1 / 60, inputs: crushDrive }
 assert.equal(crushWall.crushed, true, 'authority owns destructible world state');
 assert.ok(crushMatch.entityById.get('crush-a').state.pos.z > -30,
   'crushable cover yields to a moving tank');
-assert.ok(crushMatch.snapshot({ tick: 360, serverTimeMs: 6000,
-  viewerId: 'crush-a', ackInputSeq: 1 }).events
+const crushSnapshot = crushMatch.snapshot({ tick: 360, serverTimeMs: 6000,
+  viewerId: 'crush-a', ackInputSeq: 1 });
+assert.ok(crushSnapshot.events
   .some((event) => event.type === 'world_prop_destroyed' && event.kind === 'fence'),
 'destruction replication event identifies the authored obstacle');
+assert.equal(crushSnapshot.meta.destructibleRevision, 1,
+  'destructible state carries a persistent monotonic revision');
+assert.deepEqual(crushSnapshot.meta.destroyedObstacleIndices, [0],
+  'keyframes can reconstruct destroyed collision state after reconnect');
 
 const botMatch = createAuthoritativeMatch({
   mapId: 'verdant', countdownS: 0, seed: 123,
