@@ -1117,19 +1117,21 @@ function buildLeclerc(P) {
       [s2 * 1.70, 1.415, 1.30], [s2 * 1.785, 1.415, 1.30], [s2 * 1.785, 1.205, 3.32], [s2 * 1.70, 1.205, 3.32],
       [s2 * 1.70, 1.445, 1.30], [s2 * 1.785, 1.445, 1.30], [s2 * 1.785, 1.235, 3.32], [s2 * 1.70, 1.235, 3.32]));
 
-    // Proper Leclerc front mudguard: a shallow raked steel cap above the
-    // idler crest plus a flexible front lip AHEAD of the shoe orbit.  The
-    // deleted legacy flap sat at z=3.28/y=0.775, directly through the live
-    // terminal links.  This cap stays above them; its rubber lip begins
-    // beyond their forward sweep.  Both supports are hull-owned: the inner
-    // knee enters the narrow bow and the outer knee enters the fender rail.
+    // Proper Leclerc front mudguard: a shallow forward-falling steel shoulder
+    // above the idler crest plus a flexible front lip AHEAD of the shoe orbit.
+    // The former flat 1.48 m underside visibly hovered above both the raked
+    // bow and the 1.20-1.27 m outer fender rail.  Follow those two parents
+    // down instead: the shoulder is buried into the bow at its aft edge and
+    // meets the fender at its forward edge, while its 1.19 m lowest underside
+    // remains clear of the complete animated idler/shoe crown.  Both compact
+    // knees stay hull-owned and outside/inside the live shoe lane respectively.
     P.add('hull', slab(
-      [s2 * 0.90, 1.480, 2.95], [s2 * 1.785, 1.480, 2.95], [s2 * 1.720, 1.480, 3.58], [s2 * 0.98, 1.480, 3.58],
-      [s2 * 0.90, 1.525, 2.95], [s2 * 1.785, 1.525, 2.95], [s2 * 1.720, 1.525, 3.58], [s2 * 0.98, 1.525, 3.58]));
-    P.add('hull', box(0.08, 0.27, 0.30), s2 * 0.90, 1.365, 3.10);             // inboard bow knee (inside the shoe lane)
-    P.add('hull', box(0.07, 0.30, 0.28), s2 * 1.7425, 1.345, 3.25);           // outboard fender knee (outside the shoe lane)
-    P.add('hullRubber', box(0.64, 0.15, 0.035), s2 * 1.37, 1.405, 3.58);      // shallow flexible lip, ahead of terminal shoes
-    P.add('hullDark', box(0.52, 0.025, 0.018), s2 * 1.36, 1.515, 3.555);      // cap hinge/seam
+      [s2 * 0.90, 1.285, 2.95], [s2 * 1.785, 1.285, 2.95], [s2 * 1.720, 1.190, 3.58], [s2 * 0.98, 1.190, 3.58],
+      [s2 * 0.90, 1.340, 2.95], [s2 * 1.785, 1.340, 2.95], [s2 * 1.720, 1.245, 3.58], [s2 * 0.98, 1.245, 3.58]));
+    P.add('hull', box(0.08, 0.18, 0.30), s2 * 0.90, 1.195, 3.10);             // inboard bow knee, buried into the narrow bow
+    P.add('hull', box(0.07, 0.17, 0.28), s2 * 1.7425, 1.205, 3.25);           // outboard knee, seated into the falling fender rail
+    P.add('hullRubber', box(0.64, 0.10, 0.035), s2 * 1.37, 1.195, 3.58);      // low flexible lip, ahead of terminal shoes
+    P.add('hullDark', box(0.52, 0.020, 0.018), s2 * 1.36, 1.250, 3.555);      // cap hinge/seam follows the new shoulder rake
   }
   // driver LEFT: flush hatch + 3 episcopes (90-ladder r1 CAP-SEAT: ref deck
   // line reads 1.534-1.544 over z 0.2..1.25 — the 1.573/1.576 hatch crowns
