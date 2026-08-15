@@ -86,7 +86,12 @@ export default {
     {
       name: 'cot-dev-modulepreload',
       apply: 'serve',
-      transformIndexHtml() {
+      transformIndexHtml(_html, ctx) {
+        // This optimization belongs only to the playable game entry. Vite
+        // invokes HTML transforms for every multi-page input; injecting the
+        // game graph into /home or /docs makes a lightweight presentation
+        // visit download the complete simulation and fleet source tree.
+        if (resolve(ctx?.filename || '') !== resolve(process.cwd(), 'index.html')) return [];
         return reachableSrcModules(process.cwd()).map((href) => ({
           tag: 'link',
           attrs: { rel: 'modulepreload', href },
