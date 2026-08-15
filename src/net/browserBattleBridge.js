@@ -41,6 +41,8 @@ export function createBrowserBattleBridge({
   viewerId,
   spectator = false,
   worldCollision = null,
+  createTankVisual = createTank,
+  prepareVisualTextures = prebakeSharedTextures,
 } = {}) {
   if (!engineCtx || !engineCtx.scene || !game) throw new TypeError('engineCtx and game are required');
   const id = String(viewerId || '');
@@ -105,7 +107,7 @@ export function createBrowserBattleBridge({
     const pos = new Vector3(snapshot.x, snapshot.y, snapshot.z);
     const state = createTankState(spec, pos, snapshot.yaw);
     const combat = createCombatState(spec);
-    const visual = createTank(spec.id, engineCtx, {
+    const visual = createTankVisual(spec.id, engineCtx, {
       camoSeed: 4000 + (hashString(snapshot.id) % 100000),
       quality: snapshot.id === id ? 'high' : 'ai',
     });
@@ -133,6 +135,7 @@ export function createBrowserBattleBridge({
       contactGeom: visual.contactGeom || null,
       rigidGear: false,
       networkVisible: false,
+      _networkPoseReady: false,
       _networkDestroyed: false,
       _lastX: snapshot.x,
       _lastZ: snapshot.z,
@@ -159,7 +162,7 @@ export function createBrowserBattleBridge({
       if (!warmed.has(warmKey)) {
         warmed.add(warmKey);
         try {
-          await prebakeSharedTextures(
+          await prepareVisualTextures(
             getSpec(player.specId),
             engineCtx.anisotropy ?? 4,
             quality,
@@ -224,6 +227,13 @@ export function createBrowserBattleBridge({
     }
     entity._lastX = state.pos.x;
     entity._lastZ = state.pos.z;
+    // Prepared network visuals live at a hidden staging origin. Seed the
+    // renderer from authority exactly once before revealing them; the normal
+    // main-loop sync remains the sole per-frame owner after this point.
+    if (!entity._networkPoseReady) {
+      entity.visual.syncFromState(state, 0);
+      entity._networkPoseReady = true;
+    }
     entity.visual.setVisible(true);
   }
 

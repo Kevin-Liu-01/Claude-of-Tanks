@@ -22,8 +22,9 @@ export { tierNumeral };
 const CSS = `
 .cot-bl{position:fixed;inset:0;z-index:150;display:none;flex-direction:column;
   font-family:${FONT_STACK};color:#e6edf3;-webkit-user-select:none;user-select:none;
-  background:#05080b;opacity:0;transition:opacity .28s ease;overflow:hidden;}
+  background:#05080b;opacity:1;overflow:hidden;}
 .cot-bl.on{display:flex;opacity:1;}
+.cot-bl.leaving{display:flex;opacity:0;transition:opacity .28s ease;}
 .cot-bl *{box-sizing:border-box;margin:0;padding:0;}
 /* --- map hero band ------------------------------------------------------- */
 .cot-bl .hero{position:relative;flex:0 0 40%;min-height:210px;overflow:hidden;
@@ -214,7 +215,10 @@ export function createBattleLoadScreen() {
       countEl.textContent = '';
       api.progress(0, 'Loading battlefield');
       visible = true;
-      root.style.display = '';   // let .on drive layout again after a hide()
+      // Entry is a safety cover, not an animation: it must own the very next
+      // composited frame on slower guests. Only the exit is allowed to fade.
+      root.classList.remove('leaving');
+      root.style.display = '';
       root.classList.add('on');
     },
 
@@ -249,10 +253,10 @@ export function createBattleLoadScreen() {
       visible = false;
       // hold display through the opacity transition (.on carries display:flex,
       // so removing it alone would cut the fade to a hard pop)
-      root.style.display = 'flex';
+      root.classList.add('leaving');
       root.classList.remove('on');
       return new Promise((resolve) => setTimeout(() => {
-        if (!visible) root.style.display = '';
+        if (!visible) root.classList.remove('leaving');
         resolve();
       }, 320));
     },

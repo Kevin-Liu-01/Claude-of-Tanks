@@ -481,8 +481,35 @@ export function createPlayMenu({
     }
   }
 
+  function beginNetworkHandoff(next, nextRole = role) {
+    if (handedOff) return false;
+    handedOff = true;
+    let start;
+    try {
+      // The callback's synchronous prefix mounts the opaque battle cover.
+      // Invoke it before any more lobby DOM work and before closing the menu;
+      // guest machines otherwise pay that work with the garage underneath.
+      start = Promise.resolve(onNetworkStart &&
+        onNetworkStart({ role: nextRole, session, lobbyState: next }));
+    } catch (error) {
+      handedOff = false;
+      setStatus(error.message, true);
+      return false;
+    }
+    hide(false);
+    start.catch((error) => { handedOff = false; show(); setStatus(error.message, true); });
+    return true;
+  }
+
   function renderLobby(next) {
     state = next;
+    // A client learns that the host started through this state callback. Cover
+    // immediately; rebuilding the now-obsolete lobby first creates a guest-
+    // only window in which a constrained renderer can present the garage.
+    if (next.phase === 'starting' && role === 'client' && !handedOff) {
+      beginNetworkHandoff(next, 'client');
+      return;
+    }
     lobbyEl.classList.add('show');
     room.classList.add('connected');
     codeEl.textContent = next.roomCode;
@@ -530,23 +557,6 @@ export function createPlayMenu({
     note.textContent = (mode === 'lan'
       ? 'LAN gameplay stays on direct Wi-Fi WebRTC paths; signaling only introduces the peers.'
       : 'Gameplay travels directly between peers; signaling only exchanges connection metadata.') + fillNote;
-    if (next.phase === 'starting' && role === 'client' && !handedOff) {
-      handedOff = true;
-      let start;
-      try {
-        // Let main mount the opaque battle transition in this same task
-        // before removing the lobby. This prevents the garage underneath
-        // from ever becoming the compositor's top visible surface.
-        start = Promise.resolve(onNetworkStart &&
-          onNetworkStart({ role, session, lobbyState: next }));
-      } catch (error) {
-        handedOff = false;
-        setStatus(error.message, true);
-        return;
-      }
-      hide(false);
-      start.catch((error) => { handedOff = false; show(); setStatus(error.message, true); });
-    }
   }
 
   async function connectRoom(kind) {
@@ -583,19 +593,7 @@ export function createPlayMenu({
           relayOnly: ice.relayOnly,
           isVehicleAllowed,
           onStart: (lobbyState) => {
-            if (handedOff) return;
-            handedOff = true;
-            let start;
-            try {
-              start = Promise.resolve(onNetworkStart &&
-                onNetworkStart({ role: 'host', session, lobbyState }));
-            } catch (error) {
-              handedOff = false;
-              setStatus(error.message, true);
-              return;
-            }
-            hide(false);
-            start.catch((error) => { handedOff = false; show(); setStatus(error.message, true); });
+            beginNetworkHandoff(lobbyState, 'host');
           },
           onError: (error) => setStatus(error.message, true),
         });

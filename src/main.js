@@ -2247,6 +2247,12 @@ async function presentNetworkBattle({
     battleLoad.progress(0.56 + fraction * 0.27, `Painting ${getSpec(specId)?.name || specId}`);
   });
   markLoadStage('roster');
+  // Install terrain sampling before the bridge performs its one hidden
+  // authority-pose sync. Remote tracks and suspension must be conformed at
+  // the spawn pose before any visual is eligible to become visible.
+  for (const entity of networkBridge.entities.values()) {
+    if (entity.visual?.setGroundSampler) entity.visual.setGroundSampler(groundSampler);
+  }
   battleLoad.progress(0.84, 'Synchronizing authority');
   const initial = await waitForNetworkSnapshot(
     (snapshot) => spectator
@@ -2257,9 +2263,6 @@ async function presentNetworkBattle({
   );
   markLoadStage('initialSnapshot');
   networkBridge.apply(initial, 1 / 60);
-  for (const entity of networkBridge.entities.values()) {
-    if (entity.visual?.setGroundSampler) entity.visual.setGroundSampler(groundSampler);
-  }
   // Network rosters can contain vehicles the garage-idle solo warmer never
   // touched. Bake every fielded wreck family while the opaque load screen
   // owns the frame, otherwise first blood can synchronously build burn
