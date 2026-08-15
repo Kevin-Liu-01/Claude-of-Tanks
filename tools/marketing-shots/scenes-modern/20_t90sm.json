@@ -6,7 +6,10 @@
     "name": "T-90SM",
     "nation": "Russia",
     "role": "Modernized main battle tank",
-    "number": 20
+    "number": 20,
+    "pose": "rear-left-sweep",
+    "turretDeg": -104,
+    "gunDeg": 4
   },
   "actors": [
     {
@@ -17,8 +20,8 @@
         -54
       ],
       "facingDeg": 330,
-      "turretDeg": -5,
-      "gunDeg": 1,
+      "turretDeg": -104,
+      "gunDeg": 4,
       "camo": "digital",
       "camoSeed": 8319
     }
@@ -70,7 +73,7 @@
       -56
     ],
     "groundRel": true,
-    "fov": 52,
+    "fov": 54,
     "rollDeg": 0,
     "mode": "fly"
   },

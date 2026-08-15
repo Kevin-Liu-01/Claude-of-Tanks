@@ -6,7 +6,10 @@
     "name": "Type 99A",
     "nation": "China",
     "role": "Main battle tank",
-    "number": 25
+    "number": 25,
+    "pose": "right-contact",
+    "turretDeg": 72,
+    "gunDeg": 3
   },
   "actors": [
     {
@@ -17,8 +20,8 @@
         0
       ],
       "facingDeg": 205,
-      "turretDeg": -3,
-      "gunDeg": 1,
+      "turretDeg": 72,
+      "gunDeg": 3,
       "camo": "desert",
       "camoSeed": 8324
     }

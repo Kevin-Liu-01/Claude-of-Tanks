@@ -6,7 +6,10 @@
     "name": "T-14 Armata",
     "nation": "Russia",
     "role": "Next-generation main battle tank",
-    "number": 17
+    "number": 17,
+    "pose": "right-cover",
+    "turretDeg": 78,
+    "gunDeg": -4
   },
   "actors": [
     {
@@ -17,8 +20,8 @@
         0
       ],
       "facingDeg": 205,
-      "turretDeg": -3,
-      "gunDeg": 1,
+      "turretDeg": 78,
+      "gunDeg": -4,
       "camo": "desert",
       "camoSeed": 8316
     }
@@ -71,16 +74,16 @@
   "camera": {
     "pos": [
       5.9,
-      1.25,
+      2.6,
       -9.4
     ],
     "lookAt": [
       -1.4,
-      2.4,
+      2.52,
       1.8
     ],
     "groundRel": true,
-    "fov": 48,
+    "fov": 51,
     "rollDeg": -2.5,
     "mode": "fly"
   },

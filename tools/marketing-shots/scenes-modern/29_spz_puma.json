@@ -6,7 +6,10 @@
     "name": "Puma IFV",
     "nation": "Germany",
     "role": "Infantry fighting vehicle",
-    "number": 29
+    "number": 29,
+    "pose": "rear-right-down",
+    "turretDeg": 88,
+    "gunDeg": -7
   },
   "actors": [
     {
@@ -17,8 +20,8 @@
         30
       ],
       "facingDeg": 108,
-      "turretDeg": 3,
-      "gunDeg": 1,
+      "turretDeg": 88,
+      "gunDeg": -7,
       "camo": "dpm",
       "camoSeed": 8328
     }
@@ -73,16 +76,16 @@
   "camera": {
     "pos": [
       -34.5,
-      0.9500000000000001,
+      2.45,
       24.5
     ],
     "lookAt": [
       -42.5,
-      2.4,
+      2.52,
       32
     ],
     "groundRel": true,
-    "fov": 56,
+    "fov": 59,
     "rollDeg": -3.5,
     "mode": "fly"
   },

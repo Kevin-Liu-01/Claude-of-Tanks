@@ -6,7 +6,10 @@
     "name": "K1A1",
     "nation": "South Korea",
     "role": "Main battle tank",
-    "number": 16
+    "number": 16,
+    "pose": "left-cover",
+    "turretDeg": -24,
+    "gunDeg": 6
   },
   "actors": [
     {
@@ -17,8 +20,8 @@
         30
       ],
       "facingDeg": 200,
-      "turretDeg": 3,
-      "gunDeg": 0.5,
+      "turretDeg": -24,
+      "gunDeg": 6,
       "camo": "summer",
       "camoSeed": 8315
     }

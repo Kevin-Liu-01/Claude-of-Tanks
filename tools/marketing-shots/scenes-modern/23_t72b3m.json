@@ -6,7 +6,10 @@
     "name": "T-72B3M",
     "nation": "Russia",
     "role": "Modernized main battle tank",
-    "number": 23
+    "number": 23,
+    "pose": "rear-right-elevation",
+    "turretDeg": 98,
+    "gunDeg": 9
   },
   "actors": [
     {
@@ -17,8 +20,8 @@
         30
       ],
       "facingDeg": 195,
-      "turretDeg": -5,
-      "gunDeg": 0.5,
+      "turretDeg": 98,
+      "gunDeg": 9,
       "camo": "washworn",
       "camoSeed": 8322
     }
@@ -63,16 +66,16 @@
   "camera": {
     "pos": [
       -20,
-      1.95,
+      0.8999999999999999,
       20
     ],
     "lookAt": [
       -30,
-      2.45,
+      2.9000000000000004,
       30
     ],
     "groundRel": true,
-    "fov": 46,
+    "fov": 51,
     "rollDeg": 3,
     "mode": "fly"
   },

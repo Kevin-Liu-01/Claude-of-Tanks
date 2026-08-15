@@ -6,7 +6,10 @@
     "name": "Leopard 2A6",
     "nation": "Germany",
     "role": "Main battle tank",
-    "number": 8
+    "number": 8,
+    "pose": "left-depression",
+    "turretDeg": -55,
+    "gunDeg": -4
   },
   "actors": [
     {
@@ -17,8 +20,8 @@
         30
       ],
       "facingDeg": 200,
-      "turretDeg": 3,
-      "gunDeg": 0.5,
+      "turretDeg": -55,
+      "gunDeg": -4,
       "camo": "summer",
       "camoSeed": 8307
     }
@@ -63,16 +66,16 @@
   "camera": {
     "pos": [
       -73,
-      1.9000000000000001,
+      2.45,
       19
     ],
     "lookAt": [
       -80,
-      2.45,
+      2.5700000000000003,
       30
     ],
     "groundRel": true,
-    "fov": 44,
+    "fov": 48,
     "rollDeg": 3,
     "mode": "fly"
   },

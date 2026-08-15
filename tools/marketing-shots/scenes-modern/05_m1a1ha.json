@@ -6,7 +6,10 @@
     "name": "M1A1HA",
     "nation": "USA",
     "role": "Heavy armor package",
-    "number": 5
+    "number": 5,
+    "pose": "rear-left-high",
+    "turretDeg": -96,
+    "gunDeg": 10
   },
   "actors": [
     {
@@ -17,8 +20,8 @@
         30
       ],
       "facingDeg": 108,
-      "turretDeg": 3,
-      "gunDeg": 1,
+      "turretDeg": -96,
+      "gunDeg": 10,
       "camo": "dpm",
       "camoSeed": 8304
     }
@@ -61,16 +64,16 @@
   "camera": {
     "pos": [
       -34.5,
-      1.1,
+      0.8500000000000001,
       24.5
     ],
     "lookAt": [
       -42.5,
-      2.4,
+      2.85,
       32
     ],
     "groundRel": true,
-    "fov": 54,
+    "fov": 58,
     "rollDeg": 0,
     "mode": "fly"
   },

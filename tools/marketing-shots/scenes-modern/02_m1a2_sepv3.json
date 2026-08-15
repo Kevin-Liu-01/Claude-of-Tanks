@@ -6,7 +6,10 @@
     "name": "M1A2 SEPv3",
     "nation": "USA",
     "role": "Main battle tank",
-    "number": 2
+    "number": 2,
+    "pose": "high-right",
+    "turretDeg": 58,
+    "gunDeg": 12
   },
   "actors": [
     {
@@ -17,8 +20,8 @@
         -78
       ],
       "facingDeg": 205,
-      "turretDeg": -3,
-      "gunDeg": 1,
+      "turretDeg": 58,
+      "gunDeg": 12,
       "camo": "winter",
       "camoSeed": 8301
     }
@@ -71,16 +74,16 @@
   "camera": {
     "pos": [
       168.2,
-      1.15,
+      0.8999999999999999,
       -87.6
     ],
     "lookAt": [
       161,
-      2.35,
+      2.8000000000000003,
       -77
     ],
     "groundRel": true,
-    "fov": 50,
+    "fov": 52,
     "rollDeg": -2.5,
     "mode": "fly"
   },

@@ -6,7 +6,10 @@
     "name": "K2 Black Panther",
     "nation": "South Korea",
     "role": "Main battle tank",
-    "number": 15
+    "number": 15,
+    "pose": "right-hull-down",
+    "turretDeg": 62,
+    "gunDeg": -7
   },
   "actors": [
     {
@@ -17,8 +20,8 @@
         30
       ],
       "facingDeg": 195,
-      "turretDeg": -5,
-      "gunDeg": 1,
+      "turretDeg": 62,
+      "gunDeg": -7,
       "camo": "washworn",
       "camoSeed": 8314
     }
@@ -61,16 +64,16 @@
   "camera": {
     "pos": [
       -20,
-      1.15,
+      2.5,
       20
     ],
     "lookAt": [
       -30,
-      2.45,
+      2.5700000000000003,
       30
     ],
     "groundRel": true,
-    "fov": 49,
+    "fov": 52,
     "rollDeg": 0,
     "mode": "fly"
   },

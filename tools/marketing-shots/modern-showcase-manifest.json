@@ -5,7 +5,10 @@
     "name": "AbramsX",
     "nation": "USA",
     "role": "Next-generation demonstrator",
-    "map": "desert"
+    "map": "desert",
+    "pose": "ridge-down",
+    "turretDeg": -42,
+    "gunDeg": -6
   },
   {
     "slug": "02_m1a2_sepv3",
@@ -13,7 +16,10 @@
     "name": "M1A2 SEPv3",
     "nation": "USA",
     "role": "Main battle tank",
-    "map": "winter"
+    "map": "winter",
+    "pose": "high-right",
+    "turretDeg": 58,
+    "gunDeg": 12
   },
   {
     "slug": "03_m1a2_sepv2",
@@ -21,7 +27,10 @@
     "name": "M1A2 SEPv2",
     "nation": "USA",
     "role": "Main battle tank",
-    "map": "urban"
+    "map": "urban",
+    "pose": "left-search",
+    "turretDeg": -74,
+    "gunDeg": 5
   },
   {
     "slug": "04_m1a2_tusk",
@@ -29,7 +38,10 @@
     "name": "M1A2 TUSK",
     "nation": "USA",
     "role": "Urban assault package",
-    "map": "coastal"
+    "map": "coastal",
+    "pose": "right-ridge",
+    "turretDeg": 82,
+    "gunDeg": -5
   },
   {
     "slug": "05_m1a1ha",
@@ -37,7 +49,10 @@
     "name": "M1A1HA",
     "nation": "USA",
     "role": "Heavy armor package",
-    "map": "autumn"
+    "map": "autumn",
+    "pose": "rear-left-high",
+    "turretDeg": -96,
+    "gunDeg": 10
   },
   {
     "slug": "06_leo2a7v",
@@ -45,7 +60,10 @@
     "name": "Leopard 2A7V",
     "nation": "Germany",
     "role": "Main battle tank",
-    "map": "steppe"
+    "map": "steppe",
+    "pose": "hull-down-right",
+    "turretDeg": 34,
+    "gunDeg": -7
   },
   {
     "slug": "07_leo2_revolution",
@@ -53,7 +71,10 @@
     "name": "Leopard 2 Revolution",
     "nation": "Germany",
     "role": "Modular protection demonstrator",
-    "map": "railyard"
+    "map": "railyard",
+    "pose": "rear-right-high",
+    "turretDeg": 108,
+    "gunDeg": 13
   },
   {
     "slug": "08_leo2a6",
@@ -61,7 +82,10 @@
     "name": "Leopard 2A6",
     "nation": "Germany",
     "role": "Main battle tank",
-    "map": "verdant"
+    "map": "verdant",
+    "pose": "left-depression",
+    "turretDeg": -55,
+    "gunDeg": -4
   },
   {
     "slug": "09_kf51",
@@ -69,7 +93,10 @@
     "name": "KF51 Panther",
     "nation": "Germany",
     "role": "Next-generation demonstrator",
-    "map": "desert"
+    "map": "desert",
+    "pose": "right-sweep",
+    "turretDeg": 70,
+    "gunDeg": 4
   },
   {
     "slug": "10_challenger_3",
@@ -77,7 +104,10 @@
     "name": "Challenger 3",
     "nation": "United Kingdom",
     "role": "Main battle tank",
-    "map": "winter"
+    "map": "winter",
+    "pose": "left-elevation",
+    "turretDeg": -30,
+    "gunDeg": 11
   },
   {
     "slug": "11_challenger2",
@@ -85,7 +115,10 @@
     "name": "Challenger 2",
     "nation": "United Kingdom",
     "role": "Main battle tank",
-    "map": "urban"
+    "map": "urban",
+    "pose": "rear-right-down",
+    "turretDeg": 94,
+    "gunDeg": -6
   },
   {
     "slug": "12_leclerc",
@@ -93,7 +126,10 @@
     "name": "Leclerc",
     "nation": "France",
     "role": "Main battle tank",
-    "map": "coastal"
+    "map": "coastal",
+    "pose": "left-high",
+    "turretDeg": -68,
+    "gunDeg": 8
   },
   {
     "slug": "13_ariete",
@@ -101,7 +137,10 @@
     "name": "C1 Ariete",
     "nation": "Italy",
     "role": "Main battle tank",
-    "map": "autumn"
+    "map": "autumn",
+    "pose": "right-depression",
+    "turretDeg": 46,
+    "gunDeg": -5
   },
   {
     "slug": "14_merkava3d",
@@ -109,7 +148,10 @@
     "name": "Merkava Mk.3D",
     "nation": "Israel",
     "role": "Main battle tank",
-    "map": "steppe"
+    "map": "steppe",
+    "pose": "rear-left-sky",
+    "turretDeg": -112,
+    "gunDeg": 13
   },
   {
     "slug": "15_k2",
@@ -117,7 +159,10 @@
     "name": "K2 Black Panther",
     "nation": "South Korea",
     "role": "Main battle tank",
-    "map": "railyard"
+    "map": "railyard",
+    "pose": "right-hull-down",
+    "turretDeg": 62,
+    "gunDeg": -7
   },
   {
     "slug": "16_k1a1",
@@ -125,7 +170,10 @@
     "name": "K1A1",
     "nation": "South Korea",
     "role": "Main battle tank",
-    "map": "verdant"
+    "map": "verdant",
+    "pose": "left-cover",
+    "turretDeg": -24,
+    "gunDeg": 6
   },
   {
     "slug": "17_t14",
@@ -133,7 +181,10 @@
     "name": "T-14 Armata",
     "nation": "Russia",
     "role": "Next-generation main battle tank",
-    "map": "desert"
+    "map": "desert",
+    "pose": "right-cover",
+    "turretDeg": 78,
+    "gunDeg": -4
   },
   {
     "slug": "18_t90m",
@@ -141,7 +192,10 @@
     "name": "T-90M Proryv",
     "nation": "Russia",
     "role": "Main battle tank",
-    "map": "winter"
+    "map": "winter",
+    "pose": "rear-left-elevation",
+    "turretDeg": -86,
+    "gunDeg": 12
   },
   {
     "slug": "19_t90ms",
@@ -149,7 +203,10 @@
     "name": "T-90MS",
     "nation": "Russia",
     "role": "Export main battle tank",
-    "map": "urban"
+    "map": "urban",
+    "pose": "right-ridge-down",
+    "turretDeg": 40,
+    "gunDeg": -7
   },
   {
     "slug": "20_t90sm",
@@ -157,7 +214,10 @@
     "name": "T-90SM",
     "nation": "Russia",
     "role": "Modernized main battle tank",
-    "map": "coastal"
+    "map": "coastal",
+    "pose": "rear-left-sweep",
+    "turretDeg": -104,
+    "gunDeg": 4
   },
   {
     "slug": "21_t90a_burlak",
@@ -165,7 +225,10 @@
     "name": "T-90A Burlak",
     "nation": "Russia",
     "role": "Prototype turret program",
-    "map": "autumn"
+    "map": "autumn",
+    "pose": "right-skyline",
+    "turretDeg": 54,
+    "gunDeg": 13
   },
   {
     "slug": "22_t80u",
@@ -173,7 +236,10 @@
     "name": "T-80U",
     "nation": "Russia",
     "role": "Gas-turbine main battle tank",
-    "map": "steppe"
+    "map": "steppe",
+    "pose": "left-ridge-down",
+    "turretDeg": -62,
+    "gunDeg": -5
   },
   {
     "slug": "23_t72b3m",
@@ -181,7 +247,10 @@
     "name": "T-72B3M",
     "nation": "Russia",
     "role": "Modernized main battle tank",
-    "map": "railyard"
+    "map": "railyard",
+    "pose": "rear-right-elevation",
+    "turretDeg": 98,
+    "gunDeg": 9
   },
   {
     "slug": "24_t84",
@@ -189,7 +258,10 @@
     "name": "T-84 Oplot",
     "nation": "Ukraine",
     "role": "Main battle tank",
-    "map": "verdant"
+    "map": "verdant",
+    "pose": "left-hull-down",
+    "turretDeg": -36,
+    "gunDeg": -7
   },
   {
     "slug": "25_type99a",
@@ -197,7 +269,10 @@
     "name": "Type 99A",
     "nation": "China",
     "role": "Main battle tank",
-    "map": "desert"
+    "map": "desert",
+    "pose": "right-contact",
+    "turretDeg": 72,
+    "gunDeg": 3
   },
   {
     "slug": "26_type10",
@@ -205,7 +280,10 @@
     "name": "Type 10",
     "nation": "Japan",
     "role": "Main battle tank",
-    "map": "winter"
+    "map": "winter",
+    "pose": "rear-left-high",
+    "turretDeg": -90,
+    "gunDeg": 11
   },
   {
     "slug": "27_type90",
@@ -213,7 +291,10 @@
     "name": "Type 90",
     "nation": "Japan",
     "role": "Main battle tank",
-    "map": "urban"
+    "map": "urban",
+    "pose": "right-ridge",
+    "turretDeg": 28,
+    "gunDeg": -5
   },
   {
     "slug": "28_pt91m",
@@ -221,7 +302,10 @@
     "name": "PT-91M",
     "nation": "Poland",
     "role": "Modernized main battle tank",
-    "map": "coastal"
+    "map": "coastal",
+    "pose": "left-overwatch",
+    "turretDeg": -78,
+    "gunDeg": 7
   },
   {
     "slug": "29_spz_puma",
@@ -229,7 +313,10 @@
     "name": "Puma IFV",
     "nation": "Germany",
     "role": "Infantry fighting vehicle",
-    "map": "autumn"
+    "map": "autumn",
+    "pose": "rear-right-down",
+    "turretDeg": 88,
+    "gunDeg": -7
   },
   {
     "slug": "30_fv510",
@@ -237,6 +324,9 @@
     "name": "FV510 Warrior",
     "nation": "United Kingdom",
     "role": "Infantry fighting vehicle",
-    "map": "steppe"
+    "map": "steppe",
+    "pose": "left-skyline",
+    "turretDeg": -48,
+    "gunDeg": 10
   }
 ]

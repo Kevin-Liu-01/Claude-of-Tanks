@@ -6,7 +6,10 @@
     "name": "PT-91M",
     "nation": "Poland",
     "role": "Modernized main battle tank",
-    "number": 28
+    "number": 28,
+    "pose": "left-overwatch",
+    "turretDeg": -78,
+    "gunDeg": 7
   },
   "actors": [
     {
@@ -17,8 +20,8 @@
         -54
       ],
       "facingDeg": 330,
-      "turretDeg": -5,
-      "gunDeg": 0.5,
+      "turretDeg": -78,
+      "gunDeg": 7,
       "camo": "digital",
       "camoSeed": 8327
     }
@@ -63,7 +66,7 @@
   "camera": {
     "pos": [
       166,
-      1.9000000000000001,
+      1.75,
       -43
     ],
     "lookAt": [
@@ -72,7 +75,7 @@
       -56
     ],
     "groundRel": true,
-    "fov": 49,
+    "fov": 50,
     "rollDeg": 3,
     "mode": "fly"
   },

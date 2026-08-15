@@ -6,7 +6,10 @@
     "name": "KF51 Panther",
     "nation": "Germany",
     "role": "Next-generation demonstrator",
-    "number": 9
+    "number": 9,
+    "pose": "right-sweep",
+    "turretDeg": 70,
+    "gunDeg": 4
   },
   "actors": [
     {
@@ -17,8 +20,8 @@
         0
       ],
       "facingDeg": 205,
-      "turretDeg": -3,
-      "gunDeg": 1,
+      "turretDeg": 70,
+      "gunDeg": 4,
       "camo": "desert",
       "camoSeed": 8308
     }

@@ -6,7 +6,10 @@
     "name": "Leopard 2 Revolution",
     "nation": "Germany",
     "role": "Modular protection demonstrator",
-    "number": 7
+    "number": 7,
+    "pose": "rear-right-high",
+    "turretDeg": 108,
+    "gunDeg": 13
   },
   "actors": [
     {
@@ -17,8 +20,8 @@
         30
       ],
       "facingDeg": 195,
-      "turretDeg": -5,
-      "gunDeg": 1,
+      "turretDeg": 108,
+      "gunDeg": 13,
       "camo": "washworn",
       "camoSeed": 8306
     }
@@ -71,16 +74,16 @@
   "camera": {
     "pos": [
       -20,
-      1.15,
+      0.8999999999999999,
       20
     ],
     "lookAt": [
       -30,
-      2.45,
+      2.9000000000000004,
       30
     ],
     "groundRel": true,
-    "fov": 49,
+    "fov": 53,
     "rollDeg": -2.5,
     "mode": "fly"
   },

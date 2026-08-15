@@ -192,8 +192,11 @@ gun within spec limits, apply camouflage/damage states, fire the game's real
 effects, freeze deterministic time, and capture through the full renderer up
 to the GPU's safe output size.
 
-The landing-page modern fleet set is reproducible source, not hand-retouched
-art:
+The landing-page fleet reel is modern-only and reproducible source, not
+hand-retouched art. Its 30 checked-in scenes deliberately span broad turret
+search arcs and vehicle-authored gun elevation/depression instead of repeating
+one catalog pose. The generated manifest records the requested turret angle,
+gun angle, pose name, map, nation, and vehicle for every public frame:
 
 ```bash
 node tools/marketing-shots/gen-modern-showcase.mjs

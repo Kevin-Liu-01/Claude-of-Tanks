@@ -6,7 +6,10 @@
     "name": "Challenger 2",
     "nation": "United Kingdom",
     "role": "Main battle tank",
-    "number": 11
+    "number": 11,
+    "pose": "rear-right-down",
+    "turretDeg": 94,
+    "gunDeg": -6
   },
   "actors": [
     {
@@ -17,8 +20,8 @@
         60
       ],
       "facingDeg": 180,
-      "turretDeg": 3,
-      "gunDeg": 0.5,
+      "turretDeg": 94,
+      "gunDeg": -6,
       "camo": "urbanblock",
       "camoSeed": 8310
     }
@@ -60,16 +63,16 @@
   "camera": {
     "pos": [
       44.6,
-      1.05,
+      2.4000000000000004,
       52
     ],
     "lookAt": [
       34,
-      2.45,
+      2.5700000000000003,
       61
     ],
     "groundRel": true,
-    "fov": 51,
+    "fov": 56,
     "rollDeg": 0,
     "mode": "fly"
   },

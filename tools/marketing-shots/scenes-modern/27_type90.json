@@ -6,7 +6,10 @@
     "name": "Type 90",
     "nation": "Japan",
     "role": "Main battle tank",
-    "number": 27
+    "number": 27,
+    "pose": "right-ridge",
+    "turretDeg": 28,
+    "gunDeg": -5
   },
   "actors": [
     {
@@ -17,8 +20,8 @@
         60
       ],
       "facingDeg": 180,
-      "turretDeg": 3,
-      "gunDeg": 1,
+      "turretDeg": 28,
+      "gunDeg": -5,
       "camo": "urbanblock",
       "camoSeed": 8326
     }
@@ -71,16 +74,16 @@
   "camera": {
     "pos": [
       44.6,
-      1.05,
+      2.4000000000000004,
       52
     ],
     "lookAt": [
       34,
-      2.45,
+      2.5700000000000003,
       61
     ],
     "groundRel": true,
-    "fov": 51,
+    "fov": 54,
     "rollDeg": -2.5,
     "mode": "fly"
   },

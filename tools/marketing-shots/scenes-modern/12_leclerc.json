@@ -6,7 +6,10 @@
     "name": "Leclerc",
     "nation": "France",
     "role": "Main battle tank",
-    "number": 12
+    "number": 12,
+    "pose": "left-high",
+    "turretDeg": -68,
+    "gunDeg": 8
   },
   "actors": [
     {
@@ -17,8 +20,8 @@
         -54
       ],
       "facingDeg": 330,
-      "turretDeg": -5,
-      "gunDeg": 1,
+      "turretDeg": -68,
+      "gunDeg": 8,
       "camo": "digital",
       "camoSeed": 8311
     }
@@ -71,16 +74,16 @@
   "camera": {
     "pos": [
       166,
-      1.1,
+      0.8500000000000001,
       -43
     ],
     "lookAt": [
       168.5,
-      2.45,
+      2.9000000000000004,
       -56
     ],
     "groundRel": true,
-    "fov": 52,
+    "fov": 54,
     "rollDeg": -2.5,
     "mode": "fly"
   },

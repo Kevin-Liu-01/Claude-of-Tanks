@@ -6,7 +6,10 @@
     "name": "AbramsX",
     "nation": "USA",
     "role": "Next-generation demonstrator",
-    "number": 1
+    "number": 1,
+    "pose": "ridge-down",
+    "turretDeg": -42,
+    "gunDeg": -6
   },
   "actors": [
     {
@@ -17,8 +20,8 @@
         0
       ],
       "facingDeg": 205,
-      "turretDeg": -3,
-      "gunDeg": 0.5,
+      "turretDeg": -42,
+      "gunDeg": -6,
       "camo": "desert",
       "camoSeed": 8300
     }
@@ -60,16 +63,16 @@
   "camera": {
     "pos": [
       5.9,
-      1.25,
+      2.6,
       -9.4
     ],
     "lookAt": [
       -1.4,
-      2.4,
+      2.52,
       1.8
     ],
     "groundRel": true,
-    "fov": 48,
+    "fov": 51,
     "rollDeg": 0,
     "mode": "fly"
   },

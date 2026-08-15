@@ -6,7 +6,10 @@
     "name": "T-84 Oplot",
     "nation": "Ukraine",
     "role": "Main battle tank",
-    "number": 24
+    "number": 24,
+    "pose": "left-hull-down",
+    "turretDeg": -36,
+    "gunDeg": -7
   },
   "actors": [
     {
@@ -17,8 +20,8 @@
         30
       ],
       "facingDeg": 200,
-      "turretDeg": 3,
-      "gunDeg": 1,
+      "turretDeg": -36,
+      "gunDeg": -7,
       "camo": "summer",
       "camoSeed": 8323
     }
@@ -73,16 +76,16 @@
   "camera": {
     "pos": [
       -73,
-      0.9500000000000001,
+      2.45,
       19
     ],
     "lookAt": [
       -80,
-      2.45,
+      2.5700000000000003,
       30
     ],
     "groundRel": true,
-    "fov": 49,
+    "fov": 52,
     "rollDeg": -3.5,
     "mode": "fly"
   },

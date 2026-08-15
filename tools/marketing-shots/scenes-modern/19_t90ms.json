@@ -6,7 +6,10 @@
     "name": "T-90MS",
     "nation": "Russia",
     "role": "Export main battle tank",
-    "number": 19
+    "number": 19,
+    "pose": "right-ridge-down",
+    "turretDeg": 40,
+    "gunDeg": -7
   },
   "actors": [
     {
@@ -17,8 +20,8 @@
         60
       ],
       "facingDeg": 180,
-      "turretDeg": 3,
-      "gunDeg": 1,
+      "turretDeg": 40,
+      "gunDeg": -7,
       "camo": "urbanblock",
       "camoSeed": 8318
     }
@@ -73,16 +76,16 @@
   "camera": {
     "pos": [
       44.6,
-      0.9,
+      2.4000000000000004,
       52
     ],
     "lookAt": [
       34,
-      2.45,
+      2.5700000000000003,
       61
     ],
     "groundRel": true,
-    "fov": 53,
+    "fov": 56,
     "rollDeg": -3.5,
     "mode": "fly"
   },

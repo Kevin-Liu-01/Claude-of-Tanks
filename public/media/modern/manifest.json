@@ -6,10 +6,13 @@
     "nation": "USA",
     "role": "Next-generation demonstrator",
     "map": "desert",
+    "pose": "ridge-down",
+    "turretDeg": -42,
+    "gunDeg": -6,
     "src": "/media/modern/01_abramsx.webp",
     "width": 1600,
     "height": 900,
-    "bytes": 117658
+    "bytes": 117428
   },
   {
     "slug": "02_m1a2_sepv3",
@@ -18,10 +21,13 @@
     "nation": "USA",
     "role": "Main battle tank",
     "map": "winter",
+    "pose": "high-right",
+    "turretDeg": 58,
+    "gunDeg": 12,
     "src": "/media/modern/02_m1a2_sepv3.webp",
     "width": 1600,
     "height": 900,
-    "bytes": 86802
+    "bytes": 79110
   },
   {
     "slug": "03_m1a2_sepv2",
@@ -30,10 +36,13 @@
     "nation": "USA",
     "role": "Main battle tank",
     "map": "urban",
+    "pose": "left-search",
+    "turretDeg": -74,
+    "gunDeg": 5,
     "src": "/media/modern/03_m1a2_sepv2.webp",
     "width": 1600,
     "height": 900,
-    "bytes": 203496
+    "bytes": 199530
   },
   {
     "slug": "04_m1a2_tusk",
@@ -42,10 +51,13 @@
     "nation": "USA",
     "role": "Urban assault package",
     "map": "coastal",
+    "pose": "right-ridge",
+    "turretDeg": 82,
+    "gunDeg": -5,
     "src": "/media/modern/04_m1a2_tusk.webp",
     "width": 1600,
     "height": 900,
-    "bytes": 117056
+    "bytes": 149610
   },
   {
     "slug": "05_m1a1ha",
@@ -54,10 +66,13 @@
     "nation": "USA",
     "role": "Heavy armor package",
     "map": "autumn",
+    "pose": "rear-left-high",
+    "turretDeg": -96,
+    "gunDeg": 10,
     "src": "/media/modern/05_m1a1ha.webp",
     "width": 1600,
     "height": 900,
-    "bytes": 198728
+    "bytes": 179876
   },
   {
     "slug": "06_leo2a7v",
@@ -66,10 +81,13 @@
     "nation": "Germany",
     "role": "Main battle tank",
     "map": "steppe",
+    "pose": "hull-down-right",
+    "turretDeg": 34,
+    "gunDeg": -7,
     "src": "/media/modern/06_leo2a7v.webp",
     "width": 1600,
     "height": 900,
-    "bytes": 191734
+    "bytes": 119974
   },
   {
     "slug": "07_leo2_revolution",
@@ -78,10 +96,13 @@
     "nation": "Germany",
     "role": "Modular protection demonstrator",
     "map": "railyard",
+    "pose": "rear-right-high",
+    "turretDeg": 108,
+    "gunDeg": 13,
     "src": "/media/modern/07_leo2_revolution.webp",
     "width": 1600,
     "height": 900,
-    "bytes": 139296
+    "bytes": 132910
   },
   {
     "slug": "08_leo2a6",
@@ -90,10 +111,13 @@
     "nation": "Germany",
     "role": "Main battle tank",
     "map": "verdant",
+    "pose": "left-depression",
+    "turretDeg": -55,
+    "gunDeg": -4,
     "src": "/media/modern/08_leo2a6.webp",
     "width": 1600,
     "height": 900,
-    "bytes": 221380
+    "bytes": 206284
   },
   {
     "slug": "09_kf51",
@@ -102,10 +126,13 @@
     "nation": "Germany",
     "role": "Next-generation demonstrator",
     "map": "desert",
+    "pose": "right-sweep",
+    "turretDeg": 70,
+    "gunDeg": 4,
     "src": "/media/modern/09_kf51.webp",
     "width": 1600,
     "height": 900,
-    "bytes": 135416
+    "bytes": 151950
   },
   {
     "slug": "10_challenger_3",
@@ -114,10 +141,13 @@
     "nation": "United Kingdom",
     "role": "Main battle tank",
     "map": "winter",
+    "pose": "left-elevation",
+    "turretDeg": -30,
+    "gunDeg": 11,
     "src": "/media/modern/10_challenger_3.webp",
     "width": 1600,
     "height": 900,
-    "bytes": 96214
+    "bytes": 87448
   },
   {
     "slug": "11_challenger2",
@@ -126,10 +156,13 @@
     "nation": "United Kingdom",
     "role": "Main battle tank",
     "map": "urban",
+    "pose": "rear-right-down",
+    "turretDeg": 94,
+    "gunDeg": -6,
     "src": "/media/modern/11_challenger2.webp",
     "width": 1600,
     "height": 900,
-    "bytes": 219168
+    "bytes": 201150
   },
   {
     "slug": "12_leclerc",
@@ -138,10 +171,13 @@
     "nation": "France",
     "role": "Main battle tank",
     "map": "coastal",
+    "pose": "left-high",
+    "turretDeg": -68,
+    "gunDeg": 8,
     "src": "/media/modern/12_leclerc.webp",
     "width": 1600,
     "height": 900,
-    "bytes": 123430
+    "bytes": 109094
   },
   {
     "slug": "13_ariete",
@@ -150,10 +186,13 @@
     "nation": "Italy",
     "role": "Main battle tank",
     "map": "autumn",
+    "pose": "right-depression",
+    "turretDeg": 46,
+    "gunDeg": -5,
     "src": "/media/modern/13_ariete.webp",
     "width": 1600,
     "height": 900,
-    "bytes": 200050
+    "bytes": 209152
   },
   {
     "slug": "14_merkava3d",
@@ -162,10 +201,13 @@
     "nation": "Israel",
     "role": "Main battle tank",
     "map": "steppe",
+    "pose": "rear-left-sky",
+    "turretDeg": -112,
+    "gunDeg": 13,
     "src": "/media/modern/14_merkava3d.webp",
     "width": 1600,
     "height": 900,
-    "bytes": 194558
+    "bytes": 190898
   },
   {
     "slug": "15_k2",
@@ -174,10 +216,13 @@
     "nation": "South Korea",
     "role": "Main battle tank",
     "map": "railyard",
+    "pose": "right-hull-down",
+    "turretDeg": 62,
+    "gunDeg": -7,
     "src": "/media/modern/15_k2.webp",
     "width": 1600,
     "height": 900,
-    "bytes": 140782
+    "bytes": 152528
   },
   {
     "slug": "16_k1a1",
@@ -186,10 +231,13 @@
     "nation": "South Korea",
     "role": "Main battle tank",
     "map": "verdant",
+    "pose": "left-cover",
+    "turretDeg": -24,
+    "gunDeg": 6,
     "src": "/media/modern/16_k1a1.webp",
     "width": 1600,
     "height": 900,
-    "bytes": 223898
+    "bytes": 214586
   },
   {
     "slug": "17_t14",
@@ -198,10 +246,13 @@
     "nation": "Russia",
     "role": "Next-generation main battle tank",
     "map": "desert",
+    "pose": "right-cover",
+    "turretDeg": 78,
+    "gunDeg": -4,
     "src": "/media/modern/17_t14.webp",
     "width": 1600,
     "height": 900,
-    "bytes": 137438
+    "bytes": 165896
   },
   {
     "slug": "18_t90m",
@@ -210,10 +261,13 @@
     "nation": "Russia",
     "role": "Main battle tank",
     "map": "winter",
+    "pose": "rear-left-elevation",
+    "turretDeg": -86,
+    "gunDeg": 12,
     "src": "/media/modern/18_t90m.webp",
     "width": 1600,
     "height": 900,
-    "bytes": 107230
+    "bytes": 76660
   },
   {
     "slug": "19_t90ms",
@@ -222,10 +276,13 @@
     "nation": "Russia",
     "role": "Export main battle tank",
     "map": "urban",
+    "pose": "right-ridge-down",
+    "turretDeg": 40,
+    "gunDeg": -7,
     "src": "/media/modern/19_t90ms.webp",
     "width": 1600,
     "height": 900,
-    "bytes": 196660
+    "bytes": 198060
   },
   {
     "slug": "20_t90sm",
@@ -234,10 +291,13 @@
     "nation": "Russia",
     "role": "Modernized main battle tank",
     "map": "coastal",
+    "pose": "rear-left-sweep",
+    "turretDeg": -104,
+    "gunDeg": 4,
     "src": "/media/modern/20_t90sm.webp",
     "width": 1600,
     "height": 900,
-    "bytes": 120674
+    "bytes": 114660
   },
   {
     "slug": "21_t90a_burlak",
@@ -246,10 +306,13 @@
     "nation": "Russia",
     "role": "Prototype turret program",
     "map": "autumn",
+    "pose": "right-skyline",
+    "turretDeg": 54,
+    "gunDeg": 13,
     "src": "/media/modern/21_t90a_burlak.webp",
     "width": 1600,
     "height": 900,
-    "bytes": 187108
+    "bytes": 221166
   },
   {
     "slug": "22_t80u",
@@ -258,10 +321,13 @@
     "nation": "Russia",
     "role": "Gas-turbine main battle tank",
     "map": "steppe",
+    "pose": "left-ridge-down",
+    "turretDeg": -62,
+    "gunDeg": -5,
     "src": "/media/modern/22_t80u.webp",
     "width": 1600,
     "height": 900,
-    "bytes": 164764
+    "bytes": 182988
   },
   {
     "slug": "23_t72b3m",
@@ -270,10 +336,13 @@
     "nation": "Russia",
     "role": "Modernized main battle tank",
     "map": "railyard",
+    "pose": "rear-right-elevation",
+    "turretDeg": 98,
+    "gunDeg": 9,
     "src": "/media/modern/23_t72b3m.webp",
     "width": 1600,
     "height": 900,
-    "bytes": 144494
+    "bytes": 130868
   },
   {
     "slug": "24_t84",
@@ -282,10 +351,13 @@
     "nation": "Ukraine",
     "role": "Main battle tank",
     "map": "verdant",
+    "pose": "left-hull-down",
+    "turretDeg": -36,
+    "gunDeg": -7,
     "src": "/media/modern/24_t84.webp",
     "width": 1600,
     "height": 900,
-    "bytes": 224766
+    "bytes": 214506
   },
   {
     "slug": "25_type99a",
@@ -294,10 +366,13 @@
     "nation": "China",
     "role": "Main battle tank",
     "map": "desert",
+    "pose": "right-contact",
+    "turretDeg": 72,
+    "gunDeg": 3,
     "src": "/media/modern/25_type99a.webp",
     "width": 1600,
     "height": 900,
-    "bytes": 145238
+    "bytes": 143752
   },
   {
     "slug": "26_type10",
@@ -306,10 +381,13 @@
     "nation": "Japan",
     "role": "Main battle tank",
     "map": "winter",
+    "pose": "rear-left-high",
+    "turretDeg": -90,
+    "gunDeg": 11,
     "src": "/media/modern/26_type10.webp",
     "width": 1600,
     "height": 900,
-    "bytes": 82642
+    "bytes": 75134
   },
   {
     "slug": "27_type90",
@@ -318,10 +396,13 @@
     "nation": "Japan",
     "role": "Main battle tank",
     "map": "urban",
+    "pose": "right-ridge",
+    "turretDeg": 28,
+    "gunDeg": -5,
     "src": "/media/modern/27_type90.webp",
     "width": 1600,
     "height": 900,
-    "bytes": 188928
+    "bytes": 187844
   },
   {
     "slug": "28_pt91m",
@@ -330,10 +411,13 @@
     "nation": "Poland",
     "role": "Modernized main battle tank",
     "map": "coastal",
+    "pose": "left-overwatch",
+    "turretDeg": -78,
+    "gunDeg": 7,
     "src": "/media/modern/28_pt91m.webp",
     "width": 1600,
     "height": 900,
-    "bytes": 94874
+    "bytes": 107256
   },
   {
     "slug": "29_spz_puma",
@@ -342,10 +426,13 @@
     "nation": "Germany",
     "role": "Infantry fighting vehicle",
     "map": "autumn",
+    "pose": "rear-right-down",
+    "turretDeg": 88,
+    "gunDeg": -7,
     "src": "/media/modern/29_spz_puma.webp",
     "width": 1600,
     "height": 900,
-    "bytes": 192620
+    "bytes": 222178
   },
   {
     "slug": "30_fv510",
@@ -354,9 +441,12 @@
     "nation": "United Kingdom",
     "role": "Infantry fighting vehicle",
     "map": "steppe",
+    "pose": "left-skyline",
+    "turretDeg": -48,
+    "gunDeg": 10,
     "src": "/media/modern/30_fv510.webp",
     "width": 1600,
     "height": 900,
-    "bytes": 157584
+    "bytes": 182216
   }
 ]

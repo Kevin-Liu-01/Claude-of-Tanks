@@ -6,7 +6,10 @@
     "name": "M1A2 TUSK",
     "nation": "USA",
     "role": "Urban assault package",
-    "number": 4
+    "number": 4,
+    "pose": "right-ridge",
+    "turretDeg": 82,
+    "gunDeg": -5
   },
   "actors": [
     {
@@ -17,8 +20,8 @@
         -54
       ],
       "facingDeg": 330,
-      "turretDeg": -5,
-      "gunDeg": 1,
+      "turretDeg": 82,
+      "gunDeg": -5,
       "camo": "digital",
       "camoSeed": 8303
     }
@@ -73,16 +76,16 @@
   "camera": {
     "pos": [
       166,
-      0.9500000000000001,
+      2.45,
       -43
     ],
     "lookAt": [
       168.5,
-      2.45,
+      2.5700000000000003,
       -56
     ],
     "groundRel": true,
-    "fov": 54,
+    "fov": 57,
     "rollDeg": -3.5,
     "mode": "fly"
   },

@@ -6,7 +6,10 @@
     "name": "C1 Ariete",
     "nation": "Italy",
     "role": "Main battle tank",
-    "number": 13
+    "number": 13,
+    "pose": "right-depression",
+    "turretDeg": 46,
+    "gunDeg": -5
   },
   "actors": [
     {
@@ -17,8 +20,8 @@
         30
       ],
       "facingDeg": 108,
-      "turretDeg": 3,
-      "gunDeg": 0.5,
+      "turretDeg": 46,
+      "gunDeg": -5,
       "camo": "dpm",
       "camoSeed": 8312
     }
@@ -63,16 +66,16 @@
   "camera": {
     "pos": [
       -34.5,
-      1.9000000000000001,
+      2.45,
       24.5
     ],
     "lookAt": [
       -42.5,
-      2.4,
+      2.52,
       32
     ],
     "groundRel": true,
-    "fov": 51,
+    "fov": 55,
     "rollDeg": 3,
     "mode": "fly"
   },

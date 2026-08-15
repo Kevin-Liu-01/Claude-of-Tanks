@@ -64,12 +64,56 @@ const STAGES = [
   { map: 'verdant', pos: [-80, 30], facing: 200, turret: 3, cam: [-73, 1.1, 19], look: [-80, 2.45, 30], fov: 47, camo: 'summer' },
 ];
 
+// Each portrait has a deliberately different combat pose. The previous set
+// kept every turret within 5 degrees of the hull and every gun within 1
+// degree of level, which made thirty distinct vehicles read like the same
+// parked catalog shot. These values stay inside (or are truthfully clamped by)
+// the vehicle's authored Studio limits while spanning broad search arcs,
+// ridge-line depression, and high-angle elevation.
+const POSES = [
+  { turret: -42, gun: -6, label: 'ridge-down' },
+  { turret: 58, gun: 12, label: 'high-right' },
+  { turret: -74, gun: 5, label: 'left-search' },
+  { turret: 82, gun: -5, label: 'right-ridge' },
+  { turret: -96, gun: 10, label: 'rear-left-high' },
+  { turret: 34, gun: -7, label: 'hull-down-right' },
+  { turret: 108, gun: 13, label: 'rear-right-high' },
+  { turret: -55, gun: -4, label: 'left-depression' },
+  { turret: 70, gun: 4, label: 'right-sweep' },
+  { turret: -30, gun: 11, label: 'left-elevation' },
+  { turret: 94, gun: -6, label: 'rear-right-down' },
+  { turret: -68, gun: 8, label: 'left-high' },
+  { turret: 46, gun: -5, label: 'right-depression' },
+  { turret: -112, gun: 13, label: 'rear-left-sky' },
+  { turret: 62, gun: -7, label: 'right-hull-down' },
+  { turret: -24, gun: 6, label: 'left-cover' },
+  { turret: 78, gun: -4, label: 'right-cover' },
+  { turret: -86, gun: 12, label: 'rear-left-elevation' },
+  { turret: 40, gun: -7, label: 'right-ridge-down' },
+  { turret: -104, gun: 4, label: 'rear-left-sweep' },
+  { turret: 54, gun: 13, label: 'right-skyline' },
+  { turret: -62, gun: -5, label: 'left-ridge-down' },
+  { turret: 98, gun: 9, label: 'rear-right-elevation' },
+  { turret: -36, gun: -7, label: 'left-hull-down' },
+  { turret: 72, gun: 3, label: 'right-contact' },
+  { turret: -90, gun: 11, label: 'rear-left-high' },
+  { turret: 28, gun: -5, label: 'right-ridge' },
+  { turret: -78, gun: 7, label: 'left-overwatch' },
+  { turret: 88, gun: -7, label: 'rear-right-down' },
+  { turret: -48, gun: 10, label: 'left-skyline' },
+];
+
+if (POSES.length !== FLEET.length) {
+  throw new Error(`pose count ${POSES.length} must match fleet count ${FLEET.length}`);
+}
+
 const manifest = [];
 
 for (let index = 0; index < FLEET.length; index += 1) {
   const [id, name, nation, role] = FLEET[index];
   const number = String(index + 1).padStart(2, '0');
   const stage = STAGES[index % STAGES.length];
+  const pose = POSES[index];
   const slug = `${number}_${id}`;
   const actionMode = index % 5;
   const firing = actionMode === 0 || actionMode === 2;
@@ -78,8 +122,8 @@ for (let index = 0; index < FLEET.length; index += 1) {
     name: 'hero',
     pos: stage.pos,
     facingDeg: stage.facing,
-    turretDeg: stage.turret,
-    gunDeg: firing ? 0.5 : 1,
+    turretDeg: pose.turret,
+    gunDeg: pose.gun,
     camo: stage.camo,
     camoSeed: 8300 + index,
   };
@@ -121,19 +165,37 @@ for (let index = 0; index < FLEET.length; index += 1) {
   }
 
   const cameraPos = [...stage.cam];
-  cameraPos[1] += actionMode === 2 ? 0.8 : actionMode === 3 ? -0.15 : 0;
+  // Look down on depressed guns so their angle reads against the hull roof;
+  // stay low under elevated guns so the silhouette opens against the sky.
+  cameraPos[1] += pose.gun < -2
+    ? 1.35
+    : pose.gun > 7
+      ? -0.25
+      : actionMode === 2
+        ? 0.65
+        : actionMode === 3
+          ? -0.15
+          : 0;
+  const cameraLook = [...stage.look];
+  cameraLook[1] += pose.gun > 7 ? 0.45 : pose.gun < -2 ? 0.12 : 0;
 
   const scene = {
     map: stage.map,
     seed: 8300 + index,
-    meta: { id, name, nation, role, number: index + 1 },
+    meta: {
+      id, name, nation, role, number: index + 1,
+      pose: pose.label, turretDeg: pose.turret, gunDeg: pose.gun,
+    },
     actors: [actor],
     effects,
     camera: {
       pos: cameraPos,
-      lookAt: stage.look,
+      lookAt: cameraLook,
       groundRel: true,
-      fov: stage.fov + (actionMode === 2 ? -3 : actionMode === 3 ? 2 : 0),
+      fov: stage.fov
+        + (pose.gun < -2 ? 3 : pose.gun > 7 ? 2 : 0)
+        + (Math.abs(pose.turret) > 90 ? 2 : 0)
+        + (actionMode === 2 ? -2 : actionMode === 3 ? 2 : 0),
       rollDeg: actionMode === 1 ? -2.5 : actionMode === 2 ? 3 : actionMode === 3 ? -3.5 : 0,
       mode: 'fly',
     },
@@ -142,7 +204,10 @@ for (let index = 0; index < FLEET.length; index += 1) {
   };
 
   writeFileSync(join(OUT, `${slug}.json`), `${JSON.stringify(scene, null, 2)}\n`);
-  manifest.push({ slug, id, name, nation, role, map: stage.map });
+  manifest.push({
+    slug, id, name, nation, role, map: stage.map,
+    pose: pose.label, turretDeg: pose.turret, gunDeg: pose.gun,
+  });
 }
 
 writeFileSync(join(HERE, 'modern-showcase-manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);

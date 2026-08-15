@@ -6,7 +6,10 @@
     "name": "T-90A Burlak",
     "nation": "Russia",
     "role": "Prototype turret program",
-    "number": 21
+    "number": 21,
+    "pose": "right-skyline",
+    "turretDeg": 54,
+    "gunDeg": 13
   },
   "actors": [
     {
@@ -17,8 +20,8 @@
         30
       ],
       "facingDeg": 108,
-      "turretDeg": 3,
-      "gunDeg": 0.5,
+      "turretDeg": 54,
+      "gunDeg": 13,
       "camo": "dpm",
       "camoSeed": 8320
     }
@@ -60,16 +63,16 @@
   "camera": {
     "pos": [
       -34.5,
-      1.1,
+      0.8500000000000001,
       24.5
     ],
     "lookAt": [
       -42.5,
-      2.4,
+      2.85,
       32
     ],
     "groundRel": true,
-    "fov": 54,
+    "fov": 56,
     "rollDeg": 0,
     "mode": "fly"
   },

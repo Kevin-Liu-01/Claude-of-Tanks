@@ -4,6 +4,9 @@
 //
 //   node tools/marketing-shots/contact.mjs --dir shots/marketing/preview \
 //        --out shots/marketing/sheets [--tile 640]
+//   node tools/marketing-shots/contact.mjs --all \
+//        --dir shots/marketing-modern/raw --out shots/marketing-modern/sheets \
+//        --tile 320 --cols 5
 
 import puppeteer from 'puppeteer';
 import { readFileSync, writeFileSync, mkdirSync, readdirSync } from 'node:fs';
@@ -17,17 +20,29 @@ const opt = (n, f) => {
 const dir = resolve(opt('dir', 'shots/marketing/preview'));
 const out = resolve(opt('out', 'shots/marketing/sheets'));
 const TILE_W = parseInt(opt('tile', '640'), 10);
+const ALL = args.includes('--all');
+const COLS = parseInt(opt('cols', '5'), 10);
 mkdirSync(out, { recursive: true });
 
-const files = readdirSync(dir).filter((f) => /_v\d+\.png$/.test(f)).sort();
+const files = readdirSync(dir)
+  .filter((f) => ALL ? f.endsWith('.png') : /_v\d+\.png$/.test(f))
+  .sort();
 const groups = new Map();
-for (const f of files) {
-  const base = f.replace(/_v\d+\.png$/, '');
-  if (!groups.has(base)) groups.set(base, []);
-  groups.get(base).push(f);
+if (ALL) {
+  const pageSize = Math.max(COLS, COLS * 2);
+  for (let start = 0; start < files.length; start += pageSize) {
+    const page = String(start / pageSize + 1).padStart(2, '0');
+    groups.set(`all_${page}`, files.slice(start, start + pageSize));
+  }
+} else {
+  for (const f of files) {
+    const base = f.replace(/_v\d+\.png$/, '');
+    if (!groups.has(base)) groups.set(base, []);
+    groups.get(base).push(f);
+  }
 }
 if (!groups.size) {
-  console.error('[contact] no _vN files found in', dir);
+  console.error(`[contact] no ${ALL ? 'PNG' : '_vN'} files found in`, dir);
   process.exit(1);
 }
 
@@ -37,7 +52,7 @@ await page.setContent('<canvas id="c"></canvas>');
 
 for (const [base, names] of groups) {
   const uris = names.map((n) => `data:image/png;base64,${readFileSync(join(dir, n)).toString('base64')}`);
-  const dataURL = await page.evaluate(async (srcs, labels, tw) => {
+  const dataURL = await page.evaluate(async (srcs, labels, tw, requestedCols) => {
     const imgs = [];
     for (const s of srcs) {
       const im = new Image();
@@ -46,19 +61,23 @@ for (const [base, names] of groups) {
     }
     const th = Math.round((tw * imgs[0].height) / imgs[0].width);
     const c = document.getElementById('c');
-    c.width = tw * imgs.length;
-    c.height = th + 26;
+    const cols = Math.max(1, Math.min(requestedCols, imgs.length));
+    const rows = Math.ceil(imgs.length / cols);
+    c.width = tw * cols;
+    c.height = (th + 26) * rows;
     const ctx = c.getContext('2d');
     ctx.fillStyle = '#111';
     ctx.fillRect(0, 0, c.width, c.height);
     imgs.forEach((im, i) => {
-      ctx.drawImage(im, i * tw, 26, tw, th);
+      const x = (i % cols) * tw;
+      const y = Math.floor(i / cols) * (th + 26);
+      ctx.drawImage(im, x, y + 26, tw, th);
       ctx.fillStyle = '#ffd27a';
       ctx.font = 'bold 16px monospace';
-      ctx.fillText(labels[i], i * tw + 8, 18);
+      ctx.fillText(labels[i], x + 8, y + 18);
     });
     return c.toDataURL('image/png');
-  }, uris, names, TILE_W);
+  }, uris, names, TILE_W, ALL ? COLS : names.length);
   const file = join(out, `${base}_SHEET.png`);
   writeFileSync(file, Buffer.from(dataURL.split(',')[1], 'base64'));
   console.log(`[contact] ${file}`);

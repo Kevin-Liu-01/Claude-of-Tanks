@@ -6,7 +6,10 @@
     "name": "M1A2 SEPv2",
     "nation": "USA",
     "role": "Main battle tank",
-    "number": 3
+    "number": 3,
+    "pose": "left-search",
+    "turretDeg": -74,
+    "gunDeg": 5
   },
   "actors": [
     {
@@ -17,8 +20,8 @@
         60
       ],
       "facingDeg": 180,
-      "turretDeg": 3,
-      "gunDeg": 0.5,
+      "turretDeg": -74,
+      "gunDeg": 5,
       "camo": "urbanblock",
       "camoSeed": 8302
     }
@@ -63,7 +66,7 @@
   "camera": {
     "pos": [
       44.6,
-      1.85,
+      1.7000000000000002,
       52
     ],
     "lookAt": [
@@ -72,7 +75,7 @@
       61
     ],
     "groundRel": true,
-    "fov": 48,
+    "fov": 49,
     "rollDeg": 3,
     "mode": "fly"
   },
