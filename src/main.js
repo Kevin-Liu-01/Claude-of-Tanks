@@ -56,7 +56,7 @@ import { tankPoseFromState, queryAimArmor, traceTank } from './sim/armor.js';
 import {
   estimatePenRatio, selectShell, resolveShellHit, createCombatState, repairAllModules,
 } from './sim/damage.js';
-import { createShell, resolveGunAimDirection } from './sim/ballistics.js';
+import { createShell } from './sim/ballistics.js';
 import { createKillCam } from './game/killcam.js';
 import { createFx } from './fx/effects.js';
 import { initHud } from './ui/hud.js';
@@ -1252,15 +1252,15 @@ const audio = await bootStage('audio', () => {
 });
 
 // --- camera rig -----------------------------------------------------------------
-// Server-aim raycast: world geometry PLUS live enemy hulls, so the reticle
-// distance (and the gun's auto-elevation) matches where the shot actually
-// lands when the crosshair rests on a tank (reticle-to-impact alignment).
+// Camera-aim raycast: world geometry PLUS live enemy hulls. This owns the
+// fixed center marker and requested world point; the separate gun marker owns
+// the real articulated bore, matching World of Tanks' documented reticles.
 const _armEnd = new THREE.Vector3();
 const _armTo = new THREE.Vector3();
 // controls_gunnery r6: STICKY SERVER RETICLE. The aim ray was exact-hit-or-
 // nothing against enemy hulls, so with a mover near the crosshair the anchor
-// (range readout, pen indicator, lead reference AND the gun's auto-elevation
-// distance) flickered to background terrain the instant the ray slipped off
+// (range readout, pen indicator and lead reference) flickered to background
+// terrain the instant the ray slipped off
 // the silhouette (critic: reticle printed 694 m with a T-72B3 at ~341 m under
 // it). WoT's server reticle is deliberately sticky on vehicles:
 //  - the intersection gate is INFLATED (bounding sphere ×1.15) — a ray that
@@ -2818,14 +2818,13 @@ function muzzlePathBlockDist(muzzle, aimPoint, dispersionRadM) {
 }
 
 /**
- * Resolve the exact pre-ballistic centerline used by tryFire and its endpoint
- * at the requested range. This is the sole live source for the gun marker,
- * penetration ray and blocked-path warning.
+ * Resolve the exact articulated bore used by tryFire and its endpoint at the
+ * requested range. This is the sole live source for the gun marker,
+ * penetration ray and blocked-path warning; no post-barrel aim snap exists.
  */
 function playerGunCenterRay(p, aimPoint, outOrigin, outDir, outTarget) {
   p.visual.gunMuzzleWorld(outOrigin);
   p.visual.gunDirWorld(outDir);
-  resolveGunAimDirection(outDir, outOrigin, outDir, aimPoint);
   const rangeM = Math.max(outOrigin.distanceTo(aimPoint), 6);
   outTarget.copy(outOrigin).addScaledVector(outDir, rangeM);
   return rangeM;
@@ -2847,10 +2846,8 @@ function computeAimInfo() {
 
   // WoT dual-reticle contract (official controls guide): the camera marker
   // communicates where the player LOOKS; the aiming circle + gun marker
-  // communicate where the gun can ACTUALLY fire. The firing pipeline applies
-  // a server-aim correction once the articulated bore is within two degrees;
-  // resolve that SAME centerline here so a round can never land on the camera
-  // marker while the advertised cannon marker sits elsewhere.
+  // communicate where the gun can ACTUALLY fire. The shell leaves on this
+  // exact physical bore, including while it is slewing or pinned at a limit.
   aim.gunDistM = playerGunCenterRay(p, aim.point, _rayO, _rayD, _v2);
   aim.gunTargetId = null;
   aim.gunMarker.copy(_v2);

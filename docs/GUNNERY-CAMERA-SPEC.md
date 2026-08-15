@@ -90,14 +90,13 @@ summaries above are reproducible with the commands in the probe header).
    aim went completely dead there (the deployment has this latent bug too; it
    never fires in a full-width browser tab). Width now only counts when the
    device has no fine pointer.
-4. **Authoritative cannon-marker parity (owner follow-up, 2026-08-10).** The
-   firing pipeline corrects a bore within two degrees onto the requested
-   server-aim point, but the first dual-reticle pass drew the raw bore ray.
-   That let a zero-dispersion round land at the camera marker while the
-   advertised cannon marker sat elsewhere. `resolveGunAimDirection()` is now
-   the single pre-ballistic shot-center authority for firing, the cannon
-   marker, penetration color, and muzzle-path warning. Inside the correction
-   window the two markers honestly merge; outside it the cannon marker stays
-   on the physically slewing/limited bore. Gate:
-   `node tools/reticle-shot-parity-probe.mjs` (controlled 1.27 degree case:
-   17.14 px marker/shot error before, <0.001 px after).
+4. **Physical-bore cannon-marker parity (owner follow-up, 2026-08-15).** The
+   fixed camera marker is only the requested look direction. The aiming circle
+   and gun marker expose the actual articulated bore as it traverses and as it
+   pins at elevation/depression limits, matching Wargaming's official controls
+   guide. A shell always leaves along that visible bore: the former two-degree
+   server snap and trigger-time ballistic auto-elevation are removed. The gun
+   lay now uses an exact inverse YXZ hull transform, avoiding the old >1°
+   pitch/roll error on combined sidehills. Unguided shells drop physically
+   after muzzle exit; bots visibly elevate their own guns using an explicit
+   pre-fire ballistic lay. Gate: `node tools/reticle-shot-parity-probe.mjs`.

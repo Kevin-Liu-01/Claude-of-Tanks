@@ -19,7 +19,7 @@ import {
   updateTank,
 } from './movement.js';
 import {
-  applyDispersion, createShell, resolveShellAimDirection, stepShell,
+  applyDispersion, createShell, stepShell,
 } from './ballistics.js';
 import { tankPoseFromState, traceTank } from './armor.js';
 import {
@@ -724,9 +724,6 @@ export function createAuthoritativeMatch({
     }
     const gun = gunWorldPose(entity);
     _gunDir.copy(gun.direction);
-    resolveShellAimDirection(
-      _gunDir, gun.muzzle, _gunDir, entity.input.aimPoint, shellSpec,
-    );
     const sigma = computeDispersionRadM(entity.spec, entity.state, 100) / 200;
     applyDispersion(_gunDir, sigma, rng);
     const shell = createShell(shellSpec, entity.id, true, gun.muzzle, _gunDir, nextShellId++);

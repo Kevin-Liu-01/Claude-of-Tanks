@@ -1,8 +1,20 @@
 import assert from 'node:assert/strict';
-import { Vector3 } from 'three';
+import { Euler, Quaternion, Vector3 } from 'three';
 import '../vehicles/tankFactory.js'; // register the full authored fleet
 import { createAuthoritativeMatch } from './authoritativeMatch.js';
 import { PLAYER_ACTION_BITS } from '../net/protocol.js';
+
+function articulatedGunDirection(entity) {
+  const state = entity.state;
+  const hull = new Quaternion().setFromEuler(new Euler(
+    -state.visualPitch, state.yaw, state.visualRoll, 'YXZ',
+  ));
+  return new Vector3(
+    Math.sin(state.turretYaw) * Math.cos(state.gunPitch),
+    Math.sin(state.gunPitch),
+    Math.cos(state.turretYaw) * Math.cos(state.gunPitch),
+  ).applyQuaternion(hull).normalize();
+}
 
 const match = createAuthoritativeMatch({
   mapId: 'verdant',
@@ -210,6 +222,28 @@ const guidedDirect = guidedEntity.input.aimPoint.clone().sub(new Vector3(
 assert.ok(guidedDirect.dot(new Vector3(
   guidedEvent.dx, guidedEvent.dy, guidedEvent.dz,
 )) > 1 - 1e-10, 'authoritative guided shot launches through the center plus');
+
+// An ordinary multiplayer round must also leave on the visible articulated
+// bore. The authority rebuilds the input ray at 1,000 m; the former trigger-
+// time ballistic correction treated that synthetic range as a real target and
+// pitched slow shells visibly high. Gravity acts only after muzzle exit.
+guidedInput.get('guided-a').fire = false;
+guidedInput.get('guided-a').shellSlot = 0;
+guidedMatch.step({ dt: 1 / 60, inputs: guidedInput });
+guidedShooter.combat.reload.t = 0;
+guidedShooter.spec.gun.baseAccuracy = 0;
+const ordinaryBore = articulatedGunDirection(guidedShooter);
+guidedInput.get('guided-a').fire = true;
+guidedMatch.step({ dt: 1 / 60, inputs: guidedInput });
+guidedShooter.spec.gun.baseAccuracy = guidedAccuracy;
+const ordinaryEvent = guidedMatch.snapshot({
+  tick: 243, serverTimeMs: 243000 / 60, viewerId: 'guided-a', ackInputSeq: 2,
+}).events.find((event) => event.type === 'shell_fired' &&
+  event.shooterId === 'guided-a' && event.shellName !== guidedEvent.shellName);
+assert.ok(ordinaryEvent, 'authority emits the controlled ordinary shot');
+assert.ok(ordinaryBore.dot(new Vector3(
+  ordinaryEvent.dx, ordinaryEvent.dy, ordinaryEvent.dz,
+)) > 1 - 1e-10, 'ordinary network shot leaves exactly on the articulated bore');
 
 const firing = new Map([
   ['alpha-1', {

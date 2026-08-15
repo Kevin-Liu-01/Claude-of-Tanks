@@ -14,8 +14,7 @@ import {
   penAtDistanceMm,
   aimElevationRad,
   applyDispersion,
-  resolveGunAimDirection,
-  resolveShellAimDirection,
+  solveBallisticGunLay,
   shellGravityMps2,
 } from './ballistics.js';
 import { tankPoseFromState, traceTank, queryAimArmor } from './armor.js';
@@ -183,35 +182,35 @@ function mkShell(shellSpec, distM = 100) {
     'aimElevationRad matches 0.5·asin(gd/v²)'
   );
 
-  // The center plus is an impact contract, not merely a camera ray. The
-  // shared solver must produce the low ballistic solution for ordinary
-  // rounds and a truly centerline launch for powered/guided missiles.
+  // The physical bore is the firing contract. Gravity may curve an unguided
+  // shell after launch, but firing must never invisibly steer it above the
+  // articulated barrel in order to force an impact through the camera plus.
   const ballisticAim = V(0, 7, 300);
-  const ballisticDir = V();
   const ballisticMuzzle = V(0, 2, 0);
-  assert(resolveShellAimDirection(
-    ballisticDir, ballisticMuzzle, ballisticAim.clone().sub(ballisticMuzzle).normalize(),
-    ballisticAim, BR365K,
-  ), 'ordinary shell accepts a settled center-reticle solution');
-  const flightS = 300 / (BR365K.velocityMps * Math.hypot(ballisticDir.x, ballisticDir.z));
-  const solvedY = ballisticMuzzle.y + ballisticDir.y * BR365K.velocityMps * flightS -
+  const directDir = ballisticAim.clone().sub(ballisticMuzzle).normalize();
+  const boreOwnedShell = createShell(
+    BR365K, 'attacker_1', true, ballisticMuzzle, directDir, 98,
+  );
+  near(boreOwnedShell.vel.clone().normalize().angleTo(directDir), 0, 1e-12,
+    'ordinary trigger-time launch preserves the caller-owned physical bore');
+
+  // Bots may request a ballistic lay before firing, but the resulting angle
+  // is commanded through their physical gun rather than injected into a shell.
+  const botLay = V();
+  assert(solveBallisticGunLay(botLay, ballisticMuzzle, ballisticAim, BR365K),
+    'bot ballistic gun-lay solution is reachable');
+  const flightS = 300 / (BR365K.velocityMps * Math.hypot(botLay.x, botLay.z));
+  const solvedY = ballisticMuzzle.y + botLay.y * BR365K.velocityMps * flightS -
     0.5 * shellGravityMps2(BR365K) * flightS * flightS;
   near(solvedY, ballisticAim.y, 1e-8,
-    'ordinary shell ballistic solution crosses the center-reticle point');
+    'explicit bot gun lay crosses its requested impact point');
 
   const guided = mkShellSpec({ name: 'fixture ATGM', velocityMps: 180, guided: true });
-  const guidedDir = V();
-  const directDir = ballisticAim.clone().sub(ballisticMuzzle).normalize();
-  assert(resolveShellAimDirection(
-    guidedDir, ballisticMuzzle, directDir, ballisticAim, guided,
-  ), 'guided shell accepts a settled center-reticle solution');
   near(shellGravityMps2(guided), 0, 0,
     'guided shell is not given an artificial gravity arc');
-  near(guidedDir.angleTo(directDir), 0, 1e-12,
-    'guided shell launches exactly through the center plus');
-  const guidedEntity = createShell(guided, 'attacker_1', true, ballisticMuzzle, guidedDir, 99);
+  const guidedEntity = createShell(guided, 'attacker_1', true, ballisticMuzzle, directDir, 99);
   stepShell(guidedEntity, 1);
-  near(guidedEntity.vel.y, guidedDir.y * guided.velocityMps, 1e-9,
+  near(guidedEntity.vel.y, directDir.y * guided.velocityMps, 1e-9,
     'guided shell remains on its center-reticle flight line');
 
   const dirA = V(0, 0, 1);
@@ -223,25 +222,6 @@ function mkShell(shellSpec, distM = 100) {
   applyDispersion(dirB, 999, sigma, mulberry32(42)); // 4-slot doc form
   near(dirB.angleTo(dirA), 0, 1e-9, '3-arg and 4-arg dispersion forms agree');
 
-  // HUD/fire parity: the authoritative centerline snaps inside the same
-  // two-degree window used by live firing, but keeps the bore outside it.
-  const muzzle = V(0, 2, 0);
-  const bore = V(0, 0, 1);
-  const inside = 1.25 * Math.PI / 180;
-  const aimInside = V(Math.sin(inside) * 300, 2, Math.cos(inside) * 300);
-  const center = V(0, 0, 0);
-  assert(resolveGunAimDirection(center, muzzle, bore, aimInside),
-    'server aim corrects a bore inside the two-degree window');
-  near(center.angleTo(aimInside.clone().sub(muzzle).normalize()), 0, 1e-12,
-    'corrected shot center passes exactly through the requested aim point');
-  const outside = 2.25 * Math.PI / 180;
-  const aimOutside = V(Math.sin(outside) * 300, 2, Math.cos(outside) * 300);
-  assert(!resolveGunAimDirection(center, muzzle, bore, aimOutside),
-    'server aim leaves a visibly slewing bore outside the correction window');
-  near(center.angleTo(bore), 0, 1e-12,
-    'uncorrected shot center remains on the articulated bore');
-  assert(!resolveGunAimDirection(center, muzzle, bore, V(0, 2, 3)),
-    'server aim does not correct an unsafe point inside four meters');
 }
 
 // --------------------------------------------- armor.js geometry & frames --

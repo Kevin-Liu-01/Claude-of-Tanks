@@ -21,43 +21,10 @@ export const SHELL_MAX_LIFETIME_S = 6;
 /** Effective gravity applied to shells, m/s². */
 const G_SHELL = 9.81 * GRAVITY_SCALE;
 
-/** Cosine of the largest bore-to-aim error eligible for server-aim correction. */
-export const SERVER_AIM_SNAP_COS = 0.99939; // ~= cos(2 degrees)
-
 // Scratch vectors — module scope so update paths never allocate per call.
 const _basisRef = new Vector3();
 const _right = new Vector3();
 const _up = new Vector3();
-
-/**
- * Resolve the authoritative, pre-ballistic centerline for the next shot.
- *
- * The articulated bore remains authoritative while it is visibly slewing or
- * pinned. Once it is within the server-aim correction window, the centerline
- * snaps exactly through the requested world point. HUD and firing code must
- * both consume this function: showing the raw bore while firing used the
- * corrected line made the gun marker disagree with where rounds landed.
- *
- * @param {Vector3} out receives a unit direction
- * @param {Vector3} muzzlePos world-space muzzle origin
- * @param {Vector3} boreDir articulated bore direction
- * @param {?Vector3} aimPoint requested server-aim point
- * @returns {boolean} true when server-aim correction was applied
- */
-export function resolveGunAimDirection(out, muzzlePos, boreDir, aimPoint) {
-  out.copy(boreDir).normalize();
-  if (!aimPoint) return false;
-  const dx = aimPoint.x - muzzlePos.x;
-  const dy = aimPoint.y - muzzlePos.y;
-  const dz = aimPoint.z - muzzlePos.z;
-  const lenSq = dx * dx + dy * dy + dz * dz;
-  if (lenSq <= 16) return false;
-  const invLen = 1 / Math.sqrt(lenSq);
-  const dot = out.x * dx * invLen + out.y * dy * invLen + out.z * dz * invLen;
-  if (dot <= SERVER_AIM_SNAP_COS) return false;
-  out.set(dx * invLen, dy * invLen, dz * invLen);
-  return true;
-}
 
 /**
  * Effective shell gravity. Powered/guided missiles fly the sight line; shell
@@ -75,24 +42,23 @@ export function shellGravityMps2(shellSpec) {
 }
 
 /**
- * Resolve the complete zero-dispersion launch direction for the center plus.
- * The bore remains authoritative while it is slewing. Once settled, ordinary
- * shells receive the exact low ballistic solution and guided missiles launch
- * directly through the requested point. Local and network fire paths share
- * this function so the HUD contract cannot diverge between modes.
+ * Solve the explicit physical gun lay needed to intersect a world point.
+ * This is for AI to command its articulated gun before firing. Human and
+ * authoritative fire paths must launch along the actual bore and must never
+ * call this at trigger time: gravity bends a shell after it leaves the tube,
+ * while hidden post-barrel steering makes the shot disagree with the model.
  *
  * @param {Vector3} out receives a unit launch direction
  * @param {Vector3} muzzlePos world-space muzzle origin
- * @param {Vector3} boreDir articulated bore direction
- * @param {?Vector3} aimPoint center-reticle world point
+ * @param {?Vector3} aimPoint desired impact point
  * @param {?object} shellSpec selected ShellSpec
- * @returns {boolean} true when the settled center-reticle solution was used
+ * @returns {boolean} true when a direction could be resolved
  */
-export function resolveShellAimDirection(
-  out, muzzlePos, boreDir, aimPoint, shellSpec,
-) {
-  const corrected = resolveGunAimDirection(out, muzzlePos, boreDir, aimPoint);
-  if (!corrected || !aimPoint) return false;
+export function solveBallisticGunLay(out, muzzlePos, aimPoint, shellSpec) {
+  if (!aimPoint) return false;
+  out.copy(aimPoint).sub(muzzlePos);
+  if (out.lengthSq() <= 1e-9) return false;
+  out.normalize();
 
   const gravity = shellGravityMps2(shellSpec);
   const velocity = shellSpec?.velocityMps || 0;

@@ -17,7 +17,7 @@
  * No rendering, no DOM, no top-level side effects — runs under plain node.
  */
 
-import { Vector3 } from 'three';
+import { Euler, Quaternion, Vector3 } from 'three';
 
 /** Fixed simulation step in seconds (ARCHITECTURE §1.1). */
 export const SIM_DT = 1 / 60;
@@ -381,6 +381,15 @@ function gunArcRadFor(spec) {
 
 // Module-scope scratch (no per-frame allocation, ARCHITECTURE §1.3).
 const _push = new Vector3();
+const _aimLocal = new Vector3();
+const _gunOriginWorld = new Vector3();
+const _turretPivotLocal = new Vector3();
+const _hullUpWorld = new Vector3();
+const _turretForwardWorld = new Vector3();
+const _gunWorldDir = new Vector3();
+const _worldUp = new Vector3(0, 1, 0);
+const _hullEuler = new Euler(0, 0, 0, 'YXZ');
+const _hullQuat = new Quaternion();
 
 // ---------------------------------------------------------------------------
 // Small math helpers
@@ -1273,15 +1282,36 @@ export function updateTank(entity, heightField, dt, collide = null) {
   const aim = input.aimPoint;
   const prevTurretYaw = state.turretYaw;
   if (aim) {
-    const gy = state.pos.y + gunPivotHeight(spec);
-    const dx = aim.x - state.pos.x;
-    const dy = aim.y - gy;
-    const dz = aim.z - state.pos.z;
+    // Solve the requested ray in the actual rendered hull frame. The former
+    // small-angle subtraction (`world pitch - hull pitch/roll contribution`)
+    // missed by more than a degree on combined sidehills. Firing then hid that
+    // miss with a server-side shell snap, so the projectile visibly departed
+    // above the barrel. Exact inverse YXZ composition makes the articulated
+    // gun itself own the lay; fire code never needs to steer the shell.
+    _hullEuler.set(-state.visualPitch, state.yaw, state.visualRoll, 'YXZ');
+    _hullQuat.setFromEuler(_hullEuler);
+    const armor = spec.armor || {};
+    const turretPivot = armor.turretPivot || [0, spec.dims.heightM * 0.7, 0];
+    const gunPivot = armor.gunPivot || [0, spec.dims.heightM * 0.15, 0];
+    _gunOriginWorld.set(gunPivot[0], gunPivot[1], gunPivot[2])
+      .applyAxisAngle(_worldUp, state.turretYaw)
+      .add(_turretPivotLocal.set(turretPivot[0], turretPivot[1], turretPivot[2]))
+      .applyQuaternion(_hullQuat)
+      .add(state.pos);
+    const dx = aim.x - _gunOriginWorld.x;
+    const dy = aim.y - _gunOriginWorld.y;
+    const dz = aim.z - _gunOriginWorld.z;
     const horiz = Math.hypot(dx, dz);
-    const wantYawWorld = horiz > 1e-6 ? Math.atan2(dx, dz) : state.yaw + state.turretYaw;
     const wantPitchWorld = Math.atan2(dy, Math.max(horiz, 1e-6));
+    _aimLocal.set(dx, dy, dz).applyQuaternion(_hullQuat.conjugate());
+    _hullQuat.conjugate();
+    const localHoriz = Math.hypot(_aimLocal.x, _aimLocal.z);
+    const wantTurretYaw = localHoriz > 1e-6
+      ? Math.atan2(_aimLocal.x, _aimLocal.z)
+      : state.turretYaw;
+    const desiredGun = Math.atan2(_aimLocal.y, Math.max(localHoriz, 1e-6));
     const turretRate = spec.turretTraverseDegS * DEG2RAD * debuff.turretMult;
-    state.turretYaw = chaseAngle(state.turretYaw, wantYawWorld - state.yaw, turretRate * dt);
+    state.turretYaw = chaseAngle(state.turretYaw, wantTurretYaw, turretRate * dt);
     // Casemate gun-arc clamp (§7): the "virtual turret" (fire-control fine
     // lay) only slews inside ±gunArc of the hull; the reticle pins red
     // (atGunLimit) while the auto hull-traverse above swings the excess onto
@@ -1290,20 +1320,10 @@ export function updateTank(entity, heightField, dt, collide = null) {
     if (gunArc !== Infinity) {
       if (state.turretYaw > gunArc) state.turretYaw = gunArc;
       else if (state.turretYaw < -gunArc) state.turretYaw = -gunArc;
-      yawPinned = Math.abs(wrapAngle(wantYawWorld - state.yaw)) > gunArc + 1e-4;
+      yawPinned = Math.abs(wrapAngle(wantTurretYaw)) > gunArc + 1e-4;
     }
-    // Hull-plane elevation along the gun azimuth: pitch and roll both tilt the gun.
-    const ct = Math.cos(state.turretYaw), st = Math.sin(state.turretYaw);
-    // Hull attitude's contribution to the barrel's WORLD pitch at turret
-    // azimuth θ, matching the visual/armor YXZ pose composition
-    // (root.rotation.set(-visualPitch, yaw, visualRoll, 'YXZ')):
-    //   worldPitch ≈ gunPitch + visualPitch·cosθ + visualRoll·sinθ.
-    // The roll term was previously subtracted, which pushed the settled gun
-    // ~2·|roll·sinθ| off the aim point on rolled terrain (shots fell short).
-    const hullPitchAtGun = state.visualPitch * ct + state.visualRoll * st;
     const lo = -spec.gunDepressionDeg * DEG2RAD;
     const hi = spec.gunElevationDeg * DEG2RAD;
-    const desiredGun = wantPitchWorld - hullPitchAtGun;
     // Gun-terrain clamp (r5 minor): auto-depression onto close server-aim hits
     // used to sink the muzzle up to ~1.4 m into rising ground. Keep the muzzle
     // (and mid-barrel) at least MUZZLE_CLEARANCE_M above the heightfield by
@@ -1311,20 +1331,30 @@ export function updateTank(entity, heightField, dt, collide = null) {
     let loEff = lo;
     const barrelLen = spec.armor && spec.armor.gunBarrel ? spec.armor.gunBarrel.lengthM : 0;
     if (barrelLen > 1) {
-      const a = spec.armor;
-      const trunnionFwd = (a.turretPivot ? a.turretPivot[2] : 0) + (a.gunPivot ? a.gunPivot[2] : 0);
-      const gunYawW = state.yaw + state.turretYaw;
-      const gyw = Math.sin(gunYawW), gzw = Math.cos(gunYawW);
-      const cosWP = Math.cos(state.gunPitch + hullPitchAtGun); // planform reach, ~current pose
+      _hullUpWorld.set(0, 1, 0).applyQuaternion(_hullQuat);
+      _turretForwardWorld.set(
+        Math.sin(state.turretYaw), 0, Math.cos(state.turretYaw),
+      ).applyQuaternion(_hullQuat);
+      _gunWorldDir.copy(_hullUpWorld).multiplyScalar(Math.sin(state.gunPitch))
+        .addScaledVector(_turretForwardWorld, Math.cos(state.gunPitch));
       let needSin = -1;
       for (const frac of [1, 0.55]) { // muzzle tip + mid-barrel
-        const reach = trunnionFwd + barrelLen * frac * cosWP;
-        const hMuz = hAt(state.pos.x + gyw * reach, state.pos.z + gzw * reach);
-        const s = (hMuz + MUZZLE_CLEARANCE_M - gy) / (barrelLen * frac);
+        const hMuz = hAt(
+          _gunOriginWorld.x + _gunWorldDir.x * barrelLen * frac,
+          _gunOriginWorld.z + _gunWorldDir.z * barrelLen * frac,
+        );
+        const s = (hMuz + MUZZLE_CLEARANCE_M - _gunOriginWorld.y) / (barrelLen * frac);
         if (s > needSin) needSin = s;
       }
       if (needSin > -1) {
-        const loTerr = Math.asin(Math.min(needSin, 1)) - hullPitchAtGun;
+        // worldY(p) = A·sin(p) + B·cos(p) = R·sin(p + phase).
+        // Invert that exact relation for the local gun pitch required to keep
+        // the tube over terrain.
+        const aY = _hullUpWorld.y;
+        const bY = _turretForwardWorld.y;
+        const radiusY = Math.hypot(aY, bY) || 1;
+        const phaseY = Math.atan2(bY, aY);
+        const loTerr = Math.asin(clamp(needSin / radiusY, -1, 1)) - phaseY;
         if (loTerr > loEff) loEff = Math.min(loTerr, hi);
       }
     }

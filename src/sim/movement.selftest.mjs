@@ -8,7 +8,7 @@
  * Uses inline fixtures only — no dependency on vehicles/specs.js.
  */
 
-import { Vector3 } from 'three';
+import { Euler, Quaternion, Vector3 } from 'three';
 import {
   createTankState, fireRecoil, shotRecoilScale,
   IFV_AUTOCANNON_AFTER_SHOT_BLOOM, IFV_AUTOCANNON_RECOIL_SCALE,
@@ -144,6 +144,23 @@ function run(ent, field, ticks, perTick = null) {
     updateTank(ent, field, SIM_DT);
     if (perTick) perTick(i);
   }
+}
+
+function gunPoseWorld(state) {
+  const hull = new Quaternion().setFromEuler(new Euler(
+    -state.visualPitch, state.yaw, state.visualRoll, 'YXZ',
+  ));
+  const origin = new Vector3(...SPEC.armor.gunPivot)
+    .applyAxisAngle(new Vector3(0, 1, 0), state.turretYaw)
+    .add(new Vector3(...SPEC.armor.turretPivot))
+    .applyQuaternion(hull)
+    .add(state.pos);
+  const direction = new Vector3(
+    Math.sin(state.turretYaw) * Math.cos(state.gunPitch),
+    Math.sin(state.gunPitch),
+    Math.cos(state.turretYaw) * Math.cos(state.gunPitch),
+  ).applyQuaternion(hull).normalize();
+  return { origin, direction };
 }
 
 // ---------------------------------------------------------------- 1. flat --
@@ -376,19 +393,61 @@ for (const [wl, amp] of [[8, 1.5], [8, 0.55], [4, 0.5], [2, 0.12]]) {
   ent.input.aimPoint = new Vector3(0, field.getHeightAt(0, 3.5) + 0.02, 3.5);
   run(ent, field, 300);
   const st = ent.state;
-  const gph = SPEC.armor.turretPivot[1] + SPEC.armor.gunPivot[1];
-  const worldPitch = st.gunPitch + st.visualPitch * Math.cos(st.turretYaw)
-    + st.visualRoll * Math.sin(st.turretYaw);
   const barrel = SPEC.armor.gunBarrel.lengthM;
-  const reach = SPEC.armor.gunPivot[2] + barrel * Math.cos(worldPitch);
-  const gunYawW = st.yaw + st.turretYaw;
-  const mx = st.pos.x + Math.sin(gunYawW) * reach;
-  const mz = st.pos.z + Math.cos(gunYawW) * reach;
-  const muzzleY = st.pos.y + gph + barrel * Math.sin(worldPitch);
-  const ground = field.getHeightAt(mx, mz);
-  assert(muzzleY > ground + 0.1,
-    `muzzle clamp: muzzle ${muzzleY.toFixed(2)} m vs ground ${ground.toFixed(2)} m (+0.1 min)`);
+  const pose = gunPoseWorld(st);
+  const muzzle = pose.origin.clone().addScaledVector(pose.direction, barrel);
+  const ground = field.getHeightAt(muzzle.x, muzzle.z);
+  assert(muzzle.y > ground + 0.1,
+    `muzzle clamp: muzzle ${muzzle.y.toFixed(2)} m vs ground ${ground.toFixed(2)} m (+0.1 min)`);
   assert(st.atGunLimit === true, 'muzzle clamp: atGunLimit flags the pinned gun');
+}
+
+// ----------------------------------------- 9b. exact gun lay on a sidehill --
+// A combined pitch/roll hull pose must not use a small-angle approximation:
+// once traverse has settled, the articulated bore itself follows the requested
+// world ray. Firing code is forbidden from hiding residual error by steering a
+// shell away from the visible barrel.
+{
+  const field = makeField((x, z) => 0.25 * x + 0.2 * z);
+  const ent = makeEntity(field, 0, 0, 0.7);
+  ent.input.aimPoint = new Vector3(-220, 12, 120);
+  run(ent, field, 600);
+  const pose = gunPoseWorld(ent.state);
+  const wanted = ent.input.aimPoint.clone().sub(pose.origin).normalize();
+  const error = pose.direction.angleTo(wanted);
+  assert(!ent.state.atGunLimit, 'sidehill gun lay: requested point is inside the gun arc');
+  assert(error < 0.001,
+    `sidehill gun lay: settled bore follows world ray (error ${(error * 180 / Math.PI).toFixed(3)} deg)`);
+}
+
+// --------------------------------------- 9c. traverse and vertical stops --
+// The requested ray is exact only when mechanically reachable. Turret slew
+// rate and the per-vehicle elevation/depression stops remain authoritative.
+{
+  const field = makeField(() => 0);
+  const traverse = makeEntity(field, 0, 0, 0);
+  traverse.input.aimPoint = new Vector3(300, 2, 0);
+  updateTank(traverse, field, SIM_DT);
+  const maxTurretStep = SPEC.turretTraverseDegS * Math.PI / 180 * SIM_DT;
+  assert(Math.abs(traverse.state.turretYaw) <= maxTurretStep + 1e-9,
+    'turret lay: one tick cannot exceed the vehicle traverse rate');
+  run(traverse, field, 300);
+  near(traverse.state.turretYaw, Math.PI / 2, 0.001,
+    'turret lay: reachable horizontal ray converges exactly');
+
+  const elevated = makeEntity(field, 0, 0, 0);
+  elevated.input.aimPoint = new Vector3(0, 300, 200);
+  run(elevated, field, 300);
+  near(elevated.state.gunPitch, SPEC.gunElevationDeg * Math.PI / 180, 1e-9,
+    'gun lay: elevation is clamped to the vehicle specification');
+  assert(elevated.state.atGunLimit, 'gun lay: elevation stop reports a pinned reticle');
+
+  const depressed = makeEntity(field, 0, 0, 0);
+  depressed.input.aimPoint = new Vector3(0, -100, 300);
+  run(depressed, field, 300);
+  near(depressed.state.gunPitch, -SPEC.gunDepressionDeg * Math.PI / 180, 1e-9,
+    'gun lay: depression is clamped to the vehicle specification');
+  assert(depressed.state.atGunLimit, 'gun lay: depression stop reports a pinned reticle');
 }
 
 // -------------------------------------- 10. IFV autocannon burst grouping --

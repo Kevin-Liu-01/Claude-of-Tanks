@@ -539,15 +539,15 @@ Reads combat state ONLY via the locked debuffs table (§2.4) — guard for
 
 #### 3.5.1 `ballistics.js`
 ```js
-export const GRAVITY_SCALE = 2.2;                       // g_shell = 9.81 × this
+export const GRAVITY_SCALE = 1;                         // g_shell = 9.81 × this
 export function createShell(shellSpec, shooterId, isPlayer,
                             muzzlePos: Vector3, dir: Vector3 /* unit */, id) => ShellEntity
 export function stepShell(shell, dt) => void            // integrate; sets prevPos
 export function penAtDistanceMm(shellSpec, distM) => number   // lerp pen100→pen1000, clamp
 export function aimElevationRad(distM, velocityMps) => number // 0.5*asin(g*d/v²) clamped
-export function resolveGunAimDirection(out, muzzlePos, boreDir, aimPoint) => boolean
-//  LOCKED: authoritative PRE-BALLISTIC shot center shared by HUD + firing.
-//  Raw bore outside the 2° correction window; exact muzzle→aimPoint inside it.
+export function solveBallisticGunLay(out, muzzlePos, aimPoint, shellSpec) => boolean
+//  AI-only physical lay solver. Trigger-time firing never calls this: every
+//  shell leaves along the actual articulated bore and gravity acts afterward.
 export function applyDispersion(dir: Vector3, dispersionRadM_at100 /* i.e. r(100)? NO — */,
                                 sigmaRad, rng) => void
 //  LOCKED: pass sigmaRad = (computeDispersionRadM(spec,state,100) / 2) / 100
@@ -688,7 +688,7 @@ FrameInfo = {
     dispersionRadM: number,              // world-space reticle radius at aim distance
     penRatio: number|null,               // → color: ≥1.15 green #7ee87e / 0.85–1.15
                                          //   orange #f0b04a / <0.85 red #f05a5a
-    gunMarker: Vector3|null,              // authoritative pre-ballistic shot center
+    gunMarker: Vector3|null,              // actual articulated-bore endpoint
     atGunLimit: boolean,
     reload: { t, totalS }, shellSlot: 0|1|2,
     shells: [{ name, type, dmg, penLabel }],   // for the 1/2/3 selector

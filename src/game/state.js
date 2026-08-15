@@ -11,7 +11,7 @@ import {
   createTankState, updateTank, fireRecoil, shotRecoilScale, computeDispersionRadM, SIM_DT,
 } from '../sim/movement.js';
 import {
-  createShell, stepShell, applyDispersion, resolveShellAimDirection, shellGravityMps2,
+  createShell, stepShell, applyDispersion, shellGravityMps2,
 } from '../sim/ballistics.js';
 import { tankPoseFromState, traceTank } from '../sim/armor.js';
 import {
@@ -1338,11 +1338,6 @@ function tryFire(game, ent, bus, rig) {
     ent.visual.gunPivotWorld(_pivot);
     _dir.copy(_muzzle).sub(_pivot).normalize();
   }
-
-  // One center-reticle contract owns both bore convergence and ballistics.
-  // Guided missiles stay exactly on the sight line; unguided rounds use the
-  // physical low-angle solution. Multiplayer calls the same resolver.
-  resolveShellAimDirection(_dir, _muzzle, _dir, ent.input.aimPoint, shellSpec);
 
   // Dispersion: sigmaRad = r(100 m)/200 (§3.5.1 locked), gun yellow ⇒ σ×2.
   let sigmaRad = computeDispersionRadM(ent.spec, ent.state, 100) / 200;

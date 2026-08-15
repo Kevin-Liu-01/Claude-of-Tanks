@@ -1,10 +1,10 @@
-// Regression probe for the owner-reported dual-reticle mismatch.
+// Regression probe for the owner-reported gun firing above the reticle.
 //
-// It parks the physical barrel 1.25 degrees off the requested aim point —
-// inside the server-aim correction window used by the firing pipeline — then
-// verifies that the visible gun marker and the zero-dispersion shell center
-// resolve to the same screen position. The old HUD followed the raw bore while
-// firing silently snapped to the requested point, producing a tens-of-pixels lie.
+// It parks the physical barrel 1.25 degrees off the requested camera point,
+// then verifies that the visible gun marker and zero-dispersion launch both
+// remain on that exact articulated bore. Traverse/elevation/depression limits
+// may keep the two reticles apart; trigger-time code may never steer a shell
+// toward (or ballistically above) the camera marker.
 //
 // Usage: node tools/reticle-shot-parity-probe.mjs [--screenshot /tmp/reticle.png]
 import { createServer } from 'vite';
@@ -155,9 +155,8 @@ try {
     camera.matrixWorldInverse.copy(D.camera.matrixWorldInverse);
     const hud = window.__HUD_DEBUG.getReticleState();
 
-    // Falsification: push the bore outside the correction window. The marker
-    // must separate again and remain collinear with the real articulated bore
-    // instead of being permanently glued to the camera marker.
+    // Falsification: push the bore farther away. The marker must remain
+    // collinear with the real articulated bore at every error magnitude.
     const insideTurretYaw = p.state.turretYaw;
     p.state.turretYaw = insideTurretYaw + 2 * Math.PI / 180;
     p.visual.syncFromState(p.state);
@@ -221,6 +220,7 @@ try {
     }
     const shotCenter = at((lo + hi) * 0.5);
     const launchLine = fm.clone().addScaledVector(fd, fm.distanceTo(desired));
+    const markerDir = marker.clone().sub(fm).normalize();
     const markerNdc = marker.clone().project(camera);
     const shotNdc = shotCenter.clone().project(camera);
     const launchNdc = launchLine.clone().project(camera);
@@ -234,6 +234,9 @@ try {
       aimDistM: fm.distanceTo(desired),
       targetId: D.frameInfo.aim.gunTargetId,
       rawBoreErrorDeg,
+      launchToBoreDeg: fd.angleTo(bore) * 180 / Math.PI,
+      markerToBoreDeg: markerDir.angleTo(bore) * 180 / Math.PI,
+      launchToAimDeg: fd.angleTo(aimDir) * 180 / Math.PI,
       shotNearDesiredM: shotCenter.distanceTo(desired),
       markerToShotPx: Math.hypot(mp.x - sp.x, mp.y - sp.y),
       markerToDesiredPx: Math.hypot(mp.x - dp.x, mp.y - dp.y),
@@ -289,19 +292,20 @@ try {
       guided: p.spec.gun.shells[1].guided === true,
       settledBoreErrorDeg: bore.angleTo(direct) * 180 / Math.PI,
       launchToPlusDeg: new V(...fired.dir).angleTo(direct) * 180 / Math.PI,
+      launchToBoreDeg: new V(...fired.dir).angleTo(bore) * 180 / Math.PI,
     };
   });
 
   const checks = [
-    ['fixture is inside the 2 degree correction window', report.rawBoreErrorDeg > 0.35 && report.rawBoreErrorDeg < 1.95],
-    ['zero-dispersion shell center reaches requested aim', report.shotNearDesiredM < 1.5],
-    ['visible gun marker matches actual shot center', report.markerToShotPx <= 3],
-    ['visible gun marker converges with desired marker when the shot does', report.markerToDesiredPx <= 3],
-    ['player-visible launch correction stays under two pixels', report.launchToDesiredPx <= 2],
-    ['outside the correction window the gun marker separates', report.outside.boreErrorDeg > 2 && report.outside.hudGunOffsetPx > 8],
-    ['outside the correction window the gun marker stays on the bore', report.outside.markerToBoreDeg < 0.01],
-    ['slow guided missile launches exactly through the center plus',
-      guidedReport.guided && guidedReport.launchToPlusDeg < 0.00001],
+    ['fixture preserves a visible turret-lag offset', report.rawBoreErrorDeg > 0.35 && report.rawBoreErrorDeg < 1.95],
+    ['zero-dispersion shot leaves exactly on the articulated bore', report.launchToBoreDeg < 0.00001],
+    ['visible gun marker lies exactly on the articulated bore', report.markerToBoreDeg < 0.00001],
+    ['gun marker honestly remains separate from camera marker', report.markerToDesiredPx > 5],
+    ['launch is not invisibly snapped toward the camera marker', Math.abs(report.launchToAimDeg - report.rawBoreErrorDeg) < 0.00001],
+    ['larger gun error remains visibly separated', report.outside.boreErrorDeg > 2 && report.outside.hudGunOffsetPx > 8],
+    ['larger-error gun marker stays on the bore', report.outside.markerToBoreDeg < 0.01],
+    ['slow guided missile also leaves exactly on its physical bore',
+      guidedReport.guided && guidedReport.launchToBoreDeg < 0.00001],
     ['runtime had no page errors', pageErrors.length === 0],
   ];
   console.log(`[reticle-shot-parity] terrain=${target.distM.toFixed(1)}m report=${JSON.stringify(report)}`);

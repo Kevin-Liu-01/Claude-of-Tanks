@@ -15,10 +15,9 @@
  * `dt` / `timeS` parameters.
  */
 
-import { Vector3 } from 'three';
+import { Euler, Quaternion, Vector3 } from 'three';
 import { computeDispersionRadM } from '../sim/movement.js';
-// controls_gunnery r6: aimElevationRad import removed — tryFire (state.js)
-// owns the ballistic solution; see the aim-point comment in aimAndFire().
+import { solveBallisticGunLay } from '../sim/ballistics.js';
 import { tankPoseFromState, queryAimArmor } from '../sim/armor.js';
 import { blastRadiusM, estimatePenRatio, isHeClass } from '../sim/damage.js';
 
@@ -234,6 +233,9 @@ const _vB = new Vector3();
 const _vC = new Vector3();
 const _vD = new Vector3();
 const _vE = new Vector3();
+const _vF = new Vector3();
+const _hullEuler = new Euler(0, 0, 0, 'YXZ');
+const _hullQuat = new Quaternion();
 
 // ---------------------------------------------------------------------------
 // Small math helpers
@@ -2073,15 +2075,6 @@ export function createAI(entity, opts = {}) {
       _vD.set(_vC.x + tvx * t, _vC.y, _vC.z + tvz * t);
     }
 
-    // controls_gunnery r6: NO gravity compensation here — tryFire (state.js)
-    // already auto-elevates every shell for the aim-point distance (WoT-style
-    // server elevation). Raising the aim point by tan(elev)·dist on top of
-    // that DOUBLE-compensated: every settled bot shell flew ~tan(elev)·dist
-    // HIGH at the target (a 750 m/s WW2 gun at 300 m = +1.7 m — clean over
-    // the turret), which is exactly the "bots fired 20-27 shells and landed
-    // zero" streaky-pressure failure. The aim point is the intended IMPACT
-    // point; state.js owns the ballistic solution.
-
     // r4 BLIND-FIRE FALLBACK (WoT bush-fire): a bot with a live
     // repeat-offender window (2+ muzzle flashes from one position — the bots
     // know exactly which bush) that has been LOS-pinned for 15+ s shells the
@@ -2131,6 +2124,16 @@ export function createAI(entity, opts = {}) {
       _vD.y += blindPitchRad * dist;
     }
 
+    // Explicitly lay the BOT'S physical barrel for gravity before it fires.
+    // Trigger-time shell steering was removed: every round now leaves on the
+    // articulated bore, so a compensated bot visibly elevates its own gun
+    // instead of launching a projectile above the rendered tube.
+    _vE.set(ex, st.pos.y + selfGunM, ez);
+    const layDistance = _vE.distanceTo(_vD);
+    if (solveBallisticGunLay(_vF, _vE, _vD, shell)) {
+      _vD.copy(_vE).addScaledVector(_vF, layDistance);
+    }
+
     input.aimPoint.copy(_vD);
     input.shellSlot = /** @type {0|1|2} */ (
       clamp(chosenSlot, 0, Math.min(2, spec.gun.shells.length - 1)));
@@ -2155,27 +2158,30 @@ export function createAI(entity, opts = {}) {
     // ready for >2.5 s takes the fully-aimed shot anyway, exactly like a
     // WoT player firing on a settled-but-wide reticle.
 
-    // Alignment gate: the gun itself (not just the aim point) is on target.
-    // The wanted pitch is measured from the TRUNNION (movement.js drives the
-    // barrel from pos.y + gunPivotHeight), and the barrel's world pitch uses
-    // the same YXZ pose composition as the movement sim:
-    //   worldPitch ≈ gunPitch + visualPitch·cos(turretYaw) + visualRoll·sin(turretYaw).
-    // The old `gunPitch + visualPitch` ignored turret azimuth and roll, and a
-    // hard `!atGunLimit` veto froze the AI whenever the clamped barrel was
-    // pinned even marginally — on slopes the settled gun could sit exactly ON
-    // target with atGunLimit=true, so an uphill Tiger never fired (r6).
+    // Alignment gate: compare the requested lay to the exact articulated bore
+    // using the same YXZ hull composition as movement and rendering. A linear
+    // pitch/roll approximation can be more than a degree wrong on a sidehill.
     const gy = st.pos.y + selfGunM;
     const dxA = input.aimPoint.x - ex, dyA = input.aimPoint.y - gy, dzA = input.aimPoint.z - ez;
     const horiz = Math.hypot(dxA, dzA) || 1e-6;
     const wantYaw = Math.atan2(dxA, dzA);
     const wantPitch = Math.atan2(dyA, horiz);
-    const gunYaw = st.yaw + st.turretYaw;
-    const gunPitch = st.gunPitch +
-      (st.visualPitch || 0) * Math.cos(st.turretYaw) +
-      (st.visualRoll || 0) * Math.sin(st.turretYaw);
+    _hullEuler.set(-(st.visualPitch || 0), st.yaw, st.visualRoll || 0, 'YXZ');
+    _hullQuat.setFromEuler(_hullEuler);
+    _vF.set(
+      Math.sin(st.turretYaw) * Math.cos(st.gunPitch),
+      Math.sin(st.gunPitch),
+      Math.cos(st.turretYaw) * Math.cos(st.gunPitch),
+    ).applyQuaternion(_hullQuat).normalize();
+    const gunYaw = Math.atan2(_vF.x, _vF.z);
+    const gunPitch = Math.atan2(_vF.y, Math.hypot(_vF.x, _vF.z));
     const yawErr = Math.abs(wrapAngle(wantYaw - gunYaw));
     const pitchErr = Math.abs(wantPitch - gunPitch);
-    const tol = Math.max(0.01, Math.atan2(tw * 0.3, dist));
+    // With trigger-time shell snapping gone, a one-centiradian "ready" cone
+    // can miss a 3 m tank by five meters at 500 m. Wait for the physical bore
+    // to enter the target-sized cone instead; the gun rates still determine
+    // how quickly that happens.
+    const tol = Math.max(0.0015, Math.atan2(tw * 0.3, dist));
     // Arc-limit fallback: when the barrel is pinned at a pitch stop and still
     // off the solution, repositioning (the reverse nudge) runs in parallel —
     // but after a few seconds the AI takes the best shot its gun arc allows
