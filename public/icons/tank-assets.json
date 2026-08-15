@@ -78212,26 +78212,27 @@
           }
         ]
       },
-      "geometryHash": "0d4ec0e4",
+      "geometryHash": "97f1d555",
       "metadataHash": "4083d779",
       "appearance": {
         "version": 1,
         "issues": [],
         "roles": {
-          "gunmetal": 12,
+          "gunmetal": 13,
+          "canvas": 3,
           "wheelTire": 1,
-          "wheelDish": 6,
+          "wheelDish": 5,
           "wheelInset": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
           "armorPaint": 4,
           "fittingPaint": 7,
-          "tireRubber": 1,
           "opticGlass": 2,
-          "unclassified": 13,
-          "gearShadow": 2,
-          "canvas": 1
+          "tireRubber": 1,
+          "wood": 1,
+          "unclassified": 10,
+          "gearShadow": 2
         }
       },
       "muzzleBore": {
@@ -78242,9 +78243,9 @@
         "fallback": 1
       },
       "vehicleMarkings": {
-        "total": 4,
-        "insignia": 2,
-        "designation": 2,
+        "total": 2,
+        "insignia": 1,
+        "designation": 1,
         "codes": [
           "JP:jp-roundel:74"
         ]
@@ -78255,64 +78256,64 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 33352,
-          "sha256": "f536c28948a63309080ed4ee9ad98a8c029ff8099a30e0c4738989a031d48e59"
+          "bytes": 33222,
+          "sha256": "4b387a55dbfeafe6a6a584cef7d8931890882ccd8d4c88bd722e3399a7b10ac5"
         },
         "top": {
           "file": "type74_top.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 9238,
-          "sha256": "7a8ce3b581d25f3f2300fff8cff3fae0546e140d944bdbe9c0a4211c4ac931b2"
+          "bytes": 8018,
+          "sha256": "43cbae6832af436b272e22cddb1287e271c21d9e1d82aa893384386df55561ff"
         },
         "side": {
           "file": "type74_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 10430,
-          "sha256": "30632c501664ae7c7874a7a8c8735cb2ffab045ff31596de422fe55025c68753"
+          "bytes": 9688,
+          "sha256": "5cc139c2a3c080415cce41b0ecf32cc0d002937fcca0503e8d90e824a44229cf"
         },
         "topSilhouette": {
           "file": "type74_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1374,
-          "sha256": "9cc80df7cd35a87ecfa3baa68723413eca5dcfe41b14a35b181121e808a9d35e"
+          "bytes": 1108,
+          "sha256": "a153fdcc0bb1a7754a35ec26b3551b05ca19a8aed0376b9652539d6c28e0a1ef"
         },
         "sideSilhouette": {
           "file": "type74_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 5057,
-          "sha256": "6a7ffe6dea5c4ac8d966f5ccc6f1d41901b3f31471a6038ce46f3df470283747"
+          "bytes": 4590,
+          "sha256": "a936305540547cb4fa49a0eb22f874b33d986564195b05d73a06d322704ad5ad"
         },
         "hitZonesSide": {
           "file": "type74_hit_zones_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 78873,
-          "sha256": "5c2411cc2cc4b1f50774be5559055174d01ade279bee1a3f30923b1460ee03bc"
+          "bytes": 79810,
+          "sha256": "bccea282e1cf675edf7700252af65fa402291e197204a2d6102b7f3dbae6405b"
         },
         "armorSide": {
           "file": "type74_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 77381,
-          "sha256": "393636a6dc40583bfd16b18d46ce64faf268284e8b0a0109ce69738f42034d4b"
+          "bytes": 77323,
+          "sha256": "87f7456977566da0f5612f2f85534bec1d4826b5f3637b064c5b2668ab0891ac"
         },
         "modulesSide": {
           "file": "type74_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 77510,
-          "sha256": "89883d68496dbff4ae6eb4c6e6f5f2bffda2fa2d8e09db01545206c36d9fa223"
+          "bytes": 78565,
+          "sha256": "2fada468e5aa53a1d4d6efb5c3ffe2304c1b3eca6f0c2bf08d788292495064e6"
         },
         "markings": {
           "file": "type74_markings.png",

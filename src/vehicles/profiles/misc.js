@@ -2982,10 +2982,12 @@ function buildType74(P) {
     style: 'rubber', wheelR: 0.42, wheelW: 0.26, wheelY: 0.475, xc: XC,
     wheelZs,
     sprocket: { z: -3.00, y: 0.90, r: 0.26 }, idler: { z: 2.93, y: 0.64, r: 0.28 },
-    rollers: [], trackW: 0.55, topY: 1.00, botY: 0.055, deadSag: 0.09,
+    rollers: [], trackW: 0.55, topY: 1.00, botY: -0.08, deadSag: 0.09,
     paintedEnds: true, coveredTop: false, arms: true,
   });
-  wheelRecessAt(P, wheelZs, XC, 0.475, 0.42, 0.26);
+  // The animated native wheel faces already carry their own deep dishes.
+  // Do not add the legacy static recess cylinders here: they occupy the same
+  // swept volume as the moving shoes and create a second, hull-owned layer.
   tightenHullShadowProxy(P, { xc: XC, trackW: 0.34, y0: 0.15, y1: 0.60, z0: -2.10, z1: 2.30, hullZ0: -3.10, hullZ1: 2.90 });
 
   // ---- turret: low long cast dome flowing into a tapered bustle (STB-1
@@ -2993,11 +2995,10 @@ function buildType74(P) {
   // body-rel -0.1..+1.5, bustle/basket tail to -1.6) ----
   P.turretG.position.set(0, 1.42, 0.50);
   P.add('turret', lathe([
-    [1.04, 0.0], [1.13, 0.10], [1.09, 0.30], [0.98, 0.50], [0.82, 0.62],
-    [0.64, 0.70], [0.42, 0.78], [0.02, 0.85],
-  ], P.q ? 30 : 16, 1.45), 0, 0.0, -0.45);                                     // cast dome: crown 2.28 world (photo class: real dome 2.0-2.13 + cupola;
-                                                                               // print 2.40-2.47 — documented ~0.15 cap), shoulders fall to 2.10/2.16
-                                                                               // (the ref's own 2.03-2.13 front-view shoulder band)
+    [1.04, 0.0], [1.13, 0.10], [1.09, 0.30], [0.98, 0.53], [0.82, 0.68],
+    [0.64, 0.78], [0.42, 0.88], [0.02, 0.96],
+  ], P.q ? 30 : 16, 1.45), 0, 0.0, -0.45);                                     // cast dome crown restored to the measured oracle envelope;
+                                                                               // the raised upper stations preserve the broad Type 74 shoulder arc
   P.add('turret', frustum(0.90, -0.50, -2.02, 0.62, -0.60, -1.80, 0.05, 0.50)); // bustle taper (world 1.47..1.92, tail -1.52)
   P.add('turret', box(1.50, 0.14, 1.10), 0, 0.06, -0.65);                      // ring seat course closes dome underside to the deck (§B2)
   P.add('turretDark', box(1.44, 0.02, 1.04), 0, -0.005, -0.65);                // contact shadow at the ring
@@ -3006,15 +3007,15 @@ function buildType74(P) {
   // photo split, packet-documented) with the M2 pintle = published-2.48
   // heightM p95 anchor; low oval loader hatch ring LEFT (ref left-shoulder
   // 2.10-2.13 front-view band)
-  cupola(P, 'turret', 0.40, 0.74, -0.46, 0.20, 0.16, 6);                       // lid ~2.34
+  cupola(P, 'turret', 0.40, 0.84, -0.46, 0.20, 0.16, 6);                       // lid ~2.44, planted on the restored cast crown
   const m2 = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', tone: 'two-tone', seed: 7 });
-  m2.position.set(0.44, 0.74, -0.48);                                          // receiver+sight top ~2.535: the heightM-2.48 p95 anchor (scale-1.0 frame)
+  m2.position.set(0.44, 0.84, -0.48);                                          // receiver+sight remains seated on the raised cupola
   P.turretG.add(m2);
-  P.add('turret', cylY(0.19, 0.20, 0.05, 14), -0.44, 0.715, -0.30);            // loader ring on the left shoulder
-  P.add('turret', cylY(0.165, 0.165, 0.028, 14), -0.44, 0.765, -0.30);         // oval lid ~2.20 world
-  P.add('turretDark', box(0.31, 0.013, 0.03), -0.44, 0.782, -0.30);            // lid seam
-  periscope(P, 'turretDetail', 0.24, 0.80, 0.28);                              // gunner periscope fwd-right
-  periscope(P, 'turretDetail', -0.44, 0.795, -0.02, 0.3);                      // loader periscope
+  P.add('turret', cylY(0.19, 0.20, 0.05, 14), -0.44, 0.815, -0.30);            // loader ring on the left shoulder
+  P.add('turret', cylY(0.165, 0.165, 0.028, 14), -0.44, 0.865, -0.30);         // oval lid seated on the restored crown
+  P.add('turretDark', box(0.31, 0.013, 0.03), -0.44, 0.882, -0.30);            // lid seam
+  periscope(P, 'turretDetail', 0.24, 0.90, 0.28);                              // gunner periscope fwd-right
+  periscope(P, 'turretDetail', -0.44, 0.895, -0.02, 0.3);                      // loader periscope
   // big IR/white searchlight box LEFT of the mantlet (the signature box):
   // hood lip + split doors + glass slit + cable conduit (§B3 tells)
   P.add('turret', box(0.44, 0.36, 0.42), -0.62, 0.36, 1.19, 0, 0.06, 0);       // body seated against the dome face (rear face 0.98 buries into the casting)
@@ -3038,10 +3039,9 @@ function buildType74(P) {
     }
     P.add('turretDark', box(0.014, 0.24, bz0 - bz1 - 0.06), s * (bx1 + 0.006), 0.35, (bz0 + bz1) / 2); // mesh face
     P.add('turretCloth', box(bx1 - bx0 - 0.04, 0.20, bz0 - bz1 - 0.10), s * (bx0 + bx1) / 2, 0.36, (bz0 + bz1) / 2); // duffel load
-    // §I fittings: whip antenna on the bustle flank (ref spikes x ±0.94,
-    // body-rel -0.93 tips 2.59 — ours tip ~2.56, 1-col) + 3-tube smoke
-    // discharger bank on the dome rear quarter (real 2x3 JGSDF fit)
-    const whipF = FITTINGS.antennaWhip({ mats: P.mats, h: 0.52, rake: s * 0.05, seed: 3 + s });
+    // §I fittings: full-height whip antenna on the bustle flank plus the
+    // 3-tube smoke-discharge bank on the dome rear quarter (real 2x3 JGSDF fit)
+    const whipF = FITTINGS.antennaWhip({ mats: P.mats, h: 0.98, rake: s * 0.05, seed: 3 + s });
     whipF.position.set(s * 0.94, 0.50, -1.43);
     P.turretG.add(whipF);
     const smoke = FITTINGS.smokeBank({ mats: P.mats, count: 3, splay: s * 1.12, seed: 9 });
@@ -3055,17 +3055,16 @@ function buildType74(P) {
   P.decal('turret', 'number', P.spec.visual.number || '74', 0.26, [0.90, 0.30, -0.35], Math.PI / 2, 0, 0.08);
   P.decal('turret', 'number', P.spec.visual.number || '74', 0.26, [-0.90, 0.30, -0.35], -Math.PI / 2, 0, -0.08);
   // L7A1 105 mm on the print's 1.57-1.60 bore line: rounded cast saddle
-  // (§B3.1 mantlet mass), bare rifled tube, fat fume extractor at the ref's
-  // own +3.43..+3.72 station, muzzle step + §B3.1 bore at +5.96 (overall
-  // 9.42-9.47 from the -3.44 sprocket-shoe extreme)
+  // (§B3.1 mantlet mass), bare rifled tube, fat fume extractor, and a
+  // measured muzzle station that closes the authoritative 9.08 m envelope.
   P.gunG.position.set(0, 0.18, 1.15);                                          // bore world 1.60, trunnion +1.65
   trunnionRoll(P, 0.22, 0.62, { ballR: 0.19, ballZ: 0.18 });
   P.addGunExtra(cylZ(0.16, 0.28, 12, 0.135), 0, 0, 0.30);                      // cast collar taper
   P.addGunExtraDark(cylZ(0.024, 0.09, 8), 0.25, 0.05, 0.20);                   // coax port RIGHT of the saddle
   P.add('turret', box(0.64, 0.18, 0.34), 0, 0.52, 1.30, -0.52, 0, 0);          // cast brow over the saddle
-  buildGun(P, { len: 4.31, r: 0.062, sleeve: false, evac: 0.445, evacR: 1.75, collar: false, baseR: 0.15 });
-  P.add('gun', cylZ(0.068, 0.09, 10), 0, 0, 4.25);                             // muzzle reference step
-  muzzleBore(P, 0.062, 4.295);                                                 // §B3.1 muzzle bore inside the step face (shadow-named)
+  buildGun(P, { len: 3.91, r: 0.062, sleeve: false, evac: 0.445, evacR: 1.75, collar: false, baseR: 0.15 });
+  P.add('gun', cylZ(0.068, 0.09, 10), 0, 0, 3.85);                             // muzzle reference step at the measured overall-length station
+  muzzleBore(P, 0.062, 3.895);                                                 // §B3.1 muzzle bore inside the step face (shadow-named)
   P.topY = 1.15;
 }
 
@@ -3709,7 +3708,7 @@ export const MISC_PROFILES = {
   ariete: { build: buildAriete },
   leclerc: { build: buildLeclerc },
   t80u: { build: buildT80UNative2026 },
-  type74: { build: buildType74Native2026 },
+  type74: { build: buildType74 },
   // FRANCE ROUND: the AMX-30s render procedural (the ahab GLBs carry a
   // baked-in hull/turret 180 — see the buildAMX30 header note)
   amx30: { build: buildAMX30B },
