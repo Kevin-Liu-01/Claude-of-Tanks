@@ -224,6 +224,12 @@ status below Battle. A ready player cannot change vehicle, equipment, or team
 until they unready. Invite links contain the room code and join through the
 normal loading gate.
 
+A copied invitation carries both the room code and the host callsign, producing
+a human entry such as “Join Kevin’s Game” from the first loading frame. The
+callsign in the URL is presentation metadata only: after joining, signaling
+returns the authoritative host identity and the lobby replaces the label. Old
+room-code-only links remain valid.
+
 A non-host can reload while the host's room is waiting and reattach with the
 stable browser player identity. Reloading the browser host ends browser-owned
 authority; host migration is not claimed.
@@ -300,4 +306,3 @@ The repository includes executable checks for the claims above:
 | Development performance trace | npm run perf:dev |
 
 The detailed verification map is in docs/DEVELOPMENT.md.
-

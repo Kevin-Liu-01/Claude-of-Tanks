@@ -192,6 +192,15 @@
     .cot-boot-word .l2 i { display: block; height: 1px; width: clamp(28px, 8vw, 92px);
       background: linear-gradient(90deg, rgba(240,160,48,0), #f0a030); }
     .cot-boot-word .l2 i + span + i { background: linear-gradient(270deg, rgba(240,160,48,0), #f0a030); }
+    .cot-boot-invite {
+      display: none; width: fit-content; max-width: min(560px, 84vw); margin: 25px auto -20px;
+      padding: 9px 15px; color: #fff0d2; border: 1px solid rgba(240,160,48,.48);
+      background: rgba(9,13,18,.72); box-shadow: 0 10px 34px rgba(0,0,0,.28);
+      font-size: 12px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase;
+      animation: cot-boot-rise .48s ease-out .28s backwards;
+    }
+    .cot-boot-invite.on { display: block; }
+    #cot-boot.has-invite .cot-boot-load { margin-top: 36px; }
     @keyframes cot-boot-pop { from { opacity: 0; transform: scale(.85) translateY(8px); } }
     @keyframes cot-boot-rise { from { opacity: 0; transform: translateY(12px); } }
     @keyframes cot-boot-fade { from { opacity: 0; } }
@@ -576,6 +585,7 @@
         <span class="l1">CLAUDE</span>
         <span class="l2"><i></i><span>OF TANKS</span><i></i></span>
       </div>
+      <div class="cot-boot-invite" id="cot-boot-invite" aria-live="polite"></div>
       <div class="cot-boot-load">
         <div class="cot-boot-meta">
           <div class="cot-boot-stage" id="cot-boot-stage">Starting engine</div>
@@ -627,6 +637,22 @@
 
   <script>
     (() => {
+      document.documentElement.dataset.baseTitle = document.title;
+      const params = new URLSearchParams(location.search);
+      const roomCode = String(params.get('room') || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+      const hostName = String(params.get('host') || '').trim().replace(/\s+/g, ' ').slice(0, 24);
+      const invite = document.getElementById('cot-boot-invite');
+      const boot = document.getElementById('cot-boot');
+      if (roomCode.length === 6 && invite && boot) {
+        const invitationTitle = hostName
+          ? 'Join ' + hostName + '’s Game'
+          : 'Join Private Game · ' + roomCode;
+        invite.textContent = invitationTitle;
+        invite.classList.add('on');
+        boot.classList.add('has-invite');
+        document.title = invitationTitle + ' — Claude of Tanks';
+      }
+
       const dialog = document.getElementById('cot-credits');
       const open = document.getElementById('cot-credits-open');
       const close = document.getElementById('cot-credits-close');

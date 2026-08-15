@@ -321,6 +321,10 @@ The lifecycle is:
 ROOM_COMMAND carries intent. ROOM_STATE carries the canonical round, last
 result, roster, team, selection, and readiness.
 
+Shareable URLs carry the room code plus an optional host callsign used for
+first-paint invitation text. Signaling returns canonical host identity during
+join, so URL text never grants authority or overrides room state.
+
 The room controller outlives the match runtime. At result:
 
 - publish the final durable state;
@@ -399,4 +403,3 @@ Changes should preserve these invariants:
 - no new round inherits the previous result.
 
 Use docs/DEVELOPMENT.md to select the verification commands for a change.
-

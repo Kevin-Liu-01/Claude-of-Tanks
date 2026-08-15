@@ -137,6 +137,7 @@ const created = await hostInbox.next((message) => message.requestId === 'create-
 assert.equal(created.type, 'room_created');
 assert.equal(created.payload.roomCode.length, 6);
 assert.equal(created.payload.hostId, created.payload.peerId);
+assert.equal(created.payload.hostName, 'Host');
 assert.equal(created.payload.peerId, 'host-player',
   'signaling preserves stable browser identity for room recovery');
 
@@ -153,6 +154,8 @@ const peerJoined = await hostInbox.next((message) => message.type === 'peer_join
 assert.equal(joined.type, 'room_joined');
 assert.equal(joined.payload.peerId, 'guest-player');
 assert.equal(joined.payload.hostId, created.payload.hostId);
+assert.equal(joined.payload.hostName, 'Host',
+  'join responses identify the room host for invitation presentation');
 assert.equal(joined.payload.peers.length, 1);
 assert.equal(peerJoined.payload.peerId, joined.payload.peerId);
 

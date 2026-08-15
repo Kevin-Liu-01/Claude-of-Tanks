@@ -1,3 +1,10 @@
+/**
+ * Redis-backed signaling membership for horizontally scaled deployments.
+ *
+ * Room commands use stateless Redis operations while publish/subscribe routes
+ * WebRTC rendezvous to the function instance holding each connection. Host
+ * identity is returned as room metadata; gameplay still travels peer to peer.
+ */
 import { randomUUID } from 'node:crypto';
 import { Redis as RestRedis } from '@upstash/redis';
 import IORedis from 'ioredis';
@@ -313,7 +320,15 @@ export class DistributedSignalingRoomStore {
       );
       if (created !== 'OK') continue;
       this.#remember(connection, roomCode, peerId);
-      return { roomCode, peerId, hostId: peerId, mode: room.mode, maxPlayers, peers: [] };
+      return {
+        roomCode,
+        peerId,
+        hostId: peerId,
+        hostName: memberPlayer.name,
+        mode: room.mode,
+        maxPlayers,
+        peers: [],
+      };
     }
     throw codedError('room_code_exhausted', 'room code space is busy');
   }
@@ -335,12 +350,14 @@ export class DistributedSignalingRoomStore {
     if (result.error) throw codedError(result.error, 'could not join room');
     const room = result.room;
     const existing = room.peers.filter((peer) => peer.peerId !== peerId);
+    const hostName = room.peers.find((peer) => peer.peerId === room.hostId)?.player?.name || '';
     this.#remember(connection, code, peerId);
     return {
       result: {
         roomCode: code,
         peerId,
         hostId: room.hostId,
+        hostName,
         mode: room.mode,
         maxPlayers: room.maxPlayers,
         peers: existing.map((peer) => ({

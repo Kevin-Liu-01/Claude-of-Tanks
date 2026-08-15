@@ -105,7 +105,7 @@
       <p class="micro"><em>07</em> Persistent rooms</p><h2>A result ends the round, not the room.</h2>
       <div class="architecture"><div><b>Waiting</b><span>Team, vehicle, equipment, map, and ready state editable</span><code>room state</code></div><div><b>Starting</b><span>Roster locks and all peers load the selected world</span><code>round + 1</code></div><div><b>Playing</b><span>Existing WebRTC channels carry the match</span><code>authority</code></div><div><b>Result</b><span>Report shows live play-again readiness; room returns to waiting</span><code>same peers</code></div></div>
       <p><code>ROOM_COMMAND</code> and <code>ROOM_STATE</code> travel on reliable control and carry room round, last result, roster, selection, team, and ready state. After the verdict, readiness resets and only the simulation runtime is replaced. Closing the report returns to the garage while staying in-room; the room strip remains under Battle. Ready locks vehicle/equipment/team edits until unready. Explicit Leave is the disconnect action.</p>
-      <p>Invite links carry the validated six-character room code and auto-join after the normal boot gate. LAN chooses the direct Wi-Fi WebRTC path automatically; signaling exchanges membership and ICE metadata but never carries gameplay.</p>
+      <p>Invite links carry the validated six-character room code and a host callsign, so the loading screen can say “Join Name’s Game” before auto-joining after the normal boot gate. The name in the URL is only a display hint; signaling returns the canonical host identity. LAN chooses the direct Wi-Fi WebRTC path automatically; signaling exchanges membership and ICE metadata but never carries gameplay.</p>
     </section>
 
     <section class="doc-section" id="performance">

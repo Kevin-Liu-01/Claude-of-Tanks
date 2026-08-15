@@ -159,8 +159,12 @@ play-again intent. Closing it returns to the garage without leaving; a compact
 room strip stays under Battle. Readiness locks vehicle/equipment/team changes
 until the player unreadies. Explicit Leave disconnects from the room.
 
-Invite URLs carry the validated six-character room code. On the same deployed
-origin, opening the link loads the game and joins after the normal boot gate.
+Invite URLs carry the validated six-character room code and a normalized host
+callsign for human presentation. From the first loading frame the recipient
+sees “Join Name’s Game”; after signaling joins, the service-provided host
+identity replaces the URL hint. Room-code-only legacy links remain valid. On
+the same deployed origin, opening the link loads the game and joins after the
+normal boot gate.
 Joined browsers keep that canonical room URL and a stable browser identity.
 Reloading while the host's persistent room is waiting creates a fresh WebRTC
 channel, reattaches the same player identity, and restores the room state;

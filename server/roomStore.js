@@ -1,3 +1,10 @@
+/**
+ * In-memory signaling membership for one Node process.
+ *
+ * It authenticates room membership by WebSocket connection, returns host
+ * identity for invitation presentation, and relays only WebRTC rendezvous
+ * messages. Gameplay state never enters this store.
+ */
 import { createRoomCode } from '../src/net/protocol.js';
 
 const DEFAULT_ROOM_TTL_MS = 6 * 60 * 60 * 1000;
@@ -79,6 +86,7 @@ export class SignalingRoomStore {
       roomCode,
       peerId,
       hostId: peerId,
+      hostName: memberPlayer.name,
       mode: room.mode,
       maxPlayers: room.maxPlayers,
       peers: [],
@@ -107,11 +115,13 @@ export class SignalingRoomStore {
     room.peers.set(peerId, member);
     room.touchedAt = this.now();
     this.membership.set(connection, { roomCode: room.roomCode, peerId });
+    const hostName = room.peers.get(room.hostId)?.player?.name || '';
     return {
       result: {
         roomCode: room.roomCode,
         peerId,
         hostId: room.hostId,
+        hostName,
         mode: room.mode,
         maxPlayers: room.maxPlayers,
         peers,

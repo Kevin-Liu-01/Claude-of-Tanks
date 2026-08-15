@@ -129,7 +129,10 @@ are deterministically suffixed in both private lobbies and ranked rosters.
 Private and LAN hosts can copy a same-deployment invite URL. Opening its
 validated `room` query automatically enters the corresponding lobby and joins
 the room after the normal loading gate; manual six-character codes remain a
-fallback.
+fallback. New links also carry a normalized `host` callsign so the loading
+screen and lobby can say “Join Name’s Game.” That URL field is never trusted as
+identity: both in-memory and distributed signaling return the canonical host
+name in their create/join responses, and the client replaces the hint.
 
 Rooms persist across rounds. Protocol-v3 `ROOM_COMMAND` and `ROOM_STATE`
 messages carry round, last result, full human roster, selections, and readiness

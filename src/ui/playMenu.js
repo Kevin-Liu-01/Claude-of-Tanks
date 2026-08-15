@@ -1,10 +1,17 @@
+/**
+ * Battle-mode picker and private/LAN/ranked lobby presentation.
+ *
+ * This module owns the room-entry interface and translates user actions into
+ * signaling/lobby commands. Canonical lobby and match state remain in src/net;
+ * the menu renders that state and hands established sessions to main.js.
+ */
 import { PrivateRoomClientSession, PrivateRoomHostSession } from '../net/privateRoomSession.js';
 import { RoomSignalingClient } from '../net/signalingClient.js';
 import { resolveSignalUrl } from '../net/signalEndpoint.js';
 import { serializeLobby } from '../net/lobby.js';
 import { automaticPlayerName, normalizePlayerName } from '../net/playerNames.js';
 import { normalizeRoomCode } from '../net/protocol.js';
-import { createRoomInviteUrl } from '../net/roomInvite.js';
+import { createRoomInviteUrl, roomInviteTitle } from '../net/roomInvite.js';
 import { ensureFonts, FONT_STACK, FONT_COND } from './fonts.js';
 import { iconUrl } from './icons.js';
 import { uiIconSVG } from './uiIcons.js';
@@ -34,6 +41,8 @@ const CSS = `
   grid-template-columns:repeat(4,1fr);gap:10px}.cot-play .mode{position:relative;min-height:156px;text-align:left;padding:18px;
   color:#eef4f8;background:rgba(20,27,34,.86);border:1px solid rgba(161,180,195,.28);cursor:pointer}
 .cot-play .mode:hover,.cot-play .mode.on{border-color:#e69a36;background:rgba(230,154,54,.1)}
+.cot-play.invite-entry .panel{border-color:rgba(230,154,54,.62);box-shadow:0 30px 100px rgba(0,0,0,.72),0 0 48px rgba(230,154,54,.08)}
+.cot-play.invite-entry h2{color:#fff4df}.cot-play.invite-entry .lead{color:#c5d0d8}
 .cot-play.lobby-active .modes{display:none}.cot-play.lobby-active .lead{margin-bottom:8px}.cot-play.lobby-active .room{margin-top:10px}
 .cot-play .mode b{display:block;font-size:17px;margin:8px 0}.cot-play .mode-desc{display:block;color:#9eafbc;
   font-size:11px;line-height:1.55}.cot-play .mode i{display:block;padding-right:44px;font:800 9px ${FONT_COND};
@@ -146,10 +155,10 @@ function remember(key, value) {
   try { localStorage.setItem(key, value); } catch (_) { /* session-only */ }
 }
 
-function rememberClientRoomUrl(roomCode, mode) {
+function rememberClientRoomUrl(roomCode, mode, hostName = null) {
   if (typeof location === 'undefined' || typeof history === 'undefined') return;
   try {
-    const invite = createRoomInviteUrl({ roomCode, mode, baseUrl: location.href });
+    const invite = createRoomInviteUrl({ roomCode, mode, hostName, baseUrl: location.href });
     history.replaceState(history.state, '', invite);
   } catch (_) { /* URL persistence is a convenience, never a room dependency */ }
 }
@@ -161,6 +170,7 @@ function clearClientRoomUrl() {
     if (!url.searchParams.has('room')) return;
     url.searchParams.delete('room');
     url.searchParams.delete('mode');
+    url.searchParams.delete('host');
     history.replaceState(history.state, '', url.href);
   } catch (_) { /* cosmetic */ }
 }
@@ -369,6 +379,9 @@ export function createPlayMenu({
   const room = root.querySelector('.room');
   const ranked = root.querySelector('.ranked');
   const lobbyEl = root.querySelector('.lobby');
+  const eyebrow = root.querySelector('.eyebrow');
+  const menuTitle = root.querySelector('h2');
+  const menuLead = root.querySelector('.lead');
   const status = root.querySelector('.status');
   const nameInput = root.querySelector('[data-field="name"]');
   const signalInput = root.querySelector('[data-field="signal"]');
@@ -393,6 +406,10 @@ export function createPlayMenu({
   const rankedCancelBtn = root.querySelector('[data-ranked="cancel"]');
   const rankedProfile = root.querySelector('.rank-profile');
   const ladder = root.querySelector('.ladder');
+  const defaultDocumentTitle = document.documentElement.dataset.baseTitle || document.title;
+  const defaultEyebrow = eyebrow.textContent;
+  const defaultMenuTitle = menuTitle.textContent;
+  const defaultMenuLead = menuLead.textContent;
   for (const map of maps) {
     const option = document.createElement('option');
     option.value = map.id;
@@ -422,6 +439,41 @@ export function createPlayMenu({
   let rankedClient = null;
   let rankedTicket = null;
   let rankedAbort = null;
+  let invitedHostName = null;
+
+  function hostNameFromRoom(value) {
+    const explicit = normalizePlayerName(value?.hostName);
+    if (explicit) return explicit;
+    const hostId = value?.hostId;
+    const players = Array.isArray(value?.players) ? value.players : value?.peers;
+    const host = Array.isArray(players)
+      ? players.find((player) =>
+        player?.isHost || player?.id === hostId || player?.peerId === hostId)
+      : null;
+    return normalizePlayerName(host?.name || host?.player?.name);
+  }
+
+  function presentInvitation(hostName, roomCode, connected = false) {
+    const resolvedHost = normalizePlayerName(hostName);
+    if (resolvedHost) invitedHostName = resolvedHost;
+    const code = normalizeRoomCode(roomCode);
+    root.classList.add('invite-entry');
+    eyebrow.textContent = mode === 'lan' ? 'LAN invitation' : 'Private invitation';
+    menuTitle.textContent = roomInviteTitle(invitedHostName);
+    menuLead.textContent = connected
+      ? 'You are in room ' + code + '. Choose your vehicle, team, and ready state.'
+      : 'Room ' + code + ' is ready. Connecting you directly to the host.';
+    document.title = menuTitle.textContent + ' — Claude of Tanks';
+  }
+
+  function resetInvitation() {
+    invitedHostName = null;
+    root.classList.remove('invite-entry');
+    eyebrow.textContent = defaultEyebrow;
+    menuTitle.textContent = defaultMenuTitle;
+    menuLead.textContent = defaultMenuLead;
+    if (document.title.startsWith('Join ')) document.title = defaultDocumentTitle;
+  }
 
   function setStatus(message, error = false) {
     status.textContent = message || '';
@@ -458,6 +510,7 @@ export function createPlayMenu({
     state = null;
     role = null;
     clearClientRoomUrl();
+    resetInvitation();
     room.classList.remove('connected');
     lobbyEl.classList.remove('show');
     root.classList.remove('lobby-active');
@@ -570,11 +623,15 @@ export function createPlayMenu({
 
   function renderLobby(next) {
     state = next;
+    const roomHostName = hostNameFromRoom(next);
     // A joined browser carries its room in the canonical URL. Reloading after
     // a finished round therefore re-enters the still-live host room instead
     // of silently forgetting the session. Hosts keep the clean URL because a
     // browser-hosted authority cannot survive its own document being killed.
-    if (role === 'client' && next.roomCode) rememberClientRoomUrl(next.roomCode, next.mode || mode);
+    if (role === 'client' && next.roomCode) {
+      rememberClientRoomUrl(next.roomCode, next.mode || mode, roomHostName);
+      presentInvitation(roomHostName, next.roomCode, true);
+    }
     // A client learns that the host started through this state callback. Cover
     // immediately; rebuilding the now-obsolete lobby first creates a guest-
     // only window in which a constrained renderer can present the garage.
@@ -708,6 +765,7 @@ export function createPlayMenu({
         renderLobby(serializeLobby(session.lobby));
       } else {
         const roomInfo = await signaling.joinRoom({ roomCode: codeInput.value, player });
+        presentInvitation(hostNameFromRoom(roomInfo), roomInfo.roomCode, false);
         session = new PrivateRoomClientSession({
           signaling,
           roomInfo,
@@ -795,6 +853,7 @@ export function createPlayMenu({
     const inviteUrl = createRoomInviteUrl({
       roomCode: state.roomCode,
       mode,
+      hostName: hostNameFromRoom(state),
       baseUrl: location.href,
     });
     try {
@@ -858,8 +917,11 @@ export function createPlayMenu({
     const inviteCode = normalizeRoomCode(invite && invite.roomCode);
     if (inviteCode.length !== 6 || !invite?.autoJoin || session || connecting) return;
     codeInput.value = inviteCode;
+    presentInvitation(invite.hostName, inviteCode, false);
     setConnecting(false);
-    setStatus('Joining invited room…');
+    setStatus(invitedHostName
+      ? 'Joining ' + invitedHostName + '’s game…'
+      : 'Joining invited game…');
     connectRoom('join')
       .then(() => setStatus('Connected. Choose a team and ready up.'))
       .catch((error) => setStatus(error.message, true));
