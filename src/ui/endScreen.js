@@ -28,7 +28,8 @@
  */
 
 import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.js';
-import { maskIcon } from './icons.js';
+import { iconUrl, maskIcon } from './icons.js';
+import { getSpec } from '../vehicles/specs.js';
 import { tierNumeral } from './battleLoad.js';
 
 const COL = {
@@ -56,7 +57,10 @@ const ES_CSS = `
   box-shadow:0 0 22px rgba(240,160,48,.5);}
 .cot-es.result-victory::before{background:linear-gradient(90deg,transparent 8%,${COL.green} 50%,transparent 92%);}
 .cot-es.result-defeat::before{background:linear-gradient(90deg,transparent 8%,${COL.red} 50%,transparent 92%);}
-.cot-es .es-hero{width:1040px;max-width:94vw;flex:0 0 auto;}
+.cot-es .es-hero{position:relative;width:1040px;max-width:94vw;flex:0 0 auto;overflow:hidden;}
+.cot-es .es-vehicle-watermark{position:absolute;right:2%;top:0;width:min(28vw,330px);height:112px;
+  object-fit:contain;object-position:center;opacity:.14;filter:grayscale(.25) contrast(1.2) drop-shadow(0 12px 20px #000);
+  pointer-events:none;mix-blend-mode:screen}
 /* staggered entrance: hero first, tallies cascade, buttons last (--i steps) */
 @keyframes cotEsIn{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:none;}}
 @keyframes cotEsHero{from{opacity:0;transform:translateY(-10px) scale(.96);letter-spacing:.5em;}
@@ -180,6 +184,22 @@ body.cot-es-armed .cot-end{display:none !important;}
 .cot-es .es-kr .dm{flex:0 0 52px;text-align:right;font-family:${FONT_COND};font-weight:800;
   font-size:11px;color:${COL.gold};letter-spacing:-.01em;}
 .cot-es .es-none{padding:8px 7px;font-size:10.5px;color:${COL.dim};letter-spacing:.04em;}
+/* persistent private/LAN room: results are one round inside a social session */
+.cot-es .es-rematch{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;width:1040px;
+  max-width:94vw;margin-top:12px;padding:13px 14px;background:linear-gradient(100deg,rgba(18,27,35,.97),rgba(28,20,12,.96));
+  border:1px solid rgba(240,160,48,.45);border-left:3px solid ${COL.amber};pointer-events:auto}
+.cot-es .es-room-head{display:flex;align-items:baseline;gap:10px;font:800 10px ${FONT_COND};letter-spacing:.18em;
+  text-transform:uppercase;color:${COL.amberHi}}.cot-es .es-room-head b{font-size:15px;letter-spacing:.14em;color:#fff0d4}
+.cot-es .es-room-count{margin-left:auto;color:#b7c4ce}.cot-es .es-room-players{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
+.cot-es .es-room-player{display:grid;grid-template-columns:38px minmax(70px,1fr) auto;align-items:center;gap:7px;
+  min-width:180px;height:42px;padding:4px 8px;background:rgba(4,8,12,.62);border:1px solid rgba(151,171,186,.2)}
+.cot-es .es-room-player .ri{width:38px;height:20px}.cot-es .es-room-player .rn{min-width:0;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap;font-size:10px;font-weight:750}.cot-es .es-room-player .rs{font:800 8px ${FONT_COND};
+  letter-spacing:.1em;color:#e4aa58}.cot-es .es-room-player.ready .rs{color:${COL.green}}
+.cot-es .es-room-actions{display:flex;align-items:center;gap:8px}.cot-es .es-room-actions .cot-es-btn{min-width:190px;padding:10px 20px}
+.cot-es .cot-es-btn.ready-now{color:#b8f2c2;border-color:rgba(127,220,138,.6);background:rgba(31,88,45,.68)}
+@keyframes cotEsReadyPulse{50%{box-shadow:0 0 0 5px rgba(240,160,48,.16),0 0 26px rgba(240,160,48,.42)}}
+.cot-es .cot-es-btn.can-start{animation:cotEsReadyPulse 1.35s ease-in-out infinite}
 /* --- actions -------------------------------------------------------------- */
 .cot-es .es-actions{display:flex;gap:14px;margin-top:1.8vh;padding:4px 10px;
   flex:0 0 auto;pointer-events:auto;z-index:2;}
@@ -238,6 +258,8 @@ body.cot-es-armed .cot-end{display:none !important;}
     border-top:1px solid rgba(166,184,199,.24);}
   .cot-es .cot-es-btn{min-width:0;padding:12px 15px;font-size:11px;}
   .cot-es .es-ph{letter-spacing:.1em;white-space:nowrap;gap:8px;overflow:hidden;}
+  .cot-es .es-rematch{grid-template-columns:1fr}.cot-es .es-room-actions{width:100%}
+  .cot-es .es-room-actions .cot-es-btn{flex:1;min-width:0}.cot-es .es-room-player{min-width:100%;}
 }
 `;
 
@@ -277,6 +299,8 @@ export function createEndScreen(bus, host) {
 
   let visible = false;
   let garageBtn = null;   // adopted main.js endBtn (survives re-renders by ref)
+  let roomContext = null;
+  let rematchPanel = null;
   const counters = [];    // live count-up rAF handles
 
   // arm the legacy-overlay suppressor the moment the battle is decided —
@@ -287,6 +311,10 @@ export function createEndScreen(bus, host) {
   // __DEBUG.startBattle flow, which skips the garage's ui:battleStart (the
   // garage path also lands here via hud.setMode -> shotInfo.hideStats)
   bus.on('phase:change', (p) => { if (p && p.phase === 'battle') api.hide(); });
+  bus.on('network:roomState', (context) => {
+    roomContext = context?.state ? context : null;
+    if (rematchPanel) renderRematchPanel(rematchPanel);
+  });
 
   /** Animated count-up on an element (finalizes exactly on target). */
   function countUp(elm, target, { durMs = 1050, delayMs = 0, fmt = fmtN, prefix = '' } = {}) {
@@ -350,6 +378,60 @@ export function createEndScreen(bus, host) {
     return t;
   }
 
+  function renderRematchPanel(panel) {
+    panel.textContent = '';
+    const state = roomContext?.state;
+    if (!state) {
+      panel.remove();
+      rematchPanel = null;
+      return;
+    }
+    const playerId = roomContext.playerId;
+    const me = state.players.find((player) => player.id === playerId);
+    const active = state.players.filter((player) => player.team !== 'spectator');
+    const readyCount = active.filter((player) => player.ready).length;
+    const everyoneReady = active.length > 0 && readyCount === active.length;
+    const info = el('div', 'es-room-info', panel);
+    const head = el('div', 'es-room-head', info);
+    const mode = state.mode === 'lan' ? 'LAN room' : 'Private room';
+    head.innerHTML = `<span>${mode}</span><b>${state.roomCode || ''}</b>` +
+      `<span class="es-room-count">${readyCount}/${active.length} ready for round ${(Number(state.round) || 0) + 1}</span>`;
+    const players = el('div', 'es-room-players', info);
+    for (const player of state.players) {
+      const row = el('div', `es-room-player${player.ready ? ' ready' : ''}`, players);
+      const icon = el('span', 'ri', row);
+      maskIcon(icon, player.specId, 'side_silhouette',
+        player.ready ? 'rgba(127,220,138,.88)' : 'rgba(190,204,215,.72)');
+      const name = el('span', 'rn', row);
+      let vehicle = player.specId || 'No vehicle';
+      try { vehicle = getSpec(player.specId)?.name || vehicle; } catch (_) { /* raw id */ }
+      name.textContent = `${player.id === playerId ? 'YOU · ' : ''}${player.name || 'Commander'} · ${vehicle}`;
+      const status = el('span', 'rs', row);
+      status.textContent = player.team === 'spectator' ? 'WATCHING' : player.ready ? 'READY' : 'NOT READY';
+    }
+    const controls = el('div', 'es-room-actions', panel);
+    if (me && me.team !== 'spectator') {
+      const ready = el('button', `cot-es-btn ${me.ready ? 'ready-now' : 'prime'}`, controls);
+      ready.type = 'button';
+      ready.textContent = me.ready ? 'CANCEL READY' : 'READY FOR NEXT BATTLE';
+      ready.disabled = state.phase !== 'waiting';
+      ready.addEventListener('click', () => {
+        bus.emit('ui:click', {});
+        bus.emit('ui:roomReady', { ready: !me.ready });
+      });
+    }
+    if (roomContext.role === 'host') {
+      const start = el('button', `cot-es-btn ghost${everyoneReady ? ' can-start' : ''}`, controls);
+      start.type = 'button';
+      start.textContent = everyoneReady ? 'START NEXT BATTLE' : 'WAITING FOR TEAM';
+      start.disabled = state.phase !== 'waiting' || !everyoneReady;
+      start.addEventListener('click', () => {
+        bus.emit('ui:click', {});
+        bus.emit('ui:roomStart', {});
+      });
+    }
+  }
+
   const api = {
     root: host,
     get visible() { return visible; },
@@ -374,9 +456,14 @@ export function createEndScreen(bus, host) {
 
       // --- hero -----------------------------------------------------------
       const hero = el('div', 'es-hero', host);
+      if (sum.playerSpecId) {
+        const vehicle = el('img', 'es-vehicle-watermark', hero);
+        vehicle.src = iconUrl(sum.playerSpecId, 'angle');
+        vehicle.alt = '';
+      }
       const kick = el('div', 'es-kick es-in', hero);
       kick.style.setProperty('--i', nextI());
-      kick.textContent = 'Battle over';
+      kick.textContent = 'After action report';
       const ban = el('div', `es-ban ${res === 'victory' ? 'v' : res === 'defeat' ? 'd' : 'n'}`, hero);
       ban.textContent = res === 'victory' ? 'VICTORY'
         : res === 'defeat' ? 'DEFEAT'
@@ -508,24 +595,25 @@ export function createEndScreen(bus, host) {
       host.dataset.rosterAllies = String(sum.allies.length);
       host.dataset.rosterEnemies = String(sum.enemies.length);
 
+      if (roomContext?.state) {
+        rematchPanel = el('section', 'es-rematch es-in', host);
+        rematchPanel.style.setProperty('--i', String(seq + 1));
+        renderRematchPanel(rematchPanel);
+      } else rematchPanel = null;
+
       // --- actions (buttons last in the stagger) -----------------------------
       const actions = el('div', 'es-actions es-in', host);
       actions.style.setProperty('--i', String(seq + 3));
-      const again = el('button', 'cot-es-btn prime', actions);
-      again.type = 'button';
-      again.textContent = 'BATTLE AGAIN';
-      again.addEventListener('click', () => {
-        // battle_again fix: the old flow clicked the garage-return button and
-        // the garage BATTLE button 60 ms apart — but the garage return runs a
-        // branded transition whose enterGarage() callback fires AFTER the
-        // fade-in (~300 ms), so on a warm map the freshly started battle got
-        // clobbered back to the garage right as its loading screen finished.
-        // main.js now owns the sequencing (garage re-entry transition first,
-        // THEN the garage's own battle path with the current selection).
-        bus.emit('ui:click', {});
-        bus.emit('ui:battleAgain', {});
-        api.hide();
-      });
+      if (!roomContext?.state) {
+        const again = el('button', 'cot-es-btn prime', actions);
+        again.type = 'button';
+        again.textContent = 'BATTLE AGAIN';
+        again.addEventListener('click', () => {
+          bus.emit('ui:click', {});
+          bus.emit('ui:battleAgain', {});
+          api.hide();
+        });
+      }
       adoptEndOverlay(actions);
 
       host.classList.add('show');
@@ -540,6 +628,7 @@ export function createEndScreen(bus, host) {
       document.body.classList.remove('cot-es-armed'); // legacy overlay usable again
       if (!visible && !host.classList.contains('show')) return;
       visible = false;
+      rematchPanel = null;
       stopCounters();
       host.classList.remove('show');
       host.setAttribute('aria-hidden', 'true');

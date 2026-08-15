@@ -65,6 +65,7 @@ export class AuthoritativeMatchRuntime {
     snapshotHz = SNAPSHOT_HZ,
     maxCatchUpTicks = 4,
     maxInputLeadTicks = 120,
+    roomController = null,
     keyframeIntervalTicks = tickHz * 2,
     snapshotHistoryCapacity = Math.max(64,
       Math.ceil(keyframeIntervalTicks * snapshotHz / tickHz) * 2),
@@ -80,6 +81,11 @@ export class AuthoritativeMatchRuntime {
       throw new TypeError('snapshotHistoryCapacity must be at least two');
     }
     this.simulation = validateSimulation(simulation);
+    if (roomController && (typeof roomController.state !== 'function' ||
+        typeof roomController.command !== 'function')) {
+      throw new TypeError('roomController must implement state() and command()');
+    }
+    this.roomController = roomController;
     this.tickHz = tickHz;
     this.snapshotHz = snapshotHz;
     this.tickMs = 1000 / tickHz;
@@ -94,6 +100,9 @@ export class AuthoritativeMatchRuntime {
     this.peers = new Map();
     this.closed = false;
     this.matchStarted = false;
+    this.roomRound = Number(roomController?.state()?.round) || 0;
+    this.roundPending = false;
+    this.roundFinished = false;
     this.stats = {
       steps: 0,
       snapshots: 0,
@@ -128,6 +137,7 @@ export class AuthoritativeMatchRuntime {
       sendSeq: 0,
       welcomed: false,
       ready: false,
+      pendingRoundReady: false,
       fireQueued: false,
       actionBitsQueued: 0,
       lastSnapshotAckTick: null,
@@ -164,6 +174,10 @@ export class AuthoritativeMatchRuntime {
     if (peer.unsubscribeClose) peer.unsubscribeClose();
     if (typeof this.simulation.onPeerLeave === 'function') {
       this.simulation.onPeerLeave({ peerId: id, reason });
+    }
+    if (!this.closed && this.roomController?.remove) {
+      this.roomController.remove(id, reason);
+      this.#broadcastRoomState();
     }
     return true;
   }
@@ -217,6 +231,15 @@ export class AuthoritativeMatchRuntime {
             serverTick: this.tick,
             serverTimeMs: this.timeMs,
           });
+          if (this.roomController) {
+            this.#send(peer, MESSAGE_TYPES.ROOM_STATE, this.roomController.state());
+          }
+          break;
+        case MESSAGE_TYPES.ROOM_COMMAND:
+          if (!peer.welcomed) {
+            throw new ProtocolError('hello_required', 'hello must precede room commands');
+          }
+          this.#receiveRoomCommand(peer, message.payload);
           break;
         case MESSAGE_TYPES.INPUT:
           if (!peer.welcomed) {
@@ -228,7 +251,9 @@ export class AuthoritativeMatchRuntime {
           if (!peer.welcomed) {
             throw new ProtocolError('hello_required', 'hello must precede match readiness');
           }
-          if (!peer.ready) {
+          if (this.roundPending) {
+            peer.pendingRoundReady = true;
+          } else if (!peer.ready) {
             peer.ready = true;
             if (typeof this.simulation.onPeerReady === 'function') {
               this.simulation.onPeerReady({ peerId: peer.id, metadata: peer.metadata });
@@ -256,6 +281,79 @@ export class AuthoritativeMatchRuntime {
       this.stats.invalidMessages++;
       this.#send(peer, MESSAGE_TYPES.ERROR, safeErrorPayload(error));
     }
+  }
+
+  #receiveRoomCommand(peer, command) {
+    if (!this.roomController) {
+      throw new ProtocolError('room_unavailable', 'this match has no persistent room');
+    }
+    const beforeRound = Number(this.roomController.state()?.round) || 0;
+    const state = this.roomController.command(peer.id, command);
+    const next = state || this.roomController.state();
+    const nextRound = Number(next?.round) || 0;
+    if (next?.phase === 'starting' && nextRound > beforeRound) {
+      this.roomRound = nextRound;
+      this.roundPending = true;
+      this.roundFinished = false;
+      this.matchStarted = false;
+      this.accumulatorMs = 0;
+      for (const entry of this.peers.values()) {
+        entry.pendingRoundReady = false;
+        this.#resetPeerForRound(entry);
+      }
+    }
+    this.#broadcastRoomState(next);
+  }
+
+  #resetPeerForRound(peer) {
+    peer.ready = false;
+    peer.input = null;
+    peer.lastInputSeq = null;
+    peer.fireQueued = false;
+    peer.actionBitsQueued = 0;
+    peer.lastSnapshotAckTick = null;
+    peer.lastKeyframeTick = -Infinity;
+    peer.snapshotHistory.clear();
+    if (this.roomController?.metadataFor) {
+      peer.metadata = { ...(peer.metadata || {}), ...this.roomController.metadataFor(peer.id) };
+    }
+  }
+
+  #broadcastRoomState(state = null) {
+    if (!this.roomController) return null;
+    const next = state || this.roomController.state();
+    for (const peer of this.peers.values()) {
+      if (peer.welcomed) this.#send(peer, MESSAGE_TYPES.ROOM_STATE, next);
+    }
+    return next;
+  }
+
+  /** Install the next authority simulation after the host loads its battlefield. */
+  replaceSimulation(simulation, { round = this.roomRound } = {}) {
+    if (this.closed) throw new Error('match runtime is closed');
+    if (!Number.isSafeInteger(round) || round < 1) throw new TypeError('round must be positive');
+    const roomState = this.roomController?.state?.();
+    if (roomState && (roomState.phase !== 'starting' || Number(roomState.round) !== round)) {
+      throw new ProtocolError('round_mismatch', 'room is not starting the requested round');
+    }
+    this.simulation = validateSimulation(simulation);
+    this.roomRound = round;
+    this.roundPending = false;
+    this.roundFinished = false;
+    this.matchStarted = false;
+    this.accumulatorMs = 0;
+    for (const peer of this.peers.values()) {
+      const readyEarly = peer.pendingRoundReady;
+      this.#resetPeerForRound(peer);
+      peer.pendingRoundReady = false;
+      if (readyEarly) {
+        peer.ready = true;
+        if (typeof this.simulation.onPeerReady === 'function') {
+          this.simulation.onPeerReady({ peerId: peer.id, metadata: peer.metadata });
+        }
+      }
+    }
+    return this.simulation;
   }
 
   #receiveInput(peer, payload) {
@@ -311,9 +409,15 @@ export class AuthoritativeMatchRuntime {
     while (this.accumulatorMs + 1e-9 >= this.tickMs && steps < this.maxCatchUpTicks) {
       this.tick++;
       this.timeMs = this.tick * this.tickMs;
+      if (this.roundPending) {
+        this.accumulatorMs -= this.tickMs;
+        this.stats.steps++;
+        steps++;
+        continue;
+      }
       if (!this.matchStarted) {
         const requiredIds = Array.isArray(this.simulation.requiredPeerIds)
-          ? this.simulation.requiredPeerIds
+          ? this.simulation.requiredPeerIds.filter((id) => this.peers.has(String(id)))
           : [...this.peers.values()]
             .filter((peer) => !peer.metadata?.spectator)
             .map((peer) => peer.id);
@@ -325,6 +429,10 @@ export class AuthoritativeMatchRuntime {
           : [...this.peers.values()].some((peer) => peer.welcomed && peer.ready);
         if (this.matchStarted && typeof this.simulation.onMatchReady === 'function') {
           this.simulation.onMatchReady({ tick: this.tick, timeMs: this.timeMs });
+        }
+        if (this.matchStarted && this.roomController?.markPlaying) {
+          this.roomController.markPlaying();
+          this.#broadcastRoomState();
         }
       }
       if (this.matchStarted) {
@@ -352,6 +460,16 @@ export class AuthoritativeMatchRuntime {
           timeMs: this.timeMs,
           inputs,
         });
+        if (!this.roundFinished && this.simulation.result) {
+          this.roundFinished = true;
+          if (this.roomController?.finish) {
+            this.roomController.finish({
+              result: this.simulation.result,
+              reason: this.simulation.resultReason || null,
+            });
+            this.#broadcastRoomState();
+          }
+        }
       }
       this.accumulatorMs -= this.tickMs;
       this.stats.steps++;
@@ -370,6 +488,9 @@ export class AuthoritativeMatchRuntime {
         viewerId: peer.id,
         ackInputSeq: peer.lastInputSeq == null ? null : peer.lastInputSeq,
       });
+      if (this.roomController) {
+        snapshot.meta = { ...(snapshot.meta || {}), roomRound: this.roomRound };
+      }
       // One-shot combat and lifecycle events must never ride the replaceable
       // snapshot lane. WebRTC state packets are intentionally unordered,
       // non-retransmitted, and coalesced under backpressure; keeping events
@@ -464,6 +585,9 @@ export class MatchClientRuntime {
     this.eventListeners = new Set();
     this.pendingEventBatches = [];
     this.connectionListeners = new Set();
+    this.roomListeners = new Set();
+    this.roomState = null;
+    this.roomRound = 0;
     this.handshakeSent = false;
     this.readySent = false;
     this.unsubscribeMessage = transport.onMessage((message) => this.#receive(message));
@@ -525,6 +649,10 @@ export class MatchClientRuntime {
           this.missingSnapshotBaselines++;
           return;
         }
+        if (this.roomRound > 0 && Number(snapshot.meta?.roomRound) !== this.roomRound) {
+          this.assembler.clear();
+          return;
+        }
         if (this.buffer.push(snapshot, this.clock())) this.lastSnapshotTick = snapshot.tick;
         return;
       }
@@ -572,6 +700,21 @@ export class MatchClientRuntime {
             }
           }
           break;
+        case MESSAGE_TYPES.ROOM_STATE:
+          if (!message.payload || !Array.isArray(message.payload.players) ||
+              !Number.isSafeInteger(Number(message.payload.round)) ||
+              !Number.isSafeInteger(Number(message.payload.revision))) {
+            throw new ProtocolError('invalid_room_state', 'room state is malformed');
+          }
+          if (!this.roomState || Number(message.payload.revision) >= Number(this.roomState.revision)) {
+            const nextRound = Number(message.payload.round) || 0;
+            if (message.payload.phase === 'starting' && nextRound > this.roomRound) {
+              this.resetForRound(nextRound);
+            }
+            this.roomState = message.payload;
+            for (const listener of [...this.roomListeners]) listener(this.roomState);
+          }
+          break;
         case MESSAGE_TYPES.ERROR:
           this.errors.push(message.payload);
           break;
@@ -603,6 +746,23 @@ export class MatchClientRuntime {
     const sent = this.#send(MESSAGE_TYPES.READY, { loaded: true });
     if (sent) this.readySent = true;
     return sent;
+  }
+
+  submitRoomCommand(command) {
+    if (this.closed || !command || typeof command !== 'object') return false;
+    return this.#send(MESSAGE_TYPES.ROOM_COMMAND, command);
+  }
+
+  resetForRound(round) {
+    if (!Number.isSafeInteger(round) || round < 1) return false;
+    this.roomRound = round;
+    this.buffer.clear();
+    this.assembler.clear();
+    this.pendingEventBatches.length = 0;
+    this.lastSnapshotTick = 0;
+    this.lastSnapshotPacketTick = null;
+    this.readySent = false;
+    return true;
   }
 
   update(nowMs) {
@@ -644,6 +804,12 @@ export class MatchClientRuntime {
     return () => this.connectionListeners.delete(listener);
   }
 
+  onRoomState(listener) {
+    this.roomListeners.add(listener);
+    if (this.roomState) queueMicrotask(() => listener(this.roomState));
+    return () => this.roomListeners.delete(listener);
+  }
+
   getStats() {
     const snapshotTotal = this.snapshotPacketsReceived + this.estimatedMissingSnapshots;
     return {
@@ -673,6 +839,7 @@ export class MatchClientRuntime {
     if (this.unsubscribeMessage) this.unsubscribeMessage();
     if (this.unsubscribeClose) this.unsubscribeClose();
     this.pendingEventBatches.length = 0;
+    this.roomListeners.clear();
     if (typeof this.transport.close === 'function') this.transport.close(reason);
   }
 }

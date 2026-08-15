@@ -98,6 +98,7 @@ const CSS = `
 .cot-play .controls{display:flex;align-items:end;gap:8px;margin-top:12px}.cot-play .control-options,.cot-play .control-actions{
   display:flex;flex-wrap:wrap;align-items:end;gap:8px}.cot-play .control-actions{margin-left:auto;justify-content:flex-end}
 .cot-play .controls select{min-width:140px}.cot-play .control-actions .action{min-width:128px}
+.cot-play .leave-room{border-color:rgba(230,113,94,.4)!important;color:#efaaa0!important}
 @keyframes cot-ready-attention{0%,100%{box-shadow:0 0 0 0 rgba(230,154,54,0),0 0 0 rgba(230,154,54,0)}
   48%{box-shadow:0 0 0 4px rgba(230,154,54,.16),0 0 24px rgba(230,154,54,.48);transform:translateY(-1px)}}
 @keyframes cot-start-attention{0%,100%{box-shadow:0 0 0 0 rgba(255,185,80,0),0 0 0 rgba(255,185,80,0)}
@@ -332,7 +333,8 @@ export function createPlayMenu({
         <div class="control-options"><select data-control="team" aria-label="Team"><option value="alpha">Team Alpha</option><option value="bravo">Team Bravo</option><option value="spectator">Spectator</option></select>
           <select data-control="size" aria-label="Battle format"><option value="1">1 vs 1</option><option value="2">2 vs 2</option><option value="3">3 vs 3</option><option value="5">5 vs 5</option><option value="7">7 vs 7</option></select>
           <select data-control="map" aria-label="Battlefield"></select></div>
-        <div class="control-actions"><button class="action alt" data-action="ready" type="button">I'm ready</button>
+        <div class="control-actions"><button class="action alt leave-room" data-action="leave" type="button">Leave room</button>
+          <button class="action alt" data-action="ready" type="button">I'm ready</button>
           <button class="action" data-action="start" type="button">Start match</button></div>
       </div><div class="note"></div>
     </div></section>
@@ -361,6 +363,7 @@ export function createPlayMenu({
   const codeEl = root.querySelector('.code');
   const readyBtn = root.querySelector('[data-action="ready"]');
   const startBtn = root.querySelector('[data-action="start"]');
+  const leaveBtn = root.querySelector('[data-action="leave"]');
   const createBtn = root.querySelector('[data-action="create"]');
   const joinBtn = root.querySelector('[data-action="join"]');
   const note = root.querySelector('.note');
@@ -395,6 +398,7 @@ export function createPlayMenu({
   let role = null;
   let unsubscribeState = null;
   let handedOff = false;
+  let activeRoom = null;
   let connecting = false;
   let rankedClient = null;
   let rankedTicket = null;
@@ -406,12 +410,14 @@ export function createPlayMenu({
   }
 
   function ownId() {
-    return session && session.roomInfo && session.roomInfo.peerId;
+    return activeRoom?.playerId || (session && session.roomInfo && session.roomInfo.peerId);
   }
 
   function command(command) {
     try {
-      const result = role === 'host' ? session.command(command) : session.submit(command);
+      const result = activeRoom
+        ? activeRoom.command(command)
+        : role === 'host' ? session.command(command) : session.submit(command);
       Promise.resolve(result).catch((error) => setStatus(error.message, true));
     } catch (error) { setStatus(error.message, true); }
   }
@@ -426,8 +432,10 @@ export function createPlayMenu({
   function closeCurrentSession(reason = 'menu_closed') {
     if (unsubscribeState) unsubscribeState();
     unsubscribeState = null;
-    if (session) session.close(reason);
+    if (activeRoom) activeRoom.leave(reason);
+    else if (session) session.close(reason);
     session = null;
+    activeRoom = null;
     state = null;
     role = null;
     room.classList.remove('connected');
@@ -545,7 +553,7 @@ export function createPlayMenu({
     // A client learns that the host started through this state callback. Cover
     // immediately; rebuilding the now-obsolete lobby first creates a guest-
     // only window in which a constrained renderer can present the garage.
-    if (next.phase === 'starting' && role === 'client' && !handedOff) {
+    if (next.phase === 'starting' && role === 'client' && !handedOff && !activeRoom) {
       beginNetworkHandoff(next, 'client');
       return;
     }
@@ -565,7 +573,7 @@ export function createPlayMenu({
         remember(PLAYER_NAME_KEY, me.name);
       }
       readyBtn.textContent = me.team === 'spectator' ? 'Watching' : me.ready ? 'Not ready' : "I'm ready";
-      readyBtn.disabled = me.team === 'spectator';
+      readyBtn.disabled = me.team === 'spectator' || next.phase !== 'waiting';
       readyBtn.classList.toggle('needs-ready', me.team !== 'spectator' && !me.ready && next.phase === 'waiting');
       readyBtn.classList.toggle('is-ready', me.team !== 'spectator' && me.ready);
       readyBtn.setAttribute('aria-pressed', String(me.team !== 'spectator' && me.ready));
@@ -574,8 +582,9 @@ export function createPlayMenu({
       readyBtn.classList.remove('needs-ready', 'is-ready');
       readyBtn.removeAttribute('aria-pressed');
     }
-    mapSelect.disabled = role !== 'host';
-    sizeSelect.disabled = role !== 'host';
+    teamSelect.disabled = next.phase !== 'waiting' || !!me?.ready;
+    mapSelect.disabled = role !== 'host' || next.phase !== 'waiting';
+    sizeSelect.disabled = role !== 'host' || next.phase !== 'waiting';
     startBtn.style.display = role === 'host' ? '' : 'none';
     const activePlayers = next.players.filter((player) => player.team !== 'spectator');
     const everyoneReady = activePlayers.length > 0 &&
@@ -781,6 +790,10 @@ export function createPlayMenu({
     const me = state && state.players.find((player) => player.id === ownId());
     command({ type: 'set_ready', ready: !(me && me.ready) });
   });
+  leaveBtn.addEventListener('click', () => {
+    closeCurrentSession('left_room');
+    hide(false);
+  });
   startBtn.addEventListener('click', () => {
     const words = new Uint32Array(1);
     if (globalThis.crypto?.getRandomValues) globalThis.crypto.getRandomValues(words);
@@ -829,12 +842,51 @@ export function createPlayMenu({
   function hide(closeSession = true) {
     createSizeMenu.close();
     root.classList.remove('show');
-    if (closeSession && !handedOff) closeCurrentSession('menu_closed');
+    if (closeSession && !handedOff && !activeRoom) closeCurrentSession('menu_closed');
   }
   function dispose() {
     handedOff = false;
+    if (activeRoom) closeCurrentSession('menu_disposed');
     hide(true);
     root.remove();
   }
-  return { root, show, hide, dispose };
+  function attachActiveRoom(adapter) {
+    if (!adapter || !adapter.state || !adapter.playerId ||
+        typeof adapter.command !== 'function' || typeof adapter.leave !== 'function') {
+      throw new TypeError('active room adapter is incomplete');
+    }
+    activeRoom = adapter;
+    role = adapter.role;
+    mode = adapter.state.mode || 'private';
+    handedOff = false;
+    renderLobby(adapter.state);
+  }
+  function updateActiveRoom(next) {
+    if (!activeRoom || !next) return false;
+    activeRoom.state = next;
+    renderLobby(next);
+    return true;
+  }
+  function detachActiveRoom() {
+    activeRoom = null;
+    session = null;
+    state = null;
+    role = null;
+    handedOff = false;
+    room.classList.remove('connected');
+    lobbyEl.classList.remove('show');
+    root.classList.remove('lobby-active');
+  }
+  function showActiveRoom() {
+    if (!activeRoom) return false;
+    ranked.classList.remove('show');
+    room.classList.add('show');
+    root.classList.add('show');
+    renderLobby(activeRoom.state);
+    return true;
+  }
+  return {
+    root, show, hide, dispose,
+    attachActiveRoom, updateActiveRoom, detachActiveRoom, showActiveRoom,
+  };
 }

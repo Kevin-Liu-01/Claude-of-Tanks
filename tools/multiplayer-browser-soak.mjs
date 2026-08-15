@@ -366,6 +366,66 @@ try {
   assert.equal(authority.invalidMessages, 0);
   assert.equal(report.errors.length, 0);
 
+  // End round one, ready both commanders again, and prove round two reuses
+  // the already-open channels instead of touching signaling/WebRTC setup.
+  await hostPage.evaluate(() => {
+    const state = globalThis.__COT_SOAK;
+    for (const entity of state.match.simulation.entities) {
+      if (entity.team !== 'bravo') continue;
+      entity.combat.hp = 0;
+      entity.combat.destroyed = true;
+    }
+    state.match.advance(50);
+  });
+  await Promise.all([
+    hostPage.waitForFunction(() => globalThis.__COT_SOAK.match.client.roomState?.phase === 'waiting',
+      { timeout: 5000 }),
+    guestPage.waitForFunction(() => globalThis.__COT_SOAK.match.client.roomState?.phase === 'waiting',
+      { timeout: 5000 }),
+  ]);
+  const retainedRoom = await hostPage.evaluate(() => globalThis.__COT_SOAK.match.client.roomState);
+  assert.equal(retainedRoom.players.length, 2, 'post-battle room retains both human commanders');
+  assert.ok(retainedRoom.players.every((player) => !player.ready),
+    'post-battle room resets ready votes for the next round');
+  await Promise.all([
+    hostPage.evaluate(() => globalThis.__COT_SOAK.match.roomCommand({ type: 'set_ready', ready: true })),
+    guestPage.evaluate(() => globalThis.__COT_SOAK.match.roomCommand({ type: 'set_ready', ready: true })),
+  ]);
+  await hostPage.waitForFunction(() => globalThis.__COT_SOAK.match.client.roomState.players.every(
+    (player) => player.ready), { timeout: 5000 });
+  await hostPage.evaluate(() => globalThis.__COT_SOAK.match.roomCommand({
+    type: 'start', matchSeed: 0xC07CAFF,
+  }));
+  await Promise.all([
+    hostPage.waitForFunction(() => globalThis.__COT_SOAK.match.client.roomState?.phase === 'starting' &&
+      globalThis.__COT_SOAK.match.client.roomState?.round === 2, { timeout: 5000 }),
+    guestPage.waitForFunction(() => globalThis.__COT_SOAK.match.client.roomState?.phase === 'starting' &&
+      globalThis.__COT_SOAK.match.client.roomState?.round === 2, { timeout: 5000 }),
+  ]);
+  const nextRound = await hostPage.evaluate(() => globalThis.__COT_SOAK.match.client.roomState);
+  await guestPage.evaluate(() => globalThis.__COT_SOAK.match.ready());
+  await hostPage.evaluate((lobbyState) => {
+    const match = globalThis.__COT_SOAK.match;
+    match.prepareRound({ lobbyState });
+    match.ready();
+  }, nextRound);
+  const rematchDeadline = Date.now() + 10000;
+  let rematch = null;
+  while (Date.now() < rematchDeadline) {
+    await hostPage.evaluate(() => globalThis.__COT_SOAK.match.advance(50));
+    await guestPage.evaluate(() => globalThis.__COT_SOAK.match.update(performance.now()));
+    rematch = await hostPage.evaluate(() => ({
+      phase: globalThis.__COT_SOAK.match.client.roomState?.phase,
+      round: globalThis.__COT_SOAK.match.client.roomState?.round,
+      peers: globalThis.__COT_SOAK.match.host.peers.size,
+      rtcPeers: globalThis.__COT_SOAK.session.peers.size,
+    }));
+    if (rematch.phase === 'playing') break;
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  assert.deepEqual(rematch, { phase: 'playing', round: 2, peers: 2, rtcPeers: 1 },
+    'round two starts with the same authority peers and RTC connection');
+
   await guestPage.evaluate(() => {
     const state = globalThis.__COT_SOAK;
     clearInterval(state.inputTimer);
@@ -399,6 +459,7 @@ try {
       delayedOutgoing: report.transport.delayedOutgoing,
       droppedState: report.transport.droppedState,
     },
+    rematchRound: rematch.round,
     cleanDeparture: true,
   }, null, 2));
 } finally {

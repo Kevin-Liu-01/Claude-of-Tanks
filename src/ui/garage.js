@@ -149,6 +149,17 @@ const GARAGE_CSS = `
   padding:5px;background:rgba(8,11,15,.98);border:1px solid rgba(177,194,208,.32);
   box-shadow:0 12px 34px rgba(0,0,0,.68);}
 .cot-battle-menu.open{display:grid;gap:3px;}
+.cot-room-reminder{position:absolute;top:calc(100% + 8px);left:50%;transform:translateX(-50%);
+  display:none;width:max-content;max-width:360px;min-height:32px;padding:0 12px;border:1px solid rgba(230,154,54,.5);
+  background:linear-gradient(90deg,rgba(12,18,24,.96),rgba(39,27,14,.96));color:#dbe5ec;
+  box-shadow:0 10px 30px rgba(0,0,0,.46);font:800 8px ${FONT_COND};letter-spacing:.12em;
+  text-transform:uppercase;cursor:pointer;white-space:nowrap}.cot-room-reminder.show{display:flex;align-items:center;gap:9px}
+.cot-room-reminder .rr-dot{width:7px;height:7px;border-radius:50%;background:#e5a347;box-shadow:0 0 12px #e5a347}
+.cot-room-reminder.ready .rr-dot{background:#73d58a;box-shadow:0 0 12px #73d58a}.cot-room-reminder b{color:#ffca78}
+.cot-garage.vehicle-locked .cot-card:not(.sel),.cot-garage.vehicle-locked .cot-car-arrow,
+.cot-garage.vehicle-locked .cot-camo-card,.cot-garage.vehicle-locked .eqrow{pointer-events:none;opacity:.42}
+.cot-garage.vehicle-locked .cot-card.sel{cursor:not-allowed}.cot-garage.vehicle-locked .stats::after{content:'VEHICLE LOCKED · UNREADY TO CHANGE';
+  display:block;margin-top:8px;color:#79d890;font:800 8px ${FONT_COND};letter-spacing:.13em}
 .cot-battle-choice{min-height:48px;display:grid;grid-template-columns:28px 1fr auto;align-items:center;
   gap:8px;padding:0 10px 0 8px;border:1px solid transparent;background:rgba(25,32,39,.9);
   color:#dce6ed;cursor:pointer;text-align:left;font-family:${FONT_STACK};font-size:11px;font-weight:800;}
@@ -1380,7 +1391,8 @@ export function createGarage(opts) {
     `<button class="cot-battle-choice" type="button" role="menuitemradio" data-mode="ranked" aria-checked="false">` +
     `<span class="choice-icon">${uiIconSVG('battleRanked', 17)}</span>` +
     `<span class="choice-name">Ranked</span><small>ELO</small></button>` +
-    `</div></div>` +
+    `</div><button class="cot-room-reminder" type="button" aria-label="Open active room">` +
+    `<span class="rr-dot"></span><span class="rr-copy"></span></button></div>` +
     `<div class="stats"></div>` +
     `<div class="cot-country-chips" role="group" aria-label="Filter vehicles by country"></div>` +
     `<div class="cot-carousel">` +
@@ -1483,10 +1495,12 @@ export function createGarage(opts) {
   const battleModeBtn = root.querySelector('.cot-battle-mode');
   const battleMenu = root.querySelector('.cot-battle-menu');
   const battleChoices = [...root.querySelectorAll('.cot-battle-choice')];
+  const roomReminder = root.querySelector('.cot-room-reminder');
   const mapsEl = root.querySelector('.cot-maps');
 
   let selectedId = specs.length ? specs[0].id : null;
   let battleMode = 'solo';
+  let vehicleLocked = false;
   const cardById = new Map();
   const specById = new Map();
   // specById covers the FULL roster so direct tooling can still inspect a
@@ -1624,7 +1638,7 @@ export function createGarage(opts) {
 
   /** Assign/remove an item in the open slot, persist, refresh the card. */
   function eqAssign(itemId) {
-    if (!selectedId || eqOpenSlot < 0) return;
+    if (vehicleLocked || !selectedId || eqOpenSlot < 0) return;
     const spec = specById.get(selectedId);
     const cur = curLoadout();
     const prev = cur.indexOf(itemId);
@@ -1681,6 +1695,7 @@ export function createGarage(opts) {
   }
 
   function openEqPicker(slot) {
+    if (vehicleLocked) return;
     eqOpenSlot = slot;
     eqpickEl.classList.add('open');
     renderEqPicker();
@@ -2013,6 +2028,7 @@ export function createGarage(opts) {
   }
 
   function applySelection(specId) {
+    if (vehicleLocked && specId !== selectedId) return false;
     const spec = specById.get(specId);
     if (!spec) return false;
     selectedId = specId;
@@ -2040,6 +2056,7 @@ export function createGarage(opts) {
   }
 
   function step(dir) {
+    if (vehicleLocked) return;
     // Arrows walk the active national fleet only.
     const pool = specs.filter((spec) => inCountry(spec, countryFilter));
     if (!pool.length) return;
@@ -2112,6 +2129,7 @@ export function createGarage(opts) {
   }
 
   battleBtn.addEventListener('click', battle);
+  roomReminder.addEventListener('click', () => emit('ui:roomOpen', {}));
   battleModeBtn.addEventListener('click', () => {
     emit('ui:click', {});
     if (battleMenu.classList.contains('open')) closeBattleMenu();
@@ -2308,11 +2326,41 @@ export function createGarage(opts) {
      * @param {string} specId
      */
     setSelected(specId) {
+      if (vehicleLocked) {
+        if (specId === selectedId) applySelection(specId);
+        return;
+      }
       if (applySelection(specId) && onSelect) onSelect(specId);
     },
 
     /** Currently highlighted vehicle id (probe/tooling hook). @returns {?string} */
     getSelected() { return selectedId; },
+
+    /** Reflect persistent multiplayer membership beneath the main battle action. */
+    setRoomStatus(status = null) {
+      if (!status) {
+        roomReminder.classList.remove('show', 'ready');
+        roomReminder.querySelector('.rr-copy').textContent = '';
+        vehicleLocked = false;
+        root.classList.remove('vehicle-locked');
+        return;
+      }
+      const ready = !!status.ready;
+      const count = Math.max(0, Number(status.readyCount) || 0);
+      const total = Math.max(0, Number(status.total) || 0);
+      roomReminder.querySelector('.rr-copy').innerHTML =
+        `<b>${status.mode === 'lan' ? 'LAN' : 'PRIVATE'} ROOM ${status.roomCode || ''}</b> · ` +
+        `${ready ? 'READY' : 'NOT READY'} · ${count}/${total} READY`;
+      roomReminder.classList.add('show');
+      roomReminder.classList.toggle('ready', ready);
+      roomReminder.setAttribute('aria-label',
+        `Open room ${status.roomCode || ''}. You are ${ready ? 'ready' : 'not ready'}. ${count} of ${total} ready.`);
+      vehicleLocked = ready;
+      root.classList.toggle('vehicle-locked', vehicleLocked);
+      closeEqPicker();
+    },
+
+    isVehicleLocked() { return vehicleLocked; },
 
     /** Move the settings-owned gear into the garage navigation rail. */
     attachSettingsControl(control) {

@@ -8,6 +8,7 @@ import {
 import { createAuthoritativeMatch } from '../sim/authoritativeMatch.js';
 import { PrivateRoomClientSession } from './privateRoomSession.js';
 import { MATCH_CONTROL_CHANNEL_LABEL, MATCH_STATE_CHANNEL_LABEL } from './webrtcPeer.js';
+import { addLobbyPlayer, applyLobbyCommand, createLobby, serializeLobby } from './lobby.js';
 
 class FakeRtcChannel {
   constructor(label) {
@@ -171,4 +172,87 @@ assert.deepEqual(observerFrame.entities.map((entity) => entity.id).sort(),
   'observer snapshots include both teams without spotting redaction');
 observed.close('test_done');
 
-console.log('privateMatchHandoff.selftest: listener-safe player and spectator handoff passed');
+// A room survives its first result, enforces ready-time vehicle locking, and
+// starts round two on the same transports without another signaling handoff.
+{
+  const link = createLoopbackTransportPair();
+  const lobby = createLobby({
+    roomCode: 'ROUND2', hostId: 'host-r', hostName: 'Host', hostSpecId: 'm1a2', teamSize: 1,
+  });
+  addLobbyPlayer(lobby, { id: 'guest-r', name: 'Guest', team: 'bravo', specId: 't90m' });
+  applyLobbyCommand(lobby, 'host-r', { type: 'set_ready', ready: true });
+  applyLobbyCommand(lobby, 'guest-r', { type: 'set_ready', ready: true });
+  applyLobbyCommand(lobby, 'host-r', { type: 'start', matchSeed: 711 });
+  let factoryCalls = 0;
+  const simulationFactory = ({ players }) => {
+    const shouldFinish = factoryCalls++ === 0;
+    let result = null;
+    return {
+      requiredPeerIds: players.filter((player) => !player.bot && player.team !== 'spectator')
+        .map((player) => player.id),
+      get result() { return result; },
+      get resultReason() { return result ? 'elimination' : null; },
+      onPeerJoin() {}, onPeerLeave() {}, onPeerReady() {}, onMatchReady() {},
+      step() { if (shouldFinish) result = 'alpha'; },
+      snapshot({ tick, serverTimeMs, ackInputSeq }) {
+        return {
+          tick, serverTimeMs, ackInputSeq, entities: [], shells: [], events: [],
+          meta: { phase: result ? 'ended' : 'playing', result },
+        };
+      },
+    };
+  };
+  const hostSession = {
+    roomInfo: { peerId: 'host-r', mode: 'private' },
+    lobby,
+    isVehicleAllowed: () => true,
+    takeMatchChannels: () => [{ peerId: 'guest-r', transport: link.host }],
+  };
+  const clientSession = {
+    roomInfo: { peerId: 'guest-r', mode: 'private' },
+    takeMatchTransport: async () => link.client,
+  };
+  const hostedRound = beginPrivateHostMatch({
+    session: hostSession,
+    lobbyState: serializeLobby(lobby),
+    simulationFactory,
+  });
+  const joinedRound = await beginPrivateClientMatch({ session: clientSession });
+  await Promise.resolve();
+  hostedRound.ready();
+  joinedRound.ready();
+  await Promise.resolve();
+  hostedRound.advance(50);
+  await Promise.resolve();
+  assert.equal(hostedRound.client.roomState.phase, 'waiting');
+  assert.equal(joinedRound.client.roomState.phase, 'waiting');
+  assert.ok(hostedRound.client.roomState.players.every((player) => !player.ready),
+    'completed round resets every rematch vote but retains the room roster');
+
+  hostedRound.roomCommand({ type: 'set_ready', ready: true });
+  hostedRound.roomCommand({ type: 'select_vehicle', specId: 't90m' });
+  assert.equal(hostedRound.client.errors.at(-1)?.code, 'vehicle_locked',
+    'authority rejects a tank swap while the commander is ready');
+  joinedRound.roomCommand({ type: 'set_ready', ready: true });
+  await Promise.resolve();
+  hostedRound.roomCommand({ type: 'start', matchSeed: 712 });
+  await Promise.resolve();
+  const roundTwo = hostedRound.client.roomState;
+  assert.equal(roundTwo.phase, 'starting');
+  assert.equal(roundTwo.round, 2);
+  assert.equal(joinedRound.client.readySent, false,
+    'new room round re-arms the client asset-ready barrier');
+  joinedRound.ready(); // may arrive before the host finishes loading the map
+  hostedRound.prepareRound({ lobbyState: roundTwo });
+  hostedRound.ready();
+  await Promise.resolve();
+  hostedRound.advance(50);
+  await Promise.resolve();
+  assert.equal(hostedRound.host.matchStarted, true);
+  assert.equal(hostedRound.client.roomState.phase, 'playing');
+  assert.equal(hostedRound.host.peers.size, 2, 'round two reuses both established peers');
+  joinedRound.close('test_done');
+  hostedRound.close('test_done');
+}
+
+console.log('privateMatchHandoff.selftest: handoff, persistent room, and rematch passed');

@@ -1148,6 +1148,10 @@ const garageMaps = [
 let pendingSoloStart = null;
 let playMenuPromise = null;
 async function openPlayMenu(request) {
+  if (activeNetworkRoom && networkMatch && !networkMatch.client?.closed) {
+    const menu = await playMenuPromise;
+    if (menu?.showActiveRoom()) return;
+  }
   if ((request?.mode || 'solo') === 'solo') {
     pendingSoloStart = null;
     if (typeof request?.startSolo === 'function') {
@@ -1200,6 +1204,7 @@ const garage = await bootStage('ui', () => createGarage({
     selectedSpecId = specId;
     rememberSpecId(specId);
     setPedestalTank(specId);
+    syncActiveRoomVehicle(specId);
   },
   onBattle: (specId, mapId) => beginBattleEntry(specId, mapId), // loading screen owns entry
   onPlayRequest: (request) => openPlayMenu(request).catch((error) => {
@@ -2034,7 +2039,96 @@ let networkStatus = null;
 let latestNetworkSnapshot = null;
 let networkActionBitsPending = 0;
 let networkSpectator = false;
+let activeNetworkRoom = null;
+let unsubscribeNetworkRoom = null;
+let networkRoomMenuAttached = false;
+let networkPresentedRound = 0;
+let networkRematchPending = false;
 const pendingNetworkEvents = [];
+
+function activeRoomPlayer(state = activeNetworkRoom) {
+  return state?.players?.find((player) => player.id === networkMatch?.playerId) || null;
+}
+
+function roomReadySummary(state = activeNetworkRoom) {
+  const active = state?.players?.filter((player) => player.team !== 'spectator') || [];
+  return { ready: active.filter((player) => player.ready).length, total: active.length };
+}
+
+function syncActiveRoomVehicle(specId) {
+  const me = activeRoomPlayer();
+  if (!me || me.ready || activeNetworkRoom?.phase !== 'waiting' || me.specId === specId) return;
+  networkMatch?.roomCommand?.({ type: 'select_vehicle', specId });
+  networkMatch?.roomCommand?.({
+    type: 'select_equipment',
+    equipment: loadSelectedEquipment(specId, getSpec(specId)),
+  });
+}
+
+function updateActiveRoomPresentation(state) {
+  const me = activeRoomPlayer(state);
+  const count = roomReadySummary(state);
+  garage.setRoomStatus(me ? {
+    roomCode: state.roomCode,
+    mode: state.mode,
+    ready: me.ready,
+    readyCount: count.ready,
+    total: count.total,
+  } : null);
+  bus.emit('network:roomState', {
+    state,
+    playerId: networkMatch?.playerId || '',
+    role: networkMatch?.role || 'client',
+  });
+  if (playMenuPromise) {
+    playMenuPromise.then((menu) => {
+      if (!activeNetworkRoom) return;
+      const adapter = {
+        state: activeNetworkRoom,
+        playerId: networkMatch?.playerId || '',
+        role: networkMatch?.role || 'client',
+        command: (command) => networkMatch?.roomCommand?.(command),
+        leave: (reason) => closeNetworkMatch(reason || 'left_room'),
+      };
+      if (!networkRoomMenuAttached) {
+        menu.attachActiveRoom(adapter);
+        networkRoomMenuAttached = true;
+      } else menu.updateActiveRoom(activeNetworkRoom);
+    });
+  }
+}
+
+function handleNetworkRoomState(state) {
+  if (!state || !Array.isArray(state.players)) return;
+  activeNetworkRoom = state;
+  updateActiveRoomPresentation(state);
+  const round = Number(state.round) || 0;
+  if (state.phase === 'starting' && round > networkPresentedRound && !networkRematchPending) {
+    networkRematchPending = true;
+    queueMicrotask(() => beginNetworkRematch(state));
+  }
+}
+
+function attachNetworkRoom(initialState) {
+  if (!networkMatch?.onRoomState) return;
+  if (unsubscribeNetworkRoom) unsubscribeNetworkRoom();
+  activeNetworkRoom = initialState;
+  networkPresentedRound = Number(initialState?.round) || 1;
+  updateActiveRoomPresentation(initialState);
+  unsubscribeNetworkRoom = networkMatch.onRoomState(handleNetworkRoomState);
+}
+
+function clearActiveNetworkRoom() {
+  if (unsubscribeNetworkRoom) unsubscribeNetworkRoom();
+  unsubscribeNetworkRoom = null;
+  activeNetworkRoom = null;
+  networkPresentedRound = 0;
+  networkRematchPending = false;
+  garage.setRoomStatus(null);
+  if (playMenuPromise) playMenuPromise.then((menu) => menu.detachActiveRoom());
+  networkRoomMenuAttached = false;
+  bus.emit('network:roomState', null);
+}
 
 function networkInputFrame() {
   const player = game.player;
@@ -2109,17 +2203,22 @@ function pumpNetworkMatch(dt, nowMs) {
   if (networkStatus?.diagnosticsVisible) networkStatus.update(networkDiagnostics());
 }
 
-function closeNetworkMatch(reason = 'network_match_closed') {
-  if (networkMatch) networkMatch.close(reason);
+function disposeNetworkPresentation() {
   if (networkBridge) networkBridge.dispose();
   if (networkStatus) networkStatus.dispose();
-  networkMatch = null;
   networkBridge = null;
   networkStatus = null;
   latestNetworkSnapshot = null;
   networkActionBitsPending = 0;
   pendingNetworkEvents.length = 0;
   networkSpectator = false;
+}
+
+function closeNetworkMatch(reason = 'network_match_closed') {
+  if (networkMatch) networkMatch.close(reason);
+  disposeNetworkPresentation();
+  networkMatch = null;
+  clearActiveNetworkRoom();
 }
 
 async function beginBattleEntry(specId, mapId = null) {
@@ -2418,6 +2517,7 @@ async function beginNetworkBattle({ role, session, lobbyState } = {}) {
         ? beginPrivateHostMatch({ session, lobbyState, worldCollision: world })
         : beginPrivateClientMatch({ session, playerId: viewerId, lobbyState }),
     });
+    attachNetworkRoom(lobbyState);
     entered = true;
   } catch (error) {
     if (typeof window !== 'undefined') {
@@ -2444,6 +2544,68 @@ async function beginNetworkBattle({ role, session, lobbyState } = {}) {
     battleEntryPending = false;
   }
   return entered;
+}
+
+/** Load another authority round over the room's existing WebRTC channels. */
+async function beginNetworkRematch(lobbyState) {
+  const round = Number(lobbyState?.round) || 0;
+  if (!networkMatch || networkMatch.client?.closed || battleEntryPending ||
+      lobbyState?.phase !== 'starting' || round <= networkPresentedRound) {
+    networkRematchPending = false;
+    return false;
+  }
+  battleEntryPending = true;
+  networkPresentedRound = round;
+  const viewerId = networkMatch.playerId;
+  const own = lobbyState.players.find((player) => player.id === viewerId);
+  try {
+    if (!own) throw new Error('Your player is no longer in this room.');
+    const displayTeam = own.team === 'spectator' ? 'alpha' : own.team;
+    const modeLabel = lobbyState.mode === 'lan'
+      ? `LAN Battle · Round ${round}` : `Private Battle · Round ${round}`;
+    bus.emit('ui:battleStart', { playerId: viewerId, specId: own.specId, mapId: lobbyState.mapId });
+    battleLoad.show({
+      mapName: 'Next operation',
+      mapSub: 'The room remains connected',
+      thumb: '',
+      biome: lobbyState.mapId === 'random' ? 'none' : lobbyState.mapId,
+      mode: modeLabel,
+      allies: lobbyRosterRows(lobbyState, displayTeam, viewerId),
+      enemies: lobbyRosterRows(lobbyState,
+        displayTeam === 'alpha' ? 'bravo' : 'alpha', viewerId),
+    });
+    battleLoad.progress(0.01, 'Preparing the next round');
+    disposeNetworkPresentation();
+    latestNetworkSnapshot = null;
+    const { buildPrivateMatchPlayers, resolvePrivateMatchMap } =
+      await import('./net/privateMatchHandoff.js');
+    const mapId = resolvePrivateMatchMap(lobbyState);
+    const matchPlayers = buildPrivateMatchPlayers(lobbyState);
+    await presentNetworkBattle({
+      viewerId,
+      own,
+      mapId,
+      matchPlayers,
+      modeLabel,
+      transitionShown: true,
+      connectMatch: () => {
+        if (networkMatch.role === 'host') {
+          networkMatch.prepareRound({ lobbyState, worldCollision: world });
+        }
+        return networkMatch;
+      },
+    });
+    return true;
+  } catch (error) {
+    console.error('[network] rematch entry failed', error);
+    closeNetworkMatch('rematch_entry_failed');
+    await battleLoad.hide();
+    enterGarage();
+    return false;
+  } finally {
+    battleEntryPending = false;
+    networkRematchPending = false;
+  }
 }
 
 /** Join a server-authoritative rated match issued by the ranked queue. */
@@ -2639,8 +2801,11 @@ function openBattle() {
 // battle_countdown r1: WoT-style pre-battle freeze length (player path only).
 const PRE_BATTLE_HOLD_S = 5;
 
-function enterGarage() {
-  closeNetworkMatch('returned_to_garage');
+function enterGarage({ preserveRoom = !!(
+  activeNetworkRoom && networkMatch && !networkMatch.client?.closed && game.result
+) } = {}) {
+  if (preserveRoom) disposeNetworkPresentation();
+  else closeNetworkMatch('returned_to_garage');
   // battle_countdown r1: leaving mid-countdown (Esc -> garage) clears the hold.
   game.preBattleS = 0;
   // SHOT-MODE RESET: see startBattle — the garage is a live-mode entry too.
@@ -2716,6 +2881,27 @@ bus.on('ui:battleAgain', async () => {
   const b = document.querySelector('.cot-battle');
   if (b) b.click();
 });
+
+bus.on('ui:roomOpen', async () => {
+  if (!activeNetworkRoom || !playMenuPromise) return;
+  const menu = await playMenuPromise;
+  menu.showActiveRoom();
+});
+
+bus.on('ui:roomReady', ({ ready } = {}) => {
+  if (activeNetworkRoom?.phase !== 'waiting') return;
+  networkMatch?.roomCommand?.({ type: 'set_ready', ready: !!ready });
+});
+
+function startActiveRoomRound() {
+  if (networkMatch?.role !== 'host' || activeNetworkRoom?.phase !== 'waiting') return false;
+  const words = new Uint32Array(1);
+  if (globalThis.crypto?.getRandomValues) globalThis.crypto.getRandomValues(words);
+  else words[0] = (Date.now() ^ Math.floor(performance.now() * 1000)) >>> 0;
+  return networkMatch.roomCommand({ type: 'start', matchSeed: words[0] });
+}
+
+bus.on('ui:roomStart', startActiveRoomRound);
 
 // ---------------------------------------------------------------------------
 // HUD frame assembly (§4 step 7)

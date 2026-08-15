@@ -107,6 +107,12 @@ function markChanged(lobby) {
   return lobby;
 }
 
+function assertPlayerEditable(player) {
+  if (player.ready) {
+    throw new LobbyError('vehicle_locked', 'unready before changing your vehicle or team');
+  }
+}
+
 function createPlayer({
   id, name, team, specId = null, equipment = [], isHost = false, rating = null,
 }) {
@@ -164,6 +170,8 @@ export function createLobby({
     revision: 0,
     updatedAtTick: 0,
     matchSeed: null,
+    round: 0,
+    lastResult: null,
     players: new Map(),
   };
   lobby.players.set(id, createPlayer({
@@ -252,6 +260,7 @@ export function applyLobbyCommand(lobby, playerId, command, {
       player.name = availableName(lobby, command.name, id);
       break;
     case 'select_vehicle': {
+      assertPlayerEditable(player);
       const specId = cleanSpecId(command.specId);
       if (!isVehicleAllowed(specId, player, lobby)) {
         throw new LobbyError('vehicle_not_allowed', 'vehicle is unavailable in this lobby');
@@ -261,6 +270,7 @@ export function applyLobbyCommand(lobby, playerId, command, {
       break;
     }
     case 'select_equipment':
+      assertPlayerEditable(player);
       player.equipment = cleanEquipment(command.equipment);
       player.ready = false;
       break;
@@ -271,6 +281,7 @@ export function applyLobbyCommand(lobby, playerId, command, {
       player.ready = !!command.ready;
       break;
     case 'set_team': {
+      assertPlayerEditable(player);
       if (!lobby.allowTeamSwitch && id !== lobby.hostId) {
         throw new LobbyError('team_switch_disabled', 'team switching is disabled');
       }
@@ -323,6 +334,7 @@ export function applyLobbyCommand(lobby, playerId, command, {
         throw new LobbyError('invalid_seed', 'host must provide an unsigned match seed');
       }
       lobby.matchSeed = command.matchSeed;
+      lobby.round = (Number(lobby.round) || 0) + 1;
       lobby.phase = LOBBY_PHASES.STARTING;
       lobby.locked = true;
       break;
@@ -330,6 +342,31 @@ export function applyLobbyCommand(lobby, playerId, command, {
     default:
       throw new LobbyError('invalid_command', `unknown lobby command: ${String(command.type)}`);
   }
+  return markChanged(lobby);
+}
+
+/** Mark a fully loaded round live without rebuilding the persistent room. */
+export function markLobbyRoundPlaying(lobby) {
+  if (lobby.phase !== LOBBY_PHASES.STARTING) return lobby;
+  lobby.phase = LOBBY_PHASES.PLAYING;
+  lobby.locked = true;
+  return markChanged(lobby);
+}
+
+/** Return a completed room round to editable readiness while retaining peers. */
+export function finishLobbyRound(lobby, { result = null, reason = null } = {}) {
+  if (lobby.phase !== LOBBY_PHASES.PLAYING && lobby.phase !== LOBBY_PHASES.STARTING) {
+    return lobby;
+  }
+  lobby.phase = LOBBY_PHASES.WAITING;
+  lobby.locked = false;
+  lobby.matchSeed = null;
+  lobby.lastResult = {
+    round: Number(lobby.round) || 0,
+    result: result == null ? null : String(result),
+    reason: reason == null ? null : String(reason),
+  };
+  for (const player of lobby.players.values()) player.ready = false;
   return markChanged(lobby);
 }
 
@@ -348,6 +385,8 @@ export function serializeLobby(lobby) {
     teamSize: lobby.teamSize,
     revision: lobby.revision,
     matchSeed: lobby.matchSeed,
+    round: Number(lobby.round) || 0,
+    lastResult: lobby.lastResult ? { ...lobby.lastResult } : null,
     players: [...lobby.players.values()].map((player) => ({ ...player })),
   };
 }

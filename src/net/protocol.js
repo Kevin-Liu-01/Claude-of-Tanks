@@ -6,7 +6,7 @@
  * authoritative host validates all client-authored fields here.
  */
 
-export const PROTOCOL_VERSION = 2;
+export const PROTOCOL_VERSION = 3;
 export const MATCH_TICK_HZ = 60;
 export const SNAPSHOT_HZ = 20;
 export const MAX_PLAYERS = 14;
@@ -28,6 +28,8 @@ export const MESSAGE_TYPES = Object.freeze({
   READY: 'ready',
   LOBBY_COMMAND: 'lobby_command',
   LOBBY_STATE: 'lobby_state',
+  ROOM_COMMAND: 'room_command',
+  ROOM_STATE: 'room_state',
   INPUT: 'input',
   SNAPSHOT: 'snapshot',
   EVENT: 'event',

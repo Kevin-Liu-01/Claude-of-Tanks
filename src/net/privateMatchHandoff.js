@@ -5,6 +5,13 @@ import { createAuthoritativeMatch } from '../sim/authoritativeMatch.js';
 import { createLoopbackTransportPair } from './loopbackTransport.js';
 import { AuthoritativeMatchRuntime, MatchClientRuntime } from './matchRuntime.js';
 import { maybeCreateAdverseNetworkTransport } from './adverseNetworkTransport.js';
+import {
+  applyLobbyCommand,
+  finishLobbyRound,
+  markLobbyRoundPlaying,
+  removeLobbyPlayer,
+  serializeLobby,
+} from './lobby.js';
 
 function seededUnit(seed) {
   let value = seed >>> 0;
@@ -77,6 +84,32 @@ export function buildPrivateMatchPlayers(lobbyState) {
   return players;
 }
 
+function createPersistentRoomController(session) {
+  const lobby = session?.lobby;
+  if (!lobby || !(lobby.players instanceof Map)) return null;
+  return {
+    state: () => serializeLobby(lobby),
+    command(playerId, command) {
+      applyLobbyCommand(lobby, playerId, command, {
+        isVehicleAllowed: session.isVehicleAllowed || (() => true),
+      });
+      return serializeLobby(lobby);
+    },
+    markPlaying() { markLobbyRoundPlaying(lobby); },
+    finish(outcome) { finishLobbyRound(lobby, outcome); },
+    remove(playerId, reason = 'left') {
+      removeLobbyPlayer(lobby, playerId);
+      const rtcPeer = session.peers?.get?.(String(playerId));
+      rtcPeer?.close?.(reason);
+      session.peers?.delete?.(String(playerId));
+    },
+    metadataFor(playerId) {
+      const player = lobby.players.get(String(playerId));
+      return player ? { spectator: player.team === 'spectator', team: player.team } : {};
+    },
+  };
+}
+
 /**
  * Switch a browser-hosted room from lobby messages to authoritative match
  * messages without replacing its established WebRTC channels.
@@ -95,13 +128,14 @@ export function beginPrivateHostMatch({
   const hostId = String(session.roomInfo.peerId);
   const mapId = resolvePrivateMatchMap(lobby);
   const players = buildPrivateMatchPlayers(lobby);
-  const simulation = simulationFactory({
+  let simulation = simulationFactory({
     players,
     mapId,
     seed: lobby.matchSeed,
     worldCollision,
   });
-  const host = new AuthoritativeMatchRuntime({ simulation });
+  const roomController = createPersistentRoomController(session);
+  const host = new AuthoritativeMatchRuntime({ simulation, roomController });
   // The browser host's local player does not need an emulated network hop.
   // Keep the same protocol/runtime seam, but deliver its in-process envelopes
   // synchronously and zero-copy so host rendering never waits on microtasks.
@@ -133,10 +167,24 @@ export function beginPrivateHostMatch({
     role: 'host',
     playerId: hostId,
     mapId,
-    simulation,
+    get simulation() { return simulation; },
     host,
     client,
     ready() { return client.readyForMatch(); },
+    onRoomState(listener) { return client.onRoomState(listener); },
+    roomCommand(command) { return client.submitRoomCommand(command); },
+    prepareRound({ lobbyState: nextLobby, worldCollision: nextCollision = null } = {}) {
+      const next = validateStartingLobby(nextLobby);
+      const nextMapId = resolvePrivateMatchMap(next);
+      simulation = simulationFactory({
+        players: buildPrivateMatchPlayers(next),
+        mapId: nextMapId,
+        seed: next.matchSeed,
+        worldCollision: nextCollision,
+      });
+      host.replaceSimulation(simulation, { round: Number(next.round) || 1 });
+      return { mapId: nextMapId, simulation };
+    },
     advance(elapsedMs, input = null) {
       if (input) client.submitInput(input, host.tick);
       host.advance(elapsedMs);
@@ -146,6 +194,7 @@ export function beginPrivateHostMatch({
     close(reason = 'private_match_closed') {
       client.close(reason);
       host.close(reason);
+      session.close?.(reason);
     },
   };
 }
@@ -167,8 +216,13 @@ export async function beginPrivateClientMatch({ session, playerId, lobbyState } 
     mapId: lobbyState ? resolvePrivateMatchMap(lobbyState) : null,
     client,
     ready() { return client.readyForMatch(); },
+    onRoomState(listener) { return client.onRoomState(listener); },
+    roomCommand(command) { return client.submitRoomCommand(command); },
     update(nowMs) { return client.update(nowMs); },
     submitInput(input, clientTick) { return client.submitInput(input, clientTick); },
-    close(reason = 'private_match_closed') { client.close(reason); },
+    close(reason = 'private_match_closed') {
+      client.close(reason);
+      session.close?.(reason);
+    },
   };
 }

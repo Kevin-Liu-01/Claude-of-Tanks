@@ -30,6 +30,7 @@ export class PrivateRoomHostSession {
     this.iceServers = iceServers;
     this.relayOnly = relayOnly;
     this.RTCPeerConnectionImpl = RTCPeerConnectionImpl;
+    this.isVehicleAllowed = isVehicleAllowed;
     this.onError = onError;
     this.peers = new Map();
     this.lobby = createLobby({
