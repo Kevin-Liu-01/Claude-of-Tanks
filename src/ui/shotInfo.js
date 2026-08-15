@@ -329,6 +329,9 @@ body.cot-si-report .cot-end button{pointer-events:auto !important;}
 .cot-si-kill.cap span{color:${COL.dim} !important;font-size:7.5px;font-weight:700;
   letter-spacing:.12em;text-transform:uppercase;font-family:${FONT_COND};
   }
+@media (max-width:700px), (pointer:coarse) and (max-width:1024px){
+  .cot-si-diag{display:none;}
+}
 `;
 
 function ensureStyle(id, css) {

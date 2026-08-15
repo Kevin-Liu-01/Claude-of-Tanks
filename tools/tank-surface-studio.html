@@ -3,283 +3,136 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#070a0d">
+  <meta name="theme-color" content="#05080b">
   <link rel="icon" type="image/svg+xml" href="/brand/favicon.svg">
-  <title>Claude of Tanks — Surface Studio</title>
+  <title>Claude of Tanks — Surface Lab</title>
   <style>
-    @font-face {
-      font-family: "ABC Monument Grotesk";
-      src: url("/fonts/abc-monument-grotesk/ABCMonumentGrotesk-Regular.woff2") format("woff2");
-      font-weight: 400;
-      font-display: swap;
-    }
-    @font-face {
-      font-family: "ABC Monument Grotesk";
-      src: url("/fonts/abc-monument-grotesk/ABCMonumentGrotesk-Medium.woff2") format("woff2");
-      font-weight: 500 600;
-      font-display: swap;
-    }
-    @font-face {
-      font-family: "ABC Monument Grotesk";
-      src: url("/fonts/abc-monument-grotesk/ABCMonumentGrotesk-Bold.woff2") format("woff2");
-      font-weight: 700 900;
-      font-display: swap;
-    }
-    :root {
-      color-scheme: dark;
-      --bg: #070a0d;
-      --panel: rgba(10, 14, 18, .97);
-      --panel-2: #11171c;
-      --line: rgba(163, 180, 193, .20);
-      --line-hot: rgba(235, 156, 43, .58);
-      --text: #e6edf3;
-      --bright: #f7fafc;
-      --muted: #82909b;
-      --accent: #ee9b2d;
-      --gold: #ffd27a;
-      --remove: #e66861;
-      --reshape: #e9a640;
-      --add: #5ebc9c;
-      --inspect: #6f9fc4;
-      --font: "ABC Monument Grotesk", "Arial Narrow", sans-serif;
-    }
-    * { box-sizing: border-box; }
-    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
-    body {
-      display: grid; grid-template-rows: 58px minmax(0, 1fr);
-      background: var(--bg); color: var(--text); font: 500 13px/1.42 var(--font);
-      -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
-    }
-    button, select, input, textarea { font: inherit; }
-    button, select, input, textarea {
-      color: var(--text); background: #0c1217; border: 1px solid var(--line);
-      border-radius: 0;
-    }
-    button { cursor: pointer; padding: 7px 10px; font-weight: 700; }
-    button:hover { border-color: var(--line-hot); background: #191b17; color: var(--gold); }
-    button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible {
-      outline: 2px solid var(--accent); outline-offset: 1px;
-    }
-    #globalNav {
-      position: relative; z-index: 20; display: flex; align-items: stretch;
-      justify-content: space-between; padding: 0 22px 0 18px;
-      background: rgba(5, 8, 11, .96); border-bottom: 1px solid var(--line);
-      box-shadow: 0 10px 32px rgba(0,0,0,.28);
-    }
-    #globalNav::after {
-      content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 1px;
-      background: linear-gradient(90deg, var(--accent), transparent 34%);
-    }
-    .brand { display: flex; align-items: center; gap: 11px; color: var(--bright); text-decoration: none; }
-    .brand img { width: 31px; height: 31px; filter: drop-shadow(0 2px 5px #000); }
-    .brand-name { font-size: 13px; font-weight: 900; letter-spacing: .14em; text-transform: uppercase; }
-    .brand-name span { color: var(--accent); }
-    .nav-links { display: flex; align-items: stretch; }
-    .nav-links a {
-      position: relative; display: flex; align-items: center; gap: 7px; padding: 0 17px;
-      color: #8c9aa5; text-decoration: none; text-transform: uppercase;
-      font-size: 9px; font-weight: 800; letter-spacing: .19em;
-      border-left: 1px solid rgba(163,180,193,.08); transition: .15s ease;
-    }
-    .nav-links a::before { content: ""; width: 5px; height: 5px; border: 1px solid currentColor; transform: rotate(45deg); }
-    .nav-links a:hover { color: var(--gold); background: rgba(238,155,45,.06); }
-    .nav-links a.active { color: var(--gold); background: rgba(238,155,45,.10); }
-    .nav-links a.active::after { content: ""; position: absolute; left: 16px; right: 16px; bottom: 0; height: 2px; background: var(--accent); }
-    #app { width: 100%; min-height: 0; display: grid; grid-template-columns: 386px minmax(0, 1fr); }
-    #sidebar {
-      z-index: 3; display: flex; flex-direction: column; min-height: 0;
-      background:
-        linear-gradient(90deg, rgba(255,255,255,.018) 1px, transparent 1px) 0 0/32px 32px,
-        var(--panel);
-      border-right: 1px solid var(--line); box-shadow: 14px 0 42px #000a;
-    }
-    header { position: relative; padding: 18px 18px 15px; border-bottom: 1px solid var(--line); }
-    header::before { content: ""; position: absolute; left: 0; top: 18px; bottom: 15px; width: 3px; background: var(--accent); }
-    .eyebrow { color: var(--accent); font-size: 8px; font-weight: 900; letter-spacing: .26em; text-transform: uppercase; margin-bottom: 5px; }
-    h1 { margin: 0 0 9px; color: var(--bright); font-size: 18px; letter-spacing: .10em; text-transform: uppercase; }
-    .badge {
-      display: inline-flex; align-items: center; gap: 7px; color: #aad8c8;
-      background: rgba(28,69,58,.35); border: 1px solid rgba(94,188,156,.38);
-      padding: 4px 8px; font: 800 8px/1.2 var(--font); letter-spacing: .13em;
-    }
-    .badge::before { content: ""; width: 6px; height: 6px; background: var(--add); box-shadow: 0 0 9px rgba(94,188,156,.8); }
-    .scroll { min-height: 0; overflow: auto; padding: 5px 16px 24px; scrollbar-color: #7b511b transparent; scrollbar-width: thin; }
-    .scroll > section { position: relative; padding: 15px 0; border-bottom: 1px solid var(--line); }
-    .scroll > section:last-child { border-bottom: 0; }
-    .label { display: block; margin: 0 0 7px; color: #a5b1ba; font-size: 9px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
-    .row { display: flex; gap: 7px; align-items: center; }
-    .row + .row { margin-top: 7px; }
-    .grow { flex: 1; min-width: 0; }
-    select, input[type="text"], input[type="number"], textarea { width: 100%; padding: 8px; }
-    select:hover, input:hover, textarea:hover { border-color: rgba(163,180,193,.38); }
-    input[type="range"] { width: 100%; accent-color: var(--accent); }
-    .range-row { display: grid; grid-template-columns: 82px 1fr 45px; gap: 7px; align-items: center; margin-top: 7px; }
-    .range-value { color: var(--gold); font: 700 10px/1 var(--font); letter-spacing: .08em; text-align: right; }
-    .mode-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
-    .mode { position: relative; padding-left: 25px; text-align: left; }
-    .mode::before { content: ""; position: absolute; left: 10px; top: 50%; width: 7px; height: 7px; transform: translateY(-50%) rotate(45deg); background: var(--inspect); }
-    .mode[data-mode="remove"]::before { background: var(--remove); }
-    .mode[data-mode="reshape"]::before { background: var(--reshape); }
-    .mode[data-mode="add"]::before { background: var(--add); }
-    .mode.active { border-color: var(--accent); background: #292113; box-shadow: inset 3px 0 0 var(--accent); color: var(--gold); }
-    .preset-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
-    .preset-grid button { padding: 6px 3px; font-size: 9px; letter-spacing: .07em; text-transform: uppercase; }
-    .subgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-    .hint { margin: 7px 0 0; color: var(--muted); font-size: 10px; }
-    code { color: #c1cbd2; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 9px; }
-    #selectionList { display: grid; gap: 6px; max-height: 180px; overflow: auto; }
-    .annotation {
-      display: grid; grid-template-columns: 9px 1fr auto; gap: 8px; align-items: start;
-      width: 100%; padding: 8px; text-align: left; background: #0b1116;
-    }
-    .annotation.active { border-color: var(--line-hot); background: #211b12; }
-    .annotation-dot { width: 7px; height: 7px; transform: rotate(45deg); margin-top: 4px; }
-    .annotation strong { display: block; font-size: 11px; }
-    .annotation small { color: var(--muted); display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 230px; }
-    .annotation .remove-one { border: 0; padding: 0 2px; background: transparent; color: #98aab3; font-size: 16px; }
-    textarea { min-height: 72px; resize: vertical; }
-    #jsonOutput { min-height: 160px; font: 10px/1.35 ui-monospace, SFMono-Regular, Menlo, monospace; color: #b8c9d0; background: #070b0e; }
-    .action-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
-    .primary { border-color: #a66a1e; background: #6f4512; color: #fff1d6; }
-    #viewport {
-      position: relative; min-width: 0; overflow: hidden;
-      background: radial-gradient(circle at 52% 32%, #28323a 0, #11171b 54%, #080b0e 100%);
-    }
-    #viewport::after {
-      content: ""; position: absolute; inset: 0; pointer-events: none;
-      background:
-        linear-gradient(rgba(255,255,255,.018) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255,255,255,.018) 1px, transparent 1px),
-        radial-gradient(80% 65% at 50% 48%, transparent 45%, rgba(0,0,0,.45) 100%);
-      background-size: 74px 74px, 74px 74px, auto;
-      mix-blend-mode: screen, screen, normal;
-    }
-    #viewport canvas { display: block; width: 100%; height: 100%; touch-action: none; }
-    #topbar {
-      position: absolute; z-index: 2; left: 18px; right: 18px; top: 16px;
-      display: flex; justify-content: space-between; gap: 12px; pointer-events: none;
-    }
-    .hud-card { padding: 9px 11px; border: 1px solid rgba(163,180,193,.30); border-left: 3px solid var(--accent); background: #070b0ee8; box-shadow: 0 10px 28px #0008; pointer-events: auto; }
-    #tankTitle { color: var(--bright); font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
-    #meshStatus { max-width: 520px; color: #c4d2d7; font: 11px/1.35 ui-monospace, SFMono-Regular, monospace; text-align: right; }
-    #emptyState {
-      position: absolute; z-index: 2; inset: auto 18px 18px; color: #8d9ca7; font-size: 9px;
-      letter-spacing: .18em; text-transform: uppercase;
-      text-align: center; pointer-events: none;
-    }
-    #toast { position: absolute; z-index: 5; left: 50%; bottom: 42px; transform: translate(-50%, 12px); opacity: 0; pointer-events: none; padding: 9px 13px; background: #0a1116ef; border: 1px solid var(--line-hot); color: var(--gold); transition: .18s ease; }
-    #toast.show { opacity: 1; transform: translate(-50%, 0); }
-    .hidden { display: none !important; }
-    @media (max-width: 960px) {
-      #app { grid-template-columns: 320px minmax(0, 1fr); }
-      #sidebar { font-size: 12px; }
-      #meshStatus { display: none; }
-      .nav-links a { padding: 0 10px; font-size: 8px; }
-      .brand-name { display: none; }
-    }
-    @media (max-width: 700px) {
-      body { grid-template-rows: 50px minmax(0, 1fr); }
-      #globalNav { padding: 0 8px; }
-      .nav-links a { padding: 0 7px; }
-      .nav-links a::before { display: none; }
-      #app { grid-template-columns: 280px minmax(0, 1fr); }
-    }
+    @font-face{font-family:"ABC Monument Grotesk";src:url("/fonts/abc-monument-grotesk/ABCMonumentGrotesk-Regular.woff2") format("woff2");font-weight:400;font-display:swap}
+    @font-face{font-family:"ABC Monument Grotesk";src:url("/fonts/abc-monument-grotesk/ABCMonumentGrotesk-Medium.woff2") format("woff2");font-weight:500 600;font-display:swap}
+    @font-face{font-family:"ABC Monument Grotesk";src:url("/fonts/abc-monument-grotesk/ABCMonumentGrotesk-Bold.woff2") format("woff2");font-weight:700 900;font-display:swap}
+    :root{color-scheme:dark;--bg:#05080b;--panel:rgba(7,11,15,.98);--panel2:#0d141a;--panel3:#121b22;--line:rgba(158,178,193,.2);--line2:rgba(158,178,193,.1);--text:#eaf0f4;--bright:#fff;--muted:#81919d;--dim:#586873;--accent:#f0a030;--gold:#ffd27a;--remove:#ef685f;--reshape:#eba441;--add:#56c6a1;--inspect:#72a9d0;--font:"ABC Monument Grotesk","Arial Narrow",sans-serif}
+    *{box-sizing:border-box}
+    html,body{width:100%;height:100%;margin:0;overflow:hidden}
+    body{display:grid;grid-template-rows:68px minmax(0,1fr);background:var(--bg);color:var(--text);font:500 13px/1.42 var(--font);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+    button,select,input,textarea{font:inherit;color:var(--text);background:#091016;border:1px solid var(--line);border-radius:0}
+    button{cursor:pointer;padding:8px 10px;font-weight:700;transition:border-color .15s ease,background .15s ease,color .15s ease}
+    button:hover{border-color:rgba(240,160,48,.66);background:#17170f;color:var(--gold)}
+    button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+    #globalNav{position:relative;z-index:20;display:flex;align-items:stretch;justify-content:space-between;padding:0 22px 0 18px;background:rgba(5,8,11,.97);border-bottom:1px solid var(--line);box-shadow:0 10px 34px rgba(0,0,0,.3)}
+    #globalNav::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:1px;background:linear-gradient(90deg,var(--accent),transparent 28%)}
+    .brand{display:flex;align-items:center;gap:12px;color:var(--bright);text-decoration:none}
+    .brand img{width:34px;height:38px;filter:drop-shadow(0 3px 7px #000)}
+    .brand-name{font-size:12px;font-weight:900;letter-spacing:.24em;text-transform:uppercase}
+    .brand-name span{color:var(--accent)}
+    .nav-links{display:flex;align-items:stretch}
+    .nav-links a{position:relative;display:flex;align-items:center;gap:8px;padding:0 16px;color:#8e9ca7;text-decoration:none;text-transform:uppercase;font-size:9px;font-weight:800;letter-spacing:.18em;border-left:1px solid var(--line2);transition:.15s ease}
+    .nav-links a::before{content:"";width:5px;height:5px;border:1px solid currentColor;transform:rotate(45deg)}
+    .nav-links a:hover{color:var(--gold);background:rgba(240,160,48,.055)}
+    .nav-links a.active{color:var(--gold);background:rgba(240,160,48,.09)}
+    .nav-links a.active::after{content:"";position:absolute;left:16px;right:16px;bottom:0;height:2px;background:var(--accent)}
+    #app{width:100%;min-height:0;display:grid;grid-template-columns:420px minmax(0,1fr)}
+    #sidebar{z-index:3;display:flex;flex-direction:column;min-height:0;background:linear-gradient(90deg,rgba(255,255,255,.015) 1px,transparent 1px) 0 0/32px 32px,var(--panel);border-right:1px solid var(--line);box-shadow:18px 0 50px rgba(0,0,0,.45)}
+    .lab-header{position:relative;padding:22px 20px 18px;border-bottom:1px solid var(--line)}
+    .lab-header::before{content:"";position:absolute;left:0;top:21px;bottom:18px;width:3px;background:var(--accent);box-shadow:0 0 18px rgba(240,160,48,.45)}
+    .lab-header::after{content:"BAY 01";position:absolute;right:18px;top:19px;color:var(--dim);font:800 8px/1 var(--font);letter-spacing:.2em}
+    .eyebrow{color:var(--accent);font-size:8px;font-weight:900;letter-spacing:.27em;text-transform:uppercase;margin-bottom:6px}
+    h1{margin:0 0 12px;color:var(--bright);font-size:21px;line-height:1;letter-spacing:.08em;text-transform:uppercase}
+    .badge{display:inline-flex;align-items:center;gap:7px;color:#b4e6d5;background:rgba(31,82,66,.3);border:1px solid rgba(86,198,161,.36);padding:5px 8px;font:800 8px/1.2 var(--font);letter-spacing:.13em}
+    .badge::before{content:"";width:6px;height:6px;background:var(--add);box-shadow:0 0 10px rgba(86,198,161,.85)}
+    .scroll{min-height:0;overflow:auto;padding:3px 18px 28px;scrollbar-color:#7b511b transparent;scrollbar-width:thin}
+    .scroll>section{position:relative;padding:18px 0 18px 34px;border-bottom:1px solid var(--line)}
+    .scroll>section::before{content:attr(data-index);position:absolute;left:0;top:20px;color:var(--accent);font:800 8px/1 var(--font);letter-spacing:.16em}
+    .scroll>section::after{content:"";position:absolute;left:23px;top:22px;width:5px;height:5px;border:1px solid var(--dim);transform:rotate(45deg)}
+    .scroll>section:last-child{border-bottom:0}
+    .section-title{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px}
+    .label{display:block;margin:0 0 7px;color:#a6b4bd;font-size:8px;font-weight:800;letter-spacing:.18em;text-transform:uppercase}
+    .section-title .label{margin:0}
+    .row{display:flex;gap:7px;align-items:center}.row+.row{margin-top:7px}.grow{flex:1;min-width:0}
+    select,input[type="text"],input[type="number"],textarea{width:100%;padding:9px}
+    select:hover,input:hover,textarea:hover{border-color:rgba(158,178,193,.4)}
+    input[type="range"]{width:100%;accent-color:var(--accent)}
+    .range-row{display:grid;grid-template-columns:80px 1fr 45px;gap:8px;align-items:center;margin-top:8px;color:#99a9b4;font-size:10px}
+    .range-value{color:var(--gold);font:700 10px/1 var(--font);letter-spacing:.08em;text-align:right;font-variant-numeric:tabular-nums}
+    .mode-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+    .mode{position:relative;padding:9px 8px 9px 27px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.08em}
+    .mode::before{content:"";position:absolute;left:11px;top:50%;width:7px;height:7px;transform:translateY(-50%) rotate(45deg);background:var(--inspect);box-shadow:0 0 8px color-mix(in srgb,var(--inspect),transparent 40%)}
+    .mode[data-mode="remove"]::before{background:var(--remove)}.mode[data-mode="reshape"]::before{background:var(--reshape)}.mode[data-mode="add"]::before{background:var(--add)}
+    .mode.active{border-color:var(--accent);background:linear-gradient(90deg,rgba(240,160,48,.18),rgba(240,160,48,.04));box-shadow:inset 3px 0 0 var(--accent);color:var(--gold)}
+    .preset-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}.preset-grid button{padding:7px 3px;font-size:8px;letter-spacing:.08em;text-transform:uppercase}
+    .subgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+    .hint{margin:8px 0 0;color:var(--muted);font-size:10px}code{color:#c3cdd4;font-family:ui-monospace,SFMono-Regular,monospace;font-size:9px}
+    #selectionList{display:grid;gap:6px;max-height:180px;overflow:auto}
+    .annotation{display:grid;grid-template-columns:9px 1fr auto;gap:8px;align-items:start;width:100%;padding:8px;text-align:left;background:#0b1116}
+    .annotation.active{border-color:var(--accent);background:#211b12}.annotation-dot{width:7px;height:7px;transform:rotate(45deg);margin-top:4px}.annotation strong{display:block;font-size:11px}.annotation small{color:var(--muted);display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:230px}.annotation .remove-one{border:0;padding:0 2px;background:transparent;color:#98aab3;font-size:16px}
+    textarea{min-height:74px;resize:vertical}#jsonOutput{min-height:160px;font:10px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;color:#b8c9d0;background:#05090c}.action-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}.primary{border-color:#b47726;background:#754712;color:#fff1d6;box-shadow:0 8px 22px rgba(240,160,48,.12)}
+    #viewport{position:relative;min-width:0;overflow:hidden;background:radial-gradient(circle at 50% 33%,#29353e 0,#11181d 52%,#070a0d 100%)}
+    #viewport::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(rgba(255,255,255,.016) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.016) 1px,transparent 1px),radial-gradient(75% 64% at 50% 47%,transparent 45%,rgba(0,0,0,.48) 100%);background-size:76px 76px,76px 76px,auto;mix-blend-mode:screen,screen,normal}
+    #viewport canvas{position:relative;z-index:0;display:block;width:100%;height:100%;touch-action:none}
+    #topbar{position:absolute;z-index:3;left:22px;right:22px;top:20px;display:flex;justify-content:space-between;gap:12px;pointer-events:none}
+    .hud-card{position:relative;padding:11px 13px;border:1px solid rgba(158,178,193,.3);border-left:3px solid var(--accent);background:rgba(5,9,12,.88);box-shadow:0 12px 32px rgba(0,0,0,.42);backdrop-filter:blur(12px);pointer-events:auto}
+    .hud-card::after{content:"";position:absolute;right:-1px;top:-1px;width:8px;height:8px;border-top:1px solid var(--accent);border-right:1px solid var(--accent)}
+    #tankTitle{color:var(--bright);font-weight:900;letter-spacing:.1em;text-transform:uppercase}#ownershipStatus{color:#7dcdb2!important;text-transform:uppercase;letter-spacing:.12em}
+    #meshStatus{max-width:540px;color:#c4d2d7;font:10px/1.4 ui-monospace,SFMono-Regular,monospace;text-align:right}
+    .viewport-reticle{position:absolute;z-index:2;left:50%;top:50%;width:46px;height:46px;transform:translate(-50%,-50%);pointer-events:none;opacity:.34}
+    .viewport-reticle::before,.viewport-reticle::after{content:"";position:absolute;background:var(--accent)}.viewport-reticle::before{left:0;right:0;top:50%;height:1px}.viewport-reticle::after{top:0;bottom:0;left:50%;width:1px}.viewport-reticle i{position:absolute;inset:15px;border:1px solid var(--accent);border-radius:50%}
+    .corner{position:absolute;z-index:2;width:30px;height:30px;pointer-events:none;opacity:.55}.corner--tl{left:22px;top:96px;border-left:1px solid var(--accent);border-top:1px solid var(--accent)}.corner--br{right:22px;bottom:52px;border-right:1px solid var(--accent);border-bottom:1px solid var(--accent)}
+    .viewport-scale{position:absolute;z-index:2;right:23px;top:50%;width:6px;height:180px;transform:translateY(-50%);background:repeating-linear-gradient(to bottom,rgba(158,178,193,.5) 0 1px,transparent 1px 15px);pointer-events:none;opacity:.55}
+    #emptyState{position:absolute;z-index:3;inset:auto 22px 20px;color:#8d9ca7;font-size:8px;letter-spacing:.2em;text-transform:uppercase;text-align:center;pointer-events:none}
+    #emptyState::before{content:"LIVE GEOMETRY // ";color:var(--accent)}
+    #toast{position:absolute;z-index:5;left:50%;bottom:48px;transform:translate(-50%,12px);opacity:0;pointer-events:none;padding:10px 14px;background:rgba(7,13,17,.94);border:1px solid rgba(240,160,48,.65);color:var(--gold);transition:.18s ease;box-shadow:0 14px 32px rgba(0,0,0,.4)}#toast.show{opacity:1;transform:translate(-50%,0)}.hidden{display:none!important}
+    @media(max-width:1050px){#app{grid-template-columns:350px minmax(0,1fr)}#sidebar{font-size:12px}#meshStatus{display:none}.nav-links a{padding:0 10px;font-size:8px}.brand-name{display:none}.scroll>section{padding-left:30px}}
+    @media(max-width:720px){body{grid-template-rows:54px minmax(0,1fr);overflow:auto}#globalNav{padding:0 8px}.brand img{width:28px}.nav-links a{padding:0 7px;font-size:0}.nav-links a::before{display:block}.nav-links a:nth-child(1)::after{content:"H"}.nav-links a:nth-child(2)::after{content:"G"}.nav-links a:nth-child(3)::after{content:"S"}.nav-links a:nth-child(4)::after{content:"L"}.nav-links a::after{position:static!important;width:auto!important;height:auto!important;background:none!important;font-size:8px!important;color:inherit}#app{grid-template-columns:1fr;grid-template-rows:minmax(320px,48vh) minmax(0,1fr)}#viewport{grid-row:1;min-height:320px}#sidebar{grid-row:2;border-right:0;border-top:1px solid var(--line);min-height:0}.lab-header{padding:16px 18px}.scroll{padding-inline:14px}.scroll>section{padding-block:15px}.corner--tl{top:76px}.surface-facts{display:none}}
   </style>
 </head>
 <body>
 <nav id="globalNav" aria-label="Primary navigation">
-  <a class="brand" href="/home" aria-label="Claude of Tanks home">
-    <img src="/brand/logo-mark.svg" alt="">
-    <span class="brand-name">Claude <span>of</span> Tanks</span>
-  </a>
-  <div class="nav-links">
-    <a href="/home">Home</a>
-    <a href="/">Garage</a>
-    <a href="/studio">Studio</a>
-    <a class="active" href="/surface-studio" aria-current="page">Surface Lab</a>
-  </div>
+  <a class="brand" href="/home" aria-label="Claude of Tanks home"><img src="/brand/logo-mark.svg" alt=""><span class="brand-name">Claude <span>of</span> Tanks</span></a>
+  <div class="nav-links"><a href="/home">Home</a><a href="/">Garage</a><a href="/studio">Studio</a><a class="active" href="/surface-studio" aria-current="page">Surface Lab</a></div>
 </nav>
 <main id="app">
   <aside id="sidebar">
-    <header>
-      <div class="eyebrow">Vehicle systems / authoring bay 01</div>
-      <h1>Surface Workbench</h1>
-      <span class="badge">FIRST-PARTY PROCEDURAL ONLY</span>
-    </header>
+    <header class="lab-header"><div class="eyebrow">Vehicle systems / geometry authoring</div><h1>Surface Workbench</h1><span class="badge">First-party procedural only</span></header>
     <div class="scroll">
-      <section>
-        <label class="label" for="tankSelect">Tank</label>
+      <section data-index="01">
+        <div class="section-title"><label class="label" for="tankSelect">Vehicle</label><span class="range-value">Roster / native</span></div>
         <select id="tankSelect"></select>
-        <p class="hint">The viewer always calls <code>createTank(..., proceduralOnly: true)</code>. No source GLB can load here.</p>
+        <p class="hint">The Lab calls <code>createTank(..., proceduralOnly: true)</code>. Reference GLBs cannot enter this surface.</p>
       </section>
-
-      <section>
-        <span class="label">View</span>
-        <div class="preset-grid">
-          <button data-view="front">Front</button><button data-view="left">Left</button>
-          <button data-view="right">Right</button><button data-view="rear">Rear</button>
-          <button data-view="top">Top</button><button data-view="hero">Hero</button>
-          <button data-view="elevated-left">Elev. L</button><button data-view="elevated-right">Elev. R</button>
-        </div>
-        <div class="range-row"><span>Hull yaw</span><input id="hullYaw" type="range" min="-180" max="180" value="0"><output id="hullYawOut" class="range-value">0°</output></div>
-        <div class="range-row"><span>Turret yaw</span><input id="turretYaw" type="range" min="-180" max="180" value="0"><output id="turretYawOut" class="range-value">0°</output></div>
-        <div class="range-row"><span>Gun pitch</span><input id="gunPitch" type="range" min="-15" max="30" step="0.5" value="0"><output id="gunPitchOut" class="range-value">0°</output></div>
+      <section data-index="02">
+        <div class="section-title"><span class="label">Camera + rig</span><span class="range-value">8 presets</span></div>
+        <div class="preset-grid"><button data-view="front">Front</button><button data-view="left">Left</button><button data-view="right">Right</button><button data-view="rear">Rear</button><button data-view="top">Top</button><button data-view="hero">Hero</button><button data-view="elevated-left">Elev. L</button><button data-view="elevated-right">Elev. R</button></div>
+        <div class="range-row"><label for="hullYaw">Hull yaw</label><input id="hullYaw" type="range" min="-180" max="180" value="0"><output id="hullYawOut" class="range-value">0°</output></div>
+        <div class="range-row"><label for="turretYaw">Turret yaw</label><input id="turretYaw" type="range" min="-180" max="180" value="0"><output id="turretYawOut" class="range-value">0°</output></div>
+        <div class="range-row"><label for="gunPitch">Gun pitch</label><input id="gunPitch" type="range" min="-15" max="30" step="0.5" value="0"><output id="gunPitchOut" class="range-value">0°</output></div>
       </section>
-
-      <section>
-        <span class="label">Markup operation</span>
-        <div class="mode-grid">
-          <button class="mode" data-mode="inspect">Inspect</button>
-          <button class="mode active" data-mode="remove">Remove</button>
-          <button class="mode" data-mode="reshape">Reshape</button>
-          <button class="mode" data-mode="add">Add here</button>
-        </div>
-        <div class="row" style="margin-top:8px">
-          <label class="grow"><span class="label" style="margin-bottom:4px">Selection scope</span>
-            <select id="scope"><option value="patch">Coplanar patch</option><option value="face">Single triangle</option></select>
-          </label>
-          <label style="width:82px"><span class="label" style="margin-bottom:4px">Patch angle</span><input id="patchAngle" type="number" value="14" min="1" max="45" step="1"></label>
-        </div>
-        <p class="hint">Click selects; drag orbits; wheel zooms. Shift-click adds another surface. Keys 1–4 switch operations.</p>
+      <section data-index="03">
+        <div class="section-title"><span class="label">Markup operation</span><span class="range-value">Keys 1–4</span></div>
+        <div class="mode-grid"><button class="mode" data-mode="inspect">Inspect</button><button class="mode active" data-mode="remove">Remove</button><button class="mode" data-mode="reshape">Reshape</button><button class="mode" data-mode="add">Add here</button></div>
+        <div class="row" style="margin-top:9px"><label class="grow"><span class="label" style="margin-bottom:4px">Selection scope</span><select id="scope"><option value="patch">Coplanar patch</option><option value="face">Single triangle</option></select></label><label style="width:82px"><span class="label" style="margin-bottom:4px">Patch angle</span><input id="patchAngle" type="number" value="14" min="1" max="45" step="1"></label></div>
+        <p class="hint">Click selects. Drag orbits. Shift-click extends a surface group.</p>
       </section>
-
-      <section id="requestSection">
-        <label class="label" for="note">Instruction / note</label>
-        <textarea id="note" placeholder="Example: delete this rectangular shelf and blend the cheek into the mantlet."></textarea>
-        <div id="reshapeFields" class="hidden">
-          <span class="label" style="margin-top:8px">Suggested offset (metres)</span>
-          <div class="subgrid"><input id="offsetX" type="number" step="0.01" value="0" aria-label="X offset"><input id="offsetY" type="number" step="0.01" value="0" aria-label="Y offset"><input id="offsetZ" type="number" step="0.01" value="0" aria-label="Z offset"></div>
-        </div>
-        <div id="addFields" class="hidden">
-          <div class="row" style="margin-top:8px">
-            <label class="grow"><span class="label" style="margin-bottom:4px">Primitive</span><select id="primitive"><option>custom</option><option>box</option><option>wedge</option><option>cylinder</option><option>rail</option><option>armor block</option></select></label>
-          </div>
-          <span class="label" style="margin-top:8px">Size W × H × D (metres)</span>
-          <div class="subgrid"><input id="sizeW" type="number" step="0.01" value="0.20"><input id="sizeH" type="number" step="0.01" value="0.20"><input id="sizeD" type="number" step="0.01" value="0.20"></div>
-        </div>
+      <section id="requestSection" data-index="04">
+        <label class="label" for="note">Geometry instruction</label>
+        <textarea id="note" placeholder="Delete this shelf and blend the cheek into the mantlet."></textarea>
+        <div id="reshapeFields" class="hidden"><span class="label" style="margin-top:8px">Suggested offset / metres</span><div class="subgrid"><input id="offsetX" type="number" step="0.01" value="0" aria-label="X offset"><input id="offsetY" type="number" step="0.01" value="0" aria-label="Y offset"><input id="offsetZ" type="number" step="0.01" value="0" aria-label="Z offset"></div></div>
+        <div id="addFields" class="hidden"><div class="row" style="margin-top:8px"><label class="grow"><span class="label" style="margin-bottom:4px">Primitive</span><select id="primitive"><option>custom</option><option>box</option><option>wedge</option><option>cylinder</option><option>rail</option><option>armor block</option></select></label></div><span class="label" style="margin-top:8px">Size W × H × D / metres</span><div class="subgrid"><input id="sizeW" type="number" step="0.01" value="0.20"><input id="sizeH" type="number" step="0.01" value="0.20"><input id="sizeD" type="number" step="0.01" value="0.20"></div></div>
       </section>
-
-      <section>
-        <div class="row" style="justify-content:space-between"><span class="label" style="margin:0">Selections</span><span id="selectionCount" class="range-value">0</span></div>
+      <section data-index="05">
+        <div class="section-title"><span class="label">Selections</span><span id="selectionCount" class="range-value">0</span></div>
         <div id="selectionList"><p class="hint">No marked surfaces yet.</p></div>
         <div class="row" style="margin-top:8px"><button id="undo" class="grow">Undo</button><button id="clear" class="grow">Clear all</button><button id="focus" class="grow">Focus</button></div>
       </section>
-
-      <section>
-        <label class="label" for="jsonOutput">Actionable JSON</label>
+      <section data-index="06">
+        <div class="section-title"><label class="label" for="jsonOutput">Actionable JSON</label><span class="range-value">Schema / 01</span></div>
         <textarea id="jsonOutput" readonly spellcheck="false"></textarea>
         <div class="action-grid" style="margin-top:8px"><button id="copyJson" class="primary">Copy JSON</button><button id="downloadJson">Download</button><button id="savePng">Save PNG</button></div>
       </section>
     </div>
   </aside>
-
   <section id="viewport" aria-label="Interactive first-party tank surface viewer">
-    <div id="topbar">
-      <div class="hud-card"><div id="tankTitle">Loading…</div><div id="ownershipStatus" class="hint" style="margin:2px 0 0">proceduralOnly</div></div>
-      <div id="meshStatus" class="hud-card">Hover a surface to inspect ownership.</div>
-    </div>
-    <div id="emptyState">Drag to orbit · scroll to zoom · click a face to mark it</div>
-    <div id="toast" role="status"></div>
+    <div id="topbar"><div class="hud-card"><div id="tankTitle">Loading…</div><div id="ownershipStatus" class="hint" style="margin:3px 0 0">proceduralOnly</div></div><div id="meshStatus" class="hud-card">Hover a surface to inspect ownership.</div></div>
+    <div class="viewport-reticle" aria-hidden="true"><i></i></div><div class="corner corner--tl" aria-hidden="true"></div><div class="corner corner--br" aria-hidden="true"></div><div class="viewport-scale" aria-hidden="true"></div>
+    <div id="emptyState">Drag to orbit · scroll to zoom · click a face to mark it</div><div id="toast" role="status"></div>
   </section>
 </main>
 <script type="module" src="/tools/tank-surface-studio.js"></script>
