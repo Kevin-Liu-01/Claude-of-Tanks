@@ -4,11 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Claude of Tanks — Original Browser Armoured Combat</title>
-  <meta name="description" content="A pure Three.js armoured combat simulator with 80 original first-party vehicles, eight destructible battlefields, plate-level ballistics, persistent multiplayer rooms, and a built-in Scene Studio.">
+  <meta name="description" content="A pure Three.js armoured combat simulator with 80 original first-party vehicles, eight destructible battlefields, plate-level ballistics, persistent multiplayer rooms, and built-in Scene Studio and Surface Lab tools.">
   <link rel="canonical" href="https://cot.kevinliu.studio/home">
   <meta name="theme-color" content="#05080b">
   <meta property="og:title" content="Claude of Tanks — Armour, Authored">
-  <meta property="og:description" content="80 original vehicles. Eight battlefields. One deterministic browser combat system. Every frame captured in-engine.">
+  <meta property="og:description" content="Original vehicles, destructible battlefields, plate-level combat, and the tools that built them—running entirely in the browser.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://cot.kevinliu.studio/home">
   <meta property="og:image" content="https://cot.kevinliu.studio/brand/og-image.png">
@@ -18,7 +18,7 @@
   <link rel="preload" href="/media/modern/09_kf51.webp" as="image">
   <link rel="stylesheet" href="/presentation.css">
   <script type="application/ld+json">
-  {"@context":"https://schema.org","@type":"VideoGame","name":"Claude of Tanks","url":"https://cot.kevinliu.studio/","genre":["Vehicular combat","Simulation","Action"],"gamePlatform":"Web Browser","playMode":["SinglePlayer","MultiPlayer"],"description":"Pure Three.js armoured combat with 80 original first-party vehicles, eight battlefields, plate-level armor and ballistics, multiplayer rooms, and an in-game Scene Studio.","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}
+  {"@context":"https://schema.org","@type":"VideoGame","name":"Claude of Tanks","url":"https://cot.kevinliu.studio/","genre":["Vehicular combat","Simulation","Action"],"gamePlatform":"Web Browser","playMode":["SinglePlayer","MultiPlayer"],"description":"Pure Three.js armoured combat with original first-party vehicles, eight battlefields, plate-level armor and ballistics, multiplayer rooms, and in-browser authoring tools.","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}
   </script>
 </head>
 <body>
@@ -33,13 +33,14 @@
   <symbol id="ic-mobile" viewBox="0 0 24 24"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M10 5h4m-3 14h2"/></symbol>
   <symbol id="ic-world" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 4 6 4 9s-1 6-4 9c-3-3-4-6-4-9s1-6 4-9Z"/></symbol>
   <symbol id="ic-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-5-5 5 5-5 5"/></symbol>
+  <symbol id="ic-grid" viewBox="0 0 24 24"><path d="M4 4h6v6H4zm10 0h6v6h-6zM4 14h6v6H4zm10 0h6v6h-6z"/><path d="M12 2v20M2 12h20"/></symbol>
 </defs></svg>
 
 <nav class="site-nav" aria-label="Primary">
   <div class="inner shell">
     <a class="brand" href="/home"><img src="/brand/logo-mark.svg" alt=""><span>Claude <b>of Tanks</b></span></a>
     <div class="nav-links">
-      <a href="#fleet">Modern fleet</a><a href="#systems">Systems</a><a href="#battle">Battle</a><a href="#studio">Studio</a><a href="/docs">Docs</a><a class="nav-play" href="/">Play now</a>
+      <a href="#fleet">Modern fleet</a><a href="#archive">Archive</a><a href="#systems">Systems</a><a href="#studio">Studio</a><a href="#surface-lab">Surface Lab</a><a href="/docs">Docs</a><a class="nav-play" href="/">Play now</a>
     </div>
   </div>
 </nav>
@@ -56,14 +57,14 @@
     <div class="hero-note micro"><strong>KF51 Panther // 130 mm</strong>Scene Studio frame 09 / 30</div>
   </header>
 
-  <div class="proof" aria-label="Project statistics">
+  <div class="proof" role="group" aria-label="Project statistics">
     <article><strong>80</strong><span>Selectable originals</span></article><article><strong>8</strong><span>Generated battlefields</span></article><article><strong>60 Hz</strong><span>Deterministic authority</span></article><article><strong>0</strong><span>GLB-sourced playables</span></article>
   </div>
 
   <section class="section">
     <div class="shell manifesto reveal">
       <div><p class="micro section-index"><em>01</em> The premise</p><p class="big">Not a model viewer with game logic attached. A complete armoured simulation, built <em>from the tracks up.</em></p></div>
-      <div class="flow" aria-label="Core runtime flow">
+      <div class="flow" role="group" aria-label="Core runtime flow">
         <div class="flow-row"><svg class="icon"><use href="#ic-track"/></svg><strong>Player input enters a fixed 60 Hz authority</strong><span>Movement</span></div>
         <div class="flow-row"><svg class="icon"><use href="#ic-armor"/></svg><strong>Plates, modules, ballistics, and visibility resolve as data</strong><span>Simulation</span></div>
         <div class="flow-row"><svg class="icon"><use href="#ic-net"/></svg><strong>Viewer-safe state and reliable events cross the mode boundary</strong><span>Network</span></div>
@@ -75,22 +76,46 @@
   <section class="section" id="fleet">
     <div class="shell">
       <div class="section-head reveal"><div><p class="micro section-index"><em>02</em> Modern arsenal</p><h2>Thirty machines.<br>Thirty new frames.</h2></div><p>Fresh deterministic captures of the strongest current modern builds. Every image was staged on a live battlefield and photographed through the in-game Scene Studio—no reference model swaps, generative art, or offline beauty render.</p></div>
-      <div class="fleet-filter" id="fleet-filter" aria-label="Filter modern fleet"><button class="active" data-nation="all">All 30</button></div>
+      <div class="fleet-filter" id="fleet-filter" role="group" aria-label="Filter modern fleet"><button class="active" data-nation="all">All 30</button></div>
       <div class="fleet-grid" id="fleet-grid" aria-live="polite"></div>
       <noscript><p class="lede">JavaScript is required to load the modern-fleet manifest.</p></noscript>
     </div>
   </section>
 
-  <section class="section" id="systems">
+  <section class="archive-section" id="archive">
+    <div class="shell archive-head reveal">
+      <div><p class="micro section-index"><em>03</em> Field archive</p><h2>Previous production.<br>Back on the wall.</h2></div>
+      <div class="archive-controls" role="group" aria-label="Archive carousel controls"><span class="micro" id="archive-count">01 / 20</span><button type="button" id="archive-prev" aria-label="Previous archive frame">←</button><button type="button" id="archive-next" aria-label="Next archive frame">→</button></div>
+    </div>
+    <div class="archive-track" id="archive-track" role="region" aria-label="Previous Claude of Tanks production frames"></div>
+  </section>
+
+  <section class="section proof-section" id="systems">
     <div class="shell">
-      <div class="section-head reveal"><div><p class="micro section-index"><em>03</em> Combat stack</p><h2>One shot.<br>Every consequence.</h2></div><p>The reticle, muzzle, shell, struck plate, module damage, event stream, killcam, and results report all trace back to the same resolved shot.</p></div>
-      <div class="systems reveal">
-        <article class="system-card"><span class="micro tag">01 / Kinetics</span><svg class="icon"><use href="#ic-crosshair"/></svg><h3>Honest gun convergence</h3><p>The bore tracks the center-screen world point one-to-one within real traverse, elevation, depression, and rotation limits. The gun marker exposes physical lag and obstruction.</p></article>
-        <article class="system-card"><span class="micro tag">02 / Armor</span><svg class="icon"><use href="#ic-armor"/></svg><h3>Plate-level resolution</h3><p>Impact angle, normalization, ricochet, overmatch, spaced armor, composites, ERA, modules, crew, fuel, fire, and ammunition racks.</p></article>
-        <article class="system-card"><span class="micro tag">03 / Mobility</span><svg class="icon"><use href="#ic-track"/></svg><h3>Terrain-shaped running gear</h3><p>Support sampling, damped hull attitude, wheel contact, flexible track paths, measured scroll, crushable cover, and fixed-step movement.</p></article>
-        <article class="system-card"><span class="micro tag">04 / Visibility</span><svg class="icon"><use href="#ic-eye"/></svg><h3>Information is simulated</h3><p>View range, concealment, foliage, firing bloom, movement bloom, and the 15 m rule determine what AI and network clients are allowed to know.</p></article>
-        <article class="system-card"><span class="micro tag">05 / World</span><svg class="icon"><use href="#ic-world"/></svg><h3>Eight authored ecosystems</h3><p>Height fields, material splats, roads, vegetation, structures, destructibles, collision, sky, fog, and minimaps are generated together.</p></article>
-        <article class="system-card"><span class="micro tag">06 / Device</span><svg class="icon"><use href="#ic-mobile"/></svg><h3>Desktop depth, mobile reach</h3><p>Adaptive resolution, shadows, post, textures, vegetation, and background work preserve the game rules while fitting the device.</p></article>
+      <div class="section-head reveal"><div><p class="micro section-index"><em>04</em> Combat stack</p><h2>See the system.<br>Not the slogan.</h2></div><p>Every panel below is a real game or tool surface. The same resolved shot drives the reticle, struck plate, module damage, x-ray, effects, and report.</p></div>
+      <div class="proof-wall reveal">
+        <article class="proof-panel proof-panel--battle">
+          <button type="button" class="proof-media" data-lightbox-src="/media/home/ui_battle.webp" data-lightbox-title="Battle interface" data-lightbox-meta="LIVE HUD // BALLISTICS // SPOTTING"><img src="/media/home/ui_battle.webp" loading="lazy" width="1600" height="900" alt="Claude of Tanks battle interface with gun sight, team HUD, minimap, ammunition, and vehicle status"></button>
+          <div class="proof-label"><span class="micro">01 / Live interface</span><h3>Battle, fully instrumented.</h3></div>
+        </article>
+        <article class="proof-panel proof-panel--armor">
+          <button type="button" class="proof-media" data-lightbox-src="/media/home/ui_sniper.webp" data-lightbox-title="Plate-level shot resolution" data-lightbox-meta="IMPACT ANGLE // EFFECTIVE ARMOR // MODULE PATH"><img src="/media/home/ui_sniper.webp" loading="lazy" width="1600" height="900" alt="Sniper view resolving a shell against individual armor plates"></button>
+          <div class="armor-diagrams" role="group" aria-label="First-party M1A2 SEPv3 penetration diagrams">
+            <figure><img src="/icons/m1a2_sepv3_hit_zones_side.png" loading="lazy" alt="M1A2 SEPv3 side hit-zone penetration diagram"><figcaption>Hit zones</figcaption></figure>
+            <figure><img src="/icons/m1a2_sepv3_armor_side.png" loading="lazy" alt="M1A2 SEPv3 side armor plate diagram"><figcaption>Plate armor</figcaption></figure>
+            <figure><img src="/icons/m1a2_sepv3_modules_side.png" loading="lazy" alt="M1A2 SEPv3 internal module diagram"><figcaption>Modules</figcaption></figure>
+          </div>
+          <div class="proof-label"><span class="micro">02 / Plate resolution</span><h3>The shot passes through data.</h3></div>
+        </article>
+        <article class="proof-panel proof-panel--running">
+          <button type="button" class="proof-media" data-lightbox-src="/media/modern/13_ariete.webp" data-lightbox-title="Terrain-shaped running gear" data-lightbox-meta="WHEEL CONTACT // FLEXIBLE TRACK PATH // DAMPED HULL"><img src="/media/modern/13_ariete.webp" loading="lazy" width="1600" height="900" alt="C1 Ariete running gear and flexible track path conforming to uneven terrain"></button>
+          <div class="running-telemetry" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><span>CONTACT SOLVE // LIVE</span></div>
+          <div class="proof-label"><span class="micro">03 / Running gear</span><h3>Tracks follow the earth.</h3></div>
+        </article>
+        <article class="proof-panel proof-panel--xray">
+          <button type="button" class="proof-media" data-lightbox-src="/media/home/ui_killcam.webp" data-lightbox-title="Resolved-shot killcam" data-lightbox-meta="SHELL PATH // CREW // MODULES"><img src="/media/home/ui_killcam.webp" loading="lazy" width="1600" height="900" alt="Killcam x-ray tracing a shell through armor, crew, and internal modules"></button>
+          <div class="proof-label"><span class="micro">04 / X-ray</span><h3>Every kill can explain itself.</h3></div>
+        </article>
       </div>
     </div>
   </section>
@@ -99,33 +124,51 @@
     <img src="/media/modern/18_t90m.webp" loading="lazy" alt="T-90M advancing through a live battlefield, captured in Scene Studio">
     <div class="battle-scrim"></div>
     <div class="shell battle-copy reveal">
-      <p class="micro section-index"><em>04</em> Enter battle</p>
+      <p class="micro section-index"><em>05</em> Enter battle</p>
       <h2>Choose a machine.<br>Take the field.</h2>
       <p>Fight a fast local battle against a complete bot roster, open a private room by code or link, meet friends over the same Wi-Fi, or queue for a ranked match. The battlefield, vehicle physics, armor, spotting, and gun handling stay the same in every mode.</p>
-      <div class="battle-modes" aria-label="Battle modes"><span>Solo vs bots</span><span>Private rooms</span><span>LAN</span><span>Ranked</span></div>
+      <div class="battle-modes" role="group" aria-label="Battle modes"><span>Solo vs bots</span><span>Private rooms</span><span>LAN</span><span>Ranked</span></div>
       <a class="btn primary" href="/"><svg class="icon"><use href="#ic-crosshair"/></svg>Battle</a>
     </div>
   </section>
 
   <section class="studio-band" id="studio">
-    <div class="studio-visual"><img src="/media/modern/01_abramsx.webp" loading="lazy" alt="AbramsX firing in Sirocco Wadi, captured with Scene Studio"></div>
-    <div class="studio-copy reveal"><p class="micro section-index"><em>05</em> Scene Studio</p><h2>The camera is inside the game.</h2><p>Place any roster vehicle, conform it to terrain, pose the turret and gun within its limits, apply camouflage or damage, stage real effects, freeze deterministic time, and capture through the full render stack.</p><code>scene JSON → live battlefield<br>→ real first-party vehicle<br>→ deterministic FX clock<br>→ 1600 × 900 WebP</code><a class="btn" href="/studio"><svg class="icon"><use href="#ic-camera"/></svg>Open studio</a></div>
+    <div class="studio-gallery" role="group" aria-label="Scene Studio interface">
+      <button type="button" class="studio-frame studio-frame--main" data-lightbox-src="/media/home/st_scene.webp" data-lightbox-title="Scene Studio" data-lightbox-meta="LIVE BATTLEFIELD // ACTORS // EFFECTS"><img src="/media/home/st_scene.webp" loading="lazy" width="1600" height="900" alt="Scene Studio interface composing a multi-tank battlefield shot"></button>
+      <button type="button" class="studio-frame" data-lightbox-src="/media/home/st_timeline.webp" data-lightbox-title="Deterministic scene timing" data-lightbox-meta="CAMERA // FIRING MOMENT // FX CLOCK"><img src="/media/home/st_timeline.webp" loading="lazy" width="1600" height="900" alt="Scene Studio timeline, firing moment, camera, and deterministic effect controls"></button>
+      <button type="button" class="studio-frame" data-lightbox-src="/media/home/st_burning.webp" data-lightbox-title="Live effect staging" data-lightbox-meta="FIRE // SMOKE // DAMAGE STATE"><img src="/media/home/st_burning.webp" loading="lazy" width="1600" height="900" alt="Scene Studio staging fire, smoke, and damage effects on a live tank"></button>
+    </div>
+    <div class="studio-copy reveal"><p class="micro section-index"><em>06</em> Scene Studio</p><h2>Camera,<br>inside the game.</h2><p>Place the real roster, pose it on live terrain, stage deterministic effects, freeze time, and capture through the same render stack players see.</p><code>scene JSON → live battlefield<br>→ first-party vehicle → deterministic FX<br>→ production frame</code><a class="btn" href="/studio"><svg class="icon"><use href="#ic-camera"/></svg>Open studio</a></div>
   </section>
 
-  <section class="closing shell reveal"><p class="micro"><em>Built to be inspected</em></p><h2>The code, the proof, and the battlefield agree.</h2><p>Read the architecture, reproduce the 30-shot capture set, or open the garage and test the system yourself. No install. No account. No tech-tree grind.</p><div class="hero-actions" style="justify-content:center"><a class="btn primary" href="/">Play Claude of Tanks</a><a class="btn" href="/docs">Explore documentation</a></div></section>
+  <section class="surface-band" id="surface-lab">
+    <div class="surface-copy reveal"><p class="micro section-index"><em>07</em> Surface Lab</p><h2>Point at<br>the problem.</h2><p>Load any first-party tank, inspect mesh ownership, mark exact plates or fittings, pose the rig, and export an actionable geometry request without leaving the browser.</p><div class="surface-facts"><span>Inspect</span><span>Remove</span><span>Reshape</span><span>Add</span></div><a class="btn" href="/surface-studio"><svg class="icon"><use href="#ic-grid"/></svg>Open Surface Lab</a></div>
+    <button type="button" class="surface-visual" data-lightbox-src="/media/home/ui_surface_lab.webp" data-lightbox-title="Surface Lab" data-lightbox-meta="FIRST-PARTY PROCEDURAL GEOMETRY // SURFACE MARKUP"><img src="/media/home/ui_surface_lab.webp" loading="lazy" width="1600" height="900" alt="Redesigned Surface Lab interface inspecting first-party tank geometry"></button>
+  </section>
+
+  <section class="closing shell reveal"><p class="micro"><em>Built to be inspected</em></p><h2>The code, the proof, and the battlefield agree.</h2><p>Read the architecture, inspect the authoring tools, or open the garage and test the system yourself. No install. No account. No tech-tree grind.</p><div class="hero-actions" style="justify-content:center"><a class="btn primary" href="/">Play Claude of Tanks</a><a class="btn" href="/docs">Explore documentation</a></div></section>
 </main>
 
-<footer class="footer"><div class="shell inner"><a class="brand" href="/home"><img src="/brand/logo-mark-metal.svg" alt=""><span>Claude <b>of Tanks</b></span></a><div class="footer-links"><a href="/">Garage</a><a href="/studio">Studio</a><a href="/docs">Docs</a><a href="https://github.com/Kevin-Liu-01/Claude-of-Tanks">GitHub</a></div><span class="micro">Pure Three.js // 2026</span></div></footer>
+<footer class="footer"><div class="shell inner"><a class="brand" href="/home"><img src="/brand/logo-mark-metal.svg" alt=""><span>Claude <b>of Tanks</b></span></a><div class="footer-links"><a href="/">Garage</a><a href="/studio">Studio</a><a href="/surface-studio">Surface Lab</a><a href="/docs">Docs</a><a href="https://github.com/Kevin-Liu-01/Claude-of-Tanks">GitHub</a></div><span class="micro">Pure Three.js // 2026</span></div></footer>
 
 <dialog class="lightbox" id="lightbox"><img id="lightbox-image" alt=""><footer><div><strong id="lightbox-title"></strong><div class="micro" id="lightbox-meta"></div></div><button type="button" id="lightbox-close">Close ×</button></footer></dialog>
 <script>
 const grid=document.querySelector('#fleet-grid');const filter=document.querySelector('#fleet-filter');const dialog=document.querySelector('#lightbox');let fleet=[];
 const mapName={desert:'Sirocco Wadi',winter:'Frosthollow',urban:'Steinburg',coastal:'Saltmere Bay',autumn:'Amberford',steppe:'Tarkhan Steppe',railyard:'Cinder Junction',verdant:'Verdant Fields'};
-function card(item,index){const button=document.createElement('button');button.className='tank-card reveal';button.dataset.nation=item.nation;button.type='button';button.innerHTML=`<img src="${item.src}" alt="${item.name} on ${mapName[item.map]||item.map}, captured in Scene Studio" loading="${index<5?'eager':'lazy'}" width="${item.width}" height="${item.height}"><span class="count">${String(index+1).padStart(2,'0')} / 30</span><span class="caption"><span><strong>${item.name}</strong><small>${item.nation} · ${item.role}</small></span><small class="map">${mapName[item.map]||item.map}</small></span>`;button.addEventListener('click',()=>{document.querySelector('#lightbox-image').src=item.src;document.querySelector('#lightbox-image').alt=button.querySelector('img').alt;document.querySelector('#lightbox-title').textContent=item.name;document.querySelector('#lightbox-meta').textContent=`${item.nation} // ${item.role} // ${mapName[item.map]||item.map}`;dialog.showModal()});return button}
+function openLightbox(src,alt,title,meta){document.querySelector('#lightbox-image').src=src;document.querySelector('#lightbox-image').alt=alt||title;document.querySelector('#lightbox-title').textContent=title;document.querySelector('#lightbox-meta').textContent=meta;dialog.showModal()}
+function card(item,index){const button=document.createElement('button');button.className='tank-card reveal';button.dataset.nation=item.nation;button.type='button';button.innerHTML=`<img src="${item.src}" alt="${item.name} on ${mapName[item.map]||item.map}, captured in Scene Studio" loading="${index<5?'eager':'lazy'}" width="${item.width}" height="${item.height}"><span class="count">${String(index+1).padStart(2,'0')} / 30</span><span class="caption"><span><strong>${item.name}</strong><small>${item.nation} · ${item.role}</small></span><small class="map">${mapName[item.map]||item.map}</small></span>`;button.addEventListener('click',()=>openLightbox(item.src,button.querySelector('img').alt,item.name,`${item.nation} // ${item.role} // ${mapName[item.map]||item.map}`));return button}
 function render(nation='all'){grid.replaceChildren(...fleet.filter(x=>nation==='all'||x.nation===nation).map(card));observe()}
 fetch('/media/modern/manifest.json').then(r=>{if(!r.ok)throw new Error(`manifest ${r.status}`);return r.json()}).then(data=>{fleet=data;const nations=[...new Set(data.map(x=>x.nation))];for(const nation of nations){const b=document.createElement('button');b.textContent=nation;b.dataset.nation=nation;filter.append(b)}filter.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;filter.querySelectorAll('button').forEach(x=>x.classList.toggle('active',x===b));render(b.dataset.nation)});render()}).catch(error=>{grid.innerHTML=`<p class="lede">Modern-fleet manifest could not be loaded: ${error.message}</p>`});
+const archiveFrames=[
+['p2_31_desert_wadi_gauntlet','Wadi gauntlet — ambushed column','Sirocco Wadi'],['p2_33_desert_muzzle_worm','Under the muzzle','Sirocco Wadi'],['p2_34_desert_last_stand','Last stand at the wall','Sirocco Wadi'],['p2_35_winter_ice_breaker','Ice breaker — double kill','Frosthollow'],['p2_37_winter_road_charge','Road charge, head-on','Frosthollow'],['p2_38_winter_village_hell','Village hell','Frosthollow'],['p2_39_urban_alley_flash','Point-blank alley','Steinburg'],['p2_40_urban_overpass_dive','The crossing, rolled 20°','Steinburg'],['p2_42_urban_crossfire_x','Crossfire X','Steinburg'],['p2_43_urban_hero_leo2a6','Canyon hero — Leopard 2A6','Steinburg'],['p2_44_verdant_hedgerow_breakout','Hedgerow breakout','Verdant Fields'],['p2_46_verdant_meadow_duel','Over the barrel, dawn range','Verdant Fields'],['p2_49_coastal_harbor_kill','Harbor kill','Saltmere Bay'],['p2_51_coastal_seafront_duel','Seafront duel, telephoto','Saltmere Bay'],['p2_53_autumn_gold_inferno','Gold inferno','Amberford'],['p2_54_autumn_orchard_stand','Orchard stand','Amberford'],['p2_55_steppe_horizon_charge','Horizon charge','Tarkhan Steppe'],['p2_57_steppe_windbreak_snipe','Windbreak snipe','Tarkhan Steppe'],['p2_59_railyard_crane_dive','Gantry dive','Cinder Junction'],['p2_60_railyard_sodium_dusk','Sodium dusk — the set closer','Cinder Junction']
+];
+const archiveTrack=document.querySelector('#archive-track');const archiveCount=document.querySelector('#archive-count');
+archiveFrames.forEach((item,index)=>{const [file,title,map]=item;const src=`/media/home/${file}.webp`;const button=document.createElement('button');button.type='button';button.className='archive-card';button.innerHTML=`<img src="${src}" loading="lazy" width="1600" height="900" alt="${title}, ${map}"><span class="archive-caption"><span><small>${String(index+1).padStart(2,'0')} / 20</small><strong>${title}</strong></span><small>${map}</small></span>`;button.addEventListener('click',()=>openLightbox(src,button.querySelector('img').alt,title,`FIELD ARCHIVE // ${map}`));archiveTrack.append(button)});
+function archiveIndex(){const cards=[...archiveTrack.children];const center=archiveTrack.scrollLeft+archiveTrack.clientWidth/2;let best=0;let distance=Infinity;cards.forEach((card,index)=>{const next=Math.abs(card.offsetLeft+card.offsetWidth/2-center);if(next<distance){best=index;distance=next}});archiveCount.textContent=`${String(best+1).padStart(2,'0')} / ${String(cards.length).padStart(2,'0')}`}
+let archiveTick=0;archiveTrack.addEventListener('scroll',()=>{cancelAnimationFrame(archiveTick);archiveTick=requestAnimationFrame(archiveIndex)},{passive:true});document.querySelector('#archive-prev').addEventListener('click',()=>archiveTrack.scrollBy({left:-archiveTrack.clientWidth*.72,behavior:'smooth'}));document.querySelector('#archive-next').addEventListener('click',()=>archiveTrack.scrollBy({left:archiveTrack.clientWidth*.72,behavior:'smooth'}));
+document.addEventListener('click',event=>{const target=event.target.closest('[data-lightbox-src]');if(!target)return;openLightbox(target.dataset.lightboxSrc,target.querySelector('img')?.alt,target.dataset.lightboxTitle,target.dataset.lightboxMeta)});
 document.querySelector('#lightbox-close').addEventListener('click',()=>dialog.close());dialog.addEventListener('click',e=>{if(e.target===dialog)dialog.close()});
-let observer;function observe(){observer?.disconnect();observer=new IntersectionObserver(entries=>entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('seen');observer.unobserve(e.target)}}),{rootMargin:'0px 0px -7%'});document.querySelectorAll('.reveal:not(.seen)').forEach(el=>observer.observe(el))}observe();
+let observer;function observe(){observer?.disconnect();observer=new IntersectionObserver(entries=>entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('seen');observer.unobserve(e.target)}}),{rootMargin:'0px 0px -7%'});document.querySelectorAll('.reveal:not(.seen)').forEach(el=>observer.observe(el))}observe();archiveIndex();
 </script>
 </body>
 </html>
