@@ -166,13 +166,13 @@ const GARAGE_CSS = `
   border:1px solid rgba(146,164,180,.28);box-shadow:0 8px 30px rgba(0,0,0,.55);
   padding:16px 18px 14px;pointer-events:auto;}
 .cot-garage .stats h3{font-size:15px;font-weight:700;letter-spacing:.02em;color:#eef4f9;
-  max-width:176px;min-height:18px;}
+  max-width:218px;min-height:18px;padding-right:38px;}
 .cot-garage .stats .sub{font-size:10px;font-weight:700;letter-spacing:.18em;color:#8a97a3;
   text-transform:uppercase;margin:4px 0 12px;display:flex;align-items:center;gap:7px;
   max-width:178px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .cot-garage .stats .sub .cot-flag{display:block;object-fit:cover;
   box-shadow:0 1px 3px rgba(0,0,0,.5);}
-.cot-garage .stats .stats-ti{position:absolute;right:18px;top:17px;width:56px;height:36px;
+.cot-garage .stats .stats-ti{position:absolute;right:18px;top:16px;width:28px;height:18px;
   object-fit:contain;pointer-events:none;opacity:.78;
   filter:drop-shadow(0 3px 5px rgba(0,0,0,.72));}
 .cot-garage .srow{margin-bottom:9px;}
