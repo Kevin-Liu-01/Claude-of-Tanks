@@ -117,6 +117,10 @@ the same spotting limits as human players.
 The canonical room authority also owns display-name uniqueness. Automatic
 callsigns are stable per browser identity, while case-insensitive collisions
 are deterministically suffixed in both private lobbies and ranked rosters.
+Private and LAN hosts can copy a same-deployment invite URL. Opening its
+validated `room` query automatically enters the corresponding lobby and joins
+the room after the normal loading gate; manual six-character codes remain a
+fallback.
 
 Ranked uses service-scoped anonymous bearer identities, widening Elo search
 bands, server team balancing, one-time match tickets, persistent idempotent

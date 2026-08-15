@@ -4,7 +4,9 @@ import { resolveSignalUrl } from '../net/signalEndpoint.js';
 import { serializeLobby } from '../net/lobby.js';
 import { automaticPlayerName, normalizePlayerName } from '../net/playerNames.js';
 import { normalizeRoomCode } from '../net/protocol.js';
+import { createRoomInviteUrl } from '../net/roomInvite.js';
 import { ensureFonts, FONT_STACK, FONT_COND } from './fonts.js';
+import { uiIconSVG } from './uiIcons.js';
 
 const STYLE_ID = 'cot-play-menu-style';
 const PLAYER_ID_KEY = 'cot.player.id.v1';
@@ -28,12 +30,16 @@ const CSS = `
   color:#95a5b2;font-size:27px;cursor:pointer}.cot-play .eyebrow{font:800 10px ${FONT_COND};letter-spacing:.3em;
   text-transform:uppercase;color:#e69a36}.cot-play h2{margin:7px 0 4px;font-size:32px;letter-spacing:.02em}
 .cot-play .lead{margin:0 0 22px;color:#9dadba;font-size:13px}.cot-play .modes{display:grid;
-  grid-template-columns:repeat(4,1fr);gap:10px}.cot-play .mode{min-height:156px;text-align:left;padding:18px;
+  grid-template-columns:repeat(4,1fr);gap:10px}.cot-play .mode{position:relative;min-height:156px;text-align:left;padding:18px;
   color:#eef4f8;background:rgba(20,27,34,.86);border:1px solid rgba(161,180,195,.28);cursor:pointer}
 .cot-play .mode:hover,.cot-play .mode.on{border-color:#e69a36;background:rgba(230,154,54,.1)}
-.cot-play .mode b{display:block;font-size:17px;margin:8px 0}.cot-play .mode span{display:block;color:#9eafbc;
-  font-size:11px;line-height:1.55}.cot-play .mode i{font:800 9px ${FONT_COND};font-style:normal;letter-spacing:.2em;
-  color:#e69a36;text-transform:uppercase}.cot-play .room{display:none;margin-top:18px;padding-top:18px;
+.cot-play .mode b{display:block;font-size:17px;margin:8px 0}.cot-play .mode-desc{display:block;color:#9eafbc;
+  font-size:11px;line-height:1.55}.cot-play .mode i{display:block;padding-right:44px;font:800 9px ${FONT_COND};
+  font-style:normal;letter-spacing:.2em;color:#e69a36;text-transform:uppercase}.cot-play .mode-icon{position:absolute;
+  right:15px;top:13px;display:grid;width:36px;height:36px;place-items:center;color:#d7e1e8;background:rgba(5,9,13,.6);
+  border:1px solid rgba(159,178,192,.26)}.cot-play .mode:hover .mode-icon,.cot-play .mode.on .mode-icon{color:#ffb452;
+  border-color:rgba(230,154,54,.72);background:rgba(230,154,54,.09)}.cot-play .mode-icon svg{display:block}
+.cot-play .room{display:none;margin-top:18px;padding-top:18px;
   border-top:1px solid rgba(160,180,195,.2)}.cot-play .room.show{display:block}.cot-play .setup{display:grid;gap:12px}
 .cot-play .room.connected .setup{display:none}.cot-play .identity{display:flex;align-items:end;gap:14px}
 .cot-play .identity label{width:min(300px,100%)}.cot-play .identity-note{padding-bottom:9px;color:#758794;font-size:10px}
@@ -43,6 +49,20 @@ const CSS = `
 .cot-play .room-action-head i{color:#e69a36;font:800 9px ${FONT_COND};font-style:normal;letter-spacing:.18em;text-transform:uppercase}
 .cot-play .room-action-head b{font-size:17px}.cot-play .room-action-head span{color:#8799a6;font-size:10px;line-height:1.45}
 .cot-play .room-action-fields{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:end}
+.cot-play .field{display:grid;gap:5px}.cot-play .field-label{font:800 9px ${FONT_COND};letter-spacing:.16em;
+  text-transform:uppercase;color:#8fa1ae}.cot-play .menu-select{position:relative;min-width:0}.cot-play .menu-select-trigger{
+  position:relative;width:100%;height:40px;padding:0 38px 0 12px;text-align:left;color:#edf3f7;background:#090d12;
+  border:1px solid #d98c2d;font:700 12px ${FONT_STACK};cursor:pointer}.cot-play .menu-select-trigger::after{content:"";
+  position:absolute;right:13px;top:50%;width:7px;height:7px;border-right:2px solid #cbd6dd;border-bottom:2px solid #cbd6dd;
+  transform:translateY(-68%) rotate(45deg);transition:transform .14s ease}.cot-play .menu-select.open .menu-select-trigger::after{
+  transform:translateY(-30%) rotate(225deg)}.cot-play .menu-select-list{position:absolute;left:0;right:0;bottom:calc(100% + 5px);
+  z-index:12;display:none;padding:5px;background:linear-gradient(160deg,rgba(24,29,34,.99),rgba(11,15,19,.995));
+  border:1px solid rgba(230,154,54,.55);box-shadow:0 18px 40px rgba(0,0,0,.58)}.cot-play .menu-select.open .menu-select-list{
+  display:grid}.cot-play .menu-select-option{min-height:40px;padding:0 12px;text-align:left;color:#c8d3db;background:transparent;
+  border:1px solid transparent;font:700 12px ${FONT_STACK};cursor:pointer}.cot-play .menu-select-option:hover,
+.cot-play .menu-select-option.on{color:#fff2df;background:rgba(230,154,54,.12);border-color:rgba(230,154,54,.32)}
+.cot-play .menu-select-trigger:focus-visible,.cot-play .menu-select-option:focus-visible,.cot-play .mode:focus-visible,
+.cot-play .close:focus-visible,.cot-play button.action:focus-visible{outline:2px solid #ffb452;outline-offset:2px}
 .cot-play .code-input{font:900 17px ${FONT_COND}!important;letter-spacing:.16em;text-transform:uppercase}
 .cot-play .advanced{border-top:1px solid rgba(160,180,195,.16);padding-top:8px;color:#80929f}
 .cot-play .advanced summary{cursor:pointer;font:800 9px ${FONT_COND};letter-spacing:.14em;text-transform:uppercase}
@@ -105,6 +125,93 @@ function playerId() {
   return id;
 }
 
+function bindMenuSelect(control) {
+  const trigger = control.querySelector('[data-select-trigger]');
+  const valueLabel = trigger.querySelector('span');
+  const options = [...control.querySelectorAll('[role="option"]')];
+
+  function selectedIndex() {
+    const index = options.findIndex((option) => option.dataset.value === control.dataset.value);
+    return index < 0 ? 0 : index;
+  }
+
+  function setValue(nextValue, emit = false) {
+    const option = options.find((item) => item.dataset.value === String(nextValue));
+    if (!option) return;
+    control.dataset.value = option.dataset.value;
+    valueLabel.textContent = option.textContent;
+    for (const item of options) {
+      const selected = item === option;
+      item.classList.toggle('on', selected);
+      item.setAttribute('aria-selected', String(selected));
+    }
+    if (emit) control.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
+  function close(restoreFocus = false) {
+    if (!control.classList.contains('open')) return;
+    control.classList.remove('open');
+    trigger.setAttribute('aria-expanded', 'false');
+    if (restoreFocus) trigger.focus();
+  }
+
+  function open(index = selectedIndex()) {
+    control.classList.add('open');
+    trigger.setAttribute('aria-expanded', 'true');
+    options[Math.max(0, Math.min(options.length - 1, index))]?.focus();
+  }
+
+  Object.defineProperty(control, 'value', {
+    configurable: true,
+    get: () => control.dataset.value,
+    set: (nextValue) => setValue(nextValue),
+  });
+  setValue(control.dataset.value);
+
+  trigger.addEventListener('click', () => {
+    if (control.classList.contains('open')) close();
+    else open();
+  });
+  trigger.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      close();
+    } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      open();
+    } else if (event.key === 'Home' || event.key === 'End') {
+      event.preventDefault();
+      open(event.key === 'Home' ? 0 : options.length - 1);
+    }
+  });
+  options.forEach((option, index) => {
+    option.tabIndex = -1;
+    option.addEventListener('click', () => {
+      setValue(option.dataset.value, true);
+      close(true);
+    });
+    option.addEventListener('keydown', (event) => {
+      let nextIndex = index;
+      if (event.key === 'ArrowDown') nextIndex = (index + 1) % options.length;
+      else if (event.key === 'ArrowUp') nextIndex = (index - 1 + options.length) % options.length;
+      else if (event.key === 'Home') nextIndex = 0;
+      else if (event.key === 'End') nextIndex = options.length - 1;
+      else if (event.key === 'Escape') {
+        event.preventDefault();
+        close(true);
+        return;
+      } else if (event.key === 'Tab') {
+        close();
+        return;
+      } else return;
+      event.preventDefault();
+      options[nextIndex].focus();
+    });
+  });
+
+  return { close };
+}
+
 function defaultSignalUrl(lan = false) {
   return resolveSignalUrl({
     configured: import.meta.env.VITE_SIGNAL_URL,
@@ -147,20 +254,30 @@ export function createPlayMenu({
     <div class="eyebrow">Choose operation</div><h2>Play Claude of Tanks</h2>
     <p class="lead">One vehicle roster. Four direct ways to deploy.</p>
     <div class="modes">
-      <button class="mode" data-mode="solo" type="button"><i>Immediate</i><b>Solo vs bots</b><span>Run the same authoritative combat locally against a full bot roster.</span></button>
-      <button class="mode" data-mode="private" type="button"><i>Room code</i><b>Private lobby</b><span>Create or join a direct WebRTC match with team switching.</span></button>
-      <button class="mode" data-mode="lan" type="button"><i>Local network</i><b>LAN lobby</b><span>Use the same lobby over Wi-Fi with minimal route latency.</span></button>
-      <button class="mode" data-mode="ranked" type="button"><i>Dedicated</i><b>Ranked</b><span>Server-authoritative queue and rating. Service endpoint required.</span></button>
+      <button class="mode" data-mode="solo" type="button"><span class="mode-icon">${uiIconSVG('battleBots', 24)}</span><i>Immediate</i><b>Solo vs bots</b><span class="mode-desc">Run the same authoritative combat locally against a full bot roster.</span></button>
+      <button class="mode" data-mode="private" type="button"><span class="mode-icon">${uiIconSVG('battlePrivate', 24)}</span><i>Room code</i><b>Private lobby</b><span class="mode-desc">Create or join a direct WebRTC match with team switching.</span></button>
+      <button class="mode" data-mode="lan" type="button"><span class="mode-icon">${uiIconSVG('battleLan', 24)}</span><i>Local network</i><b>LAN lobby</b><span class="mode-desc">Use the same lobby over Wi-Fi with minimal route latency.</span></button>
+      <button class="mode" data-mode="ranked" type="button"><span class="mode-icon">${uiIconSVG('battleRanked', 24)}</span><i>Dedicated</i><b>Ranked</b><span class="mode-desc">Server-authoritative queue and rating. Service endpoint required.</span></button>
     </div>
     <section class="room"><div class="setup">
       <div class="identity"><label>Callsign<input data-field="name" maxlength="24" autocomplete="nickname"></label>
         <span class="identity-note">A unique callsign is ready automatically. Edit it only if you want to.</span></div>
       <div class="room-actions">
         <div class="room-action"><div class="room-action-head"><i>Host</i><b>Create a room</b>
-          <span>Choose a format now, then share the six-character code.</span></div>
-          <div class="room-action-fields"><label>Battle format<select data-field="create-size">
-            <option value="1">1 vs 1</option><option value="2">2 vs 2</option><option value="3">3 vs 3</option>
-            <option value="5">5 vs 5</option><option value="7">7 vs 7</option></select></label>
+          <span>Choose a format, then send the invite link to another player.</span></div>
+          <div class="room-action-fields"><div class="field"><span class="field-label" id="cot-create-size-label">Battle format</span>
+            <div class="menu-select" data-field="create-size" data-value="2">
+              <button class="menu-select-trigger" data-select-trigger type="button" aria-haspopup="listbox" aria-expanded="false"
+                aria-controls="cot-create-size-list" aria-labelledby="cot-create-size-label cot-create-size-value">
+                <span id="cot-create-size-value">2 vs 2</span></button>
+              <div class="menu-select-list" id="cot-create-size-list" role="listbox" aria-labelledby="cot-create-size-label">
+                <button class="menu-select-option" type="button" role="option" data-value="1" aria-selected="false">1 vs 1</button>
+                <button class="menu-select-option" type="button" role="option" data-value="2" aria-selected="true">2 vs 2</button>
+                <button class="menu-select-option" type="button" role="option" data-value="3" aria-selected="false">3 vs 3</button>
+                <button class="menu-select-option" type="button" role="option" data-value="5" aria-selected="false">5 vs 5</button>
+                <button class="menu-select-option" type="button" role="option" data-value="7" aria-selected="false">7 vs 7</button>
+              </div>
+            </div></div>
             <button class="action" data-action="create" type="button">Create room</button></div></div>
         <div class="room-action"><div class="room-action-head"><i>Join</i><b>Enter a room code</b>
           <span>Paste the host's code; team and battlefield controls appear after connecting.</span></div>
@@ -170,13 +287,13 @@ export function createPlayMenu({
       </div>
       <details class="advanced"><summary>Connection settings</summary>
         <label>Signaling server<input data-field="signal" spellcheck="false"></label></details>
-    </div><div class="status"></div><div class="lobby">
+    </div><div class="status" aria-live="polite"></div><div class="lobby">
       <div class="roomhead"><div><div class="roommeta">ROOM CODE</div><div class="code"></div></div>
-        <button class="action alt" data-action="copy" type="button">Copy code</button></div>
+        <button class="action alt" data-action="copy" type="button">Copy invite link</button></div>
       <div class="players"></div><div class="controls">
-        <select data-control="team"><option value="alpha">Team Alpha</option><option value="bravo">Team Bravo</option><option value="spectator">Spectator</option></select>
-        <select data-control="size"><option value="1">1 vs 1</option><option value="2">2 vs 2</option><option value="3">3 vs 3</option><option value="5">5 vs 5</option><option value="7">7 vs 7</option></select>
-        <select data-control="map"></select>
+        <select data-control="team" aria-label="Team"><option value="alpha">Team Alpha</option><option value="bravo">Team Bravo</option><option value="spectator">Spectator</option></select>
+        <select data-control="size" aria-label="Battle format"><option value="1">1 vs 1</option><option value="2">2 vs 2</option><option value="3">3 vs 3</option><option value="5">5 vs 5</option><option value="7">7 vs 7</option></select>
+        <select data-control="map" aria-label="Battlefield"></select>
         <button class="action alt" data-action="ready" type="button">Ready</button>
         <button class="action" data-action="start" type="button">Start match</button>
       </div><div class="note"></div>
@@ -198,6 +315,7 @@ export function createPlayMenu({
   const signalInput = root.querySelector('[data-field="signal"]');
   const codeInput = root.querySelector('[data-field="code"]');
   const createSizeSelect = root.querySelector('[data-field="create-size"]');
+  const createSizeMenu = bindMenuSelect(createSizeSelect);
   const teamSelect = root.querySelector('[data-control="team"]');
   const sizeSelect = root.querySelector('[data-control="size"]');
   const mapSelect = root.querySelector('[data-control="map"]');
@@ -488,6 +606,7 @@ export function createPlayMenu({
   function selectMode(nextMode) {
     const button = root.querySelector(`.mode[data-mode="${nextMode}"]`);
     if (!button) return;
+    createSizeMenu.close();
     if (nextMode === 'solo') { hide(); if (onSolo) onSolo(); return; }
     closeCurrentSession('mode_changed');
     mode = nextMode;
@@ -518,7 +637,7 @@ export function createPlayMenu({
   }));
   createBtn.addEventListener('click', async () => {
     setStatus('Creating room…');
-    try { await connectRoom('create'); setStatus('Room ready. Share the code.'); }
+    try { await connectRoom('create'); setStatus('Room ready. Copy the invite link.'); }
     catch (error) { setStatus(error.message, true); }
   });
   joinBtn.addEventListener('click', async () => {
@@ -546,8 +665,17 @@ export function createPlayMenu({
   });
   root.querySelector('[data-action="copy"]').addEventListener('click', async () => {
     if (!state) return;
-    try { await navigator.clipboard.writeText(state.roomCode); setStatus('Room code copied.'); }
-    catch (_) { setStatus('Copy the code shown above.'); }
+    const inviteUrl = createRoomInviteUrl({
+      roomCode: state.roomCode,
+      mode,
+      baseUrl: location.href,
+    });
+    try {
+      await navigator.clipboard.writeText(inviteUrl);
+      setStatus('Invite link copied. Send it to another player.');
+    } catch (_) {
+      setStatus(`Invite link: ${inviteUrl}`);
+    }
   });
   teamSelect.addEventListener('change', () => command({ type: 'set_team', team: teamSelect.value }));
   sizeSelect.addEventListener('change', () => {
@@ -588,13 +716,25 @@ export function createPlayMenu({
   });
   signalInput.addEventListener('input', () => setConnecting(connecting));
   root.querySelector('.close').addEventListener('click', () => hide());
+  root.addEventListener('pointerdown', (event) => {
+    if (!createSizeSelect.contains(event.target)) createSizeMenu.close();
+  });
   root.addEventListener('click', (event) => { if (event.target === root) hide(); });
 
-  function show(initialMode = null) {
+  function show(initialMode = null, invite = null) {
     root.classList.add('show');
     if (initialMode) selectMode(initialMode);
+    const inviteCode = normalizeRoomCode(invite && invite.roomCode);
+    if (inviteCode.length !== 6 || !invite?.autoJoin || session || connecting) return;
+    codeInput.value = inviteCode;
+    setConnecting(false);
+    setStatus('Joining invited room…');
+    connectRoom('join')
+      .then(() => setStatus('Connected. Choose a team and ready up.'))
+      .catch((error) => setStatus(error.message, true));
   }
   function hide(closeSession = true) {
+    createSizeMenu.close();
     root.classList.remove('show');
     if (closeSession && !handedOff) closeCurrentSession('menu_closed');
   }

@@ -101,6 +101,12 @@ const GARAGE_POS = new THREE.Vector3(-1500, 0, -1500);
 const MAX_SIM_STEPS = 4;
 const DEFAULT_SPEC_ID = 'm1a1';
 const LAST_SPEC_KEY = 'cot.lastTank.v1';
+// Keep invite parsing off the normal garage boot graph. Only an actual room
+// link loads the tiny URL adapter; the play menu already owns it lazily.
+const pendingRoomInvitePromise = new URLSearchParams(globalThis.location?.search || '').has('room')
+  ? import('./net/roomInvite.js').then(({ parseRoomInvite }) =>
+    parseRoomInvite(globalThis.location?.href))
+  : null;
 
 function loadLastSpecId() {
   try {
@@ -1183,7 +1189,7 @@ async function openPlayMenu(request) {
     }));
   }
   const menu = await playMenuPromise;
-  menu.show(request?.mode);
+  menu.show(request?.mode, request?.invite);
 }
 
 const garage = await bootStage('ui', () => createGarage({
@@ -5158,7 +5164,18 @@ relaxShaderChecks(renderer);
 // ready() arms the "press any key" entry gate (auto-dismissed under
 // ?nosplash / webdriver). Deliberately not awaited: __GAME_READY means
 // "fully initialised" and must not depend on a keypress.
-boot.ready();
+const entryReady = boot.ready();
+if (pendingRoomInvitePromise) {
+  Promise.all([entryReady, pendingRoomInvitePromise]).then(([, invite]) => {
+    if (!invite) return;
+    return openPlayMenu({
+      mode: invite.mode,
+      invite: { ...invite, autoJoin: true },
+    });
+  }).catch((error) => {
+    console.error('[room-invite] failed to open', error);
+  });
+}
 window.__GAME_READY = true;
 window.__BOOT_TIMINGS = BOOT_TIMINGS;
 window.__BOOT_MS = Math.round(performance.now() - BOOT_T0);
