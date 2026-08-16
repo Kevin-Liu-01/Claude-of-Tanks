@@ -76,6 +76,9 @@ import './china.js';
 // Owner-supplied Swedish family oracles. Keep after the Centurion/Leopard
 // donor waves so the first-party Strv builders can inherit complete rigs.
 import './sweden.js';
+// Owner-supplied Polish family oracles. Keep after the T-72/K2/PT-91 donor
+// registrations so each procedural derivative inherits a complete rig.
+import './poland.js';
 // All extension rows now exist. Normalize player-facing family progression
 // independently of the historical module-registration order.
 import { applyNativeFamilyOrder } from './fleetOrder.js';

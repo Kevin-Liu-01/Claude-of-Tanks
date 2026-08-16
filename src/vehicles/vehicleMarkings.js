@@ -74,6 +74,12 @@ export const VEHICLE_MARKING_ANCHORS = Object.freeze({
   strv103: anchor('hull', 'right', 0.46, 0.66, 0.27, -1),
   strv81: anchor('turret', 'left', 0.42, 0.48, 0.25, 1),
   strv122: anchor('turret', 'right', 0.34, 0.44, 0.25, -1),
+  // Polish family deliberately uses three different, source-appropriate
+  // seats: Jaguar on the cast turret flank, Twardy on the opposite ERAWA
+  // cheek, and PL-01 on its broad faceted hull-side armor.
+  t72m1_jaguar: anchor('turret', 'left', 0.39, 0.46, 0.23, 1),
+  pt91_twardy: anchor('turret', 'right', 0.36, 0.45, 0.23, -1),
+  pl01: anchor('hull', 'left', 0.44, 0.61, 0.26, 1),
   kv2: anchor('turret', 'left', 0.43, 0.48, 0.32, 1),
   jpz_e100: anchor('hull', 'right', 0.40, 0.66, 0.34, -1),
   sturmtiger: anchor('hull', 'left', 0.45, 0.64, 0.31, 1),

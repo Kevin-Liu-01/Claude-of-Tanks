@@ -10,6 +10,18 @@ const LABEL_OVERRIDES = Object.freeze({
   strv81: { displayName: 'Strv 81', searchAliases: ['Stridsvagn 81', 'Centurion Strv 81'] },
   strv103: { displayName: 'Strv 103B', searchAliases: ['Stridsvagn 103B', 'S-Tank'] },
   strv122: { displayName: 'Strv 122', searchAliases: ['Stridsvagn 122', 'Swedish Leopard 2'] },
+  t72m1_jaguar: {
+    displayName: 'T-72M1 Jaguar', shortName: 'T-72M1 Jaguar',
+    searchAliases: ['T-72M1 Jaguar Poland', 'Jaguar MBT'],
+  },
+  pt91_twardy: {
+    displayName: 'PT-91A Twardy', shortName: 'PT-91A Twardy',
+    searchAliases: ['PT-91 Twardy', 'Twardy MBT'],
+  },
+  pl01: {
+    displayName: 'PL-01', shortName: 'PL-01',
+    searchAliases: ['PL-01 Concept', 'Polish stealth tank'],
+  },
   chieftain5: { displayName: 'Chieftain Mk 5' },
   challenger1: { displayName: 'Challenger 1 Mk 3' },
   type90: { displayName: 'Type 90 (Kyū-maru)', shortName: 'Type 90' },

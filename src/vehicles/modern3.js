@@ -913,7 +913,7 @@ function buildChieftain(P) {
 // the print's furniture band (pano complex/rail masts/antenna pair) reads
 // 2.66..4.58 — a build honoring the 2.40 datum cannot corroborate it; the
 // divergence is certified, §E furniture-band warp queued as recovery.
-function buildK2(P) {
+export function buildK2(P) {
   const { box, cylX, cylY, cylZ, frustum, xform, buildGun, buildRunningGear,
     headlight, liftEye, periscope, smokeCluster, stowage, ammoCan,
     torus } = KIT;

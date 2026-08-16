@@ -1376,7 +1376,7 @@ function buildT90AVladimirLegacy(P) {
 // with ERAWA plates ±1.79 on the front half; dome crown ~2.33 center 0.18,
 // left cluster 2.64, pano 2.85, met mast 3.82 @ (-0.25, -1.0); tube axis
 // 2.008, sleeve r.122, muzzle 6.58.
-function buildPT91M(P) {
+export function buildPT91M(P) {
   const { box, cylX, cylY, cylZ, buildRunningGear } = KIT;
   // VERTEX ROUND r2 (batch-12 normalized oracle): re-anchored to
   // docs/references/vertex/pt91m.json — hull mask +-3.43 (6.856 = published,

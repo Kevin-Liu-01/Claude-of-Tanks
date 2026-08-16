@@ -388,7 +388,7 @@ function buildT72B87(P) {
 // This builder is repository-authored from visual measurements and retains
 // the fleet-native linked track, articulated gun and explicit turret/hull
 // ownership rules. No reference vertices or runtime asset are used.
-function buildT72B87Native(P, variant = 'b87') {
+export function buildT72B87Native(P, variant = 'b87') {
   const { box, cylX, cylY, cylZ, torus, buildRunningGear } = KIT;
   const b3 = variant === 'b3';
 

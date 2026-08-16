@@ -51,6 +51,9 @@ export const NATIVE_FAMILY_ORDER = Object.freeze({
   sweden: Object.freeze([
     'strv81', 'strv103', 'strv122',
   ]),
+  poland: Object.freeze([
+    't72m1_jaguar', 'pt91_twardy', 'pl01',
+  ]),
 });
 
 export function applyNativeFamilyOrder(ids = ALL_TANK_IDS) {
