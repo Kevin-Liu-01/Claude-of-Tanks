@@ -42,6 +42,9 @@ export const NATIVE_FAMILY_ORDER = Object.freeze({
   italy: Object.freeze([
     'carro45t', 'ariete', 'ariete_c1', 'ariete_c2',
   ]),
+  ukraine: Object.freeze([
+    'ua_t64bv', 'ua_t80bv', 'ua_t80u_kursk', 'ua_t84_oplot_m', 'ua_m1a1',
+  ]),
 });
 
 export function applyNativeFamilyOrder(ids = ALL_TANK_IDS) {

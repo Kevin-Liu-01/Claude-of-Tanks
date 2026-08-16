@@ -67,6 +67,9 @@ import './userdrops4.js';
 import './userdrops5.js';
 // USER DROPS wave 7: second m_bergman tank-pack mining pass.
 import './userdrops6.js';
+// Owner-supplied Ukrainian family oracles: spec registration stays after all
+// donor waves so the T-64/T-80/T-84/M1A1HA envelopes are available.
+import './ukraine.js';
 // All extension rows now exist. Normalize player-facing family progression
 // independently of the historical module-registration order.
 import { applyNativeFamilyOrder } from './fleetOrder.js';

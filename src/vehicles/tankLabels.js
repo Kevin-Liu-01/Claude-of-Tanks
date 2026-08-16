@@ -30,6 +30,11 @@ const LABEL_OVERRIDES = Object.freeze({
   ariete: { displayName: 'C1 Ariete Preserie', shortName: 'Ariete Preserie' },
   ariete_c1: { displayName: 'C1 Ariete', shortName: 'Ariete C1' },
   ariete_c2: { displayName: 'C2 Ariete', shortName: 'Ariete C2' },
+  ua_t64bv: { displayName: 'T-64BV Donbas', shortName: 'T-64BV Donbas' },
+  ua_t80bv: { displayName: 'T-80BV (Ukraine)', shortName: 'T-80BV UA' },
+  ua_t80u_kursk: { displayName: 'T-80U Kursk', shortName: 'T-80U Kursk' },
+  ua_t84_oplot_m: { displayName: 'T-84BM Oplot-M', shortName: 'Oplot-M' },
+  ua_m1a1: { displayName: 'M1A1 Abrams UA', shortName: 'M1A1 UA' },
 });
 
 function cleanDisplayName(value) {

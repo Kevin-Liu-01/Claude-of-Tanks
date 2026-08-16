@@ -136,6 +136,11 @@ export const VEHICLE_MARKING_ANCHORS = Object.freeze({
   m26_pershing: anchor('turret', 'left', 0.44, 0.48, 0.26, 1),
   m45_patton: anchor('turret', 'right', 0.42, 0.47, 0.26, -1),
   m60a3: anchor('turret', 'left', 0.40, 0.49, 0.25, 1),
+  ua_t64bv: anchor('turret', 'right', 0.38, 0.47, 0.23, -1),
+  ua_t80bv: anchor('hull', 'left', 0.42, 0.63, 0.24, 1),
+  ua_t80u_kursk: anchor('turret', 'left', 0.35, 0.46, 0.24, 1),
+  ua_t84_oplot_m: anchor('turret', 'right', 0.32, 0.45, 0.25, -1),
+  ua_m1a1: anchor('hull', 'right', 0.40, 0.65, 0.27, -1),
 });
 
 export function vehicleMarkingAnchor(specOrId) {
