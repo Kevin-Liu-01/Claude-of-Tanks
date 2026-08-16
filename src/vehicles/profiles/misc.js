@@ -2452,7 +2452,7 @@ function buildT80UNative2026(P) {
 // plan nose 1.90; tube axis 1.562, slim r 0.065 (12%-cut LANDMINE: sleeve
 // band 0.159 + evac 0.246 both under the ~0.28 side body cut).
 // ---------------------------------------------------------------------------
-function buildType90(P) {
+export function buildType90(P) {
   const { box, cylY, cylZ, frustum, torus, buildGun, buildRunningGear,
     fenders, headlight, liftEye, periscope } = KIT;
   const slab = orientedSlab;                                                   // §C missing-side fix: winding-corrected slabs only (see orientedSlab)
@@ -3003,7 +3003,7 @@ function buildType90(P) {
 // 2.28 (real 2.0-2.13 + cupola 2.25; print 2.40-2.47 reads tall), cupola
 // RIGHT of center per photos (print reads it near center x 0..0.15).
 // ---------------------------------------------------------------------------
-function buildType74(P) {
+export function buildType74(P) {
   const { box, cylY, cylZ, frustum, lathe, torus, buildGun, buildRunningGear,
     fenders, headlight, liftEye, periscope, stowage, shovelTool, cupola } = KIT;
   const slab = orientedSlab;                                                   // §C missing-side fix: winding-corrected slabs only (see orientedSlab)

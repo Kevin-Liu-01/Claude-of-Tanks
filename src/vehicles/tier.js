@@ -35,6 +35,7 @@ export const TANK_TIER = Object.freeze({
   ztz85_iii: 8, ztz99a2: 10,
   strv81: 7, strv122: 10,
   t72m1_jaguar: 8, pt91_twardy: 9, pl01: 10,
+  stb1: 7, type90a: 10, type10b: 10,
 });
 
 export const ROMAN_TIER = Object.freeze(['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X']);

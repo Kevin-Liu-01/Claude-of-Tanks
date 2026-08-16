@@ -79,6 +79,9 @@ import './sweden.js';
 // Owner-supplied Polish family oracles. Keep after the T-72/K2/PT-91 donor
 // registrations so each procedural derivative inherits a complete rig.
 import './poland.js';
+// Owner-supplied Japanese-family oracles. Keep after the Type 74/90/10
+// donors so the new first-party procedural variants inherit complete rigs.
+import './japan.js';
 // All extension rows now exist. Normalize player-facing family progression
 // independently of the historical module-registration order.
 import { applyNativeFamilyOrder } from './fleetOrder.js';

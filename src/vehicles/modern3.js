@@ -2230,7 +2230,7 @@ function buildK1A1(P) {
 // M2 12.7mm on a LOW right-side swing mount (type90 precedent: receiver at
 // the published height line — a roof-standing fitting owns p95 and zeroes
 // dims on a 2.30 datum).
-function buildType10Native2026(P) {
+export function buildType10Native2026(P) {
   const { box, cylX, cylY, cylZ, frustum, polyMultiLoft, buildGun, buildRunningGear,
     fenders, headlight, liftEye, periscope, stowage, ammoCan, torus } = KIT;
   const slab = orientedSlab;                                                    // §C.1 winding guard on every mirrored slab

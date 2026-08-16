@@ -1,0 +1,196 @@
+// First-party Japanese armored-family derivatives. The owner-supplied GLBs
+// remain external silhouette/metric oracles: no source topology is imported.
+// Each builder preserves its complete donor hull, skirts and single smart
+// running-gear course, then adds source-specific supported armor/equipment.
+
+import { KIT, FITTINGS, orientedSlab } from './kit.js';
+import { buildType10Native2026 } from '../modern3.js';
+import { buildType74, buildType90 } from './misc.js';
+
+function mount(P, fitting, x, y, z, rotation = null, owner = 'turret') {
+  fitting.position.set(x, y, z);
+  if (rotation) fitting.rotation.set(rotation[0], rotation[1], rotation[2]);
+  (owner === 'hull' ? P.hullG : P.turretG).add(fitting);
+}
+
+function cassette(P, owner, x, y, z, w, h, d, rotation = null, fastener = true) {
+  const r = rotation || [0, 0, 0];
+  const armor = owner === 'hull' ? 'hull' : 'turret';
+  const detail = owner === 'hull' ? 'hullDark' : 'turretDark';
+  P.add(armor, KIT.box(w, h, d), x, y, z, r[0], r[1], r[2]);
+  if (fastener) P.add(detail, KIT.box(w * 0.68, 0.014, Math.max(0.025, d * 0.07)),
+    x, y + h * 0.5 + 0.009, z + d * 0.25, r[0], r[1], r[2]);
+}
+
+function whips(P, y, z, seed, spread = 1.02) {
+  for (const side of [-1, 1]) {
+    P.add('turretDetail', KIT.cylY(0.036, 0.046, 0.060, 10), side * spread, y, z);
+    mount(P, FITTINGS.antennaWhip({
+      mats: P.mats, h: side < 0 ? 0.78 : 0.68, r: 0.011,
+      rake: side * 0.035, seed: seed + (side > 0 ? 1 : 0),
+    }), side * spread, y + 0.025, z);
+  }
+}
+
+function smoke(P, x, y, z, count, seed, pitch = -0.38) {
+  for (const side of [-1, 1]) mount(P, FITTINGS.smokeBank({
+    mats: P.mats, count, r: 0.041, len: 0.28, splay: side * 1.02,
+    pitch, arc: 0.55, spacing: 0.10, slot: 'detail',
+    rotation: [0, 0, -side * 0.10], seed: seed + (side > 0 ? 1 : 0),
+  }), side * x, y, z);
+}
+
+function roofWeapon(P, x, y, z, seed, scale = 0.78, yaw = 0) {
+  P.add('turret', KIT.box(0.46, 0.075, 0.43), x, y, z);
+  P.add('turretDark', KIT.box(0.36, 0.020, 0.33), x, y + 0.048, z);
+  P.add('turret', KIT.cylY(0.19, 0.21, 0.070, 16), x, y + 0.085, z);
+  mount(P, FITTINGS.pintleMG({
+    mats: P.mats, cls: 'mag', tone: 'two-tone', scale, elev: 0.10,
+    shield: true, ammo: true, ring: { r: 0.16, stubs: 3 }, seed,
+  }), x, y + 0.105, z, [0, yaw, 0]);
+}
+
+function joinedBasket(P, width, y, z, depth, seed) {
+  P.add('turretDark', KIT.box(width, 0.30, 0.045), 0, y, z - depth * 0.5);
+  for (const yy of [y - 0.14, y, y + 0.14])
+    P.add('turretDetail', KIT.box(width + 0.18, 0.026, 0.030), 0, yy, z - depth - 0.025);
+  for (let i = 0; i < 8; i++) P.add('turretDetail', KIT.box(0.026, 0.38, 0.030),
+    -width * 0.47 + i * (width * 0.94 / 7), y, z - depth - 0.025);
+  mount(P, FITTINGS.stowageRack({
+    mats: P.mats, w: width * 0.76, d: depth * 0.62, h: 0.22,
+    fill: 0.45, rails: 3, seed,
+  }), 0, y + 0.14, z - depth * 0.50);
+}
+
+function addSTB1Package(P) {
+  const { box, cylY, cylZ, torus } = KIT;
+  // Low rounded prototype identity: broad shallow cheek continuations and
+  // ribbed side armor bury into the donor casting rather than floating.
+  for (const side of [-1, 1]) {
+    P.add('turret', orientedSlab(
+      [side * 0.24, 0.05, 1.02], [side * 1.26, 0.05, 0.52],
+      [side * 1.20, 0.06, -0.62], [side * 0.45, 0.06, 0.02],
+      [side * 0.22, 0.37, 0.88], [side * 1.14, 0.40, 0.43],
+      [side * 1.08, 0.38, -0.66], [side * 0.42, 0.41, -0.02]));
+    P.add('turretDark', box(0.11, 0.35, 1.22), side * 1.13, 0.31, -0.08,
+      0, side * 0.08, side * 0.02);
+    for (let i = 0; i < 4; i++) cassette(P, 'turret', side * 1.19, 0.32,
+      0.52 - i * 0.31, 0.08, 0.25, 0.27, [0, 0, side * 0.02], false);
+  }
+  // Large source searchlight, asymmetric commander's cupola and low MG.
+  P.add('turret', box(0.46, 0.34, 0.40), -0.72, 0.65, 0.28, -0.08, 0, 0);
+  P.add('turretDark', cylZ(0.155, 0.035, 18), -0.72, 0.66, 0.505, Math.PI / 2, 0, 0);
+  P.add('turretGlass', cylZ(0.125, 0.025, 18), -0.72, 0.66, 0.528, Math.PI / 2, 0, 0);
+  P.add('turret', cylY(0.29, 0.31, 0.080, 18), 0.48, 0.70, -0.30);
+  P.add('turretDark', torus(0.27, 0.014, 18), 0.48, 0.75, -0.30);
+  roofWeapon(P, 0.48, 0.76, -0.30, 7410, 0.72, -0.05);
+  smoke(P, 1.10, 0.52, 0.15, 4, 7420, -0.42);
+  joinedBasket(P, 2.15, 0.40, -1.15, 0.58, 7430);
+  whips(P, 0.62, -1.34, 7440, 0.94);
+  // Closed 105-mm gun plant and coax aperture.
+  P.addGunExtra(box(0.62, 0.45, 0.24), 0, -0.01, 0.34);
+  P.addGunExtra(cylZ(0.17, 0.34, 18, 0.14), 0, 0, 0.60);
+  P.addGunExtraDark(cylZ(0.036, 0.09, 10), 0.25, 0.07, 0.52);
+  P.decal('turret', 'number', 'STB-1', 0.18, [-1.25, 0.34, -0.58], -Math.PI / 2);
+  P.topY = Math.max(P.topY || 0, 1.16);
+}
+
+function buildSTB1(P) {
+  buildType74(P);
+  addSTB1Package(P);
+}
+
+function addType90APackage(P) {
+  const { box, cylY, cylZ, torus } = KIT;
+  // Replace the quiet cheek read with joined, faceted NERA carriers and
+  // shallow service cassettes. Every carrier overlaps the donor turret core.
+  for (const side of [-1, 1]) {
+    P.add('turret', orientedSlab(
+      [side * 0.22, 0.02, 1.22], [side * 1.50, 0.02, 0.78],
+      [side * 1.45, 0.03, -0.40], [side * 0.42, 0.03, 0.24],
+      [side * 0.20, 0.57, 1.03], [side * 1.31, 0.60, 0.58],
+      [side * 1.28, 0.55, -0.48], [side * 0.39, 0.59, 0.16]));
+    for (let i = 0; i < 4; i++) cassette(P, 'turret', side * (0.58 + i * 0.25),
+      0.60 - i * 0.018, 0.89 - i * 0.17, 0.22, 0.18, 0.21,
+      [-0.14, side * (0.04 + i * 0.04), side * 0.02], false);
+    // Armored skirt modules remain outside the hull side but above the linked
+    // shoe course; they do not replace or hide donor running gear.
+    for (let i = 0; i < 6; i++) cassette(P, 'hull', side * 1.70, 1.07,
+      1.78 - i * 0.70, 0.055, 0.40, 0.62, null, false);
+  }
+  // Large panoramic thermal head and shielded low roof weapon.
+  P.add('turret', box(0.48, 0.075, 0.46), -0.55, 0.86, -0.22);
+  P.add('turretDetail', box(0.38, 0.34, 0.35), -0.55, 1.04, -0.18, -0.05, 0, 0);
+  P.add('turretDark', box(0.28, 0.18, 0.032), -0.55, 1.06, 0.03);
+  P.add('turretGlass', box(0.20, 0.11, 0.022), -0.55, 1.06, 0.055);
+  P.add('turret', cylY(0.27, 0.29, 0.075, 18), 0.50, 0.86, -0.48);
+  P.add('turretDark', torus(0.25, 0.014, 18), 0.50, 0.91, -0.48);
+  roofWeapon(P, 0.50, 0.92, -0.48, 9010, 0.82, -0.04);
+  smoke(P, 1.23, 0.65, 0.08, 5, 9020, -0.44);
+  joinedBasket(P, 2.48, 0.47, -1.72, 0.62, 9030);
+  whips(P, 0.73, -1.86, 9040, 1.08);
+  // Revised Rh-120 plant with broad mask, sleeve, clamp and coax cue.
+  P.addGunExtra(box(0.76, 0.50, 0.26), 0, -0.01, 0.38);
+  P.addGunExtra(cylZ(0.19, 0.38, 18, 0.15), 0, 0, 0.67);
+  P.addGunExtraDark(cylZ(0.038, 0.10, 10), 0.29, 0.08, 0.58);
+  P.decal('turret', 'number', '90-A', 0.20, [1.48, 0.42, -0.78], Math.PI / 2);
+  P.topY = Math.max(P.topY || 0, 1.46);
+}
+
+function buildType90A(P) {
+  buildType90(P);
+  addType90APackage(P);
+}
+
+function addType10BPackage(P) {
+  const { box, cylY, cylZ } = KIT;
+  // Sharp modular Type 10B cheek shell. It remains a shallow swept mass and
+  // intersects the donor crown, avoiding a second detached turret volume.
+  for (const side of [-1, 1]) {
+    P.add('turret', orientedSlab(
+      [side * 0.18, 0.05, 1.46], [side * 1.54, 0.05, 0.80],
+      [side * 1.48, 0.05, -0.58], [side * 0.40, 0.05, 0.24],
+      [side * 0.16, 0.58, 1.22], [side * 1.30, 0.61, 0.58],
+      [side * 1.25, 0.56, -0.65], [side * 0.37, 0.60, 0.15]));
+    for (let row = 0; row < 2; row++) for (let i = 0; i < 5; i++) {
+      cassette(P, 'turret', side * (0.50 + i * 0.23), 0.62 - row * 0.15,
+        1.06 - i * 0.16 - row * 0.25, 0.20, 0.14, 0.20,
+        [-0.16, side * (0.035 + i * 0.045), side * 0.018], false);
+    }
+    // High modular side armor is additive over the intact Type 10 skirts and
+    // stays clear of the five-wheel smart course.
+    for (let i = 0; i < 6; i++) cassette(P, 'hull', side * 1.58, 1.03,
+      1.62 - i * 0.68, 0.045, 0.42, 0.60, null, false);
+  }
+  // Paired EO stations and compact commander's RWS preserve JGSDF asymmetry.
+  P.add('turret', box(0.45, 0.075, 0.44), -0.50, 0.88, -0.22);
+  P.add('turretDetail', box(0.35, 0.33, 0.32), -0.50, 1.05, -0.17, -0.06, 0, 0);
+  P.add('turretDark', box(0.26, 0.17, 0.030), -0.50, 1.06, 0.025);
+  P.add('turretGlass', box(0.18, 0.10, 0.020), -0.50, 1.06, 0.048);
+  P.add('turret', box(0.34, 0.25, 0.31), 0.70, 0.89, 0.10, -0.08, 0, 0);
+  P.add('turretDark', box(0.24, 0.13, 0.026), 0.70, 0.90, 0.285);
+  P.add('turretGlass', box(0.16, 0.075, 0.018), 0.70, 0.90, 0.306);
+  roofWeapon(P, 0.42, 0.91, -0.58, 10010, 0.78, 0.045);
+  smoke(P, 1.23, 0.65, 0.05, 6, 10020, -0.45);
+  joinedBasket(P, 2.52, 0.48, -1.74, 0.70, 10030);
+  whips(P, 0.74, -1.94, 10040, 1.10);
+  // Type 10 Kai 120-mm closed mask and strengthened sleeve.
+  P.addGunExtra(box(0.78, 0.50, 0.27), 0, -0.01, 0.40);
+  P.addGunExtra(cylZ(0.19, 0.40, 18, 0.15), 0, 0, 0.70);
+  P.addGunExtra(cylZ(0.075, 0.22, 12), -0.28, 0.15, 0.47);
+  P.addGunExtraDark(cylZ(0.048, 0.045, 12), -0.28, 0.15, 0.60);
+  P.addGunExtraDark(cylZ(0.038, 0.10, 10), 0.29, 0.07, 0.61);
+  P.decal('turret', 'number', '10-B', 0.20, [-1.48, 0.43, -0.82], -Math.PI / 2);
+  P.topY = Math.max(P.topY || 0, 1.48);
+}
+
+function buildType10B(P) {
+  buildType10Native2026(P);
+  addType10BPackage(P);
+}
+
+export const JAPAN_PROFILES = {
+  stb1: { build: buildSTB1 },
+  type90a: { build: buildType90A },
+  type10b: { build: buildType10B },
+};

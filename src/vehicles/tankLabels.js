@@ -25,6 +25,9 @@ const LABEL_OVERRIDES = Object.freeze({
   chieftain5: { displayName: 'Chieftain Mk 5' },
   challenger1: { displayName: 'Challenger 1 Mk 3' },
   type90: { displayName: 'Type 90 (Kyū-maru)', shortName: 'Type 90' },
+  stb1: { displayName: 'STB-1', shortName: 'STB-1', searchAliases: ['STB 1 Japan'] },
+  type90a: { displayName: 'Type 90A', shortName: 'Type 90A', searchAliases: ['Type 90 Kai'] },
+  type10b: { displayName: 'Type 10B', shortName: 'Type 10B', searchAliases: ['Type 10 Kai'] },
   type99a: {
     displayName: 'ZTZ-99A (Type 99A)', shortName: 'ZTZ-99A',
     searchAliases: ['Type 99A (ZTZ-99A)', 'Type 99A'],
