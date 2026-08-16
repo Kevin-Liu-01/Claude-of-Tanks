@@ -23,7 +23,8 @@ export const MODERN3_IDS = [
   // owner's k2_black_panther_armored_warfare.glb drop — "fully model a
   // custom k2 black panther based on this model". Print is LOCAL-ONLY
   // quarantine (measurement/influence only); the playable stays procedural.
-  'chieftain_mk10', 'k2', 'type10', 'm2a2_bradley', 'bmp2', 'ariete',
+  'chieftain_mk10', 'k2', 'type10', 'm2a2_bradley', 'bmp2',
+  'carro45t', 'ariete', 'ariete_c1', 'ariete_c2',
   // AFV lane 2026-08-06 (owner order "make the spz puma as well" + "use the
   // bradley on puma and this type 89 ifv"): both ride the bradley recipe.
   'spz_puma', 'type89',
@@ -562,7 +563,7 @@ const MODERN3_SPECS = {
   },
 
   ariete: {
-    id: 'ariete', name: 'C1 Ariete', nation: 'Italy', era: 'modern', class: 'mbt',
+    id: 'ariete', name: 'C1 Ariete Preserie', nation: 'Italy', era: 'modern', class: 'mbt',
     hp: 2150,
     enginePowerHp: 1250, weightTons: 54, topSpeedKmh: 65, reverseSpeedKmh: 25,
     hullTraverseDegS: 40,
@@ -595,6 +596,111 @@ const MODERN3_SPECS = {
       scheme: 'stripes', base: '#42503a', weather: '#4c5a44',
       patches: ['#37432f', '#2c352a'],
       marking: 'number', number: '118', trackWidthM: 0.60, camoScale: 0.6,
+    },
+  },
+
+  ariete_c1: {
+    id: 'ariete_c1', name: 'C1 Ariete', nation: 'Italy', era: 'modern', class: 'mbt',
+    hp: 2300,
+    enginePowerHp: 1270, weightTons: 56, topSpeedKmh: 63, reverseSpeedKmh: 25,
+    hullTraverseDegS: 39,
+    terrainResistance: { hard: 0.68, medium: 0.79, soft: 1.46 },
+    pivotStyle: 'neutral',
+    turretTraverseDegS: 40, gunPitchDegS: 32, gunElevationDeg: 20, gunDepressionDeg: 9,
+    gun: {
+      caliberMm: 120, reloadS: 5.9, baseAccuracy: 0.28, aimTimeS: 1.6,
+      bloom: BLOOM_MODERN,
+      shells: [
+        shell('CL3143 APFSDS', 'APFSDS', 120, apfsdsPens(560)[0], apfsdsPens(560)[1], 520, 1705, { pen2000Mm: apfsdsPens(560)[2] }),
+        shell('DM12A1 HEAT-MP', 'HEAT', 120, 625, 625, 490, 1400),
+        shell('DM11 HE-FRAG', 'HE', 120, 55, 55, 590, 1010),
+      ],
+    },
+    dims: { hullLengthM: 7.59, overallLengthM: 9.80, widthM: 3.62, heightM: 2.68 },
+    armor: modernArmor({
+      hl: 3.8, hw: 1.80, inW: 1.22, floor: 0.42, trkTop: 0.92, roofY: 1.47,
+      turretPivot: [0, 1.48, -0.29], gunPivot: [0, 0.31, 0.72],
+      barrelLenM: 5.35, barrelRadM: 0.079,
+      glacis: [55, 380, 520], lower: [55, 320, 430], side: [45, 110, 150],
+      skirt: [45, 120, 320], rear: 40, roof: 40,
+      tw: 1.42, tFrontZ: 1.30, tRearZ: -2.45, tH: 0.76,
+      cheek: [560, 620, 850], tSide: [320, 380, 560], tRear: 90, tRoof: 45,
+      mantlet: [420, 500, 680], loader: true, bustleAmmo: true,
+    }),
+    visual: {
+      scheme: 'stripes', base: '#48533e', weather: '#53604a',
+      patches: ['#384431', '#2c3529'], marking: 'number', number: 'C1 32',
+      trackWidthM: 0.60, camoScale: 0.56,
+    },
+  },
+
+  ariete_c2: {
+    id: 'ariete_c2', name: 'C2 Ariete', nation: 'Italy', era: 'modern', class: 'mbt',
+    hp: 2600,
+    enginePowerHp: 1500, weightTons: 59, topSpeedKmh: 65, reverseSpeedKmh: 30,
+    hullTraverseDegS: 42,
+    terrainResistance: { hard: 0.65, medium: 0.76, soft: 1.40 },
+    pivotStyle: 'neutral',
+    turretTraverseDegS: 44, gunPitchDegS: 36, gunElevationDeg: 22, gunDepressionDeg: 10,
+    gun: {
+      caliberMm: 120, reloadS: 5.4, baseAccuracy: 0.26, aimTimeS: 1.45,
+      bloom: BLOOM_MODERN,
+      shells: [
+        shell('DM73 APFSDS', 'APFSDS', 120, apfsdsPens(650)[0], apfsdsPens(650)[1], 545, 1740, { pen2000Mm: apfsdsPens(650)[2] }),
+        shell('DM12B HEAT-MP', 'HEAT', 120, 650, 650, 510, 1420),
+        shell('DM11A1 Programmable', 'HE', 120, 65, 65, 620, 1010),
+      ],
+    },
+    dims: { hullLengthM: 7.75, overallLengthM: 10.12, widthM: 3.64, heightM: 2.82 },
+    armor: modernArmor({
+      hl: 3.88, hw: 1.81, inW: 1.22, floor: 0.42, trkTop: 0.92, roofY: 1.47,
+      turretPivot: [0, 1.48, -0.29], gunPivot: [0, 0.31, 0.72],
+      barrelLenM: 5.55, barrelRadM: 0.080,
+      glacis: [70, 520, 760], lower: [65, 450, 620], side: [50, 160, 240],
+      skirt: [55, 230, 520], rear: 45, roof: 45,
+      tw: 1.48, tFrontZ: 1.34, tRearZ: -2.72, tH: 0.82,
+      cheek: [650, 760, 1050], tSide: [420, 520, 760], tRear: 110, tRoof: 55,
+      mantlet: [500, 600, 820], loader: true, bustleAmmo: true,
+    }),
+    visual: {
+      scheme: 'stripes', base: '#3f4d3b', weather: '#4b5945',
+      patches: ['#2e3b2d', '#5b5140'], marking: 'number', number: 'C2 01',
+      trackWidthM: 0.60, camoScale: 0.50,
+    },
+  },
+
+  carro45t: {
+    id: 'carro45t', name: 'Carro 45t', nation: 'Italy', era: 'coldwar', class: 'medium',
+    hp: 1850,
+    enginePowerHp: 850, weightTons: 45, topSpeedKmh: 55, reverseSpeedKmh: 18,
+    hullTraverseDegS: 36,
+    terrainResistance: { hard: 0.76, medium: 0.88, soft: 1.62 },
+    pivotStyle: 'neutral',
+    turretTraverseDegS: 30, gunPitchDegS: 24, gunElevationDeg: 18, gunDepressionDeg: 8,
+    gun: {
+      caliberMm: 105, reloadS: 7.2, baseAccuracy: 0.31, aimTimeS: 2.0,
+      bloom: { move: 0.08, hullRot: 0.10, turret: 0.08, afterShot: 2.5 },
+      shells: [
+        shell('OTO 105 APDS', 'APFSDS', 105, 345, 315, 430, 1475, { pen2000Mm: 280 }),
+        shell('M456 HEAT', 'HEAT', 105, 400, 400, 420, 1173),
+        shell('M393 HESH', 'HE', 105, 127, 127, 520, 730),
+      ],
+    },
+    dims: { hullLengthM: 6.98, overallLengthM: 10.60, widthM: 3.43, heightM: 2.95 },
+    armor: modernArmor({
+      hl: 3.48, hw: 1.48, inW: 1.08, floor: 0.38, trkTop: 0.94, roofY: 1.20,
+      turretPivot: [0, 1.20, -0.34], gunPivot: [0, 0.49, 1.10],
+      barrelLenM: 5.45, barrelRadM: 0.068,
+      glacis: [80, 150, 170], lower: [65, 110, 125], side: [45, 55, 65],
+      skirt: null, rear: 35, roof: 28,
+      tw: 1.43, tFrontZ: 1.28, tRearZ: -2.18, tH: 1.03,
+      cheek: [120, 210, 240], tSide: [80, 115, 135], tRear: 45, tRoof: 30,
+      mantlet: [150, 250, 280], loader: true, bustleAmmo: true,
+    }),
+    visual: {
+      scheme: 'solid', base: '#53604a', weather: '#5f6b55',
+      patches: ['#46523e', '#6a6653'], marking: 'number', number: '45T',
+      trackWidthM: 0.52, camoScale: 0.72,
     },
   },
 };

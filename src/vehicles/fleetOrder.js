@@ -39,6 +39,9 @@ export const NATIVE_FAMILY_ORDER = Object.freeze({
   japan_mbt: Object.freeze([
     'type74', 'type90', 'type10',
   ]),
+  italy: Object.freeze([
+    'carro45t', 'ariete', 'ariete_c1', 'ariete_c2',
+  ]),
 });
 
 export function applyNativeFamilyOrder(ids = ALL_TANK_IDS) {

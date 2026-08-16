@@ -375,7 +375,7 @@ function muzzleBore(P, r, zTip) {
 // swell, muzzle +5.88 (published; the print's tube ends 5.73 — certified
 // short-tube class, ~1 col).
 // ---------------------------------------------------------------------------
-function buildAriete(P) {
+export function buildAriete(P) {
   const { box, cylX, cylY, cylZ, frustum, torus, buildGun, buildRunningGear,
     fenders, headlight, liftEye, periscope, towCable, stowage, jerryCan } = KIT;
   const slab = orientedSlab;                                                   // §C missing-side fix: winding-corrected slabs only (see orientedSlab)
@@ -772,7 +772,10 @@ function buildAriete(P) {
   // x=-0.165 column the ref's off-center fused tube owns — the certified
   // 1.84-err plan-center col drops to ~0.09. Band 0.27 (+AA 0.29) stays
   // under the 12% body cut so heightM/hullLengthM never see it.
-  P.addGunExtra(cylZ(0.135, 0.30, 12), -0.04, 0.05, 4.78);                     // off-axis MRS collar remains flush with the shortened muzzle
+  // Keep the off-axis MRS collar behind the actual tube mouth. At 4.78 its
+  // closed 4.93 m end face sat 2 mm ahead of the universal recessed bore and
+  // read as a painted plug in straight-on macro views.
+  P.addGunExtra(cylZ(0.135, 0.30, 12), -0.04, 0.05, 4.74);
   P.topY = 1.10;
 }
 
@@ -4043,7 +4046,6 @@ export const MISC_PROFILES = {
   // The weaker later Native2026 experiment remains historical comparison
   // code only; neither a source mesh nor converted vertex payload is used at
   // runtime.
-  ariete: { build: buildAriete },
   leclerc: { build: buildLeclerc },
   leclerc_xlr: { build: buildLeclercXLR },
   amx56: { build: buildAMX56 },

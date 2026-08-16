@@ -26,6 +26,10 @@ const LABEL_OVERRIDES = Object.freeze({
   vickers_mk1: { displayName: 'Vickers MBT Mk 1' },
   centurion3: { displayName: 'Centurion Mk 3' },
   centurion5: { displayName: 'Centurion Mk 5/2' },
+  carro45t: { displayName: 'Carro 45t', searchAliases: ['Carro da Combattimento 45t'] },
+  ariete: { displayName: 'C1 Ariete Preserie', shortName: 'Ariete Preserie' },
+  ariete_c1: { displayName: 'C1 Ariete', shortName: 'Ariete C1' },
+  ariete_c2: { displayName: 'C2 Ariete', shortName: 'Ariete C2' },
 });
 
 function cleanDisplayName(value) {
