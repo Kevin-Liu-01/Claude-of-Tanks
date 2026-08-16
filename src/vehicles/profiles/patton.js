@@ -2459,6 +2459,133 @@ function m60Loft(P, bucket, secs, profile, oy, oz, creases = [0]) {
 //   top 1.45 @ -3.44, tail tip 1.35/0.95 to -3.55 (band < 0.39 so
 //   hullLengthM keeps its -3.445 anchor); pintle to -3.52 at |x|<0.17.
 // ---------------------------------------------------------------------------
+function pattonFaceCassette(P, bucket, x, y, z, w, h, d, rx = 0, ry = 0, rz = 0,
+  rows = 1, cols = 1) {
+  const { box, xform } = KIT;
+  P.add(bucket, box(w, h, d), x, y, z, rx, ry, rz);
+  const faceZ = d / 2 + 0.004;
+  const dark = bucket === 'hull' ? 'hullDark' : 'turretDark';
+  for (let row = 1; row < rows; row++) {
+    const ly = -h / 2 + h * row / rows;
+    P.add(dark, xform(box(w * 0.90, 0.018, 0.010), 0, ly, faceZ), x, y, z, rx, ry, rz);
+  }
+  for (let col = 1; col < cols; col++) {
+    const lx = -w / 2 + w * col / cols;
+    P.add(dark, xform(box(0.018, h * 0.90, 0.010), lx, 0, faceZ), x, y, z, rx, ry, rz);
+  }
+  for (const sy of [-1, 1]) {
+    P.add(dark, xform(box(w * 0.94, 0.016, 0.010), 0, sy * (h / 2 - 0.015), faceZ), x, y, z, rx, ry, rz);
+  }
+  for (const sx of [-1, 1]) {
+    P.add(dark, xform(box(0.016, h * 0.94, 0.010), sx * (w / 2 - 0.015), 0, faceZ), x, y, z, rx, ry, rz);
+  }
+}
+
+function pattonSideCassette(P, side, y, z, h, len, variant) {
+  const { box, xform } = KIT;
+  const x = side * (variant === 'a2' ? 1.775 : 1.765);
+  const depth = 0.075;
+  P.add('hull', box(depth, h, len), x, y, z);
+  const faceX = side * (depth / 2 + 0.004);
+  P.add('hullDark', xform(box(0.010, h * 0.90, 0.018), faceX, 0, 0), x, y, z);
+  for (const sy of [-1, 1]) {
+    P.add('hullDark', xform(box(0.010, 0.018, len * 0.92), faceX, sy * (h / 2 - 0.018), 0), x, y, z);
+  }
+  for (const sz of [-1, 1]) {
+    P.add('hullDark', xform(box(0.010, h * 0.88, 0.018), faceX, 0, sz * (len / 2 - 0.018)), x, y, z);
+  }
+}
+
+function pattonSmokeBank(P, side, y, z, scale = 1) {
+  const { box, cylZ } = KIT;
+  const yaw = side * 0.62;
+  P.add('turret', box(0.48 * scale, 0.18 * scale, 0.15 * scale), side * 1.17, y - 0.06, z - 0.08, 0, yaw, 0);
+  P.add('turretDark', box(0.10 * scale, 0.25 * scale, 0.12 * scale), side * 1.08, y - 0.13, z - 0.16, 0, yaw, 0);
+  for (let row = 0; row < 2; row++) {
+    for (let col = 0; col < 3; col++) {
+      const lx = (col - 1) * 0.13 * scale;
+      const px = side * 1.17 + Math.cos(yaw) * lx;
+      const pz = z - Math.sin(yaw) * lx + row * 0.06 * scale;
+      const py = y + row * 0.085 * scale;
+      P.add('turretDetail', cylZ(0.043 * scale, 0.28 * scale, 10), px, py, pz, -0.43, yaw, 0);
+      P.add('turretDark', cylZ(0.031 * scale, 0.015, 10),
+        px + Math.sin(yaw) * 0.125 * scale, py + 0.052 * scale,
+        pz + Math.cos(yaw) * 0.114 * scale, -0.43, yaw, 0);
+    }
+  }
+}
+
+function finishM60Variant(P, variant) {
+  const { box, cylY, cylZ } = KIT;
+  const a3 = variant === 'a3';
+
+  // USMC RISE/P-style side protection: one supported upper run only.  The
+  // native linked course, all six wheels and both end transitions remain
+  // fully visible below it; these are armor cassettes, never replacement
+  // tracks or corridor fillers.
+  const stations = a3 ? [-2.55, -1.94, -1.33, -0.72, -0.11, 0.50, 1.11, 1.72, 2.33]
+    : [-2.48, -1.82, -1.16, -0.50, 0.16, 0.82, 1.48, 2.14];
+  for (const side of [-1, 1]) {
+    for (const z of stations) pattonSideCassette(P, side, 1.36, z, a3 ? 0.54 : 0.58, a3 ? 0.52 : 0.57, variant);
+    P.add('hullDetail', box(0.055, 0.065, 5.45), side * 1.73, 1.69, -0.10);
+  }
+
+  // Glacis kit follows the shallow M60 rake and leaves the driver/periscope
+  // lane and both light clusters open.  A1 uses broad early Blazer boxes;
+  // A3 uses a finer two-row TTS-era course.
+  const glacisRows = a3
+    ? [{ z: 2.20, y: 1.69, xs: [-1.05, -0.63, -0.21, 0.21, 0.63, 1.05], w: 0.36, d: 0.37 },
+      { z: 2.62, y: 1.59, xs: [-0.94, -0.47, 0.47, 0.94], w: 0.40, d: 0.34 }]
+    : [{ z: 2.18, y: 1.69, xs: [-0.96, -0.48, 0.48, 0.96], w: 0.43, d: 0.42 },
+      { z: 2.64, y: 1.58, xs: [-0.76, -0.25, 0.25, 0.76], w: 0.46, d: 0.36 }];
+  for (const row of glacisRows) {
+    for (const x of row.xs) pattonFaceCassette(P, 'hull', x, row.y, row.z, row.w, 0.095, row.d, -0.21, 0, 0, 1, a3 ? 2 : 1);
+  }
+
+  // Needle-casting cheek armor.  Every block is turret-owned, buried into
+  // the swept cheek and rotates as part of the complete turret package.
+  const cheekZ = a3 ? [1.27, 0.91, 0.55, 0.19] : [1.30, 0.84, 0.38];
+  for (const side of [-1, 1]) {
+    for (let i = 0; i < cheekZ.length; i++) {
+      const z = cheekZ[i];
+      const x = side * (0.52 + i * (a3 ? 0.19 : 0.27));
+      const y = a3 ? 0.61 + (i % 2) * 0.03 : 0.60;
+      pattonFaceCassette(P, 'turret', x, y, z, a3 ? 0.39 : 0.50,
+        a3 ? 0.31 : 0.36, a3 ? 0.13 : 0.15, -0.10, side * (a3 ? 0.34 : 0.29), 0, a3 ? 2 : 1, 1);
+    }
+  }
+
+  // Variant-specific roof and fire-control grammar taken from the supplied
+  // A1/A3 models.  Both retain the low M19/M85 station; the A1 keeps its
+  // mantlet searchlight while A3 carries paired M239 banks, TTS head and
+  // crosswind mast.
+  if (a3) {
+    pattonSmokeBank(P, -1, 0.61, 0.60, 0.92);
+    pattonSmokeBank(P, 1, 0.61, 0.60, 0.92);
+    P.add('turret', box(0.36, 0.25, 0.38), 0.72, 1.03, 0.64, -0.05, 0, 0);
+    P.add('turretGlass', box(0.22, 0.13, 0.022), 0.72, 1.06, 0.844, -0.05, 0, 0);
+    P.add('turretDark', cylY(0.035, 0.045, 0.42, 10), -0.92, 1.22, -1.12);
+    P.add('turretDetail', box(0.18, 0.06, 0.16), -0.92, 1.45, -1.12);
+    P.add('turretGlass', box(0.10, 0.035, 0.018), -0.92, 1.45, -1.03);
+    for (const z of [1.46, 2.26, 3.08]) P.add('gunDark', cylZ(0.096, 0.035, 16), 0, 0, z);
+    P.add('gunDark', box(0.16, 0.12, 0.26), 0.13, 0.10, 3.56);
+    P.add('gunDark', box(0.10, 0.07, 0.018), 0.13, 0.10, 3.70);
+  } else {
+    for (const z of [1.56, 2.30, 3.18]) P.add('gunDark', cylZ(0.096, 0.032, 16), 0, 0, z);
+  }
+
+  // Complete marker-carrying M85-style plant.  The fitting's flanged foot
+  // is sunk into the cupola crown, so receiver, ammo can and forward tube
+  // have one visible load path and yaw with the complete turret package.
+  const m85 = FITTINGS.pintleMG({
+    mats: P.mats, cls: 'm2', tone: 'dark', scale: a3 ? 0.50 : 0.53,
+    seed: a3 ? 603 : 601, elev: a3 ? 0.035 : 0.02, ammo: true,
+    ring: { r: 0.22, stubs: 3 }, rotation: [0, a3 ? -0.06 : 0.04, 0],
+  });
+  m85.position.set(-0.58, 1.42, 0.20);
+  P.turretG.add(m85);
+}
+
 function buildM60(P, cfg) {
   const { box, cylY, cylZ, cylX, sph, xform, liftEye, buildGun, tarpRoll, torus, towCable } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
@@ -2906,6 +3033,7 @@ function buildM60(P, cfg) {
   // shared kit helper (MANDATORY shadow-named mechanism, 3fca39b): rim
   // torus + recessed shadow disc, mask/frame-excluded by construction.
   muzzleBore(P, { len: cfg.gunLen, r: cfg.sleeve ? 0.076 : 0.082 });
+  finishM60Variant(P, cfg.a3 ? 'a3' : 'a1');
   P.topY = 3.26 - py + 0.12;
 }
 
@@ -2917,6 +3045,52 @@ function buildM60(P, cfg) {
 // print (its rear deck crowns 2.18 vs the A1's 1.886), so the hull chain is
 // re-authored in the extract frame. Published dims 6.95/7.27/3.63/3.11.
 // ---------------------------------------------------------------------------
+function finishM60A2Variant(P, muzzleZ) {
+  const { box, cylZ, torus } = KIT;
+
+  // Starship modernization course.  It deliberately stops above the native
+  // road wheels and does not touch the linked track, idler or sprocket.
+  for (const side of [-1, 1]) {
+    for (const z of [-2.62, -1.98, -1.34, -0.70, -0.06, 0.58, 1.22, 1.86, 2.50]) {
+      pattonSideCassette(P, side, 1.42, z, 0.48, 0.54, 'a2');
+    }
+    P.add('hullDetail', box(0.050, 0.060, 5.72), side * 1.73, 1.70, -0.08);
+  }
+  for (const row of [
+    { z: 2.18, y: 1.84, xs: [-1.05, -0.63, -0.21, 0.21, 0.63, 1.05] },
+    { z: 2.63, y: 1.72, xs: [-0.88, -0.44, 0.44, 0.88] },
+  ]) {
+    for (const x of row.xs) pattonFaceCassette(P, 'hull', x, row.y, row.z,
+      0.36, 0.085, 0.36, -0.20, 0, 0, 1, 2);
+  }
+
+  // The supplied Starship's defining mass is the compact tall tower and
+  // huge 152 mm shield.  Add only shallow, side-seated cassettes so that
+  // shape remains readable instead of burying it under an A1 clone.
+  for (const side of [-1, 1]) {
+    for (let i = 0; i < 4; i++) {
+      const z = 0.82 - i * 0.48;
+      const x = side * 1.205;
+      P.add('turret', box(0.10, 0.33, 0.39), x, 0.50, z, 0, 0, 0);
+      P.add('turretDark', box(0.012, 0.28, 0.030), side * 1.262, 0.50, z + 0.14);
+      P.add('turretDark', box(0.012, 0.030, 0.33), side * 1.262, 0.62, z);
+    }
+    pattonSmokeBank(P, side, 0.54, 0.92, 0.76);
+  }
+
+  // Rebuild the 152 mm installation as a layered gun/launcher plant:
+  // accordion boot collars, reinforced trunnion ring, missile-reference
+  // box, and a heavy muzzle rim.  All pieces pitch with the gun.
+  for (const z of [0.76, 0.94, 1.12]) {
+    P.addGunExtraDark(cylZ(0.23 - (z - 0.76) * 0.16, 0.040, 16), 0.045, 0.02, z);
+  }
+  P.addGunExtraDark(torus(0.25, 0.025, 20), 0.045, 0.02, 0.72);
+  P.add('gunDark', box(0.18, 0.15, 0.28), 0.20, 0.13, 1.54);
+  P.add('gunDark', box(0.10, 0.08, 0.018), 0.20, 0.13, 1.69);
+  P.add('gunDark', cylZ(0.17, 0.035, 18), 0.045, 0, muzzleZ - 0.04);
+
+}
+
 function buildM60A2(P, cfg) {
   const { box, cylY, cylZ, cylX, xform, liftEye } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
@@ -3203,6 +3377,7 @@ function buildM60A2(P, cfg) {
   // legacy 0.076 gunDark face disc above stays — certified gate state,
   // fully occluded behind the new furniture.
   muzzleBore(P, { z: glen, r: 0.148, x: 0.045 });
+  finishM60A2Variant(P, glen);
   P.topY = 3.14 - py + 0.12;
 }
 
@@ -5256,8 +5431,8 @@ export const PATTON_PROFILES = {
     }),
   },
   m60a1: { build: (P) => buildM60(P, { hull: M60_HULL, fit: M60_FIT, sections: M60_SECTIONS, bustle: M60_BUSTLE, searchlight: true, sleeve: false, gunLen: 4.435 }) },
-  // A3: searchlight ON (the real M60A3 kept the AN/VSS searchlight over the
-  // mantlet, and the shared A1 oracle models it — the old searchlight:false
-  // read cost turretCurves ~13 pts of pure missing-volume vs the reference)
-  m60a3: { build: (P) => buildM60(P, { hull: M60_HULL, fit: M60_FIT, sections: M60_SECTIONS, bustle: M60_BUSTLE, searchlight: true, sleeve: true, a3: true, gunLen: 4.435 }) },
+  // A3 TTS: the supplied A3 oracle resolves the correct variant package —
+  // thermal sleeve, TTS head, paired smoke banks and crosswind mast, without
+  // the A1's large AN/VSS-1 mantlet searchlight.
+  m60a3: { build: (P) => buildM60(P, { hull: M60_HULL, fit: M60_FIT, sections: M60_SECTIONS, bustle: M60_BUSTLE, searchlight: false, sleeve: true, a3: true, gunLen: 4.435 }) },
 };
