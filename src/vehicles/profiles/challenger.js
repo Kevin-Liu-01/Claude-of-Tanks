@@ -568,6 +568,22 @@ function challenger1Build(P) {
   binNose(1.16, 1.28, 2.23, 2.63);
   binNose(1.28, 1.37, 2.23, 2.50);
   P.add('turretDark', box(0.266, 0.02, 3.15), 1.24, 0.633, 0.425);
+  // Owner surface-studio side-assembly repair (2026-08-15): the long bins
+  // previously met the casting only at a few narrow rear corners.  Their
+  // forward inner faces therefore read as parallel shelves beside the
+  // turret, with open air visible between the bin noses and the cast cheeks.
+  // These closed, asymmetric cheek returns follow the existing left-high /
+  // right-low crown and bury into both the casting and the bin inner faces.
+  // The outer four points coincide with the bin floors/tops; the inner four
+  // enter the existing nose and rear-roof slabs, giving every part of each
+  // side assembly a continuous body-colour load path without widening its
+  // certified outer envelope.
+  P.add('turret', slab(
+    [-1.10, 0.195, 2.48], [-0.44, 0.040, 2.25], [-0.79, 0.120, -0.74], [-1.10, 0.195, -0.74],
+    [-1.10, 0.480, 2.48], [-0.30, 0.620, 2.02], [-0.62, 0.650, -0.74], [-1.10, 0.635, -0.74]));
+  P.add('turret', slab(
+    [0.44, 0.040, 2.25], [1.16, 0.195, 2.58], [1.16, 0.195, -0.74], [0.79, 0.120, -0.74],
+    [0.30, 0.620, 2.02], [1.16, 0.480, 2.58], [1.16, 0.635, -0.74], [0.62, 0.600, -0.74]));
   // Outer skirt-top bin tier (the print's 2.06-2.17 tops at x 1.46..1.60;
   // plan_turret: the RIGHT tier runs world 0.0..2.01 — the old rear -0.36
   // overhang broke the x 1.64 plan column by 0.36).
@@ -747,18 +763,21 @@ function challenger1Build(P) {
     0, 0.035, 1.105);
   liftEye(P, 'turretDetail', -0.95, 0.62, 0.55, 0.4);
   liftEye(P, 'turretDetail', 0.95, 0.62, 0.55, -0.4);
-  // 2x5 smoke discharger banks on both cheeks (the print's 2.40-2.42
-  // face bumps at z 0.9..1.3).
-  // (banks lowered 0.18: the ref's front-view discharger tops read 2.15-
-  // 2.19 at the ±1.3-1.5 columns; ours rode at 2.37)
-  for (const s of [-1, 1]) {
-    // Broad buried cheek pad plus two vertically staggered rows.  The bank
-    // rises only 55 mm and moves 45 mm forward: enough to expose the tube
-    // mouths in front/close-front while remaining below the turret crown
-    // and fully inside the certified cheek envelope.
-    P.add('turretDetail', box(0.11, 0.22, 0.39), s * 1.105, 0.455, 1.345, 0, s * 0.55, 0);
-    smokeCluster(P, s * 1.26, 0.555, 1.465, 5, s * 0.95, 0.62);
-    smokeCluster(P, s * 1.23, 0.425, 1.505, 5, s * 0.95, 0.62);
+  // 2x5 smoke discharger banks on both cheeks.  The former x=±1.23/1.26
+  // centers lived *inside* the long side-bin volumes, leaving only a few
+  // pale tube tips visible.  Each bank now sits on a canted, broad pad that
+  // overlaps the bin's outer wall.  The unequal x datums respect the real
+  // asymmetric left/right bin envelopes while both rows remain below the
+  // roof line, fully supported, and clear of the gun and sight apertures.
+  const smokeBanks = [
+    { side: -1, padX: -1.455, tubeX: -1.550, yaw: -0.95 },
+    { side: 1, padX: 1.350, tubeX: 1.450, yaw: 0.95 },
+  ];
+  for (const bank of smokeBanks) {
+    P.add('turretDetail', box(0.16, 0.32, 0.46), bank.padX, 0.505, 1.455,
+      0, bank.side * 0.20, bank.side * -0.16);
+    smokeCluster(P, bank.tubeX, 0.625, 1.465, 5, bank.yaw, 0.62);
+    smokeCluster(P, bank.tubeX - bank.side * 0.025, 0.485, 1.515, 5, bank.yaw, 0.62);
   }
   // Loader hatch ring on the commander plateau + gunner cowl RE-SEATED on
   // the low loader roof (push-2 §B1: the cowl rode the old symmetric-crown
@@ -937,9 +956,10 @@ function challenger1Build(P) {
   // tube's own face circle; front rows read y-intervals so the +6 mm z is
   // interior, and the banks are plan-interior behind the 2.52/2.63 bin
   // noses). Placement replicates smokeCluster's own transform math.
-  for (const s of [-1, 1]) {
-    for (const [bx, by, bz] of [[s * 1.26, 0.555, 1.465], [s * 1.23, 0.425, 1.505]]) {
-      const yaw = s * 0.95;
+  for (const bank of smokeBanks) {
+    for (const [bx, by, bz] of [[bank.tubeX, 0.625, 1.465],
+      [bank.tubeX - bank.side * 0.025, 0.485, 1.515]]) {
+      const yaw = bank.yaw;
       for (let k = 0; k < 5; k++) {
         const f = k - 2;
         const a = yaw + f * (0.62 / 5);
