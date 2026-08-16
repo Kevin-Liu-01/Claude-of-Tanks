@@ -2640,7 +2640,7 @@ export function buildType10Native2026(P) {
 // §6.5: tall slab aluminum box, one-piece 60° glacis, nose shelf, rear troop
 // ramp, RIGHT-offset two-man turret with 25 mm + elevating twin TOW box,
 // A2 appliqué side slabs with stand-off bolts, front drive sprocket.
-function buildBradley(P) {
+export function buildBradley(P) {
   // AFV r1 REBUILD against the 42manako oracle (vertex report docs/
   // references/vertex/m2a2_bradley.json — all targets below are that
   // report's gate-world numbers; batch-38 normalized print, 0%/0%/0% with
@@ -3385,8 +3385,8 @@ function buildBradley(P) {
                                                                                 //   the ref top is 2.38; the chin
                                                                                 //   wedge below carries the face)
   P.add('turret', slab(                                                         // r2 CHIN WEDGE: the ref mantlet
-    [-0.70, 0.01, 0.65], [0.70, 0.01, 0.65], [0.70, 0.135, 1.07], [-0.70, 0.135, 1.07], // shoulder underside RISES
-    [-0.70, 0.055, 0.65], [0.70, 0.055, 0.65], [0.70, 0.195, 1.07], [-0.70, 0.195, 1.07]));
+    [-0.70, 0.135, 1.07], [0.70, 0.135, 1.07], [0.70, 0.01, 0.65], [-0.70, 0.01, 0.65], // shoulder underside RISES
+    [-0.70, 0.195, 1.07], [0.70, 0.195, 1.07], [0.70, 0.055, 0.65], [-0.70, 0.055, 0.65]));
                                                                                 // (r4 x ±0.66 -> ±0.70: the 0.709
                                                                                 //   plan col's ref front is its own
                                                                                 //   0.616 cheek line) // 1.902@0.39 -> 2.05@0.69
@@ -3795,7 +3795,7 @@ function buildBradley(P) {
 // low boat hull, sharp two-plane prow, conical two-man center turret, long
 // thin 2A42 + roof Konkurs tube, twin bulged rear doors, firing ports 4L/3R,
 // 3+3 smoke, FRONT drive sprocket + REAR idler both raised (§B6 trapezoid).
-function buildBMP2(P) {
+export function buildBMP2(P) {
   const { box, cylX, cylY, cylZ, frustum, slab, sph, lathe, xform, torus,
     buildGun, buildRunningGear, periscope, shovelTool, stowage } = KIT;
   const { rng } = P;
@@ -4498,7 +4498,7 @@ function muzzleBore(P, faceZ, R, boreR, seg = 14, rearR) {
 // whips. §H.4 tells vs bradley (tall slab + turret cluster + TOW left),
 // bmp2 (boat prow + cone) and fv510 (ribbed strakes + manned box turret):
 // the Puma reads as a low wedge wearing a flat robotic turret.
-function buildPuma(P) {
+export function buildPuma(P) {
   const { box, cylX, cylY, cylZ, frustum, buildGun, buildRunningGear,
     liftEye, periscope, stowage, torus } = KIT;
   const slab = orientedSlab;                                                    // §C missing-side law

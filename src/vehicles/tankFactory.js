@@ -85,6 +85,10 @@ import './japan.js';
 // Owner-supplied German Leopard references. Keep after the canonical A4/A6
 // donors so all three derivatives inherit complete first-party rigs.
 import './germany.js';
+// Owner-supplied AFV/IFV comparison oracles. Keep after the Bradley, BMP,
+// T-72 and Puma donors so every new procedural derivative starts from a
+// complete certified hull and single smart running-gear course.
+import './afvFamily.js';
 // All extension rows now exist. Normalize player-facing family progression
 // independently of the historical module-registration order.
 import { applyNativeFamilyOrder } from './fleetOrder.js';

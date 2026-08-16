@@ -162,6 +162,15 @@ export const VEHICLE_MARKING_ANCHORS = Object.freeze({
   ua_t80u_kursk: anchor('turret', 'left', 0.35, 0.46, 0.24, 1),
   ua_t84_oplot_m: anchor('turret', 'right', 0.32, 0.45, 0.25, -1),
   ua_m1a1: anchor('hull', 'right', 0.40, 0.65, 0.27, -1),
+  // AFV family: every marking uses a different physically ray-seated face.
+  // Tall slab vehicles use their broad appliqué flanks; compact stations use
+  // turret cheeks that remain clear of weapons, sights and missile boxes.
+  bmp3_rok: anchor('turret', 'right', 0.43, 0.46, 0.21, -1),
+  ua_m2a3_bradley: anchor('hull', 'left', 0.39, 0.63, 0.24, 1),
+  bmpt_terminator2: anchor('turret', 'right', 0.36, 0.48, 0.21, -1),
+  upior_ifv: anchor('hull', 'right', 0.41, 0.64, 0.24, -1),
+  marder1a3: anchor('hull', 'left', 0.46, 0.62, 0.23, 1),
+  m3a3_bradley: anchor('turret', 'left', 0.39, 0.45, 0.23, 1),
 });
 
 export function vehicleMarkingAnchor(specOrId) {

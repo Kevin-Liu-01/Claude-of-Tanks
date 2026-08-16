@@ -40,6 +40,30 @@ const LABEL_OVERRIDES = Object.freeze({
     displayName: 'Leopard 2A6M', shortName: 'Leopard 2A6M',
     searchAliases: ['Leopard 2A6M CAN', '2A6M'],
   },
+  bmp3_rok: {
+    displayName: 'BMP-3 (ROK)', shortName: 'BMP-3 ROK',
+    searchAliases: ['South Korean BMP-3', 'ROK BMP-3'],
+  },
+  ua_m2a3_bradley: {
+    displayName: 'M2A3 Bradley (Ukraine)', shortName: 'M2A3 Bradley UA',
+    searchAliases: ['Ukrainian M2A3 Bradley', 'Ukraine Bradley'],
+  },
+  bmpt_terminator2: {
+    displayName: 'BMPT Terminator 2', shortName: 'Terminator 2',
+    searchAliases: ['BMPT-72', 'Terminator 2 AFV'],
+  },
+  upior_ifv: {
+    displayName: 'Upiór Infantry Fighting Vehicle', shortName: 'Upiór IFV',
+    searchAliases: ['Upior IFV', 'Polish Upior'],
+  },
+  marder1a3: {
+    displayName: 'Marder 1A3', shortName: 'Marder 1A3',
+    searchAliases: ['SPz Marder 1A3', 'Schützenpanzer Marder'],
+  },
+  m3a3_bradley: {
+    displayName: 'M3A3 Bradley CFV', shortName: 'M3A3 Bradley',
+    searchAliases: ['M3A3 Cavalry Fighting Vehicle', 'Bradley CFV'],
+  },
   type99a: {
     displayName: 'ZTZ-99A (Type 99A)', shortName: 'ZTZ-99A',
     searchAliases: ['Type 99A (ZTZ-99A)', 'Type 99A'],
