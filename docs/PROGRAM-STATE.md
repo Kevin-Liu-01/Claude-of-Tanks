@@ -8608,3 +8608,15 @@ full suite green. AGENT SPAWNING stays PAUSED pending the owner's
 word on the spend limit; the live queue = the registry's own LIVE
 tail sections + the standing DISMISSED-PENDING asks (m45 6.47,
 newc_tiger, AFV stats, Sources cards).
+
+## 5.245 POST-MERGE SPOT VERIFICATION (2026-08-16, orchestrator):
+live gate reproduces the fleet claim (36/96; k1a1 gates 49.7 live at
+this tree). Hash spot-check (k1a1/leclerc/m45) reads values differing
+from their §3-era freezes — EXPECTED, not drift: §5.229 (2026-08-14)
+standardized running gear across all 105 playables, legitimately
+moving every geometry hash after that date; the parallel session's
+freeze discipline also evolved to a three-hash system (geometry /
+instance / asset — see §5.243's k1a1 record). Pre-§5.229 hash-table
+entries are superseded-by-standardization; the LIVE gate + the
+per-section freeze records from §5.229 onward are the operative
+truth. No drift alarm.
