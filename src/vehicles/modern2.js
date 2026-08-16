@@ -29,7 +29,10 @@ import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
 // 2026-08-06 "no GLB" delist reason). The print is a LOCAL-ONLY measurement
 // oracle (community-candidates quarantine, registered in the three harness
 // maps + vertex REG); the playable stays procedural (buildType99A below).
-export const MODERN2_IDS = ['leo2a4', 't80u', 'leclerc', 'type99a', 'leo1a5', 't14'];
+export const MODERN2_IDS = [
+  'leo2a4', 't80u', 'leclerc', 'leclerc_xlr', 'amx56',
+  'type99a', 'leo1a5', 't14',
+];
 
 // ---------------------------------------------------------------------------
 // Pure spec helpers (local copies — specs.js keeps its helpers module-local).
@@ -474,6 +477,75 @@ export const MODERN2_SPECS = {
     },
   },
 };
+
+// France-family expansion (2026-08-15).  Both playables are first-party
+// procedural derivatives of the accepted Leclerc construction.  The owner
+// GLBs are measurement/visual oracles only and are never registered here as
+// runtime sources.  XLR carries the SCORPION-era passive protection package;
+// AMX 56 is the heavier ERA/gun-plant branch requested from the second
+// Leclerc oracle.
+{
+  const base = MODERN2_SPECS.leclerc;
+  const passive = { keReduction: 0.08, ceFlatMm: 180 };
+  const galixEra = { keReduction: 0.18, ceFlatMm: 330 };
+  MODERN2_SPECS.leclerc_xlr = {
+    ...base,
+    id: 'leclerc_xlr', name: 'Leclerc XLR', hp: 2550,
+    weightTons: 57.4, topSpeedKmh: 70,
+    dims: { ...base.dims, widthM: 3.64, heightM: 2.78 },
+    armor: {
+      ...base.armor,
+      hullPlates: [
+        ...base.armor.hullPlates,
+        fr('xlr_glacis_package', 90, 1.48, 1.30, 3.36, 1.54, 1.70,
+          { kind: 'spaced', era: passive, keMm: 700, ceMm: 950 }),
+        sR('xlr_skirt_package_R', 70, 1.82, 0.78, 1.82, 1.38, -2.95, 2.30,
+          { kind: 'spaced', ceMm: 330 }),
+        sL('xlr_skirt_package_L', 70, 1.82, 0.78, 1.82, 1.38, -2.95, 2.30,
+          { kind: 'spaced', ceMm: 330 }),
+      ],
+      turretPlates: [
+        ...base.armor.turretPlates,
+        chR('xlr_cheek_package_R', 120, 0.34, 1.34, 1.46, 0.56, 0.12, 0.66, 0.10, 0,
+          { kind: 'spaced', era: passive, keMm: 760, ceMm: 1050 }),
+        chL('xlr_cheek_package_L', 120, 0.34, 1.34, 1.46, 0.56, 0.12, 0.66, 0.10, 0,
+          { kind: 'spaced', era: passive, keMm: 760, ceMm: 1050 }),
+      ],
+    },
+    visual: { ...base.visual, number: '104' },
+  };
+  MODERN2_SPECS.amx56 = {
+    ...base,
+    id: 'amx56', name: 'AMX 56', hp: 2650,
+    enginePowerHp: 1550, weightTons: 58.8, topSpeedKmh: 68,
+    gun: { ...base.gun, reloadS: 4.8, aimTimeS: 1.7 },
+    dims: { ...base.dims, widthM: 3.72, heightM: 2.88 },
+    armor: {
+      ...base.armor,
+      hullPlates: [
+        ...base.armor.hullPlates,
+        fr('amx56_glacis_era', 18, 1.52, 1.28, 3.38, 1.54, 1.70,
+          { kind: 'era', era: galixEra, keMm: 720, ceMm: 1100 }),
+        sR('amx56_skirt_era_R', 18, 1.83, 0.80, 1.83, 1.35, -2.72, 2.15,
+          { kind: 'era', era: galixEra, keMm: 250, ceMm: 520 }),
+        sL('amx56_skirt_era_L', 18, 1.83, 0.80, 1.83, 1.35, -2.72, 2.15,
+          { kind: 'era', era: galixEra, keMm: 250, ceMm: 520 }),
+      ],
+      turretPlates: [
+        ...base.armor.turretPlates,
+        chR('amx56_cheek_era_R', 18, 0.30, 1.42, 1.49, 0.56, 0.12, 0.66, 0.10, 0,
+          { kind: 'era', era: galixEra, keMm: 780, ceMm: 1180 }),
+        chL('amx56_cheek_era_L', 18, 0.30, 1.42, 1.49, 0.56, 0.12, 0.66, 0.10, 0,
+          { kind: 'era', era: galixEra, keMm: 780, ceMm: 1180 }),
+      ],
+    },
+    visual: {
+      ...base.visual,
+      base: '#35483a', weather: '#405544', patches: ['#1e2521', '#5f4b37'],
+      number: '056',
+    },
+  };
+}
 
 // Register specs + model-source rows + garage roster ids (idempotent —
 // vite HMR can re-evaluate this module).

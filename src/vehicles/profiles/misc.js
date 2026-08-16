@@ -1012,12 +1012,14 @@ function buildArieteNative2026(P) {
   P.topY = 0.98;
 }
 
-function buildLeclerc(P) {
+function buildLeclerc(P, variant = 's2') {
   const { box, cylY, cylZ, frustum, torus, buildGun, buildRunningGear,
     fenders, headlight, liftEye, periscope, towCable, stowage, jerryCan, ammoCan,
     spareTrackStrip, shovelTool } = KIT;
   const slab = orientedSlab;                                                   // §C missing-side fix: winding-corrected slabs only (see orientedSlab)
   const { rng } = P;
+  const tacticalNumber = variant === 'xlr' ? '104' : variant === 'amx56' ? '056' : '33';
+  const hullTacticalNumber = variant === 'xlr' ? 'XLR-104' : variant === 'amx56' ? 'AMX-56' : '6-33';
   // hull — R2 FULL RE-LAY from the post-warp workorder (2026-08-03):
   // the ref side deck line steps 1.549 (fore) / 1.577 (mid) / 1.632 (engine)
   // / 1.715 hump / 1.605 tail lip, the bow silhouette is the RAKED GLACIS
@@ -1275,8 +1277,8 @@ function buildLeclerc(P) {
   // the col-0.623 rear line; inside the 1.245..1.545 plate band).
   P.add('hullDark', box(0.07, 0.05, 0.026), 0.60, 1.30, -3.368);
   P.add('hullDetail', box(0.09, 0.012, 0.032), 0.60, 1.333, -3.372);
-  P.decal('hull', 'number', '6-33', 0.28, [1.80, 0.95, 2.5], Math.PI / 2);
-  P.decal('hull', 'number', '6-33', 0.28, [-1.80, 0.95, 2.5], -Math.PI / 2);
+  P.decal('hull', 'number', hullTacticalNumber, 0.28, [1.80, 0.95, 2.5], Math.PI / 2);
+  P.decal('hull', 'number', hullTacticalNumber, 0.28, [-1.80, 0.95, 2.5], -Math.PI / 2);
   // 6 wheels, FRONT idler / REAR sprocket, 5 rollers. R2 workorder: HIGH
   // short idler matching the ref (wrap top 1.41 = the z 3.15..3.26 bump,
   // far edge 3.52 covers the ref's 3.43..3.54 body columns), sprocket
@@ -1837,8 +1839,8 @@ function buildLeclerc(P) {
   ammoCan(P, 'turretDark', -1.05, 0.42, -1.98, 0.25);
   P.add('turretDetail', box(0.10, 0.03, 0.16), -0.95, 0.625, 0.30);            // flush lifting lugs (on the mid roof)
   P.add('turretDetail', box(0.10, 0.03, 0.16), 0.95, 0.625, 0.30);
-  P.decal('turret', 'number', '33', 0.30, [1.30, 0.35, -1.0], Math.PI / 2);
-  P.decal('turret', 'number', '33', 0.30, [-1.30, 0.35, -1.0], -Math.PI / 2);
+  P.decal('turret', 'number', tacticalNumber, 0.30, [1.30, 0.35, -1.0], Math.PI / 2);
+  P.decal('turret', 'number', tacticalNumber, 0.30, [-1.30, 0.35, -1.0], -Math.PI / 2);
   // CN120-26 L/52 seated LOW (measured ref axis ~1.85, band half 0.14):
   // moving mantlet plate on the gun; root/collar mass is turret-frame above
   P.gunG.position.set(0, 0.27, 0.50);
@@ -1879,6 +1881,141 @@ function buildLeclerc(P) {
   buildGun(P, { len: 5.89, r: 0.085, sleeve: true, evac: 0.52, evacR: 1.72, collar: true, baseR: 0.17 });
   muzzleBore(P, 0.085, 5.87);                                                  // §B3.1 muzzle bore on the F1 tube (shadow-named)
   P.topY = LH + 0.55;
+}
+
+// Leclerc XLR — first-party procedural family delta.  The owner-supplied
+// `leclerc_tank.glb` remains an external dimensional/visual oracle: the
+// playable below is assembled only from repository primitives and fittings.
+// The accepted S2 hull/running gear/turret stay intact; every new protection
+// module has a broad parent return and stays clear of the single live course.
+function buildLeclercXLR(P) {
+  buildLeclerc(P, 'xlr');
+  const { box, cylY, cylZ, torus, periscope } = KIT;
+  const slab = orientedSlab;
+
+  // SCORPION/XLR passive bow and shoulder package.  The upper edges follow
+  // the existing Leclerc glacis instead of forming a flat shelf.
+  for (const s of [-1, 1]) {
+    P.add('hull', slab(
+      [s * 0.10, 1.355, 2.18], [s * 1.13, 1.335, 2.18], [s * 1.02, 1.225, 3.18], [s * 0.10, 1.235, 3.31],
+      [s * 0.10, 1.405, 2.16], [s * 1.16, 1.385, 2.16], [s * 1.06, 1.275, 3.17], [s * 0.10, 1.285, 3.32]));
+    P.add('hullDark', box(0.032, 0.18, 0.90), s * 1.18, 1.28, 2.66, -0.10, 0, 0);
+    for (let k = 0; k < 7; k++) {
+      const z = -2.54 + k * 0.70;
+      const depth = k === 6 ? 0.46 : 0.62;
+      P.add('hull', box(0.040, 0.52, depth), s * 1.792, 1.05, z, 0, 0, 0);
+      P.add('hullDark', box(0.014, 0.40, 0.018), s * 1.815, 1.05, z + depth * 0.38);
+      for (const yy of [0.86, 1.24]) P.add('hullDetail', cylZ(0.018, 0.010, 8), s * 1.817, yy, z, 0, Math.PI / 2, 0);
+    }
+    // Rear corner cells close the autoloader/deck shoulder without becoming
+    // a second track or an unsupported wall.
+    P.add('hull', box(0.46, 0.40, 0.34), s * 1.38, 1.36, -3.03);
+    P.add('hullDark', box(0.38, 0.025, 0.28), s * 1.38, 1.575, -3.03);
+
+    // Deep but planted turret side modules, split to preserve the source's
+    // swept waist and the GALIX launcher stations.
+    P.add('turret', slab(
+      [s * 1.29, 0.18, 0.92], [s * 1.50, 0.22, 0.70], [s * 1.50, 0.22, -0.22], [s * 1.34, 0.18, -0.35],
+      [s * 1.25, 0.63, 0.82], [s * 1.45, 0.60, 0.60], [s * 1.45, 0.60, -0.22], [s * 1.31, 0.55, -0.38]));
+    P.add('turret', slab(
+      [s * 1.34, 0.18, -0.38], [s * 1.49, 0.20, -0.52], [s * 1.47, 0.22, -1.58], [s * 1.31, 0.18, -1.72],
+      [s * 1.31, 0.55, -0.38], [s * 1.45, 0.57, -0.52], [s * 1.43, 0.56, -1.58], [s * 1.28, 0.50, -1.72]));
+    for (const z of [0.42, -0.04, -0.76, -1.30]) {
+      P.add('turretDark', box(0.018, 0.28, 0.030), s * 1.475, 0.39, z);
+      P.add('turretDetail', cylZ(0.018, 0.010, 8), s * 1.487, 0.49, z, 0, Math.PI / 2, 0);
+    }
+  }
+
+  // Full-width protected bustle termination and supported cage returns.
+  P.add('turret', box(1.70, 0.34, 0.34), 0, 0.34, -2.18);
+  P.add('turretDark', box(1.58, 0.025, 0.28), 0, 0.53, -2.18);
+  for (const x of [-0.76, -0.38, 0, 0.38, 0.76]) {
+    P.add('turretDetail', box(0.025, 0.30, 0.42), x, 0.43, -2.39);
+  }
+  for (const y of [0.29, 0.55]) P.add('turretDetail', box(1.82, 0.025, 0.025), 0, y, -2.39);
+
+  // Compact roof RWS: broad shoe, tapered sensor, armored shield and a
+  // forward-rest 7.62 mm.  Every part is turret-owned and rotates at yaw.
+  P.add('turret', cylY(0.27, 0.27, 0.055, 16), -0.34, 0.82, -0.42);
+  P.add('turret', box(0.42, 0.18, 0.42), -0.34, 0.94, -0.42);
+  P.add('turretDark', box(0.26, 0.14, 0.025), -0.34, 0.98, -0.195);
+  P.add('turretGlass', box(0.16, 0.10, 0.025), -0.34, 1.00, -0.178);
+  P.add('turret', box(0.50, 0.28, 0.045), -0.34, 1.08, -0.08, -0.18, 0, 0);
+  {
+    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', elev: 0.08, seed: 104, scale: 0.78, ammo: true });
+    mg.position.set(-0.34, 1.15, -0.35);
+    P.turretG.add(mg);
+  }
+  periscope(P, 'turretDetail', 0.18, 0.83, 0.14, -0.10);
+  P.add('turretGlass', cylZ(0.075, 0.040, 14), 0.88, 0.76, 0.35, Math.PI / 2, 0, 0);
+  P.add('turretDetail', torus(0.085, 0.012, 14), 0.88, 0.76, 0.37, Math.PI / 2, 0, 0);
+  P.topY = Math.max(P.topY, 1.34);
+}
+
+// AMX 56 — heavier Leclerc-family demonstrator requested from the
+// `char_leclerc.glb` oracle.  The ERA field is visually explicit and is
+// mirrored by armor faces in modern2.js; its new gun plant remains a single
+// pitchable gun-owned package.
+function buildAMX56(P) {
+  buildLeclerc(P, 'amx56');
+  const { box, cylY, cylZ, torus, periscope } = KIT;
+  const slab = orientedSlab;
+
+  // Glacis ERA: broken rows follow the raked plate; the central driver path
+  // and both light clusters remain open.
+  for (const row of [0, 1]) {
+    const y = 1.39 - row * 0.10;
+    const z = 2.12 + row * 0.62;
+    for (const x of [-1.08, -0.72, -0.36, 0.36, 0.72, 1.08]) {
+      P.add('hull', box(0.31, 0.085, 0.46), x, y, z, -0.18, 0, 0);
+      P.add('hullDark', box(0.26, 0.012, 0.018), x, y + 0.055, z + 0.20, -0.18, 0, 0);
+    }
+  }
+  for (const s of [-1, 1]) {
+    for (let k = 0; k < 7; k++) {
+      const z = -2.48 + k * 0.68;
+      P.add('hull', box(0.042, 0.48, 0.57), s * 1.825, 1.04, z);
+      P.add('hullDark', box(0.016, 0.36, 0.018), s * 1.849, 1.04, z + 0.22);
+    }
+    // Two-course canted cheek ERA, buried into the swept primary shell.
+    for (let k = 0; k < 4; k++) {
+      const z = 1.18 - k * 0.43;
+      P.add('turret', slab(
+        [s * 0.34, 0.22, z + 0.18], [s * 0.92, 0.20, z + 0.08], [s * 1.30, 0.17, z - 0.17], [s * 0.82, 0.18, z - 0.21],
+        [s * 0.34, 0.37, z + 0.14], [s * 0.90, 0.36, z + 0.04], [s * 1.27, 0.33, z - 0.20], [s * 0.80, 0.34, z - 0.24]));
+      P.add('turretDark', box(0.34, 0.020, 0.025), s * 1.16, 0.35, z - 0.10, 0, s * 0.68, 0);
+    }
+    for (let k = 0; k < 4; k++) {
+      const z = -0.72 - k * 0.39;
+      P.add('turret', box(0.13, 0.34, 0.34), s * 1.47, 0.38, z, 0, s * 0.08, 0);
+      P.add('turretDark', cylZ(0.018, 0.012, 8), s * 1.54, 0.48, z, 0, Math.PI / 2, 0);
+    }
+  }
+
+  // Distinct AMX 56 gun plant: armored root shoulders, thermal-section
+  // clamps and an off-axis muzzle-reference unit, all gun-owned.
+  P.addGunExtra(box(1.02, 0.22, 0.32), 0, -0.02, 0.78);
+  P.addGunExtraDark(torus(0.145, 0.022, 14), 0, -0.01, 1.02, 0, 0, 0);
+  for (const z of [1.55, 2.42, 3.34, 4.28, 5.06]) {
+    P.addGunExtraDark(cylZ(0.112, 0.035, 12), 0, 0, z);
+  }
+  P.addGunExtra(box(0.18, 0.15, 0.36), 0.15, 0.10, 5.02);
+  P.addGunExtraDark(box(0.11, 0.08, 0.025), 0.15, 0.11, 5.21);
+
+  // Gunner/commander plant: low dual sight boxes and a shielded forward RWS.
+  P.add('turret', box(0.42, 0.23, 0.40), 0.62, 0.84, 0.18, 0, -0.08, 0);
+  P.add('turretGlass', box(0.25, 0.13, 0.025), 0.62, 0.86, 0.395);
+  P.add('turret', cylY(0.24, 0.24, 0.08, 16), -0.48, 0.82, -0.58);
+  P.add('turret', box(0.40, 0.18, 0.38), -0.48, 0.95, -0.50);
+  P.add('turretGlass', box(0.15, 0.10, 0.025), -0.48, 0.97, -0.29);
+  P.add('turret', box(0.52, 0.30, 0.045), -0.48, 1.08, -0.14, -0.16, 0, 0);
+  {
+    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'heavy', tone: 'dark', elev: 0.06, seed: 56, scale: 0.82, ammo: true });
+    mg.position.set(-0.48, 1.15, -0.48);
+    P.turretG.add(mg);
+  }
+  periscope(P, 'turretDetail', 0.12, 0.81, -0.18, 0.12);
+  P.topY = Math.max(P.topY, 1.37);
 }
 
 // ---------------------------------------------------------------------------
@@ -3333,7 +3470,7 @@ function buildType74Native2026(P) {
 // 5-big-roadwheel gear (B) / skirted (B2), IR searchlight LEFT of the
 // mantlet, B2 adds the LLLTV camera box on the mantlet RIGHT.
 // ---------------------------------------------------------------------------
-function buildAMX30(P, b2) {
+function buildAMX30Legacy(P, b2) {
   const { box, cylY, cylZ, frustum, torus, buildGun, buildRunningGear,
     fenders, headlight, liftEye, periscope, jerryCan, ammoCan, stowage } = KIT;
   const slab = orientedSlab;                                                   // §C winding guard on every mirrored slab
@@ -3680,6 +3817,214 @@ function buildAMX30(P, b2) {
   // skirts added to either variant.
   P.topY = 1.15;
 }
+
+// AMX-30B/B2 source-exact family rebuild (2026-08-15).  The supplied
+// `amx_30_b.glb` contains two complete, geometrically identical tanks with
+// different skins.  Measurements below use exactly one copy: 6.846 m hull,
+// 9.549 m overall, 3.113 m width, five 0.731 m road wheels, two elevated
+// terminal wheels and five return rollers.  No source mesh, topology,
+// material, skin or vertex payload is imported into this runtime builder.
+function buildAMX30(P, b2) {
+  const {
+    box, cylX, cylY, cylZ, frustum, lathe, torus, xform,
+    buildGun, buildRunningGear, fenders, headlight, liftEye, periscope,
+    cupola, jerryCan, ammoCan, stowage,
+  } = KIT;
+  const slab = orientedSlab;
+  const { rng } = P;
+
+  // ---- source-profile hull: compact inner tub, broad high sponsons and a
+  // single swept nose.  The lower body remains strictly between live tracks.
+  P.add('hull', box(1.84, 0.74, 5.58), 0, 0.67, -0.14);
+  // The sponson overhang starts above the return course; keeping its lower
+  // face at 1.30 m prevents a second static "track" shelf through the live
+  // shoes while preserving the source deck height.
+  P.add('hull', box(2.92, 0.24, 4.52), 0, 1.42, -0.52);
+  P.add('hull', box(2.84, 0.07, 2.54), 0, 1.545, -1.34);
+  P.add('hull', box(2.62, 0.09, 1.10), 0, 1.59, -2.75);
+  // Upper glacis is one continuous cast plane with narrowing shoulders.
+  P.add('hull', slab(
+    [-1.46, 1.34, 1.46], [1.46, 1.34, 1.46], [0.60, 1.25, 3.26], [-0.60, 1.25, 3.26],
+    [-1.46, 1.61, 1.44], [1.46, 1.61, 1.44], [0.64, 1.10, 3.25], [-0.64, 1.10, 3.25]));
+  P.add('hull', slab(
+    [-0.90, 0.36, 2.50], [0.90, 0.36, 2.50], [0.82, 0.58, 3.43], [-0.82, 0.58, 3.43],
+    [-0.90, 0.94, 2.50], [0.90, 0.94, 2.50], [0.82, 1.00, 3.29], [-0.82, 1.00, 3.29]));
+  P.add('hull', slab(
+    [-0.90, 0.30, 2.34], [0.90, 0.30, 2.34], [0.76, 0.43, 3.42], [-0.76, 0.43, 3.42],
+    [-0.90, 0.62, 2.34], [0.90, 0.62, 2.34], [0.76, 0.58, 3.42], [-0.76, 0.58, 3.42]));
+  for (const s of [-1, 1]) {
+    P.add('hull', slab(
+      [s * 1.46, 1.34, 1.46], [s * 0.60, 1.25, 3.26], [s * 0.68, 1.25, 3.28], [s * 1.03, 1.32, 1.46],
+      [s * 1.55, 1.60, 1.44], [s * 0.64, 1.10, 3.25], [s * 0.72, 1.10, 3.27], [s * 1.10, 1.60, 1.44]));
+  }
+  // Raked stern and the source's large transverse rear service field.
+  P.add('hull', slab(
+    [-0.92, 0.43, -3.38], [0.92, 0.43, -3.38], [0.92, 0.43, -2.95], [-0.92, 0.43, -2.95],
+    [-0.92, 1.34, -3.42], [0.92, 1.34, -3.42], [0.92, 1.48, -2.95], [-0.92, 1.48, -2.95]));
+  P.add('hull', box(1.84, 0.35, 0.05), 0, 1.16, -3.435);
+  P.add('hullDark', box(1.76, 0.28, 0.03), 0, 1.10, -3.466);
+  for (let row = 0; row < 5; row++) {
+    P.add('hullDetail', box(1.66, 0.022, 0.025), 0, 0.98 + row * 0.07, -3.485);
+  }
+  for (const s of [-1, 1]) {
+    P.add('hull', box(0.38, 0.20, 0.07), s * 1.27, 1.43, -3.43);
+    P.add('hullDark', box(0.28, 0.16, 0.025), s * 1.27, 1.43, -3.47);
+    P.add('hullRubber', box(0.40, 0.30, 0.025), s * 1.28, 0.55, -3.41);
+    P.add('hullRubber', box(0.38, 0.28, 0.025), s * 1.27, 0.61, 3.36);
+    P.add('hullDetail', torus(0.105, 0.018, 16), s * 0.72, 0.62, -3.49, Math.PI / 2, 0, 0);
+    liftEye(P, 'hullDetail', s * 1.05, 1.39, -2.90);
+  }
+
+  // Thin fenders expose the complete return rollers and keep this family
+  // visibly distinct from the skirted AMX-40/Leclerc line.
+  fenders(P, 1.00, 1.55, 1.46, -3.05, 1.60, 0.035);
+  for (const s of [-1, 1]) {
+    P.add('hullDetail', box(0.055, 0.055, 4.72), s * 1.535, 1.50, -0.67);
+    P.add('hullDetail', box(0.10, 0.34, 0.06), s * 1.48, 1.40, 2.98, 0.24, 0, 0);
+    headlight(P, s * 1.18, 1.28, 2.86, -0.18, 0.03);
+    P.add('hullDetail', box(0.34, 0.025, 0.19), s * 1.18, 1.30, 2.86, -0.18, 0, 0);
+  }
+
+  // Driver, splash-V, fuel caps, tools and the louvred power deck.
+  P.add('hull', box(0.58, 0.045, 0.52), -0.53, 1.60, 1.02, -0.10, 0, 0);
+  for (const x of [-0.71, -0.53, -0.35]) periscope(P, 'hullDetail', x, 1.64, 1.19);
+  for (const s of [-1, 1]) {
+    P.add('hullDetail', box(0.72, 0.07, 0.045), s * 0.43, 1.50, 2.13, -0.28, s * 0.28, 0);
+    P.add('hullDetail', cylY(0.085, 0.085, 0.035, 12), s * 0.96, 1.62, 0.20);
+    P.add('hullDetail', cylY(0.075, 0.075, 0.030, 12), s * 1.13, 1.62, -0.25);
+  }
+  for (let row = 0; row < 6; row++) {
+    const z = -1.18 - row * 0.29;
+    P.add('hullDark', box(1.78, 0.016, 0.19), 0.20, 1.645, z);
+    for (let k = -4; k <= 4; k++) P.add('hullDetail', box(0.025, 0.010, 0.17), 0.20 + k * 0.19, 1.658, z);
+  }
+  P.add('hull', box(0.50, 0.07, 0.58), -1.00, 1.62, -1.42);
+  P.add('hull', box(0.42, 0.07, 0.62), -1.05, 1.62, -2.20);
+  P.add('hullDetail', box(1.42, 0.035, 0.035), 0.20, 1.68, -2.93);
+  P.add('hullDetail', box(0.035, 0.035, 1.62), 1.31, 1.63, -0.20, 0, 0.04, 0);
+  P.add('hullDetail', box(0.055, 0.055, 1.26), -1.29, 1.63, 0.15, 0, -0.05, 0);
+  {
+    const cable = FITTINGS.towCable({ mats: P.mats, pts: [[-1.18, 1.40, -3.08], [-0.28, 1.50, -3.28], [0.95, 1.40, -3.08]], r: 0.016, seed: 301 });
+    P.hullG.add(cable);
+  }
+
+  // One smart linked course per side, copied from the one-tank source
+  // stations (the GLB itself contains a duplicate whole vehicle).
+  const wheelZs = [1.551, 0.570, -0.410, -1.390, -2.270];
+  buildRunningGear(P, {
+    style: 'rubber', dishR: 0.77, tireHex: 0x30322d, wheelHex: 0x46503e,
+    wheelR: 0.366, wheelW: 0.205, wheelY: 0.416, xc: 1.255,
+    wheelZs,
+    sprocket: { z: -2.960, y: 0.785, r: 0.362 },
+    idler: { z: 2.806, y: 0.772, r: 0.339 },
+    rollers: [1.551, 0.570, -0.410, -1.390, -2.270].map((z) => ({ z, y: 0.941, r: 0.164 })),
+    trackW: 0.571, trackTh: 0.060, topY: 1.130, botY: 0.035,
+    contactZF: 2.20, contactZR: -2.45,
+    deadSag: 0.030, paintedEnds: false, coveredTop: false, arms: true,
+  });
+
+  // ---- compact cast turret.  Source body: 2.638 m wide, 3.528 m long,
+  // 1.288 m high; the TOP-7 optics are a station, not turret bulk.
+  P.turretG.position.set(0, 1.58, -0.10);
+  P.add('turret', xform(cylY(0.96, 0.96, 0.11, 22), 0, 0, 0, 0, 0, 0, [1.12, 1, 0.78]), 0, 0.01, -0.05);
+  P.add('turret', box(1.90, 0.14, 1.20), 0, 0.08, -0.08);
+  P.add('turret', lathe([
+    [0.88, 0.00], [1.16, 0.10], [1.28, 0.28], [1.27, 0.48],
+    [1.17, 0.68], [0.98, 0.88], [0.72, 1.04], [0.38, 1.17], [0.08, 1.22],
+  ], P.q ? 30 : 18, 1.39), 0, 0.02, -0.12);
+  P.add('turret', frustum(0.88, -1.40, -1.93, 0.72, -1.43, -1.86, 0.14, 0.60));
+  P.add('turretDark', box(1.78, 0.025, 0.92), 0, 0.06, -0.10);
+  for (const s of [-1, 1]) {
+    P.add('turret', slab(
+      [s * 0.28, 0.14, 1.50], [s * 0.96, 0.18, 1.08], [s * 1.23, 0.19, 0.40], [s * 0.55, 0.14, 0.78],
+      [s * 0.26, 0.63, 1.45], [s * 0.82, 0.78, 1.04], [s * 1.10, 0.72, 0.38], [s * 0.50, 0.60, 0.78]));
+    P.add('turret', box(0.24, 0.34, 0.72), s * 1.18, 0.45, -0.74, 0, s * 0.12, 0);
+    P.add('turretDark', box(0.018, 0.25, 0.55), s * 1.31, 0.45, -0.74);
+  }
+
+  // TOP-7 commander station and the source's paired large optical heads.
+  cupola(P, 'turret', -0.50, 1.12, -0.43, 0.34, 0.18, 7);
+  P.add('turret', cylY(0.40, 0.40, 0.18, 18), -0.50, 1.18, -0.43);
+  P.add('turretDark', torus(0.34, 0.016, 18), -0.50, 1.29, -0.43);
+  for (let k = 0; k < 7; k++) {
+    const a = (k / 7) * Math.PI * 2;
+    P.add('turretGlass', box(0.12, 0.08, 0.025), -0.50 + Math.sin(a) * 0.39, 1.20, -0.43 + Math.cos(a) * 0.39, 0, a, 0);
+  }
+  P.add('turret', box(0.42, 0.30, 0.34), 0.53, 0.92, 0.42, 0, -0.10, 0);
+  P.add('turretGlass', box(0.24, 0.16, 0.025), 0.53, 0.94, 0.605);
+  P.add('turret', cylZ(0.20, 0.31, 16), -1.02, 0.74, 0.72);
+  P.add('turretDark', cylZ(0.16, 0.035, 16), -1.02, 0.74, 0.89);
+  P.add('turretGlass', cylZ(0.12, 0.040, 16), -1.02, 0.74, 0.91);
+  P.add('turretDetail', torus(0.15, 0.018, 16), -1.02, 0.74, 0.92, Math.PI / 2, 0, 0);
+  periscope(P, 'turretDetail', 0.15, 1.10, -0.18, 0.18);
+  periscope(P, 'turretDetail', 0.40, 1.04, -0.62, -0.14);
+
+  // Rear bustle/basket with visible load paths and asymmetric field kit.
+  for (const y of [0.32, 0.68]) P.add('turretDetail', box(2.02, 0.035, 0.035), 0, y, -2.00);
+  for (const x of [-0.95, -0.58, -0.20, 0.18, 0.57, 0.95]) P.add('turretDetail', box(0.030, 0.36, 0.030), x, 0.50, -2.00);
+  for (const s of [-1, 1]) {
+    P.add('turretDetail', box(0.035, 0.40, 0.58), s * 1.02, 0.50, -1.72, 0, s * 0.05, 0);
+  }
+  P.add('turretCloth', box(0.78, 0.25, 0.34), -0.47, 0.48, -1.82);
+  P.add('turretCloth', box(0.62, 0.21, 0.31), 0.50, 0.47, -1.83);
+  for (const x of [-0.67, -0.29, 0.32, 0.64]) P.add('turretDark', box(0.025, 0.27, 0.34), x, 0.49, -1.82);
+  jerryCan(P, 'turretCloth', -0.94, 0.49, -1.45, 0.15);
+  ammoCan(P, 'turretDark', 0.96, 0.48, -1.42, -0.10);
+  stowage(P, 'turretCloth', rng, [[0.15, 0.74, -1.47, 0.48, 0.14, 0.32]]);
+
+  // Commander MG in forward rest with a real pintle seat and small shield.
+  P.add('turret', box(0.42, 0.12, 0.36), -0.50, 1.39, -0.20);
+  P.add('turret', box(0.50, 0.28, 0.045), -0.50, 1.48, 0.08, -0.16, 0, 0);
+  {
+    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', elev: 0.04, seed: b2 ? 302 : 301, scale: 0.84, ammo: true });
+    mg.position.set(-0.50, 1.52, -0.20);
+    P.turretG.add(mg);
+  }
+  for (const s of [-1, 1]) {
+    const smoke = FITTINGS.smokeBank({ mats: P.mats, count: 3, r: 0.050, len: 0.25, splay: s * 0.85, pitch: -0.35, seed: 330 + s });
+    smoke.position.set(s * 1.12, 0.52, -0.42);
+    P.turretG.add(smoke);
+  }
+  for (const [x, h, rake] of [[-0.92, 0.82, -0.08], [0.84, 0.72, 0.06]]) {
+    const whip = FITTINGS.antennaWhip({ mats: P.mats, h, r: 0.013, rake, seed: 310 + Math.round(x * 10) });
+    whip.position.set(x, 0.72, -1.47);
+    P.turretG.add(whip);
+  }
+
+  // 105 F1, 20 mm M693 coax and PH-8-B searchlight are one gun-owned plant.
+  P.gunG.position.set(0, 0.30, 1.48);
+  trunnionRoll(P, 0.19, 0.62);
+  P.addGunExtra(box(0.78, 0.60, 0.54), 0, 0.04, 0.30);
+  P.addGunExtra(cylZ(0.17, 0.42, 14, 0.20), 0, 0, 0.55);
+  P.addGunExtraDark(torus(0.145, 0.022, 14), 0, 0, 0.77);
+  P.addGunExtra(box(0.14, 0.20, 0.44), -0.30, 0.06, 0.42);
+  P.addGunExtra(cylZ(0.029, 1.45, 10), -0.30, 0.075, 1.34);
+  P.addGunExtraDark(cylZ(0.036, 0.09, 10), -0.30, 0.075, 2.07);
+  P.addGunExtra(box(0.48, 0.40, 0.30), 0.72, 0.20, 0.55);
+  P.addGunExtraDark(cylZ(0.15, 0.040, 16), 0.72, 0.20, 0.72);
+  P.addGunExtraDark(box(0.015, 0.36, 0.025), 0.58, 0.20, 0.73);
+  P.addGunExtraDark(box(0.015, 0.36, 0.025), 0.86, 0.20, 0.73);
+  if (b2) {
+    P.addGunExtra(box(0.30, 0.34, 0.30), -0.54, 0.18, 0.53);
+    P.addGunExtraDark(box(0.23, 0.25, 0.025), -0.54, 0.18, 0.70);
+    for (const s of [-1, 1]) P.add('hull', box(0.17, 0.20, 0.72), s * 1.52, 1.55, -2.62);
+  }
+  const gunLen = 4.79;
+  const gunRadius = b2 ? 0.106 : 0.103;
+  buildGun(P, { len: gunLen, r: gunRadius, sleeve: false, evac: null, collar: false, baseR: 0.17 });
+  P.addGunExtraDark(cylZ(0.114, 0.035, 12), 0, 0, 2.54);
+  P.addGunExtraDark(cylZ(0.114, 0.035, 12), 0, 0, 3.76);
+  muzzleBore(P, gunRadius, gunLen - 0.02);
+
+  P.decal('turret', 'number', b2 ? '68' : '53', 0.25, [1.25, 0.48, -0.42], Math.PI / 2);
+  P.decal('turret', 'number', b2 ? '68' : '53', 0.25, [-1.25, 0.48, -0.42], -Math.PI / 2);
+  // The source's cast body is broad and low beneath the tall TOP-7 station.
+  // Compress the complete turret-owned plant around its ring while cancelling
+  // that scale on the gun group so the 105 mm tube/searchlight stay circular.
+  P.turretG.scale.y = 0.84;
+  P.gunG.scale.y = 1 / 0.84;
+  P.topY = 1.44;
+}
 function buildAMX30B(P) { buildAMX30(P, false); }
 function buildAMX30B2(P) { buildAMX30(P, true); }
 
@@ -3700,6 +4045,8 @@ export const MISC_PROFILES = {
   // runtime.
   ariete: { build: buildAriete },
   leclerc: { build: buildLeclerc },
+  leclerc_xlr: { build: buildLeclercXLR },
+  amx56: { build: buildAMX56 },
   t80u: { build: buildT80UNative2026 },
   type74: { build: buildType74 },
   // FRANCE ROUND: the AMX-30s render procedural (the ahab GLBs carry a
