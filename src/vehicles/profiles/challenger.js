@@ -3792,7 +3792,11 @@ function buildChallenger3(P) {
     P.add('hull', mslab1(s,                                                    // stepped front panel — print plan: full-width faces end z 3.01;
       [1.695, 1.18, 3.05], [1.755, 1.18, 3.05], [1.755, 1.18, 2.42], [1.695, 1.18, 2.42],
       [1.695, 1.32, 3.10], [1.755, 1.32, 3.10], [1.755, 1.32, 2.42], [1.695, 1.32, 2.42]));
-    P.add('hull', box(0.10, 0.06, 0.70), s * 1.65, 1.31, 2.76);                // closed fender bridge: wing -> raised front skirt
+    // Close the 110 mm plan pocket between the middle-front bay (ending
+    // z=2.30) and the raised bow bridge (formerly beginning z=2.41).  This
+    // stays above/outboard of the animated course and restores one backed
+    // fender load path without removing or lifting any skirt geometry.
+    P.add('hull', box(0.10, 0.06, 0.82), s * 1.65, 1.31, 2.70);                // closed fender bridge: wing -> raised front skirt
     // 3 bays ONLY — the print's skirts END at z ~-0.9 (plan row: ±1.76
     // content spans 3.16..-0.73 on the print) leaving the rear wheels +
     // sprocket run OPEN (§B8 exposure)
@@ -3825,7 +3829,12 @@ function buildChallenger3(P) {
   // ---- turret: the NEW Rheinmetall wedge (§B8 print form: face ~2.45w,
   // huge squared bustle to -2.13w, ±1.41 walls). Pivot [0,1.55,1.20];
   // locals = world - pivot.
-  const C3W = 1.41, C3H = 0.85;                                                // source peak roof local (world 2.40)
+  // The former 0.85 m datum belonged only to the abandoned high rear cap.
+  // It was nevertheless reused by every hatch, sight and weapon seat, which
+  // left a second turret stacked above the low forward brow.  The connected
+  // crown now peaks at 0.68 m and every C3H-relative fitting follows that
+  // real roof instead of the deleted superstructure datum.
+  const C3W = 1.41, C3H = 0.68;
   // Leclerc-method shell: the oracle's largest connected turret component
   // has two distinct height courses.  Its broad flank shoulders live at
   // world 2.11..2.22 while only the inset center roof reaches 2.30..2.40.
@@ -3853,18 +3862,18 @@ function buildChallenger3(P) {
     // registered side pair.  Keep the full lower bustle extreme, but drop
     // its terminal 0.3 m into a raked tail instead of extending the roof
     // plateau squarely to the rear face.
-    shoulderXF: 1.28, shoulderXR: 1.35, shoulderYF: 0.67, shoulderYR: 0.58,
-    roofXF: 1.05, roofXR: 1.05, roofYF: 0.75, roofYR: 0.58,
+    shoulderXF: 1.28, shoulderXR: 1.35, shoulderYF: 0.58, shoulderYR: 0.50,
+    roofXF: 1.05, roofXR: 1.05, roofYF: 0.66, roofYR: 0.52,
   });
   c3ShellSegment(-1.33, -2.55, {
     bottomF: 0.02, bottomR: 0.10, outerF: 1.36, outerR: 1.34,
-    shoulderXF: 1.31, shoulderXR: 1.28, shoulderYF: 0.66, shoulderYR: 0.67,
-    roofXF: 0.91, roofXR: 1.05, roofYF: 0.84, roofYR: 0.75,
+    shoulderXF: 1.31, shoulderXR: 1.28, shoulderYF: 0.60, shoulderYR: 0.58,
+    roofXF: 0.91, roofXR: 1.05, roofYF: 0.68, roofYR: 0.66,
   });
   c3ShellSegment(-0.39, -1.33, {
     bottomF: 0.02, bottomR: 0.02, outerF: 1.40, outerR: 1.36,
-    shoulderXF: 1.34, shoulderXR: 1.31, shoulderYF: 0.66, shoulderYR: 0.66,
-    roofXF: 0.92, roofXR: 0.91, roofYF: 0.84, roofYR: 0.84,
+    shoulderXF: 1.34, shoulderXR: 1.31, shoulderYF: 0.60, shoulderYR: 0.60,
+    roofXF: 0.92, roofXR: 0.91, roofYF: 0.66, roofYR: 0.68,
   });
   c3ShellSegment(0.22, -0.39, {
     bottomF: 0.02, bottomR: 0.02, outerF: 1.40, outerR: 1.40,
@@ -3872,7 +3881,7 @@ function buildChallenger3(P) {
     // @ z=1.420.  The prior 2.24 m forward cap kept a false high box over
     // the gun.  The roof also remains broad at this station: the print's
     // top vertex reaches x +-1.344, not the old +-0.88 inset.
-    shoulderXF: 1.34, shoulderXR: 1.34, shoulderYF: 0.56, shoulderYR: 0.66,
+    shoulderXF: 1.34, shoulderXR: 1.34, shoulderYF: 0.56, shoulderYR: 0.60,
     roofXF: 1.15, roofXR: 1.05, roofYF: 0.56, roofYR: 0.66,
   });
   // Owner silhouette correction (2026-08-12): the old front station
@@ -3919,7 +3928,10 @@ function buildChallenger3(P) {
   // box read +0.18 outboard and -0.24 inboard). Real Trophy grammar: the
   // panel leans against the turret side on standoff brackets (§B2).
   for (const s of [-1, 1]) {
-    P.add('turret', box(0.06, 0.24, 0.18), s * 1.44, 0.89, -0.22);             // narrow raised radar shoulder at the measured ±1.44 columns
+    // Broad roots overlap the shell before the radar course reaches the
+    // outboard panel.  The previous 60 mm roots began 10 mm outside the
+    // armor wall and were visible as two detached tabs in roof/rear views.
+    P.add('turret', box(0.10, 0.24, 0.18), s * 1.43, 0.67, -0.22);
     // Rear-view correction: terminal core is 2.82 m wide; the print remains
     // x=+-1.70 continuously through the full lower rear band.  A leaned
     // 20-mm face only reached that width at its upper edge, then visibly
@@ -3929,16 +3941,18 @@ function buildChallenger3(P) {
     // -2.885..-2.385 source-plan station.
     P.add('turret', mslab1(s,
       [1.32, 0.17, -2.385], [1.70, 0.17, -2.385], [1.70, 0.17, -2.885], [1.32, 0.17, -2.885],
-      [1.25, 0.69, -2.385], [1.70, 0.69, -2.385], [1.70, 0.69, -2.885], [1.25, 0.69, -2.885]));
-    P.add('turret', box(0.02, 0.28, 2.12), s * 1.67, 0.75, -1.325, 0, 0, s * 0.53); // full-width forward course
+      [1.25, 0.62, -2.385], [1.70, 0.62, -2.385], [1.70, 0.62, -2.885], [1.25, 0.62, -2.885]));
+    P.add('turret', box(0.02, 0.28, 2.12), s * 1.67, 0.63, -1.325, 0, 0, s * 0.53); // full-width forward course
     for (const bz of [-0.40, -1.55, -2.70]) {
-      P.add('turret', box(0.26, 0.05, 0.07), s * 1.525, 0.70, bz);             // standoff mounting brackets (wall -> panel)
+      // x 1.34..1.68 overlaps both the 1.36..1.40 shell and the 1.67
+      // panel.  This is the actual load path for the complete side course.
+      P.add('turret', box(0.34, 0.08, 0.10), s * 1.51, 0.57, bz);
     }
-    P.add('turretDark', box(0.022, 0.02, 2.35), s * 1.645, 0.79, -1.575, 0, 0, s * 0.53); // panel ribs
-    P.add('turretDark', box(0.022, 0.02, 2.35), s * 1.695, 0.705, -1.575, 0, 0, s * 0.53);
-    P.add('turretDark', box(0.03, 0.18, 0.18), s * 1.575, 0.70, -0.22, 0, s * 0.35, 0);   // fwd radar
-    P.add('turretGlass', box(0.012, 0.14, 0.14), s * 1.60, 0.70, -0.21, 0, s * 0.35, 0);
-    P.add('turretDark', box(0.03, 0.18, 0.18), s * 1.53, 0.70, -2.78, 0, -s * 0.35, 0);   // rear radar
+    P.add('turretDark', box(0.022, 0.02, 2.35), s * 1.645, 0.67, -1.575, 0, 0, s * 0.53); // panel ribs
+    P.add('turretDark', box(0.022, 0.02, 2.35), s * 1.695, 0.585, -1.575, 0, 0, s * 0.53);
+    P.add('turretDark', box(0.03, 0.18, 0.18), s * 1.575, 0.58, -0.22, 0, s * 0.35, 0);   // fwd radar
+    P.add('turretGlass', box(0.012, 0.14, 0.14), s * 1.60, 0.58, -0.21, 0, s * 0.35, 0);
+    P.add('turretDark', box(0.03, 0.18, 0.18), s * 1.53, 0.57, -2.78, 0, -s * 0.35, 0);   // rear radar
   }
   // RWS (PROTECTOR-class, §H.4 UK grammar: M2 12.7 on the remote mount)
   // front-left roof. FINISH r2: seated ON the print's own RCWS body zone
@@ -4067,7 +4081,7 @@ function buildChallenger3(P) {
   P.add('turretDark', cylY(0.05, 0.06, 0.06, 8), 0.25, C3H + 0.17, -2.05);
   P.add('turretDetail', frustum(0.30, 0.18, -0.18, 0.24, 0.14, -0.14, 0, 0.18),
     0.76, C3H + 0.03, -2.52);                                                  // low faceted aft sensor plinth
-  P.add('turretDetail', box(0.32, 0.04, 0.08), -0.37, 1.01, -2.44);            // measured rear lip under the tall left sight
+  P.add('turretDetail', box(0.32, 0.04, 0.08), -0.37, C3H + 0.01, -2.44);      // planted rear lip under the tall left sight
   // hatches + periscopes + whips
   P.add('turret', cylY(0.25, 0.26, 0.10, 14), 0.55, C3H + 0.06, -1.55);        // commander hatch + raised faceted collar
   // Large asymmetric loader station measured directly from the print:
