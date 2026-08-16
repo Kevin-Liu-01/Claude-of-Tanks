@@ -3481,13 +3481,34 @@ function buildT90SMLegacy(P) {
     // |x| 1.67..1.78 is [1.153..0.313]/[1.099..0.611]; front tops taper
     // 1.829@1.674 -> 1.733@1.845 — a main panel + a lower outer panel with
     // a lid seam (§B3), no yaw skew.
-    P.add('turret', box(0.165, 0.445, 0.835), s * 1.6525, 0.2175, 0.5925);  // T3R-b7: bottom 1.395 (ref bottoms 1.393+)
+    // The old cassette was a narrow rectangular box whose inboard wall at
+    // |x|=1.57 remained visible from the roof cameras.  Carry the cassette
+    // back into the welded cheek instead: the lower plate keeps the recovered
+    // outer envelope while the upper plate follows the cheek rake.  The rear
+    // and inner edges overlap the shell, so this reads as seated armor rather
+    // than a cabinet stood beside the turret.
+    P.add('turret', orientedSlab(
+      [s * 1.42, 0.000, 0.14], [s * 1.735, 0.000, 0.18], [s * 1.735, 0.000, 1.02], [s * 1.48, 0.000, 1.08],
+      [s * 1.36, 0.440, 0.10], [s * 1.660, 0.440, 0.18], [s * 1.660, 0.440, 1.00], [s * 1.42, 0.440, 1.06],
+    ));
     // T3R-b3: outer panel z re-seated to the ref 0.805..1.078 world band
     // (plan ±1.816 col read proc 0.614 where the ref bottom is 0.805).
     // T3R-b5: print asym — the LEFT panel runs deeper (ref -1.789 col
     // band 0.668..1.105 world vs right 0.805..1.078).
-    P.add('turret', box(0.12, 0.36, s < 0 ? 0.44 : 0.28), s * (s < 0 ? 1.7925 : 1.760), 0.20, s < 0 ? 0.7965 : 0.8515);
-    P.add('turretDark', box(0.10, 0.022, s < 0 ? 0.40 : 0.24), s * 1.80, 0.343, s < 0 ? 0.7965 : 0.8515);
+    {
+      const zA = s < 0 ? 0.5765 : 0.7115;
+      const zB = s < 0 ? 1.0165 : 0.9915;
+      const outerX = s < 0 ? 1.860 : 1.820;
+      const roofX = s < 0 ? 1.790 : 1.760;
+      // Lap the outer cassette over the main cheek cassette by 80-120 mm.
+      // Its top edge leans inward with the turret wall instead of exposing a
+      // second vertical side face at |x|=1.70.
+      P.add('turret', orientedSlab(
+        [s * 1.58, 0.020, zA], [s * outerX, 0.020, zA], [s * outerX, 0.020, zB], [s * 1.58, 0.020, zB],
+        [s * 1.54, 0.380, zA], [s * roofX, 0.380, zA], [s * roofX, 0.380, zB], [s * 1.54, 0.380, zB],
+      ));
+      P.add('turretDark', box(0.18, 0.022, (zB - zA) * 0.88), s * (roofX - 0.09), 0.383, (zA + zB) * 0.5);
+    }
     // T4S BRIM FLARE (verdict order 2: "turret side stowage panels stand
     // vertical; the print's flare outward makes the MS brim"): a raked
     // apron plate bridges the main-panel face (1.735 @ y 0.155) down-out
@@ -3507,9 +3528,17 @@ function buildT90SMLegacy(P) {
         [s * xo0, 0.009, zB4], [s * xo1, 0.031, zB4], [s * xo1, 0.031, zA4], [s * xo0, 0.009, zA4],
         [s * xi0, 0.144, zB4], [s * xi1, 0.166, zB4], [s * xi1, 0.166, zA4], [s * xi0, 0.144, zA4]));
     }
-    // flank box split: ref plan rear staircase -0.365@1.477 / -0.04@1.586
-    P.add('turret', box(0.12, 0.44, 0.55), s * 1.42, 0.34, -0.145);
-    P.add('turret', box(0.05, 0.34, 0.30), s * 1.585, 0.29, 0.02);
+    // Flank transition: replace the two isolated boxes (and their exposed
+    // |x|=1.36/1.495 walls) with overlapping wedges that continue the same
+    // cheek plane into the bustle shoulder.
+    P.add('turret', orientedSlab(
+      [s * 1.18, 0.12, -0.42], [s * 1.50, 0.12, -0.42], [s * 1.50, 0.12, 0.14], [s * 1.18, 0.12, 0.14],
+      [s * 1.16, 0.56, -0.38], [s * 1.44, 0.56, -0.38], [s * 1.44, 0.56, 0.14], [s * 1.16, 0.56, 0.14],
+    ));
+    P.add('turret', orientedSlab(
+      [s * 1.38, 0.12, -0.14], [s * 1.63, 0.12, -0.14], [s * 1.63, 0.12, 0.18], [s * 1.38, 0.12, 0.18],
+      [s * 1.34, 0.46, -0.12], [s * 1.59, 0.46, -0.12], [s * 1.59, 0.46, 0.16], [s * 1.34, 0.46, 0.16],
+    ));
   }
   P.add('turret', box(0.12, 0.07, 0.55), 1.42, 0.595, -0.145);          // right flank cassette crown, seated on the 0.56 roof
   // LEFT cheek-course end lump: ref plan_turret -1.884 is a 1-col blob at
@@ -3680,14 +3709,16 @@ function buildT90SMLegacy(P) {
   for (const bx of [-0.52, 0.52]) {
     P.add('turretDark', box(0.03, 0.03, 0.05), bx, 0.37, -2.472);        // standoff struts onto step3 (§B2 attached)
   }
-  const addSMBustleSideCell = (s, x, y, h, z, d) => {
+  const cageRailYs = [0.17, 0.27, 0.37, 0.47];
+  const addSMBustleSideCell = (s, x, z, d) => {
+    const y = 0.31, h = 0.36;
     const outerX = s * (x + 0.052);
     // Recessed backing closes the bustle while four horizontal courses and
     // three stiles recover the reference's low wraparound cage. Carrier
     // feet penetrate the underlying bustle step; no rail is held by air.
     P.add('turretDark', box(0.025, h * 0.82, d * 0.90), s * x, y, z);
-    for (const by of [-0.38, -0.12, 0.14, 0.40]) {
-      P.add('turretDetail', box(0.028, 0.026, d * 0.94), outerX, y + by * h, z);
+    for (const by of cageRailYs) {
+      P.add('turretDetail', box(0.028, 0.026, d * 0.94), outerX, by, z);
     }
     for (const bz of [-0.40, 0, 0.40]) {
       P.add('turretDetail', box(0.028, h * 0.88, 0.028), outerX, y, z + bz * d);
@@ -3695,15 +3726,15 @@ function buildT90SMLegacy(P) {
     P.add('turret', box(0.12, 0.12, 0.16), s * (x - 0.02), y - h * 0.34, z + d * 0.28);
   };
   for (const s of [-1, 1]) {
-    addSMBustleSideCell(s, 0.985, s < 0 ? 0.3525 : 0.29, s < 0 ? 0.235 : 0.36, s < 0 ? -1.63 : -1.57, s < 0 ? 0.90 : 0.78);
+    addSMBustleSideCell(s, 0.985, s < 0 ? -1.63 : -1.57, s < 0 ? 0.90 : 0.78);
     // The two forward cells retain the measured staircase but become one
     // continuous slat language rather than solid vertical coffin blocks.
-    addSMBustleSideCell(s, 1.12, 0.29, 0.36, -1.17, 0.38);
-    addSMBustleSideCell(s, 1.24, 0.27, 0.34, -0.90, 0.32);
+    addSMBustleSideCell(s, 1.12, -1.17, 0.38);
+    addSMBustleSideCell(s, 1.24, -0.90, 0.32);
   }
   // T3R-b6 flank rear step: the welded staircase's first step (ref rear
   // -0.642w at x 1.33..1.43) bridging the poly rear onto the corner box.
-  for (const s of [-1, 1]) addSMBustleSideCell(s, 1.3725, 0.28, 0.36, -0.56, 0.33);
+  for (const s of [-1, 1]) addSMBustleSideCell(s, 1.3725, -0.56, 0.33);
   // deep inner step is a LEFT-col read (ref -1.585 @ -1.125 vs -1.314 @
   // +1.152 — the step edge sits at |x|~1.10 and the grids sample it
   // asymmetrically): keep the deep box clear of the +1.152 col.
@@ -3711,19 +3742,25 @@ function buildT90SMLegacy(P) {
   P.add('turret', box(0.03, 0.36, 0.60), 1.06, 0.29, -1.375);
   // (T4S: the old full-width dark plate at z -2.42 was fully buried inside
   // step3's envelope — deleted with the slat-grid rework.)
-  // T4S SIDE SLAT PANELS (verdict order 1, rearright pair): slat frames on
-  // the bustle flank step faces — backdrop recessed into the step, bars
-  // 5mm proud of the ±1.06 face (44mm clear of the ±1.109 plan window
-  // edge; front view interior behind the ±1.53 casting walls).
+  // Join the four stepped side cells into one cage.  The old T4S panel was
+  // a second slat layer over the aft cell; removing that duplicate leaves
+  // one supported cage surface.  Rails below bridge every change in x/z and
+  // the aft pair returns diagonally into the rear grille corner.
+  const addCageJoin = (s, ax, az, bx, bz, y) => {
+    const x0 = s * ax, x1 = s * bx;
+    const dx = x1 - x0, dz = bz - az;
+    const len = Math.hypot(dx, dz);
+    P.add('turretDetail', box(0.030, 0.026, len + 0.05), (x0 + x1) * 0.5, y, (az + bz) * 0.5, 0, Math.atan2(dx, dz), 0);
+  };
   for (const s of [-1, 1]) {
-    const zc4 = s < 0 ? -1.63 : -1.57;
-    P.add('turretDark', box(0.012, 0.26, 0.62), s * 1.052, 0.29, zc4);   // shadow backdrop
-    for (const by of [0.185, 0.255, 0.325, 0.395]) {
-      P.add('turretDetail', box(0.024, 0.024, 0.64), s * 1.062, by, zc4); // slat bars
+    const aftZ = s < 0 ? -2.08 : -1.96;
+    for (const y of cageRailYs) {
+      addCageJoin(s, 0.67, -2.51, 1.037, aftZ, y);
+      addCageJoin(s, 1.037, -1.18, 1.172, -1.36, y);
+      addCageJoin(s, 1.172, -0.98, 1.292, -1.06, y);
+      addCageJoin(s, 1.292, -0.74, 1.4245, -0.725, y);
     }
-    for (const bz of [-0.28, 0, 0.28]) {
-      P.add('turretDetail', box(0.024, 0.24, 0.026), s * 1.062, 0.29, zc4 + bz); // stiles
-    }
+    P.add('turretDetail', box(0.030, 0.34, 0.030), s * 1.037, 0.31, aftZ);
   }
   for (const s of [-1, 1]) P.add('turretDetail', box(0.72, 0.10, 0.88), s * 0.55, 0.50, -1.85);
   // T3R bustle basket rail ring (owner: "rear turret stowage basket ring"):
