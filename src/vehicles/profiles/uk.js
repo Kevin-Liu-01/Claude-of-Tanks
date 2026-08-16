@@ -1565,7 +1565,7 @@ const CENTURION_HULL = {
   contactZF: 2.50, contactZR: -2.32, padCornerFloor: 0.012, padHugZ0: 0,
 };
 
-function centurionBuild(P, mk) {
+export function centurionBuild(P, mk) {
   // r7 (combined tone round) — c5 O1 "expose the running gear": the Mk.5/2
   // raises its skirt hem to the ref's own exposed-disc line (outer-strip
   // band bottoms 0.81 per the r2 tables; wheels top 0.85) across panels

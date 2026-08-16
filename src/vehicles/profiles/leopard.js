@@ -2573,7 +2573,7 @@ function buildLeo2A6(P) {
 // bustle to -2.90, whips (x -0.96, z -1.93) / (+1.08, -2.02) to 4.11,
 // mantlet block top 2.21 over z 3.43..3.95, L/44 axis 1.99 muzzle 6.02.
 // ---------------------------------------------------------------------------
-function buildLeo2A5(P) {
+export function buildLeo2A5(P) {
   const { box } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
   const hookWheelFace = (material) => {

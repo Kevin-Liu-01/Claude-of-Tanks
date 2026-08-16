@@ -307,7 +307,7 @@ function steelGear(P, g) {
 // width.  Gun axis 1.56; source-registered muzzle +5.19; dozer tip +3.30;
 // compact roof cluster held to the published-height envelope.
 // ---------------------------------------------------------------------------
-function buildStrv103(P) {
+export function buildStrv103(P) {
   const { cylY, cylZ, frustum, liftEye, periscope } = KIT;
   P.fixedMount = true;
 
