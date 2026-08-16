@@ -8620,3 +8620,12 @@ instance / asset — see §5.243's k1a1 record). Pre-§5.229 hash-table
 entries are superseded-by-standardization; the LIVE gate + the
 per-section freeze records from §5.229 onward are the operative
 truth. No drift alarm.
+
+## 5.246 FLEET ICON REGEN LANDED (2026-08-16): 351 of 981 icon files
+refreshed from a clean-HEAD git worktree (the §5.45-era standing
+order finally executed at a true quiet window, load 3.8): every
+garage icon/silhouette/marking now matches the merged-tree build
+state (the flips, the §5.38 wave, the §5.229 standardization, and
+all §5.230-243 revisions render fresh). Worktree removed. The last
+standing my-lane deferral is closed; the session idles pending the
+owner's spend-limit word.
