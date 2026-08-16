@@ -8586,3 +8586,25 @@ regenerated and current.
 **KEEP the complete K1A1 exterior and single smart course. Future running-gear
 work may tune only the mechanical station path; it must not manufacture track
 clearance by deleting or lifting hull and skirt geometry.**
+
+## 5.244 SESSION RE-SYNC AT 0c627023 (2026-08-16, orchestrator): this
+session pulled the 546-commit fast-forward after the monthly spend
+limit terminated five of its agent rounds mid-flight (abrams
+flank-panel pitch, k2 90-ladder, t44+type59 builds, §E batches
+53/54/55, leopard RCWS re-cert). RECONCILIATION FINDINGS: the registry
+is CONTINUOUS (no fork — the parallel session continued §5.78-§5.243
+on top of this session's §5.34-§5.77 landings, through 2026-08-15);
+this session's freezes stand or were properly re-frozen with lineage
+(bradley 90a5568c -> 45ef7b0c §5.188; m45 53caa687 intact; leclerc
+683be340 intact). Much of this session's queued work was EXECUTED
+downstream by the parallel session (abrams family shoulders §5.240,
+tusk cassettes §5.242, base-t90 package §5.241, k1a1 iterated to
+freeze-class §5.243, vladimir/t90a revisions §5.230-§5.239, fleet
+smart-shoe standardization §5.229). THE FIVE STALE WIP SNAPSHOTS are
+RETIRED (parked at scratchpad prepull-wip/ + prepull-untracked/ —
+historical only; any resumption re-derives from the LIVE registry
+tail, not these). npm deps synced post-merge (@upstash/redis etc.),
+full suite green. AGENT SPAWNING stays PAUSED pending the owner's
+word on the spend limit; the live queue = the registry's own LIVE
+tail sections + the standing DISMISSED-PENDING asks (m45 6.47,
+newc_tiger, AFV stats, Sources cards).
