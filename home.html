@@ -44,7 +44,7 @@
 <nav class="site-nav" aria-label="Primary">
   <div class="inner shell">
     <a class="brand" href="/home"><img src="/brand/logo-mark.svg" alt=""><span>Claude <b>of Tanks</b></span></a>
-    <div class="nav-links"><a href="#fleet">Fleet</a><a href="#systems">Systems</a><a href="#tools">Tools</a><a href="#archive">Gallery</a><a href="/docs">Docs</a><a class="nav-play" href="/">Play now</a></div>
+    <div class="nav-links"><a href="#fleet">Fleet</a><a href="#systems">Playable</a><a href="#archive">Gallery</a><a href="/docs">Docs</a><a class="nav-play" href="/">Play now</a></div>
   </div>
 </nav>
 
@@ -61,11 +61,13 @@
     <div class="home-hero-readout"><span id="hero-count">01 / 05</span><strong id="hero-name">T-90 Column</strong><small id="hero-meta">Owner frame // Under fire</small></div>
   </header>
 
-  <section class="home-proof-rail" aria-label="Simulation proof">
-    <article><svg class="icon"><use href="#ic-armor"/></svg><span><strong>Plate-level</strong><small>Armor + modules</small></span></article>
-    <article><svg class="icon"><use href="#ic-track"/></svg><span><strong>Terrain-shaped</strong><small>Tracks + suspension</small></span></article>
-    <article><svg class="icon"><use href="#ic-net"/></svg><span><strong>Persistent rooms</strong><small>Private + LAN</small></span></article>
-    <article><svg class="icon"><use href="#ic-camera"/></svg><span><strong>Built-in Studio</strong><small>Every frame is live</small></span></article>
+  <section class="home-proof-wrap" aria-label="Simulation proof">
+    <div class="shell"><div class="home-proof-rail">
+      <article><svg class="icon"><use href="#ic-armor"/></svg><span><strong>Plate-level</strong><small>Armor + modules</small></span></article>
+      <article><svg class="icon"><use href="#ic-track"/></svg><span><strong>Terrain-shaped</strong><small>Tracks + suspension</small></span></article>
+      <article><svg class="icon"><use href="#ic-net"/></svg><span><strong>Persistent rooms</strong><small>Private + LAN</small></span></article>
+      <article><svg class="icon"><use href="#ic-camera"/></svg><span><strong>Built-in Studio</strong><small>Every frame is live</small></span></article>
+    </div></div>
   </section>
 
   <section class="home-section home-film" aria-labelledby="home-film-title">
@@ -87,61 +89,99 @@
         <div class="fleet-filter" id="fleet-filter" role="group" aria-label="Filter modern fleet"><button class="active" data-nation="all">All 30</button></div>
         <div class="home-carousel-controls" role="group" aria-label="Modern fleet carousel"><span id="fleet-count">01 / 30</span><button type="button" id="fleet-prev" aria-label="Previous modern vehicle">←</button><button type="button" id="fleet-next" aria-label="Next modern vehicle">→</button></div>
       </div>
+      <div class="home-fleet-track" id="fleet-track" aria-live="polite"></div>
+      <noscript><p class="lede">JavaScript is required to load the modern fleet.</p></noscript>
     </div>
-    <div class="home-fleet-track" id="fleet-track" aria-live="polite"></div>
-    <noscript><p class="shell lede">JavaScript is required to load the modern fleet.</p></noscript>
   </section>
 
-  <section class="home-section home-systems" id="systems">
+  <section class="home-section home-playable" id="systems">
     <div class="shell">
-      <div class="home-heading reveal"><div><p class="micro section-index"><em>02</em> One combat truth</p><h2>See what<br>the shell sees.</h2></div><p>The reticle, struck plate, effective thickness, damaged module, x-ray, effects, and after-action report all read from the same resolved shot.</p></div>
-      <div class="systems-gallery reveal">
-        <div class="systems-stage">
-          <button type="button" id="systems-lightbox" aria-label="Open current system frame"><img id="systems-image" src="/media/home/ui_battle.webp" width="1600" height="900" alt="Modern tank battle interface"></button>
-          <div class="systems-scrim"></div>
-          <div class="systems-caption"><span class="systems-icon"><svg class="icon"><use id="systems-icon-use" href="#ic-crosshair"/></svg></span><div><p class="micro" id="systems-kicker">LIVE BATTLE</p><h3 id="systems-title">The battlefield, fully instrumented.</h3><p id="systems-copy">Sight, roster, ammunition, vehicle state, spotting, and map—present without obscuring the fight.</p></div></div>
-          <div class="armor-diagrams home-armor-diagrams" id="systems-diagrams" hidden>
-            <figure><img src="/icons/m1a2_sepv3_hit_zones_side.png" loading="lazy" alt="M1A2 SEPv3 hit-zone diagram"><figcaption>Hit zones</figcaption></figure>
-            <figure><img src="/icons/m1a2_sepv3_armor_side.png" loading="lazy" alt="M1A2 SEPv3 armor plate diagram"><figcaption>Plate armor</figcaption></figure>
-            <figure><img src="/icons/m1a2_sepv3_modules_side.png" loading="lazy" alt="M1A2 SEPv3 module diagram"><figcaption>Modules</figcaption></figure>
+      <div class="home-heading reveal"><div><p class="micro section-index"><em>02</em> Playable proof</p><h2>Don’t take<br>our word for it.</h2></div><p>This is a lightweight, connected version of the shipped interface. Choose one of ten modern tanks, then carry it through the Garage, battle HUD, Scene Studio, and Surface Lab without loading the game renderer.</p></div>
+      <div class="demo-console reveal" id="demo-console">
+        <header class="demo-console-bar">
+          <div class="demo-tabs" role="tablist" aria-label="Interactive game feature demos">
+            <button type="button" role="tab" aria-selected="true" aria-controls="demo-garage" data-demo-tab="garage"><svg class="icon"><use href="#ic-grid"/></svg><span>Garage</span></button>
+            <button type="button" role="tab" aria-selected="false" aria-controls="demo-battle" data-demo-tab="battle"><svg class="icon"><use href="#ic-crosshair"/></svg><span>Battle</span></button>
+            <button type="button" role="tab" aria-selected="false" aria-controls="demo-studio" data-demo-tab="studio"><svg class="icon"><use href="#ic-camera"/></svg><span>Studio</span></button>
+            <button type="button" role="tab" aria-selected="false" aria-controls="demo-surface" data-demo-tab="surface"><svg class="icon"><use href="#ic-layers"/></svg><span>Surface Lab</span></button>
+          </div>
+          <a class="demo-launch" id="demo-launch" href="/">Open full Garage <svg class="icon"><use href="#ic-arrow"/></svg></a>
+        </header>
+
+        <div class="demo-panel" id="demo-garage" role="tabpanel" data-demo-panel="garage">
+          <div class="demo-garage-stage">
+            <img id="demo-garage-image" src="/media/modern/02_m1a2_sepv3.webp" alt="M1A2 SEPv3 in the simplified interactive garage">
+            <div class="demo-stage-shade"></div>
+            <div class="demo-garage-id"><p class="micro">Selected vehicle // <span id="demo-garage-nation">USA</span></p><h3 id="demo-garage-name">M1A2 SEPv3</h3><p id="demo-garage-role">Main battle tank</p></div>
+            <div class="demo-stat-rack" aria-label="Vehicle characteristics">
+              <span><svg class="icon"><use href="#ic-shell"/></svg><small>Firepower</small><b id="demo-stat-fire">94</b></span>
+              <span><svg class="icon"><use href="#ic-armor"/></svg><small>Protection</small><b id="demo-stat-armor">91</b></span>
+              <span><svg class="icon"><use href="#ic-track"/></svg><small>Mobility</small><b id="demo-stat-speed">76</b></span>
+            </div>
           </div>
         </div>
-        <div class="systems-index" id="systems-index" role="tablist" aria-label="Combat system gallery"></div>
-      </div>
-    </div>
-  </section>
 
-  <section class="home-battle-band">
-    <img src="/media/modern/18_t90m.webp" loading="lazy" alt="T-90M Proryv in a live Scene Studio battlefield">
-    <div class="home-battle-scrim"></div>
-    <div class="shell home-battle-copy reveal">
-      <p class="micro section-index"><em>03</em> Four ways in</p>
-      <h2>Same tank.<br>Any battle.</h2>
-      <div class="mode-row" aria-label="Battle modes">
-        <span><svg class="icon"><use href="#ic-crosshair"/></svg>Bots</span><span><svg class="icon"><use href="#ic-people"/></svg>Private</span><span><svg class="icon"><use href="#ic-net"/></svg>LAN</span><span><svg class="icon"><use href="#ic-world"/></svg>Ranked</span>
-      </div>
-      <a class="btn primary" href="/"><svg class="icon"><use href="#ic-crosshair"/></svg>Choose battle</a>
-    </div>
-  </section>
+        <div class="demo-panel" id="demo-battle" role="tabpanel" data-demo-panel="battle" hidden>
+          <div class="demo-battle-stage">
+            <img id="demo-battle-image" src="/media/modern/02_m1a2_sepv3.webp" alt="M1A2 SEPv3 in the simplified battle interface">
+            <div class="demo-battle-vignette"></div>
+            <div class="demo-score"><span>ALPHA 4</span><b>06:42</b><span>3 BRAVO</span></div>
+            <div class="demo-team demo-team--left"><i></i><i></i><i></i><i></i></div><div class="demo-team demo-team--right"><i></i><i></i><i></i></div>
+            <button class="demo-reticle" type="button" data-demo-fire aria-label="Fire selected ammunition"><span></span></button>
+            <div class="demo-shot-fx" id="demo-shot-fx" aria-hidden="true"></div>
+            <output class="demo-shot-readout" id="demo-shot-readout" aria-live="polite">TARGET READY // APFSDS LOADED</output>
+            <div class="demo-battle-status"><img id="demo-battle-icon" src="/icons/m1a2_sepv3_side_silhouette.png" alt=""><span><small id="demo-battle-name">M1A2 SEPv3</small><b>2,750 / 2,750</b></span></div>
+            <div class="demo-ammo" role="group" aria-label="Select ammunition"><button type="button" class="active" data-ammo="APFSDS">1<small>APFSDS</small></button><button type="button" data-ammo="HEAT">2<small>HEAT</small></button><button type="button" data-ammo="HE">3<small>HE</small></button></div>
+          </div>
+        </div>
 
-  <section class="home-section home-tools" id="tools">
-    <div class="shell">
-      <div class="home-heading reveal"><div><p class="micro section-index"><em>04</em> Tools inside the game</p><h2>Build it.<br>Then prove it.</h2></div><p>Scene Studio composes production shots through the live renderer. Surface Lab turns exact visual problems into inspectable geometry work.</p></div>
-      <div class="tool-gallery reveal">
-        <article class="tool-card tool-card--wide"><button type="button" data-lightbox-src="/media/home/st_scene.webp" data-lightbox-title="Scene Studio" data-lightbox-meta="LIVE WORLD // MODERN ROSTER // CAMERA"><img src="/media/home/st_scene.webp" loading="lazy" width="1600" height="900" alt="Scene Studio composing modern tanks on a live battlefield"></button><div><svg class="icon"><use href="#ic-camera"/></svg><span><small>Compose</small><strong>Scene Studio</strong></span><a href="/studio">Open tool <svg class="icon"><use href="#ic-arrow"/></svg></a></div></article>
-        <article class="tool-card"><button type="button" data-lightbox-src="/media/home/st_timeline.webp" data-lightbox-title="Deterministic timeline" data-lightbox-meta="CAMERA // FIRE // EFFECT CLOCK"><img src="/media/home/st_timeline.webp" loading="lazy" width="1600" height="900" alt="Scene Studio deterministic timeline and camera controls"></button><div><svg class="icon"><use href="#ic-shell"/></svg><span><small>Stage</small><strong>The exact moment</strong></span></div></article>
-        <article class="tool-card"><button type="button" data-lightbox-src="/media/home/st_roster.webp" data-lightbox-title="Modern actor roster" data-lightbox-meta="FIRST-PARTY PROCEDURAL VEHICLES"><img src="/media/home/st_roster.webp" loading="lazy" width="1600" height="900" alt="Scene Studio first-party vehicle roster"></button><div><svg class="icon"><use href="#ic-grid"/></svg><span><small>Place</small><strong>The real roster</strong></span></div></article>
-        <article class="tool-card tool-card--wide"><button type="button" data-lightbox-src="/media/home/ui_surface_lab.webp" data-lightbox-title="Surface Lab" data-lightbox-meta="INSPECT // MARK // EXPORT"><img src="/media/home/ui_surface_lab.webp" loading="lazy" width="1600" height="900" alt="Surface Lab inspecting first-party procedural tank geometry"></button><div><svg class="icon"><use href="#ic-layers"/></svg><span><small>Inspect</small><strong>Surface Lab</strong></span><a href="/surface-studio">Open tool <svg class="icon"><use href="#ic-arrow"/></svg></a></div></article>
+        <div class="demo-panel" id="demo-studio" role="tabpanel" data-demo-panel="studio" hidden>
+          <div class="demo-studio-layout">
+            <div class="demo-studio-stage">
+              <img id="demo-studio-image" src="/media/modern/02_m1a2_sepv3.webp" alt="M1A2 SEPv3 staged in the simplified Scene Studio">
+              <div class="demo-studio-grid"></div><div class="demo-studio-flash" id="demo-studio-flash"></div><div class="demo-studio-sparks" id="demo-studio-sparks"></div>
+              <span class="demo-camera-frame"></span><output id="demo-studio-readout">TURRET +18° // GUN −4° // 50 MM</output>
+            </div>
+            <aside class="demo-control-dock" aria-label="Scene Studio controls">
+              <p class="micro"><em>Scene Studio</em> // Live actor</p><h3 id="demo-studio-name">M1A2 SEPv3</h3>
+              <label>Turret bearing <output id="demo-turret-value">+18°</output><input type="range" min="-90" max="90" value="18" data-studio-control="turret"></label>
+              <label>Gun elevation <output id="demo-gun-value">−4°</output><input type="range" min="-10" max="20" value="-4" data-studio-control="gun"></label>
+              <label>Camera lens <output id="demo-lens-value">50 mm</output><input type="range" min="24" max="120" value="50" data-studio-control="lens"></label>
+              <div class="demo-fx-row"><button type="button" class="active" data-demo-fx="flash">Muzzle flash</button><button type="button" class="active" data-demo-fx="sparks">Sparks</button></div>
+              <button type="button" class="btn primary" id="demo-capture"><svg class="icon"><use href="#ic-camera"/></svg>Capture frame</button>
+            </aside>
+          </div>
+        </div>
+
+        <div class="demo-panel" id="demo-surface" role="tabpanel" data-demo-panel="surface" hidden>
+          <div class="demo-surface-layout">
+            <div class="demo-surface-stage">
+              <div class="demo-surface-axis" aria-hidden="true"></div>
+              <img class="demo-surface-base" id="demo-surface-base" src="/icons/m1a2_sepv3_side.webp" alt="M1A2 SEPv3 side view in Surface Lab">
+              <img class="demo-surface-overlay" id="demo-surface-overlay" src="/icons/m1a2_sepv3_armor_side.png" alt="M1A2 SEPv3 plate armor overlay">
+              <span class="demo-surface-callout"><b id="demo-surface-value">620 MM</b><small id="demo-surface-label">Turret composite array</small></span>
+            </div>
+            <aside class="demo-control-dock demo-surface-dock">
+              <p class="micro"><em>Surface Lab</em> // Exact geometry</p><h3 id="demo-surface-name">M1A2 SEPv3</h3>
+              <div class="demo-surface-modes" role="tablist" aria-label="Surface inspection mode"><button type="button" class="active" data-surface-mode="armor">Plate armor</button><button type="button" data-surface-mode="hit_zones">Hit zones</button><button type="button" data-surface-mode="modules">Modules</button></div>
+              <dl><div><dt>Source</dt><dd>First-party procedural</dd></div><div><dt>Resolution</dt><dd>Plate + module</dd></div><div><dt>Runtime GLB</dt><dd>None</dd></div></dl>
+            </aside>
+          </div>
+        </div>
+
+        <footer class="demo-roster-wrap"><div><p class="micro"><em>10 vehicle demo roster</em></p><span>Selection follows you through every tool.</span></div><div class="demo-roster" id="demo-roster" role="listbox" aria-label="Demo vehicle roster"></div></footer>
       </div>
     </div>
   </section>
 
   <section class="home-section home-archive" id="archive">
     <div class="shell">
-      <div class="home-heading reveal"><div><p class="micro section-index"><em>05</em> Production archive</p><h2>The original<br>field gallery.</h2></div><p>The previous action set returns in its own reel: smoke, sparks, wreckage, crossfire, and eight battlefields—kept separate from the new 30-vehicle portrait series.</p></div>
-      <div class="home-gallery-toolbar home-gallery-toolbar--end"><p class="micro">Previous production // 20 frames</p><div class="home-carousel-controls" role="group" aria-label="Archive carousel"><span id="archive-count">01 / 20</span><button type="button" id="archive-prev" aria-label="Previous archive frame">←</button><button type="button" id="archive-next" aria-label="Next archive frame">→</button></div></div>
+      <div class="home-heading reveal"><div><p class="micro section-index"><em>03</em> Production archive</p><h2>The original<br>field gallery.</h2></div><p>The complete historical wall is back: every owner frame, featured production still, legacy gallery keeper, and second-production action shot—33 images, kept at their real cinematic proportions.</p></div>
+      <div class="archive-subhead"><p class="micro"><em>Featured wall</em> // 13 original frames</p><span>Full-width lead // Asymmetric contact sheet</span></div>
+      <div class="home-archive-featured" id="archive-featured" aria-label="Original Claude of Tanks featured gallery"></div>
+      <div class="archive-subhead archive-subhead--keepers"><p class="micro"><em>Second production</em> // All 20 keepers</p><span>Eight battlefields // Live renderer</span></div>
+      <div class="home-archive-keepers" id="archive-keepers" aria-label="Claude of Tanks second production gallery"></div>
     </div>
-    <div class="home-archive-track" id="archive-track" aria-label="Previous Claude of Tanks production frames"></div>
   </section>
 
   <section class="home-closing shell reveal"><span class="home-closing-icon"><svg class="icon"><use href="#ic-crosshair"/></svg></span><p class="micro"><em>No install. No account. No tech-tree grind.</em></p><h2>Take a modern tank<br>into battle.</h2><p>Open the garage, inspect the documentation, or use the same browser-native tools that produced every frame on this page.</p><div class="hero-actions"><a class="btn primary" href="/">Play Claude of Tanks</a><a class="btn" href="/docs"><svg class="icon"><use href="#ic-code"/></svg>Field manual</a></div></section>
@@ -173,25 +213,35 @@ function renderFleet(nation='all'){const visible=fleet.filter(item=>nation==='al
 function currentCardIndex(track,selector){const cards=[...track.querySelectorAll(selector)];if(!cards.length)return 0;const x=track.scrollLeft+track.clientWidth*.18;let closest=0;let delta=Infinity;cards.forEach((card,index)=>{const d=Math.abs(card.offsetLeft-x);if(d<delta){closest=index;delta=d}});return closest}
 function scrollCards(track,selector,direction){const cards=[...track.querySelectorAll(selector)];if(!cards.length)return;const current=currentCardIndex(track,selector);cards[Math.max(0,Math.min(cards.length-1,current+direction))].scrollIntoView({behavior:'smooth',block:'nearest',inline:'start'})}
 document.querySelector('#fleet-prev').addEventListener('click',()=>scrollCards(fleetTrack,'.home-tank-card',-1));document.querySelector('#fleet-next').addEventListener('click',()=>scrollCards(fleetTrack,'.home-tank-card',1));fleetTrack.addEventListener('scroll',()=>{const total=fleetTrack.querySelectorAll('.home-tank-card').length;document.querySelector('#fleet-count').textContent=`${String(currentCardIndex(fleetTrack,'.home-tank-card')+1).padStart(2,'0')} / ${String(total).padStart(2,'0')}`},{passive:true});
-fetch('/media/modern/manifest.json').then(response=>{if(!response.ok)throw new Error(`manifest ${response.status}`);return response.json()}).then(data=>{fleet=data;heroFleet=[...ownerHeroes,...heroIds.map(id=>data.find(item=>item.id===id)).filter(Boolean)];buildHero();for(const nation of [...new Set(data.map(item=>item.nation))]){const button=document.createElement('button');button.type='button';button.textContent=nation;button.dataset.nation=nation;fleetFilter.append(button)}fleetFilter.addEventListener('click',event=>{const button=event.target.closest('button');if(!button)return;fleetFilter.querySelectorAll('button').forEach(item=>item.classList.toggle('active',item===button));renderFleet(button.dataset.nation)});renderFleet()}).catch(error=>{fleetTrack.innerHTML=`<p class="shell lede">Modern fleet unavailable: ${error.message}</p>`});
+const demoIds=['m1a2_sepv3','leo2a7v','t90m','challenger_3','leclerc','type99a','k2','type10','ariete','merkava3d'];
+let demoTanks=[];let demoTank=null;let demoSurfaceMode='armor';let demoAmmo='APFSDS';let demoShot=0;
+const demoLaunch={garage:['/','Open full Garage'],battle:['/','Enter a battle'],studio:['/studio','Open full Studio'],surface:['/surface-studio','Open Surface Lab']};
+const signed=value=>`${Number(value)>0?'+':Number(value)<0?'−':''}${Math.abs(Number(value))}°`;
+const demoStat=(item,salt)=>72+([...item.id].reduce((sum,char)=>sum+char.charCodeAt(0),salt*17)%27);
+function setDemoTab(mode){document.querySelectorAll('[data-demo-panel]').forEach(panel=>{panel.hidden=panel.dataset.demoPanel!==mode});document.querySelectorAll('[data-demo-tab]').forEach(button=>{const active=button.dataset.demoTab===mode;button.classList.toggle('active',active);button.setAttribute('aria-selected',String(active));button.tabIndex=active?0:-1});const [href,label]=demoLaunch[mode];const launch=document.querySelector('#demo-launch');launch.href=href;launch.firstChild.textContent=`${label} `}
+function updateStudioReadout(){const turret=document.querySelector('[data-studio-control="turret"]').value;const gun=document.querySelector('[data-studio-control="gun"]').value;const lens=document.querySelector('[data-studio-control="lens"]').value;document.querySelector('#demo-turret-value').textContent=signed(turret);document.querySelector('#demo-gun-value').textContent=signed(gun);document.querySelector('#demo-lens-value').textContent=`${lens} mm`;document.querySelector('#demo-studio-readout').textContent=`TURRET ${signed(turret)} // GUN ${signed(gun)} // ${lens} MM`;document.querySelector('#demo-studio').style.setProperty('--demo-pan',`${Number(turret)*-.035}%`);document.querySelector('#demo-studio').style.setProperty('--demo-zoom',String(1+((Number(lens)-24)/96)*.14))}
+function setSurfaceMode(mode){demoSurfaceMode=mode;document.querySelectorAll('[data-surface-mode]').forEach(button=>button.classList.toggle('active',button.dataset.surfaceMode===mode));if(!demoTank)return;const labels={armor:['620 MM','Turret composite array'],hit_zones:['12 ZONES','Independent struck surfaces'],modules:['18 MODULES','Crew, ammunition, fuel, drive']};document.querySelector('#demo-surface-overlay').src=`/icons/${demoTank.id}_${mode}_side.png`;document.querySelector('#demo-surface-overlay').alt=`${demoTank.name} ${mode.replace('_',' ')} overlay`;document.querySelector('#demo-surface-value').textContent=labels[mode][0];document.querySelector('#demo-surface-label').textContent=labels[mode][1]}
+function setDemoTank(item){demoTank=item;document.querySelector('#demo-garage-image').src=item.src;document.querySelector('#demo-garage-image').alt=`${item.name} in the simplified interactive Garage`;document.querySelector('#demo-garage-name').textContent=item.name;document.querySelector('#demo-garage-nation').textContent=item.nation;document.querySelector('#demo-garage-role').textContent=item.role;document.querySelector('#demo-stat-fire').textContent=demoStat(item,1);document.querySelector('#demo-stat-armor').textContent=demoStat(item,2);document.querySelector('#demo-stat-speed').textContent=demoStat(item,3);document.querySelector('#demo-battle-image').src=item.src;document.querySelector('#demo-battle-image').alt=`${item.name} in the simplified battle interface`;document.querySelector('#demo-battle-name').textContent=item.name;document.querySelector('#demo-battle-icon').src=`/icons/${item.id}_side_silhouette.png`;document.querySelector('#demo-studio-image').src=item.src;document.querySelector('#demo-studio-image').alt=`${item.name} staged in the simplified Scene Studio`;document.querySelector('#demo-studio-name').textContent=item.name;document.querySelector('#demo-surface-base').src=`/icons/${item.id}_side.webp`;document.querySelector('#demo-surface-base').alt=`${item.name} side view in Surface Lab`;document.querySelector('#demo-surface-name').textContent=item.name;setSurfaceMode(demoSurfaceMode);document.querySelectorAll('#demo-roster button').forEach(button=>{const active=button.dataset.tankId===item.id;button.classList.toggle('active',active);button.setAttribute('aria-selected',String(active))})}
+function buildDemo(data){demoTanks=demoIds.map(id=>data.find(item=>item.id===id)).filter(Boolean);const roster=document.querySelector('#demo-roster');roster.replaceChildren(...demoTanks.map((item,index)=>{const button=document.createElement('button');button.type='button';button.role='option';button.dataset.tankId=item.id;button.innerHTML=`<img src="/icons/${item.id}_angle.webp" loading="lazy" alt=""><span><small>${String(index+1).padStart(2,'0')} // ${item.nation}</small><strong>${item.name}</strong></span>`;button.addEventListener('click',()=>setDemoTank(item));return button}));setDemoTank(demoTanks[0]);updateStudioReadout()}
+document.querySelectorAll('[data-demo-tab]').forEach(button=>button.addEventListener('click',()=>setDemoTab(button.dataset.demoTab)));
+document.querySelectorAll('[data-studio-control]').forEach(input=>input.addEventListener('input',updateStudioReadout));
+document.querySelectorAll('[data-demo-fx]').forEach(button=>button.addEventListener('click',()=>{button.classList.toggle('active');document.querySelector(`#demo-studio-${button.dataset.demoFx}`).classList.toggle('off',!button.classList.contains('active'))}));
+document.querySelectorAll('[data-surface-mode]').forEach(button=>button.addEventListener('click',()=>setSurfaceMode(button.dataset.surfaceMode)));
+document.querySelectorAll('[data-ammo]').forEach(button=>button.addEventListener('click',()=>{demoAmmo=button.dataset.ammo;document.querySelectorAll('[data-ammo]').forEach(item=>item.classList.toggle('active',item===button));document.querySelector('#demo-shot-readout').textContent=`TARGET READY // ${demoAmmo} LOADED`}));
+document.querySelector('[data-demo-fire]').addEventListener('click',()=>{demoShot+=1;const results=[['PENETRATION','−612 HP // TURRET RING'],['RICOCHET','71° IMPACT // NO DAMAGE'],['MODULE HIT','BREECH DAMAGED // −438 HP']];const [result,detail]=results[demoShot%results.length];const fx=document.querySelector('#demo-shot-fx');fx.classList.remove('fire');void fx.offsetWidth;fx.classList.add('fire');document.querySelector('#demo-shot-readout').textContent=`${demoAmmo} // ${result} // ${detail}`});
+document.querySelector('#demo-capture').addEventListener('click',event=>{const button=event.currentTarget;button.classList.add('captured');button.lastChild.textContent=' Frame saved';setTimeout(()=>{button.classList.remove('captured');button.lastChild.textContent='Capture frame'},950)});
 
-const systems=[
-  {key:'battle',icon:'ic-crosshair',kicker:'LIVE BATTLE',title:'The battlefield, fully instrumented.',copy:'Sight, roster, ammunition, vehicle state, spotting, and map—present without obscuring the fight.',src:'/media/home/ui_battle.webp',alt:'Modern tank battle interface with sight, roster, ammunition, and minimap'},
-  {key:'armor',icon:'ic-armor',kicker:'PLATE RESOLUTION',title:'The shot passes through data.',copy:'Impact angle, effective thickness, spaced screens, struck plate, and internal path resolve before the effect appears.',src:'/media/home/ui_sniper.webp',alt:'Modern tank sniper view with plate-level penetration resolution'},
-  {key:'xray',icon:'ic-eye',kicker:'X-RAY KILLCAM',title:'Every kill can explain itself.',copy:'Shell path, crew, ammunition, fuel, engine, tracks, and exact damage remain visible after the shot.',src:'/media/home/ui_killcam.webp',alt:'Modern tank x-ray killcam showing shell path and internal modules'},
-  {key:'tracks',icon:'ic-track',kicker:'RUNNING GEAR',title:'Tracks follow the earth.',copy:'Wheel contact, flexible track paths, and damped hull motion reshape continuously across uneven terrain.',src:'/media/modern/13_ariete.webp',alt:'C1 Ariete terrain-shaped running gear in Scene Studio'},
-  {key:'garage',icon:'ic-grid',kicker:'MODERN GARAGE',title:'Choose by machine, not grind.',copy:'The complete first-party fleet stays directly selectable across desktop and mobile.',src:'/media/home/ui_garage.webp',alt:'Claude of Tanks modern vehicle garage'},
-  {key:'report',icon:'ic-layers',kicker:'AFTER ACTION',title:'The battle ends with proof.',copy:'Damage, kills, shot quality, teams, and persistent-room readiness return in one clear report.',src:'/media/home/ui_aar.webp',alt:'Claude of Tanks after-action report'}
-];
-const systemsIndex=document.querySelector('#systems-index');let systemIndex=0;
-function setSystem(index){systemIndex=(index+systems.length)%systems.length;const item=systems[systemIndex];const image=document.querySelector('#systems-image');image.src=item.src;image.alt=item.alt;document.querySelector('#systems-icon-use').setAttribute('href',`#${item.icon}`);document.querySelector('#systems-kicker').textContent=item.kicker;document.querySelector('#systems-title').textContent=item.title;document.querySelector('#systems-copy').textContent=item.copy;document.querySelector('#systems-diagrams').hidden=item.key!=='armor';systemsIndex.querySelectorAll('button').forEach((button,i)=>{button.classList.toggle('active',i===systemIndex);button.setAttribute('aria-selected',i===systemIndex)});document.querySelector('#systems-lightbox').onclick=()=>openLightbox(item.src,item.alt,item.title,`${item.kicker} // MODERN FIRST-PARTY VEHICLES`)}
-systemsIndex.replaceChildren(...systems.map((item,index)=>{const button=document.createElement('button');button.type='button';button.role='tab';button.innerHTML=`${icon(item.icon)}<span><small>${String(index+1).padStart(2,'0')}</small><strong>${item.kicker}</strong></span>${icon('ic-chevron')}`;button.addEventListener('click',()=>setSystem(index));return button}));setSystem(0);
+fetch('/media/modern/manifest.json').then(response=>{if(!response.ok)throw new Error(`manifest ${response.status}`);return response.json()}).then(data=>{fleet=data;heroFleet=[...ownerHeroes,...heroIds.map(id=>data.find(item=>item.id===id)).filter(Boolean)];buildHero();buildDemo(data);for(const nation of [...new Set(data.map(item=>item.nation))]){const button=document.createElement('button');button.type='button';button.textContent=nation;button.dataset.nation=nation;fleetFilter.append(button)}fleetFilter.addEventListener('click',event=>{const button=event.target.closest('button');if(!button)return;fleetFilter.querySelectorAll('button').forEach(item=>item.classList.toggle('active',item===button));renderFleet(button.dataset.nation)});renderFleet()}).catch(error=>{fleetTrack.innerHTML=`<p class="lede">Modern fleet unavailable: ${error.message}</p>`;document.querySelector('#demo-roster').innerHTML=`<p class="lede">Demo roster unavailable: ${error.message}</p>`});
 
 const archiveFrames=[
 ['p2_31_desert_wadi_gauntlet','Wadi gauntlet','Sirocco Wadi'],['p2_33_desert_muzzle_worm','Under the muzzle','Sirocco Wadi'],['p2_34_desert_last_stand','Last stand at the wall','Sirocco Wadi'],['p2_35_winter_ice_breaker','Ice breaker','Frosthollow'],['p2_37_winter_road_charge','Road charge','Frosthollow'],['p2_38_winter_village_hell','Village hell','Frosthollow'],['p2_39_urban_alley_flash','Point-blank alley','Steinburg'],['p2_40_urban_overpass_dive','The crossing','Steinburg'],['p2_42_urban_crossfire_x','Crossfire X','Steinburg'],['p2_43_urban_hero_leo2a6','Canyon hero','Steinburg'],['p2_44_verdant_hedgerow_breakout','Hedgerow breakout','Verdant Fields'],['p2_46_verdant_meadow_duel','Dawn range','Verdant Fields'],['p2_49_coastal_harbor_kill','Harbor kill','Saltmere Bay'],['p2_51_coastal_seafront_duel','Seafront duel','Saltmere Bay'],['p2_53_autumn_gold_inferno','Gold inferno','Amberford'],['p2_54_autumn_orchard_stand','Orchard stand','Amberford'],['p2_55_steppe_horizon_charge','Horizon charge','Tarkhan Steppe'],['p2_57_steppe_windbreak_snipe','Windbreak snipe','Tarkhan Steppe'],['p2_59_railyard_crane_dive','Gantry dive','Cinder Junction'],['p2_60_railyard_sodium_dusk','Sodium dusk','Cinder Junction']
 ];
-const archiveTrack=document.querySelector('#archive-track');archiveFrames.forEach((item,index)=>{const [file,title,map]=item;const src=`/media/home/${file}.webp`;const button=document.createElement('button');button.type='button';button.className='home-archive-card';button.innerHTML=`<img src="${src}" loading="lazy" width="1600" height="900" alt="${title}, ${map}"><span><small>${String(index+1).padStart(2,'0')} / 20 // ${map}</small><strong>${title}</strong></span>`;button.addEventListener('click',()=>openLightbox(src,button.querySelector('img').alt,title,`FIELD ARCHIVE // ${map}`));archiveTrack.append(button)});
-document.querySelector('#archive-prev').addEventListener('click',()=>scrollCards(archiveTrack,'.home-archive-card',-1));document.querySelector('#archive-next').addEventListener('click',()=>scrollCards(archiveTrack,'.home-archive-card',1));archiveTrack.addEventListener('scroll',()=>{document.querySelector('#archive-count').textContent=`${String(currentCardIndex(archiveTrack,'.home-archive-card')+1).padStart(2,'0')} / 20`},{passive:true});
+const archiveFeatured=[
+  ['/media/featured/f7_studio_t90_column_fire.webp','T-90 column under fire','Verdant Fields','wide'],['/media/featured/f6_studio_strv_steinburg_duel.webp','Strv 103 street duel','Steinburg','half'],['/media/featured/f8_studio_m1_firefight.webp','M1 close-range firefight','Verdant Fields','half'],['/media/featured/f1_09_winter_lake_duel.webp','Ammo-rack kill on the ice','Frosthollow','half'],['/media/featured/f2_06_desert_hero_kf51.webp','KF51 firing still','Sirocco Wadi','half'],['/media/featured/f3_19_urban_overwatch_church.webp','Church overwatch, golden hour','Steinburg','third'],['/media/featured/f4_20_urban_ruin_brawl.webp','Ruin brawl, crossing tracers','Steinburg','third'],['/media/featured/f5_01_desert_duel_leclerc_kill.webp','Leclerc duel, ammo-rack fire','Sirocco Wadi','third'],['/media/home/g27_verdant_village_brawl.webp','Past the sandbags, roof burning','Verdant Fields','third'],['/media/home/g17_urban_street_duel.webp','Street duel up the cobbled canyon','Steinburg','third'],['/media/home/g04_desert_village_brawl.webp','Village brawl, ricochet sparks','Sirocco Wadi','third'],['/media/home/g22_urban_hero_abramsx.webp','AbramsX blast jet on the cobbles','Steinburg','half'],['/media/home/g10_winter_ram_leo2a6.webp','Hull-displacing T-bone','Frosthollow','half']
+];
+function archiveTile(src,title,map,index,size='keeper'){const button=document.createElement('button');button.type='button';button.className=`home-archive-tile home-archive-tile--${size} reveal`;button.innerHTML=`<img src="${src}" loading="lazy" width="1600" height="900" alt="${title}, ${map}"><span><small>${String(index+1).padStart(2,'0')} // ${map}</small><strong>${title}</strong></span>`;button.addEventListener('click',()=>openLightbox(src,button.querySelector('img').alt,title,`FIELD ARCHIVE // ${map}`));return button}
+const archiveFeaturedGrid=document.querySelector('#archive-featured');archiveFeaturedGrid.replaceChildren(...archiveFeatured.map((item,index)=>archiveTile(item[0],item[1],item[2],index,item[3])));
+const archiveKeepers=document.querySelector('#archive-keepers');archiveKeepers.replaceChildren(...archiveFrames.map((item,index)=>archiveTile(`/media/home/${item[0]}.webp`,item[1],item[2],index,'keeper')));
 
 let observer;function observe(){observer?.disconnect();if(!('IntersectionObserver' in window)){document.querySelectorAll('.reveal').forEach(item=>item.classList.add('seen'));return}observer=new IntersectionObserver(entries=>entries.forEach(entry=>{if(entry.isIntersecting){entry.target.classList.add('seen');observer.unobserve(entry.target)}}),{rootMargin:'0px 0px -6%'});document.querySelectorAll('.reveal:not(.seen)').forEach(item=>observer.observe(item))}observe();
 </script>
