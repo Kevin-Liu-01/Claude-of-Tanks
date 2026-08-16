@@ -82,6 +82,9 @@ import './poland.js';
 // Owner-supplied Japanese-family oracles. Keep after the Type 74/90/10
 // donors so the new first-party procedural variants inherit complete rigs.
 import './japan.js';
+// Owner-supplied German Leopard references. Keep after the canonical A4/A6
+// donors so all three derivatives inherit complete first-party rigs.
+import './germany.js';
 // All extension rows now exist. Normalize player-facing family progression
 // independently of the historical module-registration order.
 import { applyNativeFamilyOrder } from './fleetOrder.js';

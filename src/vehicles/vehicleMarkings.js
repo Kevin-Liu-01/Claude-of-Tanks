@@ -114,6 +114,11 @@ export const VEHICLE_MARKING_ANCHORS = Object.freeze({
   leo2a4: anchor('turret', 'left', 0.40, 0.44, 0.25, 1),
   leo2a5: anchor('turret', 'right', 0.38, 0.43, 0.25, -1),
   leo2a6: anchor('turret', 'left', 0.37, 0.45, 0.25, 1),
+  // German derivatives use separate, surface-seated stations so their
+  // markings remain readable around each distinct applique/slat package.
+  leo2a4_otco: anchor('turret', 'right', 0.36, 0.44, 0.24, -1),
+  leo2a4m: anchor('hull', 'left', 0.40, 0.62, 0.24, 1),
+  leo2a6m: anchor('turret', 'left', 0.32, 0.43, 0.24, 1),
   leo2_revolution: anchor('turret', 'right', 0.34, 0.43, 0.25, -1),
   leo2a7v: anchor('turret', 'left', 0.35, 0.44, 0.25, 1),
   leclerc: anchor('turret', 'right', 0.38, 0.44, 0.24, -1),

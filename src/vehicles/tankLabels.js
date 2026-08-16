@@ -28,6 +28,18 @@ const LABEL_OVERRIDES = Object.freeze({
   stb1: { displayName: 'STB-1', shortName: 'STB-1', searchAliases: ['STB 1 Japan'] },
   type90a: { displayName: 'Type 90A', shortName: 'Type 90A', searchAliases: ['Type 90 Kai'] },
   type10b: { displayName: 'Type 10B', shortName: 'Type 10B', searchAliases: ['Type 10 Kai'] },
+  leo2a4_otco: {
+    displayName: 'Leopard 2A4 OTCO', shortName: 'Leopard 2A4 OTCO',
+    searchAliases: ['Leopard 2A4 OTCO Germany', '2A4 OTCO'],
+  },
+  leo2a4m: {
+    displayName: 'Leopard 2A4M', shortName: 'Leopard 2A4M',
+    searchAliases: ['Leopard 2A4M CAN', '2A4M'],
+  },
+  leo2a6m: {
+    displayName: 'Leopard 2A6M', shortName: 'Leopard 2A6M',
+    searchAliases: ['Leopard 2A6M CAN', '2A6M'],
+  },
   type99a: {
     displayName: 'ZTZ-99A (Type 99A)', shortName: 'ZTZ-99A',
     searchAliases: ['Type 99A (ZTZ-99A)', 'Type 99A'],

@@ -1233,7 +1233,7 @@ function wedgeTurretV3(P, T) {
 // plan nose 3.08 -> tips +-1.50 @ z 0.65..1.90, rack +-1.02 to -2.78,
 // mantlet block top 2.14 over z 3.35..3.90, L/55 axis 1.94 muzzle 7.08.
 // ---------------------------------------------------------------------------
-function buildLeo2A6(P) {
+export function buildLeo2A6(P) {
   const { box, cylX, cylZ, torus, xform, frustum } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
   leoHullV3(P, {
@@ -4376,7 +4376,7 @@ function leoFLW200(P, o) {
 // flap/board recipes carry over verbatim because the running-gear
 // geometry is identical).
 // ---------------------------------------------------------------------------
-function buildLeo2A4(P) {
+export function buildLeo2A4(P) {
   const { box, cylY, cylZ, torus, periscope, liftEye, smokeCluster, stowage, jerryCan, tarpRoll, ammoCan, spareTrackStrip, polyMultiLoft } = KIT;
   const slab = orientedSlab;                                  // §C.1 winding guard
   leoHullV3(P, {
