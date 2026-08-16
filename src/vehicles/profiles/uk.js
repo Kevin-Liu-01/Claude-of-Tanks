@@ -17,7 +17,7 @@ import { vehicleAmbientFloorHook } from '../materials.js';
 const {
   box, cylX, cylY, cylZ, sph, torus, slab, frustum, lathe, buildRunningGear,
   buildGun, liftEye, periscope, headlight, cupola, pintleMG, smokeCluster,
-  stowage, tarpRoll, jerryCan, spareTrackStrip, xform,
+  stowage, tarpRoll, jerryCan, spareTrackStrip, polyMultiLoft, xform,
 } = new Proxy({}, { get: (_, name) => (...args) => (name === 'slab' ? orientedSlab : KIT[name])(...args) }); // §C.1 winding guard on slab
 
 // ---------------------------------------------------------------------------
@@ -3759,11 +3759,223 @@ function vickersMk1Build(P) {
   P.topY = 1.2;
 }
 
+// ---------------------------------------------------------------------------
+// Chieftain family upper assembly — owner rebuild (2026-08-15).
+//
+// The recovered Mk.5 OBJ is used only as a measurement/visual oracle.  Its
+// source geometry and textures never enter the runtime.  The older authored
+// turrets below were painstaking silhouette studies, but successive local
+// corrections let their independent bins and ledges overtake the casting in
+// normal garage lighting.  These wrappers deliberately retain the complete
+// first-party hull/running gear, clear only the upper-assembly buckets, and
+// rebuild one connected cast shell shared by Mk.5 and Mk.10.  The Mk.10 then
+// receives supported Stillbrew armour and its thermal-sight fit as a variant,
+// preserving an unmistakable family relationship.
+const CHIEFTAIN_UPPER_BUCKETS = [
+  'turret', 'turretDetail', 'turretDark', 'turretGlass', 'turretCloth', 'turretTrack',
+  'gun', 'gunDark', 'gunMount', 'gunMountDark',
+];
+
+function clearChieftainUpper(P) {
+  P.clear(CHIEFTAIN_UPPER_BUCKETS);
+  P.clearDecals('turret');
+  for (const child of [...P.turretG.children]) {
+    if (child === P.gunG) continue;
+    P.turretG.remove(child);
+    child.traverse((object) => object.geometry?.dispose?.());
+  }
+  for (const child of [...P.gunG.children]) {
+    if (child === P.recoilG) continue;
+    P.gunG.remove(child);
+    child.traverse((object) => object.geometry?.dispose?.());
+  }
+}
+
+function buildChieftainUpper2026(P, { stillbrew = false } = {}) {
+  clearChieftainUpper(P);
+  const seg = P.q ? 24 : 16;
+
+  // The oracle's measured ring is just aft of hull center and its casting is
+  // a long pear: narrow at the gun throat, broad through the shoulders and
+  // tapered into a deep rear equipment field.  Three connected rings turn
+  // that plan into an organic cast shoulder/crown without a half-sphere or
+  // a stack of mutually penetrating boxes.
+  P.turretG.position.set(0, 1.72, stillbrew ? 0.08 : 0.02);
+  P.gunG.position.set(-0.02, 0.15, 0.66);
+  const plan = [
+    [-0.42, 1.58], [0.42, 1.58], [0.86, 1.37], [1.18, 0.98],
+    [1.38, 0.30], [1.36, -0.58], [1.25, -1.26], [0.94, -1.76],
+    [0.58, -2.04], [-0.58, -2.04], [-0.94, -1.76], [-1.25, -1.26],
+    [-1.36, -0.58], [-1.38, 0.30], [-1.18, 0.98], [-0.86, 1.37],
+  ];
+  const lower = [-0.18, -0.18, -0.16, -0.14, -0.10, -0.06, -0.03, -0.02,
+    -0.02, -0.02, -0.02, -0.03, -0.06, -0.10, -0.14, -0.16];
+  const shoulder = [0.20, 0.20, 0.34, 0.46, 0.56, 0.60, 0.58, 0.53,
+    0.49, 0.49, 0.53, 0.58, 0.60, 0.56, 0.46, 0.34];
+  const crown = [0.45, 0.45, 0.54, 0.64, 0.72, 0.76, 0.74, 0.67,
+    0.60, 0.60, 0.67, 0.74, 0.76, 0.72, 0.64, 0.54];
+  const shoulderInset = [0.94, 0.94, 0.95, 0.96, 0.97, 0.97, 0.96, 0.95,
+    0.94, 0.94, 0.95, 0.96, 0.97, 0.97, 0.96, 0.95];
+  const crownInset = [0.82, 0.82, 0.82, 0.80, 0.78, 0.76, 0.75, 0.76,
+    0.78, 0.78, 0.76, 0.75, 0.76, 0.78, 0.80, 0.82];
+  P.add('turret', polyMultiLoft(plan, [
+    { height: lower, inset: 1 },
+    { height: shoulder, inset: shoulderInset },
+    { height: crown, inset: crownInset },
+  ]));
+  P.add('turret', cylY(0.96, 0.96, 0.15, seg), 0, -0.12, -0.04); // buried ring seat
+
+  // The L11 emerges from a recessed cast throat, not a flat mantlet plate.
+  // The outer cheek roots overlap the connected shell while a dark inner
+  // aperture and tapered collars give the gun a legible supported load path.
+  P.add('turret', slab(
+    [-0.54, -0.10, 1.54], [0.54, -0.10, 1.54], [0.68, -0.05, 1.18], [-0.68, -0.05, 1.18],
+    [-0.42, 0.48, 1.50], [0.42, 0.48, 1.50], [0.58, 0.54, 1.14], [-0.58, 0.54, 1.14]));
+  P.add('turretDark', box(0.72, 0.34, 0.055), 0, 0.16, 1.49);
+  P.addGunExtra(cylZ(0.24, 0.22, seg, 0.27), 0, 0, 0.18);
+  P.addGunExtraDark(cylZ(0.205, 0.10, seg), 0, 0, 0.33);
+  P.addGunExtra(cylZ(0.175, 0.46, seg, 0.215), 0, 0, 0.57);
+  P.addGunExtra(cylZ(0.145, 0.48, seg, 0.17), 0, 0, 0.98);
+
+  // Mk.10 Stillbrew: three broad, bolted, raked masses are planted into the
+  // cast front.  They retain the underlying pear silhouette and never read
+  // as detached cassettes.  Mk.5 instead exposes the clean rolled casting.
+  if (stillbrew) {
+    P.add('turret', slab(
+      [-0.34, 0.10, 1.43], [0.34, 0.10, 1.43], [0.44, 0.12, 0.74], [-0.44, 0.12, 0.74],
+      [-0.28, 0.72, 1.26], [0.28, 0.72, 1.26], [0.38, 0.82, 0.58], [-0.38, 0.82, 0.58]));
+    for (const s of [-1, 1]) {
+      P.add('turret', slab(
+        [s * 0.30, 0.06, 1.38], [s * 1.08, 0.02, 1.04], [s * 1.28, 0.02, 0.35], [s * 0.42, 0.08, 0.58],
+        [s * 0.26, 0.68, 1.21], [s * 0.91, 0.78, 0.87], [s * 1.10, 0.70, 0.25], [s * 0.36, 0.72, 0.48]));
+      P.add('turretDetail', box(0.025, 0.42, 0.58), s * 0.83, 0.43, 0.69, 0, s * 0.44, 0);
+      for (const [x, y, z] of [
+        [s * 0.53, 0.59, 1.13], [s * 0.82, 0.63, 0.93],
+        [s * 1.02, 0.57, 0.59], [s * 1.04, 0.49, 0.32],
+      ]) P.add('turretDetail', cylZ(0.025, 0.035, 10), x, y, z);
+    }
+  }
+
+  // Asymmetric side-service packs are deliberately shallow and overlap the
+  // rear casting.  Framed lids, straps, and inner shadow plates keep them
+  // mechanical without re-creating the old solid cabinet silhouette.
+  for (const s of [-1, 1]) {
+    const z = s < 0 ? -0.93 : -1.02;
+    const d = s < 0 ? 1.08 : 0.90;
+    P.add('turret', box(0.31, 0.38, d), s * 1.20, 0.33, z);
+    P.add('turretDetail', box(0.27, 0.022, d - 0.08), s * 1.20, 0.532, z);
+    P.add('turretDark', box(0.018, 0.28, d - 0.08), s * 1.035, 0.31, z);
+    for (const dz of [-0.30, 0.30]) {
+      P.add('turretDetail', box(0.035, 0.055, 0.11), s * 1.37, 0.36, z + dz);
+    }
+  }
+  // NBC/bustle pack and a true open rear basket with diagonal/vertical
+  // returns.  Every rail lands on the pack or tray; no line ends in air.
+  P.add('turret', box(1.42, 0.42, 0.62), 0.02, 0.28, -1.72);
+  P.add('turretDetail', box(1.24, 0.035, 0.08), 0.02, 0.505, -1.47);
+  P.add('turretDetail', box(1.24, 0.035, 0.08), 0.02, 0.505, -1.95);
+  P.add('turret', box(1.16, 0.035, 0.40), 0.02, 0.47, -1.72);
+  P.add('turret', box(1.46, 0.10, 0.42), 0, 0.14, -2.16);
+  for (const y of [0.12, 0.52]) P.add('turretDetail', box(1.52, 0.035, 0.035), 0, y, -2.37);
+  for (let k = 0; k < 6; k++) {
+    const x = -0.70 + k * 0.28;
+    P.add('turretDetail', box(0.03, 0.40, 0.03), x, 0.32, -2.37);
+  }
+  for (const s of [-1, 1]) {
+    P.add('turretDetail', box(0.035, 0.46, 0.035), s * 0.75, 0.31, -2.20, s * 0.45, 0, 0);
+  }
+  tarpRoll(P, 'turretCloth', -0.36, 0.34, -2.16, 0.54, 0.105, true);
+  tarpRoll(P, 'turretCloth', 0.29, 0.34, -2.16, 0.48, 0.095, true);
+  KIT.ammoCan(P, 'turretDark', 0.96, 0.49, -1.66, 0.18);
+
+  // Mk.5's large IR/searchlight and Mk.10's armored thermal head occupy the
+  // same broad cheek station, making the upgrade lineage obvious.  Both use
+  // a buried shoe and recessed aperture rather than a floating box.
+  if (stillbrew) {
+    P.add('turret', box(0.38, 0.18, 0.44), 0.70, 0.61, 0.34);
+    P.add('turret', box(0.44, 0.36, 0.50), 0.70, 0.82, 0.34);
+    P.add('turretDark', box(0.32, 0.22, 0.04), 0.70, 0.80, 0.61);
+    P.add('turretGlass', box(0.22, 0.13, 0.018), 0.70, 0.80, 0.635);
+    P.add('turretDetail', box(0.48, 0.035, 0.40), 0.70, 1.015, 0.31);
+  } else {
+    P.add('turret', box(0.44, 0.18, 0.46), -0.70, 0.43, 1.02);
+    P.add('turret', box(0.48, 0.42, 0.42), -0.70, 0.66, 1.04);
+    P.add('turretDark', cylZ(0.19, 0.08, seg), -0.70, 0.67, 1.275);
+    P.add('turretGlass', cylZ(0.15, 0.022, seg), -0.70, 0.67, 1.326);
+    P.add('turretDetail', torus(0.16, 0.018, seg), -0.70, 0.67, 1.34);
+    P.add('turretDetail', box(0.50, 0.035, 0.44), -0.70, 0.89, 1.03);
+  }
+
+  // Low asymmetric roof station: No.15 cupola, loader hatch, compact sight
+  // heads, periscope ring, and a properly seated L37 GPMG.
+  P.add('turret', cylY(0.30, 0.32, 0.14, seg), -0.55, 0.76, -0.20);
+  P.add('turret', cylY(0.22, 0.23, 0.15, seg), -0.55, 0.905, -0.20);
+  P.add('turret', sph(0.19, P.q ? 16 : 10), -0.55, 1.01, -0.18, 0, 0, 0, [1, 0.62, 1]);
+  for (let k = 0; k < 7; k++) {
+    const a = -1.25 + k * 0.42;
+    P.add('turretDark', box(0.055, 0.045, 0.045), -0.55 + Math.sin(a) * 0.25,
+      0.965, -0.20 + Math.cos(a) * 0.20, 0, a, 0);
+  }
+  P.add('turretDetail', cylY(0.25, 0.27, 0.055, seg), 0.43, 0.76, -0.43);
+  P.add('turret', box(0.40, 0.055, 0.46), 0.43, 0.80, -0.43, 0, -0.12, 0);
+  P.add('turretDark', box(0.28, 0.045, 0.035), 0.43, 0.83, -0.20);
+  P.add('turret', box(0.24, 0.18, 0.25), -0.18, 0.80, -0.54);
+  P.add('turretDark', box(0.16, 0.09, 0.025), -0.18, 0.82, -0.395);
+  periscope(P, 'turretDetail', 0.20, 0.78, -0.03, 0.08);
+  periscope(P, 'turretDetail', 0.43, 0.77, -0.05, -0.10);
+  {
+    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone',
+      elev: 0.08, scale: 0.84, seed: stillbrew ? 17 : 15, ammo: true });
+    mg.position.set(-0.49, 0.93, -0.24);
+    mg.rotation.y = 0.18;
+    P.turretG.add(mg);
+  }
+
+  // Six-tube canted smoke banks sit low on broad cheek pads.  The tubes and
+  // pads rotate with the shell and remain clear of the searchlight/gun.
+  for (const s of [-1, 1]) {
+    P.add('turret', box(0.38, 0.09, 0.30), s * 0.95, 0.25, 0.89, 0, s * 0.42, 0);
+    P.add('turretDetail', box(0.30, 0.055, 0.08), s * 1.08, 0.35, 0.89, 0, s * 0.55, 0);
+    smokeCluster(P, s * 1.10, 0.43, 0.92, 6, s * 1.05, 0.72);
+  }
+
+  // Three unequal radio stations reproduce the reference cadence.  Each
+  // whip has a visible shoe, collar and short brace embedded in the bustle.
+  const radios = [[-0.92, 0.64, -1.62, 0.76], [0.82, 0.62, -1.73, 0.66], [0.18, 0.60, -1.92, 0.54]];
+  for (const [x, y, z, h] of radios) {
+    P.add('turret', box(0.13, 0.10, 0.15), x, y, z);
+    P.add('turretDetail', cylY(0.055, 0.065, 0.12, 12), x, y + 0.10, z);
+    P.add('turretDark', cylY(0.018, 0.012, h, 10), x, y + 0.22 + h * 0.5, z);
+    P.add('turretDetail', box(0.035, 0.20, 0.035), x + 0.07, y + 0.16, z + 0.05, 0.35, 0, -0.25);
+  }
+
+  // L11A5 thermal-sleeved cannon, fume extractor and recessed muzzle bore.
+  buildGun(P, { len: 6.35, r: 0.105, sleeve: true, evac: 0.60, evacR: 1.42,
+    collar: false, baseR: 0.17 });
+  P.add('gun', cylZ(0.118, 0.42, seg), 0, 0, 1.58);
+  P.add('gun', box(0.16, 0.11, 0.22), -0.18, 0.06, 5.53);
+  muzzleBore(P, { len: 6.35, r: 0.105 });
+  P.decal('turret', 'number', P.spec.visual.number || '', 0.28,
+    [1.34, 0.33, -0.72], Math.PI / 2);
+  ukToneKit(P, { cloth: stillbrew ? 0x41493b : 0x3d4634, dark: 0x292f29 });
+  P.topY = 1.13;
+}
+
+function chieftain5OwnerRebuild2026(P) {
+  chieftain5Build(P);
+  buildChieftainUpper2026(P, { stillbrew: false });
+}
+
+function chieftainMk10OwnerRebuild2026(P) {
+  chieftainMk10Build(P);
+  buildChieftainUpper2026(P, { stillbrew: true });
+}
+
 export const UK_PROFILES = {
-  chieftain5: { build: chieftain5Build },
+  chieftain5: { build: chieftain5OwnerRebuild2026 },
   // BASE-21 scaffold (2026-08-07): first real Mk 10 build — photo-class, no
   // oracle (FALSE-0 law). Overrides the modern3 generic via PROFILED_BUILDERS.
-  chieftain_mk10: { build: chieftainMk10Build },
+  chieftain_mk10: { build: chieftainMk10OwnerRebuild2026 },
   vickers_mk1: { build: vickersMk1Build },
   centurion3: { build: (P) => centurionBuild(P, 3) },
   centurion5: { build: (P) => centurionBuild(P, 5) },

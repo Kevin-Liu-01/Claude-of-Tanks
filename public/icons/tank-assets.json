@@ -11439,7 +11439,7 @@
           }
         ]
       },
-      "geometryHash": "3bae6ab9",
+      "geometryHash": "ce79862f",
       "metadataHash": "79a9c8da",
       "appearance": {
         "version": 1,
@@ -11454,7 +11454,7 @@
           "trackSteel": 2,
           "armorPaint": 4,
           "fittingPaint": 3,
-          "gunmetal": 7,
+          "gunmetal": 8,
           "tireRubber": 1,
           "opticGlass": 2,
           "gearShadow": 3,
@@ -11483,64 +11483,64 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 29402,
-          "sha256": "b98f85fabd92905ab7107f86b7c0377a61b67df470efd7cccd5b355a2ba521b7"
+          "bytes": 28278,
+          "sha256": "c41a01dc6a604e688c2ce4718bd82d78fea28043ae39d41eece86915a1714da6"
         },
         "top": {
           "file": "chieftain_mk10_top.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 9224,
-          "sha256": "26ef35e390d9a44f068389689361745ff1f2afa1af84fdf754e594db5365db43"
+          "bytes": 9634,
+          "sha256": "80330d2e254ab0aa507364e06fb220cbb84e5c4bab5f538013a2d404ad213eea"
         },
         "side": {
           "file": "chieftain_mk10_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 8818,
-          "sha256": "a63a1524f946e1291ef57dbd4953082ad58459a20567e993b044724f225e7ae6"
+          "bytes": 8936,
+          "sha256": "f38a20923bc62ae04a17985cf307f4ed3585e3e804e4358b9a921eac9b946d2b"
         },
         "topSilhouette": {
           "file": "chieftain_mk10_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1306,
-          "sha256": "f6a85e64618f3606cb08137bac06318c9309ecab653bbea887d22c98925069db"
+          "bytes": 1258,
+          "sha256": "eeab61151c589ca84ddd17e77fe0e38be681153b2559d5ae30357fdef4c3f65e"
         },
         "sideSilhouette": {
           "file": "chieftain_mk10_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4050,
-          "sha256": "97754419dc3a1998a49101692694192daed53c54a6ad1f9d85ffb68173c4211f"
+          "bytes": 4280,
+          "sha256": "f08afc677634315924917aa532712bcbda945ba4933bed6a7edddbaa2181363f"
         },
         "hitZonesSide": {
           "file": "chieftain_mk10_hit_zones_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 78406,
-          "sha256": "2afe9c238d860053e7a626793078f287c49663609efcbfd097861631f687e420"
+          "bytes": 78829,
+          "sha256": "f101fcd440c172cbafb64beef89919fc8414baed8684274be17ce48c0f622597"
         },
         "armorSide": {
           "file": "chieftain_mk10_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 77578,
-          "sha256": "1a0e548ef92bea8a1ecc3720689a841eb6883a67d010db1ca33f562fb8508eb4"
+          "bytes": 78569,
+          "sha256": "f47f92e70f64abac67c84c80cdba799ed08f549c8fe7115f744722d1cc9b0d46"
         },
         "modulesSide": {
           "file": "chieftain_mk10_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 74785,
-          "sha256": "b1ad95c1ef5802f9da70a1851b9713e5b283664d4a1309f703886453f8a4d9b2"
+          "bytes": 76194,
+          "sha256": "ee19b06d13178df0a43602c6653420335f7ba5e667e16717a14e836bdc098c37"
         },
         "markings": {
           "file": "chieftain_mk10_markings.png",
@@ -12348,7 +12348,7 @@
           }
         ]
       },
-      "geometryHash": "ce114454",
+      "geometryHash": "80dc6cfe",
       "metadataHash": "27e2561e",
       "appearance": {
         "version": 1,
@@ -12363,10 +12363,10 @@
           "armorPaint": 4,
           "fittingPaint": 3,
           "tireRubber": 1,
-          "gunmetal": 8,
+          "gunmetal": 9,
           "opticGlass": 2,
           "trackSteel": 1,
-          "unclassified": 16,
+          "unclassified": 12,
           "gearShadow": 2,
           "canvas": 1
         }
@@ -12392,64 +12392,64 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 28492,
-          "sha256": "4056ebb5b8ea74b3e0c21560e55c2aa2361dacf531dff86c5dfc637daa72bada"
+          "bytes": 28004,
+          "sha256": "1033e16cc2c7c258be2e07834a9516d0a509f248f0e465f68692e67b3cdd6a27"
         },
         "top": {
           "file": "chieftain5_top.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 8186,
-          "sha256": "4ce5750519353a19f2fb77c91090ec17b7c767e12573462f9918c95c2d696c16"
+          "bytes": 7912,
+          "sha256": "601070d23f0e03613c3c1146c3703a18801cd3052a64d233818a81785a80bfc4"
         },
         "side": {
           "file": "chieftain5_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 7826,
-          "sha256": "eca72c15c95f6ff728abb58b6cf567994760a4c0e03af38aa02b4337ade0f9e2"
+          "bytes": 8142,
+          "sha256": "432f5c92afaeaa0fb19fd0c586e9b87a7a14c7168bcefb717ef676be34778d51"
         },
         "topSilhouette": {
           "file": "chieftain5_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1312,
-          "sha256": "4a6a1e5782c7c428dc8b5ac651c4114d4ecfa2840674e6cd0a77027c5b0a14ef"
+          "bytes": 1360,
+          "sha256": "d9bef5a26ef35d7a6add49201e7f1abc3e5d16240c493ef3e1e0fddb80a04f21"
         },
         "sideSilhouette": {
           "file": "chieftain5_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 3869,
-          "sha256": "5f1e37e4baa7b5f019dc66e1d06eade9b63a08dcad03522775e4bbdb02fab7c5"
+          "bytes": 3985,
+          "sha256": "c0b8c5957870ae60f877f223972db10c613f2025f118061cc9d0fab89f03c37a"
         },
         "hitZonesSide": {
           "file": "chieftain5_hit_zones_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 77092,
-          "sha256": "21d86be39911b2a6e8c3bd35e11fe05c5cd60463b3473e42264a8aedbe8823e0"
+          "bytes": 77673,
+          "sha256": "be59a0e93b1e1a7c4f2e6111feae5859a87f6f95b4a6ee7a8d8fc253d7231a08"
         },
         "armorSide": {
           "file": "chieftain5_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 74410,
-          "sha256": "09f0d5d2015ed3aafd52282c97c0ebdfcf760f2db3b701981355b5d107144617"
+          "bytes": 76309,
+          "sha256": "f0974da582baef16196d447d6a3867ab0764024d978e09bbda88a4aa44d7d4e2"
         },
         "modulesSide": {
           "file": "chieftain5_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 72965,
-          "sha256": "f31b7094b9050b18eff24e4b86c68a85afc5f62bb69105be24535de528e4e89f"
+          "bytes": 74862,
+          "sha256": "489bf2b8f9e231e23cc6e1e7bb961e67fd607a970e8cfabe4577a38deacc838c"
         },
         "markings": {
           "file": "chieftain5_markings.png",
