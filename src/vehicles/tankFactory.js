@@ -70,6 +70,9 @@ import './userdrops6.js';
 // Owner-supplied Ukrainian family oracles: spec registration stays after all
 // donor waves so the T-64/T-80/T-84/M1A1HA envelopes are available.
 import './ukraine.js';
+// Owner-supplied Chinese-family oracle registrations.  Keep this after the
+// canonical Type 59/Type 99 rows so every procedural donor is available.
+import './china.js';
 // All extension rows now exist. Normalize player-facing family progression
 // independently of the historical module-registration order.
 import { applyNativeFamilyOrder } from './fleetOrder.js';

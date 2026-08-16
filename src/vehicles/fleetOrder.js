@@ -45,6 +45,9 @@ export const NATIVE_FAMILY_ORDER = Object.freeze({
   ukraine: Object.freeze([
     'ua_t64bv', 'ua_t80bv', 'ua_t80u_kursk', 'ua_t84_oplot_m', 'ua_m1a1',
   ]),
+  china: Object.freeze([
+    'type59', 'ztz85_iii', 'type99a', 'ztz99a2',
+  ]),
 });
 
 export function applyNativeFamilyOrder(ids = ALL_TANK_IDS) {

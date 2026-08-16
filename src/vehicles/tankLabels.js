@@ -15,6 +15,14 @@ const LABEL_OVERRIDES = Object.freeze({
     displayName: 'ZTZ-99A (Type 99A)', shortName: 'ZTZ-99A',
     searchAliases: ['Type 99A (ZTZ-99A)', 'Type 99A'],
   },
+  ztz85_iii: {
+    displayName: 'ZTZ-85-III', shortName: 'ZTZ-85-III',
+    searchAliases: ['Type 85-III', 'Type 85 III'],
+  },
+  ztz99a2: {
+    displayName: 'ZTZ-99A2', shortName: 'ZTZ-99A2',
+    searchAliases: ['Type 99A2', 'ZTZ 99A2'],
+  },
   m1a1ha: { displayName: 'M1A1 Abrams HA' },
   m1a2_sepv3: { displayName: 'M1A2 Abrams SEPv3' },
   m1a2_legacy: { displayName: 'M1A2 Abrams (Legacy)', shortName: 'M1A2 Legacy' },

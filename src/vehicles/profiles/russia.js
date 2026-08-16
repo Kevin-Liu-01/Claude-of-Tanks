@@ -1215,7 +1215,7 @@ export function buildT44(P) {
 // -1.43..+0.02 at halfW 1.44 (fender bins baked into the print's turret
 // node — hidden turretDark carriers); 100 mm tube: axis 1.589 (band
 // 1.471..1.706), BORE EVACUATOR bulge r 0.157 @ +3.55..+4.10 (muzzle-third).
-export function buildType59(P) {
+export function buildType59(P, options = {}) {
   const { box, cylX, cylY, cylZ, buildRunningGear } = KIT;
   // r2: the glacis center toe ends at +1.56 (ref plan center front 1.556) —
   // the +1.74-1.79 front line is carried by the FENDER/flap row (|x|
@@ -1319,6 +1319,7 @@ export function buildType59(P) {
     sprocket: { z: -3.78, y: 0.68, r: 0.24 }, idler: { z: 1.22, y: 0.60, r: 0.20 },
     rollers: [], trackW: 0.49, topY: 0.85, botY: 0.045, paintedEnds: true, coveredTop: false, arms: true,
     contactZF: 0.50, contactZR: -2.88,
+    ...(options.runningGear || {}),
   });
   widthAnchor(P, 1.635, 1.13, -0.50);
 

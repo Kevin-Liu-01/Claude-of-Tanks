@@ -27,6 +27,7 @@ import { PATTON_PROFILES } from './profiles/patton.js';
 import { MISC_PROFILES } from './profiles/misc.js';
 import { ITALY_PROFILES } from './profiles/italy.js';
 import { UKRAINE_PROFILES } from './profiles/ukraine.js';
+import { CHINA_PROFILES } from './profiles/china.js';
 
 // Preserve the historical Russia key order exactly while the builders live
 // in family modules. Carousel/roster order is part of the pure-refactor law.
@@ -67,6 +68,7 @@ export const PROCEDURAL_PROFILES = {
   ...MISC_PROFILES,
   ...ITALY_PROFILES,
   ...UKRAINE_PROFILES,
+  ...CHINA_PROFILES,
 };
 
 // A profile may carry `build(P, profile)` for a fully custom construction

@@ -106,6 +106,8 @@ export const VEHICLE_MARKING_ANCHORS = Object.freeze({
   leclerc_xlr: anchor('turret', 'left', 0.34, 0.43, 0.24, 1),
   amx56: anchor('turret', 'right', 0.31, 0.45, 0.24, -1),
   type99a: anchor('turret', 'left', 0.39, 0.45, 0.24, 1),
+  ztz85_iii: anchor('turret', 'right', 0.44, 0.47, 0.23, -1),
+  ztz99a2: anchor('turret', 'left', 0.34, 0.45, 0.25, 1),
   t14: anchor('turret', 'right', 0.36, 0.45, 0.24, -1),
   m1a1: anchor('turret', 'left', 0.45, 0.44, 0.27, 1),
   m1a2_tusk: anchor('turret', 'right', 0.42, 0.43, 0.27, -1),
