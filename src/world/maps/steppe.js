@@ -101,8 +101,9 @@ export default {
 
   props: {
     // world-dressing r1: steppe farmstead catalog — farmhouse, granary, mill
-    plan: ['farmhouse', 'barn', 'cottage', 'mill', 'cottage', 'barn', 'ruin',
+    plan: ['farmhouse', 'barn', 'tavern', 'mill', 'cottage', 'barn', 'ruin',
       'granary', 'barn', 'farmhouse', 'cottage'],
+    destructibleBuildings: ['longhouse', 'deserttent', 'motorpool', 'fieldhut'],
     tones: {
       plaster: (h, s, l) => [0.10, clamp01(s * 0.4), clamp01(l * 1.08 + 0.06)], // sun-baked lime wash
       roof: (h, s, l) => [0.075, clamp01(s * 0.7), clamp01(l * 0.95)],

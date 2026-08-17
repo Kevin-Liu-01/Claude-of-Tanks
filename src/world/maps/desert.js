@@ -211,9 +211,10 @@ export default {
     // courtyard clutter) cluster the loose adobes into real family blocks.
     // world-dressing r1: + a minaret over the bazaar skyline (the settlement
     // read as all one-story flat roofs from the establishing camera)
-    plan: ['compound', 'adobe', 'market', 'minaret', 'compoundSouk', 'tower',
-      'adobe', 'ruin', 'compound', 'adobe', 'marketRow', 'adobe', 'adobe',
+    plan: ['caravanserai', 'adobe', 'market', 'minaret', 'compoundSouk', 'tower',
+      'adobe', 'ruin', 'compound', 'bathhouse', 'marketRow', 'adobe', 'adobe',
       'compoundSouk', 'adobe', 'market', 'ruin', 'adobe'],
+    destructibleBuildings: ['deserttent', 'commandtent', 'checkpointhut', 'guardpost'],
     // denser packing: fill both road sides more often and let neighbouring
     // adobes huddle (flat-roof villages cluster tight around their souk)
     sideSkip: 0.12, spacingPad: 7,

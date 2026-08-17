@@ -121,9 +121,10 @@ export default {
 
   props: {
     // world-dressing r1: + chapel and granary in the fishing village
-    plan: ['cottage', 'boatshed', 'chapel', 'netyard', 'market', 'cottage',
+    plan: ['fishery', 'boatshed', 'chapel', 'netyard', 'market', 'cottage',
       'lighthouse', 'cottage', 'ruin', 'barn', 'granary', 'boatshed',
       'netyard', 'cottage', 'tower', 'cottage'],
+    destructibleBuildings: ['fishershack', 'saunahut', 'leanto', 'guardpost'],
     sideSkip: 0.12, spacingPad: 7,
     buildingLat: [11, 4.5], maxSpread: 2.2,
     tones: {

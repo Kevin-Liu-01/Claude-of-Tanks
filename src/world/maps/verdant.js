@@ -64,8 +64,9 @@ export default {
   props: {
     // world-dressing r1: farm-theme catalog — farmhouse (L-wing + porch),
     // raised granary, chapel and a tower windmill join the cottage/barn set
-    plan: ['farmhouse', 'barn', 'cottage', 'chapel', 'cottage', 'ruin',
-      'granary', 'barn', 'mill', 'cottage', 'farmhouse', 'cottage'],
+    plan: ['farmhouse', 'barn', 'tavern', 'chapel', 'cottage', 'ruin',
+      'granary', 'schoolhouse', 'mill', 'cottage', 'farmhouse', 'cottage'],
+    destructibleBuildings: ['fieldhut', 'leanto', 'huntingblind', 'commandtent'],
     wallRuns: [
       // village walls (relative to the classic village rect)
       [-56, 8, -56, 64, 2], [-56, 8, -20, 8, 3], [74, 30, 74, 96, 4],

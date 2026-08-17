@@ -46,10 +46,11 @@ export default {
     bushCount: 0.8, bushSpecies: 'pine',
   },
   props: {
-    plan: ['lighthouse', 'boatshed', 'netyard', 'depot', 'logcabin', 'alpine',
+    plan: ['lighthouse', 'fishery', 'netyard', 'depot', 'logcabin', 'alpine',
       'warehouse', 'boatshed', 'chapel', 'cornershop', 'ruin', 'netyard', 'depot', 'logcabin',
       'warehouse', 'boatshed', 'netyard', 'logcabin', 'alpine', 'depot', 'woodshed', 'chapel',
       'boatshed', 'warehouse', 'logcabin', 'ruin', 'netyard', 'depot'],
+    destructibleBuildings: ['fishershack', 'saunahut', 'alpinerefuge', 'quonsethut'],
     blockFill: true,
     extraKits: ['coastal'], wallStyle: 'fieldstone', wallStoneChance: 0.72,
     buildingLat: [11, 7], sideSkip: 0.12, maxSpread: 3.0, spacingPad: 8,

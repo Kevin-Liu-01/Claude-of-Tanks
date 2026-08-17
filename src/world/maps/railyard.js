@@ -13,7 +13,7 @@ const clamp01 = (x) => (x < 0 ? 0 : x > 1 ? 1 : x);
 const PLAN = [
   // world-dressing r1: 'depot' (canopied platform hall, maps/villageKit.js)
   // anchors the passenger side of the yard
-  'warehouse', 'containerRow', 'factory', 'depot', 'warehouse', 'watertower',
+  'warehouse', 'containerRow', 'factory', 'depot', 'foundryoffice', 'watertower',
   'containerRow', 'ruin', 'warehouse', 'gantry', 'stack', 'shed',
   'containerRow', 'depot', 'ruin', 'rowhouse', 'shed', 'containerRow',
   'warehouse', 'stack', 'rowhouse', 'containerRow',
@@ -95,6 +95,7 @@ export default {
 
   props: {
     plan: PLAN,
+    destructibleBuildings: ['quonsethut', 'transformershed', 'motorpool', 'guardpost'],
     blockFill: true, // r3: leftover plan slots fill the block interiors
     sideSkip: 0.08, spacingPad: 6,
     buildingLat: [12, 5], maxSpread: 2.4,

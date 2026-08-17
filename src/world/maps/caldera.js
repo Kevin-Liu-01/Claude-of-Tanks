@@ -40,10 +40,11 @@ export default {
     bushCount: 0.62, bushSpecies: 'pine',
   },
   props: {
-    plan: ['factory', 'warehouse', 'stack', 'depot', 'gantry', 'ruin',
+    plan: ['factory', 'foundryoffice', 'stack', 'depot', 'gantry', 'ruin',
       'watertower', 'containerRow', 'factory', 'ruin', 'shed', 'warehouse', 'stack', 'depot',
       'containerRow', 'factory', 'warehouse', 'gantry', 'shed', 'stack', 'ruin', 'depot',
       'watertower', 'containerRow', 'factory', 'warehouse', 'shed', 'gantry', 'ruin', 'stack'],
+    destructibleBuildings: ['quonsethut', 'transformershed', 'motorpool', 'guardpost'],
     blockFill: true,
     extraKits: ['rail'], wallStyle: 'fieldstone', wallStoneChance: 0.72,
     buildingLat: [12, 7], sideSkip: 0.08, maxSpread: 3.4,
@@ -66,7 +67,9 @@ export default {
     mieCoefficient: 0.022, mieDirectionalG: 0.91, fogDensity: 0.00134,
     fogTintHex: 0x897b6e, fogMix: 0.77, envIntensity: 0.18,
     cloudOpacity: 1.28, cloudOpacity2: 1.04, cloudTintHex: 0xc4b7aa,
-    sunIntensity: 3.15, sunColorHex: 0xffb985, hemiIntensity: 0.46,
+    // Preserve the smoky low-key grade while keeping direct/ambient
+    // separation strong enough for reliable terrain and structure shadows.
+    sunIntensity: 3.7, sunColorHex: 0xffb985, hemiIntensity: 0.46,
   },
   minimap: {
     base: [60, 57, 50], hard: [77, 73, 67], soft: [57, 54, 49],

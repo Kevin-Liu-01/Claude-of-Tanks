@@ -7,22 +7,22 @@ import {
 import { MAP_IDS } from '../src/world/maps/index.js';
 
 const expected = {
-  verdant: [3771, 448, 4114],
-  desert: [1768, 533, 1283],
-  winter: [3621, 509, 2890],
-  urban: [1727, 946, 606],
-  coastal: [2162, 447, 1575],
-  autumn: [3723, 462, 3997],
-  steppe: [1304, 519, 514],
-  railyard: [1092, 431, 425],
-  frontier: [4113, 517, 4376],
-  fjord: [3938, 583, 3206],
-  delta: [4729, 385, 6132],
-  badlands: [1923, 691, 1004],
-  monsoon: [5821, 639, 7733],
-  alpine: [4681, 677, 3809],
-  caldera: [2889, 835, 1820],
-  foundry: [2028, 495, 1211],
+  verdant: [3820, 466, 4114],
+  desert: [1768, 521, 1283],
+  winter: [3631, 509, 2890],
+  urban: [1728, 947, 606],
+  coastal: [2176, 442, 1575],
+  autumn: [3745, 473, 3997],
+  steppe: [1319, 520, 514],
+  railyard: [1090, 438, 425],
+  frontier: [4113, 512, 4376],
+  fjord: [3943, 585, 3206],
+  delta: [4779, 403, 6132],
+  badlands: [1964, 711, 1004],
+  monsoon: [5838, 647, 7733],
+  alpine: [4710, 687, 3809],
+  caldera: [2890, 842, 1820],
+  foundry: [2044, 493, 1211],
 };
 const stats = dedicatedCollisionManifestStats();
 assert.deepEqual(Object.keys(stats), MAP_IDS, 'manifest order and map registry stay in lockstep');

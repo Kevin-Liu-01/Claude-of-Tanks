@@ -153,9 +153,10 @@ export default {
     // world-dressing r1: winter catalog — log cabins, steep-roof alpine
     // houses, an onion-dome church and open woodsheds replace the all-cottage
     // village (every up-facing surface takes the snow-cap shader load)
-    plan: ['logcabin', 'alpine', 'cottage', 'onionchurch', 'logcabin', 'ruin',
+    plan: ['rangerlodge', 'alpine', 'schoolhouse', 'onionchurch', 'logcabin', 'ruin',
       'woodshed', 'alpine', 'cottage', 'logcabin', 'barn', 'woodshed',
       'alpine', 'ruin', 'logcabin', 'barn'],
+    destructibleBuildings: ['saunahut', 'alpinerefuge', 'fieldhospital', 'huntingblind'],
     tones: {
       plaster: (h, s, l) => [0.085, clamp01(s * 0.7), clamp01(l * 1.02 + 0.03)],
       roof: (h, s, l) => [0.58, clamp01(s * 0.25), clamp01(l * 1.35 + 0.18)], // snow-capped

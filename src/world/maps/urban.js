@@ -14,6 +14,9 @@ const PLAN = [];
 for (let i = 0; i < 108; i++) {
   if (i === 4) PLAN.push('church');
   else if (i === 11) PLAN.push('factory');
+  else if (i === 15) PLAN.push('firestation');
+  else if (i === 25) PLAN.push('tavern');
+  else if (i === 37) PLAN.push('schoolhouse');
   else if (i === 9 || i === 41) PLAN.push('tower');
   // world-dressing r1: corner shops (chamfered corner entrance, display
   // glass both faces) salt the block interiors — a third street archetype
@@ -101,6 +104,7 @@ export default {
 
   props: {
     plan: PLAN, // consumed by blockFill for the block interiors
+    destructibleBuildings: ['guardpost', 'checkpointhut', 'fieldhospital', 'transformershed'],
     // street frontage is built by CONTIGUOUS rowhouse strips (shared walls,
     // varied heights, collapsed slots spilling rubble) + kerbed pavements
     streetRows: true,

@@ -38,10 +38,11 @@ export default {
     clusterScrub: 2.2, bushCount: 1.45, bushSpecies: 'oak',
   },
   props: {
-    plan: ['marketRow', 'farmhouse', 'boatshed', 'market', 'chapel', 'granary',
+    plan: ['marketRow', 'farmhouse', 'fishery', 'market', 'chapel', 'granary',
       'compound', 'cornershop', 'ruin', 'boatshed', 'farmhouse', 'depot', 'marketRow', 'woodshed',
       'boatshed', 'market', 'compound', 'farmhouse', 'granary', 'marketRow', 'depot', 'ruin',
       'boatshed', 'cornershop', 'farmhouse', 'woodshed'],
+    destructibleBuildings: ['stilthouse', 'longhouse', 'fishershack', 'fieldhospital'],
     extraKits: ['river'], wallStyle: 'adobe', wallStoneChance: 0.18,
     well: true, hayCrates: true, fences: true, telegraph: true, carts: true, logs: true,
     haystacks: 18, rocks: 148, outcrops: 10, craters: 62, rubblePiles: 10,
