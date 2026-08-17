@@ -75,7 +75,6 @@ const CRITIC_REFERENCE_OVERRIDES = {
     // gunner mass, y 0.64..2.37) rides the ring in reality — as a hull
     // component it polluted every ref hull row at the turret columns.
     turretFollowers:'^interior\\.?001$' } },
-  bmpt: { source:'glb', glb:{ path:'/models/community-candidates/bmpt2_sanderwolf.glb', turretNode:'^Object_6$', autoPivot:true } },
   upior: { source:'glb', glb:{ path:'/models/community-candidates/upior_killcapturedestroy.glb', turretNode:'^mtl_h1_vehicle_bmp_2_turet_woodland$', gunNode:'^Object004$', autoPivot:true, turretFollowers:'^(?:Object002|Object003|Plane\\.?016)$',
     // turretYaw REMOVED (§5.286 critic receipts: the station is NATIVELY
     // gun-forward — the PI re-pose double-flipped the ref muzzle-over-tail).
@@ -148,7 +147,7 @@ const CRITIC_REFERENCE_OVERRIDES = {
   t90a_vladimir: { source:'glb', glb:{ path:'/models/tanks/community/recovered/t90a_vladimir.glb', paintUntextured:true, turretNode:'^desirefx[._]?me_001$', autoPivot:true } },
   t90m: { source:'glb', glb:{ path:'/models/tanks/t90m_minehffd.glb', turretNode:'^Turret$', gunNode:'^Main_barrel$', autoPivot:true, scaleToOverall:true, yawOffset:1.5707963267948966, heroTex:true } },
   t90sm: { source:'glb', glb:{ path:'/models/tanks/community/recovered/t90sm.glb', paintUntextured:true, turretNode:'^misc_a$', gunNode:'^misc_b$', autoPivot:true, yawOffset:3.141592653589793 } },
-  type90: { source:'glb', glb:{ path:'/models/tanks/community/recovered/type90.glb', paintUntextured:true, turretNode:'^Turret$', autoPivot:true, yawOffset:-1.5707963267948966 } },
+  type90: { source:'glb', glb:{ path:'/models/community-candidates/type90_kyumaru_owner.glb', paintUntextured:true, fixedMount:true, componentMasks:false, yawOffset:-1.5707963267948966 } },
   vickers_mk1: { source:'glb', glb:{ path:'/models/tanks/community/vickers_mk1_jack.glb', turretNode:'^Turret$', autoPivot:true, paintUntextured:true } },
   m1a2_sepv2: { source:'glb', glb:{ path:'/models/tanks/m1a2_tejas.glb',
     turretNode:'^Turret', gunNode:'^Gun', autoPivot:true, yawOffset:-Math.PI/2,
