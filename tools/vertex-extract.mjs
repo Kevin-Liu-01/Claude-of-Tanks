@@ -698,11 +698,11 @@ const REG = {
     pubDims: { hullLengthM: 6.55, overallLengthM: 6.55, widthM: 3.28, heightM: 2.98 },
   },
   stb1: {
-    // pyaesone print (CC-BY-NC, 125MB). Turret_2 carries the fused 105mm
+    // Owner-authoritative pyaesone print (CC-BY-NC, 119MB). Turret_2 carries the fused 105mm
     // (muzzle x -10.94, no gunNode). Nose -x -> yaw +90. Origin floats —
     // ground-plane re-zero before height reads. Spec 9.20 vs published
     // Type-74-family 9.42 = non-blocking true-up ask.
-    path: 'public/models/community-candidates/stb1_pyaesone.glb',
+    path: 'public/models/community-candidates/stb_1_owner.glb',
     turretNode: '^Turret_2$', autoPivot: true, yawOffset: Math.PI / 2,
     pubDims: { hullLengthM: 6.70, overallLengthM: 9.20, widthM: 3.18, heightM: 2.25 },
   },
