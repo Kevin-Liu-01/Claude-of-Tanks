@@ -6580,13 +6580,14 @@ function merkavaSourceOracleTurret(P, p, t) {
       merkava3c: -3.96,
       merkava3d: -3.91,
     }[id];
-    const chainFloor = (id === 'merkava1b') ? 0.60
-      : ((id === 'merkava3c' || id === 'merkava3d') ? 0.58 : null);
-    const chainTopWorld = pivotY + t.basket.bot + 0.10;
     merkavaBasket(P, {
       hw: t.basketHW, z0: t.basket.z0, z1: L(rearTarget), xoff: t.basketXoff,
       top: t.basket.top, topRear: t.basket.topRear, bot: t.basket.bot,
-      chainDrop: chainFloor === null ? (t.chainDrop ?? 0.20) : Math.max(0.20, chainTopWorld - chainFloor),
+      // Keep the curtain on the turret basket.  The old mark-specific
+      // floor target stretched the drops into the side-skirt and track
+      // corridor once the turret yawed; every source profile already owns
+      // a short, variant-specific drop measured from its basket rail.
+      chainDrop: Math.min(0.20, t.chainDrop ?? 0.20),
       chainGap: t.chainGap,
       pale: t.pale, fine: true, soft: true,
       voids: t.basketVoids, shelf: t.rackShelf,
@@ -6892,7 +6893,11 @@ function merkavaSourceFinish(P, p, t) {
         const tileD = 0.30 + f * 0.06;
         const yaw = s * (-0.12 - f * 0.24);
         const roll = s * (0.04 + f * 0.08);
-        eraCells.push({ x, y: V(y), z: L(z), tileW, tileH, tileD, yaw, roll });
+        // eraCluster turret-local placements use world rest-pose y/z and
+        // convert them around the turret pivot internally.  Feeding V/L
+        // here applied that conversion twice and dropped the cassettes into
+        // the running gear at yaw.
+        eraCells.push({ x, y, z, tileW, tileH, tileD, yaw, roll });
         P.add('turretDark', box(tileW * 0.78, 0.018, 0.028), x,
           V(y - tileH * 0.46), L(z + tileD * 0.33), -0.18, yaw, roll);
       }
