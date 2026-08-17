@@ -44,7 +44,10 @@
 // each build's committed max width (is7 anchor 3.379, is3 drums 3.15,
 // object279 flare 3.39, is6b 3.20, kv2 fenders 3.31) or the whole model
 // rescales and every mask shifts.
-import { KIT } from './kit.js';
+// §5.247 kv2 wave: FITTINGS (census-stamped decoration library) + the
+// shadow-named muzzleBore device — timing-proof top-level spellings per the
+// kit.js cycle law.
+import { KIT, FITTINGS, muzzleBore } from './kit.js';
 // kv2 shaded-parity r4 tell 1 (r5 round): the WoT-style readability floor is
 // what keeps shade-side hardware in the ref's tonal family — but the link
 // pad/inner materials are CLONES made inside buildRunningGear, and
@@ -992,6 +995,78 @@ function buildKV2(P) {
     P.add('hullDark', cylX(0.025, 0.14, 6), s * 0.52, 0.88, -3.55);            // bottom 0.718 = plate bottom, no bot drop)
   }
   fenders(P, 0.99, 1.615, 1.585, -2.88, 2.05, 0.035);                          // fender plane (top 1.6025; ref 1.59-1.62)
+  // §5.247 wave — the KV identity item the build never carried: LONG FLAT
+  // FENDERS WITH TOOL/STOWAGE ROWS. The print's own plan view lines both
+  // fenders with sheet-metal lockers (side-view lid lines at the rear/mid
+  // runs, seam-split under the skirt tail), and every KV-2 photo reference
+  // carries the era kit on them: two-man saw, screw jack + block, axe,
+  // shovel, tarp, spare links. Lockers are shallow bins seated ON the
+  // fender plane (bottoms 1.6025 — §B2 contact), tops 1.685 riding the
+  // 1.6775 deck line like the print's; every piece holds |x| <= 1.6115
+  // (fender edge 1.615, width anchor 1.66 untouched).
+  for (const s of [-1, 1]) {
+    for (const [cz, d] of [[-2.34, 1.03], [-1.095, 0.92], [1.12, 0.92]]) {
+      P.add('hull', box(0.555, 0.0825, d), s * 1.3225, 1.64375, cz);           // locker bin
+      P.add('hullDark', box(0.008, 0.008, d - 0.02), s * 1.596, 1.6815, cz);   // lid seam (outer edge)
+      for (const e of [-1, 1]) {
+        P.add('hullDark', box(0.545, 0.008, 0.008), s * 1.3225, 1.6815, cz + e * (d / 2 - 0.012)); // lid cross seams
+        P.add('hullDark', box(0.022, 0.048, 0.014), s * 1.6035, 1.650, cz + e * d / 4);            // latches (outer face)
+        P.add('hullDetail', box(0.018, 0.014, 0.05), s * 1.058, 1.687, cz + e * d / 4);            // hinge knuckles (inner edge)
+      }
+    }
+  }
+  // LEFT kit: the two-man saw strapped across lockers A+B, axe on locker A,
+  // tarp roll on locker C.
+  P.add('hullDetail', box(0.006, 0.095, 1.30), -1.6065, 1.545, -1.72);         // saw blade against the locker faces
+  P.add('hullDark', box(0.006, 0.016, 1.26), -1.6065, 1.494, -1.72);           // tooth line
+  P.add('hullWood', box(0.028, 0.115, 0.05), -1.6035, 1.545, -2.41);           // handles
+  P.add('hullWood', box(0.028, 0.115, 0.05), -1.6035, 1.545, -1.03);
+  P.add('hullDark', box(0.016, 0.115, 0.032), -1.6035, 1.545, -2.10);          // clamp straps to the locker walls
+  P.add('hullDark', box(0.016, 0.115, 0.032), -1.6035, 1.545, -1.35);
+  P.add('hullWood', box(0.026, 0.020, 0.82), -1.36, 1.697, -2.32);             // axe handle on locker A
+  P.add('hullDark', box(0.048, 0.070, 0.14), -1.36, 1.715, -1.955);            // axe head
+  P.add('hullDark', box(0.060, 0.014, 0.026), -1.36, 1.702, -2.55);            // axe strap
+  KIT.tarpRoll(P, 'hullCloth', -1.3225, 1.759, 1.12, 0.80, 0.072, false);      // rolled tarp on locker C
+  // RIGHT kit: shovel + jack block on locker A, screw jack on locker B,
+  // census-stamped spare-link strip on locker C.
+  KIT.shovelTool(P, 1.27, 1.703, -2.42, 0.92);
+  P.add('hullWood', box(0.24, 0.095, 0.26), 1.36, 1.7345, -2.62);              // jack wood block
+  P.add('hullDark', box(0.25, 0.012, 0.024), 1.36, 1.776, -2.62);              // block strap
+  P.add('hullDetail', box(0.18, 0.016, 0.26), 1.3225, 1.693, -1.13);           // jack base plate
+  P.add('hullDetail', box(0.13, 0.12, 0.20), 1.3225, 1.761, -1.13);            // jack body
+  P.add('hullDark', cylY(0.020, 0.020, 0.085, 8), 1.3225, 1.855, -1.13);       // jack screw
+  P.add('hullDark', box(0.014, 0.13, 0.028), 1.258, 1.757, -1.13);             // jack straps
+  P.add('hullDark', box(0.014, 0.13, 0.028), 1.387, 1.757, -1.13);
+  {
+    const links = FITTINGS.spareTrackLinks({ mats: P.mats, links: 3, width: 0.42,
+      pitch: 0.16, seed: 6, rotation: [0, Math.PI / 2, 0] });
+    links.position.set(1.3225, 1.717, 1.10);
+    P.hullG.add(links);
+  }
+  // radio whip on the right sponson deck (71-TK-3 seat, KV right-front) —
+  // census-stamped; top 2.95 stays under the turret roof band.
+  {
+    const whip = FITTINGS.antennaWhip({ mats: P.mats, h: 1.15, r: 0.011, rake: 0.07, seed: 4 });
+    whip.position.set(0.90, 1.675, 1.62);
+    P.hullG.add(whip);
+  }
+  // fender end flaps (KV mudguards): front pair dropping over the idler,
+  // rear pair over the sprocket — both clear the shoe-stack envelope
+  // (bottoms >= 1.375 vs pad tops 1.305) and the 1.51-1.58 bow flank
+  // ceiling (front flap tops 1.585 only at z <= 2.06).
+  for (const s of [-1, 1]) {
+    P.add('hull', box(0.55, 0.028, 0.33), s * 1.3325, 1.508, 2.20, 0.51, 0, 0);
+    P.add('hull', box(0.55, 0.026, 0.25), s * 1.3225, 1.4375, -2.995, -0.54, 0, 0);
+    P.add('hullDetail', box(0.55, 0.010, 0.014), s * 1.3325, 1.578, 2.065);    // flap hinge lines
+    P.add('hullDetail', box(0.55, 0.010, 0.014), s * 1.3225, 1.503, -2.90);
+  }
+  // driver hatch on the crest plate (seam + hinges + pull) — flush-class
+  // relief between the certified periscopes.
+  P.add('hullDark', box(0.30, 0.006, 0.24), 0, 1.6975, 1.985);                 // hatch seam ring
+  for (const dx of [-0.10, 0.10]) {
+    P.add('hullDetail', box(0.055, 0.012, 0.04), dx, 1.699, 2.075);            // hinges at the fwd edge
+  }
+  P.add('hullDark', box(0.06, 0.012, 0.024), 0, 1.699, 1.895);                 // pull handle
   // r3 #7 (open r2 ask): the glacis/roof rivet read stops at the fender —
   // continue a stud row + seam line along the PANNIER side under the fender
   // lip. Studs ride the sponson wall (x≈1.601 at this height), inside the
@@ -1343,10 +1418,20 @@ function buildKV2(P) {
   P.add('turret', box(1.10, 0.06, 0.44), 0, 1.2745, 1.21, 0.671, 0, 0);         // front-top chamfer (1.70,2.83w)->(1.36,3.09w),
                                                                                // x±0.55 so the plan corners stay the prism cut
   P.add('turret', box(1.74, 0.035, 0.40), 0, 1.4775, -0.74);                   // raised rear roof strip (3.165, z −0.22..−0.62)
+  // §5.247 wave: the print's periscope pods are ROUNDED STALKS, not bare
+  // boxes (close-roof ref read: cylindrical stubs with dark apertures).
+  // Reshaped inside the exact certified envelopes — box bases keep the pod
+  // footprints, round heads + dark caps finish at the same 3.27/3.235W tops
+  // (fwd max 1.598 local < old 1.60; rear 1.564 < old 1.565).
   for (const s of [-1, 1]) {
-    P.add('turret', box(0.135, 0.16, 0.29), s * 0.4975, 1.52, 0.405);          // fwd periscope pods (3.27, z 0.58..0.87w = ref)
-    P.add('turret', box(0.135, 0.13, 0.23), s * 0.4975, 1.50, -0.775);         // rear pods (3.235) flanking the hatches: with the fwd
-  }                                                                            // pair these 7 side-columns anchor the 3.25 p95
+    P.add('turret', box(0.135, 0.105, 0.29), s * 0.4975, 1.4925, 0.405);       // fwd pod bases (z 0.58..0.87w = ref)
+    P.add('turret', cylY(0.052, 0.056, 0.05, 12), s * 0.4975, 1.570, 0.405);   // fwd periscope stalks
+    P.add('turretDark', cylY(0.058, 0.058, 0.008, 12), s * 0.4975, 1.594, 0.405); // dark caps (top 1.598 = 3.268W)
+    P.add('turretGlass', box(0.062, 0.020, 0.005), s * 0.4975, 1.575, 0.459);  // forward optics slit
+    P.add('turret', box(0.135, 0.085, 0.23), s * 0.4975, 1.4775, -0.775);      // rear pod bases
+    P.add('turret', cylY(0.048, 0.052, 0.045, 12), s * 0.4975, 1.5425, -0.775); // rear stalks
+    P.add('turretDark', cylY(0.052, 0.052, 0.008, 12), s * 0.4975, 1.560, -0.775); // caps (top 1.564 = 3.234W)
+  }                                                                            // the 7 pod side-columns still anchor the 3.25 p95
   P.add('turret', cylY(0.155, 0.165, 0.03, 12), -0.40, 1.505, -0.74);          // commander hatch ring on the strip
   P.add('turretDark', cylY(0.172, 0.172, 0.012, 12), -0.40, 1.522, -0.74);
   P.add('turret', cylY(0.135, 0.145, 0.028, 12), 0.40, 1.505, -0.74);          // loader hatch ring
@@ -1363,7 +1448,20 @@ function buildKV2(P) {
   P.add('turretDark', cylY(0.103, 0.103, 0.006, 14), 0.40, 1.517, -0.77);      // cap seat seam
   P.add('turretDetail', cylY(0.078, 0.092, 0.012, 12), 0, 1.501, -0.76);       // ventilator drum on the strip
   P.add('turretDetail', cylY(0.045, 0.052, 0.010, 10), 0, 1.510, -0.76);       // ventilator cap (top 3.185W)
+  // §5.247 wave: real hinge/latch hardware on the hatch rings (the certified
+  // dome caps kept their exact seats/tops — hinges ride the ring rims under
+  // the 3.235 rear-pod columns).
+  for (const [hx, hr] of [[-0.40, 0.165], [0.40, 0.145]]) {
+    for (const dx of [-0.055, 0.055]) {
+      P.add('turretDetail', box(0.036, 0.020, 0.055), hx + dx, 1.514, -0.74 - hr - 0.012); // hinge blocks aft of the ring
+      P.add('turretDark', box(0.012, 0.026, 0.026), hx + dx, 1.516, -0.74 - hr - 0.040);   // pin knuckles
+    }
+    P.add('turretDark', box(0.030, 0.016, 0.050), hx, 1.512, -0.74 + hr + 0.014);          // latch tongue fwd
+  }
   P.add('turretDark', cylY(0.17, 0.17, 0.01, 14), 0.38, 1.458, 0.15);          // fwd round hatch: flush seam only
+  for (const dx of [-0.07, 0.07]) {
+    P.add('turretDark', box(0.045, 0.008, 0.028), 0.38 + dx, 1.4635, 0.325);   // flush hinge tabs on the fwd hatch seam
+  }
   // r3 #5 -> r4 tell 3 rebuild: the r3 flush dressing (every face within
   // 1.4 cm of one plane) did not register at game distance — "the single
   // biggest surface a pursuer sees is still ~80% blank". Re-derived budget
@@ -1446,6 +1544,63 @@ function buildKV2(P) {
   for (const s of [-1, 1]) {
     P.add('turretDark', box(0.02, 0.05, 0.22), s * 0.948, 0.95, 0.0);          // side vision slits
     P.add('turretDark', box(0.02, 0.05, 0.16), s * 0.948, 0.90, -0.50);
+    // §5.247 wave: armored brows over both slits + the MT-1 round pistol
+    // port plug (cross-pinned) between them — the print's side-wall kit.
+    P.add('turret', box(0.030, 0.036, 0.26), s * 0.956, 0.998, 0.0);           // slit brows
+    P.add('turret', box(0.030, 0.036, 0.20), s * 0.956, 0.948, -0.50);
+    P.add('turretDetail', cylX(0.048, 0.020, 12), s * 0.9505, 0.62, 0.30);     // pistol port plug
+    P.add('turretDark', cylX(0.020, 0.026, 8), s * 0.9525, 0.62, 0.30);        // plug core
+    P.add('turretDark', box(0.012, 0.012, 0.085), s * 0.9585, 0.62, 0.30);     // cross pin
+  }
+  // §5.247 wave — the huge slab EARNS its hardware (owner brief: real
+  // hinges/latches/lifting eyes; weld beads, plate seams, bolt rows).
+  // All reads verified against the print (close-front corner hooks, the
+  // left-wall ladder rungs, the low horizontal wall seam) + KV-2 photo
+  // references; everything stays inside the certified wall/roof envelopes.
+  KIT.liftEye(P, 'turretDetail', -0.76, 1.437, 0.60, -0.55);                   // roof-corner lifting eyes (x4)
+  KIT.liftEye(P, 'turretDetail', 0.76, 1.437, 0.60, 0.55);
+  KIT.liftEye(P, 'turretDetail', -0.70, 1.462, -0.78, -2.60);
+  KIT.liftEye(P, 'turretDetail', 0.70, 1.462, -0.78, 2.60);
+  // turret-ring flange bolt row low on every face (the print's skirt-edge
+  // washer dots): sides, rear wall, front apron.
+  for (const s of [-1, 1]) {
+    for (let k = 0; k < 11; k++) {
+      P.add('turretDark', box(0.015, 0.026, 0.026), s * 0.9495, 0.048, -0.58 + k * 0.145); // side skirt bolts
+    }
+    for (let k = 0; k < 5; k++) {
+      P.add('turretDark', box(0.015, 0.024, 0.024), s * (0.60 + k * 0.0805), 0.048, 0.938 - k * 0.0835, 0, s * -0.72, 0); // plan-cut corner bolts
+    }
+  }
+  for (let k = 0; k < 8; k++) {
+    P.add('turretDark', box(0.026, 0.026, 0.018), -0.51 + k * 0.145, 0.34, -1.602); // rear-wall flange bolts
+    P.add('turretDark', box(0.024, 0.024, 0.018), -0.50 + k * 0.143, 0.06, 0.945);  // apron bolt row
+  }
+  // vertical corner weld seams (front plan-cut joints + rear wall joints) +
+  // the long low horizontal wall seam the print carries at ~2.15W.
+  for (const s of [-1, 1]) {
+    P.add('turretDark', box(0.012, 1.30, 0.012), s * 0.9435, 0.685, 0.572);    // side-wall front edge
+    P.add('turretDark', box(0.012, 1.30, 0.012), s * 0.585, 0.68, 0.966, -0.06, 0, 0); // cut-to-face joint
+    P.add('turretDark', box(0.012, 1.06, 0.012), s * 0.812, 0.66, -0.662);     // wall-to-bustle joint
+    P.add('turretDark', box(0.008, 0.014, 1.48), s * 0.9495, 0.50, 0.13);      // low horizontal wall seam
+  }
+  // climb rungs on the LEFT rear wall (print: two stacked rungs) — feet
+  // welded to the trapezoid wall, rod standing 4 cm proud.
+  for (const ry of [0.44, 0.76]) {
+    const wallX = 0.855 - (ry - 0.28) * 0.073;                                 // trapezoid wall lean at z -1.05
+    for (const dz of [-0.085, 0.085]) {
+      P.add('turretDetail', box(0.052, 0.022, 0.022), -(wallX + 0.020), ry, -1.05 + dz); // rung feet
+    }
+    P.add('turretDetail', box(0.022, 0.022, 0.21), -(wallX + 0.048), ry, -1.05); // rung rod
+  }
+  // roof DShK on the bustle plateau rear-LEFT corner, pointing rearward —
+  // the print's own rear-roof MG seat (§B3 mandatory census MG; FITTINGS
+  // stamped; parented to turretG so it yaws with the slab).
+  {
+    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'dshk', scale: 0.95, elev: 0.10,
+      seed: 12, ring: false, ammo: true, rotation: [0, Math.PI, 0] });
+    mg.position.set(-0.55, 1.472, -1.36);
+    P.turretG.add(mg);
+    P.add('turretDetail', box(0.14, 0.016, 0.14), -0.55, 1.470, -1.36);        // pintle foot plate into the plateau
   }
   // rivet stud rows along the plate seams (dark studs, mask-safe buckets)
   const stud = (x, y, z, face) => {
@@ -1495,13 +1650,24 @@ function buildKV2(P) {
   P.add('turret', cylZ(0.335, 0.16, 16), 0, 0.91, 0.82);                       // fixed aperture collar behind the disc
   buildGun(P, { len: 2.37, r: 0.115, brake: null, baseR: 0.19, sleeve: false, evac: null });
   P.add('gun', cylZ(0.125, 0.10, 12), 0, 0, 2.31);                             // muzzle collar (world 3.36: published oal 6.95 wins the ref's 3.60)
-  // r4 micro: honeycomb muzzle face — seven dark bores standing 2.5 mm off
-  // the collar face (must be proud to render over the solid disc; +2.5 mm
-  // on the 3.36W muzzle plane is far inside the 1% dims grace).
-  P.add('gunDark', cylZ(0.030, 0.012, 8), 0, 0, 2.3565);
-  for (let k = 0; k < 6; k++) {
-    const a = (k / 6) * Math.PI * 2 + 0.26;
-    P.add('gunDark', cylZ(0.026, 0.012, 8), Math.cos(a) * 0.066, Math.sin(a) * 0.066, 2.3565);
+  // §5.247 wave: the r4 "honeycomb" face was an invention — the M-10T ends
+  // in ONE fat bore (the print's close-front read). §B3.1 mechanism: the
+  // shadow-named muzzleBore device (dark rim torus + recessed near-black
+  // disc parented to gunG) renders in game/critic views and is excluded
+  // from every mask/framing recipe by the /shadow/i name law.
+  muzzleBore(P, { r: 0.115, z: 2.351, seg: 14 });                              // disc face 2.363 / rim 2.367 — proud of the
+                                                                               // 2.36 collar face so both render over it
+  {
+    // The stock device disc rides mats.shadow, which carries the fleet
+    // ambient floor — dead-on it lifts to the documented ~52L mid-gray
+    // (TONE-SLOT MECHANICS). A bore is a HOLE: swap the disc to a floorless
+    // void clone (Material.clone() drops onBeforeCompile — the same
+    // certified sub-40 mechanism as this build's pocketVoid inserts).
+    const boreVoid = P.mats.rubber.clone();
+    boreVoid.color.setHex(0x0a0a09);
+    boreVoid.envMapIntensity = 0;
+    P.disposables.push(boreVoid);
+    P.gunG.traverse((o) => { if (o.isMesh && o.name === 'muzzleBoreShadowDisc') o.material = boreVoid; });
   }
   P.topY = 1.55;
 }

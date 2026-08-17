@@ -8690,3 +8690,14 @@ queue behind their busy lanes. ASK-OWNER banked: upior concept dims
 (print-proportional default), bmp3 nation (Russia default — ROK
 livery noted), stb1 spec 9.20 vs published 9.42, m2a3_bradley as
 family-reference vs new playable id.
+
+## 5.250 KV-2 RATIFIED + LANDED — §5.247 tank 1/10 (2026-08-17):
+critic PASS 9.6 (15/15 checklist verified in code AND independent
+pixels; builder evidence byte-identical md5 to the critic's own
+renders; leclerc-class delta confirmed — the empty-box roof and bare
+fenders now carry real seated hardware at every print/photo station;
+DShK §B5 triple-verified; width anchor ±1.6595 EXACT; never-gate law
+held, zero gate rows). Hash ea4382c0 -> adb8b0a8. Non-defect
+observations banked (markings = fleet scope; pair-tile framing = rig
+geometry; remaining gap = the print's baked weathering, certified
+out of profile scope). Round tools swept at landing.

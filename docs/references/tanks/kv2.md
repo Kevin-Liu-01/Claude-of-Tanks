@@ -349,3 +349,98 @@ chamfer −3.52). Gate re-run with the candidateGlb temporarily re-registered:
 96 dims 100 floaters 100); specs.js reverted byte-identically after the run.
 Geometry hash re-frozen (tmp-hashgeo.html pipeline): 3e08fe88 -> **f01e1e00**
 (36 meshes, 109688 -> 110408 verts). Board refreshed.
+
+## §5.247 leclerc-level quality wave — §K round (2026-08-17, builder)
+Owner order: "ultra high quality on par with our modern tanks... leave
+nothing untouched and unimproved." KV2 IS NEVER-GATE (§F.2 do-not-gate):
+this round's bar is the §K exemplar flow proven in pixels + the independent
+14-view critic; the print is measurement/parity reference only — no gate
+rows staged or chased.
+
+SOURCES VERIFIED FIRST (per §5.247 first-step law): the candidateGlb
+registration (`specs.js` kv2 row, `/models/tanks/community/
+kv2-full-comrade1280.glb`) RESOLVES and LOADS — the working tree carried
+NO live GLB (the main tree's community models are .bak-only right now;
+kv2 had no .bak at all), so the print bytes were restored from the
+committed-build `dist/` copy, md5-verified `8ed9da91023bd5cede54a8f3c0d69834`
+byte-identical across dist/ + two mq-r* worktree copies. Loads clean
+via tools/reference-glb-loader.js (9 meshes, width-normalized box
+x ±1.66 / y 0..3.287 / z ±3.5972). NOTE for the critic:
+tmp-tank-critic.html has NO kv2 override row (MODEL_SOURCE kv2 is
+'procedural' since dual-gate graduation) — pair rigs need the page-local
+candidateGlb injection (tools/tmp-kv2wave-pairs.html pattern, maps
+untouched).
+
+MEASURE -> LOFT -> CLOSE -> PROVE (what shipped, soviet-heavy.js only):
+- print re-reads that drove the round (world-mapped 1280px traces banked
+  at shots/kv2-wave/kv2-measure-{before,after}.json): the fender run
+  carries the LOCKER KIT BAND (plan panels + side lid lines, seam split
+  under the skirt tail); the periscope pods are ROUNDED STALKS with dark
+  apertures, not bare boxes; a rear-roof MG stands at the bustle rear-LEFT
+  corner; two climb rungs stack on the left rear wall; a long horizontal
+  weld seam crosses the side walls at ~2.15W; roof-corner lifting hooks.
+- MT-1 turret hardware: 4x KIT.liftEye at the roof corners; turret-ring
+  flange bolt rows on every face (sides 11x, plan-cut corners 5x, rear
+  wall 8x, apron 8x); vertical corner weld seams (side-front edges,
+  cut-to-face joints, wall-to-bustle joints) + the measured low horizontal
+  wall seam; armored brows over both certified vision slits + round
+  pistol-port plugs with cross pins; hatch-ring hinge blocks/pin
+  knuckles/latch tongues on both certified rings + flush hinge tabs on the
+  fwd round hatch; pods reshaped INSIDE their certified envelopes (box
+  bases + cylindrical stalks + dark caps: fwd top 1.598 local < old 1.60 =
+  3.268W, rear 1.564 < 1.565; the 7 pod side-columns still seat the 3.25
+  p95); left-wall climb rungs (feet welded to the trapezoid lean).
+- roof DShK (FITTINGS.pintleMG cls dshk, census mg1) at the print's own
+  rear-left seat, parented turretG (winding-audit mode-2 clean = yaws with
+  the slab), foot plate lapped into the plateau (§B5 physical seat).
+  procBox top 3.27 -> 3.5034 = the documented pintle-gun allowance class.
+- KV-1 hull identity: SIX fender stowage lockers (bottoms ON the 1.6025
+  fender plane — §B2 contact; tops 1.685 riding the print's 1.6775 deck
+  line; lid seams, cross seams, latches, hinge knuckles; |x| <= 1.6115
+  under the 1.615 fender edge / 1.66 width anchor — safeScale PROVEN
+  unmoved: procBox x ±1.6595 EXACT before and after); era kit per KV-2
+  photo refs: two-man saw strapped across the left lockers (blade
+  1.6035..1.6095, clamps close the 3.5 mm stand-off), axe + strap, tarp
+  roll (cloth), shovel, jack wood block + screw jack + straps,
+  census-stamped FITTINGS.spareTrackLinks (right locker C) and
+  FITTINGS.antennaWhip (71-TK-3 seat, right sponson deck, top 2.94W under
+  the roof band); fender end flaps front/rear (mudguards — §B4 strict
+  0/0+0/0: bottoms >= 1.373 vs shoe-stack 1.305); driver hatch seam +
+  hinges + pull on the crest (top 1.7005 < the 1.70/2.06 crest ceiling);
+  FUEL DRUMS SKIPPED deliberately — 1940-41 KV-2s carried no external
+  drum tanks (era-dependent item, decision banked).
+- M-10T muzzle: the r4 "honeycomb" face (an invention — the real M-10T
+  ends in ONE fat bore) DELETED; §B3.1 muzzleBore device (r 0.115,
+  shadow-named rim+disc at 2.363/2.367 proud of the 2.36 collar face) +
+  the disc swapped to a floorless void clone (Material.clone() drops the
+  ambient-floor hook — the certified pocketVoid sub-40 mechanism; the
+  stock mats.shadow disc read the documented ~52L mid-gray dead-on).
+
+RECEIPTS (all official rigs, zero console errors):
+- track-clip-audit --exact --strict: band 0/0 + shoe 0/0 + sweep 0/0.
+- tank-standard-check: clip 0/0+0/0, contig 0 holes, decor census mg1+2d
+  (hand kit beyond the three FITTINGS is packet-justified here: saw/jack/
+  axe/tarp/lockers are print+photo-measured KV items the generic
+  constructors cannot represent; they live in the same P.add bucket
+  families as the certified r3-r5 dressing).
+- winding-audit --check: rev 0 / mix 0 / deficit 0; mode-2 clean
+  (26 candidate px = noise; the MG rotates).
+- npm test green before AND after (exit 0 both).
+- hash guard (tmp-hashgeo, all six residents, before -> after):
+  is3 101382bc, is7 bb1b4b2, object279 d97226b8, is6b 628078c8,
+  is3_bergman 5ad72be8 — ALL FIVE BYTE-IDENTICAL both runs;
+  kv2 ea4382c0 (41 meshes / 87598 verts) -> adb8b0a8 (50 / 102461).
+- silhouette accounting (world-mapped trace diff, every moved column
+  attributed): MG band z -1.99..-0.85 (pintle class); locker/kit band
+  rear fender +8..10 cm over the print's bare-deck line (the §B3.2
+  density mandate — the print's own kit band is there, lower); jack
+  block z -2.50..-2.74 top 1.782 (trace 1.851 = the side camera's
+  0.0499 x-lean on x +1.36 — no phantom); whip cols z 1.62-1.63; pod
+  cols now TRACK the ref's rounded falloff (z 0.59-0.65: 3.29 -> 3.235
+  vs ref 3.231-3.25; rear pods 3.252 -> 3.216 vs ref 3.133-3.185).
+- evidence: shots/kv2-wave/{before,after}/ (14 critic-path pairs each,
+  identical render path to tmp-tank-critic.html), shots/kv2-wave/garage/
+  (6 = §B5 receipt set: low L/R at yaw 0+90, close-roof, top),
+  garage-before/ for comparison, measure JSONs.
+DELIVERED UNCOMMITTED-UNSTAGED per the round brief; the independent
+critic's garage read is the verdict.
