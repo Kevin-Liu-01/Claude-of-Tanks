@@ -204,6 +204,102 @@ the a4-class candidate); EMES lid edge slightly proud at close-roof.
 - Independent §B8 photo-parity critic verdict PENDING (builder
   self-reads are not the bar).
 
+## §5.247 LECLERC-LEVEL REDESIGN (2026-08-17) — r2, DELIVERED-PENDING-CRITIC
+
+Owner order (§5.247 ten-tank wave): "full leclerc-level redesign based on
+its model and historical references... leave nothing untouched and
+unimproved. make sure we load all sources correctly." §K flow executed:
+measure → loft to measured lines → close with real geometry → prove in
+pixels. Builder `buildLeo1A5Profile` rewritten in place (leopard.js lane;
+zero shared-helper edits). Final geometry hash **2aee1f9d** (53 meshes /
+84765 verts — the leo2a4 graduate class), **×2 bit-identical**
+(order-shuffled runs). Evidence: shots/leo1a5-wave/{baseline,r2a..r2d,
+final,final-yaw90}/.
+
+### SOURCES verified first (the §5.247 first step)
+- Registration RESOLVES: `LEOPARD_PROFILES.leo1a5` → PROFILED_BUILDERS →
+  BUILDERS override (tankFactory). Spec row modern2.js dims 7.09/9.54/
+  3.37/2.62 loads.
+- Gate print: NONE exists (no docs/geometry-gate/leo1a5.json, no ledger
+  row) — the CORRECT state per this packet's FALSE-0 law; not a broken
+  row; no gate was run against this id. The visual photoclass rig ×1 was
+  the round baseline instead.
+- leo1a4_scan partial reference LOADS: docs/references/vertex/
+  leo1a4_scan.json (fused, crush-scale — proportional reads only). Used
+  this round: body h/w 0.783 (vs published 0.777 ✓), the bow-wing plan
+  taper over the last ~0.24 m, and the REAR-CORNER CUT (halfW 0.604 tail
+  vs 0.85 mid → the big angled corner louvre banks, now built). The scan
+  GLB itself is absent from the live public/models tree (stale dist copy
+  only) — consistent with its RE-RIG/unregistered adjudication; it must
+  NOT be map-registered until the §E outlier-strip lands.
+
+### Gap table (photo-round contract) — CLOSED
+| # | Photo read | Baseline (r1 @ eed3f94e) | Fix (r2 @ 2aee1f9d) |
+|---|---|---|---|
+| G1 | Saddle mantlet = compact horizontal casting tucked under the brow | cylX end discs + proud ellipsoid cheeks read as a SEARCHLIGHT DRUM (worst §B3 miss) | capsule casting: cylX core + sphere-capped ends inside the cheek line, flat top cover, chin fill, boss, dark part-line; ports kept |
+| G2 | Welded turret: strongly leaning faceted walls, tapering hexagon plan | one frustum + flat slab side (~11° lean), plan read arrow-notched | measured 3-panel-per-side hexahedron loft (base A(0.96,−1.30) B(1.06,−0.15) C(0.98,0.34) D(0.60,0.80) → roof A'(0.78,−1.26) B'(0.82,−0.15) C'(0.64,0.30) D'(0.42,0.72); lean 14–17°), leaning rear wall, chin wedge + trunnion frames + brow, two-plate roof, 4 weld seams |
+| G3 | Gear alive: scalloped rubber aprons, rollers peeking, dished end wheels | apron band+shadow one black void; rollers invisible; idler/sprocket faces featureless | scalloped bays (hem 0.78/tabs 0.71), rollers r 0.095 peek under the hem, rotation-invariant dished rings + hubs on BOTH end wheels (r ≤ 0.155 under the shoe-horn sweep) |
+| G4 | Bow = plates + visible track fronts, small mudguards | full-width camo mudguard wall = bow cliff | narrow outboard rubber drops + hinge strips; track/idler fronts show head-on; blackout lamps + guard bars added |
+| G5 | German fender grammar | bare pale planks | 2 stowage bins/side (outer 1.66 < the 1.685 anchor) + latches, Bosch horn, width-indicator rods, axe + crowbar + shovel, extinguisher |
+| G6 | Leopard 1 deck + rear grammar | one dark field + 6 slats; stick-on rear vents | framed twin intake fields + spine + slats, TWO cooling-fan rings + hubs + spokes, framed transverse exhaust grille, outboard fuel caps, access seams; rear: corner-cut louvre banks at the deck line (the measured scan corner cut) + rib ladders + frame posts, spare-links fitting, convoy plate, access disc, jack body |
+| G7 | Loaded wrap baskets | rigid 4-bay fence read as architecture | finer rails + diagonal X-stays + arms, half-height mesh law kept, cargo densified (2 stowage + 2 ammo + jerry + tarp), FITTINGS.stowageRack ×2 on the side walls (fill 0.85) |
+| G8 | EMES-18 embrasure w/ shutters + hood | plain box + proud lid | pedestal + tall housing + twin RECESSED windows behind shutter frames + divider + wiper + hood side cheeks + flush lid (2.585 world < 2.62 datum) |
+| G9 | Cupola 8 blocks, domed lids, sprung whips | 6 blocks, flat rings, stick whips | 8-block ring + glass slits (P.q), domed lids + hinges + handle on both hatches, whips = base + spring + 2-segment taper, tips 2.62 EXACT |
+| G10 | Wegmann cups on visible brackets | dark panel + dots | bracket plates ON the leaning walls (rz-matched), 2×4 cups/side forward of the racks (never occluded) |
+| G11 | L7A3 sleeve/evac/MRS/open bore | ✓ (kept) | buildGun {5.48, r 0.058, sleeve, evac 0.58, collar} + muzzleBore — unchanged |
+| G12 | Roof furniture | sparse | roof-edge rails + stanchions, 4 lift eyes, TRP head, decals re-pinned ON the leaning planes (rz 0.31/0.21 = the measured leans, 5 mm proud) |
+
+### Four-box (OFFICIAL tmp-b8 probe, shots/leo1a5-wave/final/measures.json)
+- overall **9.537 × 3.370 × 2.643** (y-top **2.620 EXACT** = whip tips at
+  the datum; h carries the −0.023 shoe dip) vs 9.54/3.37/2.62 → −0.03% /
+  EXACT / ✓. WIDTH ANCHOR: planks ±1.685 EXACT (two in-round breaks —
+  apron rail 1.688, louvre-bank swing −3.645 — caught by the probe and
+  re-seated INSIDE the anchors same-round).
+- hull l **7.102** (z −3.557..+3.545; the 12 mm tail overshoot is the
+  same taillight/louvre lens class as r1's certified −3.551..−3.557)
+- turretMass l **2.947 = 41.6%** ≤42% ✓ (w 2.352 = the side racks);
+  muzzle world **+6.00 EXACT**, bore y **1.93**; saddle w 1.338
+- mesh/vert budget: 53 / 84765 (hashgeo) — leo2a4 graduate class ✓
+
+### Battery (official rigs, FINAL bytes)
+- track-clip --exact: **band 0/0 + shoe 0/0** (in-round finds fixed:
+  corner banks re-seated at the deck line over the sprocket wrap, jack
+  body pulled out of the track lane, end-wheel rings capped r ≤ 0.155
+  under the guide-horn sweep — each re-measured to 0)
+- winding-audit: m1 **rev 0 / mix 0 / deficit 0 px**; m2 **0 candidates**
+- turret-parent: **stranded 0 / abutting 0 / dangling 0**
+- standard-check: **NO gate row (FALSE-0 ✓)**, clip ✓, contig **0** ✓,
+  decor **mg1+4d** ✓ (pintleMG + spareTrackLinks ×2 + stowageRack ×2 —
+  up from r1's mg1+1d)
+- npm test: exit 0 (all selftests incl. track-geometry PASS)
+- §B5 yaw-90 pair: shots/leo1a5-wave/final{,-yaw90}/ — turret (loft +
+  EMES + cupola + MG + racks + baskets + cups + whips + saddle + gun)
+  yaws as ONE; hull kit static
+- GUARD PROOF (×2 runs, spanning TWO parallel-landing HEAD moves
+  9c583790 → d046f113 → 609ad37a; lane files name-diff-verified
+  untouched): leo2a4 3e07c84f / leo2a5 6ecdfb06 / leo2a6 e99dd7f8 /
+  leo2a7v a755d23c / leopard2_proto 2a88d640 / leo2_revolution f55a29c8 /
+  kf51 ffb1144c / kf51b 492c42e8 — **ALL byte-identical before, during
+  and after the round.**
+
+### 14-view SELF-READS (builder estimates, NOT the bar — §B8 critic pending)
+front 8.7 / frontleft 8.7 / left 8.7 / rearleft 8.6 / rear 8.5 /
+rearright 8.6 / right 8.7 / frontright 8.7 / top 8.8 / hero-fl 8.7 /
+hero-rr 8.6 / hero-toptilt 8.7 / close-front 8.7 / close-roof 8.6.
+
+### Residuals / next-round candidates
+- Sprocket carrier face still shades dark in pure side view (rings
+  present; the toothed ring carries the read) — a pale hub accent is the
+  next lever if the critic asks.
+- Corner louvre banks foreshorten from dead-rear (strong at 3/4) — a
+  darker slat-gap term could lift the head-on read.
+- hull-bucket y-max moved 1.496 → 1.571 (the rear-plate spare-links
+  fitting top) — inside every anchor; no gate row exists for this id.
+- Turret grammar remains the OWNER-BRIEF welded family (a strict-German
+  cast+B&V ruling would be a §B7 re-region — unchanged from r1).
+- leo1a4 scan §E outlier-strip lane still open (family-oracle candidate
+  if repaired); the gap table above is the re-verify checklist.
+
 ## LEOPARD 1A4 PHOTOGRAMMETRY SCAN (2026-08-06 base-21 wave — report-only)
 "Leopard 1A4 [photogrammetry scan]" by pervonharke, CC-BY-4.0 verified —
 `community/leopard_1a4_photogrammetry_scan.glb` (56 MB, 1,085,034 verts
