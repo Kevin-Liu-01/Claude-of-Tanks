@@ -55,8 +55,57 @@ function addUkrainianSmoke(P, x, y, z, count = 4, seed = 90) {
   }
 }
 
+function addUkrainianRoofRelief(P, o = {}) {
+  const { box, cylY } = KIT;
+  const y = o.y ?? 0.73;
+  const front = o.front ?? 0.32;
+  const rear = o.rear ?? -0.92;
+
+  // Thin, overlapping roof panels break up the broad cast/welded crown
+  // without becoming a second turret shell.  Every plate crosses the roof
+  // datum by at least 18 mm, so the visible top skin has a real planted
+  // lower half rather than hovering over the armor.
+  for (const [x, z, w, d, ry] of [
+    [-0.76, front - 0.18, 0.38, 0.34, 0.12],
+    [0.78, front - 0.26, 0.34, 0.30, -0.10],
+    [-0.10, rear + 0.18, 0.48, 0.28, 0.04],
+    [0.58, rear - 0.02, 0.42, 0.30, -0.08],
+  ]) {
+    P.add('turret', box(w, 0.055, d), x, y - 0.006, z, 0, ry, 0);
+    P.add('turretDark', box(w * 0.82, 0.014, d * 0.76), x, y + 0.028, z, 0, ry, 0);
+  }
+
+  // Ventilator mushroom, hatch stop and unequal low periscopes.  These are
+  // source-scale fittings, not tower blocks; their broad painted feet bury
+  // into the roof and the glass is only on the forward exposed face.
+  P.add('turret', cylY(0.14, 0.16, 0.075, 14), -0.06, y + 0.015, rear + 0.42);
+  P.add('turretDark', cylY(0.115, 0.13, 0.018, 12), -0.06, y + 0.062, rear + 0.42);
+  P.add('turretDetail', box(0.19, 0.07, 0.10), -0.42, y + 0.02, rear + 0.24, 0, 0.18, 0);
+  for (const [x, z, ry] of [
+    [-0.70, front + 0.02, 0.30], [-0.48, front + 0.13, 0.14],
+    [0.34, front + 0.10, -0.10], [0.62, front - 0.02, -0.28],
+  ]) {
+    P.add('turret', box(0.15, 0.09, 0.11), x, y + 0.005, z, 0, ry, 0);
+    P.add('turretDark', box(0.12, 0.045, 0.075), x, y + 0.060, z, 0, ry, 0);
+    P.add('turretGlass', box(0.084, 0.036, 0.016), x, y + 0.066,
+      z + 0.048, 0, ry, 0);
+  }
+
+  // Low rear service rail and two unequal strapped packs complete the roof
+  // cadence.  The rail ends return into broad armor shoes, and both packs
+  // overlap the crown instead of standing in empty air.
+  P.add('turretDark', box(1.56, 0.045, 0.045), 0, y + 0.02, rear - 0.42);
+  for (const s of [-1, 1]) {
+    P.add('turretDark', box(0.045, 0.045, 0.48), s * 0.78, y + 0.02, rear - 0.20);
+    P.add('turret', box(s < 0 ? 0.38 : 0.46, 0.18, 0.30), s * 0.52,
+      y + 0.04, rear - 0.27 + (s > 0 ? 0.04 : -0.03));
+    P.add('turretDark', box(0.045, 0.20, 0.32), s * 0.52,
+      y + 0.04, rear - 0.27 + (s > 0 ? 0.04 : -0.03));
+  }
+}
+
 function addT64DonbasKit(P) {
-  const { box, cylZ } = KIT;
+  const { box, cylX, cylZ } = KIT;
   // The Donbas oracle's defining two-tier Kontakt-1 side band.  Blocks are
   // seated against the intact source-authored skirt and never enter the
   // suspension corridor.
@@ -87,8 +136,23 @@ function addT64DonbasKit(P) {
     P.add('turretDetail', box(0.08, 0.23, 0.12), s * 0.71, 0.26, -1.30);
     P.add('turretDetail', box(0.08, 0.23, 0.12), s * 0.71, 0.26, -2.05);
   }
+  // Hull-left auxiliary drum and its two retaining saddles complete the
+  // reference's unequal aft service cluster; it remains hull-owned while
+  // the twin snorkels above rotate with the turret.
+  P.add('hullDetail', cylX(0.15, 0.62, 16), -1.02, 1.28, -2.62);
+  for (const x of [-1.22, -0.82]) P.add('hullDark', box(0.045, 0.34, 0.18),
+    x, 1.22, -2.62);
   addUkrainianRoofSuite(P, { y: 0.86, panoX: 0.48, panoZ: -0.16,
     mgX: -0.43, mgZ: -0.55, mgScale: 0.82, seed: 6410, whipZ: -1.55 });
+  addUkrainianRoofRelief(P, { y: 0.73, front: 0.28, rear: -0.94 });
+  // Complete the photographed Donbas chevron by extending the outer return
+  // one module farther around each cheek.  The buried painted shoe keeps the
+  // added block attached to the casting at every turret yaw.
+  for (const s of [-1, 1]) {
+    P.add('turret', box(0.23, 0.16, 0.22), s * 1.20, 0.24, 0.37, -0.12, s * 0.70, 0);
+    P.add('turretTrack', box(0.26, 0.20, 0.24), s * 1.24, 0.30, 0.34, -0.12, s * 0.70, 0);
+    P.add('turretDark', box(0.19, 0.016, 0.17), s * 1.24, 0.408, 0.34, -0.12, s * 0.70, 0);
+  }
   P.addGunExtra(box(0.56, 0.32, 0.22), 0, -0.02, 0.34);
   P.decal('turret', 'number', 'UA 64', 0.22, [-1.34, 0.39, -0.82], -Math.PI / 2);
   P.topY = Math.max(P.topY || 0, 1.30);
@@ -100,7 +164,7 @@ function buildUAT64BV(P) {
 }
 
 function addT80BVUkraineKit(P) {
-  const { box, cylZ } = KIT;
+  const { box, cylX, cylZ } = KIT;
   // Kontakt-1 fan follows the low cast cheek; the centerline remains open
   // for the 2A46 mask and primary sight.
   for (const s of [-1, 1]) for (let row = 0; row < 2; row++) {
@@ -120,14 +184,27 @@ function addT80BVUkraineKit(P) {
     addKontaktTile(P, 'hull', s * (0.24 + i * 0.29), 1.26 - row * 0.04,
       2.08 - row * 0.31, 0.25, 0.10, 0.27, [-0.30, 0, 0], false);
   }
-  // Rear drums and protected NSVT follow the actual Ukrainian reference.
-  for (const s of [-1, 1]) {
-    P.add('turret', cylZ(0.155, 1.36, 16), s * 0.73, 0.36, -1.62);
-    P.add('turretDark', cylZ(0.165, 0.045, 14), s * 0.73, 0.36, -2.05);
-    P.add('turretDark', cylZ(0.165, 0.045, 14), s * 0.73, 0.36, -1.19);
+  // The oracle's rear bochki are two real transverse cylinders, not the old
+  // squared shelf made from fore-aft drums.  Their three saddles overlap the
+  // bustle and the dark end caps expose the cylindrical read in quarters.
+  for (let i = 0; i < 2; i++) {
+    const z = -1.24 - i * 0.38;
+    P.add('turret', cylX(0.145, 1.42, 16), 0, 0.35 + i * 0.015, z);
+    for (const x of [-0.52, 0, 0.52]) P.add('turretDark', box(0.055, 0.34, 0.18),
+      x, 0.29 + i * 0.015, z);
+    for (const s of [-1, 1]) P.add('turretDark', cylX(0.151, 0.025, 16),
+      s * 0.722, 0.35 + i * 0.015, z);
   }
   addUkrainianRoofSuite(P, { y: 0.81, panoX: 0.50, panoZ: -0.18,
     mgX: -0.44, mgZ: -0.48, mgScale: 0.84, seed: 8020, whipZ: -1.40 });
+  addUkrainianRoofRelief(P, { y: 0.71, front: 0.24, rear: -0.82 });
+  // Large Luna searchlight on a broad cheek shoe.  A deep armored rim and
+  // inset blue-black lens make it readable without turning it into a loose
+  // lamp hung beside the turret.
+  P.add('turret', box(0.36, 0.30, 0.22), -0.72, 0.38, 0.88, -0.08, -0.20, 0);
+  P.add('turretDetail', cylZ(0.18, 0.25, 16), -0.72, 0.48, 1.00);
+  P.add('turretDark', cylZ(0.17, 0.028, 16), -0.72, 0.48, 1.135);
+  P.add('turretGlass', cylZ(0.125, 0.035, 16), -0.72, 0.48, 1.155);
   addUkrainianSmoke(P, 1.02, 0.65, 0.04, 4, 8030);
   P.addGunExtra(box(0.52, 0.30, 0.22), 0, -0.02, 0.34);
   P.decal('turret', 'number', 'UA 80', 0.22, [1.30, 0.37, -0.72], Math.PI / 2);
@@ -167,6 +244,21 @@ function addT80UKurskKit(P) {
     s * 1.10, 0.40, -1.05 + (s > 0 ? 0.14 : -0.10));
   addUkrainianRoofSuite(P, { y: 0.83, panoX: -0.40, panoZ: -0.42,
     mgX: -0.54, mgZ: -0.62, mgScale: 0.84, seed: 8040, whipZ: -1.55 });
+  addUkrainianRoofRelief(P, { y: 0.73, front: 0.28, rear: -0.92 });
+  // Kursk's cast nose carries a broken Kontakt course rather than one
+  // featureless shield.  Painted shoes bury in the dome; the darker caps
+  // and changing yaw expose four individually legible cassettes per side.
+  for (const s of [-1, 1]) for (let i = 0; i < 4; i++) {
+    const x = 0.38 + i * 0.23;
+    const z = 1.34 - i * 0.18;
+    const yaw = 0.38 + i * 0.08;
+    P.add('turret', box(0.28, 0.18, 0.24), s * (x - 0.03), 0.38, z - 0.03,
+      -0.18, s * yaw, 0);
+    P.add('turretTrack', box(0.32, 0.24, 0.27), s * x, 0.45, z,
+      -0.18, s * yaw, 0);
+    P.add('turretDark', box(0.24, 0.018, 0.20), s * x, 0.579, z,
+      -0.18, s * yaw, 0);
+  }
   addUkrainianSmoke(P, 1.08, 0.62, 0.08, 5, 8050);
   P.addGunExtra(box(0.58, 0.34, 0.24), 0, -0.01, 0.36);
   P.decal('turret', 'number', 'KURSK', 0.20, [-1.32, 0.37, -0.76], -Math.PI / 2);
@@ -191,6 +283,17 @@ function addOplotMKit(P) {
     for (let i = 0; i < 5; i++) addKontaktTile(P, 'turret', s * 1.47,
       0.40 + (i & 1) * 0.025, 0.50 - i * 0.42, 0.16, 0.38, 0.36,
       [0, 0, s * 0.08], true);
+    // Duplet is a modular cassette field.  Raised face tiles and recessed
+    // seams stop the wing from reading as one smooth, flat slab while the
+    // larger carrier remains continuously buried in the welded cheek.
+    for (let i = 0; i < 6; i++) {
+      const z = 1.16 - i * 0.34;
+      const yaw = 0.34 + i * 0.055;
+      P.add('turretTrack', box(0.30, 0.24, 0.28), s * (0.82 + i * 0.09),
+        0.48 - i * 0.012, z, -0.18, s * yaw, 0);
+      P.add('turretDark', box(0.23, 0.018, 0.20), s * (0.82 + i * 0.09),
+        0.612 - i * 0.012, z, -0.18, s * yaw, 0);
+    }
     // Full-height Duplet skirt cassettes retain the native running gear.
     for (let i = 0; i < 7; i++) addKontaktTile(P, 'hull', s * 1.73,
       1.04, 1.72 - i * 0.62, 0.085, 0.55, 0.52, [0, 0, -s * 0.025], false);
@@ -200,15 +303,21 @@ function addOplotMKit(P) {
     addKontaktTile(P, 'hull', s * (0.24 + i * 0.30), 1.30 - row * 0.04,
       2.20 - row * 0.34, 0.27, 0.105, 0.30, [-0.31, 0, 0], true);
   }
-  // Source's tall panoramic tower and compact remote weapon station.
-  P.add('turret', box(0.42, 0.09, 0.39), -0.52, 0.82, -0.34);
-  P.add('turretDetail', box(0.32, 0.52, 0.30), -0.52, 1.11, -0.34);
-  P.add('turretGlass', box(0.22, 0.31, 0.026), -0.52, 1.13, -0.175);
+  // Source PNK-6 panoramic head: broad planted pedestal, tapered armored
+  // tower and framed glass.  The old narrow rectangular chimney was tall
+  // but visually under-massed and made the surrounding roof look empty.
+  P.add('turret', box(0.50, 0.11, 0.46), -0.52, 0.79, -0.34);
+  P.add('turret', box(0.42, 0.20, 0.38), -0.52, 0.92, -0.34);
+  P.add('turretDetail', box(0.36, 0.22, 0.32), -0.52, 1.12, -0.34);
+  P.add('turretDark', box(0.30, 0.025, 0.035), -0.52, 1.13, -0.168);
+  P.add('turretGlass', box(0.24, 0.15, 0.026), -0.52, 1.13, -0.148);
   P.add('turret', box(0.34, 0.09, 0.34), 0.58, 0.83, -0.62);
   P.add('turretDetail', cylY(0.14, 0.16, 0.25, 14), 0.58, 1.00, -0.62);
-  seat(P, 'turret', FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone',
-    elev: 0.10, shield: true, ammo: true, scale: 0.80, seed: 8401 }),
-    0.58, 1.06, -0.72, [0, 0.04, 0]);
+  seat(P, 'turret', FITTINGS.pintleMG({ mats: P.mats, cls: 'nsvt', tone: 'two-tone',
+    elev: 0.12, shield: true, ammo: true, ring: { r: 0.18, stubs: 3 },
+    scale: 1.00, seed: 8401 }),
+    0.58, 1.03, -0.58, [0, 0.04, 0]);
+  addUkrainianRoofRelief(P, { y: 0.74, front: 0.32, rear: -0.96 });
   addUkrainianSmoke(P, 1.20, 0.65, 0.04, 5, 8410);
   for (const s of [-1, 1]) seat(P, 'turret', FITTINGS.antennaWhip({ mats: P.mats,
     h: s < 0 ? 0.76 : 0.64, r: 0.013, rake: -s * 0.05, seed: 8420 + (s > 0 ? 1 : 0) }),
