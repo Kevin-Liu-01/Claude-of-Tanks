@@ -1714,6 +1714,13 @@ function buildTigerI(P) {
   // Schachtellaufwerk (§B6: sprocket 0.62 / idler 0.60 raised over the 0.57
   // wheel line — modest real-Tiger ramps at BOTH ends; orbits derived from
   // the SHOE arithmetic r+0.195 at trackTh 0.13, §B4-clear of every plate).
+  // §5.247 r3 REVERTED EXPERIMENT (receipt): 24 stations at pitch 4.5/23
+  // (the real 8-wheel outer cadence) were built and measured — at render
+  // scale the 3-layer offsets (0.22/0.02/0.17) put a painted wheel every
+  // ~0.2 m and the train fused into one unbroken pale wall, losing wheel
+  // identity entirely (shots/ww2-wave/tiger1-r3draft). The certified
+  // 16-station cycle stays: its 0.30 pitch is what preserves the
+  // scallop-and-shadow Schachtellaufwerk read at the fleet's view scale.
   const wheelZs = [2.25, 1.95, 1.65, 1.35, 1.05, 0.75, 0.45, 0.15,
     -0.15, -0.45, -0.75, -1.05, -1.35, -1.65, -1.95, -2.25];
   buildRunningGear(P, {
@@ -1774,7 +1781,11 @@ function buildTigerI(P) {
     P.add('hull', mslab(s,                                                   // front mudguard over the sprocket
       [1.08, 1.256, 2.51], [1.845, 1.256, 2.51], [1.845, 1.256, 2.49], [1.08, 1.256, 2.49],
       [1.08, 1.30, 3.15], [1.845, 1.30, 3.15], [1.845, 1.35, 2.53], [1.08, 1.35, 2.53]));
+    // §5.247 r3: outer-flap hinge seam along each front mudguard (the E's
+    // fold-down flap line), riding the guard's slope.
+    P.add('hullDark', box(0.022, 0.012, 0.58), s * 1.42, 1.312, 2.83, -0.075, 0, 0);
     P.add('hull', box(0.745, 0.035, 0.55), s * 1.4625, 1.285, -2.90, 0.06, 0, 0); // rear mudguard
+    P.add('hullDark', box(0.022, 0.012, 0.50), s * 1.42, 1.310, -2.90, 0.06, 0, 0);
     P.add('hullRubber', box(0.70, 0.24, 0.024), s * 1.44, 1.13, -3.145);     // rear rubber flaps
   }
   // bow furniture: Kugelblende ball MG (right), driver visor (left)
@@ -1789,6 +1800,24 @@ function buildTigerI(P) {
   P.add('hullDetail', cylY(0.055, 0.065, 0.09, 12), 0, 1.315, 2.70);
   P.add('hullDetail', box(0.13, 0.035, 0.10), 0, 1.37, 2.70);
   P.add('hullDark', box(0.10, 0.018, 0.02), 0, 1.35, 2.755);
+  // §5.247 r3: lamp conduit down the shelf face (the floating-lamp read) +
+  // width-indicator rods with pale tips on both front fender corners.
+  P.add('hullDark', box(0.016, 0.30, 0.016), -0.09, 1.15, 2.86, -0.52, 0, 0);
+  for (const s of [-1, 1]) {
+    P.add('hullDark', cylY(0.008, 0.008, 0.34, 6), s * 1.79, 1.475, 3.08);
+    P.add('hullDetail', sph(0.017, 8), s * 1.79, 1.655, 3.08);
+  }
+  // §5.247 r3: bow shackle horns on the interlocked nose corners (pin hole +
+  // hanging shackle; everything <= z 3.155 inside the 6.32 m hull law) and
+  // matching stern horns at -3.15.
+  for (const s of [-1, 1]) {
+    P.add('hull', box(0.085, 0.16, 0.20), s * 0.97, 0.90, 3.05);
+    P.add('hullDark', cylX(0.028, 0.10, 8), s * 0.97, 0.90, 3.10);
+    P.add('hullDark', KIT.torus(0.05, 0.013, 10), s * 0.97, 0.845, 3.115, 0.35, 0, 0);
+    P.add('hullDetail', cylX(0.014, 0.11, 8), s * 0.97, 0.895, 3.115);
+    P.add('hull', box(0.085, 0.16, 0.18), s * 0.97, 0.90, -3.065);
+    P.add('hullDark', cylX(0.028, 0.10, 8), s * 0.97, 0.90, -3.11);
+  }
   // spare links in a mounting frame on the driver plate + deck-edge strip
   P.add('hull', box(0.62, 0.44, 0.04), 0.85, 1.60, 2.625, -0.085, 0, 0);
   {
@@ -1812,6 +1841,23 @@ function buildTigerI(P) {
     P.add('hullDetail', cylY(0.16, 0.16, 0.06, 14), s * 1.30, 1.92, -3.20);
     P.add('hullDark', cylX(0.045, 0.44, 8), s * 0.97, 2.06, -3.18);          // cross piping
     P.add('hullDark', cylY(0.045, 0.045, 0.16, 8), s * 1.30, 2.12, -3.19);   // riser elbows
+    // §5.247 r3: the Feifel CORRUGATED hose read (packet residual) — a short
+    // ringed run from each canister top over the deck lip (tube + 4 ribs).
+    P.add('hullDark', cylZ(0.038, 0.34, 8), s * 1.26, 1.985, -3.05, -0.165, 0, 0);
+    for (let k = 0; k < 4; k++) {
+      const f = -0.135 + k * 0.09;
+      P.add('hullDark', KIT.torus(0.045, 0.011, 8),
+        s * 1.26, 1.985 + 0.164 * f, -3.05 + 0.986 * f, -0.165, 0, 0);
+    }
+  }
+  // §5.247 r3: rear-plate spare-link column between the shroud faces (±0.30)
+  // — flat against the plate (rx 90), inside the certified -3.315 stern
+  // envelope: back faces -3.2125.
+  P.add('hull', box(0.24, 0.46, 0.025), 0, 1.55, -3.17);
+  {
+    const st = FITTINGS.spareTrackLinks({ mats: P.mats, links: 3, width: 0.15, pitch: 0.17, seed: 9, rotation: [Math.PI / 2, 0, 0] });
+    st.position.set(0, 1.55, -3.19);
+    P.hullG.add(st);
   }
   P.decal('hull', 'soot', null, 0.85, [0.55, 1.78, -3.34], Math.PI);
   P.decal('hull', 'soot', null, 0.85, [-0.55, 1.78, -3.34], Math.PI);
@@ -1835,17 +1881,55 @@ function buildTigerI(P) {
   }
   P.add('hull', cylY(0.30, 0.30, 0.035, P.q ? 22 : 12), 0, 1.996, -2.02);
   P.add('hullDark', KIT.torus(0.30, 0.014, P.q ? 22 : 12), 0, 2.006, -2.02);
+  // §5.247 r3: engine-hatch furniture (hinge tabs + lift handle) and fuel
+  // filler caps — the top view's schematic-field residual.
+  P.add('hullDetail', box(0.06, 0.028, 0.10), -0.30, 2.016, -2.10);
+  P.add('hullDetail', box(0.06, 0.028, 0.10), 0.30, 2.016, -2.10);
+  P.add('hullDark', box(0.15, 0.022, 0.035), 0, 2.02, -1.85);
+  for (const s of [-1, 1]) {
+    P.add('hullDetail', cylY(0.052, 0.058, 0.025, 10), s * 0.52, 2.008, -1.60);
+    P.add('hullDark', box(0.075, 0.012, 0.02), s * 0.52, 2.026, -1.60);
+  }
   periscope(P, 'hullDetail', -0.50, 2.01, 2.30);
   liftEye(P, 'hullDetail', -1.60, 2.04, 2.30);
   liftEye(P, 'hullDetail', 1.60, 2.04, 2.30);
   towCable(P, [[-1.72, 1.92, -2.3], [-1.83, 1.98, 0.0], [-1.72, 1.92, 2.35]]);
   towCable(P, [[1.72, 1.92, -2.3], [1.83, 1.98, 0.0], [1.72, 1.92, 2.35]]);
+  // §5.247 r3: cable terminations — shackle eyes at the bow ends, clamp
+  // blocks at the stern ends (the r2 tubes ended bare in mid-deck).
+  for (const s of [-1, 1]) {
+    P.add('hullDark', KIT.torus(0.042, 0.012, 10), s * 1.70, 1.92, 2.42, Math.PI / 2, 0, 0);
+    P.add('hullDetail', box(0.05, 0.03, 0.09), s * 1.72, 1.92, 2.36);
+    P.add('hullDark', box(0.06, 0.05, 0.10), s * 1.72, 1.925, -2.34);
+  }
+  // §5.247 r3: 2 m rod antenna, right rear deck (FITTINGS census; raked so
+  // the tip stays under the 3.00 m cupola-crest height law).
+  {
+    const aw = FITTINGS.antennaWhip({ mats: P.mats, h: 0.85, rake: 0.30, seed: 2 });
+    aw.position.set(1.70, 1.99, -2.62);
+    P.hullG.add(aw);
+  }
   shovelTool(P, 1.05, 2.02, 1.35);
   P.add('hullWood', box(0.03, 0.03, 1.15), -1.45, 2.02, 0.95);               // pry bar
   P.add('hullDark', box(0.10, 0.05, 0.28), -1.45, 2.02, 1.62);
-  P.add('hullDark', box(0.50, 0.14, 0.20), 1.30, 2.03, -2.95);               // 20t jack
+  // §5.247 r3: 20t jack rebuilt as real hardware (body + foot plate + screw
+  // head + clamp brackets) over the r2 black slab; wood block kept.
+  P.add('hullDark', box(0.44, 0.11, 0.16), 1.30, 2.035, -2.95);              // jack body
+  P.add('hullDetail', box(0.045, 0.15, 0.10), 1.51, 2.045, -2.95);           // foot plate
+  P.add('hullDetail', cylX(0.026, 0.47, 8), 1.30, 2.095, -2.95);             // screw
+  P.add('hullDark', box(0.05, 0.06, 0.05), 1.10, 2.10, -2.95);               // screw head
+  P.add('hullDetail', box(0.05, 0.035, 0.19), 1.18, 1.995, -2.95);           // brackets
+  P.add('hullDetail', box(0.05, 0.035, 0.19), 1.42, 1.995, -2.95);
   P.add('hullWood', box(0.28, 0.12, 0.30), 0.52, 2.02, -2.94);               // jack block
   P.add('hullDetail', cylZ(0.06, 0.40, 8), -0.95, 2.02, 2.18);               // extinguisher
+  // §5.247 r3: pioneer pair on the bow deck — axe (right) + wire cutters
+  // (left) in dark clamps, German small-tool grammar.
+  P.add('hullWood', box(0.03, 0.02, 0.55), 1.22, 2.015, 1.82);               // axe helve
+  P.add('hullDark', box(0.10, 0.04, 0.12), 1.22, 2.02, 2.13);                // axe head
+  P.add('hullDark', box(0.05, 0.03, 0.06), 1.22, 2.02, 1.62);                // clamp
+  P.add('hullDark', box(0.022, 0.02, 0.30), -1.29, 2.015, 1.92, 0, 0.10, 0); // cutter arms
+  P.add('hullDark', box(0.022, 0.02, 0.30), -1.24, 2.015, 1.92, 0, -0.10, 0);
+  P.add('hullDetail', box(0.06, 0.03, 0.09), -1.265, 2.02, 2.09);            // cutter jaw
   stowage(P, 'hullCloth', rng, [[0, 2.04, -2.58, 1.50, 0.15, 0.60]]);
   tarpRoll(P, 'hullCloth', -1.50, 2.06, -1.55, 1.0, 0.09, false);
   jerryCan(P, 'hullCloth', 1.66, 2.08, -1.35, 0.1);
@@ -1872,8 +1956,22 @@ function buildTigerI(P) {
   // drum cupola (left) to the 3.00 crest + loader hatch (right) with the
   // census MG34 swung on its rim pintle (FITTING-SINK under the height line)
   KIT.cupola(P, 'turret', -0.62, TH + 0.04, -0.48, 0.30, 0.20, 5);
+  // §5.247 r3: the drum cupola's five WALL vision slits (dark + glass, deep
+  // enough to read at side range — the r2 rim ring only read at close-up),
+  // a brow rain strip over each, and hatch furniture (grab bar + latch).
+  for (let k = 0; k < 5; k++) {
+    const a = (k / 5) * Math.PI * 2 + 0.35;
+    const sx = -0.62 + Math.sin(a) * 0.285, sz = -0.48 + Math.cos(a) * 0.285;
+    P.add('turretDark', box(0.105, 0.055, 0.05), sx, TH + 0.145, sz, 0, a, 0);
+    P.add('turretGlass', box(0.075, 0.026, 0.052), sx, TH + 0.145, sz, 0, a, 0);
+    P.add('turret', box(0.13, 0.022, 0.055), sx, TH + 0.19, sz, 0, a, 0);
+  }
+  P.add('turretDark', box(0.16, 0.02, 0.025), -0.62, TH + 0.285, -0.40);     // lid grab bar
+  P.add('turretDetail', box(0.045, 0.03, 0.045), -0.54, TH + 0.275, -0.56);  // latch block
   P.add('turret', cylY(0.21, 0.21, 0.05, 12), 0.55, TH + 0.055, -0.55);
   P.add('turretDark', box(0.30, 0.014, 0.03), 0.55, TH + 0.085, -0.55);
+  P.add('turretDetail', box(0.05, 0.028, 0.10), 0.55, TH + 0.085, -0.34);    // loader hatch hinge
+  P.add('turretDark', box(0.12, 0.018, 0.03), 0.55, TH + 0.088, -0.72);      // loader hatch handle
   {
     const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone', seed: 6, elev: 0.22, ammo: false, rotation: [0, 2.45, 0] });
     mg.position.set(0.80, TH + 0.02, -0.62);
@@ -1886,6 +1984,22 @@ function buildTigerI(P) {
   P.add('turret', xform2(cylX(0.105, 0.06, 12), 0, 0, 0), TW + 0.015, 0.52, -0.20);
   P.add('turret', xform2(cylX(0.075, 0.10, 10), 0, 0, 0), TW + 0.02, 0.52, -0.20);
   P.add('turretDark', xform2(cylX(0.032, 0.13, 8), 0, 0, 0), TW + 0.02, 0.52, -0.20);
+  // §5.247 r3: loader ESCAPE HATCH on the right-rear arc (mid-production
+  // tell) — proud door chording the r1.37 wall at 75° off the rear axis,
+  // with seam plate, hinge strap and handle. Turret-parented (§B5).
+  {
+    const a = Math.PI * 72 / 180, cs = Math.cos(a), sn = Math.sin(a);
+    const ry = Math.PI / 2 - a;                                              // +x face -> wall normal
+    const at = (rad, tan) => [sn * rad + cs * tan, -0.52 - cs * rad + sn * tan];
+    let [px, pz] = at(1.356, 0);
+    P.add('turretDark', box(0.03, 0.62, 0.50), px, 0.38, pz, 0, ry, 0);      // seam plate
+    [px, pz] = at(1.372, 0);
+    P.add('turret', box(0.05, 0.58, 0.46), px, 0.38, pz, 0, ry, 0);          // door
+    [px, pz] = at(1.398, 0.185);
+    P.add('turretDetail', box(0.05, 0.10, 0.06), px, 0.38, pz, 0, ry, 0);    // hinge strap
+    [px, pz] = at(1.402, -0.15);
+    P.add('turretDark', box(0.045, 0.03, 0.09), px, 0.30, pz, 0, ry, 0);     // handle
+  }
   for (const s of [-1, 1]) {
     P.add('turret', box(0.05, 0.06, 0.72), s * (TW + 0.02), 0.58, -0.30);    // hanger rail
     for (let k = 0; k < 2; k++) {
@@ -1899,13 +2013,17 @@ function buildTigerI(P) {
     }
   }
   // full-arc rear Gepaeckkasten (three wrapped segments)
+  // §5.247 r3: straps widened 0.03 -> 0.055 + a top rib per segment so the
+  // seams survive the top view (packet residual).
   for (const [ang, wseg] of [[0, 1.15], [0.72, 1.0], [-0.72, 1.0]]) {
     const br2 = TW + 0.23;
     const bx = Math.sin(ang) * br2, bz = -0.52 - Math.cos(ang) * br2;
     P.add('turret', box(wseg, 0.44, 0.42), bx, 0.40, bz, 0, -ang, 0);
     P.add('turret', box(wseg * 0.9, 0.10, 0.34), bx, 0.645, bz, 0, -ang, 0);
     for (const f of [-0.3, 0.3]) {
-      P.add('turretDark', box(0.03, 0.47, 0.44), bx + Math.cos(ang) * f * wseg, 0.40,
+      P.add('turretDark', box(0.055, 0.47, 0.44), bx + Math.cos(ang) * f * wseg, 0.40,
+        bz + Math.sin(ang) * f * wseg, 0, -ang, 0);
+      P.add('turretDark', box(0.055, 0.022, 0.36), bx + Math.cos(ang) * f * wseg, 0.702,
         bz + Math.sin(ang) * f * wseg, 0, -ang, 0);
     }
   }

@@ -99,3 +99,68 @@ no confusion. Separable at a glance.
 2. **LIVE-TREE AUDIT-JSON HAZARD:** shots/track-clip*.json is a shared
    mutable artifact — concurrent lanes overwrite it between a run and
    its read. Snapshot to scratchpad in the SAME command as the run.
+
+## §5.247 LECLERC-LEVEL WAVE r3 (2026-08-17, ww2 lane — leave nothing untouched)
+
+SOURCES VERIFIED FIRST: MODEL_SOURCE `procedural` (specs.js), NO
+procedural-fidelity override row, no oracle GLB on disk, no gate JSON —
+FALSE-0 law holds, photo-class flow. Live builder resolution PROVEN:
+PROFILED_BUILDERS override -> buildTigerI (hash receipt + render tells:
+3-layer interleave / horseshoe+bin arc / MG34 fitting / twin flat-drum
+brake). Nothing broken to report.
+
+### Gap table closure (baseline = the r2 certified build)
+| # | Photo read | Was | Now |
+|---|---|---|---|
+| 1 | outer wheel row cadence | 6 wheels/0.90 m | REVERTED EXPERIMENT (receipt): 24 stations built + measured — the 3-layer offsets fused the train into one pale wall at render scale (shots/ww2-wave/tiger1-r3draft); certified 16-station cycle retained |
+| 2 | cupola slits at side range | rim ring only close-up | 5 real wall slits (dark+glass) + brow strips + lid grab bar/latch |
+| 3 | loader escape hatch, right-rear wall | missing | proud door on the arc at 72° + seam plate + hinge + handle |
+| 4 | Feifel corrugated hoses | straight runs | ringed riser per side, canister -> deck lip |
+| 5 | bow/stern shackle horns | bare corners | horn plates + pin bores + hanging bow shackles (<= z 3.155) |
+| 6 | width-indicator rods | missing | rod + pale tip, both front fenders |
+| 7 | lamp conduit | floating lamp | dark cable down the shelf |
+| 8 | rear-plate spare links | bare plate | FITTINGS column x3 in frame between shroud faces (rear faces -3.2125, inside the certified -3.315 stern envelope) |
+| 9 | 20t jack | black slab | body + foot + screw + head + brackets |
+| 10 | cable ends | bare tube ends | bow shackle rings + stern clamp blocks |
+| 11 | bin straps from above | 0.03 seams | 0.055 straps + top ribs |
+| 12 | deck furniture | schematic | filler caps x2, hatch hinges + handle, axe, wire cutters |
+| 13 | mudguard hinge seams | plain | dark fold lines front + rear |
+| 14 | antenna | missing | FITTINGS.antennaWhip h.85 rake.30 (top 2.92 < the 3.00 crest law) |
+§D held: every addition inside ±1.855 width / nothing forward of 3.155.
+Untouched by design: horseshoe, mantlet+gun (§B3.1 certified), S-mines,
+stacks, dims anchors, three-plate bow.
+
+### Close battery (final state, x2 bit-identity)
+- track-clip --exact --strict x2: **0/0 band + 0/0 shoe + 0/0 strict
+  sweep, both runs identical** (strict sweep is NEW coverage vs r2).
+- tank-standard-check x2: clip ✓ / contig 0 ✓ / decor **mg1+3d** ✓
+  (was mg1+1d), both runs identical.
+- turret-parent: stranded 2 (hullWood 42% / hullCloth 40%) — the same
+  sub-50% merged-bucket AABB artifact adjudicated in r2; yaw-90 pixel
+  disproof at shots/ww2-wave/tiger1-final-yaw90 (turret set yaws, deck
+  kit static). Documented negative.
+- npm test: exit 0 (all selftests incl. track-geometry).
+- Geometry hash (NOT a freeze): **e2be895a (51 / 84244)**, identical
+  across two full runs; 14-view boards x2 bit-identical (16/16 pngs
+  md5-equal: shots/ww2-wave/tiger1-r3 == tiger1-final-B).
+- Guards: 15 resident/core ids bit-identical before/after (t30, m4a3e8,
+  t34_85, t34_85_cad, newc_tiger, newc_pziii, pziii_konserwa,
+  leichttraktor, q_heavy, tiger2, sherman_jumbo, is2, m1a2_legacy,
+  leo2a7, t90m). kv2 moved (ea4382c0 -> adb8b0a8) — attributable to the
+  soviet-heavy sibling lane's own uncommitted §5.247 redesign in the
+  shared tree (soviet-heavy.js +188 lines, not touched by this lane).
+
+### 14-view SELF-READS (builder estimates, not verdicts — critic is the bar)
+front 8.7 / frontleft 8.8 / left 8.8 / rearleft 8.8 / rear 8.8 /
+rearright 8.8 / right 8.8 / frontright 8.7 / top 8.7 / hero-fl 8.8 /
+hero-rr 8.8 / hero-toptilt 8.7 / close-front 8.8 / close-roof 8.7.
+**Floor 8.7** (r2 floor was 8.6). Weakest: radiator wells still read
+simplified from directly above; Feifel hose ribs only read near-range;
+wheel cadence stays the certified 16-station compromise (receipt above).
+
+### Residuals
+- Side-wall pioneer tools stay OFF the ±1.855 faces (§D EXACT law);
+  deck placement documented as the width-law compromise.
+- NO ORACLE: §E re-source lane remains open.
+- 24-station receipt banked for any future higher-res wheel-face pass
+  (needs per-wheel rim/hub contrast layers to survive render scale).
