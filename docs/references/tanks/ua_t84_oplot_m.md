@@ -217,3 +217,37 @@ Candidate bytes + SIM report: scratchpad ua-round/warp-candidates/
   frontleft, front, plan) + after-yaw06-* (left kit yaws with the shell,
   clears fender bins). Before set captured at the pre-edit tree, after at
   the delivered tree (§5.254 respective-trees law).
+
+## §5.340 right-wall finish (2026-08-17, owner follow-up: "still missing a
+## huge chunk of its turret ... visually check the left side from us facing
+## the front" = the TANK'S RIGHT; coordinator void shots at shots/oplot-check)
+- Hash `6e76802a` (66/96743, the landed §5.338 state) -> **`66fc1724`**
+  (66/100085). Gate ×2 BIT-IDENTICAL (row md5 28273969):
+  `min 0 | hull 0 whole 38.2 turret 0 stations 68.5 dims 100 floaters 100`
+  — **whole 37.1 -> 38.2 (+1.1)**, stations held, dims 100 HELD (heightM
+  2.26 0.9% grace), floaters 100.
+- MEASUREMENT: the relief probe recreated post-sweep and extended to BOTH
+  walls (tools/tmp-oplotright-relief.{html,mjs}). The print is measurably
+  ASYMMETRIC: right cheek face +1.462 (build +1.535, 1 cm shier than the
+  left's -1.4725 outer stack) over the SAME z -0.25..+1.36 window down to
+  y 1.35 with the same 2.003 top deck; same wing terrace steps; mid-wall
+  band to 1.417; bustle flank 1.25 with NO bin rim; **NO tall smoke
+  cluster** (left-only in the print — top scan right cluster max 2.19 vs
+  the left's 2.36) and a LOW shoulder ledge instead.
+- DELIVERED (s=+1 only; the §5.338 left side byte-untouched, right wing
+  §5.288 bricks + right uaSmoke seat untouched): (a) right cheek cassette
+  wall ×3 + top deck (§B2-closes the wing slot) + tier/bay/base seams +
+  leading-edge cassette (ry -0.848); (b) junction panel z 0.07..0.35;
+  (c) 3 wing-face course lids (rx -0.29 / rz +0.075); (d) LOW shoulder
+  ledge + stowage kit + cleats (tops 2.20/2.28 — print parity, no smoke
+  mirror per the asymmetry law); (e) wall kit: junction box + lid + dome
+  bolts + cable drop + clips + conduit (ry +0.154) + grab rail on 3 feet.
+- GATES: track-clip --exact --strict 0/0+0/0 sweep 0/0; §B5 same single
+  pre-existing stranded spareTrackLinks (§5.338 baseline receipt — zero
+  delta); guards at close: kursk 1332bd55 / t64bv 4fac9a30 / t80bv
+  554591b8 / ua_m1a1 f7d2ec40 / t84 54b9debb (taken BEFORE the §5.341
+  t80-pair rebase re-opened kursk/t80bv by owner order).
+- EVIDENCE: shots/oplot-right/ — before/after/print ×11 views each incl.
+  the order's head-on (front-headon) + FQ viewer-left (fq-viewerleft)
+  angles + after-yaw06 set; coordinator BEFORE reference at
+  shots/oplot-check/.

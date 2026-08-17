@@ -1395,17 +1395,17 @@
     "hullCurves": 0,
     "stations": 68.5,
     "turretCurves": 0,
-    "wholeCurves": 37.1,
+    "wholeCurves": 38.2,
     "dims": 100,
     "floaters": 100
    }
   },
   {
    "id": "ua_t80u_kursk",
-   "geoMin": 82.6,
+   "geoMin": 81.7,
    "gatePassed": false,
    "components": {
-    "wholeCurves": 82.6,
+    "wholeCurves": 81.7,
     "dims": 100,
     "floaters": 100
    }
@@ -1425,14 +1425,14 @@
   },
   {
    "id": "ua_t80bv",
-   "geoMin": 2.5,
+   "geoMin": 0,
    "gatePassed": false,
    "components": {
-    "hullCurves": 56.8,
-    "stations": 26.7,
-    "turretCurves": 19.3,
-    "wholeCurves": 2.5,
-    "dims": 95,
+    "hullCurves": 57.1,
+    "stations": 9,
+    "turretCurves": 0,
+    "wholeCurves": 0,
+    "dims": 97.4,
     "floaters": 100
    }
   },

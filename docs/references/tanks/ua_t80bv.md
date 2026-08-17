@@ -144,3 +144,56 @@ proposed as-is. The y_map half verified directionally (turret 18.9→21.9).
   drums (packet AABB: the print's bo4ki live at the tail, z -2.87..-3.40 —
   the print merely fuses them into the bashnya node, the documented oracle
   defect); their K-1 fan/roof-relief intents already carried ground-up.
+
+## §5.341 T-80 dome rebase + t90-read front + skirt/ERA program (2026-08-17,
+## owner orders: "use the same base t80 turret shapes again used with russian
+## tanks instead of the new odd base shape" + "a ton more varied era in front
+## that makes them look like t90 turrets a bunch of sideskirts and more era")
+- Hash `554591b8` (58/96877) -> **`1e175410`** (58/100843). Gate ×2
+  BIT-IDENTICAL (row md5 96addfeb):
+  `min 0 | hull 57.1 whole 0 turret 0 stations 9 dims 97.4 floaters 100`.
+  **dims 95 -> 97.4 IMPROVED** (heightM 2.20 exact 0.19% — squash 0.94 @
+  the 1.44 ring seat receipt; hullLengthM 6.87 improved from 6.89; width
+  3.52 0.13%); floaters 100; hull 56.8->57.1. whole 2.5->0 / turret
+  19.3->0 / stations 26.7->9 are the ORDERED dome cost (the russian-shape
+  casting vs this print's own tall-ellipse turret — "will measure whatever
+  it measures", released by the order; dims held as commanded).
+- DOME REBASE: the odd sz-1.10 9-ring ellipse replaced by the RESIDENT
+  t80-line cast profile (t80.js buildT80Line BV raw ring list [[1.44,.06],
+  [1.465,.42],[1.435,.47],[1.28,.655],[1.19,.69],[.80,.74],[.02,.75]]),
+  y-squashed 0.94 above the 0.06 base, sz 0.88, plan bias cz +0.17 per the
+  resident; turretG 1.50 -> 1.44 (ring recess; hidden carrier box) — the
+  gun axis holds its certified 1.69 world (gunG local +0.06). meshDome ->
+  meshDomeCurved is normals-only (silhouette-identical lathe).
+- T-90-READ FRONT: the K-1 hand fan + roof-arc pairs superseded by the
+  shared t90a grammar — eraRuCheeks 'k5' scheme-paint clamshell leaves
+  (k5Seg 4 seams, k5D 0.52 dome-hug, k5Lower two-leaf plates, 3 flank
+  tiles/side) + a VARIED dark brick course ×4/side on the upper slope
+  (alternating depth/pitch — the wedge+brick mix law) + mantlet
+  under-blocks re-seated at the new casting front.
+- ROOF RE-SEAT (the resident dome is fuller at mid-radius — old seats
+  sink, §5.04): cupolas/TKN/periscopes/vision blocks/mushroom/NSVT all
+  recomputed on the rebased skin (skin-math seats, bases buried 1-2 cm,
+  tops 2.18-2.21 = the heightM p95 carrier band); smoke banks re-seated
+  flush on the casting cheeks (x 1.36, z 0.64); bustle rail/boxes/tarp/
+  whips pulled to the shorter rear wall; decals to the fat wall band
+  (±1.39, z -0.30).
+- SKIRT/ERA PROGRAM: K-1 plate row now runs the FULL hull (8 panels/side
+  at the §5.272-proven 1.7435/0.028 deep-class face, fronts to 0.74, aft
+  0.87 — all above the 0.775 wheel tops, §B9 wheels read; panel run
+  CLAMPED inside the -2.66 band end — the first 0.705-pitch lay enclosed a
+  2-cell §B2 stern pocket per side, swap-run receipt holes 0@HEAD ->
+  fixed 0); skirt-top ERA cassette strip on the lip; rubber fore-sections
+  ×2/side at the idler lane; glacis: varied 4th half-tile course on the
+  toe (x <= 1.10, clear of the §5.272 idler window). Width guard §5.263:
+  all faces <= 1.7505 inside the ±1.76 anchor — widthM 3.52 unmoved.
+- GATES: track-clip --exact --strict 0/0+0/0 sweep 0/0; §B2 holes 0; §B5
+  0 stranded / 0 abutting / 0 dangling; census mg1+5d; npm test GREEN at
+  the final state. Guards byte-held: t80b fc659eb8 / t80u e963fb60 /
+  t80bv d2d21390 (the russian residents — family DNA shared, bytes
+  untouched, distinctness via the UA scheme-paint leaves + full skirt
+  program) + ua_m1a1 f7d2ec40 / t84 54b9debb / ua_t64bv 4fac9a30 /
+  ua_t84_oplot_m 66fc1724.
+- EVIDENCE: shots/ua-t80-rebase/ ua_t80bv-{before,after}-* ×10 views
+  (before at the pre-edit tree) + after-yaw06 set (§B5 rotate-as-one in
+  pixels).

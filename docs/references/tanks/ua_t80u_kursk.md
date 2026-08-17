@@ -117,3 +117,43 @@ better line for this near-true print — warp optional, low priority).
   carried by the clamshell above (the U's armor grammar is the big-wedge
   split, not small cassettes); roof-relief intent already carried by the
   ground-up roof kit.
+
+## §5.341 T-80 dome rebase + t90-read front + skirt/ERA program (2026-08-17,
+## owner orders — same two-part order as ua_t80bv, kursk lane)
+- Hash `1332bd55` (62/80579) -> **`fe3c4dc8`** (62/90089). Gate ×2
+  BIT-IDENTICAL (row md5 ba313f37):
+  `min 81.7 | whole 81.7 dims 100 floaters 100` (whole-view oracle class).
+  **dims 100 HELD** (heightM 2.20 exact / hull 7.02 / overall 9.65 /
+  width 3.60 at 0%); whole 82.6 -> 81.7 (-0.9, the ordered dome cost —
+  released; dims held as commanded).
+- DOME REBASE: the odd sz-1.12 ellipse replaced by the RESIDENT t80-line
+  cast profile (t80.js buildT80Line v1 9-ring raw list), y-squashed 0.88,
+  sz 0.88, cz +0.22 per the resident; turretG 1.50 -> 1.44 (ring recess +
+  hidden carrier); gun axis holds its certified 1.70 world (gunG +0.06).
+- T-90-READ FRONT: the §5.272 hand clamshell re-landed on the shared t90a
+  grammar — eraRuCheeks 'k5' DARK steel wedge leaves (kursk identity vs
+  the bv's scheme paint; k5Seg 5, k5D 0.55 dome-hug, k5Lower two-leaf,
+  flank tiles) + a varied MIXED-BUCKET brick course ×4/side (alternating
+  camo/steel, depth and pitch — the varied-field law) + the V tips
+  re-seated at the new casting front (z 1.56, meeting over the mantlet)
+  + mantlet under-blocks at the face.
+- ROOF RE-SEAT on the rebased skin: the tall right-forward gunner sight
+  keeps its ONE budgeted p95 spike window at the same world band (top
+  2.20-2.21); cupolas/TKN/vision blocks re-seated (tops 2.10-2.13);
+  folded NSVT lowered to the new slope (receiver proud, top 2.06);
+  asymmetric crates/snorkel/rail/whips pulled to the shorter rear wall
+  (snorkel still crosses the bustle, print tell held); smoke banks flush
+  on the cheeks (x 1.28, z 0.62); decals to the wall band (±1.37, -0.30).
+- SKIRT/ERA PROGRAM: §5.272 band + 3 rubber fore-sections stay; SIX
+  armored K-1 panels/side now run the full hull (face 1.783 inside the
+  ±1.80 anchor §5.263; fronts to 0.84 / aft 0.87 — above the 0.775 wheel
+  tops, §B9 wheels read) + skirt-top ERA strip; glacis: SECOND staggered
+  K-5 chevron course at the toe — first lay at x->1.17 / z 2.83 entered
+  the idler-lane strict sweep (34/16 voxel receipt, §5.272 precedent),
+  re-seated x<=1.00 / z 3.02 -> strict 0/0.
+- GATES: track-clip --exact --strict 0/0+0/0 sweep 0/0; §B2 holes 0; §B5
+  0/0/0; census mg1+5d; npm test GREEN at the final state; guards as the
+  ua_t80bv §5.341 list (russian residents byte-held — family DNA shared,
+  distinctness via the dark-wedge front + UA kit).
+- EVIDENCE: shots/ua-t80-rebase/ ua_t80u_kursk-{before,after}-* ×10 views
+  (before at the pre-edit tree).
