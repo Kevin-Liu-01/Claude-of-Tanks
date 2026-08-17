@@ -9067,3 +9067,6 @@ Icon regen (k2b full set + every changed id, §5.246 clean-HEAD recipe) → §5.
 
 ### OWNER LANDING VERIFY PENDING
 The owner's 01c3c6f5 (STB-1 rebuild from source oracle) touched profiles/japan.js (+238) — verify type10b `77870ef0` / type90 `43179448` / type90a `b59b6274` hashes post-merge next network window (japan.js hosts the type10b re-point + type90a).
+
+## §5.312 — ALL AGENTS CONTINUED (owner: "continue all work and all agents") (2026-08-17)
+- Network restored; per the §5.311 resume protocol: lanes G (t62/type59), H (amx30 pair), and the ariete re-cert sitting RESUMED from transcripts; lanes E and F transcripts were LOST — both RESPAWNED as recovery missions over their on-disk WIP (F: verify-the-finished-state + emit the unsent four-item report; E: parse-check leopard.js first (frustum hazard), assess prior progress via diff/snapshots, complete the three items). Five agents live; lane D's delivery awaits its re-cert verdict.
