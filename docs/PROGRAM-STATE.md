@@ -9000,3 +9000,6 @@ Owner: "undo strv 122 and strv 81. make our old pl-01 from before our changes in
 ## §5.301 — OWNER ORDER EXTENSION (verbatim, 2026-08-17): "revert the strv 103b as well"
 - strv103 joins lane A's revert scope (the §5.299 order named only 122/81; this extension revokes the strv103-untouchable clause). The pre-§5.271 build (the §5.198-era graduate state, historical freeze 4d0ff518) restores from 75780d72^; the lane reports the restored hash (post-§5.229 it may differ from the historical freeze value); the §3 graduates-table row reverts at landing (orchestrator action): 4ac3c8c8 entry retires, the row re-binds to the restored state with this order as authority.
 - Lane A messaged mid-flight with the updated scope. Five §5.299 lanes + §E batch remain live.
+
+## §5.302 — OWNER ORDER (verbatim, 2026-08-17): "now completely revert our marder hull while preserving its new turert"
+- Lane F spawned: marder1a3 = PRE-§5.286 hull (from 2fc642fb^, completely — the wave's hull-side §B9/glacis/ramp fixes revert with it) + the CURRENT ratified turret (low cast round-front, MK20 carriage, MILAN, collars — §5.269-fix state). Ring-seat reconciliation + §B5 unity required; all seven afvFamily neighbors hard-gated byte-identical; honest re-gate ×2; spec hull-side values revert if the wave moved them. Seven §5.299-family lanes now live (+§E batch).
