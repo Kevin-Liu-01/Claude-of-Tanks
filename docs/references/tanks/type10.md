@@ -417,3 +417,90 @@ profiles/japan.js addType10BPackage, re-seated at scale).
   byte-identical, diff receipt). One transient npm-test failure (tiger1
   transmission volume) was a torn read during the owner session's live
   write — clean re-run exit 0.
+
+## §5.364 packet — pivot re-auth + owner see-through/black-line/track/fill orders (2026-08-17)
+
+### Item 1 — rig/sim pivot re-auth (§5.362 finding, §5.361 rig-anchor law)
+- ROOT: the §5.336 rig was authored THROUGH the old finalizeCombatAnatomy
+  pivot remap; §5.361 (pivots never ride the calibration map) re-seated
+  rig_gun +0.242 m forward / −0.132 low vs certification (overall read
+  10.686 vs the decreed 10.439 row).
+- FIX (values = the EXACT retired-remap outputs, derived by running the
+  pre-§5.361 finalizer on the raw specs in a pinned worktree; the
+  old-module cross-check matched to the last double):
+  - turretPivot `[0, 1.8027777777777776, 0.2713333333333332]` (both ids;
+    sim frame + turret-local equipment datum — the VISUAL turret seat is
+    builder-pinned at [0, 1.672, 0.2354], modern3.js P.turretG line).
+  - gunPivot type10 `[0.01100000000000012, 0.4511015831134565,
+    1.1771211453744495]` (the +11 mm x = the certified asymmetric turret
+    envelope map, −1.573..+1.595); type10b `[0, 0.4511015831134565,
+    1.1771211453744495]`.
+  - SITE: japan.js post-clone re-seat block (NOT the modern3 armor row —
+    userdrops5's type90 clones that armor through fitArmorToDims, which
+    scales pivots; a donor-row edit would have silently moved the
+    byte-held type90 hit frame; japan.js evaluates after userdrops5 in
+    tankFactory's registration order). modern3 row carries the
+    clone-frame law comment.
+- PROOF: with item 1 alone the builds returned to the CERTIFIED BYTES —
+  hashgeo type10 **b2f9a0ee** / type10b **ca20604** exact (worktree
+  rigseat probe: rig_gun world [0.011, 2.1231, 1.4125] = certification).
+
+### Items 2-5 — §5.364 owner orders (verbatim: "type 10s are see through
+### and have a big black line on each side of hull. fix all of these, fix
+### the hulls, make the tracks beefier and have the same decorations as
+### other tracks, and fill up the insides of the tanks")
+- BLACK LINE ATTRIBUTED (receipt shots/type10-fix/before-type10/
+  attrib.json): flank raycast rows y 1.393..1.486 read 66/72 rays
+  `hullShadow #0b0c0a` — the 11.5 cm × 5.94 m pure-black "fender-line
+  relief" AO fake. RETIRED → 3.3 cm gunmetal fender support rail +
+  skirt-top junction seam retoned hullShadow→hullDark (§5.262: never
+  ambient-black). Flank shadow-rows after: **0**.
+- SEE-THROUGH (receipt before/sweep.json: cross-hull daylight y 1.20 =
+  60/103 rays clean through): the old 0.616-tall near-black bay liner
+  topped at 1.10 under the 1.2265 sponson floor. FILLS (all real geometry,
+  suspension gunmetal, inboard of the 1.0757 band inner face): inner bay
+  walls raised to the sponson floor (0.484..1.30) + rear bay wall
+  (0.62..1.56, front edge −2.44 meets the rear step) + bow bay wall +
+  per-station hydropneumatic strut heads/mounts; sponson-front side
+  closures (1.30..1.6583, z 1.606..2.233); driver/bow bulkhead
+  (±1.05 × 0.682..1.43 at the glacis knee); JGSDF fender toolboxes +
+  straps closing the fender-gully cells. Skirt tops rise 1.175→1.2265 to
+  the sponson underside; raked front panels top out at the 1.301 fender
+  underside (§B9 hem 0.42 and wheel exposure UNTOUCHED). AFTER: zero
+  interior see-through rows — every remaining open cell is stern-overhang
+  (z<−3.4) or beak-taper air (z>3.15), designed-openness class.
+- TRACKS BEEFIER (§5.364): band 0.055→0.072, shoe relief 0.55→0.85 of the
+  fleet shoe (full default connector-rail/guide-horn/pin-cap anatomy at
+  honest height), pitch 0.112→0.138, botY +9 mm (ground clearance held).
+  Lateral stations (trackW/xc/pinCapOuter) §B4-certified — untouched.
+  track-clip strict: **0 front / 0 rear / 0 shoe / 0 sweep** both ids
+  (the first full-width bulkhead cut read 18 sweep voxels in the top-run
+  lane — clamped to ±1.05 same run).
+- HULLS: judged at the §5.254 pairs (shots/type10-fix/cert-* vs
+  pairfinal-*): flank now continuous camo with real paneling, structured
+  bays, chunkier articulated track — silhouette/proportions unchanged.
+
+### Receipts and rows
+- AABB (probe, identical filter both states): overall 10.4512 / width
+  3.5640 / z-max 6.6632 — BYTE-EQUAL before→after items 2-5, and equal to
+  the certified-bytes worktree measurement (the sitting instrument read
+  the same state 10.4440; the +0.242 regression is dead).
+- geometry-gate type10 ×2 (final state, deterministic): **66.9 / 66.9**
+  (hull 79.1 = +2.0 vs the 67.2 row, dims **100**, floaters 100; whole
+  66.9 = −0.3, stations 71.5 = −1.6). The −0.3 is the honest cost of the
+  owner's own §5.364 seal orders measured against the §5.304-decreed
+  FALSE print (~9.1% small by decree) — §5.355 precedent (68.7→67.2 for
+  the ×1.10 order itself). dims (spec truth) untouched at 100.
+  type10b: FALSE-0 class unchanged (no reference row).
+- HASHES (final, live == pinned-worktree clean-room): type10 **6e25b62e**
+  (66/86,338), type10b **5e6f7700** (81/104,096).
+- GUARDS: clean-room A/B at HEAD 7b85fe43 — type90 **518e88f0** /
+  type90a **71208238** byte-held at HEAD-pure AND at HEAD+this-lane's
+  files (the live tree's type90 drift = the §5.364 type90-guns lane's own
+  WIP in profiles/misc.js, attributed).
+- combatAnatomyCalibrations regenerated (116 rows; the pair's hull/track
+  receipts moved with the geometry). NOTE: the shared live tree carried
+  co-resident lanes' WIP (leo2a4m/leo2a6m/kf51b/bmp3_rok/upior_ifv/
+  marder1a3/bmpt_t90/type90/type90a) — their rows reflect their in-flight
+  geometry and re-regenerate at their landings.
+- npm test EXIT 0 + production build EXIT 0. Delivered UNCOMMITTED.

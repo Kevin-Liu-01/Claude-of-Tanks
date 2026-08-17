@@ -755,12 +755,12 @@
   },
   {
    "id": "type10",
-   "geoMin": 67.2,
+   "geoMin": 66.9,
    "gatePassed": false,
    "components": {
-    "hullCurves": 77.1,
-    "stations": 73.1,
-    "wholeCurves": 67.2,
+    "hullCurves": 79.1,
+    "stations": 71.5,
+    "wholeCurves": 66.9,
     "dims": 100,
     "floaters": 100
    }

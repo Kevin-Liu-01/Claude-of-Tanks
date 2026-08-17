@@ -2137,7 +2137,7 @@ export const COMBAT_ANATOMY_CALIBRATIONS = Object.freeze({
         1.815,
         3.762
       ],
-      "sourceHash": "806bb7a56d2af68c"
+      "sourceHash": "0019a4dcd35b0274"
     },
     "turret": {
       "min": [
@@ -2156,28 +2156,28 @@ export const COMBAT_ANATOMY_CALIBRATIONS = Object.freeze({
       "left": {
         "min": [
           -1.5917,
-          0.0055,
-          -3.4362
+          0.006,
+          -3.4445
         ],
         "max": [
           -1.0757,
-          1.4471,
-          3.5804
+          1.4555,
+          3.589
         ],
-        "sourceHash": "48422921cab305a9"
+        "sourceHash": "45470792c79c5b47"
       },
       "right": {
         "min": [
           1.0757,
-          0.0055,
-          -3.4362
+          0.006,
+          -3.4445
         ],
         "max": [
           1.5917,
-          1.4471,
-          3.5804
+          1.4555,
+          3.589
         ],
-        "sourceHash": "b3d89a7b2ec38ae8"
+        "sourceHash": "e116ae7007f1be09"
       }
     }
   },
@@ -2193,7 +2193,7 @@ export const COMBAT_ANATOMY_CALIBRATIONS = Object.freeze({
         1.815,
         3.762
       ],
-      "sourceHash": "cb02750814785dfb"
+      "sourceHash": "d068c4290f715606"
     },
     "turret": {
       "min": [
@@ -2212,28 +2212,28 @@ export const COMBAT_ANATOMY_CALIBRATIONS = Object.freeze({
       "left": {
         "min": [
           -1.5917,
-          0.0055,
-          -3.4362
+          0.006,
+          -3.4445
         ],
         "max": [
           -1.0757,
-          1.4471,
-          3.5804
+          1.4555,
+          3.589
         ],
-        "sourceHash": "48422921cab305a9"
+        "sourceHash": "45470792c79c5b47"
       },
       "right": {
         "min": [
           1.0757,
-          0.0055,
-          -3.4362
+          0.006,
+          -3.4445
         ],
         "max": [
           1.5917,
-          1.4471,
-          3.5804
+          1.4555,
+          3.589
         ],
-        "sourceHash": "b3d89a7b2ec38ae8"
+        "sourceHash": "e116ae7007f1be09"
       }
     }
   },

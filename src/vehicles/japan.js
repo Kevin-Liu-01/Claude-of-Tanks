@@ -78,3 +78,40 @@ for (const id of JAPAN_IDS) {
   MODEL_SOURCE[id] = MODEL_SOURCE[id] || { source: 'procedural' };
   if (!ALL_TANK_IDS.includes(id)) ALL_TANK_IDS.push(id);
 }
+
+// --- type10 pair rig/sim pivot re-auth (§5.362 follow-up; §5.361 law) -------
+// The §5.336 rig was authored THROUGH the old finalizeCombatAnatomy pivot
+// remap: the certified builds (type10 b2f9a0ee / type10b ca20604) seated
+// rig_gun at the REMAPPED pivots, and every §5.336 receipt (bore 2.123,
+// muzzle z-max 6.656, overall 10.444) binds to those seats. §5.361 removed
+// the remap (rig anchors stay profile-authored), which re-seated the pair's
+// gun +0.242 m forward/-0.132 low vs certification. Re-author the pivots to
+// the EXACT values the retired remap produced (derived by running the
+// pre-§5.361 finalizer on the raw specs; full-precision doubles so the
+// builds return to the certified bytes):
+//   turretPivot y 1.672->1.8028 / z 0.231->0.2713 (hull plate-bounds ->
+//     receipt map; sim frame + turret-local equipment datum — the VISUAL
+//     turret seat is builder-pinned at [0, 1.672, 0.2354] in modern3.js),
+//   gunPivot [0, 0.319, 1.419] -> turret plate-bounds -> receipt map
+//     (type10's x picks up +0.011 from its asymmetric measured turret
+//     envelope, -1.573..+1.595; type10b's envelope is symmetric).
+// Applied HERE, post-clone, and NOT in the modern3 spec row: userdrops5's
+// type90 clones that armor through fitArmorToDims (which scales pivots), so
+// re-authoring the donor row would silently move the byte-held type90 frame
+// (guard law §5.336). japan.js evaluates after userdrops5 in tankFactory's
+// registration order, so the type90/type90a clones never see these values.
+{
+  const TYPE10_PAIR_RIG = Object.freeze({
+    turretPivot: [0, 1.8027777777777776, 0.2713333333333332],
+    gunPivot: {
+      type10: [0.01100000000000012, 0.4511015831134565, 1.1771211453744495],
+      type10b: [0, 0.4511015831134565, 1.1771211453744495],
+    },
+  });
+  for (const id of ['type10', 'type10b']) {
+    const armor = TANK_SPECS[id]?.armor;
+    if (!armor) throw new Error(`type10 pair rig re-auth: ${id} spec missing`);
+    armor.turretPivot = TYPE10_PAIR_RIG.turretPivot.slice();
+    armor.gunPivot = TYPE10_PAIR_RIG.gunPivot[id].slice();
+  }
+}

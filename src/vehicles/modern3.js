@@ -333,6 +333,18 @@ const MODERN3_SPECS = {
     // the 10.44 overall on the 7.52 hull. Armor frame scaled in the SAME
     // edit (§D ERA-def/geometry coupling law); protection mm values are
     // gameplay truth and do not scale with visual size.
+    // PIVOT CLONE-FRAME LAW (§5.362 re-auth): the two pivot arrays below are
+    // the §5.336 CLONE FRAME, kept byte-stable because userdrops5's type90
+    // row clones this armor through make() + fitArmorToDims (which scales
+    // pivots — the type90 hit frame must stay byte-invariant, guard law
+    // §5.336) and japan.js clones it for type10b. The LIVE rig/sim pivots
+    // for type10 + type10b are re-seated post-clone in japan.js: the §5.336
+    // rig was authored THROUGH the old calibrated-pivot remap that §5.361
+    // removed (rig anchors never ride the calibration map), so the certified
+    // seats — turretPivot [0, 1.8028, 0.2713] / gunPivot local z 1.1771,
+    // exactly what the retired remap produced from the arrays below — are
+    // now authored explicitly there. rig_turret itself stays builder-pinned
+    // at [0, 1.672, 0.2354] (see P.turretG.position.set in the builder).
     armor: modernArmor({
       hl: 3.762, hw: 1.782, inW: 1.144, floor: 0.495, trkTop: 1.045, roofY: 1.683,
       turretPivot: [0, 1.672, 0.231], gunPivot: [0, 0.319, 1.419],
@@ -2314,6 +2326,15 @@ export function buildType10Native2026(P) {
     [-1.012, 1.155, 3.168], [1.012, 1.155, 3.168], [0.946, 0.968, 3.74], [-0.946, 0.968, 3.74],
     [-1.012, 1.5015, 3.168], [1.012, 1.5015, 3.168], [0.946, 1.0505, 3.74], [-0.946, 1.0505, 3.74]));
   P.add('hull', box(0.484, 0.0825, 0.055), 0, 1.0505, 3.7345);                  // center prow lip (top 1.089 at the 3.762 front plane — the hullLengthM anchor; the print's plan bow is W-shaped)
+  // §5.364 bow-void closures (owner "see through"/"fill up the insides";
+  // receipt shots/type10-fix/after1z-type10/sweep.json rows y 1.38..1.515):
+  // the real hull side runs solid to the bow — close the sponson-front flank
+  // under the deck, and seat the driver's bulkhead behind the glacis so the
+  // bow interior never reads as daylight through the fender gully.
+  for (const s2 of [-1, 1]) {
+    P.add('hull', box(0.055, 0.3583, 0.627), s2 * 1.5345, 1.4792, 1.9195);      // sponson-front side closure 1.30..1.6583, z 1.606..2.233
+  }
+  P.add('hull', box(2.10, 0.748, 0.055), 0, 1.056, 2.2605);                     // driver/bow bulkhead 0.682..1.43 at the glacis knee (±1.05 — inside the 1.0757 band inner faces; the first full-width cut read 18 strict-sweep voxels in the top-run lane)
   for (const s2 of [-1, 1]) {
     P.add('hull', slab(                                                         // swept beak shoulders back to the 3.51 plan line (§B1 one plane each)
       [s2 * 0.242, 0.968, 3.762], [s2 * 0.946, 0.968, 3.509], [s2 * 0.946, 0.968, 3.355], [s2 * 0.242, 0.968, 3.608],
@@ -2348,12 +2369,15 @@ export function buildType10Native2026(P) {
   // raked front panel, bolt studs) — §B4: skirt inner 1.6556 clears the
   // 1.595 shoe/pin-cap outer envelope by 6.1 cm; §B9 (§5.269 law): hem at
   // 0.42 exposes ~49% of the 0.77 wheel discs (fleet 40-70 band) so the
-  // five-station train reads at garage angles ------------------------------
+  // five-station train reads at garage angles. §5.364 owner seal ("see
+  // through" + "big black line"): the skirt TOP rises 1.175 -> 1.2265 to
+  // meet the sponson underside (photos: the real panels hang from the
+  // fender line) — the hem/§B9 exposure is untouched -----------------------
   for (const s of [-1, 1]) {
-    P.add('hull', box(0.0385, 0.755, 5.115), s * 1.6413, 0.7975, -0.8525);      // straight skirt course, band 0.42..1.175 (§B9 hem); inner face 1.622 = 3.0 cm off the 1.592 band outer face — the certified sub-scan slit class (§B2 rear-slit receipt: the 6.4 cm slit read 5 enclosed cells/side, and no cap fits over the climbing run)
-    P.add('hull', slab(                                                         // front stepped panel, raked leading edge (one plane, §B1)
+    P.add('hull', box(0.0385, 0.8065, 5.115), s * 1.6413, 0.82325, -0.8525);    // straight skirt course, band 0.42..1.2265 (§B9 hem held; top meets the sponson floor, §5.364); inner face 1.622 = 3.0 cm off the 1.592 band outer face — the certified sub-scan slit class (§B2 rear-slit receipt: the 6.4 cm slit read 5 enclosed cells/side, and no cap fits over the climbing run)
+    P.add('hull', slab(                                                         // front stepped panel, raked leading edge (one plane, §B1); top 1.301 meets the fender underside (§5.364 bow-quarter window seal)
       [s * 1.622, 0.572, 2.882], [s * 1.6605, 0.572, 2.882], [s * 1.6605, 0.572, 1.705], [s * 1.622, 0.572, 1.705],
-      [s * 1.622, 1.21, 3.168], [s * 1.6605, 1.21, 3.168], [s * 1.6605, 1.254, 1.705], [s * 1.622, 1.254, 1.705]));
+      [s * 1.622, 1.301, 3.168], [s * 1.6605, 1.301, 3.168], [s * 1.6605, 1.301, 1.705], [s * 1.622, 1.301, 1.705]));
     P.add('hull', box(0.0385, 0.572, 0.132), s * 1.7023, 0.825, -3.245);        // compact rear panel (inner 1.683 rides 8.8 cm outside the raised wrap band)
     for (const zs of [0.792, -0.462, -1.716, -2.574]) P.add('hullDark', box(0.0462, 0.308, 0.0176), s * 1.6424, 0.96, zs); // module seams (aft seam -2.574 — the raised sprocket wrap corridor [-3.49..-2.80] is §B4-clear)
     if (P.q) for (let k = 0; k < 7; k++) {
@@ -2361,8 +2385,14 @@ export function buildType10Native2026(P) {
     }
     P.add('hullRubber', box(0.352, 0.242, 0.0308), s * 1.067, 1.012, 3.7125);   // front mud flaps carry the print's fender-lobe plan line ×1.10, track-clear
     P.add('hullRubber', box(0.352, 0.22, 0.0308), s * 1.298, 0.77, -3.355);     // rear flaps inside the transom outline
-    P.add('hullShadow', box(0.0462, 0.033, 4.345), s * 1.6424, 1.2265, -0.484); // skirt-top shadow seam (ends -2.657, clear of the wrap corridor)
-    P.add('hullShadow', box(0.0198, 0.1155, 5.94), s * 1.5664, 1.43, 0.495);    // fender-line relief under the deck shoulder (ends -2.475, §5.308-B trim ×1.10)
+    // §5.364 BLACK-LINE FIX (owner: "big black line on each side of hull";
+    // attribution receipt shots/type10-fix/before-type10/attrib.json — flank
+    // rows y 1.393..1.486 read 66/72 rays hullShadow #0b0c0a): the 11.5 cm
+    // full-length pure-black "fender-line relief" AO fake is RETIRED. The
+    // skirt/sponson junction seam and a 3.3 cm fender support rail carry the
+    // panel definition in honest gunmetal (§5.262 — never ambient-black).
+    P.add('hullDark', box(0.0462, 0.033, 4.345), s * 1.6424, 1.2265, -0.484);   // skirt-top junction seam (ends -2.657, clear of the wrap corridor)
+    P.add('hullDark', box(0.0198, 0.033, 5.94), s * 1.5664, 1.43, 0.495);       // fender support rail (real hardware read; ends -2.475, §5.308-B trim ×1.10)
   }
   // ---- running gear (§5.336 order 2 — the fleet smart course): FIVE big
   // exposed wheels (hard identity) + visible torsion arms + four return
@@ -2383,10 +2413,18 @@ export function buildType10Native2026(P) {
     sprocket: { z: -3.146, y: 1.155, r: 0.352, trackR: 0.22 },
     idler: { z: 3.278, y: 0.88, r: 0.385, trackR: 0.231 },
     rollers: [2.97, 1.595, 0.165, -1.32].map((z) => ({ z, y: 0.8525, r: 0.0935 })),
-    trackW: 0.5159, trackTh: 0.055, topY: 0.935, botY: 0.033,
+    // §5.364 owner order ("make the tracks beefier and have the same
+    // decorations as other tracks"): the fine-pitch course keeps its Type 10
+    // identity but at fleet gauge — band 0.055 -> 0.072, shoe relief
+    // 0.55 -> 0.85 of the fleet shoe (the full default connector-rail /
+    // guide-horn / pin-cap anatomy every other track carries, no longer
+    // half-squashed), pitch 0.112 -> 0.138 for chunkier links. botY rises
+    // 9 mm so the thicker band still clears the ground plane. Lateral
+    // stations (trackW/xc/pinCapOuter) are §B4-certified — untouched.
+    trackW: 0.5159, trackTh: 0.072, topY: 0.935, botY: 0.042,
     contactZF: 2.398, contactZR: -2.365,
     arms: true, paintedEnds: true, coveredTop: true,
-    linkPitchM: 0.112, shoeRadialScale: 0.55, padCornerFloor: 0.0132,
+    linkPitchM: 0.138, shoeRadialScale: 0.85, padCornerFloor: 0.0132,
     pinCapOuter: 0.252,                                                         // caps outer 1.586 (2 mm proud of the 1.5837 pad face; 3.6 cm inside the 1.622 skirt inner — §B4 voxel-margin law)
     padHex: 0x31322a, chainHex: 0x292a24,
     gearFloor: true, tireHex: 0x24261f, wheelHex: 0x3f4837,
@@ -2404,8 +2442,24 @@ export function buildType10Native2026(P) {
     P.add('hullTrack', KIT.xform(torus(0.078, 0.0155, P.q ? 16 : 10), 0, 0, 0, 0, 0, Math.PI / 2), s * 1.607, 1.155, -3.146);
     P.add('hullTrack', cylX(0.048, 0.036, 10), s * 1.607, 1.155, -3.146);       // sprocket hub cap
   }
+  // §5.364 BAY FILL (owner: "see through" + "fill up the insides"): the old
+  // 0.616-tall near-black hullShadow liner topped out at 1.10, leaving a
+  // 12.6 cm cross-hull daylight corridor under the 1.2265 sponson floor
+  // (before-receipt shots/type10-fix/before-type10/sweep.json: y 1.20 read
+  // 60/103 rays clean through). Real inner bay WALLS now seal liner-top ->
+  // sponson floor and the raised rear/idler bays, in suspension gunmetal
+  // (§5.262 — not pure black), still inboard of the 1.0757 band inner face.
   for (const s of [-1, 1]) {
-    P.add('hullShadow', box(0.022, 0.616, 5.39), s * 1.0395, 0.792, 0.11);      // near-black AO bay liner (§B8.1 wheel countability; inboard of the 1.076 band inner face, ends clear of both wrap corridors)
+    P.add('hullRunningGearDark', box(0.022, 0.816, 5.39), s * 1.0395, 0.892, 0.11);  // inner bay wall 0.484..1.30 (meets the sponson floor; ends clear of both wrap corridors)
+    P.add('hullRunningGearDark', box(0.022, 0.94, 1.06), s * 1.0395, 1.09, -2.97);   // rear bay wall 0.62..1.56 under the sprocket-bay roof (front edge -2.44 meets the rear step)
+    P.add('hullRunningGearDark', box(0.022, 0.56, 0.42), s * 1.0395, 0.97, 3.00);    // bow bay wall 0.69..1.25 behind the idler run
+    // Real suspension structure in the opened bays (§5.364 "fill the bay
+    // with real geometry": hydropneumatic strut heads + mounts between the
+    // wheel stations — the Type 10's in-arm units; inboard of the band).
+    for (const z of [2.2358, 1.1957, 0.1555, -0.8845, -1.9247]) {
+      P.add('hullRunningGearDetail', cylX(0.046, 0.11, 10), s * 1.005, 1.06, z + 0.52); // strut head
+      P.add('hullRunningGearDetail', box(0.09, 0.14, 0.12), s * 1.0, 1.13, z + 0.52);   // strut mount block
+    }
   }
   // ---- hull furniture (print stations ×1.10; every top follows the deck
   // lines; §B3.2 density: the type's full common kit) -----------------------
@@ -2485,6 +2539,14 @@ export function buildType10Native2026(P) {
     [0.33, 1.7952, -3.058, 0.968, 0.121, 0.506],
   ]);
   ammoCan(P, 'hullDark', 1.298, 1.7985, -3.036, 0.12);
+  // §5.364 fender toolboxes (JGSDF common kit): long tool stowage riding the
+  // front fenders — real geometry closing the fender-gully daylight cells
+  // (receipt after1z sweep y 1.38, z 2.28..2.49) on both flanks.
+  for (const s of [-1, 1]) {
+    P.add('hullEquipment', box(0.286, 0.132, 0.77), s * 1.386, 1.4092, 2.585);  // fender tool box (lid 1.4752 under the glacis edge)
+    P.add('hullDark', box(0.292, 0.022, 0.045), s * 1.386, 1.412, 2.345);       // cinch strap
+    P.add('hullDark', box(0.292, 0.022, 0.045), s * 1.386, 1.412, 2.815);       // cinch strap
+  }
   P.decal('hull', 'number', '99-4083', 0.286, [0, 1.034, 3.7565], 0, -0.10);
   P.decal('hull', 'number', '99-4083', 0.242, [0.935, 1.43, -3.7675], Math.PI);
   // rear plate furniture (§B3.2)

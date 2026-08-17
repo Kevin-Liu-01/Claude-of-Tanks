@@ -58,3 +58,26 @@ is therefore procedural-only frames + the shared-base gate row (type10
   (14 paired + 14 yaw0 + 14 yaw90 at final bytes); garage family read in
   shots/type10-enlarge/after-garage/pair-s1.png (X Type 10B beside IX
   Type 10 / Type 90 in the JP tab).
+
+## §5.364 packet — pivot re-auth + owner orders (rides the shared base) (2026-08-17)
+- Item 1 (§5.362 finding): rig/sim pivots re-authored to the exact
+  retired-remap outputs in japan.js (post-clone block; see the type10.md
+  §5.364 packet for the law and derivation): turretPivot
+  `[0, 1.8027777777777776, 0.2713333333333332]`, gunPivot
+  `[0, 0.4511015831134565, 1.1771211453744495]` (the B's measured turret
+  envelope is symmetric — no x offset, unlike the base mark). Item-1-alone
+  proof: hashgeo returned to the certified **ca20604** exact.
+- Items 2-5 ride the rebuilt shared base (buildType10Native2026): black
+  line retired, bay walls/struts, bow closures, skirt/panel raises,
+  beefier §B6 course — receipts in shots/type10-fix/ (before-/after1z-/
+  final-/cert-/pairfinal-type10b sets). The B identity delta (cheek shell,
+  cassette rows, high side cassettes on the 1.6606 skirt outer plane, EO
+  pair, RWS, Kai mask, basket, whips) is UNTOUCHED and stays flush over
+  the raised skirts (§B2 no-air held).
+- See-through after: zero interior rows (worst remaining open cell class =
+  stern-overhang/beak-taper air, designed openness). track-clip strict
+  0/0/0/0. FALSE-0 gate class unchanged (no reference row).
+- Final hash **5e6f7700** (81/104,096), live == pinned-worktree
+  clean-room. Guards type90 **518e88f0** / type90a **71208238**
+  byte-held under this lane's files (clean-room A/B at 7b85fe43).
+- npm test EXIT 0 + production build EXIT 0. Delivered UNCOMMITTED.
