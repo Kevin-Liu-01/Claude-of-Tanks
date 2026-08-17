@@ -1140,6 +1140,9 @@ ${snowCap ? `
         mass: meta.mass ?? 1,
         restitution: meta.bounce ?? 0.32,
         friction: meta.friction ?? 2.2,
+        airDrag: meta.airDrag ?? 0.16,
+        angularDrag: meta.angularDrag ?? 0.42,
+        groundConstrained: meta.groundConstrained === true,
         spinBias: ((idx + seed) & 1) ? 1 : -1,
       });
       rec.looseListed = false;
