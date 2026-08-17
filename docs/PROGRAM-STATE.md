@@ -8649,3 +8649,25 @@ critic >=9.0 x14). FIRST STEP per round: verify the ids' oracle
 registrations RESOLVE and the prints LOAD (report broken rows to the
 orchestrator lane). Five builder rounds spawned; agent spawning
 RESUMED by this order (spend pause lifted by the owner's goal).
+
+## 5.248 OWNER ORDER — 28-PRINT GROUND-UP REBUILD WAVE (2026-08-17):
+28 new reference GLBs dropped (Downloads root x13 + "Claude of Tanks
+Models" folder x15). ORDER: "completely redesign the pl-01, t72 m1
+jaguar, pt-91 a twardy, strv 122, amx 30b+stb1 (use more vertices and
+geometries in turrets), type 90a, type 10b, t-64bv donbas, type 59,
+ztz-85-III, type 99A2, carro 45t, ariete c1 and ariete c2, and the
+rest of the tanks included above... because we just reused a lot of
+models when i wanted completely new ones built from the ground up
+doing high quality visual AND exact geometric comparison with the 3d
+models... leclerc highest standards." READ: the parallel session's
+family waves used donor-clone specs/geometry (variantOf) — the owner
+wants GROUND-UP print-measured §K builds for every subject in the
+drop set. EXECUTION: (1) onboarding delegated x2 agents (inspect,
+provenance per the §5.38 ATTRIBUTION law, quarantine parking, node
+censuses, registration-row PREPARATION — the orchestrator lands all
+map edits); (2) rebuild rounds spawn per family lane AS REGISTRATIONS
+LAND (poland/sweden/china/ukraine/japan/IFV lanes are free NOW; the
+§5.247 ten-tank wave keeps its five lanes); (3) overlaps with live
+rounds relayed (t64bv1 gets the donbass print mid-round; type90/
+leo2a4/leo2a6 prints queue behind their lanes' current rounds).
+STACKED GOALS: §5.247 (ten tanks) + §5.248 (this wave) both enforce.
