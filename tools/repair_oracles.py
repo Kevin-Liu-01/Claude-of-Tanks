@@ -1602,15 +1602,21 @@ REPAIRS['t62mv1'] = [
                            delete_rules=[((-46.5, 30.0, 17.0, 19.6, -18.0, 18.0), 0, 0)],
                            expect_delete=(55, 298, 191))),
 ]
-REPAIRS['t64bv1'] = [
-    # two-part plate = thin flange slabs at y 14.37..16.51 PLUS the ring-plug
-    # box (one discrete component, y 8.71..14.91, x -33.12..31.51 z +-11.67 —
-    # the audit's "wide rear slab .. + narrow front tongue" footprint).
-    ('py2', _index_surgery('t64bv1', 'TurretMesh',
-                           delete_rules=[((-34.0, 32.5, 13.9, 16.6, -15.0, 15.0), 0, 0),
-                                         ((-33.8, 32.2, 8.4, 15.2, -12.0, 12.0), 0, 0)],
-                           expect_delete=(126, 743, 505))),
-]
+# RETIRED 2026-08-17 (PROGRAM-STATE §5.252/§5.256): t64bv1's certified oracle
+# is the RAW owner print t-64bv1_ussr.glb (sha256 608336f2…, byte-exact to the
+# packet header) — the 2026-08-15+ spec carries silhouette* dims (5.98/8.61/
+# 2.28) measured against the raw bake, so the repair chain below (batch-9
+# surgery + the batch-12 warp extension near "batch 45") no longer produces
+# the id's oracle. The chain stays byte-idempotent against the .bak (×2
+# re-verified by the §5.247 builder; output 4152882a… = the retired
+# published-dims print) but MUST NOT be re-run as the oracle. Recipe kept for
+# history:
+#   ('py2', _index_surgery('t64bv1', 'TurretMesh',
+#                          delete_rules=[((-34.0, 32.5, 13.9, 16.6, -15.0, 15.0), 0, 0),
+#                                        ((-33.8, 32.2, 8.4, 15.2, -12.0, 12.0), 0, 0)],
+#                          expect_delete=(126, 743, 505)))
+# (two-part plate = thin flange slabs y 14.37..16.51 + ring-plug box
+# y 8.71..14.91, x -33.12..31.51, z +-11.67)
 REPAIRS['t72bu'] = [
     # (a) strip the full-footprint deck shadow layer (doubled quads floating
     #     0.1-0.7 over the real deck skin, which spans below the band and is
@@ -2391,15 +2397,17 @@ REPAIRS['t62_bergman'] = [
     # bow = the real T-62 layout. Turret/gun/DShK stay untouched.
     ('py2', _rotate_mesh_180y('t62_bergman', 'HullMesh', expect_verts=48182)),
 ]
-REPAIRS['t64bv1'] = [
-    *REPAIRS['t64bv1'],
-    # SHORT print: hull mask 6.00->6.54 (+9%), fused tube to overall 9.225,
-    # uniform stature 2.283->2.17
-    ('py2', _axis_warp('t64bv1', long_axis='x',
-                       y_map=[(-0.0819, -0.0819), (27.0107, 25.6697)],
-                       long_map=[(-35.4245, -38.6286), (35.7781, 38.9822), (66.7512, 70.8454)],
-                       y_top_max=26.8564, expect=(3, 9597, 6510))),
-]
+# RETIRED 2026-08-17 (PROGRAM-STATE §5.252/§5.256, pairs with the batch-9
+# t64bv1 retirement above): the batch-12 warp normalized the print to the
+# RETIRED published dims — the 2026-08-15+ silhouette* spec matches the raw
+# owner print, which is now the certified oracle unwarped. Recipe kept for
+# history (chained after the retired batch-9 surgery):
+#   ('py2', _axis_warp('t64bv1', long_axis='x',
+#                      y_map=[(-0.0819, -0.0819), (27.0107, 25.6697)],
+#                      long_map=[(-35.4245, -38.6286), (35.7781, 38.9822), (66.7512, 70.8454)],
+#                      y_top_max=26.8564, expect=(3, 9597, 6510)))
+# (SHORT print: hull mask 6.00->6.54 (+9%), fused tube to overall 9.225,
+# uniform stature 2.283->2.17)
 REPAIRS['t72b_1987'] = [
     # Super-Dolly crown band 2.46-2.73 -> 2.17-2.27 (pub 2.23), hull mask
     # 7.29->6.67, fused tube to overall 9.53. r2 map: the crown MASS rides
