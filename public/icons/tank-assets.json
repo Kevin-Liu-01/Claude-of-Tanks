@@ -66269,7 +66269,7 @@
           }
         ]
       },
-      "geometryHash": "05b5b618",
+      "geometryHash": "6c3e72b7",
       "metadataHash": "4a293143",
       "appearance": {
         "version": 1,
@@ -66281,10 +66281,10 @@
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
-          "armorPaint": 5,
-          "gunmetal": 15,
-          "fittingPaint": 11,
           "wood": 3,
+          "fittingPaint": 10,
+          "gunmetal": 14,
+          "armorPaint": 4,
           "tireRubber": 1,
           "opticGlass": 2,
           "unclassified": 14,
@@ -66313,8 +66313,8 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 31606,
-          "sha256": "0e30fbbea451c252471261aea600bfc600d8595916d18cfe9050a039072b63c9"
+          "bytes": 31498,
+          "sha256": "65a75f7b9493a6563336d0fc2ba528a9ffc59e9f15662188b43e25069591b72f"
         },
         "top": {
           "file": "pt91_twardy_top.webp",
@@ -66329,8 +66329,8 @@
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 9114,
-          "sha256": "5189f3755aca7045f557509444853dd494ebbd5d12a3c427dc7dc17166e4b1ee"
+          "bytes": 8974,
+          "sha256": "5334d613e12bf1bc1c3ea7fb2f3aa3b501232ff51e7c087e8103184a835b64d4"
         },
         "topSilhouette": {
           "file": "pt91_twardy_top_silhouette.png",
@@ -66353,24 +66353,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 85447,
-          "sha256": "6a3780e3fa925cddca9ea2de7e04fea40197ced3d0fef1e7b0f6cbcbd77cbbd9"
+          "bytes": 85451,
+          "sha256": "bccea53439b9a9d7a6e4e9b23c4cb1723aec9461d7f72d4d918d5e6a0c3cf3ab"
         },
         "armorSide": {
           "file": "pt91_twardy_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 85369,
-          "sha256": "9d8491a9e8b7a4373946ace6e78033ecfa966eaa531e15235ffaa862dad8ff4c"
+          "bytes": 84753,
+          "sha256": "85d179ed844447289fc2442e06c7161774b4eb250ecd9a646af0fef34d89ec94"
         },
         "modulesSide": {
           "file": "pt91_twardy_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 79314,
-          "sha256": "58a7889ca145bec30a266f0974122aef3dd9400b71ae7ed9ecae60ec05d3361b"
+          "bytes": 78367,
+          "sha256": "0fd52a838d4af5c92741a1c208e042b37788ddb0e4b620fa3bc166bc0b56158f"
         },
         "markings": {
           "file": "pt91_twardy_markings.png",
