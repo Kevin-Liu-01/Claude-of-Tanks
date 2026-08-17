@@ -135,7 +135,7 @@ function communityArmor(o) {
 // ---------------------------------------------------------------------------
 // NEW VEHICLE — KF51 Panther (class-template spec, communityArmor rule)
 // ---------------------------------------------------------------------------
-export const USERDROP3_TANK_IDS = ['kf51'];
+export const USERDROP3_TANK_IDS = ['kf51', 'kf51b'];
 
 const USERDROP3_SPECS = {
   // KF51 Panther: Rheinmetall's 130 mm Future Gun System demonstrator on a
@@ -181,16 +181,21 @@ const USERDROP3_SPECS = {
       // overlay composite + the procedural stand-in while the GLB streams)
       scheme: 'nato', base: '#49543c', weather: '#515e44',
       patches: ['#23261f', '#4a3a2c'],
-      // visual r3 #8 — blotch growth ~1.6x. MEASURED DEAD END on camoScale:
-      // materials.js world-normalizes patch geometry (wk = min(1, cs/0.5)),
-      // so any camoScale ≤ 0.5 paints IDENTICAL world-size patches and
-      // 0.55 actually SHRANK them 9% (probe: 0.55 read 19.5 px mean blob vs
-      // the critic's 19.6 at 0.34 — that knob cannot grow blotches). The
-      // real knob is patchK (radius x pk, counts /pk, default 1):
-      // measured 1.55 -> flank mean 25.0 px/22 blobs (from 19.5/26);
-      // 1.75 closes on the ref's 26-31 px sweeping bands.
       marking: 'cross', number: '51', trackWidthM: 0.65, camoScale: 0.34, patchK: 1.75,
     },
+  },
+};
+
+// The owner-source rebuild is intentionally additive. Keep the graduate KF51
+// stable for saves and existing scenes while exposing the rebuilt woodland
+// vehicle as KF51B with its measured palette and geometry.
+USERDROP3_SPECS.kf51b = {
+  ...USERDROP3_SPECS.kf51,
+  id: 'kf51b', name: 'KF51B Panther', variantOf: 'kf51b',
+  visual: {
+    ...USERDROP3_SPECS.kf51.visual,
+    base: '#56573e', weather: '#51533f', patches: ['#303c30', '#473729'],
+    number: '52', patchK: 1.28,
   },
 };
 
