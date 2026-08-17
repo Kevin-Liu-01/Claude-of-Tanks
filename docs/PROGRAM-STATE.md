@@ -9107,3 +9107,7 @@ The owner's 01c3c6f5 (STB-1 rebuild from source oracle) touched profiles/japan.j
 
 ## §5.321 — owner merkava convergence (1b238145) noted: family hashes moved, NO gating (§5.265 law) (2026-08-17)
 - merkava3c/3d/4 → 800cccd8/f22bcb8a/bbf56a08 under the owner's "converge family source anatomy" (+143 lines merkava.js). Graduate oracles are .bak-only — gating would write false-0 rows; the §3 merkava rows join the isu152/kf51 STALE-ROW class for the fleet re-freeze sweep (owner-supersession authority noted). No action beyond documentation.
+
+## §5.322 — OWNER ORDER (verbatim, 2026-08-17): ariete MGs + MBT-quality round; lane E status answered
+- Owner asked whether the leo2a4m turret swap + leo2a6m finish are done: ANSWERED — not yet; the recovery agent is live (transcript active, frustum parse error FIXED, all three builders present in leopard.js), delivery → changed-view re-certs → landing.
+- **"for the ariete c1 and c2, add machine guns and make the turrets hulls and tracks so much better and more MBT like"** → ariete-MBT lane spawned on the §5.313 sloped base (49c15299/b0b3c184): coax MG 42/59 + loader pintle + commander MG (census, p95-budgeted seats), turret/hull density at the leclerc bar folding the §5.283 polish debts, skirt/gear §B6/§B9 upgrade; carro+donor untouchable; c1 dims-100 + hold-or-improve; re-cert follows. Six agents live.
