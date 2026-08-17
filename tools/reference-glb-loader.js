@@ -56,6 +56,24 @@ export async function loadReferenceGlb(source, specId, spec) {
   authoredFrame.name = 'reference_authored_frame';
   authoredFrame.rotation.y = Number(cfg.yawOffset || 0);
   hull.add(authoredFrame);
+  // Off-origin print class (§5.248 ukraine finds: t80u_kursk diorama at
+  // -1124u, t64bv_donbass at +4.2 m). An off-center model breaks every
+  // subsequent origin-anchored rotation (yawOffset here, the page's
+  // gun-forward flip) and blows the shared comparison frame apart, so
+  // center the RAW footprint INSIDE the authored frame — before any yaw —
+  // when its offset is pathological (> 0.35 of the model diagonal; every
+  // near-centered print keeps its exact historical transform).
+  {
+    const rawBox = new THREE.Box3().setFromObject(gltf.scene);
+    if (!rawBox.isEmpty()) {
+      const rawC = rawBox.getCenter(new THREE.Vector3());
+      const diag = rawBox.getSize(new THREE.Vector3()).length();
+      if (Math.hypot(rawC.x, rawC.z) > 0.35 * Math.max(diag, 1e-6)) {
+        gltf.scene.position.x -= rawC.x;
+        gltf.scene.position.z -= rawC.z;
+      }
+    }
+  }
   authoredFrame.add(gltf.scene);
   root.updateMatrixWorld(true);
 
@@ -85,6 +103,33 @@ export async function loadReferenceGlb(source, specId, spec) {
       root.updateMatrixWorld(true);
     }
     attachAll(gun, [...gunNodes, ...gunFollowers]);
+
+    // PARKED-POSE CORRECTION (§5.269 upior class, additive + opt-in): some
+    // prints are AUTHORED with the turret slewed away from the fleet's
+    // gun-forward rest law (the upior concept parks its whole station 180°
+    // over the engine deck). cfg.turretYaw re-poses the articulated rig
+    // about its own footprint center (the autoPivot convention) AFTER the
+    // attach so masks, curves and dims compare rest-law frames. Absent the
+    // param, nothing moves — every existing registration is byte-identical.
+    if (cfg.turretYaw) {
+      // Pivot on the TURRET-SHELL footprint only: a rear-hanging parked gun
+      // biases the whole-cluster center ~0.5 m off the ring (measured on
+      // the upior probe: muzzle landed 1.0 m short of the bow).
+      const clusterBox = new THREE.Box3();
+      for (const node of turretNodes) clusterBox.expandByObject(node);
+      if (clusterBox.isEmpty()) clusterBox.setFromObject(turret);
+      if (!clusterBox.isEmpty()) {
+        const pivot = clusterBox.getCenter(new THREE.Vector3());
+        for (const child of turret.children) {
+          child.position.x -= pivot.x;
+          child.position.z -= pivot.z;
+        }
+        turret.rotation.y = Number(cfg.turretYaw);
+        turret.position.x = pivot.x;
+        turret.position.z = pivot.z;
+        root.updateMatrixWorld(true);
+      }
+    }
   }
 
   // Source files arrive in metres, centimetres, millimetres, or arbitrary
