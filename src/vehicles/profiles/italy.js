@@ -18,7 +18,7 @@ function addFitting(P, owner, fitting, x, y, z, rotation = null) {
 }
 
 function addArieteWarKit(P, mark) {
-  const { box, cylY, cylZ } = KIT;
+  const { box, cylX, cylY, cylZ } = KIT;
   const slab = orientedSlab;
   const c2 = mark === 'c2';
 
@@ -99,6 +99,70 @@ function addArieteWarKit(P, mark) {
     P.add('turretGlass', box(0.16, 0.09, 0.02), 0.66, 0.95, -0.14);
   }
 
+  // The oracle roof is not an empty slab.  Its two large crew stations,
+  // forward periscope bars, sight guard, service lids and aft ready-use
+  // stowage form a dense but deliberately low silhouette.  Every item below
+  // overlaps the welded crown or a broad local shoe, so none of the visual
+  // detail is carried by a stem in empty space.
+  for (const [x, z, r, yaw] of [
+    [-0.52, -0.63, 0.29, -0.08],
+    [0.45, -0.48, 0.26, 0.10],
+  ]) {
+    P.add('turret', cylY(r + 0.035, r + 0.055, 0.075, 20), x, 0.79, z);
+    P.add('turretDark', KIT.torus(r, 0.016, 20), x, 0.84, z);
+    P.add('turret', box(r * 1.55, 0.055, r * 1.42), x, 0.855, z,
+      0, yaw, 0);
+  }
+  for (const [x, z, yaw] of [
+    [-0.79, -0.29, 0.18], [-0.58, -0.22, 0.08], [-0.34, -0.21, -0.08],
+    [0.19, -0.18, 0.08], [0.42, -0.20, -0.08], [0.66, -0.26, -0.18],
+  ]) {
+    P.add('turretDetail', box(0.14, 0.048, 0.082), x, 0.85, z, 0, yaw, 0);
+    P.add('turretGlass', box(0.096, 0.022, 0.015), x, 0.879, z + 0.038,
+      0, yaw, 0);
+  }
+  // Gunner's day/thermal block: a backed armored shoe, tapered head and
+  // recessed glass rather than the former isolated blue square.
+  P.add('turret', box(0.42, 0.095, 0.48), 0.72, 0.80, 0.05);
+  P.add('turret', box(0.34, 0.34, 0.35), 0.72, 1.00, 0.03, -0.08, 0, 0);
+  P.add('turretDark', box(0.27, 0.17, 0.035), 0.72, 1.02, 0.225,
+    -0.08, 0, 0);
+  P.add('turretGlass', box(0.19, 0.105, 0.020), 0.72, 1.02, 0.248,
+    -0.08, 0, 0);
+  // Welded roof panel cadence and fastener strips break the broad crown into
+  // the source's unequal service fields without making a second roof layer.
+  for (const [x, z, w, d] of [
+    [-0.72, -1.18, 0.48, 0.42], [0.00, -1.22, 0.62, 0.44],
+    [0.72, -1.18, 0.48, 0.42], [-0.63, -1.68, 0.58, 0.36],
+    [0.08, -1.72, 0.66, 0.34], [0.78, -1.62, 0.42, 0.38],
+  ]) {
+    P.add('turretDark', box(w, 0.022, d), x, 0.765, z);
+    P.add('turretDetail', box(w * 0.82, 0.018, 0.026), x, 0.782,
+      z + d * 0.38);
+  }
+  // Aft cylindrical stores and fire-extinguisher bottles are strapped to a
+  // full-width armor shelf.  This fills the former empty rear crown while
+  // preserving the connected basket below it.
+  P.add('turret', box(2.02, 0.085, 0.44), 0, 0.73, -2.28);
+  for (const [x, len] of [[-0.72, 0.56], [-0.22, 0.46], [0.30, 0.52], [0.76, 0.40]]) {
+    P.add('turretDetail', cylX(0.095, len, 14), x, 0.84, -2.28);
+    P.add('turretDark', box(0.035, 0.21, 0.16), x - len * 0.28,
+      0.84, -2.28);
+    P.add('turretDark', box(0.035, 0.21, 0.16), x + len * 0.28,
+      0.84, -2.28);
+  }
+  if (!c2) {
+    addFitting(P, 'turret', FITTINGS.pintleMG({
+      mats: P.mats, cls: 'mag', tone: 'two-tone', elev: 0.10,
+      shield: true, ammo: true, ring: { r: 0.17, stubs: 3 },
+      scale: 0.80, seed: 45,
+    }), -0.50, 0.89, -0.63, [0, -0.05, 0]);
+    for (const s of [-1, 1]) addFitting(P, 'turret', FITTINGS.antennaWhip({
+      mats: P.mats, h: s < 0 ? 0.72 : 0.58, rake: -s * 0.05,
+      seed: 46 + (s > 0 ? 1 : 0),
+    }), s * 1.04, 0.73, -2.18);
+  }
+
   // Deeper but closed gun mask over the inherited, elevation-correct tube.
   P.addGunExtra(box(c2 ? 0.80 : 0.70, c2 ? 0.54 : 0.48, 0.22), 0, -0.015, 0.42);
   P.addGunExtra(cylZ(c2 ? 0.19 : 0.175, 0.36, 18, 0.145), 0, -0.01, 0.66);
@@ -112,11 +176,18 @@ function addArieteWarKit(P, mark) {
 function buildArieteC1(P) {
   buildAriete(P);
   addArieteWarKit(P, 'c1');
+  // The reference fighting compartment is notably lower than the legacy
+  // donor's tall wedge.  Compress the complete owned assembly about the ring
+  // so cheeks, gun, roof stations and basket stay coherent together.
+  P.turretG.scale.y *= 0.82;
+  P.gunG.scale.y *= 1 / 0.82;
 }
 
 function buildArieteC2(P) {
   buildAriete(P);
   addArieteWarKit(P, 'c2');
+  P.turretG.scale.y *= 0.86;
+  P.gunG.scale.y *= 1 / 0.86;
 }
 
 function buildCarro45T(P) {
@@ -168,23 +239,76 @@ function buildCarro45T(P) {
     { height: [0.58, 0.58, 0.72, 0.94, 1.03, 1.03, 0.94, 0.72], inset: 0.86 },
   ]));
   P.add('turretDark', box(2.45, 0.07, 2.95), 0, 0.07, -0.52);
-  P.add('turret', box(2.28, 0.08, 1.52), 0, 1.00, -1.20);
+  // Split the former single rectangular roof into two shallow canted halves.
+  // Their outboard edges follow the loft shoulders and the center seam gives
+  // the prototype its source-visible folded crown instead of a flat lid.
+  for (const s of [-1, 1]) {
+    P.add('turret', box(1.10, 0.08, 1.50), s * 0.52, 0.98, -1.20,
+      0, 0, -s * 0.055);
+    P.add('turretDark', box(0.86, 0.018, 1.22), s * 0.52, 1.026, -1.20,
+      0, 0, -s * 0.055);
+  }
   P.add('turret', box(0.74, 0.54, 0.40), 0, 0.49, 1.10);
+
+  // Source-shaped face continuations replace the broad unarticulated slab
+  // read.  The lower shoulders intersect the lofted shell while their upper
+  // planes climb into a narrow mantlet throat, producing the source's low
+  // asymmetric wedge from front, quarter and roof views.
+  for (const s of [-1, 1]) {
+    P.add('turret', slab(
+      [s * 0.18, 0.18, 1.32], [s * 1.25, 0.18, 0.75],
+      [s * 1.32, 0.18, -0.28], [s * 0.38, 0.18, 0.33],
+      [s * 0.16, 0.72, 1.23], [s * 1.08, 0.82, 0.66],
+      [s * 1.17, 0.78, -0.34], [s * 0.36, 0.76, 0.27]));
+    P.add('turretDark', box(0.045, 0.42, 0.88), s * 1.20, 0.50, 0.16,
+      0, s * 0.10, s * 0.08);
+    // Three shallow side-access panels and their backed seam rails.
+    for (let i = 0; i < 3; i++) {
+      const z = 0.16 - i * 0.57;
+      P.add('turret', box(0.13, 0.34, 0.48), s * 1.34,
+        0.50 + (i & 1) * 0.025, z, 0, 0, s * 0.07);
+      P.add('turretDark', box(0.018, 0.25, 0.36), s * 1.414, 0.50, z);
+    }
+  }
   P.addGunExtra(box(0.64, 0.56, 0.24), 0, 0.02, 0.42);
   P.addGunExtra(cylZ(0.17, 0.38, 16, 0.13), 0, 0, 0.67);
   buildGun(P, { len: 5.45, r: 0.068, brake: 'double', sleeve: false, evac: 0.56,
     evacR: 1.75, collar: true, baseR: 0.15 });
   muzzleBore(P, { len: 5.45, r: 0.068, brake: 'double' });
 
-  // Prototype-specific sparse roof: twin hatches, left-rear smoke bank,
-  // commander MG, long radios and a large side optic in a supported blister.
-  for (const [x, z] of [[-0.55, -0.80], [0.55, -0.88]]) {
-    P.add('turret', cylY(0.27, 0.29, 0.07, 16), x, 1.04, z);
-    P.add('turretDark', torus(0.255, 0.014, 18), x, 1.08, z);
+  // Prototype-specific roof: twin multi-part crew stations, unequal service
+  // plates, low optical blocks, smoke gear and a connected bustle cage.  The
+  // old build had only two near-invisible rings on a single flat polygon.
+  for (const [x, z, yaw] of [[-0.55, -0.80, -0.10], [0.55, -0.88, 0.12]]) {
+    P.add('turret', cylY(0.30, 0.32, 0.075, 20), x, 1.02, z);
+    P.add('turretDark', torus(0.275, 0.016, 20), x, 1.07, z);
+    P.add('turret', box(0.46, 0.060, 0.40), x, 1.095, z, 0, yaw, 0);
+  }
+  for (const [x, z, yaw] of [
+    [-0.78, -0.48, 0.18], [-0.56, -0.42, 0.08], [-0.32, -0.45, -0.08],
+    [0.22, -0.48, 0.08], [0.46, -0.46, -0.08], [0.72, -0.54, -0.18],
+  ]) {
+    P.add('turretDetail', box(0.14, 0.050, 0.082), x, 1.07, z, 0, yaw, 0);
+    P.add('turretGlass', box(0.095, 0.022, 0.015), x, 1.10, z + 0.038,
+      0, yaw, 0);
   }
   periscope(P, 'turretDetail', 0.52, 1.10, -0.48);
-  P.add('turret', box(0.34, 0.32, 0.34), 1.20, 0.69, 0.30);
-  P.add('turretGlass', box(0.028, 0.18, 0.22), 1.38, 0.71, 0.42);
+  P.add('turret', box(0.42, 0.095, 0.42), 1.08, 0.74, 0.18);
+  P.add('turret', box(0.34, 0.34, 0.34), 1.08, 0.94, 0.18,
+    -0.08, -0.08, 0);
+  P.add('turretDark', box(0.026, 0.20, 0.24), 1.27, 0.95, 0.34);
+  P.add('turretGlass', box(0.018, 0.14, 0.16), 1.286, 0.95, 0.34);
+  // Unequal roof lids and hinge/fastener bars introduce visible panel
+  // styling at garage distance without increasing the turret envelope.
+  for (const [x, z, w, d, ry] of [
+    [-0.74, -1.37, 0.48, 0.42, -0.04], [-0.18, -1.40, 0.46, 0.40, 0.02],
+    [0.38, -1.39, 0.52, 0.42, -0.02], [0.84, -1.35, 0.30, 0.38, 0.05],
+    [-0.55, -1.87, 0.62, 0.34, -0.03], [0.18, -1.88, 0.66, 0.34, 0.02],
+  ]) {
+    P.add('turretDark', box(w, 0.024, d), x, 1.045, z, 0, ry, 0);
+    P.add('turretDetail', box(w * 0.78, 0.018, 0.026), x, 1.062,
+      z + d * 0.38, 0, ry, 0);
+  }
   addFitting(P, 'turret', FITTINGS.smokeBank({ mats: P.mats, count: 5, splay: -1.02,
     pitch: -0.46, slot: 'detail', seed: 70 }), -1.10, 0.74, -0.52);
   addFitting(P, 'turret', FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone',
@@ -193,8 +317,28 @@ function buildCarro45T(P) {
     h: s < 0 ? 0.83 : 0.70, rake: -s * 0.05, seed: 74 }), s * 1.02, 1.00, -1.82);
   addFitting(P, 'turret', FITTINGS.stowageRack({ mats: P.mats, w: 1.86, d: 0.38,
     h: 0.26, fill: 0.35, rails: 2, seed: 76 }), 0, 0.76, -2.24);
+  // Backed rear armor/service wall and fully connected basket termination.
+  P.add('turret', box(2.30, 0.44, 0.58), 0, 0.57, -2.34);
+  P.add('turretDark', box(2.18, 0.34, 0.045), 0, 0.57, -2.66);
+  for (const y of [0.40, 0.54, 0.68, 0.82]) {
+    P.add('turretDetail', box(2.40, 0.028, 0.032), 0, y, -2.70);
+  }
+  for (let i = 0; i < 9; i++) {
+    P.add('turretDetail', box(0.028, 0.48, 0.032), -1.12 + i * 0.28,
+      0.61, -2.70);
+  }
+  for (const s of [-1, 1]) {
+    P.add('turretDetail', box(0.032, 0.36, 0.56), s * 1.20, 0.60, -2.43);
+  }
   P.decal('turret', 'number', '45T', 0.25, [-1.38, 0.57, -0.60], -Math.PI / 2, 0, 0);
-  P.topY = 1.46;
+  // The source has a tall, narrow trapezoid rather than the previous broad
+  // low lid. Compress plan width only and leave nearly all authored height;
+  // inverse gun scaling preserves the circular tube and muzzle bore.
+  P.turretG.scale.x *= 0.88;
+  P.turretG.scale.y *= 0.98;
+  P.gunG.scale.x *= 1 / 0.88;
+  P.gunG.scale.y *= 1 / 0.98;
+  P.topY = 1.44;
 }
 
 export const ITALY_PROFILES = {

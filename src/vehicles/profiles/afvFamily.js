@@ -88,7 +88,7 @@ function bowLightPair(P, x, y, z, seed) {
 }
 
 function addBMP3Turret(P) {
-  const { box, cylY, cylZ, buildGun } = KIT;
+  const { box, cylY, cylZ, torus, buildGun } = KIT;
   clearUpperStructure(P);
   P.gunG.position.set(0, 0.34, 0.62);
 
@@ -111,6 +111,36 @@ function addBMP3Turret(P) {
   P.add('turretDetail', cylY(0.12, 0.14, 0.28, 14), -0.40, 0.91, -0.18);
   P.add('turretGlass', box(0.17, 0.11, 0.024), -0.40, 0.92, -0.02);
   P.add('turret', cylY(0.24, 0.26, 0.07, 18), 0.40, 0.73, -0.30);
+  // Two overlapping crew stations, periscopes and service lids break up the
+  // source vehicle's cast crown without leaving unsupported roof furniture.
+  for (const station of [
+    { x: -0.39, z: -0.25, r: 0.235, yaw: -0.08 },
+    { x: 0.40, z: -0.34, r: 0.255, yaw: 0.11 },
+  ]) {
+    P.add('turret', cylY(station.r * 0.92, station.r, 0.085, 18),
+      station.x, 0.735, station.z);
+    P.add('turretDark', torus(station.r * 0.82, 0.014, 18),
+      station.x, 0.783, station.z);
+    P.add('turret', box(station.r * 1.45, 0.055, station.r * 1.50),
+      station.x, 0.805, station.z, 0, station.yaw, 0);
+    for (let i = -1; i <= 1; i++) {
+      P.add('turretGlass', box(0.078, 0.045, 0.026),
+        station.x + i * 0.090, 0.825, station.z + station.r * 0.73,
+        0, station.yaw, 0);
+    }
+  }
+  P.add('turret', box(0.38, 0.045, 0.28), 0.00, 0.760, -0.66, 0, 0.04, 0);
+  P.add('turretDark', box(0.27, 0.018, 0.05), 0.00, 0.790, -0.52, 0, 0.04, 0);
+  // A supported flank collar gives the smoke banks and fittings visible
+  // armor seats instead of allowing them to disappear into the dome.
+  for (const side of [-1, 1]) {
+    armorTile(P, 'turret', side * 0.94, 0.50, 0.27, 0.13, 0.25, 0.36,
+      [0, 0, side * 0.09], false);
+    armorTile(P, 'turret', side * 0.99, 0.46, -0.14, 0.12, 0.23, 0.34,
+      [0, 0, side * 0.07], false);
+    P.add('turretDetail', box(0.10, 0.06, 0.46), side * 0.85, 0.69, -0.70,
+      0, 0, side * 0.03);
+  }
   roofMG(P, 0.40, 0.80, -0.30, 3101, 'mag', 0.03, 0.72);
   smokePair(P, 0.82, 0.58, 0.14, 4, 3110);
   radioPair(P, 0.66, -0.86, 3120, 0.76);
@@ -217,7 +247,7 @@ function buildBMPT2(P) {
 }
 
 function addUpiorStation(P) {
-  const { box, cylY, cylZ, buildGun } = KIT;
+  const { box, cylY, cylZ, torus, buildGun } = KIT;
   clearUpperStructure(P);
   P.gunG.position.set(0, 0.40, 0.60);
   P.add('turret', cylY(0.96, 1.08, 0.22, 24), 0, 0.10, -0.12);
@@ -233,6 +263,36 @@ function addUpiorStation(P) {
   P.add('turret', box(0.54, 0.42, 0.46), 0.28, 0.98, -0.04);
   P.add('turretGlass', box(0.34, 0.18, 0.025), 0.28, 1.00, 0.205);
   P.add('turretDark', cylZ(0.055, 0.64, 12), 0.28, 1.11, 0.44);
+  // Stepped roof armor and two real crew/service stations replace the former
+  // uninterrupted slab. Rings overlap the roof; sights sit on broad shoes.
+  for (const station of [
+    { x: -0.38, z: -0.30, r: 0.22, yaw: -0.12 },
+    { x: 0.34, z: -0.42, r: 0.18, yaw: 0.10 },
+  ]) {
+    P.add('turret', cylY(station.r * 0.90, station.r, 0.075, 18),
+      station.x, 0.705, station.z);
+    P.add('turretDark', torus(station.r * 0.80, 0.013, 18),
+      station.x, 0.747, station.z);
+    P.add('turret', box(station.r * 1.42, 0.055, station.r * 1.48),
+      station.x, 0.766, station.z, 0, station.yaw, 0);
+  }
+  P.add('turret', box(0.42, 0.055, 0.32), -0.02, 0.735, -0.66, 0, -0.04, 0);
+  P.add('turretDark', box(0.30, 0.018, 0.045), -0.02, 0.769, -0.49,
+    0, -0.04, 0);
+  for (const side of [-1, 1]) {
+    for (let i = 0; i < 2; i++) {
+      armorTile(P, 'turret', side * (0.76 + i * 0.11), 0.48,
+        0.36 - i * 0.44, 0.12, 0.24, 0.34,
+        [0, 0, side * 0.08], false);
+    }
+    P.add('turret', box(0.24, 0.18, 0.32), side * 0.64, 0.67, -0.51,
+      0, 0, side * 0.04);
+    P.add('turretGlass', box(0.15, 0.08, 0.024), side * 0.64, 0.70, -0.33);
+  }
+  P.add('turretDark', box(1.32, 0.09, 0.055), 0, 0.49, -0.88);
+  mount(P, 'turret', FITTINGS.stowageRack({
+    mats: P.mats, w: 1.28, d: 0.34, h: 0.23, fill: 0.60, rails: 3, seed: 3398,
+  }), 0, 0.56, -0.82);
   roofMG(P, -0.42, 0.77, -0.26, 3400, 'mag', -0.05, 0.75);
   smokePair(P, 0.83, 0.57, 0.05, 4, 3410);
   radioPair(P, 0.66, -0.72, 3420, 0.78);
@@ -253,7 +313,7 @@ function buildUpior(P) {
 }
 
 function addMarderTurret(P) {
-  const { box, cylY, cylZ, buildGun } = KIT;
+  const { box, cylY, cylZ, torus, buildGun } = KIT;
   clearUpperStructure(P);
   P.turretG.position.set(0.18, 1.84, -0.05);
   P.gunG.position.set(0, 0.26, 0.43);
@@ -272,6 +332,37 @@ function addMarderTurret(P) {
   P.add('turret', box(0.24, 0.06, 0.23), -0.26, 0.47, -0.10);
   P.add('turretDetail', box(0.21, 0.20, 0.19), -0.26, 0.59, -0.10);
   P.add('turretGlass', box(0.14, 0.10, 0.022), -0.26, 0.60, 0.005);
+  // Marder A3 source identity: a compact faceted turret wrapped by unequal
+  // side service boxes, a ringed command station and a dense optical crown.
+  // These pieces overlap the existing shell rather than widening it into a
+  // generic MBT turret.
+  for (const side of [-1, 1]) {
+    P.add('turret', orientedSlab(
+      [side * 0.38, 0.13, 0.52], [side * 0.61, 0.13, 0.42],
+      [side * 0.62, 0.13, -0.43], [side * 0.39, 0.13, -0.53],
+      [side * 0.34, 0.40, 0.43], [side * 0.52, 0.40, 0.36],
+      [side * 0.53, 0.41, -0.35], [side * 0.35, 0.41, -0.43]));
+    P.add('turret', box(0.20, 0.21, 0.34), side * 0.56, 0.32, -0.36,
+      0, 0, side * 0.035);
+    P.add('turretDark', box(0.025, 0.14, 0.25), side * 0.665, 0.34, -0.36,
+      0, 0, side * 0.035);
+  }
+  P.add('turret', cylY(0.255, 0.275, 0.075, 18), -0.24, 0.46, -0.28);
+  P.add('turretDark', torus(0.225, 0.014, 18), -0.24, 0.502, -0.28);
+  P.add('turret', box(0.34, 0.055, 0.36), -0.24, 0.523, -0.28, 0, -0.10, 0);
+  for (let i = -1; i <= 1; i++) {
+    P.add('turretGlass', box(0.070, 0.045, 0.022),
+      -0.24 + i * 0.085, 0.545, -0.074, 0, -0.10, 0);
+  }
+  P.add('turret', box(0.31, 0.055, 0.25), 0.22, 0.485, -0.38, 0, 0.08, 0);
+  P.add('turretDark', box(0.22, 0.018, 0.045), 0.22, 0.519, -0.245,
+    0, 0.08, 0);
+  // Backed rear equipment wall and basket rails close the former empty tail.
+  P.add('turret', box(1.02, 0.26, 0.23), 0, 0.29, -0.63);
+  P.add('turretDark', box(0.82, 0.13, 0.035), 0, 0.30, -0.756);
+  mount(P, 'turret', FITTINGS.stowageRack({
+    mats: P.mats, w: 1.00, d: 0.31, h: 0.22, fill: 0.66, rails: 3, seed: 3497,
+  }), 0, 0.47, -0.58);
   roofMG(P, 0.22, 0.49, -0.30, 3500, 'mag', 0.03, 0.62);
   smokePair(P, 0.52, 0.39, 0.08, 3, 3510);
   radioPair(P, 0.45, -0.56, 3520, 0.50);

@@ -85,8 +85,22 @@ function buildStrv103B(P) {
 }
 
 function addStrv81Package(P) {
-  const { box, cylY, cylZ } = KIT;
+  const { box, cylX, cylY, cylZ } = KIT;
   const slab = orientedSlab;
+
+  // Re-form the inherited vertical Centurion box into the oracle's low cast
+  // shell. This closed loft overlaps the ring, cheek field and rear body;
+  // its narrowed crown produces real sloping armor instead of a flat lid.
+  P.add('turret', slab(
+    [-1.10, 0.24, 1.20], [1.10, 0.24, 1.20],
+    [1.23, 0.26, -1.55], [-1.23, 0.26, -1.55],
+    [-0.78, 0.81, 0.95], [0.78, 0.81, 0.95],
+    [0.98, 0.78, -1.40], [-0.98, 0.78, -1.40]));
+  // Unequal crown plates follow the cast slopes and create the broken roof
+  // cadence visible on the supplied Strv 81 rather than one broad rectangle.
+  P.add('turret', box(0.74, 0.055, 0.58), -0.39, 0.825, -0.52, 0, -0.08, 0);
+  P.add('turret', box(0.58, 0.050, 0.50), 0.39, 0.817, -0.45, 0, 0.10, 0);
+  P.add('turretDark', box(0.46, 0.016, 0.08), 0.39, 0.850, -0.18, 0, 0.10, 0);
 
   // Swedish cheek continuations broaden the inherited Centurion casting but
   // bury into its nose/crown on every edge. They are low, rounded armor
@@ -125,6 +139,14 @@ function addStrv81Package(P) {
   P.add('turret', box(0.34, 0.09, 0.32), 0.47, 0.91, -0.36);
   P.add('turretDetail', cylY(0.12, 0.14, 0.25, 14), 0.47, 1.06, -0.36);
   P.add('turretGlass', box(0.16, 0.085, 0.022), 0.47, 1.07, -0.20);
+  // The source's large side ventilator/search housing is a strong profile
+  // landmark. Both concentric drums are buried into the cast side wall.
+  P.add('turret', cylX(0.21, 0.18, 18, 0.15), 1.13, 0.48, -0.64);
+  P.add('turretDark', cylX(0.155, 0.035, 18, 0.12), 1.225, 0.48, -0.64);
+  for (let i = 0; i < 6; i++) {
+    P.add('turretDetail', box(0.030, 0.22, 0.035), 1.247,
+      0.48, -0.64, 0, 0, i * Math.PI / 3);
+  }
   addSwedishRadioPair(P, 'turret', 0.78, -1.66, 8130);
 
   // Periscope cadence and hull lighting keep the early Swedish vehicle
@@ -167,6 +189,12 @@ function addStrv81Package(P) {
 function buildStrv81(P) {
   centurionBuild(P, 3);
   addStrv81Package(P);
+  // The oracle has a squat cast fighting compartment. Scale the complete
+  // turret-owned assembly about its ring, then cancel that scale on the gun
+  // group so the 20-pdr tube and mantlet remain circular.
+  P.turretG.scale.y *= 0.82;
+  P.gunG.scale.y *= 1 / 0.82;
+  P.topY = 1.13;
 }
 
 function addStrv122Package(P) {
