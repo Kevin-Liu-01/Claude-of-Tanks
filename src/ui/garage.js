@@ -306,9 +306,9 @@ const GARAGE_CSS = `
    never overlap at short viewports (the old absolute anchors collided at
    1600x900 — the RANDOM card's conic-gradient thumb showed through the camo
    grid's 5px gaps as a phantom "white national cross"). */
-/* r9.1 (owner): the column runs down to just above the country chips
-   (chips bottom:172px + ~26px tall) instead of reserving 36% — the freed
-   space all goes to the BATTLEFIELD list (maps is the flexible section). */
+/* The column runs down to just above the country chips. The battlefield
+   plate is content-height on roomy screens, but may shrink and scroll when
+   the viewport is short so it never collides with the sections below. */
 .cot-leftcol{position:absolute;left:34px;top:108px;bottom:210px;
   width:224px;display:flex;flex-direction:column;gap:8px;overflow:hidden;pointer-events:auto;}
 /* garage_polish r9: the battlefield + camo sections share ONE industrial
@@ -323,7 +323,7 @@ const GARAGE_CSS = `
 .cot-featured .ftitle > span:first-child::before{content:'';display:inline-block;
   width:8px;height:2px;background:#f0a030;margin-right:6px;vertical-align:2px;}
 .cot-maps{position:static;min-height:96px;overflow-y:auto;
-  scrollbar-width:none;flex:1 1 0;pointer-events:auto;}
+  scrollbar-width:none;flex:0 1 auto;pointer-events:auto;}
 /* half-cut last row + fade = "more below" affordance instead of a broken
    clip; .can-scroll is toggled by JS only when the list truly overflows */
 .cot-maps.can-scroll{
@@ -367,9 +367,6 @@ const GARAGE_CSS = `
 .cot-map-card .mthumb.foundry{background-color:#55585a;background-image:linear-gradient(135deg,#7b756b,#282b2e);}
 .cot-map-card .mthumb.random{background-image:conic-gradient(#4c6b38 0 25%,#c9a86e 0 50%,#cdd6de 0 75%,#5c6066 0);}
 .cot-map-card .mname{font-size:10.5px;font-weight:600;color:#e6edf3;letter-spacing:.02em;}
-.cot-map-card .msub{font-size:8.5px;font-weight:700;letter-spacing:.14em;color:#8a97a3;
-  text-transform:uppercase;margin-top:1px;}
-.cot-map-card.sel .msub{color:#d8a04c;}
 /* CAMO PICKER SECTION: per-tank paint pattern (persisted, +concealment) */
 .cot-camos{position:static;flex:0 0 auto;pointer-events:auto;}
 .cot-camos .ctitle{font-size:10px;font-weight:700;letter-spacing:.24em;color:#8a97a3;
@@ -1552,15 +1549,10 @@ export function createGarage(opts) {
       const thumb = document.createElement('div');
       thumb.className = `mthumb ${m.id}`;
       if (m.thumb) thumb.style.backgroundImage = `url(${m.thumb})`;
-      const label = document.createElement('div');
       const nm = document.createElement('div');
       nm.className = 'mname';
       nm.textContent = m.name;
-      const sub = document.createElement('div');
-      sub.className = 'msub';
-      sub.textContent = m.sub || '';
-      label.append(nm, sub);
-      card.append(thumb, label);
+      card.append(thumb, nm);
       card.addEventListener('click', () => {
         emit('ui:click', {});
         api.setSelectedMap(m.id);
