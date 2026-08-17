@@ -87,10 +87,10 @@
    "geoMin": 0,
    "gatePassed": false,
    "components": {
-    "hullCurves": 39.9,
-    "wholeCurves": 17.9,
+    "hullCurves": 39.3,
+    "stations": 13.5,
     "turretCurves": 0,
-    "stations": 21.1,
+    "wholeCurves": 16.4,
     "dims": 100,
     "floaters": 100
    }
@@ -1334,6 +1334,68 @@
    "gatePassed": false,
    "components": {
     "wholeCurves": 89.5,
+    "dims": 100,
+    "floaters": 100
+   }
+  },
+  {
+   "id": "bmp3",
+   "geoMin": 36.6,
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 62.7,
+    "stations": 61.4,
+    "turretCurves": 36.6,
+    "wholeCurves": 52.4,
+    "dims": 100,
+    "floaters": 100
+   }
+  },
+  {
+   "id": "bmpt",
+   "geoMin": 8.2,
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 53,
+    "stations": 20.6,
+    "turretCurves": 8.2,
+    "wholeCurves": 25.3,
+    "dims": 100,
+    "floaters": 100
+   }
+  },
+  {
+   "id": "upior",
+   "geoMin": 0,
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 3.4,
+    "stations": 0,
+    "turretCurves": 0,
+    "wholeCurves": 0,
+    "dims": 100,
+    "floaters": 100
+   }
+  },
+  {
+   "id": "marder1a3",
+   "geoMin": 85.1,
+   "gatePassed": false,
+   "components": {
+    "wholeCurves": 85.1,
+    "dims": 100,
+    "floaters": 100
+   }
+  },
+  {
+   "id": "m3a3_bradley",
+   "geoMin": 0,
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 0,
+    "stations": 0,
+    "turretCurves": 0,
+    "wholeCurves": 0,
     "dims": 100,
     "floaters": 100
    }
