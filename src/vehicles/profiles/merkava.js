@@ -6869,13 +6869,50 @@ function merkavaSourceFinish(P, p, t) {
   // stowage and weapon-shield position while using the existing cast shell
   // as its load-bearing surface.
   const combatFit = {
-    merkava1b: { rows: 2, cols: 4, xOut: 1.08, y: 2.02, z: 0.72, side: 4, roof: 4, shield: [-0.64, -1.43, -0.10] },
-    merkava2b: { rows: 2, cols: 5, xOut: 1.16, y: 2.08, z: 0.68, side: 5, roof: 5, shield: [0.48, -1.05, 0.08] },
-    merkava2d: { rows: 3, cols: 5, xOut: 1.22, y: 2.10, z: 0.70, side: 6, roof: 6, shield: [-0.48, -1.05, -0.08] },
-    merkava3c: { rows: 3, cols: 6, xOut: 1.28, y: 2.15, z: 0.76, side: 7, roof: 6, shield: [1.10, -1.45, 0.10] },
-    merkava3d: { rows: 3, cols: 6, xOut: 1.34, y: 2.16, z: 0.78, side: 7, roof: 7, shield: [0.40, -1.50, 0.10] },
-    merkava4b: { rows: 4, cols: 7, xOut: 1.48, y: 2.34, z: 0.92, side: 8, roof: 8, shield: [-0.62, -0.82, -0.12] },
+    merkava1b: {
+      rows: 2, cols: 4, xOut: 1.16, cheekRise: 0.065, z: 0.72, side: 5, roof: 4, roofArmor: 4,
+      sideY: 2.05, sideZ: [0.10, -1.64], sideFace: [[0.12, 1.10], [-0.55, 1.29], [-2.12, 1.18]],
+      shield: [-0.64, -1.43, -0.10],
+    },
+    merkava2b: {
+      rows: 2, cols: 5, xOut: 1.27, cheekRise: 0.070, z: 0.68, side: 6, roof: 5, roofArmor: 6,
+      sideY: 2.10, sideZ: [0.18, -1.82], sideFace: [[0.34, 1.22], [-0.48, 1.33], [-1.78, 1.24], [-2.30, 0.98]],
+      shield: [0.48, -1.05, 0.08],
+    },
+    merkava2d: {
+      rows: 3, cols: 5, xOut: 1.46, cheekRise: 0.075, z: 0.70, side: 7, roof: 6, roofArmor: 7,
+      sideY: 2.12, sideZ: [0.18, -2.16], sideFace: [[0.35, 1.46], [-0.52, 1.66], [-2.25, 1.48], [-2.66, 1.02]],
+      shield: [-0.48, -1.05, -0.08],
+    },
+    merkava3c: {
+      rows: 3, cols: 6, xOut: 1.34, cheekRise: 0.080, z: 0.76, side: 8, roof: 6, roofArmor: 8,
+      sideY: 2.15, sideZ: [0.08, -2.50], sideFace: [[-0.10, 1.30], [-1.28, 1.39], [-2.74, 1.30], [-3.28, 1.06]],
+      shield: [1.10, -1.45, 0.10],
+    },
+    merkava3d: {
+      rows: 3, cols: 6, xOut: 1.54, cheekRise: 0.085, z: 0.78, side: 9, roof: 7, roofArmor: 9,
+      sideY: 2.16, sideZ: [0.04, -2.62], sideFace: [[-0.10, 1.54], [-0.92, 1.79], [-2.52, 1.64], [-3.20, 1.30]],
+      shield: [0.40, -1.50, 0.10],
+    },
+    merkava4b: {
+      rows: 4, cols: 7, xOut: 1.52, cheekRise: 0.055, z: 0.92, side: 8, roof: 8, roofArmor: 8,
+      sideY: 2.30, sideZ: [0.04, -2.44], sideFace: [[0.10, 1.58], [-2.00, 1.48], [-2.72, 1.46]],
+      shield: [-0.62, -0.82, -0.12],
+    },
   }[id];
+
+  const sideFaceAt = (z) => {
+    const stations = combatFit.sideFace;
+    if (z >= stations[0][0]) return stations[0][1];
+    for (let i = 0; i < stations.length - 1; i++) {
+      const [za, xa] = stations[i], [zb, xb] = stations[i + 1];
+      if (z <= za && z >= zb) {
+        const f = (za - z) / Math.max(0.001, za - zb);
+        return xa + (xb - xa) * f;
+      }
+    }
+    return stations.at(-1)[1];
+  };
 
   // Faceted cheek arrays follow the cast wedge from the mantlet shoulder to
   // the outer cheek.  Each module overlaps the casting by half its depth;
@@ -6886,11 +6923,11 @@ function merkavaSourceFinish(P, p, t) {
       for (let col = 0; col < combatFit.cols; col++) {
         const f = col / Math.max(1, combatFit.cols - 1);
         const x = s * (0.48 + (combatFit.xOut - 0.48) * f);
-        const y = combatFit.y - row * 0.18 - f * 0.055;
         const z = combatFit.z - f * 0.56 - row * 0.045;
         const tileW = Math.max(0.18, (combatFit.xOut - 0.38) / combatFit.cols * 0.94);
         const tileH = combatFit.rows === 2 ? 0.19 : 0.16;
-        const tileD = 0.30 + f * 0.06;
+        const tileD = 0.34 + f * 0.07;
+        const y = roofAt(z) + combatFit.cheekRise - f * 0.08 - row * tileH * 0.92;
         const yaw = s * (-0.12 - f * 0.24);
         const roll = s * (0.04 + f * 0.08);
         // eraCluster turret-local placements use world rest-pose y/z and
@@ -6913,18 +6950,63 @@ function merkavaSourceFinish(P, p, t) {
       }
     }, true);
 
-    // A descending flank course protects the turret shoulder and visually
-    // joins the frontal array to the bustle rather than stopping in mid-air.
+    // Sample the actual outer shell instead of guessing from xOut.  The old
+    // descending course sat inside every oracle casting, which is why the
+    // Mk.2/3 turrets still looked flat even though the parts existed.
     for (let i = 0; i < combatFit.side; i++) {
       const f = i / Math.max(1, combatFit.side - 1);
-      const x = s * (combatFit.xOut - 0.02 - f * 0.10);
-      const z = 0.08 - f * 1.48;
-      const y = combatFit.y - 0.24 - f * 0.08;
-      P.add('turret', box(0.085, 0.25 - f * 0.035, 0.27), x, V(y), L(z),
-        -0.10, s * (-0.05 + f * 0.06), s * -0.05);
-      P.add('turretDark', box(0.016, 0.19, 0.18), s * (Math.abs(x) + 0.044),
-        V(y - 0.01), L(z), -0.10, s * (-0.05 + f * 0.06), 0);
+      const z = combatFit.sideZ[0] + (combatFit.sideZ[1] - combatFit.sideZ[0]) * f;
+      const faceX = sideFaceAt(z);
+      const x = s * (faceX + 0.035);
+      const h = 0.34 - f * 0.045;
+      const d = Math.max(0.26, Math.abs(combatFit.sideZ[0] - combatFit.sideZ[1])
+        / Math.max(1, combatFit.side - 1) * 0.88);
+      const y = combatFit.sideY - f * 0.07;
+      const yaw = s * (-0.035 + f * 0.055);
+      P.add('turret', box(0.11, h, d), x, V(y), L(z), -0.08, yaw, s * -0.055);
+      P.add('turretDark', box(0.018, h * 0.78, 0.022), s * (faceX + 0.094),
+        V(y - 0.01), L(z - d * 0.43), -0.08, yaw, s * -0.055);
+      P.add('turretDark', box(0.018, 0.020, d * 0.76), s * (faceX + 0.094),
+        V(y - h * 0.35), L(z), -0.08, yaw, s * -0.055);
+      P.add('turretDetail', box(0.014, 0.026, d * 0.76), s * (faceX + 0.100),
+        V(y + h * 0.37), L(z), -0.08, yaw, s * -0.055);
+      for (const dz of [-0.28, 0.28]) {
+        P.add('turretDark', box(0.016, 0.020, 0.016), s * (faceX + 0.104),
+          V(y + h * 0.20), L(z + d * dz), -0.08, yaw, 0);
+      }
     }
+  }
+
+  // Shallow roof cassettes create visible styling without replacing the cast
+  // roof.  Their lower halves are buried in the shell; unequal lanes leave
+  // the hatch and gun envelopes open and make each mark's roof distinguishable.
+  for (let i = 0; i < combatFit.roofArmor; i++) {
+    const s = i % 2 ? 1 : -1;
+    const lane = Math.floor(i / 2);
+    const z = 0.22 - lane * 0.39 + (i % 3) * 0.035;
+    const x = s * (0.42 + lane * 0.12);
+    const roof = Math.min(capWorld - 0.10, roofAt(z));
+    const w = Math.max(0.28, 0.43 - lane * 0.025);
+    const d = 0.31 + (i % 2) * 0.035;
+    const yaw = s * (0.06 + lane * 0.025);
+    P.add('turret', box(w, 0.085, d), x, V(roof + 0.018), L(z), -0.06, yaw, s * 0.025);
+    P.add('turretDark', box(w * 0.82, 0.016, 0.024), x,
+      V(roof + 0.057), L(z - d * 0.30), -0.06, yaw, s * 0.025);
+    for (const bx of [-0.34, 0.34]) {
+      P.add('turretDark', box(0.018, 0.018, 0.018), x + bx * w,
+        V(roof + 0.058), L(z + d * 0.30), -0.06, yaw, 0);
+    }
+  }
+
+  // A mark-specific armored optic on a broad shoe breaks the remaining quiet
+  // forward roof.  It is deliberately asymmetric and low enough to preserve
+  // the established gun and cupola silhouettes.
+  if (id !== 'merkava1b') {
+    const podSide = (id === 'merkava2b' || id === 'merkava3c') ? -1 : 1;
+    const podZ = id === 'merkava4b' ? -0.20 : -0.32;
+    const podX = podSide * (id.startsWith('merkava3') ? 0.78 : 0.70);
+    const podRoof = Math.min(capWorld - 0.25, roofAt(podZ));
+    sight(podX, podZ, podRoof, 0.25, id === 'merkava4b' ? 0.18 : 0.23, 0.27, podSide * -0.10);
   }
 
   // Unequal roof lockers, radio cases, spare optics and soft kit.  Every
