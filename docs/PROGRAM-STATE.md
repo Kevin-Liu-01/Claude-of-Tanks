@@ -9127,3 +9127,6 @@ The owner's 01c3c6f5 (STB-1 rebuild from source oracle) touched profiles/japan.j
 
 ## §5.327 — OWNER ORDER (verbatim, 2026-08-17): type59 "big bulbouys thing" on the turret + add machine guns (+screenshot)
 - Screenshot shows a bulbous crescent on the fresh §5.315 type59's turret front-left — attribution ordered (mis-scaled searchlight bracket / deformed brow / mantlet slab), fix to the real compact cast-collar mantlet read, and MGs added (loader DShK ring mount p95-budgeted, coax port, bow MG port). Chassis function shared with t62mv1 ac414eaa — dressing-layer edits only, chassis-level changes STOP-and-report. Nine agents live.
+
+## §5.328 — OWNER ORDER (verbatim, 2026-08-17): amx30s iconic cupolas + MGs + decorations; amx30b2 "a ton of era"
+- Second amx enhancement round spawned on the §5.318 base (33b5048/88801828): TOP cupola as the roof landmark (episcope belt, sight hood; silhouette rows re-derived honestly if moved), CLAMS 7.62 reading as a gun + coax verify, French stowage grammar, and the B2 Brénus GIAT G2 brick fields (glacis courses + turret cheeks + nose; §5.266 articulated-block read; width-guard + dims-100 discipline). The live amx garage sitting's verdict folds in as defect input when it arrives. misc.js co-resident type90 (owner-corrected d4a9410) untouchable. Ten agents live.
