@@ -108,8 +108,16 @@ function addBMP3Turret(P) {
   P.addGunExtraDark(cylZ(0.022, 1.75, 10), -0.21, 0.02, 1.40);
   P.addGunExtraDark(cylZ(0.052, 0.15, 12), 0.22, 0.03, 2.90);
   P.add('turret', box(0.30, 0.07, 0.30), -0.40, 0.72, -0.18);
-  P.add('turretDetail', cylY(0.12, 0.14, 0.28, 14), -0.40, 0.91, -0.18);
-  P.add('turretGlass', box(0.17, 0.11, 0.024), -0.40, 0.92, -0.02);
+  // The source vehicle's primary day/night head is a dominant, fully backed
+  // roof feature rather than a tiny blue chip.  A broad shoe, tapered collar,
+  // armored head and recessed circular aperture keep it readable from all
+  // front quarters without leaving any part on an unsupported stem.
+  P.add('turretDetail', cylY(0.14, 0.16, 0.20, 14), -0.40, 0.86, -0.18);
+  P.add('turret', box(0.34, 0.34, 0.28), -0.40, 1.06, -0.16, -0.04, 0, 0);
+  P.add('turretDark', cylZ(0.115, 0.032, 16), -0.40, 1.08, 0.002,
+    Math.PI / 2, 0, 0);
+  P.add('turretGlass', cylZ(0.082, 0.038, 16), -0.40, 1.08, 0.022,
+    Math.PI / 2, 0, 0);
   P.add('turret', cylY(0.24, 0.26, 0.07, 18), 0.40, 0.73, -0.30);
   // Two overlapping crew stations, periscopes and service lids break up the
   // source vehicle's cast crown without leaving unsupported roof furniture.
@@ -160,6 +168,17 @@ function buildBMP3ROK(P) {
       2.35 - i * 0.12, 0.27, 0.085, 0.30, [-0.28, 0, 0], false);
   }
   bowLightPair(P, 1.18, 1.47, 2.88, 3130);
+
+  // The comparison model has a compact low cast fighting station.  Keep the
+  // long 100 mm / 30 mm gun plant at authored diameter and length while the
+  // entire owned turret package (armor, hatches, optics, smoke, MG and radios)
+  // is pulled down around the ring as one coherent assembly.
+  P.turretG.scale.x *= 0.90;
+  P.turretG.scale.y *= 0.74;
+  P.turretG.scale.z *= 0.88;
+  P.gunG.scale.x *= 1 / 0.90;
+  P.gunG.scale.y *= 1 / 0.74;
+  P.gunG.scale.z *= 1 / 0.88;
 }
 
 function addUkrainianBradleyPackage(P) {
@@ -191,48 +210,69 @@ function buildUAM2A3(P) {
 }
 
 function addTerminatorStation(P) {
-  const { box, cylY, cylZ } = KIT;
+  const { box, cylY, cylZ, torus } = KIT;
   clearUpperStructure(P);
-  P.gunG.position.set(0, 0.50, 0.36);
-  // Low armored turntable and narrow unmanned weapons tower.
-  P.add('turret', cylY(0.98, 1.16, 0.22, 24), 0, 0.09, -0.12);
+  P.turretG.position.set(0, 1.43, -0.14);
+  P.gunG.position.set(0, 0.34, 0.42);
+
+  // The oracle's Terminator station is a shallow turntable carrying two long
+  // horizontal missile pods.  It is not a pair of tall rectangular towers.
+  // Keep the bearing buried in the T-72 deck and reserve the skyline for the
+  // command sight and two antennas.
+  P.add('turret', cylY(0.92, 1.10, 0.18, 26), 0, 0.07, -0.10);
   P.add('turret', orientedSlab(
-    [-0.72, 0.10, 0.98], [0.72, 0.10, 0.98], [0.92, 0.10, -1.05], [-0.92, 0.10, -1.05],
-    [-0.50, 0.58, 0.76], [0.50, 0.58, 0.76], [0.64, 0.62, -0.88], [-0.64, 0.62, -0.88]));
-  P.add('turret', box(0.72, 0.44, 1.20), 0, 0.56, 0.05);
-  P.add('turretDark', box(0.56, 0.20, 0.28), 0, 0.60, 0.76);
-  // Twin 2A42 cannon plant. Closed collars overlap the tower face; the
-  // individual bore mouths are explicit so the pair never reads as rods.
+    [-0.74, 0.10, 0.82], [0.74, 0.10, 0.82], [0.88, 0.10, -0.80], [-0.88, 0.10, -0.80],
+    [-0.46, 0.39, 0.70], [0.46, 0.39, 0.70], [0.61, 0.42, -0.68], [-0.61, 0.42, -0.68]));
+  P.add('turret', box(0.58, 0.28, 0.84), 0, 0.39, 0.02);
+  P.add('turretDark', box(0.46, 0.14, 0.22), 0, 0.39, 0.51);
+
+  // Twin 2A42 cannons share a closed saddle but retain distinct collars and
+  // bore mouths.  The plant pitches as one, with no gun geometry left behind.
   for (const side of [-1, 1]) {
-    P.addGunExtra(box(0.18, 0.25, 0.30), side * 0.16, 0, 0.28);
-    P.addGunExtra(cylZ(0.060, 0.32, 14, 0.048), side * 0.16, 0, 0.55);
-    P.add('gun', cylZ(0.038, 2.45, 12), side * 0.16, 0, 1.82);
-    P.add('gunDark', cylZ(0.056, 0.18, 12), side * 0.16, 0, 3.10);
-    P.add('gunDark', cylZ(0.021, 0.025, 12), side * 0.16, 0, 3.205);
+    P.addGunExtra(box(0.17, 0.21, 0.28), side * 0.14, 0, 0.25);
+    P.addGunExtra(cylZ(0.056, 0.30, 14, 0.045), side * 0.14, 0, 0.52);
+    P.add('gun', cylZ(0.035, 2.52, 12), side * 0.14, 0, 1.78);
+    P.add('gunDark', cylZ(0.052, 0.16, 12), side * 0.14, 0, 3.10);
+    P.add('gunDark', cylZ(0.019, 0.027, 12), side * 0.14, 0, 3.195);
   }
-  P.muzzleZ = 3.22;
-  // Four Ataka tubes in two armored flank boxes, visibly bracketed into the
-  // central station rather than hovering beside it.
+  P.muzzleZ = 3.21;
+
+  // Four Ataka tubes in two long source-shaped horizontal cassettes.  Each
+  // cassette has a deep inboard cradle, a tapered upper cover and two visible
+  // forward mouths; the aft rail returns into the turntable.
   for (const side of [-1, 1]) {
-    P.add('turretDark', box(0.46, 0.12, 0.42), side * 0.78, 0.46, 0.15,
-      0, 0, side * 0.08);
-    P.add('turret', box(0.50, 0.50, 0.84), side * 0.93, 0.62, 0.20,
-      0, side * 0.035, side * 0.05);
-    for (let row = 0; row < 2; row++) {
-      P.add('turretDark', cylZ(0.095, 0.76, 14), side * 0.93,
-        0.52 + row * 0.22, 0.27);
-      P.add('turretDetail', cylZ(0.080, 0.025, 14), side * 0.93,
-        0.52 + row * 0.22, 0.665);
+    P.add('turretDark', box(0.42, 0.16, 0.52), side * 0.67, 0.38, 0.02,
+      0, 0, side * 0.06);
+    P.add('turret', box(0.44, 0.32, 1.32), side * 0.94, 0.70, 0.08,
+      0, 0, side * 0.025);
+    P.add('turret', box(0.35, 0.08, 1.18), side * 0.94, 0.90, 0.05,
+      0, 0, side * 0.025);
+    for (let lane = 0; lane < 2; lane++) {
+      const laneX = side * (0.88 + lane * 0.16);
+      P.add('turretDark', cylZ(0.073, 1.16, 14), laneX, 0.70, 0.06);
+      P.add('turretDetail', cylZ(0.060, 0.028, 14), laneX, 0.70, 0.654);
     }
+    P.add('turretDetail', box(0.035, 0.26, 1.02), side * 1.165, 0.70, 0.03,
+      0, 0, side * 0.05);
   }
-  P.add('turret', box(0.26, 0.08, 0.28), 0.34, 0.80, -0.18);
-  P.add('turretDetail', cylY(0.12, 0.14, 0.28, 14), 0.34, 0.98, -0.18);
-  P.add('turretGlass', box(0.17, 0.11, 0.024), 0.34, 1.00, -0.03);
-  roofMG(P, -0.30, 0.82, -0.35, 3300, 'nsvt', -0.04, 0.72);
-  smokePair(P, 0.82, 0.58, -0.48, 4, 3310);
-  radioPair(P, 0.70, -0.88, 3320, 0.80);
-  P.decal('turret', 'number', 'BMPT-2', 0.20, [1.16, 0.44, -0.32], Math.PI / 2);
-  P.topY = Math.max(P.topY || 0, 1.35);
+
+  // Independent command panorama and gunner head, both seated on overlapping
+  // rings.  Periscopes, smoke launchers and service lids fill the crown while
+  // keeping the weapon station visibly lower than the missile cassettes.
+  P.add('turret', cylY(0.20, 0.22, 0.075, 18), -0.22, 0.45, -0.30);
+  P.add('turretDark', torus(0.18, 0.013, 18), -0.22, 0.492, -0.30);
+  P.add('turret', box(0.36, 0.38, 0.34), -0.22, 0.72, -0.28);
+  P.add('turretGlass', box(0.23, 0.13, 0.025), -0.22, 0.75, -0.095);
+  P.add('turret', box(0.24, 0.06, 0.25), 0.23, 0.47, -0.24);
+  P.add('turretDetail', cylY(0.105, 0.12, 0.25, 14), 0.23, 0.62, -0.24);
+  P.add('turretGlass', box(0.14, 0.085, 0.022), 0.23, 0.64, -0.105);
+  for (const x of [-0.53, -0.35, 0.35, 0.53]) {
+    P.add('turretGlass', box(0.09, 0.042, 0.025), x, 0.47, 0.43);
+  }
+  smokePair(P, 0.72, 0.42, -0.38, 4, 3310, -0.34);
+  radioPair(P, 0.52, -0.62, 3320, 0.62);
+  P.decal('turret', 'number', 'BMPT-2', 0.17, [1.13, 0.45, -0.18], Math.PI / 2);
+  P.topY = Math.max(P.topY || 0, 1.12);
 }
 
 function buildBMPT2(P) {
@@ -313,14 +353,21 @@ function buildUpior(P) {
 }
 
 function addMarderTurret(P) {
-  const { box, cylY, cylZ, torus, buildGun } = KIT;
+  const { box, cylY, cylZ, torus, lathe, buildGun } = KIT;
   clearUpperStructure(P);
   P.turretG.position.set(0.18, 1.84, -0.05);
   P.gunG.position.set(0, 0.26, 0.43);
   P.add('turret', cylY(0.66, 0.74, 0.14, 22), 0, 0.07, -0.02);
-  P.add('turret', orientedSlab(
-    [-0.48, 0.06, 0.70], [0.48, 0.06, 0.70], [0.57, 0.06, -0.64], [-0.57, 0.06, -0.64],
-    [-0.36, 0.42, 0.58], [0.36, 0.42, 0.58], [0.44, 0.44, -0.54], [-0.44, 0.44, -0.54]));
+  // One compact rounded fighting-station core replaces the former low
+  // rectangular cabinet. Its skirt overlaps the ring and the narrowing
+  // crown gives every roof fitting a real seat, matching the source A3's
+  // bulbous two-man turret rather than a flat slab.
+  P.add('turret', lathe([
+    [0.65, 0.00], [0.69, 0.12], [0.62, 0.31], [0.49, 0.48],
+    [0.31, 0.58], [0.08, 0.61],
+  ], P.q ? 28 : 18, 0.86), 0, 0.04, -0.03);
+  P.add('turret', box(0.48, 0.10, 0.42), 0, 0.48, -0.30,
+    0, -0.03, 0);
   P.addGunExtra(box(0.38, 0.25, 0.22), 0, 0, 0.25);
   P.addGunExtra(cylZ(0.088, 0.25, 14, 0.072), 0, 0, 0.48);
   buildGun(P, { len: 2.55, r: 0.032, sleeve: true, evac: 0.34,
@@ -386,33 +433,109 @@ function buildMarder1A3(P) {
   bowLightPair(P, 1.16, 1.48, 2.86, 3530);
 }
 
-function addM3A3Package(P) {
-  const { box, cylY } = KIT;
+function addM3A3Turret(P) {
+  const { box, cylY, cylZ, torus, buildGun } = KIT;
+  clearUpperStructure(P);
+
+  // The supplied M3A3 oracle carries a compact, low welded turret.  The
+  // former implementation inherited the M2A2's full-height cabinet and then
+  // stacked another viewer, two scout heads and a bustle on top; its roof
+  // furniture was detailed, but the primary mass was the wrong vehicle.
+  // Rebuild the complete upper assembly around one buried ring and a faceted
+  // shell, leaving height to the source-defining commander's sight alone.
+  P.turretG.position.set(0.04, 1.895, -0.36);
+  P.gunG.position.set(-0.10, 0.285, 0.62);
+  P.add('turret', cylY(0.70, 0.78, 0.105, 24), 0, 0.015, -0.04);
+  P.add('turret', orientedSlab(
+    [-0.72, 0.04, 0.98], [0.72, 0.04, 0.98], [0.83, 0.05, -1.02], [-0.83, 0.05, -1.02],
+    [-0.49, 0.55, 0.78], [0.49, 0.55, 0.78], [0.64, 0.57, -0.88], [-0.64, 0.57, -0.88]));
+
+  // Overlapping cheek continuations close the gun throat and give the front
+  // the Bradley's shallow V instead of a flat rectangular wall.  The dark
+  // saddle and round collar are both seated inside those cheeks.
+  for (const side of [-1, 1]) {
+    P.add('turret', orientedSlab(
+      [side * 0.13, 0.12, 1.02], [side * 0.57, 0.10, 0.91],
+      [side * 0.68, 0.10, 0.42], [side * 0.19, 0.13, 0.50],
+      [side * 0.13, 0.48, 0.87], [side * 0.46, 0.51, 0.75],
+      [side * 0.54, 0.50, 0.45], [side * 0.18, 0.48, 0.55]));
+    P.add('turretDetail', box(0.035, 0.20, 0.42), side * 0.79, 0.31, 0.10,
+      0, 0, side * 0.045);
+  }
+  P.addGunExtra(box(0.46, 0.30, 0.25), 0, 0, 0.27);
+  P.addGunExtraDark(cylZ(0.105, 0.34, 18, 0.085), 0, 0, 0.56);
+  buildGun(P, { len: 2.42, r: 0.037, sleeve: true, evac: 0.34,
+    collar: true, baseR: 0.10 });
+
+  // Source-specific TOW launcher: two real tubes live in one armoured pod,
+  // which is carried by a broad flank bracket rather than hovering beside
+  // the shell.  The small opposite-side electronics box breaks symmetry.
+  P.add('turretDark', box(0.24, 0.16, 0.48), 0.76, 0.38, 0.08);
+  P.add('turret', box(0.44, 0.40, 0.74), 0.91, 0.52, 0.10, 0, -0.035, 0.025);
+  for (const x of [0.82, 1.00]) {
+    P.add('turretDark', cylZ(0.073, 0.69, 14), x, 0.53, 0.12);
+    P.add('turretDetail', cylZ(0.060, 0.025, 14), x, 0.53, 0.478);
+  }
+  P.add('turret', box(0.30, 0.23, 0.44), -0.78, 0.40, -0.20,
+    0, 0.025, -0.025);
+  P.add('turretGlass', box(0.024, 0.12, 0.25), -0.942, 0.42, -0.12,
+    0, 0.025, 0);
+
+  // Two overlapping crew stations and a low periscope cadence articulate the
+  // roof.  The tall dual-aperture commander's sight is mounted on a tapered
+  // plinth, matching the oracle without turning the entire turret into a box.
+  for (const station of [
+    { x: -0.31, z: -0.28, r: 0.235, yaw: -0.08 },
+    { x: 0.32, z: -0.38, r: 0.205, yaw: 0.10 },
+  ]) {
+    P.add('turret', cylY(station.r * 0.92, station.r, 0.075, 18),
+      station.x, 0.585, station.z);
+    P.add('turretDark', torus(station.r * 0.80, 0.014, 18),
+      station.x, 0.627, station.z);
+    P.add('turret', box(station.r * 1.42, 0.055, station.r * 1.48),
+      station.x, 0.648, station.z, 0, station.yaw, 0);
+    for (let i = -1; i <= 1; i++) {
+      P.add('turretGlass', box(0.066, 0.042, 0.024),
+        station.x + i * 0.078, 0.670, station.z + station.r * 0.73,
+        0, station.yaw, 0);
+    }
+  }
+  P.add('turret', orientedSlab(
+    [-0.55, 0.59, -0.31], [-0.10, 0.59, -0.31], [-0.10, 0.59, 0.08], [-0.55, 0.59, 0.08],
+    [-0.49, 0.76, -0.27], [-0.16, 0.76, -0.27], [-0.16, 0.76, 0.02], [-0.49, 0.76, 0.02]));
+  P.add('turret', box(0.40, 0.34, 0.34), -0.33, 0.91, -0.08);
+  for (const x of [-0.42, -0.24]) {
+    P.add('turretGlass', box(0.125, 0.105, 0.025), x, 0.95, 0.102);
+    P.add('turretDark', box(0.145, 0.018, 0.045), x, 1.055, 0.065);
+  }
+
+  // Aft bins and the open rack stay below the commander's head.  Diagonal
+  // braces visibly return every rail into the bustle, so yaw inspection has
+  // no unsupported furniture or hidden donor mass.
+  P.add('turret', box(1.34, 0.28, 0.34), 0, 0.35, -1.02);
+  P.add('turretDark', box(1.10, 0.13, 0.035), 0, 0.36, -1.208);
+  mount(P, 'turret', FITTINGS.stowageRack({
+    mats: P.mats, w: 1.46, d: 0.38, h: 0.24, fill: 0.68, rails: 3, seed: 3608,
+  }), 0, 0.54, -1.04);
+  P.add('turretDetail', box(0.035, 0.24, 0.52), -0.69, 0.45, -1.04,
+    0, 0, -0.54);
+  P.add('turretDetail', box(0.035, 0.24, 0.52), 0.69, 0.45, -1.04,
+    0, 0, 0.54);
+
+  smokePair(P, 0.72, 0.46, 0.28, 4, 3640, -0.36);
+  radioPair(P, 0.60, -1.08, 3630, 0.65);
+  P.decal('turret', 'number', 'M3A3', 0.18, [0.84, 0.34, -0.50], Math.PI / 2);
+
+  // Retain the source's full-length spaced side armor, but do not duplicate
+  // the donor turret or donor bustle above it.
   sideArmorCourse(P, { x: 1.73, y: 1.43, h: 0.58, d: 0.62, count: 8,
     front: 2.42, step: 0.71 });
-  // Cavalry-recce identity: tall independent commander's viewer, paired
-  // scout optics, expanded TOW stowage and rear bustle rack.
-  P.add('turret', box(0.38, 0.075, 0.36), 0.42, 0.88, -0.25);
-  P.add('turretDetail', cylY(0.15, 0.17, 0.38, 16), 0.42, 1.10, -0.25);
-  P.add('turretGlass', box(0.21, 0.13, 0.025), 0.42, 1.14, -0.05);
-  for (const side of [-1, 1]) {
-    P.add('turret', box(0.25, 0.18, 0.30), side * 0.58, 0.83, 0.20);
-    P.add('turretGlass', box(0.15, 0.09, 0.024), side * 0.58, 0.85, 0.37);
-  }
-  P.add('turretDark', box(2.16, 0.24, 0.055), 0, 0.36, -1.53);
-  mount(P, 'turret', FITTINGS.stowageRack({
-    mats: P.mats, w: 2.10, d: 0.48, h: 0.32, fill: 0.82, rails: 3, seed: 3610,
-  }), 0, 0.47, -1.37);
-  roofMG(P, -0.40, 0.93, -0.44, 3620, 'mag', -0.06, 0.76);
-  radioPair(P, 0.80, -1.42, 3630, 0.98);
-  smokePair(P, 1.00, 0.63, 0.16, 4, 3640);
-  P.decal('turret', 'number', 'M3A3', 0.21, [1.25, 0.43, -0.50], Math.PI / 2);
-  P.topY = Math.max(P.topY || 0, 1.55);
+  P.topY = Math.max(P.topY || 0, 1.12);
 }
 
 function buildM3A3(P) {
   buildBradley(P);
-  addM3A3Package(P);
+  addM3A3Turret(P);
 }
 
 function addPumaOraclePackage(P) {

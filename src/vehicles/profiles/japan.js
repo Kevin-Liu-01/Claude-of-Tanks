@@ -26,7 +26,7 @@ function whips(P, y, z, seed, spread = 1.02) {
   for (const side of [-1, 1]) {
     P.add('turretDetail', KIT.cylY(0.036, 0.046, 0.060, 10), side * spread, y, z);
     mount(P, FITTINGS.antennaWhip({
-      mats: P.mats, h: side < 0 ? 0.78 : 0.68, r: 0.011,
+      mats: P.mats, h: side < 0 ? 0.98 : 0.90, r: 0.011,
       rake: side * 0.035, seed: seed + (side > 0 ? 1 : 0),
     }), side * spread, y + 0.025, z);
   }
@@ -84,11 +84,18 @@ function buildSTB1(P) {
   // Needle nose: a swept two-plane upper glacis and tucked lower chin.  The
   // source has a visible center crease and no tall vertical bow wall.
   for (const side of [-1, 1]) {
-    P.add('hull', orientedSlab(
+    const upper = [
       [side * 0.02, 0.78, 2.98], [side * 0.94, 0.80, 2.80],
       [side * 0.94, 0.86, 2.72], [side * 0.02, 0.84, 2.90],
       [side * 0.02, 1.32, 2.12], [side * 0.98, 1.32, 1.96],
-      [side * 0.98, 1.28, 1.87], [side * 0.02, 1.28, 2.03]));
+      [side * 0.98, 1.28, 1.87], [side * 0.02, 1.28, 2.03],
+    ];
+    // Mirroring the upper wedge reverses the ring.  Reorder its corners so
+    // both halves retain outward-facing winding without changing the crease.
+    const u = side < 0
+      ? [upper[0], upper[3], upper[2], upper[1], upper[4], upper[7], upper[6], upper[5]]
+      : upper;
+    P.add('hull', orientedSlab(...u));
     P.add('hull', orientedSlab(
       [side * 0.02, 0.35, 2.78], [side * 0.90, 0.37, 2.61],
       [side * 0.90, 0.43, 2.50], [side * 0.02, 0.41, 2.67],
@@ -146,9 +153,9 @@ function buildSTB1(P) {
     style: 'rubber', dishR: 0.86, wheelR: 0.455, wheelW: 0.26,
     wheelY: 0.51, xc: 1.33,
     wheelZs,
-    sprocket: { z: -2.58, y: 0.72, r: 0.31 },
-    idler: { z: 2.52, y: 0.69, r: 0.30 },
-    rollers: [], trackW: 0.55, trackTh: 0.085, topY: 1.00, botY: 0.03,
+    sprocket: { z: -2.55, y: 0.74, r: 0.42 },
+    idler: { z: 2.48, y: 0.74, r: 0.42 },
+    rollers: [], trackW: 0.55, trackTh: 0.090, topY: 1.16, botY: 0.03,
     deadSag: 0.045, paintedEnds: true, coveredTop: false, arms: true,
   });
 
@@ -156,12 +163,12 @@ function buildSTB1(P) {
   // shoulder, narrowing crown and stretched plan match the source's organic
   // teardrop turret without a flat donor cylinder or a second armor shell.
   P.add('turret', lathe([
-    [0.78, -0.035], [0.99, 0.02], [1.12, 0.10], [1.16, 0.22],
-    [1.12, 0.35], [1.00, 0.49], [0.80, 0.61], [0.52, 0.70],
+    [0.90, -0.035], [1.14, 0.02], [1.30, 0.10], [1.34, 0.22],
+    [1.30, 0.35], [1.15, 0.49], [0.92, 0.61], [0.60, 0.70],
     [0.28, 0.755], [0.015, 0.77],
-  ], seg, 1.24), 0, 0, -0.22);
-  P.add('turret', box(1.52, 0.13, 1.16), 0, 0.035, -0.62);
-  P.add('turretDark', box(1.44, 0.020, 1.08), 0, -0.035, -0.62);
+  ], seg, 1.17), 0, 0, -0.22);
+  P.add('turret', box(1.72, 0.13, 1.16), 0, 0.035, -0.62);
+  P.add('turretDark', box(1.64, 0.020, 1.08), 0, -0.035, -0.62);
   // Shallow bustle extension is buried into the casting and closes with a
   // backed rear service face—never a free-floating pack.
   P.add('turret', frustum(0.85, -0.55, -1.82, 0.66, -0.64, -1.73, 0.04, 0.41));
@@ -197,15 +204,15 @@ function buildSTB1(P) {
 
   // Signature left-front multi-pane searchlight: solid armored cradle,
   // hood, nine luminous panes and a conduit seated back into the cheek.
-  P.add('turret', box(0.48, 0.38, 0.36), 0.70, 0.53, 1.02, -0.05, 0, 0);
-  P.add('turret', box(0.52, 0.055, 0.12), 0.70, 0.75, 1.13, -0.05, 0, 0);
-  P.add('turretDark', box(0.42, 0.31, 0.028), 0.70, 0.53, 1.218);
+  P.add('turret', box(0.54, 0.40, 0.38), 0.73, 0.52, 1.04, -0.05, 0, 0);
+  P.add('turret', box(0.58, 0.055, 0.13), 0.73, 0.75, 1.15, -0.05, 0, 0);
+  P.add('turretDark', box(0.48, 0.33, 0.028), 0.73, 0.52, 1.242);
   for (let row = 0; row < 3; row++) for (let col = 0; col < 3; col++) {
-    P.add('turretGlass', box(0.095, 0.075, 0.018), 0.58 + col * 0.12,
-      0.43 + row * 0.105, 1.238);
+    P.add('turretGlass', box(0.108, 0.080, 0.018), 0.598 + col * 0.132,
+      0.42 + row * 0.112, 1.262);
   }
-  P.add('turretDetail', box(0.075, 0.40, 0.075), 0.70, 0.28, 0.92);
-  P.add('turretDark', box(0.025, 0.025, 0.72), 0.98, 0.50, 0.64, 0, 0.32, 0);
+  P.add('turretDetail', box(0.085, 0.42, 0.085), 0.73, 0.27, 0.92);
+  P.add('turretDark', box(0.025, 0.025, 0.76), 1.02, 0.49, 0.62, 0, 0.32, 0);
 
   // Offset rangefinder blisters and their backed optic faces give the side
   // elevation the same asymmetric equipment cadence as the source print.
@@ -220,13 +227,25 @@ function buildSTB1(P) {
 
   // Two different roof stations, low hatches, periscopes and the source's
   // commander-mounted machine gun keep the crown detailed but not tall.
-  cupola(P, 'turret', 0.43, 0.70, -0.38, 0.255, 0.105, 8);
+  cupola(P, 'turret', 0.43, 0.70, -0.38, 0.30, 0.105, 10);
+  P.add('turret', cylY(0.245, 0.275, 0.085, 18), 0.43, 0.815, -0.38);
+  P.add('turretDark', torus(0.245, 0.014, 24), 0.43, 0.865, -0.38);
+  // The source commander station is a low two-tier drum surrounded by
+  // individually readable vision blocks, not a featureless roof cylinder.
+  for (let i = 0; i < 8; i++) {
+    const a = i * Math.PI / 4;
+    P.add('turretGlass', box(0.095, 0.075, 0.032),
+      0.43 + Math.sin(a) * 0.255, 0.835, -0.38 + Math.cos(a) * 0.255,
+      0, a, 0);
+  }
+  P.add('turret', box(0.29, 0.13, 0.22), 0.43, 0.94, -0.31, -0.04, 0, 0);
+  P.add('turretDark', box(0.21, 0.075, 0.025), 0.43, 0.95, -0.184);
+  P.add('turretGlass', box(0.15, 0.045, 0.018), 0.43, 0.95, -0.201);
   P.add('turret', cylY(0.225, 0.235, 0.055, 20), -0.43, 0.715, -0.12);
   P.add('turret', cylY(0.195, 0.195, 0.028, 20), -0.43, 0.760, -0.12);
   P.add('turretDark', box(0.34, 0.014, 0.030), -0.43, 0.780, -0.12);
   for (const [x, z, yaw] of [[0.14, 0.38, 0], [-0.22, 0.34, 0.15], [0.69, -0.05, -0.2]])
     periscope(P, 'turretDetail', x, 0.80, z, yaw);
-  P.add('turretDark', torus(0.245, 0.014, 24), 0.43, 0.815, -0.38);
   P.add('turretDark', torus(0.215, 0.013, 24), -0.43, 0.785, -0.12);
   mount(P, FITTINGS.pintleMG({
     mats: P.mats, cls: 'mag', tone: 'dark', scale: 0.70, elev: 0.04,
@@ -265,9 +284,9 @@ function buildSTB1(P) {
     [1.48, 0.90, 0.82]), 0, 0, 0.46);
   P.addGunExtra(cylZ(0.145, 0.34, seg, 0.115), 0, 0, 0.66);
   P.addGunExtraDark(cylZ(0.031, 0.10, 10), 0.27, 0.07, 0.50);
-  buildGun(P, { len: 4.42, r: 0.062, sleeve: false, evac: 0.46,
+  buildGun(P, { len: 4.72, r: 0.062, sleeve: false, evac: 0.46,
     evacR: 1.72, collar: false, baseR: 0.145 });
-  P.add('gunDark', cylZ(0.067, 0.075, 12), 0, 0, 4.395);
+  P.add('gunDark', cylZ(0.067, 0.075, 12), 0, 0, 4.695);
 
   P.decal('turret', 'number', 'STB-1', 0.21, [-1.23, 0.31, -0.54], -Math.PI / 2);
   P.topY = 1.04;

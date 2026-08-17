@@ -191,7 +191,7 @@ function buildArieteC2(P) {
 }
 
 function buildCarro45T(P) {
-  const { box, cylY, cylZ, torus, frustum, polyMultiLoft, buildGun,
+  const { box, cylY, cylZ, torus, frustum, lathe, buildGun,
     buildRunningGear, headlight, periscope, liftEye, towCable } = KIT;
   const slab = orientedSlab;
 
@@ -229,26 +229,28 @@ function buildCarro45T(P) {
   });
 
   P.turretG.position.set(0, 1.20, -0.34);
-  const plan = [
-    [-0.34, 1.28], [0.34, 1.28], [1.18, 0.70], [1.43, -0.22],
-    [1.36, -2.18], [-1.36, -2.18], [-1.43, -0.22], [-1.18, 0.70],
-  ];
-  P.add('turret', polyMultiLoft(plan, [
-    { height: 0.03, inset: 1.0 },
-    { height: [0.48, 0.48, 0.62, 0.82, 0.96, 0.96, 0.82, 0.62], inset: 0.99 },
-    { height: [0.58, 0.58, 0.72, 0.94, 1.03, 1.03, 0.94, 0.72], inset: 0.86 },
-  ]));
-  P.add('turretDark', box(2.45, 0.07, 2.95), 0, 0.07, -0.52);
-  // Split the former single rectangular roof into two shallow canted halves.
-  // Their outboard edges follow the loft shoulders and the center seam gives
-  // the prototype its source-visible folded crown instead of a flat lid.
+  // High-segment cast core.  The former eight-wall loft preserved the right
+  // envelope but read as a featureless rectangular cabinet at garage scale.
+  // This low oval casting supplies continuous cheek/roof curvature; the
+  // source-specific welded shoulders and access courses below remain proud
+  // of it and carry the prototype's faceted identity.
+  P.add('turret', lathe([
+    [0.72, 0.00], [1.10, 0.08], [1.20, 0.28], [1.13, 0.52],
+    [0.94, 0.70], [0.68, 0.84], [0.34, 0.91], [0.02, 0.93],
+  ], 34, 1.10), 0, 0, -0.24);
+  P.add('turretDark', cylY(1.08, 1.15, 0.055, 30), 0, 0.03, -0.24);
+  // Keep the loft's folded crown visible. The previous pair of large roof
+  // boxes covered those facets and turned the complete turret into a flat
+  // rectangular cabinet. Narrow service fields now follow the crown without
+  // erasing its slope or swallowing the crew stations.
   for (const s of [-1, 1]) {
-    P.add('turret', box(1.10, 0.08, 1.50), s * 0.52, 0.98, -1.20,
-      0, 0, -s * 0.055);
-    P.add('turretDark', box(0.86, 0.018, 1.22), s * 0.52, 1.026, -1.20,
-      0, 0, -s * 0.055);
+    P.add('turretDark', box(0.62, 0.025, 0.72), s * 0.45, 1.015, -1.12,
+      0, 0, -s * 0.045);
   }
-  P.add('turret', box(0.74, 0.54, 0.40), 0, 0.49, 1.10);
+  // Compact buried trunnion bridge.  The prior half-metre cube survived as
+  // the turret's dominant front rectangle after plan scaling, masking the
+  // oracle's sloped cast shoulders.
+  P.add('turret', box(0.62, 0.40, 0.34), 0, 0.39, 1.10);
 
   // Source-shaped face continuations replace the broad unarticulated slab
   // read.  The lower shoulders intersect the lofted shell while their upper
@@ -265,9 +267,9 @@ function buildCarro45T(P) {
     // Three shallow side-access panels and their backed seam rails.
     for (let i = 0; i < 3; i++) {
       const z = 0.16 - i * 0.57;
-      P.add('turret', box(0.13, 0.34, 0.48), s * 1.34,
+      P.add('turret', box(0.12, 0.30, 0.44), s * 1.18,
         0.50 + (i & 1) * 0.025, z, 0, 0, s * 0.07);
-      P.add('turretDark', box(0.018, 0.25, 0.36), s * 1.414, 0.50, z);
+      P.add('turretDark', box(0.016, 0.22, 0.32), s * 1.247, 0.50, z);
     }
   }
   P.addGunExtra(box(0.64, 0.56, 0.24), 0, 0.02, 0.42);
@@ -279,20 +281,20 @@ function buildCarro45T(P) {
   // Prototype-specific roof: twin multi-part crew stations, unequal service
   // plates, low optical blocks, smoke gear and a connected bustle cage.  The
   // old build had only two near-invisible rings on a single flat polygon.
-  for (const [x, z, yaw] of [[-0.55, -0.80, -0.10], [0.55, -0.88, 0.12]]) {
-    P.add('turret', cylY(0.30, 0.32, 0.075, 20), x, 1.02, z);
-    P.add('turretDark', torus(0.275, 0.016, 20), x, 1.07, z);
-    P.add('turret', box(0.46, 0.060, 0.40), x, 1.095, z, 0, yaw, 0);
+  for (const [x, z, yaw] of [[-0.55, -0.72, -0.10], [0.55, -0.82, 0.12]]) {
+    P.add('turret', cylY(0.30, 0.32, 0.10, 20), x, 1.09, z);
+    P.add('turretDark', torus(0.275, 0.016, 20), x, 1.155, z);
+    P.add('turret', box(0.46, 0.060, 0.40), x, 1.18, z, 0, yaw, 0);
   }
   for (const [x, z, yaw] of [
     [-0.78, -0.48, 0.18], [-0.56, -0.42, 0.08], [-0.32, -0.45, -0.08],
     [0.22, -0.48, 0.08], [0.46, -0.46, -0.08], [0.72, -0.54, -0.18],
   ]) {
-    P.add('turretDetail', box(0.14, 0.050, 0.082), x, 1.07, z, 0, yaw, 0);
-    P.add('turretGlass', box(0.095, 0.022, 0.015), x, 1.10, z + 0.038,
+    P.add('turretDetail', box(0.14, 0.050, 0.082), x, 1.16, z, 0, yaw, 0);
+    P.add('turretGlass', box(0.095, 0.022, 0.015), x, 1.19, z + 0.038,
       0, yaw, 0);
   }
-  periscope(P, 'turretDetail', 0.52, 1.10, -0.48);
+  periscope(P, 'turretDetail', 0.52, 1.19, -0.48);
   P.add('turret', box(0.42, 0.095, 0.42), 1.08, 0.74, 0.18);
   P.add('turret', box(0.34, 0.34, 0.34), 1.08, 0.94, 0.18,
     -0.08, -0.08, 0);
@@ -305,39 +307,47 @@ function buildCarro45T(P) {
     [0.38, -1.39, 0.52, 0.42, -0.02], [0.84, -1.35, 0.30, 0.38, 0.05],
     [-0.55, -1.87, 0.62, 0.34, -0.03], [0.18, -1.88, 0.66, 0.34, 0.02],
   ]) {
-    P.add('turretDark', box(w, 0.024, d), x, 1.045, z, 0, ry, 0);
-    P.add('turretDetail', box(w * 0.78, 0.018, 0.026), x, 1.062,
+    P.add('turretDark', box(w, 0.024, d), x, 1.105, z, 0, ry, 0);
+    P.add('turretDetail', box(w * 0.78, 0.018, 0.026), x, 1.122,
       z + d * 0.38, 0, ry, 0);
   }
   addFitting(P, 'turret', FITTINGS.smokeBank({ mats: P.mats, count: 5, splay: -1.02,
     pitch: -0.46, slot: 'detail', seed: 70 }), -1.10, 0.74, -0.52);
   addFitting(P, 'turret', FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone',
-    elev: 0.07, shield: true, scale: 0.82, seed: 72 }), 0.54, 1.10, -0.88);
+    elev: 0.11, shield: true, ammo: true, ring: { r: 0.18, stubs: 3 },
+    scale: 1.04, seed: 72 }), 0.54, 1.20, -0.82);
   for (const s of [-1, 1]) addFitting(P, 'turret', FITTINGS.antennaWhip({ mats: P.mats,
-    h: s < 0 ? 0.83 : 0.70, rake: -s * 0.05, seed: 74 }), s * 1.02, 1.00, -1.82);
+    h: s < 0 ? 0.83 : 0.70, rake: -s * 0.05, seed: 74 }), s * 1.02, 0.92, -1.55);
   addFitting(P, 'turret', FITTINGS.stowageRack({ mats: P.mats, w: 1.86, d: 0.38,
-    h: 0.26, fill: 0.35, rails: 2, seed: 76 }), 0, 0.76, -2.24);
+    h: 0.26, fill: 0.35, rails: 2, seed: 76 }), 0, 0.76, -1.88);
   // Backed rear armor/service wall and fully connected basket termination.
-  P.add('turret', box(2.30, 0.44, 0.58), 0, 0.57, -2.34);
-  P.add('turretDark', box(2.18, 0.34, 0.045), 0, 0.57, -2.66);
+  P.add('turret', box(1.78, 0.34, 0.70), 0, 0.46, -1.57);
+  P.add('turret', box(1.86, 0.30, 0.32), 0, 0.48, -1.90);
+  P.add('turretDark', box(1.80, 0.22, 0.035), 0, 0.48, -2.08);
   for (const y of [0.40, 0.54, 0.68, 0.82]) {
-    P.add('turretDetail', box(2.40, 0.028, 0.032), 0, y, -2.70);
+    P.add('turretDetail', box(2.24, 0.028, 0.032), 0, y, -2.19);
   }
   for (let i = 0; i < 9; i++) {
-    P.add('turretDetail', box(0.028, 0.48, 0.032), -1.12 + i * 0.28,
-      0.61, -2.70);
+    P.add('turretDetail', box(0.028, 0.48, 0.032), -1.04 + i * 0.26,
+      0.61, -2.19);
   }
   for (const s of [-1, 1]) {
-    P.add('turretDetail', box(0.032, 0.36, 0.56), s * 1.20, 0.60, -2.43);
+    P.add('turretDetail', box(0.032, 0.36, 0.48), s * 1.12, 0.60, -1.96);
   }
   P.decal('turret', 'number', '45T', 0.25, [-1.38, 0.57, -0.60], -Math.PI / 2, 0, 0);
-  // The source has a tall, narrow trapezoid rather than the previous broad
-  // low lid. Compress plan width only and leave nearly all authored height;
-  // inverse gun scaling preserves the circular tube and muzzle bore.
+  // The oracle's turret is a compact cast wedge, not the tall rectangular
+  // cabinet produced by the old full-height rear wall and side courses.
+  // Compress the complete owned armor/equipment tree about the ring while
+  // preserving the circular gun plant with inverse child scaling.
   P.turretG.scale.x *= 0.88;
-  P.turretG.scale.y *= 0.98;
+  // Keep the cast shoulders visibly three-dimensional.  The previous 0.78
+  // compression matched the footprint mask but flattened the crown and hid
+  // most roof fittings at garage distance.
+  P.turretG.scale.y *= 0.90;
+  P.turretG.scale.z *= 0.74;
   P.gunG.scale.x *= 1 / 0.88;
-  P.gunG.scale.y *= 1 / 0.98;
+  P.gunG.scale.y *= 1 / 0.90;
+  P.gunG.scale.z *= 1 / 0.74;
   P.topY = 1.44;
 }
 

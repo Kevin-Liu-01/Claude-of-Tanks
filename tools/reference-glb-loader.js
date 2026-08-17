@@ -62,10 +62,28 @@ export async function loadReferenceGlb(source, specId, spec) {
   if (!cfg.fixedMount && cfg.turretNode) {
     const turretNodes = matchingNodes(gltf.scene, cfg.turretNode);
     const turretFollowers = matchingNodes(gltf.scene, cfg.turretFollowers);
+    // Keep the comparison rig on the source file's authored rotation centre.
+    // Re-parenting a turret under a pivot left at the scene origin makes it
+    // orbit the hull during yaw, which corrupts both articulation boards and
+    // component masks. Most articulated source files retain a useful object
+    // origin even when their mesh vertices were baked in an arbitrary DCC
+    // frame; explicit `pivot` remains available for the exceptions.
+    if (cfg.autoPivot && turretNodes.length) {
+      const pivot = Array.isArray(cfg.pivot)
+        ? new THREE.Vector3().fromArray(cfg.pivot)
+        : turretNodes[0].getWorldPosition(new THREE.Vector3());
+      turret.position.copy(pivot);
+      root.updateMatrixWorld(true);
+    }
     attachAll(turret, [...turretNodes, ...turretFollowers]);
 
     const gunNodes = matchingNodes(root, cfg.gunNode);
     const gunFollowers = matchingNodes(root, cfg.gunFollowers);
+    if (cfg.autoPivot && gunNodes.length) {
+      const pivotWorld = gunNodes[0].getWorldPosition(new THREE.Vector3());
+      gun.position.copy(turret.worldToLocal(pivotWorld.clone()));
+      root.updateMatrixWorld(true);
+    }
     attachAll(gun, [...gunNodes, ...gunFollowers]);
   }
 
