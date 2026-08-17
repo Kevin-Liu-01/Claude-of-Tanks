@@ -3241,7 +3241,8 @@ function updateDustAndSync(dtFrame) {
           // drums/debris inherit the rammer's velocity
           if (world.crushProp(ci, _v2.x, _v2.z, sp)) {
             _v1.set(c.x, c.y, c.z);
-            fx.propCrush(_v1, _v2, c.h);
+            if (c.dynamic && fx.loosePropHit) fx.loosePropHit(_v1, _v2, c.h);
+            else fx.propCrush(_v1, _v2, c.h);
           }
         }
       }
@@ -5467,6 +5468,7 @@ function collectDebugTelemetry() {
   const draw = renderer.getDrawingBufferSize(new THREE.Vector2());
   const shadow = lighting.getShadowTelemetry();
   const shadowCounts = shadowSceneCounts();
+  const loose = world?.getLoosePropStats?.() || { total: 0, active: 0 };
   const net = networkDiagnostics();
   const alive = (game.tanks || []).reduce((n, tank) => n + (!tank.combat?.destroyed ? 1 : 0), 0);
   return {
@@ -5493,6 +5495,8 @@ function collectDebugTelemetry() {
       concealers: collectionSize(world?.getConcealment?.()),
       destructibles: collectionSize(world?.destructibles),
       wrecks: collectionSize(world?.tankWreckSpots),
+      looseTotal: loose.total,
+      looseActive: loose.active,
     },
     shadows: {
       ...shadow,

@@ -213,6 +213,12 @@ function assembleWorld(engineCtx, config, heightField, terrain, vegetation, prop
     // world-dressing r1: destructible small-prop records (probes/debug —
     // gameplay paths run through crushObstacle/crushProp/the fx seam)
     destructibles: props.destructibles || [],
+    // Lightweight sleeping map clutter (galvanized churns, bins, cans,
+    // bottles, wheels...). Exposed for debug telemetry and deterministic
+    // probes; gameplay still enters through crushProp/shell seams.
+    looseProps: props.looseRecords || [],
+    getLoosePropStats: () => props.getLoosePropStats
+      ? props.getLoosePropStats() : { total: 0, active: 0 },
     // DESTRUCTIBLES r1: baked real-tank wreck placements (probes/debug)
     tankWreckSpots: props.tankWreckSpots || [],
     // gameplay_feel r6: crushable OBSTACLE records. state.js's collider
