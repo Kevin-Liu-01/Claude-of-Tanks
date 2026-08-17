@@ -79,14 +79,18 @@ export function createNetworkStatus() {
     const jitter = Number(stats.rttJitterMs || 0).toFixed(1);
     const loss = ((stats.estimatedSnapshotLoss || 0) * 100).toFixed(1);
     const transport = stats.transport || {};
-    const stateTransport = transport.state || transport;
+    const baseTransport = transport.base || transport;
+    const stateTransport = baseTransport.state || baseTransport;
     diagnostics.textContent =
       `NET  ${rtt}  ±${jitter} ms  gap ${loss}%\n` +
       `BUF  ${Number(buffer.interpolationDelayMs || 0).toFixed(0)} ms  ` +
       `jitter ${Number(buffer.arrivalJitterMs || 0).toFixed(1)}  ` +
       `extra ${buffer.extrapolatedSamples || 0}\n` +
       `WIRE ${stats.transportBufferedBytes || 0} B  ` +
-      `coal ${stateTransport.stateCoalesced || 0}  base-miss ${stats.missingSnapshotBaselines || 0}\n` +
+      `state-coal ${stateTransport.stateCoalesced || 0}  ` +
+      `input-coal ${stateTransport.inputCoalesced || 0}\n` +
+      `SYNC input ${stats.inputAckLag == null ? '—' : stats.inputAckLag}f  ` +
+      `edges ${stats.pendingInputEdges || 0}  base-miss ${stats.missingSnapshotBaselines || 0}\n` +
       `PRED ${prediction.pendingInputs || 0} pending  ` +
       `err ${Number(prediction.lastPositionErrorM || 0).toFixed(2)} m  ` +
       `corr ${Number(prediction.correctionM || 0).toFixed(2)} m`;

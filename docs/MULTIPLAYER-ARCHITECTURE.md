@@ -43,7 +43,7 @@ collision facade.
 
 ## Protocol and authority
 
-Protocol v3 uses validated envelopes with a finite message vocabulary,
+Protocol v4 uses validated envelopes with a finite message vocabulary,
 sequence/acknowledgement fields, and simulation ticks. Clients submit controls
 only: throttle, steering, brake, bounded aim yaw/pitch/distance, shell choice,
 fire, and explicit consumable action bits. Distance preserves the finite
@@ -61,13 +61,18 @@ connection sequence.
 
 LAN/private WebRTC uses two data channels:
 
-- `cot-match-v1`: ordered and reliable for handshake, lobby, input, combat
-  events, ping, errors, and leave control.
-- `cot-state-v1`: unordered with zero retransmits for replaceable snapshots.
+- `cot-match-v1`: ordered and reliable for handshake, lobby, combat events,
+  ping, errors, and leave control.
+- `cot-state-v1`: unordered with zero retransmits for replaceable snapshots
+  and live input.
 
-Ranked WebSocket remains ordered, but coalesces pending snapshot state so stale
-frames cannot consume the reliable control budget. All transports enforce
-payload and buffered-byte limits and fail visibly on sustained backpressure.
+Ranked WebSocket remains ordered, but coalesces pending snapshot or input state
+so stale frames cannot consume the reliable control budget. Input and reliable
+control have independent sequence spaces, preventing reordered steering from
+starving room commands. Fire and consumable edges repeat until a snapshot
+acknowledges receipt; authority deduplicates consumable rising edges before the
+simulation sees them. All transports enforce payload and buffered-byte limits
+and fail visibly on sustained backpressure.
 
 Snapshots use a compact binary codec, explicit snapshot acknowledgements,
 per-peer deltas, and periodic keyframes. A missing delta baseline waits for a
@@ -108,8 +113,9 @@ or hard snap releases the resting hold immediately, so stabilization cannot
 add steering latency or hide legitimate slope motion.
 
 Press `F3` to view live RTT, jitter, estimated snapshot loss, interpolation
-delay, extrapolation, transport queues, and reconciliation error. Deterministic
-browser impairment is available for QA:
+delay, extrapolation, input acknowledgement lag/edge redundancy, transport
+coalescing, and reconciliation error. Deterministic browser impairment is
+available for QA:
 
 ```text
 ?netSim=1&netLatency=120&netJitter=40&netLoss=10&netdiag=1
@@ -143,7 +149,7 @@ screen and lobby can say “Join Name’s Game.” That URL field is never trust
 identity: both in-memory and distributed signaling return the canonical host
 name in their create/join responses, and the client replaces the hint.
 
-Rooms persist across rounds. Protocol-v3 `ROOM_COMMAND` and `ROOM_STATE`
+Rooms persist across rounds. Protocol-v4 `ROOM_COMMAND` and `ROOM_STATE`
 messages carry round, last result, full human roster, selections, and readiness
 on the reliable channel. When authority publishes a result, the room returns
 from `playing` to `waiting`, keeps connected peers and the WebRTC channels,
@@ -205,17 +211,21 @@ WebRTC path; the signaling service only exchanges room and connection metadata.
 ```bash
 npm test
 npm run test:net:browser
+npm run test:net:four
 npm run build
 npm run build:private
 ```
 
-The browser soak starts a real signaling server, Vite, and two Chromium pages.
-It proves room codes, host-only policy, team/spectator switching, same-vehicle
-identity separation, dual-channel WebRTC handoff, authoritative movement,
-adaptive delivery under configurable latency/jitter/loss, and clean peer
-departure. Node tests separately cover hidden-coordinate filtering, combat
-authority, consumables, ram/HE damage, bots, real WebSockets, reconnect,
-matchmaking, Elo persistence, abuse bounds, and all-map collision.
+The persistent-room browser soak starts a real signaling server, Vite, and two
+Chromium pages. The four-player soak adds one host and three independent guest
+pages in a human 2v2, applies configurable latency/jitter/snapshot and input
+loss, and gates timeline skew, shared teammate poses, authority convergence,
+input acknowledgement lag, transport queues, runtime cost, and clean departure.
+Together they prove room policy, identity separation, dual-channel WebRTC
+handoff, rematches, authoritative movement, and adaptive delivery. Node tests
+separately cover four-client dedicated WebSockets, hidden-coordinate filtering,
+combat authority, consumables, ram/HE damage, bots, reconnect, matchmaking, Elo
+persistence, abuse bounds, and all-map collision.
 
 Useful service commands:
 

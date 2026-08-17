@@ -1,4 +1,5 @@
-const WIRE_TAG = 2;
+const SNAPSHOT_WIRE_TAG = 2;
+const INPUT_WIRE_TAG = 3;
 const ENTITY_FIELDS = Object.freeze([
   'id', 'specId', 'team',
   'x', 'y', 'z', 'vx', 'vz',
@@ -20,7 +21,7 @@ function toBytes(value) {
   if (ArrayBuffer.isView(value)) {
     return new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
   }
-  throw new TypeError('snapshot wire payload must be binary');
+  throw new TypeError('replaceable wire payload must be binary');
 }
 
 function packRows(rows, fields, limit, label) {
@@ -44,15 +45,67 @@ function unpackRows(rows, fields, limit, label) {
   });
 }
 
-/** Compact binary JSON-array codec for replaceable snapshot envelopes. */
+function encodeInputEnvelope(envelope) {
+  const input = envelope.payload;
+  return [
+    INPUT_WIRE_TAG,
+    envelope.v,
+    envelope.seq,
+    envelope.ack,
+    envelope.tick,
+    input.inputSeq,
+    input.clientTick,
+    input.snapshotAckTick,
+    input.throttle,
+    input.steer,
+    input.brake ? 1 : 0,
+    input.fire ? 1 : 0,
+    input.aimYaw,
+    input.aimPitch,
+    input.aimDistance,
+    input.shellSlot,
+    input.actionBits,
+  ];
+}
+
+function decodeInputEnvelope(wire) {
+  if (wire.length !== 17) throw new TypeError('invalid input wire packet');
+  return {
+    v: wire[1],
+    type: 'input',
+    seq: wire[2],
+    ack: wire[3],
+    tick: wire[4],
+    payload: {
+      inputSeq: wire[5],
+      clientTick: wire[6],
+      snapshotAckTick: wire[7],
+      throttle: wire[8],
+      steer: wire[9],
+      brake: wire[10] === 1,
+      fire: wire[11] === 1,
+      aimYaw: wire[12],
+      aimPitch: wire[13],
+      aimDistance: wire[14],
+      shellSlot: wire[15],
+      actionBits: wire[16],
+    },
+  };
+}
+
+/** Compact binary JSON-array codec for replaceable snapshot and input envelopes. */
 export const snapshotWireCodec = Object.freeze({
   encode(envelope) {
-    if (!envelope || envelope.type !== 'snapshot' || !envelope.payload) {
-      throw new TypeError('snapshot envelope is required');
+    if (!envelope || !envelope.payload) {
+      throw new TypeError('replaceable envelope is required');
     }
+    if (envelope.type === 'input') {
+      return encoder.encode(JSON.stringify(encodeInputEnvelope(envelope)));
+    }
+    if (envelope.type !== 'snapshot') throw new TypeError('replaceable envelope is required');
     const packet = envelope.payload;
     const wire = [
-      WIRE_TAG,
+      SNAPSHOT_WIRE_TAG,
       envelope.v,
       envelope.seq,
       envelope.ack,
@@ -71,7 +124,9 @@ export const snapshotWireCodec = Object.freeze({
 
   decode(value) {
     const wire = JSON.parse(decoder.decode(toBytes(value)));
-    if (!Array.isArray(wire) || wire.length !== 13 || wire[0] !== WIRE_TAG) {
+    if (!Array.isArray(wire)) throw new TypeError('invalid replaceable wire packet');
+    if (wire[0] === INPUT_WIRE_TAG) return decodeInputEnvelope(wire);
+    if (wire.length !== 13 || wire[0] !== SNAPSHOT_WIRE_TAG) {
       throw new TypeError('invalid snapshot wire packet');
     }
     const tick = wire[4];

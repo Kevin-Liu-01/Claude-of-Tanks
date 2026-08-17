@@ -274,21 +274,22 @@ so ammo-rack and ordinary destruction can produce the correct first effect.
 
 ## Multiplayer protocol
 
-src/net/protocol.js defines protocol version 3 envelopes and validation.
+src/net/protocol.js defines protocol version 4 envelopes and validation.
 src/net/matchRuntime.js owns authority ticking, input ordering, readiness,
 viewer snapshots, acknowledgements, and catch-up bounds.
 
 LAN/private WebRTC uses:
 
 - cot-match-v1: ordered reliable control and events;
-- cot-state-v1: unordered, zero-retransmit snapshots.
+- cot-state-v1: unordered, zero-retransmit snapshots and live input.
 
 Snapshots use a compact binary codec, per-peer baselines, deltas,
 acknowledgements, and periodic keyframes. A client missing a delta baseline
 waits for a keyframe instead of applying undefined state.
 
-Ranked WebSocket is ordered, but pending state is coalesced so obsolete
-snapshots cannot block control traffic.
+Ranked WebSocket is ordered, but pending snapshot and input state is coalesced
+so obsolete frames cannot block control traffic. Fire and consumable edges are
+repeated until acknowledged and deduplicated by authority.
 
 ## Prediction and reconciliation
 

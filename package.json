@@ -33,6 +33,7 @@
     "perf:dev": "node tools/dev-perf-probe.mjs",
     "perf:cold": "node tools/cold-load-probe.mjs",
     "test:net:browser": "node tools/multiplayer-browser-soak.mjs",
+    "test:net:four": "node tools/multiplayer-four-player-soak.mjs",
     "test:net:entry": "node tools/multiplayer-guest-entry.mjs",
     "test:net:render": "node tools/multiplayer-render-perf.mjs"
   },
