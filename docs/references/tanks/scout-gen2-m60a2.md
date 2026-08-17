@@ -181,3 +181,18 @@ LAW BANK (this round):
     the plateau (5th-from-top); the flip threshold is ~4.8 columns.
 Worst remaining rows: side_whole 86.3 (mechanisms above), plan_hull 88.1
 (bow/stern flap ring), front_whole ~88 (crest band). Everything else >=89.
+
+## FULL-LENGTH FENDER REPAIR (OWNER order, 2026-08-17)
+
+The live Starship only retained the elevated rear engine-deck fender from
+`z=-0.60` aft, leaving the idler and six road-wheel stations without a visible
+horizontal shelf above the track. The hull now carries a segmented fender run
+from the glacis shoulder (`z=+3.30`) through the mid deck and into the existing
+high rear course at `z=-0.92`. Each side is buried into the hull band, finished
+with a raised outer rail, and backed by short hangers; no plate is turret-owned.
+
+Browser proof covers hero, direct-left, direct-right and top views. The original
+single suspension-driven course is preserved. Exact strict track auditing is
+byte-identical to the baseline (`front 6`, `rear 0`, sweep `736/580`): the new
+fender geometry adds no track or shoe overlap, while the pre-existing low hull
+sweep debt remains unchanged.

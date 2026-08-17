@@ -3127,6 +3127,40 @@ function buildM60A2(P, cfg) {
       }
     }
   }
+  // Full Starship fender course.  The legacy print only carried the raised
+  // engine-deck fender aft of z=-0.60, which left the idler and all six road
+  // wheels without a visible shelf above the moving track.  These segmented
+  // plates begin on the glacis shoulder, follow the deck rise, and meet the
+  // retained high rear fender at z=-0.92.  Their inboard edge is buried in
+  // the 1.19 m hull band; the outboard rail stays above the exact track sweep.
+  const FENDER_RUN = [
+    [3.30, 1.50], [2.95, 1.66], [2.35, 1.76], [1.82, 1.82],
+    [0.62, 1.84], [-0.60, 1.86], [-0.92, 2.005],
+  ];
+  const fenderInner = 1.185;
+  const fenderOuter = 1.765;
+  for (const side of [-1, 1]) {
+    for (let i = 0; i < FENDER_RUN.length - 1; i++) {
+      const [z0, y0] = FENDER_RUN[i];
+      const [z1, y1] = FENDER_RUN[i + 1];
+      const dz = z0 - z1;
+      const dy = y0 - y1;
+      const run = Math.hypot(dz, dy);
+      const rx = -Math.atan2(dy, dz);
+      const z = (z0 + z1) * 0.5;
+      const y = (y0 + y1) * 0.5;
+      P.add('hull', box(fenderOuter - fenderInner, 0.055, run),
+        side * (fenderInner + fenderOuter) * 0.5, y, z, rx, 0, 0);
+      P.add('hullDetail', box(0.045, 0.085, run),
+        side * (fenderOuter - 0.012), y - 0.012, z, rx, 0, 0);
+    }
+    // Backed hangers make the long shelves read as hull-supported rather
+    // than thin decoration, while remaining well above the shoe envelope.
+    for (const [z, y] of FENDER_RUN.slice(1, -1)) {
+      P.add('hullDetail', box(0.075, 0.16, 0.075),
+        side * (fenderOuter - 0.055), y - 0.095, z);
+    }
+  }
   // outer skirt lip to 1.78 (ref front 1.85 at 1.75-1.79), then the LOW
   // full-length side flap panels at 1.79-1.815 (ref front band 0.76..1.40
   // at +-1.81; stations carry the 3.63 width) — segmented <=0.44 m per the
@@ -4186,7 +4220,7 @@ const M60A2_HULL = {
   // push round r5: fender edge 1.755 — curveHull's plate outer edge lands
   // at fenderHW+0.005, and the ref's 2.008 band covers the +-1.74 column
   // (1.996) but not +-1.78 (1.853): outer 1.760 threads both boundaries
-  fenderY: [2.005, -0.60, -3.50], fenderHW: 1.755,
+  fenderY: [2.005, -0.92, -3.50], fenderHW: 1.755,
   toeBot: 1.06, bellyFrontZ: 2.35, bellyRearZ: -2.62, tailBotY: 0.95,
   runningGearFace: true, runningGearFit: true,
   gear: {

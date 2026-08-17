@@ -58550,8 +58550,8 @@
         "schemaVersion": 2,
         "turretPivot": [
           0,
-          2.18,
-          -0.1325
+          1.5431,
+          -0.049
         ],
         "plates": [
           {
@@ -59165,12 +59165,12 @@
             "name": "turretRing",
             "min": [
               -0.8956,
-              1.9489,
+              1.3121,
               -1.1318
             ],
             "max": [
               0.8956,
-              2.3311,
+              1.6942,
               0.8668
             ],
             "turretLocal": false
@@ -59359,8 +59359,8 @@
           }
         ]
       },
-      "geometryHash": "a7627703",
-      "metadataHash": "126df3a9",
+      "geometryHash": "582568ef",
+      "metadataHash": "d7044b17",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -59376,7 +59376,7 @@
           "fittingPaint": 4,
           "opticGlass": 2,
           "tireRubber": 1,
-          "unclassified": 13,
+          "unclassified": 12,
           "gearShadow": 2,
           "canvas": 1
         }
@@ -59402,64 +59402,64 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 37802,
-          "sha256": "c78c3ac4a14daac03849bf84bd18df8bd70397044eb1d3a83ae5639a07d96df7"
+          "bytes": 37316,
+          "sha256": "c499914164e81e49c850af4ddbd255473e16d59270571c43876dac408e0dd45e"
         },
         "top": {
           "file": "m60a2_top.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 17870,
-          "sha256": "4ff99734d845dccef5cb2f8aa36df963f3615d581dab375e7e5f260a0f886ecb"
+          "bytes": 16020,
+          "sha256": "beeaba25bab10eeaf817a16d32c6fb96fb50c080509de49bb1bf7d0dcb290232"
         },
         "side": {
           "file": "m60a2_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 13252,
-          "sha256": "78f23c0e700f50072bdb1ed5c52099b4d27ff32118108655310a6be6e2793699"
+          "bytes": 13120,
+          "sha256": "b01826e182e0aadddd084369bb2610abded86a1fd371cef80ce2071b854dc8c3"
         },
         "topSilhouette": {
           "file": "m60a2_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1681,
-          "sha256": "2541016accb77a272b050b958aca762f338237b25134865f33ac7c3e52a6dde4"
+          "bytes": 1519,
+          "sha256": "bcca5ec68034bcb02fc59ca3e1c6ed885a8ff6a54c01784fb1802d7b385cb7c4"
         },
         "sideSilhouette": {
           "file": "m60a2_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 5566,
-          "sha256": "b463896ca808bec669e1b4d99f06140899dfc39e9d27a37d0523f66bd2f9edf4"
+          "bytes": 5560,
+          "sha256": "98d11ed134a84d326814d8811c77036a33f927f0785897513a943a4b33dd6113"
         },
         "hitZonesSide": {
           "file": "m60a2_hit_zones_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 82647,
-          "sha256": "51867e1ffc8c21c08f4a91dd65d4f84284aee5bb23b3e543a33dbbd177007736"
+          "bytes": 81446,
+          "sha256": "6fcb12e9e1997b66e185c988832d95e8dea4f3ce9a72037a08308ffc7e1221a3"
         },
         "armorSide": {
           "file": "m60a2_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 85729,
-          "sha256": "1bd60c57185050ed525a076356e61e9efd94026af3e512db02f66b8f461119f7"
+          "bytes": 83234,
+          "sha256": "653386f7c4d7aceab3784ff638ba4984862e9969dc51a7a8c3b2ee3a383c360f"
         },
         "modulesSide": {
           "file": "m60a2_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 93208,
-          "sha256": "2804a828dcd2ba8058eb975c756d706888cecce6372d8df611bdeb6c6101a88a"
+          "bytes": 91578,
+          "sha256": "7b1c6a2a65f3818f978ac5072cae4713d70b3ad37cce2cfed35f26a0060a73ed"
         },
         "markings": {
           "file": "m60a2_markings.png",
