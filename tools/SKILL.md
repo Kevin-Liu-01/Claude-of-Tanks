@@ -27,10 +27,13 @@ uses `ALL_TANK_IDS`; donor/retired spec rows are not part of the playable gate.
 Read the tool's CLI/help and its current evidence doc, run a baseline, then
 compare the same scenario after changes. Multiplayer release checks include the
 two-player persistent-room soak, human 2v2 (`npm run test:net:four`), and full
-human 7v7 (`npm run test:net:seven`) browser paths. Tank work must run
-`npm run tank:anatomy:update` before asset/release checks; the update refreshes
-the receipt map and only the three fleet technical views, preserving unrelated
-garage/top/side/markings assets.
+human 7v7 capacity (`npm run test:net:seven`) browser paths. Visual combat
+certification is the separate `npm run test:net:seven:live` gate: two real 7v7
+matches render the host and an impaired remote client while all fourteen tanks
+move, fire, deal damage, and report transport/prediction/frame/shadow health.
+Tank work must run `npm run tank:anatomy:update` before asset/release checks;
+the update refreshes the receipt map and only the three fleet technical views,
+preserving unrelated garage/top/side/markings assets.
 
 ## Gotchas
 <!-- agent-docs:fill:gotchas -->

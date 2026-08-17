@@ -213,6 +213,7 @@ npm test
 npm run test:net:browser
 npm run test:net:four
 npm run test:net:seven
+npm run test:net:seven:live
 npm run build
 npm run build:private
 ```
@@ -223,9 +224,19 @@ pages in a human 2v2 or one host plus thirteen guests in a full human 7v7. It
 applies configurable latency/jitter/snapshot and input loss, then gates every
 client's handshake, timeline skew, shared teammate poses, authority convergence,
 input acknowledgement lag, transport queues, runtime cost, and clean departure.
+That lightweight maximum-roster soak is a network-capacity test; it does not
+claim rendered combat quality. `test:net:seven:live` is the player-visible
+certification. It runs independent host-rendered and impaired-client-rendered
+7v7 matches, puts every human tank into a clear live battlefield engagement,
+and requires all fourteen tanks to move and fire through the real authority.
+It also requires real hit/damage events on both teams, full event delivery to
+every peer, zero prediction hard snaps or dropped history, bounded pose steps,
+30+ rendered fps with no freezes, healthy shadow cascades/WebGL, and clean
+first-volley/live screenshots under `.qa-dev/multiplayer-live-7v7/`.
+
 Together the soaks prove room policy, identity separation, dual-channel WebRTC
-handoff, rematches, authoritative movement, adaptive delivery, and the maximum
-fourteen-player room. Node tests separately cover four-client dedicated
+handoff, rematches, authoritative movement and combat, adaptive delivery, and
+the maximum fourteen-player room. Node tests separately cover four-client dedicated
 WebSockets, hidden-coordinate filtering, combat authority, consumables, ram/HE
 damage, bots, reconnect, matchmaking, Elo persistence, abuse bounds, and all-map
 collision.

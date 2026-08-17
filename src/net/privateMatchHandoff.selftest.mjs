@@ -117,6 +117,8 @@ const hosted = beginPrivateHostMatch({
 });
 assert.equal(hosted.client.connected, true,
   'host-local protocol handshake completes synchronously without a render-frame wait');
+assert.equal(hosted.host.maxCatchUpTicks, 6,
+  'browser authority retains the render loop\'s complete 100 ms clamp');
 const joined = await beginPrivateClientMatch({ session: clientSession });
 await Promise.resolve();
 hosted.ready();

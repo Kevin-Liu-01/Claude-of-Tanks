@@ -609,7 +609,12 @@ export function dressMapExtras({ mapId, extraKits = null, L, heightField, rng, b
       // downwind so the shapes read carved, not stamped.
       const WIND_YAW = -0.6;
       const lens = (x, z, r, h, streak) => {
-        const g = new THREE.SphereGeometry(1, 10, 5);
+        // These lenses are broad enough to sit directly under a chase camera.
+        // The former 10×5 sphere left metre-wide planar facets across a
+        // 20-30 m streak; at grazing angles they read as torn white polygons
+        // hovering over the ice. A modest 24×10 cap keeps the same silhouette
+        // and material budget while producing a continuous snow surface.
+        const g = new THREE.SphereGeometry(1, 24, 10);
         const el = streak ? 3.0 + rng() * 1.8 : 1.4 + rng() * 0.5;
         g.scale(r * el * 0.5, h, r * (0.55 + rng() * 0.3));
         g.rotateY(WIND_YAW + (rng() - 0.5) * 0.24);

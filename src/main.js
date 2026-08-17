@@ -2361,13 +2361,24 @@ async function presentNetworkBattle({
     else renderer.compile(scene, camera);
   } catch (_) { /* warm only */ }
   markLoadStage('compile');
-  networkMatch.ready();
+  const readyMatch = networkMatch;
+  readyMatch.ready();
+  // READY is deliberately idempotent. Keep announcing it until an
+  // authoritative countdown/playing snapshot acknowledges that every peer
+  // crossed the loading barrier; this also covers the RTC listener handoff.
+  const readyRetryTimer = setInterval(() => {
+    if (networkMatch === readyMatch && !readyMatch.client?.closed) readyMatch.ready();
+  }, 1000);
   battleLoad.progress(0.96, 'Waiting for every commander');
-  await waitForNetworkSnapshot(
-    (snapshot) => snapshot.meta?.phase === 'countdown' || snapshot.meta?.phase === 'playing',
-    20000,
-    'Another player did not finish loading in time.',
-  );
+  try {
+    await waitForNetworkSnapshot(
+      (snapshot) => snapshot.meta?.phase === 'countdown' || snapshot.meta?.phase === 'playing',
+      20000,
+      'Another player did not finish loading in time.',
+    );
+  } finally {
+    clearInterval(readyRetryTimer);
+  }
   markLoadStage('readyBarrier');
 
   shotMode = false;
