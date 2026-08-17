@@ -942,3 +942,7 @@ pristine (receipt only); leopard_2a4_otco re-drop byte-identical to the
 already-parked WT-extraction quarantine copy (2026-07-27/08-06
 adjudication STANDS; the registered leo2a4 instrument remains the
 owner-authoritative repaired repartition).
+
+## §5.317 owner drops (2026-08-17)
+- `t95_world_of_tanks.glb` (sha256 14c576b58d4eac19…, 10.6MB) — GAME-TITLED upload (World of Tanks) = EXTRACTION-SUSPECT class: LOCAL-ONLY reference in community-candidates/ (gitignored), never ship, owner-sanctioned measurement/visual use for the §5.317 t95 redesign (new row oracle candidate pending §E/censor verdicts).
+- `strv_103b.glb` (sha256 e0b0997377b43edf…, 10.6MB) — provenance TBD by the lane census (embedded tags/fingerprints); LOCAL-ONLY reference for the new strv103a id + the strv103 family.
