@@ -9124,3 +9124,6 @@ The owner's 01c3c6f5 (STB-1 rebuild from source oracle) touched profiles/japan.j
 
 ## §5.326 — OWNER FINDING (verbatim, 2026-08-17): "most ifvs dont have filled in hulls and at some angles are see through. the bradleys bmps etc"
 - FLEET-CLASS §B2 defect registered. IFV §B2 sweep lane spawned: probe ALL IFV-class ids (see-through battery incl. low/under + shallow-bay angles), classify CLEAN/MINOR/DEFECT w/ receipts, FIX defect ids outside afvFamily.js (live-lane fence), hand off afvFamily defects as exact fix orders for the live lane. The §5.303 bmp3-bow closure = the precedent class. Eight agents live.
+
+## §5.327 — OWNER ORDER (verbatim, 2026-08-17): type59 "big bulbouys thing" on the turret + add machine guns (+screenshot)
+- Screenshot shows a bulbous crescent on the fresh §5.315 type59's turret front-left — attribution ordered (mis-scaled searchlight bracket / deformed brow / mantlet slab), fix to the real compact cast-collar mantlet read, and MGs added (loader DShK ring mount p95-budgeted, coax port, bow MG port). Chassis function shared with t62mv1 ac414eaa — dressing-layer edits only, chassis-level changes STOP-and-report. Nine agents live.
