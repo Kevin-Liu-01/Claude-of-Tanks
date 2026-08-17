@@ -1498,7 +1498,10 @@ const FIRST_PARTY_EXPANSION_SPECS = {
         shell('105mm HE', 'HE', 105, 53, 53, 500, 945),
       ],
     },
-    dims: { hullLengthM: 7.6, overallLengthM: 10.7, widthM: 3.8, heightM: 2.9 },
+    // §5.317: widthM 3.8 -> 3.86 (owner-ordered published datum — the T95's
+    // shipping width; the fighting-trim stance over the outer tracks is 4.56,
+    // documented as the packet two-datum note).
+    dims: { hullLengthM: 7.6, overallLengthM: 10.7, widthM: 3.86, heightM: 2.9 },
     armor: communityArmor({
       lenM: 7.6, widM: 3.8, hgtM: 2.9, turretPivot: [0, 2.0, 0.3],
       gunPivot: [0, 0.35, 0.4], barrelLenM: 4.6, barrelRadM: 0.08,

@@ -125,6 +125,18 @@ const REG = {
     fixedMount: true,
     pubDims: { hullLengthM: 6.77, overallLengthM: 9.05, widthM: 3.07, heightM: 2.48 },
   },
+  // t95 §5.317 RE-ORACLE (owner drop 2026-08-17): the WoT print replaces the
+  // doomturtle as the row oracle (doomturtle retired to reference-history).
+  // LOCAL-ONLY gitignored quarantine (extraction-suspect class, ATTRIBUTION
+  // §t95). Raw nose +z, fixedMount casemate (gun fused-fixed; whole model is
+  // hull). pubDims mirror the specs.js §5.317 row (widthM 3.86 = the
+  // published shipping-width datum; the print's raw stance is fighting-trim
+  // 4.565 over the outer tracks — packet two-datum note).
+  t95: {
+    path: 'public/models/community-candidates/t95_world_of_tanks.glb',
+    fixedMount: true,
+    pubDims: { hullLengthM: 7.6, overallLengthM: 10.7, widthM: 3.86, heightM: 2.9 },
+  },
   merkava3b: {
     path: 'public/models/tanks/community/recovered/merkava3b.glb',
     turretNode: '^Turret$', gunNode: '^Gun$', autoPivot: true,
@@ -768,6 +780,22 @@ const REG = {
     path: 'public/models/community-candidates/strv103b_lamonekeli.glb',
     fixedMount: true, scaleToOverall: true, yawOffset: Math.PI / 2,
     pubDims: { hullLengthM: 7.04, overallLengthM: 8.99, widthM: 3.63, heightM: 2.14 },
+  },
+  strv103a: {
+    // NEW id (§5.317 lane J): the A-model family member measured against the
+    // owner drop strv_103b.glb (Sketchfab "Strv 103B" by BFJFFK/chilecaliente,
+    // CC-BY-4.0 embedded in asset.extras; sha256 e0b09973…, LOCAL-ONLY).
+    // Census 2026-08-17: 5 meshes / 73,539 verts, ~1:1 meters, length on raw
+    // Z with nose +Z (gun tube mesh Object_0 runs z +0.64..+5.01 at the
+    // ~1.5 m bore line; tail plate -3.95) -> NO yawOffset (jpz_e100 class).
+    // Print is a B: the A build diverges by order (no flotation rim, no
+    // dozer, simpler rear deck) — documented caps in the packet.
+    path: 'public/models/community-candidates/strv_103b.glb',
+    fixedMount: true, scaleToOverall: true,
+    // A-model published figures: same hull/gun as the B (hull 7.04, overall
+    // 8.99); width 3.60 bare hull (the B's 3.63 includes the added flotation
+    // gear); height 2.14 to the cupola line.
+    pubDims: { hullLengthM: 7.04, overallLengthM: 8.99, widthM: 3.60, heightM: 2.14 },
   },
   strv81: {
     path: 'public/models/community-candidates/strv81_mmdsonic.glb',

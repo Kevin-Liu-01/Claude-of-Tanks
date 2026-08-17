@@ -492,10 +492,10 @@
   },
   {
    "id": "t95",
-   "geoMin": 80.8,
+   "geoMin": 84.9,
    "gatePassed": false,
    "components": {
-    "wholeCurves": 80.8,
+    "wholeCurves": 84.9,
     "dims": 100,
     "floaters": 100
    }

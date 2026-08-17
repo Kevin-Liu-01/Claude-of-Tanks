@@ -145,6 +145,38 @@ export async function loadReferenceGlb(source, specId, spec) {
     root.position.y = -box.min.y * scale;
   }
 
+  // §5.317 (t95 WoT print): some textured rips carry near-black albedo
+  // regions (gun / track bottoms / glacis) that fall under the gate's mask
+  // threshold (red > 40) and read as silhouette HOLES — the ref's own
+  // geometry vanishes from its masks (measured: the t95 print's plan-front
+  // columns ended at the snout and its front-view bottoms floated at ~0.4 m).
+  // maskFloorOracle adds a small constant emissive floor — geometry-neutral
+  // and texture-preserving (the floor ADDS; maps stay visible) — so every
+  // authored surface clears the threshold. Opt-in per registration; do not
+  // combine with brightenOracle (its emissive×map product would re-darken).
+  if (cfg.maskFloorOracle) {
+    root.traverse((node) => {
+      if (!node.isMesh || !node.material) return;
+      const materials = Array.isArray(node.material) ? node.material : [node.material];
+      node.material = materials.map((sourceMaterial) => {
+        const material = sourceMaterial.clone();
+        if (material.emissive) material.emissive.setRGB(0.24, 0.24, 0.24);
+        // Rip-class prints also carry inward-wound faces (aprons / band
+        // bottoms) that FrontSide renders cull into the same hole class —
+        // force DoubleSide so the authored surface is mask-visible from
+        // every gate camera (§C.1 mirrored to the reference side).
+        material.side = THREE.DoubleSide;
+        material.transparent = false;
+        material.opacity = 1;
+        material.alphaTest = 0;
+        material.depthWrite = true;
+        material.needsUpdate = true;
+        return material;
+      });
+      if (node.material.length === 1) [node.material] = node.material;
+    });
+  }
+
   // A few legacy source sheets bake almost all illumination into a very dark
   // albedo. Their silhouettes remain valid, but a shaded comparison becomes
   // unreadable. Opt-in emissive reuse reveals the authored texture without

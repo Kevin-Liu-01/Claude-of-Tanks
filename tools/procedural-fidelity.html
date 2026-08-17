@@ -124,7 +124,17 @@ const LOCAL_REFERENCE_OVERRIDES = {
   // locally from git history; GLBs stay untracked/ignored per the owner).
   sturmtiger: { source:'glb', glb:{ path:'/models/tanks/community/sturmtiger-tomrs.glb', fixedMount:true, yawOffset:-Math.PI/2 } },
   jpz_e100: { source:'glb', glb:{ path:'/models/tanks/community/jagdpanzer_e100_haphazard.glb', fixedMount:true, paintUntextured:true } },
-  t95: { source:'glb', glb:{ path:'/models/tanks/community/t95_doomturtle_haphazard.glb', fixedMount:true, yawOffset:Math.PI, paintUntextured:true } },
+  // §5.317 RE-ORACLE (owner drop 2026-08-17): t95_world_of_tanks.glb replaces
+  // the doomturtle print as this id's row oracle (doomturtle retired to
+  // reference-history; the old GLB stays on disk). New print: textured
+  // Sketchfab rip (extraction-suspect class, LOCAL-ONLY gitignored quarantine,
+  // ATTRIBUTION §t95), raw nose +z (no yawOffset), 7-mesh split with the gun
+  // fused-fixed — fixedMount casemate registration. Print stance is fighting-
+  // trim (4.565 raw over the outer tracks) vs the published 3.86 shipping-
+  // width datum: the loader's width prescale puts the ref at ×0.8456 — the
+  // build is authored in that REF FRAME with published dims carried by the
+  // ratified dressing grammar (packet §5.317).
+  t95: { source:'glb', glb:{ path:'/models/community-candidates/t95_world_of_tanks.glb', fixedMount:true, maskFloorOracle:true } },
   // ---- §5.248 batch A (Downloads root, 13 drops — ALL LOCAL-ONLY
   // quarantine; provenance verdicts + SHA receipts in ATTRIBUTION).
   bmp3: { source:'glb', glb:{ path:'/models/community-candidates/bmp3_rok_42manako.glb', turretNode:'^turret\\.?001$', gunNode:'^weapon2\\.?001$', autoPivot:true, yawOffset:-Math.PI/2,
@@ -182,6 +192,7 @@ const LOCAL_REFERENCE_OVERRIDES = {
   t72m1_jaguar: { source:'glb', glb:{ path:'/models/community-candidates/t72m1_jaguar_manako.glb', yawOffset:-Math.PI/2, fixedMount:true, componentMasks:false } },
   pt91_twardy: { source:'glb', glb:{ path:'/models/community-candidates/pt91a_manako.glb', turretNode:'^misc_a$', gunNode:'^misc_b$', autoPivot:true } },
   strv103: { source:'glb', glb:{ path:'/models/community-candidates/strv103b_lamonekeli.glb', fixedMount:true, yawOffset:Math.PI/2 } },
+  strv103a: { source:'glb', glb:{ path:'/models/community-candidates/strv_103b.glb', fixedMount:true } },
   strv81: { source:'glb', glb:{ path:'/models/community-candidates/strv81_mmdsonic.glb', turretNode:'^turret_0$', gunNode:'^gun_0$', autoPivot:true, yawOffset:Math.PI } },
   strv122: { source:'glb', glb:{ path:'/models/community-candidates/strv122_vavtrudner.glb', fixedMount:true, componentMasks:false, yawOffset:-Math.PI/2 } },
   ztz99a2: { source:'glb', glb:{ path:'/models/community-candidates/ztz99a2_manako.glb', fixedMount:true, componentMasks:false, yawOffset:-Math.PI/2 } },
