@@ -144,9 +144,12 @@ export default {
     ],
     well: true, hayCrates: true, fences: true, telegraph: true, carts: true, logs: true,
     haystacks: 30, rocks: 180, outcrops: 18, craters: 44, rubblePiles: 0,
-    // DESTRUCTIBLES r1: WWII hulks along the valley lanes (baked roster
+    // Legacy-map quality backport: modern hulks along the valley lanes (baked roster
     // tanks) + harvest-season logistics dressing
-    tankWrecks: { era: 'ww2', count: 4 },
+    tankWrecks: {
+      era: 'modern', count: 5, debris: true,
+      ids: ['t90a', 't80u', 'm1a1', 'k2', 'challenger2'],
+    },
     sandbagLines: 10,
     hedgehogs: 5,
     cropFields: 7, // the harvest is in — stubble plots + standing rows
@@ -160,6 +163,7 @@ export default {
       roadFence: 'fenceplank', yardFence: 'fencewattle',
       // DESTRUCTIBLES r1: requisitioned farm lorries + roadside camps
       trucks: 3, jeeps: 1, drumClusters: 3, camps: 2,
+      modernClutter: { barrier: 4, roadsign: 4, cone: 6, transformer: 3, cablespool: 3 },
     },
   },
 

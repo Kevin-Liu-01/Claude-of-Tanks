@@ -922,8 +922,26 @@ function merkavaChassis(P, c) {
   // gearOut pins the OUTER track face (measured front-view track columns sit
   // well inside the fender line on every print in this family).
   const xc = (c.gearOut ?? hw - 0.036) - c.trackW / 2;
+  // Mk.1B's source-specific dished wheel anatomy used to be authored as
+  // shallow cylinders in the static hull buckets after the smart suspension
+  // had already been built.  That left the decorative faces parked while the
+  // real tires travelled.  Feed those same layers into buildRunningGear so
+  // there is one suspension-driven wheel assembly on both sides.
+  const wheelFaceW = Math.min(0.23, c.trackW * 0.37);
+  const wheelFaceLayers = c.wheelFace ? [
+    { geometry: KIT.cylX(c.wheelR * 0.85, 0.012, 16), material: P.mats.detail,
+      outset: wheelFaceW / 2 + 0.006, name: 'gearRoadWheelOuterDishes', appearanceRole: 'wheelDish' },
+    { geometry: KIT.cylX(c.wheelR * 0.60, 0.008, 14), material: P.mats.dark,
+      outset: wheelFaceW / 2 + 0.010, name: 'gearRoadWheelDishBreaks', appearanceRole: 'wheelInset' },
+    { geometry: KIT.cylX(c.wheelR * 0.50, 0.010, 12), material: P.mats.detail,
+      outset: wheelFaceW / 2 + 0.013, name: 'gearRoadWheelMidDishes', appearanceRole: 'wheelDish' },
+    { geometry: KIT.cylX(c.wheelR * 0.34, 0.012, 10), material: P.mats.dark,
+      outset: wheelFaceW / 2 + 0.017, name: 'gearRoadWheelInnerDishes', appearanceRole: 'wheelInset' },
+    { geometry: KIT.cylX(c.wheelR * 0.15, 0.014, 8), material: P.mats.detail,
+      outset: wheelFaceW / 2 + 0.021, name: 'gearRoadWheelHubCaps', appearanceRole: 'wheelDish' },
+  ] : undefined;
   KIT.buildRunningGear(P, {
-    style: 'rubber', wheelR: c.wheelR, wheelW: Math.min(0.23, c.trackW * 0.37),
+    style: 'rubber', wheelR: c.wheelR, wheelW: wheelFaceW,
     wheelY: c.wheelR + 0.07, xc,
     wheelZs: c.wheelZs,
     sprocket: { z: c.sprocket.z, y: c.sprocket.y, r: c.sprocket.r },
@@ -936,13 +954,14 @@ function merkavaChassis(P, c) {
     // denser, narrower-pitch Merkava shoe with its connector/horn web merged
     // into that one animated instance layer.  This improves tread read and
     // end-wrap continuity without authoring a static proxy or second course.
-    linkPitchM: c.linkPitchM ?? 0.13,
-    shoeRadialScale: c.shoeRadialScale ?? 0.82,
-    shoeWidthScale: c.shoeWidthScale ?? 0.96,
+    linkPitchM: c.linkPitchM ?? 0.11,
+    shoeRadialScale: c.shoeRadialScale ?? 0.92,
+    shoeWidthScale: c.shoeWidthScale ?? 1.00,
     integratedLinks: true,
     dishR: c.dishR ?? 0.78,
     chainHex: c.chainHex, padHex: c.padHex, gearFloor: c.gearFloor, tireHex: c.tireHex, // r12 order 2 (3D): arch-window gear floor to the ref's shade class
     armBucket: c.runningGearBuckets ? 'hullRunningGearDetail' : undefined,
+    wheelFaceLayers,
   });
 
   // 1B r10 GEAR READ (c.wheelFace-gated — 1B only, siblings byte-exact;
@@ -966,19 +985,7 @@ function merkavaChassis(P, c) {
     // near-black toothed carrier rings, which ride the band edges at
     // xc±trackW/2 — the sprocket "black C" survived. Covers now ride the
     // band-edge face proper.)
-    const wfR = c.wheelR, wfY = c.wheelR + 0.07;
-    const wfW = Math.min(0.23, c.trackW * 0.37);
-    const wfX = xc + wfW / 2 + 0.006;
     for (const s of [-1, 1]) {
-      for (const wz of c.wheelZs) {
-        // five concentric bands = the ref's dished-wheel read (tire dark ring
-        // from the instanced tire mesh, then pale/dark/pale/dark/pale)
-        P.add('hullRunningGearDetail', KIT.cylX(wfR * 0.85, 0.012, 16), s * wfX, wfY, wz);           // broad pale dish face
-        P.add('hullRunningGearDark', KIT.cylX(wfR * 0.60, 0.008, 14), s * (wfX + 0.004), wfY, wz);   // thin dark dish-break ring
-        P.add('hullRunningGearDetail', KIT.cylX(wfR * 0.50, 0.010, 12), s * (wfX + 0.007), wfY, wz); // pale mid dish
-        P.add('hullRunningGearDark', KIT.cylX(wfR * 0.34, 0.012, 10), s * (wfX + 0.011), wfY, wz);   // dark inner dish
-        P.add('hullRunningGearDetail', KIT.cylX(wfR * 0.15, 0.014, 8), s * (wfX + 0.015), wfY, wz);  // hub cap
-      }
       // wheel-form fill over the end-drum recess/carrier rings. r10c: the
       // sprocket's DARK ROOT RING rides the band edges at xc+ringSpan/2 with
       // outer face ~xc+0.267+0.033 (sprocketGeo: cylX(r*0.82, w*0.155) at
@@ -2433,12 +2440,12 @@ function merkavaChassis(P, c) {
   // lane.  Density increases by mark so the vehicles stay related without
   // collapsing into one generic modernized silhouette.
   const hullUpgrade = {
-    merkava1b: { rows: 2, cols: 4, side: 4, depth: 0.24, rear: 2 },
-    merkava2b: { rows: 2, cols: 5, side: 5, depth: 0.25, rear: 3 },
-    merkava2d: { rows: 3, cols: 5, side: 6, depth: 0.25, rear: 3 },
-    merkava3c: { rows: 3, cols: 5, side: 6, depth: 0.26, rear: 4 },
-    merkava3d: { rows: 3, cols: 6, side: 7, depth: 0.26, rear: 4 },
-    merkava4b: { rows: 3, cols: 6, side: 7, depth: 0.27, rear: 5 },
+    merkava1b: { rows: 2, cols: 5, side: 5, sideRows: 1, depth: 0.24, rear: 3, shoulder: 2, spare: 3, rolls: 1 },
+    merkava2b: { rows: 3, cols: 5, side: 6, sideRows: 1, depth: 0.25, rear: 4, shoulder: 2, spare: 4, rolls: 1 },
+    merkava2d: { rows: 3, cols: 6, side: 7, sideRows: 2, depth: 0.25, rear: 4, shoulder: 3, spare: 4, rolls: 2 },
+    merkava3c: { rows: 3, cols: 6, side: 7, sideRows: 2, depth: 0.26, rear: 5, shoulder: 3, spare: 5, rolls: 2 },
+    merkava3d: { rows: 4, cols: 6, side: 8, sideRows: 2, depth: 0.26, rear: 6, shoulder: 3, spare: 5, rolls: 3 },
+    merkava4b: { rows: 4, cols: 7, side: 8, sideRows: 2, depth: 0.27, rear: 6, shoulder: 4, spare: 6, rolls: 3 },
   }[P.spec.id];
   if (hullUpgrade) {
     const spanZ = Math.max(0.8, g.z1 - g.z0);
@@ -2458,21 +2465,57 @@ function merkavaChassis(P, c) {
       }
     }
 
+    // Outboard shoulder cassettes bridge the central glacis field into the
+    // real fender armor.  They are pitched from the same sampled hull line,
+    // overlap it by half their thickness, and stay inboard of the established
+    // width guard so no plate hovers over the track lane.
+    for (const s of [-1, 1]) {
+      for (let i = 0; i < hullUpgrade.shoulder; i++) {
+        const f = i / Math.max(1, hullUpgrade.shoulder - 1);
+        const z = g.z0 + spanZ * (0.48 + f * 0.22);
+        const x = s * (w * (0.28 + f * 0.075));
+        const y = gTop(z) + 0.036;
+        P.add('hull', box(0.31 - f * 0.025, 0.074, 0.34), x, y, z,
+          rxAt(z), s * (-0.035 - f * 0.035), s * 0.035);
+        P.add('hullDark', box(0.23, 0.010, 0.020), x, y + 0.037,
+          z - 0.10, rxAt(z), s * (-0.035 - f * 0.035), s * 0.035);
+      }
+    }
+
+    // Short spare-link courses are real hull equipment, not another moving
+    // track.  Their broad shoes are buried into the lower bow and leave the
+    // suspension corridor untouched.
+    const spareZ = g.z1 - Math.min(0.24, spanZ * 0.12);
+    const spareY = gTop(spareZ) + 0.028;
+    const spareStep = Math.min(0.24, w * 0.52 / Math.max(1, hullUpgrade.spare));
+    for (let i = 0; i < hullUpgrade.spare; i++) {
+      const x = (i - (hullUpgrade.spare - 1) / 2) * spareStep;
+      P.add('hullTrack', box(spareStep * 0.86, 0.055, 0.15), x, spareY, spareZ,
+        rxAt(spareZ), 0, (i % 2 ? 0.012 : -0.012));
+      P.add('hullDark', box(spareStep * 0.55, 0.012, 0.026), x,
+        spareY + 0.030, spareZ - 0.045, rxAt(spareZ), 0, 0);
+    }
+
     // Skirt/sponson modules sit just inboard of the established width guard.
     const sideFace = c.skirt?.x ?? c.sideCurtain?.x ?? c.fenderLip?.x ?? (c.bodyHW ?? hw * 0.94);
     const sideTop = c.skirt?.top ?? c.sideCurtain?.top ?? Math.min(deckY - 0.05, c.trackTop + 0.45);
     const sideBot = c.skirt?.bot ?? c.sideCurtain?.bot ?? Math.max(0.58, c.trackTop - 0.25);
-    const sideH = Math.max(0.20, Math.min(0.34, sideTop - sideBot - 0.10));
+    const sideRows = hullUpgrade.sideRows ?? 1;
+    const sideAvail = Math.max(0.24, sideTop - sideBot - 0.10);
+    const sideH = Math.max(0.18, Math.min(0.31, (sideAvail - (sideRows - 1) * 0.035) / sideRows));
     const sideZ0 = Math.min(g.z0 + 0.15, c.sprocket.z - 0.10);
     const sideZ1 = Math.max(c.idler.z + 0.35, sideZ0 - hullUpgrade.side * 0.46);
     for (const s of [-1, 1]) {
-      for (let i = 0; i < hullUpgrade.side; i++) {
-        const z = sideZ0 + (sideZ1 - sideZ0) * (i / Math.max(1, hullUpgrade.side - 1));
-        const d = Math.max(0.28, Math.abs(sideZ0 - sideZ1) / Math.max(1, hullUpgrade.side - 1) - 0.035);
-        P.add('hull', box(0.055, sideH, d), s * (sideFace - 0.029),
-          sideBot + sideH * 0.58, z, 0, 0, s * (i % 2 ? 0.018 : -0.018));
-        P.add('hullDark', box(0.008, sideH * 0.78, 0.018), s * (sideFace - 0.001),
-          sideBot + sideH * 0.58, z - d * 0.30);
+      for (let row = 0; row < sideRows; row++) {
+        const rowY = sideBot + 0.055 + sideH / 2 + row * (sideH + 0.035);
+        for (let i = 0; i < hullUpgrade.side; i++) {
+          const z = sideZ0 + (sideZ1 - sideZ0) * (i / Math.max(1, hullUpgrade.side - 1));
+          const d = Math.max(0.28, Math.abs(sideZ0 - sideZ1) / Math.max(1, hullUpgrade.side - 1) - 0.035);
+          P.add('hull', box(0.055, sideH, d), s * (sideFace - 0.029),
+            rowY, z, 0, 0, s * ((i + row) % 2 ? 0.018 : -0.018));
+          P.add('hullDark', box(0.008, sideH * 0.78, 0.018), s * (sideFace - 0.001),
+            rowY, z - d * 0.30);
+        }
       }
     }
 
@@ -2487,6 +2530,18 @@ function merkavaChassis(P, c) {
       P.add(i % 3 === 2 ? 'hullCloth' : 'hullDetail', box(0.30, 0.13, 0.26),
         x, y + 0.078, z, rxAt(z), s * 0.05, 0);
       P.add('hullDark', box(0.024, 0.142, 0.28), x, y + 0.078, z, rxAt(z), s * 0.05, 0);
+    }
+
+    // Canvas recovery rolls on broad deck shoes finish the rear equipment
+    // field.  Unequal positions and visible cinch straps keep them readable
+    // as tied-down kit instead of another rectangular armor wall.
+    for (let i = 0; i < hullUpgrade.rolls; i++) {
+      const s = i % 2 ? 1 : -1;
+      const z = c.rearDeckZ + 0.18 - Math.floor(i / 2) * 0.34;
+      const x = s * (0.76 - Math.floor(i / 2) * 0.10);
+      const y = gTop(z);
+      P.add('hull', box(0.52, 0.045, 0.28), x, y + 0.006, z, rxAt(z), s * 0.05, 0);
+      KIT.tarpRoll(P, 'hullCloth', x, y + 0.125, z, 0.46, 0.105, true, 14);
     }
   }
 }
@@ -6525,13 +6580,14 @@ function merkavaSourceOracleTurret(P, p, t) {
       merkava3c: -3.96,
       merkava3d: -3.91,
     }[id];
-    const chainFloor = (id === 'merkava1b') ? 0.60
-      : ((id === 'merkava3c' || id === 'merkava3d') ? 0.58 : null);
-    const chainTopWorld = pivotY + t.basket.bot + 0.10;
     merkavaBasket(P, {
       hw: t.basketHW, z0: t.basket.z0, z1: L(rearTarget), xoff: t.basketXoff,
       top: t.basket.top, topRear: t.basket.topRear, bot: t.basket.bot,
-      chainDrop: chainFloor === null ? (t.chainDrop ?? 0.20) : Math.max(0.20, chainTopWorld - chainFloor),
+      // Keep the curtain on the turret basket.  The old mark-specific
+      // floor target stretched the drops into the side-skirt and track
+      // corridor once the turret yawed; every source profile already owns
+      // a short, variant-specific drop measured from its basket rail.
+      chainDrop: Math.min(0.20, t.chainDrop ?? 0.20),
       chainGap: t.chainGap,
       pale: t.pale, fine: true, soft: true,
       voids: t.basketVoids, shelf: t.rackShelf,
@@ -6541,7 +6597,7 @@ function merkavaSourceOracleTurret(P, p, t) {
   return true;
 }
 
-// Source-finish pass shared by the six owner-supplied Merkava references.
+// Source-finish pass shared by the six rostered owner-supplied Merkavas.
 //
 // The silhouette profiles below are already measured mark-by-mark.  What the
 // high-angle reference boards expose, however, is the dense *seated* roof
@@ -6786,7 +6842,7 @@ function merkavaSourceFinish(P, p, t) {
 
   if (id === 'merkava1b' || id === 'merkava2b' || id === 'merkava2d') addEarlyRoof(id);
   else if (id === 'merkava3c' || id === 'merkava3d') addThirdGenRoof(id);
-  else addFourthGenRoof();
+  else if (id === 'merkava4b') addFourthGenRoof();
 
   // Source-readable CL-3030 banks and cheek service seams.  These live on
   // the actual sloped casting, use a broad backing shoe, and are mirrored
@@ -6813,47 +6869,144 @@ function merkavaSourceFinish(P, p, t) {
   // stowage and weapon-shield position while using the existing cast shell
   // as its load-bearing surface.
   const combatFit = {
-    merkava1b: { rows: 2, cols: 3, xOut: 1.08, y: 2.02, z: 0.72, side: 3, roof: 3, shield: [-0.64, -1.43, -0.10] },
-    merkava2b: { rows: 2, cols: 4, xOut: 1.16, y: 2.08, z: 0.68, side: 4, roof: 4, shield: [0.48, -1.05, 0.08] },
-    merkava2d: { rows: 3, cols: 4, xOut: 1.22, y: 2.10, z: 0.70, side: 5, roof: 4, shield: [-0.48, -1.05, -0.08] },
-    merkava3c: { rows: 2, cols: 5, xOut: 1.28, y: 2.15, z: 0.76, side: 5, roof: 5, shield: [1.10, -1.45, 0.10] },
-    merkava3d: { rows: 3, cols: 5, xOut: 1.34, y: 2.16, z: 0.78, side: 6, roof: 5, shield: [0.40, -1.50, 0.10] },
-    merkava4b: { rows: 3, cols: 6, xOut: 1.48, y: 2.34, z: 0.92, side: 7, roof: 6, shield: [-0.62, -0.82, -0.12] },
+    merkava1b: {
+      rows: 2, cols: 4, xOut: 1.16, cheekRise: 0.065, z: 0.72, side: 5, roof: 4, roofArmor: 4,
+      sideY: 2.05, sideZ: [0.10, -1.64], sideFace: [[0.12, 1.10], [-0.55, 1.29], [-2.12, 1.18]],
+      shield: [-0.64, -1.43, -0.10],
+    },
+    merkava2b: {
+      rows: 2, cols: 5, xOut: 1.27, cheekRise: 0.070, z: 0.68, side: 6, roof: 5, roofArmor: 6,
+      sideY: 2.10, sideZ: [0.18, -1.82], sideFace: [[0.34, 1.22], [-0.48, 1.33], [-1.78, 1.24], [-2.30, 0.98]],
+      shield: [0.48, -1.05, 0.08],
+    },
+    merkava2d: {
+      rows: 3, cols: 5, xOut: 1.46, cheekRise: 0.075, z: 0.70, side: 7, roof: 6, roofArmor: 7,
+      sideY: 2.12, sideZ: [0.18, -2.16], sideFace: [[0.35, 1.46], [-0.52, 1.66], [-2.25, 1.48], [-2.66, 1.02]],
+      shield: [-0.48, -1.05, -0.08],
+    },
+    merkava3c: {
+      rows: 3, cols: 6, xOut: 1.34, cheekRise: 0.080, z: 0.76, side: 8, roof: 6, roofArmor: 8,
+      sideY: 2.15, sideZ: [0.08, -2.50], sideFace: [[-0.10, 1.30], [-1.28, 1.39], [-2.74, 1.30], [-3.28, 1.06]],
+      shield: [1.10, -1.45, 0.10],
+    },
+    merkava3d: {
+      rows: 3, cols: 6, xOut: 1.54, cheekRise: 0.085, z: 0.78, side: 9, roof: 7, roofArmor: 9,
+      sideY: 2.16, sideZ: [0.04, -2.62], sideFace: [[-0.10, 1.54], [-0.92, 1.79], [-2.52, 1.64], [-3.20, 1.30]],
+      shield: [0.40, -1.50, 0.10],
+    },
+    merkava4b: {
+      rows: 4, cols: 7, xOut: 1.52, cheekRise: 0.055, z: 0.92, side: 8, roof: 8, roofArmor: 8,
+      sideY: 2.30, sideZ: [0.04, -2.44], sideFace: [[0.10, 1.58], [-2.00, 1.48], [-2.72, 1.46]],
+      shield: [-0.62, -0.82, -0.12],
+    },
   }[id];
+
+  const sideFaceAt = (z) => {
+    const stations = combatFit.sideFace;
+    if (z >= stations[0][0]) return stations[0][1];
+    for (let i = 0; i < stations.length - 1; i++) {
+      const [za, xa] = stations[i], [zb, xb] = stations[i + 1];
+      if (z <= za && z >= zb) {
+        const f = (za - z) / Math.max(0.001, za - zb);
+        return xa + (xb - xa) * f;
+      }
+    }
+    return stations.at(-1)[1];
+  };
 
   // Faceted cheek arrays follow the cast wedge from the mantlet shoulder to
   // the outer cheek.  Each module overlaps the casting by half its depth;
   // the visible dark lower seam is a hinge/retainer, not a floating plate.
   for (const s of [-1, 1]) {
+    const eraCells = [];
     for (let row = 0; row < combatFit.rows; row++) {
       for (let col = 0; col < combatFit.cols; col++) {
         const f = col / Math.max(1, combatFit.cols - 1);
         const x = s * (0.48 + (combatFit.xOut - 0.48) * f);
-        const y = combatFit.y - row * 0.18 - f * 0.055;
         const z = combatFit.z - f * 0.56 - row * 0.045;
         const tileW = Math.max(0.18, (combatFit.xOut - 0.38) / combatFit.cols * 0.94);
         const tileH = combatFit.rows === 2 ? 0.19 : 0.16;
-        const tileD = 0.30 + f * 0.06;
+        const tileD = 0.34 + f * 0.07;
+        const y = roofAt(z) + combatFit.cheekRise - f * 0.08 - row * tileH * 0.92;
         const yaw = s * (-0.12 - f * 0.24);
         const roll = s * (0.04 + f * 0.08);
-        P.add('turret', box(tileW, tileH, tileD), x, V(y), L(z), -0.18, yaw, roll);
+        // eraCluster turret-local placements use world rest-pose y/z and
+        // convert them around the turret pivot internally.  Feeding V/L
+        // here applied that conversion twice and dropped the cassettes into
+        // the running gear at yaw.
+        eraCells.push({ x, y, z, tileW, tileH, tileD, yaw, roll });
         P.add('turretDark', box(tileW * 0.78, 0.018, 0.028), x,
           V(y - tileH * 0.46), L(z + tileD * 0.33), -0.18, yaw, roll);
       }
     }
+    // These are actual ERA placements rather than permanent decorative
+    // boxes: damage stripping now removes the cassette while the seated
+    // retainer remains on the cheek.  Per-cell scaling preserves the
+    // source-derived faceted field and keeps one instanced mesh per side.
+    P.eraCluster(`merkava_${id}_turret_era_${s > 0 ? 'R' : 'L'}`, (put) => {
+      for (const cell of eraCells) {
+        put(cell.x, cell.y, cell.z, -0.18, cell.yaw, cell.roll,
+          cell.tileW / 0.28, cell.tileH / 0.13, cell.tileD / 0.07);
+      }
+    }, true);
 
-    // A descending flank course protects the turret shoulder and visually
-    // joins the frontal array to the bustle rather than stopping in mid-air.
+    // Sample the actual outer shell instead of guessing from xOut.  The old
+    // descending course sat inside every oracle casting, which is why the
+    // Mk.2/3 turrets still looked flat even though the parts existed.
     for (let i = 0; i < combatFit.side; i++) {
       const f = i / Math.max(1, combatFit.side - 1);
-      const x = s * (combatFit.xOut - 0.02 - f * 0.10);
-      const z = 0.08 - f * 1.48;
-      const y = combatFit.y - 0.24 - f * 0.08;
-      P.add('turret', box(0.085, 0.25 - f * 0.035, 0.27), x, V(y), L(z),
-        -0.10, s * (-0.05 + f * 0.06), s * -0.05);
-      P.add('turretDark', box(0.016, 0.19, 0.18), s * (Math.abs(x) + 0.044),
-        V(y - 0.01), L(z), -0.10, s * (-0.05 + f * 0.06), 0);
+      const z = combatFit.sideZ[0] + (combatFit.sideZ[1] - combatFit.sideZ[0]) * f;
+      const faceX = sideFaceAt(z);
+      const x = s * (faceX + 0.035);
+      const h = 0.34 - f * 0.045;
+      const d = Math.max(0.26, Math.abs(combatFit.sideZ[0] - combatFit.sideZ[1])
+        / Math.max(1, combatFit.side - 1) * 0.88);
+      const y = combatFit.sideY - f * 0.07;
+      const yaw = s * (-0.035 + f * 0.055);
+      P.add('turret', box(0.11, h, d), x, V(y), L(z), -0.08, yaw, s * -0.055);
+      P.add('turretDark', box(0.018, h * 0.78, 0.022), s * (faceX + 0.094),
+        V(y - 0.01), L(z - d * 0.43), -0.08, yaw, s * -0.055);
+      P.add('turretDark', box(0.018, 0.020, d * 0.76), s * (faceX + 0.094),
+        V(y - h * 0.35), L(z), -0.08, yaw, s * -0.055);
+      P.add('turretDetail', box(0.014, 0.026, d * 0.76), s * (faceX + 0.100),
+        V(y + h * 0.37), L(z), -0.08, yaw, s * -0.055);
+      for (const dz of [-0.28, 0.28]) {
+        P.add('turretDark', box(0.016, 0.020, 0.016), s * (faceX + 0.104),
+          V(y + h * 0.20), L(z + d * dz), -0.08, yaw, 0);
+      }
     }
+  }
+
+  // Shallow roof cassettes create visible styling without replacing the cast
+  // roof.  Their lower halves are buried in the shell; unequal lanes leave
+  // the hatch and gun envelopes open and make each mark's roof distinguishable.
+  for (let i = 0; i < combatFit.roofArmor; i++) {
+    const s = i % 2 ? 1 : -1;
+    const lane = Math.floor(i / 2);
+    const z = 0.22 - lane * 0.39 + (i % 3) * 0.035;
+    const x = s * (0.42 + lane * 0.12);
+    const roof = Math.min(capWorld - 0.10, roofAt(z));
+    const w = Math.max(0.28, 0.43 - lane * 0.025);
+    const d = 0.31 + (i % 2) * 0.035;
+    const yaw = s * (0.06 + lane * 0.025);
+    P.add('turret', box(w, 0.085, d), x, V(roof + 0.018), L(z), -0.06, yaw, s * 0.025);
+    P.add('turretDark', box(w * 0.82, 0.016, 0.024), x,
+      V(roof + 0.057), L(z - d * 0.30), -0.06, yaw, s * 0.025);
+    for (const bx of [-0.34, 0.34]) {
+      P.add('turretDark', box(0.018, 0.018, 0.018), x + bx * w,
+        V(roof + 0.058), L(z + d * 0.30), -0.06, yaw, 0);
+    }
+  }
+
+  // A mark-specific armored optic on a broad shoe breaks the remaining quiet
+  // forward roof.  It is deliberately asymmetric and low enough to preserve
+  // the established gun and cupola silhouettes.
+  if (id !== 'merkava1b') {
+    const podSide = (id === 'merkava2b' || id === 'merkava3c') ? -1 : 1;
+    const podZ = id === 'merkava4b' ? -0.20 : -0.32;
+    const podX = podSide * (id.startsWith('merkava3') ? 0.78 : 0.70);
+    const podRoof = Math.min(capWorld - 0.25, roofAt(podZ));
+    sight(podX, podZ, podRoof, 0.25, id === 'merkava4b' ? 0.18 : 0.23, 0.27, podSide * -0.10);
   }
 
   // Unequal roof lockers, radio cases, spare optics and soft kit.  Every
@@ -6893,6 +7046,20 @@ function merkavaSourceFinish(P, p, t) {
   P.add('turret', box(0.36, 0.048, 0.32), -0.06, V(caseRoof + 0.006), L(caseZ), 0, -0.05, 0);
   P.add('turretDetail', box(0.31, 0.14, 0.28), -0.06, V(caseRoof + 0.075), L(caseZ), 0.02, -0.05, 0);
   P.add('turretGlass', box(0.13, 0.050, 0.014), -0.06, V(caseRoof + 0.095), L(caseZ + 0.148), 0.02, -0.05, 0);
+
+  // Additional radio/ammunition cases on the bustle shoulders.  Each case
+  // has a painted shoe and a dark transverse strap returning into the roof;
+  // their unequal fore/aft positions preserve the characteristic asymmetric
+  // Israeli roof load instead of forming a mirrored row of loose boxes.
+  for (const [s, z, yaw, cloth] of [[-1, -2.42, -0.10, false], [1, -2.62, 0.08, true]]) {
+    const roof = Math.min(capWorld - 0.24, roofAt(z));
+    const x = s * (id === 'merkava4b' ? 0.92 : 0.82);
+    P.add('turret', box(0.42, 0.045, 0.34), x, V(roof + 0.004), L(z), 0, yaw, 0);
+    P.add(cloth ? 'turretCloth' : 'turretDetail', box(0.36, 0.18, 0.29),
+      x, V(roof + 0.105), L(z), 0.02, yaw, 0);
+    P.add('turretDark', box(0.024, 0.19, 0.30), x, V(roof + 0.105), L(z), 0.02, yaw, 0);
+    P.add('turretDark', box(0.28, 0.018, 0.026), x, V(roof + 0.185), L(z + 0.08), 0.02, yaw, 0);
+  }
 
   // Armored MG shield: center plate and canted wings terminate in a low
   // plinth on the same hatch/roof station as the weapon.  Angle and position

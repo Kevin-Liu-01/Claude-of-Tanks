@@ -2051,15 +2051,32 @@ ${snowCap ? `
     // signs, cones, transformer cabinets and cable reels. Every piece uses an
     // existing instanced destructible pool, so a count of 40 still costs five
     // draw calls rather than forty and remains idle until actually hit.
-    for (let k = 0, cap = inh.modernClutter ?? 0; k < cap; k++) {
+    const modernCfg = inh.modernClutter ?? 0;
+    const authoredModernKinds = typeof modernCfg === 'object' && modernCfg
+      ? Object.entries(modernCfg).flatMap(([kind, count]) =>
+        Array.from({ length: Math.max(0, count | 0) }, () => kind))
+      : null;
+    // Authored legacy-map backports guarantee every vocabulary family while
+    // retaining seeded variety in where those families land. Numeric budgets
+    // keep the original weighted selection path byte-for-byte unchanged.
+    if (authoredModernKinds) {
+      for (let i = authoredModernKinds.length - 1; i > 0; i--) {
+        const j = (vrng() * (i + 1)) | 0;
+        [authoredModernKinds[i], authoredModernKinds[j]] =
+          [authoredModernKinds[j], authoredModernKinds[i]];
+      }
+    }
+    const modernCap = authoredModernKinds ? authoredModernKinds.length : modernCfg;
+    for (let k = 0; k < modernCap; k++) {
       const spot = roadsideSpot(5.0, 13.5, 52);
       if (!spot) continue;
       const [mx, mz, myaw] = spot;
-      const roll = vrng();
-      const kind = roll < 0.25 ? 'barrier'
-        : roll < 0.45 ? 'roadsign'
-          : roll < 0.70 ? 'cone'
-            : roll < 0.84 ? 'transformer' : 'cablespool';
+      const roll = authoredModernKinds ? 0 : vrng();
+      const kind = authoredModernKinds ? authoredModernKinds[k]
+        : roll < 0.25 ? 'barrier'
+          : roll < 0.45 ? 'roadsign'
+            : roll < 0.70 ? 'cone'
+              : roll < 0.84 ? 'transformer' : 'cablespool';
       const y = heightField.getHeightAt(mx, mz);
       addDestructible(kind, mx, y - 0.03, mz,
         myaw + (vrng() - 0.5) * (kind === 'barrier' ? 0.18 : 0.7),
@@ -2726,6 +2743,7 @@ ${snowCap ? `
       const wreckShadowGeos = []; // factory shadow proxies, wreck-posed
       let bakedTris = 0;
       let wreckSerial = 0;
+      let wreckPickSerial = 0;
       function bakeFor(specId, pop) {
         const key = specId + (pop ? '|p' : '');
         if (bakeCache.has(key)) return bakeCache.get(key);
@@ -2736,7 +2754,12 @@ ${snowCap ? `
         return baked;
       }
       function placeWreck(x, z, yaw) {
-        const specId = pool[(wrng() * pool.length) | 0];
+        // Explicit map pools are deliberate story casts: consume them in
+        // order so the complete modern wreck vocabulary is guaranteed across
+        // the legacy-map set. Unauthored pools retain seeded random variety.
+        const specId = wCfg?.ids?.length
+          ? pool[wreckPickSerial++ % pool.length]
+          : pool[(wrng() * pool.length) | 0];
         const pop = wrng() < 0.45; // mix ammo-rack tosses with unseated kills
         const baked = bakeFor(specId, pop);
         if (!baked) return false;

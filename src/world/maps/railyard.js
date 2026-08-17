@@ -123,9 +123,12 @@ export default {
     well: false, hayCrates: true, fences: true, telegraph: true, carts: true, logs: true,
     haystacks: 0, rocks: 60, outcrops: 4, craters: 62, rubblePiles: 90,
     lampposts: true, hedgehogs: 10,
-    // DESTRUCTIBLES r1: WWII hulks on the yard aprons (baked roster tanks) —
+    // Legacy-map quality backport: modern hulks on the yard aprons (baked roster tanks) —
     // the armor that fought over the railhead
-    tankWrecks: { era: 'ww2', count: 4 },
+    tankWrecks: {
+      era: 'modern', count: 6, debris: true,
+      ids: ['kf51', 'challenger2', 'leo2a7', 'leclerc', 't90m', 'type99a'],
+    },
     sandbagLines: 10,
     // world-dressing r1: brick yard walls; industrial inhabitants — oil-drum
     // ranks + pallet/crate stacks along the aprons, benches by the depot
@@ -138,6 +141,7 @@ export default {
       // DESTRUCTIBLES r1: railhead logistics — truck ranks on the aprons,
       // fuel points between the sidings, ammo stacks
       trucks: 4, jeeps: 1, drumClusters: 4, camps: 1,
+      modernClutter: { barrier: 9, roadsign: 7, cone: 10, transformer: 7, cablespool: 7 },
     },
     townCraters: true, // shell pocks on the hardstand
   },

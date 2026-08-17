@@ -145,11 +145,14 @@ export default {
       [-120, -220, -52, -220, 2], [30, -180, 96, -180, 3],
       [-320, -20, -258, -20, 2],
     ],
-    well: true, hayCrates: true, fences: true, telegraph: false, carts: true, logs: true,
+    well: true, hayCrates: true, fences: true, telegraph: true, carts: true, logs: true,
     haystacks: 8, rocks: 200, outcrops: 22, craters: 30, rubblePiles: 0,
     // DESTRUCTIBLES r1: modern hulks on the shore road (baked roster tanks)
     // + landing-defense dressing (hedgehog obstacles, sandbag lines)
-    tankWrecks: { era: 'modern', count: 3 },
+    tankWrecks: {
+      era: 'modern', count: 5, debris: true,
+      ids: ['merkava3d', 'ariete', 'type10', 'leclerc', 'm1a1'],
+    },
     sandbagLines: 10,
     hedgehogs: 7,
     // world-dressing r1: harbor-village inhabitants — fish-crate/barrel
@@ -164,6 +167,7 @@ export default {
       // DESTRUCTIBLES r1: quayside logistics — trucks at the harbor lanes,
       // fuel-drum points, a shore bivouac
       trucks: 3, jeeps: 2, drumClusters: 3, camps: 2,
+      modernClutter: { barrier: 4, roadsign: 5, cone: 7, transformer: 3, cablespool: 3 },
     },
     cropFields: 3,
   },

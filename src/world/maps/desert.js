@@ -243,7 +243,7 @@ export default {
       [34, 58, 34, 92, 3], [34, 92, 66, 92, 2],
       [-46, 76, -12, 76, 1],
     ],
-    well: true, hayCrates: true, fences: false, telegraph: false, carts: true, logs: false,
+    well: true, hayCrates: true, fences: false, telegraph: true, carts: true, logs: false,
     // r3: craters 18 -> 30, +1 wreck — more battle scarring/track marks to
     // break the open bowl between the landforms
     // r4: rocks 210 -> 275, outcrops 24 -> 36, craters 30 -> 48, wrecks 5 ->
@@ -256,7 +256,10 @@ export default {
     rubblePiles: 14,
     // DESTRUCTIBLES r1: modern-era hulks on the wadi routes (baked roster
     // tanks), convoy dressing + defended-crossroads clutter
-    tankWrecks: { era: 'modern', count: 4 },
+    tankWrecks: {
+      era: 'modern', count: 5, debris: true,
+      ids: ['m1a2', 't90m', 'merkava3d', 'ariete', 'type99a'],
+    },
     sandbagLines: 12,
     hedgehogs: 8,
     // world-dressing r1: adobe boundary walls + souk inhabitants — stall
@@ -271,6 +274,7 @@ export default {
       // DESTRUCTIBLES r1: stalled convoy dressing — supply trucks on the
       // wadi road, utility 4x4s at the compounds, fuel dumps, a desert camp
       trucks: 4, jeeps: 2, drumClusters: 4, camps: 2,
+      modernClutter: { barrier: 5, roadsign: 4, cone: 8, transformer: 3, cablespool: 4 },
     },
   },
 

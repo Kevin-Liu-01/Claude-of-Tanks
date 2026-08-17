@@ -212,9 +212,12 @@ export default {
     // r5 terrain_environment: craters 22 -> 36 — battle scarring reads
     // LOUDEST on snow (dark pits on white); the map carried almost none
     haystacks: 12, rocks: 190, outcrops: 19, craters: 36, rubblePiles: 0,
-    // DESTRUCTIBLES r1: snow-bound WWII hulks (baked roster tanks — the
+    // Legacy-map quality backport: snow-bound modern hulks (the
     // snow-cap shader dusts them like every prop), frozen supply columns
-    tankWrecks: { era: 'ww2', count: 3 },
+    tankWrecks: {
+      era: 'modern', count: 5, debris: true,
+      ids: ['k2', 'type10', 't80u', 'leo2a7', 't90m'],
+    },
     sandbagLines: 10,
     hedgehogs: 8,
     // world-dressing r1: winter inhabitants — sleds on the snowfield (the
@@ -228,6 +231,7 @@ export default {
       roadFence: 'fencerail', yardFence: 'fenceplank',
       // DESTRUCTIBLES r1: a frozen supply column + winter bivouacs
       trucks: 3, jeeps: 1, drumClusters: 3, camps: 2,
+      modernClutter: { barrier: 4, roadsign: 4, cone: 6, transformer: 3, cablespool: 3 },
     },
   },
 

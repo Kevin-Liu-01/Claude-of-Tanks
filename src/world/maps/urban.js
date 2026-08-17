@@ -169,7 +169,10 @@ export default {
     lampposts: true, hedgehogs: 16,
     // DESTRUCTIBLES r1: modern hulks in the streets (baked roster tanks) —
     // the shelled-town read finally includes the armor that died taking it
-    tankWrecks: { era: 'modern', count: 4 },
+    tankWrecks: {
+      era: 'modern', count: 6, debris: true,
+      ids: ['leclerc', 'kf51', 'challenger2', 'm1a2', 't90m', 'leo2a7'],
+    },
     sandbagLines: 12,
     // world-dressing r1: brick boundary walls w/ coping; street inhabitants —
     // a market ring on the central square, oil drums + pallet/crate work
@@ -183,6 +186,7 @@ export default {
       roadFence: 'fenceplank',
       // DESTRUCTIBLES r1: abandoned vehicles + fuel points down the blocks
       trucks: 3, jeeps: 2, drumClusters: 3, camps: 1,
+      modernClutter: { barrier: 8, roadsign: 7, cone: 10, transformer: 5, cablespool: 5 },
     },
   },
 

@@ -5,6 +5,13 @@ const EXPANSION = [
   'frontier', 'fjord', 'delta', 'badlands',
   'monsoon', 'alpine', 'caldera', 'foundry',
 ];
+const LEGACY = ['verdant', 'desert', 'winter', 'urban',
+  'coastal', 'autumn', 'steppe', 'railyard'];
+const MODERN_FAMILIES = [
+  'm1a2', 't90m', 'leo2a7', 'm1a1', 't90a', 't80u', 'challenger2',
+  'leclerc', 'merkava3d', 'k2', 'type99a', 'type10', 'kf51', 'ariete',
+];
+const CLUTTER_FAMILIES = ['barrier', 'roadsign', 'cone', 'transformer', 'cablespool'];
 
 assert.equal(MAP_IDS.length, 16, 'the battlefield roster contains sixteen maps');
 assert.equal(new Set(MAP_IDS).size, MAP_IDS.length, 'map ids are unique');
@@ -38,4 +45,26 @@ for (const mapId of EXPANSION) {
   assert.ok(config.props.craters >= 48, `${mapId}: battlefield scarring budget`);
 }
 
-console.log('mapQuality.selftest: 16 complete maps and 8 detailed expansion biomes passed');
+const legacyWreckFamilies = new Set();
+const legacyMobileWreckFamilies = new Set();
+for (const mapId of LEGACY) {
+  const config = getMapConfig(mapId);
+  const wrecks = config.props.tankWrecks;
+  assert.equal(config.props.telegraph, true, `${mapId}: linked utility-pole network enabled`);
+  assert.equal(wrecks.era, 'modern', `${mapId}: modern wreck backport`);
+  assert.equal(wrecks.debris, true, `${mapId}: detached wreck debris backport`);
+  assert.equal(wrecks.ids.length, wrecks.count, `${mapId}: deliberate no-repeat wreck cast`);
+  wrecks.ids.forEach((id) => legacyWreckFamilies.add(id));
+  wrecks.ids.slice(0, 2).forEach((id) => legacyMobileWreckFamilies.add(id));
+  const clutter = config.props.inhabit.modernClutter;
+  assert.equal(typeof clutter, 'object', `${mapId}: authored modern-clutter mix`);
+  for (const kind of CLUTTER_FAMILIES) {
+    assert.ok(clutter[kind] >= 3, `${mapId}: ${kind} family backported`);
+  }
+}
+assert.deepEqual([...legacyWreckFamilies].sort(), [...MODERN_FAMILIES].sort(),
+  'legacy maps collectively cover the complete modern wreck roster');
+assert.deepEqual([...legacyMobileWreckFamilies].sort(), [...MODERN_FAMILIES].sort(),
+  'two-wreck mobile budgets collectively cover the complete modern wreck roster');
+
+console.log('mapQuality.selftest: 16 complete maps; legacy family/wreck backport passed');
