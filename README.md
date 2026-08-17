@@ -70,7 +70,7 @@ protocol. Three.js presents the result; it does not decide it.
 | Browser-native engine | Direct Three.js rendering, generated worlds, custom tank movement, post-processing, particles, audio, and device recovery without a commercial game-engine runtime |
 | Combat authority | Fixed 60 Hz movement, finite-point aiming, physical muzzle ballistics, plate armor, internal modules, spotting, bots, destructibles, and match outcome |
 | Original fleet | 80 selectable first-party procedural vehicles, generated presentation assets, live geometry fingerprints, and zero GLB-sourced playable tanks |
-| Network play | Protocol-v3 intent validation, viewer-filtered state, WebRTC control/state separation, dedicated WebSocket authority, prediction, reconciliation, and reconnectable room state |
+| Network play | Protocol-v4 intent validation, viewer-filtered state, low-latency replaceable input, dedicated WebSocket authority, prediction, reconciliation, and reconnectable room state |
 | Persistent rounds | Invite links, teams, spectators, ready locks, after-action rematch voting, garage room presence, and non-host rejoin while the browser host remains authoritative |
 | Performance | A direct solo path, isolated public routes, adaptive rendering, idle warmup, reusable snapshot storage, bounded cosmetic event work, and GPU black-frame recovery |
 | Production tools | A deterministic in-game Scene Studio, a geometry-aware Surface Markup Studio, fleet icon/diagram generation, browser multiplayer rigs, and public/private artifact verification |
@@ -87,8 +87,9 @@ terrain navigation, randomized seeded openings, traffic avoidance, and stall rec
 vehicle, ready up, fight, vote to play again, and rematch without destroying the room. **LAN** uses the same room flow
 over direct Wi-Fi WebRTC paths. **Ranked** moves authority to the dedicated service and records server-owned rating.
 
-WebRTC separates reliable control and combat events from replaceable 20 Hz state snapshots. Local movement predicts the
-same integrator and reconciles against authority; remote tanks interpolate a bounded snapshot buffer. Sub-centimeter
+WebRTC separates reliable control and combat events from replaceable 20 Hz snapshots and live input. Fire and consumable
+edges repeat until authority acknowledges them, while stale steering coalesces instead of blocking newer controls. Local
+movement predicts the same integrator and reconciles against authority; remote tanks interpolate a bounded snapshot buffer. Sub-centimeter
 terrain/contact noise is held only while a hull is genuinely parked, without freezing turret or gun articulation, and
 real input or authority motion releases the hold immediately. The complete design is in
 [`docs/MULTIPLAYER-ARCHITECTURE.md`](docs/MULTIPLAYER-ARCHITECTURE.md).
@@ -184,7 +185,7 @@ src/world/     eight generated maps, terrain, vegetation, props and destructible
 src/vehicles/  specs, first-party procedural geometry, materials and asset proofs
 src/sim/       renderer-free movement, aiming, ballistics, armor, damage and spotting
 src/game/      application state, AI, input, killcam and Scene Studio
-src/net/       protocol v3, rooms, snapshots, prediction, WebRTC and WebSocket adapters
+src/net/       protocol v4, rooms, snapshots, prediction, WebRTC and WebSocket adapters
 src/ui/        garage, battle HUD, room flow, reports, settings and mobile controls
 server/        signaling, distributed room store, dedicated authority, rating and ranked queue
 ```

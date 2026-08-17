@@ -28,6 +28,7 @@ function stringOption(name, fallback) {
 
 const seconds = numberOption('seconds', 6);
 const cpuRate = numberOption('cpu', 4);
+const minimumFps = numberOption('min-fps', 30);
 const adverse = {
   latency: nonNegativeOption('latency'),
   jitter: nonNegativeOption('jitter'),
@@ -285,7 +286,7 @@ async function collectFullRenderer(page, label) {
       },
     };
   }, label);
-  assert.ok(report.frames >= seconds * 30,
+  assert.ok(report.frames >= seconds * minimumFps,
     `${label} captured too few active frames: ${report.frames}`);
   assert.equal(report.freezes, 0, `${label} must not freeze under ${cpuRate}x CPU throttling`);
   assert.ok(report.gapP95 < 40,
@@ -501,7 +502,7 @@ try {
   console.log(JSON.stringify({
     ok: true,
     profile: {
-      seconds, cpuRate, viewport: [1280, 720], quality: 'desktop', roomMode, adverse,
+      seconds, cpuRate, minimumFps, viewport: [1280, 720], quality: 'desktop', roomMode, adverse,
     },
     solo,
     [`${roomMode}Host`]: host,

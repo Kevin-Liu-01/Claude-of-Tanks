@@ -94,20 +94,22 @@ export function createAdverseNetworkTransport(transport, {
     return Math.max(0, due - now);
   }
 
-  function scheduleSend(message, state = false) {
+  function scheduleSend(message, lane = 'control') {
     if (closed || transport.readyState === 'closed') return false;
-    const loss = state ? stateLossRate
-      : message?.type === 'input' ? inputLossRate : 0;
+    const state = lane === 'state';
+    const input = lane === 'input';
+    const loss = state ? stateLossRate : input ? inputLossRate : 0;
     if (loss > 0 && rng() < loss) {
       if (state) stats.droppedState++;
-      else stats.droppedInput++;
+      else if (input) stats.droppedInput++;
       return true;
     }
-    const delay = state ? delayFor() : orderedDelay('send');
+    const delay = state || input ? delayFor() : orderedDelay('send');
     stats.delayedOutgoing++;
     later(() => {
       try {
         if (state && typeof transport.sendState === 'function') transport.sendState(message);
+        else if (input && typeof transport.sendInput === 'function') transport.sendInput(message);
         else transport.send(message);
       } catch (error) {
         for (const listener of [...errors]) listener(error);
@@ -144,8 +146,9 @@ export function createAdverseNetworkTransport(transport, {
 
   return {
     kind: `${transport.kind || 'transport'}-simulated`,
-    send(message) { return scheduleSend(message, false); },
-    sendState(message) { return scheduleSend(message, true); },
+    send(message) { return scheduleSend(message, 'control'); },
+    sendInput(message) { return scheduleSend(message, 'input'); },
+    sendState(message) { return scheduleSend(message, 'state'); },
     onMessage(listener) { messages.add(listener); return () => messages.delete(listener); },
     onClose(listener) { closes.add(listener); return () => closes.delete(listener); },
     onError(listener) { errors.add(listener); return () => errors.delete(listener); },

@@ -45,6 +45,12 @@ function defaultClock() {
 
 const MAX_PENDING_EVENT_BATCHES = 256;
 const MAX_EVENTS_PER_BATCH = 512;
+const SEQUENCE_RANGE = 0x80000000;
+
+function sequenceDistance(latest, previous) {
+  if (!Number.isSafeInteger(latest) || !Number.isSafeInteger(previous)) return null;
+  return (latest - previous + SEQUENCE_RANGE) % SEQUENCE_RANGE;
+}
 
 function validateEventBatch(payload) {
   if (!payload || !Number.isSafeInteger(payload.tick) || payload.tick < 0 ||
@@ -133,6 +139,7 @@ export class AuthoritativeMatchRuntime {
       metadata,
       input: null,
       lastInputSeq: null,
+      lastInputEnvelopeSeq: null,
       lastRecvSeq: null,
       sendSeq: 0,
       welcomed: false,
@@ -140,6 +147,7 @@ export class AuthoritativeMatchRuntime {
       pendingRoundReady: false,
       fireQueued: false,
       actionBitsQueued: 0,
+      actionBitsHeld: 0,
       lastSnapshotAckTick: null,
       lastKeyframeTick: -Infinity,
       snapshotHistory: new Map(),
@@ -225,10 +233,14 @@ export class AuthoritativeMatchRuntime {
           message.type !== MESSAGE_TYPES.LEAVE) {
         throw new ProtocolError('hello_required', 'hello must precede match traffic');
       }
-      if (peer.lastRecvSeq != null && !isSequenceNewer(message.seq, peer.lastRecvSeq)) {
-        return;
+      if (message.type === MESSAGE_TYPES.INPUT) {
+        if (peer.lastInputEnvelopeSeq != null &&
+            !isSequenceNewer(message.seq, peer.lastInputEnvelopeSeq)) return;
+        peer.lastInputEnvelopeSeq = message.seq;
+      } else {
+        if (peer.lastRecvSeq != null && !isSequenceNewer(message.seq, peer.lastRecvSeq)) return;
+        peer.lastRecvSeq = message.seq;
       }
-      peer.lastRecvSeq = message.seq;
       switch (message.type) {
         case MESSAGE_TYPES.HELLO:
           if (peer.welcomed) break;
@@ -323,8 +335,10 @@ export class AuthoritativeMatchRuntime {
     peer.ready = false;
     peer.input = null;
     peer.lastInputSeq = null;
+    peer.lastInputEnvelopeSeq = null;
     peer.fireQueued = false;
     peer.actionBitsQueued = 0;
+    peer.actionBitsHeld = 0;
     peer.lastSnapshotAckTick = null;
     peer.lastKeyframeTick = -Infinity;
     peer.snapshotHistory.clear();
@@ -382,9 +396,13 @@ export class AuthoritativeMatchRuntime {
     }
     peer.lastInputSeq = input.inputSeq;
     this.#recordSnapshotAck(peer, input.snapshotAckTick);
-    peer.input = input;
     if (input.fire) peer.fireQueued = true;
-    peer.actionBitsQueued |= input.actionBits;
+    peer.actionBitsQueued |= input.actionBits & ~peer.actionBitsHeld;
+    peer.actionBitsHeld = input.actionBits;
+    // Action bits are rising-edge intents, not held movement state. Keep them
+    // exclusively in the deduplicated queue so redundant delivery cannot
+    // consume a repair or medical kit twice before its acknowledgement lands.
+    peer.input = input.actionBits ? { ...input, actionBits: 0 } : input;
   }
 
   #recordSnapshotAck(peer, rawTick) {
@@ -578,8 +596,14 @@ export class MatchClientRuntime {
     this.pingIntervalMs = pingIntervalMs;
     this.clock = clock;
     this.sendSeq = 0;
+    this.inputSendSeq = 0;
     this.inputSeq = 0;
     this.lastSubmittedInputSeq = null;
+    this.lastAckedInputSeq = null;
+    this.pendingFireAckSeq = null;
+    this.lastRequestedFire = false;
+    this.pendingActionAckSeqs = new Map();
+    this.inputPacketsSubmitted = 0;
     this.lastRecvSeq = null;
     this.clientTick = 0;
     this.lastSnapshotTick = 0;
@@ -648,13 +672,35 @@ export class MatchClientRuntime {
 
   #send(type, payload) {
     if (this.closed) return false;
+    const inputLane = type === MESSAGE_TYPES.INPUT;
+    const sequence = inputLane ? this.inputSendSeq : this.sendSeq;
     const envelope = createEnvelope(type, payload, {
-      seq: this.sendSeq,
+      seq: sequence,
       ack: this.lastRecvSeq == null ? 0 : this.lastRecvSeq,
       tick: this.clientTick,
     });
-    this.sendSeq = nextSequence(this.sendSeq);
-    return this.transport.send(envelope);
+    if (inputLane) this.inputSendSeq = nextSequence(this.inputSendSeq);
+    else this.sendSeq = nextSequence(this.sendSeq);
+    return inputLane && typeof this.transport.sendInput === 'function'
+      ? this.transport.sendInput(envelope)
+      : this.transport.send(envelope);
+  }
+
+  #acknowledgeInput(rawSequence) {
+    const acknowledged = Number(rawSequence);
+    if (!Number.isSafeInteger(acknowledged) || acknowledged < 0) return;
+    if (this.lastAckedInputSeq == null ||
+        isSequenceNewer(acknowledged, this.lastAckedInputSeq)) {
+      this.lastAckedInputSeq = acknowledged;
+    }
+    const covers = (sequence) => sequence === acknowledged ||
+      isSequenceNewer(acknowledged, sequence);
+    if (this.pendingFireAckSeq != null && covers(this.pendingFireAckSeq)) {
+      this.pendingFireAckSeq = null;
+    }
+    for (const [bit, sequence] of this.pendingActionAckSeqs) {
+      if (covers(sequence)) this.pendingActionAckSeqs.delete(bit);
+    }
   }
 
   #receive(raw) {
@@ -678,6 +724,7 @@ export class MatchClientRuntime {
           this.lastSnapshotPacketTick = message.tick;
           this.snapshotPacketsReceived++;
         }
+        this.#acknowledgeInput(message.payload.ackInputSeq);
         const snapshot = this.assembler.accept(message.payload);
         if (!snapshot) {
           this.lastSnapshotTick = 0;
@@ -783,10 +830,24 @@ export class MatchClientRuntime {
       clientTick,
       snapshotAckTick: this.lastSnapshotTick,
     });
+    if (normalized.fire && !this.lastRequestedFire && this.pendingFireAckSeq == null) {
+      this.pendingFireAckSeq = submittedInputSeq;
+    }
+    this.lastRequestedFire = normalized.fire;
+    for (let bit = 1; bit <= 0x8000; bit *= 2) {
+      if ((normalized.actionBits & bit) !== 0 && !this.pendingActionAckSeqs.has(bit)) {
+        this.pendingActionAckSeqs.set(bit, submittedInputSeq);
+      }
+    }
+    normalized.fire = normalized.fire || this.pendingFireAckSeq != null;
+    for (const bit of this.pendingActionAckSeqs.keys()) normalized.actionBits |= bit;
     this.inputSeq = nextSequence(this.inputSeq);
     this.clientTick = Math.max(this.clientTick, clientTick);
     const sent = this.#send(MESSAGE_TYPES.INPUT, normalized);
-    if (sent) this.lastSubmittedInputSeq = submittedInputSeq;
+    if (sent) {
+      this.lastSubmittedInputSeq = submittedInputSeq;
+      this.inputPacketsSubmitted++;
+    }
     return sent;
   }
 
@@ -833,6 +894,10 @@ export class MatchClientRuntime {
     this.pendingEventBatches.length = 0;
     this.lastSnapshotTick = 0;
     this.lastSnapshotPacketTick = null;
+    this.lastAckedInputSeq = null;
+    this.pendingFireAckSeq = null;
+    this.lastRequestedFire = false;
+    this.pendingActionAckSeqs.clear();
     this.readySent = false;
     return true;
   }
@@ -899,6 +964,13 @@ export class MatchClientRuntime {
       transport: this.transport.stats || null,
       transportBufferedBytes: Number(this.transport.bufferedAmount) || 0,
       pendingEventBatches: this.pendingEventBatches.length,
+      inputPacketsSubmitted: this.inputPacketsSubmitted,
+      lastAckedInputSeq: this.lastAckedInputSeq,
+      inputAckLag: this.lastSubmittedInputSeq == null || this.lastAckedInputSeq == null
+        ? null
+        : sequenceDistance(this.lastSubmittedInputSeq, this.lastAckedInputSeq),
+      pendingInputEdges: (this.pendingFireAckSeq == null ? 0 : 1) +
+        this.pendingActionAckSeqs.size,
     };
   }
 

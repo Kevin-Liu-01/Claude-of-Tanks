@@ -4,6 +4,7 @@ import { snapshotWireCodec } from './snapshotWireCodec.js';
 const DEFAULT_MAX_BUFFERED_BYTES = 512 * 1024;
 const DEFAULT_MAX_MESSAGE_BYTES = 256 * 1024;
 const DEFAULT_MAX_STATE_BUFFERED_BYTES = 64 * 1024;
+const DEFAULT_MAX_INPUT_BUFFERED_BYTES = 1024;
 
 function utf8Size(value) {
   if (typeof TextEncoder !== 'undefined') return new TextEncoder().encode(value).byteLength;
@@ -50,7 +51,9 @@ export function createChannelTransport(channel, {
   maxBufferedBytes = DEFAULT_MAX_BUFFERED_BYTES,
   maxMessageBytes = DEFAULT_MAX_MESSAGE_BYTES,
   coalesceState = false,
+  coalesceInput = false,
   maxStateBufferedBytes = Math.min(maxBufferedBytes, DEFAULT_MAX_STATE_BUFFERED_BYTES),
+  maxInputBufferedBytes = Math.min(maxBufferedBytes, DEFAULT_MAX_INPUT_BUFFERED_BYTES),
 } = {}) {
   if (!channel || typeof channel.send !== 'function' || typeof channel.close !== 'function') {
     throw new TypeError('channel must implement send() and close()');
@@ -67,6 +70,7 @@ export function createChannelTransport(channel, {
   const errors = new Set();
   let closedReason = null;
   let pendingState = null;
+  let pendingInput = null;
   const stats = {
     sent: 0,
     received: 0,
@@ -74,11 +78,17 @@ export function createChannelTransport(channel, {
     decodeErrors: 0,
     stateSent: 0,
     stateCoalesced: 0,
+    inputSent: 0,
+    inputCoalesced: 0,
   };
 
   if (!Number.isFinite(maxStateBufferedBytes) || maxStateBufferedBytes < 0 ||
       maxStateBufferedBytes > maxBufferedBytes) {
     throw new TypeError('maxStateBufferedBytes must be within the channel buffer limit');
+  }
+  if (!Number.isFinite(maxInputBufferedBytes) || maxInputBufferedBytes < 0 ||
+      maxInputBufferedBytes > maxBufferedBytes) {
+    throw new TypeError('maxInputBufferedBytes must be within the channel buffer limit');
   }
 
   const removeMessage = addListener(channel, 'message', (event) => {
@@ -96,6 +106,7 @@ export function createChannelTransport(channel, {
   const removeClose = addListener(channel, 'close', () => {
     if (closedReason == null) closedReason = 'remote_closed';
     pendingState = null;
+    pendingInput = null;
     for (const listener of [...closes]) listener(closedReason);
     messages.clear();
     closes.clear();
@@ -140,12 +151,31 @@ export function createChannelTransport(channel, {
     return true;
   }
 
+  function flushPendingInput() {
+    if (!pendingInput || normalizedReadyState(channel) !== 'open') return false;
+    if ((Number(channel.bufferedAmount) || 0) >= maxInputBufferedBytes) return false;
+    const { encoded, bytes } = pendingInput;
+    if ((Number(channel.bufferedAmount) || 0) + bytes > maxInputBufferedBytes) return false;
+    channel.send(encoded);
+    pendingInput = null;
+    stats.sent++;
+    stats.inputSent++;
+    return true;
+  }
+
   let removeBufferedLow = () => {};
-  if (coalesceState) {
+  if (coalesceState || coalesceInput) {
     if ('bufferedAmountLowThreshold' in channel) {
-      channel.bufferedAmountLowThreshold = Math.floor(maxStateBufferedBytes / 2);
+      const lowThreshold = Math.min(
+        coalesceState ? maxStateBufferedBytes : Infinity,
+        coalesceInput ? maxInputBufferedBytes : Infinity,
+      );
+      channel.bufferedAmountLowThreshold = Math.floor(lowThreshold / 2);
     }
-    removeBufferedLow = addListener(channel, 'bufferedamountlow', flushPendingState);
+    removeBufferedLow = addListener(channel, 'bufferedamountlow', () => {
+      flushPendingState();
+      flushPendingInput();
+    });
   }
 
   const transport = {
@@ -174,6 +204,25 @@ export function createChannelTransport(channel, {
       if (!accepted) stats.stateCoalesced++;
       return true;
     },
+    sendInput(message) {
+      if (!coalesceInput) return transport.send(message);
+      if (normalizedReadyState(channel) !== 'open') throw new TransportClosedError();
+      const encodedInput = encode(message, stateCodec);
+      if (encodedInput.bytes > maxMessageBytes) {
+        stats.rejected++;
+        return false;
+      }
+      if (pendingInput) stats.inputCoalesced++;
+      pendingInput = encodedInput;
+      if ((Number(channel.bufferedAmount) || 0) >= maxInputBufferedBytes) {
+        stats.inputCoalesced++;
+        return true;
+      }
+      const accepted = flushPendingInput();
+      if (!accepted && pendingInput == null) return false;
+      if (!accepted) stats.inputCoalesced++;
+      return true;
+    },
     onMessage(listener) {
       messages.add(listener);
       return () => messages.delete(listener);
@@ -199,13 +248,20 @@ export function createChannelTransport(channel, {
       removeError();
       removeBufferedLow();
       pendingState = null;
+      pendingInput = null;
       messages.clear();
       closes.clear();
       errors.clear();
     },
     get readyState() { return normalizedReadyState(channel); },
     get bufferedAmount() { return Number(channel.bufferedAmount) || 0; },
-    get stats() { return { ...stats, statePending: pendingState ? 1 : 0 }; },
+    get stats() {
+      return {
+        ...stats,
+        statePending: pendingState ? 1 : 0,
+        inputPending: pendingInput ? 1 : 0,
+      };
+    },
     rawChannel: channel,
   };
   return transport;
@@ -219,8 +275,8 @@ export function createWebRTCDataChannelTransport(channel, options = {}) {
 }
 
 /**
- * Route replaceable snapshots over an unordered/no-retransmit WebRTC lane
- * while keeping lobby, input, combat events, and connection control reliable.
+ * Route replaceable snapshots and input over an unordered/no-retransmit
+ * WebRTC lane while keeping lobby, combat events, and control reliable.
  */
 export function createWebRTCSplitTransport(controlChannel, stateChannel, options = {}) {
   if (controlChannel.ordered === false || controlChannel.maxRetransmits != null ||
@@ -234,15 +290,18 @@ export function createWebRTCSplitTransport(controlChannel, stateChannel, options
     ...options,
     kind: 'webrtc-control',
     coalesceState: false,
+    coalesceInput: false,
   });
   const state = createChannelTransport(stateChannel, {
     ...options,
     kind: 'webrtc-state',
     coalesceState: true,
+    coalesceInput: true,
     codec: options.stateCodec || snapshotWireCodec,
     stateCodec: options.stateCodec || snapshotWireCodec,
     maxBufferedBytes: options.maxStateBufferedBytes ?? DEFAULT_MAX_STATE_BUFFERED_BYTES,
     maxStateBufferedBytes: options.maxStateBufferedBytes ?? DEFAULT_MAX_STATE_BUFFERED_BYTES,
+    maxInputBufferedBytes: options.maxInputBufferedBytes ?? DEFAULT_MAX_INPUT_BUFFERED_BYTES,
   });
   const messages = new Set();
   const closes = new Set();
@@ -277,6 +336,7 @@ export function createWebRTCSplitTransport(controlChannel, stateChannel, options
   return {
     kind: 'webrtc',
     send(message) { return control.send(message); },
+    sendInput(message) { return state.sendInput(message); },
     sendState(message) { return state.sendState(message); },
     onMessage(listener) {
       messages.add(listener);
@@ -321,12 +381,21 @@ export function createWebRTCSplitTransport(controlChannel, stateChannel, options
 
 export function createWebSocketTransport(socket, options = {}) {
   const maxBufferedBytes = options.maxBufferedBytes ?? DEFAULT_MAX_BUFFERED_BYTES;
-  return createChannelTransport(socket, {
+  const transport = createChannelTransport(socket, {
     ...options,
     kind: 'websocket',
     coalesceState: options.coalesceState ?? true,
+    coalesceInput: options.coalesceInput ?? true,
     stateCodec: options.stateCodec || snapshotWireCodec,
     maxStateBufferedBytes: Math.min(options.maxStateBufferedBytes ?? 128 * 1024,
       maxBufferedBytes),
+    maxInputBufferedBytes: Math.min(
+      options.maxInputBufferedBytes ?? DEFAULT_MAX_INPUT_BUFFERED_BYTES,
+      maxBufferedBytes,
+    ),
   });
+  // WebSocket cannot provide an unordered channel, but using the same
+  // replaceable queue still prevents old steering frames from consuming
+  // reliable control headroom when a connection becomes backpressured.
+  return transport;
 }

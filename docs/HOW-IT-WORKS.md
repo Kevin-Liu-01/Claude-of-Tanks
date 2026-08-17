@@ -118,7 +118,7 @@ reproducible without making every public battle follow one memorized route.
 
 ## Multiplayer transport and prediction
 
-Protocol v3 carries validated envelopes with sequence, acknowledgement, and
+Protocol v4 carries validated envelopes with sequence, acknowledgement, and
 simulation ticks. A client submits throttle, steering, brake, shell choice,
 fire, explicit consumable action bits, and a bounded yaw/pitch/distance aim
 intent. Keeping distance preserves the same finite center-screen world point
@@ -129,9 +129,9 @@ spotting, and victory.
 
 LAN/private WebRTC splits traffic:
 
-- reliable ordered control: handshake, lobby/room state, inputs, combat
-  events, ping, errors, and leave;
-- unordered zero-retransmit state: replaceable 20 Hz snapshots.
+- reliable ordered control: handshake, lobby/room state, combat events, ping,
+  errors, and leave;
+- unordered zero-retransmit state: replaceable live input and 20 Hz snapshots.
 
 Snapshots use compact encoding, acknowledgements, deltas, and periodic
 keyframes. Remote tanks use adaptive buffered interpolation with bounded
@@ -150,7 +150,7 @@ waiting ──everyone ready──► starting ──load──► playing
    └──────── result + readiness reset ◄───────────┘
 ```
 
-Protocol-v3 `ROOM_COMMAND` and `ROOM_STATE` messages carry the room's round,
+Protocol-v4 `ROOM_COMMAND` and `ROOM_STATE` messages carry the room's round,
 last result, roster, team, vehicle, equipment, map, and ready state on the
 reliable channel. After a result the same peers remain connected, the room
 returns to waiting, readiness resets, and the next round replaces only the

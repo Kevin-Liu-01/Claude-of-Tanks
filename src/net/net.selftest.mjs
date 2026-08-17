@@ -103,6 +103,19 @@ function snapshotEnvelope(tick, x = tick) {
   }), { seq: tick, tick });
 }
 
+function inputEnvelope(sequence, overrides = {}) {
+  const payload = normalizePlayerInput({
+    ...input(overrides),
+    inputSeq: sequence,
+    clientTick: sequence,
+    snapshotAckTick: 0,
+  });
+  return createEnvelope(MESSAGE_TYPES.INPUT, payload, {
+    seq: sequence,
+    tick: sequence,
+  });
+}
+
 function expectCode(fn, ErrorType, code) {
   assert.throws(fn, (error) => error instanceof ErrorType && error.code === code);
 }
@@ -135,7 +148,7 @@ class FakeChannel extends FakeEventTarget {
   close() { this.readyState = 'closed'; this.emit('close'); }
 }
 
-// Split WebRTC delivery keeps control reliable and makes stale state replaceable.
+// Split WebRTC delivery keeps control reliable and makes stale state/input replaceable.
 {
   const control = new FakeChannel(MATCH_CONTROL_CHANNEL_LABEL, { ordered: true });
   const state = new FakeChannel(MATCH_STATE_CHANNEL_LABEL, {
@@ -146,16 +159,20 @@ class FakeChannel extends FakeEventTarget {
     maxStateBufferedBytes: 1024,
     maxMessageBytes: 4096,
   });
-  assert.equal(transport.send({ type: 'input', payload: 1 }), true);
-  assert.equal(JSON.parse(control.sent[0]).type, 'input');
-  assert.equal(state.sent.length, 0, 'control never leaks onto the state lane');
+  assert.equal(transport.send({ type: 'event', payload: 1 }), true);
+  assert.equal(JSON.parse(control.sent[0]).type, 'event');
+  assert.equal(transport.sendInput(inputEnvelope(1, { throttle: 0.75 })), true);
+  const decodedInput = snapshotWireCodec.decode(state.sent[0]);
+  assert.equal(decodedInput.type, 'input');
+  assert.equal(decodedInput.payload.throttle, 0.75);
+  assert.equal(control.sent.length, 1, 'replaceable input never blocks reliable control');
   assert.equal(transport.sendState(snapshotEnvelope(1)), true);
-  assert.equal(snapshotWireCodec.decode(state.sent[0]).tick, 1);
+  assert.equal(snapshotWireCodec.decode(state.sent[1]).tick, 1);
 
   state.bufferedAmount = 1024;
   transport.sendState(snapshotEnvelope(2));
   transport.sendState(snapshotEnvelope(3));
-  assert.equal(state.sent.length, 1, 'blocked state is coalesced instead of queued');
+  assert.equal(state.sent.length, 2, 'blocked state is coalesced instead of queued');
   assert.ok(transport.stats.state.stateCoalesced >= 1);
   state.bufferedAmount = 0;
   state.emit('bufferedamountlow');
@@ -170,6 +187,28 @@ class FakeChannel extends FakeEventTarget {
   transport.close('done');
   assert.equal(control.readyState, 'closed');
   assert.equal(state.readyState, 'closed');
+}
+
+// Dedicated WebSocket input uses the same replaceable binary queue. Under
+// backpressure, only the latest steering frame survives while control stays
+// available as text on the reliable lane.
+{
+  const socket = new FakeChannel('websocket-input');
+  const transport = createWebSocketTransport(socket, {
+    maxBufferedBytes: 2048,
+    maxStateBufferedBytes: 1024,
+    maxMessageBytes: 4096,
+  });
+  socket.bufferedAmount = 1024;
+  transport.sendInput(inputEnvelope(1, { steer: -0.5 }));
+  transport.sendInput(inputEnvelope(2, { steer: 0.5 }));
+  assert.equal(socket.sent.length, 0, 'backpressured inputs do not form a stale queue');
+  socket.bufferedAmount = 0;
+  transport.sendInput(inputEnvelope(3, { steer: 0.25 }));
+  const latest = snapshotWireCodec.decode(socket.sent[0]);
+  assert.equal(latest.payload.inputSeq, 3);
+  assert.equal(latest.payload.steer, 0.25);
+  transport.close('done');
 }
 
 // Ordered WebSockets cannot split lanes, but must stop stale snapshots from
@@ -929,6 +968,33 @@ function createTestSimulation() {
   hostRuntime.close();
 }
 
+// Replaceable inputs and reliable control have independent sequence spaces.
+// A high-sequence steering packet may arrive before READY without making the
+// lower reliable sequence look stale.
+{
+  const simulation = createTestSimulation();
+  const hostRuntime = new AuthoritativeMatchRuntime({ simulation });
+  const transport = createLoopbackTransportPair();
+  hostRuntime.attachPeer({ peerId: 'p1', transport: transport.host });
+  transport.client.send(createEnvelope(MESSAGE_TYPES.HELLO, {
+    playerId: 'p1', metadata: { team: 'alpha' },
+  }, { seq: 0, tick: 0 }));
+  await Promise.resolve();
+  const replacement = inputEnvelope(400, { throttle: 1 });
+  replacement.payload.inputSeq = 0;
+  transport.client.send(replacement);
+  transport.client.send(createEnvelope(MESSAGE_TYPES.READY, { loaded: true }, {
+    seq: 1,
+    tick: 0,
+  }));
+  await Promise.resolve();
+  const peer = hostRuntime.peers.get('p1');
+  assert.equal(peer.lastInputEnvelopeSeq, 400);
+  assert.equal(peer.lastRecvSeq, 1);
+  assert.equal(peer.ready, true, 'input reordering never starves reliable match control');
+  hostRuntime.close();
+}
+
 {
   const simulation = createTestSimulation();
   const hostRuntime = new AuthoritativeMatchRuntime({ simulation, maxCatchUpTicks: 8 });
@@ -946,8 +1012,22 @@ function createTestSimulation() {
     onClose(listener) { return p1Transport.host.onClose(listener); },
     close(reason) { return p1Transport.host.close(reason); },
   };
+  let inputLaneSends = 0;
+  const p1ClientTransport = {
+    get readyState() { return p1Transport.client.readyState; },
+    get bufferedAmount() { return p1Transport.client.bufferedAmount; },
+    get stats() { return p1Transport.client.stats; },
+    send(message) { return p1Transport.client.send(message); },
+    sendInput(message) {
+      inputLaneSends++;
+      return p1Transport.client.send(message);
+    },
+    onMessage(listener) { return p1Transport.client.onMessage(listener); },
+    onClose(listener) { return p1Transport.client.onClose(listener); },
+    close(reason) { return p1Transport.client.close(reason); },
+  };
   const p1 = new MatchClientRuntime({
-    transport: p1Transport.client,
+    transport: p1ClientTransport,
     playerId: 'p1',
     interpolationDelayMs: 0,
     clock: () => 0,
@@ -966,6 +1046,7 @@ function createTestSimulation() {
   p1.readyForMatch();
   p2.readyForMatch();
   p1.submitInput(input({ throttle: 1 }), 0);
+  assert.equal(inputLaneSends, 1, 'live steering uses the replaceable low-latency lane');
   assert.equal(p1.lastSubmittedInputSeq, 0,
     'client exposes the accepted input sequence for local prediction history');
   await Promise.resolve();
@@ -987,6 +1068,8 @@ function createTestSimulation() {
     'network diagnostics count accepted snapshot packets');
   assert.equal(clientStats.buffer.acceptedSnapshots, 1,
     'network diagnostics expose jitter-buffer health');
+  assert.equal(clientStats.inputAckLag, 0,
+    'authority acknowledgement keeps the live input queue fully caught up');
   p1.submitInput(input({ fire: true }), hostRuntime.tick);
   p1.submitInput(input({ fire: false }), hostRuntime.tick);
   p1.submitInput(input({ actionBits: PLAYER_ACTION_BITS.REPAIR }), hostRuntime.tick);
@@ -999,6 +1082,9 @@ function createTestSimulation() {
   p1.submitInput(input({ actionBits: PLAYER_ACTION_BITS.FIRST_AID }), hostRuntime.tick);
   await Promise.resolve();
   hostRuntime.advance(50);
+  await Promise.resolve();
+  assert.equal(p1.getStats().pendingInputEdges, 0,
+    'acknowledged fire and consumable edges retire from the redundant input stream');
   assert.ok(hostRuntime.stats.snapshotDeltas >= 2,
     'acknowledged peers receive entity deltas after their first keyframe');
   assert.deepEqual(simulation.actionFrames, [

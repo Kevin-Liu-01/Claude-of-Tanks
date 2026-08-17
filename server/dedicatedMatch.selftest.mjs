@@ -11,8 +11,10 @@ const registry = new DedicatedMatchRegistry({
 const tickets = registry.createMatch({
   matchId: 'ranked_test_1',
   players: [
-    { id: 'p1', specId: 'm1a2', team: 'alpha', spawn: { x: 0, z: -100, yaw: 0 } },
-    { id: 'p2', specId: 'm1a2', team: 'bravo', spawn: { x: 0, z: 100, yaw: Math.PI } },
+    { id: 'p1', specId: 'm1a2', team: 'alpha', spawn: { x: -20, z: -100, yaw: 0 } },
+    { id: 'p2', specId: 'm1a2', team: 'alpha', spawn: { x: 20, z: -100, yaw: 0 } },
+    { id: 'p3', specId: 'm1a2', team: 'bravo', spawn: { x: -20, z: 100, yaw: Math.PI } },
+    { id: 'p4', specId: 'm1a2', team: 'bravo', spawn: { x: 20, z: 100, yaw: Math.PI } },
   ],
 });
 const service = await createDedicatedMatchServer({ registry, autoTick: false });
@@ -20,12 +22,18 @@ const address = service.address;
 const url = `ws://127.0.0.1:${address.port}/match`;
 const p1Ticket = tickets.tickets.find((ticket) => ticket.playerId === 'p1');
 const p2Ticket = tickets.tickets.find((ticket) => ticket.playerId === 'p2');
+const p3Ticket = tickets.tickets.find((ticket) => ticket.playerId === 'p3');
+const p4Ticket = tickets.tickets.find((ticket) => ticket.playerId === 'p4');
 const p1 = connectDedicatedMatch({ ...p1Ticket, url, WebSocketImpl: WebSocket,
   clientOptions: { interpolationDelayMs: 0, maxExtrapolationMs: 0 } });
 const p2 = connectDedicatedMatch({ ...p2Ticket, url, WebSocketImpl: WebSocket,
   clientOptions: { interpolationDelayMs: 0, maxExtrapolationMs: 0 } });
-await Promise.all([p1.ready, p2.ready]);
-assert.equal(registry.stats().connectedPlayers, 2);
+const p3 = connectDedicatedMatch({ ...p3Ticket, url, WebSocketImpl: WebSocket,
+  clientOptions: { interpolationDelayMs: 0, maxExtrapolationMs: 0 } });
+const p4 = connectDedicatedMatch({ ...p4Ticket, url, WebSocketImpl: WebSocket,
+  clientOptions: { interpolationDelayMs: 0, maxExtrapolationMs: 0 } });
+await Promise.all([p1.ready, p2.ready, p3.ready, p4.ready]);
+assert.equal(registry.stats().connectedPlayers, 4);
 p1.client.readyForMatch();
 
 p1.client.submitInput({
@@ -36,20 +44,41 @@ p2.client.submitInput({
   throttle: 0, steer: 0, brake: true, fire: false,
   aimYaw: Math.PI, aimPitch: 0, shellSlot: 0, actionBits: 0,
 }, 0);
+for (const connection of [p3, p4]) {
+  connection.client.submitInput({
+    throttle: 0, steer: 0, brake: true, fire: false,
+    aimYaw: Math.PI, aimPitch: 0, shellSlot: 0, actionBits: 0,
+  }, 0);
+}
 await new Promise((resolve) => setTimeout(resolve, 10));
 for (let i = 0; i < 60; i++) service.advance(1000 / 60);
 const authoritative = registry.matches.get('ranked_test_1').simulation.entityById.get('p1');
-assert.ok(Math.abs(authoritative.state.speed) < 0.001,
-  'authority waits for every ticketed player, including peers not yet ready');
-p2.client.readyForMatch();
+assert.equal(registry.matches.get('ranked_test_1').runtime.matchStarted, false,
+  'four-player authority waits for every ticketed player, including peers not yet ready');
+for (const connection of [p2, p3, p4]) connection.client.readyForMatch();
 for (let i = 0; i < 480; i++) {
   service.advance(1000 / 60);
   if (i % 10 === 0) await new Promise((resolve) => setImmediate(resolve));
 }
 await new Promise((resolve) => setTimeout(resolve, 10));
-assert.ok(p1.client.buffer.snapshots.length > 0 && p2.client.buffer.snapshots.length > 0,
-  'dedicated clients receive viewer snapshots');
+assert.ok([p1, p2, p3, p4].every((connection) => connection.client.buffer.snapshots.length > 0),
+  'all four dedicated clients receive viewer snapshots');
 assert.ok(authoritative.state.speed > 0, 'server, not client, advances movement');
+const latestTicks = [p1, p2, p3, p4].map((connection) =>
+  connection.client.buffer.snapshots.at(-1).tick);
+assert.ok(Math.max(...latestTicks) - Math.min(...latestTicks) <= 3,
+  `four client views remain within one snapshot interval (${latestTicks.join(', ')})`);
+const p1Self = p1.client.buffer.snapshots.at(-1).entities.find((entity) => entity.id === 'p1');
+const p1Ally = p2.client.buffer.snapshots.at(-1).entities.find((entity) => entity.id === 'p1');
+assert.deepEqual(
+  { x: p1Self.x, y: p1Self.y, z: p1Self.z },
+  { x: p1Ally.x, y: p1Ally.y, z: p1Ally.z },
+  'teammates receive the same authoritative pose for shared entities',
+);
+assert.ok(p1.transport.stats.inputSent > 0,
+  'dedicated steering uses the backpressure-safe replaceable binary lane');
+assert.equal(p1.client.getStats().inputAckLag, 0,
+  'authority acknowledges the latest four-player input without a stale backlog');
 
 const reconnectStates = [];
 const resilient = await beginDedicatedClientMatch({
@@ -89,7 +118,7 @@ assert.deepEqual(health, {
   ok: true,
   service: 'cot-match',
   matches: 1,
-  connectedPlayers: 2,
+  connectedPlayers: 4,
   queuedPlayers: 0,
   ratedMatches: 0,
 });
@@ -97,6 +126,8 @@ assert.deepEqual(health, {
 resilient.close('test_done');
 p1.client.close('test_done');
 p2.client.close('test_done');
+p3.client.close('test_done');
+p4.client.close('test_done');
 await service.close('test_done');
 
-console.log('dedicatedMatch.selftest: auth, authority, snapshots, and health passed');
+console.log('dedicatedMatch.selftest: four-player auth, sync, authority, and health passed');

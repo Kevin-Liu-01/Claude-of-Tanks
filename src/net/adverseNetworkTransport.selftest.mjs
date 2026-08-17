@@ -57,6 +57,7 @@ function fakeTransport() {
   return {
     kind: 'fake', readyState: 'open', bufferedAmount: 0, sent,
     send(message) { sent.push(message); return true; },
+    sendInput(message) { sent.push({ ...message, lane: 'input' }); return true; },
     sendState(message) { sent.push(message); return true; },
     onMessage(listener) { listeners.add(listener); return () => listeners.delete(listener); },
     onClose() { return () => {}; },
@@ -89,11 +90,15 @@ const simulated = createAdverseNetworkTransport(base, {
 });
 simulated.send({ type: 'input', seq: 1 });
 simulated.send({ type: 'input', seq: 2 });
+simulated.sendInput({ type: 'input', seq: 3 });
 simulated.sendState({ type: 'snapshot', tick: 3 });
 assert.equal(base.sent.length, 0, 'simulator delays outbound traffic');
 scheduler.run();
-assert.deepEqual(base.sent.filter((entry) => entry.type === 'input').map((entry) => entry.seq), [1, 2],
+assert.deepEqual(base.sent.filter((entry) => entry.type === 'input' && !entry.lane)
+  .map((entry) => entry.seq), [1, 2],
   'reliable control remains ordered under opposing jitter');
+assert.equal(base.sent.find((entry) => entry.seq === 3)?.lane, 'input',
+  'simulated steering preserves the production replaceable lane');
 
 const quantizedScheduler = createQuantizedReverseTieScheduler();
 const quantizedBase = fakeTransport();
@@ -128,15 +133,19 @@ const lossScheduler = createScheduler();
 const lossBase = fakeTransport();
 const lossy = createAdverseNetworkTransport(lossBase, {
   stateLossRate: 1,
+  inputLossRate: 1,
   rng: () => 0,
   clock: lossScheduler.clock,
   schedule: lossScheduler.schedule,
   cancel: lossScheduler.cancel,
 });
 lossy.sendState({ type: 'snapshot', tick: 3 });
+lossy.sendInput({ type: 'input', seq: 4 });
 lossBase.emit({ type: 'snapshot', tick: 6 });
 lossScheduler.run();
 assert.equal(lossy.stats.droppedState, 2,
   'state loss applies independently in both directions');
+assert.equal(lossy.stats.droppedInput, 1,
+  'input loss targets only the replaceable steering lane');
 
 console.log('adverseNetworkTransport.selftest: ordered control, jitter, and loss passed');

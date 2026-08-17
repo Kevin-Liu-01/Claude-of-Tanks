@@ -204,9 +204,9 @@ hits, damage, reload completion, destructibles, and victory are resolved by
 authority.
 
 LAN and private rooms separate ordered reliable control from replaceable state.
-Lobby commands, inputs, combat events, and errors use the reliable channel.
-Viewer-filtered 20 Hz snapshots use an unordered, zero-retransmit state channel
-with acknowledgements, deltas, and periodic keyframes.
+Lobby commands, combat events, and errors use the reliable channel. Live input
+and viewer-filtered 20 Hz snapshots use an unordered, zero-retransmit state
+channel with acknowledgements, edge redundancy, deltas, and periodic keyframes.
 
 Remote vehicles use buffered interpolation and bounded extrapolation. The local
 vehicle predicts the shared movement code and replays unacknowledged input
