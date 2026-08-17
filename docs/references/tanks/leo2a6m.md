@@ -116,6 +116,27 @@ turret-parent 0/0/0. Baseline (donor-wrapper): min 82.8 (whole 82.8, dims
 5. Re-register with componentMasks restored; re-gate; expect hull/turret/
    station rows to become satisfiable (hullMask 11.69 → ~7.8).
 
+## §E EXECUTED — batch 63 (2026-08-17, §5.248 §E round; steps 1-3 landed,
+## step 4 optional-skipped, step 5 deferred)
+The tri-level de-bake LANDED (repair_oracles.py batch 63, new
+census-guarded _tri_region_move op — challenger2 batch-48e class,
+generalized): complete triangles inside the filed rule boxes moved
+verbatim from Object_5 (753t/1040v), Object_7 (615t/621v — incl. the
+baked tube to muzzle 7.964) and Object_3 (668t/1336v cage panels y>1.25)
+into the new TurretBake node under Object_6; source accessor min/max
+re-derived (batch-52 law); Object_9/10 (chassis_vlo wheel-train pair)
+UNTOUCHED as required. Receipts: .bak = pristine c10680a8…, output
+8ece5895… byte-idempotent ×2; per-source censuses exact. OFFICIAL GATE
+×2 BIT-IDENTICAL: **90.9 PASS / dims 100 / floaters 100 — EXACT HOLD**
+(the whole-view mask is move-invariant; the hold IS the byte-move proof).
+Step 4 (y ×0.94 print-tall normalize) NOT taken — optional, no sim
+receipt, and the row passes. Step 5 (componentMasks re-registration)
+DEFERRED per §5.299 ("leo2a6m/leo2a4m §E items DEFER until lane E
+lands") — this repair is provably gate-inert now and simply unlocks the
+future component re-registration lane E will want (hullMask 11.69 ->
+honest post-re-registration). If lane E prefers the pristine print, the
+revert is one command (restore the .bak; demote batch 63 to history).
+
 ## Build notes (ground-up §5.248 rebuild — buildLeo2A6M,
 ## src/vehicles/profiles/leopard.js)
 leoHullV3 family loft (own deck/glacis tables, family stations), leoGear

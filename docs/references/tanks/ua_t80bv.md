@@ -57,6 +57,28 @@ min 2.4 | hull 56.2 whole 2.4 turret 18.9 stations 23.1 dims 94.6 floaters 100
   fused-drum turret defect above; hull carries the +6.4% length overhang.
   All warp-class, banked below.
 
+## §E STOPPED — revision disproven by isolation sims (2026-08-17, §5.248
+## §E round; print PRISTINE, sha 4dd58764…, no recipe landed)
+The REVISE hypothesis (tail-scoped fwd compress rescues hull) is
+DISPROVEN. Three request-interception sims vs the standing row
+2.5/56.8/19.3/26.7/95/100 (receipts scratchpad e-round/t80bv-*.json):
+1. REVISED full plan (banked y_map + tail-scoped fwd_map [[0,0],
+   [0.55,0.28],[6.906,6.78],[9.741,9.66]]): 0 | hull 32.9 whole 0
+   turret 14 stations 36.6 dims 100 — hull STILL craters (56.8->32.9,
+   same as the rejected uniform's 33.9).
+2. Y-MAP ONLY (fwd identity): hull 32.9 whole 0 turret 21.8 stations
+   53.5 dims 95 — THE Y_MAP OWNS THE HULL CRATER (its "directional"
+   receipt was measured on the turret row only: turret +2.5 confirmed,
+   hull -23.9 unmeasured at filing). Max-y drops 3.43->2.66 re-framing
+   every court (k2 batch-56 frame-pin class) + the deck-band compress
+   re-registers the hull rows.
+3. (Uniform fwd receipt stands from the lane's own sim: 33.9.)
+VERDICT: no filed or revised variant survives its own acceptance (hull
+must hold); a working recipe needs a re-derived y_map (frame-pinned kit
+band, deck untouched — pl01/k2 class) — NEW PLAN REQUIRED, not this
+batch's to improvise. Print stays pristine; the whole/turret caps stand
+as documented.
+
 ## BANKED WARP PLAN (§E) — REVISION FLAG
 Frame: mpu 1.010217, ground rawY -0.8870, tail rawF -3.9124 along '-z'.
 ```

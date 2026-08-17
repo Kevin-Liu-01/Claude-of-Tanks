@@ -76,6 +76,24 @@ Geometry hash 417526e2 (63 meshes / 72114 verts). Floor: turretCurves
 31.9 = the print's fused sight-stack columns + basket-follower band
 (documented cap candidates for the §E lane).
 
+## §E EXECUTED — batch 65 (2026-08-17, §5.248 §E round; frame-pin law)
+The fused-sight-stack cap RELEASED (repair_oracles.py batch 65,
+node-scoped y-warp on turret.001 + the lens node). Census: the stack
+cluster reads gate 2.44..2.85 (raw x 0.49..1.09); a thin fused whip owns
+the model max-y at gate 3.48. FRAME-PIN LAW RECEIPT (k2 batch-56 class):
+the first candidate compressed the whip too and CRATERED every row (hull
+62.7->46.8, turret 36.6->23.2 — max-y re-frames every court; receipt
+scratchpad e-round/bmp3-cand-sim.json). The landed map compresses ONLY
+the 2.28..2.755 stack band to the published datum (2.851 -> 2.42) and
+PINS the whip tip exactly (raw 3.366 -> 3.366). hatch5.001 (gate 2.455
+lid, 5cm proud) is not the stack and stays. Receipts: .bak = pristine
+def74f6e…, output c20e0afe… byte-idempotent ×2; landed bytes == sim
+candidate; census (2, 1735, 1318). SIM == OFFICIAL GATE ×2 BIT-IDENTICAL:
+min 36.6 -> **39.8** — hull 62.7 EXACT HOLD (frame pinned), turret
+36.6->39.8, stations 61.4->73.0 (+11.6), whole 52.4->55.4, dims 100 HELD,
+floaters 100 HELD. The basket-follower band residual stays the next
+turret-row rung (family lane).
+
 ## §5.269 FIX ROUND (critic 6.4 -> ordered fixes, 2026-08-17)
 ORDERED + DONE: §B9 gear visibility (the round-1 full-height flank wall was
 an AABB misread — open bays + shallow sponson band per the print's own

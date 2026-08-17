@@ -75,6 +75,28 @@ tubes, coarse cluster, fused skirt banding) — silhouette-reference print
 per the round brief; §E posed/split repair is the unlock.
 Geometry hash 2a697153 (60 meshes / 74478 verts).
 
+## §E STOPPED — split premise disproven by census (2026-08-17, §5.248 §E
+## round; print PRISTINE, sha 790b9a43…, no recipe landed)
+The §5.263 "blockout split" line has no executable surgery in the real
+bytes (full-cluster census per §5.66, real vertex scans):
+1. NO hull-side station/tube content exists: all five hull objects
+   (Object_2/3/4/5/7) top out at gate 1.92 (raw 2.61) — the only content
+   above the turret base plane anywhere is Object_6 itself. The brief's
+   "twin tubes are stubs inside a hull-side object" does not survive the
+   scan (the 808 Object_4 fragments above raw 2.16 are |x| 1.5-2.3
+   fender-band bits, not tubes).
+2. Object_6 (the registered turret node) ALREADY owns the entire station
+   cluster — as 3276 disconnected 4-vert quad shreds (blockout soup, no
+   coherent sub-objects to re-partition).
+3. The turret-row deficit is ABSENT geometry: gate work order reads
+   procBot -2.8 (the authored full-length 2A42 tubes) vs refBot -1.21/-1.8
+   + cover 22.6/4.0 — the print simply has no tube geometry to move
+   (§5.263's own close text: "content the print lacks"). §E surgery
+   cannot synthesize absent content.
+VERDICT: the blockout caps stand as certified; the row's floor is the
+print, not mask ownership. Any future §E action here would need a new
+plan class (e.g., certify permanently).
+
 ## §5.269 FIX ROUND (critic 7.0 -> ordered fixes, 2026-08-17)
 ORDERED + DONE: §B9 skirts raised to 0.76 — the six T-72 wheels read below
 the hem; station dropped a full head (casemate roof 2.55 -> 2.36 world)

@@ -103,6 +103,23 @@ shots/germany-wave/leo2a4m-gate-baseline.json.
   outboard re-hang (inner 1.70) → floaters 0 (islands!) → hinge arms into
   the skirt plate / hull wall (no course at z -3.58) → 0/0 + floaters 100.
 
+## §E SKIPPED — optional ×0.94 measures below the raw ceiling, twice
+## (2026-08-17, §5.248 §E round; print PRISTINE sha b3911324…, no recipe)
+The §5.280 optional deck y-normalize ("would release 89.5→≥90 if clean")
+is DISPROVEN by two request-interception sims vs the standing 89.5/100/
+100 row (receipts scratchpad e-round/leo2a4m-cand*-sim.json):
+1. Uniform ×0.94 above ground (deck 1.91->1.80, whips ride): **86.2** —
+   the whip-top drop re-keys the safeScale clamp chain (the packet's own
+   s 0.7714/k 1.324 hazard) and re-frames every court.
+2. Deck-band-only (belt 0.204 raw -> deck 0.8686, identity above 1.60,
+   whip tops PINNED exact — frame clamp unchanged): **87.3** — the
+   print-tall deck was already priced INTO the translation registration
+   (ceiling cert #1); lowering it re-splits the residual worse.
+VERDICT: the 89.5 certified instrument ceiling STANDS; both normalize
+shapes lose points. Also DEFER-consistent (§5.299: leo2a4m §E defers
+until lane E lands — lane E replaces the turret anyway, re-pricing any
+future normalize plan).
+
 ## Build notes (ground-up §5.248 rebuild — buildLeo2A4M,
 ## src/vehicles/profiles/leopard.js)
 leoHullV3 family loft (same real base hull as the a6m — print corroborates

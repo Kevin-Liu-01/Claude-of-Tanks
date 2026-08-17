@@ -103,6 +103,30 @@ DIMS-100 HOLD receipts: the 4th p95 column chased through the cupola
 cluster (2.213 lug), arc seams (2.202), and finally the whip stubs' AA-
 faded tips (2.2016-2.2124 phase-dependent) — stubs now end under the 2.19
 crown; heightM reads 2.19 pct 0.05 with real margin.
+
+## §E EXECUTED — batch 59 (2026-08-17, §5.248 §E round; COUPLED plan landed)
+Both filed steps LANDED in one recipe (repair_oracles.py batch 59):
+(1) chassis_vlo excision (_detach_child_node on the 8794v mesh node) and
+(2) the axis rescale — WITH the batch's key finding: the vlo shell OWNED
+the print's width extremes (raw ±1.832/1.841 vs real chassis ±1.756/1.718),
+so the excision re-keys the width anchor ×1.0579 (mpu 0.977409 -> 1.033281,
+accessor==real verified) and the filed gate-meter literals were translated
+into the POST-DELETE frame: deck read 1.649 -> its true 1.56 line, crest
+reads 2.602-2.750 -> 2.19-2.31 published, met-mast -> 2.62 (pt91m family
+mast landing, 1-col p95-exempt), muzzle pinned rear+9.67. The vlo bake had
+ALSO stretched the 12%-filter body window — post-delete the honest body
+reads +0.9%, so the filed z ×0.94 became ×0.9912. SIM chain (unmodified
+gate, request-interception): pristine 0/5.2/0.6/0/100/100 -> delete-only
+64.1/47.9/43.8/5.3 -> full recipe 68.3/37.6/56.9/24.6; landed bytes ==
+sim candidate EXACTLY. Receipts: .bak = pristine fe51b45b…, output
+187f6268… byte-idempotent ×2; census (19, 17977, 14990) post-detach.
+OFFICIAL GATE ×2 BIT-IDENTICAL: min 0 -> **24.6** — hull 0->68.3, whole
+5.2->37.6, turret 0.6->56.9, stations 0->24.6, dims 100 HELD, floaters
+100 HELD; side/front registration DE-POISONED (dy 0.27-0.29 -> 0.036/
+0.021, dAlong ~0). front-row residual = post-warp re-anchor debt (m26
+batch-42 class) — the poland lane's ladder resumes from the new work
+order. Post-warp extract regenerated (docs/references/vertex/
+pt91_twardy.json, warped frame — the family lane authors from it).
 CLOSE (x2 bit-identical): dims 100 HELD / floaters 100 HELD / whole 5.2 /
 turret 0.6 / hull 0 / stations 0 (all chassis_vlo-capped as certified —
 the excision plan stands). Audits: clip 0/0+0/0 strict, parent 0/0/0,

@@ -384,3 +384,19 @@ Geometry hash 479ce768 -> 73ee54e0 (same 73 meshes / 82858 verts —
 position-only rung). turret-plan 0 remains the OWNER-CERTIFIED §B8
 centered-turret override cost (spec comment; unchanged). Close rows in
 the ×2 section of the round report.
+
+## §E EXECUTED — batch 64 (2026-08-17, §5.248 §E round)
+The FILED normalize plan LANDED (repair_oracles.py batch 64): z ×1.0418
+about the mask mid (raw -0.030), y ×1.0444 about ground, x untouched —
+on the gate's committed-path oracle public/models/tanks/community/
+spz_puma.glb (the community-candidates/spz_puma_42manako.glb copy stays
+the untouched provenance archive; the two now intentionally differ).
+Receipts: .bak = pristine d6fb2ecb… (== the packet's md5-verified
+re-drop bytes), output 9714eacc… byte-idempotent ×2; landed bytes == sim
+candidate; census (37, 38991, 21108). SIM == OFFICIAL GATE ×2
+BIT-IDENTICAL: hull 39.3->**43.8**, whole 16.4->**23.0**, stations
+13.5->**18.4**, dims 100 HELD, floaters 100 HELD; turret_plan 0 stays =
+the OWNER-CERTIFIED §B8 seat departure (min unchanged at that override).
+The post-warp re-anchor ("re-anchor from a fresh extract before any
+column chase", residual-1) now applies — extract regenerated on the
+warped bytes this batch.

@@ -63,6 +63,17 @@ min 82.3 | whole 82.3 dims 100 floaters 100   (hull/turret/stations vacuous — 
   band (+24% bodyH) — warp-blocked, banked below; remaining fixable slack
   is the K-5 wedge plan sweep + glacis detail.
 
+## §E SKIPPED — raw close verified better on the current tree (2026-08-17,
+## §5.248 §E round; print PRISTINE, sha eaa2136b…, no recipe landed)
+The optional warp was RE-VERIFIED against the current tree (post-§5.272
+build 1332bd55) via request-interception with the banked candidate bytes:
+sim whole 83.4 / dims 89.9 / floaters 100 (receipt scratchpad
+e-round/kursk-verify-sim.json) vs the standing raw close 82.6 / dims 100.
++0.8 whole buys -10.1 dims — dims sovereignty confirms the packet's own
+adjudication: the RAW instrument close is the better line. Warp stays
+unexecuted; the ~8-pt whole ladder (K-5 wedge plan + turret front vs the
+raw print) remains the documented build-side path.
+
 ## BANKED WARP PLAN (§E)
 Frame: mpu 0.240642, ground rawY 1.0002, tail rawF 1105.3977 along '-x'.
 ```

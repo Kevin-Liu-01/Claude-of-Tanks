@@ -66,6 +66,23 @@ min 0 | hull 3.9 whole 21.6 turret 0 stations 42.1 dims 100 floaters 100
   `stations 76.7 wholeCurves 39.4 dims 100 floaters 100` and climbing with
   the v4 turret; turret rows remain the ladder tail after the warp lands.
 
+## §E EXECUTED — batch 61 (2026-08-17, §5.248 §E round)
+The banked warp LANDED (repair_oracles.py batch 61; the plan's frame
+converted to raw knots, and the scratchpad candidate's vertex mapping was
+RECOVERED and matches these knots exactly — sample err <2e-5 raw).
+Receipts: .bak = pristine 761c8698…, output fcc9de7b… byte-idempotent ×2;
+census (13, 27936, 18992). OFFICIAL GATE ×2 BIT-IDENTICAL: min 0 (print-
+cap held as forecast) — whole 18.4->**35.3**, stations 44.6->**68.5**,
+hull 8.1->0 (the sim's own forecast number), turret 0 (forecast 0), dims
+100 HELD, floaters 100 HELD. vs the filed sim (stations 76.7/whole 39.4):
+-8.2/-4.1 — attributed, not plan-drift: the scratch candidate carried
+PRISTINE normals (no Jacobian transform — receipt: candidate NORMAL rows
+== pristine) + sub-mm knot precision, and the proc moved after sim-time
+(procExt h 2.275->2.264, the §5.272 fix landing); the landed bytes are the
+registry-standard warp math. The hull/turret ladder resumes from the new
+work order (family lane); the y_map furniture-knot variant (2.15->2.38)
+stays the documented ASK-ORCHESTRATOR option.
+
 ## BANKED WARP PLAN (for repair_oracles.py — §E, orchestrator lane)
 Self-measured frame: mpu 3.600129 m/raw-unit (width-anchored), ground
 rawY 0.0364, body tail rawF -0.9475 along fwd '-z'.

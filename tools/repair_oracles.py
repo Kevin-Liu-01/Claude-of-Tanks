@@ -4530,5 +4530,400 @@ REPAIRS['k2'] = {
 }
 
 
+# =============================================================== batch 57 ===
+# §5.248 §E ROUND — STRV103 BODY Z-STRETCH ×1.223 (sweden lane plan filed
+# §5.262 / strv103.md "INSTRUMENT DEFECT — LENGTH-SHORT PRINT"): at the width
+# anchor the print's body reads 5.757 m vs published 7.04 (-18.2%), overall
+# 7.999 vs 8.99. Literals derive from the committed extract frame
+# (docs/references/vertex/strv103.json: gate_z = -4.016993*raw_x - 0.0151,
+# body gate [-3.963, 1.794], box gate ±4.006): body ×1.222859 about the body
+# mid -1.0845, rear slab translates (slope 1), gun zone lands the muzzle at
+# tail'+8.99 (slope 0.862 — the packet's "published 2.0 m overhang" = 1.95
+# exact). Width (raw z) and height (raw y) untouched — y identity, print
+# stature stays the documented +3.5% cap; §5.271's bow items are BUILD-side
+# and not part of this repair. LOCAL-ONLY print (gitignored): the recipe is
+# the durable record; census taken from the pristine bytes this batch.
+REPAIRS['strv103'] = {
+    'path': 'public/models/community-candidates/strv103b_lamonekeli.glb',
+    'ops': [
+        ('py2', _axis_warp('strv103', long_axis='x',
+                           y_map=[(-0.31, -0.31), (0.28, 0.28)],
+                           long_map=[(-1.001022, -1.084792),
+                                     (-0.450362, -0.610058),
+                                     (0.9828, 1.142496),
+                                     (0.993504, 1.153201)],
+                           y_top_max=0.30, expect=(3, 174965, 253638))),
+    ],
+}
+
+
+# =============================================================== batch 58 ===
+# §5.248 §E ROUND — STRV81 WHIP-PAIR EXCISION (sweden lane plan filed §5.262
+# / strv81.md "THE WHIP PAIR"): the print fuses two large raked whip
+# antennas INTO turret_0 (t64bv1-rail/ztz85_iii-whip class). Census (real
+# vertex scan, pristine bytes): the pair is EXACTLY two index-connected
+# 46v/68t thin prisms — raw tops 2.098/1.842 = gate 4.20/3.69 (the packet's
+# front-view receipt "x ±0.4 columns read ref tops 3.7-4.2"). The 2-6 tri
+# AA-sliver debris at gate 3.0-3.17 near the cupola region is NOT in the
+# filed plan and stays. rebuild_bounds=True: the pair owns the prim's y-max,
+# so accessor min/max must re-derive or the excised band keeps poisoning
+# every box-keyed frame (batch-52 law). Delete-only (the build carries
+# base-matched p95-safe short whips; matching the fused pair reads heightM
+# 3.5-3.6 vs published 3.01 => dims 0 — packet receipts).
+REPAIRS['strv81'] = {
+    'path': 'public/models/community-candidates/strv81_mmdsonic.glb',
+    'ops': [
+        ('py2', _index_surgery('strv81', 'turret_0_turret_0_0',
+                               delete_rules=(
+                                   ((-0.35, -0.28, 1.40, 2.20, -0.10, 0.45), 0.0, 0.30),
+                                   ((0.18, 0.25, 1.40, 2.20, 0.40, 1.40), 0.0, 0.30),
+                               ),
+                               expect_delete=(2, 92, 136),
+                               rebuild_bounds=True)),
+    ],
+}
+
+
+# =============================================================== batch 59 ===
+# §5.248 §E ROUND — PT91_TWARDY COUPLED VLO-EXCISION + AXIS RESCALE (poland
+# lane plan filed §5.261 / pt91_twardy.md "_vlo AUDIT verdict POLLUTED" +
+# "Reported normalize plan"). chassis_vlo is a whole-vehicle LOD shell riding
+# the hull side: it bakes the at-rest turret + FULL GUN into every hull mask
+# and poisons side/front registration (dy 0.27-0.29). It ALSO owned the
+# print's width extremes (raw ±1.832/1.841 vs real chassis ±1.756/1.718), so
+# the excision re-keys the width anchor ×1.0579 (mpu 0.977409 -> 1.033281,
+# real-vertex == accessor box post-delete, verified) — the filed gate-meter
+# literals (deck 1.56 identity knee, crest 2.46-2.60 -> 2.19-2.31, hull
+# 7.38 -> 6.95) are therefore translated into the POST-DELETE frame: deck
+# read 1.649 -> its true 1.56 line, crest reads 2.602-2.750 -> 2.19-2.31
+# published, met-mast tail knot -> 2.62 (pt91m family-plan mast landing;
+# thin 1-col spike, p95-exempt), body window (raw z -3.484..3.302, reads
+# 7.012) -> 6.95, muzzle pinned at rear extreme + 9.67 published (the vlo
+# bake had also been stretching the 12%-filter body window — post-delete
+# the honest body reads +0.9%, so the filed x0.94 became x0.9912).
+# REQUEST-INTERCEPTION SIM (unmodified gate, tools/tmp-e-simgate.mjs):
+# pristine 0/5.2/0.6/0/100/100 -> delete-only 64.1/47.9/43.8/5.3/100/100 ->
+# THIS RECIPE 68.3/37.6/56.9/24.6/100/100 (registration de-poisoned: side
+# dy 0.036 / front dy 0.021 / dAlong ~0; refExt h 2.772 -> 2.254, len
+# 7.014). front-row residual = post-warp re-anchor debt (m26 batch-42 /
+# m47 batch-34 class, poland family lane resumes the ladder).
+REPAIRS['pt91_twardy'] = {
+    'path': 'public/models/community-candidates/pt91a_manako.glb',
+    'ops': [
+        ('py', _detach_child_node('pt91_twardy', 'chassis_vlo_chassis.0_0',
+                                  expect_verts=8794)),
+        ('py2', _axis_warp('pt91_twardy', long_axis='z',
+                           y_map=[(-1.0634, -1.0634), (0.5327, 0.4464),
+                                  (1.4535, 1.0561), (1.5967, 1.1722),
+                                  (2.6326, 1.4722)],
+                           long_map=[(-6.1415, -5.4759), (-3.484, -3.454),
+                                     (3.302, 3.272), (3.9126, 3.8826)],
+                           y_top_max=1.50, expect=(19, 17977, 14990))),
+    ],
+}
+
+
+# =============================================================== batch 60 ===
+# §5.248 §E ROUND — PL01 RWS/EO/MAST NORMALIZE + CANNON EXTENSION (poland
+# lane plan filed §5.261 / pl01.md "Reported normalize plan", literals
+# native-scale ≈ world ×0.9958). Census decoded the plan's groups: the "EO
+# domes ~2.87 crowns" are Cylinder.002/.004 (38k-vert flanking pods, crowns
+# native 2.889), the "sight-mast head 3.00" is the Cylinder.005 subtree
+# (CamHolder>Cameras>CamCovers, top 3.043), the RWS field is TurretBase/
+# TurretBody/TurretBarrel/ExplosionTubes/TurretShields + the Cylinder.003
+# ring (band 2.838..3.444). Four node-scoped warps: RWS [2.888,3.448] ->
+# [2.86,3.02] (filed literals), EO crowns -> 2.86, mast head 3.043 -> 3.00,
+# Cannon +z stretch beyond the TowerBarrelCover end (identity to 3.902, the
+# covered segment must not slide) landing the muzzle 4.8905 -> 5.358 =
+# published overall (filed literal). SIM (unmodified gate): 63.1/85.6/67.2/
+# 76.2/100/100 -> 66.9/82.2/69.9/80.8/99.6/100 — side_whole/side_turret/
+# stations caps RELEASE (+3.8 min); hull -3.4 + dims -0.4 (heightM 2.83 @
+# 1.05%, the §5.290 1.04cm pixel-row quantization at the grace edge) =
+# post-warp re-anchor debt, m26 batch-42 class; the build's RWS window
+# re-lofts to the normalized heights in the poland family round 2.
+REPAIRS['pl01'] = {
+    'path': 'public/models/community-candidates/pl01_501st.glb',
+    'ops': [
+        ('py2', _axis_warp('pl01', long_axis='z',
+                           y_map=[(2.79, 2.79), (2.888, 2.86), (3.448, 3.02)],
+                           long_map=[(-2.5, -2.5), (-0.8, -0.8)],
+                           y_top_max=3.03, expect=(9, 63734, 80534),
+                           node_scope=r'^(?:TurretBase|TurretBody|TurretBarrel|ExplosionTubes|TurretShields|Cylinder\.003)$')),
+        ('py2', _axis_warp('pl01', long_axis='z',
+                           y_map=[(2.5, 2.5), (2.889, 2.86)],
+                           long_map=[(-1.4, -1.4), (-0.6, -0.6)],
+                           y_top_max=2.87, expect=(4, 96846, 149440),
+                           node_scope=r'^Cylinder\.00[24]$')),
+        ('py2', _axis_warp('pl01', long_axis='z',
+                           y_map=[(2.7, 2.7), (3.043, 3.0)],
+                           long_map=[(-0.2, -0.2), (0.6, 0.6)],
+                           y_top_max=3.01, expect=(6, 6217, 7332),
+                           node_scope=r'^Cylinder\.005$')),
+        ('py2', _axis_warp('pl01', long_axis='z',
+                           y_map=[(2.1, 2.1), (2.4, 2.4)],
+                           long_map=[(2.598, 2.598), (3.902, 3.902),
+                                     (4.8905, 5.358)],
+                           y_top_max=2.45, expect=(1, 16708, 33216),
+                           node_scope=r'^Cannon$')),
+    ],
+}
+
+
+# =============================================================== batch 61 ===
+# §5.248 §E ROUND — UA_T84_OPLOT_M WARP (ukraine lane BANKED PLAN, filed
+# §5.265 w/ literals + SIM-VERIFIED candidate bytes in the round scratchpad;
+# packet ua_t84_oplot_m.md "BANKED WARP PLAN"). Print stylization: hull mask
+# -10.4%, overall -9.6%, roof-kit band +14..19%. Plan frame: mpu 3.600129
+# m/raw-unit (width-anchored), ground rawY 0.0364, body tail rawF -0.9475
+# along fwd '-z'. Gate-meter maps y [[0,0],[1.40,1.40],[1.95,2.285],
+# [3.38,2.80]] / fwd [[0,0],[5.825,7.08],[8.463,9.72]] converted below; the
+# scratchpad candidate's vertex mapping was RECOVERED and matches these
+# knots exactly (sample err < 2e-5 raw). SIM forecast (request-interception,
+# unmodified gate): stations 76.7 / whole 39.4 / dims 100 / floaters 100.
+REPAIRS['ua_t84_oplot_m'] = {
+    'path': 'public/models/community-candidates/oplot_m_manako.glb',
+    'ops': [
+        ('py2', _axis_warp('ua_t84_oplot_m', long_axis='z',
+                           y_map=[(0.0364, 0.0364), (0.425275, 0.425275),
+                                  (0.578047, 0.671099), (0.975255, 0.81415)],
+                           long_map=[(-1.403249, -1.752403),
+                                     (-0.670498, -1.019096),
+                                     (0.9475, 0.9475)],
+                           y_top_max=0.8197, expect=(13, 27936, 18992))),
+    ],
+}
+
+
+# =============================================================== batch 62 ===
+# §5.248 §E ROUND — UA_T64BV WARP (ukraine lane BANKED PLAN, filed §5.265 w/
+# literals + SIM-VERIFIED candidate bytes; packet ua_t64bv.md "BANKED WARP
+# PLAN"). Print stylization: body -9.6%, overall -13.5%, roof-kit band +22%.
+# Plan frame: mpu 0.928041, ground rawY 0.0381, tail rawF -3.0534 along
+# '-z'. Gate-meter maps y [[0,0],[1.35,1.35],[2.28,2.17],[2.70,2.35]] / fwd
+# [[0,0],[5.732,6.54],[7.957,9.23]] converted below; candidate mapping
+# recovered and matches (y err 2e-5, z err 5e-4 raw = sub-mm authoring
+# precision). SIM forecast: hull 62.8 / stations 50.6 / whole 43.6 / dims
+# 91.8 (the dims move is the shared-frame requantization priced INTO the
+# filed forecast; the ladder resumes from the sim work order post-warp).
+REPAIRS['ua_t64bv'] = {
+    'path': 'public/models/community-candidates/t64bv_donbass_manako.glb',
+    'ops': [
+        ('py2', _axis_warp('ua_t64bv', long_axis='z',
+                           y_map=[(0.0381, 0.0381), (1.492777, 1.492777),
+                                  (2.494888, 2.376359), (2.947454, 2.570316)],
+                           long_map=[(-5.520575, -6.892281),
+                                     (-3.123051, -3.993702),
+                                     (3.0534, 3.0534)],
+                           y_top_max=2.5919, expect=(228, 52781, 40697))),
+    ],
+}
+
+
+# BATCH-63 EXCEPTION (leo2a6m chassis.0 de-bake): `_tri_region_move` — a
+# census-guarded PER-TRIANGLE region repartition (the challenger2 batch-48e
+# "complete source triangles copied unchanged" class, generalized): complete
+# triangles whose three verts ALL sit inside a world-frame rule box move,
+# with their attribute rows copied verbatim (no transform — source and
+# target share the ancestor chain, asserted), into ONE new mesh/node under a
+# named parent. Source prims re-point at trimmed index accessors and their
+# POSITION min/max re-derive from the KEPT referenced verts (batch-52 law —
+# the moved set owns extremes like the leo2a6m muzzle 7.96). expect is an
+# exact per-source (moved_tris, moved_verts) census — mismatch refuses.
+def _tri_region_move(tank_id, *, sources, target_parent, new_node_name):
+    """sources: tuple of (node_name, rule_boxes, expect_tris, expect_verts)
+    where rule_boxes is a tuple of (x0,x1,y0,y1,z0,z1) world-frame boxes; a
+    triangle moves when ALL THREE verts sit inside ANY one box."""
+    def op(gltf, chunks, _id=tank_id, srcs=tuple(sources),
+           parent_name=target_parent, new_name=new_node_name):
+        bi = _bin_chunk_index(chunks)
+        data = bytearray(chunks[bi][1])
+        pni = find_node(gltf, parent_name)
+        parent_world = node_world_matrix(gltf, pni)
+        new_prims = []
+        for (node_name, boxes, exp_tris, exp_verts) in srcs:
+            ni = find_node(gltf, node_name)
+            node = gltf['nodes'][ni]
+            world = node_world_matrix(gltf, ni)
+            # frame-identity assert: source and target must share the world
+            # frame so verbatim row copies land in place under the parent.
+            if any(abs(a - b) > 1e-9 for a, b in zip(world, parent_world)):
+                raise SystemExit(f'{_id}: {node_name} world differs from '
+                                 f'{parent_name} — verbatim move unsafe')
+            prim = gltf['meshes'][node['mesh']]['primitives'][0]
+            idx_acc = gltf['accessors'][prim['indices']]
+            if idx_acc['componentType'] not in (5123, 5125):
+                raise SystemExit(f'{_id}: expected uint16/uint32 indices')
+            ichar = 'H' if idx_acc['componentType'] == 5123 else 'I'
+            itype = idx_acc['componentType']
+            idx = [v[0] for v in _read_rows(gltf, data, prim['indices'])]
+            pos = _read_rows(gltf, data, prim['attributes']['POSITION'])
+            W = [transform_point(world, p) for p in pos]
+
+            def inside(w, boxes=boxes):
+                for (x0, x1, y0, y1, z0, z1) in boxes:
+                    if x0 <= w[0] <= x1 and y0 <= w[1] <= y1 and z0 <= w[2] <= z1:
+                        return True
+                return False
+            kept, moved = [], []
+            for k in range(0, len(idx) - 2, 3):
+                t = (idx[k], idx[k + 1], idx[k + 2])
+                if all(inside(W[i]) for i in t):
+                    moved.append(t)
+                else:
+                    kept.extend(t)
+            mverts = sorted({v for t in moved for v in t})
+            if (len(moved), len(mverts)) != (exp_tris, exp_verts):
+                raise SystemExit(f'{_id}: {node_name} census mismatch — '
+                                 f'expected ({exp_tris}, {exp_verts}) '
+                                 f'(tris, verts), got ({len(moved)}, '
+                                 f'{len(mverts)}); refusing to write')
+            # trimmed source indices
+            nbv = _bin_append(gltf, data, struct.pack(f'<{len(kept)}{ichar}', *kept), 34963)
+            gltf['accessors'].append({'bufferView': nbv, 'componentType': itype,
+                                      'count': len(kept), 'type': 'SCALAR'})
+            prim['indices'] = len(gltf['accessors']) - 1
+            used = sorted(set(kept))
+            if not used:
+                raise SystemExit(f'{_id}: {node_name} emptied — refusing')
+            pos_acc = gltf['accessors'][prim['attributes']['POSITION']]
+            pos_acc['min'] = [min(pos[v][k] for v in used) for k in range(3)]
+            pos_acc['max'] = [max(pos[v][k] for v in used) for k in range(3)]
+            # moved prim (verbatim attribute rows)
+            remap = {v: i for i, v in enumerate(mverts)}
+            attrs = {}
+            for name, ai in prim['attributes'].items():
+                acc, ncomp, fmt, offset, stride = _acc_reader(gltf, data, ai)
+                rows = [struct.unpack_from('<' + fmt * ncomp, data,
+                                           offset + i * stride) for i in mverts]
+                payload = b''.join(struct.pack('<' + fmt * ncomp, *r) for r in rows)
+                abv = _bin_append(gltf, data, payload, 34962)
+                new_acc = {'bufferView': abv, 'componentType': acc['componentType'],
+                           'count': len(mverts), 'type': acc['type']}
+                if name == 'POSITION':
+                    new_acc['min'] = [min(r[k] for r in rows) for k in range(ncomp)]
+                    new_acc['max'] = [max(r[k] for r in rows) for k in range(ncomp)]
+                gltf['accessors'].append(new_acc)
+                attrs[name] = len(gltf['accessors']) - 1
+            gidx = [remap[v] for t in moved for v in t]
+            gbv = _bin_append(gltf, data, struct.pack(f'<{len(gidx)}{ichar}', *gidx), 34963)
+            gltf['accessors'].append({'bufferView': gbv, 'componentType': itype,
+                                      'count': len(gidx), 'type': 'SCALAR'})
+            nprim = {'attributes': attrs, 'indices': len(gltf['accessors']) - 1}
+            if 'material' in prim:
+                nprim['material'] = prim['material']
+            new_prims.append(nprim)
+            print(f'[repair] {_id}: {node_name} -> {len(moved)} tris '
+                  f'({len(mverts)} verts) staged for {new_name}')
+        gltf['meshes'].append({'name': new_name, 'primitives': new_prims})
+        gltf['nodes'].append({'name': new_name, 'mesh': len(gltf['meshes']) - 1})
+        gltf['nodes'][pni].setdefault('children', []).append(len(gltf['nodes']) - 1)
+        gltf['buffers'][0]['byteLength'] = len(data)
+        chunks[bi] = (BIN_CHUNK, bytes(data))
+        print(f'[repair] {_id}: {new_name} attached under {parent_name} '
+              f'({len(new_prims)} prims)')
+    return op
+
+
+# =============================================================== batch 63 ===
+# §5.248 §E ROUND — LEO2A6M CHASSIS.0 DE-BAKE (germany lane plan filed
+# §5.280 / leo2a6m.md "§E repair plan", tri-level literals): the chassis.0
+# detail shells Object_5/Object_7 bake the FULL GUN TUBE (x > 4.31, |z| <
+# 0.25, 1.10 < y < 1.60 — muzzle 7.964 is the overall extreme) and an
+# at-rest TURRET BAND (y > 1.25, -3.45 < x < 3.10, |z| < 1.55) into the
+# hull side; Object_3 (Slat_Armor.0) parks turret cage panels (y > 1.25)
+# hull-side. All three regions MOVE (complete triangles, verbatim rows)
+# into the new TurretBake node under Object_6 (the clean welded turret).
+# Object_9/10 (chassis_vlo pair) UNTOUCHED — the print's ONLY wheel train,
+# benign-REQUIRED per the audit. Rule literals are world-frame (the audit's
+# glb frame, nose +x; node0 carries the axis-permutation matrix — sources
+# and target share the chain, asserted identity in-op). Census (real vertex
+# scan, pristine bytes): O5 753/13398 tris (1040v), O7 615/7386 (621v),
+# O3 668/2404 (1336v). The optional y ×0.94 print-tall normalize (plan step
+# 4) is NOT taken — the row PASSES at 90.9 and the step has no sim receipt.
+# Registration stays componentMasks:false this batch (the plan's step 5
+# re-registration is a FUTURE germany-lane round; the whole-view mask is
+# move-invariant so the standing 90.9/100/100 row must HOLD EXACTLY — that
+# hold IS this repair's gate receipt; the structural de-bake unlocks the
+# future component re-registration).
+REPAIRS['leo2a6m'] = {
+    'path': 'public/models/community-candidates/leo2a6m_arrafi.glb',
+    'ops': [
+        ('py2', _tri_region_move('leo2a6m',
+                                 sources=(
+                                     ('Object_5',
+                                      ((4.31, 99.0, 1.10, 1.60, -0.25, 0.25),
+                                       (-3.45, 3.10, 1.25, 99.0, -1.55, 1.55)),
+                                      753, 1040),
+                                     ('Object_7',
+                                      ((4.31, 99.0, 1.10, 1.60, -0.25, 0.25),
+                                       (-3.45, 3.10, 1.25, 99.0, -1.55, 1.55)),
+                                      615, 621),
+                                     ('Object_3',
+                                      ((-99.0, 99.0, 1.25, 99.0, -99.0, 99.0),),
+                                      668, 1336),
+                                 ),
+                                 target_parent='Object_6',
+                                 new_node_name='TurretBake')),
+    ],
+}
+
+
+# =============================================================== batch 64 ===
+# §5.248 §E ROUND — SPZ_PUMA NORMALIZE (AFV lane plan FILED with literals,
+# spz_puma.md "NORMALIZE PLAN": z ×1.0418 about the mask mid, y ×1.0444
+# about ground, x untouched — the print reads -4% UNIFORM under the
+# width-anchored harness; the build was AUTHORED in the post-warp frame so
+# the warp pairs it). Frame (docs/references/vertex/spz_puma.json): raw
+# nose +x, gate z = 0.050032*raw_x, ground raw 0; mask mid raw -0.030,
+# box raw x ±73.03, top raw 84.73. Wheel-region ellipse ~4% accepted
+# (batch-38 class, filed). SIM (unmodified gate): 0/39.3/16.4/0/13.5/100/
+# 100 -> 0 | hull 43.8 whole 23.0 stations 18.4 dims 100 floaters 100 —
+# every releasable row up; turret_plan 0 is the OWNER-CERTIFIED §B8
+# centered-turret seat departure (0.285 m, packet record) and stays by
+# design. NOTE: this print is the committed-path oracle
+# public/models/tanks/community/spz_puma.glb (gitignored bytes); the
+# community-candidates/spz_puma_42manako.glb copy is the untouched
+# provenance archive — post-repair the two intentionally differ.
+REPAIRS['spz_puma'] = {
+    'path': 'public/models/tanks/community/spz_puma.glb',
+    'ops': [
+        ('py2', _axis_warp('spz_puma', long_axis='x',
+                           y_map=[(0.0, 0.0), (84.73, 88.492)],
+                           long_map=[(-73.03, -76.0814), (73.02, 76.0735)],
+                           y_top_max=88.6, expect=(37, 38991, 21108))),
+    ],
+}
+
+
+# =============================================================== batch 65 ===
+# §5.248 §E ROUND — BMP3 FUSED-SIGHT-STACK NORMALIZE (IFV lane cap
+# candidates filed §5.263 / bmp3.md: "turretCurves floor = the print's
+# fused sight-stack columns"; two-datum class — stack reads 2.645 p95 vs
+# the published 2.40 turret-roof datum). Census: the stack cluster lives in
+# turret.001 (raw x 0.49..1.09, tops gate 2.44..2.85) + the lens node rides
+# it; a thin fused whip (raw x -0.07..0.03) owns the model max-y at gate
+# 3.48. FRAME-PIN LAW (k2 batch-56): the first candidate compressed the
+# whip too and CRATERED every row (hull 62.7->46.8, turret 36.6->23.2 —
+# changing max-y re-frames every court; receipt
+# scratchpad e-round/bmp3-cand-sim.json). The landed map compresses ONLY
+# the 2.28..2.755 stack band to the published datum (gate 2.851 -> 2.42)
+# and PINS the whip tip exactly (2.755..3.366 re-stretches so raw 3.366 ->
+# 3.366; max-y/camera framing exact). hatch5.001 (top gate 2.455, 5 cm
+# proud lid) is not the stack and stays. SIM: 36.6/62.7/52.4/61.4/100/100
+# -> 39.8 | hull 62.7 EXACT-HOLD, whole 55.4, stations 73.0, dims 100,
+# floaters 100.
+REPAIRS['bmp3'] = {
+    'path': 'public/models/community-candidates/bmp3_rok_42manako.glb',
+    'ops': [
+        ('py2', _axis_warp('bmp3', long_axis='x',
+                           y_map=[(2.28, 2.28), (2.755, 2.338),
+                                  (3.366, 3.366)],
+                           long_map=[(-0.5, -0.5), (2.0, 2.0)],
+                           y_top_max=3.40, expect=(2, 1735, 1318),
+                           node_scope=r'^(?:turret\.001_bmp3-turret_5_0|lens_bmp3-turret_6_0)$')),
+    ],
+}
+
+
 if __name__ == '__main__':
     sys.exit(main(sys.argv[1:]))

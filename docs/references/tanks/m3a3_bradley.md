@@ -68,6 +68,34 @@ defective instrument (rest-pose parts kit — receipts in the packet);
 §E posed-bake repair is the unlock.
 Geometry hash 17f88614 (60 meshes / 61359 verts).
 
+## §E STOPPED — skinned-bounds hypothesis disproven; no framing defect
+## exists (2026-08-17, §5.248 §E round; print PRISTINE sha a5a3a985…,
+## reference-glb-loader UNTOUCHED)
+The §5.269 instrument-finding-2 chain ("renders assembled; parts-kit read
+was an AABB artifact; bounds ignore skinning; ref-side framing fix") fails
+every fact-check against the real bytes:
+1. The print has ZERO skins / zero SkinnedMeshes (231 plain mesh nodes
+   under 65 bone-NAMED plain group nodes) — the claimed mechanism
+   ("bounds ignore skinning") has nothing to act on.
+2. Accessor min/max == real-vertex boxes EXACTLY (world box x 5.525 /
+   y 3.781 / z 5.900) — no bounds lie of any kind.
+3. The single animation ("M3a3 action", 5 channels) is articulation-only
+   (turret yaw ~25°, gun/hatch pitches) and its frame-0 EQUALS the static
+   TRS — no assembling pose exists anywhere in the file (1 scene, no
+   exotic extensions).
+4. The static scene is GENUINELY part-scattered: PCA spans 6.17 × 5.74 m
+   (published 6.55 × 3.28), y to 3.72 (published 2.98), dual track runs
+   (the packet's own receipt).
+5. The gate frames it truthfully: refExt 3.412 × 1.591 == the width
+   normalization of the scatter-wide box — instrument CORRECT on
+   defective input.
+VERDICT: there is no loader/gate framing fix to make (absent-param
+byte-identity holds trivially — no code changed); a posed-bake cannot
+source an assembled pose from these bytes. The curve-0 floor is the
+PRINT's static parts-kit pose, now precisely characterized. The honest
+row stands (min 0, dims 100, floaters 100). Any unlock requires a new
+oracle drop or a hand-authored pose plan (owner/orchestrator ask).
+
 ## §5.269 FIX ROUND (critic 8.6, one fix from PASS, 2026-08-17)
 ORDERED + DONE: the TOW launcher rebuilt at REAL DEPTH on the A3 elevating
 bracket — wall root block, trunnion boss, cradle arm plate, full 0.42 ×

@@ -61,6 +61,21 @@ min 30.2 | hull 39.6 whole 30.2 turret 34.3 stations 35.4 dims 99.8 floaters 100
   (banked warp). Post-warp SIM: hull 62.8 / stations 50.6 / whole 43.6 /
   dims 91.8 — the ladder resumes from the sim work order after the warp.
 
+## §E EXECUTED — batch 62 (2026-08-17, §5.248 §E round)
+The banked warp LANDED (repair_oracles.py batch 62; raw knots converted
+from the plan frame; candidate mapping recovered and matched — y 2e-5 /
+z 5e-4 raw). Receipts: .bak = pristine 57676493…, output 99c27a43…
+byte-idempotent ×2; census (228, 52781, 40697). OFFICIAL GATE ×2
+BIT-IDENTICAL: hull 39.6->**56.3**, whole 30.5->**42.9**, stations
+36.8->**49.3**, dims 99.8->**91.8 = the filed forecast's own number**
+(shared-frame requantization priced into the plan), floaters 100 HELD;
+turret 30.8->24.9 (now the min; sim said 32.1 — the -7.2 delta is
+attributed to the scratch candidate's PRISTINE normals + sub-mm knots
+[receipt: candidate NORMAL rows == pristine bytes] pricing knife-edge
+chevron/mask columns differently; proc extents identical sim-vs-now).
+The per-node z-scope refinement for the fused rear-rack masses stays a
+documented follow-up option; the ladder resumes from the new work order.
+
 ## BANKED WARP PLAN (§E)
 Frame: mpu 0.928041, ground rawY 0.0381, tail rawF -3.0534 along '-z'.
 ```

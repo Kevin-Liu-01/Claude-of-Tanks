@@ -87,10 +87,10 @@
    "geoMin": 0,
    "gatePassed": false,
    "components": {
-    "hullCurves": 39.3,
-    "stations": 13.5,
+    "hullCurves": 43.8,
+    "stations": 18.4,
     "turretCurves": 0,
-    "wholeCurves": 16.4,
+    "wholeCurves": 23,
     "dims": 100,
     "floaters": 100
    }
@@ -1210,14 +1210,14 @@
   },
   {
    "id": "pl01",
-   "geoMin": 63.1,
+   "geoMin": 66.9,
    "gatePassed": false,
    "components": {
-    "hullCurves": 85.6,
-    "stations": 76.2,
-    "turretCurves": 67.2,
-    "wholeCurves": 63.1,
-    "dims": 100,
+    "hullCurves": 82.2,
+    "stations": 80.8,
+    "turretCurves": 69.9,
+    "wholeCurves": 66.9,
+    "dims": 99.6,
     "floaters": 100
    }
   },
@@ -1233,13 +1233,13 @@
   },
   {
    "id": "pt91_twardy",
-   "geoMin": 0,
+   "geoMin": 24.6,
    "gatePassed": false,
    "components": {
-    "hullCurves": 0,
-    "stations": 0,
-    "turretCurves": 0.6,
-    "wholeCurves": 5.2,
+    "hullCurves": 68.3,
+    "stations": 24.6,
+    "turretCurves": 56.9,
+    "wholeCurves": 37.6,
     "dims": 100,
     "floaters": 100
    }
@@ -1340,13 +1340,13 @@
   },
   {
    "id": "bmp3",
-   "geoMin": 36.6,
+   "geoMin": 39.8,
    "gatePassed": false,
    "components": {
     "hullCurves": 62.7,
-    "stations": 61.4,
-    "turretCurves": 36.6,
-    "wholeCurves": 52.4,
+    "stations": 73,
+    "turretCurves": 39.8,
+    "wholeCurves": 55.4,
     "dims": 100,
     "floaters": 100
    }
@@ -1405,10 +1405,10 @@
    "geoMin": 0,
    "gatePassed": false,
    "components": {
-    "hullCurves": 8.1,
-    "stations": 44.6,
+    "hullCurves": 0,
+    "stations": 68.5,
     "turretCurves": 0,
-    "wholeCurves": 18.4,
+    "wholeCurves": 35.3,
     "dims": 100,
     "floaters": 100
    }
@@ -1425,14 +1425,14 @@
   },
   {
    "id": "ua_t64bv",
-   "geoMin": 30.5,
+   "geoMin": 24.9,
    "gatePassed": false,
    "components": {
-    "hullCurves": 39.6,
-    "stations": 36.8,
-    "turretCurves": 30.8,
-    "wholeCurves": 30.5,
-    "dims": 99.8,
+    "hullCurves": 56.3,
+    "stations": 49.3,
+    "turretCurves": 24.9,
+    "wholeCurves": 42.9,
+    "dims": 91.8,
     "floaters": 100
    }
   },
