@@ -8985,24 +8985,26 @@ function buildKF51OwnerExact(P) {
   // FAMILY RIG (leoHullV3: one-plane glacis class, leopard deck line +
   // sponson/fender run, family driver station, fan wells, leopard rear
   // plate + grilles) at the kf51b frame: deck 1.615 crease / 1.64 mid /
-  // 1.82 power-pack aft — the §5.335 turret seat (ring 1.72, plinth top
-  // 1.70) is UNCHANGED; nose 3.84, tail lip -3.82, width anchor ±1.80
+  // 1.82 power-pack aft — the turret ring remains at y 1.72 while its
+  // complete rotating rig moves 0.18 m forward to z 0.20; nose 3.84,
+  // tail lip -3.82, width anchor ±1.80
   // (spec widM 3.60, §5.263). Running gear params VERBATIM from the
-  // §5.303 source trace (7×0.405 wheels, raised low end wheels, 0.105
-  // fine pitch, §5.262 gear-contrast tones) via the linkPitchM
-  // passthrough; §B4 walls: tub innerW 1.837 (±0.92, 5 cm off the 0.9685
-  // band inner face), sponson floor 1.19 (return-shoe crest 1.165),
-  // sponsonLaneLift over the low far-back sprocket wrap, rearWallHW 0.96
-  // (the a5 wall-in-wrap law — kf51b's sprocket wrap reaches z -3.74).
+  // §5.303 source trace (7×0.405 wheels, 0.105 fine pitch, §5.262
+  // gear-contrast tones) via the linkPitchM passthrough. The formerly low,
+  // oversized end wheels made the course read as a rounded rectangle;
+  // smaller raised Leopard terminals now produce real approach/departure
+  // ramps. §B4 walls: tub innerW 1.837 (±0.92, 5 cm off the 0.9685 band
+  // inner face), sponson floor 1.19, with the outboard floor lifted over
+  // the complete return course instead of intersecting the raised wraps.
   leoHullV3(P, {
     bodyHW: 1.56, sponsonY: 1.19, trackW: 0.587, xc: 1.262,
     deck: [[1.55, 1.615], [-0.58, 1.64], [-1.40, 1.73], [-2.25, 1.82], [-3.66, 1.82]],
     glacis: [[1.55, 1.615], [2.20, 1.512], [3.08, 1.375], [3.60, 1.275], [3.84, 1.225]],
     glacisLaneCut: { x: 0.93, z0: 2.90 },
-    sponsonLaneLift: { z0: -3.66, z1: -2.80, x0: 0.94, y: 1.30 },
+    sponsonLaneLift: { z0: -3.66, z1: 2.95, x0: 0.94, y: 1.50 },
     rearWallHW: 0.96,
     beltY: 0.60, bellyY: 0.48,
-    headlightY: 1.345, headlightZ: 3.30, headlightX: 0.88,
+    headlightY: 1.345, headlightZ: 3.30, headlightX: 0.78,
     driverZ: 1.16,
     rear: { wallZ: -3.68, lipZ: -3.82, yTop: 1.78, yBot: 0.95 },
     // fender ends AT the deck crease; the fore run follows the glacis from
@@ -9011,10 +9013,10 @@ function buildKF51OwnerExact(P) {
     fenderFore: { z0: 1.55, z1: 3.30, drop: 0.03 },
     // frontSkirt/rearSkirt OMITTED (§SRCFIX-0808 opt-out): the two-band
     // modular course builds bespoke below at the leopard skirt grammar.
-    wheelR: 0.405, wheelY: 0.45, span: [2.45, -2.28],
-    sprocket: { z: -3.18, y: 0.66, r: 0.36 },
-    idler: { z: 3.28, y: 0.61, r: 0.34 },
-    topY: 1.08, botY: 0.058, dishR: 0.78,
+    wheelR: 0.405, wheelY: 0.425, span: [2.60, -2.30],
+    sprocket: { z: -3.16, y: 1.00, r: 0.275 },
+    idler: { z: 3.30, y: 0.98, r: 0.24 },
+    topY: 0.95, botY: 0.055, dishR: 0.78,
     rollers: [
       { z: 2.00, y: 0.94, r: 0.085 }, { z: 0.72, y: 0.94, r: 0.085 },
       { z: -0.58, y: 0.94, r: 0.085 }, { z: -1.82, y: 0.94, r: 0.085 },
@@ -9094,8 +9096,8 @@ function buildKF51OwnerExact(P) {
     P.add('hullDetail', cylY(0.008, 0.008, 0.30, 6), s * 1.66, 1.42, 3.42);
     P.add('hullDetail', KIT.sph(0.016, 8), s * 1.66, 1.58, 3.42);
     // headlight brush guards (three bars riding the glacis plane)
-    for (const d of [-0.13, 0, 0.13]) {
-      P.add('hullDetail', box(0.018, 0.12, 0.12), s * 0.88 + d, 1.375, 3.40, -0.16, 0, 0);
+    for (const d of [-0.10, 0, 0.10]) {
+      P.add('hullDetail', box(0.018, 0.12, 0.12), s * 0.78 + d, 1.375, 3.40, -0.16, 0, 0);
     }
     // bow tow eyes seated flush on the raked beak underside
     P.add('hullDetail', box(0.09, 0.10, 0.12), s * 0.62, 0.99, 3.72, 0.86, 0, 0);
@@ -9154,7 +9156,7 @@ function buildKF51OwnerExact(P) {
   // ---- TURRET -------------------------------------------------------------
   // One connected faceted wedge.  The source roof is only ~0.68 m above the
   // shoulder belt; the former profile's stacked crown is intentionally gone.
-  P.turretG.position.set(0, 1.72, 0.02);
+  P.turretG.position.set(0, 1.72, 0.20);
   P.add('turret', cylY(1.00, 1.08, 0.12, P.q ? 24 : 14), 0, -0.08, -0.02);
   const turretPlan = [
     [-0.36, 1.95], [0.36, 1.95], [1.48, 1.28], [1.55, 0.18],

@@ -28566,7 +28566,7 @@
         "turretPivot": [
           0,
           1.72,
-          0.02
+          0.2
         ],
         "plates": [
           {
@@ -29088,12 +29088,12 @@
             "min": [
               -0.9845,
               1.472,
-              -0.8356
+              -0.6491
             ],
             "max": [
               0.9845,
               1.688,
-              1.2162
+              1.4027
             ],
             "turretLocal": false
           },
@@ -29192,13 +29192,13 @@
             "name": "trackL",
             "min": [
               -1.5555,
-              0.013,
-              -3.6286
+              0.01,
+              -3.52
             ],
             "max": [
               -0.9685,
-              1.115,
-              3.7084
+              1.3648,
+              3.6284
             ],
             "turretLocal": false
           },
@@ -29207,13 +29207,13 @@
             "name": "trackR",
             "min": [
               0.9685,
-              0.013,
-              -3.6286
+              0.01,
+              -3.52
             ],
             "max": [
               1.5555,
-              1.115,
-              3.7084
+              1.3648,
+              3.6284
             ],
             "turretLocal": false
           }
@@ -29281,8 +29281,8 @@
           }
         ]
       },
-      "geometryHash": "c551177f",
-      "metadataHash": "25c697a2",
+      "geometryHash": "932c72f4",
+      "metadataHash": "55d7e9b0",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -29366,24 +29366,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 69168,
-          "sha256": "dd7d63bb2c24202147dc07b01f773c132cda006ba9db65306fdb8e349725c937"
+          "bytes": 66789,
+          "sha256": "2e7c1056cf074e8ce28bbc44db15d6c72e7418940778c2489ef283256f5e8164"
         },
         "armorSide": {
           "file": "kf51b_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 72332,
-          "sha256": "58ca9d21ed2222de2181886d7175ff17061d80e03e76f556598ce71f7801e8f8"
+          "bytes": 69256,
+          "sha256": "a0d9ad10c5ee3d75478ce591dbaedd806984363975160f0badaf8313cfd5f302"
         },
         "modulesSide": {
           "file": "kf51b_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 82210,
-          "sha256": "129f9da6631eb6aec9f883abfb85adde94e6d31ecfb9ab4666b152f398dada9c"
+          "bytes": 77578,
+          "sha256": "e3e76fba31031117d158896b3ec2bf05a6b16f1d738bc53c271cfeabee20c914"
         },
         "markings": {
           "file": "kf51b_markings.png",

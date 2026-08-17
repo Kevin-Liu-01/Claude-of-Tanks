@@ -70,7 +70,7 @@ and retires only the pre-deepening shader grade + gear hexes.
 Both read KF51 Panther (low faceted wedge turret, SEOSS tower, rear-right
 RWS, 130 mm class gun). kf51b distinctions: owner-source proportions
 (z ±3.84 hull, narrow tub + full-width sponson), Rh-130 at the measured
-5.30 tube / 6.88 muzzle (userdrops3 armor truth-up: ring 1.72/0.02, gun
+5.30 tube / 6.88 muzzle (userdrops3 armor truth-up: ring 1.72/0.20, gun
 axis 1.94 — the inherited GLB-era 6.63 barrel + 1.86/0.52 pivots were a
 §C shadow proxy 1.33 m too long), full modular two-band skirts vs the
 resident's own course read, woodland 3-tone (#56573e base, number 52,
@@ -79,7 +79,7 @@ kf51 `ffb1144c` byte-held.
 
 ## Spec truth-up (src/vehicles/userdrops3.js, kf51b row ONLY)
 Fresh communityArmor instance (kf51's shared armor object untouched):
-lenM 7.70 / widM 3.60 / hgtM 2.90, turretPivot [0,1.72,0.02], gunPivot
+lenM 7.70 / widM 3.60 / hgtM 2.90, turretPivot [0,1.72,0.20], gunPivot
 [0,0.22,1.58], barrelLenM 5.30, barrelRadM 0.064, visual trackWidthM
 0.587 (the built course width).
 
