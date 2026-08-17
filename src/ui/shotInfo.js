@@ -63,6 +63,11 @@ const GLYPH = {
   radio: uiIconSVG('radio', 12),
   optics: uiIconSVG('optics', 12),
   turretRing: uiIconSVG('turretRing', 12),
+  gunMount: uiIconSVG('gunMount', 12),
+  transmission: uiIconSVG('transmission', 12),
+  autoloader: uiIconSVG('autoloader', 12),
+  feedSystem: uiIconSVG('feedSystem', 12),
+  missileRack: uiIconSVG('missileRack', 12),
   crew: uiIconSVG('crew', 12),
 };
 GLYPH.trackR = GLYPH.trackL;

@@ -19,8 +19,9 @@
 //   ring gap    = visual tBaseY − turretRing box y-band
 // Any |gap| > TOL (0.15 m) flags the vehicle.
 //
-// Usage: node tools/module-visual-align-probe.mjs [--ids=a,b] [--json out]
-// Exits 0 always (audit tool) — the gate is the module-hit probe.
+// Usage: node tools/module-visual-align-probe.mjs [--ids=a,b] [--json out] [--gate]
+// By default this is an audit. --gate exits non-zero when a playable vehicle
+// drifts, so tank:release:check can make the anatomy pass mandatory.
 
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
@@ -31,7 +32,10 @@ const eq = args.find((a) => a.startsWith('--ids='));
 const requested = eq ? eq.slice(6).split(',').map((s) => s.trim()).filter(Boolean) : null;
 const jsonIdx = args.indexOf('--json');
 const jsonOut = jsonIdx >= 0 ? args[jsonIdx + 1] : '';
+const gate = args.includes('--gate');
 const TOL = 0.15;
+const FACE_TOL = 0.035;
+const MIN_VOLUME_DEPTH_M = 0.05;
 
 const server = await createServer({
   root: process.cwd(), logLevel: 'error',
@@ -56,9 +60,9 @@ try {
   await page.waitForFunction('window.__GAME_READY === true', { timeout: 120000 });
 
   const manifest = await page.evaluate(async () => {
-    const { TANK_SPECS, MODEL_SOURCE } = await import('/src/vehicles/specs.js');
-    return Object.keys(TANK_SPECS)
-      .filter((id) => TANK_SPECS[id].armor)
+    const { ALL_TANK_IDS, TANK_SPECS, MODEL_SOURCE } = await import('/src/vehicles/specs.js');
+    return ALL_TANK_IDS
+      .filter((id) => TANK_SPECS[id] && TANK_SPECS[id].armor)
       .map((id) => ({ id, source: (MODEL_SOURCE[id] && MODEL_SOURCE[id].source) || 'procedural' }));
   });
   const list = requested ? manifest.filter((r) => requested.includes(r.id)) : manifest;
@@ -85,7 +89,9 @@ try {
 
       const scan = await page.evaluate(async (id) => {
         const { TANK_SPECS } = await import('/src/vehicles/specs.js');
+        const { COMBAT_ANATOMY_CALIBRATIONS } = await import('/src/vehicles/combatAnatomyCalibrations.js');
         const armor = TANK_SPECS[id].armor;
+        const calibration = COMBAT_ANATOMY_CALIBRATIONS[id];
         const v = window.__DEBUG.pedestalVisual;
         const root = v.root;
         root.updateMatrixWorld(true);
@@ -233,9 +239,64 @@ try {
           }
         }
 
+        const boundsOf = (plates) => {
+          const min = [Infinity, Infinity, Infinity], max = [-Infinity, -Infinity, -Infinity];
+          for (const plate of plates || []) {
+            if (plate.kind === 'external') continue;
+            for (const point of plate.verts || []) {
+              for (let axis = 0; axis < 3; axis++) {
+                min[axis] = Math.min(min[axis], point[axis]);
+                max[axis] = Math.max(max[axis], point[axis]);
+              }
+            }
+          }
+          return Number.isFinite(min[0]) ? { min, max } : null;
+        };
+        const faceGap = (actual, target, skipFloor = false) => {
+          if (!actual || !target) return 0;
+          let gap = 0;
+          for (let axis = 0; axis < 3; axis++) {
+            if (!(skipFloor && axis === 1)) gap = Math.max(gap, Math.abs(actual.min[axis] - target.min[axis]));
+            gap = Math.max(gap, Math.abs(actual.max[axis] - target.max[axis]));
+          }
+          return gap;
+        };
+        const hullArmor = boundsOf(armor.hullPlates);
+        const turretArmor = boundsOf(armor.turretPlates);
+        let trackGap = 0;
+        for (const [name, side] of [['trackL', 'left'], ['trackR', 'right']]) {
+          const module = (armor.modules || []).find((entry) => entry.module === name);
+          trackGap = Math.max(trackGap, faceGap(module, calibration?.tracks?.[side]));
+        }
+        let volumeOverflow = 0;
+        let minVolumeDepth = Infinity;
+        for (const entry of [...(armor.modules || []), ...(armor.crew || [])]) {
+          if (entry.module === 'trackL' || entry.module === 'trackR') continue;
+          const externalVolume = entry.external === true || entry.module === 'optics'
+            || entry.module === 'turretRing' || entry.module === 'gunMount';
+          const envelope = entry.turretLocal ? turretArmor : hullArmor;
+          for (let axis = 0; axis < 3; axis++) {
+            minVolumeDepth = Math.min(minVolumeDepth, entry.max[axis] - entry.min[axis]);
+            if (!envelope || externalVolume) continue;
+            volumeOverflow = Math.max(
+              volumeOverflow,
+              envelope.min[axis] - entry.min[axis],
+              entry.max[axis] - envelope.max[axis],
+            );
+          }
+        }
+        const receipt = {
+          hullFaceGap: faceGap(hullArmor, calibration?.hull, true),
+          turretFaceGap: calibration?.turret ? faceGap(turretArmor, calibration.turret) : 0,
+          trackFaceGap: trackGap,
+          volumeOverflow: Math.max(0, volumeOverflow),
+          minVolumeDepth: Number.isFinite(minVolumeDepth) ? minVolumeDepth : 0,
+        };
+
         return {
           deckY, trackX, sideX, tBaseY, hullZ: [zMin, zMax], yMax,
           roofPlateY, sidePlateX, deckRayModules,
+          receipt,
           armor: {
             trackBoxX: trkR ? Math.max(Math.abs(trkR.min[0]), Math.abs(trkR.max[0])) : NaN,
             ringY: ring ? [ring.min[1], ring.max[1]] : null,
@@ -263,18 +324,24 @@ try {
           : NaN,
         deckOverArmor: !isFinite(scan.roofPlateY), // deck ray missed armor entirely
       };
+      const receipt = scan.receipt || {};
       const flags = [];
-      if (gaps.deckOverArmor) flags.push('DECK-RAY-NO-PLATE');
-      for (const k of ['roof', 'side', 'track', 'ring']) {
-        if (isFinite(gaps[k]) && Math.abs(gaps[k]) > TOL) flags.push(`${k}${gaps[k] > 0 ? '+' : ''}${gaps[k].toFixed(2)}`);
-      }
-      rows.push({ id: row.id, source: row.source, gaps, deckRayModules: scan.deckRayModules, flags });
+      if (receipt.hullFaceGap > FACE_TOL) flags.push(`hull-face+${receipt.hullFaceGap.toFixed(3)}`);
+      if (receipt.turretFaceGap > FACE_TOL) flags.push(`turret-face+${receipt.turretFaceGap.toFixed(3)}`);
+      if (receipt.trackFaceGap > FACE_TOL) flags.push(`track-face+${receipt.trackFaceGap.toFixed(3)}`);
+      if (receipt.volumeOverflow > TOL) flags.push(`volume-out+${receipt.volumeOverflow.toFixed(2)}`);
+      if (receipt.minVolumeDepth < MIN_VOLUME_DEPTH_M) flags.push(`shallow-${receipt.minVolumeDepth.toFixed(3)}`);
+      rows.push({
+        id: row.id, source: row.source, receipt, diagnostics: gaps,
+        deckRayModules: scan.deckRayModules, flags,
+      });
       console.log(
         `  ${row.id.padEnd(20)}${flags.length ? 'DRIFT ' : 'ok    '}` +
-        `roof ${isFinite(gaps.roof) ? (gaps.roof >= 0 ? '+' : '') + gaps.roof.toFixed(2) : ' n/a'}` +
-        ` side ${isFinite(gaps.side) ? (gaps.side >= 0 ? '+' : '') + gaps.side.toFixed(2) : ' n/a'}` +
-        ` track ${isFinite(gaps.track) ? (gaps.track >= 0 ? '+' : '') + gaps.track.toFixed(2) : ' n/a'}` +
-        ` ring ${isFinite(gaps.ring) ? (gaps.ring >= 0 ? '+' : '') + gaps.ring.toFixed(2) : ' n/a'}` +
+        ` hull ${receipt.hullFaceGap.toFixed(3)}` +
+        ` turret ${receipt.turretFaceGap.toFixed(3)}` +
+        ` track ${receipt.trackFaceGap.toFixed(3)}` +
+        ` overflow ${receipt.volumeOverflow.toFixed(2)}` +
+        ` depth ${receipt.minVolumeDepth.toFixed(2)}` +
         (flags.length ? `  [${flags.join(' ')}]` : ''),
       );
     } catch (e) {
@@ -288,9 +355,10 @@ try {
 }
 
 const drift = rows.filter((r) => r.flags && r.flags.length);
-console.log(`\n[mod-align] ${rows.length} scanned, ${drift.length} with armor/visual drift > ${TOL} m`);
+console.log(`\n[mod-align] ${rows.length} scanned, ${drift.length} failing calibrated anatomy receipts`);
 if (pageErrors.length) console.error(`[mod-align] page errors:\n  ${pageErrors.slice(0, 4).join('\n  ')}`);
 if (jsonOut) {
   writeFileSync(jsonOut, `${JSON.stringify({ generatedAt: new Date().toISOString(), tolM: TOL, rows }, null, 1)}\n`);
   console.log(`[mod-align] wrote ${jsonOut}`);
 }
+if (gate && (drift.length || rows.some((row) => row.error) || pageErrors.length)) process.exitCode = 2;

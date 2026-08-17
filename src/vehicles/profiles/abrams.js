@@ -1698,9 +1698,9 @@ function tejasRoofKit(P, t, station = 'crows') {
     if (station === 'crows2tall') {
       // SEPv2: taller three-sided loader shield and a moderately raised,
       // outboard-rested M240.  The inner wing closes the former open side.
-      P.add('turret', box(0.50, 0.25, 0.040), loaderX, receiverY - 0.035, 0.01);
+      P.addEquipment('turret', box(0.50, 0.25, 0.040), loaderX, receiverY - 0.035, 0.01);
       for (const sx of [-1, 1]) {
-        P.add('turret', box(0.040, 0.27, 0.32), loaderX + sx * 0.235,
+        P.addEquipment('turret', box(0.040, 0.27, 0.32), loaderX + sx * 0.235,
           receiverY - 0.025, -0.14, 0, -sx * 0.08, 0);
       }
       P.add('turretDetail', box(0.54, 0.055, 0.07), loaderX,
@@ -1709,9 +1709,9 @@ function tejasRoofKit(P, t, station = 'crows') {
         barrelLength: 0.70, outDeg: 7, upDeg: 5 });
     } else {
       // SEPv3: lower compact shield and a subtler rest angle than SEPv2.
-      P.add('turret', box(0.42, 0.18, 0.035), loaderX, receiverY - 0.050, 0.015);
+      P.addEquipment('turret', box(0.42, 0.18, 0.035), loaderX, receiverY - 0.050, 0.015);
       for (const sx of [-1, 1]) {
-        P.add('turret', box(0.035, 0.20, 0.24), loaderX + sx * 0.195,
+        P.addEquipment('turret', box(0.035, 0.20, 0.24), loaderX + sx * 0.195,
           receiverY - 0.045, -0.095, 0, -sx * 0.055, 0);
       }
       P.add('turretDetail', box(0.44, 0.040, 0.055), loaderX,
@@ -1749,9 +1749,9 @@ function tejasRoofKit(P, t, station = 'crows') {
       receiverY + 0.010, -0.08);                                             // feed chute
     if (ha) {
       // HA: deeper three-sided armor and a more assertive outboard/up rest.
-      P.add('turret', box(0.46, 0.23, 0.040), loaderX, receiverY - 0.025, 0.045);
+      P.addEquipment('turret', box(0.46, 0.23, 0.040), loaderX, receiverY - 0.025, 0.045);
       for (const sx of [-1, 1]) {
-        P.add('turret', box(0.040, 0.25, 0.28), loaderX + sx * 0.215,
+        P.addEquipment('turret', box(0.040, 0.25, 0.28), loaderX + sx * 0.215,
           receiverY - 0.020, -0.10, 0, -sx * 0.075, 0);
       }
       P.add('turretDetail', box(0.49, 0.050, 0.065), loaderX,
@@ -1760,8 +1760,8 @@ function tejasRoofKit(P, t, station = 'crows') {
         barrelLength: 0.66, outDeg: 8, upDeg: 5, hiderLength: 0.14 });
     } else {
       // Base M1A1: lighter low shield and a restrained field-rest angle.
-      P.add('turret', box(0.38, 0.17, 0.035), loaderX, receiverY - 0.035, 0.040);
-      P.add('turret', box(0.035, 0.18, 0.23), loaderX + 0.175,
+      P.addEquipment('turret', box(0.38, 0.17, 0.035), loaderX, receiverY - 0.035, 0.040);
+      P.addEquipment('turret', box(0.035, 0.18, 0.23), loaderX + 0.175,
         receiverY - 0.035, -0.085, 0, -0.055, 0);
       P.add('turretDetail', box(0.40, 0.038, 0.055), loaderX,
         receiverY + 0.058, 0.038);
@@ -3723,7 +3723,7 @@ function buildTejasFamily(P, p) {
     // sep3 = IFLIR scale (s3 1.16 — the M1A2C larger thermal housings).
     const s3 = sep3k ? 1.16 : 1;
     P.add('turretDark', cylY(0.105, 0.115, 0.11, 14), -0.16, 0.765, 0.2565);    // drum base
-    P.add('turret', box(0.24 * s3, 0.155, 0.19), -0.16, 0.895, 0.2565);         // CITV head
+    P.addEquipment('turret', box(0.24 * s3, 0.155, 0.19), -0.16, 0.895, 0.2565); // CITV head
     P.add('turretDetail', box(0.245 * s3, 0.014, 0.195), -0.16, 0.9795, 0.2565); // crown lick
     P.add('turretDark', box(0.17 * s3, 0.095, 0.008), -0.16, 0.9075, 0.3525);   // window bezel (+z aim face)
     P.add('turretGlass', box(0.15 * s3, 0.075, 0.010), -0.16, 0.9075, 0.3565);  // thermal window
@@ -4165,7 +4165,7 @@ function buildTejasFamily(P, p) {
       armorFlankPatch(P, 'turretDetail', t, side,
         py - 0.15, py + 0.15, pz + 0.02, pz + 0.21, 0.004, 0.013);
     }
-    P.add('turret', box(0.30, 0.24, 0.010), -0.16, 0.72, -3.492);          // rear IFF panel
+    P.addEquipment('turret', box(0.30, 0.24, 0.010), -0.16, 0.72, -3.492); // rear IFF panel
     P.add('turretDetail', box(0.26, 0.09, 0.008), -0.16, 0.755, -3.497);
     P.add('turretDetail', box(0.26, 0.09, 0.008), -0.16, 0.675, -3.497);
     // IFLIR gunner's-sight upgrade: flank cheek plates widening the GPS
@@ -5985,7 +5985,7 @@ function buildM1a2(P, V) {
       // CITV pot (right of center, forward of the loader ring): slew drum
       // base + rotating head + dark thermal window on the aim face + crown.
       P.add('turretDark', cylY(0.115, 0.125, 0.115, 14), 0.24, ty(2.4225), tz(0.628)); // drum base
-      P.add('turret', box(0.24 * s3, 0.155, 0.19), 0.24, ty(2.5575), tz(0.628));       // CITV head
+      P.addEquipment('turret', box(0.24 * s3, 0.155, 0.19), 0.24, ty(2.5575), tz(0.628)); // CITV head
       P.add('turretDetail', box(0.245 * s3, 0.014, 0.195), 0.24, ty(2.642), tz(0.628)); // crown lick
       P.add('turretDark', box(0.17 * s3, 0.095, 0.008), 0.24, ty(2.575), tz(0.7205));  // window bezel (+z aim face)
       P.add('turretGlass', box(0.15 * s3, 0.075, 0.010), 0.24, ty(2.575), tz(0.7245)); // thermal window
@@ -8637,7 +8637,7 @@ function buildAbramsX(P) {
   }
   // AXDED-R1: sensor post trimmed under the falling shelf top line (the
   // old 0.45 top poked 0.036 over it and owned two mid-shelf bins).
-  P.add('turret', box(0.3, 0.24, 0.3), 0.75, 0.27, -0.85);    // sensor post
+  P.addEquipment('turret', box(0.3, 0.24, 0.3), 0.75, 0.27, -0.85);    // sensor post
   P.add('turretDark', box(0.22, 0.10, 0.03), 0.75, 0.35, -0.69);
   // Source-measured cheek appliqué.  Component extraction finds one compact
   // 0.052 x 0.280 x 0.460 m cassette per side at world z 0.910..1.370.

@@ -129,7 +129,7 @@ function saddle(P, o) {
 // live in turretDark; only the pintle post stays scheme-painted.
 function aaMG(P, x, y, z, twin = false) {
   const { box, cylY, cylZ } = KIT;
-  P.add('turret', cylY(0.045, 0.058, 0.30, 8), x, y + 0.15, z);
+  P.addEquipment('turret', cylY(0.045, 0.058, 0.30, 8), x, y + 0.15, z);
   P.add('turretDark', box(0.05, 0.15, 0.05), x, y + 0.35, z - 0.05);          // cradle yoke
   for (const dx of twin ? [-0.055, 0.055] : [0]) {
     P.add('turretDark', box(0.085, 0.105, 0.44), x + dx * 1.7, y + 0.44, z + 0.02); // receiver
@@ -152,7 +152,7 @@ function domeRail(P, x, y, z, len) {
 // External fuel drum with dark end caps + mounting straps down to the deck.
 function fuelDrum(P, x, y, z, len, r = 0.165) {
   const { cylZ, box } = KIT;
-  P.add('hull', cylZ(r, len, 12), x, y, z);
+  P.addEquipment('hull', cylZ(r, len, 12), x, y, z);
   for (const e of [-1, 1]) P.add('hullDark', cylZ(r + 0.004, 0.024, 12), x, y, z + e * (len / 2 - 0.014));
   for (const f of [-0.30, 0.30]) {
     P.add('hullDark', box(0.035, r + 0.10, 0.05), x - Math.sign(x) * 0.02, y - r * 0.55, z + f * len);
@@ -227,7 +227,7 @@ function buildIS7(P) {
   // deck furniture (thin — the oracle roof reads flat)
   P.add('hull', cylY(0.26, 0.26, 0.045, 14), 0.62, 1.44, zc + 2.02);           // driver hatch
   P.add('hullDark', cylY(0.272, 0.272, 0.014, 14), 0.62, 1.437, zc + 2.02);    // hatch cut line
-  P.add('hull', box(0.13, 0.46, 0.13), 0, 1.55, zc + 2.55);                    // glacis IR/periscope stub (oracle has one)
+  P.addEquipment('hull', box(0.13, 0.46, 0.13), 0, 1.55, zc + 2.55);           // glacis IR/periscope stub (oracle has one)
   for (let i = 0; i < 5; i++) P.add('hullDark', box(1.9, 0.02, 0.10), 0, 1.445, zc - 1.8 - i * 0.28); // grilles
   for (const s of [-1, 1]) {
     // twin round exhaust ports at the rear corners (IS-7 signature)
@@ -275,7 +275,7 @@ function buildIS7(P) {
   P.add('turret', box(0.55, 0.26, 1.05), 0, 0.86, -1.82);
   P.add('turret', box(0.30, 0.66, 0.28), 0.05, 0.66, -2.02);                   // rear jack/stowage column (rear-view center)
   aaMG(P, 0.02, 0.68, -1.95, true);                                            // twin KPVT AA mount (p95 seat 2.60)
-  for (const x of [-0.16, 0.20]) P.add('turret', box(0.035, 0.34, 0.035), x, 0.96, -1.95); // MG mount frame
+  for (const x of [-0.16, 0.20]) P.addEquipment('turret', box(0.035, 0.34, 0.035), x, 0.96, -1.95); // MG mount frame
   P.add('turret', box(0.44, 0.045, 0.05), 0.02, 1.15, -1.95);
   for (const s of [-1, 1]) {
     P.add('turretDark', cylZ(0.028, 0.40, 8), s * 0.66, 0.24, 1.72, -0.03, s * 0.08, 0); // cheek SGMT MG ports
@@ -1425,7 +1425,7 @@ function buildKV2(P) {
   // (fwd max 1.598 local < old 1.60; rear 1.564 < old 1.565).
   for (const s of [-1, 1]) {
     P.add('turret', box(0.135, 0.105, 0.29), s * 0.4975, 1.4925, 0.405);       // fwd pod bases (z 0.58..0.87w = ref)
-    P.add('turret', cylY(0.052, 0.056, 0.05, 12), s * 0.4975, 1.570, 0.405);   // fwd periscope stalks
+    P.addEquipment('turret', cylY(0.052, 0.056, 0.05, 12), s * 0.4975, 1.570, 0.405);   // fwd periscope stalks
     P.add('turretDark', cylY(0.058, 0.058, 0.008, 12), s * 0.4975, 1.594, 0.405); // dark caps (top 1.598 = 3.268W)
     P.add('turretGlass', box(0.062, 0.020, 0.005), s * 0.4975, 1.575, 0.459);  // forward optics slit
     P.add('turret', box(0.135, 0.085, 0.23), s * 0.4975, 1.4775, -0.775);      // rear pod bases

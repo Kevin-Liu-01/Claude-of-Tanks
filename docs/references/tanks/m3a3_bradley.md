@@ -169,3 +169,47 @@ track-clip --exact: front 0 / rear 0. §B2 sweep: worst whole-view 1095px
 peaks are the mesh rack's own apertures (intended see-through lattice).
 EVIDENCE: §5.254 pairs shots/m3a3-hybrid/before/ (at b0eb98a1) + after/
 (at 2c5ce78c), probe-r1.
+
+## SKIRT-SYMMETRY ROUND (OWNER ORDER, 2026-08-17 — uncommitted lane)
+ORDER (verbatim): "make m3a3 bradley sideskirts symmetric and properly
+attached to sides of tank" (rear-quarter garage screenshot: flanks
+asymmetric, panels standing off the hull with daylight above).
+
+BASELINE FACT (§5.254 BEFORE, shots/m3a3-skirts/before/): the donor base
+is print-asymmetric BY LAW for the m2a2 guard — right flank = full-length
+11-slab ODS course (face 1.6455, tops 1.10) under the 1.79 appliqué band;
+left flank = ONE deep plate ending z +1.30 with the BOW THIRD showing
+naked wheels/hull (proc_hero-frontleft), plus open daylight wedges between
+skirt tops and the sponson flare (the detached read). The m2a2 lattice is
+untouchable, so the fix is m3a3-LOCAL in buildM3A3 (the §5.316 hybrid's
+documented unreconciled seam, now closed).
+
+THE COURSE (both sides IDENTICAL, mirrored): 8 uniform panels per side
+(cuts -2.97..+3.11 every 0.76, §C end caps), outer face +-1.652 (6.5 mm
+proud of the donor ODS face — no coplanar fight), hem 0.62 = the donor's
+own §B9 wheel line (wheels read under the hem, m2a2 parity), tops 1.42
+stepping to 1.25 on the bow pair at the fender line (real A3 grammar);
+dark hinge-line seams on every joint; raked MOUNTING APRON per side
+closing the skirt-top-to-flare daylight (outer edge buried in the panel
+tops at +-1.649, inner edge 1.50/1.565 landing on the right flare slope /
+tucking under the left flare's 1.62 corner). Aprons split around each
+flank's own tall gear, which closes its own band (right exhaust z
+0.975..1.925; left stern bag box z -2.52..-1.98). CFV blank flanks hold —
+no port holes either side (§5.286). All new content |x| >= 1.4425, clear
+of the 1.395 shoe reach (§B4); the thin seams are killed by the widthM
+plan filter and widthM stays turret-owned at 3.61.
+
+RECEIPTS: hash 2c5ce78c -> 3aaa636d (64 meshes held, verts 83507 ->
+89327 = the 30 new course pieces). Track-clip strict: front 123 / rear 0
+band + shoe 0/19 — BYTE-IDENTICAL to pure HEAD in the clean-room worktree
+(the 123 front offender is the §5.316 hybrid's pre-existing debt; the
+skirt work adds ZERO offenders — all pieces outboard of the lanes).
+Gate ×2 bit-identical: min 0 | hull 0 whole 0 turret 0 stations 0 dims
+100 floaters 100 — the lawful cap and dims/floaters HOLD exactly at the
+baseline row. CLEAN-ROOM GUARD PROOF (live tree carries foreign lanes'
+WIP that drifts marder/bmp3/m2a2 hashes): worktree at HEAD da6bd042 +
+ONLY this lane's two files reproduces EVERY briefed guard hash (marder1a3
+59cb105c, bmp3 8d9d7aa3, m2a2_bradley a41410ac, bmpt_terminator2
+1c7d8fbc, bmp3_rok 7456de28, upior_ifv 3f16cb9a, spz_puma 73ee54e0, bmp2
+8da8b75a) — this lane moves only upior + m3a3.
+EVIDENCE: §5.254 pairs shots/m3a3-skirts/before/ + after/ (9 views each).

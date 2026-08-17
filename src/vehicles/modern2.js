@@ -22,6 +22,7 @@ import { KIT } from './tankFactory.js';
 // §I fittings census: the FITTINGS import is the spelling that survives
 // synchronous top-level createTank rigs (kit.js attach-site note).
 import { FITTINGS, muzzleBore } from './profiles/kit.js';
+import { createType99Armor } from './profiles/type99Armor.js';
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
 
 // type99a RE-LISTED 2026-08-08 (§5.38 owner priority wave: "fully model a
@@ -169,7 +170,6 @@ function mbtArmor(o) {
 
 // ERA behavior packs (t90m precedent: keReduction fraction + flat CE add).
 const KONTAKT5 = { keReduction: 0.20, ceFlatMm: 400 };
-const FY4 = { keReduction: 0.22, ceFlatMm: 380 };
 const MALACHIT = { keReduction: 0.25, ceFlatMm: 450 };
 
 // ---------------------------------------------------------------------------
@@ -336,46 +336,10 @@ export const MODERN2_SPECS = {
       // connected-station envelope; thin whip tips remain excluded.
       silhouetteHeightM: 3.49,
     },
-    armor: mbtArmor({
-      // §5.38 PRINT-LOFT TRUE-UP (2026-08-08, t14 measured-ladder precedent
-      // in this file): geometric FRAME params re-seated on the Type 99A2
-      // print's measured lines (deck 1.50, tracks to 1.28, floor 0.385,
-      // glacis 16.3-deg plane z 2.02..3.02, turret walls ±1.66 running to
-      // local -1.48, trunnion y 1.94). Every RHAe VALUE byte-identical to
-      // the r1 spec — core armor values stay orchestrator lane.
-      hl: 3.8, hw: 1.85, roofY: 1.50, trkTop: 1.28, floor: 0.385,
-      // Authored r2026 seat correction: the complete fighting compartment
-      // moves 0.20 m aft on the hull ring while gunPivot z compensates by
-      // the same amount.  Thus the trunnion/muzzle stay fixed in world space
-      // while the cheek, roof and supported bustle acquire the correct
-      // hull-relative side silhouette in both orthographic directions.
-      turretPivot: [0, 1.40, -0.02], gunPivot: [0, 0.46, 0.70],
-      barrelLenM: 6.25, barrelRadM: 0.068,
-      glacis: { ke: 500, ce: 700, phys: 550 }, lower: { ke: 130, ce: 130 },
-      side: { ke: 100, ce: 100 }, rear: 45, roof: 45,
-      cheek: { ke: 600, ce: 850, phys: 700 }, tSide: { ke: 300, ce: 420 },
-      tRear: 55, tRoof: 45, mantlet: { ke: 380, ce: 450 },
-      tHalfW: 1.62, tFrontZ: 1.00, tRearZ: -2.35, tH: 0.98,
-      glacisNoseZ: 3.30, glacisTopZ: 2.02,
-      hullEra: [
-        // ERA-DEF/GEOMETRY COUPLING (§5.38 print rebuild): era-kind defs
-        // move WITH the re-anchored geometry in this same edit — skirts to
-        // the ±1.85/1.86 print anchor (full-depth FY-4 wall, print tile band
-        // y 0.47..1.34 z -2.06..2.70), glacis onto the measured 16.3-deg
-        // plane. Era-kind defs are builder-lane (packet law note 2).
-        fr('glacis_era_L', 15, 1.30, 1.23, 2.97, 1.48, 2.08, { kind: 'era', era: FY4 }),
-        fr('glacis_era_R', 15, 1.30, 1.23, 2.97, 1.48, 2.08, { kind: 'era', era: FY4 }),
-        sR('skirt_era_R', 15, 1.86, 0.62, 1.86, 1.25, -2.10, 2.72, { kind: 'era', era: FY4 }),
-        sL('skirt_era_L', 15, 1.86, 0.62, 1.86, 1.25, -2.10, 2.72, { kind: 'era', era: FY4 }),
-      ],
-      turretEra: [
-        // Cheek wedge faces re-lofted to the print lines: inner edge x 0.52
-        // z 0.90, outer x 1.74 z 0.28, base local y 0.07 -> shoulder 0.86,
-        // uniform 0.08 top pullback (planarity exact by construction).
-        chR('turret_era_R', 15, 0.52, 0.90, 1.74, 0.28, 0.07, 0.86, 0.08, 0, { kind: 'era', era: FY4 }),
-        chL('turret_era_L', 15, 0.52, 0.90, 1.74, 0.28, 0.07, 0.86, 0.08, 0, { kind: 'era', era: FY4 }),
-      ],
-    }),
+    // Type 99-specific segmented combat envelope. The rendered vehicle is a
+    // measured multi-course hull/welded-arrow turret; the old generic MBT
+    // slabs were visibly shallow and no longer followed this build.
+    armor: createType99Armor('type99a'),
     visual: {
       // PLA woodland digital splinter (tight micro-square scale)
       scheme: 'digital', base: '#4d573f', weather: '#57614a',
@@ -486,17 +450,36 @@ export const MODERN2_SPECS = {
 // Leclerc oracle.
 {
   const base = MODERN2_SPECS.leclerc;
+  const cloneArmor = (armor) => ({
+    ...armor,
+    turretPivot: armor.turretPivot.slice(),
+    gunPivot: armor.gunPivot.slice(),
+    gunBarrel: { ...armor.gunBarrel },
+    hullPlates: armor.hullPlates.map((plate) => ({
+      ...plate, verts: plate.verts.map((point) => point.slice()),
+    })),
+    turretPlates: armor.turretPlates.map((plate) => ({
+      ...plate, verts: plate.verts.map((point) => point.slice()),
+    })),
+    modules: armor.modules.map((box) => ({
+      ...box, min: box.min.slice(), max: box.max.slice(),
+    })),
+    crew: armor.crew.map((box) => ({
+      ...box, min: box.min.slice(), max: box.max.slice(),
+    })),
+  });
   const passive = { keReduction: 0.08, ceFlatMm: 180 };
   const galixEra = { keReduction: 0.18, ceFlatMm: 330 };
+  const xlrArmor = cloneArmor(base.armor);
   MODERN2_SPECS.leclerc_xlr = {
     ...base,
     id: 'leclerc_xlr', name: 'Leclerc XLR', hp: 2550,
     weightTons: 57.4, topSpeedKmh: 70,
     dims: { ...base.dims, widthM: 3.64, heightM: 2.78 },
     armor: {
-      ...base.armor,
+      ...xlrArmor,
       hullPlates: [
-        ...base.armor.hullPlates,
+        ...xlrArmor.hullPlates,
         fr('xlr_glacis_package', 90, 1.48, 1.30, 3.36, 1.54, 1.70,
           { kind: 'spaced', era: passive, keMm: 700, ceMm: 950 }),
         sR('xlr_skirt_package_R', 70, 1.82, 0.78, 1.82, 1.38, -2.95, 2.30,
@@ -505,7 +488,7 @@ export const MODERN2_SPECS = {
           { kind: 'spaced', ceMm: 330 }),
       ],
       turretPlates: [
-        ...base.armor.turretPlates,
+        ...xlrArmor.turretPlates,
         chR('xlr_cheek_package_R', 120, 0.34, 1.34, 1.46, 0.56, 0.12, 0.66, 0.10, 0,
           { kind: 'spaced', era: passive, keMm: 760, ceMm: 1050 }),
         chL('xlr_cheek_package_L', 120, 0.34, 1.34, 1.46, 0.56, 0.12, 0.66, 0.10, 0,
@@ -514,6 +497,7 @@ export const MODERN2_SPECS = {
     },
     visual: { ...base.visual, number: '104' },
   };
+  const amx56Armor = cloneArmor(base.armor);
   MODERN2_SPECS.amx56 = {
     ...base,
     id: 'amx56', name: 'AMX 56', hp: 2650,
@@ -521,9 +505,9 @@ export const MODERN2_SPECS = {
     gun: { ...base.gun, reloadS: 4.8, aimTimeS: 1.7 },
     dims: { ...base.dims, widthM: 3.72, heightM: 2.88 },
     armor: {
-      ...base.armor,
+      ...amx56Armor,
       hullPlates: [
-        ...base.armor.hullPlates,
+        ...amx56Armor.hullPlates,
         fr('amx56_glacis_era', 18, 1.52, 1.28, 3.38, 1.54, 1.70,
           { kind: 'era', era: galixEra, keMm: 720, ceMm: 1100 }),
         sR('amx56_skirt_era_R', 18, 1.83, 0.80, 1.83, 1.35, -2.72, 2.15,
@@ -532,7 +516,7 @@ export const MODERN2_SPECS = {
           { kind: 'era', era: galixEra, keMm: 250, ceMm: 520 }),
       ],
       turretPlates: [
-        ...base.armor.turretPlates,
+        ...amx56Armor.turretPlates,
         chR('amx56_cheek_era_R', 18, 0.30, 1.42, 1.49, 0.56, 0.12, 0.66, 0.10, 0,
           { kind: 'era', era: galixEra, keMm: 780, ceMm: 1180 }),
         chL('amx56_cheek_era_L', 18, 0.30, 1.42, 1.49, 0.56, 0.12, 0.66, 0.10, 0,
@@ -1551,7 +1535,7 @@ function buildType99A(P) {
   // gunner PRIMARY SIGHT housing over the mantlet (print Object_13: center
   // head to 2.51 -> proc 2.46 cap; §B2: housing bridges roof -> overhang)
   P.add('turret', box(0.30, 0.24, 0.85), 0, 0.955, 1.06);                      // armored conduit off the roof edge
-  P.add('turret', box(0.28, 0.17, 0.32), 0, 0.995, 1.42);                       // sight head (top 2.425 w — the
+  P.addEquipment('turret', box(0.28, 0.17, 0.32), 0, 0.995, 1.42);                       // sight head (top 2.425 w — the
                                                                                //   p95 furniture ceiling)
   P.add('turretDark', box(0.22, 0.09, 0.03), 0, 1.005, 1.585);                  // aperture
   P.add('turretGlass', box(0.16, 0.055, 0.014), 0, 1.0, 1.605);              // glass

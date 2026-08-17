@@ -674,7 +674,7 @@ function buildAMX40(P) {
   // ---- optics band — CAPPED AT 2.40 world (post-warp frame; the print's
   // 2.77 cupola / 3.09 pano tower compress onto this line under the filed
   // knee-2.39 plan). Every top ≤ 0.800 local. -----------------------------
-  P.add('turret', slab(                                                         // compact faceted gunner sight, Object_12 forward-right peak
+  P.addEquipment('turret', slab(                                                         // compact faceted gunner sight, Object_12 forward-right peak
     [0.57, 0.49, 1.14], [0.84, 0.49, 1.14], [0.84, 0.49, 1.41], [0.57, 0.49, 1.41],
     [0.61, 0.78, 1.16], [0.80, 0.78, 1.16], [0.80, 0.73, 1.39], [0.61, 0.73, 1.39]));
   P.add('turretDetail', box(0.30, 0.024, 0.28), 0.705, 0.792, 1.275);           // sight brow lid, continuously seated
@@ -711,7 +711,7 @@ function buildAMX40(P) {
     P.add('turretDark', box(0.070, 0.038, 0.045), -0.80 + Math.cos(a) * 0.315, 0.696, -0.162 + Math.sin(a) * 0.185, 0, -a, 0);
   }
   P.add('turretDark', cylY(0.17, 0.19, 0.055, 14), -0.15, 0.625, 0.24);       // panoramic sight turntable seated on crown at the measured side-profile peak
-  P.add('turret', box(0.24, 0.14, 0.32), -0.15, 0.690, 0.24);                  // pano plinth overlaps the welded roof
+  P.addEquipment('turret', box(0.24, 0.14, 0.32), -0.15, 0.690, 0.24);                  // pano plinth overlaps the welded roof
   P.add('turret', slab(
     [-0.25, 0.74, 0.08], [-0.08, 0.74, 0.08], [-0.08, 0.74, 0.40], [-0.25, 0.74, 0.40],
     [-0.23, 1.00, 0.10], [-0.10, 1.00, 0.10], [-0.10, 0.98, 0.38], [-0.23, 0.98, 0.38])); // compact faceted panoramic head
@@ -757,7 +757,7 @@ function buildAMX40(P) {
     const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone', scale: 0.9, seed: 12, elev: -0.03, ammo: true });
     mg.position.set(-0.46, 0.864, 0.30);                                        // re-seated on the owner-raised connected turret section
     P.turretG.add(mg);
-    P.add('turret', box(0.12, 0.18, 0.12), -0.46, 0.84, 0.30);                 // continuous roof-to-receiver pedestal
+    P.addEquipment('turret', box(0.12, 0.18, 0.12), -0.46, 0.84, 0.30);                 // continuous roof-to-receiver pedestal
     // antenna whips CLIPPED LOW over the aft roof, both raked hard aft
     // (type10 rack-tail precedent; the print's 4.14/5.10 vertical rod
     // masts live in the filed normalize plan — seats documented in the

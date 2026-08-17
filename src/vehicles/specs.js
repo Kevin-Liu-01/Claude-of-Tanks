@@ -6,6 +6,7 @@
 import { tankLabelRecord } from './tankLabels.js';
 import { vehicleMarkingRecord } from './vehicleMarkings.js';
 import { isRetiredHistoricalTank } from './rosterPolicy.js';
+import { finalizeCombatAnatomy } from './combatAnatomy.js';
 
 /** Foundational roster ids in their locked relative garage-carousel order. */
 // leo2a7 REMOVED from the roster BY OWNER 2026-08-06 ('remove the leopard
@@ -1749,6 +1750,7 @@ export function finalizeFirstPartyRoster() {
   for (const id of ALL_TANK_IDS) {
     const spec = TANK_SPECS[id];
     if (!spec) continue;
+    finalizeCombatAnatomy(spec);
     delete spec.community;
     delete spec.publicVisualFallback;
     if (FIRST_PARTY_DISPLAY_NAMES[id]) spec.name = FIRST_PARTY_DISPLAY_NAMES[id];

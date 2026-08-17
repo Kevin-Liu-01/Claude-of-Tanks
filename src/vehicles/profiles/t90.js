@@ -3601,7 +3601,7 @@ function buildT90SMLegacy(P) {
   // housing on the right crown. heightM p95 stays 2.24-2.25 (ref-aligned
   // spike band, 1%-grace legal — same regime as the certified plateau).
   // Left plateau bin (ref 2.25 line, z world -0.94..-1.44) + bracket:
-  P.add('turret', box(0.12, 0.29, 0.46), -0.77, 0.70, -1.28);  // T5H-b/c: z-span 23mm clear of the re-phased -1.443w window; top 2.245w — the 2.25 top + boundary AA sampled heightM p95 2.2532 > the 2.2523 grace (dims 99.7 x2 measured; the pano-cap suspect was innocent)
+  P.addEquipment('turret', box(0.12, 0.29, 0.46), -0.77, 0.70, -1.28);  // T5H-b/c: z-span 23mm clear of the re-phased -1.443w window; top 2.245w — the 2.25 top + boundary AA sampled heightM p95 2.2532 > the 2.2523 grace (dims 99.7 x2 measured; the pano-cap suspect was innocent)
   P.add('turretDark', box(0.10, 0.022, 0.42), -0.77, 0.826, -1.28);
   P.add('turret', box(0.08, 0.06, 0.10), -0.77, 0.52, -1.40);          // bin bracket onto the bustle step (§B2)
   // Right roof-bin re-split: main 2.17 body only to x 0.89; outer sliver at
@@ -4144,7 +4144,7 @@ function buildT90(P) {
   P.add('turretDark', cylY(0.185, 0.185, 0.028, 12), -0.35, 0.804, -0.22);
   P.add('turret', box(0.10, 0.13, 0.12), 0.34, 0.74, -0.02);            // TKN-4S head
   P.add('turretDark', box(0.084, 0.05, 0.014), 0.34, 0.765, 0.045);
-  P.add('turret', box(0.26, 0.15, 0.30), -0.42, 0.70, 0.42);            // 1G46 sight housing
+  P.addEquipment('turret', box(0.26, 0.15, 0.30), -0.42, 0.70, 0.42);            // 1G46 sight housing
   P.add('turretDark', box(0.22, 0.10, 0.016), -0.42, 0.71, 0.575);
   P.add('turret', box(0.28, 0.03, 0.06), -0.42, 0.785, 0.55);           // hood lip
   // rear bustle rack (print: narrow tall rack to -2.15, halfW 0.76) + tow
@@ -4876,9 +4876,9 @@ function replaceT90ModernWeldedTurret(P, { sm = false } = {}) {
   // hierarchy.  Their feet penetrate the bustle roof, while the thin tops
   // stay within the P95 spike budget rather than inflating the whole shell.
   const panoZ = sm ? -1.16 : -1.54;
-  P.add('turret', cylY(0.12, 0.15, 0.22, 14), -0.54, sm ? 0.60 : 0.70, panoZ);
+  P.addEquipment('turret', cylY(0.12, 0.15, 0.22, 14), -0.54, sm ? 0.60 : 0.70, panoZ);
   P.add('turretDark', cylY(0.028, 0.035, sm ? 0.78 : 0.76, 10), -0.54, sm ? 1.08 : 1.11, panoZ);
-  P.add('turret', box(0.08, 0.12, 0.13), -0.54, sm ? 1.50 : 1.52, panoZ);
+  P.addEquipment('turret', box(0.08, 0.12, 0.13), -0.54, sm ? 1.50 : 1.52, panoZ);
   P.add('turretGlass', box(0.055, 0.07, 0.012), -0.54, sm ? 1.50 : 1.52, panoZ + 0.071);
   {
     const rws = new THREE.Group();

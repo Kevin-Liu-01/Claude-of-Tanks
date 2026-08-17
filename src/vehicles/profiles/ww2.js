@@ -870,12 +870,12 @@ function buildTiger2(P) {
     [-1.02, 1.86, -2.06], [1.02, 1.86, -2.06], [1.00, 1.86, -3.42], [-1.00, 1.86, -3.42],
     [-1.02, 2.74, -2.10], [1.02, 2.74, -2.10], [1.00, 2.50, -3.40], [-1.00, 2.50, -3.40]));
   P.add('hullDark', box(1.70, 0.02, 1.05), 0, 2.66, -2.62, -0.08, 0, 0);       // tower top grille
-  P.add('hull', box(0.55, 0.24, 0.30), 0, 2.20, 0.08);                         // driver periscope tower
+  P.addEquipment('hull', box(0.55, 0.24, 0.30), 0, 2.20, 0.08);                // driver periscope tower
   P.add('hullDark', box(0.42, 0.05, 0.05), 0, 2.30, 0.20);
   // bow furniture
   P.add('hull', sph(0.105, 12), 0.62, 1.44, 1.50);                           // bow MG ball on the glacis
   P.add('hullDark', cylZ(0.026, 0.26, 8), 0.62, 1.50, 1.64, -0.62, 0, 0);
-  P.add('hull', box(0.34, 0.10, 0.26), -0.62, 1.72, 1.10, -0.62, 0, 0);      // driver periscope hood
+  P.addEquipment('hull', box(0.34, 0.10, 0.26), -0.62, 1.72, 1.10, -0.62, 0, 0); // driver periscope hood
   P.add('hullDark', box(0.26, 0.035, 0.05), -0.62, 1.745, 1.16, -0.62, 0, 0);
   lightsAndGuards(P, [-0.85], 1.90, 0.95, -0.15);                            // single Bosch light
   towHook(P, -1.15, 0.72, 2.24); towHook(P, 1.15, 0.72, 2.24);

@@ -398,8 +398,8 @@ function buildArieteMk(P, mark) {
   P.add('turret', box(0.03, 0.125, 0.03), 0.905, 1.0875, L(0.382));            // hood cheek R
   P.add('turret', box(0.26, 0.022, 0.032), 0.76, 1.036, L(0.381));             // lens sill
   P.add('turretDark', box(0.012, 0.075, 0.010), 0.715, 1.088, L(0.394), 0, 0, 0.35); // wiper blade on the pane
-  P.add('turret', cylY(0.13, 0.15, 0.16, 12), -0.76, 0.94, L(-0.16));          // pano pedestal
-  P.add('turret', cylY(0.16, 0.16, 0.15, 12), -0.76, 1.095, L(-0.16));         // pano head to 2.47 (p95 datum)
+  P.addEquipment('turret', cylY(0.13, 0.15, 0.16, 12), -0.76, 0.94, L(-0.16));          // pano pedestal
+  P.addEquipment('turret', cylY(0.16, 0.16, 0.15, 12), -0.76, 1.095, L(-0.16));         // pano head to 2.47 (p95 datum)
   P.add('turretGlass', box(0.17, 0.08, 0.02), -0.76, 1.095, L(-0.005));
   // s5322-B6 pano head REALIZED: brow hood over the lens + face frame +
   // wiper — all under the head's own 1.17 crown (2.47 datum untouched).
@@ -432,9 +432,9 @@ function buildArieteMk(P, mark) {
     P.add('turretDark', box(w, 0.02, dd), px, 0.875, L(pz));
     P.add('turretDetail', box(w * 0.8, 0.016, 0.026), px, 0.888, L(pz + dd * 0.38));
   }
-  P.add('turret', box(0.30, 0.145, 0.26), 0.10, 0.93, L(0.30));                // gunner's aux sight hood (front_whole 2.31 @ x +0.14)
+  P.addEquipment('turret', box(0.30, 0.145, 0.26), 0.10, 0.93, L(0.30));                // gunner's aux sight hood (front_whole 2.31 @ x +0.14)
   // crosswind mast folded low on the rear roof (k2 height-law: no p95 spike)
-  P.add('turret', box(0.05, 0.09, 0.05), -0.30, 0.885, L(-1.12));              // mast pedestal
+  P.addEquipment('turret', box(0.05, 0.09, 0.05), -0.30, 0.885, L(-1.12));              // mast pedestal
   P.add('turretDetail', cylZ(0.02, 0.55, 8), -0.30, 0.915, L(-1.38), 0.10, 0, 0);
   // s5322-B5 wind-sensor head at the folded mast tip — T-crossbar + vane
   // stub FLUSH with the rod's own certified line (whip-rough law: no height).
@@ -487,7 +487,7 @@ function buildArieteMk(P, mark) {
         P.add('hull', box(0.44, 0.09, 0.52), s * (0.28 + i * 0.47), py, 2.30 + i * 0.30, prx, 0, 0); // glacis add-on rows re-seated ON the §5.299 raked plane
       }
     }
-    P.add('turret', box(0.30, 0.15, 0.30), -0.76, 1.295, L(-0.16));            // new commander sight housing over the pano
+    P.addEquipment('turret', box(0.30, 0.15, 0.30), -0.76, 1.295, L(-0.16));            // new commander sight housing over the pano
     P.add('turretGlass', box(0.18, 0.08, 0.02), -0.76, 1.32, L(-0.005));
     P.add('hull', box(0.26, 0.10, 0.16), 0.0, 1.72, 0.90);                     // driver thermal camera pod on the fairing
     P.add('hullGlass', box(0.16, 0.05, 0.02), 0.0, 1.73, 0.985);
@@ -694,7 +694,7 @@ function buildCarro45T(P) {
   // right shelf rim + sight housing (front_turret 2.24 rim @ x 1.2..1.48,
   // housing top 2.28)
   P.add('turret', box(0.36, 0.05, 2.10), 1.395, 0.715, L(-0.35));             // shelf rim to ±1.575 (gate 2.24 @ x 1.19..1.57)
-  P.add('turret', box(0.36, 0.14, 0.46), 1.16, 0.63, L(-0.35));                // commander's sight housing (top 2.20 — gate right side max)
+  P.addEquipment('turret', box(0.36, 0.14, 0.46), 1.16, 0.63, L(-0.35));                // commander's sight housing (top 2.20 — gate right side max)
   P.add('turretGlass', box(0.026, 0.10, 0.30), 1.345, 0.63, L(-0.30));
   P.add('turretDark', box(0.30, 0.02, 0.40), 1.16, 0.705, L(-0.35));
   // cupola (x 0, z -0.78, top 2.421) + loader ring + periscopes
@@ -716,7 +716,7 @@ function buildCarro45T(P) {
     periscope(P, 'turretDetail', -0.55 + Math.sin(a) * 0.22, 0.835,
       L(0.10) + Math.cos(a) * 0.22, a);
   }
-  P.add('turret', box(0.22, 0.155, 0.20), 0.73, 0.775, L(0.70));               // gunner periscope hood (side 2.387 @ +0.73; ref top 2.38-2.39)
+  P.addEquipment('turret', box(0.22, 0.155, 0.20), 0.73, 0.775, L(0.70));               // gunner periscope hood (side 2.387 @ +0.73; ref top 2.38-2.39)
   P.add('turretGlass', box(0.14, 0.05, 0.02), 0.73, 0.83, L(0.805));
   // rear: underside closure + backed service wall (owner c425f495 cadence
   // absorbed onto the measured rear: plan rear -2.13 at |x|<=1.26, face

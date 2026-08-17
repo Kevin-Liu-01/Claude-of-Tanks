@@ -451,9 +451,21 @@ function readDebuffs(combat) {
         if (eng.state === 'red') immobile = true;
         else if (eng.state === 'yellow') powerMult = ENGINE_YELLOW_POWER_MULT;
       }
+      const transmission = m.transmission;
+      if (transmission) {
+        if (transmission.state === 'red') {
+          powerMult *= 0.3;
+          accelMult *= 0.45;
+          traverseMult *= 0.45;
+        } else if (transmission.state === 'yellow') {
+          powerMult *= 0.72;
+          accelMult *= 0.75;
+          traverseMult *= 0.75;
+        }
+      }
       if ((m.trackL && m.trackL.state === 'red') ||
           (m.trackR && m.trackR.state === 'red')) immobile = true;
-      const ring = m.turretRing;
+      const ring = m.turretRing || m.gunMount;
       if (ring) {
         if (ring.state === 'red') turretMult = 0.2;
         else if (ring.state === 'yellow') turretMult = 0.5;

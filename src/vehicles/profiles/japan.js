@@ -22,44 +22,47 @@ function cassette(P, owner, x, y, z, w, h, d, rotation = null, fastener = true) 
     x, y + h * 0.5 + 0.009, z + d * 0.25, r[0], r[1], r[2]);
 }
 
-function whips(P, y, z, seed, spread = 1.02) {
+// `s` is an opt-in uniform scale on the helpers' internal fixed sizes
+// (§5.336 type10b ×1.10 re-seat) — the default 1 keeps every other
+// consumer (stb1, type90a) byte-identical (§F.2 shared-helper law).
+function whips(P, y, z, seed, spread = 1.02, s = 1) {
   for (const side of [-1, 1]) {
-    P.add('turretDetail', KIT.cylY(0.036, 0.046, 0.060, 10), side * spread, y, z);
+    P.add('turretDetail', KIT.cylY(0.036 * s, 0.046 * s, 0.060 * s, 10), side * spread, y, z);
     mount(P, FITTINGS.antennaWhip({
-      mats: P.mats, h: side < 0 ? 0.98 : 0.90, r: 0.011,
+      mats: P.mats, h: (side < 0 ? 0.98 : 0.90) * s, r: 0.011 * s,
       rake: side * 0.035, seed: seed + (side > 0 ? 1 : 0),
-    }), side * spread, y + 0.025, z);
+    }), side * spread, y + 0.025 * s, z);
   }
 }
 
-function smoke(P, x, y, z, count, seed, pitch = -0.38) {
+function smoke(P, x, y, z, count, seed, pitch = -0.38, s = 1) {
   for (const side of [-1, 1]) mount(P, FITTINGS.smokeBank({
-    mats: P.mats, count, r: 0.041, len: 0.28, splay: side * 1.02,
-    pitch, arc: 0.55, spacing: 0.10, slot: 'detail',
+    mats: P.mats, count, r: 0.041 * s, len: 0.28 * s, splay: side * 1.02,
+    pitch, arc: 0.55, spacing: 0.10 * s, slot: 'detail',
     rotation: [0, 0, -side * 0.10], seed: seed + (side > 0 ? 1 : 0),
   }), side * x, y, z);
 }
 
-function roofWeapon(P, x, y, z, seed, scale = 0.78, yaw = 0) {
-  P.add('turret', KIT.box(0.46, 0.075, 0.43), x, y, z);
-  P.add('turretDark', KIT.box(0.36, 0.020, 0.33), x, y + 0.048, z);
-  P.add('turret', KIT.cylY(0.19, 0.21, 0.070, 16), x, y + 0.085, z);
+function roofWeapon(P, x, y, z, seed, scale = 0.78, yaw = 0, s = 1) {
+  P.add('turret', KIT.box(0.46 * s, 0.075 * s, 0.43 * s), x, y, z);
+  P.add('turretDark', KIT.box(0.36 * s, 0.020 * s, 0.33 * s), x, y + 0.048 * s, z);
+  P.add('turret', KIT.cylY(0.19 * s, 0.21 * s, 0.070 * s, 16), x, y + 0.085 * s, z);
   mount(P, FITTINGS.pintleMG({
     mats: P.mats, cls: 'mag', tone: 'two-tone', scale, elev: 0.10,
-    shield: true, ammo: true, ring: { r: 0.16, stubs: 3 }, seed,
-  }), x, y + 0.105, z, [0, yaw, 0]);
+    shield: true, ammo: true, ring: { r: 0.16 * s, stubs: 3 }, seed,
+  }), x, y + 0.105 * s, z, [0, yaw, 0]);
 }
 
-function joinedBasket(P, width, y, z, depth, seed) {
-  P.add('turretDark', KIT.box(width, 0.30, 0.045), 0, y, z - depth * 0.5);
-  for (const yy of [y - 0.14, y, y + 0.14])
-    P.add('turretDetail', KIT.box(width + 0.18, 0.026, 0.030), 0, yy, z - depth - 0.025);
-  for (let i = 0; i < 8; i++) P.add('turretDetail', KIT.box(0.026, 0.38, 0.030),
-    -width * 0.47 + i * (width * 0.94 / 7), y, z - depth - 0.025);
+function joinedBasket(P, width, y, z, depth, seed, s = 1) {
+  P.add('turretDark', KIT.box(width, 0.30 * s, 0.045 * s), 0, y, z - depth * 0.5);
+  for (const yy of [y - 0.14 * s, y, y + 0.14 * s])
+    P.add('turretDetail', KIT.box(width + 0.18 * s, 0.026 * s, 0.030 * s), 0, yy, z - depth - 0.025 * s);
+  for (let i = 0; i < 8; i++) P.add('turretDetail', KIT.box(0.026 * s, 0.38 * s, 0.030 * s),
+    -width * 0.47 + i * (width * 0.94 / 7), y, z - depth - 0.025 * s);
   mount(P, FITTINGS.stowageRack({
-    mats: P.mats, w: width * 0.76, d: depth * 0.62, h: 0.22,
+    mats: P.mats, w: width * 0.76, d: depth * 0.62, h: 0.22 * s,
     fill: 0.45, rails: 3, seed,
-  }), 0, y + 0.14, z - depth * 0.50);
+  }), 0, y + 0.14 * s, z - depth * 0.50);
 }
 
 function buildSTB1(P) {
@@ -459,49 +462,57 @@ function buildType90A(P) {
 
 function addType10BPackage(P) {
   const { box, cylY, cylZ } = KIT;
+  // §5.336 re-seat: every station and size below is the ratified B-variant
+  // delta carried at the owner-decreed ×1.10 frame of the rebuilt shared
+  // base (the §5.299 byte-pin is retired by that order — the base upgrade
+  // covers both marks, the B identity delta is preserved here verbatim
+  // in shape, scaled in place).
   // Sharp modular Type 10B cheek shell. It remains a shallow swept mass and
   // intersects the donor crown, avoiding a second detached turret volume.
   for (const side of [-1, 1]) {
     P.add('turret', orientedSlab(
-      [side * 0.18, 0.05, 1.46], [side * 1.54, 0.05, 0.80],
-      [side * 1.48, 0.05, -0.58], [side * 0.40, 0.05, 0.24],
-      [side * 0.16, 0.58, 1.22], [side * 1.30, 0.61, 0.58],
-      [side * 1.25, 0.56, -0.65], [side * 0.37, 0.60, 0.15]));
+      [side * 0.198, 0.055, 1.606], [side * 1.694, 0.055, 0.88],
+      [side * 1.628, 0.055, -0.638], [side * 0.44, 0.055, 0.264],
+      [side * 0.176, 0.638, 1.342], [side * 1.43, 0.671, 0.638],
+      [side * 1.375, 0.616, -0.715], [side * 0.407, 0.66, 0.165]));
     for (let row = 0; row < 2; row++) for (let i = 0; i < 5; i++) {
-      cassette(P, 'turret', side * (0.50 + i * 0.23), 0.62 - row * 0.15,
-        1.06 - i * 0.16 - row * 0.25, 0.20, 0.14, 0.20,
+      cassette(P, 'turret', side * (0.55 + i * 0.253), 0.682 - row * 0.165,
+        1.166 - i * 0.176 - row * 0.275, 0.22, 0.154, 0.22,
         [-0.16, side * (0.035 + i * 0.045), side * 0.018], false);
     }
     // High modular side armor is additive over the intact Type 10 skirts and
-    // stays clear of the five-wheel smart course.
-    for (let i = 0; i < 6; i++) cassette(P, 'hull', side * 1.58, 1.03,
-      1.62 - i * 0.68, 0.045, 0.42, 0.60, null, false);
+    // stays clear of the five-wheel smart course (inner faces seated on the
+    // 1.6606 skirt outer plane — §B2 no-air; outer 1.7102 inside the ±1.782
+    // width anchor).
+    for (let i = 0; i < 6; i++) cassette(P, 'hull', side * 1.6854, 1.133,
+      1.782 - i * 0.748, 0.0495, 0.462, 0.66, null, false);
   }
   // Paired EO stations and compact commander's RWS preserve JGSDF asymmetry.
-  P.add('turret', box(0.45, 0.075, 0.44), -0.50, 0.88, -0.22);
-  P.add('turretDetail', box(0.35, 0.33, 0.32), -0.50, 1.05, -0.17, -0.06, 0, 0);
-  P.add('turretDark', box(0.26, 0.17, 0.030), -0.50, 1.06, 0.025);
-  P.add('turretGlass', box(0.18, 0.10, 0.020), -0.50, 1.06, 0.048);
-  P.add('turret', box(0.34, 0.25, 0.31), 0.70, 0.89, 0.10, -0.08, 0, 0);
-  P.add('turretDark', box(0.24, 0.13, 0.026), 0.70, 0.90, 0.285);
-  P.add('turretGlass', box(0.16, 0.075, 0.018), 0.70, 0.90, 0.306);
-  roofWeapon(P, 0.42, 0.91, -0.58, 10010, 0.78, 0.045);
-  smoke(P, 1.23, 0.65, 0.05, 6, 10020, -0.45);
-  joinedBasket(P, 2.52, 0.48, -1.74, 0.70, 10030);
-  whips(P, 0.74, -1.94, 10040, 1.10);
+  P.add('turret', box(0.495, 0.0825, 0.484), -0.55, 0.968, -0.242);
+  P.add('turretDetail', box(0.385, 0.363, 0.352), -0.55, 1.155, -0.187, -0.06, 0, 0);
+  P.add('turretDark', box(0.286, 0.187, 0.033), -0.55, 1.166, 0.0275);
+  P.add('turretGlass', box(0.198, 0.11, 0.022), -0.55, 1.166, 0.0528);
+  P.add('turret', box(0.374, 0.275, 0.341), 0.77, 0.979, 0.11, -0.08, 0, 0);
+  P.add('turretDark', box(0.264, 0.143, 0.0286), 0.77, 0.99, 0.3135);
+  P.add('turretGlass', box(0.176, 0.0825, 0.0198), 0.77, 0.99, 0.3366);
+  roofWeapon(P, 0.462, 1.001, -0.638, 10010, 0.858, 0.045, 1.1);
+  smoke(P, 1.353, 0.715, 0.055, 6, 10020, -0.45, 1.1);
+  joinedBasket(P, 2.772, 0.528, -1.914, 0.77, 10030, 1.1);
+  whips(P, 0.814, -2.134, 10040, 1.21, 1.1);
   // Type 10 Kai 120-mm closed mask and strengthened sleeve.
-  P.addGunExtra(box(0.78, 0.50, 0.27), 0, -0.01, 0.40);
-  P.addGunExtra(cylZ(0.19, 0.40, 18, 0.15), 0, 0, 0.70);
-  P.addGunExtra(cylZ(0.075, 0.22, 12), -0.28, 0.15, 0.47);
-  P.addGunExtraDark(cylZ(0.048, 0.045, 12), -0.28, 0.15, 0.60);
-  P.addGunExtraDark(cylZ(0.038, 0.10, 10), 0.29, 0.07, 0.61);
-  P.decal('turret', 'number', '10-B', 0.20, [-1.48, 0.43, -0.82], -Math.PI / 2);
-  P.topY = Math.max(P.topY || 0, 1.48);
+  P.addGunExtra(box(0.858, 0.55, 0.297), 0, -0.011, 0.44);
+  P.addGunExtra(cylZ(0.209, 0.44, 18, 0.165), 0, 0, 0.77);
+  P.addGunExtra(cylZ(0.0825, 0.242, 12), -0.308, 0.165, 0.517);
+  P.addGunExtraDark(cylZ(0.0528, 0.0495, 12), -0.308, 0.165, 0.66);
+  P.addGunExtraDark(cylZ(0.0418, 0.11, 10), 0.319, 0.077, 0.671);
+  P.decal('turret', 'number', '10-B', 0.22, [-1.628, 0.473, -0.902], -Math.PI / 2);
+  P.topY = Math.max(P.topY || 0, 1.628);
 }
 
 function buildType10B(P) {
-  // §5.299 PIN: Type 10B keeps the japan-wave base (9555f7fe) verbatim via
-  // buildType10BBase while plain type10 reverts to the pre-wave model.
+  // §5.336: the shared base is the rebuilt ×1.10 buildType10Native2026
+  // (the §5.299 byte-pin retired by owner authority; buildType10BBase now
+  // delegates). The B-variant identity rides on top, re-seated at scale.
   buildType10BBase(P);
   addType10BPackage(P);
 }

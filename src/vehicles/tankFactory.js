@@ -2346,12 +2346,12 @@ function cupola(P, bucket, x, y, z, r, h, periscopes = 6) {
   const cs = P.q ? 22 : 10;
   const darkB = bucket === 'turret' ? 'turretDark' : 'hullDark';
   const glassB = bucket === 'turret' ? 'turretGlass' : 'hullGlass';
-  P.add(bucket, cylY(r, r * 1.06, h, cs), x, y + h / 2, z);
-  P.add(bucket, cylY(r * 0.92, r * 0.92, 0.04, cs), x, y + h + 0.02, z);
+  P.addCupola(bucket, cylY(r, r * 1.06, h, cs), x, y + h / 2, z);
+  P.addCupola(bucket, cylY(r * 0.92, r * 0.92, 0.04, cs), x, y + h + 0.02, z);
   // split-hatch lid seam + hinge blocks
   P.add(darkB, box(r * 1.7, 0.015, 0.03), x, y + h + 0.045, z);
-  P.add(bucket, box(0.07, 0.045, 0.1), x + r * 0.85, y + h + 0.02, z);
-  P.add(bucket, box(0.07, 0.045, 0.1), x - r * 0.85, y + h + 0.02, z);
+  P.addCupola(bucket, box(0.07, 0.045, 0.1), x + r * 0.85, y + h + 0.02, z);
+  P.addCupola(bucket, box(0.07, 0.045, 0.1), x - r * 0.85, y + h + 0.02, z);
   if (P.q) {
     for (let k = 0; k < periscopes; k++) {
       const a = (k / periscopes) * Math.PI * 2;
@@ -2378,7 +2378,7 @@ function liftEye(P, bucket, x, y, z, ry = 0) {
 
 // Fixed periscope block with glass slit (driver / roof optics).
 function periscope(P, bucket, x, y, z, ry = 0) {
-  P.add(bucket, box(0.14, 0.07, 0.1), x, y, z, 0, ry, 0);
+  P.addEquipment(bucket, box(0.14, 0.07, 0.1), x, y, z, 0, ry, 0);
   const glassB = bucket.startsWith('turret') ? 'turretGlass' : 'hullGlass';
   P.add(glassB, box(0.11, 0.028, 0.102), x, y + 0.012, z, 0, ry, 0);
 }
@@ -2418,8 +2418,8 @@ function stowage(P, bucket, rng, spots) {
   const dark = bucket.startsWith('turret') ? 'turretDark' : 'hullDark';
   for (const [x, y, z, w, h, d] of spots) {
     const yaw = (rng() - 0.5) * 0.12;
-    P.add(bucket, box(w, h, d), x, y, z, 0, yaw, 0);
-    P.add(bucket, box(w * 1.04, h * 0.18, d * 1.04), x, y + h * 0.46, z, 0, yaw, 0); // tarp lid
+    P.addEquipment(bucket, box(w, h, d), x, y, z, 0, yaw, 0);
+    P.addEquipment(bucket, box(w * 1.04, h * 0.18, d * 1.04), x, y + h * 0.46, z, 0, yaw, 0); // tarp lid
     const along = d >= w;                                    // straps across the long axis
     for (const f of [-0.28, 0.28]) {
       P.add(dark, along
@@ -2432,11 +2432,11 @@ function stowage(P, bucket, rng, spots) {
 
 // ---- procedural prop kit (stowage clutter at canonical locations) ----------
 function jerryCan(P, bucket, x, y, z, yaw = 0) {
-  P.add(bucket, box(0.16, 0.46, 0.34), x, y, z, 0, yaw, 0);
-  P.add(bucket, box(0.04, 0.06, 0.12), x, y + 0.26, z, 0, yaw, 0);   // handles
+  P.addEquipment(bucket, box(0.16, 0.46, 0.34), x, y, z, 0, yaw, 0);
+  P.addEquipment(bucket, box(0.04, 0.06, 0.12), x, y + 0.26, z, 0, yaw, 0);   // handles
 }
 function tarpRoll(P, bucket, x, y, z, len, r = 0.1, alongX = true, seg = 10) {
-  P.add(bucket, alongX ? cylX(r, len, seg) : cylZ(r, len, seg), x, y, z);
+  P.addEquipment(bucket, alongX ? cylX(r, len, seg) : cylZ(r, len, seg), x, y, z);
   const dark = bucket.startsWith('turret') ? 'turretDark' : 'hullDark';
   for (const f of [-0.3, 0.3]) {
     P.add(dark, alongX
@@ -2446,7 +2446,7 @@ function tarpRoll(P, bucket, x, y, z, len, r = 0.1, alongX = true, seg = 10) {
   }
 }
 function ammoCan(P, bucket, x, y, z, yaw = 0) {
-  P.add(bucket, box(0.14, 0.2, 0.3), x, y, z, 0, yaw, 0);
+  P.addEquipment(bucket, box(0.14, 0.2, 0.3), x, y, z, 0, yaw, 0);
 }
 function shovelTool(P, x, y, z, len = 0.95) {
   P.add('hullWood', box(0.035, 0.025, len), x, y, z);
@@ -3030,7 +3030,7 @@ function buildIS2(P) {
   // sloped rear — top-ring zF/zR were swapped (zF -3.38 < zR -3.0 inverted
   // the slab ring => inside-out since authorship; §5.03 sweep item 1)
   P.add('hull', frustum(1.4, -2.86, -2.86, 1.4, -3.0, -3.38, 1.31, 1.8));
-  P.add('hull', box(0.3, 0.12, 0.3), 0, 1.85, 1.6);                             // driver periscope hump
+  P.addEquipment('hull', box(0.3, 0.12, 0.3), 0, 1.85, 1.6);                    // driver periscope hump
   // r4 diving-board fix (worst at the IS-2 bow): main fender run pulled back
   // from the tapered prow, sawtooth tips angle DOWN right off the run's end,
   // and support brackets tie the shelf to the hull side.
@@ -3338,7 +3338,7 @@ function buildPanther(P) {
   P.add('turretDark', torus(0.105, 0.014, 12), 0.28, 0.782, -0.55);
   periscope(P, 'turretDetail', 0.30, 0.80, 0.02);                               // loader periscope
   P.add('turretDark', box(0.16, 0.035, 0.10), -0.30, 0.785, 0.42);              // gunner sight aperture
-  P.add('turret', box(0.20, 0.028, 0.13), -0.30, 0.815, 0.46);                  // sight rain guard
+  P.addEquipment('turret', box(0.20, 0.028, 0.13), -0.30, 0.815, 0.46);                  // sight rain guard
   liftEye(P, 'turretDetail', -0.50, 0.79, 0.55);
   liftEye(P, 'turretDetail', 0.50, 0.79, 0.55);
   liftEye(P, 'turretDetail', 0, 0.79, -0.68);
@@ -3469,7 +3469,7 @@ function buildM1A2(P) {
   P.add('turretDetail', cylY(0.14, 0.16, 0.24, 16), -0.72, 0.96, 0.5);
   P.add('turretDark', box(0.26, 0.24, 0.28), -0.72, 1.18, 0.5);                 // CITV head
   P.add('turretGlass', box(0.18, 0.13, 0.02), -0.72, 1.18, 0.65);               // CITV mirror window
-  P.add('turret', box(0.55, 0.34, 0.6), 0.78, 1.0, 0.42);                       // GPS doghouse
+  P.addEquipment('turret', box(0.55, 0.34, 0.6), 0.78, 1.0, 0.42);                       // GPS doghouse
   P.add('turretDark', box(0.48, 0.16, 0.06), 0.78, 0.98, 0.74);                 // GPS window frame
   P.add('turretGlass', box(0.42, 0.11, 0.02), 0.78, 0.98, 0.775);               // GPS lens
   // CROWS-LP RWS: pedestal ring, sensor cradle, elevated .50cal with a real
@@ -4068,7 +4068,7 @@ function buildLeo2A7(P) {
   // roof edge (§8.5 weak spot): dark well sunk below the wedge top line, the
   // armored head inside it, shutter face + brow
   P.add('turretDark', box(0.62, 0.22, 0.52), 0.74, 0.82, 0.28);                 // recess well
-  P.add('turret', box(0.50, 0.26, 0.40), 0.74, 0.86, 0.26);                     // sight head
+  P.addEquipment('turret', box(0.50, 0.26, 0.40), 0.74, 0.86, 0.26);                     // sight head
   P.add('turretDetail', box(0.54, 0.05, 0.44), 0.74, 1.005, 0.24);              // brow lid
   P.add('turretDark', box(0.38, 0.18, 0.04), 0.74, 0.86, 0.475);                // shutter plate
   P.add('turretGlass', box(0.30, 0.11, 0.02), 0.74, 0.86, 0.50);                // EMES lens
@@ -4239,10 +4239,12 @@ function buildCommunityPlaceholder(P) {
 
 // Bucket -> [parent group key, material key]
 const BUCKET_DEF = {
-  hull: ['hullG', 'hull'], hullDetail: ['hullG', 'detail'], hullDark: ['hullG', 'dark'],
+  hull: ['hullG', 'hull'], hullCupola: ['hullG', 'hull'], hullEquipment: ['hullG', 'hull'],
+  hullDetail: ['hullG', 'detail'], hullDark: ['hullG', 'dark'],
   hullRubber: ['hullG', 'rubber'], hullWood: ['hullG', 'wood'], hullCloth: ['hullG', 'canvasCloth'],
   hullGlass: ['hullG', 'glass'],
-  turret: ['turretG', 'hull'], turretDetail: ['turretG', 'detail'], turretDark: ['turretG', 'dark'],
+  turret: ['turretG', 'hull'], turretCupola: ['turretG', 'hull'], turretEquipment: ['turretG', 'hull'],
+  turretDetail: ['turretG', 'detail'], turretDark: ['turretG', 'dark'],
   turretCloth: ['turretG', 'canvasCloth'], turretGlass: ['turretG', 'glass'],
   gun: ['recoilG', 'barrel'], gunDark: ['recoilG', 'dark'], gunMount: ['gunG', 'hull'],
   gunMountDark: ['gunG', 'dark'],
@@ -4286,10 +4288,16 @@ const BUCKET_DEF = {
   // §B4 from reporting the enclosure intersecting the belt it is built over.
   hullTrackGuardL: ['hullG', 'hull'], hullTrackGuardR: ['hullG', 'hull'],
 };
-const CAMO_BUCKETS = new Set(['hull', 'hullTrackGuardL', 'hullTrackGuardR', 'turret', 'gun', 'gunMount']);
+const CAMO_BUCKETS = new Set([
+  'hull', 'hullCupola', 'hullEquipment', 'hullTrackGuardL', 'hullTrackGuardR',
+  'turret', 'turretCupola', 'turretEquipment', 'gun', 'gunMount',
+]);
 // Buckets that survive past LOD1 — everything else is greeble-class and
 // disappears at range behind the silhouette shells.
-const LOD0_KEEP = new Set(['hull', 'hullTrackGuardL', 'hullTrackGuardR', 'turret', 'gun', 'gunDark', 'gunMount', 'hullRubber']);
+const LOD0_KEEP = new Set([
+  'hull', 'hullCupola', 'hullTrackGuardL', 'hullTrackGuardR',
+  'turret', 'turretCupola', 'gun', 'gunDark', 'gunMount', 'hullRubber',
+]);
 
 // Baked per-vertex weathering for camo surfaces: vertical dust gradient (heavy
 // at skirt bottoms / running gear height), downward-face AO, and a subtle
@@ -4820,6 +4828,21 @@ export function createTank(specId, engineCtx, opts = {}) {
     add(bucket, geo, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, s = 1) {
       (buckets[bucket] || (buckets[bucket] = [])).push(xform(geo, x, y, z, rx, ry, rz, s));
     },
+    // Painted fittings sometimes share the hull/turret material, but they do
+    // not own armor. Keep them in a separate semantic bucket so geometry
+    // receipts (and therefore shell hit volumes) can never grow around an MG,
+    // sight, antenna, stowage box, or other roof equipment. Cupolas continue
+    // to use P.add('hull'/'turret') because they are structural hit surfaces.
+    addEquipment(bucket, geo, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, s = 1) {
+      const visualBucket = bucket === 'hull' ? 'hullEquipment'
+        : bucket === 'turret' ? 'turretEquipment' : bucket;
+      P.add(visualBucket, geo, x, y, z, rx, ry, rz, s);
+    },
+    addCupola(bucket, geo, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, s = 1) {
+      const structuralBucket = bucket === 'hull' ? 'hullCupola'
+        : bucket === 'turret' ? 'turretCupola' : bucket;
+      P.add(structuralBucket, geo, x, y, z, rx, ry, rz, s);
+    },
     // Variant builders may replace a canonical family's turret, mantlet or
     // cannon while retaining its detailed hull and suspension. Clearing an
     // authored bucket is explicit and happens before mesh merging, so no
@@ -4898,6 +4921,15 @@ export function createTank(specId, engineCtx, opts = {}) {
     disposables.push(merged);
     const mesh = new THREE.Mesh(merged, mats[matKey]);
     mesh.name = bucket;
+    mesh.userData.combatHitboxRole = bucket === 'hull' || bucket === 'turret'
+        || bucket === 'hullCupola' || bucket === 'turretCupola'
+      ? 'armor'
+      : bucket === 'hullEquipment' || bucket === 'turretEquipment'
+        ? 'equipment'
+        : 'nonArmor';
+    if (bucket === 'hullCupola' || bucket === 'turretCupola') {
+      mesh.userData.combatHitboxPart = 'cupola';
+    }
     if (bucket === 'hullTrackGuardL' || bucket === 'hullTrackGuardR') {
       mesh.userData.trackGuard = true;
       mesh.userData.appearanceRole = 'armorPaint';
@@ -5033,14 +5065,6 @@ export function createTank(specId, engineCtx, opts = {}) {
     part.userData.cannonBorePrimaryPart = false;
     part.userData.cannonBoreSuppressed = true;
   }
-  const fallbackBore = new THREE.Group();
-  fallbackBore.name = 'muzzleBoreShadowFallback';
-  fallbackBore.userData.cannonBore = true;
-  fallbackBore.userData.caliberMm = spec.gun.caliberMm;
-  fallbackBore.visible = true;
-  // The measured seating pass below replaces this nominal 32 mm lip. Keep a
-  // safe default for profiles whose center ray has no renderable cap.
-  fallbackBore.position.z = 0.032;
   const muzzleOuterR = Math.max(0.014, (armor.gunBarrel.radiusM || 0.04) * 0.92);
   const caliberRadius = Math.max(0.004, (spec.gun.caliberMm || 20) / 2000);
   const muzzleInnerR = Math.max(muzzleOuterR * 0.46,
@@ -5054,71 +5078,101 @@ export function createTank(specId, engineCtx, opts = {}) {
   // Slightly overlap the annulus: a hairline gap between separate meshes can
   // expose legacy solid-cap triangles on small-caliber, low-segment barrels.
   const boreDiscGeo = new THREE.CircleGeometry(muzzleInnerR * 1.02, boreSegments);
-  const boreRim = new THREE.Mesh(boreRimGeo, mats.dark);
-  boreRim.name = 'muzzleBoreShadowFallbackRim';
-  boreRim.userData.cannonBoreFallbackPart = true;
-  boreRim.userData.cannonBorePrimaryPart = true;
-  boreRim.visible = true;
-  const boreAnnulus = new THREE.Mesh(boreAnnulusGeo, mats.dark);
-  boreAnnulus.name = 'muzzleBoreShadowFallbackAnnulus';
-  boreAnnulus.userData.cannonBoreFallbackPart = true;
-  boreAnnulus.userData.cannonBorePrimaryPart = true;
-  boreAnnulus.position.z = -0.002;
-  boreAnnulus.visible = true;
-  const boreDisc = new THREE.Mesh(boreDiscGeo, mats.shadow);
-  boreDisc.name = 'muzzleBoreShadowFallbackDisc';
-  boreDisc.userData.cannonBoreFallbackPart = true;
-  boreDisc.userData.cannonBorePrimaryPart = true;
-  // The disc sits 14 mm behind the ring center: after seating, the throat is
-  // 18 mm and the lip is 32 mm beyond the actual cap. This preserves the read
-  // as a recess without disabling depth testing (which would leak through
-  // tanks when the cannon points away from the camera).
-  boreDisc.position.z = -0.014;
-  boreDisc.visible = true;
-  for (const part of [boreRim, boreAnnulus, boreDisc]) {
-    part.castShadow = false;
-    part.receiveShadow = true;
-    fallbackBore.add(part);
-  }
-  // Procedural profile tips are not normalized to rig_muzzle: the all-fleet
-  // visual gate measured legacy brake caps from behind the nominal anchor to
-  // 5.5 cm beyond it. Seat against the real centerline face instead of using
-  // a fleet-wide offset (which would float in front of already-correct tubes).
+  // TWIN-BORE KNOB (owner order 2026-08-17, "2 shooting holes for both its
+  // barrels"): `spec.gun.muzzles = [{x,y}, ...]` (recoil-local lateral
+  // offsets at the muzzle plane) installs one rim/annulus/disc assembly PER
+  // barrel tip, each seated by the same capZ ray at its own axis. ABSENT =>
+  // the exact legacy single-assembly path below runs once at the authored/
+  // center axis — byte-identical geometry, names, seating and disposal
+  // order (§5.279 absent-param loader-law pattern).
+  const muzzleDefs = (Array.isArray(spec.gun.muzzles) && spec.gun.muzzles.length)
+    ? spec.gun.muzzles : [null];
   root.updateMatrixWorld(true);
-  let boreX = 0, boreY = 0;
-  const authoredSeat = authoredBore || authoredRim;
-  if (authoredSeat) {
-    const authoredLocal = muzzle.worldToLocal(authoredSeat.getWorldPosition(new THREE.Vector3()));
-    boreX = authoredLocal.x;
-    boreY = authoredLocal.y;
-    // If the nominal rig anchor is far from a hand-authored tube (M60A2),
-    // retain the authored face as the fallback before the cap ray refines it.
-    fallbackBore.position.set(boreX, boreY, authoredLocal.z + 0.032);
+  for (let mi = 0; mi < muzzleDefs.length; mi++) {
+    const def = muzzleDefs[mi];
+    const suffix = mi > 0 ? `_${mi}` : '';
+    const fallbackBore = new THREE.Group();
+    fallbackBore.name = `muzzleBoreShadowFallback${suffix}`;
+    fallbackBore.userData.cannonBore = true;
+    fallbackBore.userData.caliberMm = spec.gun.caliberMm;
+    fallbackBore.visible = true;
+    // The measured seating pass below replaces this nominal 32 mm lip. Keep a
+    // safe default for profiles whose center ray has no renderable cap.
+    fallbackBore.position.z = 0.032;
+    const boreRim = new THREE.Mesh(boreRimGeo, mats.dark);
+    boreRim.name = `muzzleBoreShadowFallbackRim${suffix}`;
+    boreRim.userData.cannonBoreFallbackPart = true;
+    boreRim.userData.cannonBorePrimaryPart = true;
+    boreRim.visible = true;
+    const boreAnnulus = new THREE.Mesh(boreAnnulusGeo, mats.dark);
+    boreAnnulus.name = `muzzleBoreShadowFallbackAnnulus${suffix}`;
+    boreAnnulus.userData.cannonBoreFallbackPart = true;
+    boreAnnulus.userData.cannonBorePrimaryPart = true;
+    boreAnnulus.position.z = -0.002;
+    boreAnnulus.visible = true;
+    const boreDisc = new THREE.Mesh(boreDiscGeo, mats.shadow);
+    boreDisc.name = `muzzleBoreShadowFallbackDisc${suffix}`;
+    boreDisc.userData.cannonBoreFallbackPart = true;
+    boreDisc.userData.cannonBorePrimaryPart = true;
+    // The disc sits 14 mm behind the ring center: after seating, the throat is
+    // 18 mm and the lip is 32 mm beyond the actual cap. This preserves the read
+    // as a recess without disabling depth testing (which would leak through
+    // tanks when the cannon points away from the camera).
+    boreDisc.position.z = -0.014;
+    boreDisc.visible = true;
+    for (const part of [boreRim, boreAnnulus, boreDisc]) {
+      part.castShadow = false;
+      part.receiveShadow = true;
+      fallbackBore.add(part);
+    }
+    // Procedural profile tips are not normalized to rig_muzzle: the all-fleet
+    // visual gate measured legacy brake caps from behind the nominal anchor to
+    // 5.5 cm beyond it. Seat against the real centerline face instead of using
+    // a fleet-wide offset (which would float in front of already-correct tubes).
+    let boreX = 0, boreY = 0;
+    if (def) {
+      // Spec-driven barrel axis: the assembly seats at its own lateral
+      // offset; authored bore furniture stays suppressed exactly as in the
+      // single-mouth path (nearest-part refinement is a centerline-only law).
+      boreX = def.x || 0;
+      boreY = def.y || 0;
+      fallbackBore.position.set(boreX, boreY, 0.032);
+    } else {
+      const authoredSeat = authoredBore || authoredRim;
+      if (authoredSeat) {
+        const authoredLocal = muzzle.worldToLocal(authoredSeat.getWorldPosition(new THREE.Vector3()));
+        boreX = authoredLocal.x;
+        boreY = authoredLocal.y;
+        // If the nominal rig anchor is far from a hand-authored tube (M60A2),
+        // retain the authored face as the fallback before the cap ray refines it.
+        fallbackBore.position.set(boreX, boreY, authoredLocal.z + 0.032);
+      }
+    }
+    // The muzzle face is authored in recoilG: barrel/brake geometry uses the
+    // `gun` buckets, while mantlet/cradle parts live in gunG and hull/turret
+    // geometry cannot own the bore. Raycasting the entire tank made every cold
+    // garage preview test tens of thousands of unrelated hull/track triangles
+    // (one constrained Leopard switch spent >200 ms here). Restricting the
+    // exact same centerline ray to its semantic owner preserves the measured
+    // cap point while removing that first-use stall. Both merged gun material
+    // buckets count: autocannon tips such as BMP-2 deliberately put their
+    // centerline cap in `gunDark`, exactly as the former generic ray did.
+    let capZ = null;
+    for (const name of ['gun', 'gunDark']) {
+      const surface = recoilG.getObjectByName(name);
+      if (!surface || !surface.isMesh) continue;
+      const z = axisGeometryCapZ(surface.geometry, boreX, boreY,
+        P.muzzleZ - 2, P.muzzleZ + 1);
+      if (z != null && (capZ == null || z > capZ)) capZ = z;
+    }
+    if (capZ != null) {
+      const capOffset = Math.max(-0.2, Math.min(0.5, capZ - P.muzzleZ));
+      fallbackBore.position.z = capOffset + 0.032;
+      fallbackBore.userData.capOffsetM = capOffset;
+    }
+    muzzle.add(fallbackBore);
+    fallbackBore.visible = true;
   }
-  // The muzzle face is authored in recoilG: barrel/brake geometry uses the
-  // `gun` buckets, while mantlet/cradle parts live in gunG and hull/turret
-  // geometry cannot own the bore. Raycasting the entire tank made every cold
-  // garage preview test tens of thousands of unrelated hull/track triangles
-  // (one constrained Leopard switch spent >200 ms here). Restricting the
-  // exact same centerline ray to its semantic owner preserves the measured
-  // cap point while removing that first-use stall. Both merged gun material
-  // buckets count: autocannon tips such as BMP-2 deliberately put their
-  // centerline cap in `gunDark`, exactly as the former generic ray did.
-  let capZ = null;
-  for (const name of ['gun', 'gunDark']) {
-    const surface = recoilG.getObjectByName(name);
-    if (!surface || !surface.isMesh) continue;
-    const z = axisGeometryCapZ(surface.geometry, boreX, boreY,
-      P.muzzleZ - 2, P.muzzleZ + 1);
-    if (z != null && (capZ == null || z > capZ)) capZ = z;
-  }
-  if (capZ != null) {
-    const capOffset = Math.max(-0.2, Math.min(0.5, capZ - P.muzzleZ));
-    fallbackBore.position.z = capOffset + 0.032;
-    fallbackBore.userData.capOffsetM = capOffset;
-  }
-  muzzle.add(fallbackBore);
-  fallbackBore.visible = true;
   disposables.push(boreRimGeo, boreAnnulusGeo, boreDiscGeo);
   const turretTop = new THREE.Object3D();
   turretTop.position.set(0, P.topY, 0);

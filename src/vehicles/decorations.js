@@ -2248,6 +2248,7 @@ export function attachTankDecorations(a) {
         mesh.castShadow = false;
         mesh.receiveShadow = true;
         mesh.userData.__decor = true;
+        mesh.userData.combatHitboxRole = 'equipment';
         // LOD: decor vanishes at the fleet's greeble horizon
         const lod = new THREE.LOD();
         lod.addLevel(mesh, 0);
@@ -2256,6 +2257,7 @@ export function attachTankDecorations(a) {
         drawCalls++;
       }
       parent.add(g);
+      g.userData.combatHitboxRole = 'equipment';
     }
     for (const m of Object.values(mats.all())) disposables.push(m);
 

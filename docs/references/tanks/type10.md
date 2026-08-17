@@ -291,3 +291,129 @@ plain type 10 to the model before"**. Delivered uncommitted-unstaged.
 The §5.248 JAPAN-WAVE section above stays as history; its KEEP 97267188 is
 superseded by this order for plain type10 — that geometry lives on solely
 as the type10b base pin.
+
+## §5.336 OWNER ORDER — pair enlargement + fleet gear + quality round (2026-08-17)
+Order verbatim: "make the type 10s larger make their tracks much better using
+our better track system and make their hulls and turrets much mcuh beter."
+Both marks upgraded through ONE shared base (the §5.299/§5.308 type10b
+byte-pin is RETIRED BY OWNER AUTHORITY — buildType10BBase now delegates to
+the rebuilt buildType10Native2026; the B identity delta lives in
+profiles/japan.js addType10BPackage, re-seated at scale).
+
+### 1. LARGER — owner-decreed ×1.10 (§5.304-class divergence)
+- Scale judged against the owner-corrected type90 side-by-side in the live
+  garage (diagnosis harness; receipts shots/type10-enlarge/scale-probe/:
+  pair-s1/s106/s108/s11/s112.png + aabb.json). ×1.10 reads decisively
+  larger with a balanced stance; ×1.12 added no garage presence beyond it.
+  AFTER read at build scale: shots/type10-enlarge/after-garage/pair-s1.png.
+- Every §5.248 print-decoded station carried at EXACT ×1.10. Spec dims
+  re-derived exactly: 6.84/9.49/3.24/2.68 -> **7.524 / 10.439 / 3.564 /
+  2.948** (type10b 7.513 / 10.439 / 3.564 / 2.838). EXACT values (not
+  rounded) so the type90 spec-clone chain (userdrops5 make ->
+  fitArmorToDims) refits to byte-invariant results — the owner-corrected
+  type90 hit frame cannot move. Armor frame scaled in the SAME edit (§D
+  coupling law); protection mm values kept (gameplay truth).
+- The registered oracle (type-10_main_battle_tank_repaired.glb, md5
+  c3df50a6) now reads ~9.1% SMALL against the build BY DECREE — adjudicated
+  FALSE-class divergence, never chase the print back. Honest gate cost:
+  68.7 -> **67.2 ×2 bit-identical** (hull 77.1 / whole 67.2 / stations 73.1
+  / dims **100** / floaters 100). dimRows: height 0.15% / hull 0.45% /
+  overall 0.07% / width 0.02%. The stations 85.4->73.1 + whole 68.7->67.2
+  drops are the ordered divergence, documented here, no chase-back.
+- ANATOMY-RECONCILE LAW (banked): combatAnatomy reconcileFrame maps
+  armor.gunPivot/turretPivot into the calibrated frame
+  (combatAnatomyCalibrations, auto-regenerated receipts) — the gun group
+  seats at world z ~1.41, not the naive spec sum (rig-probe receipt
+  gunLocal z 1.1771 + ring 0.2354). The exposed run (buildGun len 5.207,
+  muzzleZ 5.24) carries the ×1.10 muzzle to world ~6.65 = overall 10.45
+  measured vs 10.439 published (0.07%). First cut at len 5.027 measured
+  overall 10.26 (-1.73%, dims 94.2) — receipt of the reconcile offset.
+
+### 2. TRACKS — fleet §B6/§5.262 smart course (amx §5.318 / kf51b §5.324 grammar)
+- Five big exposed rubber-tired wheels (r 0.385, xc 1.3337) + VISIBLE
+  TORSION ARMS (arms:true) + FOUR return rollers (r 0.0935 @ y 0.8525) +
+  RAISED drive sprocket (z -3.146, y 1.155, r 0.352/trackR 0.22) + RAISED
+  idler (z 3.278, y 0.88, r 0.385/trackR 0.231) = the §B6 \________/
+  trapezoid at the print's own wrap stations ×1.10.
+- Fine-pitch integrated detailed shoes: linkPitchM 0.112, shoeRadialScale
+  0.55 (the old flattened 0.20 course retired), padCornerFloor 0.0132,
+  paintedEnds, coveredTop (skirted top run), pinCapOuter 0.252 (caps 2 mm
+  proud of the 1.5837 pad face).
+- §5.262 tones: gearFloor ambient hook + tireHex 0x24261f + wheelHex
+  0x3f4837 + padHex 0x31322a / chainHex 0x292a24 — the exposed train never
+  reads ambient-black behind skirt shade.
+- Rotation-invariant end-drum face anatomy (leo1a5/§5.324 grammar): rim +
+  inner tori + hub caps at the band face x 1.604-1.607, radially <=0.155
+  inside the guide-horn sweep annulus (§B4).
+- §B9: skirt hem 0.42 exposes ~49% of the 0.77 wheel discs (fleet 40-70
+  band); five stations countable in every side frame
+  (after/type10/paired/view-left.png).
+- track-clip --exact --strict **0/0 band + 0/0 shoe + 0/0 sweep — BOTH ids,
+  final bytes**. Three §B4 fixes receipted en route: (a) louvre bank
+  re-seated high on the bay-roof flank (§5.308-B fix carried ×1.10; low
+  seat measured 33 band/18 shoe vox), (b) sponson REAR STEP (underside
+  1.32, z -2.45..-1.95) — the rising run crosses y 1.2265 at z -2.40 (16
+  vox at the old full-depth edge), (c) skirt course moved inboard to 1.622
+  after the failed rear-fender cap (82/44 vox receipt: no horizontal cap
+  fits over the climbing run; the 3.0 cm band/skirt slit is the certified
+  sub-scan class). §B4 VOXEL-MARGIN LAW banked: lateral gaps of 0.6-1.8 cm
+  to the band/caps still voxel-count at --exact; ~3 cm is the clean margin
+  (ledge receipts 1.4 cm -> 36 vox, 3.1 cm -> 0).
+- Duplicate-course audit PASS ×2 (one suspension-driven layer each).
+
+### 3. HULLS + TURRETS — leclerc-bar quality on the shared base
+- Hull: measured §5.248 station geometry at ×1.10 (two-plane glacis,
+  W-beak, undercut stern, sponson chain closed §B2) + §B2 closures: fender
+  run extended to the skirt-panel end (6 cm slit read 5 cells/side) +
+  inner fender ledge over the idler (the print's own |x| 0.81-1.13 fender
+  lobes; 9-cell channel receipt) — standard-check holes **38 -> 0** both
+  ids.
+- §B3.2 density adds: second tow-cable run (left deck lane), welded
+  brush-guard frames over both lamp clusters (amx §5.318 grammar), FOLDED
+  side mirrors at the deck corners (the upright first cut floated in three
+  views — float receipt in work1 frames; folded = JGSDF combat fit), horn
+  pod on the beak shoulder, third driver periscope, pioneer shovel, engine
+  deck frames + access seams, convoy plate, turret GPS dome, rack corner
+  gussets + rear-face X-braces + rolled tarp, turret lifting eyes, wall
+  rail support posts (§B2 no-air), sight window brow hoods + wiper stub,
+  pano slew ring, cupola hatch lid + hinge lugs + grab bars, flank-sight
+  window glass, module lid seams.
+- §B3.1 gun run: armored mantlet housing + raked cradle side cheeks + top
+  cover w/ lift lugs + canvas boot (cone-seated clamp rings ×2) + coax
+  port w/ armored fairing + muzzle reference collar + recessed bore
+  (muzzle-bore probe PASS, contrast 40.7). No prism reads on the run.
+- §B5: 0 dangling / 0 abutting / 5 stranded = the certified kf51-AABB
+  false-flag deck-gear class (towCable ×2 + driver periscope glass — the
+  §5.248 packet's own adjudicated LEAVE class, +1 for the added second
+  cable); yaw90 receipts show them static and correct
+  (after/type10/yaw90/). Winding audit m1 0 rev/0 mix + m2 clean, both ids.
+- Evidence: shots/type10-enlarge/{before,after}/ — before pairs at the
+  pre-edit tree (14 type10 ref-pairs + 14 type10b proc-only), after final
+  = 14 paired + 14 yaw0 + 14 yaw90 per id. Assets: 18 files regenerated
+  (tank:assets); tank-assets-check PASS (9 views, bores verified);
+  release-check components all PASS except gate>=90 (by-decree divergence
+  row) and the type10b no-gate-json (FALSE-0 class, next section).
+  npm test && production build exit 0.
+
+### Hashes, guards, live-tree events (receipts)
+- type10 d4b5d788 (62/59,602, session start) -> **b2f9a0ee** (64/80,854).
+- type10b f8f00058 (76/77,246) -> **ca20604** (79/98,612).
+- Guards at close (held EXACT across every batch since the §5.352-era
+  re-baseline): type90 **518e88f0** / type74 **818321a5** / type89
+  **b9b1b264** / type90a **71208238**. Baseline drift earlier in the
+  session (d4a9410->...->518e88f0 etc., verts invariant) is attributed to
+  the foreign landing stream (§5.341-§5.352 + owner live session), not
+  this lane; helper A/B proof: type90a + stb1 hash BYTE-IDENTICAL with
+  HEAD's profiles/japan.js vs this lane's (71208238 / f3ee84d8 both ways —
+  the s=1-default shared-helper law §F.2 held).
+- Ariete fence: modern3.js ariete spec regions untouched (verbatim);
+  ariete_c1/c2 hash movement during the session = the live §5.322 lane's
+  own italy.js WIP.
+- LIVE-TREE EVENT (snapshot law receipt): mid-session, modern3.js was
+  externally swept to a HEAD-class state carrying the owner bradley WIP
+  (§5.349) — this lane's section re-spliced from the scratchpad snapshot
+  (wip-snap-2), zero loss. The sweep's kit.js orientedSlab import collided
+  with the file's local duplicate — de-duped to the import (bodies
+  byte-identical, diff receipt). One transient npm-test failure (tiger1
+  transmission volume) was a torn read during the owner session's live
+  write — clean re-run exit 0.

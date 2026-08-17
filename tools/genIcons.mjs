@@ -6,6 +6,7 @@
 //   node tools/genIcons.mjs
 //   node tools/genIcons.mjs --tanks m1a2,bmp2
 //   node tools/genIcons.mjs --ids=m1a2,bmp2   (compatibility alias)
+//   node tools/genIcons.mjs --views hitZonesSide,armorSide,modulesSide
 //   node tools/genIcons.mjs --out /tmp/icons --ids=m1a2 --allow-partial
 
 import { createHash } from 'node:crypto';
@@ -27,6 +28,9 @@ function opt(name, fallback = '') {
 const outDir = resolve(opt('out', 'public/icons'));
 const selected = opt('tanks') || opt('ids');
 const onlyTanks = selected ? selected.split(',').map((id) => id.trim()).filter(Boolean) : [];
+const selectedViews = opt('views')
+  ? opt('views').split(',').map((view) => view.trim()).filter(Boolean)
+  : Object.keys(TANK_ASSET_VIEWS);
 const allowPartial = args.includes('--allow-partial');
 const manifestPath = resolve(outDir, 'tank-assets.json');
 mkdirSync(outDir, { recursive: true });
@@ -41,6 +45,16 @@ function readManifest() {
 }
 
 let startingManifest = readManifest();
+for (const view of selectedViews) {
+  if (!TANK_ASSET_VIEWS[view]) {
+    console.error(`[tank-assets] Unknown view '${view}'. Expected one of: ${Object.keys(TANK_ASSET_VIEWS).join(', ')}`);
+    process.exit(1);
+  }
+}
+if (selectedViews.length < Object.keys(TANK_ASSET_VIEWS).length && !startingManifest && !allowPartial) {
+  console.error('[tank-assets] Selective view generation needs an existing complete manifest.');
+  process.exit(1);
+}
 if (onlyTanks.length && !startingManifest && !allowPartial) {
   console.error('[tank-assets] Selective generation needs an existing complete manifest;');
   console.error('[tank-assets] run the full fleet once or pass --allow-partial for scratch output.');
@@ -111,7 +125,7 @@ try {
     { timeout: 120000, polling: 400 },
   );
 
-  const generated = await page.evaluate((ids) => window.__GEN(ids), onlyTanks);
+  const generated = await page.evaluate((ids, views) => window.__GEN(ids, views), onlyTanks, selectedViews);
   for (const [name, dataUrl] of Object.entries(generated.files)) {
     if (name.endsWith('.error')) {
       failed = true;
@@ -127,8 +141,10 @@ try {
     const previous = startingManifest;
     const tanks = onlyTanks.length && previous ? { ...previous.tanks } : {};
     for (const [id, meta] of Object.entries(generated.tanks)) {
-      const assets = {};
-      for (const [view, file] of Object.entries(meta.requiredFiles)) assets[view] = assetRecord(file, view);
+      const assets = { ...(previous?.tanks?.[id]?.assets || {}) };
+      for (const [view, file] of Object.entries(meta.requiredFiles)) {
+        if (selectedViews.includes(view)) assets[view] = assetRecord(file, view);
+      }
       tanks[id] = { ...meta, assets };
       delete tanks[id].requiredFiles;
     }

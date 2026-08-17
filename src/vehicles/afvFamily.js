@@ -222,11 +222,19 @@ export const AFV_FAMILY_SPECS = {
     stats: { hp: 2250, enginePowerHp: 1000, weightTons: 44.0, topSpeedKmh: 60,
       reverseSpeedKmh: 18, turretTraverseDegS: 58, gunPitchDegS: 45,
       gunElevationDeg: 45, gunDepressionDeg: 5 },
-    gun: { caliberMm: 30, reloadS: 0.34, baseAccuracy: 0.27, aimTimeS: 1.25 },
+    // OWNER ORDER (2026-08-17): "2 shooting holes for both its barrels ...
+    // with a super fast reload". muzzles = the twin 2A42 tips' recoil-local
+    // axes (tubes authored at x +-0.16 in addTerminatorStation) — the
+    // factory's fallback-bore pass seats one dark mouth PER tip (opt-in
+    // knob, absent-param byte-identical fleet-wide). reloadS 0.34 -> 0.30:
+    // the fleet's fastest autocannon convention was marder1a3's 20 mm at
+    // 0.32; the twin-plant Terminator goes the ordered notch under it.
+    gun: { caliberMm: 30, reloadS: 0.30, baseAccuracy: 0.27, aimTimeS: 1.25,
+      muzzles: [{ x: -0.16, y: 0 }, { x: 0.16, y: 0 }] },
     shells: [
-      ap('3UBR8 APDS', 30, 75, 56, 1120, 425, 0.34),
+      ap('3UBR8 APDS', 30, 75, 56, 1120, 425, 0.30),
       heat('9M120-1 Ataka-T', 130, 850, 500, 550, 4, 13.5),
-      he('3UOF8 HE-I', 30, 52, 960, 425, 0.34),
+      he('3UOF8 HE-I', 30, 52, 960, 425, 0.30),
     ],
   }),
   upior_ifv: variant('upior_ifv', 'bmp2', {
@@ -429,25 +437,26 @@ export const AFV_FAMILY_SPECS = {
         shell('3UOF8 HE-I', 'HE', 30, 8, 8, 48, 960, { reloadS: 0.38, count: 300 }),
       ],
     },
-    // §5.269 native-frame dims: with the gun at the fleet's gun-forward
-    // rest law (the print PARKS its station 180 — corrected by the loader
-    // turretYaw param), the 30 mm overhangs the compact bow ~1.1 m on BOTH
-    // models: overall = the shared gun-forward read. hullLengthM = the
-    // side-body span (the gun-thickened bow columns keep the full 5.11
-    // mask in the body read).
-    dims: { hullLengthM: 5.15, overallLengthM: 6.20, widthM: 3.00, heightM: 2.55 },
+    // OWNER FLIP ORDER dims (2026-08-17): with the hull un-mirrored (wedge
+    // bow +z, receipts shots/upior-flip/) the turret re-seats rear-of-mid
+    // at the print's own ring station and the 30 mm stays BEHIND the nose
+    // exactly like the print ("gun stays behind the nose", §5.248 packet):
+    // overall = the hull's own span again. The §5.269 6.20 overall was the
+    // mirrored front-of-mid seat's gun overhang.
+    dims: { hullLengthM: 5.15, overallLengthM: 5.21, widthM: 3.00, heightM: 2.55 },
     armor: ifvArmor({
       // Print envelope (width-anchored frame IS the authoring frame): deck
       // crown 1.60, skirts to ±1.50, BMP-2-class turret ring 1.47 at
       // [x -0.10, z -0.74], roof 1.91, tower crown 2.55.
       hl: 2.555, hw: 1.50, inW: 0.85, floor: 0.28, trkTop: 0.83, roofY: 1.58,
-      turretPivot: [-0.10, 1.47, 0.74], gunPivot: [0, 0.21, 0.55],
+      turretPivot: [-0.10, 1.47, -0.74], gunPivot: [0, 0.21, 0.55],
       barrelLenM: 2.40, barrelRadM: 0.035,
       glacis: [40, 90, 140], lower: [35, 60, 90], side: [30, 55, 90],
       skirt: [25, 45, 120], rear: 25, roof: 15,
       tw: 0.88, tFrontZ: 0.88, tRearZ: -0.77, tH: 0.45,
-      // (§5.269 native-frame fix: ring plane front-of-mid at +0.74 — the
-      // round-1 -0.74 seat was the extract's mirrored frame)
+      // (OWNER FLIP ORDER 2026-08-17: ring back at the -0.74 rear-of-mid
+      // print station — §5.269's +0.74 "native-frame fix" was itself the
+      // mirrored read; pixel receipts shots/upior-flip/before/)
       cheek: [45, 80, 120], tSide: [30, 50, 80], tRear: 25, tRoof: 15,
       mantlet: [50, 90, 130],
     }),

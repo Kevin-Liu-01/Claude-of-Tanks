@@ -625,7 +625,7 @@ function buildMerkava4(P) {
   P.add('turretDetail', cylY(0.07, 0.085, 0.18, 10), 0.24, MKH + 0.09, -0.55);  // pano pedestal
   P.add('turretDark', box(0.24, 0.24, 0.24), 0.24, MKH + 0.30, -0.55);          // pano head
   P.add('turretGlass', box(0.15, 0.11, 0.02), 0.24, MKH + 0.31, -0.42);
-  P.add('turret', box(0.36, 0.22, 0.34), 0.46, MKH + 0.06, 0.42);               // gunner sight box
+  P.addEquipment('turret', box(0.36, 0.22, 0.34), 0.46, MKH + 0.06, 0.42);               // gunner sight box
   P.add('turretDark', box(0.28, 0.14, 0.04), 0.46, MKH + 0.08, 0.60);
   P.add('turretGlass', box(0.22, 0.09, 0.02), 0.46, MKH + 0.08, 0.625);
   P.add('turretDark', box(0.09, 0.11, 0.44), 0.10, MKH + 0.16, 0.62);           // .50cal receiver

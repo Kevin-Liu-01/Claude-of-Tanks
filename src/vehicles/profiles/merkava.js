@@ -3745,15 +3745,15 @@ function merkavaSmallTurret(P, t) {
     // The run (booster..stock) now spans ~0.74 m ~ 47 px at 640.
     const mg = d.mg;
     const mgRun = mg.rodZ0 - mg.rodZ1;
-    P.add('turret', box(0.028, 0.040, mgRun * 0.96), mg.x, mg.rodY + 0.001, (mg.rodZ0 + mg.rodZ1) / 2); // lit top strip (~2.5 px; top = rodY+0.021 certified)
+    P.addEquipment('turret', box(0.028, 0.040, mgRun * 0.96), mg.x, mg.rodY + 0.001, (mg.rodZ0 + mg.rodZ1) / 2); // lit top strip (~2.5 px; top = rodY+0.021 certified)
     P.add('turretTrack', KIT.cylZ(0.021, mgRun * 0.62, 10), mg.x, mg.rodY - 0.020, (mg.rodZ0 + mg.rodZ1) / 2 - mgRun * 0.19); // void under-rod
     P.add('turretTrack', KIT.cylZ(0.016, mgRun * 0.50, 10), mg.x, mg.rodY - 0.020, mg.rodZ0 - mgRun * 0.25);
     P.add('turretDark', KIT.cylZ(0.023, 0.075, 10), mg.x, mg.rodY - 0.010, mg.rodZ0 - 0.05); // muzzle booster
-    P.add('turret', box(0.030, 0.018, 0.070), mg.x, mg.rodY + 0.010, mg.rodZ0 - 0.05);       // booster lit cap
+    P.addEquipment('turret', box(0.030, 0.018, 0.070), mg.x, mg.rodY + 0.010, mg.rodZ0 - 0.05); // booster lit cap
     P.add('turretDark', box(0.012, 0.017, 0.015), mg.x, mg.rodY + 0.010, mg.rodZ0 - 0.14);   // front sight
     P.add('turretDark', box(Math.abs(mg.recX1 - mg.recX0), mg.recTop - 0.024 - (mg.rodY - 0.052), mg.recZ0 - mg.recZ1),
       (mg.recX0 + mg.recX1) / 2, (mg.recTop - 0.024 + mg.rodY - 0.052) / 2, (mg.recZ0 + mg.recZ1) / 2);
-    P.add('turret', box(Math.abs(mg.recX1 - mg.recX0) * 0.94, 0.026, (mg.recZ0 - mg.recZ1) * 0.94),
+    P.addEquipment('turret', box(Math.abs(mg.recX1 - mg.recX0) * 0.94, 0.026, (mg.recZ0 - mg.recZ1) * 0.94),
       (mg.recX0 + mg.recX1) / 2, mg.recTop - 0.013, (mg.recZ0 + mg.recZ1) / 2);              // receiver PALE cap (top = certified recTop)
     P.add('turretDark', box(0.05, 0.030, 0.11), mg.x, mg.recTop - 0.050, mg.recZ1 - 0.03);   // grip/stock
     P.add('turretDark', box(0.016, 0.020, 0.048), mg.x, mg.recTop - 0.062, mg.recZ1 - 0.085); // spade pair
@@ -3798,7 +3798,7 @@ function merkavaSmallTurret(P, t) {
     P.add('turretDark', box(0.14, 0.018, 0.16), rt.commander.x - 0.22, cmdY + 0.098, rt.commander.z - 0.02);
     if (rt.sight) {
       const sy = roofAt(rt.sight.z);
-      P.add('turret', box(rt.sight.w, rt.sight.top - sy, rt.sight.d), rt.sight.x, (rt.sight.top + sy) / 2, rt.sight.z);
+      P.addEquipment('turret', box(rt.sight.w, rt.sight.top - sy, rt.sight.d), rt.sight.x, (rt.sight.top + sy) / 2, rt.sight.z);
       P.add(glassMat, box(rt.sight.w * 0.62, rt.sight.h ?? 0.08, 0.018), rt.sight.x, rt.sight.top - 0.07, rt.sight.z + rt.sight.d / 2 + 0.005);
     }
   } else {
@@ -3819,7 +3819,7 @@ function merkavaSmallTurret(P, t) {
   }
   // gunner sight hood (right-front) + loader hatch disc (right-rear); the
   // hood hugs the roofline (the measured plateau IS the roof slabs now)
-  P.add('turret', box(0.34, 0.13, 0.30), -cs.x * 0.72, roofAt(t.sightZ) - 0.04, t.sightZ);
+  P.addEquipment('turret', box(0.34, 0.13, 0.30), -cs.x * 0.72, roofAt(t.sightZ) - 0.04, t.sightZ);
   P.add(glassMat, box(0.20, 0.06, 0.02), -cs.x * 0.72, roofAt(t.sightZ) - 0.02, t.sightZ + 0.16);
   if (cs.dome && cs.dome.loader) {
     // 1B loader station: RAISED ring (volumetric-rings law — the old flush
@@ -3920,7 +3920,7 @@ function merkavaSmallTurret(P, t) {
   if (t.planPts) { // measured-wedge path: mortar tucks under the dome drum
     P.add('turret', cylY(0.11, 0.12, 0.035, 10), cs.x * 0.5, roofAt(csMid) + 0.02, csMid + 0.32);
   } else {
-    P.add('turret', cylY(0.11, 0.12, 0.035, 10), cs.x * 0.5, roofAt(t.sightZ - 0.1) + 0.02, t.sightZ - 0.32);
+    P.addEquipment('turret', cylY(0.11, 0.12, 0.035, 10), cs.x * 0.5, roofAt(t.sightZ - 0.1) + 0.02, t.sightZ - 0.32);
   }
   KIT.periscope(P, 'turretDetail', cs.x * 0.4, roofAt(csMid + 0.3) + 0.02, csMid + 0.34);
 
@@ -5457,7 +5457,7 @@ function merkavaModularTurret(P, t) {
   }
   if (t.pano) {
     if (t.pano.plinth) { // continuous raised sight deck (curve band, Mk.4)
-      P.add('turret', box(1.00, 0.05, t.pano.plinth), 0.08, h + 0.025, t.pano.z + 0.20);
+      P.addEquipment('turret', box(1.00, 0.05, t.pano.plinth), 0.08, h + 0.025, t.pano.z + 0.20);
     }
     if (t.pano.seat) {
       // seated pano head (3B "half-sunk dome" fix): base pad + drum standing
@@ -5465,13 +5465,13 @@ function merkavaModularTurret(P, t) {
       const rb = deckAt(t.pano.z);
       const domeC = t.pano.top - 0.075;
       P.add('turretDetail', box(0.24, 0.03, 0.24), t.pano.x, rb + 0.015, t.pano.z);
-      P.add('turret', cylY(0.105, 0.12, Math.max(0.06, domeC - rb - 0.02), 12), t.pano.x, (domeC + rb) / 2 - 0.01, t.pano.z);
-      P.add('turret', KIT.sph(0.075, 14, Math.PI * 0.60), t.pano.x, domeC, t.pano.z);
+      P.addEquipment('turret', cylY(0.105, 0.12, Math.max(0.06, domeC - rb - 0.02), 12), t.pano.x, (domeC + rb) / 2 - 0.01, t.pano.z);
+      P.addEquipment('turret', KIT.sph(0.075, 14, Math.PI * 0.60), t.pano.x, domeC, t.pano.z);
       P.add(glassMat, box(0.10, 0.05, 0.02), t.pano.x, domeC + 0.012, t.pano.z + 0.070);
     } else {
     const py = t.pano.top - 0.27;
-    P.add('turret', cylY(0.13, 0.15, 0.14, 12), t.pano.x, py + 0.07, t.pano.z);
-    P.add('turret', KIT.sph(0.13, 12, Math.PI * 0.55), t.pano.x, py + 0.15, t.pano.z);
+    P.addEquipment('turret', cylY(0.13, 0.15, 0.14, 12), t.pano.x, py + 0.07, t.pano.z);
+    P.addEquipment('turret', KIT.sph(0.13, 12, Math.PI * 0.55), t.pano.x, py + 0.15, t.pano.z);
     P.add(glassMat, box(0.13, 0.06, 0.02), t.pano.x, py + 0.13, t.pano.z + 0.125);
     }
     if (t.pano.peak) { // true-height periscope/relay head, <=1 trace column
@@ -5482,7 +5482,7 @@ function merkavaModularTurret(P, t) {
       P.add('turretDetail', box(0.10, t.pano.top - h - 0.05, 0.10), t.pano.x + 0.55, (t.pano.top + h) / 2 - 0.02, t.pano.z - 0.15);
     }
   }
-  P.add('turret', box(0.32, 0.13, 0.30), t.sightX ?? 0.42, h - 0.045, roofF - 0.14);
+  P.addEquipment('turret', box(0.32, 0.13, 0.30), t.sightX ?? 0.42, h - 0.045, roofF - 0.14);
   P.add(glassMat, box(0.18, 0.05, 0.02), t.sightX ?? 0.42, h - 0.03, roofF + 0.015);
 }
 
@@ -6415,7 +6415,7 @@ function merkavaSidePanels(P, p, t, opts = {}) {
       // the radar face gets its frame + corner studs, so the wedge reads
       // as the countermeasure launcher, not a leaning crate. Everything
       // rides the same wall rotation, inside the head/plate footprints.
-      P.add('turret', box(0.014, 0.30, 0.036), s * (wx + 0.10), wy + 0.015, pz + 0.99, 0, 0, rz);  // radar frame rail (outer)
+      P.addEquipment('turret', box(0.014, 0.30, 0.036), s * (wx + 0.10), wy + 0.015, pz + 0.99, 0, 0, rz);  // radar frame rail (outer)
       P.add('turretDark', box(0.02, 0.05, 0.05), s * (wx + 0.075), wy - 0.135, pz + 0.965, 0, 0, rz); // frame foot stud
       P.add('turretDark', box(0.062, 0.062, 0.016), s * (wx + 0.062), wy + 0.055, pz + 0.755, 0, 0, rz); // launcher tube mouth (upper)
       P.add('turretDark', box(0.062, 0.062, 0.016), s * (wx + 0.055), wy - 0.055, pz + 0.815, 0, 0, rz); // tube mouth (lower, staggered)
@@ -7617,7 +7617,7 @@ function merkava1bKit(P, p, t) {
     P.add('turretDark', KIT.box(0.030, 0.075, 0.055), 0.46, V(2.428), L(-1.235));    // pintle socket on the ring rear rim
     P.add('turretDark', KIT.box(0.022, 0.024, 0.40), 0.462, V(2.456), L(-1.435), 0.10, 0, 0); // boom arm aft to the cradle
     P.add('turretDark', KIT.box(0.100, 0.052, 0.21), 0.46, V(2.477), L(-1.60));      // receiver body (mass, not a stick)
-    P.add('turret', KIT.box(0.086, 0.016, 0.185), 0.46, V(2.4995), L(-1.602));       // pale top-lit receiver crown (top 2.5075)
+    P.addEquipment('turret', KIT.box(0.086, 0.016, 0.185), 0.46, V(2.4995), L(-1.602));       // pale top-lit receiver crown (top 2.5075)
     P.add('turretDark', KIT.box(0.013, 0.036, 0.013), 0.46, V(2.446), L(-1.475));    // spade grips fore of the receiver
     P.add('turretDetail', KIT.box(0.085, 0.050, 0.13), 0.345, V(2.462), L(-1.61));   // ammo can on the left cheek
     P.add('turretDark', KIT.box(0.072, 0.011, 0.015), 0.345, V(2.490), L(-1.61));    // its strap
@@ -7756,14 +7756,14 @@ function merkava3Kit(P, p, t, opts = {}) {
       // cluster footprint aft — same certified tops (2.530/2.5405), plan
       // inside the crest shelf, can/chute stay on their r5 columns.
       P.add('turretDark', box(0.026, 0.16, 0.030), 0.14, crTop - 0.135, zb + 0.36);    // pintle post (into the crest core)
-      P.add('turret', box(0.118, 0.062, 0.37), 0.14, crTop - 0.046, zb + 0.395);       // receiver body (pale mass, top 2.530)
+      P.addEquipment('turret', box(0.118, 0.062, 0.37), 0.14, crTop - 0.046, zb + 0.395);       // receiver body (pale mass, top 2.530)
       // r11 TOP-DOWN GUN FOOTPRINT (critic r9 defect F-ii, pale-deck
       // roof-gun law: "ref M2 window carries 485 sub-78px vs proc 92 — the
       // side-ortho rod engineering does not print top-down"): the crown
       // splits into a pale lower band + a DARK receiver top plate at the
       // SAME certified crown line — union silhouette identical, the plan
       // view gains the dark gun form.
-      P.add('turret', box(0.104, 0.014, 0.33), 0.14, crTop - 0.017, zb + 0.395);       // receiver crown lower band (pale sides)
+      P.addEquipment('turret', box(0.104, 0.014, 0.33), 0.14, crTop - 0.017, zb + 0.395);       // receiver crown lower band (pale sides)
       P.add('turretTrack', box(0.104, 0.010, 0.33), 0.14, crTop - 0.005, zb + 0.395);  // receiver top plate (void-channel: lit turretDark reads WARM ~87L; the ref footprint class is sub-78 neutral)
       P.add('turretTrack', box(0.095, 0.026, 0.115), 0.135, crTop - 0.098, zb + 0.175); // mount tray under the receiver rear (footprint mass, void-channel)
       // r12 order 6 (gun-FORM footprints): the M2's 146px top-down chip
@@ -8025,8 +8025,8 @@ function merkava3dKit(P, p, t) {
   // top plate narrows to a receiver spine (same certified 2.6175 top) and
   // a dark barrel-line strip rides the window sill under the rod (top
   // 2.453 < the 2.462 crown-window law line).
-  P.add('turret', box(0.19, 0.058, 0.17), 1.215, V(2.560), L(-1.015));               // receiver body (pale mass, forward seat)
-  P.add('turret', box(0.16, 0.028, 0.17), 1.215, V(2.5915), L(-1.015));              // receiver crown lower band (top 2.6055)
+  P.addEquipment('turret', box(0.19, 0.058, 0.17), 1.215, V(2.560), L(-1.015));               // receiver body (pale mass, forward seat)
+  P.addEquipment('turret', box(0.16, 0.028, 0.17), 1.215, V(2.5915), L(-1.015));              // receiver crown lower band (top 2.6055)
   // r13 order 1b (critic r12: the ~(495..530, 377..390) half-frame bar +
   // sill bar are the named NEAR-BLACK deck bars — void-channel prints read
   // 42/45L at close-roof where the order wants the 60-75L soft class): both
@@ -8037,7 +8037,7 @@ function merkava3dKit(P, p, t) {
   // 2.4525 < the 2.462 crown-window law line); low edges embed in the
   // crown band / sill solids below (no floaters). The view-top .50 window
   // keeps its gun-shaped sub-78 print (60-75 < 78).
-  P.add('turret', box(0.062, 0.009, 0.17), 1.218, V(2.5987), L(-1.015), 0, 0, 0.50); // receiver spine plate (rolled soft; high edge 2.6175 unchanged)
+  P.addEquipment('turret', box(0.062, 0.009, 0.17), 1.218, V(2.5987), L(-1.015), 0, 0, 0.50); // receiver spine plate (rolled soft; high edge 2.6175 unchanged)
   P.add('turret', box(0.030, 0.008, 0.26), 1.218, V(2.4418), L(-0.70), 0, 0, 0.50);  // barrel-line print on the sill (rolled soft; high edge 2.4525)
   P.add('turretDark', box(0.022, 0.030, 0.18), 1.10, V(2.556), L(-0.99));            // cradle cheek plate (inboard)
   // r7 gun-metal law: the .50 barrel thins to the ref's AA-coverage pixel

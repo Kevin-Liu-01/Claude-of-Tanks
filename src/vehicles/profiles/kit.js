@@ -684,10 +684,12 @@ function fitAssemble(type, parts, opts) {
     mesh.castShadow = mesh.receiveShadow = shadows;
     mesh.userData.fitting = type;
     mesh.userData.fittingSlot = slot;
+    mesh.userData.combatHitboxRole = 'equipment';
     g.add(mesh);
   }
   g.userData.fitting = type;
   g.userData.fittingRoot = true;
+  g.userData.combatHitboxRole = 'equipment';
   if (opts.rotation) g.rotation.set(opts.rotation[0] || 0, opts.rotation[1] || 0, opts.rotation[2] || 0);
   const bb = new THREE.Box3().setFromObject(g);
   g.userData.aabb = { min: [bb.min.x, bb.min.y, bb.min.z], max: [bb.max.x, bb.max.y, bb.max.z] };
@@ -1067,12 +1069,14 @@ function fittingMarkExact(group, type) {
     meshCount++;
     o.userData.fitting = type;
     o.userData.fittingExact = true;
+    o.userData.combatHitboxRole = 'equipment';
   });
   if (!meshCount) throw new Error('KIT.fittings.markExact: group must contain visible mesh geometry');
   group.name = `fitting_${type}_exact`;
   group.userData.fitting = type;
   group.userData.fittingRoot = true;
   group.userData.fittingExact = true;
+  group.userData.combatHitboxRole = 'equipment';
   const bb = new THREE.Box3().setFromObject(group);
   group.userData.aabb = { min: bb.min.toArray(), max: bb.max.toArray() };
   return group;

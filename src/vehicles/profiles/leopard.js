@@ -5667,7 +5667,7 @@ function buildLeo2Revolution(P) {
   deckBand(1.540, 1.32, 2.10);                                                 // bow deck (ref 1.527-1.568)
   deckBand(1.500, 2.10, 2.32);                                                 // bow step (ref 1.489-1.506)
   deckBand(1.440, 2.32, 2.83);                                                 // bow shelf root (ref 1.435-1.465)
-  P.add('hull', box(1.30, 0.026, 0.43), -0.10, 1.575, 1.70);                   // periscope hump plate (ref 1.588 @1.65..1.77)
+  P.addEquipment('hull', box(1.30, 0.026, 0.43), -0.10, 1.575, 1.70);          // periscope hump plate (ref 1.588 @1.65..1.77)
   P.add('hull', box(1.10, 0.024, 0.16), -0.45, 1.554, 1.98);                   // driver hatch plate (ref 1.568 @1.90..2.06)
   // r5 station-8/9 width tabs SPLIT (probe: ref st8 w 3.278 / st9 3.218 —
   // the single ±1.645 pair read both 0.01-0.07 wide): tab A faces ±1.639
@@ -6524,7 +6524,7 @@ function buildLeo2Revolution(P) {
   P.add('turret', box(0.36, 0.09, 0.02), -0.85, 0.9295, -0.99);
   P.add('turret', box(0.36, 0.09, 0.02), -0.85, 0.9295, -1.11);
 
-  P.add('turret', box(0.20, 0.025, 0.20), 0.43, 0.7725, -1.25);               // RWS base plate
+  P.addEquipment('turret', box(0.20, 0.025, 0.20), 0.43, 0.7725, -1.25);               // RWS base plate
   P.add('turretDark', cylY(0.115, 0.115, 0.022, P.q ? 18 : 12), 0.43, 0.772, -1.25);
   P.add('turret', cylY(0.075, 0.095, 0.06, P.q ? 16 : 12), 0.43, 0.79, -1.25);
   P.add('turretDark', box(0.09, 0.09, 0.15), 0.43, 0.945, -1.50);              // RWS sensor pack
@@ -6533,7 +6533,7 @@ function buildLeo2Revolution(P) {
   P.add('turretDark', box(0.22, 0.004, 0.010), 0.22, 0.948, -1.10);
   P.add('turretDetail', box(0.012, 0.05, 0.05), 0.105, 0.90, -1.10);
   P.add('turretDetail', box(0.012, 0.05, 0.05), 0.105, 0.90, -1.32);
-  P.add('turret', box(0.05, 0.05, 0.05), -0.30, 0.785, -1.57);                 // crosswind mast base
+  P.addEquipment('turret', box(0.05, 0.05, 0.05), -0.30, 0.785, -1.57);                 // crosswind mast base
   P.add('turretDetail', box(0.016, 0.20, 0.016), -0.30, 0.90, -1.57);
   P.add('turretDetail', cylZ(0.013, 0.10, 8), -0.30, 1.008, -1.57);
 
@@ -7983,7 +7983,7 @@ function buildKF51(P) {
   // ringDark arc + a PALE interior disc r 0.135 at 1.3268 that unifies the
   // step-1 camo ring into the ref's pale plateau (6mm under the anchor).
   // (turretDark measured 46-48 here — too light for the ordered med ~40.)
-  P.add('turret', cylY(0.150, 0.163, 0.052, 16), -0.51, 1.2825, -0.535);       // pano column body (fattened toward the well)
+  P.addEquipment('turret', cylY(0.150, 0.163, 0.052, 16), -0.51, 1.2825, -0.535);       // pano column body (fattened toward the well)
   P.add('turret', cylY(0.104, 0.142, 0.017, 16), -0.51, 1.3170, -0.535);       // dome step 1 (shoulders over the collar)
   P.add('turret', cylY(0.052, 0.096, 0.0085, 12), -0.51, 1.32975, -0.535);     // dome core — FLAT top 1.334 EXACT (the anchor), crest +18.5 mm over the wall run
   P.add('turret', box(0.51, 0.1115, 0.43), -0.51, 1.11975, -0.535);            // camo base band (housing body, unchanged)
@@ -8054,10 +8054,10 @@ function buildKF51(P) {
   // PALE detail bucket — top-lit rod against sky, not gunmetal-on-camo.
   P.add('turretDark', KIT.cylY(0.020, 0.020, 0.157, 10), 0.60, 0.9315, -0.635); // pintle column rooted in the hatch drum (w 2.563..2.720)
   P.add('turretDark', box(0.06, 0.04, 0.05), 0.60, 1.030, -0.635);             // cradle rocker (w 2.720..2.760)
-  P.add('turret', box(0.34, 0.095, 0.105), 0.565, 1.0814, -0.635, 0, 0, 0.0699); // receiver body (camo; w 2.744..2.851 incl tilt — under the 2.955 tower cols)
+  P.addEquipment('turret', box(0.34, 0.095, 0.105), 0.565, 1.0814, -0.635, 0, 0, 0.0699); // receiver body (camo; w 2.744..2.851 incl tilt — under the 2.955 tower cols)
   P.add('turretDark', box(0.05, 0.055, 0.045), 0.375, 1.0814, -0.635);         // butt/spade grip at the inboard end
   P.add('turretDark', KIT.cylX(0.0205, 0.008, 10), 1.170, 1.1237, -0.635, 0, 0, 0.0699);   // dark muzzle face
-  P.add('turret', box(0.10, 0.095, 0.085), 0.35, 1.025, -0.578);               // belt-box hung on the receiver's left flank (z −0.128w, inside the SEOSS side window)
+  P.addEquipment('turret', box(0.10, 0.095, 0.085), 0.35, 1.025, -0.578);               // belt-box hung on the receiver's left flank (z −0.128w, inside the SEOSS side window)
   P.add('turretDark', box(0.06, 0.045, 0.024), 0.43, 1.065, -0.607);           // belt tray into the receiver
   // (barrel/booster/receiver-cap/belt-lid are mgPale TONE meshes — same
   // geometry/placement, tone block: mats.detail topped out 70-85 lit vs
@@ -8177,7 +8177,7 @@ function buildKF51(P) {
   // 2.93w top, depth 0.37 → 0.28 as a camo mast bracket spanning both L rod
   // roots, with a dark clamp collar 1 mm inside its x faces. Side columns
   // stay owned by the 2.955w plateau, plan columns by the −1.31 left band.
-  P.add('turret', box(0.08, 0.39, 0.28), -1.05, 1.025, -2.815);                // left sensor pedestal 2.54..2.93w (x −1.01..−1.09)
+  P.addEquipment('turret', box(0.08, 0.39, 0.28), -1.05, 1.025, -2.815);                // left sensor pedestal 2.54..2.93w (x −1.01..−1.09)
   P.add('turretDark', box(0.078, 0.05, 0.284), -1.05, 1.10, -2.815);           // clamp collar (z 2 mm proud, x 1 mm inset)
   P.add('turretDetail', box(0.028, 0.05, 0.028), -1.038, 1.245, -2.76);        // rod base pots on the bracket top
   P.add('turretDetail', box(0.028, 0.05, 0.028), -1.038, 1.245, -2.88);

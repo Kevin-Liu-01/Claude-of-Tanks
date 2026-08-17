@@ -23,8 +23,19 @@ const onlyTanks = selected ? selected.split(',').map((id) => id.trim()).filter(B
 const outDir = resolve(opt('out', 'public/icons'));
 const manifestPath = resolve(outDir, 'tank-assets.json');
 const skipBore = args.includes('--skip-bore');
+const skipGeometry = args.includes('--skip-geometry');
 const liveOnly = args.includes('--live-only');
+const selectedViews = opt('views')
+  ? opt('views').split(',').map((view) => view.trim()).filter(Boolean)
+  : Object.keys(TANK_ASSET_VIEWS);
 const failures = [];
+
+for (const view of selectedViews) {
+  if (!TANK_ASSET_VIEWS[view]) {
+    console.error(`[tank-assets-check] unknown view '${view}'`);
+    process.exit(2);
+  }
+}
 
 function sha256(buffer) {
   return createHash('sha256').update(buffer).digest('hex');
@@ -134,7 +145,7 @@ try {
       failures.push(`${id}: missing manifest entry`);
       continue;
     }
-    if (saved && saved.geometryHash !== live.geometryHash) failures.push(`${id}: stale geometry ${saved.geometryHash} != ${live.geometryHash}`);
+    if (!skipGeometry && saved && saved.geometryHash !== live.geometryHash) failures.push(`${id}: stale geometry ${saved.geometryHash} != ${live.geometryHash}`);
     if (saved && saved.metadataHash !== live.metadataHash) failures.push(`${id}: stale tier/armor/module metadata ${saved.metadataHash} != ${live.metadataHash}`);
     if (!Number.isInteger(live.tier) || live.tier < 1 || live.tier > 10 || !live.tierNumeral) failures.push(`${id}: invalid tier metadata`);
     if (!live.countryCode) failures.push(`${id}: missing country code`);
@@ -169,7 +180,8 @@ try {
     }
 
     if (liveOnly) continue;
-    for (const [view, def] of Object.entries(TANK_ASSET_VIEWS)) {
+    for (const view of selectedViews) {
+      const def = TANK_ASSET_VIEWS[view];
       const asset = saved.assets && saved.assets[view];
       if (!asset) {
         failures.push(`${id}: missing ${view} asset record`);
@@ -209,5 +221,6 @@ if (failures.length) {
 if (liveOnly) {
   console.log(`[tank-assets-check] PASS — live registry metadata${skipBore ? '' : ' and muzzle bores'} verified`);
 } else {
-  console.log(`[tank-assets-check] PASS — assets, metadata and geometry are current${skipBore ? ' (bore gate skipped)' : '; muzzle bores verified'}`);
+  const skipped = [skipGeometry ? 'geometry' : '', skipBore ? 'bore' : ''].filter(Boolean);
+  console.log(`[tank-assets-check] PASS — ${selectedViews.length} views, assets and metadata are current${skipped.length ? ` (${skipped.join(' + ')} gate skipped)` : '; geometry and muzzle bores verified'}`);
 }

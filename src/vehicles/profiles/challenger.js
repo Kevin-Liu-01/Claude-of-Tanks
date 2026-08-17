@@ -4011,7 +4011,7 @@ function buildChallenger3(P) {
     0.72, C3H + 0.12, -0.22);                                                  // low faceted open-mount body
   for (const sx of [-1, 1]) P.add('turretDetail', box(0.075, 0.34, 0.10), 0.72 + sx * 0.22, C3H + 0.33, -0.22);
   P.add('turretDetail', box(0.50, 0.055, 0.10), 0.72, C3H + 0.49, -0.22);      // visible but structurally continuous cradle
-  P.add('turret', box(0.28, 0.18, 0.50), 0.745, C3H + 0.43, 0.18);            // receiver spine: mount body -> recoil rails
+  P.addEquipment('turret', box(0.28, 0.18, 0.50), 0.745, C3H + 0.43, 0.18);            // receiver spine: mount body -> recoil rails
   P.add('turretDark', cylY(0.105, 0.12, 0.18, 8), 0.43, C3H + 0.40, -0.22);   // faceted sensor head
   P.add('turretGlass', box(0.14, 0.08, 0.02), 0.43, C3H + 0.40, -0.11);
   // Forward open cradle follows the source RWS component's measured

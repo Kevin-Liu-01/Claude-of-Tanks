@@ -149,3 +149,57 @@ hand-edited). docs/geometry-gate/bmpt.json and this packet STAY as
 history. The print public/models/community-candidates/bmpt2_sanderwolf.glb
 stays on disk as local reference material.
 npm test green at the removal state (no dangling references).
+
+## CLONE ROUND — `bmpt_terminator2` (OWNER ORDER, 2026-08-17, uncommitted lane)
+(This section covers the KEPT t72b3m-donor clone `bmpt_terminator2` — the
+roster's only Terminator since the ground-up `bmpt` row above was removed.)
+ORDER (verbatim): "make the terminator 2 much better and have 2 shooting
+holes for both its barrels (create this in code) with a super fast reload".
+
+TWIN-BORE CAPABILITY (CORE, tankFactory.js): the fallback-bore pass used
+to install exactly ONE rim/annulus/disc assembly at the muzzle anchor and
+suppress authored bores — twin-gun tanks physically could not show two
+mouths (the owner's screenshot: one floating center mouth between two
+solid rods, receipt shots/bmpt2-round/before/proc_view-front.png). NEW
+OPT-IN KNOB: `spec.gun.muzzles = [{x,y}, ...]` (recoil-local lateral
+offsets at the muzzle plane) installs one assembly PER barrel tip, each
+seated by the same capZ ray at its own axis. ABSENT-PARAM BYTE-IDENTICAL
+(§5.279 loader-law pattern) PROVEN: sentinels leclerc e6523de8 / t64bv1
+eabf99cc hashed byte-identical before and after the core edit on the same
+tree, and pure-HEAD == HEAD+lane-files for leclerc/t64bv1/t72b3m/bmp3 in
+the clean-room worktree (1829fcb7).
+
+WIRING: gun.muzzles = [{x:-0.16},{x:+0.16}] (the twin 2A42 tubes' authored
+axes). §B3.1 x2: both dark mouths read end-on (after/proc_view-front
+crop), and both assemblies RIDE the yaw/pitch rig (§B5 receipt
+after/proc_yaw90_view-top.png — one mouth per tip at yaw 90).
+
+MUCH BETTER (the removed bmpt's §5.269 fix bar, clone-local edits only —
+donor t72b3m byte-held 6d747b34): Ataka pods rebuilt from armored boxes
+with buried tubes into RACK ARMS — cantilever arm rooted in the turntable
+slope + hanger web + two SEPARATED tubes per flank (7 cm air gap) with
+clamp collars, PROUD light-tone end caps reading side-on, recessed dark
+mouth rings, rear end plates; the pano funnel read killed (square post +
+box head + cap lid); casemate roof clutter authored (twin ammo feed humps
+with dark lids over the trunnion, cable trunk running aft, two service
+lids with latches); radio whips re-seated from the r2-class "standing on
+air behind the casemate" island onto real wing shelves off the casemate
+rear corners (§B5 physical-seat law); glacis ERA densified with a second
+STAGGERED course up the plane (half-pitch offset, |x| <= 1.19 clear of
+the wrap lanes, §B4). Hem/wheels and stern grammar ride the certified
+t72b3m donor (verified in pixels).
+
+SUPER FAST RELOAD (spec): gun.reloadS 0.34 -> 0.30 (AP/HE per-shell
+reloads follow; Ataka 13.5 stays). The fleet's fastest autocannon
+convention was marder1a3's 20 mm at 0.32 (bmp2/bmp3 30 mm class sits at
+0.38); the twin-plant Terminator takes the ordered notch under the
+fastest. npm test chain (afvBalance/tier/combatAnatomy selftests) green
+end-to-end at the final state.
+
+RECEIPTS: hash 1c7d8fbc (130/109796) -> 8f9f4bcd (133/116856 — +3 meshes
+= the second bore assembly, +7060 verts = racks/collars/caps/clutter/
+pano/shelves). Track-clip strict front 26 / rear 18 + shoe 16/60 —
+BYTE-IDENTICAL to pure HEAD (pre-existing donor debt; the round adds ZERO
+offenders). No gate row exists for the clone (t72b3m-donor, no ref
+print); pixels + hashes + track-clip + selftests are the round's
+receipts. §5.254 pairs shots/bmpt2-round/before/ + after/ (9 views + yaw90).

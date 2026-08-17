@@ -41,7 +41,7 @@ function addChineseRoofSuite(P, options = {}) {
   const panoZ = options.panoZ ?? -0.62;
 
   // Broad planted optical foundation, tapered head and forward glass.
-  P.add('turret', box(0.42, 0.08, 0.40), panoX, y, panoZ);
+  P.addEquipment('turret', box(0.42, 0.08, 0.40), panoX, y, panoZ);
   P.add('turretDetail', cylY(0.14, 0.17, 0.30, 14), panoX, y + 0.20, panoZ);
   P.add('turretDark', box(0.25, 0.11, 0.055), panoX, y + 0.22, panoZ + 0.18);
   P.add('turretGlass', box(0.18, 0.075, 0.024), panoX, y + 0.22, panoZ + 0.215);

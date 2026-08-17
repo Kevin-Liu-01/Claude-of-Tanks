@@ -131,6 +131,16 @@ const MODULE_ICON = {
     c.clearRect(-3.2, -0.8, 2.2, 3.4);
     c.clearRect(1, -0.8, 2.2, 3.4);
   },
+  transmission(c, col) {
+    c.fillStyle = col;
+    c.fillRect(-5.5, -3.4, 11, 6.8);
+    c.fillStyle = 'rgba(8,12,16,0.82)';
+    for (const x of [-3, 3]) {
+      c.beginPath(); c.arc(x, 0, 2, 0, Math.PI * 2); c.fill();
+    }
+    c.fillStyle = col;
+    c.fillRect(-7, -1, 1.8, 2); c.fillRect(5.2, -1, 1.8, 2);
+  },
   fuelTank(c, col) {
     // jerrycan with X emboss
     c.fillStyle = col;
@@ -193,7 +203,28 @@ const MODULE_ICON = {
       c.fillRect(Math.cos(a) * 4.2 - 1, Math.sin(a) * 4.2 - 1, 2, 2);
     }
   },
+  autoloader(c, col) {
+    c.strokeStyle = col; c.lineWidth = 1.7;
+    c.beginPath(); c.arc(0, 0.8, 5, 0, Math.PI * 2); c.stroke();
+    c.fillStyle = col;
+    c.beginPath(); c.moveTo(0, -6); c.lineTo(2, -2); c.lineTo(-2, -2); c.closePath(); c.fill();
+    c.fillRect(-1.4, -2, 2.8, 7);
+  },
+  feedSystem(c, col) {
+    c.strokeStyle = col; c.lineWidth = 1.5;
+    c.strokeRect(-6, -3.5, 12, 7);
+    c.fillStyle = col;
+    for (const x of [-3.5, 0, 3.5]) { c.beginPath(); c.arc(x, 0, 1.4, 0, Math.PI * 2); c.fill(); }
+  },
+  missileRack(c, col) {
+    c.fillStyle = col;
+    for (const x of [-3, 3]) {
+      c.fillRect(x - 1.2, -3, 2.4, 8);
+      c.beginPath(); c.moveTo(x - 1.2, -3); c.lineTo(x, -6); c.lineTo(x + 1.2, -3); c.closePath(); c.fill();
+    }
+  },
 };
+MODULE_ICON.gunMount = MODULE_ICON.turretRing;
 
 // r4: no persistent healthy-module pips — every module icon appears only
 // once damaged (WoT panel behavior; see drawPip).
@@ -545,7 +576,7 @@ export function createDamagePanel() {
     ctx.restore();
   }
 
-  const REGION_MODULES = ['engine', 'ammoRack', 'fuelTank'];
+  const REGION_MODULES = ['engine', 'transmission', 'ammoRack', 'fuelTank'];
 
   function draw() {
     ctx.clearRect(0, 0, CW, CH);

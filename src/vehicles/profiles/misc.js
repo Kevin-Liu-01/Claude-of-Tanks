@@ -201,7 +201,7 @@ function wheelRecessAt(P, wheelZs, xc, y, r, w, bucket = 'hullDark') {
 // Fender/hull stowage bin with tarp lid + dark latch straps.
 function bin(P, x, y, z, w, h, d) {
   const { box } = KIT;
-  P.add('hull', box(w, h, d), x, y, z);
+  P.addEquipment('hull', box(w, h, d), x, y, z);
   P.add('hullDark', box(w * 1.03, h * 0.72, 0.024), x, y + h * 0.06, z - d * 0.28);
   P.add('hullDark', box(w * 1.03, h * 0.72, 0.024), x, y + h * 0.06, z + d * 0.28);
 }
@@ -211,7 +211,7 @@ function bin(P, x, y, z, w, h, d) {
 function sightBox(P, frame, x, y, z, w, h, d, ry = 0) {
   const { box } = KIT;
   const dark = `${frame}Dark`, glass = `${frame}Glass`;
-  P.add(frame, box(w, h, d), x, y, z, 0, ry, 0);
+  P.addEquipment(frame, box(w, h, d), x, y, z, 0, ry, 0);
   P.add(dark, box(w * 0.66, h * 0.52, 0.03), x, y + h * 0.05, z + d / 2 + 0.005, 0, ry, 0);
   P.add(glass, box(w * 0.5, h * 0.3, 0.016), x, y + h * 0.05, z + d / 2 + 0.02, 0, ry, 0);
   P.add(dark, box(0.014, h * 0.8, d * 0.9), x, y, z - 0.01, 0, ry, 0); // door split line
@@ -608,7 +608,7 @@ export function buildAriete(P) {
   P.add('turretDark', box(0.095, 0.10, 0.14), -0.2575, 0.938, -0.81);         // (90-ladder r2c: head widened x -0.21..-0.305 per the banked push-2 order — the ref 2.499 front col at -0.304 read our 2.346 plate; the -1.089/-1.212 side spikes keep their z) (90-ladder r2b: z_l -0.81, faces z_w -1.03..-1.17 [rendered -1.043..-1.185] — the -0.79 seat's front face printed 2.38 into the -0.972 col window over the ref's 2.217 notch line; the interim -0.845 seat crossed the i4/i5 station boundary at rendered -1.209 [20 mm cap law: i4 1.09 -> 8.16 topPct, displacing the trimmed i6/i13 pair, stations -3.8]. 28 mm of head keeps the -1.212 spike window)         // (r3-1024: pano shifted +0.09 fwd — the fresh side spike col is -1.089, the old -1.10..-1.27 window left it reading the 2.413 lerp)          // pano head (top 2.468 -> 2.499 rendered = the fresh front-row want at x -0.218..-0.299; the real ~2.7 pano stays the documented residual. Push-2 note: the pano z-window is AT the 2-col spike lerp tax [~0.26 sum] — every repositioning priced the same or worse, layout certified)
   P.add('turretGlass', box(0.04, 0.055, 0.02), -0.2325, 0.938, -0.76);        // (90-ladder r2d: the glass at z_w-rendered -1.018..-1.038 AA'd into the -0.972 col window edge [-1.027])
   P.add('turretDark', torus(0.115, 0.014, 12), -0.2325, 0.72, -0.81);            // ring collar at the roof foot
-  P.add('turret', cylY(0.055, 0.065, 0.26, 24), -0.2325, 0.825, 0.07);        // (90-ladder r2: 24-seg cylinders — the box z-caps PAINTED station i6 at 2.495 vs the ref's 2.346 slab top [5.91 topPct pre-existing]: the ref's spike content skips its slabs, smooth cylinders skip ours)               // SECOND sight pedestal at z_w -0.22 (r3-1024: the fresh side rows read a 2.497 spike across z_w -0.14..-0.26 the old layout never carried; x sits in the SAME -0.218..-0.299 front cols the pano head already owns, so the front row price is zero)
+  P.addEquipment('turret', cylY(0.055, 0.065, 0.26, 24), -0.2325, 0.825, 0.07);        // (90-ladder r2: 24-seg cylinders — the box z-caps PAINTED station i6 at 2.495 vs the ref's 2.346 slab top [5.91 topPct pre-existing]: the ref's spike content skips its slabs, smooth cylinders skip ours)               // SECOND sight pedestal at z_w -0.22 (r3-1024: the fresh side rows read a 2.497 spike across z_w -0.14..-0.26 the old layout never carried; x sits in the SAME -0.218..-0.299 front cols the pano head already owns, so the front row price is zero)
   P.add('turretDark', cylY(0.072, 0.075, 0.10, 24), -0.2325, 0.918, 0.07);           // second head (top 2.448 -> 2.479 rendered vs the 2.497 want)
   // hatches on the notch plate — RAISED RING RIMS (turret-fix: the r4
   // 3.8 cm crowns vanished at 1x and the roof read as a blank casemate
@@ -625,8 +625,8 @@ export function buildAriete(P) {
   periscope(P, 'turretDetail', 0.52, 0.70, -0.66);                             // (r3-1024: sunk — its 2.305 crown printed the z_w -0.97 side col over the ref's 2.217 line)
   periscope(P, 'turretDetail', -0.30, 0.79, 0.30, 0.3);                        // (r3-1024 = the banked second-periscope order: the 0.905 seat printed 2.449 rendered into the ref's 2.341 want at x -0.34..-0.40)
   P.add('turret', box(0.26, 0.26, 0.16), -0.86, 0.817, 0.59);
-  P.add('turret', box(0.075, 0.22, 0.16), -0.70, 0.769, 0.59);                // hood inboard step (top 2.359 -> 2.39 rendered: the fresh -0.67/-0.71 front cols want 2.39 where the roof plate reads 2.347)                  // loader sight hood (push-2: top 2.427 -> 2.458 rendered = the fresh L front want; the 2.46 seat read +0.03)
-  P.add('turret', box(0.14, 0.13, 0.30), 0.08, 0.855, 0.64);                   // center periscope vane (push-2 re-window: the ref vane cols are x 0.005..0.16 top 2.438-2.448 rendered — the old -0.06..0.16/2.44 box printed the -0.056/-0.015 cols where the ref valley is 2.306)
+  P.addEquipment('turret', box(0.075, 0.22, 0.16), -0.70, 0.769, 0.59);                // hood inboard step (top 2.359 -> 2.39 rendered: the fresh -0.67/-0.71 front cols want 2.39 where the roof plate reads 2.347)                  // loader sight hood (push-2: top 2.427 -> 2.458 rendered = the fresh L front want; the 2.46 seat read +0.03)
+  P.addEquipment('turret', box(0.14, 0.13, 0.30), 0.08, 0.855, 0.64);                   // center periscope vane (push-2 re-window: the ref vane cols are x 0.005..0.16 top 2.438-2.448 rendered — the old -0.06..0.16/2.44 box printed the -0.056/-0.015 cols where the ref valley is 2.306)
   // loader MAG — SS B3 KIT fitting on the bustle roof front (foot sunk to
   // 0.55: the r4 0.63 seat printed the receiver 2.52 vs the ref 2.31 at
   // z_w -1.4 — the gate's own worst column)
@@ -1497,7 +1497,7 @@ function buildLeclerc(P, variant = 's2') {
   // gunner sight HOUSING cluster (print reads 2.31-2.42 over x 0.45..1.05,
   // z_w 0.16..0.70 — the HL-70 armored box the identity packet names;
   // §B3.2 real equipment, owns the side cols the old plateau covered)
-  P.add('turret', box(0.54, 0.11, 0.42), 0.72, 0.665, 0.37);                   // compact housing base remains directly beneath the raised sight lid
+  P.addEquipment('turret', box(0.54, 0.11, 0.42), 0.72, 0.665, 0.37);                   // compact housing base remains directly beneath the raised sight lid
   P.add('turret', box(0.38, 0.055, 0.36), 0.70, 0.7475, 0.38);                 // raised lid step (top 2.375w, z_w 0.10..0.46 = the ref's 2.35-2.42 crest seat; the first z_l 0.32..0.68 seat left col 0.072's window reading the pad)
   P.add('turretDark', box(0.30, 0.016, 0.28), 0.70, 0.783, 0.38);              // lid seam
   P.add('turretDark', box(0.05, 0.05, 0.05), 0.50, 0.695, 0.24);               // wiper motor pot
@@ -2841,7 +2841,7 @@ export function buildType90(P) {
   }
   P.add('turret', cylY(0.20, 0.20, 0.05, 14), -0.52, 0.961, -0.11);            // loader coaming raised (top 2.386): r3 — run-2 unmasked the INBOARD dome-band cols x -0.33..-0.41 wanting 2.41 (the run-1 no-charge band was the cutoff hiding them, not a low ref line)
   P.add('turretDark', cylY(0.205, 0.205, 0.010, 14), -0.52, 0.988, -0.11);
-  P.add('turret', cylY(0.14, 0.16, 0.055, 12), -0.60, 0.985, -0.11);           // loader PERISCOPE DOME, offset outboard on the lid (top 2.4125): r2 — the
+  P.addEquipment('turret', cylY(0.14, 0.16, 0.055, 12), -0.60, 0.985, -0.11);           // loader PERISCOPE DOME, offset outboard on the lid (top 2.4125): r2 — the
   //   v2 print DOES carry a loader-side dome band (front cols x -0.52..-0.79
   //   want 2.42-2.43, the run-1 worst block); the offset cap covers x -0.44..
   //   -0.76 while the inboard cols x -0.33..-0.48 keep their flush read
@@ -2854,7 +2854,7 @@ export function buildType90(P) {
   // commander's stabilized periscope sight is the TALL BOX forward-right
   // (identity cue; real cluster runs to ~3.05 over sights+MG — the p95
   // budget carries the tower on <=2 pinned columns, everything else flush).
-  P.add('turret', box(0.345, 0.15, 0.69), 0.2725, 1.015, 1.135);               // gunner sight hood RAISED (top 2.49, z_w 0.59..1.28): the v2 ridge band
+  P.addEquipment('turret', box(0.345, 0.15, 0.69), 0.2725, 1.015, 1.135);               // gunner sight hood RAISED (top 2.49, z_w 0.59..1.28): the v2 ridge band
   //   wants 2.506 across the z_w 1.005..1.245 cols (§5.57 crown-band class —
   //   the print's sight-cluster housing run) — the old 2.352 "embedded" read
   //   was the datum cap, not the print. Station i9 (want 2.509) exits the
@@ -2873,11 +2873,11 @@ export function buildType90(P) {
   // 49-v2 RE-TUNE (owner verdict "turret was huge" -> oracle re-warped,
   // d4c2fec): the REAL lines govern — sight head 2.60 max, low flat read.
   P.add('turret', box(0.265, 0.165, 0.14), 0.0775, 1.0225, 0.57);              // tower body 2.34..2.505, x -0.055..0.21 (the ref's front-crown window)
-  P.add('turret', box(0.285, 0.016, 0.15), 0.0775, 1.111, 0.57);               // lid (top 2.519 = the v2 print's own i7/i8 sight-head line 2.535-rel; caps at z_w 0.295/0.445, 20+ mm inside both bin edges)
+  P.addEquipment('turret', box(0.285, 0.016, 0.15), 0.0775, 1.111, 0.57);               // lid (top 2.519 = the v2 print's own i7/i8 sight-head line 2.535-rel; caps at z_w 0.295/0.445, 20+ mm inside both bin edges)
   P.add('turretDark', box(0.22, 0.09, 0.02), 0.0775, 1.035, 0.65);             // glazed head band on the forward face (proud 10 mm, still inside the 0.519 bin edge)
   P.add('turretGlass', box(0.17, 0.05, 0.012), 0.0775, 1.035, 0.658);
-  P.add('turret', box(0.265, 0.155, 0.24), 0.0775, 1.0275, 0.76);              // sight-housing FORWARD RUN (top 2.505, z_w 0.44..0.68 — §5.248 fresh worldtrace: the v2 ridge band continues FORWARD of the tower [wants 2.525@0.47 / 2.505@0.584]; under grace 2.5755, butts the tower front face, §B2)
-  P.add('turret', box(0.265, 0.165, 0.47), 0.0775, 1.0225, 0.265);             // §5.73-1 sight-housing REAR RUN (top 2.505, z_w -0.17..0.30, butts the
+  P.addEquipment('turret', box(0.265, 0.155, 0.24), 0.0775, 1.0275, 0.76);              // sight-housing FORWARD RUN (top 2.505, z_w 0.44..0.68 — §5.248 fresh worldtrace: the v2 ridge band continues FORWARD of the tower [wants 2.525@0.47 / 2.505@0.584]; under grace 2.5755, butts the tower front face, §B2)
+  P.addEquipment('turret', box(0.265, 0.165, 0.47), 0.0775, 1.0225, 0.265);             // §5.73-1 sight-housing REAR RUN (top 2.505, z_w -0.17..0.30, butts the
   //   tower rear face): the v2 ridge band continues BEHIND the tower at
   //   2.516-2.526 across the center cols z_w -0.084..0.155 (§5.57 cap class,
   //   now free under the 2.55 datum). Rear z-cap paints the 2.34..2.505 band
@@ -4095,12 +4095,12 @@ function buildAMX30(P, b2) {
   periscope(P, 'turretDetail', 0.16, 0.70, -0.02);
   // gunner sight: B = hooded slit RIGHT-forward; B2 = the COTAC head (tell)
   if (b2) {
-    P.add('turret', box(0.34, 0.22, 0.34), 0.46, 0.70, 0.30, 0, -0.06, 0);     // COTAC sight body on the roof right-forward
+    P.addEquipment('turret', box(0.34, 0.22, 0.34), 0.46, 0.70, 0.30, 0, -0.06, 0);     // COTAC sight body on the roof right-forward
     P.add('turretDetail', box(0.36, 0.03, 0.36), 0.46, 0.825, 0.30, 0, -0.06, 0); // brow lid
     P.add('turretDark', box(0.24, 0.10, 0.028), 0.46, 0.72, 0.475);            // aperture course
     P.add('turretGlass', box(0.16, 0.06, 0.02), 0.46, 0.72, 0.492);
   } else {
-    P.add('turret', box(0.26, 0.12, 0.30), 0.44, 0.66, 0.34, 0, -0.05, 0);     // hooded sight box
+    P.addEquipment('turret', box(0.26, 0.12, 0.30), 0.44, 0.66, 0.34, 0, -0.05, 0);     // hooded sight box
     P.add('turretGlass', box(0.14, 0.035, 0.02), 0.44, 0.675, 0.492);
   }
   // smoke banks on the rear cast walls (B: 2-tube, B2: 3-tube — era tell).

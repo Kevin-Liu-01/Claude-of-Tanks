@@ -438,7 +438,7 @@ function buildStrv103A(P) {
   // ---- commander cluster (print z +0.02..-1.42, tops 2.33-2.38 CAPPED at
   // 2.16 by published heightM 2.14 p95 sovereignty; packet cap).
   P.add('hull', box(0.84, 0.10, 1.10), 0.46, 1.90, -0.62);                    // planted plinth (right)
-  P.add('hull', box(0.36, 0.26, 0.40), 0.62, 2.02, -0.94);                    // asymmetric sight head
+  P.addEquipment('hull', box(0.36, 0.26, 0.40), 0.62, 2.02, -0.94);           // asymmetric sight head
   P.add('hullDark', box(0.32, 0.02, 0.36), 0.62, 2.15, -0.94);
   P.add('hullGlass', box(0.20, 0.075, 0.022), 0.62, 2.06, -0.73);
   P.add('hull', cylY(0.26, 0.28, 0.11, 16), 0.28, 1.93, -0.40);               // commander cupola (right)
@@ -451,7 +451,7 @@ function buildStrv103A(P) {
   }), 0.52, 1.94, -0.18, [0, 0.05, 0]);                                       // commander Ksp 58 (crown <= 2.16 cap)
   P.add('hull', sph(0.155, 14, Math.PI / 2), -0.52, 1.87, -0.30);             // fixed observation dome (left)
   P.add('hullDark', torus(0.14, 0.012, 12), -0.52, 1.925, -0.30);
-  P.add('hull', box(0.34, 0.14, 0.36), -0.66, 1.92, -0.98);                   // driver/gunner sight box (left)
+  P.addEquipment('hull', box(0.34, 0.14, 0.36), -0.66, 1.92, -0.98);          // driver/gunner sight box (left)
   P.add('hullGlass', box(0.16, 0.08, 0.022), -0.66, 1.96, -0.79);
   periscope(P, 'hullDetail', 0.24, 1.80, 0.30);
   periscope(P, 'hullDetail', -0.34, 1.80, 0.44);

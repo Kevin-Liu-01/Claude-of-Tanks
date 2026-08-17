@@ -14,6 +14,7 @@ import {
 } from '/src/vehicles/tankAssets.js';
 import { auditTankAppearance } from '/src/vehicles/appearanceAudit.js';
 import { drawNationalInsignia, drawVehicleDesignation } from '/src/vehicles/vehicleMarkings.js';
+import { MODULE_LABEL } from '/src/sim/moduleCatalog.js';
 
 const BASE = 512;
 const SS = 2;
@@ -189,30 +190,59 @@ function plateCenter(points) {
   return points.reduce((acc, p) => [acc[0] + p[0] / points.length, acc[1] + p[1] / points.length], [0, 0]);
 }
 
+function convexHull2d(points) {
+  const unique = [...new Map(points.map((point) => [`${point[0]},${point[1]}`, point])).values()]
+    .sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  if (unique.length <= 2) return unique;
+  const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const lower = [];
+  for (const point of unique) {
+    while (lower.length >= 2 && cross(lower.at(-2), lower.at(-1), point) <= 0) lower.pop();
+    lower.push(point);
+  }
+  const upper = [];
+  for (let i = unique.length - 1; i >= 0; i--) {
+    const point = unique[i];
+    while (upper.length >= 2 && cross(upper.at(-2), upper.at(-1), point) <= 0) upper.pop();
+    upper.push(point);
+  }
+  lower.pop(); upper.pop();
+  return lower.concat(upper);
+}
+
 function projectedPlateKey(points) {
   return points.map((point) => `${Math.round(point[0])},${Math.round(point[1])}`).sort().join('|');
 }
 
 function compactPlateName(name) {
-  return name.replace(/_[LR](?=_|$)/g, '').replace(/_/g, ' ').toUpperCase().slice(0, 13);
+  return name
+    .replace(/_[LR](?=_|$)/g, '')
+    .replace(/_[AB]$/g, '')
+    .replace(/^hull_side_/i, '')
+    .replace(/^turret_side_/i, 'side_')
+    .replace(/^(hull|turret)_/i, '')
+    .replace(/_screen$/i, '')
+    .replace(/_/g, ' ')
+    .toUpperCase()
+    .slice(0, 13);
 }
 
 function armorColor(mm) {
-  if (mm < 50) return 'rgba(61,188,156,.62)';
-  if (mm < 120) return 'rgba(127,196,79,.62)';
-  if (mm < 250) return 'rgba(232,177,65,.66)';
-  if (mm < 450) return 'rgba(230,103,58,.68)';
-  return 'rgba(198,52,63,.72)';
+  if (mm < 50) return 'rgba(61,188,156,.50)';
+  if (mm < 120) return 'rgba(127,196,79,.50)';
+  if (mm < 250) return 'rgba(232,177,65,.54)';
+  if (mm < 450) return 'rgba(230,103,58,.56)';
+  return 'rgba(198,52,63,.60)';
 }
 
 function zoneColor(plate) {
   const name = plate.name.toLowerCase();
-  if (plate.kind === 'external' || /track|screen/.test(name)) return 'rgba(67,157,211,.62)';
-  if (plate.turretLocal || /turret|mantlet|cheek/.test(name)) return 'rgba(170,104,222,.62)';
-  if (/front|glacis|nose/.test(name)) return 'rgba(224,83,68,.64)';
-  if (/rear|engine/.test(name)) return 'rgba(64,182,166,.60)';
-  if (/roof|deck/.test(name)) return 'rgba(150,162,174,.54)';
-  return 'rgba(224,163,55,.58)';
+  if (plate.kind === 'external' || /track|screen/.test(name)) return 'rgba(67,157,211,.50)';
+  if (plate.turretLocal || /turret|mantlet|cheek/.test(name)) return 'rgba(170,104,222,.50)';
+  if (/front|glacis|nose/.test(name)) return 'rgba(224,83,68,.52)';
+  if (/rear|engine/.test(name)) return 'rgba(64,182,166,.48)';
+  if (/roof|deck/.test(name)) return 'rgba(150,162,174,.42)';
+  return 'rgba(224,163,55,.48)';
 }
 
 function penetrationReference(metadata) {
@@ -229,6 +259,42 @@ function penetrationReference(metadata) {
 }
 
 function clamp(value, min, max) { return Math.max(min, Math.min(max, value)); }
+
+function compactHitboxIds(ids) {
+  const unique = [...new Set(ids)].sort();
+  if (unique.length <= 2) return unique.join('/');
+  const parsed = unique.map((id) => /^([A-Z-]+)(\d+)$/.exec(id));
+  if (parsed.every(Boolean) && parsed.every((entry) => entry[1] === parsed[0][1])) {
+    return `${parsed[0][1]}${parsed[0][2]}–${parsed.at(-1)[2]}`;
+  }
+  return `${unique[0]}–${unique.at(-1)}`;
+}
+
+function coalescePlateLabels(items, armorMode) {
+  const groups = new Map();
+  for (const item of items) {
+    const key = `${item.name}|${item.value}|${item.color}`;
+    const previous = groups.get(key);
+    if (!previous) {
+      groups.set(key, { ...item, ids: [...item.ids], weight: item.area });
+      continue;
+    }
+    const weight = previous.weight + item.area;
+    previous.center = [
+      (previous.center[0] * previous.weight + item.center[0] * item.area) / weight,
+      (previous.center[1] * previous.weight + item.center[1] * item.area) / weight,
+    ];
+    previous.weight = weight;
+    previous.ids.push(...item.ids);
+  }
+  return [...groups.values()].map((item) => ({
+    center: item.center,
+    color: item.color,
+    label: armorMode
+      ? `${compactHitboxIds(item.ids)} ${item.value}MM`
+      : `${compactHitboxIds(item.ids)} ${item.name}`,
+  }));
+}
 
 function distributeCalloutYs(items, minY = 50, maxY = 224) {
   if (!items.length) return;
@@ -270,7 +336,7 @@ function drawCalloutLabels(c, items) {
   c.restore();
 }
 
-function drawPlateDiagram(sideCanvas, metadata, projection, mode) {
+function drawPlateDiagram(sideCanvas, metadata, projection, mode, trackShapes = []) {
   const armorMode = mode === 'armor';
   const out = technicalBase(
     sideCanvas, metadata,
@@ -283,6 +349,10 @@ function drawPlateDiagram(sideCanvas, metadata, projection, mode) {
   c.font = '800 8px ui-monospace, monospace';
   const projected = new Map();
   for (const plate of metadata.armor.plates) {
+    // Live createTank builds replace these legacy rectangles with convex
+    // prisms derived from the actual linked-track course. Do not keep lying
+    // about them in the technical card once that richer shape is available.
+    if (trackShapes.length && /^track_[LR]$/.test(plate.name)) continue;
     const points = plate.verts.map((point) => projection.point(point, plate.turretLocal, metadata.armor.turretPivot));
     if (points.length < 3) continue;
     const key = projectedPlateKey(points);
@@ -293,21 +363,60 @@ function drawPlateDiagram(sideCanvas, metadata, projection, mode) {
       if (plate.keMm > previous.plate.keMm) previous.plate = plate;
     }
   }
+  if (trackShapes.length) {
+    const legacyTrackIds = new Map(metadata.armor.plates
+      .filter((plate) => /^track_[LR]$/.test(plate.name))
+      .map((plate) => [plate.name, plate.hitboxId]));
+    for (const shape of trackShapes) {
+      if (!shape || !Array.isArray(shape.poly) || shape.poly.length < 3) continue;
+      const points = shape.poly.map(([z, y]) => projection.point([0, y, z], false));
+      const key = projectedPlateKey(points);
+      const name = shape.module === 'trackL' ? 'track_L' : 'track_R';
+      const plate = {
+        ...shape.plate,
+        name,
+        hitboxId: legacyTrackIds.get(name) || (shape.module === 'trackL' ? 'TRACK-L' : 'TRACK-R'),
+        turretLocal: false,
+      };
+      const previous = projected.get(key);
+      if (!previous) projected.set(key, { plate, points, plates: [plate] });
+      else previous.plates.push(plate);
+    }
+  }
   const labels = [];
+  const outlines = new Map();
   for (const { plate, points, plates } of projected.values()) {
     polygonPath(c, points);
     c.fillStyle = armorMode ? armorColor(plate.keMm) : zoneColor(plate);
     c.fill();
-    c.strokeStyle = 'rgba(235,242,247,.72)';
-    c.stroke();
-    const ids = plates.map((entry) => entry.hitboxId).join('/');
-    labels.push({
+    // Mirrored sides and planar triangle pairs are separate live hit
+    // surfaces but one readable zone in side projection. Stroke their outer
+    // hull once so the diagram does not invent a giant X through the turret.
+    const outlineKey = plate.name.replace(/_[LR](?=_|$)/g, '').replace(/_[AB]$/g, '');
+    const outline = outlines.get(outlineKey) || [];
+    outline.push(...points);
+    outlines.set(outlineKey, outline);
+    const area = polygonArea(points);
+    // Roofs, front plates and rears collapse to lines in a pure side view.
+    // Keep their boundary strokes, but do not route unreadable callouts to a
+    // zero-area projection; top/front cards own those surfaces.
+    if (area >= 8) labels.push({
       center: plateCenter(points),
-      label: armorMode ? `${ids} ${Math.round(plate.keMm)}MM` : `${ids} ${compactPlateName(plate.name)}`,
+      ids: plates.map((entry) => entry.hitboxId),
+      name: compactPlateName(plate.name),
+      value: Math.round(plate.keMm),
+      area,
       color: armorMode ? armorColor(plate.keMm) : zoneColor(plate),
     });
   }
-  drawCalloutLabels(c, labels);
+  c.strokeStyle = 'rgba(235,242,247,.72)';
+  for (const points of outlines.values()) {
+    const hull = convexHull2d(points);
+    if (hull.length < 2) continue;
+    polygonPath(c, hull);
+    c.stroke();
+  }
+  drawCalloutLabels(c, coalescePlateLabels(labels, armorMode));
   c.textAlign = 'left';
   c.font = '700 8px system-ui, sans-serif';
   if (armorMode) {
@@ -333,15 +442,20 @@ function drawPlateDiagram(sideCanvas, metadata, projection, mode) {
 const MODULE_COLOR = {
   engine: '#e9753b', fuelTank: '#d5a23e', ammoRack: '#d94c54', turretRing: '#9f70db',
   radio: '#54a8d8', optics: '#69c8b3', gun: '#d9dce0', trackL: '#84929e', trackR: '#84929e',
+  transmission: '#ef8c48', autoloader: '#e45b77', feedSystem: '#d06bd9', missileRack: '#c73f67',
+  gunMount: '#8f78c8',
 };
-const CREW_COLOR = '#f0c987';
+const CREW_COLOR = '#e9c47c';
+const CREW_FIGURE_HEIGHT_PX = 30;
+const CREW_FIGURE_WIDTH_PX = 20;
 
 function moduleLabel(name) {
   const fixed = {
     ammoRack: 'AMMO', fuelTank: 'FUEL', turretRing: 'TURRET',
     trackL: 'TRACK', trackR: 'TRACK', commander: 'COMMANDER',
   };
-  return fixed[name] || name.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/_/g, ' ').toUpperCase();
+  return fixed[name] || MODULE_LABEL[name]?.toUpperCase()
+    || name.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/_/g, ' ').toUpperCase();
 }
 
 function drawBox(c, box, projection, turretPivot, color) {
@@ -363,8 +477,107 @@ function drawBox(c, box, projection, turretPivot, color) {
   return { center: [x + w / 2, y + h / 2], label: `${box.volumeId} ${moduleLabel(box.name)}`, color };
 }
 
+function crewScreenRect(box, projection, turretPivot) {
+  const a = projection.point(box.min, box.turretLocal, turretPivot);
+  const b = projection.point(box.max, box.turretLocal, turretPivot);
+  const x = Math.min(a[0], b[0]), y = Math.min(a[1], b[1]);
+  const w = Math.max(5, Math.abs(b[0] - a[0])), h = Math.max(8, Math.abs(b[1] - a[1]));
+  return { x, y, w, h, centerX: x + w / 2, floorY: y + h - 1 };
+}
+
+function crewPlacements(boxes, projection, turretPivot) {
+  const placements = boxes.map((box) => crewScreenRect(box, projection, turretPivot));
+  const claimed = new Set();
+  for (let start = 0; start < placements.length; start++) {
+    if (claimed.has(start)) continue;
+    const group = [start];
+    claimed.add(start);
+    for (let cursor = 0; cursor < group.length; cursor++) {
+      const base = placements[group[cursor]];
+      for (let candidate = 0; candidate < placements.length; candidate++) {
+        if (claimed.has(candidate)) continue;
+        const other = placements[candidate];
+        if (Math.abs(base.centerX - other.centerX) < CREW_FIGURE_WIDTH_PX * 0.9
+            && Math.abs(base.floorY - other.floorY) < 8) {
+          claimed.add(candidate);
+          group.push(candidate);
+        }
+      }
+    }
+    if (group.length < 2) continue;
+    group.sort((a, b) => placements[a].centerX - placements[b].centerX
+      || boxes[a].name.localeCompare(boxes[b].name));
+    const centerX = group.reduce((sum, index) => sum + placements[index].centerX, 0) / group.length;
+    const floorY = group.reduce((sum, index) => sum + placements[index].floorY, 0) / group.length;
+    const spacing = CREW_FIGURE_WIDTH_PX * 0.9;
+    group.forEach((index, rank) => {
+      placements[index].figureCenterX = centerX + (rank - (group.length - 1) / 2) * spacing;
+      placements[index].figureFloorY = floorY;
+    });
+  }
+  return placements;
+}
+
+function drawCrew(c, box, projection, turretPivot, placement = null) {
+  if (!box.min || !box.max) return null;
+  const rect = placement || crewScreenRect(box, projection, turretPivot);
+  const { x, y, w, h } = rect;
+  const color = CREW_COLOR;
+  c.save();
+  c.fillStyle = `${color}0d`; c.fillRect(x, y, w, h);
+
+  // Crew volumes legitimately vary by vehicle, but the human pictogram must
+  // not. Every role uses this exact 20 × 30 px seated profile, centered on the
+  // station and planted on its lower datum. The volume remains visible behind
+  // it as the gameplay truth; the person is a consistent presentation layer.
+  const figureH = CREW_FIGURE_HEIGHT_PX;
+  const figureW = CREW_FIGURE_WIDTH_PX;
+  const ox = (rect.figureCenterX ?? rect.centerX) - figureW / 2;
+  const oy = (rect.figureFloorY ?? rect.floorY) - figureH;
+  const px = (u) => ox + u * figureW;
+  const py = (v) => oy + v * figureH;
+  const limbW = 2.35;
+
+  // Quiet seat datum: one back, one cushion, one support.
+  c.strokeStyle = `${color}50`; c.lineWidth = 1;
+  c.lineCap = 'round'; c.lineJoin = 'round';
+  c.beginPath();
+  c.moveTo(px(0.16), py(0.34)); c.lineTo(px(0.16), py(0.66));
+  c.lineTo(px(0.52), py(0.66));
+  c.moveTo(px(0.20), py(0.66)); c.lineTo(px(0.18), py(0.94));
+  c.stroke();
+
+  // Compact upright torso—no lean, no secondary limbs, no role-specific pose.
+  c.fillStyle = color;
+  c.beginPath();
+  c.moveTo(px(0.27), py(0.29));
+  c.quadraticCurveTo(px(0.39), py(0.25), px(0.48), py(0.31));
+  c.lineTo(px(0.49), py(0.55));
+  c.quadraticCurveTo(px(0.42), py(0.60), px(0.32), py(0.57));
+  c.lineTo(px(0.26), py(0.43));
+  c.closePath(); c.fill();
+
+  c.beginPath(); c.arc(px(0.37), py(0.14), 3.1, 0, Math.PI * 2); c.fill();
+  c.strokeStyle = color; c.lineWidth = limbW;
+  c.beginPath();
+  c.moveTo(px(0.37), py(0.24)); c.lineTo(px(0.37), py(0.29));
+  c.moveTo(px(0.43), py(0.35)); c.lineTo(px(0.61), py(0.47));
+  c.lineTo(px(0.74), py(0.47));
+  c.moveTo(px(0.42), py(0.58)); c.lineTo(px(0.71), py(0.62));
+  c.lineTo(px(0.71), py(0.87)); c.lineTo(px(0.89), py(0.87));
+  c.stroke();
+  c.restore();
+  c.strokeStyle = `${color}52`; c.lineWidth = 0.8;
+  c.strokeRect(x, y, w, h);
+  return {
+    center: [x + w / 2, y + h / 2],
+    label: `${box.volumeId} ${moduleLabel(box.name)}`,
+    color,
+  };
+}
+
 function drawModuleDiagram(sideCanvas, metadata, projection) {
-  const out = technicalBase(sideCanvas, metadata, 'Module and crew map', 'actual damage volumes');
+  const out = technicalBase(sideCanvas, metadata, 'Systems and crew layout', 'gameplay volumes • seated crew');
   const c = out.getContext('2d');
   c.font = '800 6.5px ui-monospace, monospace';
   const labels = [];
@@ -372,14 +585,15 @@ function drawModuleDiagram(sideCanvas, metadata, projection) {
     const label = drawBox(c, box, projection, metadata.armor.turretPivot, MODULE_COLOR[box.name] || '#8aa1b2');
     if (label) labels.push(label);
   }
-  for (const box of metadata.armor.crew) {
-    const label = drawBox(c, box, projection, metadata.armor.turretPivot, CREW_COLOR);
+  const placements = crewPlacements(metadata.armor.crew, projection, metadata.armor.turretPivot);
+  metadata.armor.crew.forEach((box, index) => {
+    const label = drawCrew(c, box, projection, metadata.armor.turretPivot, placements[index]);
     if (label) labels.push(label);
-  }
+  });
   drawCalloutLabels(c, labels);
   c.textAlign = 'left';
   c.font = '700 8px system-ui, sans-serif';
-  const legend = [['AMMO', MODULE_COLOR.ammoRack], ['ENGINE', MODULE_COLOR.engine], ['FUEL', MODULE_COLOR.fuelTank], ['GUN', MODULE_COLOR.gun], ['CREW', CREW_COLOR]];
+  const legend = [['AMMO', MODULE_COLOR.ammoRack], ['POWER', MODULE_COLOR.engine], ['FEED', MODULE_COLOR.feedSystem], ['GUN', MODULE_COLOR.gun], ['CREW', CREW_COLOR]];
   let x = 14;
   for (const [label, color] of legend) {
     c.fillStyle = color; c.fillRect(x, 238, 12, 6);
@@ -454,7 +668,7 @@ function vehicleMarkingCensus(root) {
   return result;
 }
 
-function inspectOne(id, renderFiles) {
+function inspectOne(id, renderFiles, requestedViews = null) {
   const visual = createTank(id, null, { camoSeed: 4100, quality: 'high' });
   const root = visual.root;
   scene.add(root);
@@ -477,32 +691,41 @@ function inspectOne(id, renderFiles) {
     if (!renderFiles) return { files: {}, meta };
 
     const files = {};
-    const topHalf = (Math.max(size.x, size.z) / 2) * MARGIN;
-    const topCam = orthoCam(center, size, [0, 1, 0], [0, 0, 1], topHalf, topHalf);
-    const topCanvas = capture(topCam, BASE, BASE);
-    files[tankAssetFile(id, 'top')] = topCanvas.toDataURL('image/webp', 0.9);
-    files[tankAssetFile(id, 'topSilhouette')] = silhouette(topCanvas, 128, 128).toDataURL('image/png');
+    const wants = (view) => !requestedViews || requestedViews.includes(view);
+    if (wants('top') || wants('topSilhouette')) {
+      const topHalf = (Math.max(size.x, size.z) / 2) * MARGIN;
+      const topCam = orthoCam(center, size, [0, 1, 0], [0, 0, 1], topHalf, topHalf);
+      const topCanvas = capture(topCam, BASE, BASE);
+      if (wants('top')) files[tankAssetFile(id, 'top')] = topCanvas.toDataURL('image/webp', 0.9);
+      if (wants('topSilhouette')) files[tankAssetFile(id, 'topSilhouette')] = silhouette(topCanvas, 128, 128).toDataURL('image/png');
+    }
 
-    const projection = sideProjection(center, size);
-    const sideCam = orthoCam(center, size, [-1, 0, 0], [0, 1, 0], projection.halfW, projection.halfH);
-    const sideCanvas = capture(sideCam, BASE, BASE / 2);
-    files[tankAssetFile(id, 'side')] = sideCanvas.toDataURL('image/webp', 0.9);
-    files[tankAssetFile(id, 'sideSilhouette')] = silhouette(sideCanvas, 256, 128).toDataURL('image/png');
-    files[tankAssetFile(id, 'hitZonesSide')] = drawPlateDiagram(sideCanvas, metadata, projection, 'zones').toDataURL('image/png');
-    files[tankAssetFile(id, 'armorSide')] = drawPlateDiagram(sideCanvas, metadata, projection, 'armor').toDataURL('image/png');
-    files[tankAssetFile(id, 'modulesSide')] = drawModuleDiagram(sideCanvas, metadata, projection).toDataURL('image/png');
-    files[tankAssetFile(id, 'markings')] = drawMarkingsDiagram(metadata).toDataURL('image/png');
+    if (wants('side') || wants('sideSilhouette') || wants('hitZonesSide')
+        || wants('armorSide') || wants('modulesSide')) {
+      const projection = sideProjection(center, size);
+      const sideCam = orthoCam(center, size, [-1, 0, 0], [0, 1, 0], projection.halfW, projection.halfH);
+      const sideCanvas = capture(sideCam, BASE, BASE / 2);
+      if (wants('side')) files[tankAssetFile(id, 'side')] = sideCanvas.toDataURL('image/webp', 0.9);
+      if (wants('sideSilhouette')) files[tankAssetFile(id, 'sideSilhouette')] = silhouette(sideCanvas, 256, 128).toDataURL('image/png');
+      const trackShapes = getSpec(id).armor.trackShapes || [];
+      if (wants('hitZonesSide')) files[tankAssetFile(id, 'hitZonesSide')] = drawPlateDiagram(sideCanvas, metadata, projection, 'zones', trackShapes).toDataURL('image/png');
+      if (wants('armorSide')) files[tankAssetFile(id, 'armorSide')] = drawPlateDiagram(sideCanvas, metadata, projection, 'armor', trackShapes).toDataURL('image/png');
+      if (wants('modulesSide')) files[tankAssetFile(id, 'modulesSide')] = drawModuleDiagram(sideCanvas, metadata, projection).toDataURL('image/png');
+    }
+    if (wants('markings')) files[tankAssetFile(id, 'markings')] = drawMarkingsDiagram(metadata).toDataURL('image/png');
 
-    const fov = 28;
-    const sphere = box.getBoundingSphere(new THREE.Sphere());
-    const dist = (sphere.radius * MARGIN) / Math.sin((fov / 2) * Math.PI / 180);
-    const dir = new THREE.Vector3(-0.56, 0.34, 1.0).normalize();
-    const angleCam = new THREE.PerspectiveCamera(fov, 1, 0.1, dist * 4);
-    angleCam.position.copy(center).addScaledVector(dir, dist);
-    angleCam.lookAt(center);
-    angleCam.updateMatrixWorld();
-    const angleCanvas = autoCropSquare(capture(angleCam, BASE * 2, BASE * 2), BASE, 0.035);
-    files[tankAssetFile(id, 'angle')] = angleCanvas.toDataURL('image/webp', 0.9);
+    if (wants('angle')) {
+      const fov = 28;
+      const sphere = box.getBoundingSphere(new THREE.Sphere());
+      const dist = (sphere.radius * MARGIN) / Math.sin((fov / 2) * Math.PI / 180);
+      const dir = new THREE.Vector3(-0.56, 0.34, 1.0).normalize();
+      const angleCam = new THREE.PerspectiveCamera(fov, 1, 0.1, dist * 4);
+      angleCam.position.copy(center).addScaledVector(dir, dist);
+      angleCam.lookAt(center);
+      angleCam.updateMatrixWorld();
+      const angleCanvas = autoCropSquare(capture(angleCam, BASE * 2, BASE * 2), BASE, 0.035);
+      files[tankAssetFile(id, 'angle')] = angleCanvas.toDataURL('image/webp', 0.9);
+    }
     return { files, meta };
   } finally {
     scene.remove(root);
@@ -656,11 +879,11 @@ window.__WARM = (ids) => {
   return true;
 };
 
-window.__GEN = (ids) => {
+window.__GEN = (ids, views) => {
   const result = { schemaVersion: TANK_ASSET_SCHEMA_VERSION, files: {}, tanks: {} };
   for (const id of idsOrFleet(ids)) {
     try {
-      const one = inspectOne(id, true);
+      const one = inspectOne(id, true, views && views.length ? views : null);
       Object.assign(result.files, one.files);
       result.tanks[id] = one.meta;
     } catch (error) {

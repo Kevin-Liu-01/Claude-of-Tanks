@@ -1015,10 +1015,10 @@ function buildT84(P) {
   // +0.10, so the step spans −0.21..−0.50 / +0.115..+0.50 only
   P.add('turret', box(0.29, 0.14, 0.21), -0.355, 0.65, 0.695);
   P.add('turret', box(0.385, 0.14, 0.21), 0.3075, 0.65, 0.695);
-  P.add('turret', box(0.66, 0.175, 0.14), -0.55, 0.7275, 0.52);   // gunner/pano sight housing 2.215 ABS (sights lane 2.22-2.24; inner edge −0.22 — at −0.20 it bled the −0.198 front bin where the fresh ref roof dips to 2.104)
+  P.addEquipment('turret', box(0.66, 0.175, 0.14), -0.55, 0.7275, 0.52);   // gunner/pano sight housing 2.215 ABS (sights lane 2.22-2.24; inner edge −0.22 — at −0.20 it bled the −0.198 front bin where the fresh ref roof dips to 2.104)
   P.add('turretGlass', box(0.22, 0.06, 0.02), -0.35, 0.75, 0.60);
   P.add('turret', box(0.17, 0.14, 0.35), -0.945, 0.77, 0.225);    // left shoulder block 2.24 ABS (ref front 2.243 to x −1.02)
-  P.add('turret', box(0.26, 0.175, 0.12), 0.35, 0.7275, 0.51);    // commander sight 2.215 ABS
+  P.addEquipment('turret', box(0.26, 0.175, 0.12), 0.35, 0.7275, 0.51);    // commander sight 2.215 ABS
   // r32 ORDER 0a (§B2, critic r31 V1): slot-lane flank walls. The lane
   // between the sight housings (z W −0.50..−0.36), apex step and the cheek
   // rears (−0.14) read OPEN SKY through the turret from both side orthos

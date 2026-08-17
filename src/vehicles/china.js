@@ -3,6 +3,7 @@
 // generated hitboxes and articulation stay coherent with their donor tanks.
 
 import { TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS } from './specs.js';
+import { createType99Armor } from './profiles/type99Armor.js';
 
 export const CHINA_IDS = Object.freeze(['ztz85_iii', 'ztz99a2']);
 
@@ -39,6 +40,7 @@ function variant(id, donorId, options) {
     }
     spec.dims = { ...spec.dims, ...options.dims };
   }
+  if (options.armor) spec.armor = options.armor;
   if (options.armorFactor) {
     for (const plate of [...spec.armor.hullPlates, ...spec.armor.turretPlates]) {
       if (plate.kind === 'external') continue;
@@ -112,6 +114,10 @@ export const CHINA_SPECS = {
       reverseSpeedKmh: 28, turretTraverseDegS: 42, gunPitchDegS: 34,
     },
     reloadS: 6.4,
+    // The A2 is a distinct ground-up build with a 1.56 m ring seat, deeper
+    // hull and longer turret bustle; it must not inherit the Type 99A's
+    // collision envelope merely because its gameplay values are related.
+    armor: createType99Armor('ztz99a2'),
     armorFactor: 1.12,
   }),
 };

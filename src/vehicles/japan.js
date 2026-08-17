@@ -64,7 +64,9 @@ export const JAPAN_SPECS = {
     name: 'Type 10B', number: '10-B', scheme: 'stripes',
     base: '#3a4937', weather: '#59604b', patches: ['#243026', '#65583b', '#7a7054'],
     camoScale: 0.40,
-    dims: { hullLengthM: 6.83, overallLengthM: 9.49, widthM: 3.24, heightM: 2.58 },
+    // §5.336 owner-decreed ×1.10 enlargement (rides the rebuilt shared base;
+    // §5.304-class divergence documented in the type10 spec row).
+    dims: { hullLengthM: 7.513, overallLengthM: 10.439, widthM: 3.564, heightM: 2.838 },
     stats: { hp: 2450, enginePowerHp: 1200, weightTons: 48.0, topSpeedKmh: 70,
       reverseSpeedKmh: 45, turretTraverseDegS: 46, gunPitchDegS: 38 },
     reloadS: 4.7, shellName: 'Type 10 Kai APFSDS', armorFactor: 1.16,

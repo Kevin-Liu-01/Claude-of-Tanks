@@ -400,7 +400,7 @@ export function buildStrv103(P) {
   // ORACLE DEFECT CAP: the print's cluster reads 2.33-2.38 over ~1 m of roof;
   // published heightM (2.14, p95-sovereign) pins the build at 2.18 max.
   P.add('hull', box(0.82, 0.09, 1.05), 0.49, 1.85, -0.42);                     // broad planted commander plinth
-  P.add('hull', box(0.34, 0.27, 0.38), 0.64, 2.01, -0.62);                     // compact asymmetric sight head
+  P.addEquipment('hull', box(0.34, 0.27, 0.38), 0.64, 2.01, -0.62);            // compact asymmetric sight head
   P.add('hullDark', box(0.30, 0.02, 0.34), 0.64, 2.15, -0.62);
   P.add('hull', cylY(0.25, 0.27, 0.10, 16), 0.26, 1.88, -0.22);                // low commander cupola
   P.add('hullDark', KIT.torus(0.25, 0.015, 16), 0.26, 1.94, -0.22);
@@ -593,8 +593,8 @@ function buildJagdtiger(P) {
   // roof furniture: the raised periscope/vent humps carry published heightM
   // (2.95 -> humps at 2.93) over >5% of body columns per the p95 rule — the
   // real vehicle's roof gear stands proud of the 2.76 plate.
-  P.add('hull', box(0.34, 0.21, 0.44), -0.50, 2.87, 1.00);                     // periscope humps -> 2.975 (heightM p95)
-  P.add('hull', box(0.34, 0.21, 0.44), 0.50, 2.87, 1.00);
+  P.addEquipment('hull', box(0.34, 0.21, 0.44), -0.50, 2.87, 1.00);            // periscope humps -> 2.975 (heightM p95)
+  P.addEquipment('hull', box(0.34, 0.21, 0.44), 0.50, 2.87, 1.00);
   P.add('hullDark', box(0.26, 0.03, 0.05), -0.50, 2.945, 1.21);
   P.add('hullDark', box(0.26, 0.03, 0.05), 0.50, 2.945, 1.21);
   P.add('hull', box(0.34, 0.215, 0.38), 0.02, 2.865, -0.20);                   // vent hump -> 2.975
@@ -953,7 +953,7 @@ function buildSturmtiger(P) {
   P.add('hullDetail', box(0.30, 0.03, 0.05), 0.60, 2.20, 2.78, -0.563, 0, 0);  // port hood lip
   // roof: loading hatch + periscope hump + vent + pilze (roof plate 2.59)
   P.add('hullDark', box(0.86, 0.016, 0.024), -0.12, 2.605, -0.30);
-  P.add('hull', box(0.30, 0.09, 0.34), -0.55, 2.62, 1.35);                     // periscope hump
+  P.addEquipment('hull', box(0.30, 0.09, 0.34), -0.55, 2.62, 1.35);            // periscope hump
   periscope(P, 'hullDetail', -0.55, 2.70, 1.35);
   P.add('hullDetail', KIT.torus(0.085, 0.014, 14), -0.55, 2.705, 1.35);        // periscope collar ring
   P.add('hull', KIT.sph(0.115, 12, Math.PI / 2), 0.55, 2.60, 1.30);            // vent dome
@@ -3260,7 +3260,7 @@ function buildISU152(P) {
     P.add('hullDetail', box(0.030, 0.44, 0.028), sd * 0.86, 1.63, -2.606);     // pile-flank frame verticals
     P.add('hullDetail', box(0.030, 0.36, 0.026), sd * 0.80, 1.59, -1.688);
   }
-  P.add('hull', box(0.60, 0.06, 0.15), -0.35, 2.225, 2.30);                    // periscope hood (under 2.252 roof)
+  P.addEquipment('hull', box(0.60, 0.06, 0.15), -0.35, 2.225, 2.30);           // periscope hood (under 2.252 roof)
   // ---- ML-20S mount: bolted face ring + ball + recuperator stack graded
   // down the ref's own 2.22->2.00 mantlet fall (all pieces x-clamped to the
   // tube band [-0.36,-0.12] so the plan never widens past the tube cols)
@@ -4339,7 +4339,7 @@ function buildISU122S(P) {
     P.add('hullDark', box(0.070, 0.014, 0.014), px3, 2.206, pz3 + 0.058);      // vision band
   }
   for (const [px2, pz2] of [[0.31, 1.90], [-0.35, 1.90]]) {
-    P.add('hull', box(0.22, 0.038, 0.15), px2, 2.156, pz2);                    // periscope hoods (top 2.175)
+    P.addEquipment('hull', box(0.22, 0.038, 0.15), px2, 2.156, pz2);           // periscope hoods (top 2.175)
     P.add('hullDark', box(0.16, 0.014, 0.02), px2, 2.166, pz2 + 0.073);        // vision slits
   }
   // cupola rings with hinges + latch handles (r3 roof-density item).

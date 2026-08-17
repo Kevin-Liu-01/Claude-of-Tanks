@@ -19,6 +19,7 @@
 import { Vector3, Matrix4, Quaternion, Euler } from 'three';
 import { penAtDistanceMm } from './ballistics.js';
 import { tankPoseFromState, traceTank, blastTargets } from './armor.js';
+import { CORE_MODULE_IDS, MODULE_DEFS, MODULE_IDS } from './moduleCatalog.js';
 
 const DEG_TO_RAD = Math.PI / 180;
 
@@ -62,33 +63,6 @@ function behaviorOf(type) {
 export function isHeClass(type) {
   return behaviorOf(type).kindClass === 'HE';
 }
-
-/** Module HP baselines (armor doc §9); ×2.5 on modern-era tanks. */
-const MODULE_HP = {
-  trackL: 100,
-  trackR: 100,
-  engine: 160,
-  fuelTank: 120,
-  ammoRack: 150,
-  gun: 150,
-  radio: 90,
-  optics: 80,
-  turretRing: 120,
-};
-const MODULE_NAMES = Object.keys(MODULE_HP);
-
-/** Saving-throw table — chance the module takes damage when hit (armor doc §9). */
-const SAVE_CHANCE = {
-  trackL: 1.0,
-  trackR: 1.0,
-  engine: 0.45,
-  fuelTank: 0.45,
-  optics: 0.45,
-  turretRing: 0.45,
-  radio: 0.45,
-  gun: 0.33,
-  ammoRack: 0.27,
-};
 
 const CREW_HIT_CHANCE = 0.33;
 const CREW_HIT_CHANCE_HE = 0.1;
@@ -212,8 +186,12 @@ function equipMult(combat, key) {
 export function createCombatState(spec) {
   const scale = spec.era === 'modern' ? 2.5 : 1;
   const modules = {};
-  for (const name of MODULE_NAMES) {
-    const hp = MODULE_HP[name] * scale;
+  const authored = spec.armor && Array.isArray(spec.armor.modules) && spec.armor.modules.length
+    ? new Set(spec.armor.modules.map((box) => box.module))
+    : new Set([...CORE_MODULE_IDS, 'turretRing']);
+  for (const name of MODULE_IDS) {
+    if (!authored.has(name)) continue;
+    const hp = MODULE_DEFS[name].hp * scale;
     modules[name] = { hp, maxHp: hp, state: 'ok', repairT: 0 };
   }
   const crew = {};
@@ -328,7 +306,7 @@ function rollModuleDamage(ctx, moduleName) {
   const m = ctx.combat.modules[moduleName];
   if (!m) return res;
   const save = ctx.rng(); // always consumed — fixed order
-  const chance = (SAVE_CHANCE[moduleName] ?? 0.45) * (ctx.chanceScale ?? 1);
+  const chance = (MODULE_DEFS[moduleName]?.saveChance ?? 0.45) * (ctx.chanceScale ?? 1);
   if (save >= Math.min(1, chance) || m.hp <= 0) return res;
 
   const moduleDmg =
@@ -1582,6 +1560,10 @@ export function startReload(combatState, spec) {
   if ('loader' in combatState.crew && combatState.crew.loader === false) mult *= 1.5;
   const rack = combatState.modules && combatState.modules.ammoRack;
   if (rack && rack.state !== 'ok') mult *= AMMORACK_RELOAD_MULT;
+  const loaderMechanism = combatState.modules &&
+    (combatState.modules.autoloader || combatState.modules.feedSystem);
+  if (loaderMechanism?.state === 'yellow') mult *= 1.35;
+  else if (loaderMechanism?.state === 'red') mult *= 2;
   // EQUIPMENT SYSTEM: gun rammer / vents (× <1) — re-derived per reload like
   // the debuffs above, from the loadout attached to this combat state.
   mult *= equipMult(combatState, 'reload');
@@ -1590,6 +1572,11 @@ export function startReload(combatState, spec) {
   // the ATGM rail on the same vehicle takes its full 14-18 s. Vehicles
   // without per-shell data keep the single gun-level duration.
   const loaded = spec.gun.shells && spec.gun.shells[combatState.shellSlot];
+  const missileRack = combatState.modules && combatState.modules.missileRack;
+  const missileRound = loaded && loaded.type === 'HEAT'
+    && Number(loaded.reloadS || spec.gun.reloadS) >= 8;
+  if (missileRound && missileRack?.state === 'yellow') mult *= 1.4;
+  else if (missileRound && missileRack?.state === 'red') mult *= 1.8;
   const baseS = (loaded && loaded.reloadS) || spec.gun.reloadS;
   const totalS = baseS * mult;
   combatState.reload.totalS = totalS;
