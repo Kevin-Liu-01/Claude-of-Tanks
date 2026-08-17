@@ -40,3 +40,85 @@ station, MG, smoke equipment, antennas, and turret stowage together. The
 glacis, fenders, tow cable, engine deck, transom, wheels, and tracks remain
 fixed. No fused duplicate, stranded fitting, empty-air item, donor course,
 collision, open sheet, sky hole, or visible winding wound remains.
+
+---
+
+## §5.309 AMX-40-BASE REBUILD (2026-08-17) — owner order, lane H
+
+**Owner order (verbatim):** "make the amx 30bs based off of stripped down
+versions of amx 40 without sideskirts and as much side turret armor, with a
+lil more turret rounding, the cupolas lights machine guns etc. update the
+amx-30b and amx-30b2"
+
+**Build:** `buildAMX30` in `src/vehicles/profiles/misc.js` rewritten on the
+`france.js buildAMX40` construction grammar, stripped per the order:
+
+- **Base (amx40 grammar):** belly tub + sloped belly shoulders between the
+  shoe lanes, full-width sponson course (±1.51, y 1.26..1.585), stepped
+  REAR-RAISED engine deck (step 1.615 / plateau 1.655 with flank chamfers),
+  station-slice `segZ` discipline (≤0.48 pitch), §B3.2 stern service field
+  (grille field, access door, lamp housings + brows, clevises + eye tori,
+  jack block, convoy recess, lift eyes).
+- **No side skirts (§B9):** the five-wheel train, five return rollers and
+  both raised end wheels read fully at side/garage angles; sponson floor
+  1.26 rides 4.5 cm over the 1.215 return-shoe crown (§B4).
+- **Much less side-turret armor:** the amx40 flank cassettes/appliqué rails
+  are deleted; the cast walls carry only lift lugs, welded grab rails and
+  smoke banks.
+- **A lil more turret rounding:** the amx40 20-station welded shell plan
+  re-derived at x*0.87 / z*0.78 fwd / *0.97 aft, Chaikin-smoothed to 40
+  stations, lofted through FIVE rings (base flare -> cast waist bulge ->
+  shoulder -> inward roll -> falling crown) + a domed cap
+  (`centerHeight 0.685` -> roof world 2.285 vs pub 2.29). Long AMX bustle
+  taper + tapering rear course retained.
+- **Grammar per the order:** TOP commander cupola RIGHT (episcope ring,
+  dished split hatch, cast collar seat) with remote 7.62 AANF1 on a seated
+  side-arm bridge, forward rest; loader hatch LEFT; twin GUARDED headlight
+  pairs on the bow corners (pods 2 per side, pedestal + welded brush-guard
+  frame); 20 mm M693 coax BESIDE the 105 F1 in a BULGED rotor cheek (LEFT,
+  loader-served, own muzzle ring + §B3.1 bore dot); PH-8-B IR searchlight
+  box LEFT of the mantlet (gun-linked, round lens + guard bars + carrier
+  arm); pioneer tools, tow cable, spare links on the glacis, whip antenna.
+- **Bow:** the one-piece AMX-30 glacis authored as TWO CO-PLANAR courses
+  split at the idler-wrap line (§B4 — a full-width plane through z 2.66+
+  runs the wrap lanes; the r1/r2 lesson), center tongue to the 3.31 prow,
+  §B4-split lower bow, outer bow noses over the lanes, exposed-lane bow
+  corners (honest skirtless read).
+- **105 F1:** clean tube (no evac, no sleeve), r 0.103, len 4.95 from the
+  trunnion (muzzle world 6.20 -> overall 9.49), jacket seam rings, §B3.1
+  muzzle bore. Bore axis world 1.93.
+
+**Dims true-up (userdrops7.js, amx rows only):** the 6.85/9.55/3.11/2.87 +
+silhouette 3.42 rows were the retired 08-15 donor-GLB envelope. New rows =
+published: hull 6.59 / overall 9.48 / width 3.10 / heightM 2.29 (turret-roof
+datum) + silhouetteHeightM 2.64 (gate-measured p95 through the mounted TOP
+cupola/MG — t62mv1 DShK convention). Gate dimRows: heightM 2.64 (0.19%),
+hullLengthM 6.60 (0.19%), overallLengthM 9.43 (0.5%), widthM 3.13 (1.1%).
+
+**Receipts (2026-08-17):**
+
+- Geometry hash: `30a12990` (50/57515) -> **`33b5048`** (58 meshes / 70051
+  verts). Guards EXACT before=after: amx40 `1a74c63c`, leclerc `733d24fd`,
+  leclerc_xlr `bce50094`, amx56 `add6a070`.
+- Geometry gate ×2 BIT-IDENTICAL (report md5 `19217957cf3961f3681704e941c75aea`):
+  **min 83.8** — whole 83.8 / dims 99.2 / floaters 100. The wholeCurves row
+  vs the ahab print is an OWNER-DECREED DIVERGENCE (the §5.304 type59
+  class): the print stays the registered measurement oracle; the build now
+  follows the §5.309 order (stripped amx40 base), so the 90.0 print-shaped
+  row retires with the 08-15 build. Never chased back.
+- Track containment `--exact --strict`: **0/0 every zone + sweep** (band
+  and shoes; skirtless full-exposure class).
+- Turret-parent audit: stranded 0 / dangling 0; abutting 1 =
+  `fitting_towCable` (fixed fender/deck item outside the ±1.29 casting
+  envelope — the certified 08-12 adjudication holds).
+- npm test: GREEN (exit 0, full selftest chain).
+- §5.254 pairs at `shots/amx30-rebuild/{before,after}/` (15 views × 2 ids
+  per side, captured at their respective trees; 30/30 pairs differ — no
+  evidence void). Donor family baseline at `shots/amx30-rebuild/donor-amx40/`.
+- Oracle prints restored from `.bak` for the gate runs (untracked live
+  copies, md5 `e28d68d5...` = the §5.36 re-baked cure); `.bak` files
+  untouched.
+- The 2026-08-12 graduation receipt above describes the RETIRED 08-15
+  lineage build; §3 registry rows (89a4cdf0/34076800) were already stale
+  against the 08-15 tree (BEFORE hash `30a12990`). A garage-read spot
+  sitting follows this rebuild per the lane order.

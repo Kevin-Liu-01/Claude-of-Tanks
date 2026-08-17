@@ -37,3 +37,54 @@ Yaw proves that the complete gun/turret/station/smoke/antenna/stowage package
 rotates together over a coherent fixed hull. No fused duplicate, stranded or
 floating fitting, donor track, collision, disappearing surface, backface
 wound, or sky-through gap is visible.
+
+---
+
+## §5.309 AMX-40-BASE REBUILD (2026-08-17) — owner order, lane H
+
+**Owner order (verbatim):** "make the amx 30bs based off of stripped down
+versions of amx 40 without sideskirts and as much side turret armor, with a
+lil more turret rounding, the cupolas lights machine guns etc. update the
+amx-30b and amx-30b2"
+
+**Build:** shares the rebuilt `buildAMX30` base with `amx30` (see the
+§5.309 section in `docs/references/tanks/amx30.md` for the full stripped
+amx40-base construction: skirtless §B9 five-wheel gear, cassette-free cast
+walls, Chaikin-smoothed five-ring cast loft + domed cap, TOP cupola RIGHT
+with remote 7.62, twin guarded bow lamp pairs, 20 mm M693 in the bulged
+rotor cheek LEFT, PH-8-B searchlight box LEFT of the mantlet, §B4-split
+one-plane glacis, §B3.2 stern field).
+
+**B2 modernization tells (b2 branch):**
+
+- COTAC gunner sight head on the roof right-forward (0.34 body + brow lid +
+  aperture course + glass) replacing the B's simple hooded slit.
+- LLLTV camera box on the mantlet RIGHT (gun-linked, window + lens hood +
+  carrier arm) — the mantlet/sight arrangement delta.
+- Rear-fender service bins both sides (lid seams + strap faces).
+- 3-tube smoke banks (B: 2-tube), second whip antenna, '68' markings,
+  slightly fatter F1 tube (r 0.106).
+
+**Dims true-up (userdrops7.js, amx rows only):** published rows shared with
+amx30 (hull 6.59 / overall 9.48 / width 3.10 / heightM 2.29 roof datum) +
+silhouetteHeightM 2.63; the old 3.34 silhouetteWidthM measured the retired
+donor envelope and is dropped. Gate dimRows: heightM 2.63 (0.19%),
+hullLengthM 6.60 (0.19%), overallLengthM 9.43 (0.5%), widthM 3.13 (1.1%).
+
+**Receipts (2026-08-17):**
+
+- Geometry hash: `de9d2780` (50/58541) -> **`88801828`** (60 meshes / 72085
+  verts). Guards EXACT before=after: amx40 `1a74c63c`, leclerc `733d24fd`,
+  leclerc_xlr `bce50094`, amx56 `add6a070`.
+- Geometry gate ×2 BIT-IDENTICAL (report md5 `475e0134c472bc2f00800d1208f9cfdc`):
+  **min 82.6** — whole 82.6 / dims 99.2 / floaters 100. The wholeCurves row
+  vs the ahab print is the same OWNER-DECREED DIVERGENCE class as amx30
+  (§5.304 precedent) — documented, never chased back.
+- Track containment `--exact --strict`: **0/0 every zone + sweep**.
+- Turret-parent audit: stranded 0 / dangling 0; abutting 1 =
+  `fitting_towCable` (the certified deck-gear adjudication holds).
+- npm test: GREEN (exit 0).
+- §5.254 pairs at `shots/amx30-rebuild/{before,after}/` (30/30 pairs
+  differ). The 08-12 graduation receipt above describes the RETIRED
+  lineage; BEFORE hash `de9d2780` (the 08-15 tree) already differed from
+  the stale §3 row `34076800`. A garage-read spot sitting follows.

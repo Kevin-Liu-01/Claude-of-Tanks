@@ -149,17 +149,24 @@ const SPECS = [
   make('leo1a5', 'amx30', 'AMX-30B', 'France',
     { hp: 1600, enginePowerHp: 720, weightTons: 36, reverseSpeedKmh: 11,
       gun: { reloadS: 7.0 },
-      // Owner-authoritative 2026-08-15 GLB, measured on one of the two
-      // geometrically identical tanks stored in that scene (never on the
-      // doubled scene envelope).
-      dims: { hullLengthM: 6.85, overallLengthM: 9.55, widthM: 3.11,
-        heightM: 2.87, silhouetteHeightM: 3.42 },
+      // §5.309 REBUILD (owner order 2026-08-17: stripped-down amx40 base):
+      // dims RE-DERIVE from the rebuilt misc.js build, authored to the
+      // PUBLISHED figures (hull 6.59 / overall 9.48 / width 3.10 over
+      // tracks / 2.29 turret-roof datum) — the prior 6.85/9.55/2.87 rows
+      // were the retired 08-15 donor-GLB envelope. silhouetteHeightM is
+      // the gate-measured p95 through the mounted TOP-cupola/MG station
+      // (t62mv1 DShK-height convention; roof datum keeps heightM).
+      dims: { hullLengthM: 6.59, overallLengthM: 9.48, widthM: 3.10,
+        heightM: 2.29, silhouetteHeightM: 2.64 },
       visual: { marking: 'number', number: '53' } }, AHAB_AMX30),
   make('leo1a5', 'amx30b2', 'AMX-30B2', 'France',
     { hp: 1700, enginePowerHp: 750, weightTons: 37, reverseSpeedKmh: 11,
       gun: { reloadS: 6.6 },
-      dims: { hullLengthM: 6.85, overallLengthM: 9.55, widthM: 3.11,
-        heightM: 2.87, silhouetteHeightM: 3.42, silhouetteWidthM: 3.34 },
+      // §5.309: same rebuilt base as amx30 (published rows shared); the
+      // B2's outboard kit no longer carries a wider silhouette row — the
+      // old 3.34 measured the retired donor envelope.
+      dims: { hullLengthM: 6.59, overallLengthM: 9.48, widthM: 3.10,
+        heightM: 2.29, silhouetteHeightM: 2.63 },
       visual: { marking: 'number', number: '68' } }, AHAB_AMX30),
   make('m60a1', 'm48', 'M48A5 Patton', 'USA',
     // hullLengthM 6.42 -> 6.87 (m48 build round 2026-08-08): the 6.42 row
