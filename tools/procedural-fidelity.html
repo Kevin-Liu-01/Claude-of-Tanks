@@ -457,7 +457,17 @@ const LOCAL_REFERENCE_OVERRIDES = {
   kf51: {
     source:'glb',
     glb:{ path:'/models/tanks/kf51_grip420.glb',
-      turretNode:'^KF51_Turret_Msh$', gunNode:'^Gun_Msh$',
+      turretNode:'^(?:KF51_Turret_Msh|Turret)$', gunNode:'^(?:Gun_Msh|Gun)$',
+      autoPivot:true, pivot:[0.52, 1.7, 0],
+      yawOffset:-Math.PI/2 },
+  },
+  // Additive owner rebuild of the same woodland source.  Keep the stable
+  // kf51 graduate intact while giving kf51b its own source-comparison lane;
+  // processed local oracles normalize the FBX nodes to Turret/Gun.
+  kf51b: {
+    source:'glb',
+    glb:{ path:'/models/tanks/kf51_grip420.glb',
+      turretNode:'^(?:KF51_Turret_Msh|Turret)$', gunNode:'^(?:Gun_Msh|Gun)$',
       autoPivot:true, pivot:[0.52, 1.7, 0],
       yawOffset:-Math.PI/2 },
   },
