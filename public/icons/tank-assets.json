@@ -65269,7 +65269,7 @@
       "tier": 9,
       "tierNumeral": "IX",
       "dimensionsM": {
-        "hullLength": 6.86,
+        "hullLength": 6.95,
         "overallLength": 9.67,
         "width": 3.59,
         "height": 2.19
@@ -65304,8 +65304,8 @@
         "schemaVersion": 2,
         "turretPivot": [
           0,
-          1.3552,
-          0.1028
+          1.38,
+          0.02
         ],
         "plates": [
           {
@@ -66269,27 +66269,26 @@
           }
         ]
       },
-      "geometryHash": "dd875841",
-      "metadataHash": "e50a2da6",
+      "geometryHash": "05b5b618",
+      "metadataHash": "4a293143",
       "appearance": {
         "version": 1,
         "issues": [],
         "roles": {
-          "fittingPaint": 11,
-          "opticGlass": 4,
-          "gunmetal": 16,
           "wheelTire": 1,
           "wheelDish": 6,
           "wheelInset": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
-          "armorPaint": 4,
-          "wood": 2,
-          "trackSteel": 2,
+          "armorPaint": 5,
+          "gunmetal": 15,
+          "fittingPaint": 11,
+          "wood": 3,
           "tireRubber": 1,
-          "unclassified": 12,
-          "gearShadow": 1,
+          "opticGlass": 2,
+          "unclassified": 14,
+          "gearShadow": 2,
           "canvas": 1
         }
       },
@@ -66301,9 +66300,9 @@
         "fallback": 1
       },
       "vehicleMarkings": {
-        "total": 2,
+        "total": 3,
         "insignia": 1,
-        "designation": 1,
+        "designation": 2,
         "codes": [
           "PL:pl-checker:PT-91"
         ]
@@ -66314,64 +66313,64 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 33150,
-          "sha256": "a695a959be89fdd479b38ed47c686528142bcd40ed80a14f8d817689f3c8cee0"
+          "bytes": 31606,
+          "sha256": "0e30fbbea451c252471261aea600bfc600d8595916d18cfe9050a039072b63c9"
         },
         "top": {
           "file": "pt91_twardy_top.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 12800,
-          "sha256": "398cdaa0b70a5239b05bf3f509e40cc2005e6e16c20422d49cd6ca7229448a3e"
+          "bytes": 10948,
+          "sha256": "29095afe95268d9dea9bfa813dae76deea0d26286e02faa8ab353dea3edb9e9d"
         },
         "side": {
           "file": "pt91_twardy_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 8734,
-          "sha256": "fd64dbdb063058aa361bac231879bd048b76a8820540560a9dcdf7f945331f05"
+          "bytes": 9114,
+          "sha256": "5189f3755aca7045f557509444853dd494ebbd5d12a3c427dc7dc17166e4b1ee"
         },
         "topSilhouette": {
           "file": "pt91_twardy_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1518,
-          "sha256": "75a6b80c04436a29601ea818892a6acb2b825bb68366f324c86042cc6ced2347"
+          "bytes": 1374,
+          "sha256": "0664341c753cb6164be0e17991b29e7a1af0b8593761a1afbc67dade94277d8f"
         },
         "sideSilhouette": {
           "file": "pt91_twardy_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4606,
-          "sha256": "4cb95b69fa67d0dc88857e1d1f4ffcb014ebdf2f45432d71efd35a07ca61affe"
+          "bytes": 4271,
+          "sha256": "765f18084303322c380daa20a03b8dc8c7a53020ddd79c98f17ee9882d3daab4"
         },
         "hitZonesSide": {
           "file": "pt91_twardy_hit_zones_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 88227,
-          "sha256": "a60b45a56b9db5021dd45bab920d10a5bb18170930baa3865aaa5cd118512046"
+          "bytes": 85447,
+          "sha256": "6a3780e3fa925cddca9ea2de7e04fea40197ced3d0fef1e7b0f6cbcbd77cbbd9"
         },
         "armorSide": {
           "file": "pt91_twardy_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 85988,
-          "sha256": "a8a106d58e9d9195946ba50215741afca187847c14964c80cbb19bf474a5b9d6"
+          "bytes": 85369,
+          "sha256": "9d8491a9e8b7a4373946ace6e78033ecfa966eaa531e15235ffaa862dad8ff4c"
         },
         "modulesSide": {
           "file": "pt91_twardy_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 77651,
-          "sha256": "ea0b4456ff71b2d0a6ca4bb3cd89548ebe1df64ab0c262b912e8101be4401cb1"
+          "bytes": 79314,
+          "sha256": "58a7889ca145bec30a266f0974122aef3dd9400b71ae7ed9ecae60ec05d3361b"
         },
         "markings": {
           "file": "pt91_twardy_markings.png",
@@ -70306,8 +70305,8 @@
         "schemaVersion": 2,
         "turretPivot": [
           0,
-          1.72,
-          -0.35
+          1.7,
+          -0.3
         ],
         "plates": [
           {
@@ -71255,29 +71254,26 @@
           }
         ]
       },
-      "geometryHash": "2446e5ac",
-      "metadataHash": "dd5afbad",
+      "geometryHash": "39dc5d82",
+      "metadataHash": "7342a826",
       "appearance": {
         "version": 1,
         "issues": [],
         "roles": {
-          "wheelTire": 2,
-          "wheelDish": 7,
+          "wheelTire": 1,
+          "wheelDish": 5,
           "wheelInset": 1,
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
-          "wheelPaint": 24,
-          "gunmetal": 25,
-          "gearShadow": 38,
-          "canvas": 6,
-          "fittingPaint": 19,
-          "armorPaint": 6,
-          "tireRubber": 2,
-          "trackSteel": 5,
+          "armorPaint": 4,
+          "fittingPaint": 7,
+          "gunmetal": 12,
+          "tireRubber": 1,
           "opticGlass": 2,
-          "wood": 1,
-          "unclassified": 12
+          "trackSteel": 1,
+          "unclassified": 11,
+          "gearShadow": 2
         }
       },
       "muzzleBore": {
@@ -71288,8 +71284,8 @@
         "fallback": 1
       },
       "vehicleMarkings": {
-        "total": 4,
-        "insignia": 2,
+        "total": 3,
+        "insignia": 1,
         "designation": 2,
         "codes": [
           "SE:se-crowns:122"
@@ -71301,64 +71297,64 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 35746,
-          "sha256": "d8c42ae790376898e38cc59cf773edd9062ca6002012fe0854a6e180e4a988d4"
+          "bytes": 32862,
+          "sha256": "21aacc080b6ba6d7f484c3583c87a19cc2fba66a3b0b88a0f2e6cd5e3c5e10c6"
         },
         "top": {
           "file": "strv122_top.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 16060,
-          "sha256": "fc7cdeff17ee001f7f27258bb3a34fd1f948554a727f10c5db945a4591295f86"
+          "bytes": 12092,
+          "sha256": "d508f6ac73cdf46d14a8eba33df590779256f18a31bd52ba87f64c9c4c04af48"
         },
         "side": {
           "file": "strv122_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 11612,
-          "sha256": "7ec4073da82b928b401e95221d9aa2c533be95b5c26401f2ad9364b8f75aaba8"
+          "bytes": 11078,
+          "sha256": "0ce580499848bea03dcacf6d9ce2d2d3a0b23f3cb301f964475b0118404d97e1"
         },
         "topSilhouette": {
           "file": "strv122_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1530,
-          "sha256": "643b8e66d4dccbf0541a8213b0c95ef50a3ee87206dd26fc1e65b6ef3da88bab"
+          "bytes": 1507,
+          "sha256": "f177982c3b9a89fb987e2428318e8d0775fed4b91faaa1394e76eb145b8e1c8a"
         },
         "sideSilhouette": {
           "file": "strv122_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4927,
-          "sha256": "7d693de8707b04859ef735be20b3d7ebb6b7b5f339e1c7cead3b77f5c5ee9d6c"
+          "bytes": 4909,
+          "sha256": "8b441858caa98939b76886178a020d6e9b29001c5be0a1b314c708d8af96ede4"
         },
         "hitZonesSide": {
           "file": "strv122_hit_zones_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 91703,
-          "sha256": "d9441330a9964864ac8ede1d8522ffe9d9492bb0b211fb870ca3bfb5a1b3fe9e"
+          "bytes": 89189,
+          "sha256": "d9501334cb92b803597d28ccec73a83f7f02fda02b81b3897309c8a230b7dfb3"
         },
         "armorSide": {
           "file": "strv122_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 90066,
-          "sha256": "59f266303f1fd0b840afb899b292d499a168f2b15b5b8f1576ec94ff21f74494"
+          "bytes": 88366,
+          "sha256": "1808622103302af2fb3f13a040a9022a89d87d1064fde4e031638d69a2807feb"
         },
         "modulesSide": {
           "file": "strv122_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 85845,
-          "sha256": "5beb91395f0ac37b04fc33035ea85a87e291c0f5212857a7abd36b0abfc9e291"
+          "bytes": 83945,
+          "sha256": "2e6e53d846a528a8bf8b84351e0a083c621029b346a50ffe2522ba9d2e77967c"
         },
         "markings": {
           "file": "strv122_markings.png",
@@ -71401,7 +71397,7 @@
       "tier": 7,
       "tierNumeral": "VII",
       "dimensionsM": {
-        "hullLength": 7.82,
+        "hullLength": 7.56,
         "overallLength": 9.85,
         "width": 3.39,
         "height": 3.01
@@ -71436,8 +71432,8 @@
         "schemaVersion": 2,
         "turretPivot": [
           0,
-          1.7437,
-          0.1005
+          1.76,
+          0.35
         ],
         "plates": [
           {
@@ -72168,8 +72164,8 @@
           }
         ]
       },
-      "geometryHash": "04d0ee81",
-      "metadataHash": "790b2359",
+      "geometryHash": "0d3f8103",
+      "metadataHash": "4783c5be",
       "appearance": {
         "version": 1,
         "issues": [],
@@ -72180,16 +72176,14 @@
           "trackHardware": 4,
           "trackBand": 2,
           "trackPad": 1,
-          "gearShadow": 10,
-          "fittingPaint": 10,
+          "fittingPaint": 9,
           "opticGlass": 4,
-          "gunmetal": 14,
-          "armorPaint": 3,
-          "tireRubber": 1,
+          "gunmetal": 15,
+          "armorPaint": 4,
           "trackSteel": 1,
-          "unclassified": 14,
-          "canvas": 2,
-          "wood": 1
+          "tireRubber": 1,
+          "unclassified": 12,
+          "gearShadow": 2
         }
       },
       "muzzleBore": {
@@ -72200,9 +72194,9 @@
         "fallback": 1
       },
       "vehicleMarkings": {
-        "total": 5,
+        "total": 3,
         "insignia": 1,
-        "designation": 4,
+        "designation": 2,
         "codes": [
           "SE:se-crowns:81"
         ]
@@ -72213,64 +72207,64 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 31306,
-          "sha256": "c388327574c2b8ff3af169c7444b6253c5d648f38d0b85b5edf4e6b0d3cce2b2"
+          "bytes": 28898,
+          "sha256": "367c5f38e15f36bde741fdccafc60ffe6a738f59543a099686806ef53fdcce38"
         },
         "top": {
           "file": "strv81_top.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 9004,
-          "sha256": "93cd1fda9affa7d7a09f2785f57e0765961d21c21ee623dfc2ccd07a0f5e35ac"
+          "bytes": 7014,
+          "sha256": "e391673386d8c0f6d7bd5c54f4d5dce0a3a4a6b0706ca686ab0e5a6054751bbb"
         },
         "side": {
           "file": "strv81_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 9026,
-          "sha256": "eb68196d3d2d0061be810c8bbaeabf29eb8c7325ffd47a9360b0f92e84ce1029"
+          "bytes": 7532,
+          "sha256": "5422b44a65be4abb8ad7da6adbdb8043eb4d4ff801e09d80bf9a266b16f763a0"
         },
         "topSilhouette": {
           "file": "strv81_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1458,
-          "sha256": "855451dacaf6896fa0384117122ff0bc06bb280261ed0dfa349d71c82cd9957c"
+          "bytes": 1323,
+          "sha256": "c9070ea0e87462c5ac60f0543acc3b30b5754fbc02745462cdb8acf6769a7f10"
         },
         "sideSilhouette": {
           "file": "strv81_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4954,
-          "sha256": "0f40b5cd53788d2583ad36dbf271b3cf46b760c63e8e86576f3890d14ed57803"
+          "bytes": 4367,
+          "sha256": "757b3135105ca5b11339c7afde31ce096ac66f6c6954d3226197803da79b4c2b"
         },
         "hitZonesSide": {
           "file": "strv81_hit_zones_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 75323,
-          "sha256": "d365ed5c9f07a3ab265c75756aec914a0e52897e791b071276d78b026deafe77"
+          "bytes": 76085,
+          "sha256": "9142a07668b67b5ae6e7e9c7e511bcb0b7fdab5179beb04776211167232d2351"
         },
         "armorSide": {
           "file": "strv81_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 72575,
-          "sha256": "684b874783e7f0d57d7f593b69179eae3b9cb76043cf1951a5311a564f4a876d"
+          "bytes": 73058,
+          "sha256": "0a963bab8b3a68cae535615d1c1c1f86c0962f71c88e2a84bb732182d27a8785"
         },
         "modulesSide": {
           "file": "strv81_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 73972,
-          "sha256": "f00c19d210a910eaa5f37f3ab9d28e0ea7a90d8a8fcf40047dcecd61591e247e"
+          "bytes": 76546,
+          "sha256": "f3436c941c729173dc51b05f601adc9ab482879db7466eac422f00ca0c06a5bd"
         },
         "markings": {
           "file": "strv81_markings.png",
