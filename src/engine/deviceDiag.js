@@ -22,14 +22,23 @@
 // onShaderError are shown too, so a single screenshot from the failing
 // device names the root cause.
 //
-// Overlay visibility: always with ?diag=1; automatically when a rescue
-// engaged or `lit` failed — but never under navigator.webdriver unless
-// ?diag=1 (screenshot-contract safety).
+// Overlay visibility: explicit only (`?diag` / `?diag=1`). Rescue logic stays
+// active and observable through window.__GL_DIAG without covering the game.
 import * as THREE from 'three';
 
 const qs = typeof location !== 'undefined' ? new URLSearchParams(location.search) : null;
 const DIAG_PARAM = qs ? qs.get('diag') : null;
 const FORCE = qs ? qs.get('diagforce') : null; // 'noshadow' | 'nolit' (test rig)
+
+/** Pure URL gate: diagnostics may run silently, but UI needs explicit opt-in. */
+export function diagUiRequested(search = (typeof location !== 'undefined' ? location.search : '')) {
+  const params = new URLSearchParams(search || '');
+  if (!params.has('diag')) return false;
+  const value = String(params.get('diag') ?? '').toLowerCase();
+  return value !== '0' && value !== 'false' && value !== 'off';
+}
+
+const DIAG_UI = diagUiRequested();
 
 /**
  * Battle-time relaxation (perf-r2): three's checkShaderErrors forces a
@@ -432,73 +441,97 @@ export function runSceneBlackWatchdog(renderer, scene, camera, { onRescue } = {}
   return out;
 }
 
-/** Small fixed overlay; safe to call unconditionally (it decides visibility). */
+/** Explicit, fixed Shadow Saver panel. Rescue itself always runs silently. */
 export function mountDiagOverlay({ tier, diag, rescue, renderer }) {
-  const webdriver = typeof navigator !== 'undefined' && navigator.webdriver;
-  const wanted = DIAG_PARAM === '1' || (!webdriver && (rescue || !diag.lit));
   const gl = renderer.getContext();
   const cap = (k) => { try { return gl.getParameter(gl[k]); } catch (_) { return '?'; } };
-  const el = document.createElement('div');
+  const el = document.createElement('aside');
   el.id = 'cot-diag';
-  el.style.cssText = 'position:fixed;left:8px;bottom:8px;z-index:400;background:rgba(5,8,11,.88);'
-    + 'color:#ffd27a;font:10px/1.5 ui-monospace,Menlo,monospace;padding:8px 10px;border:1px solid #6b5a33;'
-    + 'border-radius:4px;max-width:82vw;pointer-events:none;white-space:pre-wrap;';
+  el.setAttribute('aria-label', 'COT Shadow Saver diagnostics');
+  el.style.cssText = [
+    'position:fixed', 'left:14px', 'bottom:14px', 'z-index:400',
+    'width:min(430px,calc(100vw - 28px))', 'box-sizing:border-box',
+    'color:#edf3f1', 'font:11px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace',
+    'font-variant-numeric:tabular-nums',
+    'background:linear-gradient(145deg,rgba(10,15,19,.97),rgba(24,20,14,.94))',
+    'border:1px solid rgba(229,176,86,.46)', 'border-radius:10px',
+    'box-shadow:0 18px 55px rgba(0,0,0,.52),inset 0 1px rgba(255,255,255,.05)',
+    'backdrop-filter:blur(14px)', 'overflow:hidden', 'pointer-events:auto',
+  ].join(';');
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;padding:11px 12px;border-bottom:1px solid rgba(255,255,255,.08)">
+      <div aria-hidden="true" style="width:27px;height:27px;display:grid;place-items:center;border:1px solid rgba(239,190,102,.5);border-radius:50%;color:#f2c36f">◈</div>
+      <div style="flex:1;min-width:0"><b style="font:700 12px/1 system-ui,sans-serif;letter-spacing:.12em">COT SHADOW SAVER</b>
+        <div data-summary style="margin-top:4px;color:#aab7b9">Checking renderer health…</div></div>
+      <button data-collapse type="button" aria-label="Collapse Shadow Saver" style="border:0;background:transparent;color:#9ca8ab;font:18px/1 sans-serif;cursor:pointer;padding:5px">−</button>
+    </div>
+    <div data-body style="padding:11px 12px 12px">
+      <div data-probes style="display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:9px"></div>
+      <div data-caps style="color:#aebbc0;white-space:pre-wrap"></div>
+      <div data-rescue style="display:none;margin-top:9px;padding:8px;border-left:2px solid #f0b95e;background:rgba(240,185,94,.08);color:#f4cf8c"></div>
+      <div data-notes style="display:none;margin-top:8px;max-height:120px;overflow:auto;color:#dcae93;white-space:pre-wrap"></div>
+    </div>`;
+  const summaryEl = el.querySelector('[data-summary]');
+  const probesEl = el.querySelector('[data-probes]');
+  const capsEl = el.querySelector('[data-caps]');
+  const rescueEl = el.querySelector('[data-rescue]');
+  const notesEl = el.querySelector('[data-notes]');
+  const bodyEl = el.querySelector('[data-body]');
+  const collapseEl = el.querySelector('[data-collapse]');
   const bag = window.__GL_DIAG || (window.__GL_DIAG = { errors: [] });
   // seed the boot-probe rescue so later rescues APPEND instead of hiding it
   // (the owner's phone ran shadows-off + environment-fallback simultaneously
   // and the panel only showed the latter)
   if (rescue && !bag.rescue) bag.rescue = rescue;
   const render = () => {
-    const ok = (v) => (v ? 'OK' : 'FAIL');
     const liveRescue = bag.rescue; // all rescues accumulate here
-    el.textContent =
-      `COT DIAG  tier=${tier}  ${String(cap('VERSION')).slice(0, 40)}\n`
-      + `fragVec=${cap('MAX_FRAGMENT_UNIFORM_VECTORS')} vertVec=${cap('MAX_VERTEX_UNIFORM_VECTORS')} `
-      + `tex=${cap('MAX_TEXTURE_IMAGE_UNITS')} texSize=${cap('MAX_TEXTURE_SIZE')} dpr=${window.devicePixelRatio}\n`
-      + `probe: basic=${ok(diag.basic)} lit=${ok(diag.lit)} lit+shadow=${ok(diag.litShadow)}`
-      + (liveRescue ? `\nRESCUE: ${liveRescue === 'shadows-off' ? 'shadow maps disabled for this session' : liveRescue}` : '')
-      + (bag.errors.length ? `\nnotes (${bag.errors.length}):\n` + bag.errors.map((e) => '  ' + e.slice(0, 220)).join('\n') : '');
+    const healthy = !!(diag.basic && diag.lit && diag.litShadow && !liveRescue && !bag.errors.length);
+    summaryEl.textContent = healthy ? 'Renderer healthy · no intervention' :
+      liveRescue ? 'Compatibility rescue active' : 'Renderer probe needs attention';
+    summaryEl.style.color = healthy ? '#78d4ae' : '#f2c36f';
+    probesEl.replaceChildren();
+    for (const [label, value] of [['BASIC', diag.basic], ['LIT', diag.lit], ['SHADOWS', diag.litShadow]]) {
+      const card = document.createElement('div');
+      card.style.cssText = `padding:7px;border-radius:5px;text-align:center;background:${value ? 'rgba(84,181,139,.09)' : 'rgba(230,111,77,.10)'};border:1px solid ${value ? 'rgba(84,181,139,.25)' : 'rgba(230,111,77,.3)'}`;
+      card.innerHTML = `<span style="display:block;font:700 9px/1 system-ui,sans-serif;letter-spacing:.12em;color:#91a1a4">${label}</span><b style="display:block;margin-top:5px;color:${value ? '#78d4ae' : '#ff9b7b'}">${value ? 'PASS' : 'FAIL'}</b>`;
+      probesEl.appendChild(card);
+    }
+    capsEl.textContent =
+      `${tier} tier · ${String(cap('VERSION')).slice(0, 52)}\n` +
+      `uniforms F${cap('MAX_FRAGMENT_UNIFORM_VECTORS')} / V${cap('MAX_VERTEX_UNIFORM_VECTORS')}   ` +
+      `textures ${cap('MAX_TEXTURE_IMAGE_UNITS')} @ ${cap('MAX_TEXTURE_SIZE')}   dpr ${window.devicePixelRatio}`;
+    rescueEl.style.display = liveRescue ? 'block' : 'none';
+    rescueEl.textContent = liveRescue
+      ? `RESCUE · ${liveRescue === 'shadows-off' ? 'shadow maps disabled for this session' : liveRescue}`
+      : '';
+    notesEl.style.display = bag.errors.length ? 'block' : 'none';
+    notesEl.textContent = bag.errors.length
+      ? `NOTES (${bag.errors.length})\n${bag.errors.map((error) => `• ${String(error).slice(0, 220)}`).join('\n')}`
+      : '';
   };
   bag._refresh = render;
   render();
   let mounted = false;
-  // MOBILE-QA r2 (iOS simulator): the panel parked over the touch joystick /
-  // brake cluster for the WHOLE session on any device that trips a rescue
-  // (taps pass through — pointer-events:none — but half the control cluster
-  // is invisible). Collapse to the headline after a reading dwell, then get
-  // out of the way entirely; a later rescue re-expands it. ?diag=1 keeps the
-  // full panel pinned (that's the debugging mode).
-  let collapseT = 0;
-  let hideT = 0;
-  const schedule = () => {
-    if (DIAG_PARAM === '1') return;
-    clearTimeout(collapseT);
-    clearTimeout(hideT);
-    el.style.opacity = '1';
-    collapseT = setTimeout(() => {
-      const lines = el.textContent.split('\n');
-      const head = lines[0] || '';
-      const resc = lines.find((l) => l.startsWith('RESCUE:')) || '';
-      el.textContent = resc ? `${head}\n${resc}` : head;
-      el.style.opacity = '.72';
-    }, 14000);
-    hideT = setTimeout(() => { el.style.display = 'none'; }, 45000);
-  };
+  let collapsed = false;
+  collapseEl.addEventListener('click', () => {
+    collapsed = !collapsed;
+    bodyEl.style.display = collapsed ? 'none' : 'block';
+    collapseEl.textContent = collapsed ? '+' : '−';
+    collapseEl.setAttribute('aria-label', `${collapsed ? 'Expand' : 'Collapse'} Shadow Saver`);
+  });
   const mount = () => {
     if (mounted) return;
     mounted = true;
     if (document.body) document.body.appendChild(el);
     else window.addEventListener('DOMContentLoaded', () => document.body.appendChild(el), { once: true });
-    schedule();
   };
-  // a late watchdog rescue must surface the panel even when boot was healthy
+  // Late rescues refresh explicit panels but never surface hidden UI.
   bag._showOverlay = () => {
     render();
-    if (!webdriver || DIAG_PARAM === '1') {
+    if (DIAG_UI) {
       mount();
       el.style.display = '';
-      schedule(); // re-shown rescue gets its own reading dwell
     }
   };
-  if (wanted) mount();
+  if (DIAG_UI) mount();
 }

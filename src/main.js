@@ -31,7 +31,7 @@ import {
 } from './engine/deviceDiag.js';
 import {
   resolveDeviceTier, resolvePresetName, resolveAutoTier,
-  reportSustainedOverload, setPresetName, noteGpuRenderer,
+  reportSustainedOverload, setPresetName, noteGpuRenderer, getDeviceTier,
 } from './engine/quality.js';
 import { createSky } from './engine/sky.js';
 import { createLighting } from './engine/lighting.js';
@@ -5420,6 +5420,194 @@ function debugSlayEnemies() {
   }
 }
 
+function collectionSize(value) {
+  if (!value) return 0;
+  if (Number.isFinite(value.length)) return value.length;
+  if (Number.isFinite(value.size)) return value.size;
+  return 0;
+}
+
+const shadowCountCache = { root: null, at: -Infinity, casters: 0, receivers: 0 };
+function shadowSceneCounts(force = false) {
+  const root = world?.group || scene;
+  const now = performance.now();
+  if (!force && shadowCountCache.root === root && now - shadowCountCache.at < 2000) {
+    return { casters: shadowCountCache.casters, receivers: shadowCountCache.receivers };
+  }
+  let casters = 0;
+  let receivers = 0;
+  root.traverse((object) => {
+    if (!object.visible || (!object.isMesh && !object.isInstancedMesh)) return;
+    if (object.castShadow) casters++;
+    if (object.receiveShadow) receivers++;
+  });
+  shadowCountCache.root = root;
+  shadowCountCache.at = now;
+  shadowCountCache.casters = casters;
+  shadowCountCache.receivers = receivers;
+  return { casters, receivers };
+}
+
+let debugGpuName = null;
+function getDebugGpuName() {
+  if (debugGpuName !== null) return debugGpuName;
+  debugGpuName = '';
+  try {
+    const gl = renderer.getContext();
+    const info = gl.getExtension('WEBGL_debug_renderer_info');
+    debugGpuName = String(info
+      ? gl.getParameter(info.UNMASKED_RENDERER_WEBGL)
+      : gl.getParameter(gl.RENDERER) || '');
+  } catch (_) { /* masked/unsupported is a valid browser privacy choice */ }
+  return debugGpuName;
+}
+
+/** Low-frequency, read-only provider for the opt-in engineering dashboard. */
+function collectDebugTelemetry() {
+  const draw = renderer.getDrawingBufferSize(new THREE.Vector2());
+  const shadow = lighting.getShadowTelemetry();
+  const shadowCounts = shadowSceneCounts();
+  const net = networkDiagnostics();
+  const alive = (game.tanks || []).reduce((n, tank) => n + (!tank.combat?.destroyed ? 1 : 0), 0);
+  return {
+    quality: {
+      buffer: `${draw.x}×${draw.y}`,
+      dpr: Number(renderer.getPixelRatio().toFixed(2)),
+      dynScale: Number(post.dynScale.toFixed(3)),
+      perfTrim: post.perfTrim,
+      preset: resolvePresetName(),
+      tier: getDeviceTier(),
+      gpu: getDebugGpuName() || 'masked GPU',
+    },
+    simulation: {
+      phase: game.phase,
+      map: world?.mapId || game.mapId || null,
+      timeS: game.timeS || 0,
+      tanks: collectionSize(game.tanks),
+      alive,
+      shells: collectionSize(game.shells),
+    },
+    world: {
+      obstacles: collectionSize(world?.getObstacles?.()),
+      colliders: collectionSize(world?.getColliders?.()),
+      concealers: collectionSize(world?.getConcealment?.()),
+      destructibles: collectionSize(world?.destructibles),
+      wrecks: collectionSize(world?.tankWreckSpots),
+    },
+    shadows: {
+      ...shadow,
+      enabled: !!renderer.shadowMap.enabled,
+      rescue: window.__GL_DIAG?.rescue || null,
+      shaderErrors: collectionSize(window.__GL_DIAG?.errors),
+      ...shadowCounts,
+    },
+    network: net ? {
+      connected: !!net.connected,
+      rttMs: net.rttMs || 0,
+      jitterMs: net.rttJitterMs || 0,
+      lossPct: (net.estimatedSnapshotLoss || 0) * 100,
+      bufferedBytes: net.transportBufferedBytes || 0,
+    } : { connected: null },
+    memory: { drawBuffer: `${draw.x}×${draw.y}` },
+  };
+}
+
+function markShadowProgramsDirty() {
+  scene.traverse((object) => {
+    if (!object.material) return;
+    const materials = Array.isArray(object.material) ? object.material : [object.material];
+    for (const material of materials) material.needsUpdate = true;
+  });
+}
+
+/**
+ * Explicit QA probe: compare a tiny direct scene render with shadows on/off.
+ * It never runs in gameplay and restores every renderer flag it touches.
+ */
+async function sampleShadowContribution() {
+  const initialShadow = renderer.shadowMap.enabled;
+  const counts = shadowSceneCounts(true);
+  if (!initialShadow) {
+    return { skipped: true, reason: window.__GL_DIAG?.rescue || 'shadow maps disabled', ...counts };
+  }
+  const width = 96;
+  const height = 54;
+  const pixels = width * height;
+  const withShadow = new Uint8Array(pixels * 4);
+  const withoutShadow = new Uint8Array(pixels * 4);
+  const target = new THREE.WebGLRenderTarget(width, height, {
+    depthBuffer: true,
+    minFilter: THREE.LinearFilter,
+    magFilter: THREE.LinearFilter,
+  });
+  const previousTarget = renderer.getRenderTarget();
+  const previousViewport = renderer.getViewport(new THREE.Vector4());
+  const previousScissor = renderer.getScissor(new THREE.Vector4());
+  const previousScissorTest = renderer.getScissorTest();
+  const previousAutoClear = renderer.autoClear;
+  const renderVariant = (enabled, output) => {
+    renderer.shadowMap.enabled = enabled;
+    markShadowProgramsDirty();
+    lighting.update(true);
+    renderer.setRenderTarget(target);
+    renderer.setViewport(0, 0, width, height);
+    renderer.setScissorTest(false);
+    renderer.autoClear = true;
+    renderer.clear(true, true, false);
+    renderer.render(scene, camera);
+    renderer.readRenderTargetPixels(target, 0, 0, width, height, output);
+  };
+  try {
+    renderVariant(true, withShadow);
+    renderVariant(false, withoutShadow);
+    let absDelta = 0;
+    let changedDelta = 0;
+    let maxLumaDelta = 0;
+    let changed = 0;
+    let darkened = 0;
+    let lumaOn = 0;
+    let lumaOff = 0;
+    for (let i = 0; i < withShadow.length; i += 4) {
+      const on = withShadow[i] * 0.2126 + withShadow[i + 1] * 0.7152 + withShadow[i + 2] * 0.0722;
+      const off = withoutShadow[i] * 0.2126 + withoutShadow[i + 1] * 0.7152 + withoutShadow[i + 2] * 0.0722;
+      const delta = Math.abs(on - off);
+      absDelta += delta;
+      if (delta > maxLumaDelta) maxLumaDelta = delta;
+      lumaOn += on;
+      lumaOff += off;
+      if (delta > 2) { changed++; changedDelta += delta; }
+      if (off - on > 2) darkened++;
+    }
+    return {
+      skipped: false,
+      width,
+      height,
+      meanAbsLumaDelta: absDelta / pixels,
+      meanChangedLumaDelta: changed ? changedDelta / changed : 0,
+      maxLumaDelta,
+      changedPixelRatio: changed / pixels,
+      darkenedPixelRatio: darkened / pixels,
+      meanLumaWithShadows: lumaOn / pixels,
+      meanLumaWithoutShadows: lumaOff / pixels,
+      ...counts,
+    };
+  } finally {
+    renderer.shadowMap.enabled = initialShadow;
+    markShadowProgramsDirty();
+    lighting.update(true);
+    renderer.setRenderTarget(previousTarget);
+    renderer.setViewport(previousViewport);
+    renderer.setScissor(previousScissor);
+    renderer.setScissorTest(previousScissorTest);
+    renderer.autoClear = previousAutoClear;
+    target.dispose();
+    // Give three one turn to settle the restored shadow-enabled variant.
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+  }
+}
+
+perfHud.setTelemetryProvider(collectDebugTelemetry);
+
 window.__DEBUG = {
   scene, camera, renderer, post, lighting, game, fx, rig, bus,
   input, // controls probe: isLocked/isCursorAim/binding introspection
@@ -5478,6 +5666,8 @@ window.__DEBUG = {
   devTrace,                              // DEV flight recorder; null in production
   get network() { return networkDiagnostics(); },
   get networkPresentation() { return networkBridge?.getPresentationEventStats?.() || null; },
+  telemetry: collectDebugTelemetry,
+  sampleShadowContribution,
   // Development-only rendered lifecycle probe: feed authoritative-format
   // presentation events through the real bridge/queue without exposing the
   // authority runtime or mutating production networking APIs.
