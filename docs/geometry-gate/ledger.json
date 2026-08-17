@@ -1286,6 +1286,37 @@
     "dims": 100,
     "floaters": 100
    }
+  },
+  {
+   "id": "ariete_c1",
+   "geoMin": 39.6,
+   "gatePassed": false,
+   "components": {
+    "hullCurves": 46,
+    "stations": 85.2,
+    "turretCurves": 62.5,
+    "wholeCurves": 39.6,
+    "dims": 100,
+    "floaters": 100
+   }
+  },
+  {
+   "id": "ariete_c2",
+   "geoMin": 0,
+   "gatePassed": false
+  },
+  {
+   "id": "carro45t",
+   "geoMin": 90.3,
+   "gatePassed": true,
+   "components": {
+    "hullCurves": 91,
+    "stations": 90.3,
+    "turretCurves": 90.6,
+    "wholeCurves": 90.7,
+    "dims": 100,
+    "floaters": 100
+   }
   }
  ]
 }

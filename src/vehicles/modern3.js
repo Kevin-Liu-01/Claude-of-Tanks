@@ -2282,7 +2282,8 @@ export function buildType10Native2026(P) {
   // the 6.84 span (nose 3.42 / transom -3.42, +-0.03 vs the print's ends).
   // ---- hull core: tub + sponsons + two-plane glacis + stern -----------
   P.add('hull', box(1.71, 0.33, 5.60), 0, 0.505, 0.02);                         // central belly tub, floor 0.34 (§5.248 front-row decode: the print's visible belly line reads 0.337-0.408 between the tracks — its 0.001 'belly' corners are the donor track sheet; the real Type 10 carries ~0.45 hydropneumatic clearance), z -2.78..+2.82
-  P.add('hull', box(2.84, 0.42, 4.62), 0, 1.325, -0.85);                        // sponson body x +-1.42, underside 1.115, top at the 1.535 mid-deck line, z -3.16..+1.46
+  P.add('hull', box(2.84, 0.42, 3.56), 0, 1.325, -0.32);                        // sponson body x +-1.42, underside 1.115, top at the 1.535 mid-deck line, z -2.10..+1.46
+  P.add('hull', box(2.84, 0.115, 1.06), 0, 1.4775, -2.63);                      // SPROCKET-BAY ROOF: raised rear sponson segment (underside 1.42, z -3.16..-2.10) — the drive sprocket rides HIGH in the print's own bay (wrap top ~1.36); §B4: the solid 1.115 underside ate the rising top run + wrap, 139 strict voxels measured
   for (const s2 of [-1, 1]) {
     P.add('hull', box(0.07, 0.47, 4.30), s2 * 0.895, 0.575, 0.10);              // lower tub side strake (band 0.34..0.81 — the print's inner-bay wall the front rows read at |x| 0.91; connects tub -> sponson, §B2)
   }
@@ -2324,7 +2325,7 @@ export function buildType10Native2026(P) {
   P.add('hull', box(2.84, 0.42, 0.055), 0, 1.40, -3.3925);                      // full-width transom plate (top 1.61, face -3.42 = the rear hullLengthM anchor)
   // fender shelves (outer 1.545 — BELOW the plan ~1.55 column window; §D
   // width anchor is the +-1.62 strips; ends inside the beak/stern anchors)
-  fenders(P, 1.36, 1.52, 1.20, -2.35, 2.50, 0.035);                             // outer 1.52 (the ref's ±1.54 front col tops 1.03 — the guards fall away outboard)
+  fenders(P, 1.36, 1.52, 1.20, -2.20, 2.50, 0.035);                             // outer 1.52 (the ref's ±1.54 front col tops 1.03 — the guards fall away outboard); rear ends -2.20 clear of the rising top run (the -2.35 tip ate 10 strict voxels)
   for (const s of [-1, 1]) {
     P.add('hull', box(0.07, 0.10, 0.40), s * 1.585, 0.51, 2.22);                // §D WIDTH ANCHOR lobe x 1.55..1.62 at the ref's 0.42-0.60 side band, z 2.02..2.42 — BOTH station caps inside proc slab i11 (INDEX-ALIGNED station law; widthM 3.24; z-band 0.40 >= 0.35)
     P.add('hull', box(0.055, 0.10, 5.21), s * 1.5575, 0.51, 0.215);             // low guard strip x 1.53..1.585 at the 0.46-0.56 band, z -2.39..2.82 (ref's 1.56 plan col: front 2.80, station i2 3.139-class caps)
@@ -2346,7 +2347,7 @@ export function buildType10Native2026(P) {
     P.add('hullRubber', box(0.32, 0.22, 0.028), s * 0.97, 0.92, 3.375);         // front mud flaps carry the print's 3.39 fender-lobe plan line (|x| 0.81..1.13), track-clear
     P.add('hullRubber', box(0.32, 0.20, 0.028), s * 1.18, 0.70, -3.05);         // rear flaps inside the transom outline (the -3.09 face printed past the ref's -3.05 plan rear)
     P.add('hullShadow', box(0.042, 0.03, 3.95), s * 1.5235, 1.115, -0.44);      // skirt-top shadow seam (ends -2.415, clear of the sprocket wrap corridor)
-    P.add('hullShadow', box(0.018, 0.105, 6.30), s * 1.424, 1.30, -0.15);       // fender-line relief under the deck shoulder
+    P.add('hullShadow', box(0.018, 0.105, 5.40), s * 1.424, 1.30, 0.45);        // fender-line relief under the deck shoulder (ends -2.25, clear of the wrap corridor)
   }
   // ---- running gear: FIVE wheels (hard identity), raised idler+sprocket
   // (§B6 trapezoid), rubber-tired; contact pins at the print's liftoffs ----
@@ -2419,8 +2420,8 @@ export function buildType10Native2026(P) {
   if (P.q) for (let k = 0; k < 5; k++) P.add('hullDetail', box(2.20, 0.016, 0.05), 0, 1.632, -2.86 + k * 0.22);
   P.add('hullDark', box(1.60, 0.016, 0.55), 0, 1.545, -1.42);                   // intake mesh ahead of the step
   for (const s of [-1, 1]) P.add('hullDetail', cylY(0.08, 0.08, 0.016, 12), s * 1.18, 1.548, -1.30);
-  P.add('hullDark', box(0.06, 0.26, 0.85), -1.435, 1.32, -2.62);                // exhaust louvre bank, left sponson side
-  for (let k = 0; k < 3; k++) P.add('hullDetail', box(0.062, 0.045, 0.24), -1.437, 1.26 + k * 0.075, -2.62);
+  P.add('hullDark', box(0.06, 0.10, 0.85), -1.435, 1.475, -2.62);               // exhaust louvre bank, left flank HIGH on the bay-roof side (§B4: the old 1.26-1.32 band sat inside the raised wrap corridor)
+  for (let k = 0; k < 2; k++) P.add('hullDetail', box(0.062, 0.038, 0.24), -1.437, 1.445 + k * 0.055, -2.62);
   // stern stowage rack (hull-side; rails at the engine-deck line)
   P.add('hullDetail', box(2.80, 0.035, 0.035), 0, 1.645, -2.545);              // stern rack rails AT the engine-deck line (the print's rear deck reads bare 1.57-1.62 — side cols -3.0..-3.15 want tops 1.57-1.60)
   P.add('hullDetail', box(2.80, 0.035, 0.035), 0, 1.645, -3.135);
@@ -2575,23 +2576,23 @@ export function buildType10Native2026(P) {
     // owned heightM p95 at 2.76, measured this round; h 1.15 puts the tip
     // at ~3.49 = the print's own 3.47 mast crown, ONE body col)
     const w1 = FITTINGS.antennaWhip({ mats: P.mats, h: 1.15, r: 0.018, rake: 0.02, seed: 4, base: false, rotation: [0.02, 0, -0.02] });
-    w1.position.set(-1.308, 0.70, -1.834);
+    w1.position.set(-1.31, 0.70, -1.834);
     P.turretG.add(w1);
     const w2 = FITTINGS.antennaWhip({ mats: P.mats, h: 0.48, r: 0.011, rake: 1.24, seed: 5, rotation: [0, -Math.PI / 2, 0] });
     w2.position.set(1.16, 0.52, -1.95);
     P.turretG.add(w2);
   }
-  P.add('turretDetail', box(0.036, 0.79, 0.036), -1.308, 0.855, -1.834);         // LEFT whip MAST BASE (x -1.308 col-centered) — solid run 1.98..2.77 world seated THROUGH the
-  P.add('turretDetail', box(0.025, 0.025, 0.42), -1.308, 1.03, -2.02, -0.86, 0, 0); // antenna STAY off the mast raked aft-down (world ~2.69@-1.67 .. 2.37@-1.95 — the print's own raked mast band; under the 2.68 datum, whatsat-remeasured: the 1.16 seat topped 2.84)
+  P.add('turretDetail', box(0.036, 0.79, 0.036), -1.31, 0.855, -1.834);          // LEFT whip MAST BASE — solid run 1.98..2.77 world seated THROUGH the
+  P.add('turretDetail', box(0.025, 0.025, 0.42), -1.31, 1.03, -2.02, -0.86, 0, 0); // antenna STAY off the mast raked aft-down (world ~2.69@-1.67 .. 2.37@-1.95 — the print's own raked mast band; under the 2.68 datum, whatsat-remeasured: the 1.16 seat topped 2.84)
   //   L aft side module (top 2.01) at the print's own station (§B2 no-air;
   //   the first cut's 5.5 cm bracket gap made the whole mast cluster the
   //   yaw-0 floater island, measured via visibility bisect this round)
   P.add('turretDetail', box(0.045, 0.045, 0.26), 1.13, 0.5525, -2.394);         // forward rail stub off the rack's front post (z_w -2.31..-2.05, §B2)
   P.add('turretDetail', box(0.24, 0.045, 0.045), 1.24, 0.5525, -2.284);         // mast seat arm on the stub (x 1.12..1.36 at the print's z_w -2.07 mast station)
-  P.add('turretDetail', box(0.036, 0.66, 0.036), 1.308, 0.905, -2.284);         // RIGHT STOWED ANTENNA MAST at the print's own +1.316 front col (world
+  P.add('turretDetail', box(0.036, 0.66, 0.036), 1.31, 0.905, -2.284);          // RIGHT STOWED ANTENNA MAST at the print's own front col, window-centered (world
   //   2.095..2.755 at z_w -2.07 [side want 2.838@-2.05], seated on the arm per the PHYSICAL-SEAT
   //   gate; the print's -1.86..-2.07 side want band is ceded, packet receipt)
-  P.add('turretDark', box(0.032, 0.06, 0.032), 1.308, 1.265, -2.284);           // its cap joint (top 2.815)
+  P.add('turretDark', box(0.032, 0.06, 0.032), 1.31, 1.265, -2.284);            // its cap joint (top 2.815)
   // crosswind sensor on the bustle crown (print roof dip zone; <=2.31)
   P.add('turretDetail', box(0.09, 0.05, 0.09), 0, 0.66, -1.55);
   P.add('turretDark', box(0.052, 0.016, 0.052), 0, 0.695, -1.55);
