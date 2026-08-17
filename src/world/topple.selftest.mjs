@@ -4,6 +4,7 @@
  */
 
 import { Quaternion, Vector3 } from 'three';
+import { readFileSync } from 'node:fs';
 import { setToppleAxis, settledToppleAngle } from './topple.js';
 
 const axis = new Vector3();
@@ -34,3 +35,19 @@ if (flatAng < 1.50 || flatAng > Math.PI / 2) {
 }
 if (!(upAng < flatAng)) throw new Error('uphill ground should stop a fall earlier');
 if (!(downAng > flatAng)) throw new Error('downhill ground should let a fall lean farther');
+
+// These pose functions execute once per active destruction animation per RAF
+// frame. Keep their transform composition allocation-free as the world grows.
+const propsSource = readFileSync(new URL('./props.js', import.meta.url), 'utf8');
+for (const [name, endNeedle] of [
+  ['poseToppled', 'function pushCrushAnim('],
+  ['poseTossed', 'const _looseQ'],
+]) {
+  const start = propsSource.indexOf(`function ${name}(`);
+  const end = propsSource.indexOf(endNeedle, start);
+  if (start < 0 || end < 0) throw new Error(`missing ${name} hot-path source`);
+  const body = propsSource.slice(start, end);
+  if (body.includes('new THREE.Matrix4')) {
+    throw new Error(`${name} allocates Matrix4 inside the per-frame world update`);
+  }
+}
