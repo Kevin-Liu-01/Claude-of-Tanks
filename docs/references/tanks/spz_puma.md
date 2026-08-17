@@ -360,3 +360,27 @@ GATE (x2 bit-identical, live tree, baseline same session):
 EVIDENCE: shots/modern3-noair/spz_puma-BEFORE-top-364px.png +
 spz_puma-AFTER-*.png. Geometry hash 940912c8 (64 meshes / 69688 verts),
 tmp-hashgeo.
+
+## §5.248 IFV-WAVE REFRESH (2026-08-17) — restored-print re-baseline
+The §5.249 disk-restore round returned the print to
+public/models/tanks/community/spz_puma.glb (bytes = the same-source
+re-drop, md5 41bf64fe62ed8aa211f9437411b7a4d3 — verified against
+community-candidates/spz_puma_42manako.glb this round).
+
+HONEST RE-BASELINE vs the restored print (gate, live tree):
+  min 0 | hull 39.3 whole 12.3 turret 0 stations 7.1 dims 100 floaters 0
+vs the HEAD ledger row (39.9 / 17.9 / 0 / 21.1 / 100 / 100): the print
+restore re-framed the render and (1) exposed a REAL proc-side §B5 defect
+— the r-wave package's radio whips stood 0.3 m of air BEHIND the bustle
+(the floater island at every pose) and its roofMG pot floated 0.18 over
+the raked roof; (2) moved the ref-dependent rows a few points (the known
+-4% print, normalize plan still FILED for the orchestrator §E lane —
+whole/stations remain print-capped until the warp lands).
+
+RUNG (this round, profiles/afvFamily.js addPumaOraclePackage): whips
+re-seated onto the bustle roof plate (z -1.56 -> -1.20, pot buried), MG
+pot seated into the wedge roof (y 0.92 -> 0.735). floaters 0 -> 100.
+Geometry hash 479ce768 -> 73ee54e0 (same 73 meshes / 82858 verts —
+position-only rung). turret-plan 0 remains the OWNER-CERTIFIED §B8
+centered-turret override cost (spec comment; unchanged). Close rows in
+the ×2 section of the round report.
