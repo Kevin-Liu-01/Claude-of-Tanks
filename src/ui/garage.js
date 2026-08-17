@@ -89,7 +89,7 @@ const GARAGE_CSS = `
    only the game logo + a quiet screen-mode tag; the vehicle identity lives
    solely on the stats card. */
 /* r9.1 (owner): the quiet "GARAGE" mode tag becomes a real screen nav —
-   Garage (current) / Studio / Surface Lab / Home. */
+   Garage (current) / Studio / Tank Gallery / Home. */
 .cot-nav{position:absolute;top:20px;right:26px;display:flex;align-items:stretch;gap:4px;
   height:34px;pointer-events:auto;}
 .cot-nav .nv{font-family:${FONT_STACK};font-size:8.5px;font-weight:800;
@@ -1492,9 +1492,9 @@ export function createGarage(opts) {
     `<button class="nv" data-nav="studio" type="button" aria-label="Studio" title="Studio">` +
     `<img class="nvi" src="/brand/nav/studio.png" alt="" draggable="false">` +
     `<span class="nav-label">Studio</span></button>` +
-    `<button class="nv" data-nav="surface" type="button" aria-label="Surface Lab" title="Surface Lab">` +
+    `<button class="nv" data-nav="gallery" type="button" aria-label="Tank Gallery" title="Tank Gallery">` +
     `${uiIconSVG('scope', 15, 'currentColor', 'nvi')}` +
-    `<span class="nav-label">Surface Lab</span></button>` +
+    `<span class="nav-label">Gallery</span></button>` +
     `<button class="nv" data-nav="home" type="button" aria-label="Home" title="Home">` +
     `${uiIconSVG('home', 15, 'currentColor', 'nvi')}` +
     `<span class="nav-label">Home</span></button>` +
@@ -2601,9 +2601,10 @@ export function createGarage(opts) {
     emit('ui:click', {});
     window.dispatchEvent(new KeyboardEvent('keydown', { code: 'F8' }));
   });
-  root.querySelector('[data-nav="surface"]').addEventListener('click', () => {
+  root.querySelector('[data-nav="gallery"]').addEventListener('click', () => {
     emit('ui:click', {});
-    window.location.href = '/surface-studio';
+    const query = selectedId ? `?id=${encodeURIComponent(selectedId)}` : '';
+    window.location.href = `/gallery${query}`;
   });
   root.querySelector('[data-nav="home"]').addEventListener('click', () => {
     emit('ui:click', {});

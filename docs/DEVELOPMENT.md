@@ -28,7 +28,7 @@ The default local URL is usually http://localhost:5173.
 | /home | Public visual showcase |
 | /docs | Public technical field manual |
 | /studio | Scene Studio entry |
-| /tools/tank-surface-studio.html | Local Tank Surface Markup Studio |
+| /gallery | Tank Gallery, diagnostics, and surface markup |
 
 The home and docs routes are separate Vite entries. They must remain able to
 load without preloading the game module graph.
@@ -200,15 +200,15 @@ Encode the deployable set and manifest:
 The checked-in scene JSON is the source. Deployable WebP images are output, not
 hand-edited inputs.
 
-## Tank Surface Markup Studio
+## Tank Gallery markup
 
 Start:
 
-    npm run tank:surface-studio
+    npm run tank:gallery
 
-Use repeatable camera views and export JSON plus a matching PNG. The JSON
-records selected geometry and articulation ownership. See
-TANK-SURFACE-STUDIO.md.
+Open the Markup layer, use repeatable camera views, and export JSON plus a
+matching PNG. The JSON records selected geometry and articulation ownership.
+See GALLERY.md.
 
 ## Public and private build boundary
 
@@ -276,4 +276,3 @@ Before a production release:
 - STUDIO.md: Scene Studio API and determinism
 - TANK-ASSET-PIPELINE.md: generated vehicle asset contract
 - INDEX.md: complete documentation map
-

@@ -3,11 +3,13 @@
   "functions": {
     "api/signal.js": { "maxDuration": 300 }
   },
+  "redirects": [
+    { "source": "/surface-studio", "destination": "/gallery?layer=markup", "permanent": true }
+  ],
   "rewrites": [
     { "source": "/home", "destination": "/home.html" },
     { "source": "/docs", "destination": "/docs.html" },
     { "source": "/gallery", "destination": "/gallery.html" },
-    { "source": "/studio", "destination": "/index.html" },
-    { "source": "/surface-studio", "destination": "/tools/tank-surface-studio.html" }
+    { "source": "/studio", "destination": "/index.html" }
   ]
 }

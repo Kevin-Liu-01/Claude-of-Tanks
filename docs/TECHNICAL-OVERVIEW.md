@@ -30,8 +30,8 @@ on Three.js. The application includes:
 - local prediction, remote interpolation, viewer-filtered snapshots, and
   reliable presentation events;
 - desktop and mobile controls;
-- a deterministic Scene Studio, a public Tank Gallery, and a geometry-focused
-  Surface Lab;
+- a deterministic Scene Studio and a public Tank Gallery with geometry-focused
+  markup tools;
 - Node, browser, geometry, performance, asset, and build verification.
 
 The architecture is organized around one rule: **presentation may visualize
@@ -374,11 +374,15 @@ See [PERFORMANCE.md](PERFORMANCE.md) for the current performance architecture.
 
 ### 10.1 Tank Gallery
 
-`/gallery` is the public vehicle reference. It loads one live procedural rig,
-provides orbit and preset cameras, exposes turret and gun articulation, and
-renders selectable armor, module, and crew diagnostics from canonical spec
-volumes. Copyable data uses the versioned
-`claude-of-tanks/gallery-spec@1` schema.
+`/gallery` is the public vehicle reference and geometry-review workbench. It
+loads one live procedural rig, provides orbit and repeatable preset cameras,
+exposes hull, turret, and gun articulation, and renders selectable armor,
+module, and crew diagnostics from canonical spec volumes. Its Markup layer
+selects exact triangles or coplanar patches and exports mesh identity,
+articulation ownership, local/world bounds, camera pose, requested operation,
+and matching PNG evidence. Copyable fleet data uses the versioned
+`claude-of-tanks/gallery-spec@1` schema; surface review packets use
+`tank-gallery-surface-markup` schema version 1.
 
 See [GALLERY.md](GALLERY.md).
 
@@ -389,15 +393,6 @@ combat paused. Its scene JSON is round-trippable. Seeded effects can advance to
 an exact shared FX time and freeze for deterministic capture.
 
 See [STUDIO.md](STUDIO.md).
-
-### 10.3 Surface Lab
-
-`/surface-studio` is a vehicle-authoring workbench. It selects exact triangles
-or coplanar patches and exports mesh identity, articulation ownership, bounds,
-camera pose, requested operation, and matching evidence. It is intentionally
-procedural-only.
-
-See [TANK-SURFACE-STUDIO.md](TANK-SURFACE-STUDIO.md).
 
 ## 11. Verification model
 

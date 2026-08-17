@@ -20,12 +20,17 @@ armor plates, modules, crew volumes, and visual rigs come from canonical
 
 - search by vehicle name, stable ID, alias, nation, class, era, or tier;
 - filter by nation and class;
-- orbit, zoom, and select hero/front/side/top cameras;
+- orbit, zoom, and select hero/front/left/right/rear/top/elevated cameras;
 - enable or pause an automatic turntable;
-- change turret yaw and gun elevation within authored limits;
-- display exterior, armor, module, or crew layers;
+- change hull yaw, turret yaw, and gun elevation within authored limits;
+- display exterior, armor, module, crew, or exact-surface markup layers;
 - select a diagnostic volume to read its identifier, ownership, dimensions,
   and protection values;
+- select a single triangle or connected coplanar patch from live geometry;
+- record inspect, remove, reshape, or add-here instructions with articulation
+  ownership, rig path, local/world bounds, centroids, normals, and pose;
+- focus, undo, clear, copy, or download surface annotations and save a matching
+  PNG review image;
 - read normalized operational ratings and a generated technical brief for
   every playable vehicle;
 - inspect dimensions, mobility, weapon, protection, and ammunition data;
@@ -42,6 +47,8 @@ flowchart LR
     Factory --> Viewer[Three.js inspection viewer]
     Registry --> Overlays[src/gallery/overlays.js]
     Overlays --> Viewer
+    Factory --> Markup[src/gallery/surfaceMarkup.js]
+    Markup --> Viewer
     Catalog --> Dossier[Search, statistics, brief, and export]
 ```
 
@@ -95,6 +102,28 @@ chemical protection values separately.
 Overlays are diagnostic volumes. They are not meshes extracted from the visible
 surface, and they do not claim real-world engineering accuracy.
 
+### Surface markup
+
+`surfaceMarkup.js` owns the geometry-review layer that previously lived in a
+separate tool. It raycasts the currently visible first-party procedural rig,
+groups connected triangles by an adjustable coplanarity threshold, parents
+colored highlights to the selected mesh, and records the exact selection as a
+portable review packet.
+
+The Markup layer supports:
+
+- `Inspect`, `Remove`, `Reshape`, and `Add here` operations;
+- single-triangle and connected coplanar-patch scopes;
+- Shift-click additive selection;
+- freeform instructions, reshape offsets, and proposed primitive dimensions;
+- selection focus, per-selection deletion, undo, and clear;
+- JSON clipboard/download and PNG capture.
+
+Highlights remain children of the selected mesh. Turret-, gun-, and
+recoil-owned annotations therefore remain aligned while articulation controls
+move the rig. Markup describes requested source changes; it never mutates the
+runtime vehicle geometry.
+
 ## URL state
 
 The Gallery uses query parameters so a record can be shared or restored:
@@ -102,10 +131,13 @@ The Gallery uses query parameters so a record can be shared or restored:
 ```text
 /gallery?id=m1a2
 /gallery?id=t90m&layer=armor
+/gallery?id=t90m&layer=markup
 ```
 
-Supported `layer` values are `appearance`, `armor`, `modules`, and `crew`.
-`appearance` is omitted from the canonical URL.
+Supported `layer` values are `appearance`, `armor`, `modules`, `crew`, and
+`markup`. `appearance` is omitted from the canonical URL. The retired
+`/surface-studio` path redirects to `/gallery?layer=markup` so existing review
+links remain useful.
 
 ## Copy-data schema
 
@@ -130,6 +162,22 @@ Copy data emits `claude-of-tanks/gallery-spec@1`:
 The record intentionally excludes Three.js objects, mutable match state,
 functions, materials, and non-portable runtime identifiers.
 
+## Surface-markup schema
+
+Copy JSON and Download in the Markup layer emit schema version 1 with tool
+identifier `tank-gallery-surface-markup`. Each packet includes:
+
+- first-party/procedural authorship constraints;
+- vehicle, camera, hull, turret, and gun pose;
+- right-handed metre-based coordinate-system metadata;
+- operation, scope, instruction, and optional offset or primitive request;
+- mesh/material identity, rig path, instance identity, and triangle counts;
+- exact face indices, bounds, centroid, anchor, normal, and representative
+  triangle coordinates in local and world space.
+
+The packet is an authoring reference, not a live edit command. Consumers must
+review and implement the requested source change explicitly.
+
 ## Browser automation contract
 
 The page exposes a small inspection API for verification:
@@ -140,11 +188,16 @@ window.__TANK_GALLERY.count
 await window.__TANK_GALLERY.loadTank('m1a2')
 window.__TANK_GALLERY.setMode('armor')
 window.__TANK_GALLERY.frameView('front')
+window.__TANK_GALLERY.setMode('markup')
+window.__TANK_GALLERY.setMarkupOperation('reshape')
+window.__TANK_GALLERY.selectSurface(640, 420, false)
+window.__TANK_GALLERY.exportMarkupJSON()
 window.__TANK_GALLERY.getState()
 ```
 
-`getState()` returns selected ID, active mode, overlay count, and camera pose.
-It does not expose the mutable Three.js scene.
+`getState()` returns selected ID, active mode, overlay count, camera pose, and
+a serializable markup-state snapshot. It does not expose the mutable Three.js
+scene.
 
 ## Keyboard and accessibility
 
@@ -153,6 +206,11 @@ It does not expose the mutable Three.js scene.
 - `2` selects armor;
 - `3` selects modules;
 - `4` selects crew;
+- `5` selects surface markup;
+- `Shift+1` through `Shift+4` select inspect, remove, reshape, or add while
+  markup is active;
+- `Cmd/Ctrl+Z` undoes the last surface annotation;
+- `Delete` removes the selected surface annotation;
 - all controls use native buttons, inputs, selects, labels, and visible focus;
 - roster selection is exposed as a listbox with selected-option state;
 - loading, copy, and mode changes use status announcements;
@@ -165,21 +223,25 @@ It does not expose the mutable Three.js scene.
 - It constructs one high-quality visual at a time.
 - Diagnostic geometry exists only for the active layer and is explicitly
   disposed when the layer or vehicle changes.
+- Surface highlights exist only for the selected vehicle and dispose when the
+  selection or vehicle is cleared.
 - The animation loop reuses control and renderer objects and performs no
   catalog derivation.
 - Roster portraits load lazily.
 
 ## Verification
 
-Run the catalog self-test first:
+Run the focused self-tests first:
 
 ```bash
 node src/gallery/catalog.selftest.mjs
+node src/gallery/surfaceMarkup.selftest.mjs
 ```
 
-It verifies that every `ALL_TANK_IDS` entry receives a complete record,
-ratings remain within bounds, stable IDs are searchable, filters are exact,
-and the export schema is populated.
+They verify that every `ALL_TANK_IDS` entry receives a complete record, ratings
+remain within bounds, stable IDs are searchable, filters are exact, the fleet
+export schema is populated, coplanar grouping is bounded, and articulation
+ownership resolves to the nearest rig owner.
 
 Then run:
 
@@ -189,5 +251,6 @@ npm run build
 ```
 
 For user-facing verification, open `/gallery`, select multiple vehicles, test
-all four layers and camera presets, select at least one overlay volume, copy a
+all five layers and camera presets, select at least one overlay volume, create
+single and additive surface annotations, exercise undo/focus/export, copy a
 link and data record, and repeat the layout at desktop and mobile widths.

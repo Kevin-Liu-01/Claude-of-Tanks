@@ -29,8 +29,7 @@ https://cot.kevinliu.studio/docs and is sourced from ../docs.html.
 | MULTIPLAYER-ARCHITECTURE.md | Authority arrangements, protocol v4, delivery, prediction, rooms, signaling, ranked services, trust, and verification |
 | PERFORMANCE.md | Boot, route isolation, device quality, render recovery, frame ownership, event budgets, and measurement |
 | STUDIO.md | Scene Studio interaction, scripted API, scene schema, effects, capture, and determinism |
-| GALLERY.md | Public Tank Gallery architecture, overlay semantics, data export, interaction, and verification |
-| TANK-SURFACE-STUDIO.md | Surface selection and markup workflow |
+| GALLERY.md | Tank Gallery architecture, dossiers, diagnostic overlays, exact-surface markup, exports, interaction, and verification |
 | TANK-ASSET-PIPELINE.md | Generated portraits, silhouettes, armor/module diagrams, manifests, fingerprints, and release gates |
 | MODULES.md | Internal module and crew damage model |
 | GUNNERY-CAMERA-SPEC.md | Camera, requested aim point, gun solution, scope, and reticle contract |

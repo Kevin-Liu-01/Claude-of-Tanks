@@ -9,6 +9,7 @@ import {
   serializeGallerySpec,
 } from './catalog.js';
 import { createInspectionOverlay, inspectionLegend } from './overlays.js';
+import { createSurfaceMarkup, MARKUP_OPERATIONS } from './surfaceMarkup.js';
 
 const $ = (selector) => document.querySelector(selector);
 const viewport = $('#viewport');
@@ -19,7 +20,12 @@ const viewButtons = [...document.querySelectorAll('[data-view]')];
 const records = buildGalleryRecords(ALL_TANK_IDS.map(getSpec));
 const recordById = new Map(records.map((record) => [record.id, record]));
 
-const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+const renderer = new THREE.WebGLRenderer({
+  antialias: true,
+  alpha: true,
+  powerPreference: 'high-performance',
+  preserveDrawingBuffer: true,
+});
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.08;
@@ -96,7 +102,11 @@ const VIEW_DIRECTIONS = Object.freeze({
   hero: [-1, 0.45, 1],
   front: [0, 0.07, 1],
   left: [-1, 0.06, 0],
+  right: [1, 0.06, 0],
+  rear: [0, 0.07, -1],
   top: [0, 1, 0.015],
+  'elevated-left': [-1, 0.6, 0.2],
+  'elevated-right': [1, 0.6, 0.2],
 });
 
 function effectiveVisible(object) {
@@ -119,7 +129,8 @@ function visibleBox(root) {
   root.updateMatrixWorld(true);
   root.traverse((object) => {
     if (!(object.isMesh || object.isInstancedMesh) || !object.geometry) return;
-    if (!effectiveVisible(object) || object.name.startsWith('gallery_') || /shadow/i.test(object.name || '')) return;
+    if (!effectiveVisible(object) || object.userData.gallerySurfaceMarkup) return;
+    if (object.name.startsWith('gallery_') || /shadow/i.test(object.name || '')) return;
     if (object.isInstancedMesh) {
       if (!object.count) return;
       object.computeBoundingBox();
@@ -158,6 +169,39 @@ function showToast(message) {
   toastTimer = setTimeout(() => toast.classList.remove('show'), 1800);
 }
 
+function poseRecord() {
+  return {
+    hullYawDeg: Number($('#hullYaw').value),
+    turretYawDeg: Number($('#turretYaw').value),
+    gunPitchDeg: Number($('#gunPitch').value),
+  };
+}
+
+function renderSurfaceInspection(info) {
+  const readout = $('#inspectionReadout');
+  if (!info) {
+    readout.hidden = true;
+    return;
+  }
+  $('#inspectionId').textContent = `F${info.faceIndex}`;
+  $('#inspectionOwner').textContent = info.ownership;
+  $('#inspectionTitle').textContent = info.mesh;
+  const instance = info.instanceId === null ? '' : ` · instance ${info.instanceId}`;
+  $('#inspectionDetails').textContent = `Triangle ${info.faceIndex}${instance} · world [${info.point.join(', ')}]`;
+  readout.hidden = false;
+}
+
+const surfaceMarkup = createSurfaceMarkup({
+  renderer,
+  camera,
+  controls,
+  getSpec,
+  getPose: poseRecord,
+  renderFrame: () => renderer.render(scene, camera),
+  showToast,
+  onHover: renderSurfaceInspection,
+});
+
 function updateUrl() {
   if (!selectedId) return;
   const url = new URL(location.href);
@@ -169,7 +213,10 @@ function updateUrl() {
 
 function renderLegend() {
   const root = $('#overlayLegend');
-  root.replaceChildren(...inspectionLegend(activeMode).map(([label, color]) => {
+  const legend = activeMode === 'markup'
+    ? [['Selected surface', '#ff5a5f'], ['Hover triangle', '#65a9ff']]
+    : inspectionLegend(activeMode);
+  root.replaceChildren(...legend.map(([label, color]) => {
     const item = document.createElement('span');
     item.style.setProperty('--legend', color);
     const marker = document.createElement('i');
@@ -278,24 +325,30 @@ function renderDossier(record) {
 
 function updateArticulation() {
   if (!visual) return;
+  const hullYaw = Number($('#hullYaw').value);
   const turretYaw = Number($('#turretYaw').value);
   const gunPitch = Number($('#gunPitch').value);
+  visual.root.rotation.y = THREE.MathUtils.degToRad(hullYaw);
   const turret = visual.root.getObjectByName('rig_turret');
   const gun = visual.root.getObjectByName('rig_gun');
   if (turret) turret.rotation.y = THREE.MathUtils.degToRad(turretYaw);
   if (gun) gun.rotation.x = -THREE.MathUtils.degToRad(gunPitch);
   visual.root.updateMatrixWorld(true);
+  $('#hullYawValue').textContent = `${hullYaw}°`;
   $('#turretYawValue').textContent = `${turretYaw}°`;
   $('#gunPitchValue').textContent = `${gunPitch}°`;
+  surfaceMarkup.updatePose();
 }
 
 function configureArticulation(spec) {
+  const hullInput = $('#hullYaw');
   const turretInput = $('#turretYaw');
   const gunInput = $('#gunPitch');
   const fixedMount = spec.class === 'td' && Number(spec.turretTraverseDegS || 0) <= 0;
   turretInput.min = fixedMount ? String(-(Number(spec.gunTraverseDeg || 12))) : '-180';
   turretInput.max = fixedMount ? String(Number(spec.gunTraverseDeg || 12)) : '180';
   turretInput.value = '0';
+  hullInput.value = '0';
   gunInput.min = String(-Math.abs(Number(spec.gunDepressionDeg || 8)));
   gunInput.max = String(Math.abs(Number(spec.gunElevationDeg || 18)));
   gunInput.value = '0';
@@ -303,19 +356,32 @@ function configureArticulation(spec) {
 }
 
 function setMode(nextMode, announce = true) {
-  if (!['appearance', 'armor', 'modules', 'crew'].includes(nextMode)) nextMode = 'appearance';
+  if (!['appearance', 'armor', 'modules', 'crew', 'markup'].includes(nextMode)) nextMode = 'appearance';
   activeMode = nextMode;
   overlay.clear();
   const spec = selectedId ? getSpec(selectedId) : null;
-  overlay = createInspectionOverlay(spec, visual, activeMode);
+  overlay = createInspectionOverlay(spec, visual, activeMode === 'markup' ? 'appearance' : activeMode);
+  surfaceMarkup.setActive(activeMode === 'markup');
   modeButtons.forEach((button) => button.classList.toggle('active', button.dataset.mode === activeMode));
   $('#inspectionReadout').hidden = true;
+  $('#viewerHelp').innerHTML = activeMode === 'markup'
+    ? 'Drag to orbit <b>·</b> Shift-click to add <b>·</b> Select exact geometry'
+    : 'Drag to orbit <b>·</b> Scroll to zoom <b>·</b> Select a volume for data';
+  if (activeMode === 'markup') {
+    controls.autoRotate = false;
+    $('#autoRotate').setAttribute('aria-pressed', 'false');
+  }
   renderLegend();
   updateUrl();
-  if (announce) showToast(activeMode === 'appearance' ? 'Exterior surface restored' : `${overlay.count} ${activeMode} volumes visible`);
+  if (announce) {
+    if (activeMode === 'appearance') showToast('Exterior surface restored');
+    else if (activeMode === 'markup') showToast(`${surfaceMarkup.getState().selectableMeshes} meshes ready for markup`);
+    else showToast(`${overlay.count} ${activeMode} volumes visible`);
+  }
 }
 
 function disposeTank() {
+  surfaceMarkup.detachTank();
   overlay.clear();
   overlay = createInspectionOverlay(null, null, 'appearance');
   if (visual) {
@@ -345,6 +411,7 @@ async function loadTank(id, options = {}) {
   scene.add(visual.root);
   forceHeroLod(visual.root);
   visual.root.updateMatrixWorld(true);
+  surfaceMarkup.attachTank(visual.root, id);
   renderDossier(record);
   configureArticulation(spec);
   renderRoster();
@@ -421,6 +488,7 @@ function resize() {
 $('#gallerySearch').addEventListener('input', applyFilters);
 $('#nationFilter').addEventListener('change', applyFilters);
 $('#classFilter').addEventListener('change', applyFilters);
+$('#hullYaw').addEventListener('input', updateArticulation);
 $('#turretYaw').addEventListener('input', updateArticulation);
 $('#gunPitch').addEventListener('input', updateArticulation);
 modeButtons.forEach((button) => button.addEventListener('click', () => setMode(button.dataset.mode)));
@@ -444,8 +512,15 @@ renderer.domElement.addEventListener('pointerup', (event) => {
   if (!pointerStart) return;
   const moved = Math.hypot(event.clientX - pointerStart.x, event.clientY - pointerStart.y);
   pointerStart = null;
-  if (moved < 5) pickInspection(event.clientX, event.clientY);
+  if (moved >= 5) return;
+  if (activeMode === 'markup') surfaceMarkup.selectScreen(event.clientX, event.clientY, event.shiftKey);
+  else pickInspection(event.clientX, event.clientY);
 });
+renderer.domElement.addEventListener('pointermove', (event) => {
+  if (activeMode !== 'markup' || event.buttons) return;
+  surfaceMarkup.hoverScreen(event.clientX, event.clientY);
+});
+renderer.domElement.addEventListener('pointerleave', surfaceMarkup.clearHover);
 
 document.addEventListener('keydown', (event) => {
   if (event.key === '/' && !/input|select|textarea/i.test(document.activeElement?.tagName || '')) {
@@ -453,9 +528,22 @@ document.addEventListener('keydown', (event) => {
     $('#gallerySearch').focus();
     return;
   }
-  if (/^[1-4]$/.test(event.key) && !/input|select|textarea/i.test(document.activeElement?.tagName || '')) {
-    setMode(['appearance', 'armor', 'modules', 'crew'][Number(event.key) - 1]);
+  const editing = /input|select|textarea/i.test(document.activeElement?.tagName || '');
+  if (editing) return;
+  if (event.shiftKey && /^[1-4]$/.test(event.key) && activeMode === 'markup') {
+    surfaceMarkup.setOperation(MARKUP_OPERATIONS[Number(event.key) - 1], true);
+    return;
   }
+  if (/^[1-5]$/.test(event.key)) {
+    setMode(['appearance', 'armor', 'modules', 'crew', 'markup'][Number(event.key) - 1]);
+    return;
+  }
+  if ((event.ctrlKey || event.metaKey) && event.code === 'KeyZ' && activeMode === 'markup') {
+    event.preventDefault();
+    surfaceMarkup.undo();
+    return;
+  }
+  if (event.code === 'Delete' && activeMode === 'markup') surfaceMarkup.deleteSelected();
 });
 
 window.addEventListener('popstate', () => {
@@ -492,6 +580,10 @@ window.__TANK_GALLERY = {
     selectedId,
     mode: activeMode,
     overlayCount: overlay.count,
+    markup: surfaceMarkup.getState(),
     camera: { position: camera.position.toArray(), target: controls.target.toArray() },
   }),
+  setMarkupOperation: surfaceMarkup.setOperation,
+  selectSurface: surfaceMarkup.selectScreen,
+  exportMarkupJSON: surfaceMarkup.exportRecord,
 };

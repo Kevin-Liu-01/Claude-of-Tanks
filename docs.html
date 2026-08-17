@@ -210,9 +210,8 @@
         <p class="section-index">09 // Studios and gallery</p>
         <h2>The shipped renderer is also the inspection environment.</h2>
         <div class="system-grid">
-          <article class="system-card"><header><code>/gallery</code><span>public reference</span></header><p>The Tank Gallery loads one first-party procedural vehicle at a time. It supports orbit and preset cameras, live turret/gun articulation, searchable dossiers, normalized data export, and selectable armor, module, and crew volumes.</p><ul><li>Audience: players and technical reviewers</li><li>Authority: canonical vehicle specifications</li><li>Shareable <code>?id=…&amp;layer=…</code> URLs</li></ul></article>
+          <article class="system-card"><header><code>/gallery</code><span>reference + markup</span></header><p>The Tank Gallery loads one first-party procedural vehicle at a time. It combines searchable dossiers, armor/module/crew diagnostics, exact triangle or coplanar-patch selection, articulation ownership, and portable JSON/PNG review packets.</p><ul><li>Audience: players, vehicle authors, and technical reviewers</li><li>Authority: canonical vehicle specifications and live procedural geometry</li><li>Shareable <code>?id=…&amp;layer=…</code> URLs</li></ul></article>
           <article class="system-card"><header><code>/studio</code><span>production staging</span></header><p>Scene Studio composes live maps, tank actors, damage states, deterministic effects, camera rigs, and high-resolution captures without running combat AI.</p><ul><li>Audience: artists, QA, marketing, automation</li><li>Round-trippable scene JSON</li><li>Frozen deterministic FX timeline</li></ul></article>
-          <article class="system-card"><header><code>/surface-studio</code><span>geometry authoring</span></header><p>Surface Lab selects exact triangles and coplanar patches, records articulation ownership and local/world bounds, and exports actionable markup JSON with a matching image.</p><ul><li>Audience: vehicle authors and critics</li><li>Procedural-only geometry lock</li><li>Correction packets, not runtime edits</li></ul></article>
           <article class="system-card"><header><code>tools/</code><span>verification</span></header><p>Browser probes, fleet geometry gates, screenshot contracts, icon generation, multiplayer soak rigs, performance recorders, and release checks turn visual or operational claims into reproducible artifacts.</p><ul><li>Deterministic inputs and outputs</li><li>Focused checks before aggregate suites</li><li>Public/private artifact validation</li></ul></article>
         </div>
       </section>
@@ -342,7 +341,7 @@ npm run build:private</code></pre></div>
   <footer class="docs-footer">
     <div class="inner shell">
       <a class="brand" href="/home"><img src="/brand/logo-mark-metal.svg" alt=""><span>Claude <b>of Tanks</b></span></a>
-      <div class="footer-links"><a href="/gallery">Tank Gallery</a><a href="/">Garage</a><a href="/studio">Scene Studio</a><a href="/surface-studio">Surface Lab</a><a href="https://github.com/Kevin-Liu-01/Claude-of-Tanks">GitHub</a></div>
+      <div class="footer-links"><a href="/gallery">Tank Gallery</a><a href="/">Garage</a><a href="/studio">Scene Studio</a><a href="https://github.com/Kevin-Liu-01/Claude-of-Tanks">GitHub</a></div>
       <span class="footer-mark">Engineering reference // 2026</span>
     </div>
   </footer>
