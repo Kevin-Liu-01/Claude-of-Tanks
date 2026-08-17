@@ -15,6 +15,7 @@
 // aft-set turret, rear hull clamshell door, turret bustle basket +
 // ball-and-chain curtain. Mk.1B keeps exposed running gear under a narrow
 // fender line; every later mark hangs deep scalloped skirts.
+import * as THREE from 'three';
 import { KIT, muzzleBore, orientedSlab } from './kit.js';
 import { vehicleAmbientFloorHook } from '../materials.js';
 
@@ -1018,6 +1019,13 @@ function merkavaChassis(P, c) {
     linkPitchM: c.linkPitchM ?? 0.11,
     shoeRadialScale: c.shoeRadialScale ?? 0.92,
     shoeWidthScale: c.shoeWidthScale ?? 1.00,
+    // Source-measured terminal geometry may need a tighter loaded contact
+    // patch and ramp-corner containment. These options still feed the one
+    // canonical suspension-driven loop; they never author a proxy course.
+    contactZF: c.contactZF,
+    contactZR: c.contactZR,
+    padCornerFloor: c.padCornerFloor,
+    padHugZ0: c.padHugZ0,
     integratedLinks: true,
     dishR: c.dishR ?? 0.78,
     chainHex: c.chainHex, padHex: c.padHex, gearFloor: c.gearFloor,
@@ -6680,6 +6688,58 @@ function merkavaSourceOracleTurret(P, p, t) {
   return true;
 }
 
+// Connected axial loft for gun masks. Every cross-section is deliberately
+// low-sided and every ring owns a hard plan break, so the result reads as
+// armor plate rather than a rounded sleeve or a stack of boxes. Faces are
+// oriented independently against the solid centroid to keep FrontSide
+// winding valid even when a mark carries a small asymmetric x offset.
+function merkavaAxialLoft(rings) {
+  const verts = [];
+  const all = rings.flat();
+  const center = [0, 1, 2].map((k) => all.reduce((sum, p) => sum + p[k], 0) / all.length);
+  const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+  const cross = (a, b) => [
+    a[1] * b[2] - a[2] * b[1],
+    a[2] * b[0] - a[0] * b[2],
+    a[0] * b[1] - a[1] * b[0],
+  ];
+  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const tri = (a, b, c, faceCenter = [
+    (a[0] + b[0] + c[0]) / 3,
+    (a[1] + b[1] + c[1]) / 3,
+    (a[2] + b[2] + c[2]) / 3,
+  ]) => {
+    const n = cross(sub(b, a), sub(c, a));
+    if (dot(n, sub(faceCenter, center)) >= 0) verts.push(...a, ...b, ...c);
+    else verts.push(...c, ...b, ...a);
+  };
+  const sides = rings[0].length;
+  for (let r = 0; r < rings.length - 1; r++) {
+    const rear = rings[r], front = rings[r + 1];
+    for (let i = 0; i < sides; i++) {
+      const j = (i + 1) % sides;
+      const faceCenter = [0, 1, 2].map((k) =>
+        (rear[i][k] + rear[j][k] + front[j][k] + front[i][k]) / 4);
+      tri(rear[i], rear[j], front[j], faceCenter);
+      tri(rear[i], front[j], front[i], faceCenter);
+    }
+  }
+  for (const ring of [rings[0], rings.at(-1)]) {
+    const cap = [
+      ring.reduce((sum, p) => sum + p[0], 0) / sides,
+      ring.reduce((sum, p) => sum + p[1], 0) / sides,
+      ring.reduce((sum, p) => sum + p[2], 0) / sides,
+    ];
+    for (let i = 0; i < sides; i++) tri(ring[i], ring[(i + 1) % sides], cap, cap);
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(
+    new Float32Array((verts.length / 3) * 2), 2));
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
 // Source-authored Merkavas carry an unmistakable broad, polygonal gun mask:
 // the armor begins deep inside both cheeks, folds into a compact faceted
 // cradle, and only then exposes the short canvas/steel boot around the tube.
@@ -6691,20 +6751,19 @@ function merkavaSourceOracleTurret(P, p, t) {
 function merkavaSourceGunCradle(P, p, gunZL, L) {
   const id = P.spec.id;
   const cfg = {
-    merkava1b: { rootZ: 0.72, mouthZ: 1.55, rootHW: 0.66, rootHH: 0.28, mouthHW: 0.27, mouthHH: 0.17, bootLen: 0.39, x: -0.02 },
-    merkava2b: { rootZ: 0.78, mouthZ: 1.76, rootHW: 0.73, rootHH: 0.30, mouthHW: 0.29, mouthHH: 0.18, bootLen: 0.42, x: 0.01 },
-    merkava2d: { rootZ: 0.82, mouthZ: 1.82, rootHW: 0.82, rootHH: 0.32, mouthHW: 0.30, mouthHH: 0.19, bootLen: 0.43, x: -0.01 },
-    merkava3c: { rootZ: 0.72, mouthZ: 1.78, rootHW: 0.84, rootHH: 0.34, mouthHW: 0.32, mouthHH: 0.20, bootLen: 0.42, x: 0.01 },
-    merkava3d: { rootZ: 0.76, mouthZ: 1.88, rootHW: 0.93, rootHH: 0.36, mouthHW: 0.33, mouthHH: 0.21, bootLen: 0.44, x: -0.03 },
+    merkava1b: { rootZ: 0.48, mouthZ: 1.55, rootHW: 0.66, rootHH: 0.28, mouthHW: 0.27, mouthHH: 0.17, bootLen: 0.39, x: -0.02 },
+    merkava2b: { rootZ: 0.49, mouthZ: 1.76, rootHW: 0.73, rootHH: 0.30, mouthHW: 0.29, mouthHH: 0.18, bootLen: 0.42, x: 0.01 },
+    merkava2d: { rootZ: 0.47, mouthZ: 1.82, rootHW: 0.82, rootHH: 0.32, mouthHW: 0.30, mouthHH: 0.19, bootLen: 0.43, x: -0.01 },
+    merkava3c: { rootZ: 0.40, mouthZ: 1.78, rootHW: 0.84, rootHH: 0.34, mouthHW: 0.32, mouthHH: 0.20, bootLen: 0.42, x: 0.01 },
+    merkava3d: { rootZ: 0.39, mouthZ: 1.88, rootHW: 0.93, rootHH: 0.36, mouthHW: 0.33, mouthHH: 0.21, bootLen: 0.44, x: -0.03 },
     // Mk.4B's mask is a major turret volume, not a scaled-up boot.  Its rear
     // shoulders span most of the arrowhead cheek before breaking rapidly
     // into the compact MG253 tunnel.
-    merkava4b: { rootZ: 1.08, mouthZ: 2.43, rootHW: 1.08, rootHH: 0.43, mouthHW: 0.38, mouthHH: 0.24, bootLen: 0.46, x: 0.00 },
+    merkava4b: { rootZ: 0.58, mouthZ: 2.43, rootHW: 1.08, rootHH: 0.43, mouthHW: 0.38, mouthHH: 0.24, bootLen: 0.46, x: 0.00 },
   }[id];
   if (!cfg) return false;
 
   const { cylZ, xform } = KIT;
-  const slab = orientedSlab;
   const rootZ = L(cfg.rootZ) - gunZL;
   const mouthZ = L(cfg.mouthZ) - gunZL;
   const span = mouthZ - rootZ;
@@ -6714,59 +6773,28 @@ function merkavaSourceGunCradle(P, p, gunZL, L) {
     (dark ? P.addGunExtraDark : P.addGunExtra)(geo, x0, 0, 0);
   };
 
-  // Main six-plane armor mask.  The root is broad and buried inside the
-  // cheek field; the upper root is narrower than the lower root, producing
-  // the iconic sloped polygonal brow rather than a rectangular mantlet bar.
-  addMask(slab(
-    [-cfg.rootHW * 0.86, -cfg.rootHH * 0.78, rootZ],
-    [ cfg.rootHW * 0.86, -cfg.rootHH * 0.78, rootZ],
-    [ cfg.mouthHW, -cfg.mouthHH * 0.82, mouthZ],
-    [-cfg.mouthHW, -cfg.mouthHH * 0.82, mouthZ],
-    [-cfg.rootHW * 0.68, cfg.rootHH, rootZ - 0.05],
-    [ cfg.rootHW * 0.68, cfg.rootHH, rootZ - 0.05],
-    [ cfg.mouthHW * 0.92, cfg.mouthHH, mouthZ],
-    [-cfg.mouthHW * 0.92, cfg.mouthHH, mouthZ]));
-
-  // Separate cheek-return wings make the rear half read as armor flowing
-  // out of the turret.  They overlap the center mask and terminate before
-  // the oval mouth, avoiding both a sky seam and the rejected single long
-  // triangular-beam silhouette.
-  const shoulderZ = rootZ + span * 0.70;
-  for (const s of [-1, 1]) {
-    const rIn = cfg.rootHW * 0.53;
-    const rOut = cfg.rootHW;
-    const fIn = cfg.mouthHW * 0.68;
-    const fOut = cfg.mouthHW * 1.26;
-    const pts = s < 0
-      ? [
-          [-rOut, -cfg.rootHH * 0.62, rootZ - 0.09], [-rIn, -cfg.rootHH * 0.70, rootZ],
-          [-fIn, -cfg.mouthHH * 0.90, shoulderZ], [-fOut, -cfg.mouthHH * 0.74, shoulderZ],
-          [-rOut * 0.91, cfg.rootHH * 0.82, rootZ - 0.11], [-rIn * 0.92, cfg.rootHH * 0.93, rootZ - 0.02],
-          [-fIn * 0.94, cfg.mouthHH * 1.12, shoulderZ], [-fOut * 0.90, cfg.mouthHH * 0.94, shoulderZ],
-        ]
-      : [
-          [rIn, -cfg.rootHH * 0.70, rootZ], [rOut, -cfg.rootHH * 0.62, rootZ - 0.09],
-          [fOut, -cfg.mouthHH * 0.74, shoulderZ], [fIn, -cfg.mouthHH * 0.90, shoulderZ],
-          [rIn * 0.92, cfg.rootHH * 0.93, rootZ - 0.02], [rOut * 0.91, cfg.rootHH * 0.82, rootZ - 0.11],
-          [fOut * 0.90, cfg.mouthHH * 0.94, shoulderZ], [fIn * 0.94, cfg.mouthHH * 1.12, shoulderZ],
-        ];
-    addMask(slab(...pts));
-  }
-
-  // A compact crown and chin close the last third of the mask around the
-  // tunnel.  Both pieces overlap the main mask; neither is an unsupported
-  // stand-off plate.
-  const collarZ = rootZ + span * 0.55;
-  addMask(slab(
-    [-cfg.rootHW * 0.58, cfg.rootHH * 0.72, collarZ], [cfg.rootHW * 0.58, cfg.rootHH * 0.72, collarZ],
-    [cfg.mouthHW * 0.95, cfg.mouthHH * 0.76, mouthZ + 0.035], [-cfg.mouthHW * 0.95, cfg.mouthHH * 0.76, mouthZ + 0.035],
-    [-cfg.rootHW * 0.48, cfg.rootHH * 1.04, collarZ - 0.03], [cfg.rootHW * 0.48, cfg.rootHH * 1.04, collarZ - 0.03],
-    [cfg.mouthHW * 0.84, cfg.mouthHH * 1.08, mouthZ + 0.02], [-cfg.mouthHW * 0.84, cfg.mouthHH * 1.08, mouthZ + 0.02]));
-  addMask(slab(
-    [-cfg.rootHW * 0.54, -cfg.rootHH * 0.86, collarZ], [cfg.rootHW * 0.54, -cfg.rootHH * 0.86, collarZ],
-    [cfg.mouthHW * 0.90, -cfg.mouthHH * 1.04, mouthZ + 0.025], [-cfg.mouthHW * 0.90, -cfg.mouthHH * 1.04, mouthZ + 0.025],
-    [-cfg.rootHW * 0.44, -cfg.rootHH * 0.60, collarZ - 0.02], [cfg.rootHW * 0.44, -cfg.rootHH * 0.60, collarZ - 0.02],
-    [cfg.mouthHW * 0.80, -cfg.mouthHH * 0.72, mouthZ + 0.04], [-cfg.mouthHW * 0.80, -cfg.mouthHH * 0.72, mouthZ + 0.04]));
+  // One connected octagonal mask with two pronounced shoulder breaks. The
+  // rear ring is wider/taller than the previous carrier and sits 24-50 cm
+  // farther inside the turret, while the intermediate rings hold their
+  // width before snapping into the small mouth. This is the characteristic
+  // Merkava faceted wedge, not a four-sided block or an exposed boot.
+  const ring = (hw, hh, z, crown = 1) => [
+    [-hw * 0.44, -hh, z], [hw * 0.44, -hh, z],
+    [hw, -hh * 0.38, z], [hw * 0.82, hh * 0.55, z],
+    [hw * 0.32, hh * crown, z], [-hw * 0.32, hh * crown, z],
+    [-hw * 0.82, hh * 0.55, z], [-hw, -hh * 0.38, z],
+  ];
+  const seatHW = cfg.rootHW * 1.18;
+  const seatHH = cfg.rootHH * 1.10;
+  const break1Z = rootZ + span * 0.38;
+  const break2Z = rootZ + span * 0.72;
+  addMask(merkavaAxialLoft([
+    ring(seatHW, seatHH, rootZ - 0.10, 1.08),
+    ring(cfg.rootHW * 0.92, cfg.rootHH, break1Z, 1.02),
+    ring(Math.max(cfg.rootHW * 0.50, cfg.mouthHW * 1.52),
+      Math.max(cfg.rootHH * 0.70, cfg.mouthHH * 1.36), break2Z, 0.98),
+    ring(cfg.mouthHW, cfg.mouthHH, mouthZ + 0.035, 0.92),
+  ]));
 
   const oval = (r, len, z, scaleY = 1, taper = undefined, dark = false) => {
     const geo = xform(cylZ(r, len, P.q ? 24 : 16, taper), 0, 0, 0, 0, 0, 0,
@@ -10296,10 +10324,10 @@ export const MERKAVA_PROFILES = {
     // Mk.4B source running gear: six compact pressed-steel road wheels on a
     // low, dense single course. The former 0.42 m row and closely stacked
     // front sprocket produced the oversized bullseye/double-wheel read.
-    width: 3.72, trackW: 0.58, trackTop: 1.10, wheelR: 0.39, gearOut: 1.73,
+    width: 3.72, trackW: 0.58, trackTop: 1.02, wheelR: 0.38, gearOut: 1.73,
     modernWheelFace: true, wheelHex: 0x35392f, tireHex: 0x252820, endWheelHex: 0x34372e,
     chainHex: 0x302f28, padHex: 0x39372e, gearFloor: true,
-    trackTh: 0.082, linkPitchM: 0.095, shoeRadialScale: 0.90,
+    trackTh: 0.078, linkPitchM: 0.102, shoeRadialScale: 0.80,
     shoeWidthScale: 0.96, dishR: 0.72,
     deckY: 1.76, rearDeckZ: -2.75,
     body: [
@@ -10319,9 +10347,16 @@ export const MERKAVA_PROFILES = {
     podX: 0.60, podIn: 0.15,
     fenderPlank: { x0: 1.30, x1: 1.66, z0: 3.05, z1: 2.4, y: 1.46 },
     fenderHorn: { x0: 1.18, x1: 1.66, z0: 2.55, z1: 3.05, top: 1.52, bot: 1.30 },
-    wheelZs: [2.34, 1.43, 0.52, -0.39, -1.30, -2.21],
-    sprocket: { z: 3.18, y: 0.58, r: 0.34 }, idler: { z: -3.13, y: 0.62, r: 0.34 },
-    rollers: [2.05, 1.20, 0.35, -0.50, -1.35, -2.20],
+    // Source side elevation: a dense six-wheel contact row and compact end
+    // wraps. The former 0.91 m cadence plus twin 0.34 m terminal drums made
+    // the course read as two upright circles connected by a rectangular
+    // belt. This cadence lets the loaded run actually sit beneath the road
+    // wheels and gives both ends long, shallow approach/departure ramps.
+    wheelZs: [2.12, 1.30, 0.48, -0.34, -1.16, -1.98],
+    sprocket: { z: 2.90, y: 0.51, r: 0.285 }, idler: { z: -3.05, y: 0.53, r: 0.275 },
+    rollers: [1.82, 1.02, 0.22, -0.58, -1.38, -2.18],
+    contactZF: 2.33, contactZR: -2.20,
+    padCornerFloor: 0.0, padHugZ0: 2.28,
     // WIDTH GUARD: skirt outer face exactly +-1.86 (published 3.72); the ref
     // stations read 3.70 wide here so the skirt line carries dims width.
     // Post-repair the ref skirt band is TALL (0.80..1.78 at the corner
