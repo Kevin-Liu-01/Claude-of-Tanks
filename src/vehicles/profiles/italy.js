@@ -64,7 +64,7 @@ function cupolaRing(P, x, yLocal, zLocal, r) {
 // sight housings, APU) are photo-class per the round brief.
 // ---------------------------------------------------------------------------
 function buildArieteMk(P, mark) {
-  const { box, cylY, cylZ, frustum, torus, buildGun, buildRunningGear,
+  const { box, cylY, cylZ, torus, buildGun, buildRunningGear,
     headlight, liftEye, periscope, towCable, stowage } = KIT;
   const slab = orientedSlab;
   const { rng } = P;
@@ -72,7 +72,10 @@ function buildArieteMk(P, mark) {
 
   // ---- hull tub + sponsons -------------------------------------------------
   P.add('hull', box(1.90, 0.90, 6.30), 0, 0.85, 0.05);                         // tub x ±0.95 (inner band plane 1.017, audit dilates 2), belly 0.40
-  P.add('hull', box(3.07, 0.15, 6.44), 0, 1.435, -0.35);                       // hull side walls ±1.535 (stations st0-5 w 3.04-3.07), y 1.36..1.51
+  P.add('hull', box(3.07, 0.15, 5.24), 0, 1.435, -0.95);                       // hull side walls ±1.535 (stations st0-5 w 3.04-3.07), y 1.36..1.51 —
+  // §5.299: walls END at the driver line +1.67 (the old +2.87 overshoot
+  // painted a flat 1.51 shelf over the whole glacis; the print's own side
+  // silhouette rakes 1.51@1.62 -> 1.17@3.7 — rear extreme -3.57 byte-held)
   // ---- decks (gate ref side_hull) -------------------------------------------
   P.add('hull', box(3.05, 0.05, 1.31), 0, 1.475, -2.445);                      // rear deck 1.50 (z -3.10..-1.79)
   P.add('hull', box(3.05, 0.05, 0.72), 0, 1.465, -1.43);                       // mid deck 1.49 (z -1.79..-1.07)
@@ -80,24 +83,34 @@ function buildArieteMk(P, mark) {
   P.add('hull', box(3.05, 0.045, 0.30), 0, 1.3375, -0.68);                     // dip low 1.36 (z -0.83..-0.53)
   P.add('hull', box(3.05, 0.05, 1.10), 0, 1.415, 0.02);                        // ring deck 1.44 (z -0.53..+0.57, under the cage)
   P.add('hull', box(3.05, 0.05, 1.10), 0, 1.42, 1.12);                         // fore deck 1.445 (z +0.57..+1.67, under the fairing)
-  // ---- glacis: two measured segments + nose (gate ref: 1.375@1.66 ->
-  // 1.315@2.60 -> 1.21@3.685; nose band 1.16-1.20 to +3.79) ------------------
-  P.add('hull', frustum(1.525, 2.60, 1.66, 1.525, 2.62, 1.66, 1.315, 1.375));  // glacis A (shallow)
-  P.add('hull', frustum(1.525, 3.685, 2.58, 1.525, 3.70, 2.58, 1.20, 1.32));   // glacis B to the nose plate
-  P.add('hull', frustum(1.50, 3.79, 3.55, 1.50, 3.57, 3.55, 1.10, 1.205));     // nose wedge to +3.79 (plan 3.803 center)
+  // ---- glacis: §5.299 SLOPED RE-LOFT (owner order). The certified flat-step
+  // frustums (horizontal tops 1.375/1.32) read as a table; the print's own
+  // line is a raked plane through the SAME measured points (gate ref:
+  // 1.375@1.66 -> 1.315@2.60 -> 1.21@3.685; nose band 1.16-1.20 to +3.79).
+  // Top faces now truly slope through them; every extent (±1.525 plan, nose
+  // +3.79 chin/bump anchors) byte-held so dims/registration cannot move. ------
+  P.add('hull', slab(                                                          // upper glacis A: 1.375@1.66 -> 1.315@2.60 (rear underside meets tub 1.30)
+    [-1.525, 1.30, 1.66], [1.525, 1.30, 1.66], [1.525, 1.24, 2.60], [-1.525, 1.24, 2.60],
+    [-1.525, 1.375, 1.66], [1.525, 1.375, 1.66], [1.525, 1.315, 2.60], [-1.525, 1.315, 2.60]));
+  P.add('hull', slab(                                                          // upper glacis B: 1.315@2.60 -> 1.205@3.685 (underside buries into the chin)
+    [-1.525, 1.23, 2.60], [1.525, 1.23, 2.60], [1.50, 1.12, 3.685], [-1.50, 1.12, 3.685],
+    [-1.525, 1.315, 2.60], [1.525, 1.315, 2.60], [1.50, 1.205, 3.685], [-1.50, 1.205, 3.685]));
+  P.add('hull', slab(                                                          // nose band 1.205@3.62 -> 1.115@3.785 (plan 3.803 center via the bumps)
+    [-1.50, 1.08, 3.62], [1.50, 1.08, 3.62], [1.475, 1.08, 3.785], [-1.475, 1.08, 3.785],
+    [-1.50, 1.21, 3.62], [1.50, 1.21, 3.62], [1.475, 1.115, 3.785], [-1.475, 1.115, 3.785]));
   P.add('hull', slab(                                                          // under-nose chin: belly 0.42@+3.00 -> 0.97@+3.79 (12%-band bow anchor;
     [-0.95, 0.42, 3.00], [0.95, 0.42, 3.00], [0.90, 0.97, 3.79], [-0.90, 0.97, 3.79],   // x ±0.95 clear of the native track lane)
     [-0.95, 1.24, 3.00], [0.95, 1.24, 3.00], [0.90, 1.19, 3.79], [-0.90, 1.19, 3.79]));
   for (const s of [-1, 1]) {
     P.add('hull', slab(                                                        // bow shoulder closures tub->nose (idler pocket, §5.18 no-air;
       [s * 0.88, 0.42, 3.00], [s * 0.95, 0.42, 3.00], [s * 0.95, 0.70, 3.55], [s * 0.88, 0.70, 3.55],  // outer face ±0.95 clear of the lane)
-      [s * 0.88, 1.30, 3.00], [s * 0.95, 1.30, 3.00], [s * 0.95, 1.18, 3.55], [s * 0.88, 1.18, 3.55]));
+      [s * 0.88, 1.26, 3.00], [s * 0.95, 1.26, 3.00], [s * 0.95, 1.15, 3.55], [s * 0.88, 1.15, 3.55])); // tops tucked under the §5.299 raked B plane
     P.add('hull', box(0.18, 0.14, 0.19), s * 0.87, 1.20, 3.705);               // nose center bumps to +3.80 (plan_hull 3.803 @ x ±0.825..0.915)
     headlight(P, s * 0.87, 1.10, 3.70, -0.22, 0.05);                           // headlight pods on the bumps
     P.add('hullDetail', torus(0.075, 0.015, 10), s * 0.50, 0.62, 3.70, Math.PI / 2, 0, 0); // bow tow eyes
   }
-  for (const s of [-1, 1]) P.add('hullDetail', box(0.78, 0.04, 0.05), s * 0.39, 1.30, 2.30, -0.055, s * 0.42, 0); // V splash rail on glacis A
-  towCable(P, [[-1.06, 1.26, 2.50], [0, 1.345, 2.05], [1.06, 1.26, 2.50]]);
+  for (const s of [-1, 1]) P.add('hullDetail', box(0.78, 0.04, 0.05), s * 0.39, 1.34, 2.30, -0.055, s * 0.42, 0); // V splash rail riding the raked plane (crest ~1.36, the print's furniture line)
+  towCable(P, [[-1.06, 1.30, 2.50], [0, 1.355, 2.05], [1.06, 1.30, 2.50]]);     // drape re-seated on the §5.299 slope (was fully buried under the flat plate)
   // ---- amidships superstructure (gate-true: the print's tall mid content is
   // sponson bins + ring-cage posts + the left stack — NOT rear-deck towers).
   // side band: 2.16 (zW -0.45..+0.28) stepping 2.02..1.95 (+0.3..+1.0);
@@ -117,9 +130,12 @@ function buildArieteMk(P, mark) {
   P.add('hull', box(0.57, 0.72, 0.80), -0.565, 1.80, 0.02);                    // left group body (top 2.16, x -0.85..-0.28 per the gate front comb)
   P.add('hull', box(0.08, 0.86, 0.22), -0.815, 1.90, 0.06);                    // LEFT stack to 2.32 (ref column x -0.855..-0.775 ONLY)
   P.add('hullDark', box(0.06, 0.03, 0.18), -0.815, 2.345, 0.06);
-  P.add('hull', slab(                                                          // left fairing wedge 2.10@+0.42 -> 1.36@+1.80
-    [-0.85, 1.44, 0.42], [-0.48, 1.44, 0.42], [-0.48, 1.34, 1.80], [-0.85, 1.34, 1.80],
-    [-0.85, 2.10, 0.42], [-0.48, 2.10, 0.42], [-0.48, 1.36, 1.80], [-0.85, 1.36, 1.80]));
+  P.add('hull', slab(                                                          // §5.299 fairing re-loft to the print's stepped band: crest 2.02@+0.42 ->
+    [-0.85, 1.44, 0.42], [-0.48, 1.44, 0.42], [-0.48, 1.42, 1.05], [-0.85, 1.42, 1.05],  // 1.95@+1.05 (gate side band "2.02..1.95 @ +0.3..+1.0")
+    [-0.85, 2.02, 0.42], [-0.48, 2.02, 0.42], [-0.48, 1.95, 1.05], [-0.85, 1.95, 1.05]));
+  P.add('hull', slab(                                                          // fairing ramp 1.95@+1.05 -> 1.475@+1.66 (K-frame print ramp 1.96@0.98 ->
+    [-0.85, 1.42, 1.05], [-0.48, 1.42, 1.05], [-0.48, 1.34, 1.78], [-0.85, 1.34, 1.78],  // 1.51@1.62 — the old single 2.10->1.36 plane read 0.12-0.20 LOW), nose
+    [-0.85, 1.95, 1.05], [-0.48, 1.95, 1.05], [-0.48, 1.475, 1.66], [-0.85, 1.475, 1.66]));  // landing buried under the glacis-A plate
   // RIGHT side: the gate front comb is POSTS at +0.30/+0.51/+0.77 with the
   // 1.49 valley floor between them (no solid group, no right wedge)
   P.add('hull', box(0.58, 0.24, 0.72), 0.55, 1.57, -0.04);                     // low right chest (top 1.49)
@@ -215,11 +231,19 @@ function buildArieteMk(P, mark) {
       inset: [0.87, 0.87, 0.88, 0.90, 0.91, 0.91, 0.90, 0.90, 0.91, 0.91, 0.90, 0.88] },
   ]));
   // arrow nose: cheek slabs with RAKED undersides (gate ref bottoms rise
-  // 1.35@+0.8 -> 1.53@+1.8) meeting at the mantlet cavity; §K real closure
+  // 1.35@+0.8 -> 1.53@+1.8) meeting at the mantlet cavity; §K real closure.
+  // §5.299 SLOPED FRONT: the cheek FACES now rake back from the mantlet line
+  // to the roof — ridge top pulled +1.98 -> +1.62 and dropped to 1.965 (40°
+  // from vertical), mid +1.62 -> +1.42 (34°) — matching the print's own
+  // rising wedge silhouette (K-frame side_turret ref tops 1.82@+1.74 ->
+  // 1.96@+1.61 -> 2.02@+1.12: the roof-front is itself a rising plane, so
+  // the cheek top face now climbs 1.965@+1.62 -> 2.02@+1.16; bottom edge +
+  // plan front extreme byte-held so plan rows and the mantlet band cannot
+  // move).
   for (const s of [-1, 1]) {
     P.add('turret', slab(                                                      // upper cheek: ridge sweeping (±0.20,+2.10) -> wall corner (±1.17,+1.28)
       [s * 0.20, 0.14, L(2.06)], [s * 1.08, 0.20, L(1.70)], [s * 1.17, 0.20, L(1.26)], [s * 0.20, 0.14, L(1.28)],
-      [s * 0.20, 0.72, L(1.98)], [s * 1.08, 0.62, L(1.62)], [s * 1.17, 0.70, L(1.24)], [s * 0.20, 0.72, L(1.26)]));
+      [s * 0.20, 0.64, L(1.62)], [s * 1.08, 0.62, L(1.42)], [s * 1.17, 0.70, L(1.24)], [s * 0.20, 0.72, L(1.26)]));
     P.add('turret', slab(                                                      // lower cheek chin: raked underside 1.44@+1.30 -> 1.56@+2.02
       [s * 0.20, 0.14, L(2.02)], [s * 0.96, 0.16, L(1.66)], [s * 1.10, 0.14, L(1.30)], [s * 0.20, 0.14, L(1.30)],
       [s * 0.20, 0.30, L(2.04)], [s * 0.98, 0.32, L(1.68)], [s * 1.14, 0.30, L(1.31)], [s * 0.20, 0.30, L(1.31)]));
@@ -313,9 +337,9 @@ function buildArieteMk(P, mark) {
   P.addGunExtra(cylZ(0.165, 0.30, 14, 0.14), 0, 0, 1.22);                      // gun collar lead
   P.addGunExtraDark(cylZ(0.032, 0.10, 8), 0.28, 0.10, 1.10);                   // coax port right of gun
   for (const s of [-1, 1]) {
-    P.add('turret', slab(                                                      // raked mantlet wedge cheeks (turret-fixed)
-      [s * 0.375, 0.26, L(2.00)], [s * 0.55, 0.26, L(1.76)], [s * 0.55, 0.26, L(1.58)], [s * 0.375, 0.26, L(1.70)],
-      [s * 0.375, 0.57, L(1.95)], [s * 0.55, 0.54, L(1.71)], [s * 0.55, 0.54, L(1.54)], [s * 0.375, 0.58, L(1.64)]));
+    P.add('turret', slab(                                                      // raked mantlet wedge cheeks (turret-fixed) — tops pulled back with the
+      [s * 0.375, 0.26, L(2.00)], [s * 0.55, 0.26, L(1.76)], [s * 0.55, 0.26, L(1.58)], [s * 0.375, 0.26, L(1.70)],  // §5.299 cheek rake (33°) so the wedges hug
+      [s * 0.375, 0.57, L(1.80)], [s * 0.55, 0.54, L(1.58)], [s * 0.55, 0.54, L(1.54)], [s * 0.375, 0.58, L(1.64)]));  // the new face; rear contacts byte-held
   }
   liftEye(P, 'turretDetail', -1.05, 0.90, L(0.60), 0.3);
   liftEye(P, 'turretDetail', 1.05, 0.90, L(0.60), -0.3);
@@ -323,12 +347,12 @@ function buildArieteMk(P, mark) {
   if (c2) {
     // ---- C2/AMV upgrade package (photo-class; print is C1-only here) -------
     for (const s of [-1, 1]) {
-      P.add('turret', slab(                                                    // add-on cheek armor wedges extending the arrow
-        [s * 0.40, 0.16, L(2.04)], [s * 1.10, 0.24, L(1.72)], [s * 1.18, 0.22, L(1.30)], [s * 0.42, 0.16, L(1.58)],
-        [s * 0.40, 0.62, L(1.96)], [s * 1.04, 0.56, L(1.66)], [s * 1.12, 0.53, L(1.26)], [s * 0.42, 0.62, L(1.52)]));
+      P.add('turret', slab(                                                    // add-on cheek armor wedges extending the arrow — module tops ride the
+        [s * 0.40, 0.16, L(2.04)], [s * 1.10, 0.24, L(1.72)], [s * 1.18, 0.22, L(1.30)], [s * 0.42, 0.16, L(1.58)],  // §5.299 raked C1 faces (proud panels
+        [s * 0.40, 0.62, L(1.70)], [s * 1.04, 0.56, L(1.48)], [s * 1.12, 0.53, L(1.26)], [s * 0.42, 0.62, L(1.52)]));  // on the slope, seams intact)
       P.add('turretDark', box(0.02, 0.34, 0.34), s * 1.135, 0.38, L(1.44), 0, 0, s * 0.10); // module edge seams
-      for (let i = 0; i < 3; i++) {                                            // hull glacis add-on plate rows
-        P.add('hull', box(0.44, 0.09, 0.52), s * (0.28 + i * 0.47), 1.40 - i * 0.052, 2.30 + i * 0.30, -0.062, 0, 0);
+      for (const [i, py, prx] of [[0, 1.364, -0.064], [1, 1.345, -0.10], [2, 1.315, -0.10]]) {
+        P.add('hull', box(0.44, 0.09, 0.52), s * (0.28 + i * 0.47), py, 2.30 + i * 0.30, prx, 0, 0); // glacis add-on rows re-seated ON the §5.299 raked plane
       }
     }
     P.add('turret', box(0.30, 0.15, 0.30), -0.76, 1.295, L(-0.16));            // new commander sight housing over the pano

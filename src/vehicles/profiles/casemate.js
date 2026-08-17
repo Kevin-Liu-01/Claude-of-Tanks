@@ -1180,6 +1180,12 @@ function buildSturmtiger(P) {
 // ---------------------------------------------------------------------------
 function buildT95(P) {
   const { cylY, cylZ, liftEye, towCable } = KIT;
+  // §5.313 (task_3d06d29a): the fleet fallback bore seats on the muzzle
+  // anchor, which stays inside rig_turret without this flag — its rim torus
+  // orphaned 5 m off-hull at yaw90 (the tube itself is hull-bucketed).
+  // fixedMount re-attaches muzzle+turretTop to hullG with world seats
+  // preserved (strv103 precedent; tankFactory's only two consumers checked).
+  P.fixedMount = true;
 
   // ROUND-2 REBUILD: the v9 z-stretch (×1.173 onto published spans) put
   // 0.5-0.6 m of error on EVERY plan/side column. The hull now sits in the

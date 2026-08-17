@@ -44,3 +44,22 @@ arcs, TURMS recessed face, basket bottles) and supersedes the interim
 turretG.scale.y*0.86 squash the same way (measured roof line). The owner's
 C2 kept mg0; this rebuild carries the MG per the AMV fit and the §B3 decor
 gate.
+
+## §5.299 lane D — sloped turret front + sloped upper glacis (owner order, 2026-08-17)
+The C2 rides the shared buildArieteMk re-loft (see ariete_c1.md §5.299 for
+the measured lines and receipts): raked cheek faces, true-sloped glacis
+planes, wall-overshoot cut, fairing step band. Package-specific deltas:
+- add-on cheek armor MODULES re-lofted to ride the new raked C1 faces (tops
+  +1.96 -> +1.70 inner / +1.66 -> +1.48 outer) — still proud panels with the
+  module edge seams intact;
+- the three glacis add-on plate rows re-seated ON the raked plane (y
+  1.364/1.345/1.315 at z 2.30/2.60/2.90, pitches -0.064/-0.10/-0.10 —
+  previously seated on the flat 1.375/1.32 steps);
+- everything else in the AMV package byte-held (full-run 13-panel skirts,
+  commander sight housing, driver thermal pod, APU, second whip, MG42/59).
+New geometry hash **b0b3c184** (51 meshes / 68699 verts, reconciled ×2;
+prior a9ed20d8). Still no-gate-by-design. Machine checks at delivery:
+track-clip band/shoe/strict 0/0/0, §B2 contiguity 0, decor census mg1+5d,
+§B5 candidates identical to HEAD baseline (zero delta), npm test green,
+donor `ariete` byte-held 43e126e8. Before/after pairs:
+shots/ariete-slopes/{before,after}-c2/.

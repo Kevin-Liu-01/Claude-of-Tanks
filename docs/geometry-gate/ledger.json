@@ -1292,7 +1292,7 @@
    "geoMin": 39.6,
    "gatePassed": false,
    "components": {
-    "hullCurves": 46,
+    "hullCurves": 46.6,
     "stations": 85.2,
     "turretCurves": 62.5,
     "wholeCurves": 39.6,

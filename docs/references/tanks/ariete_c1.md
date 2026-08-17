@@ -97,3 +97,59 @@ print carries ONE rod (right) + the left base only (the C2 rigs the second).
 The compression-classed rows above; the ±1.42 rail-end column (ref rails
 run to zW -3.0, mine end -2.80 to stay out of my st1 slab under the shifted
 station frame); front sponson-bin/cage micro-combs within ±0.05.
+
+## §5.299 lane D — sloped turret front + sloped upper glacis (owner order, 2026-08-17)
+Owner: "c1 and c2 ariete should have sloped turret fronts and upper glacis."
+Delivered uncommitted on the ratified 49ce4878 base; new hash **49c15299**
+(49 meshes / 64151 verts, reconciled ×2). All edits in profiles/italy.js only;
+carro45t byte-held 9fa68918, donor `ariete` byte-held 43e126e8.
+
+**Root cause of the flat reads (measured):** (1) the hull side-wall slab
+(±1.535, top 1.51) ran to z +2.87 — one metre PAST the driver line — painting
+a flat 1.51 shelf over the entire glacis in profile (the print's own side
+silhouette rakes 1.51@~1.6 -> 1.17@~3.7); (2) the certified "two measured
+segments" were authored as HORIZONTAL frustum plates (tops flat 1.375 / 1.32)
+stepping down, not sloping through the measured points; (3) the turret cheek
+slabs rose near-vertically (top edge z 1.98 over bottom edge z 2.06 — ~8°
+from vertical) where the print's front is a rising wedge.
+
+**Re-loft (same measured lines, real slopes):**
+- side walls end at the driver line +1.67 (rear extreme -3.57 byte-held);
+- glacis A 1.375@1.66 -> 1.315@2.60 and B 1.315@2.60 -> 1.205@3.685 as true
+  sloped orientedSlabs (undersides meet the tub at 1.30 / bury into the chin);
+  nose band 1.21@3.62 -> 1.115@3.785; chin, nose bumps, headlights, ±1.525
+  plan extent and the +3.79 bow anchor all byte-held (dims cannot move);
+- bow shoulder closures tucked under the raked B plane (tops 1.26/1.15);
+- V splash rail re-seated riding the plane (crest ~1.36 = the print's
+  furniture line); tow cable drape re-seated on the slope (both were fully
+  BURIED under the old flat plates);
+- fairing re-lofted to the print's stepped band: crest 2.02@0.42 ->
+  1.95@1.05 (gate side band "2.02..1.95 @ +0.3..+1.0") then ramp to
+  1.475@1.66 (the old single 2.10->1.36 plane read 0.12-0.20 LOW vs the
+  K-frame ramp 1.96@0.98 -> 1.51@1.62);
+- turret cheek FACES raked: ridge top pulled +1.98 -> +1.62 and dropped to
+  1.94 (~40° from vertical; print K-frame wedge 1.82@+1.74 -> 1.96@+1.61,
+  ridge value at the low edge of the ±0.029 trace quantum), mid top +1.62 ->
+  +1.42; the cheek top face now RISES 1.94@1.62 -> 2.02@1.16 like the print's
+  roof-front plane (2.02@+1.12); mantlet wedge tops follow (33°); cheek
+  BOTTOM edges, plan-front extreme (+2.06), mantlet block and cavity closures
+  byte-held.
+
+**Gate receipts (live, ×2 bit-identical):** hull 46.6 / whole 39.6 / turret
+62.5 / stations 85.2 / dims 100 / floaters 100 — every component
+hold-or-improve vs the certified 39.6 row (side_whole 39.6008 -> 39.6060,
+side_hull 45.9962 -> 47.8733, plan_whole 41.55 -> 41.81, turret_side 62.481 ->
+62.515; dims rows byte-identical 2.46/7.62/9.64/3.61). Pre-fix honest
+baseline reproduced live at exactly the certified numbers before editing.
+Release checks: track-clip band+shoe+strict 0/0/0 ×both ids, §B2 contiguity 0,
+decor mg1+4d, §B5 candidates identical to the HEAD baseline (rear-deck
+overhang class, pre-adjudicated — zero delta). npm test green.
+
+**Notes for the §E warp lane:** the re-loft is authored in the K-frame
+(published z-scale) like the rest of the build; the whip antenna was probed
+at the registered pairing (-0.995) during the round and REVERTED — the
+certified -0.885 position pairs fractionally better under the live trace and
+the rod (base 2.28, tip 3.55) already matches the print's rod exactly; the
+residual whip-column errors are partial-column trace class, present in both
+states. Before/after pairs (14 views ×2 ids ×2 trees, all byte-distinct):
+shots/ariete-slopes/{before,after}-{c1,c2}/.
