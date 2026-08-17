@@ -91,6 +91,9 @@ export const VEHICLE_MARKING_ANCHORS = Object.freeze({
   challenger_3: anchor('turret', 'left', 0.35, 0.46, 0.26, 1),
   k2: anchor('turret', 'right', 0.39, 0.44, 0.24, -1),
   k1a1: anchor('turret', 'left', 0.42, 0.46, 0.24, 1),
+  // K2B (§5.299): the resurrected pre-§5.248 pl01 geometry — reuse that
+  // build's proven seat on its broad faceted hull-side armor.
+  k2b: anchor('hull', 'left', 0.44, 0.61, 0.26, 1),
   type74: anchor('turret', 'right', 0.45, 0.47, 0.23, -1),
   type90: anchor('turret', 'left', 0.40, 0.43, 0.23, 1),
   type10: anchor('turret', 'right', 0.37, 0.44, 0.23, -1),

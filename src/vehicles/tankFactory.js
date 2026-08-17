@@ -83,6 +83,9 @@ import './sweden.js';
 // Owner-supplied Polish family oracles. Keep after the T-72/K2/PT-91 donor
 // registrations so each procedural derivative inherits a complete rig.
 import './poland.js';
+// Korean family expansion (§5.299 K2B). Keep after the modern3 K2 donor
+// registration so the variant inherits the complete certified rig.
+import './korea.js';
 // Owner-supplied Japanese-family oracles. Keep after the Type 74/90/10
 // donors so the new first-party procedural variants inherit complete rigs.
 import './japan.js';

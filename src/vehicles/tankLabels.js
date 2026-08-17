@@ -22,6 +22,10 @@ const LABEL_OVERRIDES = Object.freeze({
     displayName: 'PL-01', shortName: 'PL-01',
     searchAliases: ['PL-01 Concept', 'Polish stealth tank'],
   },
+  k2b: {
+    displayName: 'K2B', shortName: 'K2B',
+    searchAliases: ['K2B Black Panther', 'Korean stealth K2'],
+  },
   chieftain5: { displayName: 'Chieftain Mk 5' },
   challenger1: { displayName: 'Challenger 1 Mk 3' },
   type90: { displayName: 'Type 90 (Kyū-maru)', shortName: 'Type 90' },

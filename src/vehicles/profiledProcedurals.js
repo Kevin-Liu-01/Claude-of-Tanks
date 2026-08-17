@@ -30,6 +30,7 @@ import { UKRAINE_PROFILES } from './profiles/ukraine.js';
 import { CHINA_PROFILES } from './profiles/china.js';
 import { SWEDEN_PROFILES } from './profiles/sweden.js';
 import { POLAND_PROFILES } from './profiles/poland.js';
+import { KOREA_PROFILES } from './profiles/korea.js';
 import { JAPAN_PROFILES } from './profiles/japan.js';
 import { GERMANY_PROFILES } from './profiles/germany.js';
 import { AFV_FAMILY_PROFILES } from './profiles/afvFamily.js';
@@ -76,6 +77,7 @@ export const PROCEDURAL_PROFILES = {
   ...CHINA_PROFILES,
   ...SWEDEN_PROFILES,
   ...POLAND_PROFILES,
+  ...KOREA_PROFILES,
   ...JAPAN_PROFILES,
   ...GERMANY_PROFILES,
   ...AFV_FAMILY_PROFILES,
