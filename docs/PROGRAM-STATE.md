@@ -8629,3 +8629,23 @@ state (the flips, the §5.38 wave, the §5.229 standardization, and
 all §5.230-243 revisions render fresh). Worktree removed. The last
 standing my-lane deferral is closed; the session idles pending the
 owner's spend-limit word.
+
+## 5.247 OWNER GOAL — TEN-TANK LECLERC-LEVEL QUALITY WAVE
+(2026-08-17): "KV-2, ISU-122s, ISU-152, t-64bv1, leopard 1a5, tiger,
+sturmtiger, panther, jagdpanzer e100, and t95 — full leclerc-level
+redesign based on its model and historical references... ultra high
+level of quality on par with our modern tanks. include all
+decorations and detailing based off of our existing libraries. leave
+nothing untouched and unimproved. make sure we load all sources
+correctly." A session goal-hook enforces completion. LANES: casemate
+(isu122s, isu152, sturmtiger, jpz_e100, t95), ww2 (tiger1,
+panther_g — panther build reachable via tankFactory core), soviet-
+heavy (kv2 — NEVER-GATE, visual/critic bar only), russia (t64bv1),
+leopard (leo1a5). BAR per tank: §K exemplar flow (measure the print
++ historical references -> loft to measured lines -> close with real
+geometry -> prove in pixels), the mature fitting/decoration libraries
+applied, dual verification (gate where an oracle exists + independent
+critic >=9.0 x14). FIRST STEP per round: verify the ids' oracle
+registrations RESOLVE and the prints LOAD (report broken rows to the
+orchestrator lane). Five builder rounds spawned; agent spawning
+RESUMED by this order (spend pause lifted by the owner's goal).
