@@ -8791,3 +8791,10 @@ isu122s+isu152 re-cert/verify + the TD trio identity sitting.
 - **Dead-oracle restores DONE (my lane)**: m2_bradley_ifv.glb (md5 37dadd81…) + leo2a6_buh.glb (md5 e025fe73…) restored from 952561ea^, untracked-gitignored. §5.251 disk-restore queue CLEAR (japan lane holds its own two).
 - **§E queue adds**: m3a3 posed-bake (unlocks all curve rows), bmpt blockout split, spz_puma normalize (still filed), bmp3 fused-sight-stack candidates, strv81 whip excision, strv103 z-warp ×1.223.
 - **ASK-OWNER adds**: roster near-duplicate pairs (bmp3/bmp3_rok, bmpt/bmpt_terminator2, upior/upior_ifv) — clone retirement is an owner call; upior dims + bmp3 nation still standing from §5.249.
+
+## §5.264 — sturmtiger + t95 fix round DELIVERED; fresh sittings LIVE (2026-08-17)
+- Both §5.255 ordered fix lists delivered (13 marker blocks in casemate.js), gates held EXACT ×2 (sturmtiger 88.8, t95 80.8; dims 100/floaters 100 both), guards isu122s/isu152/jpz_e100 byte-identical, npm test green on the LIVE tree. Hashes: sturmtiger `616c7652→a7fc1ce2` (+9156 verts), t95 `294795a0→88bf1858` (+14802 verts). Verified my side ×5 exact.
+- Sturmtiger: RW61 collar ring 1.60×0.92 + projecting pot + 20 vent wells + recessed bore; 15-column bow link band + jaw shackles + MG ball/visor at print stations; sooted shrouded stack cluster at the certified 1.878-1.88 max — **ADJUDICATED RESIDUAL: full-height standing stacks geometrically impossible** (stern rakes 40° to −3.16; two leaned variants measured 88.7 ×2; the print's own stack window tops at the same class). Fan wells sunk.
+- t95: both sponsons stowed (cables/tools/bins), two-panel pillow-louver grille block at measured sweet spot 1.710/1.650 (three-point bisect — the oracle-prose "deck 1.74" does not map to the registered ref line), X-draped tail cables + pintle + ports, bow drum noses + fender racks at 1.436.
+- LESSONS banked: KIT.torus pre-rotates rings FLAT (a collar mount swept a washer to z 3.56 breaking overallLengthM — vertex census attributed); 47° plate plane below the wall break floats; measured sweet spots beat prose mapping.
+- Fresh sittings spawned (goal-hook closes on double-PASS ≥9.0).
