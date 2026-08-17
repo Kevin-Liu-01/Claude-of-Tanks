@@ -1,9 +1,12 @@
 import assert from 'node:assert/strict';
 import { buildPrivateMatchPlayers } from '../src/net/privateMatchHandoff.js';
 import { createAuthoritativeMatch } from '../src/sim/authoritativeMatch.js';
+import { MAP_IDS } from '../src/world/maps/index.js';
 import { createDedicatedWorldCollision } from './dedicatedWorldCollision.js';
 
-const MAPS = ['verdant', 'desert', 'winter', 'urban', 'coastal', 'autumn', 'steppe', 'railyard'];
+const MAPS = process.env.COT_PACING_MAPS
+  ? process.env.COT_PACING_MAPS.split(',').filter((id) => MAP_IDS.includes(id))
+  : MAP_IDS;
 const durations = [];
 
 // Four deterministic default private-lobby rosters per battlefield.  The
@@ -12,6 +15,7 @@ const durations = [];
 // minutes.  It also verifies bots do not dog-pile an inactive player.
 for (let mapIndex = 0; mapIndex < MAPS.length; mapIndex++) {
   const mapId = MAPS[mapIndex];
+  const mapDurations = [];
   for (let sample = 0; sample < 4; sample++) {
     const matchSeed = 21000 + mapIndex * 1000 + sample;
     const lobby = {
@@ -40,7 +44,11 @@ for (let mapIndex = 0; mapIndex < MAPS.length; mapIndex++) {
         `${mapId}/${sample}: cap result is identified as time_limit`);
     }
     durations.push(match.timeS);
+    mapDurations.push(match.timeS);
   }
+  const mapTimeouts = mapDurations.filter((duration) => duration >= 899).length;
+  console.log(`${mapId}: ${mapDurations.map((v) => v.toFixed(0)).join('/')}s ` +
+    `timeouts=${mapTimeouts}/4`);
 }
 
 durations.sort((a, b) => a - b);
@@ -54,7 +62,9 @@ assert.ok(medianS >= 300 && medianS <= 480,
 assert.ok(p10S >= 180,
   `even the fast tail must retain a tactical opening (p10 ${p10S.toFixed(1)} s)`);
 assert.equal(subTwoMinute, 0, 'default bot matches no longer collapse inside two minutes');
-assert.ok(timeouts <= 4, `no more than 12.5% may reach the safety cap (got ${timeouts}/32)`);
+const maxTimeouts = Math.floor(durations.length * 0.125);
+assert.ok(timeouts <= maxTimeouts,
+  `no more than 12.5% may reach the safety cap (got ${timeouts}/${durations.length})`);
 
 console.log(`battlePacing.selftest: median=${medianS.toFixed(1)}s p10=${p10S.toFixed(1)}s ` +
-  `sub120=${subTwoMinute} timeouts=${timeouts}/32`);
+  `sub120=${subTwoMinute} timeouts=${timeouts}/${durations.length}`);

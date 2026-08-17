@@ -15,11 +15,12 @@ import { VILLAGE_BUILDERS } from './maps/villageKit.js';
 import { DESTRUCTIBLE_TYPES, FENCE_SEG, WALL_SEG, bSandbagBroken } from './maps/inhabitKit.js';
 import { registerWorldDestructibles, emitBreakFx, emitDestroyed } from './destructibles.js';
 import { setToppleAxis, settledToppleAngle } from './topple.js';
+import { createUtilityNetwork } from './utilityNetwork.js';
 import {
   cloneCollisionRecord, convexHull2, setCircleShape, setConvexShape, setObbShape,
 } from './collision.js';
 // DESTRUCTIBLES r1: real-roster tank wrecks baked to static geometry
-import { bakeTankWreck, wreckPool } from './wrecks.js';
+import { bakeTankWreck, bakeWreckDebris, wreckPool } from './wrecks.js';
 // Build-time-baked licensed models (see tools/bake-props-models.mjs +
 // docs/ATTRIBUTION.md). Synchronous import keeps the __GAME_READY contract.
 import MODELS from './props-models.json';
@@ -978,7 +979,7 @@ function* propsBuildSteps(heightField, engineCtx, seed, cfg) {
   // snow-free saturated orange roofs in a deep-snow scene" critique: roofs,
   // wall tops, chimneys, carts, sourced baked models and rocks all carry a
   // slope-masked snow load, while vertical faces keep their material.
-  const snowCap = mapId === 'winter';
+  const snowCap = mapId === 'winter' || !!P.snowCap;
   const grimeHook = (shader) => {
     shader.uniforms.uGrime = { value: grimeTex };
     shader.vertexShader = _mustReplace(shader.vertexShader, '#include <common>',
@@ -1034,6 +1035,10 @@ ${snowCap ? `
   // world-dressing r1 'loop'-contact destructibles ({recIdx} into the
   // destructible records below): flat/small clutter a hull brushes aside.
   const crushables = []; // [{x,y,z,r,h,toppled, index?|recIdx?}]
+  // One renderer-free topology + one InstancedMesh for every conductor
+  // segment. Only spans touching a falling pole are rewritten during impact.
+  let utilityNetwork = null;
+  let wireIM = null;
 
   // -------------------------------------------------------------------------
   // DESTRUCTIBLE SMALL-PROP LAYER (world-dressing r1) — "just like trees".
@@ -2042,6 +2047,37 @@ ${snowCap ? `
         }
       }
     }
+    // Modern roadside and industrial vocabulary: concrete vehicle barriers,
+    // signs, cones, transformer cabinets and cable reels. Every piece uses an
+    // existing instanced destructible pool, so a count of 40 still costs five
+    // draw calls rather than forty and remains idle until actually hit.
+    for (let k = 0, cap = inh.modernClutter ?? 0; k < cap; k++) {
+      const spot = roadsideSpot(5.0, 13.5, 52);
+      if (!spot) continue;
+      const [mx, mz, myaw] = spot;
+      const roll = vrng();
+      const kind = roll < 0.25 ? 'barrier'
+        : roll < 0.45 ? 'roadsign'
+          : roll < 0.70 ? 'cone'
+            : roll < 0.84 ? 'transformer' : 'cablespool';
+      const y = heightField.getHeightAt(mx, mz);
+      addDestructible(kind, mx, y - 0.03, mz,
+        myaw + (vrng() - 0.5) * (kind === 'barrier' ? 0.18 : 0.7),
+        0.9 + vrng() * 0.18);
+      // Checkpoint barriers and work-zone cones read as arrangements rather
+      // than isolated props. Partners keep the same seeded placement path.
+      if (kind === 'barrier' && vrng() < 0.6) {
+        const lx = Math.cos(myaw), lz = -Math.sin(myaw);
+        for (let j = 1; j <= 1 + ((vrng() * 2) | 0); j++) {
+          const bx = mx + lx * 2.75 * j, bz = mz + lz * 2.75 * j;
+          if (noVeg(bx, bz)) continue;
+          addDestructible('barrier', bx, heightField.getHeightAt(bx, bz) - 0.03,
+            bz, myaw + (vrng() - 0.5) * 0.12, 0.92 + vrng() * 0.12);
+        }
+      } else if (kind === 'cone') {
+        scatterDestructibles('cone', mx, mz, 1 + ((vrng() * 3) | 0), 0.7, 2.5);
+      }
+    }
   }
 
   // --- hay bales + crates near buildings (world-dressing r1: instanced
@@ -2106,18 +2142,25 @@ ${snowCap ? `
       if (Math.max(Math.abs(px), Math.abs(pz)) > 470 || noVeg(px, pz)) continue;
       const py = heightField.getHeightAt(px, pz);
       const armYaw = Math.atan2(bx - ax, bz - az) + Math.PI / 2;
-      poleLine.push({ x: px, y: py, z: pz, yaw: armYaw, sourced: !!SOURCED.poles });
+      const networkIndex = poleLine.length;
+      const poleRec = {
+        x: px, y: py, z: pz, yaw: armYaw, sourced: !!SOURCED.poles,
+        attachH: SOURCED.poles ? 6.5 : 5.75,
+      };
       if (SOURCED.poles) {
         addBakedInstance('pole', poleGeo, px, py - 0.05, pz, armYaw, 1);
+        poleRec.instanceIndex = bakedInstances.get('pole').list.length - 1;
+        poleLine.push(poleRec);
         // effects_combat r1: poles are CRUSHABLE — record the instance index
         // so a driving tank can hinge-topple it (crushProp) instead of
         // ghosting through.
         crushables.push({
           x: px, y: py, z: pz, r: 0.45, h: 7.4,
-          index: bakedInstances.get('pole').list.length - 1, toppled: false,
+          index: poleRec.instanceIndex, wirePoleIndex: networkIndex, toppled: false,
         });
         continue;
       }
+      poleLine.push(poleRec);
       const pole = new THREE.CylinderGeometry(0.09, 0.17, 6.2, 7, 1);
       scaleUV(pole, 0.8, 3.0);
       pole.translate(px, py + 3.0, pz);
@@ -2140,51 +2183,17 @@ ${snowCap ? `
       brace.translate(px + Math.cos(armYaw) * 0.26, py + 4.8, pz - Math.sin(armYaw) * 0.26);
       buckets.wood.push(brace);
     }
-    // r4 terrain_environment: catenary wire spans between consecutive poles —
-    // two conductors per span (one per insulator side), sagging ~0.8 m at
-    // mid-span, built as short 4-sided cylinder segments so the line reads
-    // as a continuous drooping wire instead of the poles standing as bare
-    // sticks (critique). Spans longer than ~85 m (a skipped pole) are left
-    // unstrung. Cheap: ~15 spans x 2 wires x 7 segments of 4-side cylinders.
+    // Catenary topology. Geometry is instantiated after material finalization;
+    // keeping the spans out of the static dark bucket lets adjacent wires be
+    // pulled down by a toppled pole without unmerging the rest of the world.
+    const wireSpans = [];
     for (let pi = 0; pi + 1 < poleLine.length; pi++) {
       const A = poleLine[pi], B = poleLine[pi + 1];
       const spanL = Math.hypot(B.x - A.x, B.z - A.z);
       if (spanL > 52 || spanL < 6) continue; // a skipped pole leaves the span unstrung
-      // wire attachment height: sourced pole crossarm rides higher than the
-      // procedural twin-arm pole
-      const hTop = A.sourced ? 6.5 : 5.75;
-      for (const s of [-1, 1]) { // one wire per insulator side
-        // insulator offset in each pole's OWN arm frame
-        const ax2 = A.x + Math.cos(A.yaw) * 0.6 * s, az2 = A.z - Math.sin(A.yaw) * 0.6 * s;
-        const bx2 = B.x + Math.cos(B.yaw) * 0.6 * s, bz2 = B.z - Math.sin(B.yaw) * 0.6 * s;
-        const ay2 = A.y + hTop, by2 = B.y + hTop;
-        // r5 terrain_environment: true COSH catenary at 16 segments (was a
-        // 7-seg sin approximation — visible kinks) and a thinner conductor;
-        // the drooping curve is what separates "power line" from "polyline"
-        const SEGS = 16, CATK = 1.35;
-        const droop = 0.45 + spanL * 0.008; // deeper sag on longer spans
-        const coshK = Math.cosh(CATK) - 1;
-        let prevX = ax2, prevY = ay2, prevZ = az2;
-        for (let k2 = 1; k2 <= SEGS; k2++) {
-          const t = k2 / SEGS;
-          const cat = 1 - (Math.cosh((t - 0.5) * 2 * CATK) - 1) / coshK; // 0 at ends, 1 mid
-          const cx2 = ax2 + (bx2 - ax2) * t;
-          const cy2 = ay2 + (by2 - ay2) * t - cat * droop;
-          const cz2 = az2 + (bz2 - az2) * t;
-          const segL = Math.hypot(cx2 - prevX, cy2 - prevY, cz2 - prevZ);
-          const wire = new THREE.CylinderGeometry(0.020, 0.020, segL * 1.02, 4, 1);
-          wire.rotateX(Math.PI / 2); // axis -> +z, then aim
-          const m4w = new THREE.Matrix4().lookAt(
-            new THREE.Vector3(prevX, prevY, prevZ),
-            new THREE.Vector3(cx2, cy2, cz2),
-            new THREE.Vector3(0, 1, 0));
-          wire.applyMatrix4(m4w);
-          wire.translate((prevX + cx2) / 2, (prevY + cy2) / 2, (prevZ + cz2) / 2);
-          buckets.dark.push(wire);
-          prevX = cx2; prevY = cy2; prevZ = cz2;
-        }
-      }
+      wireSpans.push([pi, pi + 1]);
     }
+    if (wireSpans.length) utilityNetwork = createUtilityNetwork(poleLine, wireSpans);
     // DESTRUCTIBLES r1: telegraph-pole DEBRIS — every pole line lost a few
     // to the shelling: a snapped stump, the felled pole across the verge
     // with its crossarm splayed, a coil of downed wire. Static dressing
@@ -2716,6 +2725,7 @@ ${snowCap ? `
       const wreckGeos = [];
       const wreckShadowGeos = []; // factory shadow proxies, wreck-posed
       let bakedTris = 0;
+      let wreckSerial = 0;
       function bakeFor(specId, pop) {
         const key = specId + (pop ? '|p' : '');
         if (bakeCache.has(key)) return bakeCache.get(key);
@@ -2738,6 +2748,21 @@ ${snowCap ? `
         g.rotateY(yaw);
         g.translate(x, y - 0.14, z); // settled on dead suspension
         wreckGeos.push(g);
+        // Secondary destruction stays inside the same static merged wreck
+        // mesh: torn track runs, wheels and armor plates improve the scene
+        // read without adding draw calls, animation, or live vehicle state.
+        let debrisTris = 0;
+        if (wCfg?.debris !== false) {
+          const debris = bakeWreckDebris(seed + 17001 + wreckSerial * 97, {
+            modern: era === 'modern',
+          });
+          wreckSerial++;
+          debris.geo.rotateY(yaw);
+          debris.geo.translate(x, y - 0.13, z);
+          wreckGeos.push(debris.geo);
+          debrisTris = debris.tris;
+          bakedTris += debrisTris;
+        }
         if (baked.shadowGeo) {
           const sg = baked.shadowGeo.clone();
           sg.rotateZ(tilt);
@@ -2755,7 +2780,7 @@ ${snowCap ? `
         obstacles.push(rec);
         colliders.push(cloneCollisionRecord(rec));
         wreckScorch.push([x, z]);
-        tankWreckSpots.push({ specId, x, z, yaw, hx, hz, h: baked.h });
+        tankWreckSpots.push({ specId, x, z, yaw, hx, hz, h: baked.h, debrisTris });
         return true;
       }
       let placedW = 0;
@@ -3367,7 +3392,7 @@ ${snowCap ? `
   // icosphere" of the critique was a sack_trench instance at 87 m). Per-map
   // instance tint pulls them to dark wet hessian so they read as emplaced
   // defenses against the snow.
-  const bakedTint = mapId === 'winter' ? new THREE.Color(0.52, 0.50, 0.47) : null;
+  const bakedTint = snowCap ? new THREE.Color(0.52, 0.50, 0.47) : null;
   for (const [name, e] of bakedInstances) {
     if (e.list.length === 0) continue;
     const im = new THREE.InstancedMesh(e.geo, mats.baked, e.list.length);
@@ -3384,10 +3409,60 @@ ${snowCap ? `
     if (name === 'pole') { poleIM = im; im.frustumCulled = false; }
   }
 
+  // Linked utility conductors: one four-sided unit cylinder, instanced along
+  // all sampled catenaries. No shadow casting avoids sub-pixel CSM shimmer;
+  // matrices move only while a connected pole is actively toppling.
+  const _wirePoints = utilityNetwork
+    ? new Float64Array((utilityNetwork.segments + 1) * 3) : null;
+  const _wireA = new THREE.Vector3(), _wireB = new THREE.Vector3();
+  const _wireMid = new THREE.Vector3(), _wireDir = new THREE.Vector3();
+  const _wireUp = new THREE.Vector3(0, 1, 0), _wireScale = new THREE.Vector3();
+  const _wireQuat = new THREE.Quaternion(), _wireMatrix = new THREE.Matrix4();
+  function writeWireSpan(spanIndex) {
+    if (!wireIM || !utilityNetwork) return;
+    for (let side = 0; side < 2; side++) {
+      utilityNetwork.writeSpanPoints(spanIndex, side, _wirePoints);
+      for (let seg = 0; seg < utilityNetwork.segments; seg++) {
+        const a = seg * 3, b = a + 3;
+        _wireA.set(_wirePoints[a], _wirePoints[a + 1], _wirePoints[a + 2]);
+        _wireB.set(_wirePoints[b], _wirePoints[b + 1], _wirePoints[b + 2]);
+        _wireDir.subVectors(_wireB, _wireA);
+        const len = _wireDir.length();
+        if (len < 1e-5) continue;
+        _wireQuat.setFromUnitVectors(_wireUp, _wireDir.multiplyScalar(1 / len));
+        _wireMid.addVectors(_wireA, _wireB).multiplyScalar(0.5);
+        _wireScale.set(0.020, len * 1.02, 0.020);
+        _wireMatrix.compose(_wireMid, _wireQuat, _wireScale);
+        wireIM.setMatrixAt(utilityNetwork.instanceIndex(spanIndex, side, seg), _wireMatrix);
+      }
+    }
+  }
+  function rebuildWireSpans(indices = null) {
+    if (!wireIM || !utilityNetwork) return;
+    if (indices) {
+      for (const spanIndex of indices) writeWireSpan(spanIndex);
+    } else {
+      for (let i = 0; i < utilityNetwork.spans.length; i++) writeWireSpan(i);
+    }
+    wireIM.instanceMatrix.needsUpdate = true;
+  }
+  if (utilityNetwork && utilityNetwork.instanceCount) {
+    const wireGeo = new THREE.CylinderGeometry(1, 1, 1, 4, 1);
+    wireIM = new THREE.InstancedMesh(wireGeo, mats.dark, utilityNetwork.instanceCount);
+    wireIM.name = 'utility-wires';
+    wireIM.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    wireIM.castShadow = false;
+    wireIM.receiveShadow = false;
+    wireIM.frustumCulled = false;
+    wireIM.matrixAutoUpdate = false;
+    group.add(wireIM);
+    rebuildWireSpans();
+  }
+
   // content_breadth r2: map-specific set dressing (Frosthollow lake basin —
   // shoreline reeds / refrozen pressure ridges / rowboat / jetty). Soft
   // dressing only: pushes into the existing material buckets, no colliders.
-  dressMapExtras({ mapId, L, heightField, rng, buckets });
+  dressMapExtras({ mapId, extraKits: P.extraKits, L, heightField, rng, buckets });
 
   // --- merge buckets into one mesh per material ---
   for (const key of Object.keys(buckets)) {
@@ -3446,7 +3521,7 @@ ${snowCap ? `
     for (let i = 0; i < pool.mats4.length; i++) imI.setMatrixAt(i, pool.mats4[i]);
     // winter: sourced sandbag models take the dark wet-hessian tint the old
     // solid emplacements wore (see bakedTint note below)
-    if (mapId === 'winter' && kind.startsWith('sandbag')) {
+    if (snowCap && kind.startsWith('sandbag')) {
       const tint = new THREE.Color(0.52, 0.50, 0.47);
       for (let i = 0; i < pool.mats4.length; i++) imI.setColorAt(i, tint);
     }
@@ -3504,6 +3579,10 @@ ${snowCap ? `
       .multiply(a.placement);
     a.im.setMatrixAt(a.index, m);
     a.im.instanceMatrix.needsUpdate = true;
+    if (a.wirePoleIndex != null && utilityNetwork) {
+      const spans = utilityNetwork.setPoleFall(a.wirePoleIndex, a.ax, a.az, ang);
+      rebuildWireSpans(spans);
+    }
   }
   function pushCrushAnim(a) {
     if (crushAnims.length >= MAX_CRUSH_ANIMS) {
@@ -3613,6 +3692,7 @@ ${snowCap ? `
     // right-handed rotation makes the pole fall along the ram direction.
     pushCrushAnim({
       im: poleIM, index: c.index, x: c.x, y: c.y, z: c.z,
+      wirePoleIndex: c.wirePoleIndex,
       ax: _cax.x, az: _cax.z, t: 0, placement: null,
       maxAng: settledToppleAngle(heightField, c.x, c.y, c.z, dx, dz, c.h, 0.12),
     });
@@ -3822,9 +3902,13 @@ ${snowCap ? `
       }
       if (dirty) poleIM.instanceMatrix.needsUpdate = true;
     }
+    if (utilityNetwork) {
+      utilityNetwork.reset();
+      rebuildWireSpans();
+    }
   }
 
   return { group, obstacles, colliders, crushables, crushProp, crushDestructible,
-    destructibles, updateProps, resetDestructibles, tankWreckSpots,
+    destructibles, updateProps, resetDestructibles, tankWreckSpots, utilityNetwork,
     features: { buildings: buildingFeatures } };
 }

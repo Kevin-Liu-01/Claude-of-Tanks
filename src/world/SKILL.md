@@ -26,7 +26,7 @@ LOD/vegetation work, reuse world caches, and reset destruction on rematch.
 ## Common tasks → first action
 <!-- agent-docs:fill:tasks -->
 Identify the canonical height/collision source, add a focused world selftest,
-then inspect all eight maps and constrained-device frame metrics. Regenerate
+then inspect all sixteen maps and constrained-device frame metrics. Regenerate
 the server collision manifest after changing authored obstacles or cover.
 
 ## Gotchas

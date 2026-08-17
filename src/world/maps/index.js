@@ -10,12 +10,27 @@ import coastal from './coastal.js';
 import autumn from './autumn.js';
 import steppe from './steppe.js';
 import railyard from './railyard.js';
+// Map-quality expansion — eight additional battlefields, each kept as a pure
+// config so headless simulation and the browser renderer consume one source.
+import frontier from './frontier.js';
+import fjord from './fjord.js';
+import delta from './delta.js';
+import badlands from './badlands.js';
+import monsoon from './monsoon.js';
+import alpine from './alpine.js';
+import caldera from './caldera.js';
+import foundry from './foundry.js';
 
 /** Ordered map ids (garage picker order). @type {string[]} */
 export const MAP_IDS = ['verdant', 'desert', 'winter', 'urban',
-  'coastal', 'autumn', 'steppe', 'railyard'];
+  'coastal', 'autumn', 'steppe', 'railyard',
+  'frontier', 'fjord', 'delta', 'badlands',
+  'monsoon', 'alpine', 'caldera', 'foundry'];
 
-const CONFIGS = { verdant, desert, winter, urban, coastal, autumn, steppe, railyard };
+const CONFIGS = {
+  verdant, desert, winter, urban, coastal, autumn, steppe, railyard,
+  frontier, fjord, delta, badlands, monsoon, alpine, caldera, foundry,
+};
 
 /**
  * Look up a map config by id.

@@ -66,6 +66,7 @@ export function createPerfHud({ renderer, game }) {
   let compactVisible = PROD_BUILD && (() => {
     try { return localStorage.getItem(COMPACT_LS_KEY) !== '0'; } catch (_) { return true; }
   })();
+  let captureHidden = false;
   el.style.display = visible ? 'block' : 'none';
 
   const sorted = new Float32Array(240);
@@ -113,8 +114,8 @@ export function createPerfHud({ renderer, game }) {
       if (PROD_BUILD) {
         compactFps.textContent = s.fps.toFixed(0);
         compactP95.textContent = `${s.p95.toFixed(1)} ms`;
-        compactEl.style.display = compactVisible ? 'grid' : 'none';
-      } else if (visible) {
+        compactEl.style.display = compactVisible && !captureHidden ? 'grid' : 'none';
+      } else if (visible && !captureHidden) {
         el.textContent =
           `${s.fps.toFixed(0).padStart(3)} fps  ${s.p95.toFixed(1)} ms p95\n` +
           `stall ${s.worstStall ? s.worstStall.toFixed(0) + ' ms' : '—'} (5s)\n` +
@@ -126,13 +127,19 @@ export function createPerfHud({ renderer, game }) {
     toggle() {
       if (PROD_BUILD) {
         compactVisible = !compactVisible;
-        compactEl.style.display = compactVisible ? 'grid' : 'none';
+        compactEl.style.display = compactVisible && !captureHidden ? 'grid' : 'none';
         try { localStorage.setItem(COMPACT_LS_KEY, compactVisible ? '1' : '0'); } catch (_) { /* fine */ }
       } else {
         visible = !visible;
-        el.style.display = visible ? 'block' : 'none';
+        el.style.display = visible && !captureHidden ? 'block' : 'none';
         try { localStorage.setItem(LS_KEY, visible ? '1' : '0'); } catch (_) { /* fine */ }
       }
+    },
+    /** Keep developer/player diagnostics out of deterministic capture art. */
+    setCaptureHidden(hidden) {
+      captureHidden = !!hidden;
+      el.style.display = visible && !captureHidden ? 'block' : 'none';
+      compactEl.style.display = compactVisible && !captureHidden ? 'grid' : 'none';
     },
     /** Mount the production readout beside the damage-panel tank plan. */
     mountCompact(parent) {
