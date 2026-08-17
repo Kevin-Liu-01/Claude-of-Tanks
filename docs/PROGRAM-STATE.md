@@ -9139,3 +9139,7 @@ The owner's 01c3c6f5 (STB-1 rebuild from source oracle) touched profiles/japan.j
 
 ## §5.331 — OWNER ORDER (verbatim, 2026-08-17): t90sm side panels flush + flowing cage (+4 markups)
 - Four surface markups on t90sm: three near-vertical LEFT-flank turret panels (faces 592/593, 604/605, 600/601 — the §5.74 abrams-panels class: armor/ERA standing vertical instead of lying flush on the sloped Proryv turret side) + the cage zig-zag joint (turretDetail 1840/1841, rear-left top rail). Lane spawned in russia.js (t90sm region only — t62 chassis region fenced): panels re-seated on the local side slope both flanks, cage re-authored as one flowing bustle sweep (leclerc/kf51 grammar). Graduate-state check + §5.265 gate law honored. Twelve agents live.
+
+## §5.332 — amx garage sitting: BOTH PASS at the §5.318 state (2026-08-17)
+- amx30 + amx30b2 PASS (77 frames, 4 sandwich passes zero drift): all five §5.309 order items verified in critic pixels — skirtless §B6 trapezoid gear, stripped cast flanks, genuine cast rounding vs the donor's welded prism ("different tank at a glance"), full grammar w/ the PH-8-B **proven gun-linked in the §B5 pitch strip** (rises+tilts with the tube at +12°), B2 five-tell distinctness. §B2/§B5 clean both.
+- Non-blocking → forwarded to the live §5.328 round: smoke-bank tube counts sub-legible at garage scale (2-vs-3 tell carried by bank size only), PH-8-B lens low-contrast dead-front, crown-fan seam in extreme plan. Housekeeping chip: buildAMX30Legacy (misc.js:3535) dead code.
