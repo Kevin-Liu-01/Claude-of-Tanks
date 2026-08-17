@@ -11,7 +11,10 @@
 // frozen canonical Type-99A constructor — it is guard-held and unchanged.
 
 import { KIT, FITTINGS, orientedSlab, muzzleBore } from './kit.js';
-import { loftHull, tubeGun, ruSkirtBand, ruFlaps, widthAnchor } from './russia.js';
+import {
+  loftHull, tubeGun, ruSkirtBand, ruFlaps, widthAnchor,
+  buildT62Obr1975Chassis, meshDome, meshDomeCurved, ringSkin, domeRailRu, ruSaddle,
+} from './russia.js';
 
 function mount(P, owner, fitting, x, y, z, rotation = null) {
   fitting.position.set(x, y, z);
@@ -779,6 +782,161 @@ function buildZTZ99A2(P) {
   P.topY = 1.30;
 }
 
+// ===========================================================================
+// Type 59 (WZ-120) — §5.304 REDESIGN ON THE WIDENED T-62 obr. 1975 BASE
+// ===========================================================================
+// OWNER ORDER (verbatim, 2026-08-17): "update our t62 obr 1975 10% wider and
+// then redeisgn our type 59 to be based off of that".  The chassis IS the
+// widened obr-1975 construction (profiles/russia.js buildT62Obr1975Chassis —
+// hull loft, twin tail drums, transom, fender/bin rails, §B3.2 service kit),
+// re-gauged here only in the wheel PATTERN: the licensed-T-54A big 1st-2nd
+// gap replaces the T-62's rear-biased spacing (same span/idler/sprocket, so
+// the §B6 ramps hold).  Chinese identity dressing distinguishes the id:
+//  * WZ-120 (T-54A-family) mushroom dome — taller, rounder casting than the
+//    T-62's long low egg; curved-normal shell (meshDomeCurved), flank
+//    shoulder shelves, cast nose BROW over the gun (the T-54A rise).
+//  * 100 mm Type 59 gun (licensed D-10T class): measured tube grammar with
+//    the BORE EVACUATOR at the muzzle-third + §B3.1 muzzle bore; cast
+//    collar + canvas boot ring on a sealed ruSaddle.
+//  * Type 59-II searchlight assembly RIGHT of the gun (mirrors the T-62's
+//    left-side Luna — the family-distinct read) + small gun-slaved IR.
+//  * Chinese fender/stowage grammar: glacis IR drum pod (Type 69 tell),
+//    muffler on the LEFT rear fender, stowed OPVT snorkel ridge on the rear
+//    deck, curved rear stowage rack on the dome tail (turret-owned, §B5).
+//  * DShK-class (Type 54 12.7 mm) census MG at the loader ring, barrel
+//    forward (CROWS law), cluster held under the cupola p95 crown.
+// The LastTriarius Type 69 print (docs/references/vertex/type59.json)
+// remains the registered measurement oracle in the three maps; this
+// redesign diverges from it BY OWNER DECREE (+10% width, obr-1975 hull) —
+// gate deltas are documented in docs/references/tanks/type59.md §5.304,
+// never chased back toward the print.
+export function buildType59(P) {
+  const { box, cylX, cylY, cylZ } = KIT;
+
+  // ---- widened obr-1975 chassis with the T-54A wheel-gap pattern (span,
+  // idler, sprocket and both contact tangents byte-held from the base) ----
+  buildT62Obr1975Chassis(P, {
+    gear: { wheelZs: [2.235, 1.08, 0.10, -0.92, -1.933] },
+  });
+
+  // ---- Chinese hull dressing --------------------------------------------
+  // Type 69-family glacis IR pod: big IR drum right of the driver line on a
+  // planted riser (the chassis keeps its paired white lamps at the bow).
+  P.add('hullDetail', cylZ(0.125, 0.20, 12), 0.462, 1.30, 2.42, -0.28, 0, 0);
+  P.add('hullDark', cylZ(0.129, 0.02, 12), 0.462, 1.33, 2.515, -0.28, 0, 0);
+  P.add('hullDark', box(0.06, 0.14, 0.06), 0.462, 1.19, 2.37, -0.28, 0, 0);
+  // Muffler on the LEFT rear fender (WZ-120 tell) — seated ON the fender
+  // run with two dark band straps and a short aft outlet stub.
+  P.add('hullDetail', cylZ(0.10, 0.78, 10), -1.65, 1.60, -2.60);
+  P.add('hullDark', cylZ(0.055, 0.20, 8), -1.65, 1.63, -3.06, 0.12, 0, 0);
+  for (const z of [-2.36, -2.84]) {
+    P.add('hullDark', box(0.226, 0.024, 0.03), -1.65, 1.60, z);
+    P.add('hullDark', box(0.05, 0.12, 0.03), -1.65, 1.52, z);
+  }
+  // Stowed OPVT snorkel ridge across the rear deck (saddled, §B2-connected).
+  P.add('hullDetail', cylX(0.09, 1.672, 12), 0, 1.62, -2.35);
+  for (const s of [-1, 1]) P.add('hullDark', box(0.06, 0.14, 0.22), s * 0.682, 1.56, -2.35);
+
+  // ---- WZ-120 (T-54A-family) mushroom dome on the widened base ring ------
+  // Ring profile = the certified §5.45 type59 dome ×1.10 laterally (the
+  // §5.304 widen law), y as authored (apex turret-local 1.04 → world 2.52);
+  // meshDomeCurved sz 1.03 ÷ 1.10 = 0.9364 keeps the plan CHORD byte-held
+  // so the casting widens with the hull without lengthening.
+  P.turretG.position.set(0, 1.4804, 0.676);
+  const rings59 = [[1.43, -0.016], [1.573, 0.10], [1.6225, 0.22], [1.584, 0.36], [1.518, 0.48], [1.43, 0.56], [1.21, 0.63], [1.166, 0.655], [1.10, 0.665], [1.012, 0.72], [0.924, 0.80], [0.792, 0.88], [0.616, 0.95], [0.44, 1.01], [0.022, 1.04]];
+  meshDomeCurved(P, rings59, 0.9364, 0, -0.21, { capR: 1.54 });
+  // flank roof-shoulder pair: the T-54A flat shelf lives on the SIDES only
+  // (outer face flush with the local dome skin).
+  for (const s of [-1, 1]) P.add('turret', box(0.264, 0.15, 1.22), s * 1.232, 0.58, -0.25);
+  // cast nose BROW over the mantlet (the T-54A casting rises over the gun):
+  // bottom ring buried under the dome skin / into the gun collar (§B2).
+  const ringsBrow = [[0.726, 0.40], [0.715, 0.62], [0.682, 0.76], [0.572, 0.85], [0.022, 0.87]];
+  meshDome(P, ringsBrow, 0.909, 0, 0.95);
+  // closed race collar under the casting (the widened base ring).
+  P.add('turret', cylY(0.748, 0.7865, 0.10, 20), 0, 0.025, -0.05);
+  // commander cupola LEFT: ring + split-hatch lid — the lid crown carries
+  // heightM (world 2.59) as the compact p95 head (≤3-4 column law).
+  P.add('turret', cylY(0.285, 0.30, 0.20, 14), -0.605, 0.975, -0.09);
+  P.add('turretDark', cylY(0.25, 0.25, 0.035, 14), -0.605, 1.0925, -0.09);
+  P.add('turretDetail', box(0.11, 0.08, 0.16), -0.605, 1.06, 0.12);
+  P.add('turretDetail', box(0.10, 0.07, 0.14), -0.792, 1.03, -0.09);
+  // loader dome RIGHT
+  P.add('turret', cylY(0.26, 0.27, 0.13, 14), 0.55, 0.94, 0.11);
+  P.add('turretDark', cylY(0.267, 0.267, 0.016, 14), 0.55, 1.0125, 0.11);
+  // mushroom VENTILATOR dome forward-center + periscope heads (T-54A
+  // anatomy) — vent crown held at the dome-apex line (p95 window).
+  P.add('turret', cylY(0.16, 0.17, 0.24, 12), 0, 0.78, 0.91);
+  P.add('turret', KIT.sph(0.16, 12, Math.PI / 2), 0, 0.88, 0.91);
+  P.add('turretDetail', box(0.10, 0.08, 0.14), -0.242, 1.00, 1.01);
+  P.add('turretDetail', box(0.10, 0.08, 0.14), 0.242, 1.00, 1.01);
+  // curved rear stowage rack on the dome tail (turret-owned, §B5; the
+  // Chinese service-rack grammar) + dark saddle straps into the skin.
+  {
+    const rack = FITTINGS.stowageRack({
+      mats: P.mats, w: 1.30, d: 0.35, h: 0.22, fill: 0.30, rails: 2, seed: 590,
+    });
+    rack.position.set(0, 0.42, -1.50);
+    P.turretG.add(rack);
+    for (const s of [-1, 1]) P.add('turretDark', box(0.06, 0.16, 0.30), s * 0.46, 0.34, -1.44);
+  }
+  // Type 54 12.7 mm (DShK-class) census MG at the loader ring — barrel
+  // FORWARD (CROWS law), planted ring mount, cluster under the cupola crown.
+  {
+    const dshk = FITTINGS.pintleMG({
+      mats: P.mats, cls: 'dshk', scale: 0.78, tone: 'two-tone', elev: 0.12, ammo: true,
+      ring: { r: 0.17, stubs: 3 }, rotation: [0, -0.22, 0], seed: 6,
+    });
+    dshk.position.set(0.638, 0.78, 0.24);
+    P.turretG.add(dshk);
+  }
+  // paired four-tube smoke banks on the dome shoulders (dark pads bridge
+  // the bank bodies onto the casting skin).
+  for (const s of [-1, 1]) {
+    const smoke = FITTINGS.smokeBank({ mats: P.mats, count: 4, r: 0.045, len: 0.27, splay: s * 1.02, pitch: -0.52, arc: 0.62, spacing: 0.10, rotation: [0, 0, -s * 0.12], seed: 590 + s });
+    smoke.position.set(s * 1.133, 0.68, 0.16);
+    P.turretG.add(smoke);
+    P.add('turretDark', box(0.30, 0.10, 0.24), s * 1.10, 0.57, 0.10, -0.18, 0, -s * 0.12);
+  }
+  // leaning whip antenna at the turret nose-left shoulder (planted collar).
+  P.add('turret', cylY(0.055, 0.07, 0.08, 10), -0.858, 0.50, 0.78);
+  {
+    const whip = FITTINGS.antennaWhip({ mats: P.mats, h: 0.72, r: 0.018, rake: 0.35, seed: 3 });
+    whip.position.set(-0.858, 0.52, 0.78);
+    P.turretG.add(whip);
+  }
+  domeRailRu(P, rings59, 1.0, 0.50, 1.1);
+
+  // ---- 100 mm Type 59 gun (licensed D-10T class): measured tube grammar,
+  // BORE EVACUATOR at the muzzle-third, §B3.1 muzzle bore. Axis world 1.767
+  // on the widened base trunnion; muzzle world +5.99.
+  P.gunG.position.set(0, 0.2866, 1.019);
+  ruSaddle(P, { rollR: 0.185, rollW: 0.528, tubeR: 0.13, rootR: 0.185, rootL: 0.48 });
+  P.addGunExtra(KIT.xform(cylZ(0.5, 0.28, 16, 0.42), 0, 0, 0, 0, 0, 0, [0.484, 0.33, 1]), 0, 0, 0.11);
+  P.addGunExtraDark(KIT.xform(cylZ(0.5, 0.042, 14), 0, 0, 0, 0, 0, 0, [0.319, 0.25, 1]), 0, 0, 0.28);
+  // small gun-slaved IR right of the mantlet (Type 69 kit)
+  P.addGunExtra(KIT.xform(cylZ(0.095, 0.13, 12), 0, 0, 0), 0.396, 0.13, 0.15);
+  P.addGunExtraDark(KIT.xform(cylZ(0.099, 0.014, 12), 0, 0, 0), 0.396, 0.13, 0.225);
+  P.addGunExtraDark(KIT.xform(cylZ(0.078, 0.010, 12), 0, 0, 0), 0.396, 0.13, 0.233);
+  P.addGunExtraDark(box(0.03, 0.10, 0.03), 0.33, 0.05, 0.13);
+  // Type 59-II searchlight assembly RIGHT of the gun: drum + glass rim +
+  // twin yoke arms + mount beam (mirrors the T-62's left Luna — the
+  // family-distinct read).
+  P.addGunExtra(KIT.xform(cylZ(0.26, 0.27, 18), 0, 0, 0), 0.66, 0.42, -0.05);
+  P.add('gunMountDark', KIT.xform(cylZ(0.245, 0.018, 18), 0, 0, 0), 0.66, 0.42, 0.090);
+  P.addGunExtra(box(0.045, 0.36, 0.30), 0.3377, 0.35, -0.05);
+  P.addGunExtra(box(0.045, 0.36, 0.30), 0.9823, 0.35, -0.05);
+  P.addGunExtra(box(0.726, 0.16, 0.12), 0.66, 0.24, -0.17);
+  tubeGun(P, [
+    [0.32, 0.90, 0.135], [0.90, 1.60, 0.122], [1.60, 2.40, 0.118],
+    [2.40, 3.34, 0.118], [3.34, 3.86, 0.155], [3.86, 4.292, 0.118],
+  ], { rings: [[0.90, 0.138], [1.60, 0.125], [3.34, 0.158], [3.86, 0.158], [4.17, 0.121]], muzzle: 4.292 });
+  muzzleBore(P, { r: 0.115 });  // §B3.1 (shadow-named, mask/frame-neutral)
+  const dxT59 = ringSkin(rings59, 0.40) + 0.02;
+  P.decal('turret', 'number', P.spec.visual.number || '', 0.26, [dxT59 * 0.98, 0.40, -0.21], Math.PI / 2);
+  P.decal('turret', 'number', P.spec.visual.number || '', 0.26, [-dxT59 * 0.98, 0.40, -0.21], -Math.PI / 2);
+  P.topY = 1.15;
+}
+
 export const CHINA_PROFILES = {
   // §5.248 ground-up builds — no donor constructor in either call chain.
   ztz85_iii: { build: buildZTZ85III },
@@ -787,4 +945,6 @@ export const CHINA_PROFILES = {
   // (GUARD-HELD resident — byte-identical through the §5.248 rebuild round.)
   type99a: { base: 'type99a', kit: addZTZ99AOraclePackage },
   ztz99a2: { build: buildZTZ99A2 },
+  // §5.304 redesign: Type 59 on the widened obr-1975 chassis (owner order).
+  type59: { build: buildType59 },
 };

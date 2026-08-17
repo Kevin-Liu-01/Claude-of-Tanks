@@ -118,3 +118,98 @@ crown mis-seated 2.535).
 r3: cupola crown 2.615 + vent dome/periscopes + flare 1.475 + apron taper +
 flap struts + gear tuck (idler z 1.24, sprocket raised y 0.68) + track band
 1.045..1.425. (Scores in the close table below.)
+
+## §5.304 REDESIGN round — Type 59 on the widened obr-1975 base (2026-08-17, lane G)
+
+OWNER ORDER (verbatim): **"update our t62 obr 1975 10% wider and then
+redeisgn our type 59 to be based off of that"**.
+
+WHAT LANDED (item 2 of 2):
+- The §5.45 type69-print build RETIRED from profiles/russia.js (git history
+  keeps it; pointer comment at the old seat). The playable now renders
+  **profiles/china.js buildType59** — a ground-up derivation:
+  `buildT62Obr1975Chassis(P, { gear: { wheelZs: [2.235, 1.08, 0.10,
+  -0.92, -1.933] } })` (the WIDENED T-62 base verbatim; only the wheel
+  PATTERN re-gauged to the licensed-T-54A big 1st–2nd gap — span, idler,
+  sprocket, both contact tangents byte-held so the §B6 ramps hold).
+- CHINESE IDENTITY DRESSING (distinguishes the id from its t62mv1 sibling):
+  WZ-120 (T-54A-family) mushroom dome — meshDomeCurved rings ×1.10 of the
+  certified §5.45 profile (max halfW 1.6225, apex local 1.04 → world 2.52)
+  with sz 1.03→0.9364 (plan chord byte-held), flank shoulder shelves flush
+  to the skin, cast nose BROW over the gun, race collar on the widened
+  ring; cupola LEFT with the lid crown carrying heightM (world 2.5904 ≈
+  2.59, compact p95 head), loader dome RIGHT, forward ventilator mushroom
+  held at the apex line (p95 window law); curved rear stowage rack
+  (FITTINGS.stowageRack) strapped into the dome tail (turret-owned, §B5
+  yaw-proven); Type 54 12.7 mm DShK-class census MG at the loader ring —
+  barrel FORWARD (CROWS law), planted ring mount, cluster under the cupola
+  crown; paired 4-tube smoke banks with skin-bridging pads; nose-left whip;
+  Type 59-II searchlight assembly RIGHT of the gun (mirrors the T-62's
+  left Luna — the family-distinct read) + small gun-slaved IR; 100 mm
+  licensed-D-10T tube — the certified §5.45 measured grammar verbatim
+  (bore evacuator at the muzzle-third, §B3.1 muzzleBore r 0.115, muzzle
+  gun-local +4.292 → world +5.99); Chinese hull dressing on the chassis:
+  glacis IR drum pod (Type 69 tell), muffler on the LEFT rear fender,
+  stowed OPVT snorkel ridge, PLA-green china-palette hooks in the spec
+  visual (base #374836 / weather #49573f / patches / camoScale 0.52,
+  ztz85_iii grammar with distinct values), number 406 decals re-seated on
+  the new dome flank (ringSkin dx).
+- FLIP MECHANICS (order item "retire MODEL_SOURCE.type59"): the flip
+  ALREADY LANDED at §5.45 (2026-08-08) — MODEL_SOURCE.type59 has been
+  `source: 'procedural'` + candidateGlb since then (userdrops7.js:253);
+  §5.304 keeps those mechanics unchanged (comment updated). The
+  LastTriarius Type 69 CC-BY print stays on disk as the registered
+  measurement oracle (restored untracked-gitignored from 952561ea^ this
+  round per §5.251 — it was a dead print, md5 10cc2b0b…; all three
+  override maps still carry the registration).
+- SPEC (userdrops7.js): stats KEPT (hp 1580 / 520 hp / 36 t / 50 km/h /
+  100 mm reloadS 8.8 / number 406). Dims RE-DERIVED from the widened base
+  (owner decree): hullLengthM 6.63 + widthM 3.63 (the base rows),
+  heightM 2.59 (authored cupola crown — happens to equal the real Type
+  59's published height), overallLengthM 9.52 (authored 100 mm gun-forward
+  total). silhouette* rows are type59's OWN gate-measured envelope
+  (7.13 / 9.52 / 2.60 from run receipts). Old row 6.04/9.00/3.27/2.59
+  retired with the print-frame build.
+- SPEC BUG FIXED IN PASSING (the §5.259 leak class, userdrops7 edition):
+  type59's donor spread inherited t62mv1's silhouette* print rows
+  (7.06/9.96/2.74) — the live-tree BEFORE gate read **dims 0** because of
+  it (stored 58.7 row was stale). The explicit type59 silhouette rows now
+  override the leak. NOTE for orchestrator: **t54 still carries the same
+  leak** (same make() donor spread from t62mv1, no silhouette override —
+  phantom 7.06/9.96/2.74 rows will zero its dims on any future re-gate);
+  ztz85_iii is safe (china.js variant() strips silhouette keys, §5.259).
+
+GATE (final bytes, registered type69 print, ×2 bit-identical — md5
+5d174e63 both runs): **min 0 | hull 32.5 / whole 18.8 / turret 0 /
+stations 42 / dims 100 / floaters 100** (before, this tree: min 0 with
+dims 0 — leak; stored stale row was 58.7). CLASSIFICATION: NOT FALSE-0 —
+the print is registered and measures; the curve rows are
+**owner-decreed-divergence-capped**: the redesign abandons the print's
+concept (3.27-wide licensed-T-54A hull) for the widened obr-1975 base by
+order, and the gate's uniform width-anchored safeScale inflates the print
+to 3.63 wide → +11% into every reference axis (ref body len 6.68 vs proc
+7.13 in the run receipts). dims 100 / floaters 100 are the meaningful
+components (ztz85_iii WEAK-instrument precedent); never chase the curve
+rows back toward the print.
+
+§B BATTERY (final bytes): track-clip --exact --strict **0/0 ALL columns**
+(inherited the chassis §B4 pocket-shim fix — see the t62mv1 §5.304
+section); turret-parent **0/0/0**; §B5 yaw-90 rotating-furniture pair in
+pixels (rack/brow/MG/smoke/whip rotate as one; hull furniture fixed —
+shots/t62-widen/after-type59-yaw90/); §B2 verified front/top/rear/heroes;
+§B9 gear fully exposed (no skirts); §B3 census MG present; §B3.1 mantlet
++ boot + muzzle bore. npm test GREEN (full suite — vehicleMarkings
+physical seats + yaw ownership pass on the new dome).
+
+HASHES: before ea1ff837 (45/63593, §5.45 print-frame build) → final
+**a62bf43c** (53/78371). AABB receipt: [3.29, 2.6409, 8.838] →
+[3.63, 2.8443, 9.517]. Guards byte-exact through the round: ztz85_iii
+13f0c8d7 (first-party §5.259 — untouched), ztz99a2 93c78198, type99a
+7f613788, t54 cedb8be8, t44 72af6298, t64bv1 eabf99cc. Armor-frame note:
+ztz85_iii deep-copies type59's armor frame ×1.14 (banked §5.259 debt) —
+its HIT frame follows type59's dims refit; its geometry/gate rows are
+untouched (hash-proven).
+
+§5.254 PAIRS: shots/t62-widen/before-type59/ (pre-order tree, print-frame
+build) vs shots/t62-widen/after-type59/ + after-type59-yaw90/ — 15 views
+each + dims.json receipts, captured at their respective trees.

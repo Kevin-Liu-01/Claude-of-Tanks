@@ -145,7 +145,13 @@ const SPECS = [
   make('leo1a5', 't62mv1', 'T-62 obr. 1975', 'USSR/Russia',
     { hp: 1650, weightTons: 38, topSpeedKmh: 50, reverseSpeedKmh: 8, gun: { reloadS: 8.2 },
       dims: {
-        hullLengthM: 6.63, overallLengthM: 9.34, widthM: 3.30, heightM: 2.40,
+        // widthM 3.30 -> 3.63 (§5.304 OWNER ORDER 2026-08-17, verbatim:
+        // "update our t62 obr 1975 10% wider ..."): owner-decreed spec
+        // change landed WITH the build widen (profiles/russia.js
+        // buildT62MV1 — every lateral station ×1.10). The offline obr-1975
+        // oracle print now reads ~9.1% narrow vs this row by decree —
+        // adjudicated FALSE-class divergence (never chase the print back).
+        hullLengthM: 6.63, overallLengthM: 9.34, widthM: 3.63, heightM: 2.40,
         // The supplied Obr. 1975 art source includes its full fender/drum
         // envelope and DShK-height convention.  Preserve published vehicle
         // dimensions for gameplay/UI while the geometry gate compares the

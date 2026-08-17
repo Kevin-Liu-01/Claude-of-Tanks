@@ -104,12 +104,32 @@ const SPECS = [
       dims: { hullLengthM: 6.45, overallLengthM: 9.00, widthM: 3.27, heightM: 2.65 },
       visual: { marking: 'number', number: '324' } }, BERGMAN),
   make('t62mv1', 'type59', 'Type 59', 'China',
-    // visual base is the LastTriarius Type 69 mesh (same WZ-120 family
-    // silhouette; scout packet note) — stats are the Type 59's
+    // §5.304 REDESIGN (owner order verbatim 2026-08-17: "update our t62 obr
+    // 1975 10% wider and then redeisgn our type 59 to be based off of
+    // that"): the visual is profiles/china.js buildType59 — the WZ-120
+    // (T-54A-family) dome + 100 mm kit on the WIDENED obr-1975 chassis.
+    // Stats stay the Type 59's; dims RE-DERIVE from the widened base
+    // (hull/width = the t62mv1 rows, height = the authored cupola crown,
+    // overall = the authored 100 mm gun-forward total). silhouette* rows
+    // are type59's OWN gate-measured envelope (they also override the
+    // donor-inherited t62mv1 print rows — the §5.259 leak class, which
+    // zeroed this id's dims row until this landing). The LastTriarius
+    // Type 69 print remains the registered measurement oracle; its gate
+    // deltas vs this owner-decreed redesign are documented divergence
+    // (docs/references/tanks/type59.md §5.304), never chased back.
     { hp: 1580, enginePowerHp: 520, weightTons: 36, topSpeedKmh: 50,
       gun: { caliberMm: 100, reloadS: 8.8 },
-      dims: { hullLengthM: 6.04, overallLengthM: 9.00, widthM: 3.27, heightM: 2.59 },
-      visual: { marking: 'number', number: '406' } }, TRIARIUS_T69),
+      dims: { hullLengthM: 6.63, overallLengthM: 9.52, widthM: 3.63, heightM: 2.59,
+        // gate-measured authored envelope (§5.304 run receipts: 12%-band
+        // body trace includes the base's drum/fender tail like t62mv1's;
+        // height p95 = the cupola crown band)
+        silhouetteHullLengthM: 7.13, silhouetteOverallLengthM: 9.52,
+        silhouetteHeightM: 2.60 },
+      // china-palette hooks (PLA green family, ztz85_iii grammar — values
+      // distinct per §H.4 family separation)
+      visual: { marking: 'number', number: '406', base: '#374836',
+        weather: '#49573f', patches: ['#2a3629', '#5c6349', '#6f684e'],
+        camoScale: 0.52 } }, TRIARIUS_T69),
   // -- T-80 turbine family ---------------------------------------------------
   make('t80u', 't80', 'T-80', 'USSR/Russia',
     { hp: 1780, enginePowerHp: 1000, weightTons: 42, gun: { reloadS: 7.8 },
@@ -250,6 +270,11 @@ MODEL_SOURCE.m48 = {
 // type59 §5.45 BUILD LANDED (russia lane 2026-08-08): renders buildType59
 // everywhere; the LastTriarius Type 69 CC BY print retires to candidateGlb
 // (same flip pattern as t44/m48 above).
+// §5.304 (2026-08-17): buildType59 REDESIGNED onto the widened obr-1975
+// chassis (profiles/china.js — owner order). The flip mechanics here are
+// unchanged: source stays 'procedural', the Type 69 print stays on disk as
+// the registered measurement oracle (three override maps) and comparison
+// provenance — its rows now measure an owner-decreed divergence.
 MODEL_SOURCE.type59 = {
   source: 'procedural',
   candidateGlb: { path: '/models/tanks/community/type69_lasttriarius.glb', turretNode: '^Turret$', autoPivot: true, paintUntextured: true },

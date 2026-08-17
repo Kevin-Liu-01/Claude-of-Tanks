@@ -56,7 +56,11 @@ const RUSSIA_PROFILES = {
   t90m: T90_PROFILES.t90m,
   t54: RUSSIA_RESIDUE_PROFILES.t54,
   t44: RUSSIA_RESIDUE_PROFILES.t44,
-  type59: RUSSIA_RESIDUE_PROFILES.type59,
+  // §5.304: type59 renders the china.js redesign (WZ-120 dome on the widened
+  // obr-1975 chassis). Keyed HERE to preserve the historical carousel
+  // position (pure-refactor law); the CHINA_PROFILES spread below re-assigns
+  // the same object without moving the key.
+  type59: CHINA_PROFILES.type59,
   t84: T80_PROFILES.t84,
 };
 
