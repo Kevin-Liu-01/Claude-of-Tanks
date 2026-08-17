@@ -9121,3 +9121,6 @@ The owner's 01c3c6f5 (STB-1 rebuild from source oracle) touched profiles/japan.j
 
 ## §5.325 — OWNER ORDER (verbatim, 2026-08-17): "make m3a3 bradley sideskirts symmetric and properly attached to sides of tank" (+screenshot)
 - Screenshot shows asymmetric per-flank skirt treatment + panels standing off the hull with a visible gap — likely the §5.316 hybrid's unreconciled skirt seam ("skirt-bin course variants not transplanted"). Folded into the upior-flip lane as item 2 (same file): mirror the flank config (CFV blank-flank held both sides), mount flush w/ hanger/rail geometry, §B2 the seam, §B9 wheel parity, dims-100 hold. Seven agents live.
+
+## §5.326 — OWNER FINDING (verbatim, 2026-08-17): "most ifvs dont have filled in hulls and at some angles are see through. the bradleys bmps etc"
+- FLEET-CLASS §B2 defect registered. IFV §B2 sweep lane spawned: probe ALL IFV-class ids (see-through battery incl. low/under + shallow-bay angles), classify CLEAN/MINOR/DEFECT w/ receipts, FIX defect ids outside afvFamily.js (live-lane fence), hand off afvFamily defects as exact fix orders for the live lane. The §5.303 bmp3-bow closure = the precedent class. Eight agents live.
