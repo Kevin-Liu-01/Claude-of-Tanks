@@ -1,33 +1,85 @@
-// FEEL r12 (owner: "show fps and ping and so on in a corner"): live perf
-// overlay — FPS, frame-time p95, worst recent stall, draw calls, shader
-// program count, JS heap, and SIM% (game-time vs wall-time ratio, the
-// throttle tell). Toggled with the 'perfHud' action (default F8), state
-// persisted. pointer-events:none — it can never block game input.
-//
-// This is also the honest-identification fix for the QA loop: the Lap's
-// long-task budgets went green while steady frame time sat at 20-26 ms
-// (~40-50 fps) — the overlay makes frame RATE a first-class, always-visible
-// signal for the owner and for probes (window.__PERF_HUD.stats()).
+// Live performance + systems dashboard. The full dashboard is deliberately
+// opt-in (`?debug=1` or F8 in development); production keeps the tiny FPS/P95
+// readout unless a debug URL explicitly asks for the engineering view.
 
 const LS_KEY = 'cot.perfhud.v1';
 const COMPACT_LS_KEY = 'cot.perfcompact.v1';
-const PROD_BUILD = import.meta.env.PROD;
+const PROD_BUILD = !!import.meta.env?.PROD;
+
+/** Pure URL gate used by the HUD and its self-test. */
+export function debugModeRequested(search = (typeof location !== 'undefined' ? location.search : '')) {
+  const qs = new URLSearchParams(search || '');
+  if (!qs.has('debug')) return false;
+  const value = String(qs.get('debug') ?? '').toLowerCase();
+  return value !== '0' && value !== 'false' && value !== 'off';
+}
+
+function fmtCount(value) {
+  const n = Number(value) || 0;
+  if (n >= 1e6) return `${(n / 1e6).toFixed(1)}m`;
+  if (n >= 1e3) return `${(n / 1e3).toFixed(0)}k`;
+  return String(n);
+}
+
+function fmtBytes(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < 0) return '—';
+  if (n >= 1048576) return `${(n / 1048576).toFixed(1)} MB`;
+  if (n >= 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${n.toFixed(0)} B`;
+}
 
 export function createPerfHud({ renderer, game }) {
-  const el = document.createElement('div');
+  const debugRequested = debugModeRequested();
+  const el = document.createElement('aside');
   el.id = 'cot-perfhud';
+  el.setAttribute('aria-label', 'COT debug telemetry');
   el.style.cssText = [
-    'position:fixed', 'top:64px', 'right:8px', 'z-index:60',
-    'font:10px/1.5 ui-monospace,Menlo,monospace', 'color:#cfe3cf',
-    'background:rgba(8,12,8,0.55)', 'padding:5px 8px', 'border-radius:4px',
-    'pointer-events:none', 'white-space:pre', 'text-align:right',
-    'text-shadow:0 1px 2px rgba(0,0,0,0.8)',
+    'position:fixed', 'top:14px', 'right:14px', 'z-index:360',
+    'width:min(390px,calc(100vw - 28px))', 'max-height:calc(100vh - 28px)',
+    'box-sizing:border-box', 'overflow:auto', 'padding:12px',
+    'font:11px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace',
+    'font-variant-numeric:tabular-nums', 'color:#e8edf2',
+    'background:linear-gradient(145deg,rgba(9,14,18,.96),rgba(15,22,27,.91))',
+    'border:1px solid rgba(143,185,172,.34)', 'border-radius:10px',
+    'box-shadow:0 18px 55px rgba(0,0,0,.45),inset 0 1px rgba(255,255,255,.04)',
+    'backdrop-filter:blur(14px)', 'pointer-events:none', 'text-shadow:0 1px 2px #000',
   ].join(';');
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div><b style="font:700 12px/1 system-ui,sans-serif;letter-spacing:.12em;color:#f3f6f7">COT TELEMETRY</b>
+        <span data-status style="margin-left:7px;color:#75d5ab">LIVE</span></div>
+      <span style="color:#77868f">F8</span>
+    </div>
+    <div data-grid style="display:grid;grid-template-columns:1fr 1fr;gap:8px"></div>`;
+  const grid = el.querySelector('[data-grid]');
+  const statusEl = el.querySelector('[data-status]');
+  const sectionEls = new Map();
+  const makeSection = (id, title, wide = false) => {
+    const section = document.createElement('section');
+    section.style.cssText = [
+      wide ? 'grid-column:1/-1' : '', 'min-width:0', 'padding:8px 9px',
+      'background:rgba(255,255,255,.035)', 'border:1px solid rgba(255,255,255,.07)',
+      'border-radius:6px',
+    ].filter(Boolean).join(';');
+    section.innerHTML = `<div style="margin-bottom:5px;font:700 9px/1 system-ui,sans-serif;letter-spacing:.14em;color:#8eaaa5">${title}</div><div data-value style="white-space:pre-wrap;color:#d7e0e4"></div>`;
+    grid.appendChild(section);
+    const value = section.querySelector('[data-value]');
+    sectionEls.set(id, value);
+    return value;
+  };
+  makeSection('frame', 'FRAME');
+  makeSection('render', 'RENDER');
+  makeSection('quality', 'RESOLUTION + QUALITY', true);
+  makeSection('simulation', 'SIMULATION');
+  makeSection('world', 'WORLD');
+  makeSection('shadows', 'SHADOWS', true);
+  makeSection('network', 'NETWORK');
+  makeSection('memory', 'MEMORY');
   document.body.appendChild(el);
 
   // The shipped HUD carries only the two numbers players can act on. It is
-  // mounted against the damage panel so it sits beside the live tank plan and
-  // automatically follows that panel's battle/spectator visibility.
+  // mounted against the damage panel so it follows battle visibility.
   const compactEl = document.createElement('div');
   compactEl.id = 'cot-perf-compact';
   compactEl.setAttribute('aria-label', 'Frame performance');
@@ -47,29 +99,33 @@ export function createPerfHud({ renderer, game }) {
   const compactFps = compactEl.querySelector('[data-fps]');
   const compactP95 = compactEl.querySelector('[data-p95]');
 
-  // frame-time ring (240 frames ≈ 4 s @60), long-task observer (5 s window)
+  // Frame-time ring (240 frames ≈ 4 s @60), long-task observer (5 s window).
   const ring = new Float32Array(240);
-  let ri = 0, rn = 0;
+  const sorted = new Float32Array(240);
+  let ri = 0;
+  let rn = 0;
   const stalls = [];
   try {
     new PerformanceObserver((list) => {
       const now = performance.now();
-      for (const e of list.getEntries()) stalls.push({ t: now, d: e.duration });
+      for (const entry of list.getEntries()) stalls.push({ t: now, d: entry.duration });
     }).observe({ entryTypes: ['longtask'] });
   } catch (_) { /* older engines: stall line reads n/a */ }
 
-  let simT0 = 0, wall0 = 0, simPct = -1;
+  let simT0 = 0;
+  let wall0 = 0;
+  let simPct = -1;
   let lastDom = 0;
-  let visible = !PROD_BUILD && (() => {
-    try { return localStorage.getItem(LS_KEY) !== '0'; } catch (_) { return true; }
-  })();
-  let compactVisible = PROD_BUILD && (() => {
+  let telemetryProvider = null;
+  let latestTelemetry = null;
+  let visible = debugRequested || (!PROD_BUILD && (() => {
+    try { return localStorage.getItem(LS_KEY) === '1'; } catch (_) { return false; }
+  })());
+  let compactVisible = PROD_BUILD && !debugRequested && (() => {
     try { return localStorage.getItem(COMPACT_LS_KEY) !== '0'; } catch (_) { return true; }
   })();
   let captureHidden = false;
   el.style.display = visible ? 'block' : 'none';
-
-  const sorted = new Float32Array(240);
 
   function stats() {
     const n = rn;
@@ -79,31 +135,89 @@ export function createPerfHud({ renderer, game }) {
     let sum = 0;
     for (let i = 0; i < n; i++) sum += view[i];
     const avg = sum / n;
+    const at = (p) => view[Math.min(n - 1, Math.floor((n - 1) * p))];
     return {
       fps: avg > 0 ? 1000 / avg : 0,
-      p95: view[Math.min(n - 1, Math.floor(n * 0.95))],
-      worstStall: stalls.reduce((a, s) => Math.max(a, s.d), 0),
+      onePctLow: at(0.99) > 0 ? 1000 / at(0.99) : 0,
+      p50: at(0.50),
+      p95: at(0.95),
+      p99: at(0.99),
+      worstStall: stalls.reduce((a, stall) => Math.max(a, stall.d), 0),
       calls: renderer.info.render.calls,
       tris: renderer.info.render.triangles,
       programs: (renderer.info.programs || []).length,
-      heapMB: performance.memory
-        ? performance.memory.usedJSHeapSize / 1048576 : -1,
+      geometries: renderer.info.memory.geometries,
+      textures: renderer.info.memory.textures,
+      heapMB: performance.memory ? performance.memory.usedJSHeapSize / 1048576 : -1,
+      heapLimitMB: performance.memory ? performance.memory.jsHeapSizeLimit / 1048576 : -1,
       simPct,
     };
+  }
+
+  function renderDashboard(s) {
+    let t = latestTelemetry;
+    if (telemetryProvider) {
+      try { t = telemetryProvider() || null; } catch (error) { t = { error: String(error?.message || error) }; }
+      latestTelemetry = t;
+    }
+    const q = t?.quality || {};
+    const sim = t?.simulation || {};
+    const world = t?.world || {};
+    const shadow = t?.shadows || {};
+    const network = t?.network || {};
+    const memory = t?.memory || {};
+    const cascades = Array.isArray(shadow.cascades) ? shadow.cascades : [];
+    statusEl.textContent = t?.error ? 'PROVIDER ERROR' : 'LIVE';
+    statusEl.style.color = t?.error ? '#ff9d7c' : '#75d5ab';
+    sectionEls.get('frame').textContent =
+      `${s.fps.toFixed(0)} fps   1% low ${s.onePctLow.toFixed(0)}\n` +
+      `${s.p50.toFixed(1)} / ${s.p95.toFixed(1)} / ${s.p99.toFixed(1)} ms\n` +
+      `stall ${s.worstStall ? `${s.worstStall.toFixed(0)} ms` : '—'}   sim ${s.simPct >= 0 ? `${s.simPct.toFixed(0)}%` : '—'}`;
+    sectionEls.get('render').textContent =
+      `${s.calls} calls   ${fmtCount(s.tris)} tri\n` +
+      `${s.programs} programs\n${s.geometries} geo   ${s.textures} tex`;
+    sectionEls.get('quality').textContent =
+      `${q.buffer || '—'} buffer  dpr ${q.dpr ?? '—'}  scale ${q.dynScale ?? '—'}\n` +
+      `${q.preset || '—'} / ${q.tier || '—'}   trim ${q.perfTrim ?? '—'}   ${q.gpu || 'GPU unavailable'}`;
+    sectionEls.get('simulation').textContent =
+      `${sim.phase || game.phase || '—'}   ${sim.map || 'no map'}\n` +
+      `${Number(sim.timeS || 0).toFixed(1)} s   tanks ${sim.alive ?? '—'}/${sim.tanks ?? '—'}   shells ${sim.shells ?? '—'}`;
+    sectionEls.get('world').textContent =
+      `${world.obstacles ?? '—'} obstacles   ${world.colliders ?? '—'} colliders\n` +
+      `${world.concealers ?? '—'} conceal   ${world.destructibles ?? '—'} destruct\n` +
+      `${world.wrecks ?? '—'} wreck sites`;
+    sectionEls.get('shadows').textContent =
+      `${shadow.enabled ? 'ON' : 'OFF'}${shadow.rescue ? ` · rescue ${shadow.rescue}` : ''}   far ${shadow.maxFar ?? '—'}m   throttle ${shadow.throttle ?? '—'}\n` +
+      (cascades.length
+        ? cascades.map((c, i) => `C${i} ${c.size ?? '—'}${c.allocated ? '✓' : '…'} r${Number(c.radius || 0).toFixed(2)}`).join('   ')
+        : 'cascade telemetry unavailable') +
+      `\n${shadow.casters ?? '—'} casters   ${shadow.receivers ?? '—'} receivers   shader errors ${shadow.shaderErrors ?? 0}`;
+    sectionEls.get('network').textContent = network.connected == null
+      ? 'local / offline\nno transport overhead'
+      : `${network.connected ? 'connected' : 'disconnected'}   RTT ${Number(network.rttMs || 0).toFixed(0)} ms\n` +
+        `jitter ${Number(network.jitterMs || 0).toFixed(0)} ms   loss ${Number(network.lossPct || 0).toFixed(1)}%\n` +
+        `buffer ${fmtBytes(network.bufferedBytes)}`;
+    sectionEls.get('memory').textContent =
+      `${s.heapMB >= 0 ? `${s.heapMB.toFixed(0)} / ${s.heapLimitMB.toFixed(0)} MB JS` : 'JS heap unavailable'}\n` +
+      `${memory.drawBuffer || q.buffer || '—'} draw buffer`;
   }
 
   return {
     el,
     /** Call once per rAF, AFTER the render (dtMs = frame delta). */
     update(dtMs) {
-      if (dtMs > 0 && dtMs < 1000) { ring[ri] = dtMs; ri = (ri + 1) % ring.length; if (rn < ring.length) rn++; }
+      if (dtMs > 0 && dtMs < 1000) {
+        ring[ri] = dtMs;
+        ri = (ri + 1) % ring.length;
+        if (rn < ring.length) rn++;
+      }
       const now = performance.now();
-      // SIM% over a 1 s window (battle only; garage shows —)
       if (game.phase === 'battle' && game.timeS > 0) {
         if (!wall0) { wall0 = now; simT0 = game.timeS; }
         else if (now - wall0 >= 1000) {
           simPct = ((game.timeS - simT0) / ((now - wall0) / 1000)) * 100;
-          wall0 = now; simT0 = game.timeS;
+          wall0 = now;
+          simT0 = game.timeS;
         }
       } else { simPct = -1; wall0 = 0; }
       while (stalls.length && now - stalls[0].t > 5000) stalls.shift();
@@ -111,29 +225,24 @@ export function createPerfHud({ renderer, game }) {
       lastDom = now;
       const s = stats();
       if (!s) return;
-      if (PROD_BUILD) {
-        compactFps.textContent = s.fps.toFixed(0);
-        compactP95.textContent = `${s.p95.toFixed(1)} ms`;
-        compactEl.style.display = compactVisible && !captureHidden ? 'grid' : 'none';
-      } else if (visible && !captureHidden) {
-        el.textContent =
-          `${s.fps.toFixed(0).padStart(3)} fps  ${s.p95.toFixed(1)} ms p95\n` +
-          `stall ${s.worstStall ? s.worstStall.toFixed(0) + ' ms' : '—'} (5s)\n` +
-          `${s.calls} calls  ${(s.tris / 1000).toFixed(0)}k tri\n` +
-          `${s.programs} prog  ${s.heapMB >= 0 ? s.heapMB.toFixed(0) + ' MB' : ''}\n` +
-          (s.simPct >= 0 ? `sim ${s.simPct.toFixed(0)}%` : 'sim —');
-      }
+      compactFps.textContent = s.fps.toFixed(0);
+      compactP95.textContent = `${s.p95.toFixed(1)} ms`;
+      compactEl.style.display = compactVisible && !captureHidden ? 'grid' : 'none';
+      if (visible && !captureHidden) renderDashboard(s);
     },
     toggle() {
-      if (PROD_BUILD) {
-        compactVisible = !compactVisible;
-        compactEl.style.display = compactVisible && !captureHidden ? 'grid' : 'none';
-        try { localStorage.setItem(COMPACT_LS_KEY, compactVisible ? '1' : '0'); } catch (_) { /* fine */ }
-      } else {
+      if (debugRequested || !PROD_BUILD) {
         visible = !visible;
         el.style.display = visible && !captureHidden ? 'block' : 'none';
         try { localStorage.setItem(LS_KEY, visible ? '1' : '0'); } catch (_) { /* fine */ }
+      } else {
+        compactVisible = !compactVisible;
+        compactEl.style.display = compactVisible && !captureHidden ? 'grid' : 'none';
+        try { localStorage.setItem(COMPACT_LS_KEY, compactVisible ? '1' : '0'); } catch (_) { /* fine */ }
       }
+    },
+    setTelemetryProvider(provider) {
+      telemetryProvider = typeof provider === 'function' ? provider : null;
     },
     /** Keep developer/player diagnostics out of deterministic capture art. */
     setCaptureHidden(hidden) {
@@ -145,7 +254,8 @@ export function createPerfHud({ renderer, game }) {
     mountCompact(parent) {
       if (parent && compactEl.parentNode !== parent) parent.appendChild(compactEl);
     },
-    /** probe hook: window.__PERF_HUD.stats() */
+    /** Probe hooks used by performance and map-audit tooling. */
     stats,
+    snapshot() { return { stats: stats(), telemetry: latestTelemetry }; },
   };
 }

@@ -2,7 +2,20 @@ import assert from 'node:assert/strict';
 
 globalThis.window = { __GL_DIAG: { errors: [] } };
 
-const { runSceneBlackWatchdog } = await import('./deviceDiag.js');
+const { diagUiRequested, runSceneBlackWatchdog } = await import('./deviceDiag.js');
+const { debugModeRequested } = await import('../ui/perfHud.js');
+
+assert.equal(diagUiRequested('?diag'), true);
+assert.equal(diagUiRequested('?diag=1'), true);
+assert.equal(diagUiRequested('?diag=true'), true);
+assert.equal(diagUiRequested('?diag=0'), false);
+assert.equal(diagUiRequested('?debug=1'), false);
+assert.equal(diagUiRequested('?diagforce=noshadow'), false,
+  'a forced rescue must remain silent unless the diagnostic UI was requested');
+assert.equal(debugModeRequested('?debug'), true);
+assert.equal(debugModeRequested('?debug=1'), true);
+assert.equal(debugModeRequested('?debug=0'), false);
+assert.equal(debugModeRequested('?diag=1'), false);
 
 const originalTarget = { name: 'screen' };
 let currentTarget = originalTarget;
@@ -26,4 +39,4 @@ assert.equal(currentTarget, originalTarget,
 assert.equal(result.rescued, false);
 assert.ok(window.__GL_DIAG.errors.some((message) => message.includes('watchdog threw')));
 
-console.log('deviceDiag.selftest: watchdog failure restores the display target');
+console.log('deviceDiag.selftest: explicit UI gates + watchdog target restore passed');

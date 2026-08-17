@@ -965,6 +965,28 @@ export function createLighting(scene, camera, sunDir) {
       forceFarCascades(); // sun moved — every cascade must re-render
     },
 
+    /** Read-only diagnostics; sampled at 4 Hz by the opt-in telemetry HUD. */
+    getShadowTelemetry() {
+      return {
+        maxFar: csm.maxFar,
+        throttle: shadowThrottle,
+        frame: shFrame,
+        forceFrames,
+        cascades: csm.lights.map((light) => {
+          const shadow = light.shadow;
+          return {
+            size: shadow.mapSize.x,
+            allocated: !!shadow.map,
+            allocatedSize: shadow.map?.width || 0,
+            radius: shadow.radius,
+            normalBias: shadow.normalBias,
+            autoUpdate: shadow.autoUpdate,
+            needsUpdate: shadow.needsUpdate,
+          };
+        }),
+      };
+    },
+
     hemi,
   };
 }
