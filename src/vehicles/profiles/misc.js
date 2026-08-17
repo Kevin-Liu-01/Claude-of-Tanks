@@ -2834,8 +2834,12 @@ export function buildType90(P) {
   P.add('turretDetail', box(0.14, 0.024, 0.20), 1.13, 0.608, 0.10);            // mount shelf (top 2.02)
   P.add('turretDark', box(0.12, 0.030, 0.14), 1.14, 0.585, 0.10);              // support arm into the wall top band
   P.add('turretDark', box(0.028, 0.20, 0.028), 1.155, 0.49, 0.10);             // diagonal brace to the wall face (§B2 no-air: the mount is connected structure)
-  const m2 = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', tone: 'two-tone', scale: 0.9, seed: 9 });
-  m2.position.set(1.13, 0.62, 0.10);                                           // foot 2.02, receiver top ~2.31, barrel fwd over the right cheek; envelope z_w -0.37..0.74 inside the plan front line (0.99 at this x). §5.248: the LOW SWING MOUNT is the certified dims-legal seat on the 2.34 roof (type10 M2-height law) — the 08-12 cupola seat rode the compressed roof retired this round
+  const m2 = FITTINGS.pintleMG({
+    mats: P.mats, cls: 'm2', tone: 'two-tone', scale: 0.94,
+    shield: true, ammo: true, ring: { r: 0.17, stubs: 3 }, seed: 9,
+  });
+  m2.scale.y = 1.24;                                                          // counter the complete turret-height correction so the weapon keeps a readable receiver/shield silhouette
+  m2.position.set(-0.18, 1.015, -0.46);                                        // source-visible roof weapon; the former low right-wall seat disappeared into the slab at garage distance
   P.turretG.add(m2);
   // side SHELVES on the bustle flanks (r5 re-read of the +-1.29-1.39 band:
   // the ref's widest turret content is a SHELF SLIVER — plan z_w -0.687..
@@ -2860,11 +2864,43 @@ export function buildType90(P) {
     P.add('turretDark', box(xOut - xIn - 0.02, 0.02, 0.57), s * xc2, 0.72, -0.79); // under-lip shadow
     P.add('turretDetail', box(xOut - xIn - 0.04, 0.02, 0.045), s * xc2, 0.815, -0.55); // lid ribs (recessed: tops stay under the per-slab shelf lines)
     P.add('turretDetail', box(xOut - xIn - 0.04, 0.02, 0.045), s * xc2, 0.80, -1.01);
-    const smoke = FITTINGS.smokeBank({ mats: P.mats, count: 3, r: 0.040, len: 0.20, splay: s * 0.75, pitch: -0.45, seed: 3 + s });
-    smoke.position.set(s * 1.04, 0.60, -0.42);                                 // 2x3 dischargers ride the upper bustle flank (real fit; tips ~2.13, under the roof plane — x/z reach unchanged so the plan lanes hold)
+    const smoke = FITTINGS.smokeBank({ mats: P.mats, count: 4, r: 0.044, len: 0.24, splay: s * 0.82, pitch: -0.42, seed: 3 + s });
+    smoke.position.set(s * 1.04, 0.76, 0.04);                                  // owner-source four-tube banks sit proud of the cheek shoulder instead of being buried in the bustle wall
     P.turretG.add(smoke);
     liftEye(P, 'turretDetail', s * 1.16, 0.80, 0.75, s * 0.4);                 // roof-edge lifting eyes on the wall-top shoulder (crown ~2.30 <= grace)
   }
+  // SOURCE-CLARITY ARMOR PASS (owner type_90_kyu-maru_japan.glb): the
+  // welded shell is clean, but its cheek and roof breaks must remain
+  // readable at normal garage distance. These broad shallow courses overlap
+  // the existing shell, so every face has a visible load path at all yaws.
+  for (const s of [-1, 1]) {
+    P.add('turret', slab(
+      [s * 0.50, 0.34, 1.70], [s * 1.14, 0.30, 1.16],
+      [s * 1.20, 0.28, 0.40], [s * 0.58, 0.34, 0.74],
+      [s * 0.48, 0.72, 1.56], [s * 1.10, 0.70, 1.08],
+      [s * 1.14, 0.68, 0.42], [s * 0.56, 0.72, 0.70]));
+    P.add('turretDark', box(0.035, 0.34, 0.54), s * 1.155, 0.50, 0.70,
+      0, s * 0.08, 0);
+    P.add('turretDetail', box(0.045, 0.026, 0.46), s * 1.178, 0.62, 0.70,
+      0, s * 0.08, 0);
+    P.add('turret', box(0.34, 0.075, 0.31), s * 0.71, 0.945, 0.72,
+      -0.035, s * 0.08, 0);
+    P.add('turretDark', box(0.24, 0.016, 0.025), s * 0.71, 0.989, 0.79,
+      -0.035, s * 0.08, 0);
+  }
+  // Large service plates and backed weld courses replace the former field
+  // of sub-pixel strips. The central lane remains clear for hatches, sight
+  // heads and the shielded roof weapon.
+  for (const [x, z, w, d, yaw] of [
+    [-0.62, 0.24, 0.48, 0.46, 0.05], [0.66, 0.13, 0.42, 0.40, -0.05],
+    [-0.70, -0.82, 0.42, 0.40, -0.03], [0.72, -0.86, 0.38, 0.38, 0.04],
+  ]) {
+    P.add('turretDark', box(w + 0.045, 0.020, d + 0.045), x, 0.947, z, 0, yaw, 0);
+    P.add('turret', box(w, 0.052, d), x, 0.972, z, -0.025, yaw, 0);
+    P.add('turretDetail', box(w * 0.66, 0.014, 0.028), x, 1.004, z + d * 0.22, 0, yaw, 0);
+  }
+  P.add('turret', cylY(0.27, 0.29, 0.075, 18), -0.18, 0.965, -0.46);
+  P.add('turretDark', torus(0.26, 0.014, 18), -0.18, 1.012, -0.46);
   // REAR BASKET low + raked corner masts (the ref rear cluster decodes as a
   // LOW overhung basket — front cols +-0.99-1.06 top 1.91-1.95 — whose 2.28+
   // side band comes from the RAKED-AFT whips and a narrow center top frame,
@@ -2999,7 +3035,15 @@ export function buildType90(P) {
   // and the §5.73-1 heightM 2.55 datum. Every crown above re-seats on the
   // full-height armor; the §B7/§5.57/§5.77 receipts in
   // docs/references/tanks/type90.md price each residual column.
-  P.topY = 1.32;                                                               // turret-top anchor above the commander tower (2.72 world, r7 tower at 2.705)
+  // The supplied Kyū-maru source has a low welded turret. Compress the
+  // complete turret-owned assembly together so the armor, gun, bustle,
+  // hatches, optics, smoke banks and weapon remain attached through yaw;
+  // hull plates, skirts and the single smart running-gear course are
+  // intentionally untouched.
+  P.turretG.scale.set(1, 0.68, 0.82);
+  P.gunG.scale.z = 1 / 0.82;                                                  // keep the authored L/44 gun run while shortening only the oversized turret/basket envelope
+  P.gunG.position.z = 0.67;                                                   // compensate the parent-Z correction so the mantlet and muzzle retain their established stations
+  P.topY = 1.12;
 }
 
 // ---------------------------------------------------------------------------
