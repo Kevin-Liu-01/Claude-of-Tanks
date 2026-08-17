@@ -3569,6 +3569,13 @@ function buildChallenger2(P) {
   P.decal('turret', 'number', P.spec.visual.number || '22', 0.30, [-1.48, 0.28, -1.45], -Math.PI / 2, 0, -0.05);
   P.decal('hull', 'number', 'KC91AA', 0.30, [0.80, 1.34, 3.58], 0, -1.25);
   P.decal('hull', 'soot', null, 0.55, [-0.60, 1.28, -4.075], Math.PI);
+  // Recover the source's complete angular fighting-compartment height.  The
+  // measured courses above had been authored so shallow that the roof suite
+  // collapsed into the hull at garage distance.  Scale every turret-owned
+  // armor/equipment station together about the ring, then counter-scale the
+  // gun cross-section so the L30 remains circular instead of becoming oval.
+  P.turretG.scale.y *= 1.40;
+  P.gunG.scale.y *= 1 / 1.40;
   P.topY = 1.03;
 }
 // ---------------------------------------------------------------------------

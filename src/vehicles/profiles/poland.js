@@ -491,36 +491,9 @@ function buildPT91Twardy(P) {
     trackW: 0.56, topY: 1.00, botY: 0.025, paintedEnds: true,
     coveredTop: true, arms: true,
   });
-  {
-    const gearParts = { hull: [], dark: [], detail: [] };
-    const gearAdd = (slot, geo, x, y, z, rx = 0, ry = 0, rz = 0) => {
-      gearParts[slot].push(KIT.xform(geo, x, y, z, rx, ry, rz));
-    };
-    for (const s of [-1, 1]) for (const z of wheelZs) {
-      gearAdd('hull', cylX(0.216, 0.024, 18), s * 1.502, 0.47, z);
-      gearAdd('dark', torus(0.154, 0.010, 18), s * 1.516, 0.47, z, 0, Math.PI / 2, 0);
-      gearAdd('detail', cylX(0.078, 0.030, 14), s * 1.522, 0.47, z);
-      for (let k = 0; k < 8; k++) {
-        const a = (k / 8) * Math.PI * 2;
-        gearAdd('dark', cylX(0.013, 0.026, 8), s * 1.528,
-          0.47 + Math.sin(a) * 0.109, z + Math.cos(a) * 0.109);
-      }
-    }
-    for (const [slot, parts] of Object.entries(gearParts)) {
-      if (!parts.length) continue;
-      const geometry = KIT.mergeAll(parts);
-      if (slot === 'hull') geometry.setAttribute('color', new THREE.BufferAttribute(
-        new Float32Array(geometry.attributes.position.count * 3).fill(1), 3));
-      const material = slot === 'hull' ? P.mats.hull
-        : slot === 'detail' ? P.mats.detail : P.mats.dark;
-      const mesh = new THREE.Mesh(geometry, material);
-      mesh.name = `gear_pt91twardy_wheelFace_${slot}`;
-      mesh.userData.runningGear = true;
-      mesh.castShadow = mesh.receiveShadow = true;
-      P.hullG.add(mesh);
-      P.disposables.push(geometry);
-    }
-  }
+  // The smart running-gear builder owns the complete road-wheel face stack.
+  // Do not add a second static disc/inset layer here: it would remain hull-
+  // fixed while the suspension instances move and visibly double the wheels.
 
   // ---- skirts: ERAWA-1 armored forward third + rubber run (±1.795) -------
   for (const s of [-1, 1]) {
