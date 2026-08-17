@@ -15,6 +15,8 @@
   &nbsp;·&nbsp;
   <a href="docs/HOW-IT-WORKS.md">HOW IT WORKS</a>
   &nbsp;·&nbsp;
+  <a href="https://cot.kevinliu.studio/gallery">TANK GALLERY</a>
+  &nbsp;·&nbsp;
   <a href="docs/INDEX.md">DOCUMENTATION</a>
 </p>
 
@@ -194,13 +196,16 @@ The renderer uses four quality-scaled cascaded shadow maps with stable texel-anc
 articulation-aware convex shadow hulls derived from their authored geometry, so hull, turret, and gun silhouettes remain
 recognizable without sending thousands of decorative triangles through every shadow cascade.
 
-Start with [Product features](docs/FEATURES.md) and
+Start with [Technical overview](docs/TECHNICAL-OVERVIEW.md),
+[Product features](docs/FEATURES.md), and
 [How it works](docs/HOW-IT-WORKS.md). Engineering work continues in
 [Internal systems](docs/SYSTEMS.md),
 [Development and verification](docs/DEVELOPMENT.md),
 [Multiplayer architecture](docs/MULTIPLAYER-ARCHITECTURE.md),
 [Performance architecture](docs/PERFORMANCE.md), and
-[Scene Studio](docs/STUDIO.md). Historical fleet-program ledgers and the original implementation contract remain
+[Scene Studio](docs/STUDIO.md). The public [Tank Gallery](https://cot.kevinliu.studio/gallery)
+and its [implementation contract](docs/GALLERY.md) expose the live procedural
+fleet with armor, module, and crew diagnostics. Historical fleet-program ledgers and the original implementation contract remain
 under docs/ as an auditable build record; they are not the current product guide.
 
 ## Develop and verify

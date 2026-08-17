@@ -81,13 +81,13 @@
     #emptyState::before{content:"LIVE GEOMETRY // ";color:var(--accent)}
     #toast{position:absolute;z-index:5;left:50%;bottom:48px;transform:translate(-50%,12px);opacity:0;pointer-events:none;padding:10px 14px;background:rgba(7,13,17,.94);border:1px solid rgba(240,160,48,.65);color:var(--gold);transition:.18s ease;box-shadow:0 14px 32px rgba(0,0,0,.4)}#toast.show{opacity:1;transform:translate(-50%,0)}.hidden{display:none!important}
     @media(max-width:1050px){#app{grid-template-columns:350px minmax(0,1fr)}#sidebar{font-size:12px}#meshStatus{display:none}.nav-links a{padding:0 10px;font-size:8px}.brand-name{display:none}.scroll>section{padding-left:30px}}
-    @media(max-width:720px){body{grid-template-rows:54px minmax(0,1fr);overflow:auto}#globalNav{padding:0 8px}.brand img{width:28px}.nav-links a{padding:0 7px;font-size:0}.nav-links a::before{display:block}.nav-links a:nth-child(1)::after{content:"H"}.nav-links a:nth-child(2)::after{content:"G"}.nav-links a:nth-child(3)::after{content:"S"}.nav-links a:nth-child(4)::after{content:"L"}.nav-links a::after{position:static!important;width:auto!important;height:auto!important;background:none!important;font-size:8px!important;color:inherit}#app{grid-template-columns:1fr;grid-template-rows:minmax(320px,48vh) minmax(0,1fr)}#viewport{grid-row:1;min-height:320px}#sidebar{grid-row:2;border-right:0;border-top:1px solid var(--line);min-height:0}.lab-header{padding:16px 18px}.scroll{padding-inline:14px}.scroll>section{padding-block:15px}.corner--tl{top:76px}.surface-facts{display:none}}
+    @media(max-width:720px){body{grid-template-rows:54px minmax(0,1fr);overflow:auto}#globalNav{padding:0 8px}.brand img{width:28px}.nav-links a{padding:0 7px;font-size:0}.nav-links a::before{display:block}.nav-links a:nth-child(1)::after{content:"H"}.nav-links a:nth-child(2)::after{content:"G"}.nav-links a:nth-child(3)::after{content:"D"}.nav-links a:nth-child(4)::after{content:"L"}.nav-links a::after{position:static!important;width:auto!important;height:auto!important;background:none!important;font-size:8px!important;color:inherit}#app{grid-template-columns:1fr;grid-template-rows:minmax(320px,48vh) minmax(0,1fr)}#viewport{grid-row:1;min-height:320px}#sidebar{grid-row:2;border-right:0;border-top:1px solid var(--line);min-height:0}.lab-header{padding:16px 18px}.scroll{padding-inline:14px}.scroll>section{padding-block:15px}.corner--tl{top:76px}.surface-facts{display:none}}
   </style>
 </head>
 <body>
 <nav id="globalNav" aria-label="Primary navigation">
   <a class="brand" href="/home" aria-label="Claude of Tanks home"><img src="/brand/logo-mark.svg" alt=""><span class="brand-name">Claude <span>of</span> Tanks</span></a>
-  <div class="nav-links"><a href="/home">Home</a><a href="/">Garage</a><a href="/studio">Studio</a><a class="active" href="/surface-studio" aria-current="page">Surface Lab</a></div>
+  <div class="nav-links"><a href="/home">Home</a><a href="/gallery">Gallery</a><a href="/docs">Docs</a><a class="active" href="/surface-studio" aria-current="page">Surface Lab</a></div>
 </nav>
 <main id="app">
   <aside id="sidebar">

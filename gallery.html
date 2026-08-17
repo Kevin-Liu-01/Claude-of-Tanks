@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#07090b">
+  <meta name="description" content="Explore the complete Claude of Tanks vehicle fleet in an interactive Three.js studio with armor plates, internal modules, crew volumes, statistics, and technical notes.">
+  <link rel="canonical" href="https://cot.kevinliu.studio/gallery">
+  <link rel="icon" type="image/svg+xml" href="/brand/favicon.svg">
+  <link rel="preload" href="/fonts/abc-monument-grotesk/ABCMonumentGrotesk-Medium.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/src/gallery/gallery.css">
+  <title>Tank Gallery — Claude of Tanks</title>
+</head>
+<body>
+  <nav class="global-nav" aria-label="Primary navigation">
+    <a class="brand" href="/home" aria-label="Claude of Tanks home">
+      <img src="/brand/logo-mark.svg" alt="">
+      <span>Claude <b>of Tanks</b></span>
+    </a>
+    <div class="nav-links">
+      <a href="/home">Showcase</a>
+      <a href="/gallery" aria-current="page">Tank Gallery</a>
+      <a href="/docs">Documentation</a>
+      <a href="/studio">Scene Studio</a>
+      <a class="nav-play" href="/">Enter garage</a>
+    </div>
+  </nav>
+
+  <main class="gallery-shell">
+    <aside class="archive-panel" aria-label="Vehicle archive">
+      <header class="panel-heading">
+        <p class="eyebrow">Ordnance archive // live registry</p>
+        <h1>Vehicle<br>Gallery</h1>
+        <p>Every selectable vehicle, reconstructed live from the first-party procedural fleet.</p>
+      </header>
+
+      <form class="archive-filters" id="archiveFilters" role="search">
+        <label class="search-field" for="gallerySearch">
+          <span>Search archive</span>
+          <input id="gallerySearch" type="search" placeholder="Name, nation, class…" autocomplete="off" spellcheck="false">
+          <kbd>/</kbd>
+        </label>
+        <div class="filter-row">
+          <label for="nationFilter"><span>Nation</span><select id="nationFilter"><option value="all">All nations</option></select></label>
+          <label for="classFilter"><span>Class</span><select id="classFilter"><option value="all">All classes</option></select></label>
+        </div>
+      </form>
+
+      <div class="archive-summary">
+        <span id="archiveCount">Loading registry…</span>
+        <span>Click to inspect</span>
+      </div>
+      <div class="vehicle-list" id="vehicleList" role="listbox" aria-label="Playable vehicles"></div>
+      <footer class="archive-footer">
+        <span><i></i> Runtime geometry</span>
+        <a href="/docs#vehicles">Read the vehicle contract →</a>
+      </footer>
+    </aside>
+
+    <section class="viewer" id="viewport" aria-label="Interactive tank viewer">
+      <div class="viewer-atmosphere" aria-hidden="true"><i></i><i></i><i></i></div>
+      <div class="viewer-head">
+        <div class="live-pill"><span></span> Live procedural specimen</div>
+        <div class="viewer-record" id="viewerRecord">Archive record —</div>
+      </div>
+
+      <div class="loading-state" id="loadingState" role="status">
+        <img src="/brand/logo-mark-metal.svg" alt="">
+        <span>Assembling vehicle</span>
+      </div>
+
+      <div class="inspection-readout" id="inspectionReadout" hidden>
+        <div><span id="inspectionId">H01</span><small id="inspectionOwner">Hull</small></div>
+        <strong id="inspectionTitle">Upper glacis</strong>
+        <p id="inspectionDetails">Select a diagnostic volume for exact data.</p>
+      </div>
+
+      <div class="view-controls" role="group" aria-label="Camera controls">
+        <button type="button" data-view="hero" class="active">Hero</button>
+        <button type="button" data-view="front">Front</button>
+        <button type="button" data-view="left">Side</button>
+        <button type="button" data-view="top">Top</button>
+        <button type="button" id="autoRotate" aria-pressed="false">Auto</button>
+      </div>
+
+      <div class="mode-dock" role="group" aria-label="Inspection overlay">
+        <p><span>Diagnostic layer</span><small>Keys 1–4</small></p>
+        <button type="button" class="active" data-mode="appearance"><i></i><span>Exterior<small>Rendered surface</small></span></button>
+        <button type="button" data-mode="armor"><i></i><span>Armor<small>Plate volumes</small></span></button>
+        <button type="button" data-mode="modules"><i></i><span>Modules<small>Internal systems</small></span></button>
+        <button type="button" data-mode="crew"><i></i><span>Crew<small>Station volumes</small></span></button>
+      </div>
+
+      <div class="overlay-legend" id="overlayLegend" aria-label="Overlay legend"></div>
+      <p class="viewer-help">Drag to orbit <b>·</b> Scroll to zoom <b>·</b> Select a volume for data</p>
+    </section>
+
+    <aside class="dossier" aria-label="Vehicle technical dossier">
+      <div class="dossier-scroll">
+        <header class="dossier-head">
+          <div class="dossier-index"><span id="dossierIndex">001</span><small>Technical dossier</small></div>
+          <div class="dossier-actions">
+            <button type="button" id="copyLink" title="Copy a link to this vehicle">Link</button>
+            <button type="button" id="copySpec" title="Copy normalized vehicle data">Copy data</button>
+          </div>
+          <p class="eyebrow" id="dossierMeta">Nation // Class // Tier</p>
+          <h2 id="dossierName">Vehicle name</h2>
+          <p class="designation" id="dossierDesignation">Registry identifier</p>
+        </header>
+
+        <section class="dossier-section" aria-labelledby="ratingHeading">
+          <div class="section-label"><span id="ratingHeading">Operational profile</span><small>Normalized / 100</small></div>
+          <div class="rating-grid" id="ratingGrid"></div>
+        </section>
+
+        <section class="dossier-section" aria-labelledby="summaryHeading">
+          <div class="section-label"><span id="summaryHeading">Technical reading</span><small>Current game model</small></div>
+          <div class="technical-brief" id="technicalBrief"></div>
+          <ul class="highlights" id="highlights"></ul>
+        </section>
+
+        <section class="dossier-section" aria-labelledby="articulationHeading">
+          <div class="section-label"><span id="articulationHeading">Articulation</span><small>Live rig</small></div>
+          <label class="range-control" for="turretYaw"><span>Turret yaw <output id="turretYawValue">0°</output></span><input id="turretYaw" type="range" min="-180" max="180" value="0"></label>
+          <label class="range-control" for="gunPitch"><span>Gun elevation <output id="gunPitchValue">0°</output></span><input id="gunPitch" type="range" min="-10" max="20" step="0.5" value="0"></label>
+        </section>
+
+        <section class="dossier-section" aria-labelledby="specHeading">
+          <div class="section-label"><span id="specHeading">Specification</span><small>Canonical values</small></div>
+          <dl class="spec-grid" id="specGrid"></dl>
+        </section>
+
+        <section class="dossier-section" aria-labelledby="ammoHeading">
+          <div class="section-label"><span id="ammoHeading">Ammunition suite</span><small>At 1,000 m</small></div>
+          <div class="ammunition-list" id="ammunitionList"></div>
+        </section>
+
+        <p class="model-note">Values describe Claude of Tanks simulation data, not a real-world survivability or engineering assessment. Diagnostic overlays show authored collision volumes.</p>
+      </div>
+    </aside>
+  </main>
+
+  <div class="toast" id="toast" role="status"></div>
+  <script type="module" src="/src/gallery/gallery.js"></script>
+</body>
+</html>
