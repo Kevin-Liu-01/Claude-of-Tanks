@@ -88,10 +88,10 @@
    "gatePassed": false,
    "components": {
     "hullCurves": 43.8,
-    "stations": 18.4,
+    "stations": 0,
     "turretCurves": 0,
-    "wholeCurves": 23,
-    "dims": 100,
+    "wholeCurves": 11,
+    "dims": 92.2,
     "floaters": 100
    }
   },
@@ -558,9 +558,9 @@
    "gatePassed": false,
    "components": {
     "hullCurves": 32.5,
-    "stations": 42,
+    "stations": 43.2,
     "turretCurves": 0,
-    "wholeCurves": 18.8,
+    "wholeCurves": 19,
     "dims": 100,
     "floaters": 100
    }

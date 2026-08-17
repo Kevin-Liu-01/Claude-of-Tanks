@@ -14,6 +14,7 @@ import { KIT, FITTINGS, orientedSlab, muzzleBore } from './kit.js';
 import {
   loftHull, tubeGun, ruSkirtBand, ruFlaps, widthAnchor,
   buildT62Obr1975Chassis, meshDome, meshDomeCurved, ringSkin, domeRailRu, ruSaddle,
+  ruBoot,
 } from './russia.js';
 
 function mount(P, owner, fitting, x, y, z, rotation = null) {
@@ -796,15 +797,19 @@ function buildZTZ99A2(P) {
 //    T-62's long low egg; curved-normal shell (meshDomeCurved), flank
 //    shoulder shelves, cast nose BROW over the gun (the T-54A rise).
 //  * 100 mm Type 59 gun (licensed D-10T class): measured tube grammar with
-//    the BORE EVACUATOR at the muzzle-third + §B3.1 muzzle bore; cast
-//    collar + canvas boot ring on a sealed ruSaddle.
-//  * Type 59-II searchlight assembly RIGHT of the gun (mirrors the T-62's
-//    left-side Luna — the family-distinct read) + small gun-slaved IR.
-//  * Chinese fender/stowage grammar: glacis IR drum pod (Type 69 tell),
-//    muffler on the LEFT rear fender, stowed OPVT snorkel ridge on the rear
-//    deck, curved rear stowage rack on the dome tail (turret-owned, §B5).
-//  * DShK-class (Type 54 12.7 mm) census MG at the loader ring, barrel
-//    forward (CROWS law), cluster held under the cupola p95 crown.
+//    the BORE EVACUATOR at the muzzle-third + §B3.1 muzzle bore; compact
+//    cast-collar mantlet with the canvas-covered wedge look (ruBoot, §5.327)
+//    over a sealed ruSaddle + coax 7.62 PORT at the boot's right shoulder.
+//  * Type 59-II searchlight RIGHT of the gun on a real shelf bracket +
+//    saddle cradles, dark drum housing (§5.327 re-seat: the old cheek-buried
+//    drum was the owner's "big bulbouys thing") + small gun-slaved IR.
+//  * Chinese fender/stowage grammar: glacis IR drum pod (Type 69 tell), bow
+//    MG port on the glacis right (§5.327), muffler on the LEFT rear fender,
+//    stowed OPVT snorkel ridge on the rear deck, curved rear stowage rack on
+//    the dome tail (turret-owned, §B5).
+//  * DShK-class (Type 54 12.7 mm) census MG on the loader-hatch RING MOUNT
+//    (race ring + carriage arm, §5.327), barrel forward (CROWS law), stowed
+//    low-forward — cluster held under the cupola p95 crown (2.59 datum).
 // The LastTriarius Type 69 print (docs/references/vertex/type59.json)
 // remains the registered measurement oracle in the three maps; this
 // redesign diverges from it BY OWNER DECREE (+10% width, obr-1975 hull) —
@@ -825,6 +830,13 @@ export function buildType59(P) {
   P.add('hullDetail', cylZ(0.125, 0.20, 12), 0.462, 1.30, 2.42, -0.28, 0, 0);
   P.add('hullDark', cylZ(0.129, 0.02, 12), 0.462, 1.33, 2.515, -0.28, 0, 0);
   P.add('hullDark', box(0.06, 0.14, 0.06), 0.462, 1.19, 2.37, -0.28, 0, 0);
+  // Bow MG PORT on the glacis right (§5.327 MG order c — the Type 59 hull
+  // 7.62 fires through a small round port; a ball/port read, not a barrel):
+  // boss cylinder along the local glacis normal (deck run 2.60→2.86 slopes
+  // 24.8°, normal rx −1.138), half-proud, dark aperture disc on the face.
+  // Outboard of the IR drum pod, inboard of the track band (x .965 < 1.111).
+  P.add('hullDetail', cylZ(0.085, 0.06, 12), 0.88, 1.369, 2.698, -1.138, 0, 0);
+  P.add('hullDark', cylZ(0.036, 0.014, 10), 0.88, 1.402, 2.712, -1.138, 0, 0);
   // Muffler on the LEFT rear fender (WZ-120 tell) — seated ON the fender
   // run with two dark band straps and a short aft outlet stub.
   P.add('hullDetail', cylZ(0.10, 0.78, 10), -1.65, 1.60, -2.60);
@@ -880,7 +892,20 @@ export function buildType59(P) {
     for (const s of [-1, 1]) P.add('turretDark', box(0.06, 0.16, 0.30), s * 0.46, 0.34, -1.44);
   }
   // Type 54 12.7 mm (DShK-class) census MG at the loader ring — barrel
-  // FORWARD (CROWS law), planted ring mount, cluster under the cupola crown.
+  // FORWARD (CROWS law), cluster under the cupola crown. §5.327 MG order a:
+  // the classic Type 59 RING MOUNT read — a race ring biting the loader
+  // hatch collar (torus inner edge 0.266 < collar outer 0.27) with carriage
+  // stubs, and a raked carriage arm dropping from the ring's forward-right
+  // quadrant onto the pintle foot. The MG keeps its STOWED/LOW-FORWARD seat
+  // (foot y 0.78 on the dome skin): p95 receipt — cluster crown world 2.57,
+  // ring crown 2.49, arm crown ~2.50, all under the 2.59 cupola-lid datum
+  // (heightM published 2.59 HOLDS, no new side column above published).
+  P.add('turretDetail', KIT.torus(0.286, 0.020, 22), 0.55, 0.985, 0.11);
+  for (const a of [0.5, 2.6, 4.7]) {
+    P.add('turretDark', box(0.05, 0.045, 0.05),
+      0.55 + 0.286 * Math.cos(a), 0.985, 0.11 + 0.286 * Math.sin(a));
+  }
+  P.add('turretDetail', box(0.065, 0.26, 0.075), 0.674, 0.886, 0.294, -0.50, 0, -0.35);
   {
     const dshk = FITTINGS.pintleMG({
       mats: P.mats, cls: 'dshk', scale: 0.78, tone: 'two-tone', elev: 0.12, ammo: true,
@@ -910,22 +935,49 @@ export function buildType59(P) {
   // BORE EVACUATOR at the muzzle-third, §B3.1 muzzle bore. Axis world 1.767
   // on the widened base trunnion; muzzle world +5.99.
   P.gunG.position.set(0, 0.2866, 1.019);
-  ruSaddle(P, { rollR: 0.185, rollW: 0.528, tubeR: 0.13, rootR: 0.185, rootL: 0.48 });
+  // §5.327 MANTLET READ: the buried collar alone left the tube exiting the
+  // casting bare (§B3.1 failing read — the dome front plane at gun height is
+  // world z ~1.97, past the whole old collar). rootL 0.48→0.30 tucks the
+  // saddle cone fully under the new boot (no cone sliver under the canvas).
+  ruSaddle(P, { rollR: 0.185, rollW: 0.528, tubeR: 0.13, rootR: 0.185, rootL: 0.30 });
   P.addGunExtra(KIT.xform(cylZ(0.5, 0.28, 16, 0.42), 0, 0, 0, 0, 0, 0, [0.484, 0.33, 1]), 0, 0, 0.11);
   P.addGunExtraDark(KIT.xform(cylZ(0.5, 0.042, 14), 0, 0, 0, 0, 0, 0, [0.319, 0.25, 1]), 0, 0, 0.28);
+  // Compact cast-collar mantlet with the canvas-covered wedge look (§5.327,
+  // owner order): three tapered boot sections root→tube, root face buried
+  // into the casting at every corner (dome front at the ±0.31 root edge is
+  // gun-local z 0.246 — root sits at 0.22), crease collars + end clamp per
+  // the fleet ruBoot grammar. Small: 0.62×0.50 root vs the 1.45 m brow.
+  ruBoot(P, {
+    pts: [[0.22, 0.62, 0.50, 0.01], [0.40, 0.48, 0.42, 0.01], [0.58, 0.34, 0.34, 0.02]],
+  });
+  // Coax 7.62 (Type 59T) PORT beside the main gun in the mantlet area
+  // (§5.327 MG order b — an aperture read, not a full barrel): short jacket
+  // stub rooted through the casting face at the boot's right shoulder, dark
+  // bore dot proud. Gun-bucketed: elevates with the tube (§B5).
+  P.addGunExtra(KIT.xform(cylZ(0.045, 0.05, 10), 0, 0, 0), 0.30, -0.06, 0.26);
+  P.addGunExtraDark(KIT.xform(cylZ(0.032, 0.15, 10), 0, 0, 0), 0.30, -0.06, 0.30);
+  P.addGunExtraDark(KIT.xform(cylZ(0.015, 0.012, 8), 0, 0, 0), 0.30, -0.06, 0.382);
   // small gun-slaved IR right of the mantlet (Type 69 kit)
   P.addGunExtra(KIT.xform(cylZ(0.095, 0.13, 12), 0, 0, 0), 0.396, 0.13, 0.15);
   P.addGunExtraDark(KIT.xform(cylZ(0.099, 0.014, 12), 0, 0, 0), 0.396, 0.13, 0.225);
   P.addGunExtraDark(KIT.xform(cylZ(0.078, 0.010, 12), 0, 0, 0), 0.396, 0.13, 0.233);
   P.addGunExtraDark(box(0.03, 0.10, 0.03), 0.33, 0.05, 0.13);
-  // Type 59-II searchlight assembly RIGHT of the gun: drum + glass rim +
-  // twin yoke arms + mount beam (mirrors the T-62's left Luna — the
-  // family-distinct read).
-  P.addGunExtra(KIT.xform(cylZ(0.26, 0.27, 18), 0, 0, 0), 0.66, 0.42, -0.05);
-  P.add('gunMountDark', KIT.xform(cylZ(0.245, 0.018, 18), 0, 0, 0), 0.66, 0.42, 0.090);
-  P.addGunExtra(box(0.045, 0.36, 0.30), 0.3377, 0.35, -0.05);
-  P.addGunExtra(box(0.045, 0.36, 0.30), 0.9823, 0.35, -0.05);
-  P.addGunExtra(box(0.726, 0.16, 0.12), 0.66, 0.24, -0.17);
+  // Type 59-II searchlight RIGHT of the gun, PROPERLY SEATED (§5.327: the
+  // old drum sat at gun-local z −0.05 — half-swallowed by the dome cheek,
+  // its exposed upper crescent on the pale gunMount slot WAS the owner's
+  // "big bulbous thing"; whatsat receipt: old drum top world 2.447). New
+  // assembly: shelf bracket cantilevered off the boot's right flank, twin
+  // saddle cradles, DARK drum housing (§C loud-carrier law) with pale
+  // mounting band + bezel, glass recessed. Drum center (0.52, 0.36, 0.50)
+  // gun-local → world top 2.367, fully FORWARD of the casting (dome front
+  // at that height is world ~1.47) — gun-linked, elevates and yaws (§B5).
+  P.addGunExtra(box(0.52, 0.055, 0.34), 0.42, 0.085, 0.42);
+  for (const zSad of [0.33, 0.51]) P.addGunExtra(box(0.30, 0.10, 0.06), 0.52, 0.16, zSad);
+  P.addGunExtraDark(KIT.xform(cylZ(0.24, 0.30, 18), 0, 0, 0), 0.52, 0.36, 0.50);
+  P.addGunExtra(KIT.xform(cylZ(0.245, 0.06, 18), 0, 0, 0), 0.52, 0.36, 0.41);
+  P.addGunExtra(KIT.xform(cylZ(0.247, 0.02, 18), 0, 0, 0), 0.52, 0.36, 0.64);
+  P.addGunExtraDark(KIT.xform(cylZ(0.225, 0.015, 18), 0, 0, 0), 0.52, 0.36, 0.655);
+  P.addGunExtraDark(KIT.xform(cylZ(0.19, 0.010, 16), 0, 0, 0), 0.52, 0.36, 0.662);
   tubeGun(P, [
     [0.32, 0.90, 0.135], [0.90, 1.60, 0.122], [1.60, 2.40, 0.118],
     [2.40, 3.34, 0.118], [3.34, 3.86, 0.155], [3.86, 4.292, 0.118],

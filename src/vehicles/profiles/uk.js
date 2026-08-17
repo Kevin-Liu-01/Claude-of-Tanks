@@ -2988,6 +2988,26 @@ function fv510PhotoBuild(P) {
         [1.445, 0.88, zw + 0.24], [1.497, 0.88, zw + 0.24],
         [1.497, 0.88, zw - 0.24], [1.445, 0.88, zw - 0.24]));
     }
+    // §B2 FENDER-SHELF CLOSURE (IFV see-through sweep §5.326): the 0.29 m
+    // module stand-off (sponson wall 1.15 -> module backs 1.438) was open
+    // from above between the transverse shoes — the top/tilt views read
+    // ~280px ground-through slots per inter-shoe bay, both flanks (4157px
+    // y0-top total). The real WRAP package sits on a continuous fender
+    // shelf. One shelf plate per module span closes the corridor: inner
+    // edge sunk 1 cm into the sponson band, outer edge buried in the module
+    // bodies (1.438..1.497), top 1.83 under the deck line and the module
+    // top edge; segmented at 0.41 m (station-slice law), z -2.62..2.30 —
+    // the glacis corner facet (to 2.28) and rear shoulder bridge own the
+    // corridor ends. Wheel daylight below the 0.75 module bottoms is
+    // untouched (§B9).
+    for (let k = 0; k < 12; k++) {
+      const z0 = 2.30 - k * 0.41;
+      P.add('hull', sslab(s,
+        [1.14, 1.76, z0], [1.50, 1.76, z0],
+        [1.50, 1.76, z0 - 0.41], [1.14, 1.76, z0 - 0.41],
+        [1.14, 1.83, z0], [1.50, 1.83, z0],
+        [1.50, 1.83, z0 - 0.41], [1.14, 1.83, z0 - 0.41]));
+    }
     P.add('hullDark', box(0.014, 0.035, 0.46), s * 1.499, 1.325, 2.06);
     P.add('hullDark', box(0.014, 0.035, 0.46), s * 1.499, 1.325, -2.38);
     // front mudguard steps over the sprocket wrap (crest ~1.04)

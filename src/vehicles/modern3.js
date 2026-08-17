@@ -5077,6 +5077,32 @@ export function buildPuma(P) {
     for (const zc of [2.05, 1.10, 0.12, -0.86, -1.84, -2.82]) {
       P.add('hullDetail', box(0.20, 0.05, 0.16), s * 1.72, 2.02, zc);
     }
+    // §B2 BOW-QUARTER FENDER CLOSURE (IFV see-through sweep §5.326): the
+    // upper body flank ends at z 1.41 and the k-loop armor line at 2.435 —
+    // from the top/tilt the strip between the bow shoulder facet's tapering
+    // outer edge and the module inner faces read clean through to the
+    // ground (1303/1186px corridors at [x ±1.64, z 2.12], 0.26 x 1.2 m per
+    // flank). The real Puma runs a closed fender from the sponson front to
+    // the bow pods. Two raked fender plates ride the facet's own top line
+    // (5 mm under it — §B1 the rake stays the surface): plate 1 spans the
+    // corridor along the modules (inner edge sunk into the facet solid,
+    // outer 1.70 lapping the module inner faces), plate 2 carries the
+    // closure forward to the pod bracket. Undersides hold >=3.5 cm over the
+    // 1.482 shoe-stack envelope (§B4; the facet's own 45 mm law), inner
+    // faces stay outboard of the 1.495 pin-cap band except where sunk into
+    // the facet solid itself. One added course pair extends the armor line
+    // over the same window (z 2.46..2.86, meets k0 at 2.435 and the pod
+    // bracket at 2.73+ — the stern-module closure grammar, mirrored).
+    P.add('hull', orientedSlab(
+      [s * 1.51, 1.622, 1.44], [s * 1.70, 1.622, 1.44], [s * 1.70, 1.533, 2.46], [s * 1.41, 1.533, 2.46],
+      [s * 1.51, 1.672, 1.44], [s * 1.70, 1.672, 1.44], [s * 1.70, 1.583, 2.46], [s * 1.41, 1.583, 2.46]));
+    P.add('hull', orientedSlab(
+      [s * 1.41, 1.533, 2.46], [s * 1.82, 1.533, 2.46], [s * 1.82, 1.499, 2.86], [s * 1.36, 1.499, 2.86],
+      [s * 1.41, 1.583, 2.46], [s * 1.82, 1.583, 2.46], [s * 1.82, 1.549, 2.86], [s * 1.36, 1.549, 2.86]));
+    P.add('hull', box(0.14, 0.42, 0.40), s * 1.73, 1.79, 2.66);                // fwd upper course x 1.66..1.80
+    P.add('hull', box(0.16, 0.60, 0.40), s * 1.78, 1.30, 2.66);                // fwd lower course x 1.70..1.86
+    P.add('hullDark', box(0.015, 0.52, 0.016), s * 1.863, 1.29, 2.415);        // seams keep the course cadence
+    P.add('hullDark', box(0.015, 0.36, 0.016), s * 1.803, 1.79, 2.415);
     // BOW-CORNER MIRROR/SENSOR PODS — the widthM carriers (print's own
     // +-1.93 pods; z-band 0.40 > the 0.35 plan filter so dims reads the
     // published 3.9 datum — bradley LEFT-RACK precedent, certified)
@@ -5351,6 +5377,24 @@ function buildType89(P) {
       [m(1.40), 1.02, 2.90], [m(1.44), 1.02, 2.90], [m(1.44), 1.26, 1.50], [m(1.40), 1.26, 1.50],
       [m(1.40), 1.12, 2.90], [m(1.44), 1.12, 2.90], [m(1.44), 1.82, 1.50], [m(1.40), 1.82, 1.50]));
     P.add('hull', box(0.04, 0.56, 0.30), m(1.42), 1.54, 1.38);
+    // §B2 BOW-CORNER CLOSURE (IFV see-through sweep §5.326): the prow side
+    // walls ended at z 2.90 while the nose block/bow face plate only start
+    // at 3.15 — every side/quarter view read clean THROUGH the z 2.90..3.15
+    // corner bay over the descending sprocket wrap (309-320px enclosed at
+    // [y 0.82, z 3.03], both sides, all yaws). The real Type 89 bow side
+    // plate runs to the nose. Extension rides the same 1.40..1.44 plane
+    // (outboard of the 1.376 pin-cap band — §B4-clear by construction, the
+    // sprocket disc z<=2.88 stays §B9-readable), top chord tucked under the
+    // glacis plate underside (0.982@3.13), flat bottom 0.62 under the wrap's
+    // forward taper; the transverse corner cap (z 3.10..3.16) seals the
+    // front edge into the nose block (lap to 3.16 vs block rear 3.15) a
+    // full 13 cm forward of the wrap's z 2.97 reach.
+    P.add('hull', slab(
+      [m(1.40), 0.62, 2.90], [m(1.44), 0.62, 2.90], [m(1.44), 0.62, 3.14], [m(1.40), 0.62, 3.14],
+      [m(1.40), 1.12, 2.90], [m(1.44), 1.12, 2.90], [m(1.44), 1.00, 3.14], [m(1.40), 1.00, 3.14]));
+    P.add('hull', slab(
+      [m(1.10), 0.60, 3.10], [m(1.44), 0.60, 3.10], [m(1.44), 0.60, 3.16], [m(1.10), 0.60, 3.16],
+      [m(1.10), 1.00, 3.10], [m(1.44), 1.00, 3.10], [m(1.44), 1.00, 3.16], [m(1.10), 1.00, 3.16]));
   }
   // ---- stern: near-vertical face + power door (the Type 89 rear) ---------
   P.add('hull', slab(

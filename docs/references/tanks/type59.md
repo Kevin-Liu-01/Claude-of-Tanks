@@ -213,3 +213,110 @@ untouched (hash-proven).
 §5.254 PAIRS: shots/t62-widen/before-type59/ (pre-order tree, print-frame
 build) vs shots/t62-widen/after-type59/ + after-type59-yaw90/ — 15 views
 each + dims.json receipts, captured at their respective trees.
+
+## §5.327 — owner order: "big bulbouys thing" on the turret (mantlet?) + machine guns (2026-08-17)
+
+ORDER (verbatim): "theres a big bulbouys thing on type 59s turret, ius
+that the manglet? make it better and also add machine guns" (+garage
+screenshot, front-left view, bulb on the turret front-left cheek left of
+the '406').
+
+BULB ATTRIBUTION (pixels first, then instrument — the order's Q answered:
+NO, it was NOT the mantlet):
+- Reproduced at the TRUE garage pose (garageCameraPose verbatim: offset
+  +7.4,+2.75,+8.0, fov 42, lookAt y 1.6 — tools/tmp-type59-mantlet-shots)
+  in shots/type59-mantlet/before/garage.png: the pale crescent/fin
+  standing on the turret front-left cheek, exactly the owner's shape.
+- whatsat AABB receipt: the only geometry occupying the bulb envelope =
+  the **Type 59-II searchlight assembly in the gunMount bucket** — old
+  drum cylZ r0.26×0.27 at gun-local (0.66, 0.42, −0.05) → world center
+  (0.66, 2.187, 1.645), **drum top 2.447** = the crescent tip; yoke arms
+  to x 1.023. Root cause ×3: (1) drum authored at gun-local z −0.05 —
+  the dome cheek SWALLOWS its lower half (casting front at its top height
+  is z-local ~0.53, at its bottom ~1.09 — the drum emerges tangentially
+  as a rounded fin, not as mounted equipment); (2) exposed body rode the
+  pale gunMount slot (§C detail-slot loud-carrier class); (3) the actual
+  mantlet collar (world z 1.665..1.945) sat ENTIRELY inside the casting
+  front plane (~1.97 at gun height) — the tube exited BARE (§B3.1
+  mantlets-mandatory failing read), so the crescent was the only mass
+  reading at the gun root.
+
+FIX (dressing layer only — buildType59 in profiles/china.js; the shared
+buildT62Obr1975Chassis is byte-untouched, t62mv1 hash-proven):
+1. MANTLET READ (§B3.1): compact cast-collar mantlet with the canvas-
+   covered wedge look — ruBoot 3 sections [[0.22,0.62,0.50],[0.40,0.48,
+   0.42],[0.58,0.34,0.34]] root→tube with crease collars + end clamp;
+   root face buried at every corner (casting front at the ±0.31 root edge
+   is z-local 0.246); ruSaddle rootL 0.48→0.30 so no cone sliver exits
+   the canvas. Small (0.62 m root vs the 1.45 m brow) — the WZ-120 dome
+   + nose brow themselves are UNTOUCHED (ratified §5.315 class).
+2. SEARCHLIGHT RE-SEAT (the bulb kill): proper Type 59-II assembly RIGHT
+   of the tube — shelf bracket cantilevered off the boot's right flank
+   (0.52×0.055×0.34 at gun-local (0.42,0.085,0.42), buried into the boot
+   wall), twin saddle cradles, **dark drum housing** cylZ r0.24×0.30 at
+   (0.52, 0.36, 0.50) with pale mounting band + bezel, recessed glass.
+   New drum top world **2.367** (was 2.447), x-max 0.763 (was 1.023),
+   fully FORWARD of the casting (clear standoff, §B2-attached through
+   shelf→boot→casting). Gun-linked as before.
+MACHINE GUNS (census §B3, p95-budgeted per §5.265):
+a. Loader DShK 12.7 RING MOUNT read (the classic Type 59 roof tell): race
+   ring torus r0.286 BITING the loader-hatch collar (inner edge 0.266 <
+   collar outer 0.27) + 3 carriage stubs + raked carriage arm from the
+   ring's forward-right quadrant onto the existing pintle foot. The MG
+   keeps its STOWED/LOW-FORWARD seat (census fitting unchanged, barrel
+   forward, CROWS law). **p95 receipt: cluster crown world 2.57, ring
+   2.505, arm ~2.50 — turretDark 2.59 (cupola lid) remains the datum
+   crown; ZERO new side columns above published heightM 2.59; dims 100
+   held ×2.**
+b. Coax 7.62 (Type 59T) PORT beside the main gun in the mantlet area:
+   boss + jacket stub + dark bore dot at gun-local (0.30, −0.06,
+   0.26..0.382), rooted through the casting face at the boot's right
+   shoulder — an aperture read, not a barrel. Gun-bucketed → elevates
+   (§B5 elev-8 pair proves it).
+c. Bow MG PORT on the glacis right: boss cylZ r0.085 along the local
+   glacis normal (deck run 2.60→2.86 slopes 24.8°, rx −1.138) at world
+   (0.88, 1.369, 2.698), half-proud + dark aperture disc — ball/port
+   read. Outboard of the IR drum pod, inboard of the track band (x-max
+   0.965 < 1.111); hullDetail AABB confirms containment.
+
+GATE (×2 bit-identical, hold-or-improve vs the §5.315 min-0 owner-
+decreed-divergence row): **min 0 | hull 32.5 (held) | whole 18.8→19.0 |
+turret 0 (capped) | stations 42→43.2 | dims 100 HELD | floaters 100
+HELD**. track-clip --exact --strict **0/0 all columns + 0/0 shoes + 0/0
+sweep**. §B5 in pixels: yaw-35 pair (DShK+ring+arm, searchlight, boot,
+coax all rotate with the turret; nothing stranded) + elev-8 pair (boot/
+drum/coax pitch with the gun; turret-owned ring mount correctly stays) —
+shots/type59-mantlet/b5-yaw35/ + b5-elev8/. §B2: floaters 100 ×2 + top-
+tilt/front closed-deck reads.
+
+HASHES: type59 **a62bf43c → ea3494b4** (53 meshes held, verts 78371 →
+81761). Guards byte-exact start→end of round: t62mv1 **ac414eaa** (the
+shared chassis — untouched by construction AND by hash), ztz85_iii
+13f0c8d7, type99a 7f613788, t54 cedb8be8, ztz99a2
+89052eac-as-read-live (= 93c78198 at clean HEAD — the live-tree offset
+is a FOREIGN live lane's uncommitted spec/marking WIP, reproduced
+clean-worktree, zero type59 mentions; my batches held the live reading
+exactly). CLOSING-WINDOW NOTE: at the post-delivery receipt type99a read
+f184fdc4 live while clean HEAD (f12bf027) still reproduces **7f613788**
+— the mover is the same foreign type99-armor lane's live WIP (its own
+tank, actively edited); type99a held 7f613788 through every one of THIS
+lane's edit batches, and clean-HEAD type59 reads a62bf43c (pre-fix) ✓.
+
+npm GATE (honest): pre-§5.337 chain GREEN exit 0 with these edits; the
+§5.337 "test-chain union" then landed mid-round referencing an UNTRACKED
+foreign-lane selftest (src/vehicles/profiles/type99Armor.selftest.mjs,
+status ??) which fails on ITS OWN WIP ("type99a authored ring seat"
+1.4436559 vs 1.4). EXONERATION RECEIPT: failure reproduces byte-identical
+in a worktree with MY china.js reverted to HEAD (md5 b5bcf038) under the
+same foreign WIP — not this lane's defect. Every OTHER test in the union
+chain runs GREEN with my edits (16/16 post-failure tests individually
+exit 0, incl. the new combatAnatomy + propPlacement).
+
+§5.254 PAIRS (same-environment, HEAD 17a33b31 both sides, byte-
+deterministic — after re-render cmp IDENTICAL): shots/type59-mantlet/
+before/ (HEAD build) vs after/ (this fix), 9 views each at the owner's
+garage angle + orthos + closeups; cross-env v1 pair archived in the lane
+scratchpad. ORCHESTRATOR NOTES: (1) icons for type59 not regenerated
+(orchestrator lane per §5.246); (2) the shared ledger.json working-tree
+diff interleaves sibling lanes' rows — type59's row update is this
+lane's; (3) delivered UNCOMMITTED-UNSTAGED per order.
