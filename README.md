@@ -15,6 +15,8 @@
   &nbsp;·&nbsp;
   <a href="docs/HOW-IT-WORKS.md">HOW IT WORKS</a>
   &nbsp;·&nbsp;
+  <a href="https://cot.kevinliu.studio/gallery">TANK GALLERY</a>
+  &nbsp;·&nbsp;
   <a href="docs/INDEX.md">DOCUMENTATION</a>
 </p>
 
@@ -73,7 +75,7 @@ protocol. Three.js presents the result; it does not decide it.
 | Network play | Protocol-v4 intent validation, viewer-filtered state, low-latency replaceable input, dedicated WebSocket authority, prediction, reconciliation, and reconnectable room state |
 | Persistent rounds | Invite links, teams, spectators, ready locks, after-action rematch voting, garage room presence, and non-host rejoin while the browser host remains authoritative |
 | Performance | A direct solo path, isolated public routes, adaptive rendering, idle warmup, reusable snapshot storage, bounded cosmetic event work, and GPU black-frame recovery |
-| Production tools | A deterministic in-game Scene Studio, a geometry-aware Surface Markup Studio, fleet icon/diagram generation, browser multiplayer rigs, and public/private artifact verification |
+| Production tools | A deterministic in-game Scene Studio, Tank Gallery geometry markup, fleet icon/diagram generation, browser multiplayer rigs, and public/private artifact verification |
 
 The detailed, code-linked feature catalog is in
 [Product features and technical achievements](docs/FEATURES.md).
@@ -135,7 +137,7 @@ The landing page presents all 30 new frames with nation filters and full-screen 
 ## Systems in view
 
 The public presentation also uses direct captures of the shipped interfaces and tools. These are not design mockups:
-they show the production garage, battle HUD, sniper view, killcam, Scene Studio, and Surface Markup Studio.
+they show the production garage, battle HUD, sniper view, killcam, Scene Studio, and Tank Gallery markup tools.
 
 <table>
 <tr>
@@ -148,7 +150,7 @@ they show the production garage, battle HUD, sniper view, killcam, Scene Studio,
 </tr>
 <tr>
 <td width="50%"><img src="public/media/home/st_scene.webp" alt="Scene Studio composing a battlefield image"><br><sub><b>Scene Studio:</b> actual worlds, vehicles, poses, effects, deterministic time, and production capture.</sub></td>
-<td width="50%"><img src="public/media/home/ui_surface_lab.webp" alt="Tank Surface Markup Studio reviewing procedural geometry"><br><sub><b>Surface Lab:</b> exact geometry selection, articulation ownership, annotations, and portable review packets.</sub></td>
+<td width="50%"><img src="public/media/home/ui_surface_lab.webp" alt="Tank Gallery reviewing procedural geometry"><br><sub><b>Tank Gallery markup:</b> exact geometry selection, articulation ownership, annotations, and portable review packets alongside fleet dossiers.</sub></td>
 </tr>
 </table>
 
@@ -194,13 +196,16 @@ The renderer uses four quality-scaled cascaded shadow maps with stable texel-anc
 articulation-aware convex shadow hulls derived from their authored geometry, so hull, turret, and gun silhouettes remain
 recognizable without sending thousands of decorative triangles through every shadow cascade.
 
-Start with [Product features](docs/FEATURES.md) and
+Start with [Technical overview](docs/TECHNICAL-OVERVIEW.md),
+[Product features](docs/FEATURES.md), and
 [How it works](docs/HOW-IT-WORKS.md). Engineering work continues in
 [Internal systems](docs/SYSTEMS.md),
 [Development and verification](docs/DEVELOPMENT.md),
 [Multiplayer architecture](docs/MULTIPLAYER-ARCHITECTURE.md),
 [Performance architecture](docs/PERFORMANCE.md), and
-[Scene Studio](docs/STUDIO.md). Historical fleet-program ledgers and the original implementation contract remain
+[Scene Studio](docs/STUDIO.md). The public [Tank Gallery](https://cot.kevinliu.studio/gallery)
+and its [implementation contract](docs/GALLERY.md) expose the live procedural
+fleet with armor, module, crew, and exact-surface markup diagnostics. Historical fleet-program ledgers and the original implementation contract remain
 under docs/ as an auditable build record; they are not the current product guide.
 
 ## Develop and verify

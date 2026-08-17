@@ -371,9 +371,9 @@ authority as well as reflected visually.
 Scene Studio uses the production world, vehicle factory, effects, materials,
 terrain support, camera, post chain, and capture path while pausing combat.
 
-Tank Surface Markup Studio uses first-party visuals and records precise
-geometry selections for review. It is an authoring tool, not a runtime
-dependency.
+Tank Gallery surface markup uses first-party visuals and records precise
+geometry selections for review. It remains isolated from the playable boot
+graph and is not a runtime battle dependency.
 
 Generated vehicle portraits and diagrams are produced by tools/genIcons.mjs.
 Marketing captures are produced by tools/marketing-shots.

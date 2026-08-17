@@ -3,150 +3,349 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Claude of Tanks — Technical Field Manual</title>
-  <meta name="description" content="How Claude of Tanks works: first-party procedural vehicles, fixed-step combat, plate-level armor, multiplayer authority and prediction, persistent rematches, performance, and Scene Studio.">
+  <meta name="theme-color" content="#080a0c">
+  <meta name="description" content="Official technical documentation for Claude of Tanks: deterministic simulation, first-party procedural vehicles, armor and ballistics, multiplayer authority, rendering, performance, tools, and verification.">
   <link rel="canonical" href="https://cot.kevinliu.studio/docs">
-  <meta name="theme-color" content="#05080b">
-  <meta property="og:title" content="Claude of Tanks — Technical Field Manual">
-  <meta property="og:description" content="The current architecture of the pure Three.js armoured combat simulator.">
-  <meta property="og:image" content="https://cot.kevinliu.studio/media/modern/17_t14.webp">
-  <link rel="icon" href="/brand/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="/presentation.css">
+  <link rel="icon" type="image/svg+xml" href="/brand/favicon.svg">
+  <link rel="preload" href="/fonts/abc-monument-grotesk/ABCMonumentGrotesk-Medium.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/src/docs/docs.css">
+  <title>Technical Documentation — Claude of Tanks</title>
 </head>
 <body>
-<svg aria-hidden="true" width="0" height="0" style="position:absolute"><defs>
-  <symbol id="ic-crosshair" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6"/><path d="M12 2v5m0 10v5M2 12h5m10 0h5"/><circle cx="12" cy="12" r="1.5"/></symbol>
-  <symbol id="ic-armor" viewBox="0 0 24 24"><path d="m12 2 8 3v6c0 5-3.2 8.3-8 11-4.8-2.7-8-6-8-11V5z"/><path d="m8 13 3-5h5l-3 4h4l-5 5"/></symbol>
-  <symbol id="ic-track" viewBox="0 0 24 24"><path d="M5 7h12l4 5-4 5H5a5 5 0 0 1 0-10Z"/><circle cx="6" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="17" cy="12" r="2"/></symbol>
-  <symbol id="ic-net" viewBox="0 0 24 24"><circle cx="5" cy="18" r="2"/><circle cx="12" cy="5" r="2"/><circle cx="19" cy="18" r="2"/><path d="m6 16 5-9m2 0 5 9M7 18h10"/></symbol>
-  <symbol id="ic-eye" viewBox="0 0 24 24"><path d="M2 12s4-6 10-6 10 6 10 6-4 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></symbol>
-  <symbol id="ic-camera" viewBox="0 0 24 24"><path d="M3 8h4l2-3h6l2 3h4v11H3z"/><circle cx="12" cy="13" r="4"/></symbol>
-  <symbol id="ic-code" viewBox="0 0 24 24"><path d="m8 4-6 8 6 8m8-16 6 8-6 8M14 2l-4 20"/></symbol>
-  <symbol id="ic-world" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 4 6 4 9s-1 6-4 9c-3-3-4-6-4-9s1-6 4-9Z"/></symbol>
-</defs></svg>
+  <nav class="site-nav" aria-label="Primary navigation">
+    <div class="inner shell">
+      <a class="brand" href="/home"><img src="/brand/logo-mark.svg" alt=""><span>Claude <b>of Tanks</b></span></a>
+      <div class="nav-links">
+        <a href="/home">Showcase</a>
+        <a href="/gallery">Tank Gallery</a>
+        <a href="/docs" aria-current="page">Documentation</a>
+        <a href="/studio">Scene Studio</a>
+        <a class="nav-play" href="/">Enter garage</a>
+      </div>
+    </div>
+  </nav>
 
-<nav class="site-nav" aria-label="Primary"><div class="inner shell"><a class="brand" href="/home"><img src="/brand/logo-mark.svg" alt=""><span>Claude <b>of Tanks</b></span></a><div class="nav-links"><a href="/home">Showcase</a><a href="/docs" aria-current="page">Docs</a><a href="/studio">Studio</a><a class="nav-play" href="/">Play now</a></div></div></nav>
+  <header class="docs-hero">
+    <div class="shell">
+      <div>
+        <p class="kicker">Engineering reference // public edition 05</p>
+        <h1>Technical<br><span>Documentation</span></h1>
+        <p class="hero-lede">The official system reference for <strong>Claude of Tanks</strong>: a browser-native armored combat game with fixed-step authority, first-party procedural vehicles, plate-level armor, viewer-filtered multiplayer state, and a production renderer built directly on Three.js.</p>
+      </div>
+      <div class="doc-status" aria-label="Core technical contracts">
+        <div><small>Simulation</small><strong>60 Hz</strong><span>fixed authority step</span></div>
+        <div><small>Network state</small><strong>20 Hz</strong><span>replaceable snapshots</span></div>
+        <div><small>Protocol</small><strong>v3</strong><span>validated envelopes</span></div>
+        <div><small>Fleet provenance</small><strong class="status-live">First-party</strong><span>runtime geometry</span></div>
+      </div>
+    </div>
+  </header>
 
-<header class="docs-hero" style="--docs-art:url('/media/modern/17_t14.webp')">
-  <div class="shell">
-    <p class="micro"><em>Current architecture</em> // Protocol 3 // August 2026</p>
-    <h1>Technical<br>field manual.</h1>
-    <p class="lede">The production system behind Claude of Tanks: what owns truth, how vehicles and worlds are built, how a shell becomes a result, and how the same battle survives a network boundary.</p>
+  <div class="docs-layout shell">
+    <aside class="docs-toc" aria-label="Documentation contents">
+      <div class="toc-head"><span>Contents</span><button id="docsMenu" type="button" aria-expanded="false">Menu</button></div>
+      <nav>
+        <a href="#overview"><span>01</span>System overview</a>
+        <a href="#architecture"><span>02</span>Architecture</a>
+        <a href="#lifecycle"><span>03</span>Runtime lifecycle</a>
+        <a href="#vehicles"><span>04</span>Vehicle system</a>
+        <a href="#combat"><span>05</span>Combat simulation</a>
+        <a href="#networking"><span>06</span>Multiplayer authority</a>
+        <a href="#presentation"><span>07</span>Presentation</a>
+        <a href="#performance"><span>08</span>Performance</a>
+        <a href="#tools"><span>09</span>Studios and gallery</a>
+        <a href="#contracts"><span>10</span>Public contracts</a>
+        <a href="#verification"><span>11</span>Verification</a>
+        <a href="#reference"><span>12</span>Reference map</a>
+      </nav>
+      <p class="toc-footer">This page is the public technical orientation. The complete source-linked manuals remain in <a href="https://github.com/Kevin-Liu-01/Claude-of-Tanks/tree/main/docs">docs/</a>.</p>
+    </aside>
+
+    <article class="docs-main">
+      <section class="doc-section" id="overview">
+        <p class="section-index">01 // System overview</p>
+        <h2>A game engine organized around authority boundaries.</h2>
+        <p class="lead">Claude of Tanks separates <strong>gameplay truth</strong> from <strong>browser presentation</strong>. Movement, aiming, ballistics, armor, damage, spotting, bots, and match results can run without the DOM or WebGL. Three.js consumes those results and constructs the visible world.</p>
+        <p>This division supports three execution arrangements without changing the rules: an in-page solo authority, a browser-hosted WebRTC authority for private and LAN rooms, and a renderer-free dedicated authority for ranked service play. The same simulation vocabulary is used in every arrangement; transport and presentation are adapters around it.</p>
+        <div class="principles">
+          <article class="principle"><span>01</span><h3>Deterministic authority</h3><p>Simulation advances in fixed 1/60-second steps. Authoritative randomness is seeded or injected, never read from wall-clock time.</p></article>
+          <article class="principle"><span>02</span><h3>Explicit ownership</h3><p>Each subsystem owns one policy boundary. Rendering cannot decide hits; clients cannot grant damage; hidden transforms never leave authority.</p></article>
+          <article class="principle"><span>03</span><h3>Measured delivery</h3><p>Focused self-tests, browser probes, asset fingerprints, geometry gates, and public/private builds verify the behavior users receive.</p></article>
+        </div>
+        <div class="callout warning"><strong>Scope statement</strong>All vehicle values and diagnostic overlays describe the game simulation. They are not real-world engineering, protection, or survivability assessments.</div>
+      </section>
+
+      <section class="doc-section" id="architecture">
+        <p class="section-index">02 // Architecture</p>
+        <h2>One direction for truth; several consumers.</h2>
+        <p>The main data path is intentionally linear. Controls become bounded intent. Authority advances the match and emits durable state plus reliable one-shot events. Presentation samples that state, renders it, and reports input back through the same intent interface.</p>
+        <div class="architecture-flow" role="img" aria-label="Controls flow into deterministic authority, delivery, and presentation">
+          <div class="flow-node"><em>INPUT</em><strong>Control intent</strong><p>Drive, aim point, fire edge, ammunition, equipment, and room actions.</p></div>
+          <div class="flow-arrow" aria-hidden="true"></div>
+          <div class="flow-node authority"><em>AUTHORITY</em><strong>Deterministic match</strong><p>Movement, combat, spotting, bots, world collision, timers, and result.</p></div>
+          <div class="flow-arrow" aria-hidden="true"></div>
+          <div class="flow-node"><em>DELIVERY</em><strong>State + events</strong><p>Direct calls, viewer-filtered snapshots, acknowledgements, and reliable events.</p></div>
+          <div class="flow-arrow" aria-hidden="true"></div>
+          <div class="flow-node presentation"><em>CLIENT</em><strong>Presentation</strong><p>Three.js visuals, interpolation, HUD, audio, effects, killcam, and reports.</p></div>
+        </div>
+        <h3>Source ownership</h3>
+        <table class="ownership-table">
+          <thead><tr><th>Path</th><th>Primary responsibility</th><th>Constraint</th></tr></thead>
+          <tbody>
+            <tr><td>src/sim/</td><td>Movement, armor, ballistics, damage, spotting, routing, and authoritative match rules.</td><td>Node-runnable; no DOM or WebGL.</td></tr>
+            <tr><td>src/net/</td><td>Protocol, rooms, transports, snapshots, prediction, reconciliation, and browser bridge.</td><td>Transport-independent policy.</td></tr>
+            <tr><td>src/vehicles/</td><td>Canonical specifications, procedural geometry, materials, labels, ordering, and asset contracts.</td><td>Playable geometry is first-party.</td></tr>
+            <tr><td>src/world/</td><td>Terrain, maps, props, vegetation, collision, destructibles, and world manifests.</td><td>Browser and server collision agree.</td></tr>
+            <tr><td>src/engine/</td><td>Renderer, lighting, sky, camera, post-processing, quality, warmup, and device diagnosis.</td><td>Presentation does not alter combat.</td></tr>
+            <tr><td>src/game/</td><td>Application orchestration, local state, input, bots, profile, killcam, and Scene Studio.</td><td>Coordinates owned subsystems.</td></tr>
+            <tr><td>src/ui/</td><td>Garage, HUD, room flow, settings, mobile controls, and reports.</td><td>Consumes canonical state and labels.</td></tr>
+            <tr><td>server/</td><td>Signaling, distributed room state, dedicated matches, matchmaking, and rating.</td><td>No renderer dependency.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="doc-section" id="lifecycle">
+        <p class="section-index">03 // Runtime lifecycle</p>
+        <h2>Boot only what the current phase requires.</h2>
+        <p>Startup prioritizes a responsive garage. Battlefield composition, multiplayer adapters, high-cost source geometry, and optional tools remain outside the critical path until a user action makes them necessary.</p>
+        <div class="sequence" aria-label="Application lifecycle">
+          <div class="sequence-step"><div><strong>Document and renderer boot</strong><p>The inline entry screen paints first. Vite prewarms the static game module graph in development; the renderer and device policy then establish a recoverable WebGL surface.</p></div></div>
+          <div class="sequence-step"><div><strong>Garage composition</strong><p>The selected specification is constructed with <code>createTank()</code>, placed on the garage stage, and paired with roster, map, equipment, and session controls.</p></div></div>
+          <div class="sequence-step"><div><strong>World activation</strong><p>Battle entry creates or restores the chosen map, prewarms required vehicle/material variants, builds the roster, and starts an authority arrangement.</p></div></div>
+          <div class="sequence-step"><div><strong>Fixed simulation and sampled presentation</strong><p>The accumulator advances bounded 60 Hz steps. Rendering remains variable-rate and samples the latest local or network state.</p></div></div>
+          <div class="sequence-step"><div><strong>Result and reset</strong><p>The authoritative result produces an after-action report. Returning to the garage clears match-specific state while retaining reusable immutable resources.</p></div></div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="vehicles">
+        <p class="section-index">04 // Vehicle system</p>
+        <h2>A specification, an authority state, and a visual rig.</h2>
+        <p class="lead">A vehicle is not a single object. Its stable specification identifies balance and geometry. Its authority state records the current match. Its Three.js rig presents that state without becoming authoritative.</p>
+        <div class="system-grid">
+          <article class="system-card"><header><code>specification</code><span>immutable contract</span></header><p>Dimensions, mass, engine output, speeds, traverse limits, weapon data, armor plates, internal volumes, crew, labels, and appearance metadata.</p><ul><li>Registry: <code>src/vehicles/specs.js</code></li><li>Stable key: vehicle spec ID</li><li>Display copy: canonical label record</li></ul></article>
+          <article class="system-card"><header><code>authority state</code><span>match truth</span></header><p>Entity identity, position, yaw, speed, aim, ammunition, reload, hit points, modules, crew, visibility, destruction, and contribution.</p><ul><li>Player ID and spec ID are independent</li><li>Duplicate vehicle selections are valid</li><li>One authority owns every mutation</li></ul></article>
+          <article class="system-card"><header><code>visual rig</code><span>presentation</span></header><p>A procedural hierarchy of hull, turret, gun, recoil group, fittings, running gear, tracks, materials, anchors, and state-driven effects.</p><ul><li>Tank forward is local +Z</li><li>Runtime units are metres and radians</li><li>Articulation mirrors authority state</li></ul></article>
+          <article class="system-card"><header><code>asset record</code><span>generated proof</span></header><p>Hero, side, top, silhouettes, armor, module, hit-zone, and marking views are generated from live geometry and bound to metadata and geometry fingerprints.</p><ul><li>Generated assets fail closed when stale</li><li>Public builds strip quarantined references</li><li>Geometry remains the source of truth</li></ul></article>
+        </div>
+        <h3>Construction pipeline</h3>
+        <div class="architecture-flow" role="img" aria-label="Vehicle specification to generated asset pipeline">
+          <div class="flow-node"><em>REGISTRY</em><strong>Canonical spec</strong><p>Mobility, weapon, dimensions, armor volumes, family, and label.</p></div><div class="flow-arrow"></div>
+          <div class="flow-node authority"><em>FACTORY</em><strong>Procedural rig</strong><p>Family builder, bucket merge, materials, fittings, running gear, and LOD.</p></div><div class="flow-arrow"></div>
+          <div class="flow-node"><em>CONSUMERS</em><strong>Game + tools</strong><p>Garage, battle, gallery, Studio, icon generator, and geometry probes.</p></div>
+        </div>
+        <p>Open the <a class="inline-link" href="/gallery">Tank Gallery</a> to inspect the current registry as live geometry. Armor, module, and crew layers are generated directly from the authored diagnostic volumes.</p>
+      </section>
+
+      <section class="doc-section" id="combat">
+        <p class="section-index">05 // Combat simulation</p>
+        <h2>Physical intent, resolved once.</h2>
+        <div class="system-grid">
+          <article class="system-card"><header><code>movement.js</code><span>mobility</span></header><p>Converts normalized controls, drivetrain parameters, terrain support, and collision context into authoritative position, heading, velocity, hull attitude, and track travel.</p></article>
+          <article class="system-card"><header><code>ballistics.js</code><span>projectiles</span></header><p>Spawns shells from the resolved muzzle, advances travel and gravity, and finds the first eligible world or vehicle impact.</p></article>
+          <article class="system-card"><header><code>armor.js</code><span>penetration</span></header><p>Transforms the impact into plate space and evaluates slope, obliquity, normalization, ricochet, overmatch, spaced layers, ERA, and kinetic/chemical resistance.</p></article>
+          <article class="system-card"><header><code>damage.js</code><span>consequence</span></header><p>Applies vehicle damage, module and crew effects, fire, repair state, destruction cause, and event data used by the HUD and killcam.</p></article>
+        </div>
+        <h3>Aiming order</h3>
+        <ol>
+          <li>Input identifies a finite world-space aim point.</li>
+          <li>Authority converts it to bounded yaw, pitch, and distance intent.</li>
+          <li>The turret and gun approach the permitted solution at spec-defined rates.</li>
+          <li>The actual muzzle transform is resolved after articulation.</li>
+          <li>Dispersion is applied and the shell begins physical travel.</li>
+          <li>Impact is resolved once; presentation receives the result.</li>
+        </ol>
+        <div class="callout"><strong>Killcam invariant</strong>The X-ray killcam is a projection of the resolved shot. It does not repeat armor or damage calculations and cannot produce a second outcome.</div>
+      </section>
+
+      <section class="doc-section" id="networking">
+        <p class="section-index">06 // Multiplayer authority</p>
+        <h2>The client requests actions; authority grants outcomes.</h2>
+        <p>Private/LAN and ranked play share the same protocol and match runtime. Their transport and authority location differ. The browser-hosted arrangement uses WebRTC; dedicated play uses an ordered WebSocket service. Both validate intents and publish viewer-specific state.</p>
+        <div class="trust-boundary">
+          <div class="trust-zone"><h3>Client-owned</h3><p>Presentation and requested intent.</p><ul><li>Normalized controls</li><li>Finite aim request</li><li>Local movement prediction</li><li>Snapshot interpolation</li><li>HUD, audio, effects, and reports</li></ul></div>
+          <div class="boundary-line"><span>Trust boundary</span></div>
+          <div class="trust-zone authoritative"><h3>Authority-owned</h3><p>All value-granting decisions.</p><ul><li>Movement acceptance</li><li>Reload and firing</li><li>Hits and damage</li><li>Spotting and hidden state</li><li>Destruction and match result</li></ul></div>
+        </div>
+        <h3>Delivery classes</h3>
+        <table class="ownership-table">
+          <thead><tr><th>Class</th><th>Examples</th><th>Delivery rule</th></tr></thead>
+          <tbody>
+            <tr><td>Durable state</td><td>Pose, hit points, reload, modules, visibility, destructibles, result.</td><td>Snapshot state; later values supersede earlier values.</td></tr>
+            <tr><td>Reliable events</td><td>Shot, impact, destruction, module alert, match ended.</td><td>Ordered/deduplicated event channel or envelope.</td></tr>
+            <tr><td>Client intent</td><td>Drive, aim, fire edge, ammunition, ready, team, rematch.</td><td>Validated, ordered input with acknowledgement.</td></tr>
+          </tbody>
+        </table>
+        <p>Viewer filtering occurs before serialization. A hidden enemy transform is omitted from that viewer's snapshot; the renderer is never asked to conceal secret coordinates it already received.</p>
+      </section>
+
+      <section class="doc-section" id="presentation">
+        <p class="section-index">07 // Presentation</p>
+        <h2>Three.js presents authority without inheriting it.</h2>
+        <p>The browser bridge samples authoritative state into presentation entities. The render loop owns final visual synchronization so tanks are not fully synchronized twice in one frame. Remote poses interpolate across a bounded snapshot buffer; the local pose predicts the shared movement integrator and reconciles against authority.</p>
+        <div class="invariants">
+          <div class="invariant"><span>✓</span><div><strong>Critical state applies immediately.</strong><p>Hit points, death, match transitions, and other durable facts are never delayed behind cosmetic work.</p></div></div>
+          <div class="invariant"><span>✓</span><div><strong>Heavy effects are budgeted.</strong><p>Smoke, debris, sparks, and remote destruction work can be admitted across frames without changing outcomes.</p></div></div>
+          <div class="invariant"><span>✓</span><div><strong>Quality remains cosmetic.</strong><p>Render scale, shadows, vegetation density, and effect budgets adapt. Combat rate, map dimensions, and armor resolution do not.</p></div></div>
+          <div class="invariant"><span>✓</span><div><strong>Failure paths restore render state.</strong><p>Off-screen targets and optional diagnostic resources are restored or disposed in guarded paths so later frames return to the visible target.</p></div></div>
+        </div>
+      </section>
+
+      <section class="doc-section" id="performance">
+        <p class="section-index">08 // Performance</p>
+        <h2>Phase-aware loading and bounded frame work.</h2>
+        <p>Performance policy begins with ownership. The garage does not activate a battlefield. Presentation routes do not preload the playable game graph. Optional networking, high-cost vehicle sources, and production tools remain dynamically reachable. Established hot loops reuse scratch state and avoid new per-frame allocations.</p>
+        <table class="ownership-table">
+          <thead><tr><th>Budget</th><th>Mechanism</th><th>Failure behavior</th></tr></thead>
+          <tbody>
+            <tr><td>Boot</td><td>Staged startup, module prewarm in development, garage-first world dormancy.</td><td>Optional paths stay outside the critical graph.</td></tr>
+            <tr><td>CPU frame</td><td>Fixed-step cap, event admission budgets, reduced distant detail cadence.</td><td>Cosmetics degrade before authority.</td></tr>
+            <tr><td>GPU frame</td><td>Adaptive render scale, shadow policy, density and post tiers, shader warmup.</td><td>Device rescue can disable optional passes.</td></tr>
+            <tr><td>Network</td><td>Snapshot coalescing, deltas, baselines, keyframes, bounded extrapolation.</td><td>Missing baselines wait for a keyframe.</td></tr>
+            <tr><td>Memory</td><td>Resource reuse, explicit visual disposal, cached immutable worlds.</td><td>Match-specific state resets independently.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="doc-section" id="tools">
+        <p class="section-index">09 // Studios and gallery</p>
+        <h2>The shipped renderer is also the inspection environment.</h2>
+        <div class="system-grid">
+          <article class="system-card"><header><code>/gallery</code><span>reference + markup</span></header><p>The Tank Gallery loads one first-party procedural vehicle at a time. It combines searchable dossiers, armor/module/crew diagnostics, exact triangle or coplanar-patch selection, articulation ownership, and portable JSON/PNG review packets.</p><ul><li>Audience: players, vehicle authors, and technical reviewers</li><li>Authority: canonical vehicle specifications and live procedural geometry</li><li>Shareable <code>?id=…&amp;layer=…</code> URLs</li></ul></article>
+          <article class="system-card"><header><code>/studio</code><span>production staging</span></header><p>Scene Studio composes live maps, tank actors, damage states, deterministic effects, camera rigs, and high-resolution captures without running combat AI.</p><ul><li>Audience: artists, QA, marketing, automation</li><li>Round-trippable scene JSON</li><li>Frozen deterministic FX timeline</li></ul></article>
+          <article class="system-card"><header><code>tools/</code><span>verification</span></header><p>Browser probes, fleet geometry gates, screenshot contracts, icon generation, multiplayer soak rigs, performance recorders, and release checks turn visual or operational claims into reproducible artifacts.</p><ul><li>Deterministic inputs and outputs</li><li>Focused checks before aggregate suites</li><li>Public/private artifact validation</li></ul></article>
+        </div>
+      </section>
+
+      <section class="doc-section" id="contracts">
+        <p class="section-index">10 // Public contracts</p>
+        <h2>Copyable interfaces for tools and automation.</h2>
+        <h3>Local development</h3>
+        <div class="code-sample"><div class="code-head"><span>shell // minimum verified loop</span><button type="button" data-copy="#quickStart">Copy</button></div><pre id="quickStart"><code>npm install
+npx vite
+
+# Focused deterministic checks, then the complete suite.
+node src/gallery/catalog.selftest.mjs
+npm test
+
+# Build the deployable public artifact.
+npm run build</code></pre></div>
+        <h3>Tank Gallery export</h3>
+        <p>Use <strong>Copy data</strong> in the gallery to produce a normalized record that is stable for documentation, issue reports, and external analysis. It intentionally omits renderer objects and mutable match state.</p>
+        <div class="code-sample"><div class="code-head"><span>json // claude-of-tanks/gallery-spec@1</span><button type="button" data-copy="#galleryContract">Copy</button></div><pre id="galleryContract"><code>{
+  "schema": "claude-of-tanks/gallery-spec@1",
+  "id": "m1a2",
+  "name": "M1A2 Abrams",
+  "nation": "USA",
+  "class": "Main battle tank",
+  "tier": 10,
+  "mobility": {
+    "enginePowerHp": 1500,
+    "weightTons": 66.8,
+    "topSpeedKmh": 67
+  },
+  "gun": {
+    "caliberMm": 120,
+    "reloadS": 6,
+    "shells": []
+  },
+  "protection": {
+    "armorPlateCount": 22,
+    "moduleVolumeCount": 9,
+    "crewVolumeCount": 4
+  }
+}</code></pre></div>
+        <h3>Scene Studio composition</h3>
+        <div class="code-sample"><div class="code-head"><span>javascript // browser console</span><button type="button" data-copy="#studioContract">Copy</button></div><pre id="studioContract"><code>await window.__STUDIO.load({
+  map: 'desert',
+  seed: 5000,
+  actors: [
+    {
+      id: 'm1a2',
+      name: 'hero',
+      pos: [12, -40],
+      facingDeg: 120,
+      turretDeg: -25,
+      gunDeg: 6,
+      state: 'intact'
+    }
+  ],
+  camera: {
+    pos: [24, 6, -52],
+    lookAt: [12, 2, -40],
+    groundRel: true,
+    fov: 45,
+    mode: 'orbit'
+  },
+  fxTime: 0,
+  timeScale: 0
+});
+
+window.__STUDIO.capture({ width: 2560, download: true });</code></pre></div>
+      </section>
+
+      <section class="doc-section" id="verification">
+        <p class="section-index">11 // Verification</p>
+        <h2>Proof is layered by failure surface.</h2>
+        <p>The project does not use one test type as a universal proxy. Pure simulation and protocol invariants run in Node. Browser interaction and rendering use Chromium probes. Fleet assets bind to live metadata and geometry fingerprints. Public and private Vite builds verify route and quarantine behavior.</p>
+        <div class="code-sample"><div class="code-head"><span>shell // release-oriented verification</span><button type="button" data-copy="#verificationCommands">Copy</button></div><pre id="verificationCommands"><code># Complete deterministic self-test suite
+npm test
+
+# Browser multiplayer behavior
+npm run test:net:browser
+
+# Vehicle provenance and generated asset contracts
+npm run tank:native:check
+npm run tank:assets:check
+
+# Deployable public and private artifacts
+npm run build
+npm run build:private</code></pre></div>
+        <table class="ownership-table">
+          <thead><tr><th>Layer</th><th>Typical proof</th><th>What it can establish</th></tr></thead>
+          <tbody>
+            <tr><td>Unit / self-test</td><td>Node assertions against deterministic modules.</td><td>Math, state transitions, schema, serialization, and policy invariants.</td></tr>
+            <tr><td>Browser integration</td><td>Real DOM, WebRTC/WebSocket, renderer, and route probes.</td><td>User-facing flow, timing boundaries, interaction, and transport behavior.</td></tr>
+            <tr><td>Visual / geometry</td><td>Deterministic captures, masks, measurements, fingerprints, and critics.</td><td>Vehicle appearance, asset freshness, articulation, and rendering output.</td></tr>
+            <tr><td>Artifact</td><td>Public/private Vite builds and quarantine stripping.</td><td>Deployability, route reachability, bundle boundaries, and provenance policy.</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="doc-section" id="reference">
+        <p class="section-index">12 // Reference map</p>
+        <h2>Continue with the authoritative subsystem document.</h2>
+        <table class="reference-table">
+          <thead><tr><th>Document</th><th>Authoritative scope</th></tr></thead>
+          <tbody>
+            <tr><td><a href="https://github.com/Kevin-Liu-01/Claude-of-Tanks/blob/main/docs/TECHNICAL-OVERVIEW.md">TECHNICAL-OVERVIEW.md</a></td><td>Current architecture, boundaries, runtime flow, system contracts, and diagrams.</td></tr>
+            <tr><td><a href="https://github.com/Kevin-Liu-01/Claude-of-Tanks/blob/main/docs/SYSTEMS.md">SYSTEMS.md</a></td><td>Detailed subsystem ownership, behavior, and current runtime integration.</td></tr>
+            <tr><td><a href="https://github.com/Kevin-Liu-01/Claude-of-Tanks/blob/main/docs/MULTIPLAYER-ARCHITECTURE.md">MULTIPLAYER-ARCHITECTURE.md</a></td><td>Authority arrangements, protocol v3, snapshots, prediction, rooms, and services.</td></tr>
+            <tr><td><a href="https://github.com/Kevin-Liu-01/Claude-of-Tanks/blob/main/docs/PERFORMANCE.md">PERFORMANCE.md</a></td><td>Boot, quality policy, frame ownership, recovery, event budgets, and measurement.</td></tr>
+            <tr><td><a href="https://github.com/Kevin-Liu-01/Claude-of-Tanks/blob/main/docs/DEVELOPMENT.md">DEVELOPMENT.md</a></td><td>Local setup, service topology, command matrix, testing, and release operations.</td></tr>
+            <tr><td><a href="https://github.com/Kevin-Liu-01/Claude-of-Tanks/blob/main/docs/GALLERY.md">GALLERY.md</a></td><td>Tank Gallery behavior, overlay semantics, export schema, and accessibility.</td></tr>
+            <tr><td><a href="https://github.com/Kevin-Liu-01/Claude-of-Tanks/blob/main/docs/STUDIO.md">STUDIO.md</a></td><td>Scene Studio controls, JavaScript API, scene schema, effects, and determinism.</td></tr>
+            <tr><td><a href="https://github.com/Kevin-Liu-01/Claude-of-Tanks/blob/main/docs/INDEX.md">INDEX.md</a></td><td>Complete documentation routing, vehicle-authoring law, research, and audit history.</td></tr>
+          </tbody>
+        </table>
+      </section>
+    </article>
+
+    <aside class="doc-aside" aria-label="Documentation notes">
+      <div class="aside-card accent"><p>Live companion</p><strong>Tank Gallery</strong><p>Open the <a href="/gallery">interactive fleet archive</a> to inspect live procedural geometry and authored armor, module, and crew volumes.</p></div>
+      <div class="aside-card"><p>Source of truth</p><strong>Code outranks prose</strong><p>Current subsystem manuals define intended ownership. Executable tests and shipped code define actual behavior.</p></div>
+      <div class="aside-card"><p>Coordinates</p><strong>Metres · seconds · radians</strong><p>Tank forward is local +Z. The authoritative step is 1/60 second. Network identity is independent from vehicle spec identity.</p></div>
+      <div class="aside-card"><p>Provenance</p><strong>Runtime fleet is first-party</strong><p>External models may exist only as quarantined comparison inputs and are stripped from public artifacts.</p></div>
+    </aside>
   </div>
-</header>
 
-<div class="shell docs-layout">
-  <aside class="docs-nav" aria-label="Manual sections">
-    <a href="#overview">Overview <span>01</span></a><a href="#fleet">Fleet <span>02</span></a><a href="#world">World <span>03</span></a><a href="#simulation">Simulation <span>04</span></a><a href="#gunnery">Gunnery <span>05</span></a><a href="#multiplayer">Multiplayer <span>06</span></a><a href="#rooms">Rooms <span>07</span></a><a href="#performance">Performance <span>08</span></a><a href="#studio">Studio <span>09</span></a><a href="#verification">Verification <span>10</span></a>
-  </aside>
-
-  <article class="docs-main">
-    <section class="doc-section" id="overview">
-      <p class="micro"><em>01</em> Runtime overview</p><h2>One authority. Several presentations.</h2>
-      <p>Claude of Tanks is a Vite application using Three.js directly—no Unity export, Unreal stream, React rendering layer, or game-engine runtime. The browser renderer is intentionally downstream from a renderer-free deterministic combat authority.</p>
-      <div class="doc-callout"><strong>Current public truth:</strong> 80 selectable original first-party vehicles, eight generated battlefields, a 60 Hz authority, viewer-filtered multiplayer state, and no credits, XP economy, or tech-tree gate.</div>
-      <div class="doc-visual-grid" aria-label="Production game interfaces">
-        <figure><img src="/media/home/ui_garage.webp" alt="Claude of Tanks garage and vehicle roster"><figcaption>Garage and first-party fleet</figcaption></figure>
-        <figure><img src="/media/home/ui_battle.webp" alt="Claude of Tanks battle interface"><figcaption>Battle authority in presentation</figcaption></figure>
-        <figure><img src="/media/home/ui_killcam.webp" alt="X-ray killcam showing armor and internal damage"><figcaption>Resolved shot and X-ray analysis</figcaption></figure>
-      </div>
-      <div class="architecture" aria-label="Runtime data flow">
-        <div><b>Input</b><span>Drive, brake, requested world aim, shell, fire, consumables</span><code>controls</code></div>
-        <div><b>Authority</b><span>Movement, collision, visibility, ballistics, armor, modules, bots, result</span><code>60 Hz</code></div>
-        <div><b>Delivery</b><span>Direct state, WebRTC snapshots/events, or dedicated WebSocket state</span><code>protocol v3</code></div>
-        <div><b>Presentation</b><span>First-party visuals, tracks, effects, HUD, audio, killcam, report</span><code>Three.js</code></div>
-      </div>
-      <p>The complete code-path tour lives in <a href="https://github.com/Kevin-Liu-01/Claude-of-Tanks/blob/main/docs/HOW-IT-WORKS.md">HOW-IT-WORKS.md</a>. The original module contracts remain in <a href="https://github.com/Kevin-Liu-01/Claude-of-Tanks/blob/main/docs/ARCHITECTURE.md">ARCHITECTURE.md</a>.</p>
-    </section>
-
-    <section class="doc-section" id="fleet">
-      <p class="micro"><em>02</em> First-party fleet</p><h2>The vehicle is a shared specification.</h2>
-      <p>A vehicle spec supplies dimensions, mass, engine and gearing, gun limits, shells, armor plates, modules, crew, concealment, texture programs, and visual metadata. That identity is shared by the garage, icon generator, battle loader, authority, bot roster, armor model, and renderer.</p>
-      <div class="doc-grid">
-        <article><svg class="icon"><use href="#ic-code"/></svg><h3>Procedural geometry</h3><p>Authored hull/turret stations, plate forms, fittings, and native running gear are assembled by <code>tankFactory.js</code>.</p></article>
-        <article><svg class="icon"><use href="#ic-armor"/></svg><h3>Gameplay geometry</h3><p>Armor is explicit data with thickness, material, slope, coverage, composites, spaced layers, and ERA behavior.</p></article>
-        <article><svg class="icon"><use href="#ic-track"/></svg><h3>Grounded presentation</h3><p>Wheel and link paths follow real running-gear topology and terrain support instead of a rigid decorative strip.</p></article>
-        <article><svg class="icon"><use href="#ic-eye"/></svg><h3>Runtime provenance</h3><p>Playable vehicles are original first-party builds. Community/reference GLBs are quarantined comparison material, not runtime replacements.</p></article>
-      </div>
-      <p>The procedural stand-in / streaming-GLB architecture is retired for playables. Public builds strip quarantined source material. Historical rebuild ledgers remain in the repository as provenance, not as a description of the deployed runtime.</p>
-    </section>
-
-    <section class="doc-section" id="world">
-      <p class="micro"><em>03</em> Battlefields</p><h2>Terrain, cover, visibility, and collision are one world.</h2>
-      <p>Verdant Fields, Sirocco Wadi, Frosthollow, Steinburg, Saltmere Bay, Amberford, Tarkhan Steppe, and Cinder Junction each own a height field, terrain material program, roads, foliage, structures, destructibles, collision, concealment, sky, fog, and minimap.</p>
-      <table class="spec-table"><thead><tr><th>Layer</th><th>Browser</th><th>Dedicated service</th></tr></thead><tbody><tr><td>Height</td><td>Live generated field</td><td>Generated collision manifest</td></tr><tr><td>Static cover</td><td>World collision facade</td><td>Manifest obstacle index</td></tr><tr><td>Destructibles</td><td>Visual + collision revision</td><td>Authoritative destroyed IDs</td></tr><tr><td>Concealment</td><td>Foliage volumes</td><td>Shared visibility volumes</td></tr></tbody></table>
-      <p>Destroyed cover is a persistent fact, not only a transient explosion. Snapshot/keyframe metadata carries a destructible revision and destroyed identifiers so packet loss, reconnect, or rematch cannot restore an obstacle for only one client.</p>
-    </section>
-
-    <section class="doc-section" id="simulation">
-      <p class="micro"><em>04</em> Fixed-step authority</p><h2>Render rate never changes the rules.</h2>
-      <p>Movement and combat advance in fixed 1/60-second steps. Engine force, gearing, steering, braking, slope response, tank/prop collision, support points, spotting, shells, fire, repair, bots, and match pacing remain independent of the display frame rate.</p>
-      <ol><li>Inputs are normalized and ordered.</li><li>The authority advances vehicle movement and terrain contact.</li><li>Spotting updates viewer knowledge.</li><li>Guns, shells, collision, armor, and damage advance.</li><li>Bots choose their next valid controls.</li><li>Durable state and one-shot events are published.</li></ol>
-      <p>A clamped frame accumulator prevents a backgrounded tab or long frame from applying one giant physics integration. Bots use the same movement, visibility, gun, and damage paths as human players, with seeded varied openings and recovery/replanning rather than a single memorized route.</p>
-    </section>
-
-    <section class="doc-section" id="gunnery">
-      <p class="micro"><em>05</em> Aim and armor</p><h2>The center point requests. The gun obeys physics.</h2>
-      <p>The center-screen camera ray establishes the desired world aim point. Turret yaw and gun pitch track it one-to-one, subject only to the selected vehicle's traverse arc, rotation rate, elevation, depression, and physical obstruction. The separate gun marker displays where the bore can actually fire now.</p>
-      <div class="architecture"><div><b>Aim ray</b><span>Center of screen → desired world point</span><code>camera</code></div><div><b>Turret solve</b><span>Desired point → clamped yaw and gun pitch</span><code>limits</code></div><div><b>Muzzle</b><span>Resolved bore transform + dispersion</span><code>weapon</code></div><div><b>Impact</b><span>Plate angle → ricochet / overmatch / penetration / damage</span><code>authority</code></div></div>
-      <p>AP, APCR, HEAT, HE, and APFSDS have distinct muzzle velocity, drop, falloff, ricochet/normalization behavior, and damage logic. The killcam and shot report display the already-resolved shell path, impact angle, effective armor, roll, damaged internals, and outcome; they do not recalculate the shot.</p>
-    </section>
-
-    <section class="doc-section" id="multiplayer">
-      <p class="micro"><em>06</em> Network model</p><h2>Clients send intent, never truth.</h2>
-      <table class="spec-table"><thead><tr><th>Mode</th><th>Authority</th><th>Transport</th></tr></thead><tbody><tr><td>Solo vs bots</td><td>Local browser</td><td>Direct composition</td></tr><tr><td>LAN</td><td>Trusted browser host</td><td>Direct Wi-Fi WebRTC</td></tr><tr><td>Private code</td><td>Trusted browser host</td><td>WebRTC + ICE/TURN fallback</td></tr><tr><td>Ranked</td><td>Dedicated Node service</td><td>Authenticated WebSocket</td></tr></tbody></table>
-      <p>Protocol v3 validates a finite envelope vocabulary with sequence, acknowledgement, and simulation ticks. A client may submit throttle, steer, brake, world aim yaw/pitch, shell selection, fire, and consumable action bits. Position, hit, damage, spotting, reload completion, and victory stay authority-owned.</p>
-      <h3>Split delivery</h3>
-      <ul><li><strong>Reliable ordered control:</strong> handshake, lobby/room state, inputs, combat/destruction events, ping, errors, and leave.</li><li><strong>Replaceable state:</strong> unordered zero-retransmit 20 Hz snapshots with acknowledgements, deltas, and periodic keyframes.</li></ul>
-      <p>Remote tanks use adaptive buffered interpolation and bounded extrapolation. The local vehicle predicts the exact shared movement code, then reconciles and replays unacknowledged inputs. Heavy cosmetic events enter a bounded presentation queue; critical state applies immediately.</p>
-    </section>
-
-    <section class="doc-section" id="rooms">
-      <p class="micro"><em>07</em> Persistent rooms</p><h2>A result ends the round, not the room.</h2>
-      <div class="architecture"><div><b>Waiting</b><span>Team, vehicle, equipment, map, and ready state editable</span><code>room state</code></div><div><b>Starting</b><span>Roster locks and all peers load the selected world</span><code>round + 1</code></div><div><b>Playing</b><span>Existing WebRTC channels carry the match</span><code>authority</code></div><div><b>Result</b><span>Report shows live play-again readiness; room returns to waiting</span><code>same peers</code></div></div>
-      <p><code>ROOM_COMMAND</code> and <code>ROOM_STATE</code> travel on reliable control and carry room round, last result, roster, selection, team, and ready state. After the verdict, readiness resets and only the simulation runtime is replaced. Closing the report returns to the garage while staying in-room; the room strip remains under Battle. Ready locks vehicle/equipment/team edits until unready. Explicit Leave is the disconnect action.</p>
-      <p>Invite links carry the validated six-character room code and a host callsign, so the loading screen can say “Join Name’s Game” before auto-joining after the normal boot gate. The name in the URL is only a display hint; signaling returns the canonical host identity. LAN chooses the direct Wi-Fi WebRTC path automatically; signaling exchanges membership and ICE metadata but never carries gameplay.</p>
-    </section>
-
-    <section class="doc-section" id="performance">
-      <p class="micro"><em>08</em> Device contract</p><h2>Scale pixels and decoration, not combat.</h2>
-      <p>The first garage frame avoids combat-only work. Maps, family texture bakes, shader programs, wreck treatments, clouds, and optional diagnostics warm in post-ready idle slices or beneath an opaque transition. Quality policy controls resolution, shadows, post, texture sizes, vegetation, particles, and background scheduling independently.</p>
-      <ul><li>Solo does not instantiate multiplayer transports or diagnostics.</li><li>Network presentation mutates state once; the main loop owns the single visual sync.</li><li>Snapshots and entity arrays are reused to avoid 120 Hz allocation churn.</li><li>Destruction FX are frame-budgeted during bursts.</li><li>A render-target watchdog restores the previous target even after GPU readback failure.</li></ul>
-      <p>Press <strong>F3</strong> for render/network diagnostics. Add <code>?diag=1</code> for boot render health. Network impairment QA supports latency, jitter, loss, and input loss without changing authority code.</p>
-    </section>
-
-    <section class="doc-section" id="studio">
-      <p class="micro"><em>09</em> Scene Studio</p><h2>Production photography is a game mode.</h2>
-      <p>Scene Studio runs a complete battlefield with combat paused. It places actual first-party vehicles, conforms them through the movement support solve, applies camo/damage, poses guns within spec, fires the real effects language, freezes a deterministic FX clock, and captures through the full renderer.</p>
-      <div class="doc-visual-grid doc-visual-grid--two" aria-label="First-party authoring tools">
-        <figure><img src="/media/home/st_scene.webp" alt="Scene Studio composing an action image"><figcaption>Scene Studio: deterministic production capture</figcaption></figure>
-        <figure><img src="/media/home/ui_surface_lab.webp" alt="Tank Surface Markup Studio inspecting geometry"><figcaption>Surface Lab: exact geometry review packets</figcaption></figure>
-      </div>
-      <pre class="doc-code">node tools/marketing-shots/gen-modern-showcase.mjs
-node tools/marketing-shots/shoot.mjs \
-  --scenes tools/marketing-shots/scenes-modern \
-  --out shots/marketing-modern/raw --width 1600
-node tools/marketing-shots/encode-modern-showcase.mjs</pre>
-      <p>The landing-page set contains 30 newly authored, modern-only scenes. Broad turret search arcs and vehicle-authored gun elevation/depression replace the repeated catalog pose; the generated manifest records each requested turret angle, gun angle, pose, map, nation, and vehicle. Scene JSON is checked in, raw PNG evidence is reproducible, and deployable WebP files are budget encoded. See <a href="https://github.com/Kevin-Liu-01/Claude-of-Tanks/blob/main/docs/STUDIO.md">the complete Studio API</a>.</p>
-      <p>The separate Tank Surface Markup Studio loads only first-party procedural vehicles and exports mesh identity, selected triangles, local and world bounds, articulation ownership, camera pose, and the requested correction as JSON plus a matching image. See <a href="https://github.com/Kevin-Liu-01/Claude-of-Tanks/blob/main/docs/TANK-SURFACE-STUDIO.md">the Surface Lab workflow</a>.</p>
-    </section>
-
-    <section class="doc-section" id="verification">
-      <p class="micro"><em>10</em> Verification</p><h2>Claims have executable checks.</h2>
-      <pre class="doc-code">npm test                    # simulation, UI, network, server, assets
-npm run test:net:browser   # signaling + two real Chromium peers
-npm run tank:native:check  # first-party runtime provenance
-npm run build              # public build + quarantined asset strip
-npm run build:private      # full private tooling build</pre>
-      <p>Node self-tests cover movement, armor, damage, spotting, bots, room lifecycle, reliable events, snapshot recovery, persistent destructibles, prediction, services, ratings, and UI contracts. Browser rigs cover real WebRTC handoff, links/codes, readiness, movement, loss/jitter, reconnect, rematch, and departure.</p>
-      <div class="doc-callout"><strong>Repository map:</strong> begin with <a href="https://github.com/Kevin-Liu-01/Claude-of-Tanks/blob/main/docs/FEATURES.md">FEATURES.md</a> for the complete capability record, <a href="https://github.com/Kevin-Liu-01/Claude-of-Tanks/blob/main/docs/SYSTEMS.md">SYSTEMS.md</a> for current runtime ownership, and <a href="https://github.com/Kevin-Liu-01/Claude-of-Tanks/blob/main/docs/DEVELOPMENT.md">DEVELOPMENT.md</a> for verification and release operations.</div>
-    </section>
-  </article>
-</div>
-
-<footer class="footer"><div class="shell inner"><a class="brand" href="/home"><img src="/brand/logo-mark-metal.svg" alt=""><span>Claude <b>of Tanks</b></span></a><div class="footer-links"><a href="/home">Showcase</a><a href="/">Garage</a><a href="/studio">Studio</a><a href="https://github.com/Kevin-Liu-01/Claude-of-Tanks">GitHub</a></div><span class="micro">Field manual // v4</span></div></footer>
-<script>
-const links=[...document.querySelectorAll('.docs-nav a')];const sections=links.map(a=>document.querySelector(a.hash));const obs=new IntersectionObserver(entries=>entries.forEach(entry=>{if(entry.isIntersecting)links.forEach(a=>a.classList.toggle('active',a.hash===`#${entry.target.id}`))}),{rootMargin:'-25% 0px -65%'});sections.forEach(s=>s&&obs.observe(s));
-</script>
+  <footer class="docs-footer">
+    <div class="inner shell">
+      <a class="brand" href="/home"><img src="/brand/logo-mark-metal.svg" alt=""><span>Claude <b>of Tanks</b></span></a>
+      <div class="footer-links"><a href="/gallery">Tank Gallery</a><a href="/">Garage</a><a href="/studio">Scene Studio</a><a href="https://github.com/Kevin-Liu-01/Claude-of-Tanks">GitHub</a></div>
+      <span class="footer-mark">Engineering reference // 2026</span>
+    </div>
+  </footer>
+  <div class="docs-toast" id="docsToast" role="status"></div>
+  <script type="module" src="/src/docs/docs.js"></script>
 </body>
 </html>

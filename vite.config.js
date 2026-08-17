@@ -52,7 +52,7 @@ function reachableSrcModules(root) {
 }
 
 /**
- * Pretty routes (owner: "/studio", "/surface-studio" and "/home"). Pure URL rewrites — the
+ * Pretty routes (owner: "/studio", "/gallery", and "/home"). Pure URL rewrites — the
  * browser's address bar keeps the pretty path while the server serves the
  * real file. /studio boots the game (index.html; src/game/studio.js sees the
  * pathname and auto-enters), /home serves the showcase page (home.html — a
@@ -66,7 +66,15 @@ function rewriteRoutes(req, res, next) {
   const path = qi === -1 ? url : url.slice(0, qi);
   const query = qi === -1 ? '' : url.slice(qi);
   if (path === '/studio' || path === '/studio/') req.url = '/index.html' + query;
-  else if (path === '/surface-studio' || path === '/surface-studio/') req.url = '/tools/tank-surface-studio.html' + query;
+  else if (path === '/gallery' || path === '/gallery/') req.url = '/gallery.html' + query;
+  else if (path === '/surface-studio' || path === '/surface-studio/') {
+    const params = new URLSearchParams(query.startsWith('?') ? query.slice(1) : query);
+    if (!params.has('layer')) params.set('layer', 'markup');
+    res.statusCode = 308;
+    res.setHeader('Location', `/gallery?${params.toString()}`);
+    res.end();
+    return;
+  }
   else if (path === '/home' || path === '/home/') req.url = '/home.html' + query;
   else if (path === '/docs' || path === '/docs/') req.url = '/docs.html' + query;
   next();
@@ -88,8 +96,8 @@ export default {
       apply: 'serve',
       transformIndexHtml(_html, ctx) {
         // This optimization belongs only to the playable game entry. Vite
-        // invokes HTML transforms for every multi-page input; injecting the
-        // game graph into /home or /docs makes a lightweight presentation
+      // invokes HTML transforms for every multi-page input; injecting the
+      // game graph into /home, /docs or /gallery makes a presentation visit
         // visit download the complete simulation and fleet source tree.
         if (resolve(ctx?.filename || '') !== resolve(process.cwd(), 'index.html')) return [];
         return reachableSrcModules(process.cwd()).map((href) => ({
@@ -109,18 +117,18 @@ export default {
   },
   build: {
     rollupOptions: {
-      // two-page build: the game + the /home showcase (which bundles its
-      // module script, so the FEATURED_SHOTS import resolves in dist too)
+      // Multi-page build: the game and independently bootable public/tools
+      // surfaces. Presentation routes never inherit the playable boot graph.
       input: {
         main: resolve(process.cwd(), 'index.html'),
         home: resolve(process.cwd(), 'home.html'),
         docs: resolve(process.cwd(), 'docs.html'),
-        surfaceStudio: resolve(process.cwd(), 'tools/tank-surface-studio.html'),
+        gallery: resolve(process.cwd(), 'gallery.html'),
       },
     },
   },
   optimizeDeps: {
-    entries: ['index.html', 'home.html', 'docs.html', 'tools/tank-surface-studio.html'],
+    entries: ['index.html', 'home.html', 'docs.html', 'gallery.html'],
     include: [
       'three',
       'three/examples/jsm/utils/BufferGeometryUtils.js',

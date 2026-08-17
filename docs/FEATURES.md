@@ -21,7 +21,7 @@ stack, authoring tools, test rigs, and public presentation.
 | Presentation | Direct Three.js WebGL rendering with adaptive quality |
 | Modes | Solo bots, private room codes, LAN rooms, and ranked service flow |
 | Platforms | Desktop and mobile browsers |
-| Authoring | Scene Studio and Tank Surface Markup Studio |
+| Authoring | Scene Studio and Tank Gallery surface markup |
 | Progression | No currency, experience grind, or tech-tree lock |
 
 The executable provenance check is:
@@ -280,14 +280,15 @@ pose. No generative or substituted vehicle imagery is used.
 
 See docs/STUDIO.md.
 
-### Tank Surface Markup Studio
+### Tank Gallery markup
 
-The Tank Surface Markup Studio is a local authoring and review tool. It loads
-only first-party procedural vehicles, provides repeatable camera and
-articulation views, and records exact mesh triangles, transforms, bounds,
-centroids, and requested changes in portable JSON.
+The Tank Gallery includes authoring and review tools beside every vehicle
+dossier. Its Markup layer loads only first-party procedural vehicles, provides
+repeatable camera and articulation views, and records exact mesh triangles,
+transforms, bounds, centroids, and requested changes in portable JSON with a
+matching PNG.
 
-See docs/TANK-SURFACE-STUDIO.md.
+See docs/GALLERY.md.
 
 ## Verification as a product feature
 

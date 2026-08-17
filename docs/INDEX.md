@@ -13,6 +13,7 @@ GEOMETRY-GATE.md own vehicle-authoring acceptance.
 | Document | Audience | Purpose |
 | --- | --- | --- |
 | ../README.md | Everyone | Public overview, screenshots, features, architecture, and quick start |
+| TECHNICAL-OVERVIEW.md | Engineers and technical reviewers | Current architecture, authority boundaries, runtime lifecycle, source ownership, and verification model |
 | FEATURES.md | Players, reviewers, contributors | Visible features connected to their implementation and proof |
 | HOW-IT-WORKS.md | Technical readers | Narrative tour of the shipped game from boot to results |
 | SYSTEMS.md | Engineers | Current subsystem ownership, data flow, lifecycle, and invariants |
@@ -28,7 +29,7 @@ https://cot.kevinliu.studio/docs and is sourced from ../docs.html.
 | MULTIPLAYER-ARCHITECTURE.md | Authority arrangements, protocol v4, delivery, prediction, rooms, signaling, ranked services, trust, and verification |
 | PERFORMANCE.md | Boot, route isolation, device quality, render recovery, frame ownership, event budgets, and measurement |
 | STUDIO.md | Scene Studio interaction, scripted API, scene schema, effects, capture, and determinism |
-| TANK-SURFACE-STUDIO.md | Surface selection and markup workflow |
+| GALLERY.md | Tank Gallery architecture, dossiers, diagnostic overlays, exact-surface markup, exports, interaction, and verification |
 | TANK-ASSET-PIPELINE.md | Generated portraits, silhouettes, armor/module diagrams, manifests, fingerprints, and release gates |
 | MODULES.md | Internal module and crew damage model |
 | GUNNERY-CAMERA-SPEC.md | Camera, requested aim point, gun solution, scope, and reticle contract |
@@ -129,7 +130,8 @@ When behavior changes:
 
 1. Update the nearest current subsystem document.
 2. Update README.md or FEATURES.md if the visible product changed.
-3. Update docs.html if the public field manual changed.
+3. Update docs.html if the public technical reference changed, and GALLERY.md
+   when the Tank Gallery contract changed.
 4. Update the source-level module comment when ownership or invariants changed.
 5. Preserve historical ledgers; add a new dated record instead of rewriting old
    evidence as though it described the present.

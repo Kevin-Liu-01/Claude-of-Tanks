@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Claude of Tanks — Modern Armored Combat in the Browser</title>
-  <meta name="description" content="A pure Three.js armored combat simulator with first-party modern vehicles, eight destructible battlefields, plate-level ballistics, multiplayer rooms, and built-in Scene Studio and Surface Lab tools.">
+  <meta name="description" content="A pure Three.js armored combat simulator with first-party modern vehicles, eight destructible battlefields, plate-level ballistics, multiplayer rooms, Scene Studio, and an interactive Tank Gallery.">
   <link rel="canonical" href="https://cot.kevinliu.studio/home">
   <meta name="theme-color" content="#05080b">
   <meta property="og:title" content="Claude of Tanks — Modern Armor, Authored">
@@ -44,7 +44,7 @@
 <nav class="site-nav" aria-label="Primary">
   <div class="inner shell">
     <a class="brand" href="/home"><img src="/brand/logo-mark.svg" alt=""><span>Claude <b>of Tanks</b></span></a>
-    <div class="nav-links"><a href="#fleet">Fleet</a><a href="#systems">Playable</a><a href="#archive">Gallery</a><a href="/docs">Docs</a><a class="nav-play" href="/">Play now</a></div>
+    <div class="nav-links"><a href="#fleet">Fleet</a><a href="#systems">Playable</a><a href="/gallery">Tank Gallery</a><a href="/docs">Docs</a><a class="nav-play" href="/">Play now</a></div>
   </div>
 </nav>
 
@@ -96,14 +96,14 @@
 
   <section class="home-section home-playable" id="systems">
     <div class="shell">
-      <div class="home-heading reveal"><div><p class="micro section-index"><em>02</em> Playable proof</p><h2>Don’t take<br>our word for it.</h2></div><p>This is a lightweight, connected version of the shipped interface. Choose one of ten modern tanks, then carry it through the Garage, battle HUD, Scene Studio, and Surface Lab without loading the game renderer.</p></div>
+      <div class="home-heading reveal"><div><p class="micro section-index"><em>02</em> Playable proof</p><h2>Don’t take<br>our word for it.</h2></div><p>This is a lightweight, connected version of the shipped interface. Choose one of ten modern tanks, then carry it through the Garage, battle HUD, Scene Studio, and Tank Gallery without loading the game renderer.</p></div>
       <div class="demo-console reveal" id="demo-console">
         <header class="demo-console-bar">
           <div class="demo-tabs" role="tablist" aria-label="Interactive game feature demos">
             <button type="button" role="tab" aria-selected="true" aria-controls="demo-garage" data-demo-tab="garage"><svg class="icon"><use href="#ic-grid"/></svg><span>Garage</span></button>
             <button type="button" role="tab" aria-selected="false" aria-controls="demo-battle" data-demo-tab="battle"><svg class="icon"><use href="#ic-crosshair"/></svg><span>Battle</span></button>
             <button type="button" role="tab" aria-selected="false" aria-controls="demo-studio" data-demo-tab="studio"><svg class="icon"><use href="#ic-camera"/></svg><span>Studio</span></button>
-            <button type="button" role="tab" aria-selected="false" aria-controls="demo-surface" data-demo-tab="surface"><svg class="icon"><use href="#ic-layers"/></svg><span>Surface Lab</span></button>
+            <button type="button" role="tab" aria-selected="false" aria-controls="demo-surface" data-demo-tab="surface"><svg class="icon"><use href="#ic-layers"/></svg><span>Tank Gallery</span></button>
           </div>
           <a class="demo-launch" id="demo-launch" href="/">Open full Garage <svg class="icon"><use href="#ic-arrow"/></svg></a>
         </header>
@@ -157,12 +157,12 @@
           <div class="demo-surface-layout">
             <div class="demo-surface-stage">
               <div class="demo-surface-axis" aria-hidden="true"></div>
-              <img class="demo-surface-base" id="demo-surface-base" src="/icons/m1a2_sepv3_side.webp" alt="M1A2 SEPv3 side view in Surface Lab">
+              <img class="demo-surface-base" id="demo-surface-base" src="/icons/m1a2_sepv3_side.webp" alt="M1A2 SEPv3 side view in Tank Gallery markup mode">
               <img class="demo-surface-overlay" id="demo-surface-overlay" src="/icons/m1a2_sepv3_armor_side.png" alt="M1A2 SEPv3 plate armor overlay">
               <span class="demo-surface-callout"><b id="demo-surface-value">620 MM</b><small id="demo-surface-label">Turret composite array</small></span>
             </div>
             <aside class="demo-control-dock demo-surface-dock">
-              <p class="micro"><em>Surface Lab</em> // Exact geometry</p><h3 id="demo-surface-name">M1A2 SEPv3</h3>
+              <p class="micro"><em>Tank Gallery</em> // Exact geometry</p><h3 id="demo-surface-name">M1A2 SEPv3</h3>
               <div class="demo-surface-modes" role="tablist" aria-label="Surface inspection mode"><button type="button" class="active" data-surface-mode="armor">Plate armor</button><button type="button" data-surface-mode="hit_zones">Hit zones</button><button type="button" data-surface-mode="modules">Modules</button></div>
               <dl><div><dt>Source</dt><dd>First-party procedural</dd></div><div><dt>Resolution</dt><dd>Plate + module</dd></div><div><dt>Runtime GLB</dt><dd>None</dd></div></dl>
             </aside>
@@ -187,7 +187,7 @@
   <section class="home-closing shell reveal"><span class="home-closing-icon"><svg class="icon"><use href="#ic-crosshair"/></svg></span><p class="micro"><em>No install. No account. No tech-tree grind.</em></p><h2>Take a modern tank<br>into battle.</h2><p>Open the garage, inspect the documentation, or use the same browser-native tools that produced every frame on this page.</p><div class="hero-actions"><a class="btn primary" href="/">Play Claude of Tanks</a><a class="btn" href="/docs"><svg class="icon"><use href="#ic-code"/></svg>Field manual</a></div></section>
 </main>
 
-<footer class="footer"><div class="shell inner"><a class="brand" href="/home"><img src="/brand/logo-mark-metal.svg" alt=""><span>Claude <b>of Tanks</b></span></a><div class="footer-links"><a href="/">Garage</a><a href="/studio">Studio</a><a href="/surface-studio">Surface Lab</a><a href="/docs">Docs</a><a href="https://github.com/Kevin-Liu-01/Claude-of-Tanks">GitHub</a></div><span class="micro">Pure Three.js // 2026</span></div></footer>
+<footer class="footer"><div class="shell inner"><a class="brand" href="/home"><img src="/brand/logo-mark-metal.svg" alt=""><span>Claude <b>of Tanks</b></span></a><div class="footer-links"><a href="/">Garage</a><a href="/gallery">Tank Gallery</a><a href="/studio">Studio</a><a href="/docs">Docs</a><a href="https://github.com/Kevin-Liu-01/Claude-of-Tanks">GitHub</a></div><span class="micro">Pure Three.js // 2026</span></div></footer>
 
 <dialog class="lightbox" id="lightbox"><img id="lightbox-image" alt=""><footer><div><strong id="lightbox-title"></strong><div class="micro" id="lightbox-meta"></div></div><button type="button" id="lightbox-close">Close ×</button></footer></dialog>
 <script>
@@ -215,13 +215,13 @@ function scrollCards(track,selector,direction){const cards=[...track.querySelect
 document.querySelector('#fleet-prev').addEventListener('click',()=>scrollCards(fleetTrack,'.home-tank-card',-1));document.querySelector('#fleet-next').addEventListener('click',()=>scrollCards(fleetTrack,'.home-tank-card',1));fleetTrack.addEventListener('scroll',()=>{const total=fleetTrack.querySelectorAll('.home-tank-card').length;document.querySelector('#fleet-count').textContent=`${String(currentCardIndex(fleetTrack,'.home-tank-card')+1).padStart(2,'0')} / ${String(total).padStart(2,'0')}`},{passive:true});
 const demoIds=['m1a2_sepv3','leo2a7v','t90m','challenger_3','leclerc','type99a','k2','type10','ariete','merkava3d'];
 let demoTanks=[];let demoTank=null;let demoSurfaceMode='armor';let demoAmmo='APFSDS';let demoShot=0;
-const demoLaunch={garage:['/','Open full Garage'],battle:['/','Enter a battle'],studio:['/studio','Open full Studio'],surface:['/surface-studio','Open Surface Lab']};
+const demoLaunch={garage:['/','Open full Garage'],battle:['/','Enter a battle'],studio:['/studio','Open full Studio'],surface:['/gallery?layer=markup','Open Tank Gallery']};
 const signed=value=>`${Number(value)>0?'+':Number(value)<0?'−':''}${Math.abs(Number(value))}°`;
 const demoStat=(item,salt)=>72+([...item.id].reduce((sum,char)=>sum+char.charCodeAt(0),salt*17)%27);
 function setDemoTab(mode){document.querySelectorAll('[data-demo-panel]').forEach(panel=>{panel.hidden=panel.dataset.demoPanel!==mode});document.querySelectorAll('[data-demo-tab]').forEach(button=>{const active=button.dataset.demoTab===mode;button.classList.toggle('active',active);button.setAttribute('aria-selected',String(active));button.tabIndex=active?0:-1});const [href,label]=demoLaunch[mode];const launch=document.querySelector('#demo-launch');launch.href=href;launch.firstChild.textContent=`${label} `}
 function updateStudioReadout(){const turret=document.querySelector('[data-studio-control="turret"]').value;const gun=document.querySelector('[data-studio-control="gun"]').value;const lens=document.querySelector('[data-studio-control="lens"]').value;document.querySelector('#demo-turret-value').textContent=signed(turret);document.querySelector('#demo-gun-value').textContent=signed(gun);document.querySelector('#demo-lens-value').textContent=`${lens} mm`;document.querySelector('#demo-studio-readout').textContent=`TURRET ${signed(turret)} // GUN ${signed(gun)} // ${lens} MM`;document.querySelector('#demo-studio').style.setProperty('--demo-pan',`${Number(turret)*-.035}%`);document.querySelector('#demo-studio').style.setProperty('--demo-zoom',String(1+((Number(lens)-24)/96)*.14))}
 function setSurfaceMode(mode){demoSurfaceMode=mode;document.querySelectorAll('[data-surface-mode]').forEach(button=>button.classList.toggle('active',button.dataset.surfaceMode===mode));if(!demoTank)return;const labels={armor:['620 MM','Turret composite array'],hit_zones:['12 ZONES','Independent struck surfaces'],modules:['18 MODULES','Crew, ammunition, fuel, drive']};document.querySelector('#demo-surface-overlay').src=`/icons/${demoTank.id}_${mode}_side.png`;document.querySelector('#demo-surface-overlay').alt=`${demoTank.name} ${mode.replace('_',' ')} overlay`;document.querySelector('#demo-surface-value').textContent=labels[mode][0];document.querySelector('#demo-surface-label').textContent=labels[mode][1]}
-function setDemoTank(item){demoTank=item;document.querySelector('#demo-garage-image').src=item.src;document.querySelector('#demo-garage-image').alt=`${item.name} in the simplified interactive Garage`;document.querySelector('#demo-garage-name').textContent=item.name;document.querySelector('#demo-garage-nation').textContent=item.nation;document.querySelector('#demo-garage-role').textContent=item.role;document.querySelector('#demo-stat-fire').textContent=demoStat(item,1);document.querySelector('#demo-stat-armor').textContent=demoStat(item,2);document.querySelector('#demo-stat-speed').textContent=demoStat(item,3);document.querySelector('#demo-battle-image').src=item.src;document.querySelector('#demo-battle-image').alt=`${item.name} in the simplified battle interface`;document.querySelector('#demo-battle-name').textContent=item.name;document.querySelector('#demo-battle-icon').src=`/icons/${item.id}_side_silhouette.png`;document.querySelector('#demo-studio-image').src=item.src;document.querySelector('#demo-studio-image').alt=`${item.name} staged in the simplified Scene Studio`;document.querySelector('#demo-studio-name').textContent=item.name;document.querySelector('#demo-surface-base').src=`/icons/${item.id}_side.webp`;document.querySelector('#demo-surface-base').alt=`${item.name} side view in Surface Lab`;document.querySelector('#demo-surface-name').textContent=item.name;setSurfaceMode(demoSurfaceMode);document.querySelectorAll('#demo-roster button').forEach(button=>{const active=button.dataset.tankId===item.id;button.classList.toggle('active',active);button.setAttribute('aria-selected',String(active))})}
+function setDemoTank(item){demoTank=item;document.querySelector('#demo-garage-image').src=item.src;document.querySelector('#demo-garage-image').alt=`${item.name} in the simplified interactive Garage`;document.querySelector('#demo-garage-name').textContent=item.name;document.querySelector('#demo-garage-nation').textContent=item.nation;document.querySelector('#demo-garage-role').textContent=item.role;document.querySelector('#demo-stat-fire').textContent=demoStat(item,1);document.querySelector('#demo-stat-armor').textContent=demoStat(item,2);document.querySelector('#demo-stat-speed').textContent=demoStat(item,3);document.querySelector('#demo-battle-image').src=item.src;document.querySelector('#demo-battle-image').alt=`${item.name} in the simplified battle interface`;document.querySelector('#demo-battle-name').textContent=item.name;document.querySelector('#demo-battle-icon').src=`/icons/${item.id}_side_silhouette.png`;document.querySelector('#demo-studio-image').src=item.src;document.querySelector('#demo-studio-image').alt=`${item.name} staged in the simplified Scene Studio`;document.querySelector('#demo-studio-name').textContent=item.name;document.querySelector('#demo-surface-base').src=`/icons/${item.id}_side.webp`;document.querySelector('#demo-surface-base').alt=`${item.name} side view in Tank Gallery markup mode`;document.querySelector('#demo-surface-name').textContent=item.name;setSurfaceMode(demoSurfaceMode);document.querySelectorAll('#demo-roster button').forEach(button=>{const active=button.dataset.tankId===item.id;button.classList.toggle('active',active);button.setAttribute('aria-selected',String(active))})}
 function buildDemo(data){demoTanks=demoIds.map(id=>data.find(item=>item.id===id)).filter(Boolean);const roster=document.querySelector('#demo-roster');roster.replaceChildren(...demoTanks.map((item,index)=>{const button=document.createElement('button');button.type='button';button.role='option';button.dataset.tankId=item.id;button.innerHTML=`<img src="/icons/${item.id}_angle.webp" loading="lazy" alt=""><span><small>${String(index+1).padStart(2,'0')} // ${item.nation}</small><strong>${item.name}</strong></span>`;button.addEventListener('click',()=>setDemoTank(item));return button}));setDemoTank(demoTanks[0]);updateStudioReadout()}
 document.querySelectorAll('[data-demo-tab]').forEach(button=>button.addEventListener('click',()=>setDemoTab(button.dataset.demoTab)));
 document.querySelectorAll('[data-studio-control]').forEach(input=>input.addEventListener('input',updateStudioReadout));

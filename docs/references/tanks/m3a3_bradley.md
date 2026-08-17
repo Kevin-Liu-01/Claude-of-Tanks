@@ -233,3 +233,44 @@ strict front 123 / rear 0 + shoe 0/19 BYTE-IDENTICAL to the donor debt
 convention unchanged). Family §5.356 coupling: see the m2a2 packet —
 the anatomy-pivot regression (fixed by the §5.361 landing, 394da5ed)
 moved the family turrets, not this course.
+
+## M2A2-FOUNDATION TURRET + BRAT ROUND (OWNER ORDER, 2026-08-17)
+
+ORDER: significantly rebuild the M3A3 turret from the M2A2's stronger
+two-man foundation, then add materially denser equipment, roof weapons,
+side ERA and upper-glacis ERA without changing the Bradley suspension or
+introducing a second track course.
+
+PRIMARY FORM: the former narrow wedge hidden behind a 1.35 m TOW cabinet
+is replaced by a broad ring, deep welded two-man shell, continuous faceted
+cheeks, full-width roof foundation and backed bustle. The compacted
+left-hand twin TOW pod retains its root, trunnion, cradle, two mouths and
+rear door, but is now visibly carried by the turret wall. The right stowage
+wing is supported by its own broad shoe. The M242 saddle is wider and fully
+buried between the cheek continuations.
+
+A3 IDENTITY / EQUIPMENT: retained and re-seated CIV drum and ISU hood;
+two structural hatch/cupola stations; shielded commander M2 and loader
+M240 on distinct forward arcs; four roof service bins; radio pair; four-
+tube smoke banks; spare links; jerry cans; deep filled four-rail bustle
+rack and diagonal bustle braces. Non-armor fittings use equipment/fitting
+ownership and cannot expand the armor receipt. All upper equipment follows
+the turret through the 90-degree yaw battery.
+
+PROTECTION: real destructible ERA clusters now occupy two turret-cheek
+rows, two turret-side rows, a three-course backed upper-glacis field and
+two full-length side courses. The existing eight-panel spaced side armor
+is the physical backing; skirts, hangers, wheels and smart course are
+preserved. Mirrored front-fender bridge plates return the first cassette
+bays into the roof and close the donor's narrow plan slots without entering
+the animated track sweep.
+
+VERIFICATION: 14-view yaw-0 visual battery plus yaw-90 hero/top ownership
+checks; standard census `mg2+11d`; plan contiguity `0` enclosed cells;
+duplicate course `1/1 PASS`; exact strict clipping `0/0 + 0/0` for M3A3
+and the M2A2 guard. Combat anatomy is regenerated from the final geometry.
+The absolute source-comparison row remains the packet's existing lawful
+zero: its registered comparison GLB was removed from the runtime repository,
+so forcing a fresh geometry gate returns the Vite HTML fallback to GLTFLoader
+and cannot produce a valid source score. That missing-oracle condition is
+not treated as a procedural-geometry regression.
