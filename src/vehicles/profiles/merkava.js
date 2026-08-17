@@ -6688,11 +6688,9 @@ function merkavaSourceOracleTurret(P, p, t) {
   return true;
 }
 
-// Connected axial loft for gun masks. Every cross-section is deliberately
-// low-sided and every ring owns a hard plan break, so the result reads as
-// armor plate rather than a rounded sleeve or a stack of boxes. Faces are
-// oriented independently against the solid centroid to keep FrontSide
-// winding valid even when a mark carries a small asymmetric x offset.
+// Connected axial loft for gun masks. Faces are oriented independently
+// against the solid centroid to keep FrontSide winding valid even when a
+// mark carries a small asymmetric x offset.
 function merkavaAxialLoft(rings) {
   const verts = [];
   const all = rings.flat();
@@ -6740,9 +6738,10 @@ function merkavaAxialLoft(rings) {
   return geometry;
 }
 
-// Source-authored Merkavas carry an unmistakable broad, polygonal gun mask:
-// the armor begins deep inside both cheeks, folds into a compact faceted
-// cradle, and only then exposes the short canvas/steel boot around the tube.
+// Source-authored Merkavas carry an unmistakable square-cone gun mask: four
+// dominant armor planes taper from a compact turret seat to the short
+// canvas/steel boot around the tube. Tiny corner bevels keep the silhouette
+// fabricated without turning the housing into a wide octagonal spear.
 // Keep the complete load path in rig_gun so mask, boot and barrel elevate as
 // one assembly.  The rear mask intentionally overlaps the connected turret
 // casting; the forward oval tunnel intentionally overlaps the boot.  That
@@ -6751,15 +6750,14 @@ function merkavaAxialLoft(rings) {
 function merkavaSourceGunCradle(P, p, gunZL, L) {
   const id = P.spec.id;
   const cfg = {
-    merkava1b: { rootZ: 0.48, mouthZ: 1.55, rootHW: 0.66, rootHH: 0.28, mouthHW: 0.27, mouthHH: 0.17, bootLen: 0.39, x: -0.02 },
-    merkava2b: { rootZ: 0.49, mouthZ: 1.76, rootHW: 0.73, rootHH: 0.30, mouthHW: 0.29, mouthHH: 0.18, bootLen: 0.42, x: 0.01 },
-    merkava2d: { rootZ: 0.47, mouthZ: 1.82, rootHW: 0.82, rootHH: 0.32, mouthHW: 0.30, mouthHH: 0.19, bootLen: 0.43, x: -0.01 },
-    merkava3c: { rootZ: 0.40, mouthZ: 1.78, rootHW: 0.84, rootHH: 0.34, mouthHW: 0.32, mouthHH: 0.20, bootLen: 0.42, x: 0.01 },
-    merkava3d: { rootZ: 0.39, mouthZ: 1.88, rootHW: 0.93, rootHH: 0.36, mouthHW: 0.33, mouthHH: 0.21, bootLen: 0.44, x: -0.03 },
-    // Mk.4B's mask is a major turret volume, not a scaled-up boot.  Its rear
-    // shoulders span most of the arrowhead cheek before breaking rapidly
-    // into the compact MG253 tunnel.
-    merkava4b: { rootZ: 0.58, mouthZ: 2.43, rootHW: 1.08, rootHH: 0.43, mouthHW: 0.38, mouthHH: 0.24, bootLen: 0.46, x: 0.00 },
+    merkava1b: { rootZ: 0.18, mouthZ: 1.55, rootHW: 0.30, rootHH: 0.28, mouthHW: 0.20, mouthHH: 0.18, bootLen: 0.39, seatDepth: 0.52, x: -0.02 },
+    merkava2b: { rootZ: 0.19, mouthZ: 1.76, rootHW: 0.32, rootHH: 0.30, mouthHW: 0.21, mouthHH: 0.19, bootLen: 0.42, seatDepth: 0.54, x: 0.01 },
+    merkava2d: { rootZ: 0.17, mouthZ: 1.82, rootHW: 0.34, rootHH: 0.31, mouthHW: 0.22, mouthHH: 0.20, bootLen: 0.43, seatDepth: 0.56, x: -0.01 },
+    merkava3c: { rootZ: 0.12, mouthZ: 1.78, rootHW: 0.37, rootHH: 0.34, mouthHW: 0.23, mouthHH: 0.21, bootLen: 0.42, seatDepth: 0.58, x: 0.01 },
+    merkava3d: { rootZ: 0.09, mouthZ: 1.88, rootHW: 0.39, rootHH: 0.36, mouthHW: 0.24, mouthHH: 0.22, bootLen: 0.44, seatDepth: 0.60, x: -0.03 },
+    // Mk.4B keeps the largest mask, but its seat is still a compact squared
+    // frustum rather than an armor wing spanning the whole arrowhead cheek.
+    merkava4b: { rootZ: 0.18, mouthZ: 2.43, rootHW: 0.46, rootHH: 0.42, mouthHW: 0.29, mouthHH: 0.26, bootLen: 0.46, seatDepth: 0.68, x: 0.00 },
   }[id];
   if (!cfg) return false;
 
@@ -6773,27 +6771,28 @@ function merkavaSourceGunCradle(P, p, gunZL, L) {
     (dark ? P.addGunExtraDark : P.addGunExtra)(geo, x0, 0, 0);
   };
 
-  // One connected octagonal mask with two pronounced shoulder breaks. The
-  // rear ring is wider/taller than the previous carrier and sits 24-50 cm
-  // farther inside the turret, while the intermediate rings hold their
-  // width before snapping into the small mouth. This is the characteristic
-  // Merkava faceted wedge, not a four-sided block or an exposed boot.
-  const ring = (hw, hh, z, crown = 1) => [
-    [-hw * 0.44, -hh, z], [hw * 0.44, -hh, z],
-    [hw, -hh * 0.38, z], [hw * 0.82, hh * 0.55, z],
-    [hw * 0.32, hh * crown, z], [-hw * 0.32, hh * crown, z],
-    [-hw * 0.82, hh * 0.55, z], [-hw, -hh * 0.38, z],
-  ];
-  const seatHW = cfg.rootHW * 1.18;
-  const seatHH = cfg.rootHH * 1.10;
-  const break1Z = rootZ + span * 0.38;
-  const break2Z = rootZ + span * 0.72;
+  // One connected square frustum with a long buried socket. Four broad faces
+  // carry nearly all of the area; the 12% clipped corners are only edge
+  // chamfers. The first two equal rings form a constant-section socket inside
+  // the cheek. From the actual turret face onward, width and height taper
+  // linearly to the mouth, so there are no shelf-like shoulder flares.
+  const ring = (hw, hh, z) => {
+    const c = 0.88;
+    return [
+      [-hw * c, -hh, z], [hw * c, -hh, z],
+      [hw, -hh * c, z], [hw, hh * c, z],
+      [hw * c, hh, z], [-hw * c, hh, z],
+      [-hw, hh * c, z], [-hw, -hh * c, z],
+    ];
+  };
+  const midF = 0.58;
+  const midHW = cfg.rootHW + (cfg.mouthHW - cfg.rootHW) * midF;
+  const midHH = cfg.rootHH + (cfg.mouthHH - cfg.rootHH) * midF;
   addMask(merkavaAxialLoft([
-    ring(seatHW, seatHH, rootZ - 0.10, 1.08),
-    ring(cfg.rootHW * 0.92, cfg.rootHH, break1Z, 1.02),
-    ring(Math.max(cfg.rootHW * 0.50, cfg.mouthHW * 1.52),
-      Math.max(cfg.rootHH * 0.70, cfg.mouthHH * 1.36), break2Z, 0.98),
-    ring(cfg.mouthHW, cfg.mouthHH, mouthZ + 0.035, 0.92),
+    ring(cfg.rootHW * 0.98, cfg.rootHH * 0.98, rootZ - cfg.seatDepth),
+    ring(cfg.rootHW, cfg.rootHH, rootZ + 0.035),
+    ring(midHW, midHH, rootZ + span * midF),
+    ring(cfg.mouthHW, cfg.mouthHH, mouthZ + 0.035),
   ]));
 
   const oval = (r, len, z, scaleY = 1, taper = undefined, dark = false) => {
