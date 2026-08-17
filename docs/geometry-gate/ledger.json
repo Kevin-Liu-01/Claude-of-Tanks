@@ -465,11 +465,11 @@
   },
   {
    "id": "leo2a6m",
-   "geoMin": 25,
-   "gatePassed": false,
+   "geoMin": 91,
+   "gatePassed": true,
    "components": {
-    "wholeCurves": 88.6,
-    "dims": 25,
+    "wholeCurves": 91,
+    "dims": 100,
     "floaters": 100
    }
   },
@@ -592,11 +592,11 @@
   },
   {
    "id": "leo2a4m",
-   "geoMin": 39.7,
+   "geoMin": 86.1,
    "gatePassed": false,
    "components": {
-    "wholeCurves": 86.3,
-    "dims": 39.7,
+    "wholeCurves": 86.1,
+    "dims": 100,
     "floaters": 100
    }
   },

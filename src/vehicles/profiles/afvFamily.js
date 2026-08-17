@@ -8,6 +8,7 @@
 import { KIT, FITTINGS, orientedSlab, muzzleBore, muzzleTipDot } from './kit.js';
 import { buildBradley, buildBMP2, buildPuma, bradleyFlankDressing } from '../modern3.js';
 import { T72_PROFILES } from './t72.js';
+import { T90_PROFILES } from './t90.js';
 
 function mount(P, owner, fitting, x, y, z, rotation = null) {
   fitting.position.set(x, y, z);
@@ -143,7 +144,28 @@ function addBMP3Turret(P) {
       0, 0, side * 0.03);
   }
   roofMG(P, 0.40, 0.80, -0.30, 3101, 'mag', 0.03, 0.72);
+  // §5.349 RESIDUE (§5.265 orphan-flap law, rebuilt-instrument find): the MG
+  // chain had real air at BOTH ends — ring bottom 0.7625 hung 5 cm over the
+  // crown slab (~0.71) and the pintle foot (0.87) hung 1.3 cm over the ring
+  // cap (0.857): a 1745px front-low / 520px yaw-45 floating-cross island.
+  // One pintle column chains slab -> ring bore -> fitting foot (0.70..0.89);
+  // the MG itself does not move (§B3: mount stays proud and readable).
+  P.add('turret', cylY(0.13, 0.15, 0.19, 14), 0.40, 0.795, -0.30);
   smokePair(P, 0.82, 0.58, 0.14, 4, 3110);
+  // §5.349 RESIDUE (§B2 sweep handoff bmp3_rok(a)): the whip pots stood on
+  // 28 cm of air over the turntable (pot base local 0.63 vs turntable top
+  // 0.35, outboard of the dome wall's r 0.86 reach — the yaw-45
+  // "cross-antenna" island, 718px pre-landing / 686px live). Rear shelf
+  // wings carry the pots (§B5 physical-seat law, the bmpt wing-shelf
+  // precedent): inner chord buried in the dome upper wall (r 0.67 vs the
+  // wall's 0.86 at shelf height), outer end under the pot bases.
+  for (const side of [-1, 1]) {
+    P.add('turret', box(0.43, 0.055, 0.34), side * 0.575, 0.6325, -0.74);
+  }
+  // §5.349 RESIDUE: the pano-sight drum floated 1.5 cm over its base box
+  // (the 533px yaw-45 island once the gap resolves at 900px) — pedestal
+  // collar welds drum to base.
+  P.add('turret', cylY(0.145, 0.155, 0.10, 14), -0.40, 0.80, -0.18);
   radioPair(P, 0.66, -0.86, 3120, 0.76);
   P.decal('turret', 'number', 'ROK 3', 0.20, [1.03, 0.38, -0.30], Math.PI / 2);
   P.topY = Math.max(P.topY || 0, 1.24);
@@ -161,6 +183,15 @@ function buildBMP3ROK(P) {
       2.35 - i * 0.12, 0.27, 0.085, 0.30, [-0.28, 0, 0], false);
   }
   bowLightPair(P, 1.18, 1.47, 2.88, 3130);
+  // §5.349 RESIDUE (§B2 sweep handoff bmp3_rok(b)): the bow light clusters
+  // hovered over the glacis (112px island every side view + 26px guard-bar
+  // sliver) — light platforms drop them to surface contact (§5.265): bottoms
+  // sunk 2.5 cm into the upper-glacis plate (surface y 1.31 at z 2.87), tops
+  // welded to the drum bases (1.43); §B4-clear 29 cm over the covered-run
+  // line, forward of the z 2.52 sprocket-wrap reach.
+  for (const side of [-1, 1]) {
+    P.add('hull', KIT.box(0.24, 0.145, 0.18), side * 1.14, 1.3575, 2.87);
+  }
 }
 
 function addUkrainianBradleyPackage(P) {
@@ -320,6 +351,13 @@ function addUpiorStation(P) {
   P.add('turret', box(0.54, 0.42, 0.46), 0.28, 0.98, -0.04);
   P.add('turretGlass', box(0.34, 0.18, 0.025), 0.28, 1.00, 0.205);
   P.add('turretDark', cylZ(0.055, 0.64, 12), 0.28, 1.11, 0.44);
+  // §5.349 RESIDUE (§B2 sweep handoff upior_ifv(a)): the sensor-head/rack
+  // framed pocket (489px pre-landing / 668px live at [y 2.51..2.82] world)
+  // — the head cantilevered over air behind/beside its pedestal ring. Mast
+  // arm block bridges the head rear to the drum roof: bottom buried in the
+  // crown slab (0.67 vs slab top 0.69), front welded 4 cm into the head,
+  // clear of the MG ring (x -0.22) and the right station lid (x 0.212).
+  P.add('turret', box(0.37, 0.34, 0.26), 0.025, 0.84, -0.36);
   // Owner landing c425f495 (re-applied after the §5.258 lane-side merge):
   // stepped roof armor and two real crew/service stations replace the former
   // uninterrupted slab. Rings overlap the roof; sights sit on broad shoes.
@@ -368,6 +406,14 @@ function buildUpiorIFVVariant(P) {
       0.25, 0.10, 0.30, [-0.30, 0, 0], false);
   }
   bowLightPair(P, 1.18, 1.51, 2.84, 3430);
+  // §5.349 RESIDUE (§B2 sweep handoff upior_ifv(b)): the same bmp3_rok-class
+  // bow light hover (119px pre-landing / 106px live every side view) —
+  // light platforms to surface contact (§5.265): bottoms sunk into the
+  // upper-glacis plate (surface y 1.32 at z 2.84), tops welded to the drum
+  // bases (1.46); §B4-clear over the covered-run line.
+  for (const side of [-1, 1]) {
+    P.add('hull', KIT.box(0.24, 0.16, 0.18), side * 1.14, 1.385, 2.84);
+  }
 }
 
 // ============================ Marder 1A3 ====================================
@@ -399,6 +445,16 @@ function addMarderCastTurret(P) {
   }
   P.add('turret', box(0.60, 0.14, 0.42), 0, 0.90, 0.20);                       // carriage beam, top 2.96
   P.add('turret', box(0.20, 0.20, 0.34), 0, 0.76, 0.21);                       // carriage riser web
+  // §5.349 RESIDUE (§B2 sweep handoff marder(a)): the MILAN-carriage pocket
+  // — enclosed sky [y 2.66..2.87, z -0.59..-0.31] world (552px plain-side
+  // pre-landing, 631+802px at the live seat) between the cast crown, the
+  // MILAN tube underside, the carriage towers and the MG cluster. Solid
+  // carriage pedestal web closes the mount frame to the casting: spans the
+  // inter-tower bay (x +-0.17 flush to the trunnion tower inner faces),
+  // welds into the beam/riser undersides (top 0.87 vs beam bottom 0.83) and
+  // buries into the cast crown (bottom 0.42). Every §5.269 cast line and
+  // carriage/MILAN/PERI piece stays untouched (§5.354 fence).
+  P.add('turret', box(0.34, 0.45, 0.67), 0, 0.645, -0.255);
   P.addGunExtra(box(0.30, 0.24, 0.55), 0, 0, 0.16);                            // cradle block
   P.addGunExtra(cylZ(0.075, 0.24, 14, 0.06), 0, 0, 0.50);                      // collar taper
   buildGun(P, { len: 2.55, r: 0.026, sleeve: false, collar: true, baseR: 0.075 });
@@ -469,6 +525,23 @@ function buildMarder1A3(P) {
       1.02 + row * 0.18, -0.18);
   }
   bowLightPair(P, 1.16, 1.48, 2.86, 3530);
+  // §5.349 RESIDUE (§B2 sweep handoff marder(b)): the donor under-bow window
+  // ([y 0.50..0.63, z 2.84..3.08] live read — the shared m2a2/m3a3/ua 200px
+  // class) closed with the SAME §5.341 bow-corner grammar
+  // bradleyFlankDressing lands on the other three Bradleys (side plate on
+  // the 1.40..1.44 plane, §B4-clear of the 1.395 shoe reach with the raised
+  // idler disc §B9-readable; transverse cap sealing into the bow corner
+  // slabs), authored marder-locally so the hard-gated splice takes none of
+  // the dressing's other content.
+  for (const s of [-1, 1]) {
+    const m = (x) => s * x;
+    P.add('hull', KIT.slab(
+      [m(1.40), 0.55, 2.80], [m(1.44), 0.55, 2.80], [m(1.44), 0.55, 3.14], [m(1.40), 0.55, 3.14],
+      [m(1.40), 1.17, 2.80], [m(1.44), 1.17, 2.80], [m(1.44), 1.02, 3.14], [m(1.40), 1.02, 3.14]));
+    P.add('hull', KIT.slab(
+      [m(1.06), 0.55, 3.10], [m(1.44), 0.55, 3.10], [m(1.44), 0.55, 3.16], [m(1.06), 0.55, 3.16],
+      [m(1.06), 1.00, 3.10], [m(1.44), 1.00, 3.10], [m(1.44), 1.00, 3.16], [m(1.06), 1.00, 3.16]));
+  }
 }
 
 // ========================= M3A3 Bradley CFV =================================

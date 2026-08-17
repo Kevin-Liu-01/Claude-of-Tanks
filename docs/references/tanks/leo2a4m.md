@@ -187,3 +187,87 @@ a755d23c / leo1a5 2aee1f9d / kf51 ffb1144c EXACT; leopard2_proto
 2a88d640 / leo2_revolution f55a29c8 byte-held. Evidence:
 shots/germany-order/leo2a4m-before/ (94a83234 bytes) vs
 shots/germany-order/leo2a4m-after/leo2a4m/ (final bytes, 14 views).
+
+## §5.345/§5.358 ORDERED ROUND — two-band skirts + ERA, glacis field, stern
+## cage, hull quality (§5.359 clean-room completion; 2026-08-17)
+Orders: owner §5.328-class round ("fix the leopard 2a4m sideskirts and era",
+"update the hull and make it look a lot better") + the caging order. Built in
+the PINNED CLEAN WORKTREE wt-5335 @ a7218931 (clean-room law §5.359: the live
+tree's foreign WIP poisons measurements — bisect receipts: the live pre-edit
+gate read a4m dims 39.7 / a6m dims 25; those POLLUTED rows sat in main's gate
+JSONs until this completion replaced them with fresh clean-frame rows).
+
+### Items (buildLeo2A4M, src/vehicles/profiles/leopard.js)
+1. TWO-BAND SKIRT SYSTEM — helper frontSkirt/rearSkirt OPTED OUT
+   (§SRCFIX-0808; the segRun curtain read as a uniform plank fence, §5.284
+   class). FORE (z 1.52..3.67): the A4M armor-module row IS the upper band —
+   five modules (4 full + 1 short at the idler) at the ±1.885 width anchor
+   (spec widthM 3.77 EXACT, §5.263 face-at-anchor law), each face carrying an
+   ARTICULATED §5.266 ERA grid: dark joint lines, varied proud cassettes
+   (staggered per module), cassette seam ticks, one pulled-cassette dark
+   recess on modules 2/4; segmented lower rubber hem + hanger strip. REAR
+   (z -3.00..1.44): paneled course at the print's own ±1.78 base-skirt line —
+   proud mounting band over recessed panels + rubber hem, panel joints, band
+   latch dots, band shadow line. §B9: hems at 0.52 leave ~65% of the 0.72
+   wheel disc reading below (family 40-70 band; the old 0.87 skirt line read
+   bare-wheeled). §B4: every inner face >= 1.746 vs the 1.69 shoe envelope.
+2. CONTINUOUS MOUNTING RAILS (the final3 batch): fore rail z 0.35..3.61 at
+   1.7775 + rear rail z -2.98..1.42 at 1.7175, bridging course -> hull side.
+   §B2/§K.4 receipts: the 17 cm fender<->skirt trench read 101 enclosed
+   top-down cells per side, the 9.5 cm rear trench 10 — the real vehicles
+   carry exactly this rail (the a6m's 10 cm gap class needed none).
+3. GLACIS ERA FIELD (§5.266, asymmetric): two bays riding their local glacis
+   planes (+0.035 proud, inboard of the 0.90 lane cuts), cassette lips +
+   center joints + a pulled-cassette recess; the right 2.94-band bay stays
+   kit (the spare-links fitting owns it).
+4. STERN SLAT CAGE (CAN class — the a6m §5.324 grammar at the A4M frame):
+   5 transverse rows x 7 posts UNDER the rack tiers, rear faces -3.766
+   INSIDE the -3.78 rack tail anchor (overall 9.96 holds); drop brackets
+   INTER-TRACK only (§B4: the sprocket wrap reaches z -3.64 across
+   x 0.97..1.63 — no bracket crosses the band).
+   CAGE RULING (orchestrator-decided §5.359, executed here): KEEP at the
+   honest cost — the owner ordered "caging"; the §5.335 order-supersedes
+   precedent applies. LADDER receipts: the 0.50-deep r1 band read side_whole
+   p95 8.66->10.38 (-2.1 pts, reverted); the 0.72 and 0.78 bands both settle
+   at whole 86.1 — the cage columns' floor cost is -0.1 total (86.2 -> 86.1);
+   the print's tail carries only the tall basket.
+5. HULL QUALITY: certified a6-class fan WELLS + gunmetal jack (fanWell +
+   jackDark opt-ins; chieftain5 O3b law — the hullWood jack block fired
+   orange), center transverse grille BETWEEN the fan wells (frame inner
+   edges ±0.375 clear the 0.40 fan-rim line) + 4-rib ladder with depth,
+   tail-frame service boxes + lid lips + latches, rear pod guard bars,
+   headlight brush guards (3 bars riding the glacis plane), tow-eye shackle
+   pins.
+6. PIONEER TOOLS -> STERN SHELF (the final3 batch): shovel/axe-helve/axe-head
+   re-seated fully aft of the turret casting envelope — every part z < -3.04
+   (envelope x ±1.72, z -3.04..nose; ring 1.70 vs deck 1.82 = the audit's
+   documented low-ring false-flag shape; the jackDark tone fix had shrunk
+   the wood bucket to the mid-deck tools and the AABB-coarse §B5 audit
+   flagged the bucket — the kf51b §5.311 shovel class; CAN refits carry the
+   pioneer kit rear when flank racks are fitted).
+
+### Gate close (§5.359 completion — verified at BOTH frames)
+**min 86.1 | whole 86.1 | dims 100 | floaters 100** — identical scores ×2 in
+the pinned worktree (a7218931 frame) AND ×2+×2 at the main frame (70444dcc +
+the hunk-merged leopard.js). The -0.1 vs the §5.335 86.2 is the ordered stern
+cage's honest floor cost (ladder receipts above; dims 100 HELD). Audits:
+standard-check row 86.1 | clip 0/0+0/0 | contig 0 | decor mg3+5d; track-clip
+--exact --strict 0/0 front/rear/shoe/sweep; turret-parent 0/0/0 (the §5.345
+pioneer re-seat cleared the wood-bucket flag). Default-mode (dilated,
+non-strict) note: a rear shoe-envelope blind-spot of 61 vox (hull 53 +
+hullDetail 8) is PRE-EXISTING — byte-identical at the a7218931 baseline,
+final2 and final3 (attribution receipts in the completion transcript); it
+vanishes under the canonical --exact --strict criterion.
+Hash dd1de614 -> **af74fbf2** (58/116693) — FRAME-INVARIANT (identical at
+a7218931 and at the merged main frame). Guards (both frames, byte-identical
+pristine-vs-merged at main): leo2a4 3e07c84f / leo2a6 e99dd7f8 / leo2a5
+6ecdfb06 / leo2a7v a755d23c / leopard2_proto 2a88d640 / leo1a5 2aee1f9d /
+strv122 1ca18498 EXACT; kf51 ffb1144c at the pinned frame -> d73007e4 at the
+main frame and leo2_revolution f55a29c8 -> e3a8a246 — both movers are the
+owner's 3635217c addEquipment conversions (7 lines in buildKF51/
+buildLeo2Revolution; §5.278/§5.354 re-bind class), proven NOT this lane's
+(pristine-HEAD vs merged hashgeo identical on all nine guards).
+Evidence: shots/leo2a4m-skirts/{before,after-b1,after}/ (§5.254 sets, final
+bytes). Merge receipt: 3-way onto main db3b1375 (base a7218931) — zero
+region overlap, the 7 addEquipment lines preserved verbatim; merged file
+md5 10ce81d2. npm test exit 0 at the merged state.

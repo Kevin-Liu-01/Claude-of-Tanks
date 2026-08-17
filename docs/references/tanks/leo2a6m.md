@@ -187,3 +187,78 @@ vs 90.9 satisfied (+0.1, dims 100 held EXACT). Audits: track-clip --exact
 **e004f4d8** (49/112843). Guards as the a4m packet (all EXACT). Evidence:
 shots/germany-order/leo2a6m-before/leo2a6m/ (59452b7a bytes) vs
 shots/germany-order/leo2a6m-after/leo2a6m/ (final bytes, 14 views).
+
+## §5.345 GESTALT ORDER — front re-loft, cage-to-accent, census MG
+## (§5.359 clean-room completion; 2026-08-17)
+Order (owner, verbatim ×2): "are we properly updating our leo 2a6m? its
+still in shambles visually." + "the turret front is jsut incomplete and
+misshapen." My own §5.345 renders confirmed: the cage dominated
+(frame-with-a-tank-inside), the turret front read as a blank slab with box
+clutter at the gun root. Built in the PINNED CLEAN WORKTREE wt-5335 @
+a7218931 (§5.359 clean-room law; the polluted live rows — a6m dims 25 —
+are replaced by this completion's fresh clean-frame rows).
+
+### Items (buildLeo2A6M + wedgeTurretV3/leoSlatRun opt-ins, leopard.js)
+1. TURRET-FRONT RE-LOFT (the core): the print's Object_6 is a WELDED
+   turret — its front volume exists; ours was an open pocket between the
+   wedge applique and the roof V (deck-read pit from top, void shadow from
+   the front quarter, the EMES crate floating in the saddle). Closed with
+   the real A5-family construction (§K: close volumes with real geometry):
+   - underride bridge NARROWED to the mantlet channel (wScale 0.60 ->
+     ±0.39, tucked flush behind the 1.60 slot wall) so the wedge cheeks
+     meet the mantlet instead of a full-width slab (the vacated front
+     pixels are body-wall-carried);
+   - NEW wedgeTurretV3 opt-in `slotCheekD` (default 0.65 literal-preserved
+     — sibling hashes byte-identical): embrasure cheeks tightened to 0.30,
+     rear edge held at the slot line — the 0.65 planks floated ahead of
+     the re-lofted walls;
+   - two plan-raked cheek WALLS per side meeting the mantlet slot (§B1
+     slope-motivates-the-mass), §5.284 articulation (dark top seam + three
+     half-buried strap studs riding each raked face);
+   - forward roof plates (inner + outer per side, tops 0.66 = the body
+     roof plane) closing the pocket top;
+   - EMES hood RAISED 0.72 -> 0.86 (world 2.66 = the print's own upper
+     roof band 2.55..2.66; at 0.72 it sat below the roof-V shoulders and
+     read as a loose crate), seated on a plinth merged into the roof
+     plates + armored camo cladding (body-colored hood, dark optics slot —
+     the real EMES-15 read; far under the 3.03 heightM p95 line);
+   - center mantlet-well floor + transverse sill (§B2 holes-not-channels);
+   - left forward roof kit at the EMES stations (periscope + plate — 
+     variant variety without silhouette growth);
+   - shadow-wall tail gussets tying the spaced-armor wall's outboard hang
+     into the side-module band (no-air law).
+2. CAGE -> BUSTLE-ACCENT (gestalt rebalance, owner-over-print §B7): my
+   §5.299 five-section forward cage extension is REVERTED with receipt —
+   five sections wrapped the whole turret and the tank read as a cage
+   frame. The run now holds the BUSTLE ONLY (two sections, world
+   -2.40..-0.84); rails thinned 0.024 -> 0.020 (NEW leoSlatRun opt-in
+   `railTh`, default 0.024 — prior callers byte-identical); ISAF placard
+   re-seated bridging the kept sec-0/1 gap at -2.07. HULL cage run
+   tightened to hug the skirt band (top 1.32 -> 1.26, railTh 0.020; the
+   ±1.990 rail plane = the widthM 3.98 anchor, HOLDS) + §B2 top-flange
+   closing the cage<->skirt air corridor (PRE-EXISTING §5.248 debt — the
+   pristine build reads the same enclosed cells; outer edge 1.99 EXACT).
+   Bow-corner flare rows follow the tightened 0.78..1.26 band.
+3. §B3 CENSUS MG (PRE-EXISTING mg0 debt, pristine standard-check receipt):
+   the CAN loader's C6 parked TRANSVERSE on bustle-roof cradles
+   (FITTINGS.pintleMG, photo-true stowage; tops ~2.62 world inside the
+   print's own 2.55-2.66 bustle band). Census now **mg1+5d**.
+4. DECALS re-pinned (§C law — a floating decal is a phantom silhouette
+   column): from the retired forward-cage plane (1.615, z -0.55) onto the
+   side-module dark band face (1.44; sized 0.17/0.16 inside the backed
+   plane).
+
+### Gate close (§5.359 completion — verified at BOTH frames)
+**min 91 PASS | whole 91 | dims 100 | floaters 100** — ×2 in the pinned
+worktree AND ×2+×2 at the main frame (70444dcc + merged leopard.js).
+HOLD-OR-IMPROVE vs the §5.335 91: HELD EXACT through the cage cut (the
+re-loft's closures paid for the retired cage columns). Standard-check:
+FULL MACHINE PASS (gate>=90 + clip 0/0+0/0 + contig 0 + **mg1+5d**).
+track-clip --exact --strict 0/0 front/rear/shoe/sweep; turret-parent
+0/0/0. Default-mode note: a rear shoe blind-spot (53 vox, hull) appears
+in the dilated non-strict read — same pre-existing class as the a4m's
+(vanishes under the canonical criterion). Hash e004f4d8 -> **d6025600**
+(51/114121) — FRAME-INVARIANT. Guards: see the a4m §5.359 section (nine
+guards byte-identical pristine-vs-merged at the main frame). Evidence:
+shots/leo2a6m-gestalt/{before,after-b1,after-b2,after}/ (§5.254 sets).
+npm test exit 0 at the merged state.
