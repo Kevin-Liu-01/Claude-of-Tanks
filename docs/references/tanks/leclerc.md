@@ -778,3 +778,97 @@ vertices). The 45-frame paired/yaw packet is hash-distinct and includes the
 standard elevated-left profile. Fidelity 94.0 (hull 95 / turret 91 / gun 91 /
 tracks 93); parent, winding, rig, bore, provenance, family order, asset,
 tests and both build lanes pass.
+
+## §5.329 THREE-ITEM OWNER ROUND (2026-08-17, leclerc lane) — lower-glacis re-loft + enlarged/raised final drive + §B2 fills; 733d24fd -> e6523de8 x2
+
+OWNER ORDERS (verbatim, surface-markup receipts): (1) "for the leclerc its
+lower glacis is really pushed back and doesnt line up with the upper glacis.
+fix" — markup hull faces 804/805, the near-vertical plate z 2.95->3.02 /
+y 0.27..1.19 / x ±0.94, ~0.44-0.56 m recessed behind the beak; (2) "make its
+rare wheel much larger and move it up a little without deleting any tank
+parts" — markup gearEndWheelHardware, rear end wheel c (0.84, -3.00), visible
+r ~0.22; (3) "the leclerc turret and hulls are also a little see throughable,
+just make them filled up roperly".
+
+ITEM 1 — LOWER GLACIS RE-LOFT. The old lower bow frustum stood a ~4-deg-
+from-vertical wall at z 2.95->3.02 whose top edge sat 0.44 m BEHIND the beak
+(nose plate bottom-front edge y 1.21 / z 3.46): the owner's step + an open
+cavity under the beak. Replaced (same P.add slot, orientedSlab) by ONE
+continuous lower-glacis plane: front face (0.27, 2.95) -> (1.21, 3.46) =
+~28.5 deg from vertical, the real Leclerc nose profile; the top-front corners
+SHARE the beak edge exactly (edge contact — no coplanar face, no z-fight);
+top-rear corners buried in the full-width shoulder at 1.24. Bow tow shackles
+re-seated from their floating z-face 3.30 (authored against the recessed
+wall, ~0.28 proud of it) onto the new plane: clevis face 3.267 = 40 mm proud
+of the surface at y 0.78 (centers z 3.27 -> 3.237, nubs 3.315 -> 3.282).
+Front length anchors untouched: plate reach 3.46 = the existing nose tip,
+front body column 3.54 (idler pads) / mudguard 3.58 / lip 3.5975 unchanged.
+
+ITEM 2 — FINAL DRIVE (rear sprocket) ENLARGED + RAISED. cfg
+sprocket { z -3.00, y 0.84, r 0.14 } -> { z -2.90, y 0.92, r 0.24 }: visible
+toothed wheel r 0.22 -> 0.32 (the §B6 raised-drive class), axle +0.08 above
+the old line, z pulled forward 0.10 so the wrap far edge holds the certified
+rear body line EXACTLY (z - r - 0.08 band = -3.22; -3.30 with link pads —
+identical to the old wheel's math; hullLengthM anchor preserved, whole-tank
+AABB z-range byte-equal before/after). DELETE NOTHING honored: body,
+hardware, carrier rings, wrap band and shoes all re-derive around the bigger
+wheel (native loop law); wheelbase/rollers/idler untouched. XLR rider: the
+XLR rear corner cell floor RAISED 1.16 -> 1.38 (same cell, same lid) clear of
+the new pad crest (~1.355). §B9: the enlarged wheel reads prominently under
+the cut-high skirt panel hem (0.805) from side and rear.
+
+ITEM 3 — §B2 SWEEP + ARMOR-GRADE CLOSURES (tools/tmp-sweep-seethrough.mjs,
+36-view battery incl. low/under). BEFORE worst: bow-lane holes at
+[±1.3, 0.5..0.8, 2.64..2.83] (up to 255 px, fq/garage views — rays through
+the open lane behind the recessed bow), stern side slivers [±0.004, 1.216,
+-2.832] through the hollow band above the boat-tail wedges, brow->boot slot
+[±0.01, 2.05, 2.05], beak notch [±0.003, 1.235, 3.50], chamfer front mouths
+(under-fr [1.017, 2.20, 0.99]). CLOSED with real geometry (§5.303/§5.326
+class): the item-1 plane itself (bow lane: fqr 288 -> 22 px, garage 263 -> 8),
+ENGINE-BAY REAR FILL box(1.88, 0.50, 0.60) @ (0, 1.30, -2.95) — the y
+1.05..1.55 / z -2.65..-3.25 band above the wedges was hollow; rear face
+-3.25 clear of the -3.352 anchor column window (stern slivers now 0),
+CANVAS BASE FOLD box(0.52, 0.194, 0.10) @ turret (0, 0.433, 2.155) bridging
+brow -> boot at the 2.13w line inside the clamp-frame plan footprint,
+BEAK CENTER CAP box(1.96, 0.06, 0.12) @ (0, 1.22, 3.46) — the bow cross-lip
+bridging nose tip -> mudguard tips (notch 32 px -> 12 px kit-sliver), and
+CHAMFER FRONT BULKHEADS (slab pair 5 mm under the sheet line) plugging the
+hollow chamfer wedges. AFTER: every remaining enclosed read classified in
+pixels as HONEST OPEN FURNITURE AIR (under pintle-MG receivers/barrels
+~2.35w, under the stowed bustle whips, basket-frame slots, turret-overhang
+keyholes, XLR standoff-ERA channels, amx56 RWS underspace) or certified
+cm-class slivers (skirt-sheet hairlines 0.005 m, beak fringe 0.037 x 0.049) —
+filling gun/basket airspace would be fake armor on priced roof windows.
+Variants sweep-verified (leclerc_xlr, amx56): closures inherited, no new
+structural voids.
+
+GATE STATE: NOT RE-GATED — the oracle GLB is .bak-only
+(public/models/tanks/char_leclerc_andertan.glb.bak; procedural-fidelity
+REF_SOURCES still points at the live path), the §5.265 graduate hazard class.
+Evidence per the §5.329 order: §5.254 changed-view pairs at the owner's two
+markup cameras + bow-close + belly-up + rear-wheel + rear-low at
+shots/leclerc-bow/{before,after}/ (before = 733d24fd bytes), §B2 sweep
+receipts at shots/see-through-sweep/, and the hash row below. dims receipt:
+whole-tank AABB byte-equal before/after on x/z and top ([-1.806, 3.5613-]
+[1.806, 2.54, 6.3099]; y-min 0.0142 -> 0.0135, a re-derived shoe corner).
+
+BATTERY: track-clip-audit --exact --strict leclerc/leclerc_xlr/amx56 = band
+0/0, shoes 0/0, strict sweep 0/0 ALL THREE (better than the certified
+front-14 residual). track-geometry, tankAssets (115), rosterPolicy, tier,
+appearanceAudit, fleetOrder selftests green on final bytes. Full npm test
+chain dies earlier in ANOTHER LANE's live WIP (type99Armor.selftest,
+untracked §-lane files, type99a ring seat — zero leclerc relation).
+
+HASHES (tools/tmp-hashgeo.mjs, x2 bit-identical): leclerc 733d24fd
+(48/85,643) -> **e6523de8** (48/98,207); leclerc_xlr bce50094 -> **1f64e4c**
+(50/107,303); amx56 add6a070 -> **71e39be** (50/112,445) — variants move
+through the shared builder per order. GUARDS: type90 d4a9410 EXACT through
+every batch; amx40 1a74c63c and amx30 33b5048 / amx30b2 88801828 EXACT
+through the batch-1 window (only §5.329 edits in tree); their later movement
+(amx40 ed5d23b2 at identical verts; amx30/amx30b2 twice) is the LIVE §5.328
+amx lane's own uncommitted WIP arriving in profiles/misc.js (buildAMX30
+region, disjoint hunks 3995+ vs this round's 1063-1954) plus a fleet-wide
+specs.js finalizeCombatAnatomy WIP from another lane — attribution receipts
+in the round snapshots (misc.js.baseline/.wip1/.wip2-dualstate/.wip3).
+Delivered UNCOMMITTED-UNSTAGED per the graduate-change order; §3 freeze row
+update (733d24fd -> e6523de8) belongs to the landing authority.

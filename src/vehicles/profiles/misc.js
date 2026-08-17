@@ -1063,8 +1063,22 @@ function buildLeclerc(P, variant = 's2') {
   P.add('hull', frustum(1.66, 2.66, 1.60, 1.66, 1.64, 1.60, 1.363, 1.55));
   P.add('hull', frustum(1.00, 2.74, 2.62, 1.66, 2.66, 2.62, 1.348, 1.363));
   P.add('hull', frustum(0.94, 3.46, 2.76, 0.94, 2.82, 2.76, 1.21, 1.34));
-  // lower bow: narrow (x ±0.94 INSIDE the track inner faces)
-  P.add('hull', frustum(0.94, 2.95, 2.42, 0.94, 3.02, 2.58, 0.27, 1.19));
+  // lower bow: narrow (x ±0.94 INSIDE the track inner faces).
+  // §5.329 item 1 (owner: "its lower glacis is really pushed back and doesnt
+  // line up with the upper glacis. fix"): the old plate stood near-vertical
+  // (z 2.95 -> 3.02 over y 0.27..1.19, normal ~4 deg — the marked faces
+  // 804/805) leaving a ~0.44 m recessed step + open cavity behind the beak
+  // (nose plate bottom-front edge y 1.21 / z 3.46). RE-LOFTED as ONE
+  // continuous lower-glacis plane from the beak line back-and-down to the
+  // belly front (0.27, 2.95) — ~28.5 deg from vertical, the real Leclerc
+  // nose profile. Top-front corners SHARE the beak edge exactly (edge
+  // contact, no coplanar face, no z-fight); top-rear corners rise to 1.24
+  // buried inside the full-width shoulder so the top face tilts away from
+  // the nose underside. Front reach 3.46 = the existing nose tip:
+  // hullLengthM anchors (front body 3.54 pads / mudguard 3.58) untouched.
+  P.add('hull', slab(
+    [-0.94, 0.27, 2.95], [0.94, 0.27, 2.95], [0.94, 0.27, 2.42], [-0.94, 0.27, 2.42],
+    [-0.94, 1.21, 3.46], [0.94, 1.21, 3.46], [0.94, 1.24, 2.58], [-0.94, 1.24, 2.58]));
   // stern boat-tail wedge, same containment narrowing
   P.add('hull', slab(                                                          // 90-ladder r1: boat-tail bottom re-laid to the ref's measured rake — the old flat-0.26-to--2.72 + single rake under-ran the want line 0.07-0.14 on five stern cols (the center wedge, not the track, owned those bottoms)
     [-0.94, 0.26, -2.44], [0.94, 0.26, -2.44], [0.94, 0.267, -2.52], [-0.94, 0.267, -2.52],
@@ -1078,6 +1092,15 @@ function buildLeclerc(P, variant = 's2') {
   P.add('hull', slab(
     [-0.94, 0.66, -2.98], [0.94, 0.66, -2.98], [0.94, 0.88, -3.28], [-0.94, 0.88, -3.28],
     [-0.94, 1.05, -2.98], [0.94, 1.05, -2.98], [0.94, 1.05, -3.28], [-0.94, 1.05, -3.28]));
+  // §5.329 item 3 (§B2 owner: "turret and hulls are ... a little see
+  // throughable, just make them filled up roperly"): ENGINE-BAY REAR FILL.
+  // The band above the boat-tail wedges (y 1.05..1.55 over z -2.65..-3.25,
+  // x ±0.94) was hollow — skirt-course gap slivers and under angles read
+  // SKY straight through the stern (sweep clusters [±0.004, 1.216, -2.832]).
+  // Real closure: the engine bay carries armor here; block buried under the
+  // deck plates / rear plate / step filler / wedges. Rear face -3.25 stays
+  // clear of the -3.352 hullLengthM anchor column window (razor-anchor law).
+  P.add('hull', box(1.88, 0.50, 0.60), 0, 1.30, -2.95);
   P.add('hullDetail', box(2.88, 0.05, 0.08), 0, 1.43, 2.24, -0.20, 0, 0);      // splash ridge on the plane
   // Long outer fender rails (x 1.70..1.785 — clear of the 1.66 pad plane):
   // raked 1.445 @ z1.30 -> 1.235 @ 3.32 so the falling glacis owns the side
@@ -1104,6 +1127,15 @@ function buildLeclerc(P, variant = 's2') {
     P.add('hullRubber', box(0.64, 0.10, 0.035), s2 * 1.37, 1.195, 3.58);      // low flexible lip, ahead of terminal shoes
     P.add('hullDark', box(0.52, 0.020, 0.018), s2 * 1.36, 1.250, 3.555);      // cap hinge/seam follows the new shoulder rake
   }
+  // §5.329 item 3 (§B2): BEAK CENTER CAP — the notch between the mudguard
+  // inner edges over the nose tip (x ±0.90..0.98, y ~1.20..1.26, z
+  // 3.46..3.56) read an enclosed sky slot from both sides (sweep
+  // [±0.003, 1.235, 3.50], 0.097 x 0.073). The real bow carries a cross
+  // lip where the glacis tip meets the lower plate; this cap bridges nose
+  // tip -> mudguard tips as that lip. Plan front 3.52 stays inside the
+  // 3.54 front-body column; side/front silhouettes already owned by the
+  // mudguard band at this y (interior fill).
+  P.add('hull', box(1.96, 0.06, 0.12), 0, 1.22, 3.46);
   // driver LEFT: flush hatch + 3 episcopes (90-ladder r1 CAP-SEAT: ref deck
   // line reads 1.534-1.544 over z 0.2..1.25 — the 1.573/1.576 hatch crowns
   // and 1.61 periscope heads printed +0.02..+0.035 on seven side cols;
@@ -1259,11 +1291,14 @@ function buildLeclerc(P, variant = 's2') {
   // 1.61 under the 1.618 engine line, inboard of the x -1.03 pioneer lane
   towCable(P, [[-0.60, 1.59, -1.95], [-0.90, 1.595, -2.40], [-0.66, 1.59, -2.92]]);
   // §B3.2: bow TOW SHACKLES on the lower bow plate (real fit: paired clevis
-  // points low center; proud 40 mm, z face 3.30 under the 3.46 nose tip and
-  // the 3.50 idler-pad plan lane; side rows there are wrap/nose-owned).
+  // points low center; proud 40 mm of the §5.329 re-lofted lower-glacis
+  // plane (surface z 3.227 at y 0.78 -> clevis face 3.267), under the 3.46
+  // nose tip and the 3.50 idler-pad plan lane; side rows wrap/nose-owned.
+  // (Pre-§5.329 these sat at face 3.30 floating ~0.28 AHEAD of the old
+  // recessed wall — the owner's screenshot fittings.)
   for (const s of [-1, 1]) {
-    P.add('hullDark', box(0.11, 0.13, 0.06), s * 0.55, 0.78, 3.27);
-    P.add('hullDetail', box(0.05, 0.05, 0.05), s * 0.55, 0.78, 3.315);
+    P.add('hullDark', box(0.11, 0.13, 0.06), s * 0.55, 0.78, 3.237);
+    P.add('hullDetail', box(0.05, 0.05, 0.05), s * 0.55, 0.78, 3.282);
   }
   liftEye(P, 'hullDetail', -1.30, 1.50, -0.95);
   liftEye(P, 'hullDetail', 1.30, 1.50, -0.95);
@@ -1285,8 +1320,8 @@ function buildLeclerc(P, variant = 's2') {
   // 6 wheels, FRONT idler / REAR sprocket, 5 rollers. R2 workorder: HIGH
   // short idler matching the ref (wrap top 1.41 = the z 3.15..3.26 bump,
   // far edge 3.52 covers the ref's 3.43..3.54 body columns), sprocket
-  // pulled to -2.90 so its wrap (far -3.23) stays inside the -3.32 column
-  // edge — front body 3.54 + rear -3.32 = hullLengthM 6.86 (in grace).
+  // pulled to -2.90 so its wrap (far -3.22) stays inside the -3.32 column
+  // edge — front body 3.54 + rear -3.30 = hullLengthM 6.86 class (in grace).
   // Track narrowed to the ref planes: inner 1.00 / outer 1.60.
   // ref contact patch is [-2.10, 2.30] (bottoms 0.03..0.06 there) — the r1
   // wheelbase sat 0.35 too far AFT; end-wheel far edges INCLUDE the link
@@ -1305,7 +1340,16 @@ function buildLeclerc(P, variant = 's2') {
     // individual shoes remain concentric and share one authored ownership.
     xcLeft: 1.315, xcRight: 1.280,
     wheelZs,
-    sprocket: { z: -3.00, y: 0.84, r: 0.14 },
+    // §5.329 item 2 (owner: "make its rare wheel much larger and move it up
+    // a little without deleting any tank parts"): final drive ENLARGED
+    // r 0.14 -> 0.24 (visible toothed wheel 0.22 -> 0.32 — the §B6 raised-
+    // drive read) and RAISED y 0.84 -> 0.92 above the road-wheel line.
+    // z pulled -3.00 -> -2.90 so the wrap far edge (z - r - 0.08 band =
+    // -3.22; -3.30 with link pads) holds the certified rear body line
+    // EXACTLY (hullLengthM anchor law — same -3.30 as the old 0.14 wheel
+    // at -3.00). DELETE NOTHING honored: body/hardware/carrier rings/wrap/
+    // shoes all re-derive around the bigger wheel (native loop law).
+    sprocket: { z: -2.90, y: 0.92, r: 0.24 },
     // Full-size front idler at the same raised station as the final drive.
     // Only this terminal wheel changes; the six established road wheels and
     // every hull/skirt/mudguard dimension remain untouched.
@@ -1429,6 +1473,15 @@ function buildLeclerc(P, variant = 's2') {
     P.add('turret', slab(                                                      // mid chamfer: mid roof edge -> the side-box top line (planar t-ring)
       [s * 1.00, 0.56, 0.98], [s * 1.40, 0.30, 0.94], [s * 1.40, 0.30, 0.02], [s * 1.00, 0.56, 0.06],
       [s * 1.02, 0.61, 0.98], [s * 1.42, 0.335, 0.94], [s * 1.42, 0.335, 0.02], [s * 1.02, 0.61, 0.06]));
+    // §5.329 item 3 (§B2): CHAMFER FRONT BULKHEAD — the chamfer is a thin
+    // sheet; its front mouth (x 1.00..1.40 at z_l ~0.94, under the sheet)
+    // opened into the hollow wedge beneath and read sky from under-front
+    // angles (sweep under-fr [1.017, 2.201, 0.994], 0.242 x 0.077). Plug
+    // follows the chamfer underside line 5 mm below the sheet (armor module
+    // face, §5.326 closure class); interior to plan/side silhouettes.
+    P.add('turret', slab(
+      [s * 1.00, 0.30, 0.97], [s * 1.40, 0.30, 0.93], [s * 1.40, 0.30, 0.86], [s * 1.00, 0.30, 0.90],
+      [s * 1.00, 0.555, 0.97], [s * 1.40, 0.295, 0.93], [s * 1.40, 0.295, 0.86], [s * 1.00, 0.555, 0.90]));
   }
   for (const s of [-1, 1]) {
     P.add('turret', box(0.66, 0.06, 0.54), s * 0.67, 0.722, -0.33);            // HIGH ROOF forward caps x 0.34..1.00 per side, top LH (2.352w), z_l -0.06..-0.60 — the CENTER stays at the channel line (ref front center cols 2.248-2.278: a full-width cap read +0.046..0.055 on six cols, loop 1)
@@ -1596,6 +1649,13 @@ function buildLeclerc(P, variant = 's2') {
   P.add('turretDark', box(0.30, 0.022, 0.004), 0, 0.19, 2.722);
   P.add('turret', box(0.52, 0.44, 0.028), 0, 0.26, 2.182);                     // clamp frame: face z_w 2.096 owns plan +-0.29
   P.add('turretDark', box(0.46, 0.38, 0.006), 0, 0.26, 2.20);                  // frame inner shadow inset
+  // §5.329 item 3 (§B2): CANVAS BASE FOLD closing the brow->boot slot. The
+  // 6 cm z-gap between the brow strip rear (z_w 2.025) and the boot mouth
+  // (z_w 2.09) read SKY above the clamp frame (sweep [±0.01, 2.05, 2.05],
+  // 0.056 x 0.139 both flanks). Same canvas class as the boot: the fold
+  // bridges brow to cap at the 2.13w line, clamp-frame plan footprint
+  // (x ±0.26 — no new plan extreme), tube passes through like the frame.
+  P.add('turret', box(0.52, 0.194, 0.10), 0, 0.433, 2.155);
   P.add('turret', box(0.34, 0.36, 0.27), 0, 0.305, 2.835);                     // root collar: top 2.085w, z_w 2.60..2.87 — rear held 25 mm clear of the col-2.951 window (the wide face at 2.90 lit it +0.027 in loop 1; the old narrow collar's 4.5 mm sliver never did)
   P.add('turret', box(0.38, 0.15, 0.12), 0, 0.025, 2.25);                      // mantlet LOWER LIP under the boot mouth: restores the col-2.176 turret-row bottom (ref 1.551) the old cheek-complex base carried
   P.add('turretDark', cylZ(0.14, 0.05, 14), 0, 0.25, 3.02);                    // §B3.1 thermal-sleeve clamp ring at the root exit (top 1.99w — also the honest owner of side col 2.951's 1.99 line the old collar held by an AA sliver)
@@ -1912,7 +1972,11 @@ function buildLeclercXLR(P) {
     }
     // Rear corner cells close the autoloader/deck shoulder without becoming
     // a second track or an unsupported wall.
-    P.add('hull', box(0.46, 0.40, 0.34), s * 1.38, 1.36, -3.03);
+    // §5.329 item 2 rider: cell FLOOR RAISED 1.16 -> 1.38 over the enlarged
+    // final drive (sprocket crest incl. link pads now ~1.355 — the old
+    // floor would clip the bigger wheel). Nothing deleted: same cell, same
+    // lid, re-seated on the new wheel line.
+    P.add('hull', box(0.46, 0.18, 0.34), s * 1.38, 1.47, -3.03);
     P.add('hullDark', box(0.38, 0.025, 0.28), s * 1.38, 1.575, -3.03);
 
     // Deep but planted turret side modules, split to preserve the source's
