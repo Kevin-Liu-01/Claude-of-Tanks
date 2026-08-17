@@ -26,6 +26,7 @@ import {
 import {
   cloneCollisionRecord, convexHull2, setCircleShape, setConvexShape, setObbShape,
 } from './collision.js';
+import { hedgehogBeamSpecs, sampleDiscGround, sampleObbGround } from './propPlacement.js';
 // DESTRUCTIBLES r1: real-roster tank wrecks baked to static geometry
 import { bakeTankWreck, bakeWreckDebris, wreckPool } from './wrecks.js';
 // Build-time-baked licensed models (see tools/bake-props-models.mjs +
@@ -1101,6 +1102,21 @@ ${snowCap ? `
   function addDestructible(kind, x, y, z, yaw = 0, sc = 1, tiltX = 0, tiltZ = 0) {
     const meta = LOCAL_TYPES[kind] || DESTRUCTIBLE_BUILDING_TYPES[kind] || DESTRUCTIBLE_TYPES[kind];
     if (!meta) throw new Error('world/props: unknown destructible kind ' + kind);
+    // Center-point placement left wide props hovering over terrain shoulders.
+    // Ground against the authored footprint once at map build time. Explicitly
+    // pitched fence/wall modules already fit their endpoints and keep that pose.
+    if ((meta.fence || meta.wall)) {
+      // Runs are pitched from their endpoints, but a concave terrain sample
+      // can still rise beneath the module midpoint. Keep that midpoint buried.
+      y = Math.min(y, heightField.getHeightAt(x, z) - 0.025);
+    } else if (Math.abs(tiltX) < 0.08 && Math.abs(tiltZ) < 0.08) {
+      const support = (meta.hw != null || meta.hl != null)
+        ? sampleObbGround(heightField, x, z,
+          (meta.hw ?? meta.r) * sc, (meta.hl ?? meta.r) * sc, yaw, 0.025)
+        : sampleDiscGround(heightField, x, z,
+          (meta.groundR ?? meta.collisionR ?? meta.r) * sc, 0.025);
+      y = Math.min(y, support.y);
+    }
     let pool = dPools.get(kind);
     if (!pool) { pool = { meta, mats4: [], records: [], imI: null, imB: null, nBroken: 0 }; dPools.set(kind, pool); }
     _de.set(tiltX, yaw, tiltZ, 'YXZ');
@@ -1160,6 +1176,8 @@ ${snowCap ? `
         const segLen = meta.wall ? WALL_SEG : FENCE_SEG;
         const thick = meta.wall ? 0.35 : 0.2;
         setObbShape(ob, x, z, thick * sc + 0.05, segLen * 0.5 * sc + 0.05, yaw);
+      } else if (meta.shape === 'circle') {
+        setCircleShape(ob, x, z, (meta.collisionR ?? meta.r) * sc + 0.025);
       } else {
         setObbShape(ob, x, z, rr, rr, yaw);
       }
@@ -1264,12 +1282,8 @@ ${snowCap ? `
   function groundFit(x, z, w, d, rot) {
     const cs = Math.abs(Math.cos(rot)), sn = Math.abs(Math.sin(rot));
     const hx = (w * cs + d * sn) / 2, hz = (w * sn + d * cs) / 2;
-    const hs = [
-      heightField.getHeightAt(x - hx, z - hz), heightField.getHeightAt(x + hx, z - hz),
-      heightField.getHeightAt(x - hx, z + hz), heightField.getHeightAt(x + hx, z + hz),
-      heightField.getHeightAt(x, z),
-    ];
-    return { y: Math.min(...hs), spread: Math.max(...hs) - Math.min(...hs), hx, hz };
+    const support = sampleObbGround(heightField, x, z, w / 2, d / 2, rot);
+    return { y: support.y, spread: support.spread, hx, hz };
   }
 
   function addFootprintAABB(list, x, z, y, hx, hz, h,
@@ -2268,7 +2282,10 @@ ${snowCap ? `
       const tl = Math.hypot(bx - ax, bz - az);
       const px = ax - ((bz - az) / tl) * 6.9, pz = az + ((bx - ax) / tl) * 6.9;
       if (Math.max(Math.abs(px), Math.abs(pz)) > 470 || noVeg(px, pz)) continue;
-      const py = heightField.getHeightAt(px, pz);
+      // A pole occupies more than one height-field sample. Plant its full base
+      // against the lowest nearby terrain so a verge shoulder cannot leave it
+      // visibly suspended above the map.
+      const py = sampleDiscGround(heightField, px, pz, 0.30, 0.035).y;
       const armYaw = Math.atan2(bx - ax, bz - az) + Math.PI / 2;
       const networkIndex = poleLine.length;
       const poleRec = {
@@ -2276,7 +2293,7 @@ ${snowCap ? `
         attachH: SOURCED.poles ? 6.5 : 5.75,
       };
       if (SOURCED.poles) {
-        addBakedInstance('pole', poleGeo, px, py - 0.05, pz, armYaw, 1);
+        addBakedInstance('pole', poleGeo, px, py, pz, armYaw, 1);
         poleRec.instanceIndex = bakedInstances.get('pole').list.length - 1;
         poleLine.push(poleRec);
         // effects_combat r1: poles are CRUSHABLE — record the instance index
@@ -2739,21 +2756,28 @@ ${snowCap ? `
         if (Math.hypot(hx - s.x, hz - s.z) < 20) { nearSpawn = true; break; }
       }
       if (nearSpawn) continue;
-      const y = heightField.getHeightAt(hx, hz);
       const yawH = hrng() * Math.PI * 2;
       const scH = 0.85 + hrng() * 0.35;
-      for (let b = 0; b < 3; b++) { // three crossed I-beams
+      const y = sampleDiscGround(heightField, hx, hz, 1.08 * scH, 0.035).y;
+      const yawOffsets = [
+        (hrng() - 0.5) * 0.3,
+        (hrng() - 0.5) * 0.3,
+        (hrng() - 0.5) * 0.3,
+      ];
+      const beams = hedgehogBeamSpecs(hx, y, hz, yawH, scH, yawOffsets);
+      for (const beamSpec of beams) { // three crossed I-beams
         const beam = box(0.16 * scH, 0.16 * scH, 2.1 * scH, 1.2);
-        beam.rotateX(b === 0 ? 0.62 : b === 1 ? -0.62 : 0.02);
-        beam.rotateY(yawH + b * (Math.PI * 2 / 3) + (hrng() - 0.5) * 0.3);
+        beam.rotateX(beamSpec.tilt);
+        beam.rotateY(beamSpec.yaw);
         beam.translate(hx, y + 0.62 * scH, hz);
         buckets.dark.push(beam);
+        const rec = setObbShape({
+          min: [hx, beamSpec.minY, hz], max: [hx, beamSpec.maxY, hz],
+          kind: 'hedgehog', hedgehogId: placed,
+        }, hx, hz, beamSpec.halfWidth + 0.025, beamSpec.halfLength + 0.025, beamSpec.yaw);
+        obstacles.push(rec);
+        colliders.push(cloneCollisionRecord(rec));
       }
-      const e = 1.15 * scH;
-      obstacles.push(setCircleShape(
-        { min: [hx - e, y, hz - e], max: [hx + e, y + 1.3 * scH, hz + e] }, hx, hz, e));
-      colliders.push(setCircleShape(
-        { min: [hx - e, y, hz - e], max: [hx + e, y + 1.3 * scH, hz + e] }, hx, hz, e));
       placed++;
     }
   }
