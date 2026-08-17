@@ -9167,3 +9167,6 @@ The owner's 01c3c6f5 (STB-1 rebuild from source oracle) touched profiles/japan.j
 
 ## §5.339 — buildAMX30Legacy deletion routed to the §5.328 lane (2026-08-17)
 - The owner's dead-code chip (misc.js:3535, ~350 lines, zero callers post-§5.318) executes INSIDE the live §5.328 amx lane (file-owner discipline — an external mid-flight edit would trip their md5/snapshot revert-detection). The chip's byte-identity acceptance is SUBSUMED by that lane's gates: their §5.328 order moves the amx hashes anyway; the deletion is geometry-neutral and lands with grep-0 receipts in their report.
+
+## §5.340 — OWNER FOLLOW-UP (verbatim, 2026-08-17): oplot "still missing a huge chunk of its turret... left side from us facing the front"
+- VISUALLY CONFIRMED MYSELF (own puppeteer renders at 6e76802a, shots/oplot-check/): the TANK'S RIGHT wall (viewer-left, facing front) is hollow behind the §5.288 wing stack — no cassette wall/side mass in the behind-wing band; the §5.291 sitting's garage weighting hid it, and §5.338 finished only the LEFT. The oplot agent RESUMED with the right-wall order (print's-right stations per its relief probe, asymmetry law, §5.338-class treatment, left side byte-untouched, dims-100 discipline). My check shots = the BEFORE reference.
